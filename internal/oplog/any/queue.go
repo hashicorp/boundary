@@ -6,6 +6,7 @@ import (
 	"reflect"
 
 	"github.com/gogo/protobuf/proto"
+	types "github.com/gogo/protobuf/types"
 )
 
 type Queue struct {
@@ -21,9 +22,11 @@ func (r *Queue) Add(m proto.Message, t OpType) error {
 		return err
 	}
 	msg := &Any{
-		TypeUrl: type_usl,
-		Value:   value,
-		Type:    t,
+		Anything: &types.Any{
+			TypeUrl: type_usl,
+			Value:   value,
+		},
+		Type: t,
 	}
 	data, err := proto.Marshal(msg)
 	if err != nil {
@@ -56,14 +59,14 @@ func (r *Queue) Remove() (proto.Message, OpType, error) {
 	if err != nil {
 		return nil, 0, err
 	}
-	if msg.Value == nil {
+	if msg.Anything.Value == nil {
 		return nil, 0, nil
 	}
-	any, err := r.Catalog.Get(msg.TypeUrl)
+	any, err := r.Catalog.Get(msg.Anything.TypeUrl)
 	if err != nil {
 		return nil, 0, err
 	}
 	pm := any.(proto.Message)
-	err = proto.Unmarshal(msg.Value, pm)
+	err = proto.Unmarshal(msg.Anything.Value, pm)
 	return pm, msg.Type, err
 }
