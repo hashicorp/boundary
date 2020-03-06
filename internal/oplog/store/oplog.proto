@@ -1,0 +1,66 @@
+syntax = "proto3";
+
+package hashicorp.watchtower.controller.v1;
+option go_package = "github.com/hashicorp/watchtower/internal/oplog/store;store";
+
+import "google/protobuf/timestamp.proto";
+
+message Timestamp {
+  google.protobuf.Timestamp timestamp = 1;
+}
+
+message Entry {
+  // @inject_tag: gorm:"primary_key"
+  uint32 id = 1;
+  // @inject_tag: gorm:"not_null;type:TIMESTAMP"
+  Timestamp created_at = 2;
+  // @inject_tag: gorm:"not_null;type:TIMESTAMP"
+  Timestamp updated_at = 3;
+
+  // @inject_tat: gorm:"not_null"
+  bytes hmac = 4;
+  // @inject_tat: gorm:"not_null"
+  string kid = 5;
+
+  // @inject_tat: gorm:"not_null"
+  string bounded_context = 6;
+
+  // one to many relationship
+  // @inject_tag: gorm:"foreignkey:entry_id"
+  repeated Metadata metadata = 7;
+
+  // @inject_tat: gorm:"not_null"
+  bytes data = 8;
+}
+
+message Ticket {
+  // @inject_tag: gorm:"primary_key"
+  uint32 id = 1;
+  // @inject_tag: gorm:"not_null;type:TIMESTAMP"
+  Timestamp created_at = 2;
+  // @inject_tag: gorm:"not_null;type:TIMESTAMP"
+  Timestamp updated_at = 3;
+
+  // @inject_tat: gorm:"not_null"
+  string name = 6;
+
+  // @inject_tat: gorm:"not_null;default:'1'"
+  uint32 version = 7;
+}
+
+message Metadata {
+  // @inject_tag: gorm:"primary_key"
+  uint32 id = 1;
+  // @inject_tag: gorm:"not_null;type:TIMESTAMP"
+  Timestamp created_at = 2;
+  // @inject_tag: gorm:"not_nul
+
+  uint32 entry_id = 3;
+  // @inject_tag: gorm:"foreignkey:EntryId"
+  Entry entry = 4;
+
+  // @inject_tag: gorm:"not_null"
+  string key = 5;
+  // @inject_tag: gorm:"not_null"
+  string value = 6;
+}
