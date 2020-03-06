@@ -6,6 +6,10 @@ require (
 	github.com/armon/go-metrics v0.3.3
 	github.com/fatih/color v1.9.0
 	github.com/ghodss/yaml v1.0.1-0.20190212211648-25d852aebe32
+	github.com/gogo/protobuf v1.3.1
+	github.com/golang-migrate/migrate/v4 v4.9.1
+	github.com/golang/protobuf v1.3.3
+	github.com/google/uuid v1.1.1
 	github.com/hashicorp/errwrap v1.0.0
 	github.com/hashicorp/go-alpnmux v0.0.0-20200304172639-978773dcd35e
 	github.com/hashicorp/go-hclog v0.12.1
@@ -15,8 +19,10 @@ require (
 	github.com/hashicorp/vault v1.2.1-0.20200306162758-a1d6dde79a9e
 	github.com/hashicorp/vault/api v1.0.5-0.20200306162758-a1d6dde79a9e
 	github.com/hashicorp/vault/sdk v0.1.14-0.20200306162758-a1d6dde79a9e
+	github.com/jinzhu/gorm v1.9.12
 	github.com/kr/text v0.2.0
 	github.com/lib/pq v1.3.0
+	github.com/matryer/is v1.2.0
 	github.com/mattn/go-colorable v0.1.6
 	github.com/mitchellh/cli v1.0.0
 	github.com/mitchellh/go-homedir v1.1.0
