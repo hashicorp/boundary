@@ -1,0 +1,17 @@
+syntax = "proto3";
+
+package hashicorp.watchtower.controller.v1;
+option go_package = "github.com/hashicorp/watchtower/internal/oplog/any;any";
+
+import "google/protobuf/any.proto";
+
+enum OpType {
+  UnknownOp = 0;
+  CreateOp = 1;
+  UpdateOp = 2;
+  DeleteOp = 3;
+}
+message Any {
+  google.protobuf.Any anything = 1;
+  OpType type = 2;
+}
