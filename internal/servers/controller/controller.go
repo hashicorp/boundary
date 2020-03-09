@@ -16,7 +16,7 @@ type Controller struct {
 	baseCancel  context.CancelFunc
 }
 
-func NewController(conf *Config) (*Controller, error) {
+func New(conf *Config) (*Controller, error) {
 	if conf.Logger == nil {
 		conf.Logger = hclog.New(&hclog.LoggerOptions{
 			Level: hclog.Trace,

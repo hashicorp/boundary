@@ -17,8 +17,8 @@ type Config struct {
 	*configutil.SharedConfig `hcl:"-"`
 }
 
-// DevConfig is a Config that is used for dev mode of Watchtower
-func DevConfig() (*Config, error) {
+// Dev is a Config that is used for dev mode of Watchtower
+func Dev() (*Config, error) {
 	randBuf := new(bytes.Buffer)
 	n, err := randBuf.ReadFrom(&io.LimitedReader{
 		R: rand.Reader,
@@ -61,28 +61,28 @@ kms "aead" {
 `
 
 	hclStr = fmt.Sprintf(hclStr, controllerKey, workerAuthKey)
-	parsed, err := ParseConfig(hclStr)
+	parsed, err := Parse(hclStr)
 	if err != nil {
 		return nil, fmt.Errorf("error parsing dev config: %w", err)
 	}
 	return parsed, nil
 }
 
-func NewConfig() *Config {
+func New() *Config {
 	return &Config{
 		SharedConfig: new(configutil.SharedConfig),
 	}
 }
 
-// LoadConfigFile loads the configuration from the given file.
-func LoadConfigFile(path string) (*Config, error) {
+// LoadFile loads the configuration from the given file.
+func LoadFile(path string) (*Config, error) {
 	// Read the file
 	d, err := ioutil.ReadFile(path)
 	if err != nil {
 		return nil, err
 	}
 
-	conf, err := ParseConfig(string(d))
+	conf, err := Parse(string(d))
 	if err != nil {
 		return nil, err
 	}
@@ -90,14 +90,14 @@ func LoadConfigFile(path string) (*Config, error) {
 	return conf, nil
 }
 
-func ParseConfig(d string) (*Config, error) {
+func Parse(d string) (*Config, error) {
 	obj, err := hcl.Parse(d)
 	if err != nil {
 		return nil, err
 	}
 
 	// Nothing to do here right now
-	result := NewConfig()
+	result := New()
 	if err := hcl.DecodeObject(result, obj); err != nil {
 		return nil, err
 	}

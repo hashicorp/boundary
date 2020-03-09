@@ -2,5 +2,5 @@
 
 package controller
 
-func (c *ControllerCommand) startMemProfiler() {
+func (c *Command) startMemProfiler() {
 }

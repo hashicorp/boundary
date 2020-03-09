@@ -18,17 +18,17 @@ import (
 	"github.com/mitchellh/cli"
 )
 
-// ListenerFactory is the factory function to create a listener.
-type ListenerFactory func(*configutil.Listener, io.Writer, cli.Ui) (*alpnmux.ALPNMux, map[string]string, reloadutil.ReloadFunc, error)
+// Factory is the factory function to create a listener.
+type Factory func(*configutil.Listener, io.Writer, cli.Ui) (*alpnmux.ALPNMux, map[string]string, reloadutil.ReloadFunc, error)
 
 // BuiltinListeners is the list of built-in listener types.
-var BuiltinListeners = map[string]ListenerFactory{
+var BuiltinListeners = map[string]Factory{
 	"tcp": tcpListenerFactory,
 }
 
-// NewListener creates a new listener of the given type with the given
+// New creates a new listener of the given type with the given
 // configuration. The type is looked up in the BuiltinListeners map.
-func NewListener(l *configutil.Listener, w io.Writer, ui cli.Ui) (*alpnmux.ALPNMux, map[string]string, reloadutil.ReloadFunc, error) {
+func New(l *configutil.Listener, w io.Writer, ui cli.Ui) (*alpnmux.ALPNMux, map[string]string, reloadutil.ReloadFunc, error) {
 	f, ok := BuiltinListeners[l.Type]
 	if !ok {
 		return nil, nil, nil, fmt.Errorf("unknown listener type: %q", l.Type)

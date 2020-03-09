@@ -2,5 +2,5 @@
 
 package dev
 
-func (d *DevCommand) startMemProfiler() {
+func (d *Command) startMemProfiler() {
 }

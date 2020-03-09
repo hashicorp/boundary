@@ -44,7 +44,7 @@ type ServerListener struct {
 	HTTPServer *http.Server
 }
 
-type BaseServer struct {
+type Server struct {
 	InfoKeys []string
 	Info     map[string]string
 
@@ -77,8 +77,8 @@ type BaseServer struct {
 	dockertestResource *dockertest.Resource
 }
 
-func NewBaseServer() *BaseServer {
-	return &BaseServer{
+func NewServer() *Server {
+	return &Server{
 		InfoKeys:           make([]string, 0, 20),
 		Info:               make(map[string]string),
 		AllLoggers:         make([]hclog.Logger, 0),
@@ -88,7 +88,7 @@ func NewBaseServer() *BaseServer {
 	}
 }
 
-func (b *BaseServer) SetupLogging(flagLogLevel, flagLogFormat, configLogLevel, configLogFormat string) error {
+func (b *Server) SetupLogging(flagLogLevel, flagLogFormat, configLogLevel, configLogFormat string) error {
 	b.logOutput = os.Stderr
 	if b.CombineLogs {
 		b.logOutput = os.Stdout
@@ -131,14 +131,14 @@ func (b *BaseServer) SetupLogging(flagLogLevel, flagLogFormat, configLogLevel, c
 	return nil
 }
 
-func (b *BaseServer) ReleaseLogGate() {
+func (b *Server) ReleaseLogGate() {
 	// Release the log gate.
 	b.Logger.(hclog.OutputResettable).ResetOutputWithFlush(&hclog.LoggerOptions{
 		Output: b.logOutput,
 	}, b.GatedWriter)
 }
 
-func (b *BaseServer) StorePidFile(pidPath string) error {
+func (b *Server) StorePidFile(pidPath string) error {
 	// Quit fast if no pidfile
 	if pidPath == "" {
 		return nil
@@ -168,14 +168,14 @@ func (b *BaseServer) StorePidFile(pidPath string) error {
 	return nil
 }
 
-func (b *BaseServer) RemovePidFile(pidPath string) error {
+func (b *Server) RemovePidFile(pidPath string) error {
 	if pidPath == "" {
 		return nil
 	}
 	return os.Remove(pidPath)
 }
 
-func (b *BaseServer) SetupMetrics(ui cli.Ui, telemetry *configutil.Telemetry) error {
+func (b *Server) SetupMetrics(ui cli.Ui, telemetry *configutil.Telemetry) error {
 	// TODO: Figure out a user-agent we want to use for the last param
 	// TODO: Do we want different names for different components?
 	var err error
@@ -187,9 +187,9 @@ func (b *BaseServer) SetupMetrics(ui cli.Ui, telemetry *configutil.Telemetry) er
 	return nil
 }
 
-func (b *BaseServer) PrintInfo(ui cli.Ui, mode string) {
+func (b *Server) PrintInfo(ui cli.Ui, mode string) {
 	b.InfoKeys = append(b.InfoKeys, "version")
-	verInfo := version.GetVersion()
+	verInfo := version.Get()
 	b.Info["version"] = verInfo.FullVersionNumber(false)
 	if verInfo.Revision != "" {
 		b.Info["version sha"] = strings.Trim(verInfo.Revision, "'")
@@ -220,7 +220,7 @@ func (b *BaseServer) PrintInfo(ui cli.Ui, mode string) {
 	}
 }
 
-func (b *BaseServer) SetupListeners(ui cli.Ui, config *configutil.SharedConfig) error {
+func (b *Server) SetupListeners(ui cli.Ui, config *configutil.SharedConfig) error {
 	// Initialize the listeners
 	b.Listeners = make([]*ServerListener, 0, len(config.Listeners))
 	// Make sure we close everything before we exit
@@ -250,7 +250,7 @@ func (b *BaseServer) SetupListeners(ui cli.Ui, config *configutil.SharedConfig) 
 			tls.TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305,
 		}
 
-		lnMux, props, reloadFunc, err := listener.NewListener(lnConfig, b.GatedWriter, ui)
+		lnMux, props, reloadFunc, err := listener.New(lnConfig, b.GatedWriter, ui)
 		if err != nil {
 			return fmt.Errorf("Error initializing listener of type %s: %w", lnConfig.Type, err)
 		}
@@ -306,7 +306,7 @@ func (b *BaseServer) SetupListeners(ui cli.Ui, config *configutil.SharedConfig) 
 	return nil
 }
 
-func (b *BaseServer) SetupKMSes(ui cli.Ui, config *configutil.SharedConfig, size int) error {
+func (b *Server) SetupKMSes(ui cli.Ui, config *configutil.SharedConfig, size int) error {
 	switch len(config.Seals) {
 	case size:
 		for _, kms := range config.Seals {
@@ -371,7 +371,7 @@ func (b *BaseServer) SetupKMSes(ui cli.Ui, config *configutil.SharedConfig, size
 	return nil
 }
 
-func (b *BaseServer) RunShutdownFuncs(ui cli.Ui) {
+func (b *Server) RunShutdownFuncs(ui cli.Ui) {
 	for _, f := range b.ShutdownFuncs {
 		if err := f(); err != nil {
 			ui.Error(fmt.Sprintf("Error running a shutdown task: %s", err.Error()))
@@ -379,7 +379,7 @@ func (b *BaseServer) RunShutdownFuncs(ui cli.Ui) {
 	}
 }
 
-func (b *BaseServer) CreateDevDatabase() error {
+func (b *Server) CreateDevDatabase() error {
 	pool, err := dockertest.NewPool("")
 	if err != nil {
 		return fmt.Errorf("could not connect to docker: %w", err)
@@ -420,7 +420,7 @@ func (b *BaseServer) CreateDevDatabase() error {
 	return nil
 }
 
-func (b *BaseServer) DestroyDevDatabase() error {
+func (b *Server) DestroyDevDatabase() error {
 	if b.dockertestPool == nil {
 		return nil
 	}

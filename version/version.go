@@ -5,15 +5,15 @@ import (
 	"fmt"
 )
 
-// VersionInfo
-type VersionInfo struct {
+// Info
+type Info struct {
 	Revision          string
 	Version           string
 	VersionPrerelease string
 	VersionMetadata   string
 }
 
-func GetVersion() *VersionInfo {
+func Get() *Info {
 	ver := Version
 	rel := VersionPrerelease
 	md := VersionMetadata
@@ -24,7 +24,7 @@ func GetVersion() *VersionInfo {
 		rel = "dev"
 	}
 
-	return &VersionInfo{
+	return &Info{
 		Revision:          GitCommit,
 		Version:           ver,
 		VersionPrerelease: rel,
@@ -32,7 +32,7 @@ func GetVersion() *VersionInfo {
 	}
 }
 
-func (c *VersionInfo) VersionNumber() string {
+func (c *Info) VersionNumber() string {
 	if Version == "unknown" && VersionPrerelease == "unknown" {
 		return "(version unknown)"
 	}
@@ -50,7 +50,7 @@ func (c *VersionInfo) VersionNumber() string {
 	return version
 }
 
-func (c *VersionInfo) FullVersionNumber(rev bool) string {
+func (c *Info) FullVersionNumber(rev bool) string {
 	var versionString bytes.Buffer
 
 	if Version == "unknown" && VersionPrerelease == "unknown" {
