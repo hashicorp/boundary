@@ -9,7 +9,7 @@ require (
 	github.com/hashicorp/errwrap v1.0.0
 	github.com/hashicorp/go-alpnmux v0.0.0-20200304172639-978773dcd35e
 	github.com/hashicorp/go-hclog v0.12.1
-	github.com/hashicorp/go-kms-wrapping v0.5.3
+	github.com/hashicorp/go-kms-wrapping v0.5.4
 	github.com/hashicorp/go-multierror v1.0.0
 	github.com/hashicorp/hcl v1.0.0
 	github.com/hashicorp/vault v1.2.1-0.20200306162758-a1d6dde79a9e
