@@ -9,8 +9,8 @@ import (
 
 // Ticketer provides an interface to storage for Tickets, so you can easily substitute your own ticketer
 type Ticketer interface {
-	InitTicket(boundedContext string) (*store.Ticket, error)
-	GetTicket(boundedContext string) (*store.Ticket, error)
+	InitTicket(aggregateName string) (*store.Ticket, error)
+	GetTicket(aggregateName string) (*store.Ticket, error)
 	Redeem(ticket *store.Ticket) error
 }
 
@@ -20,23 +20,23 @@ type GormTicketer struct {
 }
 
 // GetTicket returns a ticket for the specified name.  Names allow us to shard tickets around domain root names
-func (ticketer *GormTicketer) GetTicket(boundedContext string) (*store.Ticket, error) {
-	if boundedContext == "" {
+func (ticketer *GormTicketer) GetTicket(aggregateName string) (*store.Ticket, error) {
+	if aggregateName == "" {
 		return nil, fmt.Errorf("bad ticket name")
 	}
-	ticket := store.Ticket{Name: boundedContext, Version: 1}
-	if err := ticketer.Tx.First(&ticket, store.Ticket{Name: boundedContext}).Error; err != nil {
+	ticket := store.Ticket{Name: aggregateName, Version: 1}
+	if err := ticketer.Tx.First(&ticket, store.Ticket{Name: aggregateName}).Error; err != nil {
 		return nil, err
 	}
 	return &ticket, nil
 }
 
 // InitTicket must happen first in it's own transaction... then you can get a ticket and write to the oplog
-func (ticketer *GormTicketer) InitTicket(boundedContext string) (*store.Ticket, error) {
-	if boundedContext == "" {
+func (ticketer *GormTicketer) InitTicket(aggregateName string) (*store.Ticket, error) {
+	if aggregateName == "" {
 		return nil, fmt.Errorf("bad ticket name")
 	}
-	ticket := store.Ticket{Name: boundedContext, Version: 1}
+	ticket := store.Ticket{Name: aggregateName, Version: 1}
 	if err := ticketer.Tx.Create(&ticket).Error; err != nil {
 		return nil, err
 	}

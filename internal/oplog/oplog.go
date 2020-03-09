@@ -167,7 +167,7 @@ func (e *Entry) hmacData() ([]byte, error) {
 	if err := binary.Write(buf, binary.LittleEndian, e.Data); err != nil {
 		return nil, err
 	}
-	if _, err := buf.Write([]byte(e.BoundedContext)); err != nil {
+	if _, err := buf.Write([]byte(e.AggregateName)); err != nil {
 		return nil, err
 	}
 	if _, err := buf.Write([]byte(e.Kid)); err != nil {

@@ -71,9 +71,9 @@ func Test_BasicOplog(t *testing.T) {
 	is.NoErr(err)
 	l := Entry{
 		Entry: &store.Entry{
-			BoundedContext: "test-users",
-			Data:           queue.QueueBuffer,
-			Kid:            "giant-peach-secret",
+			AggregateName: "test-users",
+			Data:          queue.QueueBuffer,
+			Kid:           "giant-peach-secret",
 			Metadata: []*store.Metadata{
 				&store.Metadata{
 					Key:   "deployment",
@@ -134,9 +134,9 @@ func Test_BasicOplog(t *testing.T) {
 
 	newLogEntry := Entry{
 		Entry: &store.Entry{
-			BoundedContext: "test-users",
-			Data:           queue.QueueBuffer,
-			Kid:            "giant-peach-secret",
+			AggregateName: "test-users",
+			Data:          queue.QueueBuffer,
+			Kid:           "giant-peach-secret",
 			Metadata: []*store.Metadata{
 				&store.Metadata{
 					Key:   "deployment",
@@ -208,9 +208,9 @@ func Test_TicketSerialization(t *testing.T) {
 
 	firstLogEntry := Entry{
 		Entry: &store.Entry{
-			BoundedContext: "test-users",
-			Data:           firstQueue.QueueBuffer,
-			Kid:            "giant-peach-secret",
+			AggregateName: "test-users",
+			Data:          firstQueue.QueueBuffer,
+			Kid:           "giant-peach-secret",
 			Metadata: []*store.Metadata{
 				&store.Metadata{
 					Key:   "deployment",
@@ -241,9 +241,9 @@ func Test_TicketSerialization(t *testing.T) {
 
 	secondLogEntry := Entry{
 		Entry: &store.Entry{
-			BoundedContext: "foobar",
-			Data:           secondQueue.QueueBuffer,
-			Kid:            "giant-peach-secret",
+			AggregateName: "foobar",
+			Data:          secondQueue.QueueBuffer,
+			Kid:           "giant-peach-secret",
 			Metadata: []*store.Metadata{
 				&store.Metadata{
 					Key:   "deployment",
@@ -305,8 +305,8 @@ func Test_WriteEntryWith(t *testing.T) {
 	is.NoErr(err)
 	newLogEntry := Entry{
 		Entry: &store.Entry{
-			BoundedContext: "test-users",
-			Kid:            "giant-peach-secret",
+			AggregateName: "test-users",
+			Kid:           "giant-peach-secret",
 			Metadata: []*store.Metadata{
 				&store.Metadata{
 					Key:   "deployment",

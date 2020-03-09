@@ -4,7 +4,7 @@ CREATE TABLE if not exists oplog_entries (
   updated_at timestamp default current_timestamp,
   hmac bytea NULL,
   kid text NULL,
-  bounded_context text NULL,
+  aggregate_name text NULL,
   "data" bytea NULL,
   CONSTRAINT oplog_entries_pkey PRIMARY KEY (id)
 );
