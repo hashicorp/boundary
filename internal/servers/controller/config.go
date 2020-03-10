@@ -8,7 +8,7 @@ import (
 )
 
 type Config struct {
-	*base.BaseServer
+	*base.Server
 	RawConfig   *config.Config
 	BaseContext context.Context
 }

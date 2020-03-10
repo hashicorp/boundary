@@ -14,7 +14,7 @@ func init() {
 	memProfilerEnabled = true
 }
 
-func (c *ControllerCommand) startMemProfiler() {
+func (c *Command) startMemProfiler() {
 	profileDir := filepath.Join(os.TempDir(), "watchtowerprof")
 	if err := os.MkdirAll(profileDir, 0700); err != nil {
 		c.logger.Debug("could not create profile directory", "error", err)

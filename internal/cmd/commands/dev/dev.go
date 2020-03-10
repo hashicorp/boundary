@@ -13,14 +13,14 @@ import (
 	"github.com/posener/complete"
 )
 
-var _ cli.Command = (*DevCommand)(nil)
-var _ cli.CommandAutocomplete = (*DevCommand)(nil)
+var _ cli.Command = (*Command)(nil)
+var _ cli.CommandAutocomplete = (*Command)(nil)
 
 var memProfilerEnabled = false
 
-type DevCommand struct {
-	*base.BaseCommand
-	*base.BaseServer
+type Command struct {
+	*base.Command
+	*base.Server
 
 	ShutdownCh    chan struct{}
 	SighupCh      chan struct{}
@@ -39,11 +39,11 @@ type DevCommand struct {
 	flagCombineLogs             bool
 }
 
-func (c *DevCommand) Synopsis() string {
+func (c *Command) Synopsis() string {
 	return "Start a Watchtower dev environment"
 }
 
-func (c *DevCommand) Help() string {
+func (c *Command) Help() string {
 	helpText := `
 Usage: watchtower dev [options]
 
@@ -57,7 +57,7 @@ Usage: watchtower dev [options]
 	return strings.TrimSpace(helpText)
 }
 
-func (c *DevCommand) Flags() *base.FlagSets {
+func (c *Command) Flags() *base.FlagSets {
 	set := c.FlagSet(base.FlagSetHTTP)
 
 	f := set.NewFlagSet("Command Options")
@@ -109,16 +109,16 @@ func (c *DevCommand) Flags() *base.FlagSets {
 	return set
 }
 
-func (c *DevCommand) AutocompleteArgs() complete.Predictor {
+func (c *Command) AutocompleteArgs() complete.Predictor {
 	return complete.PredictNothing
 }
 
-func (c *DevCommand) AutocompleteFlags() complete.Flags {
+func (c *Command) AutocompleteFlags() complete.Flags {
 	return c.Flags().Completions()
 }
 
-func (c *DevCommand) Run(args []string) int {
-	c.BaseServer = base.NewBaseServer()
+func (c *Command) Run(args []string) int {
+	c.Server = base.NewServer()
 	c.CombineLogs = c.flagCombineLogs
 
 	var err error
@@ -132,7 +132,7 @@ func (c *DevCommand) Run(args []string) int {
 
 	childShutdownCh := make(chan struct{})
 
-	devControllerConfig, err := controllerconfig.DevConfig()
+	devControllerConfig, err := controllerconfig.Dev()
 	if err != nil {
 		c.UI.Error(fmt.Sprintf("Error creating controller dev config: %s", err))
 		return 1
@@ -223,12 +223,12 @@ func (c *DevCommand) Run(args []string) int {
 	c.childSighupCh = append(c.childSighupCh, controllerSighupCh)
 	go func() {
 		defer shutdownWg.Done()
-		devController := &controllercmd.ControllerCommand{
-			BaseCommand: c.BaseCommand,
-			BaseServer:  c.BaseServer,
-			ShutdownCh:  childShutdownCh,
-			SighupCh:    controllerSighupCh,
-			Config:      devControllerConfig,
+		devController := &controllercmd.Command{
+			Command:    c.Command,
+			Server:     c.Server,
+			ShutdownCh: childShutdownCh,
+			SighupCh:   controllerSighupCh,
+			Config:     devControllerConfig,
 		}
 		devController.Start()
 	}()

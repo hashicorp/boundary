@@ -17,14 +17,14 @@ import (
 	"github.com/posener/complete"
 )
 
-var _ cli.Command = (*ControllerCommand)(nil)
-var _ cli.CommandAutocomplete = (*ControllerCommand)(nil)
+var _ cli.Command = (*Command)(nil)
+var _ cli.CommandAutocomplete = (*Command)(nil)
 
 var memProfilerEnabled = false
 
-type ControllerCommand struct {
-	*base.BaseCommand
-	*base.BaseServer
+type Command struct {
+	*base.Command
+	*base.Server
 
 	ShutdownCh chan struct{}
 	SighupCh   chan struct{}
@@ -44,11 +44,11 @@ type ControllerCommand struct {
 	flagCombineLogs             bool
 }
 
-func (c *ControllerCommand) Synopsis() string {
+func (c *Command) Synopsis() string {
 	return "Start a Watchtower controller"
 }
 
-func (c *ControllerCommand) Help() string {
+func (c *Command) Help() string {
 	helpText := `
 Usage: watchtower controller [options]
 
@@ -62,7 +62,7 @@ Usage: watchtower controller [options]
 	return strings.TrimSpace(helpText)
 }
 
-func (c *ControllerCommand) Flags() *base.FlagSets {
+func (c *Command) Flags() *base.FlagSets {
 	set := c.FlagSet(base.FlagSetHTTP)
 
 	f := set.NewFlagSet("Command Options")
@@ -131,16 +131,16 @@ func (c *ControllerCommand) Flags() *base.FlagSets {
 	return set
 }
 
-func (c *ControllerCommand) AutocompleteArgs() complete.Predictor {
+func (c *Command) AutocompleteArgs() complete.Predictor {
 	return complete.PredictNothing
 }
 
-func (c *ControllerCommand) AutocompleteFlags() complete.Flags {
+func (c *Command) AutocompleteFlags() complete.Flags {
 	return c.Flags().Completions()
 }
 
-func (c *ControllerCommand) Run(args []string) int {
-	c.BaseServer = base.NewBaseServer()
+func (c *Command) Run(args []string) int {
+	c.Server = base.NewServer()
 	c.CombineLogs = c.flagCombineLogs
 
 	if result := c.ParseFlagsAndConfig(args); result > 0 {
@@ -209,7 +209,7 @@ func (c *ControllerCommand) Run(args []string) int {
 	return c.Start()
 }
 
-func (c *ControllerCommand) ParseFlagsAndConfig(args []string) int {
+func (c *Command) ParseFlagsAndConfig(args []string) int {
 	var err error
 
 	f := c.Flags()
@@ -236,14 +236,14 @@ func (c *ControllerCommand) ParseFlagsAndConfig(args []string) int {
 			c.UI.Error("Must supply a config file with -config")
 			return 1
 		}
-		c.Config, err = config.LoadConfigFile(c.flagConfig)
+		c.Config, err = config.LoadFile(c.flagConfig)
 		if err != nil {
 			c.UI.Error("Error parsing config: " + err.Error())
 			return 1
 		}
 
 	} else {
-		c.Config, err = config.DevConfig()
+		c.Config, err = config.Dev()
 		if err != nil {
 			c.UI.Error(fmt.Sprintf("Error creating dev config: %s", err))
 			return 1
@@ -257,15 +257,15 @@ func (c *ControllerCommand) ParseFlagsAndConfig(args []string) int {
 	return 0
 }
 
-func (c *ControllerCommand) Start() int {
+func (c *Command) Start() int {
 	// Instantiate the wait group
 	controllerConfig := &controller.Config{
-		RawConfig:  c.Config,
-		BaseServer: c.BaseServer,
+		RawConfig: c.Config,
+		Server:    c.Server,
 	}
 
 	// Initialize the core
-	controller, err := controller.NewController(controllerConfig)
+	controller, err := controller.New(controllerConfig)
 	if err != nil {
 		c.UI.Error(fmt.Sprintf("Error initializing controller: %w", err))
 		return 1
@@ -305,7 +305,7 @@ func (c *ControllerCommand) Start() int {
 				goto RUNRELOADFUNCS
 			}
 
-			newConf, err = config.LoadConfigFile(c.flagConfig)
+			newConf, err = config.LoadFile(c.flagConfig)
 			if err != nil {
 				c.Logger.Error("could not reload config", "path", c.flagConfig, "error", err)
 				goto RUNRELOADFUNCS
@@ -355,7 +355,7 @@ func (c *ControllerCommand) Start() int {
 	return 0
 }
 
-func (c *ControllerCommand) Reload() error {
+func (c *Command) Reload() error {
 	c.ReloadFuncsLock.RLock()
 	defer c.ReloadFuncsLock.RUnlock()
 
