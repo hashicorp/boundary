@@ -1,14 +1,17 @@
 syntax = "proto3";
 
-package hashicorp.watchtower.controller.v1;
+// define an oplog package within the watchtower controller
+package hashicorp.watchtower.controller.oplog.v1;
 option go_package = "github.com/hashicorp/watchtower/internal/oplog/store;store";
 
 import "google/protobuf/timestamp.proto";
 
+// Timestamp for oplog messages
 message Timestamp {
   google.protobuf.Timestamp timestamp = 1;
 }
 
+// Entry provides a message for oplog entries that's compatible with gorm
 message Entry {
   // @inject_tag: gorm:"primary_key"
   uint32 id = 1;
@@ -33,21 +36,7 @@ message Entry {
   bytes data = 8;
 }
 
-message Ticket {
-  // @inject_tag: gorm:"primary_key"
-  uint32 id = 1;
-  // @inject_tag: gorm:"not_null;type:TIMESTAMP"
-  Timestamp created_at = 2;
-  // @inject_tag: gorm:"not_null;type:TIMESTAMP"
-  Timestamp updated_at = 3;
-
-  // @inject_tat: gorm:"not_null"
-  string name = 6;
-
-  // @inject_tat: gorm:"not_null;default:'1'"
-  uint32 version = 7;
-}
-
+// Metadata provides a message for oplog metadata that's compatible with gorm
 message Metadata {
   // @inject_tag: gorm:"primary_key"
   uint32 id = 1;
@@ -63,4 +52,20 @@ message Metadata {
   string key = 5;
   // @inject_tag: gorm:"not_null"
   string value = 6;
+}
+
+// Ticket provides a message for oplog tickets that's compatible with gorm
+message Ticket {
+  // @inject_tag: gorm:"primary_key"
+  uint32 id = 1;
+  // @inject_tag: gorm:"not_null;type:TIMESTAMP"
+  Timestamp created_at = 2;
+  // @inject_tag: gorm:"not_null;type:TIMESTAMP"
+  Timestamp updated_at = 3;
+
+  // @inject_tat: gorm:"not_null"
+  string name = 6;
+
+  // @inject_tat: gorm:"not_null;default:'1'"
+  uint32 version = 7;
 }

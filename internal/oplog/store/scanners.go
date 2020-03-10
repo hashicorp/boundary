@@ -9,6 +9,7 @@ import (
 	// "github.com/golang/protobuf/ptypes"
 )
 
+// Scan supports Timestamps for oplogs
 func (ts *Timestamp) Scan(value interface{}) error {
 	switch t := value.(type) {
 	case time.Time:
@@ -24,6 +25,7 @@ func (ts *Timestamp) Scan(value interface{}) error {
 	return nil
 }
 
+// Value supports Timestamps for oplogs
 func (ts Timestamp) Value() (driver.Value, error) {
 	return types.TimestampFromProto(ts.Timestamp) // gogo version
 	// return ptypes.Timestamp(ts.Timestamp)
