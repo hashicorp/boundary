@@ -9,8 +9,11 @@ import (
 	types "github.com/gogo/protobuf/types"
 )
 
+// Queue provides a FIFO queue
 type Queue struct {
+	// QueueBuffer provides a buffer for the queue
 	QueueBuffer
+	// Catalog provides a TypeCatalog for the types added to the queue
 	Catalog *TypeCatalog
 }
 

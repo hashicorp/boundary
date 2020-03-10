@@ -9,6 +9,7 @@ import (
 	"github.com/matryer/is"
 )
 
+// Test_QueueBuffer provides basic tests for the QueueBuffer type
 func Test_QueueBuffer(t *testing.T) {
 	t.Parallel()
 	is := is.New(t)
@@ -35,6 +36,7 @@ func Test_QueueBuffer(t *testing.T) {
 	t.Log(string(bye))
 }
 
+// Test_Queue provides basic tests for the Queue type
 func Test_Queue(t *testing.T) {
 	t.Parallel()
 	is := is.New(t)

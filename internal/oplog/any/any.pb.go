@@ -23,13 +23,19 @@ var _ = math.Inf
 // proto package needs to be updated.
 const _ = proto.GoGoProtoPackageIsVersion3 // please upgrade the proto package
 
+// OpType provides the type of operation the Any message represents (create,
+// update, delete)
 type OpType int32
 
 const (
+	// UnknownOp is an unknown operation
 	OpType_UnknownOp OpType = 0
-	OpType_CreateOp  OpType = 1
-	OpType_UpdateOp  OpType = 2
-	OpType_DeleteOp  OpType = 3
+	// CreateOp is a create operation
+	OpType_CreateOp OpType = 1
+	// UpdateOps is an update operation
+	OpType_UpdateOp OpType = 2
+	// DeleteOps is a delete operation
+	OpType_DeleteOp OpType = 3
 )
 
 var OpType_name = map[int32]string{
@@ -54,6 +60,7 @@ func (OpType) EnumDescriptor() ([]byte, []int) {
 	return fileDescriptor_8caaf9c5567cb817, []int{0}
 }
 
+// Any provides a message for anything and the type of operation it represents.
 type Any struct {
 	Anything *types.Any `protobuf:"bytes,1,opt,name=anything,proto3" json:"anything,omitempty"`
 	Type     OpType     `protobuf:"varint,2,opt,name=type,proto3,enum=hashicorp.watchtower.controller.v1.OpType" json:"type,omitempty"`

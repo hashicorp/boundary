@@ -5,12 +5,20 @@ option go_package = "github.com/hashicorp/watchtower/internal/oplog/any;any";
 
 import "google/protobuf/any.proto";
 
+// OpType provides the type of operation the Any message represents (create,
+// update, delete)
 enum OpType {
+  // UnknownOp is an unknown operation
   UnknownOp = 0;
+  // CreateOp is a create operation
   CreateOp = 1;
+  // UpdateOps is an update operation
   UpdateOp = 2;
+  // DeleteOps is a delete operation
   DeleteOp = 3;
 }
+
+// Any provides a message for anything and the type of operation it represents.
 message Any {
   google.protobuf.Any anything = 1;
   OpType type = 2;
