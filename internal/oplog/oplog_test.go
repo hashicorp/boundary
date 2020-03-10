@@ -23,9 +23,13 @@ import (
 	"github.com/ory/dockertest/v3"
 )
 
+// testDatabaseURL is initialized once using sync.Once and set to the database URL for testing
 var testDatabaseURL string
+
+// testInitDatabase ensures that the database is only initialized once during the tests.
 var testInitDatabase sync.Once
 
+// setup the tests (initialize the database one-time and intialized testDatabaseURL)
 func setup(t *testing.T) (*is.I, func(), string) {
 	cleanup := func() {}
 	var url string
@@ -46,6 +50,7 @@ func setup(t *testing.T) (*is.I, func(), string) {
 	return is.New(t), cleanup, testDatabaseURL
 }
 
+// Test_BasicOplog provides some basic unit tests for oplogs
 func Test_BasicOplog(t *testing.T) {
 	t.Parallel()
 	is, cleanup, url := setup(t)
@@ -159,6 +164,7 @@ func Test_BasicOplog(t *testing.T) {
 	is.True(foundUsers[0].Message.(*oplog_test.TestUser).Name == user.Name)
 }
 
+// Test_GetTicket provides unit tests for getting oplog.Tickets
 func Test_GetTicket(t *testing.T) {
 	t.Parallel()
 	is, cleanup, url := setup(t)
@@ -177,6 +183,7 @@ func Test_GetTicket(t *testing.T) {
 	t.Logf("ticket: %+v", ticket)
 }
 
+// Test_TicketSerialization provides unit tests for making sure oplog.Tickets properly serialize writes to oplog entries
 func Test_TicketSerialization(t *testing.T) {
 	t.Parallel()
 	is, cleanup, url := setup(t)
@@ -276,6 +283,7 @@ func Test_TicketSerialization(t *testing.T) {
 	}
 }
 
+// Test_WriteEntryWith provides unit tests for oplog.WriteEntryWith
 func Test_WriteEntryWith(t *testing.T) {
 	t.Parallel()
 	is, cleanup, url := setup(t)
@@ -343,6 +351,7 @@ func Test_WriteEntryWith(t *testing.T) {
 	}
 }
 
+// initDbInDocker initializes postgres within dockertest for the unit tests
 func initDbInDocker(t *testing.T) (cleanup func(), retURL string, err error) {
 	if os.Getenv("PG_URL") != "" {
 		initTestStore(t, func() {}, os.Getenv("PG_URL"))
@@ -381,6 +390,8 @@ func initDbInDocker(t *testing.T) (cleanup func(), retURL string, err error) {
 	initTestStore(t, c, url)
 	return c, url, nil
 }
+
+// initTestStore will execute the migrations needed to initialize the store for tests
 func initTestStore(t *testing.T, cleanup func(), url string) {
 	// run migrations
 	m, err := migrate.New("file://migrations/postgres", url)
@@ -393,6 +404,8 @@ func initTestStore(t *testing.T, cleanup func(), url string) {
 		t.Fatalf("Error running migrations: %s", err)
 	}
 }
+
+// cleanupResource will clean up the dockertest resources (postgres)
 func cleanupResource(t *testing.T, pool *dockertest.Pool, resource *dockertest.Resource) {
 	var err error
 	for i := 0; i < 10; i++ {
