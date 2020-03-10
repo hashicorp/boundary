@@ -9,12 +9,12 @@ require (
 	github.com/hashicorp/errwrap v1.0.0
 	github.com/hashicorp/go-alpnmux v0.0.0-20200304172639-978773dcd35e
 	github.com/hashicorp/go-hclog v0.12.1
-	github.com/hashicorp/go-kms-wrapping v0.5.4
+	github.com/hashicorp/go-kms-wrapping v0.5.5
 	github.com/hashicorp/go-multierror v1.0.0
 	github.com/hashicorp/hcl v1.0.0
-	github.com/hashicorp/vault v1.2.1-0.20200306162758-a1d6dde79a9e
-	github.com/hashicorp/vault/api v1.0.5-0.20200306162758-a1d6dde79a9e
-	github.com/hashicorp/vault/sdk v0.1.14-0.20200306162758-a1d6dde79a9e
+	github.com/hashicorp/vault v1.2.1-0.20200310200732-a321b1217d5a
+	github.com/hashicorp/vault/api v1.0.5-0.20200310200732-a321b1217d5a
+	github.com/hashicorp/vault/sdk v0.1.14-0.20200310200732-a321b1217d5a
 	github.com/kr/text v0.2.0
 	github.com/lib/pq v1.3.0
 	github.com/mattn/go-colorable v0.1.6
