@@ -1,14 +1,17 @@
 syntax = "proto3";
 
+// define a test proto package
 package hashicorp.watchtower.oplog.test.v1;
 option go_package = "github.com/hashicorp/watchtower/internal/oplog/oplog_test;oplog_test";
 
 import "google/protobuf/timestamp.proto";
 
+// Timestamp for test proto pkg
 message Timestamp {
   google.protobuf.Timestamp timestamp = 1;
 }
 
+// TestUser for gorm test user model
 message TestUser {
   // @inject_tag: gorm:"primary_key"
   uint32 id = 1;
@@ -20,7 +23,7 @@ message TestUser {
   string phone_number = 5;
   string email = 6;
 }
-
+// TestCar for gorm test car model
 message TestCar {
   // @inject_tag: gorm:"primary_key"
   uint32 id = 1;
@@ -32,7 +35,7 @@ message TestCar {
   string model = 4;
   int32 mpg = 5;
 }
-
+// TestRental for gorm test rental model
 message TestRental {
   uint32 user_id = 1;
   uint32 car_id = 2;
