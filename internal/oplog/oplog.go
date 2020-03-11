@@ -1,12 +1,12 @@
 package oplog
 
 import (
-	"bytes"
-	"encoding/binary"
+	"context"
 	"fmt"
 	"io"
 
 	"github.com/golang/protobuf/proto"
+	wrapping "github.com/hashicorp/go-kms-wrapping"
 	"github.com/hashicorp/watchtower/internal/oplog/any"
 	"github.com/hashicorp/watchtower/internal/oplog/store"
 )
@@ -20,8 +20,8 @@ type Message struct {
 // Entry represents an oplog entry
 type Entry struct {
 	*store.Entry
-	Cipherer Cipherable `sql:"-"`
-	Ticketer Ticketer   `sql:"-"`
+	Cipherer wrapping.Wrapper `sql:"-"`
+	Ticketer Ticketer         `sql:"-"`
 }
 
 func (e *Entry) vetAll() error {
@@ -70,7 +70,7 @@ func (e *Entry) UnmarshalData(types *any.TypeCatalog) ([]Message, error) {
 
 // WriteEntryWith the []proto.Message marshaled into the entry data as a FIFO QueueBuffer
 // if CryptoService != nil then the data is encrypted and HMAC'd
-func (e *Entry) WriteEntryWith(tx Writer, ticket *store.Ticket, msgs ...*Message) error {
+func (e *Entry) WriteEntryWith(ctx context.Context, tx Writer, ticket *store.Ticket, msgs ...*Message) error {
 	if err := e.vetAll(); err != nil {
 		return err
 	}
@@ -87,21 +87,15 @@ func (e *Entry) WriteEntryWith(tx Writer, ticket *store.Ticket, msgs ...*Message
 	e.Data = append(e.Data, []byte(queue.QueueBuffer)...)
 
 	if e.Cipherer != nil {
-		b, err := e.Cipherer.Encrypt(e.Data)
+		b, err := e.Cipherer.Encrypt(ctx, e.Data, nil)
 		if err != nil {
 			return err
 		}
-		e.Data = b
-
-		macData, err := e.hmacData()
+		blob, err := proto.Marshal(b)
 		if err != nil {
 			return err
 		}
-		mac, err := e.Cipherer.HMAC(macData)
-		if err != nil {
-			return err
-		}
-		e.Hmac = mac
+		e.Data = blob
 	}
 	if err := tx.Create(e); err != nil {
 		return err
@@ -111,7 +105,7 @@ func (e *Entry) WriteEntryWith(tx Writer, ticket *store.Ticket, msgs ...*Message
 
 // Write the entry as is with whatever it has for e.Data marshaled into a FIFO QueueBuffer
 // if CryptoService != nil then the data is encrypted and HMAC'd
-func (e *Entry) Write(tx Writer, ticket *store.Ticket) error {
+func (e *Entry) Write(ctx context.Context, tx Writer, ticket *store.Ticket) error {
 	if err := e.vetAll(); err != nil {
 		return err
 	}
@@ -119,21 +113,15 @@ func (e *Entry) Write(tx Writer, ticket *store.Ticket) error {
 		return fmt.Errorf("bad ticket")
 	}
 	if e.Cipherer != nil {
-		b, err := e.Cipherer.Encrypt(e.Data)
+		b, err := e.Cipherer.Encrypt(ctx, e.Data, nil)
 		if err != nil {
 			return err
 		}
-		e.Data = b
-
-		macData, err := e.hmacData()
+		blob, err := proto.Marshal(b)
 		if err != nil {
 			return err
 		}
-		mac, err := e.Cipherer.HMAC(macData)
-		if err != nil {
-			return err
-		}
-		e.Hmac = mac
+		e.Data = blob
 	}
 
 	if err := tx.Create(e); err != nil {
@@ -143,49 +131,26 @@ func (e *Entry) Write(tx Writer, ticket *store.Ticket) error {
 	return e.Ticketer.Redeem(ticket)
 }
 
-// HMAC the entry
-func (e *Entry) HMAC() ([]byte, error) {
-	d, err := e.hmacData()
-	if err != nil {
-		return nil, err
-	}
-	return e.Cipherer.HMAC(d)
-}
-
-// Verify the entry's HMAC
-func (e *Entry) Verify() (bool, error) {
-	hmacData, err := e.hmacData()
-	if err != nil {
-		return false, err
-	}
-	return e.Cipherer.Verify(e.Hmac, hmacData)
-}
-
-// hmacData serializes the required data
-func (e *Entry) hmacData() ([]byte, error) {
-	buf := new(bytes.Buffer)
-	if err := binary.Write(buf, binary.LittleEndian, e.Data); err != nil {
-		return nil, err
-	}
-	if _, err := buf.Write([]byte(e.AggregateName)); err != nil {
-		return nil, err
-	}
-	if _, err := buf.Write([]byte(e.Kid)); err != nil {
-		return nil, err
-	}
-	return buf.Bytes(), nil
-}
-func (e *Entry) EncryptData() error {
-	d, err := e.Cipherer.Encrypt(e.Data)
+func (e *Entry) EncryptData(ctx context.Context) error {
+	d, err := e.Cipherer.Encrypt(ctx, e.Data, nil)
 	if err != nil {
 		return err
 	}
-	e.Data = d
+	blob, err := proto.Marshal(d)
+	if err != nil {
+		return err
+	}
+	e.Data = blob
 	return nil
 }
 
-func (e *Entry) DecryptData() error {
-	d, err := e.Cipherer.Decrypt(e.Data)
+func (e *Entry) DecryptData(ctx context.Context) error {
+	var msg wrapping.EncryptedBlobInfo
+	err := proto.Unmarshal(e.Data, &msg)
+	if err != nil {
+		return err
+	}
+	d, err := e.Cipherer.Decrypt(ctx, &msg, nil)
 	if err != nil {
 		return err
 	}

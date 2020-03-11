@@ -1,6 +1,8 @@
 package oplog
 
 import (
+	"context"
+	"crypto/rand"
 	"database/sql"
 	"encoding/json"
 	"fmt"
@@ -11,6 +13,8 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	wrapping "github.com/hashicorp/go-kms-wrapping"
+	"github.com/hashicorp/go-kms-wrapping/wrappers/aead"
 	"github.com/hashicorp/watchtower/internal/oplog/any"
 	"github.com/hashicorp/watchtower/internal/oplog/oplog_test"
 	"github.com/hashicorp/watchtower/internal/oplog/store"
@@ -59,7 +63,7 @@ func Test_BasicOplog(t *testing.T) {
 	is.NoErr(err)
 	defer db.Close()
 
-	cipherer := OplogCipher{Secret: []byte("a little magic can go a long way")}
+	cipherer := initWrapper(t)
 
 	user := oplog_test.TestUser{
 		Name: "foo-" + uuid.New().String(),
@@ -78,7 +82,6 @@ func Test_BasicOplog(t *testing.T) {
 		Entry: &store.Entry{
 			AggregateName: "test-users",
 			Data:          queue.QueueBuffer,
-			Kid:           "giant-peach-secret",
 			Metadata: []*store.Metadata{
 				&store.Metadata{
 					Key:   "deployment",
@@ -96,14 +99,7 @@ func Test_BasicOplog(t *testing.T) {
 	is.NoErr(err)
 	t.Log(string(j))
 
-	mac, err := l.HMAC()
-	is.NoErr(err)
-	l.Hmac = mac
-
-	ok, err := l.Verify()
-	is.NoErr(err)
-	is.True(ok)
-	err = l.EncryptData()
+	err = l.EncryptData(context.Background())
 	is.NoErr(err)
 
 	resp = db.Create(&l)
@@ -117,7 +113,7 @@ func Test_BasicOplog(t *testing.T) {
 	err = db.Where("id = ?", entryId).First(&foundEntry).Error
 	is.NoErr(err)
 	foundEntry.Cipherer = cipherer
-	err = foundEntry.DecryptData()
+	err = foundEntry.DecryptData(context.Background())
 	is.NoErr(err)
 
 	foundUsers, err := foundEntry.UnmarshalData(types)
@@ -141,7 +137,6 @@ func Test_BasicOplog(t *testing.T) {
 		Entry: &store.Entry{
 			AggregateName: "test-users",
 			Data:          queue.QueueBuffer,
-			Kid:           "giant-peach-secret",
 			Metadata: []*store.Metadata{
 				&store.Metadata{
 					Key:   "deployment",
@@ -156,7 +151,7 @@ func Test_BasicOplog(t *testing.T) {
 		Cipherer: cipherer,
 		Ticketer: ticketer,
 	}
-	err = newLogEntry.Write(&GormWriter{db}, ticket)
+	err = newLogEntry.Write(context.Background(), &GormWriter{db}, ticket)
 	is.NoErr(err)
 	is.True(newLogEntry.Id != 0)
 	foundUsers, err = foundEntry.UnmarshalData(types)
@@ -198,7 +193,7 @@ func Test_TicketSerialization(t *testing.T) {
 	// in it's own transaction, init the ticket
 	_, _ = ticketer.InitTicket(ticketName)
 
-	cipherer := OplogCipher{Secret: []byte("a little magic can go a long way")}
+	cipherer := initWrapper(t)
 
 	firstTx := db.Begin()
 	firstUser := oplog_test.TestUser{
@@ -217,7 +212,6 @@ func Test_TicketSerialization(t *testing.T) {
 		Entry: &store.Entry{
 			AggregateName: "test-users",
 			Data:          firstQueue.QueueBuffer,
-			Kid:           "giant-peach-secret",
 			Metadata: []*store.Metadata{
 				&store.Metadata{
 					Key:   "deployment",
@@ -250,7 +244,6 @@ func Test_TicketSerialization(t *testing.T) {
 		Entry: &store.Entry{
 			AggregateName: "foobar",
 			Data:          secondQueue.QueueBuffer,
-			Kid:           "giant-peach-secret",
 			Metadata: []*store.Metadata{
 				&store.Metadata{
 					Key:   "deployment",
@@ -265,7 +258,7 @@ func Test_TicketSerialization(t *testing.T) {
 		Cipherer: cipherer,
 		Ticketer: ticketer,
 	}
-	err = secondLogEntry.Write(&GormWriter{secondTx}, secondTicket)
+	err = secondLogEntry.Write(context.Background(), &GormWriter{secondTx}, secondTicket)
 	is.NoErr(err)
 	is.True(secondLogEntry.Id != 0)
 	err = secondTx.Commit().Error
@@ -273,7 +266,7 @@ func Test_TicketSerialization(t *testing.T) {
 	is.True(secondLogEntry.Id != 0)
 	t.Log(secondLogEntry)
 
-	err = firstLogEntry.Write(&GormWriter{firstTx}, firstTicket)
+	err = firstLogEntry.Write(context.Background(), &GormWriter{firstTx}, firstTicket)
 	if err != nil {
 		t.Log(err)
 		firstTx.Rollback()
@@ -292,7 +285,7 @@ func Test_WriteEntryWith(t *testing.T) {
 	is.NoErr(err)
 	defer db.Close()
 
-	cipherer := OplogCipher{Secret: []byte("a little magic can go a long way")}
+	cipherer := initWrapper(t)
 
 	u := oplog_test.TestUser{
 		Name: "foo-" + uuid.New().String(),
@@ -314,7 +307,6 @@ func Test_WriteEntryWith(t *testing.T) {
 	newLogEntry := Entry{
 		Entry: &store.Entry{
 			AggregateName: "test-users",
-			Kid:           "giant-peach-secret",
 			Metadata: []*store.Metadata{
 				&store.Metadata{
 					Key:   "deployment",
@@ -329,19 +321,16 @@ func Test_WriteEntryWith(t *testing.T) {
 		Cipherer: cipherer,
 		Ticketer: ticketer,
 	}
-	err = newLogEntry.WriteEntryWith(&GormWriter{db}, ticket, &Message{&u, any.OpType_CreateOp}, &Message{&u2, any.OpType_CreateOp})
+	err = newLogEntry.WriteEntryWith(context.Background(), &GormWriter{db}, ticket, &Message{&u, any.OpType_CreateOp}, &Message{&u2, any.OpType_CreateOp})
 	is.NoErr(err)
 
 	var foundEntry Entry
 	err = db.Where("id = ?", newLogEntry.Id).First(&foundEntry).Error
 	is.NoErr(err)
 	foundEntry.Cipherer = cipherer
-	ok, err := foundEntry.Verify()
-	is.NoErr(err)
-	is.True(ok)
 	types, err := any.NewTypeCatalog(new(oplog_test.TestUser))
 	is.NoErr(err)
-	err = foundEntry.DecryptData()
+	err = foundEntry.DecryptData(context.Background())
 	is.NoErr(err)
 	foundUsers, err := foundEntry.UnmarshalData(types)
 	is.NoErr(err)
@@ -389,6 +378,23 @@ func initDbInDocker(t *testing.T) (cleanup func(), retURL string, err error) {
 	}
 	initTestStore(t, c, url)
 	return c, url, nil
+}
+
+// initWrapper initializes an AEAD wrapping.Wrapper for testing the oplog
+func initWrapper(t *testing.T) wrapping.Wrapper {
+	rootKey := make([]byte, 32)
+	n, err := rand.Read(rootKey)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if n != 32 {
+		t.Fatal(n)
+	}
+	root := aead.NewWrapper(nil)
+	if err := root.SetAESGCMKeyBytes(rootKey); err != nil {
+		t.Fatal(err)
+	}
+	return root
 }
 
 // initTestStore will execute the migrations needed to initialize the store for tests
