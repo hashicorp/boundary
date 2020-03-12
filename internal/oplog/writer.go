@@ -1,6 +1,8 @@
 package oplog
 
 import (
+	"fmt"
+
 	"github.com/jinzhu/gorm"
 )
 
@@ -17,5 +19,8 @@ type GormWriter struct {
 
 // Create an entry in storage
 func (w *GormWriter) Create(e *Entry) error {
-	return w.Tx.Create(e).Error
+	if err := w.Tx.Create(e).Error; err != nil {
+		return fmt.Errorf("error creating oplog entry: %w", err)
+	}
+	return nil
 }

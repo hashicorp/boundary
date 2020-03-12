@@ -3,6 +3,7 @@ package oplog
 import (
 	"context"
 	"encoding/base64"
+	"errors"
 	"fmt"
 	"io"
 
@@ -27,13 +28,13 @@ type Entry struct {
 
 func (e *Entry) vetAll() error {
 	if e.Cipherer == nil {
-		return fmt.Errorf("Cipherer is nil")
+		return errors.New("Cipherer is nil")
 	}
 	if e.Ticketer == nil {
-		return fmt.Errorf("Ticketer is nil")
+		return errors.New("Ticketer is nil")
 	}
 	if e.Entry == nil {
-		return fmt.Errorf("store.Entry is nil")
+		return errors.New("store.Entry is nil")
 	}
 	return nil
 }
@@ -61,10 +62,9 @@ func (e *Entry) UnmarshalData(types *any.TypeCatalog) ([]Message, error) {
 			break
 		}
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("error removing item from queue: %w", err)
 		}
 		msgs = append(msgs, Message{m, typ})
-
 	}
 	return msgs, nil
 }
@@ -73,27 +73,27 @@ func (e *Entry) UnmarshalData(types *any.TypeCatalog) ([]Message, error) {
 // if CryptoService != nil then the data is encrypted and HMAC'd
 func (e *Entry) WriteEntryWith(ctx context.Context, tx Writer, ticket *store.Ticket, msgs ...*Message) error {
 	if err := e.vetAll(); err != nil {
-		return err
+		return fmt.Errorf("error vetting entry for writing: %w", err)
 	}
 	if ticket == nil || ticket.Version == 0 {
-		return fmt.Errorf("bad ticket")
+		return errors.New("bad ticket")
 	}
 
 	queue := any.Queue{}
 	for _, m := range msgs {
 		if err := queue.Add(m.Message, m.Type); err != nil {
-			return err
+			return fmt.Errorf("error adding message to queue: %w", err)
 		}
 	}
 	e.Data = append(e.Data, []byte(queue.QueueBuffer)...)
 
 	if e.Cipherer != nil {
 		if err := e.EncryptData(ctx); err != nil {
-			return err
+			return fmt.Errorf("error encrypting entry: %w", err)
 		}
 	}
 	if err := tx.Create(e); err != nil {
-		return err
+		return fmt.Errorf("error writing data to storage: %w", err)
 	}
 	return e.Ticketer.Redeem(ticket)
 }
@@ -102,18 +102,18 @@ func (e *Entry) WriteEntryWith(ctx context.Context, tx Writer, ticket *store.Tic
 // if CryptoService != nil then the data is encrypted and HMAC'd
 func (e *Entry) Write(ctx context.Context, tx Writer, ticket *store.Ticket) error {
 	if err := e.vetAll(); err != nil {
-		return err
+		return fmt.Errorf("error vetting entry for writing: %w", err)
 	}
 	if ticket == nil || ticket.Version == 0 {
-		return fmt.Errorf("bad ticket")
+		return errors.New("bad ticket")
 	}
 	if e.Cipherer != nil {
 		if err := e.EncryptData(ctx); err != nil {
-			return err
+			return fmt.Errorf("error encrypting entry: %w", err)
 		}
 	}
 	if err := tx.Create(e); err != nil {
-		return err
+		return fmt.Errorf("error writing data to storage: %w", err)
 	}
 	return e.Ticketer.Redeem(ticket)
 }
@@ -121,11 +121,11 @@ func (e *Entry) Write(ctx context.Context, tx Writer, ticket *store.Ticket) erro
 func (e *Entry) EncryptData(ctx context.Context) error {
 	d, err := e.Cipherer.Encrypt(ctx, e.Data, nil)
 	if err != nil {
-		return err
+		return fmt.Errorf("error encrypting entry: %w", err)
 	}
 	blob, err := proto.Marshal(d)
 	if err != nil {
-		return err
+		return fmt.Errorf("error marshaling encrypted data: %w", err)
 	}
 	e.Data = []byte(base64.RawURLEncoding.EncodeToString(blob))
 	return nil
@@ -134,16 +134,16 @@ func (e *Entry) EncryptData(ctx context.Context) error {
 func (e *Entry) DecryptData(ctx context.Context) error {
 	blob, err := base64.RawURLEncoding.DecodeString(string(e.Data))
 	if err != nil {
-		return err
+		return fmt.Errorf("error decoding encrypted data: %w", err)
 	}
 	var msg wrapping.EncryptedBlobInfo
 	err = proto.Unmarshal(blob, &msg)
 	if err != nil {
-		return err
+		return fmt.Errorf("error unmarshaling encrypted data: %w", err)
 	}
 	d, err := e.Cipherer.Decrypt(ctx, &msg, nil)
 	if err != nil {
-		return err
+		return fmt.Errorf("error decrypting data: %w", err)
 	}
 	e.Data = d
 	return nil

@@ -2,7 +2,7 @@ package any
 
 import (
 	"errors"
-	"fmt"
+	fmt "fmt"
 	"reflect"
 )
 
@@ -14,10 +14,9 @@ func NewTypeCatalog(withTypes ...interface{}) (*TypeCatalog, error) {
 	reg := TypeCatalog{}
 	for _, t := range withTypes {
 		if err := reg.Set(t); err != nil {
-			return nil, err
+			return nil, fmt.Errorf("error setting the type: %w", err)
 		}
 	}
-	// reg.Set(new(iam_store.MSP))
 	return &reg, nil
 }
 
@@ -43,5 +42,5 @@ func (t TypeCatalog) Get(name string) (interface{}, error) {
 	if typ, ok := t[name]; ok {
 		return reflect.New(typ.Elem()).Elem().Addr().Interface(), nil
 	}
-	return nil, fmt.Errorf("TypeCatalog.Get: no one")
+	return nil, errors.New("TypeCatalog.Get: no one")
 }

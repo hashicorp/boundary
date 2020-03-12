@@ -1,6 +1,7 @@
 package oplog
 
 import (
+	"errors"
 	"fmt"
 
 	"github.com/hashicorp/watchtower/internal/oplog/store"
@@ -22,11 +23,11 @@ type GormTicketer struct {
 // GetTicket returns a ticket for the specified name.  Names allow us to shard tickets around domain root names
 func (ticketer *GormTicketer) GetTicket(aggregateName string) (*store.Ticket, error) {
 	if aggregateName == "" {
-		return nil, fmt.Errorf("bad ticket name")
+		return nil, errors.New("bad ticket name")
 	}
 	ticket := store.Ticket{Name: aggregateName, Version: 1}
 	if err := ticketer.Tx.First(&ticket, store.Ticket{Name: aggregateName}).Error; err != nil {
-		return nil, err
+		return nil, fmt.Errorf("error retreiving ticket from storage: %w", err)
 	}
 	return &ticket, nil
 }
@@ -38,7 +39,7 @@ func (ticketer *GormTicketer) InitTicket(aggregateName string) (*store.Ticket, e
 	}
 	ticket := store.Ticket{Name: aggregateName, Version: 1}
 	if err := ticketer.Tx.Create(&ticket).Error; err != nil {
-		return nil, err
+		return nil, fmt.Errorf("error creating ticket in storage: %w", err)
 	}
 	return &ticket, nil
 }
@@ -47,10 +48,10 @@ func (ticketer *GormTicketer) InitTicket(aggregateName string) (*store.Ticket, e
 func (ticketer *GormTicketer) Redeem(t *store.Ticket) error {
 	tx := ticketer.Tx.Model(t).Where("version = ?", t.Version).Update("version", t.Version+1)
 	if tx.Error != nil {
-		return tx.Error
+		return fmt.Errorf("error redeeming ticket: %w", tx.Error)
 	}
 	if tx.RowsAffected != 1 {
-		return fmt.Errorf("EntryTicket.Redeem: ticket number update failed - no rows affected")
+		return errors.New("EntryTicket.Redeem: ticket number update failed - no rows affected")
 	}
 	return nil
 }

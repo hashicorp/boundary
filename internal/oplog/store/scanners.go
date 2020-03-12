@@ -2,7 +2,8 @@ package store
 
 import (
 	"database/sql/driver"
-	fmt "fmt"
+	"errors"
+	"fmt"
 	"time"
 
 	"github.com/gogo/protobuf/types"
@@ -15,12 +16,12 @@ func (ts *Timestamp) Scan(value interface{}) error {
 	case time.Time:
 		var err error
 		ts.Timestamp, err = types.TimestampProto(t) // gogo version
-		// ts.Timestamp, err = ptypes.TimestampProto(t)
+		// ts.Timestamp, err = ptypes.TimestampProto(t) // google proto version
 		if err != nil {
-			return err
+			return fmt.Errorf("error converting the timestamp: %w", err)
 		}
 	default:
-		return fmt.Errorf("Not a protobuf Timestamp")
+		return errors.New("Not a protobuf Timestamp")
 	}
 	return nil
 }
