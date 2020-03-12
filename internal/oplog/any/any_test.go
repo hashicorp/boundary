@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"testing"
 
-	"github.com/gogo/protobuf/proto"
+	"github.com/golang/protobuf/proto"
 	"github.com/hashicorp/watchtower/internal/oplog/oplog_test"
 	"github.com/matryer/is"
 )

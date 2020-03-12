@@ -290,11 +290,11 @@ func Test_WriteEntryWith(t *testing.T) {
 	u := oplog_test.TestUser{
 		Name: "foo-" + uuid.New().String(),
 	}
-	t.Log(u)
+	t.Log(&u)
 	u2 := oplog_test.TestUser{
 		Name: "foo-" + uuid.New().String(),
 	}
-	t.Log(u2)
+	t.Log(&u2)
 	ticketName := uuid.New().String()
 	ticketer := &GormTicketer{Tx: db}
 

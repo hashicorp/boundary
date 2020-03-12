@@ -6,9 +6,8 @@ require (
 	github.com/armon/go-metrics v0.3.3
 	github.com/fatih/color v1.9.0
 	github.com/ghodss/yaml v1.0.1-0.20190212211648-25d852aebe32
-	github.com/gogo/protobuf v1.3.1
 	github.com/golang-migrate/migrate/v4 v4.9.1
-	github.com/golang/protobuf v1.3.3
+	github.com/golang/protobuf v1.4.0-rc.4
 	github.com/google/uuid v1.1.1
 	github.com/hashicorp/errwrap v1.0.0
 	github.com/hashicorp/go-alpnmux v0.0.0-20200304172639-978773dcd35e
@@ -34,4 +33,5 @@ require (
 	github.com/ryanuber/columnize v2.1.0+incompatible
 	golang.org/x/net v0.0.0-20200301022130-244492dfa37a
 	google.golang.org/grpc v1.27.1
+	google.golang.org/protobuf v1.20.1
 )
