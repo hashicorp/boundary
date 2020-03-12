@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"reflect"
 
-	"github.com/golang/protobuf/proto"
 	types "github.com/golang/protobuf/ptypes/any"
+	"google.golang.org/protobuf/proto"
 )
 
 // Queue provides a FIFO queue

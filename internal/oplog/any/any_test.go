@@ -4,9 +4,9 @@ import (
 	"bytes"
 	"testing"
 
-	"github.com/golang/protobuf/proto"
 	"github.com/hashicorp/watchtower/internal/oplog/oplog_test"
 	"github.com/matryer/is"
+	"google.golang.org/protobuf/proto"
 )
 
 // Test_QueueBuffer provides basic tests for the QueueBuffer type
