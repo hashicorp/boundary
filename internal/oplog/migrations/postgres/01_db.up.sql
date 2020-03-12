@@ -2,8 +2,6 @@ CREATE TABLE if not exists oplog_entries (
   id bigserial NOT NULL,
   created_at timestamp default current_timestamp,
   updated_at timestamp default current_timestamp,
-  hmac bytea NULL,
-  kid text NULL,
   aggregate_name text NULL,
   "data" bytea NULL,
   CONSTRAINT oplog_entries_pkey PRIMARY KEY (id)
