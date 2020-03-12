@@ -2,6 +2,7 @@ package oplog
 
 import (
 	"context"
+	"encoding/base64"
 	"fmt"
 	"io"
 
@@ -87,15 +88,9 @@ func (e *Entry) WriteEntryWith(ctx context.Context, tx Writer, ticket *store.Tic
 	e.Data = append(e.Data, []byte(queue.QueueBuffer)...)
 
 	if e.Cipherer != nil {
-		b, err := e.Cipherer.Encrypt(ctx, e.Data, nil)
-		if err != nil {
+		if err := e.EncryptData(ctx); err != nil {
 			return err
 		}
-		blob, err := proto.Marshal(b)
-		if err != nil {
-			return err
-		}
-		e.Data = blob
 	}
 	if err := tx.Create(e); err != nil {
 		return err
@@ -113,21 +108,13 @@ func (e *Entry) Write(ctx context.Context, tx Writer, ticket *store.Ticket) erro
 		return fmt.Errorf("bad ticket")
 	}
 	if e.Cipherer != nil {
-		b, err := e.Cipherer.Encrypt(ctx, e.Data, nil)
-		if err != nil {
+		if err := e.EncryptData(ctx); err != nil {
 			return err
 		}
-		blob, err := proto.Marshal(b)
-		if err != nil {
-			return err
-		}
-		e.Data = blob
 	}
-
 	if err := tx.Create(e); err != nil {
 		return err
 	}
-
 	return e.Ticketer.Redeem(ticket)
 }
 
@@ -140,13 +127,17 @@ func (e *Entry) EncryptData(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	e.Data = blob
+	e.Data = []byte(base64.RawURLEncoding.EncodeToString(blob))
 	return nil
 }
 
 func (e *Entry) DecryptData(ctx context.Context) error {
+	blob, err := base64.RawURLEncoding.DecodeString(string(e.Data))
+	if err != nil {
+		return err
+	}
 	var msg wrapping.EncryptedBlobInfo
-	err := proto.Unmarshal(e.Data, &msg)
+	err = proto.Unmarshal(blob, &msg)
 	if err != nil {
 		return err
 	}
