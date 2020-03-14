@@ -72,11 +72,11 @@ func Test_BasicOplog(t *testing.T) {
 	resp := db.Create(&user)
 	is.NoErr(resp.Error)
 
-	types, err := any.NewTypeCatalog(new(oplog_test.TestUser))
+	types, err := any.NewTypeCatalog(any.Type{new(oplog_test.TestUser), "user"})
 	is.NoErr(err)
 	queue := any.Queue{Catalog: types}
 
-	err = queue.Add(&user, any.OpType_CreateOp)
+	err = queue.Add(&user, "user", any.OpType_CreateOp)
 	is.NoErr(err)
 	l := Entry{
 		Entry: &store.Entry{
@@ -130,7 +130,7 @@ func Test_BasicOplog(t *testing.T) {
 	is.NoErr(err)
 
 	queue = any.Queue{}
-	err = queue.Add(&user, any.OpType_CreateOp)
+	err = queue.Add(&user, "user", any.OpType_CreateOp)
 	is.NoErr(err)
 
 	newLogEntry := Entry{
@@ -205,7 +205,7 @@ func Test_TicketSerialization(t *testing.T) {
 	is.NoErr(err)
 
 	firstQueue := any.Queue{}
-	err = firstQueue.Add(&firstUser, any.OpType_CreateOp)
+	err = firstQueue.Add(&firstUser, "user", any.OpType_CreateOp)
 	is.NoErr(err)
 
 	firstLogEntry := Entry{
@@ -237,7 +237,7 @@ func Test_TicketSerialization(t *testing.T) {
 	is.NoErr(err)
 
 	secondQueue := any.Queue{}
-	err = secondQueue.Add(&secondUser, any.OpType_CreateOp)
+	err = secondQueue.Add(&secondUser, "user", any.OpType_CreateOp)
 	is.NoErr(err)
 
 	secondLogEntry := Entry{
@@ -321,14 +321,15 @@ func Test_WriteEntryWith(t *testing.T) {
 		Cipherer: cipherer,
 		Ticketer: ticketer,
 	}
-	err = newLogEntry.WriteEntryWith(context.Background(), &GormWriter{db}, ticket, &Message{&u, any.OpType_CreateOp}, &Message{&u2, any.OpType_CreateOp})
+	err = newLogEntry.WriteEntryWith(context.Background(), &GormWriter{db}, ticket,
+		&Message{&u, "user", any.OpType_CreateOp}, &Message{&u2, "user", any.OpType_CreateOp})
 	is.NoErr(err)
 
 	var foundEntry Entry
 	err = db.Where("id = ?", newLogEntry.Id).First(&foundEntry).Error
 	is.NoErr(err)
 	foundEntry.Cipherer = cipherer
-	types, err := any.NewTypeCatalog(new(oplog_test.TestUser))
+	types, err := any.NewTypeCatalog(any.Type{new(oplog_test.TestUser), "user"})
 	is.NoErr(err)
 	err = foundEntry.DecryptData(context.Background())
 	is.NoErr(err)

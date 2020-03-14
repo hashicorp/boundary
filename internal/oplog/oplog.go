@@ -7,16 +7,18 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/golang/protobuf/proto"
+	protoV1 "github.com/golang/protobuf/proto"
 	wrapping "github.com/hashicorp/go-kms-wrapping"
 	"github.com/hashicorp/watchtower/internal/oplog/any"
 	"github.com/hashicorp/watchtower/internal/oplog/store"
+	"google.golang.org/protobuf/proto"
 )
 
 // Message wraps a proto.Message and adds a operation type (Create, Update, Delete)
 type Message struct {
 	proto.Message
-	Type any.OpType
+	TypeURL string
+	OpType  any.OpType
 }
 
 // Entry represents an oplog entry
@@ -64,7 +66,11 @@ func (e *Entry) UnmarshalData(types *any.TypeCatalog) ([]Message, error) {
 		if err != nil {
 			return nil, fmt.Errorf("error removing item from queue: %w", err)
 		}
-		msgs = append(msgs, Message{m, typ})
+		url, err := any.GetTypeURL(types, m)
+		if err != nil {
+			return nil, fmt.Errorf("error getting TypeURL: %w", err)
+		}
+		msgs = append(msgs, Message{Message: m, TypeURL: url, OpType: typ})
 	}
 	return msgs, nil
 }
@@ -81,7 +87,7 @@ func (e *Entry) WriteEntryWith(ctx context.Context, tx Writer, ticket *store.Tic
 
 	queue := any.Queue{}
 	for _, m := range msgs {
-		if err := queue.Add(m.Message, m.Type); err != nil {
+		if err := queue.Add(m.Message, m.TypeURL, m.OpType); err != nil {
 			return fmt.Errorf("error adding message to queue: %w", err)
 		}
 	}
@@ -123,7 +129,7 @@ func (e *Entry) EncryptData(ctx context.Context) error {
 	if err != nil {
 		return fmt.Errorf("error encrypting entry: %w", err)
 	}
-	blob, err := proto.Marshal(d)
+	blob, err := protoV1.Marshal(d)
 	if err != nil {
 		return fmt.Errorf("error marshaling encrypted data: %w", err)
 	}
@@ -137,7 +143,7 @@ func (e *Entry) DecryptData(ctx context.Context) error {
 		return fmt.Errorf("error decoding encrypted data: %w", err)
 	}
 	var msg wrapping.EncryptedBlobInfo
-	err = proto.Unmarshal(blob, &msg)
+	err = protoV1.Unmarshal(blob, &msg)
 	if err != nil {
 		return fmt.Errorf("error unmarshaling encrypted data: %w", err)
 	}
