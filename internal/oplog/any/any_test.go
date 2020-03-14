@@ -41,9 +41,9 @@ func Test_Queue(t *testing.T) {
 	t.Parallel()
 	is := is.New(t)
 	types, err := NewTypeCatalog(
-		new(oplog_test.TestUser),
-		new(oplog_test.TestCar),
-		new(oplog_test.TestRental),
+		Type{new(oplog_test.TestUser), "user"},
+		Type{new(oplog_test.TestCar), "car"},
+		Type{new(oplog_test.TestRental), "rental"},
 	)
 	is.NoErr(err)
 	queue := Queue{Catalog: types}
@@ -64,11 +64,11 @@ func Test_Queue(t *testing.T) {
 		CarId:  2,
 	}
 
-	err = queue.Add(user, OpType_CreateOp)
+	err = queue.Add(user, "user", OpType_CreateOp)
 	is.NoErr(err)
-	err = queue.Add(car, OpType_CreateOp)
+	err = queue.Add(car, "car", OpType_CreateOp)
 	is.NoErr(err)
-	err = queue.Add(rental, OpType_CreateOp)
+	err = queue.Add(rental, "rental", OpType_CreateOp)
 	is.NoErr(err)
 
 	queuedUser, ty, err := queue.Remove()

@@ -3,7 +3,6 @@ package any
 import (
 	"encoding/binary"
 	"fmt"
-	"reflect"
 
 	types "github.com/golang/protobuf/ptypes/any"
 	"google.golang.org/protobuf/proto"
@@ -18,15 +17,14 @@ type Queue struct {
 }
 
 // Add pb message to queue
-func (r *Queue) Add(m proto.Message, t OpType) error {
-	type_usl := reflect.TypeOf(m).String()
+func (r *Queue) Add(m proto.Message, typeURL string, t OpType) error {
 	value, err := proto.Marshal(m)
 	if err != nil {
 		return fmt.Errorf("error marshaling add parameter: %w", err)
 	}
 	msg := &Any{
 		Anything: &types.Any{
-			TypeUrl: type_usl,
+			TypeUrl: typeURL,
 			Value:   value,
 		},
 		Type: t,
