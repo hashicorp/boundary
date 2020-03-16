@@ -3,6 +3,7 @@ package any
 import (
 	"encoding/binary"
 	"fmt"
+	"sync"
 
 	types "github.com/golang/protobuf/ptypes/any"
 	"google.golang.org/protobuf/proto"
@@ -14,6 +15,8 @@ type Queue struct {
 	QueueBuffer
 	// Catalog provides a TypeCatalog for the types added to the queue
 	Catalog *TypeCatalog
+
+	mx sync.Mutex
 }
 
 // Add pb message to queue
@@ -33,6 +36,8 @@ func (r *Queue) Add(m proto.Message, typeURL string, t OpType) error {
 	if err != nil {
 		return fmt.Errorf("error marhaling the anything msg for Add: %w", err)
 	}
+	r.mx.Lock()
+	defer r.mx.Unlock()
 	err = binary.Write(r, binary.LittleEndian, int32(len(data)))
 	if err != nil {
 		return err
@@ -49,6 +54,8 @@ func (r *Queue) Add(m proto.Message, typeURL string, t OpType) error {
 
 // Remove pb message from the queue and EOF if empty
 func (r *Queue) Remove() (proto.Message, OpType, error) {
+	r.mx.Lock()
+	defer r.mx.Unlock()
 	var n int32
 	err := binary.Read(r, binary.LittleEndian, &n)
 	if err != nil {
