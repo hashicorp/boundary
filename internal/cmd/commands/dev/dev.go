@@ -138,13 +138,13 @@ func (c *Command) Run(args []string) int {
 		return 1
 	}
 
-	if memProfilerEnabled {
-		c.startMemProfiler()
-	}
-
 	if err := c.SetupLogging(c.flagLogLevel, c.flagLogFormat, "", ""); err != nil {
 		c.UI.Error(err.Error())
 		return 1
+	}
+
+	if memProfilerEnabled {
+		base.StartMemProfiler(c.Logger)
 	}
 
 	if err := c.SetupMetrics(c.UI, devControllerConfig.Telemetry); err != nil {

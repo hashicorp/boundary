@@ -1,6 +1,6 @@
 // +build memprofiler
 
-package controller
+package base
 
 import (
 	"os"
@@ -8,16 +8,18 @@ import (
 	"runtime"
 	"runtime/pprof"
 	"time"
+
+	"github.com/hashicorp/go-hclog"
 )
 
 func init() {
 	memProfilerEnabled = true
 }
 
-func (c *Command) startMemProfiler() {
+func StartMemProfiler(logger hclog.Logger) {
 	profileDir := filepath.Join(os.TempDir(), "watchtowerprof")
 	if err := os.MkdirAll(profileDir, 0700); err != nil {
-		c.logger.Debug("could not create profile directory", "error", err)
+		logger.Debug("could not create profile directory", "error", err)
 		return
 	}
 
@@ -26,14 +28,14 @@ func (c *Command) startMemProfiler() {
 			filename := filepath.Join(profileDir, time.Now().UTC().Format("20060102_150405")) + ".pprof"
 			f, err := os.Create(filename)
 			if err != nil {
-				c.logger.Debug("could not create memory profile", "error", err)
+				logger.Debug("could not create memory profile", "error", err)
 			}
 			runtime.GC()
 			if err := pprof.WriteHeapProfile(f); err != nil {
-				c.logger.Debug("could not write memory profile", "error", err)
+				logger.Debug("could not write memory profile", "error", err)
 			}
 			f.Close()
-			c.logger.Debug("wrote memory profile", "filename", filename)
+			logger.Debug("wrote memory profile", "filename", filename)
 			time.Sleep(5 * time.Minute)
 		}
 	}()

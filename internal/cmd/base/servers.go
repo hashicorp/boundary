@@ -28,7 +28,6 @@ import (
 	"github.com/hashicorp/vault/sdk/helper/mlock"
 	"github.com/hashicorp/vault/sdk/logical"
 	"github.com/hashicorp/watchtower/globals"
-	"github.com/hashicorp/watchtower/internal/cmd/commands/controller/listener"
 	"github.com/hashicorp/watchtower/version"
 	"github.com/mitchellh/cli"
 	"github.com/ory/dockertest/v3"
@@ -250,7 +249,7 @@ func (b *Server) SetupListeners(ui cli.Ui, config *configutil.SharedConfig) erro
 			tls.TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305,
 		}
 
-		lnMux, props, reloadFunc, err := listener.New(lnConfig, b.GatedWriter, ui)
+		lnMux, props, reloadFunc, err := NewListener(lnConfig, b.GatedWriter, ui)
 		if err != nil {
 			return fmt.Errorf("Error initializing listener of type %s: %w", lnConfig.Type, err)
 		}
