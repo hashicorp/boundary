@@ -1,4 +1,4 @@
-package controller
+package worker
 
 import (
 	"fmt"
@@ -11,8 +11,8 @@ import (
 	"github.com/hashicorp/vault/sdk/helper/mlock"
 	"github.com/hashicorp/watchtower/globals"
 	"github.com/hashicorp/watchtower/internal/cmd/base"
-	"github.com/hashicorp/watchtower/internal/cmd/commands/controller/config"
-	"github.com/hashicorp/watchtower/internal/servers/controller"
+	"github.com/hashicorp/watchtower/internal/cmd/commands/worker/config"
+	"github.com/hashicorp/watchtower/internal/servers/worker"
 	"github.com/mitchellh/cli"
 	"github.com/posener/complete"
 )
@@ -35,26 +35,26 @@ type Command struct {
 
 	Config *config.Config
 
-	flagConfig                  string
-	flagLogLevel                string
-	flagLogFormat               string
-	flagDev                     bool
-	flagDevAdminToken           string
-	flagDevControllerListenAddr string
-	flagCombineLogs             bool
+	flagConfig              string
+	flagLogLevel            string
+	flagLogFormat           string
+	flagDev                 bool
+	flagDevAdminToken       string
+	flagDevWorkerListenAddr string
+	flagCombineLogs         bool
 }
 
 func (c *Command) Synopsis() string {
-	return "Start a Watchtower controller"
+	return "Start a Watchtower worker"
 }
 
 func (c *Command) Help() string {
 	helpText := `
-Usage: watchtower controller [options]
+Usage: watchtower worker [options]
 
-  Start a controller with a configuration file:
+  Start a worker with a configuration file:
 
-      $ watchtower controller -config=/etc/watchtower/controller.hcl
+      $ watchtower worker -config=/etc/watchtower/worker.hcl
 
   For a full list of examples, please see the documentation.
 
@@ -115,10 +115,10 @@ func (c *Command) Flags() *base.FlagSets {
 
 	f.StringVar(&base.StringVar{
 		Name:    "dev-listen-address",
-		Target:  &c.flagDevControllerListenAddr,
+		Target:  &c.flagDevWorkerListenAddr,
 		Default: "127.0.0.1:9200",
-		EnvVar:  "WATCHTOWER_DEV_CONTROLLER_LISTEN_ADDRESS",
-		Usage:   "Address to bind the controller to in \"dev\" mode.",
+		EnvVar:  "WATCHTOWER_DEV_WORKER_LISTEN_ADDRESS",
+		Usage:   "Address to bind the worker to in \"dev\" mode.",
 	})
 
 	f.BoolVar(&base.BoolVar{
@@ -203,7 +203,7 @@ func (c *Command) Run(args []string) int {
 
 	defer c.RunShutdownFuncs(c.UI)
 
-	c.PrintInfo(c.UI, "controller")
+	c.PrintInfo(c.UI, "worker")
 	c.ReleaseLogGate()
 
 	return c.Start()
@@ -249,8 +249,8 @@ func (c *Command) ParseFlagsAndConfig(args []string) int {
 			return 1
 		}
 
-		if c.flagDevControllerListenAddr != "" {
-			c.Config.Listeners[0].Address = c.flagDevControllerListenAddr
+		if c.flagDevWorkerListenAddr != "" {
+			c.Config.Listeners[0].Address = c.flagDevWorkerListenAddr
 		}
 	}
 
@@ -259,22 +259,22 @@ func (c *Command) ParseFlagsAndConfig(args []string) int {
 
 func (c *Command) Start() int {
 	// Instantiate the wait group
-	conf := &controller.Config{
+	conf := &worker.Config{
 		RawConfig: c.Config,
 		Server:    c.Server,
 	}
 
 	// Initialize the core
-	ctlr, err := controller.New(conf)
+	wrkr, err := worker.New(conf)
 	if err != nil {
-		c.UI.Error(fmt.Sprintf("Error initializing controller: %w", err))
+		c.UI.Error(fmt.Sprintf("Error initializing worker: %w", err))
 		return 1
 	}
 
-	if err := ctlr.Start(); err != nil {
-		c.UI.Error(fmt.Sprint("Error starting controller: %w", err))
-		if err := ctlr.Shutdown(); err != nil {
-			c.UI.Error(fmt.Sprintf("Error with controller shutdown: %w", err))
+	if err := wrkr.Start(); err != nil {
+		c.UI.Error(fmt.Sprint("Error starting worker: %w", err))
+		if err := wrkr.Shutdown(); err != nil {
+			c.UI.Error(fmt.Sprintf("Error with worker shutdown: %w", err))
 		}
 		return 1
 	}
@@ -285,16 +285,16 @@ func (c *Command) Start() int {
 	for !shutdownTriggered {
 		select {
 		case <-c.ShutdownCh:
-			c.UI.Output("==> Watchtower controller shutdown triggered")
+			c.UI.Output("==> Watchtower worker shutdown triggered")
 
-			if err := ctlr.Shutdown(); err != nil {
-				c.UI.Error(fmt.Sprintf("Error with controller shutdown: %w", err))
+			if err := wrkr.Shutdown(); err != nil {
+				c.UI.Error(fmt.Sprintf("Error with worker shutdown: %w", err))
 			}
 
 			shutdownTriggered = true
 
 		case <-c.SighupCh:
-			c.UI.Output("==> Watchtower controller reload triggered")
+			c.UI.Output("==> Watchtower worker reload triggered")
 
 			// Check for new log level
 			var level hclog.Level
@@ -318,7 +318,7 @@ func (c *Command) Start() int {
 			}
 
 			// Commented out until we need this
-			//controller.SetConfig(config)
+			//wrkr.SetConfig(config)
 
 			if newConf.LogLevel != "" {
 				configLogLevel := strings.ToLower(strings.TrimSpace(newConf.LogLevel))
@@ -337,12 +337,12 @@ func (c *Command) Start() int {
 					c.Logger.Error("unknown log level found on reload", "level", newConf.LogLevel)
 					goto RUNRELOADFUNCS
 				}
-				ctlr.SetLogLevel(level)
+				wrkr.SetLogLevel(level)
 			}
 
 		RUNRELOADFUNCS:
 			if err := c.Reload(); err != nil {
-				c.UI.Error(fmt.Sprintf("Error(s) were encountered during controller reload: %w", err))
+				c.UI.Error(fmt.Sprintf("Error(s) were encountered during worker reload: %w", err))
 			}
 
 		case <-c.SigUSR2Ch:
