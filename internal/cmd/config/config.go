@@ -12,13 +12,58 @@ import (
 	"github.com/hashicorp/vault/internalshared/configutil"
 )
 
+const (
+	devConfig = `
+disable_mlock = true
+
+listener "tcp" {
+	tls_disable = true
+	proxy_protocol_behavior = "allow_authorized"
+	proxy_protocol_authorized_addrs = "127.0.0.1"
+}
+
+telemetry {
+	prometheus_retention_time = "24h"
+	disable_hostname = true
+}
+`
+
+	devControllerExtraConfig = `
+
+kms "aead" {
+	purpose = "controller"
+	aead_type = "aes-gcm"
+	key = "%s"
+}
+
+kms "aead" {
+	purpose = "worker-auth"
+	aead_type = "aes-gcm"
+	key = "%s"
+}
+`
+)
+
 // Config is the configuration for the watchtower controller
 type Config struct {
 	*configutil.SharedConfig `hcl:"-"`
+
+	DevController bool `hcl:"-"`
 }
 
-// Dev is a Config that is used for dev mode of Watchtower
-func Dev() (*Config, error) {
+// DevWorker is a Config that is used for dev mode of Watchtower
+// workers
+func DevWorker() (*Config, error) {
+	parsed, err := Parse(devConfig)
+	if err != nil {
+		return nil, fmt.Errorf("error parsing dev config: %w", err)
+	}
+	return parsed, nil
+}
+
+// DevController is a Config that is used for dev mode of Watchtower
+// controllers
+func DevController() (*Config, error) {
 	randBuf := new(bytes.Buffer)
 	n, err := randBuf.ReadFrom(&io.LimitedReader{
 		R: rand.Reader,
@@ -33,38 +78,12 @@ func Dev() (*Config, error) {
 	controllerKey := base64.StdEncoding.EncodeToString(randBuf.Bytes()[0:32])
 	workerAuthKey := base64.StdEncoding.EncodeToString(randBuf.Bytes()[32:64])
 
-	hclStr := `
-disable_mlock = true
-
-listener "tcp" {
-	tls_disable = true
-	proxy_protocol_behavior = "allow_authorized"
-	proxy_protocol_authorized_addrs = "127.0.0.1"
-}
-
-telemetry {
-	prometheus_retention_time = "24h"
-	disable_hostname = true
-}
-
-kms "aead" {
-	purpose = "controller"
-	aead_type = "aes-gcm"
-	key = "%s"
-}
-
-kms "aead" {
-	purpose = "worker-auth"
-	aead_type = "aes-gcm"
-	key = "%s"
-}
-`
-
-	hclStr = fmt.Sprintf(hclStr, controllerKey, workerAuthKey)
+	hclStr := fmt.Sprintf(devConfig+devControllerExtraConfig, controllerKey, workerAuthKey)
 	parsed, err := Parse(hclStr)
 	if err != nil {
 		return nil, fmt.Errorf("error parsing dev config: %w", err)
 	}
+	parsed.DevController = true
 	return parsed, nil
 }
 

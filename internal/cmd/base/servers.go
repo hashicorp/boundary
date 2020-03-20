@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
 	"os"
 	"sort"
@@ -38,9 +39,10 @@ import (
 )
 
 type ServerListener struct {
-	Mux        *alpnmux.ALPNMux
-	Config     *configutil.Listener
-	HTTPServer *http.Server
+	Mux          *alpnmux.ALPNMux
+	Config       *configutil.Listener
+	HTTPServer   *http.Server
+	ALPNListener net.Listener
 }
 
 type Server struct {
@@ -299,7 +301,6 @@ func (b *Server) SetupListeners(ui cli.Ui, config *configutil.SharedConfig) erro
 		b.InfoKeys = append(b.InfoKeys, key)
 		b.Info[key] = fmt.Sprintf(
 			"%s (%s)", lnConfig.Type, strings.Join(propsList, ", "))
-
 	}
 
 	return nil

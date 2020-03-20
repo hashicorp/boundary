@@ -11,7 +11,7 @@ import (
 	"github.com/hashicorp/vault/sdk/helper/mlock"
 	"github.com/hashicorp/watchtower/globals"
 	"github.com/hashicorp/watchtower/internal/cmd/base"
-	"github.com/hashicorp/watchtower/internal/cmd/commands/controller/config"
+	"github.com/hashicorp/watchtower/internal/cmd/config"
 	"github.com/hashicorp/watchtower/internal/servers/controller"
 	"github.com/mitchellh/cli"
 	"github.com/posener/complete"
@@ -19,8 +19,6 @@ import (
 
 var _ cli.Command = (*Command)(nil)
 var _ cli.CommandAutocomplete = (*Command)(nil)
-
-var memProfilerEnabled = false
 
 type Command struct {
 	*base.Command
@@ -39,7 +37,7 @@ type Command struct {
 	flagLogLevel                string
 	flagLogFormat               string
 	flagDev                     bool
-	flagDevAdminToken           string
+	flagDevAdminPassword        string
 	flagDevControllerListenAddr string
 	flagCombineLogs             bool
 }
@@ -105,11 +103,11 @@ func (c *Command) Flags() *base.FlagSets {
 	})
 
 	f.StringVar(&base.StringVar{
-		Name:    "dev-admin-token",
-		Target:  &c.flagDevAdminToken,
+		Name:    "dev-admin-password",
+		Target:  &c.flagDevAdminPassword,
 		Default: "",
-		EnvVar:  "WATCHTWER_DEV_ADMIN_TOKEN",
-		Usage: "Initial admin token. This only applies when running in \"dev\" " +
+		EnvVar:  "WATCHTWER_DEV_ADMIN_PASSWORD",
+		Usage: "Initial admin password. This only applies when running in \"dev\" " +
 			"mode.",
 	})
 
@@ -152,9 +150,7 @@ func (c *Command) Run(args []string) int {
 		return 1
 	}
 
-	if memProfilerEnabled {
-		base.StartMemProfiler(c.Logger)
-	}
+	base.StartMemProfiler(c.Logger)
 
 	if err := c.SetupMetrics(c.UI, c.Config.Telemetry); err != nil {
 		c.UI.Error(err.Error())
@@ -171,14 +167,14 @@ func (c *Command) Run(args []string) int {
 	}
 
 	// If mlockall(2) isn't supported, show a warning. We disable this in dev
-	// because it is quite scary to see when first using Vault. We also disable
+	// because it is quite scary to see when first using Watchtower. We also disable
 	// this if the user has explicitly disabled mlock in configuration.
 	if !c.flagDev && !c.Config.DisableMlock && !mlock.Supported() {
 		c.UI.Warn(base.WrapAtLength(
 			"WARNING! mlock is not supported on this system! An mlockall(2)-like " +
 				"syscall to prevent memory from being swapped to disk is not " +
-				"supported on this system. For better security, only run Vault on " +
-				"systems where this call is supported. If you are running Vault " +
+				"supported on this system. For better security, only run Watchtower on " +
+				"systems where this call is supported. If you are running Watchtower" +
 				"in a Docker container, provide the IPC_LOCK cap to the container."))
 	}
 
@@ -189,13 +185,13 @@ func (c *Command) Run(args []string) int {
 
 	// Write out the PID to the file now that server has successfully started
 	if err := c.StorePidFile(c.Config.PidFile); err != nil {
-		c.UI.Error(fmt.Sprintf("Error storing PID: %w", err))
+		c.UI.Error(fmt.Errorf("Error storing PID: %w", err).Error())
 		return 1
 	}
 
 	if c.flagDev {
 		if err := c.CreateDevDatabase(); err != nil {
-			c.UI.Error(fmt.Sprintf("Error creating dev database container: %s", err.Error()))
+			c.UI.Error(fmt.Errorf("Error creating dev database container: %s", err.Error()).Error())
 			return 1
 		}
 		c.ShutdownFuncs = append(c.ShutdownFuncs, c.DestroyDevDatabase)
@@ -225,17 +221,13 @@ func (c *Command) ParseFlagsAndConfig(args []string) int {
 		case len(c.flagConfig) == 0:
 			c.UI.Error("Must specify a config file using -config")
 			return 1
-		case c.flagDevAdminToken != "":
+		case c.flagDevAdminPassword != "":
 			c.UI.Warn(base.WrapAtLength(
-				"You cannot specify a custom admin token ID outside of \"dev\" mode. " +
+				"You cannot specify a custom admin password outside of \"dev\" mode. " +
 					"Your request has been ignored."))
-			c.flagDevAdminToken = ""
+			c.flagDevAdminPassword = ""
 		}
 
-		if len(c.flagConfig) == 0 {
-			c.UI.Error("Must supply a config file with -config")
-			return 1
-		}
 		c.Config, err = config.LoadFile(c.flagConfig)
 		if err != nil {
 			c.UI.Error("Error parsing config: " + err.Error())
@@ -243,9 +235,9 @@ func (c *Command) ParseFlagsAndConfig(args []string) int {
 		}
 
 	} else {
-		c.Config, err = config.Dev()
+		c.Config, err = config.DevController()
 		if err != nil {
-			c.UI.Error(fmt.Sprintf("Error creating dev config: %s", err))
+			c.UI.Error(fmt.Errorf("Error creating dev config: %s", err).Error())
 			return 1
 		}
 
@@ -267,14 +259,14 @@ func (c *Command) Start() int {
 	// Initialize the core
 	ctlr, err := controller.New(conf)
 	if err != nil {
-		c.UI.Error(fmt.Sprintf("Error initializing controller: %w", err))
+		c.UI.Error(fmt.Errorf("Error initializing controller: %w", err).Error())
 		return 1
 	}
 
 	if err := ctlr.Start(); err != nil {
 		c.UI.Error(fmt.Sprint("Error starting controller: %w", err))
 		if err := ctlr.Shutdown(); err != nil {
-			c.UI.Error(fmt.Sprintf("Error with controller shutdown: %w", err))
+			c.UI.Error(fmt.Errorf("Error with controller shutdown: %w", err).Error())
 		}
 		return 1
 	}
@@ -288,7 +280,7 @@ func (c *Command) Start() int {
 			c.UI.Output("==> Watchtower controller shutdown triggered")
 
 			if err := ctlr.Shutdown(); err != nil {
-				c.UI.Error(fmt.Sprintf("Error with controller shutdown: %w", err))
+				c.UI.Error(fmt.Errorf("Error with controller shutdown: %w", err).Error())
 			}
 
 			shutdownTriggered = true
@@ -342,7 +334,7 @@ func (c *Command) Start() int {
 
 		RUNRELOADFUNCS:
 			if err := c.Reload(); err != nil {
-				c.UI.Error(fmt.Sprintf("Error(s) were encountered during controller reload: %w", err))
+				c.UI.Error(fmt.Errorf("Error(s) were encountered during controller reload: %w", err).Error())
 			}
 
 		case <-c.SigUSR2Ch:

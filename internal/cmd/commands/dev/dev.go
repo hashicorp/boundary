@@ -8,15 +8,14 @@ import (
 
 	"github.com/hashicorp/watchtower/internal/cmd/base"
 	controllercmd "github.com/hashicorp/watchtower/internal/cmd/commands/controller"
-	controllerconfig "github.com/hashicorp/watchtower/internal/cmd/commands/controller/config"
+	workercmd "github.com/hashicorp/watchtower/internal/cmd/commands/worker"
+	"github.com/hashicorp/watchtower/internal/cmd/config"
 	"github.com/mitchellh/cli"
 	"github.com/posener/complete"
 )
 
 var _ cli.Command = (*Command)(nil)
 var _ cli.CommandAutocomplete = (*Command)(nil)
-
-var memProfilerEnabled = false
 
 type Command struct {
 	*base.Command
@@ -34,7 +33,7 @@ type Command struct {
 	flagLogLevel                string
 	flagLogFormat               string
 	flagDev                     bool
-	flagDevAdminToken           string
+	flagDevAdminPassword        string
 	flagDevControllerListenAddr string
 	flagCombineLogs             bool
 }
@@ -83,11 +82,11 @@ func (c *Command) Flags() *base.FlagSets {
 	f = set.NewFlagSet("Dev Options")
 
 	f.StringVar(&base.StringVar{
-		Name:    "dev-admin-token",
-		Target:  &c.flagDevAdminToken,
+		Name:    "dev-admin-password",
+		Target:  &c.flagDevAdminPassword,
 		Default: "",
-		EnvVar:  "WATCHTWER_DEV_ADMIN_TOKEN",
-		Usage: "Initial admin token. This only applies when running in \"dev\" " +
+		EnvVar:  "WATCHTWER_DEV_ADMIN_PASSWORD",
+		Usage: "Initial admin password. This only applies when running in \"dev\" " +
 			"mode.",
 	})
 
@@ -132,9 +131,9 @@ func (c *Command) Run(args []string) int {
 
 	childShutdownCh := make(chan struct{})
 
-	devControllerConfig, err := controllerconfig.Dev()
+	devConfig, err := config.DevController()
 	if err != nil {
-		c.UI.Error(fmt.Sprintf("Error creating controller dev config: %s", err))
+		c.UI.Error(fmt.Errorf("Error creating controller dev config: %s", err).Error())
 		return 1
 	}
 
@@ -143,29 +142,27 @@ func (c *Command) Run(args []string) int {
 		return 1
 	}
 
-	if memProfilerEnabled {
-		base.StartMemProfiler(c.Logger)
-	}
+	base.StartMemProfiler(c.Logger)
 
-	if err := c.SetupMetrics(c.UI, devControllerConfig.Telemetry); err != nil {
+	if err := c.SetupMetrics(c.UI, devConfig.Telemetry); err != nil {
 		c.UI.Error(err.Error())
 		return 1
 	}
 
-	if err := c.SetupKMSes(c.UI, devControllerConfig.SharedConfig, 2); err != nil {
+	if err := c.SetupKMSes(c.UI, devConfig.SharedConfig, 2); err != nil {
 		c.UI.Error(err.Error())
 		return 1
 	}
 
 	// Initialize the listeners
-	if err := c.SetupListeners(c.UI, devControllerConfig.SharedConfig); err != nil {
+	if err := c.SetupListeners(c.UI, devConfig.SharedConfig); err != nil {
 		c.UI.Error(err.Error())
 		return 1
 	}
 
 	// Write out the PID to the file now that server has successfully started
-	if err := c.StorePidFile(devControllerConfig.PidFile); err != nil {
-		c.UI.Error(fmt.Sprintf("Error storing PID: %w", err))
+	if err := c.StorePidFile(devConfig.PidFile); err != nil {
+		c.UI.Error(fmt.Errorf("Error storing PID: %w", err).Error())
 		return 1
 	}
 
@@ -208,7 +205,7 @@ func (c *Command) Run(args []string) int {
 	defer c.RunShutdownFuncs(c.UI)
 
 	if err := c.CreateDevDatabase(); err != nil {
-		c.UI.Error(fmt.Sprintf("Error creating dev database container: %s", err.Error()))
+		c.UI.Error(fmt.Errorf("Error creating dev database container: %w", err).Error())
 		return 1
 	}
 	c.ShutdownFuncs = append(c.ShutdownFuncs, c.DestroyDevDatabase)
@@ -218,7 +215,7 @@ func (c *Command) Run(args []string) int {
 
 	// Instantiate the wait group
 	shutdownWg := &sync.WaitGroup{}
-	shutdownWg.Add(1)
+	shutdownWg.Add(2)
 	controllerSighupCh := make(chan struct{})
 	c.childSighupCh = append(c.childSighupCh, controllerSighupCh)
 	go func() {
@@ -228,9 +225,20 @@ func (c *Command) Run(args []string) int {
 			Server:     c.Server,
 			ShutdownCh: childShutdownCh,
 			SighupCh:   controllerSighupCh,
-			Config:     devControllerConfig,
+			Config:     devConfig,
 		}
 		devController.Start()
+	}()
+	go func() {
+		defer shutdownWg.Done()
+		devWorker := &workercmd.Command{
+			Command:    c.Command,
+			Server:     c.Server,
+			ShutdownCh: childShutdownCh,
+			SighupCh:   controllerSighupCh,
+			Config:     devConfig,
+		}
+		devWorker.Start()
 	}()
 
 	// Wait for shutdown
