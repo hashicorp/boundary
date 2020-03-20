@@ -4,7 +4,7 @@ import (
 	"context"
 
 	"github.com/hashicorp/watchtower/internal/cmd/base"
-	"github.com/hashicorp/watchtower/internal/cmd/commands/worker/config"
+	"github.com/hashicorp/watchtower/internal/cmd/config"
 )
 
 type Config struct {

@@ -12,10 +12,6 @@ import (
 	"github.com/hashicorp/go-hclog"
 )
 
-func init() {
-	memProfilerEnabled = true
-}
-
 func StartMemProfiler(logger hclog.Logger) {
 	profileDir := filepath.Join(os.TempDir(), "watchtowerprof")
 	if err := os.MkdirAll(profileDir, 0700); err != nil {
