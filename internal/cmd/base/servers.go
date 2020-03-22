@@ -290,6 +290,8 @@ func (b *Server) SetupListeners(ui cli.Ui, config *configutil.SharedConfig) erro
 			Config: lnConfig,
 		})
 
+		props["purpose"] = strings.Join(lnConfig.Purpose, ",")
+
 		// Store the listener props for output later
 		key := fmt.Sprintf("listener %d", i+1)
 		propsList := make([]string, 0, len(props))

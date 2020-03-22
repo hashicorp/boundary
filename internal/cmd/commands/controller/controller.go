@@ -9,6 +9,7 @@ import (
 	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/vault/sdk/helper/mlock"
+	"github.com/hashicorp/vault/sdk/helper/strutil"
 	"github.com/hashicorp/watchtower/globals"
 	"github.com/hashicorp/watchtower/internal/cmd/base"
 	"github.com/hashicorp/watchtower/internal/cmd/config"
@@ -33,13 +34,14 @@ type Command struct {
 
 	Config *config.Config
 
-	flagConfig                  string
-	flagLogLevel                string
-	flagLogFormat               string
-	flagDev                     bool
-	flagDevAdminPassword        string
-	flagDevControllerListenAddr string
-	flagCombineLogs             bool
+	flagConfig                         string
+	flagLogLevel                       string
+	flagLogFormat                      string
+	flagDev                            bool
+	flagDevAdminPassword               string
+	flagDevControllerAPIListenAddr     string
+	flagDevControllerClusterListenAddr string
+	flagCombineLogs                    bool
 }
 
 func (c *Command) Synopsis() string {
@@ -112,11 +114,17 @@ func (c *Command) Flags() *base.FlagSets {
 	})
 
 	f.StringVar(&base.StringVar{
-		Name:    "dev-listen-address",
-		Target:  &c.flagDevControllerListenAddr,
-		Default: "127.0.0.1:9200",
-		EnvVar:  "WATCHTOWER_DEV_CONTROLLER_LISTEN_ADDRESS",
-		Usage:   "Address to bind the controller to in \"dev\" mode.",
+		Name:   "dev-api-listen-address",
+		Target: &c.flagDevControllerAPIListenAddr,
+		EnvVar: "WATCHTOWER_DEV_CONTROLLER_API_LISTEN_ADDRESS",
+		Usage:  "Address to bind the controller to in \"dev\" mode for \"api\" purpose.",
+	})
+
+	f.StringVar(&base.StringVar{
+		Name:   "dev-cluster-listen-address",
+		Target: &c.flagDevControllerClusterListenAddr,
+		EnvVar: "WATCHTOWER_DEV_CONTROLLER_CLUSTER_LISTEN_ADDRESS",
+		Usage:  "Address to bind the controller to in \"dev\" mode for \"cluster\" purpose.",
 	})
 
 	f.BoolVar(&base.BoolVar{
@@ -178,6 +186,43 @@ func (c *Command) Run(args []string) int {
 				"in a Docker container, provide the IPC_LOCK cap to the container."))
 	}
 
+	// Perform controller-specific listener checks here before setup
+	var foundCluster bool
+	var foundAPI bool
+	for _, lnConfig := range c.Config.Listeners {
+		switch len(lnConfig.Purpose) {
+		case 1:
+			switch lnConfig.Purpose[0] {
+			case "cluster":
+				foundCluster = true
+			case "api":
+				foundAPI = true
+			default:
+				c.UI.Error(fmt.Sprintf("Unknown listener purpose %q", lnConfig.Purpose[0]))
+				return 1
+			}
+
+		case 0:
+			lnConfig.Purpose = []string{"api", "cluster"}
+			fallthrough
+
+		case 2:
+			if !strutil.StrListContains(lnConfig.Purpose, "api") || !strutil.StrListContains(lnConfig.Purpose, "cluster") {
+				c.UI.Error(fmt.Sprintf("Invalid listener purpose set: %v", lnConfig.Purpose))
+				return 1
+			}
+			if lnConfig.TLSDisable {
+				c.UI.Error(fmt.Sprintf("TLS cannot be disabled on listener when serving both %q and %q purposes", "api", "cluster"))
+				return 1
+			}
+			foundAPI = true
+			foundCluster = true
+		}
+	}
+	if foundAPI && !foundCluster {
+		c.UI.Error("No listener marked for cluster purpose found, but listener explicitly marked for api was found")
+		return 1
+	}
 	if err := c.SetupListeners(c.UI, c.Config.SharedConfig); err != nil {
 		c.UI.Error(err.Error())
 		return 1
@@ -241,8 +286,21 @@ func (c *Command) ParseFlagsAndConfig(args []string) int {
 			return 1
 		}
 
-		if c.flagDevControllerListenAddr != "" {
-			c.Config.Listeners[0].Address = c.flagDevControllerListenAddr
+		for _, l := range c.Config.Listeners {
+			if len(l.Purpose) != 1 {
+				continue
+			}
+			switch l.Purpose[0] {
+			case "api":
+				if c.flagDevControllerAPIListenAddr != "" {
+					l.Address = c.flagDevControllerAPIListenAddr
+				}
+
+			case "cluster":
+				if c.flagDevControllerClusterListenAddr != "" {
+					l.Address = c.flagDevControllerClusterListenAddr
+				}
+			}
 		}
 	}
 

@@ -41,7 +41,11 @@ func NewListener(l *configutil.Listener, w io.Writer, ui cli.Ui) (*alpnmux.ALPNM
 
 func tcpListenerFactory(l *configutil.Listener, _ io.Writer, ui cli.Ui) (*alpnmux.ALPNMux, map[string]string, reloadutil.ReloadFunc, error) {
 	if l.Address == "" {
-		l.Address = "127.0.0.1:9200"
+		if len(l.Purpose) == 1 && l.Purpose[0] == "cluster" {
+			l.Address = "127.0.0.1:9201"
+		} else {
+			l.Address = "127.0.0.1:9200"
+		}
 	}
 
 	bindProto := "tcp"

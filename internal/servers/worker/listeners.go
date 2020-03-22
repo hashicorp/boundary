@@ -128,12 +128,13 @@ func (c *Worker) stopListeners() error {
 		if ln.HTTPServer == nil {
 			continue
 		}
+		localLn := ln
 		serverWg.Add(1)
 		go func() {
-			shutdownKill, shutdownKillCancel := context.WithTimeout(c.baseContext, ln.Config.MaxRequestDuration)
+			shutdownKill, shutdownKillCancel := context.WithTimeout(c.baseContext, localLn.Config.MaxRequestDuration)
 			defer shutdownKillCancel()
 			defer serverWg.Done()
-			ln.HTTPServer.Shutdown(shutdownKill)
+			localLn.HTTPServer.Shutdown(shutdownKill)
 		}()
 	}
 	serverWg.Wait()
