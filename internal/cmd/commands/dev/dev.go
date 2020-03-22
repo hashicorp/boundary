@@ -29,13 +29,14 @@ type Command struct {
 
 	cleanupGuard sync.Once
 
-	flagConfig                  string
-	flagLogLevel                string
-	flagLogFormat               string
-	flagDev                     bool
-	flagDevAdminPassword        string
-	flagDevControllerListenAddr string
-	flagCombineLogs             bool
+	flagConfig                         string
+	flagLogLevel                       string
+	flagLogFormat                      string
+	flagDev                            bool
+	flagDevAdminPassword               string
+	flagDevControllerAPIListenAddr     string
+	flagDevControllerClusterListenAddr string
+	flagCombineLogs                    bool
 }
 
 func (c *Command) Synopsis() string {
@@ -91,11 +92,17 @@ func (c *Command) Flags() *base.FlagSets {
 	})
 
 	f.StringVar(&base.StringVar{
-		Name:    "dev-listen-address",
-		Target:  &c.flagDevControllerListenAddr,
-		Default: "127.0.0.1:9200",
-		EnvVar:  "WATCHTOWER_DEV_LISTEN_ADDRESS",
-		Usage:   "Address to bind against.",
+		Name:   "dev-api-listen-address",
+		Target: &c.flagDevControllerAPIListenAddr,
+		EnvVar: "WATCHTOWER_DEV_CONTROLLER_API_LISTEN_ADDRESS",
+		Usage:  "Address to bind to for controller \"api\" purpose.",
+	})
+
+	f.StringVar(&base.StringVar{
+		Name:   "dev-cluster-listen-address",
+		Target: &c.flagDevControllerClusterListenAddr,
+		EnvVar: "WATCHTOWER_DEV_CONTROLLER_CLUSTER_LISTEN_ADDRESS",
+		Usage:  "Address to bind to for controller \"cluster\" purpose.",
 	})
 
 	f.BoolVar(&base.BoolVar{
@@ -135,6 +142,23 @@ func (c *Command) Run(args []string) int {
 	if err != nil {
 		c.UI.Error(fmt.Errorf("Error creating controller dev config: %s", err).Error())
 		return 1
+	}
+
+	for _, l := range devConfig.Listeners {
+		if len(l.Purpose) != 1 {
+			continue
+		}
+		switch l.Purpose[0] {
+		case "api":
+			if c.flagDevControllerAPIListenAddr != "" {
+				l.Address = c.flagDevControllerAPIListenAddr
+			}
+
+		case "cluster":
+			if c.flagDevControllerClusterListenAddr != "" {
+				l.Address = c.flagDevControllerClusterListenAddr
+			}
+		}
 	}
 
 	if err := c.SetupLogging(c.flagLogLevel, c.flagLogFormat, "", ""); err != nil {

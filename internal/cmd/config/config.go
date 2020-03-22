@@ -16,12 +16,6 @@ const (
 	devConfig = `
 disable_mlock = true
 
-listener "tcp" {
-	tls_disable = true
-	proxy_protocol_behavior = "allow_authorized"
-	proxy_protocol_authorized_addrs = "127.0.0.1"
-}
-
 telemetry {
 	prometheus_retention_time = "24h"
 	disable_hostname = true
@@ -29,7 +23,6 @@ telemetry {
 `
 
 	devControllerExtraConfig = `
-
 kms "aead" {
 	purpose = "controller"
 	aead_type = "aes-gcm"
@@ -40,6 +33,28 @@ kms "aead" {
 	purpose = "worker-auth"
 	aead_type = "aes-gcm"
 	key = "%s"
+}
+
+listener "tcp" {
+	purpose = "api"
+	tls_disable = true
+	proxy_protocol_behavior = "allow_authorized"
+	proxy_protocol_authorized_addrs = "127.0.0.1"
+}
+
+listener "tcp" {
+	purpose = "cluster"
+	tls_disable = true
+	proxy_protocol_behavior = "allow_authorized"
+	proxy_protocol_authorized_addrs = "127.0.0.1"
+}
+`
+
+	devWorkerExtraConfig = `
+listener "tcp" {
+	tls_disable = true
+	proxy_protocol_behavior = "allow_authorized"
+	proxy_protocol_authorized_addrs = "127.0.0.1"
 }
 `
 )
@@ -54,7 +69,7 @@ type Config struct {
 // DevWorker is a Config that is used for dev mode of Watchtower
 // workers
 func DevWorker() (*Config, error) {
-	parsed, err := Parse(devConfig)
+	parsed, err := Parse(devConfig + devWorkerExtraConfig)
 	if err != nil {
 		return nil, fmt.Errorf("error parsing dev config: %w", err)
 	}

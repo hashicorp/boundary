@@ -101,11 +101,10 @@ func (c *Command) Flags() *base.FlagSets {
 	})
 
 	f.StringVar(&base.StringVar{
-		Name:    "dev-listen-address",
-		Target:  &c.flagDevWorkerListenAddr,
-		Default: "127.0.0.1:9200",
-		EnvVar:  "WATCHTOWER_DEV_WORKER_LISTEN_ADDRESS",
-		Usage:   "Address to bind the worker to in \"dev\" mode.",
+		Name:   "dev-listen-address",
+		Target: &c.flagDevWorkerListenAddr,
+		EnvVar: "WATCHTOWER_DEV_WORKER_LISTEN_ADDRESS",
+		Usage:  "Address to bind the worker to in \"dev\" mode.",
 	})
 
 	f.BoolVar(&base.BoolVar{
