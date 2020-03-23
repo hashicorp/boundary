@@ -11,14 +11,16 @@ import (
 	wrapping "github.com/hashicorp/go-kms-wrapping"
 	"github.com/hashicorp/watchtower/internal/oplog/any"
 	"github.com/hashicorp/watchtower/internal/oplog/store"
+	_ "github.com/lib/pq"
 	"google.golang.org/protobuf/proto"
 )
 
 // Message wraps a proto.Message and adds a operation type (Create, Update, Delete)
 type Message struct {
 	proto.Message
-	TypeURL string
-	OpType  any.OpType
+	TypeURL   string
+	OpType    any.OpType
+	FieldMask string
 }
 
 // Entry represents an oplog entry
@@ -59,7 +61,7 @@ func (e *Entry) UnmarshalData(types *any.TypeCatalog) ([]Message, error) {
 		Catalog:     types,
 	}
 	for {
-		m, typ, err := queue.Remove()
+		m, typ, mask, err := queue.Remove()
 		if err == io.EOF {
 			break
 		}
@@ -70,13 +72,13 @@ func (e *Entry) UnmarshalData(types *any.TypeCatalog) ([]Message, error) {
 		if err != nil {
 			return nil, fmt.Errorf("error getting TypeURL: %w", err)
 		}
-		msgs = append(msgs, Message{Message: m, TypeURL: url, OpType: typ})
+		msgs = append(msgs, Message{Message: m, TypeURL: url, OpType: typ, FieldMask: mask})
 	}
 	return msgs, nil
 }
 
 // WriteEntryWith the []proto.Message marshaled into the entry data as a FIFO QueueBuffer
-// if CryptoService != nil then the data is encrypted and HMAC'd
+// if CryptoService != nil then the data is authentication encrypted
 func (e *Entry) WriteEntryWith(ctx context.Context, tx Writer, ticket *store.Ticket, msgs ...*Message) error {
 	if err := e.vetAll(); err != nil {
 		return fmt.Errorf("error vetting entry for writing: %w", err)
@@ -87,7 +89,7 @@ func (e *Entry) WriteEntryWith(ctx context.Context, tx Writer, ticket *store.Tic
 
 	queue := any.Queue{}
 	for _, m := range msgs {
-		if err := queue.Add(m.Message, m.TypeURL, m.OpType); err != nil {
+		if err := queue.Add(m.Message, m.TypeURL, m.OpType, any.WithFieldMask(m.FieldMask)); err != nil {
 			return fmt.Errorf("error adding message to queue: %w", err)
 		}
 	}
@@ -105,7 +107,7 @@ func (e *Entry) WriteEntryWith(ctx context.Context, tx Writer, ticket *store.Tic
 }
 
 // Write the entry as is with whatever it has for e.Data marshaled into a FIFO QueueBuffer
-// if CryptoService != nil then the data is encrypted and HMAC'd
+// if CryptoService != nil then the data is authentication encrypted
 func (e *Entry) Write(ctx context.Context, tx Writer, ticket *store.Ticket) error {
 	if err := e.vetAll(); err != nil {
 		return fmt.Errorf("error vetting entry for writing: %w", err)
@@ -124,6 +126,7 @@ func (e *Entry) Write(ctx context.Context, tx Writer, ticket *store.Ticket) erro
 	return e.Ticketer.Redeem(ticket)
 }
 
+// EncryptData the entry's data using its Cipherer (wrapping.Wrapper)
 func (e *Entry) EncryptData(ctx context.Context) error {
 	d, err := e.Cipherer.Encrypt(ctx, e.Data, nil)
 	if err != nil {
@@ -137,6 +140,7 @@ func (e *Entry) EncryptData(ctx context.Context) error {
 	return nil
 }
 
+// DecryptData will decrypt the entry's data using its Cipherer (wrapping.Wrapper)
 func (e *Entry) DecryptData(ctx context.Context) error {
 	blob, err := base64.RawURLEncoding.DecodeString(string(e.Data))
 	if err != nil {
@@ -152,5 +156,40 @@ func (e *Entry) DecryptData(ctx context.Context) error {
 		return fmt.Errorf("error decrypting data: %w", err)
 	}
 	e.Data = d
+	return nil
+}
+
+// Replay provides the ability to replay an entry.  you must initialize any new tables ending with the tableSuffix before
+// calling Replay, otherwise you'll get "a table doesn't exist" error.
+func (e *Entry) Replay(ctx context.Context, tx Writer, types *any.TypeCatalog, tableSuffix string) error {
+	msgs, err := e.UnmarshalData(types)
+	if err != nil {
+		return fmt.Errorf("error on UnmarshalData: %w", err)
+	}
+	for _, m := range msgs {
+		em, ok := m.Message.(ReplayableMessage)
+		if !ok {
+			return fmt.Errorf("%T is not a ReplayableMessage", m.Message)
+		}
+		origTableName := em.TableName()
+		defer em.SetTableName(origTableName)
+		em.SetTableName(origTableName + tableSuffix)
+		switch m.OpType {
+		case any.OpType_CreateOp:
+			if err := tx.Create(m.Message); err != nil {
+				return fmt.Errorf("replay error: %w", err)
+			}
+		case any.OpType_UpdateOp:
+			if err := tx.Update(m.Message, m.FieldMask); err != nil {
+				return fmt.Errorf("replay error: %w", err)
+			}
+		case any.OpType_DeleteOp:
+			if err := tx.Delete(m.Message); err != nil {
+				return fmt.Errorf("replay error: %w", err)
+			}
+		default:
+			return fmt.Errorf("replay error: unhandled operation %T", m.OpType)
+		}
+	}
 	return nil
 }
