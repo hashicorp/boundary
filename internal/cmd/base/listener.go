@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"net"
+	"net/http"
 	"strings"
 	"time"
 
@@ -19,6 +20,19 @@ import (
 	"github.com/mitchellh/cli"
 	"github.com/pires/go-proxyproto"
 )
+
+type ServerListener struct {
+	Mux          *alpnmux.ALPNMux
+	Config       *configutil.Listener
+	HTTPServer   *http.Server
+	ALPNListener net.Listener
+}
+
+type WorkerAuthCertInfo struct {
+	CACertPEM []byte `json:"ca_cert"`
+	CertPEM   []byte `json:"cert"`
+	KeyPEM    []byte `json:"key"`
+}
 
 // Factory is the factory function to create a listener.
 type ListenerFactory func(*configutil.Listener, io.Writer, cli.Ui) (*alpnmux.ALPNMux, map[string]string, reloadutil.ReloadFunc, error)

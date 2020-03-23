@@ -8,8 +8,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"net"
-	"net/http"
 	"os"
 	"sort"
 	"strconv"
@@ -18,7 +16,6 @@ import (
 
 	"github.com/armon/go-metrics"
 	"github.com/hashicorp/errwrap"
-	"github.com/hashicorp/go-alpnmux"
 	"github.com/hashicorp/go-hclog"
 	wrapping "github.com/hashicorp/go-kms-wrapping"
 	"github.com/hashicorp/go-multierror"
@@ -37,13 +34,6 @@ import (
 
 	_ "github.com/lib/pq"
 )
-
-type ServerListener struct {
-	Mux          *alpnmux.ALPNMux
-	Config       *configutil.Listener
-	HTTPServer   *http.Server
-	ALPNListener net.Listener
-}
 
 type Server struct {
 	InfoKeys []string

@@ -31,6 +31,7 @@ type Command struct {
 	cleanupGuard sync.Once
 
 	Config *config.Config
+	worker *worker.Worker
 
 	flagConfig              string
 	flagLogLevel            string
@@ -178,7 +179,12 @@ func (c *Command) Run(args []string) int {
 	c.PrintInfo(c.UI, "worker")
 	c.ReleaseLogGate()
 
-	return c.Start()
+	if err := c.Start(); err != nil {
+		c.UI.Error(err.Error())
+		return 1
+	}
+
+	return c.WaitForInterrupt()
 }
 
 func (c *Command) ParseFlagsAndConfig(args []string) int {
@@ -218,7 +224,7 @@ func (c *Command) ParseFlagsAndConfig(args []string) int {
 	return 0
 }
 
-func (c *Command) Start() int {
+func (c *Command) Start() error {
 	// Instantiate the wait group
 	conf := &worker.Config{
 		RawConfig: c.Config,
@@ -226,20 +232,25 @@ func (c *Command) Start() int {
 	}
 
 	// Initialize the core
-	wrkr, err := worker.New(conf)
+	var err error
+	c.worker, err = worker.New(conf)
 	if err != nil {
-		c.UI.Error(fmt.Errorf("Error initializing worker: %w", err).Error())
-		return 1
+		return fmt.Errorf("Error initializing worker: %w", err)
 	}
 
-	if err := wrkr.Start(); err != nil {
-		c.UI.Error(fmt.Errorf("Error starting worker: %w", err).Error())
-		if err := wrkr.Shutdown(); err != nil {
-			c.UI.Error(fmt.Errorf("Error with worker shutdown: %w", err).Error())
+	if err := c.worker.Start(); err != nil {
+		retErr := fmt.Errorf("Error starting worker: %w", err)
+		if err := c.worker.Shutdown(); err != nil {
+			c.UI.Error(retErr.Error())
+			retErr = fmt.Errorf("Error with worker shutdown: %w", err)
 		}
-		return 1
+		return retErr
 	}
 
+	return nil
+}
+
+func (c *Command) WaitForInterrupt() int {
 	// Wait for shutdown
 	shutdownTriggered := false
 
@@ -248,7 +259,7 @@ func (c *Command) Start() int {
 		case <-c.ShutdownCh:
 			c.UI.Output("==> Watchtower worker shutdown triggered")
 
-			if err := wrkr.Shutdown(); err != nil {
+			if err := c.worker.Shutdown(); err != nil {
 				c.UI.Error(fmt.Errorf("Error with worker shutdown: %w", err).Error())
 			}
 
@@ -279,7 +290,7 @@ func (c *Command) Start() int {
 			}
 
 			// Commented out until we need this
-			//wrkr.SetConfig(config)
+			//c.worker.SetConfig(config)
 
 			if newConf.LogLevel != "" {
 				configLogLevel := strings.ToLower(strings.TrimSpace(newConf.LogLevel))
@@ -298,7 +309,7 @@ func (c *Command) Start() int {
 					c.Logger.Error("unknown log level found on reload", "level", newConf.LogLevel)
 					goto RUNRELOADFUNCS
 				}
-				wrkr.SetLogLevel(level)
+				c.worker.SetLogLevel(level)
 			}
 
 		RUNRELOADFUNCS:

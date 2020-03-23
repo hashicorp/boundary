@@ -2,15 +2,12 @@ package worker
 
 import (
 	"context"
-	"errors"
+	"crypto/tls"
 	"fmt"
-	"net"
-	"net/http"
 	"sync"
-	"time"
 
-	"github.com/hashicorp/go-alpnmux"
 	"github.com/hashicorp/go-multierror"
+	"github.com/hashicorp/vault/sdk/helper/strutil"
 )
 
 func (c *Worker) startListeners() error {
@@ -19,89 +16,37 @@ func (c *Worker) startListeners() error {
 	for _, ln := range c.conf.Listeners {
 		switch c.conf.RawConfig.DevController {
 		case false:
-			handler := c.Handler(HandlerProperties{
-				ListenerConfig: ln.Config,
-			})
-
-			/*
-				// TODO: As I write this Vault's having this code audited, make sure to
-				// port over any recommendations
-				//
-				// We perform validation on the config earlier, we can just cast here
-				if _, ok := ln.config["x_forwarded_for_authorized_addrs"]; ok {
-					hopSkips := ln.config["x_forwarded_for_hop_skips"].(int)
-					authzdAddrs := ln.config["x_forwarded_for_authorized_addrs"].([]*sockaddr.SockAddrMarshaler)
-					rejectNotPresent := ln.config["x_forwarded_for_reject_not_present"].(bool)
-					rejectNonAuthz := ln.config["x_forwarded_for_reject_not_authorized"].(bool)
-					if len(authzdAddrs) > 0 {
-						handler = vaulthttp.WrapForwardedForHandler(handler, authzdAddrs, rejectNotPresent, rejectNonAuthz, hopSkips)
-					}
-				}
-			*/
-
-			server := &http.Server{
-				Handler:           handler,
-				ReadHeaderTimeout: 10 * time.Second,
-				ReadTimeout:       30 * time.Second,
-				IdleTimeout:       5 * time.Minute,
-				ErrorLog:          c.conf.Logger.StandardLogger(nil),
-				BaseContext: func(net.Listener) context.Context {
-					return c.baseContext
-				},
-			}
-			ln.HTTPServer = server
-
-			if ln.Config.HTTPReadHeaderTimeout > 0 {
-				server.ReadHeaderTimeout = ln.Config.HTTPReadHeaderTimeout
-			}
-			if ln.Config.HTTPReadTimeout > 0 {
-				server.ReadTimeout = ln.Config.HTTPReadTimeout
-			}
-			if ln.Config.HTTPWriteTimeout > 0 {
-				server.WriteTimeout = ln.Config.HTTPWriteTimeout
-			}
-			if ln.Config.HTTPIdleTimeout > 0 {
-				server.IdleTimeout = ln.Config.HTTPIdleTimeout
-			}
-
-			switch ln.Config.TLSDisable {
-			case true:
-				l := ln.Mux.GetListener(alpnmux.NoProto)
-				if l == nil {
-					retErr = multierror.Append(retErr, errors.New("could not get non-tls listener"))
-					continue
-				}
-				servers = append(servers, func() {
-					go server.Serve(l)
-				})
-
-			default:
-				protos := []string{"", "http/1.1", "h2"}
-				for _, v := range protos {
-					l := ln.Mux.GetListener(v)
-					if l == nil {
-						retErr = multierror.Append(retErr, fmt.Errorf("could not get tls proto %q listener", v))
-						continue
-					}
-					servers = append(servers, func() {
-						go server.Serve(l)
-					})
-				}
-			}
-
-			fallthrough
+			// TODO: We'll eventually need to configure HTTP listening here for
+			// org-provided certificate handling, and configure the mux's
+			// defaultproto for accepting client connections for ALPN-based
+			// auth
 
 		default:
-			if !ln.Config.TLSDisable {
-				l := ln.Mux.GetListener(alpnmux.DefaultProto)
-				if l == nil {
-					retErr = multierror.Append(retErr, fmt.Errorf("could not get tls proto %q listener", alpnmux.DefaultProto))
+			// TODO: We'll need to go through any listeners marked for api
+			// usage and add our websocket handlers to the server. Eventually
+			// we may want to make the config function able to handle arbitrary
+			// ALPNs in a dynamic way, so that in dev mode we can also register
+			// alpn mode client auth handling via the cluster ports.
+			// TODO again because...I like that idea and don't want to forget
+			// about it :-)
+			// For now just testing out the ability to authorize via the ALPN handler
+			if strutil.StrListContains(ln.Config.Purpose, "cluster") {
+				tlsConf, err := c.workerAuthTLSConfig()
+				if err != nil {
+					retErr = multierror.Append(retErr, fmt.Errorf("error creating tls config for worker auth: %w", err))
 					continue
 				}
-				ln.ALPNListener = l
-				// TODO: give this listener to a server to handle ALPN auth
+				if ln.ALPNListener != nil {
+					c.conf.Logger.Info("testing the waters with proto", "protos", tlsConf.NextProtos)
+					conn, err := tls.Dial(ln.ALPNListener.Addr().Network(), ln.ALPNListener.Addr().String(), tlsConf)
+					if err != nil {
+						retErr = multierror.Append(retErr, fmt.Errorf("error dialing controller for worker auth: %w", err))
+						continue
+					}
+					c.conf.Logger.Info("negotiated a protocol", "proto", conn.ConnectionState().NegotiatedProtocol, "mutual", conn.ConnectionState().NegotiatedProtocolIsMutual)
+					conn.Close()
+				}
 			}
-			// TODO: Register websocket handler against server on this listener
 		}
 	}
 
