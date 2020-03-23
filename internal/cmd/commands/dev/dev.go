@@ -242,27 +242,40 @@ func (c *Command) Run(args []string) int {
 	shutdownWg.Add(2)
 	controllerSighupCh := make(chan struct{})
 	c.childSighupCh = append(c.childSighupCh, controllerSighupCh)
+
+	devController := &controllercmd.Command{
+		Command:    c.Command,
+		Server:     c.Server,
+		ShutdownCh: childShutdownCh,
+		SighupCh:   controllerSighupCh,
+		Config:     devConfig,
+	}
+	if err := devController.Start(); err != nil {
+		c.UI.Error(err.Error())
+		return 1
+	}
+
+	workerSighupCh := make(chan struct{})
+	c.childSighupCh = append(c.childSighupCh, workerSighupCh)
+	devWorker := &workercmd.Command{
+		Command:    c.Command,
+		Server:     c.Server,
+		ShutdownCh: childShutdownCh,
+		SighupCh:   workerSighupCh,
+		Config:     devConfig,
+	}
+	if err := devWorker.Start(); err != nil {
+		c.UI.Error(err.Error())
+		return 1
+	}
+
 	go func() {
 		defer shutdownWg.Done()
-		devController := &controllercmd.Command{
-			Command:    c.Command,
-			Server:     c.Server,
-			ShutdownCh: childShutdownCh,
-			SighupCh:   controllerSighupCh,
-			Config:     devConfig,
-		}
-		devController.Start()
+		devController.WaitForInterrupt()
 	}()
 	go func() {
 		defer shutdownWg.Done()
-		devWorker := &workercmd.Command{
-			Command:    c.Command,
-			Server:     c.Server,
-			ShutdownCh: childShutdownCh,
-			SighupCh:   controllerSighupCh,
-			Config:     devConfig,
-		}
-		devWorker.Start()
+		devWorker.WaitForInterrupt()
 	}()
 
 	// Wait for shutdown
@@ -290,7 +303,6 @@ func (c *Command) Run(args []string) int {
 		}
 	}
 
-	// Wait for dependent goroutines to complete
 	shutdownWg.Wait()
 
 	return 0

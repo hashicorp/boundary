@@ -32,7 +32,8 @@ type Command struct {
 
 	cleanupGuard sync.Once
 
-	Config *config.Config
+	Config     *config.Config
+	controller *controller.Controller
 
 	flagConfig                         string
 	flagLogLevel                       string
@@ -247,7 +248,12 @@ func (c *Command) Run(args []string) int {
 	c.PrintInfo(c.UI, "controller")
 	c.ReleaseLogGate()
 
-	return c.Start()
+	if err := c.Start(); err != nil {
+		c.UI.Error(err.Error())
+		return 1
+	}
+
+	return c.WaitForInterrupt()
 }
 
 func (c *Command) ParseFlagsAndConfig(args []string) int {
@@ -307,7 +313,7 @@ func (c *Command) ParseFlagsAndConfig(args []string) int {
 	return 0
 }
 
-func (c *Command) Start() int {
+func (c *Command) Start() error {
 	// Instantiate the wait group
 	conf := &controller.Config{
 		RawConfig: c.Config,
@@ -315,20 +321,25 @@ func (c *Command) Start() int {
 	}
 
 	// Initialize the core
-	ctlr, err := controller.New(conf)
+	var err error
+	c.controller, err = controller.New(conf)
 	if err != nil {
-		c.UI.Error(fmt.Errorf("Error initializing controller: %w", err).Error())
-		return 1
+		return fmt.Errorf("Error initializing controller: %w", err)
 	}
 
-	if err := ctlr.Start(); err != nil {
-		c.UI.Error(fmt.Sprint("Error starting controller: %w", err))
-		if err := ctlr.Shutdown(); err != nil {
-			c.UI.Error(fmt.Errorf("Error with controller shutdown: %w", err).Error())
+	if err := c.controller.Start(); err != nil {
+		retErr := fmt.Errorf("Error starting controller: %w", err)
+		if err := c.controller.Shutdown(); err != nil {
+			c.UI.Error(retErr.Error())
+			retErr = fmt.Errorf("Error with controller shutdown: %w", err)
 		}
-		return 1
+		return retErr
 	}
 
+	return nil
+}
+
+func (c *Command) WaitForInterrupt() int {
 	// Wait for shutdown
 	shutdownTriggered := false
 
@@ -337,7 +348,7 @@ func (c *Command) Start() int {
 		case <-c.ShutdownCh:
 			c.UI.Output("==> Watchtower controller shutdown triggered")
 
-			if err := ctlr.Shutdown(); err != nil {
+			if err := c.controller.Shutdown(); err != nil {
 				c.UI.Error(fmt.Errorf("Error with controller shutdown: %w", err).Error())
 			}
 
@@ -387,7 +398,7 @@ func (c *Command) Start() int {
 					c.Logger.Error("unknown log level found on reload", "level", newConf.LogLevel)
 					goto RUNRELOADFUNCS
 				}
-				ctlr.SetLogLevel(level)
+				c.controller.SetLogLevel(level)
 			}
 
 		RUNRELOADFUNCS:

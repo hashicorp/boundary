@@ -93,15 +93,26 @@ func (c *Controller) startListeners() error {
 	}
 
 	configureForCluster := func(ln *base.ServerListener) error {
-		l, err := ln.Mux.RegisterProto("watchtower-worker-v1", &tls.Config{
+		l, err := ln.Mux.RegisterProto(alpnmux.DefaultProto, &tls.Config{
 			GetConfigForClient: c.validateWorkerTLS,
 		})
 		if err != nil {
 			return fmt.Errorf("error getting sub-listener for worker proto: %w", err)
 		}
+		ln.ALPNListener = l
 
-		// TODO: Pass this to a handler, e.g. a grpc server
-		_ = l
+		// TODO: Pass this to a handler, e.g. a grpc server, in the mean time
+		// just accepting what comes
+		go func() {
+			for {
+				conn, err := ln.ALPNListener.Accept()
+				if err != nil {
+					c.conf.Logger.Info("default alpn listener errored, exiting")
+					return
+				}
+				conn.Close()
+			}
+		}()
 		return nil
 	}
 
