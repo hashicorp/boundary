@@ -159,6 +159,119 @@ func Test_BasicOplog(t *testing.T) {
 	is.True(foundUsers[0].Message.(*oplog_test.TestUser).Name == user.Name)
 }
 
+// Test_Replay provides some basic unit tests for replaying entries
+func Test_Replay(t *testing.T) {
+	t.Parallel()
+	is, cleanup, url := setup(t)
+	defer cleanup()
+	db, err := test_dbconn(url)
+	is.NoErr(err)
+	defer db.Close()
+
+	cipherer := initWrapper(t)
+
+	// setup new tables for replay
+	tableSuffix := "_" + uuid.New().String()
+	tmpUserModel := &oplog_test.ReplayableTestUser{}
+	tmpUserModel.SetTableName(fmt.Sprintf("%s%s", tmpUserModel.TableName(), tableSuffix))
+	db.AutoMigrate(tmpUserModel)
+	defer db.DropTableIfExists(tmpUserModel)
+
+	userName := "foo-" + uuid.New().String()
+	// create a user that's replayable
+	userCreate := oplog_test.ReplayableTestUser{
+		TestUser: oplog_test.TestUser{
+			Name: userName,
+		},
+	}
+
+	ticketName := uuid.New().String()
+	ticketer := &GormTicketer{Tx: db}
+
+	_, err = ticketer.InitTicket(ticketName)
+	is.NoErr(err)
+	ticket, err := ticketer.GetTicket(ticketName)
+	is.NoErr(err)
+
+	is.NoErr(err)
+	newLogEntry := Entry{
+		Entry: &store.Entry{
+			AggregateName: "test-users",
+			Metadata: []*store.Metadata{
+				&store.Metadata{
+					Key:   "deployment",
+					Value: "amex",
+				},
+				&store.Metadata{
+					Key:   "project",
+					Value: "central-info-systems",
+				},
+			},
+		},
+		Cipherer: cipherer,
+		Ticketer: ticketer,
+	}
+
+	err = db.Create(&userCreate).Error
+	is.NoErr(err)
+	userSave := oplog_test.ReplayableTestUser{
+		TestUser: oplog_test.TestUser{
+			Id:    userCreate.Id,
+			Name:  userCreate.Name,
+			Email: userName + "@hashicorp.com",
+		},
+	}
+	err = db.Save(&userSave).Error
+	is.NoErr(err)
+
+	userUpdate := oplog_test.ReplayableTestUser{
+		TestUser: oplog_test.TestUser{
+			Id:          userCreate.Id,
+			PhoneNumber: "867-5309",
+		},
+	}
+	err = db.Model(&userUpdate).Updates(map[string]interface{}{"PhoneNumber": "867-5309"}).Error
+	is.NoErr(err)
+
+	tx := db.Begin()
+
+	err = newLogEntry.WriteEntryWith(context.Background(), &GormWriter{tx}, ticket,
+		&Message{&userCreate, "user", any.OpType_CreateOp, ""},
+		&Message{&userSave, "user", any.OpType_UpdateOp, ""},
+		&Message{&userUpdate, "user", any.OpType_UpdateOp, "PhoneNumber"},
+	)
+	is.NoErr(err)
+
+	types, err := any.NewTypeCatalog(any.Type{new(oplog_test.ReplayableTestUser), "user"})
+	is.NoErr(err)
+
+	var foundEntry Entry
+	err = tx.Where("id = ?", newLogEntry.Id).First(&foundEntry).Error
+	is.NoErr(err)
+	foundEntry.Cipherer = cipherer
+	err = foundEntry.DecryptData(context.Background())
+	is.NoErr(err)
+
+	err = foundEntry.Replay(context.Background(), &GormWriter{tx}, types, tableSuffix)
+	is.NoErr(err)
+
+	var foundUser oplog_test.TestUser
+	err = tx.Where("id = ?", userCreate.Id).First(&foundUser).Error
+	is.NoErr(err)
+
+	var foundReplayedUser oplog_test.TestUser
+	err = tx.Where("id = ?", userCreate.Id).First(&foundReplayedUser).Error
+	is.NoErr(err)
+
+	is.True(foundUser.Id == foundReplayedUser.Id)
+	is.True(foundUser.Name == foundReplayedUser.Name && foundUser.Name == userName)
+	is.True(foundUser.PhoneNumber == foundReplayedUser.PhoneNumber && foundReplayedUser.PhoneNumber == "867-5309")
+	is.True(foundUser.Email == foundReplayedUser.Email && foundReplayedUser.Email == userName+"@hashicorp.com")
+
+	tx.Commit()
+
+}
+
 // Test_GetTicket provides unit tests for getting oplog.Tickets
 func Test_GetTicket(t *testing.T) {
 	t.Parallel()
@@ -322,7 +435,7 @@ func Test_WriteEntryWith(t *testing.T) {
 		Ticketer: ticketer,
 	}
 	err = newLogEntry.WriteEntryWith(context.Background(), &GormWriter{db}, ticket,
-		&Message{&u, "user", any.OpType_CreateOp}, &Message{&u2, "user", any.OpType_CreateOp})
+		&Message{&u, "user", any.OpType_CreateOp, ""}, &Message{&u2, "user", any.OpType_CreateOp, ""})
 	is.NoErr(err)
 
 	var foundEntry Entry
