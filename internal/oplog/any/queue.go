@@ -20,7 +20,10 @@ type Queue struct {
 }
 
 // Add pb message to queue
-func (r *Queue) Add(m proto.Message, typeURL string, t OpType) error {
+func (r *Queue) Add(m proto.Message, typeURL string, t OpType, opt ...Option) error {
+	opts := GetOpts(opt...)
+	withFieldMask := opts[optionWithFieldMask].(string)
+
 	value, err := proto.Marshal(m)
 	if err != nil {
 		return fmt.Errorf("error marshaling add parameter: %w", err)
@@ -30,7 +33,8 @@ func (r *Queue) Add(m proto.Message, typeURL string, t OpType) error {
 			TypeUrl: typeURL,
 			Value:   value,
 		},
-		Type: t,
+		Type:      t,
+		FieldMask: withFieldMask,
 	}
 	data, err := proto.Marshal(msg)
 	if err != nil {
@@ -53,30 +57,30 @@ func (r *Queue) Add(m proto.Message, typeURL string, t OpType) error {
 }
 
 // Remove pb message from the queue and EOF if empty
-func (r *Queue) Remove() (proto.Message, OpType, error) {
+func (r *Queue) Remove() (proto.Message, OpType, string, error) {
 	r.mx.Lock()
 	defer r.mx.Unlock()
 	var n int32
 	err := binary.Read(r, binary.LittleEndian, &n)
 	if err != nil {
-		return nil, 0, err // intentionally not wrapping error so client can test for sentinel EOF error
+		return nil, 0, "", err // intentionally not wrapping error so client can test for sentinel EOF error
 	}
 	data := r.Next(int(n))
 	msg := new(Any)
 	err = proto.Unmarshal(data, msg)
 	if err != nil {
-		return nil, 0, fmt.Errorf("error marshaling the anything msg for Remove: %w", err)
+		return nil, 0, "", fmt.Errorf("error marshaling the anything msg for Remove: %w", err)
 	}
 	if msg.Anything.Value == nil {
-		return nil, 0, nil
+		return nil, 0, "", nil
 	}
 	any, err := r.Catalog.Get(msg.Anything.TypeUrl)
 	if err != nil {
-		return nil, 0, fmt.Errorf("error getting the anything.TypeUrl for Remove: %w", err)
+		return nil, 0, "", fmt.Errorf("error getting the anything.TypeUrl for Remove: %w", err)
 	}
 	pm := any.(proto.Message)
 	if err = proto.Unmarshal(msg.Anything.Value, pm); err != nil {
-		return nil, 0, fmt.Errorf("error unmarshaling the anything value for Remove: %w", err)
+		return nil, 0, "", fmt.Errorf("error unmarshaling the anything value for Remove: %w", err)
 	}
-	return pm, msg.Type, err
+	return pm, msg.Type, msg.FieldMask, nil
 }
