@@ -22,4 +22,5 @@ enum OpType {
 message Any {
   google.protobuf.Any anything = 1;
   OpType type = 2;
+  string field_mask = 3;
 }
