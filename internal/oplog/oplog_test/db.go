@@ -18,7 +18,27 @@ func Reinit(db *gorm.DB) {
 	Init(db)
 }
 
+// ReplayableTestUser is simply that: a user we can replay for tests
+// the big diff is that it supports overriding the table name
+type ReplayableTestUser struct {
+	TestUser
+	Table string `gorm:"-"`
+}
+
 // TableName overrides the table name for the test user model
+func (u *ReplayableTestUser) TableName() string {
+	if u.Table != "" {
+		return u.Table
+	}
+	return "oplog_test_user"
+}
+
+func (u *ReplayableTestUser) SetTableName(name string) {
+	if name != "" {
+		u.Table = name
+	}
+}
+
 func (*TestUser) TableName() string { return "oplog_test_user" }
 
 // TableName overrides the table name for the test car model
