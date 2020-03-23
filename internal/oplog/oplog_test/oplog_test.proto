@@ -4,21 +4,10 @@ syntax = "proto3";
 package hashicorp.watchtower.oplog.test.v1;
 option go_package = "github.com/hashicorp/watchtower/internal/oplog/oplog_test;oplog_test";
 
-import "google/protobuf/timestamp.proto";
-
-// Timestamp for test proto pkg
-message Timestamp {
-  google.protobuf.Timestamp timestamp = 1;
-}
-
 // TestUser for gorm test user model
 message TestUser {
   // @inject_tag: gorm:"primary_key"
   uint32 id = 1;
-  // @inject_tag: gorm:"not_null;type:TIMESTAMP"
-  Timestamp created_at = 2;
-  // @inject_tag: gorm:"not_null;type:TIMESTAMP"
-  Timestamp updated_at = 3;
   string name = 4;
   string phone_number = 5;
   string email = 6;
@@ -27,11 +16,6 @@ message TestUser {
 message TestCar {
   // @inject_tag: gorm:"primary_key"
   uint32 id = 1;
-  // @inject_tag: gorm:"not_null;type:TIMESTAMP"
-  Timestamp created_at = 2;
-  // @inject_tag: gorm:"not_null;type:TIMESTAMP"
-  Timestamp updated_at = 3;
-
   string model = 4;
   int32 mpg = 5;
 }
