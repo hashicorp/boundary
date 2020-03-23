@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"net"
 	"net/http"
+	"strings"
 	"sync"
 	"time"
 
@@ -45,7 +46,7 @@ func (c *Controller) startListeners() error {
 			ReadHeaderTimeout: 10 * time.Second,
 			ReadTimeout:       30 * time.Second,
 			IdleTimeout:       5 * time.Minute,
-			ErrorLog:          c.conf.Logger.StandardLogger(nil),
+			ErrorLog:          c.logger.StandardLogger(nil),
 			BaseContext: func(net.Listener) context.Context {
 				return c.baseContext
 			},
@@ -107,8 +108,18 @@ func (c *Controller) startListeners() error {
 			for {
 				conn, err := ln.ALPNListener.Accept()
 				if err != nil {
-					c.conf.Logger.Info("default alpn listener errored, exiting")
+					if !strings.Contains(err.Error(), "use of closed network connection") {
+						c.logger.Info("default alpn listener errored, exiting", "error", err)
+					}
 					return
+				}
+				_, err = conn.Read(make([]byte, 3))
+				if err != nil {
+					retErr = multierror.Append(retErr, fmt.Errorf("error reading test string from worker for worker auth: %w", err))
+				}
+				_, err = conn.Write([]byte("bar"))
+				if err != nil {
+					retErr = multierror.Append(retErr, fmt.Errorf("error writing test string to worker for worker auth: %w", err))
 				}
 				conn.Close()
 			}

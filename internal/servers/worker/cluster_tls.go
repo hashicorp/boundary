@@ -39,7 +39,7 @@ func (c Worker) workerAuthTLSConfig() (*tls.Config, error) {
 		KeyUsage:              x509.KeyUsage(x509.KeyUsageCertSign | x509.KeyUsageCRLSign),
 		SerialNumber:          big.NewInt(mathrand.Int63()),
 		NotBefore:             time.Now().Add(-30 * time.Second),
-		NotAfter:              time.Now().Add(262980 * time.Hour),
+		NotAfter:              time.Now().Add(3 * time.Minute),
 		BasicConstraintsValid: true,
 		IsCA:                  true,
 	}
@@ -80,7 +80,7 @@ func (c Worker) workerAuthTLSConfig() (*tls.Config, error) {
 		KeyUsage:     x509.KeyUsageDigitalSignature | x509.KeyUsageKeyEncipherment | x509.KeyUsageKeyAgreement,
 		SerialNumber: big.NewInt(mathrand.Int63()),
 		NotBefore:    time.Now().Add(-30 * time.Second),
-		NotAfter:     time.Now().Add(262980 * time.Hour),
+		NotAfter:     time.Now().Add(2 * time.Minute),
 	}
 	certBytes, err := x509.CreateCertificate(c.conf.SecureRandomReader, certTemplate, caCert, key.Public(), caKey)
 	if err != nil {

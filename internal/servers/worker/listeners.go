@@ -3,6 +3,7 @@ package worker
 import (
 	"context"
 	"crypto/tls"
+	"errors"
 	"fmt"
 	"sync"
 
@@ -37,13 +38,41 @@ func (c *Worker) startListeners() error {
 					continue
 				}
 				if ln.ALPNListener != nil {
-					c.conf.Logger.Info("testing the waters with proto", "protos", tlsConf.NextProtos)
 					conn, err := tls.Dial(ln.ALPNListener.Addr().Network(), ln.ALPNListener.Addr().String(), tlsConf)
 					if err != nil {
 						retErr = multierror.Append(retErr, fmt.Errorf("error dialing controller for worker auth: %w", err))
 						continue
 					}
-					c.conf.Logger.Info("negotiated a protocol", "proto", conn.ConnectionState().NegotiatedProtocol, "mutual", conn.ConnectionState().NegotiatedProtocolIsMutual)
+					_, err = conn.Write([]byte("foo"))
+					if err != nil {
+						retErr = multierror.Append(retErr, fmt.Errorf("error writing test string to controller for worker auth: %w", err))
+						continue
+					}
+					_, err = conn.Read(make([]byte, 3))
+					if err != nil {
+						retErr = multierror.Append(retErr, fmt.Errorf("error reading test string from controller for worker auth: %w", err))
+						continue
+					}
+					c.logger.Info("done good writing/reading")
+					conn.Close()
+					newTLSConf, _ := c.workerAuthTLSConfig()
+					tlsConf.Certificates = newTLSConf.Certificates
+					conn, err = tls.Dial(ln.ALPNListener.Addr().Network(), ln.ALPNListener.Addr().String(), tlsConf)
+					if err != nil {
+						retErr = multierror.Append(retErr, fmt.Errorf("error dialing controller for worker auth: %w", err))
+						continue
+					}
+					_, err = conn.Write([]byte("foo"))
+					if err != nil {
+						retErr = multierror.Append(retErr, fmt.Errorf("error writing test string to controller for worker auth: %w", err))
+						continue
+					}
+					_, err = conn.Read(make([]byte, 3))
+					if err == nil {
+						retErr = multierror.Append(retErr, errors.New("expected error reading test string from controller for worker auth"))
+						continue
+					}
+					c.logger.Info("done bad writing/reading")
 					conn.Close()
 				}
 			}

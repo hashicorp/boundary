@@ -10,18 +10,24 @@ import (
 )
 
 type Controller struct {
-	conf *Config
+	conf   *Config
+	logger hclog.Logger
 
 	baseContext context.Context
 	baseCancel  context.CancelFunc
 }
 
 func New(conf *Config) (*Controller, error) {
-	if conf.Logger == nil {
-		conf.Logger = hclog.New(&hclog.LoggerOptions{
+	c := &Controller{
+		conf:   conf,
+		logger: conf.Logger,
+	}
+
+	if c.logger == nil {
+		c.logger = hclog.New(&hclog.LoggerOptions{
 			Level: hclog.Trace,
 		})
-		conf.AllLoggers = append(conf.AllLoggers, conf.Logger)
+		conf.AllLoggers = append(conf.AllLoggers, c.logger)
 	}
 
 	if conf.SecureRandomReader == nil {
@@ -44,11 +50,7 @@ func New(conf *Config) (*Controller, error) {
 		}
 	}
 
-	conf.Logger = conf.Logger.Named("controller")
-
-	c := &Controller{
-		conf: conf,
-	}
+	c.logger = c.logger.Named("controller")
 
 	c.baseContext, c.baseCancel = context.WithCancel(context.Background())
 
@@ -57,14 +59,14 @@ func New(conf *Config) (*Controller, error) {
 
 func (c *Controller) Start() error {
 	if err := c.startListeners(); err != nil {
-		return err
+		return fmt.Errorf("error starting controller listeners: %w", err)
 	}
 	return nil
 }
 
 func (c *Controller) Shutdown() error {
 	if err := c.stopListeners(); err != nil {
-		return err
+		return fmt.Errorf("error stopping controller listeners: %w", err)
 	}
 	return nil
 }

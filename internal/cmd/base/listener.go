@@ -6,6 +6,7 @@ import (
 	"io"
 	"net"
 	"net/http"
+	"os"
 	"strings"
 	"time"
 
@@ -14,6 +15,7 @@ import (
 	_ "crypto/sha512"
 
 	"github.com/hashicorp/go-alpnmux"
+	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/vault/internalshared/configutil"
 	"github.com/hashicorp/vault/internalshared/listenerutil"
 	"github.com/hashicorp/vault/internalshared/reloadutil"
@@ -35,7 +37,7 @@ type WorkerAuthCertInfo struct {
 }
 
 // Factory is the factory function to create a listener.
-type ListenerFactory func(*configutil.Listener, io.Writer, cli.Ui) (*alpnmux.ALPNMux, map[string]string, reloadutil.ReloadFunc, error)
+type ListenerFactory func(*configutil.Listener, io.Writer, hclog.Logger, cli.Ui) (*alpnmux.ALPNMux, map[string]string, reloadutil.ReloadFunc, error)
 
 // BuiltinListeners is the list of built-in listener types.
 var BuiltinListeners = map[string]ListenerFactory{
@@ -44,16 +46,16 @@ var BuiltinListeners = map[string]ListenerFactory{
 
 // New creates a new listener of the given type with the given
 // configuration. The type is looked up in the BuiltinListeners map.
-func NewListener(l *configutil.Listener, w io.Writer, ui cli.Ui) (*alpnmux.ALPNMux, map[string]string, reloadutil.ReloadFunc, error) {
+func NewListener(l *configutil.Listener, w io.Writer, logger hclog.Logger, ui cli.Ui) (*alpnmux.ALPNMux, map[string]string, reloadutil.ReloadFunc, error) {
 	f, ok := BuiltinListeners[l.Type]
 	if !ok {
 		return nil, nil, nil, fmt.Errorf("unknown listener type: %q", l.Type)
 	}
 
-	return f(l, w, ui)
+	return f(l, w, logger, ui)
 }
 
-func tcpListenerFactory(l *configutil.Listener, _ io.Writer, ui cli.Ui) (*alpnmux.ALPNMux, map[string]string, reloadutil.ReloadFunc, error) {
+func tcpListenerFactory(l *configutil.Listener, _ io.Writer, logger hclog.Logger, ui cli.Ui) (*alpnmux.ALPNMux, map[string]string, reloadutil.ReloadFunc, error) {
 	if l.Address == "" {
 		if len(l.Purpose) == 1 && l.Purpose[0] == "cluster" {
 			l.Address = "127.0.0.1:9201"
@@ -86,7 +88,10 @@ func tcpListenerFactory(l *configutil.Listener, _ io.Writer, ui cli.Ui) (*alpnmu
 		"addr": l.Address,
 	}
 
-	alpnMux := alpnmux.New(ln, nil)
+	if _, ok := os.LookupEnv("WATCHTOWER_LOG_CONNECTION_MUXING"); !ok {
+		logger = nil
+	}
+	alpnMux := alpnmux.New(ln, logger)
 
 	if l.TLSDisable {
 		if _, err = alpnMux.RegisterProto(alpnmux.NoProto, nil); err != nil {

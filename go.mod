@@ -7,7 +7,7 @@ require (
 	github.com/fatih/color v1.9.0
 	github.com/ghodss/yaml v1.0.1-0.20190212211648-25d852aebe32
 	github.com/hashicorp/errwrap v1.0.0
-	github.com/hashicorp/go-alpnmux v0.0.0-20200323001347-b5ec1528c52d
+	github.com/hashicorp/go-alpnmux v0.0.0-20200323180452-dee08f00df54
 	github.com/hashicorp/go-hclog v0.12.1
 	github.com/hashicorp/go-kms-wrapping v0.5.7-0.20200322213809-e2a819ec93db
 	github.com/hashicorp/go-multierror v1.0.0

@@ -241,7 +241,7 @@ func (b *Server) SetupListeners(ui cli.Ui, config *configutil.SharedConfig) erro
 			tls.TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305,
 		}
 
-		lnMux, props, reloadFunc, err := NewListener(lnConfig, b.GatedWriter, ui)
+		lnMux, props, reloadFunc, err := NewListener(lnConfig, b.GatedWriter, b.Logger, ui)
 		if err != nil {
 			return fmt.Errorf("Error initializing listener of type %s: %w", lnConfig.Type, err)
 		}

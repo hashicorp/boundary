@@ -317,8 +317,8 @@ github.com/hashicorp/consul/sdk v0.1.1/go.mod h1:VKf9jXwCTEY1QZP2MOLRhb5i/I/ssyN
 github.com/hashicorp/consul/sdk v0.2.0/go.mod h1:VKf9jXwCTEY1QZP2MOLRhb5i/I/ssyNV1vwHyQBF0x8=
 github.com/hashicorp/errwrap v1.0.0 h1:hLrqtEDnRye3+sgx6z4qVLNuviH3MR5aQ0ykNJa/UYA=
 github.com/hashicorp/errwrap v1.0.0/go.mod h1:YH+1FKiLXxHSkmPseP+kNlulaMuP3n2brvKWEqk/Jc4=
-github.com/hashicorp/go-alpnmux v0.0.0-20200323001347-b5ec1528c52d h1:5r4nKvUcI+vx2yDn9ysFf53mSY4kUbXqbZ4LF10skFE=
-github.com/hashicorp/go-alpnmux v0.0.0-20200323001347-b5ec1528c52d/go.mod h1:KvpteZzIafT4tRAuQ9vVRBgZyqeVCS2B2177fNAyEZc=
+github.com/hashicorp/go-alpnmux v0.0.0-20200323180452-dee08f00df54 h1:WhMHPQosFuXFjt2wpRzX2eqR1WpnS+35MFzmG3trg3Y=
+github.com/hashicorp/go-alpnmux v0.0.0-20200323180452-dee08f00df54/go.mod h1:KvpteZzIafT4tRAuQ9vVRBgZyqeVCS2B2177fNAyEZc=
 github.com/hashicorp/go-cleanhttp v0.5.0/go.mod h1:JpRdi6/HCYpAwUzNwuwqhbovhLtngrth3wmdIIUrZ80=
 github.com/hashicorp/go-cleanhttp v0.5.1 h1:dH3aiDG9Jvb5r5+bYHsikaOUIpcM0xvgMXVoDkXMzJM=
 github.com/hashicorp/go-cleanhttp v0.5.1/go.mod h1:JpRdi6/HCYpAwUzNwuwqhbovhLtngrth3wmdIIUrZ80=
