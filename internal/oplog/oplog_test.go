@@ -177,14 +177,6 @@ func Test_Replay(t *testing.T) {
 	db.AutoMigrate(tmpUserModel)
 	defer db.DropTableIfExists(tmpUserModel)
 
-	userName := "foo-" + uuid.New().String()
-	// create a user that's replayable
-	userCreate := oplog_test.ReplayableTestUser{
-		TestUser: oplog_test.TestUser{
-			Name: userName,
-		},
-	}
-
 	ticketName := uuid.New().String()
 	ticketer := &GormTicketer{Tx: db}
 
@@ -212,7 +204,16 @@ func Test_Replay(t *testing.T) {
 		Ticketer: ticketer,
 	}
 
-	err = db.Create(&userCreate).Error
+	tx := db.Begin()
+
+	userName := "foo-" + uuid.New().String()
+	// create a user that's replayable
+	userCreate := oplog_test.ReplayableTestUser{
+		TestUser: oplog_test.TestUser{
+			Name: userName,
+		},
+	}
+	err = tx.Create(&userCreate).Error
 	is.NoErr(err)
 	userSave := oplog_test.ReplayableTestUser{
 		TestUser: oplog_test.TestUser{
@@ -221,7 +222,7 @@ func Test_Replay(t *testing.T) {
 			Email: userName + "@hashicorp.com",
 		},
 	}
-	err = db.Save(&userSave).Error
+	err = tx.Save(&userSave).Error
 	is.NoErr(err)
 
 	userUpdate := oplog_test.ReplayableTestUser{
@@ -230,10 +231,8 @@ func Test_Replay(t *testing.T) {
 			PhoneNumber: "867-5309",
 		},
 	}
-	err = db.Model(&userUpdate).Updates(map[string]interface{}{"PhoneNumber": "867-5309"}).Error
+	err = tx.Model(&userUpdate).Updates(map[string]interface{}{"PhoneNumber": "867-5309"}).Error
 	is.NoErr(err)
-
-	tx := db.Begin()
 
 	err = newLogEntry.WriteEntryWith(context.Background(), &GormWriter{tx}, ticket,
 		&Message{Message: &userCreate, TypeURL: "user", OpType: any.OpType_CreateOp},
@@ -270,6 +269,71 @@ func Test_Replay(t *testing.T) {
 
 	tx.Commit()
 
+	// we need to test delete replays now...
+	tx2 := db.Begin()
+
+	ticket2, err := ticketer.GetTicket(ticketName)
+
+	userName2 := "foo-" + uuid.New().String()
+	// create a user that's replayable
+	userCreate2 := oplog_test.ReplayableTestUser{
+		TestUser: oplog_test.TestUser{
+			Name: userName2,
+		},
+	}
+	err = tx2.Create(&userCreate2).Error
+	is.NoErr(err)
+
+	deleteUser2 := oplog_test.ReplayableTestUser{
+		TestUser: oplog_test.TestUser{
+			Id: userCreate2.Id,
+		},
+	}
+	err = tx2.Delete(&deleteUser2).Error
+	is.NoErr(err)
+
+	newLogEntry2 := Entry{
+		Entry: &store.Entry{
+			AggregateName: "test-users",
+			Metadata: []*store.Metadata{
+				&store.Metadata{
+					Key:   "deployment",
+					Value: "amex",
+				},
+				&store.Metadata{
+					Key:   "project",
+					Value: "central-info-systems",
+				},
+			},
+		},
+		Cipherer: cipherer,
+		Ticketer: ticketer,
+	}
+	err = newLogEntry2.WriteEntryWith(context.Background(), &GormWriter{tx2}, ticket2,
+		&Message{Message: &userCreate2, TypeURL: "user", OpType: any.OpType_CreateOp},
+		&Message{Message: &deleteUser2, TypeURL: "user", OpType: any.OpType_DeleteOp},
+	)
+	is.NoErr(err)
+
+	var foundEntry2 Entry
+	err = tx2.Where("id = ?", newLogEntry2.Id).First(&foundEntry2).Error
+	is.NoErr(err)
+	foundEntry2.Cipherer = cipherer
+	err = foundEntry2.DecryptData(context.Background())
+	is.NoErr(err)
+
+	err = foundEntry2.Replay(context.Background(), &GormWriter{tx2}, types, tableSuffix)
+	is.NoErr(err)
+
+	var foundUser2 oplog_test.TestUser
+	err = tx2.Where("id = ?", userCreate2.Id).First(&foundUser2).Error
+	is.True(err == gorm.ErrRecordNotFound)
+
+	var foundReplayedUser2 oplog_test.TestUser
+	err = tx2.Where("id = ?", userCreate2.Id).First(&foundReplayedUser2).Error
+	is.True(err == gorm.ErrRecordNotFound)
+
+	tx2.Commit()
 }
 
 // Test_GetTicket provides unit tests for getting oplog.Tickets
