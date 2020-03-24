@@ -1,4 +1,4 @@
-package any
+package oplog
 
 import (
 	"errors"

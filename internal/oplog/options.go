@@ -1,4 +1,4 @@
-package any
+package oplog
 
 // GetOpts - iterate the inbound Options and return a struct
 func GetOpts(opt ...Option) Options {

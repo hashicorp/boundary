@@ -63,7 +63,6 @@ We need to discuss and decide how Watchtower is going to handle the following op
 * SQL migrations: you'll find the package's [SQL migrations](https://github.com/golang-migrate/migrate) under: ./migrations/postgres   We need to decide how Watchtower will manage migrations across the system and we will likely need to reference this package's migrations somehow.
 * protobuf generation: how will Watchtower generate its protobufs.  This package currently uses ./generate.sh to build its protobuf definitions: 
   * ./store/oplog.proto 
-  * ./any/any.proto
   * ./oplog_test/oplog_test.proto
 
 

@@ -9,7 +9,6 @@ import (
 
 	protoV1 "github.com/golang/protobuf/proto"
 	wrapping "github.com/hashicorp/go-kms-wrapping"
-	"github.com/hashicorp/watchtower/internal/oplog/any"
 	"github.com/hashicorp/watchtower/internal/oplog/store"
 	_ "github.com/lib/pq"
 	"google.golang.org/protobuf/proto"
@@ -19,7 +18,7 @@ import (
 type Message struct {
 	proto.Message
 	TypeURL   string
-	OpType    any.OpType
+	OpType    OpType
 	FieldMask string
 }
 
@@ -49,14 +48,14 @@ func (*Entry) TableName() string {
 }
 
 // UnmarshalData the data attribute from []byte (treated as a FIFO QueueBuffer) to a []proto.Message
-func (e *Entry) UnmarshalData(types *any.TypeCatalog) ([]Message, error) {
+func (e *Entry) UnmarshalData(types *TypeCatalog) ([]Message, error) {
 	if len(e.Data) == 0 {
 		return nil, fmt.Errorf("no Data to unmarshal")
 	}
 	msgs := []Message{}
-	cp := make(any.QueueBuffer, len(e.Data))
+	cp := make(QueueBuffer, len(e.Data))
 	copy(cp, e.Data)
-	queue := any.Queue{
+	queue := Queue{
 		QueueBuffer: cp,
 		Catalog:     types,
 	}
@@ -68,7 +67,7 @@ func (e *Entry) UnmarshalData(types *any.TypeCatalog) ([]Message, error) {
 		if err != nil {
 			return nil, fmt.Errorf("error removing item from queue: %w", err)
 		}
-		url, err := any.GetTypeURL(types, m)
+		url, err := GetTypeURL(types, m)
 		if err != nil {
 			return nil, fmt.Errorf("error getting TypeURL: %w", err)
 		}
@@ -87,9 +86,9 @@ func (e *Entry) WriteEntryWith(ctx context.Context, tx Writer, ticket *store.Tic
 		return errors.New("bad ticket")
 	}
 
-	queue := any.Queue{}
+	queue := Queue{}
 	for _, m := range msgs {
-		if err := queue.Add(m.Message, m.TypeURL, m.OpType, any.WithFieldMask(m.FieldMask)); err != nil {
+		if err := queue.Add(m.Message, m.TypeURL, m.OpType, WithFieldMask(m.FieldMask)); err != nil {
 			return fmt.Errorf("error adding message to queue: %w", err)
 		}
 	}
@@ -161,7 +160,7 @@ func (e *Entry) DecryptData(ctx context.Context) error {
 
 // Replay provides the ability to replay an entry.  you must initialize any new tables ending with the tableSuffix before
 // calling Replay, otherwise you'll get "a table doesn't exist" error.
-func (e *Entry) Replay(ctx context.Context, tx Writer, types *any.TypeCatalog, tableSuffix string) error {
+func (e *Entry) Replay(ctx context.Context, tx Writer, types *TypeCatalog, tableSuffix string) error {
 	msgs, err := e.UnmarshalData(types)
 	if err != nil {
 		return fmt.Errorf("error on UnmarshalData: %w", err)
@@ -175,15 +174,15 @@ func (e *Entry) Replay(ctx context.Context, tx Writer, types *any.TypeCatalog, t
 		defer em.SetTableName(origTableName)
 		em.SetTableName(origTableName + tableSuffix)
 		switch m.OpType {
-		case any.OpType_CreateOp:
+		case OpType_CreateOp:
 			if err := tx.Create(m.Message); err != nil {
 				return fmt.Errorf("replay error: %w", err)
 			}
-		case any.OpType_UpdateOp:
+		case OpType_UpdateOp:
 			if err := tx.Update(m.Message, m.FieldMask); err != nil {
 				return fmt.Errorf("replay error: %w", err)
 			}
-		case any.OpType_DeleteOp:
+		case OpType_DeleteOp:
 			if err := tx.Delete(m.Message); err != nil {
 				return fmt.Errorf("replay error: %w", err)
 			}

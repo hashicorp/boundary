@@ -1,7 +1,7 @@
 syntax = "proto3";
 
 package hashicorp.watchtower.controller.v1;
-option go_package = "github.com/hashicorp/watchtower/internal/oplog/any;any";
+option go_package = "github.com/hashicorp/watchtower/internal/oplog/oplog;oplog";
 
 import "google/protobuf/any.proto";
 

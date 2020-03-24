@@ -15,7 +15,6 @@ import (
 	"github.com/google/uuid"
 	wrapping "github.com/hashicorp/go-kms-wrapping"
 	"github.com/hashicorp/go-kms-wrapping/wrappers/aead"
-	"github.com/hashicorp/watchtower/internal/oplog/any"
 	"github.com/hashicorp/watchtower/internal/oplog/oplog_test"
 	"github.com/hashicorp/watchtower/internal/oplog/store"
 	"github.com/jinzhu/gorm"
@@ -72,11 +71,11 @@ func Test_BasicOplog(t *testing.T) {
 	resp := db.Create(&user)
 	is.NoErr(resp.Error)
 
-	types, err := any.NewTypeCatalog(any.Type{new(oplog_test.TestUser), "user"})
+	types, err := NewTypeCatalog(Type{new(oplog_test.TestUser), "user"})
 	is.NoErr(err)
-	queue := any.Queue{Catalog: types}
+	queue := Queue{Catalog: types}
 
-	err = queue.Add(&user, "user", any.OpType_CreateOp)
+	err = queue.Add(&user, "user", OpType_CreateOp)
 	is.NoErr(err)
 	l := Entry{
 		Entry: &store.Entry{
@@ -129,8 +128,8 @@ func Test_BasicOplog(t *testing.T) {
 	ticket, err := ticketer.GetTicket(ticketName)
 	is.NoErr(err)
 
-	queue = any.Queue{}
-	err = queue.Add(&user, "user", any.OpType_CreateOp)
+	queue = Queue{}
+	err = queue.Add(&user, "user", OpType_CreateOp)
 	is.NoErr(err)
 
 	newLogEntry := Entry{
@@ -235,13 +234,13 @@ func Test_Replay(t *testing.T) {
 	is.NoErr(err)
 
 	err = newLogEntry.WriteEntryWith(context.Background(), &GormWriter{tx}, ticket,
-		&Message{Message: &userCreate, TypeURL: "user", OpType: any.OpType_CreateOp},
-		&Message{Message: &userSave, TypeURL: "user", OpType: any.OpType_UpdateOp},
-		&Message{Message: &userUpdate, TypeURL: "user", OpType: any.OpType_UpdateOp},
+		&Message{Message: &userCreate, TypeURL: "user", OpType: OpType_CreateOp},
+		&Message{Message: &userSave, TypeURL: "user", OpType: OpType_UpdateOp},
+		&Message{Message: &userUpdate, TypeURL: "user", OpType: OpType_UpdateOp},
 	)
 	is.NoErr(err)
 
-	types, err := any.NewTypeCatalog(any.Type{new(oplog_test.ReplayableTestUser), "user"})
+	types, err := NewTypeCatalog(Type{new(oplog_test.ReplayableTestUser), "user"})
 	is.NoErr(err)
 
 	var foundEntry Entry
@@ -310,8 +309,8 @@ func Test_Replay(t *testing.T) {
 		Ticketer: ticketer,
 	}
 	err = newLogEntry2.WriteEntryWith(context.Background(), &GormWriter{tx2}, ticket2,
-		&Message{Message: &userCreate2, TypeURL: "user", OpType: any.OpType_CreateOp},
-		&Message{Message: &deleteUser2, TypeURL: "user", OpType: any.OpType_DeleteOp},
+		&Message{Message: &userCreate2, TypeURL: "user", OpType: OpType_CreateOp},
+		&Message{Message: &deleteUser2, TypeURL: "user", OpType: OpType_DeleteOp},
 	)
 	is.NoErr(err)
 
@@ -381,8 +380,8 @@ func Test_TicketSerialization(t *testing.T) {
 	firstTicket, err := ticketer.GetTicket("test-aws-root")
 	is.NoErr(err)
 
-	firstQueue := any.Queue{}
-	err = firstQueue.Add(&firstUser, "user", any.OpType_CreateOp)
+	firstQueue := Queue{}
+	err = firstQueue.Add(&firstUser, "user", OpType_CreateOp)
 	is.NoErr(err)
 
 	firstLogEntry := Entry{
@@ -413,8 +412,8 @@ func Test_TicketSerialization(t *testing.T) {
 	secondTicket, err := ticketer.GetTicket("test-aws-root")
 	is.NoErr(err)
 
-	secondQueue := any.Queue{}
-	err = secondQueue.Add(&secondUser, "user", any.OpType_CreateOp)
+	secondQueue := Queue{}
+	err = secondQueue.Add(&secondUser, "user", OpType_CreateOp)
 	is.NoErr(err)
 
 	secondLogEntry := Entry{
@@ -499,15 +498,15 @@ func Test_WriteEntryWith(t *testing.T) {
 		Ticketer: ticketer,
 	}
 	err = newLogEntry.WriteEntryWith(context.Background(), &GormWriter{db}, ticket,
-		&Message{Message: &u, TypeURL: "user", OpType: any.OpType_CreateOp},
-		&Message{Message: &u2, TypeURL: "user", OpType: any.OpType_CreateOp})
+		&Message{Message: &u, TypeURL: "user", OpType: OpType_CreateOp},
+		&Message{Message: &u2, TypeURL: "user", OpType: OpType_CreateOp})
 	is.NoErr(err)
 
 	var foundEntry Entry
 	err = db.Where("id = ?", newLogEntry.Id).First(&foundEntry).Error
 	is.NoErr(err)
 	foundEntry.Cipherer = cipherer
-	types, err := any.NewTypeCatalog(any.Type{new(oplog_test.TestUser), "user"})
+	types, err := NewTypeCatalog(Type{new(oplog_test.TestUser), "user"})
 	is.NoErr(err)
 	err = foundEntry.DecryptData(context.Background())
 	is.NoErr(err)
