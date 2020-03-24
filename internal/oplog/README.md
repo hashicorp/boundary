@@ -4,7 +4,7 @@ oplog is a package for writing operation log (oplog) entries for the purpose of 
 
 - [oplog](#oplog)
   - [Usage](#usage)
-  - [TBD](#tbd)
+  - [TBD/TODO](#tbdtodo)
   - [oplog entry](#oplog-entry)
   - [oplog tables](#oplog-tables)
   - [oplog optimistic locking using tickets](#oplog-optimistic-locking-using-tickets)
@@ -54,7 +54,7 @@ if err != nil {
 // no err means you can commit all the things.
 tx.Commit()
 ```
-## TBD
+## TBD/TODO
 We need to discuss and decide how Watchtower is going to handle the following oplog things:
 
 * SQL migrations: you'll find the package's [SQL migrations](https://github.com/golang-migrate/migrate) under: ./migrations/postgres   We need to decide how Watchtower will manage migrations across the system and we will likely need to reference this package's migrations somehow.
@@ -62,6 +62,7 @@ We need to discuss and decide how Watchtower is going to handle the following op
   * any.proto (used by the oplog entries)
   * ./store/oplog.proto 
   * ./oplog_test/oplog_test.proto
+* Snapshots: design/implementation of snapshots is still being discussed in the RFC process.  Once resolved, we'll need to implement the snapshot capability.
 
 
 ## oplog entry
