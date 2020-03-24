@@ -3,8 +3,6 @@ syntax = "proto3";
 package hashicorp.watchtower.controller.v1;
 option go_package = "github.com/hashicorp/watchtower/internal/oplog/oplog;oplog";
 
-import "google/protobuf/any.proto";
-
 // OpType provides the type of operation the Any message represents (create,
 // update, delete)
 enum OpType {
@@ -20,7 +18,8 @@ enum OpType {
 
 // Any provides a message for anything and the type of operation it represents.
 message Any {
-  google.protobuf.Any anything = 1;
-  OpType type = 2;
-  string field_mask = 3;
+  string type_url = 1;
+  bytes value = 2;
+  OpType operation_type = 3;
+  string field_mask = 4;
 }

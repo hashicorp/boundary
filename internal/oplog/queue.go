@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"sync"
 
-	types "github.com/golang/protobuf/ptypes/any"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -29,16 +28,14 @@ func (r *Queue) Add(m proto.Message, typeURL string, t OpType, opt ...Option) er
 		return fmt.Errorf("error marshaling add parameter: %w", err)
 	}
 	msg := &Any{
-		Anything: &types.Any{
-			TypeUrl: typeURL,
-			Value:   value,
-		},
-		Type:      t,
-		FieldMask: withFieldMask,
+		TypeUrl:       typeURL,
+		Value:         value,
+		OperationType: t,
+		FieldMask:     withFieldMask,
 	}
 	data, err := proto.Marshal(msg)
 	if err != nil {
-		return fmt.Errorf("error marhaling the anything msg for Add: %w", err)
+		return fmt.Errorf("error marhaling the msg for Add: %w", err)
 	}
 	r.mx.Lock()
 	defer r.mx.Unlock()
@@ -69,18 +66,18 @@ func (r *Queue) Remove() (proto.Message, OpType, string, error) {
 	msg := new(Any)
 	err = proto.Unmarshal(data, msg)
 	if err != nil {
-		return nil, 0, "", fmt.Errorf("error marshaling the anything msg for Remove: %w", err)
+		return nil, 0, "", fmt.Errorf("error marshaling the msg for Remove: %w", err)
 	}
-	if msg.Anything.Value == nil {
+	if msg.Value == nil {
 		return nil, 0, "", nil
 	}
-	any, err := r.Catalog.Get(msg.Anything.TypeUrl)
+	any, err := r.Catalog.Get(msg.TypeUrl)
 	if err != nil {
-		return nil, 0, "", fmt.Errorf("error getting the anything.TypeUrl for Remove: %w", err)
+		return nil, 0, "", fmt.Errorf("error getting the TypeUrl for Remove: %w", err)
 	}
 	pm := any.(proto.Message)
-	if err = proto.Unmarshal(msg.Anything.Value, pm); err != nil {
-		return nil, 0, "", fmt.Errorf("error unmarshaling the anything value for Remove: %w", err)
+	if err = proto.Unmarshal(msg.Value, pm); err != nil {
+		return nil, 0, "", fmt.Errorf("error unmarshaling the value for Remove: %w", err)
 	}
-	return pm, msg.Type, msg.FieldMask, nil
+	return pm, msg.OperationType, msg.FieldMask, nil
 }
