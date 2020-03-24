@@ -36,11 +36,19 @@ func Test_Queue(t *testing.T) {
 		CarId:  2,
 	}
 
+	userUpdate := &oplog_test.TestUser{
+		Id:    1,
+		Name:  "bob",
+		Email: "bob@alice.com",
+	}
+
 	err = queue.Add(user, "user", OpType_CreateOp)
 	is.NoErr(err)
 	err = queue.Add(car, "car", OpType_CreateOp)
 	is.NoErr(err)
 	err = queue.Add(rental, "rental", OpType_CreateOp)
+	is.NoErr(err)
+	err = queue.Add(userUpdate, "user", OpType_UpdateOp, WithFieldMask("Name,Email"))
 	is.NoErr(err)
 
 	queuedUser, ty, _, err := queue.Remove()
@@ -57,4 +65,10 @@ func Test_Queue(t *testing.T) {
 	is.NoErr(err)
 	is.True(proto.Equal(rental, queuedRental))
 	is.True(ty == OpType_CreateOp)
+
+	queuedUserUpdate, ty, fieldMask, err := queue.Remove()
+	is.NoErr(err)
+	is.True(proto.Equal(userUpdate, queuedUserUpdate))
+	is.True(ty == OpType_UpdateOp)
+	is.True(fieldMask == "Name,Email")
 }
