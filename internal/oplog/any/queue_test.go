@@ -1,40 +1,12 @@
 package any
 
 import (
-	"bytes"
 	"testing"
 
 	"github.com/hashicorp/watchtower/internal/oplog/oplog_test"
 	"github.com/matryer/is"
 	"google.golang.org/protobuf/proto"
 )
-
-// Test_QueueBuffer provides basic tests for the QueueBuffer type
-func Test_QueueBuffer(t *testing.T) {
-	t.Parallel()
-	is := is.New(t)
-	b := QueueBuffer{}
-
-	_, err := b.Write([]byte("bye"))
-	is.NoErr(err)
-	is.True(b.Len() == len([]byte("bye")))
-
-	_, err = b.Write([]byte("hello"))
-	is.NoErr(err)
-	is.True(b.Len() == len([]byte("bye"))+len([]byte("hello")))
-
-	bye := make([]byte, 3)
-	_, err = b.Read(bye)
-	is.NoErr(err)
-	is.True(bytes.Equal(bye, []byte("bye")))
-
-	hello := b.Next(len([]byte("hello")))
-	is.NoErr(err)
-	is.True(bytes.Equal(hello, []byte("hello")))
-
-	t.Log(string(hello))
-	t.Log(string(bye))
-}
 
 // Test_Queue provides basic tests for the Queue type
 func Test_Queue(t *testing.T) {
