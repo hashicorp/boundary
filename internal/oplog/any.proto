@@ -1,6 +1,6 @@
 syntax = "proto3";
 
-package hashicorp.watchtower.controller.v1;
+package hashicorp.watchtower.controller.oplog.v1;
 option go_package = "github.com/hashicorp/watchtower/internal/oplog/oplog;oplog";
 
 // OpType provides the type of operation the Any message represents (create,
