@@ -29,6 +29,33 @@ type Entry struct {
 	Ticketer Ticketer         `sql:"-"`
 }
 
+// Metadata provides meta information about the Entry
+type Metadata struct {
+	Key   string
+	Value string
+}
+
+// NewEntry creates a new Entry
+func NewEntry(aggregateName string, metadata []Metadata, cipherer wrapping.Wrapper, ticketer Ticketer) *Entry {
+	entry := Entry{
+		Entry: &store.Entry{
+			AggregateName: aggregateName,
+		},
+		Cipherer: cipherer,
+		Ticketer: ticketer,
+	}
+	if len(metadata) > 0 {
+		storeMD := make([]*store.Metadata, len(metadata))
+		for i := 0; i < len(metadata); i++ {
+			storeMD[i] = &store.Metadata{
+				Key:   metadata[i].Key,
+				Value: metadata[i].Value,
+			}
+		}
+		entry.Metadata = storeMD
+	}
+	return &entry
+}
 func (e *Entry) vetAll() error {
 	if e.Cipherer == nil {
 		return errors.New("Cipherer is nil")

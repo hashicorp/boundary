@@ -10,58 +10,56 @@ oplog is a package for writing operation log (oplog) entries for the purpose of 
   - [oplog optimistic locking using tickets](#oplog-optimistic-locking-using-tickets)
 ## Usage
 ```go
-    userCreate := oplog_test.TestUser{
-		TestUser: oplog_test.TestUser{
-			Name: userName,
-		},
-	}
-    tx := db.Begin()
-    // write the user to the database
-    tx.Create(&userCreate)
+userCreate := oplog_test.TestUser{
+  TestUser: oplog_test.TestUser{
+    Name: userName,
+  },
+}
+tx := db.Begin()
+// write the user to the database
+tx.Create(&userCreate)
 
-	ticketer := &GormTicketer{Tx: db}
-    // get a ticket for writing users to the oplog
-	ticket, err := ticketer.GetTicket("users")
+ticketer := &GormTicketer{Tx: db}
+// get a ticket for writing users to the oplog
+ticket, err := ticketer.GetTicket("users")
 
-    // create an entry for the oplog with the entry's metadata (likely the entry's Scope)
-	oplogEntry := Entry{
-		Entry: &store.Entry{
-			AggregateName: "test-users",
-			Metadata: []*store.Metadata{
-				&store.Metadata{
-					Key:   "org",
-					Value: "amex",
-				},
-				&store.Metadata{
-					Key:   "project",
-					Value: "central-info-systems",
-				},
-			},
-		},
-		Cipherer: cipherer, // a wrapping.Wrapper
-		Ticketer: ticketer, 
-	}
+// create an entry for the oplog with the entry's metadata (likely the entry's Scope)
+newLogEntry := NewEntry(
+  "test-users",
+  []Metadata{
+    Metadata{
+      Key:   "deployment",
+      Value: "amex",
+    },
+    Metadata{
+      Key:   "project",
+      Value: "central-info-systems",
+    },
+  },
+  cipherer, // wrapping.Wrapper
+  ticketer,
+)
 
-    // write an entry with N messages (variadic parameter) in the order they were sent to the database 
-	err = oplogEntry.WriteEntryWith(
-        context.Background(), 
-        &GormWriter{tx}, 
-        ticket,
-        &Message{Message: &userCreate, TypeURL: "user", OpType: any.OpType_CreateOp},
-    )
-    // if there's an error writing the oplog then roll EVERYTHING back
-    if err != nil {
-        tx.Rollback()
-    }
-    // no err means you can commit all the things.
-    tx.Commit()
-
+// write an entry with N messages (variadic parameter) in the order they were sent to the database 
+err = oplogEntry.WriteEntryWith(
+    context.Background(), 
+    &GormWriter{tx}, 
+    ticket,
+    &Message{Message: &userCreate, TypeURL: "user", OpType: OpType_CreateOp},
+)
+// if there's an error writing the oplog then roll EVERYTHING back
+if err != nil {
+    tx.Rollback()
+}
+// no err means you can commit all the things.
+tx.Commit()
 ```
 ## TBD
 We need to discuss and decide how Watchtower is going to handle the following oplog things:
 
 * SQL migrations: you'll find the package's [SQL migrations](https://github.com/golang-migrate/migrate) under: ./migrations/postgres   We need to decide how Watchtower will manage migrations across the system and we will likely need to reference this package's migrations somehow.
 * protobuf generation: how will Watchtower generate its protobufs.  This package currently uses ./generate.sh to build its protobuf definitions: 
+  * any.proto (used by the oplog entries)
   * ./store/oplog.proto 
   * ./oplog_test/oplog_test.proto
 

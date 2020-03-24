@@ -10,13 +10,11 @@ import (
 	"strings"
 	"sync"
 	"testing"
-	"time"
 
 	"github.com/google/uuid"
 	wrapping "github.com/hashicorp/go-kms-wrapping"
 	"github.com/hashicorp/go-kms-wrapping/wrappers/aead"
 	"github.com/hashicorp/watchtower/internal/oplog/oplog_test"
-	"github.com/hashicorp/watchtower/internal/oplog/store"
 	"github.com/jinzhu/gorm"
 
 	"github.com/golang-migrate/migrate/v4"
@@ -25,6 +23,26 @@ import (
 	"github.com/matryer/is"
 	"github.com/ory/dockertest/v3"
 )
+
+// Need a way to manage the shared database resource for these oplog
+// tests, so runningTests gives us a waitgroup to do this and clean up
+// the shared database resource when we're done.
+var runningTests sync.WaitGroup
+
+// startTest signals that we're starting a test that uses the shared test resources
+func startTest() {
+	runningTests.Add(1)
+}
+
+// completeTest signals that we've finished a test that uses the shared test resources
+func completeTest() {
+	runningTests.Done()
+}
+
+// waitForTests will wait for all the tests that are sharing resources like the database
+func waitForTests() {
+	runningTests.Wait()
+}
 
 // testDatabaseURL is initialized once using sync.Once and set to the database URL for testing
 var testDatabaseURL string
@@ -56,8 +74,10 @@ func setup(t *testing.T) (*is.I, func(), string) {
 // Test_BasicOplog provides some basic unit tests for oplogs
 func Test_BasicOplog(t *testing.T) {
 	t.Parallel()
+	startTest()
 	is, cleanup, url := setup(t)
 	defer cleanup()
+	defer completeTest() // must come after the "defer cleanup()"
 	db, err := test_dbconn(url)
 	is.NoErr(err)
 	defer db.Close()
@@ -77,23 +97,23 @@ func Test_BasicOplog(t *testing.T) {
 
 	err = queue.Add(&user, "user", OpType_CreateOp)
 	is.NoErr(err)
-	l := Entry{
-		Entry: &store.Entry{
-			AggregateName: "test-users",
-			Data:          queue.QueueBuffer,
-			Metadata: []*store.Metadata{
-				&store.Metadata{
-					Key:   "deployment",
-					Value: "amex",
-				},
-				&store.Metadata{
-					Key:   "project",
-					Value: "central-info-systems",
-				},
+	l := NewEntry(
+		"test-users",
+		[]Metadata{
+			Metadata{
+				Key:   "deployment",
+				Value: "amex",
+			},
+			Metadata{
+				Key:   "project",
+				Value: "central-info-systems",
 			},
 		},
-		Cipherer: cipherer,
-	}
+		cipherer,
+		nil,
+	)
+	l.Data = queue.QueueBuffer
+
 	j, err := json.MarshalIndent(l, "", "    ")
 	is.NoErr(err)
 	t.Log(string(j))
@@ -132,24 +152,22 @@ func Test_BasicOplog(t *testing.T) {
 	err = queue.Add(&user, "user", OpType_CreateOp)
 	is.NoErr(err)
 
-	newLogEntry := Entry{
-		Entry: &store.Entry{
-			AggregateName: "test-users",
-			Data:          queue.QueueBuffer,
-			Metadata: []*store.Metadata{
-				&store.Metadata{
-					Key:   "deployment",
-					Value: "amex",
-				},
-				&store.Metadata{
-					Key:   "project",
-					Value: "central-info-systems",
-				},
+	newLogEntry := NewEntry(
+		"test-users",
+		[]Metadata{
+			Metadata{
+				Key:   "deployment",
+				Value: "amex",
+			},
+			Metadata{
+				Key:   "project",
+				Value: "central-info-systems",
 			},
 		},
-		Cipherer: cipherer,
-		Ticketer: ticketer,
-	}
+		cipherer,
+		ticketer,
+	)
+	newLogEntry.Data = queue.QueueBuffer
 	err = newLogEntry.Write(context.Background(), &GormWriter{db}, ticket)
 	is.NoErr(err)
 	is.True(newLogEntry.Id != 0)
@@ -160,9 +178,11 @@ func Test_BasicOplog(t *testing.T) {
 
 // Test_Replay provides some basic unit tests for replaying entries
 func Test_Replay(t *testing.T) {
+	startTest()
 	t.Parallel()
 	is, cleanup, url := setup(t)
 	defer cleanup()
+	defer completeTest() // must come after the "defer cleanup()"
 	db, err := test_dbconn(url)
 	is.NoErr(err)
 	defer db.Close()
@@ -185,23 +205,21 @@ func Test_Replay(t *testing.T) {
 	is.NoErr(err)
 
 	is.NoErr(err)
-	newLogEntry := Entry{
-		Entry: &store.Entry{
-			AggregateName: "test-users",
-			Metadata: []*store.Metadata{
-				&store.Metadata{
-					Key:   "deployment",
-					Value: "amex",
-				},
-				&store.Metadata{
-					Key:   "project",
-					Value: "central-info-systems",
-				},
+	newLogEntry := NewEntry(
+		"test-users",
+		[]Metadata{
+			Metadata{
+				Key:   "deployment",
+				Value: "amex",
+			},
+			Metadata{
+				Key:   "project",
+				Value: "central-info-systems",
 			},
 		},
-		Cipherer: cipherer,
-		Ticketer: ticketer,
-	}
+		cipherer,
+		ticketer,
+	)
 
 	tx := db.Begin()
 
@@ -291,23 +309,21 @@ func Test_Replay(t *testing.T) {
 	err = tx2.Delete(&deleteUser2).Error
 	is.NoErr(err)
 
-	newLogEntry2 := Entry{
-		Entry: &store.Entry{
-			AggregateName: "test-users",
-			Metadata: []*store.Metadata{
-				&store.Metadata{
-					Key:   "deployment",
-					Value: "amex",
-				},
-				&store.Metadata{
-					Key:   "project",
-					Value: "central-info-systems",
-				},
+	newLogEntry2 := NewEntry(
+		"test-users",
+		[]Metadata{
+			Metadata{
+				Key:   "deployment",
+				Value: "amex",
+			},
+			Metadata{
+				Key:   "project",
+				Value: "central-info-systems",
 			},
 		},
-		Cipherer: cipherer,
-		Ticketer: ticketer,
-	}
+		cipherer,
+		ticketer,
+	)
 	err = newLogEntry2.WriteEntryWith(context.Background(), &GormWriter{tx2}, ticket2,
 		&Message{Message: &userCreate2, TypeURL: "user", OpType: OpType_CreateOp},
 		&Message{Message: &deleteUser2, TypeURL: "user", OpType: OpType_DeleteOp},
@@ -337,9 +353,11 @@ func Test_Replay(t *testing.T) {
 
 // Test_GetTicket provides unit tests for getting oplog.Tickets
 func Test_GetTicket(t *testing.T) {
+	startTest()
 	t.Parallel()
 	is, cleanup, url := setup(t)
 	defer cleanup()
+	defer completeTest() // must come after the "defer cleanup()"
 	db, err := test_dbconn(url)
 	is.NoErr(err)
 	defer db.Close()
@@ -356,9 +374,11 @@ func Test_GetTicket(t *testing.T) {
 
 // Test_TicketSerialization provides unit tests for making sure oplog.Tickets properly serialize writes to oplog entries
 func Test_TicketSerialization(t *testing.T) {
+	startTest()
 	t.Parallel()
 	is, cleanup, url := setup(t)
 	defer cleanup()
+	defer completeTest() // must come after the "defer cleanup()"
 	db, err := test_dbconn(url)
 	is.NoErr(err)
 	defer db.Close()
@@ -384,25 +404,22 @@ func Test_TicketSerialization(t *testing.T) {
 	err = firstQueue.Add(&firstUser, "user", OpType_CreateOp)
 	is.NoErr(err)
 
-	firstLogEntry := Entry{
-		Entry: &store.Entry{
-			AggregateName: "test-users",
-			Data:          firstQueue.QueueBuffer,
-			Metadata: []*store.Metadata{
-				&store.Metadata{
-					Key:   "deployment",
-					Value: "amex",
-				},
-				&store.Metadata{
-					Key:   "project",
-					Value: "central-info-systems",
-				},
+	firstLogEntry := NewEntry(
+		"test-users",
+		[]Metadata{
+			Metadata{
+				Key:   "deployment",
+				Value: "amex",
+			},
+			Metadata{
+				Key:   "project",
+				Value: "central-info-systems",
 			},
 		},
-		Cipherer: cipherer,
-		Ticketer: ticketer,
-	}
-
+		cipherer,
+		ticketer,
+	)
+	firstLogEntry.Data = firstQueue.QueueBuffer
 	secondTx := db.Begin()
 	secondUser := oplog_test.TestUser{
 		Name: "foo-" + uuid.New().String(),
@@ -416,24 +433,23 @@ func Test_TicketSerialization(t *testing.T) {
 	err = secondQueue.Add(&secondUser, "user", OpType_CreateOp)
 	is.NoErr(err)
 
-	secondLogEntry := Entry{
-		Entry: &store.Entry{
-			AggregateName: "foobar",
-			Data:          secondQueue.QueueBuffer,
-			Metadata: []*store.Metadata{
-				&store.Metadata{
-					Key:   "deployment",
-					Value: "amex",
-				},
-				&store.Metadata{
-					Key:   "project",
-					Value: "central-info-systems",
-				},
+	secondLogEntry := NewEntry(
+		"foobar",
+		[]Metadata{
+			Metadata{
+				Key:   "deployment",
+				Value: "amex",
+			},
+			Metadata{
+				Key:   "project",
+				Value: "central-info-systems",
 			},
 		},
-		Cipherer: cipherer,
-		Ticketer: ticketer,
-	}
+		cipherer,
+		ticketer,
+	)
+	secondLogEntry.Data = secondQueue.QueueBuffer
+
 	err = secondLogEntry.Write(context.Background(), &GormWriter{secondTx}, secondTicket)
 	is.NoErr(err)
 	is.True(secondLogEntry.Id != 0)
@@ -455,8 +471,10 @@ func Test_TicketSerialization(t *testing.T) {
 // Test_WriteEntryWith provides unit tests for oplog.WriteEntryWith
 func Test_WriteEntryWith(t *testing.T) {
 	t.Parallel()
+	startTest()
 	is, cleanup, url := setup(t)
 	defer cleanup()
+	defer completeTest() // must come after the "defer cleanup()"
 	db, err := test_dbconn(url)
 	is.NoErr(err)
 	defer db.Close()
@@ -480,23 +498,21 @@ func Test_WriteEntryWith(t *testing.T) {
 	is.NoErr(err)
 
 	is.NoErr(err)
-	newLogEntry := Entry{
-		Entry: &store.Entry{
-			AggregateName: "test-users",
-			Metadata: []*store.Metadata{
-				&store.Metadata{
-					Key:   "deployment",
-					Value: "amex",
-				},
-				&store.Metadata{
-					Key:   "project",
-					Value: "central-info-systems",
-				},
+	newLogEntry := NewEntry(
+		"test-users",
+		[]Metadata{
+			Metadata{
+				Key:   "deployment",
+				Value: "amex",
+			},
+			Metadata{
+				Key:   "project",
+				Value: "central-info-systems",
 			},
 		},
-		Cipherer: cipherer,
-		Ticketer: ticketer,
-	}
+		cipherer,
+		ticketer,
+	)
 	err = newLogEntry.WriteEntryWith(context.Background(), &GormWriter{db}, ticket,
 		&Message{Message: &u, TypeURL: "user", OpType: OpType_CreateOp},
 		&Message{Message: &u2, TypeURL: "user", OpType: OpType_CreateOp})
@@ -591,13 +607,13 @@ func initTestStore(t *testing.T, cleanup func(), url string) {
 
 // cleanupResource will clean up the dockertest resources (postgres)
 func cleanupResource(t *testing.T, pool *dockertest.Pool, resource *dockertest.Resource) {
+	waitForTests()
 	var err error
 	for i := 0; i < 10; i++ {
 		err = pool.Purge(resource)
 		if err == nil {
 			return
 		}
-		time.Sleep(1 * time.Second)
 	}
 
 	if strings.Contains(err.Error(), "No such container") {
