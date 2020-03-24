@@ -8,15 +8,15 @@ require (
 	github.com/ghodss/yaml v1.0.1-0.20190212211648-25d852aebe32
 	github.com/golang-migrate/migrate/v4 v4.9.1
 	github.com/golang/protobuf v1.4.0-rc.4
-	github.com/google/uuid v1.1.1
 	github.com/hashicorp/errwrap v1.0.0
 	github.com/hashicorp/go-alpnmux v0.0.0-20200323180452-dee08f00df54
 	github.com/hashicorp/go-hclog v0.12.1
 	github.com/hashicorp/go-kms-wrapping v0.5.7-0.20200322213809-e2a819ec93db
 	github.com/hashicorp/go-multierror v1.0.0
+	github.com/hashicorp/go-uuid v1.0.2
 	github.com/hashicorp/hcl v1.0.0
 	github.com/hashicorp/vault v1.2.1-0.20200310200732-a321b1217d5a
-  github.com/hashicorp/vault/api v1.0.5-0.20200310200732-a321b1217d5a
+	github.com/hashicorp/vault/api v1.0.5-0.20200310200732-a321b1217d5a
 	github.com/hashicorp/vault/sdk v0.1.14-0.20200310200732-a321b1217d5a
 	github.com/jinzhu/gorm v1.9.12
 	github.com/kr/text v0.2.0

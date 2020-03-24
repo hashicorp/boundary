@@ -11,9 +11,9 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/google/uuid"
 	wrapping "github.com/hashicorp/go-kms-wrapping"
 	"github.com/hashicorp/go-kms-wrapping/wrappers/aead"
+	"github.com/hashicorp/go-uuid"
 	"github.com/hashicorp/watchtower/internal/oplog/oplog_test"
 	"github.com/jinzhu/gorm"
 
@@ -82,10 +82,10 @@ func Test_BasicOplog(t *testing.T) {
 	is.NoErr(err)
 	defer db.Close()
 
+	id, err := uuid.GenerateUUID()
 	cipherer := initWrapper(t)
-
 	user := oplog_test.TestUser{
-		Name: "foo-" + uuid.New().String(),
+		Name: "foo-" + id,
 	}
 
 	resp := db.Create(&user)
@@ -140,8 +140,9 @@ func Test_BasicOplog(t *testing.T) {
 	is.True(foundUsers[0].Message.(*oplog_test.TestUser).Name == user.Name)
 	t.Log(foundUsers[0])
 
+	ticketName, err := uuid.GenerateUUID()
+	is.NoErr(err)
 	// now let's us optimistic locking via a ticketing system for a serialized oplog
-	ticketName := uuid.New().String()
 	ticketer := &GormTicketer{Tx: db}
 	_, err = ticketer.InitTicket(ticketName)
 	is.NoErr(err)
@@ -189,14 +190,17 @@ func Test_Replay(t *testing.T) {
 
 	cipherer := initWrapper(t)
 
+	id, err := uuid.GenerateUUID()
+	is.NoErr(err)
 	// setup new tables for replay
-	tableSuffix := "_" + uuid.New().String()
+	tableSuffix := "_" + id
 	tmpUserModel := &oplog_test.ReplayableTestUser{}
 	tmpUserModel.SetTableName(fmt.Sprintf("%s%s", tmpUserModel.TableName(), tableSuffix))
 	db.AutoMigrate(tmpUserModel)
 	defer db.DropTableIfExists(tmpUserModel)
 
-	ticketName := uuid.New().String()
+	ticketName, err := uuid.GenerateUUID()
+	is.NoErr(err)
 	ticketer := &GormTicketer{Tx: db}
 
 	_, err = ticketer.InitTicket(ticketName)
@@ -223,7 +227,9 @@ func Test_Replay(t *testing.T) {
 
 	tx := db.Begin()
 
-	userName := "foo-" + uuid.New().String()
+	id3, err := uuid.GenerateUUID()
+	is.NoErr(err)
+	userName := "foo-" + id3
 	// create a user that's replayable
 	userCreate := oplog_test.ReplayableTestUser{
 		TestUser: oplog_test.TestUser{
@@ -291,7 +297,9 @@ func Test_Replay(t *testing.T) {
 
 	ticket2, err := ticketer.GetTicket(ticketName)
 
-	userName2 := "foo-" + uuid.New().String()
+	id4, err := uuid.GenerateUUID()
+	is.NoErr(err)
+	userName2 := "foo-" + id4
 	// create a user that's replayable
 	userCreate2 := oplog_test.ReplayableTestUser{
 		TestUser: oplog_test.TestUser{
@@ -362,7 +370,8 @@ func Test_GetTicket(t *testing.T) {
 	is.NoErr(err)
 	defer db.Close()
 
-	ticketName := uuid.New().String()
+	ticketName, err := uuid.GenerateUUID()
+	is.NoErr(err)
 	ticketer := &GormTicketer{Tx: db}
 
 	_, err = ticketer.InitTicket(ticketName)
@@ -391,9 +400,11 @@ func Test_TicketSerialization(t *testing.T) {
 
 	cipherer := initWrapper(t)
 
+	id, err := uuid.GenerateUUID()
+	is.NoErr(err)
 	firstTx := db.Begin()
 	firstUser := oplog_test.TestUser{
-		Name: "foo-" + uuid.New().String(),
+		Name: "foo-" + id,
 	}
 	err = firstTx.Create(&firstUser).Error
 	is.NoErr(err)
@@ -420,9 +431,11 @@ func Test_TicketSerialization(t *testing.T) {
 		ticketer,
 	)
 	firstLogEntry.Data = firstQueue.QueueBuffer
+	id2, err := uuid.GenerateUUID()
+	is.NoErr(err)
 	secondTx := db.Begin()
 	secondUser := oplog_test.TestUser{
-		Name: "foo-" + uuid.New().String(),
+		Name: "foo-" + id2,
 	}
 	err = secondTx.Create(&secondUser).Error
 	is.NoErr(err)
@@ -481,15 +494,22 @@ func Test_WriteEntryWith(t *testing.T) {
 
 	cipherer := initWrapper(t)
 
+	id, err := uuid.GenerateUUID()
+	is.NoErr(err)
 	u := oplog_test.TestUser{
-		Name: "foo-" + uuid.New().String(),
+		Name: "foo-" + id,
 	}
 	t.Log(&u)
+
+	id2, err := uuid.GenerateUUID()
+	is.NoErr(err)
 	u2 := oplog_test.TestUser{
-		Name: "foo-" + uuid.New().String(),
+		Name: "foo-" + id2,
 	}
 	t.Log(&u2)
-	ticketName := uuid.New().String()
+
+	ticketName, err := uuid.GenerateUUID()
+	is.NoErr(err)
 	ticketer := &GormTicketer{Tx: db}
 
 	_, err = ticketer.InitTicket(ticketName)
