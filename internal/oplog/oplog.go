@@ -70,8 +70,8 @@ func (e *Entry) vetAll() error {
 }
 
 // TableName is needed to support gorm
-func (*Entry) TableName() string {
-	return "oplog_entries"
+func (e *Entry) TableName() string {
+	return e.Entry.TableName()
 }
 
 // UnmarshalData the data attribute from []byte (treated as a FIFO QueueBuffer) to a []proto.Message
