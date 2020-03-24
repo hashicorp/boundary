@@ -8,19 +8,18 @@ import (
 
 	"github.com/hashicorp/watchtower/internal/cmd/base"
 	controllercmd "github.com/hashicorp/watchtower/internal/cmd/commands/controller"
-	controllerconfig "github.com/hashicorp/watchtower/internal/cmd/commands/controller/config"
+	workercmd "github.com/hashicorp/watchtower/internal/cmd/commands/worker"
+	"github.com/hashicorp/watchtower/internal/cmd/config"
 	"github.com/mitchellh/cli"
 	"github.com/posener/complete"
 )
 
-var _ cli.Command = (*DevCommand)(nil)
-var _ cli.CommandAutocomplete = (*DevCommand)(nil)
+var _ cli.Command = (*Command)(nil)
+var _ cli.CommandAutocomplete = (*Command)(nil)
 
-var memProfilerEnabled = false
-
-type DevCommand struct {
-	*base.BaseCommand
-	*base.BaseServer
+type Command struct {
+	*base.Command
+	*base.Server
 
 	ShutdownCh    chan struct{}
 	SighupCh      chan struct{}
@@ -30,20 +29,21 @@ type DevCommand struct {
 
 	cleanupGuard sync.Once
 
-	flagConfig                  string
-	flagLogLevel                string
-	flagLogFormat               string
-	flagDev                     bool
-	flagDevAdminToken           string
-	flagDevControllerListenAddr string
-	flagCombineLogs             bool
+	flagConfig                         string
+	flagLogLevel                       string
+	flagLogFormat                      string
+	flagDev                            bool
+	flagDevAdminPassword               string
+	flagDevControllerAPIListenAddr     string
+	flagDevControllerClusterListenAddr string
+	flagCombineLogs                    bool
 }
 
-func (c *DevCommand) Synopsis() string {
+func (c *Command) Synopsis() string {
 	return "Start a Watchtower dev environment"
 }
 
-func (c *DevCommand) Help() string {
+func (c *Command) Help() string {
 	helpText := `
 Usage: watchtower dev [options]
 
@@ -57,7 +57,7 @@ Usage: watchtower dev [options]
 	return strings.TrimSpace(helpText)
 }
 
-func (c *DevCommand) Flags() *base.FlagSets {
+func (c *Command) Flags() *base.FlagSets {
 	set := c.FlagSet(base.FlagSetHTTP)
 
 	f := set.NewFlagSet("Command Options")
@@ -83,20 +83,26 @@ func (c *DevCommand) Flags() *base.FlagSets {
 	f = set.NewFlagSet("Dev Options")
 
 	f.StringVar(&base.StringVar{
-		Name:    "dev-admin-token",
-		Target:  &c.flagDevAdminToken,
+		Name:    "dev-admin-password",
+		Target:  &c.flagDevAdminPassword,
 		Default: "",
-		EnvVar:  "WATCHTWER_DEV_ADMIN_TOKEN",
-		Usage: "Initial admin token. This only applies when running in \"dev\" " +
+		EnvVar:  "WATCHTWER_DEV_ADMIN_PASSWORD",
+		Usage: "Initial admin password. This only applies when running in \"dev\" " +
 			"mode.",
 	})
 
 	f.StringVar(&base.StringVar{
-		Name:    "dev-listen-address",
-		Target:  &c.flagDevControllerListenAddr,
-		Default: "127.0.0.1:9200",
-		EnvVar:  "WATCHTOWER_DEV_LISTEN_ADDRESS",
-		Usage:   "Address to bind against.",
+		Name:   "dev-api-listen-address",
+		Target: &c.flagDevControllerAPIListenAddr,
+		EnvVar: "WATCHTOWER_DEV_CONTROLLER_API_LISTEN_ADDRESS",
+		Usage:  "Address to bind to for controller \"api\" purpose.",
+	})
+
+	f.StringVar(&base.StringVar{
+		Name:   "dev-cluster-listen-address",
+		Target: &c.flagDevControllerClusterListenAddr,
+		EnvVar: "WATCHTOWER_DEV_CONTROLLER_CLUSTER_LISTEN_ADDRESS",
+		Usage:  "Address to bind to for controller \"cluster\" purpose.",
 	})
 
 	f.BoolVar(&base.BoolVar{
@@ -109,16 +115,16 @@ func (c *DevCommand) Flags() *base.FlagSets {
 	return set
 }
 
-func (c *DevCommand) AutocompleteArgs() complete.Predictor {
+func (c *Command) AutocompleteArgs() complete.Predictor {
 	return complete.PredictNothing
 }
 
-func (c *DevCommand) AutocompleteFlags() complete.Flags {
+func (c *Command) AutocompleteFlags() complete.Flags {
 	return c.Flags().Completions()
 }
 
-func (c *DevCommand) Run(args []string) int {
-	c.BaseServer = base.NewBaseServer()
+func (c *Command) Run(args []string) int {
+	c.Server = base.NewServer()
 	c.CombineLogs = c.flagCombineLogs
 
 	var err error
@@ -132,14 +138,27 @@ func (c *DevCommand) Run(args []string) int {
 
 	childShutdownCh := make(chan struct{})
 
-	devControllerConfig, err := controllerconfig.DevConfig()
+	devConfig, err := config.DevController()
 	if err != nil {
-		c.UI.Error(fmt.Sprintf("Error creating controller dev config: %s", err))
+		c.UI.Error(fmt.Errorf("Error creating controller dev config: %s", err).Error())
 		return 1
 	}
 
-	if memProfilerEnabled {
-		c.startMemProfiler()
+	for _, l := range devConfig.Listeners {
+		if len(l.Purpose) != 1 {
+			continue
+		}
+		switch l.Purpose[0] {
+		case "api":
+			if c.flagDevControllerAPIListenAddr != "" {
+				l.Address = c.flagDevControllerAPIListenAddr
+			}
+
+		case "cluster":
+			if c.flagDevControllerClusterListenAddr != "" {
+				l.Address = c.flagDevControllerClusterListenAddr
+			}
+		}
 	}
 
 	if err := c.SetupLogging(c.flagLogLevel, c.flagLogFormat, "", ""); err != nil {
@@ -147,25 +166,27 @@ func (c *DevCommand) Run(args []string) int {
 		return 1
 	}
 
-	if err := c.SetupMetrics(c.UI, devControllerConfig.Telemetry); err != nil {
+	base.StartMemProfiler(c.Logger)
+
+	if err := c.SetupMetrics(c.UI, devConfig.Telemetry); err != nil {
 		c.UI.Error(err.Error())
 		return 1
 	}
 
-	if err := c.SetupKMSes(c.UI, devControllerConfig.SharedConfig, 2); err != nil {
+	if err := c.SetupKMSes(c.UI, devConfig.SharedConfig, 2); err != nil {
 		c.UI.Error(err.Error())
 		return 1
 	}
 
 	// Initialize the listeners
-	if err := c.SetupListeners(c.UI, devControllerConfig.SharedConfig); err != nil {
+	if err := c.SetupListeners(c.UI, devConfig.SharedConfig); err != nil {
 		c.UI.Error(err.Error())
 		return 1
 	}
 
 	// Write out the PID to the file now that server has successfully started
-	if err := c.StorePidFile(devControllerConfig.PidFile); err != nil {
-		c.UI.Error(fmt.Sprintf("Error storing PID: %w", err))
+	if err := c.StorePidFile(devConfig.PidFile); err != nil {
+		c.UI.Error(fmt.Errorf("Error storing PID: %w", err).Error())
 		return 1
 	}
 
@@ -208,7 +229,7 @@ func (c *DevCommand) Run(args []string) int {
 	defer c.RunShutdownFuncs(c.UI)
 
 	if err := c.CreateDevDatabase(); err != nil {
-		c.UI.Error(fmt.Sprintf("Error creating dev database container: %s", err.Error()))
+		c.UI.Error(fmt.Errorf("Error creating dev database container: %w", err).Error())
 		return 1
 	}
 	c.ShutdownFuncs = append(c.ShutdownFuncs, c.DestroyDevDatabase)
@@ -218,19 +239,43 @@ func (c *DevCommand) Run(args []string) int {
 
 	// Instantiate the wait group
 	shutdownWg := &sync.WaitGroup{}
-	shutdownWg.Add(1)
+	shutdownWg.Add(2)
 	controllerSighupCh := make(chan struct{})
 	c.childSighupCh = append(c.childSighupCh, controllerSighupCh)
+
+	devController := &controllercmd.Command{
+		Command:    c.Command,
+		Server:     c.Server,
+		ShutdownCh: childShutdownCh,
+		SighupCh:   controllerSighupCh,
+		Config:     devConfig,
+	}
+	if err := devController.Start(); err != nil {
+		c.UI.Error(err.Error())
+		return 1
+	}
+
+	workerSighupCh := make(chan struct{})
+	c.childSighupCh = append(c.childSighupCh, workerSighupCh)
+	devWorker := &workercmd.Command{
+		Command:    c.Command,
+		Server:     c.Server,
+		ShutdownCh: childShutdownCh,
+		SighupCh:   workerSighupCh,
+		Config:     devConfig,
+	}
+	if err := devWorker.Start(); err != nil {
+		c.UI.Error(err.Error())
+		return 1
+	}
+
 	go func() {
 		defer shutdownWg.Done()
-		devController := &controllercmd.ControllerCommand{
-			BaseCommand: c.BaseCommand,
-			BaseServer:  c.BaseServer,
-			ShutdownCh:  childShutdownCh,
-			SighupCh:    controllerSighupCh,
-			Config:      devControllerConfig,
-		}
-		devController.Start()
+		devController.WaitForInterrupt()
+	}()
+	go func() {
+		defer shutdownWg.Done()
+		devWorker.WaitForInterrupt()
 	}()
 
 	// Wait for shutdown
@@ -258,7 +303,6 @@ func (c *DevCommand) Run(args []string) int {
 		}
 	}
 
-	// Wait for dependent goroutines to complete
 	shutdownWg.Wait()
 
 	return 0

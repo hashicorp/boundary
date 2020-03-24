@@ -1,4 +1,4 @@
-package controller
+package worker
 
 import (
 	"context"
@@ -9,7 +9,7 @@ import (
 	"github.com/hashicorp/vault/sdk/helper/mlock"
 )
 
-type Controller struct {
+type Worker struct {
 	conf   *Config
 	logger hclog.Logger
 
@@ -17,8 +17,8 @@ type Controller struct {
 	baseCancel  context.CancelFunc
 }
 
-func New(conf *Config) (*Controller, error) {
-	c := &Controller{
+func New(conf *Config) (*Worker, error) {
+	c := &Worker{
 		conf:   conf,
 		logger: conf.Logger,
 	}
@@ -50,28 +50,28 @@ func New(conf *Config) (*Controller, error) {
 		}
 	}
 
-	c.logger = c.logger.Named("controller")
+	c.logger = c.logger.Named("worker")
 
 	c.baseContext, c.baseCancel = context.WithCancel(context.Background())
 
 	return c, nil
 }
 
-func (c *Controller) Start() error {
+func (c *Worker) Start() error {
 	if err := c.startListeners(); err != nil {
-		return fmt.Errorf("error starting controller listeners: %w", err)
+		return fmt.Errorf("error starting worker listeners: %w", err)
 	}
 	return nil
 }
 
-func (c *Controller) Shutdown() error {
+func (c *Worker) Shutdown() error {
 	if err := c.stopListeners(); err != nil {
-		return fmt.Errorf("error stopping controller listeners: %w", err)
+		return fmt.Errorf("error stopping worker listeners: %w", err)
 	}
 	return nil
 }
 
-func (c *Controller) SetLogLevel(level hclog.Level) {
+func (c *Worker) SetLogLevel(level hclog.Level) {
 	for _, logger := range c.conf.AllLoggers {
 		logger.SetLevel(level)
 	}

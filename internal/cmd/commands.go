@@ -8,6 +8,7 @@ import (
 	"github.com/hashicorp/watchtower/internal/cmd/base"
 	"github.com/hashicorp/watchtower/internal/cmd/commands/controller"
 	"github.com/hashicorp/watchtower/internal/cmd/commands/dev"
+	"github.com/hashicorp/watchtower/internal/cmd/commands/worker"
 	"github.com/mitchellh/cli"
 )
 
@@ -16,8 +17,8 @@ var Commands map[string]cli.CommandFactory
 
 func initCommands(ui, serverCmdUi cli.Ui, runOpts *RunOptions) {
 	/*
-		getBaseCommand := func() *base.BaseCommand {
-			return &base.BaseCommand{
+		getBaseCommand := func() *base.Command {
+			return &base.Command{
 				UI:      ui,
 				Address: runOpts.Address,
 			}
@@ -26,8 +27,19 @@ func initCommands(ui, serverCmdUi cli.Ui, runOpts *RunOptions) {
 
 	Commands = map[string]cli.CommandFactory{
 		"controller": func() (cli.Command, error) {
-			return &controller.ControllerCommand{
-				BaseCommand: &base.BaseCommand{
+			return &controller.Command{
+				Command: &base.Command{
+					UI:      serverCmdUi,
+					Address: runOpts.Address,
+				},
+				ShutdownCh: MakeShutdownCh(),
+				SighupCh:   MakeSighupCh(),
+				SigUSR2Ch:  MakeSigUSR2Ch(),
+			}, nil
+		},
+		"worker": func() (cli.Command, error) {
+			return &worker.Command{
+				Command: &base.Command{
 					UI:      serverCmdUi,
 					Address: runOpts.Address,
 				},
@@ -37,8 +49,8 @@ func initCommands(ui, serverCmdUi cli.Ui, runOpts *RunOptions) {
 			}, nil
 		},
 		"dev": func() (cli.Command, error) {
-			return &dev.DevCommand{
-				BaseCommand: &base.BaseCommand{
+			return &dev.Command{
+				Command: &base.Command{
 					UI:      serverCmdUi,
 					Address: runOpts.Address,
 				},

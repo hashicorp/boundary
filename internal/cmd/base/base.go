@@ -27,7 +27,7 @@ const (
 // a string.
 var reRemoveWhitespace = regexp.MustCompile(`[\s]+`)
 
-type BaseCommand struct {
+type Command struct {
 	UI      cli.Ui
 	Address string
 	Context context.Context
@@ -47,7 +47,7 @@ type BaseCommand struct {
 	flagOutputCurlString bool
 }
 
-func (c *BaseCommand) SetAddress(addr string) {
+func (c *Command) SetAddress(addr string) {
 	c.Address = addr
 }
 
@@ -62,7 +62,7 @@ const (
 
 // FlagSet creates the flags for this command. The result is cached on the
 // command to save performance on future calls.
-func (c *BaseCommand) FlagSet(bit FlagSetBit) *FlagSets {
+func (c *Command) FlagSet(bit FlagSetBit) *FlagSets {
 	c.flagsOnce.Do(func() {
 		set := NewFlagSets(c.UI)
 
