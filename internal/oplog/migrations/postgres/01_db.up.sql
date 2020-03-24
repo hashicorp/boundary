@@ -14,8 +14,8 @@ CREATE TABLE if not exists oplog_tickets (
   "version" int8 NULL,
   CONSTRAINT oplog_tickets_pkey PRIMARY KEY (id)
 );
-CREATE UNIQUE INDEX idx_entry_tickets_name ON oplog_tickets USING btree (name);
-CREATE TABLE oplog_metadata (
+CREATE UNIQUE INDEX if not exists idx_entry_tickets_name ON oplog_tickets USING btree (name);
+CREATE TABLE if not exists oplog_metadata (
   id bigserial NOT NULL,
   created_at timestamp NULL,
   entry_id int8 NULL,
