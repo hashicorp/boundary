@@ -71,17 +71,17 @@ func Test_Queue(t *testing.T) {
 	err = queue.Add(rental, "rental", OpType_CreateOp)
 	is.NoErr(err)
 
-	queuedUser, ty, err := queue.Remove()
+	queuedUser, ty, _, err := queue.Remove()
 	is.NoErr(err)
 	is.True(proto.Equal(user, queuedUser))
 	is.True(ty == OpType_CreateOp)
 
-	queuedCar, ty, err := queue.Remove()
+	queuedCar, ty, _, err := queue.Remove()
 	is.NoErr(err)
 	is.True(proto.Equal(car, queuedCar))
 	is.True(ty == OpType_CreateOp)
 
-	queuedRental, ty, err := queue.Remove()
+	queuedRental, ty, _, err := queue.Remove()
 	is.NoErr(err)
 	is.True(proto.Equal(rental, queuedRental))
 	is.True(ty == OpType_CreateOp)
