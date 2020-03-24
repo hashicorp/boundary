@@ -236,9 +236,9 @@ func Test_Replay(t *testing.T) {
 	tx := db.Begin()
 
 	err = newLogEntry.WriteEntryWith(context.Background(), &GormWriter{tx}, ticket,
-		&Message{&userCreate, "user", any.OpType_CreateOp, ""},
-		&Message{&userSave, "user", any.OpType_UpdateOp, ""},
-		&Message{&userUpdate, "user", any.OpType_UpdateOp, "PhoneNumber"},
+		&Message{Message: &userCreate, TypeURL: "user", OpType: any.OpType_CreateOp},
+		&Message{Message: &userSave, TypeURL: "user", OpType: any.OpType_UpdateOp},
+		&Message{Message: &userUpdate, TypeURL: "user", OpType: any.OpType_UpdateOp},
 	)
 	is.NoErr(err)
 
@@ -435,7 +435,8 @@ func Test_WriteEntryWith(t *testing.T) {
 		Ticketer: ticketer,
 	}
 	err = newLogEntry.WriteEntryWith(context.Background(), &GormWriter{db}, ticket,
-		&Message{&u, "user", any.OpType_CreateOp, ""}, &Message{&u2, "user", any.OpType_CreateOp, ""})
+		&Message{Message: &u, TypeURL: "user", OpType: any.OpType_CreateOp},
+		&Message{Message: &u2, TypeURL: "user", OpType: any.OpType_CreateOp})
 	is.NoErr(err)
 
 	var foundEntry Entry
