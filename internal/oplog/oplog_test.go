@@ -92,7 +92,7 @@ func Test_BasicOplog(t *testing.T) {
 	is.NoErr(resp.Error)
 
 	// now let's us optimistic locking via a ticketing system for a serialized oplog
-	ticketer := &GormTicketer{Tx: db}
+	ticketer := NewGormTicketer(db, WithAggregateNames(true))
 
 	types, err := NewTypeCatalog(Type{new(oplog_test.TestUser), "user"})
 	is.NoErr(err)
@@ -192,7 +192,7 @@ func Test_Replay(t *testing.T) {
 
 	ticketName, err := uuid.GenerateUUID()
 	is.NoErr(err)
-	ticketer := &GormTicketer{Tx: db}
+	ticketer := NewGormTicketer(db, WithAggregateNames(true))
 
 	_, err = ticketer.InitTicket(ticketName)
 	is.NoErr(err)
@@ -352,7 +352,7 @@ func Test_GetTicket(t *testing.T) {
 
 	ticketName, err := uuid.GenerateUUID()
 	is.NoErr(err)
-	ticketer := &GormTicketer{Tx: db}
+	ticketer := NewGormTicketer(db, WithAggregateNames(true))
 
 	_, err = ticketer.InitTicket(ticketName)
 	is.NoErr(err)
@@ -374,7 +374,7 @@ func Test_TicketSerialization(t *testing.T) {
 
 	ticketName, err := uuid.GenerateUUID()
 	is.NoErr(err)
-	ticketer := &GormTicketer{Tx: db}
+	ticketer := NewGormTicketer(db, WithAggregateNames(true))
 
 	// in it's own transaction, init the ticket
 	_, _ = ticketer.InitTicket(ticketName)
@@ -482,7 +482,7 @@ func Test_WriteEntryWith(t *testing.T) {
 
 	ticketName, err := uuid.GenerateUUID()
 	is.NoErr(err)
-	ticketer := &GormTicketer{Tx: db}
+	ticketer := NewGormTicketer(db, WithAggregateNames(true))
 
 	_, err = ticketer.InitTicket(ticketName)
 	is.NoErr(err)

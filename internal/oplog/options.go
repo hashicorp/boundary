@@ -17,7 +17,8 @@ type Options map[string]interface{}
 
 func getDefaultOptions() Options {
 	return Options{
-		optionWithFieldMask: "",
+		optionWithFieldMask:      "",
+		optionWithAggregateNames: false,
 	}
 }
 
@@ -27,5 +28,14 @@ const optionWithFieldMask = "optionWithFieldMask"
 func WithFieldMask(fieldMask string) Option {
 	return func(o Options) {
 		o[optionWithFieldMask] = fieldMask
+	}
+}
+
+const optionWithAggregateNames = "optionWithAggregateNames"
+
+// WithAggregateNames enables/disables the use of multiple aggregate names for Ticketers
+func WithAggregateNames(enabled bool) Option {
+	return func(o Options) {
+		o[optionWithAggregateNames] = enabled
 	}
 }
