@@ -91,27 +91,25 @@ func Test_BasicOplog(t *testing.T) {
 	resp := db.Create(&user)
 	is.NoErr(resp.Error)
 
+	// now let's us optimistic locking via a ticketing system for a serialized oplog
+	ticketer := &GormTicketer{Tx: db}
+
 	types, err := NewTypeCatalog(Type{new(oplog_test.TestUser), "user"})
 	is.NoErr(err)
 	queue := Queue{Catalog: types}
 
 	err = queue.Add(&user, "user", OpType_CreateOp)
 	is.NoErr(err)
-	l := NewEntry(
+	l, err := NewEntry(
 		"test-users",
-		[]Metadata{
-			Metadata{
-				Key:   "deployment",
-				Value: "amex",
-			},
-			Metadata{
-				Key:   "project",
-				Value: "central-info-systems",
-			},
+		Metadata{
+			"deployment": "amex",
+			"project":    "central-info-systems",
 		},
 		cipherer,
-		nil,
+		ticketer,
 	)
+	is.NoErr(err)
 	l.Data = queue.QueueBuffer
 
 	j, err := json.MarshalIndent(l, "", "    ")
@@ -142,8 +140,6 @@ func Test_BasicOplog(t *testing.T) {
 
 	ticketName, err := uuid.GenerateUUID()
 	is.NoErr(err)
-	// now let's us optimistic locking via a ticketing system for a serialized oplog
-	ticketer := &GormTicketer{Tx: db}
 	_, err = ticketer.InitTicket(ticketName)
 	is.NoErr(err)
 	ticket, err := ticketer.GetTicket(ticketName)
@@ -153,21 +149,16 @@ func Test_BasicOplog(t *testing.T) {
 	err = queue.Add(&user, "user", OpType_CreateOp)
 	is.NoErr(err)
 
-	newLogEntry := NewEntry(
+	newLogEntry, err := NewEntry(
 		"test-users",
-		[]Metadata{
-			Metadata{
-				Key:   "deployment",
-				Value: "amex",
-			},
-			Metadata{
-				Key:   "project",
-				Value: "central-info-systems",
-			},
+		Metadata{
+			"deployment": "amex",
+			"project":    "central-info-systems",
 		},
 		cipherer,
 		ticketer,
 	)
+	is.NoErr(err)
 	newLogEntry.Data = queue.QueueBuffer
 	err = newLogEntry.Write(context.Background(), &GormWriter{db}, ticket)
 	is.NoErr(err)
@@ -208,22 +199,16 @@ func Test_Replay(t *testing.T) {
 	ticket, err := ticketer.GetTicket(ticketName)
 	is.NoErr(err)
 
-	is.NoErr(err)
-	newLogEntry := NewEntry(
+	newLogEntry, err := NewEntry(
 		"test-users",
-		[]Metadata{
-			Metadata{
-				Key:   "deployment",
-				Value: "amex",
-			},
-			Metadata{
-				Key:   "project",
-				Value: "central-info-systems",
-			},
+		Metadata{
+			"deployment": "amex",
+			"project":    "central-info-systems",
 		},
 		cipherer,
 		ticketer,
 	)
+	is.NoErr(err)
 
 	tx := db.Begin()
 
@@ -317,21 +302,16 @@ func Test_Replay(t *testing.T) {
 	err = tx2.Delete(&deleteUser2).Error
 	is.NoErr(err)
 
-	newLogEntry2 := NewEntry(
+	newLogEntry2, err := NewEntry(
 		"test-users",
-		[]Metadata{
-			Metadata{
-				Key:   "deployment",
-				Value: "amex",
-			},
-			Metadata{
-				Key:   "project",
-				Value: "central-info-systems",
-			},
+		Metadata{
+			"deployment": "amex",
+			"project":    "central-info-systems",
 		},
 		cipherer,
 		ticketer,
 	)
+	is.NoErr(err)
 	err = newLogEntry2.WriteEntryWith(context.Background(), &GormWriter{tx2}, ticket2,
 		&Message{Message: &userCreate2, TypeURL: "user", OpType: OpType_CreateOp},
 		&Message{Message: &deleteUser2, TypeURL: "user", OpType: OpType_DeleteOp},
@@ -392,7 +372,8 @@ func Test_TicketSerialization(t *testing.T) {
 	is.NoErr(err)
 	defer db.Close()
 
-	ticketName := "test-aws-root"
+	ticketName, err := uuid.GenerateUUID()
+	is.NoErr(err)
 	ticketer := &GormTicketer{Tx: db}
 
 	// in it's own transaction, init the ticket
@@ -408,28 +389,24 @@ func Test_TicketSerialization(t *testing.T) {
 	}
 	err = firstTx.Create(&firstUser).Error
 	is.NoErr(err)
-	firstTicket, err := ticketer.GetTicket("test-aws-root")
+	firstTicket, err := ticketer.GetTicket(ticketName)
 	is.NoErr(err)
 
 	firstQueue := Queue{}
 	err = firstQueue.Add(&firstUser, "user", OpType_CreateOp)
 	is.NoErr(err)
 
-	firstLogEntry := NewEntry(
+	firstLogEntry, err := NewEntry(
 		"test-users",
-		[]Metadata{
-			Metadata{
-				Key:   "deployment",
-				Value: "amex",
-			},
-			Metadata{
-				Key:   "project",
-				Value: "central-info-systems",
-			},
+		Metadata{
+			"deployment": "amex",
+			"project":    "central-info-systems",
 		},
 		cipherer,
 		ticketer,
 	)
+	is.NoErr(err)
+
 	firstLogEntry.Data = firstQueue.QueueBuffer
 	id2, err := uuid.GenerateUUID()
 	is.NoErr(err)
@@ -439,28 +416,23 @@ func Test_TicketSerialization(t *testing.T) {
 	}
 	err = secondTx.Create(&secondUser).Error
 	is.NoErr(err)
-	secondTicket, err := ticketer.GetTicket("test-aws-root")
+	secondTicket, err := ticketer.GetTicket(ticketName)
 	is.NoErr(err)
 
 	secondQueue := Queue{}
 	err = secondQueue.Add(&secondUser, "user", OpType_CreateOp)
 	is.NoErr(err)
 
-	secondLogEntry := NewEntry(
+	secondLogEntry, err := NewEntry(
 		"foobar",
-		[]Metadata{
-			Metadata{
-				Key:   "deployment",
-				Value: "amex",
-			},
-			Metadata{
-				Key:   "project",
-				Value: "central-info-systems",
-			},
+		Metadata{
+			"deployment": "amex",
+			"project":    "central-info-systems",
 		},
 		cipherer,
 		ticketer,
 	)
+	is.NoErr(err)
 	secondLogEntry.Data = secondQueue.QueueBuffer
 
 	err = secondLogEntry.Write(context.Background(), &GormWriter{secondTx}, secondTicket)
@@ -518,21 +490,16 @@ func Test_WriteEntryWith(t *testing.T) {
 	is.NoErr(err)
 
 	is.NoErr(err)
-	newLogEntry := NewEntry(
+	newLogEntry, err := NewEntry(
 		"test-users",
-		[]Metadata{
-			Metadata{
-				Key:   "deployment",
-				Value: "amex",
-			},
-			Metadata{
-				Key:   "project",
-				Value: "central-info-systems",
-			},
+		Metadata{
+			"deployment": "amex",
+			"project":    "central-info-systems",
 		},
 		cipherer,
 		ticketer,
 	)
+	is.NoErr(err)
 	err = newLogEntry.WriteEntryWith(context.Background(), &GormWriter{db}, ticket,
 		&Message{Message: &u, TypeURL: "user", OpType: OpType_CreateOp},
 		&Message{Message: &u2, TypeURL: "user", OpType: OpType_CreateOp})

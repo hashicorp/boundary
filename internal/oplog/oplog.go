@@ -30,13 +30,10 @@ type Entry struct {
 }
 
 // Metadata provides meta information about the Entry
-type Metadata struct {
-	Key   string
-	Value string
-}
+type Metadata map[string]string
 
 // NewEntry creates a new Entry
-func NewEntry(aggregateName string, metadata []Metadata, cipherer wrapping.Wrapper, ticketer Ticketer) *Entry {
+func NewEntry(aggregateName string, metadata Metadata, cipherer wrapping.Wrapper, ticketer Ticketer) (*Entry, error) {
 	entry := Entry{
 		Entry: &store.Entry{
 			AggregateName: aggregateName,
@@ -45,16 +42,16 @@ func NewEntry(aggregateName string, metadata []Metadata, cipherer wrapping.Wrapp
 		Ticketer: ticketer,
 	}
 	if len(metadata) > 0 {
-		storeMD := make([]*store.Metadata, len(metadata))
-		for i := 0; i < len(metadata); i++ {
-			storeMD[i] = &store.Metadata{
-				Key:   metadata[i].Key,
-				Value: metadata[i].Value,
-			}
+		storeMD := make([]*store.Metadata, 0, len(metadata))
+		for k, v := range metadata {
+			storeMD = append(storeMD, &store.Metadata{Key: k, Value: v})
 		}
 		entry.Metadata = storeMD
 	}
-	return &entry
+	if err := entry.vetAll(); err != nil {
+		return nil, fmt.Errorf("error creating entry: %w", err)
+	}
+	return &entry, nil
 }
 func (e *Entry) vetAll() error {
 	if e.Cipherer == nil {
