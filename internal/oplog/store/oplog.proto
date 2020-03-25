@@ -21,14 +21,17 @@ message Entry {
   Timestamp updated_at = 3;
 
   // @inject_tat: gorm:"not_null"
-  string aggregate_name = 4;
+  string version = 4;
+
+  // @inject_tat: gorm:"not_null"
+  string aggregate_name = 5;
 
   // one to many relationship
   // @inject_tag: gorm:"foreignkey:entry_id"
-  repeated Metadata metadata = 5;
+  repeated Metadata metadata = 6;
 
   // @inject_tat: gorm:"not_null"
-  bytes data = 6;
+  bytes data = 7;
 }
 
 // Metadata provides a message for oplog metadata that's compatible with gorm

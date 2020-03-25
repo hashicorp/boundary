@@ -14,6 +14,9 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
+// Version of oplog entries (among other things, it's used to manage upgrade compatibility when replicating)
+const Version = "v1"
+
 // Message wraps a proto.Message and adds a operation type (Create, Update, Delete)
 type Message struct {
 	proto.Message
@@ -37,6 +40,7 @@ func NewEntry(aggregateName string, metadata Metadata, cipherer wrapping.Wrapper
 	entry := Entry{
 		Entry: &store.Entry{
 			AggregateName: aggregateName,
+			Version:       Version,
 		},
 		Cipherer: cipherer,
 		Ticketer: ticketer,
@@ -62,6 +66,12 @@ func (e *Entry) vetAll() error {
 	}
 	if e.Entry == nil {
 		return errors.New("store.Entry is nil")
+	}
+	if e.Entry.Version == "" {
+		return errors.New("entry version is not set")
+	}
+	if e.Entry.AggregateName == "" {
+		return errors.New("entry aggregate name is not set")
 	}
 	return nil
 }
