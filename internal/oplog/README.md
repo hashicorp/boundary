@@ -45,7 +45,7 @@ err = oplogEntry.WriteEntryWith(
     context.Background(), 
     &GormWriter{tx}, 
     ticket,
-    &Message{Message: &userCreate, TypeURL: "user", OpType: OpType_CreateOp},
+    &Message{Message: &userCreate, TypeName: "user", OpType: OpType_CreateOp},
 )
 // if there's an error writing the oplog then roll EVERYTHING back
 if err != nil {
@@ -58,12 +58,6 @@ tx.Commit()
 We need to discuss and decide how Watchtower is going to handle the following oplog things:
 
 * SQL migrations: you'll find the package's [SQL migrations](https://github.com/golang-migrate/migrate) under: ./migrations/postgres   We need to decide how Watchtower will manage migrations across the system and we will likely need to reference this package's migrations somehow.
-* protobuf generation: how will Watchtower generate its protobufs.  This package currently uses ./generate.sh to build its protobuf definitions: 
-  * any.proto (used by the oplog entries)
-  * ./store/oplog.proto 
-  * ./oplog_test/oplog_test.proto
-* Snapshots: design/implementation of snapshots is still being discussed in the RFC process.  Once resolved, we'll need to implement the snapshot capability.
-
 
 ## oplog entry
 ```                                            
@@ -84,7 +78,7 @@ We need to discuss and decide how Watchtower is going to handle the following op
 ││└────────┘││└────────┘││└────────┘│            │  
 ││┌────────┐││┌────────┐││┌────────┐│            │  
 │││        ││││        ││││        ││            │  
-│││typeURL ││││typeURL ││││typeURL ││            │  
+│││typeName││││typeName││││typeName││            │  
 │││  Tag   ││││  Host  ││││HostSet ││            │  
 ││└────────┘││└────────┘││└────────┘│            │  
 ││┌────────┐││┌────────┐││┌────────┐│            │  

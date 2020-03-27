@@ -16,15 +16,15 @@ func Test_TypeCalalog(t *testing.T) {
 	)
 	assert.NilError(t, err)
 
-	url, err := GetTypeURL(types, new(oplog_test.TestUser))
+	name, err := GetTypeName(types, new(oplog_test.TestUser))
 	assert.NilError(t, err)
-	assert.Assert(t, url == "user")
+	assert.Assert(t, name == "user")
 
-	_, err = GetTypeURL(types, oplog_test.TestUser{})
+	_, err = GetTypeName(types, oplog_test.TestUser{})
 	assert.Assert(t, err != nil)
 
 	s := "string"
-	_, err = GetTypeURL(types, &s)
+	_, err = GetTypeName(types, &s)
 	assert.Assert(t, err != nil)
 
 	_, err = types.Get("unknown")

@@ -21,7 +21,7 @@ const Version = "v1"
 // Message wraps a proto.Message and adds a operation type (Create, Update, Delete)
 type Message struct {
 	proto.Message
-	TypeURL   string
+	TypeName  string
 	OpType    OpType
 	FieldMask string
 }
@@ -102,11 +102,11 @@ func (e *Entry) UnmarshalData(types *TypeCatalog) ([]Message, error) {
 		if err != nil {
 			return nil, fmt.Errorf("error removing item from queue: %w", err)
 		}
-		url, err := GetTypeURL(types, m)
+		name, err := GetTypeName(types, m)
 		if err != nil {
-			return nil, fmt.Errorf("error getting TypeURL: %w", err)
+			return nil, fmt.Errorf("error getting TypeName: %w", err)
 		}
-		msgs = append(msgs, Message{Message: m, TypeURL: url, OpType: typ, FieldMask: mask})
+		msgs = append(msgs, Message{Message: m, TypeName: name, OpType: typ, FieldMask: mask})
 	}
 	return msgs, nil
 }
@@ -123,7 +123,7 @@ func (e *Entry) WriteEntryWith(ctx context.Context, tx Writer, ticket *store.Tic
 
 	queue := Queue{}
 	for _, m := range msgs {
-		if err := queue.Add(m.Message, m.TypeURL, m.OpType, WithFieldMask(m.FieldMask)); err != nil {
+		if err := queue.Add(m.Message, m.TypeName, m.OpType, WithFieldMask(m.FieldMask)); err != nil {
 			return fmt.Errorf("error adding message to queue: %w", err)
 		}
 	}

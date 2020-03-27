@@ -20,7 +20,7 @@ type Queue struct {
 }
 
 // Add pb message to queue
-func (r *Queue) Add(m proto.Message, typeURL string, t OpType, opt ...Option) error {
+func (r *Queue) Add(m proto.Message, typeName string, t OpType, opt ...Option) error {
 	opts := GetOpts(opt...)
 	withFieldMask := opts[optionWithFieldMask].(string)
 
@@ -29,7 +29,7 @@ func (r *Queue) Add(m proto.Message, typeURL string, t OpType, opt ...Option) er
 		return fmt.Errorf("error marshaling add parameter: %w", err)
 	}
 	msg := &Any{
-		TypeUrl:       typeURL,
+		TypeName:      typeName,
 		Value:         value,
 		OperationType: t,
 		FieldMask:     withFieldMask,
@@ -72,9 +72,9 @@ func (r *Queue) Remove() (proto.Message, OpType, string, error) {
 	if msg.Value == nil {
 		return nil, 0, "", nil
 	}
-	any, err := r.Catalog.Get(msg.TypeUrl)
+	any, err := r.Catalog.Get(msg.TypeName)
 	if err != nil {
-		return nil, 0, "", fmt.Errorf("error getting the TypeUrl for Remove: %w", err)
+		return nil, 0, "", fmt.Errorf("error getting the TypeName for Remove: %w", err)
 	}
 	pm := any.(proto.Message)
 	if err = proto.Unmarshal(msg.Value, pm); err != nil {

@@ -246,9 +246,9 @@ func Test_Replay(t *testing.T) {
 	assert.NilError(t, err)
 
 	err = newLogEntry.WriteEntryWith(context.Background(), &GormWriter{tx}, ticket,
-		&Message{Message: &userCreate, TypeURL: "user", OpType: OpType_CreateOp},
-		&Message{Message: &userSave, TypeURL: "user", OpType: OpType_UpdateOp},
-		&Message{Message: &userUpdate, TypeURL: "user", OpType: OpType_UpdateOp},
+		&Message{Message: &userCreate, TypeName: "user", OpType: OpType_CreateOp},
+		&Message{Message: &userSave, TypeName: "user", OpType: OpType_UpdateOp},
+		&Message{Message: &userUpdate, TypeName: "user", OpType: OpType_UpdateOp},
 	)
 	assert.NilError(t, err)
 
@@ -317,8 +317,8 @@ func Test_Replay(t *testing.T) {
 	)
 	assert.NilError(t, err)
 	err = newLogEntry2.WriteEntryWith(context.Background(), &GormWriter{tx2}, ticket2,
-		&Message{Message: &userCreate2, TypeURL: "user", OpType: OpType_CreateOp},
-		&Message{Message: &deleteUser2, TypeURL: "user", OpType: OpType_DeleteOp},
+		&Message{Message: &userCreate2, TypeName: "user", OpType: OpType_CreateOp},
+		&Message{Message: &deleteUser2, TypeName: "user", OpType: OpType_DeleteOp},
 	)
 	assert.NilError(t, err)
 
@@ -508,8 +508,8 @@ func Test_WriteEntryWith(t *testing.T) {
 	)
 	assert.NilError(t, err)
 	err = newLogEntry.WriteEntryWith(context.Background(), &GormWriter{db}, ticket,
-		&Message{Message: &u, TypeURL: "user", OpType: OpType_CreateOp},
-		&Message{Message: &u2, TypeURL: "user", OpType: OpType_CreateOp})
+		&Message{Message: &u, TypeName: "user", OpType: OpType_CreateOp},
+		&Message{Message: &u2, TypeName: "user", OpType: OpType_CreateOp})
 	assert.NilError(t, err)
 
 	var foundEntry Entry
