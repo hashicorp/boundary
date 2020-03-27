@@ -16,11 +16,11 @@ import (
 	"github.com/hashicorp/go-uuid"
 	"github.com/hashicorp/watchtower/internal/oplog/oplog_test"
 	"github.com/jinzhu/gorm"
+	"gotest.tools/assert"
 
 	"github.com/golang-migrate/migrate/v4"
 	_ "github.com/golang-migrate/migrate/v4/database/postgres"
 	_ "github.com/golang-migrate/migrate/v4/source/file"
-	"github.com/matryer/is"
 	"github.com/ory/dockertest/v3"
 )
 
@@ -51,7 +51,7 @@ var testDatabaseURL string
 var testInitDatabase sync.Once
 
 // setup the tests (initialize the database one-time and intialized testDatabaseURL)
-func setup(t *testing.T) (*is.I, func(), string) {
+func setup(t *testing.T) (func(), string) {
 	cleanup := func() {}
 	var url string
 	var err error
@@ -68,18 +68,18 @@ func setup(t *testing.T) (*is.I, func(), string) {
 		defer db.Close()
 		oplog_test.Init(db)
 	})
-	return is.New(t), cleanup, testDatabaseURL
+	return cleanup, testDatabaseURL
 }
 
 // Test_BasicOplog provides some basic unit tests for oplogs
 func Test_BasicOplog(t *testing.T) {
 	t.Parallel()
 	startTest()
-	is, cleanup, url := setup(t)
+	cleanup, url := setup(t)
 	defer cleanup()
 	defer completeTest() // must come after the "defer cleanup()"
 	db, err := test_dbconn(url)
-	is.NoErr(err)
+	assert.NilError(t, err)
 	defer db.Close()
 
 	id, err := uuid.GenerateUUID()
@@ -89,17 +89,17 @@ func Test_BasicOplog(t *testing.T) {
 	}
 
 	resp := db.Create(&user)
-	is.NoErr(resp.Error)
+	assert.NilError(t, resp.Error)
 
 	// now let's us optimistic locking via a ticketing system for a serialized oplog
 	ticketer := NewGormTicketer(db, WithAggregateNames(true))
 
 	types, err := NewTypeCatalog(Type{new(oplog_test.TestUser), "user"})
-	is.NoErr(err)
+	assert.NilError(t, err)
 	queue := Queue{Catalog: types}
 
 	err = queue.Add(&user, "user", OpType_CreateOp)
-	is.NoErr(err)
+	assert.NilError(t, err)
 	l, err := NewEntry(
 		"test-users",
 		Metadata{
@@ -109,45 +109,45 @@ func Test_BasicOplog(t *testing.T) {
 		cipherer,
 		ticketer,
 	)
-	is.NoErr(err)
+	assert.NilError(t, err)
 	l.Data = queue.Bytes()
 
 	j, err := json.MarshalIndent(l, "", "    ")
-	is.NoErr(err)
+	assert.NilError(t, err)
 	t.Log(string(j))
 
 	err = l.EncryptData(context.Background())
-	is.NoErr(err)
+	assert.NilError(t, err)
 
 	resp = db.Create(&l)
-	is.NoErr(resp.Error)
+	assert.NilError(t, resp.Error)
 	entryId := l.Id
 	j, err = json.MarshalIndent(l, "", "    ")
-	is.NoErr(err)
+	assert.NilError(t, err)
 	t.Log(string(j))
 
 	var foundEntry Entry
 	err = db.Where("id = ?", entryId).First(&foundEntry).Error
-	is.NoErr(err)
+	assert.NilError(t, err)
 	foundEntry.Cipherer = cipherer
 	err = foundEntry.DecryptData(context.Background())
-	is.NoErr(err)
+	assert.NilError(t, err)
 
 	foundUsers, err := foundEntry.UnmarshalData(types)
-	is.NoErr(err)
-	is.True(foundUsers[0].Message.(*oplog_test.TestUser).Name == user.Name)
+	assert.NilError(t, err)
+	assert.Assert(t, foundUsers[0].Message.(*oplog_test.TestUser).Name == user.Name)
 	t.Log(foundUsers[0])
 
 	ticketName, err := uuid.GenerateUUID()
-	is.NoErr(err)
+	assert.NilError(t, err)
 	_, err = ticketer.InitTicket(ticketName)
-	is.NoErr(err)
+	assert.NilError(t, err)
 	ticket, err := ticketer.GetTicket(ticketName)
-	is.NoErr(err)
+	assert.NilError(t, err)
 
 	queue = Queue{}
 	err = queue.Add(&user, "user", OpType_CreateOp)
-	is.NoErr(err)
+	assert.NilError(t, err)
 
 	newLogEntry, err := NewEntry(
 		"test-users",
@@ -158,31 +158,31 @@ func Test_BasicOplog(t *testing.T) {
 		cipherer,
 		ticketer,
 	)
-	is.NoErr(err)
+	assert.NilError(t, err)
 	newLogEntry.Data = queue.Bytes()
 	err = newLogEntry.Write(context.Background(), &GormWriter{db}, ticket)
-	is.NoErr(err)
-	is.True(newLogEntry.Id != 0)
+	assert.NilError(t, err)
+	assert.Assert(t, newLogEntry.Id != 0)
 	foundUsers, err = foundEntry.UnmarshalData(types)
-	is.NoErr(err)
-	is.True(foundUsers[0].Message.(*oplog_test.TestUser).Name == user.Name)
+	assert.NilError(t, err)
+	assert.Assert(t, foundUsers[0].Message.(*oplog_test.TestUser).Name == user.Name)
 }
 
 // Test_Replay provides some basic unit tests for replaying entries
 func Test_Replay(t *testing.T) {
 	startTest()
 	t.Parallel()
-	is, cleanup, url := setup(t)
+	cleanup, url := setup(t)
 	defer cleanup()
 	defer completeTest() // must come after the "defer cleanup()"
 	db, err := test_dbconn(url)
-	is.NoErr(err)
+	assert.NilError(t, err)
 	defer db.Close()
 
 	cipherer := initWrapper(t)
 
 	id, err := uuid.GenerateUUID()
-	is.NoErr(err)
+	assert.NilError(t, err)
 	// setup new tables for replay
 	tableSuffix := "_" + id
 	tmpUserModel := &oplog_test.ReplayableTestUser{}
@@ -191,13 +191,13 @@ func Test_Replay(t *testing.T) {
 	defer db.DropTableIfExists(tmpUserModel)
 
 	ticketName, err := uuid.GenerateUUID()
-	is.NoErr(err)
+	assert.NilError(t, err)
 	ticketer := NewGormTicketer(db, WithAggregateNames(true))
 
 	_, err = ticketer.InitTicket(ticketName)
-	is.NoErr(err)
+	assert.NilError(t, err)
 	ticket, err := ticketer.GetTicket(ticketName)
-	is.NoErr(err)
+	assert.NilError(t, err)
 
 	newLogEntry, err := NewEntry(
 		"test-users",
@@ -208,12 +208,12 @@ func Test_Replay(t *testing.T) {
 		cipherer,
 		ticketer,
 	)
-	is.NoErr(err)
+	assert.NilError(t, err)
 
 	tx := db.Begin()
 
 	id3, err := uuid.GenerateUUID()
-	is.NoErr(err)
+	assert.NilError(t, err)
 	userName := "foo-" + id3
 	// create a user that's replayable
 	userCreate := oplog_test.ReplayableTestUser{
@@ -222,7 +222,7 @@ func Test_Replay(t *testing.T) {
 		},
 	}
 	err = tx.Create(&userCreate).Error
-	is.NoErr(err)
+	assert.NilError(t, err)
 	userSave := oplog_test.ReplayableTestUser{
 		TestUser: oplog_test.TestUser{
 			Id:    userCreate.Id,
@@ -231,7 +231,7 @@ func Test_Replay(t *testing.T) {
 		},
 	}
 	err = tx.Save(&userSave).Error
-	is.NoErr(err)
+	assert.NilError(t, err)
 
 	userUpdate := oplog_test.ReplayableTestUser{
 		TestUser: oplog_test.TestUser{
@@ -240,40 +240,40 @@ func Test_Replay(t *testing.T) {
 		},
 	}
 	err = tx.Model(&userUpdate).Updates(map[string]interface{}{"PhoneNumber": "867-5309"}).Error
-	is.NoErr(err)
+	assert.NilError(t, err)
 
 	err = newLogEntry.WriteEntryWith(context.Background(), &GormWriter{tx}, ticket,
 		&Message{Message: &userCreate, TypeURL: "user", OpType: OpType_CreateOp},
 		&Message{Message: &userSave, TypeURL: "user", OpType: OpType_UpdateOp},
 		&Message{Message: &userUpdate, TypeURL: "user", OpType: OpType_UpdateOp},
 	)
-	is.NoErr(err)
+	assert.NilError(t, err)
 
 	types, err := NewTypeCatalog(Type{new(oplog_test.ReplayableTestUser), "user"})
-	is.NoErr(err)
+	assert.NilError(t, err)
 
 	var foundEntry Entry
 	err = tx.Where("id = ?", newLogEntry.Id).First(&foundEntry).Error
-	is.NoErr(err)
+	assert.NilError(t, err)
 	foundEntry.Cipherer = cipherer
 	err = foundEntry.DecryptData(context.Background())
-	is.NoErr(err)
+	assert.NilError(t, err)
 
 	err = foundEntry.Replay(context.Background(), &GormWriter{tx}, types, tableSuffix)
-	is.NoErr(err)
+	assert.NilError(t, err)
 
 	var foundUser oplog_test.TestUser
 	err = tx.Where("id = ?", userCreate.Id).First(&foundUser).Error
-	is.NoErr(err)
+	assert.NilError(t, err)
 
 	var foundReplayedUser oplog_test.TestUser
 	err = tx.Where("id = ?", userCreate.Id).First(&foundReplayedUser).Error
-	is.NoErr(err)
+	assert.NilError(t, err)
 
-	is.True(foundUser.Id == foundReplayedUser.Id)
-	is.True(foundUser.Name == foundReplayedUser.Name && foundUser.Name == userName)
-	is.True(foundUser.PhoneNumber == foundReplayedUser.PhoneNumber && foundReplayedUser.PhoneNumber == "867-5309")
-	is.True(foundUser.Email == foundReplayedUser.Email && foundReplayedUser.Email == userName+"@hashicorp.com")
+	assert.Assert(t, foundUser.Id == foundReplayedUser.Id)
+	assert.Assert(t, foundUser.Name == foundReplayedUser.Name && foundUser.Name == userName)
+	assert.Assert(t, foundUser.PhoneNumber == foundReplayedUser.PhoneNumber && foundReplayedUser.PhoneNumber == "867-5309")
+	assert.Assert(t, foundUser.Email == foundReplayedUser.Email && foundReplayedUser.Email == userName+"@hashicorp.com")
 
 	tx.Commit()
 
@@ -283,7 +283,7 @@ func Test_Replay(t *testing.T) {
 	ticket2, err := ticketer.GetTicket(ticketName)
 
 	id4, err := uuid.GenerateUUID()
-	is.NoErr(err)
+	assert.NilError(t, err)
 	userName2 := "foo-" + id4
 	// create a user that's replayable
 	userCreate2 := oplog_test.ReplayableTestUser{
@@ -292,7 +292,7 @@ func Test_Replay(t *testing.T) {
 		},
 	}
 	err = tx2.Create(&userCreate2).Error
-	is.NoErr(err)
+	assert.NilError(t, err)
 
 	deleteUser2 := oplog_test.ReplayableTestUser{
 		TestUser: oplog_test.TestUser{
@@ -300,7 +300,7 @@ func Test_Replay(t *testing.T) {
 		},
 	}
 	err = tx2.Delete(&deleteUser2).Error
-	is.NoErr(err)
+	assert.NilError(t, err)
 
 	newLogEntry2, err := NewEntry(
 		"test-users",
@@ -311,30 +311,30 @@ func Test_Replay(t *testing.T) {
 		cipherer,
 		ticketer,
 	)
-	is.NoErr(err)
+	assert.NilError(t, err)
 	err = newLogEntry2.WriteEntryWith(context.Background(), &GormWriter{tx2}, ticket2,
 		&Message{Message: &userCreate2, TypeURL: "user", OpType: OpType_CreateOp},
 		&Message{Message: &deleteUser2, TypeURL: "user", OpType: OpType_DeleteOp},
 	)
-	is.NoErr(err)
+	assert.NilError(t, err)
 
 	var foundEntry2 Entry
 	err = tx2.Where("id = ?", newLogEntry2.Id).First(&foundEntry2).Error
-	is.NoErr(err)
+	assert.NilError(t, err)
 	foundEntry2.Cipherer = cipherer
 	err = foundEntry2.DecryptData(context.Background())
-	is.NoErr(err)
+	assert.NilError(t, err)
 
 	err = foundEntry2.Replay(context.Background(), &GormWriter{tx2}, types, tableSuffix)
-	is.NoErr(err)
+	assert.NilError(t, err)
 
 	var foundUser2 oplog_test.TestUser
 	err = tx2.Where("id = ?", userCreate2.Id).First(&foundUser2).Error
-	is.True(err == gorm.ErrRecordNotFound)
+	assert.Assert(t, err == gorm.ErrRecordNotFound)
 
 	var foundReplayedUser2 oplog_test.TestUser
 	err = tx2.Where("id = ?", userCreate2.Id).First(&foundReplayedUser2).Error
-	is.True(err == gorm.ErrRecordNotFound)
+	assert.Assert(t, err == gorm.ErrRecordNotFound)
 
 	tx2.Commit()
 }
@@ -343,21 +343,21 @@ func Test_Replay(t *testing.T) {
 func Test_GetTicket(t *testing.T) {
 	startTest()
 	t.Parallel()
-	is, cleanup, url := setup(t)
+	cleanup, url := setup(t)
 	defer cleanup()
 	defer completeTest() // must come after the "defer cleanup()"
 	db, err := test_dbconn(url)
-	is.NoErr(err)
+	assert.NilError(t, err)
 	defer db.Close()
 
 	ticketName, err := uuid.GenerateUUID()
-	is.NoErr(err)
+	assert.NilError(t, err)
 	ticketer := NewGormTicketer(db, WithAggregateNames(true))
 
 	_, err = ticketer.InitTicket(ticketName)
-	is.NoErr(err)
+	assert.NilError(t, err)
 	ticket, err := ticketer.GetTicket(ticketName)
-	is.NoErr(err)
+	assert.NilError(t, err)
 	t.Logf("ticket: %+v", ticket)
 }
 
@@ -365,15 +365,15 @@ func Test_GetTicket(t *testing.T) {
 func Test_TicketSerialization(t *testing.T) {
 	startTest()
 	t.Parallel()
-	is, cleanup, url := setup(t)
+	cleanup, url := setup(t)
 	defer cleanup()
 	defer completeTest() // must come after the "defer cleanup()"
 	db, err := test_dbconn(url)
-	is.NoErr(err)
+	assert.NilError(t, err)
 	defer db.Close()
 
 	ticketName, err := uuid.GenerateUUID()
-	is.NoErr(err)
+	assert.NilError(t, err)
 	ticketer := NewGormTicketer(db, WithAggregateNames(true))
 
 	// in it's own transaction, init the ticket
@@ -382,19 +382,19 @@ func Test_TicketSerialization(t *testing.T) {
 	cipherer := initWrapper(t)
 
 	id, err := uuid.GenerateUUID()
-	is.NoErr(err)
+	assert.NilError(t, err)
 	firstTx := db.Begin()
 	firstUser := oplog_test.TestUser{
 		Name: "foo-" + id,
 	}
 	err = firstTx.Create(&firstUser).Error
-	is.NoErr(err)
+	assert.NilError(t, err)
 	firstTicket, err := ticketer.GetTicket(ticketName)
-	is.NoErr(err)
+	assert.NilError(t, err)
 
 	firstQueue := Queue{}
 	err = firstQueue.Add(&firstUser, "user", OpType_CreateOp)
-	is.NoErr(err)
+	assert.NilError(t, err)
 
 	firstLogEntry, err := NewEntry(
 		"test-users",
@@ -405,23 +405,23 @@ func Test_TicketSerialization(t *testing.T) {
 		cipherer,
 		ticketer,
 	)
-	is.NoErr(err)
+	assert.NilError(t, err)
 
 	firstLogEntry.Data = firstQueue.Bytes()
 	id2, err := uuid.GenerateUUID()
-	is.NoErr(err)
+	assert.NilError(t, err)
 	secondTx := db.Begin()
 	secondUser := oplog_test.TestUser{
 		Name: "foo-" + id2,
 	}
 	err = secondTx.Create(&secondUser).Error
-	is.NoErr(err)
+	assert.NilError(t, err)
 	secondTicket, err := ticketer.GetTicket(ticketName)
-	is.NoErr(err)
+	assert.NilError(t, err)
 
 	secondQueue := Queue{}
 	err = secondQueue.Add(&secondUser, "user", OpType_CreateOp)
-	is.NoErr(err)
+	assert.NilError(t, err)
 
 	secondLogEntry, err := NewEntry(
 		"foobar",
@@ -432,15 +432,15 @@ func Test_TicketSerialization(t *testing.T) {
 		cipherer,
 		ticketer,
 	)
-	is.NoErr(err)
+	assert.NilError(t, err)
 	secondLogEntry.Data = secondQueue.Bytes()
 
 	err = secondLogEntry.Write(context.Background(), &GormWriter{secondTx}, secondTicket)
-	is.NoErr(err)
-	is.True(secondLogEntry.Id != 0)
+	assert.NilError(t, err)
+	assert.Assert(t, secondLogEntry.Id != 0)
 	err = secondTx.Commit().Error
-	is.NoErr(err)
-	is.True(secondLogEntry.Id != 0)
+	assert.NilError(t, err)
+	assert.Assert(t, secondLogEntry.Id != 0)
 	t.Log(secondLogEntry)
 
 	err = firstLogEntry.Write(context.Background(), &GormWriter{firstTx}, firstTicket)
@@ -457,39 +457,39 @@ func Test_TicketSerialization(t *testing.T) {
 func Test_WriteEntryWith(t *testing.T) {
 	t.Parallel()
 	startTest()
-	is, cleanup, url := setup(t)
+	cleanup, url := setup(t)
 	defer cleanup()
 	defer completeTest() // must come after the "defer cleanup()"
 	db, err := test_dbconn(url)
-	is.NoErr(err)
+	assert.NilError(t, err)
 	defer db.Close()
 
 	cipherer := initWrapper(t)
 
 	id, err := uuid.GenerateUUID()
-	is.NoErr(err)
+	assert.NilError(t, err)
 	u := oplog_test.TestUser{
 		Name: "foo-" + id,
 	}
 	t.Log(&u)
 
 	id2, err := uuid.GenerateUUID()
-	is.NoErr(err)
+	assert.NilError(t, err)
 	u2 := oplog_test.TestUser{
 		Name: "foo-" + id2,
 	}
 	t.Log(&u2)
 
 	ticketName, err := uuid.GenerateUUID()
-	is.NoErr(err)
+	assert.NilError(t, err)
 	ticketer := NewGormTicketer(db, WithAggregateNames(true))
 
 	_, err = ticketer.InitTicket(ticketName)
-	is.NoErr(err)
+	assert.NilError(t, err)
 	ticket, err := ticketer.GetTicket(ticketName)
-	is.NoErr(err)
+	assert.NilError(t, err)
 
-	is.NoErr(err)
+	assert.NilError(t, err)
 	newLogEntry, err := NewEntry(
 		"test-users",
 		Metadata{
@@ -499,23 +499,23 @@ func Test_WriteEntryWith(t *testing.T) {
 		cipherer,
 		ticketer,
 	)
-	is.NoErr(err)
+	assert.NilError(t, err)
 	err = newLogEntry.WriteEntryWith(context.Background(), &GormWriter{db}, ticket,
 		&Message{Message: &u, TypeURL: "user", OpType: OpType_CreateOp},
 		&Message{Message: &u2, TypeURL: "user", OpType: OpType_CreateOp})
-	is.NoErr(err)
+	assert.NilError(t, err)
 
 	var foundEntry Entry
 	err = db.Where("id = ?", newLogEntry.Id).First(&foundEntry).Error
-	is.NoErr(err)
+	assert.NilError(t, err)
 	foundEntry.Cipherer = cipherer
 	types, err := NewTypeCatalog(Type{new(oplog_test.TestUser), "user"})
-	is.NoErr(err)
+	assert.NilError(t, err)
 	err = foundEntry.DecryptData(context.Background())
-	is.NoErr(err)
+	assert.NilError(t, err)
 	foundUsers, err := foundEntry.UnmarshalData(types)
-	is.NoErr(err)
-	is.True(foundUsers[0].Message.(*oplog_test.TestUser).Name == u.Name)
+	assert.NilError(t, err)
+	assert.Assert(t, foundUsers[0].Message.(*oplog_test.TestUser).Name == u.Name)
 	for _, m := range foundUsers {
 		t.Log(m)
 	}

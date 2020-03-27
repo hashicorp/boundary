@@ -4,31 +4,30 @@ import (
 	"testing"
 
 	"github.com/hashicorp/watchtower/internal/oplog/oplog_test"
-	"github.com/matryer/is"
+	"gotest.tools/assert"
 )
 
 func Test_TypeCalalog(t *testing.T) {
 	t.Parallel()
-	is := is.New(t)
 	types, err := NewTypeCatalog(
 		Type{new(oplog_test.TestUser), "user"},
 		Type{new(oplog_test.TestCar), "car"},
 		Type{new(oplog_test.TestRental), "rental"},
 	)
-	is.NoErr(err)
+	assert.NilError(t, err)
 
 	url, err := GetTypeURL(types, new(oplog_test.TestUser))
-	is.NoErr(err)
-	is.True(url == "user")
+	assert.NilError(t, err)
+	assert.Assert(t, url == "user")
 
 	_, err = GetTypeURL(types, oplog_test.TestUser{})
-	is.True(err != nil)
+	assert.Assert(t, err != nil)
 
 	s := "string"
 	_, err = GetTypeURL(types, &s)
-	is.True(err != nil)
+	assert.Assert(t, err != nil)
 
 	_, err = types.Get("unknown")
-	is.True(err != nil)
+	assert.Assert(t, err != nil)
 
 }
