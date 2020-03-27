@@ -1,26 +1,22 @@
 CREATE TABLE if not exists oplog_entry (
-  id bigserial NOT NULL,
-  created_at timestamp default current_timestamp,
-  updated_at timestamp default current_timestamp,
+  id bigint generated always as identity primary key,
+  created_at timestamp with time zone default current_timestamp,
+  updated_at timestamp with time zone default current_timestamp,
   version text NOT NULL,
   aggregate_name text NOT NULL,
-  "data" bytea NOT NULL,
-  CONSTRAINT oplog_entry_pkey PRIMARY KEY (id)
+  "data" bytea NOT NULL
 );
 CREATE TABLE if not exists oplog_ticket (
-  id bigserial NOT NULL,
-  created_at timestamp default current_timestamp,
-  updated_at timestamp default current_timestamp,
-  "name" text NOT NULL,
-  "version" int8 NOT NULL,
-  CONSTRAINT oplog_ticket_pkey PRIMARY KEY (id)
+  id bigint generated always as identity primary key,
+  created_at timestamp with time zone default current_timestamp,
+  updated_at timestamp with time zone default current_timestamp,
+  "name" text NOT NULL UNIQUE,
+  "version" int8 NOT NULL
 );
-CREATE UNIQUE INDEX if not exists idx_entry_ticket_name ON oplog_ticket USING btree (name);
 CREATE TABLE if not exists oplog_metadata (
-  id bigserial NOT NULL,
-  created_at timestamp default current_timestamp,
-  entry_id int8 NOT NULL,
+  id bigint generated always as identity primary key,
+  created_at timestamp with time zone default current_timestamp,
+  entry_id int8 NOT NULL REFERENCES oplog_entry(id),
   "key" text NOT NULL,
-  value text NULL,
-  CONSTRAINT oplog_metadata_pkey PRIMARY KEY (id)
+  value text NULL
 );
