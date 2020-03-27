@@ -34,7 +34,7 @@ type Entry struct {
 }
 
 // Metadata provides meta information about the Entry
-type Metadata map[string]string
+type Metadata map[string][]string
 
 // NewEntry creates a new Entry
 func NewEntry(aggregateName string, metadata Metadata, cipherer wrapping.Wrapper, ticketer Ticketer) (*Entry, error) {
@@ -47,9 +47,16 @@ func NewEntry(aggregateName string, metadata Metadata, cipherer wrapping.Wrapper
 		Ticketer: ticketer,
 	}
 	if len(metadata) > 0 {
-		storeMD := make([]*store.Metadata, 0, len(metadata))
+		storeMD := []*store.Metadata{}
 		for k, v := range metadata {
-			storeMD = append(storeMD, &store.Metadata{Key: k, Value: v})
+			if len(v) > 0 {
+				for _, vv := range v {
+					storeMD = append(storeMD, &store.Metadata{Key: k, Value: vv})
+				}
+				continue
+			}
+			// this metadata just has a key with no values
+			storeMD = append(storeMD, &store.Metadata{Key: k})
 		}
 		entry.Metadata = storeMD
 	}

@@ -103,8 +103,9 @@ func Test_BasicOplog(t *testing.T) {
 	l, err := NewEntry(
 		"test-users",
 		Metadata{
-			"deployment": "amex",
-			"project":    "central-info-systems",
+			"key-only":   nil,
+			"deployment": []string{"amex"},
+			"project":    []string{"central-info-systems", "local-info-systems"},
 		},
 		cipherer,
 		ticketer,
@@ -152,8 +153,9 @@ func Test_BasicOplog(t *testing.T) {
 	newLogEntry, err := NewEntry(
 		"test-users",
 		Metadata{
-			"deployment": "amex",
-			"project":    "central-info-systems",
+			"key-only":   nil,
+			"deployment": []string{"amex"},
+			"project":    []string{"central-info-systems", "local-info-systems"},
 		},
 		cipherer,
 		ticketer,
@@ -202,8 +204,9 @@ func Test_Replay(t *testing.T) {
 	newLogEntry, err := NewEntry(
 		"test-users",
 		Metadata{
-			"deployment": "amex",
-			"project":    "central-info-systems",
+			"key-only":   nil,
+			"deployment": []string{"amex"},
+			"project":    []string{"central-info-systems", "local-info-systems"},
 		},
 		cipherer,
 		ticketer,
@@ -305,8 +308,9 @@ func Test_Replay(t *testing.T) {
 	newLogEntry2, err := NewEntry(
 		"test-users",
 		Metadata{
-			"deployment": "amex",
-			"project":    "central-info-systems",
+			"key-only":   nil,
+			"deployment": []string{"amex"},
+			"project":    []string{"central-info-systems", "local-info-systems"},
 		},
 		cipherer,
 		ticketer,
@@ -399,8 +403,9 @@ func Test_TicketSerialization(t *testing.T) {
 	firstLogEntry, err := NewEntry(
 		"test-users",
 		Metadata{
-			"deployment": "amex",
-			"project":    "central-info-systems",
+			"key-only":   nil,
+			"deployment": []string{"amex"},
+			"project":    []string{"central-info-systems", "local-info-systems"},
 		},
 		cipherer,
 		ticketer,
@@ -426,8 +431,9 @@ func Test_TicketSerialization(t *testing.T) {
 	secondLogEntry, err := NewEntry(
 		"foobar",
 		Metadata{
-			"deployment": "amex",
-			"project":    "central-info-systems",
+			"key-only":   nil,
+			"deployment": []string{"amex"},
+			"project":    []string{"central-info-systems", "local-info-systems"},
 		},
 		cipherer,
 		ticketer,
@@ -493,8 +499,9 @@ func Test_WriteEntryWith(t *testing.T) {
 	newLogEntry, err := NewEntry(
 		"test-users",
 		Metadata{
-			"deployment": "amex",
-			"project":    "central-info-systems",
+			"key-only":   nil,
+			"deployment": []string{"amex"},
+			"project":    []string{"central-info-systems", "local-info-systems"},
 		},
 		cipherer,
 		ticketer,
