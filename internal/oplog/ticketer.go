@@ -45,7 +45,7 @@ func (ticketer *GormTicketer) GetTicket(aggregateName string) (*store.Ticket, er
 	return &ticket, nil
 }
 
-// InitTicket must happen first in it's own transaction... then you can get a ticket and write to the oplog
+// InitTicket must happen first in its own transaction... then you can get a ticket and write to the oplog
 func (ticketer *GormTicketer) InitTicket(aggregateName string) (*store.Ticket, error) {
 	if aggregateName == "" {
 		return nil, fmt.Errorf("bad ticket name")
