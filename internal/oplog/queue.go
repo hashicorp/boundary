@@ -1,6 +1,7 @@
 package oplog
 
 import (
+	"bytes"
 	"encoding/binary"
 	"fmt"
 	"sync"
@@ -11,7 +12,7 @@ import (
 // Queue provides a FIFO queue
 type Queue struct {
 	// QueueBuffer provides a buffer for the queue
-	QueueBuffer
+	bytes.Buffer
 	// Catalog provides a TypeCatalog for the types added to the queue
 	Catalog *TypeCatalog
 
