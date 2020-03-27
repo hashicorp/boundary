@@ -110,7 +110,7 @@ func Test_BasicOplog(t *testing.T) {
 		ticketer,
 	)
 	is.NoErr(err)
-	l.Data = queue.QueueBuffer
+	l.Data = queue.Bytes()
 
 	j, err := json.MarshalIndent(l, "", "    ")
 	is.NoErr(err)
@@ -159,7 +159,7 @@ func Test_BasicOplog(t *testing.T) {
 		ticketer,
 	)
 	is.NoErr(err)
-	newLogEntry.Data = queue.QueueBuffer
+	newLogEntry.Data = queue.Bytes()
 	err = newLogEntry.Write(context.Background(), &GormWriter{db}, ticket)
 	is.NoErr(err)
 	is.True(newLogEntry.Id != 0)
@@ -407,7 +407,7 @@ func Test_TicketSerialization(t *testing.T) {
 	)
 	is.NoErr(err)
 
-	firstLogEntry.Data = firstQueue.QueueBuffer
+	firstLogEntry.Data = firstQueue.Bytes()
 	id2, err := uuid.GenerateUUID()
 	is.NoErr(err)
 	secondTx := db.Begin()
@@ -433,7 +433,7 @@ func Test_TicketSerialization(t *testing.T) {
 		ticketer,
 	)
 	is.NoErr(err)
-	secondLogEntry.Data = secondQueue.QueueBuffer
+	secondLogEntry.Data = secondQueue.Bytes()
 
 	err = secondLogEntry.Write(context.Background(), &GormWriter{secondTx}, secondTicket)
 	is.NoErr(err)

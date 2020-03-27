@@ -1,6 +1,7 @@
 package oplog
 
 import (
+	"bytes"
 	"context"
 	"encoding/base64"
 	"errors"
@@ -59,10 +60,10 @@ func NewEntry(aggregateName string, metadata Metadata, cipherer wrapping.Wrapper
 }
 func (e *Entry) vetAll() error {
 	if e.Cipherer == nil {
-		return errors.New("Cipherer is nil")
+		return errors.New("entry Cipherer is nil")
 	}
 	if e.Ticketer == nil {
-		return errors.New("Ticketer is nil")
+		return errors.New("entry Ticketer is nil")
 	}
 	if e.Entry == nil {
 		return errors.New("store.Entry is nil")
@@ -76,22 +77,15 @@ func (e *Entry) vetAll() error {
 	return nil
 }
 
-// TableName is needed to support gorm
-func (e *Entry) TableName() string {
-	return e.Entry.TableName()
-}
-
 // UnmarshalData the data attribute from []byte (treated as a FIFO QueueBuffer) to a []proto.Message
 func (e *Entry) UnmarshalData(types *TypeCatalog) ([]Message, error) {
 	if len(e.Data) == 0 {
 		return nil, fmt.Errorf("no Data to unmarshal")
 	}
 	msgs := []Message{}
-	cp := make(QueueBuffer, len(e.Data))
-	copy(cp, e.Data)
 	queue := Queue{
-		QueueBuffer: cp,
-		Catalog:     types,
+		Buffer:  *bytes.NewBuffer(e.Data),
+		Catalog: types,
 	}
 	for {
 		m, typ, mask, err := queue.Remove()
@@ -126,7 +120,7 @@ func (e *Entry) WriteEntryWith(ctx context.Context, tx Writer, ticket *store.Tic
 			return fmt.Errorf("error adding message to queue: %w", err)
 		}
 	}
-	e.Data = append(e.Data, []byte(queue.QueueBuffer)...)
+	e.Data = append(e.Data, []byte(queue.Bytes())...)
 
 	if e.Cipherer != nil {
 		if err := e.EncryptData(ctx); err != nil {
