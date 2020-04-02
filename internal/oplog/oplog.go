@@ -141,7 +141,7 @@ func (e *Entry) WriteEntryWith(ctx context.Context, tx Writer, ticket *store.Tic
 }
 
 // Write the entry as is with whatever it has for e.Data marshaled into a FIFO QueueBuffer
-// if CryptoService != nil then the data is authentication encrypted
+//  Cipherer != nil then the data is authentication encrypted
 func (e *Entry) Write(ctx context.Context, tx Writer, ticket *store.Ticket) error {
 	if err := e.vetAll(); err != nil {
 		return fmt.Errorf("error vetting entry for writing: %w", err)
