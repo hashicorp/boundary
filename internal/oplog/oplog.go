@@ -21,9 +21,9 @@ const Version = "v1"
 // Message wraps a proto.Message and adds a operation type (Create, Update, Delete)
 type Message struct {
 	proto.Message
-	TypeName  string
-	OpType    OpType
-	FieldMask string
+	TypeName       string
+	OpType         OpType
+	FieldMaskPaths []string
 }
 
 // Entry represents an oplog entry
@@ -95,7 +95,7 @@ func (e *Entry) UnmarshalData(types *TypeCatalog) ([]Message, error) {
 		Catalog: types,
 	}
 	for {
-		m, typ, mask, err := queue.Remove()
+		m, typ, fieldMaskPaths, err := queue.Remove()
 		if err == io.EOF {
 			break
 		}
@@ -106,7 +106,7 @@ func (e *Entry) UnmarshalData(types *TypeCatalog) ([]Message, error) {
 		if err != nil {
 			return nil, fmt.Errorf("error getting TypeName: %w", err)
 		}
-		msgs = append(msgs, Message{Message: m, TypeName: name, OpType: typ, FieldMask: mask})
+		msgs = append(msgs, Message{Message: m, TypeName: name, OpType: typ, FieldMaskPaths: fieldMaskPaths})
 	}
 	return msgs, nil
 }
@@ -123,7 +123,7 @@ func (e *Entry) WriteEntryWith(ctx context.Context, tx Writer, ticket *store.Tic
 
 	queue := Queue{}
 	for _, m := range msgs {
-		if err := queue.Add(m.Message, m.TypeName, m.OpType, WithFieldMask(m.FieldMask)); err != nil {
+		if err := queue.Add(m.Message, m.TypeName, m.OpType, WithFieldMaskPaths(m.FieldMaskPaths)); err != nil {
 			return fmt.Errorf("error adding message to queue: %w", err)
 		}
 	}
@@ -214,7 +214,7 @@ func (e *Entry) Replay(ctx context.Context, tx Writer, types *TypeCatalog, table
 				return fmt.Errorf("replay error: %w", err)
 			}
 		case OpType_UPDATE_OP:
-			if err := tx.Update(m.Message, m.FieldMask); err != nil {
+			if err := tx.Update(m.Message, m.FieldMaskPaths); err != nil {
 				return fmt.Errorf("replay error: %w", err)
 			}
 		case OpType_DELETE_OP:
