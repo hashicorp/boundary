@@ -41,33 +41,33 @@ func Test_Queue(t *testing.T) {
 		Email: "bob@alice.com",
 	}
 
-	err = queue.Add(user, "user", OpType_CreateOp)
+	err = queue.Add(user, "user", OpType_CREATE_OP)
 	assert.NilError(t, err)
-	err = queue.Add(car, "car", OpType_CreateOp)
+	err = queue.Add(car, "car", OpType_CREATE_OP)
 	assert.NilError(t, err)
-	err = queue.Add(rental, "rental", OpType_CreateOp)
+	err = queue.Add(rental, "rental", OpType_CREATE_OP)
 	assert.NilError(t, err)
-	err = queue.Add(userUpdate, "user", OpType_UpdateOp, WithFieldMask("Name,Email"))
+	err = queue.Add(userUpdate, "user", OpType_UPDATE_OP, WithFieldMask("Name,Email"))
 	assert.NilError(t, err)
 
 	queuedUser, ty, _, err := queue.Remove()
 	assert.NilError(t, err)
 	assert.Assert(t, proto.Equal(user, queuedUser))
-	assert.Assert(t, ty == OpType_CreateOp)
+	assert.Assert(t, ty == OpType_CREATE_OP)
 
 	queuedCar, ty, _, err := queue.Remove()
 	assert.NilError(t, err)
 	assert.Assert(t, proto.Equal(car, queuedCar))
-	assert.Assert(t, ty == OpType_CreateOp)
+	assert.Assert(t, ty == OpType_CREATE_OP)
 
 	queuedRental, ty, _, err := queue.Remove()
 	assert.NilError(t, err)
 	assert.Assert(t, proto.Equal(rental, queuedRental))
-	assert.Assert(t, ty == OpType_CreateOp)
+	assert.Assert(t, ty == OpType_CREATE_OP)
 
 	queuedUserUpdate, ty, fieldMask, err := queue.Remove()
 	assert.NilError(t, err)
 	assert.Assert(t, proto.Equal(userUpdate, queuedUserUpdate))
-	assert.Assert(t, ty == OpType_UpdateOp)
+	assert.Assert(t, ty == OpType_UPDATE_OP)
 	assert.Assert(t, fieldMask == "Name,Email")
 }

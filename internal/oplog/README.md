@@ -45,7 +45,7 @@ err = oplogEntry.WriteEntryWith(
     context.Background(), 
     &GormWriter{tx}, 
     ticket,
-    &Message{Message: &userCreate, TypeName: "user", OpType: OpType_CreateOp},
+    &Message{Message: &userCreate, TypeName: "user", OpType: OpType_CREATE_OP},
 )
 // if there's an error writing the oplog then roll EVERYTHING back
 if err != nil {

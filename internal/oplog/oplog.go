@@ -209,15 +209,15 @@ func (e *Entry) Replay(ctx context.Context, tx Writer, types *TypeCatalog, table
 		defer em.SetTableName(origTableName)
 		em.SetTableName(origTableName + tableSuffix)
 		switch m.OpType {
-		case OpType_CreateOp:
+		case OpType_CREATE_OP:
 			if err := tx.Create(m.Message); err != nil {
 				return fmt.Errorf("replay error: %w", err)
 			}
-		case OpType_UpdateOp:
+		case OpType_UPDATE_OP:
 			if err := tx.Update(m.Message, m.FieldMask); err != nil {
 				return fmt.Errorf("replay error: %w", err)
 			}
-		case OpType_DeleteOp:
+		case OpType_DELETE_OP:
 			if err := tx.Delete(m.Message); err != nil {
 				return fmt.Errorf("replay error: %w", err)
 			}

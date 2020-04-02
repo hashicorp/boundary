@@ -98,7 +98,7 @@ func Test_BasicOplog(t *testing.T) {
 	assert.NilError(t, err)
 	queue := Queue{Catalog: types}
 
-	err = queue.Add(&user, "user", OpType_CreateOp)
+	err = queue.Add(&user, "user", OpType_CREATE_OP)
 	assert.NilError(t, err)
 	l, err := NewEntry(
 		"test-users",
@@ -147,7 +147,7 @@ func Test_BasicOplog(t *testing.T) {
 	assert.NilError(t, err)
 
 	queue = Queue{}
-	err = queue.Add(&user, "user", OpType_CreateOp)
+	err = queue.Add(&user, "user", OpType_CREATE_OP)
 	assert.NilError(t, err)
 
 	newLogEntry, err := NewEntry(
@@ -246,9 +246,9 @@ func Test_Replay(t *testing.T) {
 	assert.NilError(t, err)
 
 	err = newLogEntry.WriteEntryWith(context.Background(), &GormWriter{tx}, ticket,
-		&Message{Message: &userCreate, TypeName: "user", OpType: OpType_CreateOp},
-		&Message{Message: &userSave, TypeName: "user", OpType: OpType_UpdateOp},
-		&Message{Message: &userUpdate, TypeName: "user", OpType: OpType_UpdateOp},
+		&Message{Message: &userCreate, TypeName: "user", OpType: OpType_CREATE_OP},
+		&Message{Message: &userSave, TypeName: "user", OpType: OpType_UPDATE_OP},
+		&Message{Message: &userUpdate, TypeName: "user", OpType: OpType_UPDATE_OP},
 	)
 	assert.NilError(t, err)
 
@@ -317,8 +317,8 @@ func Test_Replay(t *testing.T) {
 	)
 	assert.NilError(t, err)
 	err = newLogEntry2.WriteEntryWith(context.Background(), &GormWriter{tx2}, ticket2,
-		&Message{Message: &userCreate2, TypeName: "user", OpType: OpType_CreateOp},
-		&Message{Message: &deleteUser2, TypeName: "user", OpType: OpType_DeleteOp},
+		&Message{Message: &userCreate2, TypeName: "user", OpType: OpType_CREATE_OP},
+		&Message{Message: &deleteUser2, TypeName: "user", OpType: OpType_DELETE_OP},
 	)
 	assert.NilError(t, err)
 
@@ -397,7 +397,7 @@ func Test_TicketSerialization(t *testing.T) {
 	assert.NilError(t, err)
 
 	firstQueue := Queue{}
-	err = firstQueue.Add(&firstUser, "user", OpType_CreateOp)
+	err = firstQueue.Add(&firstUser, "user", OpType_CREATE_OP)
 	assert.NilError(t, err)
 
 	firstLogEntry, err := NewEntry(
@@ -425,7 +425,7 @@ func Test_TicketSerialization(t *testing.T) {
 	assert.NilError(t, err)
 
 	secondQueue := Queue{}
-	err = secondQueue.Add(&secondUser, "user", OpType_CreateOp)
+	err = secondQueue.Add(&secondUser, "user", OpType_CREATE_OP)
 	assert.NilError(t, err)
 
 	secondLogEntry, err := NewEntry(
@@ -508,8 +508,8 @@ func Test_WriteEntryWith(t *testing.T) {
 	)
 	assert.NilError(t, err)
 	err = newLogEntry.WriteEntryWith(context.Background(), &GormWriter{db}, ticket,
-		&Message{Message: &u, TypeName: "user", OpType: OpType_CreateOp},
-		&Message{Message: &u2, TypeName: "user", OpType: OpType_CreateOp})
+		&Message{Message: &u, TypeName: "user", OpType: OpType_CREATE_OP},
+		&Message{Message: &u2, TypeName: "user", OpType: OpType_CREATE_OP})
 	assert.NilError(t, err)
 
 	var foundEntry Entry

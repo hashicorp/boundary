@@ -28,7 +28,7 @@ func (r *Queue) Add(m proto.Message, typeName string, t OpType, opt ...Option) e
 	if err != nil {
 		return fmt.Errorf("error marshaling add parameter: %w", err)
 	}
-	msg := &Any{
+	msg := &AnyOperation{
 		TypeName:      typeName,
 		Value:         value,
 		OperationType: t,
@@ -64,7 +64,7 @@ func (r *Queue) Remove() (proto.Message, OpType, string, error) {
 		return nil, 0, "", err // intentionally not wrapping error so client can test for sentinel EOF error
 	}
 	data := r.Next(int(n))
-	msg := new(Any)
+	msg := new(AnyOperation)
 	err = proto.Unmarshal(data, msg)
 	if err != nil {
 		return nil, 0, "", fmt.Errorf("error marshaling the msg for Remove: %w", err)
