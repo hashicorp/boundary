@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"sync"
 
+	"google.golang.org/genproto/protobuf/field_mask"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -22,7 +23,7 @@ type Queue struct {
 // Add pb message to queue
 func (r *Queue) Add(m proto.Message, typeName string, t OpType, opt ...Option) error {
 	opts := GetOpts(opt...)
-	withFieldMask := opts[optionWithFieldMask].(string)
+	withPaths := opts[optionWithFieldMaskPaths].([]string)
 
 	value, err := proto.Marshal(m)
 	if err != nil {
@@ -32,7 +33,7 @@ func (r *Queue) Add(m proto.Message, typeName string, t OpType, opt ...Option) e
 		TypeName:      typeName,
 		Value:         value,
 		OperationType: t,
-		FieldMask:     withFieldMask,
+		FieldMask:     &field_mask.FieldMask{Paths: withPaths},
 	}
 	data, err := proto.Marshal(msg)
 	if err != nil {
@@ -55,30 +56,30 @@ func (r *Queue) Add(m proto.Message, typeName string, t OpType, opt ...Option) e
 }
 
 // Remove pb message from the queue and EOF if empty
-func (r *Queue) Remove() (proto.Message, OpType, string, error) {
+func (r *Queue) Remove() (proto.Message, OpType, []string, error) {
 	r.mx.Lock()
 	defer r.mx.Unlock()
 	var n int32
 	err := binary.Read(r, binary.LittleEndian, &n)
 	if err != nil {
-		return nil, 0, "", err // intentionally not wrapping error so client can test for sentinel EOF error
+		return nil, 0, nil, err // intentionally not wrapping error so client can test for sentinel EOF error
 	}
 	data := r.Next(int(n))
 	msg := new(AnyOperation)
 	err = proto.Unmarshal(data, msg)
 	if err != nil {
-		return nil, 0, "", fmt.Errorf("error marshaling the msg for Remove: %w", err)
+		return nil, 0, nil, fmt.Errorf("error marshaling the msg for Remove: %w", err)
 	}
 	if msg.Value == nil {
-		return nil, 0, "", nil
+		return nil, 0, nil, nil
 	}
 	any, err := r.Catalog.Get(msg.TypeName)
 	if err != nil {
-		return nil, 0, "", fmt.Errorf("error getting the TypeName for Remove: %w", err)
+		return nil, 0, nil, fmt.Errorf("error getting the TypeName for Remove: %w", err)
 	}
 	pm := any.(proto.Message)
 	if err = proto.Unmarshal(msg.Value, pm); err != nil {
-		return nil, 0, "", fmt.Errorf("error unmarshaling the value for Remove: %w", err)
+		return nil, 0, nil, fmt.Errorf("error unmarshaling the value for Remove: %w", err)
 	}
-	return pm, msg.OperationType, msg.FieldMask, nil
+	return pm, msg.OperationType, msg.FieldMask.GetPaths(), nil
 }
