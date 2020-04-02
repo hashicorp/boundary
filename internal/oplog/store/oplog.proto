@@ -20,7 +20,7 @@ message Entry {
   // @inject_tag: gorm:"not_null;type:TIMESTAMP"
   Timestamp updated_at = 3;
 
-  // @inject_tat: gorm:"not_null"
+  // @inject_tag: gorm:"not_null"
   string version = 4;
 
   // @inject_tat: gorm:"not_null"

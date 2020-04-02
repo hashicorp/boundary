@@ -41,7 +41,7 @@ newLogEntry := NewEntry(
 )
 
 // write an entry with N messages (variadic parameter) in the order they were sent to the database 
-err = oplogEntry.WriteEntryWith(
+_, err = newLogEntry.WriteEntryWith(
     context.Background(), 
     &GormWriter{tx}, 
     ticket,
