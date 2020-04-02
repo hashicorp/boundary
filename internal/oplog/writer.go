@@ -10,8 +10,13 @@ import (
 
 // Writer interface for Entries
 type Writer interface {
+	// Create the entry
 	Create(interface{}) error
-	Update(i interface{}, fieldmask string) error
+
+	// Update the entry using the fieldMaskPaths, which are Paths from field_mask.proto
+	Update(entry interface{}, fieldMaskPaths []string) error
+
+	// Delete the entry
 	Delete(interface{}) error
 }
 
@@ -28,20 +33,19 @@ func (w *GormWriter) Create(i interface{}) error {
 	return nil
 }
 
-// Update an object in storage, if there's a fieldMask then only those comma delimited fields are updated, otherwise
+// Update an object in storage, if there's a fieldMask then only the field_mask.proto paths are updated, otherwise
 // we will send every field to the DB.
-func (w *GormWriter) Update(i interface{}, fieldmask string) error {
-	if fieldmask == "" {
+func (w *GormWriter) Update(i interface{}, fieldMaskPaths []string) error {
+	if len(fieldMaskPaths) == 0 {
 		if err := w.Tx.Save(i).Error; err != nil {
 			return fmt.Errorf("error updating: %w", err)
 		}
 	}
-	fields := strings.Split(fieldmask, ",")
 	updateFields := map[string]interface{}{}
 
 	val := reflect.Indirect(reflect.ValueOf(i))
 	structTyp := val.Type()
-	for _, field := range fields {
+	for _, field := range fieldMaskPaths {
 		for i := 0; i < structTyp.NumField(); i++ {
 			// support for an embedded a gorm type
 			if structTyp.Field(i).Type.Kind() == reflect.Struct {
