@@ -1,6 +1,7 @@
 package oplog
 
 import (
+	reflect "reflect"
 	"testing"
 
 	"github.com/hashicorp/watchtower/internal/oplog/oplog_test"
@@ -47,7 +48,7 @@ func Test_Queue(t *testing.T) {
 	assert.NilError(t, err)
 	err = queue.Add(rental, "rental", OpType_CREATE_OP)
 	assert.NilError(t, err)
-	err = queue.Add(userUpdate, "user", OpType_UPDATE_OP, WithFieldMask("Name,Email"))
+	err = queue.Add(userUpdate, "user", OpType_UPDATE_OP, WithFieldMaskPaths([]string{"Name", "Email"}))
 	assert.NilError(t, err)
 
 	queuedUser, ty, _, err := queue.Remove()
@@ -69,5 +70,5 @@ func Test_Queue(t *testing.T) {
 	assert.NilError(t, err)
 	assert.Assert(t, proto.Equal(userUpdate, queuedUserUpdate))
 	assert.Assert(t, ty == OpType_UPDATE_OP)
-	assert.Assert(t, fieldMask == "Name,Email")
+	assert.Assert(t, reflect.DeepEqual(fieldMask, []string{"Name", "Email"}))
 }
