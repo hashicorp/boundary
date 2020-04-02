@@ -112,7 +112,7 @@ func (e *Entry) UnmarshalData(types *TypeCatalog) ([]Message, error) {
 }
 
 // WriteEntryWith the []proto.Message marshaled into the entry data as a FIFO QueueBuffer
-// if CryptoService != nil then the data is authentication encrypted
+// if Cipherer != nil then the data is authentication encrypted
 func (e *Entry) WriteEntryWith(ctx context.Context, tx Writer, ticket *store.Ticket, msgs ...*Message) error {
 	if err := e.vetAll(); err != nil {
 		return fmt.Errorf("error vetting entry for writing: %w", err)
