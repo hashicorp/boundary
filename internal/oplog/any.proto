@@ -1,5 +1,7 @@
 syntax = "proto3";
 
+import "google/protobuf/field_mask.proto";
+
 package hashicorp.watchtower.controller.oplog.v1;
 option go_package = "github.com/hashicorp/watchtower/internal/oplog/oplog;oplog";
 
@@ -22,5 +24,6 @@ message AnyOperation {
   string type_name = 1;
   bytes value = 2;
   OpType operation_type = 3;
-  string field_mask = 4;
+  // mask is the mask of fields to update.
+  google.protobuf.FieldMask field_mask = 4;
 }
