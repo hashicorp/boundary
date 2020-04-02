@@ -10,6 +10,16 @@ oplog is a package for writing operation log (oplog) entries for the purpose of 
   - [oplog optimistic locking using tickets](#oplog-optimistic-locking-using-tickets)
 ## Usage
 ```go
+
+// you must init the ticket in its own transaction.  You only need
+// to init a ticket once in the database.  It doesn't need to happen for 
+// every connection.  Once it's persistent in the database, you can simply Get it.
+initTx := db.Begin()
+ticketer := &GormTicketer{Tx: initTx}
+err = ticketer.InitTicket("users")
+// if there's no error, then commit the initialized ticket
+initTx.Commit()
+
 userCreate := oplog_test.TestUser{
   TestUser: oplog_test.TestUser{
     Name: userName,
@@ -19,7 +29,8 @@ tx := db.Begin()
 // write the user to the database
 tx.Create(&userCreate)
 
-ticketer := &GormTicketer{Tx: db}
+ticketer = &GormTicketer{Tx: db}
+
 // get a ticket for writing users to the oplog
 ticket, err := ticketer.GetTicket("users")
 
