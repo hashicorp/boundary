@@ -88,8 +88,8 @@ type Entry struct {
 	CreatedAt *Timestamp `protobuf:"bytes,2,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty" gorm:"not_null;type:TIMESTAMP"`
 	// @inject_tag: gorm:"not_null;type:TIMESTAMP"
 	UpdatedAt *Timestamp `protobuf:"bytes,3,opt,name=updated_at,json=updatedAt,proto3" json:"updated_at,omitempty" gorm:"not_null;type:TIMESTAMP"`
-	// @inject_tat: gorm:"not_null"
-	Version string `protobuf:"bytes,4,opt,name=version,proto3" json:"version,omitempty"`
+	// @inject_tag: gorm:"not_null"
+	Version string `protobuf:"bytes,4,opt,name=version,proto3" json:"version,omitempty" gorm:"not_null"`
 	// @inject_tat: gorm:"not_null"
 	AggregateName string `protobuf:"bytes,5,opt,name=aggregate_name,json=aggregateName,proto3" json:"aggregate_name,omitempty"`
 	// one to many relationship
