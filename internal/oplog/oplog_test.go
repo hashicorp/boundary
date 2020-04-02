@@ -141,7 +141,7 @@ func Test_BasicOplog(t *testing.T) {
 
 	ticketName, err := uuid.GenerateUUID()
 	assert.NilError(t, err)
-	_, err = ticketer.InitTicket(ticketName)
+	err = ticketer.InitTicket(ticketName)
 	assert.NilError(t, err)
 	ticket, err := ticketer.GetTicket(ticketName)
 	assert.NilError(t, err)
@@ -196,7 +196,7 @@ func Test_Replay(t *testing.T) {
 	assert.NilError(t, err)
 	ticketer := NewGormTicketer(db, WithAggregateNames(true))
 
-	_, err = ticketer.InitTicket(ticketName)
+	err = ticketer.InitTicket(ticketName)
 	assert.NilError(t, err)
 	ticket, err := ticketer.GetTicket(ticketName)
 	assert.NilError(t, err)
@@ -358,7 +358,7 @@ func Test_GetTicket(t *testing.T) {
 	assert.NilError(t, err)
 	ticketer := NewGormTicketer(db, WithAggregateNames(true))
 
-	_, err = ticketer.InitTicket(ticketName)
+	err = ticketer.InitTicket(ticketName)
 	assert.NilError(t, err)
 	ticket, err := ticketer.GetTicket(ticketName)
 	assert.NilError(t, err)
@@ -381,7 +381,7 @@ func Test_TicketSerialization(t *testing.T) {
 	ticketer := NewGormTicketer(db, WithAggregateNames(true))
 
 	// in it's own transaction, init the ticket
-	_, _ = ticketer.InitTicket(ticketName)
+	_ = ticketer.InitTicket(ticketName)
 
 	cipherer := initWrapper(t)
 
@@ -490,7 +490,7 @@ func Test_WriteEntryWith(t *testing.T) {
 	assert.NilError(t, err)
 	ticketer := NewGormTicketer(db, WithAggregateNames(true))
 
-	_, err = ticketer.InitTicket(ticketName)
+	err = ticketer.InitTicket(ticketName)
 	assert.NilError(t, err)
 	ticket, err := ticketer.GetTicket(ticketName)
 	assert.NilError(t, err)
