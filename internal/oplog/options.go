@@ -17,17 +17,17 @@ type Options map[string]interface{}
 
 func getDefaultOptions() Options {
 	return Options{
-		optionWithFieldMask:      "",
+		optionWithFieldMaskPaths: []string{},
 		optionWithAggregateNames: false,
 	}
 }
 
-const optionWithFieldMask = "optionWithFieldMask"
+const optionWithFieldMaskPaths = "optionWithFieldMaskPaths"
 
-// WithFieldMask optional fieldMask
-func WithFieldMask(fieldMask string) Option {
+// WithFieldMaskPaths optional WithFieldMaskPaths, which are Paths from field_mask.proto
+func WithFieldMaskPaths(fieldMaskPaths []string) Option {
 	return func(o Options) {
-		o[optionWithFieldMask] = fieldMask
+		o[optionWithFieldMaskPaths] = fieldMaskPaths
 	}
 }
 
