@@ -51,24 +51,27 @@ func Test_Queue(t *testing.T) {
 	err = queue.Add(userUpdate, "user", OpType_UPDATE_OP, WithFieldMaskPaths([]string{"Name", "Email"}))
 	assert.NilError(t, err)
 
-	queuedUser, ty, _, err := queue.Remove()
+	queuedUser, ty, fm, err := queue.Remove()
 	assert.NilError(t, err)
 	assert.Assert(t, proto.Equal(user, queuedUser))
 	assert.Assert(t, ty == OpType_CREATE_OP)
+	assert.Assert(t, fm == nil)
 
-	queuedCar, ty, _, err := queue.Remove()
+	queuedCar, ty, fm, err := queue.Remove()
 	assert.NilError(t, err)
 	assert.Assert(t, proto.Equal(car, queuedCar))
 	assert.Assert(t, ty == OpType_CREATE_OP)
+	assert.Assert(t, fm == nil)
 
-	queuedRental, ty, _, err := queue.Remove()
+	queuedRental, ty, fm, err := queue.Remove()
 	assert.NilError(t, err)
 	assert.Assert(t, proto.Equal(rental, queuedRental))
 	assert.Assert(t, ty == OpType_CREATE_OP)
+	assert.Assert(t, fm == nil)
 
-	queuedUserUpdate, ty, fieldMask, err := queue.Remove()
+	queuedUserUpdate, ty, fm, err := queue.Remove()
 	assert.NilError(t, err)
 	assert.Assert(t, proto.Equal(userUpdate, queuedUserUpdate))
 	assert.Assert(t, ty == OpType_UPDATE_OP)
-	assert.Assert(t, reflect.DeepEqual(fieldMask, []string{"Name", "Email"}))
+	assert.Assert(t, reflect.DeepEqual(fm, []string{"Name", "Email"}))
 }
