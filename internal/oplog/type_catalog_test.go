@@ -7,7 +7,7 @@ import (
 	"gotest.tools/assert"
 )
 
-func Test_TypeCalalog(t *testing.T) {
+func Test_TypeCatalog(t *testing.T) {
 	t.Parallel()
 	types, err := NewTypeCatalog(
 		Type{new(oplog_test.TestUser), "user"},
