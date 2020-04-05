@@ -12,7 +12,7 @@ import (
 
 // Queue provides a FIFO queue
 type Queue struct {
-	// QueueBuffer provides a buffer for the queue
+	// Buffer for the queue
 	bytes.Buffer
 	// Catalog provides a TypeCatalog for the types added to the queue
 	Catalog *TypeCatalog
@@ -41,7 +41,7 @@ func (r *Queue) Add(m proto.Message, typeName string, t OpType, opt ...Option) e
 	}
 	r.mx.Lock()
 	defer r.mx.Unlock()
-	err = binary.Write(r, binary.LittleEndian, int32(len(data)))
+	err = binary.Write(r, binary.LittleEndian, uint32(len(data)))
 	if err != nil {
 		return err
 	}
@@ -59,7 +59,7 @@ func (r *Queue) Add(m proto.Message, typeName string, t OpType, opt ...Option) e
 func (r *Queue) Remove() (proto.Message, OpType, []string, error) {
 	r.mx.Lock()
 	defer r.mx.Unlock()
-	var n int32
+	var n uint32
 	err := binary.Read(r, binary.LittleEndian, &n)
 	if err != nil {
 		return nil, 0, nil, err // intentionally not wrapping error so client can test for sentinel EOF error
