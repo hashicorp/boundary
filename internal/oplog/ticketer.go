@@ -9,7 +9,9 @@ import (
 )
 
 var (
-	ErrTicketNotFound = errors.New("ticket not found")
+	ErrTicketNotFound        = errors.New("ticket not found")
+	ErrTicketAlreadyRedeemed = errors.New("ticket already redeemed")
+	ErrTicketRedeeming       = errors.New("error trying to redeem ticket")
 )
 
 const DefaultAggregateName = "global"
@@ -92,10 +94,10 @@ func (ticketer *GormTicketer) InitTicket(aggregateName string) error {
 func (ticketer *GormTicketer) Redeem(t *store.Ticket) error {
 	tx := ticketer.tx.Model(t).Where("version = ?", t.Version).Update("version", t.Version+1)
 	if tx.Error != nil {
-		return fmt.Errorf("error redeeming ticket: %w", tx.Error)
+		return ErrTicketRedeeming
 	}
 	if tx.RowsAffected != 1 {
-		return errors.New("EntryTicket.Redeem: ticket number update failed - no rows affected")
+		return ErrTicketAlreadyRedeemed
 	}
 	return nil
 }
