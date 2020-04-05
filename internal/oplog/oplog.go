@@ -60,12 +60,12 @@ func NewEntry(aggregateName string, metadata Metadata, cipherer wrapping.Wrapper
 		}
 		entry.Metadata = storeMD
 	}
-	if err := entry.vetAll(); err != nil {
+	if err := entry.validate(); err != nil {
 		return nil, fmt.Errorf("error creating entry: %w", err)
 	}
 	return &entry, nil
 }
-func (e *Entry) vetAll() error {
+func (e *Entry) validate() error {
 	if e.Cipherer == nil {
 		return errors.New("entry Cipherer is nil")
 	}
@@ -114,7 +114,7 @@ func (e *Entry) UnmarshalData(types *TypeCatalog) ([]Message, error) {
 // WriteEntryWith the []proto.Message marshaled into the entry data as a FIFO QueueBuffer
 // if Cipherer != nil then the data is authentication encrypted
 func (e *Entry) WriteEntryWith(ctx context.Context, tx Writer, ticket *store.Ticket, msgs ...*Message) error {
-	if err := e.vetAll(); err != nil {
+	if err := e.validate(); err != nil {
 		return fmt.Errorf("error vetting entry for writing: %w", err)
 	}
 	if ticket == nil || ticket.Version == 0 {
@@ -143,7 +143,7 @@ func (e *Entry) WriteEntryWith(ctx context.Context, tx Writer, ticket *store.Tic
 // Write the entry as is with whatever it has for e.Data marshaled into a FIFO QueueBuffer
 //  Cipherer != nil then the data is authentication encrypted
 func (e *Entry) Write(ctx context.Context, tx Writer, ticket *store.Ticket) error {
-	if err := e.vetAll(); err != nil {
+	if err := e.validate(); err != nil {
 		return fmt.Errorf("error vetting entry for writing: %w", err)
 	}
 	if ticket == nil || ticket.Version == 0 {
