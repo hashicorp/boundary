@@ -24,7 +24,8 @@ func getDefaultOptions() Options {
 
 const optionWithFieldMaskPaths = "optionWithFieldMaskPaths"
 
-// WithFieldMaskPaths optional WithFieldMaskPaths, which are Paths from field_mask.proto
+// WithFieldMaskPaths represents an optional set of symbolic field paths (for example: "f.a", "f.b.d") used
+// to specify a subset of fields that should be updated. (see google.golang.org/genproto/protobuf/field_mask)
 func WithFieldMaskPaths(fieldMaskPaths []string) Option {
 	return func(o Options) {
 		o[optionWithFieldMaskPaths] = fieldMaskPaths
