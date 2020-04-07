@@ -50,7 +50,7 @@ func (w *GormWriter) Update(i interface{}, fieldMaskPaths []string) error {
 			// support for an embedded a gorm type
 			if structTyp.Field(i).Type.Kind() == reflect.Struct {
 				embType := structTyp.Field(i).Type
-				embVal := reflect.Indirect(reflect.ValueOf(structTyp.Field(i)))
+				embVal := reflect.Indirect(reflect.ValueOf(val.Field(i).Interface()))
 				for embFieldNum := 0; embFieldNum < embType.NumField(); embFieldNum++ {
 					if strings.EqualFold(embType.Field(embFieldNum).Name, field) {
 						updateFields[field] = embVal.Field(embFieldNum).Interface()

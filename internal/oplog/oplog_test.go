@@ -480,7 +480,7 @@ func Test_Replay(t *testing.T) {
 		err = newLogEntry.WriteEntryWith(context.Background(), &GormWriter{tx}, ticket,
 			&Message{Message: &userCreate, TypeName: "user", OpType: OpType_CREATE_OP},
 			&Message{Message: &userSave, TypeName: "user", OpType: OpType_UPDATE_OP},
-			&Message{Message: &userUpdate, TypeName: "user", OpType: OpType_UPDATE_OP},
+			&Message{Message: &userUpdate, TypeName: "user", OpType: OpType_UPDATE_OP, FieldMaskPaths: []string{"PhoneNumber"}},
 		)
 		assert.NilError(t, err)
 
