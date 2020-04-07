@@ -86,8 +86,11 @@ func (e *Entry) validate() error {
 
 // UnmarshalData the data attribute from []byte (treated as a FIFO QueueBuffer) to a []proto.Message
 func (e *Entry) UnmarshalData(types *TypeCatalog) ([]Message, error) {
+	if types == nil {
+		return nil, errors.New("TypeCatalog is nil")
+	}
 	if len(e.Data) == 0 {
-		return nil, fmt.Errorf("no Data to unmarshal")
+		return nil, errors.New("no Data to unmarshal")
 	}
 	msgs := []Message{}
 	queue := Queue{
@@ -114,15 +117,20 @@ func (e *Entry) UnmarshalData(types *TypeCatalog) ([]Message, error) {
 // WriteEntryWith the []proto.Message marshaled into the entry data as a FIFO QueueBuffer
 // if Cipherer != nil then the data is authentication encrypted
 func (e *Entry) WriteEntryWith(ctx context.Context, tx Writer, ticket *store.Ticket, msgs ...*Message) error {
+	if tx == nil {
+		return errors.New("bad writer")
+	}
 	if err := e.validate(); err != nil {
 		return fmt.Errorf("error vetting entry for writing: %w", err)
 	}
 	if ticket == nil || ticket.Version == 0 {
 		return errors.New("bad ticket")
 	}
-
 	queue := Queue{}
 	for _, m := range msgs {
+		if m == nil {
+			return errors.New("bad message")
+		}
 		if err := queue.Add(m.Message, m.TypeName, m.OpType, WithFieldMaskPaths(m.FieldMaskPaths)); err != nil {
 			return fmt.Errorf("error adding message to queue: %w", err)
 		}

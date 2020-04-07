@@ -36,10 +36,14 @@ type GormTicketer struct {
 	withAggregateNames bool
 }
 
-func NewGormTicketer(tx *gorm.DB, opt ...Option) *GormTicketer {
+// NewGormTicketer creates a new ticketer that uses gorm for storage
+func NewGormTicketer(tx *gorm.DB, opt ...Option) (*GormTicketer, error) {
+	if tx == nil {
+		return nil, errors.New("tx is nil")
+	}
 	opts := GetOpts(opt...)
 	enableAggregateNames := opts[optionWithAggregateNames].(bool)
-	return &GormTicketer{tx: tx, withAggregateNames: enableAggregateNames}
+	return &GormTicketer{tx: tx, withAggregateNames: enableAggregateNames}, nil
 }
 
 // GetTicket returns a ticket for the specified name.  You MUST GetTicket in the same transaction
@@ -66,6 +70,10 @@ func (ticketer *GormTicketer) GetTicket(aggregateName string) (*store.Ticket, er
 // before you GetTicket in a later transaction to write to the oplog.  InitTicket will check to see if
 // the ticket has already been initialized before creating a new one.
 func (ticketer *GormTicketer) InitTicket(aggregateName string) error {
+	// no existing ticket found, so let's initialize a new one
+	if aggregateName == "" {
+		return fmt.Errorf("bad ticket name")
+	}
 	// check to see if a ticket has already been initialized
 	existingTicket, err := ticketer.GetTicket(aggregateName)
 	if err == nil && existingTicket != nil {
@@ -75,10 +83,6 @@ func (ticketer *GormTicketer) InitTicket(aggregateName string) error {
 		return fmt.Errorf("error retreiving ticket from storage: %w", err)
 	}
 
-	// no existing ticket found, so let's initialize a new one
-	if aggregateName == "" {
-		return fmt.Errorf("bad ticket name")
-	}
 	name := DefaultAggregateName
 	if ticketer.withAggregateNames {
 		name = aggregateName
@@ -92,6 +96,9 @@ func (ticketer *GormTicketer) InitTicket(aggregateName string) error {
 
 // Redeem will attempt to redeem the ticket. If the ticket version has already been used, then an error is returned
 func (ticketer *GormTicketer) Redeem(t *store.Ticket) error {
+	if t == nil {
+		return errors.New("ticket is nil")
+	}
 	tx := ticketer.tx.Model(t).Where("version = ?", t.Version).Update("version", t.Version+1)
 	if tx.Error != nil {
 		return ErrTicketRedeeming
