@@ -3,6 +3,7 @@ package oplog
 import (
 	"bytes"
 	"encoding/binary"
+	"errors"
 	"fmt"
 	"sync"
 
@@ -22,6 +23,8 @@ type Queue struct {
 
 // Add pb message to queue
 func (r *Queue) Add(m proto.Message, typeName string, t OpType, opt ...Option) error {
+	// we're not checking the Catalog for nil, since it's not used
+	// when Adding messages to the queue
 	opts := GetOpts(opt...)
 	withPaths := opts[optionWithFieldMaskPaths].([]string)
 
@@ -57,6 +60,9 @@ func (r *Queue) Add(m proto.Message, typeName string, t OpType, opt ...Option) e
 
 // Remove pb message from the queue and EOF if empty
 func (r *Queue) Remove() (proto.Message, OpType, []string, error) {
+	if r.Catalog == nil {
+		return nil, OpType_UNKNOWN_OP, nil, errors.New("remove Catalog is nil")
+	}
 	r.mx.Lock()
 	defer r.mx.Unlock()
 	var n uint32
