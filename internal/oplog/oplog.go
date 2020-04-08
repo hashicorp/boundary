@@ -105,7 +105,7 @@ func (e *Entry) UnmarshalData(types *TypeCatalog) ([]Message, error) {
 		if err != nil {
 			return nil, fmt.Errorf("error removing item from queue: %w", err)
 		}
-		name, err := GetTypeName(types, m)
+		name, err := types.GetTypeName(m)
 		if err != nil {
 			return nil, fmt.Errorf("error getting TypeName: %w", err)
 		}
