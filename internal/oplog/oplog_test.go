@@ -648,9 +648,6 @@ func Test_WriteEntryWith(t *testing.T) {
 		foundUsers, err := foundEntry.UnmarshalData(types)
 		assert.NilError(t, err)
 		assert.Assert(t, foundUsers[0].Message.(*oplog_test.TestUser).Name == u.Name)
-		for _, m := range foundUsers {
-			t.Log(m)
-		}
 	})
 	t.Run("nil writer", func(t *testing.T) {
 		newLogEntry, err := NewEntry(
@@ -786,11 +783,9 @@ func Test_TicketSerialization(t *testing.T) {
 	err = secondTx.Commit().Error
 	assert.NilError(t, err)
 	assert.Assert(t, secondLogEntry.Id != 0)
-	t.Log(secondLogEntry)
 
 	err = firstLogEntry.Write(context.Background(), &GormWriter{firstTx}, firstTicket)
 	if err != nil {
-		t.Log(err)
 		firstTx.Rollback()
 	} else {
 		firstTx.Commit()
