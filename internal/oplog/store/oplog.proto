@@ -1,0 +1,73 @@
+syntax = "proto3";
+
+// define an oplog package within the watchtower controller
+package hashicorp.watchtower.controller.oplog.store.v1;
+option go_package = "github.com/hashicorp/watchtower/internal/oplog/store;store";
+
+import "google/protobuf/timestamp.proto";
+
+// Timestamp for oplog messages.  We've defined a new local type wrapper
+// of google.protobuf.Timestamp so we can implement sql.Scanner and sql.Valuer
+// interfaces.  See:
+// https://golang.org/pkg/database/sql/#Scanner
+// https://golang.org/pkg/database/sql/driver/#Valuer
+message Timestamp {
+  google.protobuf.Timestamp timestamp = 1;
+}
+
+// Entry provides a message for oplog entries that's compatible with gorm
+message Entry {
+  // @inject_tag: gorm:"primary_key"
+  uint32 id = 1;
+  // @inject_tag: gorm:"not_null;type:TIMESTAMP"
+  Timestamp create_time = 2;
+  // @inject_tag: gorm:"not_null;type:TIMESTAMP"
+  Timestamp update_time = 3;
+
+  // @inject_tag: gorm:"not_null"
+  string version = 4;
+
+  // @inject_tat: gorm:"not_null"
+  string aggregate_name = 5;
+
+  // one to many relationship
+  // @inject_tag: gorm:"foreignkey:entry_id"
+  repeated Metadata metadata = 6;
+
+  // @inject_tat: gorm:"not_null"
+  bytes data = 7;
+}
+
+// Metadata provides a message for oplog metadata that's compatible with gorm
+message Metadata {
+  // @inject_tag: gorm:"primary_key"
+  uint32 id = 1;
+  // @inject_tag: gorm:"not_null;type:TIMESTAMP"
+  Timestamp create_time = 2;
+  // @inject_tag: gorm:"not_nul
+
+  uint32 entry_id = 3;
+  // @inject_tag: gorm:"foreignkey:EntryId"
+  Entry entry = 4;
+
+  // @inject_tag: gorm:"not_null"
+  string key = 5;
+  // @inject_tag: gorm:"not_null"
+  string value = 6;
+}
+
+// Ticket provides a message for oplog tickets that's compatible with gorm
+message Ticket {
+  // @inject_tag: gorm:"primary_key"
+  uint32 id = 1;
+  // @inject_tag: gorm:"not_null;type:TIMESTAMP"
+  Timestamp create_time = 2;
+  // @inject_tag: gorm:"not_null;type:TIMESTAMP"
+  Timestamp update_time = 3;
+
+  // @inject_tat: gorm:"not_null"
+  string name = 6;
+
+  // @inject_tat: gorm:"not_null;default:'1'"
+  uint32 version = 7;
+}
