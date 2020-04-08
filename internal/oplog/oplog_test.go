@@ -394,7 +394,7 @@ func Test_UnmarshalData(t *testing.T) {
 		types, err := NewTypeCatalog(Type{new(oplog_test.TestUser), "not-valid-name"})
 		assert.NilError(t, err)
 		_, err = entry.UnmarshalData(types)
-		assert.Equal(t, err.Error(), "error removing item from queue: error getting the TypeName for Remove: TypeCatalog.Get: no one")
+		assert.Equal(t, err.Error(), "error removing item from queue: error getting the TypeName for Remove: error typeName is not found for Get")
 	})
 }
 
