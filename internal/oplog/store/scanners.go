@@ -11,6 +11,9 @@ import (
 
 // Scan supports Timestamps for oplogs
 func (ts *Timestamp) Scan(value interface{}) error {
+	if ts == nil {
+		return errors.New("Timestamp is nil")
+	}
 	switch t := value.(type) {
 	case time.Time:
 		var err error
@@ -26,5 +29,8 @@ func (ts *Timestamp) Scan(value interface{}) error {
 
 // Value supports Timestamps for oplogs
 func (ts *Timestamp) Value() (driver.Value, error) {
+	if ts == nil {
+		return nil, nil
+	}
 	return ptypes.Timestamp(ts.Timestamp)
 }
