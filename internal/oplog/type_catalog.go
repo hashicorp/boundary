@@ -24,7 +24,7 @@ func NewTypeCatalog(withTypes ...Type) (*TypeCatalog, error) {
 	reg := TypeCatalog{}
 	for _, t := range withTypes {
 		if t == (Type{}) {
-			return nil, errors.New("error type is {} (in NewTypeCalalog)")
+			return nil, errors.New("error type is {} (in NewTypeCatalog)")
 
 		}
 		if err := reg.Set(t.Interface, t.Name); err != nil {

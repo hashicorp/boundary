@@ -56,7 +56,7 @@ func Test_NewTypeCatalog(t *testing.T) {
 		)
 		assert.Check(t, types == nil)
 		assert.Check(t, err != nil)
-		assert.Equal(t, err.Error(), "error setting the type: typeName is an empty string (in NewTypeCatalog)")
+		assert.Equal(t, err.Error(), "error setting the type: typeName is an empty string for Set (in NewTypeCatalog)")
 	})
 	t.Run("missing Type.Interface", func(t *testing.T) {
 		types, err := NewTypeCatalog(
@@ -64,7 +64,7 @@ func Test_NewTypeCatalog(t *testing.T) {
 		)
 		assert.Check(t, types == nil)
 		assert.Check(t, err != nil)
-		assert.Equal(t, err.Error(), "error type is {} (in NewTypeCalalog)")
+		assert.Equal(t, err.Error(), "error type is {} (in NewTypeCatalog)")
 	})
 	t.Run("empty Type", func(t *testing.T) {
 		types, err := NewTypeCatalog(
@@ -72,7 +72,7 @@ func Test_NewTypeCatalog(t *testing.T) {
 		)
 		assert.Check(t, types == nil)
 		assert.Check(t, err != nil)
-		assert.Equal(t, err.Error(), "error type is {} (in NewTypeCalalog)")
+		assert.Equal(t, err.Error(), "error type is {} (in NewTypeCatalog)")
 	})
 
 }
