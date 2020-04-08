@@ -23,31 +23,44 @@ type Type struct {
 func NewTypeCatalog(withTypes ...Type) (*TypeCatalog, error) {
 	reg := TypeCatalog{}
 	for _, t := range withTypes {
+		if t == (Type{}) {
+			return nil, errors.New("error type is {} (in NewTypeCalalog)")
+
+		}
 		if err := reg.Set(t.Interface, t.Name); err != nil {
-			return nil, fmt.Errorf("error setting the type: %w", err)
+			return nil, fmt.Errorf("error setting the type: %w (in NewTypeCatalog)", err)
 		}
 	}
 	return &reg, nil
 }
 
 // GetTypeName returns the interface's name from the catalog
-func GetTypeName(catalog *TypeCatalog, i interface{}) (string, error) {
+func (t *TypeCatalog) GetTypeName(i interface{}) (string, error) {
+	if i == nil {
+		return "", errors.New("error interface parameter is nil for GetTypeName")
+	}
 	if reflect.ValueOf(i).Kind() != reflect.Ptr {
-		return "", errors.New("TypeCatalog.Set() argument must to be a pointer")
+		return "", errors.New("error interface parameter must to be a pointer for GetTypeName")
 	}
 	interfaceType := reflect.TypeOf(i)
-	for name, t := range *catalog {
+	for name, t := range *t {
 		if t == interfaceType {
 			return name, nil
 		}
 	}
-	return "", fmt.Errorf("Unknown name for interface: %T", i)
+	return "", fmt.Errorf("error unknown name for interface: %T", i)
 }
 
 // Set creates an entry in the catalog for the interface
 func (t TypeCatalog) Set(i interface{}, typeName string) error {
+	if i == nil {
+		return errors.New("error interface parameter is nil for Set")
+	}
 	if reflect.ValueOf(i).Kind() != reflect.Ptr {
-		return errors.New("TypeCatalog.Set() argument must to be a pointer")
+		return errors.New("error interface parameter must to be a pointer for Set")
+	}
+	if typeName == "" {
+		return errors.New("typeName is an empty string for Set")
 	}
 	t[typeName] = reflect.TypeOf(i)
 	return nil
@@ -55,8 +68,11 @@ func (t TypeCatalog) Set(i interface{}, typeName string) error {
 
 // Get retrieves the interface via a name
 func (t TypeCatalog) Get(typeName string) (interface{}, error) {
+	if typeName == "" {
+		return nil, errors.New("error typeName is empty string for Get")
+	}
 	if typ, ok := t[typeName]; ok {
 		return reflect.New(typ.Elem()).Elem().Addr().Interface(), nil
 	}
-	return nil, errors.New("TypeCatalog.Get: no one")
+	return nil, errors.New("error typeName is not found for Get")
 }
