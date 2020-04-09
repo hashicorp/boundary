@@ -215,6 +215,12 @@ func (e *Entry) Replay(ctx context.Context, tx Writer, types *TypeCatalog, table
 		}
 		origTableName := em.TableName()
 		defer em.SetTableName(origTableName)
+
+		replayTable := origTableName + tableSuffix
+		if !tx.HasTable(replayTable) {
+			tx.CreateTableLike(origTableName, replayTable)
+		}
+
 		em.SetTableName(origTableName + tableSuffix)
 		switch m.OpType {
 		case OpType_CREATE_OP:

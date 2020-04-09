@@ -218,3 +218,120 @@ func Test_GormWriterUpdate(t *testing.T) {
 		assert.Equal(t, err.Error(), "update interface is nil")
 	})
 }
+
+// Test_GormWriterHasTable provides unit tests for GormWriter HasTable
+func Test_GormWriterHasTable(t *testing.T) {
+	t.Parallel()
+	startTest()
+	cleanup, url := setup(t)
+	defer cleanup()
+	defer completeTest() // must come after the "defer cleanup()"
+	db, err := test_dbconn(url)
+	assert.NilError(t, err)
+	defer db.Close()
+
+	w := GormWriter{Tx: db}
+
+	t.Run("success", func(t *testing.T) {
+		ok := w.HasTable("oplog_test_user")
+		assert.Equal(t, ok, true)
+	})
+	t.Run("no table", func(t *testing.T) {
+		badTableName, err := uuid.GenerateUUID()
+		assert.NilError(t, err)
+		ok := w.HasTable(badTableName)
+		assert.Equal(t, ok, false)
+	})
+	t.Run("blank table name", func(t *testing.T) {
+		ok := w.HasTable("")
+		assert.Equal(t, ok, false)
+	})
+}
+
+// Test_GormWriterCreateTable provides unit tests for GormWriter CreateTable
+func Test_GormWriterCreateTable(t *testing.T) {
+	t.Parallel()
+	startTest()
+	cleanup, url := setup(t)
+	defer cleanup()
+	defer completeTest() // must come after the "defer cleanup()"
+	db, err := test_dbconn(url)
+	assert.NilError(t, err)
+	defer db.Close()
+
+	t.Run("success", func(t *testing.T) {
+		w := GormWriter{Tx: db}
+		suffix, err := uuid.GenerateUUID()
+		assert.NilError(t, err)
+		u := &oplog_test.TestUser{}
+		newTableName := u.TableName() + "_" + suffix
+		defer func() { assert.NilError(t, w.DropTableIfExists(newTableName)) }()
+		err = w.CreateTableLike(u.TableName(), newTableName)
+		assert.NilError(t, err)
+	})
+	t.Run("call twice", func(t *testing.T) {
+		w := GormWriter{Tx: db}
+		suffix, err := uuid.GenerateUUID()
+		assert.NilError(t, err)
+		u := &oplog_test.TestUser{}
+		newTableName := u.TableName() + "_" + suffix
+		defer func() { assert.NilError(t, w.DropTableIfExists(newTableName)) }()
+		err = w.CreateTableLike(u.TableName(), newTableName)
+		assert.NilError(t, err)
+
+		// should be an error to create the same table twice
+		err = w.CreateTableLike(u.TableName(), newTableName)
+		assert.Check(t, err != nil)
+		assert.Error(t, err, err.Error(), nil)
+	})
+	t.Run("empty existing", func(t *testing.T) {
+		w := GormWriter{Tx: db}
+		suffix, err := uuid.GenerateUUID()
+		assert.NilError(t, err)
+		u := &oplog_test.TestUser{}
+		newTableName := u.TableName() + "_" + suffix
+		defer func() { assert.NilError(t, w.DropTableIfExists(newTableName)) }()
+		err = w.CreateTableLike("", newTableName)
+		assert.Check(t, err != nil)
+		assert.Error(t, err, err.Error(), nil)
+		assert.Equal(t, err.Error(), "error existingTableName is empty string")
+	})
+	t.Run("blank name", func(t *testing.T) {
+		w := GormWriter{Tx: db}
+		u := &oplog_test.TestUser{}
+		err = w.CreateTableLike(u.TableName(), "")
+		assert.Check(t, err != nil)
+		assert.Error(t, err, err.Error(), nil)
+		assert.Equal(t, err.Error(), "error newTableName is empty string")
+	})
+}
+
+// Test_GormWriterDropTableIfExists provides unit tests for GormWriter DropTableIfExists
+func Test_GormWriterDropTableIfExists(t *testing.T) {
+	t.Parallel()
+	startTest()
+	cleanup, url := setup(t)
+	defer cleanup()
+	defer completeTest() // must come after the "defer cleanup()"
+	db, err := test_dbconn(url)
+	assert.NilError(t, err)
+	defer db.Close()
+
+	t.Run("success", func(t *testing.T) {
+		w := GormWriter{Tx: db}
+		suffix, err := uuid.GenerateUUID()
+		assert.NilError(t, err)
+		u := &oplog_test.TestUser{}
+		newTableName := u.TableName() + "_" + suffix
+		err = w.CreateTableLike(u.TableName(), newTableName)
+		assert.NilError(t, err)
+		defer func() { assert.NilError(t, w.DropTableIfExists(newTableName)) }()
+	})
+
+	t.Run("success with blank", func(t *testing.T) {
+		w := GormWriter{Tx: db}
+		err := w.DropTableIfExists("")
+		assert.Check(t, err != nil)
+		assert.Equal(t, err.Error(), "error tableName is empty string for DropTableIfExists")
+	})
+}

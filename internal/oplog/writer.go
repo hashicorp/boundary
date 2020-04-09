@@ -19,6 +19,15 @@ type Writer interface {
 
 	// Delete the entry
 	Delete(interface{}) error
+
+	// HasTable checks if tableName exists
+	HasTable(tableName string) bool
+
+	// CreateTableLike will create a newTableName using the existing table as a starting point
+	CreateTableLike(existingTableName string, newTableName string) error
+
+	// DropTableIfExists will drop the table if it exists
+	DropTableIfExists(tableName string) error
 }
 
 // GormWriter uses a gorm DB connection for writing
@@ -98,4 +107,64 @@ func (w *GormWriter) Delete(i interface{}) error {
 		return fmt.Errorf("error deleting: %w", err)
 	}
 	return nil
+}
+
+// HasTable checks if tableName exists
+func (w *GormWriter) HasTable(tableName string) bool {
+	if tableName == "" {
+		return false
+	}
+	return w.Tx.Dialect().HasTable(tableName)
+}
+
+// CreateTableLike will create a newTableName like the model's table
+// the new table should have all things like the existing model's table (defaults, constraints, indexes, etc)
+func (w *GormWriter) CreateTableLike(existingTableName string, newTableName string) error {
+	if existingTableName == "" {
+		return errors.New("error existingTableName is empty string")
+	}
+	if newTableName == "" {
+		return errors.New("error newTableName is empty string")
+	}
+	existingTableName = w.Tx.Dialect().Quote(existingTableName)
+	newTableName = w.Tx.Dialect().Quote(newTableName)
+	var sql string
+	switch w.Tx.Dialect().GetName() {
+	case "postgres":
+		sql = fmt.Sprintf(
+			`CREATE TABLE %s ( LIKE %s INCLUDING DEFAULTS INCLUDING CONSTRAINTS INCLUDING INDEXES );`,
+			newTableName,
+			existingTableName,
+		)
+	case "mysql":
+		sql = fmt.Sprintf("CREATE TABLE %s LIKE %s",
+			newTableName,
+			existingTableName,
+		)
+	default:
+		return errors.New("error unsupported RDBMS")
+	}
+	return w.Tx.Exec(sql).Error
+}
+
+type gormTabler struct {
+	tableName string
+}
+
+// TableName returns the tabler's table name (it's a gorm pattern for this sort of thing)
+// and it has to be exported for Gorm to call it
+func (t gormTabler) TableName() string {
+	if t.tableName == "" {
+		panic("gormTabler must always have a tableName")
+	}
+	return t.tableName
+}
+
+// DropTableIfExists will drop the table if it exists
+func (w *GormWriter) DropTableIfExists(tableName string) error {
+	if tableName == "" {
+		return errors.New("error tableName is empty string for DropTableIfExists")
+	}
+	t := gormTabler{tableName: tableName}
+	return w.Tx.DropTableIfExists(&t).Error
 }
