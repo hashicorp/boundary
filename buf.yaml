@@ -1,0 +1,4 @@
+build:
+  roots:
+    - proto/local
+    - proto/third_party

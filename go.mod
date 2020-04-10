@@ -4,10 +4,12 @@ go 1.13
 
 require (
 	github.com/armon/go-metrics v0.3.3
+	github.com/bufbuild/buf v0.11.0
 	github.com/fatih/color v1.9.0
 	github.com/ghodss/yaml v1.0.1-0.20190212211648-25d852aebe32
 	github.com/golang-migrate/migrate/v4 v4.9.1
 	github.com/golang/protobuf v1.4.0-rc.4
+	github.com/grpc-ecosystem/grpc-gateway v1.9.5
 	github.com/hashicorp/errwrap v1.0.0
 	github.com/hashicorp/go-alpnmux v0.0.0-20200323180452-dee08f00df54
 	github.com/hashicorp/go-hclog v0.12.1
@@ -25,12 +27,14 @@ require (
 	github.com/mitchellh/cli v1.0.0
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/mitchellh/mapstructure v1.1.2
+	github.com/mitchellh/protoc-gen-go-json v0.0.0-20200113165135-fd297ce346f1
 	github.com/ory/dockertest/v3 v3.5.4
 	github.com/pires/go-proxyproto v0.0.0-20200213100827-833e5d06d8f0
 	github.com/pkg/errors v0.9.1
 	github.com/posener/complete v1.2.3
 	github.com/ryanuber/columnize v2.1.0+incompatible
-	golang.org/x/net v0.0.0-20200301022130-244492dfa37a
+	golang.org/x/net v0.0.0-20200324143707-d3edc9973b7e
+	google.golang.org/genproto v0.0.0-20200409111301-baae70f3302d
 	google.golang.org/grpc v1.27.1
 	google.golang.org/protobuf v1.20.1
 	gotest.tools v2.2.0+incompatible
