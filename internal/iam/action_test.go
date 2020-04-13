@@ -6,6 +6,7 @@ import (
 	"gotest.tools/assert"
 )
 
+// Test_StdActions provides unit tests for StdActions()
 func Test_StdActions(t *testing.T) {
 	t.Parallel()
 	t.Run("valid", func(t *testing.T) {
