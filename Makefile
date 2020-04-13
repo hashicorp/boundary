@@ -11,6 +11,9 @@ proto:
 	protoc-go-inject-tag -input=./internal/oplog/store/oplog.pb.go
 	protoc  --go_out=paths=source_relative:. ./internal/oplog/oplog_test/oplog_test.proto
 	protoc-go-inject-tag -input=./internal/oplog/oplog_test/oplog_test.pb.go
+	
+	# iam protos
+	cd ./internal/iam && $(MAKE) proto
 
 
 .PHONY: proto
