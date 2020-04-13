@@ -7,6 +7,7 @@ import (
 	"gotest.tools/assert"
 )
 
+// Test_GetOpts provides unit tests for GetOpts and all the options
 func Test_GetOpts(t *testing.T) {
 	t.Parallel()
 	t.Run("WithOwnerId", func(t *testing.T) {
