@@ -34,8 +34,8 @@ func WithOwnerId(id uint32) Option {
 
 const optionWithFriendlyName = "optionWithFriendlyName"
 
-// ByFriendlyName provides an option to search by a friendly name
-func ByFriendlyName(name string) Option {
+// WithFriendlyName provides an option to search by a friendly name
+func WithFriendlyName(name string) Option {
 	return func(o Options) {
 		o[optionWithFriendlyName] = name
 	}
