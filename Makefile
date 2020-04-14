@@ -15,5 +15,8 @@ proto:
 	# iam protos
 	cd ./internal/iam && $(MAKE) proto
 
+	# db protos
+	cd ./internal/db && $(MAKE) proto
+
 
 .PHONY: proto
