@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-# Copied with minor changes from Makego at https://github.com/bufbuild/buf/blob/master/make/go/scripts/protoc_gen_plugin.bash
+# Copied with minor changes from Makego at https://github.com/bufbuild/makego/blob/master/make/go/scripts/protoc_gen_plugin.bash
 
 set -eo pipefail
 

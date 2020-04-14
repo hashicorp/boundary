@@ -17,4 +17,3 @@ message Ec2Catalog {
     google.protobuf.Timestamp created_time = 7;
     google.protobuf.Timestamp updated_time = 8;
 }
-

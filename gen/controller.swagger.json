@@ -18,7 +18,7 @@
   "paths": {
     "/v1/ec2_catalogs": {
       "get": {
-        "operationId": "ListEc2Catalogs",
+        "operationId": "ControllerService_ListEc2Catalogs",
         "responses": {
           "200": {
             "description": "A successful response.",
@@ -48,7 +48,7 @@
         ]
       },
       "post": {
-        "operationId": "CreateEc2Catalog",
+        "operationId": "ControllerService_CreateEc2Catalog",
         "responses": {
           "200": {
             "description": "",
@@ -80,7 +80,7 @@
     },
     "/v1/ec2_catalogs/{catalog.id}": {
       "patch": {
-        "operationId": "UpdateEc2Catalog",
+        "operationId": "ControllerService_UpdateEc2Catalog",
         "responses": {
           "200": {
             "description": "A successful response.",
@@ -119,7 +119,7 @@
     },
     "/v1/ec2_catalogs/{id}": {
       "get": {
-        "operationId": "GetEc2Catalog",
+        "operationId": "ControllerService_GetEc2Catalog",
         "responses": {
           "200": {
             "description": "",
@@ -148,7 +148,7 @@
         ]
       },
       "delete": {
-        "operationId": "DeleteEc2Catalog",
+        "operationId": "ControllerService_DeleteEc2Catalog",
         "responses": {
           "200": {
             "description": "A successful response.",
@@ -178,7 +178,7 @@
     },
     "/v1/ec2_catalogs/{id}:rotate": {
       "post": {
-        "operationId": "RotateEc2CatalogAccessKey",
+        "operationId": "ControllerService_RotateEc2CatalogAccessKey",
         "responses": {
           "200": {
             "description": "A successful response.",
