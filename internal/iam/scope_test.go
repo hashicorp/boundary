@@ -4,21 +4,22 @@ import (
 	"context"
 	"testing"
 
+	"github.com/hashicorp/watchtower/internal/db"
 	"gotest.tools/assert"
 )
 
 func Test_NewScope(t *testing.T) {
-	startTest()
+	db.StartTest()
 	t.Parallel()
-	cleanup, url := setup(t)
+	cleanup, url := db.SetupTest(t, "../db/migrations/postgres")
 	defer cleanup()
-	defer completeTest() // must come after the "defer cleanup()"
-	db, err := test_dbconn(url)
+	defer db.CompleteTest() // must come after the "defer cleanup()"
+	conn, err := db.TestConnection(url)
 	assert.NilError(t, err)
-	defer db.Close()
+	defer conn.Close()
 
 	t.Run("valid", func(t *testing.T) {
-		w := GormReadWriter{Tx: db}
+		w := db.GormReadWriter{Tx: conn}
 		u, err := NewUser(AsRootUser(true))
 		if err != nil {
 			t.Fatal(err)
@@ -38,17 +39,17 @@ func Test_NewScope(t *testing.T) {
 	})
 }
 func Test_ScopeWrite(t *testing.T) {
-	startTest()
+	db.StartTest()
 	t.Parallel()
-	cleanup, url := setup(t)
+	cleanup, url := db.SetupTest(t, "../db/migrations/postgres")
 	defer cleanup()
-	defer completeTest() // must come after the "defer cleanup()"
-	db, err := test_dbconn(url)
+	defer db.CompleteTest() // must come after the "defer cleanup()"
+	conn, err := db.TestConnection(url)
 	assert.NilError(t, err)
-	defer db.Close()
+	defer conn.Close()
 
 	t.Run("valid", func(t *testing.T) {
-		w := GormReadWriter{Tx: db}
+		w := db.GormReadWriter{Tx: conn}
 		u, err := NewUser(AsRootUser(true))
 		if err != nil {
 			t.Fatal(err)

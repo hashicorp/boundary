@@ -6,6 +6,7 @@ import (
 	"fmt"
 
 	"github.com/hashicorp/vault/sdk/helper/base62"
+	"github.com/hashicorp/watchtower/internal/db"
 	"github.com/hashicorp/watchtower/internal/iam/store"
 )
 
@@ -45,7 +46,7 @@ func NewScope(ownerId uint32, opt ...Option) (*Scope, error) {
 	}
 	return s, nil
 }
-func (s *Scope) Write(ctx context.Context, w Writer) error {
+func (s *Scope) Write(ctx context.Context, w db.Writer) error {
 	if w == nil {
 		return errors.New("error writer is nil for scope Write")
 	}
@@ -58,7 +59,7 @@ func (s *Scope) Write(ctx context.Context, w Writer) error {
 	return w.Create(ctx, s)
 }
 
-func (*Scope) GetOwner(ctx context.Context, r Reader) (*User, error) {
+func (*Scope) GetOwner(ctx context.Context, r db.Reader) (*User, error) {
 	return nil, nil
 }
 func (s *Scope) ResourceType() ResourceType { return ResourceTypeScope }
@@ -66,7 +67,7 @@ func (s *Scope) ResourceType() ResourceType { return ResourceTypeScope }
 func (*Scope) Actions() map[string]Action {
 	return StdActions()
 }
-func (s *Scope) GetPrimaryScope(ctx context.Context, r Reader) (*Scope, error) {
+func (s *Scope) GetPrimaryScope(ctx context.Context, r db.Reader) (*Scope, error) {
 	if r == nil {
 		return nil, errors.New("error db is nil for scope GetPrimaryScope")
 	}
@@ -79,7 +80,7 @@ func (s *Scope) GetPrimaryScope(ctx context.Context, r Reader) (*Scope, error) {
 	}
 	return &p, nil
 }
-func (s *Scope) GetAssignableScopes(ctx context.Context, r Reader) (map[string]*AssignableScope, error) {
+func (s *Scope) GetAssignableScopes(ctx context.Context, r db.Reader) (map[string]*AssignableScope, error) {
 	if r == nil {
 		return nil, errors.New("error db is nil for GetAssignableScopes")
 	}
