@@ -1,45 +1,48 @@
 syntax = "proto3";
 
-package watchtower;
+package controller.api.v1;
 
-option go_package = "github.com/hashicorp/watchtower/apipb;apipb";
+option go_package = "github.com/hashicorp/watchtower/gen/controller/api;api";
 
 import "protoc-gen-swagger/options/annotations.proto";
 import "google/api/annotations.proto";
-import "google/protobuf/empty.proto";
 import "google/protobuf/field_mask.proto";
-import "google/protobuf/timestamp.proto";
+import "controller/resource/v1/ec2catalog.proto";
 
 option (grpc.gateway.protoc_gen_swagger.options.openapiv2_swagger) = {
   info: {
-    title: "Watchtower Host Catalogs Controller"
+    title: "Controller API"
     version: "0.0.1"
-    description: "Watchtower API for managing host catalogs"
+    description: "Controller API for "
   }
   schemes: HTTPS
   schemes: HTTP
 };
 
-
-service Watchtower {
-  rpc GetEc2Catalog(GetEc2CatalogRequest) returns (Ec2Catalog) {
-    option (google.api.http) = {
-      get: "/v1/ec2_catalogs/{id}"
-    };
-    option (grpc.gateway.protoc_gen_swagger.options.openapiv2_operation) = {
-      responses: {
-        key: "default"
-        value: {
-          description: "The default error structure returned."
-          schema: {
-            json_schema: {
-              ref: ".watchtower.Error"
-            };
+// Controller Service contains methods for managing a Controller.
+service ControllerService {
+    // Retrieves an EC2Catalog using the provided id or friendly name.
+    rpc GetEc2Catalog(GetEc2CatalogRequest) returns (GetEc2CatalogResponse) {
+      option (google.api.http) = {
+        get: "/v1/ec2_catalogs/{id}"
+        response_body: "catalog"
+      };
+      option (grpc.gateway.protoc_gen_swagger.options.openapiv2_operation) = {
+        responses: {
+          key: "default"
+          value: {
+            description: "The default error structure returned."
+            schema: {
+              json_schema: {
+                ref: ".controller.api.Error"
+              };
+            }
           }
         }
-      }
-    };
-  }
+      };
+    }
+
+  // Lists the EC2Catalogs known to Watchtower.
   rpc ListEc2Catalogs(ListEc2CatalogsRequest) returns (ListEc2CatalogsResponse) {
     option (google.api.http) = {
       get: "/v1/ec2_catalogs"
@@ -51,13 +54,16 @@ service Watchtower {
           description: "The default error structure returned."
           schema: {
             json_schema: {
-              ref: ".watchtower.Error"
-            }
+              ref: ".controller.api.Error"
+            };
           }
         }
       }
     };
   }
+
+  // Creates an EC2Catalog.  Verification of the provided credentials and account/region mapping is done
+  // at the time this is called.  If this returns without an error the structure of the Catalog has been verified.
   rpc CreateEc2Catalog(CreateEc2CatalogRequest) returns (CreateEc2CatalogResponse) {
     option (google.api.http) = {
       post: "/v1/ec2_catalogs"
@@ -71,14 +77,15 @@ service Watchtower {
           description: "The default error structure returned."
           schema: {
             json_schema: {
-              ref: ".watchtower.Error"
-            }
+              ref: ".controller.api.Error"
+            };
           }
         }
       }
     };
   }
-  rpc UpdateEc2Catalog(UpdateEc2CatalogRequest) returns (Ec2Catalog) {
+
+  rpc UpdateEc2Catalog(UpdateEc2CatalogRequest) returns (UpdateEc2CatalogResponse) {
     option (google.api.http) = {
       patch: "/v1/ec2_catalogs/{catalog.id}"
       body: "catalog"
@@ -90,13 +97,14 @@ service Watchtower {
           description: "The default error structure returned."
           schema: {
             json_schema: {
-              ref: ".watchtower.Error"
-            }
+              ref: ".controller.api.Error"
+            };
           }
         }
       }
     };
   }
+
   rpc DeleteEc2Catalog(DeleteEc2CatalogRequest) returns (DeleteEc2CatalogResponse) {
     option (google.api.http) = {
       delete: "/v1/ec2_catalogs/{id}"
@@ -108,14 +116,15 @@ service Watchtower {
           description: "The default error structure returned."
           schema: {
             json_schema: {
-              ref: ".watchtower.Error"
-            }
+              ref: ".controller.api.Error"
+            };
           }
         }
       }
     };
   }
-  rpc RotateEc2CatalogAccessKey(RotateEc2CatalogAccessKeyRequest) returns (google.protobuf.Empty) {
+
+  rpc RotateEc2CatalogAccessKey(RotateEc2CatalogAccessKeyRequest) returns (RotateEc2CatalogAccessKeyResponse) {
     option (google.api.http) = {
       post: "/v1/ec2_catalogs/{id}:rotate"
       body: "*"
@@ -127,8 +136,8 @@ service Watchtower {
           description: "The default error structure returned."
           schema: {
             json_schema: {
-              ref: ".watchtower.Error"
-            }
+              ref: ".controller.api.Error"
+            };
           }
         }
       }
@@ -136,9 +145,14 @@ service Watchtower {
   }
 }
 
+
 message GetEc2CatalogRequest {
   // The id can be the system defined identifier or the friendly name.
   string id = 1;
+}
+
+message GetEc2CatalogResponse {
+    resource.v1.Ec2Catalog catalog = 1;
 }
 
 message ListEc2CatalogsRequest {
@@ -147,21 +161,33 @@ message ListEc2CatalogsRequest {
 }
 
 message ListEc2CatalogsResponse {
-  repeated Ec2Catalog items = 1;
+  repeated resource.v1.Ec2Catalog items = 1;
 }
 
 message CreateEc2CatalogRequest {
-  Ec2Catalog catalog = 1;
+    // The request to create an EC2Catalog.  The fields access_key, secret_key, and regions are required.
+    // The account_id is a value Watchtower looks up from AWS upon creation and should not be provided.  If rotate is
+    // set to true the provided access key will be rotated to ensure only Watchtower knows the AWS secret key.
+    resource.v1.Ec2Catalog catalog = 1;
 }
 
 message CreateEc2CatalogResponse {
   string id = 1;
-  Ec2Catalog catalog = 2;
+  resource.v1.Ec2Catalog catalog = 2;
 }
 
 message UpdateEc2CatalogRequest {
-  Ec2Catalog catalog = 1;
+  // Allows an existing EC2Catalog to be updated.  The field rotate=true requires access_key and secret_key to also be
+  // set.  The only stored fields that can be updated with this call are the regions list and
+  // the access_key and secret_key.
+  // When a new access_key and secret_key are provided, a lookup will happen to verify they are for the same aws account
+  // as the previously provided credentials.  If not an error will be returned.
+  resource.v1.Ec2Catalog catalog = 1;
   google.protobuf.FieldMask update_mask = 2;
+}
+
+message UpdateEc2CatalogResponse {
+    resource.v1.Ec2Catalog catalog = 1;
 }
 
 message DeleteEc2CatalogRequest {
@@ -176,26 +202,4 @@ message RotateEc2CatalogAccessKeyRequest {
   string id = 1;
 }
 
-message Ec2Catalog {
-  string id = 1;
-  string friendly_name = 2;
-  string access_key = 3;
-  string secret_key = 4;
-  repeated string regions = 5;
-  bool rotate = 6;
-  google.protobuf.Timestamp created_time = 7;
-  google.protobuf.Timestamp updated_time = 8;
-}
-
-message ErrorDetails {
-  string TraceId = 1;
-  string request_id = 2;
-  repeated string request_fields = 3;
-}
-
-message Error {
-  int32 status = 1;
-  string code = 2;
-  string message = 3;
-  ErrorDetails details = 4;
-}
+message RotateEc2CatalogAccessKeyResponse {}
