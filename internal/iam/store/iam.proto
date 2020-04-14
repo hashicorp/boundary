@@ -22,11 +22,11 @@ message Scope {
   uint32 id = 1;
 
   // create_time from the RDBMS
-  // @inject_tag: `gorm:"default:not null"`
+  // @inject_tag: `gorm:"default:current_timestamp"`
   Timestamp create_time = 2;
 
   // update_time from the RDBMS
-  // @inject_tag: `gorm:"default:not null"`
+  // @inject_tag: `gorm:"default:current_timestamp"`
   Timestamp update_time = 3;
 
   // public_id is the used to access the Scope via an API
@@ -34,6 +34,7 @@ message Scope {
 
   // FriendlyName is the optional friendly name used to
   // access the Scope via an API
+  // @inject_tag: `gorm:"default:null"`
   string friendly_name = 5;
 
   // Type of scope
@@ -57,11 +58,11 @@ message AssignableScope {
   uint32 id = 1;
 
   // create_time from the RDBMS
-  // @inject_tag: `gorm:"default:not null"`
+  // @inject_tag: `gorm:"default:CURRENT_TIMESTAMP"`
   Timestamp create_time = 2;
 
   // update_time from the RDBMS
-  // @inject_tag: `gorm:"default:not null"`
+  // @inject_tag: `gorm:"default:CURRENT_TIMESTAMP"`
   Timestamp update_time = 3;
 
   // public_id is the used to access the AssignablScope via an API
@@ -69,6 +70,7 @@ message AssignableScope {
 
   // FriendlyName is the optional friendly name used to
   // access the Scope via an API
+  // @inject_tag: `gorm:"default:null"`
   string friendly_name = 5;
 
   // scope id of the PrimaryScope
@@ -90,11 +92,11 @@ message User {
   uint32 id = 2;
 
   // create_time from the RDBMS
-  // @inject_tag: `gorm:"default:not null"`
+  // @inject_tag: `gorm:"default:current_timestamp"`
   Timestamp create_time = 3;
 
   // update_time from the RDBMS
-  // @inject_tag: `gorm:"default:not null"`
+  // @inject_tag: `gorm:"default:current_timestamp"`
   Timestamp update_time = 4;
 
   // public_id is used to access the User via an API
@@ -102,6 +104,7 @@ message User {
 
   // FriendlyName is the optional friendly name used to
   // access the User via an API
+  // @inject_tag: `gorm:"default:null"`
   string friendly_name = 6;
 
   string name = 7;

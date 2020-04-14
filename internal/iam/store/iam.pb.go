@@ -133,16 +133,17 @@ type Scope struct {
 	// @inject_tag: gorm:"primary_key"
 	Id uint32 `protobuf:"varint,1,opt,name=id,proto3" json:"id,omitempty" gorm:"primary_key"`
 	// create_time from the RDBMS
-	// @inject_tag: `gorm:"default:not null"`
-	CreateTime *Timestamp `protobuf:"bytes,2,opt,name=create_time,json=createTime,proto3" json:"create_time,omitempty" gorm:"default:not null"`
+	// @inject_tag: `gorm:"default:current_timestamp"`
+	CreateTime *Timestamp `protobuf:"bytes,2,opt,name=create_time,json=createTime,proto3" json:"create_time,omitempty" gorm:"default:current_timestamp"`
 	// update_time from the RDBMS
-	// @inject_tag: `gorm:"default:not null"`
-	UpdateTime *Timestamp `protobuf:"bytes,3,opt,name=update_time,json=updateTime,proto3" json:"update_time,omitempty" gorm:"default:not null"`
+	// @inject_tag: `gorm:"default:current_timestamp"`
+	UpdateTime *Timestamp `protobuf:"bytes,3,opt,name=update_time,json=updateTime,proto3" json:"update_time,omitempty" gorm:"default:current_timestamp"`
 	// public_id is the used to access the Scope via an API
 	PublicId string `protobuf:"bytes,4,opt,name=public_id,json=publicId,proto3" json:"public_id,omitempty"`
 	// FriendlyName is the optional friendly name used to
 	// access the Scope via an API
-	FriendlyName string `protobuf:"bytes,5,opt,name=friendly_name,json=friendlyName,proto3" json:"friendly_name,omitempty"`
+	// @inject_tag: `gorm:"default:null"`
+	FriendlyName string `protobuf:"bytes,5,opt,name=friendly_name,json=friendlyName,proto3" json:"friendly_name,omitempty" gorm:"default:null"`
 	// Type of scope
 	Type Scope_Type `protobuf:"varint,6,opt,name=type,proto3,enum=hashicorp.watchtower.controller.iam.store.v1.Scope_Type" json:"type,omitempty"`
 	// parent_id is the id (primary key in the Scope aggregate) of scope's parent
@@ -259,16 +260,17 @@ type AssignableScope struct {
 	// @inject_tag: gorm:"primary_key"
 	Id uint32 `protobuf:"varint,1,opt,name=id,proto3" json:"id,omitempty" gorm:"primary_key"`
 	// create_time from the RDBMS
-	// @inject_tag: `gorm:"default:not null"`
-	CreateTime *Timestamp `protobuf:"bytes,2,opt,name=create_time,json=createTime,proto3" json:"create_time,omitempty" gorm:"default:not null"`
+	// @inject_tag: `gorm:"default:CURRENT_TIMESTAMP"`
+	CreateTime *Timestamp `protobuf:"bytes,2,opt,name=create_time,json=createTime,proto3" json:"create_time,omitempty" gorm:"default:CURRENT_TIMESTAMP"`
 	// update_time from the RDBMS
-	// @inject_tag: `gorm:"default:not null"`
-	UpdateTime *Timestamp `protobuf:"bytes,3,opt,name=update_time,json=updateTime,proto3" json:"update_time,omitempty" gorm:"default:not null"`
+	// @inject_tag: `gorm:"default:CURRENT_TIMESTAMP"`
+	UpdateTime *Timestamp `protobuf:"bytes,3,opt,name=update_time,json=updateTime,proto3" json:"update_time,omitempty" gorm:"default:CURRENT_TIMESTAMP"`
 	// public_id is the used to access the AssignablScope via an API
 	PublicId string `protobuf:"bytes,4,opt,name=public_id,json=publicId,proto3" json:"public_id,omitempty"`
 	// FriendlyName is the optional friendly name used to
 	// access the Scope via an API
-	FriendlyName string `protobuf:"bytes,5,opt,name=friendly_name,json=friendlyName,proto3" json:"friendly_name,omitempty"`
+	// @inject_tag: `gorm:"default:null"`
+	FriendlyName string `protobuf:"bytes,5,opt,name=friendly_name,json=friendlyName,proto3" json:"friendly_name,omitempty" gorm:"default:null"`
 	// scope id of the PrimaryScope
 	PrimaryScopeId uint32 `protobuf:"varint,6,opt,name=primary_scope_id,json=primaryScopeId,proto3" json:"primary_scope_id,omitempty"`
 	// @inject_tag: gorm:"foreignkey:ScopeId"
@@ -384,16 +386,17 @@ type User struct {
 	// @inject_tag: gorm:"primary_key"
 	Id uint32 `protobuf:"varint,2,opt,name=id,proto3" json:"id,omitempty" gorm:"primary_key"`
 	// create_time from the RDBMS
-	// @inject_tag: `gorm:"default:not null"`
-	CreateTime *Timestamp `protobuf:"bytes,3,opt,name=create_time,json=createTime,proto3" json:"create_time,omitempty" gorm:"default:not null"`
+	// @inject_tag: `gorm:"default:current_timestamp"`
+	CreateTime *Timestamp `protobuf:"bytes,3,opt,name=create_time,json=createTime,proto3" json:"create_time,omitempty" gorm:"default:current_timestamp"`
 	// update_time from the RDBMS
-	// @inject_tag: `gorm:"default:not null"`
-	UpdateTime *Timestamp `protobuf:"bytes,4,opt,name=update_time,json=updateTime,proto3" json:"update_time,omitempty" gorm:"default:not null"`
+	// @inject_tag: `gorm:"default:current_timestamp"`
+	UpdateTime *Timestamp `protobuf:"bytes,4,opt,name=update_time,json=updateTime,proto3" json:"update_time,omitempty" gorm:"default:current_timestamp"`
 	// public_id is used to access the User via an API
 	PublicId string `protobuf:"bytes,5,opt,name=public_id,json=publicId,proto3" json:"public_id,omitempty"`
 	// FriendlyName is the optional friendly name used to
 	// access the User via an API
-	FriendlyName string `protobuf:"bytes,6,opt,name=friendly_name,json=friendlyName,proto3" json:"friendly_name,omitempty"`
+	// @inject_tag: `gorm:"default:null"`
+	FriendlyName string `protobuf:"bytes,6,opt,name=friendly_name,json=friendlyName,proto3" json:"friendly_name,omitempty" gorm:"default:null"`
 	Name         string `protobuf:"bytes,7,opt,name=name,proto3" json:"name,omitempty"`
 	// primary scope id of the PrimaryScope
 	// @inject_tag: `gorm:"default:null"`
