@@ -10,7 +10,7 @@ require (
 	github.com/ghodss/yaml v1.0.1-0.20190212211648-25d852aebe32
 	github.com/golang-migrate/migrate/v4 v4.9.1
 	github.com/golang/protobuf v1.4.0
-	github.com/grpc-ecosystem/grpc-gateway v1.9.5
+	github.com/grpc-ecosystem/grpc-gateway v1.14.4-rc.1
 	github.com/hashicorp/errwrap v1.0.0
 	github.com/hashicorp/go-alpnmux v0.0.0-20200323180452-dee08f00df54
 	github.com/hashicorp/go-hclog v0.12.2

@@ -34,7 +34,7 @@ type TestUser struct {
 	unknownFields protoimpl.UnknownFields
 
 	// @inject_tag: gorm:"primary_key"
-	Id          uint32 `protobuf:"varint,1,opt,name=id,proto3" json:"id,omitempty"`
+	Id          uint32 `protobuf:"varint,1,opt,name=id,proto3" json:"id,omitempty" gorm:"primary_key"`
 	Name        string `protobuf:"bytes,4,opt,name=name,proto3" json:"name,omitempty"`
 	PhoneNumber string `protobuf:"bytes,5,opt,name=phone_number,json=phoneNumber,proto3" json:"phone_number,omitempty"`
 	Email       string `protobuf:"bytes,6,opt,name=email,proto3" json:"email,omitempty"`
@@ -107,7 +107,7 @@ type TestCar struct {
 	unknownFields protoimpl.UnknownFields
 
 	// @inject_tag: gorm:"primary_key"
-	Id    uint32 `protobuf:"varint,1,opt,name=id,proto3" json:"id,omitempty"`
+	Id    uint32 `protobuf:"varint,1,opt,name=id,proto3" json:"id,omitempty" gorm:"primary_key"`
 	Model string `protobuf:"bytes,4,opt,name=model,proto3" json:"model,omitempty"`
 	Mpg   int32  `protobuf:"varint,5,opt,name=mpg,proto3" json:"mpg,omitempty"`
 }

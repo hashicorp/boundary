@@ -87,18 +87,18 @@ type Entry struct {
 	unknownFields protoimpl.UnknownFields
 
 	// @inject_tag: gorm:"primary_key"
-	Id uint32 `protobuf:"varint,1,opt,name=id,proto3" json:"id,omitempty"`
+	Id uint32 `protobuf:"varint,1,opt,name=id,proto3" json:"id,omitempty" gorm:"primary_key"`
 	// @inject_tag: gorm:"not_null;type:TIMESTAMP"
-	CreateTime *Timestamp `protobuf:"bytes,2,opt,name=create_time,json=createTime,proto3" json:"create_time,omitempty"`
+	CreateTime *Timestamp `protobuf:"bytes,2,opt,name=create_time,json=createTime,proto3" json:"create_time,omitempty" gorm:"not_null;type:TIMESTAMP"`
 	// @inject_tag: gorm:"not_null;type:TIMESTAMP"
-	UpdateTime *Timestamp `protobuf:"bytes,3,opt,name=update_time,json=updateTime,proto3" json:"update_time,omitempty"`
+	UpdateTime *Timestamp `protobuf:"bytes,3,opt,name=update_time,json=updateTime,proto3" json:"update_time,omitempty" gorm:"not_null;type:TIMESTAMP"`
 	// @inject_tag: gorm:"not_null"
-	Version string `protobuf:"bytes,4,opt,name=version,proto3" json:"version,omitempty"`
+	Version string `protobuf:"bytes,4,opt,name=version,proto3" json:"version,omitempty" gorm:"not_null"`
 	// @inject_tat: gorm:"not_null"
 	AggregateName string `protobuf:"bytes,5,opt,name=aggregate_name,json=aggregateName,proto3" json:"aggregate_name,omitempty"`
 	// one to many relationship
 	// @inject_tag: gorm:"foreignkey:entry_id"
-	Metadata []*Metadata `protobuf:"bytes,6,rep,name=metadata,proto3" json:"metadata,omitempty"`
+	Metadata []*Metadata `protobuf:"bytes,6,rep,name=metadata,proto3" json:"metadata,omitempty" gorm:"foreignkey:entry_id"`
 	// @inject_tat: gorm:"not_null"
 	Data []byte `protobuf:"bytes,7,opt,name=data,proto3" json:"data,omitempty"`
 }
@@ -191,16 +191,16 @@ type Metadata struct {
 	unknownFields protoimpl.UnknownFields
 
 	// @inject_tag: gorm:"primary_key"
-	Id uint32 `protobuf:"varint,1,opt,name=id,proto3" json:"id,omitempty"`
+	Id uint32 `protobuf:"varint,1,opt,name=id,proto3" json:"id,omitempty" gorm:"primary_key"`
 	// @inject_tag: gorm:"not_null;type:TIMESTAMP"
-	CreateTime *Timestamp `protobuf:"bytes,2,opt,name=create_time,json=createTime,proto3" json:"create_time,omitempty"` // @inject_tag: gorm:"not_nul
+	CreateTime *Timestamp `protobuf:"bytes,2,opt,name=create_time,json=createTime,proto3" json:"create_time,omitempty" gorm:"not_null;type:TIMESTAMP"` // @inject_tag: gorm:"not_nul
 	EntryId    uint32     `protobuf:"varint,3,opt,name=entry_id,json=entryId,proto3" json:"entry_id,omitempty"`
 	// @inject_tag: gorm:"foreignkey:EntryId"
-	Entry *Entry `protobuf:"bytes,4,opt,name=entry,proto3" json:"entry,omitempty"`
+	Entry *Entry `protobuf:"bytes,4,opt,name=entry,proto3" json:"entry,omitempty" gorm:"foreignkey:EntryId"`
 	// @inject_tag: gorm:"not_null"
-	Key string `protobuf:"bytes,5,opt,name=key,proto3" json:"key,omitempty"`
+	Key string `protobuf:"bytes,5,opt,name=key,proto3" json:"key,omitempty" gorm:"not_null"`
 	// @inject_tag: gorm:"not_null"
-	Value string `protobuf:"bytes,6,opt,name=value,proto3" json:"value,omitempty"`
+	Value string `protobuf:"bytes,6,opt,name=value,proto3" json:"value,omitempty" gorm:"not_null"`
 }
 
 func (x *Metadata) Reset() {
@@ -284,11 +284,11 @@ type Ticket struct {
 	unknownFields protoimpl.UnknownFields
 
 	// @inject_tag: gorm:"primary_key"
-	Id uint32 `protobuf:"varint,1,opt,name=id,proto3" json:"id,omitempty"`
+	Id uint32 `protobuf:"varint,1,opt,name=id,proto3" json:"id,omitempty" gorm:"primary_key"`
 	// @inject_tag: gorm:"not_null;type:TIMESTAMP"
-	CreateTime *Timestamp `protobuf:"bytes,2,opt,name=create_time,json=createTime,proto3" json:"create_time,omitempty"`
+	CreateTime *Timestamp `protobuf:"bytes,2,opt,name=create_time,json=createTime,proto3" json:"create_time,omitempty" gorm:"not_null;type:TIMESTAMP"`
 	// @inject_tag: gorm:"not_null;type:TIMESTAMP"
-	UpdateTime *Timestamp `protobuf:"bytes,3,opt,name=update_time,json=updateTime,proto3" json:"update_time,omitempty"`
+	UpdateTime *Timestamp `protobuf:"bytes,3,opt,name=update_time,json=updateTime,proto3" json:"update_time,omitempty" gorm:"not_null;type:TIMESTAMP"`
 	// @inject_tat: gorm:"not_null"
 	Name string `protobuf:"bytes,6,opt,name=name,proto3" json:"name,omitempty"`
 	// @inject_tat: gorm:"not_null;default:'1'"
