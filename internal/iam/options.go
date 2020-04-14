@@ -23,6 +23,24 @@ func getDefaultOptions() Options {
 	}
 }
 
+const optionWithOplog = "optionWithOplog"
+
+// WithCommit provides an option to commit the transaction
+func WithOplog(commitTx bool) Option {
+	return func(o Options) {
+		o[optionWithCommit] = commitTx
+	}
+}
+
+const optionWithCommit = "optionWithCommit"
+
+// WithCommit provides an option to commit the transaction
+func WithCommit(commitTx bool) Option {
+	return func(o Options) {
+		o[optionWithCommit] = commitTx
+	}
+}
+
 const optionWithOwnerId = "optionWithOwnerId"
 
 // WithOwnerId provides an optional owner id
