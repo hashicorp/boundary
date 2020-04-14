@@ -88,6 +88,7 @@ func (x *ErrorDetails) GetRequestFields() []string {
 	return nil
 }
 
+// Error is returned by the JSON API when an error occurs.
 type Error struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache

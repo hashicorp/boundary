@@ -98,6 +98,7 @@
         "parameters": [
           {
             "name": "catalog.id",
+            "description": "A system defined identifier unique to this resource.  This field is present in all EC2Catalogs.",
             "in": "path",
             "required": true,
             "type": "string"
@@ -299,13 +300,16 @@
       "type": "object",
       "properties": {
         "id": {
-          "type": "string"
+          "type": "string",
+          "description": "A system defined identifier unique to this resource.  This field is present in all EC2Catalogs."
         },
         "friendly_name": {
-          "type": "string"
+          "type": "string",
+          "description": "An optional field containing a user defined friendly name for this EC2Catalog."
         },
         "access_key": {
-          "type": "string"
+          "type": "string",
+          "description": "The access key used for authenticating with AWS when retrieving EC2 instance details."
         },
         "secret_key": {
           "type": "string"
@@ -314,21 +318,26 @@
           "type": "array",
           "items": {
             "type": "string"
-          }
+          },
+          "description": "The AWS regions from which this catalog will retrieve the EC2 instances."
         },
         "rotate": {
           "type": "boolean",
-          "format": "boolean"
+          "format": "boolean",
+          "description": "Rotate instructs this service to rotate the credentials.\nThis field can only be set when access_key and secret_key are also set."
         },
         "created_time": {
           "type": "string",
-          "format": "date-time"
+          "format": "date-time",
+          "description": "The time this catalog was created."
         },
         "updated_time": {
           "type": "string",
-          "format": "date-time"
+          "format": "date-time",
+          "description": "The time this catalog was last updated."
         }
-      }
+      },
+      "description": "An EC2Catalog is a host catalog that pulls information from AWS."
     },
     "v1GetEc2CatalogResponse": {
       "type": "object",
