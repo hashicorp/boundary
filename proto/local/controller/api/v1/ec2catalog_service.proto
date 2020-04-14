@@ -7,7 +7,7 @@ option go_package = "github.com/hashicorp/watchtower/gen/controller/api;api";
 import "protoc-gen-swagger/options/annotations.proto";
 import "google/api/annotations.proto";
 import "google/protobuf/field_mask.proto";
-import "controller/resource/v1/ec2catalog.proto";
+import "controller/api/resource/v1/ec2catalog.proto";
 
 option (grpc.gateway.protoc_gen_swagger.options.openapiv2_swagger) = {
   info: {
@@ -152,7 +152,7 @@ message GetEc2CatalogRequest {
 }
 
 message GetEc2CatalogResponse {
-    resource.v1.Ec2Catalog catalog = 1;
+    api.resource.v1.Ec2Catalog catalog = 1;
 }
 
 message ListEc2CatalogsRequest {
@@ -161,19 +161,19 @@ message ListEc2CatalogsRequest {
 }
 
 message ListEc2CatalogsResponse {
-  repeated resource.v1.Ec2Catalog items = 1;
+  repeated api.resource.v1.Ec2Catalog items = 1;
 }
 
 message CreateEc2CatalogRequest {
     // The request to create an EC2Catalog.  The fields access_key, secret_key, and regions are required.
     // The account_id is a value Watchtower looks up from AWS upon creation and should not be provided.  If rotate is
     // set to true the provided access key will be rotated to ensure only Watchtower knows the AWS secret key.
-    resource.v1.Ec2Catalog catalog = 1;
+    api.resource.v1.Ec2Catalog catalog = 1;
 }
 
 message CreateEc2CatalogResponse {
   string id = 1;
-  resource.v1.Ec2Catalog catalog = 2;
+  api.resource.v1.Ec2Catalog catalog = 2;
 }
 
 message UpdateEc2CatalogRequest {
@@ -182,12 +182,12 @@ message UpdateEc2CatalogRequest {
   // the access_key and secret_key.
   // When a new access_key and secret_key are provided, a lookup will happen to verify they are for the same aws account
   // as the previously provided credentials.  If not an error will be returned.
-  resource.v1.Ec2Catalog catalog = 1;
+  api.resource.v1.Ec2Catalog catalog = 1;
   google.protobuf.FieldMask update_mask = 2;
 }
 
 message UpdateEc2CatalogResponse {
-    resource.v1.Ec2Catalog catalog = 1;
+    api.resource.v1.Ec2Catalog catalog = 1;
 }
 
 message DeleteEc2CatalogRequest {
