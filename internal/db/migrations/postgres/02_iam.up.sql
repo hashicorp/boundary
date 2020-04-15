@@ -25,16 +25,7 @@ CREATE TABLE if not exists iam_scope (
   friendly_name text UNIQUE,
   type int NOT NULL,
   parent_id bigint REFERENCES iam_scope(id),
-  owner_id bigint NOT NULL
-);
-CREATE TABLE if not exists iam_assignable_scope (
-  id bigint generated always as identity primary key,
-  create_time timestamp with time zone default current_timestamp,
-  update_time timestamp with time zone default current_timestamp,
-  public_id text not null UNIQUE,
-  friendly_name text UNIQUE,
-  primary_scope_id bigint NOT NULL REFERENCES iam_scope(id),
-  iam_assignable_scope bigint NOT NULL REFERENCES iam_scope(id)
+  owner_id bigint
 );
 CREATE TABLE if not exists iam_user (
   id bigint generated always as identity primary key,
@@ -43,9 +34,6 @@ CREATE TABLE if not exists iam_user (
   public_id text not null UNIQUE,
   friendly_name text UNIQUE,
   name text NOT NULL,
-  primary_scope_id bigint REFERENCES iam_scope(id),
+  primary_scope_id bigint NOT NULL REFERENCES iam_scope(id),
   owner_id bigint REFERENCES iam_user(id)
 );
-ALTER TABLE iam_scope
-ADD
-  CONSTRAINT iam_scope_owner_id_fk FOREIGN KEY (owner_id) REFERENCES iam_user(id) ON DELETE CASCADE ON UPDATE CASCADE;
