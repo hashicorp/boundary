@@ -16,13 +16,13 @@ import (
 
 type Reader interface {
 	// LookupByFriendlyName will lookup resource my its friendly_name which must be unique
-	LookupByFriendlyName(ctx context.Context, resource interface{}, friendlyName string, opt ...Option) error
+	LookupByFriendlyName(ctx context.Context, resource ResourceWithFriendlyName, opt ...Option) error
 
 	// LookupByPublicId will lookup resource my its public_id which must be unique
-	LookupByPublicId(ctx context.Context, resource interface{}, publicId string, opt ...Option) error
+	LookupByPublicId(ctx context.Context, resource ResourceWithPublicId, opt ...Option) error
 
-	// LookupByInternalId will lookup resource my its internal id which must be unique
-	LookupByInternalId(ctx context.Context, resource interface{}, internalId uint32, opt ...Option) error
+	// LookupById will lookup resource my its internal id which must be unique
+	LookupById(ctx context.Context, resource ResourceWithId, opt ...Option) error
 
 	// LookupBy will lookup the first resource using a where clause with parameters (it only returns the first one)
 	LookupBy(ctx context.Context, resource interface{}, where string, args ...interface{}) error
@@ -54,7 +54,23 @@ type Writer interface {
 	Dialect() (string, error)
 }
 
-type VetForWrite interface {
+// ResourceWithPublicId defines an interface that LookupByPublicId() can use to get the resource's public id
+type ResourceWithPublicId interface {
+	GetPublicId() string
+}
+
+// ResourceWithFriendlyName defines an interface that LookupByFriendlyName() can use to get the resource's friendly name
+type ResourceWithFriendlyName interface {
+	GetFriendlyName() string
+}
+
+// ResourceWithId defines an interface that LookupById() can use to get the resource's internal id
+type ResourceWithId interface {
+	GetId() uint32
+}
+
+// VetForWriter provides an interface that Create and Update can use to vet the resource before sending it to the db
+type VetForWriter interface {
 	VetForWrite() error
 }
 
@@ -115,7 +131,7 @@ func (rw *GormReadWriter) Create(ctx context.Context, i interface{}, opt ...Opti
 	if i == nil {
 		return errors.New("create interface is nil")
 	}
-	if vetter, ok := i.(VetForWrite); ok {
+	if vetter, ok := i.(VetForWriter); ok {
 		if err := vetter.VetForWrite(); err != nil {
 			return fmt.Errorf("error on Create %w", err)
 		}
@@ -177,7 +193,7 @@ func (rw *GormReadWriter) Create(ctx context.Context, i interface{}, opt ...Opti
 }
 
 // Update an object in the db, if there's a fieldMask then only the field_mask.proto paths are updated, otherwise
-// it will send every field to the DB.
+// it will send every field to the DB.  Update supports embedding a struct (or structPtr) one level deep for updating
 func (w *GormReadWriter) Update(i interface{}, fieldMaskPaths []string, opt ...Option) error {
 	if w.Tx == nil {
 		return errors.New("update Tx is nil")
@@ -192,7 +208,7 @@ func (w *GormReadWriter) Update(i interface{}, fieldMaskPaths []string, opt ...O
 	if i == nil {
 		return errors.New("update interface is nil")
 	}
-	if vetter, ok := i.(VetForWrite); ok {
+	if vetter, ok := i.(VetForWriter); ok {
 		if err := vetter.VetForWrite(); err != nil {
 			return fmt.Errorf("error on Create %w", err)
 		}
@@ -246,7 +262,7 @@ func (w *GormReadWriter) Update(i interface{}, fieldMaskPaths []string, opt ...O
 }
 
 // LookupByFriendlyName will lookup resource my its friendly_name which must be unique
-func (rw *GormReadWriter) LookupByFriendlyName(ctx context.Context, resource interface{}, friendlyName string, opt ...Option) error {
+func (rw *GormReadWriter) LookupByFriendlyName(ctx context.Context, resource ResourceWithFriendlyName, opt ...Option) error {
 	if rw.Tx == nil {
 		return errors.New("error db nil for LookupByFriendlyName")
 	}
@@ -259,14 +275,14 @@ func (rw *GormReadWriter) LookupByFriendlyName(ctx context.Context, resource int
 	if reflect.ValueOf(resource).Kind() != reflect.Ptr {
 		return errors.New("error interface parameter must to be a pointer for LookupByFriendlyName")
 	}
-	if friendlyName == "" {
+	if resource.GetFriendlyName() == "" {
 		return errors.New("error friendlyName empty string for LookupByFriendlyName")
 	}
-	return rw.Tx.Where("friendly_name = ?", friendlyName).First(resource).Error
+	return rw.Tx.Where("friendly_name = ?", resource.GetFriendlyName()).First(resource).Error
 }
 
 // LookupByPublicId will lookup resource my its public_id which must be unique
-func (rw *GormReadWriter) LookupByPublicId(ctx context.Context, resource interface{}, publicId string, opt ...Option) error {
+func (rw *GormReadWriter) LookupByPublicId(ctx context.Context, resource ResourceWithPublicId, opt ...Option) error {
 	if rw.Tx == nil {
 		return errors.New("error db nil for LookupByPublicId")
 	}
@@ -279,14 +295,14 @@ func (rw *GormReadWriter) LookupByPublicId(ctx context.Context, resource interfa
 	if reflect.ValueOf(resource).Kind() != reflect.Ptr {
 		return errors.New("error interface parameter must to be a pointer for LookupByPublicId")
 	}
-	if publicId == "" {
+	if resource.GetPublicId() == "" {
 		return errors.New("error publicId empty string for LookupByPublicId")
 	}
-	return rw.Tx.Where("public_id = ?", publicId).First(resource).Error
+	return rw.Tx.Where("public_id = ?", resource.GetPublicId()).First(resource).Error
 }
 
-// LookupByInternalId will lookup resource my its internal id which must be unique
-func (rw *GormReadWriter) LookupByInternalId(ctx context.Context, resource interface{}, internalId uint32, opt ...Option) error {
+// LookupById will lookup resource my its internal id which must be unique
+func (rw *GormReadWriter) LookupById(ctx context.Context, resource ResourceWithId, opt ...Option) error {
 	if rw.Tx == nil {
 		return errors.New("error db nil for LookupByInternalId")
 	}
@@ -299,10 +315,10 @@ func (rw *GormReadWriter) LookupByInternalId(ctx context.Context, resource inter
 	if reflect.ValueOf(resource).Kind() != reflect.Ptr {
 		return errors.New("error interface parameter must to be a pointer for LookupByInternalId")
 	}
-	if internalId == 0 {
+	if resource.GetId() == 0 {
 		return errors.New("error internalId is 0 for LookupByInternalId")
 	}
-	return rw.Tx.Where("id = ?", internalId).First(resource).Error
+	return rw.Tx.Where("id = ?", resource.GetId()).First(resource).Error
 }
 
 // LookupBy will lookup the first resource using a where clause with parameters (it only returns the first one)
