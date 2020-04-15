@@ -32,7 +32,8 @@ func Test_Create(t *testing.T) {
 		assert.Check(t, user.Id != 0)
 
 		var foundUser db_test.TestUser
-		err = w.LookupByInternalId(context.Background(), &foundUser, user.Id)
+		foundUser.Id = user.Id
+		err = w.LookupById(context.Background(), &foundUser)
 		assert.NilError(t, err)
 		assert.Equal(t, user.Id, foundUser.Id)
 	})
@@ -58,7 +59,8 @@ func Test_Create(t *testing.T) {
 		assert.Check(t, user.Id != 0)
 
 		var foundUser db_test.TestUser
-		err = w.LookupByInternalId(context.Background(), &foundUser, user.Id)
+		foundUser.Id = user.Id
+		err = w.LookupById(context.Background(), &foundUser)
 		assert.NilError(t, err)
 		assert.Equal(t, user.Id, foundUser.Id)
 	})
@@ -86,7 +88,8 @@ func Test_LookupByInternalId(t *testing.T) {
 		assert.Check(t, user.Id != 0)
 
 		var foundUser db_test.TestUser
-		err = w.LookupByInternalId(context.Background(), &foundUser, user.Id)
+		foundUser.Id = user.Id
+		err = w.LookupById(context.Background(), &foundUser)
 		assert.NilError(t, err)
 		assert.Equal(t, user.Id, foundUser.Id)
 	})
@@ -115,7 +118,8 @@ func Test_LookupByFriendlyName(t *testing.T) {
 		assert.Check(t, user.Id != 0)
 
 		var foundUser db_test.TestUser
-		err = w.LookupByFriendlyName(context.Background(), &foundUser, "fn-"+id)
+		foundUser.FriendlyName = "fn-" + id
+		err = w.LookupByFriendlyName(context.Background(), &foundUser)
 		assert.NilError(t, err)
 		assert.Equal(t, user.Id, foundUser.Id)
 	})
@@ -144,7 +148,8 @@ func Test_LookupByPublicId(t *testing.T) {
 		assert.Check(t, user.PublicId != "")
 
 		var foundUser db_test.TestUser
-		err = w.LookupByPublicId(context.Background(), &foundUser, user.PublicId)
+		foundUser.PublicId = user.PublicId
+		err = w.LookupByPublicId(context.Background(), &foundUser)
 		assert.NilError(t, err)
 		assert.Equal(t, user.Id, foundUser.Id)
 	})
