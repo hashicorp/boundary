@@ -46,19 +46,17 @@ func NewScope(ownerId uint32, opt ...Option) (*Scope, error) {
 	}
 	return s, nil
 }
-func (s *Scope) Write(ctx context.Context, w db.Writer) error {
-	if w == nil {
-		return errors.New("error writer is nil for scope Write")
-	}
+
+// VetForWrite implements db.VetForWrite() interface
+func (s *Scope) VetForWrite() error {
 	if s.PublicId == "" {
 		return errors.New("error public id is empty string for scope Write")
 	}
 	if s.OwnerId == 0 {
 		return errors.New("error owner id is 0 for scope Write")
 	}
-	return w.Create(ctx, s)
+	return nil
 }
-
 func (*Scope) GetOwner(ctx context.Context, r db.Reader) (*User, error) {
 	return nil, nil
 }

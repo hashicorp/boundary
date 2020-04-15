@@ -24,7 +24,7 @@ func Test_NewScope(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		u.Write(context.Background(), &w)
+		w.Create(context.Background(), u)
 		assert.Check(t, u.Id != 0)
 
 		s, err := NewScope(u.Id)
@@ -54,7 +54,7 @@ func Test_ScopeWrite(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		u.Write(context.Background(), &w)
+		w.Create(context.Background(), u)
 		assert.Check(t, u.Id != 0)
 
 		s, err := NewScope(u.Id)
@@ -62,7 +62,7 @@ func Test_ScopeWrite(t *testing.T) {
 		assert.Check(t, s.Scope != nil)
 		assert.Equal(t, s.Scope.OwnerId, u.Id)
 
-		err = s.Write(context.Background(), &w)
+		err = w.Create(context.Background(), s)
 		assert.NilError(t, err)
 	})
 
