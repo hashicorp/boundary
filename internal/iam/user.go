@@ -100,20 +100,7 @@ func (u *User) GetPrimaryScope(ctx context.Context, r db.Reader) (*Scope, error)
 	}
 	return &p, nil
 }
-func (u *User) GetAssignableScopes(ctx context.Context, r db.Reader) (map[string]*AssignableScope, error) {
-	if r == nil {
-		return nil, errors.New("error db is nil for AssignableScopes for User")
-	}
-	as := []*AssignableScope{}
-	if err := r.SearchBy(ctx, as, "primary_scope_id = ?", u.Id); err != nil {
-		return nil, fmt.Errorf("error getting PrimaryScope %w for User", err)
-	}
-	asmap := map[string]*AssignableScope{}
-	for _, s := range as {
-		asmap[s.PublicId] = s
-	}
-	return asmap, nil
-}
+
 func (*User) ResourceType() ResourceType { return ResourceTypeUser }
 
 func (*User) Actions() map[string]Action {
