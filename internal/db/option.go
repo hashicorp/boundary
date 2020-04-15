@@ -26,6 +26,16 @@ func getDefaultOptions() Options {
 		optionWithCommit:   false,
 		optionWithWrapper:  nil,
 		optionWithMetadata: oplog.Metadata{},
+		optionWithDebug:    false,
+	}
+}
+
+const optionWithDebug = "optionWithDebug"
+
+// WithDebug enables debug
+func WithDebug(enable bool) Option {
+	return func(o Options) {
+		o[optionWithDebug] = enable
 	}
 }
 

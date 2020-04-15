@@ -54,6 +54,10 @@ type Writer interface {
 	Dialect() (string, error)
 }
 
+type VetForWrite interface {
+	VetForWrite() error
+}
+
 // GormReadWriter uses a gorm DB connection for read/write
 type GormReadWriter struct {
 	Tx *gorm.DB
@@ -98,13 +102,23 @@ func (w *GormReadWriter) CreateConstraint(tableName string, constraintName strin
 
 // Create an object in the db with options: WithOplog (which requires WithMetadata, WithWrapper)
 func (rw *GormReadWriter) Create(ctx context.Context, i interface{}, opt ...Option) error {
-	opts := GetOpts(opt...)
-	withOplog := opts[optionWithOplog].(bool)
 	if rw.Tx == nil {
 		return errors.New("create Tx is nil")
 	}
+	opts := GetOpts(opt...)
+	withOplog := opts[optionWithOplog].(bool)
+	withDebug := opts[optionWithDebug].(bool)
+	if withDebug {
+		rw.Tx.LogMode(true)
+		defer rw.Tx.LogMode(false)
+	}
 	if i == nil {
 		return errors.New("create interface is nil")
+	}
+	if vetter, ok := i.(VetForWrite); ok {
+		if err := vetter.VetForWrite(); err != nil {
+			return fmt.Errorf("error on Create %w", err)
+		}
 	}
 	if err := rw.Tx.Create(i).Error; err != nil {
 		return fmt.Errorf("error creating: %w", err)
@@ -168,8 +182,20 @@ func (w *GormReadWriter) Update(i interface{}, fieldMaskPaths []string, opt ...O
 	if w.Tx == nil {
 		return errors.New("update Tx is nil")
 	}
+	opts := GetOpts(opt...)
+	withDebug := opts[optionWithDebug].(bool)
+	if withDebug {
+		w.Tx.LogMode(true)
+		defer w.Tx.LogMode(false)
+	}
+
 	if i == nil {
 		return errors.New("update interface is nil")
+	}
+	if vetter, ok := i.(VetForWrite); ok {
+		if err := vetter.VetForWrite(); err != nil {
+			return fmt.Errorf("error on Create %w", err)
+		}
 	}
 	if len(fieldMaskPaths) == 0 {
 		if err := w.Tx.Save(i).Error; err != nil {
@@ -182,12 +208,20 @@ func (w *GormReadWriter) Update(i interface{}, fieldMaskPaths []string, opt ...O
 	structTyp := val.Type()
 	for _, field := range fieldMaskPaths {
 		for i := 0; i < structTyp.NumField(); i++ {
-			// support for an embedded a gorm type
-			if structTyp.Field(i).Type.Kind() == reflect.Struct {
+			kind := structTyp.Field(i).Type.Kind()
+			if kind == reflect.Struct || kind == reflect.Ptr {
 				embType := structTyp.Field(i).Type
 				// check if the embedded field is exported via CanInterface()
 				if val.Field(i).CanInterface() {
 					embVal := reflect.Indirect(reflect.ValueOf(val.Field(i).Interface()))
+					// if it's a ptr to a struct, then we need a few more bits before proceeding.
+					if kind == reflect.Ptr {
+						embVal = val.Field(i).Elem()
+						embType = embVal.Type()
+						if embType.Kind() != reflect.Struct {
+							continue
+						}
+					}
 					for embFieldNum := 0; embFieldNum < embType.NumField(); embFieldNum++ {
 						if strings.EqualFold(embType.Field(embFieldNum).Name, field) {
 							updateFields[field] = embVal.Field(embFieldNum).Interface()
@@ -202,6 +236,9 @@ func (w *GormReadWriter) Update(i interface{}, fieldMaskPaths []string, opt ...O
 			}
 		}
 	}
+	if len(updateFields) == 0 {
+		return fmt.Errorf("error no update fields matched using fieldMaskPaths: %s", fieldMaskPaths)
+	}
 	if err := w.Tx.Model(i).Updates(updateFields).Error; err != nil {
 		return fmt.Errorf("error updating: %w", err)
 	}
@@ -209,9 +246,15 @@ func (w *GormReadWriter) Update(i interface{}, fieldMaskPaths []string, opt ...O
 }
 
 // LookupByFriendlyName will lookup resource my its friendly_name which must be unique
-func (w *GormReadWriter) LookupByFriendlyName(ctx context.Context, resource interface{}, friendlyName string, opt ...Option) error {
-	if w.Tx == nil {
+func (rw *GormReadWriter) LookupByFriendlyName(ctx context.Context, resource interface{}, friendlyName string, opt ...Option) error {
+	if rw.Tx == nil {
 		return errors.New("error db nil for LookupByFriendlyName")
+	}
+	opts := GetOpts(opt...)
+	withDebug := opts[optionWithDebug].(bool)
+	if withDebug {
+		rw.Tx.LogMode(true)
+		defer rw.Tx.LogMode(false)
 	}
 	if reflect.ValueOf(resource).Kind() != reflect.Ptr {
 		return errors.New("error interface parameter must to be a pointer for LookupByFriendlyName")
@@ -219,13 +262,19 @@ func (w *GormReadWriter) LookupByFriendlyName(ctx context.Context, resource inte
 	if friendlyName == "" {
 		return errors.New("error friendlyName empty string for LookupByFriendlyName")
 	}
-	return w.Tx.Where("friendly_name = ?", friendlyName).First(resource).Error
+	return rw.Tx.Where("friendly_name = ?", friendlyName).First(resource).Error
 }
 
 // LookupByPublicId will lookup resource my its public_id which must be unique
-func (w *GormReadWriter) LookupByPublicId(ctx context.Context, resource interface{}, publicId string, opt ...Option) error {
-	if w.Tx == nil {
+func (rw *GormReadWriter) LookupByPublicId(ctx context.Context, resource interface{}, publicId string, opt ...Option) error {
+	if rw.Tx == nil {
 		return errors.New("error db nil for LookupByPublicId")
+	}
+	opts := GetOpts(opt...)
+	withDebug := opts[optionWithDebug].(bool)
+	if withDebug {
+		rw.Tx.LogMode(true)
+		defer rw.Tx.LogMode(false)
 	}
 	if reflect.ValueOf(resource).Kind() != reflect.Ptr {
 		return errors.New("error interface parameter must to be a pointer for LookupByPublicId")
@@ -233,13 +282,19 @@ func (w *GormReadWriter) LookupByPublicId(ctx context.Context, resource interfac
 	if publicId == "" {
 		return errors.New("error publicId empty string for LookupByPublicId")
 	}
-	return w.Tx.Where("public_id = ?", publicId).First(resource).Error
+	return rw.Tx.Where("public_id = ?", publicId).First(resource).Error
 }
 
 // LookupByInternalId will lookup resource my its internal id which must be unique
-func (w *GormReadWriter) LookupByInternalId(ctx context.Context, resource interface{}, internalId uint32, opt ...Option) error {
-	if w.Tx == nil {
+func (rw *GormReadWriter) LookupByInternalId(ctx context.Context, resource interface{}, internalId uint32, opt ...Option) error {
+	if rw.Tx == nil {
 		return errors.New("error db nil for LookupByInternalId")
+	}
+	opts := GetOpts(opt...)
+	withDebug := opts[optionWithDebug].(bool)
+	if withDebug {
+		rw.Tx.LogMode(true)
+		defer rw.Tx.LogMode(false)
 	}
 	if reflect.ValueOf(resource).Kind() != reflect.Ptr {
 		return errors.New("error interface parameter must to be a pointer for LookupByInternalId")
@@ -247,27 +302,27 @@ func (w *GormReadWriter) LookupByInternalId(ctx context.Context, resource interf
 	if internalId == 0 {
 		return errors.New("error internalId is 0 for LookupByInternalId")
 	}
-	return w.Tx.Where("id = ?", internalId).First(resource).Error
+	return rw.Tx.Where("id = ?", internalId).First(resource).Error
 }
 
 // LookupBy will lookup the first resource using a where clause with parameters (it only returns the first one)
-func (w *GormReadWriter) LookupBy(ctx context.Context, resource interface{}, where string, args ...interface{}) error {
-	if w.Tx == nil {
+func (rw *GormReadWriter) LookupBy(ctx context.Context, resource interface{}, where string, args ...interface{}) error {
+	if rw.Tx == nil {
 		return errors.New("error db nil for SearchBy")
 	}
 	if reflect.ValueOf(resource).Kind() != reflect.Ptr {
 		return errors.New("error interface parameter must to be a pointer for LookupBy")
 	}
-	return w.Tx.Where(where, args...).First(resource).Error
+	return rw.Tx.Where(where, args...).First(resource).Error
 }
 
 // SearchBy will search for all the resources it can find using a where clause with parameters
-func (w *GormReadWriter) SearchBy(ctx context.Context, resources interface{}, where string, args ...interface{}) error {
-	if w.Tx == nil {
+func (rw *GormReadWriter) SearchBy(ctx context.Context, resources interface{}, where string, args ...interface{}) error {
+	if rw.Tx == nil {
 		return errors.New("error db nil for SearchBy")
 	}
 	if reflect.ValueOf(resources).Kind() != reflect.Ptr {
 		return errors.New("error interface parameter must to be a pointer for SearchBy")
 	}
-	return w.Tx.Where(where, args...).Find(resources).Error
+	return rw.Tx.Where(where, args...).Find(resources).Error
 }
