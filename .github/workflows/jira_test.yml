@@ -32,6 +32,6 @@ jobs:
         # Type of the issue to be created. Would need to add in conditionals by the label most likely.
         issuetype: Bug
         # Issue summary
-        summary: github.event.issues.issue.title
+        summary: github.event.issues.title
         # Issue description
-        description: github.event.issues.issue.body
+        description: github.event.issues.body
