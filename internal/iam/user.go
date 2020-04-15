@@ -6,6 +6,7 @@ import (
 	"fmt"
 
 	"github.com/hashicorp/vault/sdk/helper/base62"
+	"github.com/hashicorp/watchtower/internal/db"
 	"github.com/hashicorp/watchtower/internal/iam/store"
 )
 
@@ -51,7 +52,9 @@ func NewUser(opt ...Option) (*User, error) {
 	}
 	return u, nil
 }
-func (u *User) Write(ctx context.Context, w Writer) error {
+
+// VetForWrite implements db.VetForWrite() interface
+func (u *User) VetForWrite() error {
 	if u.PublicId == "" {
 		return errors.New("error public id is empty string for user Write")
 	}
@@ -61,30 +64,37 @@ func (u *User) Write(ctx context.Context, w Writer) error {
 	if u.isRootUser && u.OwnerId != 0 {
 		return errors.New("error a root user cannot have an owner id")
 	}
-	if err := w.Create(ctx, u); err != nil {
-		return err
-	}
 	return nil
 }
 
-func (u *User) GetOwner(ctx context.Context, r Reader) (*User, error) {
-	return nil, nil
+func (u *User) GetOwner(ctx context.Context, r db.Reader) (*User, error) {
+	if u.Id == 0 {
+		return nil, errors.New("error user id is 0")
+	}
+	if u.OwnerId == 0 {
+		return nil, nil
+	}
+	owner := User{}
+	if err := r.LookupByInternalId(ctx, &owner, u.OwnerId); err != nil {
+		return nil, fmt.Errorf("error getting Owner %w for user", err)
+	}
+	return &owner, nil
 }
-func (u *User) GetPrimaryScope(ctx context.Context, r Reader) (*Scope, error) {
+func (u *User) GetPrimaryScope(ctx context.Context, r db.Reader) (*Scope, error) {
 	if r == nil {
 		return nil, errors.New("error db is nil for user GetPrimaryScope")
 	}
 	// if u.PrimaryScopeId != nil && u.PrimaryScopeId.Value != 0 {
-	if u.PrimaryScopeId != 0 {
+	if u.PrimaryScopeId == 0 {
 		return nil, nil
 	}
 	var p Scope
-	if err := r.LookupBy(ctx, &p, "id = ?", u.PrimaryScopeId); err != nil {
+	if err := r.LookupByInternalId(ctx, &p, u.PrimaryScopeId); err != nil {
 		return nil, fmt.Errorf("error getting PrimaryScope %w for User", err)
 	}
 	return &p, nil
 }
-func (u *User) GetAssignableScopes(ctx context.Context, r Reader) (map[string]*AssignableScope, error) {
+func (u *User) GetAssignableScopes(ctx context.Context, r db.Reader) (map[string]*AssignableScope, error) {
 	if r == nil {
 		return nil, errors.New("error db is nil for AssignableScopes for User")
 	}
