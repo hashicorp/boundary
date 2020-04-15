@@ -23,14 +23,14 @@ type Scope struct {
 
 var _ Resource = (*Scope)(nil)
 
-func NewScope(ownerId uint32, opt ...Option) (*Scope, error) {
-	if ownerId == 0 {
-		return nil, errors.New("error ownerId is 0 for NewScope")
-	}
-	// we intentionally don't check for ownerID
+// NewScope creates a new Scope with options:
+// WithOwnerId specifies the Scope's owner id (a User). Most Scopes
+// will have an owner id, but we have to be able to create Scopes before users.
+// WithFriendlyName specifies the Scope's friendly name.
+func NewScope(opt ...Option) (*Scope, error) {
 	opts := GetOpts(opt...)
 	withFriendlyName := opts[optionWithFriendlyName].(string)
-
+	withOwnerId := opts[optionWithOwnerId].(uint32)
 	publicId, err := base62.Random(20)
 	if err != nil {
 		return nil, fmt.Errorf("error generating public ID %w for NewScope", err)
@@ -38,8 +38,10 @@ func NewScope(ownerId uint32, opt ...Option) (*Scope, error) {
 	s := &Scope{
 		Scope: &store.Scope{
 			PublicId: publicId,
-			OwnerId:  ownerId,
 		},
+	}
+	if withOwnerId != 0 {
+		s.OwnerId = withOwnerId
 	}
 	if withFriendlyName != "" {
 		s.FriendlyName = withFriendlyName
@@ -51,9 +53,6 @@ func NewScope(ownerId uint32, opt ...Option) (*Scope, error) {
 func (s *Scope) VetForWrite() error {
 	if s.PublicId == "" {
 		return errors.New("error public id is empty string for scope Write")
-	}
-	if s.OwnerId == 0 {
-		return errors.New("error owner id is 0 for scope Write")
 	}
 	return nil
 }
@@ -77,20 +76,6 @@ func (s *Scope) GetPrimaryScope(ctx context.Context, r db.Reader) (*Scope, error
 		return nil, fmt.Errorf("error getting PrimaryScope %w for Scope", err)
 	}
 	return &p, nil
-}
-func (s *Scope) GetAssignableScopes(ctx context.Context, r db.Reader) (map[string]*AssignableScope, error) {
-	if r == nil {
-		return nil, errors.New("error db is nil for GetAssignableScopes")
-	}
-	as := []*AssignableScope{}
-	if err := r.SearchBy(ctx, as, "primary_scope_id = ?", s.Id); err != nil {
-		return nil, fmt.Errorf("error getting AssignableScopes %w for Scope", err)
-	}
-	asmap := map[string]*AssignableScope{}
-	for _, s := range as {
-		asmap[s.PublicId] = s
-	}
-	return asmap, nil
 }
 
 func (s *Scope) TableName() string {
