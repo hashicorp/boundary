@@ -22,7 +22,7 @@ var _ Resource = (*User)(nil)
 // WithOwnerId - to specify the user's owner id (another user)
 // AsRootUser - to specify a root user with no owner (null)
 // withFriendlyName - to specify the user's friendly name
-func NewUser(opt ...Option) (*User, error) {
+func NewUser(s *Scope, opt ...Option) (*User, error) {
 	// we intentionally don't check for ownerID
 	opts := GetOpts(opt...)
 	asRootUser := opts[optionAsRootUser].(bool)
@@ -35,7 +35,8 @@ func NewUser(opt ...Option) (*User, error) {
 	}
 	u := &User{
 		User: &store.User{
-			PublicId: publicId,
+			PublicId:       publicId,
+			PrimaryScopeId: s.Id,
 		},
 	}
 	if asRootUser {
@@ -57,6 +58,9 @@ func NewUser(opt ...Option) (*User, error) {
 func (u *User) VetForWrite() error {
 	if u.PublicId == "" {
 		return errors.New("error public id is empty string for user Write")
+	}
+	if u.PrimaryScopeId == 0 {
+		return errors.New("error primary scope id not set for user Write")
 	}
 	if u.OwnerId == 0 && !u.isRootUser {
 		return errors.New("error owner id is nil for user Write")
@@ -81,12 +85,14 @@ func (u *User) GetOwner(ctx context.Context, r db.Reader) (*User, error) {
 	}
 	return &owner, nil
 }
+
+// GetPrimaryScope returns the PrimaryScope for the User if there is one defined.
 func (u *User) GetPrimaryScope(ctx context.Context, r db.Reader) (*Scope, error) {
 	if r == nil {
 		return nil, errors.New("error db is nil for user GetPrimaryScope")
 	}
 	if u.PrimaryScopeId == 0 {
-		return nil, nil
+		return nil, errors.New("error primary scope is unset for user GetPrimaryScope")
 	}
 	var p Scope
 	if err := r.LookupBy(ctx, &p, "id = ?", u.PrimaryScopeId); err != nil {

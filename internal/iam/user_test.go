@@ -14,22 +14,47 @@ func Test_NewUser(t *testing.T) {
 	cleanup, url := db.SetupTest(t, "../db/migrations/postgres")
 	defer cleanup()
 	defer db.CompleteTest() // must come after the "defer cleanup()"
-	db, err := db.TestConnection(url)
+	conn, err := db.TestConnection(url)
 	assert.NilError(t, err)
-	defer db.Close()
+	defer conn.Close()
 
-	t.Run("valid-root", func(t *testing.T) {
-		u, err := NewUser(AsRootUser(true))
+	t.Run("valid-root-with-no-owner", func(t *testing.T) {
+		w := db.GormReadWriter{Tx: conn}
+		s, err := NewScope()
 		assert.NilError(t, err)
-		assert.Check(t, u.User != nil)
-		assert.Equal(t, u.isRootUser, true)
-		assert.Equal(t, u.OwnerId, uint32(0))
+		assert.Check(t, s.Scope != nil)
+		err = w.Create(context.Background(), s)
+		assert.NilError(t, err)
+		assert.Check(t, s.Id != 0)
+
+		rootUser, err := NewUser(s, AsRootUser(true))
+		assert.NilError(t, err)
+		assert.Check(t, rootUser.User != nil)
+		assert.Equal(t, rootUser.isRootUser, true)
+		assert.Equal(t, rootUser.OwnerId, uint32(0))
+		assert.Equal(t, rootUser.PrimaryScopeId, s.Id)
 	})
 	t.Run("valid-WithOwnerId", func(t *testing.T) {
-		u, err := NewUser(WithOwnerId(1))
+		w := db.GormReadWriter{Tx: conn}
+		s, err := NewScope()
 		assert.NilError(t, err)
-		assert.Check(t, u.User != nil)
-		assert.Equal(t, u.OwnerId, uint32(1))
+		assert.Check(t, s.Scope != nil)
+		err = w.Create(context.Background(), s)
+		assert.NilError(t, err)
+		assert.Check(t, s.Id != 0)
+
+		rootUser, err := NewUser(s, AsRootUser(true))
+		assert.NilError(t, err)
+		assert.Check(t, rootUser.User != nil)
+		assert.Equal(t, rootUser.isRootUser, true)
+		assert.Equal(t, rootUser.OwnerId, uint32(0))
+		assert.Equal(t, rootUser.PrimaryScopeId, s.Id)
+
+		userWithOwner, err := NewUser(s, WithOwnerId(rootUser.Id))
+		assert.NilError(t, err)
+		assert.Check(t, userWithOwner.User != nil)
+		assert.Equal(t, userWithOwner.OwnerId, rootUser.Id)
+		assert.Equal(t, userWithOwner.PrimaryScopeId, s.Id)
 	})
 }
 
@@ -45,50 +70,71 @@ func Test_UserCreate(t *testing.T) {
 
 	t.Run("valid root user", func(t *testing.T) {
 		w := db.GormReadWriter{Tx: conn}
-		u, err := NewUser(AsRootUser(true))
+		s, err := NewScope()
 		assert.NilError(t, err)
-		err = w.Create(context.Background(), u)
+		assert.Check(t, s.Scope != nil)
+		err = w.Create(context.Background(), s)
 		assert.NilError(t, err)
-		assert.Check(t, u.isRootUser)
-		assert.Check(t, u.Id != 0)
-		assert.Equal(t, u.OwnerId, uint32(0))
+		assert.Check(t, s.Id != 0)
+
+		rootUser, err := NewUser(s, AsRootUser(true))
+		assert.NilError(t, err)
+		err = w.Create(context.Background(), rootUser)
+		assert.NilError(t, err)
+		assert.Check(t, rootUser.isRootUser)
+		assert.Check(t, rootUser.Id != 0)
+		assert.Equal(t, rootUser.OwnerId, uint32(0))
 	})
 	t.Run("valid user with owner", func(t *testing.T) {
 		w := db.GormReadWriter{Tx: conn}
-		u, err := NewUser(AsRootUser(true))
+		s, err := NewScope()
 		assert.NilError(t, err)
-		err = w.Create(context.Background(), u)
+		assert.Check(t, s.Scope != nil)
+		err = w.Create(context.Background(), s)
 		assert.NilError(t, err)
-		assert.Check(t, u.Id != uint32(0))
+		assert.Check(t, s.Id != 0)
 
-		userWithOwner, err := NewUser(WithOwnerId(u.Id))
+		rootUser, err := NewUser(s, AsRootUser(true))
+		assert.NilError(t, err)
+		err = w.Create(context.Background(), rootUser)
+		assert.NilError(t, err)
+		assert.Check(t, rootUser.Id != uint32(0))
+
+		userWithOwner, err := NewUser(s, WithOwnerId(rootUser.Id))
 		assert.NilError(t, err)
 		err = w.Create(context.Background(), userWithOwner)
 		assert.NilError(t, err)
 		assert.Check(t, userWithOwner.Id != 0)
-		assert.Equal(t, userWithOwner.OwnerId, u.Id)
+		assert.Equal(t, userWithOwner.OwnerId, rootUser.Id)
 	})
 	t.Run("valid user with owner and scope", func(t *testing.T) {
 		w := db.GormReadWriter{Tx: conn}
-		u, err := NewUser(AsRootUser(true))
+		s, err := NewScope()
 		assert.NilError(t, err)
-		err = w.Create(context.Background(), u)
+		assert.Check(t, s.Scope != nil)
+		err = w.Create(context.Background(), s)
 		assert.NilError(t, err)
-		assert.Check(t, u.Id != uint32(0))
+		assert.Check(t, s.Id != 0)
 
-		userWithOwner, err := NewUser(WithOwnerId(u.Id))
+		rootUser, err := NewUser(s, AsRootUser(true))
+		assert.NilError(t, err)
+		err = w.Create(context.Background(), rootUser)
+		assert.NilError(t, err)
+		assert.Check(t, rootUser.Id != uint32(0))
+
+		userWithOwner, err := NewUser(s, WithOwnerId(rootUser.Id))
 		assert.NilError(t, err)
 		err = w.Create(context.Background(), userWithOwner)
 		assert.NilError(t, err)
 		assert.Check(t, userWithOwner.Id != 0)
-		assert.Equal(t, userWithOwner.OwnerId, u.Id)
+		assert.Equal(t, userWithOwner.OwnerId, rootUser.Id)
 
-		s, err := NewScope(userWithOwner.Id)
+		scopeWithOwner, err := NewScope(WithOwnerId(userWithOwner.Id))
 		assert.NilError(t, err)
-		assert.Check(t, s.Scope != nil)
-		assert.Equal(t, s.Scope.OwnerId, userWithOwner.Id)
+		assert.Check(t, scopeWithOwner.Scope != nil)
+		assert.Equal(t, scopeWithOwner.Scope.OwnerId, userWithOwner.Id)
 
-		err = w.Create(context.Background(), s)
+		err = w.Create(context.Background(), scopeWithOwner)
 		assert.NilError(t, err)
 	})
 }
@@ -104,27 +150,35 @@ func Test_UserGetPrimaryScope(t *testing.T) {
 	defer conn.Close()
 	t.Run("valid primary scope", func(t *testing.T) {
 		w := db.GormReadWriter{Tx: conn}
-		rootUser, err := NewUser(AsRootUser(true))
+		s, err := NewScope()
+		assert.NilError(t, err)
+		assert.Check(t, s.Scope != nil)
+		err = w.Create(context.Background(), s)
+		assert.NilError(t, err)
+		assert.Check(t, s.Id != 0)
+
+		rootUser, err := NewUser(s, AsRootUser(true))
 		assert.NilError(t, err)
 		err = w.Create(context.Background(), rootUser)
 		assert.NilError(t, err)
 		assert.Check(t, rootUser.Id != uint32(0))
+		assert.Equal(t, rootUser.PrimaryScopeId, s.Id)
 
-		userWithOwner, err := NewUser(WithOwnerId(rootUser.Id))
+		userWithOwner, err := NewUser(s, WithOwnerId(rootUser.Id))
 		assert.NilError(t, err)
 		err = w.Create(context.Background(), userWithOwner)
 		assert.NilError(t, err)
 		assert.Check(t, userWithOwner.Id != 0)
 		assert.Equal(t, userWithOwner.OwnerId, rootUser.Id)
 
-		s, err := NewScope(rootUser.Id)
+		scopeWithOwner, err := NewScope(WithOwnerId(rootUser.Id))
 		assert.NilError(t, err)
-		assert.Check(t, s.Scope != nil)
-		assert.Equal(t, s.Scope.OwnerId, rootUser.Id)
-		err = w.Create(context.Background(), s)
+		assert.Check(t, scopeWithOwner.Scope != nil)
+		assert.Equal(t, scopeWithOwner.Scope.OwnerId, rootUser.Id)
+		err = w.Create(context.Background(), scopeWithOwner)
 		assert.NilError(t, err)
 
-		userWithOwner.PrimaryScopeId = s.Id
+		userWithOwner.PrimaryScopeId = scopeWithOwner.Id
 		err = w.Update(userWithOwner, []string{"PrimaryScopeId"})
 		assert.NilError(t, err)
 
@@ -133,4 +187,5 @@ func Test_UserGetPrimaryScope(t *testing.T) {
 		assert.Check(t, primaryScope != nil)
 		assert.Equal(t, primaryScope.Id, userWithOwner.PrimaryScopeId)
 	})
+
 }
