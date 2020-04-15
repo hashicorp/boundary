@@ -419,11 +419,7 @@ func Test_Replay(t *testing.T) {
 
 	testUser := &oplog_test.TestUser{}
 	replayUserTable := fmt.Sprintf("%s%s", testUser.TableName(), tableSuffix)
-	// err = writer.CreateTableLike(testUser, replayUserTable)
-	// if err != nil {
-	// 	t.Fatal(err)
-	// }
-	defer func() { assert.NilError(t, writer.DropTableIfExists(replayUserTable)) }()
+	defer func() { assert.NilError(t, writer.dropTableIfExists(replayUserTable)) }()
 
 	ticketName, err := uuid.GenerateUUID()
 	assert.NilError(t, err)

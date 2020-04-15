@@ -217,8 +217,8 @@ func (e *Entry) Replay(ctx context.Context, tx Writer, types *TypeCatalog, table
 		defer em.SetTableName(origTableName)
 
 		replayTable := origTableName + tableSuffix
-		if !tx.HasTable(replayTable) {
-			tx.CreateTableLike(origTableName, replayTable)
+		if !tx.hasTable(replayTable) {
+			tx.createTableLike(origTableName, replayTable)
 		}
 
 		em.SetTableName(origTableName + tableSuffix)

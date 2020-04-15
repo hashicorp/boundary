@@ -28,8 +28,7 @@ func (r *Queue) Add(m proto.Message, typeName string, t OpType, opt ...Option) e
 	opts := GetOpts(opt...)
 	withPaths := opts[optionWithFieldMaskPaths].([]string)
 
-	_, ok := m.(ReplayableMessage)
-	if !ok {
+	if _, ok := m.(ReplayableMessage); !ok {
 		return fmt.Errorf("error %T is not a ReplayableMessage", m)
 	}
 	value, err := proto.Marshal(m)

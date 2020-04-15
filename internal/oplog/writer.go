@@ -21,13 +21,13 @@ type Writer interface {
 	Delete(interface{}) error
 
 	// HasTable checks if tableName exists
-	HasTable(tableName string) bool
+	hasTable(tableName string) bool
 
 	// CreateTableLike will create a newTableName using the existing table as a starting point
-	CreateTableLike(existingTableName string, newTableName string) error
+	createTableLike(existingTableName string, newTableName string) error
 
 	// DropTableIfExists will drop the table if it exists
-	DropTableIfExists(tableName string) error
+	dropTableIfExists(tableName string) error
 }
 
 // GormWriter uses a gorm DB connection for writing
@@ -110,7 +110,7 @@ func (w *GormWriter) Delete(i interface{}) error {
 }
 
 // HasTable checks if tableName exists
-func (w *GormWriter) HasTable(tableName string) bool {
+func (w *GormWriter) hasTable(tableName string) bool {
 	if tableName == "" {
 		return false
 	}
@@ -119,7 +119,7 @@ func (w *GormWriter) HasTable(tableName string) bool {
 
 // CreateTableLike will create a newTableName like the model's table
 // the new table should have all things like the existing model's table (defaults, constraints, indexes, etc)
-func (w *GormWriter) CreateTableLike(existingTableName string, newTableName string) error {
+func (w *GormWriter) createTableLike(existingTableName string, newTableName string) error {
 	if existingTableName == "" {
 		return errors.New("error existingTableName is empty string")
 	}
@@ -161,10 +161,9 @@ func (t gormTabler) TableName() string {
 }
 
 // DropTableIfExists will drop the table if it exists
-func (w *GormWriter) DropTableIfExists(tableName string) error {
+func (w *GormWriter) dropTableIfExists(tableName string) error {
 	if tableName == "" {
 		return errors.New("error tableName is empty string for DropTableIfExists")
 	}
-	t := gormTabler{tableName: tableName}
-	return w.Tx.DropTableIfExists(&t).Error
+	return w.Tx.DropTableIfExists(tableName).Error
 }

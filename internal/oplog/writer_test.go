@@ -233,17 +233,17 @@ func Test_GormWriterHasTable(t *testing.T) {
 	w := GormWriter{Tx: db}
 
 	t.Run("success", func(t *testing.T) {
-		ok := w.HasTable("oplog_test_user")
+		ok := w.hasTable("oplog_test_user")
 		assert.Equal(t, ok, true)
 	})
 	t.Run("no table", func(t *testing.T) {
 		badTableName, err := uuid.GenerateUUID()
 		assert.NilError(t, err)
-		ok := w.HasTable(badTableName)
+		ok := w.hasTable(badTableName)
 		assert.Equal(t, ok, false)
 	})
 	t.Run("blank table name", func(t *testing.T) {
-		ok := w.HasTable("")
+		ok := w.hasTable("")
 		assert.Equal(t, ok, false)
 	})
 }
@@ -265,8 +265,8 @@ func Test_GormWriterCreateTable(t *testing.T) {
 		assert.NilError(t, err)
 		u := &oplog_test.TestUser{}
 		newTableName := u.TableName() + "_" + suffix
-		defer func() { assert.NilError(t, w.DropTableIfExists(newTableName)) }()
-		err = w.CreateTableLike(u.TableName(), newTableName)
+		defer func() { assert.NilError(t, w.dropTableIfExists(newTableName)) }()
+		err = w.createTableLike(u.TableName(), newTableName)
 		assert.NilError(t, err)
 	})
 	t.Run("call twice", func(t *testing.T) {
@@ -275,12 +275,12 @@ func Test_GormWriterCreateTable(t *testing.T) {
 		assert.NilError(t, err)
 		u := &oplog_test.TestUser{}
 		newTableName := u.TableName() + "_" + suffix
-		defer func() { assert.NilError(t, w.DropTableIfExists(newTableName)) }()
-		err = w.CreateTableLike(u.TableName(), newTableName)
+		defer func() { assert.NilError(t, w.dropTableIfExists(newTableName)) }()
+		err = w.createTableLike(u.TableName(), newTableName)
 		assert.NilError(t, err)
 
 		// should be an error to create the same table twice
-		err = w.CreateTableLike(u.TableName(), newTableName)
+		err = w.createTableLike(u.TableName(), newTableName)
 		assert.Check(t, err != nil)
 		assert.Error(t, err, err.Error(), nil)
 	})
@@ -290,8 +290,8 @@ func Test_GormWriterCreateTable(t *testing.T) {
 		assert.NilError(t, err)
 		u := &oplog_test.TestUser{}
 		newTableName := u.TableName() + "_" + suffix
-		defer func() { assert.NilError(t, w.DropTableIfExists(newTableName)) }()
-		err = w.CreateTableLike("", newTableName)
+		defer func() { assert.NilError(t, w.dropTableIfExists(newTableName)) }()
+		err = w.createTableLike("", newTableName)
 		assert.Check(t, err != nil)
 		assert.Error(t, err, err.Error(), nil)
 		assert.Equal(t, err.Error(), "error existingTableName is empty string")
@@ -299,7 +299,7 @@ func Test_GormWriterCreateTable(t *testing.T) {
 	t.Run("blank name", func(t *testing.T) {
 		w := GormWriter{Tx: db}
 		u := &oplog_test.TestUser{}
-		err = w.CreateTableLike(u.TableName(), "")
+		err = w.createTableLike(u.TableName(), "")
 		assert.Check(t, err != nil)
 		assert.Error(t, err, err.Error(), nil)
 		assert.Equal(t, err.Error(), "error newTableName is empty string")
@@ -323,14 +323,14 @@ func Test_GormWriterDropTableIfExists(t *testing.T) {
 		assert.NilError(t, err)
 		u := &oplog_test.TestUser{}
 		newTableName := u.TableName() + "_" + suffix
-		err = w.CreateTableLike(u.TableName(), newTableName)
+		err = w.createTableLike(u.TableName(), newTableName)
 		assert.NilError(t, err)
-		defer func() { assert.NilError(t, w.DropTableIfExists(newTableName)) }()
+		defer func() { assert.NilError(t, w.dropTableIfExists(newTableName)) }()
 	})
 
 	t.Run("success with blank", func(t *testing.T) {
 		w := GormWriter{Tx: db}
-		err := w.DropTableIfExists("")
+		err := w.dropTableIfExists("")
 		assert.Check(t, err != nil)
 		assert.Equal(t, err.Error(), "error tableName is empty string for DropTableIfExists")
 	})
