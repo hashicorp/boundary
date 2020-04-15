@@ -67,6 +67,7 @@ func (u *User) VetForWrite() error {
 	return nil
 }
 
+// GetOwner returns
 func (u *User) GetOwner(ctx context.Context, r db.Reader) (*User, error) {
 	if u.Id == 0 {
 		return nil, errors.New("error user id is 0")
@@ -75,7 +76,7 @@ func (u *User) GetOwner(ctx context.Context, r db.Reader) (*User, error) {
 		return nil, nil
 	}
 	owner := User{}
-	if err := r.LookupByInternalId(ctx, &owner, u.OwnerId); err != nil {
+	if err := r.LookupById(ctx, &owner); err != nil {
 		return nil, fmt.Errorf("error getting Owner %w for user", err)
 	}
 	return &owner, nil
@@ -84,12 +85,11 @@ func (u *User) GetPrimaryScope(ctx context.Context, r db.Reader) (*Scope, error)
 	if r == nil {
 		return nil, errors.New("error db is nil for user GetPrimaryScope")
 	}
-	// if u.PrimaryScopeId != nil && u.PrimaryScopeId.Value != 0 {
 	if u.PrimaryScopeId == 0 {
 		return nil, nil
 	}
 	var p Scope
-	if err := r.LookupByInternalId(ctx, &p, u.PrimaryScopeId); err != nil {
+	if err := r.LookupBy(ctx, &p, "id = ?", u.PrimaryScopeId); err != nil {
 		return nil, fmt.Errorf("error getting PrimaryScope %w for User", err)
 	}
 	return &p, nil
