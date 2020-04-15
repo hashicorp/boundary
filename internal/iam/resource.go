@@ -19,10 +19,6 @@ type Resource interface {
 	// GetPrimaryScope is the Scope that owns the Resource
 	GetPrimaryScope(ctx context.Context, r db.Reader) (*Scope, error)
 
-	// GetAssignableScopes specifies the scopes that this resource is available in.
-	// Public Ids are the keys to the map of Scopes returned
-	GetAssignableScopes(ctx context.Context, r db.Reader) (map[string]*AssignableScope, error)
-
 	// GetOwner is the owner of the resource, that has
 	// full access to the resource including the right to delegate access
 	// to others
