@@ -18,16 +18,23 @@ type User struct {
 
 var _ Resource = (*User)(nil)
 
+var _ db.VetForWriter = (*User)(nil)
+
 // NewUser creates a new user and allows options:
 // WithOwnerId - to specify the user's owner id (another user)
 // AsRootUser - to specify a root user with no owner (null)
 // withFriendlyName - to specify the user's friendly name
-func NewUser(s *Scope, opt ...Option) (*User, error) {
+func NewUser(primaryScope *Scope, opt ...Option) (*User, error) {
 	opts := GetOpts(opt...)
 	asRootUser := opts[optionAsRootUser].(bool)
 	withOwnerId := opts[optionWithOwnerId].(uint32)
 	withFriendlyName := opts[optionWithFriendlyName].(string)
-
+	if primaryScope == nil {
+		return nil, errors.New("error user primary scope is nil")
+	}
+	if primaryScope.Type != uint32(OrganizationScope) {
+		return nil, errors.New("users can only be within an organization scope")
+	}
 	publicId, err := base62.Random(20)
 	if err != nil {
 		return nil, fmt.Errorf("error generating public ID %w for new user", err)
@@ -35,7 +42,7 @@ func NewUser(s *Scope, opt ...Option) (*User, error) {
 	u := &User{
 		User: &store.User{
 			PublicId:       publicId,
-			PrimaryScopeId: s.Id,
+			PrimaryScopeId: primaryScope.GetId(),
 		},
 	}
 	if asRootUser {
@@ -54,7 +61,7 @@ func NewUser(s *Scope, opt ...Option) (*User, error) {
 }
 
 // VetForWrite implements db.VetForWrite() interface
-func (u *User) VetForWrite() error {
+func (u *User) VetForWrite(ctx context.Context, r db.Reader, opType db.OpType) error {
 	if u.PublicId == "" {
 		return errors.New("error public id is empty string for user write")
 	}
@@ -67,6 +74,20 @@ func (u *User) VetForWrite() error {
 	if u.isRootUser && u.OwnerId != 0 {
 		return errors.New("error a root user cannot have an owner id")
 	}
+	if err := u.checkPrimaryScope(ctx, r); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (u *User) checkPrimaryScope(ctx context.Context, r db.Reader) error {
+	ps, err := LookupPrimaryScope(ctx, r, u)
+	if err != nil {
+		return err
+	}
+	if ps.Type != uint32(OrganizationScope) {
+		return errors.New("error primary scope is not an organization")
+	}
 	return nil
 }
 
@@ -75,16 +96,20 @@ func (u *User) GetOwner(ctx context.Context, r db.Reader) (*User, error) {
 	return LookupOwner(ctx, r, u)
 }
 
-// GetPrimaryScope returns the PrimaryScope for the User if there is one defined.
+// GetPrimaryScope returns the PrimaryScope for the User
 func (u *User) GetPrimaryScope(ctx context.Context, r db.Reader) (*Scope, error) {
 	return LookupPrimaryScope(ctx, r, u)
 }
 
+// ResourceType returns the type of resource
 func (*User) ResourceType() ResourceType { return ResourceTypeUser }
 
+// Actions returns the  available actions for Users
 func (*User) Actions() map[string]Action {
 	return StdActions()
 }
+
+// TableName returns the tablename to override the default gorm table name
 func (u *User) TableName() string {
 	if u.tableName != "" {
 		return u.tableName
@@ -92,6 +117,7 @@ func (u *User) TableName() string {
 	return "iam_user"
 }
 
+// SetTableName sets the tablename and satisfies the ReplayableMessage interface
 func (u *User) SetTableName(n string) {
 	if n != "" {
 		u.tableName = n
