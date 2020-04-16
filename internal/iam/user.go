@@ -71,34 +71,14 @@ func (u *User) VetForWrite() error {
 	return nil
 }
 
-// GetOwner returns
+// GetOwner returns the owner (User) of the User
 func (u *User) GetOwner(ctx context.Context, r db.Reader) (*User, error) {
-	if u.Id == 0 {
-		return nil, errors.New("error user id is 0")
-	}
-	if u.OwnerId == 0 {
-		return nil, nil
-	}
-	owner := User{}
-	if err := r.LookupById(ctx, &owner); err != nil {
-		return nil, fmt.Errorf("error getting Owner %w for user", err)
-	}
-	return &owner, nil
+	return LookupOwner(ctx, r, u)
 }
 
 // GetPrimaryScope returns the PrimaryScope for the User if there is one defined.
 func (u *User) GetPrimaryScope(ctx context.Context, r db.Reader) (*Scope, error) {
-	if r == nil {
-		return nil, errors.New("error db is nil for user GetPrimaryScope")
-	}
-	if u.PrimaryScopeId == 0 {
-		return nil, errors.New("error primary scope is unset for user GetPrimaryScope")
-	}
-	var p Scope
-	if err := r.LookupBy(ctx, &p, "id = ?", u.PrimaryScopeId); err != nil {
-		return nil, fmt.Errorf("error getting PrimaryScope %w for User", err)
-	}
-	return &p, nil
+	return LookupPrimaryScope(ctx, r, u)
 }
 
 func (*User) ResourceType() ResourceType { return ResourceTypeUser }

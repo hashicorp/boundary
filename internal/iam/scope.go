@@ -56,8 +56,8 @@ func (s *Scope) VetForWrite() error {
 	}
 	return nil
 }
-func (*Scope) GetOwner(ctx context.Context, r db.Reader) (*User, error) {
-	return nil, nil
+func (s *Scope) GetOwner(ctx context.Context, r db.Reader) (*User, error) {
+	return LookupOwner(ctx, r, s)
 }
 func (s *Scope) ResourceType() ResourceType { return ResourceTypeScope }
 
