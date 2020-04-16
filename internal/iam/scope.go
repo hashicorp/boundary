@@ -31,14 +31,26 @@ func NewScope(opt ...Option) (*Scope, error) {
 	opts := GetOpts(opt...)
 	withFriendlyName := opts[optionWithFriendlyName].(string)
 	withOwnerId := opts[optionWithOwnerId].(uint32)
+	withScope := opts[optionWithScope]
+
 	publicId, err := base62.Random(20)
 	if err != nil {
-		return nil, fmt.Errorf("error generating public ID %w for NewScope", err)
+		return nil, fmt.Errorf("error generating public id %w for new scope", err)
 	}
 	s := &Scope{
 		Scope: &store.Scope{
 			PublicId: publicId,
 		},
+	}
+	if withScope != nil {
+		parentScope, ok := withScope.(*Scope)
+		if !ok {
+			return nil, errors.New("error assigning scope parent id to primary scope that is not a scope")
+		}
+		if parentScope.Id == 0 {
+			return nil, errors.New("error assigning scope parent id to primary scope with id == 0")
+		}
+		s.ParentId = parentScope.Id
 	}
 	if withOwnerId != 0 {
 		s.OwnerId = withOwnerId
@@ -52,7 +64,7 @@ func NewScope(opt ...Option) (*Scope, error) {
 // VetForWrite implements db.VetForWrite() interface
 func (s *Scope) VetForWrite() error {
 	if s.PublicId == "" {
-		return errors.New("error public id is empty string for scope Write")
+		return errors.New("error public id is empty string for scope write")
 	}
 	return nil
 }
@@ -66,14 +78,14 @@ func (*Scope) Actions() map[string]Action {
 }
 func (s *Scope) GetPrimaryScope(ctx context.Context, r db.Reader) (*Scope, error) {
 	if r == nil {
-		return nil, errors.New("error db is nil for scope GetPrimaryScope")
+		return nil, errors.New("error db is nil for scope getting primary scope")
 	}
 	if s.ParentId == 0 {
 		return nil, nil
 	}
 	var p Scope
-	if err := r.LookupBy(ctx, &p, "public_id = ?", s.ParentId); err != nil {
-		return nil, fmt.Errorf("error getting PrimaryScope %w for Scope", err)
+	if err := r.LookupBy(ctx, &p, "id = ?", s.ParentId); err != nil {
+		return nil, fmt.Errorf("error getting primary scope %w for scope", err)
 	}
 	return &p, nil
 }
