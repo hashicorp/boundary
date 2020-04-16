@@ -2,6 +2,8 @@ package iam
 
 import (
 	"context"
+	"errors"
+	"fmt"
 
 	"github.com/hashicorp/watchtower/internal/db"
 	"github.com/hashicorp/watchtower/internal/iam/store"
@@ -51,3 +53,50 @@ const (
 	ResourceTypeGroup
 	ResourceTypeRole
 )
+
+type ResourceWithOwner interface {
+	GetId() uint32
+	GetOwnerId() uint32
+}
+
+func LookupOwner(ctx context.Context, reader db.Reader, resource ResourceWithOwner) (*User, error) {
+	if reader == nil {
+		return nil, errors.New("error reader is nil for LookupOwner")
+	}
+	if resource == nil {
+		return nil, errors.New("error resource is nil for LookupOwner")
+	}
+	if resource.GetId() == 0 {
+		return nil, errors.New("error id is 0 for LookupOwner")
+	}
+	if resource.GetOwnerId() == 0 {
+		return nil, nil
+	}
+	owner := User{}
+	if err := reader.LookupBy(ctx, &owner, "id = ?", resource.GetOwnerId()); err != nil {
+		return nil, fmt.Errorf("error getting Owner %w for LookupOwner", err)
+	}
+	return &owner, nil
+}
+
+type ResourceWithPrimaryScope interface {
+	GetId() uint32
+	GetPrimaryScopeId() uint32
+}
+
+func LookupPrimaryScope(ctx context.Context, reader db.Reader, resource ResourceWithPrimaryScope) (*Scope, error) {
+	if reader == nil {
+		return nil, errors.New("error reader is nil for LookupPrimaryScope")
+	}
+	if resource == nil {
+		return nil, errors.New("error resource is nil for LookupPrimaryScope")
+	}
+	if resource.GetPrimaryScopeId() == 0 {
+		return nil, errors.New("error primary scope is unset for LookupPrimaryScope")
+	}
+	var p Scope
+	if err := reader.LookupBy(ctx, &p, "id = ?", resource.GetPrimaryScopeId()); err != nil {
+		return nil, fmt.Errorf("error getting PrimaryScope %w for LookupPrimaryScope", err)
+	}
+	return &p, nil
+}
