@@ -7,12 +7,6 @@ option go_package = "github.com/hashicorp/watchtower/internal/iam/store;store";
 import "timestamp.proto";
 
 message Scope {
-  enum Type {
-    Unknown = 0;
-    Organization = 1;
-    Project = 2;
-  }
-
   // @inject_tag: gorm:"primary_key"
   uint32 id = 1;
 
@@ -33,7 +27,7 @@ message Scope {
   string friendly_name = 5;
 
   // Type of scope
-  Type type = 6;
+  uint32 type = 6;
 
   // parent_id is the id (primary key in the Scope aggregate) of scope's parent
   // @inject_tag: `gorm:"default:0"`
