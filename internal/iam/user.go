@@ -23,7 +23,6 @@ var _ Resource = (*User)(nil)
 // AsRootUser - to specify a root user with no owner (null)
 // withFriendlyName - to specify the user's friendly name
 func NewUser(s *Scope, opt ...Option) (*User, error) {
-	// we intentionally don't check for ownerID
 	opts := GetOpts(opt...)
 	asRootUser := opts[optionAsRootUser].(bool)
 	withOwnerId := opts[optionWithOwnerId].(uint32)
