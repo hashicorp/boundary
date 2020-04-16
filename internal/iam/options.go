@@ -20,6 +20,16 @@ func getDefaultOptions() Options {
 		optionWithFriendlyName: "",
 		optionAsRootUser:       false,
 		optionWithOwnerId:      uint32(0),
+		optionWithScope:        nil,
+	}
+}
+
+const optionWithScope = "optionWithScope"
+
+// WithScope provides an optional scope
+func WithScope(s *Scope) Option {
+	return func(o Options) {
+		o[optionWithScope] = s
 	}
 }
 
