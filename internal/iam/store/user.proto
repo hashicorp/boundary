@@ -8,38 +8,35 @@ import "timestamp.proto";
 import "scope.proto";
 
 message User {
-  // @inject_tag: gorm:"-" json:"-"
-  string table = 1;
-
   // @inject_tag: gorm:"primary_key"
-  uint32 id = 2;
+  uint32 id = 1;
 
   // create_time from the RDBMS
   // @inject_tag: `gorm:"default:current_timestamp"`
-  Timestamp create_time = 3;
+  Timestamp create_time = 2;
 
   // update_time from the RDBMS
   // @inject_tag: `gorm:"default:current_timestamp"`
-  Timestamp update_time = 4;
+  Timestamp update_time = 3;
 
   // public_id is used to access the User via an API
-  string public_id = 5;
+  string public_id = 4;
 
   // FriendlyName is the optional friendly name used to
   // access the User via an API
   // @inject_tag: `gorm:"default:null"`
-  string friendly_name = 6;
+  string friendly_name = 5;
 
-  string name = 7;
+  string name = 6;
 
   // primary scope id of the PrimaryScope
   // @inject_tag: `gorm:"default:null"`
-  uint32 primary_scope_id = 8;
+  uint32 primary_scope_id = 7;
   // @inject_tag: gorm:"foreignkey:ScopeId"
-  Scope primary_scope = 9;
+  Scope primary_scope = 8;
 
   // owner_id is the id (primary key in the user aggregate) of the user that
   // owns this scope
   // @inject_tag: `gorm:"default:0"`
-  uint32 owner_id = 11;
+  uint32 owner_id = 9;
 }
