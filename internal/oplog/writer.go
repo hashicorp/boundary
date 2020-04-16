@@ -147,19 +147,6 @@ func (w *GormWriter) createTableLike(existingTableName string, newTableName stri
 	return w.Tx.Exec(sql).Error
 }
 
-type gormTabler struct {
-	tableName string
-}
-
-// TableName returns the tabler's table name (it's a gorm pattern for this sort of thing)
-// and it has to be exported for Gorm to call it
-func (t gormTabler) TableName() string {
-	if t.tableName == "" {
-		panic("gormTabler must always have a tableName")
-	}
-	return t.tableName
-}
-
 // DropTableIfExists will drop the table if it exists
 func (w *GormWriter) dropTableIfExists(tableName string) error {
 	if tableName == "" {
