@@ -221,7 +221,7 @@ func (e *Entry) Replay(ctx context.Context, tx Writer, types *TypeCatalog, table
 			tx.createTableLike(origTableName, replayTable)
 		}
 
-		em.SetTableName(origTableName + tableSuffix)
+		em.SetTableName(replayTable)
 		switch m.OpType {
 		case OpType_CREATE_OP:
 			if err := tx.Create(m.Message); err != nil {
