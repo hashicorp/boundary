@@ -10,9 +10,18 @@ import (
 	"github.com/hashicorp/watchtower/internal/iam/store"
 )
 
+// ScopeType defines the possible types for Scopes
+type ScopeType uint32
+
+const (
+	UnknownScope      ScopeType = 0
+	OrganizationScope ScopeType = 1
+	ProjectScope      ScopeType = 2
+)
+
 // Scope is used to create a hierarchy of "containers" that encompass the scope of
-// an IAM resource.  Scopes are Organizations and Projects for launch and likely
-// Folders and SubProjects in the future
+// an IAM resource.  Scopes are Organizations and Projects (based on their Type) for
+// launch and likely Folders and SubProjects in the future
 type Scope struct {
 	*store.Scope
 
@@ -22,17 +31,24 @@ type Scope struct {
 }
 
 var _ Resource = (*Scope)(nil)
+var _ db.VetForWriter = (*User)(nil)
 
-// NewScope creates a new Scope with options:
+// NewScope creates a new Scope of the specified ScopeType with options:
 // WithOwnerId specifies the Scope's owner id (a User). Most Scopes
 // will have an owner id, but we have to be able to create Scopes before users.
 // WithFriendlyName specifies the Scope's friendly name.
-func NewScope(opt ...Option) (*Scope, error) {
+func NewScope(scopeType ScopeType, opt ...Option) (*Scope, error) {
 	opts := GetOpts(opt...)
 	withFriendlyName := opts[optionWithFriendlyName].(string)
 	withOwnerId := opts[optionWithOwnerId].(uint32)
 	withScope := opts[optionWithScope]
 
+	if scopeType == UnknownScope {
+		return nil, errors.New("error unknown scope type for new scope")
+	}
+	if scopeType == ProjectScope && withOwnerId == 0 {
+		return nil, errors.New("project scopes must have an owner")
+	}
 	publicId, err := base62.Random(20)
 	if err != nil {
 		return nil, fmt.Errorf("error generating public id %w for new scope", err)
@@ -40,6 +56,7 @@ func NewScope(opt ...Option) (*Scope, error) {
 	s := &Scope{
 		Scope: &store.Scope{
 			PublicId: publicId,
+			Type:     uint32(scopeType),
 		},
 	}
 	if withScope != nil {
@@ -61,21 +78,46 @@ func NewScope(opt ...Option) (*Scope, error) {
 	return s, nil
 }
 
-// VetForWrite implements db.VetForWrite() interface
-func (s *Scope) VetForWrite() error {
+// Organization will walk up the scope tree via primary scopes until it finds an organization
+func (s *Scope) Organization(ctx context.Context, r db.Reader) (*Scope, error) {
+	if s.Type == uint32(OrganizationScope) {
+		return s, nil
+	}
+	p, err := s.GetPrimaryScope(ctx, r)
+	if err != nil {
+		return nil, err
+	}
+	if p.Type == uint32(OrganizationScope) {
+		return p, nil
+	}
+	return p.Organization(ctx, r)
+}
+
+// VetForWrite implements db.VetForWrite() interface for scopes
+func (s *Scope) VetForWrite(ctx context.Context, r db.Reader, opType db.OpType) error {
+	if s.Type == uint32(UnknownScope) {
+		return errors.New("error unknown scope type for scope write")
+	}
 	if s.PublicId == "" {
 		return errors.New("error public id is empty string for scope write")
 	}
 	return nil
 }
+
+// GetOwner returns the scope's owner (User)
 func (s *Scope) GetOwner(ctx context.Context, r db.Reader) (*User, error) {
 	return LookupOwner(ctx, r, s)
 }
+
+// ResourceType returns the type of resource
 func (s *Scope) ResourceType() ResourceType { return ResourceTypeScope }
 
+// Actions returns the  available actions for Scopes
 func (*Scope) Actions() map[string]Action {
 	return StdActions()
 }
+
+// GetPrimaryScope returns the primary scope for the scope if there is one defined
 func (s *Scope) GetPrimaryScope(ctx context.Context, r db.Reader) (*Scope, error) {
 	if r == nil {
 		return nil, errors.New("error db is nil for scope getting primary scope")
@@ -90,6 +132,7 @@ func (s *Scope) GetPrimaryScope(ctx context.Context, r db.Reader) (*Scope, error
 	return &p, nil
 }
 
+// TableName returns the tablename to override the default gorm table name
 func (s *Scope) TableName() string {
 	if s.tableName != "" {
 		return s.tableName
@@ -97,6 +140,7 @@ func (s *Scope) TableName() string {
 	return "iam_scope"
 }
 
+// SetTableName sets the tablename and satisfies the ReplayableMessage interface
 func (s *Scope) SetTableName(n string) {
 	if n != "" {
 		s.tableName = n
