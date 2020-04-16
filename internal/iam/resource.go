@@ -45,13 +45,13 @@ type Resource interface {
 type ResourceType int
 
 const (
-	ResourceTypeUnknown = iota
-	ResourceTypeScope
-	ResourceTypeAssignableScope
-	ResourceTypeUser
-	ResourceTypeUserAlias
-	ResourceTypeGroup
-	ResourceTypeRole
+	ResourceTypeUnknown      ResourceType = 0
+	ResourceTypeScope        ResourceType = 1
+	ResourceTypeUser         ResourceType = 2
+	ResourceTypeUserAlias    ResourceType = 3
+	ResourceTypeGroup        ResourceType = 4
+	ResourceTypeRole         ResourceType = 5
+	ResourceTypeOrganization ResourceType = 6
 )
 
 type ResourceWithOwner interface {

@@ -5,12 +5,12 @@ package iam
 type Action int
 
 const (
-	ActionUnknown Action = iota
-	ActionList
-	ActionCreate
-	ActionUpdate
-	ActionEdit
-	ActionDelete
+	ActionUnknown Action = 0
+	ActionList    Action = 1
+	ActionCreate  Action = 2
+	ActionUpdate  Action = 3
+	ActionEdit    Action = 4
+	ActionDelete  Action = 5
 )
 
 func (a Action) String() string {
