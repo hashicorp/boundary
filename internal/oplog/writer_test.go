@@ -332,6 +332,6 @@ func Test_GormWriterDropTableIfExists(t *testing.T) {
 		w := GormWriter{Tx: db}
 		err := w.dropTableIfExists("")
 		assert.Check(t, err != nil)
-		assert.Equal(t, err.Error(), "error tableName is empty string for DropTableIfExists")
+		assert.Equal(t, err.Error(), "cannot drop table whose name is an empty string")
 	})
 }
