@@ -31,7 +31,7 @@ func NewUser(s *Scope, opt ...Option) (*User, error) {
 
 	publicId, err := base62.Random(20)
 	if err != nil {
-		return nil, fmt.Errorf("error generating public ID %w for NewUser", err)
+		return nil, fmt.Errorf("error generating public ID %w for new user", err)
 	}
 	u := &User{
 		User: &store.User{
@@ -57,13 +57,13 @@ func NewUser(s *Scope, opt ...Option) (*User, error) {
 // VetForWrite implements db.VetForWrite() interface
 func (u *User) VetForWrite() error {
 	if u.PublicId == "" {
-		return errors.New("error public id is empty string for user Write")
+		return errors.New("error public id is empty string for user write")
 	}
 	if u.PrimaryScopeId == 0 {
-		return errors.New("error primary scope id not set for user Write")
+		return errors.New("error primary scope id not set for user write")
 	}
 	if u.OwnerId == 0 && !u.isRootUser {
-		return errors.New("error owner id is nil for user Write")
+		return errors.New("error owner id is nil for user write")
 	}
 	if u.isRootUser && u.OwnerId != 0 {
 		return errors.New("error a root user cannot have an owner id")
