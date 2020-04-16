@@ -1,11 +1,11 @@
 package iam
 
 // Action defines a type for the Actions of Resources
+// actions are also stored as a lookup db table named iam_action
 type Action int
 
 const (
 	ActionUnknown Action = iota
-	ActionAssignable
 	ActionList
 	ActionCreate
 	ActionUpdate
@@ -16,7 +16,6 @@ const (
 func (a Action) String() string {
 	return [...]string{
 		"unknown",
-		"assignable",
 		"list",
 		"create",
 		"update",
@@ -27,11 +26,10 @@ func (a Action) String() string {
 // StdActions returns a standard set of actions for resources that support a CRUD API
 func StdActions() map[string]Action {
 	return map[string]Action{
-		ActionAssignable.String(): ActionAssignable,
-		ActionList.String():       ActionList,
-		ActionCreate.String():     ActionCreate,
-		ActionUpdate.String():     ActionUpdate,
-		ActionEdit.String():       ActionEdit,
-		ActionDelete.String():     ActionDelete,
+		ActionList.String():   ActionList,
+		ActionCreate.String(): ActionCreate,
+		ActionUpdate.String(): ActionUpdate,
+		ActionEdit.String():   ActionEdit,
+		ActionDelete.String(): ActionDelete,
 	}
 }
