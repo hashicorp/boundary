@@ -150,7 +150,7 @@ func (w *GormWriter) createTableLike(existingTableName string, newTableName stri
 // DropTableIfExists will drop the table if it exists
 func (w *GormWriter) dropTableIfExists(tableName string) error {
 	if tableName == "" {
-		return errors.New("error tableName is empty string for DropTableIfExists")
+		return errors.New("cannot drop table whose name is an empty string")
 	}
 	return w.Tx.DropTableIfExists(tableName).Error
 }
