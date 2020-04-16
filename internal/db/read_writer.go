@@ -69,9 +69,17 @@ type ResourceWithId interface {
 	GetId() uint32
 }
 
+type OpType int
+
+const (
+	UnknownOp OpType = 0
+	CreateOp  OpType = 1
+	UpdateOp  OpType = 2
+)
+
 // VetForWriter provides an interface that Create and Update can use to vet the resource before sending it to the db
 type VetForWriter interface {
-	VetForWrite() error
+	VetForWrite(ctx context.Context, r Reader, opType OpType) error
 }
 
 // GormReadWriter uses a gorm DB connection for read/write
@@ -132,7 +140,7 @@ func (rw *GormReadWriter) Create(ctx context.Context, i interface{}, opt ...Opti
 		return errors.New("create interface is nil")
 	}
 	if vetter, ok := i.(VetForWriter); ok {
-		if err := vetter.VetForWrite(); err != nil {
+		if err := vetter.VetForWrite(ctx, rw, CreateOp); err != nil {
 			return fmt.Errorf("error on Create %w", err)
 		}
 	}
@@ -209,7 +217,7 @@ func (w *GormReadWriter) Update(ctx context.Context, i interface{}, fieldMaskPat
 		return errors.New("update interface is nil")
 	}
 	if vetter, ok := i.(VetForWriter); ok {
-		if err := vetter.VetForWrite(); err != nil {
+		if err := vetter.VetForWrite(ctx, w, UpdateOp); err != nil {
 			return fmt.Errorf("error on Create %w", err)
 		}
 	}
