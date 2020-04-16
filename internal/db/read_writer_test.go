@@ -10,6 +10,43 @@ import (
 	"gotest.tools/assert"
 )
 
+func Test_Update(t *testing.T) {
+	StartTest()
+	t.Parallel()
+	cleanup, url := SetupTest(t, "migrations/postgres")
+	defer cleanup()
+	defer CompleteTest() // must come after the "defer cleanup()"
+	conn, err := TestConnection(url)
+	assert.NilError(t, err)
+	defer conn.Close()
+	db_test.Init(conn)
+	t.Run("simple", func(t *testing.T) {
+		w := GormReadWriter{Tx: conn}
+		id, err := uuid.GenerateUUID()
+		assert.NilError(t, err)
+		user, err := db_test.NewTestUser()
+		assert.NilError(t, err)
+		user.Name = "foo-" + id
+		err = w.Create(context.Background(), &user)
+		assert.NilError(t, err)
+		assert.Check(t, user.Id != 0)
+
+		var foundUser db_test.TestUser
+		foundUser.Id = user.Id
+		err = w.LookupById(context.Background(), &foundUser)
+		assert.NilError(t, err)
+		assert.Equal(t, user.Id, foundUser.Id)
+
+		user.FriendlyName = "friendly-" + id
+		err = w.Update(context.Background(), user, []string{"FriendlyName"})
+		assert.NilError(t, err)
+
+		err = w.LookupById(context.Background(), &foundUser)
+		assert.NilError(t, err)
+		assert.Equal(t, user.FriendlyName, foundUser.FriendlyName)
+	})
+}
+
 func Test_Create(t *testing.T) {
 	StartTest()
 	t.Parallel()

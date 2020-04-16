@@ -39,7 +39,7 @@ type Reader interface {
 type Writer interface {
 	// Update an object in the db, if there's a fieldMask then only the field_mask.proto paths are updated, otherwise
 	// it will send every field to the DB
-	Update(i interface{}, fieldMaskPaths []string, opt ...Option) error
+	Update(ctx context.Context, i interface{}, fieldMaskPaths []string, opt ...Option) error
 
 	// Create an object in the db with options: WithOplog (which requires WithMetadata, WithWrapper)
 	Create(ctx context.Context, i interface{}, opt ...Option) error
@@ -194,7 +194,7 @@ func (rw *GormReadWriter) Create(ctx context.Context, i interface{}, opt ...Opti
 
 // Update an object in the db, if there's a fieldMask then only the field_mask.proto paths are updated, otherwise
 // it will send every field to the DB.  Update supports embedding a struct (or structPtr) one level deep for updating
-func (w *GormReadWriter) Update(i interface{}, fieldMaskPaths []string, opt ...Option) error {
+func (w *GormReadWriter) Update(ctx context.Context, i interface{}, fieldMaskPaths []string, opt ...Option) error {
 	if w.Tx == nil {
 		return errors.New("update Tx is nil")
 	}
