@@ -37,3 +37,28 @@ CREATE TABLE if not exists iam_user (
   primary_scope_id bigint NOT NULL REFERENCES iam_scope(id),
   owner_id bigint REFERENCES iam_user(id)
 );
+CREATE TABLE if not exists iam_action (
+  id smallint NOT NULL primary key,
+  string text NOT NULL UNIQUE
+);
+INSERT INTO iam_action (id, string)
+values
+  (0, 'unknown');
+INSERT INTO iam_action (id, string)
+values
+  (1, 'list');
+INSERT INTO iam_action (id, string)
+values
+  (2, 'create');
+INSERT INTO iam_action (id, string)
+values
+  (3, 'update');
+INSERT INTO iam_action (id, string)
+values
+  (4, 'delete');
+ALTER TABLE iam_action
+ADD
+  CONSTRAINT iam_action_id_between_chk CHECK (
+    id BETWEEN 0
+    AND 4
+  );
