@@ -1,0 +1,45 @@
+syntax = "proto3";
+
+// define an oplog package within the watchtower controller
+package hashicorp.watchtower.controller.iam.store.v1;
+option go_package = "github.com/hashicorp/watchtower/internal/iam/store;store";
+
+import "timestamp.proto";
+
+message Scope {
+  enum Type {
+    Unknown = 0;
+    Organization = 1;
+    Project = 2;
+  }
+
+  // @inject_tag: gorm:"primary_key"
+  uint32 id = 1;
+
+  // create_time from the RDBMS
+  // @inject_tag: `gorm:"default:current_timestamp"`
+  Timestamp create_time = 2;
+
+  // update_time from the RDBMS
+  // @inject_tag: `gorm:"default:current_timestamp"`
+  Timestamp update_time = 3;
+
+  // public_id is the used to access the Scope via an API
+  string public_id = 4;
+
+  // FriendlyName is the optional friendly name used to
+  // access the Scope via an API
+  // @inject_tag: `gorm:"default:null"`
+  string friendly_name = 5;
+
+  // Type of scope
+  Type type = 6;
+
+  // parent_id is the id (primary key in the Scope aggregate) of scope's parent
+  // @inject_tag: `gorm:"default:0"`
+  uint32 parent_id = 7;
+
+  // owner_id is the id (primary key in the user aggregate) of the user that
+  // owns this scope
+  uint32 owner_id = 8;
+}
