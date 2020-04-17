@@ -87,6 +87,17 @@ CREATE TABLE if not exists iam_user_alias (
     disabled BOOLEAN NOT NULL default FALSE,
     auth_method_id bigint NOT NULL REFERENCES iam_auth_method(id)
   );
+CREATE TABLE if not exists iam_role (
+    id bigint generated always as identity primary key,
+    create_time timestamp with time zone NOT NULL default current_timestamp,
+    update_time timestamp with time zone NOT NULL default current_timestamp,
+    public_id text not null UNIQUE,
+    friendly_name text UNIQUE,
+    description text NOT NULL,
+    primary_scope_id bigint NOT NULL REFERENCES iam_scope(id),
+    owner_id bigint NOT NULL REFERENCES iam_user(id),
+    disabled BOOLEAN NOT NULL default FALSE
+  );
 --
   -- define the iam_auth_method_type_enm lookup table
   --
