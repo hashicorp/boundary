@@ -4,6 +4,7 @@ import (
 	"context"
 	"testing"
 
+	"github.com/hashicorp/go-uuid"
 	"github.com/hashicorp/watchtower/internal/db"
 	"gotest.tools/assert"
 )
@@ -35,9 +36,17 @@ func Test_NewUserAlias(t *testing.T) {
 		meth, err := NewAuthMethod(s, rootUser, AuthUserPass)
 		assert.NilError(t, err)
 		assert.Check(t, meth != nil)
+		err = w.Create(context.Background(), meth)
+		assert.NilError(t, err)
 
-		alias, err := NewUserAlias(s, rootUser, meth)
+		id, err := uuid.GenerateUUID()
+		assert.NilError(t, err)
+		alias, err := NewUserAlias(s, rootUser, meth, id)
 		assert.NilError(t, err)
 		assert.Check(t, alias != nil)
+		err = w.Create(context.Background(), alias)
+		assert.NilError(t, err)
+		assert.Check(t, alias != nil)
+		assert.Equal(t, alias.OwnerId, rootUser.Id)
 	})
 }

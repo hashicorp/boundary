@@ -20,10 +20,17 @@ var _ Resource = (*UserAlias)(nil)
 
 var _ db.VetForWriter = (*UserAlias)(nil)
 
-// NewUserAlias creates a new user alias for scope (project/organization), owner (user), and auth method
-func NewUserAlias(primaryScope *Scope, owner *User, authMethod *AuthMethod, opt ...Option) (*UserAlias, error) {
+// NewUserAlias creates a new user alias with a given name for
+// a scope (project/organization), owner (user), and auth method
+func NewUserAlias(primaryScope *Scope, owner *User, authMethod *AuthMethod, name string, opt ...Option) (*UserAlias, error) {
 	opts := GetOpts(opt...)
 	withFriendlyName := opts[optionWithFriendlyName].(string)
+	if name == "" {
+		return nil, errors.New("error user alias name is null")
+	}
+	if authMethod.Id == 0 {
+		return nil, errors.New("error user alias auth method id == 0")
+	}
 	if primaryScope == nil {
 		return nil, errors.New("error user alias primary scope is nil")
 	}
@@ -43,9 +50,11 @@ func NewUserAlias(primaryScope *Scope, owner *User, authMethod *AuthMethod, opt 
 	}
 	a := &UserAlias{
 		UserAlias: &store.UserAlias{
+			Name:           name,
 			PublicId:       publicId,
 			PrimaryScopeId: primaryScope.GetId(),
-			OwnerId:        owner.OwnerId,
+			OwnerId:        owner.Id,
+			AuthMethodId:   authMethod.Id,
 		},
 	}
 	if withFriendlyName != "" {
@@ -56,14 +65,20 @@ func NewUserAlias(primaryScope *Scope, owner *User, authMethod *AuthMethod, opt 
 
 // VetForWrite implements db.VetForWrite() interface
 func (a *UserAlias) VetForWrite(ctx context.Context, r db.Reader, opType db.OpType) error {
+	if a.Name == "" {
+		return errors.New("error alias name is null for user alias write")
+	}
+	if a.AuthMethodId == 0 {
+		return errors.New("error auth method id ==0 for user alias write")
+	}
 	if a.PublicId == "" {
-		return errors.New("error public id is empty string for user write")
+		return errors.New("error public id is empty string for user alias write")
 	}
 	if a.PrimaryScopeId == 0 {
-		return errors.New("error primary scope id not set for user write")
+		return errors.New("error primary scope id not set for user alias write")
 	}
 	if a.OwnerId == 0 {
-		return errors.New("error owner id is nil for user write")
+		return errors.New("error owner id is nil for user alias write")
 	}
 	// make sure the scope is valid for aliases
 	if err := a.primaryScopeIsValid(ctx, r); err != nil {
