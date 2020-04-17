@@ -14,4 +14,10 @@ proto:
 	protoc  --proto_path=./store --go_out=paths=source_relative:./store ./store/user.proto
 	protoc-go-inject-tag -input=./store/user.pb.go
 
+	protoc  --proto_path=./store --go_out=paths=source_relative:./store ./store/user_alias.proto
+	protoc-go-inject-tag -input=./store/user_alias.pb.go
+
+	protoc  --proto_path=./store --go_out=paths=source_relative:./store ./store/auth_method.proto
+	protoc-go-inject-tag -input=./store/auth_method.pb.go
+
 .PHONY: proto
