@@ -74,13 +74,14 @@ func (u *User) VetForWrite(ctx context.Context, r db.Reader, opType db.OpType) e
 	if u.isRootUser && u.OwnerId != 0 {
 		return errors.New("error a root user cannot have an owner id")
 	}
-	if err := u.checkPrimaryScope(ctx, r); err != nil {
+	// make sure the scope is valid for users
+	if err := u.primaryScopeIsValid(ctx, r); err != nil {
 		return err
 	}
 	return nil
 }
 
-func (u *User) checkPrimaryScope(ctx context.Context, r db.Reader) error {
+func (u *User) primaryScopeIsValid(ctx context.Context, r db.Reader) error {
 	ps, err := LookupPrimaryScope(ctx, r, u)
 	if err != nil {
 		return err
@@ -101,7 +102,7 @@ func (u *User) GetPrimaryScope(ctx context.Context, r db.Reader) (*Scope, error)
 	return LookupPrimaryScope(ctx, r, u)
 }
 
-// ResourceType returns the type of resource
+// ResourceType returns the type of the User
 func (*User) ResourceType() ResourceType { return ResourceTypeUser }
 
 // Actions returns the  available actions for Users
