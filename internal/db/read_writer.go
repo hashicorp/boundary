@@ -148,53 +148,8 @@ func (rw *GormReadWriter) Create(ctx context.Context, i interface{}, opt ...Opti
 		return fmt.Errorf("error creating: %w", err)
 	}
 	if withOplog {
-		if opts[optionWithWrapper] == nil {
-			return errors.New("error wrapper is nil for create WithWrapper")
-		}
-		withWrapper, ok := opts[optionWithWrapper].(wrapping.Wrapper)
-		if !ok {
-			return errors.New("error not a wrapping.Wrapper for create WithWrapper")
-		}
-		withMetadata := opts[optionWithMetadata].(oplog.Metadata)
-		if len(withMetadata) == 0 {
-			return errors.New("error no metadata for create WithOplog")
-		}
-		replayable, ok := i.(oplog.ReplayableMessage)
-		if !ok {
-			return errors.New("error not a replayable message for create WithOplog")
-		}
-		gdb, err := rw.gormDB()
-		if err != nil {
-			return fmt.Errorf("error getting underlying gorm DB %w for create WithOplog", err)
-		}
-		ticketer, err := oplog.NewGormTicketer(gdb, oplog.WithAggregateNames(true))
-		if err != nil {
-			return fmt.Errorf("error getting Ticketer %w for create WithOplog", err)
-		}
-		err = ticketer.InitTicket(replayable.TableName())
-		if err != nil {
-			return fmt.Errorf("error getting initializing ticket %w for create WithOplog", err)
-		}
-		ticket, err := ticketer.GetTicket(replayable.TableName())
-		if err != nil {
-			return fmt.Errorf("error getting ticket %w for create WithOplog", err)
-		}
-
-		entry, err := oplog.NewEntry(
-			replayable.TableName(),
-			withMetadata,
-			withWrapper,
-			ticketer,
-		)
-
-		err = entry.WriteEntryWith(
-			ctx,
-			&oplog.GormWriter{Tx: gdb},
-			ticket,
-			&oplog.Message{Message: i.(proto.Message), TypeName: replayable.TableName(), OpType: oplog.OpType_CREATE_OP},
-		)
-		if err != nil {
-			return fmt.Errorf("error creating oplog entry %w for create WithOplog", err)
+		if err := rw.addOplog(ctx, CreateOp, opts, i); err != nil {
+			return err
 		}
 	}
 	return nil
@@ -202,27 +157,32 @@ func (rw *GormReadWriter) Create(ctx context.Context, i interface{}, opt ...Opti
 
 // Update an object in the db, if there's a fieldMask then only the field_mask.proto paths are updated, otherwise
 // it will send every field to the DB.  Update supports embedding a struct (or structPtr) one level deep for updating
-func (w *GormReadWriter) Update(ctx context.Context, i interface{}, fieldMaskPaths []string, opt ...Option) error {
-	if w.Tx == nil {
+func (rw *GormReadWriter) Update(ctx context.Context, i interface{}, fieldMaskPaths []string, opt ...Option) error {
+	if rw.Tx == nil {
 		return errors.New("update Tx is nil")
 	}
 	opts := GetOpts(opt...)
 	withDebug := opts[optionWithDebug].(bool)
+	withOplog := opts[optionWithOplog].(bool)
 	if withDebug {
-		w.Tx.LogMode(true)
-		defer w.Tx.LogMode(false)
+		rw.Tx.LogMode(true)
+		defer rw.Tx.LogMode(false)
+	}
+	if withDebug {
+		rw.Tx.LogMode(true)
+		defer rw.Tx.LogMode(false)
 	}
 
 	if i == nil {
 		return errors.New("update interface is nil")
 	}
 	if vetter, ok := i.(VetForWriter); ok {
-		if err := vetter.VetForWrite(ctx, w, UpdateOp); err != nil {
+		if err := vetter.VetForWrite(ctx, rw, UpdateOp); err != nil {
 			return fmt.Errorf("error on Create %w", err)
 		}
 	}
 	if len(fieldMaskPaths) == 0 {
-		if err := w.Tx.Save(i).Error; err != nil {
+		if err := rw.Tx.Save(i).Error; err != nil {
 			return fmt.Errorf("error updating: %w", err)
 		}
 	}
@@ -263,8 +223,73 @@ func (w *GormReadWriter) Update(ctx context.Context, i interface{}, fieldMaskPat
 	if len(updateFields) == 0 {
 		return fmt.Errorf("error no update fields matched using fieldMaskPaths: %s", fieldMaskPaths)
 	}
-	if err := w.Tx.Model(i).Updates(updateFields).Error; err != nil {
+	if err := rw.Tx.Model(i).Updates(updateFields).Error; err != nil {
 		return fmt.Errorf("error updating: %w", err)
+	}
+	if withOplog {
+		if err := rw.addOplog(ctx, UpdateOp, opts, i); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (rw *GormReadWriter) addOplog(ctx context.Context, opType OpType, opts Options, i interface{}) error {
+	if opts[optionWithWrapper] == nil {
+		return errors.New("error wrapper is nil for create WithWrapper")
+	}
+	withWrapper, ok := opts[optionWithWrapper].(wrapping.Wrapper)
+	if !ok {
+		return errors.New("error not a wrapping.Wrapper for create WithWrapper")
+	}
+	withMetadata := opts[optionWithMetadata].(oplog.Metadata)
+	if len(withMetadata) == 0 {
+		return errors.New("error no metadata for create WithOplog")
+	}
+	replayable, ok := i.(oplog.ReplayableMessage)
+	if !ok {
+		return errors.New("error not a replayable message for create WithOplog")
+	}
+	gdb, err := rw.gormDB()
+	if err != nil {
+		return fmt.Errorf("error getting underlying gorm DB %w for create WithOplog", err)
+	}
+	ticketer, err := oplog.NewGormTicketer(gdb, oplog.WithAggregateNames(true))
+	if err != nil {
+		return fmt.Errorf("error getting Ticketer %w for create WithOplog", err)
+	}
+	err = ticketer.InitTicket(replayable.TableName())
+	if err != nil {
+		return fmt.Errorf("error getting initializing ticket %w for create WithOplog", err)
+	}
+	ticket, err := ticketer.GetTicket(replayable.TableName())
+	if err != nil {
+		return fmt.Errorf("error getting ticket %w for create WithOplog", err)
+	}
+
+	entry, err := oplog.NewEntry(
+		replayable.TableName(),
+		withMetadata,
+		withWrapper,
+		ticketer,
+	)
+	var entryOp oplog.OpType
+	switch opType {
+	case CreateOp:
+		entryOp = oplog.OpType_CREATE_OP
+	case UpdateOp:
+		entryOp = oplog.OpType_UPDATE_OP
+	default:
+		return fmt.Errorf("error operation type %v is not supported", opType)
+	}
+	err = entry.WriteEntryWith(
+		ctx,
+		&oplog.GormWriter{Tx: gdb},
+		ticket,
+		&oplog.Message{Message: i.(proto.Message), TypeName: replayable.TableName(), OpType: entryOp},
+	)
+	if err != nil {
+		return fmt.Errorf("error creating oplog entry %w for create WithOplog", err)
 	}
 	return nil
 }

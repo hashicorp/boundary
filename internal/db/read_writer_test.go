@@ -45,6 +45,39 @@ func Test_Update(t *testing.T) {
 		assert.NilError(t, err)
 		assert.Equal(t, user.FriendlyName, foundUser.FriendlyName)
 	})
+	t.Run("valid-WithOplog", func(t *testing.T) {
+		w := GormReadWriter{Tx: conn}
+		id, err := uuid.GenerateUUID()
+		assert.NilError(t, err)
+		user, err := db_test.NewTestUser()
+		assert.NilError(t, err)
+		user.Name = "foo-" + id
+		err = w.Create(context.Background(), &user)
+		assert.NilError(t, err)
+		assert.Check(t, user.Id != 0)
+
+		var foundUser db_test.TestUser
+		foundUser.Id = user.Id
+		err = w.LookupById(context.Background(), &foundUser)
+		assert.NilError(t, err)
+		assert.Equal(t, user.Id, foundUser.Id)
+
+		user.FriendlyName = "friendly-" + id
+		err = w.Update(context.Background(), user, []string{"FriendlyName"},
+			WithOplog(true),
+			WithWrapper(InitTestWrapper(t)),
+			WithMetadata(oplog.Metadata{
+				"key-only":   nil,
+				"deployment": []string{"amex"},
+				"project":    []string{"central-info-systems", "local-info-systems"},
+			}),
+		)
+		assert.NilError(t, err)
+
+		err = w.LookupById(context.Background(), &foundUser)
+		assert.NilError(t, err)
+		assert.Equal(t, user.FriendlyName, foundUser.FriendlyName)
+	})
 }
 
 func Test_Create(t *testing.T) {
