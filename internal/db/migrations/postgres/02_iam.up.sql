@@ -25,7 +25,8 @@ CREATE TABLE if not exists iam_scope (
   friendly_name text UNIQUE,
   type int NOT NULL,
   parent_id bigint REFERENCES iam_scope(id),
-  owner_id bigint
+  owner_id bigint,
+  disabled BOOLEAN NOT NULL default FALSE
 );
 CREATE TABLE if not exists iam_user (
   id bigint generated always as identity primary key,
@@ -35,7 +36,8 @@ CREATE TABLE if not exists iam_user (
   friendly_name text UNIQUE,
   name text NOT NULL,
   primary_scope_id bigint NOT NULL REFERENCES iam_scope(id),
-  owner_id bigint REFERENCES iam_user(id)
+  owner_id bigint REFERENCES iam_user(id),
+  disabled BOOLEAN NOT NULL default FALSE
 );
 CREATE TABLE if not exists iam_action (
   id smallint NOT NULL primary key,
@@ -55,10 +57,16 @@ values
   (3, 'update');
 INSERT INTO iam_action (id, string)
 values
-  (4, 'delete');
+  (4, 'edit');
+INSERT INTO iam_action (id, string)
+values
+  (5, 'delete');
+INSERT INTO iam_action (id, string)
+values
+  (6, 'authen');
 ALTER TABLE iam_action
 ADD
   CONSTRAINT iam_action_id_between_chk CHECK (
     id BETWEEN 0
-    AND 4
+    AND 6
   );
