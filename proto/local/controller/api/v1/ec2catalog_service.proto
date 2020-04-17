@@ -21,26 +21,26 @@ option (grpc.gateway.protoc_gen_swagger.options.openapiv2_swagger) = {
 
 // Controller Service contains methods for managing a Controller.
 service ControllerService {
-    // Retrieves an EC2Catalog using the provided id or friendly name.
-    rpc GetEc2Catalog(GetEc2CatalogRequest) returns (GetEc2CatalogResponse) {
-      option (google.api.http) = {
-        get: "/v1/ec2_catalogs/{id}"
-        response_body: "catalog"
-      };
-      option (grpc.gateway.protoc_gen_swagger.options.openapiv2_operation) = {
-        responses: {
-          key: "default"
-          value: {
-            description: "The default error structure returned."
-            schema: {
-              json_schema: {
-                ref: ".controller.api.Error"
-              };
-            }
+  // Retrieves an EC2Catalog using the provided id or friendly name.
+  rpc GetEc2Catalog(GetEc2CatalogRequest) returns (GetEc2CatalogResponse) {
+    option (google.api.http) = {
+      get: "/v1/ec2_catalogs/{id}"
+      response_body: "catalog"
+    };
+    option (grpc.gateway.protoc_gen_swagger.options.openapiv2_operation) = {
+      responses: {
+        key: "default"
+        value: {
+          description: "The default error structure returned."
+          schema: {
+            json_schema: {
+              ref: ".controller.api.Error"
+            };
           }
         }
-      };
-    }
+      }
+    };
+  }
 
   // Lists the EC2Catalogs known to Watchtower.
   rpc ListEc2Catalogs(ListEc2CatalogsRequest) returns (ListEc2CatalogsResponse) {
@@ -67,7 +67,7 @@ service ControllerService {
   rpc CreateEc2Catalog(CreateEc2CatalogRequest) returns (CreateEc2CatalogResponse) {
     option (google.api.http) = {
       post: "/v1/ec2_catalogs"
-      body: "*"
+      body: "catalog"
       response_body: "catalog"
     };
     option (grpc.gateway.protoc_gen_swagger.options.openapiv2_operation) = {
@@ -89,6 +89,10 @@ service ControllerService {
     option (google.api.http) = {
       patch: "/v1/ec2_catalogs/{catalog.id}"
       body: "catalog"
+      additional_bindings {
+        patch: "/v1/ec2_catalogs/{catalog.id}"
+        body: "*"
+      }
     };
     option (grpc.gateway.protoc_gen_swagger.options.openapiv2_operation) = {
       responses: {
@@ -152,7 +156,7 @@ message GetEc2CatalogRequest {
 }
 
 message GetEc2CatalogResponse {
-    api.resource.v1.Ec2Catalog catalog = 1;
+  api.resource.v1.Ec2Catalog catalog = 1;
 }
 
 message ListEc2CatalogsRequest {
@@ -165,10 +169,10 @@ message ListEc2CatalogsResponse {
 }
 
 message CreateEc2CatalogRequest {
-    // The request to create an EC2Catalog.  The fields access_key, secret_key, and regions are required.
-    // The account_id is a value Watchtower looks up from AWS upon creation and should not be provided.  If rotate is
-    // set to true the provided access key will be rotated to ensure only Watchtower knows the AWS secret key.
-    api.resource.v1.Ec2Catalog catalog = 1;
+  // The request to create an EC2Catalog.  The fields access_key, secret_key, and regions are required.
+  // The account_id is a value Watchtower looks up from AWS upon creation and should not be provided.  If rotate is
+  // set to true the provided access key will be rotated to ensure only Watchtower knows the AWS secret key.
+  api.resource.v1.Ec2Catalog catalog = 1;
 }
 
 message CreateEc2CatalogResponse {
@@ -187,7 +191,7 @@ message UpdateEc2CatalogRequest {
 }
 
 message UpdateEc2CatalogResponse {
-    api.resource.v1.Ec2Catalog catalog = 1;
+  api.resource.v1.Ec2Catalog catalog = 1;
 }
 
 message DeleteEc2CatalogRequest {
