@@ -54,11 +54,13 @@ const (
 	ResourceTypeOrganization ResourceType = 6
 )
 
+// ResourceWithOwner defines an interface for Resources that have an owner (user)
 type ResourceWithOwner interface {
 	GetId() uint32
 	GetOwnerId() uint32
 }
 
+// LookupOwner looks up the resource's owner (user)
 func LookupOwner(ctx context.Context, reader db.Reader, resource ResourceWithOwner) (*User, error) {
 	if reader == nil {
 		return nil, errors.New("error reader is nil for LookupOwner")
@@ -79,11 +81,13 @@ func LookupOwner(ctx context.Context, reader db.Reader, resource ResourceWithOwn
 	return &owner, nil
 }
 
+// ResourceWithPrimaryScope defines an interface for Resources that have a primary scope
 type ResourceWithPrimaryScope interface {
 	GetId() uint32
 	GetPrimaryScopeId() uint32
 }
 
+// LookupPrimaryScope looks up the resource's primary scope
 func LookupPrimaryScope(ctx context.Context, reader db.Reader, resource ResourceWithPrimaryScope) (*Scope, error) {
 	if reader == nil {
 		return nil, errors.New("error reader is nil for LookupPrimaryScope")
