@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"reflect"
 	"strings"
+	"time"
 
 	wrapping "github.com/hashicorp/go-kms-wrapping"
 	"github.com/hashicorp/watchtower/internal/oplog"
@@ -37,6 +38,9 @@ type Reader interface {
 	Dialect() (string, error)
 }
 type Writer interface {
+	// DoTx will wrap the TxHandler in a retryable transaction
+	DoTx(ctx context.Context, retries int, backOff Backoff, Handler TxHandler) (RetryInfo, error)
+
 	// Update an object in the db, if there's a fieldMask then only the field_mask.proto paths are updated, otherwise
 	// it will send every field to the DB
 	Update(ctx context.Context, i interface{}, fieldMaskPaths []string, opt ...Option) error
@@ -53,6 +57,15 @@ type Writer interface {
 	// Dialect returns the RDBMS dialect: postgres, mysql, etc
 	Dialect() (string, error)
 }
+
+// RetryInfo provides information on the retries of a transaction
+type RetryInfo struct {
+	Retries int
+	Backoff time.Duration
+}
+
+// TxHandler defines a handler for a func that writes a transaction for use with DoTx
+type TxHandler func(Writer) error
 
 // ResourceWithPublicId defines an interface that LookupByPublicId() can use to get the resource's public id
 type ResourceWithPublicId interface {
@@ -292,6 +305,42 @@ func (rw *GormReadWriter) addOplog(ctx context.Context, opType OpType, opts Opti
 		return fmt.Errorf("error creating oplog entry %w for create WithOplog", err)
 	}
 	return nil
+}
+
+func (w *GormReadWriter) DoTx(ctx context.Context, retries int, backOff Backoff, Handler TxHandler) (RetryInfo, error) {
+	info := RetryInfo{}
+	for attempts := 1; ; attempts++ {
+		if attempts == retries {
+			return info, fmt.Errorf("Too many retries: %d of %d", attempts, retries)
+		}
+		newTx := w.Tx.BeginTx(ctx, nil)
+		if err := Handler(&GormReadWriter{newTx}); err != nil {
+			if errors.Is(err, oplog.ErrTicketAlreadyRedeemed) {
+				newTx.Rollback() // need to still handle rollback errors
+				d := backOff.Duration(attempts)
+				info.Retries++
+				info.Backoff = info.Backoff + d
+				time.Sleep(d)
+				continue
+			} else {
+				return info, err
+			}
+		} else {
+			if err := newTx.Commit().Error; err != nil {
+				if errors.Is(err, oplog.ErrTicketAlreadyRedeemed) {
+					d := backOff.Duration(attempts)
+					info.Retries++
+					info.Backoff = info.Backoff + d
+					time.Sleep(d)
+					continue
+				} else {
+					return info, err
+				}
+			}
+			break // it all worked!!!
+		}
+	}
+	return info, nil
 }
 
 // LookupByFriendlyName will lookup resource my its friendly_name which must be unique

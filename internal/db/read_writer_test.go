@@ -63,15 +63,21 @@ func Test_Update(t *testing.T) {
 		assert.Equal(t, user.Id, foundUser.Id)
 
 		user.FriendlyName = "friendly-" + id
-		err = w.Update(context.Background(), user, []string{"FriendlyName"},
-			WithOplog(true),
-			WithWrapper(InitTestWrapper(t)),
-			WithMetadata(oplog.Metadata{
-				"key-only":   nil,
-				"deployment": []string{"amex"},
-				"project":    []string{"central-info-systems", "local-info-systems"},
-			}),
-		)
+		_, err = w.DoTx(
+			context.Background(),
+			20,
+			ExpBackoff{},
+			func(Writer) error {
+				return w.Update(context.Background(), user, []string{"FriendlyName"},
+					WithOplog(true),
+					WithWrapper(InitTestWrapper(t)),
+					WithMetadata(oplog.Metadata{
+						"key-only":   nil,
+						"deployment": []string{"amex"},
+						"project":    []string{"central-info-systems", "local-info-systems"},
+					}),
+				)
+			})
 		assert.NilError(t, err)
 
 		err = w.LookupById(context.Background(), &foundUser)
@@ -114,17 +120,23 @@ func Test_Create(t *testing.T) {
 		user, err := db_test.NewTestUser()
 		assert.NilError(t, err)
 		user.Name = "foo-" + id
-		err = w.Create(
+		_, err = w.DoTx(
 			context.Background(),
-			user,
-			WithOplog(true),
-			WithWrapper(InitTestWrapper(t)),
-			WithMetadata(oplog.Metadata{
-				"key-only":   nil,
-				"deployment": []string{"amex"},
-				"project":    []string{"central-info-systems", "local-info-systems"},
-			}),
-		)
+			3,
+			ExpBackoff{},
+			func(Writer) error {
+				return w.Create(
+					context.Background(),
+					user,
+					WithOplog(true),
+					WithWrapper(InitTestWrapper(t)),
+					WithMetadata(oplog.Metadata{
+						"key-only":   nil,
+						"deployment": []string{"amex"},
+						"project":    []string{"central-info-systems", "local-info-systems"},
+					}),
+				)
+			})
 		assert.NilError(t, err)
 		assert.Check(t, user.Id != 0)
 
