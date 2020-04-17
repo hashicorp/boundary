@@ -38,8 +38,8 @@ message AuthMethod {
   // @inject_tag: `gorm:"default:0"`
   uint32 owner_id = 8;
 
-  // enabled is by default false.
-  bool enabled = 9;
+  // disabled is by default false.
+  bool disabled = 9;
 
   // Type of auth method
   uint32 type = 10;

@@ -59,7 +59,7 @@ func NewAuthMethod(primaryScope *Scope, owner *User, authType AuthType, opt ...O
 		AuthMethod: &store.AuthMethod{
 			PublicId:       publicId,
 			PrimaryScopeId: primaryScope.GetId(),
-			OwnerId:        owner.OwnerId,
+			OwnerId:        owner.Id,
 			Type:           uint32(authType),
 		},
 	}
@@ -123,7 +123,7 @@ func (p *AuthMethod) TableName() string {
 	if p.tableName != "" {
 		return p.tableName
 	}
-	return "iam_user_pass"
+	return "iam_auth_method"
 }
 
 // SetTableName sets the tablename and satisfies the ReplayableMessage interface
