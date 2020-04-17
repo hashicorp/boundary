@@ -11,6 +11,7 @@ const (
 	ActionUpdate  Action = 3
 	ActionEdit    Action = 4
 	ActionDelete  Action = 5
+	ActionAuthen  Action = 6
 )
 
 func (a Action) String() string {
@@ -20,7 +21,9 @@ func (a Action) String() string {
 		"create",
 		"update",
 		"edit",
-		"delete"}[a]
+		"delete",
+		"authen",
+	}[a]
 }
 
 // StdActions returns a standard set of actions for resources that support a CRUD API
