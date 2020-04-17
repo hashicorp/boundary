@@ -21,6 +21,16 @@ func getDefaultOptions() Options {
 		optionAsRootUser:       false,
 		optionWithOwnerId:      uint32(0),
 		optionWithScope:        nil,
+		optionWithDescription:  "",
+	}
+}
+
+const optionWithDescription = "optionWithDescription"
+
+// WithDescription provides an optional description
+func WithDescription(desc string) Option {
+	return func(o Options) {
+		o[optionWithDescription] = desc
 	}
 }
 
