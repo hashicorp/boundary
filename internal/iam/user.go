@@ -60,6 +60,18 @@ func NewUser(primaryScope *Scope, opt ...Option) (*User, error) {
 	return u, nil
 }
 
+// UserAliases searches for all the UserAliases owned by this user
+func (u *User) UserAliases(ctx context.Context, r db.Reader) ([]*UserAlias, error) {
+	if u.Id == 0 {
+		return nil, errors.New("error user id is 0 for finding user aliases")
+	}
+	aliases := []*UserAlias{}
+	if err := r.SearchBy(ctx, &aliases, "owner_id = ?", u.Id); err != nil {
+		return nil, fmt.Errorf("error finding user aliases: %w", err)
+	}
+	return aliases, nil
+}
+
 // VetForWrite implements db.VetForWrite() interface
 func (u *User) VetForWrite(ctx context.Context, r db.Reader, opType db.OpType) error {
 	if u.PublicId == "" {
