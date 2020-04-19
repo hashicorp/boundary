@@ -28,7 +28,7 @@ jobs:
       uses: atlassian/gajira-create@v2.0.0
       with:
         # Key of the project
-        project: PBT
+        project: WAT
         # Type of the issue to be created. Would need to add in conditionals by the label most likely.
         issuetype: Bug
         # Issue summary
