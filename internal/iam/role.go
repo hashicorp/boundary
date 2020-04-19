@@ -12,8 +12,7 @@ import (
 
 type Role struct {
 	*store.Role
-	tableName  string `gorm:"-"`
-	isRootUser bool   `gorm:"-"`
+	tableName string `gorm:"-"`
 }
 
 var _ Resource = (*Role)(nil)
@@ -62,13 +61,13 @@ func NewRole(primaryScope *Scope, owner *User, opt ...Option) (*Role, error) {
 // VetForWrite implements db.VetForWrite() interface
 func (role *Role) VetForWrite(ctx context.Context, r db.Reader, opType db.OpType) error {
 	if role.PublicId == "" {
-		return errors.New("error public id is empty string for user write")
+		return errors.New("error public id is empty string for role write")
 	}
 	if role.PrimaryScopeId == 0 {
-		return errors.New("error primary scope id not set for user write")
+		return errors.New("error primary scope id not set for role write")
 	}
 	if role.OwnerId == 0 {
-		return errors.New("error owner id == 0 for user write")
+		return errors.New("error owner id == 0 for role write")
 	}
 	// make sure the scope is valid for users
 	if err := role.primaryScopeIsValid(ctx, r); err != nil {
@@ -98,7 +97,7 @@ func (role *Role) GetPrimaryScope(ctx context.Context, r db.Reader) (*Scope, err
 	return LookupPrimaryScope(ctx, r, role)
 }
 
-// ResourceType returns the type of the User
+// ResourceType returns the type of the Role
 func (*Role) ResourceType() ResourceType { return ResourceTypeRole }
 
 // Actions returns the  available actions for Role
