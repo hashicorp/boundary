@@ -52,6 +52,7 @@ const (
 	ResourceTypeGroup        ResourceType = 4
 	ResourceTypeRole         ResourceType = 5
 	ResourceTypeOrganization ResourceType = 6
+	ResourceTypeGroupMember  ResourceType = 7
 )
 
 // ResourceWithOwner defines an interface for Resources that have an owner (user)
