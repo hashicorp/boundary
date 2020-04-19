@@ -40,10 +40,10 @@ type AuthMethod struct {
 	// update_time from the RDBMS
 	// @inject_tag: `gorm:"default:current_timestamp"`
 	UpdateTime *Timestamp `protobuf:"bytes,3,opt,name=update_time,json=updateTime,proto3" json:"update_time,omitempty" gorm:"default:current_timestamp"`
-	// public_id is used to access the UserAlias via an API
+	// public_id is used to access the AuthMethod via an API
 	PublicId string `protobuf:"bytes,4,opt,name=public_id,json=publicId,proto3" json:"public_id,omitempty"`
 	// FriendlyName is the optional friendly name used to
-	// access the UserAlias via an API
+	// access the AuthMethod via an API
 	// @inject_tag: `gorm:"default:null"`
 	FriendlyName string `protobuf:"bytes,5,opt,name=friendly_name,json=friendlyName,proto3" json:"friendly_name,omitempty" gorm:"default:null"`
 	// primary scope id of the PrimaryScope
@@ -52,7 +52,7 @@ type AuthMethod struct {
 	// @inject_tag: gorm:"foreignkey:ScopeId"
 	PrimaryScope *Scope `protobuf:"bytes,7,opt,name=primary_scope,json=primaryScope,proto3" json:"primary_scope,omitempty" gorm:"foreignkey:ScopeId"`
 	// owner_id is the id (primary key in the user aggregate) of the user that
-	// owns this UserAlias
+	// owns this AuthMethod
 	// @inject_tag: `gorm:"default:0"`
 	OwnerId uint32 `protobuf:"varint,8,opt,name=owner_id,json=ownerId,proto3" json:"owner_id,omitempty" gorm:"default:0"`
 	// disabled is by default false.

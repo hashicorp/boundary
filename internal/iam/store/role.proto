@@ -19,11 +19,11 @@ message Role {
   // @inject_tag: `gorm:"default:current_timestamp"`
   Timestamp update_time = 3;
 
-  // public_id is used to access the User via an API
+  // public_id is used to access the Role via an API
   string public_id = 4;
 
   // FriendlyName is the optional friendly name used to
-  // access the User via an API
+  // access the Role via an API
   // @inject_tag: `gorm:"default:null"`
   string friendly_name = 5;
 
@@ -36,11 +36,10 @@ message Role {
   Scope primary_scope = 8;
 
   // owner_id is the id (primary key in the user aggregate) of the user that
-  // owns this user.
+  // owns this Role.
   // @inject_tag: `gorm:"default:0"`
   uint32 owner_id = 9;
 
-  // disabled is by default false and allows a User to be marked disabled.
-  // which means among other things, the user cannot authen/authz
+  // disabled is by default false and allows a Role to be marked disabled.
   bool disabled = 10;
 }

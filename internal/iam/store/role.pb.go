@@ -40,10 +40,10 @@ type Role struct {
 	// update_time from the RDBMS
 	// @inject_tag: `gorm:"default:current_timestamp"`
 	UpdateTime *Timestamp `protobuf:"bytes,3,opt,name=update_time,json=updateTime,proto3" json:"update_time,omitempty" gorm:"default:current_timestamp"`
-	// public_id is used to access the User via an API
+	// public_id is used to access the Role via an API
 	PublicId string `protobuf:"bytes,4,opt,name=public_id,json=publicId,proto3" json:"public_id,omitempty"`
 	// FriendlyName is the optional friendly name used to
-	// access the User via an API
+	// access the Role via an API
 	// @inject_tag: `gorm:"default:null"`
 	FriendlyName string `protobuf:"bytes,5,opt,name=friendly_name,json=friendlyName,proto3" json:"friendly_name,omitempty" gorm:"default:null"`
 	Description  string `protobuf:"bytes,6,opt,name=description,proto3" json:"description,omitempty"`
@@ -53,11 +53,10 @@ type Role struct {
 	// @inject_tag: gorm:"foreignkey:ScopeId"
 	PrimaryScope *Scope `protobuf:"bytes,8,opt,name=primary_scope,json=primaryScope,proto3" json:"primary_scope,omitempty" gorm:"foreignkey:ScopeId"`
 	// owner_id is the id (primary key in the user aggregate) of the user that
-	// owns this user.
+	// owns this Role.
 	// @inject_tag: `gorm:"default:0"`
 	OwnerId uint32 `protobuf:"varint,9,opt,name=owner_id,json=ownerId,proto3" json:"owner_id,omitempty" gorm:"default:0"`
-	// disabled is by default false and allows a User to be marked disabled.
-	// which means among other things, the user cannot authen/authz
+	// disabled is by default false and allows a Role to be marked disabled.
 	Disabled bool `protobuf:"varint,10,opt,name=disabled,proto3" json:"disabled,omitempty"`
 }
 

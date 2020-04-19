@@ -57,7 +57,6 @@ type User struct {
 	// @inject_tag: `gorm:"default:0"`
 	OwnerId uint32 `protobuf:"varint,9,opt,name=owner_id,json=ownerId,proto3" json:"owner_id,omitempty" gorm:"default:0"`
 	// disabled is by default false and allows a User to be marked disabled.
-	// which means among other things, the user cannot authen/authz
 	Disabled bool `protobuf:"varint,10,opt,name=disabled,proto3" json:"disabled,omitempty"`
 }
 
