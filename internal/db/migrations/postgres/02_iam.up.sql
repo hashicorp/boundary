@@ -93,11 +93,79 @@ CREATE TABLE if not exists iam_role (
     update_time timestamp with time zone NOT NULL default current_timestamp,
     public_id text not null UNIQUE,
     friendly_name text UNIQUE,
-    description text NOT NULL,
+    description text,
     primary_scope_id bigint NOT NULL REFERENCES iam_scope(id),
     owner_id bigint NOT NULL REFERENCES iam_user(id),
     disabled BOOLEAN NOT NULL default FALSE
   );
+--
+  -- define the iam_group_member_type_enm lookup table
+  --
+  CREATE TABLE if not exists iam_group_member_type_enm (
+    id smallint NOT NULL primary key,
+    string text NOT NULL UNIQUE
+  );
+INSERT INTO iam_group_member_type_enm (id, string)
+values
+  (0, 'unknown');
+INSERT INTO iam_group_member_type_enm (id, string)
+values
+  (1, 'user');
+INSERT INTO iam_group_member_type_enm (id, string)
+values
+  (2, 'user_alias');
+ALTER TABLE iam_group_member_type_enm
+ADD
+  CONSTRAINT iam_group_member_type_enm_between_chk CHECK (
+    id BETWEEN 0
+    AND 2
+  );
+CREATE TABLE if not exists iam_group (
+    id bigint generated always as identity primary key,
+    create_time timestamp with time zone NOT NULL default current_timestamp,
+    update_time timestamp with time zone NOT NULL default current_timestamp,
+    public_id text not null UNIQUE,
+    friendly_name text UNIQUE,
+    description text,
+    primary_scope_id bigint NOT NULL REFERENCES iam_scope(id),
+    owner_id bigint NOT NULL REFERENCES iam_user(id),
+    disabled BOOLEAN NOT NULL default FALSE
+  );
+CREATE TABLE if not exists iam_group_member_user (
+    id bigint generated always as identity primary key,
+    create_time timestamp with time zone NOT NULL default current_timestamp,
+    update_time timestamp with time zone NOT NULL default current_timestamp,
+    public_id text not null UNIQUE,
+    friendly_name text UNIQUE,
+    primary_scope_id bigint NOT NULL REFERENCES iam_scope(id),
+    owner_id bigint NOT NULL REFERENCES iam_user(id),
+    group_id bigint NOT NULL REFERENCES iam_group(id),
+    member_id bigint NOT NULL REFERENCES iam_user(id),
+    type int NOT NULL REFERENCES iam_group_member_type_enm(id) CHECK(type = 1)
+  );
+CREATE TABLE if not exists iam_group_member_user_alias (
+    id bigint generated always as identity primary key,
+    create_time timestamp with time zone NOT NULL default current_timestamp,
+    update_time timestamp with time zone NOT NULL default current_timestamp,
+    public_id text not null UNIQUE,
+    friendly_name text UNIQUE,
+    primary_scope_id bigint NOT NULL REFERENCES iam_scope(id),
+    owner_id bigint NOT NULL REFERENCES iam_user(id),
+    group_id bigint NOT NULL REFERENCES iam_group(id),
+    member_id bigint NOT NULL REFERENCES iam_user_alias(id),
+    type int NOT NULL REFERENCES iam_group_member_type_enm(id) CHECK(type = 2)
+  );
+CREATE VIEW iam_group_member AS
+SELECT
+  *
+FROM iam_group_member_user
+UNION
+SELECT
+  *
+FROM iam_group_member_user_alias;
+select
+  *
+from iam_group_member;
 --
   -- define the iam_auth_method_type_enm lookup table
   --
