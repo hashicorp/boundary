@@ -58,6 +58,75 @@ func NewRole(primaryScope *Scope, owner *User, opt ...Option) (*Role, error) {
 	return r, nil
 }
 
+// PrincipalRoles returns a list of principal roles (Users, UserAliases and Groups) for the Role.
+func (role *Role) PrincipalRoles(ctx context.Context, r db.Reader) ([]PrincipalRole, error) {
+	viewRoles := []*principalRoleView{}
+	if err := r.SearchBy(
+		ctx,
+		&viewRoles,
+		"role_id = ? and type in(?, ?, ?)",
+		role.Id, UserRoleType, UserAliasRoleType, GroupRoleType); err != nil {
+		return nil, fmt.Errorf("error getting principals %w", err)
+	}
+
+	pRoles := []PrincipalRole{}
+	for _, vr := range viewRoles {
+		switch vr.Type {
+		case uint32(UserRoleType):
+			pr := &UserRole{
+				UserRole: &store.UserRole{
+					Id:             vr.Id,
+					CreateTime:     vr.CreateTime,
+					UpdateTime:     vr.UpdateTime,
+					PublicId:       vr.PublicId,
+					FriendlyName:   vr.FriendlyName,
+					PrimaryScopeId: vr.PrimaryScopeId,
+					OwnerId:        vr.OwnerId,
+					RoleId:         vr.RoleId,
+					Type:           uint32(UserRoleType),
+					PrincipalId:    vr.PrincipalId,
+				},
+			}
+			pRoles = append(pRoles, pr)
+		case uint32(UserAliasRoleType):
+			pr := &UserAliasRole{
+				UserAliasRole: &store.UserAliasRole{
+					Id:             vr.Id,
+					CreateTime:     vr.CreateTime,
+					UpdateTime:     vr.UpdateTime,
+					PublicId:       vr.PublicId,
+					FriendlyName:   vr.FriendlyName,
+					PrimaryScopeId: vr.PrimaryScopeId,
+					OwnerId:        vr.OwnerId,
+					RoleId:         vr.RoleId,
+					Type:           uint32(UserAliasRoleType),
+					PrincipalId:    vr.PrincipalId,
+				},
+			}
+			pRoles = append(pRoles, pr)
+		case uint32(GroupRoleType):
+			pr := &GroupRole{
+				GroupRole: &store.GroupRole{
+					Id:             vr.Id,
+					CreateTime:     vr.CreateTime,
+					UpdateTime:     vr.UpdateTime,
+					PublicId:       vr.PublicId,
+					FriendlyName:   vr.FriendlyName,
+					PrimaryScopeId: vr.PrimaryScopeId,
+					OwnerId:        vr.OwnerId,
+					RoleId:         vr.RoleId,
+					Type:           uint32(GroupRoleType),
+					PrincipalId:    vr.PrincipalId,
+				},
+			}
+			pRoles = append(pRoles, pr)
+		default:
+			return nil, fmt.Errorf("error unsupported role type: %d", vr.Type)
+		}
+	}
+	return pRoles, nil
+}
+
 // VetForWrite implements db.VetForWrite() interface
 func (role *Role) VetForWrite(ctx context.Context, r db.Reader, opType db.OpType) error {
 	if role.PublicId == "" {
