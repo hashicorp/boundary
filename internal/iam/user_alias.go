@@ -87,6 +87,19 @@ func (a *UserAlias) VetForWrite(ctx context.Context, r db.Reader, opType db.OpTy
 	return nil
 }
 
+// Groups searches for all the UserAlias' groups
+func (u *UserAlias) Groups(ctx context.Context, r db.Reader) ([]*Group, error) {
+	if u.Id == 0 {
+		return nil, errors.New("error user id is 0 for finding user alias groups")
+	}
+	where := "id in (select distinct group_id from iam_group_member where member_id = ? and type = ?)"
+	groups := []*Group{}
+	if err := r.SearchBy(ctx, &groups, where, u.Id, UserAliasMemberType); err != nil {
+		return nil, fmt.Errorf("error finding user alias groups: %w", err)
+	}
+	return groups, nil
+}
+
 // primaryScopeIsValid checks the alias primary scope to make sure it's either an org or project
 func (a *UserAlias) primaryScopeIsValid(ctx context.Context, r db.Reader) error {
 	ps, err := LookupPrimaryScope(ctx, r, a)

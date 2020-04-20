@@ -72,6 +72,19 @@ func (u *User) UserAliases(ctx context.Context, r db.Reader) ([]*UserAlias, erro
 	return aliases, nil
 }
 
+// Groups searches for all the user's groups
+func (u *User) Groups(ctx context.Context, r db.Reader) ([]*Group, error) {
+	if u.Id == 0 {
+		return nil, errors.New("error user id is 0 for finding user groups")
+	}
+	where := "id in (select distinct group_id from iam_group_member where member_id = ? and type = ?)"
+	groups := []*Group{}
+	if err := r.SearchBy(ctx, &groups, where, u.Id, UserMemberType); err != nil {
+		return nil, fmt.Errorf("error finding user groups: %w", err)
+	}
+	return groups, nil
+}
+
 // VetForWrite implements db.VetForWrite() interface
 func (u *User) VetForWrite(ctx context.Context, r db.Reader, opType db.OpType) error {
 	if u.PublicId == "" {

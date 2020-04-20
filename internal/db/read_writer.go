@@ -15,6 +15,7 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
+// Reader interface defines lookups/searching for resources
 type Reader interface {
 	// LookupByFriendlyName will lookup resource my its friendly_name which must be unique
 	LookupByFriendlyName(ctx context.Context, resource ResourceWithFriendlyName, opt ...Option) error
@@ -37,6 +38,8 @@ type Reader interface {
 	// Dialect returns the RDBMS dialect: postgres, mysql, etc
 	Dialect() (string, error)
 }
+
+// Writer interface defines create, update and retryable transaction handlers
 type Writer interface {
 	// DoTx will wrap the TxHandler in a retryable transaction
 	DoTx(ctx context.Context, retries int, backOff Backoff, Handler TxHandler) (RetryInfo, error)
