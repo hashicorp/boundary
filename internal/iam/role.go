@@ -58,18 +58,18 @@ func NewRole(primaryScope *Scope, owner *User, opt ...Option) (*Role, error) {
 	return r, nil
 }
 
-// PrincipalRoles returns a list of principal roles (Users, UserAliases and Groups) for the Role.
-func (role *Role) PrincipalRoles(ctx context.Context, r db.Reader) ([]PrincipalRole, error) {
-	viewRoles := []*principalRoleView{}
+// AssignedRoles returns a list of principal roles (Users, UserAliases and Groups) for the Role.
+func (role *Role) AssignedRoles(ctx context.Context, r db.Reader) ([]AssignedRole, error) {
+	viewRoles := []*assignedRoleView{}
 	if err := r.SearchBy(
 		ctx,
 		&viewRoles,
 		"role_id = ? and type in(?, ?, ?)",
 		role.Id, UserRoleType, UserAliasRoleType, GroupRoleType); err != nil {
-		return nil, fmt.Errorf("error getting principals %w", err)
+		return nil, fmt.Errorf("error getting assigned roles %w", err)
 	}
 
-	pRoles := []PrincipalRole{}
+	pRoles := []AssignedRole{}
 	for _, vr := range viewRoles {
 		switch vr.Type {
 		case uint32(UserRoleType):

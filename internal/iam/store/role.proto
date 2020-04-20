@@ -164,7 +164,7 @@ message GroupRole {
   uint32 principal_id = 11;
 }
 
-message PrincipalRoleView {
+message AssignedRoleView {
   // @inject_tag: gorm:"primary_key"
   uint32 id = 1;
 

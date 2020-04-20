@@ -65,7 +65,7 @@ func (u *User) Roles(ctx context.Context, r db.Reader, opt ...Option) (map[strin
 	if u.Id == 0 {
 		return nil, errors.New("error user id is 0 for finding user aliases")
 	}
-	where := "select * from iam_role where id in (select role_id from iam_principal_role ipr where principal_id  = ? and type = 1)"
+	where := "select * from iam_role where id in (select role_id from iam_assigned_role ipr where principal_id  = ? and type = 1)"
 	roles := []*Role{}
 	if err := r.SearchBy(ctx, &roles, where, u.Id); err != nil {
 		return nil, fmt.Errorf("error getting user roles %w", err)
