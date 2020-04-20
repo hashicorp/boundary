@@ -19,6 +19,15 @@ type Writer interface {
 
 	// Delete the entry
 	Delete(interface{}) error
+
+	// HasTable checks if tableName exists
+	hasTable(tableName string) bool
+
+	// CreateTableLike will create a newTableName using the existing table as a starting point
+	createTableLike(existingTableName string, newTableName string) error
+
+	// DropTableIfExists will drop the table if it exists
+	dropTableIfExists(tableName string) error
 }
 
 // GormWriter uses a gorm DB connection for writing
@@ -98,4 +107,50 @@ func (w *GormWriter) Delete(i interface{}) error {
 		return fmt.Errorf("error deleting: %w", err)
 	}
 	return nil
+}
+
+// HasTable checks if tableName exists
+func (w *GormWriter) hasTable(tableName string) bool {
+	if tableName == "" {
+		return false
+	}
+	return w.Tx.Dialect().HasTable(tableName)
+}
+
+// CreateTableLike will create a newTableName like the model's table
+// the new table should have all things like the existing model's table (defaults, constraints, indexes, etc)
+func (w *GormWriter) createTableLike(existingTableName string, newTableName string) error {
+	if existingTableName == "" {
+		return errors.New("error existingTableName is empty string")
+	}
+	if newTableName == "" {
+		return errors.New("error newTableName is empty string")
+	}
+	existingTableName = w.Tx.Dialect().Quote(existingTableName)
+	newTableName = w.Tx.Dialect().Quote(newTableName)
+	var sql string
+	switch w.Tx.Dialect().GetName() {
+	case "postgres":
+		sql = fmt.Sprintf(
+			`CREATE TABLE %s ( LIKE %s INCLUDING DEFAULTS INCLUDING CONSTRAINTS INCLUDING INDEXES );`,
+			newTableName,
+			existingTableName,
+		)
+	case "mysql":
+		sql = fmt.Sprintf("CREATE TABLE %s LIKE %s",
+			newTableName,
+			existingTableName,
+		)
+	default:
+		return errors.New("error unsupported RDBMS")
+	}
+	return w.Tx.Exec(sql).Error
+}
+
+// DropTableIfExists will drop the table if it exists
+func (w *GormWriter) dropTableIfExists(tableName string) error {
+	if tableName == "" {
+		return errors.New("cannot drop table whose name is an empty string")
+	}
+	return w.Tx.DropTableIfExists(tableName).Error
 }
