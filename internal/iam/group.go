@@ -80,7 +80,7 @@ func (g *Group) Members(ctx context.Context, r db.Reader) ([]GroupMember, error)
 					OwnerId:        m.OwnerId,
 					GroupId:        m.GroupId,
 					Type:           uint32(UserMemberType),
-					MemberId:       m.Id,
+					MemberId:       m.MemberId,
 				},
 			}
 			members = append(members, gm)
@@ -96,7 +96,7 @@ func (g *Group) Members(ctx context.Context, r db.Reader) ([]GroupMember, error)
 					OwnerId:        m.OwnerId,
 					GroupId:        m.GroupId,
 					Type:           uint32(UserMemberType),
-					MemberId:       m.Id,
+					MemberId:       m.MemberId,
 				},
 			}
 			members = append(members, gm)

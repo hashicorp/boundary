@@ -111,7 +111,7 @@ func Test_GroupMembers(t *testing.T) {
 		assert.Check(t, len(members) == 2)
 		for _, m := range members {
 			if m.GetMemberId() != alias.Id && m.GetMemberId() != rootUser.Id {
-				t.Error("members not one of the known ids")
+				t.Errorf("members %d not one of the known ids %d, %d", m.GetMemberId(), alias.Id, rootUser.Id)
 			}
 		}
 	})
