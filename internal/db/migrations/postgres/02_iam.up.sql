@@ -294,3 +294,14 @@ FROM iam_role_user_alias;
 select
   *
 from iam_role_group;
+CREATE TABLE if not exists iam_role_grant (
+    id bigint generated always as identity primary key,
+    create_time timestamp with time zone NOT NULL default current_timestamp,
+    update_time timestamp with time zone NOT NULL default current_timestamp,
+    public_id text not null UNIQUE,
+    friendly_name text UNIQUE,
+    primary_scope_id bigint NOT NULL REFERENCES iam_scope(id),
+    owner_id bigint NOT NULL REFERENCES iam_user(id),
+    role_id bigint NOT NULL REFERENCES iam_role(id),
+    role_grant text NOT NULL
+  );

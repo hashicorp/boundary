@@ -11,6 +11,7 @@ proto:
 	protoc-go-inject-tag -input=./store/group_member.pb.go
 	protoc-go-inject-tag -input=./store/group.pb.go
 	protoc-go-inject-tag -input=./store/role.pb.go
+	protoc-go-inject-tag -input=./store/role_grant.pb.go
 	protoc-go-inject-tag -input=./store/auth_method.pb.go
 	protoc-go-inject-tag -input=./store/user_alias.pb.go
 	protoc-go-inject-tag -input=./store/user.pb.go
