@@ -163,9 +163,6 @@ UNION
 SELECT
   *
 FROM iam_group_member_user_alias;
-select
-  *
-from iam_group_member;
 --
   -- define the iam_auth_method_type_enm lookup table
   --
@@ -225,3 +222,75 @@ ADD
     id BETWEEN 0
     AND 6
   );
+--
+  -- define the iam_role_type_enm lookup table
+  --
+  CREATE TABLE if not exists iam_role_type_enm (
+    id smallint NOT NULL primary key,
+    string text NOT NULL UNIQUE
+  );
+INSERT INTO iam_role_type_enm (id, string)
+values
+  (0, 'unknown');
+INSERT INTO iam_role_type_enm (id, string)
+values
+  (1, 'user');
+INSERT INTO iam_role_type_enm (id, string)
+values
+  (2, 'user_alias');
+INSERT INTO iam_role_type_enm (id, string)
+values
+  (3, 'group');
+ALTER TABLE iam_role_type_enm
+ADD
+  CONSTRAINT iam_role_type_enm_between_chk CHECK (
+    id BETWEEN 0
+    AND 3
+  );
+CREATE TABLE if not exists iam_role_user (
+    id bigint generated always as identity primary key,
+    create_time timestamp with time zone NOT NULL default current_timestamp,
+    update_time timestamp with time zone NOT NULL default current_timestamp,
+    public_id text not null UNIQUE,
+    friendly_name text UNIQUE,
+    primary_scope_id bigint NOT NULL REFERENCES iam_scope(id),
+    owner_id bigint NOT NULL REFERENCES iam_user(id),
+    role_id bigint NOT NULL REFERENCES iam_role(id),
+    principal_id bigint NOT NULL REFERENCES iam_user(id),
+    type int NOT NULL REFERENCES iam_role_type_enm(id) CHECK(type = 1)
+  );
+CREATE TABLE if not exists iam_role_user_alias (
+    id bigint generated always as identity primary key,
+    create_time timestamp with time zone NOT NULL default current_timestamp,
+    update_time timestamp with time zone NOT NULL default current_timestamp,
+    public_id text not null UNIQUE,
+    friendly_name text UNIQUE,
+    primary_scope_id bigint NOT NULL REFERENCES iam_scope(id),
+    owner_id bigint NOT NULL REFERENCES iam_user(id),
+    role_id bigint NOT NULL REFERENCES iam_role(id),
+    principal_id bigint NOT NULL REFERENCES iam_user_alias(id),
+    type int NOT NULL REFERENCES iam_role_type_enm(id) CHECK(type = 2)
+  );
+CREATE TABLE if not exists iam_role_group (
+    id bigint generated always as identity primary key,
+    create_time timestamp with time zone NOT NULL default current_timestamp,
+    update_time timestamp with time zone NOT NULL default current_timestamp,
+    public_id text not null UNIQUE,
+    friendly_name text UNIQUE,
+    primary_scope_id bigint NOT NULL REFERENCES iam_scope(id),
+    owner_id bigint NOT NULL REFERENCES iam_user(id),
+    role_id bigint NOT NULL REFERENCES iam_role(id),
+    principal_id bigint NOT NULL REFERENCES iam_group(id),
+    type int NOT NULL REFERENCES iam_role_type_enm(id) CHECK(type = 3)
+  );
+CREATE VIEW iam_principal_role AS
+SELECT
+  *
+FROM iam_role_user
+UNION
+SELECT
+  *
+FROM iam_role_user_alias;
+select
+  *
+from iam_role_group;
