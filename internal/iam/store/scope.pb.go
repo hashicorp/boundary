@@ -4,8 +4,6 @@
 // 	protoc        v3.11.4
 // source: scope.proto
 
-// define an oplog package within the watchtower controller
-
 package store
 
 import (

@@ -27,8 +27,8 @@ type AuthMethod struct {
 }
 
 // check that required interfaces are implemented
-var _ Resource = (*UserAlias)(nil)
-var _ db.VetForWriter = (*UserAlias)(nil)
+var _ Resource = (*AuthMethod)(nil)
+var _ db.VetForWriter = (*AuthMethod)(nil)
 
 // NewAuthMethod creates a new AuthMethod for a Scope (org or project), Owner (User)
 // and authentication type.
