@@ -29,7 +29,7 @@
           "default": {
             "description": "The default error structure returned.",
             "schema": {
-              "$ref": ".controller.api.Error"
+              "$ref": "#/definitions/apiv1Error"
             }
           }
         },
@@ -59,7 +59,7 @@
           "default": {
             "description": "The default error structure returned.",
             "schema": {
-              "$ref": ".controller.api.Error"
+              "$ref": "#/definitions/apiv1Error"
             }
           }
         },
@@ -92,7 +92,7 @@
           "default": {
             "description": "The default error structure returned.",
             "schema": {
-              "$ref": ".controller.api.Error"
+              "$ref": "#/definitions/apiv1Error"
             }
           }
         },
@@ -131,7 +131,7 @@
           "default": {
             "description": "The default error structure returned.",
             "schema": {
-              "$ref": ".controller.api.Error"
+              "$ref": "#/definitions/apiv1Error"
             }
           }
         },
@@ -160,7 +160,7 @@
           "default": {
             "description": "The default error structure returned.",
             "schema": {
-              "$ref": ".controller.api.Error"
+              "$ref": "#/definitions/apiv1Error"
             }
           }
         },
@@ -190,7 +190,7 @@
           "default": {
             "description": "The default error structure returned.",
             "schema": {
-              "$ref": ".controller.api.Error"
+              "$ref": "#/definitions/apiv1Error"
             }
           }
         },
@@ -217,6 +217,29 @@
     }
   },
   "definitions": {
+    "apiv1Error": {
+      "type": "object",
+      "properties": {
+        "status": {
+          "type": "integer",
+          "format": "int32",
+          "description": "The HTTP Status code applicable to this error."
+        },
+        "code": {
+          "type": "string",
+          "description": "An application-specific error string."
+        },
+        "message": {
+          "type": "string",
+          "description": "A human readable explanation specific to this occurrence of the error."
+        },
+        "details": {
+          "$ref": "#/definitions/v1ErrorDetails",
+          "description": "Additional metadata regarding the error.  Depending on the error different fields will be populated."
+        }
+      },
+      "description": "Error is returned by the JSON API when an error occurs."
+    },
     "gatewayruntimeError": {
       "type": "object",
       "properties": {
@@ -329,6 +352,23 @@
         }
       },
       "description": "An EC2Catalog is a host catalog that pulls information from AWS."
+    },
+    "v1ErrorDetails": {
+      "type": "object",
+      "properties": {
+        "trace_id": {
+          "type": "string"
+        },
+        "request_id": {
+          "type": "string"
+        },
+        "request_fields": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
     },
     "v1GetEc2CatalogResponse": {
       "type": "object",

@@ -34,7 +34,7 @@ service ControllerService {
           description: "The default error structure returned."
           schema: {
             json_schema: {
-              ref: ".controller.api.Error"
+              ref: ".controller.api.v1.Error"
             };
           }
         }
@@ -54,7 +54,7 @@ service ControllerService {
           description: "The default error structure returned."
           schema: {
             json_schema: {
-              ref: ".controller.api.Error"
+              ref: ".controller.api.v1.Error"
             };
           }
         }
@@ -77,7 +77,7 @@ service ControllerService {
           description: "The default error structure returned."
           schema: {
             json_schema: {
-              ref: ".controller.api.Error"
+              ref: ".controller.api.v1.Error"
             };
           }
         }
@@ -101,7 +101,7 @@ service ControllerService {
           description: "The default error structure returned."
           schema: {
             json_schema: {
-              ref: ".controller.api.Error"
+              ref: ".controller.api.v1.Error"
             };
           }
         }
@@ -120,7 +120,7 @@ service ControllerService {
           description: "The default error structure returned."
           schema: {
             json_schema: {
-              ref: ".controller.api.Error"
+              ref: ".controller.api.v1.Error"
             };
           }
         }
@@ -140,7 +140,7 @@ service ControllerService {
           description: "The default error structure returned."
           schema: {
             json_schema: {
-              ref: ".controller.api.Error"
+              ref: ".controller.api.v1.Error"
             };
           }
         }
