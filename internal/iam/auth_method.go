@@ -20,7 +20,9 @@ const (
 )
 
 // AuthMethod are the authentication methods available in different Organization and/or
-// Project Scopes within WatchTower
+// Project Scopes within WatchTower.  UserAliases must have an AuthMethod, since that's
+// how they authenticate and it's really the purpose of UserAlaises (to tie users to
+// different authmethods via aliases)
 type AuthMethod struct {
 	*store.AuthMethod
 	tableName string `gorm:"-"`
