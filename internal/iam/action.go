@@ -4,6 +4,7 @@ package iam
 // actions are also stored as a lookup db table named iam_action
 type Action int
 
+// not using iota intentionally, since the values are stored in the db as well.
 const (
 	ActionUnknown Action = 0
 	ActionList    Action = 1
