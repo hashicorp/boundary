@@ -84,6 +84,24 @@ func (a *UserAlias) VetForWrite(ctx context.Context, r db.Reader, opType db.OpTy
 	return nil
 }
 
+// Roles gets the roles for the user alias
+// (we should/can support options to include roles associated with the user alias' user, and groups (user + aliases))
+func (a *UserAlias) Roles(ctx context.Context, r db.Reader, opt ...Option) (map[string]*Role, error) {
+	if a.Id == 0 {
+		return nil, errors.New("error user alias id is 0 for finding user aliases")
+	}
+	where := "select * from iam_role where id in (select role_id from iam_assigned_role ipr where principal_id  = ? and type = 1)"
+	roles := []*Role{}
+	if err := r.SearchBy(ctx, &roles, where, a.Id, UserAliasRoleType); err != nil {
+		return nil, fmt.Errorf("error getting user roles %w", err)
+	}
+	results := map[string]*Role{}
+	for _, r := range roles {
+		results[r.PublicId] = r
+	}
+	return results, nil
+}
+
 // Groups searches for all the UserAlias' groups
 func (u *UserAlias) Groups(ctx context.Context, r db.Reader) ([]*Group, error) {
 	if u.Id == 0 {
@@ -95,6 +113,18 @@ func (u *UserAlias) Groups(ctx context.Context, r db.Reader) ([]*Group, error) {
 		return nil, fmt.Errorf("error finding user alias groups: %w", err)
 	}
 	return groups, nil
+}
+
+// Users searches for the user of this alias
+func (a *UserAlias) User(ctx context.Context, r db.Reader) (*User, error) {
+	if a.Id == 0 {
+		return nil, errors.New("error user id is 0 for finding user aliases")
+	}
+	var user User
+	if err := r.LookupBy(ctx, &user, "id = ?", a.UserId); err != nil {
+		return nil, fmt.Errorf("error finding user: %w", err)
+	}
+	return &user, nil
 }
 
 // primaryScopeIsValid checks the alias primary scope to make sure it's either an org or project
