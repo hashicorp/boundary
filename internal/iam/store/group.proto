@@ -34,11 +34,6 @@ message Group {
   // @inject_tag: gorm:"foreignkey:ScopeId"
   Scope primary_scope = 8;
 
-  // owner_id is the id (primary key in the user aggregate) of the user that
-  // owns this Group
-  // @inject_tag: `gorm:"default:0"`
-  uint32 owner_id = 9;
-
   // disabled is by default false and allows a Group to be marked disabled.
   bool disabled = 11;
 }

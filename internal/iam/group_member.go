@@ -32,7 +32,7 @@ type groupMemberView struct {
 
 func (v *groupMemberView) TableName() string { return "iam_group_member" }
 
-// NewGroupMember creates a new member of the group with a scope (project/organization), owner (user)
+// NewGroupMember creates a new member of the group with a scope (project/organization)
 // options include: withDescripion, withFriendlyName
 func NewGroupMember(primaryScope *Scope, g *Group, m Resource, opt ...Option) (GroupMember, error) {
 	if m.ResourceType() == ResourceTypeUser {
@@ -59,7 +59,7 @@ var _ Resource = (*GroupMemberUser)(nil)
 var _ GroupMember = (*GroupMemberUser)(nil)
 var _ db.VetForWriter = (*GroupMemberUser)(nil)
 
-// NewGroupMemberUser creates a new user member of the groupwith a scope (project/organization), owner (user)
+// NewGroupMemberUser creates a new user member of the groupwith a scope (project/organization)
 // options include: withDescripion, withFriendlyName
 func NewGroupMemberUser(primaryScope *Scope, g *Group, m *User, opt ...Option) (GroupMember, error) {
 	opts := GetOpts(opt...)
@@ -79,9 +79,6 @@ func NewGroupMemberUser(primaryScope *Scope, g *Group, m *User, opt ...Option) (
 	if g.Id == 0 {
 		return nil, errors.New("error the user member group == 0")
 	}
-	if g.OwnerId == 0 {
-		return nil, errors.New("error the user member group owner_id == 0")
-	}
 	if primaryScope.Type != uint32(OrganizationScope) &&
 		primaryScope.Type != uint32(ProjectScope) {
 		return nil, errors.New("roles can only be within an organization or project scope")
@@ -94,7 +91,6 @@ func NewGroupMemberUser(primaryScope *Scope, g *Group, m *User, opt ...Option) (
 		GroupMemberUser: &store.GroupMemberUser{
 			PublicId:       publicId,
 			PrimaryScopeId: primaryScope.GetId(),
-			OwnerId:        g.OwnerId,
 			MemberId:       m.Id,
 			GroupId:        g.Id,
 			Type:           uint32(UserMemberType),
@@ -113,9 +109,6 @@ func (m *GroupMemberUser) VetForWrite(ctx context.Context, r db.Reader, opType d
 	}
 	if m.PrimaryScopeId == 0 {
 		return errors.New("error primary scope id not set for group write")
-	}
-	if m.OwnerId == 0 {
-		return errors.New("error owner id == 0 for group write")
 	}
 	if m.Type != uint32(UserMemberType) {
 		return errors.New("error member type is not user")
@@ -136,11 +129,6 @@ func (m *GroupMemberUser) primaryScopeIsValid(ctx context.Context, r db.Reader) 
 		return errors.New("error primary scope is not an organization or project for user group member")
 	}
 	return nil
-}
-
-// GetOwner returns the owner (User) of the GroupMember
-func (m *GroupMemberUser) GetOwner(ctx context.Context, r db.Reader) (*User, error) {
-	return LookupOwner(ctx, r, m)
 }
 
 // GetPrimaryScope returns the PrimaryScope for the GroupMember
@@ -180,7 +168,7 @@ var _ Resource = (*GroupMemberUserAlias)(nil)
 var _ GroupMember = (*GroupMemberUserAlias)(nil)
 var _ db.VetForWriter = (*GroupMemberUserAlias)(nil)
 
-// NewGroupMemberUserAlias creates a new user alias member of the groupwith a scope (project/organization), owner (user)
+// NewGroupMemberUserAlias creates a new user alias member of the groupwith a scope (project/organization)
 // options include: withDescripion, withFriendlyName
 func NewGroupMemberUserAlias(primaryScope *Scope, g *Group, m *UserAlias, opt ...Option) (GroupMember, error) {
 	opts := GetOpts(opt...)
@@ -200,9 +188,6 @@ func NewGroupMemberUserAlias(primaryScope *Scope, g *Group, m *UserAlias, opt ..
 	if g.Id == 0 {
 		return nil, errors.New("error the user member group == 0")
 	}
-	if g.OwnerId == 0 {
-		return nil, errors.New("error the user member group owner_id == 0")
-	}
 	if primaryScope.Type != uint32(OrganizationScope) &&
 		primaryScope.Type != uint32(ProjectScope) {
 		return nil, errors.New("roles can only be within an organization or project scope")
@@ -215,7 +200,6 @@ func NewGroupMemberUserAlias(primaryScope *Scope, g *Group, m *UserAlias, opt ..
 		GroupMemberUserAlias: &store.GroupMemberUserAlias{
 			PublicId:       publicId,
 			PrimaryScopeId: primaryScope.GetId(),
-			OwnerId:        g.OwnerId,
 			MemberId:       m.Id,
 			GroupId:        g.Id,
 			Type:           uint32(UserAliasMemberType),
@@ -234,9 +218,6 @@ func (m *GroupMemberUserAlias) VetForWrite(ctx context.Context, r db.Reader, opT
 	}
 	if m.PrimaryScopeId == 0 {
 		return errors.New("error primary scope id not set for group write")
-	}
-	if m.OwnerId == 0 {
-		return errors.New("error owner id == 0 for group write")
 	}
 	if m.Type != uint32(UserAliasMemberType) {
 		return errors.New("error member type is not user")
@@ -257,11 +238,6 @@ func (m *GroupMemberUserAlias) primaryScopeIsValid(ctx context.Context, r db.Rea
 		return errors.New("error primary scope is not an organization or project for user group member")
 	}
 	return nil
-}
-
-// GetOwner returns the owner (User) of the GroupMember
-func (m *GroupMemberUserAlias) GetOwner(ctx context.Context, r db.Reader) (*User, error) {
-	return LookupOwner(ctx, r, m)
 }
 
 // GetPrimaryScope returns the PrimaryScope for the GroupMember

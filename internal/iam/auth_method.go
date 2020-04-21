@@ -32,9 +32,9 @@ type AuthMethod struct {
 var _ Resource = (*AuthMethod)(nil)
 var _ db.VetForWriter = (*AuthMethod)(nil)
 
-// NewAuthMethod creates a new AuthMethod for a Scope (org or project), Owner (User)
+// NewAuthMethod creates a new AuthMethod for a Scope (org or project)
 // and authentication type.
-func NewAuthMethod(primaryScope *Scope, owner *User, authType AuthType, opt ...Option) (*AuthMethod, error) {
+func NewAuthMethod(primaryScope *Scope, authType AuthType, opt ...Option) (*AuthMethod, error) {
 	opts := GetOpts(opt...)
 	withFriendlyName := opts[optionWithFriendlyName].(string)
 	if authType == AuthUnknown {
@@ -42,12 +42,6 @@ func NewAuthMethod(primaryScope *Scope, owner *User, authType AuthType, opt ...O
 	}
 	if primaryScope == nil {
 		return nil, errors.New("error user pass primary scope is nil")
-	}
-	if owner == nil {
-		return nil, errors.New("error the user pass owner is nil")
-	}
-	if owner.Id == 0 {
-		return nil, errors.New("error the user pass owner id == 0")
 	}
 	if primaryScope.Type != uint32(OrganizationScope) &&
 		primaryScope.Type != uint32(ProjectScope) {
@@ -61,7 +55,6 @@ func NewAuthMethod(primaryScope *Scope, owner *User, authType AuthType, opt ...O
 		AuthMethod: &store.AuthMethod{
 			PublicId:       publicId,
 			PrimaryScopeId: primaryScope.GetId(),
-			OwnerId:        owner.Id,
 			Type:           uint32(authType),
 		},
 	}
@@ -78,9 +71,6 @@ func (p *AuthMethod) VetForWrite(ctx context.Context, r db.Reader, opType db.OpT
 	}
 	if p.PrimaryScopeId == 0 {
 		return errors.New("error primary scope id not set for user write")
-	}
-	if p.OwnerId == 0 {
-		return errors.New("error owner id is nil for user write")
 	}
 	// make sure the scope is valid for auth methods
 	if err := p.primaryScopeIsValid(ctx, r); err != nil {
@@ -99,11 +89,6 @@ func (p *AuthMethod) primaryScopeIsValid(ctx context.Context, r db.Reader) error
 		return errors.New("error primary scope is not an organization")
 	}
 	return nil
-}
-
-// GetOwner returns the owner (User) of the AuthMethod
-func (p *AuthMethod) GetOwner(ctx context.Context, r db.Reader) (*User, error) {
-	return LookupOwner(ctx, r, p)
 }
 
 // GetPrimaryScope returns the PrimaryScope for the AuthMethod

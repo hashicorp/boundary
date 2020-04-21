@@ -34,20 +34,26 @@ var _ Resource = (*Scope)(nil)
 var _ db.VetForWriter = (*User)(nil)
 
 // NewScope creates a new Scope of the specified ScopeType with options:
-// WithOwnerId specifies the Scope's owner id (a User). Most Scopes
-// will have an owner id, but we have to be able to create Scopes before users.
 // WithFriendlyName specifies the Scope's friendly name.
 func NewScope(scopeType ScopeType, opt ...Option) (*Scope, error) {
 	opts := GetOpts(opt...)
 	withFriendlyName := opts[optionWithFriendlyName].(string)
-	withOwnerId := opts[optionWithOwnerId].(uint32)
 	withScope := opts[optionWithScope]
 
 	if scopeType == UnknownScope {
 		return nil, errors.New("error unknown scope type for new scope")
 	}
-	if scopeType == ProjectScope && withOwnerId == 0 {
-		return nil, errors.New("project scopes must have an owner")
+	if scopeType == ProjectScope {
+		if withScope == nil {
+			return nil, errors.New("error project scope must be with a scope")
+		}
+		parentScope, ok := withScope.(*Scope)
+		if !ok {
+			return nil, errors.New("error project scope with a scope which is not a scope")
+		}
+		if parentScope.Id == 0 {
+			return nil, errors.New("error project scope parent id == 0")
+		}
 	}
 	publicId, err := base62.Random(20)
 	if err != nil {
@@ -68,9 +74,6 @@ func NewScope(scopeType ScopeType, opt ...Option) (*Scope, error) {
 			return nil, errors.New("error assigning scope parent id to primary scope with id == 0")
 		}
 		s.ParentId = parentScope.Id
-	}
-	if withOwnerId != 0 {
-		s.OwnerId = withOwnerId
 	}
 	if withFriendlyName != "" {
 		s.FriendlyName = withFriendlyName
@@ -102,11 +105,6 @@ func (s *Scope) VetForWrite(ctx context.Context, r db.Reader, opType db.OpType) 
 		return errors.New("error public id is empty string for scope write")
 	}
 	return nil
-}
-
-// GetOwner returns the scope's owner (User)
-func (s *Scope) GetOwner(ctx context.Context, r db.Reader) (*User, error) {
-	return LookupOwner(ctx, r, s)
 }
 
 // ResourceType returns the type of resource

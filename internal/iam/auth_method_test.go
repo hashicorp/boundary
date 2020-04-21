@@ -27,18 +27,12 @@ func Test_NewAuthMethod(t *testing.T) {
 		assert.NilError(t, err)
 		assert.Check(t, s.Id != 0)
 
-		rootUser, err := NewUser(s, AsRootUser(true))
-		assert.NilError(t, err)
-		err = w.Create(context.Background(), rootUser)
-		assert.NilError(t, err)
-
-		meth, err := NewAuthMethod(s, rootUser, AuthUserPass)
+		meth, err := NewAuthMethod(s, AuthUserPass)
 		assert.NilError(t, err)
 		assert.Check(t, meth != nil)
 		err = w.Create(context.Background(), meth)
 		assert.NilError(t, err)
 		assert.Check(t, meth != nil)
 		assert.Equal(t, meth.Type, uint32(AuthUserPass))
-		assert.Equal(t, meth.OwnerId, rootUser.Id)
 	})
 }

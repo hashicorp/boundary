@@ -19,20 +19,14 @@ var _ Resource = (*Role)(nil)
 
 var _ db.VetForWriter = (*Role)(nil)
 
-// NewRole creates a new role with a scope (project/organization), owner (user)
+// NewRole creates a new role with a scope (project/organization)
 // options include: withDescripion, withFriendlyName
-func NewRole(primaryScope *Scope, owner *User, opt ...Option) (*Role, error) {
+func NewRole(primaryScope *Scope, opt ...Option) (*Role, error) {
 	opts := GetOpts(opt...)
 	withFriendlyName := opts[optionWithFriendlyName].(string)
 	withDescription := opts[optionWithDescription].(string)
 	if primaryScope == nil {
 		return nil, errors.New("error the role primary scope is nil")
-	}
-	if owner == nil {
-		return nil, errors.New("error the role owner is nil")
-	}
-	if owner.Id == 0 {
-		return nil, errors.New("error the role owner id == 0")
 	}
 	if primaryScope.Type != uint32(OrganizationScope) &&
 		primaryScope.Type != uint32(ProjectScope) {
@@ -46,7 +40,6 @@ func NewRole(primaryScope *Scope, owner *User, opt ...Option) (*Role, error) {
 		Role: &store.Role{
 			PublicId:       publicId,
 			PrimaryScopeId: primaryScope.GetId(),
-			OwnerId:        owner.Id,
 		},
 	}
 	if withFriendlyName != "" {
@@ -81,7 +74,6 @@ func (role *Role) AssignedRoles(ctx context.Context, r db.Reader) ([]AssignedRol
 					PublicId:       vr.PublicId,
 					FriendlyName:   vr.FriendlyName,
 					PrimaryScopeId: vr.PrimaryScopeId,
-					OwnerId:        vr.OwnerId,
 					RoleId:         vr.RoleId,
 					Type:           uint32(UserRoleType),
 					PrincipalId:    vr.PrincipalId,
@@ -97,7 +89,6 @@ func (role *Role) AssignedRoles(ctx context.Context, r db.Reader) ([]AssignedRol
 					PublicId:       vr.PublicId,
 					FriendlyName:   vr.FriendlyName,
 					PrimaryScopeId: vr.PrimaryScopeId,
-					OwnerId:        vr.OwnerId,
 					RoleId:         vr.RoleId,
 					Type:           uint32(UserAliasRoleType),
 					PrincipalId:    vr.PrincipalId,
@@ -113,7 +104,6 @@ func (role *Role) AssignedRoles(ctx context.Context, r db.Reader) ([]AssignedRol
 					PublicId:       vr.PublicId,
 					FriendlyName:   vr.FriendlyName,
 					PrimaryScopeId: vr.PrimaryScopeId,
-					OwnerId:        vr.OwnerId,
 					RoleId:         vr.RoleId,
 					Type:           uint32(GroupRoleType),
 					PrincipalId:    vr.PrincipalId,
@@ -135,9 +125,6 @@ func (role *Role) VetForWrite(ctx context.Context, r db.Reader, opType db.OpType
 	if role.PrimaryScopeId == 0 {
 		return errors.New("error primary scope id not set for role write")
 	}
-	if role.OwnerId == 0 {
-		return errors.New("error owner id == 0 for role write")
-	}
 	// make sure the scope is valid for users
 	if err := role.primaryScopeIsValid(ctx, r); err != nil {
 		return err
@@ -154,11 +141,6 @@ func (role *Role) primaryScopeIsValid(ctx context.Context, r db.Reader) error {
 		return errors.New("error primary scope is not an organization or project for role")
 	}
 	return nil
-}
-
-// GetOwner returns the owner (User) of the Role
-func (role *Role) GetOwner(ctx context.Context, r db.Reader) (*User, error) {
-	return LookupOwner(ctx, r, role)
 }
 
 // GetPrimaryScope returns the PrimaryScope for the Role

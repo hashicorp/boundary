@@ -31,8 +31,4 @@ message Scope {
   // parent_id is the id (primary key in the Scope aggregate) of scope's parent
   // @inject_tag: `gorm:"default:0"`
   uint32 parent_id = 7;
-
-  // owner_id is the id (primary key in the user aggregate) of the user that
-  // owns this scope
-  uint32 owner_id = 8;
 }

@@ -26,7 +26,11 @@ const (
 // of the legacy proto package is being used.
 const _ = proto.ProtoPackageIsVersion4
 
-// Timestamp for oplog messages
+// Timestamp for iam messages.  We've defined a new local type wrapper
+// of google.protobuf.Timestamp so we can implement sql.Scanner and sql.Valuer
+// interfaces.  See:
+// https://golang.org/pkg/database/sql/#Scanner
+// https://golang.org/pkg/database/sql/driver/#Valuer
 type Timestamp struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache

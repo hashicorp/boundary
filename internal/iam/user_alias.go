@@ -21,8 +21,8 @@ var _ Resource = (*UserAlias)(nil)
 var _ db.VetForWriter = (*UserAlias)(nil)
 
 // NewUserAlias creates a new user alias with a given name for
-// a scope (project/organization), owner (user), and auth method
-func NewUserAlias(primaryScope *Scope, owner *User, authMethod *AuthMethod, name string, opt ...Option) (*UserAlias, error) {
+// a scope (project/organization), User, and auth method
+func NewUserAlias(primaryScope *Scope, user *User, authMethod *AuthMethod, name string, opt ...Option) (*UserAlias, error) {
 	opts := GetOpts(opt...)
 	withFriendlyName := opts[optionWithFriendlyName].(string)
 	if name == "" {
@@ -34,11 +34,11 @@ func NewUserAlias(primaryScope *Scope, owner *User, authMethod *AuthMethod, name
 	if primaryScope == nil {
 		return nil, errors.New("error user alias primary scope is nil")
 	}
-	if owner == nil {
-		return nil, errors.New("error the user alias owner is nil")
+	if user == nil {
+		return nil, errors.New("error the user alias user is nil")
 	}
-	if owner.Id == 0 {
-		return nil, errors.New("error the user alias owner id == 0")
+	if user.Id == 0 {
+		return nil, errors.New("error the user alias user id == 0")
 	}
 	if primaryScope.Type != uint32(OrganizationScope) &&
 		primaryScope.Type != uint32(ProjectScope) {
@@ -53,7 +53,7 @@ func NewUserAlias(primaryScope *Scope, owner *User, authMethod *AuthMethod, name
 			Name:           name,
 			PublicId:       publicId,
 			PrimaryScopeId: primaryScope.GetId(),
-			OwnerId:        owner.Id,
+			UserId:         user.Id,
 			AuthMethodId:   authMethod.Id,
 		},
 	}
@@ -76,9 +76,6 @@ func (a *UserAlias) VetForWrite(ctx context.Context, r db.Reader, opType db.OpTy
 	}
 	if a.PrimaryScopeId == 0 {
 		return errors.New("error primary scope id not set for user alias write")
-	}
-	if a.OwnerId == 0 {
-		return errors.New("error owner id is nil for user alias write")
 	}
 	// make sure the scope is valid for aliases
 	if err := a.primaryScopeIsValid(ctx, r); err != nil {
@@ -110,11 +107,6 @@ func (a *UserAlias) primaryScopeIsValid(ctx context.Context, r db.Reader) error 
 		return errors.New("error primary scope is not an organization")
 	}
 	return nil
-}
-
-// GetOwner returns the owner (User) of the UserAlias
-func (a *UserAlias) GetOwner(ctx context.Context, r db.Reader) (*User, error) {
-	return LookupOwner(ctx, r, a)
 }
 
 // GetPrimaryScope returns the PrimaryScope for the UserAlias

@@ -18,8 +18,6 @@ type Options map[string]interface{}
 func getDefaultOptions() Options {
 	return Options{
 		optionWithFriendlyName: "",
-		optionAsRootUser:       false,
-		optionWithOwnerId:      uint32(0),
 		optionWithScope:        nil,
 		optionWithDescription:  "",
 	}
@@ -43,29 +41,11 @@ func WithScope(s *Scope) Option {
 	}
 }
 
-const optionWithOwnerId = "optionWithOwnerId"
-
-// WithOwnerId provides an optional owner id
-func WithOwnerId(id uint32) Option {
-	return func(o Options) {
-		o[optionWithOwnerId] = id
-	}
-}
-
 const optionWithFriendlyName = "optionWithFriendlyName"
 
 // WithFriendlyName provides an option to search by a friendly name
 func WithFriendlyName(name string) Option {
 	return func(o Options) {
 		o[optionWithFriendlyName] = name
-	}
-}
-
-const optionAsRootUser = "optionAsRootUser"
-
-// AsRootUser provides an option to specify this is a root user
-func AsRootUser(b bool) Option {
-	return func(o Options) {
-		o[optionAsRootUser] = b
 	}
 }

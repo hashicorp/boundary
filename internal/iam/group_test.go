@@ -28,15 +28,9 @@ func Test_NewGroup(t *testing.T) {
 		assert.NilError(t, err)
 		assert.Check(t, s.Id != 0)
 
-		rootUser, err := NewUser(s, AsRootUser(true))
-		assert.NilError(t, err)
-		err = w.Create(context.Background(), rootUser)
-		assert.NilError(t, err)
-
-		grp, err := NewGroup(s, rootUser, WithDescription("this is a test group"))
+		grp, err := NewGroup(s, WithDescription("this is a test group"))
 		assert.NilError(t, err)
 		assert.Check(t, grp != nil)
-		assert.Equal(t, rootUser.Id, grp.OwnerId)
 		assert.Equal(t, grp.Description, "this is a test group")
 		assert.Equal(t, s.Id, grp.PrimaryScopeId)
 		err = w.Create(context.Background(), grp)
@@ -64,28 +58,27 @@ func Test_GroupMembers(t *testing.T) {
 		assert.NilError(t, err)
 		assert.Check(t, s.Id != 0)
 
-		rootUser, err := NewUser(s, AsRootUser(true))
+		user, err := NewUser(s)
 		assert.NilError(t, err)
-		err = w.Create(context.Background(), rootUser)
+		err = w.Create(context.Background(), user)
 		assert.NilError(t, err)
 
-		grp, err := NewGroup(s, rootUser, WithDescription("this is a test group"))
+		grp, err := NewGroup(s, WithDescription("this is a test group"))
 		assert.NilError(t, err)
 		assert.Check(t, grp != nil)
-		assert.Equal(t, rootUser.Id, grp.OwnerId)
 		assert.Equal(t, grp.Description, "this is a test group")
 		assert.Equal(t, s.Id, grp.PrimaryScopeId)
 		err = w.Create(context.Background(), grp)
 		assert.NilError(t, err)
 		assert.Check(t, grp.Id != 0)
 
-		gm, err := NewGroupMember(s, grp, rootUser)
+		gm, err := NewGroupMember(s, grp, user)
 		assert.NilError(t, err)
 		assert.Check(t, gm != nil)
 		err = w.Create(context.Background(), gm)
 		assert.NilError(t, err)
 
-		meth, err := NewAuthMethod(s, rootUser, AuthUserPass)
+		meth, err := NewAuthMethod(s, AuthUserPass)
 		assert.NilError(t, err)
 		assert.Check(t, meth != nil)
 		err = w.Create(context.Background(), meth)
@@ -93,7 +86,7 @@ func Test_GroupMembers(t *testing.T) {
 
 		id, err := uuid.GenerateUUID()
 		assert.NilError(t, err)
-		alias, err := NewUserAlias(s, rootUser, meth, id)
+		alias, err := NewUserAlias(s, user, meth, id)
 		assert.NilError(t, err)
 		assert.Check(t, alias != nil)
 		err = w.Create(context.Background(), alias)
@@ -110,8 +103,8 @@ func Test_GroupMembers(t *testing.T) {
 		assert.Check(t, members != nil)
 		assert.Check(t, len(members) == 2)
 		for _, m := range members {
-			if m.GetMemberId() != alias.Id && m.GetMemberId() != rootUser.Id {
-				t.Errorf("members %d not one of the known ids %d, %d", m.GetMemberId(), alias.Id, rootUser.Id)
+			if m.GetMemberId() != alias.Id && m.GetMemberId() != user.Id {
+				t.Errorf("members %d not one of the known ids %d, %d", m.GetMemberId(), alias.Id, user.Id)
 			}
 		}
 	})

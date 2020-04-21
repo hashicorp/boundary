@@ -19,19 +19,13 @@ var _ Resource = (*RoleGrant)(nil)
 
 var _ db.VetForWriter = (*RoleGrant)(nil)
 
-// NewRoleGrant creates a new grant with a scope (project/organization), owner (user)
+// NewRoleGrant creates a new grant with a scope (project/organization)
 // options include: withFriendlyName
-func NewRoleGrant(primaryScope *Scope, owner *User, role *Role, grant string, opt ...Option) (*RoleGrant, error) {
+func NewRoleGrant(primaryScope *Scope, role *Role, grant string, opt ...Option) (*RoleGrant, error) {
 	opts := GetOpts(opt...)
 	withFriendlyName := opts[optionWithFriendlyName].(string)
 	if primaryScope == nil {
 		return nil, errors.New("error the role grant primary scope is nil")
-	}
-	if owner == nil {
-		return nil, errors.New("error the role grant owner is nil")
-	}
-	if owner.Id == 0 {
-		return nil, errors.New("error the role grant owner id == 0")
 	}
 	if primaryScope.Type != uint32(OrganizationScope) &&
 		primaryScope.Type != uint32(ProjectScope) {
@@ -51,7 +45,6 @@ func NewRoleGrant(primaryScope *Scope, owner *User, role *Role, grant string, op
 		RoleGrant: &store.RoleGrant{
 			PublicId:       publicId,
 			PrimaryScopeId: primaryScope.GetId(),
-			OwnerId:        owner.Id,
 			RoleId:         role.Id,
 			RoleGrant:      grant,
 		},
@@ -70,9 +63,6 @@ func (g *RoleGrant) VetForWrite(ctx context.Context, r db.Reader, opType db.OpTy
 	if g.PrimaryScopeId == 0 {
 		return errors.New("error primary scope id not set for grant write")
 	}
-	if g.OwnerId == 0 {
-		return errors.New("error owner id == 0 for grant write")
-	}
 	// make sure the scope is valid for users
 	if err := g.primaryScopeIsValid(ctx, r); err != nil {
 		return err
@@ -89,11 +79,6 @@ func (g *RoleGrant) primaryScopeIsValid(ctx context.Context, r db.Reader) error 
 		return errors.New("error primary scope is not an organization or project for the grant")
 	}
 	return nil
-}
-
-// GetOwner returns the owner (User) of the RoleGrant
-func (g *RoleGrant) GetOwner(ctx context.Context, r db.Reader) (*User, error) {
-	return LookupOwner(ctx, r, g)
 }
 
 // GetPrimaryScope returns the PrimaryScope for the RoleGrant

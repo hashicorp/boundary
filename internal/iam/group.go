@@ -19,20 +19,14 @@ var _ Resource = (*Group)(nil)
 
 var _ db.VetForWriter = (*Group)(nil)
 
-// NewGroup creates a new group with a scope (project/organization), owner (user)
+// NewGroup creates a new group with a scope (project/organization)
 // options include: withDescripion, withFriendlyName
-func NewGroup(primaryScope *Scope, owner *User, opt ...Option) (*Group, error) {
+func NewGroup(primaryScope *Scope, opt ...Option) (*Group, error) {
 	opts := GetOpts(opt...)
 	withFriendlyName := opts[optionWithFriendlyName].(string)
 	withDescription := opts[optionWithDescription].(string)
 	if primaryScope == nil {
 		return nil, errors.New("error the role primary scope is nil")
-	}
-	if owner == nil {
-		return nil, errors.New("error the role owner is nil")
-	}
-	if owner.Id == 0 {
-		return nil, errors.New("error the role owner id == 0")
 	}
 	if primaryScope.Type != uint32(OrganizationScope) &&
 		primaryScope.Type != uint32(ProjectScope) {
@@ -46,7 +40,6 @@ func NewGroup(primaryScope *Scope, owner *User, opt ...Option) (*Group, error) {
 		Group: &store.Group{
 			PublicId:       publicId,
 			PrimaryScopeId: primaryScope.GetId(),
-			OwnerId:        owner.Id,
 		},
 	}
 	if withFriendlyName != "" {
@@ -77,7 +70,6 @@ func (g *Group) Members(ctx context.Context, r db.Reader) ([]GroupMember, error)
 					PublicId:       m.PublicId,
 					FriendlyName:   m.FriendlyName,
 					PrimaryScopeId: m.PrimaryScopeId,
-					OwnerId:        m.OwnerId,
 					GroupId:        m.GroupId,
 					Type:           uint32(UserMemberType),
 					MemberId:       m.MemberId,
@@ -93,7 +85,6 @@ func (g *Group) Members(ctx context.Context, r db.Reader) ([]GroupMember, error)
 					PublicId:       m.PublicId,
 					FriendlyName:   m.FriendlyName,
 					PrimaryScopeId: m.PrimaryScopeId,
-					OwnerId:        m.OwnerId,
 					GroupId:        m.GroupId,
 					Type:           uint32(UserMemberType),
 					MemberId:       m.MemberId,
@@ -116,9 +107,6 @@ func (g *Group) VetForWrite(ctx context.Context, r db.Reader, opType db.OpType) 
 	if g.PrimaryScopeId == 0 {
 		return errors.New("error primary scope id not set for group write")
 	}
-	if g.OwnerId == 0 {
-		return errors.New("error owner id == 0 for group write")
-	}
 	// make sure the scope is valid for users
 	if err := g.primaryScopeIsValid(ctx, r); err != nil {
 		return err
@@ -135,11 +123,6 @@ func (g *Group) primaryScopeIsValid(ctx context.Context, r db.Reader) error {
 		return errors.New("error primary scope is not an organization or project for group")
 	}
 	return nil
-}
-
-// GetOwner returns the owner (User) of the Group
-func (g *Group) GetOwner(ctx context.Context, r db.Reader) (*User, error) {
-	return LookupOwner(ctx, r, g)
 }
 
 // GetPrimaryScope returns the PrimaryScope for the Group

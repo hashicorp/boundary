@@ -32,11 +32,6 @@ message AuthMethod {
   // @inject_tag: gorm:"foreignkey:ScopeId"
   Scope primary_scope = 7;
 
-  // owner_id is the id (primary key in the user aggregate) of the user that
-  // owns this AuthMethod
-  // @inject_tag: `gorm:"default:0"`
-  uint32 owner_id = 8;
-
   // disabled is by default false.
   bool disabled = 9;
 

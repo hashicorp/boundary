@@ -32,11 +32,6 @@ message GroupMemberUser {
   // @inject_tag: gorm:"foreignkey:ScopeId"
   Scope primary_scope = 7;
 
-  // owner_id is the id (primary key in the user aggregate) of the user that
-  // owns this GroupMember which is the same as the group owner
-  // @inject_tag: `gorm:"default:0"`
-  uint32 owner_id = 8;
-
   // group_id is the Group of this GroupMemberUser.
   uint32 group_id = 9;
 
@@ -73,11 +68,6 @@ message GroupMemberUserAlias {
   // @inject_tag: gorm:"foreignkey:ScopeId"
   Scope primary_scope = 7;
 
-  // owner_id is the id (primary key in the user aggregate) of the user that
-  // owns this GroupMember which is the same as the group owner
-  // @inject_tag: `gorm:"default:0"`
-  uint32 owner_id = 8;
-
   // group_id is the Group of this GroupMemberUserAlias.
   uint32 group_id = 9;
 
@@ -112,11 +102,6 @@ message GroupMemberView {
   uint32 primary_scope_id = 6;
   // @inject_tag: gorm:"foreignkey:ScopeId"
   Scope primary_scope = 7;
-
-  // owner_id is the id (primary key in the user aggregate) of the user that
-  // owns this GroupMember which is the same as the group owner
-  // @inject_tag: `gorm:"default:0"`
-  uint32 owner_id = 8;
 
   // group_id is the Group of this GroupMember.
   uint32 group_id = 9;

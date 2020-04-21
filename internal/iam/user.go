@@ -12,8 +12,7 @@ import (
 
 type User struct {
 	*store.User
-	tableName  string `gorm:"-"`
-	isRootUser bool   `gorm:"-"`
+	tableName string `gorm:"-"`
 }
 
 var _ Resource = (*User)(nil)
@@ -21,13 +20,9 @@ var _ Resource = (*User)(nil)
 var _ db.VetForWriter = (*User)(nil)
 
 // NewUser creates a new user and allows options:
-// WithOwnerId - to specify the user's owner id (another user)
-// AsRootUser - to specify a root user with no owner (null)
 // withFriendlyName - to specify the user's friendly name
 func NewUser(primaryScope *Scope, opt ...Option) (*User, error) {
 	opts := GetOpts(opt...)
-	asRootUser := opts[optionAsRootUser].(bool)
-	withOwnerId := opts[optionWithOwnerId].(uint32)
 	withFriendlyName := opts[optionWithFriendlyName].(string)
 	if primaryScope == nil {
 		return nil, errors.New("error user primary scope is nil")
@@ -44,15 +39,6 @@ func NewUser(primaryScope *Scope, opt ...Option) (*User, error) {
 			PublicId:       publicId,
 			PrimaryScopeId: primaryScope.GetId(),
 		},
-	}
-	if asRootUser {
-		u.isRootUser = true
-	}
-	if withOwnerId != 0 {
-		u.OwnerId = withOwnerId
-	}
-	if withOwnerId != 0 && asRootUser {
-		return nil, errors.New("error a root user cannot have an owner id")
 	}
 	if withFriendlyName != "" {
 		u.FriendlyName = withFriendlyName
@@ -83,7 +69,7 @@ func (u *User) UserAliases(ctx context.Context, r db.Reader) ([]*UserAlias, erro
 		return nil, errors.New("error user id is 0 for finding user aliases")
 	}
 	aliases := []*UserAlias{}
-	if err := r.SearchBy(ctx, &aliases, "owner_id = ?", u.Id); err != nil {
+	if err := r.SearchBy(ctx, &aliases, "user_id = ?", u.Id); err != nil {
 		return nil, fmt.Errorf("error finding user aliases: %w", err)
 	}
 	return aliases, nil
@@ -110,12 +96,6 @@ func (u *User) VetForWrite(ctx context.Context, r db.Reader, opType db.OpType) e
 	if u.PrimaryScopeId == 0 {
 		return errors.New("error primary scope id not set for user write")
 	}
-	if u.OwnerId == 0 && !u.isRootUser {
-		return errors.New("error owner id is nil for user write")
-	}
-	if u.isRootUser && u.OwnerId != 0 {
-		return errors.New("error a root user cannot have an owner id")
-	}
 	// make sure the scope is valid for users
 	if err := u.primaryScopeIsValid(ctx, r); err != nil {
 		return err
@@ -132,11 +112,6 @@ func (u *User) primaryScopeIsValid(ctx context.Context, r db.Reader) error {
 		return errors.New("error primary scope is not an organization")
 	}
 	return nil
-}
-
-// GetOwner returns the owner (User) of the User
-func (u *User) GetOwner(ctx context.Context, r db.Reader) (*User, error) {
-	return LookupOwner(ctx, r, u)
 }
 
 // GetPrimaryScope returns the PrimaryScope for the User

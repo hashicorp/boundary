@@ -34,10 +34,10 @@ message UserAlias {
   // @inject_tag: gorm:"foreignkey:ScopeId"
   Scope primary_scope = 8;
 
-  // owner_id is the id (primary key in the user aggregate) of the user that
+  // user_id is the id (primary key in the user aggregate) of the user that
   // owns this UserAlias
   // @inject_tag: `gorm:"default:0"`
-  uint32 owner_id = 9;
+  uint32 user_id = 9;
 
   // auth_method_id is the AuthMethod of this UserAlias.
   uint32 auth_method_id = 10;

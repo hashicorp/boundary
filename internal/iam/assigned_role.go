@@ -26,7 +26,6 @@ type AssignedRole interface {
 	GetRoleId() uint32
 	GetPrincipalId() uint32
 	GetType() uint32
-	GetOwnerId() uint32
 }
 
 type assignedRoleView struct {
@@ -35,7 +34,7 @@ type assignedRoleView struct {
 
 func (v *assignedRoleView) TableName() string { return "iam_assigned_role_vw" }
 
-// NewAssignedRole creates a new role for the principal (User, UserAlias, Group) with a scope (project/organization), owner (user)
+// NewAssignedRole creates a new role for the principal (User, UserAlias, Group) with a scope (project/organization)
 // options include: withFriendlyName
 func NewAssignedRole(primaryScope *Scope, role *Role, principal Resource, opt ...Option) (AssignedRole, error) {
 	if principal.ResourceType() == ResourceTypeUser {
@@ -68,7 +67,7 @@ var _ Resource = (*UserRole)(nil)
 var _ AssignedRole = (*UserRole)(nil)
 var _ db.VetForWriter = (*UserRole)(nil)
 
-// NewUserRole creates a new user role with a scope (project/organization), owner (user)
+// NewUserRole creates a new user role with a scope (project/organization)
 // options include:  withFriendlyName
 func NewUserRole(primaryScope *Scope, r *Role, u *User, opt ...Option) (AssignedRole, error) {
 	opts := GetOpts(opt...)
@@ -88,9 +87,6 @@ func NewUserRole(primaryScope *Scope, r *Role, u *User, opt ...Option) (Assigned
 	if r.Id == 0 {
 		return nil, errors.New("error the user role id == 0")
 	}
-	if r.OwnerId == 0 {
-		return nil, errors.New("error the user role owner_id == 0")
-	}
 	if primaryScope.Type != uint32(OrganizationScope) &&
 		primaryScope.Type != uint32(ProjectScope) {
 		return nil, errors.New("user roles can only be within an organization or project scope")
@@ -103,7 +99,6 @@ func NewUserRole(primaryScope *Scope, r *Role, u *User, opt ...Option) (Assigned
 		UserRole: &store.UserRole{
 			PublicId:       publicId,
 			PrimaryScopeId: primaryScope.GetId(),
-			OwnerId:        r.OwnerId,
 			PrincipalId:    u.Id,
 			RoleId:         r.Id,
 			Type:           uint32(UserRoleType),
@@ -122,9 +117,6 @@ func (role *UserRole) VetForWrite(ctx context.Context, r db.Reader, opType db.Op
 	}
 	if role.PrimaryScopeId == 0 {
 		return errors.New("error primary scope id not set for user role write")
-	}
-	if role.OwnerId == 0 {
-		return errors.New("error owner id == 0 for user role write")
 	}
 	if role.Type != uint32(UserRoleType) {
 		return errors.New("error role type is not user")
@@ -145,11 +137,6 @@ func (role *UserRole) primaryScopeIsValid(ctx context.Context, r db.Reader) erro
 		return errors.New("error primary scope is not an organization or project for user role")
 	}
 	return nil
-}
-
-// GetOwner returns the owner (User) of the user role
-func (role *UserRole) GetOwner(ctx context.Context, r db.Reader) (*User, error) {
-	return LookupOwner(ctx, r, role)
 }
 
 // GetPrimaryScope returns the PrimaryScope for the user role
@@ -189,7 +176,7 @@ var _ Resource = (*UserAliasRole)(nil)
 var _ AssignedRole = (*UserAliasRole)(nil)
 var _ db.VetForWriter = (*UserAliasRole)(nil)
 
-// NewUserRole creates a new user alias role with a scope (project/organization), owner (user)
+// NewUserRole creates a new user alias role with a scope (project/organization), and user
 // options include:  withFriendlyName
 func NewUserAliasRole(primaryScope *Scope, r *Role, u *UserAlias, opt ...Option) (AssignedRole, error) {
 	opts := GetOpts(opt...)
@@ -209,9 +196,6 @@ func NewUserAliasRole(primaryScope *Scope, r *Role, u *UserAlias, opt ...Option)
 	if r.Id == 0 {
 		return nil, errors.New("error the user alias role id == 0")
 	}
-	if r.OwnerId == 0 {
-		return nil, errors.New("error the user alias role owner_id == 0")
-	}
 	if primaryScope.Type != uint32(OrganizationScope) &&
 		primaryScope.Type != uint32(ProjectScope) {
 		return nil, errors.New("user alias roles can only be within an organization or project scope")
@@ -224,7 +208,6 @@ func NewUserAliasRole(primaryScope *Scope, r *Role, u *UserAlias, opt ...Option)
 		UserAliasRole: &store.UserAliasRole{
 			PublicId:       publicId,
 			PrimaryScopeId: primaryScope.GetId(),
-			OwnerId:        r.OwnerId,
 			PrincipalId:    u.Id,
 			RoleId:         r.Id,
 			Type:           uint32(UserAliasRoleType),
@@ -243,9 +226,6 @@ func (role *UserAliasRole) VetForWrite(ctx context.Context, r db.Reader, opType 
 	}
 	if role.PrimaryScopeId == 0 {
 		return errors.New("error primary scope id not set for user alias role write")
-	}
-	if role.OwnerId == 0 {
-		return errors.New("error owner id == 0 for user alias role write")
 	}
 	if role.Type != uint32(UserAliasRoleType) {
 		return errors.New("error role type is not user alias role")
@@ -266,11 +246,6 @@ func (role *UserAliasRole) primaryScopeIsValid(ctx context.Context, r db.Reader)
 		return errors.New("error primary scope is not an organization or project for user alias role")
 	}
 	return nil
-}
-
-// GetOwner returns the owner (User) of the user alias role
-func (role *UserAliasRole) GetOwner(ctx context.Context, r db.Reader) (*User, error) {
-	return LookupOwner(ctx, r, role)
 }
 
 // GetPrimaryScope returns the PrimaryScope for the user alias role
@@ -310,7 +285,7 @@ var _ Resource = (*GroupRole)(nil)
 var _ AssignedRole = (*GroupRole)(nil)
 var _ db.VetForWriter = (*GroupRole)(nil)
 
-// GroupRole creates a new group role with a scope (project/organization), owner (user)
+// GroupRole creates a new group role with a scope (project/organization)
 // options include:  withFriendlyName
 func NewGroupRole(primaryScope *Scope, r *Role, g *Group, opt ...Option) (AssignedRole, error) {
 	opts := GetOpts(opt...)
@@ -330,9 +305,6 @@ func NewGroupRole(primaryScope *Scope, r *Role, g *Group, opt ...Option) (Assign
 	if r.Id == 0 {
 		return nil, errors.New("error the group role id == 0")
 	}
-	if r.OwnerId == 0 {
-		return nil, errors.New("error the group role owner_id == 0")
-	}
 	if primaryScope.Type != uint32(OrganizationScope) &&
 		primaryScope.Type != uint32(ProjectScope) {
 		return nil, errors.New("group roles can only be within an organization or project scope")
@@ -345,7 +317,6 @@ func NewGroupRole(primaryScope *Scope, r *Role, g *Group, opt ...Option) (Assign
 		GroupRole: &store.GroupRole{
 			PublicId:       publicId,
 			PrimaryScopeId: primaryScope.GetId(),
-			OwnerId:        r.OwnerId,
 			PrincipalId:    g.Id,
 			RoleId:         r.Id,
 			Type:           uint32(GroupRoleType),
@@ -364,9 +335,6 @@ func (role *GroupRole) VetForWrite(ctx context.Context, r db.Reader, opType db.O
 	}
 	if role.PrimaryScopeId == 0 {
 		return errors.New("error primary scope id not set for group role write")
-	}
-	if role.OwnerId == 0 {
-		return errors.New("error owner id == 0 for group ole write")
 	}
 	if role.Type != uint32(GroupRoleType) {
 		return errors.New("error role type is not group")
@@ -387,11 +355,6 @@ func (role *GroupRole) primaryScopeIsValid(ctx context.Context, r db.Reader) err
 		return errors.New("error primary scope is not an organization or project for group role")
 	}
 	return nil
-}
-
-// GetOwner returns the owner (User) of the group role
-func (role *GroupRole) GetOwner(ctx context.Context, r db.Reader) (*User, error) {
-	return LookupOwner(ctx, r, role)
 }
 
 // GetPrimaryScope returns the PrimaryScope for the group role

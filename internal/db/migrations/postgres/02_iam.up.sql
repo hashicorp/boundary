@@ -15,8 +15,6 @@ if not exists (
 end if;
 end;
 $$ language 'plpgsql';
--- we must wait until the iam_user table is defined, before we can add a fk constraint to iam_user
--- we cannot restrict NULL values for owner_id, because we need to create the scope before the user
 CREATE TABLE if not exists iam_scope (
   id bigint generated always as identity primary key,
   create_time timestamp with time zone default current_timestamp,
@@ -25,7 +23,6 @@ CREATE TABLE if not exists iam_scope (
   friendly_name text UNIQUE,
   type int NOT NULL,
   parent_id bigint REFERENCES iam_scope(id),
-  owner_id bigint,
   disabled BOOLEAN NOT NULL default FALSE
 );
 --
@@ -61,7 +58,6 @@ CREATE TABLE if not exists iam_user (
     friendly_name text UNIQUE,
     name text NOT NULL,
     primary_scope_id bigint NOT NULL REFERENCES iam_scope(id),
-    owner_id bigint REFERENCES iam_user(id),
     disabled BOOLEAN NOT NULL default FALSE
   );
 CREATE TABLE if not exists iam_auth_method (
@@ -71,7 +67,6 @@ CREATE TABLE if not exists iam_auth_method (
     public_id text not null UNIQUE,
     friendly_name text UNIQUE,
     primary_scope_id bigint NOT NULL REFERENCES iam_scope(id),
-    owner_id bigint REFERENCES iam_user(id),
     disabled BOOLEAN NOT NULL default FALSE,
     type smallint NOT NULL
   );
@@ -83,7 +78,7 @@ CREATE TABLE if not exists iam_user_alias (
     friendly_name text UNIQUE,
     name text NOT NULL,
     primary_scope_id bigint NOT NULL REFERENCES iam_scope(id),
-    owner_id bigint NOT NULL REFERENCES iam_user(id),
+    user_id bigint NOT NULL REFERENCES iam_user(id),
     disabled BOOLEAN NOT NULL default FALSE,
     auth_method_id bigint NOT NULL REFERENCES iam_auth_method(id)
   );
@@ -95,7 +90,6 @@ CREATE TABLE if not exists iam_role (
     friendly_name text UNIQUE,
     description text,
     primary_scope_id bigint NOT NULL REFERENCES iam_scope(id),
-    owner_id bigint NOT NULL REFERENCES iam_user(id),
     disabled BOOLEAN NOT NULL default FALSE
   );
 --
@@ -128,7 +122,6 @@ CREATE TABLE if not exists iam_group (
     friendly_name text UNIQUE,
     description text,
     primary_scope_id bigint NOT NULL REFERENCES iam_scope(id),
-    owner_id bigint NOT NULL REFERENCES iam_user(id),
     disabled BOOLEAN NOT NULL default FALSE
   );
 CREATE TABLE if not exists iam_group_member_user (
@@ -138,7 +131,6 @@ CREATE TABLE if not exists iam_group_member_user (
     public_id text not null UNIQUE,
     friendly_name text UNIQUE,
     primary_scope_id bigint NOT NULL REFERENCES iam_scope(id),
-    owner_id bigint NOT NULL REFERENCES iam_user(id),
     group_id bigint NOT NULL REFERENCES iam_group(id),
     member_id bigint NOT NULL REFERENCES iam_user(id),
     type int NOT NULL REFERENCES iam_group_member_type_enm(id) CHECK(type = 1)
@@ -150,7 +142,6 @@ CREATE TABLE if not exists iam_group_member_user_alias (
     public_id text not null UNIQUE,
     friendly_name text UNIQUE,
     primary_scope_id bigint NOT NULL REFERENCES iam_scope(id),
-    owner_id bigint NOT NULL REFERENCES iam_user(id),
     group_id bigint NOT NULL REFERENCES iam_group(id),
     member_id bigint NOT NULL REFERENCES iam_user_alias(id),
     type int NOT NULL REFERENCES iam_group_member_type_enm(id) CHECK(type = 2)
@@ -254,7 +245,6 @@ CREATE TABLE if not exists iam_role_user (
     public_id text not null UNIQUE,
     friendly_name text UNIQUE,
     primary_scope_id bigint NOT NULL REFERENCES iam_scope(id),
-    owner_id bigint NOT NULL REFERENCES iam_user(id),
     role_id bigint NOT NULL REFERENCES iam_role(id),
     principal_id bigint NOT NULL REFERENCES iam_user(id),
     type int NOT NULL REFERENCES iam_role_type_enm(id) CHECK(type = 1)
@@ -266,7 +256,6 @@ CREATE TABLE if not exists iam_role_user_alias (
     public_id text not null UNIQUE,
     friendly_name text UNIQUE,
     primary_scope_id bigint NOT NULL REFERENCES iam_scope(id),
-    owner_id bigint NOT NULL REFERENCES iam_user(id),
     role_id bigint NOT NULL REFERENCES iam_role(id),
     principal_id bigint NOT NULL REFERENCES iam_user_alias(id),
     type int NOT NULL REFERENCES iam_role_type_enm(id) CHECK(type = 2)
@@ -278,7 +267,6 @@ CREATE TABLE if not exists iam_role_group (
     public_id text not null UNIQUE,
     friendly_name text UNIQUE,
     primary_scope_id bigint NOT NULL REFERENCES iam_scope(id),
-    owner_id bigint NOT NULL REFERENCES iam_user(id),
     role_id bigint NOT NULL REFERENCES iam_role(id),
     principal_id bigint NOT NULL REFERENCES iam_group(id),
     type int NOT NULL REFERENCES iam_role_type_enm(id) CHECK(type = 3)
@@ -301,7 +289,6 @@ CREATE TABLE if not exists iam_role_grant (
     public_id text not null UNIQUE,
     friendly_name text UNIQUE,
     primary_scope_id bigint NOT NULL REFERENCES iam_scope(id),
-    owner_id bigint NOT NULL REFERENCES iam_user(id),
     role_id bigint NOT NULL REFERENCES iam_role(id),
     role_grant text NOT NULL
   );

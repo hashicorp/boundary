@@ -27,15 +27,9 @@ func Test_NewRole(t *testing.T) {
 		assert.NilError(t, err)
 		assert.Check(t, s.Id != 0)
 
-		rootUser, err := NewUser(s, AsRootUser(true))
-		assert.NilError(t, err)
-		err = w.Create(context.Background(), rootUser)
-		assert.NilError(t, err)
-
-		role, err := NewRole(s, rootUser, WithDescription("this is a test role"))
+		role, err := NewRole(s, WithDescription("this is a test role"))
 		assert.NilError(t, err)
 		assert.Check(t, role != nil)
-		assert.Equal(t, rootUser.Id, role.OwnerId)
 		assert.Equal(t, role.Description, "this is a test role")
 		assert.Equal(t, s.Id, role.PrimaryScopeId)
 		err = w.Create(context.Background(), role)
