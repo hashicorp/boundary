@@ -78,13 +78,13 @@ func (p *AuthMethod) VetForWrite(ctx context.Context, r db.Reader, opType db.OpT
 	return nil
 }
 
-// primaryScopeIsValid makes sure the primary scope is either an Organization or Project
+// primaryScopeIsValid makes sure the primary scope is an Organization
 func (p *AuthMethod) primaryScopeIsValid(ctx context.Context, r db.Reader) error {
 	ps, err := LookupPrimaryScope(ctx, r, p)
 	if err != nil {
 		return err
 	}
-	if ps.Type != uint32(OrganizationScope) && ps.Type != uint32(ProjectScope) {
+	if ps.Type != uint32(OrganizationScope) {
 		return errors.New("error primary scope is not an organization")
 	}
 	return nil
