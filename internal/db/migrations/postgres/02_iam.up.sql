@@ -70,18 +70,6 @@ CREATE TABLE if not exists iam_auth_method (
     disabled BOOLEAN NOT NULL default FALSE,
     type smallint NOT NULL
   );
-CREATE TABLE if not exists iam_user_alias (
-    id bigint generated always as identity primary key,
-    create_time timestamp with time zone NOT NULL default current_timestamp,
-    update_time timestamp with time zone NOT NULL default current_timestamp,
-    public_id text not null UNIQUE,
-    friendly_name text UNIQUE,
-    name text NOT NULL,
-    primary_scope_id bigint NOT NULL REFERENCES iam_scope(id),
-    user_id bigint NOT NULL REFERENCES iam_user(id),
-    disabled BOOLEAN NOT NULL default FALSE,
-    auth_method_id bigint NOT NULL REFERENCES iam_auth_method(id)
-  );
 CREATE TABLE if not exists iam_role (
     id bigint generated always as identity primary key,
     create_time timestamp with time zone NOT NULL default current_timestamp,
@@ -105,14 +93,11 @@ values
 INSERT INTO iam_group_member_type_enm (id, string)
 values
   (1, 'user');
-INSERT INTO iam_group_member_type_enm (id, string)
-values
-  (2, 'user_alias');
 ALTER TABLE iam_group_member_type_enm
 ADD
   CONSTRAINT iam_group_member_type_enm_between_chk CHECK (
     id BETWEEN 0
-    AND 2
+    AND 1
   );
 CREATE TABLE if not exists iam_group (
     id bigint generated always as identity primary key,
@@ -135,25 +120,10 @@ CREATE TABLE if not exists iam_group_member_user (
     member_id bigint NOT NULL REFERENCES iam_user(id),
     type int NOT NULL REFERENCES iam_group_member_type_enm(id) CHECK(type = 1)
   );
-CREATE TABLE if not exists iam_group_member_user_alias (
-    id bigint generated always as identity primary key,
-    create_time timestamp with time zone NOT NULL default current_timestamp,
-    update_time timestamp with time zone NOT NULL default current_timestamp,
-    public_id text not null UNIQUE,
-    friendly_name text UNIQUE,
-    primary_scope_id bigint NOT NULL REFERENCES iam_scope(id),
-    group_id bigint NOT NULL REFERENCES iam_group(id),
-    member_id bigint NOT NULL REFERENCES iam_user_alias(id),
-    type int NOT NULL REFERENCES iam_group_member_type_enm(id) CHECK(type = 2)
-  );
 CREATE VIEW iam_group_member AS
 SELECT
   *
-FROM iam_group_member_user
-UNION
-SELECT
-  *
-FROM iam_group_member_user_alias;
+FROM iam_group_member_user;
 --
   -- define the iam_auth_method_type_enm lookup table
   --
@@ -228,10 +198,7 @@ values
   (1, 'user');
 INSERT INTO iam_role_type_enm (id, string)
 values
-  (2, 'user_alias');
-INSERT INTO iam_role_type_enm (id, string)
-values
-  (3, 'group');
+  (2, 'group');
 ALTER TABLE iam_role_type_enm
 ADD
   CONSTRAINT iam_role_type_enm_between_chk CHECK (
@@ -249,17 +216,6 @@ CREATE TABLE if not exists iam_role_user (
     principal_id bigint NOT NULL REFERENCES iam_user(id),
     type int NOT NULL REFERENCES iam_role_type_enm(id) CHECK(type = 1)
   );
-CREATE TABLE if not exists iam_role_user_alias (
-    id bigint generated always as identity primary key,
-    create_time timestamp with time zone NOT NULL default current_timestamp,
-    update_time timestamp with time zone NOT NULL default current_timestamp,
-    public_id text not null UNIQUE,
-    friendly_name text UNIQUE,
-    primary_scope_id bigint NOT NULL REFERENCES iam_scope(id),
-    role_id bigint NOT NULL REFERENCES iam_role(id),
-    principal_id bigint NOT NULL REFERENCES iam_user_alias(id),
-    type int NOT NULL REFERENCES iam_role_type_enm(id) CHECK(type = 2)
-  );
 CREATE TABLE if not exists iam_role_group (
     id bigint generated always as identity primary key,
     create_time timestamp with time zone NOT NULL default current_timestamp,
@@ -269,16 +225,13 @@ CREATE TABLE if not exists iam_role_group (
     primary_scope_id bigint NOT NULL REFERENCES iam_scope(id),
     role_id bigint NOT NULL REFERENCES iam_role(id),
     principal_id bigint NOT NULL REFERENCES iam_group(id),
-    type int NOT NULL REFERENCES iam_role_type_enm(id) CHECK(type = 3)
+    type int NOT NULL REFERENCES iam_role_type_enm(id) CHECK(type = 2)
   );
 CREATE VIEW iam_assigned_role AS
 SELECT
   *
 FROM iam_role_user
 UNION
-SELECT
-  *
-FROM iam_role_user_alias;
 select
   *
 from iam_role_group;

@@ -4,7 +4,6 @@ import (
 	"context"
 	"testing"
 
-	"github.com/hashicorp/go-uuid"
 	"github.com/hashicorp/watchtower/internal/db"
 	"gotest.tools/assert"
 )
@@ -71,27 +70,5 @@ func Test_NewPrincipalRole(t *testing.T) {
 		assert.Check(t, gRole != nil)
 		assert.Equal(t, gRole.GetPrincipalId(), grp.Id)
 
-		meth, err := NewAuthMethod(s, AuthUserPass)
-		assert.NilError(t, err)
-		assert.Check(t, meth != nil)
-		err = w.Create(context.Background(), meth)
-		assert.NilError(t, err)
-
-		id, err := uuid.GenerateUUID()
-		assert.NilError(t, err)
-		alias, err := NewUserAlias(s, user, meth, id)
-		assert.NilError(t, err)
-		assert.Check(t, alias != nil)
-		err = w.Create(context.Background(), alias)
-		assert.NilError(t, err)
-
-		aRole, err := NewAssignedRole(s, role, alias)
-		assert.NilError(t, err)
-		assert.Check(t, aRole != nil)
-		assert.Equal(t, aRole.GetRoleId(), role.Id)
-		assert.Equal(t, aRole.GetPrincipalId(), alias.Id)
-		err = w.Create(context.Background(), aRole)
-		assert.NilError(t, err)
-		assert.Check(t, aRole.GetId() != 0)
 	})
 }

@@ -4,7 +4,6 @@ import (
 	"context"
 	"testing"
 
-	"github.com/hashicorp/go-uuid"
 	"github.com/hashicorp/watchtower/internal/db"
 	"gotest.tools/assert"
 )
@@ -52,20 +51,6 @@ func Test_NewGroupMember(t *testing.T) {
 		assert.NilError(t, err)
 		assert.Check(t, meth != nil)
 		err = w.Create(context.Background(), meth)
-		assert.NilError(t, err)
-
-		id, err := uuid.GenerateUUID()
-		assert.NilError(t, err)
-		alias, err := NewUserAlias(s, user, meth, id)
-		assert.NilError(t, err)
-		assert.Check(t, alias != nil)
-		err = w.Create(context.Background(), alias)
-		assert.NilError(t, err)
-
-		gm2, err := NewGroupMember(s, grp, alias)
-		assert.NilError(t, err)
-		assert.Check(t, gm2 != nil)
-		err = w.Create(context.Background(), gm2)
 		assert.NilError(t, err)
 	})
 }

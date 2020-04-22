@@ -38,7 +38,7 @@ type Group struct {
 	// update_time from the RDBMS
 	// @inject_tag: `gorm:"default:current_timestamp"`
 	UpdateTime *Timestamp `protobuf:"bytes,3,opt,name=update_time,json=updateTime,proto3" json:"update_time,omitempty" gorm:"default:current_timestamp"`
-	// public_id is used to access the UserAlias via an API
+	// public_id is used to access the Group via an API
 	PublicId string `protobuf:"bytes,4,opt,name=public_id,json=publicId,proto3" json:"public_id,omitempty"`
 	// FriendlyName is the optional friendly name used to
 	// access the Group via an API

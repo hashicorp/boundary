@@ -46,7 +46,7 @@ func NewUser(primaryScope *Scope, opt ...Option) (*User, error) {
 	return u, nil
 }
 
-// Roles gets the roles for the user (we should/can support options to include roles associated with the user's alias, and groups (user + aliases))
+// Roles gets the roles for the user (we should/can support options to include roles associated with the user's groups)
 func (u *User) Roles(ctx context.Context, r db.Reader, opt ...Option) (map[string]*Role, error) {
 	if u.Id == 0 {
 		return nil, errors.New("error user id is 0 for finding roles")
@@ -61,18 +61,6 @@ func (u *User) Roles(ctx context.Context, r db.Reader, opt ...Option) (map[strin
 		results[r.PublicId] = r
 	}
 	return results, nil
-}
-
-// UserAliases searches for all the UserAliases owned by this user
-func (u *User) UserAliases(ctx context.Context, r db.Reader) ([]*UserAlias, error) {
-	if u.Id == 0 {
-		return nil, errors.New("error user id is 0 for finding user aliases")
-	}
-	aliases := []*UserAlias{}
-	if err := r.SearchBy(ctx, &aliases, "user_id = ?", u.Id); err != nil {
-		return nil, fmt.Errorf("error finding user aliases: %w", err)
-	}
-	return aliases, nil
 }
 
 // Groups searches for all the user's groups

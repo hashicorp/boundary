@@ -51,14 +51,14 @@ func NewRole(primaryScope *Scope, opt ...Option) (*Role, error) {
 	return r, nil
 }
 
-// AssignedRoles returns a list of principal roles (Users, UserAliases and Groups) for the Role.
+// AssignedRoles returns a list of principal roles (Users and Groups) for the Role.
 func (role *Role) AssignedRoles(ctx context.Context, r db.Reader) ([]AssignedRole, error) {
 	viewRoles := []*assignedRoleView{}
 	if err := r.SearchBy(
 		ctx,
 		&viewRoles,
-		"role_id = ? and type in(?, ?, ?)",
-		role.Id, UserRoleType, UserAliasRoleType, GroupRoleType); err != nil {
+		"role_id = ? and type in(?, ?)",
+		role.Id, UserRoleType, GroupRoleType); err != nil {
 		return nil, fmt.Errorf("error getting assigned roles %w", err)
 	}
 
@@ -76,21 +76,6 @@ func (role *Role) AssignedRoles(ctx context.Context, r db.Reader) ([]AssignedRol
 					PrimaryScopeId: vr.PrimaryScopeId,
 					RoleId:         vr.RoleId,
 					Type:           uint32(UserRoleType),
-					PrincipalId:    vr.PrincipalId,
-				},
-			}
-			pRoles = append(pRoles, pr)
-		case uint32(UserAliasRoleType):
-			pr := &UserAliasRole{
-				UserAliasRole: &store.UserAliasRole{
-					Id:             vr.Id,
-					CreateTime:     vr.CreateTime,
-					UpdateTime:     vr.UpdateTime,
-					PublicId:       vr.PublicId,
-					FriendlyName:   vr.FriendlyName,
-					PrimaryScopeId: vr.PrimaryScopeId,
-					RoleId:         vr.RoleId,
-					Type:           uint32(UserAliasRoleType),
 					PrincipalId:    vr.PrincipalId,
 				},
 			}

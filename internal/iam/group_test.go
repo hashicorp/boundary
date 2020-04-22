@@ -4,7 +4,6 @@ import (
 	"context"
 	"testing"
 
-	"github.com/hashicorp/go-uuid"
 	"github.com/hashicorp/watchtower/internal/db"
 	"gotest.tools/assert"
 )
@@ -78,21 +77,13 @@ func Test_GroupMembers(t *testing.T) {
 		err = w.Create(context.Background(), gm)
 		assert.NilError(t, err)
 
-		meth, err := NewAuthMethod(s, AuthUserPass)
+		secondUser, err := NewUser(s)
 		assert.NilError(t, err)
-		assert.Check(t, meth != nil)
-		err = w.Create(context.Background(), meth)
-		assert.NilError(t, err)
-
-		id, err := uuid.GenerateUUID()
-		assert.NilError(t, err)
-		alias, err := NewUserAlias(s, user, meth, id)
-		assert.NilError(t, err)
-		assert.Check(t, alias != nil)
-		err = w.Create(context.Background(), alias)
+		assert.Check(t, secondUser != nil)
+		err = w.Create(context.Background(), secondUser)
 		assert.NilError(t, err)
 
-		gm2, err := NewGroupMember(s, grp, alias)
+		gm2, err := NewGroupMember(s, grp, secondUser)
 		assert.NilError(t, err)
 		assert.Check(t, gm2 != nil)
 		err = w.Create(context.Background(), gm2)
@@ -103,8 +94,8 @@ func Test_GroupMembers(t *testing.T) {
 		assert.Check(t, members != nil)
 		assert.Check(t, len(members) == 2)
 		for _, m := range members {
-			if m.GetMemberId() != alias.Id && m.GetMemberId() != user.Id {
-				t.Errorf("members %d not one of the known ids %d, %d", m.GetMemberId(), alias.Id, user.Id)
+			if m.GetMemberId() != secondUser.Id && m.GetMemberId() != user.Id {
+				t.Errorf("members %d not one of the known ids %d, %d", m.GetMemberId(), secondUser.Id, user.Id)
 			}
 		}
 	})

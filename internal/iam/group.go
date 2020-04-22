@@ -51,10 +51,10 @@ func NewGroup(primaryScope *Scope, opt ...Option) (*Group, error) {
 	return g, nil
 }
 
-// Members returns the members of the group (Users or UserAlias)
+// Members returns the members of the group (Users)
 func (g *Group) Members(ctx context.Context, r db.Reader) ([]GroupMember, error) {
 	viewMembers := []*groupMemberView{}
-	if err := r.SearchBy(ctx, &viewMembers, "group_id = ? and type in(?, ?)", g.Id, UserMemberType, UserAliasMemberType); err != nil {
+	if err := r.SearchBy(ctx, &viewMembers, "group_id = ? and type = ?", g.Id, UserMemberType); err != nil {
 		return nil, fmt.Errorf("error getting group members %w", err)
 	}
 
@@ -62,21 +62,6 @@ func (g *Group) Members(ctx context.Context, r db.Reader) ([]GroupMember, error)
 	for _, m := range viewMembers {
 		switch m.Type {
 		case uint32(UserMemberType):
-			gm := &GroupMemberUser{
-				GroupMemberUser: &store.GroupMemberUser{
-					Id:             m.Id,
-					CreateTime:     m.CreateTime,
-					UpdateTime:     m.UpdateTime,
-					PublicId:       m.PublicId,
-					FriendlyName:   m.FriendlyName,
-					PrimaryScopeId: m.PrimaryScopeId,
-					GroupId:        m.GroupId,
-					Type:           uint32(UserMemberType),
-					MemberId:       m.MemberId,
-				},
-			}
-			members = append(members, gm)
-		case uint32(UserAliasMemberType):
 			gm := &GroupMemberUser{
 				GroupMemberUser: &store.GroupMemberUser{
 					Id:             m.Id,

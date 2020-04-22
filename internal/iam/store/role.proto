@@ -73,41 +73,6 @@ message UserRole {
   uint32 principal_id = 11;
 }
 
-message UserAliasRole {
-  // @inject_tag: gorm:"primary_key"
-  uint32 id = 1;
-
-  // create_time from the RDBMS
-  // @inject_tag: `gorm:"default:current_timestamp"`
-  Timestamp create_time = 2;
-
-  // update_time from the RDBMS
-  // @inject_tag: `gorm:"default:current_timestamp"`
-  Timestamp update_time = 3;
-
-  // public_id is used to access the UserAliasRole via an API
-  string public_id = 4;
-
-  // FriendlyName is the optional friendly name used to
-  // access the UserAliasRole via an API
-  // @inject_tag: `gorm:"default:null"`
-  string friendly_name = 5;
-
-  // primary scope id of the PrimaryScope
-  // @inject_tag: `gorm:"default:null"`
-  uint32 primary_scope_id = 6;
-  // @inject_tag: gorm:"foreignkey:ScopeId"
-  Scope primary_scope = 7;
-
-  // role_id is the role of this principal.
-  uint32 role_id = 9;
-
-  // Principal type (UserAlias)
-  uint32 type = 10;
-
-  uint32 principal_id = 11;
-}
-
 message GroupRole {
   // @inject_tag: gorm:"primary_key"
   uint32 id = 1;
@@ -172,7 +137,7 @@ message AssignedRoleView {
   // role_id is the role of this principal.
   uint32 role_id = 9;
 
-  // Principal type (User, UserAlias or Group)
+  // Principal type (User or Group)
   uint32 type = 10;
 
   uint32 principal_id = 11;

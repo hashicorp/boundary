@@ -14,12 +14,12 @@ import (
 type RoleType uint32
 
 const (
-	UnknownRoleType   RoleType = 0
-	UserRoleType      RoleType = 1
-	UserAliasRoleType RoleType = 2
-	GroupRoleType     RoleType = 3
+	UnknownRoleType RoleType = 0
+	UserRoleType    RoleType = 1
+	GroupRoleType   RoleType = 2
 )
 
+// AssignedRole declares a common interface for all roles assigned to resources (Users and Groups for now)
 type AssignedRole interface {
 	Resource
 	GetId() uint32
@@ -28,13 +28,16 @@ type AssignedRole interface {
 	GetType() uint32
 }
 
+// assignedRoleView provides a common way to return roles regardless of their underlying type
 type assignedRoleView struct {
 	*store.AssignedRoleView
 }
 
+// TableName provides an overridden gorm table name for assigned roles
 func (v *assignedRoleView) TableName() string { return "iam_assigned_role_vw" }
 
-// NewAssignedRole creates a new role for the principal (User, UserAlias, Group) with a scope (project/organization)
+// NewAssignedRole creates a new role for the principal (User,Group) with a scope (project/organization)
+// This is the preferred way to create roles vs calling a specific role type constructor func
 // options include: withFriendlyName
 func NewAssignedRole(primaryScope *Scope, role *Role, principal Resource, opt ...Option) (AssignedRole, error) {
 	if principal.ResourceType() == ResourceTypeUser {
@@ -43,17 +46,11 @@ func NewAssignedRole(primaryScope *Scope, role *Role, principal Resource, opt ..
 		}
 		return nil, errors.New("error principal is not a user ptr")
 	}
-	if principal.ResourceType() == ResourceTypeUserAlias {
-		if a, ok := principal.(*UserAlias); ok {
-			return NewUserAliasRole(primaryScope, role, a, opt...)
-		}
-		return nil, errors.New("error principal is not a user alias ptr")
-	}
 	if principal.ResourceType() == ResourceTypeGroup {
 		if a, ok := principal.(*Group); ok {
 			return NewGroupRole(primaryScope, role, a, opt...)
 		}
-		return nil, errors.New("error principal is not a user alias ptr")
+		return nil, errors.New("error principal is not a group ptr")
 	}
 	return nil, errors.New("error unknown principal type")
 }
@@ -167,115 +164,6 @@ func (r *UserRole) SetTableName(n string) {
 	}
 }
 
-type UserAliasRole struct {
-	*store.UserAliasRole
-	tableName string `gorm:"-"`
-}
-
-var _ Resource = (*UserAliasRole)(nil)
-var _ AssignedRole = (*UserAliasRole)(nil)
-var _ db.VetForWriter = (*UserAliasRole)(nil)
-
-// NewUserRole creates a new user alias role with a scope (project/organization), and user
-// options include:  withFriendlyName
-func NewUserAliasRole(primaryScope *Scope, r *Role, u *UserAlias, opt ...Option) (AssignedRole, error) {
-	opts := GetOpts(opt...)
-	withFriendlyName := opts[optionWithFriendlyName].(string)
-	if primaryScope == nil {
-		return nil, errors.New("error the user alias role primary scope is nil")
-	}
-	if u == nil {
-		return nil, errors.New("error the user alias is nil")
-	}
-	if u.Id == 0 {
-		return nil, errors.New("error the user alias id == 0")
-	}
-	if r == nil {
-		return nil, errors.New("error the user alias role is nil")
-	}
-	if r.Id == 0 {
-		return nil, errors.New("error the user alias role id == 0")
-	}
-	if primaryScope.Type != uint32(OrganizationScope) &&
-		primaryScope.Type != uint32(ProjectScope) {
-		return nil, errors.New("user alias roles can only be within an organization or project scope")
-	}
-	publicId, err := base62.Random(20)
-	if err != nil {
-		return nil, fmt.Errorf("error generating public id %w for new user alias role", err)
-	}
-	ur := &UserAliasRole{
-		UserAliasRole: &store.UserAliasRole{
-			PublicId:       publicId,
-			PrimaryScopeId: primaryScope.GetId(),
-			PrincipalId:    u.Id,
-			RoleId:         r.Id,
-			Type:           uint32(UserAliasRoleType),
-		},
-	}
-	if withFriendlyName != "" {
-		ur.FriendlyName = withFriendlyName
-	}
-	return ur, nil
-}
-
-// VetForWrite implements db.VetForWrite() interface
-func (role *UserAliasRole) VetForWrite(ctx context.Context, r db.Reader, opType db.OpType) error {
-	if role.PublicId == "" {
-		return errors.New("error public id is empty string for user alias role write")
-	}
-	if role.PrimaryScopeId == 0 {
-		return errors.New("error primary scope id not set for user alias role write")
-	}
-	if role.Type != uint32(UserAliasRoleType) {
-		return errors.New("error role type is not user alias role")
-	}
-	// make sure the scope is valid for user roles
-	if err := role.primaryScopeIsValid(ctx, r); err != nil {
-		return err
-	}
-	return nil
-}
-
-func (role *UserAliasRole) primaryScopeIsValid(ctx context.Context, r db.Reader) error {
-	ps, err := LookupPrimaryScope(ctx, r, role)
-	if err != nil {
-		return err
-	}
-	if ps.Type != uint32(OrganizationScope) && ps.Type != uint32(ProjectScope) {
-		return errors.New("error primary scope is not an organization or project for user alias role")
-	}
-	return nil
-}
-
-// GetPrimaryScope returns the PrimaryScope for the user alias role
-func (role *UserAliasRole) GetPrimaryScope(ctx context.Context, r db.Reader) (*Scope, error) {
-	return LookupPrimaryScope(ctx, r, role)
-}
-
-// ResourceType returns the type of the user alias role
-func (*UserAliasRole) ResourceType() ResourceType { return ResourceTypeAssignedRole }
-
-// Actions returns the  available actions for user alias role
-func (*UserAliasRole) Actions() map[string]Action {
-	return StdActions()
-}
-
-// TableName returns the tablename to override the default gorm table name
-func (r *UserAliasRole) TableName() string {
-	if r.tableName != "" {
-		return r.tableName
-	}
-	return "iam_role_user_alias"
-}
-
-// SetTableName sets the tablename and satisfies the ReplayableMessage interface
-func (r *UserAliasRole) SetTableName(n string) {
-	if r.tableName != "" {
-		r.tableName = n
-	}
-}
-
 type GroupRole struct {
 	*store.GroupRole
 	tableName string `gorm:"-"`
@@ -365,7 +253,7 @@ func (role *GroupRole) GetPrimaryScope(ctx context.Context, r db.Reader) (*Scope
 // ResourceType returns the type of the group role
 func (*GroupRole) ResourceType() ResourceType { return ResourceTypeAssignedRole }
 
-// Actions returns the  available actions for user alias role
+// Actions returns the  available actions for group role
 func (*GroupRole) Actions() map[string]Action {
 	return StdActions()
 }

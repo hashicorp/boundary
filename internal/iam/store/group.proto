@@ -18,7 +18,7 @@ message Group {
   // @inject_tag: `gorm:"default:current_timestamp"`
   Timestamp update_time = 3;
 
-  // public_id is used to access the UserAlias via an API
+  // public_id is used to access the Group via an API
   string public_id = 4;
 
   // FriendlyName is the optional friendly name used to
