@@ -26,15 +26,15 @@ func NewGroup(primaryScope *Scope, opt ...Option) (*Group, error) {
 	withFriendlyName := opts[optionWithFriendlyName].(string)
 	withDescription := opts[optionWithDescription].(string)
 	if primaryScope == nil {
-		return nil, errors.New("error the role primary scope is nil")
+		return nil, errors.New("error the group primary scope is nil")
 	}
 	if primaryScope.Type != uint32(OrganizationScope) &&
 		primaryScope.Type != uint32(ProjectScope) {
-		return nil, errors.New("roles can only be within an organization or project scope")
+		return nil, errors.New("groups can only be within an organization or project scope")
 	}
 	publicId, err := base62.Random(20)
 	if err != nil {
-		return nil, fmt.Errorf("error generating public id %w for new role", err)
+		return nil, fmt.Errorf("error generating public id %w for new group", err)
 	}
 	g := &Group{
 		Group: &store.Group{
@@ -82,6 +82,19 @@ func (g *Group) Members(ctx context.Context, r db.Reader) ([]GroupMember, error)
 
 	}
 	return members, nil
+}
+
+// AddMember will add member to the group and the caller is responsible for Creating that Member via db.Writer.Create()
+func (g *Group) AddMember(ctx context.Context, r db.Reader, m Resource, opt ...db.Option) (GroupMember, error) {
+	ps, err := g.GetPrimaryScope(ctx, r)
+	if err != nil {
+		return nil, fmt.Errorf("error getting primary scope while adding member: %w", err)
+	}
+	gm, err := NewGroupMember(ps, g, m)
+	if err != nil {
+		return nil, fmt.Errorf("error while adding member %w", err)
+	}
+	return gm, nil
 }
 
 // VetForWrite implements db.VetForWrite() interface
