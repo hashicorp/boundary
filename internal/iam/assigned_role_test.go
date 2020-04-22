@@ -231,7 +231,6 @@ func TestUserRole_Actions(t *testing.T) {
 	assert.Equal(t, a[ActionUpdate.String()], ActionUpdate)
 	assert.Equal(t, a[ActionEdit.String()], ActionEdit)
 	assert.Equal(t, a[ActionDelete.String()], ActionDelete)
-
 }
 
 func TestGroupRole_Actions(t *testing.T) {
@@ -242,7 +241,6 @@ func TestGroupRole_Actions(t *testing.T) {
 	assert.Equal(t, a[ActionUpdate.String()], ActionUpdate)
 	assert.Equal(t, a[ActionEdit.String()], ActionEdit)
 	assert.Equal(t, a[ActionDelete.String()], ActionDelete)
-
 }
 
 func TestGroupRole_GetPrimaryScope(t *testing.T) {
