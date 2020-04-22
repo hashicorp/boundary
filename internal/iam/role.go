@@ -10,13 +10,14 @@ import (
 	"github.com/hashicorp/watchtower/internal/iam/store"
 )
 
+// Roles are granted permissions and assignable to User and Groups
 type Role struct {
 	*store.Role
 	tableName string `gorm:"-"`
 }
 
+// ensure that Group implements the interfaces of: Resource, and db.VetForWriter
 var _ Resource = (*Role)(nil)
-
 var _ db.VetForWriter = (*Role)(nil)
 
 // NewRole creates a new role with a scope (project/organization)
