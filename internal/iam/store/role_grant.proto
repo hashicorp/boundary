@@ -35,5 +35,5 @@ message RoleGrant {
   Scope primary_scope = 8;
 
   uint32 role_id = 10;
-  string role_grant = 11;
+  string grant = 11;
 }

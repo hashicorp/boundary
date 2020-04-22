@@ -46,7 +46,7 @@ func NewRoleGrant(primaryScope *Scope, role *Role, grant string, opt ...Option) 
 			PublicId:       publicId,
 			PrimaryScopeId: primaryScope.GetId(),
 			RoleId:         role.Id,
-			RoleGrant:      grant,
+			Grant:          grant,
 		},
 	}
 	if withFriendlyName != "" {
