@@ -194,5 +194,10 @@ func Test_UserRoles(t *testing.T) {
 		assert.NilError(t, err)
 		assert.Check(t, uRole != nil)
 		assert.Equal(t, uRole.GetPrincipalId(), user.Id)
+
+		userRoles, err := user.Roles(context.Background(), &w)
+		assert.NilError(t, err)
+		assert.Equal(t, len(userRoles), 1)
+		assert.Equal(t, userRoles[role.PublicId].GetId(), role.Id)
 	})
 }
