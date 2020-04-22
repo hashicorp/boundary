@@ -40,16 +40,18 @@ type Resource interface {
 type ResourceType int
 
 const (
-	ResourceTypeUnknown      ResourceType = 0
-	ResourceTypeScope        ResourceType = 1
-	ResourceTypeUser         ResourceType = 2
-	ResourceTypeGroup        ResourceType = 3
-	ResourceTypeRole         ResourceType = 4
-	ResourceTypeOrganization ResourceType = 5
-	ResourceTypeGroupMember  ResourceType = 6
-	ResourceTypeAssignedRole ResourceType = 7
-	ResourceTypeRoleGrant    ResourceType = 8
-	ResourceTypeAuthMethod   ResourceType = 9
+	ResourceTypeUnknown           ResourceType = 0
+	ResourceTypeScope             ResourceType = 1
+	ResourceTypeUser              ResourceType = 2
+	ResourceTypeGroup             ResourceType = 3
+	ResourceTypeRole              ResourceType = 4
+	ResourceTypeOrganization      ResourceType = 5
+	ResourceTypeGroupMember       ResourceType = 6
+	ResourceTypeAssignedRole      ResourceType = 7
+	ResourceTypeAssignedUserRole  ResourceType = 8
+	ResourceTypeAssignedGroupRole ResourceType = 9
+	ResourceTypeRoleGrant         ResourceType = 10
+	ResourceTypeAuthMethod        ResourceType = 11
 )
 
 // ResourceWithPrimaryScope defines an interface for Resources that have a primary scope
