@@ -227,7 +227,7 @@ CREATE TABLE if not exists iam_role_group (
     principal_id bigint NOT NULL REFERENCES iam_group(id),
     type int NOT NULL REFERENCES iam_role_type_enm(id) CHECK(type = 2)
   );
-CREATE VIEW iam_assigned_role AS
+CREATE VIEW iam_assigned_role_vw AS
 SELECT
   *
 FROM iam_role_user
