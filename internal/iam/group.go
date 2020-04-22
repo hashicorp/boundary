@@ -10,13 +10,14 @@ import (
 	"github.com/hashicorp/watchtower/internal/iam/store"
 )
 
+// Group is made up of members (users for now) and can be assigned roles
 type Group struct {
 	*store.Group
 	tableName string `gorm:"-"`
 }
 
+// ensure that Group implements the interfaces of: Resource, and db.VetForWriter
 var _ Resource = (*Group)(nil)
-
 var _ db.VetForWriter = (*Group)(nil)
 
 // NewGroup creates a new group with a scope (project/organization)
