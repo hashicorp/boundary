@@ -92,7 +92,7 @@ func TestGroup_Members(t *testing.T) {
 		gm2, err := NewGroupMember(s, grp, secondUser)
 		assert.NilError(t, err)
 		assert.Check(t, gm2 != nil)
-		err = w.Create(context.Background(), gm2, db.WithDebug(true))
+		err = w.Create(context.Background(), gm2)
 		assert.NilError(t, err)
 
 		members, err := grp.Members(context.Background(), &w)
@@ -189,7 +189,7 @@ func TestGroup_AddMember(t *testing.T) {
 		assert.NilError(t, err)
 		assert.Check(t, grp.Id != 0)
 
-		gm, err := grp.AddMember(context.Background(), &w, user, db.WithDebug(true))
+		gm, err := grp.AddMember(context.Background(), &w, user)
 		assert.NilError(t, err)
 		assert.Check(t, gm != nil)
 		assert.Equal(t, gm.(*GroupMemberUser).PrimaryScopeId, grp.PrimaryScopeId)
