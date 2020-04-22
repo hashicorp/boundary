@@ -30,7 +30,7 @@ var _ Resource = (*AuthMethod)(nil)
 var _ db.VetForWriter = (*AuthMethod)(nil)
 
 // NewAuthMethod creates a new AuthMethod for a Scope (org or project)
-// and authentication type.
+// and authentication type.  AuthMethods can only have an Organizational Scope
 func NewAuthMethod(primaryScope *Scope, authType AuthType, opt ...Option) (*AuthMethod, error) {
 	opts := GetOpts(opt...)
 	withFriendlyName := opts[optionWithFriendlyName].(string)
@@ -38,10 +38,13 @@ func NewAuthMethod(primaryScope *Scope, authType AuthType, opt ...Option) (*Auth
 		return nil, errors.New("error unknown auth type")
 	}
 	if primaryScope == nil {
-		return nil, errors.New("error user pass primary scope is nil")
+		return nil, errors.New("error scope is nil for new auth method")
+	}
+	if primaryScope.Id == 0 {
+		return nil, errors.New("error scope id == 0 for new auth method")
 	}
 	if primaryScope.Type != uint32(OrganizationScope) {
-		return nil, errors.New("user pass can only be within an organization scope")
+		return nil, errors.New("auth method can only be within an organization scope")
 	}
 	publicId, err := base62.Random(20)
 	if err != nil {

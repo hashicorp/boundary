@@ -35,4 +35,10 @@ func Test_NewAuthMethod(t *testing.T) {
 		assert.Check(t, meth != nil)
 		assert.Equal(t, meth.Type, uint32(AuthUserPass))
 	})
+	t.Run("nil-scope", func(t *testing.T) {
+		meth, err := NewAuthMethod(nil, AuthUserPass)
+		assert.Check(t, err != nil)
+		assert.Check(t, meth == nil)
+		assert.Equal(t, err.Error(), "error scope is nil for new auth method")
+	})
 }
