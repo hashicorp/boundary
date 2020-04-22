@@ -36,7 +36,7 @@ func (v *groupMemberView) TableName() string { return "iam_group_member" }
 func NewGroupMember(primaryScope *Scope, g *Group, m Resource, opt ...Option) (GroupMember, error) {
 	if m.ResourceType() == ResourceTypeUser {
 		if u, ok := m.(*User); ok {
-			return NewGroupMemberUser(primaryScope, g, u, opt...)
+			return newGroupMemberUser(primaryScope, g, u, opt...)
 		}
 		return nil, errors.New("error group member is not a user ptr")
 	}
@@ -52,9 +52,9 @@ var _ Resource = (*GroupMemberUser)(nil)
 var _ GroupMember = (*GroupMemberUser)(nil)
 var _ db.VetForWriter = (*GroupMemberUser)(nil)
 
-// NewGroupMemberUser creates a new user member of the groupwith a scope (project/organization)
+// newGroupMemberUser creates a new user member of the groupwith a scope (project/organization)
 // options include: withDescripion, withFriendlyName
-func NewGroupMemberUser(primaryScope *Scope, g *Group, m *User, opt ...Option) (GroupMember, error) {
+func newGroupMemberUser(primaryScope *Scope, g *Group, m *User, opt ...Option) (GroupMember, error) {
 	opts := GetOpts(opt...)
 	withFriendlyName := opts[optionWithFriendlyName].(string)
 	if primaryScope == nil {
