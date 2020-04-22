@@ -19,10 +19,7 @@ const (
 	AuthOIDC     AuthType = 2
 )
 
-// AuthMethod are the authentication methods available in different Organization and/or
-// Project Scopes within WatchTower.  UserAliases must have an AuthMethod, since that's
-// how they authenticate and it's really the purpose of UserAlaises (to tie users to
-// different authmethods via aliases)
+// AuthMethod are the authentication methods available at the Organization Scope within WatchTower.
 type AuthMethod struct {
 	*store.AuthMethod
 	tableName string `gorm:"-"`
@@ -43,13 +40,12 @@ func NewAuthMethod(primaryScope *Scope, authType AuthType, opt ...Option) (*Auth
 	if primaryScope == nil {
 		return nil, errors.New("error user pass primary scope is nil")
 	}
-	if primaryScope.Type != uint32(OrganizationScope) &&
-		primaryScope.Type != uint32(ProjectScope) {
-		return nil, errors.New("user pass can only be within an organization or project scope")
+	if primaryScope.Type != uint32(OrganizationScope) {
+		return nil, errors.New("user pass can only be within an organization scope")
 	}
 	publicId, err := base62.Random(20)
 	if err != nil {
-		return nil, fmt.Errorf("error generating public id %w for new pass alias", err)
+		return nil, fmt.Errorf("error generating public id %w for new auth method", err)
 	}
 	a := &AuthMethod{
 		AuthMethod: &store.AuthMethod{
@@ -97,7 +93,7 @@ func (p *AuthMethod) GetPrimaryScope(ctx context.Context, r db.Reader) (*Scope, 
 }
 
 // ResourceType returns the type of the AuthMethod
-func (*AuthMethod) ResourceType() ResourceType { return ResourceTypeUserAlias }
+func (*AuthMethod) ResourceType() ResourceType { return ResourceTypeAuthMethod }
 
 // Actions returns the  available actions for AuthMethod
 func (*AuthMethod) Actions() map[string]Action {
