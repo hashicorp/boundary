@@ -30,6 +30,7 @@ type Scope struct {
 	tableName string `gorm:"-"`
 }
 
+// ensure that Scope implements the interfaces of: Resource, and db.VetForWriter
 var _ Resource = (*Scope)(nil)
 var _ db.VetForWriter = (*User)(nil)
 

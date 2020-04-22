@@ -32,6 +32,18 @@ func Test_NewScope(t *testing.T) {
 		assert.Check(t, lowerScope.Scope != nil)
 		assert.Equal(t, lowerScope.GetParentId(), s.Id)
 	})
+	t.Run("unknown-scope", func(t *testing.T) {
+		s, err := NewScope(UnknownScope)
+		assert.Check(t, err != nil)
+		assert.Check(t, s == nil)
+		assert.Equal(t, err.Error(), "error unknown scope type for new scope")
+	})
+	t.Run("proj-scope-with-no-parent", func(t *testing.T) {
+		s, err := NewScope(ProjectScope)
+		assert.Check(t, err != nil)
+		assert.Check(t, s == nil)
+		assert.Equal(t, err.Error(), "error project scope must be with a scope")
+	})
 }
 func Test_ScopeCreate(t *testing.T) {
 	db.StartTest()
@@ -134,4 +146,20 @@ func Test_ScopeOrganization(t *testing.T) {
 		assert.Check(t, scopeOrg != nil)
 		assert.Equal(t, scopeOrg.Id, org.Id)
 	})
+}
+
+func TestScope_Actions(t *testing.T) {
+	s := &Scope{}
+	a := s.Actions()
+	assert.Equal(t, a[ActionList.String()], ActionList)
+	assert.Equal(t, a[ActionCreate.String()], ActionCreate)
+	assert.Equal(t, a[ActionUpdate.String()], ActionUpdate)
+	assert.Equal(t, a[ActionEdit.String()], ActionEdit)
+	assert.Equal(t, a[ActionDelete.String()], ActionDelete)
+}
+
+func TestScope_ResourceType(t *testing.T) {
+	r := &Scope{}
+	ty := r.ResourceType()
+	assert.Equal(t, ty, ResourceTypeScope)
 }
