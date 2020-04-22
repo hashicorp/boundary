@@ -18,6 +18,7 @@ const (
 	UserMemberType    MemberType = 1
 )
 
+// GroupMember declares a common interface for all members assigned to a group (which is just users for now)
 type GroupMember interface {
 	Resource
 	GetGroupId() uint32
@@ -25,15 +26,32 @@ type GroupMember interface {
 	GetType() uint32
 }
 
+// groupMemberView provides a common way to return group members regardless of their underlying type
 type groupMemberView struct {
 	*store.GroupMemberView
 }
 
+// TableName provides an overridden gorm table name for group members
 func (v *groupMemberView) TableName() string { return "iam_group_member" }
 
 // NewGroupMember creates a new member of the group with a scope (project/organization)
 // options include: withDescripion, withFriendlyName
 func NewGroupMember(primaryScope *Scope, g *Group, m Resource, opt ...Option) (GroupMember, error) {
+	if primaryScope == nil {
+		return nil, errors.New("error scope is nil for group member")
+	}
+	if primaryScope.Id == 0 {
+		return nil, errors.New("error scope id == 0 for group member")
+	}
+	if g == nil {
+		return nil, errors.New("error group is nil for group member")
+	}
+	if g.Id == 0 {
+		return nil, errors.New("error group id == 0 for group member")
+	}
+	if m == nil {
+		return nil, errors.New("member is nil for group member")
+	}
 	if m.ResourceType() == ResourceTypeUser {
 		if u, ok := m.(*User); ok {
 			return newGroupMemberUser(primaryScope, g, u, opt...)
@@ -43,11 +61,13 @@ func NewGroupMember(primaryScope *Scope, g *Group, m Resource, opt ...Option) (G
 	return nil, errors.New("error unknown group member type")
 }
 
+// GroupMemberUser is a group member that's a User
 type GroupMemberUser struct {
 	*store.GroupMemberUser
 	tableName string `gorm:"-"`
 }
 
+// ensure that GroupMemberUser implements the interfaces of: Resource, GroupMember and db.VetForWriter
 var _ Resource = (*GroupMemberUser)(nil)
 var _ GroupMember = (*GroupMemberUser)(nil)
 var _ db.VetForWriter = (*GroupMemberUser)(nil)
@@ -130,7 +150,7 @@ func (m *GroupMemberUser) GetPrimaryScope(ctx context.Context, r db.Reader) (*Sc
 }
 
 // ResourceType returns the type of the GroupMember
-func (*GroupMemberUser) ResourceType() ResourceType { return ResourceTypeGroupMember }
+func (*GroupMemberUser) ResourceType() ResourceType { return ResourceTypeGroupUserMember }
 
 // Actions returns the  available actions for GroupMember
 func (*GroupMemberUser) Actions() map[string]Action {
