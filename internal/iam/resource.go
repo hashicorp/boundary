@@ -47,11 +47,12 @@ const (
 	ResourceTypeRole              ResourceType = 4
 	ResourceTypeOrganization      ResourceType = 5
 	ResourceTypeGroupMember       ResourceType = 6
-	ResourceTypeAssignedRole      ResourceType = 7
-	ResourceTypeAssignedUserRole  ResourceType = 8
-	ResourceTypeAssignedGroupRole ResourceType = 9
-	ResourceTypeRoleGrant         ResourceType = 10
-	ResourceTypeAuthMethod        ResourceType = 11
+	ResourceTypeGroupUserMember   ResourceType = 7
+	ResourceTypeAssignedRole      ResourceType = 8
+	ResourceTypeAssignedUserRole  ResourceType = 9
+	ResourceTypeAssignedGroupRole ResourceType = 10
+	ResourceTypeRoleGrant         ResourceType = 11
+	ResourceTypeAuthMethod        ResourceType = 12
 )
 
 // ResourceWithPrimaryScope defines an interface for Resources that have a primary scope
