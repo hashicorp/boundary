@@ -43,6 +43,9 @@ func NewAssignedRole(primaryScope *Scope, role *Role, principal Resource, opt ..
 	if primaryScope == nil {
 		return nil, errors.New("error scope is nil for assigning role")
 	}
+	if primaryScope.Id == 0 {
+		return nil, errors.New("error scope id == 0 for assigning role")
+	}
 	if role == nil {
 		return nil, errors.New("error role is nil for assigning role")
 	}
