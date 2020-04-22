@@ -14,7 +14,10 @@ func Test_StdActions(t *testing.T) {
 		assert.Equal(t, a[ActionList.String()], ActionList)
 		assert.Equal(t, a[ActionCreate.String()], ActionCreate)
 		assert.Equal(t, a[ActionUpdate.String()], ActionUpdate)
+		assert.Equal(t, a[ActionEdit.String()], ActionEdit)
 		assert.Equal(t, a[ActionDelete.String()], ActionDelete)
+		assert.Equal(t, a[ActionAuthen.String()], ActionAuthen)
+
 	})
 	t.Run("invalid", func(t *testing.T) {
 		a := StdActions()

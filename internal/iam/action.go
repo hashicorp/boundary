@@ -35,5 +35,6 @@ func StdActions() map[string]Action {
 		ActionUpdate.String(): ActionUpdate,
 		ActionEdit.String():   ActionEdit,
 		ActionDelete.String(): ActionDelete,
+		ActionAuthen.String(): ActionAuthen,
 	}
 }
