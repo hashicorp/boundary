@@ -40,6 +40,9 @@ func (v *assignedRoleView) TableName() string { return "iam_assigned_role_vw" }
 // This is the preferred way to create roles vs calling a specific role type constructor func
 // options include: withFriendlyName
 func NewAssignedRole(primaryScope *Scope, role *Role, principal Resource, opt ...Option) (AssignedRole, error) {
+	if primaryScope == nil {
+		return nil, errors.New("error scope is nil for assigning role")
+	}
 	if role == nil {
 		return nil, errors.New("error role is nil for assigning role")
 	}
@@ -150,7 +153,7 @@ func (role *UserRole) GetPrimaryScope(ctx context.Context, r db.Reader) (*Scope,
 }
 
 // ResourceType returns the type of the user role
-func (*UserRole) ResourceType() ResourceType { return ResourceTypeAssignedRole }
+func (*UserRole) ResourceType() ResourceType { return ResourceTypeAssignedUserRole }
 
 // Actions returns the  available actions for user role
 func (*UserRole) Actions() map[string]Action {
@@ -172,11 +175,13 @@ func (r *UserRole) SetTableName(n string) {
 	}
 }
 
+//  GroupRole is a role assigned to a group
 type GroupRole struct {
 	*store.GroupRole
 	tableName string `gorm:"-"`
 }
 
+// ensure that GroupRole implements the interfaces of: Resource, AssignedRole and db.VetForWriter
 var _ Resource = (*GroupRole)(nil)
 var _ AssignedRole = (*GroupRole)(nil)
 var _ db.VetForWriter = (*GroupRole)(nil)
@@ -259,7 +264,7 @@ func (role *GroupRole) GetPrimaryScope(ctx context.Context, r db.Reader) (*Scope
 }
 
 // ResourceType returns the type of the group role
-func (*GroupRole) ResourceType() ResourceType { return ResourceTypeAssignedRole }
+func (*GroupRole) ResourceType() ResourceType { return ResourceTypeAssignedGroupRole }
 
 // Actions returns the  available actions for group role
 func (*GroupRole) Actions() map[string]Action {
