@@ -40,33 +40,41 @@ func (v *assignedRoleView) TableName() string { return "iam_assigned_role_vw" }
 // This is the preferred way to create roles vs calling a specific role type constructor func
 // options include: withFriendlyName
 func NewAssignedRole(primaryScope *Scope, role *Role, principal Resource, opt ...Option) (AssignedRole, error) {
+	if role == nil {
+		return nil, errors.New("error role is nil for assigning role")
+	}
+	if principal == nil {
+		return nil, errors.New("principal is nil for assigning role")
+	}
 	if principal.ResourceType() == ResourceTypeUser {
 		if u, ok := principal.(*User); ok {
-			return NewUserRole(primaryScope, role, u, opt...)
+			return newUserRole(primaryScope, role, u, opt...)
 		}
-		return nil, errors.New("error principal is not a user ptr")
+		return nil, errors.New("error principal is not a user ptr for assigning role")
 	}
 	if principal.ResourceType() == ResourceTypeGroup {
 		if a, ok := principal.(*Group); ok {
-			return NewGroupRole(primaryScope, role, a, opt...)
+			return newGroupRole(primaryScope, role, a, opt...)
 		}
-		return nil, errors.New("error principal is not a group ptr")
+		return nil, errors.New("error principal is not a group ptr for assigning role")
 	}
-	return nil, errors.New("error unknown principal type")
+	return nil, errors.New("error unknown principal type for assigning role")
 }
 
+// UserRole is a role assigned to a user
 type UserRole struct {
 	*store.UserRole
 	tableName string `gorm:"-"`
 }
 
+// ensure that UserRole implements the interfaces of: Resource, AssignedRole and db.VetForWriter
 var _ Resource = (*UserRole)(nil)
 var _ AssignedRole = (*UserRole)(nil)
 var _ db.VetForWriter = (*UserRole)(nil)
 
-// NewUserRole creates a new user role with a scope (project/organization)
+// newUserRole creates a new user role with a scope (project/organization)
 // options include:  withFriendlyName
-func NewUserRole(primaryScope *Scope, r *Role, u *User, opt ...Option) (AssignedRole, error) {
+func newUserRole(primaryScope *Scope, r *Role, u *User, opt ...Option) (AssignedRole, error) {
 	opts := GetOpts(opt...)
 	withFriendlyName := opts[optionWithFriendlyName].(string)
 	if primaryScope == nil {
@@ -173,9 +181,9 @@ var _ Resource = (*GroupRole)(nil)
 var _ AssignedRole = (*GroupRole)(nil)
 var _ db.VetForWriter = (*GroupRole)(nil)
 
-// GroupRole creates a new group role with a scope (project/organization)
+// newGroupRole creates a new group role with a scope (project/organization)
 // options include:  withFriendlyName
-func NewGroupRole(primaryScope *Scope, r *Role, g *Group, opt ...Option) (AssignedRole, error) {
+func newGroupRole(primaryScope *Scope, r *Role, g *Group, opt ...Option) (AssignedRole, error) {
 	opts := GetOpts(opt...)
 	withFriendlyName := opts[optionWithFriendlyName].(string)
 	if primaryScope == nil {
