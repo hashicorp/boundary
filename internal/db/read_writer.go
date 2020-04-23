@@ -51,6 +51,8 @@ type Writer interface {
 	// Create an object in the db with options: WithOplog (which requires WithMetadata, WithWrapper)
 	Create(ctx context.Context, i interface{}, opt ...Option) error
 
+	// Delete(ctx context.Context, i interface{}, opt ...Option) error
+
 	// CreateConstraint will create a db constraint if it doesn't already exist
 	CreateConstraint(tableName string, constraintName string, constraint string) error
 
@@ -106,7 +108,7 @@ type GormReadWriter struct {
 // Dialect returns the RDBMS dialect: postgres, mysql, etc
 func (rw *GormReadWriter) Dialect() (string, error) {
 	if rw.Tx == nil {
-		return "", errors.New("create Tx is nil for Dialect")
+		return "", errors.New("create tx is nil for dialect")
 	}
 	return rw.Tx.Dialect().GetName(), nil
 }
@@ -114,7 +116,7 @@ func (rw *GormReadWriter) Dialect() (string, error) {
 // DB returns the sql.DB
 func (rw *GormReadWriter) DB() (*sql.DB, error) {
 	if rw.Tx == nil {
-		return nil, errors.New("create Tx is nil for DB")
+		return nil, errors.New("create tx is nil for db")
 	}
 	return rw.Tx.DB(), nil
 }
@@ -140,10 +142,28 @@ func (w *GormReadWriter) CreateConstraint(tableName string, constraintName strin
 	return w.Tx.Exec("create_constraint_if_not_exists(?, ?, ?)", tableName, constraintName, constraint).Error
 }
 
-// Create an object in the db with options: WithOplog (which requires WithMetadata, WithWrapper)
+var ErrNotResourceWithId = errors.New("not a resource with an id")
+
+func (rw *GormReadWriter) lookupAfterWrite(ctx context.Context, i interface{}, opt ...Option) error {
+	opts := GetOpts(opt...)
+	withLookup := opts[optionWithLookup].(bool)
+
+	if !withLookup {
+		return nil
+	}
+	if _, ok := i.(ResourceWithId); ok {
+		if err := rw.LookupById(ctx, i.(ResourceWithId), opt...); err != nil {
+			return err
+		}
+		return nil
+	}
+	return ErrNotResourceWithId
+}
+
+// Create an object in the db with options: WithOplog (which requires WithMetadata, WithWrapper, WithLookup (to force a lookup after create))
 func (rw *GormReadWriter) Create(ctx context.Context, i interface{}, opt ...Option) error {
 	if rw.Tx == nil {
-		return errors.New("create Tx is nil")
+		return errors.New("create tx is nil")
 	}
 	opts := GetOpts(opt...)
 	withOplog := opts[optionWithOplog].(bool)
@@ -168,6 +188,9 @@ func (rw *GormReadWriter) Create(ctx context.Context, i interface{}, opt ...Opti
 			return err
 		}
 	}
+	if err := rw.lookupAfterWrite(ctx, i, opt...); err != nil {
+		return fmt.Errorf("lookup error after create: %w", err)
+	}
 	return nil
 }
 
@@ -175,7 +198,7 @@ func (rw *GormReadWriter) Create(ctx context.Context, i interface{}, opt ...Opti
 // it will send every field to the DB.  Update supports embedding a struct (or structPtr) one level deep for updating
 func (rw *GormReadWriter) Update(ctx context.Context, i interface{}, fieldMaskPaths []string, opt ...Option) error {
 	if rw.Tx == nil {
-		return errors.New("update Tx is nil")
+		return errors.New("update tx is nil")
 	}
 	opts := GetOpts(opt...)
 	withDebug := opts[optionWithDebug].(bool)
@@ -247,40 +270,43 @@ func (rw *GormReadWriter) Update(ctx context.Context, i interface{}, fieldMaskPa
 			return err
 		}
 	}
+	if err := rw.lookupAfterWrite(ctx, i, opt...); err != nil {
+		return fmt.Errorf("lookup error after update: %w", err)
+	}
 	return nil
 }
 
 func (rw *GormReadWriter) addOplog(ctx context.Context, opType OpType, opts Options, i interface{}) error {
 	if opts[optionWithWrapper] == nil {
-		return errors.New("error wrapper is nil for create WithWrapper")
+		return errors.New("error wrapper is nil for WithWrapper")
 	}
 	withWrapper, ok := opts[optionWithWrapper].(wrapping.Wrapper)
 	if !ok {
-		return errors.New("error not a wrapping.Wrapper for create WithWrapper")
+		return errors.New("error not a wrapping.Wrapper for WithWrapper")
 	}
 	withMetadata := opts[optionWithMetadata].(oplog.Metadata)
 	if len(withMetadata) == 0 {
-		return errors.New("error no metadata for create WithOplog")
+		return errors.New("error no metadata for WithOplog")
 	}
 	replayable, ok := i.(oplog.ReplayableMessage)
 	if !ok {
-		return errors.New("error not a replayable message for create WithOplog")
+		return errors.New("error not a replayable message for WithOplog")
 	}
 	gdb, err := rw.gormDB()
 	if err != nil {
-		return fmt.Errorf("error getting underlying gorm DB %w for create WithOplog", err)
+		return fmt.Errorf("error getting underlying gorm DB %w for WithOplog", err)
 	}
 	ticketer, err := oplog.NewGormTicketer(gdb, oplog.WithAggregateNames(true))
 	if err != nil {
-		return fmt.Errorf("error getting Ticketer %w for create WithOplog", err)
+		return fmt.Errorf("error getting Ticketer %w for WithOplog", err)
 	}
 	err = ticketer.InitTicket(replayable.TableName())
 	if err != nil {
-		return fmt.Errorf("error getting initializing ticket %w for create WithOplog", err)
+		return fmt.Errorf("error getting initializing ticket %w for WithOplog", err)
 	}
 	ticket, err := ticketer.GetTicket(replayable.TableName())
 	if err != nil {
-		return fmt.Errorf("error getting ticket %w for create WithOplog", err)
+		return fmt.Errorf("error getting ticket %w for WithOplog", err)
 	}
 
 	entry, err := oplog.NewEntry(
@@ -305,7 +331,7 @@ func (rw *GormReadWriter) addOplog(ctx context.Context, opType OpType, opts Opti
 		&oplog.Message{Message: i.(proto.Message), TypeName: replayable.TableName(), OpType: entryOp},
 	)
 	if err != nil {
-		return fmt.Errorf("error creating oplog entry %w for create WithOplog", err)
+		return fmt.Errorf("error creating oplog entry %w for WithOplog", err)
 	}
 	return nil
 }
