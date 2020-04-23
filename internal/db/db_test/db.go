@@ -9,10 +9,11 @@ import (
 
 	"github.com/golang/protobuf/ptypes"
 	"github.com/hashicorp/vault/sdk/helper/base62"
+	"google.golang.org/protobuf/proto"
 )
 
 type TestUser struct {
-	StoreTestUser
+	*StoreTestUser
 	table string `gorm:"-"`
 }
 
@@ -22,12 +23,19 @@ func NewTestUser() (*TestUser, error) {
 		return nil, err
 	}
 	return &TestUser{
-		StoreTestUser: StoreTestUser{
+		StoreTestUser: &StoreTestUser{
 			PublicId: publicId,
 		},
 	}, nil
 }
 
+// Clone is useful when you're retrying transactions and you need to send the user several times
+func (u *TestUser) Clone() *TestUser {
+	s := proto.Clone(u.StoreTestUser)
+	return &TestUser{
+		StoreTestUser: s.(*StoreTestUser),
+	}
+}
 func (u *TestUser) TableName() string {
 	if u.table != "" {
 		return u.table
@@ -42,7 +50,7 @@ func (u *TestUser) SetTableName(name string) {
 }
 
 type TestCar struct {
-	StoreTestCar
+	*StoreTestCar
 	table string `gorm:"-"`
 }
 
@@ -52,7 +60,7 @@ func NewTestCar() (*TestCar, error) {
 		return nil, err
 	}
 	return &TestCar{
-		StoreTestCar: StoreTestCar{
+		StoreTestCar: &StoreTestCar{
 			PublicId: publicId,
 		},
 	}, nil
@@ -72,7 +80,7 @@ func (c *TestCar) SetTableName(name string) {
 }
 
 type TestRental struct {
-	StoreTestRental
+	*StoreTestRental
 	table string `gorm:"-"`
 }
 
@@ -82,7 +90,7 @@ func NewTestRental() (*TestRental, error) {
 		return nil, err
 	}
 	return &TestRental{
-		StoreTestRental: StoreTestRental{
+		StoreTestRental: &StoreTestRental{
 			PublicId: publicId,
 		},
 	}, nil

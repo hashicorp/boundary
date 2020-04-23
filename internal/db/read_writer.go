@@ -51,7 +51,8 @@ type Writer interface {
 	// Create an object in the db with options: WithOplog (which requires WithMetadata, WithWrapper)
 	Create(ctx context.Context, i interface{}, opt ...Option) error
 
-	// Delete(ctx context.Context, i interface{}, opt ...Option) error
+	// Delete an object in the db with options: WithOplog (which requires WithMetadata, WithWrapper)
+	Delete(ctx context.Context, i interface{}, opt ...Option) error
 
 	// CreateConstraint will create a db constraint if it doesn't already exist
 	CreateConstraint(tableName string, constraintName string, constraint string) error
@@ -314,10 +315,7 @@ func (rw *GormReadWriter) addOplog(ctx context.Context, opType OpType, opts Opti
 	if !ok {
 		return errors.New("error not a replayable message for WithOplog")
 	}
-	gdb, err := rw.gormDB()
-	if err != nil {
-		return fmt.Errorf("error getting underlying gorm DB %w for WithOplog", err)
-	}
+	gdb := rw.Tx
 	withDebug := opts[optionWithDebug].(bool)
 	if withDebug {
 		gdb.LogMode(true)

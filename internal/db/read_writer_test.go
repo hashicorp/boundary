@@ -32,9 +32,10 @@ func TestGormReadWriter_Update(t *testing.T) {
 		assert.NilError(t, err)
 		assert.Check(t, user.Id != 0)
 
-		var foundUser db_test.TestUser
+		foundUser, err := db_test.NewTestUser()
+		assert.NilError(t, err)
 		foundUser.Id = user.Id
-		err = w.LookupById(context.Background(), &foundUser)
+		err = w.LookupById(context.Background(), foundUser)
 		assert.NilError(t, err)
 		assert.Equal(t, user.Id, foundUser.Id)
 
@@ -42,7 +43,7 @@ func TestGormReadWriter_Update(t *testing.T) {
 		err = w.Update(context.Background(), user, []string{"FriendlyName"})
 		assert.NilError(t, err)
 
-		err = w.LookupById(context.Background(), &foundUser)
+		err = w.LookupById(context.Background(), foundUser)
 		assert.NilError(t, err)
 		assert.Equal(t, user.FriendlyName, foundUser.FriendlyName)
 	})
@@ -57,9 +58,10 @@ func TestGormReadWriter_Update(t *testing.T) {
 		assert.NilError(t, err)
 		assert.Check(t, user.Id != 0)
 
-		var foundUser db_test.TestUser
+		foundUser, err := db_test.NewTestUser()
+		assert.NilError(t, err)
 		foundUser.Id = user.Id
-		err = w.LookupById(context.Background(), &foundUser)
+		err = w.LookupById(context.Background(), foundUser)
 		assert.NilError(t, err)
 		assert.Equal(t, user.Id, foundUser.Id)
 
@@ -68,7 +70,7 @@ func TestGormReadWriter_Update(t *testing.T) {
 			context.Background(),
 			20,
 			ExpBackoff{},
-			func(Writer) error {
+			func(w Writer) error {
 				return w.Update(context.Background(), user, []string{"FriendlyName"},
 					WithOplog(true),
 					WithWrapper(InitTestWrapper(t)),
@@ -81,7 +83,7 @@ func TestGormReadWriter_Update(t *testing.T) {
 			})
 		assert.NilError(t, err)
 
-		err = w.LookupById(context.Background(), &foundUser)
+		err = w.LookupById(context.Background(), foundUser)
 		assert.NilError(t, err)
 		assert.Equal(t, user.FriendlyName, foundUser.FriendlyName)
 	})
@@ -107,9 +109,10 @@ func TestGormReadWriter_Update(t *testing.T) {
 		assert.NilError(t, err)
 		assert.Check(t, user.Id != 0)
 
-		var foundUser db_test.TestUser
+		foundUser, err := db_test.NewTestUser()
+		assert.NilError(t, err)
 		foundUser.Id = user.Id
-		err = w.LookupById(context.Background(), &foundUser)
+		err = w.LookupById(context.Background(), foundUser)
 		assert.NilError(t, err)
 		assert.Equal(t, user.Id, foundUser.Id)
 
@@ -118,7 +121,7 @@ func TestGormReadWriter_Update(t *testing.T) {
 			context.Background(),
 			20,
 			ExpBackoff{},
-			func(Writer) error {
+			func(w Writer) error {
 				return w.Update(context.Background(), user, []string{"FriendlyName"},
 					WithOplog(true),
 					WithMetadata(oplog.Metadata{
@@ -142,9 +145,10 @@ func TestGormReadWriter_Update(t *testing.T) {
 		assert.NilError(t, err)
 		assert.Check(t, user.Id != 0)
 
-		var foundUser db_test.TestUser
+		foundUser, err := db_test.NewTestUser()
+		assert.NilError(t, err)
 		foundUser.Id = user.Id
-		err = w.LookupById(context.Background(), &foundUser)
+		err = w.LookupById(context.Background(), foundUser)
 		assert.NilError(t, err)
 		assert.Equal(t, user.Id, foundUser.Id)
 
@@ -153,7 +157,7 @@ func TestGormReadWriter_Update(t *testing.T) {
 			context.Background(),
 			20,
 			ExpBackoff{},
-			func(Writer) error {
+			func(w Writer) error {
 				return w.Update(context.Background(), user, []string{"FriendlyName"},
 					WithOplog(true),
 					WithWrapper(InitTestWrapper(t)),
@@ -186,9 +190,10 @@ func TestGormReadWriter_Create(t *testing.T) {
 		assert.Check(t, user.GetCreateTime() != nil)
 		assert.Check(t, user.GetUpdateTime() != nil)
 
-		var foundUser db_test.TestUser
+		foundUser, err := db_test.NewTestUser()
+		assert.NilError(t, err)
 		foundUser.Id = user.Id
-		err = w.LookupById(context.Background(), &foundUser)
+		err = w.LookupById(context.Background(), foundUser)
 		assert.NilError(t, err)
 		assert.Equal(t, user.Id, foundUser.Id)
 	})
@@ -199,14 +204,18 @@ func TestGormReadWriter_Create(t *testing.T) {
 		user, err := db_test.NewTestUser()
 		assert.NilError(t, err)
 		user.Name = "foo-" + id
+		var returnedUser *db_test.TestUser
 		_, err = w.DoTx(
 			context.Background(),
 			3,
 			ExpBackoff{},
-			func(Writer) error {
+			func(w Writer) error {
+				// make sure you used the passed in writer that properly handles transaction rollback
+				// we need to clone the user before every attempt to insert it, since it will be retried
+				returnedUser = user.Clone()
 				return w.Create(
 					context.Background(),
-					user,
+					returnedUser,
 					WithOplog(true),
 					WithWrapper(InitTestWrapper(t)),
 					WithMetadata(oplog.Metadata{
@@ -217,13 +226,14 @@ func TestGormReadWriter_Create(t *testing.T) {
 				)
 			})
 		assert.NilError(t, err)
-		assert.Check(t, user.Id != 0)
+		assert.Check(t, returnedUser.Id != 0)
 
-		var foundUser db_test.TestUser
-		foundUser.Id = user.Id
-		err = w.LookupById(context.Background(), &foundUser)
+		foundUser, err := db_test.NewTestUser()
 		assert.NilError(t, err)
-		assert.Equal(t, user.Id, foundUser.Id)
+		foundUser.Id = returnedUser.Id
+		err = w.LookupById(context.Background(), foundUser)
+		assert.NilError(t, err)
+		assert.Equal(t, returnedUser.Id, foundUser.Id)
 	})
 	t.Run("no-wrapper-WithOplog", func(t *testing.T) {
 		w := GormReadWriter{Tx: conn}
@@ -236,10 +246,11 @@ func TestGormReadWriter_Create(t *testing.T) {
 			context.Background(),
 			3,
 			ExpBackoff{},
-			func(Writer) error {
+			func(w Writer) error {
+				retryableUser := user.Clone()
 				return w.Create(
 					context.Background(),
-					user,
+					retryableUser,
 					WithOplog(true),
 					WithMetadata(oplog.Metadata{
 						"key-only":   nil,
@@ -262,10 +273,11 @@ func TestGormReadWriter_Create(t *testing.T) {
 			context.Background(),
 			3,
 			ExpBackoff{},
-			func(Writer) error {
+			func(w Writer) error {
+				retryableUser := user.Clone()
 				return w.Create(
 					context.Background(),
-					user,
+					retryableUser,
 					WithOplog(true),
 					WithWrapper(InitTestWrapper(t)),
 				)
@@ -306,31 +318,35 @@ func TestGormReadWriter_LookupByInternalId(t *testing.T) {
 		assert.NilError(t, err)
 		assert.Check(t, user.Id != 0)
 
-		var foundUser db_test.TestUser
+		foundUser, err := db_test.NewTestUser()
+		assert.NilError(t, err)
 		foundUser.Id = user.Id
-		err = w.LookupById(context.Background(), &foundUser)
+		err = w.LookupById(context.Background(), foundUser)
 		assert.NilError(t, err)
 		assert.Equal(t, user.Id, foundUser.Id)
 	})
 	t.Run("tx-nil,", func(t *testing.T) {
 		w := GormReadWriter{}
-		var foundUser db_test.TestUser
-		err = w.LookupById(context.Background(), &foundUser)
+		foundUser, err := db_test.NewTestUser()
+		assert.NilError(t, err)
+		err = w.LookupById(context.Background(), foundUser)
 		assert.Check(t, err != nil)
 		assert.Equal(t, err.Error(), "error tx nil for lookup by internal id")
 	})
 	t.Run("no-public-id-set", func(t *testing.T) {
 		w := GormReadWriter{Tx: conn}
-		var foundUser db_test.TestUser
-		err = w.LookupById(context.Background(), &foundUser)
+		foundUser, err := db_test.NewTestUser()
+		assert.NilError(t, err)
+		err = w.LookupById(context.Background(), foundUser)
 		assert.Check(t, err != nil)
 		assert.Equal(t, err.Error(), "error internal id is 0 for lookup by internal id")
 	})
 	t.Run("not-found", func(t *testing.T) {
 		w := GormReadWriter{Tx: conn}
-		var foundUser db_test.TestUser
+		foundUser, err := db_test.NewTestUser()
+		assert.NilError(t, err)
 		foundUser.Id = 4294967295 // we should never get to the max for unit32
-		err = w.LookupById(context.Background(), &foundUser)
+		err = w.LookupById(context.Background(), foundUser)
 		assert.Check(t, err != nil)
 		assert.Equal(t, err, gorm.ErrRecordNotFound)
 	})
@@ -357,24 +373,27 @@ func TestGormReadWriter_LookupByFriendlyName(t *testing.T) {
 		assert.NilError(t, err)
 		assert.Check(t, user.Id != 0)
 
-		var foundUser db_test.TestUser
+		foundUser, err := db_test.NewTestUser()
+		assert.NilError(t, err)
 		foundUser.FriendlyName = "fn-" + id
-		err = w.LookupByFriendlyName(context.Background(), &foundUser)
+		err = w.LookupByFriendlyName(context.Background(), foundUser)
 		assert.NilError(t, err)
 		assert.Equal(t, user.Id, foundUser.Id)
 	})
 	t.Run("tx-nil,", func(t *testing.T) {
 		w := GormReadWriter{}
-		var foundUser db_test.TestUser
+		foundUser, err := db_test.NewTestUser()
+		assert.NilError(t, err)
 		foundUser.FriendlyName = "fn-name"
-		err = w.LookupByFriendlyName(context.Background(), &foundUser)
+		err = w.LookupByFriendlyName(context.Background(), foundUser)
 		assert.Check(t, err != nil)
 		assert.Equal(t, err.Error(), "error tx nil for lookup by friendly name")
 	})
 	t.Run("no-friendly-name-set", func(t *testing.T) {
 		w := GormReadWriter{Tx: conn}
-		var foundUser db_test.TestUser
-		err = w.LookupByFriendlyName(context.Background(), &foundUser)
+		foundUser, err := db_test.NewTestUser()
+		assert.NilError(t, err)
+		err = w.LookupByFriendlyName(context.Background(), foundUser)
 		assert.Check(t, err != nil)
 		assert.Equal(t, err.Error(), "error friendly name empty string for lookup by friendly name")
 	})
@@ -383,9 +402,10 @@ func TestGormReadWriter_LookupByFriendlyName(t *testing.T) {
 		id, err := uuid.GenerateUUID()
 		assert.NilError(t, err)
 
-		var foundUser db_test.TestUser
+		foundUser, err := db_test.NewTestUser()
+		assert.NilError(t, err)
 		foundUser.FriendlyName = "fn-" + id
-		err = w.LookupByFriendlyName(context.Background(), &foundUser)
+		err = w.LookupByFriendlyName(context.Background(), foundUser)
 		assert.Check(t, err != nil)
 		assert.Equal(t, err, gorm.ErrRecordNotFound)
 	})
@@ -412,23 +432,27 @@ func TestGormReadWriter_LookupByPublicId(t *testing.T) {
 		assert.NilError(t, err)
 		assert.Check(t, user.PublicId != "")
 
-		var foundUser db_test.TestUser
+		foundUser, err := db_test.NewTestUser()
+		assert.NilError(t, err)
 		foundUser.PublicId = user.PublicId
-		err = w.LookupByPublicId(context.Background(), &foundUser)
+		err = w.LookupByPublicId(context.Background(), foundUser)
 		assert.NilError(t, err)
 		assert.Equal(t, user.Id, foundUser.Id)
 	})
 	t.Run("tx-nil,", func(t *testing.T) {
 		w := GormReadWriter{}
-		var foundUser db_test.TestUser
-		err = w.LookupByPublicId(context.Background(), &foundUser)
+		foundUser, err := db_test.NewTestUser()
+		assert.NilError(t, err)
+		err = w.LookupByPublicId(context.Background(), foundUser)
 		assert.Check(t, err != nil)
 		assert.Equal(t, err.Error(), "error tx nil for lookup by public id")
 	})
 	t.Run("no-public-id-set", func(t *testing.T) {
 		w := GormReadWriter{Tx: conn}
-		var foundUser db_test.TestUser
-		err = w.LookupByPublicId(context.Background(), &foundUser)
+		foundUser, err := db_test.NewTestUser()
+		foundUser.PublicId = ""
+		assert.NilError(t, err)
+		err = w.LookupByPublicId(context.Background(), foundUser)
 		assert.Check(t, err != nil)
 		assert.Equal(t, err.Error(), "error public id empty string for lookup by public id")
 	})
@@ -437,9 +461,10 @@ func TestGormReadWriter_LookupByPublicId(t *testing.T) {
 		id, err := uuid.GenerateUUID()
 		assert.NilError(t, err)
 
-		var foundUser db_test.TestUser
+		foundUser, err := db_test.NewTestUser()
+		assert.NilError(t, err)
 		foundUser.PublicId = id
-		err = w.LookupByPublicId(context.Background(), &foundUser)
+		err = w.LookupByPublicId(context.Background(), foundUser)
 		assert.Check(t, err != nil)
 		assert.Equal(t, err, gorm.ErrRecordNotFound)
 	})
@@ -683,16 +708,17 @@ func TestGormReadWriter_Delete(t *testing.T) {
 		assert.Check(t, user.GetCreateTime() != nil)
 		assert.Check(t, user.GetUpdateTime() != nil)
 
-		var foundUser db_test.TestUser
+		foundUser, err := db_test.NewTestUser()
+		assert.NilError(t, err)
 		foundUser.Id = user.Id
-		err = w.LookupById(context.Background(), &foundUser)
+		err = w.LookupById(context.Background(), foundUser)
 		assert.NilError(t, err)
 		assert.Equal(t, user.Id, foundUser.Id)
 
 		err = w.Delete(context.Background(), user)
 		assert.NilError(t, err)
 
-		err = w.LookupById(context.Background(), &foundUser)
+		err = w.LookupById(context.Background(), foundUser)
 		assert.Check(t, err != nil)
 		assert.Equal(t, err, gorm.ErrRecordNotFound)
 	})
@@ -703,14 +729,18 @@ func TestGormReadWriter_Delete(t *testing.T) {
 		user, err := db_test.NewTestUser()
 		assert.NilError(t, err)
 		user.Name = "foo-" + id
+		var returnedUser *db_test.TestUser
 		_, err = w.DoTx(
 			context.Background(),
-			3,
+			10,
 			ExpBackoff{},
-			func(Writer) error {
-				return w.Create(
+			func(w Writer) error {
+				// make sure you used the passed in writer that properly handles transaction rollback
+				// we need to clone the user before every attempt to insert it, since it will be retried
+				returnedUser = user.Clone()
+				err := w.Create(
 					context.Background(),
-					user,
+					returnedUser,
 					WithOplog(true),
 					WithWrapper(InitTestWrapper(t)),
 					WithMetadata(oplog.Metadata{
@@ -719,19 +749,21 @@ func TestGormReadWriter_Delete(t *testing.T) {
 						"project":    []string{"central-info-systems", "local-info-systems"},
 					}),
 				)
+				return err
 			})
 		assert.NilError(t, err)
-		assert.Check(t, user.Id != 0)
+		assert.Check(t, returnedUser.Id != 0)
 
-		var foundUser db_test.TestUser
-		foundUser.Id = user.Id
-		err = w.LookupById(context.Background(), &foundUser)
+		foundUser, err := db_test.NewTestUser()
 		assert.NilError(t, err)
-		assert.Equal(t, user.Id, foundUser.Id)
+		foundUser.Id = returnedUser.Id
+		err = w.LookupById(context.Background(), foundUser)
+		assert.NilError(t, err)
+		assert.Equal(t, returnedUser.Id, foundUser.Id)
 
 		err = w.Delete(
 			context.Background(),
-			user,
+			returnedUser,
 			WithOplog(true),
 			WithWrapper(InitTestWrapper(t)),
 			WithMetadata(oplog.Metadata{
@@ -742,7 +774,7 @@ func TestGormReadWriter_Delete(t *testing.T) {
 		)
 		assert.NilError(t, err)
 
-		err = w.LookupById(context.Background(), &foundUser)
+		err = w.LookupById(context.Background(), foundUser)
 		assert.Check(t, err != nil)
 		assert.Equal(t, err, gorm.ErrRecordNotFound)
 	})
@@ -753,14 +785,18 @@ func TestGormReadWriter_Delete(t *testing.T) {
 		user, err := db_test.NewTestUser()
 		assert.NilError(t, err)
 		user.Name = "foo-" + id
+		var returnedUser *db_test.TestUser
 		_, err = w.DoTx(
 			context.Background(),
 			3,
 			ExpBackoff{},
-			func(Writer) error {
+			func(w Writer) error {
+				// make sure you used the passed in writer that properly handles transaction rollback
+				// we need to clone the user before every attempt to insert it, since it will be retried
+				returnedUser = user.Clone()
 				return w.Create(
 					context.Background(),
-					user,
+					returnedUser,
 					WithOplog(true),
 					WithWrapper(InitTestWrapper(t)),
 					WithMetadata(oplog.Metadata{
@@ -771,17 +807,18 @@ func TestGormReadWriter_Delete(t *testing.T) {
 				)
 			})
 		assert.NilError(t, err)
-		assert.Check(t, user.Id != 0)
+		assert.Check(t, returnedUser.Id != 0)
 
-		var foundUser db_test.TestUser
-		foundUser.Id = user.Id
-		err = w.LookupById(context.Background(), &foundUser)
+		foundUser, err := db_test.NewTestUser()
 		assert.NilError(t, err)
-		assert.Equal(t, user.Id, foundUser.Id)
+		foundUser.Id = returnedUser.Id
+		err = w.LookupById(context.Background(), foundUser)
+		assert.NilError(t, err)
+		assert.Equal(t, returnedUser.Id, foundUser.Id)
 
 		err = w.Delete(
 			context.Background(),
-			user,
+			returnedUser,
 			WithOplog(true),
 			WithMetadata(oplog.Metadata{
 				"key-only":   nil,
@@ -799,14 +836,18 @@ func TestGormReadWriter_Delete(t *testing.T) {
 		user, err := db_test.NewTestUser()
 		assert.NilError(t, err)
 		user.Name = "foo-" + id
+		var returnedUser *db_test.TestUser
 		_, err = w.DoTx(
 			context.Background(),
 			3,
 			ExpBackoff{},
-			func(Writer) error {
+			func(w Writer) error {
+				// make sure you used the passed in writer that properly handles transaction rollback
+				// we need to clone the user before every attempt to insert it, since it will be retried
+				returnedUser = user.Clone()
 				return w.Create(
 					context.Background(),
-					user,
+					returnedUser,
 					WithOplog(true),
 					WithWrapper(InitTestWrapper(t)),
 					WithMetadata(oplog.Metadata{
@@ -817,17 +858,18 @@ func TestGormReadWriter_Delete(t *testing.T) {
 				)
 			})
 		assert.NilError(t, err)
-		assert.Check(t, user.Id != 0)
+		assert.Check(t, returnedUser.Id != 0)
 
-		var foundUser db_test.TestUser
-		foundUser.Id = user.Id
-		err = w.LookupById(context.Background(), &foundUser)
+		foundUser, err := db_test.NewTestUser()
 		assert.NilError(t, err)
-		assert.Equal(t, user.Id, foundUser.Id)
+		foundUser.Id = returnedUser.Id
+		err = w.LookupById(context.Background(), foundUser)
+		assert.NilError(t, err)
+		assert.Equal(t, returnedUser.Id, foundUser.Id)
 
 		err = w.Delete(
 			context.Background(),
-			user,
+			returnedUser,
 			WithOplog(true),
 			WithWrapper(InitTestWrapper(t)),
 		)
