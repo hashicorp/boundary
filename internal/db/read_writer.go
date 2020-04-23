@@ -379,7 +379,7 @@ func (w *GormReadWriter) DoTx(ctx context.Context, retries uint, backOff Backoff
 // LookupByFriendlyName will lookup resource my its friendly_name which must be unique
 func (rw *GormReadWriter) LookupByFriendlyName(ctx context.Context, resource ResourceWithFriendlyName, opt ...Option) error {
 	if rw.Tx == nil {
-		return errors.New("error db nil for LookupByFriendlyName")
+		return errors.New("error tx nil for lookup by friendly name")
 	}
 	opts := GetOpts(opt...)
 	withDebug := opts[optionWithDebug].(bool)
@@ -388,10 +388,10 @@ func (rw *GormReadWriter) LookupByFriendlyName(ctx context.Context, resource Res
 		defer rw.Tx.LogMode(false)
 	}
 	if reflect.ValueOf(resource).Kind() != reflect.Ptr {
-		return errors.New("error interface parameter must to be a pointer for LookupByFriendlyName")
+		return errors.New("error interface parameter must to be a pointer for lookup by friendly name")
 	}
 	if resource.GetFriendlyName() == "" {
-		return errors.New("error friendlyName empty string for LookupByFriendlyName")
+		return errors.New("error friendly name empty string for lookup by friendly name")
 	}
 	return rw.Tx.Where("friendly_name = ?", resource.GetFriendlyName()).First(resource).Error
 }

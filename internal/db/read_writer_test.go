@@ -8,6 +8,7 @@ import (
 	"github.com/hashicorp/go-uuid"
 	"github.com/hashicorp/watchtower/internal/db/db_test"
 	"github.com/hashicorp/watchtower/internal/oplog"
+	"github.com/jinzhu/gorm"
 	"gotest.tools/assert"
 )
 
@@ -339,6 +340,32 @@ func TestGormReadWriter_LookupByFriendlyName(t *testing.T) {
 		err = w.LookupByFriendlyName(context.Background(), &foundUser)
 		assert.NilError(t, err)
 		assert.Equal(t, user.Id, foundUser.Id)
+	})
+	t.Run("tx-nil,", func(t *testing.T) {
+		w := GormReadWriter{}
+		var foundUser db_test.TestUser
+		foundUser.FriendlyName = "fn-name"
+		err = w.LookupByFriendlyName(context.Background(), &foundUser)
+		assert.Check(t, err != nil)
+		assert.Equal(t, err.Error(), "error tx nil for lookup by friendly name")
+	})
+	t.Run("no-friendly-name-set", func(t *testing.T) {
+		w := GormReadWriter{Tx: conn}
+		var foundUser db_test.TestUser
+		err = w.LookupByFriendlyName(context.Background(), &foundUser)
+		assert.Check(t, err != nil)
+		assert.Equal(t, err.Error(), "error friendly name empty string for lookup by friendly name")
+	})
+	t.Run("not-found", func(t *testing.T) {
+		w := GormReadWriter{Tx: conn}
+		id, err := uuid.GenerateUUID()
+		assert.NilError(t, err)
+
+		var foundUser db_test.TestUser
+		foundUser.FriendlyName = "fn-" + id
+		err = w.LookupByFriendlyName(context.Background(), &foundUser)
+		assert.Check(t, err != nil)
+		assert.Equal(t, err, gorm.ErrRecordNotFound)
 	})
 }
 
