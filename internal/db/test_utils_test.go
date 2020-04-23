@@ -3,7 +3,6 @@ package db
 import (
 	"testing"
 
-	"github.com/hashicorp/watchtower/internal/db/db_test"
 	"gotest.tools/assert"
 )
 
@@ -16,7 +15,6 @@ func Test_Utils(t *testing.T) {
 	conn, err := TestConnection(url)
 	assert.NilError(t, err)
 	defer conn.Close()
-	db_test.Init(conn)
 	t.Run("nothing", func(t *testing.T) {
 
 	})
