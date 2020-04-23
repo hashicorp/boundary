@@ -539,8 +539,8 @@ func TestGormReadWriter_SearchBy(t *testing.T) {
 
 		var foundUsers []db_test.TestUser
 		err = w.SearchBy(context.Background(), &foundUsers, "public_id = ?", id)
-		assert.Check(t, err != nil)
-		assert.Equal(t, err, gorm.ErrRecordNotFound)
+		assert.NilError(t, err)
+		assert.Equal(t, len(foundUsers), 0)
 	})
 	t.Run("bad-where", func(t *testing.T) {
 		w := GormReadWriter{Tx: conn}
