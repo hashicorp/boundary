@@ -26,16 +26,16 @@ func getDefaultOptions() Options {
 		optionWithWrapper:  nil,
 		optionWithMetadata: oplog.Metadata{},
 		optionWithDebug:    false,
-		optionWithLookup:   true, // optionWithLookup is true by default,
+		optionWithLookup:   false,
 	}
 }
 
 const optionWithLookup = "optionWithLookup"
 
-// WithLookup is true by default, so you're disabling the lookup
-func WithLookup(disabled bool) Option {
+// WithLookup enables a lookup
+func WithLookup(enable bool) Option {
 	return func(o Options) {
-		o[optionWithLookup] = disabled
+		o[optionWithLookup] = enable
 	}
 }
 

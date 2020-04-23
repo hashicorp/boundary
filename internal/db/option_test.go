@@ -28,13 +28,13 @@ func Test_GetOpts(t *testing.T) {
 		// test default of true
 		opts := GetOpts()
 		testOpts := getDefaultOptions()
-		testOpts[optionWithLookup] = true
+		testOpts[optionWithLookup] = false
 		assert.Check(t, reflect.DeepEqual(opts, testOpts))
 
 		// try setting to false
-		opts = GetOpts(WithLookup(false))
+		opts = GetOpts(WithLookup(true))
 		testOpts = getDefaultOptions()
-		testOpts[optionWithLookup] = false
+		testOpts[optionWithLookup] = true
 		assert.Check(t, reflect.DeepEqual(opts, testOpts))
 
 	})
