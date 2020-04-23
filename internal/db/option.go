@@ -23,10 +23,19 @@ type Options map[string]interface{}
 func getDefaultOptions() Options {
 	return Options{
 		optionWithOplog:    false,
-		optionWithCommit:   false,
 		optionWithWrapper:  nil,
 		optionWithMetadata: oplog.Metadata{},
 		optionWithDebug:    false,
+		optionWithLookup:   true, // optionWithLookup is true by default,
+	}
+}
+
+const optionWithLookup = "optionWithLookup"
+
+// WithLookup is true by default, so you're disabling the lookup
+func WithLookup(disabled bool) Option {
+	return func(o Options) {
+		o[optionWithLookup] = disabled
 	}
 }
 
@@ -36,15 +45,6 @@ const optionWithDebug = "optionWithDebug"
 func WithDebug(enable bool) Option {
 	return func(o Options) {
 		o[optionWithDebug] = enable
-	}
-}
-
-const optionWithCommit = "optionWithCommit"
-
-// WithCommit provides an option to commit the transaction
-func WithCommit(commitTx bool) Option {
-	return func(o Options) {
-		o[optionWithCommit] = commitTx
 	}
 }
 
@@ -68,7 +68,7 @@ func WithWrapper(wrapper wrapping.Wrapper) Option {
 
 const optionWithMetadata = "optionWithMetadata"
 
-// WithWrapper provides an optional kms wrapper
+// WithMetadata provides an optional metadata
 func WithMetadata(md oplog.Metadata) Option {
 	return func(o Options) {
 		o[optionWithMetadata] = md
