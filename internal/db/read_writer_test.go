@@ -19,7 +19,6 @@ func Test_Update(t *testing.T) {
 	conn, err := TestConnection(url)
 	assert.NilError(t, err)
 	defer conn.Close()
-	db_test.Init(conn)
 	t.Run("simple", func(t *testing.T) {
 		w := GormReadWriter{Tx: conn}
 		id, err := uuid.GenerateUUID()
@@ -27,7 +26,7 @@ func Test_Update(t *testing.T) {
 		user, err := db_test.NewTestUser()
 		assert.NilError(t, err)
 		user.Name = "foo-" + id
-		err = w.Create(context.Background(), &user)
+		err = w.Create(context.Background(), user)
 		assert.NilError(t, err)
 		assert.Check(t, user.Id != 0)
 
@@ -38,7 +37,7 @@ func Test_Update(t *testing.T) {
 		assert.Equal(t, user.Id, foundUser.Id)
 
 		user.FriendlyName = "friendly-" + id
-		err = w.Update(context.Background(), user, []string{"FriendlyName"})
+		err = w.Update(context.Background(), user, []string{"FriendlyName"}, WithDebug(true))
 		assert.NilError(t, err)
 
 		err = w.LookupById(context.Background(), &foundUser)
@@ -52,7 +51,7 @@ func Test_Update(t *testing.T) {
 		user, err := db_test.NewTestUser()
 		assert.NilError(t, err)
 		user.Name = "foo-" + id
-		err = w.Create(context.Background(), &user)
+		err = w.Create(context.Background(), user)
 		assert.NilError(t, err)
 		assert.Check(t, user.Id != 0)
 
@@ -95,7 +94,6 @@ func Test_Create(t *testing.T) {
 	conn, err := TestConnection(url)
 	assert.NilError(t, err)
 	defer conn.Close()
-	db_test.Init(conn)
 	t.Run("simple", func(t *testing.T) {
 		w := GormReadWriter{Tx: conn}
 		id, err := uuid.GenerateUUID()
@@ -103,9 +101,10 @@ func Test_Create(t *testing.T) {
 		user, err := db_test.NewTestUser()
 		assert.NilError(t, err)
 		user.Name = "foo-" + id
-		err = w.Create(context.Background(), &user)
+		err = w.Create(context.Background(), user)
 		assert.NilError(t, err)
 		assert.Check(t, user.Id != 0)
+		assert.Check(t, user.GetCreateTime() != nil)
 
 		var foundUser db_test.TestUser
 		foundUser.Id = user.Id
@@ -157,7 +156,6 @@ func Test_LookupByInternalId(t *testing.T) {
 	conn, err := TestConnection(url)
 	assert.NilError(t, err)
 	defer conn.Close()
-	db_test.Init(conn)
 	t.Run("simple", func(t *testing.T) {
 		w := GormReadWriter{Tx: conn}
 		id, err := uuid.GenerateUUID()
@@ -165,7 +163,7 @@ func Test_LookupByInternalId(t *testing.T) {
 		user, err := db_test.NewTestUser()
 		assert.NilError(t, err)
 		user.Name = "foo-" + id
-		err = w.Create(context.Background(), &user)
+		err = w.Create(context.Background(), user)
 		assert.NilError(t, err)
 		assert.Check(t, user.Id != 0)
 
@@ -186,7 +184,6 @@ func Test_LookupByFriendlyName(t *testing.T) {
 	conn, err := TestConnection(url)
 	assert.NilError(t, err)
 	defer conn.Close()
-	db_test.Init(conn)
 	t.Run("simple", func(t *testing.T) {
 		w := GormReadWriter{Tx: conn}
 		id, err := uuid.GenerateUUID()
@@ -195,7 +192,7 @@ func Test_LookupByFriendlyName(t *testing.T) {
 		assert.NilError(t, err)
 		user.Name = "foo-" + id
 		user.FriendlyName = "fn-" + id
-		err = w.Create(context.Background(), &user)
+		err = w.Create(context.Background(), user)
 		assert.NilError(t, err)
 		assert.Check(t, user.Id != 0)
 
@@ -216,7 +213,6 @@ func Test_LookupByPublicId(t *testing.T) {
 	conn, err := TestConnection(url)
 	assert.NilError(t, err)
 	defer conn.Close()
-	db_test.Init(conn)
 	t.Run("simple", func(t *testing.T) {
 		w := GormReadWriter{Tx: conn}
 		id, err := uuid.GenerateUUID()
@@ -225,7 +221,7 @@ func Test_LookupByPublicId(t *testing.T) {
 		assert.NilError(t, err)
 		user.Name = "foo-" + id
 		user.FriendlyName = "fn-" + id
-		err = w.Create(context.Background(), &user)
+		err = w.Create(context.Background(), user)
 		assert.NilError(t, err)
 		assert.Check(t, user.PublicId != "")
 
@@ -246,7 +242,6 @@ func Test_LookupBy(t *testing.T) {
 	conn, err := TestConnection(url)
 	assert.NilError(t, err)
 	defer conn.Close()
-	db_test.Init(conn)
 	t.Run("simple", func(t *testing.T) {
 		w := GormReadWriter{Tx: conn}
 		id, err := uuid.GenerateUUID()
@@ -255,7 +250,7 @@ func Test_LookupBy(t *testing.T) {
 		assert.NilError(t, err)
 		user.Name = "foo-" + id
 		user.FriendlyName = "fn-" + id
-		err = w.Create(context.Background(), &user)
+		err = w.Create(context.Background(), user)
 		assert.NilError(t, err)
 		assert.Check(t, user.PublicId != "")
 
@@ -275,7 +270,6 @@ func Test_SearchBy(t *testing.T) {
 	conn, err := TestConnection(url)
 	assert.NilError(t, err)
 	defer conn.Close()
-	db_test.Init(conn)
 	t.Run("simple", func(t *testing.T) {
 		w := GormReadWriter{Tx: conn}
 		id, err := uuid.GenerateUUID()
@@ -284,7 +278,7 @@ func Test_SearchBy(t *testing.T) {
 		assert.NilError(t, err)
 		user.Name = "foo-" + id
 		user.FriendlyName = "fn-" + id
-		err = w.Create(context.Background(), &user)
+		err = w.Create(context.Background(), user)
 		assert.NilError(t, err)
 		assert.Check(t, user.PublicId != "")
 
