@@ -419,7 +419,7 @@ func (rw *GormReadWriter) LookupByPublicId(ctx context.Context, resource Resourc
 // LookupById will lookup resource my its internal id which must be unique
 func (rw *GormReadWriter) LookupById(ctx context.Context, resource ResourceWithId, opt ...Option) error {
 	if rw.Tx == nil {
-		return errors.New("error db nil for LookupByInternalId")
+		return errors.New("error tx nil for lookup by internal id")
 	}
 	opts := GetOpts(opt...)
 	withDebug := opts[optionWithDebug].(bool)
@@ -428,10 +428,10 @@ func (rw *GormReadWriter) LookupById(ctx context.Context, resource ResourceWithI
 		defer rw.Tx.LogMode(false)
 	}
 	if reflect.ValueOf(resource).Kind() != reflect.Ptr {
-		return errors.New("error interface parameter must to be a pointer for LookupByInternalId")
+		return errors.New("error interface parameter must to be a pointer for lookup by internal id")
 	}
 	if resource.GetId() == 0 {
-		return errors.New("error internalId is 0 for LookupByInternalId")
+		return errors.New("error internal id is 0 for lookup by internal id")
 	}
 	return rw.Tx.Where("id = ?", resource.GetId()).First(resource).Error
 }

@@ -312,6 +312,28 @@ func TestGormReadWriter_LookupByInternalId(t *testing.T) {
 		assert.NilError(t, err)
 		assert.Equal(t, user.Id, foundUser.Id)
 	})
+	t.Run("tx-nil,", func(t *testing.T) {
+		w := GormReadWriter{}
+		var foundUser db_test.TestUser
+		err = w.LookupById(context.Background(), &foundUser)
+		assert.Check(t, err != nil)
+		assert.Equal(t, err.Error(), "error tx nil for lookup by internal id")
+	})
+	t.Run("no-public-id-set", func(t *testing.T) {
+		w := GormReadWriter{Tx: conn}
+		var foundUser db_test.TestUser
+		err = w.LookupById(context.Background(), &foundUser)
+		assert.Check(t, err != nil)
+		assert.Equal(t, err.Error(), "error internal id is 0 for lookup by internal id")
+	})
+	t.Run("not-found", func(t *testing.T) {
+		w := GormReadWriter{Tx: conn}
+		var foundUser db_test.TestUser
+		foundUser.Id = 4294967295 // we should never get to the max for unit32
+		err = w.LookupById(context.Background(), &foundUser)
+		assert.Check(t, err != nil)
+		assert.Equal(t, err, gorm.ErrRecordNotFound)
+	})
 }
 
 func TestGormReadWriter_LookupByFriendlyName(t *testing.T) {
