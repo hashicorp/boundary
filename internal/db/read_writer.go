@@ -42,7 +42,7 @@ type Reader interface {
 // Writer interface defines create, update and retryable transaction handlers
 type Writer interface {
 	// DoTx will wrap the TxHandler in a retryable transaction
-	DoTx(ctx context.Context, retries int, backOff Backoff, Handler TxHandler) (RetryInfo, error)
+	DoTx(ctx context.Context, retries uint, backOff Backoff, Handler TxHandler) (RetryInfo, error)
 
 	// Update an object in the db, if there's a fieldMask then only the field_mask.proto paths are updated, otherwise
 	// it will send every field to the DB
@@ -336,9 +336,13 @@ func (rw *GormReadWriter) addOplog(ctx context.Context, opType OpType, opts Opti
 	return nil
 }
 
-func (w *GormReadWriter) DoTx(ctx context.Context, retries int, backOff Backoff, Handler TxHandler) (RetryInfo, error) {
+// DoTx will wrap the Handler func passed within a transaction with retries
+func (w *GormReadWriter) DoTx(ctx context.Context, retries uint, backOff Backoff, Handler TxHandler) (RetryInfo, error) {
+	if w.Tx == nil {
+		return RetryInfo{}, errors.New("do tx is nil")
+	}
 	info := RetryInfo{}
-	for attempts := 1; ; attempts++ {
+	for attempts := uint(1); ; attempts++ {
 		if attempts == retries {
 			return info, fmt.Errorf("Too many retries: %d of %d", attempts, retries)
 		}

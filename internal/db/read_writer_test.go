@@ -2,6 +2,7 @@ package db
 
 import (
 	"context"
+	"errors"
 	"testing"
 
 	"github.com/hashicorp/go-uuid"
@@ -473,5 +474,63 @@ func TestGormReadWriter_DB(t *testing.T) {
 		assert.Check(t, err != nil)
 		assert.Check(t, d == nil)
 		assert.Equal(t, err.Error(), "create tx is nil for db")
+	})
+}
+
+func TestGormReadWriter_DoTx(t *testing.T) {
+	StartTest()
+	t.Parallel()
+	cleanup, url := SetupTest(t, "migrations/postgres")
+	defer cleanup()
+	defer CompleteTest() // must come after the "defer cleanup()"
+	conn, err := TestConnection(url)
+	assert.NilError(t, err)
+	defer conn.Close()
+
+	t.Run("valid-with-10-retries", func(t *testing.T) {
+		w := &GormReadWriter{Tx: conn}
+		retries := 0
+		got, err := w.DoTx(context.Background(), 10, ExpBackoff{},
+			func(Writer) error {
+				retries += 1
+				if retries < 9 {
+					return oplog.ErrTicketAlreadyRedeemed
+				}
+				return nil
+			})
+		assert.NilError(t, err)
+		assert.Equal(t, got.Retries, 8)
+		assert.Equal(t, retries, 9) // attempted 1 + 8 retries
+	})
+	t.Run("zero-retries", func(t *testing.T) {
+		w := &GormReadWriter{Tx: conn}
+		retries := 0
+		got, err := w.DoTx(context.Background(), 0, ExpBackoff{}, func(Writer) error { retries += 1; return nil })
+		assert.NilError(t, err)
+		assert.Equal(t, got, RetryInfo{})
+		assert.Equal(t, retries, 1)
+	})
+	t.Run("nil-tx", func(t *testing.T) {
+		w := &GormReadWriter{nil}
+		retries := 0
+		got, err := w.DoTx(context.Background(), 1, ExpBackoff{}, func(Writer) error { retries += 1; return nil })
+		assert.Check(t, err != nil)
+		assert.Equal(t, got, RetryInfo{})
+		assert.Equal(t, err.Error(), "do tx is nil")
+	})
+	t.Run("not-a-retry-err", func(t *testing.T) {
+		w := &GormReadWriter{Tx: conn}
+		got, err := w.DoTx(context.Background(), 1, ExpBackoff{}, func(Writer) error { return errors.New("not a retry error") })
+		assert.Check(t, err != nil)
+		assert.Equal(t, got, RetryInfo{})
+		assert.Check(t, err != oplog.ErrTicketAlreadyRedeemed)
+	})
+	t.Run("too-many-retries", func(t *testing.T) {
+		w := &GormReadWriter{Tx: conn}
+		retries := 0
+		got, err := w.DoTx(context.Background(), 2, ExpBackoff{}, func(Writer) error { retries += 1; return oplog.ErrTicketAlreadyRedeemed })
+		assert.Check(t, err != nil)
+		assert.Equal(t, got.Retries, 1)
+		assert.Equal(t, err.Error(), "Too many retries: 2 of 2")
 	})
 }
