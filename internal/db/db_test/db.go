@@ -2,24 +2,14 @@
 package db_test
 
 import (
+	"database/sql/driver"
+	"errors"
+	"fmt"
+	"time"
+
+	"github.com/golang/protobuf/ptypes"
 	"github.com/hashicorp/vault/sdk/helper/base62"
-	"github.com/jinzhu/gorm"
 )
-
-// Init will use gorm migrations to init tables for test models
-func Init(db *gorm.DB) {
-	db.AutoMigrate(&TestUser{})
-	db.AutoMigrate(&TestCar{})
-	db.AutoMigrate(&TestRental{})
-}
-
-// Reinit will use gorm to drop then init tables for test models
-func Reinit(db *gorm.DB) {
-	db.DropTableIfExists(&TestUser{})
-	db.DropTableIfExists(&TestCar{})
-	db.DropTableIfExists(&TestRental{})
-	Init(db)
-}
 
 type TestUser struct {
 	StoreTestUser
@@ -108,4 +98,27 @@ func (r *TestRental) SetTableName(name string) {
 	if name != "" {
 		r.table = name
 	}
+}
+
+// Scan supports Timestamps for oplogs
+func (ts *Timestamp) Scan(value interface{}) error {
+	switch t := value.(type) {
+	case time.Time:
+		var err error
+		ts.Timestamp, err = ptypes.TimestampProto(t) // google proto version
+		if err != nil {
+			return fmt.Errorf("error converting the timestamp: %w", err)
+		}
+	default:
+		return errors.New("Not a protobuf Timestamp")
+	}
+	return nil
+}
+
+// Value supports Timestamps for oplogs
+func (ts *Timestamp) Value() (driver.Value, error) {
+	if ts == nil {
+		return nil, nil
+	}
+	return ptypes.Timestamp(ts.Timestamp)
 }
