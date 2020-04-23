@@ -660,3 +660,189 @@ func TestGormReadWriter_DoTx(t *testing.T) {
 		assert.Equal(t, err.Error(), "Too many retries: 2 of 2")
 	})
 }
+
+func TestGormReadWriter_Delete(t *testing.T) {
+	StartTest()
+	t.Parallel()
+	cleanup, url := SetupTest(t, "migrations/postgres")
+	defer cleanup()
+	defer CompleteTest() // must come after the "defer cleanup()"
+	conn, err := TestConnection(url)
+	assert.NilError(t, err)
+	defer conn.Close()
+	t.Run("simple", func(t *testing.T) {
+		w := GormReadWriter{Tx: conn}
+		id, err := uuid.GenerateUUID()
+		assert.NilError(t, err)
+		user, err := db_test.NewTestUser()
+		assert.NilError(t, err)
+		user.Name = "foo-" + id
+		err = w.Create(context.Background(), user)
+		assert.NilError(t, err)
+		assert.Check(t, user.Id != 0)
+		assert.Check(t, user.GetCreateTime() != nil)
+		assert.Check(t, user.GetUpdateTime() != nil)
+
+		var foundUser db_test.TestUser
+		foundUser.Id = user.Id
+		err = w.LookupById(context.Background(), &foundUser)
+		assert.NilError(t, err)
+		assert.Equal(t, user.Id, foundUser.Id)
+
+		err = w.Delete(context.Background(), user)
+		assert.NilError(t, err)
+
+		err = w.LookupById(context.Background(), &foundUser)
+		assert.Check(t, err != nil)
+		assert.Equal(t, err, gorm.ErrRecordNotFound)
+	})
+	t.Run("valid-WithOplog", func(t *testing.T) {
+		w := GormReadWriter{Tx: conn}
+		id, err := uuid.GenerateUUID()
+		assert.NilError(t, err)
+		user, err := db_test.NewTestUser()
+		assert.NilError(t, err)
+		user.Name = "foo-" + id
+		_, err = w.DoTx(
+			context.Background(),
+			3,
+			ExpBackoff{},
+			func(Writer) error {
+				return w.Create(
+					context.Background(),
+					user,
+					WithOplog(true),
+					WithWrapper(InitTestWrapper(t)),
+					WithMetadata(oplog.Metadata{
+						"key-only":   nil,
+						"deployment": []string{"amex"},
+						"project":    []string{"central-info-systems", "local-info-systems"},
+					}),
+				)
+			})
+		assert.NilError(t, err)
+		assert.Check(t, user.Id != 0)
+
+		var foundUser db_test.TestUser
+		foundUser.Id = user.Id
+		err = w.LookupById(context.Background(), &foundUser)
+		assert.NilError(t, err)
+		assert.Equal(t, user.Id, foundUser.Id)
+
+		err = w.Delete(
+			context.Background(),
+			user,
+			WithOplog(true),
+			WithWrapper(InitTestWrapper(t)),
+			WithMetadata(oplog.Metadata{
+				"key-only":   nil,
+				"deployment": []string{"amex"},
+				"project":    []string{"central-info-systems", "local-info-systems"},
+			}),
+		)
+		assert.NilError(t, err)
+
+		err = w.LookupById(context.Background(), &foundUser)
+		assert.Check(t, err != nil)
+		assert.Equal(t, err, gorm.ErrRecordNotFound)
+	})
+	t.Run("no-wrapper-WithOplog", func(t *testing.T) {
+		w := GormReadWriter{Tx: conn}
+		id, err := uuid.GenerateUUID()
+		assert.NilError(t, err)
+		user, err := db_test.NewTestUser()
+		assert.NilError(t, err)
+		user.Name = "foo-" + id
+		_, err = w.DoTx(
+			context.Background(),
+			3,
+			ExpBackoff{},
+			func(Writer) error {
+				return w.Create(
+					context.Background(),
+					user,
+					WithOplog(true),
+					WithWrapper(InitTestWrapper(t)),
+					WithMetadata(oplog.Metadata{
+						"key-only":   nil,
+						"deployment": []string{"amex"},
+						"project":    []string{"central-info-systems", "local-info-systems"},
+					}),
+				)
+			})
+		assert.NilError(t, err)
+		assert.Check(t, user.Id != 0)
+
+		var foundUser db_test.TestUser
+		foundUser.Id = user.Id
+		err = w.LookupById(context.Background(), &foundUser)
+		assert.NilError(t, err)
+		assert.Equal(t, user.Id, foundUser.Id)
+
+		err = w.Delete(
+			context.Background(),
+			user,
+			WithOplog(true),
+			WithMetadata(oplog.Metadata{
+				"key-only":   nil,
+				"deployment": []string{"amex"},
+				"project":    []string{"central-info-systems", "local-info-systems"},
+			}),
+		)
+		assert.Check(t, err != nil)
+		assert.Equal(t, err.Error(), "error wrapper is nil for WithWrapper")
+	})
+	t.Run("no-metadata-WithOplog", func(t *testing.T) {
+		w := GormReadWriter{Tx: conn}
+		id, err := uuid.GenerateUUID()
+		assert.NilError(t, err)
+		user, err := db_test.NewTestUser()
+		assert.NilError(t, err)
+		user.Name = "foo-" + id
+		_, err = w.DoTx(
+			context.Background(),
+			3,
+			ExpBackoff{},
+			func(Writer) error {
+				return w.Create(
+					context.Background(),
+					user,
+					WithOplog(true),
+					WithWrapper(InitTestWrapper(t)),
+					WithMetadata(oplog.Metadata{
+						"key-only":   nil,
+						"deployment": []string{"amex"},
+						"project":    []string{"central-info-systems", "local-info-systems"},
+					}),
+				)
+			})
+		assert.NilError(t, err)
+		assert.Check(t, user.Id != 0)
+
+		var foundUser db_test.TestUser
+		foundUser.Id = user.Id
+		err = w.LookupById(context.Background(), &foundUser)
+		assert.NilError(t, err)
+		assert.Equal(t, user.Id, foundUser.Id)
+
+		err = w.Delete(
+			context.Background(),
+			user,
+			WithOplog(true),
+			WithWrapper(InitTestWrapper(t)),
+		)
+		assert.Check(t, err != nil)
+		assert.Equal(t, err.Error(), "error no metadata for WithOplog")
+	})
+	t.Run("nil-tx", func(t *testing.T) {
+		w := GormReadWriter{Tx: nil}
+		id, err := uuid.GenerateUUID()
+		assert.NilError(t, err)
+		user, err := db_test.NewTestUser()
+		assert.NilError(t, err)
+		user.Name = "foo-" + id
+		err = w.Create(context.Background(), user)
+		assert.Check(t, err != nil)
+		assert.Equal(t, err.Error(), "create tx is nil")
+	})
+}

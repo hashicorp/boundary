@@ -93,6 +93,7 @@ const (
 	UnknownOp OpType = 0
 	CreateOp  OpType = 1
 	UpdateOp  OpType = 2
+	DeleteOp  OpType = 3
 )
 
 // VetForWriter provides an interface that Create and Update can use to vet the resource before sending it to the db
@@ -207,11 +208,6 @@ func (rw *GormReadWriter) Update(ctx context.Context, i interface{}, fieldMaskPa
 		rw.Tx.LogMode(true)
 		defer rw.Tx.LogMode(false)
 	}
-	if withDebug {
-		rw.Tx.LogMode(true)
-		defer rw.Tx.LogMode(false)
-	}
-
 	if i == nil {
 		return errors.New("update interface is nil")
 	}
@@ -276,6 +272,32 @@ func (rw *GormReadWriter) Update(ctx context.Context, i interface{}, fieldMaskPa
 	return nil
 }
 
+// Delete an object in the db with options: WithOplog (which requires WithMetadata, WithWrapper)
+func (rw *GormReadWriter) Delete(ctx context.Context, i interface{}, opt ...Option) error {
+	if rw.Tx == nil {
+		return errors.New("delete tx is nil")
+	}
+	if i == nil {
+		return errors.New("delete interface is nil")
+	}
+	opts := GetOpts(opt...)
+	withDebug := opts[optionWithDebug].(bool)
+	withOplog := opts[optionWithOplog].(bool)
+	if withDebug {
+		rw.Tx.LogMode(true)
+		defer rw.Tx.LogMode(false)
+	}
+	if err := rw.Tx.Delete(i).Error; err != nil {
+		return fmt.Errorf("error deleting: %w", err)
+	}
+	if withOplog {
+		if err := rw.addOplog(ctx, DeleteOp, opts, i); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 func (rw *GormReadWriter) addOplog(ctx context.Context, opType OpType, opts Options, i interface{}) error {
 	if opts[optionWithWrapper] == nil {
 		return errors.New("error wrapper is nil for WithWrapper")
@@ -295,6 +317,11 @@ func (rw *GormReadWriter) addOplog(ctx context.Context, opType OpType, opts Opti
 	gdb, err := rw.gormDB()
 	if err != nil {
 		return fmt.Errorf("error getting underlying gorm DB %w for WithOplog", err)
+	}
+	withDebug := opts[optionWithDebug].(bool)
+	if withDebug {
+		gdb.LogMode(true)
+		defer gdb.LogMode(false)
 	}
 	ticketer, err := oplog.NewGormTicketer(gdb, oplog.WithAggregateNames(true))
 	if err != nil {
@@ -321,6 +348,8 @@ func (rw *GormReadWriter) addOplog(ctx context.Context, opType OpType, opts Opti
 		entryOp = oplog.OpType_CREATE_OP
 	case UpdateOp:
 		entryOp = oplog.OpType_UPDATE_OP
+	case DeleteOp:
+		entryOp = oplog.OpType_DELETE_OP
 	default:
 		return fmt.Errorf("error operation type %v is not supported", opType)
 	}
