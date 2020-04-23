@@ -471,6 +471,32 @@ func TestGormReadWriter_LookupBy(t *testing.T) {
 		assert.NilError(t, err)
 		assert.Equal(t, user.Id, foundUser.Id)
 	})
+	t.Run("tx-nil,", func(t *testing.T) {
+		w := GormReadWriter{}
+		var foundUser db_test.TestUser
+		err = w.LookupBy(context.Background(), &foundUser, "public_id = ?", 1)
+		assert.Check(t, err != nil)
+		assert.Equal(t, err.Error(), "error tx nil for lookup by")
+	})
+	t.Run("not-found", func(t *testing.T) {
+		w := GormReadWriter{Tx: conn}
+		id, err := uuid.GenerateUUID()
+		assert.NilError(t, err)
+
+		var foundUser db_test.TestUser
+		err = w.LookupBy(context.Background(), &foundUser, "public_id = ?", id)
+		assert.Check(t, err != nil)
+		assert.Equal(t, err, gorm.ErrRecordNotFound)
+	})
+	t.Run("bad-where", func(t *testing.T) {
+		w := GormReadWriter{Tx: conn}
+		id, err := uuid.GenerateUUID()
+		assert.NilError(t, err)
+
+		var foundUser db_test.TestUser
+		err = w.LookupBy(context.Background(), &foundUser, "? = ?", id)
+		assert.Check(t, err != nil)
+	})
 }
 
 func TestGormReadWriter_SearchBy(t *testing.T) {
@@ -498,6 +524,32 @@ func TestGormReadWriter_SearchBy(t *testing.T) {
 		err = w.SearchBy(context.Background(), &foundUsers, "public_id = ?", user.PublicId)
 		assert.NilError(t, err)
 		assert.Equal(t, user.Id, foundUsers[0].Id)
+	})
+	t.Run("tx-nil,", func(t *testing.T) {
+		w := GormReadWriter{}
+		var foundUsers []db_test.TestUser
+		err = w.SearchBy(context.Background(), &foundUsers, "public_id = ?", 1)
+		assert.Check(t, err != nil)
+		assert.Equal(t, err.Error(), "error tx nil for search by")
+	})
+	t.Run("not-found", func(t *testing.T) {
+		w := GormReadWriter{Tx: conn}
+		id, err := uuid.GenerateUUID()
+		assert.NilError(t, err)
+
+		var foundUsers []db_test.TestUser
+		err = w.SearchBy(context.Background(), &foundUsers, "public_id = ?", id)
+		assert.Check(t, err != nil)
+		assert.Equal(t, err, gorm.ErrRecordNotFound)
+	})
+	t.Run("bad-where", func(t *testing.T) {
+		w := GormReadWriter{Tx: conn}
+		id, err := uuid.GenerateUUID()
+		assert.NilError(t, err)
+
+		var foundUsers []db_test.TestUser
+		err = w.SearchBy(context.Background(), &foundUsers, "? = ?", id)
+		assert.Check(t, err != nil)
 	})
 }
 

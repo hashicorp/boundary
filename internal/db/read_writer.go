@@ -439,10 +439,10 @@ func (rw *GormReadWriter) LookupById(ctx context.Context, resource ResourceWithI
 // LookupBy will lookup the first resource using a where clause with parameters (it only returns the first one)
 func (rw *GormReadWriter) LookupBy(ctx context.Context, resource interface{}, where string, args ...interface{}) error {
 	if rw.Tx == nil {
-		return errors.New("error db nil for SearchBy")
+		return errors.New("error tx nil for lookup by")
 	}
 	if reflect.ValueOf(resource).Kind() != reflect.Ptr {
-		return errors.New("error interface parameter must to be a pointer for LookupBy")
+		return errors.New("error interface parameter must to be a pointer for lookup by")
 	}
 	return rw.Tx.Where(where, args...).First(resource).Error
 }
@@ -450,10 +450,10 @@ func (rw *GormReadWriter) LookupBy(ctx context.Context, resource interface{}, wh
 // SearchBy will search for all the resources it can find using a where clause with parameters
 func (rw *GormReadWriter) SearchBy(ctx context.Context, resources interface{}, where string, args ...interface{}) error {
 	if rw.Tx == nil {
-		return errors.New("error db nil for SearchBy")
+		return errors.New("error tx nil for search by")
 	}
 	if reflect.ValueOf(resources).Kind() != reflect.Ptr {
-		return errors.New("error interface parameter must to be a pointer for SearchBy")
+		return errors.New("error interface parameter must to be a pointer for search by")
 	}
 	return rw.Tx.Where(where, args...).Find(resources).Error
 }
