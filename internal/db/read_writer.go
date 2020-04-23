@@ -399,7 +399,7 @@ func (rw *GormReadWriter) LookupByFriendlyName(ctx context.Context, resource Res
 // LookupByPublicId will lookup resource my its public_id which must be unique
 func (rw *GormReadWriter) LookupByPublicId(ctx context.Context, resource ResourceWithPublicId, opt ...Option) error {
 	if rw.Tx == nil {
-		return errors.New("error db nil for LookupByPublicId")
+		return errors.New("error tx nil for lookup by public id")
 	}
 	opts := GetOpts(opt...)
 	withDebug := opts[optionWithDebug].(bool)
@@ -408,10 +408,10 @@ func (rw *GormReadWriter) LookupByPublicId(ctx context.Context, resource Resourc
 		defer rw.Tx.LogMode(false)
 	}
 	if reflect.ValueOf(resource).Kind() != reflect.Ptr {
-		return errors.New("error interface parameter must to be a pointer for LookupByPublicId")
+		return errors.New("error interface parameter must to be a pointer for lookup by public id")
 	}
 	if resource.GetPublicId() == "" {
-		return errors.New("error publicId empty string for LookupByPublicId")
+		return errors.New("error public id empty string for lookup by public id")
 	}
 	return rw.Tx.Where("public_id = ?", resource.GetPublicId()).First(resource).Error
 }
