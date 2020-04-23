@@ -364,6 +364,9 @@ func (rw *GormReadWriter) addOplog(ctx context.Context, opType OpType, opts Opti
 }
 
 // DoTx will wrap the Handler func passed within a transaction with retries
+// you should ensure that any objects written to the db in your TxHandler are retryable, which
+// means that the object may be sent to the db several times (retried), so things like the primary key must
+// be reset before retry
 func (w *GormReadWriter) DoTx(ctx context.Context, retries uint, backOff Backoff, Handler TxHandler) (RetryInfo, error) {
 	if w.Tx == nil {
 		return RetryInfo{}, errors.New("do tx is nil")
