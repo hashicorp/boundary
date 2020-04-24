@@ -7,7 +7,6 @@ option go_package = "github.com/hashicorp/watchtower/gen/controller/api;api";
 import "protoc-gen-swagger/options/annotations.proto";
 import "google/api/annotations.proto";
 import "google/protobuf/field_mask.proto";
-import "google/protobuf/wrappers.proto";
 import "controller/api/resource/v1/host_catalog.proto";
 
 service HostCatalogService {
@@ -32,7 +31,7 @@ service HostCatalogService {
   }
   rpc ListHostCatalogs(ListHostCatalogsRequest) returns (ListHostCatalogsResponse) {
     option (google.api.http) = {
-      get: "/v1/{parent=org/*/project/*}/host_catalogs"
+      get: "/v1/org/{org}/project/{project}/host_catalogs"
     };
     option (grpc.gateway.protoc_gen_swagger.options.openapiv2_operation) = {
       responses: {
@@ -50,7 +49,7 @@ service HostCatalogService {
   }
   rpc CreateHostCatalog(CreateHostCatalogRequest) returns (CreateHostCatalogResponse) {
     option (google.api.http) = {
-      post: "/v1/{parent=org/*/project/*}/host_catalogs"
+      post: "/v1/org/{org}/project/{project}/host_catalogs"
       body: "item"
       response_body: "item"
     };
@@ -72,10 +71,10 @@ service HostCatalogService {
   // TODO: Potentially make this in line with GET and DELETE so we can correctly share the URLs for swagger, or make
   // those other methods in line with this.
     option (google.api.http) = {
-      patch: "/v1/{item.uri=org/*/project/*/host_catalogs/*}"
+      patch: "/v1/org/{org}/project/{project}/host_catalogs/{id}"
       body: "item"
         additional_bindings {
-          patch: "/v1/{item.uri=org/*/project/*/host_catalogs/*}"
+          patch: "/v1/org/{org}/project/{project}/host_catalogs/{id}"
           body: "*"
         }
     };
@@ -133,38 +132,41 @@ message GetHostCatalogResponse {
 }
 
 message ListHostCatalogsRequest {
-  string parent = 1;
-  int32 count = 2;
+  string org = 1;
+  string project = 2;
+
   bool ignore_result_limit = 3;
   HostCatalogView view = 4;
 }
 
 message ListHostCatalogsResponse {
-  repeated api.resource.v1.HostCatalog items = 1;
+  repeated api.resource.v1.HostCatalogResult items = 1;
 }
 
 message CreateHostCatalogRequest {
-  string parent = 1;
-  api.resource.v1.HostCatalog item = 2;
+  string org = 1;
+  string project = 2;
+  api.resource.v1.HostCatalog item = 3;
 }
 
 message CreateHostCatalogResponse {
   string ref = 1;
-  api.resource.v1.HostCatalog item = 2;
+  api.resource.v1.HostCatalogResult item = 2;
 }
 
 message UpdateHostCatalogRequest {
-  api.resource.v1.HostCatalog item = 1;
-  google.protobuf.FieldMask update_mask = 2;
+  string org = 1;
+  string project = 2;
+  string id = 3;
+  api.resource.v1.HostCatalog item = 4;
+  google.protobuf.FieldMask update_mask = 5;
 }
 
 message UpdateHostCatalogResponse {
-  api.resource.v1.HostCatalog item = 1;
+  api.resource.v1.HostCatalogResult item = 1;
 }
 
 message DeleteHostCatalogRequest {
-  // TODO: Colapse this down into a single uri field once we figure out how to generate good swagger where the full
-  // uri is declared in a single field.
   string org = 1;
   string project = 2;
   string id = 3;

@@ -6,11 +6,20 @@ option go_package = "github.com/hashicorp/watchtower/gen/controller/api/resource
 
 import "google/protobuf/timestamp.proto";
 import "google/protobuf/wrappers.proto";
-import "protoc-gen-swagger/options/annotations.proto";
 
-
+// Host contains fields which are settable and modifiable by the end user.
 message Host {
-	// Must be in the format "org/<org_id>/project/<project_id>/host_catalogs/<catalog_id>/hosts/<host_id>"
+	google.protobuf.StringValue friendly_name = 2;
+	// Marks the host as disabled.  Default is false.
+	google.protobuf.BoolValue disabled = 5;
+
+	// This field is required.
+	google.protobuf.StringValue address = 6;
+}
+
+// HostResult contains all fields related to a Host resource.  The result object should be used in responses but never
+// in requests.
+message HostResult {
 	string uri = 1;
 	google.protobuf.StringValue friendly_name = 2;
 
@@ -24,4 +33,5 @@ message Host {
 
 	// This field is required.
 	google.protobuf.StringValue address = 6;
+
 }

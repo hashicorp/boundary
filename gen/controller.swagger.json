@@ -215,14 +215,14 @@
         ]
       }
     },
-    "/v1/org/{org}/project/{project}/host_catalogs/{catalog_id}/hosts/{id}": {
+    "/v1/org/{org}/project/{project}/host_catalogs": {
       "get": {
-        "operationId": "HostService_GetHost",
+        "operationId": "HostCatalogService_ListHostCatalogs",
         "responses": {
           "200": {
-            "description": "",
+            "description": "A successful response.",
             "schema": {
-              "$ref": "#/definitions/v1Host"
+              "$ref": "#/definitions/v1ListHostCatalogsResponse"
             }
           },
           "default": {
@@ -235,7 +235,212 @@
         "parameters": [
           {
             "name": "org",
-            "description": "TODO: Colapse this down into a single uri field once we figure out how to generate good swagger where the full\nuri is declared in a single field.",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "project",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "ignore_result_limit",
+            "in": "query",
+            "required": false,
+            "type": "boolean",
+            "format": "boolean"
+          },
+          {
+            "name": "view",
+            "in": "query",
+            "required": false,
+            "type": "string",
+            "enum": [
+              "HOST_CATALOG_VIEW_UNSPECIFIED",
+              "HOST_CATALOG_VIEW_BASIC",
+              "HOST_CATALOG_VIEW_FULL"
+            ],
+            "default": "HOST_CATALOG_VIEW_UNSPECIFIED"
+          }
+        ],
+        "tags": [
+          "HostCatalogService"
+        ]
+      },
+      "post": {
+        "operationId": "HostCatalogService_CreateHostCatalog",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/v1HostCatalogResult"
+            }
+          },
+          "default": {
+            "description": "The default error structure returned.",
+            "schema": {
+              "$ref": "#/definitions/apiv1Error"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "org",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "project",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/v1HostCatalog"
+            }
+          }
+        ],
+        "tags": [
+          "HostCatalogService"
+        ]
+      }
+    },
+    "/v1/org/{org}/project/{project}/host_catalogs/{catalog_id}/hosts": {
+      "get": {
+        "operationId": "HostService_ListHosts",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1ListHostsResponse"
+            }
+          },
+          "default": {
+            "description": "The default error structure returned.",
+            "schema": {
+              "$ref": "#/definitions/apiv1Error"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "org",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "project",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "catalog_id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "ignore_result_limit",
+            "in": "query",
+            "required": false,
+            "type": "boolean",
+            "format": "boolean"
+          },
+          {
+            "name": "view",
+            "in": "query",
+            "required": false,
+            "type": "string",
+            "enum": [
+              "HOST_VIEW_UNSPECIFIED",
+              "HOST_VIEW_BASIC",
+              "HOST_VIEW_FULL"
+            ],
+            "default": "HOST_VIEW_UNSPECIFIED"
+          }
+        ],
+        "tags": [
+          "HostService"
+        ]
+      },
+      "post": {
+        "operationId": "HostService_CreateHost",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/v1HostResult"
+            }
+          },
+          "default": {
+            "description": "The default error structure returned.",
+            "schema": {
+              "$ref": "#/definitions/apiv1Error"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "org",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "project",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "catalog_id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/v1Host"
+            }
+          }
+        ],
+        "tags": [
+          "HostService"
+        ]
+      }
+    },
+    "/v1/org/{org}/project/{project}/host_catalogs/{catalog_id}/hosts/{id}": {
+      "get": {
+        "operationId": "HostService_GetHost",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/v1HostResult"
+            }
+          },
+          "default": {
+            "description": "The default error structure returned.",
+            "schema": {
+              "$ref": "#/definitions/apiv1Error"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "org",
             "in": "path",
             "required": true,
             "type": "string"
@@ -294,7 +499,6 @@
         "parameters": [
           {
             "name": "org",
-            "description": "TODO: Colapse this down into a single uri field once we figure out how to generate good swagger where the full\nuri is declared in a single field.",
             "in": "path",
             "required": true,
             "type": "string"
@@ -316,6 +520,60 @@
             "in": "path",
             "required": true,
             "type": "string"
+          }
+        ],
+        "tags": [
+          "HostService"
+        ]
+      },
+      "patch": {
+        "operationId": "HostService_UpdateHost2",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1UpdateHostResponse"
+            }
+          },
+          "default": {
+            "description": "The default error structure returned.",
+            "schema": {
+              "$ref": "#/definitions/apiv1Error"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "org",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "project",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "catalog_id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/v1UpdateHostRequest"
+            }
           }
         ],
         "tags": [
@@ -396,7 +654,6 @@
         "parameters": [
           {
             "name": "org",
-            "description": "TODO: Colapse this down into a single uri field once we figure out how to generate good swagger where the full\nuri is declared in a single field.",
             "in": "path",
             "required": true,
             "type": "string"
@@ -417,16 +674,14 @@
         "tags": [
           "HostCatalogService"
         ]
-      }
-    },
-    "/v1/{item.uri}": {
+      },
       "patch": {
-        "operationId": "HostService_UpdateHost2",
+        "operationId": "HostCatalogService_UpdateHostCatalog2",
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
-              "$ref": "#/definitions/v1UpdateHostResponse"
+              "$ref": "#/definitions/v1UpdateHostCatalogResponse"
             }
           },
           "default": {
@@ -438,8 +693,19 @@
         },
         "parameters": [
           {
-            "name": "item.uri",
-            "description": "Must be in the format \"org/\u003corg_id\u003e/project/\u003cproject_id\u003e/host_catalogs/\u003ccatalog_id\u003e/hosts/\u003chost_id\u003e\"",
+            "name": "org",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "project",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "id",
             "in": "path",
             "required": true,
             "type": "string"
@@ -449,191 +715,7 @@
             "in": "body",
             "required": true,
             "schema": {
-              "$ref": "#/definitions/v1UpdateHostRequest"
-            }
-          }
-        ],
-        "tags": [
-          "HostService"
-        ]
-      }
-    },
-    "/v1/{parent=org/*/project/*/host_catalogs/*}/hosts": {
-      "get": {
-        "operationId": "HostService_ListHosts",
-        "responses": {
-          "200": {
-            "description": "A successful response.",
-            "schema": {
-              "$ref": "#/definitions/v1ListHostsResponse"
-            }
-          },
-          "default": {
-            "description": "The default error structure returned.",
-            "schema": {
-              "$ref": "#/definitions/apiv1Error"
-            }
-          }
-        },
-        "parameters": [
-          {
-            "name": "parent",
-            "in": "path",
-            "required": true,
-            "type": "string"
-          },
-          {
-            "name": "count",
-            "in": "query",
-            "required": false,
-            "type": "integer",
-            "format": "int32"
-          },
-          {
-            "name": "ignore_result_limit",
-            "in": "query",
-            "required": false,
-            "type": "boolean",
-            "format": "boolean"
-          },
-          {
-            "name": "view",
-            "in": "query",
-            "required": false,
-            "type": "string",
-            "enum": [
-              "HOST_VIEW_UNSPECIFIED",
-              "HOST_VIEW_BASIC",
-              "HOST_VIEW_FULL"
-            ],
-            "default": "HOST_VIEW_UNSPECIFIED"
-          }
-        ],
-        "tags": [
-          "HostService"
-        ]
-      },
-      "post": {
-        "operationId": "HostService_CreateHost",
-        "responses": {
-          "200": {
-            "description": "",
-            "schema": {
-              "$ref": "#/definitions/v1Host"
-            }
-          },
-          "default": {
-            "description": "The default error structure returned.",
-            "schema": {
-              "$ref": "#/definitions/apiv1Error"
-            }
-          }
-        },
-        "parameters": [
-          {
-            "name": "parent",
-            "in": "path",
-            "required": true,
-            "type": "string"
-          },
-          {
-            "name": "body",
-            "in": "body",
-            "required": true,
-            "schema": {
-              "$ref": "#/definitions/v1Host"
-            }
-          }
-        ],
-        "tags": [
-          "HostService"
-        ]
-      }
-    },
-    "/v1/{parent=org/*/project/*}/host_catalogs": {
-      "get": {
-        "operationId": "HostCatalogService_ListHostCatalogs",
-        "responses": {
-          "200": {
-            "description": "A successful response.",
-            "schema": {
-              "$ref": "#/definitions/v1ListHostCatalogsResponse"
-            }
-          },
-          "default": {
-            "description": "The default error structure returned.",
-            "schema": {
-              "$ref": "#/definitions/apiv1Error"
-            }
-          }
-        },
-        "parameters": [
-          {
-            "name": "parent",
-            "in": "path",
-            "required": true,
-            "type": "string"
-          },
-          {
-            "name": "count",
-            "in": "query",
-            "required": false,
-            "type": "integer",
-            "format": "int32"
-          },
-          {
-            "name": "ignore_result_limit",
-            "in": "query",
-            "required": false,
-            "type": "boolean",
-            "format": "boolean"
-          },
-          {
-            "name": "view",
-            "in": "query",
-            "required": false,
-            "type": "string",
-            "enum": [
-              "HOST_CATALOG_VIEW_UNSPECIFIED",
-              "HOST_CATALOG_VIEW_BASIC",
-              "HOST_CATALOG_VIEW_FULL"
-            ],
-            "default": "HOST_CATALOG_VIEW_UNSPECIFIED"
-          }
-        ],
-        "tags": [
-          "HostCatalogService"
-        ]
-      },
-      "post": {
-        "operationId": "HostCatalogService_CreateHostCatalog",
-        "responses": {
-          "200": {
-            "description": "",
-            "schema": {
-              "$ref": "#/definitions/v1HostCatalog"
-            }
-          },
-          "default": {
-            "description": "The default error structure returned.",
-            "schema": {
-              "$ref": "#/definitions/apiv1Error"
-            }
-          }
-        },
-        "parameters": [
-          {
-            "name": "parent",
-            "in": "path",
-            "required": true,
-            "type": "string"
-          },
-          {
-            "name": "body",
-            "in": "body",
-            "required": true,
-            "schema": {
-              "$ref": "#/definitions/v1HostCatalog"
+              "$ref": "#/definitions/v1UpdateHostCatalogRequest"
             }
           }
         ],
@@ -735,7 +817,7 @@
           "type": "string"
         },
         "item": {
-          "$ref": "#/definitions/v1HostCatalog"
+          "$ref": "#/definitions/v1HostCatalogResult"
         }
       }
     },
@@ -746,7 +828,7 @@
           "type": "string"
         },
         "item": {
-          "$ref": "#/definitions/v1Host"
+          "$ref": "#/definitions/v1HostResult"
         }
       }
     },
@@ -857,29 +939,15 @@
       "type": "object",
       "properties": {
         "item": {
-          "$ref": "#/definitions/v1Host"
+          "$ref": "#/definitions/v1HostResult"
         }
       }
     },
     "v1Host": {
       "type": "object",
       "properties": {
-        "uri": {
-          "type": "string",
-          "title": "Must be in the format \"org/\u003corg_id\u003e/project/\u003cproject_id\u003e/host_catalogs/\u003ccatalog_id\u003e/hosts/\u003chost_id\u003e\""
-        },
         "friendly_name": {
           "type": "string"
-        },
-        "created_time": {
-          "type": "string",
-          "format": "date-time",
-          "description": "The time this host was created."
-        },
-        "updated_time": {
-          "type": "string",
-          "format": "date-time",
-          "description": "The time this host was last updated."
         },
         "disabled": {
           "type": "boolean",
@@ -890,9 +958,24 @@
           "type": "string",
           "description": "This field is required."
         }
-      }
+      },
+      "description": "Host contains fields which are settable and modifiable by the end user."
     },
     "v1HostCatalog": {
+      "type": "object",
+      "properties": {
+        "friendly_name": {
+          "type": "string"
+        },
+        "disabled": {
+          "type": "boolean",
+          "format": "boolean",
+          "description": "Marks the host_catalog as disabled.  Default is false."
+        }
+      },
+      "description": "HostCatalog contains fields which are settable and modifiable by the end user.  This message should be used in\nrelevant requests."
+    },
+    "v1HostCatalogResult": {
       "type": "object",
       "properties": {
         "uri": {
@@ -917,7 +1000,8 @@
           "format": "boolean",
           "description": "Marks the host_catalog as disabled.  Default is false."
         }
-      }
+      },
+      "description": "HostCatalogResult contains all fields related to a HostCatalog resource.  The result object should be used in\nresponses but never in requests."
     },
     "v1HostCatalogView": {
       "type": "string",
@@ -927,6 +1011,37 @@
         "HOST_CATALOG_VIEW_FULL"
       ],
       "default": "HOST_CATALOG_VIEW_UNSPECIFIED"
+    },
+    "v1HostResult": {
+      "type": "object",
+      "properties": {
+        "uri": {
+          "type": "string"
+        },
+        "friendly_name": {
+          "type": "string"
+        },
+        "created_time": {
+          "type": "string",
+          "format": "date-time",
+          "description": "The time this host was created."
+        },
+        "updated_time": {
+          "type": "string",
+          "format": "date-time",
+          "description": "The time this host was last updated."
+        },
+        "disabled": {
+          "type": "boolean",
+          "format": "boolean",
+          "description": "Marks the host as disabled.  Default is false."
+        },
+        "address": {
+          "type": "string",
+          "description": "This field is required."
+        }
+      },
+      "description": "HostResult contains all fields related to a Host resource.  The result object should be used in responses but never\nin requests."
     },
     "v1HostView": {
       "type": "string",
@@ -954,7 +1069,7 @@
         "items": {
           "type": "array",
           "items": {
-            "$ref": "#/definitions/v1HostCatalog"
+            "$ref": "#/definitions/v1HostCatalogResult"
           }
         }
       }
@@ -965,7 +1080,7 @@
         "items": {
           "type": "array",
           "items": {
-            "$ref": "#/definitions/v1Host"
+            "$ref": "#/definitions/v1HostResult"
           }
         }
       }
@@ -1004,6 +1119,15 @@
     "v1UpdateHostCatalogRequest": {
       "type": "object",
       "properties": {
+        "org": {
+          "type": "string"
+        },
+        "project": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
         "item": {
           "$ref": "#/definitions/v1HostCatalog"
         },
@@ -1016,13 +1140,25 @@
       "type": "object",
       "properties": {
         "item": {
-          "$ref": "#/definitions/v1HostCatalog"
+          "$ref": "#/definitions/v1HostCatalogResult"
         }
       }
     },
     "v1UpdateHostRequest": {
       "type": "object",
       "properties": {
+        "org": {
+          "type": "string"
+        },
+        "project": {
+          "type": "string"
+        },
+        "catalog_id": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
         "item": {
           "$ref": "#/definitions/v1Host"
         },
@@ -1035,7 +1171,7 @@
       "type": "object",
       "properties": {
         "item": {
-          "$ref": "#/definitions/v1Host"
+          "$ref": "#/definitions/v1HostResult"
         }
       }
     }

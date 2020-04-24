@@ -7,7 +7,18 @@ option go_package = "github.com/hashicorp/watchtower/gen/controller/api/resource
 import "google/protobuf/timestamp.proto";
 import "google/protobuf/wrappers.proto";
 
+// HostCatalog contains fields which are settable and modifiable by the end user.  This message should be used in
+// relevant requests.
 message HostCatalog {
+	google.protobuf.StringValue friendly_name = 1;
+
+	// Marks the host_catalog as disabled.  Default is false.
+	google.protobuf.BoolValue disabled = 2;
+}
+
+// HostCatalogResult contains all fields related to a HostCatalog resource.  The result object should be used in
+// responses but never in requests.
+message HostCatalogResult {
 	// Must be in the format "org/<org_id>/project/<project_id>/host_catalogs/<catalog_id>"
 	string uri = 1;
 	google.protobuf.StringValue friendly_name = 2;

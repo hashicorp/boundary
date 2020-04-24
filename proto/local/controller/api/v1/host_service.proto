@@ -31,7 +31,7 @@ service HostService {
   }
   rpc ListHosts(ListHostsRequest) returns (ListHostsResponse) {
     option (google.api.http) = {
-      get: "/v1/{parent=org/*/project/*/host_catalogs/*}/hosts"
+      get: "/v1/org/{org}/project/{project}/host_catalogs/{catalog_id}/hosts"
     };
     option (grpc.gateway.protoc_gen_swagger.options.openapiv2_operation) = {
       responses: {
@@ -49,7 +49,7 @@ service HostService {
   }
   rpc CreateHost(CreateHostRequest) returns (CreateHostResponse) {
     option (google.api.http) = {
-      post: "/v1/{parent=org/*/project/*/host_catalogs/*}/hosts"
+      post: "/v1/org/{org}/project/{project}/host_catalogs/{catalog_id}/hosts"
       body: "item"
       response_body: "item"
     };
@@ -68,13 +68,11 @@ service HostService {
     };
   }
   rpc UpdateHost(UpdateHostRequest) returns (UpdateHostResponse) {
-  // TODO: Potentially make this in line with GET and DELETE so we can correctly share the URLs for swagger, or make
-  // those other methods in line with this.
     option (google.api.http) = {
-      patch: "/v1/{item.uri=org/*/project/*/host_catalogs/*/hosts/*}"
+      patch: "/v1/org/{org}/project/{project}/host_catalogs/{catalog_id}/hosts/{id}"
       body: "item"
         additional_bindings {
-          patch: "/v1/{item.uri=org/*/project/*/host_catalogs/*/hosts/*}"
+          patch: "/v1/org/{org}/project/{project}/host_catalogs/{catalog_id}/hosts/{id}"
           body: "*"
         }
     };
@@ -119,8 +117,6 @@ enum HostView {
 }
 
 message GetHostRequest {
-  // TODO: Colapse this down into a single uri field once we figure out how to generate good swagger where the full
-  // uri is declared in a single field.
   string org = 1;
   string project = 2;
   string catalog_id = 3;
@@ -129,42 +125,48 @@ message GetHostRequest {
 }
 
 message GetHostResponse {
-  api.resource.v1.Host item = 1;
+  api.resource.v1.HostResult item = 1;
 }
 
 message ListHostsRequest {
-  string parent = 1;
-  int32 count = 2;
-  bool ignore_result_limit = 3;
-  HostView view = 4;
+  string org = 1;
+  string project = 2;
+  string catalog_id = 3;
+
+  bool ignore_result_limit = 4;
+  HostView view = 5;
 }
 
 message ListHostsResponse {
-  repeated api.resource.v1.Host items = 1;
+  repeated api.resource.v1.HostResult items = 1;
 }
 
 message CreateHostRequest {
-  string parent = 1;
-  api.resource.v1.Host item = 2;
+  string org = 1;
+  string project = 2;
+  string catalog_id = 3;
+  api.resource.v1.Host item = 4;
 }
 
 message CreateHostResponse {
   string ref = 1;
-  api.resource.v1.Host item = 2;
+  api.resource.v1.HostResult item = 2;
 }
 
 message UpdateHostRequest {
-  api.resource.v1.Host item = 1;
-  google.protobuf.FieldMask update_mask = 2;
+  string org = 1;
+  string project = 2;
+  string catalog_id = 3;
+  string id = 4;
+  api.resource.v1.Host item = 5;
+  google.protobuf.FieldMask update_mask = 6;
 }
 
 message UpdateHostResponse {
-  api.resource.v1.Host item = 1;
+  api.resource.v1.HostResult item = 1;
 }
 
 message DeleteHostRequest {
-  // TODO: Colapse this down into a single uri field once we figure out how to generate good swagger where the full
-  // uri is declared in a single field.
   string org = 1;
   string project = 2;
   string catalog_id = 3;
