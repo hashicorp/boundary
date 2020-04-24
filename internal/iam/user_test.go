@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/hashicorp/watchtower/internal/db"
+	"google.golang.org/protobuf/proto"
 	"gotest.tools/assert"
 )
 
@@ -199,5 +200,56 @@ func Test_UserRoles(t *testing.T) {
 		assert.NilError(t, err)
 		assert.Equal(t, len(userRoles), 1)
 		assert.Equal(t, userRoles[role.PublicId].GetId(), role.Id)
+	})
+}
+
+func TestUser_Clone(t *testing.T) {
+	db.StartTest()
+	t.Parallel()
+	cleanup, url := db.SetupTest(t, "../db/migrations/postgres")
+	defer cleanup()
+	defer db.CompleteTest() // must come after the "defer cleanup()"
+	conn, err := db.TestConnection(url)
+	assert.NilError(t, err)
+	defer conn.Close()
+
+	t.Run("valid", func(t *testing.T) {
+		w := db.GormReadWriter{Tx: conn}
+		s, err := NewScope(OrganizationScope)
+		assert.NilError(t, err)
+		assert.Check(t, s.Scope != nil)
+		err = w.Create(context.Background(), s)
+		assert.NilError(t, err)
+		assert.Check(t, s.Id != 0)
+
+		user, err := NewUser(s)
+		assert.NilError(t, err)
+		err = w.Create(context.Background(), user)
+		assert.NilError(t, err)
+
+		cp := user.Clone()
+		assert.Check(t, proto.Equal(cp.(*User).User, user.User))
+	})
+	t.Run("not-equal", func(t *testing.T) {
+		w := db.GormReadWriter{Tx: conn}
+		s, err := NewScope(OrganizationScope)
+		assert.NilError(t, err)
+		assert.Check(t, s.Scope != nil)
+		err = w.Create(context.Background(), s)
+		assert.NilError(t, err)
+		assert.Check(t, s.Id != 0)
+
+		user, err := NewUser(s)
+		assert.NilError(t, err)
+		err = w.Create(context.Background(), user)
+		assert.NilError(t, err)
+
+		user2, err := NewUser(s)
+		assert.NilError(t, err)
+		err = w.Create(context.Background(), user2)
+		assert.NilError(t, err)
+
+		cp := user.Clone()
+		assert.Check(t, !proto.Equal(cp.(*User).User, user2.User))
 	})
 }

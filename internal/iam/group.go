@@ -8,6 +8,7 @@ import (
 	"github.com/hashicorp/vault/sdk/helper/base62"
 	"github.com/hashicorp/watchtower/internal/db"
 	"github.com/hashicorp/watchtower/internal/iam/store"
+	"google.golang.org/protobuf/proto"
 )
 
 // Group is made up of members (users for now) and can be assigned roles
@@ -16,8 +17,9 @@ type Group struct {
 	tableName string `gorm:"-"`
 }
 
-// ensure that Group implements the interfaces of: Resource, and db.VetForWriter
+// ensure that Group implements the interfaces of: Resource, ClonableResource, and db.VetForWriter
 var _ Resource = (*Group)(nil)
+var _ ClonableResource = (*Group)(nil)
 var _ db.VetForWriter = (*Group)(nil)
 
 // NewGroup creates a new group with a scope (project/organization)
@@ -50,6 +52,14 @@ func NewGroup(primaryScope *Scope, opt ...Option) (*Group, error) {
 		g.Description = withDescription
 	}
 	return g, nil
+}
+
+// Clone creates a clone of the Group
+func (g *Group) Clone() Resource {
+	cp := proto.Clone(g.Group)
+	return &Group{
+		Group: cp.(*store.Group),
+	}
 }
 
 // Members returns the members of the group (Users)

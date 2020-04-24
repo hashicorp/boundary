@@ -8,6 +8,7 @@ import (
 	"github.com/hashicorp/vault/sdk/helper/base62"
 	"github.com/hashicorp/watchtower/internal/db"
 	"github.com/hashicorp/watchtower/internal/iam/store"
+	"google.golang.org/protobuf/proto"
 )
 
 // ScopeType defines the possible types for Scopes
@@ -30,9 +31,10 @@ type Scope struct {
 	tableName string `gorm:"-"`
 }
 
-// ensure that Scope implements the interfaces of: Resource, and db.VetForWriter
+// ensure that Scope implements the interfaces of: Resource, ClonableResource, and db.VetForWriter
 var _ Resource = (*Scope)(nil)
 var _ db.VetForWriter = (*User)(nil)
+var _ ClonableResource = (*User)(nil)
 
 // NewScope creates a new Scope of the specified ScopeType with options:
 // WithFriendlyName specifies the Scope's friendly name.
@@ -80,6 +82,14 @@ func NewScope(scopeType ScopeType, opt ...Option) (*Scope, error) {
 		s.FriendlyName = withFriendlyName
 	}
 	return s, nil
+}
+
+// Clone creates a clone of the Scope
+func (s *Scope) Clone() Resource {
+	cp := proto.Clone(s.Scope)
+	return &Scope{
+		Scope: cp.(*store.Scope),
+	}
 }
 
 // Organization will walk up the scope tree via primary scopes until it finds an organization

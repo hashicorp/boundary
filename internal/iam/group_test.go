@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/hashicorp/watchtower/internal/db"
+	"google.golang.org/protobuf/proto"
 	"gotest.tools/assert"
 )
 
@@ -196,5 +197,66 @@ func TestGroup_AddMember(t *testing.T) {
 		err = w.Create(context.Background(), gm)
 		assert.NilError(t, err)
 		assert.Check(t, gm.GetPublicId() != "")
+	})
+}
+
+func TestGroup_Clone(t *testing.T) {
+	db.StartTest()
+	t.Parallel()
+	cleanup, url := db.SetupTest(t, "../db/migrations/postgres")
+	defer cleanup()
+	defer db.CompleteTest() // must come after the "defer cleanup()"
+	conn, err := db.TestConnection(url)
+	assert.NilError(t, err)
+	defer conn.Close()
+
+	t.Run("valid", func(t *testing.T) {
+		w := db.GormReadWriter{Tx: conn}
+		s, err := NewScope(OrganizationScope)
+		assert.NilError(t, err)
+		assert.Check(t, s.Scope != nil)
+		err = w.Create(context.Background(), s)
+		assert.NilError(t, err)
+		assert.Check(t, s.Id != 0)
+
+		grp, err := NewGroup(s, WithDescription("this is a test group"))
+		assert.NilError(t, err)
+		assert.Check(t, grp != nil)
+		assert.Equal(t, grp.Description, "this is a test group")
+		assert.Equal(t, s.Id, grp.PrimaryScopeId)
+		err = w.Create(context.Background(), grp)
+		assert.NilError(t, err)
+		assert.Check(t, grp.Id != 0)
+
+		cp := grp.Clone()
+		assert.Check(t, proto.Equal(cp.(*Group).Group, grp.Group))
+	})
+	t.Run("not-equal", func(t *testing.T) {
+		w := db.GormReadWriter{Tx: conn}
+		s, err := NewScope(OrganizationScope)
+		assert.NilError(t, err)
+		assert.Check(t, s.Scope != nil)
+		err = w.Create(context.Background(), s)
+		assert.NilError(t, err)
+		assert.Check(t, s.Id != 0)
+
+		grp, err := NewGroup(s, WithDescription("this is a test group"))
+		assert.NilError(t, err)
+		assert.Check(t, grp != nil)
+		assert.Equal(t, grp.Description, "this is a test group")
+		assert.Equal(t, s.Id, grp.PrimaryScopeId)
+		err = w.Create(context.Background(), grp)
+		assert.NilError(t, err)
+		assert.Check(t, grp.Id != 0)
+
+		grp2, err := NewGroup(s, WithDescription("second group"))
+		assert.NilError(t, err)
+		assert.Check(t, grp2 != nil)
+		err = w.Create(context.Background(), grp2)
+		assert.NilError(t, err)
+		assert.Check(t, grp2.Id != 0)
+
+		cp := grp.Clone()
+		assert.Check(t, !proto.Equal(cp.(*Group).Group, grp2.Group))
 	})
 }

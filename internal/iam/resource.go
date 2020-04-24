@@ -55,6 +55,10 @@ const (
 	ResourceTypeAuthMethod        ResourceType = 12
 )
 
+type ClonableResource interface {
+	Clone() Resource
+}
+
 // ResourceWithPrimaryScope defines an interface for Resources that have a primary scope
 type ResourceWithPrimaryScope interface {
 	GetId() uint32

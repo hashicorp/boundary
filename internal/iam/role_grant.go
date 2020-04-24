@@ -8,15 +8,18 @@ import (
 	"github.com/hashicorp/vault/sdk/helper/base62"
 	"github.com/hashicorp/watchtower/internal/db"
 	"github.com/hashicorp/watchtower/internal/iam/store"
+	"google.golang.org/protobuf/proto"
 )
 
+// RoleGrant defines the grants that are assigned to a role
 type RoleGrant struct {
 	*store.RoleGrant
 	tableName string `gorm:"-"`
 }
 
+// ensure that RoleGrant implements the interfaces of: Resource, ClonableResource and db.VetForWriter
 var _ Resource = (*RoleGrant)(nil)
-
+var _ ClonableResource = (*RoleGrant)(nil)
 var _ db.VetForWriter = (*RoleGrant)(nil)
 
 // NewRoleGrant creates a new grant with a scope (project/organization)
@@ -53,6 +56,14 @@ func NewRoleGrant(primaryScope *Scope, role *Role, grant string, opt ...Option) 
 		rg.FriendlyName = withFriendlyName
 	}
 	return rg, nil
+}
+
+// Clone creates a clone of the RoleGrant
+func (g *RoleGrant) Clone() Resource {
+	cp := proto.Clone(g.RoleGrant)
+	return &RoleGrant{
+		RoleGrant: cp.(*store.RoleGrant),
+	}
 }
 
 // VetForWrite implements db.VetForWrite() interface

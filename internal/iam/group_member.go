@@ -8,6 +8,7 @@ import (
 	"github.com/hashicorp/vault/sdk/helper/base62"
 	"github.com/hashicorp/watchtower/internal/db"
 	"github.com/hashicorp/watchtower/internal/iam/store"
+	"google.golang.org/protobuf/proto"
 )
 
 // MemberType defines the possible types for members
@@ -67,8 +68,9 @@ type GroupMemberUser struct {
 	tableName string `gorm:"-"`
 }
 
-// ensure that GroupMemberUser implements the interfaces of: Resource, GroupMember and db.VetForWriter
+// ensure that GroupMemberUser implements the interfaces of: Resource, ClonableResource, GroupMember and db.VetForWriter
 var _ Resource = (*GroupMemberUser)(nil)
+var _ ClonableResource = (*GroupMemberUser)(nil)
 var _ GroupMember = (*GroupMemberUser)(nil)
 var _ db.VetForWriter = (*GroupMemberUser)(nil)
 
@@ -113,6 +115,14 @@ func newGroupMemberUser(primaryScope *Scope, g *Group, m *User, opt ...Option) (
 		gm.FriendlyName = withFriendlyName
 	}
 	return gm, nil
+}
+
+// Clone creates a clone of the GroupMemberUser
+func (m *GroupMemberUser) Clone() Resource {
+	cp := proto.Clone(m.GroupMemberUser)
+	return &GroupMemberUser{
+		GroupMemberUser: cp.(*store.GroupMemberUser),
+	}
 }
 
 // VetForWrite implements db.VetForWrite() interface

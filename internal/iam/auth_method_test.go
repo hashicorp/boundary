@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/hashicorp/watchtower/internal/db"
+	"google.golang.org/protobuf/proto"
 	"gotest.tools/assert"
 )
 
@@ -117,4 +118,62 @@ func TestAuthMethod_Actions(t *testing.T) {
 	assert.Equal(t, a[ActionUpdate.String()], ActionUpdate)
 	assert.Equal(t, a[ActionEdit.String()], ActionEdit)
 	assert.Equal(t, a[ActionDelete.String()], ActionDelete)
+}
+
+func TestAuthMethod_Clone(t *testing.T) {
+	db.StartTest()
+	t.Parallel()
+	cleanup, url := db.SetupTest(t, "../db/migrations/postgres")
+	defer cleanup()
+	defer db.CompleteTest() // must come after the "defer cleanup()"
+	conn, err := db.TestConnection(url)
+	assert.NilError(t, err)
+	defer conn.Close()
+
+	t.Run("valid", func(t *testing.T) {
+		w := db.GormReadWriter{Tx: conn}
+		s, err := NewScope(OrganizationScope)
+		assert.NilError(t, err)
+		assert.Check(t, s.Scope != nil)
+		err = w.Create(context.Background(), s)
+		assert.NilError(t, err)
+		assert.Check(t, s.Id != 0)
+
+		meth, err := NewAuthMethod(s, AuthUserPass)
+		assert.NilError(t, err)
+		assert.Check(t, meth != nil)
+		err = w.Create(context.Background(), meth)
+		assert.NilError(t, err)
+		assert.Check(t, meth != nil)
+		assert.Equal(t, meth.Type, uint32(AuthUserPass))
+
+		cp := meth.Clone()
+		assert.Check(t, proto.Equal(cp.(*AuthMethod).AuthMethod, meth.AuthMethod))
+	})
+	t.Run("not-equal", func(t *testing.T) {
+		w := db.GormReadWriter{Tx: conn}
+		s, err := NewScope(OrganizationScope)
+		assert.NilError(t, err)
+		assert.Check(t, s.Scope != nil)
+		err = w.Create(context.Background(), s)
+		assert.NilError(t, err)
+		assert.Check(t, s.Id != 0)
+
+		meth, err := NewAuthMethod(s, AuthUserPass)
+		assert.NilError(t, err)
+		assert.Check(t, meth != nil)
+		err = w.Create(context.Background(), meth)
+		assert.NilError(t, err)
+		assert.Check(t, meth != nil)
+		assert.Equal(t, meth.Type, uint32(AuthUserPass))
+
+		meth2, err := NewAuthMethod(s, AuthUserPass)
+		assert.NilError(t, err)
+		assert.Check(t, meth2 != nil)
+		err = w.Create(context.Background(), meth2)
+		assert.NilError(t, err)
+
+		cp := meth.Clone()
+		assert.Check(t, !proto.Equal(cp.(*AuthMethod).AuthMethod, meth2.AuthMethod))
+	})
 }

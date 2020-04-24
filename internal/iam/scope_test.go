@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/hashicorp/watchtower/internal/db"
+	"google.golang.org/protobuf/proto"
 	"gotest.tools/assert"
 )
 
@@ -162,4 +163,47 @@ func TestScope_ResourceType(t *testing.T) {
 	r := &Scope{}
 	ty := r.ResourceType()
 	assert.Equal(t, ty, ResourceTypeScope)
+}
+
+func TestScope_Clone(t *testing.T) {
+	db.StartTest()
+	t.Parallel()
+	cleanup, url := db.SetupTest(t, "../db/migrations/postgres")
+	defer cleanup()
+	defer db.CompleteTest() // must come after the "defer cleanup()"
+	conn, err := db.TestConnection(url)
+	assert.NilError(t, err)
+	defer conn.Close()
+
+	t.Run("valid", func(t *testing.T) {
+		w := db.GormReadWriter{Tx: conn}
+		s, err := NewScope(OrganizationScope)
+		assert.NilError(t, err)
+		assert.Check(t, s.Scope != nil)
+		err = w.Create(context.Background(), s)
+		assert.NilError(t, err)
+		assert.Check(t, s.Id != 0)
+
+		cp := s.Clone()
+		assert.Check(t, proto.Equal(cp.(*Scope).Scope, s.Scope))
+	})
+	t.Run("not-equal", func(t *testing.T) {
+		w := db.GormReadWriter{Tx: conn}
+		s, err := NewScope(OrganizationScope)
+		assert.NilError(t, err)
+		assert.Check(t, s.Scope != nil)
+		err = w.Create(context.Background(), s)
+		assert.NilError(t, err)
+		assert.Check(t, s.Id != 0)
+
+		s2, err := NewScope(OrganizationScope)
+		assert.NilError(t, err)
+		assert.Check(t, s2.Scope != nil)
+		err = w.Create(context.Background(), s2)
+		assert.NilError(t, err)
+		assert.Check(t, s2.Id != 0)
+
+		cp := s.Clone()
+		assert.Check(t, !proto.Equal(cp.(*Scope).Scope, s2.Scope))
+	})
 }

@@ -8,15 +8,18 @@ import (
 	"github.com/hashicorp/vault/sdk/helper/base62"
 	"github.com/hashicorp/watchtower/internal/db"
 	"github.com/hashicorp/watchtower/internal/iam/store"
+	"google.golang.org/protobuf/proto"
 )
 
+// User defines watchtower users which are scoped to an Organization
 type User struct {
 	*store.User
 	tableName string `gorm:"-"`
 }
 
+// ensure that User implements the interfaces of: Resource, ClonableResource and db.VetForWriter
 var _ Resource = (*User)(nil)
-
+var _ ClonableResource = (*User)(nil)
 var _ db.VetForWriter = (*User)(nil)
 
 // NewUser creates a new user and allows options:
@@ -44,6 +47,14 @@ func NewUser(primaryScope *Scope, opt ...Option) (*User, error) {
 		u.FriendlyName = withFriendlyName
 	}
 	return u, nil
+}
+
+// Clone creates a clone of the User
+func (u *User) Clone() Resource {
+	cp := proto.Clone(u.User)
+	return &User{
+		User: cp.(*store.User),
+	}
 }
 
 // Roles gets the roles for the user (we should/can support options to include roles associated with the user's groups)

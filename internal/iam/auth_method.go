@@ -8,6 +8,7 @@ import (
 	"github.com/hashicorp/vault/sdk/helper/base62"
 	"github.com/hashicorp/watchtower/internal/db"
 	"github.com/hashicorp/watchtower/internal/iam/store"
+	"google.golang.org/protobuf/proto"
 )
 
 // AuthType defines the possible types for AuthMethod
@@ -25,8 +26,9 @@ type AuthMethod struct {
 	tableName string `gorm:"-"`
 }
 
-// check that required interfaces are implemented
+// check that required interfaces are implemented: Resource, ClonableResource, db.VetForWriter
 var _ Resource = (*AuthMethod)(nil)
+var _ ClonableResource = (*AuthMethod)(nil)
 var _ db.VetForWriter = (*AuthMethod)(nil)
 
 // NewAuthMethod creates a new AuthMethod for a Scope (org or project)
@@ -63,16 +65,24 @@ func NewAuthMethod(primaryScope *Scope, authType AuthType, opt ...Option) (*Auth
 	return a, nil
 }
 
+// Clone creates a clone of the AuthMethod
+func (a *AuthMethod) Clone() Resource {
+	cp := proto.Clone(a.AuthMethod)
+	return &AuthMethod{
+		AuthMethod: cp.(*store.AuthMethod),
+	}
+}
+
 // VetForWrite implements db.VetForWrite() interface
-func (p *AuthMethod) VetForWrite(ctx context.Context, r db.Reader, opType db.OpType) error {
-	if p.PublicId == "" {
+func (a *AuthMethod) VetForWrite(ctx context.Context, r db.Reader, opType db.OpType) error {
+	if a.PublicId == "" {
 		return errors.New("error public id is empty string for user write")
 	}
-	if p.PrimaryScopeId == 0 {
+	if a.PrimaryScopeId == 0 {
 		return errors.New("error primary scope id not set for user write")
 	}
 	// make sure the scope is valid for auth methods
-	if err := p.primaryScopeIsValid(ctx, r); err != nil {
+	if err := a.primaryScopeIsValid(ctx, r); err != nil {
 		return err
 	}
 	return nil

@@ -8,6 +8,7 @@ import (
 	"github.com/hashicorp/vault/sdk/helper/base62"
 	"github.com/hashicorp/watchtower/internal/db"
 	"github.com/hashicorp/watchtower/internal/iam/store"
+	"google.golang.org/protobuf/proto"
 )
 
 // Roles are granted permissions and assignable to User and Groups
@@ -16,8 +17,9 @@ type Role struct {
 	tableName string `gorm:"-"`
 }
 
-// ensure that Group implements the interfaces of: Resource, and db.VetForWriter
+// ensure that Group implements the interfaces of: Resource, ClonableResource, and db.VetForWriter
 var _ Resource = (*Role)(nil)
+var _ ClonableResource = (*Role)(nil)
 var _ db.VetForWriter = (*Role)(nil)
 
 // NewRole creates a new role with a scope (project/organization)
@@ -50,6 +52,14 @@ func NewRole(primaryScope *Scope, opt ...Option) (*Role, error) {
 		r.Description = withDescription
 	}
 	return r, nil
+}
+
+// Clone creates a clone of the Role
+func (r *Role) Clone() Resource {
+	cp := proto.Clone(r.Role)
+	return &Role{
+		Role: cp.(*store.Role),
+	}
 }
 
 // AssignedRoles returns a list of principal roles (Users and Groups) for the Role.

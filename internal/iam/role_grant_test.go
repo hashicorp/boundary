@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/hashicorp/watchtower/internal/db"
+	"google.golang.org/protobuf/proto"
 	"gotest.tools/assert"
 )
 
@@ -133,5 +134,76 @@ func TestRoleGrant_GetPrimaryScope(t *testing.T) {
 		assert.NilError(t, err)
 		assert.Check(t, ps != nil)
 		assert.Equal(t, ps.Id, s.Id)
+	})
+}
+
+func TestRoleGrant_Clone(t *testing.T) {
+	db.StartTest()
+	t.Parallel()
+	cleanup, url := db.SetupTest(t, "../db/migrations/postgres")
+	defer cleanup()
+	defer db.CompleteTest() // must come after the "defer cleanup()"
+	conn, err := db.TestConnection(url)
+	assert.NilError(t, err)
+	defer conn.Close()
+
+	t.Run("valid", func(t *testing.T) {
+		w := db.GormReadWriter{Tx: conn}
+		s, err := NewScope(OrganizationScope)
+		assert.NilError(t, err)
+		assert.Check(t, s.Scope != nil)
+		err = w.Create(context.Background(), s)
+		assert.NilError(t, err)
+		assert.Check(t, s.Id != 0)
+
+		role, err := NewRole(s)
+		assert.NilError(t, err)
+		assert.Check(t, role != nil)
+		assert.Equal(t, s.Id, role.PrimaryScopeId)
+		err = w.Create(context.Background(), role)
+		assert.NilError(t, err)
+		assert.Check(t, role.Id != 0)
+
+		g, err := NewRoleGrant(s, role, "everything*")
+		assert.NilError(t, err)
+		assert.Check(t, g != nil)
+		assert.Equal(t, g.RoleId, role.Id)
+		assert.Equal(t, g.Grant, "everything*")
+
+		cp := g.Clone()
+		assert.Check(t, proto.Equal(cp.(*RoleGrant).RoleGrant, g.RoleGrant))
+	})
+	t.Run("not-equal", func(t *testing.T) {
+		w := db.GormReadWriter{Tx: conn}
+		s, err := NewScope(OrganizationScope)
+		assert.NilError(t, err)
+		assert.Check(t, s.Scope != nil)
+		err = w.Create(context.Background(), s)
+		assert.NilError(t, err)
+		assert.Check(t, s.Id != 0)
+
+		role, err := NewRole(s)
+		assert.NilError(t, err)
+		assert.Check(t, role != nil)
+		assert.Equal(t, s.Id, role.PrimaryScopeId)
+		err = w.Create(context.Background(), role)
+		assert.NilError(t, err)
+		assert.Check(t, role.Id != 0)
+
+		g, err := NewRoleGrant(s, role, "everything*")
+		assert.NilError(t, err)
+		assert.Check(t, g != nil)
+		assert.Equal(t, g.RoleId, role.Id)
+		assert.Equal(t, g.Grant, "everything*")
+
+		g2, err := NewRoleGrant(s, role, "nothing*")
+		assert.NilError(t, err)
+		assert.Check(t, g2 != nil)
+		assert.Equal(t, g2.RoleId, role.Id)
+		assert.Equal(t, g2.Grant, "nothing*")
+
+		cp := g.Clone()
+		assert.Check(t, !proto.Equal(cp.(*RoleGrant).RoleGrant, g2.RoleGrant))
+
 	})
 }

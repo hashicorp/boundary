@@ -8,6 +8,7 @@ import (
 	"github.com/hashicorp/vault/sdk/helper/base62"
 	"github.com/hashicorp/watchtower/internal/db"
 	"github.com/hashicorp/watchtower/internal/iam/store"
+	"google.golang.org/protobuf/proto"
 )
 
 // RoleType defines the possible types for roles
@@ -73,8 +74,9 @@ type UserRole struct {
 	tableName string `gorm:"-"`
 }
 
-// ensure that UserRole implements the interfaces of: Resource, AssignedRole and db.VetForWriter
+// ensure that UserRole implements the interfaces of: Resource, ClonableResource, AssignedRole and db.VetForWriter
 var _ Resource = (*UserRole)(nil)
+var _ ClonableResource = (*UserRole)(nil)
 var _ AssignedRole = (*UserRole)(nil)
 var _ db.VetForWriter = (*UserRole)(nil)
 
@@ -119,6 +121,14 @@ func newUserRole(primaryScope *Scope, r *Role, u *User, opt ...Option) (Assigned
 		ur.FriendlyName = withFriendlyName
 	}
 	return ur, nil
+}
+
+// Clone creates a clone of the UserRole
+func (r *UserRole) Clone() Resource {
+	cp := proto.Clone(r.UserRole)
+	return &UserRole{
+		UserRole: cp.(*store.UserRole),
+	}
 }
 
 // VetForWrite implements db.VetForWrite() interface
@@ -184,8 +194,9 @@ type GroupRole struct {
 	tableName string `gorm:"-"`
 }
 
-// ensure that GroupRole implements the interfaces of: Resource, AssignedRole and db.VetForWriter
+// ensure that GroupRole implements the interfaces of: Resource, ClonableResource, AssignedRole and db.VetForWriter
 var _ Resource = (*GroupRole)(nil)
+var _ ClonableResource = (*GroupRole)(nil)
 var _ AssignedRole = (*GroupRole)(nil)
 var _ db.VetForWriter = (*GroupRole)(nil)
 
@@ -230,6 +241,14 @@ func newGroupRole(primaryScope *Scope, r *Role, g *Group, opt ...Option) (Assign
 		gr.FriendlyName = withFriendlyName
 	}
 	return gr, nil
+}
+
+// Clone creates a clone of the GroupRole
+func (r *GroupRole) Clone() Resource {
+	cp := proto.Clone(r.GroupRole)
+	return &GroupRole{
+		GroupRole: cp.(*store.GroupRole),
+	}
 }
 
 // VetForWrite implements db.VetForWrite() interface
