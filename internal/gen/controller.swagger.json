@@ -389,7 +389,7 @@
           "200": {
             "description": "",
             "schema": {
-              "$ref": "#/definitions/v1HostCatalog"
+              "$ref": "#/definitions/v1HostCatalogResult"
             }
           },
           "default": {
@@ -959,7 +959,7 @@
       "type": "object",
       "properties": {
         "item": {
-          "$ref": "#/definitions/v1HostCatalog"
+          "$ref": "#/definitions/v1HostCatalogResult"
         }
       }
     },

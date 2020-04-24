@@ -128,7 +128,7 @@ message GetHostCatalogRequest {
 }
 
 message GetHostCatalogResponse {
-  api.resource.v1.HostCatalog item = 1;
+  api.resource.v1.HostCatalogResult item = 1;
 }
 
 message ListHostCatalogsRequest {
