@@ -14,6 +14,11 @@ message HostCatalog {
 
 	// Marks the host_catalog as disabled.  Default is false.
 	google.protobuf.BoolValue disabled = 2;
+
+	oneof type_details {
+		StaticHostCatalog static_host_catalog_details = 3;
+		Ec2HostCatalog ec2_host_catalog_details = 4;
+	}
 }
 
 // HostCatalogResult contains all fields related to a HostCatalog resource.  The result object should be used in
@@ -31,5 +36,36 @@ message HostCatalogResult {
 	// Marks the host_catalog as disabled.  Default is false.
 	google.protobuf.BoolValue disabled = 5;
 
+	oneof type_details {
+		StaticHostCatalogResult static_host_catalog_details = 6;
+		Ec2HostCatalogResult ec2_host_catalog_details = 7;
+	}
+
 	// TODO: Figure out how to provide relevant information regarding Host and Set lists on a catalog.
+}
+
+message StaticHostCatalog {
+	// nothing here yet.
+}
+
+message StaticHostCatalogResult {
+	// nothing here yet.
+}
+
+message Ec2HostCatalog {
+	// The AWS regions from which this catalog will retrieve the EC2 instances.
+	repeated string regions = 1;
+
+	// The access key used for authenticating with AWS when retrieving EC2 instance details.
+	google.protobuf.StringValue  access_key = 2;
+	google.protobuf.StringValue  secret_key = 3;
+	google.protobuf.BoolValue rotate = 4;
+}
+
+message Ec2HostCatalogResult {
+	// The AWS regions from which this catalog will retrieve the EC2 instances.
+	repeated string regions = 1;
+
+	// The access key used for authenticating with AWS when retrieving EC2 instance details.
+	google.protobuf.StringValue  access_key = 2;
 }
