@@ -30,7 +30,7 @@ protobuild:
 
 	@protoc --proto_path=internal/proto/local --proto_path=internal/proto/third_party --swagger_out=logtostderr=true,allow_merge,merge_file_name=controller:internal/gen/. internal/proto/local/controller/api/v1/*.proto
 	@protoc-go-inject-tag -input=./internal/oplog/store/oplog.pb.go
-	@protoc-go-inject-tag -input=./internal/oplog/oplog_test/test_structures.pb.go
+	@protoc-go-inject-tag -input=./internal/oplog/oplog_test/oplog_test.pb.go
 
 
 cleanup:
