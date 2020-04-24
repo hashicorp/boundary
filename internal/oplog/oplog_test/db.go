@@ -18,31 +18,47 @@ func Reinit(db *gorm.DB) {
 	Init(db)
 }
 
-// ReplayableTestUser is simply that: a user we can replay for tests
-// the big diff is that it supports overriding the table name
-type ReplayableTestUser struct {
-	TestUser
-	Table string `gorm:"-"`
-}
-
-// TableName overrides the table name for the test user model
-func (u *ReplayableTestUser) TableName() string {
+// TableName overrides the table name for TestUser
+func (u *TestUser) TableName() string {
 	if u.Table != "" {
 		return u.Table
 	}
 	return "oplog_test_user"
 }
 
-func (u *ReplayableTestUser) SetTableName(name string) {
-	if name != "" {
-		u.Table = name
+// SetTableName allows the table name to be overridden and makes a TestUser a ReplayableMessage
+func (u *TestUser) SetTableName(n string) {
+	if n != "" {
+		u.Table = n
 	}
 }
 
-func (*TestUser) TableName() string { return "oplog_test_user" }
+// TableName overrides the table name for TestCar
+func (c *TestCar) TableName() string {
+	if c.Table != "" {
+		return c.Table
+	}
+	return "oplog_test_car"
+}
 
-// TableName overrides the table name for the test car model
-func (*TestCar) TableName() string { return "oplog_test_car" }
+// SetTableName allows the table name to be overridden and makes a TestCar a ReplayableMessage
+func (c *TestCar) SetTableName(n string) {
+	if n != "" {
+		c.Table = n
+	}
+}
 
-// TableName overrids the table name for the test rental model
-func (*TestRental) TableName() string { return "oplog_test_rental" }
+// TableName overrids the table name for TestRental
+func (r *TestRental) TableName() string {
+	if r.Table != "" {
+		return r.Table
+	}
+	return "oplog_test_rental"
+}
+
+// SetTableName allows the table name to be overridden and makes a TestRental a ReplayableMessage
+func (r *TestRental) SetTableName(n string) {
+	if n != "" {
+		r.Table = n
+	}
+}

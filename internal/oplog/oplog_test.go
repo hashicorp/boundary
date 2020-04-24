@@ -416,10 +416,11 @@ func Test_Replay(t *testing.T) {
 	assert.NilError(t, err)
 	// setup new tables for replay
 	tableSuffix := "_" + id
-	tmpUserModel := &oplog_test.ReplayableTestUser{}
-	tmpUserModel.SetTableName(fmt.Sprintf("%s%s", tmpUserModel.TableName(), tableSuffix))
-	db.AutoMigrate(tmpUserModel)
-	defer db.DropTableIfExists(tmpUserModel)
+	writer := GormWriter{Tx: db}
+
+	testUser := &oplog_test.TestUser{}
+	replayUserTable := fmt.Sprintf("%s%s", testUser.TableName(), tableSuffix)
+	defer func() { assert.NilError(t, writer.dropTableIfExists(replayUserTable)) }()
 
 	ticketName, err := uuid.GenerateUUID()
 	assert.NilError(t, err)
@@ -452,28 +453,22 @@ func Test_Replay(t *testing.T) {
 		assert.NilError(t, err)
 		userName := "foo-" + id3
 		// create a user that's replayable
-		userCreate := oplog_test.ReplayableTestUser{
-			TestUser: oplog_test.TestUser{
-				Name: userName,
-			},
+		userCreate := oplog_test.TestUser{
+			Name: userName,
 		}
 		err = tx.Create(&userCreate).Error
 		assert.NilError(t, err)
-		userSave := oplog_test.ReplayableTestUser{
-			TestUser: oplog_test.TestUser{
-				Id:    userCreate.Id,
-				Name:  userCreate.Name,
-				Email: userName + "@hashicorp.com",
-			},
+		userSave := oplog_test.TestUser{
+			Id:    userCreate.Id,
+			Name:  userCreate.Name,
+			Email: userName + "@hashicorp.com",
 		}
 		err = tx.Save(&userSave).Error
 		assert.NilError(t, err)
 
-		userUpdate := oplog_test.ReplayableTestUser{
-			TestUser: oplog_test.TestUser{
-				Id:          userCreate.Id,
-				PhoneNumber: "867-5309",
-			},
+		userUpdate := oplog_test.TestUser{
+			Id:          userCreate.Id,
+			PhoneNumber: "867-5309",
 		}
 		err = tx.Model(&userUpdate).Updates(map[string]interface{}{"PhoneNumber": "867-5309"}).Error
 		assert.NilError(t, err)
@@ -485,7 +480,7 @@ func Test_Replay(t *testing.T) {
 		)
 		assert.NilError(t, err)
 
-		types, err := NewTypeCatalog(Type{new(oplog_test.ReplayableTestUser), "user"})
+		types, err := NewTypeCatalog(Type{new(oplog_test.TestUser), "user"})
 		assert.NilError(t, err)
 
 		var foundEntry Entry
@@ -526,18 +521,14 @@ func Test_Replay(t *testing.T) {
 		assert.NilError(t, err)
 		userName2 := "foo-" + id4
 		// create a user that's replayable
-		userCreate2 := oplog_test.ReplayableTestUser{
-			TestUser: oplog_test.TestUser{
-				Name: userName2,
-			},
+		userCreate2 := oplog_test.TestUser{
+			Name: userName2,
 		}
 		err = tx2.Create(&userCreate2).Error
 		assert.NilError(t, err)
 
-		deleteUser2 := oplog_test.ReplayableTestUser{
-			TestUser: oplog_test.TestUser{
-				Id: userCreate2.Id,
-			},
+		deleteUser2 := oplog_test.TestUser{
+			Id: userCreate2.Id,
 		}
 		err = tx2.Delete(&deleteUser2).Error
 		assert.NilError(t, err)
@@ -566,7 +557,7 @@ func Test_Replay(t *testing.T) {
 		err = foundEntry2.DecryptData(context.Background())
 		assert.NilError(t, err)
 
-		types, err := NewTypeCatalog(Type{new(oplog_test.ReplayableTestUser), "user"})
+		types, err := NewTypeCatalog(Type{new(oplog_test.TestUser), "user"})
 		assert.NilError(t, err)
 
 		err = foundEntry2.Replay(context.Background(), &GormWriter{tx2}, types, tableSuffix)

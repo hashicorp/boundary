@@ -86,5 +86,20 @@ func Test_Queue(t *testing.T) {
 		assert.Check(t, err != nil)
 		assert.Equal(t, err.Error(), "remove Catalog is nil")
 	})
+	t.Run("not replayable", func(t *testing.T) {
+		u := &oplog_test.TestNonReplayableUser{
+			Name:        "Alice",
+			PhoneNumber: "867-5309",
+			Email:       "alice@bob.com",
+		}
+		err = queue.Add(u, "user", OpType_CREATE_OP)
+		assert.Check(t, err != nil)
+		assert.Equal(t, err.Error(), "error *oplog_test.TestNonReplayableUser is not a ReplayableMessage")
+	})
+	t.Run("nil message", func(t *testing.T) {
+		err = queue.Add(nil, "user", OpType_CREATE_OP)
+		assert.Check(t, err != nil)
+		assert.Equal(t, err.Error(), "error <nil> is not a ReplayableMessage")
+	})
 
 }
