@@ -2,7 +2,7 @@ syntax = "proto3";
 
 package controller.api.v1;
 
-option go_package = "github.com/hashicorp/watchtower/gen/controller/api;api";
+option go_package = "github.com/hashicorp/watchtower/internal/gen/controller/api;api";
 
 import "protoc-gen-swagger/options/annotations.proto";
 import "google/api/annotations.proto";
@@ -150,7 +150,7 @@ message CreateHostCatalogRequest {
 }
 
 message CreateHostCatalogResponse {
-  string ref = 1;
+  string uri = 1;
   api.resource.v1.HostCatalogResult item = 2;
 }
 

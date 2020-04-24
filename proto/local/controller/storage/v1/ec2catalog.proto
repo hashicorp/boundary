@@ -2,7 +2,7 @@ syntax = "proto3";
 
 package controller.storage.v1;
 
-option go_package = "github.com/hashicorp/watchtower/gen/controller/storage;storage";
+option go_package = "github.com/hashicorp/watchtower/internal/gen/controller/storage;storage";
 
 import "google/protobuf/timestamp.proto";
 

@@ -1,0 +1,28 @@
+syntax = "proto3";
+
+package controller.api.resource.v1;
+
+option go_package = "github.com/hashicorp/watchtower/internal/gen/controller/api/resource;resource";
+
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/wrappers.proto";
+
+message HostSet {
+	google.protobuf.StringValue friendly_name = 2;
+
+	// Marks the host_set as disabled.  Default is false.
+	google.protobuf.BoolValue disabled = 5;
+}
+
+message HostSetResult {
+	string uri = 1;
+	google.protobuf.StringValue friendly_name = 2;
+
+	// The time this host_set was created.
+	google.protobuf.Timestamp created_time = 3;
+	// The time this host_set was last updated.
+	google.protobuf.Timestamp updated_time = 4;
+
+	// Marks the host_set as disabled.  Default is false.
+	google.protobuf.BoolValue disabled = 5;
+}

@@ -7,12 +7,23 @@ option go_package = "github.com/hashicorp/watchtower/internal/gen/controller/api
 import "protoc-gen-swagger/options/annotations.proto";
 import "google/api/annotations.proto";
 import "google/protobuf/field_mask.proto";
-import "controller/api/resource/v1/host.proto";
+import "google/protobuf/wrappers.proto";
+import "controller/api/resource/v1/host_set.proto";
 
-service HostService {
-  rpc GetHost(GetHostRequest) returns (GetHostResponse) {
+option (grpc.gateway.protoc_gen_swagger.options.openapiv2_swagger) = {
+  info: {
+    title: "Controller IAM API"
+    version: "0.0.1"
+    description: "API for managing the IAM resources for a watchtower deployment."
+  }
+  schemes: HTTPS
+  schemes: HTTP
+};
+
+service HostSetService {
+  rpc GetHostSet(GetHostSetRequest) returns (GetHostSetResponse) {
     option (google.api.http) = {
-      get: "/v1/org/{org}/project/{project}/host_catalogs/{catalog_id}/hosts/{id}"
+      get: "/v1/org/{org}/project/{project}/host_sets/{id}"
       response_body: "item"
     };
     option (grpc.gateway.protoc_gen_swagger.options.openapiv2_operation) = {
@@ -29,9 +40,9 @@ service HostService {
       }
     };
   }
-  rpc ListHosts(ListHostsRequest) returns (ListHostsResponse) {
+  rpc ListHostSets(ListHostSetsRequest) returns (ListHostSetsResponse) {
     option (google.api.http) = {
-      get: "/v1/org/{org}/project/{project}/host_catalogs/{catalog_id}/hosts"
+      get: "/v1/org/{org}/project/{project}/host_sets"
     };
     option (grpc.gateway.protoc_gen_swagger.options.openapiv2_operation) = {
       responses: {
@@ -47,9 +58,9 @@ service HostService {
       }
     };
   }
-  rpc CreateHost(CreateHostRequest) returns (CreateHostResponse) {
+  rpc CreateHostSet(CreateHostSetRequest) returns (CreateHostSetResponse) {
     option (google.api.http) = {
-      post: "/v1/org/{org}/project/{project}/host_catalogs/{catalog_id}/hosts"
+      post: "/v1/org/{org}/project/{project}/host_sets"
       body: "item"
       response_body: "item"
     };
@@ -67,12 +78,12 @@ service HostService {
       }
     };
   }
-  rpc UpdateHost(UpdateHostRequest) returns (UpdateHostResponse) {
+  rpc UpdateHostSet(UpdateHostSetRequest) returns (UpdateHostSetResponse) {
     option (google.api.http) = {
-      patch: "/v1/org/{org}/project/{project}/host_catalogs/{catalog_id}/hosts/{id}"
+      patch: "/v1/org/{org}/project/{project}/host_sets/{id}"
       body: "item"
         additional_bindings {
-          patch: "/v1/org/{org}/project/{project}/host_catalogs/{catalog_id}/hosts/{id}"
+          patch: "/v1/org/{org}/project/{project}/host_sets/{id}"
           body: "*"
         }
     };
@@ -90,9 +101,9 @@ service HostService {
       }
     };
   }
-  rpc DeleteHost(DeleteHostRequest) returns (DeleteHostResponse) {
+  rpc DeleteHostSet(DeleteHostSetRequest) returns (DeleteHostSetResponse) {
     option (google.api.http) = {
-      delete: "/v1/org/{org}/project/{project}/host_catalogs/{catalog_id}/hosts/{id}"
+      delete: "/v1/org/{org}/project/{project}/host_sets/{id}"
     };
     option (grpc.gateway.protoc_gen_swagger.options.openapiv2_operation) = {
       responses: {
@@ -110,69 +121,64 @@ service HostService {
   }
 }
 
-enum HostView {
-  HOST_VIEW_UNSPECIFIED = 0;
-  HOST_VIEW_BASIC = 1;
-  HOST_VIEW_FULL = 2;
+enum HostSetView {
+  HOST_SET_VIEW_UNSPECIFIED = 0;
+  HOST_SET_VIEW_BASIC = 1;
+  HOST_SET_VIEW_FULL = 2;
 }
 
-message GetHostRequest {
+
+message GetHostSetRequest {
   string org = 1;
   string project = 2;
-  string catalog_id = 3;
-  string id = 4;
-  HostView view = 5;
+  string id = 3;
+  HostSetView view = 4;
 }
 
-message GetHostResponse {
-  api.resource.v1.HostResult item = 1;
+message GetHostSetResponse {
+  api.resource.v1.HostSetResult item = 1;
 }
 
-message ListHostsRequest {
+message ListHostSetsRequest {
   string org = 1;
   string project = 2;
-  string catalog_id = 3;
-
-  bool ignore_result_limit = 4;
-  HostView view = 5;
+  bool ignore_result_limit = 3;
+  HostSetView view = 4;
 }
 
-message ListHostsResponse {
-  repeated api.resource.v1.HostResult items = 1;
+message ListHostSetsResponse {
+  repeated api.resource.v1.HostSetResult items = 1;
 }
 
-message CreateHostRequest {
+message CreateHostSetRequest {
   string org = 1;
   string project = 2;
-  string catalog_id = 3;
-  api.resource.v1.Host item = 4;
+  api.resource.v1.HostSet item = 3;
 }
 
-message CreateHostResponse {
-  string ref = 1;
-  api.resource.v1.HostResult item = 2;
+message CreateHostSetResponse {
+  string uri = 1;
+  api.resource.v1.HostSetResult item = 2;
 }
 
-message UpdateHostRequest {
+message UpdateHostSetRequest {
   string org = 1;
   string project = 2;
-  string catalog_id = 3;
-  string id = 4;
-  api.resource.v1.Host item = 5;
-  google.protobuf.FieldMask update_mask = 6;
+  string id = 3;
+  api.resource.v1.HostSet item = 4;
+  google.protobuf.FieldMask update_mask = 5;
 }
 
-message UpdateHostResponse {
-  api.resource.v1.HostResult item = 1;
+message UpdateHostSetResponse {
+  api.resource.v1.HostSetResult item = 1;
 }
 
-message DeleteHostRequest {
+message DeleteHostSetRequest {
   string org = 1;
-  string project = 2;
-  string catalog_id = 3;
-  string id = 4;
+  string project =2;
+  string id = 3;
 }
 
-message DeleteHostResponse {
+message DeleteHostSetResponse {
   bool existed = 1;
 }

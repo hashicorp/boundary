@@ -29,7 +29,7 @@ protobuild:
 	# Move the generated files from the tmp file subdirectories into the current repo.
 	cp -R ${TMP_DIR}/${REPO_PATH}/* .
 
-	@protoc --proto_path=proto/local --proto_path=proto/third_party --swagger_out=logtostderr=true,allow_merge,merge_file_name=controller:gen/. proto/local/controller/api/v1/*.proto
+	@protoc --proto_path=proto/local --proto_path=proto/third_party --swagger_out=logtostderr=true,allow_merge,merge_file_name=controller:internal/gen/. proto/local/controller/api/v1/*.proto
 	@protoc-go-inject-tag -input=./internal/oplog/store/oplog.pb.go
 	@protoc-go-inject-tag -input=./internal/oplog/oplog_test/oplog_test.pb.go
 
