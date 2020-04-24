@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"reflect"
 	"strconv"
 
 	wrapping "github.com/hashicorp/go-kms-wrapping"
@@ -16,7 +15,8 @@ import (
 type Repository interface {
 	Create(ctx context.Context, r Resource, opt ...Option) (Resource, error)
 	Update(ctx context.Context, r Resource, fieldMaskPaths []string, opt ...Option) (Resource, error)
-	LookupById(ctx context.Context, publicId string, r Resource, opt ...Option) error
+	LookupById(ctx context.Context, r Resource, opt ...Option) error
+	LookupByFriendlyName(ctx context.Context, resource Resource, opt ...Option) error
 }
 
 // dbRepository is the iam database repository
@@ -26,8 +26,20 @@ type dbRepository struct {
 	wrapper wrapping.Wrapper
 }
 
+// ensure that dbRepository implements the interfaces of: Repository
+var _ Repository = (*dbRepository)(nil)
+
 // NewDatabaseRepository creates a new iam database repository
 func NewDatabaseRepository(r db.Reader, w db.Writer, wrapper wrapping.Wrapper) (Repository, error) {
+	if r == nil {
+		return nil, errors.New("error creating db repository with nil reader")
+	}
+	if w == nil {
+		return nil, errors.New("error creating db repository with nil writer")
+	}
+	if wrapper == nil {
+		return nil, errors.New("error creating db repository with nil wrapper")
+	}
 	return &dbRepository{
 		reader:  r,
 		writer:  w,
@@ -37,14 +49,19 @@ func NewDatabaseRepository(r db.Reader, w db.Writer, wrapper wrapping.Wrapper) (
 
 // Create will create a new iam resource in the db repository with an oplog entry
 func (r *dbRepository) Create(ctx context.Context, resource Resource, opt ...Option) (Resource, error) {
+	if resource == nil {
+		return nil, errors.New("error creating resource that is nil")
+	}
 	resourceCloner, ok := resource.(ClonableResource)
 	if !ok {
 		return nil, errors.New("error resource is not clonable for create")
 	}
-	metadata, err := r.scopeMetaData(ctx, resource)
+	metadata, err := r.stdMetadata(ctx, resource)
 	if err != nil {
 		return nil, fmt.Errorf("error getting metadata for create: %w", err)
 	}
+	metadata["op-type"] = []string{strconv.Itoa(int(oplog.OpType_CREATE_OP))}
+
 	var returnedResource Resource
 	_, err = r.writer.DoTx(
 		ctx,
@@ -70,10 +87,12 @@ func (r *dbRepository) Update(ctx context.Context, resource Resource, fieldMaskP
 	if !ok {
 		return nil, errors.New("error resource is not clonable for update")
 	}
-	metadata, err := r.scopeMetaData(ctx, resource)
+	metadata, err := r.stdMetadata(ctx, resource)
 	if err != nil {
 		return nil, fmt.Errorf("error getting metadata for update: %w", err)
 	}
+	metadata["op-type"] = []string{strconv.Itoa(int(oplog.OpType_UPDATE_OP))}
+
 	var returnedResource Resource
 	_, err = r.writer.DoTx(
 		ctx,
@@ -95,31 +114,37 @@ func (r *dbRepository) Update(ctx context.Context, resource Resource, fieldMaskP
 }
 
 // LookupById will lookup an iam resource from the repository using its public id
-func (r *dbRepository) LookupById(ctx context.Context, publicId string, resource Resource, opt ...Option) error {
-	resourceId := reflect.ValueOf(resource).Elem().FieldByName("PublicId")
-	if !resourceId.IsValid() {
-		return errors.New("error resource doesn't have a public id field")
-	}
-	resourceId.SetString(publicId)
+func (r *dbRepository) LookupById(ctx context.Context, resource Resource, opt ...Option) error {
 	return r.reader.LookupByPublicId(ctx, resource)
 }
 
 // LookupById will lookup an iam resource from the repository using its friendly name
-func (r *dbRepository) LookupByFriendlyName(ctx context.Context, name string, resource Resource, opt ...Option) error {
-	resourceName := reflect.ValueOf(resource).Elem().FieldByName("FriendlyName")
-	if !resourceName.IsValid() {
-		return errors.New("error resource doesn't have a friendly name field")
-	}
-	resourceName.SetString(name)
+func (r *dbRepository) LookupByFriendlyName(ctx context.Context, resource Resource, opt ...Option) error {
 	return r.reader.LookupByFriendlyName(ctx, resource)
 }
-func (r *dbRepository) scopeMetaData(ctx context.Context, resource Resource) (oplog.Metadata, error) {
+func (r *dbRepository) stdMetadata(ctx context.Context, resource Resource) (oplog.Metadata, error) {
+	rType := strconv.Itoa(int(resource.ResourceType()))
+	if s, ok := resource.(*Scope); ok {
+		if s.Type == uint32(OrganizationScope) {
+			return oplog.Metadata{
+				"resource-public-id": []string{resource.GetPublicId()},
+				"scope-id":           []string{s.PublicId},
+				"scope-type":         []string{strconv.Itoa(int(s.Type))},
+				"resource-type":      []string{rType},
+			}, nil
+		}
+	}
 	scope, err := resource.GetPrimaryScope(ctx, r.reader)
 	if err != nil {
 		return nil, err
 	}
+	if scope == nil {
+		return nil, errors.New("error primary scope is nil")
+	}
 	return oplog.Metadata{
-		"scope-id":   []string{scope.PublicId},
-		"scope-type": []string{strconv.Itoa(int(scope.Type))},
+		"resource-public-id": []string{resource.GetPublicId()},
+		"scope-id":           []string{scope.PublicId},
+		"scope-type":         []string{strconv.Itoa(int(scope.Type))},
+		"resource-type":      []string{rType},
 	}, nil
 }
