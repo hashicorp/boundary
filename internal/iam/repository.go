@@ -83,6 +83,9 @@ func (r *dbRepository) Create(ctx context.Context, resource Resource, opt ...Opt
 
 // Update will update an iam resource in the db repository with an oplog entry
 func (r *dbRepository) Update(ctx context.Context, resource Resource, fieldMaskPaths []string, opt ...Option) (Resource, error) {
+	if resource == nil {
+		return nil, errors.New("error updating resource that is nil")
+	}
 	resourceCloner, ok := resource.(ClonableResource)
 	if !ok {
 		return nil, errors.New("error resource is not clonable for update")
