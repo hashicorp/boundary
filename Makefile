@@ -20,7 +20,7 @@ protobuild:
 		"--plugin_name=go" \
 		"--plugin_out=plugins=grpc:${TMP_DIR}"
 	@bash make/protoc_gen_plugin.bash \
-		"--proto_path=internal/proto/local/api" \
+		"--proto_path=internal/proto/local/" \
 		"--proto_include_path=internal/proto/third_party" \
 		"--plugin_name=grpc-gateway" \
 		"--plugin_out=logtostderr=true:${TMP_DIR}"

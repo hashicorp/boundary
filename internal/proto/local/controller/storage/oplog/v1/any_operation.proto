@@ -5,17 +5,13 @@ import "google/protobuf/field_mask.proto";
 package controller.storage.oplog.v1;
 option go_package = "github.com/hashicorp/watchtower/internal/oplog;oplog";
 
-// OpType provides the type of operation the Any message represents (create,
+// OpType provides the type of database operation the Any message represents (create,
 // update, delete)
 enum OpType {
-  // UNKNOWN_OP is an unknown operation
-  UNKNOWN_OP = 0;
-  // CREATE_OP is a create operation
-  CREATE_OP = 1;
-  // UPDATE_OP is an update operation
-  UPDATE_OP = 2;
-  // DELETE_OP is a delete operation
-  DELETE_OP = 3;
+  OP_TYPE_UNSPECIFIED = 0;
+  OP_TYPE_CREATE = 1;
+  OP_TYPE_UPDATE = 2;
+  OP_TYPE_DELETE = 3;
 }
 
 // AnyOperation provides a message for anything and the type of operation it

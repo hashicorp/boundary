@@ -2,7 +2,6 @@ build:
   roots:
     - internal/proto/local
     - internal/proto/third_party
-    - internal/oplog
 
 lint:
   use:
@@ -10,5 +9,3 @@ lint:
   ignore:
     - protoc-gen-swagger
     - google
-    # TODO: Remove once the proto files under oplog are compliant with the linter.
-    - controller/storage/oplog

@@ -1,7 +1,7 @@
 syntax = "proto3";
 
 // define a test proto package
-package controller.storage.oplog.v1;
+package controller.storage.oplog.test.v1;
 option go_package = "github.com/hashicorp/watchtower/internal/oplog/oplog_test;oplog_test";
 
 // TestUser for gorm test user model

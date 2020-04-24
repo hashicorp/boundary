@@ -10,9 +10,10 @@ import (
 
 	protoV1 "github.com/golang/protobuf/proto"
 	wrapping "github.com/hashicorp/go-kms-wrapping"
-	"github.com/hashicorp/watchtower/internal/oplog/store"
 	_ "github.com/lib/pq"
 	"google.golang.org/protobuf/proto"
+
+	"github.com/hashicorp/watchtower/internal/oplog/store"
 )
 
 // Version of oplog entries (among other things, it's used to manage upgrade compatibility when replicating)
@@ -217,15 +218,15 @@ func (e *Entry) Replay(ctx context.Context, tx Writer, types *TypeCatalog, table
 		defer em.SetTableName(origTableName)
 		em.SetTableName(origTableName + tableSuffix)
 		switch m.OpType {
-		case OpType_CREATE_OP:
+		case OpType_OP_TYPE_CREATE:
 			if err := tx.Create(m.Message); err != nil {
 				return fmt.Errorf("replay error: %w", err)
 			}
-		case OpType_UPDATE_OP:
+		case OpType_OP_TYPE_UPDATE:
 			if err := tx.Update(m.Message, m.FieldMaskPaths); err != nil {
 				return fmt.Errorf("replay error: %w", err)
 			}
-		case OpType_DELETE_OP:
+		case OpType_OP_TYPE_DELETE:
 			if err := tx.Delete(m.Message); err != nil {
 				return fmt.Errorf("replay error: %w", err)
 			}
