@@ -92,12 +92,12 @@ func Test_Queue(t *testing.T) {
 			PhoneNumber: "867-5309",
 			Email:       "alice@bob.com",
 		}
-		err = queue.Add(u, "user", OpType_CREATE_OP)
+		err = queue.Add(u, "user", OpType_OP_TYPE_CREATE)
 		assert.Check(t, err != nil)
 		assert.Equal(t, err.Error(), "error *oplog_test.TestNonReplayableUser is not a ReplayableMessage")
 	})
 	t.Run("nil message", func(t *testing.T) {
-		err = queue.Add(nil, "user", OpType_CREATE_OP)
+		err = queue.Add(nil, "user", OpType_OP_TYPE_CREATE)
 		assert.Check(t, err != nil)
 		assert.Equal(t, err.Error(), "error <nil> is not a ReplayableMessage")
 	})
