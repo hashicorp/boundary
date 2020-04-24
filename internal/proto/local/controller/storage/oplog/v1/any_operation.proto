@@ -2,7 +2,7 @@ syntax = "proto3";
 
 import "google/protobuf/field_mask.proto";
 
-package hashicorp.watchtower.controller.oplog.v1;
+package controller.storage.oplog.v1;
 option go_package = "github.com/hashicorp/watchtower/internal/oplog;oplog";
 
 // OpType provides the type of operation the Any message represents (create,

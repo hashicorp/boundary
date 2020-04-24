@@ -11,6 +11,4 @@ lint:
     - protoc-gen-swagger
     - google
     # TODO: Remove once the proto files under oplog are compliant with the linter.
-    - any_operation.proto
-    - oplog_test
-    - store/oplog.proto
+    - controller/storage/oplog

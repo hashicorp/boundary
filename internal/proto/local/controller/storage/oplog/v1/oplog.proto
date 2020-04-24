@@ -1,7 +1,7 @@
 syntax = "proto3";
 
 // define an oplog package within the watchtower controller
-package hashicorp.watchtower.controller.oplog.store.v1;
+package controller.storage.oplog.v1;
 option go_package = "github.com/hashicorp/watchtower/internal/oplog/store;store";
 
 import "google/protobuf/timestamp.proto";
