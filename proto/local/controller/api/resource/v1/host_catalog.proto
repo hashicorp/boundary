@@ -1,0 +1,24 @@
+syntax = "proto3";
+
+package controller.api.resource.v1;
+
+option go_package = "github.com/hashicorp/watchtower/gen/controller/api/resource;resource";
+
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/wrappers.proto";
+
+message HostCatalog {
+	// Must be in the format "org/<org_id>/project/<project_id>/host_catalogs/<catalog_id>"
+	string uri = 1;
+	google.protobuf.StringValue friendly_name = 2;
+
+	// The time this host_catalog was created.
+	google.protobuf.Timestamp created_time = 3;
+	// The time this host_catalog was last updated.
+	google.protobuf.Timestamp updated_time = 4;
+
+	// Marks the host_catalog as disabled.  Default is false.
+	google.protobuf.BoolValue disabled = 5;
+
+	// TODO: Figure out how to provide relevant information regarding Host and Set lists on a catalog.
+}

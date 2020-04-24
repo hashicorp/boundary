@@ -1,0 +1,176 @@
+syntax = "proto3";
+
+package controller.api.v1;
+
+option go_package = "github.com/hashicorp/watchtower/gen/controller/api;api";
+
+import "protoc-gen-swagger/options/annotations.proto";
+import "google/api/annotations.proto";
+import "google/protobuf/field_mask.proto";
+import "controller/api/resource/v1/host.proto";
+
+service HostService {
+  rpc GetHost(GetHostRequest) returns (GetHostResponse) {
+    option (google.api.http) = {
+      get: "/v1/org/{org}/project/{project}/host_catalogs/{catalog_id}/hosts/{id}"
+      response_body: "item"
+    };
+    option (grpc.gateway.protoc_gen_swagger.options.openapiv2_operation) = {
+      responses: {
+        key: "default"
+        value: {
+          description: "The default error structure returned."
+          schema: {
+            json_schema: {
+              ref: ".controller.api.v1.Error"
+            };
+          }
+        }
+      }
+    };
+  }
+  rpc ListHosts(ListHostsRequest) returns (ListHostsResponse) {
+    option (google.api.http) = {
+      get: "/v1/{parent=org/*/project/*/host_catalogs/*}/hosts"
+    };
+    option (grpc.gateway.protoc_gen_swagger.options.openapiv2_operation) = {
+      responses: {
+        key: "default"
+        value: {
+          description: "The default error structure returned."
+          schema: {
+            json_schema: {
+              ref: ".controller.api.v1.Error"
+            };
+          }
+        }
+      }
+    };
+  }
+  rpc CreateHost(CreateHostRequest) returns (CreateHostResponse) {
+    option (google.api.http) = {
+      post: "/v1/{parent=org/*/project/*/host_catalogs/*}/hosts"
+      body: "item"
+      response_body: "item"
+    };
+    option (grpc.gateway.protoc_gen_swagger.options.openapiv2_operation) = {
+      responses: {
+        key: "default"
+        value: {
+          description: "The default error structure returned."
+          schema: {
+            json_schema: {
+              ref: ".controller.api.v1.Error"
+            };
+          }
+        }
+      }
+    };
+  }
+  rpc UpdateHost(UpdateHostRequest) returns (UpdateHostResponse) {
+  // TODO: Potentially make this in line with GET and DELETE so we can correctly share the URLs for swagger, or make
+  // those other methods in line with this.
+    option (google.api.http) = {
+      patch: "/v1/{item.uri=org/*/project/*/host_catalogs/*/hosts/*}"
+      body: "item"
+        additional_bindings {
+          patch: "/v1/{item.uri=org/*/project/*/host_catalogs/*/hosts/*}"
+          body: "*"
+        }
+    };
+    option (grpc.gateway.protoc_gen_swagger.options.openapiv2_operation) = {
+      responses: {
+        key: "default"
+        value: {
+          description: "The default error structure returned."
+          schema: {
+            json_schema: {
+              ref: ".controller.api.v1.Error"
+            };
+          }
+        }
+      }
+    };
+  }
+  rpc DeleteHost(DeleteHostRequest) returns (DeleteHostResponse) {
+    option (google.api.http) = {
+      delete: "/v1/org/{org}/project/{project}/host_catalogs/{catalog_id}/hosts/{id}"
+    };
+    option (grpc.gateway.protoc_gen_swagger.options.openapiv2_operation) = {
+      responses: {
+        key: "default"
+        value: {
+          description: "The default error structure returned."
+          schema: {
+            json_schema: {
+              ref: ".controller.api.v1.Error"
+            };
+          }
+        }
+      }
+    };
+  }
+}
+
+enum HostView {
+  HOST_VIEW_UNSPECIFIED = 0;
+  HOST_VIEW_BASIC = 1;
+  HOST_VIEW_FULL = 2;
+}
+
+message GetHostRequest {
+  // TODO: Colapse this down into a single uri field once we figure out how to generate good swagger where the full
+  // uri is declared in a single field.
+  string org = 1;
+  string project = 2;
+  string catalog_id = 3;
+  string id = 4;
+  HostView view = 5;
+}
+
+message GetHostResponse {
+  api.resource.v1.Host item = 1;
+}
+
+message ListHostsRequest {
+  string parent = 1;
+  int32 count = 2;
+  bool ignore_result_limit = 3;
+  HostView view = 4;
+}
+
+message ListHostsResponse {
+  repeated api.resource.v1.Host items = 1;
+}
+
+message CreateHostRequest {
+  string parent = 1;
+  api.resource.v1.Host item = 2;
+}
+
+message CreateHostResponse {
+  string ref = 1;
+  api.resource.v1.Host item = 2;
+}
+
+message UpdateHostRequest {
+  api.resource.v1.Host item = 1;
+  google.protobuf.FieldMask update_mask = 2;
+}
+
+message UpdateHostResponse {
+  api.resource.v1.Host item = 1;
+}
+
+message DeleteHostRequest {
+  // TODO: Colapse this down into a single uri field once we figure out how to generate good swagger where the full
+  // uri is declared in a single field.
+  string org = 1;
+  string project = 2;
+  string catalog_id = 3;
+  string id = 4;
+}
+
+message DeleteHostResponse {
+  bool existed = 1;
+}
