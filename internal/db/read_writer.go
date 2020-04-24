@@ -107,6 +107,10 @@ type GormReadWriter struct {
 	Tx *gorm.DB
 }
 
+// ensure that GroupRole implements the interfaces of: Resource, ClonableResource, AssignedRole and db.VetForWriter
+var _ Reader = (*GormReadWriter)(nil)
+var _ Writer = (*GormReadWriter)(nil)
+
 // Dialect returns the RDBMS dialect: postgres, mysql, etc
 func (rw *GormReadWriter) Dialect() (string, error) {
 	if rw.Tx == nil {
