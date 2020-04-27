@@ -15,16 +15,6 @@ if not exists (
 end if;
 end;
 $$ language 'plpgsql';
-CREATE TABLE if not exists iam_scope (
-  id bigint generated always as identity primary key,
-  create_time timestamp with time zone default current_timestamp,
-  update_time timestamp with time zone default current_timestamp,
-  public_id text NOT NULL UNIQUE,
-  friendly_name text UNIQUE,
-  type int NOT NULL,
-  parent_id bigint REFERENCES iam_scope(id),
-  disabled BOOLEAN NOT NULL default FALSE
-);
 --
 -- define the iam_auth_method_type_enm lookup table
 --
@@ -47,9 +37,50 @@ ADD
     id BETWEEN 0
     AND 2
   );
-ALTER TABLE iam_scope
-ADD
-  FOREIGN KEY (type) REFERENCES iam_scope_type_enm(id);
+CREATE TABLE if not exists iam_scope (
+    id bigint generated always as identity primary key,
+    create_time timestamp with time zone default current_timestamp,
+    update_time timestamp with time zone default current_timestamp,
+    public_id text NOT NULL UNIQUE,
+    friendly_name text UNIQUE,
+    type int NOT NULL REFERENCES iam_scope_type_enm(id) CHECK(
+      (
+        type = '1'
+        and parent_id = NULL
+      )
+      or (
+        type = '2'
+        and parent_id IS NOT NULL
+      )
+    ),
+    parent_id bigint REFERENCES iam_scope(id),
+    disabled BOOLEAN NOT NULL default FALSE
+  );
+-- check_scope_parent_is_org will ensure that project parents are always organizations
+  CREATE
+  OR REPLACE FUNCTION check_scope_parent_is_org() RETURNS TRIGGER
+SET SCHEMA
+  'public' LANGUAGE plpgsql AS $$ DECLARE parent_type INT;
+-- if it's an organization type then return
+  BEGIN IF new.type = '1' THEN return NEW;
+END IF;
+select
+  "type"
+from iam_scope
+where
+  id = new.parent_id INTO parent_type;
+--  projects (2) cannot be parents
+  IF parent_type = '2' THEN RAISE EXCEPTION 'parent must be an organization';
+end if;
+return new;
+END;
+$$;
+CREATE TRIGGER check_iam_scope_insert BEFORE
+insert ON iam_scope FOR EACH ROW
+  WHEN (new.type = '2') EXECUTE PROCEDURE check_scope_parent_is_org();
+CREATE TRIGGER check_iam_scope_update BEFORE
+update ON iam_scope FOR EACH ROW
+  WHEN (new.type = '2') EXECUTE PROCEDURE check_scope_parent_is_org();
 CREATE TABLE if not exists iam_user (
     id bigint generated always as identity primary key,
     create_time timestamp with time zone NOT NULL default current_timestamp,
