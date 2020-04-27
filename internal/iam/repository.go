@@ -13,8 +13,16 @@ import (
 
 // Repository defines an interface for the iam repositories (db, file, inmem, etc).
 type Repository interface {
-	Create(ctx context.Context, r Resource, opt ...Option) (Resource, error)
-	Update(ctx context.Context, r Resource, fieldMaskPaths []string, opt ...Option) (Resource, error)
+	CreateUser(ctx context.Context, user *User, opt ...Option) (*User, error)
+	UpdateUser(ctx context.Context, user *User, fieldMaskPaths []string, opt ...Option) (*User, error)
+	LookupUser(ctx context.Context, opt ...Option) (User, error)
+
+	CreateScope(ctx context.Context, scope *Scope, opt ...Option) (*User, error)
+	UpdateScope(ctx context.Context, scope *Scope, fieldMaskPaths []string, opt ...Option) (*Scope, error)
+	LookupScope(ctx context.Context, opt ...Option) (Scope, error)
+
+	create(ctx context.Context, r Resource, opt ...Option) (Resource, error)
+	update(ctx context.Context, r Resource, fieldMaskPaths []string, opt ...Option) (Resource, error)
 	LookupById(ctx context.Context, r Resource, opt ...Option) error
 	LookupByFriendlyName(ctx context.Context, resource Resource, opt ...Option) error
 }
@@ -47,8 +55,73 @@ func NewDatabaseRepository(r db.Reader, w db.Writer, wrapper wrapping.Wrapper) (
 	}, nil
 }
 
+func (r *dbRepository) CreateUser(ctx context.Context, user *User, opt ...Option) (*User, error) {
+	resource, err := r.create(context.Background(), user)
+	return resource.(*User), err
+}
+func (r *dbRepository) UpdateUser(ctx context.Context, user *User, fieldMaskPaths []string, opt ...Option) (*User, error) {
+	resource, err := r.update(context.Background(), user, fieldMaskPaths)
+	return resource.(*User), err
+}
+
+func (r *dbRepository) LookupUser(ctx context.Context, opt ...Option) (User, error) {
+	opts := GetOpts(opt...)
+	withPublicId := opts[optionWithPublicId].(string)
+	withFriendlyName := opts[optionWithFriendlyName].(string)
+
+	user := allocUser()
+
+	if withPublicId != "" {
+		user.PublicId = withPublicId
+		if err := r.reader.LookupByPublicId(ctx, &user); err != nil {
+			return allocUser(), err
+		}
+		return user, nil
+	}
+	if withFriendlyName != "" {
+		user.PublicId = withFriendlyName
+		if err := r.reader.LookupByFriendlyName(ctx, &user); err != nil {
+			return allocUser(), err
+		}
+		return user, nil
+	}
+	return allocUser(), errors.New("you must loop up users by id or friendly name")
+}
+
+func (r *dbRepository) CreateScope(ctx context.Context, scope *Scope, opt ...Option) (*User, error) {
+	resource, err := r.create(context.Background(), scope)
+	return resource.(*User), err
+}
+func (r *dbRepository) UpdateScope(ctx context.Context, scope *Scope, fieldMaskPaths []string, opt ...Option) (*Scope, error) {
+	resource, err := r.update(context.Background(), scope, fieldMaskPaths)
+	return resource.(*Scope), err
+}
+func (r *dbRepository) LookupScope(ctx context.Context, opt ...Option) (Scope, error) {
+	opts := GetOpts(opt...)
+	withPublicId := opts[optionWithPublicId].(string)
+	withFriendlyName := opts[optionWithFriendlyName].(string)
+
+	scope := allocScope()
+
+	if withPublicId != "" {
+		scope.PublicId = withPublicId
+		if err := r.reader.LookupByPublicId(ctx, &scope); err != nil {
+			return allocScope(), err
+		}
+		return scope, nil
+	}
+	if withFriendlyName != "" {
+		scope.FriendlyName = withFriendlyName
+		if err := r.reader.LookupByFriendlyName(ctx, &scope); err != nil {
+			return allocScope(), err
+		}
+		return scope, nil
+	}
+	return allocScope(), errors.New("you must loop up scopes by id or friendly name")
+}
+
 // Create will create a new iam resource in the db repository with an oplog entry
-func (r *dbRepository) Create(ctx context.Context, resource Resource, opt ...Option) (Resource, error) {
+func (r *dbRepository) create(ctx context.Context, resource Resource, opt ...Option) (Resource, error) {
 	if resource == nil {
 		return nil, errors.New("error creating resource that is nil")
 	}
@@ -82,7 +155,7 @@ func (r *dbRepository) Create(ctx context.Context, resource Resource, opt ...Opt
 }
 
 // Update will update an iam resource in the db repository with an oplog entry
-func (r *dbRepository) Update(ctx context.Context, resource Resource, fieldMaskPaths []string, opt ...Option) (Resource, error) {
+func (r *dbRepository) update(ctx context.Context, resource Resource, fieldMaskPaths []string, opt ...Option) (Resource, error) {
 	if resource == nil {
 		return nil, errors.New("error updating resource that is nil")
 	}

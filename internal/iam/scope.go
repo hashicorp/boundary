@@ -84,6 +84,12 @@ func NewScope(scopeType ScopeType, opt ...Option) (*Scope, error) {
 	return s, nil
 }
 
+func allocScope() Scope {
+	return Scope{
+		Scope: &store.Scope{},
+	}
+}
+
 // Clone creates a clone of the Scope
 func (s *Scope) Clone() Resource {
 	cp := proto.Clone(s.Scope)

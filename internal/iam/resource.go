@@ -55,6 +55,24 @@ const (
 	ResourceTypeAuthMethod        ResourceType = 12
 )
 
+func (r ResourceType) String() string {
+	return [...]string{
+		"unknown",
+		"scope",
+		"user",
+		"group",
+		"role",
+		"organization",
+		"group member",
+		"group member user",
+		"assigned role",
+		"assigned role user",
+		"assigned role group",
+		"role grant",
+		"auth method",
+	}[r]
+}
+
 type ClonableResource interface {
 	Clone() Resource
 }

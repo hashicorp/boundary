@@ -101,7 +101,7 @@ func TestNewDatabaseRepository(t *testing.T) {
 		})
 	}
 }
-func Test_dbRepository_Create(t *testing.T) {
+func Test_dbRepository_create(t *testing.T) {
 	db.StartTest()
 	t.Parallel()
 	cleanup, url := db.SetupTest(t, "../db/migrations/postgres")
@@ -119,20 +119,18 @@ func Test_dbRepository_Create(t *testing.T) {
 		assert.NilError(t, err)
 
 		s, err := NewScope(OrganizationScope, WithFriendlyName("fname-"+id))
-		retScope, err := repo.Create(context.Background(), s)
+		retScope, err := repo.create(context.Background(), s)
 		assert.NilError(t, err)
 		assert.Check(t, retScope != nil)
 		assert.Check(t, retScope.GetPublicId() != "")
 		assert.Equal(t, retScope.GetFriendlyName(), "fname-"+id)
 
-		foundScope, err := NewScope(OrganizationScope)
-		foundScope.PublicId = s.PublicId
-		err = repo.LookupById(context.Background(), foundScope)
+		foundScope, err := repo.LookupScope(context.Background(), WitPublicId(s.PublicId))
 		assert.NilError(t, err)
 		assert.Equal(t, foundScope.GetPublicId(), retScope.GetPublicId())
 
-		foundScope.FriendlyName = "fname-" + id
-		err = repo.LookupByFriendlyName(context.Background(), foundScope)
+		// foundScope.FriendlyName = "fname-" + id
+		foundScope, err = repo.LookupScope(context.Background(), WithFriendlyName("fname-"+id))
 		assert.NilError(t, err)
 		assert.Equal(t, foundScope.GetPublicId(), retScope.GetPublicId())
 
@@ -150,7 +148,7 @@ func Test_dbRepository_Create(t *testing.T) {
 		repo, err := NewDatabaseRepository(rw, rw, wrapper)
 
 		s, err := NewScope(OrganizationScope)
-		retScope, err := repo.Create(context.Background(), s)
+		retScope, err := repo.create(context.Background(), s)
 		assert.NilError(t, err)
 		assert.Check(t, retScope != nil)
 		assert.Check(t, retScope.GetPublicId() != "")
@@ -159,7 +157,7 @@ func Test_dbRepository_Create(t *testing.T) {
 
 		user, err := NewUser(retScope.(*Scope))
 		assert.NilError(t, err)
-		retUser, err := repo.Create(context.Background(), user)
+		retUser, err := repo.create(context.Background(), user)
 		assert.NilError(t, err)
 		assert.Check(t, retUser != nil)
 		assert.Check(t, retUser.GetPublicId() != "")
@@ -177,14 +175,14 @@ func Test_dbRepository_Create(t *testing.T) {
 		rw := &db.GormReadWriter{Tx: conn}
 		wrapper := db.InitTestWrapper(t)
 		repo, err := NewDatabaseRepository(rw, rw, wrapper)
-		ret, err := repo.Create(context.Background(), nil)
+		resource, err := repo.create(context.Background(), nil)
 		assert.Check(t, err != nil)
-		assert.Check(t, ret == nil)
+		assert.Check(t, resource == nil)
 		assert.Equal(t, err.Error(), "error creating resource that is nil")
 	})
 }
 
-func Test_dbRepository_Update(t *testing.T) {
+func Test_dbRepository_update(t *testing.T) {
 	db.StartTest()
 	t.Parallel()
 	cleanup, url := db.SetupTest(t, "../db/migrations/postgres")
@@ -202,14 +200,14 @@ func Test_dbRepository_Update(t *testing.T) {
 		assert.NilError(t, err)
 
 		s, err := NewScope(OrganizationScope)
-		retScope, err := repo.Create(context.Background(), s)
+		retScope, err := repo.create(context.Background(), s)
 		assert.NilError(t, err)
 		assert.Check(t, retScope != nil)
 		assert.Check(t, retScope.GetPublicId() != "")
 		assert.Equal(t, retScope.GetFriendlyName(), "")
 
 		retScope.(*Scope).FriendlyName = "fname-" + id
-		retScope, err = repo.Update(context.Background(), retScope, []string{"FriendlyName"})
+		retScope, err = repo.update(context.Background(), retScope, []string{"FriendlyName"})
 		assert.NilError(t, err)
 		assert.Check(t, retScope != nil)
 		assert.Equal(t, retScope.GetFriendlyName(), "fname-"+id)
@@ -232,9 +230,9 @@ func Test_dbRepository_Update(t *testing.T) {
 		rw := &db.GormReadWriter{Tx: conn}
 		wrapper := db.InitTestWrapper(t)
 		repo, err := NewDatabaseRepository(rw, rw, wrapper)
-		ret, err := repo.Update(context.Background(), nil, nil)
+		resource, err := repo.update(context.Background(), nil, nil)
 		assert.Check(t, err != nil)
-		assert.Check(t, ret == nil)
+		assert.Check(t, resource == nil)
 		assert.Equal(t, err.Error(), "error updating resource that is nil")
 	})
 }

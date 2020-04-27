@@ -17,9 +17,19 @@ type Options map[string]interface{}
 
 func getDefaultOptions() Options {
 	return Options{
+		optionWithPublicId:     "",
 		optionWithFriendlyName: "",
 		optionWithScope:        nil,
 		optionWithDescription:  "",
+	}
+}
+
+const optionWithPublicId = "optionWithPublicId"
+
+// WitPublicId provides an optional public id
+func WitPublicId(id string) Option {
+	return func(o Options) {
+		o[optionWithPublicId] = id
 	}
 }
 

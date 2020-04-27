@@ -49,6 +49,12 @@ func NewUser(primaryScope *Scope, opt ...Option) (*User, error) {
 	return u, nil
 }
 
+func allocUser() User {
+	return User{
+		User: &store.User{},
+	}
+}
+
 // Clone creates a clone of the User
 func (u *User) Clone() Resource {
 	cp := proto.Clone(u.User)
