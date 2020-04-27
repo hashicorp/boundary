@@ -212,9 +212,7 @@ func Test_dbRepository_update(t *testing.T) {
 		assert.Check(t, retScope != nil)
 		assert.Equal(t, retScope.GetFriendlyName(), "fname-"+id)
 
-		foundScope, err := NewScope(OrganizationScope)
-		foundScope.FriendlyName = "fname-" + id
-		err = repo.LookupByFriendlyName(context.Background(), foundScope)
+		foundScope, err := repo.LookupScope(context.Background(), WithFriendlyName("fname-"+id))
 		assert.NilError(t, err)
 		assert.Equal(t, foundScope.GetPublicId(), retScope.GetPublicId())
 
