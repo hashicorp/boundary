@@ -125,7 +125,7 @@ message GetHostRequest {
 }
 
 message GetHostResponse {
-  api.resource.v1.HostResult item = 1;
+  api.resource.v1.Host item = 1;
 }
 
 message ListHostsRequest {
@@ -138,7 +138,7 @@ message ListHostsRequest {
 }
 
 message ListHostsResponse {
-  repeated api.resource.v1.HostResult items = 1;
+  repeated api.resource.v1.Host items = 1;
 }
 
 message CreateHostRequest {
@@ -150,7 +150,7 @@ message CreateHostRequest {
 
 message CreateHostResponse {
   string ref = 1;
-  api.resource.v1.HostResult item = 2;
+  api.resource.v1.Host item = 2;
 }
 
 message UpdateHostRequest {
@@ -163,7 +163,7 @@ message UpdateHostRequest {
 }
 
 message UpdateHostResponse {
-  api.resource.v1.HostResult item = 1;
+  api.resource.v1.Host item = 1;
 }
 
 message DeleteHostRequest {

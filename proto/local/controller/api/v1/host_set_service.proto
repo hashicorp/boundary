@@ -136,7 +136,7 @@ message GetHostSetRequest {
 }
 
 message GetHostSetResponse {
-  api.resource.v1.HostSetResult item = 1;
+  api.resource.v1.HostSet item = 1;
 }
 
 message ListHostSetsRequest {
@@ -147,7 +147,7 @@ message ListHostSetsRequest {
 }
 
 message ListHostSetsResponse {
-  repeated api.resource.v1.HostSetResult items = 1;
+  repeated api.resource.v1.HostSet items = 1;
 }
 
 message CreateHostSetRequest {
@@ -158,7 +158,7 @@ message CreateHostSetRequest {
 
 message CreateHostSetResponse {
   string uri = 1;
-  api.resource.v1.HostSetResult item = 2;
+  api.resource.v1.HostSet item = 2;
 }
 
 message UpdateHostSetRequest {
@@ -170,7 +170,7 @@ message UpdateHostSetRequest {
 }
 
 message UpdateHostSetResponse {
-  api.resource.v1.HostSetResult item = 1;
+  api.resource.v1.HostSet item = 1;
 }
 
 message DeleteHostSetRequest {

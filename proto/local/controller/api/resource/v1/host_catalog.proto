@@ -7,48 +7,41 @@ option go_package = "github.com/hashicorp/watchtower/internal/gen/controller/api
 import "google/protobuf/timestamp.proto";
 import "google/protobuf/wrappers.proto";
 
-// HostCatalog contains fields which are settable and modifiable by the end user.  This message should be used in
-// relevant requests.
-message HostCatalog {
-	google.protobuf.StringValue friendly_name = 1;
 
-	// Marks the host_catalog as disabled.  Default is false.
-	google.protobuf.BoolValue disabled = 2;
-
-	oneof type_details {
-		StaticHostCatalog static_host_catalog_details = 3;
-		Ec2HostCatalog ec2_host_catalog_details = 4;
-	}
+enum HostCatalogType {
+	HOST_CATALOG_TYPE_UNSPECIFIED = 0;
+	HOST_CATALOG_TYPE_EC2 = 1;
+	HOST_CATALOG_TYPE_STATIC = 2;
 }
 
 // HostCatalogResult contains all fields related to a HostCatalog resource.  The result object should be used in
 // responses but never in requests.
-message HostCatalogResult {
+message HostCatalog {
 	// Must be in the format "org/<org_id>/project/<project_id>/host_catalogs/<catalog_id>"
+	// Output only.
 	string uri = 1;
 	google.protobuf.StringValue friendly_name = 2;
 
 	// The time this host_catalog was created.
+	// Output only.
 	google.protobuf.Timestamp created_time = 3;
 	// The time this host_catalog was last updated.
+	// Output only.
 	google.protobuf.Timestamp updated_time = 4;
 
 	// Marks the host_catalog as disabled.  Default is false.
 	google.protobuf.BoolValue disabled = 5;
 
 	oneof type_details {
-		StaticHostCatalogResult static_host_catalog_details = 6;
-		Ec2HostCatalogResult ec2_host_catalog_details = 7;
+		StaticHostCatalog static_host_catalog_details = 6;
+		Ec2HostCatalog ec2_host_catalog_details = 7;
 	}
 
+	HostCatalogType type = 8;
 	// TODO: Figure out how to provide relevant information regarding Host and Set lists on a catalog.
 }
 
 message StaticHostCatalog {
-	// nothing here yet.
-}
-
-message StaticHostCatalogResult {
 	// nothing here yet.
 }
 
@@ -58,14 +51,9 @@ message Ec2HostCatalog {
 
 	// The access key used for authenticating with AWS when retrieving EC2 instance details.
 	google.protobuf.StringValue  access_key = 2;
+	// Input only.
 	google.protobuf.StringValue  secret_key = 3;
+
+	// Input only.
 	google.protobuf.BoolValue rotate = 4;
-}
-
-message Ec2HostCatalogResult {
-	// The AWS regions from which this catalog will retrieve the EC2 instances.
-	repeated string regions = 1;
-
-	// The access key used for authenticating with AWS when retrieving EC2 instance details.
-	google.protobuf.StringValue  access_key = 2;
 }
