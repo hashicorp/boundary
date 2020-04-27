@@ -33,8 +33,8 @@ type Scope struct {
 
 // ensure that Scope implements the interfaces of: Resource, ClonableResource, and db.VetForWriter
 var _ Resource = (*Scope)(nil)
-var _ db.VetForWriter = (*User)(nil)
-var _ ClonableResource = (*User)(nil)
+var _ db.VetForWriter = (*Scope)(nil)
+var _ ClonableResource = (*Scope)(nil)
 
 // NewScope creates a new Scope of the specified ScopeType with options:
 // WithFriendlyName specifies the Scope's friendly name.
