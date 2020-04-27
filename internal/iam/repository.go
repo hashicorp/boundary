@@ -17,14 +17,12 @@ type Repository interface {
 	UpdateUser(ctx context.Context, user *User, fieldMaskPaths []string, opt ...Option) (*User, error)
 	LookupUser(ctx context.Context, opt ...Option) (User, error)
 
-	CreateScope(ctx context.Context, scope *Scope, opt ...Option) (*User, error)
+	CreateScope(ctx context.Context, scope *Scope, opt ...Option) (*Scope, error)
 	UpdateScope(ctx context.Context, scope *Scope, fieldMaskPaths []string, opt ...Option) (*Scope, error)
 	LookupScope(ctx context.Context, opt ...Option) (Scope, error)
 
 	create(ctx context.Context, r Resource, opt ...Option) (Resource, error)
 	update(ctx context.Context, r Resource, fieldMaskPaths []string, opt ...Option) (Resource, error)
-	LookupById(ctx context.Context, r Resource, opt ...Option) error
-	LookupByFriendlyName(ctx context.Context, resource Resource, opt ...Option) error
 }
 
 // dbRepository is the iam database repository
@@ -88,11 +86,17 @@ func (r *dbRepository) LookupUser(ctx context.Context, opt ...Option) (User, err
 	return allocUser(), errors.New("you must loop up users by id or friendly name")
 }
 
-func (r *dbRepository) CreateScope(ctx context.Context, scope *Scope, opt ...Option) (*User, error) {
+func (r *dbRepository) CreateScope(ctx context.Context, scope *Scope, opt ...Option) (*Scope, error) {
+	if scope == nil {
+		return nil, errors.New("error scope is nil for create")
+	}
 	resource, err := r.create(context.Background(), scope)
-	return resource.(*User), err
+	return resource.(*Scope), err
 }
 func (r *dbRepository) UpdateScope(ctx context.Context, scope *Scope, fieldMaskPaths []string, opt ...Option) (*Scope, error) {
+	if scope == nil {
+		return nil, errors.New("error scope is nil for update")
+	}
 	resource, err := r.update(context.Background(), scope, fieldMaskPaths)
 	return resource.(*Scope), err
 }
@@ -189,15 +193,6 @@ func (r *dbRepository) update(ctx context.Context, resource Resource, fieldMaskP
 	return returnedResource, err
 }
 
-// LookupById will lookup an iam resource from the repository using its public id
-func (r *dbRepository) LookupById(ctx context.Context, resource Resource, opt ...Option) error {
-	return r.reader.LookupByPublicId(ctx, resource)
-}
-
-// LookupById will lookup an iam resource from the repository using its friendly name
-func (r *dbRepository) LookupByFriendlyName(ctx context.Context, resource Resource, opt ...Option) error {
-	return r.reader.LookupByFriendlyName(ctx, resource)
-}
 func (r *dbRepository) stdMetadata(ctx context.Context, resource Resource) (oplog.Metadata, error) {
 	rType := strconv.Itoa(int(resource.ResourceType()))
 	if s, ok := resource.(*Scope); ok {

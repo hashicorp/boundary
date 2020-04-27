@@ -234,3 +234,103 @@ func Test_dbRepository_update(t *testing.T) {
 		assert.Equal(t, err.Error(), "error updating resource that is nil")
 	})
 }
+
+func Test_dbRepository_CreateScope(t *testing.T) {
+	db.StartTest()
+	t.Parallel()
+	cleanup, url := db.SetupTest(t, "../db/migrations/postgres")
+	defer cleanup()
+	defer db.CompleteTest() // must come after the "defer cleanup()"
+	conn, err := db.TestConnection(url)
+	assert.NilError(t, err)
+	defer conn.Close()
+
+	t.Run("valid-scope", func(t *testing.T) {
+		rw := &db.GormReadWriter{Tx: conn}
+		wrapper := db.InitTestWrapper(t)
+		repo, err := NewDatabaseRepository(rw, rw, wrapper)
+		id, err := uuid.GenerateUUID()
+		assert.NilError(t, err)
+
+		s, err := NewScope(OrganizationScope, WithFriendlyName("fname-"+id))
+		s, err = repo.CreateScope(context.Background(), s)
+		assert.NilError(t, err)
+		assert.Check(t, s != nil)
+		assert.Check(t, s.GetPublicId() != "")
+		assert.Equal(t, s.GetFriendlyName(), "fname-"+id)
+
+		foundScope, err := repo.LookupScope(context.Background(), WitPublicId(s.PublicId))
+		assert.NilError(t, err)
+		assert.Equal(t, foundScope.GetPublicId(), s.GetPublicId())
+
+		foundScope, err = repo.LookupScope(context.Background(), WithFriendlyName("fname-"+id))
+		assert.NilError(t, err)
+		assert.Equal(t, foundScope.GetPublicId(), s.GetPublicId())
+
+		var metadata store.Metadata
+		err = conn.Where("key = ? and value = ?", "resource-public-id", s.PublicId).First(&metadata).Error
+		assert.NilError(t, err)
+
+		var foundEntry oplog.Entry
+		err = conn.Where("id = ?", metadata.EntryId).First(&foundEntry).Error
+		assert.NilError(t, err)
+	})
+}
+
+func Test_dbRepository_UpdateScope(t *testing.T) {
+	db.StartTest()
+	t.Parallel()
+	cleanup, url := db.SetupTest(t, "../db/migrations/postgres")
+	defer cleanup()
+	defer db.CompleteTest() // must come after the "defer cleanup()"
+	conn, err := db.TestConnection(url)
+	assert.NilError(t, err)
+	defer conn.Close()
+
+	t.Run("valid-scope", func(t *testing.T) {
+		rw := &db.GormReadWriter{Tx: conn}
+		wrapper := db.InitTestWrapper(t)
+		repo, err := NewDatabaseRepository(rw, rw, wrapper)
+		id, err := uuid.GenerateUUID()
+		assert.NilError(t, err)
+
+		s, err := NewScope(OrganizationScope, WithFriendlyName("fname-"+id))
+		s, err = repo.CreateScope(context.Background(), s)
+		assert.NilError(t, err)
+		assert.Check(t, s != nil)
+		assert.Check(t, s.GetPublicId() != "")
+		assert.Equal(t, s.GetFriendlyName(), "fname-"+id)
+
+		foundScope, err := repo.LookupScope(context.Background(), WitPublicId(s.PublicId))
+		assert.NilError(t, err)
+		assert.Equal(t, foundScope.GetPublicId(), s.GetPublicId())
+
+		foundScope, err = repo.LookupScope(context.Background(), WithFriendlyName("fname-"+id))
+		assert.NilError(t, err)
+		assert.Equal(t, foundScope.GetPublicId(), s.GetPublicId())
+
+		var metadata store.Metadata
+		err = conn.Where("key = ? and value = ?", "resource-public-id", s.PublicId).First(&metadata).Error
+		assert.NilError(t, err)
+
+		var foundEntry oplog.Entry
+		err = conn.Where("id = ?", metadata.EntryId).First(&foundEntry).Error
+		assert.NilError(t, err)
+
+		s.FriendlyName = "fname-" + id
+		s, err = repo.UpdateScope(context.Background(), s, []string{"FriendlyName"})
+		assert.NilError(t, err)
+		assert.Check(t, s != nil)
+		assert.Equal(t, s.GetFriendlyName(), "fname-"+id)
+
+		foundScope, err = repo.LookupScope(context.Background(), WithFriendlyName("fname-"+id))
+		assert.NilError(t, err)
+		assert.Equal(t, foundScope.GetPublicId(), s.GetPublicId())
+
+		err = conn.Where("key = ? and value = ?", "resource-public-id", s.PublicId).First(&metadata).Error
+		assert.NilError(t, err)
+
+		err = conn.Where("id = ?", metadata.EntryId).First(&foundEntry).Error
+		assert.NilError(t, err)
+	})
+}
