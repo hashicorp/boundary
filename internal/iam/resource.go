@@ -53,6 +53,7 @@ const (
 	ResourceTypeAssignedGroupRole ResourceType = 10
 	ResourceTypeRoleGrant         ResourceType = 11
 	ResourceTypeAuthMethod        ResourceType = 12
+	ResourceTypeProject           ResourceType = 13
 )
 
 func (r ResourceType) String() string {
