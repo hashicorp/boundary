@@ -69,14 +69,14 @@ func (role *Role) AssignedRoles(ctx context.Context, r db.Reader) ([]AssignedRol
 		ctx,
 		&viewRoles,
 		"role_id = ? and type in(?, ?)",
-		role.Id, UserRoleType, GroupRoleType); err != nil {
+		role.Id, UserRoleType.String(), GroupRoleType.String()); err != nil {
 		return nil, fmt.Errorf("error getting assigned roles %w", err)
 	}
 
 	pRoles := []AssignedRole{}
 	for _, vr := range viewRoles {
 		switch vr.Type {
-		case uint32(UserRoleType):
+		case UserRoleType.String():
 			pr := &UserRole{
 				UserRole: &store.UserRole{
 					Id:             vr.Id,
@@ -86,12 +86,12 @@ func (role *Role) AssignedRoles(ctx context.Context, r db.Reader) ([]AssignedRol
 					FriendlyName:   vr.FriendlyName,
 					PrimaryScopeId: vr.PrimaryScopeId,
 					RoleId:         vr.RoleId,
-					Type:           uint32(UserRoleType),
+					Type:           UserRoleType.String(),
 					PrincipalId:    vr.PrincipalId,
 				},
 			}
 			pRoles = append(pRoles, pr)
-		case uint32(GroupRoleType):
+		case GroupRoleType.String():
 			pr := &GroupRole{
 				GroupRole: &store.GroupRole{
 					Id:             vr.Id,
@@ -101,13 +101,13 @@ func (role *Role) AssignedRoles(ctx context.Context, r db.Reader) ([]AssignedRol
 					FriendlyName:   vr.FriendlyName,
 					PrimaryScopeId: vr.PrimaryScopeId,
 					RoleId:         vr.RoleId,
-					Type:           uint32(GroupRoleType),
+					Type:           GroupRoleType.String(),
 					PrincipalId:    vr.PrincipalId,
 				},
 			}
 			pRoles = append(pRoles, pr)
 		default:
-			return nil, fmt.Errorf("error unsupported role type: %d", vr.Type)
+			return nil, fmt.Errorf("error unsupported role type: %s", vr.Type)
 		}
 	}
 	return pRoles, nil

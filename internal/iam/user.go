@@ -70,7 +70,7 @@ func (u *User) Roles(ctx context.Context, r db.Reader, opt ...Option) (map[strin
 	}
 	where := "id in (select role_id from iam_assigned_role_vw ipr where principal_id  = ? and type = ?)"
 	roles := []*Role{}
-	if err := r.SearchBy(ctx, &roles, where, u.Id, UserRoleType); err != nil {
+	if err := r.SearchBy(ctx, &roles, where, u.Id, UserRoleType.String()); err != nil {
 		return nil, fmt.Errorf("error getting user roles %w", err)
 	}
 	results := map[string]*Role{}

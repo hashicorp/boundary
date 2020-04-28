@@ -20,13 +20,21 @@ const (
 	GroupRoleType   RoleType = 2
 )
 
+func (r RoleType) String() string {
+	return [...]string{
+		"unknown",
+		"user",
+		"group",
+	}[r]
+}
+
 // AssignedRole declares a common interface for all roles assigned to resources (Users and Groups for now)
 type AssignedRole interface {
 	Resource
 	GetId() uint32
 	GetRoleId() uint32
 	GetPrincipalId() uint32
-	GetType() uint32
+	GetType() string
 }
 
 // assignedRoleView provides a common way to return roles regardless of their underlying type
@@ -114,7 +122,7 @@ func newUserRole(primaryScope *Scope, r *Role, u *User, opt ...Option) (Assigned
 			PrimaryScopeId: primaryScope.GetId(),
 			PrincipalId:    u.Id,
 			RoleId:         r.Id,
-			Type:           uint32(UserRoleType),
+			Type:           UserRoleType.String(),
 		},
 	}
 	if withFriendlyName != "" {
@@ -139,7 +147,7 @@ func (role *UserRole) VetForWrite(ctx context.Context, r db.Reader, opType db.Op
 	if role.PrimaryScopeId == 0 {
 		return errors.New("error primary scope id not set for user role write")
 	}
-	if role.Type != uint32(UserRoleType) {
+	if role.Type != UserRoleType.String() {
 		return errors.New("error role type is not user")
 	}
 	// make sure the scope is valid for user roles
@@ -234,7 +242,7 @@ func newGroupRole(primaryScope *Scope, r *Role, g *Group, opt ...Option) (Assign
 			PrimaryScopeId: primaryScope.GetId(),
 			PrincipalId:    g.Id,
 			RoleId:         r.Id,
-			Type:           uint32(GroupRoleType),
+			Type:           GroupRoleType.String(),
 		},
 	}
 	if withFriendlyName != "" {
@@ -259,7 +267,7 @@ func (role *GroupRole) VetForWrite(ctx context.Context, r db.Reader, opType db.O
 	if role.PrimaryScopeId == 0 {
 		return errors.New("error primary scope id not set for group role write")
 	}
-	if role.Type != uint32(GroupRoleType) {
+	if role.Type != GroupRoleType.String() {
 		return errors.New("error role type is not group")
 	}
 	// make sure the scope is valid for user roles

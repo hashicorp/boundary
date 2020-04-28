@@ -204,24 +204,23 @@ values
   -- define the iam_role_type_enm lookup table
   --
   CREATE TABLE if not exists iam_role_type_enm (
-    id smallint NOT NULL primary key,
-    string text NOT NULL UNIQUE
+    string text NOT NULL primary key CHECK(
+      string IN (
+        'unknown',
+        'user',
+        'group'
+      )
+    )
   );
-INSERT INTO iam_role_type_enm (id, string)
+INSERT INTO iam_role_type_enm (string)
 values
-  (0, 'unknown');
-INSERT INTO iam_role_type_enm (id, string)
+  ('unknown');
+INSERT INTO iam_role_type_enm (string)
 values
-  (1, 'user');
-INSERT INTO iam_role_type_enm (id, string)
+  ('user');
+INSERT INTO iam_role_type_enm (string)
 values
-  (2, 'group');
-ALTER TABLE iam_role_type_enm
-ADD
-  CONSTRAINT iam_role_type_enm_between_chk CHECK (
-    id BETWEEN 0
-    AND 3
-  );
+  ('group');
 CREATE TABLE if not exists iam_role_user (
     id bigint generated always as identity primary key,
     create_time timestamp with time zone NOT NULL default current_timestamp,
@@ -231,7 +230,7 @@ CREATE TABLE if not exists iam_role_user (
     primary_scope_id bigint NOT NULL REFERENCES iam_scope(id),
     role_id bigint NOT NULL REFERENCES iam_role(id),
     principal_id bigint NOT NULL REFERENCES iam_user(id),
-    type int NOT NULL REFERENCES iam_role_type_enm(id) CHECK(type = 1)
+    type text NOT NULL REFERENCES iam_role_type_enm(string) CHECK(type = 'user')
   );
 CREATE TABLE if not exists iam_role_group (
     id bigint generated always as identity primary key,
@@ -242,7 +241,7 @@ CREATE TABLE if not exists iam_role_group (
     primary_scope_id bigint NOT NULL REFERENCES iam_scope(id),
     role_id bigint NOT NULL REFERENCES iam_role(id),
     principal_id bigint NOT NULL REFERENCES iam_group(id),
-    type int NOT NULL REFERENCES iam_role_type_enm(id) CHECK(type = 2)
+    type text NOT NULL REFERENCES iam_role_type_enm(string) CHECK(type = 'group')
   );
 CREATE VIEW iam_assigned_role_vw AS
 SELECT
