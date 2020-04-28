@@ -42,13 +42,6 @@
             "type": "string"
           },
           {
-            "name": "ignore_result_limit",
-            "in": "query",
-            "required": false,
-            "type": "boolean",
-            "format": "boolean"
-          },
-          {
             "name": "view",
             "in": "query",
             "required": false,
@@ -133,13 +126,6 @@
             "in": "path",
             "required": true,
             "type": "string"
-          },
-          {
-            "name": "ignore_result_limit",
-            "in": "query",
-            "required": false,
-            "type": "boolean",
-            "format": "boolean"
           },
           {
             "name": "view",
@@ -248,14 +234,6 @@
               "FULL"
             ],
             "default": "BASIC"
-          },
-          {
-            "name": "ignore_result_limit",
-            "description": "Allows the full list of Hosts in this Host Set to be returned even if there are more than the system wide limit.",
-            "in": "query",
-            "required": false,
-            "type": "boolean",
-            "format": "boolean"
           }
         ],
         "tags": [
@@ -472,13 +450,6 @@
             "in": "path",
             "required": true,
             "type": "string"
-          },
-          {
-            "name": "ignore_result_limit",
-            "in": "query",
-            "required": false,
-            "type": "boolean",
-            "format": "boolean"
           },
           {
             "name": "view",

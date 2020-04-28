@@ -76,8 +76,7 @@ message ListHostsRequest {
   string project_id = 2;
   string host_catalog_id = 3;
 
-  bool ignore_result_limit = 4;
-  api.view.v1.View view = 5;
+  api.view.v1.View view = 4;
 }
 
 message ListHostsResponse {

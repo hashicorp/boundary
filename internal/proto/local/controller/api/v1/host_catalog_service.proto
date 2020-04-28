@@ -82,8 +82,7 @@ message ListHostCatalogsRequest {
   string org = 1;
   string project_id = 2;
 
-  bool ignore_result_limit = 3;
-  api.view.v1.View view = 4;
+  api.view.v1.View view = 3;
 }
 
 message ListHostCatalogsResponse {
