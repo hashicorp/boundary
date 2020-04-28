@@ -25,7 +25,7 @@ service HostSetService {
   // This retrieves the host set specified in the request using the basic view.
   rpc GetHostSet(GetHostSetRequest) returns (GetHostSetResponse) {
     option (google.api.http) = {
-      get: "/v1/org/{org}/project/{project}/host-catalogs/{host_catalog_id}/host-sets/{id}"
+      get: "/v1/org/{org}/project/{project_id}/host-catalogs/{host_catalog_id}/host-sets/{id}"
       response_body: "item"
     };
     option (grpc.gateway.protoc_gen_swagger.options.openapiv2_operation) = {
@@ -34,7 +34,7 @@ service HostSetService {
   }
   rpc ListHostSets(ListHostSetsRequest) returns (ListHostSetsResponse) {
     option (google.api.http) = {
-      get: "/v1/org/{org}/project/{project}/host-catalogs/{host_catalog_id}/host-sets"
+      get: "/v1/org/{org}/project/{project_id}/host-catalogs/{host_catalog_id}/host-sets"
     };
     option (grpc.gateway.protoc_gen_swagger.options.openapiv2_operation) = {
       summary: "List all HostSets under the specific catalog"
@@ -42,7 +42,7 @@ service HostSetService {
   }
   rpc CreateHostSet(CreateHostSetRequest) returns (CreateHostSetResponse) {
     option (google.api.http) = {
-      post: "/v1/org/{org}/project/{project}/host-catalogs/{host_catalog_id}/host-sets"
+      post: "/v1/org/{org}/project/{project_id}/host-catalogs/{host_catalog_id}/host-sets"
       body: "item"
       response_body: "item"
     };
@@ -52,7 +52,7 @@ service HostSetService {
   }
   rpc UpdateHostSet(UpdateHostSetRequest) returns (UpdateHostSetResponse) {
     option (google.api.http) = {
-      patch: "/v1/org/{org}/project/{project}/host-catalogs/{host_catalog_id}/host-sets/{id}"
+      patch: "/v1/org/{org}/project/{project_id}/host-catalogs/{host_catalog_id}/host-sets/{id}"
       body: "item"
       response_body: "item"
     };
@@ -62,7 +62,7 @@ service HostSetService {
   }
   rpc DeleteHostSet(DeleteHostSetRequest) returns (DeleteHostSetResponse) {
     option (google.api.http) = {
-      delete: "/v1/org/{org}/project/{project}/host-catalogs/{host_catalog_id}/host-sets/{id}"
+      delete: "/v1/org/{org}/project/{project_id}/host-catalogs/{host_catalog_id}/host-sets/{id}"
     };
     option (grpc.gateway.protoc_gen_swagger.options.openapiv2_operation) = {
       summary: "Delete a HostSet"
@@ -72,7 +72,7 @@ service HostSetService {
 
 message GetHostSetRequest {
   string org = 1;
-  string project = 2;
+  string project_id = 2;
   string host_catalog_id = 3;
   string id = 4;
   api.view.v1.View view = 5;
@@ -84,7 +84,7 @@ message GetHostSetResponse {
 
 message ListHostSetsRequest {
   string org = 1;
-  string project = 2;
+  string project_id = 2;
   string host_catalog_id = 3;
   bool ignore_result_limit = 4;
   api.view.v1.View view = 5;
@@ -96,7 +96,7 @@ message ListHostSetsResponse {
 
 message CreateHostSetRequest {
   string org = 1;
-  string project = 2;
+  string project_id = 2;
   string host_catalog_id = 3;
   api.resource.v1.HostSet item = 4;
 }
@@ -108,7 +108,7 @@ message CreateHostSetResponse {
 
 message UpdateHostSetRequest {
   string org = 1;
-  string project = 2;
+  string project_id = 2;
   string host_catalog_id = 3;
   string id = 4;
   api.resource.v1.HostSet item = 5;
@@ -121,7 +121,7 @@ message UpdateHostSetResponse {
 
 message DeleteHostSetRequest {
   string org = 1;
-  string project =2;
+  string project_id =2;
   string host_catalog_id = 3;
   string id = 4;
 }
