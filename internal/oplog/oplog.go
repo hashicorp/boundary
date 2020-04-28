@@ -10,10 +10,9 @@ import (
 
 	protoV1 "github.com/golang/protobuf/proto"
 	wrapping "github.com/hashicorp/go-kms-wrapping"
+	"github.com/hashicorp/watchtower/internal/oplog/store"
 	_ "github.com/lib/pq"
 	"google.golang.org/protobuf/proto"
-
-	"github.com/hashicorp/watchtower/internal/oplog/store"
 )
 
 // Version of oplog entries (among other things, it's used to manage upgrade compatibility when replicating)

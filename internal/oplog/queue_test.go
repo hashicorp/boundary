@@ -4,10 +4,9 @@ import (
 	reflect "reflect"
 	"testing"
 
+	"github.com/hashicorp/watchtower/internal/oplog/oplog_test"
 	"google.golang.org/protobuf/proto"
 	"gotest.tools/assert"
-
-	"github.com/hashicorp/watchtower/internal/oplog/oplog_test"
 )
 
 // Test_Queue provides basic tests for the Queue type

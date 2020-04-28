@@ -13,10 +13,9 @@ import (
 	wrapping "github.com/hashicorp/go-kms-wrapping"
 	"github.com/hashicorp/go-kms-wrapping/wrappers/aead"
 	"github.com/hashicorp/go-uuid"
+	"github.com/hashicorp/watchtower/internal/oplog/oplog_test"
 	"github.com/jinzhu/gorm"
 	"gotest.tools/assert"
-
-	"github.com/hashicorp/watchtower/internal/oplog/oplog_test"
 
 	"github.com/golang-migrate/migrate/v4"
 	_ "github.com/golang-migrate/migrate/v4/database/postgres"
