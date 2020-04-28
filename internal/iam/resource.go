@@ -36,6 +36,12 @@ type Resource interface {
 	GetUpdateTime() *store.Timestamp
 }
 
+type foo string
+
+const (
+	bar foo = "whatever"
+)
+
 // ResourceType defines the types of resources in the system
 type ResourceType int
 
@@ -71,6 +77,7 @@ func (r ResourceType) String() string {
 		"assigned role group",
 		"role grant",
 		"auth method",
+		"project",
 	}[r]
 }
 
