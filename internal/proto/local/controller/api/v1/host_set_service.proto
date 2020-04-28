@@ -96,6 +96,9 @@ message GetHostSetRequest {
   string host_catalog_id = 3;
   string id = 4;
   api.view.v1.View view = 5;
+
+  // Allows the full list of Hosts in this Host Set to be returned even if there are more than the system wide limit.
+  bool ignore_result_limit = 6;
 }
 
 message GetHostSetResponse {

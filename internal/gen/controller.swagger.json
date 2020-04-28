@@ -248,6 +248,14 @@
               "FULL"
             ],
             "default": "BASIC"
+          },
+          {
+            "name": "ignore_result_limit",
+            "description": "Allows the full list of Hosts in this Host Set to be returned even if there are more than the system wide limit.",
+            "in": "query",
+            "required": false,
+            "type": "boolean",
+            "format": "boolean"
           }
         ],
         "tags": [
@@ -951,7 +959,7 @@
           "items": {
             "$ref": "#/definitions/controller.api.resource.v1.Host"
           },
-          "title": "A list of hosts in this  host set.\nOutput only"
+          "title": "A list of hosts in this host set.\nTODO: Figure out if this should be in the basic HostSet view and what view to use on the Hosts.\nOutput only"
         }
       },
       "description": "HostSets are a collection of sets created and managed by a catalog."
