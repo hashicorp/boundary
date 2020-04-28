@@ -42,42 +42,42 @@ func Test_Queue(t *testing.T) {
 		Email: "bob@alice.com",
 	}
 	t.Run("add/remove", func(t *testing.T) {
-		err = queue.Add(user, "user", OpType_CREATE_OP)
+		err = queue.Add(user, "user", OpType_OP_TYPE_CREATE)
 		assert.NilError(t, err)
-		err = queue.Add(car, "car", OpType_CREATE_OP)
+		err = queue.Add(car, "car", OpType_OP_TYPE_CREATE)
 		assert.NilError(t, err)
-		err = queue.Add(rental, "rental", OpType_CREATE_OP)
+		err = queue.Add(rental, "rental", OpType_OP_TYPE_CREATE)
 		assert.NilError(t, err)
-		err = queue.Add(userUpdate, "user", OpType_UPDATE_OP, WithFieldMaskPaths([]string{"Name", "Email"}))
+		err = queue.Add(userUpdate, "user", OpType_OP_TYPE_UPDATE, WithFieldMaskPaths([]string{"Name", "Email"}))
 		assert.NilError(t, err)
 
 		queuedUser, ty, fm, err := queue.Remove()
 		assert.NilError(t, err)
 		assert.Assert(t, proto.Equal(user, queuedUser))
-		assert.Assert(t, ty == OpType_CREATE_OP)
+		assert.Assert(t, ty == OpType_OP_TYPE_CREATE)
 		assert.Assert(t, fm == nil)
 
 		queuedCar, ty, fm, err := queue.Remove()
 		assert.NilError(t, err)
 		assert.Assert(t, proto.Equal(car, queuedCar))
-		assert.Assert(t, ty == OpType_CREATE_OP)
+		assert.Assert(t, ty == OpType_OP_TYPE_CREATE)
 		assert.Assert(t, fm == nil)
 
 		queuedRental, ty, fm, err := queue.Remove()
 		assert.NilError(t, err)
 		assert.Assert(t, proto.Equal(rental, queuedRental))
-		assert.Assert(t, ty == OpType_CREATE_OP)
+		assert.Assert(t, ty == OpType_OP_TYPE_CREATE)
 		assert.Assert(t, fm == nil)
 
 		queuedUserUpdate, ty, fm, err := queue.Remove()
 		assert.NilError(t, err)
 		assert.Assert(t, proto.Equal(userUpdate, queuedUserUpdate))
-		assert.Assert(t, ty == OpType_UPDATE_OP)
+		assert.Assert(t, ty == OpType_OP_TYPE_UPDATE)
 		assert.Assert(t, reflect.DeepEqual(fm, []string{"Name", "Email"}))
 	})
 	t.Run("valid with nil type catalog", func(t *testing.T) {
 		queue := Queue{}
-		assert.NilError(t, queue.Add(user, "user", OpType_CREATE_OP))
+		assert.NilError(t, queue.Add(user, "user", OpType_OP_TYPE_CREATE))
 	})
 	t.Run("error with nil type catalog", func(t *testing.T) {
 		queue := Queue{}
@@ -91,12 +91,12 @@ func Test_Queue(t *testing.T) {
 			PhoneNumber: "867-5309",
 			Email:       "alice@bob.com",
 		}
-		err = queue.Add(u, "user", OpType_CREATE_OP)
+		err = queue.Add(u, "user", OpType_OP_TYPE_CREATE)
 		assert.Check(t, err != nil)
 		assert.Equal(t, err.Error(), "error *oplog_test.TestNonReplayableUser is not a ReplayableMessage")
 	})
 	t.Run("nil message", func(t *testing.T) {
-		err = queue.Add(nil, "user", OpType_CREATE_OP)
+		err = queue.Add(nil, "user", OpType_OP_TYPE_CREATE)
 		assert.Check(t, err != nil)
 		assert.Equal(t, err.Error(), "error <nil> is not a ReplayableMessage")
 	})

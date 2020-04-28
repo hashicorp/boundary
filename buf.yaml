@@ -1,0 +1,11 @@
+build:
+  roots:
+    - internal/proto/local
+    - internal/proto/third_party
+
+lint:
+  use:
+    - DEFAULT
+  ignore:
+    - protoc-gen-swagger
+    - google

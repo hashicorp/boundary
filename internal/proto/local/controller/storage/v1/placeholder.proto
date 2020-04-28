@@ -1,0 +1,11 @@
+syntax = "proto3";
+
+package controller.storage.v1;
+
+option go_package = "github.com/hashicorp/watchtower/internal/gen/controller/storage;storage";
+
+import "google/protobuf/timestamp.proto";
+
+// A placeholder is empty to capture the directory structure for storage focused protos.
+message Placeholder {
+}

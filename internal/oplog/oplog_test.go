@@ -102,7 +102,7 @@ func Test_BasicOplog(t *testing.T) {
 		resp := db.Create(&user)
 		assert.NilError(t, resp.Error)
 
-		err = queue.Add(&user, "user", OpType_CREATE_OP)
+		err = queue.Add(&user, "user", OpType_OP_TYPE_CREATE)
 		assert.NilError(t, err)
 		l, err := NewEntry(
 			"test-users",
@@ -169,7 +169,7 @@ func Test_BasicOplog(t *testing.T) {
 		assert.NilError(t, err)
 
 		queue = Queue{}
-		err = queue.Add(&user, "user", OpType_CREATE_OP)
+		err = queue.Add(&user, "user", OpType_OP_TYPE_CREATE)
 		assert.NilError(t, err)
 
 		newLogEntry, err := NewEntry(
@@ -307,7 +307,7 @@ func Test_UnmarshalData(t *testing.T) {
 		user := oplog_test.TestUser{
 			Name: "foo-" + id,
 		}
-		err = queue.Add(&user, "user", OpType_CREATE_OP)
+		err = queue.Add(&user, "user", OpType_OP_TYPE_CREATE)
 		assert.NilError(t, err)
 		entry, err := NewEntry(
 			"test-users",
@@ -354,7 +354,7 @@ func Test_UnmarshalData(t *testing.T) {
 		user := oplog_test.TestUser{
 			Name: "foo-" + id,
 		}
-		err = queue.Add(&user, "user", OpType_CREATE_OP)
+		err = queue.Add(&user, "user", OpType_OP_TYPE_CREATE)
 		assert.NilError(t, err)
 		entry, err := NewEntry(
 			"test-users",
@@ -377,7 +377,7 @@ func Test_UnmarshalData(t *testing.T) {
 		user := oplog_test.TestUser{
 			Name: "foo-" + id,
 		}
-		err = queue.Add(&user, "user", OpType_CREATE_OP)
+		err = queue.Add(&user, "user", OpType_OP_TYPE_CREATE)
 		assert.NilError(t, err)
 		entry, err := NewEntry(
 			"test-users",
@@ -473,9 +473,9 @@ func Test_Replay(t *testing.T) {
 		assert.NilError(t, err)
 
 		err = newLogEntry.WriteEntryWith(context.Background(), &GormWriter{tx}, ticket,
-			&Message{Message: &userCreate, TypeName: "user", OpType: OpType_CREATE_OP},
-			&Message{Message: &userSave, TypeName: "user", OpType: OpType_UPDATE_OP},
-			&Message{Message: &userUpdate, TypeName: "user", OpType: OpType_UPDATE_OP, FieldMaskPaths: []string{"PhoneNumber"}},
+			&Message{Message: &userCreate, TypeName: "user", OpType: OpType_OP_TYPE_CREATE},
+			&Message{Message: &userSave, TypeName: "user", OpType: OpType_OP_TYPE_UPDATE},
+			&Message{Message: &userUpdate, TypeName: "user", OpType: OpType_OP_TYPE_UPDATE, FieldMaskPaths: []string{"PhoneNumber"}},
 		)
 		assert.NilError(t, err)
 
@@ -544,8 +544,8 @@ func Test_Replay(t *testing.T) {
 		)
 		assert.NilError(t, err)
 		err = newLogEntry2.WriteEntryWith(context.Background(), &GormWriter{tx2}, ticket2,
-			&Message{Message: &userCreate2, TypeName: "user", OpType: OpType_CREATE_OP},
-			&Message{Message: &deleteUser2, TypeName: "user", OpType: OpType_DELETE_OP},
+			&Message{Message: &userCreate2, TypeName: "user", OpType: OpType_OP_TYPE_CREATE},
+			&Message{Message: &deleteUser2, TypeName: "user", OpType: OpType_OP_TYPE_DELETE},
 		)
 		assert.NilError(t, err)
 
@@ -624,8 +624,8 @@ func Test_WriteEntryWith(t *testing.T) {
 		)
 		assert.NilError(t, err)
 		err = newLogEntry.WriteEntryWith(context.Background(), &GormWriter{db}, ticket,
-			&Message{Message: &u, TypeName: "user", OpType: OpType_CREATE_OP},
-			&Message{Message: &u2, TypeName: "user", OpType: OpType_CREATE_OP})
+			&Message{Message: &u, TypeName: "user", OpType: OpType_OP_TYPE_CREATE},
+			&Message{Message: &u2, TypeName: "user", OpType: OpType_OP_TYPE_CREATE})
 		assert.NilError(t, err)
 
 		var foundEntry Entry
@@ -653,8 +653,8 @@ func Test_WriteEntryWith(t *testing.T) {
 		)
 		assert.NilError(t, err)
 		err = newLogEntry.WriteEntryWith(context.Background(), nil, ticket,
-			&Message{Message: &u, TypeName: "user", OpType: OpType_CREATE_OP},
-			&Message{Message: &u2, TypeName: "user", OpType: OpType_CREATE_OP})
+			&Message{Message: &u, TypeName: "user", OpType: OpType_OP_TYPE_CREATE},
+			&Message{Message: &u2, TypeName: "user", OpType: OpType_OP_TYPE_CREATE})
 		assert.Equal(t, err.Error(), "bad writer")
 	})
 	t.Run("nil ticket", func(t *testing.T) {
@@ -670,8 +670,8 @@ func Test_WriteEntryWith(t *testing.T) {
 		)
 		assert.NilError(t, err)
 		err = newLogEntry.WriteEntryWith(context.Background(), &GormWriter{db}, nil,
-			&Message{Message: &u, TypeName: "user", OpType: OpType_CREATE_OP},
-			&Message{Message: &u2, TypeName: "user", OpType: OpType_CREATE_OP})
+			&Message{Message: &u, TypeName: "user", OpType: OpType_OP_TYPE_CREATE},
+			&Message{Message: &u2, TypeName: "user", OpType: OpType_OP_TYPE_CREATE})
 		assert.Equal(t, err.Error(), "bad ticket")
 	})
 	t.Run("nil ticket", func(t *testing.T) {
@@ -724,7 +724,7 @@ func Test_TicketSerialization(t *testing.T) {
 	assert.NilError(t, err)
 
 	firstQueue := Queue{}
-	err = firstQueue.Add(&firstUser, "user", OpType_CREATE_OP)
+	err = firstQueue.Add(&firstUser, "user", OpType_OP_TYPE_CREATE)
 	assert.NilError(t, err)
 
 	firstLogEntry, err := NewEntry(
@@ -752,7 +752,7 @@ func Test_TicketSerialization(t *testing.T) {
 	assert.NilError(t, err)
 
 	secondQueue := Queue{}
-	err = secondQueue.Add(&secondUser, "user", OpType_CREATE_OP)
+	err = secondQueue.Add(&secondUser, "user", OpType_OP_TYPE_CREATE)
 	assert.NilError(t, err)
 
 	secondLogEntry, err := NewEntry(

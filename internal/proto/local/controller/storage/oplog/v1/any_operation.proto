@@ -1,0 +1,25 @@
+syntax = "proto3";
+
+import "google/protobuf/field_mask.proto";
+
+package controller.storage.oplog.v1;
+option go_package = "github.com/hashicorp/watchtower/internal/oplog;oplog";
+
+// OpType provides the type of database operation the Any message represents (create,
+// update, delete)
+enum OpType {
+  OP_TYPE_UNSPECIFIED = 0;
+  OP_TYPE_CREATE = 1;
+  OP_TYPE_UPDATE = 2;
+  OP_TYPE_DELETE = 3;
+}
+
+// AnyOperation provides a message for anything and the type of operation it
+// represents.
+message AnyOperation {
+  string type_name = 1;
+  bytes value = 2;
+  OpType operation_type = 3;
+  // mask is the mask of fields to update.
+  google.protobuf.FieldMask field_mask = 4;
+}

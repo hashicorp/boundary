@@ -1,0 +1,16 @@
+syntax = "proto3";
+
+package controller.api.v1;
+
+option go_package = "github.com/hashicorp/watchtower/internal/gen/controller/api;api";
+
+import "protoc-gen-swagger/options/annotations.proto";
+import "controller/api/resource/v1/placeholder.proto";
+
+option (grpc.gateway.protoc_gen_swagger.options.openapiv2_swagger) = {
+
+};
+
+// Placeholder Service contains nothing but organization details.
+service PlaceholderService {
+}
