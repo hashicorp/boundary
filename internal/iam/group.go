@@ -31,8 +31,8 @@ func NewGroup(primaryScope *Scope, opt ...Option) (*Group, error) {
 	if primaryScope == nil {
 		return nil, errors.New("error the group primary scope is nil")
 	}
-	if primaryScope.Type != uint32(OrganizationScope) &&
-		primaryScope.Type != uint32(ProjectScope) {
+	if primaryScope.Type != OrganizationScope.String() &&
+		primaryScope.Type != ProjectScope.String() {
 		return nil, errors.New("groups can only be within an organization or project scope")
 	}
 	publicId, err := base62.Random(20)
@@ -128,7 +128,7 @@ func (g *Group) primaryScopeIsValid(ctx context.Context, r db.Reader) error {
 	if err != nil {
 		return err
 	}
-	if ps.Type != uint32(OrganizationScope) && ps.Type != uint32(ProjectScope) {
+	if ps.Type != OrganizationScope.String() && ps.Type != ProjectScope.String() {
 		return errors.New("error primary scope is not an organization or project for group")
 	}
 	return nil

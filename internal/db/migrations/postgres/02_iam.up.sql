@@ -18,38 +18,29 @@ $$ language 'plpgsql';
 --
 -- define the iam_auth_method_type_enm lookup table
 --
-CREATE TABLE if not exists iam_scope_type_enm (
-  id smallint NOT NULL primary key,
-  string text NOT NULL UNIQUE
-);
-INSERT INTO iam_scope_type_enm (id, string)
+CREATE TABLE if not exists iam_scope_type_enm (string text NOT NULL primary key);
+INSERT INTO iam_scope_type_enm (string)
 values
-  (0, 'unknown');
-INSERT INTO iam_scope_type_enm (id, string)
+  ('unknown');
+INSERT INTO iam_scope_type_enm (string)
 values
-  (1, 'organization');
-INSERT INTO iam_scope_type_enm (id, string)
+  ('organization');
+INSERT INTO iam_scope_type_enm (string)
 values
-  (2, 'project');
-ALTER TABLE iam_scope_type_enm
-ADD
-  CONSTRAINT iam_scope_type_enm_between_chk CHECK (
-    id BETWEEN 0
-    AND 2
-  );
+  ('project');
 CREATE TABLE if not exists iam_scope (
     id bigint generated always as identity primary key,
     create_time timestamp with time zone default current_timestamp,
     update_time timestamp with time zone default current_timestamp,
     public_id text NOT NULL UNIQUE,
     friendly_name text UNIQUE,
-    type int NOT NULL REFERENCES iam_scope_type_enm(id) CHECK(
+    type text NOT NULL REFERENCES iam_scope_type_enm(string) CHECK(
       (
-        type = '1'
+        type = 'organization'
         and parent_id = NULL
       )
       or (
-        type = '2'
+        type = 'project'
         and parent_id IS NOT NULL
       )
     ),
@@ -67,13 +58,13 @@ CREATE
   OR REPLACE FUNCTION iam_sub_scopes_func() RETURNS TRIGGER
 SET SCHEMA
   'public' LANGUAGE plpgsql AS $$ DECLARE parent_type INT;
-BEGIN IF new.type = '1' THEN
+BEGIN IF new.type = 'organization' THEN
 insert into iam_scope_organization (scope_id)
 values
   (new.id);
 return NEW;
 END IF;
-IF new.type = '2' THEN
+IF new.type = 'project' THEN
 insert into iam_scope_project (scope_id, parent_id)
 values
   (new.id, new.parent_id);

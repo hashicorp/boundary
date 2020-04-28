@@ -48,7 +48,7 @@ func Test_UserCreate(t *testing.T) {
 	t.Run("valid-user", func(t *testing.T) {
 		w := db.GormReadWriter{Tx: conn}
 		s, err := NewScope(OrganizationScope)
-		assert.Equal(t, s.Type, uint32(OrganizationScope))
+		assert.Equal(t, s.Type, OrganizationScope.String())
 		assert.NilError(t, err)
 		assert.Check(t, s.Scope != nil)
 		err = w.Create(context.Background(), s)

@@ -196,11 +196,11 @@ func (r *dbRepository) update(ctx context.Context, resource Resource, fieldMaskP
 func (r *dbRepository) stdMetadata(ctx context.Context, resource Resource) (oplog.Metadata, error) {
 	rType := strconv.Itoa(int(resource.ResourceType()))
 	if s, ok := resource.(*Scope); ok {
-		if s.Type == uint32(OrganizationScope) {
+		if s.Type == OrganizationScope.String() {
 			return oplog.Metadata{
 				"resource-public-id": []string{resource.GetPublicId()},
 				"scope-id":           []string{s.PublicId},
-				"scope-type":         []string{strconv.Itoa(int(s.Type))},
+				"scope-type":         []string{s.Type},
 				"resource-type":      []string{rType},
 			}, nil
 		}
@@ -215,7 +215,7 @@ func (r *dbRepository) stdMetadata(ctx context.Context, resource Resource) (oplo
 	return oplog.Metadata{
 		"resource-public-id": []string{resource.GetPublicId()},
 		"scope-id":           []string{scope.PublicId},
-		"scope-type":         []string{strconv.Itoa(int(scope.Type))},
+		"scope-type":         []string{scope.Type},
 		"resource-type":      []string{rType},
 	}, nil
 }

@@ -45,7 +45,7 @@ func NewAuthMethod(primaryScope *Scope, authType AuthType, opt ...Option) (*Auth
 	if primaryScope.Id == 0 {
 		return nil, errors.New("error scope id == 0 for new auth method")
 	}
-	if primaryScope.Type != uint32(OrganizationScope) {
+	if primaryScope.Type != OrganizationScope.String() {
 		return nil, errors.New("auth method can only be within an organization scope")
 	}
 	publicId, err := base62.Random(20)
@@ -94,7 +94,7 @@ func (p *AuthMethod) primaryScopeIsValid(ctx context.Context, r db.Reader) error
 	if err != nil {
 		return err
 	}
-	if ps.Type != uint32(OrganizationScope) {
+	if ps.Type != OrganizationScope.String() {
 		return errors.New("error primary scope is not an organization")
 	}
 	return nil

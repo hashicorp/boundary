@@ -20,6 +20,14 @@ const (
 	ProjectScope      ScopeType = 2
 )
 
+func (s ScopeType) String() string {
+	return [...]string{
+		"unknown",
+		"organization",
+		"project",
+	}[s]
+}
+
 // Scope is used to create a hierarchy of "containers" that encompass the scope of
 // an IAM resource.  Scopes are Organizations and Projects (based on their Type) for
 // launch and likely Folders and SubProjects in the future
@@ -65,7 +73,7 @@ func NewScope(scopeType ScopeType, opt ...Option) (*Scope, error) {
 	s := &Scope{
 		Scope: &store.Scope{
 			PublicId: publicId,
-			Type:     uint32(scopeType),
+			Type:     scopeType.String(),
 		},
 	}
 	if withScope != nil {
@@ -100,14 +108,14 @@ func (s *Scope) Clone() Resource {
 
 // Organization will walk up the scope tree via primary scopes until it finds an organization
 func (s *Scope) Organization(ctx context.Context, r db.Reader) (*Scope, error) {
-	if s.Type == uint32(OrganizationScope) {
+	if s.Type == OrganizationScope.String() {
 		return s, nil
 	}
 	p, err := s.GetPrimaryScope(ctx, r)
 	if err != nil {
 		return nil, err
 	}
-	if p.Type == uint32(OrganizationScope) {
+	if p.Type == OrganizationScope.String() {
 		return p, nil
 	}
 	return p.Organization(ctx, r)
@@ -115,7 +123,7 @@ func (s *Scope) Organization(ctx context.Context, r db.Reader) (*Scope, error) {
 
 // VetForWrite implements db.VetForWrite() interface for scopes
 func (s *Scope) VetForWrite(ctx context.Context, r db.Reader, opType db.OpType) error {
-	if s.Type == uint32(UnknownScope) {
+	if s.Type == UnknownScope.String() {
 		return errors.New("error unknown scope type for scope write")
 	}
 	if s.PublicId == "" {

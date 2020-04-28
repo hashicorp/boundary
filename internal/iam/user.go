@@ -30,7 +30,7 @@ func NewUser(primaryScope *Scope, opt ...Option) (*User, error) {
 	if primaryScope == nil {
 		return nil, errors.New("error user primary scope is nil")
 	}
-	if primaryScope.Type != uint32(OrganizationScope) {
+	if primaryScope.Type != OrganizationScope.String() {
 		return nil, errors.New("users can only be within an organization scope")
 	}
 	publicId, err := base62.Random(20)
@@ -113,7 +113,7 @@ func (u *User) primaryScopeIsValid(ctx context.Context, r db.Reader) error {
 	if err != nil {
 		return err
 	}
-	if ps.Type != uint32(OrganizationScope) {
+	if ps.Type != OrganizationScope.String() {
 		return errors.New("error primary scope is not an organization")
 	}
 	return nil

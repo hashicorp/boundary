@@ -94,8 +94,8 @@ func newGroupMemberUser(primaryScope *Scope, g *Group, m *User, opt ...Option) (
 	if g.Id == 0 {
 		return nil, errors.New("error the user member group == 0")
 	}
-	if primaryScope.Type != uint32(OrganizationScope) &&
-		primaryScope.Type != uint32(ProjectScope) {
+	if primaryScope.Type != OrganizationScope.String() &&
+		primaryScope.Type != ProjectScope.String() {
 		return nil, errors.New("roles can only be within an organization or project scope")
 	}
 	publicId, err := base62.Random(20)
@@ -148,7 +148,7 @@ func (m *GroupMemberUser) primaryScopeIsValid(ctx context.Context, r db.Reader) 
 	if err != nil {
 		return err
 	}
-	if ps.Type != uint32(OrganizationScope) && ps.Type != uint32(ProjectScope) {
+	if ps.Type != OrganizationScope.String() && ps.Type != ProjectScope.String() {
 		return errors.New("error primary scope is not an organization or project for user group member")
 	}
 	return nil

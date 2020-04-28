@@ -100,8 +100,8 @@ func newUserRole(primaryScope *Scope, r *Role, u *User, opt ...Option) (Assigned
 	if r.Id == 0 {
 		return nil, errors.New("error the user role id == 0")
 	}
-	if primaryScope.Type != uint32(OrganizationScope) &&
-		primaryScope.Type != uint32(ProjectScope) {
+	if primaryScope.Type != OrganizationScope.String() &&
+		primaryScope.Type != ProjectScope.String() {
 		return nil, errors.New("user roles can only be within an organization or project scope")
 	}
 	publicId, err := base62.Random(20)
@@ -154,7 +154,7 @@ func (role *UserRole) primaryScopeIsValid(ctx context.Context, r db.Reader) erro
 	if err != nil {
 		return err
 	}
-	if ps.Type != uint32(OrganizationScope) && ps.Type != uint32(ProjectScope) {
+	if ps.Type != OrganizationScope.String() && ps.Type != ProjectScope.String() {
 		return errors.New("error primary scope is not an organization or project for user role")
 	}
 	return nil
@@ -220,8 +220,8 @@ func newGroupRole(primaryScope *Scope, r *Role, g *Group, opt ...Option) (Assign
 	if r.Id == 0 {
 		return nil, errors.New("error the group role id == 0")
 	}
-	if primaryScope.Type != uint32(OrganizationScope) &&
-		primaryScope.Type != uint32(ProjectScope) {
+	if primaryScope.Type != OrganizationScope.String() &&
+		primaryScope.Type != ProjectScope.String() {
 		return nil, errors.New("group roles can only be within an organization or project scope")
 	}
 	publicId, err := base62.Random(20)
@@ -274,7 +274,7 @@ func (role *GroupRole) primaryScopeIsValid(ctx context.Context, r db.Reader) err
 	if err != nil {
 		return err
 	}
-	if ps.Type != uint32(OrganizationScope) && ps.Type != uint32(ProjectScope) {
+	if ps.Type != OrganizationScope.String() && ps.Type != ProjectScope.String() {
 		return errors.New("error primary scope is not an organization or project for group role")
 	}
 	return nil

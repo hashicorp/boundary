@@ -30,8 +30,8 @@ func NewRoleGrant(primaryScope *Scope, role *Role, grant string, opt ...Option) 
 	if primaryScope == nil {
 		return nil, errors.New("error the role grant primary scope is nil")
 	}
-	if primaryScope.Type != uint32(OrganizationScope) &&
-		primaryScope.Type != uint32(ProjectScope) {
+	if primaryScope.Type != OrganizationScope.String() &&
+		primaryScope.Type != ProjectScope.String() {
 		return nil, errors.New("role grants can only be within an organization or project scope")
 	}
 	if role == nil {
@@ -86,7 +86,7 @@ func (g *RoleGrant) primaryScopeIsValid(ctx context.Context, r db.Reader) error 
 	if err != nil {
 		return err
 	}
-	if ps.Type != uint32(OrganizationScope) && ps.Type != uint32(ProjectScope) {
+	if ps.Type != OrganizationScope.String() && ps.Type != ProjectScope.String() {
 		return errors.New("error primary scope is not an organization or project for the grant")
 	}
 	return nil
