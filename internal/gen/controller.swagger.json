@@ -952,14 +952,16 @@
         "size": {
           "type": "integer",
           "format": "int32",
-          "title": "The total count of hosts in this host set\nOutput only"
+          "description": "The total count of hosts in this host set\nOutput only.",
+          "readOnly": true
         },
         "hosts": {
           "type": "array",
           "items": {
             "$ref": "#/definitions/controller.api.resource.v1.Host"
           },
-          "title": "A list of hosts in this host set.\nTODO: Figure out if this should be in the basic HostSet view and what view to use on the Hosts.\nOutput only"
+          "description": "A list of hosts in this host set.\nTODO: Figure out if this should be in the basic HostSet view and what view to use on the Hosts.\nOutput only.",
+          "readOnly": true
         }
       },
       "description": "HostSets are a collection of sets created and managed by a catalog."

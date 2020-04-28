@@ -45,11 +45,11 @@ type HostSet struct {
 	// Marks the host_set as disabled.  Default is false.
 	Disabled *wrappers.BoolValue `protobuf:"bytes,5,opt,name=disabled,proto3" json:"disabled,omitempty"`
 	// The total count of hosts in this host set
-	// Output only
+	// Output only.
 	Size *wrappers.Int32Value `protobuf:"bytes,6,opt,name=size,proto3" json:"size,omitempty"`
 	// A list of hosts in this host set.
 	// TODO: Figure out if this should be in the basic HostSet view and what view to use on the Hosts.
-	// Output only
+	// Output only.
 	Hosts []*Host `protobuf:"bytes,7,rep,name=hosts,proto3" json:"hosts,omitempty"`
 }
 
