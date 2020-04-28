@@ -9,6 +9,7 @@ import "google/api/annotations.proto";
 import "google/protobuf/field_mask.proto";
 import "google/protobuf/wrappers.proto";
 import "controller/api/resource/v1/host_set.proto";
+import "controller/api/resource/v1/host.proto";
 import "controller/api/view/v1/view.proto";
 
 option (grpc.gateway.protoc_gen_swagger.options.openapiv2_swagger) = {
@@ -66,6 +67,25 @@ service HostSetService {
     };
     option (grpc.gateway.protoc_gen_swagger.options.openapiv2_operation) = {
       summary: "Delete a HostSet"
+    };
+  }
+
+  rpc AddToHostSet(AddToHostSetRequest) returns (AddToHostSetResponse) {
+    option (google.api.http) = {
+      post: "/v1/org/{org}/projects/{project_id}/host-catalogs/{host_catalog_id}/host-sets/{id}:add-hosts"
+    };
+    option (grpc.gateway.protoc_gen_swagger.options.openapiv2_operation) = {
+      summary: "Adds existing Hosts to the Host Set"
+    };
+  }
+
+  rpc RemoveFromHostSet(RemoveFromHostSetRequest) returns (RemoveFromHostSetResponse) {
+    option (google.api.http) = {
+      post: "/v1/org/{org}/projects/{project_id}/host-catalogs/{host_catalog_id}/host-sets/{id}:remove-hosts"
+    };
+    option (grpc.gateway.protoc_gen_swagger.options.openapiv2_operation) = {
+      summary: "Removes Hosts to the Host Set"
+      description: "Removes the hosts from this Host Set if present.  If it is not present then no action is taken and no error is returned."
     };
   }
 }
@@ -128,4 +148,31 @@ message DeleteHostSetRequest {
 
 message DeleteHostSetResponse {
   bool existed = 1;
+}
+
+message AddToHostSetRequest {
+  string org = 1;
+  string project_id =2;
+  string host_catalog_id = 3;
+  string id = 4;
+
+  // A list of host uris which will be added to this host set.
+  repeated string host_uris = 5;
+}
+
+message AddToHostSetResponse {
+}
+
+message RemoveFromHostSetRequest {
+  string org = 1;
+  string project_id =2;
+  string host_catalog_id = 3;
+  // This host set's id.
+  string id = 4;
+
+  // A list of host uris which should not be in the host set when this request returns.
+  repeated string host_uris = 5;
+}
+
+message RemoveFromHostSetResponse {
 }

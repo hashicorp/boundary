@@ -345,6 +345,94 @@
         ]
       }
     },
+    "/v1/org/{org}/projects/{project_id}/host-catalogs/{host_catalog_id}/host-sets/{id}:add-hosts": {
+      "post": {
+        "summary": "Adds existing Hosts to the Host Set",
+        "operationId": "HostSetService_AddToHostSet",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.v1.AddToHostSetResponse"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "org",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "project_id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "host_catalog_id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "controller.api.v1.HostSetService"
+        ]
+      }
+    },
+    "/v1/org/{org}/projects/{project_id}/host-catalogs/{host_catalog_id}/host-sets/{id}:remove-hosts": {
+      "post": {
+        "summary": "Removes Hosts to the Host Set",
+        "description": "Removes the hosts from this Host Set if present.  If it is not present then no action is taken and no error is returned.",
+        "operationId": "HostSetService_RemoveFromHostSet",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.v1.RemoveFromHostSetResponse"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "org",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "project_id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "host_catalog_id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "id",
+            "description": "This host set's id.",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "controller.api.v1.HostSetService"
+        ]
+      }
+    },
     "/v1/org/{org}/projects/{project_id}/host-catalogs/{host_catalog_id}/hosts": {
       "get": {
         "summary": "List all Hosts for the specified catalog",
@@ -852,11 +940,26 @@
           "type": "boolean",
           "format": "boolean",
           "description": "Marks the host_set as disabled.  Default is false."
+        },
+        "size": {
+          "type": "integer",
+          "format": "int32",
+          "title": "The total count of hosts in this host set\nOutput only"
+        },
+        "hosts": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/controller.api.resource.v1.Host"
+          },
+          "title": "A list of hosts in this  host set.\nOutput only"
         }
       },
       "description": "HostSets are a collection of sets created and managed by a catalog."
     },
     "controller.api.resource.v1.StaticCatalogDetails": {
+      "type": "object"
+    },
+    "controller.api.v1.AddToHostSetResponse": {
       "type": "object"
     },
     "controller.api.v1.CreateHostCatalogResponse": {
@@ -975,6 +1078,9 @@
           }
         }
       }
+    },
+    "controller.api.v1.RemoveFromHostSetResponse": {
+      "type": "object"
     },
     "controller.api.v1.UpdateHostCatalogResponse": {
       "type": "object",

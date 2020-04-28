@@ -6,6 +6,7 @@ option go_package = "github.com/hashicorp/watchtower/internal/gen/controller/api
 
 import "google/protobuf/timestamp.proto";
 import "google/protobuf/wrappers.proto";
+import "controller/api/resource/v1/host.proto";
 
 // HostSets are a collection of sets created and managed by a catalog.
 message HostSet {
@@ -22,4 +23,12 @@ message HostSet {
 
 	// Marks the host_set as disabled.  Default is false.
 	google.protobuf.BoolValue disabled = 5;
+
+	// The total count of hosts in this host set
+	// Output only
+	google.protobuf.Int32Value size = 6;
+
+	// A list of hosts in this  host set.
+	// Output only
+	repeated Host hosts = 7;
 }
