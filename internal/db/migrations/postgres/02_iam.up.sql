@@ -57,11 +57,9 @@ CREATE TABLE if not exists iam_scope (
     disabled BOOLEAN NOT NULL default FALSE
   );
 create table if not exists iam_scope_organization (
-    id bigint generated always as identity primary key,
     scope_id bigint NOT NULL UNIQUE REFERENCES iam_scope(id) ON DELETE CASCADE ON UPDATE CASCADE
   );
 create table if not exists iam_scope_project (
-    id bigint generated always as identity primary key,
     scope_id bigint REFERENCES iam_scope(id) ON DELETE CASCADE ON UPDATE CASCADE,
     parent_id bigint REFERENCES iam_scope_organization(scope_id) ON DELETE CASCADE ON UPDATE CASCADE
   );
