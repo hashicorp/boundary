@@ -1,0 +1,12 @@
+syntax = "proto3";
+
+package controller.api.view.v1;
+option go_package = "github.com/hashicorp/watchtower/internal/gen/controller/api/view;view";
+
+// Note: This does not follow any of the good proto practices of using enums (allowing 0 represent unspecified, etc.)
+// This is designed this way in order to generate cleaner and easier to understand swagger.
+
+enum View {
+	BASIC = 0;
+	FULL = 1;
+}

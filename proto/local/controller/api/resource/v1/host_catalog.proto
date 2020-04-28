@@ -14,10 +14,8 @@ enum HostCatalogType {
 	HOST_CATALOG_TYPE_STATIC = 2;
 }
 
-// HostCatalogResult contains all fields related to a HostCatalog resource.  The result object should be used in
-// responses but never in requests.
+// HostCatalog organizes Hosts into HostSets.
 message HostCatalog {
-	// Must be in the format "org/<org_id>/project/<project_id>/host_catalogs/<catalog_id>"
 	// Output only.
 	string uri = 1;
 	google.protobuf.StringValue friendly_name = 2;
@@ -33,19 +31,19 @@ message HostCatalog {
 	google.protobuf.BoolValue disabled = 5;
 
 	oneof type_details {
-		StaticHostCatalog static_host_catalog_details = 6;
-		Ec2HostCatalog ec2_host_catalog_details = 7;
+		StaticCatalogDetails static_host_catalog_details = 6;
+		Ec2CatalogDetails ec2_host_catalog_details = 7;
 	}
 
 	HostCatalogType type = 8;
 	// TODO: Figure out how to provide relevant information regarding Host and Set lists on a catalog.
 }
 
-message StaticHostCatalog {
+message StaticCatalogDetails {
 	// nothing here yet.
 }
 
-message Ec2HostCatalog {
+message Ec2CatalogDetails {
 	// The AWS regions from which this catalog will retrieve the EC2 instances.
 	repeated string regions = 1;
 

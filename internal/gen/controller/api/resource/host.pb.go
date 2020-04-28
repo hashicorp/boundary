@@ -27,8 +27,7 @@ const (
 // of the legacy proto package is being used.
 const _ = proto.ProtoPackageIsVersion4
 
-// HostResult contains all fields related to a Host resource.  The result object should be used in responses but never
-// in requests.
+// Host contains all fields related to a Host resource.
 type Host struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache

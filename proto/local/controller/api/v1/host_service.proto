@@ -8,25 +8,17 @@ import "protoc-gen-swagger/options/annotations.proto";
 import "google/api/annotations.proto";
 import "google/protobuf/field_mask.proto";
 import "controller/api/resource/v1/host.proto";
+import "controller/api/view/v1/view.proto";
 
 service HostService {
+  // This retrieves the host specified in the request using the basic view.
   rpc GetHost(GetHostRequest) returns (GetHostResponse) {
     option (google.api.http) = {
       get: "/v1/org/{org}/project/{project}/host_catalogs/{catalog_id}/hosts/{id}"
       response_body: "item"
     };
     option (grpc.gateway.protoc_gen_swagger.options.openapiv2_operation) = {
-      responses: {
-        key: "default"
-        value: {
-          description: "The default error structure returned."
-          schema: {
-            json_schema: {
-              ref: ".controller.api.v1.Error"
-            };
-          }
-        }
-      }
+      summary: "Gets a single Host"
     };
   }
   rpc ListHosts(ListHostsRequest) returns (ListHostsResponse) {
@@ -34,17 +26,7 @@ service HostService {
       get: "/v1/org/{org}/project/{project}/host_catalogs/{catalog_id}/hosts"
     };
     option (grpc.gateway.protoc_gen_swagger.options.openapiv2_operation) = {
-      responses: {
-        key: "default"
-        value: {
-          description: "The default error structure returned."
-          schema: {
-            json_schema: {
-              ref: ".controller.api.v1.Error"
-            };
-          }
-        }
-      }
+      summary: "List all Hosts for the specified catalog"
     };
   }
   rpc CreateHost(CreateHostRequest) returns (CreateHostResponse) {
@@ -54,40 +36,17 @@ service HostService {
       response_body: "item"
     };
     option (grpc.gateway.protoc_gen_swagger.options.openapiv2_operation) = {
-      responses: {
-        key: "default"
-        value: {
-          description: "The default error structure returned."
-          schema: {
-            json_schema: {
-              ref: ".controller.api.v1.Error"
-            };
-          }
-        }
-      }
+      summary: "Create a single Host"
     };
   }
   rpc UpdateHost(UpdateHostRequest) returns (UpdateHostResponse) {
     option (google.api.http) = {
       patch: "/v1/org/{org}/project/{project}/host_catalogs/{catalog_id}/hosts/{id}"
       body: "item"
-        additional_bindings {
-          patch: "/v1/org/{org}/project/{project}/host_catalogs/{catalog_id}/hosts/{id}"
-          body: "*"
-        }
+      response_body: "item"
     };
     option (grpc.gateway.protoc_gen_swagger.options.openapiv2_operation) = {
-      responses: {
-        key: "default"
-        value: {
-          description: "The default error structure returned."
-          schema: {
-            json_schema: {
-              ref: ".controller.api.v1.Error"
-            };
-          }
-        }
-      }
+      summary: "Update a Host"
     };
   }
   rpc DeleteHost(DeleteHostRequest) returns (DeleteHostResponse) {
@@ -95,25 +54,9 @@ service HostService {
       delete: "/v1/org/{org}/project/{project}/host_catalogs/{catalog_id}/hosts/{id}"
     };
     option (grpc.gateway.protoc_gen_swagger.options.openapiv2_operation) = {
-      responses: {
-        key: "default"
-        value: {
-          description: "The default error structure returned."
-          schema: {
-            json_schema: {
-              ref: ".controller.api.v1.Error"
-            };
-          }
-        }
-      }
+      summary: "Delete a Host"
     };
   }
-}
-
-enum HostView {
-  HOST_VIEW_UNSPECIFIED = 0;
-  HOST_VIEW_BASIC = 1;
-  HOST_VIEW_FULL = 2;
 }
 
 message GetHostRequest {
@@ -121,7 +64,7 @@ message GetHostRequest {
   string project = 2;
   string catalog_id = 3;
   string id = 4;
-  HostView view = 5;
+  api.view.v1.View view = 5;
 }
 
 message GetHostResponse {
@@ -134,7 +77,7 @@ message ListHostsRequest {
   string catalog_id = 3;
 
   bool ignore_result_limit = 4;
-  HostView view = 5;
+  api.view.v1.View view = 5;
 }
 
 message ListHostsResponse {

@@ -8,25 +8,22 @@ import "protoc-gen-swagger/options/annotations.proto";
 import "google/api/annotations.proto";
 import "google/protobuf/field_mask.proto";
 import "controller/api/resource/v1/host_catalog.proto";
+import "controller/api/view/v1/view.proto";
 
 service HostCatalogService {
+	option (grpc.gateway.protoc_gen_swagger.options.openapiv2_tag) = {
+		description: "The host catalog service allows you to get/mutate Host catalogs of every type."
+	};
+
+  // This retrieves the host catalog specified in the request using the basic view.
   rpc GetHostCatalog(GetHostCatalogRequest) returns (GetHostCatalogResponse) {
+    // Gets the host as specified int he url.
     option (google.api.http) = {
       get: "/v1/org/{org}/project/{project}/host_catalogs/{id}"
       response_body: "item"
     };
     option (grpc.gateway.protoc_gen_swagger.options.openapiv2_operation) = {
-      responses: {
-        key: "default"
-        value: {
-          description: "The default error structure returned."
-          schema: {
-            json_schema: {
-              ref: ".controller.api.v1.Error"
-            };
-          }
-        }
-      }
+      summary: "Gets a single HostCatalog"
     };
   }
   rpc ListHostCatalogs(ListHostCatalogsRequest) returns (ListHostCatalogsResponse) {
@@ -34,17 +31,7 @@ service HostCatalogService {
       get: "/v1/org/{org}/project/{project}/host_catalogs"
     };
     option (grpc.gateway.protoc_gen_swagger.options.openapiv2_operation) = {
-      responses: {
-        key: "default"
-        value: {
-          description: "The default error structure returned."
-          schema: {
-            json_schema: {
-              ref: ".controller.api.v1.Error"
-            };
-          }
-        }
-      }
+      summary: "Gets a list of HostCatalogs"
     };
   }
   rpc CreateHostCatalog(CreateHostCatalogRequest) returns (CreateHostCatalogResponse) {
@@ -54,42 +41,18 @@ service HostCatalogService {
       response_body: "item"
     };
     option (grpc.gateway.protoc_gen_swagger.options.openapiv2_operation) = {
-      responses: {
-        key: "default"
-        value: {
-          description: "The default error structure returned."
-          schema: {
-            json_schema: {
-              ref: ".controller.api.v1.Error"
-            };
-          }
-        }
-      }
+      summary: "Creates a HostCatalog"
+      description: "Creates a single host catalog under the specified org and project"
     };
   }
   rpc UpdateHostCatalog(UpdateHostCatalogRequest) returns (UpdateHostCatalogResponse) {
-  // TODO: Potentially make this in line with GET and DELETE so we can correctly share the URLs for swagger, or make
-  // those other methods in line with this.
     option (google.api.http) = {
       patch: "/v1/org/{org}/project/{project}/host_catalogs/{id}"
       body: "item"
-        additional_bindings {
-          patch: "/v1/org/{org}/project/{project}/host_catalogs/{id}"
-          body: "*"
-        }
+      response_body: "item"
     };
     option (grpc.gateway.protoc_gen_swagger.options.openapiv2_operation) = {
-      responses: {
-        key: "default"
-        value: {
-          description: "The default error structure returned."
-          schema: {
-            json_schema: {
-              ref: ".controller.api.v1.Error"
-            };
-          }
-        }
-      }
+      summary: "Updates a HostCatalog"
     };
   }
   rpc DeleteHostCatalog(DeleteHostCatalogRequest) returns (DeleteHostCatalogResponse) {
@@ -97,34 +60,16 @@ service HostCatalogService {
       delete: "/v1/org/{org}/project/{project}/host_catalogs/{id}"
     };
     option (grpc.gateway.protoc_gen_swagger.options.openapiv2_operation) = {
-      responses: {
-        key: "default"
-        value: {
-          description: "The default error structure returned."
-          schema: {
-            json_schema: {
-              ref: ".controller.api.v1.Error"
-            };
-          }
-        }
-      }
+      summary: "Deletes a HostCatalog"
     };
   }
 }
 
-enum HostCatalogView {
-  HOST_CATALOG_VIEW_UNSPECIFIED = 0;
-  HOST_CATALOG_VIEW_BASIC = 1;
-  HOST_CATALOG_VIEW_FULL = 2;
-}
-
 message GetHostCatalogRequest {
-  // TODO: Colapse this down into a single uri field once we figure out how to generate good swagger where the full
-  // uri is declared in a single field.
   string org = 1;
   string project = 2;
   string id = 3;
-  HostCatalogView view = 4;
+  api.view.v1.View view = 4;
 }
 
 message GetHostCatalogResponse {
@@ -136,7 +81,7 @@ message ListHostCatalogsRequest {
   string project = 2;
 
   bool ignore_result_limit = 3;
-  HostCatalogView view = 4;
+  api.view.v1.View view = 4;
 }
 
 message ListHostCatalogsResponse {

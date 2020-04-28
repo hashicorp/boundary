@@ -7,8 +7,7 @@ option go_package = "github.com/hashicorp/watchtower/internal/gen/controller/api
 import "google/protobuf/timestamp.proto";
 import "google/protobuf/wrappers.proto";
 
-// HostResult contains all fields related to a Host resource.  The result object should be used in responses but never
-// in requests.
+// Host contains all fields related to a Host resource.
 message Host {
 	// Output only.
 	string uri = 1;
