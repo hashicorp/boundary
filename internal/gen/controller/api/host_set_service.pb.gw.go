@@ -957,15 +957,15 @@ func (m response_HostSetService_UpdateHostSet_0) XXX_ResponseBody() interface{} 
 }
 
 var (
-	pattern_HostSetService_GetHostSet_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 1, 2, 2, 1, 0, 4, 1, 5, 3, 2, 4, 1, 0, 4, 1, 5, 5, 2, 6, 1, 0, 4, 1, 5, 7}, []string{"v1", "org", "project", "project_id", "host-catalogs", "host_catalog_id", "host-sets", "id"}, "", runtime.AssumeColonVerbOpt(true)))
+	pattern_HostSetService_GetHostSet_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 1, 2, 2, 1, 0, 4, 1, 5, 3, 2, 4, 1, 0, 4, 1, 5, 5, 2, 6, 1, 0, 4, 1, 5, 7}, []string{"v1", "org", "projects", "project_id", "host-catalogs", "host_catalog_id", "host-sets", "id"}, "", runtime.AssumeColonVerbOpt(true)))
 
-	pattern_HostSetService_ListHostSets_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 1, 2, 2, 1, 0, 4, 1, 5, 3, 2, 4, 1, 0, 4, 1, 5, 5, 2, 6}, []string{"v1", "org", "project", "project_id", "host-catalogs", "host_catalog_id", "host-sets"}, "", runtime.AssumeColonVerbOpt(true)))
+	pattern_HostSetService_ListHostSets_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 1, 2, 2, 1, 0, 4, 1, 5, 3, 2, 4, 1, 0, 4, 1, 5, 5, 2, 6}, []string{"v1", "org", "projects", "project_id", "host-catalogs", "host_catalog_id", "host-sets"}, "", runtime.AssumeColonVerbOpt(true)))
 
-	pattern_HostSetService_CreateHostSet_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 1, 2, 2, 1, 0, 4, 1, 5, 3, 2, 4, 1, 0, 4, 1, 5, 5, 2, 6}, []string{"v1", "org", "project", "project_id", "host-catalogs", "host_catalog_id", "host-sets"}, "", runtime.AssumeColonVerbOpt(true)))
+	pattern_HostSetService_CreateHostSet_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 1, 2, 2, 1, 0, 4, 1, 5, 3, 2, 4, 1, 0, 4, 1, 5, 5, 2, 6}, []string{"v1", "org", "projects", "project_id", "host-catalogs", "host_catalog_id", "host-sets"}, "", runtime.AssumeColonVerbOpt(true)))
 
-	pattern_HostSetService_UpdateHostSet_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 1, 2, 2, 1, 0, 4, 1, 5, 3, 2, 4, 1, 0, 4, 1, 5, 5, 2, 6, 1, 0, 4, 1, 5, 7}, []string{"v1", "org", "project", "project_id", "host-catalogs", "host_catalog_id", "host-sets", "id"}, "", runtime.AssumeColonVerbOpt(true)))
+	pattern_HostSetService_UpdateHostSet_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 1, 2, 2, 1, 0, 4, 1, 5, 3, 2, 4, 1, 0, 4, 1, 5, 5, 2, 6, 1, 0, 4, 1, 5, 7}, []string{"v1", "org", "projects", "project_id", "host-catalogs", "host_catalog_id", "host-sets", "id"}, "", runtime.AssumeColonVerbOpt(true)))
 
-	pattern_HostSetService_DeleteHostSet_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 1, 2, 2, 1, 0, 4, 1, 5, 3, 2, 4, 1, 0, 4, 1, 5, 5, 2, 6, 1, 0, 4, 1, 5, 7}, []string{"v1", "org", "project", "project_id", "host-catalogs", "host_catalog_id", "host-sets", "id"}, "", runtime.AssumeColonVerbOpt(true)))
+	pattern_HostSetService_DeleteHostSet_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 1, 2, 2, 1, 0, 4, 1, 5, 3, 2, 4, 1, 0, 4, 1, 5, 5, 2, 6, 1, 0, 4, 1, 5, 7}, []string{"v1", "org", "projects", "project_id", "host-catalogs", "host_catalog_id", "host-sets", "id"}, "", runtime.AssumeColonVerbOpt(true)))
 )
 
 var (
