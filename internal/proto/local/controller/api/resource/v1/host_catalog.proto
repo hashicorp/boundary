@@ -52,6 +52,6 @@ message Ec2CatalogDetails {
 	// Input only.
 	google.protobuf.StringValue  secret_key = 3;
 
-	// Input only.
+	// This value will never be returned in a response.
 	google.protobuf.BoolValue rotate = 4;
 }

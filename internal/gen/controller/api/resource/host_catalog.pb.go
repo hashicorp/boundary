@@ -260,7 +260,7 @@ type Ec2CatalogDetails struct {
 	AccessKey *wrappers.StringValue `protobuf:"bytes,2,opt,name=access_key,json=accessKey,proto3" json:"access_key,omitempty"`
 	// Input only.
 	SecretKey *wrappers.StringValue `protobuf:"bytes,3,opt,name=secret_key,json=secretKey,proto3" json:"secret_key,omitempty"`
-	// Input only.
+	// This value will never be returned in a response.
 	Rotate *wrappers.BoolValue `protobuf:"bytes,4,opt,name=rotate,proto3" json:"rotate,omitempty"`
 }
 

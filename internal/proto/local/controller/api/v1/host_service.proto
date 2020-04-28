@@ -14,7 +14,7 @@ service HostService {
   // This retrieves the host specified in the request using the basic view.
   rpc GetHost(GetHostRequest) returns (GetHostResponse) {
     option (google.api.http) = {
-      get: "/v1/org/{org}/project/{project}/host_catalogs/{catalog_id}/hosts/{id}"
+      get: "/v1/org/{org}/project/{project}/host-catalogs/{host_catalog_id}/hosts/{id}"
       response_body: "item"
     };
     option (grpc.gateway.protoc_gen_swagger.options.openapiv2_operation) = {
@@ -23,7 +23,7 @@ service HostService {
   }
   rpc ListHosts(ListHostsRequest) returns (ListHostsResponse) {
     option (google.api.http) = {
-      get: "/v1/org/{org}/project/{project}/host_catalogs/{catalog_id}/hosts"
+      get: "/v1/org/{org}/project/{project}/host-catalogs/{host_catalog_id}/hosts"
     };
     option (grpc.gateway.protoc_gen_swagger.options.openapiv2_operation) = {
       summary: "List all Hosts for the specified catalog"
@@ -31,7 +31,7 @@ service HostService {
   }
   rpc CreateHost(CreateHostRequest) returns (CreateHostResponse) {
     option (google.api.http) = {
-      post: "/v1/org/{org}/project/{project}/host_catalogs/{catalog_id}/hosts"
+      post: "/v1/org/{org}/project/{project}/host-catalogs/{host_catalog_id}/hosts"
       body: "item"
       response_body: "item"
     };
@@ -41,7 +41,7 @@ service HostService {
   }
   rpc UpdateHost(UpdateHostRequest) returns (UpdateHostResponse) {
     option (google.api.http) = {
-      patch: "/v1/org/{org}/project/{project}/host_catalogs/{catalog_id}/hosts/{id}"
+      patch: "/v1/org/{org}/project/{project}/host-catalogs/{host_catalog_id}/hosts/{id}"
       body: "item"
       response_body: "item"
     };
@@ -51,7 +51,7 @@ service HostService {
   }
   rpc DeleteHost(DeleteHostRequest) returns (DeleteHostResponse) {
     option (google.api.http) = {
-      delete: "/v1/org/{org}/project/{project}/host_catalogs/{catalog_id}/hosts/{id}"
+      delete: "/v1/org/{org}/project/{project}/host-catalogs/{host_catalog_id}/hosts/{id}"
     };
     option (grpc.gateway.protoc_gen_swagger.options.openapiv2_operation) = {
       summary: "Delete a Host"
@@ -62,7 +62,7 @@ service HostService {
 message GetHostRequest {
   string org = 1;
   string project = 2;
-  string catalog_id = 3;
+  string host_catalog_id = 3;
   string id = 4;
   api.view.v1.View view = 5;
 }
@@ -74,7 +74,7 @@ message GetHostResponse {
 message ListHostsRequest {
   string org = 1;
   string project = 2;
-  string catalog_id = 3;
+  string host_catalog_id = 3;
 
   bool ignore_result_limit = 4;
   api.view.v1.View view = 5;
@@ -87,7 +87,7 @@ message ListHostsResponse {
 message CreateHostRequest {
   string org = 1;
   string project = 2;
-  string catalog_id = 3;
+  string host_catalog_id = 3;
   api.resource.v1.Host item = 4;
 }
 
@@ -99,7 +99,7 @@ message CreateHostResponse {
 message UpdateHostRequest {
   string org = 1;
   string project = 2;
-  string catalog_id = 3;
+  string host_catalog_id = 3;
   string id = 4;
   api.resource.v1.Host item = 5;
   google.protobuf.FieldMask update_mask = 6;
@@ -112,7 +112,7 @@ message UpdateHostResponse {
 message DeleteHostRequest {
   string org = 1;
   string project = 2;
-  string catalog_id = 3;
+  string host_catalog_id = 3;
   string id = 4;
 }
 

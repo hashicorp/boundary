@@ -27,6 +27,7 @@ const (
 // of the legacy proto package is being used.
 const _ = proto.ProtoPackageIsVersion4
 
+// HostSets are a collection of sets created and managed by a catalog.
 type HostSet struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache

@@ -7,6 +7,7 @@ option go_package = "github.com/hashicorp/watchtower/internal/gen/controller/api
 import "google/protobuf/timestamp.proto";
 import "google/protobuf/wrappers.proto";
 
+// HostSets are a collection of sets created and managed by a catalog.
 message HostSet {
 	// Output only.
 	string uri = 1;
