@@ -44,7 +44,8 @@ type RoleGrant struct {
 	// access the Role via an API
 	// @inject_tag: `gorm:"default:null"`
 	FriendlyName string `protobuf:"bytes,5,opt,name=friendly_name,json=friendlyName,proto3" json:"friendly_name,omitempty" gorm:"default:null"`
-	Description  string `protobuf:"bytes,6,opt,name=description,proto3" json:"description,omitempty"`
+	// @inject_tag: `gorm:"default:null"`
+	Description string `protobuf:"bytes,6,opt,name=description,proto3" json:"description,omitempty" gorm:"default:null"`
 	// primary scope id of the PrimaryScope
 	// @inject_tag: `gorm:"default:null"`
 	PrimaryScopeId uint32 `protobuf:"varint,7,opt,name=primary_scope_id,json=primaryScopeId,proto3" json:"primary_scope_id,omitempty" gorm:"default:null"`

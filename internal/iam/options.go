@@ -21,6 +21,7 @@ func getDefaultOptions() Options {
 		optionWithFriendlyName: "",
 		optionWithScope:        nil,
 		optionWithDescription:  "",
+		optionWithGroupGrants:  false,
 	}
 }
 
@@ -57,5 +58,14 @@ const optionWithFriendlyName = "optionWithFriendlyName"
 func WithFriendlyName(name string) Option {
 	return func(o Options) {
 		o[optionWithFriendlyName] = name
+	}
+}
+
+const optionWithGroupGrants = "optionWithGroupGrants"
+
+// WithGroupGrants provides an option to include group grants
+func WithGroupGrants(include bool) Option {
+	return func(o Options) {
+		o[optionWithGroupGrants] = include
 	}
 }

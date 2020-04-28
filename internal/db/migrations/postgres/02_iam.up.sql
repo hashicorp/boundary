@@ -259,5 +259,6 @@ CREATE TABLE if not exists iam_role_grant (
     friendly_name text UNIQUE,
     primary_scope_id bigint NOT NULL REFERENCES iam_scope(id),
     role_id bigint NOT NULL REFERENCES iam_role(id),
-    role_grant text NOT NULL
+    "grant" text NOT NULL,
+    description text
   );

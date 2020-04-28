@@ -79,8 +79,36 @@ func (u *User) Roles(ctx context.Context, r db.Reader, opt ...Option) (map[strin
 	}
 	return results, nil
 }
-
-// Groups searches for all the user's groups
+func (u *User) Grants(ctx context.Context, r db.Reader, opt ...Option) ([]*RoleGrant, error) {
+	opts := GetOpts(opt...)
+	withGrpGrants := opts[optionWithGroupGrants].(bool)
+	if u.Id == 0 {
+		return nil, errors.New("error user id is 0 for finding roles")
+	}
+	where := "role_id in (select role_id from iam_assigned_role_vw ipr where principal_id  = ? and type = ?)"
+	grants := []*RoleGrant{}
+	if err := r.SearchBy(ctx, &grants, where, u.Id, UserRoleType.String()); err != nil {
+		return nil, fmt.Errorf("error getting user roles %w", err)
+	}
+	if withGrpGrants {
+		grpGrants := []*RoleGrant{}
+		where :=
+			`role_id in (
+				select distinct role_id from iam_assigned_role_vw 
+			 	where principal_id in (
+					select grp.id from iam_group grp 
+			     	where id in (
+						select distinct group_id from iam_group_member 
+						where member_id = ? and type = ?)) and type = ?)`
+		if err := r.SearchBy(ctx, &grpGrants, where, u.Id, UserRoleType.String(), GroupRoleType.String()); err != nil {
+			return nil, fmt.Errorf("error getting user roles %w", err)
+		}
+		for _, g := range grpGrants {
+			grants = append(grants, g)
+		}
+	}
+	return grants, nil
+}
 func (u *User) Groups(ctx context.Context, r db.Reader) ([]*Group, error) {
 	if u.Id == 0 {
 		return nil, errors.New("error user id is 0 for finding user groups")

@@ -26,6 +26,7 @@ message RoleGrant {
   // @inject_tag: `gorm:"default:null"`
   string friendly_name = 5;
 
+  // @inject_tag: `gorm:"default:null"`
   string description = 6;
 
   // primary scope id of the PrimaryScope

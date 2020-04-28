@@ -110,7 +110,7 @@ func (g *RoleGrant) TableName() string {
 	if g.tableName != "" {
 		return g.tableName
 	}
-	return "iam_role"
+	return "iam_role_grant"
 }
 
 // SetTableName sets the tablename and satisfies the ReplayableMessage interface
