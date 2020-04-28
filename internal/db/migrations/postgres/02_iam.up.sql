@@ -167,36 +167,39 @@ ADD
   -- define the iam_action_emn lookup table
   --
   CREATE TABLE if not exists iam_action_enm (
-    id smallint NOT NULL primary key,
-    string text NOT NULL UNIQUE
+    string text NOT NULL primary key CHECK(
+      string IN (
+        'unknown',
+        'list',
+        'create',
+        'update',
+        'edit',
+        'delete',
+        'authen'
+      )
+    )
   );
-INSERT INTO iam_action_enm (id, string)
+INSERT INTO iam_action_enm (string)
 values
-  (0, 'unknown');
-INSERT INTO iam_action_enm (id, string)
+  ('unknown');
+INSERT INTO iam_action_enm (string)
 values
-  (1, 'list');
-INSERT INTO iam_action_enm (id, string)
+  ('list');
+INSERT INTO iam_action_enm (string)
 values
-  (2, 'create');
-INSERT INTO iam_action_enm (id, string)
+  ('create');
+INSERT INTO iam_action_enm (string)
 values
-  (3, 'update');
-INSERT INTO iam_action_enm (id, string)
+  ('update');
+INSERT INTO iam_action_enm (string)
 values
-  (4, 'edit');
-INSERT INTO iam_action_enm (id, string)
+  ('edit');
+INSERT INTO iam_action_enm (string)
 values
-  (5, 'delete');
-INSERT INTO iam_action_enm (id, string)
+  ('delete');
+INSERT INTO iam_action_enm (string)
 values
-  (6, 'authen');
-ALTER TABLE iam_action_enm
-ADD
-  CONSTRAINT iam_action_enm_between_chk CHECK (
-    id BETWEEN 0
-    AND 6
-  );
+  ('authen');
 --
   -- define the iam_role_type_enm lookup table
   --
