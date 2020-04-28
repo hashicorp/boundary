@@ -53,34 +53,40 @@ CREATE TABLE if not exists iam_scope (
         and parent_id IS NOT NULL
       )
     ),
-    parent_id bigint REFERENCES iam_scope(id),
+    parent_id bigint REFERENCES iam_scope(id) ON DELETE CASCADE ON UPDATE CASCADE,
     disabled BOOLEAN NOT NULL default FALSE
   );
--- check_scope_parent_is_org will ensure that project parents are always organizations
-  CREATE
-  OR REPLACE FUNCTION check_scope_parent_is_org() RETURNS TRIGGER
+create table if not exists iam_scope_organization (
+    id bigint generated always as identity primary key,
+    scope_id bigint NOT NULL UNIQUE REFERENCES iam_scope(id) ON DELETE CASCADE ON UPDATE CASCADE
+  );
+create table if not exists iam_scope_project (
+    id bigint generated always as identity primary key,
+    scope_id bigint REFERENCES iam_scope(id) ON DELETE CASCADE ON UPDATE CASCADE,
+    parent_id bigint REFERENCES iam_scope_organization(scope_id) ON DELETE CASCADE ON UPDATE CASCADE
+  );
+CREATE
+  OR REPLACE FUNCTION iam_sub_scopes_func() RETURNS TRIGGER
 SET SCHEMA
   'public' LANGUAGE plpgsql AS $$ DECLARE parent_type INT;
--- if it's an organization type then return
-  BEGIN IF new.type = '1' THEN return NEW;
+BEGIN IF new.type = '1' THEN
+insert into iam_scope_organization (scope_id)
+values
+  (new.id);
+return NEW;
 END IF;
-select
-  "type"
-from iam_scope
-where
-  id = new.parent_id INTO parent_type;
---  projects (2) cannot be parents
-  IF parent_type = '2' THEN RAISE EXCEPTION 'parent must be an organization';
-end if;
-return new;
+IF new.type = '2' THEN
+insert into iam_scope_project (scope_id, parent_id)
+values
+  (new.id, new.parent_id);
+return NEW;
+END IF;
+RAISE EXCEPTION 'unknown scope type';
 END;
 $$;
-CREATE TRIGGER check_iam_scope_insert BEFORE
-insert ON iam_scope FOR EACH ROW
-  WHEN (new.type = '2') EXECUTE PROCEDURE check_scope_parent_is_org();
-CREATE TRIGGER check_iam_scope_update BEFORE
-update ON iam_scope FOR EACH ROW
-  WHEN (new.type = '2') EXECUTE PROCEDURE check_scope_parent_is_org();
+CREATE TRIGGER iam_scope_insert
+AFTER
+insert ON iam_scope FOR EACH ROW EXECUTE PROCEDURE iam_sub_scopes_func();
 CREATE TABLE if not exists iam_user (
     id bigint generated always as identity primary key,
     create_time timestamp with time zone NOT NULL default current_timestamp,
@@ -88,7 +94,7 @@ CREATE TABLE if not exists iam_user (
     public_id text not null UNIQUE,
     friendly_name text UNIQUE,
     name text NOT NULL,
-    primary_scope_id bigint NOT NULL REFERENCES iam_scope(id),
+    primary_scope_id bigint NOT NULL REFERENCES iam_scope_organization(scope_id),
     disabled BOOLEAN NOT NULL default FALSE
   );
 CREATE TABLE if not exists iam_auth_method (
@@ -97,7 +103,7 @@ CREATE TABLE if not exists iam_auth_method (
     update_time timestamp with time zone NOT NULL default current_timestamp,
     public_id text not null UNIQUE,
     friendly_name text UNIQUE,
-    primary_scope_id bigint NOT NULL REFERENCES iam_scope(id),
+    primary_scope_id bigint NOT NULL REFERENCES iam_scope_organization(scope_id),
     disabled BOOLEAN NOT NULL default FALSE,
     type smallint NOT NULL
   );
