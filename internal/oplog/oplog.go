@@ -215,17 +215,34 @@ func (e *Entry) Replay(ctx context.Context, tx Writer, types *TypeCatalog, table
 		}
 		origTableName := em.TableName()
 		defer em.SetTableName(origTableName)
-		em.SetTableName(origTableName + tableSuffix)
+
+		/*
+			how replay will be implemented for snapshots is still very much under discussion.
+			when we go to implement snapshots we may very well need to refactor this create table
+			choice... there are many issues with doing the "create" in this manner:
+				* the perms needed to create a table and possible security issues
+				* the fk references would be to the original tables, not the new replay tables.
+			It may be a better choice to just create separate schemas for replay named blue and green
+			since we need at min of two replay tables definitions. if we went with separate schemas they
+			could be create with a watchtower cli cmd that had appropriate privs (reducing security issues)
+			and the separate schemas wouldn't have the fk reference issues mentioned above.
+		*/
+		replayTable := origTableName + tableSuffix
+		if !tx.hasTable(replayTable) {
+			tx.createTableLike(origTableName, replayTable)
+		}
+
+		em.SetTableName(replayTable)
 		switch m.OpType {
-		case OpType_CREATE_OP:
+		case OpType_OP_TYPE_CREATE:
 			if err := tx.Create(m.Message); err != nil {
 				return fmt.Errorf("replay error: %w", err)
 			}
-		case OpType_UPDATE_OP:
+		case OpType_OP_TYPE_UPDATE:
 			if err := tx.Update(m.Message, m.FieldMaskPaths); err != nil {
 				return fmt.Errorf("replay error: %w", err)
 			}
-		case OpType_DELETE_OP:
+		case OpType_OP_TYPE_DELETE:
 			if err := tx.Delete(m.Message); err != nil {
 				return fmt.Errorf("replay error: %w", err)
 			}

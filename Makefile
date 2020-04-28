@@ -15,21 +15,20 @@ protolint:
 protobuild:
     # To add a new directory containing a proto pass the  proto's root path in through the --proto_path flag.
 	@bash make/protoc_gen_plugin.bash \
-		"--proto_path=proto/local" \
-		"--proto_path=internal" \
-		"--proto_include_path=proto/third_party" \
+		"--proto_path=internal/proto/local" \
+		"--proto_include_path=internal/proto/third_party" \
 		"--plugin_name=go" \
 		"--plugin_out=plugins=grpc:${TMP_DIR}"
 	@bash make/protoc_gen_plugin.bash \
-		"--proto_path=proto/local" \
-		"--proto_include_path=proto/third_party" \
+		"--proto_path=internal/proto/local/" \
+		"--proto_include_path=internal/proto/third_party" \
 		"--plugin_name=grpc-gateway" \
 		"--plugin_out=logtostderr=true:${TMP_DIR}"
 
 	# Move the generated files from the tmp file subdirectories into the current repo.
 	cp -R ${TMP_DIR}/${REPO_PATH}/* .
 
-	@protoc --proto_path=proto/local --proto_path=proto/third_party --swagger_out=logtostderr=true,disable_default_errors=true,include_package_in_tags=true,allow_merge,fqn_for_swagger_name=true,merge_file_name=controller:internal/gen/. proto/local/controller/api/v1/*.proto
+	@protoc --proto_path=internal/proto/local --proto_path=internal/proto/third_party --swagger_out=logtostderr=true,disable_default_errors=true,include_package_in_tags=true,fqn_for_swagger_name=true,allow_merge,merge_file_name=controller:internal/gen/. internal/proto/local/controller/api/v1/*.proto
 	@protoc-go-inject-tag -input=./internal/oplog/store/oplog.pb.go
 	@protoc-go-inject-tag -input=./internal/oplog/oplog_test/oplog_test.pb.go
 

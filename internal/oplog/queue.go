@@ -28,6 +28,9 @@ func (r *Queue) Add(m proto.Message, typeName string, t OpType, opt ...Option) e
 	opts := GetOpts(opt...)
 	withPaths := opts[optionWithFieldMaskPaths].([]string)
 
+	if _, ok := m.(ReplayableMessage); !ok {
+		return fmt.Errorf("error %T is not a ReplayableMessage", m)
+	}
 	value, err := proto.Marshal(m)
 	if err != nil {
 		return fmt.Errorf("error marshaling add parameter: %w", err)
@@ -61,7 +64,7 @@ func (r *Queue) Add(m proto.Message, typeName string, t OpType, opt ...Option) e
 // Remove pb message from the queue and EOF if empty
 func (r *Queue) Remove() (proto.Message, OpType, []string, error) {
 	if r.Catalog == nil {
-		return nil, OpType_UNKNOWN_OP, nil, errors.New("remove Catalog is nil")
+		return nil, OpType_OP_TYPE_UNSPECIFIED, nil, errors.New("remove Catalog is nil")
 	}
 	r.mx.Lock()
 	defer r.mx.Unlock()

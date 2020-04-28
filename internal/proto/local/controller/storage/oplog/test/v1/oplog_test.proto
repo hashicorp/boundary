@@ -1,7 +1,7 @@
 syntax = "proto3";
 
 // define a test proto package
-package hashicorp.watchtower.controller.oplog.test.v1;
+package controller.storage.oplog.test.v1;
 option go_package = "github.com/hashicorp/watchtower/internal/oplog/oplog_test;oplog_test";
 
 // TestUser for gorm test user model
@@ -11,6 +11,8 @@ message TestUser {
   string name = 4;
   string phone_number = 5;
   string email = 6;
+  // @inject_tag: gorm:"-" json:"-"
+  string table = 7;
 }
 // TestCar for gorm test car model
 message TestCar {
@@ -18,9 +20,22 @@ message TestCar {
   uint32 id = 1;
   string model = 4;
   int32 mpg = 5;
+  // @inject_tag: gorm:"-" json:"-"
+  string table = 6;
 }
 // TestRental for gorm test rental model
 message TestRental {
   uint32 user_id = 1;
   uint32 car_id = 2;
+  // @inject_tag: gorm:"-" json:"-"
+  string table = 3;
+}
+
+// TestNonReplayableUser for negative test
+message TestNonReplayableUser {
+  // @inject_tag: gorm:"primary_key"
+  uint32 id = 1;
+  string name = 4;
+  string phone_number = 5;
+  string email = 6;
 }

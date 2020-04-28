@@ -1,8 +1,7 @@
 build:
   roots:
-    - proto/local
-    - proto/third_party
-    - internal
+    - internal/proto/local
+    - internal/proto/third_party
 
 lint:
   use:
@@ -10,11 +9,8 @@ lint:
   ignore:
     - protoc-gen-swagger
     - google
-    # TODO: Remove once the proto files under oplog are compliant with the linter.
-    - oplog
   ignore_only:
     ENUM_VALUE_PREFIX:
       - controller/api/view/v1/view.proto
     ENUM_ZERO_VALUE_SUFFIX:
       - controller/api/view/v1/view.proto
-
