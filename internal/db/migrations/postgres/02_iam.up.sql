@@ -110,21 +110,14 @@ CREATE TABLE if not exists iam_role (
   -- define the iam_group_member_type_enm lookup table
   --
   CREATE TABLE if not exists iam_group_member_type_enm (
-    id smallint NOT NULL primary key,
-    string text NOT NULL UNIQUE
+    string text NOT NULL primary key CHECK(string IN ('unknown', 'user'))
   );
-INSERT INTO iam_group_member_type_enm (id, string)
+INSERT INTO iam_group_member_type_enm (string)
 values
-  (0, 'unknown');
-INSERT INTO iam_group_member_type_enm (id, string)
+  ('unknown');
+INSERT INTO iam_group_member_type_enm (string)
 values
-  (1, 'user');
-ALTER TABLE iam_group_member_type_enm
-ADD
-  CONSTRAINT iam_group_member_type_enm_between_chk CHECK (
-    id BETWEEN 0
-    AND 1
-  );
+  ('user');
 CREATE TABLE if not exists iam_group (
     id bigint generated always as identity primary key,
     create_time timestamp with time zone NOT NULL default current_timestamp,
@@ -144,7 +137,7 @@ CREATE TABLE if not exists iam_group_member_user (
     primary_scope_id bigint NOT NULL REFERENCES iam_scope(id),
     group_id bigint NOT NULL REFERENCES iam_group(id),
     member_id bigint NOT NULL REFERENCES iam_user(id),
-    type int NOT NULL REFERENCES iam_group_member_type_enm(id) CHECK(type = 1)
+    type text NOT NULL REFERENCES iam_group_member_type_enm(string) check(type = 'user')
   );
 CREATE VIEW iam_group_member AS
 SELECT

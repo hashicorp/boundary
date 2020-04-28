@@ -36,8 +36,8 @@ message GroupMemberUser {
   uint32 group_id = 9;
 
   // GroupMember type (User)
-  // @inject_tag: `gorm:"default:1"`
-  uint32 type = 10;
+  // @inject_tag: `gorm:"default:user"`
+  string type = 10;
 
   uint32 member_id = 11;
 }
@@ -72,7 +72,7 @@ message GroupMemberView {
   uint32 group_id = 9;
 
   // GroupMember type (User)
-  uint32 type = 10;
+  string type = 10;
 
   uint32 member_id = 11;
 }

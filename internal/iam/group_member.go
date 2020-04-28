@@ -19,12 +19,19 @@ const (
 	UserMemberType    MemberType = 1
 )
 
+func (m MemberType) String() string {
+	return [...]string{
+		"unknown",
+		"user",
+	}[m]
+}
+
 // GroupMember declares a common interface for all members assigned to a group (which is just users for now)
 type GroupMember interface {
 	Resource
 	GetGroupId() uint32
 	GetMemberId() uint32
-	GetType() uint32
+	GetType() string
 }
 
 // groupMemberView provides a common way to return group members regardless of their underlying type
@@ -108,7 +115,7 @@ func newGroupMemberUser(primaryScope *Scope, g *Group, m *User, opt ...Option) (
 			PrimaryScopeId: primaryScope.GetId(),
 			MemberId:       m.Id,
 			GroupId:        g.Id,
-			Type:           uint32(UserMemberType),
+			Type:           UserMemberType.String(),
 		},
 	}
 	if withFriendlyName != "" {
@@ -133,7 +140,7 @@ func (m *GroupMemberUser) VetForWrite(ctx context.Context, r db.Reader, opType d
 	if m.PrimaryScopeId == 0 {
 		return errors.New("error primary scope id not set for group write")
 	}
-	if m.Type != uint32(UserMemberType) {
+	if m.Type != UserMemberType.String() {
 		return errors.New("error member type is not user")
 	}
 	// make sure the scope is valid for users

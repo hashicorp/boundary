@@ -65,14 +65,14 @@ func (g *Group) Clone() Resource {
 // Members returns the members of the group (Users)
 func (g *Group) Members(ctx context.Context, r db.Reader) ([]GroupMember, error) {
 	viewMembers := []*groupMemberView{}
-	if err := r.SearchBy(ctx, &viewMembers, "group_id = ? and type = ?", g.Id, UserMemberType); err != nil {
+	if err := r.SearchBy(ctx, &viewMembers, "group_id = ? and type = ?", g.Id, UserMemberType.String()); err != nil {
 		return nil, fmt.Errorf("error getting group members %w", err)
 	}
 
 	members := []GroupMember{}
 	for _, m := range viewMembers {
 		switch m.Type {
-		case uint32(UserMemberType):
+		case UserMemberType.String():
 			gm := &GroupMemberUser{
 				GroupMemberUser: &store.GroupMemberUser{
 					Id:             m.Id,
@@ -82,13 +82,13 @@ func (g *Group) Members(ctx context.Context, r db.Reader) ([]GroupMember, error)
 					FriendlyName:   m.FriendlyName,
 					PrimaryScopeId: m.PrimaryScopeId,
 					GroupId:        m.GroupId,
-					Type:           uint32(UserMemberType),
+					Type:           UserMemberType.String(),
 					MemberId:       m.MemberId,
 				},
 			}
 			members = append(members, gm)
 		default:
-			return nil, fmt.Errorf("error unsupported member type: %d", m.Type)
+			return nil, fmt.Errorf("error unsupported member type: %s", m.Type)
 		}
 
 	}

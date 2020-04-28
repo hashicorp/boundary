@@ -87,7 +87,7 @@ func (u *User) Groups(ctx context.Context, r db.Reader) ([]*Group, error) {
 	}
 	where := "id in (select distinct group_id from iam_group_member where member_id = ? and type = ?)"
 	groups := []*Group{}
-	if err := r.SearchBy(ctx, &groups, where, u.Id, UserMemberType); err != nil {
+	if err := r.SearchBy(ctx, &groups, where, u.Id, UserMemberType.String()); err != nil {
 		return nil, fmt.Errorf("error finding user groups: %w", err)
 	}
 	return groups, nil
