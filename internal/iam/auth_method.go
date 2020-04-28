@@ -20,6 +20,14 @@ const (
 	AuthOIDC     AuthType = 2
 )
 
+func (a AuthType) String() string {
+	return [...]string{
+		"unknown",
+		"userpass",
+		"oidc",
+	}[a]
+}
+
 // AuthMethod are the authentication methods available at the Organization Scope within WatchTower.
 type AuthMethod struct {
 	*store.AuthMethod
@@ -56,7 +64,7 @@ func NewAuthMethod(primaryScope *Scope, authType AuthType, opt ...Option) (*Auth
 		AuthMethod: &store.AuthMethod{
 			PublicId:       publicId,
 			PrimaryScopeId: primaryScope.GetId(),
-			Type:           uint32(authType),
+			Type:           authType.String(),
 		},
 	}
 	if withFriendlyName != "" {

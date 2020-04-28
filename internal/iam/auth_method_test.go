@@ -34,7 +34,7 @@ func Test_NewAuthMethod(t *testing.T) {
 		err = w.Create(context.Background(), meth)
 		assert.NilError(t, err)
 		assert.Check(t, meth != nil)
-		assert.Equal(t, meth.Type, uint32(AuthUserPass))
+		assert.Equal(t, meth.Type, AuthUserPass.String())
 	})
 	t.Run("nil-scope", func(t *testing.T) {
 		meth, err := NewAuthMethod(nil, AuthUserPass)
@@ -69,7 +69,7 @@ func TestAuthMethod_GetPrimaryScope(t *testing.T) {
 		err = w.Create(context.Background(), meth)
 		assert.NilError(t, err)
 		assert.Check(t, meth != nil)
-		assert.Equal(t, meth.Type, uint32(AuthUserPass))
+		assert.Equal(t, meth.Type, AuthUserPass.String())
 
 		primaryScope, err := meth.GetPrimaryScope(context.Background(), &w)
 		assert.NilError(t, err)
@@ -103,7 +103,7 @@ func TestAuthMethod_ResourceType(t *testing.T) {
 		err = w.Create(context.Background(), meth)
 		assert.NilError(t, err)
 		assert.Check(t, meth != nil)
-		assert.Equal(t, meth.Type, uint32(AuthUserPass))
+		assert.Equal(t, meth.Type, AuthUserPass.String())
 
 		ty := meth.ResourceType()
 		assert.Equal(t, ty, ResourceTypeAuthMethod)
@@ -145,7 +145,7 @@ func TestAuthMethod_Clone(t *testing.T) {
 		err = w.Create(context.Background(), meth)
 		assert.NilError(t, err)
 		assert.Check(t, meth != nil)
-		assert.Equal(t, meth.Type, uint32(AuthUserPass))
+		assert.Equal(t, meth.Type, AuthUserPass.String())
 
 		cp := meth.Clone()
 		assert.Check(t, proto.Equal(cp.(*AuthMethod).AuthMethod, meth.AuthMethod))
@@ -165,7 +165,7 @@ func TestAuthMethod_Clone(t *testing.T) {
 		err = w.Create(context.Background(), meth)
 		assert.NilError(t, err)
 		assert.Check(t, meth != nil)
-		assert.Equal(t, meth.Type, uint32(AuthUserPass))
+		assert.Equal(t, meth.Type, AuthUserPass.String())
 
 		meth2, err := NewAuthMethod(s, AuthUserPass)
 		assert.NilError(t, err)

@@ -36,5 +36,5 @@ message AuthMethod {
   bool disabled = 9;
 
   // Type of auth method
-  uint32 type = 10;
+  string type = 10;
 }
