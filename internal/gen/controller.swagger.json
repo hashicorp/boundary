@@ -356,6 +356,7 @@
     "/v1/org/{org}/projects/{project_id}/host-catalogs/{host_catalog_id}/host-sets/{id}:add-hosts": {
       "post": {
         "summary": "Adds existing Hosts to the Host Set",
+        "description": "Adds the hosts to this Host Set if possible.  All hosts added must be a child of the same host catalog this host set is a child of.",
         "operationId": "HostSetService_AddToHostSet",
         "responses": {
           "200": {

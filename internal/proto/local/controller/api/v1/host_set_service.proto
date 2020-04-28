@@ -76,6 +76,7 @@ service HostSetService {
     };
     option (grpc.gateway.protoc_gen_swagger.options.openapiv2_operation) = {
       summary: "Adds existing Hosts to the Host Set"
+      description: "Adds the hosts to this Host Set if possible.  All hosts added must be a child of the same host catalog this host set is a child of."
     };
   }
 
@@ -159,7 +160,8 @@ message AddToHostSetRequest {
   string host_catalog_id = 3;
   string id = 4;
 
-  // A list of host uris which will be added to this host set.
+  // A list of host uris which will be added to this host set.  Each host referenced here must be a child of the
+  // same host catalog that this host set is a child of.
   repeated string host_uris = 5;
 }
 
