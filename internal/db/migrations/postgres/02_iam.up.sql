@@ -18,7 +18,9 @@ $$ language 'plpgsql';
 --
 -- define the iam_auth_method_type_enm lookup table
 --
-CREATE TABLE if not exists iam_scope_type_enm (string text NOT NULL primary key);
+CREATE TABLE if not exists iam_scope_type_enm (
+  string text NOT NULL primary key CHECK(string IN ('unknown', 'organization', 'project'))
+);
 INSERT INTO iam_scope_type_enm (string)
 values
   ('unknown');
