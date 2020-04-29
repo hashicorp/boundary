@@ -52,3 +52,12 @@ values
 INSERT INTO oplog_ticket (name, version)
 values
   ('iam_role_user', 1);
+INSERT INTO oplog_ticket (name, version)
+values
+  ('db_test_user', 1);
+INSERT INTO oplog_ticket (name, version)
+values
+  ('db_test_car', 1);
+INSERT INTO oplog_ticket (name, version)
+values
+  ('db_test_rental', 1);
