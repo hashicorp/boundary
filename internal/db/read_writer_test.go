@@ -68,11 +68,12 @@ func TestGormReadWriter_Update(t *testing.T) {
 		user.FriendlyName = "friendly-" + id
 		_, err = w.DoTx(
 			context.Background(),
-			20,
-			ExpBackoff{},
+			20,           // twenty retries
+			ExpBackoff{}, // exponential backoff
 			func(w Writer) error {
+				// the TxHandler updates the user's friendly name
 				return w.Update(context.Background(), user, []string{"FriendlyName"},
-					WithOplog(true),
+					WithOplog(true), // write oplogs for this update
 					WithWrapper(InitTestWrapper(t)),
 					WithMetadata(oplog.Metadata{
 						"key-only":   nil,
@@ -886,5 +887,38 @@ func TestGormReadWriter_Delete(t *testing.T) {
 		err = w.Create(context.Background(), user)
 		assert.Check(t, err != nil)
 		assert.Equal(t, err.Error(), "create tx is nil")
+	})
+}
+
+func TestGormReadWriter_ScanRows(t *testing.T) {
+	StartTest()
+	t.Parallel()
+	cleanup, url := SetupTest(t, "migrations/postgres")
+	defer cleanup()
+	defer CompleteTest() // must come after the "defer cleanup()"
+	conn, err := TestConnection(url)
+	assert.NilError(t, err)
+	defer conn.Close()
+	t.Run("valid", func(t *testing.T) {
+		w := GormReadWriter{Tx: conn}
+		user, err := db_test.NewTestUser()
+		assert.NilError(t, err)
+		err = w.Create(context.Background(), user)
+		assert.NilError(t, err)
+		assert.Check(t, user.Id != 0)
+
+		tx, err := w.DB()
+		where := "select * from db_test_user where friendly_name in ($1, $2)"
+		rows, err := tx.Query(where, "alice", "bob")
+		defer rows.Close()
+		for rows.Next() {
+			u, err := db_test.NewTestUser()
+			assert.NilError(t, err)
+
+			// scan the row into your Gorm struct
+			err = w.ScanRows(rows, &u)
+			assert.NilError(t, err)
+			assert.Equal(t, u.PublicId, user.PublicId)
+		}
 	})
 }
