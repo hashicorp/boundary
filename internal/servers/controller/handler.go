@@ -5,8 +5,13 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/grpc-ecosystem/grpc-gateway/runtime"
 	"github.com/hashicorp/vault/internalshared/configutil"
 	"github.com/hashicorp/watchtower/globals"
+	"github.com/hashicorp/watchtower/internal/gen/controller/api"
+	"github.com/hashicorp/watchtower/internal/servers/controller/handlers/host_catalogs"
+	"github.com/hashicorp/watchtower/internal/servers/controller/handlers/host_sets"
+	"github.com/hashicorp/watchtower/internal/servers/controller/handlers/hosts"
 )
 
 type HandlerProperties struct {
@@ -15,25 +20,28 @@ type HandlerProperties struct {
 
 // Handler returns an http.Handler for the API. This can be used on
 // its own to mount the Vault API within another web server.
-func (c *Controller) Handler(props HandlerProperties) http.Handler {
+func Handler(props HandlerProperties) http.Handler {
 	// Create the muxer to handle the actual endpoints
 	mux := http.NewServeMux()
 
-	mux.Handle("/v1/", handleDummy())
+	mux.Handle("/v1/", handleGrpcGateway())
 
-	genericWrappedHandler := c.wrapGenericHandler(mux, props)
+	genericWrappedHandler := wrapGenericHandler(mux, props)
 
 	return genericWrappedHandler
 }
 
-func handleDummy() http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-		w.Write([]byte(`{"foo": "bar"}`))
-	})
+func handleGrpcGateway() http.Handler {
+	ignored := context.Background()
+	mux := runtime.NewServeMux()
+	api.RegisterHostCatalogServiceHandlerServer(ignored, mux, &host_catalogs.Service{})
+	api.RegisterHostSetServiceHandlerServer(ignored, mux, &host_sets.Service{})
+	api.RegisterHostServiceHandlerServer(ignored, mux, &hosts.Service{})
+
+	return mux
 }
 
-func (c *Controller) wrapGenericHandler(h http.Handler, props HandlerProperties) http.Handler {
+func wrapGenericHandler(h http.Handler, props HandlerProperties) http.Handler {
 	var maxRequestDuration time.Duration
 	var maxRequestSize int64
 	if props.ListenerConfig != nil {
