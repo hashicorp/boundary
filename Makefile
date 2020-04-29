@@ -5,6 +5,9 @@ THIS_FILE := $(lastword $(MAKEFILE_LIST))
 TMP_DIR := $(shell mktemp -d)
 REPO_PATH := github.com/hashicorp/watchtower
 
+bootstrap:
+	go generate -tags tools tools/tools.go
+
 ### oplog requires protoc-gen-go v1.20.0 or later
 # GO111MODULE=on go get -u github.com/golang/protobuf/protoc-gen-go@v1.40
 proto: protolint protobuild cleanup

@@ -1,11 +1,17 @@
 // +build tools
 
-// This file ensures tool dependencies are kept in sync.  This is the recommended way of doing this according to
+// This file ensures tool dependencies are kept in sync.  This is the
+// recommended way of doing this according to
 // https://github.com/golang/go/wiki/Modules#how-can-i-track-tool-dependencies-for-a-module
-// To update the versions used by this repo use:
-// $ go mod tidy
 // To install the following tools at the version used by this repo run:
-// $ go install (each of the dependencies listed below)
+// $ go generate -tags tools
+
+//go:generate go install github.com/bufbuild/buf/cmd/buf
+//go:generate go install github.com/favadi/protoc-go-inject-tag
+//go:generate go install github.com/go-swagger/go-swagger/cmd/swagger
+//go:generate go install github.com/golang/protobuf/protoc-gen-go
+//go:generate go install github.com/grpc-ecosystem/grpc-gateway/protoc-gen-grpc-gateway
+//go:generate go install github.com/grpc-ecosystem/grpc-gateway/protoc-gen-swagger
 
 package tools
 
