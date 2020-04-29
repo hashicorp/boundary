@@ -10,9 +10,11 @@ const (
 	ActionList    Action = 1
 	ActionCreate  Action = 2
 	ActionUpdate  Action = 3
-	ActionEdit    Action = 4
+	ActionRead    Action = 4
 	ActionDelete  Action = 5
 	ActionAuthen  Action = 6
+	ActionAll     Action = 7
+	ActionConnect Action = 8
 )
 
 func (a Action) String() string {
@@ -21,9 +23,11 @@ func (a Action) String() string {
 		"list",
 		"create",
 		"update",
-		"edit",
+		"read",
 		"delete",
 		"authen",
+		"all",
+		"connect",
 	}[a]
 }
 
@@ -33,7 +37,7 @@ func StdActions() map[string]Action {
 		ActionList.String():   ActionList,
 		ActionCreate.String(): ActionCreate,
 		ActionUpdate.String(): ActionUpdate,
-		ActionEdit.String():   ActionEdit,
+		ActionRead.String():   ActionRead,
 		ActionDelete.String(): ActionDelete,
 	}
 }
