@@ -137,7 +137,7 @@ func (r *dbRepository) create(ctx context.Context, resource Resource, opt ...Opt
 	if err != nil {
 		return nil, fmt.Errorf("error getting metadata for create: %w", err)
 	}
-	metadata["op-type"] = []string{strconv.Itoa(int(oplog.OpType_CREATE_OP))}
+	metadata["op-type"] = []string{strconv.Itoa(int(oplog.OpType_OP_TYPE_CREATE))}
 
 	var returnedResource Resource
 	_, err = r.writer.DoTx(
@@ -171,7 +171,7 @@ func (r *dbRepository) update(ctx context.Context, resource Resource, fieldMaskP
 	if err != nil {
 		return nil, fmt.Errorf("error getting metadata for update: %w", err)
 	}
-	metadata["op-type"] = []string{strconv.Itoa(int(oplog.OpType_UPDATE_OP))}
+	metadata["op-type"] = []string{strconv.Itoa(int(oplog.OpType_OP_TYPE_UPDATE))}
 
 	var returnedResource Resource
 	_, err = r.writer.DoTx(
