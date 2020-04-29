@@ -1,4 +1,4 @@
-package host_sets
+package host_sets_test
 
 import (
 	"context"
@@ -6,28 +6,31 @@ import (
 
 	"github.com/golang/protobuf/proto"
 	"github.com/hashicorp/watchtower/internal/gen/controller/api"
+	"github.com/hashicorp/watchtower/internal/servers/controller/handlers/host_sets"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 )
 
 func TestDelete(t *testing.T) {
 	toMerge := &api.DeleteHostSetRequest{
-		Org:           "1",
+		OrgId:         "1",
 		ProjectId:     "2",
 		HostCatalogId: "3",
 		Id:            "4",
 	}
 
-	s := Service{}
+	s := host_sets.Service{}
 	cases := []struct {
-		name string
-		req  *api.DeleteHostSetRequest
-		res  *api.DeleteHostSetResponse
-		wErr error
+		name    string
+		req     *api.DeleteHostSetRequest
+		res     *api.DeleteHostSetResponse
+		errCode codes.Code
 	}{
 		{
-			name: "Default request",
-			req:  &api.DeleteHostSetRequest{},
-			res:  &api.DeleteHostSetResponse{},
-			wErr: nil,
+			name:    "Delete succeeds even for non existing resources",
+			req:     &api.DeleteHostSetRequest{Id: "this doesn't exist"},
+			res:     &api.DeleteHostSetResponse{},
+			errCode: codes.OK,
 		},
 	}
 	for _, tc := range cases {
@@ -35,8 +38,8 @@ func TestDelete(t *testing.T) {
 			req := proto.Clone(toMerge).(*api.DeleteHostSetRequest)
 			proto.Merge(req, tc.req)
 			got, gErr := s.DeleteHostSet(context.Background(), req)
-			if gErr != tc.wErr {
-				t.Errorf("DeleteHostSet(%+v) got error %v, wanted %v", req, gErr, tc.wErr)
+			if status.Code(gErr) != tc.errCode {
+				t.Errorf("DeleteHostSet(%+v) got error %v, wanted %v", req, gErr, tc.errCode)
 			}
 			if !proto.Equal(got, tc.res) {
 				t.Errorf("DeleteHostSet(%q) got response %q, wanted %q", req, got, tc.res)
