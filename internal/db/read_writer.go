@@ -32,6 +32,9 @@ type Reader interface {
 	// SearchBy will search for all the resources it can find using a where clause with parameters
 	SearchBy(ctx context.Context, resources interface{}, where string, args ...interface{}) error
 
+	// ScanRows will scan sql rows into the interface provided
+	ScanRows(rows *sql.Rows, result interface{}) error
+
 	// DB returns the sql.DB
 	DB() (*sql.DB, error)
 
@@ -125,6 +128,11 @@ func (rw *GormReadWriter) DB() (*sql.DB, error) {
 		return nil, errors.New("create tx is nil for db")
 	}
 	return rw.Tx.DB(), nil
+}
+
+// Scan rows will scan the rows into the interface
+func (rw *GormReadWriter) ScanRows(rows *sql.Rows, result interface{}) error {
+	return rw.Tx.ScanRows(rows, result)
 }
 
 // gormDB returns a *gorm.DB
