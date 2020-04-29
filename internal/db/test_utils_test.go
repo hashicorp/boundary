@@ -3,7 +3,7 @@ package db
 import (
 	"testing"
 
-	"gotest.tools/assert"
+	"github.com/stretchr/testify/assert"
 )
 
 func Test_Utils(t *testing.T) {
@@ -13,7 +13,8 @@ func Test_Utils(t *testing.T) {
 	defer cleanup()
 	defer CompleteTest() // must come after the "defer cleanup()"
 	conn, err := TestConnection(url)
-	assert.NilError(t, err)
+	assert := assert.New(t)
+	assert.Nil(err)
 	defer conn.Close()
 	t.Run("nothing", func(t *testing.T) {
 
