@@ -16,7 +16,7 @@
     "application/json"
   ],
   "paths": {
-    "/v1/org/{org}/projects/{project_id}/host-catalogs": {
+    "/v1/orgs/{org_id}/projects/{project_id}/host-catalogs": {
       "get": {
         "summary": "Gets a list of HostCatalogs",
         "operationId": "HostCatalogService_ListHostCatalogs",
@@ -30,7 +30,7 @@
         },
         "parameters": [
           {
-            "name": "org",
+            "name": "org_id",
             "in": "path",
             "required": true,
             "type": "string"
@@ -71,7 +71,7 @@
         },
         "parameters": [
           {
-            "name": "org",
+            "name": "org_id",
             "in": "path",
             "required": true,
             "type": "string"
@@ -96,7 +96,7 @@
         ]
       }
     },
-    "/v1/org/{org}/projects/{project_id}/host-catalogs/{host_catalog_id}/host-sets": {
+    "/v1/orgs/{org_id}/projects/{project_id}/host-catalogs/{host_catalog_id}/host-sets": {
       "get": {
         "summary": "List all HostSets under the specific catalog",
         "operationId": "HostSetService_ListHostSets",
@@ -110,7 +110,7 @@
         },
         "parameters": [
           {
-            "name": "org",
+            "name": "org_id",
             "in": "path",
             "required": true,
             "type": "string"
@@ -156,7 +156,7 @@
         },
         "parameters": [
           {
-            "name": "org",
+            "name": "org_id",
             "in": "path",
             "required": true,
             "type": "string"
@@ -187,7 +187,7 @@
         ]
       }
     },
-    "/v1/org/{org}/projects/{project_id}/host-catalogs/{host_catalog_id}/host-sets/{id}": {
+    "/v1/orgs/{org_id}/projects/{project_id}/host-catalogs/{host_catalog_id}/host-sets/{id}": {
       "get": {
         "summary": "Get a single HostSet",
         "operationId": "HostSetService_GetHostSet",
@@ -201,7 +201,7 @@
         },
         "parameters": [
           {
-            "name": "org",
+            "name": "org_id",
             "in": "path",
             "required": true,
             "type": "string"
@@ -253,7 +253,7 @@
         },
         "parameters": [
           {
-            "name": "org",
+            "name": "org_id",
             "in": "path",
             "required": true,
             "type": "string"
@@ -294,7 +294,7 @@
         },
         "parameters": [
           {
-            "name": "org",
+            "name": "org_id",
             "in": "path",
             "required": true,
             "type": "string"
@@ -331,7 +331,7 @@
         ]
       }
     },
-    "/v1/org/{org}/projects/{project_id}/host-catalogs/{host_catalog_id}/host-sets/{id}:add-hosts": {
+    "/v1/orgs/{org_id}/projects/{project_id}/host-catalogs/{host_catalog_id}/host-sets/{id}:add-hosts": {
       "post": {
         "summary": "Adds existing Hosts to the Host Set",
         "description": "Adds the hosts to this Host Set if possible.  All hosts added must be a child of the same host catalog this host set is a child of.",
@@ -346,7 +346,7 @@
         },
         "parameters": [
           {
-            "name": "org",
+            "name": "org_id",
             "in": "path",
             "required": true,
             "type": "string"
@@ -375,7 +375,7 @@
         ]
       }
     },
-    "/v1/org/{org}/projects/{project_id}/host-catalogs/{host_catalog_id}/host-sets/{id}:remove-hosts": {
+    "/v1/orgs/{org_id}/projects/{project_id}/host-catalogs/{host_catalog_id}/host-sets/{id}:remove-hosts": {
       "post": {
         "summary": "Removes Hosts to the Host Set",
         "description": "Removes the hosts from this Host Set if present.  If it is not present then no action is taken and no error is returned.",
@@ -390,7 +390,7 @@
         },
         "parameters": [
           {
-            "name": "org",
+            "name": "org_id",
             "in": "path",
             "required": true,
             "type": "string"
@@ -420,7 +420,7 @@
         ]
       }
     },
-    "/v1/org/{org}/projects/{project_id}/host-catalogs/{host_catalog_id}/hosts": {
+    "/v1/orgs/{org_id}/projects/{project_id}/host-catalogs/{host_catalog_id}/hosts": {
       "get": {
         "summary": "List all Hosts for the specified catalog",
         "operationId": "HostService_ListHosts",
@@ -434,7 +434,7 @@
         },
         "parameters": [
           {
-            "name": "org",
+            "name": "org_id",
             "in": "path",
             "required": true,
             "type": "string"
@@ -480,7 +480,7 @@
         },
         "parameters": [
           {
-            "name": "org",
+            "name": "org_id",
             "in": "path",
             "required": true,
             "type": "string"
@@ -511,7 +511,7 @@
         ]
       }
     },
-    "/v1/org/{org}/projects/{project_id}/host-catalogs/{host_catalog_id}/hosts/{id}": {
+    "/v1/orgs/{org_id}/projects/{project_id}/host-catalogs/{host_catalog_id}/hosts/{id}": {
       "get": {
         "summary": "Gets a single Host",
         "operationId": "HostService_GetHost",
@@ -525,7 +525,7 @@
         },
         "parameters": [
           {
-            "name": "org",
+            "name": "org_id",
             "in": "path",
             "required": true,
             "type": "string"
@@ -577,7 +577,7 @@
         },
         "parameters": [
           {
-            "name": "org",
+            "name": "org_id",
             "in": "path",
             "required": true,
             "type": "string"
@@ -618,7 +618,7 @@
         },
         "parameters": [
           {
-            "name": "org",
+            "name": "org_id",
             "in": "path",
             "required": true,
             "type": "string"
@@ -655,7 +655,7 @@
         ]
       }
     },
-    "/v1/org/{org}/projects/{project_id}/host-catalogs/{id}": {
+    "/v1/orgs/{org_id}/projects/{project_id}/host-catalogs/{id}": {
       "get": {
         "summary": "Gets a single HostCatalog",
         "description": "Get's a single Host Catalog with the provided identifier.",
@@ -670,7 +670,7 @@
         },
         "parameters": [
           {
-            "name": "org",
+            "name": "org_id",
             "in": "path",
             "required": true,
             "type": "string"
@@ -716,7 +716,7 @@
         },
         "parameters": [
           {
-            "name": "org",
+            "name": "org_id",
             "in": "path",
             "required": true,
             "type": "string"
@@ -751,7 +751,7 @@
         },
         "parameters": [
           {
-            "name": "org",
+            "name": "org_id",
             "in": "path",
             "required": true,
             "type": "string"

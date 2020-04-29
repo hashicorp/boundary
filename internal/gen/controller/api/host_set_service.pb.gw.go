@@ -32,7 +32,7 @@ var _ = utilities.NewDoubleArray
 var _ = descriptor.ForMessage
 
 var (
-	filter_HostSetService_GetHostSet_0 = &utilities.DoubleArray{Encoding: map[string]int{"org": 0, "project_id": 1, "host_catalog_id": 2, "id": 3}, Base: []int{1, 1, 2, 3, 4, 0, 0, 0, 0}, Check: []int{0, 1, 1, 1, 1, 2, 3, 4, 5}}
+	filter_HostSetService_GetHostSet_0 = &utilities.DoubleArray{Encoding: map[string]int{"org_id": 0, "project_id": 1, "host_catalog_id": 2, "id": 3}, Base: []int{1, 1, 2, 3, 4, 0, 0, 0, 0}, Check: []int{0, 1, 1, 1, 1, 2, 3, 4, 5}}
 )
 
 func request_HostSetService_GetHostSet_0(ctx context.Context, marshaler runtime.Marshaler, client HostSetServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
@@ -46,15 +46,15 @@ func request_HostSetService_GetHostSet_0(ctx context.Context, marshaler runtime.
 		_   = err
 	)
 
-	val, ok = pathParams["org"]
+	val, ok = pathParams["org_id"]
 	if !ok {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "org")
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "org_id")
 	}
 
-	protoReq.Org, err = runtime.String(val)
+	protoReq.OrgId, err = runtime.String(val)
 
 	if err != nil {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "org", err)
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "org_id", err)
 	}
 
 	val, ok = pathParams["project_id"]
@@ -113,15 +113,15 @@ func local_request_HostSetService_GetHostSet_0(ctx context.Context, marshaler ru
 		_   = err
 	)
 
-	val, ok = pathParams["org"]
+	val, ok = pathParams["org_id"]
 	if !ok {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "org")
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "org_id")
 	}
 
-	protoReq.Org, err = runtime.String(val)
+	protoReq.OrgId, err = runtime.String(val)
 
 	if err != nil {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "org", err)
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "org_id", err)
 	}
 
 	val, ok = pathParams["project_id"]
@@ -167,7 +167,7 @@ func local_request_HostSetService_GetHostSet_0(ctx context.Context, marshaler ru
 }
 
 var (
-	filter_HostSetService_ListHostSets_0 = &utilities.DoubleArray{Encoding: map[string]int{"org": 0, "project_id": 1, "host_catalog_id": 2}, Base: []int{1, 1, 2, 3, 0, 0, 0}, Check: []int{0, 1, 1, 1, 2, 3, 4}}
+	filter_HostSetService_ListHostSets_0 = &utilities.DoubleArray{Encoding: map[string]int{"org_id": 0, "project_id": 1, "host_catalog_id": 2}, Base: []int{1, 1, 2, 3, 0, 0, 0}, Check: []int{0, 1, 1, 1, 2, 3, 4}}
 )
 
 func request_HostSetService_ListHostSets_0(ctx context.Context, marshaler runtime.Marshaler, client HostSetServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
@@ -181,15 +181,15 @@ func request_HostSetService_ListHostSets_0(ctx context.Context, marshaler runtim
 		_   = err
 	)
 
-	val, ok = pathParams["org"]
+	val, ok = pathParams["org_id"]
 	if !ok {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "org")
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "org_id")
 	}
 
-	protoReq.Org, err = runtime.String(val)
+	protoReq.OrgId, err = runtime.String(val)
 
 	if err != nil {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "org", err)
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "org_id", err)
 	}
 
 	val, ok = pathParams["project_id"]
@@ -237,15 +237,15 @@ func local_request_HostSetService_ListHostSets_0(ctx context.Context, marshaler 
 		_   = err
 	)
 
-	val, ok = pathParams["org"]
+	val, ok = pathParams["org_id"]
 	if !ok {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "org")
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "org_id")
 	}
 
-	protoReq.Org, err = runtime.String(val)
+	protoReq.OrgId, err = runtime.String(val)
 
 	if err != nil {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "org", err)
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "org_id", err)
 	}
 
 	val, ok = pathParams["project_id"]
@@ -298,15 +298,15 @@ func request_HostSetService_CreateHostSet_0(ctx context.Context, marshaler runti
 		_   = err
 	)
 
-	val, ok = pathParams["org"]
+	val, ok = pathParams["org_id"]
 	if !ok {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "org")
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "org_id")
 	}
 
-	protoReq.Org, err = runtime.String(val)
+	protoReq.OrgId, err = runtime.String(val)
 
 	if err != nil {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "org", err)
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "org_id", err)
 	}
 
 	val, ok = pathParams["project_id"]
@@ -355,15 +355,15 @@ func local_request_HostSetService_CreateHostSet_0(ctx context.Context, marshaler
 		_   = err
 	)
 
-	val, ok = pathParams["org"]
+	val, ok = pathParams["org_id"]
 	if !ok {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "org")
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "org_id")
 	}
 
-	protoReq.Org, err = runtime.String(val)
+	protoReq.OrgId, err = runtime.String(val)
 
 	if err != nil {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "org", err)
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "org_id", err)
 	}
 
 	val, ok = pathParams["project_id"]
@@ -394,7 +394,7 @@ func local_request_HostSetService_CreateHostSet_0(ctx context.Context, marshaler
 }
 
 var (
-	filter_HostSetService_UpdateHostSet_0 = &utilities.DoubleArray{Encoding: map[string]int{"item": 0, "org": 1, "project_id": 2, "host_catalog_id": 3, "id": 4}, Base: []int{1, 1, 2, 3, 4, 5, 0, 0, 0, 0, 0}, Check: []int{0, 1, 1, 1, 1, 1, 2, 3, 4, 5, 6}}
+	filter_HostSetService_UpdateHostSet_0 = &utilities.DoubleArray{Encoding: map[string]int{"item": 0, "org_id": 1, "project_id": 2, "host_catalog_id": 3, "id": 4}, Base: []int{1, 1, 2, 3, 4, 5, 0, 0, 0, 0, 0}, Check: []int{0, 1, 1, 1, 1, 1, 2, 3, 4, 5, 6}}
 )
 
 func request_HostSetService_UpdateHostSet_0(ctx context.Context, marshaler runtime.Marshaler, client HostSetServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
@@ -424,15 +424,15 @@ func request_HostSetService_UpdateHostSet_0(ctx context.Context, marshaler runti
 		_   = err
 	)
 
-	val, ok = pathParams["org"]
+	val, ok = pathParams["org_id"]
 	if !ok {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "org")
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "org_id")
 	}
 
-	protoReq.Org, err = runtime.String(val)
+	protoReq.OrgId, err = runtime.String(val)
 
 	if err != nil {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "org", err)
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "org_id", err)
 	}
 
 	val, ok = pathParams["project_id"]
@@ -507,15 +507,15 @@ func local_request_HostSetService_UpdateHostSet_0(ctx context.Context, marshaler
 		_   = err
 	)
 
-	val, ok = pathParams["org"]
+	val, ok = pathParams["org_id"]
 	if !ok {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "org")
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "org_id")
 	}
 
-	protoReq.Org, err = runtime.String(val)
+	protoReq.OrgId, err = runtime.String(val)
 
 	if err != nil {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "org", err)
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "org_id", err)
 	}
 
 	val, ok = pathParams["project_id"]
@@ -571,15 +571,15 @@ func request_HostSetService_DeleteHostSet_0(ctx context.Context, marshaler runti
 		_   = err
 	)
 
-	val, ok = pathParams["org"]
+	val, ok = pathParams["org_id"]
 	if !ok {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "org")
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "org_id")
 	}
 
-	protoReq.Org, err = runtime.String(val)
+	protoReq.OrgId, err = runtime.String(val)
 
 	if err != nil {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "org", err)
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "org_id", err)
 	}
 
 	val, ok = pathParams["project_id"]
@@ -631,15 +631,15 @@ func local_request_HostSetService_DeleteHostSet_0(ctx context.Context, marshaler
 		_   = err
 	)
 
-	val, ok = pathParams["org"]
+	val, ok = pathParams["org_id"]
 	if !ok {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "org")
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "org_id")
 	}
 
-	protoReq.Org, err = runtime.String(val)
+	protoReq.OrgId, err = runtime.String(val)
 
 	if err != nil {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "org", err)
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "org_id", err)
 	}
 
 	val, ok = pathParams["project_id"]
@@ -681,7 +681,7 @@ func local_request_HostSetService_DeleteHostSet_0(ctx context.Context, marshaler
 }
 
 var (
-	filter_HostSetService_AddToHostSet_0 = &utilities.DoubleArray{Encoding: map[string]int{"org": 0, "project_id": 1, "host_catalog_id": 2, "id": 3}, Base: []int{1, 1, 2, 3, 4, 0, 0, 0, 0}, Check: []int{0, 1, 1, 1, 1, 2, 3, 4, 5}}
+	filter_HostSetService_AddToHostSet_0 = &utilities.DoubleArray{Encoding: map[string]int{"org_id": 0, "project_id": 1, "host_catalog_id": 2, "id": 3}, Base: []int{1, 1, 2, 3, 4, 0, 0, 0, 0}, Check: []int{0, 1, 1, 1, 1, 2, 3, 4, 5}}
 )
 
 func request_HostSetService_AddToHostSet_0(ctx context.Context, marshaler runtime.Marshaler, client HostSetServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
@@ -695,15 +695,15 @@ func request_HostSetService_AddToHostSet_0(ctx context.Context, marshaler runtim
 		_   = err
 	)
 
-	val, ok = pathParams["org"]
+	val, ok = pathParams["org_id"]
 	if !ok {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "org")
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "org_id")
 	}
 
-	protoReq.Org, err = runtime.String(val)
+	protoReq.OrgId, err = runtime.String(val)
 
 	if err != nil {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "org", err)
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "org_id", err)
 	}
 
 	val, ok = pathParams["project_id"]
@@ -762,15 +762,15 @@ func local_request_HostSetService_AddToHostSet_0(ctx context.Context, marshaler 
 		_   = err
 	)
 
-	val, ok = pathParams["org"]
+	val, ok = pathParams["org_id"]
 	if !ok {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "org")
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "org_id")
 	}
 
-	protoReq.Org, err = runtime.String(val)
+	protoReq.OrgId, err = runtime.String(val)
 
 	if err != nil {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "org", err)
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "org_id", err)
 	}
 
 	val, ok = pathParams["project_id"]
@@ -816,7 +816,7 @@ func local_request_HostSetService_AddToHostSet_0(ctx context.Context, marshaler 
 }
 
 var (
-	filter_HostSetService_RemoveFromHostSet_0 = &utilities.DoubleArray{Encoding: map[string]int{"org": 0, "project_id": 1, "host_catalog_id": 2, "id": 3}, Base: []int{1, 1, 2, 3, 4, 0, 0, 0, 0}, Check: []int{0, 1, 1, 1, 1, 2, 3, 4, 5}}
+	filter_HostSetService_RemoveFromHostSet_0 = &utilities.DoubleArray{Encoding: map[string]int{"org_id": 0, "project_id": 1, "host_catalog_id": 2, "id": 3}, Base: []int{1, 1, 2, 3, 4, 0, 0, 0, 0}, Check: []int{0, 1, 1, 1, 1, 2, 3, 4, 5}}
 )
 
 func request_HostSetService_RemoveFromHostSet_0(ctx context.Context, marshaler runtime.Marshaler, client HostSetServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
@@ -830,15 +830,15 @@ func request_HostSetService_RemoveFromHostSet_0(ctx context.Context, marshaler r
 		_   = err
 	)
 
-	val, ok = pathParams["org"]
+	val, ok = pathParams["org_id"]
 	if !ok {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "org")
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "org_id")
 	}
 
-	protoReq.Org, err = runtime.String(val)
+	protoReq.OrgId, err = runtime.String(val)
 
 	if err != nil {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "org", err)
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "org_id", err)
 	}
 
 	val, ok = pathParams["project_id"]
@@ -897,15 +897,15 @@ func local_request_HostSetService_RemoveFromHostSet_0(ctx context.Context, marsh
 		_   = err
 	)
 
-	val, ok = pathParams["org"]
+	val, ok = pathParams["org_id"]
 	if !ok {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "org")
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "org_id")
 	}
 
-	protoReq.Org, err = runtime.String(val)
+	protoReq.OrgId, err = runtime.String(val)
 
 	if err != nil {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "org", err)
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "org_id", err)
 	}
 
 	val, ok = pathParams["project_id"]
@@ -1307,19 +1307,19 @@ func (m response_HostSetService_UpdateHostSet_0) XXX_ResponseBody() interface{} 
 }
 
 var (
-	pattern_HostSetService_GetHostSet_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 1, 2, 2, 1, 0, 4, 1, 5, 3, 2, 4, 1, 0, 4, 1, 5, 5, 2, 6, 1, 0, 4, 1, 5, 7}, []string{"v1", "org", "projects", "project_id", "host-catalogs", "host_catalog_id", "host-sets", "id"}, "", runtime.AssumeColonVerbOpt(true)))
+	pattern_HostSetService_GetHostSet_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2, 2, 3, 1, 0, 4, 1, 5, 4, 2, 5, 1, 0, 4, 1, 5, 6, 2, 7, 1, 0, 4, 1, 5, 8}, []string{"v1", "orgs", "org_id", "projects", "project_id", "host-catalogs", "host_catalog_id", "host-sets", "id"}, "", runtime.AssumeColonVerbOpt(true)))
 
-	pattern_HostSetService_ListHostSets_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 1, 2, 2, 1, 0, 4, 1, 5, 3, 2, 4, 1, 0, 4, 1, 5, 5, 2, 6}, []string{"v1", "org", "projects", "project_id", "host-catalogs", "host_catalog_id", "host-sets"}, "", runtime.AssumeColonVerbOpt(true)))
+	pattern_HostSetService_ListHostSets_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2, 2, 3, 1, 0, 4, 1, 5, 4, 2, 5, 1, 0, 4, 1, 5, 6, 2, 7}, []string{"v1", "orgs", "org_id", "projects", "project_id", "host-catalogs", "host_catalog_id", "host-sets"}, "", runtime.AssumeColonVerbOpt(true)))
 
-	pattern_HostSetService_CreateHostSet_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 1, 2, 2, 1, 0, 4, 1, 5, 3, 2, 4, 1, 0, 4, 1, 5, 5, 2, 6}, []string{"v1", "org", "projects", "project_id", "host-catalogs", "host_catalog_id", "host-sets"}, "", runtime.AssumeColonVerbOpt(true)))
+	pattern_HostSetService_CreateHostSet_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2, 2, 3, 1, 0, 4, 1, 5, 4, 2, 5, 1, 0, 4, 1, 5, 6, 2, 7}, []string{"v1", "orgs", "org_id", "projects", "project_id", "host-catalogs", "host_catalog_id", "host-sets"}, "", runtime.AssumeColonVerbOpt(true)))
 
-	pattern_HostSetService_UpdateHostSet_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 1, 2, 2, 1, 0, 4, 1, 5, 3, 2, 4, 1, 0, 4, 1, 5, 5, 2, 6, 1, 0, 4, 1, 5, 7}, []string{"v1", "org", "projects", "project_id", "host-catalogs", "host_catalog_id", "host-sets", "id"}, "", runtime.AssumeColonVerbOpt(true)))
+	pattern_HostSetService_UpdateHostSet_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2, 2, 3, 1, 0, 4, 1, 5, 4, 2, 5, 1, 0, 4, 1, 5, 6, 2, 7, 1, 0, 4, 1, 5, 8}, []string{"v1", "orgs", "org_id", "projects", "project_id", "host-catalogs", "host_catalog_id", "host-sets", "id"}, "", runtime.AssumeColonVerbOpt(true)))
 
-	pattern_HostSetService_DeleteHostSet_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 1, 2, 2, 1, 0, 4, 1, 5, 3, 2, 4, 1, 0, 4, 1, 5, 5, 2, 6, 1, 0, 4, 1, 5, 7}, []string{"v1", "org", "projects", "project_id", "host-catalogs", "host_catalog_id", "host-sets", "id"}, "", runtime.AssumeColonVerbOpt(true)))
+	pattern_HostSetService_DeleteHostSet_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2, 2, 3, 1, 0, 4, 1, 5, 4, 2, 5, 1, 0, 4, 1, 5, 6, 2, 7, 1, 0, 4, 1, 5, 8}, []string{"v1", "orgs", "org_id", "projects", "project_id", "host-catalogs", "host_catalog_id", "host-sets", "id"}, "", runtime.AssumeColonVerbOpt(true)))
 
-	pattern_HostSetService_AddToHostSet_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 1, 2, 2, 1, 0, 4, 1, 5, 3, 2, 4, 1, 0, 4, 1, 5, 5, 2, 6, 1, 0, 4, 1, 5, 7}, []string{"v1", "org", "projects", "project_id", "host-catalogs", "host_catalog_id", "host-sets", "id"}, "add-hosts", runtime.AssumeColonVerbOpt(true)))
+	pattern_HostSetService_AddToHostSet_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2, 2, 3, 1, 0, 4, 1, 5, 4, 2, 5, 1, 0, 4, 1, 5, 6, 2, 7, 1, 0, 4, 1, 5, 8}, []string{"v1", "orgs", "org_id", "projects", "project_id", "host-catalogs", "host_catalog_id", "host-sets", "id"}, "add-hosts", runtime.AssumeColonVerbOpt(true)))
 
-	pattern_HostSetService_RemoveFromHostSet_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 1, 2, 2, 1, 0, 4, 1, 5, 3, 2, 4, 1, 0, 4, 1, 5, 5, 2, 6, 1, 0, 4, 1, 5, 7}, []string{"v1", "org", "projects", "project_id", "host-catalogs", "host_catalog_id", "host-sets", "id"}, "remove-hosts", runtime.AssumeColonVerbOpt(true)))
+	pattern_HostSetService_RemoveFromHostSet_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2, 2, 3, 1, 0, 4, 1, 5, 4, 2, 5, 1, 0, 4, 1, 5, 6, 2, 7, 1, 0, 4, 1, 5, 8}, []string{"v1", "orgs", "org_id", "projects", "project_id", "host-catalogs", "host_catalog_id", "host-sets", "id"}, "remove-hosts", runtime.AssumeColonVerbOpt(true)))
 )
 
 var (
