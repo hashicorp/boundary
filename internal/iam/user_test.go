@@ -5,6 +5,7 @@ import (
 	"os"
 	"testing"
 
+	"github.com/hashicorp/go-uuid"
 	"github.com/hashicorp/watchtower/internal/db"
 	"google.golang.org/protobuf/proto"
 	"gotest.tools/assert"
@@ -219,6 +220,8 @@ func Test_UserGrants(t *testing.T) {
 			// turn on debugging
 			conn.LogMode(true)
 		}
+		id, err := uuid.GenerateUUID()
+		assert.NilError(t, err)
 		w := db.GormReadWriter{Tx: conn}
 		s, err := NewScope(OrganizationScope)
 		assert.NilError(t, err)
@@ -235,11 +238,11 @@ func Test_UserGrants(t *testing.T) {
 		assert.NilError(t, err)
 		assert.Check(t, role.Id != 0)
 
-		g, err := NewRoleGrant(s, role, "everything*")
+		g, err := NewRoleGrant(s, role, "everything*"+id)
 		assert.NilError(t, err)
 		assert.Check(t, g != nil)
 		assert.Equal(t, g.RoleId, role.Id)
-		assert.Equal(t, g.Grant, "everything*")
+		assert.Equal(t, g.Grant, "everything*"+id)
 		err = w.Create(context.Background(), g)
 		assert.NilError(t, err)
 		assert.Check(t, g.Id != 0)
@@ -262,7 +265,6 @@ func Test_UserGrants(t *testing.T) {
 		assert.NilError(t, err)
 		assert.Equal(t, len(userGrants), 1)
 		assert.Equal(t, userGrants[0].GetId(), g.Id)
-		t.Log(userGrants)
 
 		grp, err := NewGroup(s, WithDescription("user grants test group"))
 		assert.NilError(t, err)
@@ -287,11 +289,11 @@ func Test_UserGrants(t *testing.T) {
 		assert.NilError(t, err)
 		assert.Check(t, groupRole.Id != 0)
 
-		groupGrant, err := NewRoleGrant(s, groupRole, "group-grant*")
+		groupGrant, err := NewRoleGrant(s, groupRole, "group-grant*"+id)
 		assert.NilError(t, err)
 		assert.Check(t, groupGrant != nil)
 		assert.Equal(t, groupGrant.RoleId, groupRole.Id)
-		assert.Equal(t, groupGrant.Grant, "group-grant*")
+		assert.Equal(t, groupGrant.Grant, "group-grant*"+id)
 		err = w.Create(context.Background(), groupGrant)
 		assert.NilError(t, err)
 		assert.Check(t, groupGrant.Id != 0)
@@ -311,7 +313,6 @@ func Test_UserGrants(t *testing.T) {
 		assert.Equal(t, len(allGrants), 2)
 		assert.Equal(t, allGrants[0].GetId(), g.Id)
 		assert.Equal(t, allGrants[1].GetId(), groupGrant.Id)
-		t.Log(allGrants)
 	})
 }
 func TestUser_Clone(t *testing.T) {

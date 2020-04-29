@@ -79,36 +79,71 @@ func (u *User) Roles(ctx context.Context, r db.Reader, opt ...Option) (map[strin
 	}
 	return results, nil
 }
+
+// Grants finds the grants for the user and supports options:
+// WithGroupGrants which will get the grants assigned to the user's groups as well
 func (u *User) Grants(ctx context.Context, r db.Reader, opt ...Option) ([]*RoleGrant, error) {
 	opts := GetOpts(opt...)
 	withGrpGrants := opts[optionWithGroupGrants].(bool)
 	if u.Id == 0 {
 		return nil, errors.New("error user id is 0 for finding roles")
 	}
-	where := "role_id in (select role_id from iam_assigned_role_vw ipr where principal_id  = ? and type = ?)"
 	grants := []*RoleGrant{}
-	if err := r.SearchBy(ctx, &grants, where, u.Id, UserRoleType.String()); err != nil {
-		return nil, fmt.Errorf("error getting user roles %w", err)
-	}
-	if withGrpGrants {
-		grpGrants := []*RoleGrant{}
-		where :=
-			`role_id in (
-				select distinct role_id from iam_assigned_role_vw 
-			 	where principal_id in (
-					select grp.id from iam_group grp 
-			     	where id in (
-						select distinct group_id from iam_group_member 
-						where member_id = ? and type = ?)) and type = ?)`
-		if err := r.SearchBy(ctx, &grpGrants, where, u.Id, UserRoleType.String(), GroupRoleType.String()); err != nil {
+	// client just wants the grants directly granted to the user
+	if !withGrpGrants {
+		where := "role_id in (select role_id from iam_assigned_role_vw ipr where principal_id  = ? and type = ?)"
+		if err := r.SearchBy(ctx, &grants, where, u.Id, UserRoleType.String()); err != nil {
 			return nil, fmt.Errorf("error getting user roles %w", err)
 		}
-		for _, g := range grpGrants {
-			grants = append(grants, g)
+		return grants, nil
+	}
+
+	if withGrpGrants {
+		// okay, we're going to get the user grants and include the grants from any group the user is part of.
+		tx, err := r.DB()
+		if err != nil {
+			return nil, err
+		}
+		where := `
+select 
+  rg.*
+from
+  iam_role_grant rg,
+  iam_assigned_role_vw ipr, 
+  iam_group grp, 
+  iam_group_member gm 
+where 
+  rg.role_id = ipr.role_id and 
+  ipr.principal_id = grp.id and 
+  grp.id = gm.group_id and 
+  gm.member_id = $1 and gm.type = 'user' and
+  ipr."type" = 'group'
+union
+select 
+  rg.*
+from 
+  iam_role_grant rg,
+  iam_assigned_role_vw ipr 
+where 
+  ipr.role_id  = rg.role_id and 
+  ipr.principal_id  = $2 and ipr.type = 'user'`
+
+		rows, err := tx.Query(where, u.Id, u.Id)
+		if err != nil {
+			return nil, err
+		}
+		defer rows.Close()
+		for rows.Next() {
+			g := allocRoleGrant()
+			if err := r.ScanRows(rows, &g); err != nil {
+				return nil, err
+			}
+			grants = append(grants, &g)
 		}
 	}
 	return grants, nil
 }
+
 func (u *User) Groups(ctx context.Context, r db.Reader) ([]*Group, error) {
 	if u.Id == 0 {
 		return nil, errors.New("error user id is 0 for finding user groups")
