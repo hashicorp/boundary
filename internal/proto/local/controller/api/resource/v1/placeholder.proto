@@ -1,0 +1,12 @@
+syntax = "proto3";
+
+package controller.api.resource.v1;
+
+option go_package = "github.com/hashicorp/watchtower/internal/gen/controller/api/resource;resource";
+
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/wrappers.proto";
+
+// A Placeholder does nothing but establishes directory organization.
+message Placeholder {
+}
