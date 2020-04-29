@@ -4,7 +4,7 @@
 Just some high-level usage highlights to get you started.  Read the godocs for a complete list of capabilities and their documentation.
 
 ```go
-	conn, _ := gorm.Open("postgres", url)
+    conn, _ := gorm.Open("postgres", url)
     
     // GormReadWriter implements both the Reader and Writer interfaces
     rw := GormReadWriter{Tx: conn}
