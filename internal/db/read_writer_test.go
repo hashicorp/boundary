@@ -210,7 +210,7 @@ func TestGormReadWriter_Create(t *testing.T) {
 		var returnedUser *db_test.TestUser
 		_, err = w.DoTx(
 			context.Background(),
-			3,
+			10,
 			ExpBackoff{},
 			func(w Writer) error {
 				// make sure you used the passed in writer that properly handles transaction rollback
@@ -247,7 +247,7 @@ func TestGormReadWriter_Create(t *testing.T) {
 		user.Name = "foo-" + id
 		_, err = w.DoTx(
 			context.Background(),
-			3,
+			10,
 			ExpBackoff{},
 			func(w Writer) error {
 				retryableUser := user.Clone()
@@ -274,7 +274,7 @@ func TestGormReadWriter_Create(t *testing.T) {
 		user.Name = "foo-" + id
 		_, err = w.DoTx(
 			context.Background(),
-			3,
+			10,
 			ExpBackoff{},
 			func(w Writer) error {
 				retryableUser := user.Clone()
