@@ -73,4 +73,17 @@ func Test_GetOpts(t *testing.T) {
 		testOpts[optionWithWrapper] = wrapper
 		assert.Check(t, reflect.DeepEqual(opts, testOpts))
 	})
+	t.Run("WithDebug", func(t *testing.T) {
+		// test default of false
+		opts := GetOpts()
+		testOpts := getDefaultOptions()
+		testOpts[optionWithDebug] = false
+		assert.Check(t, reflect.DeepEqual(opts, testOpts))
+
+		// try setting to true
+		opts = GetOpts(WithDebug(true))
+		testOpts = getDefaultOptions()
+		testOpts[optionWithDebug] = true
+		assert.Check(t, reflect.DeepEqual(opts, testOpts))
+	})
 }
