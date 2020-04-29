@@ -41,16 +41,17 @@ Just some high-level usage highlights to get you started.  Read the godocs for a
     // to DoTx, which will wrap the writes in a retryable 
     // transaction with the retry attempts and backoff
     // strategy you specify via options.
-    _, err = rw.DoTx(
+    _, err = w.DoTx(
 			context.Background(),
-			10,             // 10 retries
-			ExpBackoff{},   // exponential backoff 
+			10,           // ten retries
+			ExpBackoff{}, // exponential backoff
 			func(w Writer) error {
-                // my handler will update the user's friendly name
+				// the TxHandler updates the user's friendly name
 				return w.Update(context.Background(), user, []string{"FriendlyName"},
-					WithOplog(true), // write an oplog entry for this update
+					WithOplog(true), // write oplogs for this update
 					WithWrapper(InitTestWrapper(t)),
 					WithMetadata(oplog.Metadata{
+						"key-only":   nil,
 						"deployment": []string{"amex"},
 						"project":    []string{"central-info-systems", "local-info-systems"},
 					}),
