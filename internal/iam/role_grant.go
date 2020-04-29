@@ -58,6 +58,12 @@ func NewRoleGrant(primaryScope *Scope, role *Role, grant string, opt ...Option) 
 	return rg, nil
 }
 
+func allocRoleGrant() RoleGrant {
+	return RoleGrant{
+		RoleGrant: &store.RoleGrant{},
+	}
+}
+
 // Clone creates a clone of the RoleGrant
 func (g *RoleGrant) Clone() Resource {
 	cp := proto.Clone(g.RoleGrant)
