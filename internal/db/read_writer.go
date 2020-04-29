@@ -355,11 +355,11 @@ func (rw *GormReadWriter) addOplog(ctx context.Context, opType OpType, opts Opti
 	var entryOp oplog.OpType
 	switch opType {
 	case CreateOp:
-		entryOp = oplog.OpType_CREATE_OP
+		entryOp = oplog.OpType_OP_TYPE_CREATE
 	case UpdateOp:
-		entryOp = oplog.OpType_UPDATE_OP
+		entryOp = oplog.OpType_OP_TYPE_UPDATE
 	case DeleteOp:
-		entryOp = oplog.OpType_DELETE_OP
+		entryOp = oplog.OpType_OP_TYPE_DELETE
 	default:
 		return fmt.Errorf("error operation type %v is not supported", opType)
 	}
