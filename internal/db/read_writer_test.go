@@ -651,31 +651,76 @@ func TestGormReadWriter_DoTx(t *testing.T) {
 
 	t.Run("valid-with-10-retries", func(t *testing.T) {
 		w := &GormReadWriter{Tx: conn}
-		retries := 0
+		attempts := 0
 		got, err := w.DoTx(context.Background(), 10, ExpBackoff{},
 			func(Writer) error {
-				retries += 1
-				if retries < 9 {
+				attempts += 1
+				if attempts < 9 {
 					return oplog.ErrTicketAlreadyRedeemed
 				}
 				return nil
 			})
 		assert.Nil(err)
 		assert.Equal(8, got.Retries)
-		assert.Equal(9, retries) // attempted 1 + 8 retries
+		assert.Equal(9, attempts) // attempted 1 + 8 retries
+	})
+	t.Run("valid-with-1-retries", func(t *testing.T) {
+		w := &GormReadWriter{Tx: conn}
+		attempts := 0
+		got, err := w.DoTx(context.Background(), 1, ExpBackoff{},
+			func(Writer) error {
+				attempts += 1
+				if attempts < 2 {
+					return oplog.ErrTicketAlreadyRedeemed
+				}
+				return nil
+			})
+		assert.Nil(err)
+		assert.Equal(1, got.Retries)
+		assert.Equal(2, attempts) // attempted 1 + 8 retries
+	})
+	t.Run("valid-with-2-retries", func(t *testing.T) {
+		w := &GormReadWriter{Tx: conn}
+		attempts := 0
+		got, err := w.DoTx(context.Background(), 3, ExpBackoff{},
+			func(Writer) error {
+				attempts += 1
+				if attempts < 3 {
+					return oplog.ErrTicketAlreadyRedeemed
+				}
+				return nil
+			})
+		assert.Nil(err)
+		assert.Equal(2, got.Retries)
+		assert.Equal(3, attempts) // attempted 1 + 8 retries
+	})
+	t.Run("valid-with-4-retries", func(t *testing.T) {
+		w := &GormReadWriter{Tx: conn}
+		attempts := 0
+		got, err := w.DoTx(context.Background(), 4, ExpBackoff{},
+			func(Writer) error {
+				attempts += 1
+				if attempts < 4 {
+					return oplog.ErrTicketAlreadyRedeemed
+				}
+				return nil
+			})
+		assert.Nil(err)
+		assert.Equal(3, got.Retries)
+		assert.Equal(4, attempts) // attempted 1 + 8 retries
 	})
 	t.Run("zero-retries", func(t *testing.T) {
 		w := &GormReadWriter{Tx: conn}
-		retries := 0
-		got, err := w.DoTx(context.Background(), 0, ExpBackoff{}, func(Writer) error { retries += 1; return nil })
+		attempts := 0
+		got, err := w.DoTx(context.Background(), 0, ExpBackoff{}, func(Writer) error { attempts += 1; return nil })
 		assert.Nil(err)
 		assert.Equal(RetryInfo{}, got)
-		assert.Equal(1, retries)
+		assert.Equal(1, attempts)
 	})
 	t.Run("nil-tx", func(t *testing.T) {
 		w := &GormReadWriter{nil}
-		retries := 0
-		got, err := w.DoTx(context.Background(), 1, ExpBackoff{}, func(Writer) error { retries += 1; return nil })
+		attempts := 0
+		got, err := w.DoTx(context.Background(), 1, ExpBackoff{}, func(Writer) error { attempts += 1; return nil })
 		assert.True(err != nil)
 		assert.Equal(RetryInfo{}, got)
 		assert.Equal("do tx is nil", err.Error())
@@ -689,11 +734,11 @@ func TestGormReadWriter_DoTx(t *testing.T) {
 	})
 	t.Run("too-many-retries", func(t *testing.T) {
 		w := &GormReadWriter{Tx: conn}
-		retries := 0
-		got, err := w.DoTx(context.Background(), 2, ExpBackoff{}, func(Writer) error { retries += 1; return oplog.ErrTicketAlreadyRedeemed })
+		attempts := 0
+		got, err := w.DoTx(context.Background(), 2, ExpBackoff{}, func(Writer) error { attempts += 1; return oplog.ErrTicketAlreadyRedeemed })
 		assert.True(err != nil)
-		assert.Equal(1, got.Retries)
-		assert.Equal("Too many retries: 2 of 2", err.Error())
+		assert.Equal(3, got.Retries)
+		assert.Equal("Too many retries: 3 of 3", err.Error())
 	})
 }
 

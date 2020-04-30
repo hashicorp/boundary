@@ -385,8 +385,8 @@ func (w *GormReadWriter) DoTx(ctx context.Context, retries uint, backOff Backoff
 	}
 	info := RetryInfo{}
 	for attempts := uint(1); ; attempts++ {
-		if attempts == retries {
-			return info, fmt.Errorf("Too many retries: %d of %d", attempts, retries)
+		if attempts > retries+1 {
+			return info, fmt.Errorf("Too many retries: %d of %d", attempts-1, retries+1)
 		}
 		newTx := w.Tx.BeginTx(ctx, nil)
 		if err := Handler(&GormReadWriter{newTx}); err != nil {
