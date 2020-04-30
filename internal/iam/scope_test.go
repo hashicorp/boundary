@@ -5,8 +5,8 @@ import (
 	"testing"
 
 	"github.com/hashicorp/watchtower/internal/db"
+	"github.com/stretchr/testify/assert"
 	"google.golang.org/protobuf/proto"
-	"gotest.tools/assert"
 )
 
 func Test_NewScope(t *testing.T) {
@@ -16,34 +16,35 @@ func Test_NewScope(t *testing.T) {
 	defer cleanup()
 	defer db.CompleteTest() // must come after the "defer cleanup()"
 	conn, err := db.TestConnection(url)
-	assert.NilError(t, err)
+	assert := assert.New(t)
+	assert.Nil(err)
 	defer conn.Close()
 
 	t.Run("valid-with-child", func(t *testing.T) {
 		w := db.GormReadWriter{Tx: conn}
 		s, err := NewScope(OrganizationScope)
-		assert.NilError(t, err)
-		assert.Check(t, s.Scope != nil)
+		assert.Nil(err)
+		assert.True(s.Scope != nil)
 		err = w.Create(context.Background(), s)
-		assert.NilError(t, err)
-		assert.Check(t, s.Id != 0)
+		assert.Nil(err)
+		assert.True(s.Id != 0)
 
 		lowerScope, err := NewScope(ProjectScope, WithScope(s))
-		assert.NilError(t, err)
-		assert.Check(t, lowerScope.Scope != nil)
-		assert.Equal(t, lowerScope.GetParentId(), s.Id)
+		assert.Nil(err)
+		assert.True(lowerScope.Scope != nil)
+		assert.Equal(lowerScope.GetParentId(), s.Id)
 	})
 	t.Run("unknown-scope", func(t *testing.T) {
 		s, err := NewScope(UnknownScope)
-		assert.Check(t, err != nil)
-		assert.Check(t, s == nil)
-		assert.Equal(t, err.Error(), "error unknown scope type for new scope")
+		assert.True(err != nil)
+		assert.True(s == nil)
+		assert.Equal(err.Error(), "error unknown scope type for new scope")
 	})
 	t.Run("proj-scope-with-no-parent", func(t *testing.T) {
 		s, err := NewScope(ProjectScope)
-		assert.Check(t, err != nil)
-		assert.Check(t, s == nil)
-		assert.Equal(t, err.Error(), "error project scope must be with a scope")
+		assert.True(err != nil)
+		assert.True(s == nil)
+		assert.Equal(err.Error(), "error project scope must be with a scope")
 	})
 }
 func Test_ScopeCreate(t *testing.T) {
@@ -53,35 +54,36 @@ func Test_ScopeCreate(t *testing.T) {
 	defer cleanup()
 	defer db.CompleteTest() // must come after the "defer cleanup()"
 	conn, err := db.TestConnection(url)
-	assert.NilError(t, err)
+	assert := assert.New(t)
+	assert.Nil(err)
 	defer conn.Close()
 
 	t.Run("valid", func(t *testing.T) {
 		w := db.GormReadWriter{Tx: conn}
 		s, err := NewScope(OrganizationScope)
-		assert.NilError(t, err)
-		assert.Check(t, s.Scope != nil)
+		assert.Nil(err)
+		assert.True(s.Scope != nil)
 		err = w.Create(context.Background(), s)
-		assert.NilError(t, err)
-		assert.Check(t, s.Id != 0)
+		assert.Nil(err)
+		assert.True(s.Id != 0)
 	})
 	t.Run("valid-with-parent", func(t *testing.T) {
 		w := db.GormReadWriter{Tx: conn}
 		s, err := NewScope(OrganizationScope)
-		assert.NilError(t, err)
-		assert.Check(t, s.Scope != nil)
+		assert.Nil(err)
+		assert.True(s.Scope != nil)
 		err = w.Create(context.Background(), s)
-		assert.NilError(t, err)
-		assert.Check(t, s.Id != 0)
+		assert.Nil(err)
+		assert.True(s.Id != 0)
 
 		scopeWithParent, err := NewScope(ProjectScope, WithScope(s))
-		assert.NilError(t, err)
-		assert.Check(t, scopeWithParent.Scope != nil)
-		assert.Equal(t, scopeWithParent.Scope.ParentId, s.Id)
+		assert.Nil(err)
+		assert.True(scopeWithParent.Scope != nil)
+		assert.Equal(scopeWithParent.Scope.ParentId, s.Id)
 
 		err = w.Create(context.Background(), scopeWithParent)
-		assert.NilError(t, err)
-		assert.Equal(t, scopeWithParent.ParentId, s.Id)
+		assert.Nil(err)
+		assert.Equal(scopeWithParent.ParentId, s.Id)
 	})
 }
 
@@ -92,28 +94,29 @@ func Test_ScopeGetPrimaryScope(t *testing.T) {
 	defer cleanup()
 	defer db.CompleteTest() // must come after the "defer cleanup()"
 	conn, err := db.TestConnection(url)
-	assert.NilError(t, err)
+	assert := assert.New(t)
+	assert.Nil(err)
 	defer conn.Close()
 	t.Run("valid primary scope", func(t *testing.T) {
 		w := db.GormReadWriter{Tx: conn}
 		s, err := NewScope(OrganizationScope)
-		assert.NilError(t, err)
-		assert.Check(t, s.Scope != nil)
+		assert.Nil(err)
+		assert.True(s.Scope != nil)
 		err = w.Create(context.Background(), s)
-		assert.NilError(t, err)
-		assert.Check(t, s.Id != 0)
+		assert.Nil(err)
+		assert.True(s.Id != 0)
 
 		scopeWithParent, err := NewScope(ProjectScope, WithScope(s))
-		assert.NilError(t, err)
-		assert.Check(t, scopeWithParent.Scope != nil)
-		assert.Equal(t, scopeWithParent.ParentId, s.Id)
+		assert.Nil(err)
+		assert.True(scopeWithParent.Scope != nil)
+		assert.Equal(scopeWithParent.ParentId, s.Id)
 		err = w.Create(context.Background(), scopeWithParent)
-		assert.NilError(t, err)
+		assert.Nil(err)
 
 		primaryScope, err := scopeWithParent.GetPrimaryScope(context.Background(), &w)
-		assert.NilError(t, err)
-		assert.Check(t, primaryScope != nil)
-		assert.Equal(t, primaryScope.Id, scopeWithParent.ParentId)
+		assert.Nil(err)
+		assert.True(primaryScope != nil)
+		assert.Equal(primaryScope.Id, scopeWithParent.ParentId)
 	})
 }
 
@@ -124,45 +127,48 @@ func Test_ScopeOrganization(t *testing.T) {
 	defer cleanup()
 	defer db.CompleteTest() // must come after the "defer cleanup()"
 	conn, err := db.TestConnection(url)
-	assert.NilError(t, err)
+	assert := assert.New(t)
+	assert.Nil(err)
 	defer conn.Close()
 	t.Run("valid org scope", func(t *testing.T) {
 		w := db.GormReadWriter{Tx: conn}
 		org, err := NewScope(OrganizationScope)
-		assert.NilError(t, err)
-		assert.Check(t, org.Scope != nil)
+		assert.Nil(err)
+		assert.True(org.Scope != nil)
 		err = w.Create(context.Background(), org)
-		assert.NilError(t, err)
-		assert.Check(t, org.Id != 0)
+		assert.Nil(err)
+		assert.True(org.Id != 0)
 
 		projScope, err := NewScope(ProjectScope, WithScope(org))
-		assert.NilError(t, err)
-		assert.Check(t, projScope.Scope != nil)
-		assert.Equal(t, projScope.ParentId, org.Id)
+		assert.Nil(err)
+		assert.True(projScope.Scope != nil)
+		assert.Equal(projScope.ParentId, org.Id)
 		err = w.Create(context.Background(), projScope)
-		assert.NilError(t, err)
+		assert.Nil(err)
 
 		scopeOrg, err := projScope.Organization(context.Background(), &w)
-		assert.NilError(t, err)
-		assert.Check(t, scopeOrg != nil)
-		assert.Equal(t, scopeOrg.Id, org.Id)
+		assert.Nil(err)
+		assert.True(scopeOrg != nil)
+		assert.Equal(scopeOrg.Id, org.Id)
 	})
 }
 
 func TestScope_Actions(t *testing.T) {
+	assert := assert.New(t)
 	s := &Scope{}
 	a := s.Actions()
-	assert.Equal(t, a[ActionList.String()], ActionList)
-	assert.Equal(t, a[ActionCreate.String()], ActionCreate)
-	assert.Equal(t, a[ActionUpdate.String()], ActionUpdate)
-	assert.Equal(t, a[ActionEdit.String()], ActionEdit)
-	assert.Equal(t, a[ActionDelete.String()], ActionDelete)
+	assert.Equal(a[ActionList.String()], ActionList)
+	assert.Equal(a[ActionCreate.String()], ActionCreate)
+	assert.Equal(a[ActionUpdate.String()], ActionUpdate)
+	assert.Equal(a[ActionRead.String()], ActionRead)
+	assert.Equal(a[ActionDelete.String()], ActionDelete)
 }
 
 func TestScope_ResourceType(t *testing.T) {
+	assert := assert.New(t)
 	r := &Scope{}
 	ty := r.ResourceType()
-	assert.Equal(t, ty, ResourceTypeScope)
+	assert.Equal(ty, ResourceTypeScope)
 }
 
 func TestScope_Clone(t *testing.T) {
@@ -172,38 +178,39 @@ func TestScope_Clone(t *testing.T) {
 	defer cleanup()
 	defer db.CompleteTest() // must come after the "defer cleanup()"
 	conn, err := db.TestConnection(url)
-	assert.NilError(t, err)
+	assert := assert.New(t)
+	assert.Nil(err)
 	defer conn.Close()
 
 	t.Run("valid", func(t *testing.T) {
 		w := db.GormReadWriter{Tx: conn}
 		s, err := NewScope(OrganizationScope)
-		assert.NilError(t, err)
-		assert.Check(t, s.Scope != nil)
+		assert.Nil(err)
+		assert.True(s.Scope != nil)
 		err = w.Create(context.Background(), s)
-		assert.NilError(t, err)
-		assert.Check(t, s.Id != 0)
+		assert.Nil(err)
+		assert.True(s.Id != 0)
 
 		cp := s.Clone()
-		assert.Check(t, proto.Equal(cp.(*Scope).Scope, s.Scope))
+		assert.True(proto.Equal(cp.(*Scope).Scope, s.Scope))
 	})
 	t.Run("not-equal", func(t *testing.T) {
 		w := db.GormReadWriter{Tx: conn}
 		s, err := NewScope(OrganizationScope)
-		assert.NilError(t, err)
-		assert.Check(t, s.Scope != nil)
+		assert.Nil(err)
+		assert.True(s.Scope != nil)
 		err = w.Create(context.Background(), s)
-		assert.NilError(t, err)
-		assert.Check(t, s.Id != 0)
+		assert.Nil(err)
+		assert.True(s.Id != 0)
 
 		s2, err := NewScope(OrganizationScope)
-		assert.NilError(t, err)
-		assert.Check(t, s2.Scope != nil)
+		assert.Nil(err)
+		assert.True(s2.Scope != nil)
 		err = w.Create(context.Background(), s2)
-		assert.NilError(t, err)
-		assert.Check(t, s2.Id != 0)
+		assert.Nil(err)
+		assert.True(s2.Id != 0)
 
 		cp := s.Clone()
-		assert.Check(t, !proto.Equal(cp.(*Scope).Scope, s2.Scope))
+		assert.True(!proto.Equal(cp.(*Scope).Scope, s2.Scope))
 	})
 }

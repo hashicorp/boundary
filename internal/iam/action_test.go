@@ -3,24 +3,25 @@ package iam
 import (
 	"testing"
 
-	"gotest.tools/assert"
+	"github.com/stretchr/testify/assert"
 )
 
 // Test_StdActions provides unit tests for StdActions()
 func Test_StdActions(t *testing.T) {
 	t.Parallel()
+	assert := assert.New(t)
 	t.Run("valid", func(t *testing.T) {
 		a := StdActions()
-		assert.Equal(t, a[ActionList.String()], ActionList)
-		assert.Equal(t, a[ActionCreate.String()], ActionCreate)
-		assert.Equal(t, a[ActionUpdate.String()], ActionUpdate)
-		assert.Equal(t, a[ActionEdit.String()], ActionEdit)
-		assert.Equal(t, a[ActionDelete.String()], ActionDelete)
+		assert.Equal(a[ActionList.String()], ActionList)
+		assert.Equal(a[ActionCreate.String()], ActionCreate)
+		assert.Equal(a[ActionUpdate.String()], ActionUpdate)
+		assert.Equal(a[ActionRead.String()], ActionRead)
+		assert.Equal(a[ActionDelete.String()], ActionDelete)
 	})
 	t.Run("invalid", func(t *testing.T) {
 		a := StdActions()
 		action, ok := a["invalid"]
-		assert.Equal(t, ok, false)
-		assert.Equal(t, action, ActionUnknown)
+		assert.Equal(ok, false)
+		assert.Equal(action, ActionUnknown)
 	})
 }
