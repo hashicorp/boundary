@@ -1,8 +1,8 @@
 syntax = "proto3";
 
-package controller.api.resource.v1;
+package controller.api.resource.hosts.v1;
 
-option go_package = "github.com/hashicorp/watchtower/internal/gen/controller/api/resource;resource";
+option go_package = "github.com/hashicorp/watchtower/internal/gen/controller/api/resource/hosts;hosts";
 
 import "google/protobuf/timestamp.proto";
 import "google/protobuf/wrappers.proto";
@@ -14,20 +14,22 @@ enum HostCatalogType {
 	HOST_CATALOG_TYPE_STATIC = 2;
 }
 
-// HostCatalog organizes Hosts into HostSets.
+// HostCatalog manages Hosts and HostSets
 message HostCatalog {
-	// Output only.
-	string uri = 1;
+	// Canonical path of the resource from the API's base URI; returned on
+	// output only
+	string path = 1;
+
+	// Friendly name, if set
 	google.protobuf.StringValue friendly_name = 2;
 
-	// The time this host_catalog was created.
-	// Output only.
+	// The time this host was created (output only)
 	google.protobuf.Timestamp created_time = 3;
-	// The time this host_catalog was last updated.
-	// Output only.
+
+	// The time this host was last updated (output only)
 	google.protobuf.Timestamp updated_time = 4;
 
-	// Marks the host_catalog as disabled.  Default is false.
+	// Whether the catalog is disabled
 	google.protobuf.BoolValue disabled = 5;
 
 	oneof type_details {

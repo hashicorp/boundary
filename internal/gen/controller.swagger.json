@@ -65,7 +65,7 @@
           "200": {
             "description": "",
             "schema": {
-              "$ref": "#/definitions/controller.api.resource.v1.HostCatalog"
+              "$ref": "#/definitions/controller.api.resource.hosts.v1.HostCatalog"
             }
           }
         },
@@ -87,7 +87,7 @@
             "in": "body",
             "required": true,
             "schema": {
-              "$ref": "#/definitions/controller.api.resource.v1.HostCatalog"
+              "$ref": "#/definitions/controller.api.resource.hosts.v1.HostCatalog"
             }
           }
         ],
@@ -150,7 +150,7 @@
           "200": {
             "description": "",
             "schema": {
-              "$ref": "#/definitions/controller.api.resource.v1.HostSet"
+              "$ref": "#/definitions/controller.api.resource.hosts.v1.HostSet"
             }
           }
         },
@@ -178,7 +178,7 @@
             "in": "body",
             "required": true,
             "schema": {
-              "$ref": "#/definitions/controller.api.resource.v1.HostSet"
+              "$ref": "#/definitions/controller.api.resource.hosts.v1.HostSet"
             }
           }
         ],
@@ -195,7 +195,7 @@
           "200": {
             "description": "",
             "schema": {
-              "$ref": "#/definitions/controller.api.resource.v1.HostSet"
+              "$ref": "#/definitions/controller.api.resource.hosts.v1.HostSet"
             }
           }
         },
@@ -288,7 +288,7 @@
           "200": {
             "description": "",
             "schema": {
-              "$ref": "#/definitions/controller.api.resource.v1.HostSet"
+              "$ref": "#/definitions/controller.api.resource.hosts.v1.HostSet"
             }
           }
         },
@@ -322,7 +322,7 @@
             "in": "body",
             "required": true,
             "schema": {
-              "$ref": "#/definitions/controller.api.resource.v1.HostSet"
+              "$ref": "#/definitions/controller.api.resource.hosts.v1.HostSet"
             }
           }
         ],
@@ -474,7 +474,7 @@
           "200": {
             "description": "",
             "schema": {
-              "$ref": "#/definitions/controller.api.resource.v1.Host"
+              "$ref": "#/definitions/controller.api.resource.hosts.v1.Host"
             }
           }
         },
@@ -502,7 +502,7 @@
             "in": "body",
             "required": true,
             "schema": {
-              "$ref": "#/definitions/controller.api.resource.v1.Host"
+              "$ref": "#/definitions/controller.api.resource.hosts.v1.Host"
             }
           }
         ],
@@ -519,7 +519,7 @@
           "200": {
             "description": "",
             "schema": {
-              "$ref": "#/definitions/controller.api.resource.v1.Host"
+              "$ref": "#/definitions/controller.api.resource.hosts.v1.Host"
             }
           }
         },
@@ -612,7 +612,7 @@
           "200": {
             "description": "",
             "schema": {
-              "$ref": "#/definitions/controller.api.resource.v1.Host"
+              "$ref": "#/definitions/controller.api.resource.hosts.v1.Host"
             }
           }
         },
@@ -646,7 +646,7 @@
             "in": "body",
             "required": true,
             "schema": {
-              "$ref": "#/definitions/controller.api.resource.v1.Host"
+              "$ref": "#/definitions/controller.api.resource.hosts.v1.Host"
             }
           }
         ],
@@ -664,7 +664,7 @@
           "200": {
             "description": "",
             "schema": {
-              "$ref": "#/definitions/controller.api.resource.v1.HostCatalog"
+              "$ref": "#/definitions/controller.api.resource.hosts.v1.HostCatalog"
             }
           }
         },
@@ -745,7 +745,7 @@
           "200": {
             "description": "",
             "schema": {
-              "$ref": "#/definitions/controller.api.resource.v1.HostCatalog"
+              "$ref": "#/definitions/controller.api.resource.hosts.v1.HostCatalog"
             }
           }
         },
@@ -773,7 +773,7 @@
             "in": "body",
             "required": true,
             "schema": {
-              "$ref": "#/definitions/controller.api.resource.v1.HostCatalog"
+              "$ref": "#/definitions/controller.api.resource.hosts.v1.HostCatalog"
             }
           }
         ],
@@ -784,7 +784,7 @@
     }
   },
   "definitions": {
-    "controller.api.resource.v1.Ec2CatalogDetails": {
+    "controller.api.resource.hosts.v1.Ec2CatalogDetails": {
       "type": "object",
       "properties": {
         "regions": {
@@ -809,82 +809,78 @@
         }
       }
     },
-    "controller.api.resource.v1.Host": {
+    "controller.api.resource.hosts.v1.Host": {
       "type": "object",
       "properties": {
-        "uri": {
+        "path": {
           "type": "string",
-          "description": "Output only.",
-          "readOnly": true
+          "title": "Canonical path of the resource from the API's base URI (output only)"
         },
         "friendly_name": {
-          "type": "string"
+          "type": "string",
+          "title": "Friendly name, if set"
         },
         "created_time": {
           "type": "string",
           "format": "date-time",
-          "description": "The time this host was created.\nOutput only.",
-          "readOnly": true
+          "title": "The time this host was created (output only)"
         },
         "updated_time": {
           "type": "string",
           "format": "date-time",
-          "description": "The time this host was last updated.\nOutput only.",
-          "readOnly": true
+          "title": "The time this host was last updated (output only)"
         },
         "disabled": {
           "type": "boolean",
           "format": "boolean",
-          "description": "Marks the host as disabled.  Default is false."
+          "title": "Whether the host is disabled"
         },
         "address": {
           "type": "string",
-          "description": "This field is required."
+          "title": "The address (DNS or IP name) used to reach the host"
         }
       },
-      "description": "Host contains all fields related to a Host resource."
+      "title": "Host contains all fields related to a Host resource"
     },
-    "controller.api.resource.v1.HostCatalog": {
+    "controller.api.resource.hosts.v1.HostCatalog": {
       "type": "object",
       "properties": {
-        "uri": {
+        "path": {
           "type": "string",
-          "description": "Output only.",
-          "readOnly": true
+          "title": "Canonical path of the resource from the API's base URI; returned on\noutput only"
         },
         "friendly_name": {
-          "type": "string"
+          "type": "string",
+          "title": "Friendly name, if set"
         },
         "created_time": {
           "type": "string",
           "format": "date-time",
-          "description": "The time this host_catalog was created.\nOutput only.",
-          "readOnly": true
+          "title": "The time this host was created (output only)"
         },
         "updated_time": {
           "type": "string",
           "format": "date-time",
-          "description": "The time this host_catalog was last updated.\nOutput only.",
-          "readOnly": true
+          "title": "The time this host was last updated (output only)"
         },
         "disabled": {
           "type": "boolean",
           "format": "boolean",
-          "description": "Marks the host_catalog as disabled.  Default is false."
+          "title": "Whether the catalog is disabled"
         },
         "static_host_catalog_details": {
-          "$ref": "#/definitions/controller.api.resource.v1.StaticCatalogDetails"
+          "$ref": "#/definitions/controller.api.resource.hosts.v1.StaticCatalogDetails"
         },
         "ec2_host_catalog_details": {
-          "$ref": "#/definitions/controller.api.resource.v1.Ec2CatalogDetails"
+          "$ref": "#/definitions/controller.api.resource.hosts.v1.Ec2CatalogDetails"
         },
         "type": {
-          "$ref": "#/definitions/controller.api.resource.v1.HostCatalogType"
+          "$ref": "#/definitions/controller.api.resource.hosts.v1.HostCatalogType"
         }
       },
-      "description": "HostCatalog organizes Hosts into HostSets."
+      "title": "HostCatalog manages Hosts and HostSets"
     },
-    "controller.api.resource.v1.HostCatalogType": {
+    "controller.api.resource.hosts.v1.HostCatalogType": {
       "type": "string",
       "enum": [
         "HOST_CATALOG_TYPE_UNSPECIFIED",
@@ -893,52 +889,48 @@
       ],
       "default": "HOST_CATALOG_TYPE_UNSPECIFIED"
     },
-    "controller.api.resource.v1.HostSet": {
+    "controller.api.resource.hosts.v1.HostSet": {
       "type": "object",
       "properties": {
-        "uri": {
+        "path": {
           "type": "string",
-          "description": "Output only.",
-          "readOnly": true
+          "title": "Canonical path of the resource from the API's base URI; returned on\noutput only"
         },
         "friendly_name": {
-          "type": "string"
+          "type": "string",
+          "title": "Friendly name, if set"
         },
         "created_time": {
           "type": "string",
           "format": "date-time",
-          "description": "The time this host_set was created.\nOutput only.",
-          "readOnly": true
+          "title": "The time this host was created (output only)"
         },
         "updated_time": {
           "type": "string",
           "format": "date-time",
-          "description": "The time this host_set was last updated.\nOutput only.",
-          "readOnly": true
+          "title": "The time this host was last updated (output only)"
         },
         "disabled": {
           "type": "boolean",
           "format": "boolean",
-          "description": "Marks the host_set as disabled.  Default is false."
+          "title": "Whether the host set is disabled"
         },
         "size": {
           "type": "integer",
           "format": "int32",
-          "description": "The total count of hosts in this host set\nOutput only.",
-          "readOnly": true
+          "title": "The total count of hosts in this host set (output only)"
         },
         "hosts": {
           "type": "array",
           "items": {
-            "$ref": "#/definitions/controller.api.resource.v1.Host"
+            "$ref": "#/definitions/controller.api.resource.hosts.v1.Host"
           },
-          "description": "A list of hosts in this host set.\nTODO: Figure out if this should be in the basic HostSet view and what view to use on the Hosts.\nOutput only.",
-          "readOnly": true
+          "description": "A list of hosts in this host set (output only)\nTODO: Figure out if this should be in the basic HostSet view and what view to use on the Hosts."
         }
       },
-      "description": "HostSets are a collection of sets created and managed by a catalog."
+      "title": "HostSet is a collection of Hosts created and managed by a HostCatalog"
     },
-    "controller.api.resource.v1.StaticCatalogDetails": {
+    "controller.api.resource.hosts.v1.StaticCatalogDetails": {
       "type": "object"
     },
     "controller.api.v1.AddToHostSetResponse": {
@@ -951,7 +943,7 @@
           "type": "string"
         },
         "item": {
-          "$ref": "#/definitions/controller.api.resource.v1.HostCatalog"
+          "$ref": "#/definitions/controller.api.resource.hosts.v1.HostCatalog"
         }
       }
     },
@@ -962,7 +954,7 @@
           "type": "string"
         },
         "item": {
-          "$ref": "#/definitions/controller.api.resource.v1.Host"
+          "$ref": "#/definitions/controller.api.resource.hosts.v1.Host"
         }
       }
     },
@@ -973,7 +965,7 @@
           "type": "string"
         },
         "item": {
-          "$ref": "#/definitions/controller.api.resource.v1.HostSet"
+          "$ref": "#/definitions/controller.api.resource.hosts.v1.HostSet"
         }
       }
     },
@@ -1008,7 +1000,7 @@
       "type": "object",
       "properties": {
         "item": {
-          "$ref": "#/definitions/controller.api.resource.v1.HostCatalog"
+          "$ref": "#/definitions/controller.api.resource.hosts.v1.HostCatalog"
         }
       }
     },
@@ -1016,7 +1008,7 @@
       "type": "object",
       "properties": {
         "item": {
-          "$ref": "#/definitions/controller.api.resource.v1.Host"
+          "$ref": "#/definitions/controller.api.resource.hosts.v1.Host"
         }
       }
     },
@@ -1024,7 +1016,7 @@
       "type": "object",
       "properties": {
         "item": {
-          "$ref": "#/definitions/controller.api.resource.v1.HostSet"
+          "$ref": "#/definitions/controller.api.resource.hosts.v1.HostSet"
         }
       }
     },
@@ -1034,7 +1026,7 @@
         "items": {
           "type": "array",
           "items": {
-            "$ref": "#/definitions/controller.api.resource.v1.HostCatalog"
+            "$ref": "#/definitions/controller.api.resource.hosts.v1.HostCatalog"
           }
         }
       }
@@ -1045,7 +1037,7 @@
         "items": {
           "type": "array",
           "items": {
-            "$ref": "#/definitions/controller.api.resource.v1.HostSet"
+            "$ref": "#/definitions/controller.api.resource.hosts.v1.HostSet"
           }
         }
       }
@@ -1056,7 +1048,7 @@
         "items": {
           "type": "array",
           "items": {
-            "$ref": "#/definitions/controller.api.resource.v1.Host"
+            "$ref": "#/definitions/controller.api.resource.hosts.v1.Host"
           }
         }
       }
@@ -1068,7 +1060,7 @@
       "type": "object",
       "properties": {
         "item": {
-          "$ref": "#/definitions/controller.api.resource.v1.HostCatalog"
+          "$ref": "#/definitions/controller.api.resource.hosts.v1.HostCatalog"
         }
       }
     },
@@ -1076,7 +1068,7 @@
       "type": "object",
       "properties": {
         "item": {
-          "$ref": "#/definitions/controller.api.resource.v1.Host"
+          "$ref": "#/definitions/controller.api.resource.hosts.v1.Host"
         }
       }
     },
@@ -1084,7 +1076,7 @@
       "type": "object",
       "properties": {
         "item": {
-          "$ref": "#/definitions/controller.api.resource.v1.HostSet"
+          "$ref": "#/definitions/controller.api.resource.hosts.v1.HostSet"
         }
       }
     },
