@@ -15,27 +15,30 @@ message StaticHostSet {
 	// Output only.
 	string path = 1;
 
+	// The type of the resource, to help differentiate schemas
+	string type = 2;
+
 	// Friendly name, if set
-	google.protobuf.StringValue friendly_name = 2;
+	google.protobuf.StringValue friendly_name = 3;
 
 	// The time this host was created
 	// Output only.
-	google.protobuf.Timestamp created_time = 3;
+	google.protobuf.Timestamp created_time = 4;
 
 	// The time this host was last updated
 	// Output only.
-	google.protobuf.Timestamp updated_time = 4;
+	google.protobuf.Timestamp updated_time = 5;
 
 	// Whether the host set is disabled
-	google.protobuf.BoolValue disabled = 5;
+	google.protobuf.BoolValue disabled = 6;
 
 	// The total count of hosts in this host set
 	// Output only.
-	google.protobuf.Int64Value size = 6;
+	google.protobuf.Int64Value size = 7;
 
 	// A list of hosts in this host set
 	// TODO: Figure out if this should be in the basic HostSet view and what
 	// view to use on the Hosts.
 	// Output only.
-	repeated StaticHost hosts = 7;
+	repeated StaticHost hosts = 8;
 }
