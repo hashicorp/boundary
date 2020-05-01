@@ -1,7 +1,7 @@
 syntax = "proto3";
 
 // define a test proto package
-package hashicorp.watchtower.controller.db.test.v1;
+package controller.storage.db.db_test.v1;
 option go_package = "github.com/hashicorp/watchtower/internal/db/db_test;db_test";
 
 import "google/protobuf/timestamp.proto";
