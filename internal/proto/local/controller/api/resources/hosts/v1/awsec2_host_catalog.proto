@@ -12,30 +12,33 @@ message AwsEc2HostCatalog {
 	// Output only.
 	string path = 1;
 
+	// The type of the resource, to help differentiate schemas
+	string type = 2;
+
 	// Friendly name, if set
-	google.protobuf.StringValue friendly_name = 2;
+	google.protobuf.StringValue friendly_name = 3;
 
 	// The time this host was created
 	// Output only.
-	google.protobuf.Timestamp created_time = 3;
+	google.protobuf.Timestamp created_time = 4;
 
 	// The time this host was last updated
 	// Output only.
-	google.protobuf.Timestamp updated_time = 4;
+	google.protobuf.Timestamp updated_time = 5;
 
 	// Whether the catalog is disabled
-	google.protobuf.BoolValue disabled = 5;
+	google.protobuf.BoolValue disabled = 6;
 
 	// TODO: Figure out how to provide relevant information regarding Host and
 	// Set lists on a catalog.
 	// The AWS regions from which this catalog will retrieve the EC2 instances.
-	repeated string regions = 6;
+	repeated string regions = 7;
 
 	// The access key used for authenticating with AWS when retrieving EC2 instance details.
-	google.protobuf.StringValue access_key = 7;
+	google.protobuf.StringValue access_key = 8;
 	// Input only.
-	google.protobuf.StringValue secret_key = 8;
+	google.protobuf.StringValue secret_key = 9;
 
 	// This value will never be returned in a response.
-	google.protobuf.BoolValue rotate = 9;
+	google.protobuf.BoolValue rotate = 10;
 }
