@@ -15,13 +15,13 @@ import (
 func TestGormReadWriter_Update(t *testing.T) {
 	StartTest()
 	t.Parallel()
-	cleanup, conn := SetupTest(t, "migrations/postgres")
+	cleanup, db := SetupTest(t, "migrations/postgres")
 	defer cleanup()
 	defer CompleteTest() // must come after the "defer cleanup()"
 	assert := assert.New(t)
-	defer conn.Close()
+	defer db.Close()
 	t.Run("simple", func(t *testing.T) {
-		w := GormReadWriter{Tx: conn}
+		w := GormReadWriter{Tx: db}
 		id, err := uuid.GenerateUUID()
 		assert.Nil(err)
 		user, err := db_test.NewTestUser()
@@ -47,7 +47,7 @@ func TestGormReadWriter_Update(t *testing.T) {
 		assert.Equal(foundUser.FriendlyName, user.FriendlyName)
 	})
 	t.Run("valid-WithOplog", func(t *testing.T) {
-		w := GormReadWriter{Tx: conn}
+		w := GormReadWriter{Tx: db}
 		id, err := uuid.GenerateUUID()
 		assert.Nil(err)
 		user, err := db_test.NewTestUser()
@@ -100,7 +100,7 @@ func TestGormReadWriter_Update(t *testing.T) {
 		assert.Equal("update tx is nil", err.Error())
 	})
 	t.Run("no-wrapper-WithOplog", func(t *testing.T) {
-		w := GormReadWriter{Tx: conn}
+		w := GormReadWriter{Tx: db}
 		id, err := uuid.GenerateUUID()
 		assert.Nil(err)
 		user, err := db_test.NewTestUser()
@@ -137,7 +137,7 @@ func TestGormReadWriter_Update(t *testing.T) {
 		assert.Equal("error wrapper is nil for WithWrapper", err.Error())
 	})
 	t.Run("no-metadata-WithOplog", func(t *testing.T) {
-		w := GormReadWriter{Tx: conn}
+		w := GormReadWriter{Tx: db}
 		id, err := uuid.GenerateUUID()
 		assert.Nil(err)
 		user, err := db_test.NewTestUser()
@@ -175,13 +175,13 @@ func TestGormReadWriter_Update(t *testing.T) {
 func TestGormReadWriter_Create(t *testing.T) {
 	StartTest()
 	t.Parallel()
-	cleanup, conn := SetupTest(t, "migrations/postgres")
+	cleanup, db := SetupTest(t, "migrations/postgres")
 	defer cleanup()
 	defer CompleteTest() // must come after the "defer cleanup()"
 	assert := assert.New(t)
-	defer conn.Close()
+	defer db.Close()
 	t.Run("simple", func(t *testing.T) {
-		w := GormReadWriter{Tx: conn}
+		w := GormReadWriter{Tx: db}
 		id, err := uuid.GenerateUUID()
 		assert.Nil(err)
 		user, err := db_test.NewTestUser()
@@ -201,7 +201,7 @@ func TestGormReadWriter_Create(t *testing.T) {
 		assert.Equal(foundUser.Id, user.Id)
 	})
 	t.Run("valid-WithOplog", func(t *testing.T) {
-		w := GormReadWriter{Tx: conn}
+		w := GormReadWriter{Tx: db}
 		id, err := uuid.GenerateUUID()
 		assert.Nil(err)
 		user, err := db_test.NewTestUser()
@@ -240,7 +240,7 @@ func TestGormReadWriter_Create(t *testing.T) {
 		assert.Equal(foundUser.Id, returnedUser.Id)
 	})
 	t.Run("no-wrapper-WithOplog", func(t *testing.T) {
-		w := GormReadWriter{Tx: conn}
+		w := GormReadWriter{Tx: db}
 		id, err := uuid.GenerateUUID()
 		assert.Nil(err)
 		user, err := db_test.NewTestUser()
@@ -269,7 +269,7 @@ func TestGormReadWriter_Create(t *testing.T) {
 		assert.Equal("error wrapper is nil for WithWrapper", err.Error())
 	})
 	t.Run("no-metadata-WithOplog", func(t *testing.T) {
-		w := GormReadWriter{Tx: conn}
+		w := GormReadWriter{Tx: db}
 		id, err := uuid.GenerateUUID()
 		assert.Nil(err)
 		user, err := db_test.NewTestUser()
@@ -309,13 +309,13 @@ func TestGormReadWriter_Create(t *testing.T) {
 func TestGormReadWriter_LookupByInternalId(t *testing.T) {
 	StartTest()
 	t.Parallel()
-	cleanup, conn := SetupTest(t, "migrations/postgres")
+	cleanup, db := SetupTest(t, "migrations/postgres")
 	defer cleanup()
 	defer CompleteTest() // must come after the "defer cleanup()"
 	assert := assert.New(t)
-	defer conn.Close()
+	defer db.Close()
 	t.Run("simple", func(t *testing.T) {
-		w := GormReadWriter{Tx: conn}
+		w := GormReadWriter{Tx: db}
 		id, err := uuid.GenerateUUID()
 		assert.Nil(err)
 		user, err := db_test.NewTestUser()
@@ -341,7 +341,7 @@ func TestGormReadWriter_LookupByInternalId(t *testing.T) {
 		assert.Equal("error tx nil for lookup by internal id", err.Error())
 	})
 	t.Run("no-public-id-set", func(t *testing.T) {
-		w := GormReadWriter{Tx: conn}
+		w := GormReadWriter{Tx: db}
 		foundUser, err := db_test.NewTestUser()
 		assert.Nil(err)
 		err = w.LookupById(context.Background(), foundUser)
@@ -349,7 +349,7 @@ func TestGormReadWriter_LookupByInternalId(t *testing.T) {
 		assert.Equal("error internal id is 0 for lookup by internal id", err.Error())
 	})
 	t.Run("not-found", func(t *testing.T) {
-		w := GormReadWriter{Tx: conn}
+		w := GormReadWriter{Tx: db}
 		foundUser, err := db_test.NewTestUser()
 		assert.Nil(err)
 		foundUser.Id = 4294967295 // we should never get to the max for unit32
@@ -362,13 +362,13 @@ func TestGormReadWriter_LookupByInternalId(t *testing.T) {
 func TestGormReadWriter_LookupByFriendlyName(t *testing.T) {
 	StartTest()
 	t.Parallel()
-	cleanup, conn := SetupTest(t, "migrations/postgres")
+	cleanup, db := SetupTest(t, "migrations/postgres")
 	defer cleanup()
 	defer CompleteTest() // must come after the "defer cleanup()"
 	assert := assert.New(t)
-	defer conn.Close()
+	defer db.Close()
 	t.Run("simple", func(t *testing.T) {
-		w := GormReadWriter{Tx: conn}
+		w := GormReadWriter{Tx: db}
 		id, err := uuid.GenerateUUID()
 		assert.Nil(err)
 		user, err := db_test.NewTestUser()
@@ -396,7 +396,7 @@ func TestGormReadWriter_LookupByFriendlyName(t *testing.T) {
 		assert.Equal("error tx nil for lookup by friendly name", err.Error())
 	})
 	t.Run("no-friendly-name-set", func(t *testing.T) {
-		w := GormReadWriter{Tx: conn}
+		w := GormReadWriter{Tx: db}
 		foundUser, err := db_test.NewTestUser()
 		assert.Nil(err)
 		err = w.LookupByFriendlyName(context.Background(), foundUser)
@@ -404,7 +404,7 @@ func TestGormReadWriter_LookupByFriendlyName(t *testing.T) {
 		assert.Equal("error friendly name empty string for lookup by friendly name", err.Error())
 	})
 	t.Run("not-found", func(t *testing.T) {
-		w := GormReadWriter{Tx: conn}
+		w := GormReadWriter{Tx: db}
 		id, err := uuid.GenerateUUID()
 		assert.Nil(err)
 
@@ -420,13 +420,13 @@ func TestGormReadWriter_LookupByFriendlyName(t *testing.T) {
 func TestGormReadWriter_LookupByPublicId(t *testing.T) {
 	StartTest()
 	t.Parallel()
-	cleanup, conn := SetupTest(t, "migrations/postgres")
+	cleanup, db := SetupTest(t, "migrations/postgres")
 	defer cleanup()
 	defer CompleteTest() // must come after the "defer cleanup()"
 	assert := assert.New(t)
-	defer conn.Close()
+	defer db.Close()
 	t.Run("simple", func(t *testing.T) {
-		w := GormReadWriter{Tx: conn}
+		w := GormReadWriter{Tx: db}
 		id, err := uuid.GenerateUUID()
 		assert.Nil(err)
 		user, err := db_test.NewTestUser()
@@ -453,7 +453,7 @@ func TestGormReadWriter_LookupByPublicId(t *testing.T) {
 		assert.Equal("error tx nil for lookup by public id", err.Error())
 	})
 	t.Run("no-public-id-set", func(t *testing.T) {
-		w := GormReadWriter{Tx: conn}
+		w := GormReadWriter{Tx: db}
 		foundUser, err := db_test.NewTestUser()
 		foundUser.PublicId = ""
 		assert.Nil(err)
@@ -462,7 +462,7 @@ func TestGormReadWriter_LookupByPublicId(t *testing.T) {
 		assert.Equal("error public id empty string for lookup by public id", err.Error())
 	})
 	t.Run("not-found", func(t *testing.T) {
-		w := GormReadWriter{Tx: conn}
+		w := GormReadWriter{Tx: db}
 		id, err := uuid.GenerateUUID()
 		assert.Nil(err)
 
@@ -478,13 +478,13 @@ func TestGormReadWriter_LookupByPublicId(t *testing.T) {
 func TestGormReadWriter_LookupBy(t *testing.T) {
 	StartTest()
 	t.Parallel()
-	cleanup, conn := SetupTest(t, "migrations/postgres")
+	cleanup, db := SetupTest(t, "migrations/postgres")
 	defer cleanup()
 	defer CompleteTest() // must come after the "defer cleanup()"
 	assert := assert.New(t)
-	defer conn.Close()
+	defer db.Close()
 	t.Run("simple", func(t *testing.T) {
-		w := GormReadWriter{Tx: conn}
+		w := GormReadWriter{Tx: db}
 		id, err := uuid.GenerateUUID()
 		assert.Nil(err)
 		user, err := db_test.NewTestUser()
@@ -508,7 +508,7 @@ func TestGormReadWriter_LookupBy(t *testing.T) {
 		assert.Equal("error tx nil for lookup by", err.Error())
 	})
 	t.Run("not-found", func(t *testing.T) {
-		w := GormReadWriter{Tx: conn}
+		w := GormReadWriter{Tx: db}
 		id, err := uuid.GenerateUUID()
 		assert.Nil(err)
 
@@ -518,7 +518,7 @@ func TestGormReadWriter_LookupBy(t *testing.T) {
 		assert.Equal(gorm.ErrRecordNotFound, err)
 	})
 	t.Run("bad-where", func(t *testing.T) {
-		w := GormReadWriter{Tx: conn}
+		w := GormReadWriter{Tx: db}
 		id, err := uuid.GenerateUUID()
 		assert.Nil(err)
 
@@ -531,13 +531,13 @@ func TestGormReadWriter_LookupBy(t *testing.T) {
 func TestGormReadWriter_SearchBy(t *testing.T) {
 	StartTest()
 	t.Parallel()
-	cleanup, conn := SetupTest(t, "migrations/postgres")
+	cleanup, db := SetupTest(t, "migrations/postgres")
 	defer cleanup()
 	defer CompleteTest() // must come after the "defer cleanup()"
 	assert := assert.New(t)
-	defer conn.Close()
+	defer db.Close()
 	t.Run("simple", func(t *testing.T) {
-		w := GormReadWriter{Tx: conn}
+		w := GormReadWriter{Tx: db}
 		id, err := uuid.GenerateUUID()
 		assert.Nil(err)
 		user, err := db_test.NewTestUser()
@@ -561,7 +561,7 @@ func TestGormReadWriter_SearchBy(t *testing.T) {
 		assert.Equal("error tx nil for search by", err.Error())
 	})
 	t.Run("not-found", func(t *testing.T) {
-		w := GormReadWriter{Tx: conn}
+		w := GormReadWriter{Tx: db}
 		id, err := uuid.GenerateUUID()
 		assert.Nil(err)
 
@@ -571,7 +571,7 @@ func TestGormReadWriter_SearchBy(t *testing.T) {
 		assert.Equal(0, len(foundUsers))
 	})
 	t.Run("bad-where", func(t *testing.T) {
-		w := GormReadWriter{Tx: conn}
+		w := GormReadWriter{Tx: db}
 		id, err := uuid.GenerateUUID()
 		assert.Nil(err)
 
@@ -584,13 +584,13 @@ func TestGormReadWriter_SearchBy(t *testing.T) {
 func TestGormReadWriter_Dialect(t *testing.T) {
 	StartTest()
 	t.Parallel()
-	cleanup, conn := SetupTest(t, "migrations/postgres")
+	cleanup, db := SetupTest(t, "migrations/postgres")
 	defer cleanup()
 	defer CompleteTest() // must come after the "defer cleanup()"
 	assert := assert.New(t)
-	defer conn.Close()
+	defer db.Close()
 	t.Run("valid", func(t *testing.T) {
-		w := GormReadWriter{Tx: conn}
+		w := GormReadWriter{Tx: db}
 		d, err := w.Dialect()
 		assert.Nil(err)
 		assert.Equal("postgres", d)
@@ -607,13 +607,13 @@ func TestGormReadWriter_Dialect(t *testing.T) {
 func TestGormReadWriter_DB(t *testing.T) {
 	StartTest()
 	t.Parallel()
-	cleanup, conn := SetupTest(t, "migrations/postgres")
+	cleanup, db := SetupTest(t, "migrations/postgres")
 	defer cleanup()
 	defer CompleteTest() // must come after the "defer cleanup()"
 	assert := assert.New(t)
-	defer conn.Close()
+	defer db.Close()
 	t.Run("valid", func(t *testing.T) {
-		w := GormReadWriter{Tx: conn}
+		w := GormReadWriter{Tx: db}
 		d, err := w.DB()
 		assert.Nil(err)
 		assert.True(d != nil)
@@ -632,14 +632,14 @@ func TestGormReadWriter_DB(t *testing.T) {
 func TestGormReadWriter_DoTx(t *testing.T) {
 	StartTest()
 	t.Parallel()
-	cleanup, conn := SetupTest(t, "migrations/postgres")
+	cleanup, db := SetupTest(t, "migrations/postgres")
 	defer cleanup()
 	defer CompleteTest() // must come after the "defer cleanup()"
 	assert := assert.New(t)
-	defer conn.Close()
+	defer db.Close()
 
 	t.Run("valid-with-10-retries", func(t *testing.T) {
-		w := &GormReadWriter{Tx: conn}
+		w := &GormReadWriter{Tx: db}
 		attempts := 0
 		got, err := w.DoTx(context.Background(), 10, ExpBackoff{},
 			func(Writer) error {
@@ -654,7 +654,7 @@ func TestGormReadWriter_DoTx(t *testing.T) {
 		assert.Equal(9, attempts) // attempted 1 + 8 retries
 	})
 	t.Run("valid-with-1-retries", func(t *testing.T) {
-		w := &GormReadWriter{Tx: conn}
+		w := &GormReadWriter{Tx: db}
 		attempts := 0
 		got, err := w.DoTx(context.Background(), 1, ExpBackoff{},
 			func(Writer) error {
@@ -669,7 +669,7 @@ func TestGormReadWriter_DoTx(t *testing.T) {
 		assert.Equal(2, attempts) // attempted 1 + 8 retries
 	})
 	t.Run("valid-with-2-retries", func(t *testing.T) {
-		w := &GormReadWriter{Tx: conn}
+		w := &GormReadWriter{Tx: db}
 		attempts := 0
 		got, err := w.DoTx(context.Background(), 3, ExpBackoff{},
 			func(Writer) error {
@@ -684,7 +684,7 @@ func TestGormReadWriter_DoTx(t *testing.T) {
 		assert.Equal(3, attempts) // attempted 1 + 8 retries
 	})
 	t.Run("valid-with-4-retries", func(t *testing.T) {
-		w := &GormReadWriter{Tx: conn}
+		w := &GormReadWriter{Tx: db}
 		attempts := 0
 		got, err := w.DoTx(context.Background(), 4, ExpBackoff{},
 			func(Writer) error {
@@ -699,7 +699,7 @@ func TestGormReadWriter_DoTx(t *testing.T) {
 		assert.Equal(4, attempts) // attempted 1 + 8 retries
 	})
 	t.Run("zero-retries", func(t *testing.T) {
-		w := &GormReadWriter{Tx: conn}
+		w := &GormReadWriter{Tx: db}
 		attempts := 0
 		got, err := w.DoTx(context.Background(), 0, ExpBackoff{}, func(Writer) error { attempts += 1; return nil })
 		assert.Nil(err)
@@ -715,14 +715,14 @@ func TestGormReadWriter_DoTx(t *testing.T) {
 		assert.Equal("do tx is nil", err.Error())
 	})
 	t.Run("not-a-retry-err", func(t *testing.T) {
-		w := &GormReadWriter{Tx: conn}
+		w := &GormReadWriter{Tx: db}
 		got, err := w.DoTx(context.Background(), 1, ExpBackoff{}, func(Writer) error { return errors.New("not a retry error") })
 		assert.True(err != nil)
 		assert.Equal(RetryInfo{}, got)
 		assert.True(err != oplog.ErrTicketAlreadyRedeemed)
 	})
 	t.Run("too-many-retries", func(t *testing.T) {
-		w := &GormReadWriter{Tx: conn}
+		w := &GormReadWriter{Tx: db}
 		attempts := 0
 		got, err := w.DoTx(context.Background(), 2, ExpBackoff{}, func(Writer) error { attempts += 1; return oplog.ErrTicketAlreadyRedeemed })
 		assert.True(err != nil)
@@ -734,13 +734,13 @@ func TestGormReadWriter_DoTx(t *testing.T) {
 func TestGormReadWriter_Delete(t *testing.T) {
 	StartTest()
 	t.Parallel()
-	cleanup, conn := SetupTest(t, "migrations/postgres")
+	cleanup, db := SetupTest(t, "migrations/postgres")
 	defer cleanup()
 	defer CompleteTest() // must come after the "defer cleanup()"
 	assert := assert.New(t)
-	defer conn.Close()
+	defer db.Close()
 	t.Run("simple", func(t *testing.T) {
-		w := GormReadWriter{Tx: conn}
+		w := GormReadWriter{Tx: db}
 		id, err := uuid.GenerateUUID()
 		assert.Nil(err)
 		user, err := db_test.NewTestUser()
@@ -767,7 +767,7 @@ func TestGormReadWriter_Delete(t *testing.T) {
 		assert.Equal(gorm.ErrRecordNotFound, err)
 	})
 	t.Run("valid-WithOplog", func(t *testing.T) {
-		w := GormReadWriter{Tx: conn}
+		w := GormReadWriter{Tx: db}
 		id, err := uuid.GenerateUUID()
 		assert.Nil(err)
 		user, err := db_test.NewTestUser()
@@ -825,7 +825,7 @@ func TestGormReadWriter_Delete(t *testing.T) {
 		assert.Equal(gorm.ErrRecordNotFound, err)
 	})
 	t.Run("no-wrapper-WithOplog", func(t *testing.T) {
-		w := GormReadWriter{Tx: conn}
+		w := GormReadWriter{Tx: db}
 		id, err := uuid.GenerateUUID()
 		assert.Nil(err)
 		user, err := db_test.NewTestUser()
@@ -879,7 +879,7 @@ func TestGormReadWriter_Delete(t *testing.T) {
 		assert.Equal("error wrapper is nil for WithWrapper", err.Error())
 	})
 	t.Run("no-metadata-WithOplog", func(t *testing.T) {
-		w := GormReadWriter{Tx: conn}
+		w := GormReadWriter{Tx: db}
 		id, err := uuid.GenerateUUID()
 		assert.Nil(err)
 		user, err := db_test.NewTestUser()
@@ -944,13 +944,13 @@ func TestGormReadWriter_Delete(t *testing.T) {
 func TestGormReadWriter_ScanRows(t *testing.T) {
 	StartTest()
 	t.Parallel()
-	cleanup, conn := SetupTest(t, "migrations/postgres")
+	cleanup, db := SetupTest(t, "migrations/postgres")
 	defer cleanup()
 	defer CompleteTest() // must come after the "defer cleanup()"
 	assert := assert.New(t)
-	defer conn.Close()
+	defer db.Close()
 	t.Run("valid", func(t *testing.T) {
-		w := GormReadWriter{Tx: conn}
+		w := GormReadWriter{Tx: db}
 		user, err := db_test.NewTestUser()
 		assert.Nil(err)
 		err = w.Create(context.Background(), user)
