@@ -1,15 +1,15 @@
 syntax = "proto3";
 
-package controller.api.hosts.v1;
+package controller.api.services.v1;
 
-option go_package = "github.com/hashicorp/watchtower/internal/gen/controller/api/hosts;hosts";
+option go_package = "github.com/hashicorp/watchtower/internal/gen/controller/api/services;services";
 
 import "protoc-gen-swagger/options/annotations.proto";
 import "google/api/annotations.proto";
 import "google/protobuf/field_mask.proto";
 import "google/protobuf/wrappers.proto";
-import "controller/api/hosts/v1/static_host.proto";
-import "controller/api/hosts/v1/static_host_set.proto";
+import "controller/api/resources/hosts/v1/static_host.proto";
+import "controller/api/resources/hosts/v1/static_host_set.proto";
 import "controller/api/view/v1/view.proto";
 
 option (grpc.gateway.protoc_gen_swagger.options.openapiv2_swagger) = {
@@ -100,7 +100,7 @@ message GetHostSetRequest {
 }
 
 message GetHostSetResponse {
-  StaticHostSet item = 1;
+  api.resources.hosts.v1.StaticHostSet item = 1;
 }
 
 message ListHostSetsRequest {
@@ -111,19 +111,19 @@ message ListHostSetsRequest {
 }
 
 message ListHostSetsResponse {
-  repeated StaticHostSet items = 1;
+  repeated api.resources.hosts.v1.StaticHostSet items = 1;
 }
 
 message CreateHostSetRequest {
   string org_id = 1;
   string project_id = 2;
   string host_catalog_id = 3;
-  StaticHostSet item = 4;
+  api.resources.hosts.v1.StaticHostSet item = 4;
 }
 
 message CreateHostSetResponse {
   string uri = 1;
-  StaticHostSet item = 2;
+  api.resources.hosts.v1.StaticHostSet item = 2;
 }
 
 message UpdateHostSetRequest {
@@ -131,12 +131,12 @@ message UpdateHostSetRequest {
   string project_id = 2;
   string host_catalog_id = 3;
   string id = 4;
-  StaticHostSet item = 5;
+  api.resources.hosts.v1.StaticHostSet item = 5;
   google.protobuf.FieldMask update_mask = 6;
 }
 
 message UpdateHostSetResponse {
-  StaticHostSet item = 1;
+  api.resources.hosts.v1.StaticHostSet item = 1;
 }
 
 message DeleteHostSetRequest {

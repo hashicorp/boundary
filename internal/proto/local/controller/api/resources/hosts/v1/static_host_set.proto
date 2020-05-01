@@ -1,12 +1,12 @@
 syntax = "proto3";
 
-package controller.api.hosts.v1;
+package controller.api.resources.hosts.v1;
 
-option go_package = "github.com/hashicorp/watchtower/internal/gen/controller/api/hosts;hosts";
+option go_package = "github.com/hashicorp/watchtower/internal/gen/controller/api/resources/hosts;hosts";
 
 import "google/protobuf/timestamp.proto";
 import "google/protobuf/wrappers.proto";
-import "controller/api/hosts/v1/static_host.proto";
+import "controller/api/resources/hosts/v1/static_host.proto";
 
 // StaticHostSet is a collection of StaticHosts created and managed by a
 // StaticHostCatalog

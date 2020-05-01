@@ -1,13 +1,13 @@
 syntax = "proto3";
 
-package controller.api.hosts.v1;
+package controller.api.services.v1;
 
-option go_package = "github.com/hashicorp/watchtower/internal/gen/controller/api/hosts;hosts";
+option go_package = "github.com/hashicorp/watchtower/internal/gen/controller/api/services;services";
 
 import "protoc-gen-swagger/options/annotations.proto";
 import "google/api/annotations.proto";
 import "google/protobuf/field_mask.proto";
-import "controller/api/hosts/v1/static_host_catalog.proto";
+import "controller/api/resources/hosts/v1/static_host_catalog.proto";
 import "controller/api/view/v1/view.proto";
 
 service HostCatalogService {
@@ -75,7 +75,7 @@ message GetHostCatalogRequest {
 }
 
 message GetHostCatalogResponse {
-  StaticHostCatalog item = 1;
+  api.resources.hosts.v1.StaticHostCatalog item = 1;
 }
 
 message ListHostCatalogsRequest {
@@ -86,30 +86,30 @@ message ListHostCatalogsRequest {
 }
 
 message ListHostCatalogsResponse {
-  repeated StaticHostCatalog items = 1;
+  repeated api.resources.hosts.v1.StaticHostCatalog items = 1;
 }
 
 message CreateHostCatalogRequest {
   string org_id = 1;
   string project_id = 2;
-  StaticHostCatalog item = 3;
+  api.resources.hosts.v1.StaticHostCatalog item = 3;
 }
 
 message CreateHostCatalogResponse {
   string uri = 1;
-  StaticHostCatalog item = 2;
+  api.resources.hosts.v1.StaticHostCatalog item = 2;
 }
 
 message UpdateHostCatalogRequest {
   string org_id = 1;
   string project_id = 2;
   string id = 3;
-  StaticHostCatalog item = 4;
+  api.resources.hosts.v1.StaticHostCatalog item = 4;
   google.protobuf.FieldMask update_mask = 5;
 }
 
 message UpdateHostCatalogResponse {
-  StaticHostCatalog item = 1;
+  api.resources.hosts.v1.StaticHostCatalog item = 1;
 }
 
 message DeleteHostCatalogRequest {
