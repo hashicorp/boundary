@@ -23,29 +23,18 @@ import (
 // the shared database resource when we're done.
 var runningTests sync.WaitGroup
 
-func TestConnection(url string) (*gorm.DB, error) {
-	return gorm.Open("postgres", url)
-}
-func TestGormReader(url string) (Reader, error) {
-	conn, err := gorm.Open("postgres", url)
-	if err != nil {
-		return nil, err
-	}
-	return &GormReadWriter{Tx: conn}, nil
-}
-
 // startTest signals that we're starting a test that uses the shared test resources
 func StartTest() {
 	runningTests.Add(1)
 }
 
-// completeTest signals that we've finished a test that uses the shared test resources
+// CompleteTest signals that we've finished a test that uses the shared test resources
 func CompleteTest() {
 	runningTests.Done()
 }
 
 // setup the tests (initialize the database one-time and intialized testDatabaseURL)
-func SetupTest(t *testing.T, migrationsDirectory string) (func(), string) {
+func SetupTest(t *testing.T, migrationsDirectory string) (func(), *gorm.DB) {
 	if _, err := os.Stat(migrationsDirectory); os.IsNotExist(err) {
 		t.Fatal("error migrationsDirectory does not exist")
 	}
@@ -59,13 +48,17 @@ func SetupTest(t *testing.T, migrationsDirectory string) (func(), string) {
 			t.Fatal(err)
 		}
 		testDatabaseURL = url
-		db, err := TestConnection(url)
+		db, err := gorm.Open("postgres", url)
 		if err != nil {
 			t.Fatal(err)
 		}
 		defer db.Close()
 	})
-	return cleanup, testDatabaseURL
+	db, err := gorm.Open("postgres", testDatabaseURL)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return cleanup, db
 }
 
 // InitTestWrapper initializes an AEAD wrapping.Wrapper for testing the oplog
