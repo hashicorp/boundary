@@ -7,8 +7,8 @@ option go_package = "github.com/hashicorp/watchtower/internal/gen/controller/api
 import "google/protobuf/timestamp.proto";
 import "google/protobuf/wrappers.proto";
 
-// StaticHostCatalog manages StaticHosts and StaticHostSets
-message StaticHostCatalog {
+// HostCatalog manages Hosts and HostSets
+message HostCatalog {
 	// Canonical path of the resource from the API's base URI
 	// Output only.
 	string path = 1;
@@ -29,4 +29,26 @@ message StaticHostCatalog {
 
 	// Whether the catalog is disabled
 	google.protobuf.BoolValue disabled = 6;
+
+	oneof attributes {
+		StaticHostCatalogDetails static_host_catalog_details = 7;
+		AwsEc2HostCatalogDetails awsec2_host_catalog_details = 8;
+	}
+}
+
+message StaticHostCatalogDetails {
+	// nothing here yet.
+}
+
+message AwsEc2HostCatalogDetails {
+	// The AWS regions from which this catalog will retrieve the EC2 instances.
+	repeated string regions = 1;
+
+	// The access key used for authenticating with AWS when retrieving EC2 instance details.
+	google.protobuf.StringValue  access_key = 2;
+	// Input only.
+	google.protobuf.StringValue  secret_key = 3;
+
+	// This value will never be returned in a response.
+	google.protobuf.BoolValue rotate = 4;
 }

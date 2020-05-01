@@ -6,11 +6,10 @@ option go_package = "github.com/hashicorp/watchtower/internal/gen/controller/api
 
 import "google/protobuf/timestamp.proto";
 import "google/protobuf/wrappers.proto";
-import "controller/api/resources/hosts/v1/static_host.proto";
+import "controller/api/resources/hosts/v1/host.proto";
 
-// StaticHostSet is a collection of StaticHosts created and managed by a
-// StaticHostCatalog
-message StaticHostSet {
+// HostSet is a collection of Hosts created and managed by a HostCatalog
+message HostSet {
 	// Canonical path of the resource from the API's base URI
 	// Output only.
 	string path = 1;
@@ -34,11 +33,11 @@ message StaticHostSet {
 
 	// The total count of hosts in this host set
 	// Output only.
-	google.protobuf.Int32Value size = 7;
+	google.protobuf.Int64Value size = 7;
 
 	// A list of hosts in this host set
 	// TODO: Figure out if this should be in the basic HostSet view and what
 	// view to use on the Hosts.
 	// Output only.
-	repeated StaticHost hosts = 8;
+	repeated Host hosts = 8;
 }
