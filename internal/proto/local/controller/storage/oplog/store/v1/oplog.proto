@@ -19,9 +19,9 @@ message Timestamp {
 message Entry {
   // @inject_tag: gorm:"primary_key"
   uint32 id = 1;
-  // @inject_tag: gorm:"not_null;type:TIMESTAMP"
+  // @inject_tag: `gorm:"default:current_timestamp"`
   Timestamp create_time = 2;
-  // @inject_tag: gorm:"not_null;type:TIMESTAMP"
+  // @inject_tag: `gorm:"default:current_timestamp"`
   Timestamp update_time = 3;
 
   // @inject_tag: gorm:"not_null"
@@ -42,7 +42,7 @@ message Entry {
 message Metadata {
   // @inject_tag: gorm:"primary_key"
   uint32 id = 1;
-  // @inject_tag: gorm:"not_null;type:TIMESTAMP"
+  // @inject_tag: `gorm:"default:current_timestamp"`
   Timestamp create_time = 2;
   // @inject_tag: gorm:"not_nul
 
@@ -60,9 +60,9 @@ message Metadata {
 message Ticket {
   // @inject_tag: gorm:"primary_key"
   uint32 id = 1;
-  // @inject_tag: gorm:"not_null;type:TIMESTAMP"
+  // @inject_tag: `gorm:"default:current_timestamp"`
   Timestamp create_time = 2;
-  // @inject_tag: gorm:"not_null;type:TIMESTAMP"
+  // @inject_tag: `gorm:"default:current_timestamp"`
   Timestamp update_time = 3;
 
   // @inject_tat: gorm:"not_null"

@@ -88,10 +88,10 @@ type Entry struct {
 
 	// @inject_tag: gorm:"primary_key"
 	Id uint32 `protobuf:"varint,1,opt,name=id,proto3" json:"id,omitempty" gorm:"primary_key"`
-	// @inject_tag: gorm:"not_null;type:TIMESTAMP"
-	CreateTime *Timestamp `protobuf:"bytes,2,opt,name=create_time,json=createTime,proto3" json:"create_time,omitempty" gorm:"not_null;type:TIMESTAMP"`
-	// @inject_tag: gorm:"not_null;type:TIMESTAMP"
-	UpdateTime *Timestamp `protobuf:"bytes,3,opt,name=update_time,json=updateTime,proto3" json:"update_time,omitempty" gorm:"not_null;type:TIMESTAMP"`
+	// @inject_tag: `gorm:"default:current_timestamp"`
+	CreateTime *Timestamp `protobuf:"bytes,2,opt,name=create_time,json=createTime,proto3" json:"create_time,omitempty" gorm:"default:current_timestamp"`
+	// @inject_tag: `gorm:"default:current_timestamp"`
+	UpdateTime *Timestamp `protobuf:"bytes,3,opt,name=update_time,json=updateTime,proto3" json:"update_time,omitempty" gorm:"default:current_timestamp"`
 	// @inject_tag: gorm:"not_null"
 	Version string `protobuf:"bytes,4,opt,name=version,proto3" json:"version,omitempty" gorm:"not_null"`
 	// @inject_tat: gorm:"not_null"
@@ -192,8 +192,8 @@ type Metadata struct {
 
 	// @inject_tag: gorm:"primary_key"
 	Id uint32 `protobuf:"varint,1,opt,name=id,proto3" json:"id,omitempty" gorm:"primary_key"`
-	// @inject_tag: gorm:"not_null;type:TIMESTAMP"
-	CreateTime *Timestamp `protobuf:"bytes,2,opt,name=create_time,json=createTime,proto3" json:"create_time,omitempty" gorm:"not_null;type:TIMESTAMP"` // @inject_tag: gorm:"not_nul
+	// @inject_tag: `gorm:"default:current_timestamp"`
+	CreateTime *Timestamp `protobuf:"bytes,2,opt,name=create_time,json=createTime,proto3" json:"create_time,omitempty" gorm:"default:current_timestamp"` // @inject_tag: gorm:"not_nul
 	EntryId    uint32     `protobuf:"varint,3,opt,name=entry_id,json=entryId,proto3" json:"entry_id,omitempty"`
 	// @inject_tag: gorm:"foreignkey:EntryId"
 	Entry *Entry `protobuf:"bytes,4,opt,name=entry,proto3" json:"entry,omitempty" gorm:"foreignkey:EntryId"`
@@ -285,10 +285,10 @@ type Ticket struct {
 
 	// @inject_tag: gorm:"primary_key"
 	Id uint32 `protobuf:"varint,1,opt,name=id,proto3" json:"id,omitempty" gorm:"primary_key"`
-	// @inject_tag: gorm:"not_null;type:TIMESTAMP"
-	CreateTime *Timestamp `protobuf:"bytes,2,opt,name=create_time,json=createTime,proto3" json:"create_time,omitempty" gorm:"not_null;type:TIMESTAMP"`
-	// @inject_tag: gorm:"not_null;type:TIMESTAMP"
-	UpdateTime *Timestamp `protobuf:"bytes,3,opt,name=update_time,json=updateTime,proto3" json:"update_time,omitempty" gorm:"not_null;type:TIMESTAMP"`
+	// @inject_tag: `gorm:"default:current_timestamp"`
+	CreateTime *Timestamp `protobuf:"bytes,2,opt,name=create_time,json=createTime,proto3" json:"create_time,omitempty" gorm:"default:current_timestamp"`
+	// @inject_tag: `gorm:"default:current_timestamp"`
+	UpdateTime *Timestamp `protobuf:"bytes,3,opt,name=update_time,json=updateTime,proto3" json:"update_time,omitempty" gorm:"default:current_timestamp"`
 	// @inject_tat: gorm:"not_null"
 	Name string `protobuf:"bytes,6,opt,name=name,proto3" json:"name,omitempty"`
 	// @inject_tat: gorm:"not_null;default:'1'"
