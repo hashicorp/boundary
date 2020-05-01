@@ -48,12 +48,21 @@ type Writer interface {
 
 	// Update an object in the db, if there's a fieldMask then only the field_mask.proto paths are updated, otherwise
 	// it will send every field to the DB.  options: WithOplog
+	// the caller is responsible for the transaction life cycle of the writer
+	// and if an error is returned the caller must decide what to do with
+	// the transaction, which is almost always a rollback.
 	Update(ctx context.Context, i interface{}, fieldMaskPaths []string, opt ...Option) error
 
 	// Create an object in the db with options: WithOplog
+	// the caller is responsible for the transaction life cycle of the writer
+	// and if an error is returned the caller must decide what to do with
+	// the transaction, which is almost always a rollback.
 	Create(ctx context.Context, i interface{}, opt ...Option) error
 
 	// Delete an object in the db with options: WithOplog
+	// the caller is responsible for the transaction life cycle of the writer
+	// and if an error is returned the caller must decide what to do with
+	// the transaction, which is almost always a rollback.
 	Delete(ctx context.Context, i interface{}, opt ...Option) error
 
 	// CreateConstraint will create a db constraint if it doesn't already exist
