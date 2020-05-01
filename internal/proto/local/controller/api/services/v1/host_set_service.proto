@@ -155,7 +155,7 @@ message AddToHostSetRequest {
   string host_catalog_id = 3;
   string id = 4;
 
-  // A list of host IDss which will be added to this host set. Each host referenced here must be a child of the
+  // A list of host IDs which will be added to this host set. Each host referenced here must be a child of the
   // same host catalog that this host set is a child of.
   repeated string host_ids = 5;
 }
