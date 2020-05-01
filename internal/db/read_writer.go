@@ -62,7 +62,7 @@ type Writer interface {
 	// Delete an object in the db with options: WithOplog
 	// the caller is responsible for the transaction life cycle of the writer
 	// and if an error is returned the caller must decide what to do with
-	// the transaction, which is almost always a rollback.
+	// the transaction, which almost always should be to rollback.
 	Delete(ctx context.Context, i interface{}, opt ...Option) error
 
 	// CreateConstraint will create a db constraint if it doesn't already exist
