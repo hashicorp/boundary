@@ -1,15 +1,15 @@
 syntax = "proto3";
 
-package controller.api.v1;
+package controller.api.services.v1;
 
-option go_package = "github.com/hashicorp/watchtower/internal/gen/controller/api;api";
+option go_package = "github.com/hashicorp/watchtower/internal/gen/controller/api/services;services";
 
 import "protoc-gen-swagger/options/annotations.proto";
 import "google/api/annotations.proto";
 import "google/protobuf/field_mask.proto";
 import "google/protobuf/wrappers.proto";
-import "controller/api/resource/v1/host_set.proto";
-import "controller/api/resource/v1/host.proto";
+import "controller/api/resources/hosts/v1/static_host.proto";
+import "controller/api/resources/hosts/v1/static_host_set.proto";
 import "controller/api/view/v1/view.proto";
 
 option (grpc.gateway.protoc_gen_swagger.options.openapiv2_swagger) = {
@@ -26,7 +26,7 @@ service HostSetService {
   // This retrieves the host set specified in the request using the basic view.
   rpc GetHostSet(GetHostSetRequest) returns (GetHostSetResponse) {
     option (google.api.http) = {
-      get: "/v1/org/{org}/projects/{project_id}/host-catalogs/{host_catalog_id}/host-sets/{id}"
+      get: "/v1/orgs/{org_id}/projects/{project_id}/host-catalogs/{host_catalog_id}/host-sets/{id}"
       response_body: "item"
     };
     option (grpc.gateway.protoc_gen_swagger.options.openapiv2_operation) = {
@@ -35,7 +35,7 @@ service HostSetService {
   }
   rpc ListHostSets(ListHostSetsRequest) returns (ListHostSetsResponse) {
     option (google.api.http) = {
-      get: "/v1/org/{org}/projects/{project_id}/host-catalogs/{host_catalog_id}/host-sets"
+      get: "/v1/orgs/{org_id}/projects/{project_id}/host-catalogs/{host_catalog_id}/host-sets"
     };
     option (grpc.gateway.protoc_gen_swagger.options.openapiv2_operation) = {
       summary: "List all HostSets under the specific catalog"
@@ -43,7 +43,7 @@ service HostSetService {
   }
   rpc CreateHostSet(CreateHostSetRequest) returns (CreateHostSetResponse) {
     option (google.api.http) = {
-      post: "/v1/org/{org}/projects/{project_id}/host-catalogs/{host_catalog_id}/host-sets"
+      post: "/v1/orgs/{org_id}/projects/{project_id}/host-catalogs/{host_catalog_id}/host-sets"
       body: "item"
       response_body: "item"
     };
@@ -53,7 +53,7 @@ service HostSetService {
   }
   rpc UpdateHostSet(UpdateHostSetRequest) returns (UpdateHostSetResponse) {
     option (google.api.http) = {
-      patch: "/v1/org/{org}/projects/{project_id}/host-catalogs/{host_catalog_id}/host-sets/{id}"
+      patch: "/v1/orgs/{org_id}/projects/{project_id}/host-catalogs/{host_catalog_id}/host-sets/{id}"
       body: "item"
       response_body: "item"
     };
@@ -63,7 +63,7 @@ service HostSetService {
   }
   rpc DeleteHostSet(DeleteHostSetRequest) returns (DeleteHostSetResponse) {
     option (google.api.http) = {
-      delete: "/v1/org/{org}/projects/{project_id}/host-catalogs/{host_catalog_id}/host-sets/{id}"
+      delete: "/v1/orgs/{org_id}/projects/{project_id}/host-catalogs/{host_catalog_id}/host-sets/{id}"
     };
     option (grpc.gateway.protoc_gen_swagger.options.openapiv2_operation) = {
       summary: "Delete a HostSet"
@@ -72,7 +72,7 @@ service HostSetService {
 
   rpc AddToHostSet(AddToHostSetRequest) returns (AddToHostSetResponse) {
     option (google.api.http) = {
-      post: "/v1/org/{org}/projects/{project_id}/host-catalogs/{host_catalog_id}/host-sets/{id}:add-hosts"
+      post: "/v1/orgs/{org_id}/projects/{project_id}/host-catalogs/{host_catalog_id}/host-sets/{id}:add-hosts"
     };
     option (grpc.gateway.protoc_gen_swagger.options.openapiv2_operation) = {
       summary: "Adds existing Hosts to the Host Set"
@@ -82,7 +82,7 @@ service HostSetService {
 
   rpc RemoveFromHostSet(RemoveFromHostSetRequest) returns (RemoveFromHostSetResponse) {
     option (google.api.http) = {
-      post: "/v1/org/{org}/projects/{project_id}/host-catalogs/{host_catalog_id}/host-sets/{id}:remove-hosts"
+      post: "/v1/orgs/{org_id}/projects/{project_id}/host-catalogs/{host_catalog_id}/host-sets/{id}:remove-hosts"
     };
     option (grpc.gateway.protoc_gen_swagger.options.openapiv2_operation) = {
       summary: "Removes Hosts to the Host Set"
@@ -92,7 +92,7 @@ service HostSetService {
 }
 
 message GetHostSetRequest {
-  string org = 1;
+  string org_id = 1;
   string project_id = 2;
   string host_catalog_id = 3;
   string id = 4;
@@ -100,47 +100,47 @@ message GetHostSetRequest {
 }
 
 message GetHostSetResponse {
-  api.resource.v1.HostSet item = 1;
+  api.resources.hosts.v1.StaticHostSet item = 1;
 }
 
 message ListHostSetsRequest {
-  string org = 1;
+  string org_id = 1;
   string project_id = 2;
   string host_catalog_id = 3;
   api.view.v1.View view = 4;
 }
 
 message ListHostSetsResponse {
-  repeated api.resource.v1.HostSet items = 1;
+  repeated api.resources.hosts.v1.StaticHostSet items = 1;
 }
 
 message CreateHostSetRequest {
-  string org = 1;
+  string org_id = 1;
   string project_id = 2;
   string host_catalog_id = 3;
-  api.resource.v1.HostSet item = 4;
+  api.resources.hosts.v1.StaticHostSet item = 4;
 }
 
 message CreateHostSetResponse {
   string uri = 1;
-  api.resource.v1.HostSet item = 2;
+  api.resources.hosts.v1.StaticHostSet item = 2;
 }
 
 message UpdateHostSetRequest {
-  string org = 1;
+  string org_id = 1;
   string project_id = 2;
   string host_catalog_id = 3;
   string id = 4;
-  api.resource.v1.HostSet item = 5;
+  api.resources.hosts.v1.StaticHostSet item = 5;
   google.protobuf.FieldMask update_mask = 6;
 }
 
 message UpdateHostSetResponse {
-  api.resource.v1.HostSet item = 1;
+  api.resources.hosts.v1.StaticHostSet item = 1;
 }
 
 message DeleteHostSetRequest {
-  string org = 1;
+  string org_id = 1;
   string project_id =2;
   string host_catalog_id = 3;
   string id = 4;
@@ -151,7 +151,7 @@ message DeleteHostSetResponse {
 }
 
 message AddToHostSetRequest {
-  string org = 1;
+  string org_id = 1;
   string project_id =2;
   string host_catalog_id = 3;
   string id = 4;
@@ -165,7 +165,7 @@ message AddToHostSetResponse {
 }
 
 message RemoveFromHostSetRequest {
-  string org = 1;
+  string org_id = 1;
   string project_id =2;
   string host_catalog_id = 3;
   // This host set's id.
