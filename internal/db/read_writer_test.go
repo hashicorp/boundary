@@ -8,6 +8,7 @@ import (
 	"github.com/hashicorp/go-uuid"
 	"github.com/hashicorp/watchtower/internal/db/db_test"
 	"github.com/hashicorp/watchtower/internal/oplog"
+	"github.com/hashicorp/watchtower/internal/oplog/store"
 	"github.com/jinzhu/gorm"
 	"github.com/stretchr/testify/assert"
 )
@@ -76,9 +77,10 @@ func TestGormReadWriter_Update(t *testing.T) {
 					WithOplog(
 						InitTestWrapper(t),
 						oplog.Metadata{
-							"key-only":   nil,
-							"deployment": []string{"amex"},
-							"project":    []string{"central-info-systems", "local-info-systems"},
+							"key-only":           nil,
+							"deployment":         []string{"amex"},
+							"project":            []string{"central-info-systems", "local-info-systems"},
+							"resource-public-id": []string{user.GetPublicId()},
 						}),
 				)
 			})
@@ -87,6 +89,14 @@ func TestGormReadWriter_Update(t *testing.T) {
 		err = w.LookupById(context.Background(), foundUser)
 		assert.Nil(err)
 		assert.Equal(foundUser.FriendlyName, user.FriendlyName)
+
+		var metadata store.Metadata
+		err = db.Where("key = ? and value = ?", "resource-public-id", user.PublicId).First(&metadata).Error
+		assert.Nil(err)
+
+		var foundEntry oplog.Entry
+		err = db.Where("id = ?", metadata.EntryId).First(&foundEntry).Error
+		assert.Nil(err)
 	})
 	t.Run("nil-tx", func(t *testing.T) {
 		w := GormReadWriter{Tx: nil}
