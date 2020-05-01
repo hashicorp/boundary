@@ -18,9 +18,12 @@ require (
 	github.com/grpc-ecosystem/grpc-gateway v1.14.4-rc.1
 	github.com/hashicorp/errwrap v1.0.0
 	github.com/hashicorp/go-alpnmux v0.0.0-20200323180452-dee08f00df54
+	github.com/hashicorp/go-cleanhttp v0.5.1
 	github.com/hashicorp/go-hclog v0.12.2
 	github.com/hashicorp/go-kms-wrapping v0.5.8
 	github.com/hashicorp/go-multierror v1.0.0
+	github.com/hashicorp/go-retryablehttp v0.6.6
+	github.com/hashicorp/go-rootcerts v1.0.2
 	github.com/hashicorp/go-uuid v1.0.2
 	github.com/hashicorp/hcl v1.0.0
 	github.com/hashicorp/vault v1.2.1-0.20200310200732-a321b1217d5a
@@ -44,6 +47,7 @@ require (
 	go.mongodb.org/mongo-driver v1.3.2 // indirect
 	golang.org/x/net v0.0.0-20200324143707-d3edc9973b7e
 	golang.org/x/sys v0.0.0-20200420163511-1957bb5e6d1f // indirect
+	golang.org/x/time v0.0.0-20190308202827-9d24e82272b4
 	golang.org/x/tools v0.0.0-20200421185700-66008de356c7 // indirect
 	google.golang.org/genproto v0.0.0-20200409111301-baae70f3302d
 	google.golang.org/grpc v1.27.1
