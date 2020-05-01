@@ -45,12 +45,7 @@
             "name": "view",
             "in": "query",
             "required": false,
-            "type": "string",
-            "enum": [
-              "BASIC",
-              "FULL"
-            ],
-            "default": "BASIC"
+            "type": "string"
           }
         ],
         "tags": [
@@ -131,12 +126,7 @@
             "name": "view",
             "in": "query",
             "required": false,
-            "type": "string",
-            "enum": [
-              "BASIC",
-              "FULL"
-            ],
-            "default": "BASIC"
+            "type": "string"
           }
         ],
         "tags": [
@@ -228,12 +218,7 @@
             "name": "view",
             "in": "query",
             "required": false,
-            "type": "string",
-            "enum": [
-              "BASIC",
-              "FULL"
-            ],
-            "default": "BASIC"
+            "type": "string"
           }
         ],
         "tags": [
@@ -455,12 +440,7 @@
             "name": "view",
             "in": "query",
             "required": false,
-            "type": "string",
-            "enum": [
-              "BASIC",
-              "FULL"
-            ],
-            "default": "BASIC"
+            "type": "string"
           }
         ],
         "tags": [
@@ -552,12 +532,7 @@
             "name": "view",
             "in": "query",
             "required": false,
-            "type": "string",
-            "enum": [
-              "BASIC",
-              "FULL"
-            ],
-            "default": "BASIC"
+            "type": "string"
           }
         ],
         "tags": [
@@ -691,12 +666,7 @@
             "name": "view",
             "in": "query",
             "required": false,
-            "type": "string",
-            "enum": [
-              "BASIC",
-              "FULL"
-            ],
-            "default": "BASIC"
+            "type": "string"
           }
         ],
         "tags": [
@@ -1059,14 +1029,6 @@
           "$ref": "#/definitions/controller.api.resources.hosts.v1.HostSet"
         }
       }
-    },
-    "controller.api.view.v1.View": {
-      "type": "string",
-      "enum": [
-        "BASIC",
-        "FULL"
-      ],
-      "default": "BASIC"
     },
     "google.protobuf.FieldMask": {
       "type": "object",

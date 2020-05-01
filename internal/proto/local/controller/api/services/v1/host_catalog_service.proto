@@ -8,7 +8,6 @@ import "protoc-gen-swagger/options/annotations.proto";
 import "google/api/annotations.proto";
 import "google/protobuf/field_mask.proto";
 import "controller/api/resources/hosts/v1/host_catalog.proto";
-import "controller/api/view/v1/view.proto";
 
 service HostCatalogService {
 	option (grpc.gateway.protoc_gen_swagger.options.openapiv2_tag) = {
@@ -71,7 +70,7 @@ message GetHostCatalogRequest {
   string org_id = 1;
   string project_id = 2;
   string id = 3;
-  api.view.v1.View view = 4;
+  string view = 4;
 }
 
 message GetHostCatalogResponse {
@@ -81,7 +80,7 @@ message GetHostCatalogResponse {
 message ListHostCatalogsRequest {
   string org_id = 1;
   string project_id = 2;
-  api.view.v1.View view = 3;
+  string view = 3;
 }
 
 message ListHostCatalogsResponse {

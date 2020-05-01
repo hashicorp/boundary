@@ -10,7 +10,6 @@ import "google/protobuf/field_mask.proto";
 import "google/protobuf/wrappers.proto";
 import "controller/api/resources/hosts/v1/host.proto";
 import "controller/api/resources/hosts/v1/host_set.proto";
-import "controller/api/view/v1/view.proto";
 
 option (grpc.gateway.protoc_gen_swagger.options.openapiv2_swagger) = {
   info: {
@@ -96,7 +95,7 @@ message GetHostSetRequest {
   string project_id = 2;
   string host_catalog_id = 3;
   string id = 4;
-  api.view.v1.View view = 5;
+  string view = 5;
 }
 
 message GetHostSetResponse {
@@ -107,7 +106,7 @@ message ListHostSetsRequest {
   string org_id = 1;
   string project_id = 2;
   string host_catalog_id = 3;
-  api.view.v1.View view = 4;
+  string view = 4;
 }
 
 message ListHostSetsResponse {
