@@ -1,16 +1,15 @@
 syntax = "proto3";
 
-package controller.api.v1;
+package controller.api.services.v1;
 
-option go_package = "github.com/hashicorp/watchtower/internal/gen/controller/api;api";
+option go_package = "github.com/hashicorp/watchtower/internal/gen/controller/api/services;services";
 
 import "protoc-gen-swagger/options/annotations.proto";
 import "google/api/annotations.proto";
 import "google/protobuf/field_mask.proto";
 import "google/protobuf/wrappers.proto";
-import "controller/api/resource/v1/host_set.proto";
-import "controller/api/resource/v1/host.proto";
-import "controller/api/view/v1/view.proto";
+import "controller/api/resources/hosts/v1/host.proto";
+import "controller/api/resources/hosts/v1/host_set.proto";
 
 option (grpc.gateway.protoc_gen_swagger.options.openapiv2_swagger) = {
   info: {
@@ -96,34 +95,34 @@ message GetHostSetRequest {
   string project_id = 2;
   string host_catalog_id = 3;
   string id = 4;
-  api.view.v1.View view = 5;
+  string view = 5;
 }
 
 message GetHostSetResponse {
-  api.resource.v1.HostSet item = 1;
+  api.resources.hosts.v1.HostSet item = 1;
 }
 
 message ListHostSetsRequest {
   string org_id = 1;
   string project_id = 2;
   string host_catalog_id = 3;
-  api.view.v1.View view = 4;
+  string view = 4;
 }
 
 message ListHostSetsResponse {
-  repeated api.resource.v1.HostSet items = 1;
+  repeated api.resources.hosts.v1.HostSet items = 1;
 }
 
 message CreateHostSetRequest {
   string org_id = 1;
   string project_id = 2;
   string host_catalog_id = 3;
-  api.resource.v1.HostSet item = 4;
+  api.resources.hosts.v1.HostSet item = 4;
 }
 
 message CreateHostSetResponse {
   string uri = 1;
-  api.resource.v1.HostSet item = 2;
+  api.resources.hosts.v1.HostSet item = 2;
 }
 
 message UpdateHostSetRequest {
@@ -131,12 +130,12 @@ message UpdateHostSetRequest {
   string project_id = 2;
   string host_catalog_id = 3;
   string id = 4;
-  api.resource.v1.HostSet item = 5;
+  api.resources.hosts.v1.HostSet item = 5;
   google.protobuf.FieldMask update_mask = 6;
 }
 
 message UpdateHostSetResponse {
-  api.resource.v1.HostSet item = 1;
+  api.resources.hosts.v1.HostSet item = 1;
 }
 
 message DeleteHostSetRequest {
@@ -156,9 +155,9 @@ message AddToHostSetRequest {
   string host_catalog_id = 3;
   string id = 4;
 
-  // A list of host uris which will be added to this host set.  Each host referenced here must be a child of the
+  // A list of host IDs which will be added to this host set. Each host referenced here must be a child of the
   // same host catalog that this host set is a child of.
-  repeated string host_uris = 5;
+  repeated string host_ids = 5;
 }
 
 message AddToHostSetResponse {
@@ -171,8 +170,8 @@ message RemoveFromHostSetRequest {
   // This host set's id.
   string id = 4;
 
-  // A list of host uris which should not be in the host set when this request returns.
-  repeated string host_uris = 5;
+  // A list of host IDs which should not be in the host set when this request returns.
+  repeated string host_ids = 5;
 }
 
 message RemoveFromHostSetResponse {

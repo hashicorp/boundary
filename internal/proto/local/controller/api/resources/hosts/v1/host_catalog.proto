@@ -1,0 +1,53 @@
+syntax = "proto3";
+
+package controller.api.resources.hosts.v1;
+
+option go_package = "github.com/hashicorp/watchtower/internal/gen/controller/api/resources/hosts;hosts";
+
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/wrappers.proto";
+import "google/protobuf/struct.proto";
+
+// HostCatalog manages Hosts and HostSets
+message HostCatalog {
+	// Canonical path of the resource from the API's base URI
+	// Output only.
+	string path = 1;
+
+	// The type of the resource, to help differentiate schemas
+	string type = 2;
+
+	// Friendly name, if set
+	google.protobuf.StringValue friendly_name = 3;
+
+	// The time this host was created
+	// Output only.
+	google.protobuf.Timestamp created_time = 4;
+
+	// The time this host was last updated
+	// Output only.
+	google.protobuf.Timestamp updated_time = 5;
+
+	// Whether the catalog is disabled
+	google.protobuf.BoolValue disabled = 6;
+
+	// Attributes specific to the catalog type
+	google.protobuf.Struct attributes = 7;
+}
+
+message StaticHostCatalogDetails {
+	// nothing here yet.
+}
+
+message AwsEc2HostCatalogDetails {
+	// The AWS regions from which this catalog will retrieve the EC2 instances.
+	repeated string regions = 1;
+
+	// The access key used for authenticating with AWS when retrieving EC2 instance details.
+	google.protobuf.StringValue access_key = 2;
+	// Input only.
+	google.protobuf.StringValue secret_key = 3;
+
+	// This value will never be returned in a response.
+	google.protobuf.BoolValue rotate = 4;
+}
