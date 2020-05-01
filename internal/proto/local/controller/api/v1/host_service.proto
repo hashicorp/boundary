@@ -1,0 +1,120 @@
+syntax = "proto3";
+
+package controller.api.v1;
+
+option go_package = "github.com/hashicorp/watchtower/internal/gen/controller/api;api";
+
+import "protoc-gen-swagger/options/annotations.proto";
+import "google/api/annotations.proto";
+import "google/protobuf/field_mask.proto";
+import "controller/api/resource/v1/host.proto";
+import "controller/api/view/v1/view.proto";
+
+service HostService {
+  // This retrieves the host specified in the request using the basic view.
+  rpc GetHost(GetHostRequest) returns (GetHostResponse) {
+    option (google.api.http) = {
+      get: "/v1/orgs/{org_id}/projects/{project_id}/host-catalogs/{host_catalog_id}/hosts/{id}"
+      response_body: "item"
+    };
+    option (grpc.gateway.protoc_gen_swagger.options.openapiv2_operation) = {
+      summary: "Gets a single Host"
+    };
+  }
+  rpc ListHosts(ListHostsRequest) returns (ListHostsResponse) {
+    option (google.api.http) = {
+      get: "/v1/orgs/{org_id}/projects/{project_id}/host-catalogs/{host_catalog_id}/hosts"
+    };
+    option (grpc.gateway.protoc_gen_swagger.options.openapiv2_operation) = {
+      summary: "List all Hosts for the specified catalog"
+    };
+  }
+  rpc CreateHost(CreateHostRequest) returns (CreateHostResponse) {
+    option (google.api.http) = {
+      post: "/v1/orgs/{org_id}/projects/{project_id}/host-catalogs/{host_catalog_id}/hosts"
+      body: "item"
+      response_body: "item"
+    };
+    option (grpc.gateway.protoc_gen_swagger.options.openapiv2_operation) = {
+      summary: "Create a single Host"
+    };
+  }
+  rpc UpdateHost(UpdateHostRequest) returns (UpdateHostResponse) {
+    option (google.api.http) = {
+      patch: "/v1/orgs/{org_id}/projects/{project_id}/host-catalogs/{host_catalog_id}/hosts/{id}"
+      body: "item"
+      response_body: "item"
+    };
+    option (grpc.gateway.protoc_gen_swagger.options.openapiv2_operation) = {
+      summary: "Update a Host"
+    };
+  }
+  rpc DeleteHost(DeleteHostRequest) returns (DeleteHostResponse) {
+    option (google.api.http) = {
+      delete: "/v1/orgs/{org_id}/projects/{project_id}/host-catalogs/{host_catalog_id}/hosts/{id}"
+    };
+    option (grpc.gateway.protoc_gen_swagger.options.openapiv2_operation) = {
+      summary: "Delete a Host"
+    };
+  }
+}
+
+message GetHostRequest {
+  string org_id = 1;
+  string project_id = 2;
+  string host_catalog_id = 3;
+  string id = 4;
+  api.view.v1.View view = 5;
+}
+
+message GetHostResponse {
+  api.resource.v1.Host item = 1;
+}
+
+message ListHostsRequest {
+  string org_id = 1;
+  string project_id = 2;
+  string host_catalog_id = 3;
+
+  api.view.v1.View view = 4;
+}
+
+message ListHostsResponse {
+  repeated api.resource.v1.Host items = 1;
+}
+
+message CreateHostRequest {
+  string org_id = 1;
+  string project_id = 2;
+  string host_catalog_id = 3;
+  api.resource.v1.Host item = 4;
+}
+
+message CreateHostResponse {
+  string ref = 1;
+  api.resource.v1.Host item = 2;
+}
+
+message UpdateHostRequest {
+  string org_id = 1;
+  string project_id = 2;
+  string host_catalog_id = 3;
+  string id = 4;
+  api.resource.v1.Host item = 5;
+  google.protobuf.FieldMask update_mask = 6;
+}
+
+message UpdateHostResponse {
+  api.resource.v1.Host item = 1;
+}
+
+message DeleteHostRequest {
+  string org_id = 1;
+  string project_id = 2;
+  string host_catalog_id = 3;
+  string id = 4;
+}
+
+message DeleteHostResponse {
+  bool existed = 1;
+}

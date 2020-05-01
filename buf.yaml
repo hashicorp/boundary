@@ -9,3 +9,9 @@ lint:
   ignore:
     - protoc-gen-swagger
     - google
+  ignore_only:
+    # These api enums break these lint checks in order to appear nice in swagger.
+    ENUM_VALUE_PREFIX:
+      - controller/api/view/v1/view.proto
+    ENUM_ZERO_VALUE_SUFFIX:
+      - controller/api/view/v1/view.proto
