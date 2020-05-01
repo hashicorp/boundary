@@ -31,7 +31,7 @@ message StaticHostSet {
 
 	// The total count of hosts in this host set
 	// Output only.
-	google.protobuf.Int32Value size = 6;
+	google.protobuf.Int64Value size = 6;
 
 	// A list of hosts in this host set
 	// TODO: Figure out if this should be in the basic HostSet view and what

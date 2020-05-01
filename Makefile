@@ -9,7 +9,7 @@ bootstrap:
 	go generate -tags tools tools/tools.go
 
 api:
-	go generate -tags genapi api/internal/genapi/makeimports.go
+	APIGEN_BASEPATH=$(shell pwd) go generate -tags genapi api/internal/genapi/makeimports.go
 
 ### oplog requires protoc-gen-go v1.20.0 or later
 # GO111MODULE=on go get -u github.com/golang/protobuf/protoc-gen-go@v1.40

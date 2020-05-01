@@ -49,7 +49,7 @@ type StaticHostSet struct {
 	Disabled *wrappers.BoolValue `protobuf:"bytes,5,opt,name=disabled,proto3" json:"disabled,omitempty"`
 	// The total count of hosts in this host set
 	// Output only.
-	Size *wrappers.Int32Value `protobuf:"bytes,6,opt,name=size,proto3" json:"size,omitempty"`
+	Size *wrappers.Int64Value `protobuf:"bytes,6,opt,name=size,proto3" json:"size,omitempty"`
 	// A list of hosts in this host set
 	// TODO: Figure out if this should be in the basic HostSet view and what
 	// view to use on the Hosts.
@@ -124,7 +124,7 @@ func (x *StaticHostSet) GetDisabled() *wrappers.BoolValue {
 	return nil
 }
 
-func (x *StaticHostSet) GetSize() *wrappers.Int32Value {
+func (x *StaticHostSet) GetSize() *wrappers.Int64Value {
 	if x != nil {
 		return x.Size
 	}
@@ -174,7 +174,7 @@ var file_controller_api_resources_hosts_v1_static_host_set_proto_rawDesc = []byt
 	0x6f, 0x6c, 0x56, 0x61, 0x6c, 0x75, 0x65, 0x52, 0x08, 0x64, 0x69, 0x73, 0x61, 0x62, 0x6c, 0x65,
 	0x64, 0x12, 0x2f, 0x0a, 0x04, 0x73, 0x69, 0x7a, 0x65, 0x18, 0x06, 0x20, 0x01, 0x28, 0x0b, 0x32,
 	0x1b, 0x2e, 0x67, 0x6f, 0x6f, 0x67, 0x6c, 0x65, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x62, 0x75,
-	0x66, 0x2e, 0x49, 0x6e, 0x74, 0x33, 0x32, 0x56, 0x61, 0x6c, 0x75, 0x65, 0x52, 0x04, 0x73, 0x69,
+	0x66, 0x2e, 0x49, 0x6e, 0x74, 0x36, 0x34, 0x56, 0x61, 0x6c, 0x75, 0x65, 0x52, 0x04, 0x73, 0x69,
 	0x7a, 0x65, 0x12, 0x43, 0x0a, 0x05, 0x68, 0x6f, 0x73, 0x74, 0x73, 0x18, 0x07, 0x20, 0x03, 0x28,
 	0x0b, 0x32, 0x2d, 0x2e, 0x63, 0x6f, 0x6e, 0x74, 0x72, 0x6f, 0x6c, 0x6c, 0x65, 0x72, 0x2e, 0x61,
 	0x70, 0x69, 0x2e, 0x72, 0x65, 0x73, 0x6f, 0x75, 0x72, 0x63, 0x65, 0x73, 0x2e, 0x68, 0x6f, 0x73,
@@ -206,7 +206,7 @@ var file_controller_api_resources_hosts_v1_static_host_set_proto_goTypes = []int
 	(*wrappers.StringValue)(nil), // 1: google.protobuf.StringValue
 	(*timestamp.Timestamp)(nil),  // 2: google.protobuf.Timestamp
 	(*wrappers.BoolValue)(nil),   // 3: google.protobuf.BoolValue
-	(*wrappers.Int32Value)(nil),  // 4: google.protobuf.Int32Value
+	(*wrappers.Int64Value)(nil),  // 4: google.protobuf.Int64Value
 	(*StaticHost)(nil),           // 5: controller.api.resources.hosts.v1.StaticHost
 }
 var file_controller_api_resources_hosts_v1_static_host_set_proto_depIdxs = []int32{
@@ -214,7 +214,7 @@ var file_controller_api_resources_hosts_v1_static_host_set_proto_depIdxs = []int
 	2, // 1: controller.api.resources.hosts.v1.StaticHostSet.created_time:type_name -> google.protobuf.Timestamp
 	2, // 2: controller.api.resources.hosts.v1.StaticHostSet.updated_time:type_name -> google.protobuf.Timestamp
 	3, // 3: controller.api.resources.hosts.v1.StaticHostSet.disabled:type_name -> google.protobuf.BoolValue
-	4, // 4: controller.api.resources.hosts.v1.StaticHostSet.size:type_name -> google.protobuf.Int32Value
+	4, // 4: controller.api.resources.hosts.v1.StaticHostSet.size:type_name -> google.protobuf.Int64Value
 	5, // 5: controller.api.resources.hosts.v1.StaticHostSet.hosts:type_name -> controller.api.resources.hosts.v1.StaticHost
 	6, // [6:6] is the sub-list for method output_type
 	6, // [6:6] is the sub-list for method input_type

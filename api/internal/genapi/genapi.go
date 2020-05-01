@@ -33,10 +33,26 @@ var (
 
 	inputStructs = []*generateInfo{
 		{
-			"../../../internal/gen/controller/api/resource/host.pb.go",
-			"Host",
-			"../../hosts/host.go",
-			"Host",
+			os.Getenv("APIGEN_BASEPATH") + "/internal/gen/controller/api/resources/hosts/static_host.pb.go",
+			"StaticHost",
+			os.Getenv("APIGEN_BASEPATH") + "/api/hosts/static_host.go",
+			"StaticHost",
+			"hosts",
+			"",
+		},
+		{
+			os.Getenv("APIGEN_BASEPATH") + "/internal/gen/controller/api/resources/hosts/static_host_set.pb.go",
+			"StaticHostSet",
+			os.Getenv("APIGEN_BASEPATH") + "/api/hosts/static_host_set.go",
+			"StaticHostSet",
+			"hosts",
+			"",
+		},
+		{
+			os.Getenv("APIGEN_BASEPATH") + "/internal/gen/controller/api/resources/hosts/static_host_catalog.pb.go",
+			"StaticHostCatalog",
+			os.Getenv("APIGEN_BASEPATH") + "/api/hosts/static_host_catalog.go",
+			"StaticHostCatalog",
 			"hosts",
 			"",
 		},
@@ -95,34 +111,38 @@ func createStructs() {
 				os.Exit(1)
 				return
 			}
-			var elideList []int
-			defer func() {
-				var cutCount int
-				// Remove unexported proto stuff
-				for _, val := range elideList {
-					loc := val - cutCount
-					st.Fields.List = append(st.Fields.List[:loc], st.Fields.List[loc+1:]...)
-					cutCount++
-				}
 
-				// Add default fields
-				st.Fields.List = append([]*ast.Field{&ast.Field{
-					Names: []*ast.Ident{
-						{
-							Name: "defaultFields",
-							Obj: &ast.Object{
-								Kind: ast.Var,
+			// Tee up unexported field deletion
+			var elideList []int
+			{
+				defer func() {
+					var cutCount int
+					// Remove unexported proto stuff
+					for _, val := range elideList {
+						loc := val - cutCount
+						st.Fields.List = append(st.Fields.List[:loc], st.Fields.List[loc+1:]...)
+						cutCount++
+					}
+
+					// Add default fields
+					st.Fields.List = append([]*ast.Field{&ast.Field{
+						Names: []*ast.Ident{
+							{
 								Name: "defaultFields",
+								Obj: &ast.Object{
+									Kind: ast.Var,
+									Name: "defaultFields",
+								},
 							},
 						},
-					},
-					Type: &ast.ArrayType{
-						Elt: &ast.Ident{
-							Name: "string",
+						Type: &ast.ArrayType{
+							Elt: &ast.Ident{
+								Name: "string",
+							},
 						},
-					},
-				}}, st.Fields.List...)
-			}()
+					}}, st.Fields.List...)
+				}()
+			}
 
 			for i, field := range st.Fields.List {
 				if !field.Names[0].IsExported() {
@@ -141,6 +161,8 @@ func createStructs() {
 				switch typ := field.Type.(type) {
 				case *ast.Ident:
 					typ.Name = "*" + typ.Name
+					goto TAGMODIFY
+				case *ast.ArrayType:
 					goto TAGMODIFY
 				case *ast.StarExpr:
 					switch nextTyp := typ.X.(type) {
@@ -178,6 +200,14 @@ func createStructs() {
 								Names: field.Names,
 								Type: &ast.Ident{
 									Name: "*bool",
+								},
+								Tag: field.Tag,
+							}
+						case "Int64Value":
+							st.Fields.List[i] = &ast.Field{
+								Names: field.Names,
+								Type: &ast.Ident{
+									Name: "*int64",
 								},
 								Tag: field.Tag,
 							}
