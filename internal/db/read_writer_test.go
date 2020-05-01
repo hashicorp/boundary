@@ -14,8 +14,8 @@ import (
 )
 
 func TestGormReadWriter_Update(t *testing.T) {
+	// intentionally not run with t.Parallel so we don't need to use DoTx for the Update tests
 	StartTest()
-	t.Parallel()
 	cleanup, db := SetupTest(t, "migrations/postgres")
 	defer cleanup()
 	defer CompleteTest() // must come after the "defer cleanup()"
@@ -66,24 +66,17 @@ func TestGormReadWriter_Update(t *testing.T) {
 		assert.Equal(foundUser.Id, user.Id)
 
 		user.FriendlyName = "friendly-" + id
-		_, err = w.DoTx(
-			context.Background(),
-			20,           // twenty retries
-			ExpBackoff{}, // exponential backoff
-			func(w Writer) error {
-				// the TxHandler updates the user's friendly name
-				return w.Update(context.Background(), user, []string{"FriendlyName"},
-					// write oplogs for this update
-					WithOplog(
-						InitTestWrapper(t),
-						oplog.Metadata{
-							"key-only":           nil,
-							"deployment":         []string{"amex"},
-							"project":            []string{"central-info-systems", "local-info-systems"},
-							"resource-public-id": []string{user.GetPublicId()},
-						}),
-				)
-			})
+		err = w.Update(context.Background(), user, []string{"FriendlyName"},
+			// write oplogs for this update
+			WithOplog(
+				InitTestWrapper(t),
+				oplog.Metadata{
+					"key-only":           nil,
+					"deployment":         []string{"amex"},
+					"project":            []string{"central-info-systems", "local-info-systems"},
+					"resource-public-id": []string{user.GetPublicId()},
+				}),
+		)
 		assert.Nil(err)
 
 		err = w.LookupById(context.Background(), foundUser)
@@ -128,21 +121,15 @@ func TestGormReadWriter_Update(t *testing.T) {
 		assert.Equal(foundUser.Id, user.Id)
 
 		user.FriendlyName = "friendly-" + id
-		_, err = w.DoTx(
-			context.Background(),
-			20,
-			ExpBackoff{},
-			func(w Writer) error {
-				return w.Update(context.Background(), user, []string{"FriendlyName"},
-					WithOplog(
-						nil,
-						oplog.Metadata{
-							"key-only":   nil,
-							"deployment": []string{"amex"},
-							"project":    []string{"central-info-systems", "local-info-systems"},
-						}),
-				)
-			})
+		err = w.Update(context.Background(), user, []string{"FriendlyName"},
+			WithOplog(
+				nil,
+				oplog.Metadata{
+					"key-only":   nil,
+					"deployment": []string{"amex"},
+					"project":    []string{"central-info-systems", "local-info-systems"},
+				}),
+		)
 		assert.True(err != nil)
 		assert.Equal("error wrapper is nil for WithWrapper", err.Error())
 	})
@@ -165,26 +152,20 @@ func TestGormReadWriter_Update(t *testing.T) {
 		assert.Equal(foundUser.Id, user.Id)
 
 		user.FriendlyName = "friendly-" + id
-		_, err = w.DoTx(
-			context.Background(),
-			20,
-			ExpBackoff{},
-			func(w Writer) error {
-				return w.Update(context.Background(), user, []string{"FriendlyName"},
-					WithOplog(
-						InitTestWrapper(t),
-						nil,
-					),
-				)
-			})
+		err = w.Update(context.Background(), user, []string{"FriendlyName"},
+			WithOplog(
+				InitTestWrapper(t),
+				nil,
+			),
+		)
 		assert.True(err != nil)
 		assert.Equal("error no metadata for WithOplog", err.Error())
 	})
 }
 
 func TestGormReadWriter_Create(t *testing.T) {
+	// intentionally not run with t.Parallel so we don't need to use DoTx for the Create tests
 	StartTest()
-	t.Parallel()
 	cleanup, db := SetupTest(t, "migrations/postgres")
 	defer cleanup()
 	defer CompleteTest() // must come after the "defer cleanup()"
@@ -217,37 +198,27 @@ func TestGormReadWriter_Create(t *testing.T) {
 		user, err := db_test.NewTestUser()
 		assert.Nil(err)
 		user.Name = "foo-" + id
-		var returnedUser *db_test.TestUser
-		_, err = w.DoTx(
+		err = w.Create(
 			context.Background(),
-			10,
-			ExpBackoff{},
-			func(w Writer) error {
-				// make sure you used the passed in writer that properly handles transaction rollback
-				// we need to clone the user before every attempt to insert it, since it will be retried
-				returnedUser = user.Clone()
-				return w.Create(
-					context.Background(),
-					returnedUser,
-					WithOplog(
-						InitTestWrapper(t),
-						oplog.Metadata{
-							"key-only":   nil,
-							"deployment": []string{"amex"},
-							"project":    []string{"central-info-systems", "local-info-systems"},
-						},
-					),
-				)
-			})
+			user,
+			WithOplog(
+				InitTestWrapper(t),
+				oplog.Metadata{
+					"key-only":   nil,
+					"deployment": []string{"amex"},
+					"project":    []string{"central-info-systems", "local-info-systems"},
+				},
+			),
+		)
 		assert.Nil(err)
-		assert.True(returnedUser.Id != 0)
+		assert.True(user.Id != 0)
 
 		foundUser, err := db_test.NewTestUser()
 		assert.Nil(err)
-		foundUser.Id = returnedUser.Id
+		foundUser.Id = user.Id
 		err = w.LookupById(context.Background(), foundUser)
 		assert.Nil(err)
-		assert.Equal(foundUser.Id, returnedUser.Id)
+		assert.Equal(foundUser.Id, user.Id)
 	})
 	t.Run("no-wrapper-WithOplog", func(t *testing.T) {
 		w := GormReadWriter{Tx: db}
@@ -256,25 +227,18 @@ func TestGormReadWriter_Create(t *testing.T) {
 		user, err := db_test.NewTestUser()
 		assert.Nil(err)
 		user.Name = "foo-" + id
-		_, err = w.DoTx(
+		err = w.Create(
 			context.Background(),
-			10,
-			ExpBackoff{},
-			func(w Writer) error {
-				retryableUser := user.Clone()
-				return w.Create(
-					context.Background(),
-					retryableUser,
-					WithOplog(
-						nil,
-						oplog.Metadata{
-							"key-only":   nil,
-							"deployment": []string{"amex"},
-							"project":    []string{"central-info-systems", "local-info-systems"},
-						},
-					),
-				)
-			})
+			user,
+			WithOplog(
+				nil,
+				oplog.Metadata{
+					"key-only":   nil,
+					"deployment": []string{"amex"},
+					"project":    []string{"central-info-systems", "local-info-systems"},
+				},
+			),
+		)
 		assert.True(err != nil)
 		assert.Equal("error wrapper is nil for WithWrapper", err.Error())
 	})
@@ -285,21 +249,14 @@ func TestGormReadWriter_Create(t *testing.T) {
 		user, err := db_test.NewTestUser()
 		assert.Nil(err)
 		user.Name = "foo-" + id
-		_, err = w.DoTx(
+		err = w.Create(
 			context.Background(),
-			10,
-			ExpBackoff{},
-			func(w Writer) error {
-				retryableUser := user.Clone()
-				return w.Create(
-					context.Background(),
-					retryableUser,
-					WithOplog(
-						InitTestWrapper(t),
-						nil,
-					),
-				)
-			})
+			user,
+			WithOplog(
+				InitTestWrapper(t),
+				nil,
+			),
+		)
 		assert.True(err != nil)
 		assert.Equal("error no metadata for WithOplog", err.Error())
 	})
@@ -742,8 +699,8 @@ func TestGormReadWriter_DoTx(t *testing.T) {
 }
 
 func TestGormReadWriter_Delete(t *testing.T) {
+	// intentionally not run with t.Parallel so we don't need to use DoTx for the Create tests
 	StartTest()
-	t.Parallel()
 	cleanup, db := SetupTest(t, "migrations/postgres")
 	defer cleanup()
 	defer CompleteTest() // must come after the "defer cleanup()"
@@ -783,42 +740,31 @@ func TestGormReadWriter_Delete(t *testing.T) {
 		user, err := db_test.NewTestUser()
 		assert.Nil(err)
 		user.Name = "foo-" + id
-		var returnedUser *db_test.TestUser
-		_, err = w.DoTx(
+		err = w.Create(
 			context.Background(),
-			10,
-			ExpBackoff{},
-			func(w Writer) error {
-				// make sure you used the passed in writer that properly handles transaction rollback
-				// we need to clone the user before every attempt to insert it, since it will be retried
-				returnedUser = user.Clone()
-				err := w.Create(
-					context.Background(),
-					returnedUser,
-					WithOplog(
-						InitTestWrapper(t),
-						oplog.Metadata{
-							"key-only":   nil,
-							"deployment": []string{"amex"},
-							"project":    []string{"central-info-systems", "local-info-systems"},
-						},
-					),
-				)
-				return err
-			})
+			user,
+			WithOplog(
+				InitTestWrapper(t),
+				oplog.Metadata{
+					"key-only":   nil,
+					"deployment": []string{"amex"},
+					"project":    []string{"central-info-systems", "local-info-systems"},
+				},
+			),
+		)
 		assert.Nil(err)
-		assert.True(returnedUser.Id != 0)
+		assert.True(user.Id != 0)
 
 		foundUser, err := db_test.NewTestUser()
 		assert.Nil(err)
-		foundUser.Id = returnedUser.Id
+		foundUser.Id = user.Id
 		err = w.LookupById(context.Background(), foundUser)
 		assert.Nil(err)
-		assert.Equal(foundUser.Id, returnedUser.Id)
+		assert.Equal(foundUser.Id, user.Id)
 
 		err = w.Delete(
 			context.Background(),
-			returnedUser,
+			user,
 			WithOplog(
 				InitTestWrapper(t),
 				oplog.Metadata{
@@ -841,41 +787,31 @@ func TestGormReadWriter_Delete(t *testing.T) {
 		user, err := db_test.NewTestUser()
 		assert.Nil(err)
 		user.Name = "foo-" + id
-		var returnedUser *db_test.TestUser
-		_, err = w.DoTx(
+		err = w.Create(
 			context.Background(),
-			3,
-			ExpBackoff{},
-			func(w Writer) error {
-				// make sure you used the passed in writer that properly handles transaction rollback
-				// we need to clone the user before every attempt to insert it, since it will be retried
-				returnedUser = user.Clone()
-				return w.Create(
-					context.Background(),
-					returnedUser,
-					WithOplog(
-						InitTestWrapper(t),
-						oplog.Metadata{
-							"key-only":   nil,
-							"deployment": []string{"amex"},
-							"project":    []string{"central-info-systems", "local-info-systems"},
-						},
-					),
-				)
-			})
+			user,
+			WithOplog(
+				InitTestWrapper(t),
+				oplog.Metadata{
+					"key-only":   nil,
+					"deployment": []string{"amex"},
+					"project":    []string{"central-info-systems", "local-info-systems"},
+				},
+			),
+		)
 		assert.Nil(err)
-		assert.True(returnedUser.Id != 0)
+		assert.True(user.Id != 0)
 
 		foundUser, err := db_test.NewTestUser()
 		assert.Nil(err)
-		foundUser.Id = returnedUser.Id
+		foundUser.Id = user.Id
 		err = w.LookupById(context.Background(), foundUser)
 		assert.Nil(err)
-		assert.Equal(foundUser.Id, returnedUser.Id)
+		assert.Equal(foundUser.Id, user.Id)
 
 		err = w.Delete(
 			context.Background(),
-			returnedUser,
+			user,
 			WithOplog(
 				nil,
 				oplog.Metadata{
@@ -895,41 +831,31 @@ func TestGormReadWriter_Delete(t *testing.T) {
 		user, err := db_test.NewTestUser()
 		assert.Nil(err)
 		user.Name = "foo-" + id
-		var returnedUser *db_test.TestUser
-		_, err = w.DoTx(
+		err = w.Create(
 			context.Background(),
-			3,
-			ExpBackoff{},
-			func(w Writer) error {
-				// make sure you used the passed in writer that properly handles transaction rollback
-				// we need to clone the user before every attempt to insert it, since it will be retried
-				returnedUser = user.Clone()
-				return w.Create(
-					context.Background(),
-					returnedUser,
-					WithOplog(
-						InitTestWrapper(t),
-						oplog.Metadata{
-							"key-only":   nil,
-							"deployment": []string{"amex"},
-							"project":    []string{"central-info-systems", "local-info-systems"},
-						},
-					),
-				)
-			})
+			user,
+			WithOplog(
+				InitTestWrapper(t),
+				oplog.Metadata{
+					"key-only":   nil,
+					"deployment": []string{"amex"},
+					"project":    []string{"central-info-systems", "local-info-systems"},
+				},
+			),
+		)
 		assert.Nil(err)
-		assert.True(returnedUser.Id != 0)
+		assert.True(user.Id != 0)
 
 		foundUser, err := db_test.NewTestUser()
 		assert.Nil(err)
-		foundUser.Id = returnedUser.Id
+		foundUser.Id = user.Id
 		err = w.LookupById(context.Background(), foundUser)
 		assert.Nil(err)
-		assert.Equal(foundUser.Id, returnedUser.Id)
+		assert.Equal(foundUser.Id, user.Id)
 
 		err = w.Delete(
 			context.Background(),
-			returnedUser,
+			user,
 			WithOplog(
 				InitTestWrapper(t),
 				nil,
