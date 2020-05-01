@@ -47,14 +47,16 @@ Just some high-level usage highlights to get you started.  Read the godocs for a
 			ExpBackoff{}, // exponential backoff
 			func(w Writer) error {
 				// the TxHandler updates the user's friendly name
-				return w.Update(context.Background(), user, []string{"FriendlyName"},
-					WithOplog(true), // write oplogs for this update
-					WithWrapper(InitTestWrapper(t)),
-					WithMetadata(oplog.Metadata{
-						"key-only":   nil,
-						"deployment": []string{"amex"},
-						"project":    []string{"central-info-systems", "local-info-systems"},
-					}),
+                return w.Update(context.Background(), user, []string{"FriendlyName"},
+                    // write oplogs for this update
+					WithOplog(
+                        InitTestWrapper(t),
+					    oplog.Metadata{
+						    "key-only":   nil,
+						    "deployment": []string{"amex"},
+						     "project":    []string{"central-info-systems", "local-info-systems"},
+                        },
+                    ),
 				)
 			})
 

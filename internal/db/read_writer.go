@@ -9,7 +9,6 @@ import (
 	"strings"
 	"time"
 
-	wrapping "github.com/hashicorp/go-kms-wrapping"
 	"github.com/hashicorp/watchtower/internal/oplog"
 	"github.com/jinzhu/gorm"
 	"google.golang.org/protobuf/proto"
@@ -48,13 +47,13 @@ type Writer interface {
 	DoTx(ctx context.Context, retries uint, backOff Backoff, Handler TxHandler) (RetryInfo, error)
 
 	// Update an object in the db, if there's a fieldMask then only the field_mask.proto paths are updated, otherwise
-	// it will send every field to the DB
+	// it will send every field to the DB.  options: WithOplog
 	Update(ctx context.Context, i interface{}, fieldMaskPaths []string, opt ...Option) error
 
-	// Create an object in the db with options: WithOplog (which requires WithMetadata, WithWrapper)
+	// Create an object in the db with options: WithOplog
 	Create(ctx context.Context, i interface{}, opt ...Option) error
 
-	// Delete an object in the db with options: WithOplog (which requires WithMetadata, WithWrapper)
+	// Delete an object in the db with options: WithOplog
 	Delete(ctx context.Context, i interface{}, opt ...Option) error
 
 	// CreateConstraint will create a db constraint if it doesn't already exist
@@ -174,7 +173,7 @@ func (rw *GormReadWriter) lookupAfterWrite(ctx context.Context, i interface{}, o
 	return ErrNotResourceWithId
 }
 
-// Create an object in the db with options: WithOplog (which requires WithMetadata, WithWrapper, WithLookup (to force a lookup after create))
+// Create an object in the db with options: WithOplog and WithLookup (to force a lookup after create))
 func (rw *GormReadWriter) Create(ctx context.Context, i interface{}, opt ...Option) error {
 	if rw.Tx == nil {
 		return errors.New("create tx is nil")
@@ -312,15 +311,11 @@ func (rw *GormReadWriter) Delete(ctx context.Context, i interface{}, opt ...Opti
 }
 
 func (rw *GormReadWriter) addOplog(ctx context.Context, opType OpType, opts Options, i interface{}) error {
-	if opts[optionWithWrapper] == nil {
+	oplogArgs := opts[optionOplogArgs].(oplogArgs)
+	if oplogArgs.wrapper == nil {
 		return errors.New("error wrapper is nil for WithWrapper")
 	}
-	withWrapper, ok := opts[optionWithWrapper].(wrapping.Wrapper)
-	if !ok {
-		return errors.New("error not a wrapping.Wrapper for WithWrapper")
-	}
-	withMetadata := opts[optionWithMetadata].(oplog.Metadata)
-	if len(withMetadata) == 0 {
+	if len(oplogArgs.metadata) == 0 {
 		return errors.New("error no metadata for WithOplog")
 	}
 	replayable, ok := i.(oplog.ReplayableMessage)
@@ -348,8 +343,8 @@ func (rw *GormReadWriter) addOplog(ctx context.Context, opType OpType, opts Opti
 
 	entry, err := oplog.NewEntry(
 		replayable.TableName(),
-		withMetadata,
-		withWrapper,
+		oplogArgs.metadata,
+		oplogArgs.wrapper,
 		ticketer,
 	)
 	var entryOp oplog.OpType

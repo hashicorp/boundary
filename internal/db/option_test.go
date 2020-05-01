@@ -19,10 +19,20 @@ func Test_GetOpts(t *testing.T) {
 		testOpts[optionWithOplog] = false
 		assert.True(reflect.DeepEqual(opts, testOpts))
 
+		wrapper := InitTestWrapper(t)
+		md := oplog.Metadata{
+			"key-only":   nil,
+			"deployment": []string{"amex"},
+			"project":    []string{"central-info-systems", "local-info-systems"},
+		}
 		// try setting to true
-		opts = GetOpts(WithOplog(true))
+		opts = GetOpts(WithOplog(wrapper, md))
 		testOpts = getDefaultOptions()
 		testOpts[optionWithOplog] = true
+		testOpts[optionOplogArgs] = oplogArgs{
+			wrapper:  wrapper,
+			metadata: md,
+		}
 		assert.True(reflect.DeepEqual(opts, testOpts))
 	})
 	t.Run("WithLookup", func(t *testing.T) {
@@ -38,41 +48,6 @@ func Test_GetOpts(t *testing.T) {
 		testOpts[optionWithLookup] = true
 		assert.True(reflect.DeepEqual(opts, testOpts))
 
-	})
-	t.Run("WithMetadata", func(t *testing.T) {
-		// default of no metadata
-		opts := GetOpts()
-		testOpts := getDefaultOptions()
-		testOpts[optionWithMetadata] = oplog.Metadata{}
-		assert.True(reflect.DeepEqual(opts, testOpts))
-
-		// try setting metadata
-		opts = GetOpts(WithMetadata(oplog.Metadata{
-			"key-only":   nil,
-			"deployment": []string{"amex"},
-			"project":    []string{"central-info-systems", "local-info-systems"},
-		}))
-		testOpts = getDefaultOptions()
-		testOpts[optionWithMetadata] = oplog.Metadata{
-			"key-only":   nil,
-			"deployment": []string{"amex"},
-			"project":    []string{"central-info-systems", "local-info-systems"},
-		}
-		assert.True(reflect.DeepEqual(opts, testOpts))
-	})
-	t.Run("WithWrapper", func(t *testing.T) {
-		// default of no wrapper
-		opts := GetOpts()
-		testOpts := getDefaultOptions()
-		testOpts[optionWithWrapper] = nil
-		assert.True(reflect.DeepEqual(opts, testOpts))
-
-		// try setting wrapper
-		wrapper := InitTestWrapper(t)
-		opts = GetOpts(WithWrapper(wrapper))
-		testOpts = getDefaultOptions()
-		testOpts[optionWithWrapper] = wrapper
-		assert.True(reflect.DeepEqual(opts, testOpts))
 	})
 	t.Run("WithDebug", func(t *testing.T) {
 		// test default of false

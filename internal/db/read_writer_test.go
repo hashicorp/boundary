@@ -74,13 +74,14 @@ func TestGormReadWriter_Update(t *testing.T) {
 			func(w Writer) error {
 				// the TxHandler updates the user's friendly name
 				return w.Update(context.Background(), user, []string{"FriendlyName"},
-					WithOplog(true), // write oplogs for this update
-					WithWrapper(InitTestWrapper(t)),
-					WithMetadata(oplog.Metadata{
-						"key-only":   nil,
-						"deployment": []string{"amex"},
-						"project":    []string{"central-info-systems", "local-info-systems"},
-					}),
+					// write oplogs for this update
+					WithOplog(
+						InitTestWrapper(t),
+						oplog.Metadata{
+							"key-only":   nil,
+							"deployment": []string{"amex"},
+							"project":    []string{"central-info-systems", "local-info-systems"},
+						}),
 				)
 			})
 		assert.Nil(err)
@@ -125,12 +126,13 @@ func TestGormReadWriter_Update(t *testing.T) {
 			ExpBackoff{},
 			func(w Writer) error {
 				return w.Update(context.Background(), user, []string{"FriendlyName"},
-					WithOplog(true),
-					WithMetadata(oplog.Metadata{
-						"key-only":   nil,
-						"deployment": []string{"amex"},
-						"project":    []string{"central-info-systems", "local-info-systems"},
-					}),
+					WithOplog(
+						nil,
+						oplog.Metadata{
+							"key-only":   nil,
+							"deployment": []string{"amex"},
+							"project":    []string{"central-info-systems", "local-info-systems"},
+						}),
 				)
 			})
 		assert.True(err != nil)
@@ -161,8 +163,10 @@ func TestGormReadWriter_Update(t *testing.T) {
 			ExpBackoff{},
 			func(w Writer) error {
 				return w.Update(context.Background(), user, []string{"FriendlyName"},
-					WithOplog(true),
-					WithWrapper(InitTestWrapper(t)),
+					WithOplog(
+						InitTestWrapper(t),
+						nil,
+					),
 				)
 			})
 		assert.True(err != nil)
@@ -219,13 +223,14 @@ func TestGormReadWriter_Create(t *testing.T) {
 				return w.Create(
 					context.Background(),
 					returnedUser,
-					WithOplog(true),
-					WithWrapper(InitTestWrapper(t)),
-					WithMetadata(oplog.Metadata{
-						"key-only":   nil,
-						"deployment": []string{"amex"},
-						"project":    []string{"central-info-systems", "local-info-systems"},
-					}),
+					WithOplog(
+						InitTestWrapper(t),
+						oplog.Metadata{
+							"key-only":   nil,
+							"deployment": []string{"amex"},
+							"project":    []string{"central-info-systems", "local-info-systems"},
+						},
+					),
 				)
 			})
 		assert.Nil(err)
@@ -254,12 +259,14 @@ func TestGormReadWriter_Create(t *testing.T) {
 				return w.Create(
 					context.Background(),
 					retryableUser,
-					WithOplog(true),
-					WithMetadata(oplog.Metadata{
-						"key-only":   nil,
-						"deployment": []string{"amex"},
-						"project":    []string{"central-info-systems", "local-info-systems"},
-					}),
+					WithOplog(
+						nil,
+						oplog.Metadata{
+							"key-only":   nil,
+							"deployment": []string{"amex"},
+							"project":    []string{"central-info-systems", "local-info-systems"},
+						},
+					),
 				)
 			})
 		assert.True(err != nil)
@@ -281,8 +288,10 @@ func TestGormReadWriter_Create(t *testing.T) {
 				return w.Create(
 					context.Background(),
 					retryableUser,
-					WithOplog(true),
-					WithWrapper(InitTestWrapper(t)),
+					WithOplog(
+						InitTestWrapper(t),
+						nil,
+					),
 				)
 			})
 		assert.True(err != nil)
@@ -798,13 +807,14 @@ func TestGormReadWriter_Delete(t *testing.T) {
 				err := w.Create(
 					context.Background(),
 					returnedUser,
-					WithOplog(true),
-					WithWrapper(InitTestWrapper(t)),
-					WithMetadata(oplog.Metadata{
-						"key-only":   nil,
-						"deployment": []string{"amex"},
-						"project":    []string{"central-info-systems", "local-info-systems"},
-					}),
+					WithOplog(
+						InitTestWrapper(t),
+						oplog.Metadata{
+							"key-only":   nil,
+							"deployment": []string{"amex"},
+							"project":    []string{"central-info-systems", "local-info-systems"},
+						},
+					),
 				)
 				return err
 			})
@@ -821,13 +831,14 @@ func TestGormReadWriter_Delete(t *testing.T) {
 		err = w.Delete(
 			context.Background(),
 			returnedUser,
-			WithOplog(true),
-			WithWrapper(InitTestWrapper(t)),
-			WithMetadata(oplog.Metadata{
-				"key-only":   nil,
-				"deployment": []string{"amex"},
-				"project":    []string{"central-info-systems", "local-info-systems"},
-			}),
+			WithOplog(
+				InitTestWrapper(t),
+				oplog.Metadata{
+					"key-only":   nil,
+					"deployment": []string{"amex"},
+					"project":    []string{"central-info-systems", "local-info-systems"},
+				},
+			),
 		)
 		assert.Nil(err)
 
@@ -854,13 +865,14 @@ func TestGormReadWriter_Delete(t *testing.T) {
 				return w.Create(
 					context.Background(),
 					returnedUser,
-					WithOplog(true),
-					WithWrapper(InitTestWrapper(t)),
-					WithMetadata(oplog.Metadata{
-						"key-only":   nil,
-						"deployment": []string{"amex"},
-						"project":    []string{"central-info-systems", "local-info-systems"},
-					}),
+					WithOplog(
+						InitTestWrapper(t),
+						oplog.Metadata{
+							"key-only":   nil,
+							"deployment": []string{"amex"},
+							"project":    []string{"central-info-systems", "local-info-systems"},
+						},
+					),
 				)
 			})
 		assert.Nil(err)
@@ -876,12 +888,14 @@ func TestGormReadWriter_Delete(t *testing.T) {
 		err = w.Delete(
 			context.Background(),
 			returnedUser,
-			WithOplog(true),
-			WithMetadata(oplog.Metadata{
-				"key-only":   nil,
-				"deployment": []string{"amex"},
-				"project":    []string{"central-info-systems", "local-info-systems"},
-			}),
+			WithOplog(
+				nil,
+				oplog.Metadata{
+					"key-only":   nil,
+					"deployment": []string{"amex"},
+					"project":    []string{"central-info-systems", "local-info-systems"},
+				},
+			),
 		)
 		assert.True(err != nil)
 		assert.Equal("error wrapper is nil for WithWrapper", err.Error())
@@ -905,13 +919,14 @@ func TestGormReadWriter_Delete(t *testing.T) {
 				return w.Create(
 					context.Background(),
 					returnedUser,
-					WithOplog(true),
-					WithWrapper(InitTestWrapper(t)),
-					WithMetadata(oplog.Metadata{
-						"key-only":   nil,
-						"deployment": []string{"amex"},
-						"project":    []string{"central-info-systems", "local-info-systems"},
-					}),
+					WithOplog(
+						InitTestWrapper(t),
+						oplog.Metadata{
+							"key-only":   nil,
+							"deployment": []string{"amex"},
+							"project":    []string{"central-info-systems", "local-info-systems"},
+						},
+					),
 				)
 			})
 		assert.Nil(err)
@@ -927,8 +942,10 @@ func TestGormReadWriter_Delete(t *testing.T) {
 		err = w.Delete(
 			context.Background(),
 			returnedUser,
-			WithOplog(true),
-			WithWrapper(InitTestWrapper(t)),
+			WithOplog(
+				InitTestWrapper(t),
+				nil,
+			),
 		)
 		assert.True(err != nil)
 		assert.Equal("error no metadata for WithOplog", err.Error())

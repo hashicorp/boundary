@@ -22,11 +22,13 @@ type Options map[string]interface{}
 
 func getDefaultOptions() Options {
 	return Options{
-		optionWithOplog:    false,
-		optionWithWrapper:  nil,
-		optionWithMetadata: oplog.Metadata{},
-		optionWithDebug:    false,
-		optionWithLookup:   false,
+		optionWithOplog: false,
+		optionOplogArgs: oplogArgs{
+			wrapper:  nil,
+			metadata: oplog.Metadata{},
+		},
+		optionWithDebug:  false,
+		optionWithLookup: false,
 	}
 }
 
@@ -48,29 +50,21 @@ func WithDebug(enable bool) Option {
 	}
 }
 
+type oplogArgs struct {
+	wrapper  wrapping.Wrapper
+	metadata oplog.Metadata
+}
+
 const optionWithOplog = "optionWithOplog"
+const optionOplogArgs = "optionWithOplogArgs"
 
 // WithOplog provides an option to write an oplog entry
-func WithOplog(withOplog bool) Option {
+func WithOplog(wrapper wrapping.Wrapper, md oplog.Metadata) Option {
 	return func(o Options) {
-		o[optionWithOplog] = withOplog
-	}
-}
-
-const optionWithWrapper = "optionWithWrapper"
-
-// WithWrapper provides an optional kms wrapper
-func WithWrapper(wrapper wrapping.Wrapper) Option {
-	return func(o Options) {
-		o[optionWithWrapper] = wrapper
-	}
-}
-
-const optionWithMetadata = "optionWithMetadata"
-
-// WithMetadata provides an optional metadata
-func WithMetadata(md oplog.Metadata) Option {
-	return func(o Options) {
-		o[optionWithMetadata] = md
+		o[optionWithOplog] = true
+		o[optionOplogArgs] = oplogArgs{
+			wrapper:  wrapper,
+			metadata: md,
+		}
 	}
 }
