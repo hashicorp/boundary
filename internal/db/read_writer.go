@@ -50,7 +50,7 @@ type Writer interface {
 	// it will send every field to the DB.  options: WithOplog
 	// the caller is responsible for the transaction life cycle of the writer
 	// and if an error is returned the caller must decide what to do with
-	// the transaction, which is almost always a rollback.
+	// the transaction, which almost always should be to rollback.
 	Update(ctx context.Context, i interface{}, fieldMaskPaths []string, opt ...Option) error
 
 	// Create an object in the db with options: WithOplog
