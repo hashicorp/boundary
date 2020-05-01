@@ -17,13 +17,13 @@ import (
 // Reader interface defines lookups/searching for resources
 type Reader interface {
 	// LookupByFriendlyName will lookup resource my its friendly_name which must be unique
-	LookupByFriendlyName(ctx context.Context, resource ResourceWithFriendlyName, opt ...Option) error
+	LookupByFriendlyName(ctx context.Context, resource ResourceFriendlyNamer, opt ...Option) error
 
 	// LookupByPublicId will lookup resource my its public_id which must be unique
-	LookupByPublicId(ctx context.Context, resource ResourceWithPublicId, opt ...Option) error
+	LookupByPublicId(ctx context.Context, resource ResourcePublicIder, opt ...Option) error
 
 	// LookupById will lookup resource my its internal id which must be unique
-	LookupById(ctx context.Context, resource ResourceWithId, opt ...Option) error
+	LookupById(ctx context.Context, resource ResourceIder, opt ...Option) error
 
 	// LookupBy will lookup the first resource using a where clause with parameters (it only returns the first one)
 	LookupBy(ctx context.Context, resource interface{}, where string, args ...interface{}) error
@@ -84,18 +84,18 @@ type RetryInfo struct {
 // TxHandler defines a handler for a func that writes a transaction for use with DoTx
 type TxHandler func(Writer) error
 
-// ResourceWithPublicId defines an interface that LookupByPublicId() can use to get the resource's public id
-type ResourceWithPublicId interface {
+// ResourcePublicIder defines an interface that LookupByPublicId() can use to get the resource's public id
+type ResourcePublicIder interface {
 	GetPublicId() string
 }
 
-// ResourceWithFriendlyName defines an interface that LookupByFriendlyName() can use to get the resource's friendly name
-type ResourceWithFriendlyName interface {
+// ResourceFriendlyNamer defines an interface that LookupByFriendlyName() can use to get the resource's friendly name
+type ResourceFriendlyNamer interface {
 	GetFriendlyName() string
 }
 
-// ResourceWithId defines an interface that LookupById() can use to get the resource's internal id
-type ResourceWithId interface {
+// ResourceIder defines an interface that LookupById() can use to get the resource's internal id
+type ResourceIder interface {
 	GetId() uint32
 }
 
@@ -173,8 +173,8 @@ func (rw *GormReadWriter) lookupAfterWrite(ctx context.Context, i interface{}, o
 	if !withLookup {
 		return nil
 	}
-	if _, ok := i.(ResourceWithId); ok {
-		if err := rw.LookupById(ctx, i.(ResourceWithId), opt...); err != nil {
+	if _, ok := i.(ResourceIder); ok {
+		if err := rw.LookupById(ctx, i.(ResourceIder), opt...); err != nil {
 			return err
 		}
 		return nil
@@ -423,7 +423,7 @@ func (w *GormReadWriter) DoTx(ctx context.Context, retries uint, backOff Backoff
 }
 
 // LookupByFriendlyName will lookup resource my its friendly_name which must be unique
-func (rw *GormReadWriter) LookupByFriendlyName(ctx context.Context, resource ResourceWithFriendlyName, opt ...Option) error {
+func (rw *GormReadWriter) LookupByFriendlyName(ctx context.Context, resource ResourceFriendlyNamer, opt ...Option) error {
 	if rw.Tx == nil {
 		return errors.New("error tx nil for lookup by friendly name")
 	}
@@ -443,7 +443,7 @@ func (rw *GormReadWriter) LookupByFriendlyName(ctx context.Context, resource Res
 }
 
 // LookupByPublicId will lookup resource my its public_id which must be unique
-func (rw *GormReadWriter) LookupByPublicId(ctx context.Context, resource ResourceWithPublicId, opt ...Option) error {
+func (rw *GormReadWriter) LookupByPublicId(ctx context.Context, resource ResourcePublicIder, opt ...Option) error {
 	if rw.Tx == nil {
 		return errors.New("error tx nil for lookup by public id")
 	}
@@ -463,7 +463,7 @@ func (rw *GormReadWriter) LookupByPublicId(ctx context.Context, resource Resourc
 }
 
 // LookupById will lookup resource my its internal id which must be unique
-func (rw *GormReadWriter) LookupById(ctx context.Context, resource ResourceWithId, opt ...Option) error {
+func (rw *GormReadWriter) LookupById(ctx context.Context, resource ResourceIder, opt ...Option) error {
 	if rw.Tx == nil {
 		return errors.New("error tx nil for lookup by internal id")
 	}
