@@ -7,7 +7,8 @@ option go_package = "github.com/hashicorp/watchtower/internal/gen/controller/api
 import "google/protobuf/timestamp.proto";
 import "google/protobuf/wrappers.proto";
 
-message AwsEc2HostCatalog {
+// Host contains all fields related to a Host resource
+message Host {
 	// Canonical path of the resource from the API's base URI
 	// Output only.
 	string path = 1;
@@ -19,26 +20,16 @@ message AwsEc2HostCatalog {
 	google.protobuf.StringValue friendly_name = 3;
 
 	// The time this host was created
-	// Output only.
+	// Ouput only.
 	google.protobuf.Timestamp created_time = 4;
 
 	// The time this host was last updated
 	// Output only.
 	google.protobuf.Timestamp updated_time = 5;
 
-	// Whether the catalog is disabled
+	// Whether the host is disabled
 	google.protobuf.BoolValue disabled = 6;
 
-	// TODO: Figure out how to provide relevant information regarding Host and
-	// Set lists on a catalog.
-	// The AWS regions from which this catalog will retrieve the EC2 instances.
-	repeated string regions = 7;
-
-	// The access key used for authenticating with AWS when retrieving EC2 instance details.
-	google.protobuf.StringValue access_key = 8;
-	// Input only.
-	google.protobuf.StringValue secret_key = 9;
-
-	// This value will never be returned in a response.
-	google.protobuf.BoolValue rotate = 10;
+	// The address (DNS or IP name) used to reach the host
+	google.protobuf.StringValue address = 7;
 }

@@ -6,11 +6,10 @@ option go_package = "github.com/hashicorp/watchtower/internal/gen/controller/api
 
 import "google/protobuf/timestamp.proto";
 import "google/protobuf/wrappers.proto";
-import "controller/api/resources/hosts/v1/static_host.proto";
+import "google/protobuf/struct.proto";
 
-// StaticHostSet is a collection of StaticHosts created and managed by a
-// StaticHostCatalog
-message StaticHostSet {
+// HostCatalog manages Hosts and HostSets
+message HostCatalog {
 	// Canonical path of the resource from the API's base URI
 	// Output only.
 	string path = 1;
@@ -29,16 +28,26 @@ message StaticHostSet {
 	// Output only.
 	google.protobuf.Timestamp updated_time = 5;
 
-	// Whether the host set is disabled
+	// Whether the catalog is disabled
 	google.protobuf.BoolValue disabled = 6;
 
-	// The total count of hosts in this host set
-	// Output only.
-	google.protobuf.Int64Value size = 7;
+	// Attributes specific to the catalog type
+	google.protobuf.Struct attributes = 7;
+}
 
-	// A list of hosts in this host set
-	// TODO: Figure out if this should be in the basic HostSet view and what
-	// view to use on the Hosts.
-	// Output only.
-	repeated StaticHost hosts = 8;
+message StaticHostCatalogDetails {
+	// nothing here yet.
+}
+
+message AwsEc2HostCatalogDetails {
+	// The AWS regions from which this catalog will retrieve the EC2 instances.
+	repeated string regions = 1;
+
+	// The access key used for authenticating with AWS when retrieving EC2 instance details.
+	google.protobuf.StringValue access_key = 2;
+	// Input only.
+	google.protobuf.StringValue secret_key = 3;
+
+	// This value will never be returned in a response.
+	google.protobuf.BoolValue rotate = 4;
 }

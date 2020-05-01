@@ -7,8 +7,7 @@ option go_package = "github.com/hashicorp/watchtower/internal/gen/controller/api
 import "protoc-gen-swagger/options/annotations.proto";
 import "google/api/annotations.proto";
 import "google/protobuf/field_mask.proto";
-import "controller/api/resources/hosts/v1/static_host.proto";
-import "controller/api/view/v1/view.proto";
+import "controller/api/resources/hosts/v1/host.proto";
 
 service HostService {
   // This retrieves the host specified in the request using the basic view.
@@ -64,35 +63,34 @@ message GetHostRequest {
   string project_id = 2;
   string host_catalog_id = 3;
   string id = 4;
-  api.view.v1.View view = 5;
+  string view = 5;
 }
 
 message GetHostResponse {
-  api.resources.hosts.v1.StaticHost item = 1;
+  api.resources.hosts.v1.Host item = 1;
 }
 
 message ListHostsRequest {
   string org_id = 1;
   string project_id = 2;
   string host_catalog_id = 3;
-
-  api.view.v1.View view = 4;
+  string view = 4;
 }
 
 message ListHostsResponse {
-  repeated api.resources.hosts.v1.StaticHost items = 1;
+  repeated api.resources.hosts.v1.Host items = 1;
 }
 
 message CreateHostRequest {
   string org_id = 1;
   string project_id = 2;
   string host_catalog_id = 3;
-  api.resources.hosts.v1.StaticHost item = 4;
+  api.resources.hosts.v1.Host item = 4;
 }
 
 message CreateHostResponse {
   string ref = 1;
-  api.resources.hosts.v1.StaticHost item = 2;
+  api.resources.hosts.v1.Host item = 2;
 }
 
 message UpdateHostRequest {
@@ -100,12 +98,12 @@ message UpdateHostRequest {
   string project_id = 2;
   string host_catalog_id = 3;
   string id = 4;
-  api.resources.hosts.v1.StaticHost item = 5;
+  api.resources.hosts.v1.Host item = 5;
   google.protobuf.FieldMask update_mask = 6;
 }
 
 message UpdateHostResponse {
-  api.resources.hosts.v1.StaticHost item = 1;
+  api.resources.hosts.v1.Host item = 1;
 }
 
 message DeleteHostRequest {
