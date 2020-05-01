@@ -47,7 +47,7 @@ func CompleteTest() {
 // setup the tests (initialize the database one-time and intialized testDatabaseURL)
 func SetupTest(t *testing.T, migrationsDirectory string) (func(), string) {
 	if _, err := os.Stat(migrationsDirectory); os.IsNotExist(err) {
-		panic("error migrationsDirectory does not exist")
+		t.Fatal("error migrationsDirectory does not exist")
 	}
 
 	cleanup := func() {}
@@ -56,12 +56,12 @@ func SetupTest(t *testing.T, migrationsDirectory string) (func(), string) {
 	testInitDatabase.Do(func() {
 		cleanup, url, err = initDbInDocker(t, migrationsDirectory)
 		if err != nil {
-			panic(err)
+			t.Fatal(err)
 		}
 		testDatabaseURL = url
 		db, err := TestConnection(url)
 		if err != nil {
-			panic(err)
+			t.Fatal(err)
 		}
 		defer db.Close()
 	})
