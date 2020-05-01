@@ -781,6 +781,493 @@
           "controller.api.v1.HostCatalogService"
         ]
       }
+    },
+    "/v1/orgs/{org_id}/projects/{project_id}/sessions": {
+      "get": {
+        "summary": "Lists all Sessions",
+        "operationId": "SessionService_ListSessions",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.v1.ListSessionsResponse"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "org_id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "project_id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "view",
+            "in": "query",
+            "required": false,
+            "type": "string",
+            "enum": [
+              "BASIC",
+              "FULL"
+            ],
+            "default": "BASIC"
+          }
+        ],
+        "tags": [
+          "controller.api.v1.SessionService"
+        ]
+      },
+      "post": {
+        "summary": "Creates a single Session",
+        "description": "Creates a session for the provided target.",
+        "operationId": "SessionService_CreateSession",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/controller.api.resource.v1.Session"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "org_id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "project_id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/controller.api.resource.v1.Session"
+            }
+          }
+        ],
+        "tags": [
+          "controller.api.v1.SessionService"
+        ]
+      }
+    },
+    "/v1/orgs/{org_id}/projects/{project_id}/sessions/{id}": {
+      "get": {
+        "summary": "Gets a single Session",
+        "operationId": "SessionService_GetSession",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/controller.api.resource.v1.Session"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "org_id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "project_id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "view",
+            "in": "query",
+            "required": false,
+            "type": "string",
+            "enum": [
+              "BASIC",
+              "FULL"
+            ],
+            "default": "BASIC"
+          }
+        ],
+        "tags": [
+          "controller.api.v1.SessionService"
+        ]
+      },
+      "delete": {
+        "summary": "Deletes a Session",
+        "operationId": "SessionService_DeleteSession",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.v1.DeleteSessionResponse"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "org_id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "project_id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "controller.api.v1.SessionService"
+        ]
+      },
+      "patch": {
+        "summary": "Updates a Session",
+        "operationId": "SessionService_UpdateSession",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/controller.api.resource.v1.Session"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "org_id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "project_id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/controller.api.resource.v1.Session"
+            }
+          }
+        ],
+        "tags": [
+          "controller.api.v1.SessionService"
+        ]
+      }
+    },
+    "/v1/orgs/{org_id}/projects/{project_id}/targets": {
+      "get": {
+        "summary": "Lists all Targets",
+        "operationId": "TargetService_ListTargets",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.v1.ListTargetsResponse"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "org_id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "project_id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "view",
+            "in": "query",
+            "required": false,
+            "type": "string",
+            "enum": [
+              "BASIC",
+              "FULL"
+            ],
+            "default": "BASIC"
+          }
+        ],
+        "tags": [
+          "controller.api.v1.TargetService"
+        ]
+      },
+      "post": {
+        "summary": "Creates a single Target",
+        "operationId": "TargetService_CreateTarget",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/controller.api.resource.v1.Target"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "org_id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "project_id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/controller.api.resource.v1.Target"
+            }
+          }
+        ],
+        "tags": [
+          "controller.api.v1.TargetService"
+        ]
+      }
+    },
+    "/v1/orgs/{org_id}/projects/{project_id}/targets/{id}": {
+      "get": {
+        "summary": "Gets a single Target",
+        "operationId": "TargetService_GetTarget",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/controller.api.resource.v1.Target"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "org_id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "project_id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "view",
+            "in": "query",
+            "required": false,
+            "type": "string",
+            "enum": [
+              "BASIC",
+              "FULL"
+            ],
+            "default": "BASIC"
+          }
+        ],
+        "tags": [
+          "controller.api.v1.TargetService"
+        ]
+      },
+      "delete": {
+        "summary": "Deletes a Target",
+        "operationId": "TargetService_DeleteTarget",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.v1.DeleteTargetResponse"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "org_id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "project_id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "controller.api.v1.TargetService"
+        ]
+      },
+      "patch": {
+        "summary": "Updates a Target",
+        "operationId": "TargetService_UpdateTarget",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/controller.api.resource.v1.Target"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "org_id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "project_id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/controller.api.resource.v1.Target"
+            }
+          }
+        ],
+        "tags": [
+          "controller.api.v1.TargetService"
+        ]
+      }
+    },
+    "/v1/orgs/{org_id}/projects/{project_id}/targets/{id}:add-host-sets": {
+      "post": {
+        "summary": "Adds existing Host Sets to the Target",
+        "description": "Adds the host sets to this target if possible.  All host sets added must be in the same project this target is from.",
+        "operationId": "TargetService_AddHostSetsToTarget",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.v1.AddHostSetsToTargetResponse"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "org_id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "project_id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "controller.api.v1.TargetService"
+        ]
+      }
+    },
+    "/v1/orgs/{org_id}/projects/{project_id}/targets/{id}:remove-host-sets": {
+      "post": {
+        "summary": "Removes Host Sets from the Target",
+        "description": "Removes the host sets from this target if present.  If it is not present then no action is taken and no error is returned.",
+        "operationId": "TargetService_RemoveHostSetsFromTarget",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.v1.RemoveHostSetsFromTargetResponse"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "org_id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "project_id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "controller.api.v1.TargetService"
+        ]
+      }
     }
   },
   "definitions": {
@@ -938,7 +1425,108 @@
       },
       "description": "HostSets are a collection of sets created and managed by a catalog."
     },
+    "controller.api.resource.v1.Session": {
+      "type": "object",
+      "properties": {
+        "uri": {
+          "type": "string",
+          "description": "Output only.",
+          "readOnly": true
+        },
+        "friendly_name": {
+          "type": "string"
+        },
+        "created_time": {
+          "type": "string",
+          "format": "date-time",
+          "description": "The time this session was created.\nOutput only.",
+          "readOnly": true
+        },
+        "updated_time": {
+          "type": "string",
+          "format": "date-time",
+          "description": "The time this session was last updated.\nOutput only.",
+          "readOnly": true
+        },
+        "worker_uris": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "The workers which are able to handle this session.\nOutput only.",
+          "readOnly": true
+        },
+        "mtls_cert": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "format": "byte"
+          },
+          "description": "Output only.",
+          "readOnly": true
+        },
+        "target_reference": {
+          "$ref": "#/definitions/controller.api.resource.v1.TargetRef",
+          "description": "A reference to the target that this session will connect to.\nTODO: Decide between holding just a reference (good for request) or inline (good for response) or some combination."
+        }
+      },
+      "description": "A session contains the information required for an end user to connect to target.\nTODO: Add a way to track session state information."
+    },
     "controller.api.resource.v1.StaticCatalogDetails": {
+      "type": "object"
+    },
+    "controller.api.resource.v1.Target": {
+      "type": "object",
+      "properties": {
+        "uri": {
+          "type": "string",
+          "description": "Output only.",
+          "readOnly": true
+        },
+        "friendly_name": {
+          "type": "string"
+        },
+        "created_time": {
+          "type": "string",
+          "format": "date-time",
+          "description": "The time this target was created.\nOutput only.",
+          "readOnly": true
+        },
+        "updated_time": {
+          "type": "string",
+          "format": "date-time",
+          "description": "The time this target was last updated.\nOutput only.",
+          "readOnly": true
+        },
+        "disabled": {
+          "type": "boolean",
+          "format": "boolean",
+          "description": "Marks the target as disabled.  Default is false."
+        },
+        "hosts": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/controller.api.resource.v1.HostSet"
+          },
+          "description": "A list of HostSets which this target points to."
+        },
+        "default_port": {
+          "type": "integer",
+          "format": "int32",
+          "title": "The default port to connect to for all"
+        }
+      },
+      "description": "A target captures how to access a specific service.  It's list of hostsets all host the same service and authorize\naccess to it using any single credential in the list of credential sets."
+    },
+    "controller.api.resource.v1.TargetRef": {
+      "type": "object",
+      "properties": {
+        "uri": {
+          "type": "string"
+        }
+      }
+    },
+    "controller.api.v1.AddHostSetsToTargetResponse": {
       "type": "object"
     },
     "controller.api.v1.AddToHostSetResponse": {
@@ -977,6 +1565,28 @@
         }
       }
     },
+    "controller.api.v1.CreateSessionResponse": {
+      "type": "object",
+      "properties": {
+        "uri": {
+          "type": "string"
+        },
+        "item": {
+          "$ref": "#/definitions/controller.api.resource.v1.Session"
+        }
+      }
+    },
+    "controller.api.v1.CreateTargetResponse": {
+      "type": "object",
+      "properties": {
+        "uri": {
+          "type": "string"
+        },
+        "item": {
+          "$ref": "#/definitions/controller.api.resource.v1.Target"
+        }
+      }
+    },
     "controller.api.v1.DeleteHostCatalogResponse": {
       "type": "object",
       "properties": {
@@ -996,6 +1606,24 @@
       }
     },
     "controller.api.v1.DeleteHostSetResponse": {
+      "type": "object",
+      "properties": {
+        "existed": {
+          "type": "boolean",
+          "format": "boolean"
+        }
+      }
+    },
+    "controller.api.v1.DeleteSessionResponse": {
+      "type": "object",
+      "properties": {
+        "existed": {
+          "type": "boolean",
+          "format": "boolean"
+        }
+      }
+    },
+    "controller.api.v1.DeleteTargetResponse": {
       "type": "object",
       "properties": {
         "existed": {
@@ -1025,6 +1653,22 @@
       "properties": {
         "item": {
           "$ref": "#/definitions/controller.api.resource.v1.HostSet"
+        }
+      }
+    },
+    "controller.api.v1.GetSessionResponse": {
+      "type": "object",
+      "properties": {
+        "item": {
+          "$ref": "#/definitions/controller.api.resource.v1.Session"
+        }
+      }
+    },
+    "controller.api.v1.GetTargetResponse": {
+      "type": "object",
+      "properties": {
+        "item": {
+          "$ref": "#/definitions/controller.api.resource.v1.Target"
         }
       }
     },
@@ -1061,7 +1705,32 @@
         }
       }
     },
+    "controller.api.v1.ListSessionsResponse": {
+      "type": "object",
+      "properties": {
+        "items": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/controller.api.resource.v1.Session"
+          }
+        }
+      }
+    },
+    "controller.api.v1.ListTargetsResponse": {
+      "type": "object",
+      "properties": {
+        "items": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/controller.api.resource.v1.Target"
+          }
+        }
+      }
+    },
     "controller.api.v1.RemoveFromHostSetResponse": {
+      "type": "object"
+    },
+    "controller.api.v1.RemoveHostSetsFromTargetResponse": {
       "type": "object"
     },
     "controller.api.v1.UpdateHostCatalogResponse": {
@@ -1085,6 +1754,22 @@
       "properties": {
         "item": {
           "$ref": "#/definitions/controller.api.resource.v1.HostSet"
+        }
+      }
+    },
+    "controller.api.v1.UpdateSessionResponse": {
+      "type": "object",
+      "properties": {
+        "item": {
+          "$ref": "#/definitions/controller.api.resource.v1.Session"
+        }
+      }
+    },
+    "controller.api.v1.UpdateTargetResponse": {
+      "type": "object",
+      "properties": {
+        "item": {
+          "$ref": "#/definitions/controller.api.resource.v1.Target"
         }
       }
     },

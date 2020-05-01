@@ -1,0 +1,114 @@
+syntax = "proto3";
+
+package controller.api.v1;
+
+option go_package = "github.com/hashicorp/watchtower/internal/gen/controller/api;api";
+
+import "protoc-gen-swagger/options/annotations.proto";
+import "google/api/annotations.proto";
+import "google/protobuf/field_mask.proto";
+import "controller/api/resource/v1/session.proto";
+import "controller/api/view/v1/view.proto";
+
+service SessionService {
+  rpc GetSession(GetSessionRequest) returns (GetSessionResponse) {
+    option (google.api.http) = {
+      get: "/v1/orgs/{org_id}/projects/{project_id}/sessions/{id}"
+      response_body: "item"
+    };
+    option (grpc.gateway.protoc_gen_swagger.options.openapiv2_operation) = {
+      summary: "Gets a single Session"
+    };
+  }
+  rpc ListSessions(ListSessionsRequest) returns (ListSessionsResponse) {
+    option (google.api.http) = {
+      get: "/v1/orgs/{org_id}/projects/{project_id}/sessions"
+    };
+    option (grpc.gateway.protoc_gen_swagger.options.openapiv2_operation) = {
+      summary: "Lists all Sessions"
+    };
+  }
+  rpc CreateSession(CreateSessionRequest) returns (CreateSessionResponse) {
+    option (google.api.http) = {
+      post: "/v1/orgs/{org_id}/projects/{project_id}/sessions"
+      body: "item"
+      response_body: "item"
+    };
+    option (grpc.gateway.protoc_gen_swagger.options.openapiv2_operation) = {
+      summary: "Creates a single Session"
+      description: "Creates a session for the provided target."
+    };
+  }
+  rpc UpdateSession(UpdateSessionRequest) returns (UpdateSessionResponse) {
+    option (google.api.http) = {
+      patch: "/v1/orgs/{org_id}/projects/{project_id}/sessions/{id}"
+      body: "item"
+      response_body: "item"
+    };
+    option (grpc.gateway.protoc_gen_swagger.options.openapiv2_operation) = {
+      summary: "Updates a Session"
+    };
+  }
+  rpc DeleteSession(DeleteSessionRequest) returns (DeleteSessionResponse) {
+    option (google.api.http) = {
+      delete: "/v1/orgs/{org_id}/projects/{project_id}/sessions/{id}"
+    };
+    option (grpc.gateway.protoc_gen_swagger.options.openapiv2_operation) = {
+      summary: "Deletes a Session"
+    };
+  }
+}
+
+message GetSessionRequest {
+  string org_id = 1;
+  string project_id = 2;
+  string id = 3;
+  api.view.v1.View view = 4;
+}
+
+message GetSessionResponse {
+  api.resource.v1.Session item = 1;
+}
+
+message ListSessionsRequest {
+  string org_id = 1;
+  string project_id = 2;
+  api.view.v1.View view = 3;
+}
+
+message ListSessionsResponse {
+  repeated api.resource.v1.Session items = 1;
+}
+
+message CreateSessionRequest {
+  string org_id = 1;
+  string project_id = 2;
+  api.resource.v1.Session item = 3;
+}
+
+message CreateSessionResponse {
+  string uri = 1;
+  api.resource.v1.Session item = 2;
+}
+
+message UpdateSessionRequest {
+  string org_id = 1;
+  string project_id = 2;
+  string id = 3;
+  api.resource.v1.Session item = 4;
+  google.protobuf.FieldMask update_mask = 5;
+}
+
+message UpdateSessionResponse {
+  api.resource.v1.Session item = 1;
+}
+
+message DeleteSessionRequest {
+  string org_id = 1;
+  string project_id =2;
+  string id = 3;
+}
+
+message DeleteSessionResponse {
+  bool existed = 1;
+}

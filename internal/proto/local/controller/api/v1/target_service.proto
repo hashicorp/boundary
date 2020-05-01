@@ -1,0 +1,158 @@
+syntax = "proto3";
+
+package controller.api.v1;
+
+option go_package = "github.com/hashicorp/watchtower/internal/gen/controller/api;api";
+
+import "protoc-gen-swagger/options/annotations.proto";
+import "google/api/annotations.proto";
+import "google/protobuf/field_mask.proto";
+import "controller/api/resource/v1/target.proto";
+import "controller/api/view/v1/view.proto";
+
+service TargetService {
+  rpc GetTarget(GetTargetRequest) returns (GetTargetResponse) {
+    option (google.api.http) = {
+      get: "/v1/orgs/{org_id}/projects/{project_id}/targets/{id}"
+      response_body: "item"
+    };
+    option (grpc.gateway.protoc_gen_swagger.options.openapiv2_operation) = {
+      summary: "Gets a single Target"
+    };
+  }
+  rpc ListTargets(ListTargetsRequest) returns (ListTargetsResponse) {
+    option (google.api.http) = {
+      get: "/v1/orgs/{org_id}/projects/{project_id}/targets"
+    };
+    option (grpc.gateway.protoc_gen_swagger.options.openapiv2_operation) = {
+      summary: "Lists all Targets"
+    };
+  }
+  rpc CreateTarget(CreateTargetRequest) returns (CreateTargetResponse) {
+    option (google.api.http) = {
+      post: "/v1/orgs/{org_id}/projects/{project_id}/targets"
+      body: "item"
+      response_body: "item"
+    };
+    option (grpc.gateway.protoc_gen_swagger.options.openapiv2_operation) = {
+      summary: "Creates a single Target"
+    };
+  }
+  rpc UpdateTarget(UpdateTargetRequest) returns (UpdateTargetResponse) {
+    option (google.api.http) = {
+      patch: "/v1/orgs/{org_id}/projects/{project_id}/targets/{id}"
+      body: "item"
+      response_body: "item"
+    };
+    option (grpc.gateway.protoc_gen_swagger.options.openapiv2_operation) = {
+      summary: "Updates a Target"
+    };
+  }
+  rpc DeleteTarget(DeleteTargetRequest) returns (DeleteTargetResponse) {
+    option (google.api.http) = {
+      delete: "/v1/orgs/{org_id}/projects/{project_id}/targets/{id}"
+    };
+    option (grpc.gateway.protoc_gen_swagger.options.openapiv2_operation) = {
+      summary: "Deletes a Target"
+    };
+  }
+
+  rpc AddHostSetsToTarget(AddHostSetsToTargetRequest) returns (AddHostSetsToTargetResponse) {
+    option (google.api.http) = {
+      post: "/v1/orgs/{org_id}/projects/{project_id}/targets/{id}:add-host-sets"
+    };
+    option (grpc.gateway.protoc_gen_swagger.options.openapiv2_operation) = {
+      summary: "Adds existing Host Sets to the Target"
+      description: "Adds the host sets to this target if possible.  All host sets added must be in the same project this target is from."
+    };
+  }
+
+  rpc RemoveHostSetsFromTarget(RemoveHostSetsFromTargetRequest) returns (RemoveHostSetsFromTargetResponse) {
+    option (google.api.http) = {
+      post: "/v1/orgs/{org_id}/projects/{project_id}/targets/{id}:remove-host-sets"
+    };
+    option (grpc.gateway.protoc_gen_swagger.options.openapiv2_operation) = {
+      summary: "Removes Host Sets from the Target"
+      description: "Removes the host sets from this target if present.  If it is not present then no action is taken and no error is returned."
+    };
+  }
+}
+
+message GetTargetRequest {
+  string org_id = 1;
+  string project_id = 2;
+  string id = 3;
+  api.view.v1.View view = 4;
+}
+
+message GetTargetResponse {
+  resource.v1.Target item = 1;
+}
+
+message ListTargetsRequest {
+  string org_id = 1;
+  string project_id = 2;
+  view.v1.View view = 3;
+}
+
+message ListTargetsResponse {
+  repeated resource.v1.Target items = 1;
+}
+
+message CreateTargetRequest {
+  string org_id = 1;
+  string project_id = 2;
+  resource.v1.Target item = 3;
+}
+
+message CreateTargetResponse {
+  string uri = 1;
+  resource.v1.Target item = 2;
+}
+
+message UpdateTargetRequest {
+  string org_id = 1;
+  string project_id = 2;
+  string id = 3;
+  resource.v1.Target item = 4;
+  google.protobuf.FieldMask update_mask = 5;
+}
+
+message UpdateTargetResponse {
+  resource.v1.Target item = 1;
+}
+
+message DeleteTargetRequest {
+  string org_id = 1;
+  string project_id =2;
+  string id = 3;
+}
+
+message DeleteTargetResponse {
+  bool existed = 1;
+}
+
+message AddHostSetsToTargetRequest {
+  string org_id = 1;
+  string project_id =2;
+  string id = 3;
+
+  // A list of host set uris which will be added to this target.  Each host set referenced here must be a child of the
+  // same project that this target is a child of.
+  repeated string host_set_uris = 5;
+}
+
+message AddHostSetsToTargetResponse {
+}
+
+message RemoveHostSetsFromTargetRequest {
+  string org_id = 1;
+  string project_id =2;
+  string id = 4;
+
+  // A list of host set uris which will not be in the host set when this request returns.
+  repeated string host_set_uris = 5;
+}
+
+message RemoveHostSetsFromTargetResponse {
+}

@@ -1,0 +1,35 @@
+syntax = "proto3";
+
+package controller.api.resource.v1;
+
+option go_package = "github.com/hashicorp/watchtower/internal/gen/controller/api/resource;resource";
+
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/wrappers.proto";
+import "controller/api/resource/v1/host_set.proto";
+
+// A target captures how to access a specific service.  It's list of hostsets all host the same service and authorize
+// access to it using any single credential in the list of credential sets.
+message Target {
+	// Output only.
+	string uri = 1;
+	google.protobuf.StringValue friendly_name = 2;
+
+	// The time this target was created.
+	// Output only.
+	google.protobuf.Timestamp created_time = 3;
+	// The time this target was last updated.
+	// Output only.
+	google.protobuf.Timestamp updated_time = 4;
+
+	// Marks the target as disabled.  Default is false.
+	google.protobuf.BoolValue disabled = 5;
+
+	// A list of HostSets which this target points to.
+	repeated v1.HostSet hosts = 6;
+
+	// The default port to connect to for all
+	google.protobuf.Int32Value default_port = 7;
+
+	// TODO: Add credential sets when they are added.
+}
