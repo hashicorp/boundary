@@ -16,7 +16,7 @@ func Test_GetOpts(t *testing.T) {
 		// test default of false
 		opts := GetOpts()
 		testOpts := getDefaultOptions()
-		testOpts[optionWithOplog] = false
+		testOpts.withOplog = false
 		assert.True(reflect.DeepEqual(opts, testOpts))
 
 		wrapper := InitTestWrapper(t)
@@ -28,8 +28,8 @@ func Test_GetOpts(t *testing.T) {
 		// try setting to true
 		opts = GetOpts(WithOplog(wrapper, md))
 		testOpts = getDefaultOptions()
-		testOpts[optionWithOplog] = true
-		testOpts[optionOplogArgs] = oplogArgs{
+		testOpts.withOplog = true
+		testOpts.oplogOpts = oplogOpts{
 			wrapper:  wrapper,
 			metadata: md,
 		}
@@ -39,13 +39,13 @@ func Test_GetOpts(t *testing.T) {
 		// test default of true
 		opts := GetOpts()
 		testOpts := getDefaultOptions()
-		testOpts[optionWithLookup] = false
+		testOpts.withLookup = false
 		assert.True(reflect.DeepEqual(opts, testOpts))
 
 		// try setting to false
 		opts = GetOpts(WithLookup(true))
 		testOpts = getDefaultOptions()
-		testOpts[optionWithLookup] = true
+		testOpts.withLookup = true
 		assert.True(reflect.DeepEqual(opts, testOpts))
 
 	})
@@ -53,13 +53,13 @@ func Test_GetOpts(t *testing.T) {
 		// test default of false
 		opts := GetOpts()
 		testOpts := getDefaultOptions()
-		testOpts[optionWithDebug] = false
+		testOpts.withDebug = false
 		assert.True(reflect.DeepEqual(opts, testOpts))
 
 		// try setting to true
 		opts = GetOpts(WithDebug(true))
 		testOpts = getDefaultOptions()
-		testOpts[optionWithDebug] = true
+		testOpts.withDebug = true
 		assert.True(reflect.DeepEqual(opts, testOpts))
 	})
 }

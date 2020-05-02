@@ -168,7 +168,7 @@ var ErrNotResourceWithId = errors.New("not a resource with an id")
 
 func (rw *GormReadWriter) lookupAfterWrite(ctx context.Context, i interface{}, opt ...Option) error {
 	opts := GetOpts(opt...)
-	withLookup := opts[optionWithLookup].(bool)
+	withLookup := opts.withLookup
 
 	if !withLookup {
 		return nil
@@ -188,8 +188,8 @@ func (rw *GormReadWriter) Create(ctx context.Context, i interface{}, opt ...Opti
 		return errors.New("create tx is nil")
 	}
 	opts := GetOpts(opt...)
-	withOplog := opts[optionWithOplog].(bool)
-	withDebug := opts[optionWithDebug].(bool)
+	withOplog := opts.withOplog
+	withDebug := opts.withDebug
 	if withDebug {
 		rw.Tx.LogMode(true)
 		defer rw.Tx.LogMode(false)
@@ -223,8 +223,8 @@ func (rw *GormReadWriter) Update(ctx context.Context, i interface{}, fieldMaskPa
 		return errors.New("update tx is nil")
 	}
 	opts := GetOpts(opt...)
-	withDebug := opts[optionWithDebug].(bool)
-	withOplog := opts[optionWithOplog].(bool)
+	withDebug := opts.withDebug
+	withOplog := opts.withOplog
 	if withDebug {
 		rw.Tx.LogMode(true)
 		defer rw.Tx.LogMode(false)
@@ -302,8 +302,8 @@ func (rw *GormReadWriter) Delete(ctx context.Context, i interface{}, opt ...Opti
 		return errors.New("delete interface is nil")
 	}
 	opts := GetOpts(opt...)
-	withDebug := opts[optionWithDebug].(bool)
-	withOplog := opts[optionWithOplog].(bool)
+	withDebug := opts.withDebug
+	withOplog := opts.withOplog
 	if withDebug {
 		rw.Tx.LogMode(true)
 		defer rw.Tx.LogMode(false)
@@ -320,7 +320,7 @@ func (rw *GormReadWriter) Delete(ctx context.Context, i interface{}, opt ...Opti
 }
 
 func (rw *GormReadWriter) addOplog(ctx context.Context, opType OpType, opts Options, i interface{}) error {
-	oplogArgs := opts[optionOplogArgs].(oplogArgs)
+	oplogArgs := opts.oplogOpts
 	if oplogArgs.wrapper == nil {
 		return errors.New("error wrapper is nil for WithWrapper")
 	}
@@ -332,7 +332,7 @@ func (rw *GormReadWriter) addOplog(ctx context.Context, opType OpType, opts Opti
 		return errors.New("error not a replayable message for WithOplog")
 	}
 	gdb := rw.Tx
-	withDebug := opts[optionWithDebug].(bool)
+	withDebug := opts.withDebug
 	if withDebug {
 		gdb.LogMode(true)
 		defer gdb.LogMode(false)
@@ -428,7 +428,7 @@ func (rw *GormReadWriter) LookupByFriendlyName(ctx context.Context, resource Res
 		return errors.New("error tx nil for lookup by friendly name")
 	}
 	opts := GetOpts(opt...)
-	withDebug := opts[optionWithDebug].(bool)
+	withDebug := opts.withDebug
 	if withDebug {
 		rw.Tx.LogMode(true)
 		defer rw.Tx.LogMode(false)
@@ -448,7 +448,7 @@ func (rw *GormReadWriter) LookupByPublicId(ctx context.Context, resource Resourc
 		return errors.New("error tx nil for lookup by public id")
 	}
 	opts := GetOpts(opt...)
-	withDebug := opts[optionWithDebug].(bool)
+	withDebug := opts.withDebug
 	if withDebug {
 		rw.Tx.LogMode(true)
 		defer rw.Tx.LogMode(false)
@@ -468,7 +468,7 @@ func (rw *GormReadWriter) LookupById(ctx context.Context, resource ResourceIder,
 		return errors.New("error tx nil for lookup by internal id")
 	}
 	opts := GetOpts(opt...)
-	withDebug := opts[optionWithDebug].(bool)
+	withDebug := opts.withDebug
 	if withDebug {
 		rw.Tx.LogMode(true)
 		defer rw.Tx.LogMode(false)

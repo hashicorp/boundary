@@ -9,60 +9,58 @@ import (
 func GetOpts(opt ...Option) Options {
 	opts := getDefaultOptions()
 	for _, o := range opt {
-		o(opts)
+		o(&opts)
 	}
 	return opts
 }
 
 // Option - how Options are passed as arguments
-type Option func(Options)
+type Option func(*Options)
 
 // Options = how options are represented
-type Options map[string]interface{}
-
-func getDefaultOptions() Options {
-	return Options{
-		optionWithOplog: false,
-		optionOplogArgs: oplogArgs{
-			wrapper:  nil,
-			metadata: oplog.Metadata{},
-		},
-		optionWithDebug:  false,
-		optionWithLookup: false,
-	}
+type Options struct {
+	withOplog  bool
+	oplogOpts  oplogOpts
+	withDebug  bool
+	withLookup bool
 }
 
-const optionWithLookup = "optionWithLookup"
-
-// WithLookup enables a lookup
-func WithLookup(enable bool) Option {
-	return func(o Options) {
-		o[optionWithLookup] = enable
-	}
-}
-
-const optionWithDebug = "optionWithDebug"
-
-// WithDebug enables debug
-func WithDebug(enable bool) Option {
-	return func(o Options) {
-		o[optionWithDebug] = enable
-	}
-}
-
-type oplogArgs struct {
+type oplogOpts struct {
 	wrapper  wrapping.Wrapper
 	metadata oplog.Metadata
 }
 
-const optionWithOplog = "optionWithOplog"
-const optionOplogArgs = "optionWithOplogArgs"
+func getDefaultOptions() Options {
+	return Options{
+		withOplog: false,
+		oplogOpts: oplogOpts{
+			wrapper:  nil,
+			metadata: oplog.Metadata{},
+		},
+		withDebug:  false,
+		withLookup: false,
+	}
+}
+
+// WithLookup enables a lookup
+func WithLookup(enable bool) Option {
+	return func(o *Options) {
+		o.withLookup = enable
+	}
+}
+
+// WithDebug enables debug
+func WithDebug(enable bool) Option {
+	return func(o *Options) {
+		o.withDebug = enable
+	}
+}
 
 // WithOplog provides an option to write an oplog entry
 func WithOplog(wrapper wrapping.Wrapper, md oplog.Metadata) Option {
-	return func(o Options) {
-		o[optionWithOplog] = true
-		o[optionOplogArgs] = oplogArgs{
+	return func(o *Options) {
+		o.withOplog = true
+		o.oplogOpts = oplogOpts{
 			wrapper:  wrapper,
 			metadata: md,
 		}
