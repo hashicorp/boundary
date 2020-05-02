@@ -232,6 +232,27 @@ func createStructs() {
 							os.Exit(1)
 						}
 
+					case "_struct":
+						switch selectorExpr.Sel.Name {
+						case "Struct":
+							st.Fields.List[i] = &ast.Field{
+								Names: field.Names,
+								Type: &ast.MapType{
+									Key: &ast.Ident{
+										Name: "string",
+									},
+									Value: &ast.InterfaceType{
+										Methods: &ast.FieldList{},
+									},
+								},
+								Tag: field.Tag,
+							}
+
+						default:
+							fmt.Printf("unhandled timestamp selector sel name %q\n", selectorExpr.Sel.Name)
+							os.Exit(1)
+						}
+
 					default:
 						fmt.Printf("unhandled xident name %q\n", xident.Name)
 						os.Exit(1)
