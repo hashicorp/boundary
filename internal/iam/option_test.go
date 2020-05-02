@@ -14,7 +14,7 @@ func Test_GetOpts(t *testing.T) {
 	t.Run("WithFriendlyName", func(t *testing.T) {
 		opts := GetOpts(WithFriendlyName("test"))
 		testOpts := getDefaultOptions()
-		testOpts[optionWithFriendlyName] = "test"
+		testOpts.withFriendlyName = "test"
 		assert.True(reflect.DeepEqual(opts, testOpts))
 	})
 	t.Run("WithScope", func(t *testing.T) {
@@ -24,13 +24,13 @@ func Test_GetOpts(t *testing.T) {
 
 		opts := GetOpts(WithScope(s))
 		testOpts := getDefaultOptions()
-		testOpts[optionWithScope] = s
+		testOpts.withScope = s
 		assert.True(reflect.DeepEqual(opts, testOpts))
 	})
 	t.Run("optionWithDescription", func(t *testing.T) {
 		opts := GetOpts(WithDescription("test desc"))
 		testOpts := getDefaultOptions()
-		testOpts[optionWithDescription] = "test desc"
+		testOpts.withDescription = "test desc"
 		assert.True(reflect.DeepEqual(opts, testOpts))
 	})
 }

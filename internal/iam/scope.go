@@ -48,8 +48,8 @@ var _ ClonableResource = (*Scope)(nil)
 // WithFriendlyName specifies the Scope's friendly name.
 func NewScope(scopeType ScopeType, opt ...Option) (*Scope, error) {
 	opts := GetOpts(opt...)
-	withFriendlyName := opts[optionWithFriendlyName].(string)
-	withScope := opts[optionWithScope]
+	withFriendlyName := opts.withFriendlyName
+	withScope := opts.withScope
 
 	if scopeType == UnknownScope {
 		return nil, errors.New("error unknown scope type for new scope")
@@ -58,11 +58,10 @@ func NewScope(scopeType ScopeType, opt ...Option) (*Scope, error) {
 		if withScope == nil {
 			return nil, errors.New("error project scope must be with a scope")
 		}
-		parentScope, ok := withScope.(*Scope)
-		if !ok {
-			return nil, errors.New("error project scope with a scope which is not a scope")
+		if withScope == nil {
+			return nil, errors.New("error project scope with a nil scope")
 		}
-		if parentScope.Id == 0 {
+		if withScope.Id == 0 {
 			return nil, errors.New("error project scope parent id == 0")
 		}
 	}
@@ -77,14 +76,10 @@ func NewScope(scopeType ScopeType, opt ...Option) (*Scope, error) {
 		},
 	}
 	if withScope != nil {
-		parentScope, ok := withScope.(*Scope)
-		if !ok {
-			return nil, errors.New("error assigning scope parent id to primary scope that is not a scope")
-		}
-		if parentScope.Id == 0 {
+		if withScope.Id == 0 {
 			return nil, errors.New("error assigning scope parent id to primary scope with id == 0")
 		}
-		s.ParentId = parentScope.Id
+		s.ParentId = withScope.Id
 	}
 	if withFriendlyName != "" {
 		s.FriendlyName = withFriendlyName

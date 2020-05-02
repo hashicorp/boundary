@@ -26,7 +26,7 @@ var _ db.VetForWriter = (*RoleGrant)(nil)
 // options include: withFriendlyName
 func NewRoleGrant(primaryScope *Scope, role *Role, grant string, opt ...Option) (*RoleGrant, error) {
 	opts := GetOpts(opt...)
-	withFriendlyName := opts[optionWithFriendlyName].(string)
+	withFriendlyName := opts.withFriendlyName
 	if primaryScope == nil {
 		return nil, errors.New("error the role grant primary scope is nil")
 	}

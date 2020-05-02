@@ -85,7 +85,7 @@ var _ db.VetForWriter = (*GroupMemberUser)(nil)
 // options include: withDescripion, withFriendlyName
 func newGroupMemberUser(primaryScope *Scope, g *Group, m *User, opt ...Option) (GroupMember, error) {
 	opts := GetOpts(opt...)
-	withFriendlyName := opts[optionWithFriendlyName].(string)
+	withFriendlyName := opts.withFriendlyName
 	if primaryScope == nil {
 		return nil, errors.New("error the user member primary scope is nil")
 	}

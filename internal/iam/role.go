@@ -26,8 +26,8 @@ var _ db.VetForWriter = (*Role)(nil)
 // options include: withDescripion, withFriendlyName
 func NewRole(primaryScope *Scope, opt ...Option) (*Role, error) {
 	opts := GetOpts(opt...)
-	withFriendlyName := opts[optionWithFriendlyName].(string)
-	withDescription := opts[optionWithDescription].(string)
+	withFriendlyName := opts.withFriendlyName
+	withDescription := opts.withDescription
 	if primaryScope == nil {
 		return nil, errors.New("error the role primary scope is nil")
 	}
@@ -48,7 +48,7 @@ func NewRole(primaryScope *Scope, opt ...Option) (*Role, error) {
 	if withFriendlyName != "" {
 		r.FriendlyName = withFriendlyName
 	}
-	if optionWithDescription != "" {
+	if withDescription != "" {
 		r.Description = withDescription
 	}
 	return r, nil

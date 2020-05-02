@@ -26,8 +26,8 @@ var _ db.VetForWriter = (*Group)(nil)
 // options include: withDescripion, withFriendlyName
 func NewGroup(primaryScope *Scope, opt ...Option) (*Group, error) {
 	opts := GetOpts(opt...)
-	withFriendlyName := opts[optionWithFriendlyName].(string)
-	withDescription := opts[optionWithDescription].(string)
+	withFriendlyName := opts.withFriendlyName
+	withDescription := opts.withDescription
 	if primaryScope == nil {
 		return nil, errors.New("error the group primary scope is nil")
 	}
@@ -48,7 +48,7 @@ func NewGroup(primaryScope *Scope, opt ...Option) (*Group, error) {
 	if withFriendlyName != "" {
 		g.FriendlyName = withFriendlyName
 	}
-	if optionWithDescription != "" {
+	if withDescription != "" {
 		g.Description = withDescription
 	}
 	return g, nil

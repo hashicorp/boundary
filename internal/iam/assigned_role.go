@@ -92,7 +92,7 @@ var _ db.VetForWriter = (*UserRole)(nil)
 // options include:  withFriendlyName
 func newUserRole(primaryScope *Scope, r *Role, u *User, opt ...Option) (AssignedRole, error) {
 	opts := GetOpts(opt...)
-	withFriendlyName := opts[optionWithFriendlyName].(string)
+	withFriendlyName := opts.withFriendlyName
 	if primaryScope == nil {
 		return nil, errors.New("error the user role primary scope is nil")
 	}
@@ -212,7 +212,7 @@ var _ db.VetForWriter = (*GroupRole)(nil)
 // options include:  withFriendlyName
 func newGroupRole(primaryScope *Scope, r *Role, g *Group, opt ...Option) (AssignedRole, error) {
 	opts := GetOpts(opt...)
-	withFriendlyName := opts[optionWithFriendlyName].(string)
+	withFriendlyName := opts.withFriendlyName
 	if primaryScope == nil {
 		return nil, errors.New("error the group role primary scope is nil")
 	}

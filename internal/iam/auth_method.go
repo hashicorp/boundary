@@ -43,7 +43,7 @@ var _ db.VetForWriter = (*AuthMethod)(nil)
 // and authentication type.  AuthMethods can only have an Organizational Scope
 func NewAuthMethod(primaryScope *Scope, authType AuthType, opt ...Option) (*AuthMethod, error) {
 	opts := GetOpts(opt...)
-	withFriendlyName := opts[optionWithFriendlyName].(string)
+	withFriendlyName := opts.withFriendlyName
 	if authType == AuthUnknown {
 		return nil, errors.New("error unknown auth type")
 	}

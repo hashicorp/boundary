@@ -26,7 +26,7 @@ var _ db.VetForWriter = (*User)(nil)
 // withFriendlyName - to specify the user's friendly name
 func NewUser(primaryScope *Scope, opt ...Option) (*User, error) {
 	opts := GetOpts(opt...)
-	withFriendlyName := opts[optionWithFriendlyName].(string)
+	withFriendlyName := opts.withFriendlyName
 	if primaryScope == nil {
 		return nil, errors.New("error user primary scope is nil")
 	}
@@ -84,7 +84,7 @@ func (u *User) Roles(ctx context.Context, r db.Reader, opt ...Option) (map[strin
 // WithGroupGrants which will get the grants assigned to the user's groups as well
 func (u *User) Grants(ctx context.Context, r db.Reader, opt ...Option) ([]*RoleGrant, error) {
 	opts := GetOpts(opt...)
-	withGrpGrants := opts[optionWithGroupGrants].(bool)
+	withGrpGrants := opts.withGroupGrants
 	if u.Id == 0 {
 		return nil, errors.New("error user id is 0 for finding roles")
 	}

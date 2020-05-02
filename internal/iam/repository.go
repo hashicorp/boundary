@@ -64,8 +64,8 @@ func (r *dbRepository) UpdateUser(ctx context.Context, user *User, fieldMaskPath
 
 func (r *dbRepository) LookupUser(ctx context.Context, opt ...Option) (User, error) {
 	opts := GetOpts(opt...)
-	withPublicId := opts[optionWithPublicId].(string)
-	withFriendlyName := opts[optionWithFriendlyName].(string)
+	withPublicId := opts.withPublicId
+	withFriendlyName := opts.withFriendlyName
 
 	user := allocUser()
 
@@ -102,8 +102,8 @@ func (r *dbRepository) UpdateScope(ctx context.Context, scope *Scope, fieldMaskP
 }
 func (r *dbRepository) LookupScope(ctx context.Context, opt ...Option) (Scope, error) {
 	opts := GetOpts(opt...)
-	withPublicId := opts[optionWithPublicId].(string)
-	withFriendlyName := opts[optionWithFriendlyName].(string)
+	withPublicId := opts.withPublicId
+	withFriendlyName := opts.withFriendlyName
 
 	scope := allocScope()
 
