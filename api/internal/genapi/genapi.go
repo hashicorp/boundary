@@ -445,9 +445,9 @@ type {{ .DetailName }} struct {
 	{{ .StructFields }}
 }
 
-func (s *{{ .ParentName }}) As{{ .DetailName }}() (*{{ .DetailName }}, error) {
+func (s {{ .ParentName }}) As{{ .DetailName }}() (*{{ .DetailName }}, error) {
 	out := &{{ .DetailName }}{
-		{{ .ParentName }}: s,
+		{{ .ParentName }}: &s,
 	}
 	decoder, err := mapstructure.NewDecoder(&mapstructure.DecoderConfig{
 		Result: out,

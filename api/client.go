@@ -6,7 +6,6 @@ import (
 	"crypto/tls"
 	"encoding/json"
 	"fmt"
-	"io"
 	"net"
 	"net/http"
 	"net/url"
@@ -528,7 +527,7 @@ func (c *Client) Clone() (*Client, error) {
 
 func copyHeaders(in http.Header) http.Header {
 	ret := make(http.Header)
-	for k, v := range in.headers {
+	for k, v := range in {
 		for _, val := range v {
 			ret[k] = append(ret[k], val)
 		}
@@ -685,10 +684,12 @@ func (c *Client) Do(r *http.Request) (*http.Response, error) {
 	}
 
 	var result *http.Response
-	resp, err := client.Do(req)
-	if resp != nil {
-		result = &Response{Response: resp}
-	}
+	result, err = client.Do(req)
+	/*
+		if resp != nil {
+			result = &Response{Response: resp}
+		}
+	*/
 	if err != nil {
 		if strings.Contains(err.Error(), "tls: oversized") {
 			err = errwrap.Wrapf(
