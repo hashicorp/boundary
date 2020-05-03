@@ -19,13 +19,23 @@ import (
 	"time"
 )
 
+type templateType int
+
+const (
+	templateTypeResource templateType = iota
+	templateTypeDetail
+)
+
 type generateInfo struct {
-	inFile    string
-	inName    string
-	outFile   string
-	outName   string
-	outPkg    string
-	outStruct string
+	inFile       string
+	inName       string
+	outFile      string
+	outName      string
+	outPkg       string
+	structFields string
+	parentName   string
+	detailName   string
+	templateType templateType
 }
 
 var (
@@ -39,6 +49,9 @@ var (
 			"Host",
 			"hosts",
 			"",
+			"",
+			"",
+			templateTypeResource,
 		},
 		{
 			os.Getenv("APIGEN_BASEPATH") + "/internal/gen/controller/api/resources/hosts/host_set.pb.go",
@@ -47,6 +60,9 @@ var (
 			"HostSet",
 			"hosts",
 			"",
+			"",
+			"",
+			templateTypeResource,
 		},
 		{
 			os.Getenv("APIGEN_BASEPATH") + "/internal/gen/controller/api/resources/hosts/host_catalog.pb.go",
@@ -55,6 +71,31 @@ var (
 			"HostCatalog",
 			"hosts",
 			"",
+			"",
+			"",
+			templateTypeResource,
+		},
+		{
+			os.Getenv("APIGEN_BASEPATH") + "/internal/gen/controller/api/resources/hosts/host_catalog.pb.go",
+			"StaticHostCatalogDetails",
+			os.Getenv("APIGEN_BASEPATH") + "/api/hosts/static_host_catalog.go",
+			"StaticHostCatalogDetails",
+			"hosts",
+			"",
+			"HostCatalog",
+			"StaticHostCatalog",
+			templateTypeDetail,
+		},
+		{
+			os.Getenv("APIGEN_BASEPATH") + "/internal/gen/controller/api/resources/hosts/host_catalog.pb.go",
+			"AwsEc2HostCatalogDetails",
+			os.Getenv("APIGEN_BASEPATH") + "/api/hosts/awsec2_host_catalog.go",
+			"AwsEc2HostCatalogDetails",
+			"hosts",
+			"",
+			"HostCatalog",
+			"AwsEc2HostCatalog",
+			templateTypeDetail,
 		},
 	}
 )
@@ -124,23 +165,25 @@ func createStructs() {
 						cutCount++
 					}
 
-					// Add default fields
-					st.Fields.List = append([]*ast.Field{&ast.Field{
-						Names: []*ast.Ident{
-							{
-								Name: "defaultFields",
-								Obj: &ast.Object{
-									Kind: ast.Var,
+					// Add default fields if a base resource
+					if inputStruct.templateType == templateTypeResource {
+						st.Fields.List = append([]*ast.Field{&ast.Field{
+							Names: []*ast.Ident{
+								{
 									Name: "defaultFields",
+									Obj: &ast.Object{
+										Kind: ast.Var,
+										Name: "defaultFields",
+									},
 								},
 							},
-						},
-						Type: &ast.ArrayType{
-							Elt: &ast.Ident{
-								Name: "string",
+							Type: &ast.ArrayType{
+								Elt: &ast.Ident{
+									Name: "string",
+								},
 							},
-						},
-					}}, st.Fields.List...)
+						}}, st.Fields.List...)
+					}
 				}()
 			}
 
@@ -284,11 +327,13 @@ func createStructs() {
 			if !inType {
 				if strings.HasPrefix(scanner.Text(), "type "+inputStruct.outName) {
 					inType = true
+					// Don't add this line, we'll do it in the template
+					continue
 				}
 			} else {
 				if scanner.Text() == "}" {
-					outBuf = append(outBuf, scanner.Text())
-					inType = false
+					// We've reached the end of the type
+					break
 				}
 			}
 
@@ -297,24 +342,43 @@ func createStructs() {
 			}
 		}
 
-		inputStruct.outStruct = strings.Join(outBuf, "\n")
+		inputStruct.structFields = strings.Join(outBuf, "\n")
 	}
 }
 
 func createUtilFuncs() {
 	for _, inputStruct := range inputStructs {
 		outBuf := new(bytes.Buffer)
-		utilFuncsTemplate.Execute(outBuf, struct {
-			Timestamp time.Time
-			Name      string
-			Package   string
-			Struct    string
-		}{
-			Timestamp: time.Now(),
-			Name:      inputStruct.outName,
-			Package:   inputStruct.outPkg,
-			Struct:    inputStruct.outStruct,
-		})
+		switch inputStruct.templateType {
+		case templateTypeResource:
+			utilFuncsTemplate.Execute(outBuf, struct {
+				Timestamp    time.Time
+				Name         string
+				Package      string
+				StructFields string
+			}{
+				Timestamp:    time.Now(),
+				Name:         inputStruct.outName,
+				Package:      inputStruct.outPkg,
+				StructFields: inputStruct.structFields,
+			})
+
+		case templateTypeDetail:
+			detailTemplate.Execute(outBuf, struct {
+				Timestamp    time.Time
+				Package      string
+				StructFields string
+				ParentName   string
+				DetailName   string
+			}{
+				Timestamp:    time.Now(),
+				Package:      inputStruct.outPkg,
+				StructFields: inputStruct.structFields,
+				ParentName:   inputStruct.parentName,
+				DetailName:   inputStruct.detailName,
+			})
+
+		}
 
 		outFile, err := filepath.Abs(inputStruct.outFile)
 		if err != nil {
@@ -340,7 +404,9 @@ import (
 	"github.com/hashicorp/watchtower/api/internal/strutil"
 )
 
-{{ .Struct }}
+type {{ .Name }} struct {
+	{{ .StructFields }}
+}
 
 func (s *{{ .Name }}) SetDefault(key string) {
 	s.defaultFields = strutil.AppendIfMissing(s.defaultFields, key)
@@ -359,5 +425,42 @@ func (s {{ .Name }}) MarshalJSON() ([]byte, error) {
 		m[k] = nil
 	}
 	return json.Marshal(m)
+}
+`))
+
+// TODO: Figure out the right way to write out the specific fields
+var detailTemplate = template.Must(template.New("").Parse(`// Code generated by go generate; DO NOT EDIT.
+// This file was generated by robots at
+// {{ .Timestamp }}
+package {{ .Package }}
+
+import (
+	"fmt"
+
+	"github.com/mitchellh/mapstructure"
+)
+
+type {{ .DetailName }} struct {
+	*{{ .ParentName }}
+	{{ .StructFields }}
+}
+
+func (s *{{ .ParentName }}) As{{ .DetailName }}() (*{{ .DetailName }}, error) {
+	out := &{{ .DetailName }}{
+		{{ .ParentName }}: s,
+	}
+	decoder, err := mapstructure.NewDecoder(&mapstructure.DecoderConfig{
+		Result: out,
+		TagName: "json",
+	})
+	if err != nil {
+		return nil, fmt.Errorf("error creating map decoder: %w", err)
+	}
+	
+	if err := decoder.Decode(s.Attributes); err != nil {
+		return nil, fmt.Errorf("error decoding attributes map: %w", err)
+	}
+
+	return out, nil
 }
 `))
