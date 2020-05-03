@@ -21,7 +21,7 @@ import (
 	cleanhttp "github.com/hashicorp/go-cleanhttp"
 	retryablehttp "github.com/hashicorp/go-retryablehttp"
 	rootcerts "github.com/hashicorp/go-rootcerts"
-	"github.com/hashicorp/vault/sdk/helper/parseutil"
+	"github.com/hashicorp/watchtower/api/internal/parseutil"
 	"golang.org/x/time/rate"
 )
 
@@ -37,6 +37,8 @@ const EnvWatchtowerMaxRetries = "WATCHTOWER_MAX_RETRIES"
 const EnvWatchtowerToken = "WATCHTOWER_TOKEN"
 const EnvWatchtowerRateLimit = "WATCHTOWER_RATE_LIMIT"
 const EnvWatchtowerSRVLookup = "WATCHTOWER_SRV_LOOKUP"
+const EnvWatchtowerOrg = "WATCHTOWER_ORG"
+const EnvWatchtowerProject = "WATCHTOWER_PROJECT"
 
 // Config is used to configure the creation of the client
 type Config struct {
@@ -50,12 +52,12 @@ type Config struct {
 	// used to make calls into Watchtower
 	Token string
 
-	// HTTPClient is the HTTP client to use. Watchtower sets sane defaults for
+	// HttpClient is the HTTP client to use. Watchtower sets sane defaults for
 	// the http.Client and its associated http.Transport created in
 	// DefaultConfig. If you must modify Watchtower's defaults, it is
 	// suggested that you start with that client and modify as needed rather
 	// than start with an empty client (or http.DefaultClient).
-	HTTPClient *http.Client
+	HttpClient *http.Client
 
 	// TLSConfig contains TLS configuration information. After modifying these
 	// values, ConfigureTLS should be called.
@@ -69,7 +71,7 @@ type Config struct {
 	// of three tries).
 	MaxRetries int
 
-	// Timeout is for setting custom timeout parameter in the HTTPClient
+	// Timeout is for setting custom timeout parameter in the HttpClient
 	Timeout time.Duration
 
 	// If there is an error when creating the configuration, this will be the
@@ -99,23 +101,29 @@ type Config struct {
 
 	// SRVLookup enables the client to lookup the host through DNS SRV lookup
 	SRVLookup bool
+
+	// Org is the organization to use if not overridden per-call
+	Org string
+
+	// Project is the project to use if not overridden per-call
+	Project string
 }
 
 // TLSConfig contains the parameters needed to configure TLS on the HTTP client
 // used to communicate with Watchtower.
 type TLSConfig struct {
 	// CACert is the path to a PEM-encoded CA cert file to use to verify the
-	// Vault server SSL certificate.
+	// Watchtower server SSL certificate.
 	CACert string
 
 	// CAPath is the path to a directory of PEM-encoded CA cert files to verify
-	// the Vault server SSL certificate.
+	// the Watchtower server SSL certificate.
 	CAPath string
 
-	// ClientCert is the path to the certificate for Vault communication
+	// ClientCert is the path to the certificate for Watchtower communication
 	ClientCert string
 
-	// ClientKey is the path to the private key for Vault communication
+	// ClientKey is the path to the private key for Watchtower communication
 	ClientKey string
 
 	// ServerName, if set, is used to set the SNI host when connecting via
@@ -136,7 +144,7 @@ type TLSConfig struct {
 func DefaultConfig() *Config {
 	config := &Config{
 		Address:    "https://127.0.0.1:9200",
-		HTTPClient: cleanhttp.DefaultPooledClient(),
+		HttpClient: cleanhttp.DefaultPooledClient(),
 		Timeout:    time.Second * 60,
 	}
 
@@ -147,7 +155,7 @@ func DefaultConfig() *Config {
 		return config
 	}
 
-	transport := config.HTTPClient.Transport.(*http.Transport)
+	transport := config.HttpClient.Transport.(*http.Transport)
 	transport.TLSHandshakeTimeout = 10 * time.Second
 	transport.TLSClientConfig = &tls.Config{
 		MinVersion: tls.VersionTLS12,
@@ -163,10 +171,10 @@ func DefaultConfig() *Config {
 // ConfigureTLS takes a set of TLS configurations and applies those to the the
 // HTTP client.
 func (c *Config) ConfigureTLS() error {
-	if c.HTTPClient == nil {
-		c.HTTPClient = DefaultConfig().HTTPClient
+	if c.HttpClient == nil {
+		c.HttpClient = DefaultConfig().HttpClient
 	}
-	clientTLSConfig := c.HTTPClient.Transport.(*http.Transport).TLSClientConfig
+	clientTLSConfig := c.HttpClient.Transport.(*http.Transport).TLSClientConfig
 
 	var clientCert tls.Certificate
 	foundClientCert := false
@@ -213,30 +221,69 @@ func (c *Config) ConfigureTLS() error {
 	return nil
 }
 
+// setAddress parses a given string and looks for org and project info, setting
+// the actual address to the base. Note that if a very malformed URL is passed
+// in, this may not return what one expects. For now this is on purpose to
+// avoid requiring error handling.
+//
+// This also removes any trailing "/v1"; we'll use that in our commands so we
+// don't require it from users.
+func (c *Config) setAddress(addr string) {
+	defer func() {
+		c.Address = strings.TrimSuffix(c.Address, "/")
+		c.Address = strings.TrimSuffix(c.Address, "/v1")
+	}()
+
+	split := strings.Split(strings.TrimSuffix("/", addr), "/")
+	if len(split) < 5 {
+		return
+	}
+
+	// ..../org/<org id>/project/<project id>
+	if split[len(split)-4] == "org" {
+		c.Org = split[len(split)-3]
+		if split[len(split)-2] == "project" {
+			c.Project = split[len(split)-1]
+		}
+		c.Address = strings.Join(split[0:len(split)-4], "/")
+		return
+	}
+
+	// ..../org/<org id>/project/<project id>
+	if split[len(split)-2] == "org" {
+		c.Org = split[len(split)-1]
+		c.Address = strings.Join(split[0:len(split)-2], "/")
+		return
+	}
+
+	return
+}
+
 // ReadEnvironment reads configuration information from the environment. If
 // there is an error, no configuration value is updated.
 func (c *Config) ReadEnvironment() error {
-	var envAddress string
 	var envCACert string
 	var envCAPath string
 	var envClientCert string
 	var envClientKey string
-	var envClientTimeout time.Duration
 	var envInsecure bool
 	var envServerName string
-	var envMaxRetries *uint64
-	var envSRVLookup *bool
-	var envToken string
-	var limit *rate.Limiter
-	var foundTLSConfig bool
 
 	// Parse the environment variables
 	if v := os.Getenv(EnvWatchtowerAddress); v != "" {
-		envAddress = v
+		c.Address = v
 	}
 
 	if v := os.Getenv(EnvWatchtowerToken); v != "" {
-		envToken = v
+		c.Token = v
+	}
+
+	if v := os.Getenv(EnvWatchtowerOrg); v != "" {
+		c.Org = v
+	}
+
+	if v := os.Getenv(EnvWatchtowerProject); v != "" {
+		c.Project = v
 	}
 
 	if v := os.Getenv(EnvWatchtowerMaxRetries); v != "" {
@@ -244,37 +291,7 @@ func (c *Config) ReadEnvironment() error {
 		if err != nil {
 			return err
 		}
-		envMaxRetries = &maxRetries
-	}
-	if v := os.Getenv(EnvWatchtowerCACert); v != "" {
-		foundTLSConfig = true
-		envCACert = v
-	}
-	if v := os.Getenv(EnvWatchtowerCAPath); v != "" {
-		foundTLSConfig = true
-		envCAPath = v
-	}
-	if v := os.Getenv(EnvWatchtowerClientCert); v != "" {
-		foundTLSConfig = true
-		envClientCert = v
-	}
-	if v := os.Getenv(EnvWatchtowerClientKey); v != "" {
-		foundTLSConfig = true
-		envClientKey = v
-	}
-
-	if v := os.Getenv(EnvWatchtowerTLSInsecure); v != "" {
-		foundTLSConfig = true
-		var err error
-		envInsecure, err = strconv.ParseBool(v)
-		if err != nil {
-			return fmt.Errorf("could not parse WATCHTOWER_TLS_INSECURE")
-		}
-	}
-
-	if v := os.Getenv(EnvWatchtowerTLSServerName); v != "" {
-		foundTLSConfig = true
-		envServerName = v
+		c.MaxRetries = int(maxRetries)
 	}
 
 	if v := os.Getenv(EnvWatchtowerSRVLookup); v != "" {
@@ -283,16 +300,7 @@ func (c *Config) ReadEnvironment() error {
 		if err != nil {
 			return fmt.Errorf("could not parse %s", EnvWatchtowerSRVLookup)
 		}
-		envSRVLookup = new(bool)
-		*envSRVLookup = lookup
-	}
-
-	if v := os.Getenv(EnvWatchtowerRateLimit); v != "" {
-		rateLimit, burstLimit, err := parseRateLimit(v)
-		if err != nil {
-			return err
-		}
-		limit = rate.NewLimiter(rate.Limit(rateLimit), burstLimit)
+		c.SRVLookup = lookup
 	}
 
 	if t := os.Getenv(EnvWatchtowerClientTimeout); t != "" {
@@ -300,35 +308,49 @@ func (c *Config) ReadEnvironment() error {
 		if err != nil {
 			return fmt.Errorf("could not parse %q", EnvWatchtowerClientTimeout)
 		}
-		envClientTimeout = clientTimeout
+		c.Timeout = clientTimeout
 	}
 
-	// Set the values on the config
+	if v := os.Getenv(EnvWatchtowerRateLimit); v != "" {
+		rateLimit, burstLimit, err := parseRateLimit(v)
+		if err != nil {
+			return err
+		}
+		c.Limiter = rate.NewLimiter(rate.Limit(rateLimit), burstLimit)
+	}
+
+	// TLS Config
 	{
-		if envToken != "" {
-			c.Token = envToken
+		var foundTLSConfig bool
+		if v := os.Getenv(EnvWatchtowerCACert); v != "" {
+			foundTLSConfig = true
+			envCACert = v
 		}
-
-		if envAddress != "" {
-			c.Address = envAddress
+		if v := os.Getenv(EnvWatchtowerCAPath); v != "" {
+			foundTLSConfig = true
+			envCAPath = v
 		}
-
-		if envMaxRetries != nil {
-			c.MaxRetries = int(*envMaxRetries)
+		if v := os.Getenv(EnvWatchtowerClientCert); v != "" {
+			foundTLSConfig = true
+			envClientCert = v
 		}
-
-		if envClientTimeout != 0 {
-			c.Timeout = envClientTimeout
+		if v := os.Getenv(EnvWatchtowerClientKey); v != "" {
+			foundTLSConfig = true
+			envClientKey = v
 		}
-
-		if envSRVLookup != nil {
-			c.SRVLookup = *envSRVLookup
+		if v := os.Getenv(EnvWatchtowerTLSInsecure); v != "" {
+			foundTLSConfig = true
+			var err error
+			envInsecure, err = strconv.ParseBool(v)
+			if err != nil {
+				return fmt.Errorf("could not parse WATCHTOWER_TLS_INSECURE")
+			}
 		}
-
-		if limit != nil {
-			c.Limiter = limit
+		if v := os.Getenv(EnvWatchtowerTLSServerName); v != "" {
+			foundTLSConfig = true
+			envServerName = v
 		}
-
+		// Set the values on the config
 		// Configure the HTTP clients TLS configuration.
 		if foundTLSConfig {
 			c.TLSConfig = &TLSConfig{
@@ -339,11 +361,8 @@ func (c *Config) ReadEnvironment() error {
 				ServerName: envServerName,
 				Insecure:   envInsecure,
 			}
+			return c.ConfigureTLS()
 		}
-	}
-
-	if foundTLSConfig {
-		return c.ConfigureTLS()
 	}
 
 	return nil
@@ -362,7 +381,7 @@ func parseRateLimit(val string) (rate float64, burst int, err error) {
 	return rate, burst, err
 }
 
-// Client is the client to the Vault API. Create a client with NewClient.
+// Client is the client to the Watchtower API. Create a client with NewClient.
 type Client struct {
 	modifyLock sync.RWMutex
 	config     *Config
@@ -389,15 +408,15 @@ func NewClient(c *Config) (*Client, error) {
 		c = def
 	}
 
-	if c.HTTPClient == nil {
-		c.HTTPClient = def.HTTPClient
+	if c.HttpClient == nil {
+		c.HttpClient = def.HttpClient
 	}
-	if c.HTTPClient.Transport == nil {
-		c.HTTPClient.Transport = def.HTTPClient.Transport
+	if c.HttpClient.Transport == nil {
+		c.HttpClient.Transport = def.HttpClient.Transport
 	}
-	if c.HTTPClient.CheckRedirect == nil {
+	if c.HttpClient.CheckRedirect == nil {
 		// Ensure redirects are not automatically followed
-		c.HTTPClient.CheckRedirect = func(req *http.Request, via []*http.Request) error {
+		c.HttpClient.CheckRedirect = func(req *http.Request, via []*http.Request) error {
 			// Returning this value causes the Go net library to not close the
 			// response body and to nil out the error. Otherwise retry clients may
 			// try three times on every redirect because it sees an error from this
@@ -405,6 +424,8 @@ func NewClient(c *Config) (*Client, error) {
 			return http.ErrUseLastResponse
 		}
 	}
+
+	c.setAddress(c.Address)
 
 	return &Client{
 		config: c,
@@ -418,7 +439,7 @@ func (c *Client) SetAddress(addr string) {
 	c.modifyLock.Lock()
 	defer c.modifyLock.Unlock()
 
-	c.config.Address = addr
+	c.config.setAddress(addr)
 }
 
 // SetLimiter will set the rate limiter for this client.  This method is
@@ -501,7 +522,7 @@ func (c *Client) Clone() (*Client, error) {
 	newConfig := &Config{
 		Address:    config.Address,
 		Token:      config.Token,
-		HTTPClient: config.HTTPClient,
+		HttpClient: config.HttpClient,
 		Headers:    make(http.Header),
 		MaxRetries: config.MaxRetries,
 		Timeout:    config.Timeout,
@@ -552,16 +573,23 @@ func getBufferForJSON(val interface{}) (*bytes.Buffer, error) {
 // doesn't need to be called externally.
 func (c *Client) NewRequest(ctx context.Context, method, requestPath string, body interface{}) (*http.Request, error) {
 	c.modifyLock.RLock()
-	defer c.modifyLock.RUnlock()
+	addr := c.config.Address
+	org := c.config.Org
+	project := c.config.Project
+	srvLookup := c.config.SRVLookup
+	token := c.config.Token
+	httpClient := c.config.HttpClient
+	headers := copyHeaders(c.config.Headers)
+	c.modifyLock.RUnlock()
 
-	u, err := url.Parse(c.config.Address)
+	u, err := url.Parse(addr)
 	if err != nil {
 		return nil, err
 	}
 
-	if strings.HasPrefix(c.config.Address, "unix://") {
-		socket := strings.TrimPrefix(c.config.Address, "unix://")
-		transport := c.config.HTTPClient.Transport.(*http.Transport)
+	if strings.HasPrefix(addr, "unix://") {
+		socket := strings.TrimPrefix(addr, "unix://")
+		transport := httpClient.Transport.(*http.Transport)
 		transport.DialContext = func(context.Context, string, string) (net.Conn, error) {
 			dialer := net.Dialer{}
 			return dialer.DialContext(ctx, "unix", socket)
@@ -582,7 +610,7 @@ func (c *Client) NewRequest(ctx context.Context, method, requestPath string, bod
 	// record and take the highest match; this is not designed for
 	// high-availability, just discovery Internet Draft specifies that the SRV
 	// record is ignored if a port is given
-	if u.Port() == "" && c.config.SRVLookup {
+	if u.Port() == "" && srvLookup {
 		_, addrs, err := net.LookupSRV("http", "tcp", u.Hostname())
 		if err != nil {
 			return nil, fmt.Errorf("error performing SRV lookup of http:tcp:%s : %w", u.Hostname(), err)
@@ -592,18 +620,30 @@ func (c *Client) NewRequest(ctx context.Context, method, requestPath string, bod
 		}
 	}
 
+	var ok bool
+	if orgRaw := ctx.Value("org"); orgRaw != nil {
+		if org, ok = orgRaw.(string); !ok {
+			return nil, fmt.Errorf("could not convert %v into string org value", orgRaw)
+		}
+	}
+	if projectRaw := ctx.Value("project"); projectRaw != nil {
+		if project, ok = projectRaw.(string); !ok {
+			return nil, fmt.Errorf("could not convert %v into string project value", projectRaw)
+		}
+	}
+
 	req := &http.Request{
 		Method: method,
 		URL: &url.URL{
 			User:   u.User,
 			Scheme: u.Scheme,
 			Host:   host,
-			Path:   path.Join(u.Path, requestPath),
+			Path:   path.Join(u.Path, requestPath, "v1", "org", org, "project", project),
 		},
 		Host: u.Host,
 	}
-	req.Header = copyHeaders(c.config.Headers)
-	req.Header.Add("authorization", "bearer: "+c.config.Token)
+	req.Header = headers
+	req.Header.Add("authorization", "bearer: "+token)
 	if ctx != nil {
 		req = req.WithContext(ctx)
 	}
@@ -611,16 +651,15 @@ func (c *Client) NewRequest(ctx context.Context, method, requestPath string, bod
 	return req, nil
 }
 
-// RawRequestWithContext performs the raw request given. This request may be against
-// a Vault server not configured with this client. This is an advanced operation
-// that generally won't need to be called externally.
+// Do takes a properly configured request and applies client configuration to
+// it, returning the response.
 func (c *Client) Do(r *http.Request) (*http.Response, error) {
 	c.modifyLock.RLock()
 	limiter := c.config.Limiter
 	maxRetries := c.config.MaxRetries
 	checkRetry := c.config.CheckRetry
 	backoff := c.config.Backoff
-	httpClient := c.config.HTTPClient
+	httpClient := c.config.HttpClient
 	timeout := c.config.Timeout
 	token := c.config.Token
 	outputCurlString := c.config.OutputCurlString
@@ -683,13 +722,7 @@ func (c *Client) Do(r *http.Request) (*http.Response, error) {
 		ErrorHandler: retryablehttp.PassthroughErrorHandler,
 	}
 
-	var result *http.Response
-	result, err = client.Do(req)
-	/*
-		if resp != nil {
-			result = &Response{Response: resp}
-		}
-	*/
+	result, err := client.Do(req)
 	if err != nil {
 		if strings.Contains(err.Error(), "tls: oversized") {
 			err = errwrap.Wrapf(
