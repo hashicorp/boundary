@@ -3,7 +3,6 @@ package oplog
 import (
 	"bytes"
 	"context"
-	"encoding/base64"
 	"errors"
 	"fmt"
 	"io"
@@ -175,18 +174,11 @@ func (e *Entry) EncryptData(ctx context.Context) error {
 	if err := structwrapping.WrapStruct(ctx, e.Cipherer, e.Entry, nil); err != nil {
 		return fmt.Errorf("error encrypting entry: %w", err)
 	}
-	e.CtData = []byte(base64.RawURLEncoding.EncodeToString(e.CtData))
 	return nil
 }
 
 // DecryptData will decrypt the entry's data using its Cipherer (wrapping.Wrapper)
 func (e *Entry) DecryptData(ctx context.Context) error {
-	// the CtData was encoded after encryption, so we need to decode it first.
-	blob, err := base64.RawURLEncoding.DecodeString(string(e.CtData))
-	if err != nil {
-		return fmt.Errorf("error decoding encrypted data: %w", err)
-	}
-	e.CtData = blob
 	// structwrapping doesn't support embedding, so we'll pass in the store.Entry directly
 	if err := structwrapping.UnwrapStruct(ctx, e.Cipherer, e.Entry, nil); err != nil {
 		return fmt.Errorf("error decrypting entry: %w", err)
