@@ -1,12 +1,12 @@
 syntax = "proto3";
 
-package hashicorp.watchtower.controller.iam.store.v1;
+package controller.storage.iam.store.v1;
 option go_package = "github.com/hashicorp/watchtower/internal/iam/store;store";
 
-import "timestamp.proto";
-import "scope.proto";
+import "controller/storage/iam/store/v1/timestamp.proto";
+import "controller/storage/iam/store/v1/scope.proto";
 
-message AuthMethod {
+message RoleGrant {
   // @inject_tag: gorm:"primary_key"
   uint32 id = 1;
 
@@ -18,23 +18,23 @@ message AuthMethod {
   // @inject_tag: `gorm:"default:current_timestamp"`
   Timestamp update_time = 3;
 
-  // public_id is used to access the AuthMethod via an API
+  // public_id is used to access the Role via an API
   string public_id = 4;
 
   // FriendlyName is the optional friendly name used to
-  // access the AuthMethod via an API
+  // access the Role via an API
   // @inject_tag: `gorm:"default:null"`
   string friendly_name = 5;
 
+  // @inject_tag: `gorm:"default:null"`
+  string description = 6;
+
   // primary scope id of the PrimaryScope
   // @inject_tag: `gorm:"default:null"`
-  uint32 primary_scope_id = 6;
+  uint32 primary_scope_id = 7;
   // @inject_tag: gorm:"foreignkey:ScopeId"
-  Scope primary_scope = 7;
+  Scope primary_scope = 8;
 
-  // disabled is by default false.
-  bool disabled = 9;
-
-  // Type of auth method
-  string type = 10;
+  uint32 role_id = 10;
+  string grant = 11;
 }

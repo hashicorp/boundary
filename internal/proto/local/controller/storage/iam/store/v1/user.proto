@@ -1,10 +1,10 @@
 syntax = "proto3";
 
-package hashicorp.watchtower.controller.iam.store.v1;
+package controller.storage.iam.store.v1;
 option go_package = "github.com/hashicorp/watchtower/internal/iam/store;store";
 
-import "timestamp.proto";
-import "scope.proto";
+import "controller/storage/iam/store/v1/timestamp.proto";
+import "controller/storage/iam/store/v1/scope.proto";
 
 message User {
   // @inject_tag: gorm:"primary_key"

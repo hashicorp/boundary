@@ -1,6 +1,6 @@
 syntax = "proto3";
 
-package hashicorp.watchtower.controller.iam.store.v1;
+package controller.storage.iam.store.v1;
 option go_package = "github.com/hashicorp/watchtower/internal/iam/store;store";
 
 import "google/protobuf/timestamp.proto";
