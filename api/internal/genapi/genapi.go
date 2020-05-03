@@ -43,6 +43,28 @@ var (
 
 	inputStructs = []*generateInfo{
 		{
+			os.Getenv("APIGEN_BASEPATH") + "/internal/gen/controller/api/error.pb.go",
+			"Error",
+			os.Getenv("APIGEN_BASEPATH") + "/api/error.go",
+			"Error",
+			"api",
+			"",
+			"",
+			"",
+			templateTypeResource,
+		},
+		{
+			os.Getenv("APIGEN_BASEPATH") + "/internal/gen/controller/api/error.pb.go",
+			"ErrorDetails",
+			os.Getenv("APIGEN_BASEPATH") + "/api/error_details.go",
+			"ErrorDetails",
+			"api",
+			"",
+			"",
+			"",
+			templateTypeResource,
+		},
+		{
 			os.Getenv("APIGEN_BASEPATH") + "/internal/gen/controller/api/resources/hosts/host.pb.go",
 			"Host",
 			os.Getenv("APIGEN_BASEPATH") + "/api/hosts/host.go",
@@ -167,7 +189,7 @@ func createStructs() {
 
 					// Add default fields if a base resource
 					if inputStruct.templateType == templateTypeResource {
-						st.Fields.List = append([]*ast.Field{&ast.Field{
+						st.Fields.List = append([]*ast.Field{{
 							Names: []*ast.Ident{
 								{
 									Name: "defaultFields",
@@ -325,7 +347,7 @@ func createStructs() {
 		var outBuf []string
 		for scanner.Scan() {
 			if !inType {
-				if strings.HasPrefix(scanner.Text(), "type "+inputStruct.outName) {
+				if strings.HasPrefix(scanner.Text(), "type "+inputStruct.outName+" struct") {
 					inType = true
 					// Don't add this line, we'll do it in the template
 					continue

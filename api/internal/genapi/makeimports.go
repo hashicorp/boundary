@@ -4,3 +4,4 @@ package main
 
 //go:generate go run genapi.go
 //go:generate goimports -w ../../hosts
+//go:generate goimports -w ../..
