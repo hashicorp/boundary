@@ -6,6 +6,7 @@ require (
 	github.com/armon/go-metrics v0.3.3
 	github.com/bufbuild/buf v0.11.0
 	github.com/fatih/color v1.9.0
+	github.com/fatih/structs v1.1.0
 	github.com/favadi/protoc-go-inject-tag v1.0.0
 	github.com/ghodss/yaml v1.0.1-0.20190212211648-25d852aebe32
 	github.com/go-openapi/runtime v0.19.15 // indirect
@@ -38,7 +39,9 @@ require (
 	github.com/pkg/errors v0.9.1
 	github.com/posener/complete v1.2.3
 	github.com/ryanuber/columnize v2.1.0+incompatible
+	github.com/ryanuber/go-glob v1.0.0
 	github.com/spf13/viper v1.6.3 // indirect
+	github.com/stretchr/testify v1.5.1
 	go.mongodb.org/mongo-driver v1.3.2 // indirect
 	golang.org/x/net v0.0.0-20200324143707-d3edc9973b7e
 	golang.org/x/sys v0.0.0-20200420163511-1957bb5e6d1f // indirect

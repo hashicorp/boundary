@@ -19,9 +19,9 @@ message Timestamp {
 message Entry {
   // @inject_tag: gorm:"primary_key"
   uint32 id = 1;
-  // @inject_tag: `gorm:"default:current_timestamp"`
+  // @inject_tag: gorm:"not_null;type:TIMESTAMP"
   Timestamp create_time = 2;
-  // @inject_tag: `gorm:"default:current_timestamp"`
+  // @inject_tag: gorm:"not_null;type:TIMESTAMP"
   Timestamp update_time = 3;
 
   // @inject_tag: gorm:"not_null"
@@ -34,21 +34,15 @@ message Entry {
   // @inject_tag: gorm:"foreignkey:entry_id"
   repeated Metadata metadata = 6;
 
-  // ciphertext entry data stored in the database
-  // @inject_tag: gorm:"column:data;not_null" wrapping:"ct,entry_data"
-  bytes ct_data = 7;
-
-  // plain text version of the decrypted entry data
-  // we are NOT storing this plain-text entry data in the db
-  // @inject_tag: gorm:"-" wrapping:"pt,entry_data"
-  bytes data = 8;
+  // @inject_tat: gorm:"not_null"
+  bytes data = 7;
 }
 
 // Metadata provides a message for oplog metadata that's compatible with gorm
 message Metadata {
   // @inject_tag: gorm:"primary_key"
   uint32 id = 1;
-  // @inject_tag: `gorm:"default:current_timestamp"`
+  // @inject_tag: gorm:"not_null;type:TIMESTAMP"
   Timestamp create_time = 2;
   // @inject_tag: gorm:"not_nul
 
@@ -66,9 +60,9 @@ message Metadata {
 message Ticket {
   // @inject_tag: gorm:"primary_key"
   uint32 id = 1;
-  // @inject_tag: `gorm:"default:current_timestamp"`
+  // @inject_tag: gorm:"not_null;type:TIMESTAMP"
   Timestamp create_time = 2;
-  // @inject_tag: `gorm:"default:current_timestamp"`
+  // @inject_tag: gorm:"not_null;type:TIMESTAMP"
   Timestamp update_time = 3;
 
   // @inject_tat: gorm:"not_null"
