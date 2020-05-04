@@ -5,23 +5,25 @@ import (
 
 	"github.com/grpc-ecosystem/grpc-gateway/runtime"
 	"github.com/hashicorp/watchtower/internal/gen/controller/api"
-	"github.com/hashicorp/watchtower/internal/gen/controller/api/resource"
+	"github.com/hashicorp/watchtower/internal/repo"
 	"github.com/hashicorp/watchtower/internal/servers/controller"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
 
-// dao contains the data store lookups required by this service to satisfy it's functionality.
-type dao interface {
-	LookupHostByPublicId(ctx context.Context, id string) *resource.Host
-	ListHosts(ctx context.Context, orgID, projID, hostCatalogID string) []*resource.Host
-	DeleteHostByPublicId(ctx context.Context, id string) (bool, error)
-	CreateHost(ctx context.Context, orgID, projID, hostCatalogID, id string, h resource.Host) (resource.Host, error)
-	UpdateHost(ctx context.Context, orgID, projID, hostCatalogID, id string, h resource.Host, masks string) (resource.Host, error)
+// hostRepo contains the data store lookups required by this service to satisfy it's functionality.
+type hostRepo interface {
+	LookupHost(ctx context.Context, id string) (repo.Host, error)
+	ListHosts(ctx context.Context, catalogID string) ([]repo.Host, error)
+	DeleteHost(ctx context.Context, id string) (bool, error)
+	CreateHost(ctx context.Context, catalogID, id string, h repo.Host) (repo.Host, error)
+	UpdateHost(ctx context.Context, id string, h repo.Host, masks string) (repo.Host, error)
+	// TODO: Figure out the appropriate way to verify the path is appropriate, whether as a seperate method or merging this into the methods above.
+	VerifyAnsestory(ctx context.Context, id ...string) error
 }
 
 type Service struct {
-	dao dao
+	hRepo hostRepo
 }
 
 var _ api.HostServiceServer = &Service{}
@@ -62,6 +64,11 @@ func (s Service) DeleteHost(ctx context.Context, req *api.DeleteHostRequest) (*a
 	return nil, status.Errorf(codes.NotFound, "Org %q not found", req.OrgId)
 }
 
+// A validateX method should exist for each method above.  These methods do not make calls to any backing service but enforce
+// requirements on the structure of the request.  They verify that:
+//  * The path passed in is correctly formatted
+//  * All required parameters are set
+//  * There are no conflicting parameters provided
 func validateGetHostRequest(req *api.GetHostRequest) error {
 	if err := validateAncestors(req); err != nil {
 		return err

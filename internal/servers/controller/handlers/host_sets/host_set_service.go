@@ -5,22 +5,24 @@ import (
 
 	"github.com/grpc-ecosystem/grpc-gateway/runtime"
 	"github.com/hashicorp/watchtower/internal/gen/controller/api"
-	"github.com/hashicorp/watchtower/internal/gen/controller/api/resource"
+	"github.com/hashicorp/watchtower/internal/repo"
 	"github.com/hashicorp/watchtower/internal/servers/controller"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
 
-type dao interface {
-	LookupHostSetByPublicId(ctx context.Context, id string) *resource.HostSet
-	ListHostSets(ctx context.Context, orgID, projID, hostCatalogID string) []*resource.HostSet
-	DeleteHostSetByPublicId(ctx context.Context, id string) (bool, error)
-	CreateHostSet(ctx context.Context, orgID, projID, hostCatalogID, id string, hs resource.HostSet) (resource.HostSet, error)
-	UpdateHostSEt(ctx context.Context, orgID, projID, hostCatalogID, id string, hs resource.HostSet, masks string) (resource.HostSet, error)
+type hostSetRepo interface {
+	LookupHostSet(ctx context.Context, id string) (repo.HostSet, error)
+	ListHostSets(ctx context.Context, scopeID, catalogID string) ([]repo.HostSet, error)
+	DeleteHostSet(ctx context.Context, id string) (bool, error)
+	CreateHostSet(ctx context.Context, catalogID, id string, hs repo.HostSet) (repo.HostSet, error)
+	UpdateHostSet(ctx context.Context, catalogID, id string, hs repo.HostSet, masks string) (repo.HostSet, error)
+	// TODO: Figure out the appropriate way to verify the path is appropriate, whether as a seperate method or merging this into the methods above.
+	VerifyAnsestory(ctx context.Context, id ...string) error
 }
 
 type Service struct {
-	dao dao
+	hsRepo hostSetRepo
 }
 
 var _ api.HostSetServiceServer = &Service{}
@@ -75,6 +77,11 @@ func (s Service) RemoveFromHostSet(ctx context.Context, req *api.RemoveFromHostS
 	return nil, status.Errorf(codes.NotFound, "Org %q not found", req.OrgId)
 }
 
+// A validateX method should exist for each method above.  These methods do not make calls to any backing service but enforce
+// requirements on the structure of the request.  They verify that:
+//  * The path passed in is correctly formatted
+//  * All required parameters are set
+//  * There are no conflicting parameters provided
 func validateListHostSetRequest(req *api.GetHostSetRequest) error {
 	if err := validateAncestors(req); err != nil {
 		return err
