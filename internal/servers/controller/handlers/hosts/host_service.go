@@ -7,8 +7,8 @@ import (
 	"github.com/golang/protobuf/ptypes"
 	"github.com/golang/protobuf/ptypes/wrappers"
 	"github.com/grpc-ecosystem/grpc-gateway/runtime"
+	"github.com/hashicorp/watchtower/internal/gen/controller/api/resources/hosts"
 	"github.com/hashicorp/watchtower/internal/gen/controller/api/services"
-	"github.com/hashicorp/watchtower/internal/gen/controller/api/resource"
 	"github.com/hashicorp/watchtower/internal/repo"
 	"github.com/hashicorp/watchtower/internal/servers/controller"
 	"google.golang.org/grpc/codes"
@@ -33,42 +33,42 @@ type Service struct {
 var _ services.HostServiceServer = &Service{}
 var _ controller.RegisterGrpcGatewayer = &Service{}
 
-func (s Service) GetHost(ctx context.Context, req *services.GetHostRequest) (*api.GetHostResponse, error) {
+func (s Service) GetHost(ctx context.Context, req *services.GetHostRequest) (*services.GetHostResponse, error) {
 	if err := validateGetHostRequest(req); err != nil {
 		return nil, err
 	}
 	return nil, status.Errorf(codes.NotFound, "Org %q not found", req.OrgId)
 }
 
-func (s Service) CreateHost(ctx context.Context, req *services.CreateHostRequest) (*api.CreateHostResponse, error) {
+func (s Service) CreateHost(ctx context.Context, req *services.CreateHostRequest) (*services.CreateHostResponse, error) {
 	if err := validateCreateHostRequest(req); err != nil {
 		return nil, err
 	}
 	return nil, status.Errorf(codes.NotFound, "Org %q not found", req.OrgId)
 }
 
-func (s Service) UpdateHost(ctx context.Context, req *services.UpdateHostRequest) (*api.UpdateHostResponse, error) {
+func (s Service) UpdateHost(ctx context.Context, req *services.UpdateHostRequest) (*services.UpdateHostResponse, error) {
 	if err := validateUpdateHostRequest(req); err != nil {
 		return nil, err
 	}
 	return nil, status.Errorf(codes.NotFound, "Org %q not found", req.OrgId)
 }
 
-func (s Service) ListHosts(ctx context.Context, req *services.ListHostsRequest) (*api.ListHostsResponse, error) {
+func (s Service) ListHosts(ctx context.Context, req *services.ListHostsRequest) (*services.ListHostsResponse, error) {
 	if err := validateListHostsRequest(req); err != nil {
 		return nil, err
 	}
 	return nil, status.Errorf(codes.NotFound, "Org %q not found", req.OrgId)
 }
 
-func (s Service) DeleteHost(ctx context.Context, req *services.DeleteHostRequest) (*api.DeleteHostResponse, error) {
+func (s Service) DeleteHost(ctx context.Context, req *services.DeleteHostRequest) (*services.DeleteHostResponse, error) {
 	if err := validateDeleteHostRequest(req); err != nil {
 		return nil, err
 	}
 	return nil, status.Errorf(codes.NotFound, "Org %q not found", req.OrgId)
 }
 
-func toRepo(id string, in resource.Host) repo.Host {
+func toRepo(id string, in hosts.Host) repo.Host {
 	out := repo.Host{ID: id}
 	if in.GetFriendlyName() != nil {
 		out.FriendlyName = in.GetFriendlyName().GetValue()
@@ -79,9 +79,9 @@ func toRepo(id string, in resource.Host) repo.Host {
 	return out
 }
 
-func toProto(orgID, projID, catID string, in repo.Host) resource.Host {
-	out := resource.Host{}
-	out.Uri = fmt.Sprintf("orgs/%s/projects/%s/host-catalogs/%s/hosts/%s", orgID, projID, catID, in.ID)
+func toProto(orgID, projID, catID string, in repo.Host) hosts.Host {
+	out := hosts.Host{}
+	out.Path = fmt.Sprintf("orgs/%s/projects/%s/host-catalogs/%s/hosts/%s", orgID, projID, catID, in.ID)
 	out.Disabled = &wrappers.BoolValue{Value: in.Disabled}
 	// TODO: Don't ignore the errors.
 	out.CreatedTime, _ = ptypes.TimestampProto(in.CreateTime)
