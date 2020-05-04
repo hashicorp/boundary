@@ -12,7 +12,7 @@ import (
 	"text/tabwriter"
 
 	"github.com/fatih/color"
-	"github.com/hashicorp/vault/api"
+	"github.com/hashicorp/watchtower/api"
 	"github.com/hashicorp/watchtower/internal/cmd/base"
 	colorable "github.com/mattn/go-colorable"
 	"github.com/mitchellh/cli"
@@ -178,7 +178,7 @@ func RunCustom(args []string, runOpts *RunOptions) int {
 	exitCode, err := cli.Run()
 	if outputCurlString {
 		if exitCode == 0 {
-			fmt.Fprint(runOpts.Stderr, "Could not generate cURL command")
+			fmt.Fprint(runOpts.Stderr, "Could not generate cURL command\n")
 			return 1
 		} else {
 			if api.LastOutputStringError == nil {

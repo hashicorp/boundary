@@ -10,9 +10,9 @@ import "controller/api/resources/hosts/v1/host.proto";
 
 // HostSet is a collection of Hosts created and managed by a HostCatalog
 message HostSet {
-	// Canonical path of the resource from the API's base URI
+	// The ID of the host
 	// Output only.
-	string path = 1;
+	string id = 1;
 
 	// The type of the resource, to help differentiate schemas
 	google.protobuf.StringValue type = 2;

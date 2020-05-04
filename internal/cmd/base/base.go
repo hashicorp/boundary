@@ -7,12 +7,14 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"os"
 	"regexp"
 	"strings"
 	"sync"
 
 	"github.com/hashicorp/watchtower/api"
 	"github.com/mitchellh/cli"
+	"github.com/pkg/errors"
 	"github.com/posener/complete"
 )
 
@@ -29,27 +31,103 @@ const (
 var reRemoveWhitespace = regexp.MustCompile(`[\s]+`)
 
 type Command struct {
-	UI      cli.Ui
-	Address string
-	Context context.Context
+	Context    context.Context
+	UI         cli.Ui
+	ShutdownCh chan struct{}
 
 	flags     *FlagSets
 	flagsOnce sync.Once
 
-	flagCACert        string
-	flagCAPath        string
-	flagClientCert    string
-	flagClientKey     string
+	flagAddress string
+	flagOrg     string
+	flagProject string
+
+	flagTLSCACert     string
+	flagTLSCAPath     string
+	flagTLSClientCert string
+	flagTLSClientKey  string
 	flagTLSServerName string
 	flagTLSInsecure   bool
 
 	flagFormat           string
 	flagField            string
 	flagOutputCurlString bool
+
+	client *api.Client
 }
 
-func (c *Command) SetAddress(addr string) {
-	c.Address = addr
+// Client returns the HTTP API client. The client is cached on the command to
+// save performance on future calls.
+func (c *Command) Client() (*api.Client, error) {
+	// Read the test client if present
+	if c.client != nil {
+		return c.client, nil
+	}
+
+	config, err := api.DefaultConfig()
+	if err != nil {
+		return nil, err
+	}
+
+	if c.flagOutputCurlString {
+		config.OutputCurlString = c.flagOutputCurlString
+	}
+
+	c.client, err = api.NewClient(config)
+	if err != nil {
+		return nil, err
+	}
+
+	if c.flagAddress != NotSetValue {
+		c.client.SetAddress(c.flagAddress)
+	}
+	if c.flagOrg != NotSetValue {
+		c.client.SetOrg(c.flagOrg)
+	}
+	if c.flagProject != NotSetValue {
+		c.client.SetProject(c.flagProject)
+	}
+
+	// If we need custom TLS configuration, then set it
+	var modifiedTLS bool
+	tlsConfig := config.TLSConfig
+	if c.flagTLSCACert != NotSetValue {
+		tlsConfig.CACert = c.flagTLSCACert
+		modifiedTLS = true
+	}
+	if c.flagTLSCAPath != NotSetValue {
+		tlsConfig.CAPath = c.flagTLSCAPath
+		modifiedTLS = true
+	}
+	if c.flagTLSClientCert != NotSetValue {
+		tlsConfig.ClientCert = c.flagTLSClientCert
+		modifiedTLS = true
+	}
+	if c.flagTLSClientKey != NotSetValue {
+		tlsConfig.ClientKey = c.flagTLSClientKey
+		modifiedTLS = true
+	}
+	if c.flagTLSServerName != NotSetValue {
+		tlsConfig.ServerName = c.flagTLSServerName
+		modifiedTLS = true
+	}
+	if c.flagTLSInsecure {
+		tlsConfig.Insecure = c.flagTLSInsecure
+		modifiedTLS = true
+	}
+	if modifiedTLS {
+		// Setup TLS config
+		if err := c.client.SetTLSConfig(tlsConfig); err != nil {
+			return nil, errors.Wrap(err, "failed to setup TLS config")
+		}
+	}
+
+	// Turn off retries on the CLI
+	if os.Getenv(api.EnvWatchtowerMaxRetries) == "" {
+		c.client.SetMaxRetries(0)
+	}
+
+	return c.client, nil
 }
 
 type FlagSetBit uint
@@ -73,26 +151,39 @@ func (c *Command) FlagSet(bit FlagSetBit) *FlagSets {
 		bit = bit | FlagSetHTTP
 
 		if bit&FlagSetHTTP != 0 {
-			f := set.NewFlagSet("HTTP Options")
+			f := set.NewFlagSet("Connection Options")
 
-			addrStringVar := &StringVar{
+			f.StringVar(&StringVar{
 				Name:       FlagNameAddress,
-				Target:     &c.Address,
+				Target:     &c.flagAddress,
+				Default:    NotSetValue,
 				EnvVar:     api.EnvWatchtowerAddress,
 				Completion: complete.PredictAnything,
 				Usage:      "Address of the Watchtower controller.",
-			}
-			if c.Address != "" {
-				addrStringVar.Default = c.Address
-			} else {
-				addrStringVar.Default = "https://127.0.0.1:9200"
-			}
-			f.StringVar(addrStringVar)
+			})
+
+			f.StringVar(&StringVar{
+				Name:       FlagNameOrg,
+				Target:     &c.flagOrg,
+				Default:    NotSetValue,
+				EnvVar:     api.EnvWatchtowerOrg,
+				Completion: complete.PredictAnything,
+				Usage:      "Organization in which to make the request; overrides any set in the address.",
+			})
+
+			f.StringVar(&StringVar{
+				Name:       FlagNameProject,
+				Target:     &c.flagProject,
+				Default:    NotSetValue,
+				EnvVar:     api.EnvWatchtowerProject,
+				Completion: complete.PredictAnything,
+				Usage:      "Project in which to make the request; overrides any set in the address.",
+			})
 
 			f.StringVar(&StringVar{
 				Name:       FlagNameCACert,
-				Target:     &c.flagCACert,
-				Default:    "",
+				Target:     &c.flagTLSCACert,
+				Default:    NotSetValue,
 				EnvVar:     api.EnvWatchtowerCACert,
 				Completion: complete.PredictFiles("*"),
 				Usage: "Path on the local disk to a single PEM-encoded CA " +
@@ -102,8 +193,8 @@ func (c *Command) FlagSet(bit FlagSetBit) *FlagSets {
 
 			f.StringVar(&StringVar{
 				Name:       FlagNameCAPath,
-				Target:     &c.flagCAPath,
-				Default:    "",
+				Target:     &c.flagTLSCAPath,
+				Default:    NotSetValue,
 				EnvVar:     api.EnvWatchtowerCAPath,
 				Completion: complete.PredictDirs("*"),
 				Usage: "Path on the local disk to a directory of PEM-encoded CA " +
@@ -112,8 +203,8 @@ func (c *Command) FlagSet(bit FlagSetBit) *FlagSets {
 
 			f.StringVar(&StringVar{
 				Name:       FlagNameClientCert,
-				Target:     &c.flagClientCert,
-				Default:    "",
+				Target:     &c.flagTLSClientCert,
+				Default:    NotSetValue,
 				EnvVar:     api.EnvWatchtowerClientCert,
 				Completion: complete.PredictFiles("*"),
 				Usage: "Path on the local disk to a single PEM-encoded CA " +
@@ -123,8 +214,8 @@ func (c *Command) FlagSet(bit FlagSetBit) *FlagSets {
 
 			f.StringVar(&StringVar{
 				Name:       FlagNameClientKey,
-				Target:     &c.flagClientKey,
-				Default:    "",
+				Target:     &c.flagTLSClientKey,
+				Default:    NotSetValue,
 				EnvVar:     api.EnvWatchtowerClientKey,
 				Completion: complete.PredictFiles("*"),
 				Usage: "Path on the local disk to a single PEM-encoded private key " +
@@ -134,7 +225,7 @@ func (c *Command) FlagSet(bit FlagSetBit) *FlagSets {
 			f.StringVar(&StringVar{
 				Name:       FlagTLSServerName,
 				Target:     &c.flagTLSServerName,
-				Default:    "",
+				Default:    NotSetValue,
 				EnvVar:     api.EnvWatchtowerTLSServerName,
 				Completion: complete.PredictAnything,
 				Usage: "Name to use as the SNI host when connecting to the Watchtower " +
@@ -142,23 +233,20 @@ func (c *Command) FlagSet(bit FlagSetBit) *FlagSets {
 			})
 
 			f.BoolVar(&BoolVar{
-				Name:    FlagNameTLSInsecure,
-				Target:  &c.flagTLSInsecure,
-				Default: false,
-				EnvVar:  api.EnvWatchtowerTLSInsecure,
+				Name:   FlagNameTLSInsecure,
+				Target: &c.flagTLSInsecure,
+				EnvVar: api.EnvWatchtowerTLSInsecure,
 				Usage: "Disable verification of TLS certificates. Using this option " +
 					"is highly discouraged as it decreases the security of data " +
 					"transmissions to and from the Watchtower server.",
 			})
 
 			f.BoolVar(&BoolVar{
-				Name:    "output-curl-string",
-				Target:  &c.flagOutputCurlString,
-				Default: false,
+				Name:   "output-curl-string",
+				Target: &c.flagOutputCurlString,
 				Usage: "Instead of executing the request, print an equivalent cURL " +
 					"command string and exit.",
 			})
-
 		}
 
 		if bit&(FlagSetOutputField|FlagSetOutputFormat) != 0 {
