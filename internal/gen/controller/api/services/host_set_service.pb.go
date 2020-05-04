@@ -665,8 +665,9 @@ type AddToHostSetRequest struct {
 	ProjectId     string `protobuf:"bytes,2,opt,name=project_id,json=projectId,proto3" json:"project_id,omitempty"`
 	HostCatalogId string `protobuf:"bytes,3,opt,name=host_catalog_id,json=hostCatalogId,proto3" json:"host_catalog_id,omitempty"`
 	Id            string `protobuf:"bytes,4,opt,name=id,proto3" json:"id,omitempty"`
-	// A list of host IDss which will be added to this host set. Each host referenced here must be a child of the
-	// same host catalog that this host set is a child of.
+	// A list of host IDs which will be added to this host set. Each host
+	// referenced here must be a child of the same host catalog that this host
+	// set is a child of.
 	HostIds []string `protobuf:"bytes,5,rep,name=host_ids,json=hostIds,proto3" json:"host_ids,omitempty"`
 }
 
@@ -785,7 +786,8 @@ type RemoveFromHostSetRequest struct {
 	HostCatalogId string `protobuf:"bytes,3,opt,name=host_catalog_id,json=hostCatalogId,proto3" json:"host_catalog_id,omitempty"`
 	// This host set's id.
 	Id string `protobuf:"bytes,4,opt,name=id,proto3" json:"id,omitempty"`
-	// A list of host IDs which should not be in the host set when this request returns.
+	// A list of host IDs which should not be in the host set when this request
+	// returns.
 	HostIds []string `protobuf:"bytes,5,rep,name=host_ids,json=hostIds,proto3" json:"host_ids,omitempty"`
 }
 

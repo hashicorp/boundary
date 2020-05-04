@@ -6,6 +6,7 @@ require (
 	github.com/armon/go-metrics v0.3.3
 	github.com/bufbuild/buf v0.11.0
 	github.com/fatih/color v1.9.0
+	github.com/fatih/structs v1.1.0
 	github.com/favadi/protoc-go-inject-tag v1.0.0
 	github.com/ghodss/yaml v1.0.1-0.20190212211648-25d852aebe32
 	github.com/go-openapi/runtime v0.19.15 // indirect
