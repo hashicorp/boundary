@@ -15,7 +15,7 @@ message HostCatalog {
 	string path = 1;
 
 	// The type of the resource, to help differentiate schemas
-	string type = 2;
+	google.protobuf.StringValue type = 2;
 
 	// Friendly name, if set
 	google.protobuf.StringValue friendly_name = 3;

@@ -10,6 +10,8 @@ export APIGEN_BASEPATH := $(shell pwd)
 bootstrap:
 	go generate -tags tools tools/tools.go
 
+gen: proto api
+
 api:
 	$(MAKE) --environment-overrides -C api/internal/genapi api
 
@@ -46,6 +48,6 @@ cleanup:
 	@rm -R ${TMP_DIR}
 
 
-.PHONY: api bootstrap cleanup proto
+.PHONY: api bootstrap cleanup gen proto
 
 .NOTPARALLEL:
