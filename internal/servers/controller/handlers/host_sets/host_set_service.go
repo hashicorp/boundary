@@ -7,8 +7,8 @@ import (
 	"github.com/golang/protobuf/ptypes"
 	"github.com/golang/protobuf/ptypes/wrappers"
 	"github.com/grpc-ecosystem/grpc-gateway/runtime"
+	"github.com/hashicorp/watchtower/internal/gen/controller/api/resources/hosts"
 	"github.com/hashicorp/watchtower/internal/gen/controller/api/services"
-	"github.com/hashicorp/watchtower/internal/gen/controller/api/resource"
 	"github.com/hashicorp/watchtower/internal/repo"
 	"github.com/hashicorp/watchtower/internal/servers/controller"
 	"google.golang.org/grpc/codes"
@@ -32,56 +32,56 @@ type Service struct {
 var _ services.HostSetServiceServer = &Service{}
 var _ controller.RegisterGrpcGatewayer = &Service{}
 
-func (s Service) GetHostSet(ctx context.Context, req *services.GetHostSetRequest) (*api.GetHostSetResponse, error) {
+func (s Service) GetHostSet(ctx context.Context, req *services.GetHostSetRequest) (*services.GetHostSetResponse, error) {
 	if err := validateListHostSetRequest(req); err != nil {
 		return nil, err
 	}
 	return nil, status.Errorf(codes.NotFound, "Org %q not found", req.OrgId)
 }
 
-func (s Service) ListHostSets(ctx context.Context, req *services.ListHostSetsRequest) (*api.ListHostSetsResponse, error) {
+func (s Service) ListHostSets(ctx context.Context, req *services.ListHostSetsRequest) (*services.ListHostSetsResponse, error) {
 	if err := validateListHostSetsRequest(req); err != nil {
 		return nil, err
 	}
 	return nil, status.Errorf(codes.NotFound, "Org %q not found", req.OrgId)
 }
 
-func (s Service) CreateHostSet(ctx context.Context, req *services.CreateHostSetRequest) (*api.CreateHostSetResponse, error) {
+func (s Service) CreateHostSet(ctx context.Context, req *services.CreateHostSetRequest) (*services.CreateHostSetResponse, error) {
 	if err := validateCreateHostSetRequest(req); err != nil {
 		return nil, err
 	}
 	return nil, status.Errorf(codes.NotFound, "Org %q not found", req.OrgId)
 }
 
-func (s Service) UpdateHostSet(ctx context.Context, req *api.UpdateHostSetRequest) (*api.UpdateHostSetResponse, error) {
+func (s Service) UpdateHostSet(ctx context.Context, req *services.UpdateHostSetRequest) (*services.UpdateHostSetResponse, error) {
 	if err := validateUpdateHostSetRequest(req); err != nil {
 		return nil, err
 	}
 	return nil, status.Errorf(codes.NotFound, "Org %q not found", req.OrgId)
 }
 
-func (s Service) DeleteHostSet(ctx context.Context, req *services.DeleteHostSetRequest) (*api.DeleteHostSetResponse, error) {
+func (s Service) DeleteHostSet(ctx context.Context, req *services.DeleteHostSetRequest) (*services.DeleteHostSetResponse, error) {
 	if err := validateDeleteHostSetRequest(req); err != nil {
 		return nil, err
 	}
 	return nil, status.Errorf(codes.NotFound, "Org %q not found", req.OrgId)
 }
 
-func (s Service) AddToHostSet(ctx context.Context, req *services.AddToHostSetRequest) (*api.AddToHostSetResponse, error) {
+func (s Service) AddToHostSet(ctx context.Context, req *services.AddToHostSetRequest) (*services.AddToHostSetResponse, error) {
 	if err := validateAddToHostSetRequest(req); err != nil {
 		return nil, err
 	}
 	return nil, status.Errorf(codes.NotFound, "Org %q not found", req.OrgId)
 }
 
-func (s Service) RemoveFromHostSet(ctx context.Context, req *services.RemoveFromHostSetRequest) (*api.RemoveFromHostSetResponse, error) {
+func (s Service) RemoveFromHostSet(ctx context.Context, req *services.RemoveFromHostSetRequest) (*services.RemoveFromHostSetResponse, error) {
 	if err := validateRemoveFromHostSetRequest(req); err != nil {
 		return nil, err
 	}
 	return nil, status.Errorf(codes.NotFound, "Org %q not found", req.OrgId)
 }
 
-func toRepo(id string, in resource.HostSet) repo.HostSet {
+func toRepo(id string, in hosts.HostSet) repo.HostSet {
 	out := repo.HostSet{ID: id}
 	if in.GetFriendlyName() != nil {
 		out.FriendlyName = in.GetFriendlyName().GetValue()
@@ -92,14 +92,14 @@ func toRepo(id string, in resource.HostSet) repo.HostSet {
 	return out
 }
 
-func toProto(orgID, projID, catID string, in repo.HostSet) resource.HostSet {
-	out := resource.HostSet{}
-	out.Uri = fmt.Sprintf("orgs/%s/projects/%s/host-catalogs/%s/host-sets/%s", orgID, projID, catID, in.ID)
+func toProto(orgID, projID, catID string, in repo.HostSet) hosts.HostSet {
+	out := hosts.HostSet{}
+	out.Path = fmt.Sprintf("orgs/%s/projects/%s/host-catalogs/%s/host-sets/%s", orgID, projID, catID, in.ID)
 	out.Disabled = &wrappers.BoolValue{Value: in.Disabled}
 	// TODO: Don't ignore the errors.
 	out.CreatedTime, _ = ptypes.TimestampProto(in.CreateTime)
 	out.UpdatedTime, _ = ptypes.TimestampProto(in.UpdateTime)
-	out.Size = &wrappers.Int32Value{Value: in.Size}
+	out.Size = &wrappers.Int64Value{Value: in.Size}
 	// TODO: Figure out conversion of Hosts for the lists
 	return out
 }

@@ -29,7 +29,7 @@ type HostSet struct {
 	Disabled     bool
 	Hosts        []Host
 	// These values cannot be used to mutate data in storage.
-	Size       int32
+	Size       int64
 	CreateTime time.Time
 	UpdateTime time.Time
 }
