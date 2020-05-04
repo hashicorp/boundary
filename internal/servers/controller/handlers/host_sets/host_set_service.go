@@ -7,8 +7,8 @@ import (
 	"github.com/golang/protobuf/ptypes"
 	"github.com/golang/protobuf/ptypes/wrappers"
 	"github.com/grpc-ecosystem/grpc-gateway/runtime"
-	"github.com/hashicorp/watchtower/internal/gen/controller/api/resources/hosts"
-	"github.com/hashicorp/watchtower/internal/gen/controller/api/services"
+	pb "github.com/hashicorp/watchtower/internal/gen/controller/api/resources/hosts"
+	pbs "github.com/hashicorp/watchtower/internal/gen/controller/api/services"
 	"github.com/hashicorp/watchtower/internal/repo"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -31,37 +31,37 @@ func NewService(r hostSetRepo) *Service {
 	return &Service{r}
 }
 
-var _ services.HostSetServiceServer = &Service{}
+var _ pbs.HostSetServiceServer = &Service{}
 
-func (s Service) GetHostSet(ctx context.Context, req *services.GetHostSetRequest) (*services.GetHostSetResponse, error) {
+func (s Service) GetHostSet(ctx context.Context, req *pbs.GetHostSetRequest) (*pbs.GetHostSetResponse, error) {
 	if err := validateListHostSetRequest(req); err != nil {
 		return nil, err
 	}
 	return nil, status.Errorf(codes.NotFound, "Org %q not found", req.OrgId)
 }
 
-func (s Service) ListHostSets(ctx context.Context, req *services.ListHostSetsRequest) (*services.ListHostSetsResponse, error) {
+func (s Service) ListHostSets(ctx context.Context, req *pbs.ListHostSetsRequest) (*pbs.ListHostSetsResponse, error) {
 	if err := validateListHostSetsRequest(req); err != nil {
 		return nil, err
 	}
 	return nil, status.Errorf(codes.NotFound, "Org %q not found", req.OrgId)
 }
 
-func (s Service) CreateHostSet(ctx context.Context, req *services.CreateHostSetRequest) (*services.CreateHostSetResponse, error) {
+func (s Service) CreateHostSet(ctx context.Context, req *pbs.CreateHostSetRequest) (*pbs.CreateHostSetResponse, error) {
 	if err := validateCreateHostSetRequest(req); err != nil {
 		return nil, err
 	}
 	return nil, status.Errorf(codes.NotFound, "Org %q not found", req.OrgId)
 }
 
-func (s Service) UpdateHostSet(ctx context.Context, req *services.UpdateHostSetRequest) (*services.UpdateHostSetResponse, error) {
+func (s Service) UpdateHostSet(ctx context.Context, req *pbs.UpdateHostSetRequest) (*pbs.UpdateHostSetResponse, error) {
 	if err := validateUpdateHostSetRequest(req); err != nil {
 		return nil, err
 	}
 	return nil, status.Errorf(codes.NotFound, "Org %q not found", req.OrgId)
 }
 
-func (s Service) DeleteHostSet(ctx context.Context, req *services.DeleteHostSetRequest) (*services.DeleteHostSetResponse, error) {
+func (s Service) DeleteHostSet(ctx context.Context, req *pbs.DeleteHostSetRequest) (*pbs.DeleteHostSetResponse, error) {
 	if err := validateDeleteHostSetRequest(req); err != nil {
 		return nil, err
 	}
@@ -70,24 +70,24 @@ func (s Service) DeleteHostSet(ctx context.Context, req *services.DeleteHostSetR
 	if err != nil {
 		return nil, err
 	}
-	return &services.DeleteHostSetResponse{Existed: existed}, nil
+	return &pbs.DeleteHostSetResponse{Existed: existed}, nil
 }
 
-func (s Service) AddToHostSet(ctx context.Context, req *services.AddToHostSetRequest) (*services.AddToHostSetResponse, error) {
+func (s Service) AddToHostSet(ctx context.Context, req *pbs.AddToHostSetRequest) (*pbs.AddToHostSetResponse, error) {
 	if err := validateAddToHostSetRequest(req); err != nil {
 		return nil, err
 	}
 	return nil, status.Errorf(codes.NotFound, "Org %q not found", req.OrgId)
 }
 
-func (s Service) RemoveFromHostSet(ctx context.Context, req *services.RemoveFromHostSetRequest) (*services.RemoveFromHostSetResponse, error) {
+func (s Service) RemoveFromHostSet(ctx context.Context, req *pbs.RemoveFromHostSetRequest) (*pbs.RemoveFromHostSetResponse, error) {
 	if err := validateRemoveFromHostSetRequest(req); err != nil {
 		return nil, err
 	}
 	return nil, status.Errorf(codes.NotFound, "Org %q not found", req.OrgId)
 }
 
-func toRepo(id string, in *hosts.HostSet) *repo.HostSet {
+func toRepo(id string, in *pb.HostSet) *repo.HostSet {
 	out := &repo.HostSet{ID: id}
 	if in.GetFriendlyName() != nil {
 		out.FriendlyName = in.GetFriendlyName().GetValue()
@@ -98,8 +98,8 @@ func toRepo(id string, in *hosts.HostSet) *repo.HostSet {
 	return out
 }
 
-func toProto(orgID, projID, catID string, in *repo.HostSet) *hosts.HostSet {
-	out := &hosts.HostSet{}
+func toProto(orgID, projID, catID string, in *repo.HostSet) *pb.HostSet {
+	out := &pb.HostSet{}
 	out.Path = fmt.Sprintf("orgs/%s/projects/%s/host-catalogs/%s/host-sets/%s", orgID, projID, catID, in.ID)
 	out.Disabled = &wrappers.BoolValue{Value: in.Disabled}
 	// TODO: Don't ignore the errors.
@@ -115,49 +115,49 @@ func toProto(orgID, projID, catID string, in *repo.HostSet) *hosts.HostSet {
 //  * The path passed in is correctly formatted
 //  * All required parameters are set
 //  * There are no conflicting parameters provided
-func validateListHostSetRequest(req *services.GetHostSetRequest) error {
+func validateListHostSetRequest(req *pbs.GetHostSetRequest) error {
 	if err := validateAncestors(req); err != nil {
 		return err
 	}
 	return nil
 }
 
-func validateListHostSetsRequest(req *services.ListHostSetsRequest) error {
+func validateListHostSetsRequest(req *pbs.ListHostSetsRequest) error {
 	if err := validateAncestors(req); err != nil {
 		return err
 	}
 	return nil
 }
 
-func validateCreateHostSetRequest(req *services.CreateHostSetRequest) error {
+func validateCreateHostSetRequest(req *pbs.CreateHostSetRequest) error {
 	if err := validateAncestors(req); err != nil {
 		return err
 	}
 	return nil
 }
 
-func validateUpdateHostSetRequest(req *services.UpdateHostSetRequest) error {
+func validateUpdateHostSetRequest(req *pbs.UpdateHostSetRequest) error {
 	if err := validateAncestors(req); err != nil {
 		return err
 	}
 	return nil
 }
 
-func validateDeleteHostSetRequest(req *services.DeleteHostSetRequest) error {
+func validateDeleteHostSetRequest(req *pbs.DeleteHostSetRequest) error {
 	if err := validateAncestors(req); err != nil {
 		return err
 	}
 	return nil
 }
 
-func validateAddToHostSetRequest(req *services.AddToHostSetRequest) error {
+func validateAddToHostSetRequest(req *pbs.AddToHostSetRequest) error {
 	if err := validateAncestors(req); err != nil {
 		return err
 	}
 	return nil
 }
 
-func validateRemoveFromHostSetRequest(req *services.RemoveFromHostSetRequest) error {
+func validateRemoveFromHostSetRequest(req *pbs.RemoveFromHostSetRequest) error {
 	if err := validateAncestors(req); err != nil {
 		return err
 	}
@@ -186,5 +186,5 @@ func validateAncestors(r ancestorProvider) error {
 
 // RegisterGrpcGateway satisfies the RegisterGrpcGatewayer interface.
 func (s Service) RegisterGrpcGateway(mux *runtime.ServeMux) error {
-	return services.RegisterHostSetServiceHandlerServer(context.Background(), mux, s)
+	return pbs.RegisterHostSetServiceHandlerServer(context.Background(), mux, s)
 }

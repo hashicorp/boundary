@@ -7,8 +7,8 @@ import (
 	"github.com/golang/protobuf/ptypes"
 	"github.com/golang/protobuf/ptypes/wrappers"
 	"github.com/grpc-ecosystem/grpc-gateway/runtime"
-	"github.com/hashicorp/watchtower/internal/gen/controller/api/resources/hosts"
-	"github.com/hashicorp/watchtower/internal/gen/controller/api/services"
+	pb "github.com/hashicorp/watchtower/internal/gen/controller/api/resources/hosts"
+	pbs "github.com/hashicorp/watchtower/internal/gen/controller/api/services"
 	"github.com/hashicorp/watchtower/internal/repo"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -32,37 +32,45 @@ func NewService(r hostRepo) *Service {
 	return &Service{r}
 }
 
-var _ services.HostServiceServer = &Service{}
+var _ pbs.HostServiceServer = &Service{}
 
-func (s Service) GetHost(ctx context.Context, req *services.GetHostRequest) (*services.GetHostResponse, error) {
+func (s Service) GetHost(ctx context.Context, req *pbs.GetHostRequest) (*pbs.GetHostResponse, error) {
 	if err := validateGetHostRequest(req); err != nil {
 		return nil, err
 	}
-	return nil, status.Errorf(codes.NotFound, "Org %q not found", req.OrgId)
+	h, err := s.hRepo.LookupHost(ctx, req.GetId())
+	if err != nil {
+		return nil, err
+	}
+	if h == nil {
+		return nil, status.Errorf(codes.NotFound, "Unable to find host with id %q", req.GetId())
+	}
+	resp := &pbs.GetHostResponse{Item: toProto(req.GetOrgId(), req.GetProjectId(), req.GetHostCatalogId(), h)}
+	return resp, nil
 }
 
-func (s Service) CreateHost(ctx context.Context, req *services.CreateHostRequest) (*services.CreateHostResponse, error) {
+func (s Service) CreateHost(ctx context.Context, req *pbs.CreateHostRequest) (*pbs.CreateHostResponse, error) {
 	if err := validateCreateHostRequest(req); err != nil {
 		return nil, err
 	}
 	return nil, status.Errorf(codes.NotFound, "Org %q not found", req.OrgId)
 }
 
-func (s Service) UpdateHost(ctx context.Context, req *services.UpdateHostRequest) (*services.UpdateHostResponse, error) {
+func (s Service) UpdateHost(ctx context.Context, req *pbs.UpdateHostRequest) (*pbs.UpdateHostResponse, error) {
 	if err := validateUpdateHostRequest(req); err != nil {
 		return nil, err
 	}
 	return nil, status.Errorf(codes.NotFound, "Org %q not found", req.OrgId)
 }
 
-func (s Service) ListHosts(ctx context.Context, req *services.ListHostsRequest) (*services.ListHostsResponse, error) {
+func (s Service) ListHosts(ctx context.Context, req *pbs.ListHostsRequest) (*pbs.ListHostsResponse, error) {
 	if err := validateListHostsRequest(req); err != nil {
 		return nil, err
 	}
 	return nil, status.Errorf(codes.NotFound, "Org %q not found", req.OrgId)
 }
 
-func (s Service) DeleteHost(ctx context.Context, req *services.DeleteHostRequest) (*services.DeleteHostResponse, error) {
+func (s Service) DeleteHost(ctx context.Context, req *pbs.DeleteHostRequest) (*pbs.DeleteHostResponse, error) {
 	if err := validateDeleteHostRequest(req); err != nil {
 		return nil, err
 	}
@@ -71,10 +79,10 @@ func (s Service) DeleteHost(ctx context.Context, req *services.DeleteHostRequest
 	if err != nil {
 		return nil, err
 	}
-	return &services.DeleteHostResponse{Existed: existed}, nil
+	return &pbs.DeleteHostResponse{Existed: existed}, nil
 }
 
-func toRepo(id string, in *hosts.Host) *repo.Host {
+func toRepo(id string, in *pb.Host) *repo.Host {
 	out := &repo.Host{ID: id}
 	if in.GetFriendlyName() != nil {
 		out.FriendlyName = in.GetFriendlyName().GetValue()
@@ -85,8 +93,8 @@ func toRepo(id string, in *hosts.Host) *repo.Host {
 	return out
 }
 
-func toProto(orgID, projID, catID string, in *repo.Host) *hosts.Host {
-	out := &hosts.Host{}
+func toProto(orgID, projID, catID string, in *repo.Host) *pb.Host {
+	out := &pb.Host{}
 	out.Path = fmt.Sprintf("orgs/%s/projects/%s/host-catalogs/%s/hosts/%s", orgID, projID, catID, in.ID)
 	out.Disabled = &wrappers.BoolValue{Value: in.Disabled}
 	// TODO: Don't ignore the errors.
@@ -101,35 +109,35 @@ func toProto(orgID, projID, catID string, in *repo.Host) *hosts.Host {
 //  * The path passed in is correctly formatted
 //  * All required parameters are set
 //  * There are no conflicting parameters provided
-func validateGetHostRequest(req *services.GetHostRequest) error {
+func validateGetHostRequest(req *pbs.GetHostRequest) error {
 	if err := validateAncestors(req); err != nil {
 		return err
 	}
 	return nil
 }
 
-func validateCreateHostRequest(req *services.CreateHostRequest) error {
+func validateCreateHostRequest(req *pbs.CreateHostRequest) error {
 	if err := validateAncestors(req); err != nil {
 		return err
 	}
 	return nil
 }
 
-func validateUpdateHostRequest(req *services.UpdateHostRequest) error {
+func validateUpdateHostRequest(req *pbs.UpdateHostRequest) error {
 	if err := validateAncestors(req); err != nil {
 		return err
 	}
 	return nil
 }
 
-func validateListHostsRequest(req *services.ListHostsRequest) error {
+func validateListHostsRequest(req *pbs.ListHostsRequest) error {
 	if err := validateAncestors(req); err != nil {
 		return err
 	}
 	return nil
 }
 
-func validateDeleteHostRequest(req *services.DeleteHostRequest) error {
+func validateDeleteHostRequest(req *pbs.DeleteHostRequest) error {
 	if err := validateAncestors(req); err != nil {
 		return err
 	}
@@ -158,5 +166,5 @@ func validateAncestors(r ancestorProvider) error {
 
 // RegisterGrpcGateway satisfies the RegisterGrpcGatewayer interface.
 func (s Service) RegisterGrpcGateway(mux *runtime.ServeMux) error {
-	return services.RegisterHostServiceHandlerServer(context.Background(), mux, s)
+	return pbs.RegisterHostServiceHandlerServer(context.Background(), mux, s)
 }

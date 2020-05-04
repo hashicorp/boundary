@@ -9,8 +9,8 @@ import (
 	"github.com/golang/protobuf/proto"
 	"github.com/golang/protobuf/ptypes"
 	"github.com/golang/protobuf/ptypes/wrappers"
-	"github.com/hashicorp/watchtower/internal/gen/controller/api/resources/hosts"
-	"github.com/hashicorp/watchtower/internal/gen/controller/api/services"
+	pb "github.com/hashicorp/watchtower/internal/gen/controller/api/resources/hosts"
+	pbs "github.com/hashicorp/watchtower/internal/gen/controller/api/services"
 	"github.com/hashicorp/watchtower/internal/repo"
 	"github.com/hashicorp/watchtower/internal/servers/controller/handlers/host_catalogs"
 	"google.golang.org/grpc/codes"
@@ -72,7 +72,7 @@ func (f *fakeRepo) UpdateHostCatalog(ctx context.Context, scopeID, id string, hc
 }
 
 func TestDelete(t *testing.T) {
-	toMerge := &services.DeleteHostCatalogRequest{
+	toMerge := &pbs.DeleteHostCatalogRequest{
 		OrgId:     "1",
 		ProjectId: "2",
 		Id:        "3",
@@ -85,35 +85,35 @@ func TestDelete(t *testing.T) {
 	cases := []struct {
 		name     string
 		repoResp func() (bool, error)
-		req      *services.DeleteHostCatalogRequest
-		res      *services.DeleteHostCatalogResponse
+		req      *pbs.DeleteHostCatalogRequest
+		res      *pbs.DeleteHostCatalogResponse
 		errCode  codes.Code
 	}{
 		{
 			name:     "Delete Existing record",
 			repoResp: repoReturns(true, nil),
-			req:      &services.DeleteHostCatalogRequest{Id: "exists"},
-			res:      &services.DeleteHostCatalogResponse{Existed: true},
+			req:      &pbs.DeleteHostCatalogRequest{Id: "exists"},
+			res:      &pbs.DeleteHostCatalogResponse{Existed: true},
 			errCode:  codes.OK,
 		},
 		{
 			name:     "Delete always succeeds even for non existant catalogs",
 			repoResp: repoReturns(false, nil),
-			req:      &services.DeleteHostCatalogRequest{Id: "This doesn't exist."},
-			res:      &services.DeleteHostCatalogResponse{},
+			req:      &pbs.DeleteHostCatalogRequest{Id: "This doesn't exist."},
+			res:      &pbs.DeleteHostCatalogResponse{},
 			errCode:  codes.OK,
 		},
 		{
 			name:     "Repo Errors passed on to client",
 			repoResp: repoReturns(false, fmt.Errorf("Some Failure")),
-			req:      &services.DeleteHostCatalogRequest{Id: "exists"},
+			req:      &pbs.DeleteHostCatalogRequest{Id: "exists"},
 			res:      nil,
 			errCode:  codes.Internal,
 		},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			req := proto.Clone(toMerge).(*services.DeleteHostCatalogRequest)
+			req := proto.Clone(toMerge).(*pbs.DeleteHostCatalogRequest)
 			proto.Merge(req, tc.req)
 
 			repo := &fakeRepo{delete: tc.repoResp}
@@ -136,7 +136,7 @@ func TestDelete(t *testing.T) {
 
 func TestGet(t *testing.T) {
 	var err error
-	toMerge := &services.GetHostCatalogRequest{
+	toMerge := &pbs.GetHostCatalogRequest{
 		OrgId:     "1",
 		ProjectId: "2",
 		Id:        "requested id",
@@ -150,7 +150,7 @@ func TestGet(t *testing.T) {
 		UpdatedTime:  time.Now(),
 	}
 
-	pHostCatalog := &hosts.HostCatalog{
+	pHostCatalog := &pb.HostCatalog{
 		FriendlyName: &wrappers.StringValue{Value: rHostCatalog.FriendlyName},
 	}
 	if pHostCatalog.CreatedTime, err = ptypes.TimestampProto(rHostCatalog.CreatedTime); err != nil {
@@ -167,28 +167,28 @@ func TestGet(t *testing.T) {
 	cases := []struct {
 		name     string
 		repoResp func() (*repo.HostCatalog, error)
-		req      *services.GetHostCatalogRequest
-		res      *services.GetHostCatalogResponse
+		req      *pbs.GetHostCatalogRequest
+		res      *pbs.GetHostCatalogResponse
 		errCode  codes.Code
 	}{
 		{
 			name:     "Get an Existing HostCatalog",
 			repoResp: repoReturns(rHostCatalog, nil),
-			req:      &services.GetHostCatalogRequest{Id: "exists"},
-			res:      &services.GetHostCatalogResponse{Item: pHostCatalog},
+			req:      &pbs.GetHostCatalogRequest{Id: "exists"},
+			res:      &pbs.GetHostCatalogResponse{Item: pHostCatalog},
 			errCode:  codes.OK,
 		},
 		{
 			name:     "Get a non existant Host Catalog",
 			repoResp: repoReturns(nil, nil),
-			req:      &services.GetHostCatalogRequest{Id: "doesnt exist"},
+			req:      &pbs.GetHostCatalogRequest{Id: "doesnt exist"},
 			res:      nil,
 			errCode:  codes.NotFound,
 		},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			req := proto.Clone(toMerge).(*services.GetHostCatalogRequest)
+			req := proto.Clone(toMerge).(*pbs.GetHostCatalogRequest)
 			proto.Merge(req, tc.req)
 
 			repo := &fakeRepo{lookup: tc.repoResp}
