@@ -2,7 +2,10 @@ package host_sets
 
 import (
 	"context"
+	"fmt"
 
+	"github.com/golang/protobuf/ptypes"
+	"github.com/golang/protobuf/ptypes/wrappers"
 	"github.com/grpc-ecosystem/grpc-gateway/runtime"
 	"github.com/hashicorp/watchtower/internal/gen/controller/api/services"
 	"github.com/hashicorp/watchtower/internal/gen/controller/api/resource"
@@ -76,6 +79,29 @@ func (s Service) RemoveFromHostSet(ctx context.Context, req *services.RemoveFrom
 		return nil, err
 	}
 	return nil, status.Errorf(codes.NotFound, "Org %q not found", req.OrgId)
+}
+
+func toRepo(id string, in resource.HostSet) repo.HostSet {
+	out := repo.HostSet{ID: id}
+	if in.GetFriendlyName() != nil {
+		out.FriendlyName = in.GetFriendlyName().GetValue()
+	}
+	if in.GetDisabled() != nil {
+		out.Disabled = in.GetDisabled().GetValue()
+	}
+	return out
+}
+
+func toProto(orgID, projID, catID string, in repo.HostSet) resource.HostSet {
+	out := resource.HostSet{}
+	out.Uri = fmt.Sprintf("orgs/%s/projects/%s/host-catalogs/%s/host-sets/%s", orgID, projID, catID, in.ID)
+	out.Disabled = &wrappers.BoolValue{Value: in.Disabled}
+	// TODO: Don't ignore the errors.
+	out.CreatedTime, _ = ptypes.TimestampProto(in.CreateTime)
+	out.UpdatedTime, _ = ptypes.TimestampProto(in.UpdateTime)
+	out.Size = &wrappers.Int32Value{Value: in.Size}
+	// TODO: Figure out conversion of Hosts for the lists
+	return out
 }
 
 // A validateX method should exist for each method above.  These methods do not make calls to any backing service but enforce

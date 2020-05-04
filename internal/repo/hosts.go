@@ -17,7 +17,7 @@ type HostCatalog struct {
 	ID           string
 	FriendlyName string
 	Disabled     bool
-	scopeID      string
+	ScopeID      string
 	// These values cannot be used to mutate data in storage.
 	CreateTime time.Time
 	UpdateTime time.Time
