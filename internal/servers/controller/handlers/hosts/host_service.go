@@ -16,17 +16,20 @@ import (
 
 // hostRepo contains the data store lookups required by this service to satisfy it's functionality.
 type hostRepo interface {
-	LookupHost(ctx context.Context, id string) (repo.Host, error)
+	LookupHost(ctx context.Context, id string) (*repo.Host, error)
 	ListHosts(ctx context.Context, catalogID string) ([]repo.Host, error)
 	DeleteHost(ctx context.Context, id string) (bool, error)
-	CreateHost(ctx context.Context, catalogID, id string, h repo.Host) (repo.Host, error)
-	UpdateHost(ctx context.Context, id string, h repo.Host, masks string) (repo.Host, error)
+	CreateHost(ctx context.Context, catalogID, id string, h repo.Host) (*repo.Host, error)
+	UpdateHost(ctx context.Context, id string, h repo.Host, masks string) (*repo.Host, error)
 	// TODO: Figure out the appropriate way to verify the path is appropriate, whether as a seperate method or merging this into the methods above.
-	VerifyAnsestory(ctx context.Context, id ...string) error
 }
 
 type Service struct {
 	hRepo hostRepo
+}
+
+func NewService(r hostRepo) *Service {
+	return &Service{r}
 }
 
 var _ services.HostServiceServer = &Service{}
@@ -63,11 +66,16 @@ func (s Service) DeleteHost(ctx context.Context, req *services.DeleteHostRequest
 	if err := validateDeleteHostRequest(req); err != nil {
 		return nil, err
 	}
-	return nil, status.Errorf(codes.NotFound, "Org %q not found", req.OrgId)
+
+	existed, err := s.hRepo.DeleteHost(ctx, req.Id)
+	if err != nil {
+		return nil, err
+	}
+	return &services.DeleteHostResponse{Existed: existed}, nil
 }
 
-func toRepo(id string, in hosts.Host) repo.Host {
-	out := repo.Host{ID: id}
+func toRepo(id string, in *hosts.Host) *repo.Host {
+	out := &repo.Host{ID: id}
 	if in.GetFriendlyName() != nil {
 		out.FriendlyName = in.GetFriendlyName().GetValue()
 	}
@@ -77,13 +85,13 @@ func toRepo(id string, in hosts.Host) repo.Host {
 	return out
 }
 
-func toProto(orgID, projID, catID string, in repo.Host) hosts.Host {
-	out := hosts.Host{}
+func toProto(orgID, projID, catID string, in *repo.Host) *hosts.Host {
+	out := &hosts.Host{}
 	out.Path = fmt.Sprintf("orgs/%s/projects/%s/host-catalogs/%s/hosts/%s", orgID, projID, catID, in.ID)
 	out.Disabled = &wrappers.BoolValue{Value: in.Disabled}
 	// TODO: Don't ignore the errors.
-	out.CreatedTime, _ = ptypes.TimestampProto(in.CreateTime)
-	out.UpdatedTime, _ = ptypes.TimestampProto(in.UpdateTime)
+	out.CreatedTime, _ = ptypes.TimestampProto(in.CreatedTime)
+	out.UpdatedTime, _ = ptypes.TimestampProto(in.UpdatedTime)
 	out.Address = &wrappers.StringValue{Value: in.Address}
 	return out
 }

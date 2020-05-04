@@ -2,7 +2,6 @@ package host_catalogs
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/golang/protobuf/ptypes"
 	"github.com/golang/protobuf/ptypes/wrappers"
@@ -15,17 +14,20 @@ import (
 )
 
 type hostCatalogRepo interface {
-	LookupHostCatalog(ctx context.Context, id string) (repo.HostCatalog, error)
+	LookupHostCatalog(ctx context.Context, id string) (*repo.HostCatalog, error)
 	ListHostCatalogs(ctx context.Context, scopeID string) ([]repo.HostCatalog, error)
 	DeleteHostCatalog(ctx context.Context, id string) (bool, error)
-	CreateHostCatalog(ctx context.Context, scopeID, id string, hc repo.HostCatalog) (repo.HostCatalog, error)
-	UpdateHostCatalog(ctx context.Context, scopeID, id string, hc repo.HostCatalog, masks string) (repo.HostCatalog, error)
+	CreateHostCatalog(ctx context.Context, scopeID, id string, hc repo.HostCatalog) (*repo.HostCatalog, error)
+	UpdateHostCatalog(ctx context.Context, scopeID, id string, hc repo.HostCatalog, masks string) (*repo.HostCatalog, error)
 	// TODO: Figure out the appropriate way to verify the path is appropriate, whether as a seperate method or merging this into the methods above.
-	VerifyAnsestory(ctx context.Context, id ...string) error
 }
 
 type Service struct {
 	hcRepo hostCatalogRepo
+}
+
+func NewService(repo hostCatalogRepo) *Service {
+	return &Service{repo}
 }
 
 var _ services.HostCatalogServiceServer = &Service{}
@@ -41,7 +43,16 @@ func (s Service) GetHostCatalog(ctx context.Context, req *services.GetHostCatalo
 	if err := validateGetHostCatalogRequest(req); err != nil {
 		return nil, err
 	}
-	return nil, status.Errorf(codes.NotFound, "Org %q not found", req.OrgId)
+	h, err := s.hcRepo.LookupHostCatalog(ctx, req.Id)
+	if err != nil {
+		return nil, err
+	}
+	if h == nil {
+		return nil, status.Errorf(codes.NotFound, "Could not find HostCatalog with id %q", req.GetId())
+	}
+	resp := &services.GetHostCatalogResponse{}
+	resp.Item = toProto(req.OrgId, req.ProjectId, h)
+	return resp, nil
 }
 
 func (s Service) CreateHostCatalog(ctx context.Context, req *services.CreateHostCatalogRequest) (*services.CreateHostCatalogResponse, error) {
@@ -62,7 +73,12 @@ func (s Service) DeleteHostCatalog(ctx context.Context, req *services.DeleteHost
 	if err := validateDeleteHostCatalogRequest(req); err != nil {
 		return nil, err
 	}
-	return &services.DeleteHostCatalogResponse{}, nil
+	existed, err := s.hcRepo.DeleteHostCatalog(ctx, req.Id)
+	if err != nil {
+		// TODO: Handle errors appropriately
+		return nil, status.Errorf(codes.Internal, "Couldn't delete Host Catalog: %v", err)
+	}
+	return &services.DeleteHostCatalogResponse{Existed: existed}, nil
 }
 
 func toRepo(id string, in hosts.HostCatalog) repo.HostCatalog {
@@ -76,14 +92,18 @@ func toRepo(id string, in hosts.HostCatalog) repo.HostCatalog {
 	return out
 }
 
-func toProto(orgID, projID string, in repo.HostCatalog) hosts.HostCatalog {
+func toProto(orgID, projID string, in *repo.HostCatalog) *hosts.HostCatalog {
 	out := hosts.HostCatalog{}
-	out.Path = fmt.Sprintf("orgs/%s/projects/%s/host-catalogs/%s", orgID, projID, in.ID)
-	out.Disabled = &wrappers.BoolValue{Value: in.Disabled}
+	if in.Disabled {
+		out.Disabled = &wrappers.BoolValue{Value: in.Disabled}
+	}
+	if in.FriendlyName != "" {
+		out.FriendlyName = &wrappers.StringValue{Value: in.FriendlyName}
+	}
 	// TODO: Don't ignore the errors.
-	out.CreatedTime, _ = ptypes.TimestampProto(in.CreateTime)
-	out.UpdatedTime, _ = ptypes.TimestampProto(in.UpdateTime)
-	return out
+	out.CreatedTime, _ = ptypes.TimestampProto(in.CreatedTime)
+	out.UpdatedTime, _ = ptypes.TimestampProto(in.UpdatedTime)
+	return &out
 }
 
 // A validateX method should exist for each method above.  These methods do not make calls to any backing service but enforce

@@ -9,8 +9,8 @@ type Host struct {
 	Disabled     bool
 	Address      string
 	// These values cannot be used to mutate data in storage.
-	CreateTime time.Time
-	UpdateTime time.Time
+	CreatedTime time.Time
+	UpdatedTime time.Time
 }
 
 type HostCatalog struct {
@@ -19,8 +19,8 @@ type HostCatalog struct {
 	Disabled     bool
 	ScopeID      string
 	// These values cannot be used to mutate data in storage.
-	CreateTime time.Time
-	UpdateTime time.Time
+	CreatedTime time.Time
+	UpdatedTime time.Time
 }
 
 type HostSet struct {
@@ -29,7 +29,7 @@ type HostSet struct {
 	Disabled     bool
 	Hosts        []Host
 	// These values cannot be used to mutate data in storage.
-	Size       int64
-	CreateTime time.Time
-	UpdateTime time.Time
+	Size        int64
+	CreatedTime time.Time
+	UpdatedTime time.Time
 }

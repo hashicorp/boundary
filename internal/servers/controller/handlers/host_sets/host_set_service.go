@@ -15,17 +15,20 @@ import (
 )
 
 type hostSetRepo interface {
-	LookupHostSet(ctx context.Context, id string) (repo.HostSet, error)
+	LookupHostSet(ctx context.Context, id string) (*repo.HostSet, error)
 	ListHostSets(ctx context.Context, scopeID, catalogID string) ([]repo.HostSet, error)
 	DeleteHostSet(ctx context.Context, id string) (bool, error)
-	CreateHostSet(ctx context.Context, catalogID, id string, hs repo.HostSet) (repo.HostSet, error)
-	UpdateHostSet(ctx context.Context, catalogID, id string, hs repo.HostSet, masks string) (repo.HostSet, error)
+	CreateHostSet(ctx context.Context, catalogID, id string, hs repo.HostSet) (*repo.HostSet, error)
+	UpdateHostSet(ctx context.Context, catalogID, id string, hs repo.HostSet, masks string) (*repo.HostSet, error)
 	// TODO: Figure out the appropriate way to verify the path is appropriate, whether as a seperate method or merging this into the methods above.
-	VerifyAnsestory(ctx context.Context, id ...string) error
 }
 
 type Service struct {
 	hsRepo hostSetRepo
+}
+
+func NewService(r hostSetRepo) *Service {
+	return &Service{r}
 }
 
 var _ services.HostSetServiceServer = &Service{}
@@ -62,7 +65,12 @@ func (s Service) DeleteHostSet(ctx context.Context, req *services.DeleteHostSetR
 	if err := validateDeleteHostSetRequest(req); err != nil {
 		return nil, err
 	}
-	return nil, status.Errorf(codes.NotFound, "Org %q not found", req.OrgId)
+
+	existed, err := s.hsRepo.DeleteHostSet(ctx, req.Id)
+	if err != nil {
+		return nil, err
+	}
+	return &services.DeleteHostSetResponse{Existed: existed}, nil
 }
 
 func (s Service) AddToHostSet(ctx context.Context, req *services.AddToHostSetRequest) (*services.AddToHostSetResponse, error) {
@@ -79,8 +87,8 @@ func (s Service) RemoveFromHostSet(ctx context.Context, req *services.RemoveFrom
 	return nil, status.Errorf(codes.NotFound, "Org %q not found", req.OrgId)
 }
 
-func toRepo(id string, in hosts.HostSet) repo.HostSet {
-	out := repo.HostSet{ID: id}
+func toRepo(id string, in *hosts.HostSet) *repo.HostSet {
+	out := &repo.HostSet{ID: id}
 	if in.GetFriendlyName() != nil {
 		out.FriendlyName = in.GetFriendlyName().GetValue()
 	}
@@ -90,13 +98,13 @@ func toRepo(id string, in hosts.HostSet) repo.HostSet {
 	return out
 }
 
-func toProto(orgID, projID, catID string, in repo.HostSet) hosts.HostSet {
-	out := hosts.HostSet{}
+func toProto(orgID, projID, catID string, in *repo.HostSet) *hosts.HostSet {
+	out := &hosts.HostSet{}
 	out.Path = fmt.Sprintf("orgs/%s/projects/%s/host-catalogs/%s/host-sets/%s", orgID, projID, catID, in.ID)
 	out.Disabled = &wrappers.BoolValue{Value: in.Disabled}
 	// TODO: Don't ignore the errors.
-	out.CreatedTime, _ = ptypes.TimestampProto(in.CreateTime)
-	out.UpdatedTime, _ = ptypes.TimestampProto(in.UpdateTime)
+	out.CreatedTime, _ = ptypes.TimestampProto(in.CreatedTime)
+	out.UpdatedTime, _ = ptypes.TimestampProto(in.UpdatedTime)
 	out.Size = &wrappers.Int64Value{Value: in.Size}
 	// TODO: Figure out conversion of Hosts for the lists
 	return out
