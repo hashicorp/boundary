@@ -1,3 +1,6 @@
+-- create test tables used in the unit tests for the internal/db package
+-- these tables (db_test_user, db_test_car, db_test_rental) are not part
+-- of the Watchtower domain model... they are simply used for testing the internal/db package
 CREATE TABLE if not exists db_test_user (
   id bigint generated always as identity primary key,
   create_time timestamp with time zone default current_timestamp,

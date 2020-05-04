@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"os"
 	"strings"
-	"sync"
 	"testing"
 
 	"github.com/golang-migrate/migrate/v4"
@@ -18,21 +17,6 @@ import (
 	"github.com/ory/dockertest/v3"
 )
 
-// Need a way to manage the shared database resource for these oplog
-// tests, so runningTests gives us a waitgroup to do this and clean up
-// the shared database resource when we're done.
-var runningTests sync.WaitGroup
-
-// startTest signals that we're starting a test that uses the shared test resources
-func StartTest() {
-	runningTests.Add(1)
-}
-
-// CompleteTest signals that we've finished a test that uses the shared test resources
-func CompleteTest() {
-	runningTests.Done()
-}
-
 // setup the tests (initialize the database one-time and intialized testDatabaseURL)
 func SetupTest(t *testing.T, migrationsDirectory string) (func(), *gorm.DB) {
 	if _, err := os.Stat(migrationsDirectory); os.IsNotExist(err) {
@@ -42,19 +26,11 @@ func SetupTest(t *testing.T, migrationsDirectory string) (func(), *gorm.DB) {
 	cleanup := func() {}
 	var url string
 	var err error
-	testInitDatabase.Do(func() {
-		cleanup, url, err = initDbInDocker(t, migrationsDirectory)
-		if err != nil {
-			t.Fatal(err)
-		}
-		testDatabaseURL = url
-		db, err := gorm.Open("postgres", url)
-		if err != nil {
-			t.Fatal(err)
-		}
-		defer db.Close()
-	})
-	db, err := gorm.Open("postgres", testDatabaseURL)
+	cleanup, url, err = initDbInDocker(t, migrationsDirectory)
+	if err != nil {
+		t.Fatal(err)
+	}
+	db, err := gorm.Open("postgres", url)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -77,17 +53,6 @@ func InitTestWrapper(t *testing.T) wrapping.Wrapper {
 	}
 	return root
 }
-
-// waitForTests will wait for all the tests that are sharing resources like the database
-func waitForTests() {
-	runningTests.Wait()
-}
-
-// testDatabaseURL is initialized once using sync.Once and set to the database URL for testing
-var testDatabaseURL string
-
-// testInitDatabase ensures that the database is only initialized once during the tests.
-var testInitDatabase sync.Once
 
 // initDbInDocker initializes postgres within dockertest for the unit tests
 func initDbInDocker(t *testing.T, migrationsDirectory string) (cleanup func(), retURL string, err error) {
@@ -134,12 +99,10 @@ func InitTestStore(t *testing.T, cleanup func(), url string, migrationsDirectory
 	// run migrations
 	m, err := migrate.New(fmt.Sprintf("file://%s", migrationsDirectory), url)
 	if err != nil {
-		CompleteTest()
 		cleanup()
 		t.Fatalf("Error creating migrations: %s", err)
 	}
 	if err := m.Up(); err != nil && err != migrate.ErrNoChange {
-		CompleteTest()
 		cleanup()
 		t.Fatalf("Error running migrations: %s", err)
 	}
@@ -147,7 +110,6 @@ func InitTestStore(t *testing.T, cleanup func(), url string, migrationsDirectory
 
 // cleanupResource will clean up the dockertest resources (postgres)
 func cleanupResource(t *testing.T, pool *dockertest.Pool, resource *dockertest.Resource) {
-	waitForTests()
 	var err error
 	for i := 0; i < 10; i++ {
 		err = pool.Purge(resource)

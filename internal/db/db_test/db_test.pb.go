@@ -4,7 +4,9 @@
 // 	protoc        v3.11.4
 // source: controller/storage/db/db_test/v1/db_test.proto
 
-// define a test proto package
+// define a test proto package for the internal/db package.  These protos
+// are only used for unit tests and are not part of the rest of the watchtower
+// domain model
 
 package db_test
 

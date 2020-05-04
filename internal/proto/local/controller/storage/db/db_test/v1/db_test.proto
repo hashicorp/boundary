@@ -1,6 +1,8 @@
 syntax = "proto3";
 
-// define a test proto package
+// define a test proto package for the internal/db package.  These protos
+// are only used for unit tests and are not part of the rest of the watchtower
+// domain model
 package controller.storage.db.db_test.v1;
 option go_package = "github.com/hashicorp/watchtower/internal/db/db_test;db_test";
 
