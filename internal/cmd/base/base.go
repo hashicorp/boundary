@@ -11,6 +11,7 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/hashicorp/watchtower/api"
 	"github.com/mitchellh/cli"
 	"github.com/posener/complete"
 )
@@ -77,7 +78,7 @@ func (c *Command) FlagSet(bit FlagSetBit) *FlagSets {
 			addrStringVar := &StringVar{
 				Name:       FlagNameAddress,
 				Target:     &c.Address,
-				EnvVar:     EnvWatchtowerAddress,
+				EnvVar:     api.EnvWatchtowerAddress,
 				Completion: complete.PredictAnything,
 				Usage:      "Address of the Watchtower controller.",
 			}
@@ -92,7 +93,7 @@ func (c *Command) FlagSet(bit FlagSetBit) *FlagSets {
 				Name:       FlagNameCACert,
 				Target:     &c.flagCACert,
 				Default:    "",
-				EnvVar:     EnvWatchtowerCACert,
+				EnvVar:     api.EnvWatchtowerCACert,
 				Completion: complete.PredictFiles("*"),
 				Usage: "Path on the local disk to a single PEM-encoded CA " +
 					"certificate to verify the Controller or Worker's server's SSL certificate. This " +
@@ -103,7 +104,7 @@ func (c *Command) FlagSet(bit FlagSetBit) *FlagSets {
 				Name:       FlagNameCAPath,
 				Target:     &c.flagCAPath,
 				Default:    "",
-				EnvVar:     EnvWatchtowerCAPath,
+				EnvVar:     api.EnvWatchtowerCAPath,
 				Completion: complete.PredictDirs("*"),
 				Usage: "Path on the local disk to a directory of PEM-encoded CA " +
 					"certificates to verify the SSL certificate of the Controller.",
@@ -113,7 +114,7 @@ func (c *Command) FlagSet(bit FlagSetBit) *FlagSets {
 				Name:       FlagNameClientCert,
 				Target:     &c.flagClientCert,
 				Default:    "",
-				EnvVar:     EnvWatchtowerClientCert,
+				EnvVar:     api.EnvWatchtowerClientCert,
 				Completion: complete.PredictFiles("*"),
 				Usage: "Path on the local disk to a single PEM-encoded CA " +
 					"certificate to use for TLS authentication to the Watchtower Controller. If " +
@@ -124,7 +125,7 @@ func (c *Command) FlagSet(bit FlagSetBit) *FlagSets {
 				Name:       FlagNameClientKey,
 				Target:     &c.flagClientKey,
 				Default:    "",
-				EnvVar:     EnvWatchtowerClientKey,
+				EnvVar:     api.EnvWatchtowerClientKey,
 				Completion: complete.PredictFiles("*"),
 				Usage: "Path on the local disk to a single PEM-encoded private key " +
 					"matching the client certificate from -client-cert.",
@@ -134,7 +135,7 @@ func (c *Command) FlagSet(bit FlagSetBit) *FlagSets {
 				Name:       FlagTLSServerName,
 				Target:     &c.flagTLSServerName,
 				Default:    "",
-				EnvVar:     EnvWatchtowerTLSServerName,
+				EnvVar:     api.EnvWatchtowerTLSServerName,
 				Completion: complete.PredictAnything,
 				Usage: "Name to use as the SNI host when connecting to the Watchtower " +
 					"server via TLS.",
@@ -144,7 +145,7 @@ func (c *Command) FlagSet(bit FlagSetBit) *FlagSets {
 				Name:    FlagNameTLSInsecure,
 				Target:  &c.flagTLSInsecure,
 				Default: false,
-				EnvVar:  EnvWatchtowerTLSInsecure,
+				EnvVar:  api.EnvWatchtowerTLSInsecure,
 				Usage: "Disable verification of TLS certificates. Using this option " +
 					"is highly discouraged as it decreases the security of data " +
 					"transmissions to and from the Watchtower server.",
