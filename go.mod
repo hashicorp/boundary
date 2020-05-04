@@ -37,6 +37,7 @@ require (
 	github.com/pires/go-proxyproto v0.0.0-20200213100827-833e5d06d8f0
 	github.com/pkg/errors v0.9.1
 	github.com/posener/complete v1.2.3
+	github.com/prometheus/common v0.9.1 // indirect
 	github.com/ryanuber/columnize v2.1.0+incompatible
 	github.com/spf13/viper v1.6.3 // indirect
 	go.mongodb.org/mongo-driver v1.3.2 // indirect
