@@ -5,22 +5,25 @@ import (
 
 	"github.com/grpc-ecosystem/grpc-gateway/runtime"
 	"github.com/hashicorp/watchtower/internal/gen/controller/api/services"
+	"github.com/hashicorp/watchtower/internal/repo"
 	"github.com/hashicorp/watchtower/internal/gen/controller/api/resource"
 	"github.com/hashicorp/watchtower/internal/servers/controller"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
 
-type dao interface {
-	LookupHostCatalogByPublicId(ctx context.Context, id string) *resource.HostCatalog
-	ListHostCatalogs(ctx context.Context, orgID, projID string) []*resource.HostCatalog
-	DeleteHostCatalogByPublicId(ctx context.Context, id string) (bool, error)
-	CreateHostCatalog(ctx context.Context, org, proj, id string, hc resource.HostCatalog) (resource.HostCatalog, error)
-	UpdateHostCatalog(ctx context.Context, org, proj, id string, hc resource.HostCatalog, masks string) (resource.HostCatalog, error)
+type hostCatalogRepo interface {
+	LookupHostCatalog(ctx context.Context, id string) (repo.HostCatalog, error)
+	ListHostCatalogs(ctx context.Context, scopeID string) ([]repo.HostCatalog, error)
+	DeleteHostCatalog(ctx context.Context, id string) (bool, error)
+	CreateHostCatalog(ctx context.Context, scopeID, id string, hc repo.HostCatalog) (repo.HostCatalog, error)
+	UpdateHostCatalog(ctx context.Context, scopeID, id string, hc repo.HostCatalog, masks string) (repo.HostCatalog, error)
+	// TODO: Figure out the appropriate way to verify the path is appropriate, whether as a seperate method or merging this into the methods above.
+	VerifyAnsestory(ctx context.Context, id ...string) error
 }
 
 type Service struct {
-	dao dao
+	hcRepo hostCatalogRepo
 }
 
 var _ services.HostCatalogServiceServer = &Service{}
@@ -61,6 +64,11 @@ func (s Service) DeleteHostCatalog(ctx context.Context, req *services.DeleteHost
 	return &services.DeleteHostCatalogResponse{}, nil
 }
 
+// A validateX method should exist for each method above.  These methods do not make calls to any backing service but enforce
+// requirements on the structure of the request.  They verify that:
+//  * The path passed in is correctly formatted
+//  * All required parameters are set
+//  * There are no conflicting parameters provided
 func validateListHostCatalogsRequest(req *services.ListHostCatalogsRequest) error {
 	if err := validateAncestors(req); err != nil {
 		return err
