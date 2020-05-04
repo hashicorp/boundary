@@ -18,6 +18,10 @@ type HandlerProperties struct {
 	ListenerConfig *configutil.Listener
 }
 
+type RegisterGrpcGatewayer interface {
+	RegisterGrpcGateway(*runtime.ServeMux) error
+}
+
 // Handler returns an http.Handler for the services. This can be used on
 // its own to mount the Vault API within another web server.
 func Handler(props HandlerProperties) http.Handler {
@@ -32,11 +36,15 @@ func Handler(props HandlerProperties) http.Handler {
 }
 
 func handleGrpcGateway() http.Handler {
-	ignored := context.Background()
 	mux := runtime.NewServeMux()
-	services.RegisterHostCatalogServiceHandlerServer(ignored, mux, &host_catalogs.Service{})
-	services.RegisterHostSetServiceHandlerServer(ignored, mux, &host_sets.Service{})
-	services.RegisterHostServiceHandlerServer(ignored, mux, &hosts.Service{})
+	services := []RegisterGrpcGatewayer{
+		&host_catalogs.Service{},
+		&host_sets.Service{},
+		&hosts.Service{},
+	}
+	for _, s := range services {
+		s.RegisterGrpcGateway(mux)
+	}
 
 	return mux
 }
