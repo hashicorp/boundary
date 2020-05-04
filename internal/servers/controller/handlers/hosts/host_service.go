@@ -10,7 +10,6 @@ import (
 	"github.com/hashicorp/watchtower/internal/gen/controller/api/resources/hosts"
 	"github.com/hashicorp/watchtower/internal/gen/controller/api/services"
 	"github.com/hashicorp/watchtower/internal/repo"
-	"github.com/hashicorp/watchtower/internal/servers/controller"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
@@ -31,7 +30,6 @@ type Service struct {
 }
 
 var _ services.HostServiceServer = &Service{}
-var _ controller.RegisterGrpcGatewayer = &Service{}
 
 func (s Service) GetHost(ctx context.Context, req *services.GetHostRequest) (*services.GetHostResponse, error) {
 	if err := validateGetHostRequest(req); err != nil {
