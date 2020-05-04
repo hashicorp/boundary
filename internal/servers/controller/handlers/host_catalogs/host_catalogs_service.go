@@ -2,9 +2,13 @@ package host_catalogs
 
 import (
 	"context"
+	"fmt"
 
+	"github.com/golang/protobuf/ptypes"
+	"github.com/golang/protobuf/ptypes/wrappers"
 	"github.com/grpc-ecosystem/grpc-gateway/runtime"
 	"github.com/hashicorp/watchtower/internal/gen/controller/api"
+	"github.com/hashicorp/watchtower/internal/gen/controller/api/resource"
 	"github.com/hashicorp/watchtower/internal/repo"
 	"github.com/hashicorp/watchtower/internal/servers/controller"
 	"google.golang.org/grpc/codes"
@@ -61,6 +65,27 @@ func (s Service) DeleteHostCatalog(ctx context.Context, req *api.DeleteHostCatal
 		return nil, err
 	}
 	return &api.DeleteHostCatalogResponse{}, nil
+}
+
+func toRepo(id string, in resource.HostCatalog) repo.HostCatalog {
+	out := repo.HostCatalog{ID: id}
+	if in.GetFriendlyName() != nil {
+		out.FriendlyName = in.GetFriendlyName().GetValue()
+	}
+	if in.GetDisabled() != nil {
+		out.Disabled = in.GetDisabled().GetValue()
+	}
+	return out
+}
+
+func toProto(orgID, projID string, in repo.HostCatalog) resource.HostCatalog {
+	out := resource.HostCatalog{}
+	out.Uri = fmt.Sprintf("orgs/%s/projects/%s/host-catalogs/%s", orgID, projID, in.ID)
+	out.Disabled = &wrappers.BoolValue{Value: in.Disabled}
+	// TODO: Don't ignore the errors.
+	out.CreatedTime, _ = ptypes.TimestampProto(in.CreateTime)
+	out.UpdatedTime, _ = ptypes.TimestampProto(in.UpdateTime)
+	return out
 }
 
 // A validateX method should exist for each method above.  These methods do not make calls to any backing service but enforce
