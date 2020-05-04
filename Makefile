@@ -8,6 +8,9 @@ REPO_PATH := github.com/hashicorp/watchtower
 bootstrap:
 	go generate -tags tools tools/tools.go
 
+api:
+	APIGEN_BASEPATH=$(shell pwd) go generate -tags genapi api/internal/genapi/makeimports.go
+
 ### oplog requires protoc-gen-go v1.20.0 or later
 # GO111MODULE=on go get -u github.com/golang/protobuf/protoc-gen-go@v1.40
 proto: protolint protobuild cleanup
@@ -40,6 +43,6 @@ cleanup:
 	@rm -R ${TMP_DIR}
 
 
-.PHONY: proto
+.PHONY: api bootstrap cleanup proto
 
 .NOTPARALLEL:

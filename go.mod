@@ -22,7 +22,7 @@ require (
 	github.com/hashicorp/go-hclog v0.12.2
 	github.com/hashicorp/go-kms-wrapping v0.5.8
 	github.com/hashicorp/go-multierror v1.0.0
-	github.com/hashicorp/go-retryablehttp v0.6.2
+	github.com/hashicorp/go-retryablehttp v0.6.6
 	github.com/hashicorp/go-rootcerts v1.0.2
 	github.com/hashicorp/go-sockaddr v1.0.2
 	github.com/hashicorp/go-uuid v1.0.2
