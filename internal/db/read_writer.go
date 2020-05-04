@@ -22,23 +22,17 @@ type Reader interface {
 	// LookupByPublicId will lookup resource my its public_id which must be unique
 	LookupByPublicId(ctx context.Context, resource ResourcePublicIder, opt ...Option) error
 
-	// LookupById will lookup resource my its internal id which must be unique
-	LookupById(ctx context.Context, resource ResourceIder, opt ...Option) error
+	// LookupWhere will lookup the first resource using a where clause with parameters (it only returns the first one)
+	LookupWhere(ctx context.Context, resource interface{}, where string, args ...interface{}) error
 
-	// LookupBy will lookup the first resource using a where clause with parameters (it only returns the first one)
-	LookupBy(ctx context.Context, resource interface{}, where string, args ...interface{}) error
-
-	// SearchBy will search for all the resources it can find using a where clause with parameters
-	SearchBy(ctx context.Context, resources interface{}, where string, args ...interface{}) error
+	// SearchWhere will search for all the resources it can find using a where clause with parameters
+	SearchWhere(ctx context.Context, resources interface{}, where string, args ...interface{}) error
 
 	// ScanRows will scan sql rows into the interface provided
 	ScanRows(rows *sql.Rows, result interface{}) error
 
 	// DB returns the sql.DB
 	DB() (*sql.DB, error)
-
-	// Dialect returns the RDBMS dialect: postgres, mysql, etc
-	Dialect() (string, error)
 }
 
 // Writer interface defines create, update and retryable transaction handlers
@@ -65,14 +59,8 @@ type Writer interface {
 	// the transaction, which almost always should be to rollback.
 	Delete(ctx context.Context, i interface{}, opt ...Option) error
 
-	// CreateConstraint will create a db constraint if it doesn't already exist
-	CreateConstraint(tableName string, constraintName string, constraint string) error
-
 	// DB returns the sql.DB
 	DB() (*sql.DB, error)
-
-	// Dialect returns the RDBMS dialect: postgres, mysql, etc
-	Dialect() (string, error)
 }
 
 // RetryInfo provides information on the retries of a transaction
@@ -92,11 +80,6 @@ type ResourcePublicIder interface {
 // ResourceFriendlyNamer defines an interface that LookupByFriendlyName() can use to get the resource's friendly name
 type ResourceFriendlyNamer interface {
 	GetFriendlyName() string
-}
-
-// ResourceIder defines an interface that LookupById() can use to get the resource's internal id
-type ResourceIder interface {
-	GetId() uint32
 }
 
 type OpType int
@@ -122,14 +105,6 @@ type GormReadWriter struct {
 var _ Reader = (*GormReadWriter)(nil)
 var _ Writer = (*GormReadWriter)(nil)
 
-// Dialect returns the RDBMS dialect: postgres, mysql, etc
-func (rw *GormReadWriter) Dialect() (string, error) {
-	if rw.Tx == nil {
-		return "", errors.New("create tx is nil for dialect")
-	}
-	return rw.Tx.Dialect().GetName(), nil
-}
-
 // DB returns the sql.DB
 func (rw *GormReadWriter) DB() (*sql.DB, error) {
 	if rw.Tx == nil {
@@ -141,22 +116,6 @@ func (rw *GormReadWriter) DB() (*sql.DB, error) {
 // Scan rows will scan the rows into the interface
 func (rw *GormReadWriter) ScanRows(rows *sql.Rows, result interface{}) error {
 	return rw.Tx.ScanRows(rows, result)
-}
-
-// gormDB returns a *gorm.DB
-func (rw *GormReadWriter) gormDB() (*gorm.DB, error) {
-	if rw.Tx == nil {
-		return nil, errors.New("create Tx is nil for gormDB")
-	}
-	dialect, err := rw.Dialect()
-	if err != nil {
-		return nil, fmt.Errorf("error getting dialect %w for gormDB", err)
-	}
-	db, err := rw.DB()
-	if err != nil {
-		return nil, fmt.Errorf("error getting DB %w for gormDB", err)
-	}
-	return gorm.Open(dialect, db)
 }
 
 // CreateConstraint will create a db constraint if it doesn't already exist
@@ -173,8 +132,8 @@ func (rw *GormReadWriter) lookupAfterWrite(ctx context.Context, i interface{}, o
 	if !withLookup {
 		return nil
 	}
-	if _, ok := i.(ResourceIder); ok {
-		if err := rw.LookupById(ctx, i.(ResourceIder), opt...); err != nil {
+	if _, ok := i.(ResourcePublicIder); ok {
+		if err := rw.LookupByPublicId(ctx, i.(ResourcePublicIder), opt...); err != nil {
 			return err
 		}
 		return nil
@@ -462,28 +421,8 @@ func (rw *GormReadWriter) LookupByPublicId(ctx context.Context, resource Resourc
 	return rw.Tx.Where("public_id = ?", resource.GetPublicId()).First(resource).Error
 }
 
-// LookupById will lookup resource my its internal id which must be unique
-func (rw *GormReadWriter) LookupById(ctx context.Context, resource ResourceIder, opt ...Option) error {
-	if rw.Tx == nil {
-		return errors.New("error tx nil for lookup by internal id")
-	}
-	opts := GetOpts(opt...)
-	withDebug := opts.withDebug
-	if withDebug {
-		rw.Tx.LogMode(true)
-		defer rw.Tx.LogMode(false)
-	}
-	if reflect.ValueOf(resource).Kind() != reflect.Ptr {
-		return errors.New("error interface parameter must to be a pointer for lookup by internal id")
-	}
-	if resource.GetId() == 0 {
-		return errors.New("error internal id is 0 for lookup by internal id")
-	}
-	return rw.Tx.Where("id = ?", resource.GetId()).First(resource).Error
-}
-
-// LookupBy will lookup the first resource using a where clause with parameters (it only returns the first one)
-func (rw *GormReadWriter) LookupBy(ctx context.Context, resource interface{}, where string, args ...interface{}) error {
+// LookupWhere will lookup the first resource using a where clause with parameters (it only returns the first one)
+func (rw *GormReadWriter) LookupWhere(ctx context.Context, resource interface{}, where string, args ...interface{}) error {
 	if rw.Tx == nil {
 		return errors.New("error tx nil for lookup by")
 	}
@@ -493,8 +432,8 @@ func (rw *GormReadWriter) LookupBy(ctx context.Context, resource interface{}, wh
 	return rw.Tx.Where(where, args...).First(resource).Error
 }
 
-// SearchBy will search for all the resources it can find using a where clause with parameters
-func (rw *GormReadWriter) SearchBy(ctx context.Context, resources interface{}, where string, args ...interface{}) error {
+// SearchWhere will search for all the resources it can find using a where clause with parameters
+func (rw *GormReadWriter) SearchWhere(ctx context.Context, resources interface{}, where string, args ...interface{}) error {
 	if rw.Tx == nil {
 		return errors.New("error tx nil for search by")
 	}

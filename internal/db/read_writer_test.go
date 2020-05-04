@@ -32,8 +32,8 @@ func TestGormReadWriter_Update(t *testing.T) {
 
 		foundUser, err := db_test.NewTestUser()
 		assert.Nil(err)
-		foundUser.Id = user.Id
-		err = w.LookupById(context.Background(), foundUser)
+		foundUser.PublicId = user.PublicId
+		err = w.LookupByPublicId(context.Background(), foundUser)
 		assert.Nil(err)
 		assert.Equal(foundUser.Id, user.Id)
 
@@ -41,7 +41,7 @@ func TestGormReadWriter_Update(t *testing.T) {
 		err = w.Update(context.Background(), user, []string{"FriendlyName"})
 		assert.Nil(err)
 
-		err = w.LookupById(context.Background(), foundUser)
+		err = w.LookupByPublicId(context.Background(), foundUser)
 		assert.Nil(err)
 		assert.Equal(foundUser.FriendlyName, user.FriendlyName)
 	})
@@ -58,8 +58,8 @@ func TestGormReadWriter_Update(t *testing.T) {
 
 		foundUser, err := db_test.NewTestUser()
 		assert.Nil(err)
-		foundUser.Id = user.Id
-		err = w.LookupById(context.Background(), foundUser)
+		foundUser.PublicId = user.PublicId
+		err = w.LookupByPublicId(context.Background(), foundUser)
 		assert.Nil(err)
 		assert.Equal(foundUser.Id, user.Id)
 
@@ -77,7 +77,7 @@ func TestGormReadWriter_Update(t *testing.T) {
 		)
 		assert.Nil(err)
 
-		err = w.LookupById(context.Background(), foundUser)
+		err = w.LookupByPublicId(context.Background(), foundUser)
 		assert.Nil(err)
 		assert.Equal(foundUser.FriendlyName, user.FriendlyName)
 
@@ -113,8 +113,8 @@ func TestGormReadWriter_Update(t *testing.T) {
 
 		foundUser, err := db_test.NewTestUser()
 		assert.Nil(err)
-		foundUser.Id = user.Id
-		err = w.LookupById(context.Background(), foundUser)
+		foundUser.PublicId = user.PublicId
+		err = w.LookupByPublicId(context.Background(), foundUser)
 		assert.Nil(err)
 		assert.Equal(foundUser.Id, user.Id)
 
@@ -144,8 +144,8 @@ func TestGormReadWriter_Update(t *testing.T) {
 
 		foundUser, err := db_test.NewTestUser()
 		assert.Nil(err)
-		foundUser.Id = user.Id
-		err = w.LookupById(context.Background(), foundUser)
+		foundUser.PublicId = user.PublicId
+		err = w.LookupByPublicId(context.Background(), foundUser)
 		assert.Nil(err)
 		assert.Equal(foundUser.Id, user.Id)
 
@@ -182,8 +182,8 @@ func TestGormReadWriter_Create(t *testing.T) {
 
 		foundUser, err := db_test.NewTestUser()
 		assert.Nil(err)
-		foundUser.Id = user.Id
-		err = w.LookupById(context.Background(), foundUser)
+		foundUser.PublicId = user.PublicId
+		err = w.LookupByPublicId(context.Background(), foundUser)
 		assert.Nil(err)
 		assert.Equal(foundUser.Id, user.Id)
 	})
@@ -211,8 +211,8 @@ func TestGormReadWriter_Create(t *testing.T) {
 
 		foundUser, err := db_test.NewTestUser()
 		assert.Nil(err)
-		foundUser.Id = user.Id
-		err = w.LookupById(context.Background(), foundUser)
+		foundUser.PublicId = user.PublicId
+		err = w.LookupByPublicId(context.Background(), foundUser)
 		assert.Nil(err)
 		assert.Equal(foundUser.Id, user.Id)
 	})
@@ -266,57 +266,6 @@ func TestGormReadWriter_Create(t *testing.T) {
 		err = w.Create(context.Background(), user)
 		assert.True(err != nil)
 		assert.Equal("create tx is nil", err.Error())
-	})
-}
-
-func TestGormReadWriter_LookupByInternalId(t *testing.T) {
-	t.Parallel()
-	cleanup, db := SetupTest(t, "migrations/postgres")
-	defer cleanup()
-	assert := assert.New(t)
-	defer db.Close()
-	t.Run("simple", func(t *testing.T) {
-		w := GormReadWriter{Tx: db}
-		id, err := uuid.GenerateUUID()
-		assert.Nil(err)
-		user, err := db_test.NewTestUser()
-		assert.Nil(err)
-		user.Name = "foo-" + id
-		err = w.Create(context.Background(), user)
-		assert.Nil(err)
-		assert.True(user.Id != 0)
-
-		foundUser, err := db_test.NewTestUser()
-		assert.Nil(err)
-		foundUser.Id = user.Id
-		err = w.LookupById(context.Background(), foundUser)
-		assert.Nil(err)
-		assert.Equal(foundUser.Id, user.Id)
-	})
-	t.Run("tx-nil,", func(t *testing.T) {
-		w := GormReadWriter{}
-		foundUser, err := db_test.NewTestUser()
-		assert.Nil(err)
-		err = w.LookupById(context.Background(), foundUser)
-		assert.True(err != nil)
-		assert.Equal("error tx nil for lookup by internal id", err.Error())
-	})
-	t.Run("no-public-id-set", func(t *testing.T) {
-		w := GormReadWriter{Tx: db}
-		foundUser, err := db_test.NewTestUser()
-		assert.Nil(err)
-		err = w.LookupById(context.Background(), foundUser)
-		assert.True(err != nil)
-		assert.Equal("error internal id is 0 for lookup by internal id", err.Error())
-	})
-	t.Run("not-found", func(t *testing.T) {
-		w := GormReadWriter{Tx: db}
-		foundUser, err := db_test.NewTestUser()
-		assert.Nil(err)
-		foundUser.Id = 4294967295 // we should never get to the max for unit32
-		err = w.LookupById(context.Background(), foundUser)
-		assert.True(err != nil)
-		assert.Equal(gorm.ErrRecordNotFound, err)
 	})
 }
 
@@ -432,7 +381,7 @@ func TestGormReadWriter_LookupByPublicId(t *testing.T) {
 	})
 }
 
-func TestGormReadWriter_LookupBy(t *testing.T) {
+func TestGormReadWriter_LookupWhere(t *testing.T) {
 	t.Parallel()
 	cleanup, db := SetupTest(t, "migrations/postgres")
 	defer cleanup()
@@ -451,14 +400,14 @@ func TestGormReadWriter_LookupBy(t *testing.T) {
 		assert.True(user.PublicId != "")
 
 		var foundUser db_test.TestUser
-		err = w.LookupBy(context.Background(), &foundUser, "public_id = ?", user.PublicId)
+		err = w.LookupWhere(context.Background(), &foundUser, "public_id = ?", user.PublicId)
 		assert.Nil(err)
 		assert.Equal(foundUser.Id, user.Id)
 	})
 	t.Run("tx-nil,", func(t *testing.T) {
 		w := GormReadWriter{}
 		var foundUser db_test.TestUser
-		err := w.LookupBy(context.Background(), &foundUser, "public_id = ?", 1)
+		err := w.LookupWhere(context.Background(), &foundUser, "public_id = ?", 1)
 		assert.True(err != nil)
 		assert.Equal("error tx nil for lookup by", err.Error())
 	})
@@ -468,7 +417,7 @@ func TestGormReadWriter_LookupBy(t *testing.T) {
 		assert.Nil(err)
 
 		var foundUser db_test.TestUser
-		err = w.LookupBy(context.Background(), &foundUser, "public_id = ?", id)
+		err = w.LookupWhere(context.Background(), &foundUser, "public_id = ?", id)
 		assert.True(err != nil)
 		assert.Equal(gorm.ErrRecordNotFound, err)
 	})
@@ -478,12 +427,12 @@ func TestGormReadWriter_LookupBy(t *testing.T) {
 		assert.Nil(err)
 
 		var foundUser db_test.TestUser
-		err = w.LookupBy(context.Background(), &foundUser, "? = ?", id)
+		err = w.LookupWhere(context.Background(), &foundUser, "? = ?", id)
 		assert.True(err != nil)
 	})
 }
 
-func TestGormReadWriter_SearchBy(t *testing.T) {
+func TestGormReadWriter_SearchWhere(t *testing.T) {
 	t.Parallel()
 	cleanup, db := SetupTest(t, "migrations/postgres")
 	defer cleanup()
@@ -502,14 +451,14 @@ func TestGormReadWriter_SearchBy(t *testing.T) {
 		assert.True(user.PublicId != "")
 
 		var foundUsers []db_test.TestUser
-		err = w.SearchBy(context.Background(), &foundUsers, "public_id = ?", user.PublicId)
+		err = w.SearchWhere(context.Background(), &foundUsers, "public_id = ?", user.PublicId)
 		assert.Nil(err)
 		assert.Equal(foundUsers[0].Id, user.Id)
 	})
 	t.Run("tx-nil,", func(t *testing.T) {
 		w := GormReadWriter{}
 		var foundUsers []db_test.TestUser
-		err := w.SearchBy(context.Background(), &foundUsers, "public_id = ?", 1)
+		err := w.SearchWhere(context.Background(), &foundUsers, "public_id = ?", 1)
 		assert.True(err != nil)
 		assert.Equal("error tx nil for search by", err.Error())
 	})
@@ -519,7 +468,7 @@ func TestGormReadWriter_SearchBy(t *testing.T) {
 		assert.Nil(err)
 
 		var foundUsers []db_test.TestUser
-		err = w.SearchBy(context.Background(), &foundUsers, "public_id = ?", id)
+		err = w.SearchWhere(context.Background(), &foundUsers, "public_id = ?", id)
 		assert.Nil(err)
 		assert.Equal(0, len(foundUsers))
 	})
@@ -529,29 +478,8 @@ func TestGormReadWriter_SearchBy(t *testing.T) {
 		assert.Nil(err)
 
 		var foundUsers []db_test.TestUser
-		err = w.SearchBy(context.Background(), &foundUsers, "? = ?", id)
+		err = w.SearchWhere(context.Background(), &foundUsers, "? = ?", id)
 		assert.True(err != nil)
-	})
-}
-
-func TestGormReadWriter_Dialect(t *testing.T) {
-	t.Parallel()
-	cleanup, db := SetupTest(t, "migrations/postgres")
-	defer cleanup()
-	assert := assert.New(t)
-	defer db.Close()
-	t.Run("valid", func(t *testing.T) {
-		w := GormReadWriter{Tx: db}
-		d, err := w.Dialect()
-		assert.Nil(err)
-		assert.Equal("postgres", d)
-	})
-	t.Run("nil-tx", func(t *testing.T) {
-		w := GormReadWriter{Tx: nil}
-		d, err := w.Dialect()
-		assert.True(err != nil)
-		assert.Equal("", d)
-		assert.Equal("create tx is nil for dialect", err.Error())
 	})
 }
 
@@ -699,15 +627,15 @@ func TestGormReadWriter_Delete(t *testing.T) {
 
 		foundUser, err := db_test.NewTestUser()
 		assert.Nil(err)
-		foundUser.Id = user.Id
-		err = w.LookupById(context.Background(), foundUser)
+		foundUser.PublicId = user.PublicId
+		err = w.LookupByPublicId(context.Background(), foundUser)
 		assert.Nil(err)
 		assert.Equal(foundUser.Id, user.Id)
 
 		err = w.Delete(context.Background(), user)
 		assert.Nil(err)
 
-		err = w.LookupById(context.Background(), foundUser)
+		err = w.LookupByPublicId(context.Background(), foundUser)
 		assert.True(err != nil)
 		assert.Equal(gorm.ErrRecordNotFound, err)
 	})
@@ -735,8 +663,8 @@ func TestGormReadWriter_Delete(t *testing.T) {
 
 		foundUser, err := db_test.NewTestUser()
 		assert.Nil(err)
-		foundUser.Id = user.Id
-		err = w.LookupById(context.Background(), foundUser)
+		foundUser.PublicId = user.PublicId
+		err = w.LookupByPublicId(context.Background(), foundUser)
 		assert.Nil(err)
 		assert.Equal(foundUser.Id, user.Id)
 
@@ -754,7 +682,7 @@ func TestGormReadWriter_Delete(t *testing.T) {
 		)
 		assert.Nil(err)
 
-		err = w.LookupById(context.Background(), foundUser)
+		err = w.LookupByPublicId(context.Background(), foundUser)
 		assert.True(err != nil)
 		assert.Equal(gorm.ErrRecordNotFound, err)
 	})
@@ -782,8 +710,8 @@ func TestGormReadWriter_Delete(t *testing.T) {
 
 		foundUser, err := db_test.NewTestUser()
 		assert.Nil(err)
-		foundUser.Id = user.Id
-		err = w.LookupById(context.Background(), foundUser)
+		foundUser.PublicId = user.PublicId
+		err = w.LookupByPublicId(context.Background(), foundUser)
 		assert.Nil(err)
 		assert.Equal(foundUser.Id, user.Id)
 
@@ -826,8 +754,8 @@ func TestGormReadWriter_Delete(t *testing.T) {
 
 		foundUser, err := db_test.NewTestUser()
 		assert.Nil(err)
-		foundUser.Id = user.Id
-		err = w.LookupById(context.Background(), foundUser)
+		foundUser.PublicId = user.PublicId
+		err = w.LookupByPublicId(context.Background(), foundUser)
 		assert.Nil(err)
 		assert.Equal(foundUser.Id, user.Id)
 
