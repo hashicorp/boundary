@@ -5,11 +5,13 @@ THIS_FILE := $(lastword $(MAKEFILE_LIST))
 TMP_DIR := $(shell mktemp -d)
 REPO_PATH := github.com/hashicorp/watchtower
 
+export APIGEN_BASEPATH := $(shell pwd)
+
 bootstrap:
 	go generate -tags tools tools/tools.go
 
 api:
-	APIGEN_BASEPATH=$(shell pwd) go generate -tags genapi api/internal/genapi/makeimports.go
+	$(MAKE) --environment-overrides -C api/internal/genapi api
 
 ### oplog requires protoc-gen-go v1.20.0 or later
 # GO111MODULE=on go get -u github.com/golang/protobuf/protoc-gen-go@v1.40
@@ -19,7 +21,8 @@ protolint:
 	@buf check lint
 
 protobuild:
-    # To add a new directory containing a proto pass the  proto's root path in through the --proto_path flag.
+	# To add a new directory containing a proto pass the  proto's root path in
+	# through the --proto_path flag.
 	@bash make/protoc_gen_plugin.bash \
 		"--proto_path=internal/proto/local" \
 		"--proto_include_path=internal/proto/third_party" \
