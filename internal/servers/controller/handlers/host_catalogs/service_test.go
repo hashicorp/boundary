@@ -22,7 +22,7 @@ type fakeRepo struct {
 	listParam   string
 	deleteParam string
 	createParam string
-	updateParam string
+	updateParam repo.HostCatalog
 
 	lookup func() (*repo.HostCatalog, error)
 	list   func() ([]repo.HostCatalog, error)
@@ -55,16 +55,16 @@ func (f *fakeRepo) DeleteHostCatalog(ctx context.Context, id string) (bool, erro
 	return f.delete()
 }
 
-func (f *fakeRepo) CreateHostCatalog(ctx context.Context, scopeID, id string, hc repo.HostCatalog) (*repo.HostCatalog, error) {
-	f.createParam = id
+func (f *fakeRepo) CreateHostCatalog(ctx context.Context, scopeID string, hc repo.HostCatalog) (*repo.HostCatalog, error) {
+	f.createParam = scopeID
 	if f.create == nil {
 		panic("Unexpected call to CreateHostCatalog")
 	}
 	return f.create()
 }
 
-func (f *fakeRepo) UpdateHostCatalog(ctx context.Context, scopeID, id string, hc repo.HostCatalog, masks string) (*repo.HostCatalog, error) {
-	f.updateParam = scopeID
+func (f *fakeRepo) UpdateHostCatalog(ctx context.Context, hc repo.HostCatalog, masks string) (*repo.HostCatalog, error) {
+	f.updateParam = hc
 	if f.update == nil {
 		panic("Unexpected call to UpdateHostCatalog")
 	}

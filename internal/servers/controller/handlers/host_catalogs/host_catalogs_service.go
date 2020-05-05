@@ -26,10 +26,10 @@ type hostCatalogRepo interface {
 	DeleteHostCatalog(ctx context.Context, id string) (bool, error)
 	// CreateHostCatalog creates a new HostCatalog in the provided scope and returns a HostCatalog with all the read only fields populated.
 	// error is non-nil if the HostCatalog is unable to be created.
-	CreateHostCatalog(ctx context.Context, scopeID, hc repo.HostCatalog) (*repo.HostCatalog, error)
-	// UpdateHostCatalog updates the HostCatalog with the id provided using the values in the provide HostCatalog object.
-	// The provide HostCatalog cannot have any read only values set.  error returns a non nil value if the HostCatalog could not be updated.
-	UpdateHostCatalog(ctx context.Context, scopeID, id string, hc repo.HostCatalog, masks string) (*repo.HostCatalog, error)
+	CreateHostCatalog(ctx context.Context, scopeID string, hc repo.HostCatalog) (*repo.HostCatalog, error)
+	// UpdateHostCatalog updates the HostCatalog using the values in the provide HostCatalog object.
+	// The provide HostCatalog cannot have any read only values set except for the ID.  error returns a non nil value if the HostCatalog could not be updated.
+	UpdateHostCatalog(ctx context.Context, hc repo.HostCatalog, masks string) (*repo.HostCatalog, error)
 	// TODO: Figure out the appropriate way to verify the path is appropriate, whether as a separate method or merging this into the methods above.
 }
 
