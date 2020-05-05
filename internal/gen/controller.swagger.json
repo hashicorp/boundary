@@ -421,6 +421,53 @@
       }
     },
     "/v1/orgs/{org_id}/host-catalogs/{host_catalog_id}/hosts/{id}": {
+      "get": {
+        "summary": "Gets a single Host",
+        "operationId": "HostService_GetHost2",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/controller.api.resources.hosts.v1.Host"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "org_id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "host_catalog_id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "project_id",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "view",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "controller.api.services.v1.HostService"
+        ]
+      },
       "delete": {
         "summary": "Delete a Host",
         "operationId": "HostService_DeleteHost2",
