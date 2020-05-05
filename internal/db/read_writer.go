@@ -126,7 +126,7 @@ func (w *GormReadWriter) CreateConstraint(tableName string, constraintName strin
 var ErrNotResourceWithId = errors.New("not a resource with an id")
 
 func (rw *GormReadWriter) lookupAfterWrite(ctx context.Context, i interface{}, opt ...Option) error {
-	opts := GetOpts(opt...)
+	opts := getOpts(opt...)
 	withLookup := opts.withLookup
 
 	if !withLookup {
@@ -146,7 +146,7 @@ func (rw *GormReadWriter) Create(ctx context.Context, i interface{}, opt ...Opti
 	if rw.Tx == nil {
 		return errors.New("create tx is nil")
 	}
-	opts := GetOpts(opt...)
+	opts := getOpts(opt...)
 	withOplog := opts.withOplog
 	withDebug := opts.withDebug
 	if withDebug {
@@ -181,7 +181,7 @@ func (rw *GormReadWriter) Update(ctx context.Context, i interface{}, fieldMaskPa
 	if rw.Tx == nil {
 		return errors.New("update tx is nil")
 	}
-	opts := GetOpts(opt...)
+	opts := getOpts(opt...)
 	withDebug := opts.withDebug
 	withOplog := opts.withOplog
 	if withDebug {
@@ -260,7 +260,7 @@ func (rw *GormReadWriter) Delete(ctx context.Context, i interface{}, opt ...Opti
 	if i == nil {
 		return errors.New("delete interface is nil")
 	}
-	opts := GetOpts(opt...)
+	opts := getOpts(opt...)
 	withDebug := opts.withDebug
 	withOplog := opts.withOplog
 	if withDebug {
@@ -386,7 +386,7 @@ func (rw *GormReadWriter) LookupByFriendlyName(ctx context.Context, resource Res
 	if rw.Tx == nil {
 		return errors.New("error tx nil for lookup by friendly name")
 	}
-	opts := GetOpts(opt...)
+	opts := getOpts(opt...)
 	withDebug := opts.withDebug
 	if withDebug {
 		rw.Tx.LogMode(true)
@@ -406,7 +406,7 @@ func (rw *GormReadWriter) LookupByPublicId(ctx context.Context, resource Resourc
 	if rw.Tx == nil {
 		return errors.New("error tx nil for lookup by public id")
 	}
-	opts := GetOpts(opt...)
+	opts := getOpts(opt...)
 	withDebug := opts.withDebug
 	if withDebug {
 		rw.Tx.LogMode(true)
