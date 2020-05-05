@@ -777,12 +777,13 @@
         "created_time": {
           "type": "string",
           "format": "date-time",
-          "description": "The time this host was created\nOuput only."
+          "description": "The time this resource was created\nOutput only.",
+          "readOnly": true
         },
         "updated_time": {
           "type": "string",
           "format": "date-time",
-          "description": "The time this host was last updated\nOutput only.",
+          "description": "The time this resource was last updated\nOutput only.",
           "readOnly": true
         },
         "disabled": {
@@ -820,13 +821,13 @@
         "created_time": {
           "type": "string",
           "format": "date-time",
-          "description": "The time this host was created\nOutput only.",
+          "description": "The time this resource was created\nOutput only.",
           "readOnly": true
         },
         "updated_time": {
           "type": "string",
           "format": "date-time",
-          "description": "The time this host was last updated\nOutput only.",
+          "description": "The time this resource was last updated\nOutput only.",
           "readOnly": true
         },
         "disabled": {
@@ -864,13 +865,13 @@
         "created_time": {
           "type": "string",
           "format": "date-time",
-          "description": "The time this host was created\nOutput only.",
+          "description": "The time this resource was created\nOutput only.",
           "readOnly": true
         },
         "updated_time": {
           "type": "string",
           "format": "date-time",
-          "description": "The time this host was last updated\nOutput only.",
+          "description": "The time this resource was last updated\nOutput only.",
           "readOnly": true
         },
         "disabled": {

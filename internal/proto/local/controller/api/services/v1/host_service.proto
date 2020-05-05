@@ -59,9 +59,9 @@ service HostService {
 }
 
 message GetHostRequest {
-  string org_id = 1;
-  string project_id = 2;
-  string host_catalog_id = 3;
+  string org_id = 1 [json_name="org_id"];
+  string project_id = 2 [json_name="project_id"];
+  string host_catalog_id = 3 [json_name="host_catalog_id"];
   string id = 4;
   string view = 5;
 }
@@ -71,9 +71,9 @@ message GetHostResponse {
 }
 
 message ListHostsRequest {
-  string org_id = 1;
-  string project_id = 2;
-  string host_catalog_id = 3;
+  string org_id = 1 [json_name="org_id"];
+  string project_id = 2 [json_name="project_id"];
+  string host_catalog_id = 3 [json_name="host_catalog_id"];
   string view = 4;
 }
 
@@ -82,9 +82,9 @@ message ListHostsResponse {
 }
 
 message CreateHostRequest {
-  string org_id = 1;
-  string project_id = 2;
-  string host_catalog_id = 3;
+  string org_id = 1 [json_name="org_id"];
+  string project_id = 2 [json_name="project_id"];
+  string host_catalog_id = 3 [json_name="host_catalog_id"];
   api.resources.hosts.v1.Host item = 4;
 }
 
@@ -94,9 +94,9 @@ message CreateHostResponse {
 }
 
 message UpdateHostRequest {
-  string org_id = 1;
-  string project_id = 2;
-  string host_catalog_id = 3;
+  string org_id = 1 [json_name="org_id"];
+  string project_id = 2 [json_name="project_id"];
+  string host_catalog_id = 3 [json_name="host_catalog_id"];
   string id = 4;
   api.resources.hosts.v1.Host item = 5;
   google.protobuf.FieldMask update_mask = 6;
@@ -107,9 +107,9 @@ message UpdateHostResponse {
 }
 
 message DeleteHostRequest {
-  string org_id = 1;
-  string project_id = 2;
-  string host_catalog_id = 3;
+  string org_id = 1 [json_name="org_id"];
+  string project_id = 2 [json_name="project_id"];
+  string host_catalog_id = 3 [json_name="host_catalog_id"];
   string id = 4;
 }
 

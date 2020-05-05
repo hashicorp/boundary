@@ -23,13 +23,13 @@ message HostCatalog {
 	// Optional user-set description for identification purposes
 	google.protobuf.StringValue description = 4;
 
-	// The time this host was created
+	// The time this resource was created
 	// Output only.
-	google.protobuf.Timestamp created_time = 5;
+	google.protobuf.Timestamp created_time = 5 [json_name="created_time"];
 
-	// The time this host was last updated
+	// The time this resource was last updated
 	// Output only.
-	google.protobuf.Timestamp updated_time = 6;
+	google.protobuf.Timestamp updated_time = 6 [json_name="updated_time"];
 
 	// Whether the catalog is disabled
 	google.protobuf.BoolValue disabled = 7;
@@ -47,9 +47,9 @@ message AwsEc2HostCatalogDetails {
 	repeated string regions = 1;
 
 	// The access key used for authenticating with AWS when retrieving EC2 instance details.
-	google.protobuf.StringValue access_key = 2;
+	google.protobuf.StringValue access_key = 2 [json_name="access_key"];
 	// Input only.
-	google.protobuf.StringValue secret_key = 3;
+	google.protobuf.StringValue secret_key = 3 [json_name="secret_key"];
 
 	// This value will never be returned in a response.
 	google.protobuf.BoolValue rotate = 4;

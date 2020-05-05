@@ -18,17 +18,17 @@ type HostCatalog struct {
 
 	// The ID of the host
 	// Output only.
-	Id *string `json:"id,omitempty"`
+	Id string `json:"id,omitempty"`
 	// The type of the resource, to help differentiate schemas
 	Type *string `json:"type,omitempty"`
 	// Optional name for identification purposes
 	Name *string `json:"name,omitempty"`
 	// Optional user-set description for identification purposes
 	Description *string `json:"description,omitempty"`
-	// The time this host was created
+	// The time this resource was created
 	// Output only.
 	CreatedTime time.Time `json:"created_time,omitempty"`
-	// The time this host was last updated
+	// The time this resource was last updated
 	// Output only.
 	UpdatedTime time.Time `json:"updated_time,omitempty"`
 	// Whether the catalog is disabled

@@ -22,13 +22,13 @@ message Host {
 	// Optional user-set description for identification purposes
 	google.protobuf.StringValue description = 4;
 
-	// The time this host was created
-	// Ouput only.
-	google.protobuf.Timestamp created_time = 5;
-
-	// The time this host was last updated
+	// The time this resource was created
 	// Output only.
-	google.protobuf.Timestamp updated_time = 6;
+	google.protobuf.Timestamp created_time = 5 [json_name="created_time"];
+
+	// The time this resource was last updated
+	// Output only.
+	google.protobuf.Timestamp updated_time = 6 [json_name="updated_time"];
 
 	// Whether the host is disabled
 	google.protobuf.BoolValue disabled = 7;
