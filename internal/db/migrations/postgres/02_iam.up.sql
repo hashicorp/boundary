@@ -109,10 +109,9 @@ CREATE TABLE if not exists iam_group (
     disabled BOOLEAN NOT NULL default FALSE
   );
 CREATE TABLE if not exists iam_group_member_user (
-    id bigint generated always as identity primary key,
+    public_id text not null primary key,
     create_time timestamp with time zone NOT NULL default current_timestamp,
     update_time timestamp with time zone NOT NULL default current_timestamp,
-    public_id text not null UNIQUE,
     friendly_name text UNIQUE,
     primary_scope_id text NOT NULL REFERENCES iam_scope(public_id),
     group_id text NOT NULL REFERENCES iam_group(public_id),

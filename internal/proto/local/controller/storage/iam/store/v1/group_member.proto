@@ -8,7 +8,8 @@ import "controller/storage/iam/store/v1/scope.proto";
 
 message GroupMemberUser {
   // @inject_tag: gorm:"primary_key"
-  uint32 id = 1;
+  // public_id is used to access the GroupMemberUser via an API
+  string public_id = 1;
 
   // create_time from the RDBMS
   // @inject_tag: `gorm:"default:current_timestamp"`
@@ -17,34 +18,32 @@ message GroupMemberUser {
   // update_time from the RDBMS
   // @inject_tag: `gorm:"default:current_timestamp"`
   Timestamp update_time = 3;
-
-  // public_id is used to access the GroupMemberUser via an API
-  string public_id = 4;
 
   // FriendlyName is the optional friendly name used to
   // access the GroupMemberUser via an API
   // @inject_tag: `gorm:"default:null"`
-  string friendly_name = 5;
+  string friendly_name = 4;
 
   // primary scope id of the PrimaryScope
   // @inject_tag: `gorm:"default:null"`
-  string primary_scope_id = 6;
+  string primary_scope_id = 5;
   // @inject_tag: gorm:"foreignkey:ScopeId"
-  Scope primary_scope = 7;
+  Scope primary_scope = 6;
 
   // group_id is the Group of this GroupMemberUser.
-  string group_id = 9;
+  string group_id = 7;
 
   // GroupMember type (User)
   // @inject_tag: `gorm:"default:user"`
-  string type = 10;
+  string type = 8;
 
-  string member_id = 11;
+  string member_id = 9;
 }
 
 message GroupMemberView {
+  // public_id is used to access the GroupMember via an API
   // @inject_tag: gorm:"primary_key"
-  uint32 id = 1;
+  string public_id = 1;
 
   // create_time from the RDBMS
   // @inject_tag: `gorm:"default:current_timestamp"`
@@ -54,25 +53,22 @@ message GroupMemberView {
   // @inject_tag: `gorm:"default:current_timestamp"`
   Timestamp update_time = 3;
 
-  // public_id is used to access the GroupMember via an API
-  string public_id = 4;
-
   // FriendlyName is the optional friendly name used to
   // access the GroupMember via an API
   // @inject_tag: `gorm:"default:null"`
-  string friendly_name = 5;
+  string friendly_name = 4;
 
   // primary scope id of the PrimaryScope
   // @inject_tag: `gorm:"default:null"`
-  string primary_scope_id = 6;
+  string primary_scope_id = 5;
   // @inject_tag: gorm:"foreignkey:ScopeId"
-  Scope primary_scope = 7;
+  Scope primary_scope = 6;
 
   // group_id is the Group of this GroupMember.
-  string group_id = 9;
+  string group_id = 7;
 
   // GroupMember type (User)
-  string type = 10;
+  string type = 8;
 
-  string member_id = 11;
+  string member_id = 9;
 }

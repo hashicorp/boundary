@@ -75,10 +75,9 @@ func (g *Group) Members(ctx context.Context, r db.Reader) ([]GroupMember, error)
 		case UserMemberType.String():
 			gm := &GroupMemberUser{
 				GroupMemberUser: &store.GroupMemberUser{
-					Id:             m.Id,
+					PublicId:       m.PublicId,
 					CreateTime:     m.CreateTime,
 					UpdateTime:     m.UpdateTime,
-					PublicId:       m.PublicId,
 					FriendlyName:   m.FriendlyName,
 					PrimaryScopeId: m.PrimaryScopeId,
 					GroupId:        m.GroupId,
