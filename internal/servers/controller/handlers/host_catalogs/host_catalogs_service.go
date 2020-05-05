@@ -14,10 +14,21 @@ import (
 )
 
 type hostCatalogRepo interface {
+	// LookupHostCatalog returns the Host catalog based on the provided id and any error associated with the lookup.
+	// If the HostCatalog does not exist but the query was performed successfuly without any failures then both return
+	// values are nil.
 	LookupHostCatalog(ctx context.Context, id string) (*repo.HostCatalog, error)
+	// ListHostCatalog returns the list of HostCatalogs, if any, in the provided scope.  error returns nil even if
+	// there were no values returned by this query.  error is non-nil if, among other things, the provided scope does not exist.
 	ListHostCatalogs(ctx context.Context, scopeID string) ([]repo.HostCatalog, error)
+	// DeleteHostCatalog returns a boolean value indicating if the requested HostCatalog existed prior to being deleted.
+	// error is non-nil if there was a failure to execute the query but not if the HostCatalog does not exist.
 	DeleteHostCatalog(ctx context.Context, id string) (bool, error)
-	CreateHostCatalog(ctx context.Context, scopeID, id string, hc repo.HostCatalog) (*repo.HostCatalog, error)
+	// CreateHostCatalog creates a new HostCatalog in the provided scope and returns a HostCatalog with all the read only fields populated.
+	// error is non-nil if the HostCatalog is unable to be created.
+	CreateHostCatalog(ctx context.Context, scopeID, hc repo.HostCatalog) (*repo.HostCatalog, error)
+	// UpdateHostCatalog updates the HostCatalog with the id provided using the values in the provide HostCatalog object.
+	// The provide HostCatalog cannot have any read only values set.  error returns a non nil value if the HostCatalog could not be updated.
 	UpdateHostCatalog(ctx context.Context, scopeID, id string, hc repo.HostCatalog, masks string) (*repo.HostCatalog, error)
 	// TODO: Figure out the appropriate way to verify the path is appropriate, whether as a seperate method or merging this into the methods above.
 }
@@ -154,10 +165,10 @@ type ancestorProvider interface {
 // validateAncestors verifies that the ancestors of this call are properly set and provided.
 func validateAncestors(r ancestorProvider) error {
 	if r.GetOrgId() == "" {
-		return status.Errorf(codes.InvalidArgument, "OrgId must be provided.")
+		return status.Errorf(codes.InvalidArgument, "org_id must be provided.")
 	}
 	if r.GetProjectId() == "" {
-		return status.Errorf(codes.InvalidArgument, "ProjectId must be provided.")
+		return status.Errorf(codes.InvalidArgument, "project_id must be provided.")
 	}
 	return nil
 }
