@@ -4,7 +4,7 @@ package main
 
 import "os"
 
-type generateInfo struct {
+type structInfo struct {
 	inFile       string
 	inName       string
 	outFile      string
@@ -16,7 +16,7 @@ type generateInfo struct {
 	templateType templateType
 }
 
-var inputStructs = []*generateInfo{
+var inputStructs = []*structInfo{
 	{
 		os.Getenv("APIGEN_BASEPATH") + "/internal/gen/controller/api/error.pb.go",
 		"Error",
