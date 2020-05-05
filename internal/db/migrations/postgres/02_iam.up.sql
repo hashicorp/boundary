@@ -201,10 +201,9 @@ INSERT INTO iam_role_type_enm (string)
 values
   ('group');
 CREATE TABLE if not exists iam_role_user (
-    id bigint generated always as identity primary key,
+    public_id text not null primary key,
     create_time timestamp with time zone NOT NULL default current_timestamp,
     update_time timestamp with time zone NOT NULL default current_timestamp,
-    public_id text not null UNIQUE,
     friendly_name text UNIQUE,
     primary_scope_id text NOT NULL REFERENCES iam_scope(public_id),
     role_id text NOT NULL REFERENCES iam_role(public_id),
@@ -212,10 +211,9 @@ CREATE TABLE if not exists iam_role_user (
     type text NOT NULL REFERENCES iam_role_type_enm(string) CHECK(type = 'user')
   );
 CREATE TABLE if not exists iam_role_group (
-    id bigint generated always as identity primary key,
+    public_id text not null primary key,
     create_time timestamp with time zone NOT NULL default current_timestamp,
     update_time timestamp with time zone NOT NULL default current_timestamp,
-    public_id text not null UNIQUE,
     friendly_name text UNIQUE,
     primary_scope_id text NOT NULL REFERENCES iam_scope(public_id),
     role_id text NOT NULL REFERENCES iam_role(public_id),

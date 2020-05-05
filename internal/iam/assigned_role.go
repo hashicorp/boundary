@@ -31,7 +31,6 @@ func (r RoleType) String() string {
 // AssignedRole declares a common interface for all roles assigned to resources (Users and Groups for now)
 type AssignedRole interface {
 	Resource
-	GetId() uint32
 	GetRoleId() string
 	GetPrincipalId() string
 	GetType() string

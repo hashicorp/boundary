@@ -79,10 +79,9 @@ func (role *Role) AssignedRoles(ctx context.Context, r db.Reader) ([]AssignedRol
 		case UserRoleType.String():
 			pr := &UserRole{
 				UserRole: &store.UserRole{
-					Id:             vr.Id,
+					PublicId:       vr.PublicId,
 					CreateTime:     vr.CreateTime,
 					UpdateTime:     vr.UpdateTime,
-					PublicId:       vr.PublicId,
 					FriendlyName:   vr.FriendlyName,
 					PrimaryScopeId: vr.PrimaryScopeId,
 					RoleId:         vr.RoleId,
@@ -94,10 +93,9 @@ func (role *Role) AssignedRoles(ctx context.Context, r db.Reader) ([]AssignedRol
 		case GroupRoleType.String():
 			pr := &GroupRole{
 				GroupRole: &store.GroupRole{
-					Id:             vr.Id,
+					PublicId:       vr.PublicId,
 					CreateTime:     vr.CreateTime,
 					UpdateTime:     vr.UpdateTime,
-					PublicId:       vr.PublicId,
 					FriendlyName:   vr.FriendlyName,
 					PrimaryScopeId: vr.PrimaryScopeId,
 					RoleId:         vr.RoleId,

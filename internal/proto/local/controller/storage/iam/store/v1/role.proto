@@ -37,8 +37,9 @@ message Role {
 }
 
 message UserRole {
+  // public_id is used to access the UserRole via an API
   // @inject_tag: gorm:"primary_key"
-  uint32 id = 1;
+  string public_id = 1;
 
   // create_time from the RDBMS
   // @inject_tag: `gorm:"default:current_timestamp"`
@@ -47,33 +48,31 @@ message UserRole {
   // update_time from the RDBMS
   // @inject_tag: `gorm:"default:current_timestamp"`
   Timestamp update_time = 3;
-
-  // public_id is used to access the UserRole via an API
-  string public_id = 4;
 
   // FriendlyName is the optional friendly name used to
   // access the UserRole via an API
   // @inject_tag: `gorm:"default:null"`
-  string friendly_name = 5;
+  string friendly_name = 4;
 
   // primary scope id of the PrimaryScope
   // @inject_tag: `gorm:"default:null"`
-  string primary_scope_id = 6;
+  string primary_scope_id = 5;
   // @inject_tag: gorm:"foreignkey:ScopeId"
-  Scope primary_scope = 7;
+  Scope primary_scope = 6;
 
   // role_id is the role of this principal.
-  string role_id = 9;
+  string role_id = 7;
 
   // Principal type (User)
-  string type = 10;
+  string type = 8;
 
-  string principal_id = 11;
+  string principal_id = 9;
 }
 
 message GroupRole {
+  // public_id is used to access the GroupRole via an API
   // @inject_tag: gorm:"primary_key"
-  uint32 id = 1;
+  string public_id = 1;
 
   // create_time from the RDBMS
   // @inject_tag: `gorm:"default:current_timestamp"`
@@ -82,33 +81,31 @@ message GroupRole {
   // update_time from the RDBMS
   // @inject_tag: `gorm:"default:current_timestamp"`
   Timestamp update_time = 3;
-
-  // public_id is used to access the GroupRole via an API
-  string public_id = 4;
 
   // FriendlyName is the optional friendly name used to
   // access the GroupRole via an API
   // @inject_tag: `gorm:"default:null"`
-  string friendly_name = 5;
+  string friendly_name = 4;
 
   // primary scope id of the PrimaryScope
   // @inject_tag: `gorm:"default:null"`
-  string primary_scope_id = 6;
+  string primary_scope_id = 5;
   // @inject_tag: gorm:"foreignkey:ScopeId"
-  Scope primary_scope = 7;
+  Scope primary_scope = 6;
 
   // role_id is the role of this principal.
-  string role_id = 9;
+  string role_id = 7;
 
   // Principal type (Group)
-  string type = 10;
+  string type = 8;
 
-  string principal_id = 11;
+  string principal_id = 9;
 }
 
 message AssignedRoleView {
+  // public_id is used to access the PrincipalRole via an API
   // @inject_tag: gorm:"primary_key"
-  uint32 id = 1;
+  string public_id = 1;
 
   // create_time from the RDBMS
   // @inject_tag: `gorm:"default:current_timestamp"`
@@ -118,25 +115,22 @@ message AssignedRoleView {
   // @inject_tag: `gorm:"default:current_timestamp"`
   Timestamp update_time = 3;
 
-  // public_id is used to access the PrincipalRole via an API
-  string public_id = 4;
-
   // FriendlyName is the optional friendly name used to
   // access the PrincipalRole via an API
   // @inject_tag: `gorm:"default:null"`
-  string friendly_name = 5;
+  string friendly_name = 4;
 
   // primary scope id of the PrimaryScope
   // @inject_tag: `gorm:"default:null"`
-  string primary_scope_id = 6;
+  string primary_scope_id = 5;
   // @inject_tag: gorm:"foreignkey:ScopeId"
-  Scope primary_scope = 7;
+  Scope primary_scope = 6;
 
   // role_id is the role of this principal.
-  string role_id = 9;
+  string role_id = 7;
 
   // Principal type (User or Group)
-  string type = 10;
+  string type = 8;
 
-  string principal_id = 11;
+  string principal_id = 9;
 }
