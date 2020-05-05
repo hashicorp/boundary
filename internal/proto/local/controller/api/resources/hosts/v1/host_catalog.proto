@@ -17,8 +17,8 @@ message HostCatalog {
 	// The type of the resource, to help differentiate schemas
 	google.protobuf.StringValue type = 2;
 
-	// Friendly name, if set
-	google.protobuf.StringValue friendly_name = 3;
+	// Optional user-set name for identification purposes
+	google.protobuf.StringValue name = 3;
 
 	// The time this host was created
 	// Output only.

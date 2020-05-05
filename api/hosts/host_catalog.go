@@ -21,8 +21,8 @@ type HostCatalog struct {
 	Id *string `json:"id,omitempty"`
 	// The type of the resource, to help differentiate schemas
 	Type *string `json:"type,omitempty"`
-	// Friendly name, if set
-	FriendlyName *string `json:"friendly_name,omitempty"`
+	// Optional user-set name for identification purposes
+	Name *string `json:"name,omitempty"`
 	// The time this host was created
 	// Output only.
 	CreatedTime time.Time `json:"created_time,omitempty"`

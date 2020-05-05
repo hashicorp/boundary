@@ -766,9 +766,9 @@
           "type": "string",
           "title": "The type of the resource, to help differentiate schemas"
         },
-        "friendly_name": {
+        "name": {
           "type": "string",
-          "title": "Friendly name, if set"
+          "title": "Optional user-set name for identification purposes"
         },
         "created_time": {
           "type": "string",
@@ -805,9 +805,9 @@
           "type": "string",
           "title": "The type of the resource, to help differentiate schemas"
         },
-        "friendly_name": {
+        "name": {
           "type": "string",
-          "title": "Friendly name, if set"
+          "title": "Optional user-set name for identification purposes"
         },
         "created_time": {
           "type": "string",
@@ -845,9 +845,9 @@
           "type": "string",
           "title": "The type of the resource, to help differentiate schemas"
         },
-        "friendly_name": {
+        "name": {
           "type": "string",
-          "title": "Friendly name, if set"
+          "title": "Optional user-set name for identification purposes"
         },
         "created_time": {
           "type": "string",
