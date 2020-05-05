@@ -21,7 +21,7 @@ type hostRepo interface {
 	DeleteHost(ctx context.Context, id string) (bool, error)
 	CreateHost(ctx context.Context, catalogID, id string, h repo.Host) (*repo.Host, error)
 	UpdateHost(ctx context.Context, id string, h repo.Host, masks string) (*repo.Host, error)
-	// TODO: Figure out the appropriate way to verify the path is appropriate, whether as a seperate method or merging this into the methods above.
+	// TODO: Figure out the appropriate way to verify the path is appropriate, whether as a separate method or merging this into the methods above.
 }
 
 type Service struct {

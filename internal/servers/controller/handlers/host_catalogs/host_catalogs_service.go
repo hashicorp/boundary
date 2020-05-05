@@ -30,7 +30,7 @@ type hostCatalogRepo interface {
 	// UpdateHostCatalog updates the HostCatalog with the id provided using the values in the provide HostCatalog object.
 	// The provide HostCatalog cannot have any read only values set.  error returns a non nil value if the HostCatalog could not be updated.
 	UpdateHostCatalog(ctx context.Context, scopeID, id string, hc repo.HostCatalog, masks string) (*repo.HostCatalog, error)
-	// TODO: Figure out the appropriate way to verify the path is appropriate, whether as a seperate method or merging this into the methods above.
+	// TODO: Figure out the appropriate way to verify the path is appropriate, whether as a separate method or merging this into the methods above.
 }
 
 type Service struct {

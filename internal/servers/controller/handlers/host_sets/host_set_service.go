@@ -20,7 +20,7 @@ type hostSetRepo interface {
 	DeleteHostSet(ctx context.Context, id string) (bool, error)
 	CreateHostSet(ctx context.Context, catalogID, id string, hs repo.HostSet) (*repo.HostSet, error)
 	UpdateHostSet(ctx context.Context, catalogID, id string, hs repo.HostSet, masks string) (*repo.HostSet, error)
-	// TODO: Figure out the appropriate way to verify the path is appropriate, whether as a seperate method or merging this into the methods above.
+	// TODO: Figure out the appropriate way to verify the path is appropriate, whether as a separate method or merging this into the methods above.
 }
 
 type Service struct {
