@@ -278,7 +278,7 @@ func (rw *GormReadWriter) Delete(ctx context.Context, i interface{}, opt ...Opti
 	return nil
 }
 
-func (rw *GormReadWriter) addOplog(ctx context.Context, opType OpType, opts Options, i interface{}) error {
+func (rw *GormReadWriter) addOplog(ctx context.Context, opType OpType, opts options, i interface{}) error {
 	oplogArgs := opts.oplogOpts
 	if oplogArgs.wrapper == nil {
 		return errors.New("error wrapper is nil for WithWrapper")

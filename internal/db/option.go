@@ -6,7 +6,7 @@ import (
 )
 
 // GetOpts - iterate the inbound Options and return a struct
-func GetOpts(opt ...Option) Options {
+func GetOpts(opt ...Option) options {
 	opts := getDefaultOptions()
 	for _, o := range opt {
 		o(&opts)
@@ -15,10 +15,10 @@ func GetOpts(opt ...Option) Options {
 }
 
 // Option - how Options are passed as arguments
-type Option func(*Options)
+type Option func(*options)
 
-// Options = how options are represented
-type Options struct {
+// options = how options are represented
+type options struct {
 	withOplog  bool
 	oplogOpts  oplogOpts
 	withDebug  bool
@@ -30,8 +30,8 @@ type oplogOpts struct {
 	metadata oplog.Metadata
 }
 
-func getDefaultOptions() Options {
-	return Options{
+func getDefaultOptions() options {
+	return options{
 		withOplog: false,
 		oplogOpts: oplogOpts{
 			wrapper:  nil,
@@ -44,21 +44,21 @@ func getDefaultOptions() Options {
 
 // WithLookup enables a lookup
 func WithLookup(enable bool) Option {
-	return func(o *Options) {
+	return func(o *options) {
 		o.withLookup = enable
 	}
 }
 
 // WithDebug enables debug
 func WithDebug(enable bool) Option {
-	return func(o *Options) {
+	return func(o *options) {
 		o.withDebug = enable
 	}
 }
 
 // WithOplog provides an option to write an oplog entry
 func WithOplog(wrapper wrapping.Wrapper, md oplog.Metadata) Option {
-	return func(o *Options) {
+	return func(o *options) {
 		o.withOplog = true
 		o.oplogOpts = oplogOpts{
 			wrapper:  wrapper,
