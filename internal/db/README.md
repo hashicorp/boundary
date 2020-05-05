@@ -19,14 +19,14 @@ Just some high-level usage highlights to get you started.  Read the godocs for a
     err = rw.Create(context.Background(), user)
    
     // There are reader methods like: LookupByPublicId,  
-    // LookupByFriendlyName, SearchBy, LookupBy, etc
+    // LookupByName, SearchBy, LookupBy, etc
     // which will lookup resources for you and scan them into your Gorm struct
     err = rw.LookupByPublicId(context.Background(), foundUser)
 
     // There's reader ScanRows that facilitates scanning rows from 
     // a "raw" SQL query into your Gorm struct
     tx, err := rw.DB()
-    where := "select * from test_users where friendly_name in ($1, $2)"
+    where := "select * from test_users where name in ($1, $2)"
     rows, err := tx.Query(where, "alice", "bob")
 	defer rows.Close()
 	for rows.Next() {

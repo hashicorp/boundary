@@ -16,8 +16,8 @@ import (
 
 // Reader interface defines lookups/searching for resources
 type Reader interface {
-	// LookupByFriendlyName will lookup resource by its friendly_name which must be unique
-	LookupByFriendlyName(ctx context.Context, resource ResourceFriendlyNamer, opt ...Option) error
+	// LookupByName will lookup resource by its friendly name which must be unique
+	LookupByName(ctx context.Context, resource ResourceNamer, opt ...Option) error
 
 	// LookupByPublicId will lookup resource by its public_id which must be unique
 	LookupByPublicId(ctx context.Context, resource ResourcePublicIder, opt ...Option) error
@@ -77,9 +77,9 @@ type ResourcePublicIder interface {
 	GetPublicId() string
 }
 
-// ResourceFriendlyNamer defines an interface that LookupByFriendlyName() can use to get the resource's friendly name
-type ResourceFriendlyNamer interface {
-	GetFriendlyName() string
+// ResourceNamer defines an interface that LookupByName() can use to get the resource's friendly name
+type ResourceNamer interface {
+	GetName() string
 }
 
 type OpType int
@@ -381,10 +381,10 @@ func (w *GormReadWriter) DoTx(ctx context.Context, retries uint, backOff Backoff
 	return info, nil
 }
 
-// LookupByFriendlyName will lookup resource my its friendly_name which must be unique
-func (rw *GormReadWriter) LookupByFriendlyName(ctx context.Context, resource ResourceFriendlyNamer, opt ...Option) error {
+// LookupByName will lookup resource my its friendly name which must be unique
+func (rw *GormReadWriter) LookupByName(ctx context.Context, resource ResourceNamer, opt ...Option) error {
 	if rw.Tx == nil {
-		return errors.New("error tx nil for lookup by friendly name")
+		return errors.New("error tx nil for lookup by name")
 	}
 	opts := getOpts(opt...)
 	withDebug := opts.withDebug
@@ -393,12 +393,12 @@ func (rw *GormReadWriter) LookupByFriendlyName(ctx context.Context, resource Res
 		defer rw.Tx.LogMode(false)
 	}
 	if reflect.ValueOf(resource).Kind() != reflect.Ptr {
-		return errors.New("error interface parameter must to be a pointer for lookup by friendly name")
+		return errors.New("error interface parameter must to be a pointer for lookup by name")
 	}
-	if resource.GetFriendlyName() == "" {
-		return errors.New("error friendly name empty string for lookup by friendly name")
+	if resource.GetName() == "" {
+		return errors.New("error name empty string for lookup by name")
 	}
-	return rw.Tx.Where("friendly_name = ?", resource.GetFriendlyName()).First(resource).Error
+	return rw.Tx.Where("name = ?", resource.GetName()).First(resource).Error
 }
 
 // LookupByPublicId will lookup resource my its public_id which must be unique
