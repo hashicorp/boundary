@@ -45,7 +45,7 @@ func TestNewRoleGrant(t *testing.T) {
 		assert.Equal(g.Grant, "everything*")
 		err = w.Create(context.Background(), g)
 		assert.Nil(err)
-		assert.True(g.Id != 0)
+		assert.True(g.PublicId != "")
 
 		user, err := NewUser(s)
 		assert.Nil(err)

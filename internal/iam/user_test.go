@@ -251,7 +251,7 @@ func Test_UserGrants(t *testing.T) {
 		assert.Equal(g.Grant, "everything*"+id)
 		err = w.Create(context.Background(), g)
 		assert.Nil(err)
-		assert.True(g.Id != 0)
+		assert.True(g.PublicId != "")
 
 		user, err := NewUser(s)
 		assert.Nil(err)
@@ -270,7 +270,7 @@ func Test_UserGrants(t *testing.T) {
 		userGrants, err := user.Grants(context.Background(), &w)
 		assert.Nil(err)
 		assert.Equal(len(userGrants), 1)
-		assert.Equal(userGrants[0].GetId(), g.Id)
+		assert.Equal(userGrants[0].GetPublicId(), g.PublicId)
 
 		grp, err := NewGroup(s, WithDescription("user grants test group"))
 		assert.Nil(err)
@@ -302,7 +302,7 @@ func Test_UserGrants(t *testing.T) {
 		assert.Equal(groupGrant.Grant, "group-grant*"+id)
 		err = w.Create(context.Background(), groupGrant)
 		assert.Nil(err)
-		assert.True(groupGrant.Id != 0)
+		assert.True(groupGrant.PublicId != "")
 
 		gRole, err := NewAssignedRole(s, groupRole, grp)
 		assert.Nil(err)
@@ -318,7 +318,7 @@ func Test_UserGrants(t *testing.T) {
 		assert.Nil(err)
 		assert.Equal(len(allGrants), 2)
 		for _, grant := range allGrants {
-			assert.True(grant.Id == g.Id || grant.Id == groupGrant.Id)
+			assert.True(grant.PublicId == g.PublicId || grant.PublicId == groupGrant.PublicId)
 		}
 	})
 }
