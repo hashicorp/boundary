@@ -16,20 +16,23 @@ message Host {
 	// The type of the resource, to help differentiate schemas
 	google.protobuf.StringValue type = 2;
 
-	// Optional user-set name for identification purposes
+	// Optional name for identification purposes
 	google.protobuf.StringValue name = 3;
+
+	// Optional user-set description for identification purposes
+	google.protobuf.StringValue description = 4;
 
 	// The time this host was created
 	// Ouput only.
-	google.protobuf.Timestamp created_time = 4;
+	google.protobuf.Timestamp created_time = 5;
 
 	// The time this host was last updated
 	// Output only.
-	google.protobuf.Timestamp updated_time = 5;
+	google.protobuf.Timestamp updated_time = 6;
 
 	// Whether the host is disabled
-	google.protobuf.BoolValue disabled = 6;
+	google.protobuf.BoolValue disabled = 7;
 
 	// The address (DNS or IP name) used to reach the host
-	google.protobuf.StringValue address = 7;
+	google.protobuf.StringValue address = 8;
 }

@@ -768,7 +768,11 @@
         },
         "name": {
           "type": "string",
-          "title": "Optional user-set name for identification purposes"
+          "title": "Optional name for identification purposes"
+        },
+        "description": {
+          "type": "string",
+          "title": "Optional user-set description for identification purposes"
         },
         "created_time": {
           "type": "string",
@@ -807,7 +811,11 @@
         },
         "name": {
           "type": "string",
-          "title": "Optional user-set name for identification purposes"
+          "title": "Optional name for identification purposes"
+        },
+        "description": {
+          "type": "string",
+          "title": "Optional user-set description for identification purposes"
         },
         "created_time": {
           "type": "string",
@@ -847,7 +855,11 @@
         },
         "name": {
           "type": "string",
-          "title": "Optional user-set name for identification purposes"
+          "title": "Optional name for identification purposes"
+        },
+        "description": {
+          "type": "string",
+          "title": "Optional user-set description for identification purposes"
         },
         "created_time": {
           "type": "string",

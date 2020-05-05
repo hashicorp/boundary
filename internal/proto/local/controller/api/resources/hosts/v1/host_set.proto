@@ -17,27 +17,30 @@ message HostSet {
 	// The type of the resource, to help differentiate schemas
 	google.protobuf.StringValue type = 2;
 
-	// Optional user-set name for identification purposes
+	// Optional name for identification purposes
 	google.protobuf.StringValue name = 3;
+
+	// Optional user-set description for identification purposes
+	google.protobuf.StringValue description = 4;
 
 	// The time this host was created
 	// Output only.
-	google.protobuf.Timestamp created_time = 4;
+	google.protobuf.Timestamp created_time = 5;
 
 	// The time this host was last updated
 	// Output only.
-	google.protobuf.Timestamp updated_time = 5;
+	google.protobuf.Timestamp updated_time = 6;
 
 	// Whether the host set is disabled
-	google.protobuf.BoolValue disabled = 6;
+	google.protobuf.BoolValue disabled = 7;
 
 	// The total count of hosts in this host set
 	// Output only.
-	google.protobuf.Int64Value size = 7;
+	google.protobuf.Int64Value size = 8;
 
 	// A list of hosts in this host set
 	// TODO: Figure out if this should be in the basic HostSet view and what
 	// view to use on the Hosts.
 	// Output only.
-	repeated Host hosts = 8;
+	repeated Host hosts = 9;
 }

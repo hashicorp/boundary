@@ -18,9 +18,10 @@ var _ cli.CommandAutocomplete = (*CreateCommand)(nil)
 type CreateCommand struct {
 	*base.Command
 
-	flagAddress string
-	flagName    string
-	flagCatalog string
+	flagAddress     string
+	flagName        string
+	flagCatalog     string
+	flagDescription string
 }
 
 func (c *CreateCommand) Synopsis() string {
@@ -69,6 +70,13 @@ func (c *CreateCommand) Flags() *base.FlagSets {
 		Usage:      "The ID of the host catalog in which the host should be created",
 	})
 
+	f.StringVar(&base.StringVar{
+		Name:       "description",
+		Target:     &c.flagDescription,
+		Completion: complete.PredictNothing,
+		Usage:      "The ID of the host catalog in which the host should be created",
+	})
+
 	return set
 }
 
@@ -109,8 +117,9 @@ func (c *CreateCommand) Run(args []string) int {
 	}
 
 	host := &hosts.Host{
-		Name:    api.StringOrNil(c.flagName),
-		Address: api.String(c.flagAddress),
+		Address:     api.String(c.flagAddress),
+		Name:        api.StringOrNil(c.flagName),
+		Description: api.StringOrNil(c.flagDescription),
 	}
 
 	var apiErr *api.Error

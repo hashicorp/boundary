@@ -21,8 +21,10 @@ type Host struct {
 	Id *string `json:"id,omitempty"`
 	// The type of the resource, to help differentiate schemas
 	Type *string `json:"type,omitempty"`
-	// Optional user-set name for identification purposes
+	// Optional name for identification purposes
 	Name *string `json:"name,omitempty"`
+	// Optional user-set description for identification purposes
+	Description *string `json:"description,omitempty"`
 	// The time this host was created
 	// Ouput only.
 	CreatedTime time.Time `json:"created_time,omitempty"`
