@@ -4,5 +4,6 @@ package main
 
 func main() {
 	parsePBs()
-	writeTemplates()
+	writeStructTemplates()
+	writeCreateFuncs()
 }

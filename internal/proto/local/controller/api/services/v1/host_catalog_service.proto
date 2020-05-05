@@ -87,8 +87,8 @@ service HostCatalogService {
 }
 
 message GetHostCatalogRequest {
-  string org_id = 1;
-  string project_id = 2;
+  string org_id = 1 [json_name="org_id"];
+  string project_id = 2 [json_name="project_id"];
   string id = 3;
   string view = 4;
 }
@@ -98,8 +98,8 @@ message GetHostCatalogResponse {
 }
 
 message ListHostCatalogsRequest {
-  string org_id = 1;
-  string project_id = 2;
+  string org_id = 1 [json_name="org_id"];
+  string project_id = 2 [json_name="project_id"];
   string view = 3;
 }
 
@@ -108,8 +108,8 @@ message ListHostCatalogsResponse {
 }
 
 message CreateHostCatalogRequest {
-  string org_id = 1;
-  string project_id = 2;
+  string org_id = 1 [json_name="org_id"];
+  string project_id = 2 [json_name="project_id"];
   api.resources.hosts.v1.HostCatalog item = 3;
 }
 
@@ -119,8 +119,8 @@ message CreateHostCatalogResponse {
 }
 
 message UpdateHostCatalogRequest {
-  string org_id = 1;
-  string project_id = 2;
+  string org_id = 1 [json_name="org_id"];
+  string project_id = 2 [json_name="project_id"];
   string id = 3;
   api.resources.hosts.v1.HostCatalog item = 4;
   google.protobuf.FieldMask update_mask = 5;
@@ -131,8 +131,8 @@ message UpdateHostCatalogResponse {
 }
 
 message DeleteHostCatalogRequest {
-  string org_id = 1;
-  string project_id = 2;
+  string org_id = 1 [json_name="org_id"];
+  string project_id = 2 [json_name="project_id"];
   string id = 3;
 }
 

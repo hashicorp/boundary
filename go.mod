@@ -31,6 +31,7 @@ require (
 	github.com/hashicorp/vault/api v1.0.5-0.20200310200732-a321b1217d5a
 	github.com/hashicorp/vault/sdk v0.1.14-0.20200310200732-a321b1217d5a
 	github.com/jinzhu/gorm v1.9.12
+	github.com/kr/pretty v0.2.0
 	github.com/kr/text v0.2.0
 	github.com/lib/pq v1.3.0
 	github.com/mattn/go-colorable v0.1.6

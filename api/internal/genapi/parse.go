@@ -116,7 +116,11 @@ func parsePBs() {
 				var selectorExpr *ast.SelectorExpr
 				switch typ := field.Type.(type) {
 				case *ast.Ident:
-					typ.Name = "*" + typ.Name
+					// Id values are immutable and should always exist, so
+					// don't make it a pointer
+					if field.Names[0].Name != "Id" {
+						typ.Name = "*" + typ.Name
+					}
 					goto TAGMODIFY
 				case *ast.ArrayType:
 					goto TAGMODIFY
@@ -220,7 +224,9 @@ func parsePBs() {
 				}
 
 			TAGMODIFY:
-				st.Fields.List[i].Tag.Value = "`" + regex.FindString(st.Fields.List[i].Tag.Value) + "`"
+				// TraceId needs to be handled differently because it's a
+				// specific value used by OpenTelemetry
+				st.Fields.List[i].Tag.Value = "`" + strings.Replace(regex.FindString(st.Fields.List[i].Tag.Value), "trace_id", "TraceId", 1) + "`"
 			}
 		}), inAst)
 

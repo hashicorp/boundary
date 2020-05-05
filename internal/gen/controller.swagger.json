@@ -1363,28 +1363,33 @@
     "controller.api.resources.hosts.v1.Host": {
       "type": "object",
       "properties": {
-        "path": {
+        "id": {
           "type": "string",
-          "description": "Canonical path of the resource from the API's base URI\nOutput only.",
+          "description": "The ID of the host\nOutput only.",
           "readOnly": true
         },
         "type": {
           "type": "string",
           "title": "The type of the resource, to help differentiate schemas"
         },
-        "friendly_name": {
+        "name": {
           "type": "string",
-          "title": "Friendly name, if set"
+          "title": "Optional name for identification purposes"
+        },
+        "description": {
+          "type": "string",
+          "title": "Optional user-set description for identification purposes"
         },
         "created_time": {
           "type": "string",
           "format": "date-time",
-          "description": "The time this host was created\nOuput only."
+          "description": "The time this resource was created\nOutput only.",
+          "readOnly": true
         },
         "updated_time": {
           "type": "string",
           "format": "date-time",
-          "description": "The time this host was last updated\nOutput only.",
+          "description": "The time this resource was last updated\nOutput only.",
           "readOnly": true
         },
         "disabled": {
@@ -1402,29 +1407,33 @@
     "controller.api.resources.hosts.v1.HostCatalog": {
       "type": "object",
       "properties": {
-        "path": {
+        "id": {
           "type": "string",
-          "description": "Canonical path of the resource from the API's base URI\nOutput only.",
+          "description": "The ID of the host\nOutput only.",
           "readOnly": true
         },
         "type": {
           "type": "string",
           "title": "The type of the resource, to help differentiate schemas"
         },
-        "friendly_name": {
+        "name": {
           "type": "string",
-          "title": "Friendly name, if set"
+          "title": "Optional name for identification purposes"
+        },
+        "description": {
+          "type": "string",
+          "title": "Optional user-set description for identification purposes"
         },
         "created_time": {
           "type": "string",
           "format": "date-time",
-          "description": "The time this host was created\nOutput only.",
+          "description": "The time this resource was created\nOutput only.",
           "readOnly": true
         },
         "updated_time": {
           "type": "string",
           "format": "date-time",
-          "description": "The time this host was last updated\nOutput only.",
+          "description": "The time this resource was last updated\nOutput only.",
           "readOnly": true
         },
         "disabled": {
@@ -1442,29 +1451,33 @@
     "controller.api.resources.hosts.v1.HostSet": {
       "type": "object",
       "properties": {
-        "path": {
+        "id": {
           "type": "string",
-          "description": "Canonical path of the resource from the API's base URI\nOutput only.",
+          "description": "The ID of the host\nOutput only.",
           "readOnly": true
         },
         "type": {
           "type": "string",
           "title": "The type of the resource, to help differentiate schemas"
         },
-        "friendly_name": {
+        "name": {
           "type": "string",
-          "title": "Friendly name, if set"
+          "title": "Optional name for identification purposes"
+        },
+        "description": {
+          "type": "string",
+          "title": "Optional user-set description for identification purposes"
         },
         "created_time": {
           "type": "string",
           "format": "date-time",
-          "description": "The time this host was created\nOutput only.",
+          "description": "The time this resource was created\nOutput only.",
           "readOnly": true
         },
         "updated_time": {
           "type": "string",
           "format": "date-time",
-          "description": "The time this host was last updated\nOutput only.",
+          "description": "The time this resource was last updated\nOutput only.",
           "readOnly": true
         },
         "disabled": {

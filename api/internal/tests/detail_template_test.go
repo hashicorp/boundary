@@ -12,7 +12,7 @@ import (
 func TestDetailTemplating(t *testing.T) {
 	lt := time.Now()
 	c := hosts.HostCatalog{
-		Path:        api.String("path"),
+		Id:          "id",
 		CreatedTime: lt,
 		Attributes: map[string]interface{}{
 			"regions":    []string{"a", "b"},

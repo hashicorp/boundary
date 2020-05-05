@@ -10,29 +10,32 @@ import "google/protobuf/struct.proto";
 
 // HostCatalog manages Hosts and HostSets
 message HostCatalog {
-	// Canonical path of the resource from the API's base URI
+	// The ID of the host
 	// Output only.
-	string path = 1;
+	string id = 1;
 
 	// The type of the resource, to help differentiate schemas
 	google.protobuf.StringValue type = 2;
 
-	// Friendly name, if set
-	google.protobuf.StringValue friendly_name = 3;
+	// Optional name for identification purposes
+	google.protobuf.StringValue name = 3;
 
-	// The time this host was created
-	// Output only.
-	google.protobuf.Timestamp created_time = 4;
+	// Optional user-set description for identification purposes
+	google.protobuf.StringValue description = 4;
 
-	// The time this host was last updated
+	// The time this resource was created
 	// Output only.
-	google.protobuf.Timestamp updated_time = 5;
+	google.protobuf.Timestamp created_time = 5 [json_name="created_time"];
+
+	// The time this resource was last updated
+	// Output only.
+	google.protobuf.Timestamp updated_time = 6 [json_name="updated_time"];
 
 	// Whether the catalog is disabled
-	google.protobuf.BoolValue disabled = 6;
+	google.protobuf.BoolValue disabled = 7;
 
 	// Attributes specific to the catalog type
-	google.protobuf.Struct attributes = 7;
+	google.protobuf.Struct attributes = 8;
 }
 
 message StaticHostCatalogDetails {
@@ -44,9 +47,9 @@ message AwsEc2HostCatalogDetails {
 	repeated string regions = 1;
 
 	// The access key used for authenticating with AWS when retrieving EC2 instance details.
-	google.protobuf.StringValue access_key = 2;
+	google.protobuf.StringValue access_key = 2 [json_name="access_key"];
 	// Input only.
-	google.protobuf.StringValue secret_key = 3;
+	google.protobuf.StringValue secret_key = 3 [json_name="secret_key"];
 
 	// This value will never be returned in a response.
 	google.protobuf.BoolValue rotate = 4;
