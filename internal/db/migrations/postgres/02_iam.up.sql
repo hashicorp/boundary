@@ -76,7 +76,7 @@ CREATE TABLE if not exists iam_auth_method (
     create_time timestamp with time zone NOT NULL default current_timestamp,
     update_time timestamp with time zone NOT NULL default current_timestamp,
     friendly_name text UNIQUE,
-    primary_scope_id text NOT NULL REFERENCES iam_scope_organization(scope_id),
+    primary_scope_id text NOT NULL REFERENCES iam_scope_organization(scope_id) ON DELETE CASCADE ON UPDATE CASCADE,
     disabled BOOLEAN NOT NULL default FALSE,
     type text NOT NULL
   );
@@ -88,7 +88,7 @@ CREATE TABLE if not exists iam_role (
     update_time timestamp with time zone NOT NULL default current_timestamp,
     friendly_name text UNIQUE,
     description text,
-    primary_scope_id text NOT NULL REFERENCES iam_scope(public_id),
+    primary_scope_id text NOT NULL REFERENCES iam_scope(public_id) ON DELETE CASCADE ON UPDATE CASCADE,
     disabled BOOLEAN NOT NULL default FALSE
   );
 
@@ -107,7 +107,7 @@ CREATE TABLE if not exists iam_group (
     update_time timestamp with time zone NOT NULL default current_timestamp,
     friendly_name text UNIQUE,
     description text,
-    primary_scope_id text NOT NULL REFERENCES iam_scope(public_id),
+    primary_scope_id text NOT NULL REFERENCES iam_scope(public_id) ON DELETE CASCADE ON UPDATE CASCADE,
     disabled BOOLEAN NOT NULL default FALSE
   );
 
@@ -118,8 +118,8 @@ CREATE TABLE if not exists iam_group_member_user (
     update_time timestamp with time zone NOT NULL default current_timestamp,
     friendly_name text UNIQUE,
     primary_scope_id text NOT NULL REFERENCES iam_scope(public_id),
-    group_id text NOT NULL REFERENCES iam_group(public_id),
-    member_id text NOT NULL REFERENCES iam_user(public_id),
+    group_id text NOT NULL REFERENCES iam_group(public_id) ON DELETE CASCADE ON UPDATE CASCADE,
+    member_id text NOT NULL REFERENCES iam_user(public_id) ON DELETE CASCADE ON UPDATE CASCADE,
     type text NOT NULL REFERENCES iam_group_member_type_enm(string) check(type = 'user')
   );
 
@@ -188,9 +188,9 @@ CREATE TABLE if not exists iam_role_user (
     create_time timestamp with time zone NOT NULL default current_timestamp,
     update_time timestamp with time zone NOT NULL default current_timestamp,
     friendly_name text UNIQUE,
-    primary_scope_id text NOT NULL REFERENCES iam_scope(public_id),
-    role_id text NOT NULL REFERENCES iam_role(public_id),
-    principal_id text NOT NULL REFERENCES iam_user(public_id),
+    primary_scope_id text NOT NULL REFERENCES iam_scope(public_id) ON DELETE CASCADE ON UPDATE CASCADE,
+    role_id text NOT NULL REFERENCES iam_role(public_id) ON DELETE CASCADE ON UPDATE CASCADE,
+    principal_id text NOT NULL REFERENCES iam_user(public_id) ON DELETE CASCADE ON UPDATE CASCADE,
     type text NOT NULL REFERENCES iam_role_type_enm(string) CHECK(type = 'user')
   );
 
@@ -200,9 +200,9 @@ CREATE TABLE if not exists iam_role_group (
     create_time timestamp with time zone NOT NULL default current_timestamp,
     update_time timestamp with time zone NOT NULL default current_timestamp,
     friendly_name text UNIQUE,
-    primary_scope_id text NOT NULL REFERENCES iam_scope(public_id),
-    role_id text NOT NULL REFERENCES iam_role(public_id),
-    principal_id text NOT NULL REFERENCES iam_group(public_id),
+    primary_scope_id text NOT NULL REFERENCES iam_scope(public_id) ON DELETE CASCADE ON UPDATE CASCADE,
+    role_id text NOT NULL REFERENCES iam_role(public_id) ON DELETE CASCADE ON UPDATE CASCADE,
+    principal_id text NOT NULL REFERENCES iam_group(public_id) ON DELETE CASCADE ON UPDATE CASCADE,
     type text NOT NULL REFERENCES iam_role_type_enm(string) CHECK(type = 'group')
   );
 
@@ -222,8 +222,8 @@ CREATE TABLE if not exists iam_role_grant (
     create_time timestamp with time zone NOT NULL default current_timestamp,
     update_time timestamp with time zone NOT NULL default current_timestamp,
     friendly_name text UNIQUE,
-    primary_scope_id text NOT NULL REFERENCES iam_scope(public_id),
-    role_id text NOT NULL REFERENCES iam_role(public_id),
+    primary_scope_id text NOT NULL REFERENCES iam_scope(public_id) ON DELETE CASCADE ON UPDATE CASCADE,
+    role_id text NOT NULL REFERENCES iam_role(public_id) ON DELETE CASCADE ON UPDATE CASCADE,
     "grant" text NOT NULL,
     description text
   );
