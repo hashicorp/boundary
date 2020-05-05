@@ -1,0 +1,88 @@
+syntax = "proto3";
+
+// define a test proto package for the internal/db package.  These protos
+// are only used for unit tests and are not part of the rest of the watchtower
+// domain model
+package controller.storage.db.db_test.v1;
+option go_package = "github.com/hashicorp/watchtower/internal/db/db_test;db_test";
+
+import "google/protobuf/timestamp.proto";
+
+// Timestamp for oplog messages
+message Timestamp {
+  google.protobuf.Timestamp timestamp = 1;
+}
+
+// TestUser for gorm test user model
+message StoreTestUser {
+  // @inject_tag: gorm:"primary_key"
+  uint32 id = 1;
+
+  // create_time from the RDBMS
+  // @inject_tag: `gorm:"default:CURRENT_TIMESTAMP"`
+  Timestamp create_time = 2;
+
+  // update_time from the RDBMS
+  // @inject_tag: `gorm:"default:CURRENT_TIMESTAMP"`
+  Timestamp update_time = 3;
+
+  // public_id is the used to access the AssignablScope via an API
+  string public_id = 4;
+
+  // FriendlyName is the optional friendly name used to
+  // access the Scope via an API
+  // @inject_tag: `gorm:"default:null"`
+  string friendly_name = 5;
+
+  string name = 6;
+  string phone_number = 7;
+  string email = 8;
+}
+// TestCar for gorm test car model
+message StoreTestCar {
+  // @inject_tag: gorm:"primary_key"
+  uint32 id = 1;
+
+  // create_time from the RDBMS
+  // @inject_tag: `gorm:"default:CURRENT_TIMESTAMP"`
+  Timestamp create_time = 2;
+
+  // update_time from the RDBMS
+  // @inject_tag: `gorm:"default:CURRENT_TIMESTAMP"`
+  Timestamp update_time = 3;
+
+  // public_id is the used to access the AssignablScope via an API
+  string public_id = 4;
+
+  // FriendlyName is the optional friendly name used to
+  // access the Scope via an API
+  // @inject_tag: `gorm:"default:null"`
+  string friendly_name = 5;
+
+  string model = 6;
+  int32 mpg = 7;
+}
+// TestRental for gorm test rental model
+message StoreTestRental {
+  // @inject_tag: gorm:"primary_key"
+  uint32 id = 1;
+
+  // create_time from the RDBMS
+  // @inject_tag: `gorm:"default:CURRENT_TIMESTAMP"`
+  Timestamp create_time = 2;
+
+  // update_time from the RDBMS
+  // @inject_tag: `gorm:"default:CURRENT_TIMESTAMP"`
+  Timestamp update_time = 3;
+
+  // public_id is the used to access the AssignablScope via an API
+  string public_id = 4;
+
+  // FriendlyName is the optional friendly name used to
+  // access the Scope via an API
+  // @inject_tag: `gorm:"default:null"`
+  string friendly_name = 5;
+
+  uint32 user_id = 6;
+  uint32 car_id = 7;
+}
