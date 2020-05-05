@@ -5,8 +5,8 @@ import (
 	"github.com/hashicorp/watchtower/internal/oplog"
 )
 
-// GetOpts - iterate the inbound Options and return a struct
-func GetOpts(opt ...Option) options {
+// getOpts - iterate the inbound Options and return a struct
+func getOpts(opt ...Option) options {
 	opts := getDefaultOptions()
 	for _, o := range opt {
 		o(&opts)
