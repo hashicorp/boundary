@@ -37,8 +37,8 @@ func NewRoleGrant(primaryScope *Scope, role *Role, grant string, opt ...Option) 
 	if role == nil {
 		return nil, errors.New("error role is nil")
 	}
-	if role.Id == 0 {
-		return nil, errors.New("error role id == 0")
+	if role.PublicId == "" {
+		return nil, errors.New("error role id is unset")
 	}
 	publicId, err := base62.Random(20)
 	if err != nil {
@@ -48,7 +48,7 @@ func NewRoleGrant(primaryScope *Scope, role *Role, grant string, opt ...Option) 
 		RoleGrant: &store.RoleGrant{
 			PublicId:       publicId,
 			PrimaryScopeId: primaryScope.GetPublicId(),
-			RoleId:         role.Id,
+			RoleId:         role.PublicId,
 			Grant:          grant,
 		},
 	}

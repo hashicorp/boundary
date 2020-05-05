@@ -36,7 +36,7 @@ func Test_NewRole(t *testing.T) {
 		assert.Equal(s.PublicId, role.PrimaryScopeId)
 		err = w.Create(context.Background(), role)
 		assert.Nil(err)
-		assert.True(role.Id != 0)
+		assert.True(role.PublicId != "")
 	})
 	t.Run("nil-scope", func(t *testing.T) {
 		role, err := NewRole(nil)
@@ -91,7 +91,7 @@ func TestRole_GetPrimaryScope(t *testing.T) {
 		assert.Equal(s.PublicId, role.PrimaryScopeId)
 		err = w.Create(context.Background(), role)
 		assert.Nil(err)
-		assert.True(role.Id != 0)
+		assert.True(role.PublicId != "")
 
 		primaryScope, err := role.GetPrimaryScope(context.Background(), &w)
 		assert.Nil(err)
@@ -131,12 +131,12 @@ func TestRole_AssignedRoles(t *testing.T) {
 		assert.Equal(s.PublicId, role.PrimaryScopeId)
 		err = w.Create(context.Background(), role)
 		assert.Nil(err)
-		assert.True(role.Id != 0)
+		assert.True(role.PublicId != "")
 
 		uRole, err := NewAssignedRole(s, role, user)
 		assert.Nil(err)
 		assert.True(uRole != nil)
-		assert.Equal(uRole.GetRoleId(), role.Id)
+		assert.Equal(uRole.GetRoleId(), role.PublicId)
 		assert.Equal(uRole.GetPrincipalId(), user.PublicId)
 		err = w.Create(context.Background(), uRole)
 		assert.Nil(err)
@@ -155,7 +155,7 @@ func TestRole_AssignedRoles(t *testing.T) {
 		gRole, err := NewAssignedRole(s, role, grp)
 		assert.Nil(err)
 		assert.True(gRole != nil)
-		assert.Equal(gRole.GetRoleId(), role.Id)
+		assert.Equal(gRole.GetRoleId(), role.PublicId)
 		assert.Equal(gRole.GetPrincipalId(), grp.PublicId)
 		err = w.Create(context.Background(), gRole)
 		assert.Nil(err)
@@ -195,7 +195,7 @@ func TestRole_Clone(t *testing.T) {
 		assert.Equal(s.PublicId, role.PrimaryScopeId)
 		err = w.Create(context.Background(), role)
 		assert.Nil(err)
-		assert.True(role.Id != 0)
+		assert.True(role.PublicId != "")
 
 		cp := role.Clone()
 		assert.True(proto.Equal(cp.(*Role).Role, role.Role))
@@ -216,7 +216,7 @@ func TestRole_Clone(t *testing.T) {
 		assert.Equal(s.PublicId, role.PrimaryScopeId)
 		err = w.Create(context.Background(), role)
 		assert.Nil(err)
-		assert.True(role.Id != 0)
+		assert.True(role.PublicId != "")
 
 		role2, err := NewRole(s, WithDescription("this is a test role"))
 		assert.Nil(err)
@@ -225,7 +225,7 @@ func TestRole_Clone(t *testing.T) {
 		assert.Equal(s.PublicId, role2.PrimaryScopeId)
 		err = w.Create(context.Background(), role2)
 		assert.Nil(err)
-		assert.True(role2.Id != 0)
+		assert.True(role2.PublicId != "")
 
 		cp := role.Clone()
 		assert.True(!proto.Equal(cp.(*Role).Role, role2.Role))

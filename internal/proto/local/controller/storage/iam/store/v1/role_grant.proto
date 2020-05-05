@@ -35,6 +35,6 @@ message RoleGrant {
   // @inject_tag: gorm:"foreignkey:ScopeId"
   Scope primary_scope = 8;
 
-  uint32 role_id = 10;
+  string role_id = 10;
   string grant = 11;
 }

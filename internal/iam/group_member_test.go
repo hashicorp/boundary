@@ -64,7 +64,7 @@ func Test_NewGroupMember(t *testing.T) {
 		assert.Equal(s.PublicId, role.PrimaryScopeId)
 		err = w.Create(context.Background(), role)
 		assert.Nil(err)
-		assert.True(role.Id != 0)
+		assert.True(role.PublicId != "")
 
 		grp, err := NewGroup(s)
 		assert.Nil(err)

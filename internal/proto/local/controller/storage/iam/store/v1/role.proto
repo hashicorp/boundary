@@ -7,8 +7,9 @@ import "controller/storage/iam/store/v1/timestamp.proto";
 import "controller/storage/iam/store/v1/scope.proto";
 
 message Role {
+  // public_id is used to access the Role via an API
   // @inject_tag: gorm:"primary_key"
-  uint32 id = 1;
+  string public_id = 1;
 
   // create_time from the RDBMS
   // @inject_tag: `gorm:"default:current_timestamp"`
@@ -17,9 +18,6 @@ message Role {
   // update_time from the RDBMS
   // @inject_tag: `gorm:"default:current_timestamp"`
   Timestamp update_time = 3;
-
-  // public_id is used to access the Role via an API
-  string public_id = 4;
 
   // FriendlyName is the optional friendly name used to
   // access the Role via an API
@@ -35,7 +33,7 @@ message Role {
   Scope primary_scope = 8;
 
   // disabled is by default false and allows a Role to be marked disabled.
-  bool disabled = 10;
+  bool disabled = 9;
 }
 
 message UserRole {
@@ -65,7 +63,7 @@ message UserRole {
   Scope primary_scope = 7;
 
   // role_id is the role of this principal.
-  uint32 role_id = 9;
+  string role_id = 9;
 
   // Principal type (User)
   string type = 10;
@@ -100,7 +98,7 @@ message GroupRole {
   Scope primary_scope = 7;
 
   // role_id is the role of this principal.
-  uint32 role_id = 9;
+  string role_id = 9;
 
   // Principal type (Group)
   string type = 10;
@@ -135,7 +133,7 @@ message AssignedRoleView {
   Scope primary_scope = 7;
 
   // role_id is the role of this principal.
-  uint32 role_id = 9;
+  string role_id = 9;
 
   // Principal type (User or Group)
   string type = 10;

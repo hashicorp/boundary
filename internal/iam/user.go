@@ -68,7 +68,7 @@ func (u *User) Roles(ctx context.Context, r db.Reader, opt ...Option) (map[strin
 	if u.PublicId == "" {
 		return nil, errors.New("error user id is unset for finding roles")
 	}
-	where := "id in (select role_id from iam_assigned_role_vw ipr where principal_id  = ? and type = ?)"
+	where := "public_id in (select role_id from iam_assigned_role_vw ipr where principal_id  = ? and type = ?)"
 	roles := []*Role{}
 	if err := r.SearchBy(ctx, &roles, where, u.PublicId, UserRoleType.String()); err != nil {
 		return nil, fmt.Errorf("error getting user roles %w", err)
