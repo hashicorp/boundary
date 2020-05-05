@@ -766,9 +766,13 @@
           "type": "string",
           "title": "The type of the resource, to help differentiate schemas"
         },
-        "friendly_name": {
+        "name": {
           "type": "string",
-          "title": "Friendly name, if set"
+          "title": "Optional name for identification purposes"
+        },
+        "description": {
+          "type": "string",
+          "title": "Optional user-set description for identification purposes"
         },
         "created_time": {
           "type": "string",
@@ -805,9 +809,13 @@
           "type": "string",
           "title": "The type of the resource, to help differentiate schemas"
         },
-        "friendly_name": {
+        "name": {
           "type": "string",
-          "title": "Friendly name, if set"
+          "title": "Optional name for identification purposes"
+        },
+        "description": {
+          "type": "string",
+          "title": "Optional user-set description for identification purposes"
         },
         "created_time": {
           "type": "string",
@@ -845,9 +853,13 @@
           "type": "string",
           "title": "The type of the resource, to help differentiate schemas"
         },
-        "friendly_name": {
+        "name": {
           "type": "string",
-          "title": "Friendly name, if set"
+          "title": "Optional name for identification purposes"
+        },
+        "description": {
+          "type": "string",
+          "title": "Optional user-set description for identification purposes"
         },
         "created_time": {
           "type": "string",

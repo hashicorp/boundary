@@ -18,9 +18,10 @@ var _ cli.CommandAutocomplete = (*CreateCommand)(nil)
 type CreateCommand struct {
 	*base.Command
 
-	flagHost    string
-	flagName    string
-	flagCatalog string
+	flagAddress     string
+	flagName        string
+	flagCatalog     string
+	flagDescription string
 }
 
 func (c *CreateCommand) Synopsis() string {
@@ -36,7 +37,7 @@ Usage: watchtower hosts create
 
   Example: 
 
-      $ watchtower hosts create -catalog=<id> -host=<addr> -name=<name>
+      $ watchtower hosts create -catalog=<id> -address=<addr> -name=<name>
 
 ` + c.Flags().Help()
 
@@ -49,8 +50,8 @@ func (c *CreateCommand) Flags() *base.FlagSets {
 	f := set.NewFlagSet("Command Options")
 
 	f.StringVar(&base.StringVar{
-		Name:       "host",
-		Target:     &c.flagHost,
+		Name:       "address",
+		Target:     &c.flagAddress,
 		Completion: complete.PredictAnything,
 		Usage:      "The host's address; can be an IP address or DNS name",
 	})
@@ -59,13 +60,20 @@ func (c *CreateCommand) Flags() *base.FlagSets {
 		Name:       "name",
 		Target:     &c.flagName,
 		Completion: complete.PredictAnything,
-		Usage:      "A friendly name for the host for display purposes",
+		Usage:      "An optional name assigned to the host for display purposes",
 	})
 
 	f.StringVar(&base.StringVar{
 		Name:       "catalog",
 		Target:     &c.flagCatalog,
 		Completion: complete.PredictAnything,
+		Usage:      "The ID of the host catalog in which the host should be created",
+	})
+
+	f.StringVar(&base.StringVar{
+		Name:       "description",
+		Target:     &c.flagDescription,
+		Completion: complete.PredictNothing,
 		Usage:      "The ID of the host catalog in which the host should be created",
 	})
 
@@ -92,8 +100,8 @@ func (c *CreateCommand) Run(args []string) int {
 	case c.flagCatalog == "":
 		c.UI.Error("Catalog ID must be provided via -catalog")
 		return 1
-	case c.flagHost == "":
-		c.UI.Error("Host address must be provided via -host")
+	case c.flagAddress == "":
+		c.UI.Error("Host address must be provided via -address")
 		return 1
 	}
 
@@ -109,8 +117,9 @@ func (c *CreateCommand) Run(args []string) int {
 	}
 
 	host := &hosts.Host{
-		FriendlyName: api.StringOrNil(c.flagName),
-		Address:      api.String(c.flagHost),
+		Address:     api.String(c.flagAddress),
+		Name:        api.StringOrNil(c.flagName),
+		Description: api.StringOrNil(c.flagDescription),
 	}
 
 	var apiErr *api.Error

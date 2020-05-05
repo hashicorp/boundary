@@ -38,7 +38,7 @@ type Command struct {
 	flags     *FlagSets
 	flagsOnce sync.Once
 
-	flagAddress string
+	flagAddr    string
 	flagOrg     string
 	flagProject string
 
@@ -78,8 +78,8 @@ func (c *Command) Client() (*api.Client, error) {
 		return nil, err
 	}
 
-	if c.flagAddress != NotSetValue {
-		c.client.SetAddress(c.flagAddress)
+	if c.flagAddr != NotSetValue {
+		c.client.SetAddr(c.flagAddr)
 	}
 	if c.flagOrg != NotSetValue {
 		c.client.SetOrg(c.flagOrg)
@@ -154,12 +154,12 @@ func (c *Command) FlagSet(bit FlagSetBit) *FlagSets {
 			f := set.NewFlagSet("Connection Options")
 
 			f.StringVar(&StringVar{
-				Name:       FlagNameAddress,
-				Target:     &c.flagAddress,
+				Name:       FlagNameAddr,
+				Target:     &c.flagAddr,
 				Default:    NotSetValue,
-				EnvVar:     api.EnvWatchtowerAddress,
+				EnvVar:     api.EnvWatchtowerAddr,
 				Completion: complete.PredictAnything,
-				Usage:      "Address of the Watchtower controller.",
+				Usage:      "Addr of the Watchtower controller, as a complete URL (e.g. https://watchtower.example.com:9200).",
 			})
 
 			f.StringVar(&StringVar{

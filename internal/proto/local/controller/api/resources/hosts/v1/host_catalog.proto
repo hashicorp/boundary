@@ -17,22 +17,25 @@ message HostCatalog {
 	// The type of the resource, to help differentiate schemas
 	google.protobuf.StringValue type = 2;
 
-	// Friendly name, if set
-	google.protobuf.StringValue friendly_name = 3;
+	// Optional name for identification purposes
+	google.protobuf.StringValue name = 3;
+
+	// Optional user-set description for identification purposes
+	google.protobuf.StringValue description = 4;
 
 	// The time this host was created
 	// Output only.
-	google.protobuf.Timestamp created_time = 4;
+	google.protobuf.Timestamp created_time = 5;
 
 	// The time this host was last updated
 	// Output only.
-	google.protobuf.Timestamp updated_time = 5;
+	google.protobuf.Timestamp updated_time = 6;
 
 	// Whether the catalog is disabled
-	google.protobuf.BoolValue disabled = 6;
+	google.protobuf.BoolValue disabled = 7;
 
 	// Attributes specific to the catalog type
-	google.protobuf.Struct attributes = 7;
+	google.protobuf.Struct attributes = 8;
 }
 
 message StaticHostCatalogDetails {
