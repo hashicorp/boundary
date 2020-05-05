@@ -757,9 +757,9 @@
     "controller.api.resources.hosts.v1.Host": {
       "type": "object",
       "properties": {
-        "path": {
+        "id": {
           "type": "string",
-          "description": "Canonical path of the resource from the API's base URI\nOutput only.",
+          "description": "The ID of the host\nOutput only.",
           "readOnly": true
         },
         "type": {
@@ -796,9 +796,9 @@
     "controller.api.resources.hosts.v1.HostCatalog": {
       "type": "object",
       "properties": {
-        "path": {
+        "id": {
           "type": "string",
-          "description": "Canonical path of the resource from the API's base URI\nOutput only.",
+          "description": "The ID of the host\nOutput only.",
           "readOnly": true
         },
         "type": {
@@ -836,9 +836,9 @@
     "controller.api.resources.hosts.v1.HostSet": {
       "type": "object",
       "properties": {
-        "path": {
+        "id": {
           "type": "string",
-          "description": "Canonical path of the resource from the API's base URI\nOutput only.",
+          "description": "The ID of the host\nOutput only.",
           "readOnly": true
         },
         "type": {
