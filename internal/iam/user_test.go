@@ -63,7 +63,7 @@ func Test_UserCreate(t *testing.T) {
 		assert.Nil(err)
 		err = w.Create(context.Background(), user)
 		assert.Nil(err)
-		assert.True(user.Id != 0)
+		assert.True(user.PublicId != "")
 	})
 }
 
@@ -90,7 +90,7 @@ func Test_UserGetPrimaryScope(t *testing.T) {
 		assert.Nil(err)
 		err = w.Create(context.Background(), user)
 		assert.Nil(err)
-		assert.True(user.Id != uint32(0))
+		assert.True(user.PublicId != "")
 		assert.Equal(user.PrimaryScopeId, s.PublicId)
 
 		childScope, err := NewScope(ProjectScope, WithScope(s))
@@ -144,7 +144,7 @@ func Test_UserGroups(t *testing.T) {
 		assert.Equal(s.PublicId, grp.PrimaryScopeId)
 		err = w.Create(context.Background(), grp)
 		assert.Nil(err)
-		assert.True(grp.Id != 0)
+		assert.True(grp.PublicId != "")
 
 		gm, err := NewGroupMember(s, grp, user)
 		assert.Nil(err)
@@ -155,7 +155,7 @@ func Test_UserGroups(t *testing.T) {
 		group, err := user.Groups(context.Background(), &w)
 		assert.Nil(err)
 		assert.Equal(len(group), 1)
-		assert.Equal(group[0].Id, grp.Id)
+		assert.Equal(group[0].PublicId, grp.PublicId)
 	})
 }
 
@@ -197,11 +197,11 @@ func Test_UserRoles(t *testing.T) {
 		assert.Nil(err)
 		assert.True(uRole != nil)
 		assert.Equal(uRole.GetRoleId(), role.Id)
-		assert.Equal(uRole.GetPrincipalId(), user.Id)
+		assert.Equal(uRole.GetPrincipalId(), user.PublicId)
 		err = w.Create(context.Background(), uRole)
 		assert.Nil(err)
 		assert.True(uRole != nil)
-		assert.Equal(uRole.GetPrincipalId(), user.Id)
+		assert.Equal(uRole.GetPrincipalId(), user.PublicId)
 
 		userRoles, err := user.Roles(context.Background(), &w)
 		assert.Nil(err)
@@ -261,11 +261,11 @@ func Test_UserGrants(t *testing.T) {
 		assert.Nil(err)
 		assert.True(uRole != nil)
 		assert.Equal(uRole.GetRoleId(), role.Id)
-		assert.Equal(uRole.GetPrincipalId(), user.Id)
+		assert.Equal(uRole.GetPrincipalId(), user.PublicId)
 		err = w.Create(context.Background(), uRole)
 		assert.Nil(err)
 		assert.True(uRole != nil)
-		assert.Equal(uRole.GetPrincipalId(), user.Id)
+		assert.Equal(uRole.GetPrincipalId(), user.PublicId)
 
 		userGrants, err := user.Grants(context.Background(), &w)
 		assert.Nil(err)
@@ -279,7 +279,7 @@ func Test_UserGrants(t *testing.T) {
 		assert.Equal(s.PublicId, grp.PrimaryScopeId)
 		err = w.Create(context.Background(), grp)
 		assert.Nil(err)
-		assert.True(grp.Id != 0)
+		assert.True(grp.PublicId != "")
 
 		gm, err := NewGroupMember(s, grp, user)
 		assert.Nil(err)
@@ -308,11 +308,11 @@ func Test_UserGrants(t *testing.T) {
 		assert.Nil(err)
 		assert.True(gRole != nil)
 		assert.Equal(gRole.GetRoleId(), groupRole.Id)
-		assert.Equal(gRole.GetPrincipalId(), grp.Id)
+		assert.Equal(gRole.GetPrincipalId(), grp.PublicId)
 		err = w.Create(context.Background(), gRole)
 		assert.Nil(err)
 		assert.True(gRole != nil)
-		assert.Equal(gRole.GetPrincipalId(), grp.Id)
+		assert.Equal(gRole.GetPrincipalId(), grp.PublicId)
 
 		allGrants, err := user.Grants(context.Background(), &w, WithGroupGrants(true))
 		assert.Nil(err)

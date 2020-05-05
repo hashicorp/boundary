@@ -55,11 +55,11 @@ func TestNewRoleGrant(t *testing.T) {
 		assert.Nil(err)
 		assert.True(uRole != nil)
 		assert.Equal(uRole.GetRoleId(), role.Id)
-		assert.Equal(uRole.GetPrincipalId(), user.Id)
+		assert.Equal(uRole.GetPrincipalId(), user.PublicId)
 		err = w.Create(context.Background(), uRole)
 		assert.Nil(err)
 		assert.True(uRole != nil)
-		assert.Equal(uRole.GetPrincipalId(), user.Id)
+		assert.Equal(uRole.GetPrincipalId(), user.PublicId)
 	})
 	t.Run("nil-scope", func(t *testing.T) {
 		w := db.GormReadWriter{Tx: conn}

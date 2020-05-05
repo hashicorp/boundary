@@ -7,8 +7,9 @@ import "controller/storage/iam/store/v1/timestamp.proto";
 import "controller/storage/iam/store/v1/scope.proto";
 
 message User {
+  // public_id is used to access the User via an API
   // @inject_tag: gorm:"primary_key"
-  uint32 id = 1;
+  string public_id = 1;
 
   // create_time from the RDBMS
   // @inject_tag: `gorm:"default:current_timestamp"`
@@ -18,22 +19,19 @@ message User {
   // @inject_tag: `gorm:"default:current_timestamp"`
   Timestamp update_time = 3;
 
-  // public_id is used to access the User via an API
-  string public_id = 4;
-
   // FriendlyName is the optional friendly name used to
   // access the User via an API
   // @inject_tag: `gorm:"default:null"`
-  string friendly_name = 5;
+  string friendly_name = 4;
 
-  string name = 6;
+  string name = 5;
 
   // primary scope id of the PrimaryScope
   // @inject_tag: `gorm:"default:null"`
-  string primary_scope_id = 7;
+  string primary_scope_id = 6;
   // @inject_tag: gorm:"foreignkey:ScopeId"
-  Scope primary_scope = 8;
+  Scope primary_scope = 7;
 
   // disabled is by default false and allows a User to be marked disabled.
-  bool disabled = 10;
+  bool disabled = 8;
 }

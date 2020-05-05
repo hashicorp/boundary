@@ -61,10 +61,9 @@ CREATE TRIGGER iam_scope_insert
 AFTER
 insert ON iam_scope FOR EACH ROW EXECUTE PROCEDURE iam_sub_scopes_func();
 CREATE TABLE if not exists iam_user (
-    id bigint generated always as identity primary key,
+    public_id text not null primary key,
     create_time timestamp with time zone NOT NULL default current_timestamp,
     update_time timestamp with time zone NOT NULL default current_timestamp,
-    public_id text not null UNIQUE,
     friendly_name text UNIQUE,
     name text NOT NULL,
     primary_scope_id text NOT NULL REFERENCES iam_scope_organization(scope_id),
@@ -103,10 +102,9 @@ INSERT INTO iam_group_member_type_enm (string)
 values
   ('user');
 CREATE TABLE if not exists iam_group (
-    id bigint generated always as identity primary key,
+    public_id text not null primary key,
     create_time timestamp with time zone NOT NULL default current_timestamp,
     update_time timestamp with time zone NOT NULL default current_timestamp,
-    public_id text not null UNIQUE,
     friendly_name text UNIQUE,
     description text,
     primary_scope_id text NOT NULL REFERENCES iam_scope(public_id),
@@ -119,8 +117,8 @@ CREATE TABLE if not exists iam_group_member_user (
     public_id text not null UNIQUE,
     friendly_name text UNIQUE,
     primary_scope_id text NOT NULL REFERENCES iam_scope(public_id),
-    group_id bigint NOT NULL REFERENCES iam_group(id),
-    member_id bigint NOT NULL REFERENCES iam_user(id),
+    group_id text NOT NULL REFERENCES iam_group(public_id),
+    member_id text NOT NULL REFERENCES iam_user(public_id),
     type text NOT NULL REFERENCES iam_group_member_type_enm(string) check(type = 'user')
   );
 CREATE VIEW iam_group_member AS
@@ -211,7 +209,7 @@ CREATE TABLE if not exists iam_role_user (
     friendly_name text UNIQUE,
     primary_scope_id text NOT NULL REFERENCES iam_scope(public_id),
     role_id bigint NOT NULL REFERENCES iam_role(id),
-    principal_id bigint NOT NULL REFERENCES iam_user(id),
+    principal_id text NOT NULL REFERENCES iam_user(public_id),
     type text NOT NULL REFERENCES iam_role_type_enm(string) CHECK(type = 'user')
   );
 CREATE TABLE if not exists iam_role_group (
@@ -222,7 +220,7 @@ CREATE TABLE if not exists iam_role_group (
     friendly_name text UNIQUE,
     primary_scope_id text NOT NULL REFERENCES iam_scope(public_id),
     role_id bigint NOT NULL REFERENCES iam_role(id),
-    principal_id bigint NOT NULL REFERENCES iam_group(id),
+    principal_id text NOT NULL REFERENCES iam_group(public_id),
     type text NOT NULL REFERENCES iam_role_type_enm(string) CHECK(type = 'group')
   );
 CREATE VIEW iam_assigned_role_vw AS

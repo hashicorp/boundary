@@ -29,8 +29,8 @@ func (m MemberType) String() string {
 // GroupMember declares a common interface for all members assigned to a group (which is just users for now)
 type GroupMember interface {
 	Resource
-	GetGroupId() uint32
-	GetMemberId() uint32
+	GetGroupId() string
+	GetMemberId() string
 	GetType() string
 }
 
@@ -54,8 +54,8 @@ func NewGroupMember(primaryScope *Scope, g *Group, m Resource, opt ...Option) (G
 	if g == nil {
 		return nil, errors.New("error group is nil for group member")
 	}
-	if g.Id == 0 {
-		return nil, errors.New("error group id == 0 for group member")
+	if g.PublicId == "" {
+		return nil, errors.New("error group id is unset for group member")
 	}
 	if m == nil {
 		return nil, errors.New("member is nil for group member")
@@ -92,14 +92,14 @@ func newGroupMemberUser(primaryScope *Scope, g *Group, m *User, opt ...Option) (
 	if m == nil {
 		return nil, errors.New("error the user member is nil")
 	}
-	if m.Id == 0 {
-		return nil, errors.New("error the user member id == 0")
+	if m.PublicId == "" {
+		return nil, errors.New("error the user member id is unset")
 	}
 	if g == nil {
 		return nil, errors.New("error the user member group is nil")
 	}
-	if g.Id == 0 {
-		return nil, errors.New("error the user member group == 0")
+	if g.PublicId == "" {
+		return nil, errors.New("error the user member group is unset")
 	}
 	if primaryScope.Type != OrganizationScope.String() &&
 		primaryScope.Type != ProjectScope.String() {
@@ -113,8 +113,8 @@ func newGroupMemberUser(primaryScope *Scope, g *Group, m *User, opt ...Option) (
 		GroupMemberUser: &store.GroupMemberUser{
 			PublicId:       publicId,
 			PrimaryScopeId: primaryScope.GetPublicId(),
-			MemberId:       m.Id,
-			GroupId:        g.Id,
+			MemberId:       m.PublicId,
+			GroupId:        g.PublicId,
 			Type:           UserMemberType.String(),
 		},
 	}

@@ -36,7 +36,7 @@ func Test_NewGroup(t *testing.T) {
 		assert.Equal(s.PublicId, grp.PrimaryScopeId)
 		err = w.Create(context.Background(), grp)
 		assert.Nil(err)
-		assert.True(grp.Id != 0)
+		assert.True(grp.PublicId != "")
 	})
 	t.Run("nil-scope", func(t *testing.T) {
 		grp, err := NewGroup(nil)
@@ -78,7 +78,7 @@ func TestGroup_Members(t *testing.T) {
 		assert.Equal(s.PublicId, grp.PrimaryScopeId)
 		err = w.Create(context.Background(), grp)
 		assert.Nil(err)
-		assert.True(grp.Id != 0)
+		assert.True(grp.PublicId != "")
 
 		gm, err := NewGroupMember(s, grp, user)
 		assert.Nil(err)
@@ -103,8 +103,8 @@ func TestGroup_Members(t *testing.T) {
 		assert.True(members != nil)
 		assert.True(len(members) == 2)
 		for _, m := range members {
-			if m.GetMemberId() != secondUser.Id && m.GetMemberId() != user.Id {
-				t.Errorf("members %d not one of the known ids %d, %d", m.GetMemberId(), secondUser.Id, user.Id)
+			if m.GetMemberId() != secondUser.PublicId && m.GetMemberId() != user.PublicId {
+				t.Errorf("members %s not one of the known ids %s, %s", m.GetMemberId(), secondUser.PublicId, user.PublicId)
 			}
 		}
 	})
@@ -154,7 +154,7 @@ func TestGroup_GetPrimaryScope(t *testing.T) {
 		assert.Equal(s.PublicId, grp.PrimaryScopeId)
 		err = w.Create(context.Background(), grp)
 		assert.Nil(err)
-		assert.True(grp.Id != 0)
+		assert.True(grp.PublicId != "")
 
 		primaryScope, err := grp.GetPrimaryScope(context.Background(), &w)
 		assert.Nil(err)
@@ -194,7 +194,7 @@ func TestGroup_AddMember(t *testing.T) {
 		assert.Equal(s.PublicId, grp.PrimaryScopeId)
 		err = w.Create(context.Background(), grp)
 		assert.Nil(err)
-		assert.True(grp.Id != 0)
+		assert.True(grp.PublicId != "")
 
 		gm, err := grp.AddMember(context.Background(), &w, user)
 		assert.Nil(err)
@@ -233,7 +233,7 @@ func TestGroup_Clone(t *testing.T) {
 		assert.Equal(s.PublicId, grp.PrimaryScopeId)
 		err = w.Create(context.Background(), grp)
 		assert.Nil(err)
-		assert.True(grp.Id != 0)
+		assert.True(grp.PublicId != "")
 
 		cp := grp.Clone()
 		assert.True(proto.Equal(cp.(*Group).Group, grp.Group))
@@ -254,14 +254,14 @@ func TestGroup_Clone(t *testing.T) {
 		assert.Equal(s.PublicId, grp.PrimaryScopeId)
 		err = w.Create(context.Background(), grp)
 		assert.Nil(err)
-		assert.True(grp.Id != 0)
+		assert.True(grp.PublicId != "")
 
 		grp2, err := NewGroup(s, WithDescription("second group"))
 		assert.Nil(err)
 		assert.True(grp2 != nil)
 		err = w.Create(context.Background(), grp2)
 		assert.Nil(err)
-		assert.True(grp2.Id != 0)
+		assert.True(grp2.PublicId != "")
 
 		cp := grp.Clone()
 		assert.True(!proto.Equal(cp.(*Group).Group, grp2.Group))

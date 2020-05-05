@@ -33,13 +33,13 @@ message GroupMemberUser {
   Scope primary_scope = 7;
 
   // group_id is the Group of this GroupMemberUser.
-  uint32 group_id = 9;
+  string group_id = 9;
 
   // GroupMember type (User)
   // @inject_tag: `gorm:"default:user"`
   string type = 10;
 
-  uint32 member_id = 11;
+  string member_id = 11;
 }
 
 message GroupMemberView {
@@ -69,10 +69,10 @@ message GroupMemberView {
   Scope primary_scope = 7;
 
   // group_id is the Group of this GroupMember.
-  uint32 group_id = 9;
+  string group_id = 9;
 
   // GroupMember type (User)
   string type = 10;
 
-  uint32 member_id = 11;
+  string member_id = 11;
 }

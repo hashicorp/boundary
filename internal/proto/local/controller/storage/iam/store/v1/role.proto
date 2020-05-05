@@ -70,7 +70,7 @@ message UserRole {
   // Principal type (User)
   string type = 10;
 
-  uint32 principal_id = 11;
+  string principal_id = 11;
 }
 
 message GroupRole {
@@ -105,7 +105,7 @@ message GroupRole {
   // Principal type (Group)
   string type = 10;
 
-  uint32 principal_id = 11;
+  string principal_id = 11;
 }
 
 message AssignedRoleView {
@@ -140,5 +140,5 @@ message AssignedRoleView {
   // Principal type (User or Group)
   string type = 10;
 
-  uint32 principal_id = 11;
+  string principal_id = 11;
 }

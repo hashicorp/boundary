@@ -33,7 +33,7 @@ type AssignedRole interface {
 	Resource
 	GetId() uint32
 	GetRoleId() uint32
-	GetPrincipalId() uint32
+	GetPrincipalId() string
 	GetType() string
 }
 
@@ -99,8 +99,8 @@ func newUserRole(primaryScope *Scope, r *Role, u *User, opt ...Option) (Assigned
 	if u == nil {
 		return nil, errors.New("error the user is nil")
 	}
-	if u.Id == 0 {
-		return nil, errors.New("error the user id == 0")
+	if u.PublicId == "" {
+		return nil, errors.New("error the user id is unset")
 	}
 	if r == nil {
 		return nil, errors.New("error the user role is nil")
@@ -120,7 +120,7 @@ func newUserRole(primaryScope *Scope, r *Role, u *User, opt ...Option) (Assigned
 		UserRole: &store.UserRole{
 			PublicId:       publicId,
 			PrimaryScopeId: primaryScope.GetPublicId(),
-			PrincipalId:    u.Id,
+			PrincipalId:    u.PublicId,
 			RoleId:         r.Id,
 			Type:           UserRoleType.String(),
 		},
@@ -219,8 +219,8 @@ func newGroupRole(primaryScope *Scope, r *Role, g *Group, opt ...Option) (Assign
 	if g == nil {
 		return nil, errors.New("error the group is nil")
 	}
-	if g.Id == 0 {
-		return nil, errors.New("error the group id == 0")
+	if g.PublicId == "" {
+		return nil, errors.New("error the group id is unset")
 	}
 	if r == nil {
 		return nil, errors.New("error the group role is nil")
@@ -240,7 +240,7 @@ func newGroupRole(primaryScope *Scope, r *Role, g *Group, opt ...Option) (Assign
 		GroupRole: &store.GroupRole{
 			PublicId:       publicId,
 			PrimaryScopeId: primaryScope.GetPublicId(),
-			PrincipalId:    g.Id,
+			PrincipalId:    g.PublicId,
 			RoleId:         r.Id,
 			Type:           GroupRoleType.String(),
 		},

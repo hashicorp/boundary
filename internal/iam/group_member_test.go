@@ -40,7 +40,7 @@ func Test_NewGroupMember(t *testing.T) {
 		assert.Equal(s.PublicId, grp.PrimaryScopeId)
 		err = w.Create(context.Background(), grp)
 		assert.Nil(err)
-		assert.True(grp.Id != 0)
+		assert.True(grp.PublicId != "")
 
 		gm, err := NewGroupMember(s, grp, user)
 		assert.Nil(err)
@@ -72,7 +72,7 @@ func Test_NewGroupMember(t *testing.T) {
 		assert.Equal(s.PublicId, grp.PrimaryScopeId)
 		err = w.Create(context.Background(), grp)
 		assert.Nil(err)
-		assert.True(grp.Id != 0)
+		assert.True(grp.PublicId != "")
 
 		gm, err := NewGroupMember(s, grp, role)
 		assert.True(err != nil)
@@ -113,7 +113,7 @@ func Test_NewGroupMember(t *testing.T) {
 		assert.Equal(s.PublicId, grp.PrimaryScopeId)
 		err = w.Create(context.Background(), grp)
 		assert.Nil(err)
-		assert.True(grp.Id != 0)
+		assert.True(grp.PublicId != "")
 
 		gm, err := NewGroupMember(s, grp, nil)
 		assert.True(err != nil)
@@ -136,7 +136,7 @@ func Test_NewGroupMember(t *testing.T) {
 		assert.Equal(s.PublicId, grp.PrimaryScopeId)
 		err = w.Create(context.Background(), grp)
 		assert.Nil(err)
-		assert.True(grp.Id != 0)
+		assert.True(grp.PublicId != "")
 
 		user, err := NewUser(s)
 		assert.Nil(err)
@@ -182,7 +182,7 @@ func TestGroupMemberUser_GetPrimaryScope(t *testing.T) {
 		assert.Equal(s.PublicId, grp.PrimaryScopeId)
 		err = w.Create(context.Background(), grp)
 		assert.Nil(err)
-		assert.True(grp.Id != 0)
+		assert.True(grp.PublicId != "")
 
 		gm, err := NewGroupMember(s, grp, user)
 		assert.Nil(err)

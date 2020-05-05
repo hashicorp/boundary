@@ -65,7 +65,7 @@ func (g *Group) Clone() Resource {
 // Members returns the members of the group (Users)
 func (g *Group) Members(ctx context.Context, r db.Reader) ([]GroupMember, error) {
 	viewMembers := []*groupMemberView{}
-	if err := r.SearchBy(ctx, &viewMembers, "group_id = ? and type = ?", g.Id, UserMemberType.String()); err != nil {
+	if err := r.SearchBy(ctx, &viewMembers, "group_id = ? and type = ?", g.PublicId, UserMemberType.String()); err != nil {
 		return nil, fmt.Errorf("error getting group members %w", err)
 	}
 
