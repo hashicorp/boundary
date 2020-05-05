@@ -70,11 +70,11 @@ func (s {{ .BaseType }}) Create{{ .TargetType }}(ctx context.Context, {{ .LowerT
 	if s.Client == nil {
 		return nil, nil, fmt.Errorf("nil client in Create{{ .TargetType }} request")
 	}
-	if s.Id == nil || *s.Id == "" {
+	if s.Id == "" {
 		return nil, nil, fmt.Errorf("missing catalog ID in Create{{ .TargetType }} request")
 	}
 
-	req, err := s.Client.NewRequest(ctx, "{{ .Verb }}", fmt.Sprintf("{{ .Path }}", *s.Id), {{ .LowerTargetType }})
+	req, err := s.Client.NewRequest(ctx, "{{ .Verb }}", fmt.Sprintf("{{ .Path }}", s.Id), {{ .LowerTargetType }})
 	if err != nil {
 		return nil, nil, fmt.Errorf("error creating Create{{ .TargetType }} request: %w", err)
 	}

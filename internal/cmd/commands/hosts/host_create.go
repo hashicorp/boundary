@@ -113,7 +113,7 @@ func (c *CreateCommand) Run(args []string) int {
 
 	catalog := &hosts.HostCatalog{
 		Client: client,
-		Id:     api.String(c.flagCatalogId),
+		Id:     c.flagCatalogId,
 	}
 
 	host := &hosts.Host{
