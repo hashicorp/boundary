@@ -10,14 +10,10 @@ import (
 )
 
 func Test_NewRole(t *testing.T) {
-	db.StartTest()
 	t.Parallel()
-	cleanup, url := db.SetupTest(t, "../db/migrations/postgres")
+	cleanup, conn := db.TestSetup(t, "../db/migrations/postgres")
 	defer cleanup()
-	defer db.CompleteTest() // must come after the "defer cleanup()"
-	conn, err := db.TestConnection(url)
 	assert := assert.New(t)
-	assert.Nil(err)
 	defer conn.Close()
 
 	t.Run("valid", func(t *testing.T) {
@@ -65,14 +61,10 @@ func TestRole_ResourceType(t *testing.T) {
 }
 
 func TestRole_GetPrimaryScope(t *testing.T) {
-	db.StartTest()
 	t.Parallel()
-	cleanup, url := db.SetupTest(t, "../db/migrations/postgres")
+	cleanup, conn := db.TestSetup(t, "../db/migrations/postgres")
 	defer cleanup()
-	defer db.CompleteTest() // must come after the "defer cleanup()"
-	conn, err := db.TestConnection(url)
 	assert := assert.New(t)
-	assert.Nil(err)
 	defer conn.Close()
 
 	t.Run("valid", func(t *testing.T) {
@@ -100,14 +92,10 @@ func TestRole_GetPrimaryScope(t *testing.T) {
 }
 
 func TestRole_AssignedRoles(t *testing.T) {
-	db.StartTest()
 	t.Parallel()
-	cleanup, url := db.SetupTest(t, "../db/migrations/postgres")
+	cleanup, conn := db.TestSetup(t, "../db/migrations/postgres")
 	defer cleanup()
-	defer db.CompleteTest() // must come after the "defer cleanup()"
-	conn, err := db.TestConnection(url)
 	assert := assert.New(t)
-	assert.Nil(err)
 	defer conn.Close()
 
 	t.Run("valid", func(t *testing.T) {
@@ -169,14 +157,10 @@ func TestRole_AssignedRoles(t *testing.T) {
 }
 
 func TestRole_Clone(t *testing.T) {
-	db.StartTest()
 	t.Parallel()
-	cleanup, url := db.SetupTest(t, "../db/migrations/postgres")
+	cleanup, conn := db.TestSetup(t, "../db/migrations/postgres")
 	defer cleanup()
-	defer db.CompleteTest() // must come after the "defer cleanup()"
-	conn, err := db.TestConnection(url)
 	assert := assert.New(t)
-	assert.Nil(err)
 	defer conn.Close()
 
 	t.Run("valid", func(t *testing.T) {

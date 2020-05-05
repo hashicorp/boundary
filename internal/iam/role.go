@@ -23,10 +23,10 @@ var _ ClonableResource = (*Role)(nil)
 var _ db.VetForWriter = (*Role)(nil)
 
 // NewRole creates a new role with a scope (project/organization)
-// options include: withDescripion, withFriendlyName
+// options include: withDescripion, WithName
 func NewRole(primaryScope *Scope, opt ...Option) (*Role, error) {
 	opts := GetOpts(opt...)
-	withFriendlyName := opts.withFriendlyName
+	withName := opts.withName
 	withDescription := opts.withDescription
 	if primaryScope == nil {
 		return nil, errors.New("error the role primary scope is nil")
@@ -45,8 +45,8 @@ func NewRole(primaryScope *Scope, opt ...Option) (*Role, error) {
 			PrimaryScopeId: primaryScope.GetPublicId(),
 		},
 	}
-	if withFriendlyName != "" {
-		r.FriendlyName = withFriendlyName
+	if withName != "" {
+		r.Name = withName
 	}
 	if withDescription != "" {
 		r.Description = withDescription
@@ -65,7 +65,7 @@ func (r *Role) Clone() Resource {
 // AssignedRoles returns a list of principal roles (Users and Groups) for the Role.
 func (role *Role) AssignedRoles(ctx context.Context, r db.Reader) ([]AssignedRole, error) {
 	viewRoles := []*assignedRoleView{}
-	if err := r.SearchBy(
+	if err := r.SearchWhere(
 		ctx,
 		&viewRoles,
 		"role_id = ? and type in(?, ?)",
@@ -82,7 +82,7 @@ func (role *Role) AssignedRoles(ctx context.Context, r db.Reader) ([]AssignedRol
 					PublicId:       vr.PublicId,
 					CreateTime:     vr.CreateTime,
 					UpdateTime:     vr.UpdateTime,
-					FriendlyName:   vr.FriendlyName,
+					Name:           vr.Name,
 					PrimaryScopeId: vr.PrimaryScopeId,
 					RoleId:         vr.RoleId,
 					Type:           UserRoleType.String(),
@@ -96,7 +96,7 @@ func (role *Role) AssignedRoles(ctx context.Context, r db.Reader) ([]AssignedRol
 					PublicId:       vr.PublicId,
 					CreateTime:     vr.CreateTime,
 					UpdateTime:     vr.UpdateTime,
-					FriendlyName:   vr.FriendlyName,
+					Name:           vr.Name,
 					PrimaryScopeId: vr.PrimaryScopeId,
 					RoleId:         vr.RoleId,
 					Type:           GroupRoleType.String(),

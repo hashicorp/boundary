@@ -43,7 +43,7 @@ type groupMemberView struct {
 func (v *groupMemberView) TableName() string { return "iam_group_member" }
 
 // NewGroupMember creates a new member of the group with a scope (project/organization)
-// options include: withDescripion, withFriendlyName
+// options include: withDescripion, WithName
 func NewGroupMember(primaryScope *Scope, g *Group, m Resource, opt ...Option) (GroupMember, error) {
 	if primaryScope == nil {
 		return nil, errors.New("error scope is nil for group member")
@@ -82,10 +82,10 @@ var _ GroupMember = (*GroupMemberUser)(nil)
 var _ db.VetForWriter = (*GroupMemberUser)(nil)
 
 // newGroupMemberUser creates a new user member of the groupwith a scope (project/organization)
-// options include: withDescripion, withFriendlyName
+// options include: withDescripion, WithName
 func newGroupMemberUser(primaryScope *Scope, g *Group, m *User, opt ...Option) (GroupMember, error) {
 	opts := GetOpts(opt...)
-	withFriendlyName := opts.withFriendlyName
+	withName := opts.withName
 	if primaryScope == nil {
 		return nil, errors.New("error the user member primary scope is nil")
 	}
@@ -118,8 +118,8 @@ func newGroupMemberUser(primaryScope *Scope, g *Group, m *User, opt ...Option) (
 			Type:           UserMemberType.String(),
 		},
 	}
-	if withFriendlyName != "" {
-		gm.FriendlyName = withFriendlyName
+	if withName != "" {
+		gm.Name = withName
 	}
 	return gm, nil
 }

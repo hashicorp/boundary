@@ -14,18 +14,14 @@ import (
 )
 
 func TestNewDatabaseRepository(t *testing.T) {
-	db.StartTest()
 	t.Parallel()
-	cleanup, url := db.SetupTest(t, "../db/migrations/postgres")
+	cleanup, conn := db.TestSetup(t, "../db/migrations/postgres")
 	defer cleanup()
-	defer db.CompleteTest() // must come after the "defer cleanup()"
-	conn, err := db.TestConnection(url)
 	assert := assert.New(t)
-	assert.Nil(err)
 	defer conn.Close()
 
 	rw := &db.GormReadWriter{Tx: conn}
-	wrapper := db.InitTestWrapper(t)
+	wrapper := db.TestWrapper(t)
 	type args struct {
 		r       db.Reader
 		w       db.Writer
@@ -103,36 +99,32 @@ func TestNewDatabaseRepository(t *testing.T) {
 	}
 }
 func Test_dbRepository_create(t *testing.T) {
-	db.StartTest()
 	t.Parallel()
-	cleanup, url := db.SetupTest(t, "../db/migrations/postgres")
+	cleanup, conn := db.TestSetup(t, "../db/migrations/postgres")
 	defer cleanup()
-	defer db.CompleteTest() // must come after the "defer cleanup()"
-	conn, err := db.TestConnection(url)
 	assert := assert.New(t)
-	assert.Nil(err)
 	defer conn.Close()
 
 	t.Run("valid-scope", func(t *testing.T) {
 		rw := &db.GormReadWriter{Tx: conn}
-		wrapper := db.InitTestWrapper(t)
+		wrapper := db.TestWrapper(t)
 		repo, err := NewDatabaseRepository(rw, rw, wrapper)
 		id, err := uuid.GenerateUUID()
 		assert.Nil(err)
 
-		s, err := NewScope(OrganizationScope, WithFriendlyName("fname-"+id))
+		s, err := NewScope(OrganizationScope, WithName("fname-"+id))
 		retScope, err := repo.create(context.Background(), s)
 		assert.Nil(err)
 		assert.True(retScope != nil)
 		assert.True(retScope.GetPublicId() != "")
-		assert.Equal(retScope.GetFriendlyName(), "fname-"+id)
+		assert.Equal(retScope.GetName(), "fname-"+id)
 
 		foundScope, err := repo.LookupScope(context.Background(), WitPublicId(s.PublicId))
 		assert.Nil(err)
 		assert.Equal(foundScope.GetPublicId(), retScope.GetPublicId())
 
-		// foundScope.FriendlyName = "fname-" + id
-		foundScope, err = repo.LookupScope(context.Background(), WithFriendlyName("fname-"+id))
+		foundScope.Name = "fname-" + id
+		foundScope, err = repo.LookupScope(context.Background(), WithName("fname-"+id))
 		assert.Nil(err)
 		assert.Equal(foundScope.GetPublicId(), retScope.GetPublicId())
 
@@ -146,7 +138,7 @@ func Test_dbRepository_create(t *testing.T) {
 	})
 	t.Run("valid-user", func(t *testing.T) {
 		rw := &db.GormReadWriter{Tx: conn}
-		wrapper := db.InitTestWrapper(t)
+		wrapper := db.TestWrapper(t)
 		repo, err := NewDatabaseRepository(rw, rw, wrapper)
 
 		s, err := NewScope(OrganizationScope)
@@ -175,7 +167,7 @@ func Test_dbRepository_create(t *testing.T) {
 	})
 	t.Run("nil-resource", func(t *testing.T) {
 		rw := &db.GormReadWriter{Tx: conn}
-		wrapper := db.InitTestWrapper(t)
+		wrapper := db.TestWrapper(t)
 		repo, err := NewDatabaseRepository(rw, rw, wrapper)
 		resource, err := repo.create(context.Background(), nil)
 		assert.True(err != nil)
@@ -185,19 +177,15 @@ func Test_dbRepository_create(t *testing.T) {
 }
 
 func Test_dbRepository_update(t *testing.T) {
-	db.StartTest()
 	t.Parallel()
-	cleanup, url := db.SetupTest(t, "../db/migrations/postgres")
+	cleanup, conn := db.TestSetup(t, "../db/migrations/postgres")
 	defer cleanup()
-	defer db.CompleteTest() // must come after the "defer cleanup()"
-	conn, err := db.TestConnection(url)
 	assert := assert.New(t)
-	assert.Nil(err)
 	defer conn.Close()
 
 	t.Run("valid-scope", func(t *testing.T) {
 		rw := &db.GormReadWriter{Tx: conn}
-		wrapper := db.InitTestWrapper(t)
+		wrapper := db.TestWrapper(t)
 		repo, err := NewDatabaseRepository(rw, rw, wrapper)
 		id, err := uuid.GenerateUUID()
 		assert.Nil(err)
@@ -207,15 +195,15 @@ func Test_dbRepository_update(t *testing.T) {
 		assert.Nil(err)
 		assert.True(retScope != nil)
 		assert.True(retScope.GetPublicId() != "")
-		assert.Equal(retScope.GetFriendlyName(), "")
+		assert.Equal(retScope.GetName(), "")
 
-		retScope.(*Scope).FriendlyName = "fname-" + id
-		retScope, err = repo.update(context.Background(), retScope, []string{"FriendlyName"})
+		retScope.(*Scope).Name = "fname-" + id
+		retScope, err = repo.update(context.Background(), retScope, []string{"Name"})
 		assert.Nil(err)
 		assert.True(retScope != nil)
-		assert.Equal(retScope.GetFriendlyName(), "fname-"+id)
+		assert.Equal(retScope.GetName(), "fname-"+id)
 
-		foundScope, err := repo.LookupScope(context.Background(), WithFriendlyName("fname-"+id))
+		foundScope, err := repo.LookupScope(context.Background(), WithName("fname-"+id))
 		assert.Nil(err)
 		assert.Equal(foundScope.GetPublicId(), retScope.GetPublicId())
 
@@ -229,7 +217,7 @@ func Test_dbRepository_update(t *testing.T) {
 	})
 	t.Run("nil-resource", func(t *testing.T) {
 		rw := &db.GormReadWriter{Tx: conn}
-		wrapper := db.InitTestWrapper(t)
+		wrapper := db.TestWrapper(t)
 		repo, err := NewDatabaseRepository(rw, rw, wrapper)
 		resource, err := repo.update(context.Background(), nil, nil)
 		assert.True(err != nil)
@@ -239,35 +227,31 @@ func Test_dbRepository_update(t *testing.T) {
 }
 
 func Test_dbRepository_CreateScope(t *testing.T) {
-	db.StartTest()
 	t.Parallel()
-	cleanup, url := db.SetupTest(t, "../db/migrations/postgres")
+	cleanup, conn := db.TestSetup(t, "../db/migrations/postgres")
 	defer cleanup()
-	defer db.CompleteTest() // must come after the "defer cleanup()"
-	conn, err := db.TestConnection(url)
 	assert := assert.New(t)
-	assert.Nil(err)
 	defer conn.Close()
 
 	t.Run("valid-scope", func(t *testing.T) {
 		rw := &db.GormReadWriter{Tx: conn}
-		wrapper := db.InitTestWrapper(t)
+		wrapper := db.TestWrapper(t)
 		repo, err := NewDatabaseRepository(rw, rw, wrapper)
 		id, err := uuid.GenerateUUID()
 		assert.Nil(err)
 
-		s, err := NewScope(OrganizationScope, WithFriendlyName("fname-"+id))
+		s, err := NewScope(OrganizationScope, WithName("fname-"+id))
 		s, err = repo.CreateScope(context.Background(), s)
 		assert.Nil(err)
 		assert.True(s != nil)
 		assert.True(s.GetPublicId() != "")
-		assert.Equal(s.GetFriendlyName(), "fname-"+id)
+		assert.Equal(s.GetName(), "fname-"+id)
 
 		foundScope, err := repo.LookupScope(context.Background(), WitPublicId(s.PublicId))
 		assert.Nil(err)
 		assert.Equal(foundScope.GetPublicId(), s.GetPublicId())
 
-		foundScope, err = repo.LookupScope(context.Background(), WithFriendlyName("fname-"+id))
+		foundScope, err = repo.LookupScope(context.Background(), WithName("fname-"+id))
 		assert.Nil(err)
 		assert.Equal(foundScope.GetPublicId(), s.GetPublicId())
 
@@ -282,35 +266,31 @@ func Test_dbRepository_CreateScope(t *testing.T) {
 }
 
 func Test_dbRepository_UpdateScope(t *testing.T) {
-	db.StartTest()
 	t.Parallel()
-	cleanup, url := db.SetupTest(t, "../db/migrations/postgres")
+	cleanup, conn := db.TestSetup(t, "../db/migrations/postgres")
 	defer cleanup()
-	defer db.CompleteTest() // must come after the "defer cleanup()"
-	conn, err := db.TestConnection(url)
 	assert := assert.New(t)
-	assert.Nil(err)
 	defer conn.Close()
 
 	t.Run("valid-scope", func(t *testing.T) {
 		rw := &db.GormReadWriter{Tx: conn}
-		wrapper := db.InitTestWrapper(t)
+		wrapper := db.TestWrapper(t)
 		repo, err := NewDatabaseRepository(rw, rw, wrapper)
 		id, err := uuid.GenerateUUID()
 		assert.Nil(err)
 
-		s, err := NewScope(OrganizationScope, WithFriendlyName("fname-"+id))
+		s, err := NewScope(OrganizationScope, WithName("fname-"+id))
 		s, err = repo.CreateScope(context.Background(), s)
 		assert.Nil(err)
 		assert.True(s != nil)
 		assert.True(s.GetPublicId() != "")
-		assert.Equal(s.GetFriendlyName(), "fname-"+id)
+		assert.Equal(s.GetName(), "fname-"+id)
 
 		foundScope, err := repo.LookupScope(context.Background(), WitPublicId(s.PublicId))
 		assert.Nil(err)
 		assert.Equal(foundScope.GetPublicId(), s.GetPublicId())
 
-		foundScope, err = repo.LookupScope(context.Background(), WithFriendlyName("fname-"+id))
+		foundScope, err = repo.LookupScope(context.Background(), WithName("fname-"+id))
 		assert.Nil(err)
 		assert.Equal(foundScope.GetPublicId(), s.GetPublicId())
 
@@ -322,13 +302,13 @@ func Test_dbRepository_UpdateScope(t *testing.T) {
 		err = conn.Where("id = ?", metadata.EntryId).First(&foundEntry).Error
 		assert.Nil(err)
 
-		s.FriendlyName = "fname-" + id
-		s, err = repo.UpdateScope(context.Background(), s, []string{"FriendlyName"})
+		s.Name = "fname-" + id
+		s, err = repo.UpdateScope(context.Background(), s, []string{"Name"})
 		assert.Nil(err)
 		assert.True(s != nil)
-		assert.Equal(s.GetFriendlyName(), "fname-"+id)
+		assert.Equal(s.GetName(), "fname-"+id)
 
-		foundScope, err = repo.LookupScope(context.Background(), WithFriendlyName("fname-"+id))
+		foundScope, err = repo.LookupScope(context.Background(), WithName("fname-"+id))
 		assert.Nil(err)
 		assert.Equal(foundScope.GetPublicId(), s.GetPublicId())
 

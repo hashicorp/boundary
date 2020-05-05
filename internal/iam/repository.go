@@ -65,7 +65,7 @@ func (r *dbRepository) UpdateUser(ctx context.Context, user *User, fieldMaskPath
 func (r *dbRepository) LookupUser(ctx context.Context, opt ...Option) (User, error) {
 	opts := GetOpts(opt...)
 	withPublicId := opts.withPublicId
-	withFriendlyName := opts.withFriendlyName
+	withName := opts.withName
 
 	user := allocUser()
 
@@ -76,9 +76,9 @@ func (r *dbRepository) LookupUser(ctx context.Context, opt ...Option) (User, err
 		}
 		return user, nil
 	}
-	if withFriendlyName != "" {
-		user.PublicId = withFriendlyName
-		if err := r.reader.LookupByFriendlyName(ctx, &user); err != nil {
+	if withName != "" {
+		user.Name = withName
+		if err := r.reader.LookupByName(ctx, &user); err != nil {
 			return allocUser(), err
 		}
 		return user, nil
@@ -103,7 +103,7 @@ func (r *dbRepository) UpdateScope(ctx context.Context, scope *Scope, fieldMaskP
 func (r *dbRepository) LookupScope(ctx context.Context, opt ...Option) (Scope, error) {
 	opts := GetOpts(opt...)
 	withPublicId := opts.withPublicId
-	withFriendlyName := opts.withFriendlyName
+	withName := opts.withName
 
 	scope := allocScope()
 
@@ -114,9 +114,9 @@ func (r *dbRepository) LookupScope(ctx context.Context, opt ...Option) (Scope, e
 		}
 		return scope, nil
 	}
-	if withFriendlyName != "" {
-		scope.FriendlyName = withFriendlyName
-		if err := r.reader.LookupByFriendlyName(ctx, &scope); err != nil {
+	if withName != "" {
+		scope.Name = withName
+		if err := r.reader.LookupByName(ctx, &scope); err != nil {
 			return allocScope(), err
 		}
 		return scope, nil
@@ -149,9 +149,7 @@ func (r *dbRepository) create(ctx context.Context, resource Resource, opt ...Opt
 			return w.Create(
 				context.Background(),
 				returnedResource,
-				db.WithOplog(true),
-				db.WithWrapper(r.wrapper),
-				db.WithMetadata(metadata),
+				db.WithOplog(r.wrapper, metadata),
 			)
 		},
 	)
@@ -184,9 +182,7 @@ func (r *dbRepository) update(ctx context.Context, resource Resource, fieldMaskP
 				context.Background(),
 				returnedResource,
 				fieldMaskPaths,
-				db.WithOplog(true),
-				db.WithWrapper(r.wrapper),
-				db.WithMetadata(metadata),
+				db.WithOplog(r.wrapper, metadata),
 			)
 		},
 	)

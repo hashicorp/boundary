@@ -23,10 +23,10 @@ var _ ClonableResource = (*RoleGrant)(nil)
 var _ db.VetForWriter = (*RoleGrant)(nil)
 
 // NewRoleGrant creates a new grant with a scope (project/organization)
-// options include: withFriendlyName
+// options include: WithName
 func NewRoleGrant(primaryScope *Scope, role *Role, grant string, opt ...Option) (*RoleGrant, error) {
 	opts := GetOpts(opt...)
-	withFriendlyName := opts.withFriendlyName
+	withName := opts.withName
 	if primaryScope == nil {
 		return nil, errors.New("error the role grant primary scope is nil")
 	}
@@ -52,8 +52,8 @@ func NewRoleGrant(primaryScope *Scope, role *Role, grant string, opt ...Option) 
 			Grant:          grant,
 		},
 	}
-	if withFriendlyName != "" {
-		rg.FriendlyName = withFriendlyName
+	if withName != "" {
+		rg.Name = withName
 	}
 	return rg, nil
 }

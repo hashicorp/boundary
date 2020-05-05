@@ -23,10 +23,10 @@ var _ ClonableResource = (*User)(nil)
 var _ db.VetForWriter = (*User)(nil)
 
 // NewUser creates a new user and allows options:
-// withFriendlyName - to specify the user's friendly name
+// WithName - to specify the user's friendly name
 func NewUser(primaryScope *Scope, opt ...Option) (*User, error) {
 	opts := GetOpts(opt...)
-	withFriendlyName := opts.withFriendlyName
+	withName := opts.withName
 	if primaryScope == nil {
 		return nil, errors.New("error user primary scope is nil")
 	}
@@ -43,8 +43,8 @@ func NewUser(primaryScope *Scope, opt ...Option) (*User, error) {
 			PrimaryScopeId: primaryScope.GetPublicId(),
 		},
 	}
-	if withFriendlyName != "" {
-		u.FriendlyName = withFriendlyName
+	if withName != "" {
+		u.Name = withName
 	}
 	return u, nil
 }
@@ -70,7 +70,7 @@ func (u *User) Roles(ctx context.Context, r db.Reader, opt ...Option) (map[strin
 	}
 	where := "public_id in (select role_id from iam_assigned_role_vw ipr where principal_id  = ? and type = ?)"
 	roles := []*Role{}
-	if err := r.SearchBy(ctx, &roles, where, u.PublicId, UserRoleType.String()); err != nil {
+	if err := r.SearchWhere(ctx, &roles, where, u.PublicId, UserRoleType.String()); err != nil {
 		return nil, fmt.Errorf("error getting user roles %w", err)
 	}
 	results := map[string]*Role{}
@@ -92,7 +92,7 @@ func (u *User) Grants(ctx context.Context, r db.Reader, opt ...Option) ([]*RoleG
 	// client just wants the grants directly granted to the user
 	if !withGrpGrants {
 		where := "role_id in (select role_id from iam_assigned_role_vw ipr where principal_id  = ? and type = ?)"
-		if err := r.SearchBy(ctx, &grants, where, u.PublicId, UserRoleType.String()); err != nil {
+		if err := r.SearchWhere(ctx, &grants, where, u.PublicId, UserRoleType.String()); err != nil {
 			return nil, fmt.Errorf("error getting user roles %w", err)
 		}
 		return grants, nil
@@ -150,7 +150,7 @@ func (u *User) Groups(ctx context.Context, r db.Reader) ([]*Group, error) {
 	}
 	where := "public_id in (select distinct group_id from iam_group_member where member_id = ? and type = ?)"
 	groups := []*Group{}
-	if err := r.SearchBy(ctx, &groups, where, u.PublicId, UserMemberType.String()); err != nil {
+	if err := r.SearchWhere(ctx, &groups, where, u.PublicId, UserMemberType.String()); err != nil {
 		return nil, fmt.Errorf("error finding user groups: %w", err)
 	}
 	return groups, nil

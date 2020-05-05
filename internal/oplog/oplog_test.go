@@ -122,6 +122,8 @@ func Test_BasicOplog(t *testing.T) {
 
 		resp = db.Create(&l)
 		assert.NilError(t, resp.Error)
+		assert.Check(t, l.CreateTime != nil)
+		assert.Check(t, l.UpdateTime != nil)
 		entryId := l.Id
 
 		var foundEntry Entry
@@ -771,6 +773,8 @@ func Test_TicketSerialization(t *testing.T) {
 	err = secondLogEntry.Write(context.Background(), &GormWriter{secondTx}, secondTicket)
 	assert.NilError(t, err)
 	assert.Assert(t, secondLogEntry.Id != 0)
+	assert.Check(t, secondLogEntry.CreateTime != nil)
+	assert.Check(t, secondLogEntry.UpdateTime != nil)
 	err = secondTx.Commit().Error
 	assert.NilError(t, err)
 	assert.Assert(t, secondLogEntry.Id != 0)

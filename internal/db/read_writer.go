@@ -9,7 +9,6 @@ import (
 	"strings"
 	"time"
 
-	wrapping "github.com/hashicorp/go-kms-wrapping"
 	"github.com/hashicorp/watchtower/internal/oplog"
 	"github.com/jinzhu/gorm"
 	"google.golang.org/protobuf/proto"
@@ -17,29 +16,23 @@ import (
 
 // Reader interface defines lookups/searching for resources
 type Reader interface {
-	// LookupByFriendlyName will lookup resource my its friendly_name which must be unique
-	LookupByFriendlyName(ctx context.Context, resource ResourceWithFriendlyName, opt ...Option) error
+	// LookupByName will lookup resource by its friendly name which must be unique
+	LookupByName(ctx context.Context, resource ResourceNamer, opt ...Option) error
 
-	// LookupByPublicId will lookup resource my its public_id which must be unique
-	LookupByPublicId(ctx context.Context, resource ResourceWithPublicId, opt ...Option) error
+	// LookupByPublicId will lookup resource by its public_id which must be unique
+	LookupByPublicId(ctx context.Context, resource ResourcePublicIder, opt ...Option) error
 
-	// LookupById will lookup resource my its internal id which must be unique
-	LookupById(ctx context.Context, resource ResourceWithId, opt ...Option) error
+	// LookupWhere will lookup and return the first resource using a where clause with parameters
+	LookupWhere(ctx context.Context, resource interface{}, where string, args ...interface{}) error
 
-	// LookupBy will lookup the first resource using a where clause with parameters (it only returns the first one)
-	LookupBy(ctx context.Context, resource interface{}, where string, args ...interface{}) error
-
-	// SearchBy will search for all the resources it can find using a where clause with parameters
-	SearchBy(ctx context.Context, resources interface{}, where string, args ...interface{}) error
+	// SearchWhere will search for all the resources it can find using a where clause with parameters
+	SearchWhere(ctx context.Context, resources interface{}, where string, args ...interface{}) error
 
 	// ScanRows will scan sql rows into the interface provided
 	ScanRows(rows *sql.Rows, result interface{}) error
 
 	// DB returns the sql.DB
 	DB() (*sql.DB, error)
-
-	// Dialect returns the RDBMS dialect: postgres, mysql, etc
-	Dialect() (string, error)
 }
 
 // Writer interface defines create, update and retryable transaction handlers
@@ -48,23 +41,26 @@ type Writer interface {
 	DoTx(ctx context.Context, retries uint, backOff Backoff, Handler TxHandler) (RetryInfo, error)
 
 	// Update an object in the db, if there's a fieldMask then only the field_mask.proto paths are updated, otherwise
-	// it will send every field to the DB
+	// it will send every field to the DB.  options: WithOplog
+	// the caller is responsible for the transaction life cycle of the writer
+	// and if an error is returned the caller must decide what to do with
+	// the transaction, which almost always should be to rollback.
 	Update(ctx context.Context, i interface{}, fieldMaskPaths []string, opt ...Option) error
 
-	// Create an object in the db with options: WithOplog (which requires WithMetadata, WithWrapper)
+	// Create an object in the db with options: WithOplog
+	// the caller is responsible for the transaction life cycle of the writer
+	// and if an error is returned the caller must decide what to do with
+	// the transaction, which almost always should be to rollback.
 	Create(ctx context.Context, i interface{}, opt ...Option) error
 
-	// Delete an object in the db with options: WithOplog (which requires WithMetadata, WithWrapper)
+	// Delete an object in the db with options: WithOplog
+	// the caller is responsible for the transaction life cycle of the writer
+	// and if an error is returned the caller must decide what to do with
+	// the transaction, which almost always should be to rollback.
 	Delete(ctx context.Context, i interface{}, opt ...Option) error
-
-	// CreateConstraint will create a db constraint if it doesn't already exist
-	CreateConstraint(tableName string, constraintName string, constraint string) error
 
 	// DB returns the sql.DB
 	DB() (*sql.DB, error)
-
-	// Dialect returns the RDBMS dialect: postgres, mysql, etc
-	Dialect() (string, error)
 }
 
 // RetryInfo provides information on the retries of a transaction
@@ -76,19 +72,14 @@ type RetryInfo struct {
 // TxHandler defines a handler for a func that writes a transaction for use with DoTx
 type TxHandler func(Writer) error
 
-// ResourceWithPublicId defines an interface that LookupByPublicId() can use to get the resource's public id
-type ResourceWithPublicId interface {
+// ResourcePublicIder defines an interface that LookupByPublicId() can use to get the resource's public id
+type ResourcePublicIder interface {
 	GetPublicId() string
 }
 
-// ResourceWithFriendlyName defines an interface that LookupByFriendlyName() can use to get the resource's friendly name
-type ResourceWithFriendlyName interface {
-	GetFriendlyName() string
-}
-
-// ResourceWithId defines an interface that LookupById() can use to get the resource's internal id
-type ResourceWithId interface {
-	GetId() uint32
+// ResourceNamer defines an interface that LookupByName() can use to get the resource's friendly name
+type ResourceNamer interface {
+	GetName() string
 }
 
 type OpType int
@@ -114,14 +105,6 @@ type GormReadWriter struct {
 var _ Reader = (*GormReadWriter)(nil)
 var _ Writer = (*GormReadWriter)(nil)
 
-// Dialect returns the RDBMS dialect: postgres, mysql, etc
-func (rw *GormReadWriter) Dialect() (string, error) {
-	if rw.Tx == nil {
-		return "", errors.New("create tx is nil for dialect")
-	}
-	return rw.Tx.Dialect().GetName(), nil
-}
-
 // DB returns the sql.DB
 func (rw *GormReadWriter) DB() (*sql.DB, error) {
 	if rw.Tx == nil {
@@ -135,22 +118,6 @@ func (rw *GormReadWriter) ScanRows(rows *sql.Rows, result interface{}) error {
 	return rw.Tx.ScanRows(rows, result)
 }
 
-// gormDB returns a *gorm.DB
-func (rw *GormReadWriter) gormDB() (*gorm.DB, error) {
-	if rw.Tx == nil {
-		return nil, errors.New("create Tx is nil for gormDB")
-	}
-	dialect, err := rw.Dialect()
-	if err != nil {
-		return nil, fmt.Errorf("error getting dialect %w for gormDB", err)
-	}
-	db, err := rw.DB()
-	if err != nil {
-		return nil, fmt.Errorf("error getting DB %w for gormDB", err)
-	}
-	return gorm.Open(dialect, db)
-}
-
 // CreateConstraint will create a db constraint if it doesn't already exist
 func (w *GormReadWriter) CreateConstraint(tableName string, constraintName string, constraint string) error {
 	return w.Tx.Exec("create_constraint_if_not_exists(?, ?, ?)", tableName, constraintName, constraint).Error
@@ -159,14 +126,14 @@ func (w *GormReadWriter) CreateConstraint(tableName string, constraintName strin
 var ErrNotResourceWithId = errors.New("not a resource with an id")
 
 func (rw *GormReadWriter) lookupAfterWrite(ctx context.Context, i interface{}, opt ...Option) error {
-	opts := GetOpts(opt...)
-	withLookup := opts[optionWithLookup].(bool)
+	opts := getOpts(opt...)
+	withLookup := opts.withLookup
 
 	if !withLookup {
 		return nil
 	}
-	if _, ok := i.(ResourceWithId); ok {
-		if err := rw.LookupById(ctx, i.(ResourceWithId), opt...); err != nil {
+	if _, ok := i.(ResourcePublicIder); ok {
+		if err := rw.LookupByPublicId(ctx, i.(ResourcePublicIder), opt...); err != nil {
 			return err
 		}
 		return nil
@@ -174,14 +141,14 @@ func (rw *GormReadWriter) lookupAfterWrite(ctx context.Context, i interface{}, o
 	return ErrNotResourceWithId
 }
 
-// Create an object in the db with options: WithOplog (which requires WithMetadata, WithWrapper, WithLookup (to force a lookup after create))
+// Create an object in the db with options: WithOplog and WithLookup (to force a lookup after create))
 func (rw *GormReadWriter) Create(ctx context.Context, i interface{}, opt ...Option) error {
 	if rw.Tx == nil {
 		return errors.New("create tx is nil")
 	}
-	opts := GetOpts(opt...)
-	withOplog := opts[optionWithOplog].(bool)
-	withDebug := opts[optionWithDebug].(bool)
+	opts := getOpts(opt...)
+	withOplog := opts.withOplog
+	withDebug := opts.withDebug
 	if withDebug {
 		rw.Tx.LogMode(true)
 		defer rw.Tx.LogMode(false)
@@ -214,9 +181,9 @@ func (rw *GormReadWriter) Update(ctx context.Context, i interface{}, fieldMaskPa
 	if rw.Tx == nil {
 		return errors.New("update tx is nil")
 	}
-	opts := GetOpts(opt...)
-	withDebug := opts[optionWithDebug].(bool)
-	withOplog := opts[optionWithOplog].(bool)
+	opts := getOpts(opt...)
+	withDebug := opts.withDebug
+	withOplog := opts.withOplog
 	if withDebug {
 		rw.Tx.LogMode(true)
 		defer rw.Tx.LogMode(false)
@@ -293,9 +260,9 @@ func (rw *GormReadWriter) Delete(ctx context.Context, i interface{}, opt ...Opti
 	if i == nil {
 		return errors.New("delete interface is nil")
 	}
-	opts := GetOpts(opt...)
-	withDebug := opts[optionWithDebug].(bool)
-	withOplog := opts[optionWithOplog].(bool)
+	opts := getOpts(opt...)
+	withDebug := opts.withDebug
+	withOplog := opts.withOplog
 	if withDebug {
 		rw.Tx.LogMode(true)
 		defer rw.Tx.LogMode(false)
@@ -311,16 +278,12 @@ func (rw *GormReadWriter) Delete(ctx context.Context, i interface{}, opt ...Opti
 	return nil
 }
 
-func (rw *GormReadWriter) addOplog(ctx context.Context, opType OpType, opts Options, i interface{}) error {
-	if opts[optionWithWrapper] == nil {
+func (rw *GormReadWriter) addOplog(ctx context.Context, opType OpType, opts options, i interface{}) error {
+	oplogArgs := opts.oplogOpts
+	if oplogArgs.wrapper == nil {
 		return errors.New("error wrapper is nil for WithWrapper")
 	}
-	withWrapper, ok := opts[optionWithWrapper].(wrapping.Wrapper)
-	if !ok {
-		return errors.New("error not a wrapping.Wrapper for WithWrapper")
-	}
-	withMetadata := opts[optionWithMetadata].(oplog.Metadata)
-	if len(withMetadata) == 0 {
+	if len(oplogArgs.metadata) == 0 {
 		return errors.New("error no metadata for WithOplog")
 	}
 	replayable, ok := i.(oplog.ReplayableMessage)
@@ -328,7 +291,7 @@ func (rw *GormReadWriter) addOplog(ctx context.Context, opType OpType, opts Opti
 		return errors.New("error not a replayable message for WithOplog")
 	}
 	gdb := rw.Tx
-	withDebug := opts[optionWithDebug].(bool)
+	withDebug := opts.withDebug
 	if withDebug {
 		gdb.LogMode(true)
 		defer gdb.LogMode(false)
@@ -348,8 +311,8 @@ func (rw *GormReadWriter) addOplog(ctx context.Context, opType OpType, opts Opti
 
 	entry, err := oplog.NewEntry(
 		replayable.TableName(),
-		withMetadata,
-		withWrapper,
+		oplogArgs.metadata,
+		oplogArgs.wrapper,
 		ticketer,
 	)
 	var entryOp oplog.OpType
@@ -385,8 +348,8 @@ func (w *GormReadWriter) DoTx(ctx context.Context, retries uint, backOff Backoff
 	}
 	info := RetryInfo{}
 	for attempts := uint(1); ; attempts++ {
-		if attempts == retries {
-			return info, fmt.Errorf("Too many retries: %d of %d", attempts, retries)
+		if attempts > retries+1 {
+			return info, fmt.Errorf("Too many retries: %d of %d", attempts-1, retries+1)
 		}
 		newTx := w.Tx.BeginTx(ctx, nil)
 		if err := Handler(&GormReadWriter{newTx}); err != nil {
@@ -418,33 +381,33 @@ func (w *GormReadWriter) DoTx(ctx context.Context, retries uint, backOff Backoff
 	return info, nil
 }
 
-// LookupByFriendlyName will lookup resource my its friendly_name which must be unique
-func (rw *GormReadWriter) LookupByFriendlyName(ctx context.Context, resource ResourceWithFriendlyName, opt ...Option) error {
+// LookupByName will lookup resource my its friendly name which must be unique
+func (rw *GormReadWriter) LookupByName(ctx context.Context, resource ResourceNamer, opt ...Option) error {
 	if rw.Tx == nil {
-		return errors.New("error tx nil for lookup by friendly name")
+		return errors.New("error tx nil for lookup by name")
 	}
-	opts := GetOpts(opt...)
-	withDebug := opts[optionWithDebug].(bool)
+	opts := getOpts(opt...)
+	withDebug := opts.withDebug
 	if withDebug {
 		rw.Tx.LogMode(true)
 		defer rw.Tx.LogMode(false)
 	}
 	if reflect.ValueOf(resource).Kind() != reflect.Ptr {
-		return errors.New("error interface parameter must to be a pointer for lookup by friendly name")
+		return errors.New("error interface parameter must to be a pointer for lookup by name")
 	}
-	if resource.GetFriendlyName() == "" {
-		return errors.New("error friendly name empty string for lookup by friendly name")
+	if resource.GetName() == "" {
+		return errors.New("error name empty string for lookup by name")
 	}
-	return rw.Tx.Where("friendly_name = ?", resource.GetFriendlyName()).First(resource).Error
+	return rw.Tx.Where("name = ?", resource.GetName()).First(resource).Error
 }
 
 // LookupByPublicId will lookup resource my its public_id which must be unique
-func (rw *GormReadWriter) LookupByPublicId(ctx context.Context, resource ResourceWithPublicId, opt ...Option) error {
+func (rw *GormReadWriter) LookupByPublicId(ctx context.Context, resource ResourcePublicIder, opt ...Option) error {
 	if rw.Tx == nil {
 		return errors.New("error tx nil for lookup by public id")
 	}
-	opts := GetOpts(opt...)
-	withDebug := opts[optionWithDebug].(bool)
+	opts := getOpts(opt...)
+	withDebug := opts.withDebug
 	if withDebug {
 		rw.Tx.LogMode(true)
 		defer rw.Tx.LogMode(false)
@@ -458,28 +421,8 @@ func (rw *GormReadWriter) LookupByPublicId(ctx context.Context, resource Resourc
 	return rw.Tx.Where("public_id = ?", resource.GetPublicId()).First(resource).Error
 }
 
-// LookupById will lookup resource my its internal id which must be unique
-func (rw *GormReadWriter) LookupById(ctx context.Context, resource ResourceWithId, opt ...Option) error {
-	if rw.Tx == nil {
-		return errors.New("error tx nil for lookup by internal id")
-	}
-	opts := GetOpts(opt...)
-	withDebug := opts[optionWithDebug].(bool)
-	if withDebug {
-		rw.Tx.LogMode(true)
-		defer rw.Tx.LogMode(false)
-	}
-	if reflect.ValueOf(resource).Kind() != reflect.Ptr {
-		return errors.New("error interface parameter must to be a pointer for lookup by internal id")
-	}
-	if resource.GetId() == 0 {
-		return errors.New("error internal id is 0 for lookup by internal id")
-	}
-	return rw.Tx.Where("id = ?", resource.GetId()).First(resource).Error
-}
-
-// LookupBy will lookup the first resource using a where clause with parameters (it only returns the first one)
-func (rw *GormReadWriter) LookupBy(ctx context.Context, resource interface{}, where string, args ...interface{}) error {
+// LookupWhere will lookup the first resource using a where clause with parameters (it only returns the first one)
+func (rw *GormReadWriter) LookupWhere(ctx context.Context, resource interface{}, where string, args ...interface{}) error {
 	if rw.Tx == nil {
 		return errors.New("error tx nil for lookup by")
 	}
@@ -489,8 +432,8 @@ func (rw *GormReadWriter) LookupBy(ctx context.Context, resource interface{}, wh
 	return rw.Tx.Where(where, args...).First(resource).Error
 }
 
-// SearchBy will search for all the resources it can find using a where clause with parameters
-func (rw *GormReadWriter) SearchBy(ctx context.Context, resources interface{}, where string, args ...interface{}) error {
+// SearchWhere will search for all the resources it can find using a where clause with parameters
+func (rw *GormReadWriter) SearchWhere(ctx context.Context, resources interface{}, where string, args ...interface{}) error {
 	if rw.Tx == nil {
 		return errors.New("error tx nil for search by")
 	}

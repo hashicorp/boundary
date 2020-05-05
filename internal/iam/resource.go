@@ -14,9 +14,9 @@ type Resource interface {
 	// GetPublicId is the resource ID used to access the resource via an API
 	GetPublicId() string
 
-	// GetFriendlyName is the optional friendly name used to
+	// GetName is the optional friendly name used to
 	// access the resource via an API
-	GetFriendlyName() string
+	GetName() string
 
 	// GetPrimaryScope is the Scope that owns the Resource
 	GetPrimaryScope(ctx context.Context, r db.Reader) (*Scope, error)
@@ -103,7 +103,7 @@ func LookupPrimaryScope(ctx context.Context, reader db.Reader, resource Resource
 		return nil, errors.New("error primary scope is unset for LookupPrimaryScope")
 	}
 	var p Scope
-	if err := reader.LookupBy(ctx, &p, "public_id = ?", resource.GetPrimaryScopeId()); err != nil {
+	if err := reader.LookupWhere(ctx, &p, "public_id = ?", resource.GetPrimaryScopeId()); err != nil {
 		return nil, fmt.Errorf("error getting PrimaryScope %w for LookupPrimaryScope", err)
 	}
 	return &p, nil

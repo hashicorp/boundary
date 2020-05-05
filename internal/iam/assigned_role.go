@@ -46,7 +46,7 @@ func (v *assignedRoleView) TableName() string { return "iam_assigned_role_vw" }
 
 // NewAssignedRole creates a new role for the principal (User,Group) with a scope (project/organization)
 // This is the preferred way to create roles vs calling a specific role type constructor func
-// options include: withFriendlyName
+// options include: WithName
 func NewAssignedRole(primaryScope *Scope, role *Role, principal Resource, opt ...Option) (AssignedRole, error) {
 	if primaryScope == nil {
 		return nil, errors.New("error scope is nil for assigning role")
@@ -88,10 +88,10 @@ var _ AssignedRole = (*UserRole)(nil)
 var _ db.VetForWriter = (*UserRole)(nil)
 
 // newUserRole creates a new user role with a scope (project/organization)
-// options include:  withFriendlyName
+// options include:  WithName
 func newUserRole(primaryScope *Scope, r *Role, u *User, opt ...Option) (AssignedRole, error) {
 	opts := GetOpts(opt...)
-	withFriendlyName := opts.withFriendlyName
+	withName := opts.withName
 	if primaryScope == nil {
 		return nil, errors.New("error the user role primary scope is nil")
 	}
@@ -124,8 +124,8 @@ func newUserRole(primaryScope *Scope, r *Role, u *User, opt ...Option) (Assigned
 			Type:           UserRoleType.String(),
 		},
 	}
-	if withFriendlyName != "" {
-		ur.FriendlyName = withFriendlyName
+	if withName != "" {
+		ur.Name = withName
 	}
 	return ur, nil
 }
@@ -208,10 +208,10 @@ var _ AssignedRole = (*GroupRole)(nil)
 var _ db.VetForWriter = (*GroupRole)(nil)
 
 // newGroupRole creates a new group role with a scope (project/organization)
-// options include:  withFriendlyName
+// options include:  WithName
 func newGroupRole(primaryScope *Scope, r *Role, g *Group, opt ...Option) (AssignedRole, error) {
 	opts := GetOpts(opt...)
-	withFriendlyName := opts.withFriendlyName
+	withName := opts.withName
 	if primaryScope == nil {
 		return nil, errors.New("error the group role primary scope is nil")
 	}
@@ -244,8 +244,8 @@ func newGroupRole(primaryScope *Scope, r *Role, g *Group, opt ...Option) (Assign
 			Type:           GroupRoleType.String(),
 		},
 	}
-	if withFriendlyName != "" {
-		gr.FriendlyName = withFriendlyName
+	if withName != "" {
+		gr.Name = withName
 	}
 	return gr, nil
 }

@@ -11,10 +11,10 @@ import (
 func Test_GetOpts(t *testing.T) {
 	t.Parallel()
 	assert := assert.New(t)
-	t.Run("WithFriendlyName", func(t *testing.T) {
-		opts := GetOpts(WithFriendlyName("test"))
+	t.Run("WithName", func(t *testing.T) {
+		opts := GetOpts(WithName("test"))
 		testOpts := getDefaultOptions()
-		testOpts.withFriendlyName = "test"
+		testOpts.withName = "test"
 		assert.True(reflect.DeepEqual(opts, testOpts))
 	})
 	t.Run("WithScope", func(t *testing.T) {

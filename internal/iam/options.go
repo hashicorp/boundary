@@ -14,20 +14,20 @@ type Option func(*options)
 
 // options = how options are represented
 type options struct {
-	withPublicId     string
-	withFriendlyName string
-	withScope        *Scope
-	withDescription  string
-	withGroupGrants  bool
+	withPublicId    string
+	withName        string
+	withScope       *Scope
+	withDescription string
+	withGroupGrants bool
 }
 
 func getDefaultOptions() options {
 	return options{
-		withPublicId:     "",
-		withFriendlyName: "",
-		withScope:        nil,
-		withDescription:  "",
-		withGroupGrants:  false,
+		withPublicId:    "",
+		withScope:       nil,
+		withDescription: "",
+		withGroupGrants: false,
+		withName:        "",
 	}
 }
 
@@ -52,10 +52,10 @@ func WithScope(s *Scope) Option {
 	}
 }
 
-// WithFriendlyName provides an option to search by a friendly name
-func WithFriendlyName(name string) Option {
+// WithName provides an option to search by a friendly name
+func WithName(name string) Option {
 	return func(o *options) {
-		o.withFriendlyName = name
+		o.withName = name
 	}
 }
 

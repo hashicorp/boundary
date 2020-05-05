@@ -23,10 +23,10 @@ var _ ClonableResource = (*Group)(nil)
 var _ db.VetForWriter = (*Group)(nil)
 
 // NewGroup creates a new group with a scope (project/organization)
-// options include: withDescripion, withFriendlyName
+// options include: withDescripion, WithName
 func NewGroup(primaryScope *Scope, opt ...Option) (*Group, error) {
 	opts := GetOpts(opt...)
-	withFriendlyName := opts.withFriendlyName
+	withName := opts.withName
 	withDescription := opts.withDescription
 	if primaryScope == nil {
 		return nil, errors.New("error the group primary scope is nil")
@@ -45,8 +45,8 @@ func NewGroup(primaryScope *Scope, opt ...Option) (*Group, error) {
 			PrimaryScopeId: primaryScope.GetPublicId(),
 		},
 	}
-	if withFriendlyName != "" {
-		g.FriendlyName = withFriendlyName
+	if withName != "" {
+		g.Name = withName
 	}
 	if withDescription != "" {
 		g.Description = withDescription
@@ -65,7 +65,7 @@ func (g *Group) Clone() Resource {
 // Members returns the members of the group (Users)
 func (g *Group) Members(ctx context.Context, r db.Reader) ([]GroupMember, error) {
 	viewMembers := []*groupMemberView{}
-	if err := r.SearchBy(ctx, &viewMembers, "group_id = ? and type = ?", g.PublicId, UserMemberType.String()); err != nil {
+	if err := r.SearchWhere(ctx, &viewMembers, "group_id = ? and type = ?", g.PublicId, UserMemberType.String()); err != nil {
 		return nil, fmt.Errorf("error getting group members %w", err)
 	}
 
@@ -78,7 +78,7 @@ func (g *Group) Members(ctx context.Context, r db.Reader) ([]GroupMember, error)
 					PublicId:       m.PublicId,
 					CreateTime:     m.CreateTime,
 					UpdateTime:     m.UpdateTime,
-					FriendlyName:   m.FriendlyName,
+					Name:           m.Name,
 					PrimaryScopeId: m.PrimaryScopeId,
 					GroupId:        m.GroupId,
 					Type:           UserMemberType.String(),

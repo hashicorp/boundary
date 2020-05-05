@@ -1,0 +1,180 @@
+syntax = "proto3";
+
+package controller.api.services.v1;
+
+option go_package = "github.com/hashicorp/watchtower/internal/gen/controller/api/services;services";
+
+import "protoc-gen-swagger/options/annotations.proto";
+import "google/api/annotations.proto";
+import "google/protobuf/field_mask.proto";
+import "google/protobuf/wrappers.proto";
+import "controller/api/resources/hosts/v1/host.proto";
+import "controller/api/resources/hosts/v1/host_set.proto";
+
+option (grpc.gateway.protoc_gen_swagger.options.openapiv2_swagger) = {
+  info: {
+    title: "Controller API"
+    version: "0.0.1"
+    description: "API for managing resources associated with Controllers."
+  }
+  schemes: HTTPS
+  schemes: HTTP
+};
+
+service HostSetService {
+  // This retrieves the host set specified in the request using the basic view.
+  rpc GetHostSet(GetHostSetRequest) returns (GetHostSetResponse) {
+    option (google.api.http) = {
+      get: "/v1/orgs/{org_id}/projects/{project_id}/host-catalogs/{host_catalog_id}/host-sets/{id}"
+      response_body: "item"
+    };
+    option (grpc.gateway.protoc_gen_swagger.options.openapiv2_operation) = {
+      summary: "Get a single HostSet"
+    };
+  }
+  rpc ListHostSets(ListHostSetsRequest) returns (ListHostSetsResponse) {
+    option (google.api.http) = {
+      get: "/v1/orgs/{org_id}/projects/{project_id}/host-catalogs/{host_catalog_id}/host-sets"
+    };
+    option (grpc.gateway.protoc_gen_swagger.options.openapiv2_operation) = {
+      summary: "List all HostSets under the specific catalog"
+    };
+  }
+  rpc CreateHostSet(CreateHostSetRequest) returns (CreateHostSetResponse) {
+    option (google.api.http) = {
+      post: "/v1/orgs/{org_id}/projects/{project_id}/host-catalogs/{host_catalog_id}/host-sets"
+      body: "item"
+      response_body: "item"
+    };
+    option (grpc.gateway.protoc_gen_swagger.options.openapiv2_operation) = {
+      summary: "Create a HostSet"
+    };
+  }
+  rpc UpdateHostSet(UpdateHostSetRequest) returns (UpdateHostSetResponse) {
+    option (google.api.http) = {
+      patch: "/v1/orgs/{org_id}/projects/{project_id}/host-catalogs/{host_catalog_id}/host-sets/{id}"
+      body: "item"
+      response_body: "item"
+    };
+    option (grpc.gateway.protoc_gen_swagger.options.openapiv2_operation) = {
+      summary: "Update a HostSet"
+    };
+  }
+  rpc DeleteHostSet(DeleteHostSetRequest) returns (DeleteHostSetResponse) {
+    option (google.api.http) = {
+      delete: "/v1/orgs/{org_id}/projects/{project_id}/host-catalogs/{host_catalog_id}/host-sets/{id}"
+    };
+    option (grpc.gateway.protoc_gen_swagger.options.openapiv2_operation) = {
+      summary: "Delete a HostSet"
+    };
+  }
+
+  rpc AddToHostSet(AddToHostSetRequest) returns (AddToHostSetResponse) {
+    option (google.api.http) = {
+      post: "/v1/orgs/{org_id}/projects/{project_id}/host-catalogs/{host_catalog_id}/host-sets/{id}:add-hosts"
+    };
+    option (grpc.gateway.protoc_gen_swagger.options.openapiv2_operation) = {
+      summary: "Adds existing Hosts to the Host Set"
+      description: "Adds the hosts to this Host Set if possible.  All hosts added must be a child of the same host catalog this host set is a child of."
+    };
+  }
+
+  rpc RemoveFromHostSet(RemoveFromHostSetRequest) returns (RemoveFromHostSetResponse) {
+    option (google.api.http) = {
+      post: "/v1/orgs/{org_id}/projects/{project_id}/host-catalogs/{host_catalog_id}/host-sets/{id}:remove-hosts"
+    };
+    option (grpc.gateway.protoc_gen_swagger.options.openapiv2_operation) = {
+      summary: "Removes Hosts to the Host Set"
+      description: "Removes the hosts from this Host Set if present.  If it is not present then no action is taken and no error is returned."
+    };
+  }
+}
+
+message GetHostSetRequest {
+  string org_id = 1 [json_name="org_id"];
+  string project_id = 2 [json_name="project_id"];
+  string host_catalog_id = 3 [json_name="host_catalog_id"];
+  string id = 4;
+  string view = 5;
+}
+
+message GetHostSetResponse {
+  api.resources.hosts.v1.HostSet item = 1;
+}
+
+message ListHostSetsRequest {
+  string org_id = 1 [json_name="org_id"];
+  string project_id = 2 [json_name="project_id"];
+  string host_catalog_id = 3 [json_name="host_catalog_id"];
+  string view = 4;
+}
+
+message ListHostSetsResponse {
+  repeated api.resources.hosts.v1.HostSet items = 1;
+}
+
+message CreateHostSetRequest {
+  string org_id = 1 [json_name="org_id"];
+  string project_id = 2 [json_name="project_id"];
+  string host_catalog_id = 3 [json_name="host_catalog_id"];
+  api.resources.hosts.v1.HostSet item = 4;
+}
+
+message CreateHostSetResponse {
+  string uri = 1;
+  api.resources.hosts.v1.HostSet item = 2;
+}
+
+message UpdateHostSetRequest {
+  string org_id = 1 [json_name="org_id"];
+  string project_id = 2 [json_name="project_id"];
+  string host_catalog_id = 3 [json_name="host_catalog_id"];
+  string id = 4;
+  api.resources.hosts.v1.HostSet item = 5;
+  google.protobuf.FieldMask update_mask = 6;
+}
+
+message UpdateHostSetResponse {
+  api.resources.hosts.v1.HostSet item = 1;
+}
+
+message DeleteHostSetRequest {
+  string org_id = 1 [json_name="org_id"];
+  string project_id = 2 [json_name="project_id"];
+  string host_catalog_id = 3 [json_name="host_catalog_id"];
+  string id = 4;
+}
+
+message DeleteHostSetResponse {
+  bool existed = 1;
+}
+
+message AddToHostSetRequest {
+  string org_id = 1 [json_name="org_id"];
+  string project_id = 2 [json_name="project_id"];
+  string host_catalog_id = 3 [json_name="host_catalog_id"];
+  string id = 4;
+
+  // A list of host IDs which will be added to this host set. Each host
+  // referenced here must be a child of the same host catalog that this host
+  // set is a child of.
+  repeated string host_ids = 5;
+}
+
+message AddToHostSetResponse {
+}
+
+message RemoveFromHostSetRequest {
+  string org_id = 1 [json_name="org_id"];
+  string project_id = 2 [json_name="project_id"];
+  string host_catalog_id = 3 [json_name="host_catalog_id"];
+  // This host set's id.
+  string id = 4;
+
+  // A list of host IDs which should not be in the host set when this request
+  // returns.
+  repeated string host_ids = 5;
+}
+
+message RemoveFromHostSetResponse {
+}

@@ -10,14 +10,10 @@ import (
 )
 
 func Test_NewGroup(t *testing.T) {
-	db.StartTest()
 	t.Parallel()
-	cleanup, url := db.SetupTest(t, "../db/migrations/postgres")
+	cleanup, conn := db.TestSetup(t, "../db/migrations/postgres")
 	defer cleanup()
-	defer db.CompleteTest() // must come after the "defer cleanup()"
-	conn, err := db.TestConnection(url)
 	assert := assert.New(t)
-	assert.Nil(err)
 	defer conn.Close()
 
 	t.Run("valid", func(t *testing.T) {
@@ -47,14 +43,10 @@ func Test_NewGroup(t *testing.T) {
 }
 
 func TestGroup_Members(t *testing.T) {
-	db.StartTest()
 	t.Parallel()
-	cleanup, url := db.SetupTest(t, "../db/migrations/postgres")
+	cleanup, conn := db.TestSetup(t, "../db/migrations/postgres")
 	defer cleanup()
-	defer db.CompleteTest() // must come after the "defer cleanup()"
-	conn, err := db.TestConnection(url)
 	assert := assert.New(t)
-	assert.Nil(err)
 	defer conn.Close()
 
 	t.Run("valid", func(t *testing.T) {
@@ -129,14 +121,10 @@ func TestGroup_ResourceType(t *testing.T) {
 }
 
 func TestGroup_GetPrimaryScope(t *testing.T) {
-	db.StartTest()
 	t.Parallel()
-	cleanup, url := db.SetupTest(t, "../db/migrations/postgres")
+	cleanup, conn := db.TestSetup(t, "../db/migrations/postgres")
 	defer cleanup()
-	defer db.CompleteTest() // must come after the "defer cleanup()"
-	conn, err := db.TestConnection(url)
 	assert := assert.New(t)
-	assert.Nil(err)
 	defer conn.Close()
 
 	t.Run("valid", func(t *testing.T) {
@@ -163,14 +151,10 @@ func TestGroup_GetPrimaryScope(t *testing.T) {
 }
 
 func TestGroup_AddMember(t *testing.T) {
-	db.StartTest()
 	t.Parallel()
-	cleanup, url := db.SetupTest(t, "../db/migrations/postgres")
+	cleanup, conn := db.TestSetup(t, "../db/migrations/postgres")
 	defer cleanup()
-	defer db.CompleteTest() // must come after the "defer cleanup()"
-	conn, err := db.TestConnection(url)
 	assert := assert.New(t)
-	assert.Nil(err)
 	defer conn.Close()
 
 	t.Run("valid", func(t *testing.T) {
@@ -207,14 +191,10 @@ func TestGroup_AddMember(t *testing.T) {
 }
 
 func TestGroup_Clone(t *testing.T) {
-	db.StartTest()
 	t.Parallel()
-	cleanup, url := db.SetupTest(t, "../db/migrations/postgres")
+	cleanup, conn := db.TestSetup(t, "../db/migrations/postgres")
 	defer cleanup()
-	defer db.CompleteTest() // must come after the "defer cleanup()"
-	conn, err := db.TestConnection(url)
 	assert := assert.New(t)
-	assert.Nil(err)
 	defer conn.Close()
 
 	t.Run("valid", func(t *testing.T) {

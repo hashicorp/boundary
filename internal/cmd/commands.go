@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"context"
 	"os"
 	"os/signal"
 	"syscall"
@@ -8,6 +9,7 @@ import (
 	"github.com/hashicorp/watchtower/internal/cmd/base"
 	"github.com/hashicorp/watchtower/internal/cmd/commands/controller"
 	"github.com/hashicorp/watchtower/internal/cmd/commands/dev"
+	"github.com/hashicorp/watchtower/internal/cmd/commands/hosts"
 	"github.com/hashicorp/watchtower/internal/cmd/commands/worker"
 	"github.com/mitchellh/cli"
 )
@@ -16,47 +18,56 @@ import (
 var Commands map[string]cli.CommandFactory
 
 func initCommands(ui, serverCmdUi cli.Ui, runOpts *RunOptions) {
-	/*
-		getBaseCommand := func() *base.Command {
-			return &base.Command{
-				UI:      ui,
-				Address: runOpts.Address,
-			}
+	getBaseCommand := func() *base.Command {
+		ctx, cancel := context.WithCancel(context.Background())
+		ret := &base.Command{
+			UI:         ui,
+			ShutdownCh: MakeShutdownCh(),
+			Context:    ctx,
 		}
-	*/
+
+		go func() {
+			<-ret.ShutdownCh
+			cancel()
+		}()
+
+		return ret
+	}
 
 	Commands = map[string]cli.CommandFactory{
 		"controller": func() (cli.Command, error) {
 			return &controller.Command{
 				Command: &base.Command{
-					UI:      serverCmdUi,
-					Address: runOpts.Address,
+					UI:         serverCmdUi,
+					ShutdownCh: MakeShutdownCh(),
 				},
-				ShutdownCh: MakeShutdownCh(),
-				SighupCh:   MakeSighupCh(),
-				SigUSR2Ch:  MakeSigUSR2Ch(),
+				SighupCh:  MakeSighupCh(),
+				SigUSR2Ch: MakeSigUSR2Ch(),
 			}, nil
 		},
 		"worker": func() (cli.Command, error) {
 			return &worker.Command{
 				Command: &base.Command{
-					UI:      serverCmdUi,
-					Address: runOpts.Address,
+					UI:         serverCmdUi,
+					ShutdownCh: MakeShutdownCh(),
 				},
-				ShutdownCh: MakeShutdownCh(),
-				SighupCh:   MakeSighupCh(),
-				SigUSR2Ch:  MakeSigUSR2Ch(),
+				SighupCh:  MakeSighupCh(),
+				SigUSR2Ch: MakeSigUSR2Ch(),
 			}, nil
 		},
 		"dev": func() (cli.Command, error) {
 			return &dev.Command{
 				Command: &base.Command{
-					UI:      serverCmdUi,
-					Address: runOpts.Address,
+					UI:         serverCmdUi,
+					ShutdownCh: MakeShutdownCh(),
 				},
-				ShutdownCh: MakeShutdownCh(),
-				SighupCh:   MakeSighupCh(),
-				SigUSR2Ch:  MakeSigUSR2Ch(),
+				SighupCh:  MakeSighupCh(),
+				SigUSR2Ch: MakeSigUSR2Ch(),
+			}, nil
+		},
+		"hosts create": func() (cli.Command, error) {
+			return &hosts.CreateCommand{
+				Command: getBaseCommand(),
 			}, nil
 		},
 	}

@@ -8,917 +8,803 @@ import (
 	"github.com/hashicorp/go-uuid"
 	"github.com/hashicorp/watchtower/internal/db/db_test"
 	"github.com/hashicorp/watchtower/internal/oplog"
+	"github.com/hashicorp/watchtower/internal/oplog/store"
 	"github.com/jinzhu/gorm"
-	"gotest.tools/assert"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestGormReadWriter_Update(t *testing.T) {
-	StartTest()
-	t.Parallel()
-	cleanup, url := SetupTest(t, "migrations/postgres")
+	// intentionally not run with t.Parallel so we don't need to use DoTx for the Update tests
+	cleanup, db := TestSetup(t, "migrations/postgres")
 	defer cleanup()
-	defer CompleteTest() // must come after the "defer cleanup()"
-	conn, err := TestConnection(url)
-	assert.NilError(t, err)
-	defer conn.Close()
+	assert := assert.New(t)
+	defer db.Close()
 	t.Run("simple", func(t *testing.T) {
-		w := GormReadWriter{Tx: conn}
+		w := GormReadWriter{Tx: db}
 		id, err := uuid.GenerateUUID()
-		assert.NilError(t, err)
+		assert.Nil(err)
 		user, err := db_test.NewTestUser()
-		assert.NilError(t, err)
+		assert.Nil(err)
 		user.Name = "foo-" + id
 		err = w.Create(context.Background(), user)
-		assert.NilError(t, err)
-		assert.Check(t, user.Id != 0)
+		assert.Nil(err)
+		assert.True(user.Id != 0)
 
 		foundUser, err := db_test.NewTestUser()
-		assert.NilError(t, err)
-		foundUser.Id = user.Id
-		err = w.LookupById(context.Background(), foundUser)
-		assert.NilError(t, err)
-		assert.Equal(t, user.Id, foundUser.Id)
+		assert.Nil(err)
+		foundUser.PublicId = user.PublicId
+		err = w.LookupByPublicId(context.Background(), foundUser)
+		assert.Nil(err)
+		assert.Equal(foundUser.Id, user.Id)
 
-		user.FriendlyName = "friendly-" + id
-		err = w.Update(context.Background(), user, []string{"FriendlyName"})
-		assert.NilError(t, err)
+		user.Name = "friendly-" + id
+		err = w.Update(context.Background(), user, []string{"Name"})
+		assert.Nil(err)
 
-		err = w.LookupById(context.Background(), foundUser)
-		assert.NilError(t, err)
-		assert.Equal(t, user.FriendlyName, foundUser.FriendlyName)
+		err = w.LookupByPublicId(context.Background(), foundUser)
+		assert.Nil(err)
+		assert.Equal(foundUser.Name, user.Name)
 	})
 	t.Run("valid-WithOplog", func(t *testing.T) {
-		w := GormReadWriter{Tx: conn}
+		w := GormReadWriter{Tx: db}
 		id, err := uuid.GenerateUUID()
-		assert.NilError(t, err)
+		assert.Nil(err)
 		user, err := db_test.NewTestUser()
-		assert.NilError(t, err)
+		assert.Nil(err)
 		user.Name = "foo-" + id
 		err = w.Create(context.Background(), user)
-		assert.NilError(t, err)
-		assert.Check(t, user.Id != 0)
+		assert.Nil(err)
+		assert.True(user.Id != 0)
 
 		foundUser, err := db_test.NewTestUser()
-		assert.NilError(t, err)
-		foundUser.Id = user.Id
-		err = w.LookupById(context.Background(), foundUser)
-		assert.NilError(t, err)
-		assert.Equal(t, user.Id, foundUser.Id)
+		assert.Nil(err)
+		foundUser.PublicId = user.PublicId
+		err = w.LookupByPublicId(context.Background(), foundUser)
+		assert.Nil(err)
+		assert.Equal(foundUser.Id, user.Id)
 
-		user.FriendlyName = "friendly-" + id
-		_, err = w.DoTx(
-			context.Background(),
-			20,           // twenty retries
-			ExpBackoff{}, // exponential backoff
-			func(w Writer) error {
-				// the TxHandler updates the user's friendly name
-				return w.Update(context.Background(), user, []string{"FriendlyName"},
-					WithOplog(true), // write oplogs for this update
-					WithWrapper(InitTestWrapper(t)),
-					WithMetadata(oplog.Metadata{
-						"key-only":   nil,
-						"deployment": []string{"amex"},
-						"project":    []string{"central-info-systems", "local-info-systems"},
-					}),
-				)
-			})
-		assert.NilError(t, err)
+		user.Name = "friendly-" + id
+		err = w.Update(context.Background(), user, []string{"Name"},
+			// write oplogs for this update
+			WithOplog(
+				TestWrapper(t),
+				oplog.Metadata{
+					"key-only":           nil,
+					"deployment":         []string{"amex"},
+					"project":            []string{"central-info-systems", "local-info-systems"},
+					"resource-public-id": []string{user.GetPublicId()},
+				}),
+		)
+		assert.Nil(err)
 
-		err = w.LookupById(context.Background(), foundUser)
-		assert.NilError(t, err)
-		assert.Equal(t, user.FriendlyName, foundUser.FriendlyName)
+		err = w.LookupByPublicId(context.Background(), foundUser)
+		assert.Nil(err)
+		assert.Equal(foundUser.Name, user.Name)
+
+		var metadata store.Metadata
+		err = db.Where("key = ? and value = ?", "resource-public-id", user.PublicId).First(&metadata).Error
+		assert.Nil(err)
+
+		var foundEntry oplog.Entry
+		err = db.Where("id = ?", metadata.EntryId).First(&foundEntry).Error
+		assert.Nil(err)
 	})
 	t.Run("nil-tx", func(t *testing.T) {
 		w := GormReadWriter{Tx: nil}
 		id, err := uuid.GenerateUUID()
-		assert.NilError(t, err)
+		assert.Nil(err)
 		user, err := db_test.NewTestUser()
-		assert.NilError(t, err)
+		assert.Nil(err)
 		user.Name = "foo-" + id
 		err = w.Update(context.Background(), user, nil)
-		assert.Check(t, err != nil)
-		assert.Equal(t, err.Error(), "update tx is nil")
+		assert.True(err != nil)
+		assert.Equal("update tx is nil", err.Error())
 	})
 	t.Run("no-wrapper-WithOplog", func(t *testing.T) {
-		w := GormReadWriter{Tx: conn}
+		w := GormReadWriter{Tx: db}
 		id, err := uuid.GenerateUUID()
-		assert.NilError(t, err)
+		assert.Nil(err)
 		user, err := db_test.NewTestUser()
-		assert.NilError(t, err)
+		assert.Nil(err)
 		user.Name = "foo-" + id
 		err = w.Create(context.Background(), user)
-		assert.NilError(t, err)
-		assert.Check(t, user.Id != 0)
+		assert.Nil(err)
+		assert.True(user.Id != 0)
 
 		foundUser, err := db_test.NewTestUser()
-		assert.NilError(t, err)
-		foundUser.Id = user.Id
-		err = w.LookupById(context.Background(), foundUser)
-		assert.NilError(t, err)
-		assert.Equal(t, user.Id, foundUser.Id)
+		assert.Nil(err)
+		foundUser.PublicId = user.PublicId
+		err = w.LookupByPublicId(context.Background(), foundUser)
+		assert.Nil(err)
+		assert.Equal(foundUser.Id, user.Id)
 
-		user.FriendlyName = "friendly-" + id
-		_, err = w.DoTx(
-			context.Background(),
-			20,
-			ExpBackoff{},
-			func(w Writer) error {
-				return w.Update(context.Background(), user, []string{"FriendlyName"},
-					WithOplog(true),
-					WithMetadata(oplog.Metadata{
-						"key-only":   nil,
-						"deployment": []string{"amex"},
-						"project":    []string{"central-info-systems", "local-info-systems"},
-					}),
-				)
-			})
-		assert.Check(t, err != nil)
-		assert.Equal(t, err.Error(), "error wrapper is nil for WithWrapper")
+		user.Name = "friendly-" + id
+		err = w.Update(context.Background(), user, []string{"Name"},
+			WithOplog(
+				nil,
+				oplog.Metadata{
+					"key-only":   nil,
+					"deployment": []string{"amex"},
+					"project":    []string{"central-info-systems", "local-info-systems"},
+				}),
+		)
+		assert.True(err != nil)
+		assert.Equal("error wrapper is nil for WithWrapper", err.Error())
 	})
 	t.Run("no-metadata-WithOplog", func(t *testing.T) {
-		w := GormReadWriter{Tx: conn}
+		w := GormReadWriter{Tx: db}
 		id, err := uuid.GenerateUUID()
-		assert.NilError(t, err)
+		assert.Nil(err)
 		user, err := db_test.NewTestUser()
-		assert.NilError(t, err)
+		assert.Nil(err)
 		user.Name = "foo-" + id
 		err = w.Create(context.Background(), user)
-		assert.NilError(t, err)
-		assert.Check(t, user.Id != 0)
+		assert.Nil(err)
+		assert.True(user.Id != 0)
 
 		foundUser, err := db_test.NewTestUser()
-		assert.NilError(t, err)
-		foundUser.Id = user.Id
-		err = w.LookupById(context.Background(), foundUser)
-		assert.NilError(t, err)
-		assert.Equal(t, user.Id, foundUser.Id)
+		assert.Nil(err)
+		foundUser.PublicId = user.PublicId
+		err = w.LookupByPublicId(context.Background(), foundUser)
+		assert.Nil(err)
+		assert.Equal(foundUser.Id, user.Id)
 
-		user.FriendlyName = "friendly-" + id
-		_, err = w.DoTx(
-			context.Background(),
-			20,
-			ExpBackoff{},
-			func(w Writer) error {
-				return w.Update(context.Background(), user, []string{"FriendlyName"},
-					WithOplog(true),
-					WithWrapper(InitTestWrapper(t)),
-				)
-			})
-		assert.Check(t, err != nil)
-		assert.Equal(t, err.Error(), "error no metadata for WithOplog")
+		user.Name = "friendly-" + id
+		err = w.Update(context.Background(), user, []string{"Name"},
+			WithOplog(
+				TestWrapper(t),
+				nil,
+			),
+		)
+		assert.True(err != nil)
+		assert.Equal("error no metadata for WithOplog", err.Error())
 	})
 }
 
 func TestGormReadWriter_Create(t *testing.T) {
-	StartTest()
-	t.Parallel()
-	cleanup, url := SetupTest(t, "migrations/postgres")
+	// intentionally not run with t.Parallel so we don't need to use DoTx for the Create tests
+	cleanup, db := TestSetup(t, "migrations/postgres")
 	defer cleanup()
-	defer CompleteTest() // must come after the "defer cleanup()"
-	conn, err := TestConnection(url)
-	assert.NilError(t, err)
-	defer conn.Close()
+	assert := assert.New(t)
+	defer db.Close()
 	t.Run("simple", func(t *testing.T) {
-		w := GormReadWriter{Tx: conn}
+		w := GormReadWriter{Tx: db}
 		id, err := uuid.GenerateUUID()
-		assert.NilError(t, err)
+		assert.Nil(err)
 		user, err := db_test.NewTestUser()
-		assert.NilError(t, err)
+		assert.Nil(err)
 		user.Name = "foo-" + id
 		err = w.Create(context.Background(), user)
-		assert.NilError(t, err)
-		assert.Check(t, user.Id != 0)
-		assert.Check(t, user.GetCreateTime() != nil)
-		assert.Check(t, user.GetUpdateTime() != nil)
+		assert.Nil(err)
+		assert.True(user.Id != 0)
+		assert.True(user.GetCreateTime() != nil)
+		assert.True(user.GetUpdateTime() != nil)
 
 		foundUser, err := db_test.NewTestUser()
-		assert.NilError(t, err)
-		foundUser.Id = user.Id
-		err = w.LookupById(context.Background(), foundUser)
-		assert.NilError(t, err)
-		assert.Equal(t, user.Id, foundUser.Id)
+		assert.Nil(err)
+		foundUser.PublicId = user.PublicId
+		err = w.LookupByPublicId(context.Background(), foundUser)
+		assert.Nil(err)
+		assert.Equal(foundUser.Id, user.Id)
 	})
 	t.Run("valid-WithOplog", func(t *testing.T) {
-		w := GormReadWriter{Tx: conn}
+		w := GormReadWriter{Tx: db}
 		id, err := uuid.GenerateUUID()
-		assert.NilError(t, err)
+		assert.Nil(err)
 		user, err := db_test.NewTestUser()
-		assert.NilError(t, err)
+		assert.Nil(err)
 		user.Name = "foo-" + id
-		var returnedUser *db_test.TestUser
-		_, err = w.DoTx(
+		err = w.Create(
 			context.Background(),
-			3,
-			ExpBackoff{},
-			func(w Writer) error {
-				// make sure you used the passed in writer that properly handles transaction rollback
-				// we need to clone the user before every attempt to insert it, since it will be retried
-				returnedUser = user.Clone()
-				return w.Create(
-					context.Background(),
-					returnedUser,
-					WithOplog(true),
-					WithWrapper(InitTestWrapper(t)),
-					WithMetadata(oplog.Metadata{
-						"key-only":   nil,
-						"deployment": []string{"amex"},
-						"project":    []string{"central-info-systems", "local-info-systems"},
-					}),
-				)
-			})
-		assert.NilError(t, err)
-		assert.Check(t, returnedUser.Id != 0)
+			user,
+			WithOplog(
+				TestWrapper(t),
+				oplog.Metadata{
+					"key-only":   nil,
+					"deployment": []string{"amex"},
+					"project":    []string{"central-info-systems", "local-info-systems"},
+				},
+			),
+		)
+		assert.Nil(err)
+		assert.True(user.Id != 0)
 
 		foundUser, err := db_test.NewTestUser()
-		assert.NilError(t, err)
-		foundUser.Id = returnedUser.Id
-		err = w.LookupById(context.Background(), foundUser)
-		assert.NilError(t, err)
-		assert.Equal(t, returnedUser.Id, foundUser.Id)
+		assert.Nil(err)
+		foundUser.PublicId = user.PublicId
+		err = w.LookupByPublicId(context.Background(), foundUser)
+		assert.Nil(err)
+		assert.Equal(foundUser.Id, user.Id)
 	})
 	t.Run("no-wrapper-WithOplog", func(t *testing.T) {
-		w := GormReadWriter{Tx: conn}
+		w := GormReadWriter{Tx: db}
 		id, err := uuid.GenerateUUID()
-		assert.NilError(t, err)
+		assert.Nil(err)
 		user, err := db_test.NewTestUser()
-		assert.NilError(t, err)
+		assert.Nil(err)
 		user.Name = "foo-" + id
-		_, err = w.DoTx(
+		err = w.Create(
 			context.Background(),
-			3,
-			ExpBackoff{},
-			func(w Writer) error {
-				retryableUser := user.Clone()
-				return w.Create(
-					context.Background(),
-					retryableUser,
-					WithOplog(true),
-					WithMetadata(oplog.Metadata{
-						"key-only":   nil,
-						"deployment": []string{"amex"},
-						"project":    []string{"central-info-systems", "local-info-systems"},
-					}),
-				)
-			})
-		assert.Check(t, err != nil)
-		assert.Equal(t, err.Error(), "error wrapper is nil for WithWrapper")
+			user,
+			WithOplog(
+				nil,
+				oplog.Metadata{
+					"key-only":   nil,
+					"deployment": []string{"amex"},
+					"project":    []string{"central-info-systems", "local-info-systems"},
+				},
+			),
+		)
+		assert.True(err != nil)
+		assert.Equal("error wrapper is nil for WithWrapper", err.Error())
 	})
 	t.Run("no-metadata-WithOplog", func(t *testing.T) {
-		w := GormReadWriter{Tx: conn}
+		w := GormReadWriter{Tx: db}
 		id, err := uuid.GenerateUUID()
-		assert.NilError(t, err)
+		assert.Nil(err)
 		user, err := db_test.NewTestUser()
-		assert.NilError(t, err)
+		assert.Nil(err)
 		user.Name = "foo-" + id
-		_, err = w.DoTx(
+		err = w.Create(
 			context.Background(),
-			3,
-			ExpBackoff{},
-			func(w Writer) error {
-				retryableUser := user.Clone()
-				return w.Create(
-					context.Background(),
-					retryableUser,
-					WithOplog(true),
-					WithWrapper(InitTestWrapper(t)),
-				)
-			})
-		assert.Check(t, err != nil)
-		assert.Equal(t, err.Error(), "error no metadata for WithOplog")
+			user,
+			WithOplog(
+				TestWrapper(t),
+				nil,
+			),
+		)
+		assert.True(err != nil)
+		assert.Equal("error no metadata for WithOplog", err.Error())
 	})
 	t.Run("nil-tx", func(t *testing.T) {
 		w := GormReadWriter{Tx: nil}
 		id, err := uuid.GenerateUUID()
-		assert.NilError(t, err)
+		assert.Nil(err)
 		user, err := db_test.NewTestUser()
-		assert.NilError(t, err)
+		assert.Nil(err)
 		user.Name = "foo-" + id
 		err = w.Create(context.Background(), user)
-		assert.Check(t, err != nil)
-		assert.Equal(t, err.Error(), "create tx is nil")
+		assert.True(err != nil)
+		assert.Equal("create tx is nil", err.Error())
 	})
 }
 
-func TestGormReadWriter_LookupByInternalId(t *testing.T) {
-	StartTest()
+func TestGormReadWriter_LookupByName(t *testing.T) {
 	t.Parallel()
-	cleanup, url := SetupTest(t, "migrations/postgres")
+	cleanup, db := TestSetup(t, "migrations/postgres")
 	defer cleanup()
-	defer CompleteTest() // must come after the "defer cleanup()"
-	conn, err := TestConnection(url)
-	assert.NilError(t, err)
-	defer conn.Close()
+	assert := assert.New(t)
+	defer db.Close()
 	t.Run("simple", func(t *testing.T) {
-		w := GormReadWriter{Tx: conn}
+		w := GormReadWriter{Tx: db}
 		id, err := uuid.GenerateUUID()
-		assert.NilError(t, err)
+		assert.Nil(err)
 		user, err := db_test.NewTestUser()
-		assert.NilError(t, err)
-		user.Name = "foo-" + id
+		assert.Nil(err)
+		user.Name = "fn-" + id
 		err = w.Create(context.Background(), user)
-		assert.NilError(t, err)
-		assert.Check(t, user.Id != 0)
+		assert.Nil(err)
+		assert.True(user.Id != 0)
 
 		foundUser, err := db_test.NewTestUser()
-		assert.NilError(t, err)
-		foundUser.Id = user.Id
-		err = w.LookupById(context.Background(), foundUser)
-		assert.NilError(t, err)
-		assert.Equal(t, user.Id, foundUser.Id)
+		assert.Nil(err)
+		foundUser.Name = "fn-" + id
+		err = w.LookupByName(context.Background(), foundUser)
+		assert.Nil(err)
+		assert.Equal(foundUser.Id, user.Id)
 	})
 	t.Run("tx-nil,", func(t *testing.T) {
 		w := GormReadWriter{}
 		foundUser, err := db_test.NewTestUser()
-		assert.NilError(t, err)
-		err = w.LookupById(context.Background(), foundUser)
-		assert.Check(t, err != nil)
-		assert.Equal(t, err.Error(), "error tx nil for lookup by internal id")
-	})
-	t.Run("no-public-id-set", func(t *testing.T) {
-		w := GormReadWriter{Tx: conn}
-		foundUser, err := db_test.NewTestUser()
-		assert.NilError(t, err)
-		err = w.LookupById(context.Background(), foundUser)
-		assert.Check(t, err != nil)
-		assert.Equal(t, err.Error(), "error internal id is 0 for lookup by internal id")
-	})
-	t.Run("not-found", func(t *testing.T) {
-		w := GormReadWriter{Tx: conn}
-		foundUser, err := db_test.NewTestUser()
-		assert.NilError(t, err)
-		foundUser.Id = 4294967295 // we should never get to the max for unit32
-		err = w.LookupById(context.Background(), foundUser)
-		assert.Check(t, err != nil)
-		assert.Equal(t, err, gorm.ErrRecordNotFound)
-	})
-}
-
-func TestGormReadWriter_LookupByFriendlyName(t *testing.T) {
-	StartTest()
-	t.Parallel()
-	cleanup, url := SetupTest(t, "migrations/postgres")
-	defer cleanup()
-	defer CompleteTest() // must come after the "defer cleanup()"
-	conn, err := TestConnection(url)
-	assert.NilError(t, err)
-	defer conn.Close()
-	t.Run("simple", func(t *testing.T) {
-		w := GormReadWriter{Tx: conn}
-		id, err := uuid.GenerateUUID()
-		assert.NilError(t, err)
-		user, err := db_test.NewTestUser()
-		assert.NilError(t, err)
-		user.Name = "foo-" + id
-		user.FriendlyName = "fn-" + id
-		err = w.Create(context.Background(), user)
-		assert.NilError(t, err)
-		assert.Check(t, user.Id != 0)
-
-		foundUser, err := db_test.NewTestUser()
-		assert.NilError(t, err)
-		foundUser.FriendlyName = "fn-" + id
-		err = w.LookupByFriendlyName(context.Background(), foundUser)
-		assert.NilError(t, err)
-		assert.Equal(t, user.Id, foundUser.Id)
-	})
-	t.Run("tx-nil,", func(t *testing.T) {
-		w := GormReadWriter{}
-		foundUser, err := db_test.NewTestUser()
-		assert.NilError(t, err)
-		foundUser.FriendlyName = "fn-name"
-		err = w.LookupByFriendlyName(context.Background(), foundUser)
-		assert.Check(t, err != nil)
-		assert.Equal(t, err.Error(), "error tx nil for lookup by friendly name")
+		assert.Nil(err)
+		foundUser.Name = "fn-name"
+		err = w.LookupByName(context.Background(), foundUser)
+		assert.True(err != nil)
+		assert.Equal("error tx nil for lookup by name", err.Error())
 	})
 	t.Run("no-friendly-name-set", func(t *testing.T) {
-		w := GormReadWriter{Tx: conn}
+		w := GormReadWriter{Tx: db}
 		foundUser, err := db_test.NewTestUser()
-		assert.NilError(t, err)
-		err = w.LookupByFriendlyName(context.Background(), foundUser)
-		assert.Check(t, err != nil)
-		assert.Equal(t, err.Error(), "error friendly name empty string for lookup by friendly name")
+		assert.Nil(err)
+		err = w.LookupByName(context.Background(), foundUser)
+		assert.True(err != nil)
+		assert.Equal("error name empty string for lookup by name", err.Error())
 	})
 	t.Run("not-found", func(t *testing.T) {
-		w := GormReadWriter{Tx: conn}
+		w := GormReadWriter{Tx: db}
 		id, err := uuid.GenerateUUID()
-		assert.NilError(t, err)
+		assert.Nil(err)
 
 		foundUser, err := db_test.NewTestUser()
-		assert.NilError(t, err)
-		foundUser.FriendlyName = "fn-" + id
-		err = w.LookupByFriendlyName(context.Background(), foundUser)
-		assert.Check(t, err != nil)
-		assert.Equal(t, err, gorm.ErrRecordNotFound)
+		assert.Nil(err)
+		foundUser.Name = "fn-" + id
+		err = w.LookupByName(context.Background(), foundUser)
+		assert.True(err != nil)
+		assert.Equal(gorm.ErrRecordNotFound, err)
 	})
 }
 
 func TestGormReadWriter_LookupByPublicId(t *testing.T) {
-	StartTest()
 	t.Parallel()
-	cleanup, url := SetupTest(t, "migrations/postgres")
+	cleanup, db := TestSetup(t, "migrations/postgres")
 	defer cleanup()
-	defer CompleteTest() // must come after the "defer cleanup()"
-	conn, err := TestConnection(url)
-	assert.NilError(t, err)
-	defer conn.Close()
+	assert := assert.New(t)
+	defer db.Close()
 	t.Run("simple", func(t *testing.T) {
-		w := GormReadWriter{Tx: conn}
+		w := GormReadWriter{Tx: db}
 		id, err := uuid.GenerateUUID()
-		assert.NilError(t, err)
+		assert.Nil(err)
 		user, err := db_test.NewTestUser()
-		assert.NilError(t, err)
+		assert.Nil(err)
 		user.Name = "foo-" + id
-		user.FriendlyName = "fn-" + id
 		err = w.Create(context.Background(), user)
-		assert.NilError(t, err)
-		assert.Check(t, user.PublicId != "")
+		assert.Nil(err)
+		assert.True(user.PublicId != "")
 
 		foundUser, err := db_test.NewTestUser()
-		assert.NilError(t, err)
+		assert.Nil(err)
 		foundUser.PublicId = user.PublicId
 		err = w.LookupByPublicId(context.Background(), foundUser)
-		assert.NilError(t, err)
-		assert.Equal(t, user.Id, foundUser.Id)
+		assert.Nil(err)
+		assert.Equal(foundUser.Id, user.Id)
 	})
 	t.Run("tx-nil,", func(t *testing.T) {
 		w := GormReadWriter{}
 		foundUser, err := db_test.NewTestUser()
-		assert.NilError(t, err)
+		assert.Nil(err)
 		err = w.LookupByPublicId(context.Background(), foundUser)
-		assert.Check(t, err != nil)
-		assert.Equal(t, err.Error(), "error tx nil for lookup by public id")
+		assert.True(err != nil)
+		assert.Equal("error tx nil for lookup by public id", err.Error())
 	})
 	t.Run("no-public-id-set", func(t *testing.T) {
-		w := GormReadWriter{Tx: conn}
+		w := GormReadWriter{Tx: db}
 		foundUser, err := db_test.NewTestUser()
 		foundUser.PublicId = ""
-		assert.NilError(t, err)
+		assert.Nil(err)
 		err = w.LookupByPublicId(context.Background(), foundUser)
-		assert.Check(t, err != nil)
-		assert.Equal(t, err.Error(), "error public id empty string for lookup by public id")
+		assert.True(err != nil)
+		assert.Equal("error public id empty string for lookup by public id", err.Error())
 	})
 	t.Run("not-found", func(t *testing.T) {
-		w := GormReadWriter{Tx: conn}
+		w := GormReadWriter{Tx: db}
 		id, err := uuid.GenerateUUID()
-		assert.NilError(t, err)
+		assert.Nil(err)
 
 		foundUser, err := db_test.NewTestUser()
-		assert.NilError(t, err)
+		assert.Nil(err)
 		foundUser.PublicId = id
 		err = w.LookupByPublicId(context.Background(), foundUser)
-		assert.Check(t, err != nil)
-		assert.Equal(t, err, gorm.ErrRecordNotFound)
+		assert.True(err != nil)
+		assert.Equal(gorm.ErrRecordNotFound, err)
 	})
 }
 
-func TestGormReadWriter_LookupBy(t *testing.T) {
-	StartTest()
+func TestGormReadWriter_LookupWhere(t *testing.T) {
 	t.Parallel()
-	cleanup, url := SetupTest(t, "migrations/postgres")
+	cleanup, db := TestSetup(t, "migrations/postgres")
 	defer cleanup()
-	defer CompleteTest() // must come after the "defer cleanup()"
-	conn, err := TestConnection(url)
-	assert.NilError(t, err)
-	defer conn.Close()
+	assert := assert.New(t)
+	defer db.Close()
 	t.Run("simple", func(t *testing.T) {
-		w := GormReadWriter{Tx: conn}
+		w := GormReadWriter{Tx: db}
 		id, err := uuid.GenerateUUID()
-		assert.NilError(t, err)
+		assert.Nil(err)
 		user, err := db_test.NewTestUser()
-		assert.NilError(t, err)
+		assert.Nil(err)
 		user.Name = "foo-" + id
-		user.FriendlyName = "fn-" + id
 		err = w.Create(context.Background(), user)
-		assert.NilError(t, err)
-		assert.Check(t, user.PublicId != "")
+		assert.Nil(err)
+		assert.True(user.PublicId != "")
 
 		var foundUser db_test.TestUser
-		err = w.LookupBy(context.Background(), &foundUser, "public_id = ?", user.PublicId)
-		assert.NilError(t, err)
-		assert.Equal(t, user.Id, foundUser.Id)
+		err = w.LookupWhere(context.Background(), &foundUser, "public_id = ?", user.PublicId)
+		assert.Nil(err)
+		assert.Equal(foundUser.Id, user.Id)
 	})
 	t.Run("tx-nil,", func(t *testing.T) {
 		w := GormReadWriter{}
 		var foundUser db_test.TestUser
-		err = w.LookupBy(context.Background(), &foundUser, "public_id = ?", 1)
-		assert.Check(t, err != nil)
-		assert.Equal(t, err.Error(), "error tx nil for lookup by")
+		err := w.LookupWhere(context.Background(), &foundUser, "public_id = ?", 1)
+		assert.True(err != nil)
+		assert.Equal("error tx nil for lookup by", err.Error())
 	})
 	t.Run("not-found", func(t *testing.T) {
-		w := GormReadWriter{Tx: conn}
+		w := GormReadWriter{Tx: db}
 		id, err := uuid.GenerateUUID()
-		assert.NilError(t, err)
+		assert.Nil(err)
 
 		var foundUser db_test.TestUser
-		err = w.LookupBy(context.Background(), &foundUser, "public_id = ?", id)
-		assert.Check(t, err != nil)
-		assert.Equal(t, err, gorm.ErrRecordNotFound)
+		err = w.LookupWhere(context.Background(), &foundUser, "public_id = ?", id)
+		assert.True(err != nil)
+		assert.Equal(gorm.ErrRecordNotFound, err)
 	})
 	t.Run("bad-where", func(t *testing.T) {
-		w := GormReadWriter{Tx: conn}
+		w := GormReadWriter{Tx: db}
 		id, err := uuid.GenerateUUID()
-		assert.NilError(t, err)
+		assert.Nil(err)
 
 		var foundUser db_test.TestUser
-		err = w.LookupBy(context.Background(), &foundUser, "? = ?", id)
-		assert.Check(t, err != nil)
+		err = w.LookupWhere(context.Background(), &foundUser, "? = ?", id)
+		assert.True(err != nil)
 	})
 }
 
-func TestGormReadWriter_SearchBy(t *testing.T) {
-	StartTest()
+func TestGormReadWriter_SearchWhere(t *testing.T) {
 	t.Parallel()
-	cleanup, url := SetupTest(t, "migrations/postgres")
+	cleanup, db := TestSetup(t, "migrations/postgres")
 	defer cleanup()
-	defer CompleteTest() // must come after the "defer cleanup()"
-	conn, err := TestConnection(url)
-	assert.NilError(t, err)
-	defer conn.Close()
+	assert := assert.New(t)
+	defer db.Close()
 	t.Run("simple", func(t *testing.T) {
-		w := GormReadWriter{Tx: conn}
+		w := GormReadWriter{Tx: db}
 		id, err := uuid.GenerateUUID()
-		assert.NilError(t, err)
+		assert.Nil(err)
 		user, err := db_test.NewTestUser()
-		assert.NilError(t, err)
+		assert.Nil(err)
 		user.Name = "foo-" + id
-		user.FriendlyName = "fn-" + id
 		err = w.Create(context.Background(), user)
-		assert.NilError(t, err)
-		assert.Check(t, user.PublicId != "")
+		assert.Nil(err)
+		assert.True(user.PublicId != "")
 
 		var foundUsers []db_test.TestUser
-		err = w.SearchBy(context.Background(), &foundUsers, "public_id = ?", user.PublicId)
-		assert.NilError(t, err)
-		assert.Equal(t, user.Id, foundUsers[0].Id)
+		err = w.SearchWhere(context.Background(), &foundUsers, "public_id = ?", user.PublicId)
+		assert.Nil(err)
+		assert.Equal(foundUsers[0].Id, user.Id)
 	})
 	t.Run("tx-nil,", func(t *testing.T) {
 		w := GormReadWriter{}
 		var foundUsers []db_test.TestUser
-		err = w.SearchBy(context.Background(), &foundUsers, "public_id = ?", 1)
-		assert.Check(t, err != nil)
-		assert.Equal(t, err.Error(), "error tx nil for search by")
+		err := w.SearchWhere(context.Background(), &foundUsers, "public_id = ?", 1)
+		assert.True(err != nil)
+		assert.Equal("error tx nil for search by", err.Error())
 	})
 	t.Run("not-found", func(t *testing.T) {
-		w := GormReadWriter{Tx: conn}
+		w := GormReadWriter{Tx: db}
 		id, err := uuid.GenerateUUID()
-		assert.NilError(t, err)
+		assert.Nil(err)
 
 		var foundUsers []db_test.TestUser
-		err = w.SearchBy(context.Background(), &foundUsers, "public_id = ?", id)
-		assert.NilError(t, err)
-		assert.Equal(t, len(foundUsers), 0)
+		err = w.SearchWhere(context.Background(), &foundUsers, "public_id = ?", id)
+		assert.Nil(err)
+		assert.Equal(0, len(foundUsers))
 	})
 	t.Run("bad-where", func(t *testing.T) {
-		w := GormReadWriter{Tx: conn}
+		w := GormReadWriter{Tx: db}
 		id, err := uuid.GenerateUUID()
-		assert.NilError(t, err)
+		assert.Nil(err)
 
 		var foundUsers []db_test.TestUser
-		err = w.SearchBy(context.Background(), &foundUsers, "? = ?", id)
-		assert.Check(t, err != nil)
-	})
-}
-
-func TestGormReadWriter_Dialect(t *testing.T) {
-	StartTest()
-	t.Parallel()
-	cleanup, url := SetupTest(t, "migrations/postgres")
-	defer cleanup()
-	defer CompleteTest() // must come after the "defer cleanup()"
-	conn, err := TestConnection(url)
-	assert.NilError(t, err)
-	defer conn.Close()
-	t.Run("valid", func(t *testing.T) {
-		w := GormReadWriter{Tx: conn}
-		d, err := w.Dialect()
-		assert.NilError(t, err)
-		assert.Equal(t, d, "postgres")
-	})
-	t.Run("nil-tx", func(t *testing.T) {
-		w := GormReadWriter{Tx: nil}
-		d, err := w.Dialect()
-		assert.Check(t, err != nil)
-		assert.Equal(t, d, "")
-		assert.Equal(t, err.Error(), "create tx is nil for dialect")
+		err = w.SearchWhere(context.Background(), &foundUsers, "? = ?", id)
+		assert.True(err != nil)
 	})
 }
 
 func TestGormReadWriter_DB(t *testing.T) {
-	StartTest()
 	t.Parallel()
-	cleanup, url := SetupTest(t, "migrations/postgres")
+	cleanup, db := TestSetup(t, "migrations/postgres")
 	defer cleanup()
-	defer CompleteTest() // must come after the "defer cleanup()"
-	conn, err := TestConnection(url)
-	assert.NilError(t, err)
-	defer conn.Close()
+	assert := assert.New(t)
+	defer db.Close()
 	t.Run("valid", func(t *testing.T) {
-		w := GormReadWriter{Tx: conn}
+		w := GormReadWriter{Tx: db}
 		d, err := w.DB()
-		assert.NilError(t, err)
-		assert.Check(t, d != nil)
+		assert.Nil(err)
+		assert.True(d != nil)
 		err = d.Ping()
-		assert.NilError(t, err)
+		assert.Nil(err)
 	})
 	t.Run("nil-tx", func(t *testing.T) {
 		w := GormReadWriter{Tx: nil}
 		d, err := w.DB()
-		assert.Check(t, err != nil)
-		assert.Check(t, d == nil)
-		assert.Equal(t, err.Error(), "create tx is nil for db")
+		assert.True(err != nil)
+		assert.True(d == nil)
+		assert.Equal("create tx is nil for db", err.Error())
 	})
 }
 
 func TestGormReadWriter_DoTx(t *testing.T) {
-	StartTest()
 	t.Parallel()
-	cleanup, url := SetupTest(t, "migrations/postgres")
+	cleanup, db := TestSetup(t, "migrations/postgres")
 	defer cleanup()
-	defer CompleteTest() // must come after the "defer cleanup()"
-	conn, err := TestConnection(url)
-	assert.NilError(t, err)
-	defer conn.Close()
+	assert := assert.New(t)
+	defer db.Close()
 
 	t.Run("valid-with-10-retries", func(t *testing.T) {
-		w := &GormReadWriter{Tx: conn}
-		retries := 0
+		w := &GormReadWriter{Tx: db}
+		attempts := 0
 		got, err := w.DoTx(context.Background(), 10, ExpBackoff{},
 			func(Writer) error {
-				retries += 1
-				if retries < 9 {
+				attempts += 1
+				if attempts < 9 {
 					return oplog.ErrTicketAlreadyRedeemed
 				}
 				return nil
 			})
-		assert.NilError(t, err)
-		assert.Equal(t, got.Retries, 8)
-		assert.Equal(t, retries, 9) // attempted 1 + 8 retries
+		assert.Nil(err)
+		assert.Equal(8, got.Retries)
+		assert.Equal(9, attempts) // attempted 1 + 8 retries
+	})
+	t.Run("valid-with-1-retries", func(t *testing.T) {
+		w := &GormReadWriter{Tx: db}
+		attempts := 0
+		got, err := w.DoTx(context.Background(), 1, ExpBackoff{},
+			func(Writer) error {
+				attempts += 1
+				if attempts < 2 {
+					return oplog.ErrTicketAlreadyRedeemed
+				}
+				return nil
+			})
+		assert.Nil(err)
+		assert.Equal(1, got.Retries)
+		assert.Equal(2, attempts) // attempted 1 + 8 retries
+	})
+	t.Run("valid-with-2-retries", func(t *testing.T) {
+		w := &GormReadWriter{Tx: db}
+		attempts := 0
+		got, err := w.DoTx(context.Background(), 3, ExpBackoff{},
+			func(Writer) error {
+				attempts += 1
+				if attempts < 3 {
+					return oplog.ErrTicketAlreadyRedeemed
+				}
+				return nil
+			})
+		assert.Nil(err)
+		assert.Equal(2, got.Retries)
+		assert.Equal(3, attempts) // attempted 1 + 8 retries
+	})
+	t.Run("valid-with-4-retries", func(t *testing.T) {
+		w := &GormReadWriter{Tx: db}
+		attempts := 0
+		got, err := w.DoTx(context.Background(), 4, ExpBackoff{},
+			func(Writer) error {
+				attempts += 1
+				if attempts < 4 {
+					return oplog.ErrTicketAlreadyRedeemed
+				}
+				return nil
+			})
+		assert.Nil(err)
+		assert.Equal(3, got.Retries)
+		assert.Equal(4, attempts) // attempted 1 + 8 retries
 	})
 	t.Run("zero-retries", func(t *testing.T) {
-		w := &GormReadWriter{Tx: conn}
-		retries := 0
-		got, err := w.DoTx(context.Background(), 0, ExpBackoff{}, func(Writer) error { retries += 1; return nil })
-		assert.NilError(t, err)
-		assert.Equal(t, got, RetryInfo{})
-		assert.Equal(t, retries, 1)
+		w := &GormReadWriter{Tx: db}
+		attempts := 0
+		got, err := w.DoTx(context.Background(), 0, ExpBackoff{}, func(Writer) error { attempts += 1; return nil })
+		assert.Nil(err)
+		assert.Equal(RetryInfo{}, got)
+		assert.Equal(1, attempts)
 	})
 	t.Run("nil-tx", func(t *testing.T) {
 		w := &GormReadWriter{nil}
-		retries := 0
-		got, err := w.DoTx(context.Background(), 1, ExpBackoff{}, func(Writer) error { retries += 1; return nil })
-		assert.Check(t, err != nil)
-		assert.Equal(t, got, RetryInfo{})
-		assert.Equal(t, err.Error(), "do tx is nil")
+		attempts := 0
+		got, err := w.DoTx(context.Background(), 1, ExpBackoff{}, func(Writer) error { attempts += 1; return nil })
+		assert.True(err != nil)
+		assert.Equal(RetryInfo{}, got)
+		assert.Equal("do tx is nil", err.Error())
 	})
 	t.Run("not-a-retry-err", func(t *testing.T) {
-		w := &GormReadWriter{Tx: conn}
+		w := &GormReadWriter{Tx: db}
 		got, err := w.DoTx(context.Background(), 1, ExpBackoff{}, func(Writer) error { return errors.New("not a retry error") })
-		assert.Check(t, err != nil)
-		assert.Equal(t, got, RetryInfo{})
-		assert.Check(t, err != oplog.ErrTicketAlreadyRedeemed)
+		assert.True(err != nil)
+		assert.Equal(RetryInfo{}, got)
+		assert.True(err != oplog.ErrTicketAlreadyRedeemed)
 	})
 	t.Run("too-many-retries", func(t *testing.T) {
-		w := &GormReadWriter{Tx: conn}
-		retries := 0
-		got, err := w.DoTx(context.Background(), 2, ExpBackoff{}, func(Writer) error { retries += 1; return oplog.ErrTicketAlreadyRedeemed })
-		assert.Check(t, err != nil)
-		assert.Equal(t, got.Retries, 1)
-		assert.Equal(t, err.Error(), "Too many retries: 2 of 2")
+		w := &GormReadWriter{Tx: db}
+		attempts := 0
+		got, err := w.DoTx(context.Background(), 2, ExpBackoff{}, func(Writer) error { attempts += 1; return oplog.ErrTicketAlreadyRedeemed })
+		assert.True(err != nil)
+		assert.Equal(3, got.Retries)
+		assert.Equal("Too many retries: 3 of 3", err.Error())
 	})
 }
 
 func TestGormReadWriter_Delete(t *testing.T) {
-	StartTest()
-	t.Parallel()
-	cleanup, url := SetupTest(t, "migrations/postgres")
+	// intentionally not run with t.Parallel so we don't need to use DoTx for the Create tests
+	cleanup, db := TestSetup(t, "migrations/postgres")
 	defer cleanup()
-	defer CompleteTest() // must come after the "defer cleanup()"
-	conn, err := TestConnection(url)
-	assert.NilError(t, err)
-	defer conn.Close()
+	assert := assert.New(t)
+	defer db.Close()
 	t.Run("simple", func(t *testing.T) {
-		w := GormReadWriter{Tx: conn}
+		w := GormReadWriter{Tx: db}
 		id, err := uuid.GenerateUUID()
-		assert.NilError(t, err)
+		assert.Nil(err)
 		user, err := db_test.NewTestUser()
-		assert.NilError(t, err)
+		assert.Nil(err)
 		user.Name = "foo-" + id
 		err = w.Create(context.Background(), user)
-		assert.NilError(t, err)
-		assert.Check(t, user.Id != 0)
-		assert.Check(t, user.GetCreateTime() != nil)
-		assert.Check(t, user.GetUpdateTime() != nil)
+		assert.Nil(err)
+		assert.True(user.Id != 0)
+		assert.True(user.GetCreateTime() != nil)
+		assert.True(user.GetUpdateTime() != nil)
 
 		foundUser, err := db_test.NewTestUser()
-		assert.NilError(t, err)
-		foundUser.Id = user.Id
-		err = w.LookupById(context.Background(), foundUser)
-		assert.NilError(t, err)
-		assert.Equal(t, user.Id, foundUser.Id)
+		assert.Nil(err)
+		foundUser.PublicId = user.PublicId
+		err = w.LookupByPublicId(context.Background(), foundUser)
+		assert.Nil(err)
+		assert.Equal(foundUser.Id, user.Id)
 
 		err = w.Delete(context.Background(), user)
-		assert.NilError(t, err)
+		assert.Nil(err)
 
-		err = w.LookupById(context.Background(), foundUser)
-		assert.Check(t, err != nil)
-		assert.Equal(t, err, gorm.ErrRecordNotFound)
+		err = w.LookupByPublicId(context.Background(), foundUser)
+		assert.True(err != nil)
+		assert.Equal(gorm.ErrRecordNotFound, err)
 	})
 	t.Run("valid-WithOplog", func(t *testing.T) {
-		w := GormReadWriter{Tx: conn}
+		w := GormReadWriter{Tx: db}
 		id, err := uuid.GenerateUUID()
-		assert.NilError(t, err)
+		assert.Nil(err)
 		user, err := db_test.NewTestUser()
-		assert.NilError(t, err)
+		assert.Nil(err)
 		user.Name = "foo-" + id
-		var returnedUser *db_test.TestUser
-		_, err = w.DoTx(
+		err = w.Create(
 			context.Background(),
-			10,
-			ExpBackoff{},
-			func(w Writer) error {
-				// make sure you used the passed in writer that properly handles transaction rollback
-				// we need to clone the user before every attempt to insert it, since it will be retried
-				returnedUser = user.Clone()
-				err := w.Create(
-					context.Background(),
-					returnedUser,
-					WithOplog(true),
-					WithWrapper(InitTestWrapper(t)),
-					WithMetadata(oplog.Metadata{
-						"key-only":   nil,
-						"deployment": []string{"amex"},
-						"project":    []string{"central-info-systems", "local-info-systems"},
-					}),
-				)
-				return err
-			})
-		assert.NilError(t, err)
-		assert.Check(t, returnedUser.Id != 0)
+			user,
+			WithOplog(
+				TestWrapper(t),
+				oplog.Metadata{
+					"key-only":   nil,
+					"deployment": []string{"amex"},
+					"project":    []string{"central-info-systems", "local-info-systems"},
+				},
+			),
+		)
+		assert.Nil(err)
+		assert.True(user.Id != 0)
 
 		foundUser, err := db_test.NewTestUser()
-		assert.NilError(t, err)
-		foundUser.Id = returnedUser.Id
-		err = w.LookupById(context.Background(), foundUser)
-		assert.NilError(t, err)
-		assert.Equal(t, returnedUser.Id, foundUser.Id)
+		assert.Nil(err)
+		foundUser.PublicId = user.PublicId
+		err = w.LookupByPublicId(context.Background(), foundUser)
+		assert.Nil(err)
+		assert.Equal(foundUser.Id, user.Id)
 
 		err = w.Delete(
 			context.Background(),
-			returnedUser,
-			WithOplog(true),
-			WithWrapper(InitTestWrapper(t)),
-			WithMetadata(oplog.Metadata{
-				"key-only":   nil,
-				"deployment": []string{"amex"},
-				"project":    []string{"central-info-systems", "local-info-systems"},
-			}),
+			user,
+			WithOplog(
+				TestWrapper(t),
+				oplog.Metadata{
+					"key-only":   nil,
+					"deployment": []string{"amex"},
+					"project":    []string{"central-info-systems", "local-info-systems"},
+				},
+			),
 		)
-		assert.NilError(t, err)
+		assert.Nil(err)
 
-		err = w.LookupById(context.Background(), foundUser)
-		assert.Check(t, err != nil)
-		assert.Equal(t, err, gorm.ErrRecordNotFound)
+		err = w.LookupByPublicId(context.Background(), foundUser)
+		assert.True(err != nil)
+		assert.Equal(gorm.ErrRecordNotFound, err)
 	})
 	t.Run("no-wrapper-WithOplog", func(t *testing.T) {
-		w := GormReadWriter{Tx: conn}
+		w := GormReadWriter{Tx: db}
 		id, err := uuid.GenerateUUID()
-		assert.NilError(t, err)
+		assert.Nil(err)
 		user, err := db_test.NewTestUser()
-		assert.NilError(t, err)
+		assert.Nil(err)
 		user.Name = "foo-" + id
-		var returnedUser *db_test.TestUser
-		_, err = w.DoTx(
+		err = w.Create(
 			context.Background(),
-			3,
-			ExpBackoff{},
-			func(w Writer) error {
-				// make sure you used the passed in writer that properly handles transaction rollback
-				// we need to clone the user before every attempt to insert it, since it will be retried
-				returnedUser = user.Clone()
-				return w.Create(
-					context.Background(),
-					returnedUser,
-					WithOplog(true),
-					WithWrapper(InitTestWrapper(t)),
-					WithMetadata(oplog.Metadata{
-						"key-only":   nil,
-						"deployment": []string{"amex"},
-						"project":    []string{"central-info-systems", "local-info-systems"},
-					}),
-				)
-			})
-		assert.NilError(t, err)
-		assert.Check(t, returnedUser.Id != 0)
+			user,
+			WithOplog(
+				TestWrapper(t),
+				oplog.Metadata{
+					"key-only":   nil,
+					"deployment": []string{"amex"},
+					"project":    []string{"central-info-systems", "local-info-systems"},
+				},
+			),
+		)
+		assert.Nil(err)
+		assert.True(user.Id != 0)
 
 		foundUser, err := db_test.NewTestUser()
-		assert.NilError(t, err)
-		foundUser.Id = returnedUser.Id
-		err = w.LookupById(context.Background(), foundUser)
-		assert.NilError(t, err)
-		assert.Equal(t, returnedUser.Id, foundUser.Id)
+		assert.Nil(err)
+		foundUser.PublicId = user.PublicId
+		err = w.LookupByPublicId(context.Background(), foundUser)
+		assert.Nil(err)
+		assert.Equal(foundUser.Id, user.Id)
 
 		err = w.Delete(
 			context.Background(),
-			returnedUser,
-			WithOplog(true),
-			WithMetadata(oplog.Metadata{
-				"key-only":   nil,
-				"deployment": []string{"amex"},
-				"project":    []string{"central-info-systems", "local-info-systems"},
-			}),
+			user,
+			WithOplog(
+				nil,
+				oplog.Metadata{
+					"key-only":   nil,
+					"deployment": []string{"amex"},
+					"project":    []string{"central-info-systems", "local-info-systems"},
+				},
+			),
 		)
-		assert.Check(t, err != nil)
-		assert.Equal(t, err.Error(), "error wrapper is nil for WithWrapper")
+		assert.True(err != nil)
+		assert.Equal("error wrapper is nil for WithWrapper", err.Error())
 	})
 	t.Run("no-metadata-WithOplog", func(t *testing.T) {
-		w := GormReadWriter{Tx: conn}
+		w := GormReadWriter{Tx: db}
 		id, err := uuid.GenerateUUID()
-		assert.NilError(t, err)
+		assert.Nil(err)
 		user, err := db_test.NewTestUser()
-		assert.NilError(t, err)
+		assert.Nil(err)
 		user.Name = "foo-" + id
-		var returnedUser *db_test.TestUser
-		_, err = w.DoTx(
+		err = w.Create(
 			context.Background(),
-			3,
-			ExpBackoff{},
-			func(w Writer) error {
-				// make sure you used the passed in writer that properly handles transaction rollback
-				// we need to clone the user before every attempt to insert it, since it will be retried
-				returnedUser = user.Clone()
-				return w.Create(
-					context.Background(),
-					returnedUser,
-					WithOplog(true),
-					WithWrapper(InitTestWrapper(t)),
-					WithMetadata(oplog.Metadata{
-						"key-only":   nil,
-						"deployment": []string{"amex"},
-						"project":    []string{"central-info-systems", "local-info-systems"},
-					}),
-				)
-			})
-		assert.NilError(t, err)
-		assert.Check(t, returnedUser.Id != 0)
+			user,
+			WithOplog(
+				TestWrapper(t),
+				oplog.Metadata{
+					"key-only":   nil,
+					"deployment": []string{"amex"},
+					"project":    []string{"central-info-systems", "local-info-systems"},
+				},
+			),
+		)
+		assert.Nil(err)
+		assert.True(user.Id != 0)
 
 		foundUser, err := db_test.NewTestUser()
-		assert.NilError(t, err)
-		foundUser.Id = returnedUser.Id
-		err = w.LookupById(context.Background(), foundUser)
-		assert.NilError(t, err)
-		assert.Equal(t, returnedUser.Id, foundUser.Id)
+		assert.Nil(err)
+		foundUser.PublicId = user.PublicId
+		err = w.LookupByPublicId(context.Background(), foundUser)
+		assert.Nil(err)
+		assert.Equal(foundUser.Id, user.Id)
 
 		err = w.Delete(
 			context.Background(),
-			returnedUser,
-			WithOplog(true),
-			WithWrapper(InitTestWrapper(t)),
+			user,
+			WithOplog(
+				TestWrapper(t),
+				nil,
+			),
 		)
-		assert.Check(t, err != nil)
-		assert.Equal(t, err.Error(), "error no metadata for WithOplog")
+		assert.True(err != nil)
+		assert.Equal("error no metadata for WithOplog", err.Error())
 	})
 	t.Run("nil-tx", func(t *testing.T) {
 		w := GormReadWriter{Tx: nil}
 		id, err := uuid.GenerateUUID()
-		assert.NilError(t, err)
+		assert.Nil(err)
 		user, err := db_test.NewTestUser()
-		assert.NilError(t, err)
+		assert.Nil(err)
 		user.Name = "foo-" + id
 		err = w.Create(context.Background(), user)
-		assert.Check(t, err != nil)
-		assert.Equal(t, err.Error(), "create tx is nil")
+		assert.True(err != nil)
+		assert.Equal("create tx is nil", err.Error())
 	})
 }
 
 func TestGormReadWriter_ScanRows(t *testing.T) {
-	StartTest()
 	t.Parallel()
-	cleanup, url := SetupTest(t, "migrations/postgres")
+	cleanup, db := TestSetup(t, "migrations/postgres")
 	defer cleanup()
-	defer CompleteTest() // must come after the "defer cleanup()"
-	conn, err := TestConnection(url)
-	assert.NilError(t, err)
-	defer conn.Close()
+	assert := assert.New(t)
+	defer db.Close()
 	t.Run("valid", func(t *testing.T) {
-		w := GormReadWriter{Tx: conn}
+		w := GormReadWriter{Tx: db}
 		user, err := db_test.NewTestUser()
-		assert.NilError(t, err)
+		assert.Nil(err)
 		err = w.Create(context.Background(), user)
-		assert.NilError(t, err)
-		assert.Check(t, user.Id != 0)
+		assert.Nil(err)
+		assert.True(user.Id != 0)
 
 		tx, err := w.DB()
-		where := "select * from db_test_user where friendly_name in ($1, $2)"
+		where := "select * from db_test_user where name in ($1, $2)"
 		rows, err := tx.Query(where, "alice", "bob")
 		defer rows.Close()
 		for rows.Next() {
 			u, err := db_test.NewTestUser()
-			assert.NilError(t, err)
+			assert.Nil(err)
 
 			// scan the row into your Gorm struct
 			err = w.ScanRows(rows, &u)
-			assert.NilError(t, err)
-			assert.Equal(t, u.PublicId, user.PublicId)
+			assert.Nil(err)
+			assert.Equal(user.PublicId, u.PublicId)
 		}
 	})
 }

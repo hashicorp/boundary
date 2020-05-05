@@ -45,10 +45,10 @@ var _ db.VetForWriter = (*Scope)(nil)
 var _ ClonableResource = (*Scope)(nil)
 
 // NewScope creates a new Scope of the specified ScopeType with options:
-// WithFriendlyName specifies the Scope's friendly name.
+// WithName specifies the Scope's friendly name.
 func NewScope(scopeType ScopeType, opt ...Option) (*Scope, error) {
 	opts := GetOpts(opt...)
-	withFriendlyName := opts.withFriendlyName
+	withName := opts.withName
 	withScope := opts.withScope
 
 	if scopeType == UnknownScope {
@@ -81,8 +81,8 @@ func NewScope(scopeType ScopeType, opt ...Option) (*Scope, error) {
 		}
 		s.ParentId = withScope.PublicId
 	}
-	if withFriendlyName != "" {
-		s.FriendlyName = withFriendlyName
+	if withName != "" {
+		s.Name = withName
 	}
 	return s, nil
 }
@@ -144,7 +144,7 @@ func (s *Scope) GetPrimaryScope(ctx context.Context, r db.Reader) (*Scope, error
 		return nil, nil
 	}
 	var p Scope
-	if err := r.LookupBy(ctx, &p, "public_id = ?", s.ParentId); err != nil {
+	if err := r.LookupWhere(ctx, &p, "public_id = ?", s.ParentId); err != nil {
 		return nil, fmt.Errorf("error getting primary scope %w for scope", err)
 	}
 	return &p, nil
