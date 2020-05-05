@@ -25,7 +25,7 @@ import (
 	"golang.org/x/time/rate"
 )
 
-const EnvWatchtowerAddress = "WATCHTOWER_ADDR"
+const EnvWatchtowerAddr = "WATCHTOWER_ADDR"
 const EnvWatchtowerCACert = "WATCHTOWER_CACERT"
 const EnvWatchtowerCAPath = "WATCHTOWER_CAPATH"
 const EnvWatchtowerClientCert = "WATCHTOWER_CLIENT_CERT"
@@ -42,11 +42,11 @@ const EnvWatchtowerProject = "WATCHTOWER_PROJECT"
 
 // Config is used to configure the creation of the client
 type Config struct {
-	// Address is the address of the Watchtower controller. This should be a
+	// Addr is the address of the Watchtower controller. This should be a
 	// complete URL such as "http://watchtower.example.com". If you need a custom
 	// SSL cert or want to enable insecure mode, you need to specify a custom
 	// HttpClient.
-	Address string
+	Addr string
 
 	// Token is the client token that reuslts from authentication and can be
 	// used to make calls into Watchtower
@@ -133,13 +133,13 @@ type TLSConfig struct {
 // DefaultConfig returns a default configuration for the client. It is
 // safe to modify the return value of this function.
 //
-// The default Address is https://127.0.0.1:9200, but this can be overridden by
+// The default Addr is https://127.0.0.1:9200, but this can be overridden by
 // setting the `WATCHTOWER_ADDR` environment variable.
 //
 // If an error is encountered, this will return nil.
 func DefaultConfig() (*Config, error) {
 	config := &Config{
-		Address:    "https://127.0.0.1:9200",
+		Addr:       "https://127.0.0.1:9200",
 		HttpClient: cleanhttp.DefaultPooledClient(),
 		Timeout:    time.Second * 60,
 	}
@@ -223,12 +223,12 @@ func (c *Config) ConfigureTLS() error {
 //
 // This also removes any trailing "/v1"; we'll use that in our commands so we
 // don't require it from users.
-func (c *Config) setAddress(addr string) error {
+func (c *Config) setAddr(addr string) error {
 	u, err := url.Parse(addr)
 	if err != nil {
 		return fmt.Errorf("error parsing address: %w", err)
 	}
-	c.Address = fmt.Sprintf("%s://%s", u.Scheme, u.Host)
+	c.Addr = fmt.Sprintf("%s://%s", u.Scheme, u.Host)
 
 	path := strings.TrimPrefix(u.Path, "/v1")
 	path = strings.TrimPrefix(path, "/")
@@ -271,8 +271,8 @@ func (c *Config) ReadEnvironment() error {
 	var envServerName string
 
 	// Parse the environment variables
-	if v := os.Getenv(EnvWatchtowerAddress); v != "" {
-		c.Address = v
+	if v := os.Getenv(EnvWatchtowerAddr); v != "" {
+		c.Addr = v
 	}
 
 	if v := os.Getenv(EnvWatchtowerToken); v != "" {
@@ -423,8 +423,8 @@ func NewClient(c *Config) (*Client, error) {
 		}
 	}
 
-	if c.Address != "" {
-		if err := c.setAddress(c.Address); err != nil {
+	if c.Addr != "" {
+		if err := c.setAddr(c.Addr); err != nil {
 			return nil, err
 		}
 	}
@@ -437,11 +437,11 @@ func NewClient(c *Config) (*Client, error) {
 // Sets the address of Watchtower in the client. The format of address should
 // be "<Scheme>://<Host>:<Port>". Setting this on a client will override the
 // value of the WATCHTOWER_ADDR environment variable.
-func (c *Client) SetAddress(addr string) error {
+func (c *Client) SetAddr(addr string) error {
 	c.modifyLock.Lock()
 	defer c.modifyLock.Unlock()
 
-	return c.config.setAddress(addr)
+	return c.config.setAddr(addr)
 }
 
 // SetOrg sets the organization the client will use by default
@@ -550,7 +550,7 @@ func (c *Client) Clone() (*Client, error) {
 	config := c.config
 
 	newConfig := &Config{
-		Address:    config.Address,
+		Addr:       config.Addr,
 		Token:      config.Token,
 		HttpClient: config.HttpClient,
 		Headers:    make(http.Header),
@@ -626,7 +626,7 @@ func (c *Client) NewRequest(ctx context.Context, method, requestPath string, bod
 	}
 
 	c.modifyLock.RLock()
-	addr := c.config.Address
+	addr := c.config.Addr
 	org := c.config.Org
 	project := c.config.Project
 	srvLookup := c.config.SRVLookup

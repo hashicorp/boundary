@@ -1,9 +1,9 @@
 package base
 
 const (
-	// FlagNameAddress is the flag used in the base command to read in the
+	// FlagNameAddr is the flag used in the base command to read in the
 	// address of the Watchtower server.
-	FlagNameAddress = "address"
+	FlagNameAddr = "addr"
 	// FlagNameOrg is the flag used in the base command to read in the org in
 	// which to make a request.
 	FlagNameOrg = "org"
