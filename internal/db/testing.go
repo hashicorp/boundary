@@ -18,7 +18,7 @@ import (
 )
 
 // setup the tests (initialize the database one-time and intialized testDatabaseURL)
-func SetupTest(t *testing.T, migrationsDirectory string) (func(), *gorm.DB) {
+func TestSetup(t *testing.T, migrationsDirectory string) (func(), *gorm.DB) {
 	if _, err := os.Stat(migrationsDirectory); os.IsNotExist(err) {
 		t.Fatal("error migrationsDirectory does not exist")
 	}
@@ -37,8 +37,8 @@ func SetupTest(t *testing.T, migrationsDirectory string) (func(), *gorm.DB) {
 	return cleanup, db
 }
 
-// InitTestWrapper initializes an AEAD wrapping.Wrapper for testing the oplog
-func InitTestWrapper(t *testing.T) wrapping.Wrapper {
+// TestWrapper initializes an AEAD wrapping.Wrapper for testing the oplog
+func TestWrapper(t *testing.T) wrapping.Wrapper {
 	rootKey := make([]byte, 32)
 	n, err := rand.Read(rootKey)
 	if err != nil {
@@ -57,7 +57,7 @@ func InitTestWrapper(t *testing.T) wrapping.Wrapper {
 // initDbInDocker initializes postgres within dockertest for the unit tests
 func initDbInDocker(t *testing.T, migrationsDirectory string) (cleanup func(), retURL string, err error) {
 	if os.Getenv("PG_URL") != "" {
-		InitTestStore(t, func() {}, os.Getenv("PG_URL"), migrationsDirectory)
+		TestInitStore(t, func() {}, os.Getenv("PG_URL"), migrationsDirectory)
 		return func() {}, os.Getenv("PG_URL"), nil
 	}
 	pool, err := dockertest.NewPool("")
@@ -90,12 +90,12 @@ func initDbInDocker(t *testing.T, migrationsDirectory string) (cleanup func(), r
 	}); err != nil {
 		return func() {}, "", fmt.Errorf("could not connect to docker: %w", err)
 	}
-	InitTestStore(t, c, url, migrationsDirectory)
+	TestInitStore(t, c, url, migrationsDirectory)
 	return c, url, nil
 }
 
-// InitTestStore will execute the migrations needed to initialize the store for tests
-func InitTestStore(t *testing.T, cleanup func(), url string, migrationsDirectory string) {
+// TestInitStore will execute the migrations needed to initialize the store for tests
+func TestInitStore(t *testing.T, cleanup func(), url string, migrationsDirectory string) {
 	// run migrations
 	m, err := migrate.New(fmt.Sprintf("file://%s", migrationsDirectory), url)
 	if err != nil {

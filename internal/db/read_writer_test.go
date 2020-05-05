@@ -15,7 +15,7 @@ import (
 
 func TestGormReadWriter_Update(t *testing.T) {
 	// intentionally not run with t.Parallel so we don't need to use DoTx for the Update tests
-	cleanup, db := SetupTest(t, "migrations/postgres")
+	cleanup, db := TestSetup(t, "migrations/postgres")
 	defer cleanup()
 	assert := assert.New(t)
 	defer db.Close()
@@ -67,7 +67,7 @@ func TestGormReadWriter_Update(t *testing.T) {
 		err = w.Update(context.Background(), user, []string{"FriendlyName"},
 			// write oplogs for this update
 			WithOplog(
-				InitTestWrapper(t),
+				TestWrapper(t),
 				oplog.Metadata{
 					"key-only":           nil,
 					"deployment":         []string{"amex"},
@@ -152,7 +152,7 @@ func TestGormReadWriter_Update(t *testing.T) {
 		user.FriendlyName = "friendly-" + id
 		err = w.Update(context.Background(), user, []string{"FriendlyName"},
 			WithOplog(
-				InitTestWrapper(t),
+				TestWrapper(t),
 				nil,
 			),
 		)
@@ -163,7 +163,7 @@ func TestGormReadWriter_Update(t *testing.T) {
 
 func TestGormReadWriter_Create(t *testing.T) {
 	// intentionally not run with t.Parallel so we don't need to use DoTx for the Create tests
-	cleanup, db := SetupTest(t, "migrations/postgres")
+	cleanup, db := TestSetup(t, "migrations/postgres")
 	defer cleanup()
 	assert := assert.New(t)
 	defer db.Close()
@@ -198,7 +198,7 @@ func TestGormReadWriter_Create(t *testing.T) {
 			context.Background(),
 			user,
 			WithOplog(
-				InitTestWrapper(t),
+				TestWrapper(t),
 				oplog.Metadata{
 					"key-only":   nil,
 					"deployment": []string{"amex"},
@@ -249,7 +249,7 @@ func TestGormReadWriter_Create(t *testing.T) {
 			context.Background(),
 			user,
 			WithOplog(
-				InitTestWrapper(t),
+				TestWrapper(t),
 				nil,
 			),
 		)
@@ -271,7 +271,7 @@ func TestGormReadWriter_Create(t *testing.T) {
 
 func TestGormReadWriter_LookupByFriendlyName(t *testing.T) {
 	t.Parallel()
-	cleanup, db := SetupTest(t, "migrations/postgres")
+	cleanup, db := TestSetup(t, "migrations/postgres")
 	defer cleanup()
 	assert := assert.New(t)
 	defer db.Close()
@@ -327,7 +327,7 @@ func TestGormReadWriter_LookupByFriendlyName(t *testing.T) {
 
 func TestGormReadWriter_LookupByPublicId(t *testing.T) {
 	t.Parallel()
-	cleanup, db := SetupTest(t, "migrations/postgres")
+	cleanup, db := TestSetup(t, "migrations/postgres")
 	defer cleanup()
 	assert := assert.New(t)
 	defer db.Close()
@@ -383,7 +383,7 @@ func TestGormReadWriter_LookupByPublicId(t *testing.T) {
 
 func TestGormReadWriter_LookupWhere(t *testing.T) {
 	t.Parallel()
-	cleanup, db := SetupTest(t, "migrations/postgres")
+	cleanup, db := TestSetup(t, "migrations/postgres")
 	defer cleanup()
 	assert := assert.New(t)
 	defer db.Close()
@@ -434,7 +434,7 @@ func TestGormReadWriter_LookupWhere(t *testing.T) {
 
 func TestGormReadWriter_SearchWhere(t *testing.T) {
 	t.Parallel()
-	cleanup, db := SetupTest(t, "migrations/postgres")
+	cleanup, db := TestSetup(t, "migrations/postgres")
 	defer cleanup()
 	assert := assert.New(t)
 	defer db.Close()
@@ -485,7 +485,7 @@ func TestGormReadWriter_SearchWhere(t *testing.T) {
 
 func TestGormReadWriter_DB(t *testing.T) {
 	t.Parallel()
-	cleanup, db := SetupTest(t, "migrations/postgres")
+	cleanup, db := TestSetup(t, "migrations/postgres")
 	defer cleanup()
 	assert := assert.New(t)
 	defer db.Close()
@@ -508,7 +508,7 @@ func TestGormReadWriter_DB(t *testing.T) {
 
 func TestGormReadWriter_DoTx(t *testing.T) {
 	t.Parallel()
-	cleanup, db := SetupTest(t, "migrations/postgres")
+	cleanup, db := TestSetup(t, "migrations/postgres")
 	defer cleanup()
 	assert := assert.New(t)
 	defer db.Close()
@@ -608,7 +608,7 @@ func TestGormReadWriter_DoTx(t *testing.T) {
 
 func TestGormReadWriter_Delete(t *testing.T) {
 	// intentionally not run with t.Parallel so we don't need to use DoTx for the Create tests
-	cleanup, db := SetupTest(t, "migrations/postgres")
+	cleanup, db := TestSetup(t, "migrations/postgres")
 	defer cleanup()
 	assert := assert.New(t)
 	defer db.Close()
@@ -650,7 +650,7 @@ func TestGormReadWriter_Delete(t *testing.T) {
 			context.Background(),
 			user,
 			WithOplog(
-				InitTestWrapper(t),
+				TestWrapper(t),
 				oplog.Metadata{
 					"key-only":   nil,
 					"deployment": []string{"amex"},
@@ -672,7 +672,7 @@ func TestGormReadWriter_Delete(t *testing.T) {
 			context.Background(),
 			user,
 			WithOplog(
-				InitTestWrapper(t),
+				TestWrapper(t),
 				oplog.Metadata{
 					"key-only":   nil,
 					"deployment": []string{"amex"},
@@ -697,7 +697,7 @@ func TestGormReadWriter_Delete(t *testing.T) {
 			context.Background(),
 			user,
 			WithOplog(
-				InitTestWrapper(t),
+				TestWrapper(t),
 				oplog.Metadata{
 					"key-only":   nil,
 					"deployment": []string{"amex"},
@@ -741,7 +741,7 @@ func TestGormReadWriter_Delete(t *testing.T) {
 			context.Background(),
 			user,
 			WithOplog(
-				InitTestWrapper(t),
+				TestWrapper(t),
 				oplog.Metadata{
 					"key-only":   nil,
 					"deployment": []string{"amex"},
@@ -763,7 +763,7 @@ func TestGormReadWriter_Delete(t *testing.T) {
 			context.Background(),
 			user,
 			WithOplog(
-				InitTestWrapper(t),
+				TestWrapper(t),
 				nil,
 			),
 		)
@@ -785,7 +785,7 @@ func TestGormReadWriter_Delete(t *testing.T) {
 
 func TestGormReadWriter_ScanRows(t *testing.T) {
 	t.Parallel()
-	cleanup, db := SetupTest(t, "migrations/postgres")
+	cleanup, db := TestSetup(t, "migrations/postgres")
 	defer cleanup()
 	assert := assert.New(t)
 	defer db.Close()
