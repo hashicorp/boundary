@@ -20,7 +20,7 @@ type CreateCommand struct {
 
 	flagAddress     string
 	flagName        string
-	flagCatalog     string
+	flagCatalogId   string
 	flagDescription string
 }
 
@@ -37,7 +37,7 @@ Usage: watchtower hosts create
 
   Example: 
 
-      $ watchtower hosts create -catalog=<id> -address=<addr> -name=<name>
+      $ watchtower hosts create -catalog-id=<id> -address=<addr> -name=<name>
 
 ` + c.Flags().Help()
 
@@ -64,8 +64,8 @@ func (c *CreateCommand) Flags() *base.FlagSets {
 	})
 
 	f.StringVar(&base.StringVar{
-		Name:       "catalog",
-		Target:     &c.flagCatalog,
+		Name:       "catalog-id",
+		Target:     &c.flagCatalogId,
 		Completion: complete.PredictAnything,
 		Usage:      "The ID of the host catalog in which the host should be created",
 	})
@@ -97,8 +97,8 @@ func (c *CreateCommand) Run(args []string) int {
 	}
 
 	switch {
-	case c.flagCatalog == "":
-		c.UI.Error("Catalog ID must be provided via -catalog")
+	case c.flagCatalogId == "":
+		c.UI.Error("Catalog ID must be provided via -catalog-id")
 		return 1
 	case c.flagAddress == "":
 		c.UI.Error("Host address must be provided via -address")
@@ -113,7 +113,7 @@ func (c *CreateCommand) Run(args []string) int {
 
 	catalog := &hosts.HostCatalog{
 		Client: client,
-		Id:     api.String(c.flagCatalog),
+		Id:     api.String(c.flagCatalogId),
 	}
 
 	host := &hosts.Host{
