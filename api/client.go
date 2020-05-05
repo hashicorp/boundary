@@ -647,11 +647,8 @@ func (c *Client) NewRequest(ctx context.Context, method, requestPath string, bod
 		}
 	}
 
-	switch {
-	case org == "":
+	if org == "" {
 		return nil, fmt.Errorf("could not create request, no organization set")
-	case project == "":
-		return nil, fmt.Errorf("could not create request, no project set")
 	}
 
 	u, err := url.Parse(addr)
