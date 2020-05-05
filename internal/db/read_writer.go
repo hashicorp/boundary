@@ -16,7 +16,7 @@ import (
 
 // Reader interface defines lookups/searching for resources
 type Reader interface {
-	// LookupByFriendlyName will lookup resource my its friendly_name which must be unique
+	// LookupByFriendlyName will lookup resource by its friendly_name which must be unique
 	LookupByFriendlyName(ctx context.Context, resource ResourceFriendlyNamer, opt ...Option) error
 
 	// LookupByPublicId will lookup resource my its public_id which must be unique
