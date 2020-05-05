@@ -6,6 +6,7 @@ import (
 	"crypto/tls"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net"
 	"net/http"
 	"net/url"
@@ -17,7 +18,6 @@ import (
 	"time"
 	"unicode"
 
-	"github.com/hashicorp/errwrap"
 	cleanhttp "github.com/hashicorp/go-cleanhttp"
 	retryablehttp "github.com/hashicorp/go-retryablehttp"
 	rootcerts "github.com/hashicorp/go-rootcerts"
@@ -73,10 +73,6 @@ type Config struct {
 
 	// Timeout is for setting custom timeout parameter in the HttpClient
 	Timeout time.Duration
-
-	// If there is an error when creating the configuration, this will be the
-	// error
-	Error error
 
 	// The Backoff function to use; a default is used if not provided
 	Backoff retryablehttp.Backoff
@@ -141,7 +137,7 @@ type TLSConfig struct {
 // setting the `WATCHTOWER_ADDR` environment variable.
 //
 // If an error is encountered, this will return nil.
-func DefaultConfig() *Config {
+func DefaultConfig() (*Config, error) {
 	config := &Config{
 		Address:    "https://127.0.0.1:9200",
 		HttpClient: cleanhttp.DefaultPooledClient(),
@@ -151,8 +147,7 @@ func DefaultConfig() *Config {
 	// We read the environment now; after DefaultClient returns we can override
 	// values from command line flags, which should take precedence.
 	if err := config.ReadEnvironment(); err != nil {
-		config.Error = err
-		return config
+		return config, fmt.Errorf("failed to read environment: %w", err)
 	}
 
 	transport := config.HttpClient.Transport.(*http.Transport)
@@ -165,14 +160,14 @@ func DefaultConfig() *Config {
 	config.MaxRetries = 2
 	config.Headers = make(http.Header)
 
-	return config
+	return config, nil
 }
 
 // ConfigureTLS takes a set of TLS configurations and applies those to the the
 // HTTP client.
 func (c *Config) ConfigureTLS() error {
 	if c.HttpClient == nil {
-		c.HttpClient = DefaultConfig().HttpClient
+		c.HttpClient = cleanhttp.DefaultPooledClient()
 	}
 	clientTLSConfig := c.HttpClient.Transport.(*http.Transport).TLSClientConfig
 
@@ -402,12 +397,9 @@ type Client struct {
 // automatically added to the client. Otherwise, you must manually call
 // `SetToken()`.
 func NewClient(c *Config) (*Client, error) {
-	def := DefaultConfig()
-	if def == nil {
-		return nil, fmt.Errorf("could not create/read default configuration")
-	}
-	if def.Error != nil {
-		return nil, errwrap.Wrapf("error encountered setting up default configuration: {{err}}", def.Error)
+	def, err := DefaultConfig()
+	if err != nil {
+		return nil, fmt.Errorf("error encountered setting up default configuration: %w", err)
 	}
 
 	if c == nil {
@@ -431,8 +423,10 @@ func NewClient(c *Config) (*Client, error) {
 		}
 	}
 
-	if err := c.setAddress(c.Address); err != nil {
-		return nil, err
+	if c.Address != "" {
+		if err := c.setAddress(c.Address); err != nil {
+			return nil, err
+		}
 	}
 
 	return &Client{
@@ -450,8 +444,36 @@ func (c *Client) SetAddress(addr string) error {
 	return c.config.setAddress(addr)
 }
 
+// SetOrg sets the organization the client will use by default
+func (c *Client) SetOrg(org string) {
+	c.modifyLock.Lock()
+	defer c.modifyLock.Unlock()
+
+	c.config.Org = org
+}
+
+// SetProject sets the project the client will use by default
+func (c *Client) SetProject(project string) {
+	c.modifyLock.Lock()
+	defer c.modifyLock.Unlock()
+
+	c.config.Project = project
+}
+
+// SetTLSConfig sets the TLS parameters to use and calls ConfigureTLS
+func (c *Client) SetTLSConfig(conf *TLSConfig) error {
+	c.modifyLock.Lock()
+	defer c.modifyLock.Unlock()
+	if conf == nil {
+		return fmt.Errorf("nil configuration supplied to SetTLSConfig")
+	}
+
+	c.config.TLSConfig = conf
+	return c.config.ConfigureTLS()
+}
+
 // SetLimiter will set the rate limiter for this client.  This method is
-// thread-safe.  rateLimit and burst are specified according to
+// thread-safe. rateLimit and burst are specified according to
 // https://godoc.org/golang.org/x/time/rate#NewLimiter
 func (c *Client) SetLimiter(rateLimit float64, burst int) {
 	c.modifyLock.Lock()
@@ -579,7 +601,30 @@ func getBufferForJSON(val interface{}) (*bytes.Buffer, error) {
 // NewRequest creates a new raw request object to query the Watchtower controller
 // configured for this client. This is an advanced method and generally
 // doesn't need to be called externally.
-func (c *Client) NewRequest(ctx context.Context, method, requestPath string, body interface{}) (*http.Request, error) {
+func (c *Client) NewRequest(ctx context.Context, method, requestPath string, body interface{}) (*retryablehttp.Request, error) {
+	if c == nil {
+		return nil, fmt.Errorf("client is nil")
+	}
+
+	// Figure out what to do with the body. If it's already a reader it might
+	// be marshaled or raw bytes in a reader, so pass it through. Otherwise
+	// attempt JSON encoding and then pop in a bytes.Buffer.
+	var rawBody interface{}
+	if body != nil {
+		switch t := body.(type) {
+		case io.ReadCloser, io.Reader:
+			rawBody = t
+		case []byte:
+			rawBody = bytes.NewBuffer(t)
+		default:
+			b, err := json.Marshal(body)
+			if err != nil {
+				return nil, fmt.Errorf("error marshaling body: %w", err)
+			}
+			rawBody = bytes.NewBuffer(b)
+		}
+	}
+
 	c.modifyLock.RLock()
 	addr := c.config.Address
 	org := c.config.Org
@@ -589,6 +634,25 @@ func (c *Client) NewRequest(ctx context.Context, method, requestPath string, bod
 	httpClient := c.config.HttpClient
 	headers := copyHeaders(c.config.Headers)
 	c.modifyLock.RUnlock()
+
+	var ok bool
+	if orgRaw := ctx.Value("org"); orgRaw != nil {
+		if org, ok = orgRaw.(string); !ok {
+			return nil, fmt.Errorf("could not convert %v into string org value", orgRaw)
+		}
+	}
+	if projectRaw := ctx.Value("project"); projectRaw != nil {
+		if project, ok = projectRaw.(string); !ok {
+			return nil, fmt.Errorf("could not convert %v into string project value", projectRaw)
+		}
+	}
+
+	switch {
+	case org == "":
+		return nil, fmt.Errorf("could not create request, no organization set")
+	case project == "":
+		return nil, fmt.Errorf("could not create request, no project set")
+	}
 
 	u, err := url.Parse(addr)
 	if err != nil {
@@ -628,18 +692,6 @@ func (c *Client) NewRequest(ctx context.Context, method, requestPath string, bod
 		}
 	}
 
-	var ok bool
-	if orgRaw := ctx.Value("org"); orgRaw != nil {
-		if org, ok = orgRaw.(string); !ok {
-			return nil, fmt.Errorf("could not convert %v into string org value", orgRaw)
-		}
-	}
-	if projectRaw := ctx.Value("project"); projectRaw != nil {
-		if project, ok = projectRaw.(string); !ok {
-			return nil, fmt.Errorf("could not convert %v into string project value", projectRaw)
-		}
-	}
-
 	req := &http.Request{
 		Method: method,
 		URL: &url.URL{
@@ -656,12 +708,17 @@ func (c *Client) NewRequest(ctx context.Context, method, requestPath string, bod
 		req = req.WithContext(ctx)
 	}
 
-	return req, nil
+	ret := &retryablehttp.Request{
+		Request: req,
+	}
+	ret.SetBody(rawBody)
+
+	return ret, nil
 }
 
 // Do takes a properly configured request and applies client configuration to
 // it, returning the response.
-func (c *Client) Do(r *http.Request) (*http.Response, error) {
+func (c *Client) Do(r *retryablehttp.Request) (*Response, error) {
 	c.modifyLock.RLock()
 	limiter := c.config.Limiter
 	maxRetries := c.config.MaxRetries
@@ -687,16 +744,8 @@ func (c *Client) Do(r *http.Request) (*http.Response, error) {
 		return nil, fmt.Errorf("configured Watchtower token contains non-printable characters and cannot be used")
 	}
 
-	req, err := retryablehttp.FromRequest(r)
-	if err != nil {
-		return nil, fmt.Errorf("error converting request to retryable request: %w", err)
-	}
-	if req == nil {
-		return nil, fmt.Errorf("nil request created")
-	}
-
 	if outputCurlString {
-		LastOutputStringError = &OutputStringError{Request: req}
+		LastOutputStringError = &OutputStringError{Request: r}
 		return nil, LastOutputStringError
 	}
 
@@ -710,7 +759,7 @@ func (c *Client) Do(r *http.Request) (*http.Response, error) {
 		// down, keep it not-canceled even though vet complains.
 		ctx, _ = context.WithTimeout(ctx, timeout)
 	}
-	req.Request = req.Request.WithContext(ctx)
+	r.Request = r.Request.WithContext(ctx)
 
 	if backoff == nil {
 		backoff = retryablehttp.LinearJitterBackoff
@@ -730,11 +779,11 @@ func (c *Client) Do(r *http.Request) (*http.Response, error) {
 		ErrorHandler: retryablehttp.PassthroughErrorHandler,
 	}
 
-	result, err := client.Do(req)
+	result, err := client.Do(r)
 	if err != nil {
 		if strings.Contains(err.Error(), "tls: oversized") {
-			err = errwrap.Wrapf(
-				"{{err}}\n\n"+
+			err = fmt.Errorf(
+				"%w\n\n"+
 					"This error usually means that the controller is running with TLS disabled\n"+
 					"but the client is configured to use TLS. Please either enable TLS\n"+
 					"on the server or run the client with -address set to an address\n"+
@@ -745,8 +794,8 @@ func (c *Client) Do(r *http.Request) (*http.Response, error) {
 					"where <address> is replaced by the actual address to the controller.",
 				err)
 		}
-		return result, err
+		return nil, err
 	}
 
-	return result, nil
+	return &Response{resp: result}, nil
 }
