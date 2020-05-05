@@ -70,10 +70,9 @@ CREATE TABLE if not exists iam_user (
     disabled BOOLEAN NOT NULL default FALSE
   );
 CREATE TABLE if not exists iam_auth_method (
-    id bigint generated always as identity primary key,
+    public_id text not null primary key,
     create_time timestamp with time zone NOT NULL default current_timestamp,
     update_time timestamp with time zone NOT NULL default current_timestamp,
-    public_id text not null UNIQUE,
     friendly_name text UNIQUE,
     primary_scope_id text NOT NULL REFERENCES iam_scope_organization(scope_id),
     disabled BOOLEAN NOT NULL default FALSE,
