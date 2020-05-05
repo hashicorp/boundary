@@ -31,7 +31,7 @@ message RoleGrant {
 
   // primary scope id of the PrimaryScope
   // @inject_tag: `gorm:"default:null"`
-  uint32 primary_scope_id = 7;
+  string primary_scope_id = 7;
   // @inject_tag: gorm:"foreignkey:ScopeId"
   Scope primary_scope = 8;
 

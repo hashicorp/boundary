@@ -1,20 +1,3 @@
-create
-or replace function create_constraint_if_not_exists (
-  t_name text,
-  c_name text,
-  constraint_sql text
-) returns void AS $$ begin -- Look for our constraint
-if not exists (
-  select
-    constraint_name
-  from information_schema.constraint_column_usage
-  where
-    table_name = t_name
-    and constraint_name = c_name
-) then execute 'ALTER TABLE ' || t_name || ' ADD CONSTRAINT ' || c_name || ' ' || constraint_sql;
-end if;
-end;
-$$ language 'plpgsql';
 --
 -- define the iam_auth_method_type_enm lookup table
 --
@@ -31,10 +14,9 @@ INSERT INTO iam_scope_type_enm (string)
 values
   ('project');
 CREATE TABLE if not exists iam_scope (
-    id bigint generated always as identity primary key,
+    public_id text NOT NULL primary key,
     create_time timestamp with time zone default current_timestamp,
     update_time timestamp with time zone default current_timestamp,
-    public_id text NOT NULL UNIQUE,
     friendly_name text UNIQUE,
     type text NOT NULL REFERENCES iam_scope_type_enm(string) CHECK(
       (
@@ -46,15 +28,15 @@ CREATE TABLE if not exists iam_scope (
         and parent_id IS NOT NULL
       )
     ),
-    parent_id bigint REFERENCES iam_scope(id) ON DELETE CASCADE ON UPDATE CASCADE,
+    parent_id text REFERENCES iam_scope(public_id) ON DELETE CASCADE ON UPDATE CASCADE,
     disabled BOOLEAN NOT NULL default FALSE
   );
 create table if not exists iam_scope_organization (
-    scope_id bigint NOT NULL UNIQUE REFERENCES iam_scope(id) ON DELETE CASCADE ON UPDATE CASCADE
+    scope_id text NOT NULL UNIQUE REFERENCES iam_scope(public_id) ON DELETE CASCADE ON UPDATE CASCADE
   );
 create table if not exists iam_scope_project (
-    scope_id bigint REFERENCES iam_scope(id) ON DELETE CASCADE ON UPDATE CASCADE,
-    parent_id bigint REFERENCES iam_scope_organization(scope_id) ON DELETE CASCADE ON UPDATE CASCADE
+    scope_id text REFERENCES iam_scope(public_id) ON DELETE CASCADE ON UPDATE CASCADE,
+    parent_id text REFERENCES iam_scope_organization(scope_id) ON DELETE CASCADE ON UPDATE CASCADE
   );
 CREATE
   OR REPLACE FUNCTION iam_sub_scopes_func() RETURNS TRIGGER
@@ -63,13 +45,13 @@ SET SCHEMA
 BEGIN IF new.type = 'organization' THEN
 insert into iam_scope_organization (scope_id)
 values
-  (new.id);
+  (new.public_id);
 return NEW;
 END IF;
 IF new.type = 'project' THEN
 insert into iam_scope_project (scope_id, parent_id)
 values
-  (new.id, new.parent_id);
+  (new.public_id, new.parent_id);
 return NEW;
 END IF;
 RAISE EXCEPTION 'unknown scope type';
@@ -85,7 +67,7 @@ CREATE TABLE if not exists iam_user (
     public_id text not null UNIQUE,
     friendly_name text UNIQUE,
     name text NOT NULL,
-    primary_scope_id bigint NOT NULL REFERENCES iam_scope_organization(scope_id),
+    primary_scope_id text NOT NULL REFERENCES iam_scope_organization(scope_id),
     disabled BOOLEAN NOT NULL default FALSE
   );
 CREATE TABLE if not exists iam_auth_method (
@@ -94,7 +76,7 @@ CREATE TABLE if not exists iam_auth_method (
     update_time timestamp with time zone NOT NULL default current_timestamp,
     public_id text not null UNIQUE,
     friendly_name text UNIQUE,
-    primary_scope_id bigint NOT NULL REFERENCES iam_scope_organization(scope_id),
+    primary_scope_id text NOT NULL REFERENCES iam_scope_organization(scope_id),
     disabled BOOLEAN NOT NULL default FALSE,
     type text NOT NULL
   );
@@ -105,7 +87,7 @@ CREATE TABLE if not exists iam_role (
     public_id text not null UNIQUE,
     friendly_name text UNIQUE,
     description text,
-    primary_scope_id bigint NOT NULL REFERENCES iam_scope(id),
+    primary_scope_id text NOT NULL REFERENCES iam_scope(public_id),
     disabled BOOLEAN NOT NULL default FALSE
   );
 --
@@ -127,7 +109,7 @@ CREATE TABLE if not exists iam_group (
     public_id text not null UNIQUE,
     friendly_name text UNIQUE,
     description text,
-    primary_scope_id bigint NOT NULL REFERENCES iam_scope(id),
+    primary_scope_id text NOT NULL REFERENCES iam_scope(public_id),
     disabled BOOLEAN NOT NULL default FALSE
   );
 CREATE TABLE if not exists iam_group_member_user (
@@ -136,7 +118,7 @@ CREATE TABLE if not exists iam_group_member_user (
     update_time timestamp with time zone NOT NULL default current_timestamp,
     public_id text not null UNIQUE,
     friendly_name text UNIQUE,
-    primary_scope_id bigint NOT NULL REFERENCES iam_scope(id),
+    primary_scope_id text NOT NULL REFERENCES iam_scope(public_id),
     group_id bigint NOT NULL REFERENCES iam_group(id),
     member_id bigint NOT NULL REFERENCES iam_user(id),
     type text NOT NULL REFERENCES iam_group_member_type_enm(string) check(type = 'user')
@@ -227,7 +209,7 @@ CREATE TABLE if not exists iam_role_user (
     update_time timestamp with time zone NOT NULL default current_timestamp,
     public_id text not null UNIQUE,
     friendly_name text UNIQUE,
-    primary_scope_id bigint NOT NULL REFERENCES iam_scope(id),
+    primary_scope_id text NOT NULL REFERENCES iam_scope(public_id),
     role_id bigint NOT NULL REFERENCES iam_role(id),
     principal_id bigint NOT NULL REFERENCES iam_user(id),
     type text NOT NULL REFERENCES iam_role_type_enm(string) CHECK(type = 'user')
@@ -238,7 +220,7 @@ CREATE TABLE if not exists iam_role_group (
     update_time timestamp with time zone NOT NULL default current_timestamp,
     public_id text not null UNIQUE,
     friendly_name text UNIQUE,
-    primary_scope_id bigint NOT NULL REFERENCES iam_scope(id),
+    primary_scope_id text NOT NULL REFERENCES iam_scope(public_id),
     role_id bigint NOT NULL REFERENCES iam_role(id),
     principal_id bigint NOT NULL REFERENCES iam_group(id),
     type text NOT NULL REFERENCES iam_role_type_enm(string) CHECK(type = 'group')
@@ -257,7 +239,7 @@ CREATE TABLE if not exists iam_role_grant (
     update_time timestamp with time zone NOT NULL default current_timestamp,
     public_id text not null UNIQUE,
     friendly_name text UNIQUE,
-    primary_scope_id bigint NOT NULL REFERENCES iam_scope(id),
+    primary_scope_id text NOT NULL REFERENCES iam_scope(public_id),
     role_id bigint NOT NULL REFERENCES iam_role(id),
     "grant" text NOT NULL,
     description text

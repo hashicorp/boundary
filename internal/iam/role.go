@@ -42,7 +42,7 @@ func NewRole(primaryScope *Scope, opt ...Option) (*Role, error) {
 	r := &Role{
 		Role: &store.Role{
 			PublicId:       publicId,
-			PrimaryScopeId: primaryScope.GetId(),
+			PrimaryScopeId: primaryScope.GetPublicId(),
 		},
 	}
 	if withFriendlyName != "" {
@@ -118,7 +118,7 @@ func (role *Role) VetForWrite(ctx context.Context, r db.Reader, opType db.OpType
 	if role.PublicId == "" {
 		return errors.New("error public id is empty string for role write")
 	}
-	if role.PrimaryScopeId == 0 {
+	if role.PrimaryScopeId == "" {
 		return errors.New("error primary scope id not set for role write")
 	}
 	// make sure the scope is valid for users

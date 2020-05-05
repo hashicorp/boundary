@@ -40,7 +40,7 @@ func NewUser(primaryScope *Scope, opt ...Option) (*User, error) {
 	u := &User{
 		User: &store.User{
 			PublicId:       publicId,
-			PrimaryScopeId: primaryScope.GetId(),
+			PrimaryScopeId: primaryScope.GetPublicId(),
 		},
 	}
 	if withFriendlyName != "" {
@@ -161,7 +161,7 @@ func (u *User) VetForWrite(ctx context.Context, r db.Reader, opType db.OpType) e
 	if u.PublicId == "" {
 		return errors.New("error public id is empty string for user write")
 	}
-	if u.PrimaryScopeId == 0 {
+	if u.PrimaryScopeId == "" {
 		return errors.New("error primary scope id not set for user write")
 	}
 	// make sure the scope is valid for users

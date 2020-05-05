@@ -29,12 +29,12 @@ func Test_NewUser(t *testing.T) {
 		assert.True(s.Scope != nil)
 		err = w.Create(context.Background(), s)
 		assert.Nil(err)
-		assert.True(s.Id != 0)
+		assert.True(s.PublicId != "")
 
 		user, err := NewUser(s)
 		assert.Nil(err)
 		assert.True(user.User != nil)
-		assert.Equal(user.PrimaryScopeId, s.Id)
+		assert.Equal(user.PrimaryScopeId, s.PublicId)
 	})
 }
 
@@ -57,7 +57,7 @@ func Test_UserCreate(t *testing.T) {
 		assert.True(s.Scope != nil)
 		err = w.Create(context.Background(), s)
 		assert.Nil(err)
-		assert.True(s.Id != 0)
+		assert.True(s.PublicId != "")
 
 		user, err := NewUser(s)
 		assert.Nil(err)
@@ -84,30 +84,30 @@ func Test_UserGetPrimaryScope(t *testing.T) {
 		assert.True(s.Scope != nil)
 		err = w.Create(context.Background(), s)
 		assert.Nil(err)
-		assert.True(s.Id != 0)
+		assert.True(s.PublicId != "")
 
 		user, err := NewUser(s)
 		assert.Nil(err)
 		err = w.Create(context.Background(), user)
 		assert.Nil(err)
 		assert.True(user.Id != uint32(0))
-		assert.Equal(user.PrimaryScopeId, s.Id)
+		assert.Equal(user.PrimaryScopeId, s.PublicId)
 
 		childScope, err := NewScope(ProjectScope, WithScope(s))
 		assert.Nil(err)
 		assert.True(childScope.Scope != nil)
-		assert.Equal(childScope.GetParentId(), s.Id)
+		assert.Equal(childScope.GetParentId(), s.PublicId)
 		err = w.Create(context.Background(), childScope)
 		assert.Nil(err)
 
-		user.PrimaryScopeId = s.Id
+		user.PrimaryScopeId = s.PublicId
 		err = w.Update(context.Background(), user, []string{"PrimaryScopeId"})
 		assert.Nil(err)
 
 		primaryScope, err := user.GetPrimaryScope(context.Background(), &w)
 		assert.Nil(err)
 		assert.True(primaryScope != nil)
-		assert.Equal(primaryScope.Id, user.PrimaryScopeId)
+		assert.Equal(primaryScope.PublicId, user.PrimaryScopeId)
 	})
 
 }
@@ -130,7 +130,7 @@ func Test_UserGroups(t *testing.T) {
 		assert.True(s.Scope != nil)
 		err = w.Create(context.Background(), s)
 		assert.Nil(err)
-		assert.True(s.Id != 0)
+		assert.True(s.PublicId != "")
 
 		user, err := NewUser(s)
 		assert.Nil(err)
@@ -141,7 +141,7 @@ func Test_UserGroups(t *testing.T) {
 		assert.Nil(err)
 		assert.True(grp != nil)
 		assert.Equal(grp.Description, "this is a test group")
-		assert.Equal(s.Id, grp.PrimaryScopeId)
+		assert.Equal(s.PublicId, grp.PrimaryScopeId)
 		err = w.Create(context.Background(), grp)
 		assert.Nil(err)
 		assert.True(grp.Id != 0)
@@ -177,7 +177,7 @@ func Test_UserRoles(t *testing.T) {
 		assert.True(s.Scope != nil)
 		err = w.Create(context.Background(), s)
 		assert.Nil(err)
-		assert.True(s.Id != 0)
+		assert.True(s.PublicId != "")
 
 		user, err := NewUser(s)
 		assert.Nil(err)
@@ -188,7 +188,7 @@ func Test_UserRoles(t *testing.T) {
 		assert.Nil(err)
 		assert.True(role != nil)
 		assert.Equal(role.Description, "this is a test role")
-		assert.Equal(s.Id, role.PrimaryScopeId)
+		assert.Equal(s.PublicId, role.PrimaryScopeId)
 		err = w.Create(context.Background(), role)
 		assert.Nil(err)
 		assert.True(role.Id != 0)
@@ -234,12 +234,12 @@ func Test_UserGrants(t *testing.T) {
 		assert.True(s.Scope != nil)
 		err = w.Create(context.Background(), s)
 		assert.Nil(err)
-		assert.True(s.Id != 0)
+		assert.True(s.PublicId != "")
 
 		role, err := NewRole(s)
 		assert.Nil(err)
 		assert.True(role != nil)
-		assert.Equal(s.Id, role.PrimaryScopeId)
+		assert.Equal(s.PublicId, role.PrimaryScopeId)
 		err = w.Create(context.Background(), role)
 		assert.Nil(err)
 		assert.True(role.Id != 0)
@@ -276,7 +276,7 @@ func Test_UserGrants(t *testing.T) {
 		assert.Nil(err)
 		assert.True(grp != nil)
 		assert.Equal(grp.Description, "user grants test group")
-		assert.Equal(s.Id, grp.PrimaryScopeId)
+		assert.Equal(s.PublicId, grp.PrimaryScopeId)
 		err = w.Create(context.Background(), grp)
 		assert.Nil(err)
 		assert.True(grp.Id != 0)
@@ -290,7 +290,7 @@ func Test_UserGrants(t *testing.T) {
 		groupRole, err := NewRole(s)
 		assert.Nil(err)
 		assert.True(role != nil)
-		assert.Equal(s.Id, groupRole.PrimaryScopeId)
+		assert.Equal(s.PublicId, groupRole.PrimaryScopeId)
 		err = w.Create(context.Background(), groupRole)
 		assert.Nil(err)
 		assert.True(groupRole.Id != 0)
@@ -340,7 +340,7 @@ func TestUser_Clone(t *testing.T) {
 		assert.True(s.Scope != nil)
 		err = w.Create(context.Background(), s)
 		assert.Nil(err)
-		assert.True(s.Id != 0)
+		assert.True(s.PublicId != "")
 
 		user, err := NewUser(s)
 		assert.Nil(err)
@@ -357,7 +357,7 @@ func TestUser_Clone(t *testing.T) {
 		assert.True(s.Scope != nil)
 		err = w.Create(context.Background(), s)
 		assert.Nil(err)
-		assert.True(s.Id != 0)
+		assert.True(s.PublicId != "")
 
 		user, err := NewUser(s)
 		assert.Nil(err)

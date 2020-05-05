@@ -30,7 +30,7 @@ message Role {
 
   // primary scope id of the PrimaryScope
   // @inject_tag: `gorm:"default:null"`
-  uint32 primary_scope_id = 7;
+  string primary_scope_id = 7;
   // @inject_tag: gorm:"foreignkey:ScopeId"
   Scope primary_scope = 8;
 
@@ -60,7 +60,7 @@ message UserRole {
 
   // primary scope id of the PrimaryScope
   // @inject_tag: `gorm:"default:null"`
-  uint32 primary_scope_id = 6;
+  string primary_scope_id = 6;
   // @inject_tag: gorm:"foreignkey:ScopeId"
   Scope primary_scope = 7;
 
@@ -95,7 +95,7 @@ message GroupRole {
 
   // primary scope id of the PrimaryScope
   // @inject_tag: `gorm:"default:null"`
-  uint32 primary_scope_id = 6;
+  string primary_scope_id = 6;
   // @inject_tag: gorm:"foreignkey:ScopeId"
   Scope primary_scope = 7;
 
@@ -130,7 +130,7 @@ message AssignedRoleView {
 
   // primary scope id of the PrimaryScope
   // @inject_tag: `gorm:"default:null"`
-  uint32 primary_scope_id = 6;
+  string primary_scope_id = 6;
   // @inject_tag: gorm:"foreignkey:ScopeId"
   Scope primary_scope = 7;
 

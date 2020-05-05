@@ -27,7 +27,7 @@ func Test_NewAuthMethod(t *testing.T) {
 		assert.True(s.Scope != nil)
 		err = w.Create(context.Background(), s)
 		assert.Nil(err)
-		assert.True(s.Id != 0)
+		assert.True(s.PublicId != "")
 
 		meth, err := NewAuthMethod(s, AuthUserPass)
 		assert.Nil(err)
@@ -63,7 +63,7 @@ func TestAuthMethod_GetPrimaryScope(t *testing.T) {
 		assert.True(s.Scope != nil)
 		err = w.Create(context.Background(), s)
 		assert.Nil(err)
-		assert.True(s.Id != 0)
+		assert.True(s.PublicId != "")
 
 		meth, err := NewAuthMethod(s, AuthUserPass)
 		assert.Nil(err)
@@ -75,7 +75,7 @@ func TestAuthMethod_GetPrimaryScope(t *testing.T) {
 
 		primaryScope, err := meth.GetPrimaryScope(context.Background(), &w)
 		assert.Nil(err)
-		assert.Equal(primaryScope.GetId(), s.Id)
+		assert.Equal(primaryScope.GetPublicId(), s.PublicId)
 	})
 
 }
@@ -98,7 +98,7 @@ func TestAuthMethod_ResourceType(t *testing.T) {
 		assert.True(s.Scope != nil)
 		err = w.Create(context.Background(), s)
 		assert.Nil(err)
-		assert.True(s.Id != 0)
+		assert.True(s.PublicId != "")
 
 		meth, err := NewAuthMethod(s, AuthUserPass)
 		assert.Nil(err)
@@ -142,7 +142,7 @@ func TestAuthMethod_Clone(t *testing.T) {
 		assert.True(s.Scope != nil)
 		err = w.Create(context.Background(), s)
 		assert.Nil(err)
-		assert.True(s.Id != 0)
+		assert.True(s.PublicId != "")
 
 		meth, err := NewAuthMethod(s, AuthUserPass)
 		assert.Nil(err)
@@ -162,7 +162,7 @@ func TestAuthMethod_Clone(t *testing.T) {
 		assert.True(s.Scope != nil)
 		err = w.Create(context.Background(), s)
 		assert.Nil(err)
-		assert.True(s.Id != 0)
+		assert.True(s.PublicId != "")
 
 		meth, err := NewAuthMethod(s, AuthUserPass)
 		assert.Nil(err)

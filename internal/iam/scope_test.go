@@ -27,12 +27,12 @@ func Test_NewScope(t *testing.T) {
 		assert.True(s.Scope != nil)
 		err = w.Create(context.Background(), s)
 		assert.Nil(err)
-		assert.True(s.Id != 0)
+		assert.True(s.PublicId != "")
 
 		lowerScope, err := NewScope(ProjectScope, WithScope(s))
 		assert.Nil(err)
 		assert.True(lowerScope.Scope != nil)
-		assert.Equal(lowerScope.GetParentId(), s.Id)
+		assert.Equal(lowerScope.GetParentId(), s.PublicId)
 	})
 	t.Run("unknown-scope", func(t *testing.T) {
 		s, err := NewScope(UnknownScope)
@@ -65,7 +65,7 @@ func Test_ScopeCreate(t *testing.T) {
 		assert.True(s.Scope != nil)
 		err = w.Create(context.Background(), s)
 		assert.Nil(err)
-		assert.True(s.Id != 0)
+		assert.True(s.PublicId != "")
 	})
 	t.Run("valid-with-parent", func(t *testing.T) {
 		w := db.GormReadWriter{Tx: conn}
@@ -74,16 +74,16 @@ func Test_ScopeCreate(t *testing.T) {
 		assert.True(s.Scope != nil)
 		err = w.Create(context.Background(), s)
 		assert.Nil(err)
-		assert.True(s.Id != 0)
+		assert.True(s.PublicId != "")
 
 		scopeWithParent, err := NewScope(ProjectScope, WithScope(s))
 		assert.Nil(err)
 		assert.True(scopeWithParent.Scope != nil)
-		assert.Equal(scopeWithParent.Scope.ParentId, s.Id)
+		assert.Equal(scopeWithParent.Scope.ParentId, s.PublicId)
 
 		err = w.Create(context.Background(), scopeWithParent)
 		assert.Nil(err)
-		assert.Equal(scopeWithParent.ParentId, s.Id)
+		assert.Equal(scopeWithParent.ParentId, s.PublicId)
 	})
 }
 
@@ -104,19 +104,19 @@ func Test_ScopeGetPrimaryScope(t *testing.T) {
 		assert.True(s.Scope != nil)
 		err = w.Create(context.Background(), s)
 		assert.Nil(err)
-		assert.True(s.Id != 0)
+		assert.True(s.PublicId != "")
 
 		scopeWithParent, err := NewScope(ProjectScope, WithScope(s))
 		assert.Nil(err)
 		assert.True(scopeWithParent.Scope != nil)
-		assert.Equal(scopeWithParent.ParentId, s.Id)
+		assert.Equal(scopeWithParent.ParentId, s.PublicId)
 		err = w.Create(context.Background(), scopeWithParent)
 		assert.Nil(err)
 
 		primaryScope, err := scopeWithParent.GetPrimaryScope(context.Background(), &w)
 		assert.Nil(err)
 		assert.True(primaryScope != nil)
-		assert.Equal(primaryScope.Id, scopeWithParent.ParentId)
+		assert.Equal(primaryScope.PublicId, scopeWithParent.ParentId)
 	})
 }
 
@@ -137,19 +137,19 @@ func Test_ScopeOrganization(t *testing.T) {
 		assert.True(org.Scope != nil)
 		err = w.Create(context.Background(), org)
 		assert.Nil(err)
-		assert.True(org.Id != 0)
+		assert.True(org.PublicId != "")
 
 		projScope, err := NewScope(ProjectScope, WithScope(org))
 		assert.Nil(err)
 		assert.True(projScope.Scope != nil)
-		assert.Equal(projScope.ParentId, org.Id)
+		assert.Equal(projScope.ParentId, org.PublicId)
 		err = w.Create(context.Background(), projScope)
 		assert.Nil(err)
 
 		scopeOrg, err := projScope.Organization(context.Background(), &w)
 		assert.Nil(err)
 		assert.True(scopeOrg != nil)
-		assert.Equal(scopeOrg.Id, org.Id)
+		assert.Equal(scopeOrg.PublicId, org.PublicId)
 	})
 }
 
@@ -189,7 +189,7 @@ func TestScope_Clone(t *testing.T) {
 		assert.True(s.Scope != nil)
 		err = w.Create(context.Background(), s)
 		assert.Nil(err)
-		assert.True(s.Id != 0)
+		assert.True(s.PublicId != "")
 
 		cp := s.Clone()
 		assert.True(proto.Equal(cp.(*Scope).Scope, s.Scope))
@@ -201,14 +201,14 @@ func TestScope_Clone(t *testing.T) {
 		assert.True(s.Scope != nil)
 		err = w.Create(context.Background(), s)
 		assert.Nil(err)
-		assert.True(s.Id != 0)
+		assert.True(s.PublicId != "")
 
 		s2, err := NewScope(OrganizationScope)
 		assert.Nil(err)
 		assert.True(s2.Scope != nil)
 		err = w.Create(context.Background(), s2)
 		assert.Nil(err)
-		assert.True(s2.Id != 0)
+		assert.True(s2.PublicId != "")
 
 		cp := s.Clone()
 		assert.True(!proto.Equal(cp.(*Scope).Scope, s2.Scope))

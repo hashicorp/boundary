@@ -87,8 +87,8 @@ type ClonableResource interface {
 
 // ResourceWithPrimaryScope defines an interface for Resources that have a primary scope
 type ResourceWithPrimaryScope interface {
-	GetId() uint32
-	GetPrimaryScopeId() uint32
+	GetPublicId() string
+	GetPrimaryScopeId() string
 }
 
 // LookupPrimaryScope looks up the resource's primary scope
@@ -99,11 +99,11 @@ func LookupPrimaryScope(ctx context.Context, reader db.Reader, resource Resource
 	if resource == nil {
 		return nil, errors.New("error resource is nil for LookupPrimaryScope")
 	}
-	if resource.GetPrimaryScopeId() == 0 {
+	if resource.GetPrimaryScopeId() == "" {
 		return nil, errors.New("error primary scope is unset for LookupPrimaryScope")
 	}
 	var p Scope
-	if err := reader.LookupBy(ctx, &p, "id = ?", resource.GetPrimaryScopeId()); err != nil {
+	if err := reader.LookupBy(ctx, &p, "public_id = ?", resource.GetPrimaryScopeId()); err != nil {
 		return nil, fmt.Errorf("error getting PrimaryScope %w for LookupPrimaryScope", err)
 	}
 	return &p, nil

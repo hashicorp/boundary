@@ -61,8 +61,8 @@ func NewScope(scopeType ScopeType, opt ...Option) (*Scope, error) {
 		if withScope == nil {
 			return nil, errors.New("error project scope with a nil scope")
 		}
-		if withScope.Id == 0 {
-			return nil, errors.New("error project scope parent id == 0")
+		if withScope.PublicId == "" {
+			return nil, errors.New("error project scope parent id is unset")
 		}
 	}
 	publicId, err := base62.Random(20)
@@ -76,10 +76,10 @@ func NewScope(scopeType ScopeType, opt ...Option) (*Scope, error) {
 		},
 	}
 	if withScope != nil {
-		if withScope.Id == 0 {
-			return nil, errors.New("error assigning scope parent id to primary scope with id == 0")
+		if withScope.PublicId == "" {
+			return nil, errors.New("error assigning scope parent id to primary scope with unset id")
 		}
-		s.ParentId = withScope.Id
+		s.ParentId = withScope.PublicId
 	}
 	if withFriendlyName != "" {
 		s.FriendlyName = withFriendlyName
@@ -140,11 +140,11 @@ func (s *Scope) GetPrimaryScope(ctx context.Context, r db.Reader) (*Scope, error
 	if r == nil {
 		return nil, errors.New("error db is nil for scope getting primary scope")
 	}
-	if s.ParentId == 0 {
+	if s.ParentId == "" {
 		return nil, nil
 	}
 	var p Scope
-	if err := r.LookupBy(ctx, &p, "id = ?", s.ParentId); err != nil {
+	if err := r.LookupBy(ctx, &p, "public_id = ?", s.ParentId); err != nil {
 		return nil, fmt.Errorf("error getting primary scope %w for scope", err)
 	}
 	return &p, nil

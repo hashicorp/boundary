@@ -50,8 +50,8 @@ func NewAuthMethod(primaryScope *Scope, authType AuthType, opt ...Option) (*Auth
 	if primaryScope == nil {
 		return nil, errors.New("error scope is nil for new auth method")
 	}
-	if primaryScope.Id == 0 {
-		return nil, errors.New("error scope id == 0 for new auth method")
+	if primaryScope.PublicId == "" {
+		return nil, errors.New("error scope id is unset for new auth method")
 	}
 	if primaryScope.Type != OrganizationScope.String() {
 		return nil, errors.New("auth method can only be within an organization scope")
@@ -63,7 +63,7 @@ func NewAuthMethod(primaryScope *Scope, authType AuthType, opt ...Option) (*Auth
 	a := &AuthMethod{
 		AuthMethod: &store.AuthMethod{
 			PublicId:       publicId,
-			PrimaryScopeId: primaryScope.GetId(),
+			PrimaryScopeId: primaryScope.GetPublicId(),
 			Type:           authType.String(),
 		},
 	}
@@ -86,7 +86,7 @@ func (a *AuthMethod) VetForWrite(ctx context.Context, r db.Reader, opType db.OpT
 	if a.PublicId == "" {
 		return errors.New("error public id is empty string for user write")
 	}
-	if a.PrimaryScopeId == 0 {
+	if a.PrimaryScopeId == "" {
 		return errors.New("error primary scope id not set for user write")
 	}
 	// make sure the scope is valid for auth methods

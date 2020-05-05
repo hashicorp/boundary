@@ -52,8 +52,8 @@ func NewAssignedRole(primaryScope *Scope, role *Role, principal Resource, opt ..
 	if primaryScope == nil {
 		return nil, errors.New("error scope is nil for assigning role")
 	}
-	if primaryScope.Id == 0 {
-		return nil, errors.New("error scope id == 0 for assigning role")
+	if primaryScope.PublicId == "" {
+		return nil, errors.New("error scope id is missing for assigning role")
 	}
 	if role == nil {
 		return nil, errors.New("error role is nil for assigning role")
@@ -119,7 +119,7 @@ func newUserRole(primaryScope *Scope, r *Role, u *User, opt ...Option) (Assigned
 	ur := &UserRole{
 		UserRole: &store.UserRole{
 			PublicId:       publicId,
-			PrimaryScopeId: primaryScope.GetId(),
+			PrimaryScopeId: primaryScope.GetPublicId(),
 			PrincipalId:    u.Id,
 			RoleId:         r.Id,
 			Type:           UserRoleType.String(),
@@ -144,7 +144,7 @@ func (role *UserRole) VetForWrite(ctx context.Context, r db.Reader, opType db.Op
 	if role.PublicId == "" {
 		return errors.New("error public id is empty string for user role write")
 	}
-	if role.PrimaryScopeId == 0 {
+	if role.PrimaryScopeId == "" {
 		return errors.New("error primary scope id not set for user role write")
 	}
 	if role.Type != UserRoleType.String() {
@@ -239,7 +239,7 @@ func newGroupRole(primaryScope *Scope, r *Role, g *Group, opt ...Option) (Assign
 	gr := &GroupRole{
 		GroupRole: &store.GroupRole{
 			PublicId:       publicId,
-			PrimaryScopeId: primaryScope.GetId(),
+			PrimaryScopeId: primaryScope.GetPublicId(),
 			PrincipalId:    g.Id,
 			RoleId:         r.Id,
 			Type:           GroupRoleType.String(),
@@ -264,7 +264,7 @@ func (role *GroupRole) VetForWrite(ctx context.Context, r db.Reader, opType db.O
 	if role.PublicId == "" {
 		return errors.New("error public id is empty string for group role write")
 	}
-	if role.PrimaryScopeId == 0 {
+	if role.PrimaryScopeId == "" {
 		return errors.New("error primary scope id not set for group role write")
 	}
 	if role.Type != GroupRoleType.String() {

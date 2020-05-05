@@ -1,7 +1,7 @@
 package iam
 
 // GetOpts - iterate the inbound Options and return a struct
-func GetOpts(opt ...Option) Options {
+func GetOpts(opt ...Option) options {
 	opts := getDefaultOptions()
 	for _, o := range opt {
 		o(&opts)
@@ -10,10 +10,10 @@ func GetOpts(opt ...Option) Options {
 }
 
 // Option - how Options are passed as arguments
-type Option func(*Options)
+type Option func(*options)
 
-// Options = how options are represented
-type Options struct {
+// options = how options are represented
+type options struct {
 	withPublicId     string
 	withFriendlyName string
 	withScope        *Scope
@@ -21,8 +21,8 @@ type Options struct {
 	withGroupGrants  bool
 }
 
-func getDefaultOptions() Options {
-	return Options{
+func getDefaultOptions() options {
+	return options{
 		withPublicId:     "",
 		withFriendlyName: "",
 		withScope:        nil,
@@ -33,35 +33,35 @@ func getDefaultOptions() Options {
 
 // WitPublicId provides an optional public id
 func WitPublicId(id string) Option {
-	return func(o *Options) {
+	return func(o *options) {
 		o.withPublicId = id
 	}
 }
 
 // WithDescription provides an optional description
 func WithDescription(desc string) Option {
-	return func(o *Options) {
+	return func(o *options) {
 		o.withDescription = desc
 	}
 }
 
 // WithScope provides an optional scope
 func WithScope(s *Scope) Option {
-	return func(o *Options) {
+	return func(o *options) {
 		o.withScope = s
 	}
 }
 
 // WithFriendlyName provides an option to search by a friendly name
 func WithFriendlyName(name string) Option {
-	return func(o *Options) {
+	return func(o *options) {
 		o.withFriendlyName = name
 	}
 }
 
 // WithGroupGrants provides an option to include group grants
 func WithGroupGrants(include bool) Option {
-	return func(o *Options) {
+	return func(o *options) {
 		o.withGroupGrants = include
 	}
 }

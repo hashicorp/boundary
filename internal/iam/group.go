@@ -42,7 +42,7 @@ func NewGroup(primaryScope *Scope, opt ...Option) (*Group, error) {
 	g := &Group{
 		Group: &store.Group{
 			PublicId:       publicId,
-			PrimaryScopeId: primaryScope.GetId(),
+			PrimaryScopeId: primaryScope.GetPublicId(),
 		},
 	}
 	if withFriendlyName != "" {
@@ -113,7 +113,7 @@ func (g *Group) VetForWrite(ctx context.Context, r db.Reader, opType db.OpType) 
 	if g.PublicId == "" {
 		return errors.New("error public id is empty string for group write")
 	}
-	if g.PrimaryScopeId == 0 {
+	if g.PrimaryScopeId == "" {
 		return errors.New("error primary scope id not set for group write")
 	}
 	// make sure the scope is valid for users

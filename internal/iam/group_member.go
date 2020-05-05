@@ -48,8 +48,8 @@ func NewGroupMember(primaryScope *Scope, g *Group, m Resource, opt ...Option) (G
 	if primaryScope == nil {
 		return nil, errors.New("error scope is nil for group member")
 	}
-	if primaryScope.Id == 0 {
-		return nil, errors.New("error scope id == 0 for group member")
+	if primaryScope.PublicId == "" {
+		return nil, errors.New("error scope id is unset for group member")
 	}
 	if g == nil {
 		return nil, errors.New("error group is nil for group member")
@@ -112,7 +112,7 @@ func newGroupMemberUser(primaryScope *Scope, g *Group, m *User, opt ...Option) (
 	gm := &GroupMemberUser{
 		GroupMemberUser: &store.GroupMemberUser{
 			PublicId:       publicId,
-			PrimaryScopeId: primaryScope.GetId(),
+			PrimaryScopeId: primaryScope.GetPublicId(),
 			MemberId:       m.Id,
 			GroupId:        g.Id,
 			Type:           UserMemberType.String(),
@@ -137,7 +137,7 @@ func (m *GroupMemberUser) VetForWrite(ctx context.Context, r db.Reader, opType d
 	if m.PublicId == "" {
 		return errors.New("error public id is empty string for group write")
 	}
-	if m.PrimaryScopeId == 0 {
+	if m.PrimaryScopeId == "" {
 		return errors.New("error primary scope id not set for group write")
 	}
 	if m.Type != UserMemberType.String() {

@@ -163,7 +163,7 @@ func Test_dbRepository_create(t *testing.T) {
 		assert.Nil(err)
 		assert.True(retUser != nil)
 		assert.True(retUser.GetPublicId() != "")
-		assert.Equal(retUser.(*User).PrimaryScopeId, retScope.(*Scope).Id)
+		assert.Equal(retUser.(*User).PrimaryScopeId, retScope.(*Scope).PublicId)
 
 		var metadata store.Metadata
 		err = conn.Where("key = ? and value = ?", "resource-public-id", user.PublicId).First(&metadata).Error
