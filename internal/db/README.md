@@ -18,7 +18,7 @@ Just some high-level usage highlights to get you started.  Read the godocs for a
     // the transaction, which is almost always a rollback for the caller.
     err = rw.Create(context.Background(), user)
    
-    // There are reader methods like: LookupByPublicId, LookupById, 
+    // There are reader methods like: LookupByPublicId,  
     // LookupByFriendlyName, SearchBy, LookupBy, etc
     // which will lookup resources for you and scan them into your Gorm struct
     err = rw.LookupByPublicId(context.Background(), foundUser)
