@@ -19,7 +19,7 @@ type Reader interface {
 	// LookupByFriendlyName will lookup resource by its friendly_name which must be unique
 	LookupByFriendlyName(ctx context.Context, resource ResourceFriendlyNamer, opt ...Option) error
 
-	// LookupByPublicId will lookup resource my its public_id which must be unique
+	// LookupByPublicId will lookup resource by its public_id which must be unique
 	LookupByPublicId(ctx context.Context, resource ResourcePublicIder, opt ...Option) error
 
 	// LookupWhere will lookup and return the first resource using a where clause with parameters
