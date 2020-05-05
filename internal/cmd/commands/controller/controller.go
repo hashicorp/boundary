@@ -25,10 +25,10 @@ type Command struct {
 	*base.Command
 	*base.Server
 
-	ShutdownCh chan struct{}
-	SighupCh   chan struct{}
-	ReloadedCh chan struct{}
-	SigUSR2Ch  chan struct{}
+	ExtShutdownCh chan struct{}
+	SighupCh      chan struct{}
+	ReloadedCh    chan struct{}
+	SigUSR2Ch     chan struct{}
 
 	cleanupGuard sync.Once
 
@@ -343,9 +343,14 @@ func (c *Command) WaitForInterrupt() int {
 	// Wait for shutdown
 	shutdownTriggered := false
 
+	shutdownCh := c.ShutdownCh
+	if c.ExtShutdownCh != nil {
+		shutdownCh = c.ExtShutdownCh
+	}
+
 	for !shutdownTriggered {
 		select {
-		case <-c.ShutdownCh:
+		case <-shutdownCh:
 			c.UI.Output("==> Watchtower controller shutdown triggered")
 
 			if err := c.controller.Shutdown(); err != nil {
