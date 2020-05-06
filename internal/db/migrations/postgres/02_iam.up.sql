@@ -63,4 +63,19 @@ AFTER
 insert ON iam_scope FOR EACH ROW EXECUTE PROCEDURE iam_sub_scopes_func();
 
 
+CREATE
+  OR REPLACE FUNCTION iam_immutable_scope_type_func() RETURNS TRIGGER
+SET SCHEMA
+  'public' LANGUAGE plpgsql AS $$ DECLARE parent_type INT;
+BEGIN IF new.type != old.type THEN
+RAISE EXCEPTION 'scope type cannot be updated';
+END IF;
+return NEW;
+END;
+$$;
+
+CREATE TRIGGER iam_scope_update
+BEFORE
+update ON iam_scope FOR EACH ROW EXECUTE PROCEDURE iam_immutable_scope_type_func();
+
 COMMIT;

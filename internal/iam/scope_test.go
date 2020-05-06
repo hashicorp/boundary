@@ -4,6 +4,7 @@ import (
 	"context"
 	"testing"
 
+	"github.com/hashicorp/go-uuid"
 	"github.com/hashicorp/watchtower/internal/db"
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/protobuf/proto"
@@ -79,6 +80,42 @@ func Test_ScopeCreate(t *testing.T) {
 	})
 }
 
+func Test_ScopeUpdate(t *testing.T) {
+	t.Parallel()
+	cleanup, conn := db.TestSetup(t, "../db/migrations/postgres")
+	defer cleanup()
+	assert := assert.New(t)
+	defer conn.Close()
+
+	t.Run("valid", func(t *testing.T) {
+		w := db.GormReadWriter{Tx: conn}
+		s, err := NewScope(OrganizationScope)
+		assert.Nil(err)
+		assert.True(s.Scope != nil)
+		err = w.Create(context.Background(), s)
+		assert.Nil(err)
+		assert.True(s.PublicId != "")
+
+		id, err := uuid.GenerateUUID()
+		assert.Nil(err)
+		s.Name = id
+		err = w.Update(context.Background(), s, []string{"Name"})
+		assert.Nil(err)
+	})
+	t.Run("type-update-not-allowed", func(t *testing.T) {
+		w := db.GormReadWriter{Tx: conn}
+		s, err := NewScope(OrganizationScope)
+		assert.Nil(err)
+		assert.True(s.Scope != nil)
+		err = w.Create(context.Background(), s)
+		assert.Nil(err)
+		assert.True(s.PublicId != "")
+
+		s.Type = ProjectScope.String()
+		err = w.Update(context.Background(), s, []string{"Type"})
+		assert.True(err != nil)
+	})
+}
 func Test_ScopeGetPrimaryScope(t *testing.T) {
 	t.Parallel()
 	cleanup, conn := db.TestSetup(t, "../db/migrations/postgres")
