@@ -14,6 +14,10 @@ service TargetService {
     option (google.api.http) = {
       get: "/v1/orgs/{org_id}/projects/{project_id}/targets/{id}"
       response_body: "item"
+      additional_bindings {
+        get: "/v1/orgs/{org_id}/targets/{id}"
+        response_body: "item"
+      }
     };
     option (grpc.gateway.protoc_gen_swagger.options.openapiv2_operation) = {
       summary: "Gets a single Target"
@@ -22,6 +26,9 @@ service TargetService {
   rpc ListTargets(ListTargetsRequest) returns (ListTargetsResponse) {
     option (google.api.http) = {
       get: "/v1/orgs/{org_id}/projects/{project_id}/targets"
+      additional_bindings {
+        get: "/v1/orgs/{org_id}/targets"
+      }
     };
     option (grpc.gateway.protoc_gen_swagger.options.openapiv2_operation) = {
       summary: "Lists all Targets"
@@ -32,6 +39,11 @@ service TargetService {
       post: "/v1/orgs/{org_id}/projects/{project_id}/targets"
       body: "item"
       response_body: "item"
+      additional_bindings {
+        post: "/v1/orgs/{org_id}/targets/"
+        body: "item"
+        response_body: "item"
+      }
     };
     option (grpc.gateway.protoc_gen_swagger.options.openapiv2_operation) = {
       summary: "Creates a single Target"
@@ -42,6 +54,11 @@ service TargetService {
       patch: "/v1/orgs/{org_id}/projects/{project_id}/targets/{id}"
       body: "item"
       response_body: "item"
+      additional_bindings {
+        patch: "/v1/orgs/{org_id}/targets/{id}"
+        body: "item"
+        response_body: "item"
+      }
     };
     option (grpc.gateway.protoc_gen_swagger.options.openapiv2_operation) = {
       summary: "Updates a Target"
@@ -50,6 +67,9 @@ service TargetService {
   rpc DeleteTarget(DeleteTargetRequest) returns (DeleteTargetResponse) {
     option (google.api.http) = {
       delete: "/v1/orgs/{org_id}/projects/{project_id}/targets/{id}"
+      additional_bindings {
+        delete: "/v1/orgs/{org_id}/targets/{id}"
+      }
     };
     option (grpc.gateway.protoc_gen_swagger.options.openapiv2_operation) = {
       summary: "Deletes a Target"

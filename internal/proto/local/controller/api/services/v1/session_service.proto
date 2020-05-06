@@ -14,6 +14,10 @@ service SessionService {
     option (google.api.http) = {
       get: "/v1/orgs/{org_id}/projects/{project_id}/sessions/{id}"
       response_body: "item"
+      additional_bindings {
+        get: "/v1/orgs/{org_id}/sessions/{id}"
+        response_body: "item"
+      }
     };
     option (grpc.gateway.protoc_gen_swagger.options.openapiv2_operation) = {
       summary: "Gets a single Session"
@@ -22,6 +26,9 @@ service SessionService {
   rpc ListSessions(ListSessionsRequest) returns (ListSessionsResponse) {
     option (google.api.http) = {
       get: "/v1/orgs/{org_id}/projects/{project_id}/sessions"
+      additional_bindings {
+        get: "/v1/orgs/{org_id}/sessions"
+      }
     };
     option (grpc.gateway.protoc_gen_swagger.options.openapiv2_operation) = {
       summary: "Lists all Sessions"
@@ -32,6 +39,11 @@ service SessionService {
       post: "/v1/orgs/{org_id}/projects/{project_id}/sessions"
       body: "item"
       response_body: "item"
+      additional_bindings {
+        post: "/v1/orgs/{org_id}/sessions"
+        body: "item"
+        response_body: "item"
+      }
     };
     option (grpc.gateway.protoc_gen_swagger.options.openapiv2_operation) = {
       summary: "Creates a single Session"
@@ -43,6 +55,11 @@ service SessionService {
       patch: "/v1/orgs/{org_id}/projects/{project_id}/sessions/{id}"
       body: "item"
       response_body: "item"
+      additional_bindings {
+        patch: "/v1/orgs/{org_id}/sessions/{id}"
+        body: "item"
+        response_body: "item"
+      }
     };
     option (grpc.gateway.protoc_gen_swagger.options.openapiv2_operation) = {
       summary: "Updates a Session"
@@ -51,6 +68,9 @@ service SessionService {
   rpc DeleteSession(DeleteSessionRequest) returns (DeleteSessionResponse) {
     option (google.api.http) = {
       delete: "/v1/orgs/{org_id}/projects/{project_id}/sessions/{id}"
+      additional_bindings {
+        delete: "/v1/orgs/{org_id}/sessions/{id}"
+      }
     };
     option (grpc.gateway.protoc_gen_swagger.options.openapiv2_operation) = {
       summary: "Deletes a Session"
