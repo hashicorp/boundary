@@ -1,3 +1,4 @@
+BEGIN;
 
 CREATE TABLE if not exists iam_scope_type_enm (
   string text NOT NULL primary key CHECK(string IN ('unknown', 'organization', 'project'))
@@ -70,3 +71,5 @@ CREATE TABLE if not exists iam_user (
     disabled BOOLEAN NOT NULL default FALSE
   );
 
+
+COMMIT;
