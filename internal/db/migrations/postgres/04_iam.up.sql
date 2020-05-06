@@ -1,3 +1,16 @@
+BEGIN;
+
+CREATE TABLE if not exists iam_user (
+    public_id text not null primary key,
+    create_time timestamp with time zone NOT NULL default current_timestamp,
+    update_time timestamp with time zone NOT NULL default current_timestamp,
+    name text UNIQUE,
+    external_name text NOT NULL,
+    primary_scope_id text NOT NULL REFERENCES iam_scope_organization(scope_id),
+    disabled BOOLEAN NOT NULL default FALSE
+  );
+
+
 CREATE TABLE if not exists iam_auth_method (
     public_id text not null primary key,
     create_time timestamp with time zone NOT NULL default current_timestamp,
@@ -154,3 +167,5 @@ CREATE TABLE if not exists iam_role_grant (
     "grant" text NOT NULL,
     description text
   );
+
+  COMMIT;
