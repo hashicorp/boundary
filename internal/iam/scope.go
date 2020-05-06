@@ -115,12 +115,32 @@ func (s *Scope) Clone() Resource {
 }
 
 // VetForWrite implements db.VetForWrite() interface for scopes
-func (s *Scope) VetForWrite(ctx context.Context, r db.Reader, opType db.OpType) error {
+func (s *Scope) VetForWrite(ctx context.Context, r db.Reader, opType db.OpType, opt ...db.Option) error {
 	if s.Type == UnknownScope.String() {
-		return errors.New("error unknown scope type for scope write")
+		return errors.New("unknown scope type for scope write")
 	}
 	if s.PublicId == "" {
-		return errors.New("error public id is empty string for scope write")
+		return errors.New("public id is empty string for scope write")
+	}
+	if opType == db.UpdateOp {
+		dbOptions := db.GetOpts(opt...)
+		for _, path := range dbOptions.WithFieldMaskPaths {
+			if path == "ParentId" {
+				if s.ParentId == "" && s.Type == ProjectScope.String() {
+					return errors.New("parent id is unset for project scope")
+				}
+				if s.Type == ProjectScope.String() {
+					parentScope := allocScope()
+					parentScope.PublicId = s.ParentId
+					if err := r.LookupByPublicId(ctx, &parentScope, opt...); err != nil {
+						return fmt.Errorf("unable to verify project's organization scope: %w", err)
+					}
+					if parentScope.Type != OrganizationScope.String() {
+						return errors.New("project parent scope is not an organization")
+					}
+				}
+			}
+		}
 	}
 	return nil
 }

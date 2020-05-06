@@ -103,4 +103,31 @@ func Test_Repository_UpdateScope(t *testing.T) {
 		err = conn.Where("id = ?", metadata.EntryId).First(&foundEntry).Error
 		assert.Nil(err)
 	})
+	t.Run("bad-parent-scope", func(t *testing.T) {
+		conn.LogMode(true)
+		rw := &db.GormReadWriter{Tx: conn}
+		wrapper := db.TestWrapper(t)
+		repo, err := NewRepository(rw, rw, wrapper)
+		id, err := uuid.GenerateUUID()
+		assert.Nil(err)
+
+		s, err := NewOrganization(WithName("fname-" + id))
+		assert.Nil(err)
+		s, err = repo.CreateScope(context.Background(), s)
+		assert.Nil(err)
+		assert.True(s != nil)
+		assert.True(s.GetPublicId() != "")
+		assert.Equal(s.GetName(), "fname-"+id)
+
+		project, err := NewProject(s.PublicId)
+		assert.Nil(err)
+		project, err = repo.CreateScope(context.Background(), project)
+		assert.Nil(err)
+		assert.True(project != nil)
+
+		project.ParentId = project.PublicId
+		project, err = repo.UpdateScope(context.Background(), project, []string{"ParentId"})
+		assert.True(err != nil)
+		assert.Equal(err.Error(), "error on update project parent scope is not an organization")
+	})
 }
