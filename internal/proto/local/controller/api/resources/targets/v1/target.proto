@@ -1,12 +1,12 @@
 syntax = "proto3";
 
-package controller.api.resource.v1;
+package controller.api.resources.targets.v1;
 
-option go_package = "github.com/hashicorp/watchtower/internal/gen/controller/api/resource;resource";
+option go_package = "github.com/hashicorp/watchtower/internal/gen/controller/api/resources/targets;targets";
 
 import "google/protobuf/timestamp.proto";
 import "google/protobuf/wrappers.proto";
-import "controller/api/resource/v1/host_set.proto";
+import "controller/api/resources/hosts/v1/host_set.proto";
 
 // A target captures how to access a specific service.  It's list of hostsets all host the same service and authorize
 // access to it using any single credential in the list of credential sets.
@@ -26,7 +26,7 @@ message Target {
 	google.protobuf.BoolValue disabled = 5;
 
 	// A list of HostSets which this target points to.
-	repeated v1.HostSet hosts = 6;
+	repeated hosts.v1.HostSet hosts = 6;
 
 	// The default port to connect to for all
 	google.protobuf.Int32Value default_port = 7;

@@ -7,8 +7,7 @@ option go_package = "github.com/hashicorp/watchtower/internal/gen/controller/api
 import "protoc-gen-swagger/options/annotations.proto";
 import "google/api/annotations.proto";
 import "google/protobuf/field_mask.proto";
-import "controller/api/resource/v1/target.proto";
-import "controller/api/view/v1/view.proto";
+import "controller/api/resources/targets/v1/target.proto";
 
 service TargetService {
   rpc GetTarget(GetTargetRequest) returns (GetTargetResponse) {
@@ -82,44 +81,44 @@ message GetTargetRequest {
   string org_id = 1;
   string project_id = 2;
   string id = 3;
-  api.view.v1.View view = 4;
+  string view = 4;
 }
 
 message GetTargetResponse {
-  resource.v1.Target item = 1;
+  string item = 1;
 }
 
 message ListTargetsRequest {
   string org_id = 1;
   string project_id = 2;
-  view.v1.View view = 3;
+  string view = 3;
 }
 
 message ListTargetsResponse {
-  repeated resource.v1.Target items = 1;
+  repeated resources.targets.v1.Target items = 1;
 }
 
 message CreateTargetRequest {
   string org_id = 1;
   string project_id = 2;
-  resource.v1.Target item = 3;
+  resources.targets.v1.Target item = 3;
 }
 
 message CreateTargetResponse {
   string uri = 1;
-  resource.v1.Target item = 2;
+  resources.targets.v1.Target item = 2;
 }
 
 message UpdateTargetRequest {
   string org_id = 1;
   string project_id = 2;
   string id = 3;
-  resource.v1.Target item = 4;
+  resources.targets.v1.Target item = 4;
   google.protobuf.FieldMask update_mask = 5;
 }
 
 message UpdateTargetResponse {
-  resource.v1.Target item = 1;
+  resources.targets.v1.Target item = 1;
 }
 
 message DeleteTargetRequest {
