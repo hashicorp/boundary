@@ -11,8 +11,8 @@ import "google/protobuf/wrappers.proto";
 // TODO: Add a way to track session state information.
 message Session {
 	// Output only.
-	string uri = 1;
-	google.protobuf.StringValue friendly_name = 2;
+	string id = 1;
+	google.protobuf.StringValue name = 2;
 
 	// The time this session was created.
 	// Output only.

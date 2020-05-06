@@ -8,12 +8,12 @@ import "google/protobuf/timestamp.proto";
 import "google/protobuf/wrappers.proto";
 import "controller/api/resources/hosts/v1/host_set.proto";
 
-// A target captures how to access a specific service.  It's list of hostsets all host the same service and authorize
-// access to it using any single credential in the list of credential sets.
+// A target captures how to access a specific service.  It's list of hostsets contain hosts which all accept the same
+// set of credentials to access the same service with the same level of access.
 message Target {
 	// Output only.
-	string uri = 1;
-	google.protobuf.StringValue friendly_name = 2;
+	string id = 1;
+	google.protobuf.StringValue name = 2;
 
 	// The time this target was created.
 	// Output only.

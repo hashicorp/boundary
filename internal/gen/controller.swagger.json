@@ -2450,12 +2450,12 @@
     "controller.api.resources.sessions.v1.Session": {
       "type": "object",
       "properties": {
-        "uri": {
+        "id": {
           "type": "string",
           "description": "Output only.",
           "readOnly": true
         },
-        "friendly_name": {
+        "name": {
           "type": "string"
         },
         "created_time": {
@@ -2505,12 +2505,12 @@
     "controller.api.resources.targets.v1.Target": {
       "type": "object",
       "properties": {
-        "uri": {
+        "id": {
           "type": "string",
           "description": "Output only.",
           "readOnly": true
         },
-        "friendly_name": {
+        "name": {
           "type": "string"
         },
         "created_time": {
