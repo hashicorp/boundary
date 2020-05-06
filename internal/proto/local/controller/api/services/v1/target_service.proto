@@ -1,8 +1,8 @@
 syntax = "proto3";
 
-package controller.api.v1;
+package controller.api.services.v1;
 
-option go_package = "github.com/hashicorp/watchtower/internal/gen/controller/api;api";
+option go_package = "github.com/hashicorp/watchtower/internal/gen/controller/api/services;services";
 
 import "protoc-gen-swagger/options/annotations.proto";
 import "google/api/annotations.proto";
@@ -40,7 +40,7 @@ service TargetService {
       body: "item"
       response_body: "item"
       additional_bindings {
-        post: "/v1/orgs/{org_id}/targets/"
+        post: "/v1/orgs/{org_id}/targets"
         body: "item"
         response_body: "item"
       }
@@ -79,6 +79,9 @@ service TargetService {
   rpc AddHostSetsToTarget(AddHostSetsToTargetRequest) returns (AddHostSetsToTargetResponse) {
     option (google.api.http) = {
       post: "/v1/orgs/{org_id}/projects/{project_id}/targets/{id}:add-host-sets"
+      additional_bindings {
+        post: "/v1/orgs/{org_id}/targets/{id}:add-host-sets"
+      }
     };
     option (grpc.gateway.protoc_gen_swagger.options.openapiv2_operation) = {
       summary: "Adds existing Host Sets to the Target"
@@ -89,6 +92,9 @@ service TargetService {
   rpc RemoveHostSetsFromTarget(RemoveHostSetsFromTargetRequest) returns (RemoveHostSetsFromTargetResponse) {
     option (google.api.http) = {
       post: "/v1/orgs/{org_id}/projects/{project_id}/targets/{id}:remove-host-sets"
+      additional_bindings {
+        post: "/v1/orgs/{org_id}/targets/{id}:remove-host-sets"
+      }
     };
     option (grpc.gateway.protoc_gen_swagger.options.openapiv2_operation) = {
       summary: "Removes Host Sets from the Target"

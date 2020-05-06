@@ -1,8 +1,8 @@
 syntax = "proto3";
 
-package controller.api.v1;
+package controller.api.services.v1;
 
-option go_package = "github.com/hashicorp/watchtower/internal/gen/controller/api;api";
+option go_package = "github.com/hashicorp/watchtower/internal/gen/controller/api/services;services";
 
 import "protoc-gen-swagger/options/annotations.proto";
 import "google/api/annotations.proto";
