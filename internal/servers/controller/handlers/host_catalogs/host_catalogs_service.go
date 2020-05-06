@@ -13,23 +13,20 @@ import (
 	"google.golang.org/grpc/status"
 )
 
+// TODO: Rely on the repo defined options
+type Option int
+
+func WithPublicId(id string) Option { return 0 }
+
+// TODO: Use db defined structs instead of repo.HostCatalog
 type hostCatalogRepo interface {
-	// LookupHostCatalog returns the Host catalog based on the provided id and any error associated with the lookup.
-	// If the HostCatalog does not exist but the query was performed successfuly without any failures then both return
-	// values are nil.
-	LookupHostCatalog(ctx context.Context, id string) (*repo.HostCatalog, error)
-	// ListHostCatalog returns the list of HostCatalogs, if any, in the provided scope.  error returns nil even if
-	// there were no values returned by this query.  error is non-nil if, among other things, the provided scope does not exist.
-	ListHostCatalogs(ctx context.Context, scopeID string) ([]repo.HostCatalog, error)
-	// DeleteHostCatalog returns a boolean value indicating if the requested HostCatalog existed prior to being deleted.
-	// error is non-nil if there was a failure to execute the query but not if the HostCatalog does not exist.
-	DeleteHostCatalog(ctx context.Context, id string) (bool, error)
-	// CreateHostCatalog creates a new HostCatalog in the provided scope and returns a HostCatalog with all the read only fields populated.
-	// error is non-nil if the HostCatalog is unable to be created.
-	CreateHostCatalog(ctx context.Context, scopeID string, hc repo.HostCatalog) (*repo.HostCatalog, error)
-	// UpdateHostCatalog updates the HostCatalog using the values in the provide HostCatalog object.
-	// The provide HostCatalog cannot have any read only values set except for the ID.  error returns a non nil value if the HostCatalog could not be updated.
-	UpdateHostCatalog(ctx context.Context, hc repo.HostCatalog, masks string) (*repo.HostCatalog, error)
+	CreateHostCatalog(ctx context.Context, hc *repo.HostCatalog, opt ...Option) (*repo.HostCatalog, error)
+	UpdateHostCatalog(ctx context.Context, hc *repo.HostCatalog, fieldMaskPaths []string, opt ...Option) (*repo.HostCatalog, error) // LookupHostCatalog returns the Host catalog based on the provided id and any error associated with the lookup.
+	LookupHostCatalog(ctx context.Context, opt ...Option) (*repo.HostCatalog, error)
+	DeleteHostCatalog(ctx context.Context, opt ...Option) (bool, error)
+
+	// TODO: Sure this up with repository expectations for list operations.
+	ListHostCatalogs(ctx context.Context, opt ...Option) ([]repo.HostCatalog, error)
 	// TODO: Figure out the appropriate way to verify the path is appropriate, whether as a separate method or merging this into the methods above.
 }
 
@@ -54,7 +51,7 @@ func (s Service) GetHostCatalog(ctx context.Context, req *pbs.GetHostCatalogRequ
 	if err := validateGetHostCatalogRequest(req); err != nil {
 		return nil, err
 	}
-	h, err := s.hcRepo.LookupHostCatalog(ctx, req.Id)
+	h, err := s.hcRepo.LookupHostCatalog(ctx, WithPublicId(req.GetId()))
 	if err != nil {
 		return nil, err
 	}
@@ -84,7 +81,7 @@ func (s Service) DeleteHostCatalog(ctx context.Context, req *pbs.DeleteHostCatal
 	if err := validateDeleteHostCatalogRequest(req); err != nil {
 		return nil, err
 	}
-	existed, err := s.hcRepo.DeleteHostCatalog(ctx, req.Id)
+	existed, err := s.hcRepo.DeleteHostCatalog(ctx, WithPublicId(req.Id))
 	if err != nil {
 		// TODO: Handle errors appropriately
 		return nil, status.Errorf(codes.Internal, "Couldn't delete Host Catalog: %v", err)

@@ -3,6 +3,7 @@ package host_catalogs_test
 import (
 	"context"
 	"fmt"
+	"reflect"
 	"testing"
 	"time"
 
@@ -18,11 +19,11 @@ import (
 )
 
 type fakeRepo struct {
-	lookupParam string
-	listParam   string
-	deleteParam string
-	createParam string
-	updateParam repo.HostCatalog
+	lookupParam []host_catalogs.Option
+	listParam   []host_catalogs.Option
+	deleteParam []host_catalogs.Option
+	createParam *repo.HostCatalog
+	updateParam *repo.HostCatalog
 
 	lookup func() (*repo.HostCatalog, error)
 	list   func() ([]repo.HostCatalog, error)
@@ -31,39 +32,39 @@ type fakeRepo struct {
 	update func() (*repo.HostCatalog, error)
 }
 
-func (f *fakeRepo) LookupHostCatalog(ctx context.Context, id string) (*repo.HostCatalog, error) {
-	f.lookupParam = id
+func (f *fakeRepo) LookupHostCatalog(ctx context.Context, opt ...host_catalogs.Option) (*repo.HostCatalog, error) {
+	f.lookupParam = opt
 	if f.lookup == nil {
 		panic("Unexpected call to LookupHostCatalog")
 	}
 	return f.lookup()
 }
 
-func (f *fakeRepo) ListHostCatalogs(ctx context.Context, scopeID string) ([]repo.HostCatalog, error) {
-	f.listParam = scopeID
+func (f *fakeRepo) ListHostCatalogs(ctx context.Context, opt ...host_catalogs.Option) ([]repo.HostCatalog, error) {
+	f.listParam = opt
 	if f.list == nil {
 		panic("Unexpected call to ListHostCatalogs")
 	}
 	return f.list()
 }
 
-func (f *fakeRepo) DeleteHostCatalog(ctx context.Context, id string) (bool, error) {
-	f.deleteParam = id
+func (f *fakeRepo) DeleteHostCatalog(ctx context.Context, opt ...host_catalogs.Option) (bool, error) {
+	f.deleteParam = opt
 	if f.delete == nil {
 		panic("Unexpected call to DeleteHostCatalog")
 	}
 	return f.delete()
 }
 
-func (f *fakeRepo) CreateHostCatalog(ctx context.Context, scopeID string, hc repo.HostCatalog) (*repo.HostCatalog, error) {
-	f.createParam = scopeID
+func (f *fakeRepo) CreateHostCatalog(ctx context.Context, hc *repo.HostCatalog, opt ...host_catalogs.Option) (*repo.HostCatalog, error) {
+	f.createParam = hc
 	if f.create == nil {
 		panic("Unexpected call to CreateHostCatalog")
 	}
 	return f.create()
 }
 
-func (f *fakeRepo) UpdateHostCatalog(ctx context.Context, hc repo.HostCatalog, masks string) (*repo.HostCatalog, error) {
+func (f *fakeRepo) UpdateHostCatalog(ctx context.Context, hc *repo.HostCatalog, fieldMaskPaths []string, opt ...host_catalogs.Option) (*repo.HostCatalog, error) {
 	f.updateParam = hc
 	if f.update == nil {
 		panic("Unexpected call to UpdateHostCatalog")
@@ -127,7 +128,7 @@ func TestDelete(t *testing.T) {
 				t.Errorf("DeleteHostCatalog(%q) got response %q, wanted %q", req, got, tc.res)
 			}
 
-			if got, want := repo.deleteParam, tc.req.Id; got != want {
+			if got, want := repo.deleteParam, []host_catalogs.Option{host_catalogs.WithPublicId(tc.req.Id)}; !reflect.DeepEqual(got, want) {
 				t.Errorf("DeleteHostCatalog(%+v) results in %q passed to repo, wanted %q", req, got, want)
 			}
 		})
@@ -202,7 +203,7 @@ func TestGet(t *testing.T) {
 				t.Errorf("GetHostCatalog(%q) got response %q, wanted %q", req, got, tc.res)
 			}
 
-			if got, want := repo.lookupParam, tc.req.Id; got != want {
+			if got, want := repo.lookupParam, []host_catalogs.Option{host_catalogs.WithPublicId(tc.req.Id)}; !reflect.DeepEqual(got, want) {
 				t.Errorf("GetHostCatalog(%+v) results in %q passed to repo, wanted %q", req, got, want)
 			}
 		})
