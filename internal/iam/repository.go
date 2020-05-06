@@ -35,8 +35,8 @@ type dbRepository struct {
 // ensure that dbRepository implements the interfaces of: Repository
 var _ Repository = (*dbRepository)(nil)
 
-// NewDatabaseRepository creates a new iam database repository
-func NewDatabaseRepository(r db.Reader, w db.Writer, wrapper wrapping.Wrapper) (Repository, error) {
+// NewRepository creates a new iam database repository
+func NewRepository(r db.Reader, w db.Writer, wrapper wrapping.Wrapper) (Repository, error) {
 	if r == nil {
 		return nil, errors.New("error creating db repository with nil reader")
 	}
@@ -51,77 +51,6 @@ func NewDatabaseRepository(r db.Reader, w db.Writer, wrapper wrapping.Wrapper) (
 		writer:  w,
 		wrapper: wrapper,
 	}, nil
-}
-
-func (r *dbRepository) CreateUser(ctx context.Context, user *User, opt ...Option) (*User, error) {
-	resource, err := r.create(context.Background(), user)
-	return resource.(*User), err
-}
-func (r *dbRepository) UpdateUser(ctx context.Context, user *User, fieldMaskPaths []string, opt ...Option) (*User, error) {
-	resource, err := r.update(context.Background(), user, fieldMaskPaths)
-	return resource.(*User), err
-}
-
-func (r *dbRepository) LookupUser(ctx context.Context, opt ...Option) (User, error) {
-	opts := GetOpts(opt...)
-	withPublicId := opts.withPublicId
-	withName := opts.withName
-
-	user := allocUser()
-
-	if withPublicId != "" {
-		user.PublicId = withPublicId
-		if err := r.reader.LookupByPublicId(ctx, &user); err != nil {
-			return allocUser(), err
-		}
-		return user, nil
-	}
-	if withName != "" {
-		user.Name = withName
-		if err := r.reader.LookupByName(ctx, &user); err != nil {
-			return allocUser(), err
-		}
-		return user, nil
-	}
-	return allocUser(), errors.New("you must loop up users by id or friendly name")
-}
-
-func (r *dbRepository) CreateScope(ctx context.Context, scope *Scope, opt ...Option) (*Scope, error) {
-	if scope == nil {
-		return nil, errors.New("error scope is nil for create")
-	}
-	resource, err := r.create(context.Background(), scope)
-	return resource.(*Scope), err
-}
-func (r *dbRepository) UpdateScope(ctx context.Context, scope *Scope, fieldMaskPaths []string, opt ...Option) (*Scope, error) {
-	if scope == nil {
-		return nil, errors.New("error scope is nil for update")
-	}
-	resource, err := r.update(context.Background(), scope, fieldMaskPaths)
-	return resource.(*Scope), err
-}
-func (r *dbRepository) LookupScope(ctx context.Context, opt ...Option) (Scope, error) {
-	opts := GetOpts(opt...)
-	withPublicId := opts.withPublicId
-	withName := opts.withName
-
-	scope := allocScope()
-
-	if withPublicId != "" {
-		scope.PublicId = withPublicId
-		if err := r.reader.LookupByPublicId(ctx, &scope); err != nil {
-			return allocScope(), err
-		}
-		return scope, nil
-	}
-	if withName != "" {
-		scope.Name = withName
-		if err := r.reader.LookupByName(ctx, &scope); err != nil {
-			return allocScope(), err
-		}
-		return scope, nil
-	}
-	return allocScope(), errors.New("you must loop up scopes by id or friendly name")
 }
 
 // Create will create a new iam resource in the db repository with an oplog entry
