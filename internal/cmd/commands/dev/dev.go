@@ -21,7 +21,6 @@ type Command struct {
 	*base.Command
 	*base.Server
 
-	ShutdownCh    chan struct{}
 	SighupCh      chan struct{}
 	childSighupCh []chan struct{}
 	ReloadedCh    chan struct{}
@@ -244,11 +243,11 @@ func (c *Command) Run(args []string) int {
 	c.childSighupCh = append(c.childSighupCh, controllerSighupCh)
 
 	devController := &controllercmd.Command{
-		Command:    c.Command,
-		Server:     c.Server,
-		ShutdownCh: childShutdownCh,
-		SighupCh:   controllerSighupCh,
-		Config:     devConfig,
+		Command:       c.Command,
+		Server:        c.Server,
+		ExtShutdownCh: childShutdownCh,
+		SighupCh:      controllerSighupCh,
+		Config:        devConfig,
 	}
 	if err := devController.Start(); err != nil {
 		c.UI.Error(err.Error())
@@ -258,11 +257,11 @@ func (c *Command) Run(args []string) int {
 	workerSighupCh := make(chan struct{})
 	c.childSighupCh = append(c.childSighupCh, workerSighupCh)
 	devWorker := &workercmd.Command{
-		Command:    c.Command,
-		Server:     c.Server,
-		ShutdownCh: childShutdownCh,
-		SighupCh:   workerSighupCh,
-		Config:     devConfig,
+		Command:       c.Command,
+		Server:        c.Server,
+		ExtShutdownCh: childShutdownCh,
+		SighupCh:      workerSighupCh,
+		Config:        devConfig,
 	}
 	if err := devWorker.Start(); err != nil {
 		c.UI.Error(err.Error())
@@ -286,7 +285,8 @@ func (c *Command) Run(args []string) int {
 		case <-c.ShutdownCh:
 			c.UI.Output("==> Watchtower dev environment shutdown triggered")
 
-			close(childShutdownCh)
+			childShutdownCh <- struct{}{}
+			childShutdownCh <- struct{}{}
 
 			shutdownTriggered = true
 

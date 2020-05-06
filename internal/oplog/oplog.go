@@ -3,13 +3,13 @@ package oplog
 import (
 	"bytes"
 	"context"
-	"encoding/base64"
 	"errors"
 	"fmt"
 	"io"
 
-	protoV1 "github.com/golang/protobuf/proto"
 	wrapping "github.com/hashicorp/go-kms-wrapping"
+	structwrapping "github.com/hashicorp/go-kms-wrapping/structwrapping"
+
 	"github.com/hashicorp/watchtower/internal/oplog/store"
 	_ "github.com/lib/pq"
 	"google.golang.org/protobuf/proto"
@@ -170,34 +170,19 @@ func (e *Entry) Write(ctx context.Context, tx Writer, ticket *store.Ticket) erro
 
 // EncryptData the entry's data using its Cipherer (wrapping.Wrapper)
 func (e *Entry) EncryptData(ctx context.Context) error {
-	d, err := e.Cipherer.Encrypt(ctx, e.Data, nil)
-	if err != nil {
+	// structwrapping doesn't support embedding, so we'll pass in the store.Entry directly
+	if err := structwrapping.WrapStruct(ctx, e.Cipherer, e.Entry, nil); err != nil {
 		return fmt.Errorf("error encrypting entry: %w", err)
 	}
-	blob, err := protoV1.Marshal(d)
-	if err != nil {
-		return fmt.Errorf("error marshaling encrypted data: %w", err)
-	}
-	e.Data = []byte(base64.RawURLEncoding.EncodeToString(blob))
 	return nil
 }
 
 // DecryptData will decrypt the entry's data using its Cipherer (wrapping.Wrapper)
 func (e *Entry) DecryptData(ctx context.Context) error {
-	blob, err := base64.RawURLEncoding.DecodeString(string(e.Data))
-	if err != nil {
-		return fmt.Errorf("error decoding encrypted data: %w", err)
+	// structwrapping doesn't support embedding, so we'll pass in the store.Entry directly
+	if err := structwrapping.UnwrapStruct(ctx, e.Cipherer, e.Entry, nil); err != nil {
+		return fmt.Errorf("error decrypting entry: %w", err)
 	}
-	var msg wrapping.EncryptedBlobInfo
-	err = protoV1.Unmarshal(blob, &msg)
-	if err != nil {
-		return fmt.Errorf("error unmarshaling encrypted data: %w", err)
-	}
-	d, err := e.Cipherer.Decrypt(ctx, &msg, nil)
-	if err != nil {
-		return fmt.Errorf("error decrypting data: %w", err)
-	}
-	e.Data = d
 	return nil
 }
 

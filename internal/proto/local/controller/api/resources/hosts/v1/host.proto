@@ -1,0 +1,38 @@
+syntax = "proto3";
+
+package controller.api.resources.hosts.v1;
+
+option go_package = "github.com/hashicorp/watchtower/internal/gen/controller/api/resources/hosts;hosts";
+
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/wrappers.proto";
+
+// Host contains all fields related to a Host resource
+message Host {
+	// The ID of the host
+	// Output only.
+	string id = 1;
+
+	// The type of the resource, to help differentiate schemas
+	google.protobuf.StringValue type = 2;
+
+	// Optional name for identification purposes
+	google.protobuf.StringValue name = 3;
+
+	// Optional user-set description for identification purposes
+	google.protobuf.StringValue description = 4;
+
+	// The time this resource was created
+	// Output only.
+	google.protobuf.Timestamp created_time = 5 [json_name="created_time"];
+
+	// The time this resource was last updated
+	// Output only.
+	google.protobuf.Timestamp updated_time = 6 [json_name="updated_time"];
+
+	// Whether the host is disabled
+	google.protobuf.BoolValue disabled = 7;
+
+	// The address (DNS or IP name) used to reach the host
+	google.protobuf.StringValue address = 8;
+}
