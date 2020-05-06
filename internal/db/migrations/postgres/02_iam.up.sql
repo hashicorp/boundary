@@ -61,15 +61,6 @@ $$;
 CREATE TRIGGER iam_scope_insert
 AFTER
 insert ON iam_scope FOR EACH ROW EXECUTE PROCEDURE iam_sub_scopes_func();
-CREATE TABLE if not exists iam_user (
-    public_id text not null primary key,
-    create_time timestamp with time zone NOT NULL default current_timestamp,
-    update_time timestamp with time zone NOT NULL default current_timestamp,
-    name text UNIQUE,
-    external_name text NOT NULL,
-    primary_scope_id text NOT NULL REFERENCES iam_scope_organization(scope_id),
-    disabled BOOLEAN NOT NULL default FALSE
-  );
 
 
 COMMIT;
