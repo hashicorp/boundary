@@ -12,7 +12,7 @@ func Test_GetOpts(t *testing.T) {
 	t.Parallel()
 	assert := assert.New(t)
 	t.Run("WithName", func(t *testing.T) {
-		opts := GetOpts(WithName("test"))
+		opts := getOpts(WithName("test"))
 		testOpts := getDefaultOptions()
 		testOpts.withName = "test"
 		assert.True(reflect.DeepEqual(opts, testOpts))
@@ -22,13 +22,13 @@ func Test_GetOpts(t *testing.T) {
 		assert.Nil(err)
 		assert.True(s.Scope != nil)
 
-		opts := GetOpts(WithScope(s))
+		opts := getOpts(WithScope(s))
 		testOpts := getDefaultOptions()
 		testOpts.withScope = s
 		assert.True(reflect.DeepEqual(opts, testOpts))
 	})
 	t.Run("optionWithDescription", func(t *testing.T) {
-		opts := GetOpts(WithDescription("test desc"))
+		opts := getOpts(WithDescription("test desc"))
 		testOpts := getDefaultOptions()
 		testOpts.withDescription = "test desc"
 		assert.True(reflect.DeepEqual(opts, testOpts))
