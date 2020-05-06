@@ -11,7 +11,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func Test_dbRepository_CreateScope(t *testing.T) {
+func Test_Repository_CreateScope(t *testing.T) {
 	t.Parallel()
 	cleanup, conn := db.TestSetup(t, "../db/migrations/postgres")
 	defer cleanup()
@@ -25,7 +25,7 @@ func Test_dbRepository_CreateScope(t *testing.T) {
 		id, err := uuid.GenerateUUID()
 		assert.Nil(err)
 
-		s, err := NewScope(OrganizationScope, WithName("fname-"+id))
+		s, err := NewOrganization(WithName("fname-" + id))
 		s, err = repo.CreateScope(context.Background(), s)
 		assert.Nil(err)
 		assert.True(s != nil)
@@ -50,7 +50,7 @@ func Test_dbRepository_CreateScope(t *testing.T) {
 	})
 }
 
-func Test_dbRepository_UpdateScope(t *testing.T) {
+func Test_Repository_UpdateScope(t *testing.T) {
 	t.Parallel()
 	cleanup, conn := db.TestSetup(t, "../db/migrations/postgres")
 	defer cleanup()
@@ -64,7 +64,7 @@ func Test_dbRepository_UpdateScope(t *testing.T) {
 		id, err := uuid.GenerateUUID()
 		assert.Nil(err)
 
-		s, err := NewScope(OrganizationScope, WithName("fname-"+id))
+		s, err := NewOrganization(WithName("fname-" + id))
 		s, err = repo.CreateScope(context.Background(), s)
 		assert.Nil(err)
 		assert.True(s != nil)

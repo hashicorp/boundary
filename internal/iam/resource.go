@@ -6,7 +6,6 @@ import (
 	"fmt"
 
 	"github.com/hashicorp/watchtower/internal/db"
-	"github.com/hashicorp/watchtower/internal/iam/store"
 )
 
 // Resource declares the shared behavior of IAM Resources
@@ -18,8 +17,8 @@ type Resource interface {
 	// access the resource via an API
 	GetName() string
 
-	// GetPrimaryScope is the Scope that owns the Resource
-	GetPrimaryScope(ctx context.Context, r db.Reader) (*Scope, error)
+	// GetScope is the Scope that owns the Resource
+	GetScope(ctx context.Context, r db.Reader) (*Scope, error)
 
 	// Type of Resource (Target, Policy, User, Group, etc)
 	ResourceType() ResourceType
@@ -28,19 +27,7 @@ type Resource interface {
 	// the Resource in Policies. Action String() is key for
 	// the map of Actions returned.
 	Actions() map[string]Action
-
-	// CreateTime is the time the resource was created
-	GetCreateTime() *store.Timestamp
-
-	// UpdateTime is the time the resource was last updated
-	GetUpdateTime() *store.Timestamp
 }
-
-type foo string
-
-const (
-	bar foo = "whatever"
-)
 
 // ResourceType defines the types of resources in the system
 type ResourceType int
@@ -85,26 +72,26 @@ type ClonableResource interface {
 	Clone() Resource
 }
 
-// ResourceWithPrimaryScope defines an interface for Resources that have a primary scope
-type ResourceWithPrimaryScope interface {
+// ResourceWithScope defines an interface for Resources that have a scope
+type ResourceWithScope interface {
 	GetPublicId() string
-	GetPrimaryScopeId() string
+	GetScopeId() string
 }
 
-// LookupPrimaryScope looks up the resource's primary scope
-func LookupPrimaryScope(ctx context.Context, reader db.Reader, resource ResourceWithPrimaryScope) (*Scope, error) {
+// LookupScope looks up the resource's  scope
+func LookupScope(ctx context.Context, reader db.Reader, resource ResourceWithScope) (*Scope, error) {
 	if reader == nil {
-		return nil, errors.New("error reader is nil for LookupPrimaryScope")
+		return nil, errors.New("error reader is nil for LookupScope")
 	}
 	if resource == nil {
-		return nil, errors.New("error resource is nil for LookupPrimaryScope")
+		return nil, errors.New("error resource is nil for LookupScope")
 	}
-	if resource.GetPrimaryScopeId() == "" {
-		return nil, errors.New("error primary scope is unset for LookupPrimaryScope")
+	if resource.GetScopeId() == "" {
+		return nil, errors.New("error scope is unset for LookupScope")
 	}
 	var p Scope
-	if err := reader.LookupWhere(ctx, &p, "public_id = ?", resource.GetPrimaryScopeId()); err != nil {
-		return nil, fmt.Errorf("error getting PrimaryScope %w for LookupPrimaryScope", err)
+	if err := reader.LookupWhere(ctx, &p, "public_id = ?", resource.GetScopeId()); err != nil {
+		return nil, fmt.Errorf("error getting Scope %w for LookupScope", err)
 	}
 	return &p, nil
 }

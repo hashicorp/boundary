@@ -18,7 +18,7 @@ func Test_GetOpts(t *testing.T) {
 		assert.True(reflect.DeepEqual(opts, testOpts))
 	})
 	t.Run("WithScope", func(t *testing.T) {
-		s, err := NewScope(OrganizationScope)
+		s, err := NewOrganization()
 		assert.Nil(err)
 		assert.True(s.Scope != nil)
 

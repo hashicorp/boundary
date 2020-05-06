@@ -18,7 +18,6 @@ type options struct {
 	withName        string
 	withScope       *Scope
 	withDescription string
-	withGroupGrants bool
 }
 
 func getDefaultOptions() options {
@@ -26,7 +25,6 @@ func getDefaultOptions() options {
 		withPublicId:    "",
 		withScope:       nil,
 		withDescription: "",
-		withGroupGrants: false,
 		withName:        "",
 	}
 }
@@ -56,12 +54,5 @@ func WithScope(s *Scope) Option {
 func WithName(name string) Option {
 	return func(o *options) {
 		o.withName = name
-	}
-}
-
-// WithGroupGrants provides an option to include group grants
-func WithGroupGrants(include bool) Option {
-	return func(o *options) {
-		o.withGroupGrants = include
 	}
 }

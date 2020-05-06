@@ -44,9 +44,25 @@ var _ Resource = (*Scope)(nil)
 var _ db.VetForWriter = (*Scope)(nil)
 var _ ClonableResource = (*Scope)(nil)
 
-// NewScope creates a new Scope of the specified ScopeType with options:
+func NewOrganization(opt ...Option) (*Scope, error) {
+	return newScope(OrganizationScope, opt...)
+}
+
+func NewProject(organizationPublicId string, opt ...Option) (*Scope, error) {
+	org := allocScope()
+	org.PublicId = organizationPublicId
+	opt = append(opt, WithScope(&org))
+	p, err := newScope(ProjectScope, opt...)
+	if err != nil {
+		return nil, fmt.Errorf("error creating new project: %w", err)
+	}
+	return p, nil
+}
+
+// newScope creates a new Scope of the specified ScopeType with options:
 // WithName specifies the Scope's friendly name.
-func NewScope(scopeType ScopeType, opt ...Option) (*Scope, error) {
+// WithScope specifies the Scope's parent
+func newScope(scopeType ScopeType, opt ...Option) (*Scope, error) {
 	opts := getOpts(opt...)
 	withName := opts.withName
 	withScope := opts.withScope
@@ -58,14 +74,11 @@ func NewScope(scopeType ScopeType, opt ...Option) (*Scope, error) {
 		if withScope == nil {
 			return nil, errors.New("error project scope must be with a scope")
 		}
-		if withScope == nil {
-			return nil, errors.New("error project scope with a nil scope")
-		}
 		if withScope.PublicId == "" {
 			return nil, errors.New("error project scope parent id is unset")
 		}
 	}
-	publicId, err := base62.Random(20)
+	publicId, err := base62.Random(32)
 	if err != nil {
 		return nil, fmt.Errorf("error generating public id %w for new scope", err)
 	}
@@ -77,7 +90,7 @@ func NewScope(scopeType ScopeType, opt ...Option) (*Scope, error) {
 	}
 	if withScope != nil {
 		if withScope.PublicId == "" {
-			return nil, errors.New("error assigning scope parent id to primary scope with unset id")
+			return nil, errors.New("error assigning scope parent id to a scope with unset id")
 		}
 		s.ParentId = withScope.PublicId
 	}
@@ -101,21 +114,6 @@ func (s *Scope) Clone() Resource {
 	}
 }
 
-// Organization will walk up the scope tree via primary scopes until it finds an organization
-func (s *Scope) Organization(ctx context.Context, r db.Reader) (*Scope, error) {
-	if s.Type == OrganizationScope.String() {
-		return s, nil
-	}
-	p, err := s.GetPrimaryScope(ctx, r)
-	if err != nil {
-		return nil, err
-	}
-	if p.Type == OrganizationScope.String() {
-		return p, nil
-	}
-	return p.Organization(ctx, r)
-}
-
 // VetForWrite implements db.VetForWrite() interface for scopes
 func (s *Scope) VetForWrite(ctx context.Context, r db.Reader, opType db.OpType) error {
 	if s.Type == UnknownScope.String() {
@@ -127,25 +125,33 @@ func (s *Scope) VetForWrite(ctx context.Context, r db.Reader, opType db.OpType) 
 	return nil
 }
 
-// ResourceType returns the type of resource
-func (s *Scope) ResourceType() ResourceType { return ResourceTypeScope }
+// ResourceType returns the type of scope
+func (s *Scope) ResourceType() ResourceType {
+	if s.Type == OrganizationScope.String() {
+		return ResourceTypeOrganization
+	}
+	if s.Type == ProjectScope.String() {
+		return ResourceTypeProject
+	}
+	return ResourceTypeScope
+}
 
 // Actions returns the  available actions for Scopes
 func (*Scope) Actions() map[string]Action {
 	return StdActions()
 }
 
-// GetPrimaryScope returns the primary scope for the scope if there is one defined
-func (s *Scope) GetPrimaryScope(ctx context.Context, r db.Reader) (*Scope, error) {
+// GetScope returns the scope for the "scope" if there is one defined
+func (s *Scope) GetScope(ctx context.Context, r db.Reader) (*Scope, error) {
 	if r == nil {
-		return nil, errors.New("error db is nil for scope getting primary scope")
+		return nil, errors.New("error db is nil for get scope")
 	}
 	if s.ParentId == "" {
 		return nil, nil
 	}
 	var p Scope
 	if err := r.LookupWhere(ctx, &p, "public_id = ?", s.ParentId); err != nil {
-		return nil, fmt.Errorf("error getting primary scope %w for scope", err)
+		return nil, fmt.Errorf("error getting scope %w", err)
 	}
 	return &p, nil
 }

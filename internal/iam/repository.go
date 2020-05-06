@@ -11,28 +11,15 @@ import (
 	"github.com/hashicorp/watchtower/internal/oplog"
 )
 
-// Repository defines an interface for the iam repositories (db, file, inmem, etc).
-type Repository interface {
-	CreateScope(ctx context.Context, scope *Scope, opt ...Option) (*Scope, error)
-	UpdateScope(ctx context.Context, scope *Scope, fieldMaskPaths []string, opt ...Option) (*Scope, error)
-	LookupScope(ctx context.Context, opt ...Option) (Scope, error)
-
-	create(ctx context.Context, r Resource, opt ...Option) (Resource, error)
-	update(ctx context.Context, r Resource, fieldMaskPaths []string, opt ...Option) (Resource, error)
-}
-
-// dbRepository is the iam database repository
-type dbRepository struct {
+// Repository is the iam database repository
+type Repository struct {
 	reader  db.Reader
 	writer  db.Writer
 	wrapper wrapping.Wrapper
 }
 
-// ensure that dbRepository implements the interfaces of: Repository
-var _ Repository = (*dbRepository)(nil)
-
-// NewRepository creates a new iam database repository
-func NewRepository(r db.Reader, w db.Writer, wrapper wrapping.Wrapper) (Repository, error) {
+// NewRepository creates a new iam Repository
+func NewRepository(r db.Reader, w db.Writer, wrapper wrapping.Wrapper) (*Repository, error) {
 	if r == nil {
 		return nil, errors.New("error creating db repository with nil reader")
 	}
@@ -42,7 +29,7 @@ func NewRepository(r db.Reader, w db.Writer, wrapper wrapping.Wrapper) (Reposito
 	if wrapper == nil {
 		return nil, errors.New("error creating db repository with nil wrapper")
 	}
-	return &dbRepository{
+	return &Repository{
 		reader:  r,
 		writer:  w,
 		wrapper: wrapper,
@@ -50,7 +37,7 @@ func NewRepository(r db.Reader, w db.Writer, wrapper wrapping.Wrapper) (Reposito
 }
 
 // Create will create a new iam resource in the db repository with an oplog entry
-func (r *dbRepository) create(ctx context.Context, resource Resource, opt ...Option) (Resource, error) {
+func (r *Repository) create(ctx context.Context, resource Resource, opt ...Option) (Resource, error) {
 	if resource == nil {
 		return nil, errors.New("error creating resource that is nil")
 	}
@@ -82,7 +69,7 @@ func (r *dbRepository) create(ctx context.Context, resource Resource, opt ...Opt
 }
 
 // Update will update an iam resource in the db repository with an oplog entry
-func (r *dbRepository) update(ctx context.Context, resource Resource, fieldMaskPaths []string, opt ...Option) (Resource, error) {
+func (r *Repository) update(ctx context.Context, resource Resource, fieldMaskPaths []string, opt ...Option) (Resource, error) {
 	if resource == nil {
 		return nil, errors.New("error updating resource that is nil")
 	}
@@ -114,7 +101,7 @@ func (r *dbRepository) update(ctx context.Context, resource Resource, fieldMaskP
 	return returnedResource, err
 }
 
-func (r *dbRepository) stdMetadata(ctx context.Context, resource Resource) (oplog.Metadata, error) {
+func (r *Repository) stdMetadata(ctx context.Context, resource Resource) (oplog.Metadata, error) {
 	rType := strconv.Itoa(int(resource.ResourceType()))
 	if s, ok := resource.(*Scope); ok {
 		if s.Type == OrganizationScope.String() {
@@ -126,12 +113,12 @@ func (r *dbRepository) stdMetadata(ctx context.Context, resource Resource) (oplo
 			}, nil
 		}
 	}
-	scope, err := resource.GetPrimaryScope(ctx, r.reader)
+	scope, err := resource.GetScope(ctx, r.reader)
 	if err != nil {
 		return nil, err
 	}
 	if scope == nil {
-		return nil, errors.New("error primary scope is nil")
+		return nil, errors.New("error scope is nil")
 	}
 	return oplog.Metadata{
 		"resource-public-id": []string{resource.GetPublicId()},
