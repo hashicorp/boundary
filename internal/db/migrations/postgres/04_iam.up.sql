@@ -11,10 +11,10 @@ values
 
  
 CREATE TABLE if not exists iam_scope (
-    public_id text NOT NULL primary key,
+    public_id wt_public_id primary key,
     create_time timestamp with time zone default current_timestamp,
     update_time timestamp with time zone default current_timestamp,
-    name text UNIQUE,
+    name text,
     type text NOT NULL REFERENCES iam_scope_type_enm(string) CHECK(
       (
         type = 'organization'
@@ -25,15 +25,19 @@ CREATE TABLE if not exists iam_scope (
         and parent_id IS NOT NULL
       )
     ),
-    parent_id text REFERENCES iam_scope(public_id) ON DELETE CASCADE ON UPDATE CASCADE,
-    disabled BOOLEAN NOT NULL default FALSE
+    parent_id text REFERENCES iam_scope(public_id) ON DELETE CASCADE ON UPDATE CASCADE
   );
 create table if not exists iam_scope_organization (
-    scope_id text NOT NULL UNIQUE REFERENCES iam_scope(public_id) ON DELETE CASCADE ON UPDATE CASCADE
+    scope_id wt_public_id NOT NULL UNIQUE REFERENCES iam_scope(public_id) ON DELETE CASCADE ON UPDATE CASCADE,
+    name text UNIQUE,
+    primary key(scope_id)
   );
 create table if not exists iam_scope_project (
-    scope_id text REFERENCES iam_scope(public_id) ON DELETE CASCADE ON UPDATE CASCADE,
-    parent_id text REFERENCES iam_scope_organization(scope_id) ON DELETE CASCADE ON UPDATE CASCADE
+    scope_id wt_public_id NOT NULL REFERENCES iam_scope(public_id) ON DELETE CASCADE ON UPDATE CASCADE,
+    parent_id wt_public_id NOT NULL REFERENCES iam_scope_organization(scope_id) ON DELETE CASCADE ON UPDATE CASCADE,
+    name text,
+    unique(parent_id, name),
+    primary key(scope_id, parent_id)
   );
 
 
@@ -42,15 +46,15 @@ CREATE
 SET SCHEMA
   'public' LANGUAGE plpgsql AS $$ DECLARE parent_type INT;
 BEGIN IF new.type = 'organization' THEN
-insert into iam_scope_organization (scope_id)
+insert into iam_scope_organization (scope_id, name)
 values
-  (new.public_id);
+  (new.public_id, new.name);
 return NEW;
 END IF;
 IF new.type = 'project' THEN
-insert into iam_scope_project (scope_id, parent_id)
+insert into iam_scope_project (scope_id, parent_id, name)
 values
-  (new.public_id, new.parent_id);
+  (new.public_id, new.parent_id, new.name);
 return NEW;
 END IF;
 RAISE EXCEPTION 'unknown scope type';
