@@ -47,7 +47,7 @@ var _ ClonableResource = (*Scope)(nil)
 // NewScope creates a new Scope of the specified ScopeType with options:
 // WithName specifies the Scope's friendly name.
 func NewScope(scopeType ScopeType, opt ...Option) (*Scope, error) {
-	opts := GetOpts(opt...)
+	opts := getOpts(opt...)
 	withName := opts.withName
 	withScope := opts.withScope
 

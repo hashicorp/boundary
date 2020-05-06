@@ -84,7 +84,7 @@ var _ db.VetForWriter = (*GroupMemberUser)(nil)
 // newGroupMemberUser creates a new user member of the groupwith a scope (project/organization)
 // options include: withDescripion, WithName
 func newGroupMemberUser(primaryScope *Scope, g *Group, m *User, opt ...Option) (GroupMember, error) {
-	opts := GetOpts(opt...)
+	opts := getOpts(opt...)
 	withName := opts.withName
 	if primaryScope == nil {
 		return nil, errors.New("error the user member primary scope is nil")

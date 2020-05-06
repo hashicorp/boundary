@@ -25,7 +25,7 @@ var _ db.VetForWriter = (*Group)(nil)
 // NewGroup creates a new group with a scope (project/organization)
 // options include: withDescripion, WithName
 func NewGroup(primaryScope *Scope, opt ...Option) (*Group, error) {
-	opts := GetOpts(opt...)
+	opts := getOpts(opt...)
 	withName := opts.withName
 	withDescription := opts.withDescription
 	if primaryScope == nil {

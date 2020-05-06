@@ -20,7 +20,7 @@ func (r *dbRepository) UpdateScope(ctx context.Context, scope *Scope, fieldMaskP
 	return resource.(*Scope), err
 }
 func (r *dbRepository) LookupScope(ctx context.Context, opt ...Option) (Scope, error) {
-	opts := GetOpts(opt...)
+	opts := getOpts(opt...)
 	withPublicId := opts.withPublicId
 	withName := opts.withName
 

@@ -25,7 +25,7 @@ var _ db.VetForWriter = (*User)(nil)
 // NewUser creates a new user and allows options:
 // WithName - to specify the user's friendly name
 func NewUser(primaryScope *Scope, opt ...Option) (*User, error) {
-	opts := GetOpts(opt...)
+	opts := getOpts(opt...)
 	withName := opts.withName
 	if primaryScope == nil {
 		return nil, errors.New("error user primary scope is nil")
@@ -83,7 +83,7 @@ func (u *User) Roles(ctx context.Context, r db.Reader, opt ...Option) (map[strin
 // Grants finds the grants for the user and supports options:
 // WithGroupGrants which will get the grants assigned to the user's groups as well
 func (u *User) Grants(ctx context.Context, r db.Reader, opt ...Option) ([]*RoleGrant, error) {
-	opts := GetOpts(opt...)
+	opts := getOpts(opt...)
 	withGrpGrants := opts.withGroupGrants
 	if u.PublicId == "" {
 		return nil, errors.New("error user id is unset for finding roles")

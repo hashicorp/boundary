@@ -15,6 +15,10 @@ service HostService {
     option (google.api.http) = {
       get: "/v1/orgs/{org_id}/projects/{project_id}/host-catalogs/{host_catalog_id}/hosts/{id}"
       response_body: "item"
+      additional_bindings {
+        get: "/v1/orgs/{org_id}/host-catalogs/{host_catalog_id}/hosts/{id}"
+        response_body: "item"
+      }
     };
     option (grpc.gateway.protoc_gen_swagger.options.openapiv2_operation) = {
       summary: "Gets a single Host"
@@ -23,6 +27,9 @@ service HostService {
   rpc ListHosts(ListHostsRequest) returns (ListHostsResponse) {
     option (google.api.http) = {
       get: "/v1/orgs/{org_id}/projects/{project_id}/host-catalogs/{host_catalog_id}/hosts"
+      additional_bindings {
+        get: "/v1/orgs/{org_id}/host-catalogs"
+      }
     };
     option (grpc.gateway.protoc_gen_swagger.options.openapiv2_operation) = {
       summary: "List all Hosts for the specified catalog"
@@ -33,6 +40,11 @@ service HostService {
       post: "/v1/orgs/{org_id}/projects/{project_id}/host-catalogs/{host_catalog_id}/hosts"
       body: "item"
       response_body: "item"
+      additional_bindings {
+        post: "/v1/orgs/{org_id}/host-catalogs/{host_catalog_id}/hosts"
+        body: "item"
+        response_body: "item"
+      }
     };
     option (grpc.gateway.protoc_gen_swagger.options.openapiv2_operation) = {
       summary: "Create a single Host"
@@ -43,6 +55,11 @@ service HostService {
       patch: "/v1/orgs/{org_id}/projects/{project_id}/host-catalogs/{host_catalog_id}/hosts/{id}"
       body: "item"
       response_body: "item"
+      additional_bindings {
+        patch: "/v1/orgs/{org_id}/host-catalogs/{host_catalog_id}/hosts/{id}"
+        body: "item"
+        response_body: "item"
+      }
     };
     option (grpc.gateway.protoc_gen_swagger.options.openapiv2_operation) = {
       summary: "Update a Host"
@@ -51,6 +68,9 @@ service HostService {
   rpc DeleteHost(DeleteHostRequest) returns (DeleteHostResponse) {
     option (google.api.http) = {
       delete: "/v1/orgs/{org_id}/projects/{project_id}/host-catalogs/{host_catalog_id}/hosts/{id}"
+      additional_bindings {
+        delete: "/v1/orgs/{org_id}/host-catalogs/{host_catalog_id}/hosts/{id}"
+      }
     };
     option (grpc.gateway.protoc_gen_swagger.options.openapiv2_operation) = {
       summary: "Delete a Host"

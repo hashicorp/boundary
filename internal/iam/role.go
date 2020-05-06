@@ -25,7 +25,7 @@ var _ db.VetForWriter = (*Role)(nil)
 // NewRole creates a new role with a scope (project/organization)
 // options include: withDescripion, WithName
 func NewRole(primaryScope *Scope, opt ...Option) (*Role, error) {
-	opts := GetOpts(opt...)
+	opts := getOpts(opt...)
 	withName := opts.withName
 	withDescription := opts.withDescription
 	if primaryScope == nil {

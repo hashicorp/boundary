@@ -90,7 +90,7 @@ var _ db.VetForWriter = (*UserRole)(nil)
 // newUserRole creates a new user role with a scope (project/organization)
 // options include:  WithName
 func newUserRole(primaryScope *Scope, r *Role, u *User, opt ...Option) (AssignedRole, error) {
-	opts := GetOpts(opt...)
+	opts := getOpts(opt...)
 	withName := opts.withName
 	if primaryScope == nil {
 		return nil, errors.New("error the user role primary scope is nil")
@@ -210,7 +210,7 @@ var _ db.VetForWriter = (*GroupRole)(nil)
 // newGroupRole creates a new group role with a scope (project/organization)
 // options include:  WithName
 func newGroupRole(primaryScope *Scope, r *Role, g *Group, opt ...Option) (AssignedRole, error) {
-	opts := GetOpts(opt...)
+	opts := getOpts(opt...)
 	withName := opts.withName
 	if primaryScope == nil {
 		return nil, errors.New("error the group role primary scope is nil")

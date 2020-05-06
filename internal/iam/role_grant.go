@@ -25,7 +25,7 @@ var _ db.VetForWriter = (*RoleGrant)(nil)
 // NewRoleGrant creates a new grant with a scope (project/organization)
 // options include: WithName
 func NewRoleGrant(primaryScope *Scope, role *Role, grant string, opt ...Option) (*RoleGrant, error) {
-	opts := GetOpts(opt...)
+	opts := getOpts(opt...)
 	withName := opts.withName
 	if primaryScope == nil {
 		return nil, errors.New("error the role grant primary scope is nil")

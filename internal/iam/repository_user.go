@@ -15,7 +15,7 @@ func (r *dbRepository) UpdateUser(ctx context.Context, user *User, fieldMaskPath
 }
 
 func (r *dbRepository) LookupUser(ctx context.Context, opt ...Option) (User, error) {
-	opts := GetOpts(opt...)
+	opts := getOpts(opt...)
 	withPublicId := opts.withPublicId
 	withName := opts.withName
 
