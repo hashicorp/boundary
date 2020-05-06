@@ -104,7 +104,6 @@ func Test_Repository_UpdateScope(t *testing.T) {
 		assert.Nil(err)
 	})
 	t.Run("bad-parent-scope", func(t *testing.T) {
-		conn.LogMode(true)
 		rw := &db.GormReadWriter{Tx: conn}
 		wrapper := db.TestWrapper(t)
 		repo, err := NewRepository(rw, rw, wrapper)
