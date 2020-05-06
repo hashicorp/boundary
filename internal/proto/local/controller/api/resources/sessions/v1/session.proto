@@ -23,7 +23,7 @@ message Session {
 
 	// The workers which are able to handle this session.
 	// Output only.
-	repeated string worker_uris = 5;
+	repeated string worker_addresses = 5;
 
 	// Output only.
 	repeated bytes mtls_cert = 6;
