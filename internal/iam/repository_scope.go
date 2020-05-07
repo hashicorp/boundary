@@ -40,5 +40,5 @@ func (r *Repository) LookupScope(ctx context.Context, opt ...Option) (Scope, err
 		}
 		return scope, nil
 	}
-	return allocScope(), errors.New("you must loop up scopes by id or name")
+	return allocScope(), errors.New("you must look up scopes by id or name")
 }
