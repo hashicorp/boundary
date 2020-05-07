@@ -43,6 +43,7 @@ protobuild:
 	@protoc-go-inject-tag -input=./internal/oplog/store/oplog.pb.go
 	@protoc-go-inject-tag -input=./internal/oplog/oplog_test/oplog_test.pb.go
 	@protoc-go-inject-tag -input=./internal/db/db_test/db_test.pb.go
+	@protoc-go-inject-tag -input=./internal/host/static/store/static.pb.go
 
 
 cleanup:
