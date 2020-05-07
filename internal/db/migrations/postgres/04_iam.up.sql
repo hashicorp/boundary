@@ -25,6 +25,7 @@ CREATE TABLE if not exists iam_scope (
         and parent_id IS NOT NULL
       )
     ),
+    description text,
     parent_id text REFERENCES iam_scope(public_id) ON DELETE CASCADE ON UPDATE CASCADE
   );
 create table if not exists iam_scope_organization (

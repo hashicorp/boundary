@@ -17,6 +17,9 @@ type Resource interface {
 	// access the resource via an API
 	GetName() string
 
+	// GetDescription is the optional description of the resource
+	GetDescription() string
+
 	// GetScope is the Scope that owns the Resource
 	GetScope(ctx context.Context, r db.Reader) (*Scope, error)
 
@@ -91,7 +94,7 @@ func LookupScope(ctx context.Context, reader db.Reader, resource ResourceWithSco
 	}
 	var p Scope
 	if err := reader.LookupWhere(ctx, &p, "public_id = ?", resource.GetScopeId()); err != nil {
-		return nil, fmt.Errorf("error getting Scope %w for LookupScope", err)
+		return nil, fmt.Errorf("error getting scope for LookupScope: %w", err)
 	}
 	return &p, nil
 }
