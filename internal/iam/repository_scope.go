@@ -33,8 +33,7 @@ func (r *Repository) LookupScope(ctx context.Context, opt ...Option) (*Scope, er
 		scope := allocScope()
 		scope.PublicId = withPublicId
 		if err := r.reader.LookupByPublicId(ctx, &scope); err != nil {
-			s := allocScope()
-			return &s, err
+			return nil, err
 		}
 		return &scope, nil
 	}
@@ -47,6 +46,5 @@ func (r *Repository) LookupScope(ctx context.Context, opt ...Option) (*Scope, er
 		}
 		return &scope, nil
 	}
-	s := allocScope()
-	return &s, errors.New("you must look up scopes by id or name")
+	return nil, errors.New("you must look up scopes by id or name")
 }
