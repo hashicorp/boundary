@@ -63,6 +63,10 @@ type Writer interface {
 	DB() (*sql.DB, error)
 }
 
+const (
+	StdRetryCnt = 20
+)
+
 // RetryInfo provides information on the retries of a transaction
 type RetryInfo struct {
 	Retries int

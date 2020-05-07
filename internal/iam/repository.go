@@ -54,7 +54,7 @@ func (r *Repository) create(ctx context.Context, resource Resource, opt ...Optio
 	var returnedResource Resource
 	_, err = r.writer.DoTx(
 		ctx,
-		20,
+		db.StdRetryCnt,
 		db.ExpBackoff{},
 		func(w db.Writer) error {
 			returnedResource = resourceCloner.Clone()
@@ -86,7 +86,7 @@ func (r *Repository) update(ctx context.Context, resource Resource, fieldMaskPat
 	var returnedResource Resource
 	_, err = r.writer.DoTx(
 		ctx,
-		20,
+		db.StdRetryCnt,
 		db.ExpBackoff{},
 		func(w db.Writer) error {
 			returnedResource = resourceCloner.Clone()
