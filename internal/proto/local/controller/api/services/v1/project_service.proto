@@ -1,0 +1,108 @@
+syntax = "proto3";
+
+package controller.api.services.v1;
+
+option go_package = "github.com/hashicorp/watchtower/internal/gen/controller/api/services;services";
+
+import "protoc-gen-swagger/options/annotations.proto";
+import "google/api/annotations.proto";
+import "google/protobuf/field_mask.proto";
+import "google/protobuf/wrappers.proto";
+import "controller/api/resources/projects/v1/project.proto";
+
+service ProjectService {
+  rpc GetProject(GetProjectRequest) returns (GetProjectResponse) {
+    option (google.api.http) = {
+      get: "/v1/orgs/{org_id}/projects/{id}"
+      response_body: "item"
+    };
+    option (grpc.gateway.protoc_gen_swagger.options.openapiv2_operation) = {
+      summary: "Gets a single Project"
+    };
+  }
+  rpc ListProjects(ListProjectsRequest) returns (ListProjectsResponse) {
+    option (google.api.http) = {
+      get: "/v1/orgs/{org_id}/projects"
+    };
+    option (grpc.gateway.protoc_gen_swagger.options.openapiv2_operation) = {
+      summary: "Lists all Projects"
+    };
+  }
+  rpc CreateProject(CreateProjectRequest) returns (CreateProjectResponse) {
+    option (google.api.http) = {
+      post: "/v1/orgs/{org_id}/projects"
+      body: "item"
+      response_body: "item"
+    };
+    option (grpc.gateway.protoc_gen_swagger.options.openapiv2_operation) = {
+      summary: "Creates a single Project"
+    };
+  }
+  rpc UpdateProject(UpdateProjectRequest) returns (UpdateProjectResponse) {
+    option (google.api.http) = {
+      patch: "/v1/orgs/{org_id}/projects/{id}"
+      body: "item"
+      response_body: "item"
+    };
+    option (grpc.gateway.protoc_gen_swagger.options.openapiv2_operation) = {
+      summary: "Updates a Project"
+    };
+  }
+  rpc DeleteProject(DeleteProjectRequest) returns (DeleteProjectResponse) {
+    option (google.api.http) = {
+      delete: "/v1/orgs/{org_id}/projects/{id}"
+    };
+    option (grpc.gateway.protoc_gen_swagger.options.openapiv2_operation) = {
+      summary: "Deletes a Project"
+    };
+  }
+}
+
+message GetProjectRequest {
+  string org_id = 1;
+  string id = 2;
+  string view = 3;
+}
+
+message GetProjectResponse {
+  resources.projects.v1.Project item = 1;
+}
+
+message ListProjectsRequest {
+  string org_id = 1;
+  string view = 2;
+}
+
+message ListProjectsResponse {
+  repeated resources.projects.v1.Project items = 1;
+}
+
+message CreateProjectRequest {
+  string org_id = 1;
+  resources.projects.v1.Project item = 2;
+}
+
+message CreateProjectResponse {
+  string uri = 1;
+  resources.projects.v1.Project item = 2;
+}
+
+message UpdateProjectRequest {
+  string org_id = 1;
+  string id = 2;
+  resources.projects.v1.Project item = 3;
+  google.protobuf.FieldMask update_mask = 4;
+}
+
+message UpdateProjectResponse {
+  resources.projects.v1.Project item = 1;
+}
+
+message DeleteProjectRequest {
+  string org_id = 1;
+  string id = 2;
+}
+
+message DeleteProjectResponse {
+  bool existed = 1;
+}
