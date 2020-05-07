@@ -31,8 +31,8 @@ func (a Action) String() string {
 	}[a]
 }
 
-// StdActions returns a standard set of actions for resources that support a CRUD API
-func StdActions() map[string]Action {
+// CrudActions returns a standard set of actions for resources that support a CRUD API
+func CrudActions() map[string]Action {
 	return map[string]Action{
 		ActionList.String():   ActionList,
 		ActionCreate.String(): ActionCreate,

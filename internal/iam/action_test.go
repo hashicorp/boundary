@@ -11,7 +11,7 @@ func Test_StdActions(t *testing.T) {
 	t.Parallel()
 	assert := assert.New(t)
 	t.Run("valid", func(t *testing.T) {
-		a := StdActions()
+		a := CrudActions()
 		assert.Equal(a[ActionList.String()], ActionList)
 		assert.Equal(a[ActionCreate.String()], ActionCreate)
 		assert.Equal(a[ActionUpdate.String()], ActionUpdate)
@@ -19,7 +19,7 @@ func Test_StdActions(t *testing.T) {
 		assert.Equal(a[ActionDelete.String()], ActionDelete)
 	})
 	t.Run("invalid", func(t *testing.T) {
-		a := StdActions()
+		a := CrudActions()
 		action, ok := a["invalid"]
 		assert.Equal(ok, false)
 		assert.Equal(action, ActionUnknown)
