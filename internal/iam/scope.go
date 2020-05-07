@@ -29,8 +29,7 @@ func (s ScopeType) String() string {
 }
 
 // Scope is used to create a hierarchy of "containers" that encompass the scope of
-// an IAM resource.  Scopes are Organizations and Projects (based on their Type) for
-// launch and likely Folders and SubProjects in the future
+// an IAM resource.  Scopes are Organizations and Projects.
 type Scope struct {
 	*store.Scope
 
