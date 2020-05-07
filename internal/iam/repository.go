@@ -59,7 +59,7 @@ func (r *Repository) create(ctx context.Context, resource Resource, opt ...Optio
 		func(w db.Writer) error {
 			returnedResource = resourceCloner.Clone()
 			return w.Create(
-				context.Background(),
+				ctx,
 				returnedResource,
 				db.WithOplog(r.wrapper, metadata),
 			)
@@ -91,7 +91,7 @@ func (r *Repository) update(ctx context.Context, resource Resource, fieldMaskPat
 		func(w db.Writer) error {
 			returnedResource = resourceCloner.Clone()
 			return w.Update(
-				context.Background(),
+				ctx,
 				returnedResource,
 				fieldMaskPaths,
 				db.WithOplog(r.wrapper, metadata),
