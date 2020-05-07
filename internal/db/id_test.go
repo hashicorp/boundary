@@ -21,7 +21,7 @@ func TestNewPublicId(t *testing.T) {
 				prefix: "id",
 			},
 			wantErr: false,
-			wantLen: 24 + len("id_"),
+			wantLen: 10 + len("id_"),
 		},
 		{
 			name: "bad-prefix",

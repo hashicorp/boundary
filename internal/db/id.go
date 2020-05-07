@@ -12,7 +12,7 @@ func NewPublicId(prefix string) (string, error) {
 	if prefix == "" {
 		return "", errors.New("error no prefix for new public id")
 	}
-	publicId, err := base62.Random(24)
+	publicId, err := base62.Random(10)
 	if err != nil {
 		return "", fmt.Errorf("unable to generate public id: %w", err)
 	}
