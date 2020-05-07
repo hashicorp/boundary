@@ -43,8 +43,8 @@ func WithDescription(desc string) Option {
 	}
 }
 
-// WithScope provides an optional scope
-func WithScope(s *Scope) Option {
+// withScope provides an optional scope and used within the package
+func withScope(s *Scope) Option {
 	return func(o *options) {
 		o.withScope = s
 	}

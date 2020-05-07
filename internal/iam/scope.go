@@ -51,7 +51,7 @@ func NewOrganization(opt ...Option) (*Scope, error) {
 func NewProject(organizationPublicId string, opt ...Option) (*Scope, error) {
 	org := allocScope()
 	org.PublicId = organizationPublicId
-	opt = append(opt, WithScope(&org))
+	opt = append(opt, withScope(&org))
 	p, err := newScope(ProjectScope, opt...)
 	if err != nil {
 		return nil, fmt.Errorf("error creating new project: %w", err)
