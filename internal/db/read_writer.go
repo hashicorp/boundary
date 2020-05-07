@@ -63,6 +63,10 @@ type Writer interface {
 	DB() (*sql.DB, error)
 }
 
+const (
+	StdRetryCnt = 20
+)
+
 // RetryInfo provides information on the retries of a transaction
 type RetryInfo struct {
 	Retries int
@@ -93,7 +97,7 @@ const (
 
 // VetForWriter provides an interface that Create and Update can use to vet the resource before sending it to the db
 type VetForWriter interface {
-	VetForWrite(ctx context.Context, r Reader, opType OpType) error
+	VetForWrite(ctx context.Context, r Reader, opType OpType, opt ...Option) error
 }
 
 // GormReadWriter uses a gorm DB connection for read/write
@@ -118,15 +122,10 @@ func (rw *GormReadWriter) ScanRows(rows *sql.Rows, result interface{}) error {
 	return rw.Tx.ScanRows(rows, result)
 }
 
-// CreateConstraint will create a db constraint if it doesn't already exist
-func (w *GormReadWriter) CreateConstraint(tableName string, constraintName string, constraint string) error {
-	return w.Tx.Exec("create_constraint_if_not_exists(?, ?, ?)", tableName, constraintName, constraint).Error
-}
-
 var ErrNotResourceWithId = errors.New("not a resource with an id")
 
 func (rw *GormReadWriter) lookupAfterWrite(ctx context.Context, i interface{}, opt ...Option) error {
-	opts := getOpts(opt...)
+	opts := GetOpts(opt...)
 	withLookup := opts.withLookup
 
 	if !withLookup {
@@ -146,7 +145,7 @@ func (rw *GormReadWriter) Create(ctx context.Context, i interface{}, opt ...Opti
 	if rw.Tx == nil {
 		return errors.New("create tx is nil")
 	}
-	opts := getOpts(opt...)
+	opts := GetOpts(opt...)
 	withOplog := opts.withOplog
 	withDebug := opts.withDebug
 	if withDebug {
@@ -158,7 +157,7 @@ func (rw *GormReadWriter) Create(ctx context.Context, i interface{}, opt ...Opti
 	}
 	if vetter, ok := i.(VetForWriter); ok {
 		if err := vetter.VetForWrite(ctx, rw, CreateOp); err != nil {
-			return fmt.Errorf("error on Create %w", err)
+			return fmt.Errorf("error on create %w", err)
 		}
 	}
 	if err := rw.Tx.Create(i).Error; err != nil {
@@ -181,7 +180,7 @@ func (rw *GormReadWriter) Update(ctx context.Context, i interface{}, fieldMaskPa
 	if rw.Tx == nil {
 		return errors.New("update tx is nil")
 	}
-	opts := getOpts(opt...)
+	opts := GetOpts(opt...)
 	withDebug := opts.withDebug
 	withOplog := opts.withOplog
 	if withDebug {
@@ -192,8 +191,8 @@ func (rw *GormReadWriter) Update(ctx context.Context, i interface{}, fieldMaskPa
 		return errors.New("update interface is nil")
 	}
 	if vetter, ok := i.(VetForWriter); ok {
-		if err := vetter.VetForWrite(ctx, rw, UpdateOp); err != nil {
-			return fmt.Errorf("error on Create %w", err)
+		if err := vetter.VetForWrite(ctx, rw, UpdateOp, WithFieldMaskPaths(fieldMaskPaths)); err != nil {
+			return fmt.Errorf("error on update %w", err)
 		}
 	}
 	if len(fieldMaskPaths) == 0 {
@@ -246,6 +245,9 @@ func (rw *GormReadWriter) Update(ctx context.Context, i interface{}, fieldMaskPa
 			return err
 		}
 	}
+	// we need to force a lookupAfterWrite so the resource returned is correctly initialized
+	// from the db
+	opt = append(opt, WithLookup(true))
 	if err := rw.lookupAfterWrite(ctx, i, opt...); err != nil {
 		return fmt.Errorf("lookup error after update: %w", err)
 	}
@@ -260,7 +262,7 @@ func (rw *GormReadWriter) Delete(ctx context.Context, i interface{}, opt ...Opti
 	if i == nil {
 		return errors.New("delete interface is nil")
 	}
-	opts := getOpts(opt...)
+	opts := GetOpts(opt...)
 	withDebug := opts.withDebug
 	withOplog := opts.withOplog
 	if withDebug {
@@ -278,7 +280,7 @@ func (rw *GormReadWriter) Delete(ctx context.Context, i interface{}, opt ...Opti
 	return nil
 }
 
-func (rw *GormReadWriter) addOplog(ctx context.Context, opType OpType, opts options, i interface{}) error {
+func (rw *GormReadWriter) addOplog(ctx context.Context, opType OpType, opts Options, i interface{}) error {
 	oplogArgs := opts.oplogOpts
 	if oplogArgs.wrapper == nil {
 		return errors.New("error wrapper is nil for WithWrapper")
@@ -386,7 +388,7 @@ func (rw *GormReadWriter) LookupByName(ctx context.Context, resource ResourceNam
 	if rw.Tx == nil {
 		return errors.New("error tx nil for lookup by name")
 	}
-	opts := getOpts(opt...)
+	opts := GetOpts(opt...)
 	withDebug := opts.withDebug
 	if withDebug {
 		rw.Tx.LogMode(true)
@@ -406,7 +408,7 @@ func (rw *GormReadWriter) LookupByPublicId(ctx context.Context, resource Resourc
 	if rw.Tx == nil {
 		return errors.New("error tx nil for lookup by public id")
 	}
-	opts := getOpts(opt...)
+	opts := GetOpts(opt...)
 	withDebug := opts.withDebug
 	if withDebug {
 		rw.Tx.LogMode(true)
