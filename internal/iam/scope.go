@@ -125,20 +125,26 @@ func (s *Scope) VetForWrite(ctx context.Context, r db.Reader, opType db.OpType, 
 	if opType == db.UpdateOp {
 		dbOptions := db.GetOpts(opt...)
 		for _, path := range dbOptions.WithFieldMaskPaths {
-			if path == "ParentId" {
-				if s.ParentId == "" && s.Type == ProjectScope.String() {
-					return errors.New("parent id is unset for project scope")
-				}
-				if s.Type == ProjectScope.String() {
-					parentScope := allocScope()
-					parentScope.PublicId = s.ParentId
-					if err := r.LookupByPublicId(ctx, &parentScope, opt...); err != nil {
-						return fmt.Errorf("unable to verify project's organization scope: %w", err)
-					}
-					if parentScope.Type != OrganizationScope.String() {
-						return errors.New("project parent scope is not an organization")
-					}
-				}
+			switch path {
+			case "ParentId":
+				return errors.New("you cannot change a scope's parent")
+			case "Type":
+				return errors.New("you cannot change a scope's type")
+			}
+		}
+	}
+	if opType == db.CreateOp {
+		if s.ParentId == "" && s.Type == ProjectScope.String() {
+			return errors.New("project has no organization")
+		}
+		if s.Type == ProjectScope.String() {
+			parentScope := allocScope()
+			parentScope.PublicId = s.ParentId
+			if err := r.LookupByPublicId(ctx, &parentScope, opt...); err != nil {
+				return fmt.Errorf("unable to verify project's organization scope: %w", err)
+			}
+			if parentScope.Type != OrganizationScope.String() {
+				return errors.New("project parent scope is not an organization")
 			}
 		}
 	}

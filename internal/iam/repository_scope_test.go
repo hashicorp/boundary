@@ -127,6 +127,6 @@ func Test_Repository_UpdateScope(t *testing.T) {
 		project.ParentId = project.PublicId
 		project, err = repo.UpdateScope(context.Background(), project, []string{"ParentId"})
 		assert.True(err != nil)
-		assert.Equal(err.Error(), "error on update project parent scope is not an organization")
+		assert.Equal("error on update you cannot change a scope's parent", err.Error())
 	})
 }
