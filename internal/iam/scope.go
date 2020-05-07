@@ -118,6 +118,8 @@ func (s *Scope) Clone() Resource {
 }
 
 // VetForWrite implements db.VetForWrite() interface for scopes
+// this function is intended to be callled by a db.Writer (Create and Update) to validate
+// the scope before writing it to the db.
 func (s *Scope) VetForWrite(ctx context.Context, r db.Reader, opType db.OpType, opt ...db.Option) error {
 	if s.Type == UnknownScope.String() {
 		return errors.New("unknown scope type for scope write")
