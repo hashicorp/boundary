@@ -167,7 +167,7 @@ func (s *Scope) ResourceType() ResourceType {
 
 // Actions returns the  available actions for Scopes
 func (*Scope) Actions() map[string]Action {
-	return CrudActions()
+	return CrudlActions()
 }
 
 // GetScope returns the scope for the "scope" if there is one defined

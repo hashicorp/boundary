@@ -34,10 +34,20 @@ func (a Action) String() string {
 // CrudActions returns a standard set of actions for resources that support a CRUD API
 func CrudActions() map[string]Action {
 	return map[string]Action{
-		ActionList.String():   ActionList,
 		ActionCreate.String(): ActionCreate,
 		ActionUpdate.String(): ActionUpdate,
 		ActionRead.String():   ActionRead,
 		ActionDelete.String(): ActionDelete,
+	}
+}
+
+// CrudlActions adds list to the standard set of actions for resources that support a CRUD API
+func CrudlActions() map[string]Action {
+	return map[string]Action{
+		ActionCreate.String(): ActionCreate,
+		ActionUpdate.String(): ActionUpdate,
+		ActionRead.String():   ActionRead,
+		ActionDelete.String(): ActionDelete,
+		ActionList.String():   ActionList,
 	}
 }
