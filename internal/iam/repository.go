@@ -115,10 +115,10 @@ func (r *Repository) stdMetadata(ctx context.Context, resource Resource) (oplog.
 	}
 	scope, err := resource.GetScope(ctx, r.reader)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("unable to get scope for standard metadata: %w", err)
 	}
 	if scope == nil {
-		return nil, errors.New("error scope is nil")
+		return nil, errors.New("scope was nil for standard metadata")
 	}
 	return oplog.Metadata{
 		"resource-public-id": []string{resource.GetPublicId()},
