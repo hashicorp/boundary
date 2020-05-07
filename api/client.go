@@ -689,13 +689,18 @@ func (c *Client) NewRequest(ctx context.Context, method, requestPath string, bod
 		}
 	}
 
+	orgProjPath := path.Join("org", org)
+	if project != "" {
+		orgProjPath = path.Join(orgProjPath, "project", project)
+	}
+
 	req := &http.Request{
 		Method: method,
 		URL: &url.URL{
 			User:   u.User,
 			Scheme: u.Scheme,
 			Host:   host,
-			Path:   path.Join(u.Path, "v1", "org", org, "project", project, requestPath),
+			Path:   path.Join(u.Path, "v1", orgProjPath, requestPath),
 		},
 		Host: u.Host,
 	}

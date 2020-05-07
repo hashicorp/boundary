@@ -16,6 +16,659 @@
     "application/json"
   ],
   "paths": {
+    "/v1/orgs/{org_id}/host-catalogs": {
+      "get": {
+        "summary": "List all Hosts for the specified catalog",
+        "operationId": "HostService_ListHosts2",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.services.v1.ListHostsResponse"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "org_id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "project_id",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "host_catalog_id",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "view",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "controller.api.services.v1.HostService"
+        ]
+      },
+      "post": {
+        "summary": "Creates a HostCatalog",
+        "description": "Creates a single host catalog under the specified org and project",
+        "operationId": "HostCatalogService_CreateHostCatalog2",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/controller.api.resources.hosts.v1.HostCatalog"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "org_id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/controller.api.resources.hosts.v1.HostCatalog"
+            }
+          }
+        ],
+        "tags": [
+          "controller.api.services.v1.HostCatalogService"
+        ]
+      }
+    },
+    "/v1/orgs/{org_id}/host-catalogs/{host_catalog_id}/host-sets": {
+      "get": {
+        "summary": "List all HostSets under the specific catalog",
+        "operationId": "HostSetService_ListHostSets2",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.services.v1.ListHostSetsResponse"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "org_id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "host_catalog_id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "project_id",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "view",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "controller.api.services.v1.HostSetService"
+        ]
+      },
+      "post": {
+        "summary": "Create a HostSet",
+        "operationId": "HostSetService_CreateHostSet2",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/controller.api.resources.hosts.v1.HostSet"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "org_id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "host_catalog_id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/controller.api.resources.hosts.v1.HostSet"
+            }
+          }
+        ],
+        "tags": [
+          "controller.api.services.v1.HostSetService"
+        ]
+      }
+    },
+    "/v1/orgs/{org_id}/host-catalogs/{host_catalog_id}/host-sets/{id}": {
+      "get": {
+        "summary": "Get a single HostSet",
+        "operationId": "HostSetService_GetHostSet2",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/controller.api.resources.hosts.v1.HostSet"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "org_id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "host_catalog_id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "project_id",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "view",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "controller.api.services.v1.HostSetService"
+        ]
+      },
+      "delete": {
+        "summary": "Delete a HostSet",
+        "operationId": "HostSetService_DeleteHostSet2",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.services.v1.DeleteHostSetResponse"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "org_id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "host_catalog_id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "project_id",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "controller.api.services.v1.HostSetService"
+        ]
+      },
+      "patch": {
+        "summary": "Update a HostSet",
+        "operationId": "HostSetService_UpdateHostSet2",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/controller.api.resources.hosts.v1.HostSet"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "org_id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "host_catalog_id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/controller.api.resources.hosts.v1.HostSet"
+            }
+          }
+        ],
+        "tags": [
+          "controller.api.services.v1.HostSetService"
+        ]
+      }
+    },
+    "/v1/orgs/{org_id}/host-catalogs/{host_catalog_id}/host-sets/{id}:add-hosts": {
+      "post": {
+        "summary": "Adds existing Hosts to the Host Set",
+        "description": "Adds the hosts to this Host Set if possible.  All hosts added must be a child of the same host catalog this host set is a child of.",
+        "operationId": "HostSetService_AddToHostSet2",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.services.v1.AddToHostSetResponse"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "org_id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "host_catalog_id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "controller.api.services.v1.HostSetService"
+        ]
+      }
+    },
+    "/v1/orgs/{org_id}/host-catalogs/{host_catalog_id}/host-sets/{id}:remove-hosts": {
+      "post": {
+        "summary": "Removes Hosts to the Host Set",
+        "description": "Removes the hosts from this Host Set if present.  If it is not present then no action is taken and no error is returned.",
+        "operationId": "HostSetService_RemoveFromHostSet2",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.services.v1.RemoveFromHostSetResponse"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "org_id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "host_catalog_id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "id",
+            "description": "This host set's id.",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "controller.api.services.v1.HostSetService"
+        ]
+      }
+    },
+    "/v1/orgs/{org_id}/host-catalogs/{host_catalog_id}/hosts": {
+      "post": {
+        "summary": "Create a single Host",
+        "operationId": "HostService_CreateHost2",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/controller.api.resources.hosts.v1.Host"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "org_id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "host_catalog_id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/controller.api.resources.hosts.v1.Host"
+            }
+          }
+        ],
+        "tags": [
+          "controller.api.services.v1.HostService"
+        ]
+      }
+    },
+    "/v1/orgs/{org_id}/host-catalogs/{host_catalog_id}/hosts/{id}": {
+      "get": {
+        "summary": "Gets a single Host",
+        "operationId": "HostService_GetHost2",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/controller.api.resources.hosts.v1.Host"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "org_id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "host_catalog_id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "project_id",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "view",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "controller.api.services.v1.HostService"
+        ]
+      },
+      "delete": {
+        "summary": "Delete a Host",
+        "operationId": "HostService_DeleteHost2",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.services.v1.DeleteHostResponse"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "org_id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "host_catalog_id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "project_id",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "controller.api.services.v1.HostService"
+        ]
+      },
+      "patch": {
+        "summary": "Update a Host",
+        "operationId": "HostService_UpdateHost2",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/controller.api.resources.hosts.v1.Host"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "org_id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "host_catalog_id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/controller.api.resources.hosts.v1.Host"
+            }
+          }
+        ],
+        "tags": [
+          "controller.api.services.v1.HostService"
+        ]
+      }
+    },
+    "/v1/orgs/{org_id}/host-catalogs/{id}": {
+      "get": {
+        "summary": "Gets a single HostCatalog",
+        "description": "Get's a single Host Catalog with the provided identifier.",
+        "operationId": "HostCatalogService_GetHostCatalog2",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/controller.api.resources.hosts.v1.HostCatalog"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "org_id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "project_id",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "view",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "controller.api.services.v1.HostCatalogService"
+        ]
+      },
+      "delete": {
+        "summary": "Deletes a HostCatalog",
+        "operationId": "HostCatalogService_DeleteHostCatalog2",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.services.v1.DeleteHostCatalogResponse"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "org_id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "project_id",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "controller.api.services.v1.HostCatalogService"
+        ]
+      },
+      "patch": {
+        "summary": "Updates a HostCatalog",
+        "operationId": "HostCatalogService_UpdateHostCatalog2",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/controller.api.resources.hosts.v1.HostCatalog"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "org_id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/controller.api.resources.hosts.v1.HostCatalog"
+            }
+          }
+        ],
+        "tags": [
+          "controller.api.services.v1.HostCatalogService"
+        ]
+      }
+    },
     "/v1/orgs/{org_id}/projects/{project_id}/host-catalogs": {
       "get": {
         "summary": "Gets a list of HostCatalogs",

@@ -37,13 +37,13 @@ func TestGormReadWriter_Update(t *testing.T) {
 		assert.Nil(err)
 		assert.Equal(foundUser.Id, user.Id)
 
-		user.FriendlyName = "friendly-" + id
-		err = w.Update(context.Background(), user, []string{"FriendlyName"})
+		user.Name = "friendly-" + id
+		err = w.Update(context.Background(), user, []string{"Name"})
 		assert.Nil(err)
 
 		err = w.LookupByPublicId(context.Background(), foundUser)
 		assert.Nil(err)
-		assert.Equal(foundUser.FriendlyName, user.FriendlyName)
+		assert.Equal(foundUser.Name, user.Name)
 	})
 	t.Run("valid-WithOplog", func(t *testing.T) {
 		w := GormReadWriter{Tx: db}
@@ -63,8 +63,8 @@ func TestGormReadWriter_Update(t *testing.T) {
 		assert.Nil(err)
 		assert.Equal(foundUser.Id, user.Id)
 
-		user.FriendlyName = "friendly-" + id
-		err = w.Update(context.Background(), user, []string{"FriendlyName"},
+		user.Name = "friendly-" + id
+		err = w.Update(context.Background(), user, []string{"Name"},
 			// write oplogs for this update
 			WithOplog(
 				TestWrapper(t),
@@ -79,7 +79,7 @@ func TestGormReadWriter_Update(t *testing.T) {
 
 		err = w.LookupByPublicId(context.Background(), foundUser)
 		assert.Nil(err)
-		assert.Equal(foundUser.FriendlyName, user.FriendlyName)
+		assert.Equal(foundUser.Name, user.Name)
 
 		var metadata store.Metadata
 		err = db.Where("key = ? and value = ?", "resource-public-id", user.PublicId).First(&metadata).Error
@@ -118,8 +118,8 @@ func TestGormReadWriter_Update(t *testing.T) {
 		assert.Nil(err)
 		assert.Equal(foundUser.Id, user.Id)
 
-		user.FriendlyName = "friendly-" + id
-		err = w.Update(context.Background(), user, []string{"FriendlyName"},
+		user.Name = "friendly-" + id
+		err = w.Update(context.Background(), user, []string{"Name"},
 			WithOplog(
 				nil,
 				oplog.Metadata{
@@ -149,8 +149,8 @@ func TestGormReadWriter_Update(t *testing.T) {
 		assert.Nil(err)
 		assert.Equal(foundUser.Id, user.Id)
 
-		user.FriendlyName = "friendly-" + id
-		err = w.Update(context.Background(), user, []string{"FriendlyName"},
+		user.Name = "friendly-" + id
+		err = w.Update(context.Background(), user, []string{"Name"},
 			WithOplog(
 				TestWrapper(t),
 				nil,
@@ -269,7 +269,7 @@ func TestGormReadWriter_Create(t *testing.T) {
 	})
 }
 
-func TestGormReadWriter_LookupByFriendlyName(t *testing.T) {
+func TestGormReadWriter_LookupByName(t *testing.T) {
 	t.Parallel()
 	cleanup, db := TestSetup(t, "migrations/postgres")
 	defer cleanup()
@@ -281,16 +281,15 @@ func TestGormReadWriter_LookupByFriendlyName(t *testing.T) {
 		assert.Nil(err)
 		user, err := db_test.NewTestUser()
 		assert.Nil(err)
-		user.Name = "foo-" + id
-		user.FriendlyName = "fn-" + id
+		user.Name = "fn-" + id
 		err = w.Create(context.Background(), user)
 		assert.Nil(err)
 		assert.True(user.Id != 0)
 
 		foundUser, err := db_test.NewTestUser()
 		assert.Nil(err)
-		foundUser.FriendlyName = "fn-" + id
-		err = w.LookupByFriendlyName(context.Background(), foundUser)
+		foundUser.Name = "fn-" + id
+		err = w.LookupByName(context.Background(), foundUser)
 		assert.Nil(err)
 		assert.Equal(foundUser.Id, user.Id)
 	})
@@ -298,18 +297,18 @@ func TestGormReadWriter_LookupByFriendlyName(t *testing.T) {
 		w := GormReadWriter{}
 		foundUser, err := db_test.NewTestUser()
 		assert.Nil(err)
-		foundUser.FriendlyName = "fn-name"
-		err = w.LookupByFriendlyName(context.Background(), foundUser)
+		foundUser.Name = "fn-name"
+		err = w.LookupByName(context.Background(), foundUser)
 		assert.True(err != nil)
-		assert.Equal("error tx nil for lookup by friendly name", err.Error())
+		assert.Equal("error tx nil for lookup by name", err.Error())
 	})
 	t.Run("no-friendly-name-set", func(t *testing.T) {
 		w := GormReadWriter{Tx: db}
 		foundUser, err := db_test.NewTestUser()
 		assert.Nil(err)
-		err = w.LookupByFriendlyName(context.Background(), foundUser)
+		err = w.LookupByName(context.Background(), foundUser)
 		assert.True(err != nil)
-		assert.Equal("error friendly name empty string for lookup by friendly name", err.Error())
+		assert.Equal("error name empty string for lookup by name", err.Error())
 	})
 	t.Run("not-found", func(t *testing.T) {
 		w := GormReadWriter{Tx: db}
@@ -318,8 +317,8 @@ func TestGormReadWriter_LookupByFriendlyName(t *testing.T) {
 
 		foundUser, err := db_test.NewTestUser()
 		assert.Nil(err)
-		foundUser.FriendlyName = "fn-" + id
-		err = w.LookupByFriendlyName(context.Background(), foundUser)
+		foundUser.Name = "fn-" + id
+		err = w.LookupByName(context.Background(), foundUser)
 		assert.True(err != nil)
 		assert.Equal(gorm.ErrRecordNotFound, err)
 	})
@@ -338,7 +337,6 @@ func TestGormReadWriter_LookupByPublicId(t *testing.T) {
 		user, err := db_test.NewTestUser()
 		assert.Nil(err)
 		user.Name = "foo-" + id
-		user.FriendlyName = "fn-" + id
 		err = w.Create(context.Background(), user)
 		assert.Nil(err)
 		assert.True(user.PublicId != "")
@@ -394,7 +392,6 @@ func TestGormReadWriter_LookupWhere(t *testing.T) {
 		user, err := db_test.NewTestUser()
 		assert.Nil(err)
 		user.Name = "foo-" + id
-		user.FriendlyName = "fn-" + id
 		err = w.Create(context.Background(), user)
 		assert.Nil(err)
 		assert.True(user.PublicId != "")
@@ -445,7 +442,6 @@ func TestGormReadWriter_SearchWhere(t *testing.T) {
 		user, err := db_test.NewTestUser()
 		assert.Nil(err)
 		user.Name = "foo-" + id
-		user.FriendlyName = "fn-" + id
 		err = w.Create(context.Background(), user)
 		assert.Nil(err)
 		assert.True(user.PublicId != "")
@@ -798,7 +794,7 @@ func TestGormReadWriter_ScanRows(t *testing.T) {
 		assert.True(user.Id != 0)
 
 		tx, err := w.DB()
-		where := "select * from db_test_user where friendly_name in ($1, $2)"
+		where := "select * from db_test_user where name in ($1, $2)"
 		rows, err := tx.Query(where, "alice", "bob")
 		defer rows.Close()
 		for rows.Next() {

@@ -29,14 +29,13 @@ message StoreTestUser {
   // public_id is the used to access the AssignablScope via an API
   string public_id = 4;
 
-  // FriendlyName is the optional friendly name used to
+  // name is the optional friendly name used to
   // access the Scope via an API
   // @inject_tag: `gorm:"default:null"`
-  string friendly_name = 5;
+  string name = 5;
 
-  string name = 6;
-  string phone_number = 7;
-  string email = 8;
+  string phone_number = 6;
+  string email = 7;
 }
 // TestCar for gorm test car model
 message StoreTestCar {
@@ -54,10 +53,10 @@ message StoreTestCar {
   // public_id is the used to access the AssignablScope via an API
   string public_id = 4;
 
-  // FriendlyName is the optional friendly name used to
+  // name is the optional friendly name used to
   // access the Scope via an API
   // @inject_tag: `gorm:"default:null"`
-  string friendly_name = 5;
+  string name = 5;
 
   string model = 6;
   int32 mpg = 7;
@@ -78,10 +77,10 @@ message StoreTestRental {
   // public_id is the used to access the AssignablScope via an API
   string public_id = 4;
 
-  // FriendlyName is the optional friendly name used to
+  // name is the optional friendly name used to
   // access the Scope via an API
   // @inject_tag: `gorm:"default:null"`
-  string friendly_name = 5;
+  string name = 5;
 
   uint32 user_id = 6;
   uint32 car_id = 7;
