@@ -245,6 +245,9 @@ func (rw *GormReadWriter) Update(ctx context.Context, i interface{}, fieldMaskPa
 			return err
 		}
 	}
+	// we need to force a lookupAfterWrite so the resource returned is correctly initialized
+	// from the db
+	opt = append(opt, WithLookup(true))
 	if err := rw.lookupAfterWrite(ctx, i, opt...); err != nil {
 		return fmt.Errorf("lookup error after update: %w", err)
 	}

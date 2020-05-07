@@ -88,14 +88,17 @@ func Test_Repository_UpdateScope(t *testing.T) {
 		assert.Nil(err)
 
 		s.Name = "fname-" + id
+		s.Description = "desc-id" // not in the field mask paths
 		s, err = repo.UpdateScope(context.Background(), s, []string{"Name"})
 		assert.Nil(err)
 		assert.True(s != nil)
 		assert.Equal(s.GetName(), "fname-"+id)
+		assert.Equal(foundScope.GetDescription(), "") // should  be "" after update in db
 
 		foundScope, err = repo.LookupScope(context.Background(), WithName("fname-"+id))
 		assert.Nil(err)
 		assert.Equal(foundScope.GetPublicId(), s.GetPublicId())
+		assert.Equal(foundScope.GetDescription(), "")
 
 		err = conn.Where("key = ? and value = ?", "resource-public-id", s.PublicId).First(&metadata).Error
 		assert.Nil(err)
