@@ -26,10 +26,13 @@ func Test_NewScope(t *testing.T) {
 		assert.Nil(err)
 		assert.True(s.PublicId != "")
 
-		projScope, err := NewProject(s.PublicId)
+		id, err := uuid.GenerateUUID()
+		assert.Nil(err)
+		projScope, err := NewProject(s.PublicId, WithDescription(id))
 		assert.Nil(err)
 		assert.True(projScope.Scope != nil)
 		assert.Equal(projScope.GetParentId(), s.PublicId)
+		assert.Equal(projScope.GetDescription(), id)
 	})
 	t.Run("unknown-scope", func(t *testing.T) {
 		s, err := newScope(UnknownScope)
@@ -69,10 +72,14 @@ func Test_ScopeCreate(t *testing.T) {
 		assert.Nil(err)
 		assert.True(s.PublicId != "")
 
-		project, err := NewProject(s.PublicId)
+		id, err := uuid.GenerateUUID()
+		assert.Nil(err)
+
+		project, err := NewProject(s.PublicId, WithDescription(id))
 		assert.Nil(err)
 		assert.True(project.Scope != nil)
 		assert.Equal(project.Scope.ParentId, s.PublicId)
+		assert.Equal(project.GetDescription(), id)
 
 		err = w.Create(context.Background(), project)
 		assert.Nil(err)

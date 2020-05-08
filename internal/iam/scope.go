@@ -64,6 +64,7 @@ func newScope(scopeType ScopeType, opt ...Option) (*Scope, error) {
 	opts := getOpts(opt...)
 	withName := opts.withName
 	withScope := opts.withScope
+	withDescription := opts.withDescription
 
 	if scopeType == UnknownScope {
 		return nil, errors.New("error unknown scope type for new scope")
@@ -99,6 +100,9 @@ func newScope(scopeType ScopeType, opt ...Option) (*Scope, error) {
 	}
 	if withName != "" {
 		s.Name = withName
+	}
+	if withDescription != "" {
+		s.Description = withDescription
 	}
 	return s, nil
 }
