@@ -4,9 +4,8 @@ import (
 	"testing"
 )
 
-
 func TestOpen(t *testing.T) {
-	cleanup, url, err := StartDbInDocker(t)
+	cleanup, url, err := StartDbInDocker()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -40,7 +39,11 @@ func TestOpen(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			got, err := Open(tt.args.dbType, tt.args.connectionUrl)
-			defer func () { if err == nil { got.Close() } }()
+			defer func() {
+				if err == nil {
+					got.Close()
+				}
+			}()
 			if (err != nil) != tt.wantErr {
 				t.Errorf("Open() error = %v, wantErr %v", err, tt.wantErr)
 				return
@@ -52,9 +55,8 @@ func TestOpen(t *testing.T) {
 	}
 }
 
-
 func TestMigrate(t *testing.T) {
-	cleanup, url, err := StartDbInDocker(t)
+	cleanup, url, err := StartDbInDocker()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -71,7 +73,7 @@ func TestMigrate(t *testing.T) {
 		{
 			name: "valid",
 			args: args{
-				connectionUrl: url,
+				connectionUrl:       url,
 				migrationsDirectory: "migrations/postgres",
 			},
 			wantErr: false,
@@ -79,7 +81,7 @@ func TestMigrate(t *testing.T) {
 		{
 			name: "bad-url",
 			args: args{
-				connectionUrl: "",
+				connectionUrl:       "",
 				migrationsDirectory: "migrations/postgres",
 			},
 			wantErr: true,
@@ -87,7 +89,7 @@ func TestMigrate(t *testing.T) {
 		{
 			name: "bad-dir",
 			args: args{
-				connectionUrl: url,
+				connectionUrl:       url,
 				migrationsDirectory: "",
 			},
 			wantErr: true,
