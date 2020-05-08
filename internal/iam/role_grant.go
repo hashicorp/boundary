@@ -24,14 +24,14 @@ var _ db.VetForWriter = (*RoleGrant)(nil)
 
 // NewRoleGrant creates a new grant with a scope (project/organization)
 // options include: WithName
-func NewRoleGrant(primaryScope *Scope, role *Role, grant string, opt ...Option) (*RoleGrant, error) {
+func NewRoleGrant(scope *Scope, role *Role, grant string, opt ...Option) (*RoleGrant, error) {
 	opts := getOpts(opt...)
 	withName := opts.withName
-	if primaryScope == nil {
-		return nil, errors.New("error the role grant primary scope is nil")
+	if scope == nil {
+		return nil, errors.New("error the role grant scope is nil")
 	}
-	if primaryScope.Type != OrganizationScope.String() &&
-		primaryScope.Type != ProjectScope.String() {
+	if scope.Type != OrganizationScope.String() &&
+		scope.Type != ProjectScope.String() {
 		return nil, errors.New("role grants can only be within an organization or project scope")
 	}
 	if role == nil {
@@ -46,10 +46,10 @@ func NewRoleGrant(primaryScope *Scope, role *Role, grant string, opt ...Option) 
 	}
 	rg := &RoleGrant{
 		RoleGrant: &store.RoleGrant{
-			PublicId:       publicId,
-			PrimaryScopeId: primaryScope.GetPublicId(),
-			RoleId:         role.PublicId,
-			Grant:          grant,
+			PublicId: publicId,
+			ScopeId:  scope.GetPublicId(),
+			RoleId:   role.PublicId,
+			Grant:    grant,
 		},
 	}
 	if withName != "" {
@@ -73,34 +73,34 @@ func (g *RoleGrant) Clone() Resource {
 }
 
 // VetForWrite implements db.VetForWrite() interface
-func (g *RoleGrant) VetForWrite(ctx context.Context, r db.Reader, opType db.OpType) error {
+func (g *RoleGrant) VetForWrite(ctx context.Context, r db.Reader, opType db.OpType, opt ...db.Option) error {
 	if g.PublicId == "" {
 		return errors.New("error public id is empty string for grant write")
 	}
-	if g.PrimaryScopeId == "" {
-		return errors.New("error primary scope id not set for grant write")
+	if g.ScopeId == "" {
+		return errors.New("error scope id not set for grant write")
 	}
 	// make sure the scope is valid for users
-	if err := g.primaryScopeIsValid(ctx, r); err != nil {
+	if err := g.scopeIsValid(ctx, r); err != nil {
 		return err
 	}
 	return nil
 }
 
-func (g *RoleGrant) primaryScopeIsValid(ctx context.Context, r db.Reader) error {
-	ps, err := LookupPrimaryScope(ctx, r, g)
+func (g *RoleGrant) scopeIsValid(ctx context.Context, r db.Reader) error {
+	ps, err := LookupScope(ctx, r, g)
 	if err != nil {
 		return err
 	}
 	if ps.Type != OrganizationScope.String() && ps.Type != ProjectScope.String() {
-		return errors.New("error primary scope is not an organization or project for the grant")
+		return errors.New("error scope is not an organization or project for the grant")
 	}
 	return nil
 }
 
-// GetPrimaryScope returns the PrimaryScope for the RoleGrant
-func (g *RoleGrant) GetPrimaryScope(ctx context.Context, r db.Reader) (*Scope, error) {
-	return LookupPrimaryScope(ctx, r, g)
+// GetScope returns the scope for the RoleGrant
+func (g *RoleGrant) GetScope(ctx context.Context, r db.Reader) (*Scope, error) {
+	return LookupScope(ctx, r, g)
 }
 
 // ResourceType returns the type of the RoleGrant
@@ -108,7 +108,7 @@ func (*RoleGrant) ResourceType() ResourceType { return ResourceTypeRoleGrant }
 
 // Actions returns the  available actions for RoleGrant
 func (*RoleGrant) Actions() map[string]Action {
-	return StdActions()
+	return CrudActions()
 }
 
 // TableName returns the tablename to override the default gorm table name

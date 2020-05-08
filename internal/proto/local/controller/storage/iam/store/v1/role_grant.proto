@@ -27,12 +27,11 @@ message RoleGrant {
   // @inject_tag: `gorm:"default:null"`
   string description = 5;
 
-  // primary scope id of the PrimaryScope
+  // scope id for the role grant
   // @inject_tag: `gorm:"default:null"`
-  string primary_scope_id = 6;
-  // @inject_tag: gorm:"foreignkey:ScopeId"
-  Scope primary_scope = 7;
+  string scope_id = 6;
 
-  string role_id = 8;
-  string grant = 9;
+  string role_id = 7;
+
+  string grant = 8;
 }

@@ -6,12 +6,12 @@ import (
 	"time"
 
 	"github.com/golang/protobuf/ptypes/timestamp"
-	"gotest.tools/assert"
+	"github.com/stretchr/testify/assert"
 )
 
 func Test_TimestampValue(t *testing.T) {
 	t.Parallel()
-
+	assert := assert.New(t)
 	t.Run("valid", func(t *testing.T) {
 		ts := Timestamp{Timestamp: &timestamp.Timestamp{Seconds: 0, Nanos: 0}}
 		v, err := ts.Value()
@@ -35,7 +35,7 @@ func Test_TimestampValue(t *testing.T) {
 
 func Test_TimestampScan(t *testing.T) {
 	t.Parallel()
-
+	assert := assert.New(t)
 	t.Run("valid", func(t *testing.T) {
 		v := time.Unix(0, 0)
 		ts := Timestamp{}

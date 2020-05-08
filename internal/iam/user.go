@@ -24,13 +24,13 @@ var _ db.VetForWriter = (*User)(nil)
 
 // NewUser creates a new user and allows options:
 // WithName - to specify the user's friendly name
-func NewUser(primaryScope *Scope, opt ...Option) (*User, error) {
+func NewUser(scope *Scope, opt ...Option) (*User, error) {
 	opts := getOpts(opt...)
 	withName := opts.withName
-	if primaryScope == nil {
-		return nil, errors.New("error user primary scope is nil")
+	if scope == nil {
+		return nil, errors.New("error user scope is nil")
 	}
-	if primaryScope.Type != OrganizationScope.String() {
+	if scope.Type != OrganizationScope.String() {
 		return nil, errors.New("users can only be within an organization scope")
 	}
 	publicId, err := base62.Random(20)
@@ -39,8 +39,8 @@ func NewUser(primaryScope *Scope, opt ...Option) (*User, error) {
 	}
 	u := &User{
 		User: &store.User{
-			PublicId:       publicId,
-			PrimaryScopeId: primaryScope.GetPublicId(),
+			PublicId: publicId,
+			ScopeId:  scope.GetPublicId(),
 		},
 	}
 	if withName != "" {
@@ -157,34 +157,34 @@ func (u *User) Groups(ctx context.Context, r db.Reader) ([]*Group, error) {
 }
 
 // VetForWrite implements db.VetForWrite() interface
-func (u *User) VetForWrite(ctx context.Context, r db.Reader, opType db.OpType) error {
+func (u *User) VetForWrite(ctx context.Context, r db.Reader, opType db.OpType, opt ...db.Option) error {
 	if u.PublicId == "" {
 		return errors.New("error public id is empty string for user write")
 	}
-	if u.PrimaryScopeId == "" {
-		return errors.New("error primary scope id not set for user write")
+	if u.ScopeId == "" {
+		return errors.New("error scope id not set for user write")
 	}
 	// make sure the scope is valid for users
-	if err := u.primaryScopeIsValid(ctx, r); err != nil {
+	if err := u.scopeIsValid(ctx, r); err != nil {
 		return err
 	}
 	return nil
 }
 
-func (u *User) primaryScopeIsValid(ctx context.Context, r db.Reader) error {
-	ps, err := LookupPrimaryScope(ctx, r, u)
+func (u *User) scopeIsValid(ctx context.Context, r db.Reader) error {
+	ps, err := LookupScope(ctx, r, u)
 	if err != nil {
 		return err
 	}
 	if ps.Type != OrganizationScope.String() {
-		return errors.New("error primary scope is not an organization")
+		return errors.New("error scope is not an organization")
 	}
 	return nil
 }
 
-// GetPrimaryScope returns the PrimaryScope for the User
-func (u *User) GetPrimaryScope(ctx context.Context, r db.Reader) (*Scope, error) {
-	return LookupPrimaryScope(ctx, r, u)
+// GetScope returns the scope for the User
+func (u *User) GetScope(ctx context.Context, r db.Reader) (*Scope, error) {
+	return LookupScope(ctx, r, u)
 }
 
 // ResourceType returns the type of the User
@@ -192,7 +192,7 @@ func (*User) ResourceType() ResourceType { return ResourceTypeUser }
 
 // Actions returns the  available actions for Users
 func (*User) Actions() map[string]Action {
-	return StdActions()
+	return CrudActions()
 }
 
 // TableName returns the tablename to override the default gorm table name

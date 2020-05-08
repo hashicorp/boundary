@@ -17,7 +17,7 @@ func Test_NewGroupMember(t *testing.T) {
 
 	t.Run("valid", func(t *testing.T) {
 		w := db.GormReadWriter{Tx: conn}
-		s, err := NewScope(OrganizationScope)
+		s, err := NewOrganization()
 		assert.Nil(err)
 		assert.True(s.Scope != nil)
 		err = w.Create(context.Background(), s)
@@ -33,7 +33,7 @@ func Test_NewGroupMember(t *testing.T) {
 		assert.Nil(err)
 		assert.True(grp != nil)
 		assert.Equal(grp.Description, "this is a test group")
-		assert.Equal(s.PublicId, grp.PrimaryScopeId)
+		assert.Equal(s.PublicId, grp.ScopeId)
 		err = w.Create(context.Background(), grp)
 		assert.Nil(err)
 		assert.True(grp.PublicId != "")
@@ -47,7 +47,7 @@ func Test_NewGroupMember(t *testing.T) {
 	})
 	t.Run("bad-type", func(t *testing.T) {
 		w := db.GormReadWriter{Tx: conn}
-		s, err := NewScope(OrganizationScope)
+		s, err := NewOrganization()
 		assert.Nil(err)
 		assert.True(s.Scope != nil)
 		err = w.Create(context.Background(), s)
@@ -57,7 +57,7 @@ func Test_NewGroupMember(t *testing.T) {
 		role, err := NewRole(s)
 		assert.Nil(err)
 		assert.True(role != nil)
-		assert.Equal(s.PublicId, role.PrimaryScopeId)
+		assert.Equal(s.PublicId, role.ScopeId)
 		err = w.Create(context.Background(), role)
 		assert.Nil(err)
 		assert.True(role.PublicId != "")
@@ -65,7 +65,7 @@ func Test_NewGroupMember(t *testing.T) {
 		grp, err := NewGroup(s)
 		assert.Nil(err)
 		assert.True(grp != nil)
-		assert.Equal(s.PublicId, grp.PrimaryScopeId)
+		assert.Equal(s.PublicId, grp.ScopeId)
 		err = w.Create(context.Background(), grp)
 		assert.Nil(err)
 		assert.True(grp.PublicId != "")
@@ -77,7 +77,7 @@ func Test_NewGroupMember(t *testing.T) {
 	})
 	t.Run("nil-group", func(t *testing.T) {
 		w := db.GormReadWriter{Tx: conn}
-		s, err := NewScope(OrganizationScope)
+		s, err := NewOrganization()
 		assert.Nil(err)
 		assert.True(s.Scope != nil)
 		err = w.Create(context.Background(), s)
@@ -96,7 +96,7 @@ func Test_NewGroupMember(t *testing.T) {
 	})
 	t.Run("nil-user", func(t *testing.T) {
 		w := db.GormReadWriter{Tx: conn}
-		s, err := NewScope(OrganizationScope)
+		s, err := NewOrganization()
 		assert.Nil(err)
 		assert.True(s.Scope != nil)
 		err = w.Create(context.Background(), s)
@@ -106,7 +106,7 @@ func Test_NewGroupMember(t *testing.T) {
 		grp, err := NewGroup(s)
 		assert.Nil(err)
 		assert.True(grp != nil)
-		assert.Equal(s.PublicId, grp.PrimaryScopeId)
+		assert.Equal(s.PublicId, grp.ScopeId)
 		err = w.Create(context.Background(), grp)
 		assert.Nil(err)
 		assert.True(grp.PublicId != "")
@@ -119,7 +119,7 @@ func Test_NewGroupMember(t *testing.T) {
 
 	t.Run("nil-scope", func(t *testing.T) {
 		w := db.GormReadWriter{Tx: conn}
-		s, err := NewScope(OrganizationScope)
+		s, err := NewOrganization()
 		assert.Nil(err)
 		assert.True(s.Scope != nil)
 		err = w.Create(context.Background(), s)
@@ -129,7 +129,7 @@ func Test_NewGroupMember(t *testing.T) {
 		grp, err := NewGroup(s)
 		assert.Nil(err)
 		assert.True(grp != nil)
-		assert.Equal(s.PublicId, grp.PrimaryScopeId)
+		assert.Equal(s.PublicId, grp.ScopeId)
 		err = w.Create(context.Background(), grp)
 		assert.Nil(err)
 		assert.True(grp.PublicId != "")
@@ -146,7 +146,7 @@ func Test_NewGroupMember(t *testing.T) {
 	})
 }
 
-func TestGroupMemberUser_GetPrimaryScope(t *testing.T) {
+func TestGroupMemberUser_GetScope(t *testing.T) {
 	t.Parallel()
 	cleanup, conn := db.TestSetup(t, "../db/migrations/postgres")
 	defer cleanup()
@@ -155,7 +155,7 @@ func TestGroupMemberUser_GetPrimaryScope(t *testing.T) {
 
 	t.Run("valid", func(t *testing.T) {
 		w := db.GormReadWriter{Tx: conn}
-		s, err := NewScope(OrganizationScope)
+		s, err := NewOrganization()
 		assert.Nil(err)
 		assert.True(s.Scope != nil)
 		err = w.Create(context.Background(), s)
@@ -171,7 +171,7 @@ func TestGroupMemberUser_GetPrimaryScope(t *testing.T) {
 		assert.Nil(err)
 		assert.True(grp != nil)
 		assert.Equal(grp.Description, "this is a test group")
-		assert.Equal(s.PublicId, grp.PrimaryScopeId)
+		assert.Equal(s.PublicId, grp.ScopeId)
 		err = w.Create(context.Background(), grp)
 		assert.Nil(err)
 		assert.True(grp.PublicId != "")
@@ -182,9 +182,9 @@ func TestGroupMemberUser_GetPrimaryScope(t *testing.T) {
 		err = w.Create(context.Background(), gm)
 		assert.Nil(err)
 
-		primaryScope, err := gm.GetPrimaryScope(context.Background(), &w)
+		scope, err := gm.GetScope(context.Background(), &w)
 		assert.Nil(err)
-		assert.True(primaryScope != nil)
+		assert.True(scope != nil)
 	})
 }
 
@@ -192,7 +192,6 @@ func TestGroupMemberUser_Actions(t *testing.T) {
 	assert := assert.New(t)
 	r := &GroupMemberUser{}
 	a := r.Actions()
-	assert.Equal(a[ActionList.String()], ActionList)
 	assert.Equal(a[ActionCreate.String()], ActionCreate)
 	assert.Equal(a[ActionUpdate.String()], ActionUpdate)
 	assert.Equal(a[ActionRead.String()], ActionRead)

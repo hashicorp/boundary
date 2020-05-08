@@ -31,8 +31,8 @@ func getDefaultOptions() options {
 	}
 }
 
-// WitPublicId provides an optional public id
-func WitPublicId(id string) Option {
+// WithPublicId provides an optional public id
+func WithPublicId(id string) Option {
 	return func(o *options) {
 		o.withPublicId = id
 	}
@@ -45,8 +45,8 @@ func WithDescription(desc string) Option {
 	}
 }
 
-// WithScope provides an optional scope
-func WithScope(s *Scope) Option {
+// withScope provides an optional scope and used within the package
+func withScope(s *Scope) Option {
 	return func(o *options) {
 		o.withScope = s
 	}

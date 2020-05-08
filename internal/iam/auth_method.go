@@ -41,19 +41,19 @@ var _ db.VetForWriter = (*AuthMethod)(nil)
 
 // NewAuthMethod creates a new AuthMethod for a Scope (org or project)
 // and authentication type.  AuthMethods can only have an Organizational Scope
-func NewAuthMethod(primaryScope *Scope, authType AuthType, opt ...Option) (*AuthMethod, error) {
+func NewAuthMethod(scope *Scope, authType AuthType, opt ...Option) (*AuthMethod, error) {
 	opts := getOpts(opt...)
 	withName := opts.withName
 	if authType == AuthUnknown {
 		return nil, errors.New("error unknown auth type")
 	}
-	if primaryScope == nil {
+	if scope == nil {
 		return nil, errors.New("error scope is nil for new auth method")
 	}
-	if primaryScope.PublicId == "" {
+	if scope.PublicId == "" {
 		return nil, errors.New("error scope id is unset for new auth method")
 	}
-	if primaryScope.Type != OrganizationScope.String() {
+	if scope.Type != OrganizationScope.String() {
 		return nil, errors.New("auth method can only be within an organization scope")
 	}
 	publicId, err := base62.Random(20)
@@ -62,9 +62,9 @@ func NewAuthMethod(primaryScope *Scope, authType AuthType, opt ...Option) (*Auth
 	}
 	a := &AuthMethod{
 		AuthMethod: &store.AuthMethod{
-			PublicId:       publicId,
-			PrimaryScopeId: primaryScope.GetPublicId(),
-			Type:           authType.String(),
+			PublicId: publicId,
+			ScopeId:  scope.GetPublicId(),
+			Type:     authType.String(),
 		},
 	}
 	if withName != "" {
@@ -82,35 +82,35 @@ func (a *AuthMethod) Clone() Resource {
 }
 
 // VetForWrite implements db.VetForWrite() interface
-func (a *AuthMethod) VetForWrite(ctx context.Context, r db.Reader, opType db.OpType) error {
+func (a *AuthMethod) VetForWrite(ctx context.Context, r db.Reader, opType db.OpType, opt ...db.Option) error {
 	if a.PublicId == "" {
 		return errors.New("error public id is empty string for user write")
 	}
-	if a.PrimaryScopeId == "" {
-		return errors.New("error primary scope id not set for user write")
+	if a.ScopeId == "" {
+		return errors.New("error scope id not set for user write")
 	}
 	// make sure the scope is valid for auth methods
-	if err := a.primaryScopeIsValid(ctx, r); err != nil {
+	if err := a.scopeIsValid(ctx, r); err != nil {
 		return err
 	}
 	return nil
 }
 
-// primaryScopeIsValid makes sure the primary scope is an Organization
-func (p *AuthMethod) primaryScopeIsValid(ctx context.Context, r db.Reader) error {
-	ps, err := LookupPrimaryScope(ctx, r, p)
+// scopeIsValid makes sure the scope is an Organization
+func (p *AuthMethod) scopeIsValid(ctx context.Context, r db.Reader) error {
+	ps, err := LookupScope(ctx, r, p)
 	if err != nil {
 		return err
 	}
 	if ps.Type != OrganizationScope.String() {
-		return errors.New("error primary scope is not an organization")
+		return errors.New("error scope is not an organization")
 	}
 	return nil
 }
 
-// GetPrimaryScope returns the PrimaryScope for the AuthMethod
-func (p *AuthMethod) GetPrimaryScope(ctx context.Context, r db.Reader) (*Scope, error) {
-	return LookupPrimaryScope(ctx, r, p)
+// GetScope returns the scope for the AuthMethod
+func (p *AuthMethod) GetScope(ctx context.Context, r db.Reader) (*Scope, error) {
+	return LookupScope(ctx, r, p)
 }
 
 // ResourceType returns the type of the AuthMethod
@@ -118,7 +118,7 @@ func (*AuthMethod) ResourceType() ResourceType { return ResourceTypeAuthMethod }
 
 // Actions returns the  available actions for AuthMethod
 func (*AuthMethod) Actions() map[string]Action {
-	actions := StdActions()
+	actions := CrudActions()
 	return actions
 }
 

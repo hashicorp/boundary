@@ -47,11 +47,11 @@ func (v *assignedRoleView) TableName() string { return "iam_assigned_role_vw" }
 // NewAssignedRole creates a new role for the principal (User,Group) with a scope (project/organization)
 // This is the preferred way to create roles vs calling a specific role type constructor func
 // options include: WithName
-func NewAssignedRole(primaryScope *Scope, role *Role, principal Resource, opt ...Option) (AssignedRole, error) {
-	if primaryScope == nil {
+func NewAssignedRole(scope *Scope, role *Role, principal Resource, opt ...Option) (AssignedRole, error) {
+	if scope == nil {
 		return nil, errors.New("error scope is nil for assigning role")
 	}
-	if primaryScope.PublicId == "" {
+	if scope.PublicId == "" {
 		return nil, errors.New("error scope id is missing for assigning role")
 	}
 	if role == nil {
@@ -62,13 +62,13 @@ func NewAssignedRole(primaryScope *Scope, role *Role, principal Resource, opt ..
 	}
 	if principal.ResourceType() == ResourceTypeUser {
 		if u, ok := principal.(*User); ok {
-			return newUserRole(primaryScope, role, u, opt...)
+			return newUserRole(scope, role, u, opt...)
 		}
 		return nil, errors.New("error principal is not a user ptr for assigning role")
 	}
 	if principal.ResourceType() == ResourceTypeGroup {
 		if a, ok := principal.(*Group); ok {
-			return newGroupRole(primaryScope, role, a, opt...)
+			return newGroupRole(scope, role, a, opt...)
 		}
 		return nil, errors.New("error principal is not a group ptr for assigning role")
 	}
@@ -89,11 +89,11 @@ var _ db.VetForWriter = (*UserRole)(nil)
 
 // newUserRole creates a new user role with a scope (project/organization)
 // options include:  WithName
-func newUserRole(primaryScope *Scope, r *Role, u *User, opt ...Option) (AssignedRole, error) {
+func newUserRole(scope *Scope, r *Role, u *User, opt ...Option) (AssignedRole, error) {
 	opts := getOpts(opt...)
 	withName := opts.withName
-	if primaryScope == nil {
-		return nil, errors.New("error the user role primary scope is nil")
+	if scope == nil {
+		return nil, errors.New("error the user role scope is nil")
 	}
 	if u == nil {
 		return nil, errors.New("error the user is nil")
@@ -107,8 +107,8 @@ func newUserRole(primaryScope *Scope, r *Role, u *User, opt ...Option) (Assigned
 	if r.PublicId == "" {
 		return nil, errors.New("error the user role id is unset")
 	}
-	if primaryScope.Type != OrganizationScope.String() &&
-		primaryScope.Type != ProjectScope.String() {
+	if scope.Type != OrganizationScope.String() &&
+		scope.Type != ProjectScope.String() {
 		return nil, errors.New("user roles can only be within an organization or project scope")
 	}
 	publicId, err := base62.Random(20)
@@ -117,11 +117,11 @@ func newUserRole(primaryScope *Scope, r *Role, u *User, opt ...Option) (Assigned
 	}
 	ur := &UserRole{
 		UserRole: &store.UserRole{
-			PublicId:       publicId,
-			PrimaryScopeId: primaryScope.GetPublicId(),
-			PrincipalId:    u.PublicId,
-			RoleId:         r.PublicId,
-			Type:           UserRoleType.String(),
+			PublicId:    publicId,
+			ScopeId:     scope.GetPublicId(),
+			PrincipalId: u.PublicId,
+			RoleId:      r.PublicId,
+			Type:        UserRoleType.String(),
 		},
 	}
 	if withName != "" {
@@ -139,37 +139,37 @@ func (r *UserRole) Clone() Resource {
 }
 
 // VetForWrite implements db.VetForWrite() interface
-func (role *UserRole) VetForWrite(ctx context.Context, r db.Reader, opType db.OpType) error {
+func (role *UserRole) VetForWrite(ctx context.Context, r db.Reader, opType db.OpType, opt ...db.Option) error {
 	if role.PublicId == "" {
 		return errors.New("error public id is empty string for user role write")
 	}
-	if role.PrimaryScopeId == "" {
-		return errors.New("error primary scope id not set for user role write")
+	if role.ScopeId == "" {
+		return errors.New("error scope id not set for user role write")
 	}
 	if role.Type != UserRoleType.String() {
 		return errors.New("error role type is not user")
 	}
 	// make sure the scope is valid for user roles
-	if err := role.primaryScopeIsValid(ctx, r); err != nil {
+	if err := role.scopeIsValid(ctx, r); err != nil {
 		return err
 	}
 	return nil
 }
 
-func (role *UserRole) primaryScopeIsValid(ctx context.Context, r db.Reader) error {
-	ps, err := LookupPrimaryScope(ctx, r, role)
+func (role *UserRole) scopeIsValid(ctx context.Context, r db.Reader) error {
+	ps, err := LookupScope(ctx, r, role)
 	if err != nil {
 		return err
 	}
 	if ps.Type != OrganizationScope.String() && ps.Type != ProjectScope.String() {
-		return errors.New("error primary scope is not an organization or project for user role")
+		return errors.New("error scope is not an organization or project for user role")
 	}
 	return nil
 }
 
-// GetPrimaryScope returns the PrimaryScope for the user role
-func (role *UserRole) GetPrimaryScope(ctx context.Context, r db.Reader) (*Scope, error) {
-	return LookupPrimaryScope(ctx, r, role)
+// Getscope returns the scope for the user role
+func (role *UserRole) GetScope(ctx context.Context, r db.Reader) (*Scope, error) {
+	return LookupScope(ctx, r, role)
 }
 
 // ResourceType returns the type of the user role
@@ -177,7 +177,7 @@ func (*UserRole) ResourceType() ResourceType { return ResourceTypeAssignedUserRo
 
 // Actions returns the  available actions for user role
 func (*UserRole) Actions() map[string]Action {
-	return StdActions()
+	return CrudActions()
 }
 
 // TableName returns the tablename to override the default gorm table name
@@ -209,11 +209,11 @@ var _ db.VetForWriter = (*GroupRole)(nil)
 
 // newGroupRole creates a new group role with a scope (project/organization)
 // options include:  WithName
-func newGroupRole(primaryScope *Scope, r *Role, g *Group, opt ...Option) (AssignedRole, error) {
+func newGroupRole(scope *Scope, r *Role, g *Group, opt ...Option) (AssignedRole, error) {
 	opts := getOpts(opt...)
 	withName := opts.withName
-	if primaryScope == nil {
-		return nil, errors.New("error the group role primary scope is nil")
+	if scope == nil {
+		return nil, errors.New("error the group role scope is nil")
 	}
 	if g == nil {
 		return nil, errors.New("error the group is nil")
@@ -227,8 +227,8 @@ func newGroupRole(primaryScope *Scope, r *Role, g *Group, opt ...Option) (Assign
 	if r.PublicId == "" {
 		return nil, errors.New("error the group role id is unset")
 	}
-	if primaryScope.Type != OrganizationScope.String() &&
-		primaryScope.Type != ProjectScope.String() {
+	if scope.Type != OrganizationScope.String() &&
+		scope.Type != ProjectScope.String() {
 		return nil, errors.New("group roles can only be within an organization or project scope")
 	}
 	publicId, err := base62.Random(20)
@@ -237,11 +237,11 @@ func newGroupRole(primaryScope *Scope, r *Role, g *Group, opt ...Option) (Assign
 	}
 	gr := &GroupRole{
 		GroupRole: &store.GroupRole{
-			PublicId:       publicId,
-			PrimaryScopeId: primaryScope.GetPublicId(),
-			PrincipalId:    g.PublicId,
-			RoleId:         r.PublicId,
-			Type:           GroupRoleType.String(),
+			PublicId:    publicId,
+			ScopeId:     scope.GetPublicId(),
+			PrincipalId: g.PublicId,
+			RoleId:      r.PublicId,
+			Type:        GroupRoleType.String(),
 		},
 	}
 	if withName != "" {
@@ -259,37 +259,37 @@ func (r *GroupRole) Clone() Resource {
 }
 
 // VetForWrite implements db.VetForWrite() interface
-func (role *GroupRole) VetForWrite(ctx context.Context, r db.Reader, opType db.OpType) error {
+func (role *GroupRole) VetForWrite(ctx context.Context, r db.Reader, opType db.OpType, opt ...db.Option) error {
 	if role.PublicId == "" {
 		return errors.New("error public id is empty string for group role write")
 	}
-	if role.PrimaryScopeId == "" {
-		return errors.New("error primary scope id not set for group role write")
+	if role.ScopeId == "" {
+		return errors.New("error scope id not set for group role write")
 	}
 	if role.Type != GroupRoleType.String() {
 		return errors.New("error role type is not group")
 	}
 	// make sure the scope is valid for user roles
-	if err := role.primaryScopeIsValid(ctx, r); err != nil {
+	if err := role.scopeIsValid(ctx, r); err != nil {
 		return err
 	}
 	return nil
 }
 
-func (role *GroupRole) primaryScopeIsValid(ctx context.Context, r db.Reader) error {
-	ps, err := LookupPrimaryScope(ctx, r, role)
+func (role *GroupRole) scopeIsValid(ctx context.Context, r db.Reader) error {
+	ps, err := LookupScope(ctx, r, role)
 	if err != nil {
 		return err
 	}
 	if ps.Type != OrganizationScope.String() && ps.Type != ProjectScope.String() {
-		return errors.New("error primary scope is not an organization or project for group role")
+		return errors.New("error scope is not an organization or project for group role")
 	}
 	return nil
 }
 
-// GetPrimaryScope returns the PrimaryScope for the group role
-func (role *GroupRole) GetPrimaryScope(ctx context.Context, r db.Reader) (*Scope, error) {
-	return LookupPrimaryScope(ctx, r, role)
+// GetScope returns the scope for the group role
+func (role *GroupRole) GetScope(ctx context.Context, r db.Reader) (*Scope, error) {
+	return LookupScope(ctx, r, role)
 }
 
 // ResourceType returns the type of the group role
@@ -297,7 +297,7 @@ func (*GroupRole) ResourceType() ResourceType { return ResourceTypeAssignedGroup
 
 // Actions returns the  available actions for group role
 func (*GroupRole) Actions() map[string]Action {
-	return StdActions()
+	return CrudActions()
 }
 
 // TableName returns the tablename to override the default gorm table name

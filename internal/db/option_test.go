@@ -14,7 +14,7 @@ func Test_getOpts(t *testing.T) {
 	t.Parallel()
 	t.Run("WithOplog", func(t *testing.T) {
 		// test default of false
-		opts := getOpts()
+		opts := GetOpts()
 		testOpts := getDefaultOptions()
 		testOpts.withOplog = false
 		assert.True(reflect.DeepEqual(opts, testOpts))
@@ -26,7 +26,7 @@ func Test_getOpts(t *testing.T) {
 			"project":    []string{"central-info-systems", "local-info-systems"},
 		}
 		// try setting to true
-		opts = getOpts(WithOplog(wrapper, md))
+		opts = GetOpts(WithOplog(wrapper, md))
 		testOpts = getDefaultOptions()
 		testOpts.withOplog = true
 		testOpts.oplogOpts = oplogOpts{
@@ -37,13 +37,13 @@ func Test_getOpts(t *testing.T) {
 	})
 	t.Run("WithLookup", func(t *testing.T) {
 		// test default of true
-		opts := getOpts()
+		opts := GetOpts()
 		testOpts := getDefaultOptions()
 		testOpts.withLookup = false
 		assert.True(reflect.DeepEqual(opts, testOpts))
 
 		// try setting to false
-		opts = getOpts(WithLookup(true))
+		opts = GetOpts(WithLookup(true))
 		testOpts = getDefaultOptions()
 		testOpts.withLookup = true
 		assert.True(reflect.DeepEqual(opts, testOpts))
@@ -51,13 +51,13 @@ func Test_getOpts(t *testing.T) {
 	})
 	t.Run("WithDebug", func(t *testing.T) {
 		// test default of false
-		opts := getOpts()
+		opts := GetOpts()
 		testOpts := getDefaultOptions()
 		testOpts.withDebug = false
 		assert.True(reflect.DeepEqual(opts, testOpts))
 
 		// try setting to true
-		opts = getOpts(WithDebug(true))
+		opts = GetOpts(WithDebug(true))
 		testOpts = getDefaultOptions()
 		testOpts.withDebug = true
 		assert.True(reflect.DeepEqual(opts, testOpts))

@@ -24,13 +24,12 @@ message Role {
   // @inject_tag: `gorm:"default:null"`
   string name = 5;
 
+  // description of the role
   string description = 6;
 
-  // primary scope id of the PrimaryScope
+  // scope id for the role
   // @inject_tag: `gorm:"default:null"`
-  string primary_scope_id = 7;
-  // @inject_tag: gorm:"foreignkey:ScopeId"
-  Scope primary_scope = 8;
+  string scope_id = 7;
 
   // disabled is by default false and allows a Role to be marked disabled.
   bool disabled = 9;
@@ -54,11 +53,13 @@ message UserRole {
   // @inject_tag: `gorm:"default:null"`
   string name = 4;
 
-  // primary scope id of the PrimaryScope
+  // description of the user role
   // @inject_tag: `gorm:"default:null"`
-  string primary_scope_id = 5;
-  // @inject_tag: gorm:"foreignkey:ScopeId"
-  Scope primary_scope = 6;
+  string description = 5;
+
+  // scope id for the user role
+  // @inject_tag: `gorm:"default:null"`
+  string scope_id = 6;
 
   // role_id is the role of this principal.
   string role_id = 7;
@@ -87,11 +88,13 @@ message GroupRole {
   // @inject_tag: `gorm:"default:null"`
   string name = 4;
 
-  // primary scope id of the PrimaryScope
+  // description of the group role
   // @inject_tag: `gorm:"default:null"`
-  string primary_scope_id = 5;
-  // @inject_tag: gorm:"foreignkey:ScopeId"
-  Scope primary_scope = 6;
+  string description = 5;
+
+  // scope id for the group role
+  // @inject_tag: `gorm:"default:null"`
+  string scope_id = 6;
 
   // role_id is the role of this principal.
   string role_id = 7;
@@ -120,11 +123,13 @@ message AssignedRoleView {
   // @inject_tag: `gorm:"default:null"`
   string name = 4;
 
-  // primary scope id of the PrimaryScope
+  // description of the principal role
   // @inject_tag: `gorm:"default:null"`
-  string primary_scope_id = 5;
-  // @inject_tag: gorm:"foreignkey:ScopeId"
-  Scope primary_scope = 6;
+  string description = 5;
+
+  // scope id for the principal role
+  // @inject_tag: `gorm:"default:null"`
+  string scope_id = 6;
 
   // role_id is the role of this principal.
   string role_id = 7;

@@ -13,7 +13,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestNewDatabaseRepository(t *testing.T) {
+func TestNewRepository(t *testing.T) {
 	t.Parallel()
 	cleanup, conn := db.TestSetup(t, "../db/migrations/postgres")
 	defer cleanup()
@@ -30,7 +30,7 @@ func TestNewDatabaseRepository(t *testing.T) {
 	tests := []struct {
 		name          string
 		args          args
-		want          Repository
+		want          *Repository
 		wantErr       bool
 		wantErrString string
 	}{
@@ -41,7 +41,7 @@ func TestNewDatabaseRepository(t *testing.T) {
 				w:       rw,
 				wrapper: wrapper,
 			},
-			want: &dbRepository{
+			want: &Repository{
 				reader:  rw,
 				writer:  rw,
 				wrapper: wrapper,
@@ -86,11 +86,11 @@ func TestNewDatabaseRepository(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			got, err := NewRepository(tt.args.r, tt.args.w, tt.args.wrapper)
 			if (err != nil) != tt.wantErr {
-				t.Errorf("NewDatabaseRepository() error = %v, wantErr %v", err, tt.wantErr)
+				t.Errorf("NewRepository() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
 			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("NewDatabaseRepository() = %v, want %v", got, tt.want)
+				t.Errorf("NewRepository() = %v, want %v", got, tt.want)
 			}
 			if err != nil {
 				assert.Equal(err.Error(), tt.wantErrString)
@@ -98,7 +98,7 @@ func TestNewDatabaseRepository(t *testing.T) {
 		})
 	}
 }
-func Test_dbRepository_create(t *testing.T) {
+func Test_Repository_create(t *testing.T) {
 	t.Parallel()
 	cleanup, conn := db.TestSetup(t, "../db/migrations/postgres")
 	defer cleanup()
@@ -112,14 +112,14 @@ func Test_dbRepository_create(t *testing.T) {
 		id, err := uuid.GenerateUUID()
 		assert.Nil(err)
 
-		s, err := NewScope(OrganizationScope, WithName("fname-"+id))
+		s, err := NewOrganization(WithName("fname-" + id))
 		retScope, err := repo.create(context.Background(), s)
 		assert.Nil(err)
 		assert.True(retScope != nil)
 		assert.True(retScope.GetPublicId() != "")
 		assert.Equal(retScope.GetName(), "fname-"+id)
 
-		foundScope, err := repo.LookupScope(context.Background(), WitPublicId(s.PublicId))
+		foundScope, err := repo.LookupScope(context.Background(), WithPublicId(s.PublicId))
 		assert.Nil(err)
 		assert.Equal(foundScope.GetPublicId(), retScope.GetPublicId())
 
@@ -136,35 +136,6 @@ func Test_dbRepository_create(t *testing.T) {
 		err = conn.Where("id = ?", metadata.EntryId).First(&foundEntry).Error
 		assert.Nil(err)
 	})
-	t.Run("valid-user", func(t *testing.T) {
-		rw := &db.GormReadWriter{Tx: conn}
-		wrapper := db.TestWrapper(t)
-		repo, err := NewRepository(rw, rw, wrapper)
-
-		s, err := NewScope(OrganizationScope)
-		retScope, err := repo.create(context.Background(), s)
-		assert.Nil(err)
-		assert.True(retScope != nil)
-		assert.True(retScope.GetPublicId() != "")
-		assert.True(retScope.GetCreateTime() != nil)
-		assert.True(retScope.GetUpdateTime() != nil)
-
-		user, err := NewUser(retScope.(*Scope))
-		assert.Nil(err)
-		retUser, err := repo.create(context.Background(), user)
-		assert.Nil(err)
-		assert.True(retUser != nil)
-		assert.True(retUser.GetPublicId() != "")
-		assert.Equal(retUser.(*User).PrimaryScopeId, retScope.(*Scope).PublicId)
-
-		var metadata store.Metadata
-		err = conn.Where("key = ? and value = ?", "resource-public-id", user.PublicId).First(&metadata).Error
-		assert.Nil(err)
-
-		var foundEntry oplog.Entry
-		err = conn.Where("id = ?", metadata.GetEntryId()).First(&foundEntry).Error
-		assert.Nil(err)
-	})
 	t.Run("nil-resource", func(t *testing.T) {
 		rw := &db.GormReadWriter{Tx: conn}
 		wrapper := db.TestWrapper(t)
@@ -176,7 +147,7 @@ func Test_dbRepository_create(t *testing.T) {
 	})
 }
 
-func Test_dbRepository_update(t *testing.T) {
+func Test_Repository_update(t *testing.T) {
 	t.Parallel()
 	cleanup, conn := db.TestSetup(t, "../db/migrations/postgres")
 	defer cleanup()
@@ -190,7 +161,7 @@ func Test_dbRepository_update(t *testing.T) {
 		id, err := uuid.GenerateUUID()
 		assert.Nil(err)
 
-		s, err := NewScope(OrganizationScope)
+		s, err := NewOrganization()
 		retScope, err := repo.create(context.Background(), s)
 		assert.Nil(err)
 		assert.True(retScope != nil)

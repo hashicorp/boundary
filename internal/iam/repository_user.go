@@ -5,16 +5,16 @@ import (
 	"errors"
 )
 
-func (r *dbRepository) CreateUser(ctx context.Context, user *User, opt ...Option) (*User, error) {
+func (r *Repository) CreateUser(ctx context.Context, user *User, opt ...Option) (*User, error) {
 	resource, err := r.create(context.Background(), user)
 	return resource.(*User), err
 }
-func (r *dbRepository) UpdateUser(ctx context.Context, user *User, fieldMaskPaths []string, opt ...Option) (*User, error) {
+func (r *Repository) UpdateUser(ctx context.Context, user *User, fieldMaskPaths []string, opt ...Option) (*User, error) {
 	resource, err := r.update(context.Background(), user, fieldMaskPaths)
 	return resource.(*User), err
 }
 
-func (r *dbRepository) LookupUser(ctx context.Context, opt ...Option) (User, error) {
+func (r *Repository) LookupUser(ctx context.Context, opt ...Option) (User, error) {
 	opts := getOpts(opt...)
 	withPublicId := opts.withPublicId
 	withName := opts.withName

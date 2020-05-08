@@ -19,7 +19,7 @@ func Test_NewAssignedRole(t *testing.T) {
 
 	t.Run("valid", func(t *testing.T) {
 		w := db.GormReadWriter{Tx: conn}
-		s, err := NewScope(OrganizationScope)
+		s, err := NewOrganization()
 		assert.Nil(err)
 		assert.True(s.Scope != nil)
 		err = w.Create(context.Background(), s)
@@ -35,7 +35,7 @@ func Test_NewAssignedRole(t *testing.T) {
 		assert.Nil(err)
 		assert.True(role != nil)
 		assert.Equal(role.Description, "this is a test role")
-		assert.Equal(s.PublicId, role.PrimaryScopeId)
+		assert.Equal(s.PublicId, role.ScopeId)
 		err = w.Create(context.Background(), role)
 		assert.Nil(err)
 		assert.True(role.PublicId != "")
@@ -54,7 +54,7 @@ func Test_NewAssignedRole(t *testing.T) {
 		assert.Nil(err)
 		assert.True(grp != nil)
 		assert.Equal(grp.Description, "this is a test group")
-		assert.Equal(s.PublicId, grp.PrimaryScopeId)
+		assert.Equal(s.PublicId, grp.ScopeId)
 		err = w.Create(context.Background(), grp)
 		assert.Nil(err)
 		assert.True(grp.PublicId != "")
@@ -71,14 +71,14 @@ func Test_NewAssignedRole(t *testing.T) {
 	})
 	t.Run("bad-resource-type", func(t *testing.T) {
 		w := db.GormReadWriter{Tx: conn}
-		s, err := NewScope(OrganizationScope)
+		s, err := NewOrganization()
 		assert.Nil(err)
 		assert.True(s.Scope != nil)
 		err = w.Create(context.Background(), s)
 		assert.Nil(err)
 		assert.True(s.PublicId != "")
 
-		secondScope, err := NewScope(OrganizationScope)
+		secondScope, err := NewOrganization()
 		assert.Nil(err)
 		assert.True(secondScope.Scope != nil)
 		err = w.Create(context.Background(), secondScope)
@@ -89,7 +89,7 @@ func Test_NewAssignedRole(t *testing.T) {
 		assert.Nil(err)
 		assert.True(role != nil)
 		assert.Equal(role.Description, "this is a test role")
-		assert.Equal(s.PublicId, role.PrimaryScopeId)
+		assert.Equal(s.PublicId, role.ScopeId)
 		err = w.Create(context.Background(), role)
 		assert.Nil(err)
 		assert.True(role.PublicId != "")
@@ -101,7 +101,7 @@ func Test_NewAssignedRole(t *testing.T) {
 	})
 	t.Run("nil-role", func(t *testing.T) {
 		w := db.GormReadWriter{Tx: conn}
-		s, err := NewScope(OrganizationScope)
+		s, err := NewOrganization()
 		assert.Nil(err)
 		assert.True(s.Scope != nil)
 		err = w.Create(context.Background(), s)
@@ -120,7 +120,7 @@ func Test_NewAssignedRole(t *testing.T) {
 	})
 	t.Run("nil-principal", func(t *testing.T) {
 		w := db.GormReadWriter{Tx: conn}
-		s, err := NewScope(OrganizationScope)
+		s, err := NewOrganization()
 		assert.Nil(err)
 		assert.True(s.Scope != nil)
 		err = w.Create(context.Background(), s)
@@ -131,7 +131,7 @@ func Test_NewAssignedRole(t *testing.T) {
 		assert.Nil(err)
 		assert.True(role != nil)
 		assert.Equal(role.Description, "this is a test role")
-		assert.Equal(s.PublicId, role.PrimaryScopeId)
+		assert.Equal(s.PublicId, role.ScopeId)
 		err = w.Create(context.Background(), role)
 		assert.Nil(err)
 		assert.True(role.PublicId != "")
@@ -143,7 +143,7 @@ func Test_NewAssignedRole(t *testing.T) {
 	})
 	t.Run("nil-scope", func(t *testing.T) {
 		w := db.GormReadWriter{Tx: conn}
-		s, err := NewScope(OrganizationScope)
+		s, err := NewOrganization()
 		assert.Nil(err)
 		assert.True(s.Scope != nil)
 		err = w.Create(context.Background(), s)
@@ -154,7 +154,7 @@ func Test_NewAssignedRole(t *testing.T) {
 		assert.Nil(err)
 		assert.True(role != nil)
 		assert.Equal(role.Description, "this is a test role")
-		assert.Equal(s.PublicId, role.PrimaryScopeId)
+		assert.Equal(s.PublicId, role.ScopeId)
 		err = w.Create(context.Background(), role)
 		assert.Nil(err)
 		assert.True(role.PublicId != "")
@@ -171,7 +171,7 @@ func Test_NewAssignedRole(t *testing.T) {
 	})
 }
 
-func TestUserRole_GetPrimaryScope(t *testing.T) {
+func TestUserRole_GetScope(t *testing.T) {
 	t.Parallel()
 	cleanup, conn := db.TestSetup(t, "../db/migrations/postgres")
 	defer cleanup()
@@ -180,7 +180,7 @@ func TestUserRole_GetPrimaryScope(t *testing.T) {
 
 	t.Run("valid", func(t *testing.T) {
 		w := db.GormReadWriter{Tx: conn}
-		s, err := NewScope(OrganizationScope)
+		s, err := NewOrganization()
 		assert.Nil(err)
 		assert.True(s.Scope != nil)
 		err = w.Create(context.Background(), s)
@@ -196,7 +196,7 @@ func TestUserRole_GetPrimaryScope(t *testing.T) {
 		assert.Nil(err)
 		assert.True(role != nil)
 		assert.Equal(role.Description, "this is a test role")
-		assert.Equal(s.PublicId, role.PrimaryScopeId)
+		assert.Equal(s.PublicId, role.ScopeId)
 		err = w.Create(context.Background(), role)
 		assert.Nil(err)
 		assert.True(role.PublicId != "")
@@ -211,9 +211,9 @@ func TestUserRole_GetPrimaryScope(t *testing.T) {
 		assert.True(uRole != nil)
 		assert.Equal(uRole.GetPrincipalId(), user.PublicId)
 
-		primaryScope, err := uRole.GetPrimaryScope(context.Background(), &w)
+		scope, err := uRole.GetScope(context.Background(), &w)
 		assert.Nil(err)
-		assert.True(primaryScope != nil)
+		assert.True(scope != nil)
 	})
 }
 
@@ -221,7 +221,6 @@ func TestUserRole_Actions(t *testing.T) {
 	assert := assert.New(t)
 	r := &UserRole{}
 	a := r.Actions()
-	assert.Equal(a[ActionList.String()], ActionList)
 	assert.Equal(a[ActionCreate.String()], ActionCreate)
 	assert.Equal(a[ActionUpdate.String()], ActionUpdate)
 	assert.Equal(a[ActionRead.String()], ActionRead)
@@ -232,14 +231,13 @@ func TestGroupRole_Actions(t *testing.T) {
 	assert := assert.New(t)
 	r := &GroupRole{}
 	a := r.Actions()
-	assert.Equal(a[ActionList.String()], ActionList)
 	assert.Equal(a[ActionCreate.String()], ActionCreate)
 	assert.Equal(a[ActionUpdate.String()], ActionUpdate)
 	assert.Equal(a[ActionRead.String()], ActionRead)
 	assert.Equal(a[ActionDelete.String()], ActionDelete)
 }
 
-func TestGroupRole_GetPrimaryScope(t *testing.T) {
+func TestGroupRole_GetScope(t *testing.T) {
 	t.Parallel()
 	cleanup, conn := db.TestSetup(t, "../db/migrations/postgres")
 	defer cleanup()
@@ -248,7 +246,7 @@ func TestGroupRole_GetPrimaryScope(t *testing.T) {
 
 	t.Run("valid", func(t *testing.T) {
 		w := db.GormReadWriter{Tx: conn}
-		s, err := NewScope(OrganizationScope)
+		s, err := NewOrganization()
 		assert.Nil(err)
 		assert.True(s.Scope != nil)
 		err = w.Create(context.Background(), s)
@@ -259,7 +257,7 @@ func TestGroupRole_GetPrimaryScope(t *testing.T) {
 		assert.Nil(err)
 		assert.True(role != nil)
 		assert.Equal(role.Description, "this is a test role")
-		assert.Equal(s.PublicId, role.PrimaryScopeId)
+		assert.Equal(s.PublicId, role.ScopeId)
 		err = w.Create(context.Background(), role)
 		assert.Nil(err)
 		assert.True(role.PublicId != "")
@@ -268,7 +266,7 @@ func TestGroupRole_GetPrimaryScope(t *testing.T) {
 		assert.Nil(err)
 		assert.True(grp != nil)
 		assert.Equal(grp.Description, "this is a test group")
-		assert.Equal(s.PublicId, grp.PrimaryScopeId)
+		assert.Equal(s.PublicId, grp.ScopeId)
 		err = w.Create(context.Background(), grp)
 		assert.Nil(err)
 		assert.True(grp.PublicId != "")
@@ -283,8 +281,8 @@ func TestGroupRole_GetPrimaryScope(t *testing.T) {
 		assert.True(gRole != nil)
 		assert.Equal(gRole.GetPrincipalId(), grp.PublicId)
 
-		primaryScope, err := gRole.GetPrimaryScope(context.Background(), &w)
+		scope, err := gRole.GetScope(context.Background(), &w)
 		assert.Nil(err)
-		assert.True(primaryScope != nil)
+		assert.True(scope != nil)
 	})
 }

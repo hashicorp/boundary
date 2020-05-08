@@ -24,11 +24,13 @@ message GroupMemberUser {
   // @inject_tag: `gorm:"default:null"`
   string name = 4;
 
-  // primary scope id of the PrimaryScope
+  // description of the GroupMemberUser
   // @inject_tag: `gorm:"default:null"`
-  string primary_scope_id = 5;
-  // @inject_tag: gorm:"foreignkey:ScopeId"
-  Scope primary_scope = 6;
+  string description = 5;
+
+  // scope id for the GroupMemberUser
+  // @inject_tag: `gorm:"default:null"`
+  string scope_id = 6;
 
   // group_id is the Group of this GroupMemberUser.
   string group_id = 7;
@@ -58,11 +60,13 @@ message GroupMemberView {
   // @inject_tag: `gorm:"default:null"`
   string name = 4;
 
-  // primary scope id of the PrimaryScope
+  // description of the GroupMember
   // @inject_tag: `gorm:"default:null"`
-  string primary_scope_id = 5;
-  // @inject_tag: gorm:"foreignkey:ScopeId"
-  Scope primary_scope = 6;
+  string description = 5;
+
+  // scope id for the GroupMember
+  // @inject_tag: `gorm:"default:null"`
+  string scope_id = 6;
 
   // group_id is the Group of this GroupMember.
   string group_id = 7;

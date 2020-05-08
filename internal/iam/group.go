@@ -24,15 +24,15 @@ var _ db.VetForWriter = (*Group)(nil)
 
 // NewGroup creates a new group with a scope (project/organization)
 // options include: withDescripion, WithName
-func NewGroup(primaryScope *Scope, opt ...Option) (*Group, error) {
+func NewGroup(scope *Scope, opt ...Option) (*Group, error) {
 	opts := getOpts(opt...)
 	withName := opts.withName
 	withDescription := opts.withDescription
-	if primaryScope == nil {
-		return nil, errors.New("error the group primary scope is nil")
+	if scope == nil {
+		return nil, errors.New("error the group scope is nil")
 	}
-	if primaryScope.Type != OrganizationScope.String() &&
-		primaryScope.Type != ProjectScope.String() {
+	if scope.Type != OrganizationScope.String() &&
+		scope.Type != ProjectScope.String() {
 		return nil, errors.New("groups can only be within an organization or project scope")
 	}
 	publicId, err := base62.Random(20)
@@ -41,8 +41,8 @@ func NewGroup(primaryScope *Scope, opt ...Option) (*Group, error) {
 	}
 	g := &Group{
 		Group: &store.Group{
-			PublicId:       publicId,
-			PrimaryScopeId: primaryScope.GetPublicId(),
+			PublicId: publicId,
+			ScopeId:  scope.GetPublicId(),
 		},
 	}
 	if withName != "" {
@@ -75,14 +75,14 @@ func (g *Group) Members(ctx context.Context, r db.Reader) ([]GroupMember, error)
 		case UserMemberType.String():
 			gm := &GroupMemberUser{
 				GroupMemberUser: &store.GroupMemberUser{
-					PublicId:       m.PublicId,
-					CreateTime:     m.CreateTime,
-					UpdateTime:     m.UpdateTime,
-					Name:           m.Name,
-					PrimaryScopeId: m.PrimaryScopeId,
-					GroupId:        m.GroupId,
-					Type:           UserMemberType.String(),
-					MemberId:       m.MemberId,
+					PublicId:   m.PublicId,
+					CreateTime: m.CreateTime,
+					UpdateTime: m.UpdateTime,
+					Name:       m.Name,
+					ScopeId:    m.ScopeId,
+					GroupId:    m.GroupId,
+					Type:       UserMemberType.String(),
+					MemberId:   m.MemberId,
 				},
 			}
 			members = append(members, gm)
@@ -96,9 +96,9 @@ func (g *Group) Members(ctx context.Context, r db.Reader) ([]GroupMember, error)
 
 // AddMember will add member to the group and the caller is responsible for Creating that Member via db.Writer.Create()
 func (g *Group) AddMember(ctx context.Context, r db.Reader, m Resource, opt ...db.Option) (GroupMember, error) {
-	ps, err := g.GetPrimaryScope(ctx, r)
+	ps, err := g.GetScope(ctx, r)
 	if err != nil {
-		return nil, fmt.Errorf("error getting primary scope while adding member: %w", err)
+		return nil, fmt.Errorf("error getting scope while adding member: %w", err)
 	}
 	gm, err := NewGroupMember(ps, g, m)
 	if err != nil {
@@ -108,34 +108,34 @@ func (g *Group) AddMember(ctx context.Context, r db.Reader, m Resource, opt ...d
 }
 
 // VetForWrite implements db.VetForWrite() interface
-func (g *Group) VetForWrite(ctx context.Context, r db.Reader, opType db.OpType) error {
+func (g *Group) VetForWrite(ctx context.Context, r db.Reader, opType db.OpType, opt ...db.Option) error {
 	if g.PublicId == "" {
 		return errors.New("error public id is empty string for group write")
 	}
-	if g.PrimaryScopeId == "" {
-		return errors.New("error primary scope id not set for group write")
+	if g.ScopeId == "" {
+		return errors.New("error scope id not set for group write")
 	}
 	// make sure the scope is valid for users
-	if err := g.primaryScopeIsValid(ctx, r); err != nil {
+	if err := g.scopeIsValid(ctx, r); err != nil {
 		return err
 	}
 	return nil
 }
 
-func (g *Group) primaryScopeIsValid(ctx context.Context, r db.Reader) error {
-	ps, err := LookupPrimaryScope(ctx, r, g)
+func (g *Group) scopeIsValid(ctx context.Context, r db.Reader) error {
+	ps, err := LookupScope(ctx, r, g)
 	if err != nil {
 		return err
 	}
 	if ps.Type != OrganizationScope.String() && ps.Type != ProjectScope.String() {
-		return errors.New("error primary scope is not an organization or project for group")
+		return errors.New("error scope is not an organization or project for group")
 	}
 	return nil
 }
 
-// GetPrimaryScope returns the PrimaryScope for the Group
-func (g *Group) GetPrimaryScope(ctx context.Context, r db.Reader) (*Scope, error) {
-	return LookupPrimaryScope(ctx, r, g)
+// GetScope returns the scope for the Group
+func (g *Group) GetScope(ctx context.Context, r db.Reader) (*Scope, error) {
+	return LookupScope(ctx, r, g)
 }
 
 // ResourceType returns the type of the Group
@@ -143,7 +143,7 @@ func (*Group) ResourceType() ResourceType { return ResourceTypeGroup }
 
 // Actions returns the  available actions for Group
 func (*Group) Actions() map[string]Action {
-	return StdActions()
+	return CrudActions()
 }
 
 // TableName returns the tablename to override the default gorm table name

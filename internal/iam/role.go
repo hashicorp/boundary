@@ -24,15 +24,15 @@ var _ db.VetForWriter = (*Role)(nil)
 
 // NewRole creates a new role with a scope (project/organization)
 // options include: withDescripion, WithName
-func NewRole(primaryScope *Scope, opt ...Option) (*Role, error) {
+func NewRole(scope *Scope, opt ...Option) (*Role, error) {
 	opts := getOpts(opt...)
 	withName := opts.withName
 	withDescription := opts.withDescription
-	if primaryScope == nil {
-		return nil, errors.New("error the role primary scope is nil")
+	if scope == nil {
+		return nil, errors.New("error the role scope is nil")
 	}
-	if primaryScope.Type != OrganizationScope.String() &&
-		primaryScope.Type != ProjectScope.String() {
+	if scope.Type != OrganizationScope.String() &&
+		scope.Type != ProjectScope.String() {
 		return nil, errors.New("roles can only be within an organization or project scope")
 	}
 	publicId, err := base62.Random(20)
@@ -41,8 +41,8 @@ func NewRole(primaryScope *Scope, opt ...Option) (*Role, error) {
 	}
 	r := &Role{
 		Role: &store.Role{
-			PublicId:       publicId,
-			PrimaryScopeId: primaryScope.GetPublicId(),
+			PublicId: publicId,
+			ScopeId:  scope.GetPublicId(),
 		},
 	}
 	if withName != "" {
@@ -79,28 +79,28 @@ func (role *Role) AssignedRoles(ctx context.Context, r db.Reader) ([]AssignedRol
 		case UserRoleType.String():
 			pr := &UserRole{
 				UserRole: &store.UserRole{
-					PublicId:       vr.PublicId,
-					CreateTime:     vr.CreateTime,
-					UpdateTime:     vr.UpdateTime,
-					Name:           vr.Name,
-					PrimaryScopeId: vr.PrimaryScopeId,
-					RoleId:         vr.RoleId,
-					Type:           UserRoleType.String(),
-					PrincipalId:    vr.PrincipalId,
+					PublicId:    vr.PublicId,
+					CreateTime:  vr.CreateTime,
+					UpdateTime:  vr.UpdateTime,
+					Name:        vr.Name,
+					ScopeId:     vr.ScopeId,
+					RoleId:      vr.RoleId,
+					Type:        UserRoleType.String(),
+					PrincipalId: vr.PrincipalId,
 				},
 			}
 			pRoles = append(pRoles, pr)
 		case GroupRoleType.String():
 			pr := &GroupRole{
 				GroupRole: &store.GroupRole{
-					PublicId:       vr.PublicId,
-					CreateTime:     vr.CreateTime,
-					UpdateTime:     vr.UpdateTime,
-					Name:           vr.Name,
-					PrimaryScopeId: vr.PrimaryScopeId,
-					RoleId:         vr.RoleId,
-					Type:           GroupRoleType.String(),
-					PrincipalId:    vr.PrincipalId,
+					PublicId:    vr.PublicId,
+					CreateTime:  vr.CreateTime,
+					UpdateTime:  vr.UpdateTime,
+					Name:        vr.Name,
+					ScopeId:     vr.ScopeId,
+					RoleId:      vr.RoleId,
+					Type:        GroupRoleType.String(),
+					PrincipalId: vr.PrincipalId,
 				},
 			}
 			pRoles = append(pRoles, pr)
@@ -112,34 +112,34 @@ func (role *Role) AssignedRoles(ctx context.Context, r db.Reader) ([]AssignedRol
 }
 
 // VetForWrite implements db.VetForWrite() interface
-func (role *Role) VetForWrite(ctx context.Context, r db.Reader, opType db.OpType) error {
+func (role *Role) VetForWrite(ctx context.Context, r db.Reader, opType db.OpType, opt ...db.Option) error {
 	if role.PublicId == "" {
 		return errors.New("error public id is empty string for role write")
 	}
-	if role.PrimaryScopeId == "" {
-		return errors.New("error primary scope id not set for role write")
+	if role.ScopeId == "" {
+		return errors.New("error scope id not set for role write")
 	}
 	// make sure the scope is valid for users
-	if err := role.primaryScopeIsValid(ctx, r); err != nil {
+	if err := role.scopeIsValid(ctx, r); err != nil {
 		return err
 	}
 	return nil
 }
 
-func (role *Role) primaryScopeIsValid(ctx context.Context, r db.Reader) error {
-	ps, err := LookupPrimaryScope(ctx, r, role)
+func (role *Role) scopeIsValid(ctx context.Context, r db.Reader) error {
+	ps, err := LookupScope(ctx, r, role)
 	if err != nil {
 		return err
 	}
 	if ps.Type != OrganizationScope.String() && ps.Type != ProjectScope.String() {
-		return errors.New("error primary scope is not an organization or project for role")
+		return errors.New("error scope is not an organization or project for role")
 	}
 	return nil
 }
 
-// GetPrimaryScope returns the PrimaryScope for the Role
-func (role *Role) GetPrimaryScope(ctx context.Context, r db.Reader) (*Scope, error) {
-	return LookupPrimaryScope(ctx, r, role)
+// Getscope returns the scope for the Role
+func (role *Role) GetScope(ctx context.Context, r db.Reader) (*Scope, error) {
+	return LookupScope(ctx, r, role)
 }
 
 // ResourceType returns the type of the Role
@@ -147,7 +147,7 @@ func (*Role) ResourceType() ResourceType { return ResourceTypeRole }
 
 // Actions returns the  available actions for Role
 func (*Role) Actions() map[string]Action {
-	return StdActions()
+	return CrudActions()
 }
 
 // TableName returns the tablename to override the default gorm table name

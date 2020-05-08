@@ -24,11 +24,13 @@ message AuthMethod {
   // @inject_tag: `gorm:"default:null"`
   string name = 4;
 
-  // primary scope id of the PrimaryScope
+  // description of the AuthMethod
   // @inject_tag: `gorm:"default:null"`
-  string primary_scope_id = 5;
-  // @inject_tag: gorm:"foreignkey:ScopeId"
-  Scope primary_scope = 6;
+  string description = 5;
+
+  // scope id for the AuthMethod
+  // @inject_tag: `gorm:"default:null"`
+  string scope_id = 6;
 
   // disabled is by default false.
   bool disabled = 7;

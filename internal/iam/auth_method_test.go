@@ -18,7 +18,7 @@ func Test_NewAuthMethod(t *testing.T) {
 
 	t.Run("valid", func(t *testing.T) {
 		w := db.GormReadWriter{Tx: conn}
-		s, err := NewScope(OrganizationScope)
+		s, err := NewOrganization()
 		assert.Nil(err)
 		assert.True(s.Scope != nil)
 		err = w.Create(context.Background(), s)
@@ -41,7 +41,7 @@ func Test_NewAuthMethod(t *testing.T) {
 	})
 }
 
-func TestAuthMethod_GetPrimaryScope(t *testing.T) {
+func TestAuthMethod_GetScope(t *testing.T) {
 	t.Parallel()
 	cleanup, conn := db.TestSetup(t, "../db/migrations/postgres")
 	defer cleanup()
@@ -50,7 +50,7 @@ func TestAuthMethod_GetPrimaryScope(t *testing.T) {
 
 	t.Run("valid", func(t *testing.T) {
 		w := db.GormReadWriter{Tx: conn}
-		s, err := NewScope(OrganizationScope)
+		s, err := NewOrganization()
 		assert.Nil(err)
 		assert.True(s.Scope != nil)
 		err = w.Create(context.Background(), s)
@@ -65,9 +65,9 @@ func TestAuthMethod_GetPrimaryScope(t *testing.T) {
 		assert.True(meth != nil)
 		assert.Equal(meth.Type, AuthUserPass.String())
 
-		primaryScope, err := meth.GetPrimaryScope(context.Background(), &w)
+		scope, err := meth.GetScope(context.Background(), &w)
 		assert.Nil(err)
-		assert.Equal(primaryScope.GetPublicId(), s.PublicId)
+		assert.Equal(scope.GetPublicId(), s.PublicId)
 	})
 
 }
@@ -81,7 +81,7 @@ func TestAuthMethod_ResourceType(t *testing.T) {
 
 	t.Run("valid", func(t *testing.T) {
 		w := db.GormReadWriter{Tx: conn}
-		s, err := NewScope(OrganizationScope)
+		s, err := NewOrganization()
 		assert.Nil(err)
 		assert.True(s.Scope != nil)
 		err = w.Create(context.Background(), s)
@@ -105,7 +105,6 @@ func TestAuthMethod_Actions(t *testing.T) {
 	assert := assert.New(t)
 	meth := &AuthMethod{}
 	a := meth.Actions()
-	assert.Equal(a[ActionList.String()], ActionList)
 	assert.Equal(a[ActionCreate.String()], ActionCreate)
 	assert.Equal(a[ActionUpdate.String()], ActionUpdate)
 	assert.Equal(a[ActionRead.String()], ActionRead)
@@ -121,7 +120,7 @@ func TestAuthMethod_Clone(t *testing.T) {
 
 	t.Run("valid", func(t *testing.T) {
 		w := db.GormReadWriter{Tx: conn}
-		s, err := NewScope(OrganizationScope)
+		s, err := NewOrganization()
 		assert.Nil(err)
 		assert.True(s.Scope != nil)
 		err = w.Create(context.Background(), s)
@@ -141,7 +140,7 @@ func TestAuthMethod_Clone(t *testing.T) {
 	})
 	t.Run("not-equal", func(t *testing.T) {
 		w := db.GormReadWriter{Tx: conn}
-		s, err := NewScope(OrganizationScope)
+		s, err := NewOrganization()
 		assert.Nil(err)
 		assert.True(s.Scope != nil)
 		err = w.Create(context.Background(), s)
