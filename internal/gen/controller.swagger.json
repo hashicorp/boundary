@@ -1741,6 +1741,9 @@
           "type": "boolean",
           "format": "boolean",
           "description": "Marks the project as disabled.  Default is false."
+        },
+        "description": {
+          "type": "string"
         }
       }
     },

@@ -3,31 +3,31 @@ package projects
 import (
 	"context"
 
-	"github.com/golang/protobuf/ptypes"
 	"github.com/golang/protobuf/ptypes/wrappers"
 	"github.com/grpc-ecosystem/grpc-gateway/runtime"
 	pb "github.com/hashicorp/watchtower/internal/gen/controller/api/resources/projects"
 	pbs "github.com/hashicorp/watchtower/internal/gen/controller/api/services"
+	"github.com/hashicorp/watchtower/internal/iam"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
 
-type projectsRepo interface {
-	CreateProject(ctx context.Context, hc *repo.Project, opt ...Option) (*repo.Project, error)
-	UpdateProject(ctx context.Context, hc *repo.Project, fieldMaskPaths []string, opt ...Option) (*repo.Project, error) // LookupProject returns the Host catalog based on the provided id and any error associated with the lookup.
-	LookupProject(ctx context.Context, opt ...Option) (*repo.Project, error)
-	DeleteProject(ctx context.Context, opt ...Option) (bool, error)
+type scopeRepo interface {
+	CreateScope(ctx context.Context, p *iam.Scope, opt ...iam.Option) (*iam.Scope, error)
+	UpdateScope(ctx context.Context, p *iam.Scope, fieldMaskPaths []string, opt ...iam.Option) (*iam.Scope, error) // LookupProject returns the Host catalog based on the provided id and any error associated with the lookup.
+	LookupScope(ctx context.Context, opt ...iam.Option) (*iam.Scope, error)
+	DeleteScope(ctx context.Context, opt ...iam.Option) (bool, error)
 
 	// TODO: Sure this up with repository expectations for list operations.
-	ListProjects(ctx context.Context, opt ...Option) ([]repo.Project, error)
+	ListProjects(ctx context.Context, opt ...iam.Option) ([]iam.Scope, error)
 	// TODO: Figure out the appropriate way to verify the path is appropriate, whether as a separate method or merging this into the methods above.
 }
 
 type Service struct {
-	repo projectsRepo
+	repo scopeRepo
 }
 
-func NewService(repo repo) *Service {
+func NewService(repo scopeRepo) *Service {
 	return &Service{repo}
 }
 
@@ -44,7 +44,7 @@ func (s Service) GetProject(ctx context.Context, req *pbs.GetProjectRequest) (*p
 	if err := validateGetProjectRequest(req); err != nil {
 		return nil, err
 	}
-	p, err := s.repo.LookupProject(ctx, WithPublicId(req.GetId()))
+	p, err := s.repo.LookupScope(ctx, iam.WitPublicId(req.GetId()))
 	if err != nil {
 		return nil, err
 	}
@@ -52,7 +52,7 @@ func (s Service) GetProject(ctx context.Context, req *pbs.GetProjectRequest) (*p
 		return nil, status.Errorf(codes.NotFound, "Could not find Project with id %q", req.GetId())
 	}
 	resp := &pbs.GetProjectResponse{}
-	resp.Item = toProto(req.OrgId, p)
+	resp.Item = toProto(p)
 	return resp, nil
 }
 
@@ -74,7 +74,7 @@ func (s Service) DeleteProject(ctx context.Context, req *pbs.DeleteProjectReques
 	if err := validateDeleteProjectRequest(req); err != nil {
 		return nil, err
 	}
-	existed, err := s.repo.DeleteProject(ctx, WithPublicId(req.Id))
+	existed, err := s.repo.DeleteScope(ctx, iam.WitPublicId(req.Id))
 	if err != nil {
 		// TODO: Handle errors appropriately
 		return nil, status.Errorf(codes.Internal, "Couldn't delete Host Catalog: %v", err)
@@ -82,28 +82,31 @@ func (s Service) DeleteProject(ctx context.Context, req *pbs.DeleteProjectReques
 	return &pbs.DeleteProjectResponse{Existed: existed}, nil
 }
 
-func toRepo(id string, in pb.Project) repo.Project {
-	out := repo.Project{ID: id}
-	if in.GetName() != nil {
-		out.Name = in.GetName().GetValue()
+func toRepo(orgID string, in pb.Project) *iam.Scope {
+	sopt := []iam.Option{}
+	// TODO: Handle setting the values to nil value.
+	if name := in.GetName().GetValue(); name != "" {
+		sopt = append(sopt, iam.WithName(name))
 	}
-	if in.GetDisabled() != nil {
-		out.Disabled = in.GetDisabled().GetValue()
+	if desc := in.GetDescription().GetValue(); desc != "" {
+		sopt = append(sopt, iam.WithDescription(desc))
 	}
-	return out
+	// TODO: Don't ignore errors
+	p, _ := iam.NewProject(orgID, sopt...)
+	return p
 }
 
-func toProto(orgID, in *repo.Project) *pb.Project {
-	out := pb.Project{}
-	if in.Disabled {
-		out.Disabled = &wrappers.BoolValue{Value: in.Disabled}
+func toProto(in *iam.Scope) *pb.Project {
+	// TODO: Decide if we should put the id prefix here or in scopes.
+	out := pb.Project{Id: in.GetPublicId()}
+	if in.GetDescription() != "" {
+		out.Description = &wrappers.StringValue{Value: in.GetDescription()}
 	}
-	if in.Name != "" {
-		out.Name = &wrappers.StringValue{Value: in.Name}
+	if in.GetName() != "" {
+		out.Name = &wrappers.StringValue{Value: in.GetName()}
 	}
-	// TODO: Don't ignore the errors.
-	out.CreatedTime, _ = ptypes.TimestampProto(in.CreatedTime)
-	out.UpdatedTime, _ = ptypes.TimestampProto(in.UpdatedTime)
+	out.CreatedTime = in.GetCreateTime().GetTimestamp()
+	out.UpdatedTime = in.GetUpdateTime().GetTimestamp()
 	return &out
 }
 

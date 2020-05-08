@@ -21,4 +21,6 @@ message Project {
 
 	// Marks the project as disabled.  Default is false.
 	google.protobuf.BoolValue disabled = 5;
+
+	google.protobuf.StringValue description = 6;
 }
