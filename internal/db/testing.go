@@ -60,6 +60,15 @@ func initDbInDocker(t *testing.T, migrationsDirectory string) (cleanup func(), r
 		TestInitStore(t, func() {}, os.Getenv("PG_URL"), migrationsDirectory)
 		return func() {}, os.Getenv("PG_URL"), nil
 	}
+	c, url, err := StartDbInDocker(t)
+	if err != nil {
+		return func() {}, "", fmt.Errorf("could not start docker: %w", err)
+	}
+	TestInitStore(t, c, url, migrationsDirectory)
+	return c, url, nil
+}
+
+func StartDbInDocker(t *testing.T) (cleanup func(), retURL string, err error) {
 	pool, err := dockertest.NewPool("")
 	if err != nil {
 		return func() {}, "", fmt.Errorf("could not connect to docker: %w", err)
@@ -90,7 +99,6 @@ func initDbInDocker(t *testing.T, migrationsDirectory string) (cleanup func(), r
 	}); err != nil {
 		return func() {}, "", fmt.Errorf("could not connect to docker: %w", err)
 	}
-	TestInitStore(t, c, url, migrationsDirectory)
 	return c, url, nil
 }
 
