@@ -119,7 +119,7 @@ func Test_Repository_create(t *testing.T) {
 		assert.True(retScope.GetPublicId() != "")
 		assert.Equal(retScope.GetName(), "fname-"+id)
 
-		foundScope, err := repo.LookupScope(context.Background(), WitPublicId(s.PublicId))
+		foundScope, err := repo.LookupScope(context.Background(), WithPublicId(s.PublicId))
 		assert.Nil(err)
 		assert.Equal(foundScope.GetPublicId(), retScope.GetPublicId())
 
