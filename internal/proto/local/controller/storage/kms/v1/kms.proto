@@ -1,0 +1,27 @@
+syntax = "proto3";
+
+package controller.storage.kms.v1;
+option go_package = "github.com/hashicorp/watchtower/internal/kms/store;store";
+
+// KeyEntry contains information about a key used within the Watchtower. It
+// consits of a wrapped key, its ID information, and information about its
+// parent key ID. No parent means it's encrypted by the top-level KMS. Key IDs
+// should follow a pattern of "<use>_<key#>", so the root key wrapped by the
+// KMS should be "root_1" rotated to "root_2", etc. while a key used for
+// database encryption of sensitive values would be wrapped by a root key and
+// would be "db_1", "db_2", etc.
+message KeyEntry {
+	// ParentKeyId is the parent key ID. An empty string means the top-level
+	// KMS.
+	string parent_key_id = 1;
+
+	// KeyId is this key's ID. This can be used to form a key tree. For
+	// instance, first we'd unwrap existing "root_X" keys and put into a
+	// multiwrapper; then we can use those keys to decrypt other keys whose
+	// parent_key_id starts with "root_".
+	string key_id = 2;
+
+	// Key is the key itself. This should be a marshaled
+	// wrapping.EncryptedBlobInfo.
+	bytes key = 3;
+}
