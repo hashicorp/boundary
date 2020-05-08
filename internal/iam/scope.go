@@ -162,13 +162,14 @@ func (s *Scope) VetForWrite(ctx context.Context, r db.Reader, opType db.OpType, 
 
 // ResourceType returns the type of scope
 func (s *Scope) ResourceType() ResourceType {
-	if s.Type == OrganizationScope.String() {
+	switch s.Type {
+	case OrganizationScope.String():
 		return ResourceTypeOrganization
-	}
-	if s.Type == ProjectScope.String() {
+	case ProjectScope.String():
 		return ResourceTypeProject
+	default:
+		return ResourceTypeScope
 	}
-	return ResourceTypeScope
 }
 
 // Actions returns the  available actions for Scopes
