@@ -156,11 +156,14 @@ func TestScope_Actions(t *testing.T) {
 	assert := assert.New(t)
 	s := &Scope{}
 	a := s.Actions()
-	assert.Equal(a[ActionList.String()], ActionList)
 	assert.Equal(a[ActionCreate.String()], ActionCreate)
 	assert.Equal(a[ActionUpdate.String()], ActionUpdate)
 	assert.Equal(a[ActionRead.String()], ActionRead)
 	assert.Equal(a[ActionDelete.String()], ActionDelete)
+
+	if _, ok := a[ActionList.String()]; ok {
+		t.Errorf("scopes should not include %s as an action", ActionList.String())
+	}
 }
 
 func TestScope_ResourceType(t *testing.T) {
