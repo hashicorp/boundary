@@ -42,6 +42,7 @@ type Command struct {
 	flagDevAdminPassword               string
 	flagDevControllerAPIListenAddr     string
 	flagDevControllerClusterListenAddr string
+	flagDevOrgId                       string
 	flagCombineLogs                    bool
 }
 
@@ -103,6 +104,15 @@ func (c *Command) Flags() *base.FlagSets {
 		Target: &c.flagDev,
 		Usage: "Enable development mode. As the name implies, do not run \"dev\" mode in " +
 			"production.",
+	})
+
+	f.StringVar(&base.StringVar{
+		Name:    "dev-org-id",
+		Target:  &c.flagDevOrgId,
+		Default: "",
+		EnvVar:  "WATCHTWER_DEV_ORG_ID",
+		Usage: "Auto-created organization ID. This only applies when running in \"dev\" " +
+			"mode.",
 	})
 
 	f.StringVar(&base.StringVar{
@@ -298,6 +308,10 @@ func (c *Command) ParseFlagsAndConfig(args []string) int {
 		if err != nil {
 			c.UI.Error(fmt.Errorf("Error creating dev config: %s", err).Error())
 			return 1
+		}
+
+		if c.flagDevOrgId != "" {
+			c.Config.DefaultOrgId = c.flagDevOrgId
 		}
 
 		for _, l := range c.Config.Listeners {
