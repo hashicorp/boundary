@@ -12,6 +12,9 @@ import (
 	"text/template"
 )
 
+// generate looks for migration sql in a directory for the given flavor and
+// applies the templates below to the contents of the files, building up a
+// migrations map for the flavor
 func generate(flavor string) {
 	baseDir := os.Getenv("GEN_BASEPATH") + fmt.Sprint("/internal/db/migrations")
 	dir, err := os.Open(fmt.Sprintf("%s/%s", baseDir, flavor))

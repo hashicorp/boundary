@@ -35,7 +35,7 @@ func (m *migrationDriver) Open(name string) (http.File, error) {
 	return ff, nil
 }
 
-// NewMigrationSource creates a source.Driver
+// NewMigrationSource creates a source.Driver using httpfs with the given flavor
 func NewMigrationSource(flavor string) (source.Driver, error) {
 	switch flavor {
 	case "postgres":
@@ -66,17 +66,22 @@ func (f *fakeFile) Close() error { return nil }
 // Readdir returns os.FileInfo values, in sorted order, and eliding the
 // migrations "dir"
 func (f *fakeFile) Readdir(count int) ([]os.FileInfo, error) {
+	// Get the right map
 	var migrationsMap map[string]*fakeFile
 	switch f.flavor {
 	case "postgres":
 		migrationsMap = postgresMigrations
 	}
-	ret := make([]os.FileInfo, 0, len(migrationsMap))
+
+	// Sort the keys. May not be necessary but feels nice.
 	keys := make([]string, 0, len(migrationsMap))
 	for k := range migrationsMap {
 		keys = append(keys, k)
 	}
 	sort.Strings(keys)
+
+	// Create the slice of fileinfo objects to return
+	ret := make([]os.FileInfo, 0, len(migrationsMap))
 	for _, v := range keys {
 		if v == "migrations" {
 			continue
@@ -90,6 +95,7 @@ func (f *fakeFile) Readdir(count int) ([]os.FileInfo, error) {
 	return ret, nil
 }
 
+// Stat returns a new fakeFileInfo object with the necessary bits
 func (f *fakeFile) Stat() (os.FileInfo, error) {
 	return &fakeFileInfo{
 		name: f.name,
