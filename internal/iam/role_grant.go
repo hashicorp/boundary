@@ -19,7 +19,7 @@ type RoleGrant struct {
 
 // ensure that RoleGrant implements the interfaces of: Resource, ClonableResource and db.VetForWriter
 var _ Resource = (*RoleGrant)(nil)
-var _ ClonableResource = (*RoleGrant)(nil)
+var _ Clonable = (*RoleGrant)(nil)
 var _ db.VetForWriter = (*RoleGrant)(nil)
 
 // NewRoleGrant creates a new grant with a scope (project/organization)
@@ -65,7 +65,7 @@ func allocRoleGrant() RoleGrant {
 }
 
 // Clone creates a clone of the RoleGrant
-func (g *RoleGrant) Clone() Resource {
+func (g *RoleGrant) Clone() interface{} {
 	cp := proto.Clone(g.RoleGrant)
 	return &RoleGrant{
 		RoleGrant: cp.(*store.RoleGrant),

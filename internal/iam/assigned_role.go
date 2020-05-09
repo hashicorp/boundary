@@ -83,7 +83,7 @@ type UserRole struct {
 
 // ensure that UserRole implements the interfaces of: Resource, ClonableResource, AssignedRole and db.VetForWriter
 var _ Resource = (*UserRole)(nil)
-var _ ClonableResource = (*UserRole)(nil)
+var _ Clonable = (*UserRole)(nil)
 var _ AssignedRole = (*UserRole)(nil)
 var _ db.VetForWriter = (*UserRole)(nil)
 
@@ -131,7 +131,7 @@ func newUserRole(scope *Scope, r *Role, u *User, opt ...Option) (AssignedRole, e
 }
 
 // Clone creates a clone of the UserRole
-func (r *UserRole) Clone() Resource {
+func (r *UserRole) Clone() interface{} {
 	cp := proto.Clone(r.UserRole)
 	return &UserRole{
 		UserRole: cp.(*store.UserRole),
@@ -203,7 +203,7 @@ type GroupRole struct {
 
 // ensure that GroupRole implements the interfaces of: Resource, ClonableResource, AssignedRole and db.VetForWriter
 var _ Resource = (*GroupRole)(nil)
-var _ ClonableResource = (*GroupRole)(nil)
+var _ Clonable = (*GroupRole)(nil)
 var _ AssignedRole = (*GroupRole)(nil)
 var _ db.VetForWriter = (*GroupRole)(nil)
 
@@ -251,7 +251,7 @@ func newGroupRole(scope *Scope, r *Role, g *Group, opt ...Option) (AssignedRole,
 }
 
 // Clone creates a clone of the GroupRole
-func (r *GroupRole) Clone() Resource {
+func (r *GroupRole) Clone() interface{} {
 	cp := proto.Clone(r.GroupRole)
 	return &GroupRole{
 		GroupRole: cp.(*store.GroupRole),

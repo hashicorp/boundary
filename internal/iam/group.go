@@ -19,7 +19,7 @@ type Group struct {
 
 // ensure that Group implements the interfaces of: Resource, ClonableResource, and db.VetForWriter
 var _ Resource = (*Group)(nil)
-var _ ClonableResource = (*Group)(nil)
+var _ Clonable = (*Group)(nil)
 var _ db.VetForWriter = (*Group)(nil)
 
 // NewGroup creates a new group with a scope (project/organization)

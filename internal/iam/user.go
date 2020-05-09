@@ -19,7 +19,7 @@ type User struct {
 
 // ensure that User implements the interfaces of: Resource, ClonableResource and db.VetForWriter
 var _ Resource = (*User)(nil)
-var _ ClonableResource = (*User)(nil)
+var _ Clonable = (*User)(nil)
 var _ db.VetForWriter = (*User)(nil)
 
 // NewUser creates a new user and allows options:
@@ -56,7 +56,7 @@ func allocUser() User {
 }
 
 // Clone creates a clone of the User
-func (u *User) Clone() Resource {
+func (u *User) Clone() interface{} {
 	cp := proto.Clone(u.User)
 	return &User{
 		User: cp.(*store.User),

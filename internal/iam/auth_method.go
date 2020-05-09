@@ -36,7 +36,7 @@ type AuthMethod struct {
 
 // check that required interfaces are implemented: Resource, ClonableResource, db.VetForWriter
 var _ Resource = (*AuthMethod)(nil)
-var _ ClonableResource = (*AuthMethod)(nil)
+var _ Clonable = (*AuthMethod)(nil)
 var _ db.VetForWriter = (*AuthMethod)(nil)
 
 // NewAuthMethod creates a new AuthMethod for a Scope (org or project)
@@ -74,7 +74,7 @@ func NewAuthMethod(scope *Scope, authType AuthType, opt ...Option) (*AuthMethod,
 }
 
 // Clone creates a clone of the AuthMethod
-func (a *AuthMethod) Clone() Resource {
+func (a *AuthMethod) Clone() interface{} {
 	cp := proto.Clone(a.AuthMethod)
 	return &AuthMethod{
 		AuthMethod: cp.(*store.AuthMethod),

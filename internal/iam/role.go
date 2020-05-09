@@ -19,7 +19,7 @@ type Role struct {
 
 // ensure that Group implements the interfaces of: Resource, ClonableResource, and db.VetForWriter
 var _ Resource = (*Role)(nil)
-var _ ClonableResource = (*Role)(nil)
+var _ Clonable = (*Role)(nil)
 var _ db.VetForWriter = (*Role)(nil)
 
 // NewRole creates a new role with a scope (project/organization)
@@ -55,7 +55,7 @@ func NewRole(scope *Scope, opt ...Option) (*Role, error) {
 }
 
 // Clone creates a clone of the Role
-func (r *Role) Clone() Resource {
+func (r *Role) Clone() interface{} {
 	cp := proto.Clone(r.Role)
 	return &Role{
 		Role: cp.(*store.Role),

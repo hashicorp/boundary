@@ -71,8 +71,8 @@ func (r ResourceType) String() string {
 	}[r]
 }
 
-type ClonableResource interface {
-	Clone() Resource
+type Clonable interface {
+	Clone() interface{}
 }
 
 // ResourceWithScope defines an interface for Resources that have a scope
