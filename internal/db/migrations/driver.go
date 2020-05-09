@@ -30,6 +30,7 @@ func (m *migrationDriver) Open(name string) (http.File, error) {
 		return nil, os.ErrNotExist
 	}
 	ff.name = strings.TrimPrefix(name, "migrations/")
+	ff.reader = bytes.NewReader(ff.bytes)
 	ff.flavor = m.flavor
 	return ff, nil
 }
@@ -47,6 +48,7 @@ func NewMigrationSource(flavor string) (source.Driver, error) {
 // fakeFile is used to satisfy the http.File interface
 type fakeFile struct {
 	name   string
+	bytes  []byte
 	reader *bytes.Reader
 	flavor string
 }
@@ -91,7 +93,7 @@ func (f *fakeFile) Readdir(count int) ([]os.FileInfo, error) {
 func (f *fakeFile) Stat() (os.FileInfo, error) {
 	return &fakeFileInfo{
 		name: f.name,
-		size: int64(f.reader.Len()),
+		size: int64(len(f.bytes)),
 	}, nil
 }
 

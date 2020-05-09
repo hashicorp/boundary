@@ -80,6 +80,6 @@ var {{ .Type }}Migrations = map[string]*fakeFile{
 var migrationsValueTemplate = template.Must(template.New("").Parse(
 	`"migrations/{{ .Name }}": {
 		name: "{{ .Name }}",
-		reader: bytes.NewReader([]byte(` + "`\n{{ .Contents }}\n`" + `)),
+		bytes: []byte(` + "`\n{{ .Contents }}\n`" + `),
 	},
 `))
