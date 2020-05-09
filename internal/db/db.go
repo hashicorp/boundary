@@ -56,13 +56,21 @@ func Migrate(connectionUrl string, migrationsDirectory string) error {
 }
 
 // StartDbInDocker
-func StartDbInDocker() (cleanup func() error, retURL string, err error) {
+func StartDbInDocker(flavor string) (cleanup func() error, retURL string, err error) {
 	pool, err := dockertest.NewPool("")
 	if err != nil {
 		return func() error { return nil }, "", fmt.Errorf("could not connect to docker: %w", err)
 	}
 
-	resource, err := pool.Run("postgres", "latest", []string{"POSTGRES_PASSWORD=secret", "POSTGRES_DB=watchtower"})
+	var resource *dockertest.Resource
+	var url string
+	switch flavor {
+	case "postgres":
+		resource, err = pool.Run("postgres", "latest", []string{"POSTGRES_PASSWORD=secret", "POSTGRES_DB=watchtower"})
+		url = "postgres://postgres:secret@localhost:%s?sslmode=disable"
+	default:
+		panic(fmt.Sprintf("unknown flavor %q", flavor))
+	}
 	if err != nil {
 		return func() error { return nil }, "", fmt.Errorf("could not start resource: %w", err)
 	}
@@ -71,12 +79,12 @@ func StartDbInDocker() (cleanup func() error, retURL string, err error) {
 		return cleanupDockerResource(pool, resource)
 	}
 
-	url := fmt.Sprintf("postgres://postgres:secret@localhost:%s?sslmode=disable", resource.GetPort("5432/tcp"))
+	url = fmt.Sprintf(url, resource.GetPort("5432/tcp"))
 
 	if err := pool.Retry(func() error {
-		db, err := sql.Open("postgres", url)
+		db, err := sql.Open(flavor, url)
 		if err != nil {
-			return fmt.Errorf("error opening postgres dev container: %w", err)
+			return fmt.Errorf("error opening %s dev container: %w", flavor, err)
 		}
 
 		if err := db.Ping(); err != nil {

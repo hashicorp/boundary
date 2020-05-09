@@ -16,15 +16,15 @@ import (
 )
 
 // setup the tests (initialize the database one-time and intialized testDatabaseURL)
-func TestSetup(t *testing.T) (func() error, *gorm.DB) {
+func TestSetup(t *testing.T, flavor string) (func() error, *gorm.DB) {
 	cleanup := func() error { return nil }
 	var url string
 	var err error
-	cleanup, url, err = initDbInDocker(t)
+	cleanup, url, err = initDbInDocker(t, flavor)
 	if err != nil {
 		t.Fatal(err)
 	}
-	db, err := gorm.Open("postgres", url)
+	db, err := gorm.Open(flavor, url)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -49,23 +49,26 @@ func TestWrapper(t *testing.T) wrapping.Wrapper {
 }
 
 // initDbInDocker initializes postgres within dockertest for the unit tests
-func initDbInDocker(t *testing.T) (cleanup func() error, retURL string, err error) {
-	if os.Getenv("PG_URL") != "" {
-		TestInitStore(t, func() error { return nil }, os.Getenv("PG_URL"))
-		return func() error { return nil }, os.Getenv("PG_URL"), nil
+func initDbInDocker(t *testing.T, flavor string) (cleanup func() error, retURL string, err error) {
+	switch flavor {
+	case "postgres":
+		if os.Getenv("PG_URL") != "" {
+			TestInitStore(t, flavor, func() error { return nil }, os.Getenv("PG_URL"))
+			return func() error { return nil }, os.Getenv("PG_URL"), nil
+		}
 	}
-	c, url, err := StartDbInDocker()
+	c, url, err := StartDbInDocker(flavor)
 	if err != nil {
 		return func() error { return nil }, "", fmt.Errorf("could not start docker: %w", err)
 	}
-	TestInitStore(t, c, url)
+	TestInitStore(t, flavor, c, url)
 	return c, url, nil
 }
 
 // TestInitStore will execute the migrations needed to initialize the store for tests
-func TestInitStore(t *testing.T, cleanup func() error, url string) {
+func TestInitStore(t *testing.T, flavor string, cleanup func() error, url string) {
 	// run migrations
-	source, err := migrations.NewMigrationSource()
+	source, err := migrations.NewMigrationSource(flavor)
 	if err != nil {
 		cleanup()
 		t.Fatalf("Error creating migration driver: %s", err)

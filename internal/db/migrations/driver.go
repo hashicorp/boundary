@@ -2,9 +2,11 @@ package migrations
 
 import (
 	"bytes"
+	"fmt"
 	"net/http"
 	"os"
 	"sort"
+	"strings"
 	"time"
 
 	"github.com/golang-migrate/migrate/v4/source"
@@ -12,29 +14,41 @@ import (
 )
 
 // migrationDriver satisfies the remaining need of the Driver interface, since
-// the package uses PartialDriver under the hood. If we want to support more
-// than Postgres in the future, we can add a type flag in this struct, and have
-// the desired type passed into NewMigrationsSource()
-type migrationDriver struct{}
+// the package uses PartialDriver under the hood
+type migrationDriver struct {
+	flavor string
+}
 
 // Open returns the given "file"
 func (m *migrationDriver) Open(name string) (http.File, error) {
-	ff := postgresMigrations[name]
+	var ff *fakeFile
+	switch m.flavor {
+	case "postgres":
+		ff = postgresMigrations[name]
+	}
 	if m == nil {
 		return nil, os.ErrNotExist
 	}
+	ff.name = strings.TrimPrefix(name, "migrations/")
+	ff.flavor = m.flavor
 	return ff, nil
 }
 
 // NewMigrationSource creates a source.Driver
-func NewMigrationSource() (source.Driver, error) {
-	return httpfs.New(&migrationDriver{}, "migrations")
+func NewMigrationSource(flavor string) (source.Driver, error) {
+	switch flavor {
+	case "postgres":
+	default:
+		return nil, fmt.Errorf("unknown migrations flavor %s", flavor)
+	}
+	return httpfs.New(&migrationDriver{flavor}, "migrations")
 }
 
 // fakeFile is used to satisfy the http.File interface
 type fakeFile struct {
 	name   string
 	reader *bytes.Reader
+	flavor string
 }
 
 func (f *fakeFile) Read(p []byte) (n int, err error) {
@@ -50,9 +64,14 @@ func (f *fakeFile) Close() error { return nil }
 // Readdir returns os.FileInfo values, in sorted order, and eliding the
 // migrations "dir"
 func (f *fakeFile) Readdir(count int) ([]os.FileInfo, error) {
-	ret := make([]os.FileInfo, 0, len(postgresMigrations))
-	keys := make([]string, 0, len(postgresMigrations))
-	for k := range postgresMigrations {
+	var migrationsMap map[string]*fakeFile
+	switch f.flavor {
+	case "postgres":
+		migrationsMap = postgresMigrations
+	}
+	ret := make([]os.FileInfo, 0, len(migrationsMap))
+	keys := make([]string, 0, len(migrationsMap))
+	for k := range migrationsMap {
 		keys = append(keys, k)
 	}
 	sort.Strings(keys)
@@ -60,7 +79,7 @@ func (f *fakeFile) Readdir(count int) ([]os.FileInfo, error) {
 		if v == "migrations" {
 			continue
 		}
-		stat, err := postgresMigrations[v].Stat()
+		stat, err := migrationsMap[v].Stat()
 		if err != nil {
 			return nil, err
 		}
