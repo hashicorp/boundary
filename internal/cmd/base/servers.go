@@ -4,7 +4,6 @@ import (
 	"context"
 	"crypto/rand"
 	"crypto/tls"
-	"database/sql"
 	"errors"
 	"fmt"
 	"io"
@@ -18,7 +17,6 @@ import (
 	"github.com/hashicorp/errwrap"
 	"github.com/hashicorp/go-hclog"
 	wrapping "github.com/hashicorp/go-kms-wrapping"
-	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/vault/internalshared/configutil"
 	"github.com/hashicorp/vault/internalshared/gatedwriter"
 	"github.com/hashicorp/vault/internalshared/reloadutil"
@@ -26,9 +24,9 @@ import (
 	"github.com/hashicorp/vault/sdk/helper/mlock"
 	"github.com/hashicorp/vault/sdk/logical"
 	"github.com/hashicorp/watchtower/globals"
+	"github.com/hashicorp/watchtower/internal/db"
 	"github.com/hashicorp/watchtower/version"
 	"github.com/mitchellh/cli"
-	"github.com/ory/dockertest/v3"
 	"golang.org/x/net/http/httpproxy"
 	"google.golang.org/grpc/grpclog"
 
@@ -60,12 +58,8 @@ type Server struct {
 
 	Listeners []*ServerListener
 
-	DevDatabasePassword string
-	DevDatabaseName     string
-	DevDatabasePort     string
-
-	dockertestPool     *dockertest.Pool
-	dockertestResource *dockertest.Resource
+	DevDatabaseUrl         string
+	DevDatabaseCleanupFunc func() error
 }
 
 func NewServer() *Server {
@@ -372,54 +366,26 @@ func (b *Server) RunShutdownFuncs(ui cli.Ui) {
 }
 
 func (b *Server) CreateDevDatabase() error {
-	pool, err := dockertest.NewPool("")
+	c, url, err := db.StartDbInDocker("postgres")
 	if err != nil {
-		return fmt.Errorf("could not connect to docker: %w", err)
+		c()
+		return fmt.Errorf("unable to start dev database: %w", err)
+	}
+	if err := db.InitStore("postgres", c, url); err != nil {
+		return fmt.Errorf("error running migrations: %w", err)
 	}
 
-	resource, err := pool.Run("postgres", "latest", []string{"POSTGRES_PASSWORD=secret", "POSTGRES_DB=watchtower"})
-	if err != nil {
-		return fmt.Errorf("could not start resource: %w", err)
-	}
+	b.DevDatabaseCleanupFunc = c
+	b.DevDatabaseUrl = url
 
-	if err := pool.Retry(func() error {
-		db, err := sql.Open("postgres", fmt.Sprintf("postgres://postgres:secret@localhost:%s/watchtower?sslmode=disable", resource.GetPort("5432/tcp")))
-		if err != nil {
-			return fmt.Errorf("error opening postgres dev container: %w", err)
-		}
-		var mErr *multierror.Error
-		if err := db.Ping(); err != nil {
-			mErr = multierror.Append(fmt.Errorf("error pinging dev database container: %w", err))
-		}
-		if err := db.Close(); err != nil {
-			mErr = multierror.Append(fmt.Errorf("error closing dev database container: %w", err))
-		}
-		return mErr.ErrorOrNil()
-	}); err != nil {
-		return fmt.Errorf("could not connect to docker: %w", err)
-	}
-
-	b.dockertestPool = pool
-	b.dockertestResource = resource
-	b.DevDatabaseName = "watchtower"
-	b.DevDatabasePassword = "secret"
-	b.DevDatabasePort = resource.GetPort("5432/tcp")
-
-	b.InfoKeys = append(b.InfoKeys, "dev database name", "dev database password", "dev database port")
-	b.Info["dev database name"] = "watchtower"
-	b.Info["dev database password"] = "secret"
-	b.Info["dev database port"] = b.DevDatabasePort
+	b.InfoKeys = append(b.InfoKeys, "dev database url")
+	b.Info["dev database url"] = b.DevDatabaseUrl
 	return nil
 }
 
 func (b *Server) DestroyDevDatabase() error {
-	if b.dockertestPool == nil {
-		return nil
+	if b.DevDatabaseCleanupFunc != nil {
+		return b.DevDatabaseCleanupFunc()
 	}
-
-	if b.dockertestResource == nil {
-		return errors.New("found a pool for dev database container but no resource")
-	}
-
-	return b.dockertestPool.Purge(b.dockertestResource)
+	return errors.New("no dev database cleanup function found")
 }

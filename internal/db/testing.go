@@ -6,12 +6,10 @@ import (
 	"os"
 	"testing"
 
-	"github.com/golang-migrate/migrate/v4"
 	_ "github.com/golang-migrate/migrate/v4/database/postgres"
 	_ "github.com/golang-migrate/migrate/v4/source/file"
 	wrapping "github.com/hashicorp/go-kms-wrapping"
 	"github.com/hashicorp/go-kms-wrapping/wrappers/aead"
-	"github.com/hashicorp/watchtower/internal/db/migrations"
 	"github.com/jinzhu/gorm"
 )
 
@@ -53,7 +51,9 @@ func initDbInDocker(t *testing.T, flavor string) (cleanup func() error, retURL s
 	switch flavor {
 	case "postgres":
 		if os.Getenv("PG_URL") != "" {
-			TestInitStore(t, flavor, func() error { return nil }, os.Getenv("PG_URL"))
+			if err := InitStore(flavor, func() error { return nil }, os.Getenv("PG_URL")); err != nil {
+				return func() error { return nil }, os.Getenv("PG_URL"), fmt.Errorf("error initializing store: %w", err)
+			}
 			return func() error { return nil }, os.Getenv("PG_URL"), nil
 		}
 	}
@@ -61,25 +61,8 @@ func initDbInDocker(t *testing.T, flavor string) (cleanup func() error, retURL s
 	if err != nil {
 		return func() error { return nil }, "", fmt.Errorf("could not start docker: %w", err)
 	}
-	TestInitStore(t, flavor, c, url)
+	if err := InitStore(flavor, c, url); err != nil {
+		return func() error { return nil }, "", fmt.Errorf("error initializing store: %w", err)
+	}
 	return c, url, nil
-}
-
-// TestInitStore will execute the migrations needed to initialize the store for tests
-func TestInitStore(t *testing.T, flavor string, cleanup func() error, url string) {
-	// run migrations
-	source, err := migrations.NewMigrationSource(flavor)
-	if err != nil {
-		cleanup()
-		t.Fatalf("Error creating migration driver: %s", err)
-	}
-	m, err := migrate.NewWithSourceInstance("httpfs", source, url)
-	if err != nil {
-		cleanup()
-		t.Fatalf("Error creating migrations: %s", err)
-	}
-	if err := m.Up(); err != nil && err != migrate.ErrNoChange {
-		cleanup()
-		t.Fatalf("Error running migrations: %s", err)
-	}
 }

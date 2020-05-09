@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/golang-migrate/migrate/v4"
+	"github.com/hashicorp/watchtower/internal/db/migrations"
 	"github.com/jinzhu/gorm"
 	"github.com/ory/dockertest"
 )
@@ -75,7 +76,7 @@ func StartDbInDocker(flavor string) (cleanup func() error, retURL string, err er
 		return func() error { return nil }, "", fmt.Errorf("could not start resource: %w", err)
 	}
 
-	c := func() error {
+	cleanup = func() error {
 		return cleanupDockerResource(pool, resource)
 	}
 
@@ -95,7 +96,29 @@ func StartDbInDocker(flavor string) (cleanup func() error, retURL string, err er
 	}); err != nil {
 		return func() error { return nil }, "", fmt.Errorf("could not connect to docker: %w", err)
 	}
-	return c, url, nil
+
+	return cleanup, url, nil
+}
+
+// InitStore will execute the migrations needed to initialize the store for tests
+func InitStore(flavor string, cleanup func() error, url string) error {
+	// run migrations
+	source, err := migrations.NewMigrationSource(flavor)
+	if err != nil {
+		cleanup()
+		return fmt.Errorf("error creating migration driver: %w", err)
+	}
+	m, err := migrate.NewWithSourceInstance("httpfs", source, url)
+	if err != nil {
+		cleanup()
+		return fmt.Errorf("error creating migrations: %w", err)
+	}
+	if err := m.Up(); err != nil && err != migrate.ErrNoChange {
+		cleanup()
+		return fmt.Errorf("error running migrations: %w", err)
+	}
+
+	return nil
 }
 
 // cleanupDockerResource will clean up the dockertest resources (postgres)
