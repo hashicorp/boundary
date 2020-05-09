@@ -105,7 +105,7 @@ type GormReadWriter struct {
 	Tx *gorm.DB
 }
 
-// ensure that GroupRole implements the interfaces of: Resource, ClonableResource, AssignedRole and db.VetForWriter
+// ensure that GormReadWriter implements the interfaces of: Reader and Writer
 var _ Reader = (*GormReadWriter)(nil)
 var _ Writer = (*GormReadWriter)(nil)
 
