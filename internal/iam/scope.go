@@ -40,7 +40,7 @@ type Scope struct {
 // ensure that Scope implements the interfaces of: Resource, ClonableResource, and db.VetForWriter
 var _ Resource = (*Scope)(nil)
 var _ db.VetForWriter = (*Scope)(nil)
-var _ ClonableResource = (*Scope)(nil)
+var _ Clonable = (*Scope)(nil)
 
 func NewOrganization(opt ...Option) (*Scope, error) {
 	return newScope(OrganizationScope, opt...)
@@ -114,7 +114,7 @@ func allocScope() Scope {
 }
 
 // Clone creates a clone of the Scope
-func (s *Scope) Clone() Resource {
+func (s *Scope) Clone() interface{} {
 	cp := proto.Clone(s.Scope)
 	return &Scope{
 		Scope: cp.(*store.Scope),
