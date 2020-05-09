@@ -130,7 +130,7 @@ func Test_UserGroups(t *testing.T) {
 		assert.Nil(err)
 		assert.True(grp.PublicId != "")
 
-		gm, err := NewGroupMember(s, grp, user)
+		gm, err := NewGroupMember(grp, user)
 		assert.Nil(err)
 		assert.True(gm != nil)
 		err = w.Create(context.Background(), gm)
@@ -257,7 +257,7 @@ func Test_UserGrants(t *testing.T) {
 		assert.Nil(err)
 		assert.True(grp.PublicId != "")
 
-		gm, err := NewGroupMember(s, grp, user)
+		gm, err := NewGroupMember(grp, user)
 		assert.Nil(err)
 		assert.True(gm != nil)
 		err = w.Create(context.Background(), gm)
