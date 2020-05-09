@@ -18,9 +18,9 @@ type structInfo struct {
 
 var inputStructs = []*structInfo{
 	{
-		os.Getenv("APIGEN_BASEPATH") + "/internal/gen/controller/api/error.pb.go",
+		os.Getenv("GEN_BASEPATH") + "/internal/gen/controller/api/error.pb.go",
 		"Error",
-		os.Getenv("APIGEN_BASEPATH") + "/api/error.gen.go",
+		os.Getenv("GEN_BASEPATH") + "/api/error.gen.go",
 		"Error",
 		"api",
 		"",
@@ -29,9 +29,9 @@ var inputStructs = []*structInfo{
 		templateTypeResource,
 	},
 	{
-		os.Getenv("APIGEN_BASEPATH") + "/internal/gen/controller/api/error.pb.go",
+		os.Getenv("GEN_BASEPATH") + "/internal/gen/controller/api/error.pb.go",
 		"ErrorDetails",
-		os.Getenv("APIGEN_BASEPATH") + "/api/error_details.gen.go",
+		os.Getenv("GEN_BASEPATH") + "/api/error_details.gen.go",
 		"ErrorDetails",
 		"api",
 		"",
@@ -40,9 +40,9 @@ var inputStructs = []*structInfo{
 		templateTypeResource,
 	},
 	{
-		os.Getenv("APIGEN_BASEPATH") + "/internal/gen/controller/api/resources/hosts/host.pb.go",
+		os.Getenv("GEN_BASEPATH") + "/internal/gen/controller/api/resources/hosts/host.pb.go",
 		"Host",
-		os.Getenv("APIGEN_BASEPATH") + "/api/hosts/host.gen.go",
+		os.Getenv("GEN_BASEPATH") + "/api/hosts/host.gen.go",
 		"Host",
 		"hosts",
 		"",
@@ -51,9 +51,9 @@ var inputStructs = []*structInfo{
 		templateTypeResource,
 	},
 	{
-		os.Getenv("APIGEN_BASEPATH") + "/internal/gen/controller/api/resources/hosts/host_set.pb.go",
+		os.Getenv("GEN_BASEPATH") + "/internal/gen/controller/api/resources/hosts/host_set.pb.go",
 		"HostSet",
-		os.Getenv("APIGEN_BASEPATH") + "/api/hosts/host_set.gen.go",
+		os.Getenv("GEN_BASEPATH") + "/api/hosts/host_set.gen.go",
 		"HostSet",
 		"hosts",
 		"",
@@ -62,9 +62,9 @@ var inputStructs = []*structInfo{
 		templateTypeResource,
 	},
 	{
-		os.Getenv("APIGEN_BASEPATH") + "/internal/gen/controller/api/resources/hosts/host_catalog.pb.go",
+		os.Getenv("GEN_BASEPATH") + "/internal/gen/controller/api/resources/hosts/host_catalog.pb.go",
 		"HostCatalog",
-		os.Getenv("APIGEN_BASEPATH") + "/api/hosts/host_catalog.gen.go",
+		os.Getenv("GEN_BASEPATH") + "/api/hosts/host_catalog.gen.go",
 		"HostCatalog",
 		"hosts",
 		"",
@@ -73,9 +73,9 @@ var inputStructs = []*structInfo{
 		templateTypeResource,
 	},
 	{
-		os.Getenv("APIGEN_BASEPATH") + "/internal/gen/controller/api/resources/hosts/host_catalog.pb.go",
+		os.Getenv("GEN_BASEPATH") + "/internal/gen/controller/api/resources/hosts/host_catalog.pb.go",
 		"StaticHostCatalogDetails",
-		os.Getenv("APIGEN_BASEPATH") + "/api/hosts/static_host_catalog.gen.go",
+		os.Getenv("GEN_BASEPATH") + "/api/hosts/static_host_catalog.gen.go",
 		"StaticHostCatalogDetails",
 		"hosts",
 		"",
@@ -84,9 +84,9 @@ var inputStructs = []*structInfo{
 		templateTypeDetail,
 	},
 	{
-		os.Getenv("APIGEN_BASEPATH") + "/internal/gen/controller/api/resources/hosts/host_catalog.pb.go",
+		os.Getenv("GEN_BASEPATH") + "/internal/gen/controller/api/resources/hosts/host_catalog.pb.go",
 		"AwsEc2HostCatalogDetails",
-		os.Getenv("APIGEN_BASEPATH") + "/api/hosts/awsec2_host_catalog.gen.go",
+		os.Getenv("GEN_BASEPATH") + "/api/hosts/awsec2_host_catalog.gen.go",
 		"AwsEc2HostCatalogDetails",
 		"hosts",
 		"",
