@@ -7,72 +7,41 @@ import "controller/storage/iam/store/v1/timestamp.proto";
 import "controller/storage/iam/store/v1/scope.proto";
 
 message GroupMemberUser {
-  // @inject_tag: gorm:"primary_key"
-  // public_id is used to access the GroupMemberUser via an API
-  string public_id = 1;
-
   // create_time from the RDBMS
   // @inject_tag: `gorm:"default:current_timestamp"`
-  Timestamp create_time = 2;
+  Timestamp create_time = 1;
 
   // update_time from the RDBMS
   // @inject_tag: `gorm:"default:current_timestamp"`
-  Timestamp update_time = 3;
-
-  // name is the optional friendly name used to
-  // access the GroupMemberUser via an API
-  // @inject_tag: `gorm:"default:null"`
-  string name = 4;
-
-  // description of the GroupMemberUser
-  // @inject_tag: `gorm:"default:null"`
-  string description = 5;
-
-  // scope id for the GroupMemberUser
-  // @inject_tag: `gorm:"default:null"`
-  string scope_id = 6;
+  Timestamp update_time = 2;
 
   // group_id is the Group of this GroupMemberUser.
-  string group_id = 7;
+  // @inject_tag: gorm:"primary_key"
+  string group_id = 3;
+
+  // @inject_tag: gorm:"primary_key"
+  string member_id = 4;
 
   // GroupMember type (User)
   // @inject_tag: `gorm:"default:user"`
-  string type = 8;
-
-  string member_id = 9;
+  string type = 5;
 }
 
 message GroupMemberView {
-  // public_id is used to access the GroupMember via an API
-  // @inject_tag: gorm:"primary_key"
-  string public_id = 1;
-
   // create_time from the RDBMS
   // @inject_tag: `gorm:"default:current_timestamp"`
-  Timestamp create_time = 2;
+  Timestamp create_time = 1;
 
   // update_time from the RDBMS
   // @inject_tag: `gorm:"default:current_timestamp"`
-  Timestamp update_time = 3;
-
-  // name is the optional friendly name used to
-  // access the GroupMember via an API
-  // @inject_tag: `gorm:"default:null"`
-  string name = 4;
-
-  // description of the GroupMember
-  // @inject_tag: `gorm:"default:null"`
-  string description = 5;
-
-  // scope id for the GroupMember
-  // @inject_tag: `gorm:"default:null"`
-  string scope_id = 6;
+  Timestamp update_time = 2;
 
   // group_id is the Group of this GroupMember.
-  string group_id = 7;
+  string group_id = 3;
+
+  // member_id of the GroupMember
+  string member_id = 4;
 
   // GroupMember type (User)
-  string type = 8;
-
-  string member_id = 9;
+  string type = 5;
 }

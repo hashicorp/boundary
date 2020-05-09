@@ -55,7 +55,7 @@ func NewGroup(scope *Scope, opt ...Option) (*Group, error) {
 }
 
 // Clone creates a clone of the Group
-func (g *Group) Clone() Resource {
+func (g *Group) Clone() interface{} {
 	cp := proto.Clone(g.Group)
 	return &Group{
 		Group: cp.(*store.Group),
@@ -75,11 +75,8 @@ func (g *Group) Members(ctx context.Context, r db.Reader) ([]GroupMember, error)
 		case UserMemberType.String():
 			gm := &GroupMemberUser{
 				GroupMemberUser: &store.GroupMemberUser{
-					PublicId:   m.PublicId,
 					CreateTime: m.CreateTime,
 					UpdateTime: m.UpdateTime,
-					Name:       m.Name,
-					ScopeId:    m.ScopeId,
 					GroupId:    m.GroupId,
 					Type:       UserMemberType.String(),
 					MemberId:   m.MemberId,
@@ -96,11 +93,7 @@ func (g *Group) Members(ctx context.Context, r db.Reader) ([]GroupMember, error)
 
 // AddMember will add member to the group and the caller is responsible for Creating that Member via db.Writer.Create()
 func (g *Group) AddMember(ctx context.Context, r db.Reader, m Resource, opt ...db.Option) (GroupMember, error) {
-	ps, err := g.GetScope(ctx, r)
-	if err != nil {
-		return nil, fmt.Errorf("error getting scope while adding member: %w", err)
-	}
-	gm, err := NewGroupMember(ps, g, m)
+	gm, err := NewGroupMember(g, m)
 	if err != nil {
 		return nil, fmt.Errorf("error while adding member %w", err)
 	}

@@ -141,15 +141,11 @@ CREATE TABLE if not exists iam_group (
 
 
 CREATE TABLE if not exists iam_group_member_user (
-    public_id text not null primary key,
     create_time timestamp with time zone NOT NULL default current_timestamp,
     update_time timestamp with time zone NOT NULL default current_timestamp,
-    name text UNIQUE,
-    description text,
-    scope_id text NOT NULL REFERENCES iam_scope(public_id),
     group_id text NOT NULL REFERENCES iam_group(public_id) ON DELETE CASCADE ON UPDATE CASCADE,
     member_id text NOT NULL REFERENCES iam_user(public_id) ON DELETE CASCADE ON UPDATE CASCADE,
-    type text NOT NULL REFERENCES iam_group_member_type_enm(string) check(type = 'user')
+    type text NOT NULL default 'user' REFERENCES iam_group_member_type_enm(string) check(type = 'user') 
   );
 
 

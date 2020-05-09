@@ -3,9 +3,7 @@ package iam
 import (
 	"context"
 	"errors"
-	"fmt"
 
-	"github.com/hashicorp/vault/sdk/helper/base62"
 	"github.com/hashicorp/watchtower/internal/db"
 	"github.com/hashicorp/watchtower/internal/iam/store"
 	"google.golang.org/protobuf/proto"
@@ -28,7 +26,6 @@ func (m MemberType) String() string {
 
 // GroupMember declares a common interface for all members assigned to a group (which is just users for now)
 type GroupMember interface {
-	Resource
 	GetGroupId() string
 	GetMemberId() string
 	GetType() string
@@ -44,13 +41,7 @@ func (v *groupMemberView) TableName() string { return "iam_group_member" }
 
 // NewGroupMember creates a new member of the group with a scope (project/organization)
 // options include: withDescripion, WithName
-func NewGroupMember(scope *Scope, g *Group, m Resource, opt ...Option) (GroupMember, error) {
-	if scope == nil {
-		return nil, errors.New("error scope is nil for group member")
-	}
-	if scope.PublicId == "" {
-		return nil, errors.New("error scope id is unset for group member")
-	}
+func NewGroupMember(g *Group, m Resource, opt ...Option) (GroupMember, error) {
 	if g == nil {
 		return nil, errors.New("error group is nil for group member")
 	}
@@ -62,7 +53,7 @@ func NewGroupMember(scope *Scope, g *Group, m Resource, opt ...Option) (GroupMem
 	}
 	if m.ResourceType() == ResourceTypeUser {
 		if u, ok := m.(*User); ok {
-			return newGroupMemberUser(scope, g, u, opt...)
+			return newGroupMemberUser(g, u, opt...)
 		}
 		return nil, errors.New("error group member is not a user ptr")
 	}
@@ -75,20 +66,14 @@ type GroupMemberUser struct {
 	tableName string `gorm:"-"`
 }
 
-// ensure that GroupMemberUser implements the interfaces of: Resource, ClonableResource, GroupMember and db.VetForWriter
-var _ Resource = (*GroupMemberUser)(nil)
+// ensure that GroupMemberUser implements the interfaces of: ClonableResource, GroupMember and db.VetForWriter
 var _ ClonableResource = (*GroupMemberUser)(nil)
 var _ GroupMember = (*GroupMemberUser)(nil)
 var _ db.VetForWriter = (*GroupMemberUser)(nil)
 
 // newGroupMemberUser creates a new user member of the groupwith a scope (project/organization)
 // options include: withDescripion, WithName
-func newGroupMemberUser(scope *Scope, g *Group, m *User, opt ...Option) (GroupMember, error) {
-	opts := getOpts(opt...)
-	withName := opts.withName
-	if scope == nil {
-		return nil, errors.New("error the user member scope is nil")
-	}
+func newGroupMemberUser(g *Group, m *User, opt ...Option) (GroupMember, error) {
 	if m == nil {
 		return nil, errors.New("error the user member is nil")
 	}
@@ -101,31 +86,23 @@ func newGroupMemberUser(scope *Scope, g *Group, m *User, opt ...Option) (GroupMe
 	if g.PublicId == "" {
 		return nil, errors.New("error the user member group is unset")
 	}
-	if scope.Type != OrganizationScope.String() &&
-		scope.Type != ProjectScope.String() {
-		return nil, errors.New("roles can only be within an organization or project scope")
-	}
-	publicId, err := base62.Random(20)
-	if err != nil {
-		return nil, fmt.Errorf("error generating public id %w for new user member", err)
-	}
 	gm := &GroupMemberUser{
 		GroupMemberUser: &store.GroupMemberUser{
-			PublicId: publicId,
-			ScopeId:  scope.GetPublicId(),
 			MemberId: m.PublicId,
 			GroupId:  g.PublicId,
 			Type:     UserMemberType.String(),
 		},
 	}
-	if withName != "" {
-		gm.Name = withName
-	}
 	return gm, nil
+}
+func allocGroupMemberUser() GroupMemberUser {
+	return GroupMemberUser{
+		GroupMemberUser: &store.GroupMemberUser{},
+	}
 }
 
 // Clone creates a clone of the GroupMemberUser
-func (m *GroupMemberUser) Clone() Resource {
+func (m *GroupMemberUser) Clone() interface{} {
 	cp := proto.Clone(m.GroupMemberUser)
 	return &GroupMemberUser{
 		GroupMemberUser: cp.(*store.GroupMemberUser),
@@ -134,44 +111,10 @@ func (m *GroupMemberUser) Clone() Resource {
 
 // VetForWrite implements db.VetForWrite() interface
 func (m *GroupMemberUser) VetForWrite(ctx context.Context, r db.Reader, opType db.OpType, opt ...db.Option) error {
-	if m.PublicId == "" {
-		return errors.New("error public id is empty string for group write")
-	}
-	if m.ScopeId == "" {
-		return errors.New("error scope id not set for group write")
-	}
 	if m.Type != UserMemberType.String() {
 		return errors.New("error member type is not user")
 	}
-	// make sure the scope is valid for users
-	if err := m.scopeIsValid(ctx, r); err != nil {
-		return err
-	}
 	return nil
-}
-
-func (m *GroupMemberUser) scopeIsValid(ctx context.Context, r db.Reader) error {
-	ps, err := LookupScope(ctx, r, m)
-	if err != nil {
-		return err
-	}
-	if ps.Type != OrganizationScope.String() && ps.Type != ProjectScope.String() {
-		return errors.New("error scope is not an organization or project for user group member")
-	}
-	return nil
-}
-
-// GetScope returns the scope for the GroupMember
-func (m *GroupMemberUser) GetScope(ctx context.Context, r db.Reader) (*Scope, error) {
-	return LookupScope(ctx, r, m)
-}
-
-// ResourceType returns the type of the GroupMember
-func (*GroupMemberUser) ResourceType() ResourceType { return ResourceTypeGroupUserMember }
-
-// Actions returns the  available actions for GroupMember
-func (*GroupMemberUser) Actions() map[string]Action {
-	return CrudActions()
 }
 
 // TableName returns the tablename to override the default gorm table name

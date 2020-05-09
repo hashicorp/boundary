@@ -38,12 +38,24 @@ func Test_NewGroupMember(t *testing.T) {
 		assert.Nil(err)
 		assert.True(grp.PublicId != "")
 
-		gm, err := NewGroupMember(s, grp, user)
+		gm, err := NewGroupMember(grp, user)
 		assert.Nil(err)
 		assert.True(gm != nil)
 		err = w.Create(context.Background(), gm)
 		assert.Nil(err)
 
+		members, err := grp.Members(context.Background(), &w)
+		assert.Nil(err)
+		assert.Equal(1, len(members))
+		assert.Equal(members[0].GetMemberId(), user.PublicId)
+		assert.Equal(members[0].GetGroupId(), grp.PublicId)
+
+		err = w.Delete(context.Background(), gm)
+		assert.Nil(err)
+
+		members, err = grp.Members(context.Background(), &w)
+		assert.Nil(err)
+		assert.Equal(0, len(members))
 	})
 	t.Run("bad-type", func(t *testing.T) {
 		w := db.GormReadWriter{Tx: conn}
@@ -70,7 +82,7 @@ func Test_NewGroupMember(t *testing.T) {
 		assert.Nil(err)
 		assert.True(grp.PublicId != "")
 
-		gm, err := NewGroupMember(s, grp, role)
+		gm, err := NewGroupMember(grp, role)
 		assert.True(err != nil)
 		assert.True(gm == nil)
 		assert.Equal(err.Error(), "error unknown group member type")
@@ -89,7 +101,7 @@ func Test_NewGroupMember(t *testing.T) {
 		err = w.Create(context.Background(), user)
 		assert.Nil(err)
 
-		gm, err := NewGroupMember(s, nil, user)
+		gm, err := NewGroupMember(nil, user)
 		assert.True(err != nil)
 		assert.True(gm == nil)
 		assert.Equal(err.Error(), "error group is nil for group member")
@@ -111,96 +123,9 @@ func Test_NewGroupMember(t *testing.T) {
 		assert.Nil(err)
 		assert.True(grp.PublicId != "")
 
-		gm, err := NewGroupMember(s, grp, nil)
+		gm, err := NewGroupMember(grp, nil)
 		assert.True(err != nil)
 		assert.True(gm == nil)
 		assert.Equal(err.Error(), "member is nil for group member")
 	})
-
-	t.Run("nil-scope", func(t *testing.T) {
-		w := db.GormReadWriter{Tx: conn}
-		s, err := NewOrganization()
-		assert.Nil(err)
-		assert.True(s.Scope != nil)
-		err = w.Create(context.Background(), s)
-		assert.Nil(err)
-		assert.True(s.PublicId != "")
-
-		grp, err := NewGroup(s)
-		assert.Nil(err)
-		assert.True(grp != nil)
-		assert.Equal(s.PublicId, grp.ScopeId)
-		err = w.Create(context.Background(), grp)
-		assert.Nil(err)
-		assert.True(grp.PublicId != "")
-
-		user, err := NewUser(s)
-		assert.Nil(err)
-		err = w.Create(context.Background(), user)
-		assert.Nil(err)
-
-		gm, err := NewGroupMember(nil, grp, nil)
-		assert.True(err != nil)
-		assert.True(gm == nil)
-		assert.Equal(err.Error(), "error scope is nil for group member")
-	})
-}
-
-func TestGroupMemberUser_GetScope(t *testing.T) {
-	t.Parallel()
-	cleanup, conn := db.TestSetup(t, "../db/migrations/postgres")
-	defer cleanup()
-	assert := assert.New(t)
-	defer conn.Close()
-
-	t.Run("valid", func(t *testing.T) {
-		w := db.GormReadWriter{Tx: conn}
-		s, err := NewOrganization()
-		assert.Nil(err)
-		assert.True(s.Scope != nil)
-		err = w.Create(context.Background(), s)
-		assert.Nil(err)
-		assert.True(s.PublicId != "")
-
-		user, err := NewUser(s)
-		assert.Nil(err)
-		err = w.Create(context.Background(), user)
-		assert.Nil(err)
-
-		grp, err := NewGroup(s, WithDescription("this is a test group"))
-		assert.Nil(err)
-		assert.True(grp != nil)
-		assert.Equal(grp.Description, "this is a test group")
-		assert.Equal(s.PublicId, grp.ScopeId)
-		err = w.Create(context.Background(), grp)
-		assert.Nil(err)
-		assert.True(grp.PublicId != "")
-
-		gm, err := NewGroupMember(s, grp, user)
-		assert.Nil(err)
-		assert.True(gm != nil)
-		err = w.Create(context.Background(), gm)
-		assert.Nil(err)
-
-		scope, err := gm.GetScope(context.Background(), &w)
-		assert.Nil(err)
-		assert.True(scope != nil)
-	})
-}
-
-func TestGroupMemberUser_Actions(t *testing.T) {
-	assert := assert.New(t)
-	r := &GroupMemberUser{}
-	a := r.Actions()
-	assert.Equal(a[ActionCreate.String()], ActionCreate)
-	assert.Equal(a[ActionUpdate.String()], ActionUpdate)
-	assert.Equal(a[ActionRead.String()], ActionRead)
-	assert.Equal(a[ActionDelete.String()], ActionDelete)
-}
-
-func TestGroupMemberUser_ResourceType(t *testing.T) {
-	assert := assert.New(t)
-	r := &GroupMemberUser{}
-	ty := r.ResourceType()
-	assert.Equal(ty, ResourceTypeGroupUserMember)
 }
