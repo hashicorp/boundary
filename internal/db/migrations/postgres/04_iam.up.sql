@@ -1,6 +1,3 @@
-package postgres
-
-const IamUp04 = `
 BEGIN;
 
 CREATE TABLE if not exists iam_scope_type_enm (
@@ -87,4 +84,3 @@ BEFORE
 update ON iam_scope FOR EACH ROW EXECUTE PROCEDURE iam_immutable_scope_type_func();
 
 COMMIT;
-`

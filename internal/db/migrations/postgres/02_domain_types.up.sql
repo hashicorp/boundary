@@ -1,6 +1,3 @@
-package postgres
-
-const DomainTypesUp02 = `
 begin;
 
 create domain wt_public_id as text
@@ -11,4 +8,3 @@ comment on domain wt_public_id is
 'Random ID generated with github.com/hashicorp/vault/sdk/helper/base62';
 
 commit;
-`
