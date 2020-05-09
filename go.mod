@@ -28,7 +28,7 @@ require (
 	github.com/hashicorp/go-uuid v1.0.2
 	github.com/hashicorp/hcl v1.0.0
 	github.com/hashicorp/vault v1.2.1-0.20200310200732-a321b1217d5a
-	github.com/hashicorp/vault/api v1.0.5-0.20200310200732-a321b1217d5a
+	github.com/hashicorp/vault/api v1.0.5-0.20200310200732-a321b1217d5a // indirect
 	github.com/hashicorp/vault/sdk v0.1.14-0.20200310200732-a321b1217d5a
 	github.com/jackc/pgx/v4 v4.6.0
 	github.com/jinzhu/gorm v1.9.12
@@ -39,6 +39,7 @@ require (
 	github.com/mitchellh/cli v1.0.0
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/mitchellh/mapstructure v1.2.2
+	github.com/ory/dockertest v3.3.5+incompatible
 	github.com/ory/dockertest/v3 v3.5.4
 	github.com/pelletier/go-toml v1.7.0 // indirect
 	github.com/pires/go-proxyproto v0.0.0-20200213100827-833e5d06d8f0
