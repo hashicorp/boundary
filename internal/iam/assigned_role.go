@@ -3,9 +3,7 @@ package iam
 import (
 	"context"
 	"errors"
-	"fmt"
 
-	"github.com/hashicorp/vault/sdk/helper/base62"
 	"github.com/hashicorp/watchtower/internal/db"
 	"github.com/hashicorp/watchtower/internal/iam/store"
 	"google.golang.org/protobuf/proto"
@@ -30,7 +28,6 @@ func (r RoleType) String() string {
 
 // AssignedRole declares a common interface for all roles assigned to resources (Users and Groups for now)
 type AssignedRole interface {
-	Resource
 	GetRoleId() string
 	GetPrincipalId() string
 	GetType() string
@@ -62,13 +59,13 @@ func NewAssignedRole(scope *Scope, role *Role, principal Resource, opt ...Option
 	}
 	if principal.ResourceType() == ResourceTypeUser {
 		if u, ok := principal.(*User); ok {
-			return newUserRole(scope, role, u, opt...)
+			return newUserRole(role, u, opt...)
 		}
 		return nil, errors.New("error principal is not a user ptr for assigning role")
 	}
 	if principal.ResourceType() == ResourceTypeGroup {
 		if a, ok := principal.(*Group); ok {
-			return newGroupRole(scope, role, a, opt...)
+			return newGroupRole(role, a, opt...)
 		}
 		return nil, errors.New("error principal is not a group ptr for assigning role")
 	}
@@ -81,23 +78,13 @@ type UserRole struct {
 	tableName string `gorm:"-"`
 }
 
-// ensure that UserRole implements the interfaces of: Resource, Clonable, AssignedRole and db.VetForWriter
-var _ Resource = (*UserRole)(nil)
+// ensure that UserRole implements the interfaces of:  Clonable, AssignedRole and db.VetForWriter
 var _ Clonable = (*UserRole)(nil)
 var _ AssignedRole = (*UserRole)(nil)
 var _ db.VetForWriter = (*UserRole)(nil)
 
-// newUserRole creates a new user role with a scope (project/organization)
-// options include:  WithName
-func newUserRole(scope *Scope, r *Role, u *User, opt ...Option) (AssignedRole, error) {
-	opts := getOpts(opt...)
-	withName := opts.withName
-	if scope == nil {
-		return nil, errors.New("error the user role scope is nil")
-	}
-	if u == nil {
-		return nil, errors.New("error the user is nil")
-	}
+// newUserRole creates a new user role. options include:  WithName
+func newUserRole(r *Role, u *User, opt ...Option) (AssignedRole, error) {
 	if u.PublicId == "" {
 		return nil, errors.New("error the user id is unset")
 	}
@@ -107,25 +94,12 @@ func newUserRole(scope *Scope, r *Role, u *User, opt ...Option) (AssignedRole, e
 	if r.PublicId == "" {
 		return nil, errors.New("error the user role id is unset")
 	}
-	if scope.Type != OrganizationScope.String() &&
-		scope.Type != ProjectScope.String() {
-		return nil, errors.New("user roles can only be within an organization or project scope")
-	}
-	publicId, err := base62.Random(20)
-	if err != nil {
-		return nil, fmt.Errorf("error generating public id %w for new user role", err)
-	}
 	ur := &UserRole{
 		UserRole: &store.UserRole{
-			PublicId:    publicId,
-			ScopeId:     scope.GetPublicId(),
 			PrincipalId: u.PublicId,
 			RoleId:      r.PublicId,
 			Type:        UserRoleType.String(),
 		},
-	}
-	if withName != "" {
-		ur.Name = withName
 	}
 	return ur, nil
 }
@@ -140,44 +114,10 @@ func (r *UserRole) Clone() interface{} {
 
 // VetForWrite implements db.VetForWrite() interface
 func (role *UserRole) VetForWrite(ctx context.Context, r db.Reader, opType db.OpType, opt ...db.Option) error {
-	if role.PublicId == "" {
-		return errors.New("error public id is empty string for user role write")
-	}
-	if role.ScopeId == "" {
-		return errors.New("error scope id not set for user role write")
-	}
 	if role.Type != UserRoleType.String() {
 		return errors.New("error role type is not user")
 	}
-	// make sure the scope is valid for user roles
-	if err := role.scopeIsValid(ctx, r); err != nil {
-		return err
-	}
 	return nil
-}
-
-func (role *UserRole) scopeIsValid(ctx context.Context, r db.Reader) error {
-	ps, err := LookupScope(ctx, r, role)
-	if err != nil {
-		return err
-	}
-	if ps.Type != OrganizationScope.String() && ps.Type != ProjectScope.String() {
-		return errors.New("error scope is not an organization or project for user role")
-	}
-	return nil
-}
-
-// Getscope returns the scope for the user role
-func (role *UserRole) GetScope(ctx context.Context, r db.Reader) (*Scope, error) {
-	return LookupScope(ctx, r, role)
-}
-
-// ResourceType returns the type of the user role
-func (*UserRole) ResourceType() ResourceType { return ResourceTypeAssignedUserRole }
-
-// Actions returns the  available actions for user role
-func (*UserRole) Actions() map[string]Action {
-	return CrudActions()
 }
 
 // TableName returns the tablename to override the default gorm table name
@@ -201,20 +141,14 @@ type GroupRole struct {
 	tableName string `gorm:"-"`
 }
 
-// ensure that GroupRole implements the interfaces of: Resource, Clonable, AssignedRole and db.VetForWriter
-var _ Resource = (*GroupRole)(nil)
+// ensure that GroupRole implements the interfaces of: Clonable, AssignedRole and db.VetForWriter
 var _ Clonable = (*GroupRole)(nil)
 var _ AssignedRole = (*GroupRole)(nil)
 var _ db.VetForWriter = (*GroupRole)(nil)
 
-// newGroupRole creates a new group role with a scope (project/organization)
+// newGroupRole creates a new group role.
 // options include:  WithName
-func newGroupRole(scope *Scope, r *Role, g *Group, opt ...Option) (AssignedRole, error) {
-	opts := getOpts(opt...)
-	withName := opts.withName
-	if scope == nil {
-		return nil, errors.New("error the group role scope is nil")
-	}
+func newGroupRole(r *Role, g *Group, opt ...Option) (AssignedRole, error) {
 	if g == nil {
 		return nil, errors.New("error the group is nil")
 	}
@@ -227,25 +161,12 @@ func newGroupRole(scope *Scope, r *Role, g *Group, opt ...Option) (AssignedRole,
 	if r.PublicId == "" {
 		return nil, errors.New("error the group role id is unset")
 	}
-	if scope.Type != OrganizationScope.String() &&
-		scope.Type != ProjectScope.String() {
-		return nil, errors.New("group roles can only be within an organization or project scope")
-	}
-	publicId, err := base62.Random(20)
-	if err != nil {
-		return nil, fmt.Errorf("error generating public id %w for new group role", err)
-	}
 	gr := &GroupRole{
 		GroupRole: &store.GroupRole{
-			PublicId:    publicId,
-			ScopeId:     scope.GetPublicId(),
 			PrincipalId: g.PublicId,
 			RoleId:      r.PublicId,
 			Type:        GroupRoleType.String(),
 		},
-	}
-	if withName != "" {
-		gr.Name = withName
 	}
 	return gr, nil
 }
@@ -260,44 +181,10 @@ func (r *GroupRole) Clone() interface{} {
 
 // VetForWrite implements db.VetForWrite() interface
 func (role *GroupRole) VetForWrite(ctx context.Context, r db.Reader, opType db.OpType, opt ...db.Option) error {
-	if role.PublicId == "" {
-		return errors.New("error public id is empty string for group role write")
-	}
-	if role.ScopeId == "" {
-		return errors.New("error scope id not set for group role write")
-	}
 	if role.Type != GroupRoleType.String() {
 		return errors.New("error role type is not group")
 	}
-	// make sure the scope is valid for user roles
-	if err := role.scopeIsValid(ctx, r); err != nil {
-		return err
-	}
 	return nil
-}
-
-func (role *GroupRole) scopeIsValid(ctx context.Context, r db.Reader) error {
-	ps, err := LookupScope(ctx, r, role)
-	if err != nil {
-		return err
-	}
-	if ps.Type != OrganizationScope.String() && ps.Type != ProjectScope.String() {
-		return errors.New("error scope is not an organization or project for group role")
-	}
-	return nil
-}
-
-// GetScope returns the scope for the group role
-func (role *GroupRole) GetScope(ctx context.Context, r db.Reader) (*Scope, error) {
-	return LookupScope(ctx, r, role)
-}
-
-// ResourceType returns the type of the group role
-func (*GroupRole) ResourceType() ResourceType { return ResourceTypeAssignedGroupRole }
-
-// Actions returns the  available actions for group role
-func (*GroupRole) Actions() map[string]Action {
-	return CrudActions()
 }
 
 // TableName returns the tablename to override the default gorm table name

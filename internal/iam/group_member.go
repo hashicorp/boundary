@@ -71,7 +71,7 @@ var _ Clonable = (*GroupMemberUser)(nil)
 var _ GroupMember = (*GroupMemberUser)(nil)
 var _ db.VetForWriter = (*GroupMemberUser)(nil)
 
-// newGroupMemberUser creates a new user member of the groupwith a scope (project/organization)
+// newGroupMemberUser creates a new user member of the group
 // options include: withDescripion, WithName
 func newGroupMemberUser(g *Group, m *User, opt ...Option) (GroupMember, error) {
 	if m == nil {

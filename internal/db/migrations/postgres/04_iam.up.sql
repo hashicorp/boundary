@@ -145,7 +145,8 @@ CREATE TABLE if not exists iam_group_member_user (
     update_time timestamp with time zone NOT NULL default current_timestamp,
     group_id text NOT NULL REFERENCES iam_group(public_id) ON DELETE CASCADE ON UPDATE CASCADE,
     member_id text NOT NULL REFERENCES iam_user(public_id) ON DELETE CASCADE ON UPDATE CASCADE,
-    type text NOT NULL default 'user' REFERENCES iam_group_member_type_enm(string) check(type = 'user') 
+    type text NOT NULL default 'user' REFERENCES iam_group_member_type_enm(string) check(type = 'user'),
+    primary key (group_id, member_id)
   );
 
 
@@ -209,28 +210,22 @@ values
 
 
 CREATE TABLE if not exists iam_role_user (
-    public_id text not null primary key,
     create_time timestamp with time zone NOT NULL default current_timestamp,
     update_time timestamp with time zone NOT NULL default current_timestamp,
-    name text UNIQUE,
-    description text,
-    scope_id text NOT NULL REFERENCES iam_scope(public_id) ON DELETE CASCADE ON UPDATE CASCADE,
     role_id text NOT NULL REFERENCES iam_role(public_id) ON DELETE CASCADE ON UPDATE CASCADE,
     principal_id text NOT NULL REFERENCES iam_user(public_id) ON DELETE CASCADE ON UPDATE CASCADE,
-    type text NOT NULL REFERENCES iam_role_type_enm(string) CHECK(type = 'user')
+    type text NOT NULL REFERENCES iam_role_type_enm(string) CHECK(type = 'user'),
+    primary key (role_id, principal_id)
   );
 
 
 CREATE TABLE if not exists iam_role_group (
-    public_id text not null primary key,
     create_time timestamp with time zone NOT NULL default current_timestamp,
     update_time timestamp with time zone NOT NULL default current_timestamp,
-    name text UNIQUE,
-    description text,
-    scope_id text NOT NULL REFERENCES iam_scope(public_id) ON DELETE CASCADE ON UPDATE CASCADE,
     role_id text NOT NULL REFERENCES iam_role(public_id) ON DELETE CASCADE ON UPDATE CASCADE,
     principal_id text NOT NULL REFERENCES iam_group(public_id) ON DELETE CASCADE ON UPDATE CASCADE,
-    type text NOT NULL REFERENCES iam_role_type_enm(string) CHECK(type = 'group')
+    type text NOT NULL REFERENCES iam_role_type_enm(string) CHECK(type = 'group'),
+    primary key (role_id, principal_id)
   );
 
 CREATE VIEW iam_assigned_role_vw AS
