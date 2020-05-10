@@ -27,7 +27,7 @@ func Test_NewUser(t *testing.T) {
 		assert.Nil(err)
 		assert.True(s.PublicId != "")
 
-		user, err := NewUser(s)
+		user, err := NewUser(s.PublicId)
 		assert.Nil(err)
 		assert.True(user.User != nil)
 		assert.Equal(user.ScopeId, s.PublicId)
@@ -51,7 +51,7 @@ func Test_UserCreate(t *testing.T) {
 		assert.Nil(err)
 		assert.True(s.PublicId != "")
 
-		user, err := NewUser(s)
+		user, err := NewUser(s.PublicId)
 		assert.Nil(err)
 		err = w.Create(context.Background(), user)
 		assert.Nil(err)
@@ -74,7 +74,7 @@ func Test_UserGetScope(t *testing.T) {
 		assert.Nil(err)
 		assert.True(s.PublicId != "")
 
-		user, err := NewUser(s)
+		user, err := NewUser(s.PublicId)
 		assert.Nil(err)
 		err = w.Create(context.Background(), user)
 		assert.Nil(err)
@@ -116,7 +116,7 @@ func Test_UserGroups(t *testing.T) {
 		assert.Nil(err)
 		assert.True(s.PublicId != "")
 
-		user, err := NewUser(s)
+		user, err := NewUser(s.PublicId)
 		assert.Nil(err)
 		err = w.Create(context.Background(), user)
 		assert.Nil(err)
@@ -159,7 +159,7 @@ func Test_UserRoles(t *testing.T) {
 		assert.Nil(err)
 		assert.True(s.PublicId != "")
 
-		user, err := NewUser(s)
+		user, err := NewUser(s.PublicId)
 		assert.Nil(err)
 		err = w.Create(context.Background(), user)
 		assert.Nil(err)
@@ -229,7 +229,7 @@ func Test_UserGrants(t *testing.T) {
 		assert.Nil(err)
 		assert.True(g.PublicId != "")
 
-		user, err := NewUser(s)
+		user, err := NewUser(s.PublicId)
 		assert.Nil(err)
 		err = w.Create(context.Background(), user)
 		assert.Nil(err)
@@ -314,7 +314,7 @@ func TestUser_Clone(t *testing.T) {
 		assert.Nil(err)
 		assert.True(s.PublicId != "")
 
-		user, err := NewUser(s)
+		user, err := NewUser(s.PublicId)
 		assert.Nil(err)
 		err = w.Create(context.Background(), user)
 		assert.Nil(err)
@@ -331,12 +331,12 @@ func TestUser_Clone(t *testing.T) {
 		assert.Nil(err)
 		assert.True(s.PublicId != "")
 
-		user, err := NewUser(s)
+		user, err := NewUser(s.PublicId)
 		assert.Nil(err)
 		err = w.Create(context.Background(), user)
 		assert.Nil(err)
 
-		user2, err := NewUser(s)
+		user2, err := NewUser(s.PublicId)
 		assert.Nil(err)
 		err = w.Create(context.Background(), user2)
 		assert.Nil(err)

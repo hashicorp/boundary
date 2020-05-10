@@ -24,15 +24,9 @@ var _ db.VetForWriter = (*User)(nil)
 
 // NewUser creates a new user and allows options:
 // WithName - to specify the user's friendly name
-func NewUser(scope *Scope, opt ...Option) (*User, error) {
+func NewUser(organizationPublicId string, opt ...Option) (*User, error) {
 	opts := getOpts(opt...)
 	withName := opts.withName
-	if scope == nil {
-		return nil, errors.New("error user scope is nil")
-	}
-	if scope.Type != OrganizationScope.String() {
-		return nil, errors.New("users can only be within an organization scope")
-	}
 	publicId, err := base62.Random(20)
 	if err != nil {
 		return nil, fmt.Errorf("error generating public ID %w for new user", err)
@@ -40,7 +34,7 @@ func NewUser(scope *Scope, opt ...Option) (*User, error) {
 	u := &User{
 		User: &store.User{
 			PublicId: publicId,
-			ScopeId:  scope.GetPublicId(),
+			ScopeId:  organizationPublicId,
 		},
 	}
 	if withName != "" {

@@ -58,7 +58,7 @@ func TestGroup_Members(t *testing.T) {
 		assert.Nil(err)
 		assert.True(s.PublicId != "")
 
-		user, err := NewUser(s)
+		user, err := NewUser(s.PublicId)
 		assert.Nil(err)
 		err = w.Create(context.Background(), user)
 		assert.Nil(err)
@@ -78,7 +78,7 @@ func TestGroup_Members(t *testing.T) {
 		err = w.Create(context.Background(), gm)
 		assert.Nil(err)
 
-		secondUser, err := NewUser(s)
+		secondUser, err := NewUser(s.PublicId)
 		assert.Nil(err)
 		assert.True(secondUser != nil)
 		err = w.Create(context.Background(), secondUser)
@@ -165,7 +165,7 @@ func TestGroup_AddMember(t *testing.T) {
 		assert.Nil(err)
 		assert.True(s.PublicId != "")
 
-		user, err := NewUser(s)
+		user, err := NewUser(s.PublicId)
 		assert.Nil(err)
 		err = w.Create(context.Background(), user)
 		assert.Nil(err)

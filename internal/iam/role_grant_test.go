@@ -42,7 +42,7 @@ func TestNewRoleGrant(t *testing.T) {
 		assert.Nil(err)
 		assert.True(g.PublicId != "")
 
-		user, err := NewUser(s)
+		user, err := NewUser(s.PublicId)
 		assert.Nil(err)
 		err = w.Create(context.Background(), user)
 		assert.Nil(err)
