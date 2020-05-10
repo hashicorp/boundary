@@ -66,7 +66,7 @@ type GroupMemberUser struct {
 	tableName string `gorm:"-"`
 }
 
-// ensure that GroupMemberUser implements the interfaces of: ClonableResource, GroupMember and db.VetForWriter
+// ensure that GroupMemberUser implements the interfaces of: Clonable, GroupMember and db.VetForWriter
 var _ Clonable = (*GroupMemberUser)(nil)
 var _ GroupMember = (*GroupMemberUser)(nil)
 var _ db.VetForWriter = (*GroupMemberUser)(nil)

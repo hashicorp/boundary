@@ -34,7 +34,7 @@ type AuthMethod struct {
 	tableName string `gorm:"-"`
 }
 
-// check that required interfaces are implemented: Resource, ClonableResource, db.VetForWriter
+// check that required interfaces are implemented: Resource, Clonable, db.VetForWriter
 var _ Resource = (*AuthMethod)(nil)
 var _ Clonable = (*AuthMethod)(nil)
 var _ db.VetForWriter = (*AuthMethod)(nil)

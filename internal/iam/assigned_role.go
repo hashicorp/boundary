@@ -81,7 +81,7 @@ type UserRole struct {
 	tableName string `gorm:"-"`
 }
 
-// ensure that UserRole implements the interfaces of: Resource, ClonableResource, AssignedRole and db.VetForWriter
+// ensure that UserRole implements the interfaces of: Resource, Clonable, AssignedRole and db.VetForWriter
 var _ Resource = (*UserRole)(nil)
 var _ Clonable = (*UserRole)(nil)
 var _ AssignedRole = (*UserRole)(nil)
@@ -201,7 +201,7 @@ type GroupRole struct {
 	tableName string `gorm:"-"`
 }
 
-// ensure that GroupRole implements the interfaces of: Resource, ClonableResource, AssignedRole and db.VetForWriter
+// ensure that GroupRole implements the interfaces of: Resource, Clonable, AssignedRole and db.VetForWriter
 var _ Resource = (*GroupRole)(nil)
 var _ Clonable = (*GroupRole)(nil)
 var _ AssignedRole = (*GroupRole)(nil)

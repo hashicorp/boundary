@@ -17,7 +17,7 @@ type Role struct {
 	tableName string `gorm:"-"`
 }
 
-// ensure that Group implements the interfaces of: Resource, ClonableResource, and db.VetForWriter
+// ensure that Group implements the interfaces of: Resource, Clonable, and db.VetForWriter
 var _ Resource = (*Role)(nil)
 var _ Clonable = (*Role)(nil)
 var _ db.VetForWriter = (*Role)(nil)

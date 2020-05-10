@@ -17,7 +17,7 @@ type RoleGrant struct {
 	tableName string `gorm:"-"`
 }
 
-// ensure that RoleGrant implements the interfaces of: Resource, ClonableResource and db.VetForWriter
+// ensure that RoleGrant implements the interfaces of: Resource, Clonable and db.VetForWriter
 var _ Resource = (*RoleGrant)(nil)
 var _ Clonable = (*RoleGrant)(nil)
 var _ db.VetForWriter = (*RoleGrant)(nil)
