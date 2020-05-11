@@ -207,10 +207,12 @@ CREATE TABLE if not exists iam_role_group (
 
 CREATE VIEW iam_assigned_role_vw AS
 SELECT
+  -- intentionally using * to specify the view which requires that the concrete role assignment tables match
   *, 'user' as type
 FROM iam_role_user
 UNION
 select
+  -- intentionally using * to specify the view which requires that the concrete role assignment tables match
   *, 'group' as type
 from iam_role_group;
 
