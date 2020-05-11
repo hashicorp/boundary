@@ -105,7 +105,7 @@ type GormReadWriter struct {
 	Tx *gorm.DB
 }
 
-// ensure that GroupRole implements the interfaces of: Resource, ClonableResource, AssignedRole and db.VetForWriter
+// ensure that GormReadWriter implements the interfaces of: Reader and Writer
 var _ Reader = (*GormReadWriter)(nil)
 var _ Writer = (*GormReadWriter)(nil)
 
@@ -301,10 +301,6 @@ func (rw *GormReadWriter) addOplog(ctx context.Context, opType OpType, opts Opti
 	ticketer, err := oplog.NewGormTicketer(gdb, oplog.WithAggregateNames(true))
 	if err != nil {
 		return fmt.Errorf("error getting Ticketer %w for WithOplog", err)
-	}
-	err = ticketer.InitTicket(replayable.TableName())
-	if err != nil {
-		return fmt.Errorf("error getting initializing ticket %w for WithOplog", err)
 	}
 	ticket, err := ticketer.GetTicket(replayable.TableName())
 	if err != nil {

@@ -18,15 +18,16 @@ const DefaultAggregateName = "global"
 
 // Ticketer provides an interface to storage for Tickets, so you can easily substitute your own ticketer
 type Ticketer interface {
-	// InitTicket initializes a ticket.  You MUST initialize a ticket in its own transaction (and commit it),
-	// before you GetTicket in a later transaction to write to the oplog.  InitTicket will check to see if
-	// the ticket has already been initialized before creating a new one.
-	InitTicket(aggregateName string) error
-
 	// GetTicket returns a ticket for the specified name.  You MUST GetTicket in the same transaction
-	// that you're using to write to the database tables. Names allow us to shard tickets around domain root names
+	// that you're using to write to the database tables. Names allow us to shard tickets around domain root names.
+	// Before getting a ticket you must insert it with it's name into the oplog_ticket table.  This is done via a
+	// db migrations script.  Requiring this insert as part of migrations ensures that the tickets are initialized in
+	// a separate transaction from when a client calls GetTicket(aggregateName) which is critical for the optimized locking
+	// pattern to work properly
 	GetTicket(aggregateName string) (*store.Ticket, error)
 
+	// Redeem ticket will attempt to redeem the ticket and ensure it's serialized with other tickets using the same
+	// aggregate name
 	Redeem(ticket *store.Ticket) error
 }
 
@@ -64,34 +65,6 @@ func (ticketer *GormTicketer) GetTicket(aggregateName string) (*store.Ticket, er
 		return nil, fmt.Errorf("error retreiving ticket from storage: %w", err)
 	}
 	return &ticket, nil
-}
-
-// InitTicket initializes a ticket.  You MUST initialize a ticket in its own transaction (and commit it),
-// before you GetTicket in a later transaction to write to the oplog.  InitTicket will check to see if
-// the ticket has already been initialized before creating a new one.
-func (ticketer *GormTicketer) InitTicket(aggregateName string) error {
-	// no existing ticket found, so let's initialize a new one
-	if aggregateName == "" {
-		return fmt.Errorf("bad ticket name")
-	}
-	// check to see if a ticket has already been initialized
-	existingTicket, err := ticketer.GetTicket(aggregateName)
-	if err == nil && existingTicket != nil {
-		return nil // found an existing intialized ticket without errors
-	}
-	if err != ErrTicketNotFound {
-		return fmt.Errorf("error retreiving ticket from storage: %w", err)
-	}
-
-	name := DefaultAggregateName
-	if ticketer.withAggregateNames {
-		name = aggregateName
-	}
-	newTicket := store.Ticket{Name: name, Version: 1}
-	if err := ticketer.tx.Create(&newTicket).Error; err != nil {
-		return fmt.Errorf("error creating ticket in storage: %w", err)
-	}
-	return nil
 }
 
 // Redeem will attempt to redeem the ticket. If the ticket version has already been used, then an error is returned
