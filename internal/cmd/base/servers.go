@@ -384,7 +384,7 @@ func (b *Server) CreateDevDatabase(dialect string) error {
 	}
 	b.Database = dbase
 
-	rw := &db.GormReadWriter{Tx: b.Database}
+	rw := &db.Db{Tx: b.Database}
 	repo, err := iam.NewRepository(rw, rw, b.ControllerKMS)
 	if err != nil {
 		c()
