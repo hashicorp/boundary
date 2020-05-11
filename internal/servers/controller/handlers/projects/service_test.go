@@ -20,7 +20,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func testProjectAndRepo(t *testing.T) (*iam.Scope, *iam.Repository) {
+func createDefaultProjectAndRepo(t *testing.T) (*iam.Scope, *iam.Repository) {
 	t.Helper()
 	cleanup, conn := db.TestSetup(t, "postgres")
 	t.Cleanup(func() {
@@ -55,7 +55,7 @@ func testProjectAndRepo(t *testing.T) (*iam.Scope, *iam.Repository) {
 }
 
 func TestGet(t *testing.T) {
-	proj, repo := testProjectAndRepo(t)
+	proj, repo := createDefaultProjectAndRepo(t)
 	toMerge := &pbs.GetProjectRequest{
 		OrgId: proj.GetParentId(),
 		Id:    proj.GetPublicId(),
@@ -82,10 +82,31 @@ func TestGet(t *testing.T) {
 		},
 		{
 			name: "Get a non existant Host Catalog",
-			req:  &pbs.GetProjectRequest{Id: "doesnt exist"},
+			req:  &pbs.GetProjectRequest{Id: "p_DoesntExis"},
 			res:  nil,
 			// This will be fixed with PR 42
 			errCode: codes.NotFound,
+		},
+		{
+			name: "To long identifier",
+			req:  &pbs.GetProjectRequest{Id: "p_ThisIdIsJustToLong"},
+			res:  nil,
+			// This will be fixed with PR 42
+			errCode: codes.InvalidArgument,
+		},
+		{
+			name: "Wrong id prefix",
+			req:  &pbs.GetProjectRequest{Id: "j_1234567890"},
+			res:  nil,
+			// This will be fixed with PR 42
+			errCode: codes.InvalidArgument,
+		},
+		{
+			name: "space in id",
+			req:  &pbs.GetProjectRequest{Id: "p_1 23456789"},
+			res:  nil,
+			// This will be fixed with PR 42
+			errCode: codes.InvalidArgument,
 		},
 	}
 	for _, tc := range cases {
@@ -104,7 +125,7 @@ func TestGet(t *testing.T) {
 }
 
 func TestCreate(t *testing.T) {
-	defaultProj, repo := testProjectAndRepo(t)
+	defaultProj, repo := createDefaultProjectAndRepo(t)
 	defaultProjCreated, err := ptypes.Timestamp(defaultProj.GetCreateTime().GetTimestamp())
 	if err != nil {
 		t.Fatalf("Error converting proto to timestamp: %v", err)
@@ -195,7 +216,7 @@ func TestCreate(t *testing.T) {
 }
 
 func TestUpdate(t *testing.T) {
-	proj, repo := testProjectAndRepo(t)
+	proj, repo := createDefaultProjectAndRepo(t)
 	projCreated, err := ptypes.Timestamp(proj.GetCreateTime().GetTimestamp())
 	if err != nil {
 		t.Fatalf("Error converting proto to timestamp: %v", err)
@@ -230,7 +251,7 @@ func TestUpdate(t *testing.T) {
 		{
 			name: "Update a Non Existing Project",
 			req: &pbs.UpdateProjectRequest{
-				Id: "doesntexist",
+				Id: "p_DoesntExis",
 				Item: &pb.Project{
 					Name:        &wrappers.StringValue{Value: "new"},
 					Description: &wrappers.StringValue{Value: "desc"},
@@ -242,9 +263,9 @@ func TestUpdate(t *testing.T) {
 		{
 			name: "Cant change Id",
 			req: &pbs.UpdateProjectRequest{
-				Id: "onething",
+				Id: "p_1234567890",
 				Item: &pb.Project{
-					Id:          "another",
+					Id:          "p_0987654321",
 					Name:        &wrappers.StringValue{Value: "new"},
 					Description: &wrappers.StringValue{Value: "new desc"},
 				}},

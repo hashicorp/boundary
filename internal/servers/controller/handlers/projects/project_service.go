@@ -3,6 +3,8 @@ package projects
 import (
 	"context"
 	"fmt"
+	"regexp"
+	"strings"
 
 	"github.com/golang/protobuf/ptypes/wrappers"
 	"github.com/grpc-ecosystem/grpc-gateway/runtime"
@@ -12,6 +14,8 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
+
+var reInvalidID = regexp.MustCompile("[^A-Za-z0-9]")
 
 type Service struct {
 	pbs.UnimplementedProjectServiceServer
@@ -153,11 +157,20 @@ func validateGetProjectRequest(req *pbs.GetProjectRequest) error {
 	if err := validateAncestors(req); err != nil {
 		return err
 	}
+	if err := validateID(req.GetOrgId(), "o_"); err != nil {
+		return err
+	}
+	if err := validateID(req.GetId(), "p_"); err != nil {
+		return err
+	}
 	return nil
 }
 
 func validateCreateProjectRequest(req *pbs.CreateProjectRequest) error {
 	if err := validateAncestors(req); err != nil {
+		return err
+	}
+	if err := validateID(req.GetOrgId(), "o_"); err != nil {
 		return err
 	}
 	item := req.GetItem()
@@ -177,6 +190,12 @@ func validateUpdateProjectRequest(req *pbs.UpdateProjectRequest) error {
 	if err := validateAncestors(req); err != nil {
 		return err
 	}
+	if err := validateID(req.GetId(), "p_"); err != nil {
+		return err
+	}
+	if err := validateID(req.GetOrgId(), "o_"); err != nil {
+		return err
+	}
 	// TODO: Either require mask to be set or document in API that an unset mask updates all fields.
 	item := req.GetItem()
 	if item == nil {
@@ -185,6 +204,9 @@ func validateUpdateProjectRequest(req *pbs.UpdateProjectRequest) error {
 		return nil
 	}
 
+	if err := validateID(item.GetId(), "p_"); item.GetId() != "" && err != nil {
+		return err
+	}
 	if item.GetId() != "" && item.GetId() != req.GetId() {
 		return status.Errorf(codes.InvalidArgument, "Id in provided item and url must match. Item Id was %q, url id was %q", item.GetId(), req.GetId())
 	}
@@ -192,6 +214,20 @@ func validateUpdateProjectRequest(req *pbs.UpdateProjectRequest) error {
 		return status.Errorf(codes.InvalidArgument, "Cannot set Created or Updated time when updating a project.")
 	}
 
+	return nil
+}
+
+func validateID(id, prefix string) error {
+	if !strings.HasPrefix(id, prefix) {
+		return status.Errorf(codes.InvalidArgument, "ID start with a %q prefix, provided %q", prefix, id)
+	}
+	id = strings.TrimPrefix(id, prefix)
+	if len(id) != 10 {
+		return status.Errorf(codes.InvalidArgument, "ID should have a length of 10, but was %d", len(id))
+	}
+	if reInvalidID.Match([]byte(id)) {
+		return status.Errorf(codes.InvalidArgument, "Improperly formatted ID: %q", id)
+	}
 	return nil
 }
 
