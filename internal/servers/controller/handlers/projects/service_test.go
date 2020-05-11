@@ -19,21 +19,21 @@ import (
 	"github.com/stretchr/testify/mock"
 )
 
-type fakeRepo struct {
+type mockRepo struct {
 	mock.Mock
 }
 
-func (f *fakeRepo) LookupScope(ctx context.Context, opt ...iam.Option) (*iam.Scope, error) {
+func (f *mockRepo) LookupScope(ctx context.Context, opt ...iam.Option) (*iam.Scope, error) {
 	args := f.Called(ctx, opt)
 	return args.Get(0).(*iam.Scope), args.Error(1)
 }
 
-func (f *fakeRepo) CreateScope(ctx context.Context, hc *iam.Scope, opt ...iam.Option) (*iam.Scope, error) {
+func (f *mockRepo) CreateScope(ctx context.Context, hc *iam.Scope, opt ...iam.Option) (*iam.Scope, error) {
 	args := f.Called(ctx, hc, opt)
 	return args.Get(0).(*iam.Scope), args.Error(1)
 }
 
-func (f *fakeRepo) UpdateScope(ctx context.Context, hc *iam.Scope, fieldMaskPaths []string, opt ...iam.Option) (*iam.Scope, error) {
+func (f *mockRepo) UpdateScope(ctx context.Context, hc *iam.Scope, fieldMaskPaths []string, opt ...iam.Option) (*iam.Scope, error) {
 	args := f.Called(ctx, hc, fieldMaskPaths, opt)
 	return args.Get(0).(*iam.Scope), args.Error(1)
 }
@@ -94,7 +94,7 @@ func TestGet(t *testing.T) {
 			req := proto.Clone(toMerge).(*pbs.GetProjectRequest)
 			proto.Merge(req, tc.req)
 
-			repo := &fakeRepo{}
+			repo := &mockRepo{}
 			// TODO: Validate input option arguments to the repo
 			if tc.repoOut != nil {
 				repo.On("LookupScope", mock.Anything, mock.Anything).Return(tc.repoOut.scope, tc.repoOut.err)
@@ -187,7 +187,7 @@ func TestCreate(t *testing.T) {
 			req := proto.Clone(toMerge).(*pbs.CreateProjectRequest)
 			proto.Merge(req, tc.req)
 
-			repo := &fakeRepo{}
+			repo := &mockRepo{}
 			if tc.repoOut != nil {
 				repo.On("CreateScope", mock.Anything, mock.Anything, mock.Anything).Return(tc.repoOut.scope, tc.repoOut.err)
 			}
@@ -282,7 +282,7 @@ func TestUpdate(t *testing.T) {
 			req := proto.Clone(toMerge).(*pbs.UpdateProjectRequest)
 			proto.Merge(req, tc.req)
 
-			repo := &fakeRepo{}
+			repo := &mockRepo{}
 			if tc.repoOut != nil {
 				repo.On("UpdateScope", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(tc.repoOut.scope, tc.repoOut.err)
 			}
