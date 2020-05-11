@@ -71,6 +71,8 @@ func (f *fakeFile) Readdir(count int) ([]os.FileInfo, error) {
 	switch f.dialect {
 	case "postgres":
 		migrationsMap = postgresMigrations
+	default:
+		return nil, fmt.Errorf("unknown database dialect %s", f.dialect)
 	}
 
 	// Sort the keys. May not be necessary but feels nice.
