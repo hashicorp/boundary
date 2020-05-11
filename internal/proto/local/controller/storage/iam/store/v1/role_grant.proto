@@ -27,11 +27,7 @@ message RoleGrant {
   // @inject_tag: `gorm:"default:null"`
   string description = 5;
 
-  // scope id for the role grant
-  // @inject_tag: `gorm:"default:null"`
-  string scope_id = 6;
+  string role_id = 6;
 
-  string role_id = 7;
-
-  string grant = 8;
+  string grant = 7;
 }

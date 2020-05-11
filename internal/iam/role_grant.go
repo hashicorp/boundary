@@ -47,7 +47,6 @@ func NewRoleGrant(scope *Scope, role *Role, grant string, opt ...Option) (*RoleG
 	rg := &RoleGrant{
 		RoleGrant: &store.RoleGrant{
 			PublicId: publicId,
-			ScopeId:  scope.GetPublicId(),
 			RoleId:   role.PublicId,
 			Grant:    grant,
 		},
@@ -77,30 +76,24 @@ func (g *RoleGrant) VetForWrite(ctx context.Context, r db.Reader, opType db.OpTy
 	if g.PublicId == "" {
 		return errors.New("error public id is empty string for grant write")
 	}
-	if g.ScopeId == "" {
-		return errors.New("error scope id not set for grant write")
-	}
-	// make sure the scope is valid for users
-	if err := g.scopeIsValid(ctx, r); err != nil {
-		return err
-	}
-	return nil
-}
-
-func (g *RoleGrant) scopeIsValid(ctx context.Context, r db.Reader) error {
-	ps, err := LookupScope(ctx, r, g)
-	if err != nil {
-		return err
-	}
-	if ps.Type != OrganizationScope.String() && ps.Type != ProjectScope.String() {
-		return errors.New("error scope is not an organization or project for the grant")
-	}
 	return nil
 }
 
 // GetScope returns the scope for the RoleGrant
 func (g *RoleGrant) GetScope(ctx context.Context, r db.Reader) (*Scope, error) {
-	return LookupScope(ctx, r, g)
+	if g.RoleId == "" {
+		return nil, errors.New("grant's role id is unset")
+	}
+	role := allocRole()
+	role.PublicId = g.RoleId
+	if err := r.LookupByPublicId(ctx, &role); err != nil {
+		return nil, fmt.Errorf("unable to look up grant's role: %w", err)
+	}
+	roleScope, err := LookupScope(ctx, r, &role)
+	if err != nil {
+		return nil, fmt.Errorf("unable to get grant's scope: %w", err)
+	}
+	return roleScope, nil
 }
 
 // ResourceType returns the type of the RoleGrant

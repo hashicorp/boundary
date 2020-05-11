@@ -54,6 +54,12 @@ func NewRole(scope *Scope, opt ...Option) (*Role, error) {
 	return r, nil
 }
 
+func allocRole() Role {
+	return Role{
+		Role: &store.Role{},
+	}
+}
+
 // Clone creates a clone of the Role
 func (r *Role) Clone() interface{} {
 	cp := proto.Clone(r.Role)
