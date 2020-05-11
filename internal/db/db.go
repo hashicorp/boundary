@@ -56,6 +56,27 @@ func Migrate(connectionUrl string, migrationsDirectory string) error {
 	return nil
 }
 
+// InitDbInDocker initializes the data store within docker or an existing PG_URL
+func InitDbInDocker(dialect string) (cleanup func() error, retURL string, err error) {
+	switch dialect {
+	case "postgres":
+		if os.Getenv("PG_URL") != "" {
+			if err := InitStore(dialect, func() error { return nil }, os.Getenv("PG_URL")); err != nil {
+				return func() error { return nil }, os.Getenv("PG_URL"), fmt.Errorf("error initializing store: %w", err)
+			}
+			return func() error { return nil }, os.Getenv("PG_URL"), nil
+		}
+	}
+	c, url, err := StartDbInDocker(dialect)
+	if err != nil {
+		return func() error { return nil }, "", fmt.Errorf("could not start docker: %w", err)
+	}
+	if err := InitStore(dialect, c, url); err != nil {
+		return func() error { return nil }, "", fmt.Errorf("error initializing store: %w", err)
+	}
+	return c, url, nil
+}
+
 // StartDbInDocker
 func StartDbInDocker(dialect string) (cleanup func() error, retURL string, err error) {
 	pool, err := dockertest.NewPool("")

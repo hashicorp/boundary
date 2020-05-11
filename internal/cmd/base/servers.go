@@ -366,13 +366,10 @@ func (b *Server) RunShutdownFuncs(ui cli.Ui) {
 }
 
 func (b *Server) CreateDevDatabase() error {
-	c, url, err := db.StartDbInDocker("postgres")
+	c, url, err := db.InitDbInDocker("postgres")
 	if err != nil {
 		c()
 		return fmt.Errorf("unable to start dev database: %w", err)
-	}
-	if err := db.InitStore("postgres", c, url); err != nil {
-		return fmt.Errorf("error running migrations: %w", err)
 	}
 
 	b.DevDatabaseCleanupFunc = c
