@@ -20,14 +20,7 @@ type Worker struct {
 func New(conf *Config) (*Worker, error) {
 	c := &Worker{
 		conf:   conf,
-		logger: conf.Logger,
-	}
-
-	if c.logger == nil {
-		c.logger = hclog.New(&hclog.LoggerOptions{
-			Level: hclog.Trace,
-		})
-		conf.AllLoggers = append(conf.AllLoggers, c.logger)
+		logger: conf.Logger.Named("worker"),
 	}
 
 	if conf.SecureRandomReader == nil {
@@ -50,8 +43,6 @@ func New(conf *Config) (*Worker, error) {
 		}
 	}
 
-	c.logger = c.logger.Named("worker")
-
 	c.baseContext, c.baseCancel = context.WithCancel(context.Background())
 
 	return c, nil
@@ -69,10 +60,4 @@ func (c *Worker) Shutdown() error {
 		return fmt.Errorf("error stopping worker listeners: %w", err)
 	}
 	return nil
-}
-
-func (c *Worker) SetLogLevel(level hclog.Level) {
-	for _, logger := range c.conf.AllLoggers {
-		logger.SetLevel(level)
-	}
 }
