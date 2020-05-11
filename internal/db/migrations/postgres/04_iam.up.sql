@@ -142,7 +142,6 @@ CREATE TABLE if not exists iam_group (
 
 CREATE TABLE if not exists iam_group_member_user (
     create_time timestamp with time zone NOT NULL default current_timestamp,
-    update_time timestamp with time zone NOT NULL default current_timestamp,
     group_id wt_public_id NOT NULL REFERENCES iam_group(public_id) ON DELETE CASCADE ON UPDATE CASCADE,
     member_id wt_public_id NOT NULL REFERENCES iam_user(public_id) ON DELETE CASCADE ON UPDATE CASCADE,
     primary key (group_id, member_id)
@@ -191,25 +190,8 @@ values
   ('delete'),
   ('authen');
 
-
-CREATE TABLE if not exists iam_role_type_enm (
-    string text NOT NULL primary key CHECK(
-      string IN (
-        'unknown',
-        'user',
-        'group'
-      )
-    )
-  );
-INSERT INTO iam_role_type_enm (string)
-values
-  ('unknown'),
-  ('user'),
-  ('group');
-
 CREATE TABLE if not exists iam_role_user (
     create_time timestamp with time zone NOT NULL default current_timestamp,
-    update_time timestamp with time zone NOT NULL default current_timestamp,
     role_id wt_public_id NOT NULL REFERENCES iam_role(public_id) ON DELETE CASCADE ON UPDATE CASCADE,
     principal_id wt_public_id NOT NULL REFERENCES iam_user(public_id) ON DELETE CASCADE ON UPDATE CASCADE,
     primary key (role_id, principal_id)
@@ -217,7 +199,6 @@ CREATE TABLE if not exists iam_role_user (
 
 CREATE TABLE if not exists iam_role_group (
     create_time timestamp with time zone NOT NULL default current_timestamp,
-    update_time timestamp with time zone NOT NULL default current_timestamp,
     role_id wt_public_id NOT NULL REFERENCES iam_role(public_id) ON DELETE CASCADE ON UPDATE CASCADE,
     principal_id wt_public_id NOT NULL REFERENCES iam_group(public_id) ON DELETE CASCADE ON UPDATE CASCADE,
     primary key (role_id, principal_id)

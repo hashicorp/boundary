@@ -76,7 +76,6 @@ func (g *Group) Members(ctx context.Context, r db.Reader) ([]GroupMember, error)
 			gm := &GroupMemberUser{
 				GroupMemberUser: &store.GroupMemberUser{
 					CreateTime: m.CreateTime,
-					UpdateTime: m.UpdateTime,
 					GroupId:    m.GroupId,
 					MemberId:   m.MemberId,
 				},

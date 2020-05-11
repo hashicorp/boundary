@@ -86,7 +86,6 @@ func (role *Role) AssignedRoles(ctx context.Context, r db.Reader) ([]AssignedRol
 			pr := &UserRole{
 				UserRole: &store.UserRole{
 					CreateTime:  vr.CreateTime,
-					UpdateTime:  vr.UpdateTime,
 					RoleId:      vr.RoleId,
 					PrincipalId: vr.PrincipalId,
 				},
@@ -96,7 +95,6 @@ func (role *Role) AssignedRoles(ctx context.Context, r db.Reader) ([]AssignedRol
 			pr := &GroupRole{
 				GroupRole: &store.GroupRole{
 					CreateTime:  vr.CreateTime,
-					UpdateTime:  vr.UpdateTime,
 					RoleId:      vr.RoleId,
 					PrincipalId: vr.PrincipalId,
 				},

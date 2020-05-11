@@ -40,14 +40,11 @@ message UserRole {
   // @inject_tag: `gorm:"default:current_timestamp"`
   Timestamp create_time = 1;
 
-  // update_time from the RDBMS
-  // @inject_tag: `gorm:"default:current_timestamp"`
-  Timestamp update_time = 2;
-
   // role_id is the role of this principal.
-  string role_id = 3;
+  string role_id = 2;
 
-  string principal_id = 4;
+  // principal_id is the public_id of the user (which is the principal)
+  string principal_id = 3;
 }
 
 message GroupRole {
@@ -55,14 +52,11 @@ message GroupRole {
   // @inject_tag: `gorm:"default:current_timestamp"`
   Timestamp create_time = 1;
 
-  // update_time from the RDBMS
-  // @inject_tag: `gorm:"default:current_timestamp"`
-  Timestamp update_time = 2;
-
   // role_id is the role of this principal.
-  string role_id = 3;
+  string role_id = 2;
 
-  string principal_id = 4;
+  // principal_id is the public_id of the group (which is the principal)
+  string principal_id = 3;
 }
 
 message AssignedRoleView {
@@ -70,15 +64,11 @@ message AssignedRoleView {
   // @inject_tag: `gorm:"default:current_timestamp"`
   Timestamp create_time = 1;
 
-  // update_time from the RDBMS
-  // @inject_tag: `gorm:"default:current_timestamp"`
-  Timestamp update_time = 2;
-
   // role_id is the role of this principal.
-  string role_id = 3;
+  string role_id = 2;
 
   // Principal type (User or Group)
-  string type = 4;
+  string type = 3;
 
-  string principal_id = 5;
+  string principal_id = 4;
 }

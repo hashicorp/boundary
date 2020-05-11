@@ -11,16 +11,12 @@ message GroupMemberUser {
   // @inject_tag: `gorm:"default:current_timestamp"`
   Timestamp create_time = 1;
 
-  // update_time from the RDBMS
-  // @inject_tag: `gorm:"default:current_timestamp"`
-  Timestamp update_time = 2;
-
   // group_id is the Group of this GroupMemberUser.
   // @inject_tag: gorm:"primary_key"
-  string group_id = 3;
+  string group_id = 2;
 
   // @inject_tag: gorm:"primary_key"
-  string member_id = 4;
+  string member_id = 3;
 }
 
 message GroupMemberView {
@@ -28,16 +24,12 @@ message GroupMemberView {
   // @inject_tag: `gorm:"default:current_timestamp"`
   Timestamp create_time = 1;
 
-  // update_time from the RDBMS
-  // @inject_tag: `gorm:"default:current_timestamp"`
-  Timestamp update_time = 2;
-
   // group_id is the Group of this GroupMember.
-  string group_id = 3;
+  string group_id = 2;
 
   // member_id of the GroupMember
-  string member_id = 4;
+  string member_id = 3;
 
   // GroupMember type (User)
-  string type = 5;
+  string type = 4;
 }
