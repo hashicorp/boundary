@@ -133,7 +133,6 @@ func (s Service) updateInRepo(ctx context.Context, req *pbs.UpdateProjectRequest
 }
 
 func toProto(in *iam.Scope) *pb.Project {
-	// TODO: Decide if we should put the id prefix here or in scopes.
 	out := pb.Project{Id: in.GetPublicId()}
 	if in.GetDescription() != "" {
 		out.Description = &wrappers.StringValue{Value: in.GetDescription()}
@@ -151,6 +150,7 @@ func toProto(in *iam.Scope) *pb.Project {
 //  * The path passed in is correctly formatted
 //  * All required parameters are set
 //  * There are no conflicting parameters provided
+// TODO: Populate the error in a way to allow it to be converted to the previously described error format and include all invalid fields instead of just the most recent.
 func validateGetProjectRequest(req *pbs.GetProjectRequest) error {
 	if err := validateAncestors(req); err != nil {
 		return err
