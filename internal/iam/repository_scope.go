@@ -4,6 +4,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
+
+	"github.com/hashicorp/watchtower/internal/db"
 )
 
 // CreateScope will create a scope in the repository and return the written scope
@@ -30,7 +32,8 @@ func (r *Repository) UpdateScope(ctx context.Context, scope *Scope, fieldMaskPat
 	return resource.(*Scope), err
 }
 
-// LookupScope will look up a scope in the respository
+// LookupScope will look up a scope in the repository.  If the scope is not
+// found, it will return nil, nil.
 func (r *Repository) LookupScope(ctx context.Context, opt ...Option) (*Scope, error) {
 	opts := getOpts(opt...)
 	withPublicId := opts.withPublicId
@@ -40,6 +43,9 @@ func (r *Repository) LookupScope(ctx context.Context, opt ...Option) (*Scope, er
 		scope := allocScope()
 		scope.PublicId = withPublicId
 		if err := r.reader.LookupByPublicId(ctx, &scope); err != nil {
+			if err == db.ErrRecordNotFound {
+				return nil, nil
+			}
 			return nil, err
 		}
 		return &scope, nil
@@ -48,6 +54,9 @@ func (r *Repository) LookupScope(ctx context.Context, opt ...Option) (*Scope, er
 		scope := allocScope()
 		scope.Name = withName
 		if err := r.reader.LookupByName(ctx, &scope); err != nil {
+			if err == db.ErrRecordNotFound {
+				return nil, nil
+			}
 			return nil, err
 		}
 		return &scope, nil

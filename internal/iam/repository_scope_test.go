@@ -133,3 +133,44 @@ func Test_Repository_UpdateScope(t *testing.T) {
 		assert.Equal("failed to update scope: error on update you cannot change a scope's parent", err.Error())
 	})
 }
+
+func Test_Repository_LookupScope(t *testing.T) {
+	t.Parallel()
+	cleanup, conn := db.TestSetup(t, "postgres")
+	defer cleanup()
+	assert := assert.New(t)
+	defer conn.Close()
+
+	t.Run("found-and-not-found", func(t *testing.T) {
+		rw := &db.GormReadWriter{Tx: conn}
+		wrapper := db.TestWrapper(t)
+		repo, err := NewRepository(rw, rw, wrapper)
+		id, err := uuid.GenerateUUID()
+		assert.Nil(err)
+
+		s, err := NewOrganization(WithName("fname-" + id))
+		s, err = repo.CreateScope(context.Background(), s)
+		assert.Nil(err)
+		assert.True(s != nil)
+		assert.True(s.GetPublicId() != "")
+		assert.Equal(s.GetName(), "fname-"+id)
+
+		foundScope, err := repo.LookupScope(context.Background(), WithPublicId(s.PublicId))
+		assert.Nil(err)
+		assert.Equal(foundScope.GetPublicId(), s.GetPublicId())
+
+		foundScope, err = repo.LookupScope(context.Background(), WithName("fname-"+id))
+		assert.Nil(err)
+		assert.Equal(foundScope.GetPublicId(), s.GetPublicId())
+
+		invalidId, err := uuid.GenerateUUID()
+		assert.Nil(err)
+		notFoundById, err := repo.LookupScope(context.Background(), WithPublicId(invalidId))
+		assert.Nil(err)
+		assert.Nil(notFoundById)
+
+		notFoundByName, err := repo.LookupScope(context.Background(), WithName(invalidId))
+		assert.Nil(err)
+		assert.Nil(notFoundByName)
+	})
+}

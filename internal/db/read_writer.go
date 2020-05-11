@@ -14,6 +14,13 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
+var (
+	// ErrRecordNotFound returns a "record not found" error and it only occurs
+	// when attempting to read from the database into struct.
+	// When reading into a slice it won't return this error.
+	ErrRecordNotFound = errors.New("record not found")
+)
+
 // Reader interface defines lookups/searching for resources
 type Reader interface {
 	// LookupByName will lookup resource by its friendly name which must be unique
@@ -396,7 +403,13 @@ func (rw *GormReadWriter) LookupByName(ctx context.Context, resource ResourceNam
 	if resource.GetName() == "" {
 		return errors.New("error name empty string for lookup by name")
 	}
-	return rw.Tx.Where("name = ?", resource.GetName()).First(resource).Error
+	if err := rw.Tx.Where("name = ?", resource.GetName()).First(resource).Error; err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return ErrRecordNotFound
+		}
+		return err
+	}
+	return nil
 }
 
 // LookupByPublicId will lookup resource my its public_id which must be unique
@@ -416,7 +429,13 @@ func (rw *GormReadWriter) LookupByPublicId(ctx context.Context, resource Resourc
 	if resource.GetPublicId() == "" {
 		return errors.New("error public id empty string for lookup by public id")
 	}
-	return rw.Tx.Where("public_id = ?", resource.GetPublicId()).First(resource).Error
+	if err := rw.Tx.Where("public_id = ?", resource.GetPublicId()).First(resource).Error; err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return ErrRecordNotFound
+		}
+		return err
+	}
+	return nil
 }
 
 // LookupWhere will lookup the first resource using a where clause with parameters (it only returns the first one)
