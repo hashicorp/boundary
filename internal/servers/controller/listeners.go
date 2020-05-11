@@ -14,6 +14,9 @@ import (
 	"github.com/hashicorp/go-alpnmux"
 	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/watchtower/internal/cmd/base"
+	"github.com/hashicorp/watchtower/internal/db"
+	"github.com/hashicorp/watchtower/internal/iam"
+	"github.com/hashicorp/watchtower/internal/servers/controller/handlers/projects"
 )
 
 func (c *Controller) startListeners() error {
@@ -21,8 +24,17 @@ func (c *Controller) startListeners() error {
 	servers := make([]func(), 0, len(c.conf.Listeners))
 
 	configureForAPI := func(ln *base.ServerListener) error {
+		rw := &db.Db{Tx: c.conf.Database}
+		repo, err := iam.NewRepository(rw, rw, c.conf.ControllerKMS)
+		if err != nil {
+			return fmt.Errorf("unable to create repo for resource services: %w", err)
+		}
+
 		handler := Handler(HandlerProperties{
 			ListenerConfig: ln.Config,
+			grpcGatewayServices: []RegisterGrpcGatewayer{
+				projects.NewService(repo),
+			},
 		})
 
 		/*

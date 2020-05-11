@@ -12,11 +12,11 @@ import (
 	"github.com/hashicorp/watchtower/internal/servers/controller/handlers/host_catalogs"
 	"github.com/hashicorp/watchtower/internal/servers/controller/handlers/host_sets"
 	"github.com/hashicorp/watchtower/internal/servers/controller/handlers/hosts"
-	"github.com/hashicorp/watchtower/internal/servers/controller/handlers/projects"
 )
 
 type HandlerProperties struct {
-	ListenerConfig *configutil.Listener
+	ListenerConfig      *configutil.Listener
+	grpcGatewayServices []RegisterGrpcGatewayer
 }
 
 type RegisterGrpcGatewayer interface {
@@ -29,14 +29,14 @@ func Handler(props HandlerProperties) http.Handler {
 	// Create the muxer to handle the actual endpoints
 	mux := http.NewServeMux()
 
-	mux.Handle("/v1/", handleGrpcGateway())
+	mux.Handle("/v1/", handleGrpcGateway(props.grpcGatewayServices))
 
 	genericWrappedHandler := wrapGenericHandler(mux, props)
 
 	return genericWrappedHandler
 }
 
-func handleGrpcGateway() http.Handler {
+func handleGrpcGateway(rs []RegisterGrpcGatewayer) http.Handler {
 	ignored := context.Background()
 	mux := runtime.NewServeMux()
 	services.RegisterHostCatalogServiceHandlerServer(ignored, mux, &host_catalogs.Service{})
@@ -44,9 +44,6 @@ func handleGrpcGateway() http.Handler {
 	services.RegisterHostServiceHandlerServer(ignored, mux, &hosts.Service{})
 	// Using the RegisterGrpcGatewayer interface allows us to decouple the creation of the services with registering them
 	// to the handler/Mux.  This means the services can be initiated closer to the creation of the DB and the service's other dependencies.
-	rs := []RegisterGrpcGatewayer{
-		&projects.Service{},
-	}
 	for _, r := range rs {
 		r.RegisterGrpcGateway(mux)
 	}
