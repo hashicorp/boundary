@@ -254,7 +254,7 @@ func (c *Command) Run(args []string) int {
 	}
 
 	if c.flagDev {
-		if err := c.CreateDevDatabase(); err != nil {
+		if err := c.CreateDevDatabase("postgres"); err != nil {
 			c.UI.Error(fmt.Errorf("Error creating dev database container: %s", err.Error()).Error())
 			return 1
 		}

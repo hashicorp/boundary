@@ -26,6 +26,7 @@ import (
 	"github.com/hashicorp/watchtower/globals"
 	"github.com/hashicorp/watchtower/internal/db"
 	"github.com/hashicorp/watchtower/version"
+	"github.com/jinzhu/gorm"
 	"github.com/mitchellh/cli"
 	"golang.org/x/net/http/httpproxy"
 	"google.golang.org/grpc/grpclog"
@@ -59,6 +60,7 @@ type Server struct {
 
 	DevDatabaseUrl         string
 	DevDatabaseCleanupFunc func() error
+	DevDatabase            *gorm.DB
 }
 
 func NewServer() *Server {
@@ -355,11 +357,11 @@ func (b *Server) RunShutdownFuncs(ui cli.Ui) {
 	}
 }
 
-func (b *Server) CreateDevDatabase() error {
-	c, url, err := db.InitDbInDocker("postgres")
+func (b *Server) CreateDevDatabase(dialect string) error {
+	c, url, err := db.InitDbInDocker(dialect)
 	if err != nil {
 		c()
-		return fmt.Errorf("unable to start dev database: %w", err)
+		return fmt.Errorf("unable to start dev database with dialect %s: %w", dialect, err)
 	}
 
 	b.DevDatabaseCleanupFunc = c
@@ -367,10 +369,21 @@ func (b *Server) CreateDevDatabase() error {
 
 	b.InfoKeys = append(b.InfoKeys, "dev database url")
 	b.Info["dev database url"] = b.DevDatabaseUrl
+
+	db, err := gorm.Open(dialect, url)
+	if err != nil {
+		c()
+		return fmt.Errorf("unable to create db object with dialect %s: %w", dialect, err)
+	}
+	b.DevDatabase = db
+
 	return nil
 }
 
 func (b *Server) DestroyDevDatabase() error {
+	if b.DevDatabase != nil {
+		b.DevDatabase.Close()
+	}
 	if b.DevDatabaseCleanupFunc != nil {
 		return b.DevDatabaseCleanupFunc()
 	}

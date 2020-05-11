@@ -212,7 +212,7 @@ func (c *Command) Run(args []string) int {
 
 	defer c.RunShutdownFuncs(c.UI)
 
-	if err := c.CreateDevDatabase(); err != nil {
+	if err := c.CreateDevDatabase("postgres"); err != nil {
 		c.UI.Error(fmt.Errorf("Error creating dev database container: %w", err).Error())
 		return 1
 	}
