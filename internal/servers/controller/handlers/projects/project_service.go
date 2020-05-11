@@ -115,16 +115,17 @@ func (s Service) updateInRepo(ctx context.Context, req *pbs.UpdateProjectRequest
 		opts = append(opts, iam.WithName(name.GetValue()))
 	}
 	opts = append(opts, iam.WithPublicId(req.GetId()))
-	p, err := iam.NewProject(req.GetOrgId(), iam.WithPublicId(req.GetId()))
+	p, err := iam.NewProject(req.GetOrgId(), opts...)
 	if err != nil {
 		return nil, err
 	}
-	out, err := s.repo.UpdateScope(ctx, p, madeUp)
+	p.PublicId = req.GetId()
+	out, err := s.repo.UpdateScope(ctx, p, madeUp, opts...)
 	if err != nil {
 		return nil, err
 	}
 	if out == nil {
-		return nil, status.Error(codes.Internal, "Failed to get Project after updating it.")
+		return nil, status.Error(codes.NotFound, "Project doesn't exist.")
 	}
 	return toProto(out), nil
 }
