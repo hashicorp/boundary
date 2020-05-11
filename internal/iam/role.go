@@ -82,7 +82,6 @@ func (role *Role) AssignedRoles(ctx context.Context, r db.Reader) ([]AssignedRol
 					CreateTime:  vr.CreateTime,
 					UpdateTime:  vr.UpdateTime,
 					RoleId:      vr.RoleId,
-					Type:        UserRoleType.String(),
 					PrincipalId: vr.PrincipalId,
 				},
 			}
@@ -93,7 +92,6 @@ func (role *Role) AssignedRoles(ctx context.Context, r db.Reader) ([]AssignedRol
 					CreateTime:  vr.CreateTime,
 					UpdateTime:  vr.UpdateTime,
 					RoleId:      vr.RoleId,
-					Type:        GroupRoleType.String(),
 					PrincipalId: vr.PrincipalId,
 				},
 			}

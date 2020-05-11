@@ -98,10 +98,14 @@ func newUserRole(r *Role, u *User, opt ...Option) (AssignedRole, error) {
 		UserRole: &store.UserRole{
 			PrincipalId: u.PublicId,
 			RoleId:      r.PublicId,
-			Type:        UserRoleType.String(),
 		},
 	}
 	return ur, nil
+}
+
+// GetType returns the principal role type
+func (r *UserRole) GetType() string {
+	return UserRoleType.String()
 }
 
 // Clone creates a clone of the UserRole
@@ -114,9 +118,6 @@ func (r *UserRole) Clone() interface{} {
 
 // VetForWrite implements db.VetForWrite() interface
 func (role *UserRole) VetForWrite(ctx context.Context, r db.Reader, opType db.OpType, opt ...db.Option) error {
-	if role.Type != UserRoleType.String() {
-		return errors.New("error role type is not user")
-	}
 	return nil
 }
 
@@ -165,10 +166,14 @@ func newGroupRole(r *Role, g *Group, opt ...Option) (AssignedRole, error) {
 		GroupRole: &store.GroupRole{
 			PrincipalId: g.PublicId,
 			RoleId:      r.PublicId,
-			Type:        GroupRoleType.String(),
 		},
 	}
 	return gr, nil
+}
+
+// GetType returns the principal role type
+func (r *GroupRole) GetType() string {
+	return GroupRoleType.String()
 }
 
 // Clone creates a clone of the GroupRole
@@ -181,9 +186,6 @@ func (r *GroupRole) Clone() interface{} {
 
 // VetForWrite implements db.VetForWrite() interface
 func (role *GroupRole) VetForWrite(ctx context.Context, r db.Reader, opType db.OpType, opt ...db.Option) error {
-	if role.Type != GroupRoleType.String() {
-		return errors.New("error role type is not group")
-	}
 	return nil
 }
 

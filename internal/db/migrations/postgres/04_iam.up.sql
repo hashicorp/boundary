@@ -99,7 +99,7 @@ CREATE TABLE if not exists iam_user (
 
 
 CREATE TABLE if not exists iam_auth_method (
-    public_id wt_public_id not null primary key,
+    public_id wt_public_id not null primary key, 
     create_time timestamp with time zone NOT NULL default current_timestamp,
     update_time timestamp with time zone NOT NULL default current_timestamp,
     name text UNIQUE,
@@ -213,7 +213,6 @@ CREATE TABLE if not exists iam_role_user (
     update_time timestamp with time zone NOT NULL default current_timestamp,
     role_id wt_public_id NOT NULL REFERENCES iam_role(public_id) ON DELETE CASCADE ON UPDATE CASCADE,
     principal_id wt_public_id NOT NULL REFERENCES iam_user(public_id) ON DELETE CASCADE ON UPDATE CASCADE,
-    type text NOT NULL REFERENCES iam_role_type_enm(string) CHECK(type = 'user'),
     primary key (role_id, principal_id)
   );
 
@@ -222,17 +221,16 @@ CREATE TABLE if not exists iam_role_group (
     update_time timestamp with time zone NOT NULL default current_timestamp,
     role_id wt_public_id NOT NULL REFERENCES iam_role(public_id) ON DELETE CASCADE ON UPDATE CASCADE,
     principal_id wt_public_id NOT NULL REFERENCES iam_group(public_id) ON DELETE CASCADE ON UPDATE CASCADE,
-    type text NOT NULL REFERENCES iam_role_type_enm(string) CHECK(type = 'group'),
     primary key (role_id, principal_id)
   );
 
 CREATE VIEW iam_assigned_role_vw AS
 SELECT
-  *
+  *, 'user' as type
 FROM iam_role_user
 UNION
 select
-  *
+  *, 'group' as type
 from iam_role_group;
 
 

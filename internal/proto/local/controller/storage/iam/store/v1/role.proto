@@ -47,10 +47,7 @@ message UserRole {
   // role_id is the role of this principal.
   string role_id = 3;
 
-  // Principal type (User)
-  string type = 4;
-
-  string principal_id = 5;
+  string principal_id = 4;
 }
 
 message GroupRole {
@@ -65,10 +62,7 @@ message GroupRole {
   // role_id is the role of this principal.
   string role_id = 3;
 
-  // Principal type (Group)
-  string type = 4;
-
-  string principal_id = 5;
+  string principal_id = 4;
 }
 
 message AssignedRoleView {
