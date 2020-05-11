@@ -26,7 +26,7 @@ func (m *migrationDriver) Open(name string) (http.File, error) {
 	case "postgres":
 		ff = postgresMigrations[name]
 	}
-	if m == nil {
+	if ff == nil {
 		return nil, os.ErrNotExist
 	}
 	ff.name = strings.TrimPrefix(name, "migrations/")
