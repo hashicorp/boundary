@@ -91,10 +91,12 @@ CREATE TABLE if not exists iam_user (
     public_id wt_public_id not null primary key,
     create_time timestamp with time zone NOT NULL default current_timestamp,
     update_time timestamp with time zone NOT NULL default current_timestamp,
-    name text UNIQUE,
+    name text,
     description text,
     external_name text NOT NULL,
     scope_id wt_public_id NOT NULL REFERENCES iam_scope_organization(scope_id),
+    unique(name, scope_id),
+    unique(external_name, scope_id),
     disabled BOOLEAN NOT NULL default FALSE
   );
 
@@ -103,9 +105,10 @@ CREATE TABLE if not exists iam_auth_method (
     public_id wt_public_id not null primary key, 
     create_time timestamp with time zone NOT NULL default current_timestamp,
     update_time timestamp with time zone NOT NULL default current_timestamp,
-    name text UNIQUE,
+    name text,
     description text,
     scope_id wt_public_id NOT NULL REFERENCES iam_scope_organization(scope_id) ON DELETE CASCADE ON UPDATE CASCADE,
+    unique(name, scope_id),
     disabled BOOLEAN NOT NULL default FALSE,
     type text NOT NULL
   );
@@ -115,9 +118,10 @@ CREATE TABLE if not exists iam_role (
     public_id wt_public_id not null primary key,
     create_time timestamp with time zone NOT NULL default current_timestamp,
     update_time timestamp with time zone NOT NULL default current_timestamp,
-    name text UNIQUE,
+    name text,
     description text,
     scope_id wt_public_id NOT NULL REFERENCES iam_scope(public_id) ON DELETE CASCADE ON UPDATE CASCADE,
+    unique(name, scope_id),
     disabled BOOLEAN NOT NULL default FALSE
   );
 
@@ -134,9 +138,10 @@ CREATE TABLE if not exists iam_group (
     public_id wt_public_id not null primary key,
     create_time timestamp with time zone NOT NULL default current_timestamp,
     update_time timestamp with time zone NOT NULL default current_timestamp,
-    name text UNIQUE,
+    name text,
     description text,
     scope_id wt_public_id NOT NULL REFERENCES iam_scope(public_id) ON DELETE CASCADE ON UPDATE CASCADE,
+    unique(name, scope_id),
     disabled BOOLEAN NOT NULL default FALSE
   );
 
@@ -222,7 +227,6 @@ CREATE TABLE if not exists iam_role_grant (
     public_id wt_public_id not null primary key,
     create_time timestamp with time zone NOT NULL default current_timestamp,
     update_time timestamp with time zone NOT NULL default current_timestamp,
-    name text UNIQUE,
     description text,
     role_id wt_public_id NOT NULL REFERENCES iam_role(public_id) ON DELETE CASCADE ON UPDATE CASCADE,
     "grant" text NOT NULL
