@@ -63,7 +63,8 @@ listener "tcp" {
 type Config struct {
 	*configutil.SharedConfig `hcl:"-"`
 
-	DevController bool `hcl:"-"`
+	DevController bool   `hcl:"-"`
+	DefaultOrgId  string `hcl:"default_org_id"`
 }
 
 // DevWorker is a Config that is used for dev mode of Watchtower

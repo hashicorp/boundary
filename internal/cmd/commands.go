@@ -37,30 +37,30 @@ func initCommands(ui, serverCmdUi cli.Ui, runOpts *RunOptions) {
 	Commands = map[string]cli.CommandFactory{
 		"controller": func() (cli.Command, error) {
 			return &controller.Command{
-				Command: &base.Command{
+				Server: base.NewServer(&base.Command{
 					UI:         serverCmdUi,
 					ShutdownCh: MakeShutdownCh(),
-				},
+				}),
 				SighupCh:  MakeSighupCh(),
 				SigUSR2Ch: MakeSigUSR2Ch(),
 			}, nil
 		},
 		"worker": func() (cli.Command, error) {
 			return &worker.Command{
-				Command: &base.Command{
+				Server: base.NewServer(&base.Command{
 					UI:         serverCmdUi,
 					ShutdownCh: MakeShutdownCh(),
-				},
+				}),
 				SighupCh:  MakeSighupCh(),
 				SigUSR2Ch: MakeSigUSR2Ch(),
 			}, nil
 		},
 		"dev": func() (cli.Command, error) {
 			return &dev.Command{
-				Command: &base.Command{
+				Server: base.NewServer(&base.Command{
 					UI:         serverCmdUi,
 					ShutdownCh: MakeShutdownCh(),
-				},
+				}),
 				SighupCh:  MakeSighupCh(),
 				SigUSR2Ch: MakeSigUSR2Ch(),
 			}, nil
