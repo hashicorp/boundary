@@ -20,7 +20,7 @@ func TestNewRepository(t *testing.T) {
 	assert := assert.New(t)
 	defer conn.Close()
 
-	rw := &db.GormReadWriter{Tx: conn}
+	rw := &db.Db{Tx: conn}
 	wrapper := db.TestWrapper(t)
 	type args struct {
 		r       db.Reader
@@ -106,7 +106,7 @@ func Test_Repository_create(t *testing.T) {
 	defer conn.Close()
 
 	t.Run("valid-scope", func(t *testing.T) {
-		rw := &db.GormReadWriter{Tx: conn}
+		rw := &db.Db{Tx: conn}
 		wrapper := db.TestWrapper(t)
 		repo, err := NewRepository(rw, rw, wrapper)
 		id, err := uuid.GenerateUUID()
@@ -137,7 +137,7 @@ func Test_Repository_create(t *testing.T) {
 		assert.Nil(err)
 	})
 	t.Run("nil-resource", func(t *testing.T) {
-		rw := &db.GormReadWriter{Tx: conn}
+		rw := &db.Db{Tx: conn}
 		wrapper := db.TestWrapper(t)
 		repo, err := NewRepository(rw, rw, wrapper)
 		resource, err := repo.create(context.Background(), nil)
@@ -155,7 +155,7 @@ func Test_dbRepository_update(t *testing.T) {
 	defer conn.Close()
 
 	t.Run("valid-scope", func(t *testing.T) {
-		rw := &db.GormReadWriter{Tx: conn}
+		rw := &db.Db{Tx: conn}
 		wrapper := db.TestWrapper(t)
 		repo, err := NewRepository(rw, rw, wrapper)
 		id, err := uuid.GenerateUUID()
@@ -187,7 +187,7 @@ func Test_dbRepository_update(t *testing.T) {
 		assert.Nil(err)
 	})
 	t.Run("nil-resource", func(t *testing.T) {
-		rw := &db.GormReadWriter{Tx: conn}
+		rw := &db.Db{Tx: conn}
 		wrapper := db.TestWrapper(t)
 		repo, err := NewRepository(rw, rw, wrapper)
 		resource, err := repo.update(context.Background(), nil, nil)
