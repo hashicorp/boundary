@@ -37,7 +37,7 @@ type Scope struct {
 	tableName string `gorm:"-"`
 }
 
-// ensure that Scope implements the interfaces of: Resource, ClonableResource, and db.VetForWriter
+// ensure that Scope implements the interfaces of: Resource, Clonable, and db.VetForWriter
 var _ Resource = (*Scope)(nil)
 var _ db.VetForWriter = (*Scope)(nil)
 var _ Clonable = (*Scope)(nil)

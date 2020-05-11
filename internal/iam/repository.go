@@ -41,7 +41,7 @@ func (r *Repository) create(ctx context.Context, resource Resource, opt ...Optio
 	if resource == nil {
 		return nil, errors.New("error creating resource that is nil")
 	}
-	resourceCloner, ok := resource.(ClonableResource)
+	resourceCloner, ok := resource.(Clonable)
 	if !ok {
 		return nil, errors.New("error resource is not clonable for create")
 	}
@@ -51,7 +51,7 @@ func (r *Repository) create(ctx context.Context, resource Resource, opt ...Optio
 	}
 	metadata["op-type"] = []string{strconv.Itoa(int(oplog.OpType_OP_TYPE_CREATE))}
 
-	var returnedResource Resource
+	var returnedResource interface{}
 	_, err = r.writer.DoTx(
 		ctx,
 		db.StdRetryCnt,
@@ -65,7 +65,7 @@ func (r *Repository) create(ctx context.Context, resource Resource, opt ...Optio
 			)
 		},
 	)
-	return returnedResource, err
+	return returnedResource.(Resource), err
 }
 
 // Update will update an iam resource in the db repository with an oplog entry
@@ -73,7 +73,7 @@ func (r *Repository) update(ctx context.Context, resource Resource, fieldMaskPat
 	if resource == nil {
 		return nil, errors.New("error updating resource that is nil")
 	}
-	resourceCloner, ok := resource.(ClonableResource)
+	resourceCloner, ok := resource.(Clonable)
 	if !ok {
 		return nil, errors.New("error resource is not clonable for update")
 	}
@@ -83,7 +83,7 @@ func (r *Repository) update(ctx context.Context, resource Resource, fieldMaskPat
 	}
 	metadata["op-type"] = []string{strconv.Itoa(int(oplog.OpType_OP_TYPE_UPDATE))}
 
-	var returnedResource Resource
+	var returnedResource interface{}
 	_, err = r.writer.DoTx(
 		ctx,
 		db.StdRetryCnt,
@@ -98,7 +98,7 @@ func (r *Repository) update(ctx context.Context, resource Resource, fieldMaskPat
 			)
 		},
 	)
-	return returnedResource, err
+	return returnedResource.(Resource), err
 }
 
 func (r *Repository) stdMetadata(ctx context.Context, resource Resource) (oplog.Metadata, error) {
