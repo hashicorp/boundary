@@ -411,7 +411,7 @@ func (c *Command) WaitForInterrupt() int {
 					c.Logger.Error("unknown log level found on reload", "level", newConf.LogLevel)
 					goto RUNRELOADFUNCS
 				}
-				c.controller.SetLogLevel(level)
+				c.Logger.SetLevel(level)
 			}
 
 		RUNRELOADFUNCS:

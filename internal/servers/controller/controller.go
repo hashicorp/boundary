@@ -20,14 +20,7 @@ type Controller struct {
 func New(conf *Config) (*Controller, error) {
 	c := &Controller{
 		conf:   conf,
-		logger: conf.Logger,
-	}
-
-	if c.logger == nil {
-		c.logger = hclog.New(&hclog.LoggerOptions{
-			Level: hclog.Trace,
-		})
-		conf.AllLoggers = append(conf.AllLoggers, c.logger)
+		logger: conf.Logger.Named("controller"),
 	}
 
 	if conf.SecureRandomReader == nil {
@@ -50,8 +43,6 @@ func New(conf *Config) (*Controller, error) {
 		}
 	}
 
-	c.logger = c.logger.Named("controller")
-
 	c.baseContext, c.baseCancel = context.WithCancel(context.Background())
 
 	return c, nil
@@ -69,10 +60,4 @@ func (c *Controller) Shutdown() error {
 		return fmt.Errorf("error stopping controller listeners: %w", err)
 	}
 	return nil
-}
-
-func (c *Controller) SetLogLevel(level hclog.Level) {
-	for _, logger := range c.conf.AllLoggers {
-		logger.SetLevel(level)
-	}
 }

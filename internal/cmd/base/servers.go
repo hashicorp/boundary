@@ -41,7 +41,6 @@ type Server struct {
 	GatedWriter *gatedwriter.Writer
 	Logger      hclog.Logger
 	CombineLogs bool
-	AllLoggers  []hclog.Logger
 	LogLevel    hclog.Level
 
 	ControllerKMS      wrapping.Wrapper
@@ -66,7 +65,6 @@ func NewServer() *Server {
 	return &Server{
 		InfoKeys:           make([]string, 0, 20),
 		Info:               make(map[string]string),
-		AllLoggers:         make([]hclog.Logger, 0),
 		SecureRandomReader: rand.Reader,
 		ReloadFuncsLock:    new(sync.RWMutex),
 		ReloadFuncs:        make(map[string][]reloadutil.ReloadFunc),
@@ -92,12 +90,9 @@ func (b *Server) SetupLogging(flagLogLevel, flagLogFormat, configLogLevel, confi
 		// the resulting logger's format will be standard.
 		JSONFormat: logFormat == logging.JSONFormat,
 	})
-	// Create allLoggers which can be used to HUP the various derived loggers
-	b.AllLoggers = []hclog.Logger{b.Logger}
 
 	// create GRPC logger
 	namedGRPCLogFaker := b.Logger.Named("grpclogfaker")
-	b.AllLoggers = append(b.AllLoggers, namedGRPCLogFaker)
 	grpclog.SetLogger(&GRPCLogFaker{
 		Logger: namedGRPCLogFaker,
 		Log:    os.Getenv("WATCHTOWER_GRPC_LOGGING") != "",
@@ -306,7 +301,6 @@ func (b *Server) SetupKMSes(ui cli.Ui, config *configutil.SharedConfig, purposes
 
 			kmsLogger := b.Logger.ResetNamed(fmt.Sprintf("kms-%s-%s", purpose, kms.Type))
 
-			b.AllLoggers = append(b.AllLoggers, kmsLogger)
 			wrapper, wrapperConfigError := configutil.ConfigureWrapper(kms, &b.InfoKeys, &b.Info, kmsLogger)
 			if wrapperConfigError != nil {
 				if !errwrap.ContainsType(wrapperConfigError, new(logical.KeyNotFoundError)) {
