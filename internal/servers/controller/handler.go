@@ -42,6 +42,8 @@ func handleGrpcGateway() http.Handler {
 	services.RegisterHostCatalogServiceHandlerServer(ignored, mux, &host_catalogs.Service{})
 	services.RegisterHostSetServiceHandlerServer(ignored, mux, &host_sets.Service{})
 	services.RegisterHostServiceHandlerServer(ignored, mux, &hosts.Service{})
+	// Using the RegisterGrpcGatewayer interface allows us to decouple the creation of the services with registering them
+	// to the handler/Mux.  This means the services can be initiated closer to the creation of the DB and the service's other dependencies.
 	rs := []RegisterGrpcGatewayer{
 		&projects.Service{},
 	}
