@@ -18,7 +18,6 @@ var _ cli.Command = (*Command)(nil)
 var _ cli.CommandAutocomplete = (*Command)(nil)
 
 type Command struct {
-	*base.Command
 	*base.Server
 
 	SighupCh      chan struct{}
@@ -33,6 +32,7 @@ type Command struct {
 	flagLogFormat                      string
 	flagDev                            bool
 	flagDevAdminPassword               string
+	flagDevOrgId                       string
 	flagDevControllerAPIListenAddr     string
 	flagDevControllerClusterListenAddr string
 	flagCombineLogs                    bool
@@ -82,6 +82,15 @@ func (c *Command) Flags() *base.FlagSets {
 	f = set.NewFlagSet("Dev Options")
 
 	f.StringVar(&base.StringVar{
+		Name:    "dev-org-id",
+		Target:  &c.flagDevOrgId,
+		Default: "",
+		EnvVar:  "WATCHTWER_DEV_ORG_ID",
+		Usage: "Auto-created organization ID. This only applies when running in \"dev\" " +
+			"mode.",
+	})
+
+	f.StringVar(&base.StringVar{
 		Name:    "dev-admin-password",
 		Target:  &c.flagDevAdminPassword,
 		Default: "",
@@ -123,7 +132,6 @@ func (c *Command) AutocompleteFlags() complete.Flags {
 }
 
 func (c *Command) Run(args []string) int {
-	c.Server = base.NewServer()
 	c.CombineLogs = c.flagCombineLogs
 
 	var err error
@@ -139,8 +147,11 @@ func (c *Command) Run(args []string) int {
 
 	devConfig, err := config.DevController()
 	if err != nil {
-		c.UI.Error(fmt.Errorf("Error creating controller dev config: %s", err).Error())
+		c.UI.Error(fmt.Errorf("Error creating controller dev config: %w", err).Error())
 		return 1
+	}
+	if c.flagDevOrgId != "" {
+		devConfig.DefaultOrgId = c.flagDevOrgId
 	}
 
 	for _, l := range devConfig.Listeners {
@@ -158,6 +169,18 @@ func (c *Command) Run(args []string) int {
 				l.Address = c.flagDevControllerClusterListenAddr
 			}
 		}
+	}
+
+	if devConfig.DefaultOrgId != "" {
+		if !strings.HasPrefix(devConfig.DefaultOrgId, "o_") {
+			c.UI.Error(fmt.Sprintf("Invalid default org ID, must start with %q", "o_"))
+			return 1
+		}
+		if len(devConfig.DefaultOrgId) != 12 {
+			c.UI.Error(fmt.Sprintf("Invalid default org ID, must be 10 base62 characters after %q", "o_"))
+			return 1
+		}
+		c.DefaultOrgId = devConfig.DefaultOrgId
 	}
 
 	if err := c.SetupLogging(c.flagLogLevel, c.flagLogFormat, "", ""); err != nil {
@@ -197,45 +220,9 @@ func (c *Command) Run(args []string) int {
 		return 1
 	}
 
-	/*
-		// If we're in Dev mode, then initialize the core
-		if c.flagDev && !c.flagDevSkipInit {
-			init, err := c.enableDev(core, coreConfig)
-			if err != nil {
-				c.UI.Error(fmt.Sprintf("Error initializing Dev mode: %w", err))
-				return 1
-			}
-
-			// Print the big dev mode warning!
-			c.UI.Warn(base.WrapAtLength(
-				"WARNING! dev mode is enabled! In this mode, Watchtower runs entirely " +
-					"in-memory and all state is lost upon shutdown."))
-			c.UI.Warn("")
-			c.UI.Warn("You may need to set the following environment variable:")
-			c.UI.Warn("")
-
-			endpointURL := "http://" + config.Listeners[0].Config["address"].(string)
-			if runtime.GOOS == "windows" {
-				c.UI.Warn("PowerShell:")
-				c.UI.Warn(fmt.Sprintf("    $env:WATCHTOWER_ADDR=\"%s\"", endpointURL))
-				c.UI.Warn("cmd.exe:")
-				c.UI.Warn(fmt.Sprintf("    set WATCHTOWER_ADDR=%s", endpointURL))
-			} else {
-				c.UI.Warn(fmt.Sprintf("    $ export VAULT_ADDR='%s'", endpointURL))
-			}
-
-			c.UI.Warn(fmt.Sprintf("Root Token: %s", init.RootToken))
-
-			c.UI.Warn("")
-			c.UI.Warn(base.WrapAtLength(
-				"Development mode should NOT be used in production installations!"))
-			c.UI.Warn("")
-		}
-	*/
-
 	defer c.RunShutdownFuncs(c.UI)
 
-	if err := c.CreateDevDatabase(); err != nil {
+	if err := c.CreateDevDatabase("postgres"); err != nil {
 		c.UI.Error(fmt.Errorf("Error creating dev database container: %w", err).Error())
 		return 1
 	}
@@ -251,7 +238,6 @@ func (c *Command) Run(args []string) int {
 	c.childSighupCh = append(c.childSighupCh, controllerSighupCh)
 
 	devController := &controllercmd.Command{
-		Command:       c.Command,
 		Server:        c.Server,
 		ExtShutdownCh: childShutdownCh,
 		SighupCh:      controllerSighupCh,
@@ -265,7 +251,6 @@ func (c *Command) Run(args []string) int {
 	workerSighupCh := make(chan struct{})
 	c.childSighupCh = append(c.childSighupCh, workerSighupCh)
 	devWorker := &workercmd.Command{
-		Command:       c.Command,
 		Server:        c.Server,
 		ExtShutdownCh: childShutdownCh,
 		SighupCh:      workerSighupCh,
