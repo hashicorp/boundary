@@ -145,14 +145,13 @@ CREATE TABLE if not exists iam_group_member_user (
     update_time timestamp with time zone NOT NULL default current_timestamp,
     group_id wt_public_id NOT NULL REFERENCES iam_group(public_id) ON DELETE CASCADE ON UPDATE CASCADE,
     member_id wt_public_id NOT NULL REFERENCES iam_user(public_id) ON DELETE CASCADE ON UPDATE CASCADE,
-    type text NOT NULL default 'user' REFERENCES iam_group_member_type_enm(string) check(type = 'user'),
     primary key (group_id, member_id)
   );
 
 
 CREATE VIEW iam_group_member AS
 SELECT
-  *
+  *, 'user' as type
 FROM iam_group_member_user;
 
 

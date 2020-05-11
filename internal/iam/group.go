@@ -78,7 +78,6 @@ func (g *Group) Members(ctx context.Context, r db.Reader) ([]GroupMember, error)
 					CreateTime: m.CreateTime,
 					UpdateTime: m.UpdateTime,
 					GroupId:    m.GroupId,
-					Type:       UserMemberType.String(),
 					MemberId:   m.MemberId,
 				},
 			}

@@ -21,10 +21,6 @@ message GroupMemberUser {
 
   // @inject_tag: gorm:"primary_key"
   string member_id = 4;
-
-  // GroupMember type (User)
-  // @inject_tag: `gorm:"default:user"`
-  string type = 5;
 }
 
 message GroupMemberView {

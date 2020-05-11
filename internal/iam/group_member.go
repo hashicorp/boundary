@@ -90,10 +90,13 @@ func newGroupMemberUser(g *Group, m *User, opt ...Option) (GroupMember, error) {
 		GroupMemberUser: &store.GroupMemberUser{
 			MemberId: m.PublicId,
 			GroupId:  g.PublicId,
-			Type:     UserMemberType.String(),
 		},
 	}
 	return gm, nil
+}
+
+func (m *GroupMemberUser) GetType() string {
+	return UserMemberType.String()
 }
 func allocGroupMemberUser() GroupMemberUser {
 	return GroupMemberUser{
@@ -111,9 +114,6 @@ func (m *GroupMemberUser) Clone() interface{} {
 
 // VetForWrite implements db.VetForWrite() interface
 func (m *GroupMemberUser) VetForWrite(ctx context.Context, r db.Reader, opType db.OpType, opt ...db.Option) error {
-	if m.Type != UserMemberType.String() {
-		return errors.New("error member type is not user")
-	}
 	return nil
 }
 
