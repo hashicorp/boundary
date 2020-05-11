@@ -72,7 +72,7 @@ func (s Service) UpdateProject(ctx context.Context, req *pbs.UpdateProjectReques
 }
 
 func (s Service) getFromRepo(ctx context.Context, req *pbs.GetProjectRequest) (*pb.Project, error) {
-	p, err := s.repo.LookupScope(ctx, iam.WitPublicId(req.GetId()))
+	p, err := s.repo.LookupScope(ctx, iam.WithPublicId(req.GetId()))
 	if err != nil {
 		return nil, err
 	}
@@ -118,7 +118,7 @@ func (s Service) updateInRepo(ctx context.Context, req *pbs.UpdateProjectRequest
 		madeUp = append(madeUp, "Name")
 		opts = append(opts, iam.WithName(name.GetValue()))
 	}
-	p, err := iam.NewProject(req.GetOrgId(), iam.WitPublicId(req.GetId()))
+	p, err := iam.NewProject(req.GetOrgId(), iam.WithPublicId(req.GetId()))
 	if err != nil {
 		return nil, err
 	}

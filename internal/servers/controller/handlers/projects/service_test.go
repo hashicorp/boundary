@@ -70,7 +70,7 @@ func TestGet(t *testing.T) {
 	}{
 		{
 			name:    "Get an Existing Project",
-			repoIn:  repoIn{iam.WitPublicId(rProject.GetPublicId())},
+			repoIn:  repoIn{iam.WithPublicId(rProject.GetPublicId())},
 			repoOut: repoOut{rProject, nil},
 			req:     &pbs.GetProjectRequest{Id: rProject.GetPublicId()},
 			res:     &pbs.GetProjectResponse{Item: pProject},
@@ -78,7 +78,7 @@ func TestGet(t *testing.T) {
 		},
 		{
 			name:    "Get a non existant Host Catalog",
-			repoIn:  repoIn{iam.WitPublicId("doesnt exist")},
+			repoIn:  repoIn{iam.WithPublicId("doesnt exist")},
 			repoOut: repoOut{nil, nil},
 			req:     &pbs.GetProjectRequest{Id: "doesnt exist"},
 			res:     nil,
