@@ -32,7 +32,8 @@ func (r *Repository) UpdateScope(ctx context.Context, scope *Scope, fieldMaskPat
 	return resource.(*Scope), err
 }
 
-// LookupScope will look up a scope in the repository.  If the scope is not found, it will return nil, nil.
+// LookupScope will look up a scope in the repository.  If the scope is not
+// found, it will return nil, nil.
 func (r *Repository) LookupScope(ctx context.Context, opt ...Option) (*Scope, error) {
 	opts := getOpts(opt...)
 	withPublicId := opts.withPublicId
