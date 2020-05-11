@@ -149,7 +149,7 @@ CREATE TABLE if not exists iam_group_member_user (
   );
 
 
-CREATE VIEW iam_group_member AS
+CREATE VIEW iam_group_member_vw AS
 SELECT
   *, 'user' as type
 FROM iam_group_member_user;
@@ -240,7 +240,6 @@ CREATE TABLE if not exists iam_role_grant (
     update_time timestamp with time zone NOT NULL default current_timestamp,
     name text UNIQUE,
     description text,
-    scope_id wt_public_id NOT NULL REFERENCES iam_scope(public_id) ON DELETE CASCADE ON UPDATE CASCADE,
     role_id wt_public_id NOT NULL REFERENCES iam_role(public_id) ON DELETE CASCADE ON UPDATE CASCADE,
     "grant" text NOT NULL
   );
