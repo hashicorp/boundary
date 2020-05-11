@@ -12,7 +12,7 @@ import (
 
 func Test_NewScope(t *testing.T) {
 	t.Parallel()
-	cleanup, conn := db.TestSetup(t, "../db/migrations/postgres")
+	cleanup, conn := db.TestSetup(t, "postgres")
 	defer cleanup()
 	assert := assert.New(t)
 	defer conn.Close()
@@ -49,7 +49,7 @@ func Test_NewScope(t *testing.T) {
 }
 func Test_ScopeCreate(t *testing.T) {
 	t.Parallel()
-	cleanup, conn := db.TestSetup(t, "../db/migrations/postgres")
+	cleanup, conn := db.TestSetup(t, "postgres")
 	defer cleanup()
 	assert := assert.New(t)
 	defer conn.Close()
@@ -89,7 +89,7 @@ func Test_ScopeCreate(t *testing.T) {
 
 func Test_ScopeUpdate(t *testing.T) {
 	t.Parallel()
-	cleanup, conn := db.TestSetup(t, "../db/migrations/postgres")
+	cleanup, conn := db.TestSetup(t, "postgres")
 	defer cleanup()
 	assert := assert.New(t)
 	defer conn.Close()
@@ -125,7 +125,7 @@ func Test_ScopeUpdate(t *testing.T) {
 }
 func Test_ScopeGetScope(t *testing.T) {
 	t.Parallel()
-	cleanup, conn := db.TestSetup(t, "../db/migrations/postgres")
+	cleanup, conn := db.TestSetup(t, "postgres")
 	defer cleanup()
 	assert := assert.New(t)
 	defer conn.Close()
@@ -176,7 +176,7 @@ func TestScope_ResourceType(t *testing.T) {
 
 func TestScope_Clone(t *testing.T) {
 	t.Parallel()
-	cleanup, conn := db.TestSetup(t, "../db/migrations/postgres")
+	cleanup, conn := db.TestSetup(t, "postgres")
 	defer cleanup()
 	assert := assert.New(t)
 	defer conn.Close()

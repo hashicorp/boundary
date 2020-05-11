@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/golang-migrate/migrate/v4"
+	"github.com/hashicorp/watchtower/internal/db/migrations"
 	"github.com/jinzhu/gorm"
 	"github.com/ory/dockertest"
 )
@@ -55,28 +56,57 @@ func Migrate(connectionUrl string, migrationsDirectory string) error {
 	return nil
 }
 
+// InitDbInDocker initializes the data store within docker or an existing PG_URL
+func InitDbInDocker(dialect string) (cleanup func() error, retURL string, err error) {
+	switch dialect {
+	case "postgres":
+		if os.Getenv("PG_URL") != "" {
+			if err := InitStore(dialect, func() error { return nil }, os.Getenv("PG_URL")); err != nil {
+				return func() error { return nil }, os.Getenv("PG_URL"), fmt.Errorf("error initializing store: %w", err)
+			}
+			return func() error { return nil }, os.Getenv("PG_URL"), nil
+		}
+	}
+	c, url, err := StartDbInDocker(dialect)
+	if err != nil {
+		return func() error { return nil }, "", fmt.Errorf("could not start docker: %w", err)
+	}
+	if err := InitStore(dialect, c, url); err != nil {
+		return func() error { return nil }, "", fmt.Errorf("error initializing store: %w", err)
+	}
+	return c, url, nil
+}
+
 // StartDbInDocker
-func StartDbInDocker() (cleanup func() error, retURL string, err error) {
+func StartDbInDocker(dialect string) (cleanup func() error, retURL string, err error) {
 	pool, err := dockertest.NewPool("")
 	if err != nil {
 		return func() error { return nil }, "", fmt.Errorf("could not connect to docker: %w", err)
 	}
 
-	resource, err := pool.Run("postgres", "latest", []string{"POSTGRES_PASSWORD=secret", "POSTGRES_DB=watchtower"})
+	var resource *dockertest.Resource
+	var url string
+	switch dialect {
+	case "postgres":
+		resource, err = pool.Run("postgres", "latest", []string{"POSTGRES_PASSWORD=secret", "POSTGRES_DB=watchtower"})
+		url = "postgres://postgres:secret@localhost:%s?sslmode=disable"
+	default:
+		panic(fmt.Sprintf("unknown dialect %q", dialect))
+	}
 	if err != nil {
 		return func() error { return nil }, "", fmt.Errorf("could not start resource: %w", err)
 	}
 
-	c := func() error {
+	cleanup = func() error {
 		return cleanupDockerResource(pool, resource)
 	}
 
-	url := fmt.Sprintf("postgres://postgres:secret@localhost:%s?sslmode=disable", resource.GetPort("5432/tcp"))
+	url = fmt.Sprintf(url, resource.GetPort("5432/tcp"))
 
 	if err := pool.Retry(func() error {
-		db, err := sql.Open("postgres", url)
+		db, err := sql.Open(dialect, url)
 		if err != nil {
-			return fmt.Errorf("error opening postgres dev container: %w", err)
+			return fmt.Errorf("error opening %s dev container: %w", dialect, err)
 		}
 
 		if err := db.Ping(); err != nil {
@@ -87,7 +117,29 @@ func StartDbInDocker() (cleanup func() error, retURL string, err error) {
 	}); err != nil {
 		return func() error { return nil }, "", fmt.Errorf("could not connect to docker: %w", err)
 	}
-	return c, url, nil
+
+	return cleanup, url, nil
+}
+
+// InitStore will execute the migrations needed to initialize the store for tests
+func InitStore(dialect string, cleanup func() error, url string) error {
+	// run migrations
+	source, err := migrations.NewMigrationSource(dialect)
+	if err != nil {
+		cleanup()
+		return fmt.Errorf("error creating migration driver: %w", err)
+	}
+	m, err := migrate.NewWithSourceInstance("httpfs", source, url)
+	if err != nil {
+		cleanup()
+		return fmt.Errorf("error creating migrations: %w", err)
+	}
+	if err := m.Up(); err != nil && err != migrate.ErrNoChange {
+		cleanup()
+		return fmt.Errorf("error running migrations: %w", err)
+	}
+
+	return nil
 }
 
 // cleanupDockerResource will clean up the dockertest resources (postgres)
