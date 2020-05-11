@@ -11,13 +11,8 @@ import (
 
 // Test_GormWriterCreate provides unit tests for GormWriter Create
 func Test_GormWriterCreate(t *testing.T) {
-	t.Parallel()
-	startTest()
-	cleanup, url := setup(t)
+	cleanup, db := setup(t)
 	defer cleanup()
-	defer completeTest() // must come after the "defer cleanup()"
-	db, err := test_dbconn(url)
-	assert.NilError(t, err)
 	defer db.Close()
 	t.Run("valid", func(t *testing.T) {
 		tx := db.Begin()
@@ -54,7 +49,7 @@ func Test_GormWriterCreate(t *testing.T) {
 		tx := db.Begin()
 		defer tx.Rollback()
 		w := GormWriter{tx}
-		err = w.Create(nil)
+		err := w.Create(nil)
 		assert.Check(t, err != nil)
 		assert.Equal(t, err.Error(), "create interface is nil")
 	})
@@ -62,13 +57,8 @@ func Test_GormWriterCreate(t *testing.T) {
 
 // Test_GormWriterDelete provides unit tests for GormWriter Delete
 func Test_GormWriterDelete(t *testing.T) {
-	t.Parallel()
-	startTest()
-	cleanup, url := setup(t)
+	cleanup, db := setup(t)
 	defer cleanup()
-	defer completeTest() // must come after the "defer cleanup()"
-	db, err := test_dbconn(url)
-	assert.NilError(t, err)
 	defer db.Close()
 	t.Run("valid", func(t *testing.T) {
 		tx := db.Begin()
@@ -108,7 +98,7 @@ func Test_GormWriterDelete(t *testing.T) {
 		tx := db.Begin()
 		defer tx.Rollback()
 		w := GormWriter{tx}
-		err = w.Delete(nil)
+		err := w.Delete(nil)
 		assert.Check(t, err != nil)
 		assert.Equal(t, err.Error(), "delete interface is nil")
 	})
@@ -116,13 +106,8 @@ func Test_GormWriterDelete(t *testing.T) {
 
 // Test_GormWriterUpdate provides unit tests for GormWriter Update
 func Test_GormWriterUpdate(t *testing.T) {
-	t.Parallel()
-	startTest()
-	cleanup, url := setup(t)
+	cleanup, db := setup(t)
 	defer cleanup()
-	defer completeTest() // must come after the "defer cleanup()"
-	db, err := test_dbconn(url)
-	assert.NilError(t, err)
 	defer db.Close()
 	t.Run("valid no fieldmask", func(t *testing.T) {
 		tx := db.Begin()
@@ -213,7 +198,7 @@ func Test_GormWriterUpdate(t *testing.T) {
 		tx := db.Begin()
 		defer tx.Rollback()
 		w := GormWriter{tx}
-		err = w.Update(nil, nil)
+		err := w.Update(nil, nil)
 		assert.Check(t, err != nil)
 		assert.Equal(t, err.Error(), "update interface is nil")
 	})
@@ -221,15 +206,9 @@ func Test_GormWriterUpdate(t *testing.T) {
 
 // Test_GormWriterHasTable provides unit tests for GormWriter HasTable
 func Test_GormWriterHasTable(t *testing.T) {
-	t.Parallel()
-	startTest()
-	cleanup, url := setup(t)
+	cleanup, db := setup(t)
 	defer cleanup()
-	defer completeTest() // must come after the "defer cleanup()"
-	db, err := test_dbconn(url)
-	assert.NilError(t, err)
 	defer db.Close()
-
 	w := GormWriter{Tx: db}
 
 	t.Run("success", func(t *testing.T) {
@@ -250,15 +229,9 @@ func Test_GormWriterHasTable(t *testing.T) {
 
 // Test_GormWriterCreateTable provides unit tests for GormWriter CreateTable
 func Test_GormWriterCreateTable(t *testing.T) {
-	t.Parallel()
-	startTest()
-	cleanup, url := setup(t)
+	cleanup, db := setup(t)
 	defer cleanup()
-	defer completeTest() // must come after the "defer cleanup()"
-	db, err := test_dbconn(url)
-	assert.NilError(t, err)
 	defer db.Close()
-
 	t.Run("success", func(t *testing.T) {
 		w := GormWriter{Tx: db}
 		suffix, err := uuid.GenerateUUID()
@@ -299,7 +272,7 @@ func Test_GormWriterCreateTable(t *testing.T) {
 	t.Run("blank name", func(t *testing.T) {
 		w := GormWriter{Tx: db}
 		u := &oplog_test.TestUser{}
-		err = w.createTableLike(u.TableName(), "")
+		err := w.createTableLike(u.TableName(), "")
 		assert.Check(t, err != nil)
 		assert.Error(t, err, err.Error(), nil)
 		assert.Equal(t, err.Error(), "error newTableName is empty string")
@@ -308,15 +281,9 @@ func Test_GormWriterCreateTable(t *testing.T) {
 
 // Test_GormWriterDropTableIfExists provides unit tests for GormWriter DropTableIfExists
 func Test_GormWriterDropTableIfExists(t *testing.T) {
-	t.Parallel()
-	startTest()
-	cleanup, url := setup(t)
+	cleanup, db := setup(t)
 	defer cleanup()
-	defer completeTest() // must come after the "defer cleanup()"
-	db, err := test_dbconn(url)
-	assert.NilError(t, err)
 	defer db.Close()
-
 	t.Run("success", func(t *testing.T) {
 		w := GormWriter{Tx: db}
 		suffix, err := uuid.GenerateUUID()

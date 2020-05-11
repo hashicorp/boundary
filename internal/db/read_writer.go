@@ -302,10 +302,6 @@ func (rw *GormReadWriter) addOplog(ctx context.Context, opType OpType, opts Opti
 	if err != nil {
 		return fmt.Errorf("error getting Ticketer %w for WithOplog", err)
 	}
-	err = ticketer.InitTicket(replayable.TableName())
-	if err != nil {
-		return fmt.Errorf("error getting initializing ticket %w for WithOplog", err)
-	}
 	ticket, err := ticketer.GetTicket(replayable.TableName())
 	if err != nil {
 		return fmt.Errorf("error getting ticket %w for WithOplog", err)
