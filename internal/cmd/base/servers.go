@@ -292,11 +292,10 @@ func (b *Server) SetupListeners(ui cli.Ui, config *configutil.SharedConfig) erro
 	return nil
 }
 
-func (b *Server) SetupKMSes(ui cli.Ui, config *configutil.SharedConfig, size int) error {
-	switch len(config.Seals) {
-	case size:
-		for _, kms := range config.Seals {
-			purpose := strings.ToLower(kms.Purpose)
+func (b *Server) SetupKMSes(ui cli.Ui, config *configutil.SharedConfig, purposes []string) error {
+	for _, kms := range config.Seals {
+		for _, purpose := range kms.Purpose {
+			purpose = strings.ToLower(purpose)
 			switch purpose {
 			case "":
 				return errors.New("KMS block missing 'purpose'")
@@ -329,15 +328,12 @@ func (b *Server) SetupKMSes(ui cli.Ui, config *configutil.SharedConfig, size int
 			// Ensure that the seal finalizer is called, even if using verify-only
 			b.ShutdownFuncs = append(b.ShutdownFuncs, func() error {
 				if err := wrapper.Finalize(context.Background()); err != nil {
-					return fmt.Errorf("Error finalizing kms of type %s and purpose %s: %v", kms.Type, kms.Purpose, err)
+					return fmt.Errorf("Error finalizing kms of type %s and purpose %s: %v", kms.Type, purpose, err)
 				}
 
 				return nil
 			})
 		}
-
-	default:
-		return fmt.Errorf("Wrong number of KMS blocks provided; expected %d, got %d", size, len(config.Seals))
 	}
 
 	// prepare a secure random reader

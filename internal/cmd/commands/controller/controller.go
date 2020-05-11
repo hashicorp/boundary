@@ -166,8 +166,16 @@ func (c *Command) Run(args []string) int {
 		return 1
 	}
 
-	if err := c.SetupKMSes(c.UI, c.Config.SharedConfig, 2); err != nil {
+	if err := c.SetupKMSes(c.UI, c.Config.SharedConfig, []string{"controller", "worker-auth"}); err != nil {
 		c.UI.Error(err.Error())
+		return 1
+	}
+	if c.ControllerKMS == nil {
+		c.UI.Error("Controller KMS not found after parsing KMS blocks")
+		return 1
+	}
+	if c.WorkerAuthKMS == nil {
+		c.UI.Error("Worker Auth KMS not found after parsing KMS blocks")
 		return 1
 	}
 
