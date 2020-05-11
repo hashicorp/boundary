@@ -13,19 +13,15 @@ import (
 	"google.golang.org/grpc/status"
 )
 
-type scopeRepo interface {
-	CreateScope(ctx context.Context, p *iam.Scope, opt ...iam.Option) (*iam.Scope, error)
-	UpdateScope(ctx context.Context, p *iam.Scope, fieldMaskPaths []string, opt ...iam.Option) (*iam.Scope, error)
-	LookupScope(ctx context.Context, opt ...iam.Option) (*iam.Scope, error)
-}
-
 type Service struct {
 	pbs.UnimplementedProjectServiceServer
-	repo scopeRepo
+	repo *iam.Repository
 }
 
-// TODO: Figure out the appropriate way to verify the path is appropriate, whether as a separate method or merging this into the methods above.
-func NewService(repo scopeRepo) *Service {
+func NewService(repo *iam.Repository) *Service {
+	if repo == nil {
+		return nil
+	}
 	return &Service{repo: repo}
 }
 
@@ -118,6 +114,7 @@ func (s Service) updateInRepo(ctx context.Context, req *pbs.UpdateProjectRequest
 		madeUp = append(madeUp, "Name")
 		opts = append(opts, iam.WithName(name.GetValue()))
 	}
+	opts = append(opts, iam.WithPublicId(req.GetId()))
 	p, err := iam.NewProject(req.GetOrgId(), iam.WithPublicId(req.GetId()))
 	if err != nil {
 		return nil, err
