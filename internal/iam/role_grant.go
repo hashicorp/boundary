@@ -17,16 +17,13 @@ type RoleGrant struct {
 	tableName string `gorm:"-"`
 }
 
-// ensure that RoleGrant implements the interfaces of: Resource, Clonable and db.VetForWriter
-var _ Resource = (*RoleGrant)(nil)
+// ensure that RoleGrant implements the interfaces of: Clonable and db.VetForWriter
 var _ Clonable = (*RoleGrant)(nil)
 var _ db.VetForWriter = (*RoleGrant)(nil)
 
 // NewRoleGrant creates a new grant with a scope (project/organization)
 // options include: WithName
 func NewRoleGrant(scope *Scope, role *Role, grant string, opt ...Option) (*RoleGrant, error) {
-	opts := getOpts(opt...)
-	withName := opts.withName
 	if scope == nil {
 		return nil, errors.New("error the role grant scope is nil")
 	}
@@ -50,9 +47,6 @@ func NewRoleGrant(scope *Scope, role *Role, grant string, opt ...Option) (*RoleG
 			RoleId:   role.PublicId,
 			Grant:    grant,
 		},
-	}
-	if withName != "" {
-		rg.Name = withName
 	}
 	return rg, nil
 }

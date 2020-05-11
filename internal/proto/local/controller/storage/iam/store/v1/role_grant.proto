@@ -19,15 +19,10 @@ message RoleGrant {
   // @inject_tag: `gorm:"default:current_timestamp"`
   Timestamp update_time = 3;
 
-  // name is the optional friendly name used to
-  // access the Role via an API
   // @inject_tag: `gorm:"default:null"`
-  string name = 4;
+  string description = 4;
 
-  // @inject_tag: `gorm:"default:null"`
-  string description = 5;
+  string role_id = 5;
 
-  string role_id = 6;
-
-  string grant = 7;
+  string grant = 6;
 }
