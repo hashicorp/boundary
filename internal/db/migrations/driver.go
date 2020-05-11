@@ -16,13 +16,13 @@ import (
 // migrationDriver satisfies the remaining need of the Driver interface, since
 // the package uses PartialDriver under the hood
 type migrationDriver struct {
-	flavor string
+	dialect string
 }
 
 // Open returns the given "file"
 func (m *migrationDriver) Open(name string) (http.File, error) {
 	var ff *fakeFile
-	switch m.flavor {
+	switch m.dialect {
 	case "postgres":
 		ff = postgresMigrations[name]
 	}
@@ -31,26 +31,26 @@ func (m *migrationDriver) Open(name string) (http.File, error) {
 	}
 	ff.name = strings.TrimPrefix(name, "migrations/")
 	ff.reader = bytes.NewReader(ff.bytes)
-	ff.flavor = m.flavor
+	ff.dialect = m.dialect
 	return ff, nil
 }
 
-// NewMigrationSource creates a source.Driver using httpfs with the given flavor
-func NewMigrationSource(flavor string) (source.Driver, error) {
-	switch flavor {
+// NewMigrationSource creates a source.Driver using httpfs with the given dialect
+func NewMigrationSource(dialect string) (source.Driver, error) {
+	switch dialect {
 	case "postgres":
 	default:
-		return nil, fmt.Errorf("unknown migrations flavor %s", flavor)
+		return nil, fmt.Errorf("unknown migrations dialect %s", dialect)
 	}
-	return httpfs.New(&migrationDriver{flavor}, "migrations")
+	return httpfs.New(&migrationDriver{dialect}, "migrations")
 }
 
 // fakeFile is used to satisfy the http.File interface
 type fakeFile struct {
-	name   string
-	bytes  []byte
-	reader *bytes.Reader
-	flavor string
+	name    string
+	bytes   []byte
+	reader  *bytes.Reader
+	dialect string
 }
 
 func (f *fakeFile) Read(p []byte) (n int, err error) {
@@ -68,7 +68,7 @@ func (f *fakeFile) Close() error { return nil }
 func (f *fakeFile) Readdir(count int) ([]os.FileInfo, error) {
 	// Get the right map
 	var migrationsMap map[string]*fakeFile
-	switch f.flavor {
+	switch f.dialect {
 	case "postgres":
 		migrationsMap = postgresMigrations
 	}

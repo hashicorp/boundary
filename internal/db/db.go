@@ -57,7 +57,7 @@ func Migrate(connectionUrl string, migrationsDirectory string) error {
 }
 
 // StartDbInDocker
-func StartDbInDocker(flavor string) (cleanup func() error, retURL string, err error) {
+func StartDbInDocker(dialect string) (cleanup func() error, retURL string, err error) {
 	pool, err := dockertest.NewPool("")
 	if err != nil {
 		return func() error { return nil }, "", fmt.Errorf("could not connect to docker: %w", err)
@@ -65,12 +65,12 @@ func StartDbInDocker(flavor string) (cleanup func() error, retURL string, err er
 
 	var resource *dockertest.Resource
 	var url string
-	switch flavor {
+	switch dialect {
 	case "postgres":
 		resource, err = pool.Run("postgres", "latest", []string{"POSTGRES_PASSWORD=secret", "POSTGRES_DB=watchtower"})
 		url = "postgres://postgres:secret@localhost:%s?sslmode=disable"
 	default:
-		panic(fmt.Sprintf("unknown flavor %q", flavor))
+		panic(fmt.Sprintf("unknown dialect %q", dialect))
 	}
 	if err != nil {
 		return func() error { return nil }, "", fmt.Errorf("could not start resource: %w", err)
@@ -83,9 +83,9 @@ func StartDbInDocker(flavor string) (cleanup func() error, retURL string, err er
 	url = fmt.Sprintf(url, resource.GetPort("5432/tcp"))
 
 	if err := pool.Retry(func() error {
-		db, err := sql.Open(flavor, url)
+		db, err := sql.Open(dialect, url)
 		if err != nil {
-			return fmt.Errorf("error opening %s dev container: %w", flavor, err)
+			return fmt.Errorf("error opening %s dev container: %w", dialect, err)
 		}
 
 		if err := db.Ping(); err != nil {
@@ -101,9 +101,9 @@ func StartDbInDocker(flavor string) (cleanup func() error, retURL string, err er
 }
 
 // InitStore will execute the migrations needed to initialize the store for tests
-func InitStore(flavor string, cleanup func() error, url string) error {
+func InitStore(dialect string, cleanup func() error, url string) error {
 	// run migrations
-	source, err := migrations.NewMigrationSource(flavor)
+	source, err := migrations.NewMigrationSource(dialect)
 	if err != nil {
 		cleanup()
 		return fmt.Errorf("error creating migration driver: %w", err)

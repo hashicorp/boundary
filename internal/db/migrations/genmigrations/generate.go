@@ -12,19 +12,19 @@ import (
 	"text/template"
 )
 
-// generate looks for migration sql in a directory for the given flavor and
+// generate looks for migration sql in a directory for the given dialect and
 // applies the templates below to the contents of the files, building up a
-// migrations map for the flavor
-func generate(flavor string) {
+// migrations map for the dialect
+func generate(dialect string) {
 	baseDir := os.Getenv("GEN_BASEPATH") + fmt.Sprint("/internal/db/migrations")
-	dir, err := os.Open(fmt.Sprintf("%s/%s", baseDir, flavor))
+	dir, err := os.Open(fmt.Sprintf("%s/%s", baseDir, dialect))
 	if err != nil {
-		fmt.Printf("error opening dir with flavor %s: %v\n", flavor, err)
+		fmt.Printf("error opening dir with dialect %s: %v\n", dialect, err)
 		os.Exit(1)
 	}
 	names, err := dir.Readdirnames(0)
 	if err != nil {
-		fmt.Printf("error reading dir names with flavor %s: %v\n", flavor, err)
+		fmt.Printf("error reading dir names with dialect %s: %v\n", dialect, err)
 		os.Exit(1)
 	}
 	outBuf := bytes.NewBuffer(nil)
@@ -36,9 +36,9 @@ func generate(flavor string) {
 		if !strings.HasSuffix(name, ".sql") {
 			continue
 		}
-		contents, err := ioutil.ReadFile(fmt.Sprintf("%s/%s/%s", baseDir, flavor, name))
+		contents, err := ioutil.ReadFile(fmt.Sprintf("%s/%s/%s", baseDir, dialect, name))
 		if err != nil {
-			fmt.Printf("error opening file %s with flavor %s: %v", name, flavor, err)
+			fmt.Printf("error opening file %s with dialect %s: %v", name, dialect, err)
 			os.Exit(1)
 		}
 		migrationsValueTemplate.Execute(valuesBuf, struct {
@@ -53,11 +53,11 @@ func generate(flavor string) {
 		Type   string
 		Values string
 	}{
-		Type:   flavor,
+		Type:   dialect,
 		Values: valuesBuf.String(),
 	})
 
-	outFile := fmt.Sprintf("%s/%s.gen.go", baseDir, flavor)
+	outFile := fmt.Sprintf("%s/%s.gen.go", baseDir, dialect)
 	if err := ioutil.WriteFile(outFile, outBuf.Bytes(), 0644); err != nil {
 		fmt.Printf("error writing file %q: %v\n", outFile, err)
 		os.Exit(1)
