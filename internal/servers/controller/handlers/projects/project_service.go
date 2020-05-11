@@ -162,6 +162,16 @@ func validateCreateProjectRequest(req *pbs.CreateProjectRequest) error {
 	if err := validateAncestors(req); err != nil {
 		return err
 	}
+	item := req.GetItem()
+	if item == nil {
+		return status.Errorf(codes.InvalidArgument, "A project's fields must be set to something .")
+	}
+	if item.GetId() != "" {
+		return status.Errorf(codes.InvalidArgument, "Cannot set ID when creating a new project.")
+	}
+	if item.GetCreatedTime() != nil || item.GetUpdatedTime() != nil {
+		return status.Errorf(codes.InvalidArgument, "Cannot set Created or Updated time when creating a new project.")
+	}
 	return nil
 }
 
@@ -169,6 +179,21 @@ func validateUpdateProjectRequest(req *pbs.UpdateProjectRequest) error {
 	if err := validateAncestors(req); err != nil {
 		return err
 	}
+	// TODO: Either require mask to be set or document in API that an unset mask updates all fields.
+	item := req.GetItem()
+	if item == nil {
+		// It is legitimate for no item to be specified in an update request as it indicates all fields provided in
+		// the mask will be marked as unset.
+		return nil
+	}
+
+	if item.GetId() != "" && item.GetId() != req.GetId() {
+		return status.Errorf(codes.InvalidArgument, "Id in provided item and url must match. Item Id was %q, url id was %q", item.GetId(), req.GetId())
+	}
+	if item.GetCreatedTime() != nil || item.GetUpdatedTime() != nil {
+		return status.Errorf(codes.InvalidArgument, "Cannot set Created or Updated time when updating a project.")
+	}
+
 	return nil
 }
 
