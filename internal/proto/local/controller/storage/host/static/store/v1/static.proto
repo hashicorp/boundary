@@ -1,12 +1,13 @@
 syntax = "proto3";
 
-// define an oplog package within the watchtower controller
+// Package store provides protobufs for storing types in the static host
+// package.
 package controller.storage.host.static.store.v1;
 option go_package = "github.com/hashicorp/watchtower/internal/host/static/store;store";
 
 import "google/protobuf/timestamp.proto";
 
-// Timestamp for oplog messages.  We've defined a new local type wrapper
+// Timestamp for static host messages.  We've defined a new local type wrapper
 // of google.protobuf.Timestamp so we can implement sql.Scanner and sql.Valuer
 // interfaces.  See:
 // https://golang.org/pkg/database/sql/#Scanner
@@ -15,7 +16,6 @@ message Timestamp {
   google.protobuf.Timestamp timestamp = 1;
 }
 
-// 
 message Host {
   // @inject_tag: gorm:"primary_key"
   string public_id = 1;
@@ -28,9 +28,46 @@ message Host {
   string description = 5;
 
   // @inject_tag: gorm:"not_null"
-  string address = 6;
+  string static_host_catalog_id = 6;
 
   // @inject_tag: gorm:"not_null"
-  string static_host_catalog_id = 7;
+  string address = 7;
+}
 
+message HostCatalog {
+  // @inject_tag: gorm:"primary_key"
+  string public_id = 1;
+  // @inject_tag: `gorm:"default:current_timestamp"`
+  Timestamp create_time = 2;
+  // @inject_tag: `gorm:"default:current_timestamp"`
+  Timestamp update_time = 3;
+
+  string name = 4;
+  string description = 5;
+
+  // @inject_tag: gorm:"not_null"
+  string scope_id = 6;
+}
+
+message HostSet {
+  // @inject_tag: gorm:"primary_key"
+  string public_id = 1;
+  // @inject_tag: `gorm:"default:current_timestamp"`
+  Timestamp create_time = 2;
+  // @inject_tag: `gorm:"default:current_timestamp"`
+  Timestamp update_time = 3;
+
+  string name = 4;
+  string description = 5;
+
+  // @inject_tag: gorm:"not_null"
+  string static_host_catalog_id = 6;
+}
+
+message HostSetMember {
+  // @inject_tag: gorm:"primary_key"
+  string static_host_set_id = 1;
+
+  // @inject_tag: gorm:"primary_key"
+  string static_host_id = 2;
 }
