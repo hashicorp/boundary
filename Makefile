@@ -5,15 +5,18 @@ THIS_FILE := $(lastword $(MAKEFILE_LIST))
 TMP_DIR := $(shell mktemp -d)
 REPO_PATH := github.com/hashicorp/watchtower
 
-export APIGEN_BASEPATH := $(shell pwd)
+export GEN_BASEPATH := $(shell pwd)
 
 bootstrap:
 	go generate -tags tools tools/tools.go
 
-gen: proto api
+gen: proto api migrations
 
 api:
 	$(MAKE) --environment-overrides -C api/internal/genapi api
+
+migrations:
+	$(MAKE) --environment-overrides -C internal/db/migrations/genmigrations migrations
 
 ### oplog requires protoc-gen-go v1.20.0 or later
 # GO111MODULE=on go get -u github.com/golang/protobuf/protoc-gen-go@v1.40
@@ -49,6 +52,6 @@ cleanup:
 	@rm -R ${TMP_DIR}
 
 
-.PHONY: api bootstrap cleanup gen proto
+.PHONY: api bootstrap cleanup gen migrations proto
 
 .NOTPARALLEL:

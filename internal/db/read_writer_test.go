@@ -15,7 +15,7 @@ import (
 
 func TestGormReadWriter_Update(t *testing.T) {
 	// intentionally not run with t.Parallel so we don't need to use DoTx for the Update tests
-	cleanup, db := TestSetup(t, "migrations/postgres")
+	cleanup, db := TestSetup(t, "postgres")
 	defer cleanup()
 	assert := assert.New(t)
 	defer db.Close()
@@ -163,7 +163,7 @@ func TestGormReadWriter_Update(t *testing.T) {
 
 func TestGormReadWriter_Create(t *testing.T) {
 	// intentionally not run with t.Parallel so we don't need to use DoTx for the Create tests
-	cleanup, db := TestSetup(t, "migrations/postgres")
+	cleanup, db := TestSetup(t, "postgres")
 	defer cleanup()
 	assert := assert.New(t)
 	defer db.Close()
@@ -271,7 +271,7 @@ func TestGormReadWriter_Create(t *testing.T) {
 
 func TestGormReadWriter_LookupByName(t *testing.T) {
 	t.Parallel()
-	cleanup, db := TestSetup(t, "migrations/postgres")
+	cleanup, db := TestSetup(t, "postgres")
 	defer cleanup()
 	assert := assert.New(t)
 	defer db.Close()
@@ -326,7 +326,7 @@ func TestGormReadWriter_LookupByName(t *testing.T) {
 
 func TestGormReadWriter_LookupByPublicId(t *testing.T) {
 	t.Parallel()
-	cleanup, db := TestSetup(t, "migrations/postgres")
+	cleanup, db := TestSetup(t, "postgres")
 	defer cleanup()
 	assert := assert.New(t)
 	defer db.Close()
@@ -381,7 +381,7 @@ func TestGormReadWriter_LookupByPublicId(t *testing.T) {
 
 func TestGormReadWriter_LookupWhere(t *testing.T) {
 	t.Parallel()
-	cleanup, db := TestSetup(t, "migrations/postgres")
+	cleanup, db := TestSetup(t, "postgres")
 	defer cleanup()
 	assert := assert.New(t)
 	defer db.Close()
@@ -431,7 +431,7 @@ func TestGormReadWriter_LookupWhere(t *testing.T) {
 
 func TestGormReadWriter_SearchWhere(t *testing.T) {
 	t.Parallel()
-	cleanup, db := TestSetup(t, "migrations/postgres")
+	cleanup, db := TestSetup(t, "postgres")
 	defer cleanup()
 	assert := assert.New(t)
 	defer db.Close()
@@ -481,7 +481,7 @@ func TestGormReadWriter_SearchWhere(t *testing.T) {
 
 func TestGormReadWriter_DB(t *testing.T) {
 	t.Parallel()
-	cleanup, db := TestSetup(t, "migrations/postgres")
+	cleanup, db := TestSetup(t, "postgres")
 	defer cleanup()
 	assert := assert.New(t)
 	defer db.Close()
@@ -504,7 +504,7 @@ func TestGormReadWriter_DB(t *testing.T) {
 
 func TestGormReadWriter_DoTx(t *testing.T) {
 	t.Parallel()
-	cleanup, db := TestSetup(t, "migrations/postgres")
+	cleanup, db := TestSetup(t, "postgres")
 	defer cleanup()
 	assert := assert.New(t)
 	defer db.Close()
@@ -604,7 +604,7 @@ func TestGormReadWriter_DoTx(t *testing.T) {
 
 func TestGormReadWriter_Delete(t *testing.T) {
 	// intentionally not run with t.Parallel so we don't need to use DoTx for the Create tests
-	cleanup, db := TestSetup(t, "migrations/postgres")
+	cleanup, db := TestSetup(t, "postgres")
 	defer cleanup()
 	assert := assert.New(t)
 	defer db.Close()
@@ -781,7 +781,7 @@ func TestGormReadWriter_Delete(t *testing.T) {
 
 func TestGormReadWriter_ScanRows(t *testing.T) {
 	t.Parallel()
-	cleanup, db := TestSetup(t, "migrations/postgres")
+	cleanup, db := TestSetup(t, "postgres")
 	defer cleanup()
 	assert := assert.New(t)
 	defer db.Close()
