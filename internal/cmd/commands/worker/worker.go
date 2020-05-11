@@ -20,7 +20,6 @@ var _ cli.Command = (*Command)(nil)
 var _ cli.CommandAutocomplete = (*Command)(nil)
 
 type Command struct {
-	*base.Command
 	*base.Server
 
 	ExtShutdownCh chan struct{}
@@ -127,7 +126,6 @@ func (c *Command) AutocompleteFlags() complete.Flags {
 }
 
 func (c *Command) Run(args []string) int {
-	c.Server = base.NewServer()
 	c.CombineLogs = c.flagCombineLogs
 
 	if result := c.ParseFlagsAndConfig(args); result > 0 {

@@ -22,7 +22,6 @@ var _ cli.Command = (*Command)(nil)
 var _ cli.CommandAutocomplete = (*Command)(nil)
 
 type Command struct {
-	*base.Command
 	*base.Server
 
 	ExtShutdownCh chan struct{}
@@ -157,7 +156,6 @@ func (c *Command) AutocompleteFlags() complete.Flags {
 }
 
 func (c *Command) Run(args []string) int {
-	c.Server = base.NewServer()
 	c.CombineLogs = c.flagCombineLogs
 
 	if result := c.ParseFlagsAndConfig(args); result > 0 {
@@ -306,7 +304,7 @@ func (c *Command) ParseFlagsAndConfig(args []string) int {
 	} else {
 		c.Config, err = config.DevController()
 		if err != nil {
-			c.UI.Error(fmt.Errorf("Error creating dev config: %s", err).Error())
+			c.UI.Error(fmt.Errorf("Error creating dev config: %w", err).Error())
 			return 1
 		}
 
@@ -330,6 +328,18 @@ func (c *Command) ParseFlagsAndConfig(args []string) int {
 				}
 			}
 		}
+	}
+
+	if c.Config.DefaultOrgId != "" {
+		if !strings.HasPrefix(c.Config.DefaultOrgId, "o_") {
+			c.UI.Error(fmt.Sprintf("Invalid default org ID, must start with %q", "o_"))
+			return 1
+		}
+		if len(c.Config.DefaultOrgId) != 12 {
+			c.UI.Error(fmt.Sprintf("Invalid default org ID, must be 10 base62 characters after %q", "o_"))
+			return 1
+		}
+		c.DefaultOrgId = c.Config.DefaultOrgId
 	}
 
 	return 0

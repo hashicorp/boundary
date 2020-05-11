@@ -18,7 +18,6 @@ var _ cli.Command = (*Command)(nil)
 var _ cli.CommandAutocomplete = (*Command)(nil)
 
 type Command struct {
-	*base.Command
 	*base.Server
 
 	SighupCh      chan struct{}
@@ -133,7 +132,6 @@ func (c *Command) AutocompleteFlags() complete.Flags {
 }
 
 func (c *Command) Run(args []string) int {
-	c.Server = base.NewServer()
 	c.CombineLogs = c.flagCombineLogs
 
 	var err error
@@ -149,7 +147,7 @@ func (c *Command) Run(args []string) int {
 
 	devConfig, err := config.DevController()
 	if err != nil {
-		c.UI.Error(fmt.Errorf("Error creating controller dev config: %s", err).Error())
+		c.UI.Error(fmt.Errorf("Error creating controller dev config: %w", err).Error())
 		return 1
 	}
 	if c.flagDevOrgId != "" {
@@ -171,6 +169,18 @@ func (c *Command) Run(args []string) int {
 				l.Address = c.flagDevControllerClusterListenAddr
 			}
 		}
+	}
+
+	if devConfig.DefaultOrgId != "" {
+		if !strings.HasPrefix(devConfig.DefaultOrgId, "o_") {
+			c.UI.Error(fmt.Sprintf("Invalid default org ID, must start with %q", "o_"))
+			return 1
+		}
+		if len(devConfig.DefaultOrgId) != 12 {
+			c.UI.Error(fmt.Sprintf("Invalid default org ID, must be 10 base62 characters after %q", "o_"))
+			return 1
+		}
+		c.DefaultOrgId = devConfig.DefaultOrgId
 	}
 
 	if err := c.SetupLogging(c.flagLogLevel, c.flagLogFormat, "", ""); err != nil {
@@ -228,7 +238,6 @@ func (c *Command) Run(args []string) int {
 	c.childSighupCh = append(c.childSighupCh, controllerSighupCh)
 
 	devController := &controllercmd.Command{
-		Command:       c.Command,
 		Server:        c.Server,
 		ExtShutdownCh: childShutdownCh,
 		SighupCh:      controllerSighupCh,
@@ -242,7 +251,6 @@ func (c *Command) Run(args []string) int {
 	workerSighupCh := make(chan struct{})
 	c.childSighupCh = append(c.childSighupCh, workerSighupCh)
 	devWorker := &workercmd.Command{
-		Command:       c.Command,
 		Server:        c.Server,
 		ExtShutdownCh: childShutdownCh,
 		SighupCh:      workerSighupCh,
