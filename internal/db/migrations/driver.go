@@ -85,6 +85,8 @@ func (f *fakeFile) Readdir(count int) ([]os.FileInfo, error) {
 	// Create the slice of fileinfo objects to return
 	ret := make([]os.FileInfo, 0, len(migrationsMap))
 	for _, v := range keys {
+		// We need "migrations" in the map for the initial Open call but we
+		// should not return it as part of the "directory"'s "files".
 		if v == "migrations" {
 			continue
 		}
