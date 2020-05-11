@@ -19,7 +19,7 @@ func Test_Repository_CreateScope(t *testing.T) {
 	defer conn.Close()
 
 	t.Run("valid-scope", func(t *testing.T) {
-		rw := &db.GormReadWriter{Tx: conn}
+		rw := &db.Db{Tx: conn}
 		wrapper := db.TestWrapper(t)
 		repo, err := NewRepository(rw, rw, wrapper)
 		id, err := uuid.GenerateUUID()
@@ -58,7 +58,7 @@ func Test_Repository_UpdateScope(t *testing.T) {
 	defer conn.Close()
 
 	t.Run("valid-scope", func(t *testing.T) {
-		rw := &db.GormReadWriter{Tx: conn}
+		rw := &db.Db{Tx: conn}
 		wrapper := db.TestWrapper(t)
 		repo, err := NewRepository(rw, rw, wrapper)
 		id, err := uuid.GenerateUUID()
@@ -107,7 +107,7 @@ func Test_Repository_UpdateScope(t *testing.T) {
 		assert.Nil(err)
 	})
 	t.Run("bad-parent-scope", func(t *testing.T) {
-		rw := &db.GormReadWriter{Tx: conn}
+		rw := &db.Db{Tx: conn}
 		wrapper := db.TestWrapper(t)
 		repo, err := NewRepository(rw, rw, wrapper)
 		id, err := uuid.GenerateUUID()
@@ -142,7 +142,7 @@ func Test_Repository_LookupScope(t *testing.T) {
 	defer conn.Close()
 
 	t.Run("found-and-not-found", func(t *testing.T) {
-		rw := &db.GormReadWriter{Tx: conn}
+		rw := &db.Db{Tx: conn}
 		wrapper := db.TestWrapper(t)
 		repo, err := NewRepository(rw, rw, wrapper)
 		id, err := uuid.GenerateUUID()
