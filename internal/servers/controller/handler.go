@@ -12,10 +12,15 @@ import (
 	"github.com/hashicorp/watchtower/internal/servers/controller/handlers/host_catalogs"
 	"github.com/hashicorp/watchtower/internal/servers/controller/handlers/host_sets"
 	"github.com/hashicorp/watchtower/internal/servers/controller/handlers/hosts"
+	"github.com/hashicorp/watchtower/internal/servers/controller/handlers/projects"
 )
 
 type HandlerProperties struct {
 	ListenerConfig *configutil.Listener
+}
+
+type RegisterGrpcGatewayer interface {
+	RegisterGrpcGateway(*runtime.ServeMux) error
 }
 
 // Handler returns an http.Handler for the services. This can be used on
@@ -37,6 +42,12 @@ func handleGrpcGateway() http.Handler {
 	services.RegisterHostCatalogServiceHandlerServer(ignored, mux, &host_catalogs.Service{})
 	services.RegisterHostSetServiceHandlerServer(ignored, mux, &host_sets.Service{})
 	services.RegisterHostServiceHandlerServer(ignored, mux, &hosts.Service{})
+	rs := []RegisterGrpcGatewayer{
+		&projects.Service{},
+	}
+	for _, r := range rs {
+		r.RegisterGrpcGateway(mux)
+	}
 
 	return mux
 }

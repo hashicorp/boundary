@@ -2,6 +2,7 @@ package projects
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/golang/protobuf/ptypes/wrappers"
 	"github.com/grpc-ecosystem/grpc-gateway/runtime"
@@ -14,45 +15,32 @@ import (
 
 type scopeRepo interface {
 	CreateScope(ctx context.Context, p *iam.Scope, opt ...iam.Option) (*iam.Scope, error)
-	UpdateScope(ctx context.Context, p *iam.Scope, fieldMaskPaths []string, opt ...iam.Option) (*iam.Scope, error) // LookupProject returns the Host catalog based on the provided id and any error associated with the lookup.
+	UpdateScope(ctx context.Context, p *iam.Scope, fieldMaskPaths []string, opt ...iam.Option) (*iam.Scope, error)
 	LookupScope(ctx context.Context, opt ...iam.Option) (*iam.Scope, error)
-	DeleteScope(ctx context.Context, opt ...iam.Option) (bool, error)
-
-	// TODO: Sure this up with repository expectations for list operations.
-	ListProjects(ctx context.Context, opt ...iam.Option) ([]iam.Scope, error)
-	// TODO: Figure out the appropriate way to verify the path is appropriate, whether as a separate method or merging this into the methods above.
 }
 
 type Service struct {
+	pbs.UnimplementedProjectServiceServer
 	repo scopeRepo
 }
 
+// TODO: Figure out the appropriate way to verify the path is appropriate, whether as a separate method or merging this into the methods above.
 func NewService(repo scopeRepo) *Service {
-	return &Service{repo}
+	return &Service{repo: repo}
 }
 
 var _ pbs.ProjectServiceServer = &Service{}
-
-func (s Service) ListProjects(ctx context.Context, req *pbs.ListProjectsRequest) (*pbs.ListProjectsResponse, error) {
-	if err := validateListProjectsRequest(req); err != nil {
-		return nil, err
-	}
-	return nil, status.Errorf(codes.NotFound, "Org %q not found", req.OrgId)
-}
 
 func (s Service) GetProject(ctx context.Context, req *pbs.GetProjectRequest) (*pbs.GetProjectResponse, error) {
 	if err := validateGetProjectRequest(req); err != nil {
 		return nil, err
 	}
-	p, err := s.repo.LookupScope(ctx, iam.WitPublicId(req.GetId()))
+	p, err := s.getFromRepo(ctx, req)
 	if err != nil {
 		return nil, err
 	}
-	if p == nil {
-		return nil, status.Errorf(codes.NotFound, "Could not find Project with id %q", req.GetId())
-	}
 	resp := &pbs.GetProjectResponse{}
-	resp.Item = toProto(p)
+	resp.Item = p
 	return resp, nil
 }
 
@@ -60,40 +48,88 @@ func (s Service) CreateProject(ctx context.Context, req *pbs.CreateProjectReques
 	if err := validateCreateProjectRequest(req); err != nil {
 		return nil, err
 	}
-	return nil, status.Errorf(codes.NotFound, "Org %q not found", req.OrgId)
+	p, err := s.createInRepo(ctx, req)
+	if err != nil {
+		return nil, err
+	}
+	resp := &pbs.CreateProjectResponse{}
+	resp.Uri = fmt.Sprintf("orgs/%s/projects/%s", req.GetOrgId(), p.GetId())
+	resp.Item = p
+	return resp, nil
 }
 
 func (s Service) UpdateProject(ctx context.Context, req *pbs.UpdateProjectRequest) (*pbs.UpdateProjectResponse, error) {
 	if err := validateUpdateProjectRequest(req); err != nil {
 		return nil, err
 	}
-	return nil, status.Errorf(codes.NotFound, "Org %q not found", req.OrgId)
-}
-
-func (s Service) DeleteProject(ctx context.Context, req *pbs.DeleteProjectRequest) (*pbs.DeleteProjectResponse, error) {
-	if err := validateDeleteProjectRequest(req); err != nil {
+	p, err := s.updateInRepo(ctx, req)
+	if err != nil {
 		return nil, err
 	}
-	existed, err := s.repo.DeleteScope(ctx, iam.WitPublicId(req.Id))
-	if err != nil {
-		// TODO: Handle errors appropriately
-		return nil, status.Errorf(codes.Internal, "Couldn't delete Host Catalog: %v", err)
-	}
-	return &pbs.DeleteProjectResponse{Existed: existed}, nil
+	resp := &pbs.UpdateProjectResponse{}
+	resp.Item = p
+	return resp, nil
 }
 
-func toRepo(orgID string, in pb.Project) *iam.Scope {
-	sopt := []iam.Option{}
-	// TODO: Handle setting the values to nil value.
-	if name := in.GetName().GetValue(); name != "" {
-		sopt = append(sopt, iam.WithName(name))
+func (s Service) getFromRepo(ctx context.Context, req *pbs.GetProjectRequest) (*pb.Project, error) {
+	p, err := s.repo.LookupScope(ctx, iam.WitPublicId(req.GetId()))
+	if err != nil {
+		return nil, err
 	}
-	if desc := in.GetDescription().GetValue(); desc != "" {
-		sopt = append(sopt, iam.WithDescription(desc))
+	if p == nil {
+		return nil, status.Errorf(codes.NotFound, "Could not find Project with id %q", req.GetId())
 	}
-	// TODO: Don't ignore errors
-	p, _ := iam.NewProject(orgID, sopt...)
-	return p
+	return toProto(p), nil
+}
+
+func (s Service) createInRepo(ctx context.Context, req *pbs.CreateProjectRequest) (*pb.Project, error) {
+	in := req.GetItem()
+	opts := []iam.Option{}
+	if in.GetName() != nil {
+		opts = append(opts, iam.WithName(in.GetName().GetValue()))
+	}
+	if in.GetDescription() != nil {
+		opts = append(opts, iam.WithDescription(in.GetDescription().GetValue()))
+	}
+	p, err := iam.NewProject(req.GetOrgId(), opts...)
+	if err != nil {
+		return nil, err
+	}
+	out, err := s.repo.CreateScope(ctx, p)
+	if err != nil {
+		return nil, err
+	}
+	if out == nil {
+		return nil, status.Error(codes.Internal, "Unable to create scope but no error returned from repository.")
+	}
+	return toProto(out), nil
+}
+
+func (s Service) updateInRepo(ctx context.Context, req *pbs.UpdateProjectRequest) (*pb.Project, error) {
+	item := req.GetItem()
+	// TODO: convert field masks from API field masks with snake_case to db field masks casing.
+	madeUp := []string{}
+	opts := []iam.Option{}
+	if desc := item.GetDescription(); desc != nil {
+		madeUp = append(madeUp, "Description")
+		opts = append(opts, iam.WithDescription(desc.GetValue()))
+	}
+	if name := item.GetName(); name != nil {
+		madeUp = append(madeUp, "Name")
+		opts = append(opts, iam.WithName(name.GetValue()))
+	}
+	p, err := iam.NewProject(req.GetOrgId(), iam.WitPublicId(req.GetId()))
+	if err != nil {
+		return nil, err
+	}
+	out, err := s.repo.UpdateScope(ctx, p, madeUp)
+	if err != nil {
+		return nil, err
+	}
+	if out == nil {
+		return nil, status.Error(codes.Internal, "Failed to get Project after updating it.")
+	}
+	return toProto(out), nil
 }
 
 func toProto(in *iam.Scope) *pb.Project {
@@ -115,13 +151,6 @@ func toProto(in *iam.Scope) *pb.Project {
 //  * The path passed in is correctly formatted
 //  * All required parameters are set
 //  * There are no conflicting parameters provided
-func validateListProjectsRequest(req *pbs.ListProjectsRequest) error {
-	if err := validateAncestors(req); err != nil {
-		return err
-	}
-	return nil
-}
-
 func validateGetProjectRequest(req *pbs.GetProjectRequest) error {
 	if err := validateAncestors(req); err != nil {
 		return err
@@ -143,13 +172,6 @@ func validateUpdateProjectRequest(req *pbs.UpdateProjectRequest) error {
 	return nil
 }
 
-func validateDeleteProjectRequest(req *pbs.DeleteProjectRequest) error {
-	if err := validateAncestors(req); err != nil {
-		return err
-	}
-	return nil
-}
-
 type ancestorProvider interface {
 	GetOrgId() string
 }
@@ -163,6 +185,6 @@ func validateAncestors(r ancestorProvider) error {
 }
 
 // RegisterGrpcGateway satisfies the RegisterGrpcGatewayer interface.
-func (s Service) RegisterGrpcGateway(mux *runtime.ServeMux) error {
+func (s *Service) RegisterGrpcGateway(mux *runtime.ServeMux) error {
 	return pbs.RegisterProjectServiceHandlerServer(context.Background(), mux, s)
 }
