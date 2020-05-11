@@ -12,7 +12,7 @@ import (
 // is the preferred way to assign roles to users and groups
 func Test_NewAssignedRole(t *testing.T) {
 	t.Parallel()
-	cleanup, conn := db.TestSetup(t, "../db/migrations/postgres")
+	cleanup, conn := db.TestSetup(t, "postgres")
 	defer cleanup()
 	assert := assert.New(t)
 	defer conn.Close()

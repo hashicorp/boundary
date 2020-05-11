@@ -10,7 +10,7 @@ import (
 
 func Test_NewGroupMember(t *testing.T) {
 	t.Parallel()
-	cleanup, conn := db.TestSetup(t, "../db/migrations/postgres")
+	cleanup, conn := db.TestSetup(t, "postgres")
 	defer cleanup()
 	assert := assert.New(t)
 	defer conn.Close()
