@@ -28,13 +28,10 @@ message User {
   // @inject_tag: `gorm:"default:null"`
   string description = 5;
 
-  // external_name for the user
-  string external_name = 6;
-
   // scope id for the user
   // @inject_tag: `gorm:"default:null"`
-  string scope_id = 7;
+  string scope_id = 6;
 
   // disabled is by default false and allows a User to be marked disabled.
-  bool disabled = 8;
+  bool disabled = 7;
 }
