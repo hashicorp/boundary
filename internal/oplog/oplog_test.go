@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"os"
 	"strings"
-	"sync"
 	"testing"
 
 	wrapping "github.com/hashicorp/go-kms-wrapping"
@@ -23,62 +22,29 @@ import (
 	"github.com/ory/dockertest/v3"
 )
 
-// Need a way to manage the shared database resource for these oplog
-// tests, so runningTests gives us a waitgroup to do this and clean up
-// the shared database resource when we're done.
-var runningTests sync.WaitGroup
-
-// startTest signals that we're starting a test that uses the shared test resources
-func startTest() {
-	runningTests.Add(1)
-}
-
-// completeTest signals that we've finished a test that uses the shared test resources
-func completeTest() {
-	runningTests.Done()
-}
-
-// waitForTests will wait for all the tests that are sharing resources like the database
-func waitForTests() {
-	runningTests.Wait()
-}
-
-// testDatabaseURL is initialized once using sync.Once and set to the database URL for testing
-var testDatabaseURL string
-
-// testInitDatabase ensures that the database is only initialized once during the tests.
-var testInitDatabase sync.Once
-
 // setup the tests (initialize the database one-time and intialized testDatabaseURL)
-func setup(t *testing.T) (func(), string) {
+func setup(t *testing.T) (func(), *gorm.DB) {
 	cleanup := func() {}
 	var url string
 	var err error
-	testInitDatabase.Do(func() {
-		cleanup, url, err = initDbInDocker(t)
-		if err != nil {
-			panic(err)
-		}
-		testDatabaseURL = url
-		db, err := test_dbconn(url)
-		if err != nil {
-			panic(err)
-		}
-		defer db.Close()
-		oplog_test.Init(db)
-	})
-	return cleanup, testDatabaseURL
+
+	cleanup, url, err = initDbInDocker(t)
+	if err != nil {
+		t.Fatal(err)
+	}
+	db, err := gorm.Open("postgres", url)
+	if err != nil {
+		t.Fatal(err)
+	}
+	oplog_test.Init(db)
+
+	return cleanup, db
 }
 
 // Test_BasicOplog provides some basic unit tests for oplogs
 func Test_BasicOplog(t *testing.T) {
-	t.Parallel()
-	startTest()
-	cleanup, url := setup(t)
+	cleanup, db := setup(t)
 	defer cleanup()
-	defer completeTest() // must come after the "defer cleanup()"
-	db, err := test_dbconn(url)
-	assert.NilError(t, err)
 	defer db.Close()
 
 	t.Run("EncryptData/DecryptData/UnmarshalData", func(t *testing.T) {
@@ -163,11 +129,8 @@ func Test_BasicOplog(t *testing.T) {
 		resp := db.Create(&user)
 		assert.NilError(t, resp.Error)
 
-		ticketName, err := uuid.GenerateUUID()
 		assert.NilError(t, err)
-		err = ticketer.InitTicket(ticketName)
-		assert.NilError(t, err)
-		ticket, err := ticketer.GetTicket(ticketName)
+		ticket, err := ticketer.GetTicket("default")
 		assert.NilError(t, err)
 
 		queue = Queue{}
@@ -195,13 +158,8 @@ func Test_BasicOplog(t *testing.T) {
 
 // Test_NewEntry provides some basic unit tests for NewEntry
 func Test_NewEntry(t *testing.T) {
-	t.Parallel()
-	startTest()
-	cleanup, url := setup(t)
+	cleanup, db := setup(t)
 	defer cleanup()
-	defer completeTest() // must come after the "defer cleanup()"
-	db, err := test_dbconn(url)
-	assert.NilError(t, err)
 	defer db.Close()
 	t.Run("valid", func(t *testing.T) {
 		cipherer := initWrapper(t)
@@ -283,13 +241,8 @@ func Test_NewEntry(t *testing.T) {
 }
 
 func Test_UnmarshalData(t *testing.T) {
-	t.Parallel()
-	startTest()
-	cleanup, url := setup(t)
+	cleanup, db := setup(t)
 	defer cleanup()
-	defer completeTest() // must come after the "defer cleanup()"
-	db, err := test_dbconn(url)
-	assert.NilError(t, err)
 	defer db.Close()
 
 	cipherer := initWrapper(t)
@@ -402,13 +355,8 @@ func Test_UnmarshalData(t *testing.T) {
 
 // Test_Replay provides some basic unit tests for replaying entries
 func Test_Replay(t *testing.T) {
-	startTest()
-	t.Parallel()
-	cleanup, url := setup(t)
+	cleanup, db := setup(t)
 	defer cleanup()
-	defer completeTest() // must come after the "defer cleanup()"
-	db, err := test_dbconn(url)
-	assert.NilError(t, err)
 	defer db.Close()
 
 	cipherer := initWrapper(t)
@@ -423,17 +371,12 @@ func Test_Replay(t *testing.T) {
 	replayUserTable := fmt.Sprintf("%s%s", testUser.TableName(), tableSuffix)
 	defer func() { assert.NilError(t, writer.dropTableIfExists(replayUserTable)) }()
 
-	ticketName, err := uuid.GenerateUUID()
-	assert.NilError(t, err)
 	ticketer, err := NewGormTicketer(db, WithAggregateNames(true))
-	assert.NilError(t, err)
-
-	err = ticketer.InitTicket(ticketName)
 	assert.NilError(t, err)
 
 	t.Run("replay:create/update", func(t *testing.T) {
 
-		ticket, err := ticketer.GetTicket(ticketName)
+		ticket, err := ticketer.GetTicket("default")
 		assert.NilError(t, err)
 
 		newLogEntry, err := NewEntry(
@@ -515,7 +458,7 @@ func Test_Replay(t *testing.T) {
 		// we need to test delete replays now...
 		tx2 := db.Begin()
 
-		ticket2, err := ticketer.GetTicket(ticketName)
+		ticket2, err := ticketer.GetTicket("default")
 		assert.NilError(t, err)
 
 		id4, err := uuid.GenerateUUID()
@@ -578,13 +521,8 @@ func Test_Replay(t *testing.T) {
 
 // Test_WriteEntryWith provides unit tests for oplog.WriteEntryWith
 func Test_WriteEntryWith(t *testing.T) {
-	t.Parallel()
-	startTest()
-	cleanup, url := setup(t)
+	cleanup, db := setup(t)
 	defer cleanup()
-	defer completeTest() // must come after the "defer cleanup()"
-	db, err := test_dbconn(url)
-	assert.NilError(t, err)
 	defer db.Close()
 
 	cipherer := initWrapper(t)
@@ -603,14 +541,10 @@ func Test_WriteEntryWith(t *testing.T) {
 	}
 	t.Log(&u2)
 
-	ticketName, err := uuid.GenerateUUID()
-	assert.NilError(t, err)
 	ticketer, err := NewGormTicketer(db, WithAggregateNames(true))
 	assert.NilError(t, err)
 
-	err = ticketer.InitTicket(ticketName)
-	assert.NilError(t, err)
-	ticket, err := ticketer.GetTicket(ticketName)
+	ticket, err := ticketer.GetTicket("default")
 	assert.NilError(t, err)
 
 	t.Run("successful", func(t *testing.T) {
@@ -695,22 +629,12 @@ func Test_WriteEntryWith(t *testing.T) {
 
 // Test_TicketSerialization provides unit tests for making sure oplog.Tickets properly serialize writes to oplog entries
 func Test_TicketSerialization(t *testing.T) {
-	startTest()
-	t.Parallel()
-	cleanup, url := setup(t)
+	cleanup, db := setup(t)
 	defer cleanup()
-	defer completeTest() // must come after the "defer cleanup()"
-	db, err := test_dbconn(url)
-	assert.NilError(t, err)
 	defer db.Close()
 
-	ticketName, err := uuid.GenerateUUID()
-	assert.NilError(t, err)
 	ticketer, err := NewGormTicketer(db, WithAggregateNames(true))
 	assert.NilError(t, err)
-
-	// in it's own transaction, init the ticket
-	_ = ticketer.InitTicket(ticketName)
 
 	cipherer := initWrapper(t)
 
@@ -722,7 +646,7 @@ func Test_TicketSerialization(t *testing.T) {
 	}
 	err = firstTx.Create(&firstUser).Error
 	assert.NilError(t, err)
-	firstTicket, err := ticketer.GetTicket(ticketName)
+	firstTicket, err := ticketer.GetTicket("default")
 	assert.NilError(t, err)
 
 	firstQueue := Queue{}
@@ -750,7 +674,7 @@ func Test_TicketSerialization(t *testing.T) {
 	}
 	err = secondTx.Create(&secondUser).Error
 	assert.NilError(t, err)
-	secondTicket, err := ticketer.GetTicket(ticketName)
+	secondTicket, err := ticketer.GetTicket("default")
 	assert.NilError(t, err)
 
 	secondQueue := Queue{}
@@ -805,7 +729,7 @@ func initDbInDocker(t *testing.T) (cleanup func(), retURL string, err error) {
 	}
 
 	c := func() {
-		cleanupResource(t, pool, resource)
+		cleanupResource(pool, resource)
 	}
 
 	url := fmt.Sprintf("postgres://postgres:secret@localhost:%s?sslmode=disable", resource.GetPort("5432/tcp"))
@@ -848,7 +772,7 @@ func initWrapper(t *testing.T) wrapping.Wrapper {
 // initTestStore will execute the migrations needed to initialize the store for tests
 func initTestStore(t *testing.T, cleanup func(), url string) {
 	// run migrations
-	m, err := migrate.New("file://migrations/postgres", url)
+	m, err := migrate.New("file://../db/migrations/postgres", url)
 	if err != nil {
 		cleanup()
 		t.Fatalf("Error creating migrations: %s", err)
@@ -860,22 +784,16 @@ func initTestStore(t *testing.T, cleanup func(), url string) {
 }
 
 // cleanupResource will clean up the dockertest resources (postgres)
-func cleanupResource(t *testing.T, pool *dockertest.Pool, resource *dockertest.Resource) {
-	waitForTests()
+func cleanupResource(pool *dockertest.Pool, resource *dockertest.Resource) error {
 	var err error
 	for i := 0; i < 10; i++ {
 		err = pool.Purge(resource)
 		if err == nil {
-			return
+			return nil
 		}
 	}
-
 	if strings.Contains(err.Error(), "No such container") {
-		return
+		return nil
 	}
-	t.Fatalf("Failed to cleanup local container: %s", err)
-}
-
-func test_dbconn(url string) (*gorm.DB, error) {
-	return gorm.Open("postgres", url)
+	return fmt.Errorf("Failed to cleanup local container: %s", err)
 }

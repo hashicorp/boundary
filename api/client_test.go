@@ -78,11 +78,11 @@ func TestConfigSetAddress(t *testing.T) {
 	for _, v := range tests {
 		t.Run(v.name, func(t *testing.T) {
 			var c Config
-			err := c.setAddress(v.input)
+			err := c.setAddr(v.input)
 			if err != nil {
 				assert.Equal(t, v.err, err.Error())
 			}
-			assert.Equal(t, v.address, c.Address)
+			assert.Equal(t, v.address, c.Addr)
 			assert.Equal(t, v.org, c.Org)
 			assert.Equal(t, v.project, c.Project)
 		})
