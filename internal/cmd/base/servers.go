@@ -397,15 +397,19 @@ func (b *Server) CreateDevDatabase(dialect string) error {
 		cancel()
 	}()
 
-	/*
-		// FIXME: make this work
-		scope, err := repo.LookupScope(ctx, iam.WithPublicId(b.DefaultOrgId))
+	var scope *iam.Scope
+	if b.DefaultOrgId != "" {
+		scope, err = repo.LookupScope(ctx, iam.WithPublicId(b.DefaultOrgId))
 		if err != nil {
 			c()
 			return fmt.Errorf("error looking up existing scope with org ID %q: %w", b.DefaultOrgId, err)
 		}
-	*/
-	scope, err := iam.NewOrganization(iam.WithPublicId(b.DefaultOrgId))
+		if scope != nil {
+			goto INFO
+		}
+	}
+
+	scope, err = iam.NewOrganization(iam.WithPublicId(b.DefaultOrgId))
 	if err != nil {
 		c()
 		return fmt.Errorf("error creating new org scope: %w", err)
@@ -424,6 +428,7 @@ func (b *Server) CreateDevDatabase(dialect string) error {
 		b.DefaultOrgId = scope.GetPublicId()
 	}
 
+INFO:
 	b.InfoKeys = append(b.InfoKeys, "dev org id")
 	b.Info["dev org id"] = b.DefaultOrgId
 
