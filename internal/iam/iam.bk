@@ -1,0 +1,16 @@
+package iam
+
+type Policy struct{}
+
+// FindAllowed finds the resources that allow an Action
+// based on the slice of Roles. Among other things, the
+// Options specify any search criteria to apply
+// (for example WithTags for EC2 targets)
+func FindAllowed(Action, []Role, ...Option) map[string]Resource {
+	return nil
+}
+
+type Polices interface {
+	Resource
+	Eval(Principal, Resource) ([]Action, error)
+}

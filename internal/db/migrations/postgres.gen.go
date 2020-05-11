@@ -164,6 +164,7 @@ CREATE TABLE if not exists iam_scope (
     public_id wt_public_id primary key,
     create_time timestamp with time zone default current_timestamp,
     update_time timestamp with time zone default current_timestamp,
+    -- no unique constraint intentionally, since it's covered by constraints in iam_scope_organization and iam_scope_project 
     name text,
     type text NOT NULL REFERENCES iam_scope_type_enm(string) CHECK(
       (
