@@ -109,7 +109,7 @@ func (s Service) updateInRepo(ctx context.Context, req *pbs.UpdateProjectRequest
 	item := req.GetItem()
 	// TODO: convert field masks from API field masks with snake_case to db field masks casing.
 	madeUp := []string{}
-	opts := []iam.Option{}
+	opts := []iam.Option{iam.WithPublicId(req.GetId())}
 	if desc := item.GetDescription(); desc != nil {
 		madeUp = append(madeUp, "Description")
 		opts = append(opts, iam.WithDescription(desc.GetValue()))
@@ -118,13 +118,11 @@ func (s Service) updateInRepo(ctx context.Context, req *pbs.UpdateProjectRequest
 		madeUp = append(madeUp, "Name")
 		opts = append(opts, iam.WithName(name.GetValue()))
 	}
-	opts = append(opts, iam.WithPublicId(req.GetId()))
 	p, err := iam.NewProject(req.GetOrgId(), opts...)
 	if err != nil {
 		return nil, err
 	}
-	p.PublicId = req.GetId()
-	out, err := s.repo.UpdateScope(ctx, p, madeUp, opts...)
+	out, err := s.repo.UpdateScope(ctx, p, madeUp)
 	if err != nil {
 		return nil, err
 	}
@@ -222,9 +220,6 @@ func validateID(id, prefix string) error {
 		return status.Errorf(codes.InvalidArgument, "ID start with a %q prefix, provided %q", prefix, id)
 	}
 	id = strings.TrimPrefix(id, prefix)
-	if len(id) != 10 {
-		return status.Errorf(codes.InvalidArgument, "ID should have a length of 10, but was %d", len(id))
-	}
 	if reInvalidID.Match([]byte(id)) {
 		return status.Errorf(codes.InvalidArgument, "Improperly formatted ID: %q", id)
 	}

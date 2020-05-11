@@ -27,7 +27,7 @@ func createDefaultProjectAndRepo(t *testing.T) (*iam.Scope, *iam.Repository) {
 		conn.Close()
 		cleanup()
 	})
-	rw := &db.GormReadWriter{Tx: conn}
+	rw := &db.Db{Tx: conn}
 	wrap := db.TestWrapper(t)
 	repo, err := iam.NewRepository(rw, rw, wrap)
 	assert.Nil(t, err, "Unable to create new repo")
@@ -86,13 +86,6 @@ func TestGet(t *testing.T) {
 			res:  nil,
 			// This will be fixed with PR 42
 			errCode: codes.NotFound,
-		},
-		{
-			name: "To long identifier",
-			req:  &pbs.GetProjectRequest{Id: "p_ThisIdIsJustToLong"},
-			res:  nil,
-			// This will be fixed with PR 42
-			errCode: codes.InvalidArgument,
 		},
 		{
 			name: "Wrong id prefix",
