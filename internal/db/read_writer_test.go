@@ -9,7 +9,6 @@ import (
 	"github.com/hashicorp/watchtower/internal/db/db_test"
 	"github.com/hashicorp/watchtower/internal/oplog"
 	"github.com/hashicorp/watchtower/internal/oplog/store"
-	"github.com/jinzhu/gorm"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -320,7 +319,7 @@ func TestGormReadWriter_LookupByName(t *testing.T) {
 		foundUser.Name = "fn-" + id
 		err = w.LookupByName(context.Background(), foundUser)
 		assert.True(err != nil)
-		assert.Equal(gorm.ErrRecordNotFound, err)
+		assert.Equal(ErrRecordNotFound, err)
 	})
 }
 
@@ -375,7 +374,7 @@ func TestGormReadWriter_LookupByPublicId(t *testing.T) {
 		foundUser.PublicId = id
 		err = w.LookupByPublicId(context.Background(), foundUser)
 		assert.True(err != nil)
-		assert.Equal(gorm.ErrRecordNotFound, err)
+		assert.Equal(ErrRecordNotFound, err)
 	})
 }
 
@@ -416,7 +415,7 @@ func TestGormReadWriter_LookupWhere(t *testing.T) {
 		var foundUser db_test.TestUser
 		err = w.LookupWhere(context.Background(), &foundUser, "public_id = ?", id)
 		assert.True(err != nil)
-		assert.Equal(gorm.ErrRecordNotFound, err)
+		assert.Equal(ErrRecordNotFound, err)
 	})
 	t.Run("bad-where", func(t *testing.T) {
 		w := GormReadWriter{Tx: db}
@@ -633,7 +632,7 @@ func TestGormReadWriter_Delete(t *testing.T) {
 
 		err = w.LookupByPublicId(context.Background(), foundUser)
 		assert.True(err != nil)
-		assert.Equal(gorm.ErrRecordNotFound, err)
+		assert.Equal(ErrRecordNotFound, err)
 	})
 	t.Run("valid-WithOplog", func(t *testing.T) {
 		w := GormReadWriter{Tx: db}
@@ -680,7 +679,7 @@ func TestGormReadWriter_Delete(t *testing.T) {
 
 		err = w.LookupByPublicId(context.Background(), foundUser)
 		assert.True(err != nil)
-		assert.Equal(gorm.ErrRecordNotFound, err)
+		assert.Equal(ErrRecordNotFound, err)
 	})
 	t.Run("no-wrapper-WithOplog", func(t *testing.T) {
 		w := GormReadWriter{Tx: db}
