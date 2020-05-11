@@ -40,7 +40,7 @@ type Scope struct {
 // ensure that Scope implements the interfaces of: Resource, ClonableResource, and db.VetForWriter
 var _ Resource = (*Scope)(nil)
 var _ db.VetForWriter = (*Scope)(nil)
-var _ ClonableResource = (*Scope)(nil)
+var _ Clonable = (*Scope)(nil)
 
 func NewOrganization(opt ...Option) (*Scope, error) {
 	return newScope(OrganizationScope, opt...)
@@ -64,6 +64,7 @@ func newScope(scopeType ScopeType, opt ...Option) (*Scope, error) {
 	opts := getOpts(opt...)
 	withName := opts.withName
 	withScope := opts.withScope
+	withDescription := opts.withDescription
 
 	if scopeType == UnknownScope {
 		return nil, errors.New("error unknown scope type for new scope")
@@ -100,6 +101,9 @@ func newScope(scopeType ScopeType, opt ...Option) (*Scope, error) {
 	if withName != "" {
 		s.Name = withName
 	}
+	if withDescription != "" {
+		s.Description = withDescription
+	}
 	return s, nil
 }
 
@@ -110,7 +114,7 @@ func allocScope() Scope {
 }
 
 // Clone creates a clone of the Scope
-func (s *Scope) Clone() Resource {
+func (s *Scope) Clone() interface{} {
 	cp := proto.Clone(s.Scope)
 	return &Scope{
 		Scope: cp.(*store.Scope),
@@ -158,18 +162,19 @@ func (s *Scope) VetForWrite(ctx context.Context, r db.Reader, opType db.OpType, 
 
 // ResourceType returns the type of scope
 func (s *Scope) ResourceType() ResourceType {
-	if s.Type == OrganizationScope.String() {
+	switch s.Type {
+	case OrganizationScope.String():
 		return ResourceTypeOrganization
-	}
-	if s.Type == ProjectScope.String() {
+	case ProjectScope.String():
 		return ResourceTypeProject
+	default:
+		return ResourceTypeScope
 	}
-	return ResourceTypeScope
 }
 
 // Actions returns the  available actions for Scopes
 func (*Scope) Actions() map[string]Action {
-	return CrudlActions()
+	return CrudActions()
 }
 
 // GetScope returns the scope for the "scope" if there is one defined

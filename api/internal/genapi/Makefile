@@ -4,6 +4,6 @@ THIS_FILE := $(lastword $(MAKEFILE_LIST))
 
 api:
 	go run -tags genapi .
-	goimports -w ${APIGEN_BASEPATH}/api
+	goimports -w ${GEN_BASEPATH}/api
 
 .PHONY: api

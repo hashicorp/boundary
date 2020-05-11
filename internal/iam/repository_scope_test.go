@@ -13,7 +13,7 @@ import (
 
 func Test_Repository_CreateScope(t *testing.T) {
 	t.Parallel()
-	cleanup, conn := db.TestSetup(t, "../db/migrations/postgres")
+	cleanup, conn := db.TestSetup(t, "postgres")
 	defer cleanup()
 	assert := assert.New(t)
 	defer conn.Close()
@@ -32,7 +32,7 @@ func Test_Repository_CreateScope(t *testing.T) {
 		assert.True(s.GetPublicId() != "")
 		assert.Equal(s.GetName(), "fname-"+id)
 
-		foundScope, err := repo.LookupScope(context.Background(), WitPublicId(s.PublicId))
+		foundScope, err := repo.LookupScope(context.Background(), WithPublicId(s.PublicId))
 		assert.Nil(err)
 		assert.Equal(foundScope.GetPublicId(), s.GetPublicId())
 
@@ -52,7 +52,7 @@ func Test_Repository_CreateScope(t *testing.T) {
 
 func Test_Repository_UpdateScope(t *testing.T) {
 	t.Parallel()
-	cleanup, conn := db.TestSetup(t, "../db/migrations/postgres")
+	cleanup, conn := db.TestSetup(t, "postgres")
 	defer cleanup()
 	assert := assert.New(t)
 	defer conn.Close()
@@ -71,7 +71,7 @@ func Test_Repository_UpdateScope(t *testing.T) {
 		assert.True(s.GetPublicId() != "")
 		assert.Equal(s.GetName(), "fname-"+id)
 
-		foundScope, err := repo.LookupScope(context.Background(), WitPublicId(s.PublicId))
+		foundScope, err := repo.LookupScope(context.Background(), WithPublicId(s.PublicId))
 		assert.Nil(err)
 		assert.Equal(foundScope.GetPublicId(), s.GetPublicId())
 

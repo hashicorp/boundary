@@ -9,7 +9,7 @@ import (
 func TestPublicIdDomain(t *testing.T) {
 	const (
 		createTable = `
-create table test_table (
+create table if not exists test_table (
   id bigint generated always as identity primary key,
   public_id wt_public_id
 );
@@ -21,7 +21,7 @@ returning id;
 `
 	)
 
-	cleanup, conn := TestSetup(t, "migrations/postgres")
+	cleanup, conn := TestSetup(t, "postgres")
 	defer cleanup()
 	defer conn.Close()
 
@@ -33,7 +33,7 @@ returning id;
 	failTests := []string{
 		" ",
 		"bar",
-		"0000000001000000000200000000031",
+		"00000009",
 	}
 	for _, tt := range failTests {
 		value := tt

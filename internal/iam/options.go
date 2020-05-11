@@ -29,8 +29,8 @@ func getDefaultOptions() options {
 	}
 }
 
-// WitPublicId provides an optional public id
-func WitPublicId(id string) Option {
+// WithPublicId provides an optional public id
+func WithPublicId(id string) Option {
 	return func(o *options) {
 		o.withPublicId = id
 	}

@@ -27,7 +27,7 @@ func Test_GetOpts(t *testing.T) {
 		testOpts.withScope = s
 		assert.True(reflect.DeepEqual(opts, testOpts))
 	})
-	t.Run("optionWithDescription", func(t *testing.T) {
+	t.Run("WithDescription", func(t *testing.T) {
 		opts := getOpts(WithDescription("test desc"))
 		testOpts := getDefaultOptions()
 		testOpts.withDescription = "test desc"

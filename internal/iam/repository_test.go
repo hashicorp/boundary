@@ -15,7 +15,7 @@ import (
 
 func TestNewRepository(t *testing.T) {
 	t.Parallel()
-	cleanup, conn := db.TestSetup(t, "../db/migrations/postgres")
+	cleanup, conn := db.TestSetup(t, "postgres")
 	defer cleanup()
 	assert := assert.New(t)
 	defer conn.Close()
@@ -100,7 +100,7 @@ func TestNewRepository(t *testing.T) {
 }
 func Test_Repository_create(t *testing.T) {
 	t.Parallel()
-	cleanup, conn := db.TestSetup(t, "../db/migrations/postgres")
+	cleanup, conn := db.TestSetup(t, "postgres")
 	defer cleanup()
 	assert := assert.New(t)
 	defer conn.Close()
@@ -119,7 +119,7 @@ func Test_Repository_create(t *testing.T) {
 		assert.True(retScope.GetPublicId() != "")
 		assert.Equal(retScope.GetName(), "fname-"+id)
 
-		foundScope, err := repo.LookupScope(context.Background(), WitPublicId(s.PublicId))
+		foundScope, err := repo.LookupScope(context.Background(), WithPublicId(s.PublicId))
 		assert.Nil(err)
 		assert.Equal(foundScope.GetPublicId(), retScope.GetPublicId())
 
@@ -149,7 +149,7 @@ func Test_Repository_create(t *testing.T) {
 
 func Test_dbRepository_update(t *testing.T) {
 	t.Parallel()
-	cleanup, conn := db.TestSetup(t, "../db/migrations/postgres")
+	cleanup, conn := db.TestSetup(t, "postgres")
 	defer cleanup()
 	assert := assert.New(t)
 	defer conn.Close()
