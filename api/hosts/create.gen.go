@@ -13,7 +13,13 @@ func (s HostCatalog) CreateHost(ctx context.Context, host *Host) (*Host, *api.Er
 		return nil, nil, fmt.Errorf("nil client in CreateHost request")
 	}
 	if s.Id == "" {
-		return nil, nil, fmt.Errorf("missing catalog ID in CreateHost request")
+
+		return nil, nil, fmt.Errorf("missing HostCatalog ID in CreateHost request")
+
+	} else {
+		// If it's explicitly set here, override anything that might be in the
+		// client
+
 	}
 
 	req, err := s.Client.NewRequest(ctx, "PUT", fmt.Sprintf("host-catalogs/%s/hosts", s.Id), host)
@@ -40,7 +46,13 @@ func (s HostCatalog) CreateHostSet(ctx context.Context, hostset *HostSet) (*Host
 		return nil, nil, fmt.Errorf("nil client in CreateHostSet request")
 	}
 	if s.Id == "" {
-		return nil, nil, fmt.Errorf("missing catalog ID in CreateHostSet request")
+
+		return nil, nil, fmt.Errorf("missing HostCatalog ID in CreateHostSet request")
+
+	} else {
+		// If it's explicitly set here, override anything that might be in the
+		// client
+
 	}
 
 	req, err := s.Client.NewRequest(ctx, "PUT", fmt.Sprintf("host-catalogs/%s/host-sets", s.Id), hostset)

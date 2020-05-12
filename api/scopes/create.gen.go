@@ -13,7 +13,16 @@ func (s Organization) CreateProject(ctx context.Context, project *Project) (*Pro
 		return nil, nil, fmt.Errorf("nil client in CreateProject request")
 	}
 	if s.Id == "" {
-		return nil, nil, fmt.Errorf("missing catalog ID in CreateProject request")
+
+		// Assume the client has been configured with organization already and
+		// move on
+
+	} else {
+		// If it's explicitly set here, override anything that might be in the
+		// client
+
+		ctx = context.WithValue(ctx, "org", s.Id)
+
 	}
 
 	req, err := s.Client.NewRequest(ctx, "PUT", fmt.Sprintf("projects", s.Id), project)
