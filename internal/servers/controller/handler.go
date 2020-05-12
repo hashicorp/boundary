@@ -58,11 +58,12 @@ func wrapGenericHandler(h http.Handler, c *Controller, props HandlerProperties) 
 	if maxRequestSize == 0 {
 		maxRequestSize = globals.DefaultMaxRequestSize
 	}
+	defaultOrgId := c.conf.DefaultOrgId
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if c.conf.DefaultOrgId != "" {
+		if defaultOrgId != "" {
 			splitPath := strings.Split(r.URL.Path, "/")
 			if len(splitPath) >= 3 && splitPath[2] == "projects" {
-				http.Redirect(w, r, path.Join("/v1/orgs", c.conf.DefaultOrgId, strings.Join(splitPath[2:], "/")), 307)
+				http.Redirect(w, r, path.Join("/v1/orgs", defaultOrgId, strings.Join(splitPath[2:], "/")), 307)
 				return
 			}
 		}
