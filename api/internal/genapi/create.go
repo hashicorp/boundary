@@ -31,6 +31,14 @@ var createFuncs = map[string][]*createInfo{
 			"host-catalogs/%s/host-sets",
 		},
 	},
+	"scopes": {
+		{
+			"Organization",
+			"Project",
+			"PUT",
+			"projects",
+		},
+	},
 }
 
 func writeCreateFuncs() {
