@@ -1,5 +1,3 @@
-// +build genapi
-
 package main
 
 func main() {
