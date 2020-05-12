@@ -123,7 +123,7 @@ func New(underlying *gorm.DB) *Db {
 // DB returns the sql.DB
 func (rw *Db) DB() (*sql.DB, error) {
 	if rw.underlying == nil {
-		return nil, errors.New("create tx is nil for db")
+		return nil, errors.New("underlying db is nil")
 	}
 	return rw.underlying.DB(), nil
 }
@@ -154,7 +154,7 @@ func (rw *Db) lookupAfterWrite(ctx context.Context, i interface{}, opt ...Option
 // Create an object in the db with options: WithOplog and WithLookup (to force a lookup after create))
 func (rw *Db) Create(ctx context.Context, i interface{}, opt ...Option) error {
 	if rw.underlying == nil {
-		return errors.New("create tx is nil")
+		return errors.New("create underlying db is nil")
 	}
 	opts := GetOpts(opt...)
 	withOplog := opts.withOplog
@@ -189,7 +189,7 @@ func (rw *Db) Create(ctx context.Context, i interface{}, opt ...Option) error {
 // it will send every field to the DB.  Update supports embedding a struct (or structPtr) one level deep for updating
 func (rw *Db) Update(ctx context.Context, i interface{}, fieldMaskPaths []string, opt ...Option) error {
 	if rw.underlying == nil {
-		return errors.New("update tx is nil")
+		return errors.New("update underlying db is nil")
 	}
 	opts := GetOpts(opt...)
 	withDebug := opts.withDebug
@@ -268,7 +268,7 @@ func (rw *Db) Update(ctx context.Context, i interface{}, fieldMaskPaths []string
 // Delete an object in the db with options: WithOplog (which requires WithMetadata, WithWrapper)
 func (rw *Db) Delete(ctx context.Context, i interface{}, opt ...Option) error {
 	if rw.underlying == nil {
-		return errors.New("delete tx is nil")
+		return errors.New("delete underlying db is nil")
 	}
 	if i == nil {
 		return errors.New("delete interface is nil")
@@ -353,7 +353,7 @@ func (rw *Db) addOplog(ctx context.Context, opType OpType, opts Options, i inter
 // be reset before retry
 func (w *Db) DoTx(ctx context.Context, retries uint, backOff Backoff, Handler TxHandler) (RetryInfo, error) {
 	if w.underlying == nil {
-		return RetryInfo{}, errors.New("do tx is nil")
+		return RetryInfo{}, errors.New("do underlying db is nil")
 	}
 	info := RetryInfo{}
 	for attempts := uint(1); ; attempts++ {
@@ -393,7 +393,7 @@ func (w *Db) DoTx(ctx context.Context, retries uint, backOff Backoff, Handler Tx
 // LookupByName will lookup resource my its friendly name which must be unique
 func (rw *Db) LookupByName(ctx context.Context, resource ResourceNamer, opt ...Option) error {
 	if rw.underlying == nil {
-		return errors.New("error tx nil for lookup by name")
+		return errors.New("error underlying db nil for lookup by name")
 	}
 	opts := GetOpts(opt...)
 	withDebug := opts.withDebug
@@ -419,7 +419,7 @@ func (rw *Db) LookupByName(ctx context.Context, resource ResourceNamer, opt ...O
 // LookupByPublicId will lookup resource my its public_id which must be unique
 func (rw *Db) LookupByPublicId(ctx context.Context, resource ResourcePublicIder, opt ...Option) error {
 	if rw.underlying == nil {
-		return errors.New("error tx nil for lookup by public id")
+		return errors.New("error underlying db nil for lookup by public id")
 	}
 	opts := GetOpts(opt...)
 	withDebug := opts.withDebug
@@ -445,7 +445,7 @@ func (rw *Db) LookupByPublicId(ctx context.Context, resource ResourcePublicIder,
 // LookupWhere will lookup the first resource using a where clause with parameters (it only returns the first one)
 func (rw *Db) LookupWhere(ctx context.Context, resource interface{}, where string, args ...interface{}) error {
 	if rw.underlying == nil {
-		return errors.New("error tx nil for lookup by")
+		return errors.New("error underlying db nil for lookup by")
 	}
 	if reflect.ValueOf(resource).Kind() != reflect.Ptr {
 		return errors.New("error interface parameter must to be a pointer for lookup by")
@@ -456,7 +456,7 @@ func (rw *Db) LookupWhere(ctx context.Context, resource interface{}, where strin
 // SearchWhere will search for all the resources it can find using a where clause with parameters
 func (rw *Db) SearchWhere(ctx context.Context, resources interface{}, where string, args ...interface{}) error {
 	if rw.underlying == nil {
-		return errors.New("error tx nil for search by")
+		return errors.New("error underlying db nil for search by")
 	}
 	if reflect.ValueOf(resources).Kind() != reflect.Ptr {
 		return errors.New("error interface parameter must to be a pointer for search by")
