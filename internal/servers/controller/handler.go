@@ -3,6 +3,8 @@ package controller
 import (
 	"context"
 	"net/http"
+	"path"
+	"strings"
 	"time"
 
 	"github.com/grpc-ecosystem/grpc-gateway/runtime"
@@ -27,7 +29,7 @@ func Handler(c *Controller, props HandlerProperties) http.Handler {
 
 	mux.Handle("/v1/", handleGrpcGateway(c))
 
-	genericWrappedHandler := wrapGenericHandler(mux, props)
+	genericWrappedHandler := wrapGenericHandler(mux, c, props)
 
 	return genericWrappedHandler
 }
@@ -43,7 +45,7 @@ func handleGrpcGateway(c *Controller) http.Handler {
 	return mux
 }
 
-func wrapGenericHandler(h http.Handler, props HandlerProperties) http.Handler {
+func wrapGenericHandler(h http.Handler, c *Controller, props HandlerProperties) http.Handler {
 	var maxRequestDuration time.Duration
 	var maxRequestSize int64
 	if props.ListenerConfig != nil {
@@ -57,6 +59,14 @@ func wrapGenericHandler(h http.Handler, props HandlerProperties) http.Handler {
 		maxRequestSize = globals.DefaultMaxRequestSize
 	}
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if c.conf.DefaultOrgId != "" {
+			splitPath := strings.Split(r.URL.Path, "/")
+			if len(splitPath) >= 3 && splitPath[2] == "projects" {
+				http.Redirect(w, r, path.Join("/v1/orgs", c.conf.DefaultOrgId, strings.Join(splitPath[2:], "/")), 307)
+				return
+			}
+		}
+
 		// Set the Cache-Control header for all responses returned
 		w.Header().Set("Cache-Control", "no-store")
 
