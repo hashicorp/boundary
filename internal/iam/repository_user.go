@@ -21,15 +21,15 @@ func (r *Repository) CreateUser(ctx context.Context, user *User, opt ...Option) 
 }
 
 // UpdateUser will update a user in the repository and return the written user
-func (r *Repository) UpdateUser(ctx context.Context, user *User, fieldMaskPaths []string, opt ...Option) (*User, error) {
+func (r *Repository) UpdateUser(ctx context.Context, user *User, fieldMaskPaths []string, opt ...Option) (*User, int, error) {
 	if user == nil {
-		return nil, errors.New("error user is nil for update")
+		return nil, db.NoRowsAffected, errors.New("error user is nil for update")
 	}
-	resource, err := r.update(context.Background(), user, fieldMaskPaths)
+	resource, rowsUpdated, err := r.update(context.Background(), user, fieldMaskPaths)
 	if err != nil {
-		return nil, fmt.Errorf("failed to update user: %w", err)
+		return nil, db.NoRowsAffected, fmt.Errorf("failed to update user: %w", err)
 	}
-	return resource.(*User), err
+	return resource.(*User), rowsUpdated, err
 }
 
 // LookupUser will look up a user in the repository.  If the user is not
@@ -59,7 +59,7 @@ func (r *Repository) LookupUser(ctx context.Context, opt ...Option) (*User, erro
 }
 
 // DeleteUser will delete a user from the repository
-func (r *Repository) DeleteUser(ctx context.Context, opt ...Option) error {
+func (r *Repository) DeleteUser(ctx context.Context, opt ...Option) (int, error) {
 	opts := getOpts(opt...)
 	withPublicId := opts.withPublicId
 	withName := opts.withName
@@ -67,27 +67,29 @@ func (r *Repository) DeleteUser(ctx context.Context, opt ...Option) error {
 	if withPublicId != "" {
 		user := allocUser()
 		user.PublicId = withPublicId
-		if err := r.writer.Delete(ctx, &user); err != nil {
-			return fmt.Errorf("unable to delete user by public id: %w", err)
+		rowsDeleted, err := r.writer.Delete(ctx, &user)
+		if err != nil {
+			return db.NoRowsAffected, fmt.Errorf("unable to delete user by public id: %w", err)
 		}
-		return nil
+		return rowsDeleted, nil
 	}
 	if withName != "" {
 		user := allocUser()
 		user.Name = withName
 		if err := r.reader.LookupByName(ctx, &user); err != nil {
 			if err == db.ErrRecordNotFound {
-				return nil
+				return db.NoRowsAffected, nil
 			}
-			return fmt.Errorf("unable to find user by name for delete: %w", err)
+			return db.NoRowsAffected, fmt.Errorf("unable to find user by name for delete: %w", err)
 		}
 		if user.PublicId == "" {
-			return fmt.Errorf("unable to delete user with unset public id")
+			return db.NoRowsAffected, fmt.Errorf("unable to delete user with unset public id")
 		}
-		if err := r.writer.Delete(ctx, &user); err != nil {
-			return fmt.Errorf("unable to delete user by name: %w", err)
+		rowsDeleted, err := r.writer.Delete(ctx, &user)
+		if err != nil {
+			return db.NoRowsAffected, fmt.Errorf("unable to delete user by name: %w", err)
 		}
-		return nil
+		return rowsDeleted, nil
 	}
-	return errors.New("you must delete users by id or name")
+	return db.NoRowsAffected, errors.New("you must delete users by id or name")
 }

@@ -11,7 +11,7 @@ import (
 
 func Test_NewRole(t *testing.T) {
 	t.Parallel()
-	cleanup, conn := db.TestSetup(t, "postgres")
+	cleanup, conn, _ := db.TestSetup(t, "postgres")
 	defer cleanup()
 	assert := assert.New(t)
 	defer conn.Close()
@@ -61,7 +61,7 @@ func TestRole_ResourceType(t *testing.T) {
 
 func TestRole_GetScope(t *testing.T) {
 	t.Parallel()
-	cleanup, conn := db.TestSetup(t, "postgres")
+	cleanup, conn, _ := db.TestSetup(t, "postgres")
 	defer cleanup()
 	assert := assert.New(t)
 	defer conn.Close()
@@ -92,7 +92,7 @@ func TestRole_GetScope(t *testing.T) {
 
 func TestRole_AssignedRoles(t *testing.T) {
 	t.Parallel()
-	cleanup, conn := db.TestSetup(t, "postgres")
+	cleanup, conn, _ := db.TestSetup(t, "postgres")
 	defer cleanup()
 	assert := assert.New(t)
 	defer conn.Close()
@@ -157,7 +157,7 @@ func TestRole_AssignedRoles(t *testing.T) {
 
 func TestRole_Clone(t *testing.T) {
 	t.Parallel()
-	cleanup, conn := db.TestSetup(t, "postgres")
+	cleanup, conn, _ := db.TestSetup(t, "postgres")
 	defer cleanup()
 	assert := assert.New(t)
 	defer conn.Close()

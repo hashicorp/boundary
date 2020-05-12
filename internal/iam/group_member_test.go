@@ -10,7 +10,7 @@ import (
 
 func Test_NewGroupMember(t *testing.T) {
 	t.Parallel()
-	cleanup, conn := db.TestSetup(t, "postgres")
+	cleanup, conn, _ := db.TestSetup(t, "postgres")
 	defer cleanup()
 	assert := assert.New(t)
 	defer conn.Close()
@@ -50,8 +50,9 @@ func Test_NewGroupMember(t *testing.T) {
 		assert.Equal(members[0].GetMemberId(), user.PublicId)
 		assert.Equal(members[0].GetGroupId(), grp.PublicId)
 
-		err = w.Delete(context.Background(), gm)
+		rowsDeleted, err := w.Delete(context.Background(), gm)
 		assert.Nil(err)
+		assert.Equal(1, rowsDeleted)
 
 		members, err = grp.Members(context.Background(), w)
 		assert.Nil(err)

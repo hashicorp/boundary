@@ -13,7 +13,7 @@ import (
 
 func Test_NewUser(t *testing.T) {
 	t.Parallel()
-	cleanup, conn := db.TestSetup(t, "postgres")
+	cleanup, conn, _ := db.TestSetup(t, "postgres")
 	defer cleanup()
 	assert := assert.New(t)
 	defer conn.Close()
@@ -36,7 +36,7 @@ func Test_NewUser(t *testing.T) {
 
 func Test_UserCreate(t *testing.T) {
 	t.Parallel()
-	cleanup, conn := db.TestSetup(t, "postgres")
+	cleanup, conn, _ := db.TestSetup(t, "postgres")
 	defer cleanup()
 	assert := assert.New(t)
 	defer conn.Close()
@@ -61,7 +61,7 @@ func Test_UserCreate(t *testing.T) {
 
 func Test_UserGetScope(t *testing.T) {
 	t.Parallel()
-	cleanup, conn := db.TestSetup(t, "postgres")
+	cleanup, conn, _ := db.TestSetup(t, "postgres")
 	defer cleanup()
 	assert := assert.New(t)
 	defer conn.Close()
@@ -89,8 +89,9 @@ func Test_UserGetScope(t *testing.T) {
 		assert.Nil(err)
 
 		user.ScopeId = s.PublicId
-		err = w.Update(context.Background(), user, []string{"ScopeId"})
+		rowsUpdated, err := w.Update(context.Background(), user, []string{"ScopeId"})
 		assert.Nil(err)
+		assert.Equal(1, rowsUpdated)
 
 		scope, err := user.GetScope(context.Background(), w)
 		assert.Nil(err)
@@ -102,7 +103,7 @@ func Test_UserGetScope(t *testing.T) {
 
 func Test_UserGroups(t *testing.T) {
 	t.Parallel()
-	cleanup, conn := db.TestSetup(t, "postgres")
+	cleanup, conn, _ := db.TestSetup(t, "postgres")
 	defer cleanup()
 	assert := assert.New(t)
 	defer conn.Close()
@@ -145,7 +146,7 @@ func Test_UserGroups(t *testing.T) {
 
 func Test_UserRoles(t *testing.T) {
 	t.Parallel()
-	cleanup, conn := db.TestSetup(t, "postgres")
+	cleanup, conn, _ := db.TestSetup(t, "postgres")
 	defer cleanup()
 	assert := assert.New(t)
 	defer conn.Close()
@@ -192,7 +193,7 @@ func Test_UserRoles(t *testing.T) {
 
 func Test_UserGrants(t *testing.T) {
 	t.Parallel()
-	cleanup, conn := db.TestSetup(t, "postgres")
+	cleanup, conn, _ := db.TestSetup(t, "postgres")
 	defer cleanup()
 	assert := assert.New(t)
 	defer conn.Close()
@@ -300,7 +301,7 @@ func Test_UserGrants(t *testing.T) {
 }
 func TestUser_Clone(t *testing.T) {
 	t.Parallel()
-	cleanup, conn := db.TestSetup(t, "postgres")
+	cleanup, conn, _ := db.TestSetup(t, "postgres")
 	defer cleanup()
 	assert := assert.New(t)
 	defer conn.Close()

@@ -11,7 +11,7 @@ import (
 
 func Test_Repository_CreateUser(t *testing.T) {
 	t.Parallel()
-	cleanup, conn := db.TestSetup(t, "postgres")
+	cleanup, conn, _ := db.TestSetup(t, "postgres")
 	defer cleanup()
 	assert := assert.New(t)
 	defer conn.Close()

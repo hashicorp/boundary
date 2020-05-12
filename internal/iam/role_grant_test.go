@@ -11,7 +11,7 @@ import (
 
 func TestNewRoleGrant(t *testing.T) {
 	t.Parallel()
-	cleanup, conn := db.TestSetup(t, "postgres")
+	cleanup, conn, _ := db.TestSetup(t, "postgres")
 	defer cleanup()
 	assert := assert.New(t)
 	defer conn.Close()
@@ -113,7 +113,7 @@ func TestRoleGrant_ResourceType(t *testing.T) {
 
 func TestRoleGrant_GetScope(t *testing.T) {
 	t.Parallel()
-	cleanup, conn := db.TestSetup(t, "postgres")
+	cleanup, conn, _ := db.TestSetup(t, "postgres")
 	defer cleanup()
 	assert := assert.New(t)
 	defer conn.Close()
@@ -150,7 +150,7 @@ func TestRoleGrant_GetScope(t *testing.T) {
 
 func TestRoleGrant_Clone(t *testing.T) {
 	t.Parallel()
-	cleanup, conn := db.TestSetup(t, "postgres")
+	cleanup, conn, _ := db.TestSetup(t, "postgres")
 	defer cleanup()
 	assert := assert.New(t)
 	defer conn.Close()
