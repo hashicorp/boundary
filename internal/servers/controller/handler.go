@@ -9,7 +9,6 @@ import (
 	"github.com/hashicorp/vault/internalshared/configutil"
 	"github.com/hashicorp/watchtower/globals"
 	"github.com/hashicorp/watchtower/internal/gen/controller/api/services"
-	"github.com/hashicorp/watchtower/internal/iam"
 	"github.com/hashicorp/watchtower/internal/servers/controller/handlers/host_catalogs"
 	"github.com/hashicorp/watchtower/internal/servers/controller/handlers/host_sets"
 	"github.com/hashicorp/watchtower/internal/servers/controller/handlers/hosts"
@@ -18,29 +17,28 @@ import (
 
 type HandlerProperties struct {
 	ListenerConfig *configutil.Listener
-	iamRepo        *iam.Repository
 }
 
 // Handler returns an http.Handler for the services. This can be used on
 // its own to mount the Vault API within another web server.
-func Handler(props HandlerProperties) http.Handler {
+func Handler(c *Controller, props HandlerProperties) http.Handler {
 	// Create the muxer to handle the actual endpoints
 	mux := http.NewServeMux()
 
-	mux.Handle("/v1/", handleGrpcGateway(props.iamRepo))
+	mux.Handle("/v1/", handleGrpcGateway(c))
 
 	genericWrappedHandler := wrapGenericHandler(mux, props)
 
 	return genericWrappedHandler
 }
 
-func handleGrpcGateway(repo *iam.Repository) http.Handler {
+func handleGrpcGateway(c *Controller) http.Handler {
 	ignored := context.Background()
 	mux := runtime.NewServeMux()
 	services.RegisterHostCatalogServiceHandlerServer(ignored, mux, &host_catalogs.Service{})
 	services.RegisterHostSetServiceHandlerServer(ignored, mux, &host_sets.Service{})
 	services.RegisterHostServiceHandlerServer(ignored, mux, &hosts.Service{})
-	services.RegisterProjectServiceHandlerServer(ignored, mux, projects.NewService(repo))
+	services.RegisterProjectServiceHandlerServer(ignored, mux, projects.NewService(c.IamRepo))
 
 	return mux
 }
