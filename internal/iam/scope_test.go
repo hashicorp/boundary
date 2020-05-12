@@ -18,7 +18,7 @@ func Test_NewScope(t *testing.T) {
 	defer conn.Close()
 
 	t.Run("valid-org-with-project", func(t *testing.T) {
-		w := db.Db{Tx: conn}
+		w := db.New(conn)
 		s, err := NewOrganization()
 		assert.Nil(err)
 		assert.True(s.Scope != nil)
@@ -55,7 +55,7 @@ func Test_ScopeCreate(t *testing.T) {
 	defer conn.Close()
 
 	t.Run("valid", func(t *testing.T) {
-		w := db.Db{Tx: conn}
+		w := db.New(conn)
 		s, err := NewOrganization()
 		assert.Nil(err)
 		assert.True(s.Scope != nil)
@@ -64,7 +64,7 @@ func Test_ScopeCreate(t *testing.T) {
 		assert.True(s.PublicId != "")
 	})
 	t.Run("valid-with-parent", func(t *testing.T) {
-		w := db.Db{Tx: conn}
+		w := db.New(conn)
 		s, err := NewOrganization()
 		assert.Nil(err)
 		assert.True(s.Scope != nil)
@@ -95,7 +95,7 @@ func Test_ScopeUpdate(t *testing.T) {
 	defer conn.Close()
 
 	t.Run("valid", func(t *testing.T) {
-		w := db.Db{Tx: conn}
+		w := db.New(conn)
 		s, err := NewOrganization()
 		assert.Nil(err)
 		assert.True(s.Scope != nil)
@@ -110,7 +110,7 @@ func Test_ScopeUpdate(t *testing.T) {
 		assert.Nil(err)
 	})
 	t.Run("type-update-not-allowed", func(t *testing.T) {
-		w := db.Db{Tx: conn}
+		w := db.New(conn)
 		s, err := NewOrganization()
 		assert.Nil(err)
 		assert.True(s.Scope != nil)
@@ -130,7 +130,7 @@ func Test_ScopeGetScope(t *testing.T) {
 	assert := assert.New(t)
 	defer conn.Close()
 	t.Run("valid-scope", func(t *testing.T) {
-		w := db.Db{Tx: conn}
+		w := db.New(conn)
 		s, err := NewOrganization()
 		assert.Nil(err)
 		assert.True(s.Scope != nil)
@@ -145,7 +145,7 @@ func Test_ScopeGetScope(t *testing.T) {
 		err = w.Create(context.Background(), project)
 		assert.Nil(err)
 
-		projectOrg, err := project.GetScope(context.Background(), &w)
+		projectOrg, err := project.GetScope(context.Background(), w)
 		assert.Nil(err)
 		assert.True(projectOrg != nil)
 		assert.Equal(projectOrg.PublicId, project.ParentId)
@@ -182,7 +182,7 @@ func TestScope_Clone(t *testing.T) {
 	defer conn.Close()
 
 	t.Run("valid", func(t *testing.T) {
-		w := db.Db{Tx: conn}
+		w := db.New(conn)
 		s, err := NewOrganization()
 		assert.Nil(err)
 		assert.True(s.Scope != nil)
@@ -194,7 +194,7 @@ func TestScope_Clone(t *testing.T) {
 		assert.True(proto.Equal(cp.(*Scope).Scope, s.Scope))
 	})
 	t.Run("not-equal", func(t *testing.T) {
-		w := db.Db{Tx: conn}
+		w := db.New(conn)
 		s, err := NewOrganization()
 		assert.Nil(err)
 		assert.True(s.Scope != nil)

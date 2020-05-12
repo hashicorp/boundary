@@ -109,24 +109,28 @@ type VetForWriter interface {
 
 // Db uses a gorm DB connection for read/write
 type Db struct {
-	Tx *gorm.DB
+	underlying *gorm.DB
 }
 
 // ensure that Db implements the interfaces of: Reader and Writer
 var _ Reader = (*Db)(nil)
 var _ Writer = (*Db)(nil)
 
+func New(underlying *gorm.DB) *Db {
+	return &Db{underlying: underlying}
+}
+
 // DB returns the sql.DB
 func (rw *Db) DB() (*sql.DB, error) {
-	if rw.Tx == nil {
-		return nil, errors.New("create tx is nil for db")
+	if rw.underlying == nil {
+		return nil, errors.New("underlying db is nil")
 	}
-	return rw.Tx.DB(), nil
+	return rw.underlying.DB(), nil
 }
 
 // Scan rows will scan the rows into the interface
 func (rw *Db) ScanRows(rows *sql.Rows, result interface{}) error {
-	return rw.Tx.ScanRows(rows, result)
+	return rw.underlying.ScanRows(rows, result)
 }
 
 var ErrNotResourceWithId = errors.New("not a resource with an id")
@@ -149,15 +153,15 @@ func (rw *Db) lookupAfterWrite(ctx context.Context, i interface{}, opt ...Option
 
 // Create an object in the db with options: WithOplog and WithLookup (to force a lookup after create))
 func (rw *Db) Create(ctx context.Context, i interface{}, opt ...Option) error {
-	if rw.Tx == nil {
-		return errors.New("create tx is nil")
+	if rw.underlying == nil {
+		return errors.New("create underlying db is nil")
 	}
 	opts := GetOpts(opt...)
 	withOplog := opts.withOplog
 	withDebug := opts.withDebug
 	if withDebug {
-		rw.Tx.LogMode(true)
-		defer rw.Tx.LogMode(false)
+		rw.underlying.LogMode(true)
+		defer rw.underlying.LogMode(false)
 	}
 	if i == nil {
 		return errors.New("create interface is nil")
@@ -167,7 +171,7 @@ func (rw *Db) Create(ctx context.Context, i interface{}, opt ...Option) error {
 			return fmt.Errorf("error on create %w", err)
 		}
 	}
-	if err := rw.Tx.Create(i).Error; err != nil {
+	if err := rw.underlying.Create(i).Error; err != nil {
 		return fmt.Errorf("error creating: %w", err)
 	}
 	if withOplog {
@@ -184,15 +188,15 @@ func (rw *Db) Create(ctx context.Context, i interface{}, opt ...Option) error {
 // Update an object in the db, if there's a fieldMask then only the field_mask.proto paths are updated, otherwise
 // it will send every field to the DB.  Update supports embedding a struct (or structPtr) one level deep for updating
 func (rw *Db) Update(ctx context.Context, i interface{}, fieldMaskPaths []string, opt ...Option) error {
-	if rw.Tx == nil {
-		return errors.New("update tx is nil")
+	if rw.underlying == nil {
+		return errors.New("update underlying db is nil")
 	}
 	opts := GetOpts(opt...)
 	withDebug := opts.withDebug
 	withOplog := opts.withOplog
 	if withDebug {
-		rw.Tx.LogMode(true)
-		defer rw.Tx.LogMode(false)
+		rw.underlying.LogMode(true)
+		defer rw.underlying.LogMode(false)
 	}
 	if i == nil {
 		return errors.New("update interface is nil")
@@ -203,7 +207,7 @@ func (rw *Db) Update(ctx context.Context, i interface{}, fieldMaskPaths []string
 		}
 	}
 	if len(fieldMaskPaths) == 0 {
-		if err := rw.Tx.Save(i).Error; err != nil {
+		if err := rw.underlying.Save(i).Error; err != nil {
 			return fmt.Errorf("error updating: %w", err)
 		}
 	}
@@ -244,7 +248,7 @@ func (rw *Db) Update(ctx context.Context, i interface{}, fieldMaskPaths []string
 	if len(updateFields) == 0 {
 		return fmt.Errorf("error no update fields matched using fieldMaskPaths: %s", fieldMaskPaths)
 	}
-	if err := rw.Tx.Model(i).Updates(updateFields).Error; err != nil {
+	if err := rw.underlying.Model(i).Updates(updateFields).Error; err != nil {
 		return fmt.Errorf("error updating: %w", err)
 	}
 	if withOplog {
@@ -263,8 +267,8 @@ func (rw *Db) Update(ctx context.Context, i interface{}, fieldMaskPaths []string
 
 // Delete an object in the db with options: WithOplog (which requires WithMetadata, WithWrapper)
 func (rw *Db) Delete(ctx context.Context, i interface{}, opt ...Option) error {
-	if rw.Tx == nil {
-		return errors.New("delete tx is nil")
+	if rw.underlying == nil {
+		return errors.New("delete underlying db is nil")
 	}
 	if i == nil {
 		return errors.New("delete interface is nil")
@@ -273,10 +277,10 @@ func (rw *Db) Delete(ctx context.Context, i interface{}, opt ...Option) error {
 	withDebug := opts.withDebug
 	withOplog := opts.withOplog
 	if withDebug {
-		rw.Tx.LogMode(true)
-		defer rw.Tx.LogMode(false)
+		rw.underlying.LogMode(true)
+		defer rw.underlying.LogMode(false)
 	}
-	if err := rw.Tx.Delete(i).Error; err != nil {
+	if err := rw.underlying.Delete(i).Error; err != nil {
 		return fmt.Errorf("error deleting: %w", err)
 	}
 	if withOplog {
@@ -299,7 +303,7 @@ func (rw *Db) addOplog(ctx context.Context, opType OpType, opts Options, i inter
 	if !ok {
 		return errors.New("error not a replayable message for WithOplog")
 	}
-	gdb := rw.Tx
+	gdb := rw.underlying
 	withDebug := opts.withDebug
 	if withDebug {
 		gdb.LogMode(true)
@@ -348,15 +352,15 @@ func (rw *Db) addOplog(ctx context.Context, opType OpType, opts Options, i inter
 // means that the object may be sent to the db several times (retried), so things like the primary key must
 // be reset before retry
 func (w *Db) DoTx(ctx context.Context, retries uint, backOff Backoff, Handler TxHandler) (RetryInfo, error) {
-	if w.Tx == nil {
-		return RetryInfo{}, errors.New("do tx is nil")
+	if w.underlying == nil {
+		return RetryInfo{}, errors.New("do underlying db is nil")
 	}
 	info := RetryInfo{}
 	for attempts := uint(1); ; attempts++ {
 		if attempts > retries+1 {
 			return info, fmt.Errorf("Too many retries: %d of %d", attempts-1, retries+1)
 		}
-		newTx := w.Tx.BeginTx(ctx, nil)
+		newTx := w.underlying.BeginTx(ctx, nil)
 		if err := Handler(&Db{newTx}); err != nil {
 			if errors.Is(err, oplog.ErrTicketAlreadyRedeemed) {
 				newTx.Rollback() // need to still handle rollback errors
@@ -388,14 +392,14 @@ func (w *Db) DoTx(ctx context.Context, retries uint, backOff Backoff, Handler Tx
 
 // LookupByName will lookup resource my its friendly name which must be unique
 func (rw *Db) LookupByName(ctx context.Context, resource ResourceNamer, opt ...Option) error {
-	if rw.Tx == nil {
-		return errors.New("error tx nil for lookup by name")
+	if rw.underlying == nil {
+		return errors.New("error underlying db nil for lookup by name")
 	}
 	opts := GetOpts(opt...)
 	withDebug := opts.withDebug
 	if withDebug {
-		rw.Tx.LogMode(true)
-		defer rw.Tx.LogMode(false)
+		rw.underlying.LogMode(true)
+		defer rw.underlying.LogMode(false)
 	}
 	if reflect.ValueOf(resource).Kind() != reflect.Ptr {
 		return errors.New("error interface parameter must to be a pointer for lookup by name")
@@ -403,7 +407,7 @@ func (rw *Db) LookupByName(ctx context.Context, resource ResourceNamer, opt ...O
 	if resource.GetName() == "" {
 		return errors.New("error name empty string for lookup by name")
 	}
-	if err := rw.Tx.Where("name = ?", resource.GetName()).First(resource).Error; err != nil {
+	if err := rw.underlying.Where("name = ?", resource.GetName()).First(resource).Error; err != nil {
 		if err == gorm.ErrRecordNotFound {
 			return ErrRecordNotFound
 		}
@@ -414,14 +418,14 @@ func (rw *Db) LookupByName(ctx context.Context, resource ResourceNamer, opt ...O
 
 // LookupByPublicId will lookup resource my its public_id which must be unique
 func (rw *Db) LookupByPublicId(ctx context.Context, resource ResourcePublicIder, opt ...Option) error {
-	if rw.Tx == nil {
-		return errors.New("error tx nil for lookup by public id")
+	if rw.underlying == nil {
+		return errors.New("error underlying db nil for lookup by public id")
 	}
 	opts := GetOpts(opt...)
 	withDebug := opts.withDebug
 	if withDebug {
-		rw.Tx.LogMode(true)
-		defer rw.Tx.LogMode(false)
+		rw.underlying.LogMode(true)
+		defer rw.underlying.LogMode(false)
 	}
 	if reflect.ValueOf(resource).Kind() != reflect.Ptr {
 		return errors.New("error interface parameter must to be a pointer for lookup by public id")
@@ -429,7 +433,7 @@ func (rw *Db) LookupByPublicId(ctx context.Context, resource ResourcePublicIder,
 	if resource.GetPublicId() == "" {
 		return errors.New("error public id empty string for lookup by public id")
 	}
-	if err := rw.Tx.Where("public_id = ?", resource.GetPublicId()).First(resource).Error; err != nil {
+	if err := rw.underlying.Where("public_id = ?", resource.GetPublicId()).First(resource).Error; err != nil {
 		if err == gorm.ErrRecordNotFound {
 			return ErrRecordNotFound
 		}
@@ -440,22 +444,22 @@ func (rw *Db) LookupByPublicId(ctx context.Context, resource ResourcePublicIder,
 
 // LookupWhere will lookup the first resource using a where clause with parameters (it only returns the first one)
 func (rw *Db) LookupWhere(ctx context.Context, resource interface{}, where string, args ...interface{}) error {
-	if rw.Tx == nil {
-		return errors.New("error tx nil for lookup by")
+	if rw.underlying == nil {
+		return errors.New("error underlying db nil for lookup by")
 	}
 	if reflect.ValueOf(resource).Kind() != reflect.Ptr {
 		return errors.New("error interface parameter must to be a pointer for lookup by")
 	}
-	return rw.Tx.Where(where, args...).First(resource).Error
+	return rw.underlying.Where(where, args...).First(resource).Error
 }
 
 // SearchWhere will search for all the resources it can find using a where clause with parameters
 func (rw *Db) SearchWhere(ctx context.Context, resources interface{}, where string, args ...interface{}) error {
-	if rw.Tx == nil {
-		return errors.New("error tx nil for search by")
+	if rw.underlying == nil {
+		return errors.New("error underlying db nil for search by")
 	}
 	if reflect.ValueOf(resources).Kind() != reflect.Ptr {
 		return errors.New("error interface parameter must to be a pointer for search by")
 	}
-	return rw.Tx.Where(where, args...).Find(resources).Error
+	return rw.underlying.Where(where, args...).Find(resources).Error
 }
