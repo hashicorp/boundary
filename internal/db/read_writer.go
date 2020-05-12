@@ -54,7 +54,7 @@ type Writer interface {
 	// the DB.  options: WithOplog the caller is responsible for the transaction
 	// life cycle of the writer and if an error is returned the caller must
 	// decide what to do with the transaction, which almost always should be to
-	// rollback.  Update returns the number of rows updated and any errors.
+	// rollback.  Update returns the number of rows updated or an error.
 	Update(ctx context.Context, i interface{}, fieldMaskPaths []string, opt ...Option) (int, error)
 
 	// Create an object in the db with options: WithOplog
