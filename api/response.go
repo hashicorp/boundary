@@ -5,6 +5,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+
+	"github.com/kr/pretty"
 )
 
 // Response is a custom response that wraps an HTTP response. Body will be
@@ -41,13 +43,14 @@ func (r *Response) Decode(inStruct interface{}) (*Error, error) {
 		return nil, fmt.Errorf("error reading response body: %w", err)
 	}
 
+	fmt.Println(pretty.Sprint(r.resp))
 	dec := json.NewDecoder(bytes.NewReader(r.Body.Bytes()))
 	var apiErr Error
 	if r.resp.StatusCode >= 400 {
 		inStruct = &apiErr
 	}
 	if err := dec.Decode(inStruct); err != nil {
-		return nil, fmt.Errorf("error decoding response: %w", err)
+		return nil, fmt.Errorf("error decoding response: %w; response was %s", err, r.Body.String())
 	}
 	if r.resp.StatusCode >= 400 {
 		return &apiErr, nil

@@ -28,7 +28,7 @@ func (s Organization) ReadProject(ctx context.Context, project *Project) (*Proje
 		return nil, nil, fmt.Errorf("empty project ID field in ReadProject request")
 	}
 
-	req, err := s.Client.NewRequest(ctx, "GET", fmt.Sprintf("projects/%s", s.Id), project)
+	req, err := s.Client.NewRequest(ctx, "GET", fmt.Sprintf("projects/%s", project.Id), project)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error creating ReadProject request: %w", err)
 	}

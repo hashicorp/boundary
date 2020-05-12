@@ -25,7 +25,7 @@ func (s Organization) CreateProject(ctx context.Context, project *Project) (*Pro
 
 	}
 
-	req, err := s.Client.NewRequest(ctx, "PUT", fmt.Sprintf("projects", s.Id), project)
+	req, err := s.Client.NewRequest(ctx, "POST", "projects", project)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error creating CreateProject request: %w", err)
 	}

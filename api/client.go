@@ -621,6 +621,7 @@ func (c *Client) NewRequest(ctx context.Context, method, requestPath string, bod
 			if err != nil {
 				return nil, fmt.Errorf("error marshaling body: %w", err)
 			}
+			fmt.Println(string(b))
 			rawBody = bytes.NewBuffer(b)
 		}
 	}
@@ -689,9 +690,9 @@ func (c *Client) NewRequest(ctx context.Context, method, requestPath string, bod
 		}
 	}
 
-	orgProjPath := path.Join("org", org)
+	orgProjPath := path.Join("orgs", org)
 	if project != "" {
-		orgProjPath = path.Join(orgProjPath, "project", project)
+		orgProjPath = path.Join(orgProjPath, "projects", project)
 	}
 
 	req := &http.Request{
@@ -706,6 +707,7 @@ func (c *Client) NewRequest(ctx context.Context, method, requestPath string, bod
 	}
 	req.Header = headers
 	req.Header.Add("authorization", "bearer: "+token)
+	req.Header.Set("Content-Type", "application/json")
 	if ctx != nil {
 		req = req.WithContext(ctx)
 	}

@@ -10,6 +10,7 @@ import (
 	"github.com/hashicorp/watchtower/internal/cmd/commands/controller"
 	"github.com/hashicorp/watchtower/internal/cmd/commands/dev"
 	"github.com/hashicorp/watchtower/internal/cmd/commands/hosts"
+	"github.com/hashicorp/watchtower/internal/cmd/commands/scopes"
 	"github.com/hashicorp/watchtower/internal/cmd/commands/worker"
 	"github.com/mitchellh/cli"
 )
@@ -67,6 +68,11 @@ func initCommands(ui, serverCmdUi cli.Ui, runOpts *RunOptions) {
 		},
 		"hosts create": func() (cli.Command, error) {
 			return &hosts.CreateCommand{
+				Command: getBaseCommand(),
+			}, nil
+		},
+		"projects create": func() (cli.Command, error) {
+			return &scopes.CreateProjectCommand{
 				Command: getBaseCommand(),
 			}, nil
 		},

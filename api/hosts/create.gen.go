@@ -22,7 +22,7 @@ func (s HostCatalog) CreateHost(ctx context.Context, host *Host) (*Host, *api.Er
 
 	}
 
-	req, err := s.Client.NewRequest(ctx, "PUT", fmt.Sprintf("host-catalogs/%s/hosts", s.Id), host)
+	req, err := s.Client.NewRequest(ctx, "POST", fmt.Sprintf("host-catalogs/%s/hosts", s.Id), host)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error creating CreateHost request: %w", err)
 	}
@@ -55,7 +55,7 @@ func (s HostCatalog) CreateHostSet(ctx context.Context, hostset *HostSet) (*Host
 
 	}
 
-	req, err := s.Client.NewRequest(ctx, "PUT", fmt.Sprintf("host-catalogs/%s/host-sets", s.Id), hostset)
+	req, err := s.Client.NewRequest(ctx, "POST", fmt.Sprintf("host-catalogs/%s/host-sets", s.Id), hostset)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error creating CreateHostSet request: %w", err)
 	}

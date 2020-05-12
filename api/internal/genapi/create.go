@@ -12,7 +12,6 @@ import (
 type createInfo struct {
 	baseType   string
 	targetType string
-	verb       string
 	path       string
 }
 
@@ -21,22 +20,19 @@ var createFuncs = map[string][]*createInfo{
 		{
 			"HostCatalog",
 			"Host",
-			"PUT",
-			"host-catalogs/%s/hosts",
+			`fmt.Sprintf("host-catalogs/%s/hosts", s.Id)`,
 		},
 		{
 			"HostCatalog",
 			"HostSet",
-			"PUT",
-			"host-catalogs/%s/host-sets",
+			`fmt.Sprintf("host-catalogs/%s/host-sets", s.Id)`,
 		},
 	},
 	"scopes": {
 		{
 			"Organization",
 			"Project",
-			"PUT",
-			"projects",
+			`"projects"`,
 		},
 	},
 }
@@ -53,13 +49,11 @@ package %s
 				BaseType        string
 				TargetType      string
 				LowerTargetType string
-				Verb            string
 				Path            string
 			}{
 				BaseType:        createInfo.baseType,
 				TargetType:      createInfo.targetType,
 				LowerTargetType: strings.ToLower(createInfo.targetType),
-				Verb:            createInfo.verb,
 				Path:            createInfo.path,
 			})
 		}
@@ -96,7 +90,7 @@ func (s {{ .BaseType }}) Create{{ .TargetType }}(ctx context.Context, {{ .LowerT
 		{{ end }}
 	}
 
-	req, err := s.Client.NewRequest(ctx, "{{ .Verb }}", fmt.Sprintf("{{ .Path }}", s.Id), {{ .LowerTargetType }})
+	req, err := s.Client.NewRequest(ctx, "POST", {{ .Path }}, {{ .LowerTargetType }})
 	if err != nil {
 		return nil, nil, fmt.Errorf("error creating Create{{ .TargetType }} request: %w", err)
 	}

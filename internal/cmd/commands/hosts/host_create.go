@@ -74,7 +74,7 @@ func (c *CreateCommand) Flags() *base.FlagSets {
 		Name:       "description",
 		Target:     &c.flagDescription,
 		Completion: complete.PredictNothing,
-		Usage:      "The ID of the host catalog in which the host should be created",
+		Usage:      "An optional description assigned to the host for display purposes",
 	})
 
 	return set

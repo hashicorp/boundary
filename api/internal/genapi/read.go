@@ -85,7 +85,7 @@ func (s {{ .BaseType }}) Read{{ .TargetType }}(ctx context.Context, {{ .LowerTar
 		return nil, nil, fmt.Errorf("empty {{ .LowerTargetType }} ID field in Read{{ .TargetType }} request")
 	}
 
-	req, err := s.Client.NewRequest(ctx, "{{ .Verb }}", fmt.Sprintf("{{ .Path }}", s.Id), {{ .LowerTargetType }})
+	req, err := s.Client.NewRequest(ctx, "{{ .Verb }}", fmt.Sprintf("{{ .Path }}", {{ .LowerTargetType }}.Id), {{ .LowerTargetType }})
 	if err != nil {
 		return nil, nil, fmt.Errorf("error creating Read{{ .TargetType }} request: %w", err)
 	}
