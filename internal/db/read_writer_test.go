@@ -37,8 +37,9 @@ func TestDb_Update(t *testing.T) {
 		assert.Equal(foundUser.Id, user.Id)
 
 		user.Name = "friendly-" + id
-		err = w.Update(context.Background(), user, []string{"Name"})
+		rowsUpdated, err := w.Update(context.Background(), user, []string{"Name"})
 		assert.Nil(err)
+		assert.Equal(1, rowsUpdated)
 
 		err = w.LookupByPublicId(context.Background(), foundUser)
 		assert.Nil(err)
@@ -63,7 +64,7 @@ func TestDb_Update(t *testing.T) {
 		assert.Equal(foundUser.Id, user.Id)
 
 		user.Name = "friendly-" + id
-		err = w.Update(context.Background(), user, []string{"Name"},
+		rowsUpdated, err := w.Update(context.Background(), user, []string{"Name"},
 			// write oplogs for this update
 			WithOplog(
 				TestWrapper(t),
@@ -75,6 +76,7 @@ func TestDb_Update(t *testing.T) {
 				}),
 		)
 		assert.Nil(err)
+		assert.Equal(1, rowsUpdated)
 
 		err = w.LookupByPublicId(context.Background(), foundUser)
 		assert.Nil(err)
@@ -95,8 +97,9 @@ func TestDb_Update(t *testing.T) {
 		user, err := db_test.NewTestUser()
 		assert.Nil(err)
 		user.Name = "foo-" + id
-		err = w.Update(context.Background(), user, nil)
+		rowsUpdated, err := w.Update(context.Background(), user, nil)
 		assert.True(err != nil)
+		assert.Equal(0, rowsUpdated)
 		assert.Equal("update underlying db is nil", err.Error())
 	})
 	t.Run("no-wrapper-WithOplog", func(t *testing.T) {
@@ -118,7 +121,7 @@ func TestDb_Update(t *testing.T) {
 		assert.Equal(foundUser.Id, user.Id)
 
 		user.Name = "friendly-" + id
-		err = w.Update(context.Background(), user, []string{"Name"},
+		rowsUpdated, err := w.Update(context.Background(), user, []string{"Name"},
 			WithOplog(
 				nil,
 				oplog.Metadata{
@@ -128,7 +131,8 @@ func TestDb_Update(t *testing.T) {
 				}),
 		)
 		assert.True(err != nil)
-		assert.Equal("error wrapper is nil for WithWrapper", err.Error())
+		assert.Equal(0, rowsUpdated)
+		assert.Equal("error no wrapper WithOplog", err.Error())
 	})
 	t.Run("no-metadata-WithOplog", func(t *testing.T) {
 		w := Db{underlying: db}
@@ -149,13 +153,14 @@ func TestDb_Update(t *testing.T) {
 		assert.Equal(foundUser.Id, user.Id)
 
 		user.Name = "friendly-" + id
-		err = w.Update(context.Background(), user, []string{"Name"},
+		rowsUpdated, err := w.Update(context.Background(), user, []string{"Name"},
 			WithOplog(
 				TestWrapper(t),
 				nil,
 			),
 		)
 		assert.True(err != nil)
+		assert.Equal(0, rowsUpdated)
 		assert.Equal("error no metadata for WithOplog", err.Error())
 	})
 }
@@ -235,7 +240,7 @@ func TestDb_Create(t *testing.T) {
 			),
 		)
 		assert.True(err != nil)
-		assert.Equal("error wrapper is nil for WithWrapper", err.Error())
+		assert.Equal("error no wrapper WithOplog", err.Error())
 	})
 	t.Run("no-metadata-WithOplog", func(t *testing.T) {
 		w := Db{underlying: db}
@@ -627,8 +632,9 @@ func TestDb_Delete(t *testing.T) {
 		assert.Nil(err)
 		assert.Equal(foundUser.Id, user.Id)
 
-		err = w.Delete(context.Background(), user)
+		rowsDeleted, err := w.Delete(context.Background(), user)
 		assert.Nil(err)
+		assert.Equal(1, rowsDeleted)
 
 		err = w.LookupByPublicId(context.Background(), foundUser)
 		assert.True(err != nil)
@@ -663,7 +669,7 @@ func TestDb_Delete(t *testing.T) {
 		assert.Nil(err)
 		assert.Equal(foundUser.Id, user.Id)
 
-		err = w.Delete(
+		rowsDeleted, err := w.Delete(
 			context.Background(),
 			user,
 			WithOplog(
@@ -676,6 +682,7 @@ func TestDb_Delete(t *testing.T) {
 			),
 		)
 		assert.Nil(err)
+		assert.Equal(1, rowsDeleted)
 
 		err = w.LookupByPublicId(context.Background(), foundUser)
 		assert.True(err != nil)
@@ -710,7 +717,7 @@ func TestDb_Delete(t *testing.T) {
 		assert.Nil(err)
 		assert.Equal(foundUser.Id, user.Id)
 
-		err = w.Delete(
+		rowsDeleted, err := w.Delete(
 			context.Background(),
 			user,
 			WithOplog(
@@ -723,7 +730,8 @@ func TestDb_Delete(t *testing.T) {
 			),
 		)
 		assert.True(err != nil)
-		assert.Equal("error wrapper is nil for WithWrapper", err.Error())
+		assert.Equal(0, rowsDeleted)
+		assert.Equal("error no wrapper WithOplog", err.Error())
 	})
 	t.Run("no-metadata-WithOplog", func(t *testing.T) {
 		w := Db{underlying: db}
@@ -754,7 +762,7 @@ func TestDb_Delete(t *testing.T) {
 		assert.Nil(err)
 		assert.Equal(foundUser.Id, user.Id)
 
-		err = w.Delete(
+		rowsDeleted, err := w.Delete(
 			context.Background(),
 			user,
 			WithOplog(
@@ -763,6 +771,7 @@ func TestDb_Delete(t *testing.T) {
 			),
 		)
 		assert.True(err != nil)
+		assert.Equal(0, rowsDeleted)
 		assert.Equal("error no metadata for WithOplog", err.Error())
 	})
 	t.Run("nil-tx", func(t *testing.T) {
