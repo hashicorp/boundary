@@ -93,7 +93,7 @@ CREATE TABLE if not exists iam_user (
     update_time timestamp with time zone NOT NULL default current_timestamp,
     name text,
     description text,
-    scope_id wt_public_id NOT NULL REFERENCES iam_scope_organization(scope_id),
+    scope_id wt_public_id NOT NULL REFERENCES iam_scope_organization(scope_id) ON DELETE CASCADE ON UPDATE CASCADE,
     unique(name, scope_id),
     disabled BOOLEAN NOT NULL default FALSE
   );
