@@ -621,7 +621,6 @@ func (c *Client) NewRequest(ctx context.Context, method, requestPath string, bod
 			if err != nil {
 				return nil, fmt.Errorf("error marshaling body: %w", err)
 			}
-			fmt.Println(string(b))
 			rawBody = bytes.NewBuffer(b)
 		}
 	}
@@ -701,7 +700,7 @@ func (c *Client) NewRequest(ctx context.Context, method, requestPath string, bod
 			User:   u.User,
 			Scheme: u.Scheme,
 			Host:   host,
-			Path:   path.Join(u.Path, "v1", orgProjPath, requestPath),
+			Path:   path.Join(u.Path, "/v1", orgProjPath, requestPath),
 		},
 		Host: u.Host,
 	}
