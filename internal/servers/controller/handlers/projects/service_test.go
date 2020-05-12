@@ -27,7 +27,7 @@ func createDefaultProjectAndRepo(t *testing.T) (*iam.Scope, *iam.Repository) {
 		conn.Close()
 		cleanup()
 	})
-	rw := &db.Db{Tx: conn}
+	rw := db.New(conn)
 	wrap := db.TestWrapper(t)
 	repo, err := iam.NewRepository(rw, rw, wrap)
 	assert.Nil(t, err, "Unable to create new repo")

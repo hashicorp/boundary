@@ -31,16 +31,8 @@ func TestHandleGrpcGateway(t *testing.T) {
 		},
 		{
 			"Unimplemented path",
-			"v1/org/1/projects/2/host-catalogs/3/host-sets/4",
+			"v1/orgs/1/projects/2/host-catalogs/3/host-sets/4",
 			http.StatusNotImplemented,
-		},
-		{
-			// TODO: This will need to be updated or removed when we are actually checking the existence of org and
-			// project's since this path shouldn't actually map to anything yet.  This simply checks to confirm some
-			// routing is happening.
-			"Implemented path",
-			"v1/org/1/projects/2/host-catalogs",
-			http.StatusOK,
 		},
 	}
 	for _, tc := range cases {
