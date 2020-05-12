@@ -779,10 +779,24 @@ func (c *Client) Do(r *retryablehttp.Request) (*Response, error) {
 		ErrorHandler: retryablehttp.PassthroughErrorHandler,
 	}
 
-	var redirected bool
-
-start:
 	result, err := client.Do(r)
+	if result != nil && err == nil && result.StatusCode == 307 {
+		loc, err := result.Location()
+		if err != nil {
+			return nil, fmt.Errorf("error getting new location during redirect: %w", err)
+		}
+
+		// Ensure a protocol downgrade doesn't happen
+		if r.URL.Scheme == "https" && loc.Scheme != "https" {
+			return nil, errors.New("redirect would cause protocol downgrade")
+		}
+
+		// Update the request
+		r.URL = loc
+
+		result, err = client.Do(r)
+	}
+
 	if err != nil {
 		if strings.Contains(err.Error(), "tls: oversized") {
 			err = fmt.Errorf(
@@ -798,28 +812,6 @@ start:
 				err)
 		}
 		return nil, err
-	}
-
-	if result.StatusCode == 307 {
-		if redirected {
-			return nil, errors.New("more than one redirect encountered, refusing to follow")
-		}
-
-		loc, err := result.Location()
-		if err != nil {
-			return nil, fmt.Errorf("error getting new location during redirect: %w", err)
-		}
-
-		// Ensure a protocol downgrade doesn't happen
-		if r.URL.Scheme == "https" && loc.Scheme != "https" {
-			return nil, errors.New("redirect would cause protocol downgrade")
-		}
-
-		// Update the request
-		r.URL = loc
-
-		redirected = true
-		goto start
 	}
 
 	return &Response{resp: result}, nil
