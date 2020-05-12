@@ -222,4 +222,83 @@ update ON iam_scope FOR EACH ROW EXECUTE PROCEDURE iam_immutable_scope_type_func
 COMMIT;
 `),
 	},
+	"migrations/10_static_host.down.sql": {
+		name: "10_static_host.down.sql",
+		bytes: []byte(`
+begin;
+
+  drop table static_host_set_member;
+  drop table static_host_set;
+  drop table static_host;
+  drop table static_host_catalog;
+
+commit;
+
+`),
+	},
+	"migrations/10_static_host.up.sql": {
+		name: "10_static_host.up.sql",
+		bytes: []byte(`
+begin;
+
+  -- TODO: Add domain for timestamp
+
+  create table static_host_catalog (
+    public_id wt_public_id primary key,
+    -- scope_id wt_public_id not null
+      -- references iam_scope (public_id)
+      -- on delete cascade
+      -- on update cascade,
+    scope_id wt_public_id not null,
+    name text,
+    description text,
+    create_time timestamp with time zone default current_timestamp,
+    update_time timestamp with time zone default current_timestamp,
+    unique(scope_id, name)
+  );
+
+  create table static_host (
+    public_id wt_public_id primary key,
+    static_host_catalog_id wt_public_id not null
+      references static_host_catalog (public_id)
+      on delete cascade
+      on update cascade,
+    name text,
+    description text,
+    address text not null, -- TODO: add check constraint
+    create_time timestamp with time zone default current_timestamp,
+    update_time timestamp with time zone default current_timestamp,
+    unique(static_host_catalog_id, name)
+  );
+
+  create table static_host_set (
+    public_id wt_public_id primary key,
+    static_host_catalog_id wt_public_id not null
+      references static_host_catalog (public_id)
+      on delete cascade
+      on update cascade,
+    name text,
+    description text,
+    create_time timestamp with time zone default current_timestamp,
+    update_time timestamp with time zone default current_timestamp,
+    unique(static_host_catalog_id, name)
+  );
+
+  create table static_host_set_member (
+    static_host_set_id wt_public_id
+      references static_host_set (public_id)
+      on delete cascade
+      on update cascade,
+    static_host_id wt_public_id
+      references static_host (public_id)
+      on delete cascade
+      on update cascade,
+    primary key(static_host_set_id, static_host_id)
+  );
+
+commit;
+
+
+`),
+	},
 }

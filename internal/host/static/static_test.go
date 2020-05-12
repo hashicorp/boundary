@@ -1,14 +1,24 @@
 package static
 
 import (
+	"context"
+	"fmt"
 	"strings"
 	"testing"
 
+	"github.com/hashicorp/watchtower/internal/db"
 	"github.com/hashicorp/watchtower/internal/host/static/store"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestHostCatalog_New(t *testing.T) {
+
+	// cleanup, conn := db.TestSetup(t, "postgres")
+	// defer cleanup()
+
+	_, conn := db.TestSetup(t, "postgres")
+	fmt.Println(conn)
+	defer conn.Close()
 
 	type args struct {
 		scopeId string
@@ -71,6 +81,7 @@ func TestHostCatalog_New(t *testing.T) {
 			},
 		},
 	}
+
 	for _, tt := range tests {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
@@ -85,6 +96,9 @@ func TestHostCatalog_New(t *testing.T) {
 				assertPublicID(t, "sthc", got.PublicId)
 				tt.want.PublicId = got.PublicId
 				assert.Equal(tt.want, got)
+				w := db.New(conn)
+				err2 := w.Create(context.Background(), got)
+				assert.NoError(err2)
 			}
 		})
 	}
