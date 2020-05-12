@@ -1722,10 +1722,6 @@
           "description": "The ID of the Project\nOutput only.",
           "readOnly": true
         },
-        "type": {
-          "type": "string",
-          "title": "The type of the resource, to help differentiate schemas"
-        },
         "name": {
           "type": "string",
           "title": "Optional name for identification purposes"

@@ -13,23 +13,20 @@ message Project {
 	// Output only.
 	string id = 1;
 
-	// The type of the resource, to help differentiate schemas
-	google.protobuf.StringValue type = 2;
-
 	// Optional name for identification purposes
-	google.protobuf.StringValue name = 3;
+	google.protobuf.StringValue name = 2;
 
 	// Optional user-set descripton for identification purposes
-	google.protobuf.StringValue description = 4;
+	google.protobuf.StringValue description = 3;
 
 	// The time this resource was created
 	// Output only.
-	google.protobuf.Timestamp created_time = 5 [json_name="created_time"];
+	google.protobuf.Timestamp created_time = 4 [json_name="created_time"];
 
 	// The time this resource was last updated.
 	// Output only.
-	google.protobuf.Timestamp updated_time = 6 [json_name="updated_time"];
+	google.protobuf.Timestamp updated_time = 5 [json_name="updated_time"];
 
 	// Whether the resource is disabled
-	google.protobuf.BoolValue disabled = 7;
+	google.protobuf.BoolValue disabled = 6;
 }
