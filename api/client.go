@@ -706,7 +706,7 @@ func (c *Client) NewRequest(ctx context.Context, method, requestPath string, bod
 	}
 	req.Header = headers
 	req.Header.Add("authorization", "bearer: "+token)
-	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("content-type", "application/json")
 	if ctx != nil {
 		req = req.WithContext(ctx)
 	}
