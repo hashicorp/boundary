@@ -169,9 +169,10 @@ func Test_dbRepository_update(t *testing.T) {
 		assert.Equal(retScope.GetName(), "")
 
 		retScope.(*Scope).Name = "fname-" + id
-		retScope, err = repo.update(context.Background(), retScope, []string{"Name"})
+		retScope, updatedRows, err := repo.update(context.Background(), retScope, []string{"Name"})
 		assert.Nil(err)
 		assert.True(retScope != nil)
+		assert.Equal(1, updatedRows)
 		assert.Equal(retScope.GetName(), "fname-"+id)
 
 		foundScope, err := repo.LookupScope(context.Background(), WithName("fname-"+id))
@@ -190,9 +191,10 @@ func Test_dbRepository_update(t *testing.T) {
 		rw := db.New(conn)
 		wrapper := db.TestWrapper(t)
 		repo, err := NewRepository(rw, rw, wrapper)
-		resource, err := repo.update(context.Background(), nil, nil)
+		resource, updatedRows, err := repo.update(context.Background(), nil, nil)
 		assert.True(err != nil)
 		assert.True(resource == nil)
+		assert.Equal(0, updatedRows)
 		assert.Equal(err.Error(), "error updating resource that is nil")
 	})
 }
