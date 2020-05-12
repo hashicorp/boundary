@@ -36,6 +36,21 @@ func NewHostCatalog(scopeId string, opt ...Option) (*HostCatalog, error) {
 	return hc, nil
 }
 
+// TableName returns the table name for the host catalog.
+func (c *HostCatalog) TableName() string {
+	if c.tableName != "" {
+		return c.tableName
+	}
+	return "static_host_catalog"
+}
+
+// SetTableName sets the table name.
+func (c *HostCatalog) SetTableName(n string) {
+	if n != "" {
+		c.tableName = n
+	}
+}
+
 type Host struct {
 	*store.Host
 	tableName string `gorm:"-"`
