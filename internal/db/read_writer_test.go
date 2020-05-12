@@ -14,7 +14,7 @@ import (
 
 func TestDb_Update(t *testing.T) {
 	// intentionally not run with t.Parallel so we don't need to use DoTx for the Update tests
-	cleanup, db := TestSetup(t, "postgres")
+	cleanup, db, _ := TestSetup(t, "postgres")
 	defer cleanup()
 	assert := assert.New(t)
 	defer db.Close()
@@ -167,7 +167,7 @@ func TestDb_Update(t *testing.T) {
 
 func TestDb_Create(t *testing.T) {
 	// intentionally not run with t.Parallel so we don't need to use DoTx for the Create tests
-	cleanup, db := TestSetup(t, "postgres")
+	cleanup, db, _ := TestSetup(t, "postgres")
 	defer cleanup()
 	assert := assert.New(t)
 	defer db.Close()
@@ -275,7 +275,7 @@ func TestDb_Create(t *testing.T) {
 
 func TestDb_LookupByName(t *testing.T) {
 	t.Parallel()
-	cleanup, db := TestSetup(t, "postgres")
+	cleanup, db, _ := TestSetup(t, "postgres")
 	defer cleanup()
 	assert := assert.New(t)
 	defer db.Close()
@@ -330,7 +330,7 @@ func TestDb_LookupByName(t *testing.T) {
 
 func TestDb_LookupByPublicId(t *testing.T) {
 	t.Parallel()
-	cleanup, db := TestSetup(t, "postgres")
+	cleanup, db, _ := TestSetup(t, "postgres")
 	defer cleanup()
 	assert := assert.New(t)
 	defer db.Close()
@@ -385,7 +385,7 @@ func TestDb_LookupByPublicId(t *testing.T) {
 
 func TestDb_LookupWhere(t *testing.T) {
 	t.Parallel()
-	cleanup, db := TestSetup(t, "postgres")
+	cleanup, db, _ := TestSetup(t, "postgres")
 	defer cleanup()
 	assert := assert.New(t)
 	defer db.Close()
@@ -435,7 +435,7 @@ func TestDb_LookupWhere(t *testing.T) {
 
 func TestDb_SearchWhere(t *testing.T) {
 	t.Parallel()
-	cleanup, db := TestSetup(t, "postgres")
+	cleanup, db, _ := TestSetup(t, "postgres")
 	defer cleanup()
 	assert := assert.New(t)
 	defer db.Close()
@@ -485,7 +485,7 @@ func TestDb_SearchWhere(t *testing.T) {
 
 func TestDb_DB(t *testing.T) {
 	t.Parallel()
-	cleanup, db := TestSetup(t, "postgres")
+	cleanup, db, _ := TestSetup(t, "postgres")
 	defer cleanup()
 	assert := assert.New(t)
 	defer db.Close()
@@ -508,7 +508,7 @@ func TestDb_DB(t *testing.T) {
 
 func TestDb_DoTx(t *testing.T) {
 	t.Parallel()
-	cleanup, db := TestSetup(t, "postgres")
+	cleanup, db, _ := TestSetup(t, "postgres")
 	defer cleanup()
 	assert := assert.New(t)
 	defer db.Close()
@@ -608,7 +608,7 @@ func TestDb_DoTx(t *testing.T) {
 
 func TestDb_Delete(t *testing.T) {
 	// intentionally not run with t.Parallel so we don't need to use DoTx for the Create tests
-	cleanup, db := TestSetup(t, "postgres")
+	cleanup, db, _ := TestSetup(t, "postgres")
 	defer cleanup()
 	assert := assert.New(t)
 	defer db.Close()
@@ -789,7 +789,7 @@ func TestDb_Delete(t *testing.T) {
 
 func TestDb_ScanRows(t *testing.T) {
 	t.Parallel()
-	cleanup, db := TestSetup(t, "postgres")
+	cleanup, db, _ := TestSetup(t, "postgres")
 	defer cleanup()
 	assert := assert.New(t)
 	defer db.Close()

@@ -12,7 +12,7 @@ import (
 )
 
 // setup the tests (initialize the database one-time and intialized testDatabaseURL)
-func TestSetup(t *testing.T, dialect string) (func() error, *gorm.DB) {
+func TestSetup(t *testing.T, dialect string) (func() error, *gorm.DB, string) {
 	cleanup := func() error { return nil }
 	var url string
 	var err error
@@ -24,7 +24,7 @@ func TestSetup(t *testing.T, dialect string) (func() error, *gorm.DB) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	return cleanup, db
+	return cleanup, db, url
 }
 
 // TestWrapper initializes an AEAD wrapping.Wrapper for testing the oplog
