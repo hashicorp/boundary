@@ -25,7 +25,9 @@ import (
 	"github.com/hashicorp/vault/sdk/logical"
 	"github.com/hashicorp/watchtower/globals"
 	"github.com/hashicorp/watchtower/internal/db"
+	"github.com/hashicorp/watchtower/internal/iam"
 	"github.com/hashicorp/watchtower/version"
+	"github.com/jinzhu/gorm"
 	"github.com/mitchellh/cli"
 	"golang.org/x/net/http/httpproxy"
 	"google.golang.org/grpc/grpclog"
@@ -34,6 +36,8 @@ import (
 )
 
 type Server struct {
+	*Command
+
 	InfoKeys []string
 	Info     map[string]string
 
@@ -57,12 +61,17 @@ type Server struct {
 
 	Listeners []*ServerListener
 
+	DefaultOrgId string
+
 	DevDatabaseUrl         string
 	DevDatabaseCleanupFunc func() error
+
+	Database *gorm.DB
 }
 
-func NewServer() *Server {
+func NewServer(cmd *Command) *Server {
 	return &Server{
+		Command:            cmd,
 		InfoKeys:           make([]string, 0, 20),
 		Info:               make(map[string]string),
 		SecureRandomReader: rand.Reader,
@@ -355,11 +364,11 @@ func (b *Server) RunShutdownFuncs(ui cli.Ui) {
 	}
 }
 
-func (b *Server) CreateDevDatabase() error {
-	c, url, err := db.InitDbInDocker("postgres")
+func (b *Server) CreateDevDatabase(dialect string) error {
+	c, url, err := db.InitDbInDocker(dialect)
 	if err != nil {
 		c()
-		return fmt.Errorf("unable to start dev database: %w", err)
+		return fmt.Errorf("unable to start dev database with dialect %s: %w", dialect, err)
 	}
 
 	b.DevDatabaseCleanupFunc = c
@@ -367,10 +376,69 @@ func (b *Server) CreateDevDatabase() error {
 
 	b.InfoKeys = append(b.InfoKeys, "dev database url")
 	b.Info["dev database url"] = b.DevDatabaseUrl
+
+	dbase, err := gorm.Open(dialect, url)
+	if err != nil {
+		c()
+		return fmt.Errorf("unable to create db object with dialect %s: %w", dialect, err)
+	}
+	b.Database = dbase
+
+	rw := db.New(b.Database)
+	repo, err := iam.NewRepository(rw, rw, b.ControllerKMS)
+	if err != nil {
+		c()
+		return fmt.Errorf("unable to create repo for org id: %w", err)
+	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	go func() {
+		<-b.ShutdownCh
+		cancel()
+	}()
+
+	var scope *iam.Scope
+	if b.DefaultOrgId != "" {
+		scope, err = repo.LookupScope(ctx, iam.WithPublicId(b.DefaultOrgId))
+		if err != nil {
+			c()
+			return fmt.Errorf("error looking up existing scope with org ID %q: %w", b.DefaultOrgId, err)
+		}
+		if scope != nil {
+			goto INFO
+		}
+	}
+
+	scope, err = iam.NewOrganization(iam.WithPublicId(b.DefaultOrgId))
+	if err != nil {
+		c()
+		return fmt.Errorf("error creating new org scope: %w", err)
+	}
+	scope, err = repo.CreateScope(ctx, scope)
+	if err != nil {
+		c()
+		return fmt.Errorf("error persisting new org scope: %w", err)
+	}
+	if b.DefaultOrgId != "" {
+		if scope.GetPublicId() != b.DefaultOrgId {
+			c()
+			return fmt.Errorf("expected org ID %q, got %q after persisting", b.DefaultOrgId, scope.GetPublicId())
+		}
+	} else {
+		b.DefaultOrgId = scope.GetPublicId()
+	}
+
+INFO:
+	b.InfoKeys = append(b.InfoKeys, "dev org id")
+	b.Info["dev org id"] = b.DefaultOrgId
+
 	return nil
 }
 
 func (b *Server) DestroyDevDatabase() error {
+	if b.Database != nil {
+		b.Database.Close()
+	}
 	if b.DevDatabaseCleanupFunc != nil {
 		return b.DevDatabaseCleanupFunc()
 	}

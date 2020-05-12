@@ -6,8 +6,8 @@ Just some high-level usage highlights to get you started.  Read the godocs for a
 ```go
     conn, _ := gorm.Open("postgres", url)
     
-    // GormReadWriter implements both the Reader and Writer interfaces
-    rw := GormReadWriter{Tx: conn}
+    // Db implements both the Reader and Writer interfaces
+    rw := Db{Tx: conn}
     
     // There are writer methods like: Create, Update and Delete
     // that will write Gorm struct to the db.  These writer methods
