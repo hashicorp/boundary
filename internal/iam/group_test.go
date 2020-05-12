@@ -17,7 +17,7 @@ func Test_NewGroup(t *testing.T) {
 	defer conn.Close()
 
 	t.Run("valid", func(t *testing.T) {
-		w := db.GormReadWriter{Tx: conn}
+		w := db.New(conn)
 		s, err := NewOrganization()
 		assert.Nil(err)
 		assert.True(s.Scope != nil)
@@ -50,7 +50,7 @@ func TestGroup_Members(t *testing.T) {
 	defer conn.Close()
 
 	t.Run("valid", func(t *testing.T) {
-		w := db.GormReadWriter{Tx: conn}
+		w := db.New(conn)
 		s, err := NewOrganization()
 		assert.Nil(err)
 		assert.True(s.Scope != nil)
@@ -90,7 +90,7 @@ func TestGroup_Members(t *testing.T) {
 		err = w.Create(context.Background(), gm2)
 		assert.Nil(err)
 
-		members, err := grp.Members(context.Background(), &w)
+		members, err := grp.Members(context.Background(), w)
 		assert.Nil(err)
 		assert.True(members != nil)
 		assert.True(len(members) == 2)
@@ -127,7 +127,7 @@ func TestGroup_GetScope(t *testing.T) {
 	defer conn.Close()
 
 	t.Run("valid", func(t *testing.T) {
-		w := db.GormReadWriter{Tx: conn}
+		w := db.New(conn)
 		s, err := NewOrganization()
 		assert.Nil(err)
 		assert.True(s.Scope != nil)
@@ -143,7 +143,7 @@ func TestGroup_GetScope(t *testing.T) {
 		assert.Nil(err)
 		assert.True(grp.PublicId != "")
 
-		scope, err := grp.GetScope(context.Background(), &w)
+		scope, err := grp.GetScope(context.Background(), w)
 		assert.Nil(err)
 		assert.True(scope != nil)
 	})
@@ -157,7 +157,7 @@ func TestGroup_AddMember(t *testing.T) {
 	defer conn.Close()
 
 	t.Run("valid", func(t *testing.T) {
-		w := db.GormReadWriter{Tx: conn}
+		w := db.New(conn)
 		s, err := NewOrganization()
 		assert.Nil(err)
 		assert.True(s.Scope != nil)
@@ -179,7 +179,7 @@ func TestGroup_AddMember(t *testing.T) {
 		assert.Nil(err)
 		assert.True(grp.PublicId != "")
 
-		gm, err := grp.AddMember(context.Background(), &w, user)
+		gm, err := grp.AddMember(context.Background(), w, user)
 		assert.Nil(err)
 		assert.True(gm != nil)
 		assert.Equal(gm.(*GroupMemberUser).GroupId, grp.PublicId)
@@ -197,7 +197,7 @@ func TestGroup_Clone(t *testing.T) {
 	defer conn.Close()
 
 	t.Run("valid", func(t *testing.T) {
-		w := db.GormReadWriter{Tx: conn}
+		w := db.New(conn)
 		s, err := NewOrganization()
 		assert.Nil(err)
 		assert.True(s.Scope != nil)
@@ -218,7 +218,7 @@ func TestGroup_Clone(t *testing.T) {
 		assert.True(proto.Equal(cp.(*Group).Group, grp.Group))
 	})
 	t.Run("not-equal", func(t *testing.T) {
-		w := db.GormReadWriter{Tx: conn}
+		w := db.New(conn)
 		s, err := NewOrganization()
 		assert.Nil(err)
 		assert.True(s.Scope != nil)

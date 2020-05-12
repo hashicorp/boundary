@@ -17,7 +17,7 @@ func Test_NewRole(t *testing.T) {
 	defer conn.Close()
 
 	t.Run("valid", func(t *testing.T) {
-		w := db.GormReadWriter{Tx: conn}
+		w := db.New(conn)
 		s, err := NewOrganization()
 		assert.Nil(err)
 		assert.True(s.Scope != nil)
@@ -67,7 +67,7 @@ func TestRole_GetScope(t *testing.T) {
 	defer conn.Close()
 
 	t.Run("valid", func(t *testing.T) {
-		w := db.GormReadWriter{Tx: conn}
+		w := db.New(conn)
 		s, err := NewOrganization()
 		assert.Nil(err)
 		assert.True(s.Scope != nil)
@@ -84,7 +84,7 @@ func TestRole_GetScope(t *testing.T) {
 		assert.Nil(err)
 		assert.True(role.PublicId != "")
 
-		scope, err := role.GetScope(context.Background(), &w)
+		scope, err := role.GetScope(context.Background(), w)
 		assert.Nil(err)
 		assert.True(scope != nil)
 	})
@@ -98,7 +98,7 @@ func TestRole_AssignedRoles(t *testing.T) {
 	defer conn.Close()
 
 	t.Run("valid", func(t *testing.T) {
-		w := db.GormReadWriter{Tx: conn}
+		w := db.New(conn)
 		s, err := NewOrganization()
 		assert.Nil(err)
 		assert.True(s.Scope != nil)
@@ -149,7 +149,7 @@ func TestRole_AssignedRoles(t *testing.T) {
 		assert.True(gRole != nil)
 		assert.Equal(gRole.GetPrincipalId(), grp.PublicId)
 
-		allRoles, err := role.AssignedRoles(context.Background(), &w)
+		allRoles, err := role.AssignedRoles(context.Background(), w)
 		assert.Nil(err)
 		assert.Equal(len(allRoles), 2)
 	})
@@ -163,7 +163,7 @@ func TestRole_Clone(t *testing.T) {
 	defer conn.Close()
 
 	t.Run("valid", func(t *testing.T) {
-		w := db.GormReadWriter{Tx: conn}
+		w := db.New(conn)
 		s, err := NewOrganization()
 		assert.Nil(err)
 		assert.True(s.Scope != nil)
@@ -184,7 +184,7 @@ func TestRole_Clone(t *testing.T) {
 		assert.True(proto.Equal(cp.(*Role).Role, role.Role))
 	})
 	t.Run("not-equal", func(t *testing.T) {
-		w := db.GormReadWriter{Tx: conn}
+		w := db.New(conn)
 		s, err := NewOrganization()
 		assert.Nil(err)
 		assert.True(s.Scope != nil)

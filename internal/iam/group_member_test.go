@@ -16,7 +16,7 @@ func Test_NewGroupMember(t *testing.T) {
 	defer conn.Close()
 
 	t.Run("valid", func(t *testing.T) {
-		w := db.GormReadWriter{Tx: conn}
+		w := db.New(conn)
 		s, err := NewOrganization()
 		assert.Nil(err)
 		assert.True(s.Scope != nil)
@@ -44,7 +44,7 @@ func Test_NewGroupMember(t *testing.T) {
 		err = w.Create(context.Background(), gm)
 		assert.Nil(err)
 
-		members, err := grp.Members(context.Background(), &w)
+		members, err := grp.Members(context.Background(), w)
 		assert.Nil(err)
 		assert.Equal(1, len(members))
 		assert.Equal(members[0].GetMemberId(), user.PublicId)
@@ -53,12 +53,12 @@ func Test_NewGroupMember(t *testing.T) {
 		err = w.Delete(context.Background(), gm)
 		assert.Nil(err)
 
-		members, err = grp.Members(context.Background(), &w)
+		members, err = grp.Members(context.Background(), w)
 		assert.Nil(err)
 		assert.Equal(0, len(members))
 	})
 	t.Run("bad-type", func(t *testing.T) {
-		w := db.GormReadWriter{Tx: conn}
+		w := db.New(conn)
 		s, err := NewOrganization()
 		assert.Nil(err)
 		assert.True(s.Scope != nil)
@@ -88,7 +88,7 @@ func Test_NewGroupMember(t *testing.T) {
 		assert.Equal(err.Error(), "error unknown group member type")
 	})
 	t.Run("nil-group", func(t *testing.T) {
-		w := db.GormReadWriter{Tx: conn}
+		w := db.New(conn)
 		s, err := NewOrganization()
 		assert.Nil(err)
 		assert.True(s.Scope != nil)
@@ -107,7 +107,7 @@ func Test_NewGroupMember(t *testing.T) {
 		assert.Equal(err.Error(), "error group is nil for group member")
 	})
 	t.Run("nil-user", func(t *testing.T) {
-		w := db.GormReadWriter{Tx: conn}
+		w := db.New(conn)
 		s, err := NewOrganization()
 		assert.Nil(err)
 		assert.True(s.Scope != nil)

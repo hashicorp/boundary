@@ -17,7 +17,7 @@ func TestNewRoleGrant(t *testing.T) {
 	defer conn.Close()
 
 	t.Run("valid", func(t *testing.T) {
-		w := db.GormReadWriter{Tx: conn}
+		w := db.New(conn)
 		s, err := NewOrganization()
 		assert.Nil(err)
 		assert.True(s.Scope != nil)
@@ -57,7 +57,7 @@ func TestNewRoleGrant(t *testing.T) {
 		assert.Equal(uRole.GetPrincipalId(), user.PublicId)
 	})
 	t.Run("nil-scope", func(t *testing.T) {
-		w := db.GormReadWriter{Tx: conn}
+		w := db.New(conn)
 		s, err := NewOrganization()
 		assert.Nil(err)
 		assert.True(s.Scope != nil)
@@ -79,7 +79,7 @@ func TestNewRoleGrant(t *testing.T) {
 		assert.Equal(err.Error(), "error the role grant scope is nil")
 	})
 	t.Run("nil-role", func(t *testing.T) {
-		w := db.GormReadWriter{Tx: conn}
+		w := db.New(conn)
 		s, err := NewOrganization()
 		assert.Nil(err)
 		assert.True(s.Scope != nil)
@@ -119,7 +119,7 @@ func TestRoleGrant_GetScope(t *testing.T) {
 	defer conn.Close()
 
 	t.Run("valid", func(t *testing.T) {
-		w := db.GormReadWriter{Tx: conn}
+		w := db.New(conn)
 		s, err := NewOrganization()
 		assert.Nil(err)
 		assert.True(s.Scope != nil)
@@ -141,7 +141,7 @@ func TestRoleGrant_GetScope(t *testing.T) {
 		assert.Equal(g.RoleId, role.PublicId)
 		assert.Equal(g.Grant, "everything*")
 
-		ps, err := g.GetScope(context.Background(), &w)
+		ps, err := g.GetScope(context.Background(), w)
 		assert.Nil(err)
 		assert.True(ps != nil)
 		assert.Equal(ps.PublicId, s.PublicId)
@@ -156,7 +156,7 @@ func TestRoleGrant_Clone(t *testing.T) {
 	defer conn.Close()
 
 	t.Run("valid", func(t *testing.T) {
-		w := db.GormReadWriter{Tx: conn}
+		w := db.New(conn)
 		s, err := NewOrganization()
 		assert.Nil(err)
 		assert.True(s.Scope != nil)
@@ -182,7 +182,7 @@ func TestRoleGrant_Clone(t *testing.T) {
 		assert.True(proto.Equal(cp.(*RoleGrant).RoleGrant, g.RoleGrant))
 	})
 	t.Run("not-equal", func(t *testing.T) {
-		w := db.GormReadWriter{Tx: conn}
+		w := db.New(conn)
 		s, err := NewOrganization()
 		assert.Nil(err)
 		assert.True(s.Scope != nil)

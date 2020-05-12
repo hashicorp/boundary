@@ -17,7 +17,7 @@ func Test_NewAuthMethod(t *testing.T) {
 	defer conn.Close()
 
 	t.Run("valid", func(t *testing.T) {
-		w := db.GormReadWriter{Tx: conn}
+		w := db.New(conn)
 		s, err := NewOrganization()
 		assert.Nil(err)
 		assert.True(s.Scope != nil)
@@ -49,7 +49,7 @@ func TestAuthMethod_GetScope(t *testing.T) {
 	defer conn.Close()
 
 	t.Run("valid", func(t *testing.T) {
-		w := db.GormReadWriter{Tx: conn}
+		w := db.New(conn)
 		s, err := NewOrganization()
 		assert.Nil(err)
 		assert.True(s.Scope != nil)
@@ -65,7 +65,7 @@ func TestAuthMethod_GetScope(t *testing.T) {
 		assert.True(meth != nil)
 		assert.Equal(meth.Type, AuthUserPass.String())
 
-		scope, err := meth.GetScope(context.Background(), &w)
+		scope, err := meth.GetScope(context.Background(), w)
 		assert.Nil(err)
 		assert.Equal(scope.GetPublicId(), s.PublicId)
 	})
@@ -80,7 +80,7 @@ func TestAuthMethod_ResourceType(t *testing.T) {
 	defer conn.Close()
 
 	t.Run("valid", func(t *testing.T) {
-		w := db.GormReadWriter{Tx: conn}
+		w := db.New(conn)
 		s, err := NewOrganization()
 		assert.Nil(err)
 		assert.True(s.Scope != nil)
@@ -119,7 +119,7 @@ func TestAuthMethod_Clone(t *testing.T) {
 	defer conn.Close()
 
 	t.Run("valid", func(t *testing.T) {
-		w := db.GormReadWriter{Tx: conn}
+		w := db.New(conn)
 		s, err := NewOrganization()
 		assert.Nil(err)
 		assert.True(s.Scope != nil)
@@ -139,7 +139,7 @@ func TestAuthMethod_Clone(t *testing.T) {
 		assert.True(proto.Equal(cp.(*AuthMethod).AuthMethod, meth.AuthMethod))
 	})
 	t.Run("not-equal", func(t *testing.T) {
-		w := db.GormReadWriter{Tx: conn}
+		w := db.New(conn)
 		s, err := NewOrganization()
 		assert.Nil(err)
 		assert.True(s.Scope != nil)

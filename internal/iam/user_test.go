@@ -19,7 +19,7 @@ func Test_NewUser(t *testing.T) {
 	defer conn.Close()
 
 	t.Run("valid", func(t *testing.T) {
-		w := db.GormReadWriter{Tx: conn}
+		w := db.New(conn)
 		s, err := NewOrganization()
 		assert.Nil(err)
 		assert.True(s.Scope != nil)
@@ -42,7 +42,7 @@ func Test_UserCreate(t *testing.T) {
 	defer conn.Close()
 
 	t.Run("valid-user", func(t *testing.T) {
-		w := db.GormReadWriter{Tx: conn}
+		w := db.New(conn)
 		s, err := NewOrganization()
 		assert.Equal(s.Type, OrganizationScope.String())
 		assert.Nil(err)
@@ -66,7 +66,7 @@ func Test_UserGetScope(t *testing.T) {
 	assert := assert.New(t)
 	defer conn.Close()
 	t.Run("valid scope", func(t *testing.T) {
-		w := db.GormReadWriter{Tx: conn}
+		w := db.New(conn)
 		s, err := NewOrganization()
 		assert.Nil(err)
 		assert.True(s.Scope != nil)
@@ -92,7 +92,7 @@ func Test_UserGetScope(t *testing.T) {
 		err = w.Update(context.Background(), user, []string{"ScopeId"})
 		assert.Nil(err)
 
-		scope, err := user.GetScope(context.Background(), &w)
+		scope, err := user.GetScope(context.Background(), w)
 		assert.Nil(err)
 		assert.True(scope != nil)
 		assert.Equal(scope.PublicId, user.ScopeId)
@@ -108,7 +108,7 @@ func Test_UserGroups(t *testing.T) {
 	defer conn.Close()
 
 	t.Run("valid", func(t *testing.T) {
-		w := db.GormReadWriter{Tx: conn}
+		w := db.New(conn)
 		s, err := NewOrganization()
 		assert.Nil(err)
 		assert.True(s.Scope != nil)
@@ -136,7 +136,7 @@ func Test_UserGroups(t *testing.T) {
 		err = w.Create(context.Background(), gm)
 		assert.Nil(err)
 
-		group, err := user.Groups(context.Background(), &w)
+		group, err := user.Groups(context.Background(), w)
 		assert.Nil(err)
 		assert.Equal(len(group), 1)
 		assert.Equal(group[0].PublicId, grp.PublicId)
@@ -151,7 +151,7 @@ func Test_UserRoles(t *testing.T) {
 	defer conn.Close()
 
 	t.Run("valid", func(t *testing.T) {
-		w := db.GormReadWriter{Tx: conn}
+		w := db.New(conn)
 		s, err := NewOrganization()
 		assert.Nil(err)
 		assert.True(s.Scope != nil)
@@ -183,7 +183,7 @@ func Test_UserRoles(t *testing.T) {
 		assert.True(uRole != nil)
 		assert.Equal(uRole.GetPrincipalId(), user.PublicId)
 
-		userRoles, err := user.Roles(context.Background(), &w)
+		userRoles, err := user.Roles(context.Background(), w)
 		assert.Nil(err)
 		assert.Equal(len(userRoles), 1)
 		assert.Equal(userRoles[role.PublicId].GetPublicId(), role.PublicId)
@@ -204,7 +204,7 @@ func Test_UserGrants(t *testing.T) {
 		}
 		id, err := uuid.GenerateUUID()
 		assert.Nil(err)
-		w := db.GormReadWriter{Tx: conn}
+		w := db.New(conn)
 		s, err := NewOrganization()
 		assert.Nil(err)
 		assert.True(s.Scope != nil)
@@ -243,7 +243,7 @@ func Test_UserGrants(t *testing.T) {
 		assert.True(uRole != nil)
 		assert.Equal(uRole.GetPrincipalId(), user.PublicId)
 
-		userGrants, err := user.Grants(context.Background(), &w)
+		userGrants, err := user.Grants(context.Background(), w)
 		assert.Nil(err)
 		assert.Equal(len(userGrants), 1)
 		assert.Equal(userGrants[0].GetPublicId(), g.PublicId)
@@ -290,7 +290,7 @@ func Test_UserGrants(t *testing.T) {
 		assert.True(gRole != nil)
 		assert.Equal(gRole.GetPrincipalId(), grp.PublicId)
 
-		allGrants, err := user.Grants(context.Background(), &w, WithGroupGrants(true))
+		allGrants, err := user.Grants(context.Background(), w, WithGroupGrants(true))
 		assert.Nil(err)
 		assert.Equal(len(allGrants), 2)
 		for _, grant := range allGrants {
@@ -306,7 +306,7 @@ func TestUser_Clone(t *testing.T) {
 	defer conn.Close()
 
 	t.Run("valid", func(t *testing.T) {
-		w := db.GormReadWriter{Tx: conn}
+		w := db.New(conn)
 		s, err := NewOrganization()
 		assert.Nil(err)
 		assert.True(s.Scope != nil)
@@ -323,7 +323,7 @@ func TestUser_Clone(t *testing.T) {
 		assert.True(proto.Equal(cp.(*User).User, user.User))
 	})
 	t.Run("not-equal", func(t *testing.T) {
-		w := db.GormReadWriter{Tx: conn}
+		w := db.New(conn)
 		s, err := NewOrganization()
 		assert.Nil(err)
 		assert.True(s.Scope != nil)

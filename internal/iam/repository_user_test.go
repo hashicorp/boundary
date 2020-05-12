@@ -19,7 +19,7 @@ func Test_Repository_CreateUser(t *testing.T) {
 	defer conn.Close()
 
 	t.Run("valid", func(t *testing.T) {
-		rw := &db.GormReadWriter{Tx: conn}
+		rw := db.New(conn)
 		wrapper := db.TestWrapper(t)
 		repo, err := NewRepository(rw, rw, wrapper)
 		id, err := uuid.GenerateUUID()
@@ -55,7 +55,7 @@ func Test_Repository_CreateUser(t *testing.T) {
 		assert.Nil(err)
 	})
 	t.Run("bad-scope-id", func(t *testing.T) {
-		rw := &db.GormReadWriter{Tx: conn}
+		rw := db.New(conn)
 		wrapper := db.TestWrapper(t)
 		repo, err := NewRepository(rw, rw, wrapper)
 		badScopeId, err := uuid.GenerateUUID()

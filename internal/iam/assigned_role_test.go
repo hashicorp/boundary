@@ -18,7 +18,7 @@ func Test_NewAssignedRole(t *testing.T) {
 	defer conn.Close()
 
 	t.Run("valid", func(t *testing.T) {
-		w := db.GormReadWriter{Tx: conn}
+		w := db.New(conn)
 		s, err := NewOrganization()
 		assert.Nil(err)
 		assert.True(s.Scope != nil)
@@ -70,7 +70,7 @@ func Test_NewAssignedRole(t *testing.T) {
 		assert.Equal(gRole.GetPrincipalId(), grp.PublicId)
 	})
 	t.Run("bad-resource-type", func(t *testing.T) {
-		w := db.GormReadWriter{Tx: conn}
+		w := db.New(conn)
 		s, err := NewOrganization()
 		assert.Nil(err)
 		assert.True(s.Scope != nil)
@@ -100,7 +100,7 @@ func Test_NewAssignedRole(t *testing.T) {
 		assert.Equal(err.Error(), "error unknown principal type for assigning role")
 	})
 	t.Run("nil-role", func(t *testing.T) {
-		w := db.GormReadWriter{Tx: conn}
+		w := db.New(conn)
 		s, err := NewOrganization()
 		assert.Nil(err)
 		assert.True(s.Scope != nil)
@@ -119,7 +119,7 @@ func Test_NewAssignedRole(t *testing.T) {
 		assert.Equal(err.Error(), "error role is nil for assigning role")
 	})
 	t.Run("nil-principal", func(t *testing.T) {
-		w := db.GormReadWriter{Tx: conn}
+		w := db.New(conn)
 		s, err := NewOrganization()
 		assert.Nil(err)
 		assert.True(s.Scope != nil)
@@ -142,7 +142,7 @@ func Test_NewAssignedRole(t *testing.T) {
 		assert.Equal(err.Error(), "principal is nil for assigning role")
 	})
 	t.Run("nil-scope", func(t *testing.T) {
-		w := db.GormReadWriter{Tx: conn}
+		w := db.New(conn)
 		s, err := NewOrganization()
 		assert.Nil(err)
 		assert.True(s.Scope != nil)
