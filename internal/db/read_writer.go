@@ -202,7 +202,7 @@ func (rw *Db) Create(ctx context.Context, i interface{}, opt ...Option) error {
 // updating. Update returns the number of rows updated and any errors.
 func (rw *Db) Update(ctx context.Context, i interface{}, fieldMaskPaths []string, opt ...Option) (int, error) {
 	if rw.underlying == nil {
-		return 0, errors.New("update underlying db is nil")
+		return NoRowsAffected, errors.New("update underlying db is nil")
 	}
 	opts := GetOpts(opt...)
 	withDebug := opts.withDebug
