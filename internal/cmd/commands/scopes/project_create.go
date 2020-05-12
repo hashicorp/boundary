@@ -23,7 +23,7 @@ type CreateProjectCommand struct {
 }
 
 func (c *CreateProjectCommand) Synopsis() string {
-	return "Creates a host in the given host catalog"
+	return "Creates a project within an organization"
 }
 
 func (c *CreateProjectCommand) Help() string {
@@ -35,7 +35,7 @@ Usage: watchtower projects create
 
   Example: 
 
-      $ watchtower projects create -org=<id> -name=<name>
+      $ watchtower projects create -org=<org_id> -name=<name>
 
 ` + c.Flags().Help()
 
@@ -100,7 +100,7 @@ func (c *CreateProjectCommand) Run(args []string) int {
 
 	switch {
 	case err != nil:
-		c.UI.Error(fmt.Errorf("error creating host: %w", err).Error())
+		c.UI.Error(fmt.Errorf("error creating project: %w", err).Error())
 		return 2
 	case apiErr != nil:
 		c.UI.Error(pretty.Sprint(apiErr))

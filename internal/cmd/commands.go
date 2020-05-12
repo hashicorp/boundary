@@ -76,6 +76,11 @@ func initCommands(ui, serverCmdUi cli.Ui, runOpts *RunOptions) {
 				Command: getBaseCommand(),
 			}, nil
 		},
+		"projects read": func() (cli.Command, error) {
+			return &scopes.ReadProjectCommand{
+				Command: getBaseCommand(),
+			}, nil
+		},
 	}
 }
 
