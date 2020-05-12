@@ -63,34 +63,3 @@ func (r *Repository) LookupScope(ctx context.Context, opt ...Option) (*Scope, er
 	}
 	return nil, errors.New("you must look up scopes by id or name")
 }
-
-// DeleteScope will delete a scope from the repository
-func (r *Repository) DeleteScope(ctx context.Context, opt ...Option) (*Scope, error) {
-	opts := getOpts(opt...)
-	withPublicId := opts.withPublicId
-	withName := opts.withName
-
-	if withPublicId != "" {
-		scope := allocScope()
-		scope.PublicId = withPublicId
-		if err := r.writer.Delete(ctx, &scope); err != nil {
-			if err == db.ErrRecordNotFound {
-				return nil, nil
-			}
-			return nil, err
-		}
-		return &scope, nil
-	}
-	if withName != "" {
-		scope := allocScope()
-		scope.Name = withName
-		if err := r.reader.LookupByName(ctx, &scope); err != nil {
-			if err == db.ErrRecordNotFound {
-				return nil, nil
-			}
-			return nil, err
-		}
-		return &scope, nil
-	}
-	return nil, errors.New("you must look up scopes by id or name")
-}
