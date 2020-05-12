@@ -44,5 +44,8 @@ func (s Organization) ReadProject(ctx context.Context, project *Project) (*Proje
 		return nil, nil, fmt.Errorf("error decoding ReadProject repsonse: %w", err)
 	}
 
+	target.Client = s.Client.Clone()
+	target.Client.SetProject(target.Id)
+
 	return target, apiErr, nil
 }

@@ -38,6 +38,8 @@ func (s HostCatalog) CreateHost(ctx context.Context, host *Host) (*Host, *api.Er
 		return nil, nil, fmt.Errorf("error decoding CreateHost repsonse: %w", err)
 	}
 
+	target.Client = s.Client
+
 	return target, apiErr, nil
 }
 
@@ -70,6 +72,8 @@ func (s HostCatalog) CreateHostSet(ctx context.Context, hostset *HostSet) (*Host
 	if err != nil {
 		return nil, nil, fmt.Errorf("error decoding CreateHostSet repsonse: %w", err)
 	}
+
+	target.Client = s.Client
 
 	return target, apiErr, nil
 }

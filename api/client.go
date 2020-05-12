@@ -548,7 +548,7 @@ func (c *Client) SetBackoff(backoff retryablehttp.Backoff) {
 // underlying http.Client is used; modifying the client from more than one
 // goroutine at once may not be safe, so modify the client as needed and then
 // clone.
-func (c *Client) Clone() (*Client, error) {
+func (c *Client) Clone() *Client {
 	c.modifyLock.RLock()
 	defer c.modifyLock.RUnlock()
 
@@ -565,6 +565,8 @@ func (c *Client) Clone() (*Client, error) {
 		CheckRetry: config.CheckRetry,
 		Limiter:    config.Limiter,
 		SRVLookup:  config.SRVLookup,
+		Org:        config.Org,
+		Project:    config.Project,
 	}
 	if config.TLSConfig != nil {
 		newConfig.TLSConfig = new(TLSConfig)
@@ -578,7 +580,7 @@ func (c *Client) Clone() (*Client, error) {
 		newConfig.Headers[k] = vSlice
 	}
 
-	return NewClient(newConfig)
+	return &Client{config: newConfig}
 }
 
 func copyHeaders(in http.Header) http.Header {

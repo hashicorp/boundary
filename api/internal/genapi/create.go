@@ -106,6 +106,16 @@ func (s {{ .BaseType }}) Create{{ .TargetType }}(ctx context.Context, {{ .LowerT
 		return nil, nil, fmt.Errorf("error decoding Create{{ .TargetType }} repsonse: %w", err)
 	}
 
+	{{ if (eq .TargetType "Organization") }}
+	target.Client = s.Client.Clone()
+	target.Client.SetOrgnization(target.Id)
+	{{ else if (eq .TargetType "Project") }}
+	target.Client = s.Client.Clone()
+	target.Client.SetProject(target.Id)
+	{{ else }}
+	target.Client = s.Client
+	{{ end }}
+
 	return target, apiErr, nil
 }
 `))

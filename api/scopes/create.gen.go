@@ -41,5 +41,8 @@ func (s Organization) CreateProject(ctx context.Context, project *Project) (*Pro
 		return nil, nil, fmt.Errorf("error decoding CreateProject repsonse: %w", err)
 	}
 
+	target.Client = s.Client.Clone()
+	target.Client.SetProject(target.Id)
+
 	return target, apiErr, nil
 }
