@@ -3,13 +3,14 @@ package controller
 import (
 	"context"
 	"net/http"
+	"path"
+	"strings"
 	"time"
 
 	"github.com/grpc-ecosystem/grpc-gateway/runtime"
 	"github.com/hashicorp/vault/internalshared/configutil"
 	"github.com/hashicorp/watchtower/globals"
 	"github.com/hashicorp/watchtower/internal/gen/controller/api/services"
-	"github.com/hashicorp/watchtower/internal/iam"
 	"github.com/hashicorp/watchtower/internal/servers/controller/handlers/host_catalogs"
 	"github.com/hashicorp/watchtower/internal/servers/controller/handlers/host_sets"
 	"github.com/hashicorp/watchtower/internal/servers/controller/handlers/hosts"
@@ -18,34 +19,33 @@ import (
 
 type HandlerProperties struct {
 	ListenerConfig *configutil.Listener
-	iamRepo        *iam.Repository
 }
 
 // Handler returns an http.Handler for the services. This can be used on
 // its own to mount the Vault API within another web server.
-func Handler(props HandlerProperties) http.Handler {
+func (c *Controller) handler(props HandlerProperties) http.Handler {
 	// Create the muxer to handle the actual endpoints
 	mux := http.NewServeMux()
 
-	mux.Handle("/v1/", handleGrpcGateway(props.iamRepo))
+	mux.Handle("/v1/", handleGrpcGateway(c))
 
-	genericWrappedHandler := wrapGenericHandler(mux, props)
+	genericWrappedHandler := wrapGenericHandler(mux, c, props)
 
 	return genericWrappedHandler
 }
 
-func handleGrpcGateway(repo *iam.Repository) http.Handler {
+func handleGrpcGateway(c *Controller) http.Handler {
 	ignored := context.Background()
 	mux := runtime.NewServeMux()
 	services.RegisterHostCatalogServiceHandlerServer(ignored, mux, &host_catalogs.Service{})
 	services.RegisterHostSetServiceHandlerServer(ignored, mux, &host_sets.Service{})
 	services.RegisterHostServiceHandlerServer(ignored, mux, &hosts.Service{})
-	services.RegisterProjectServiceHandlerServer(ignored, mux, projects.NewService(repo))
+	services.RegisterProjectServiceHandlerServer(ignored, mux, projects.NewService(c.IamRepo))
 
 	return mux
 }
 
-func wrapGenericHandler(h http.Handler, props HandlerProperties) http.Handler {
+func wrapGenericHandler(h http.Handler, c *Controller, props HandlerProperties) http.Handler {
 	var maxRequestDuration time.Duration
 	var maxRequestSize int64
 	if props.ListenerConfig != nil {
@@ -58,7 +58,19 @@ func wrapGenericHandler(h http.Handler, props HandlerProperties) http.Handler {
 	if maxRequestSize == 0 {
 		maxRequestSize = globals.DefaultMaxRequestSize
 	}
+	var defaultOrgId string
+	if c != nil && c.conf != nil {
+		defaultOrgId = c.conf.DefaultOrgId
+	}
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if defaultOrgId != "" {
+			splitPath := strings.Split(r.URL.Path, "/")
+			if len(splitPath) >= 3 && splitPath[2] == "projects" {
+				http.Redirect(w, r, path.Join("/v1/orgs", defaultOrgId, strings.Join(splitPath[2:], "/")), 307)
+				return
+			}
+		}
+
 		// Set the Cache-Control header for all responses returned
 		w.Header().Set("Cache-Control", "no-store")
 

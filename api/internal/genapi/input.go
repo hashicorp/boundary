@@ -1,5 +1,3 @@
-// +build genapi
-
 package main
 
 import "os"
@@ -67,6 +65,28 @@ var inputStructs = []*structInfo{
 		os.Getenv("GEN_BASEPATH") + "/api/hosts/host_catalog.gen.go",
 		"HostCatalog",
 		"hosts",
+		"",
+		"",
+		"",
+		templateTypeResource,
+	},
+	{
+		os.Getenv("GEN_BASEPATH") + "/internal/gen/controller/api/resources/scopes/organization.pb.go",
+		"Organization",
+		os.Getenv("GEN_BASEPATH") + "/api/scopes/organization.gen.go",
+		"Organization",
+		"scopes",
+		"",
+		"",
+		"",
+		templateTypeResource,
+	},
+	{
+		os.Getenv("GEN_BASEPATH") + "/internal/gen/controller/api/resources/scopes/project.pb.go",
+		"Project",
+		os.Getenv("GEN_BASEPATH") + "/api/scopes/project.gen.go",
+		"Project",
+		"scopes",
 		"",
 		"",
 		"",

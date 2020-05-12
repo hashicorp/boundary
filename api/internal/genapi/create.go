@@ -1,5 +1,3 @@
-// +build genapi
-
 package main
 
 import (
@@ -14,7 +12,6 @@ import (
 type createInfo struct {
 	baseType   string
 	targetType string
-	verb       string
 	path       string
 }
 
@@ -23,14 +20,19 @@ var createFuncs = map[string][]*createInfo{
 		{
 			"HostCatalog",
 			"Host",
-			"PUT",
-			"host-catalogs/%s/hosts",
+			`fmt.Sprintf("host-catalogs/%s/hosts", s.Id)`,
 		},
 		{
 			"HostCatalog",
 			"HostSet",
-			"PUT",
-			"host-catalogs/%s/host-sets",
+			`fmt.Sprintf("host-catalogs/%s/host-sets", s.Id)`,
+		},
+	},
+	"scopes": {
+		{
+			"Organization",
+			"Project",
+			`"projects"`,
 		},
 	},
 }
@@ -47,13 +49,11 @@ package %s
 				BaseType        string
 				TargetType      string
 				LowerTargetType string
-				Verb            string
 				Path            string
 			}{
 				BaseType:        createInfo.baseType,
 				TargetType:      createInfo.targetType,
 				LowerTargetType: strings.ToLower(createInfo.targetType),
-				Verb:            createInfo.verb,
 				Path:            createInfo.path,
 			})
 		}
@@ -71,10 +71,26 @@ func (s {{ .BaseType }}) Create{{ .TargetType }}(ctx context.Context, {{ .LowerT
 		return nil, nil, fmt.Errorf("nil client in Create{{ .TargetType }} request")
 	}
 	if s.Id == "" {
-		return nil, nil, fmt.Errorf("missing catalog ID in Create{{ .TargetType }} request")
+		{{ if (eq .BaseType "Organization") }}
+		// Assume the client has been configured with organization already and
+		// move on
+		{{ else if (eq .BaseType "Project") }}
+		// Assume the client has been configured with project already and move
+		// on
+		{{ else }}
+		return nil, nil, fmt.Errorf("missing {{ .BaseType}} ID in Create{{ .TargetType }} request")
+		{{ end }}
+	} else {
+		// If it's explicitly set here, override anything that might be in the
+		// client
+		{{ if (eq .BaseType "Organization") }}
+		ctx = context.WithValue(ctx, "org", s.Id)
+		{{ else if (eq .BaseType "Project") }}
+		ctx = context.WithValue(ctx, "project", s.Id)
+		{{ end }}
 	}
 
-	req, err := s.Client.NewRequest(ctx, "{{ .Verb }}", fmt.Sprintf("{{ .Path }}", s.Id), {{ .LowerTargetType }})
+	req, err := s.Client.NewRequest(ctx, "POST", {{ .Path }}, {{ .LowerTargetType }})
 	if err != nil {
 		return nil, nil, fmt.Errorf("error creating Create{{ .TargetType }} request: %w", err)
 	}

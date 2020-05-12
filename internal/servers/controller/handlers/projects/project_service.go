@@ -8,7 +8,7 @@ import (
 
 	"github.com/golang/protobuf/ptypes/wrappers"
 	"github.com/grpc-ecosystem/grpc-gateway/runtime"
-	pb "github.com/hashicorp/watchtower/internal/gen/controller/api/resources/projects"
+	pb "github.com/hashicorp/watchtower/internal/gen/controller/api/resources/scopes"
 	pbs "github.com/hashicorp/watchtower/internal/gen/controller/api/services"
 	"github.com/hashicorp/watchtower/internal/iam"
 	"google.golang.org/grpc/codes"

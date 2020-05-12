@@ -1,8 +1,8 @@
 syntax = "proto3";
 
-package controller.api.resources.projects.v1;
+package controller.api.resources.scopes.v1;
 
-option go_package = "github.com/hashicorp/watchtower/internal/gen/controller/api/resources/projects;projects";
+option go_package = "github.com/hashicorp/watchtower/internal/gen/controller/api/resources/scopes;scopes";
 
 import "google/protobuf/timestamp.proto";
 import "google/protobuf/wrappers.proto";

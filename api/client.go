@@ -5,6 +5,7 @@ import (
 	"context"
 	"crypto/tls"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net"
@@ -647,10 +648,6 @@ func (c *Client) NewRequest(ctx context.Context, method, requestPath string, bod
 		}
 	}
 
-	if org == "" {
-		return nil, fmt.Errorf("could not create request, no organization set")
-	}
-
 	u, err := url.Parse(addr)
 	if err != nil {
 		return nil, err
@@ -689,9 +686,12 @@ func (c *Client) NewRequest(ctx context.Context, method, requestPath string, bod
 		}
 	}
 
-	orgProjPath := path.Join("org", org)
+	var orgProjPath string
+	if org != "" {
+		orgProjPath = path.Join(orgProjPath, "orgs", org)
+	}
 	if project != "" {
-		orgProjPath = path.Join(orgProjPath, "project", project)
+		orgProjPath = path.Join(orgProjPath, "projects", project)
 	}
 
 	req := &http.Request{
@@ -700,12 +700,13 @@ func (c *Client) NewRequest(ctx context.Context, method, requestPath string, bod
 			User:   u.User,
 			Scheme: u.Scheme,
 			Host:   host,
-			Path:   path.Join(u.Path, "v1", orgProjPath, requestPath),
+			Path:   path.Join(u.Path, "/v1", orgProjPath, requestPath),
 		},
 		Host: u.Host,
 	}
 	req.Header = headers
 	req.Header.Add("authorization", "bearer: "+token)
+	req.Header.Set("content-type", "application/json")
 	if ctx != nil {
 		req = req.WithContext(ctx)
 	}
@@ -752,14 +753,11 @@ func (c *Client) Do(r *retryablehttp.Request) (*Response, error) {
 	}
 
 	if timeout != 0 {
-		// NOTE: this leaks a timer. But when we defer a cancel call here for
-		// the returned function we see errors in tests with contxt canceled.
-		// Although the request is done by the time we exit this function it is
-		// still causing something else to go wrong. Maybe it ends up being
-		// tied to the response somehow and reading the response body ends up
-		// checking it, or something. I don't know, but until we can chase this
-		// down, keep it not-canceled even though vet complains.
-		ctx, _ = context.WithTimeout(ctx, timeout)
+		var cancel context.CancelFunc
+		ctx, cancel = context.WithTimeout(ctx, timeout)
+		// This dance is just to ignore vet warnings; we don't want to cancel
+		// this as it will make reading the response body impossible
+		_ = cancel
 	}
 	r.Request = r.Request.WithContext(ctx)
 
@@ -782,6 +780,23 @@ func (c *Client) Do(r *retryablehttp.Request) (*Response, error) {
 	}
 
 	result, err := client.Do(r)
+	if result != nil && err == nil && result.StatusCode == 307 {
+		loc, err := result.Location()
+		if err != nil {
+			return nil, fmt.Errorf("error getting new location during redirect: %w", err)
+		}
+
+		// Ensure a protocol downgrade doesn't happen
+		if r.URL.Scheme == "https" && loc.Scheme != "https" {
+			return nil, errors.New("redirect would cause protocol downgrade")
+		}
+
+		// Update the request
+		r.URL = loc
+
+		result, err = client.Do(r)
+	}
+
 	if err != nil {
 		if strings.Contains(err.Error(), "tls: oversized") {
 			err = fmt.Errorf(

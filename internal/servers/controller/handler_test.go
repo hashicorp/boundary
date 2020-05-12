@@ -8,7 +8,8 @@ import (
 )
 
 func TestHandleGrpcGateway(t *testing.T) {
-	h := Handler(HandlerProperties{})
+	var c Controller
+	h := c.handler(HandlerProperties{})
 	l, err := net.Listen("tcp4", "127.0.0.1:0")
 	if err != nil {
 		t.Fatalf("Couldn't listen: %v", err)

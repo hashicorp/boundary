@@ -706,7 +706,7 @@
           "200": {
             "description": "",
             "schema": {
-              "$ref": "#/definitions/controller.api.resources.projects.v1.Project"
+              "$ref": "#/definitions/controller.api.resources.scopes.v1.Project"
             }
           }
         },
@@ -722,7 +722,7 @@
             "in": "body",
             "required": true,
             "schema": {
-              "$ref": "#/definitions/controller.api.resources.projects.v1.Project"
+              "$ref": "#/definitions/controller.api.resources.scopes.v1.Project"
             }
           }
         ],
@@ -739,7 +739,7 @@
           "200": {
             "description": "",
             "schema": {
-              "$ref": "#/definitions/controller.api.resources.projects.v1.Project"
+              "$ref": "#/definitions/controller.api.resources.scopes.v1.Project"
             }
           }
         },
@@ -803,7 +803,7 @@
           "200": {
             "description": "",
             "schema": {
-              "$ref": "#/definitions/controller.api.resources.projects.v1.Project"
+              "$ref": "#/definitions/controller.api.resources.scopes.v1.Project"
             }
           }
         },
@@ -825,7 +825,7 @@
             "in": "body",
             "required": true,
             "schema": {
-              "$ref": "#/definitions/controller.api.resources.projects.v1.Project"
+              "$ref": "#/definitions/controller.api.resources.scopes.v1.Project"
             }
           }
         ],
@@ -1714,7 +1714,7 @@
       },
       "title": "HostSet is a collection of Hosts created and managed by a HostCatalog"
     },
-    "controller.api.resources.projects.v1.Project": {
+    "controller.api.resources.scopes.v1.Project": {
       "type": "object",
       "properties": {
         "id": {
@@ -1793,7 +1793,7 @@
           "type": "string"
         },
         "item": {
-          "$ref": "#/definitions/controller.api.resources.projects.v1.Project"
+          "$ref": "#/definitions/controller.api.resources.scopes.v1.Project"
         }
       }
     },
@@ -1861,7 +1861,7 @@
       "type": "object",
       "properties": {
         "item": {
-          "$ref": "#/definitions/controller.api.resources.projects.v1.Project"
+          "$ref": "#/definitions/controller.api.resources.scopes.v1.Project"
         }
       }
     },
@@ -1904,7 +1904,7 @@
         "items": {
           "type": "array",
           "items": {
-            "$ref": "#/definitions/controller.api.resources.projects.v1.Project"
+            "$ref": "#/definitions/controller.api.resources.scopes.v1.Project"
           }
         }
       }
@@ -1940,7 +1940,7 @@
       "type": "object",
       "properties": {
         "item": {
-          "$ref": "#/definitions/controller.api.resources.projects.v1.Project"
+          "$ref": "#/definitions/controller.api.resources.scopes.v1.Project"
         }
       }
     },
