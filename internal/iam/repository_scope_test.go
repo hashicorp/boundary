@@ -7,7 +7,6 @@ import (
 	"github.com/hashicorp/go-uuid"
 	"github.com/hashicorp/watchtower/internal/db"
 	"github.com/hashicorp/watchtower/internal/oplog"
-	"github.com/hashicorp/watchtower/internal/oplog/store"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -40,12 +39,7 @@ func Test_Repository_CreateScope(t *testing.T) {
 		assert.Nil(err)
 		assert.Equal(foundScope.GetPublicId(), s.GetPublicId())
 
-		var metadata store.Metadata
-		err = conn.Where("key = ? and value = ?", "resource-public-id", s.PublicId).First(&metadata).Error
-		assert.Nil(err)
-
-		var foundEntry oplog.Entry
-		err = conn.Where("id = ?", metadata.EntryId).First(&foundEntry).Error
+		err = TestVerifyOplog(rw, s.PublicId)
 		assert.Nil(err)
 	})
 }
@@ -79,12 +73,8 @@ func Test_Repository_UpdateScope(t *testing.T) {
 		assert.Nil(err)
 		assert.Equal(foundScope.GetPublicId(), s.GetPublicId())
 
-		var metadata store.Metadata
-		err = conn.Where("key = ? and value = ?", "resource-public-id", s.PublicId).First(&metadata).Error
 		assert.Nil(err)
-
-		var foundEntry oplog.Entry
-		err = conn.Where("id = ?", metadata.EntryId).First(&foundEntry).Error
+		err = TestVerifyOplog(rw, s.PublicId, WithOperation(oplog.OpType_OP_TYPE_CREATE), WithCreateNbf(10))
 		assert.Nil(err)
 
 		s.Name = "fname-" + id
@@ -100,10 +90,7 @@ func Test_Repository_UpdateScope(t *testing.T) {
 		assert.Equal(foundScope.GetPublicId(), s.GetPublicId())
 		assert.Equal(foundScope.GetDescription(), "")
 
-		err = conn.Where("key = ? and value = ?", "resource-public-id", s.PublicId).First(&metadata).Error
-		assert.Nil(err)
-
-		err = conn.Where("id = ?", metadata.EntryId).First(&foundEntry).Error
+		err = TestVerifyOplog(rw, s.PublicId, WithOperation(oplog.OpType_OP_TYPE_UPDATE), WithCreateNbf(10))
 		assert.Nil(err)
 	})
 	t.Run("bad-parent-scope", func(t *testing.T) {

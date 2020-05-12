@@ -6,8 +6,6 @@ import (
 
 	"github.com/hashicorp/go-uuid"
 	"github.com/hashicorp/watchtower/internal/db"
-	"github.com/hashicorp/watchtower/internal/oplog"
-	"github.com/hashicorp/watchtower/internal/oplog/store"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -46,12 +44,7 @@ func Test_Repository_CreateUser(t *testing.T) {
 		assert.Equal(foundUser.GetScopeId(), u.GetScopeId())
 		assert.Equal(foundUser.GetName(), "fn-"+id)
 
-		var metadata store.Metadata
-		err = conn.Where("key = ? and value = ?", "resource-public-id", u.PublicId).First(&metadata).Error
-		assert.Nil(err)
-
-		var foundEntry oplog.Entry
-		err = conn.Where("id = ?", metadata.EntryId).First(&foundEntry).Error
+		err = TestVerifyOplog(rw, u.PublicId)
 		assert.Nil(err)
 	})
 	t.Run("bad-scope-id", func(t *testing.T) {
@@ -76,9 +69,7 @@ func Test_Repository_CreateUser(t *testing.T) {
 		assert.True(err != nil)
 		assert.True(foundUser == nil)
 
-		var metadata store.Metadata
-		err = conn.Where("key = ? and value = ?", "resource-public-id", pubId).First(&metadata).Error
+		err = TestVerifyOplog(rw, pubId)
 		assert.True(err != nil)
-
 	})
 }
