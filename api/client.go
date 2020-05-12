@@ -779,9 +779,9 @@ func (c *Client) Do(r *retryablehttp.Request) (*Response, error) {
 		ErrorHandler: retryablehttp.PassthroughErrorHandler,
 	}
 
-start:
 	var redirected bool
 
+start:
 	result, err := client.Do(r)
 	if err != nil {
 		if strings.Contains(err.Error(), "tls: oversized") {
