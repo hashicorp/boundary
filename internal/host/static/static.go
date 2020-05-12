@@ -1,6 +1,40 @@
 package static
 
-import "github.com/hashicorp/watchtower/internal/host/static/store"
+import (
+	"errors"
+
+	"github.com/hashicorp/watchtower/internal/db"
+	"github.com/hashicorp/watchtower/internal/host/static/store"
+)
+
+// A HostCatalog contains static hosts and static host sets.
+type HostCatalog struct {
+	*store.HostCatalog
+	tableName string `gorm:"-"`
+}
+
+// NewHostCatalog creates a new in memory HostCatalog assigned to scopeId.
+// Name and description are the only valid options. All other options are
+// ignored.
+func NewHostCatalog(scopeId string, opt ...Option) (*HostCatalog, error) {
+	if scopeId == "" {
+		return nil, errors.New("empty scopeId")
+	}
+	id, err := db.NewPublicId("sthc")
+	if err != nil {
+		return nil, err
+	}
+	opts := getOpts(opt...)
+	hc := &HostCatalog{
+		HostCatalog: &store.HostCatalog{
+			ScopeId:     scopeId,
+			Name:        opts.withName,
+			Description: opts.withDescription,
+			PublicId:    id,
+		},
+	}
+	return hc, nil
+}
 
 type Host struct {
 	*store.Host
@@ -9,52 +43,4 @@ type Host struct {
 
 func NewHost(opt ...Option) *Host {
 	return nil
-}
-
-// getOpts - iterate the inbound Options and return a struct
-func getOpts(opt ...Option) options {
-	opts := getDefaultOptions()
-	for _, o := range opt {
-		o(&opts)
-	}
-	return opts
-}
-
-// Option - how Options are passed as arguments
-type Option func(*options)
-
-// options = how options are represented
-type options struct {
-	withPublicId    string
-	withName        string
-	withDescription string
-}
-
-func getDefaultOptions() options {
-	return options{
-		withPublicId:    "",
-		withDescription: "",
-		withName:        "",
-	}
-}
-
-// WithPublicId provides an optional public id
-func WithPublicId(id string) Option {
-	return func(o *options) {
-		o.withPublicId = id
-	}
-}
-
-// WithDescription provides an optional description
-func WithDescription(desc string) Option {
-	return func(o *options) {
-		o.withDescription = desc
-	}
-}
-
-// WithName provides an option to search by a friendly name
-func WithName(name string) Option {
-	return func(o *options) {
-		o.withName = name
-	}
 }
