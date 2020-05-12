@@ -8,7 +8,7 @@ import "protoc-gen-swagger/options/annotations.proto";
 import "google/api/annotations.proto";
 import "google/protobuf/field_mask.proto";
 import "google/protobuf/wrappers.proto";
-import "controller/api/resources/projects/v1/project.proto";
+import "controller/api/resources/scopes/v1/project.proto";
 
 service ProjectService {
   rpc GetProject(GetProjectRequest) returns (GetProjectResponse) {
@@ -65,7 +65,7 @@ message GetProjectRequest {
 }
 
 message GetProjectResponse {
-  resources.projects.v1.Project item = 1;
+  resources.scopes.v1.Project item = 1;
 }
 
 message ListProjectsRequest {
@@ -74,28 +74,28 @@ message ListProjectsRequest {
 }
 
 message ListProjectsResponse {
-  repeated resources.projects.v1.Project items = 1;
+  repeated resources.scopes.v1.Project items = 1;
 }
 
 message CreateProjectRequest {
   string org_id = 1;
-  resources.projects.v1.Project item = 2;
+  resources.scopes.v1.Project item = 2;
 }
 
 message CreateProjectResponse {
   string uri = 1;
-  resources.projects.v1.Project item = 2;
+  resources.scopes.v1.Project item = 2;
 }
 
 message UpdateProjectRequest {
   string org_id = 1;
   string id = 2;
-  resources.projects.v1.Project item = 3;
+  resources.scopes.v1.Project item = 3;
   google.protobuf.FieldMask update_mask = 4;
 }
 
 message UpdateProjectResponse {
-  resources.projects.v1.Project item = 1;
+  resources.scopes.v1.Project item = 1;
 }
 
 message DeleteProjectRequest {
