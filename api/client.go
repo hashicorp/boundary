@@ -241,16 +241,16 @@ func (c *Config) setAddr(addr string) error {
 	switch len(split) {
 	case 0:
 	case 2:
-		if split[0] != "org" {
-			return fmt.Errorf("expected org segment in address, found %q", split[0])
+		if split[0] != "orgs" {
+			return fmt.Errorf("expected orgs segment in address, found %q", split[0])
 		}
 		c.Org = split[1]
 	case 4:
-		if split[0] != "org" {
+		if split[0] != "orgs" {
 			return fmt.Errorf("expected org segment in address, found %q", split[0])
 		}
 		c.Org = split[1]
-		if split[2] != "project" {
+		if split[2] != "projects" {
 			return fmt.Errorf("expected project segment in address, found %q", split[2])
 		}
 		c.Project = split[3]
