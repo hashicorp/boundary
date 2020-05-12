@@ -67,7 +67,7 @@ type Writer interface {
 	// the caller is responsible for the transaction life cycle of the writer
 	// and if an error is returned the caller must decide what to do with
 	// the transaction, which almost always should be to rollback. Delete
-	// returns the number of rows deleted and any errors.
+	// returns the number of rows deleted or an error.
 	Delete(ctx context.Context, i interface{}, opt ...Option) (int, error)
 
 	// DB returns the sql.DB
