@@ -21,7 +21,7 @@ returning id;
 `
 	)
 
-	cleanup, conn := TestSetup(t, "postgres")
+	cleanup, conn, _ := TestSetup(t, "postgres")
 	defer cleanup()
 	defer conn.Close()
 
