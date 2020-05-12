@@ -16,8 +16,8 @@ func TestHostCatalog_New(t *testing.T) {
 	// cleanup, conn := db.TestSetup(t, "postgres")
 	// defer cleanup()
 
-	_, conn := db.TestSetup(t, "postgres")
-	fmt.Println(conn)
+	_, conn, url := db.TestSetup(t, "postgres")
+	fmt.Println(url)
 	defer conn.Close()
 
 	type args struct {
