@@ -21,7 +21,7 @@ func (c *Controller) startListeners() error {
 	servers := make([]func(), 0, len(c.conf.Listeners))
 
 	configureForAPI := func(ln *base.ServerListener) error {
-		handler := Handler(c, HandlerProperties{
+		handler := c.handler(HandlerProperties{
 			ListenerConfig: ln.Config,
 		})
 

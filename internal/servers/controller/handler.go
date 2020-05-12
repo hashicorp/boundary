@@ -23,7 +23,7 @@ type HandlerProperties struct {
 
 // Handler returns an http.Handler for the services. This can be used on
 // its own to mount the Vault API within another web server.
-func Handler(c *Controller, props HandlerProperties) http.Handler {
+func (c *Controller) handler(props HandlerProperties) http.Handler {
 	// Create the muxer to handle the actual endpoints
 	mux := http.NewServeMux()
 
@@ -58,7 +58,10 @@ func wrapGenericHandler(h http.Handler, c *Controller, props HandlerProperties) 
 	if maxRequestSize == 0 {
 		maxRequestSize = globals.DefaultMaxRequestSize
 	}
-	defaultOrgId := c.conf.DefaultOrgId
+	var defaultOrgId string
+	if c != nil && c.conf != nil {
+		defaultOrgId = c.conf.DefaultOrgId
+	}
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if defaultOrgId != "" {
 			splitPath := strings.Split(r.URL.Path, "/")
