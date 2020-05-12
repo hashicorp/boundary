@@ -14,6 +14,15 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
+var (
+	// ErrRecordNotFound returns a "record not found" error and it only occurs
+	// when attempting to read from the database into struct.
+	// When reading into a slice it won't return this error.
+	ErrRecordNotFound = errors.New("record not found")
+)
+
+const NoRowsAffected = 0
+
 // Reader interface defines lookups/searching for resources
 type Reader interface {
 	// LookupByName will lookup resource by its friendly name which must be unique
@@ -40,12 +49,13 @@ type Writer interface {
 	// DoTx will wrap the TxHandler in a retryable transaction
 	DoTx(ctx context.Context, retries uint, backOff Backoff, Handler TxHandler) (RetryInfo, error)
 
-	// Update an object in the db, if there's a fieldMask then only the field_mask.proto paths are updated, otherwise
-	// it will send every field to the DB.  options: WithOplog
-	// the caller is responsible for the transaction life cycle of the writer
-	// and if an error is returned the caller must decide what to do with
-	// the transaction, which almost always should be to rollback.
-	Update(ctx context.Context, i interface{}, fieldMaskPaths []string, opt ...Option) error
+	// Update an object in the db, if there's a fieldMask then only the
+	// field_mask.proto paths are updated, otherwise it will send every field to
+	// the DB.  options: WithOplog the caller is responsible for the transaction
+	// life cycle of the writer and if an error is returned the caller must
+	// decide what to do with the transaction, which almost always should be to
+	// rollback.  Update returns the number of rows updated or an error.
+	Update(ctx context.Context, i interface{}, fieldMaskPaths []string, opt ...Option) (int, error)
 
 	// Create an object in the db with options: WithOplog
 	// the caller is responsible for the transaction life cycle of the writer
@@ -56,8 +66,9 @@ type Writer interface {
 	// Delete an object in the db with options: WithOplog
 	// the caller is responsible for the transaction life cycle of the writer
 	// and if an error is returned the caller must decide what to do with
-	// the transaction, which almost always should be to rollback.
-	Delete(ctx context.Context, i interface{}, opt ...Option) error
+	// the transaction, which almost always should be to rollback. Delete
+	// returns the number of rows deleted or an error.
+	Delete(ctx context.Context, i interface{}, opt ...Option) (int, error)
 
 	// DB returns the sql.DB
 	DB() (*sql.DB, error)
@@ -100,31 +111,35 @@ type VetForWriter interface {
 	VetForWrite(ctx context.Context, r Reader, opType OpType, opt ...Option) error
 }
 
-// GormReadWriter uses a gorm DB connection for read/write
-type GormReadWriter struct {
-	Tx *gorm.DB
+// Db uses a gorm DB connection for read/write
+type Db struct {
+	underlying *gorm.DB
 }
 
-// ensure that GroupRole implements the interfaces of: Resource, ClonableResource, AssignedRole and db.VetForWriter
-var _ Reader = (*GormReadWriter)(nil)
-var _ Writer = (*GormReadWriter)(nil)
+// ensure that Db implements the interfaces of: Reader and Writer
+var _ Reader = (*Db)(nil)
+var _ Writer = (*Db)(nil)
+
+func New(underlying *gorm.DB) *Db {
+	return &Db{underlying: underlying}
+}
 
 // DB returns the sql.DB
-func (rw *GormReadWriter) DB() (*sql.DB, error) {
-	if rw.Tx == nil {
-		return nil, errors.New("create tx is nil for db")
+func (rw *Db) DB() (*sql.DB, error) {
+	if rw.underlying == nil {
+		return nil, errors.New("underlying db is nil")
 	}
-	return rw.Tx.DB(), nil
+	return rw.underlying.DB(), nil
 }
 
 // Scan rows will scan the rows into the interface
-func (rw *GormReadWriter) ScanRows(rows *sql.Rows, result interface{}) error {
-	return rw.Tx.ScanRows(rows, result)
+func (rw *Db) ScanRows(rows *sql.Rows, result interface{}) error {
+	return rw.underlying.ScanRows(rows, result)
 }
 
 var ErrNotResourceWithId = errors.New("not a resource with an id")
 
-func (rw *GormReadWriter) lookupAfterWrite(ctx context.Context, i interface{}, opt ...Option) error {
+func (rw *Db) lookupAfterWrite(ctx context.Context, i interface{}, opt ...Option) error {
 	opts := GetOpts(opt...)
 	withLookup := opts.withLookup
 
@@ -141,16 +156,23 @@ func (rw *GormReadWriter) lookupAfterWrite(ctx context.Context, i interface{}, o
 }
 
 // Create an object in the db with options: WithOplog and WithLookup (to force a lookup after create))
-func (rw *GormReadWriter) Create(ctx context.Context, i interface{}, opt ...Option) error {
-	if rw.Tx == nil {
-		return errors.New("create tx is nil")
+func (rw *Db) Create(ctx context.Context, i interface{}, opt ...Option) error {
+	if rw.underlying == nil {
+		return errors.New("create underlying db is nil")
 	}
 	opts := GetOpts(opt...)
 	withOplog := opts.withOplog
 	withDebug := opts.withDebug
+	if withOplog {
+		// let's validate oplog options before we start writing to the database
+		_, err := validateOplogArgs(i, opts)
+		if err != nil {
+			return err
+		}
+	}
 	if withDebug {
-		rw.Tx.LogMode(true)
-		defer rw.Tx.LogMode(false)
+		rw.underlying.LogMode(true)
+		defer rw.underlying.LogMode(false)
 	}
 	if i == nil {
 		return errors.New("create interface is nil")
@@ -160,7 +182,7 @@ func (rw *GormReadWriter) Create(ctx context.Context, i interface{}, opt ...Opti
 			return fmt.Errorf("error on create %w", err)
 		}
 	}
-	if err := rw.Tx.Create(i).Error; err != nil {
+	if err := rw.underlying.Create(i).Error; err != nil {
 		return fmt.Errorf("error creating: %w", err)
 	}
 	if withOplog {
@@ -174,30 +196,39 @@ func (rw *GormReadWriter) Create(ctx context.Context, i interface{}, opt ...Opti
 	return nil
 }
 
-// Update an object in the db, if there's a fieldMask then only the field_mask.proto paths are updated, otherwise
-// it will send every field to the DB.  Update supports embedding a struct (or structPtr) one level deep for updating
-func (rw *GormReadWriter) Update(ctx context.Context, i interface{}, fieldMaskPaths []string, opt ...Option) error {
-	if rw.Tx == nil {
-		return errors.New("update tx is nil")
+// Update an object in the db, if there's a fieldMask then only the
+// field_mask.proto paths are updated, otherwise it will send every field to the
+// DB.  Update supports embedding a struct (or structPtr) one level deep for
+// updating. Update returns the number of rows updated and any errors.
+func (rw *Db) Update(ctx context.Context, i interface{}, fieldMaskPaths []string, opt ...Option) (int, error) {
+	if rw.underlying == nil {
+		return NoRowsAffected, errors.New("update underlying db is nil")
 	}
 	opts := GetOpts(opt...)
 	withDebug := opts.withDebug
 	withOplog := opts.withOplog
+	if withOplog {
+		// let's validate oplog options before we start writing to the database
+		_, err := validateOplogArgs(i, opts)
+		if err != nil {
+			return NoRowsAffected, err
+		}
+	}
 	if withDebug {
-		rw.Tx.LogMode(true)
-		defer rw.Tx.LogMode(false)
+		rw.underlying.LogMode(true)
+		defer rw.underlying.LogMode(false)
 	}
 	if i == nil {
-		return errors.New("update interface is nil")
+		return NoRowsAffected, errors.New("update interface is nil")
 	}
 	if vetter, ok := i.(VetForWriter); ok {
 		if err := vetter.VetForWrite(ctx, rw, UpdateOp, WithFieldMaskPaths(fieldMaskPaths)); err != nil {
-			return fmt.Errorf("error on update %w", err)
+			return NoRowsAffected, fmt.Errorf("error on update %w", err)
 		}
 	}
 	if len(fieldMaskPaths) == 0 {
-		if err := rw.Tx.Save(i).Error; err != nil {
-			return fmt.Errorf("error updating: %w", err)
+		if err := rw.underlying.Save(i).Error; err != nil {
+			return NoRowsAffected, fmt.Errorf("error updating: %w", err)
 		}
 	}
 	updateFields := map[string]interface{}{}
@@ -235,64 +266,85 @@ func (rw *GormReadWriter) Update(ctx context.Context, i interface{}, fieldMaskPa
 		}
 	}
 	if len(updateFields) == 0 {
-		return fmt.Errorf("error no update fields matched using fieldMaskPaths: %s", fieldMaskPaths)
+		return NoRowsAffected, fmt.Errorf("error no update fields matched using fieldMaskPaths: %s", fieldMaskPaths)
 	}
-	if err := rw.Tx.Model(i).Updates(updateFields).Error; err != nil {
-		return fmt.Errorf("error updating: %w", err)
+	underlying := rw.underlying.Model(i).Updates(updateFields)
+	if underlying.Error != nil {
+		return NoRowsAffected, fmt.Errorf("error updating: %w", underlying.Error)
 	}
+	rowsUpdated := int(underlying.RowsAffected)
 	if withOplog {
 		if err := rw.addOplog(ctx, UpdateOp, opts, i); err != nil {
-			return err
+			return rowsUpdated, err
 		}
 	}
 	// we need to force a lookupAfterWrite so the resource returned is correctly initialized
 	// from the db
 	opt = append(opt, WithLookup(true))
 	if err := rw.lookupAfterWrite(ctx, i, opt...); err != nil {
-		return fmt.Errorf("lookup error after update: %w", err)
+		return NoRowsAffected, fmt.Errorf("lookup error after update: %w", err)
 	}
-	return nil
+	return rowsUpdated, nil
 }
 
-// Delete an object in the db with options: WithOplog (which requires WithMetadata, WithWrapper)
-func (rw *GormReadWriter) Delete(ctx context.Context, i interface{}, opt ...Option) error {
-	if rw.Tx == nil {
-		return errors.New("delete tx is nil")
+// Delete an object in the db with options: WithOplog (which requires
+// WithMetadata, WithWrapper). Delete returns the number of rows deleted and
+// any errors.
+func (rw *Db) Delete(ctx context.Context, i interface{}, opt ...Option) (int, error) {
+	if rw.underlying == nil {
+		return NoRowsAffected, errors.New("delete underlying db is nil")
 	}
 	if i == nil {
-		return errors.New("delete interface is nil")
+		return NoRowsAffected, errors.New("delete interface is nil")
 	}
 	opts := GetOpts(opt...)
 	withDebug := opts.withDebug
 	withOplog := opts.withOplog
-	if withDebug {
-		rw.Tx.LogMode(true)
-		defer rw.Tx.LogMode(false)
-	}
-	if err := rw.Tx.Delete(i).Error; err != nil {
-		return fmt.Errorf("error deleting: %w", err)
-	}
 	if withOplog {
-		if err := rw.addOplog(ctx, DeleteOp, opts, i); err != nil {
-			return err
+		_, err := validateOplogArgs(i, opts)
+		if err != nil {
+			return NoRowsAffected, err
 		}
 	}
-	return nil
+	if withDebug {
+		rw.underlying.LogMode(true)
+		defer rw.underlying.LogMode(false)
+	}
+	underlying := rw.underlying.Delete(i)
+	if underlying.Error != nil {
+		return NoRowsAffected, fmt.Errorf("error deleting: %w", underlying.Error)
+	}
+	rowsDeleted := int(underlying.RowsAffected)
+	if withOplog {
+		if err := rw.addOplog(ctx, DeleteOp, opts, i); err != nil {
+			return rowsDeleted, err
+		}
+	}
+	return rowsDeleted, nil
 }
 
-func (rw *GormReadWriter) addOplog(ctx context.Context, opType OpType, opts Options, i interface{}) error {
+func validateOplogArgs(i interface{}, opts Options) (oplog.ReplayableMessage, error) {
 	oplogArgs := opts.oplogOpts
 	if oplogArgs.wrapper == nil {
-		return errors.New("error wrapper is nil for WithWrapper")
+		return nil, errors.New("error no wrapper WithOplog")
 	}
 	if len(oplogArgs.metadata) == 0 {
-		return errors.New("error no metadata for WithOplog")
+		return nil, errors.New("error no metadata for WithOplog")
 	}
 	replayable, ok := i.(oplog.ReplayableMessage)
 	if !ok {
-		return errors.New("error not a replayable message for WithOplog")
+		return nil, errors.New("error not a replayable message for WithOplog")
 	}
-	gdb := rw.Tx
+	return replayable, nil
+}
+
+func (rw *Db) addOplog(ctx context.Context, opType OpType, opts Options, i interface{}) error {
+	oplogArgs := opts.oplogOpts
+	replayable, err := validateOplogArgs(i, opts)
+	if err != nil {
+		return err
+	}
+	gdb := rw.underlying
 	withDebug := opts.withDebug
 	if withDebug {
 		gdb.LogMode(true)
@@ -301,10 +353,6 @@ func (rw *GormReadWriter) addOplog(ctx context.Context, opType OpType, opts Opti
 	ticketer, err := oplog.NewGormTicketer(gdb, oplog.WithAggregateNames(true))
 	if err != nil {
 		return fmt.Errorf("error getting Ticketer %w for WithOplog", err)
-	}
-	err = ticketer.InitTicket(replayable.TableName())
-	if err != nil {
-		return fmt.Errorf("error getting initializing ticket %w for WithOplog", err)
 	}
 	ticket, err := ticketer.GetTicket(replayable.TableName())
 	if err != nil {
@@ -344,17 +392,17 @@ func (rw *GormReadWriter) addOplog(ctx context.Context, opType OpType, opts Opti
 // you should ensure that any objects written to the db in your TxHandler are retryable, which
 // means that the object may be sent to the db several times (retried), so things like the primary key must
 // be reset before retry
-func (w *GormReadWriter) DoTx(ctx context.Context, retries uint, backOff Backoff, Handler TxHandler) (RetryInfo, error) {
-	if w.Tx == nil {
-		return RetryInfo{}, errors.New("do tx is nil")
+func (w *Db) DoTx(ctx context.Context, retries uint, backOff Backoff, Handler TxHandler) (RetryInfo, error) {
+	if w.underlying == nil {
+		return RetryInfo{}, errors.New("do underlying db is nil")
 	}
 	info := RetryInfo{}
 	for attempts := uint(1); ; attempts++ {
 		if attempts > retries+1 {
 			return info, fmt.Errorf("Too many retries: %d of %d", attempts-1, retries+1)
 		}
-		newTx := w.Tx.BeginTx(ctx, nil)
-		if err := Handler(&GormReadWriter{newTx}); err != nil {
+		newTx := w.underlying.BeginTx(ctx, nil)
+		if err := Handler(&Db{newTx}); err != nil {
 			if errors.Is(err, oplog.ErrTicketAlreadyRedeemed) {
 				newTx.Rollback() // need to still handle rollback errors
 				d := backOff.Duration(attempts)
@@ -384,15 +432,15 @@ func (w *GormReadWriter) DoTx(ctx context.Context, retries uint, backOff Backoff
 }
 
 // LookupByName will lookup resource my its friendly name which must be unique
-func (rw *GormReadWriter) LookupByName(ctx context.Context, resource ResourceNamer, opt ...Option) error {
-	if rw.Tx == nil {
-		return errors.New("error tx nil for lookup by name")
+func (rw *Db) LookupByName(ctx context.Context, resource ResourceNamer, opt ...Option) error {
+	if rw.underlying == nil {
+		return errors.New("error underlying db nil for lookup by name")
 	}
 	opts := GetOpts(opt...)
 	withDebug := opts.withDebug
 	if withDebug {
-		rw.Tx.LogMode(true)
-		defer rw.Tx.LogMode(false)
+		rw.underlying.LogMode(true)
+		defer rw.underlying.LogMode(false)
 	}
 	if reflect.ValueOf(resource).Kind() != reflect.Ptr {
 		return errors.New("error interface parameter must to be a pointer for lookup by name")
@@ -400,19 +448,25 @@ func (rw *GormReadWriter) LookupByName(ctx context.Context, resource ResourceNam
 	if resource.GetName() == "" {
 		return errors.New("error name empty string for lookup by name")
 	}
-	return rw.Tx.Where("name = ?", resource.GetName()).First(resource).Error
+	if err := rw.underlying.Where("name = ?", resource.GetName()).First(resource).Error; err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return ErrRecordNotFound
+		}
+		return err
+	}
+	return nil
 }
 
 // LookupByPublicId will lookup resource my its public_id which must be unique
-func (rw *GormReadWriter) LookupByPublicId(ctx context.Context, resource ResourcePublicIder, opt ...Option) error {
-	if rw.Tx == nil {
-		return errors.New("error tx nil for lookup by public id")
+func (rw *Db) LookupByPublicId(ctx context.Context, resource ResourcePublicIder, opt ...Option) error {
+	if rw.underlying == nil {
+		return errors.New("error underlying db nil for lookup by public id")
 	}
 	opts := GetOpts(opt...)
 	withDebug := opts.withDebug
 	if withDebug {
-		rw.Tx.LogMode(true)
-		defer rw.Tx.LogMode(false)
+		rw.underlying.LogMode(true)
+		defer rw.underlying.LogMode(false)
 	}
 	if reflect.ValueOf(resource).Kind() != reflect.Ptr {
 		return errors.New("error interface parameter must to be a pointer for lookup by public id")
@@ -420,27 +474,33 @@ func (rw *GormReadWriter) LookupByPublicId(ctx context.Context, resource Resourc
 	if resource.GetPublicId() == "" {
 		return errors.New("error public id empty string for lookup by public id")
 	}
-	return rw.Tx.Where("public_id = ?", resource.GetPublicId()).First(resource).Error
+	if err := rw.underlying.Where("public_id = ?", resource.GetPublicId()).First(resource).Error; err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return ErrRecordNotFound
+		}
+		return err
+	}
+	return nil
 }
 
 // LookupWhere will lookup the first resource using a where clause with parameters (it only returns the first one)
-func (rw *GormReadWriter) LookupWhere(ctx context.Context, resource interface{}, where string, args ...interface{}) error {
-	if rw.Tx == nil {
-		return errors.New("error tx nil for lookup by")
+func (rw *Db) LookupWhere(ctx context.Context, resource interface{}, where string, args ...interface{}) error {
+	if rw.underlying == nil {
+		return errors.New("error underlying db nil for lookup by")
 	}
 	if reflect.ValueOf(resource).Kind() != reflect.Ptr {
 		return errors.New("error interface parameter must to be a pointer for lookup by")
 	}
-	return rw.Tx.Where(where, args...).First(resource).Error
+	return rw.underlying.Where(where, args...).First(resource).Error
 }
 
 // SearchWhere will search for all the resources it can find using a where clause with parameters
-func (rw *GormReadWriter) SearchWhere(ctx context.Context, resources interface{}, where string, args ...interface{}) error {
-	if rw.Tx == nil {
-		return errors.New("error tx nil for search by")
+func (rw *Db) SearchWhere(ctx context.Context, resources interface{}, where string, args ...interface{}) error {
+	if rw.underlying == nil {
+		return errors.New("error underlying db nil for search by")
 	}
 	if reflect.ValueOf(resources).Kind() != reflect.Ptr {
 		return errors.New("error interface parameter must to be a pointer for search by")
 	}
-	return rw.Tx.Where(where, args...).Find(resources).Error
+	return rw.underlying.Where(where, args...).Find(resources).Error
 }

@@ -22,7 +22,6 @@ var _ cli.Command = (*Command)(nil)
 var _ cli.CommandAutocomplete = (*Command)(nil)
 
 type Command struct {
-	*base.Command
 	*base.Server
 
 	ExtShutdownCh chan struct{}
@@ -42,6 +41,7 @@ type Command struct {
 	flagDevAdminPassword               string
 	flagDevControllerAPIListenAddr     string
 	flagDevControllerClusterListenAddr string
+	flagDevOrgId                       string
 	flagCombineLogs                    bool
 }
 
@@ -106,6 +106,15 @@ func (c *Command) Flags() *base.FlagSets {
 	})
 
 	f.StringVar(&base.StringVar{
+		Name:    "dev-org-id",
+		Target:  &c.flagDevOrgId,
+		Default: "",
+		EnvVar:  "WATCHTWER_DEV_ORG_ID",
+		Usage: "Auto-created organization ID. This only applies when running in \"dev\" " +
+			"mode.",
+	})
+
+	f.StringVar(&base.StringVar{
 		Name:    "dev-admin-password",
 		Target:  &c.flagDevAdminPassword,
 		Default: "",
@@ -147,7 +156,6 @@ func (c *Command) AutocompleteFlags() complete.Flags {
 }
 
 func (c *Command) Run(args []string) int {
-	c.Server = base.NewServer()
 	c.CombineLogs = c.flagCombineLogs
 
 	if result := c.ParseFlagsAndConfig(args); result > 0 {
@@ -166,8 +174,16 @@ func (c *Command) Run(args []string) int {
 		return 1
 	}
 
-	if err := c.SetupKMSes(c.UI, c.Config.SharedConfig, 2); err != nil {
+	if err := c.SetupKMSes(c.UI, c.Config.SharedConfig, []string{"controller", "worker-auth"}); err != nil {
 		c.UI.Error(err.Error())
+		return 1
+	}
+	if c.ControllerKMS == nil {
+		c.UI.Error("Controller KMS not found after parsing KMS blocks")
+		return 1
+	}
+	if c.WorkerAuthKMS == nil {
+		c.UI.Error("Worker Auth KMS not found after parsing KMS blocks")
 		return 1
 	}
 
@@ -236,7 +252,7 @@ func (c *Command) Run(args []string) int {
 	}
 
 	if c.flagDev {
-		if err := c.CreateDevDatabase(); err != nil {
+		if err := c.CreateDevDatabase("postgres"); err != nil {
 			c.UI.Error(fmt.Errorf("Error creating dev database container: %s", err.Error()).Error())
 			return 1
 		}
@@ -288,8 +304,12 @@ func (c *Command) ParseFlagsAndConfig(args []string) int {
 	} else {
 		c.Config, err = config.DevController()
 		if err != nil {
-			c.UI.Error(fmt.Errorf("Error creating dev config: %s", err).Error())
+			c.UI.Error(fmt.Errorf("Error creating dev config: %w", err).Error())
 			return 1
+		}
+
+		if c.flagDevOrgId != "" {
+			c.Config.DefaultOrgId = c.flagDevOrgId
 		}
 
 		for _, l := range c.Config.Listeners {
@@ -308,6 +328,18 @@ func (c *Command) ParseFlagsAndConfig(args []string) int {
 				}
 			}
 		}
+	}
+
+	if c.Config.DefaultOrgId != "" {
+		if !strings.HasPrefix(c.Config.DefaultOrgId, "o_") {
+			c.UI.Error(fmt.Sprintf("Invalid default org ID, must start with %q", "o_"))
+			return 1
+		}
+		if len(c.Config.DefaultOrgId) != 12 {
+			c.UI.Error(fmt.Sprintf("Invalid default org ID, must be 10 base62 characters after %q", "o_"))
+			return 1
+		}
+		c.DefaultOrgId = c.Config.DefaultOrgId
 	}
 
 	return 0
@@ -403,7 +435,7 @@ func (c *Command) WaitForInterrupt() int {
 					c.Logger.Error("unknown log level found on reload", "level", newConf.LogLevel)
 					goto RUNRELOADFUNCS
 				}
-				c.controller.SetLogLevel(level)
+				c.Logger.SetLevel(level)
 			}
 
 		RUNRELOADFUNCS:

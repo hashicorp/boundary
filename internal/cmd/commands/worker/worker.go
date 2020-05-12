@@ -20,7 +20,6 @@ var _ cli.Command = (*Command)(nil)
 var _ cli.CommandAutocomplete = (*Command)(nil)
 
 type Command struct {
-	*base.Command
 	*base.Server
 
 	ExtShutdownCh chan struct{}
@@ -127,7 +126,6 @@ func (c *Command) AutocompleteFlags() complete.Flags {
 }
 
 func (c *Command) Run(args []string) int {
-	c.Server = base.NewServer()
 	c.CombineLogs = c.flagCombineLogs
 
 	if result := c.ParseFlagsAndConfig(args); result > 0 {
@@ -146,8 +144,12 @@ func (c *Command) Run(args []string) int {
 		return 1
 	}
 
-	if err := c.SetupKMSes(c.UI, c.Config.SharedConfig, 1); err != nil {
+	if err := c.SetupKMSes(c.UI, c.Config.SharedConfig, []string{"worker-auth"}); err != nil {
 		c.UI.Error(err.Error())
+		return 1
+	}
+	if c.WorkerAuthKMS == nil {
+		c.UI.Error("Worker Auth KMS not found after parsing KMS blocks")
 		return 1
 	}
 
@@ -314,7 +316,7 @@ func (c *Command) WaitForInterrupt() int {
 					c.Logger.Error("unknown log level found on reload", "level", newConf.LogLevel)
 					goto RUNRELOADFUNCS
 				}
-				c.worker.SetLogLevel(level)
+				c.Logger.SetLevel(level)
 			}
 
 		RUNRELOADFUNCS:

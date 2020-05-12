@@ -4,7 +4,6 @@ import (
 	"context"
 	"crypto/rand"
 	"crypto/tls"
-	"database/sql"
 	"errors"
 	"fmt"
 	"io"
@@ -18,7 +17,6 @@ import (
 	"github.com/hashicorp/errwrap"
 	"github.com/hashicorp/go-hclog"
 	wrapping "github.com/hashicorp/go-kms-wrapping"
-	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/vault/internalshared/configutil"
 	"github.com/hashicorp/vault/internalshared/gatedwriter"
 	"github.com/hashicorp/vault/internalshared/reloadutil"
@@ -26,9 +24,11 @@ import (
 	"github.com/hashicorp/vault/sdk/helper/mlock"
 	"github.com/hashicorp/vault/sdk/logical"
 	"github.com/hashicorp/watchtower/globals"
+	"github.com/hashicorp/watchtower/internal/db"
+	"github.com/hashicorp/watchtower/internal/iam"
 	"github.com/hashicorp/watchtower/version"
+	"github.com/jinzhu/gorm"
 	"github.com/mitchellh/cli"
-	"github.com/ory/dockertest/v3"
 	"golang.org/x/net/http/httpproxy"
 	"google.golang.org/grpc/grpclog"
 
@@ -36,6 +36,8 @@ import (
 )
 
 type Server struct {
+	*Command
+
 	InfoKeys []string
 	Info     map[string]string
 
@@ -43,7 +45,6 @@ type Server struct {
 	GatedWriter *gatedwriter.Writer
 	Logger      hclog.Logger
 	CombineLogs bool
-	AllLoggers  []hclog.Logger
 	LogLevel    hclog.Level
 
 	ControllerKMS      wrapping.Wrapper
@@ -60,19 +61,19 @@ type Server struct {
 
 	Listeners []*ServerListener
 
-	DevDatabasePassword string
-	DevDatabaseName     string
-	DevDatabasePort     string
+	DefaultOrgId string
 
-	dockertestPool     *dockertest.Pool
-	dockertestResource *dockertest.Resource
+	DevDatabaseUrl         string
+	DevDatabaseCleanupFunc func() error
+
+	Database *gorm.DB
 }
 
-func NewServer() *Server {
+func NewServer(cmd *Command) *Server {
 	return &Server{
+		Command:            cmd,
 		InfoKeys:           make([]string, 0, 20),
 		Info:               make(map[string]string),
-		AllLoggers:         make([]hclog.Logger, 0),
 		SecureRandomReader: rand.Reader,
 		ReloadFuncsLock:    new(sync.RWMutex),
 		ReloadFuncs:        make(map[string][]reloadutil.ReloadFunc),
@@ -98,12 +99,9 @@ func (b *Server) SetupLogging(flagLogLevel, flagLogFormat, configLogLevel, confi
 		// the resulting logger's format will be standard.
 		JSONFormat: logFormat == logging.JSONFormat,
 	})
-	// Create allLoggers which can be used to HUP the various derived loggers
-	b.AllLoggers = []hclog.Logger{b.Logger}
 
 	// create GRPC logger
 	namedGRPCLogFaker := b.Logger.Named("grpclogfaker")
-	b.AllLoggers = append(b.AllLoggers, namedGRPCLogFaker)
 	grpclog.SetLogger(&GRPCLogFaker{
 		Logger: namedGRPCLogFaker,
 		Log:    os.Getenv("WATCHTOWER_GRPC_LOGGING") != "",
@@ -298,11 +296,10 @@ func (b *Server) SetupListeners(ui cli.Ui, config *configutil.SharedConfig) erro
 	return nil
 }
 
-func (b *Server) SetupKMSes(ui cli.Ui, config *configutil.SharedConfig, size int) error {
-	switch len(config.Seals) {
-	case size:
-		for _, kms := range config.Seals {
-			purpose := strings.ToLower(kms.Purpose)
+func (b *Server) SetupKMSes(ui cli.Ui, config *configutil.SharedConfig, purposes []string) error {
+	for _, kms := range config.Seals {
+		for _, purpose := range kms.Purpose {
+			purpose = strings.ToLower(purpose)
 			switch purpose {
 			case "":
 				return errors.New("KMS block missing 'purpose'")
@@ -313,7 +310,6 @@ func (b *Server) SetupKMSes(ui cli.Ui, config *configutil.SharedConfig, size int
 
 			kmsLogger := b.Logger.ResetNamed(fmt.Sprintf("kms-%s-%s", purpose, kms.Type))
 
-			b.AllLoggers = append(b.AllLoggers, kmsLogger)
 			wrapper, wrapperConfigError := configutil.ConfigureWrapper(kms, &b.InfoKeys, &b.Info, kmsLogger)
 			if wrapperConfigError != nil {
 				if !errwrap.ContainsType(wrapperConfigError, new(logical.KeyNotFoundError)) {
@@ -335,15 +331,12 @@ func (b *Server) SetupKMSes(ui cli.Ui, config *configutil.SharedConfig, size int
 			// Ensure that the seal finalizer is called, even if using verify-only
 			b.ShutdownFuncs = append(b.ShutdownFuncs, func() error {
 				if err := wrapper.Finalize(context.Background()); err != nil {
-					return fmt.Errorf("Error finalizing kms of type %s and purpose %s: %v", kms.Type, kms.Purpose, err)
+					return fmt.Errorf("Error finalizing kms of type %s and purpose %s: %v", kms.Type, purpose, err)
 				}
 
 				return nil
 			})
 		}
-
-	default:
-		return fmt.Errorf("Wrong number of KMS blocks provided; expected %d, got %d", size, len(config.Seals))
 	}
 
 	// prepare a secure random reader
@@ -371,55 +364,83 @@ func (b *Server) RunShutdownFuncs(ui cli.Ui) {
 	}
 }
 
-func (b *Server) CreateDevDatabase() error {
-	pool, err := dockertest.NewPool("")
+func (b *Server) CreateDevDatabase(dialect string) error {
+	c, url, err := db.InitDbInDocker(dialect)
 	if err != nil {
-		return fmt.Errorf("could not connect to docker: %w", err)
+		c()
+		return fmt.Errorf("unable to start dev database with dialect %s: %w", dialect, err)
 	}
 
-	resource, err := pool.Run("postgres", "latest", []string{"POSTGRES_PASSWORD=secret", "POSTGRES_DB=watchtower"})
+	b.DevDatabaseCleanupFunc = c
+	b.DevDatabaseUrl = url
+
+	b.InfoKeys = append(b.InfoKeys, "dev database url")
+	b.Info["dev database url"] = b.DevDatabaseUrl
+
+	dbase, err := gorm.Open(dialect, url)
 	if err != nil {
-		return fmt.Errorf("could not start resource: %w", err)
+		c()
+		return fmt.Errorf("unable to create db object with dialect %s: %w", dialect, err)
+	}
+	b.Database = dbase
+
+	rw := db.New(b.Database)
+	repo, err := iam.NewRepository(rw, rw, b.ControllerKMS)
+	if err != nil {
+		c()
+		return fmt.Errorf("unable to create repo for org id: %w", err)
 	}
 
-	if err := pool.Retry(func() error {
-		db, err := sql.Open("postgres", fmt.Sprintf("postgres://postgres:secret@localhost:%s/watchtower?sslmode=disable", resource.GetPort("5432/tcp")))
+	ctx, cancel := context.WithCancel(context.Background())
+	go func() {
+		<-b.ShutdownCh
+		cancel()
+	}()
+
+	var scope *iam.Scope
+	if b.DefaultOrgId != "" {
+		scope, err = repo.LookupScope(ctx, iam.WithPublicId(b.DefaultOrgId))
 		if err != nil {
-			return fmt.Errorf("error opening postgres dev container: %w", err)
+			c()
+			return fmt.Errorf("error looking up existing scope with org ID %q: %w", b.DefaultOrgId, err)
 		}
-		var mErr *multierror.Error
-		if err := db.Ping(); err != nil {
-			mErr = multierror.Append(fmt.Errorf("error pinging dev database container: %w", err))
+		if scope != nil {
+			goto INFO
 		}
-		if err := db.Close(); err != nil {
-			mErr = multierror.Append(fmt.Errorf("error closing dev database container: %w", err))
-		}
-		return mErr.ErrorOrNil()
-	}); err != nil {
-		return fmt.Errorf("could not connect to docker: %w", err)
 	}
 
-	b.dockertestPool = pool
-	b.dockertestResource = resource
-	b.DevDatabaseName = "watchtower"
-	b.DevDatabasePassword = "secret"
-	b.DevDatabasePort = resource.GetPort("5432/tcp")
+	scope, err = iam.NewOrganization(iam.WithPublicId(b.DefaultOrgId))
+	if err != nil {
+		c()
+		return fmt.Errorf("error creating new org scope: %w", err)
+	}
+	scope, err = repo.CreateScope(ctx, scope)
+	if err != nil {
+		c()
+		return fmt.Errorf("error persisting new org scope: %w", err)
+	}
+	if b.DefaultOrgId != "" {
+		if scope.GetPublicId() != b.DefaultOrgId {
+			c()
+			return fmt.Errorf("expected org ID %q, got %q after persisting", b.DefaultOrgId, scope.GetPublicId())
+		}
+	} else {
+		b.DefaultOrgId = scope.GetPublicId()
+	}
 
-	b.InfoKeys = append(b.InfoKeys, "dev database name", "dev database password", "dev database port")
-	b.Info["dev database name"] = "watchtower"
-	b.Info["dev database password"] = "secret"
-	b.Info["dev database port"] = b.DevDatabasePort
+INFO:
+	b.InfoKeys = append(b.InfoKeys, "dev org id")
+	b.Info["dev org id"] = b.DefaultOrgId
+
 	return nil
 }
 
 func (b *Server) DestroyDevDatabase() error {
-	if b.dockertestPool == nil {
-		return nil
+	if b.Database != nil {
+		b.Database.Close()
 	}
-
-	if b.dockertestResource == nil {
-		return errors.New("found a pool for dev database container but no resource")
+	if b.DevDatabaseCleanupFunc != nil {
+		return b.DevDatabaseCleanupFunc()
 	}
-
-	return b.dockertestPool.Purge(b.dockertestResource)
+	return errors.New("no dev database cleanup function found")
 }

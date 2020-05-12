@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/hashicorp/watchtower/internal/db"
 	"github.com/hashicorp/watchtower/internal/iam/store"
@@ -37,10 +38,10 @@ type Scope struct {
 	tableName string `gorm:"-"`
 }
 
-// ensure that Scope implements the interfaces of: Resource, ClonableResource, and db.VetForWriter
+// ensure that Scope implements the interfaces of: Resource, Clonable, and db.VetForWriter
 var _ Resource = (*Scope)(nil)
 var _ db.VetForWriter = (*Scope)(nil)
-var _ ClonableResource = (*Scope)(nil)
+var _ Clonable = (*Scope)(nil)
 
 func NewOrganization(opt ...Option) (*Scope, error) {
 	return newScope(OrganizationScope, opt...)
@@ -62,6 +63,7 @@ func NewProject(organizationPublicId string, opt ...Option) (*Scope, error) {
 // WithScope specifies the Scope's parent
 func newScope(scopeType ScopeType, opt ...Option) (*Scope, error) {
 	opts := getOpts(opt...)
+	withPublicId := opts.withPublicId
 	withName := opts.withName
 	withScope := opts.withScope
 	withDescription := opts.withDescription
@@ -81,11 +83,20 @@ func newScope(scopeType ScopeType, opt ...Option) (*Scope, error) {
 	if scopeType == OrganizationScope {
 		prefix = "o"
 	}
-
-	publicId, err := db.NewPublicId(prefix)
-	if err != nil {
-		return nil, fmt.Errorf("error generating public id %w for new scope", err)
+	var publicId string
+	if withPublicId != "" {
+		if !strings.HasPrefix(withPublicId, prefix+"_") {
+			return nil, errors.New("passed-in public ID has wrong prefix for type")
+		}
+		publicId = withPublicId
+	} else {
+		var err error
+		publicId, err = db.NewPublicId(prefix)
+		if err != nil {
+			return nil, fmt.Errorf("error generating public id %w for new scope", err)
+		}
 	}
+
 	s := &Scope{
 		Scope: &store.Scope{
 			PublicId: publicId,
@@ -114,7 +125,7 @@ func allocScope() Scope {
 }
 
 // Clone creates a clone of the Scope
-func (s *Scope) Clone() Resource {
+func (s *Scope) Clone() interface{} {
 	cp := proto.Clone(s.Scope)
 	return &Scope{
 		Scope: cp.(*store.Scope),
