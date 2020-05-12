@@ -19,7 +19,7 @@ func TestDb_Update(t *testing.T) {
 	assert := assert.New(t)
 	defer db.Close()
 	t.Run("simple", func(t *testing.T) {
-		w := Db{Tx: db}
+		w := Db{underlying: db}
 		id, err := uuid.GenerateUUID()
 		assert.Nil(err)
 		user, err := db_test.NewTestUser()
@@ -45,7 +45,7 @@ func TestDb_Update(t *testing.T) {
 		assert.Equal(foundUser.Name, user.Name)
 	})
 	t.Run("valid-WithOplog", func(t *testing.T) {
-		w := Db{Tx: db}
+		w := Db{underlying: db}
 		id, err := uuid.GenerateUUID()
 		assert.Nil(err)
 		user, err := db_test.NewTestUser()
@@ -89,7 +89,7 @@ func TestDb_Update(t *testing.T) {
 		assert.Nil(err)
 	})
 	t.Run("nil-tx", func(t *testing.T) {
-		w := Db{Tx: nil}
+		w := Db{underlying: nil}
 		id, err := uuid.GenerateUUID()
 		assert.Nil(err)
 		user, err := db_test.NewTestUser()
@@ -100,7 +100,7 @@ func TestDb_Update(t *testing.T) {
 		assert.Equal("update tx is nil", err.Error())
 	})
 	t.Run("no-wrapper-WithOplog", func(t *testing.T) {
-		w := Db{Tx: db}
+		w := Db{underlying: db}
 		id, err := uuid.GenerateUUID()
 		assert.Nil(err)
 		user, err := db_test.NewTestUser()
@@ -131,7 +131,7 @@ func TestDb_Update(t *testing.T) {
 		assert.Equal("error wrapper is nil for WithWrapper", err.Error())
 	})
 	t.Run("no-metadata-WithOplog", func(t *testing.T) {
-		w := Db{Tx: db}
+		w := Db{underlying: db}
 		id, err := uuid.GenerateUUID()
 		assert.Nil(err)
 		user, err := db_test.NewTestUser()
@@ -167,7 +167,7 @@ func TestDb_Create(t *testing.T) {
 	assert := assert.New(t)
 	defer db.Close()
 	t.Run("simple", func(t *testing.T) {
-		w := Db{Tx: db}
+		w := Db{underlying: db}
 		id, err := uuid.GenerateUUID()
 		assert.Nil(err)
 		user, err := db_test.NewTestUser()
@@ -187,7 +187,7 @@ func TestDb_Create(t *testing.T) {
 		assert.Equal(foundUser.Id, user.Id)
 	})
 	t.Run("valid-WithOplog", func(t *testing.T) {
-		w := Db{Tx: db}
+		w := Db{underlying: db}
 		id, err := uuid.GenerateUUID()
 		assert.Nil(err)
 		user, err := db_test.NewTestUser()
@@ -216,7 +216,7 @@ func TestDb_Create(t *testing.T) {
 		assert.Equal(foundUser.Id, user.Id)
 	})
 	t.Run("no-wrapper-WithOplog", func(t *testing.T) {
-		w := Db{Tx: db}
+		w := Db{underlying: db}
 		id, err := uuid.GenerateUUID()
 		assert.Nil(err)
 		user, err := db_test.NewTestUser()
@@ -238,7 +238,7 @@ func TestDb_Create(t *testing.T) {
 		assert.Equal("error wrapper is nil for WithWrapper", err.Error())
 	})
 	t.Run("no-metadata-WithOplog", func(t *testing.T) {
-		w := Db{Tx: db}
+		w := Db{underlying: db}
 		id, err := uuid.GenerateUUID()
 		assert.Nil(err)
 		user, err := db_test.NewTestUser()
@@ -256,7 +256,7 @@ func TestDb_Create(t *testing.T) {
 		assert.Equal("error no metadata for WithOplog", err.Error())
 	})
 	t.Run("nil-tx", func(t *testing.T) {
-		w := Db{Tx: nil}
+		w := Db{underlying: nil}
 		id, err := uuid.GenerateUUID()
 		assert.Nil(err)
 		user, err := db_test.NewTestUser()
@@ -275,7 +275,7 @@ func TestDb_LookupByName(t *testing.T) {
 	assert := assert.New(t)
 	defer db.Close()
 	t.Run("simple", func(t *testing.T) {
-		w := Db{Tx: db}
+		w := Db{underlying: db}
 		id, err := uuid.GenerateUUID()
 		assert.Nil(err)
 		user, err := db_test.NewTestUser()
@@ -302,7 +302,7 @@ func TestDb_LookupByName(t *testing.T) {
 		assert.Equal("error tx nil for lookup by name", err.Error())
 	})
 	t.Run("no-friendly-name-set", func(t *testing.T) {
-		w := Db{Tx: db}
+		w := Db{underlying: db}
 		foundUser, err := db_test.NewTestUser()
 		assert.Nil(err)
 		err = w.LookupByName(context.Background(), foundUser)
@@ -310,7 +310,7 @@ func TestDb_LookupByName(t *testing.T) {
 		assert.Equal("error name empty string for lookup by name", err.Error())
 	})
 	t.Run("not-found", func(t *testing.T) {
-		w := Db{Tx: db}
+		w := Db{underlying: db}
 		id, err := uuid.GenerateUUID()
 		assert.Nil(err)
 
@@ -330,7 +330,7 @@ func TestDb_LookupByPublicId(t *testing.T) {
 	assert := assert.New(t)
 	defer db.Close()
 	t.Run("simple", func(t *testing.T) {
-		w := Db{Tx: db}
+		w := Db{underlying: db}
 		id, err := uuid.GenerateUUID()
 		assert.Nil(err)
 		user, err := db_test.NewTestUser()
@@ -356,7 +356,7 @@ func TestDb_LookupByPublicId(t *testing.T) {
 		assert.Equal("error tx nil for lookup by public id", err.Error())
 	})
 	t.Run("no-public-id-set", func(t *testing.T) {
-		w := Db{Tx: db}
+		w := Db{underlying: db}
 		foundUser, err := db_test.NewTestUser()
 		foundUser.PublicId = ""
 		assert.Nil(err)
@@ -365,7 +365,7 @@ func TestDb_LookupByPublicId(t *testing.T) {
 		assert.Equal("error public id empty string for lookup by public id", err.Error())
 	})
 	t.Run("not-found", func(t *testing.T) {
-		w := Db{Tx: db}
+		w := Db{underlying: db}
 		id, err := uuid.GenerateUUID()
 		assert.Nil(err)
 
@@ -385,7 +385,7 @@ func TestDb_LookupWhere(t *testing.T) {
 	assert := assert.New(t)
 	defer db.Close()
 	t.Run("simple", func(t *testing.T) {
-		w := Db{Tx: db}
+		w := Db{underlying: db}
 		id, err := uuid.GenerateUUID()
 		assert.Nil(err)
 		user, err := db_test.NewTestUser()
@@ -408,7 +408,7 @@ func TestDb_LookupWhere(t *testing.T) {
 		assert.Equal("error tx nil for lookup by", err.Error())
 	})
 	t.Run("not-found", func(t *testing.T) {
-		w := Db{Tx: db}
+		w := Db{underlying: db}
 		id, err := uuid.GenerateUUID()
 		assert.Nil(err)
 
@@ -418,7 +418,7 @@ func TestDb_LookupWhere(t *testing.T) {
 		assert.Equal(ErrRecordNotFound, err)
 	})
 	t.Run("bad-where", func(t *testing.T) {
-		w := Db{Tx: db}
+		w := Db{underlying: db}
 		id, err := uuid.GenerateUUID()
 		assert.Nil(err)
 
@@ -435,7 +435,7 @@ func TestDb_SearchWhere(t *testing.T) {
 	assert := assert.New(t)
 	defer db.Close()
 	t.Run("simple", func(t *testing.T) {
-		w := Db{Tx: db}
+		w := Db{underlying: db}
 		id, err := uuid.GenerateUUID()
 		assert.Nil(err)
 		user, err := db_test.NewTestUser()
@@ -458,7 +458,7 @@ func TestDb_SearchWhere(t *testing.T) {
 		assert.Equal("error tx nil for search by", err.Error())
 	})
 	t.Run("not-found", func(t *testing.T) {
-		w := Db{Tx: db}
+		w := Db{underlying: db}
 		id, err := uuid.GenerateUUID()
 		assert.Nil(err)
 
@@ -468,7 +468,7 @@ func TestDb_SearchWhere(t *testing.T) {
 		assert.Equal(0, len(foundUsers))
 	})
 	t.Run("bad-where", func(t *testing.T) {
-		w := Db{Tx: db}
+		w := Db{underlying: db}
 		id, err := uuid.GenerateUUID()
 		assert.Nil(err)
 
@@ -485,7 +485,7 @@ func TestDb_DB(t *testing.T) {
 	assert := assert.New(t)
 	defer db.Close()
 	t.Run("valid", func(t *testing.T) {
-		w := Db{Tx: db}
+		w := Db{underlying: db}
 		d, err := w.DB()
 		assert.Nil(err)
 		assert.True(d != nil)
@@ -493,7 +493,7 @@ func TestDb_DB(t *testing.T) {
 		assert.Nil(err)
 	})
 	t.Run("nil-tx", func(t *testing.T) {
-		w := Db{Tx: nil}
+		w := Db{underlying: nil}
 		d, err := w.DB()
 		assert.True(err != nil)
 		assert.True(d == nil)
@@ -509,7 +509,7 @@ func TestDb_DoTx(t *testing.T) {
 	defer db.Close()
 
 	t.Run("valid-with-10-retries", func(t *testing.T) {
-		w := &Db{Tx: db}
+		w := &Db{underlying: db}
 		attempts := 0
 		got, err := w.DoTx(context.Background(), 10, ExpBackoff{},
 			func(Writer) error {
@@ -524,7 +524,7 @@ func TestDb_DoTx(t *testing.T) {
 		assert.Equal(9, attempts) // attempted 1 + 8 retries
 	})
 	t.Run("valid-with-1-retries", func(t *testing.T) {
-		w := &Db{Tx: db}
+		w := &Db{underlying: db}
 		attempts := 0
 		got, err := w.DoTx(context.Background(), 1, ExpBackoff{},
 			func(Writer) error {
@@ -539,7 +539,7 @@ func TestDb_DoTx(t *testing.T) {
 		assert.Equal(2, attempts) // attempted 1 + 8 retries
 	})
 	t.Run("valid-with-2-retries", func(t *testing.T) {
-		w := &Db{Tx: db}
+		w := &Db{underlying: db}
 		attempts := 0
 		got, err := w.DoTx(context.Background(), 3, ExpBackoff{},
 			func(Writer) error {
@@ -554,7 +554,7 @@ func TestDb_DoTx(t *testing.T) {
 		assert.Equal(3, attempts) // attempted 1 + 8 retries
 	})
 	t.Run("valid-with-4-retries", func(t *testing.T) {
-		w := &Db{Tx: db}
+		w := &Db{underlying: db}
 		attempts := 0
 		got, err := w.DoTx(context.Background(), 4, ExpBackoff{},
 			func(Writer) error {
@@ -569,7 +569,7 @@ func TestDb_DoTx(t *testing.T) {
 		assert.Equal(4, attempts) // attempted 1 + 8 retries
 	})
 	t.Run("zero-retries", func(t *testing.T) {
-		w := &Db{Tx: db}
+		w := &Db{underlying: db}
 		attempts := 0
 		got, err := w.DoTx(context.Background(), 0, ExpBackoff{}, func(Writer) error { attempts += 1; return nil })
 		assert.Nil(err)
@@ -585,14 +585,14 @@ func TestDb_DoTx(t *testing.T) {
 		assert.Equal("do tx is nil", err.Error())
 	})
 	t.Run("not-a-retry-err", func(t *testing.T) {
-		w := &Db{Tx: db}
+		w := &Db{underlying: db}
 		got, err := w.DoTx(context.Background(), 1, ExpBackoff{}, func(Writer) error { return errors.New("not a retry error") })
 		assert.True(err != nil)
 		assert.Equal(RetryInfo{}, got)
 		assert.True(err != oplog.ErrTicketAlreadyRedeemed)
 	})
 	t.Run("too-many-retries", func(t *testing.T) {
-		w := &Db{Tx: db}
+		w := &Db{underlying: db}
 		attempts := 0
 		got, err := w.DoTx(context.Background(), 2, ExpBackoff{}, func(Writer) error { attempts += 1; return oplog.ErrTicketAlreadyRedeemed })
 		assert.True(err != nil)
@@ -608,7 +608,7 @@ func TestDb_Delete(t *testing.T) {
 	assert := assert.New(t)
 	defer db.Close()
 	t.Run("simple", func(t *testing.T) {
-		w := Db{Tx: db}
+		w := Db{underlying: db}
 		id, err := uuid.GenerateUUID()
 		assert.Nil(err)
 		user, err := db_test.NewTestUser()
@@ -635,7 +635,7 @@ func TestDb_Delete(t *testing.T) {
 		assert.Equal(ErrRecordNotFound, err)
 	})
 	t.Run("valid-WithOplog", func(t *testing.T) {
-		w := Db{Tx: db}
+		w := Db{underlying: db}
 		id, err := uuid.GenerateUUID()
 		assert.Nil(err)
 		user, err := db_test.NewTestUser()
@@ -682,7 +682,7 @@ func TestDb_Delete(t *testing.T) {
 		assert.Equal(ErrRecordNotFound, err)
 	})
 	t.Run("no-wrapper-WithOplog", func(t *testing.T) {
-		w := Db{Tx: db}
+		w := Db{underlying: db}
 		id, err := uuid.GenerateUUID()
 		assert.Nil(err)
 		user, err := db_test.NewTestUser()
@@ -726,7 +726,7 @@ func TestDb_Delete(t *testing.T) {
 		assert.Equal("error wrapper is nil for WithWrapper", err.Error())
 	})
 	t.Run("no-metadata-WithOplog", func(t *testing.T) {
-		w := Db{Tx: db}
+		w := Db{underlying: db}
 		id, err := uuid.GenerateUUID()
 		assert.Nil(err)
 		user, err := db_test.NewTestUser()
@@ -766,7 +766,7 @@ func TestDb_Delete(t *testing.T) {
 		assert.Equal("error no metadata for WithOplog", err.Error())
 	})
 	t.Run("nil-tx", func(t *testing.T) {
-		w := Db{Tx: nil}
+		w := Db{underlying: nil}
 		id, err := uuid.GenerateUUID()
 		assert.Nil(err)
 		user, err := db_test.NewTestUser()
@@ -785,7 +785,7 @@ func TestDb_ScanRows(t *testing.T) {
 	assert := assert.New(t)
 	defer db.Close()
 	t.Run("valid", func(t *testing.T) {
-		w := Db{Tx: db}
+		w := Db{underlying: db}
 		user, err := db_test.NewTestUser()
 		assert.Nil(err)
 		err = w.Create(context.Background(), user)
