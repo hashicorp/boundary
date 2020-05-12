@@ -97,7 +97,7 @@ func TestDb_Update(t *testing.T) {
 		user.Name = "foo-" + id
 		err = w.Update(context.Background(), user, nil)
 		assert.True(err != nil)
-		assert.Equal("update tx is nil", err.Error())
+		assert.Equal("update underlying db is nil", err.Error())
 	})
 	t.Run("no-wrapper-WithOplog", func(t *testing.T) {
 		w := Db{underlying: db}
@@ -264,7 +264,7 @@ func TestDb_Create(t *testing.T) {
 		user.Name = "foo-" + id
 		err = w.Create(context.Background(), user)
 		assert.True(err != nil)
-		assert.Equal("create tx is nil", err.Error())
+		assert.Equal("create underlying db is nil", err.Error())
 	})
 }
 
@@ -299,7 +299,7 @@ func TestDb_LookupByName(t *testing.T) {
 		foundUser.Name = "fn-name"
 		err = w.LookupByName(context.Background(), foundUser)
 		assert.True(err != nil)
-		assert.Equal("error tx nil for lookup by name", err.Error())
+		assert.Equal("error underlying db nil for lookup by name", err.Error())
 	})
 	t.Run("no-friendly-name-set", func(t *testing.T) {
 		w := Db{underlying: db}
@@ -353,7 +353,7 @@ func TestDb_LookupByPublicId(t *testing.T) {
 		assert.Nil(err)
 		err = w.LookupByPublicId(context.Background(), foundUser)
 		assert.True(err != nil)
-		assert.Equal("error tx nil for lookup by public id", err.Error())
+		assert.Equal("error underlying db nil for lookup by public id", err.Error())
 	})
 	t.Run("no-public-id-set", func(t *testing.T) {
 		w := Db{underlying: db}
@@ -405,7 +405,7 @@ func TestDb_LookupWhere(t *testing.T) {
 		var foundUser db_test.TestUser
 		err := w.LookupWhere(context.Background(), &foundUser, "public_id = ?", 1)
 		assert.True(err != nil)
-		assert.Equal("error tx nil for lookup by", err.Error())
+		assert.Equal("error underlying db nil for lookup by", err.Error())
 	})
 	t.Run("not-found", func(t *testing.T) {
 		w := Db{underlying: db}
@@ -455,7 +455,7 @@ func TestDb_SearchWhere(t *testing.T) {
 		var foundUsers []db_test.TestUser
 		err := w.SearchWhere(context.Background(), &foundUsers, "public_id = ?", 1)
 		assert.True(err != nil)
-		assert.Equal("error tx nil for search by", err.Error())
+		assert.Equal("error underlying db nil for search by", err.Error())
 	})
 	t.Run("not-found", func(t *testing.T) {
 		w := Db{underlying: db}
@@ -497,7 +497,7 @@ func TestDb_DB(t *testing.T) {
 		d, err := w.DB()
 		assert.True(err != nil)
 		assert.True(d == nil)
-		assert.Equal("create tx is nil for db", err.Error())
+		assert.Equal("underlying db is nil", err.Error())
 	})
 }
 
@@ -582,7 +582,7 @@ func TestDb_DoTx(t *testing.T) {
 		got, err := w.DoTx(context.Background(), 1, ExpBackoff{}, func(Writer) error { attempts += 1; return nil })
 		assert.True(err != nil)
 		assert.Equal(RetryInfo{}, got)
-		assert.Equal("do tx is nil", err.Error())
+		assert.Equal("do underlying db is nil", err.Error())
 	})
 	t.Run("not-a-retry-err", func(t *testing.T) {
 		w := &Db{underlying: db}
@@ -774,7 +774,7 @@ func TestDb_Delete(t *testing.T) {
 		user.Name = "foo-" + id
 		err = w.Create(context.Background(), user)
 		assert.True(err != nil)
-		assert.Equal("create tx is nil", err.Error())
+		assert.Equal("create underlying db is nil", err.Error())
 	})
 }
 
