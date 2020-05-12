@@ -16,7 +16,6 @@ import (
 	"github.com/hashicorp/watchtower/internal/cmd/base"
 	"github.com/hashicorp/watchtower/internal/db"
 	"github.com/hashicorp/watchtower/internal/iam"
-	"github.com/hashicorp/watchtower/internal/servers/controller/handlers/projects"
 )
 
 func (c *Controller) startListeners() error {
@@ -32,9 +31,7 @@ func (c *Controller) startListeners() error {
 
 		handler := Handler(HandlerProperties{
 			ListenerConfig: ln.Config,
-			grpcGatewayServices: []RegisterGrpcGatewayer{
-				projects.NewService(repo),
-			},
+			iamRepo:        repo,
 		})
 
 		/*

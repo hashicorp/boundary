@@ -9,18 +9,16 @@ import (
 	"github.com/hashicorp/vault/internalshared/configutil"
 	"github.com/hashicorp/watchtower/globals"
 	"github.com/hashicorp/watchtower/internal/gen/controller/api/services"
+	"github.com/hashicorp/watchtower/internal/iam"
 	"github.com/hashicorp/watchtower/internal/servers/controller/handlers/host_catalogs"
 	"github.com/hashicorp/watchtower/internal/servers/controller/handlers/host_sets"
 	"github.com/hashicorp/watchtower/internal/servers/controller/handlers/hosts"
+	"github.com/hashicorp/watchtower/internal/servers/controller/handlers/projects"
 )
 
 type HandlerProperties struct {
-	ListenerConfig      *configutil.Listener
-	grpcGatewayServices []RegisterGrpcGatewayer
-}
-
-type RegisterGrpcGatewayer interface {
-	RegisterGrpcGateway(*runtime.ServeMux) error
+	ListenerConfig *configutil.Listener
+	iamRepo        *iam.Repository
 }
 
 // Handler returns an http.Handler for the services. This can be used on
@@ -29,24 +27,20 @@ func Handler(props HandlerProperties) http.Handler {
 	// Create the muxer to handle the actual endpoints
 	mux := http.NewServeMux()
 
-	mux.Handle("/v1/", handleGrpcGateway(props.grpcGatewayServices))
+	mux.Handle("/v1/", handleGrpcGateway(props.iamRepo))
 
 	genericWrappedHandler := wrapGenericHandler(mux, props)
 
 	return genericWrappedHandler
 }
 
-func handleGrpcGateway(rs []RegisterGrpcGatewayer) http.Handler {
+func handleGrpcGateway(repo *iam.Repository) http.Handler {
 	ignored := context.Background()
 	mux := runtime.NewServeMux()
 	services.RegisterHostCatalogServiceHandlerServer(ignored, mux, &host_catalogs.Service{})
 	services.RegisterHostSetServiceHandlerServer(ignored, mux, &host_sets.Service{})
 	services.RegisterHostServiceHandlerServer(ignored, mux, &hosts.Service{})
-	// Using the RegisterGrpcGatewayer interface allows us to decouple the creation of the services with registering them
-	// to the handler/Mux.  This means the services can be initiated closer to the creation of the DB and the service's other dependencies.
-	for _, r := range rs {
-		r.RegisterGrpcGateway(mux)
-	}
+	services.RegisterProjectServiceHandlerServer(ignored, mux, projects.NewService(repo))
 
 	return mux
 }
