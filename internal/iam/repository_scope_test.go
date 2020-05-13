@@ -202,7 +202,6 @@ func Test_Repository_DeleteScope(t *testing.T) {
 	wrapper := db.TestWrapper(t)
 	repo, err := NewRepository(rw, rw, wrapper)
 	assert.Nil(err)
-
 	t.Run("valid-with-public-id", func(t *testing.T) {
 		id, err := uuid.GenerateUUID()
 		assert.Nil(err)
@@ -220,6 +219,10 @@ func Test_Repository_DeleteScope(t *testing.T) {
 		rowsDeleted, err := repo.DeleteScope(context.Background(), s.PublicId)
 		assert.Nil(err)
 		assert.Equal(1, rowsDeleted)
+
+		err = db.TestVerifyOplog(rw, s.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_DELETE), db.WithCreateNbf(10*time.Second))
+		assert.Nil(err)
+
 		foundScope, err = repo.LookupScope(context.Background(), s.PublicId)
 		assert.Nil(err)
 		assert.Nil(foundScope)
