@@ -247,8 +247,8 @@ COMMIT;
 
 CREATE TABLE if not exists iam_user (
     public_id wt_public_id not null primary key,
-    create_time timestamp with time zone NOT NULL default current_timestamp,
-    update_time timestamp with time zone NOT NULL default current_timestamp,
+    create_time wt_timestamp,
+    update_time wt_timestamp,
     name text,
     description text,
     scope_id wt_public_id NOT NULL REFERENCES iam_scope_organization(scope_id) ON DELETE CASCADE ON UPDATE CASCADE,
@@ -259,8 +259,8 @@ CREATE TABLE if not exists iam_user (
 
 CREATE TABLE if not exists iam_auth_method (
     public_id wt_public_id not null primary key, 
-    create_time timestamp with time zone NOT NULL default current_timestamp,
-    update_time timestamp with time zone NOT NULL default current_timestamp,
+    create_time wt_timestamp,
+    update_time wt_timestamp,
     name text,
     description text,
     scope_id wt_public_id NOT NULL REFERENCES iam_scope_organization(scope_id) ON DELETE CASCADE ON UPDATE CASCADE,
@@ -272,8 +272,8 @@ CREATE TABLE if not exists iam_auth_method (
 
 CREATE TABLE if not exists iam_role (
     public_id wt_public_id not null primary key,
-    create_time timestamp with time zone NOT NULL default current_timestamp,
-    update_time timestamp with time zone NOT NULL default current_timestamp,
+    create_time wt_timestamp,
+    update_time wt_timestamp,
     name text,
     description text,
     scope_id wt_public_id NOT NULL REFERENCES iam_scope(public_id) ON DELETE CASCADE ON UPDATE CASCADE,
@@ -292,8 +292,8 @@ values
 
 CREATE TABLE if not exists iam_group (
     public_id wt_public_id not null primary key,
-    create_time timestamp with time zone NOT NULL default current_timestamp,
-    update_time timestamp with time zone NOT NULL default current_timestamp,
+    create_time wt_timestamp,
+    update_time wt_timestamp,
     name text,
     description text,
     scope_id wt_public_id NOT NULL REFERENCES iam_scope(public_id) ON DELETE CASCADE ON UPDATE CASCADE,
@@ -303,7 +303,7 @@ CREATE TABLE if not exists iam_group (
 
 
 CREATE TABLE if not exists iam_group_member_user (
-    create_time timestamp with time zone NOT NULL default current_timestamp,
+    create_time wt_timestamp,
     group_id wt_public_id NOT NULL REFERENCES iam_group(public_id) ON DELETE CASCADE ON UPDATE CASCADE,
     member_id wt_public_id NOT NULL REFERENCES iam_user(public_id) ON DELETE CASCADE ON UPDATE CASCADE,
     primary key (group_id, member_id)
@@ -353,14 +353,14 @@ values
   ('authen');
 
 CREATE TABLE if not exists iam_role_user (
-    create_time timestamp with time zone NOT NULL default current_timestamp,
+    create_time wt_timestamp,
     role_id wt_public_id NOT NULL REFERENCES iam_role(public_id) ON DELETE CASCADE ON UPDATE CASCADE,
     principal_id wt_public_id NOT NULL REFERENCES iam_user(public_id) ON DELETE CASCADE ON UPDATE CASCADE,
     primary key (role_id, principal_id)
   );
 
 CREATE TABLE if not exists iam_role_group (
-    create_time timestamp with time zone NOT NULL default current_timestamp,
+    create_time wt_timestamp,
     role_id wt_public_id NOT NULL REFERENCES iam_role(public_id) ON DELETE CASCADE ON UPDATE CASCADE,
     principal_id wt_public_id NOT NULL REFERENCES iam_group(public_id) ON DELETE CASCADE ON UPDATE CASCADE,
     primary key (role_id, principal_id)
@@ -381,8 +381,8 @@ from iam_role_group;
 
 CREATE TABLE if not exists iam_role_grant (
     public_id wt_public_id not null primary key,
-    create_time timestamp with time zone NOT NULL default current_timestamp,
-    update_time timestamp with time zone NOT NULL default current_timestamp,
+    create_time wt_timestamp,
+    update_time wt_timestamp,
     description text,
     role_id wt_public_id NOT NULL REFERENCES iam_role(public_id) ON DELETE CASCADE ON UPDATE CASCADE,
     "grant" text NOT NULL
