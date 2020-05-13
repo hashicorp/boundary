@@ -18,7 +18,6 @@ type options struct {
 	withName        string
 	withScope       *Scope
 	withDescription string
-	withCreateNbf   *int
 	withParentId    *string
 }
 
@@ -28,7 +27,6 @@ func getDefaultOptions() options {
 		withScope:       nil,
 		withDescription: "",
 		withName:        "",
-		withCreateNbf:   nil,
 		withParentId:    nil,
 	}
 }
