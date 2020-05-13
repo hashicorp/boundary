@@ -51,11 +51,50 @@ func (c *HostCatalog) SetTableName(n string) {
 	}
 }
 
+// A Host contains a static address.
 type Host struct {
 	*store.Host
 	tableName string `gorm:"-"`
 }
 
-func NewHost(opt ...Option) *Host {
-	return nil
+// NewHost creates a new in memory Host for address assigned to catalogId.
+// Name and description are the only valid options. All other options are
+// ignored.
+func NewHost(catalogId, address string, opt ...Option) (*Host, error) {
+	if catalogId == "" {
+		return nil, errors.New("empty catalogId")
+	}
+	if address == "" {
+		return nil, errors.New("empty address")
+	}
+	id, err := db.NewPublicId("sth")
+	if err != nil {
+		return nil, err
+	}
+	opts := getOpts(opt...)
+	host := &Host{
+		Host: &store.Host{
+			StaticHostCatalogId: catalogId,
+			Address:             address,
+			Name:                opts.withName,
+			Description:         opts.withDescription,
+			PublicId:            id,
+		},
+	}
+	return host, nil
+}
+
+// TableName returns the table name for the host.
+func (h *Host) TableName() string {
+	if h.tableName != "" {
+		return h.tableName
+	}
+	return "static_host"
+}
+
+// SetTableName sets the table name.
+func (h *Host) SetTableName(n string) {
+	if n != "" {
+		h.tableName = n
+	}
 }
