@@ -140,6 +140,10 @@ func Test_ScopeGetScope(t *testing.T) {
 		assert.Nil(err)
 		assert.True(s.PublicId != "")
 
+		foundScope, err := s.GetScope(context.Background(), w)
+		assert.Nil(err)
+		assert.True(foundScope == nil)
+
 		project, err := NewProject(s.PublicId)
 		assert.Nil(err)
 		assert.True(project.Scope != nil)
@@ -151,6 +155,13 @@ func Test_ScopeGetScope(t *testing.T) {
 		assert.Nil(err)
 		assert.True(projectOrg != nil)
 		assert.Equal(projectOrg.PublicId, project.ParentId)
+
+		p := allocScope()
+		p.PublicId = project.PublicId
+		p.Type = ProjectScope.String()
+		projectOrg, err = p.GetScope(context.Background(), w)
+		assert.Nil(err)
+		assert.Equal(s.PublicId, projectOrg.PublicId)
 	})
 }
 
