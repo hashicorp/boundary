@@ -39,7 +39,7 @@ func Test_Repository_CreateScope(t *testing.T) {
 		assert.Nil(err)
 		assert.Equal(foundScope.GetPublicId(), s.GetPublicId())
 
-		err = TestVerifyOplog(rw, s.PublicId)
+		err = db.TestVerifyOplog(rw, s.PublicId)
 		assert.Nil(err)
 	})
 	t.Run("dup-org-names", func(t *testing.T) {
@@ -117,7 +117,7 @@ func Test_Repository_UpdateScope(t *testing.T) {
 		assert.Equal(foundScope.GetPublicId(), s.GetPublicId())
 
 		assert.Nil(err)
-		err = TestVerifyOplog(rw, s.PublicId, WithOperation(oplog.OpType_OP_TYPE_CREATE), WithCreateNbf(10))
+		err = db.TestVerifyOplog(rw, s.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_CREATE), db.WithCreateNbf(10))
 		assert.Nil(err)
 
 		s.Name = "fname-" + id
@@ -134,7 +134,7 @@ func Test_Repository_UpdateScope(t *testing.T) {
 		assert.Equal(foundScope.GetPublicId(), s.GetPublicId())
 		assert.Equal(foundScope.GetDescription(), "")
 
-		err = TestVerifyOplog(rw, s.PublicId, WithOperation(oplog.OpType_OP_TYPE_UPDATE), WithCreateNbf(10))
+		err = db.TestVerifyOplog(rw, s.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_UPDATE), db.WithCreateNbf(10))
 		assert.Nil(err)
 	})
 	t.Run("bad-parent-scope", func(t *testing.T) {

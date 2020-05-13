@@ -4,7 +4,6 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/hashicorp/watchtower/internal/oplog"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -32,19 +31,6 @@ func Test_GetOpts(t *testing.T) {
 		opts := getOpts(WithDescription("test desc"))
 		testOpts := getDefaultOptions()
 		testOpts.withDescription = "test desc"
-		assert.True(reflect.DeepEqual(opts, testOpts))
-	})
-	t.Run("WithOperation", func(t *testing.T) {
-		opts := getOpts(WithOperation(oplog.OpType_OP_TYPE_CREATE))
-		testOpts := getDefaultOptions()
-		testOpts.withOperation = oplog.OpType_OP_TYPE_CREATE
-		assert.True(reflect.DeepEqual(opts, testOpts))
-	})
-	t.Run("WithCreateNbf", func(t *testing.T) {
-		nbfSecs := 10
-		opts := getOpts(WithCreateNbf(nbfSecs))
-		testOpts := getDefaultOptions()
-		testOpts.withCreateNbf = &nbfSecs
 		assert.True(reflect.DeepEqual(opts, testOpts))
 	})
 }
