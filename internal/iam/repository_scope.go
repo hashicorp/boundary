@@ -83,7 +83,7 @@ func (r *Repository) LookupScope(ctx context.Context, opt ...Option) (*Scope, er
 		}
 		return scopes[0], nil
 	}
-	return nil, errors.New("you must look up scopes by id or name")
+	return nil, errors.New("you must look up scopes by id or parent id and name")
 }
 
 // DeleteScope will delete a scope from the repository
@@ -138,5 +138,5 @@ func (r *Repository) DeleteScope(ctx context.Context, opt ...Option) (int, error
 		}
 		return rowsDeleted, nil
 	}
-	return db.NoRowsAffected, errors.New("you must delete scopes by id or name")
+	return db.NoRowsAffected, errors.New("you must delete scopes by id or parent id and name")
 }
