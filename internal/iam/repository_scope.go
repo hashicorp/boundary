@@ -25,6 +25,9 @@ func (r *Repository) UpdateScope(ctx context.Context, scope *Scope, fieldMaskPat
 	if scope == nil {
 		return nil, db.NoRowsAffected, errors.New("error scope is nil for update")
 	}
+	if scope.PublicId == "" {
+		return nil, db.NoRowsAffected, errors.New("error scope public id is unset for update")
+	}
 	resource, rowsUpdated, err := r.update(ctx, scope, fieldMaskPaths)
 	if err != nil {
 		return nil, db.NoRowsAffected, fmt.Errorf("failed to update scope: %w", err)
@@ -38,6 +41,11 @@ func (r *Repository) LookupScope(ctx context.Context, opt ...Option) (*Scope, er
 	opts := getOpts(opt...)
 	withPublicId := opts.withPublicId
 	withName := opts.withName
+	withParentId := opts.withParentId
+
+	if withPublicId != "" && withName != "" {
+		return nil, errors.New("you cannot lookup a scope using both its public id and name")
+	}
 
 	if withPublicId != "" {
 		scope := allocScope()
@@ -46,20 +54,34 @@ func (r *Repository) LookupScope(ctx context.Context, opt ...Option) (*Scope, er
 			if err == db.ErrRecordNotFound {
 				return nil, nil
 			}
-			return nil, fmt.Errorf("unable to lookup scope by public id: %w", err)
+			return nil, fmt.Errorf("unable to lookup scope by public id %s: %w", withPublicId, err)
 		}
 		return &scope, nil
 	}
 	if withName != "" {
-		scope := allocScope()
-		scope.Name = withName
-		if err := r.reader.LookupByName(ctx, &scope); err != nil {
+		var scopes []*Scope
+		var where string
+		args := []interface{}{withName}
+		switch withParentId {
+		case nil:
+			where = "name = ? and parent_id is null"
+		default:
+			args = append(args, *withParentId)
+			where = "name = ? and parent_id = ?"
+		}
+		if err := r.reader.SearchWhere(ctx, &scopes, where, args...); err != nil {
 			if err == db.ErrRecordNotFound {
 				return nil, nil
 			}
 			return nil, fmt.Errorf("unable to lookup scope by name: %w", err)
 		}
-		return &scope, nil
+		if len(scopes) == 0 {
+			return nil, nil
+		}
+		if len(scopes) > 1 {
+			return nil, fmt.Errorf("unable to lookup scope by name, since there are %d scopes with a name of %s", len(scopes), withName)
+		}
+		return scopes[0], nil
 	}
 	return nil, errors.New("you must look up scopes by id or name")
 }
@@ -69,7 +91,11 @@ func (r *Repository) DeleteScope(ctx context.Context, opt ...Option) (int, error
 	opts := getOpts(opt...)
 	withPublicId := opts.withPublicId
 	withName := opts.withName
+	withParentId := opts.withParentId
 
+	if withPublicId != "" && withName != "" {
+		return db.NoRowsAffected, errors.New("you cannot delete a scope using both its public id and name")
+	}
 	if withPublicId != "" {
 		scope := allocScope()
 		scope.PublicId = withPublicId
@@ -81,7 +107,16 @@ func (r *Repository) DeleteScope(ctx context.Context, opt ...Option) (int, error
 	}
 	if withName != "" {
 		var scopes []*Scope
-		if err := r.reader.SearchWhere(ctx, &scopes, "name = ?", withName); err != nil {
+		var where string
+		args := []interface{}{withName}
+		switch withParentId {
+		case nil:
+			where = "name = ? and parent_id is null"
+		default:
+			args = append(args, *withParentId)
+			where = "name = ? and parent_id = ?"
+		}
+		if err := r.reader.SearchWhere(ctx, &scopes, where, args...); err != nil {
 			if err == db.ErrRecordNotFound {
 				return db.NoRowsAffected, nil
 			}

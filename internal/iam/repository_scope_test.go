@@ -250,15 +250,55 @@ func Test_Repository_DeleteScope(t *testing.T) {
 		assert.True(s.GetPublicId() != "")
 		assert.Equal(s.GetName(), "fname-"+id)
 
+		p, err := NewProject(s.PublicId, WithName("fname-"+id))
+		p, err = repo.CreateScope(context.Background(), p)
+		assert.Nil(err)
+		assert.True(p.PublicId != "")
+
 		foundScope, err := repo.LookupScope(context.Background(), WithName("fname-"+id))
 		assert.Nil(err)
 		assert.Equal(foundScope.GetPublicId(), s.GetPublicId())
 
-		rowsDeleted, err := repo.DeleteScope(context.Background(), WithName(s.Name))
+		rowsDeleted, err := repo.DeleteScope(context.Background(), WithName(s.Name), WithParentId(s.ParentId))
 		assert.Nil(err)
 		assert.Equal(1, rowsDeleted)
 
 		foundScope, err = repo.LookupScope(context.Background(), WithPublicId(s.PublicId))
+		assert.Nil(err)
+		assert.Nil(foundScope)
+
+		foundScope, err = repo.LookupScope(context.Background(), WithPublicId(p.PublicId))
+		assert.Nil(err)
+		assert.Nil(foundScope)
+	})
+	t.Run("bad-parent-id", func(t *testing.T) {
+		id, err := uuid.GenerateUUID()
+		assert.Nil(err)
+		s, err := NewOrganization(WithName("fname-" + id))
+		s, err = repo.CreateScope(context.Background(), s)
+		assert.Nil(err)
+		assert.True(s != nil)
+		assert.True(s.GetPublicId() != "")
+		assert.Equal(s.GetName(), "fname-"+id)
+
+		p, err := NewProject(s.PublicId, WithName("fname-"+id))
+		p, err = repo.CreateScope(context.Background(), p)
+		assert.Nil(err)
+		assert.True(p.PublicId != "")
+
+		foundScope, err := repo.LookupScope(context.Background(), WithName("fname-"+id))
+		assert.Nil(err)
+		assert.Equal(foundScope.GetPublicId(), s.GetPublicId())
+
+		rowsDeleted, err := repo.DeleteScope(context.Background(), WithName(s.Name), WithParentId(s.ParentId))
+		assert.Nil(err)
+		assert.Equal(1, rowsDeleted)
+
+		foundScope, err = repo.LookupScope(context.Background(), WithPublicId(s.PublicId))
+		assert.Nil(err)
+		assert.Nil(foundScope)
+
+		foundScope, err = repo.LookupScope(context.Background(), WithPublicId(p.PublicId))
 		assert.Nil(err)
 		assert.Nil(foundScope)
 	})

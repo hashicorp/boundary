@@ -25,6 +25,7 @@ type options struct {
 	withGroupGrants bool
 	withOperation   oplog.OpType
 	withCreateNbf   *int
+	withParentId    *string
 }
 
 func getDefaultOptions() options {
@@ -36,6 +37,7 @@ func getDefaultOptions() options {
 		withName:        "",
 		withOperation:   oplog.OpType_OP_TYPE_UNSPECIFIED,
 		withCreateNbf:   nil,
+		withParentId:    nil,
 	}
 }
 
@@ -79,5 +81,14 @@ func WithOperation(op oplog.OpType) Option {
 func WithCreateNbf(secs int) Option {
 	return func(o *options) {
 		o.withCreateNbf = &secs
+	}
+}
+
+// WithParentId provides an optional parent id for a scope
+func WithParentId(id string) Option {
+	return func(o *options) {
+		if id != "" {
+			o.withParentId = &id
+		}
 	}
 }
