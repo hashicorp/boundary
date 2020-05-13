@@ -5,7 +5,7 @@ import (
 )
 
 func TestOpen(t *testing.T) {
-	cleanup, url, err := StartDbInDocker("postgres")
+	cleanup, url, _, err := StartDbInDocker("postgres")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -56,7 +56,7 @@ func TestOpen(t *testing.T) {
 }
 
 func TestMigrate(t *testing.T) {
-	cleanup, url, err := StartDbInDocker("postgres")
+	cleanup, url, _, err := StartDbInDocker("postgres")
 	if err != nil {
 		t.Fatal(err)
 	}
