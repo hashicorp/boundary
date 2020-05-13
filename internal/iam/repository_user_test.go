@@ -44,7 +44,7 @@ func Test_Repository_CreateUser(t *testing.T) {
 		assert.Equal(foundUser.GetScopeId(), u.GetScopeId())
 		assert.Equal(foundUser.GetName(), "fn-"+id)
 
-		err = TestVerifyOplog(rw, u.PublicId)
+		err = db.TestVerifyOplog(rw, u.PublicId)
 		assert.Nil(err)
 	})
 	t.Run("bad-scope-id", func(t *testing.T) {
@@ -69,7 +69,7 @@ func Test_Repository_CreateUser(t *testing.T) {
 		assert.True(err != nil)
 		assert.True(foundUser == nil)
 
-		err = TestVerifyOplog(rw, pubId)
+		err = db.TestVerifyOplog(rw, pubId)
 		assert.True(err != nil)
 	})
 }
