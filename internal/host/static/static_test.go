@@ -13,7 +13,6 @@ import (
 )
 
 func TestHostCatalog_New(t *testing.T) {
-
 	cleanup, conn, _ := db.TestSetup(t, "postgres")
 	defer cleanup()
 	defer conn.Close()
@@ -120,7 +119,6 @@ func testCatalog(t *testing.T, conn *gorm.DB) *HostCatalog {
 }
 
 func TestHost_New(t *testing.T) {
-
 	cleanup, conn, _ := db.TestSetup(t, "postgres")
 	defer cleanup()
 	defer conn.Close()
@@ -274,5 +272,97 @@ func assertPublicID(t *testing.T, prefix, actual string) {
 
 	if prefix != parts[0] {
 		t.Errorf("PublicID want prefix: %q, got: %q in %q", prefix, parts[0], actual)
+	}
+}
+
+func TestHostSet_New(t *testing.T) {
+	cleanup, conn, _ := db.TestSetup(t, "postgres")
+	defer cleanup()
+	defer conn.Close()
+	cat := testCatalog(t, conn)
+
+	conn.LogMode(false)
+	type args struct {
+		catalogId string
+		opts      []Option
+	}
+
+	var tests = []struct {
+		name    string
+		args    args
+		want    *HostSet
+		wantErr bool
+	}{
+		{
+			name: "blank-catalogId",
+			args: args{
+				catalogId: "",
+			},
+			want:    nil,
+			wantErr: true,
+		},
+		{
+			name: "valid-no-options",
+			args: args{
+				catalogId: cat.GetPublicId(),
+			},
+			want: &HostSet{
+				HostSet: &store.HostSet{
+					StaticHostCatalogId: cat.GetPublicId(),
+				},
+			},
+		},
+		{
+			name: "valid-with-name",
+			args: args{
+				catalogId: cat.GetPublicId(),
+				opts: []Option{
+					WithName("test-name"),
+				},
+			},
+			want: &HostSet{
+				HostSet: &store.HostSet{
+					StaticHostCatalogId: cat.GetPublicId(),
+					Name:                "test-name",
+				},
+			},
+		},
+		{
+			name: "valid-with-description",
+			args: args{
+				catalogId: cat.GetPublicId(),
+				opts: []Option{
+					WithDescription("test-description"),
+				},
+			},
+			want: &HostSet{
+				HostSet: &store.HostSet{
+					StaticHostCatalogId: cat.GetPublicId(),
+					Description:         "test-description",
+				},
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			assert := assert.New(t)
+			got, err := NewHostSet(tt.args.catalogId, tt.args.opts...)
+			if tt.wantErr {
+				assert.Error(err)
+				assert.Nil(got)
+			} else {
+				assert.NoError(err)
+				if assert.NotNil(got) {
+					assertPublicID(t, "sths", got.PublicId)
+					tt.want.PublicId = got.PublicId
+					assert.Equal(tt.want, got)
+					w := db.New(conn)
+					err2 := w.Create(context.Background(), got)
+					assert.NoError(err2)
+				}
+			}
+		})
 	}
 }
