@@ -122,7 +122,7 @@ func (s Service) updateInRepo(ctx context.Context, req *pbs.UpdateProjectRequest
 	if err != nil {
 		return nil, err
 	}
-	out, err := s.repo.UpdateScope(ctx, p, madeUp)
+	out, _, err := s.repo.UpdateScope(ctx, p, madeUp)
 	if err != nil {
 		return nil, err
 	}
