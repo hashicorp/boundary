@@ -6,7 +6,7 @@ import (
 	_ "github.com/jackc/pgx/v4"
 )
 
-func TestPublicIdDomain(t *testing.T) {
+func TestDomain_PublicId(t *testing.T) {
 	const (
 		createTable = `
 create table if not exists test_table (
@@ -61,5 +61,46 @@ returning id;
 				t.Errorf("%s: want no error, got error %v", value, err)
 			}
 		})
+	}
+}
+
+func TestDomain_Timestamp(t *testing.T) {
+	const (
+		createTable = `
+create table if not exists test_table (
+  id bigint generated always as identity primary key,
+  name text,
+  good_time wt_timestamp,
+  bad_time timestamp default current_timestamp
+);
+`
+		insert = `
+insert into test_table (name)
+values ($1)
+returning id;
+`
+	)
+
+	// _, conn, url := TestSetup(t, "postgres")
+	// fmt.Println(url)
+	cleanup, conn, _ := TestSetup(t, "postgres")
+	defer cleanup()
+	defer conn.Close()
+
+	db := conn.DB()
+	if _, err := db.Exec(createTable); err != nil {
+		t.Fatalf("query: \n%s\n error: %s", createTable, err)
+	}
+
+	if _, err := db.Exec(insert, "foo"); err != nil {
+		t.Fatalf("want no error, got error %v", err)
+	}
+
+	if _, err := db.Query("select extract(timezone from good_time) from test_table;"); err != nil {
+		t.Errorf("want no error, got error %v", err)
+	}
+
+	if _, err := db.Query("select extract(timezone from bad_time) from test_table;"); err == nil {
+		t.Errorf("want error, got no error")
 	}
 }
