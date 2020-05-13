@@ -1,21 +1,21 @@
 CREATE TABLE if not exists oplog_entry (
   id bigint generated always as identity primary key,
-  create_time timestamp with time zone default current_timestamp,
-  update_time timestamp with time zone default current_timestamp,
+  create_time wt_timestamp,
+  update_time wt_timestamp,
   version text NOT NULL,
   aggregate_name text NOT NULL,
   "data" bytea NOT NULL
 );
 CREATE TABLE if not exists oplog_ticket (
   id bigint generated always as identity primary key,
-  create_time timestamp with time zone default current_timestamp,
-  update_time timestamp with time zone default current_timestamp,
+  create_time wt_timestamp,
+  update_time wt_timestamp,
   "name" text NOT NULL UNIQUE,
   "version" bigint NOT NULL
 );
 CREATE TABLE if not exists oplog_metadata (
   id bigint generated always as identity primary key,
-  create_time timestamp with time zone default current_timestamp,
+  create_time wt_timestamp,
   entry_id bigint NOT NULL REFERENCES oplog_entry(id) ON DELETE CASCADE ON UPDATE CASCADE,
   "key" text NOT NULL,
   value text NULL
