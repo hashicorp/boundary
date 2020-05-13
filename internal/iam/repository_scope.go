@@ -25,6 +25,9 @@ func (r *Repository) UpdateScope(ctx context.Context, scope *Scope, fieldMaskPat
 	if scope == nil {
 		return nil, db.NoRowsAffected, errors.New("error scope is nil for update")
 	}
+	if scope.PublicId == "" {
+		return nil, db.NoRowsAffected, errors.New("error scope public id is unset for update")
+	}
 	resource, rowsUpdated, err := r.update(ctx, scope, fieldMaskPaths)
 	if err != nil {
 		return nil, db.NoRowsAffected, fmt.Errorf("failed to update scope: %w", err)
@@ -34,68 +37,31 @@ func (r *Repository) UpdateScope(ctx context.Context, scope *Scope, fieldMaskPat
 
 // LookupScope will look up a scope in the repository.  If the scope is not
 // found, it will return nil, nil.
-func (r *Repository) LookupScope(ctx context.Context, opt ...Option) (*Scope, error) {
-	opts := getOpts(opt...)
-	withPublicId := opts.withPublicId
-	withName := opts.withName
-
-	if withPublicId != "" {
-		scope := allocScope()
-		scope.PublicId = withPublicId
-		if err := r.reader.LookupByPublicId(ctx, &scope); err != nil {
-			if err == db.ErrRecordNotFound {
-				return nil, nil
-			}
-			return nil, fmt.Errorf("unable to lookup scope by public id: %w", err)
-		}
-		return &scope, nil
+func (r *Repository) LookupScope(ctx context.Context, withPublicId string, opt ...Option) (*Scope, error) {
+	if withPublicId == "" {
+		return nil, errors.New("you cannot lookup a scope with an empty public id")
 	}
-	if withName != "" {
-		scope := allocScope()
-		scope.Name = withName
-		if err := r.reader.LookupByName(ctx, &scope); err != nil {
-			if err == db.ErrRecordNotFound {
-				return nil, nil
-			}
-			return nil, fmt.Errorf("unable to lookup scope by name: %w", err)
+	scope := allocScope()
+	scope.PublicId = withPublicId
+	if err := r.reader.LookupByPublicId(ctx, &scope); err != nil {
+		if err == db.ErrRecordNotFound {
+			return nil, nil
 		}
-		return &scope, nil
+		return nil, fmt.Errorf("unable to lookup scope by public id %s: %w", withPublicId, err)
 	}
-	return nil, errors.New("you must look up scopes by id or name")
+	return &scope, nil
 }
 
 // DeleteScope will delete a scope from the repository
-func (r *Repository) DeleteScope(ctx context.Context, opt ...Option) (int, error) {
-	opts := getOpts(opt...)
-	withPublicId := opts.withPublicId
-	withName := opts.withName
-
-	if withPublicId != "" {
-		scope := allocScope()
-		scope.PublicId = withPublicId
-		rowsDeleted, err := r.writer.Delete(ctx, &scope)
-		if err != nil {
-			return db.NoRowsAffected, fmt.Errorf("unable to delete scope by public id: %w", err)
-		}
-		return rowsDeleted, nil
+func (r *Repository) DeleteScope(ctx context.Context, withPublicId string, opt ...Option) (int, error) {
+	if withPublicId == "" {
+		return db.NoRowsAffected, errors.New("you cannot delete a scope with an empty public id")
 	}
-	if withName != "" {
-		scope := allocScope()
-		scope.Name = withName
-		if err := r.reader.LookupByName(ctx, &scope); err != nil {
-			if err == db.ErrRecordNotFound {
-				return db.NoRowsAffected, nil
-			}
-			return db.NoRowsAffected, fmt.Errorf("unable to find scope by name for delete: %w", err)
-		}
-		if scope.PublicId == "" {
-			return db.NoRowsAffected, fmt.Errorf("unable to delete scope with unset public id")
-		}
-		rowsDeleted, err := r.writer.Delete(ctx, &scope)
-		if err != nil {
-			return db.NoRowsAffected, fmt.Errorf("unable to delete scope by name: %w", err)
-		}
-		return rowsDeleted, nil
+	scope := allocScope()
+	scope.PublicId = withPublicId
+	rowsDeleted, err := r.delete(ctx, &scope)
+	if err != nil {
+		return db.NoRowsAffected, fmt.Errorf("unable to delete scope with public id %s: %w", withPublicId, err)
 	}
-	return db.NoRowsAffected, errors.New("you must delete scopes by id or name")
+	return rowsDeleted, nil
 }

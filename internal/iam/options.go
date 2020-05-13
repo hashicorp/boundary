@@ -1,9 +1,5 @@
 package iam
 
-import (
-	"github.com/hashicorp/watchtower/internal/oplog"
-)
-
 // getOpts - iterate the inbound Options and return a struct
 func getOpts(opt ...Option) options {
 	opts := getDefaultOptions()
@@ -22,9 +18,8 @@ type options struct {
 	withName        string
 	withScope       *Scope
 	withDescription string
+	withParentId    *string
 	withGroupGrants bool
-	withOperation   oplog.OpType
-	withCreateNbf   *int
 }
 
 func getDefaultOptions() options {
@@ -34,8 +29,14 @@ func getDefaultOptions() options {
 		withDescription: "",
 		withGroupGrants: false,
 		withName:        "",
-		withOperation:   oplog.OpType_OP_TYPE_UNSPECIFIED,
-		withCreateNbf:   nil,
+		withParentId:    nil,
+	}
+}
+
+// WithGroupGrants provides and option to include group grants
+func WithGroupGrants(enable bool) Option {
+	return func(o *options) {
+		o.withGroupGrants = enable
 	}
 }
 
@@ -67,24 +68,11 @@ func WithName(name string) Option {
 	}
 }
 
-// WithGroupGrants provides an option to include group grants
-func WithGroupGrants(include bool) Option {
+// WithParentId provides an optional parent id for a scope
+func WithParentId(id string) Option {
 	return func(o *options) {
-		o.withGroupGrants = include
-	}
-}
-
-// WithOperation provides an option to specify the operation type
-func WithOperation(op oplog.OpType) Option {
-	return func(o *options) {
-		o.withOperation = op
-	}
-}
-
-// WithCreateNbf provides an option to specify that the create time is not
-// before (nbf) N seconds
-func WithCreateNbf(secs int) Option {
-	return func(o *options) {
-		o.withCreateNbf = &secs
+		if id != "" {
+			o.withParentId = &id
+		}
 	}
 }

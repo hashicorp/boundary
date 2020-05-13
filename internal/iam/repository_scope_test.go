@@ -3,6 +3,7 @@ package iam
 import (
 	"context"
 	"testing"
+	"time"
 
 	"github.com/hashicorp/go-uuid"
 	"github.com/hashicorp/watchtower/internal/db"
@@ -31,16 +32,55 @@ func Test_Repository_CreateScope(t *testing.T) {
 		assert.True(s.GetPublicId() != "")
 		assert.Equal(s.GetName(), "fname-"+id)
 
-		foundScope, err := repo.LookupScope(context.Background(), WithPublicId(s.PublicId))
+		foundScope, err := repo.LookupScope(context.Background(), s.PublicId)
 		assert.Nil(err)
 		assert.Equal(foundScope.GetPublicId(), s.GetPublicId())
 
-		foundScope, err = repo.LookupScope(context.Background(), WithName("fname-"+id))
+		err = db.TestVerifyOplog(rw, s.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_CREATE), db.WithCreateNotBefore(10*time.Second))
 		assert.Nil(err)
-		assert.Equal(foundScope.GetPublicId(), s.GetPublicId())
+	})
+	t.Run("dup-org-names", func(t *testing.T) {
+		rw := db.New(conn)
+		wrapper := db.TestWrapper(t)
+		repo, err := NewRepository(rw, rw, wrapper)
+		id, err := uuid.GenerateUUID()
+		assert.Nil(err)
 
-		err = TestVerifyOplog(rw, s.PublicId)
+		s, err := NewOrganization(WithName("fname-" + id))
+		s, err = repo.CreateScope(context.Background(), s)
 		assert.Nil(err)
+		assert.True(s != nil)
+		assert.True(s.GetPublicId() != "")
+		assert.Equal(s.GetName(), "fname-"+id)
+
+		s2, err := NewOrganization(WithName("fname-" + id))
+		s2, err = repo.CreateScope(context.Background(), s2)
+		assert.True(err != nil)
+		assert.True(s2 == nil)
+	})
+	t.Run("dup-proj-names", func(t *testing.T) {
+		rw := db.New(conn)
+		wrapper := db.TestWrapper(t)
+		repo, err := NewRepository(rw, rw, wrapper)
+		id, err := uuid.GenerateUUID()
+		assert.Nil(err)
+
+		s, err := NewOrganization(WithName("fname-" + id))
+		s, err = repo.CreateScope(context.Background(), s)
+		assert.Nil(err)
+		assert.True(s != nil)
+		assert.True(s.GetPublicId() != "")
+		assert.Equal(s.GetName(), "fname-"+id)
+
+		p, err := NewProject(s.PublicId, WithName("fname-"+id))
+		p, err = repo.CreateScope(context.Background(), p)
+		assert.Nil(err)
+		assert.True(p.PublicId != "")
+
+		p2, err := NewProject(s.PublicId, WithName("fname-"+id))
+		p2, err = repo.CreateScope(context.Background(), p2)
+		assert.True(err != nil)
+		assert.True(p2 == nil)
 	})
 }
 
@@ -65,16 +105,12 @@ func Test_Repository_UpdateScope(t *testing.T) {
 		assert.True(s.GetPublicId() != "")
 		assert.Equal(s.GetName(), "fname-"+id)
 
-		foundScope, err := repo.LookupScope(context.Background(), WithPublicId(s.PublicId))
-		assert.Nil(err)
-		assert.Equal(foundScope.GetPublicId(), s.GetPublicId())
-
-		foundScope, err = repo.LookupScope(context.Background(), WithName("fname-"+id))
+		foundScope, err := repo.LookupScope(context.Background(), s.PublicId)
 		assert.Nil(err)
 		assert.Equal(foundScope.GetPublicId(), s.GetPublicId())
 
 		assert.Nil(err)
-		err = TestVerifyOplog(rw, s.PublicId, WithOperation(oplog.OpType_OP_TYPE_CREATE), WithCreateNbf(10))
+		err = db.TestVerifyOplog(rw, s.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_CREATE), db.WithCreateNotBefore(10*time.Second))
 		assert.Nil(err)
 
 		s.Name = "fname-" + id
@@ -86,12 +122,12 @@ func Test_Repository_UpdateScope(t *testing.T) {
 		assert.Equal(s.GetName(), "fname-"+id)
 		assert.Equal(foundScope.GetDescription(), "") // should  be "" after update in db
 
-		foundScope, err = repo.LookupScope(context.Background(), WithName("fname-"+id))
+		foundScope, err = repo.LookupScope(context.Background(), s.PublicId)
 		assert.Nil(err)
 		assert.Equal(foundScope.GetPublicId(), s.GetPublicId())
 		assert.Equal(foundScope.GetDescription(), "")
 
-		err = TestVerifyOplog(rw, s.PublicId, WithOperation(oplog.OpType_OP_TYPE_UPDATE), WithCreateNbf(10))
+		err = db.TestVerifyOplog(rw, s.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_UPDATE), db.WithCreateNotBefore(10*time.Second))
 		assert.Nil(err)
 	})
 	t.Run("bad-parent-scope", func(t *testing.T) {
@@ -144,23 +180,60 @@ func Test_Repository_LookupScope(t *testing.T) {
 		assert.True(s.GetPublicId() != "")
 		assert.Equal(s.GetName(), "fname-"+id)
 
-		foundScope, err := repo.LookupScope(context.Background(), WithPublicId(s.PublicId))
-		assert.Nil(err)
-		assert.Equal(foundScope.GetPublicId(), s.GetPublicId())
-
-		foundScope, err = repo.LookupScope(context.Background(), WithName("fname-"+id))
+		foundScope, err := repo.LookupScope(context.Background(), s.PublicId)
 		assert.Nil(err)
 		assert.Equal(foundScope.GetPublicId(), s.GetPublicId())
 
 		invalidId, err := uuid.GenerateUUID()
 		assert.Nil(err)
-		notFoundById, err := repo.LookupScope(context.Background(), WithPublicId(invalidId))
+		notFoundById, err := repo.LookupScope(context.Background(), invalidId)
 		assert.Nil(err)
 		assert.Nil(notFoundById)
+	})
+}
 
-		notFoundByName, err := repo.LookupScope(context.Background(), WithName(invalidId))
+func Test_Repository_DeleteScope(t *testing.T) {
+	t.Parallel()
+	cleanup, conn, _ := db.TestSetup(t, "postgres")
+	defer cleanup()
+	assert := assert.New(t)
+	defer conn.Close()
+	rw := db.New(conn)
+	wrapper := db.TestWrapper(t)
+	repo, err := NewRepository(rw, rw, wrapper)
+	assert.Nil(err)
+	t.Run("valid-with-public-id", func(t *testing.T) {
+		s, err := NewOrganization()
+		s, err = repo.CreateScope(context.Background(), s)
 		assert.Nil(err)
-		assert.Nil(notFoundByName)
+		assert.True(s != nil)
+		assert.True(s.GetPublicId() != "")
+
+		foundScope, err := repo.LookupScope(context.Background(), s.PublicId)
+		assert.Nil(err)
+		assert.Equal(foundScope.GetPublicId(), s.GetPublicId())
+
+		rowsDeleted, err := repo.DeleteScope(context.Background(), s.PublicId)
+		assert.Nil(err)
+		assert.Equal(1, rowsDeleted)
+
+		err = db.TestVerifyOplog(rw, s.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_DELETE), db.WithCreateNotBefore(10*time.Second))
+		assert.Nil(err)
+
+		foundScope, err = repo.LookupScope(context.Background(), s.PublicId)
+		assert.Nil(err)
+		assert.Nil(foundScope)
+
+	})
+	t.Run("valid-with-bad-id", func(t *testing.T) {
+		invalidId, err := uuid.GenerateUUID()
+		foundScope, err := repo.LookupScope(context.Background(), invalidId)
+		assert.Nil(err)
+		assert.Nil(foundScope)
+		assert.Nil(err)
+		rowsDeleted, err := repo.DeleteScope(context.Background(), invalidId)
+		assert.Nil(err) // no error is expected if the resource isn't in the db
+		assert.Equal(0, rowsDeleted)
 	})
 }
 

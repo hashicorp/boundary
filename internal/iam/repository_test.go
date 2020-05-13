@@ -4,6 +4,7 @@ import (
 	"context"
 	"reflect"
 	"testing"
+	"time"
 
 	wrapping "github.com/hashicorp/go-kms-wrapping"
 	"github.com/hashicorp/go-uuid"
@@ -119,12 +120,7 @@ func Test_Repository_create(t *testing.T) {
 		assert.True(retScope.GetPublicId() != "")
 		assert.Equal(retScope.GetName(), "fname-"+id)
 
-		foundScope, err := repo.LookupScope(context.Background(), WithPublicId(s.PublicId))
-		assert.Nil(err)
-		assert.Equal(foundScope.GetPublicId(), retScope.GetPublicId())
-
-		foundScope.Name = "fname-" + id
-		foundScope, err = repo.LookupScope(context.Background(), WithName("fname-"+id))
+		foundScope, err := repo.LookupScope(context.Background(), s.PublicId)
 		assert.Nil(err)
 		assert.Equal(foundScope.GetPublicId(), retScope.GetPublicId())
 
@@ -175,7 +171,7 @@ func Test_Repository_update(t *testing.T) {
 		assert.Equal(1, updatedRows)
 		assert.Equal(retScope.GetName(), "fname-"+id)
 
-		foundScope, err := repo.LookupScope(context.Background(), WithName("fname-"+id))
+		foundScope, err := repo.LookupScope(context.Background(), s.PublicId)
 		assert.Nil(err)
 		assert.Equal(foundScope.GetPublicId(), retScope.GetPublicId())
 
@@ -196,5 +192,42 @@ func Test_Repository_update(t *testing.T) {
 		assert.True(resource == nil)
 		assert.Equal(0, updatedRows)
 		assert.Equal(err.Error(), "error updating resource that is nil")
+	})
+}
+
+func Test_dbRepository_delete(t *testing.T) {
+	// t.Parallel()
+	cleanup, conn, _ := db.TestSetup(t, "postgres")
+	defer cleanup()
+	assert := assert.New(t)
+	defer conn.Close()
+
+	t.Run("valid-org", func(t *testing.T) {
+		rw := db.New(conn)
+		wrapper := db.TestWrapper(t)
+		repo, err := NewRepository(rw, rw, wrapper)
+
+		s, err := NewOrganization()
+		retScope, err := repo.create(context.Background(), s)
+		assert.Nil(err)
+		assert.True(retScope != nil)
+		assert.True(retScope.GetPublicId() != "")
+		assert.Equal(retScope.GetName(), "")
+
+		rowsDeleted, err := repo.delete(context.Background(), s)
+		assert.Nil(err)
+		assert.Equal(1, rowsDeleted)
+
+		err = db.TestVerifyOplog(rw, s.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_DELETE), db.WithCreateNotBefore(5*time.Second))
+		assert.Nil(err)
+	})
+	t.Run("nil-resource", func(t *testing.T) {
+		rw := db.New(conn)
+		wrapper := db.TestWrapper(t)
+		repo, err := NewRepository(rw, rw, wrapper)
+		deletedRows, err := repo.delete(context.Background(), nil, nil)
+		assert.True(err != nil)
+		assert.Equal(0, deletedRows)
+		assert.Equal(err.Error(), "error deleting resource that is nil")
 	})
 }
