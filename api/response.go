@@ -47,7 +47,7 @@ func (r *Response) Decode(inStruct interface{}) (*Error, error) {
 		inStruct = &apiErr
 	}
 	if err := dec.Decode(inStruct); err != nil {
-		return nil, fmt.Errorf("error decoding response: %w", err)
+		return nil, fmt.Errorf("error decoding response: %w; response was %s", err, r.Body.String())
 	}
 	if r.resp.StatusCode >= 400 {
 		return &apiErr, nil

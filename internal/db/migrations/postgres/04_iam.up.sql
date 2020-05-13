@@ -12,8 +12,8 @@ values
  
 CREATE TABLE if not exists iam_scope (
     public_id wt_public_id primary key,
-    create_time timestamp with time zone default current_timestamp,
-    update_time timestamp with time zone default current_timestamp,
+    create_time wt_timestamp,
+    update_time wt_timestamp,
     name text,
     type text NOT NULL REFERENCES iam_scope_type_enm(string) CHECK(
       (

@@ -7,6 +7,8 @@ import (
 
 	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/vault/sdk/helper/mlock"
+	"github.com/hashicorp/watchtower/internal/db"
+	"github.com/hashicorp/watchtower/internal/iam"
 )
 
 type Controller struct {
@@ -15,6 +17,9 @@ type Controller struct {
 
 	baseContext context.Context
 	baseCancel  context.CancelFunc
+
+	// Repos
+	IamRepo *iam.Repository
 }
 
 func New(conf *Config) (*Controller, error) {
@@ -44,6 +49,15 @@ func New(conf *Config) (*Controller, error) {
 	}
 
 	c.baseContext, c.baseCancel = context.WithCancel(context.Background())
+
+	// Set up repo stuff
+	var err error
+
+	dbase := db.New(c.conf.Database)
+	c.IamRepo, err = iam.NewRepository(dbase, dbase, c.conf.ControllerKMS)
+	if err != nil {
+		return nil, fmt.Errorf("unable to create iam repo: %w", err)
+	}
 
 	return c, nil
 }
