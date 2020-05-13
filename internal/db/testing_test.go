@@ -3,7 +3,9 @@ package db
 import (
 	"context"
 	"reflect"
+	"strconv"
 	"testing"
+	"time"
 
 	"github.com/hashicorp/go-uuid"
 	"github.com/hashicorp/watchtower/internal/db/db_test"
@@ -34,7 +36,16 @@ func Test_TestVerifyOplogEntry(t *testing.T) {
 		user, err := db_test.NewTestUser()
 		assert.Nil(err)
 		user.Name = "foo-" + id
-		err = rw.Create(context.Background(), user)
+		err = rw.Create(
+			context.Background(),
+			user,
+			WithOplog(
+				TestWrapper(t),
+				oplog.Metadata{
+					"op-type":            []string{strconv.Itoa(int(oplog.OpType_OP_TYPE_CREATE))},
+					"resource-public-id": []string{user.GetPublicId()},
+				}),
+		)
 		assert.Nil(err)
 		assert.True(user.Id != 0)
 
@@ -44,8 +55,7 @@ func Test_TestVerifyOplogEntry(t *testing.T) {
 		err = rw.LookupByPublicId(context.Background(), foundUser)
 		assert.Nil(err)
 		assert.Equal(foundUser.Id, user.Id)
-
-		err = TestVerifyOplog(&rw, user.PublicId, WithOperation(oplog.OpType_OP_TYPE_CREATE), WithCreateNbf(5))
+		err = TestVerifyOplog(&rw, user.PublicId, WithOperation(oplog.OpType_OP_TYPE_CREATE), WithCreateNbf(5*time.Second))
 		assert.Nil(err)
 	})
 	t.Run("should-fail", func(t *testing.T) {
@@ -68,7 +78,7 @@ func Test_getTestOpts(t *testing.T) {
 	})
 	t.Run("WithCreateNbf", func(t *testing.T) {
 		nbfSecs := 10
-		opts := getTestOpts(WithCreateNbf(nbfSecs))
+		opts := getTestOpts(WithCreateNbf(time.Second * 10))
 		testOpts := getDefaultTestOptions()
 		testOpts.withCreateNbf = &nbfSecs
 		assert.True(reflect.DeepEqual(opts, testOpts))

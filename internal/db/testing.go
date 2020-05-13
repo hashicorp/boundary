@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"strconv"
 	"testing"
+	"time"
 
 	_ "github.com/golang-migrate/migrate/v4/database/postgres"
 	_ "github.com/golang-migrate/migrate/v4/source/file"
@@ -120,8 +121,9 @@ func getDefaultTestOptions() testOptions {
 
 // WithCreateNbf provides an option to specify that the create time is not
 // before (nbf) N seconds
-func WithCreateNbf(secs int) TestOption {
+func WithCreateNbf(nbfDuration time.Duration) TestOption {
 	return func(o *testOptions) {
+		secs := int(nbfDuration.Truncate(time.Second).Seconds())
 		o.withCreateNbf = &secs
 	}
 }
