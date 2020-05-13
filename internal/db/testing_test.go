@@ -55,7 +55,7 @@ func Test_TestVerifyOplogEntry(t *testing.T) {
 		err = rw.LookupByPublicId(context.Background(), foundUser)
 		assert.Nil(err)
 		assert.Equal(foundUser.Id, user.Id)
-		err = TestVerifyOplog(&rw, user.PublicId, WithOperation(oplog.OpType_OP_TYPE_CREATE), WithCreateNbf(5*time.Second))
+		err = TestVerifyOplog(&rw, user.PublicId, WithOperation(oplog.OpType_OP_TYPE_CREATE), WithCreateNotBefore(5*time.Second))
 		assert.Nil(err)
 	})
 	t.Run("should-fail", func(t *testing.T) {
@@ -76,11 +76,11 @@ func Test_getTestOpts(t *testing.T) {
 		testOpts.withOperation = oplog.OpType_OP_TYPE_CREATE
 		assert.True(reflect.DeepEqual(opts, testOpts))
 	})
-	t.Run("WithCreateNbf", func(t *testing.T) {
+	t.Run("WithCreateNotBefore", func(t *testing.T) {
 		nbfSecs := 10
-		opts := getTestOpts(WithCreateNbf(time.Second * 10))
+		opts := getTestOpts(WithCreateNotBefore(time.Second * 10))
 		testOpts := getDefaultTestOptions()
-		testOpts.withCreateNbf = &nbfSecs
+		testOpts.withCreateNotBefore = &nbfSecs
 		assert.True(reflect.DeepEqual(opts, testOpts))
 	})
 }

@@ -54,7 +54,7 @@ func TestWrapper(t *testing.T) wrapping.Wrapper {
 func TestVerifyOplog(r Reader, resourcePublicId string, opt ...TestOption) error {
 	opts := getTestOpts(opt...)
 	withOperation := opts.withOperation
-	withCreateNbf := opts.withCreateNbf
+	withCreateNotBefore := opts.withCreateNotBefore
 
 	var metadata store.Metadata
 
@@ -74,8 +74,8 @@ func TestVerifyOplog(r Reader, resourcePublicId string, opt ...TestOption) error
 		args = append(args, strconv.Itoa(int(withOperation)))
 	}
 
-	if withCreateNbf != nil {
-		where = fmt.Sprintf("%s and create_time > NOW()::timestamp - interval '%d second'", where, *withCreateNbf)
+	if withCreateNotBefore != nil {
+		where = fmt.Sprintf("%s and create_time > NOW()::timestamp - interval '%d second'", where, *withCreateNotBefore)
 	}
 
 	if err := r.LookupWhere(context.Background(), &metadata, where, args...); err != nil {
@@ -108,23 +108,23 @@ type TestOption func(*testOptions)
 
 // options = how options are represented
 type testOptions struct {
-	withCreateNbf *int
-	withOperation oplog.OpType
+	withCreateNotBefore *int
+	withOperation       oplog.OpType
 }
 
 func getDefaultTestOptions() testOptions {
 	return testOptions{
-		withCreateNbf: nil,
-		withOperation: oplog.OpType_OP_TYPE_UNSPECIFIED,
+		withCreateNotBefore: nil,
+		withOperation:       oplog.OpType_OP_TYPE_UNSPECIFIED,
 	}
 }
 
-// WithCreateNbf provides an option to specify that the create time is not
+// WithCreateNotBefore provides an option to specify that the create time is not
 // before (nbf) N seconds
-func WithCreateNbf(nbfDuration time.Duration) TestOption {
+func WithCreateNotBefore(nbfDuration time.Duration) TestOption {
 	return func(o *testOptions) {
 		secs := int(nbfDuration.Truncate(time.Second).Seconds())
-		o.withCreateNbf = &secs
+		o.withCreateNotBefore = &secs
 	}
 }
 
