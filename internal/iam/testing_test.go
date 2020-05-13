@@ -18,9 +18,7 @@ func Test_TestScopes(t *testing.T) {
 
 	assert.NotNil(org)
 	assert.NotEmpty(org.GetPublicId())
-	assert.Equal(org.GetName(), "test-org")
 
 	assert.NotNil(prj)
 	assert.NotEmpty(prj.GetPublicId())
-	assert.Equal(prj.GetName(), "test-project")
 }
