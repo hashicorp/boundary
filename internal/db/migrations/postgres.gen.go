@@ -251,8 +251,6 @@ commit;
 		bytes: []byte(`
 begin;
 
-  -- TODO: Add domain for timestamp
-
   create table static_host_catalog (
     public_id wt_public_id primary key,
     scope_id wt_public_id not null
@@ -261,8 +259,8 @@ begin;
       on update cascade,
     name text,
     description text,
-    create_time timestamp with time zone default current_timestamp,
-    update_time timestamp with time zone default current_timestamp,
+    create_time wt_timestamp,
+    update_time wt_timestamp,
     unique(scope_id, name)
   );
 
@@ -275,8 +273,8 @@ begin;
     name text,
     description text,
     address text not null, -- TODO: add check constraint
-    create_time timestamp with time zone default current_timestamp,
-    update_time timestamp with time zone default current_timestamp,
+    create_time wt_timestamp,
+    update_time wt_timestamp,
     unique(static_host_catalog_id, name)
   );
 
@@ -288,8 +286,8 @@ begin;
       on update cascade,
     name text,
     description text,
-    create_time timestamp with time zone default current_timestamp,
-    update_time timestamp with time zone default current_timestamp,
+    create_time wt_timestamp,
+    update_time wt_timestamp,
     unique(static_host_catalog_id, name)
   );
 
