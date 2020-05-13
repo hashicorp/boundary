@@ -119,12 +119,7 @@ func Test_Repository_create(t *testing.T) {
 		assert.True(retScope.GetPublicId() != "")
 		assert.Equal(retScope.GetName(), "fname-"+id)
 
-		foundScope, err := repo.LookupScope(context.Background(), WithPublicId(s.PublicId))
-		assert.Nil(err)
-		assert.Equal(foundScope.GetPublicId(), retScope.GetPublicId())
-
-		foundScope.Name = "fname-" + id
-		foundScope, err = repo.LookupScope(context.Background(), WithName("fname-"+id))
+		foundScope, err := repo.LookupScope(context.Background(), s.PublicId)
 		assert.Nil(err)
 		assert.Equal(foundScope.GetPublicId(), retScope.GetPublicId())
 
@@ -175,7 +170,7 @@ func Test_dbRepository_update(t *testing.T) {
 		assert.Equal(1, updatedRows)
 		assert.Equal(retScope.GetName(), "fname-"+id)
 
-		foundScope, err := repo.LookupScope(context.Background(), WithName("fname-"+id))
+		foundScope, err := repo.LookupScope(context.Background(), s.PublicId)
 		assert.Nil(err)
 		assert.Equal(foundScope.GetPublicId(), retScope.GetPublicId())
 
