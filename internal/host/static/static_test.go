@@ -2,23 +2,22 @@ package static
 
 import (
 	"context"
-	"fmt"
 	"strings"
 	"testing"
 
 	"github.com/hashicorp/watchtower/internal/db"
 	"github.com/hashicorp/watchtower/internal/host/static/store"
+	"github.com/hashicorp/watchtower/internal/iam"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestHostCatalog_New(t *testing.T) {
 
-	// cleanup, conn := db.TestSetup(t, "postgres")
-	// defer cleanup()
-
-	_, conn, url := db.TestSetup(t, "postgres")
-	fmt.Println(url)
+	cleanup, conn, _ := db.TestSetup(t, "postgres")
+	defer cleanup()
 	defer conn.Close()
+
+	_, prj := iam.TestScopes(t, conn)
 
 	type args struct {
 		scopeId string
@@ -42,25 +41,25 @@ func TestHostCatalog_New(t *testing.T) {
 		{
 			name: "valid-no-options",
 			args: args{
-				scopeId: "1234567890",
+				scopeId: prj.GetPublicId(),
 			},
 			want: &HostCatalog{
 				HostCatalog: &store.HostCatalog{
-					ScopeId: "1234567890",
+					ScopeId: prj.GetPublicId(),
 				},
 			},
 		},
 		{
 			name: "valid-with-name",
 			args: args{
-				scopeId: "1234567890",
+				scopeId: prj.GetPublicId(),
 				opts: []Option{
 					WithName("test-name"),
 				},
 			},
 			want: &HostCatalog{
 				HostCatalog: &store.HostCatalog{
-					ScopeId: "1234567890",
+					ScopeId: prj.GetPublicId(),
 					Name:    "test-name",
 				},
 			},
@@ -68,14 +67,14 @@ func TestHostCatalog_New(t *testing.T) {
 		{
 			name: "valid-with-description",
 			args: args{
-				scopeId: "1234567890",
+				scopeId: prj.GetPublicId(),
 				opts: []Option{
 					WithDescription("test-description"),
 				},
 			},
 			want: &HostCatalog{
 				HostCatalog: &store.HostCatalog{
-					ScopeId:     "1234567890",
+					ScopeId:     prj.GetPublicId(),
 					Description: "test-description",
 				},
 			},
