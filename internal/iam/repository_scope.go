@@ -80,18 +80,24 @@ func (r *Repository) DeleteScope(ctx context.Context, opt ...Option) (int, error
 		return rowsDeleted, nil
 	}
 	if withName != "" {
-		scope := allocScope()
-		scope.Name = withName
-		if err := r.reader.LookupByName(ctx, &scope); err != nil {
+		var scopes []*Scope
+		if err := r.reader.SearchWhere(ctx, &scopes, "name = ?", withName); err != nil {
 			if err == db.ErrRecordNotFound {
 				return db.NoRowsAffected, nil
 			}
 			return db.NoRowsAffected, fmt.Errorf("unable to find scope by name for delete: %w", err)
 		}
-		if scope.PublicId == "" {
-			return db.NoRowsAffected, fmt.Errorf("unable to delete scope with unset public id")
+		if len(scopes) == 0 {
+			return db.NoRowsAffected, nil
 		}
-		rowsDeleted, err := r.writer.Delete(ctx, &scope)
+		if len(scopes) > 1 {
+			// the db schema should prevent this from ever happening, but just
+			// in case there are multiple matches for this name
+			return db.NoRowsAffected, fmt.Errorf("unable to delete scope with name %s, since there are multiple scopes with that name", withName)
+		}
+		s := allocScope()
+		s.PublicId = scopes[0].PublicId
+		rowsDeleted, err := r.writer.Delete(ctx, &s)
 		if err != nil {
 			return db.NoRowsAffected, fmt.Errorf("unable to delete scope by name: %w", err)
 		}

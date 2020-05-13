@@ -218,7 +218,6 @@ func Test_Repository_DeleteScope(t *testing.T) {
 	repo, err := NewRepository(rw, rw, wrapper)
 	assert.Nil(err)
 
-	conn.LogMode(true)
 	t.Run("valid-with-public-id", func(t *testing.T) {
 		id, err := uuid.GenerateUUID()
 		assert.Nil(err)
