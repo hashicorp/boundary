@@ -22,7 +22,6 @@ type options struct {
 	withName        string
 	withScope       *Scope
 	withDescription string
-	withGroupGrants bool
 	withOperation   oplog.OpType
 	withCreateNbf   *int
 	withParentId    *string
@@ -33,7 +32,6 @@ func getDefaultOptions() options {
 		withPublicId:    "",
 		withScope:       nil,
 		withDescription: "",
-		withGroupGrants: false,
 		withName:        "",
 		withOperation:   oplog.OpType_OP_TYPE_UNSPECIFIED,
 		withCreateNbf:   nil,
