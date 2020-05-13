@@ -42,6 +42,49 @@ func Test_Repository_CreateScope(t *testing.T) {
 		err = TestVerifyOplog(rw, s.PublicId)
 		assert.Nil(err)
 	})
+	t.Run("dup-org-names", func(t *testing.T) {
+		rw := db.New(conn)
+		wrapper := db.TestWrapper(t)
+		repo, err := NewRepository(rw, rw, wrapper)
+		id, err := uuid.GenerateUUID()
+		assert.Nil(err)
+
+		s, err := NewOrganization(WithName("fname-" + id))
+		s, err = repo.CreateScope(context.Background(), s)
+		assert.Nil(err)
+		assert.True(s != nil)
+		assert.True(s.GetPublicId() != "")
+		assert.Equal(s.GetName(), "fname-"+id)
+
+		s2, err := NewOrganization(WithName("fname-" + id))
+		s2, err = repo.CreateScope(context.Background(), s2)
+		assert.True(err != nil)
+		assert.True(s2 == nil)
+	})
+	t.Run("dup-proj-names", func(t *testing.T) {
+		rw := db.New(conn)
+		wrapper := db.TestWrapper(t)
+		repo, err := NewRepository(rw, rw, wrapper)
+		id, err := uuid.GenerateUUID()
+		assert.Nil(err)
+
+		s, err := NewOrganization(WithName("fname-" + id))
+		s, err = repo.CreateScope(context.Background(), s)
+		assert.Nil(err)
+		assert.True(s != nil)
+		assert.True(s.GetPublicId() != "")
+		assert.Equal(s.GetName(), "fname-"+id)
+
+		p, err := NewProject(s.PublicId, WithName("fname-"+id))
+		p, err = repo.CreateScope(context.Background(), p)
+		assert.Nil(err)
+		assert.True(p.PublicId != "")
+
+		p2, err := NewProject(s.PublicId, WithName("fname-"+id))
+		p2, err = repo.CreateScope(context.Background(), p2)
+		assert.True(err != nil)
+		assert.True(p2 == nil)
+	})
 }
 
 func Test_Repository_UpdateScope(t *testing.T) {
@@ -175,6 +218,7 @@ func Test_Repository_DeleteScope(t *testing.T) {
 	repo, err := NewRepository(rw, rw, wrapper)
 	assert.Nil(err)
 
+	conn.LogMode(true)
 	t.Run("valid-with-public-id", func(t *testing.T) {
 		id, err := uuid.GenerateUUID()
 		assert.Nil(err)
