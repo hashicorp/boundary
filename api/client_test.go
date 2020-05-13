@@ -51,7 +51,7 @@ func TestConfigSetAddress(t *testing.T) {
 		},
 		{
 			"valid org",
-			"http://127.0.0.1:9200/v1/org/orgid",
+			"http://127.0.0.1:9200/v1/orgs/orgid",
 			"http://127.0.0.1:9200",
 			"",
 			"orgid",
@@ -59,7 +59,7 @@ func TestConfigSetAddress(t *testing.T) {
 		},
 		{
 			"invalid project",
-			"http://127.0.0.1:9200/v1/org/orgid/project",
+			"http://127.0.0.1:9200/v1/orgs/orgid/projects",
 			"http://127.0.0.1:9200",
 			"unexpected number of segments in address",
 			"",
@@ -67,7 +67,7 @@ func TestConfigSetAddress(t *testing.T) {
 		},
 		{
 			"valid project",
-			"http://127.0.0.1:9200/v1/org/orgid/project/projid",
+			"http://127.0.0.1:9200/v1/orgs/orgid/projects/projid",
 			"http://127.0.0.1:9200",
 			"",
 			"orgid",

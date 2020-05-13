@@ -5,14 +5,14 @@ import (
 	"testing"
 
 	"github.com/golang/protobuf/proto"
-	"github.com/hashicorp/watchtower/internal/gen/controller/api"
+	pbs "github.com/hashicorp/watchtower/internal/gen/controller/api/services"
 	"github.com/hashicorp/watchtower/internal/servers/controller/handlers/host_catalogs"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
 
 func TestDelete(t *testing.T) {
-	toMerge := &api.DeleteHostCatalogRequest{
+	toMerge := &pbs.DeleteHostCatalogRequest{
 		OrgId:     "1",
 		ProjectId: "2",
 		Id:        "3",
@@ -21,20 +21,20 @@ func TestDelete(t *testing.T) {
 	s := host_catalogs.Service{}
 	cases := []struct {
 		name    string
-		req     *api.DeleteHostCatalogRequest
-		res     *api.DeleteHostCatalogResponse
+		req     *pbs.DeleteHostCatalogRequest
+		res     *pbs.DeleteHostCatalogResponse
 		errCode codes.Code
 	}{
 		{
 			name:    "Delete always succeeds even for non existant catalogs",
-			req:     &api.DeleteHostCatalogRequest{Id: "This doesn't exist."},
-			res:     &api.DeleteHostCatalogResponse{},
+			req:     &pbs.DeleteHostCatalogRequest{Id: "This doesn't exist."},
+			res:     &pbs.DeleteHostCatalogResponse{},
 			errCode: codes.OK,
 		},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			req := proto.Clone(toMerge).(*api.DeleteHostCatalogRequest)
+			req := proto.Clone(toMerge).(*pbs.DeleteHostCatalogRequest)
 			proto.Merge(req, tc.req)
 			got, gErr := s.DeleteHostCatalog(context.Background(), req)
 			if status.Code(gErr) != tc.errCode {
