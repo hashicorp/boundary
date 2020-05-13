@@ -81,8 +81,6 @@ returning id;
 `
 	)
 
-	// _, conn, url := TestSetup(t, "postgres")
-	// fmt.Println(url)
 	cleanup, conn, _ := TestSetup(t, "postgres")
 	defer cleanup()
 	defer conn.Close()
