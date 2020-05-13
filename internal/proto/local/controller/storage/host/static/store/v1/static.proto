@@ -24,7 +24,9 @@ message Host {
   // @inject_tag: `gorm:"default:current_timestamp"`
   Timestamp update_time = 3;
 
+  // @inject_tag: `gorm:"default:null"`
   string name = 4;
+  // @inject_tag: `gorm:"default:null"`
   string description = 5;
 
   // @inject_tag: gorm:"not_null"
@@ -42,7 +44,9 @@ message HostCatalog {
   // @inject_tag: `gorm:"default:current_timestamp"`
   Timestamp update_time = 3;
 
+  // @inject_tag: `gorm:"default:null"`
   string name = 4;
+  // @inject_tag: `gorm:"default:null"`
   string description = 5;
 
   // @inject_tag: gorm:"not_null"
@@ -57,7 +61,9 @@ message HostSet {
   // @inject_tag: `gorm:"default:current_timestamp"`
   Timestamp update_time = 3;
 
+  // @inject_tag: `gorm:"default:null"`
   string name = 4;
+  // @inject_tag: `gorm:"default:null"`
   string description = 5;
 
   // @inject_tag: gorm:"not_null"

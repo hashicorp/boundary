@@ -91,9 +91,11 @@ type Host struct {
 	// @inject_tag: `gorm:"default:current_timestamp"`
 	CreateTime *Timestamp `protobuf:"bytes,2,opt,name=create_time,json=createTime,proto3" json:"create_time,omitempty" gorm:"default:current_timestamp"`
 	// @inject_tag: `gorm:"default:current_timestamp"`
-	UpdateTime  *Timestamp `protobuf:"bytes,3,opt,name=update_time,json=updateTime,proto3" json:"update_time,omitempty" gorm:"default:current_timestamp"`
-	Name        string     `protobuf:"bytes,4,opt,name=name,proto3" json:"name,omitempty"`
-	Description string     `protobuf:"bytes,5,opt,name=description,proto3" json:"description,omitempty"`
+	UpdateTime *Timestamp `protobuf:"bytes,3,opt,name=update_time,json=updateTime,proto3" json:"update_time,omitempty" gorm:"default:current_timestamp"`
+	// @inject_tag: `gorm:"default:null"`
+	Name string `protobuf:"bytes,4,opt,name=name,proto3" json:"name,omitempty" gorm:"default:null"`
+	// @inject_tag: `gorm:"default:null"`
+	Description string `protobuf:"bytes,5,opt,name=description,proto3" json:"description,omitempty" gorm:"default:null"`
 	// @inject_tag: gorm:"not_null"
 	StaticHostCatalogId string `protobuf:"bytes,6,opt,name=static_host_catalog_id,json=staticHostCatalogId,proto3" json:"static_host_catalog_id,omitempty" gorm:"not_null"`
 	// @inject_tag: gorm:"not_null"
@@ -191,9 +193,11 @@ type HostCatalog struct {
 	// @inject_tag: `gorm:"default:current_timestamp"`
 	CreateTime *Timestamp `protobuf:"bytes,2,opt,name=create_time,json=createTime,proto3" json:"create_time,omitempty" gorm:"default:current_timestamp"`
 	// @inject_tag: `gorm:"default:current_timestamp"`
-	UpdateTime  *Timestamp `protobuf:"bytes,3,opt,name=update_time,json=updateTime,proto3" json:"update_time,omitempty" gorm:"default:current_timestamp"`
-	Name        string     `protobuf:"bytes,4,opt,name=name,proto3" json:"name,omitempty"`
-	Description string     `protobuf:"bytes,5,opt,name=description,proto3" json:"description,omitempty"`
+	UpdateTime *Timestamp `protobuf:"bytes,3,opt,name=update_time,json=updateTime,proto3" json:"update_time,omitempty" gorm:"default:current_timestamp"`
+	// @inject_tag: `gorm:"default:null"`
+	Name string `protobuf:"bytes,4,opt,name=name,proto3" json:"name,omitempty" gorm:"default:null"`
+	// @inject_tag: `gorm:"default:null"`
+	Description string `protobuf:"bytes,5,opt,name=description,proto3" json:"description,omitempty" gorm:"default:null"`
 	// @inject_tag: gorm:"not_null"
 	ScopeId string `protobuf:"bytes,6,opt,name=scope_id,json=scopeId,proto3" json:"scope_id,omitempty" gorm:"not_null"`
 }
@@ -282,9 +286,11 @@ type HostSet struct {
 	// @inject_tag: `gorm:"default:current_timestamp"`
 	CreateTime *Timestamp `protobuf:"bytes,2,opt,name=create_time,json=createTime,proto3" json:"create_time,omitempty" gorm:"default:current_timestamp"`
 	// @inject_tag: `gorm:"default:current_timestamp"`
-	UpdateTime  *Timestamp `protobuf:"bytes,3,opt,name=update_time,json=updateTime,proto3" json:"update_time,omitempty" gorm:"default:current_timestamp"`
-	Name        string     `protobuf:"bytes,4,opt,name=name,proto3" json:"name,omitempty"`
-	Description string     `protobuf:"bytes,5,opt,name=description,proto3" json:"description,omitempty"`
+	UpdateTime *Timestamp `protobuf:"bytes,3,opt,name=update_time,json=updateTime,proto3" json:"update_time,omitempty" gorm:"default:current_timestamp"`
+	// @inject_tag: `gorm:"default:null"`
+	Name string `protobuf:"bytes,4,opt,name=name,proto3" json:"name,omitempty" gorm:"default:null"`
+	// @inject_tag: `gorm:"default:null"`
+	Description string `protobuf:"bytes,5,opt,name=description,proto3" json:"description,omitempty" gorm:"default:null"`
 	// @inject_tag: gorm:"not_null"
 	StaticHostCatalogId string `protobuf:"bytes,6,opt,name=static_host_catalog_id,json=staticHostCatalogId,proto3" json:"static_host_catalog_id,omitempty" gorm:"not_null"`
 }
