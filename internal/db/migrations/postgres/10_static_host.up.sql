@@ -21,7 +21,12 @@ begin;
       on update cascade,
     name text,
     description text,
-    address text not null, -- TODO: add check constraint
+    address text not null
+    check(
+      length(trim(address)) > 7
+      and
+      length(trim(address)) < 256
+    ),
     create_time wt_timestamp,
     update_time wt_timestamp,
     unique(static_host_catalog_id, name)
