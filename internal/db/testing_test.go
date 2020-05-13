@@ -7,6 +7,8 @@ import (
 	"testing"
 	"time"
 
+	_ "github.com/golang-migrate/migrate/v4/database/postgres"
+	_ "github.com/golang-migrate/migrate/v4/source/file"
 	"github.com/hashicorp/go-uuid"
 	"github.com/hashicorp/watchtower/internal/db/db_test"
 	"github.com/hashicorp/watchtower/internal/oplog"
@@ -83,4 +85,45 @@ func Test_getTestOpts(t *testing.T) {
 		testOpts.withCreateNotBefore = &nbfSecs
 		assert.True(reflect.DeepEqual(opts, testOpts))
 	})
+}
+
+func TestWithCreateNotBefore(t *testing.T) {
+	type args struct {
+		nbfDuration time.Duration
+	}
+	tests := []struct {
+		name string
+		args args
+		want int
+	}{
+		{
+			name: "0 seconds",
+			args: args{nbfDuration: 0},
+			want: 0,
+		},
+		{
+			name: "1 seconds",
+			args: args{nbfDuration: time.Millisecond * 1900},
+			want: 1,
+		},
+		{
+			name: "2 seconds",
+			args: args{nbfDuration: time.Millisecond * 2100},
+			want: 2,
+		},
+		{
+			name: "60 seconds",
+			args: args{nbfDuration: time.Minute * 1},
+			want: 60,
+		},
+	}
+	assert := assert.New(t)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			opts := getTestOpts(WithCreateNotBefore(tt.args.nbfDuration))
+			testOpts := getDefaultTestOptions()
+			testOpts.withCreateNotBefore = &tt.want
+			assert.True(reflect.DeepEqual(opts, testOpts))
+		})
+	}
 }
