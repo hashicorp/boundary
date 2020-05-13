@@ -5,8 +5,41 @@ var postgresMigrations = map[string]*fakeFile{
 	"migrations": {
 		name: "migrations",
 	},
-	"migrations/01_oplog.up.sql": {
-		name: "01_oplog.up.sql",
+	"migrations/01_domain_types.down.sql": {
+		name: "01_domain_types.down.sql",
+		bytes: []byte(`
+begin;
+
+drop domain wt_public_id;
+
+commit;
+
+`),
+	},
+	"migrations/01_domain_types.up.sql": {
+		name: "01_domain_types.up.sql",
+		bytes: []byte(`
+begin;
+
+create domain wt_public_id as text
+check(
+  length(trim(value)) > 10
+);
+comment on domain wt_public_id is
+'Random ID generated with github.com/hashicorp/vault/sdk/helper/base62';
+
+create domain wt_timestamp as
+  timestamp with time zone
+  default current_timestamp;
+comment on domain wt_timestamp is
+'Standard timestamp for all create_time and update_time columns';
+
+commit;
+
+`),
+	},
+	"migrations/02_oplog.up.sql": {
+		name: "02_oplog.up.sql",
 		bytes: []byte(`
 CREATE TABLE if not exists oplog_entry (
   id bigint generated always as identity primary key,
@@ -47,39 +80,6 @@ values
   ('db_test_user', 1),
   ('db_test_car', 1),
   ('db_test_rental', 1);
-
-`),
-	},
-	"migrations/02_domain_types.down.sql": {
-		name: "02_domain_types.down.sql",
-		bytes: []byte(`
-begin;
-
-drop domain wt_public_id;
-
-commit;
-
-`),
-	},
-	"migrations/02_domain_types.up.sql": {
-		name: "02_domain_types.up.sql",
-		bytes: []byte(`
-begin;
-
-create domain wt_public_id as text
-check(
-  length(trim(value)) > 10
-);
-comment on domain wt_public_id is
-'Random ID generated with github.com/hashicorp/vault/sdk/helper/base62';
-
-create domain wt_timestamp as
-  timestamp with time zone
-  default current_timestamp;
-comment on domain wt_timestamp is
-'Standard timestamp for all create_time and update_time columns';
-
-commit;
 
 `),
 	},
