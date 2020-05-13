@@ -669,6 +669,171 @@
         ]
       }
     },
+    "/v1/orgs/{org_id}/projects": {
+      "get": {
+        "summary": "Lists all Projects",
+        "operationId": "ProjectService_ListProjects",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.services.v1.ListProjectsResponse"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "org_id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "view",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "controller.api.services.v1.ProjectService"
+        ]
+      },
+      "post": {
+        "summary": "Creates a single Project",
+        "operationId": "ProjectService_CreateProject",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/controller.api.resources.scopes.v1.Project"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "org_id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/controller.api.resources.scopes.v1.Project"
+            }
+          }
+        ],
+        "tags": [
+          "controller.api.services.v1.ProjectService"
+        ]
+      }
+    },
+    "/v1/orgs/{org_id}/projects/{id}": {
+      "get": {
+        "summary": "Gets a single Project",
+        "operationId": "ProjectService_GetProject",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/controller.api.resources.scopes.v1.Project"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "org_id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "view",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "controller.api.services.v1.ProjectService"
+        ]
+      },
+      "delete": {
+        "summary": "Deletes a Project",
+        "operationId": "ProjectService_DeleteProject",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.services.v1.DeleteProjectResponse"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "org_id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "controller.api.services.v1.ProjectService"
+        ]
+      },
+      "patch": {
+        "summary": "Updates a Project",
+        "operationId": "ProjectService_UpdateProject",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/controller.api.resources.scopes.v1.Project"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "org_id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/controller.api.resources.scopes.v1.Project"
+            }
+          }
+        ],
+        "tags": [
+          "controller.api.services.v1.ProjectService"
+        ]
+      }
+    },
     "/v1/orgs/{org_id}/projects/{project_id}/host-catalogs": {
       "get": {
         "summary": "Gets a list of HostCatalogs",
@@ -1549,6 +1714,42 @@
       },
       "title": "HostSet is a collection of Hosts created and managed by a HostCatalog"
     },
+    "controller.api.resources.scopes.v1.Project": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "The ID of the Project\nOutput only.",
+          "readOnly": true
+        },
+        "name": {
+          "type": "string",
+          "title": "Optional name for identification purposes"
+        },
+        "description": {
+          "type": "string",
+          "title": "Optional user-set descripton for identification purposes"
+        },
+        "created_time": {
+          "type": "string",
+          "format": "date-time",
+          "description": "The time this resource was created\nOutput only.",
+          "readOnly": true
+        },
+        "updated_time": {
+          "type": "string",
+          "format": "date-time",
+          "description": "The time this resource was last updated.\nOutput only.",
+          "readOnly": true
+        },
+        "disabled": {
+          "type": "boolean",
+          "format": "boolean",
+          "title": "Whether the resource is disabled"
+        }
+      },
+      "title": "Project contains all fields related to a Project resource"
+    },
     "controller.api.services.v1.AddToHostSetResponse": {
       "type": "object"
     },
@@ -1585,6 +1786,17 @@
         }
       }
     },
+    "controller.api.services.v1.CreateProjectResponse": {
+      "type": "object",
+      "properties": {
+        "uri": {
+          "type": "string"
+        },
+        "item": {
+          "$ref": "#/definitions/controller.api.resources.scopes.v1.Project"
+        }
+      }
+    },
     "controller.api.services.v1.DeleteHostCatalogResponse": {
       "type": "object",
       "properties": {
@@ -1604,6 +1816,15 @@
       }
     },
     "controller.api.services.v1.DeleteHostSetResponse": {
+      "type": "object",
+      "properties": {
+        "existed": {
+          "type": "boolean",
+          "format": "boolean"
+        }
+      }
+    },
+    "controller.api.services.v1.DeleteProjectResponse": {
       "type": "object",
       "properties": {
         "existed": {
@@ -1633,6 +1854,14 @@
       "properties": {
         "item": {
           "$ref": "#/definitions/controller.api.resources.hosts.v1.HostSet"
+        }
+      }
+    },
+    "controller.api.services.v1.GetProjectResponse": {
+      "type": "object",
+      "properties": {
+        "item": {
+          "$ref": "#/definitions/controller.api.resources.scopes.v1.Project"
         }
       }
     },
@@ -1669,6 +1898,17 @@
         }
       }
     },
+    "controller.api.services.v1.ListProjectsResponse": {
+      "type": "object",
+      "properties": {
+        "items": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/controller.api.resources.scopes.v1.Project"
+          }
+        }
+      }
+    },
     "controller.api.services.v1.RemoveFromHostSetResponse": {
       "type": "object"
     },
@@ -1693,6 +1933,14 @@
       "properties": {
         "item": {
           "$ref": "#/definitions/controller.api.resources.hosts.v1.HostSet"
+        }
+      }
+    },
+    "controller.api.services.v1.UpdateProjectResponse": {
+      "type": "object",
+      "properties": {
+        "item": {
+          "$ref": "#/definitions/controller.api.resources.scopes.v1.Project"
         }
       }
     },

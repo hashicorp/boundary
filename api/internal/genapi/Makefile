@@ -3,7 +3,7 @@
 THIS_FILE := $(lastword $(MAKEFILE_LIST))
 
 api:
-	go run -tags genapi .
+	go run .
 	goimports -w ${GEN_BASEPATH}/api
 
 .PHONY: api

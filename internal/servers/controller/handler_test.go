@@ -8,7 +8,8 @@ import (
 )
 
 func TestHandleGrpcGateway(t *testing.T) {
-	h := Handler(HandlerProperties{})
+	var c Controller
+	h := c.handler(HandlerProperties{})
 	l, err := net.Listen("tcp4", "127.0.0.1:0")
 	if err != nil {
 		t.Fatalf("Couldn't listen: %v", err)
@@ -30,16 +31,8 @@ func TestHandleGrpcGateway(t *testing.T) {
 		},
 		{
 			"Unimplemented path",
-			"v1/org/1/projects/2/host-catalogs/3/host-sets/4",
+			"v1/orgs/1/projects/2/host-catalogs/3/host-sets/4",
 			http.StatusNotImplemented,
-		},
-		{
-			// TODO: This will need to be updated or removed when we are actually checking the existence of org and
-			// project's since this path shouldn't actually map to anything yet.  This simply checks to confirm some
-			// routing is happening.
-			"Implemented path",
-			"v1/org/1/projects/2/host-catalogs",
-			http.StatusOK,
 		},
 	}
 	for _, tc := range cases {
