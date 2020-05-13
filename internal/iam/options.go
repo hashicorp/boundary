@@ -67,13 +67,6 @@ func WithName(name string) Option {
 	}
 }
 
-// WithGroupGrants provides an option to include group grants
-func WithGroupGrants(include bool) Option {
-	return func(o *options) {
-		o.withGroupGrants = include
-	}
-}
-
 // WithOperation provides an option to specify the operation type
 func WithOperation(op oplog.OpType) Option {
 	return func(o *options) {
