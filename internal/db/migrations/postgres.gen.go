@@ -5,27 +5,61 @@ var postgresMigrations = map[string]*fakeFile{
 	"migrations": {
 		name: "migrations",
 	},
-	"migrations/01_oplog.up.sql": {
-		name: "01_oplog.up.sql",
+	"migrations/01_domain_types.down.sql": {
+		name: "01_domain_types.down.sql",
+		bytes: []byte(`
+begin;
+
+drop domain wt_timestamp;
+drop domain wt_public_id;
+
+commit;
+
+`),
+	},
+	"migrations/01_domain_types.up.sql": {
+		name: "01_domain_types.up.sql",
+		bytes: []byte(`
+begin;
+
+create domain wt_public_id as text
+check(
+  length(trim(value)) > 10
+);
+comment on domain wt_public_id is
+'Random ID generated with github.com/hashicorp/vault/sdk/helper/base62';
+
+create domain wt_timestamp as
+  timestamp with time zone
+  default current_timestamp;
+comment on domain wt_timestamp is
+'Standard timestamp for all create_time and update_time columns';
+
+commit;
+
+`),
+	},
+	"migrations/02_oplog.up.sql": {
+		name: "02_oplog.up.sql",
 		bytes: []byte(`
 CREATE TABLE if not exists oplog_entry (
   id bigint generated always as identity primary key,
-  create_time timestamp with time zone default current_timestamp,
-  update_time timestamp with time zone default current_timestamp,
+  create_time wt_timestamp,
+  update_time wt_timestamp,
   version text NOT NULL,
   aggregate_name text NOT NULL,
   "data" bytea NOT NULL
 );
 CREATE TABLE if not exists oplog_ticket (
   id bigint generated always as identity primary key,
-  create_time timestamp with time zone default current_timestamp,
-  update_time timestamp with time zone default current_timestamp,
+  create_time wt_timestamp,
+  update_time wt_timestamp,
   "name" text NOT NULL UNIQUE,
   "version" bigint NOT NULL
 );
 CREATE TABLE if not exists oplog_metadata (
   id bigint generated always as identity primary key,
-  create_time timestamp with time zone default current_timestamp,
+  create_time wt_timestamp,
   entry_id bigint NOT NULL REFERENCES oplog_entry(id) ON DELETE CASCADE ON UPDATE CASCADE,
   "key" text NOT NULL,
   value text NULL
@@ -47,32 +81,6 @@ values
   ('db_test_user', 1),
   ('db_test_car', 1),
   ('db_test_rental', 1);
-`),
-	},
-	"migrations/02_domain_types.down.sql": {
-		name: "02_domain_types.down.sql",
-		bytes: []byte(`
-begin;
-
-drop domain wt_public_id;
-
-commit;
-
-`),
-	},
-	"migrations/02_domain_types.up.sql": {
-		name: "02_domain_types.up.sql",
-		bytes: []byte(`
-begin;
-
-create domain wt_public_id as text
-check(
-  length(trim(value)) > 10
-);
-comment on domain wt_public_id is
-'Random ID generated with github.com/hashicorp/vault/sdk/helper/base62';
-
-commit;
 
 `),
 	},
@@ -92,8 +100,8 @@ drop table if exists db_test_rental;
 -- of the Watchtower domain model... they are simply used for testing the internal/db package
 CREATE TABLE if not exists db_test_user (
   id bigint generated always as identity primary key,
-  create_time timestamp with time zone default current_timestamp,
-  update_time timestamp with time zone default current_timestamp,
+  create_time wt_timestamp,
+  update_time wt_timestamp,
   public_id text NOT NULL UNIQUE,
   name text UNIQUE,
   phone_number text,
@@ -101,8 +109,8 @@ CREATE TABLE if not exists db_test_user (
 );
 CREATE TABLE if not exists db_test_car (
   id bigint generated always as identity primary key,
-  create_time timestamp with time zone default current_timestamp,
-  update_time timestamp with time zone default current_timestamp,
+  create_time wt_timestamp,
+  update_time wt_timestamp,
   public_id text NOT NULL UNIQUE,
   name text UNIQUE,
   model text,
@@ -110,13 +118,14 @@ CREATE TABLE if not exists db_test_car (
 );
 CREATE TABLE if not exists db_test_rental (
   id bigint generated always as identity primary key,
-  create_time timestamp with time zone default current_timestamp,
-  update_time timestamp with time zone default current_timestamp,
+  create_time wt_timestamp,
+  update_time wt_timestamp,
   public_id text NOT NULL UNIQUE,
   name text UNIQUE,
   user_id bigint not null REFERENCES db_test_user(id),
   car_id bigint not null REFERENCES db_test_car(id)
 );
+
 `),
 	},
 	"migrations/04_iam.down.sql": {
@@ -148,8 +157,8 @@ values
  
 CREATE TABLE if not exists iam_scope (
     public_id wt_public_id primary key,
-    create_time timestamp with time zone default current_timestamp,
-    update_time timestamp with time zone default current_timestamp,
+    create_time wt_timestamp,
+    update_time wt_timestamp,
     name text,
     type text NOT NULL REFERENCES iam_scope_type_enm(string) CHECK(
       (
@@ -220,6 +229,7 @@ BEFORE
 update ON iam_scope FOR EACH ROW EXECUTE PROCEDURE iam_immutable_scope_type_func();
 
 COMMIT;
+
 `),
 	},
 	"migrations/10_static_host.down.sql": {
