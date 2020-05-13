@@ -203,14 +203,11 @@ func Test_Repository_DeleteScope(t *testing.T) {
 	repo, err := NewRepository(rw, rw, wrapper)
 	assert.Nil(err)
 	t.Run("valid-with-public-id", func(t *testing.T) {
-		id, err := uuid.GenerateUUID()
-		assert.Nil(err)
-		s, err := NewOrganization(WithName("fname-" + id))
+		s, err := NewOrganization()
 		s, err = repo.CreateScope(context.Background(), s)
 		assert.Nil(err)
 		assert.True(s != nil)
 		assert.True(s.GetPublicId() != "")
-		assert.Equal(s.GetName(), "fname-"+id)
 
 		foundScope, err := repo.LookupScope(context.Background(), s.PublicId)
 		assert.Nil(err)
