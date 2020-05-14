@@ -49,7 +49,7 @@ func Test_TestVerifyOplogEntry(t *testing.T) {
 				}),
 		)
 		assert.Nil(err)
-		assert.True(user.Id != 0)
+		assert.NotZero(user.Id)
 
 		foundUser, err := db_test.NewTestUser()
 		assert.Nil(err)
