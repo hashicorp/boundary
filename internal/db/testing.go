@@ -14,6 +14,7 @@ import (
 	"github.com/hashicorp/watchtower/internal/oplog"
 	"github.com/hashicorp/watchtower/internal/oplog/store"
 	"github.com/jinzhu/gorm"
+	"github.com/stretchr/testify/assert"
 )
 
 // setup the tests (initialize the database one-time and intialized testDatabaseURL)
@@ -50,7 +51,10 @@ func TestWrapper(t *testing.T) wrapping.Wrapper {
 }
 
 // TestVerifyOplog will verify that there is an oplog entry
-func TestVerifyOplog(t *testing.T, r Reader, resourcePublicId string, opt ...TestOption) error {
+func TestVerifyOplog(t *testing.T, r Reader, resourcePublicId string, opt ...TestOption) {
+	t.Helper()
+	assert := assert.New(t)
+
 	// sql where clauses
 	const (
 		whereBase = `
@@ -91,14 +95,15 @@ and create_time > NOW()::timestamp - (interval '1 second' * ?)
 
 	var metadata store.Metadata
 	if err := r.LookupWhere(context.Background(), &metadata, where, whereArgs...); err != nil {
-		return err
+		assert.NoError(err)
+		return
 	}
 
 	var foundEntry oplog.Entry
 	if err := r.LookupWhere(context.Background(), &foundEntry, "id = ?", metadata.EntryId); err != nil {
-		return err
+		assert.NoError(err)
+		return
 	}
-	return nil
 }
 
 // getTestOpts - iterate the inbound TestOptions and return a struct
