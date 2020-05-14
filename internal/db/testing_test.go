@@ -48,7 +48,7 @@ func Test_TestVerifyOplogEntry(t *testing.T) {
 					"resource-public-id": []string{user.GetPublicId()},
 				}),
 		)
-		assert.Nil(err)
+		assert.NoError(err)
 		assert.NotZero(user.Id)
 
 		foundUser, err := db_test.NewTestUser()
