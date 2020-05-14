@@ -120,7 +120,7 @@ func TestRole_AssignedRoles(t *testing.T) {
 		assert.Nil(err)
 		assert.True(role.PublicId != "")
 
-		uRole, err := NewAssignedRole(s, role, user)
+		uRole, err := NewAssignedRole(role, user)
 		assert.Nil(err)
 		assert.True(uRole != nil)
 		assert.Equal(uRole.GetRoleId(), role.PublicId)
@@ -139,7 +139,7 @@ func TestRole_AssignedRoles(t *testing.T) {
 		assert.Nil(err)
 		assert.True(grp.PublicId != "")
 
-		gRole, err := NewAssignedRole(s, role, grp)
+		gRole, err := NewAssignedRole(role, grp)
 		assert.Nil(err)
 		assert.True(gRole != nil)
 		assert.Equal(gRole.GetRoleId(), role.PublicId)

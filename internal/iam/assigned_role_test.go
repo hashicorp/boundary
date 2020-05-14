@@ -40,7 +40,7 @@ func Test_NewAssignedRole(t *testing.T) {
 		assert.Nil(err)
 		assert.True(role.PublicId != "")
 
-		uRole, err := NewAssignedRole(s, role, user)
+		uRole, err := NewAssignedRole(role, user)
 		assert.Nil(err)
 		assert.True(uRole != nil)
 		assert.Equal(uRole.GetRoleId(), role.PublicId)
@@ -59,7 +59,7 @@ func Test_NewAssignedRole(t *testing.T) {
 		assert.Nil(err)
 		assert.True(grp.PublicId != "")
 
-		gRole, err := NewAssignedRole(s, role, grp)
+		gRole, err := NewAssignedRole(role, grp)
 		assert.Nil(err)
 		assert.True(gRole != nil)
 		assert.Equal(gRole.GetRoleId(), role.PublicId)
@@ -94,7 +94,7 @@ func Test_NewAssignedRole(t *testing.T) {
 		assert.Nil(err)
 		assert.True(role.PublicId != "")
 
-		uRole, err := NewAssignedRole(s, role, secondScope)
+		uRole, err := NewAssignedRole(role, secondScope)
 		assert.True(err != nil)
 		assert.True(uRole == nil)
 		assert.Equal(err.Error(), "error unknown principal type for assigning role")
@@ -113,7 +113,7 @@ func Test_NewAssignedRole(t *testing.T) {
 		err = w.Create(context.Background(), user)
 		assert.Nil(err)
 
-		uRole, err := NewAssignedRole(s, nil, user)
+		uRole, err := NewAssignedRole(nil, user)
 		assert.True(err != nil)
 		assert.True(uRole == nil)
 		assert.Equal(err.Error(), "error role is nil for assigning role")
@@ -136,7 +136,7 @@ func Test_NewAssignedRole(t *testing.T) {
 		assert.Nil(err)
 		assert.True(role.PublicId != "")
 
-		uRole, err := NewAssignedRole(s, role, nil)
+		uRole, err := NewAssignedRole(role, nil)
 		assert.True(err != nil)
 		assert.True(uRole == nil)
 		assert.Equal(err.Error(), "principal is nil for assigning role")
@@ -163,10 +163,5 @@ func Test_NewAssignedRole(t *testing.T) {
 		assert.Nil(err)
 		err = w.Create(context.Background(), user)
 		assert.Nil(err)
-
-		uRole, err := NewAssignedRole(nil, role, user)
-		assert.True(err != nil)
-		assert.True(uRole == nil)
-		assert.Equal(err.Error(), "error scope is nil for assigning role")
 	})
 }

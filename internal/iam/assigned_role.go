@@ -41,16 +41,9 @@ type assignedRoleView struct {
 // TableName provides an overridden gorm table name for assigned roles
 func (v *assignedRoleView) TableName() string { return "iam_assigned_role_vw" }
 
-// NewAssignedRole creates a new in memory assigned role for the principal (User,Group) with a scope (project/organization)
-// This is the preferred way to create roles vs calling a specific role type constructor func
+// NewAssignedRole creates a new in memory assigned role for the principal (User,Group)
 // options include: WithName
-func NewAssignedRole(scope *Scope, role *Role, principal Resource, opt ...Option) (AssignedRole, error) {
-	if scope == nil {
-		return nil, errors.New("error scope is nil for assigning role")
-	}
-	if scope.PublicId == "" {
-		return nil, errors.New("error scope id is missing for assigning role")
-	}
+func NewAssignedRole(role *Role, principal Resource, opt ...Option) (AssignedRole, error) {
 	if role == nil {
 		return nil, errors.New("error role is nil for assigning role")
 	}
