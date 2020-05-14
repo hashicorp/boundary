@@ -267,6 +267,28 @@ func TestUpdate(t *testing.T) {
 			errCode: codes.InvalidArgument,
 		},
 		{
+			name: "No Paths in Mask Is Invalid Argument",
+			req: &pbs.UpdateProjectRequest{
+				UpdateMask: &field_mask.FieldMask{Paths: []string{}},
+				Item: &pb.Project{
+					Name:        &wrappers.StringValue{Value: "updated name"},
+					Description: &wrappers.StringValue{Value: "updated desc"},
+				},
+			},
+			errCode: codes.InvalidArgument,
+		},
+		{
+			name: "Only non-existant paths in Mask Is Invalid Argument",
+			req: &pbs.UpdateProjectRequest{
+				UpdateMask: &field_mask.FieldMask{Paths: []string{"nonexistant_field"}},
+				Item: &pb.Project{
+					Name:        &wrappers.StringValue{Value: "updated name"},
+					Description: &wrappers.StringValue{Value: "updated desc"},
+				},
+			},
+			errCode: codes.InvalidArgument,
+		},
+		{
 			name: "Unset Name",
 			req: &pbs.UpdateProjectRequest{
 				UpdateMask: &field_mask.FieldMask{

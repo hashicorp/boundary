@@ -130,6 +130,9 @@ func (s Service) updateInRepo(ctx context.Context, req *pbs.UpdateProjectRequest
 	if err != nil {
 		return nil, err
 	}
+	if len(dbMask) == 0 {
+		return nil, status.Errorf(codes.InvalidArgument, "No valid fields included in the update mask.")
+	}
 	out, _, err := s.repo.UpdateScope(ctx, p, dbMask)
 	if err != nil {
 		return nil, err
