@@ -52,7 +52,7 @@ func Test_TestVerifyOplogEntry(t *testing.T) {
 		assert.NotZero(user.Id)
 
 		foundUser, err := db_test.NewTestUser()
-		assert.Nil(err)
+		assert.NoError(err)
 		foundUser.PublicId = user.PublicId
 		err = rw.LookupByPublicId(context.Background(), foundUser)
 		assert.Nil(err)
