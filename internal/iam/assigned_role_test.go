@@ -50,7 +50,7 @@ func Test_NewAssignedRole(t *testing.T) {
 		assert.True(uRole != nil)
 		assert.Equal(uRole.GetPrincipalId(), user.PublicId)
 
-		grp, err := NewGroup(s, WithDescription("this is a test group"))
+		grp, err := NewGroup(s.PublicId, WithDescription("this is a test group"))
 		assert.Nil(err)
 		assert.True(grp != nil)
 		assert.Equal(grp.Description, "this is a test group")

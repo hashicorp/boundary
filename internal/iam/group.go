@@ -24,16 +24,12 @@ var _ db.VetForWriter = (*Group)(nil)
 
 // NewGroup creates a new in memory group with a scope (project/organization)
 // options include: withDescripion, WithName
-func NewGroup(scope *Scope, opt ...Option) (*Group, error) {
+func NewGroup(scopeId string, opt ...Option) (*Group, error) {
 	opts := getOpts(opt...)
 	withName := opts.withName
 	withDescription := opts.withDescription
-	if scope == nil {
-		return nil, errors.New("error the group scope is nil")
-	}
-	if scope.Type != OrganizationScope.String() &&
-		scope.Type != ProjectScope.String() {
-		return nil, errors.New("groups can only be within an organization or project scope")
+	if scopeId == "" {
+		return nil, errors.New("error the group scope id is unset")
 	}
 	publicId, err := base62.Random(20)
 	if err != nil {
@@ -42,7 +38,7 @@ func NewGroup(scope *Scope, opt ...Option) (*Group, error) {
 	g := &Group{
 		Group: &store.Group{
 			PublicId:    publicId,
-			ScopeId:     scope.GetPublicId(),
+			ScopeId:     scopeId,
 			Name:        withName,
 			Description: withDescription,
 		},

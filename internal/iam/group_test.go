@@ -25,7 +25,7 @@ func Test_NewGroup(t *testing.T) {
 		assert.Nil(err)
 		assert.True(s.PublicId != "")
 
-		grp, err := NewGroup(s, WithDescription("this is a test group"))
+		grp, err := NewGroup(s.PublicId, WithDescription("this is a test group"))
 		assert.Nil(err)
 		assert.True(grp != nil)
 		assert.Equal(grp.Description, "this is a test group")
@@ -34,11 +34,11 @@ func Test_NewGroup(t *testing.T) {
 		assert.Nil(err)
 		assert.True(grp.PublicId != "")
 	})
-	t.Run("nil-scope", func(t *testing.T) {
-		grp, err := NewGroup(nil)
+	t.Run("no-scope", func(t *testing.T) {
+		grp, err := NewGroup("")
 		assert.True(err != nil)
 		assert.True(grp == nil)
-		assert.Equal(err.Error(), "error the group scope is nil")
+		assert.Equal(err.Error(), "error the group scope id is unset")
 	})
 }
 
@@ -63,7 +63,7 @@ func TestGroup_Members(t *testing.T) {
 		err = w.Create(context.Background(), user)
 		assert.Nil(err)
 
-		grp, err := NewGroup(s, WithDescription("this is a test group"))
+		grp, err := NewGroup(s.PublicId, WithDescription("this is a test group"))
 		assert.Nil(err)
 		assert.True(grp != nil)
 		assert.Equal(grp.Description, "this is a test group")
@@ -135,7 +135,7 @@ func TestGroup_GetScope(t *testing.T) {
 		assert.Nil(err)
 		assert.True(s.PublicId != "")
 
-		grp, err := NewGroup(s)
+		grp, err := NewGroup(s.PublicId)
 		assert.Nil(err)
 		assert.True(grp != nil)
 		assert.Equal(s.PublicId, grp.ScopeId)
@@ -170,7 +170,7 @@ func TestGroup_AddMember(t *testing.T) {
 		err = w.Create(context.Background(), user)
 		assert.Nil(err)
 
-		grp, err := NewGroup(s, WithDescription("this is a test group"))
+		grp, err := NewGroup(s.PublicId, WithDescription("this is a test group"))
 		assert.Nil(err)
 		assert.True(grp != nil)
 		assert.Equal(grp.Description, "this is a test group")
@@ -205,7 +205,7 @@ func TestGroup_Clone(t *testing.T) {
 		assert.Nil(err)
 		assert.True(s.PublicId != "")
 
-		grp, err := NewGroup(s, WithDescription("this is a test group"))
+		grp, err := NewGroup(s.PublicId, WithDescription("this is a test group"))
 		assert.Nil(err)
 		assert.True(grp != nil)
 		assert.Equal(grp.Description, "this is a test group")
@@ -226,7 +226,7 @@ func TestGroup_Clone(t *testing.T) {
 		assert.Nil(err)
 		assert.True(s.PublicId != "")
 
-		grp, err := NewGroup(s, WithDescription("this is a test group"))
+		grp, err := NewGroup(s.PublicId, WithDescription("this is a test group"))
 		assert.Nil(err)
 		assert.True(grp != nil)
 		assert.Equal(grp.Description, "this is a test group")
@@ -235,7 +235,7 @@ func TestGroup_Clone(t *testing.T) {
 		assert.Nil(err)
 		assert.True(grp.PublicId != "")
 
-		grp2, err := NewGroup(s, WithDescription("second group"))
+		grp2, err := NewGroup(s.PublicId, WithDescription("second group"))
 		assert.Nil(err)
 		assert.True(grp2 != nil)
 		err = w.Create(context.Background(), grp2)

@@ -29,7 +29,7 @@ func Test_NewGroupMember(t *testing.T) {
 		err = w.Create(context.Background(), user)
 		assert.Nil(err)
 
-		grp, err := NewGroup(s, WithDescription("this is a test group"))
+		grp, err := NewGroup(s.PublicId, WithDescription("this is a test group"))
 		assert.Nil(err)
 		assert.True(grp != nil)
 		assert.Equal(grp.Description, "this is a test group")
@@ -75,7 +75,7 @@ func Test_NewGroupMember(t *testing.T) {
 		assert.Nil(err)
 		assert.True(role.PublicId != "")
 
-		grp, err := NewGroup(s)
+		grp, err := NewGroup(s.PublicId)
 		assert.Nil(err)
 		assert.True(grp != nil)
 		assert.Equal(s.PublicId, grp.ScopeId)
@@ -116,7 +116,7 @@ func Test_NewGroupMember(t *testing.T) {
 		assert.Nil(err)
 		assert.True(s.PublicId != "")
 
-		grp, err := NewGroup(s)
+		grp, err := NewGroup(s.PublicId)
 		assert.Nil(err)
 		assert.True(grp != nil)
 		assert.Equal(s.PublicId, grp.ScopeId)

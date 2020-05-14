@@ -122,7 +122,7 @@ func Test_UserGroups(t *testing.T) {
 		err = w.Create(context.Background(), user)
 		assert.Nil(err)
 
-		grp, err := NewGroup(s, WithDescription("this is a test group"))
+		grp, err := NewGroup(s.PublicId, WithDescription("this is a test group"))
 		assert.Nil(err)
 		assert.True(grp != nil)
 		assert.Equal(grp.Description, "this is a test group")
@@ -249,7 +249,7 @@ func Test_UserGrants(t *testing.T) {
 		assert.Equal(len(userGrants), 1)
 		assert.Equal(userGrants[0].GetPublicId(), g.PublicId)
 
-		grp, err := NewGroup(s, WithDescription("user grants test group"))
+		grp, err := NewGroup(s.PublicId, WithDescription("user grants test group"))
 		assert.Nil(err)
 		assert.True(grp != nil)
 		assert.Equal(grp.Description, "user grants test group")
