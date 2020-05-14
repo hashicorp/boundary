@@ -63,10 +63,12 @@ func Test_Repository_CreateScope(t *testing.T) {
 		rw := db.New(conn)
 		wrapper := db.TestWrapper(t)
 		repo, err := NewRepository(rw, rw, wrapper)
+		assert.NoError(err)
 		id, err := uuid.GenerateUUID()
 		assert.NoError(err)
 
 		s, err := NewOrganization(WithName("fname-" + id))
+		assert.NoError(err)
 		s, err = repo.CreateScope(context.Background(), s)
 		assert.NoError(err)
 		assert.NotNil(s)
