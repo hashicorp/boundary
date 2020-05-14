@@ -25,7 +25,7 @@ func Test_NewRole(t *testing.T) {
 		assert.Nil(err)
 		assert.True(s.PublicId != "")
 
-		role, err := NewRole(s, WithDescription("this is a test role"))
+		role, err := NewRole(s.PublicId, WithDescription("this is a test role"))
 		assert.Nil(err)
 		assert.True(role != nil)
 		assert.Equal(role.Description, "this is a test role")
@@ -34,11 +34,11 @@ func Test_NewRole(t *testing.T) {
 		assert.Nil(err)
 		assert.True(role.PublicId != "")
 	})
-	t.Run("nil-scope", func(t *testing.T) {
-		role, err := NewRole(nil)
+	t.Run("no-scope", func(t *testing.T) {
+		role, err := NewRole("")
 		assert.True(err != nil)
 		assert.True(role == nil)
-		assert.Equal(err.Error(), "error the role scope is nil")
+		assert.Equal(err.Error(), "error the role scope id is unset")
 	})
 }
 
@@ -75,7 +75,7 @@ func TestRole_GetScope(t *testing.T) {
 		assert.Nil(err)
 		assert.True(s.PublicId != "")
 
-		role, err := NewRole(s, WithDescription("this is a test role"))
+		role, err := NewRole(s.PublicId, WithDescription("this is a test role"))
 		assert.Nil(err)
 		assert.True(role != nil)
 		assert.Equal(role.Description, "this is a test role")
@@ -111,7 +111,7 @@ func TestRole_AssignedRoles(t *testing.T) {
 		err = w.Create(context.Background(), user)
 		assert.Nil(err)
 
-		role, err := NewRole(s, WithDescription("this is a test role"))
+		role, err := NewRole(s.PublicId, WithDescription("this is a test role"))
 		assert.Nil(err)
 		assert.True(role != nil)
 		assert.Equal(role.Description, "this is a test role")
@@ -171,7 +171,7 @@ func TestRole_Clone(t *testing.T) {
 		assert.Nil(err)
 		assert.True(s.PublicId != "")
 
-		role, err := NewRole(s, WithDescription("this is a test role"))
+		role, err := NewRole(s.PublicId, WithDescription("this is a test role"))
 		assert.Nil(err)
 		assert.True(role != nil)
 		assert.Equal(role.Description, "this is a test role")
@@ -192,7 +192,7 @@ func TestRole_Clone(t *testing.T) {
 		assert.Nil(err)
 		assert.True(s.PublicId != "")
 
-		role, err := NewRole(s, WithDescription("this is a test role"))
+		role, err := NewRole(s.PublicId, WithDescription("this is a test role"))
 		assert.Nil(err)
 		assert.True(role != nil)
 		assert.Equal(role.Description, "this is a test role")
@@ -201,7 +201,7 @@ func TestRole_Clone(t *testing.T) {
 		assert.Nil(err)
 		assert.True(role.PublicId != "")
 
-		role2, err := NewRole(s, WithDescription("this is a test role"))
+		role2, err := NewRole(s.PublicId, WithDescription("this is a test role"))
 		assert.Nil(err)
 		assert.True(role2 != nil)
 		assert.Equal(role2.Description, "this is a test role")

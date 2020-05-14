@@ -25,7 +25,7 @@ func TestNewRoleGrant(t *testing.T) {
 		assert.Nil(err)
 		assert.True(s.PublicId != "")
 
-		role, err := NewRole(s)
+		role, err := NewRole(s.PublicId)
 		assert.Nil(err)
 		assert.True(role != nil)
 		assert.Equal(s.PublicId, role.ScopeId)
@@ -65,7 +65,7 @@ func TestNewRoleGrant(t *testing.T) {
 		assert.Nil(err)
 		assert.True(s.PublicId != "")
 
-		role, err := NewRole(s)
+		role, err := NewRole(s.PublicId)
 		assert.Nil(err)
 		assert.True(role != nil)
 		assert.Equal(s.PublicId, role.ScopeId)
@@ -127,7 +127,7 @@ func TestRoleGrant_GetScope(t *testing.T) {
 		assert.Nil(err)
 		assert.True(s.PublicId != "")
 
-		role, err := NewRole(s)
+		role, err := NewRole(s.PublicId)
 		assert.Nil(err)
 		assert.True(role != nil)
 		assert.Equal(s.PublicId, role.ScopeId)
@@ -164,7 +164,7 @@ func TestRoleGrant_Clone(t *testing.T) {
 		assert.Nil(err)
 		assert.True(s.PublicId != "")
 
-		role, err := NewRole(s)
+		role, err := NewRole(s.PublicId)
 		assert.Nil(err)
 		assert.True(role != nil)
 		assert.Equal(s.PublicId, role.ScopeId)
@@ -190,7 +190,7 @@ func TestRoleGrant_Clone(t *testing.T) {
 		assert.Nil(err)
 		assert.True(s.PublicId != "")
 
-		role, err := NewRole(s)
+		role, err := NewRole(s.PublicId)
 		assert.Nil(err)
 		assert.True(role != nil)
 		assert.Equal(s.PublicId, role.ScopeId)

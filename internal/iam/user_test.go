@@ -165,7 +165,7 @@ func Test_UserRoles(t *testing.T) {
 		err = w.Create(context.Background(), user)
 		assert.Nil(err)
 
-		role, err := NewRole(s, WithDescription("this is a test role"))
+		role, err := NewRole(s.PublicId, WithDescription("this is a test role"))
 		assert.Nil(err)
 		assert.True(role != nil)
 		assert.Equal(role.Description, "this is a test role")
@@ -213,7 +213,7 @@ func Test_UserGrants(t *testing.T) {
 		assert.Nil(err)
 		assert.True(s.PublicId != "")
 
-		role, err := NewRole(s)
+		role, err := NewRole(s.PublicId)
 		assert.Nil(err)
 		assert.True(role != nil)
 		assert.Equal(s.PublicId, role.ScopeId)
@@ -264,7 +264,7 @@ func Test_UserGrants(t *testing.T) {
 		err = w.Create(context.Background(), gm)
 		assert.Nil(err)
 
-		groupRole, err := NewRole(s)
+		groupRole, err := NewRole(s.PublicId)
 		assert.Nil(err)
 		assert.True(role != nil)
 		assert.Equal(s.PublicId, groupRole.ScopeId)

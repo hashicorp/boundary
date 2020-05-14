@@ -31,7 +31,7 @@ func Test_NewAssignedRole(t *testing.T) {
 		err = w.Create(context.Background(), user)
 		assert.Nil(err)
 
-		role, err := NewRole(s, WithDescription("this is a test role"))
+		role, err := NewRole(s.PublicId, WithDescription("this is a test role"))
 		assert.Nil(err)
 		assert.True(role != nil)
 		assert.Equal(role.Description, "this is a test role")
@@ -85,7 +85,7 @@ func Test_NewAssignedRole(t *testing.T) {
 		assert.Nil(err)
 		assert.True(secondScope.PublicId != "")
 
-		role, err := NewRole(s, WithDescription("this is a test role"))
+		role, err := NewRole(s.PublicId, WithDescription("this is a test role"))
 		assert.Nil(err)
 		assert.True(role != nil)
 		assert.Equal(role.Description, "this is a test role")
@@ -127,7 +127,7 @@ func Test_NewAssignedRole(t *testing.T) {
 		assert.Nil(err)
 		assert.True(s.PublicId != "")
 
-		role, err := NewRole(s, WithDescription("this is a test role"))
+		role, err := NewRole(s.PublicId, WithDescription("this is a test role"))
 		assert.Nil(err)
 		assert.True(role != nil)
 		assert.Equal(role.Description, "this is a test role")
@@ -150,7 +150,7 @@ func Test_NewAssignedRole(t *testing.T) {
 		assert.Nil(err)
 		assert.True(s.PublicId != "")
 
-		role, err := NewRole(s, WithDescription("this is a test role"))
+		role, err := NewRole(s.PublicId, WithDescription("this is a test role"))
 		assert.Nil(err)
 		assert.True(role != nil)
 		assert.Equal(role.Description, "this is a test role")
