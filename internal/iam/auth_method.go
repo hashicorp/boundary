@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/hashicorp/vault/sdk/helper/base62"
 	"github.com/hashicorp/watchtower/internal/db"
 	"github.com/hashicorp/watchtower/internal/iam/store"
 	"google.golang.org/protobuf/proto"
@@ -50,7 +49,7 @@ func NewAuthMethod(organizationId string, authType AuthType, opt ...Option) (*Au
 	if organizationId == "" {
 		return nil, errors.New("error organization id is unset for new auth method")
 	}
-	publicId, err := base62.Random(20)
+	publicId, err := db.NewPublicId("authm")
 	if err != nil {
 		return nil, fmt.Errorf("error generating public id %w for new auth method", err)
 	}

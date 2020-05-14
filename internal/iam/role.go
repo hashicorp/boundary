@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/hashicorp/vault/sdk/helper/base62"
 	"github.com/hashicorp/watchtower/internal/db"
 	"github.com/hashicorp/watchtower/internal/iam/store"
 	"google.golang.org/protobuf/proto"
@@ -31,7 +30,7 @@ func NewRole(scopeId string, opt ...Option) (*Role, error) {
 	if scopeId == "" {
 		return nil, errors.New("error the role scope id is unset")
 	}
-	publicId, err := base62.Random(20)
+	publicId, err := db.NewPublicId("r")
 	if err != nil {
 		return nil, fmt.Errorf("error generating public id %w for new role", err)
 	}

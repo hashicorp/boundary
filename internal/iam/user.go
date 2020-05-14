@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/hashicorp/vault/sdk/helper/base62"
 	"github.com/hashicorp/watchtower/internal/db"
 	"github.com/hashicorp/watchtower/internal/iam/store"
 	"google.golang.org/protobuf/proto"
@@ -27,7 +26,7 @@ var _ db.VetForWriter = (*User)(nil)
 func NewUser(organizationPublicId string, opt ...Option) (*User, error) {
 	opts := getOpts(opt...)
 	withName := opts.withName
-	publicId, err := base62.Random(20)
+	publicId, err := db.NewPublicId("u")
 	if err != nil {
 		return nil, fmt.Errorf("error generating public ID %w for new user", err)
 	}
