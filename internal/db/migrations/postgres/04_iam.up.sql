@@ -86,7 +86,7 @@ update ON iam_scope FOR EACH ROW EXECUTE PROCEDURE iam_immutable_scope_type_func
 COMMIT;
 
 
-CREATE TABLE if not exists iam_user (
+CREATE TABLE iam_user (
     public_id wt_public_id not null primary key,
     create_time wt_timestamp,
     update_time wt_timestamp,
@@ -98,7 +98,7 @@ CREATE TABLE if not exists iam_user (
   );
 
 
-CREATE TABLE if not exists iam_auth_method (
+CREATE TABLE iam_auth_method (
     public_id wt_public_id not null primary key, 
     create_time wt_timestamp,
     update_time wt_timestamp,
@@ -111,7 +111,7 @@ CREATE TABLE if not exists iam_auth_method (
   );
 
 
-CREATE TABLE if not exists iam_role (
+CREATE TABLE iam_role (
     public_id wt_public_id not null primary key,
     create_time wt_timestamp,
     update_time wt_timestamp,
@@ -122,7 +122,7 @@ CREATE TABLE if not exists iam_role (
     disabled BOOLEAN NOT NULL default FALSE
   );
 
-CREATE TABLE if not exists iam_group_member_type_enm (
+CREATE TABLE iam_group_member_type_enm (
     string text NOT NULL primary key CHECK(string IN ('unknown', 'user'))
   );
 INSERT INTO iam_group_member_type_enm (string)
@@ -131,7 +131,7 @@ values
   ('user');
 
 
-CREATE TABLE if not exists iam_group (
+CREATE TABLE iam_group (
     public_id wt_public_id not null primary key,
     create_time wt_timestamp,
     update_time wt_timestamp,
@@ -143,7 +143,7 @@ CREATE TABLE if not exists iam_group (
   );
 
 
-CREATE TABLE if not exists iam_group_member_user (
+CREATE TABLE iam_group_member_user (
     create_time wt_timestamp,
     group_id wt_public_id NOT NULL REFERENCES iam_group(public_id) ON DELETE CASCADE ON UPDATE CASCADE,
     member_id wt_public_id NOT NULL REFERENCES iam_user(public_id) ON DELETE CASCADE ON UPDATE CASCADE,
@@ -157,7 +157,7 @@ SELECT
 FROM iam_group_member_user;
 
 
-CREATE TABLE if not exists iam_auth_method_type_enm (
+CREATE TABLE iam_auth_method_type_enm (
     string text NOT NULL primary key CHECK(string IN ('unknown', 'userpass', 'oidc'))
   );
 INSERT INTO iam_auth_method_type_enm (string)
@@ -169,7 +169,7 @@ ALTER TABLE iam_auth_method
 ADD
   FOREIGN KEY (type) REFERENCES iam_auth_method_type_enm(string);
 
-CREATE TABLE if not exists iam_action_enm (
+CREATE TABLE iam_action_enm (
     string text NOT NULL primary key CHECK(
       string IN (
         'unknown',
@@ -193,14 +193,14 @@ values
   ('delete'),
   ('authen');
 
-CREATE TABLE if not exists iam_role_user (
+CREATE TABLE iam_role_user (
     create_time wt_timestamp,
     role_id wt_public_id NOT NULL REFERENCES iam_role(public_id) ON DELETE CASCADE ON UPDATE CASCADE,
     principal_id wt_public_id NOT NULL REFERENCES iam_user(public_id) ON DELETE CASCADE ON UPDATE CASCADE,
     primary key (role_id, principal_id)
   );
 
-CREATE TABLE if not exists iam_role_group (
+CREATE TABLE iam_role_group (
     create_time wt_timestamp,
     role_id wt_public_id NOT NULL REFERENCES iam_role(public_id) ON DELETE CASCADE ON UPDATE CASCADE,
     principal_id wt_public_id NOT NULL REFERENCES iam_group(public_id) ON DELETE CASCADE ON UPDATE CASCADE,
@@ -220,7 +220,7 @@ from iam_role_group;
 
 
 
-CREATE TABLE if not exists iam_role_grant (
+CREATE TABLE iam_role_grant (
     public_id wt_public_id not null primary key,
     create_time wt_timestamp,
     update_time wt_timestamp,
