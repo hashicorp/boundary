@@ -39,22 +39,16 @@ var _ Resource = (*AuthMethod)(nil)
 var _ Clonable = (*AuthMethod)(nil)
 var _ db.VetForWriter = (*AuthMethod)(nil)
 
-// NewAuthMethod creates a new in memory AuthMethod for a Scope (org or project)
-// and authentication type.  AuthMethods can only have an Organizational Scope
-func NewAuthMethod(scope *Scope, authType AuthType, opt ...Option) (*AuthMethod, error) {
+// NewAuthMethod creates a new in memory AuthMethod for an Organization
+// and authentication type.
+func NewAuthMethod(organizationId string, authType AuthType, opt ...Option) (*AuthMethod, error) {
 	opts := getOpts(opt...)
 	withName := opts.withName
 	if authType == AuthUnknown {
 		return nil, errors.New("error unknown auth type")
 	}
-	if scope == nil {
-		return nil, errors.New("error scope is nil for new auth method")
-	}
-	if scope.PublicId == "" {
-		return nil, errors.New("error scope id is unset for new auth method")
-	}
-	if scope.Type != OrganizationScope.String() {
-		return nil, errors.New("auth method can only be within an organization scope")
+	if organizationId == "" {
+		return nil, errors.New("error organization id is unset for new auth method")
 	}
 	publicId, err := base62.Random(20)
 	if err != nil {
@@ -63,7 +57,7 @@ func NewAuthMethod(scope *Scope, authType AuthType, opt ...Option) (*AuthMethod,
 	a := &AuthMethod{
 		AuthMethod: &store.AuthMethod{
 			PublicId: publicId,
-			ScopeId:  scope.GetPublicId(),
+			ScopeId:  organizationId,
 			Type:     authType.String(),
 			Name:     withName,
 		},

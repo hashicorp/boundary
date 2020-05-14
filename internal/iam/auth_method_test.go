@@ -25,7 +25,7 @@ func Test_NewAuthMethod(t *testing.T) {
 		assert.Nil(err)
 		assert.True(s.PublicId != "")
 
-		meth, err := NewAuthMethod(s, AuthUserPass)
+		meth, err := NewAuthMethod(s.PublicId, AuthUserPass)
 		assert.Nil(err)
 		assert.True(meth != nil)
 		err = w.Create(context.Background(), meth)
@@ -33,11 +33,11 @@ func Test_NewAuthMethod(t *testing.T) {
 		assert.True(meth != nil)
 		assert.Equal(meth.Type, AuthUserPass.String())
 	})
-	t.Run("nil-scope", func(t *testing.T) {
-		meth, err := NewAuthMethod(nil, AuthUserPass)
+	t.Run("no-scope", func(t *testing.T) {
+		meth, err := NewAuthMethod("", AuthUserPass)
 		assert.True(err != nil)
 		assert.True(meth == nil)
-		assert.Equal(err.Error(), "error scope is nil for new auth method")
+		assert.Equal(err.Error(), "error organization id is unset for new auth method")
 	})
 }
 
@@ -57,7 +57,7 @@ func TestAuthMethod_GetScope(t *testing.T) {
 		assert.Nil(err)
 		assert.True(s.PublicId != "")
 
-		meth, err := NewAuthMethod(s, AuthUserPass)
+		meth, err := NewAuthMethod(s.PublicId, AuthUserPass)
 		assert.Nil(err)
 		assert.True(meth != nil)
 		err = w.Create(context.Background(), meth)
@@ -88,7 +88,7 @@ func TestAuthMethod_ResourceType(t *testing.T) {
 		assert.Nil(err)
 		assert.True(s.PublicId != "")
 
-		meth, err := NewAuthMethod(s, AuthUserPass)
+		meth, err := NewAuthMethod(s.PublicId, AuthUserPass)
 		assert.Nil(err)
 		assert.True(meth != nil)
 		err = w.Create(context.Background(), meth)
@@ -127,7 +127,7 @@ func TestAuthMethod_Clone(t *testing.T) {
 		assert.Nil(err)
 		assert.True(s.PublicId != "")
 
-		meth, err := NewAuthMethod(s, AuthUserPass)
+		meth, err := NewAuthMethod(s.PublicId, AuthUserPass)
 		assert.Nil(err)
 		assert.True(meth != nil)
 		err = w.Create(context.Background(), meth)
@@ -147,7 +147,7 @@ func TestAuthMethod_Clone(t *testing.T) {
 		assert.Nil(err)
 		assert.True(s.PublicId != "")
 
-		meth, err := NewAuthMethod(s, AuthUserPass)
+		meth, err := NewAuthMethod(s.PublicId, AuthUserPass)
 		assert.Nil(err)
 		assert.True(meth != nil)
 		err = w.Create(context.Background(), meth)
@@ -155,7 +155,7 @@ func TestAuthMethod_Clone(t *testing.T) {
 		assert.True(meth != nil)
 		assert.Equal(meth.Type, AuthUserPass.String())
 
-		meth2, err := NewAuthMethod(s, AuthUserPass)
+		meth2, err := NewAuthMethod(s.PublicId, AuthUserPass)
 		assert.Nil(err)
 		assert.True(meth2 != nil)
 		err = w.Create(context.Background(), meth2)
