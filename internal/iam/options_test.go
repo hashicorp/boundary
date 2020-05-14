@@ -19,7 +19,7 @@ func Test_GetOpts(t *testing.T) {
 	})
 	t.Run("withScope", func(t *testing.T) {
 		s, err := NewOrganization()
-		assert.Nil(err)
+		assert.NoError(err)
 		assert.True(s.Scope != nil)
 
 		opts := getOpts(withScope(s))
