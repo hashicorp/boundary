@@ -2,6 +2,7 @@ package static
 
 import (
 	"context"
+	"fmt"
 	"strings"
 	"testing"
 
@@ -104,18 +105,28 @@ func TestHostCatalog_New(t *testing.T) {
 	}
 }
 
-func testCatalog(t *testing.T, conn *gorm.DB) *HostCatalog {
+func testCatalogs(t *testing.T, conn *gorm.DB, count int) []*HostCatalog {
 	t.Helper()
 	assert := assert.New(t)
 	_, prj := iam.TestScopes(t, conn)
-	cat, err := NewHostCatalog(prj.GetPublicId())
-	assert.NoError(err)
-	assert.NotNil(cat)
+	var cats []*HostCatalog
+	for i := 0; i < count; i++ {
+		cat, err := NewHostCatalog(prj.GetPublicId())
+		assert.NoError(err)
+		assert.NotNil(cat)
 
-	w := db.New(conn)
-	err2 := w.Create(context.Background(), cat)
-	assert.NoError(err2)
-	return cat
+		w := db.New(conn)
+		err2 := w.Create(context.Background(), cat)
+		assert.NoError(err2)
+		cats = append(cats, cat)
+	}
+	return cats
+}
+
+func testCatalog(t *testing.T, conn *gorm.DB) *HostCatalog {
+	t.Helper()
+	cats := testCatalogs(t, conn, 1)
+	return cats[0]
 }
 
 func TestHost_New(t *testing.T) {
@@ -362,6 +373,93 @@ func TestHostSet_New(t *testing.T) {
 					err2 := w.Create(context.Background(), got)
 					assert.NoError(err2)
 				}
+			}
+		})
+	}
+}
+
+func testHosts(t *testing.T, conn *gorm.DB, catalogId string, count int) []*Host {
+	t.Helper()
+	assert := assert.New(t)
+	var hosts []*Host
+
+	for i := 0; i < count; i++ {
+		host, err := NewHost(catalogId, fmt.Sprintf("%s-%d", catalogId, i))
+		assert.NoError(err)
+		assert.NotNil(host)
+
+		w := db.New(conn)
+		err2 := w.Create(context.Background(), host)
+		assert.NoError(err2)
+		hosts = append(hosts, host)
+	}
+	return hosts
+}
+
+func testSets(t *testing.T, conn *gorm.DB, catalogId string, count int) []*HostSet {
+	t.Helper()
+	assert := assert.New(t)
+	var sets []*HostSet
+
+	for i := 0; i < count; i++ {
+		set, err := NewHostSet(catalogId)
+		assert.NoError(err)
+		assert.NotNil(set)
+
+		w := db.New(conn)
+		err2 := w.Create(context.Background(), set)
+		assert.NoError(err2)
+		sets = append(sets, set)
+	}
+	return sets
+}
+
+func TestHostSetMember_New(t *testing.T) {
+	cleanup, conn, _ := db.TestSetup(t, "postgres")
+	defer cleanup()
+	defer conn.Close()
+	conn.LogMode(false)
+
+	cats := testCatalogs(t, conn, 2)
+
+	blueCat := cats[0]
+	blueSets := testSets(t, conn, blueCat.GetPublicId(), 2)
+	blueHosts := testHosts(t, conn, blueCat.GetPublicId(), 2)
+
+	// these will be needed when the repository code is done
+	// greenCat := cats[1]
+	// greenSets := testSets(t, conn, greenCat.GetPublicId(), 2)
+	// greenHosts := testHosts(t, conn, greenCat.GetPublicId(), 2)
+
+	var tests = []struct {
+		name    string
+		set     *HostSet
+		host    *Host
+		wantErr bool
+	}{
+		{
+			name: "valid-host-in-set",
+			set:  blueSets[0],
+			host: blueHosts[0],
+		},
+		// {
+		// 	name:    "invalid-diff-catalogs",
+		// 	set:     greenSets[0],
+		// 	host:    blueHosts[0],
+		// 	wantErr: true,
+		// },
+	}
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			assert := assert.New(t)
+			got, err := NewHostSetMember(tt.set.PublicId, tt.host.PublicId)
+			if tt.wantErr {
+				assert.Error(err)
+				assert.Nil(got)
+			} else {
+				assert.NoError(err)
+				assert.NotNil(got)
 			}
 		})
 	}

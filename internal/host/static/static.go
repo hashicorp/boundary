@@ -142,3 +142,43 @@ func (s *HostSet) SetTableName(n string) {
 		s.tableName = n
 	}
 }
+
+// A HostSetMember contains a static address.
+type HostSetMember struct {
+	*store.HostSetMember
+	tableName string `gorm:"-"`
+}
+
+// NewHostSetMember creates a new in memory HostSetMember assigned to catalogId.
+// Name and description are the only valid options. All other options are
+// ignored.
+func NewHostSetMember(hostSetId, hostId string, opt ...Option) (*HostSetMember, error) {
+	if hostSetId == "" {
+		return nil, errors.New("empty hostSetId")
+	}
+	if hostId == "" {
+		return nil, errors.New("empty hostId")
+	}
+	member := &HostSetMember{
+		HostSetMember: &store.HostSetMember{
+			StaticHostSetId: hostSetId,
+			StaticHostId:    hostId,
+		},
+	}
+	return member, nil
+}
+
+// TableName returns the table name for the host set.
+func (m *HostSetMember) TableName() string {
+	if m.tableName != "" {
+		return m.tableName
+	}
+	return "static_host_set_member"
+}
+
+// SetTableName sets the table name.
+func (m *HostSetMember) SetTableName(n string) {
+	if n != "" {
+		m.tableName = n
+	}
+}
