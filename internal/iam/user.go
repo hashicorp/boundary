@@ -26,6 +26,9 @@ var _ db.VetForWriter = (*User)(nil)
 func NewUser(organizationPublicId string, opt ...Option) (*User, error) {
 	opts := getOpts(opt...)
 	withName := opts.withName
+	if organizationPublicId == "" {
+		return nil, errors.New("error organization id is unset for new user")
+	}
 	publicId, err := db.NewPublicId("u")
 	if err != nil {
 		return nil, fmt.Errorf("error generating public ID %w for new user", err)
