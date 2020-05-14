@@ -21,18 +21,7 @@ type migrationDriver struct {
 
 // Open returns the given "file"
 func (m *migrationDriver) Open(name string) (http.File, error) {
-	var ff *fakeFile
-	switch m.dialect {
-	case "postgres":
-		ff = postgresMigrations[name]
-	}
-	if ff == nil {
-		return nil, os.ErrNotExist
-	}
-	ff.name = strings.TrimPrefix(name, "migrations/")
-	ff.reader = bytes.NewReader(ff.bytes)
-	ff.dialect = m.dialect
-	return ff, nil
+	return newFakeFile(m.dialect, name)
 }
 
 // NewMigrationSource creates a source.Driver using httpfs with the given dialect
@@ -53,6 +42,20 @@ type fakeFile struct {
 	dialect string
 }
 
+func newFakeFile(dialect string, name string) (*fakeFile, error) {
+	var ff *fakeFile
+	switch dialect {
+	case "postgres":
+		ff = postgresMigrations[name]
+	}
+	if ff == nil {
+		return nil, os.ErrNotExist
+	}
+	ff.name = strings.TrimPrefix(name, "migrations/")
+	ff.reader = bytes.NewReader(ff.bytes)
+	ff.dialect = dialect
+	return ff, nil
+}
 func (f *fakeFile) Read(p []byte) (n int, err error) {
 	return f.reader.Read(p)
 }
@@ -84,7 +87,7 @@ func (f *fakeFile) Readdir(count int) ([]os.FileInfo, error) {
 
 	// Create the slice of fileinfo objects to return
 	ret := make([]os.FileInfo, 0, len(migrationsMap))
-	for _, v := range keys {
+	for i, v := range keys {
 		// We need "migrations" in the map for the initial Open call but we
 		// should not return it as part of the "directory"'s "files".
 		if v == "migrations" {
@@ -95,6 +98,9 @@ func (f *fakeFile) Readdir(count int) ([]os.FileInfo, error) {
 			return nil, err
 		}
 		ret = append(ret, stat)
+		if count > 0 && count == i {
+			break
+		}
 	}
 	return ret, nil
 }
