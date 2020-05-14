@@ -9,6 +9,7 @@ import (
 	"github.com/hashicorp/watchtower/internal/db"
 	"github.com/hashicorp/watchtower/internal/oplog"
 	"github.com/stretchr/testify/assert"
+	"google.golang.org/protobuf/proto"
 )
 
 func Test_Repository_CreateScope(t *testing.T) {
@@ -28,8 +29,8 @@ func Test_Repository_CreateScope(t *testing.T) {
 		s, err := NewOrganization(WithName("fname-" + id))
 		s, err = repo.CreateScope(context.Background(), s)
 		assert.NoError(err)
-		assert.True(s != nil)
-		assert.True(s.GetPublicId() != "")
+		assert.NotNil(s)
+		assert.NotEmpty(s.GetPublicId())
 		assert.Equal(s.GetName(), "fname-"+id)
 
 		foundScope, err := repo.LookupScope(context.Background(), s.PublicId)
@@ -49,14 +50,14 @@ func Test_Repository_CreateScope(t *testing.T) {
 		s, err := NewOrganization(WithName("fname-" + id))
 		s, err = repo.CreateScope(context.Background(), s)
 		assert.NoError(err)
-		assert.True(s != nil)
-		assert.True(s.GetPublicId() != "")
+		assert.NotNil(s)
+		assert.NotEmpty(s.GetPublicId())
 		assert.Equal(s.GetName(), "fname-"+id)
 
 		s2, err := NewOrganization(WithName("fname-" + id))
 		s2, err = repo.CreateScope(context.Background(), s2)
-		assert.True(err != nil)
-		assert.True(s2 == nil)
+		assert.NotNil(err)
+		assert.Nil(s2)
 	})
 	t.Run("dup-proj-names", func(t *testing.T) {
 		rw := db.New(conn)
@@ -68,19 +69,19 @@ func Test_Repository_CreateScope(t *testing.T) {
 		s, err := NewOrganization(WithName("fname-" + id))
 		s, err = repo.CreateScope(context.Background(), s)
 		assert.NoError(err)
-		assert.True(s != nil)
-		assert.True(s.GetPublicId() != "")
+		assert.NotNil(s)
+		assert.NotEmpty(s.GetPublicId())
 		assert.Equal(s.GetName(), "fname-"+id)
 
 		p, err := NewProject(s.PublicId, WithName("fname-"+id))
 		p, err = repo.CreateScope(context.Background(), p)
 		assert.NoError(err)
-		assert.True(p.PublicId != "")
+		assert.NotEmpty(p.PublicId)
 
 		p2, err := NewProject(s.PublicId, WithName("fname-"+id))
 		p2, err = repo.CreateScope(context.Background(), p2)
-		assert.True(err != nil)
-		assert.True(p2 == nil)
+		assert.NotNil(err)
+		assert.Nil(p2)
 	})
 }
 
@@ -101,13 +102,13 @@ func Test_Repository_UpdateScope(t *testing.T) {
 		s, err := NewOrganization(WithName("fname-" + id))
 		s, err = repo.CreateScope(context.Background(), s)
 		assert.NoError(err)
-		assert.True(s != nil)
-		assert.True(s.GetPublicId() != "")
+		assert.NotNil(s)
+		assert.NotEmpty(s.GetPublicId())
 		assert.Equal(s.GetName(), "fname-"+id)
 
 		foundScope, err := repo.LookupScope(context.Background(), s.PublicId)
 		assert.NoError(err)
-		assert.Equal(foundScope.GetPublicId(), s.GetPublicId())
+		assert.True(proto.Equal(foundScope, s))
 
 		assert.NoError(err)
 		err = db.TestVerifyOplog(t, rw, s.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_CREATE), db.WithCreateNotBefore(10*time.Second))
@@ -118,14 +119,14 @@ func Test_Repository_UpdateScope(t *testing.T) {
 		s, updatedRows, err := repo.UpdateScope(context.Background(), s, []string{"Name"})
 		assert.NoError(err)
 		assert.Equal(1, updatedRows)
-		assert.True(s != nil)
+		assert.NotNil(s)
 		assert.Equal(s.GetName(), "fname-"+id)
-		assert.Equal(foundScope.GetDescription(), "") // should  be "" after update in db
+		assert.Empty(foundScope.GetDescription()) // should  be "" after update in db
 
 		foundScope, err = repo.LookupScope(context.Background(), s.PublicId)
 		assert.NoError(err)
 		assert.Equal(foundScope.GetPublicId(), s.GetPublicId())
-		assert.Equal(foundScope.GetDescription(), "")
+		assert.Empty(foundScope.GetDescription())
 
 		err = db.TestVerifyOplog(t, rw, s.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_UPDATE), db.WithCreateNotBefore(10*time.Second))
 		assert.NoError(err)
@@ -141,19 +142,19 @@ func Test_Repository_UpdateScope(t *testing.T) {
 		assert.NoError(err)
 		s, err = repo.CreateScope(context.Background(), s)
 		assert.NoError(err)
-		assert.True(s != nil)
-		assert.True(s.GetPublicId() != "")
+		assert.NotNil(s)
+		assert.NotEmpty(s.GetPublicId())
 		assert.Equal(s.GetName(), "fname-"+id)
 
 		project, err := NewProject(s.PublicId)
 		assert.NoError(err)
 		project, err = repo.CreateScope(context.Background(), project)
 		assert.NoError(err)
-		assert.True(project != nil)
+		assert.NotNil(project)
 
 		project.ParentId = project.PublicId
 		project, updatedRows, err := repo.UpdateScope(context.Background(), project, []string{"ParentId"})
-		assert.True(err != nil)
+		assert.Error(err)
 		assert.Equal(0, updatedRows)
 		assert.Equal("failed to update scope: error on update you cannot change a scope's parent", err.Error())
 	})
@@ -176,13 +177,13 @@ func Test_Repository_LookupScope(t *testing.T) {
 		s, err := NewOrganization(WithName("fname-" + id))
 		s, err = repo.CreateScope(context.Background(), s)
 		assert.NoError(err)
-		assert.True(s != nil)
-		assert.True(s.GetPublicId() != "")
+		assert.NotNil(s)
+		assert.NotEmpty(s.GetPublicId())
 		assert.Equal(s.GetName(), "fname-"+id)
 
 		foundScope, err := repo.LookupScope(context.Background(), s.PublicId)
 		assert.NoError(err)
-		assert.Equal(foundScope.GetPublicId(), s.GetPublicId())
+		assert.True(proto.Equal(foundScope, s))
 
 		invalidId, err := uuid.GenerateUUID()
 		assert.NoError(err)
@@ -206,8 +207,8 @@ func Test_Repository_DeleteScope(t *testing.T) {
 		s, err := NewOrganization()
 		s, err = repo.CreateScope(context.Background(), s)
 		assert.NoError(err)
-		assert.True(s != nil)
-		assert.True(s.GetPublicId() != "")
+		assert.NotNil(s)
+		assert.NotEmpty(s.GetPublicId())
 
 		foundScope, err := repo.LookupScope(context.Background(), s.PublicId)
 		assert.NoError(err)

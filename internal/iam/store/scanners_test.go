@@ -27,7 +27,7 @@ func Test_TimestampValue(t *testing.T) {
 	t.Run("invalid ts", func(t *testing.T) {
 		ts := Timestamp{Timestamp: &timestamp.Timestamp{Seconds: maxValidSeconds, Nanos: 0}}
 		v, err := ts.Value()
-		assert.True(err != nil)
+		assert.NotNil(err)
 		assert.Equal(err.Error(), "timestamp: seconds:253402300800 after 10000-01-01")
 		assert.Equal(v, utcDate(10000, 1, 1))
 	})
@@ -54,14 +54,14 @@ func Test_TimestampScan(t *testing.T) {
 		v := 1
 		ts := Timestamp{}
 		err := ts.Scan(v)
-		assert.True(err != nil)
+		assert.NotNil(err)
 		assert.Equal(err.Error(), "Not a protobuf Timestamp")
 	})
 	t.Run("invalid time", func(t *testing.T) {
 		v := time.Unix(maxValidSeconds, 0)
 		ts := Timestamp{}
 		err := ts.Scan(v)
-		assert.True(err != nil)
+		assert.NotNil(err)
 		assert.Equal(err.Error(), "error converting the timestamp: timestamp: seconds:253402300800 after 10000-01-01")
 	})
 }

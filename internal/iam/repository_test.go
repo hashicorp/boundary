@@ -12,6 +12,7 @@ import (
 	"github.com/hashicorp/watchtower/internal/oplog"
 	"github.com/hashicorp/watchtower/internal/oplog/store"
 	"github.com/stretchr/testify/assert"
+	"google.golang.org/protobuf/proto"
 )
 
 func TestNewRepository(t *testing.T) {
@@ -116,13 +117,13 @@ func Test_Repository_create(t *testing.T) {
 		s, err := NewOrganization(WithName("fname-" + id))
 		retScope, err := repo.create(context.Background(), s)
 		assert.NoError(err)
-		assert.True(retScope != nil)
-		assert.True(retScope.GetPublicId() != "")
+		assert.NotNil(retScope)
+		assert.NotEmpty(retScope.GetPublicId())
 		assert.Equal(retScope.GetName(), "fname-"+id)
 
 		foundScope, err := repo.LookupScope(context.Background(), s.PublicId)
 		assert.NoError(err)
-		assert.Equal(foundScope.GetPublicId(), retScope.GetPublicId())
+		assert.True(proto.Equal(foundScope, retScope.(*Scope)))
 
 		var metadata store.Metadata
 		err = conn.Where("key = ? and value = ?", "resource-public-id", s.PublicId).First(&metadata).Error
@@ -137,8 +138,8 @@ func Test_Repository_create(t *testing.T) {
 		wrapper := db.TestWrapper(t)
 		repo, err := NewRepository(rw, rw, wrapper)
 		resource, err := repo.create(context.Background(), nil)
-		assert.True(err != nil)
-		assert.True(resource == nil)
+		assert.NotNil(err)
+		assert.Nil(resource)
 		assert.Equal(err.Error(), "error creating resource that is nil")
 	})
 }
@@ -160,14 +161,14 @@ func Test_Repository_update(t *testing.T) {
 		s, err := NewOrganization()
 		retScope, err := repo.create(context.Background(), s)
 		assert.NoError(err)
-		assert.True(retScope != nil)
-		assert.True(retScope.GetPublicId() != "")
-		assert.Equal(retScope.GetName(), "")
+		assert.NotNil(retScope)
+		assert.NotEmpty(retScope.GetPublicId())
+		assert.NotEmpty(retScope.GetName())
 
 		retScope.(*Scope).Name = "fname-" + id
 		retScope, updatedRows, err := repo.update(context.Background(), retScope, []string{"Name"})
 		assert.NoError(err)
-		assert.True(retScope != nil)
+		assert.NotNil(retScope)
 		assert.Equal(1, updatedRows)
 		assert.Equal(retScope.GetName(), "fname-"+id)
 
@@ -188,8 +189,8 @@ func Test_Repository_update(t *testing.T) {
 		wrapper := db.TestWrapper(t)
 		repo, err := NewRepository(rw, rw, wrapper)
 		resource, updatedRows, err := repo.update(context.Background(), nil, nil)
-		assert.True(err != nil)
-		assert.True(resource == nil)
+		assert.NotNil(err)
+		assert.Nil(resource)
 		assert.Equal(0, updatedRows)
 		assert.Equal(err.Error(), "error updating resource that is nil")
 	})
@@ -210,8 +211,8 @@ func Test_Repository_delete(t *testing.T) {
 		s, err := NewOrganization()
 		retScope, err := repo.create(context.Background(), s)
 		assert.NoError(err)
-		assert.True(retScope != nil)
-		assert.True(retScope.GetPublicId() != "")
+		assert.NotNil(retScope)
+		assert.NotEmpty(retScope.GetPublicId())
 		assert.Equal(retScope.GetName(), "")
 
 		rowsDeleted, err := repo.delete(context.Background(), s)
@@ -226,7 +227,7 @@ func Test_Repository_delete(t *testing.T) {
 		wrapper := db.TestWrapper(t)
 		repo, err := NewRepository(rw, rw, wrapper)
 		deletedRows, err := repo.delete(context.Background(), nil, nil)
-		assert.True(err != nil)
+		assert.NotNil(err)
 		assert.Equal(0, deletedRows)
 		assert.Equal(err.Error(), "error deleting resource that is nil")
 	})
