@@ -143,7 +143,7 @@ func Test_Repository_create(t *testing.T) {
 	})
 }
 
-func Test_dbRepository_update(t *testing.T) {
+func Test_Repository_update(t *testing.T) {
 	t.Parallel()
 	cleanup, conn, _ := db.TestSetup(t, "postgres")
 	defer cleanup()
@@ -195,8 +195,8 @@ func Test_dbRepository_update(t *testing.T) {
 	})
 }
 
-func Test_dbRepository_delete(t *testing.T) {
-	// t.Parallel()
+func Test_Repository_delete(t *testing.T) {
+	t.Parallel()
 	cleanup, conn, _ := db.TestSetup(t, "postgres")
 	defer cleanup()
 	assert := assert.New(t)
