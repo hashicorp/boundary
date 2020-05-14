@@ -2,7 +2,7 @@
 THIS_FILE := $(lastword $(MAKEFILE_LIST))
 
 migrations:
-	go run -tags genmigrations .
+	go run .
 	goimports -w ${GEN_BASEPATH}/internal/db/migrations
 
 .PHONY: migrations

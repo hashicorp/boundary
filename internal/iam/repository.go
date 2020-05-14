@@ -69,20 +69,21 @@ func (r *Repository) create(ctx context.Context, resource Resource, opt ...Optio
 }
 
 // Update will update an iam resource in the db repository with an oplog entry
-func (r *Repository) update(ctx context.Context, resource Resource, fieldMaskPaths []string, opt ...Option) (Resource, error) {
+func (r *Repository) update(ctx context.Context, resource Resource, fieldMaskPaths []string, opt ...Option) (Resource, int, error) {
 	if resource == nil {
-		return nil, errors.New("error updating resource that is nil")
+		return nil, db.NoRowsAffected, errors.New("error updating resource that is nil")
 	}
 	resourceCloner, ok := resource.(Clonable)
 	if !ok {
-		return nil, errors.New("error resource is not clonable for update")
+		return nil, db.NoRowsAffected, errors.New("error resource is not clonable for update")
 	}
 	metadata, err := r.stdMetadata(ctx, resource)
 	if err != nil {
-		return nil, fmt.Errorf("error getting metadata for update: %w", err)
+		return nil, db.NoRowsAffected, fmt.Errorf("error getting metadata for update: %w", err)
 	}
 	metadata["op-type"] = []string{strconv.Itoa(int(oplog.OpType_OP_TYPE_UPDATE))}
 
+	var rowsUpdated int
 	var returnedResource interface{}
 	_, err = r.writer.DoTx(
 		ctx,
@@ -90,15 +91,17 @@ func (r *Repository) update(ctx context.Context, resource Resource, fieldMaskPat
 		db.ExpBackoff{},
 		func(w db.Writer) error {
 			returnedResource = resourceCloner.Clone()
-			return w.Update(
+			var err error
+			rowsUpdated, err = w.Update(
 				ctx,
 				returnedResource,
 				fieldMaskPaths,
 				db.WithOplog(r.wrapper, metadata),
 			)
+			return err
 		},
 	)
-	return returnedResource.(Resource), err
+	return returnedResource.(Resource), rowsUpdated, err
 }
 
 func (r *Repository) stdMetadata(ctx context.Context, resource Resource) (oplog.Metadata, error) {

@@ -12,7 +12,7 @@ import (
 
 func Test_NewScope(t *testing.T) {
 	t.Parallel()
-	cleanup, conn := db.TestSetup(t, "postgres")
+	cleanup, conn, _ := db.TestSetup(t, "postgres")
 	defer cleanup()
 	assert := assert.New(t)
 	defer conn.Close()
@@ -49,7 +49,7 @@ func Test_NewScope(t *testing.T) {
 }
 func Test_ScopeCreate(t *testing.T) {
 	t.Parallel()
-	cleanup, conn := db.TestSetup(t, "postgres")
+	cleanup, conn, _ := db.TestSetup(t, "postgres")
 	defer cleanup()
 	assert := assert.New(t)
 	defer conn.Close()
@@ -89,7 +89,7 @@ func Test_ScopeCreate(t *testing.T) {
 
 func Test_ScopeUpdate(t *testing.T) {
 	t.Parallel()
-	cleanup, conn := db.TestSetup(t, "postgres")
+	cleanup, conn, _ := db.TestSetup(t, "postgres")
 	defer cleanup()
 	assert := assert.New(t)
 	defer conn.Close()
@@ -106,8 +106,9 @@ func Test_ScopeUpdate(t *testing.T) {
 		id, err := uuid.GenerateUUID()
 		assert.Nil(err)
 		s.Name = id
-		err = w.Update(context.Background(), s, []string{"Name"})
+		updatedRows, err := w.Update(context.Background(), s, []string{"Name"})
 		assert.Nil(err)
+		assert.Equal(1, updatedRows)
 	})
 	t.Run("type-update-not-allowed", func(t *testing.T) {
 		w := db.New(conn)
@@ -119,13 +120,14 @@ func Test_ScopeUpdate(t *testing.T) {
 		assert.True(s.PublicId != "")
 
 		s.Type = ProjectScope.String()
-		err = w.Update(context.Background(), s, []string{"Type"})
+		updatedRows, err := w.Update(context.Background(), s, []string{"Type"})
 		assert.True(err != nil)
+		assert.Equal(0, updatedRows)
 	})
 }
 func Test_ScopeGetScope(t *testing.T) {
 	t.Parallel()
-	cleanup, conn := db.TestSetup(t, "postgres")
+	cleanup, conn, _ := db.TestSetup(t, "postgres")
 	defer cleanup()
 	assert := assert.New(t)
 	defer conn.Close()
@@ -176,7 +178,7 @@ func TestScope_ResourceType(t *testing.T) {
 
 func TestScope_Clone(t *testing.T) {
 	t.Parallel()
-	cleanup, conn := db.TestSetup(t, "postgres")
+	cleanup, conn, _ := db.TestSetup(t, "postgres")
 	defer cleanup()
 	assert := assert.New(t)
 	defer conn.Close()

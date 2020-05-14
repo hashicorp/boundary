@@ -13,7 +13,7 @@ import (
 
 func Test_Repository_CreateScope(t *testing.T) {
 	t.Parallel()
-	cleanup, conn := db.TestSetup(t, "postgres")
+	cleanup, conn, _ := db.TestSetup(t, "postgres")
 	defer cleanup()
 	assert := assert.New(t)
 	defer conn.Close()
@@ -52,7 +52,7 @@ func Test_Repository_CreateScope(t *testing.T) {
 
 func Test_Repository_UpdateScope(t *testing.T) {
 	t.Parallel()
-	cleanup, conn := db.TestSetup(t, "postgres")
+	cleanup, conn, _ := db.TestSetup(t, "postgres")
 	defer cleanup()
 	assert := assert.New(t)
 	defer conn.Close()
@@ -89,8 +89,9 @@ func Test_Repository_UpdateScope(t *testing.T) {
 
 		s.Name = "fname-" + id
 		s.Description = "desc-id" // not in the field mask paths
-		s, err = repo.UpdateScope(context.Background(), s, []string{"Name"})
+		s, updatedRows, err := repo.UpdateScope(context.Background(), s, []string{"Name"})
 		assert.Nil(err)
+		assert.Equal(1, updatedRows)
 		assert.True(s != nil)
 		assert.Equal(s.GetName(), "fname-"+id)
 		assert.Equal(foundScope.GetDescription(), "") // should  be "" after update in db
@@ -128,15 +129,16 @@ func Test_Repository_UpdateScope(t *testing.T) {
 		assert.True(project != nil)
 
 		project.ParentId = project.PublicId
-		project, err = repo.UpdateScope(context.Background(), project, []string{"ParentId"})
+		project, updatedRows, err := repo.UpdateScope(context.Background(), project, []string{"ParentId"})
 		assert.True(err != nil)
+		assert.Equal(0, updatedRows)
 		assert.Equal("failed to update scope: error on update you cannot change a scope's parent", err.Error())
 	})
 }
 
 func Test_Repository_LookupScope(t *testing.T) {
 	t.Parallel()
-	cleanup, conn := db.TestSetup(t, "postgres")
+	cleanup, conn, _ := db.TestSetup(t, "postgres")
 	defer cleanup()
 	assert := assert.New(t)
 	defer conn.Close()

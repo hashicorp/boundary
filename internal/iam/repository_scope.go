@@ -21,15 +21,15 @@ func (r *Repository) CreateScope(ctx context.Context, scope *Scope, opt ...Optio
 }
 
 // UpdateScope will update a scope in the repository and return the written scope
-func (r *Repository) UpdateScope(ctx context.Context, scope *Scope, fieldMaskPaths []string, opt ...Option) (*Scope, error) {
+func (r *Repository) UpdateScope(ctx context.Context, scope *Scope, fieldMaskPaths []string, opt ...Option) (*Scope, int, error) {
 	if scope == nil {
-		return nil, errors.New("error scope is nil for update")
+		return nil, db.NoRowsAffected, errors.New("error scope is nil for update")
 	}
-	resource, err := r.update(ctx, scope, fieldMaskPaths)
+	resource, rowsUpdated, err := r.update(ctx, scope, fieldMaskPaths)
 	if err != nil {
-		return nil, fmt.Errorf("failed to update scope: %w", err)
+		return nil, db.NoRowsAffected, fmt.Errorf("failed to update scope: %w", err)
 	}
-	return resource.(*Scope), err
+	return resource.(*Scope), rowsUpdated, err
 }
 
 // LookupScope will look up a scope in the repository.  If the scope is not
