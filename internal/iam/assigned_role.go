@@ -39,7 +39,7 @@ type assignedRoleView struct {
 }
 
 // TableName provides an overridden gorm table name for assigned roles
-func (v *assignedRoleView) TableName() string { return "iam_assigned_role_vw" }
+func (v *assignedRoleView) TableName() string { return "iam_assigned_role" }
 
 // NewAssignedRole creates a new in memory assigned role for the principal (User,Group)
 // options include: WithName

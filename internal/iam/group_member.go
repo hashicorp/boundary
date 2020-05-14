@@ -37,7 +37,7 @@ type groupMemberView struct {
 }
 
 // TableName provides an overridden gorm table name for group members
-func (v *groupMemberView) TableName() string { return "iam_group_member_vw" }
+func (v *groupMemberView) TableName() string { return "iam_group_member" }
 
 // NewGroupMember creates a new in memory member of the group with a scope (project/organization)
 // options include: withDescripion, WithName

@@ -151,7 +151,7 @@ CREATE TABLE if not exists iam_group_member_user (
   );
 
 
-CREATE VIEW iam_group_member_vw AS
+CREATE VIEW iam_group_member AS
 SELECT
   *, 'user' as type
 FROM iam_group_member_user;
@@ -207,7 +207,7 @@ CREATE TABLE if not exists iam_role_group (
     primary key (role_id, principal_id)
   );
 
-CREATE VIEW iam_assigned_role_vw AS
+CREATE VIEW iam_assigned_role AS
 SELECT
   -- intentionally using * to specify the view which requires that the concrete role assignment tables match
   *, 'user' as type
