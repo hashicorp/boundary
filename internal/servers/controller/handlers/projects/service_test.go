@@ -257,22 +257,14 @@ func TestUpdate(t *testing.T) {
 			errCode: codes.OK,
 		},
 		{
-			name: "No Update Mask updates everything",
+			name: "No Update Mask Is Invalid Argument",
 			req: &pbs.UpdateProjectRequest{
 				Item: &pb.Project{
 					Name:        &wrappers.StringValue{Value: "updated name"},
 					Description: &wrappers.StringValue{Value: "updated desc"},
 				},
 			},
-			res: &pbs.UpdateProjectResponse{
-				Item: &pb.Project{
-					Id:          proj.GetPublicId(),
-					Name:        &wrappers.StringValue{Value: "updated name"},
-					Description: &wrappers.StringValue{Value: "updated desc"},
-					CreatedTime: proj.GetCreateTime().GetTimestamp(),
-				},
-			},
-			errCode: codes.OK,
+			errCode: codes.InvalidArgument,
 		},
 		{
 			name: "Unset Name",

@@ -144,14 +144,6 @@ func (s Service) updateInRepo(ctx context.Context, req *pbs.UpdateProjectRequest
 func toDbUpdateMask(fm *field_mask.FieldMask) ([]string, error) {
 	dbPaths := []string{}
 	invalid := []string{}
-	if fm == nil {
-		// No FieldMask set indicates all mutable fields should be updated
-		for _, v := range wireToStorageMask {
-			dbPaths = append(dbPaths, v)
-		}
-		return dbPaths, nil
-	}
-
 	for _, p := range fm.GetPaths() {
 		for _, f := range strings.Split(p, ",") {
 			if dbField, ok := wireToStorageMask[strings.TrimSpace(f)]; ok {
@@ -229,7 +221,9 @@ func validateUpdateProjectRequest(req *pbs.UpdateProjectRequest) error {
 	if err := validateID(req.GetOrgId(), "o_"); err != nil {
 		return err
 	}
-	// TODO: Either require mask to be set or document in API that an unset mask updates all fields.
+	if req.GetUpdateMask() == nil {
+		return status.Errorf(codes.InvalidArgument, "UpdateMask not provided but is required to update a project.")
+	}
 	item := req.GetItem()
 	if item == nil {
 		// It is legitimate for no item to be specified in an update request as it indicates all fields provided in
