@@ -3,6 +3,7 @@ package db
 import (
 	"context"
 	"errors"
+	"fmt"
 	"testing"
 
 	"github.com/hashicorp/go-uuid"
@@ -603,6 +604,68 @@ func TestDb_DoTx(t *testing.T) {
 		assert.True(err != nil)
 		assert.Equal(3, got.Retries)
 		assert.Equal("Too many retries: 3 of 3", err.Error())
+	})
+	t.Run("updating-good-bad-good", func(t *testing.T) {
+		w := Db{underlying: db}
+		id, err := uuid.GenerateUUID()
+		assert.NoError(err)
+		user, err := db_test.NewTestUser()
+		assert.NoError(err)
+		user.Name = "foo-" + id
+		err = w.Create(context.Background(), user)
+		assert.NoError(err)
+		assert.True(user.Id != 0)
+
+		_, err = w.DoTx(context.Background(), 10, ExpBackoff{}, func(w Writer) error {
+			user.Name = "friendly-" + id
+			rowsUpdated, err := w.Update(context.Background(), user, []string{"Name"})
+			if err != nil {
+				return err
+			}
+			if rowsUpdated != 1 {
+				return fmt.Errorf("error in number of rows updated %d", rowsUpdated)
+			}
+			return nil
+		})
+		assert.NoError(err)
+
+		foundUser, err := db_test.NewTestUser()
+		assert.NoError(err)
+		foundUser.PublicId = user.PublicId
+		err = w.LookupByPublicId(context.Background(), foundUser)
+		assert.NoError(err)
+		assert.Equal(foundUser.Name, user.Name)
+
+		user2, err := db_test.NewTestUser()
+		assert.NoError(err)
+		_, err = w.DoTx(context.Background(), 10, ExpBackoff{}, func(w Writer) error {
+			user2.Name = "friendly2-" + id
+			rowsUpdated, err := w.Update(context.Background(), user2, []string{"Name"})
+			if err != nil {
+				return err
+			}
+			if rowsUpdated != 1 {
+				return fmt.Errorf("error in number of rows updated %d", rowsUpdated)
+			}
+			return nil
+		})
+		assert.Error(err)
+
+		_, err = w.DoTx(context.Background(), 10, ExpBackoff{}, func(w Writer) error {
+			user.Name = "friendly2-" + id
+			rowsUpdated, err := w.Update(context.Background(), user, []string{"Name"})
+			if err != nil {
+				return err
+			}
+			if rowsUpdated != 1 {
+				return fmt.Errorf("error in number of rows updated %d", rowsUpdated)
+			}
+			return nil
+		})
+		assert.NoError(err)
+		err = w.LookupByPublicId(context.Background(), foundUser)
+		assert.NoError(err)
+		assert.Equal(foundUser.Name, user.Name)
 	})
 }
 
