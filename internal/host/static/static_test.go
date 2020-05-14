@@ -459,7 +459,11 @@ func TestHostSetMember_New(t *testing.T) {
 				assert.Nil(got)
 			} else {
 				assert.NoError(err)
-				assert.NotNil(got)
+				if assert.NotNil(got) {
+					w := db.New(conn)
+					err2 := w.Create(context.Background(), got)
+					assert.NoError(err2)
+				}
 			}
 		})
 	}
