@@ -3,7 +3,6 @@ package db
 import (
 	"context"
 	"crypto/rand"
-	"fmt"
 	"strconv"
 	"testing"
 	"time"
@@ -51,44 +50,52 @@ func TestWrapper(t *testing.T) wrapping.Wrapper {
 }
 
 // TestVerifyOplog will verify that there is an oplog entry
-func TestVerifyOplog(r Reader, resourcePublicId string, opt ...TestOption) error {
+func TestVerifyOplog(t *testing.T, r Reader, resourcePublicId string, opt ...TestOption) error {
+	// sql where clauses
+	const (
+		whereBase = `
+      key = 'resource-public-id'
+and value = ?
+`
+		whereOptype = `
+and entry_id in (
+  select entry_id
+    from oplog_metadata
+	 where key = 'op-type'
+     and value = ?
+)
+`
+		whereCreateNotBefore = `
+and create_time > NOW()::timestamp - (interval '1 second' * ?)
+`
+	)
+
 	opts := getTestOpts(opt...)
 	withOperation := opts.withOperation
 	withCreateNotBefore := opts.withCreateNotBefore
 
-	var metadata store.Metadata
-
-	where := "key = 'resource-public-id' and value = ?"
-	args := []interface{}{
+	where := whereBase
+	whereArgs := []interface{}{
 		resourcePublicId,
 	}
 
 	if withOperation != oplog.OpType_OP_TYPE_UNSPECIFIED {
-		where = where + ` and entry_id in (
-			select entry_id
-			FROM oplog_metadata
-			where
-			 	key = 'op-type' and
-				 value = ?
-			 )`
-		args = append(args, strconv.Itoa(int(withOperation)))
+		where = where + whereOptype
+		whereArgs = append(whereArgs, strconv.Itoa(int(withOperation)))
 	}
 
 	if withCreateNotBefore != nil {
-		where = fmt.Sprintf("%s and create_time > NOW()::timestamp - interval '%d second'", where, *withCreateNotBefore)
+		where = where + whereCreateNotBefore
+		whereArgs = append(whereArgs, int(*withCreateNotBefore))
 	}
 
-	if err := r.LookupWhere(context.Background(), &metadata, where, args...); err != nil {
+	var metadata store.Metadata
+	if err := r.LookupWhere(context.Background(), &metadata, where, whereArgs...); err != nil {
 		return err
 	}
 
 	var foundEntry oplog.Entry
-	if err := r.LookupWhere(
-		context.Background(),
-		&foundEntry,
-		"id = ?",
-		metadata.EntryId,
-	); err != nil {
+	if err := r.LookupWhere(context.Background(), &foundEntry, "id = ?", metadata.EntryId); err != nil {
 		return err
 	}
 	return nil

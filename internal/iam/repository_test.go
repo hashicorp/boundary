@@ -218,7 +218,7 @@ func Test_dbRepository_delete(t *testing.T) {
 		assert.Nil(err)
 		assert.Equal(1, rowsDeleted)
 
-		err = db.TestVerifyOplog(rw, s.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_DELETE), db.WithCreateNotBefore(5*time.Second))
+		err = db.TestVerifyOplog(t, rw, s.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_DELETE), db.WithCreateNotBefore(5*time.Second))
 		assert.Nil(err)
 	})
 	t.Run("nil-resource", func(t *testing.T) {

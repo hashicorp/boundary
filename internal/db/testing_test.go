@@ -57,14 +57,14 @@ func Test_TestVerifyOplogEntry(t *testing.T) {
 		err = rw.LookupByPublicId(context.Background(), foundUser)
 		assert.Nil(err)
 		assert.Equal(foundUser.Id, user.Id)
-		err = TestVerifyOplog(&rw, user.PublicId, WithOperation(oplog.OpType_OP_TYPE_CREATE), WithCreateNotBefore(5*time.Second))
+		err = TestVerifyOplog(t, &rw, user.PublicId, WithOperation(oplog.OpType_OP_TYPE_CREATE), WithCreateNotBefore(5*time.Second))
 		assert.Nil(err)
 	})
 	t.Run("should-fail", func(t *testing.T) {
 		rw := Db{underlying: db}
 		id, err := uuid.GenerateUUID()
 		assert.Nil(err)
-		err = TestVerifyOplog(&rw, id)
+		err = TestVerifyOplog(t, &rw, id)
 		assert.True(err != nil)
 	})
 }

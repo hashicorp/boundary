@@ -36,7 +36,7 @@ func Test_Repository_CreateScope(t *testing.T) {
 		assert.Nil(err)
 		assert.Equal(foundScope.GetPublicId(), s.GetPublicId())
 
-		err = db.TestVerifyOplog(rw, s.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_CREATE), db.WithCreateNotBefore(10*time.Second))
+		err = db.TestVerifyOplog(t, rw, s.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_CREATE), db.WithCreateNotBefore(10*time.Second))
 		assert.Nil(err)
 	})
 	t.Run("dup-org-names", func(t *testing.T) {
@@ -110,7 +110,7 @@ func Test_Repository_UpdateScope(t *testing.T) {
 		assert.Equal(foundScope.GetPublicId(), s.GetPublicId())
 
 		assert.Nil(err)
-		err = db.TestVerifyOplog(rw, s.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_CREATE), db.WithCreateNotBefore(10*time.Second))
+		err = db.TestVerifyOplog(t, rw, s.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_CREATE), db.WithCreateNotBefore(10*time.Second))
 		assert.Nil(err)
 
 		s.Name = "fname-" + id
@@ -127,7 +127,7 @@ func Test_Repository_UpdateScope(t *testing.T) {
 		assert.Equal(foundScope.GetPublicId(), s.GetPublicId())
 		assert.Equal(foundScope.GetDescription(), "")
 
-		err = db.TestVerifyOplog(rw, s.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_UPDATE), db.WithCreateNotBefore(10*time.Second))
+		err = db.TestVerifyOplog(t, rw, s.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_UPDATE), db.WithCreateNotBefore(10*time.Second))
 		assert.Nil(err)
 	})
 	t.Run("bad-parent-scope", func(t *testing.T) {
@@ -217,7 +217,7 @@ func Test_Repository_DeleteScope(t *testing.T) {
 		assert.Nil(err)
 		assert.Equal(1, rowsDeleted)
 
-		err = db.TestVerifyOplog(rw, s.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_DELETE), db.WithCreateNotBefore(10*time.Second))
+		err = db.TestVerifyOplog(t, rw, s.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_DELETE), db.WithCreateNotBefore(10*time.Second))
 		assert.Nil(err)
 
 		foundScope, err = repo.LookupScope(context.Background(), s.PublicId)
