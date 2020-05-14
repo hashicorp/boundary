@@ -56,13 +56,16 @@ func (u *User) Clone() interface{} {
 
 // Roles gets the roles for the user (we should/can support options to include roles associated with the user's groups)
 func (u *User) Roles(ctx context.Context, r db.Reader, opt ...Option) (map[string]*Role, error) {
+	if r == nil {
+		return nil, errors.New("reader is nil for getting the user's roles")
+	}
 	if u.PublicId == "" {
 		return nil, errors.New("error user id is unset for finding roles")
 	}
 	where := "public_id in (select role_id from iam_assigned_role ipr where principal_id  = ? and type = ?)"
 	roles := []*Role{}
 	if err := r.SearchWhere(ctx, &roles, where, u.PublicId, UserRoleType.String()); err != nil {
-		return nil, fmt.Errorf("error getting user roles %w", err)
+		return nil, err
 	}
 	results := map[string]*Role{}
 	for _, r := range roles {
@@ -74,52 +77,51 @@ func (u *User) Roles(ctx context.Context, r db.Reader, opt ...Option) (map[strin
 // Grants finds the grants for the user and supports options:
 // WithGroupGrants which will get the grants assigned to the user's groups as well
 func (u *User) Grants(ctx context.Context, r db.Reader, opt ...Option) ([]*RoleGrant, error) {
+	const (
+		whereBase = `
+role_id in (select role_id from iam_assigned_role ipr where principal_id  = ? and type = ?)
+`
+
+		whereWithGrpGrants = `
+select 
+	rg.*
+from
+	iam_role_grant rg,
+	iam_assigned_role ipr, 
+	iam_group grp, 
+	iam_group_member gm 
+where 
+	rg.role_id = ipr.role_id and 
+	ipr.principal_id = grp.public_id and 
+	grp.public_id = gm.group_id and 
+	gm.member_id = $1 and gm.type = 'user' and
+	ipr."type" = 'group'
+union
+select 
+	rg.*
+from 
+	iam_role_grant rg,
+	iam_assigned_role ipr 
+where 
+	ipr.role_id  = rg.role_id and 
+	ipr.principal_id  = $2 and ipr.type = 'user'
+`
+	)
+	if r == nil {
+		return nil, errors.New("error reader is nil for getting the user's grants")
+	}
 	opts := getOpts(opt...)
 	withGrpGrants := opts.withGroupGrants
 	if u.PublicId == "" {
 		return nil, errors.New("error user id is unset for finding roles")
 	}
-	grants := []*RoleGrant{}
-	// client just wants the grants directly granted to the user
-	if !withGrpGrants {
-		where := "role_id in (select role_id from iam_assigned_role ipr where principal_id  = ? and type = ?)"
-		if err := r.SearchWhere(ctx, &grants, where, u.PublicId, UserRoleType.String()); err != nil {
-			return nil, fmt.Errorf("error getting user roles %w", err)
-		}
-		return grants, nil
-	}
-
 	if withGrpGrants {
-		// okay, we're going to get the user grants and include the grants from any group the user is part of.
+		grants := []*RoleGrant{}
 		tx, err := r.DB()
 		if err != nil {
 			return nil, err
 		}
-		where := `
-select 
-  rg.*
-from
-  iam_role_grant rg,
-  iam_assigned_role ipr, 
-  iam_group grp, 
-  iam_group_member gm 
-where 
-  rg.role_id = ipr.role_id and 
-  ipr.principal_id = grp.public_id and 
-  grp.public_id = gm.group_id and 
-  gm.member_id = $1 and gm.type = 'user' and
-  ipr."type" = 'group'
-union
-select 
-  rg.*
-from 
-  iam_role_grant rg,
-  iam_assigned_role ipr 
-where 
-  ipr.role_id  = rg.role_id and 
-  ipr.principal_id  = $2 and ipr.type = 'user'`
-
-		rows, err := tx.Query(where, u.PublicId, u.PublicId)
+		rows, err := tx.Query(whereWithGrpGrants, u.PublicId, u.PublicId)
 		if err != nil {
 			return nil, err
 		}
@@ -131,18 +133,29 @@ where
 			}
 			grants = append(grants, &g)
 		}
+		return grants, nil
+	}
+
+	grants := []*RoleGrant{}
+	if err := r.SearchWhere(ctx, &grants, whereBase, u.PublicId, UserRoleType.String()); err != nil {
+		return nil, err
 	}
 	return grants, nil
+
 }
 
+// Groups will get the user's groups
 func (u *User) Groups(ctx context.Context, r db.Reader) ([]*Group, error) {
+	if r == nil {
+		return nil, errors.New("error reader is nil for getting the user's groups")
+	}
 	if u.PublicId == "" {
 		return nil, errors.New("error user id is unset for finding user groups")
 	}
 	where := "public_id in (select distinct group_id from iam_group_member where member_id = ? and type = ?)"
 	groups := []*Group{}
 	if err := r.SearchWhere(ctx, &groups, where, u.PublicId, UserMemberType.String()); err != nil {
-		return nil, fmt.Errorf("error finding user groups: %w", err)
+		return nil, err
 	}
 	return groups, nil
 }
