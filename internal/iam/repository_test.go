@@ -163,7 +163,7 @@ func Test_Repository_update(t *testing.T) {
 		assert.NoError(err)
 		assert.NotNil(retScope)
 		assert.NotEmpty(retScope.GetPublicId())
-		assert.NotEmpty(retScope.GetName())
+		assert.Empty(retScope.GetName())
 
 		retScope.(*Scope).Name = "fname-" + id
 		retScope, updatedRows, err := repo.update(context.Background(), retScope, []string{"Name"})
@@ -219,7 +219,7 @@ func Test_Repository_delete(t *testing.T) {
 		assert.NoError(err)
 		assert.Equal(1, rowsDeleted)
 
-		err = db.TestVerifyOplog(t, rw, s.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_DELETE), db.WithCreateNotBefore(5*time.Second))
+		db.TestVerifyOplog(t, rw, s.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_DELETE), db.WithCreateNotBefore(5*time.Second))
 		assert.NoError(err)
 	})
 	t.Run("nil-resource", func(t *testing.T) {
