@@ -14,6 +14,7 @@ import (
 	pbs "github.com/hashicorp/watchtower/internal/gen/controller/api/services"
 	"github.com/hashicorp/watchtower/internal/iam"
 	"github.com/hashicorp/watchtower/internal/servers/controller/handlers/projects"
+	"google.golang.org/genproto/protobuf/field_mask"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
@@ -22,7 +23,7 @@ import (
 
 func createDefaultProjectAndRepo(t *testing.T) (*iam.Scope, *iam.Repository) {
 	t.Helper()
-	cleanup, conn := db.TestSetup(t, "postgres")
+	cleanup, conn, _ := db.TestSetup(t, "postgres")
 	t.Cleanup(func() {
 		conn.Close()
 		cleanup()
@@ -227,15 +228,80 @@ func TestUpdate(t *testing.T) {
 	}{
 		{
 			name: "Update an Existing Project",
-			req: &pbs.UpdateProjectRequest{Item: &pb.Project{
-				Name:        &wrappers.StringValue{Value: "new"},
-				Description: &wrappers.StringValue{Value: "desc"},
-			}},
-			res: &pbs.UpdateProjectResponse{
+			req: &pbs.UpdateProjectRequest{
+				UpdateMask: &field_mask.FieldMask{
+					Paths: []string{"name,description"},
+				},
 				Item: &pb.Project{
-					Id:          proj.GetPublicId(),
 					Name:        &wrappers.StringValue{Value: "new"},
 					Description: &wrappers.StringValue{Value: "desc"},
+				},
+			},
+			res: &pbs.UpdateProjectResponse{
+				Item: &pb.Project{
+					Id:          "should be replaced in the test",
+					Name:        &wrappers.StringValue{Value: "new"},
+					Description: &wrappers.StringValue{Value: "desc"},
+					CreatedTime: proj.GetCreateTime().GetTimestamp(),
+				},
+			},
+			errCode: codes.OK,
+		},
+		{
+			name: "No Update Mask updates everything",
+			req: &pbs.UpdateProjectRequest{
+				Item: &pb.Project{
+					Name:        &wrappers.StringValue{Value: "updated name"},
+					Description: &wrappers.StringValue{Value: "updated desc"},
+				},
+			},
+			res: &pbs.UpdateProjectResponse{
+				Item: &pb.Project{
+					Id:          "should be replaced in the test",
+					Name:        &wrappers.StringValue{Value: "updated name"},
+					Description: &wrappers.StringValue{Value: "updated desc"},
+					CreatedTime: proj.GetCreateTime().GetTimestamp(),
+				},
+			},
+			errCode: codes.OK,
+		},
+		{
+			name: "Update Only Name",
+			req: &pbs.UpdateProjectRequest{
+				UpdateMask: &field_mask.FieldMask{
+					Paths: []string{"name"},
+				},
+				Item: &pb.Project{
+					Name:        &wrappers.StringValue{Value: "updated"},
+					Description: &wrappers.StringValue{Value: "ignored"},
+				},
+			},
+			res: &pbs.UpdateProjectResponse{
+				Item: &pb.Project{
+					Id:          "should be replaced in the test",
+					Name:        &wrappers.StringValue{Value: "updated"},
+					Description: &wrappers.StringValue{Value: "default"},
+					CreatedTime: proj.GetCreateTime().GetTimestamp(),
+				},
+			},
+			errCode: codes.OK,
+		},
+		{
+			name: "Update Only Description",
+			req: &pbs.UpdateProjectRequest{
+				UpdateMask: &field_mask.FieldMask{
+					Paths: []string{"description"},
+				},
+				Item: &pb.Project{
+					Name:        &wrappers.StringValue{Value: "ignored"},
+					Description: &wrappers.StringValue{Value: "notignored"},
+				},
+			},
+			res: &pbs.UpdateProjectResponse{
+				Item: &pb.Project{
+					Id:          "should be replaced in the test",
+					Name:        &wrappers.StringValue{Value: "default"},
+					Description: &wrappers.StringValue{Value: "notignored"},
 					CreatedTime: proj.GetCreateTime().GetTimestamp(),
 				},
 			},
@@ -257,6 +323,9 @@ func TestUpdate(t *testing.T) {
 			name: "Cant change Id",
 			req: &pbs.UpdateProjectRequest{
 				Id: "p_1234567890",
+				UpdateMask: &field_mask.FieldMask{
+					Paths: []string{"id"},
+				},
 				Item: &pb.Project{
 					Id:          "p_0987654321",
 					Name:        &wrappers.StringValue{Value: "new"},
@@ -267,17 +336,27 @@ func TestUpdate(t *testing.T) {
 		},
 		{
 			name: "Cant specify Created Time",
-			req: &pbs.UpdateProjectRequest{Item: &pb.Project{
-				CreatedTime: ptypes.TimestampNow(),
-			}},
+			req: &pbs.UpdateProjectRequest{
+				UpdateMask: &field_mask.FieldMask{
+					Paths: []string{"created_time"},
+				},
+				Item: &pb.Project{
+					CreatedTime: ptypes.TimestampNow(),
+				},
+			},
 			res:     nil,
 			errCode: codes.InvalidArgument,
 		},
 		{
 			name: "Cant specify Updated Time",
-			req: &pbs.UpdateProjectRequest{Item: &pb.Project{
-				UpdatedTime: ptypes.TimestampNow(),
-			}},
+			req: &pbs.UpdateProjectRequest{
+				UpdateMask: &field_mask.FieldMask{
+					Paths: []string{"updated_time"},
+				},
+				Item: &pb.Project{
+					UpdatedTime: ptypes.TimestampNow(),
+				},
+			},
 			res:     nil,
 			errCode: codes.InvalidArgument,
 		},
@@ -286,6 +365,8 @@ func TestUpdate(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			assert := assert.New(t)
 			req := proto.Clone(toMerge).(*pbs.UpdateProjectRequest)
+			nProj := newTestProject(t, req.GetOrgId(), repo)
+			req.Id = nProj.GetPublicId()
 			proto.Merge(req, tc.req)
 
 			s := projects.NewService(repo)
@@ -294,6 +375,7 @@ func TestUpdate(t *testing.T) {
 			assert.Equal(tc.errCode, status.Code(gErr), "UpdateProject(%+v) got error %v, wanted %v", req, gErr, tc.errCode)
 
 			if got != nil {
+				assert.NotNilf(tc.res, "Expected UpdateProject response to be nil, but was %v", got)
 				gotUpdateTime, err := ptypes.Timestamp(got.GetItem().GetUpdatedTime())
 				if err != nil {
 					t.Fatalf("Error converting proto to timestamp: %v", err)
@@ -305,9 +387,23 @@ func TestUpdate(t *testing.T) {
 				_ = projCreated
 
 				// Clear all values which are hard to compare against.
-				got.Item.CreatedTime, got.Item.UpdatedTime, tc.res.Item.CreatedTime, tc.res.Item.UpdatedTime = nil, nil, nil, nil
+				got.Item.UpdatedTime, tc.res.Item.UpdatedTime = nil, nil
+				tc.res.Item.Id = req.GetId()
 			}
 			assert.True(proto.Equal(got, tc.res), "UpdateProject(%q) got response %q, wanted %q", req, got, tc.res)
 		})
 	}
+}
+
+func newTestProject(t *testing.T, org string, repo *iam.Repository) *iam.Scope {
+	t.Helper()
+	nProj, err := iam.NewProject(org, iam.WithName("default"), iam.WithDescription("default"))
+	if err != nil {
+		t.Fatalf("Unable to setup initial test project: %v", err)
+	}
+	nProj, err = repo.CreateScope(context.Background(), nProj)
+	if err != nil {
+		t.Fatalf("Unable to add initial test project to repo: %v", err)
+	}
+	return nProj
 }
