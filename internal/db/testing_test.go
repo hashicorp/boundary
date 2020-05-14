@@ -36,7 +36,7 @@ func Test_TestVerifyOplogEntry(t *testing.T) {
 		id, err := uuid.GenerateUUID()
 		assert.Nil(err)
 		user, err := db_test.NewTestUser()
-		assert.Nil(err)
+		assert.NoError(err)
 		user.Name = "foo-" + id
 		err = rw.Create(
 			context.Background(),
@@ -48,11 +48,11 @@ func Test_TestVerifyOplogEntry(t *testing.T) {
 					"resource-public-id": []string{user.GetPublicId()},
 				}),
 		)
-		assert.Nil(err)
-		assert.True(user.Id != 0)
+		assert.NoError(err)
+		assert.NotZero(user.Id)
 
 		foundUser, err := db_test.NewTestUser()
-		assert.Nil(err)
+		assert.NoError(err)
 		foundUser.PublicId = user.PublicId
 		err = rw.LookupByPublicId(context.Background(), foundUser)
 		assert.Nil(err)
