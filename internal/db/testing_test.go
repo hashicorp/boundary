@@ -36,7 +36,7 @@ func Test_TestVerifyOplogEntry(t *testing.T) {
 		id, err := uuid.GenerateUUID()
 		assert.Nil(err)
 		user, err := db_test.NewTestUser()
-		assert.Nil(err)
+		assert.NoError(err)
 		user.Name = "foo-" + id
 		err = rw.Create(
 			context.Background(),
