@@ -58,12 +58,3 @@ func WithName(name string) Option {
 		o.withName = name
 	}
 }
-
-// WithParentId provides an optional parent id for a scope
-func WithParentId(id string) Option {
-	return func(o *options) {
-		if id != "" {
-			o.withParentId = &id
-		}
-	}
-}
