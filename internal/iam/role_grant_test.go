@@ -33,7 +33,7 @@ func TestNewRoleGrant(t *testing.T) {
 		assert.Nil(err)
 		assert.True(role.PublicId != "")
 
-		g, err := NewRoleGrant(s, role, "everything*")
+		g, err := NewRoleGrant(role, "everything*")
 		assert.Nil(err)
 		assert.True(g != nil)
 		assert.Equal(g.RoleId, role.PublicId)
@@ -72,11 +72,6 @@ func TestNewRoleGrant(t *testing.T) {
 		err = w.Create(context.Background(), role)
 		assert.Nil(err)
 		assert.True(role.PublicId != "")
-
-		g, err := NewRoleGrant(nil, role, "everything*")
-		assert.True(err != nil)
-		assert.True(g == nil)
-		assert.Equal(err.Error(), "error the role grant scope is nil")
 	})
 	t.Run("nil-role", func(t *testing.T) {
 		w := db.New(conn)
@@ -87,7 +82,7 @@ func TestNewRoleGrant(t *testing.T) {
 		assert.Nil(err)
 		assert.True(s.PublicId != "")
 
-		g, err := NewRoleGrant(s, nil, "everything*")
+		g, err := NewRoleGrant(nil, "everything*")
 		assert.True(err != nil)
 		assert.True(g == nil)
 		assert.Equal(err.Error(), "error role is nil")
@@ -135,7 +130,7 @@ func TestRoleGrant_GetScope(t *testing.T) {
 		assert.Nil(err)
 		assert.True(role.PublicId != "")
 
-		g, err := NewRoleGrant(s, role, "everything*")
+		g, err := NewRoleGrant(role, "everything*")
 		assert.Nil(err)
 		assert.True(g != nil)
 		assert.Equal(g.RoleId, role.PublicId)
@@ -172,7 +167,7 @@ func TestRoleGrant_Clone(t *testing.T) {
 		assert.Nil(err)
 		assert.True(role.PublicId != "")
 
-		g, err := NewRoleGrant(s, role, "everything*")
+		g, err := NewRoleGrant(role, "everything*")
 		assert.Nil(err)
 		assert.True(g != nil)
 		assert.Equal(g.RoleId, role.PublicId)
@@ -198,13 +193,13 @@ func TestRoleGrant_Clone(t *testing.T) {
 		assert.Nil(err)
 		assert.True(role.PublicId != "")
 
-		g, err := NewRoleGrant(s, role, "everything*")
+		g, err := NewRoleGrant(role, "everything*")
 		assert.Nil(err)
 		assert.True(g != nil)
 		assert.Equal(g.RoleId, role.PublicId)
 		assert.Equal(g.Grant, "everything*")
 
-		g2, err := NewRoleGrant(s, role, "nothing*")
+		g2, err := NewRoleGrant(role, "nothing*")
 		assert.Nil(err)
 		assert.True(g2 != nil)
 		assert.Equal(g2.RoleId, role.PublicId)

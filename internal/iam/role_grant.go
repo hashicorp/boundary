@@ -21,16 +21,9 @@ type RoleGrant struct {
 var _ Clonable = (*RoleGrant)(nil)
 var _ db.VetForWriter = (*RoleGrant)(nil)
 
-// NewRoleGrant creates a new in memory grant with a scope (project/organization)
+// NewRoleGrant creates a new in memory role grant
 // options include: WithName
-func NewRoleGrant(scope *Scope, role *Role, grant string, opt ...Option) (*RoleGrant, error) {
-	if scope == nil {
-		return nil, errors.New("error the role grant scope is nil")
-	}
-	if scope.Type != OrganizationScope.String() &&
-		scope.Type != ProjectScope.String() {
-		return nil, errors.New("role grants can only be within an organization or project scope")
-	}
+func NewRoleGrant(role *Role, grant string, opt ...Option) (*RoleGrant, error) {
 	if role == nil {
 		return nil, errors.New("error role is nil")
 	}
