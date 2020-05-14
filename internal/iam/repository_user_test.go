@@ -21,40 +21,40 @@ func Test_Repository_CreateUser(t *testing.T) {
 		wrapper := db.TestWrapper(t)
 		repo, err := NewRepository(rw, rw, wrapper)
 		id, err := uuid.GenerateUUID()
-		assert.Nil(err)
+		assert.NoError(err)
 
 		s, err := NewOrganization()
 		s, err = repo.CreateScope(context.Background(), s)
-		assert.Nil(err)
+		assert.NoError(err)
 		assert.True(s != nil)
 
 		u, err := NewUser(s.PublicId, WithName("fn-"+id))
-		assert.Nil(err)
+		assert.NoError(err)
 		assert.Equal(s.GetPublicId(), u.ScopeId)
 		assert.Equal(u.GetName(), "fn-"+id)
 
 		u, err = repo.CreateUser(context.Background(), u)
-		assert.Nil(err)
+		assert.NoError(err)
 		assert.True(u.CreateTime != nil)
 		assert.True(u.UpdateTime != nil)
 
 		foundUser, err := repo.LookupUser(context.Background(), WithPublicId(u.PublicId))
-		assert.Nil(err)
+		assert.NoError(err)
 		assert.Equal(foundUser.GetPublicId(), u.GetPublicId())
 		assert.Equal(foundUser.GetScopeId(), u.GetScopeId())
 		assert.Equal(foundUser.GetName(), "fn-"+id)
 
 		err = db.TestVerifyOplog(rw, u.PublicId)
-		assert.Nil(err)
+		assert.NoError(err)
 	})
 	t.Run("bad-scope-id", func(t *testing.T) {
 		rw := db.New(conn)
 		wrapper := db.TestWrapper(t)
 		repo, err := NewRepository(rw, rw, wrapper)
 		badScopeId, err := uuid.GenerateUUID()
-		assert.Nil(err)
+		assert.NoError(err)
 		u, err := NewUser(badScopeId)
-		assert.Nil(err)
+		assert.NoError(err)
 		assert.Equal(badScopeId, u.ScopeId)
 
 		pubId := u.PublicId

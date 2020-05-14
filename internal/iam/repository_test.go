@@ -111,26 +111,26 @@ func Test_Repository_create(t *testing.T) {
 		wrapper := db.TestWrapper(t)
 		repo, err := NewRepository(rw, rw, wrapper)
 		id, err := uuid.GenerateUUID()
-		assert.Nil(err)
+		assert.NoError(err)
 
 		s, err := NewOrganization(WithName("fname-" + id))
 		retScope, err := repo.create(context.Background(), s)
-		assert.Nil(err)
+		assert.NoError(err)
 		assert.True(retScope != nil)
 		assert.True(retScope.GetPublicId() != "")
 		assert.Equal(retScope.GetName(), "fname-"+id)
 
 		foundScope, err := repo.LookupScope(context.Background(), s.PublicId)
-		assert.Nil(err)
+		assert.NoError(err)
 		assert.Equal(foundScope.GetPublicId(), retScope.GetPublicId())
 
 		var metadata store.Metadata
 		err = conn.Where("key = ? and value = ?", "resource-public-id", s.PublicId).First(&metadata).Error
-		assert.Nil(err)
+		assert.NoError(err)
 
 		var foundEntry oplog.Entry
 		err = conn.Where("id = ?", metadata.EntryId).First(&foundEntry).Error
-		assert.Nil(err)
+		assert.NoError(err)
 	})
 	t.Run("nil-resource", func(t *testing.T) {
 		rw := db.New(conn)
@@ -155,33 +155,33 @@ func Test_Repository_update(t *testing.T) {
 		wrapper := db.TestWrapper(t)
 		repo, err := NewRepository(rw, rw, wrapper)
 		id, err := uuid.GenerateUUID()
-		assert.Nil(err)
+		assert.NoError(err)
 
 		s, err := NewOrganization()
 		retScope, err := repo.create(context.Background(), s)
-		assert.Nil(err)
+		assert.NoError(err)
 		assert.True(retScope != nil)
 		assert.True(retScope.GetPublicId() != "")
 		assert.Equal(retScope.GetName(), "")
 
 		retScope.(*Scope).Name = "fname-" + id
 		retScope, updatedRows, err := repo.update(context.Background(), retScope, []string{"Name"})
-		assert.Nil(err)
+		assert.NoError(err)
 		assert.True(retScope != nil)
 		assert.Equal(1, updatedRows)
 		assert.Equal(retScope.GetName(), "fname-"+id)
 
 		foundScope, err := repo.LookupScope(context.Background(), s.PublicId)
-		assert.Nil(err)
+		assert.NoError(err)
 		assert.Equal(foundScope.GetPublicId(), retScope.GetPublicId())
 
 		var metadata store.Metadata
 		err = conn.Where("key = ? and value = ?", "resource-public-id", s.PublicId).First(&metadata).Error
-		assert.Nil(err)
+		assert.NoError(err)
 
 		var foundEntry oplog.Entry
 		err = conn.Where("id = ?", metadata.EntryId).First(&foundEntry).Error
-		assert.Nil(err)
+		assert.NoError(err)
 	})
 	t.Run("nil-resource", func(t *testing.T) {
 		rw := db.New(conn)
@@ -209,17 +209,17 @@ func Test_dbRepository_delete(t *testing.T) {
 
 		s, err := NewOrganization()
 		retScope, err := repo.create(context.Background(), s)
-		assert.Nil(err)
+		assert.NoError(err)
 		assert.True(retScope != nil)
 		assert.True(retScope.GetPublicId() != "")
 		assert.Equal(retScope.GetName(), "")
 
 		rowsDeleted, err := repo.delete(context.Background(), s)
-		assert.Nil(err)
+		assert.NoError(err)
 		assert.Equal(1, rowsDeleted)
 
 		err = db.TestVerifyOplog(rw, s.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_DELETE), db.WithCreateNotBefore(5*time.Second))
-		assert.Nil(err)
+		assert.NoError(err)
 	})
 	t.Run("nil-resource", func(t *testing.T) {
 		rw := db.New(conn)

@@ -20,16 +20,16 @@ func Test_NewScope(t *testing.T) {
 	t.Run("valid-org-with-project", func(t *testing.T) {
 		w := db.New(conn)
 		s, err := NewOrganization()
-		assert.Nil(err)
+		assert.NoError(err)
 		assert.True(s.Scope != nil)
 		err = w.Create(context.Background(), s)
-		assert.Nil(err)
+		assert.NoError(err)
 		assert.True(s.PublicId != "")
 
 		id, err := uuid.GenerateUUID()
-		assert.Nil(err)
+		assert.NoError(err)
 		projScope, err := NewProject(s.PublicId, WithDescription(id))
-		assert.Nil(err)
+		assert.NoError(err)
 		assert.True(projScope.Scope != nil)
 		assert.Equal(projScope.GetParentId(), s.PublicId)
 		assert.Equal(projScope.GetDescription(), id)
@@ -57,32 +57,32 @@ func Test_ScopeCreate(t *testing.T) {
 	t.Run("valid", func(t *testing.T) {
 		w := db.New(conn)
 		s, err := NewOrganization()
-		assert.Nil(err)
+		assert.NoError(err)
 		assert.True(s.Scope != nil)
 		err = w.Create(context.Background(), s)
-		assert.Nil(err)
+		assert.NoError(err)
 		assert.True(s.PublicId != "")
 	})
 	t.Run("valid-with-parent", func(t *testing.T) {
 		w := db.New(conn)
 		s, err := NewOrganization()
-		assert.Nil(err)
+		assert.NoError(err)
 		assert.True(s.Scope != nil)
 		err = w.Create(context.Background(), s)
-		assert.Nil(err)
+		assert.NoError(err)
 		assert.True(s.PublicId != "")
 
 		id, err := uuid.GenerateUUID()
-		assert.Nil(err)
+		assert.NoError(err)
 
 		project, err := NewProject(s.PublicId, WithDescription(id))
-		assert.Nil(err)
+		assert.NoError(err)
 		assert.True(project.Scope != nil)
 		assert.Equal(project.Scope.ParentId, s.PublicId)
 		assert.Equal(project.GetDescription(), id)
 
 		err = w.Create(context.Background(), project)
-		assert.Nil(err)
+		assert.NoError(err)
 		assert.Equal(project.ParentId, s.PublicId)
 	})
 }
@@ -97,26 +97,26 @@ func Test_ScopeUpdate(t *testing.T) {
 	t.Run("valid", func(t *testing.T) {
 		w := db.New(conn)
 		s, err := NewOrganization()
-		assert.Nil(err)
+		assert.NoError(err)
 		assert.True(s.Scope != nil)
 		err = w.Create(context.Background(), s)
-		assert.Nil(err)
+		assert.NoError(err)
 		assert.True(s.PublicId != "")
 
 		id, err := uuid.GenerateUUID()
-		assert.Nil(err)
+		assert.NoError(err)
 		s.Name = id
 		updatedRows, err := w.Update(context.Background(), s, []string{"Name"})
-		assert.Nil(err)
+		assert.NoError(err)
 		assert.Equal(1, updatedRows)
 	})
 	t.Run("type-update-not-allowed", func(t *testing.T) {
 		w := db.New(conn)
 		s, err := NewOrganization()
-		assert.Nil(err)
+		assert.NoError(err)
 		assert.True(s.Scope != nil)
 		err = w.Create(context.Background(), s)
-		assert.Nil(err)
+		assert.NoError(err)
 		assert.True(s.PublicId != "")
 
 		s.Type = ProjectScope.String()
@@ -134,25 +134,25 @@ func Test_ScopeGetScope(t *testing.T) {
 	t.Run("valid-scope", func(t *testing.T) {
 		w := db.New(conn)
 		s, err := NewOrganization()
-		assert.Nil(err)
+		assert.NoError(err)
 		assert.True(s.Scope != nil)
 		err = w.Create(context.Background(), s)
-		assert.Nil(err)
+		assert.NoError(err)
 		assert.True(s.PublicId != "")
 
 		foundScope, err := s.GetScope(context.Background(), w)
-		assert.Nil(err)
+		assert.NoError(err)
 		assert.True(foundScope == nil)
 
 		project, err := NewProject(s.PublicId)
-		assert.Nil(err)
+		assert.NoError(err)
 		assert.True(project.Scope != nil)
 		assert.Equal(project.ParentId, s.PublicId)
 		err = w.Create(context.Background(), project)
-		assert.Nil(err)
+		assert.NoError(err)
 
 		projectOrg, err := project.GetScope(context.Background(), w)
-		assert.Nil(err)
+		assert.NoError(err)
 		assert.True(projectOrg != nil)
 		assert.Equal(projectOrg.PublicId, project.ParentId)
 
@@ -160,7 +160,7 @@ func Test_ScopeGetScope(t *testing.T) {
 		p.PublicId = project.PublicId
 		p.Type = ProjectScope.String()
 		projectOrg, err = p.GetScope(context.Background(), w)
-		assert.Nil(err)
+		assert.NoError(err)
 		assert.Equal(s.PublicId, projectOrg.PublicId)
 	})
 }
@@ -182,7 +182,7 @@ func TestScope_Actions(t *testing.T) {
 func TestScope_ResourceType(t *testing.T) {
 	assert := assert.New(t)
 	o, err := NewOrganization()
-	assert.Nil(err)
+	assert.NoError(err)
 	ty := o.ResourceType()
 	assert.Equal(ty, ResourceTypeOrganization)
 }
@@ -197,10 +197,10 @@ func TestScope_Clone(t *testing.T) {
 	t.Run("valid", func(t *testing.T) {
 		w := db.New(conn)
 		s, err := NewOrganization()
-		assert.Nil(err)
+		assert.NoError(err)
 		assert.True(s.Scope != nil)
 		err = w.Create(context.Background(), s)
-		assert.Nil(err)
+		assert.NoError(err)
 		assert.True(s.PublicId != "")
 
 		cp := s.Clone()
@@ -209,17 +209,17 @@ func TestScope_Clone(t *testing.T) {
 	t.Run("not-equal", func(t *testing.T) {
 		w := db.New(conn)
 		s, err := NewOrganization()
-		assert.Nil(err)
+		assert.NoError(err)
 		assert.True(s.Scope != nil)
 		err = w.Create(context.Background(), s)
-		assert.Nil(err)
+		assert.NoError(err)
 		assert.True(s.PublicId != "")
 
 		s2, err := NewOrganization()
-		assert.Nil(err)
+		assert.NoError(err)
 		assert.True(s2.Scope != nil)
 		err = w.Create(context.Background(), s2)
-		assert.Nil(err)
+		assert.NoError(err)
 		assert.True(s2.PublicId != "")
 
 		cp := s.Clone()

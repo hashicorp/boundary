@@ -17,43 +17,43 @@ func Test_LookupScope(t *testing.T) {
 	t.Run("valid-scope", func(t *testing.T) {
 		w := db.New(conn)
 		s, err := NewOrganization()
-		assert.Nil(err)
+		assert.NoError(err)
 		assert.True(s.Scope != nil)
 		err = w.Create(context.Background(), s)
-		assert.Nil(err)
+		assert.NoError(err)
 		assert.True(s.PublicId != "")
 
 		user, err := NewUser(s.PublicId)
-		assert.Nil(err)
+		assert.NoError(err)
 		err = w.Create(context.Background(), user)
-		assert.Nil(err)
+		assert.NoError(err)
 		assert.True(user.PublicId != "")
 		assert.Equal(user.ScopeId, s.PublicId)
 
 		foundScope, err := LookupScope(context.Background(), w, user)
-		assert.Nil(err)
+		assert.NoError(err)
 		assert.Equal(foundScope.PublicId, user.ScopeId)
 
 		user2 := allocUser()
 		user2.PublicId = user.PublicId
 		foundScope, err = LookupScope(context.Background(), w, user)
-		assert.Nil(err)
+		assert.NoError(err)
 		assert.Equal(foundScope.PublicId, user.ScopeId)
 	})
 	t.Run("bad-scope", func(t *testing.T) {
 		w := db.New(conn)
 
 		s, err := NewOrganization()
-		assert.Nil(err)
+		assert.NoError(err)
 		assert.True(s.Scope != nil)
 		err = w.Create(context.Background(), s)
-		assert.Nil(err)
+		assert.NoError(err)
 		assert.True(s.PublicId != "")
 
 		user, err := NewUser(s.PublicId)
-		assert.Nil(err)
+		assert.NoError(err)
 		err = w.Create(context.Background(), user)
-		assert.Nil(err)
+		assert.NoError(err)
 		assert.True(user.PublicId != "")
 		assert.Equal(user.ScopeId, s.PublicId)
 
