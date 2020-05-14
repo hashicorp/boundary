@@ -22,7 +22,7 @@ var _ Resource = (*Group)(nil)
 var _ Clonable = (*Group)(nil)
 var _ db.VetForWriter = (*Group)(nil)
 
-// NewGroup creates a new group with a scope (project/organization)
+// NewGroup creates a new in memory group with a scope (project/organization)
 // options include: withDescripion, WithName
 func NewGroup(scope *Scope, opt ...Option) (*Group, error) {
 	opts := getOpts(opt...)
@@ -41,15 +41,11 @@ func NewGroup(scope *Scope, opt ...Option) (*Group, error) {
 	}
 	g := &Group{
 		Group: &store.Group{
-			PublicId: publicId,
-			ScopeId:  scope.GetPublicId(),
+			PublicId:    publicId,
+			ScopeId:     scope.GetPublicId(),
+			Name:        withName,
+			Description: withDescription,
 		},
-	}
-	if withName != "" {
-		g.Name = withName
-	}
-	if withDescription != "" {
-		g.Description = withDescription
 	}
 	return g, nil
 }

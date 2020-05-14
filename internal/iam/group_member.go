@@ -39,7 +39,7 @@ type groupMemberView struct {
 // TableName provides an overridden gorm table name for group members
 func (v *groupMemberView) TableName() string { return "iam_group_member_vw" }
 
-// NewGroupMember creates a new member of the group with a scope (project/organization)
+// NewGroupMember creates a new in memory member of the group with a scope (project/organization)
 // options include: withDescripion, WithName
 func NewGroupMember(g *Group, m Resource, opt ...Option) (GroupMember, error) {
 	if g == nil {
@@ -71,7 +71,7 @@ var _ Clonable = (*GroupMemberUser)(nil)
 var _ GroupMember = (*GroupMemberUser)(nil)
 var _ db.VetForWriter = (*GroupMemberUser)(nil)
 
-// newGroupMemberUser creates a new user member of the group
+// newGroupMemberUser creates a new in memory user member of the group
 // options include: withDescripion, WithName
 func newGroupMemberUser(g *Group, m *User, opt ...Option) (GroupMember, error) {
 	if m == nil {

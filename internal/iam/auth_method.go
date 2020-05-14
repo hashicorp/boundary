@@ -39,7 +39,7 @@ var _ Resource = (*AuthMethod)(nil)
 var _ Clonable = (*AuthMethod)(nil)
 var _ db.VetForWriter = (*AuthMethod)(nil)
 
-// NewAuthMethod creates a new AuthMethod for a Scope (org or project)
+// NewAuthMethod creates a new in memory AuthMethod for a Scope (org or project)
 // and authentication type.  AuthMethods can only have an Organizational Scope
 func NewAuthMethod(scope *Scope, authType AuthType, opt ...Option) (*AuthMethod, error) {
 	opts := getOpts(opt...)
@@ -65,10 +65,8 @@ func NewAuthMethod(scope *Scope, authType AuthType, opt ...Option) (*AuthMethod,
 			PublicId: publicId,
 			ScopeId:  scope.GetPublicId(),
 			Type:     authType.String(),
+			Name:     withName,
 		},
-	}
-	if withName != "" {
-		a.Name = withName
 	}
 	return a, nil
 }

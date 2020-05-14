@@ -22,7 +22,7 @@ var _ Resource = (*User)(nil)
 var _ Clonable = (*User)(nil)
 var _ db.VetForWriter = (*User)(nil)
 
-// NewUser creates a new user and allows options:
+// NewUser creates a new in memory user and allows options:
 // WithName - to specify the user's friendly name
 func NewUser(organizationPublicId string, opt ...Option) (*User, error) {
 	opts := getOpts(opt...)
@@ -34,11 +34,9 @@ func NewUser(organizationPublicId string, opt ...Option) (*User, error) {
 	u := &User{
 		User: &store.User{
 			PublicId: publicId,
+			Name:     withName,
 			ScopeId:  organizationPublicId,
 		},
-	}
-	if withName != "" {
-		u.Name = withName
 	}
 	return u, nil
 }
