@@ -65,6 +65,7 @@ func TestGet(t *testing.T) {
 	pProject := &pb.Project{
 		Id:          proj.GetPublicId(),
 		Name:        &wrappers.StringValue{Value: proj.GetName()},
+		Description: &wrappers.StringValue{Value: proj.GetDescription()},
 		CreatedTime: proj.CreateTime.GetTimestamp(),
 		UpdatedTime: proj.UpdateTime.GetTimestamp(),
 	}
