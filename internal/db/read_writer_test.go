@@ -614,7 +614,7 @@ func TestDb_DoTx(t *testing.T) {
 		user.Name = "foo-" + id
 		err = w.Create(context.Background(), user)
 		assert.NoError(err)
-		assert.True(user.Id != 0)
+		assert.NotZero(user.Id)
 
 		_, err = w.DoTx(context.Background(), 10, ExpBackoff{}, func(w Writer) error {
 			user.Name = "friendly-" + id
