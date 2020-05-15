@@ -15,15 +15,10 @@ func Test_UserGroups(t *testing.T) {
 	assert := assert.New(t)
 	defer conn.Close()
 
+	org, _ := TestScopes(t, conn)
+
 	t.Run("valid", func(t *testing.T) {
 		w := db.New(conn)
-		org, err := NewOrganization()
-		assert.NoError(err)
-		assert.NotNil(org.Scope)
-		err = w.Create(context.Background(), org)
-		assert.NoError(err)
-		assert.NotEqual(org.PublicId, "")
-
 		user, err := NewUser(org.PublicId)
 		assert.NoError(err)
 		err = w.Create(context.Background(), user)

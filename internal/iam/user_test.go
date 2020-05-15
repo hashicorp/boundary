@@ -16,14 +16,7 @@ func TestNewUser(t *testing.T) {
 	defer cleanup()
 	assert := assert.New(t)
 	defer conn.Close()
-
-	w := db.New(conn)
-	s, err := NewOrganization()
-	assert.NoError(err)
-	assert.True(s.Scope != nil)
-	err = w.Create(context.Background(), s)
-	assert.NoError(err)
-	assert.NotEqual("", s.PublicId)
+	org, _ := TestScopes(t, conn)
 
 	id, err := uuid.GenerateUUID()
 	assert.NoError(err)
@@ -42,7 +35,7 @@ func TestNewUser(t *testing.T) {
 		{
 			name: "valid",
 			args: args{
-				organizationPublicId: s.PublicId,
+				organizationPublicId: org.PublicId,
 				opt:                  []Option{WithName(id)},
 			},
 			wantErr:  false,
@@ -51,7 +44,7 @@ func TestNewUser(t *testing.T) {
 		{
 			name: "valid-with-no-name",
 			args: args{
-				organizationPublicId: s.PublicId,
+				organizationPublicId: org.PublicId,
 			},
 			wantErr: false,
 		},
@@ -84,18 +77,10 @@ func Test_UserCreate(t *testing.T) {
 	defer cleanup()
 	assert := assert.New(t)
 	defer conn.Close()
-
+	org, _ := TestScopes(t, conn)
 	t.Run("valid-user", func(t *testing.T) {
 		w := db.New(conn)
-		s, err := NewOrganization()
-		assert.Equal(s.Type, OrganizationScope.String())
-		assert.NoError(err)
-		assert.NotNil(s.Scope)
-		err = w.Create(context.Background(), s)
-		assert.NoError(err)
-		assert.NotEqual(s.PublicId, "")
-
-		user, err := NewUser(s.PublicId)
+		user, err := NewUser(org.PublicId)
 		assert.NoError(err)
 		err = w.Create(context.Background(), user)
 		assert.NoError(err)
@@ -115,15 +100,9 @@ func Test_UserGetScope(t *testing.T) {
 	defer cleanup()
 	assert := assert.New(t)
 	defer conn.Close()
+	org, _ := TestScopes(t, conn)
 	t.Run("valid-scope", func(t *testing.T) {
 		w := db.New(conn)
-		org, err := NewOrganization()
-		assert.NoError(err)
-		assert.NotNil(org.Scope)
-		err = w.Create(context.Background(), org)
-		assert.NoError(err)
-		assert.NotEqual(org.PublicId, "")
-
 		user, err := NewUser(org.PublicId)
 		assert.NoError(err)
 		err = w.Create(context.Background(), user)
@@ -140,7 +119,7 @@ func Test_UserGetScope(t *testing.T) {
 
 		userScope, err := user.GetScope(context.Background(), w)
 		assert.NoError(err)
-		assert.Equal(org, userScope)
+		assert.True(proto.Equal(org, userScope))
 	})
 
 }
@@ -151,17 +130,11 @@ func TestUser_Clone(t *testing.T) {
 	defer cleanup()
 	assert := assert.New(t)
 	defer conn.Close()
+	org, _ := TestScopes(t, conn)
 
 	t.Run("valid", func(t *testing.T) {
 		w := db.New(conn)
-		s, err := NewOrganization()
-		assert.NoError(err)
-		assert.NotNil(s.Scope)
-		err = w.Create(context.Background(), s)
-		assert.NoError(err)
-		assert.NotEqual(s.PublicId, "")
-
-		user, err := NewUser(s.PublicId)
+		user, err := NewUser(org.PublicId)
 		assert.NoError(err)
 		err = w.Create(context.Background(), user)
 		assert.NoError(err)
@@ -171,19 +144,13 @@ func TestUser_Clone(t *testing.T) {
 	})
 	t.Run("not-equal-test", func(t *testing.T) {
 		w := db.New(conn)
-		s, err := NewOrganization()
-		assert.NoError(err)
-		assert.NotNil(s.Scope)
-		err = w.Create(context.Background(), s)
-		assert.NoError(err)
-		assert.True(s.PublicId != "")
 
-		user, err := NewUser(s.PublicId)
+		user, err := NewUser(org.PublicId)
 		assert.NoError(err)
 		err = w.Create(context.Background(), user)
 		assert.NoError(err)
 
-		user2, err := NewUser(s.PublicId)
+		user2, err := NewUser(org.PublicId)
 		assert.NoError(err)
 		err = w.Create(context.Background(), user2)
 		assert.NoError(err)

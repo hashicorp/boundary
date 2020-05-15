@@ -16,16 +16,12 @@ func Test_UserGrants(t *testing.T) {
 	assert := assert.New(t)
 	defer conn.Close()
 
+	org, _ := TestScopes(t, conn)
+
 	t.Run("valid", func(t *testing.T) {
 		id, err := uuid.GenerateUUID()
 		assert.NoError(err)
 		w := db.New(conn)
-		org, err := NewOrganization()
-		assert.NoError(err)
-		assert.NotNil(org.Scope)
-		err = w.Create(context.Background(), org)
-		assert.NoError(err)
-		assert.NotEqual(org.PublicId, "")
 
 		role, err := NewRole(org.PublicId)
 		assert.NoError(err)

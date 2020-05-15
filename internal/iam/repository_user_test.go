@@ -17,6 +17,8 @@ func Test_Repository_CreateUser(t *testing.T) {
 	assert := assert.New(t)
 	defer conn.Close()
 
+	org, _ := TestScopes(t, conn)
+
 	t.Run("valid", func(t *testing.T) {
 		rw := db.New(conn)
 		wrapper := db.TestWrapper(t)
@@ -24,14 +26,9 @@ func Test_Repository_CreateUser(t *testing.T) {
 		id, err := uuid.GenerateUUID()
 		assert.NoError(err)
 
-		s, err := NewOrganization()
-		s, err = repo.CreateScope(context.Background(), s)
+		u, err := NewUser(org.PublicId, WithName("fn-"+id))
 		assert.NoError(err)
-		assert.NotNil(s)
-
-		u, err := NewUser(s.PublicId, WithName("fn-"+id))
-		assert.NoError(err)
-		assert.Equal(s.GetPublicId(), u.ScopeId)
+		assert.Equal(org.GetPublicId(), u.ScopeId)
 		assert.Equal(u.GetName(), "fn-"+id)
 
 		u, err = repo.CreateUser(context.Background(), u)
