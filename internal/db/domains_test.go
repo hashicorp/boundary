@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	_ "github.com/jackc/pgx/v4"
+	"github.com/jinzhu/gorm"
 )
 
 func TestDomain_PublicId(t *testing.T) {
@@ -24,6 +25,7 @@ returning id;
 	cleanup, conn, _ := TestSetup(t, "postgres")
 	defer cleanup()
 	defer conn.Close()
+	defer testDomainsCleanup(t, conn)
 
 	db := conn.DB()
 	if _, err := db.Exec(createTable); err != nil {
@@ -84,6 +86,7 @@ returning id;
 	cleanup, conn, _ := TestSetup(t, "postgres")
 	defer cleanup()
 	defer conn.Close()
+	defer testDomainsCleanup(t, conn)
 
 	db := conn.DB()
 	if _, err := db.Exec(createTable); err != nil {
@@ -101,4 +104,14 @@ returning id;
 	if _, err := db.Query("select extract(timezone from bad_time) from test_table;"); err == nil {
 		t.Errorf("want error, got no error")
 	}
+}
+
+func testDomainsCleanup(t *testing.T, conn *gorm.DB) {
+	t.Helper()
+	db := conn.DB()
+	dropTable := `drop table if exists test_table`
+	if _, err := db.Exec(dropTable); err != nil {
+		t.Errorf("query: \n%s\n error: %s", dropTable, err)
+	}
+
 }
