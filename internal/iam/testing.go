@@ -32,3 +32,20 @@ func TestScopes(t *testing.T, conn *gorm.DB) (org *Scope, prj *Scope) {
 
 	return
 }
+
+// TestUser creates a user suitable for testing.
+func TestUser(t *testing.T, conn *gorm.DB, orgId string) *User {
+	t.Helper()
+	assert := assert.New(t)
+	rw := db.New(conn)
+	wrapper := db.TestWrapper(t)
+	repo, err := NewRepository(rw, rw, wrapper)
+	assert.NoError(err)
+
+	user, err := NewUser(orgId)
+	assert.NoError(err)
+	user, err = repo.CreateUser(context.Background(), user)
+	assert.NoError(err)
+	assert.NotEmpty(user.PublicId)
+	return user
+}
