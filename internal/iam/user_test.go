@@ -78,19 +78,30 @@ func Test_UserCreate(t *testing.T) {
 	assert := assert.New(t)
 	defer conn.Close()
 	org, _ := TestScopes(t, conn)
+
+	id, err := uuid.GenerateUUID()
+	assert.NoError(err)
 	t.Run("valid-user", func(t *testing.T) {
 		w := db.New(conn)
 		user, err := NewUser(org.PublicId)
 		assert.NoError(err)
 		err = w.Create(context.Background(), user)
 		assert.NoError(err)
-		assert.NotEqual(user.PublicId, "")
+		assert.NotEmpty(user.PublicId)
 
 		foundUser := allocUser()
 		foundUser.PublicId = user.PublicId
 		err = w.LookupByPublicId(context.Background(), &foundUser)
 		assert.NoError(err)
 		assert.Equal(user, &foundUser)
+	})
+	t.Run("bad-orgid", func(t *testing.T) {
+		w := db.New(conn)
+		user, err := NewUser(id)
+		assert.NoError(err)
+		err = w.Create(context.Background(), user)
+		assert.Error(err)
+		assert.Equal("error on create scope is not found", err.Error())
 	})
 }
 
@@ -107,7 +118,7 @@ func Test_UserGetScope(t *testing.T) {
 		assert.NoError(err)
 		err = w.Create(context.Background(), user)
 		assert.NoError(err)
-		assert.NotEqual(user.PublicId, "")
+		assert.NotEmpty(user.PublicId)
 		assert.Equal(user.ScopeId, org.PublicId)
 
 		childScope, err := NewProject(org.PublicId)
