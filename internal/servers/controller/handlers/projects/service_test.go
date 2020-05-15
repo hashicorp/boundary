@@ -14,6 +14,7 @@ import (
 	pbs "github.com/hashicorp/watchtower/internal/gen/controller/api/services"
 	"github.com/hashicorp/watchtower/internal/iam"
 	"github.com/hashicorp/watchtower/internal/servers/controller/handlers/projects"
+	"google.golang.org/genproto/protobuf/field_mask"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
@@ -22,7 +23,7 @@ import (
 
 func createDefaultProjectAndRepo(t *testing.T) (*iam.Scope, *iam.Repository) {
 	t.Helper()
-	cleanup, conn := db.TestSetup(t, "postgres")
+	cleanup, conn, _ := db.TestSetup(t, "postgres")
 	t.Cleanup(func() {
 		conn.Close()
 		cleanup()
@@ -42,7 +43,7 @@ func createDefaultProjectAndRepo(t *testing.T) (*iam.Scope, *iam.Repository) {
 		t.Fatalf("Could not create org scope: %v", err)
 	}
 
-	p, err := iam.NewProject(oRes.GetPublicId(), iam.WithName("default"))
+	p, err := iam.NewProject(oRes.GetPublicId(), iam.WithName("default"), iam.WithDescription("default"))
 	if err != nil {
 		t.Fatalf("Could not get new project: %v", err)
 	}
@@ -64,6 +65,7 @@ func TestGet(t *testing.T) {
 	pProject := &pb.Project{
 		Id:          proj.GetPublicId(),
 		Name:        &wrappers.StringValue{Value: proj.GetName()},
+		Description: &wrappers.StringValue{Value: proj.GetDescription()},
 		CreatedTime: proj.CreateTime.GetTimestamp(),
 		UpdatedTime: proj.UpdateTime.GetTimestamp(),
 	}
@@ -210,6 +212,15 @@ func TestCreate(t *testing.T) {
 
 func TestUpdate(t *testing.T) {
 	proj, repo := createDefaultProjectAndRepo(t)
+	tested := projects.NewService(repo)
+
+	var err error
+	resetProject := func() {
+		if proj, _, err = repo.UpdateScope(context.Background(), proj, []string{"Name", "Description"}); err != nil {
+			t.Fatalf("Failed to reset the project")
+		}
+	}
+
 	projCreated, err := ptypes.Timestamp(proj.GetCreateTime().GetTimestamp())
 	if err != nil {
 		t.Fatalf("Error converting proto to timestamp: %v", err)
@@ -227,10 +238,15 @@ func TestUpdate(t *testing.T) {
 	}{
 		{
 			name: "Update an Existing Project",
-			req: &pbs.UpdateProjectRequest{Item: &pb.Project{
-				Name:        &wrappers.StringValue{Value: "new"},
-				Description: &wrappers.StringValue{Value: "desc"},
-			}},
+			req: &pbs.UpdateProjectRequest{
+				UpdateMask: &field_mask.FieldMask{
+					Paths: []string{"name", "description"},
+				},
+				Item: &pb.Project{
+					Name:        &wrappers.StringValue{Value: "new"},
+					Description: &wrappers.StringValue{Value: "desc"},
+				},
+			},
 			res: &pbs.UpdateProjectResponse{
 				Item: &pb.Project{
 					Id:          proj.GetPublicId(),
@@ -242,23 +258,142 @@ func TestUpdate(t *testing.T) {
 			errCode: codes.OK,
 		},
 		{
-			name: "Update a Non Existing Project",
+			name: "Multiple Paths in single string",
 			req: &pbs.UpdateProjectRequest{
-				Id: "p_DoesntExis",
+				UpdateMask: &field_mask.FieldMask{
+					Paths: []string{"name,description"},
+				},
 				Item: &pb.Project{
 					Name:        &wrappers.StringValue{Value: "new"},
 					Description: &wrappers.StringValue{Value: "desc"},
 				},
 			},
-			// TODO: Update this to be NotFound.
+			res: &pbs.UpdateProjectResponse{
+				Item: &pb.Project{
+					Id:          proj.GetPublicId(),
+					Name:        &wrappers.StringValue{Value: "new"},
+					Description: &wrappers.StringValue{Value: "desc"},
+					CreatedTime: proj.GetCreateTime().GetTimestamp(),
+				},
+			},
+			errCode: codes.OK,
+		},
+		{
+			name: "No Update Mask Is Invalid Argument",
+			req: &pbs.UpdateProjectRequest{
+				Item: &pb.Project{
+					Name:        &wrappers.StringValue{Value: "updated name"},
+					Description: &wrappers.StringValue{Value: "updated desc"},
+				},
+			},
+			errCode: codes.InvalidArgument,
+		},
+		{
+			name: "No Paths in Mask Is Invalid Argument",
+			req: &pbs.UpdateProjectRequest{
+				UpdateMask: &field_mask.FieldMask{Paths: []string{}},
+				Item: &pb.Project{
+					Name:        &wrappers.StringValue{Value: "updated name"},
+					Description: &wrappers.StringValue{Value: "updated desc"},
+				},
+			},
+			errCode: codes.InvalidArgument,
+		},
+		{
+			name: "Only non-existant paths in Mask Is Invalid Argument",
+			req: &pbs.UpdateProjectRequest{
+				UpdateMask: &field_mask.FieldMask{Paths: []string{"nonexistant_field"}},
+				Item: &pb.Project{
+					Name:        &wrappers.StringValue{Value: "updated name"},
+					Description: &wrappers.StringValue{Value: "updated desc"},
+				},
+			},
+			errCode: codes.InvalidArgument,
+		},
+		{
+			name: "Unset Name",
+			req: &pbs.UpdateProjectRequest{
+				UpdateMask: &field_mask.FieldMask{
+					Paths: []string{"name"},
+				},
+				Item: &pb.Project{
+					Description: &wrappers.StringValue{Value: "ignored"},
+				},
+			},
+			res: &pbs.UpdateProjectResponse{
+				Item: &pb.Project{
+					Id:          proj.GetPublicId(),
+					Description: &wrappers.StringValue{Value: "default"},
+					CreatedTime: proj.GetCreateTime().GetTimestamp(),
+				},
+			},
+			errCode: codes.OK,
+		},
+		{
+			name: "Update Only Name",
+			req: &pbs.UpdateProjectRequest{
+				UpdateMask: &field_mask.FieldMask{
+					Paths: []string{"name"},
+				},
+				Item: &pb.Project{
+					Name:        &wrappers.StringValue{Value: "updated"},
+					Description: &wrappers.StringValue{Value: "ignored"},
+				},
+			},
+			res: &pbs.UpdateProjectResponse{
+				Item: &pb.Project{
+					Id:          proj.GetPublicId(),
+					Name:        &wrappers.StringValue{Value: "updated"},
+					Description: &wrappers.StringValue{Value: "default"},
+					CreatedTime: proj.GetCreateTime().GetTimestamp(),
+				},
+			},
+			errCode: codes.OK,
+		},
+		{
+			name: "Update Only Description",
+			req: &pbs.UpdateProjectRequest{
+				UpdateMask: &field_mask.FieldMask{
+					Paths: []string{"description"},
+				},
+				Item: &pb.Project{
+					Name:        &wrappers.StringValue{Value: "ignored"},
+					Description: &wrappers.StringValue{Value: "notignored"},
+				},
+			},
+			res: &pbs.UpdateProjectResponse{
+				Item: &pb.Project{
+					Id:          proj.GetPublicId(),
+					Name:        &wrappers.StringValue{Value: "default"},
+					Description: &wrappers.StringValue{Value: "notignored"},
+					CreatedTime: proj.GetCreateTime().GetTimestamp(),
+				},
+			},
+			errCode: codes.OK,
+		},
+		{
+			name: "Update a Non Existing Project",
+			req: &pbs.UpdateProjectRequest{
+				Id: "p_DoesntExis",
+				UpdateMask: &field_mask.FieldMask{
+					Paths: []string{"description"},
+				},
+				Item: &pb.Project{
+					Name:        &wrappers.StringValue{Value: "new"},
+					Description: &wrappers.StringValue{Value: "desc"},
+				},
+			},
 			errCode: codes.Unknown,
 		},
 		{
 			name: "Cant change Id",
 			req: &pbs.UpdateProjectRequest{
-				Id: "p_1234567890",
+				Id: proj.GetPublicId(),
+				UpdateMask: &field_mask.FieldMask{
+					Paths: []string{"id"},
+				},
 				Item: &pb.Project{
-					Id:          "p_0987654321",
+					Id:          "p_somethinge",
 					Name:        &wrappers.StringValue{Value: "new"},
 					Description: &wrappers.StringValue{Value: "new desc"},
 				}},
@@ -267,33 +402,43 @@ func TestUpdate(t *testing.T) {
 		},
 		{
 			name: "Cant specify Created Time",
-			req: &pbs.UpdateProjectRequest{Item: &pb.Project{
-				CreatedTime: ptypes.TimestampNow(),
-			}},
+			req: &pbs.UpdateProjectRequest{
+				UpdateMask: &field_mask.FieldMask{
+					Paths: []string{"created_time"},
+				},
+				Item: &pb.Project{
+					CreatedTime: ptypes.TimestampNow(),
+				},
+			},
 			res:     nil,
 			errCode: codes.InvalidArgument,
 		},
 		{
 			name: "Cant specify Updated Time",
-			req: &pbs.UpdateProjectRequest{Item: &pb.Project{
-				UpdatedTime: ptypes.TimestampNow(),
-			}},
+			req: &pbs.UpdateProjectRequest{
+				UpdateMask: &field_mask.FieldMask{
+					Paths: []string{"updated_time"},
+				},
+				Item: &pb.Project{
+					UpdatedTime: ptypes.TimestampNow(),
+				},
+			},
 			res:     nil,
 			errCode: codes.InvalidArgument,
 		},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
+			defer resetProject()
 			assert := assert.New(t)
 			req := proto.Clone(toMerge).(*pbs.UpdateProjectRequest)
 			proto.Merge(req, tc.req)
 
-			s := projects.NewService(repo)
-
-			got, gErr := s.UpdateProject(context.Background(), req)
+			got, gErr := tested.UpdateProject(context.Background(), req)
 			assert.Equal(tc.errCode, status.Code(gErr), "UpdateProject(%+v) got error %v, wanted %v", req, gErr, tc.errCode)
 
 			if got != nil {
+				assert.NotNilf(tc.res, "Expected UpdateProject response to be nil, but was %v", got)
 				gotUpdateTime, err := ptypes.Timestamp(got.GetItem().GetUpdatedTime())
 				if err != nil {
 					t.Fatalf("Error converting proto to timestamp: %v", err)
@@ -305,7 +450,7 @@ func TestUpdate(t *testing.T) {
 				_ = projCreated
 
 				// Clear all values which are hard to compare against.
-				got.Item.CreatedTime, got.Item.UpdatedTime, tc.res.Item.CreatedTime, tc.res.Item.UpdatedTime = nil, nil, nil, nil
+				got.Item.UpdatedTime, tc.res.Item.UpdatedTime = nil, nil
 			}
 			assert.True(proto.Equal(got, tc.res), "UpdateProject(%q) got response %q, wanted %q", req, got, tc.res)
 		})

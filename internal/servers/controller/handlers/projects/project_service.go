@@ -11,11 +11,19 @@ import (
 	pb "github.com/hashicorp/watchtower/internal/gen/controller/api/resources/scopes"
 	pbs "github.com/hashicorp/watchtower/internal/gen/controller/api/services"
 	"github.com/hashicorp/watchtower/internal/iam"
+	"google.golang.org/genproto/protobuf/field_mask"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
 
-var reInvalidID = regexp.MustCompile("[^A-Za-z0-9]")
+var (
+	reInvalidID = regexp.MustCompile("[^A-Za-z0-9]")
+	// TODO: Find a way to auto update these names and enforce the mappings between wire and storage.
+	wireToStorageMask = map[string]string{
+		"name":        "Name",
+		"description": "Description",
+	}
+)
 
 type Service struct {
 	pbs.UnimplementedProjectServiceServer
@@ -107,22 +115,25 @@ func (s Service) createInRepo(ctx context.Context, req *pbs.CreateProjectRequest
 
 func (s Service) updateInRepo(ctx context.Context, req *pbs.UpdateProjectRequest) (*pb.Project, error) {
 	item := req.GetItem()
-	// TODO: convert field masks from API field masks with snake_case to db field masks casing.
-	madeUp := []string{}
 	opts := []iam.Option{iam.WithPublicId(req.GetId())}
 	if desc := item.GetDescription(); desc != nil {
-		madeUp = append(madeUp, "Description")
 		opts = append(opts, iam.WithDescription(desc.GetValue()))
 	}
 	if name := item.GetName(); name != nil {
-		madeUp = append(madeUp, "Name")
 		opts = append(opts, iam.WithName(name.GetValue()))
 	}
 	p, err := iam.NewProject(req.GetOrgId(), opts...)
 	if err != nil {
 		return nil, err
 	}
-	out, _, err := s.repo.UpdateScope(ctx, p, madeUp)
+	dbMask, err := toDbUpdateMask(req.GetUpdateMask())
+	if err != nil {
+		return nil, err
+	}
+	if len(dbMask) == 0 {
+		return nil, status.Errorf(codes.InvalidArgument, "No valid fields included in the update mask.")
+	}
+	out, _, err := s.repo.UpdateScope(ctx, p, dbMask)
 	if err != nil {
 		return nil, err
 	}
@@ -130,6 +141,25 @@ func (s Service) updateInRepo(ctx context.Context, req *pbs.UpdateProjectRequest
 		return nil, status.Error(codes.NotFound, "Project doesn't exist.")
 	}
 	return toProto(out), nil
+}
+
+// toDbUpdateMask converts the wire format's FieldMask into a list of strings containing FieldMask paths used
+func toDbUpdateMask(fm *field_mask.FieldMask) ([]string, error) {
+	dbPaths := []string{}
+	invalid := []string{}
+	for _, p := range fm.GetPaths() {
+		for _, f := range strings.Split(p, ",") {
+			if dbField, ok := wireToStorageMask[strings.TrimSpace(f)]; ok {
+				dbPaths = append(dbPaths, dbField)
+			} else {
+				invalid = append(invalid, f)
+			}
+		}
+	}
+	if len(invalid) > 0 {
+		return nil, status.Errorf(codes.InvalidArgument, "Invalid fields passed in update_update mask: %v", invalid)
+	}
+	return dbPaths, nil
 }
 
 func toProto(in *iam.Scope) *pb.Project {
@@ -194,7 +224,9 @@ func validateUpdateProjectRequest(req *pbs.UpdateProjectRequest) error {
 	if err := validateID(req.GetOrgId(), "o_"); err != nil {
 		return err
 	}
-	// TODO: Either require mask to be set or document in API that an unset mask updates all fields.
+	if req.GetUpdateMask() == nil {
+		return status.Errorf(codes.InvalidArgument, "UpdateMask not provided but is required to update a project.")
+	}
 	item := req.GetItem()
 	if item == nil {
 		// It is legitimate for no item to be specified in an update request as it indicates all fields provided in
