@@ -220,7 +220,11 @@ func (c *Command) Run(args []string) int {
 		return 1
 	}
 
-	defer c.RunShutdownFuncs(c.UI)
+	defer func() {
+		if err := c.RunShutdownFuncs(); err != nil {
+			c.UI.Error(fmt.Errorf("Error running shutdown tasks: %w", err).Error())
+		}
+	}()
 
 	if err := c.CreateDevDatabase("postgres"); err != nil {
 		c.UI.Error(fmt.Errorf("Error creating dev database container: %w", err).Error())

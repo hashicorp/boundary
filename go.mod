@@ -17,7 +17,7 @@ require (
 	github.com/golang/protobuf v1.4.1
 	github.com/grpc-ecosystem/grpc-gateway v1.14.5
 	github.com/hashicorp/errwrap v1.0.0
-	github.com/hashicorp/go-alpnmux v0.0.0-20200323180452-dee08f00df54
+	github.com/hashicorp/go-alpnmux v0.0.0-20200513011953-0293f5d23c31
 	github.com/hashicorp/go-cleanhttp v0.5.1
 	github.com/hashicorp/go-hclog v0.13.0
 	github.com/hashicorp/go-kms-wrapping v0.5.8
@@ -27,7 +27,7 @@ require (
 	github.com/hashicorp/go-sockaddr v1.0.2
 	github.com/hashicorp/go-uuid v1.0.2
 	github.com/hashicorp/hcl v1.0.0
-	github.com/hashicorp/vault v1.2.1-0.20200511170424-4928e34922e8
+	github.com/hashicorp/vault v1.2.1-0.20200513002223-fc89625cd196
 	github.com/hashicorp/vault/sdk v0.1.14-0.20200511170424-4928e34922e8
 	github.com/jackc/pgx/v4 v4.6.0
 	github.com/jinzhu/gorm v1.9.12

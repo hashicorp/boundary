@@ -259,7 +259,11 @@ func (c *Command) Run(args []string) int {
 		c.ShutdownFuncs = append(c.ShutdownFuncs, c.DestroyDevDatabase)
 	}
 
-	defer c.RunShutdownFuncs(c.UI)
+	defer func() {
+		if err := c.RunShutdownFuncs(); err != nil {
+			c.UI.Error(fmt.Errorf("Error running shutdown tasks: %w", err).Error())
+		}
+	}()
 
 	c.PrintInfo(c.UI, "controller")
 	c.ReleaseLogGate()

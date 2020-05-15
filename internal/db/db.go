@@ -57,31 +57,31 @@ func Migrate(connectionUrl string, migrationsDirectory string) error {
 }
 
 // InitDbInDocker initializes the data store within docker or an existing PG_URL
-func InitDbInDocker(dialect string) (cleanup func() error, retURL string, err error) {
+func InitDbInDocker(dialect string) (cleanup func() error, retURL, container string, err error) {
 	switch dialect {
 	case "postgres":
 		if os.Getenv("PG_URL") != "" {
 			if err := InitStore(dialect, func() error { return nil }, os.Getenv("PG_URL")); err != nil {
-				return func() error { return nil }, os.Getenv("PG_URL"), fmt.Errorf("error initializing store: %w", err)
+				return func() error { return nil }, os.Getenv("PG_URL"), "", fmt.Errorf("error initializing store: %w", err)
 			}
-			return func() error { return nil }, os.Getenv("PG_URL"), nil
+			return func() error { return nil }, os.Getenv("PG_URL"), "", nil
 		}
 	}
-	c, url, err := StartDbInDocker(dialect)
+	c, url, container, err := StartDbInDocker(dialect)
 	if err != nil {
-		return func() error { return nil }, "", fmt.Errorf("could not start docker: %w", err)
+		return func() error { return nil }, "", "", fmt.Errorf("could not start docker: %w", err)
 	}
 	if err := InitStore(dialect, c, url); err != nil {
-		return func() error { return nil }, "", fmt.Errorf("error initializing store: %w", err)
+		return func() error { return nil }, "", "", fmt.Errorf("error initializing store: %w", err)
 	}
-	return c, url, nil
+	return c, url, container, nil
 }
 
 // StartDbInDocker
-func StartDbInDocker(dialect string) (cleanup func() error, retURL string, err error) {
+func StartDbInDocker(dialect string) (cleanup func() error, retURL, container string, err error) {
 	pool, err := dockertest.NewPool("")
 	if err != nil {
-		return func() error { return nil }, "", fmt.Errorf("could not connect to docker: %w", err)
+		return func() error { return nil }, "", "", fmt.Errorf("could not connect to docker: %w", err)
 	}
 
 	var resource *dockertest.Resource
@@ -94,7 +94,7 @@ func StartDbInDocker(dialect string) (cleanup func() error, retURL string, err e
 		panic(fmt.Sprintf("unknown dialect %q", dialect))
 	}
 	if err != nil {
-		return func() error { return nil }, "", fmt.Errorf("could not start resource: %w", err)
+		return func() error { return nil }, "", "", fmt.Errorf("could not start resource: %w", err)
 	}
 
 	cleanup = func() error {
@@ -115,10 +115,10 @@ func StartDbInDocker(dialect string) (cleanup func() error, retURL string, err e
 		defer db.Close()
 		return nil
 	}); err != nil {
-		return func() error { return nil }, "", fmt.Errorf("could not connect to docker: %w", err)
+		return func() error { return nil }, "", "", fmt.Errorf("could not connect to docker: %w", err)
 	}
 
-	return cleanup, url, nil
+	return cleanup, url, resource.Container.Name, nil
 }
 
 // InitStore will execute the migrations needed to initialize the store for tests
