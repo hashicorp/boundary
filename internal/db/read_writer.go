@@ -491,7 +491,13 @@ func (rw *Db) LookupWhere(ctx context.Context, resource interface{}, where strin
 	if reflect.ValueOf(resource).Kind() != reflect.Ptr {
 		return errors.New("error interface parameter must to be a pointer for lookup by")
 	}
-	return rw.underlying.Where(where, args...).First(resource).Error
+	if err := rw.underlying.Where(where, args...).First(resource).Error; err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return ErrRecordNotFound
+		}
+		return err
+	}
+	return nil
 }
 
 // SearchWhere will search for all the resources it can find using a where clause with parameters
