@@ -650,6 +650,9 @@ func TestDb_DoTx(t *testing.T) {
 			return nil
 		})
 		assert.Error(err)
+		err = w.LookupByPublicId(context.Background(), foundUser)
+		assert.NoError(err)
+		assert.NotEqual(foundUser.Name, user2.Name)
 
 		_, err = w.DoTx(context.Background(), 10, ExpBackoff{}, func(w Writer) error {
 			user.Name = "friendly2-" + id
