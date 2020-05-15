@@ -14,7 +14,6 @@ import (
 	"github.com/hashicorp/watchtower/internal/oplog"
 	"github.com/hashicorp/watchtower/internal/oplog/store"
 	"github.com/jinzhu/gorm"
-	"github.com/stretchr/testify/assert"
 )
 
 // setup the tests (initialize the database one-time and intialized testDatabaseURL)
@@ -50,11 +49,10 @@ func TestWrapper(t *testing.T) wrapping.Wrapper {
 	return root
 }
 
-// TestVerifyOplog will verify that there is an oplog entry
-func TestVerifyOplog(t *testing.T, r Reader, resourcePublicId string, opt ...TestOption) {
-	t.Helper()
-	assert := assert.New(t)
-
+// TestVerifyOplog will verify that there is an oplog entry. An error is
+// returned if the entry or it's metadata is not found.  Returning an error
+// allows clients to test if an entry was not written, which is a valid use case.
+func TestVerifyOplog(t *testing.T, r Reader, resourcePublicId string, opt ...TestOption) error {
 	// sql where clauses
 	const (
 		whereBase = `
@@ -95,15 +93,14 @@ and create_time > NOW()::timestamp - (interval '1 second' * ?)
 
 	var metadata store.Metadata
 	if err := r.LookupWhere(context.Background(), &metadata, where, whereArgs...); err != nil {
-		assert.NoError(err)
-		return
+		return err
 	}
 
 	var foundEntry oplog.Entry
 	if err := r.LookupWhere(context.Background(), &foundEntry, "id = ?", metadata.EntryId); err != nil {
-		assert.NoError(err)
-		return
+		return err
 	}
+	return nil
 }
 
 // getTestOpts - iterate the inbound TestOptions and return a struct
@@ -146,4 +143,3 @@ func WithOperation(op oplog.OpType) TestOption {
 		o.withOperation = op
 	}
 }
-
