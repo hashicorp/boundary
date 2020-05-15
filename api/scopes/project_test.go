@@ -35,6 +35,8 @@ func TestProjects_Crud(t *testing.T) {
 	checkProject("read", p, apiErr, err)
 
 	// TODO: Update and Delete
+	p, apiErr, err = org.UpdateProject(tc.Context(), &Project{Id: p.Id})
+	checkProject("read", p, apiErr, err)
 
 	// TODO: Error conditions once the proper errors are being returned.
 	// Probably as parallel subtests against the same DB.
