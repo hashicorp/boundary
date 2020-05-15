@@ -104,7 +104,7 @@ func LookupScope(ctx context.Context, reader db.Reader, resource ResourceWithSco
 	}
 	var p Scope
 	if err := reader.LookupWhere(ctx, &p, "public_id = ?", resource.GetScopeId()); err != nil {
-		return nil, fmt.Errorf("error getting scope for LookupScope: %w", err)
+		return nil, err
 	}
 	return &p, nil
 }

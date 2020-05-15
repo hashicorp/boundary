@@ -47,7 +47,7 @@ func (r *Repository) create(ctx context.Context, resource Resource, opt ...Optio
 	}
 	metadata, err := r.stdMetadata(ctx, resource)
 	if err != nil {
-		return nil, fmt.Errorf("error getting metadata for create: %w", err)
+		return nil, err
 	}
 	metadata["op-type"] = []string{strconv.Itoa(int(oplog.OpType_OP_TYPE_CREATE))}
 
@@ -79,7 +79,7 @@ func (r *Repository) update(ctx context.Context, resource Resource, fieldMaskPat
 	}
 	metadata, err := r.stdMetadata(ctx, resource)
 	if err != nil {
-		return nil, db.NoRowsAffected, fmt.Errorf("error getting metadata for update: %w", err)
+		return nil, db.NoRowsAffected, err
 	}
 	metadata["op-type"] = []string{strconv.Itoa(int(oplog.OpType_OP_TYPE_UPDATE))}
 
@@ -119,7 +119,7 @@ func (r *Repository) delete(ctx context.Context, resource Resource, opt ...Optio
 	}
 	metadata, err := r.stdMetadata(ctx, resource)
 	if err != nil {
-		return db.NoRowsAffected, fmt.Errorf("error getting metadata for delete: %w", err)
+		return db.NoRowsAffected, err
 	}
 	metadata["op-type"] = []string{strconv.Itoa(int(oplog.OpType_OP_TYPE_DELETE))}
 
@@ -174,6 +174,9 @@ func (r *Repository) stdMetadata(ctx context.Context, resource Resource) (oplog.
 
 	scope, err := resource.GetScope(ctx, r.reader)
 	if err != nil {
+		if errors.Is(err, db.ErrRecordNotFound) {
+			return nil, errors.New("scope not found")
+		}
 		return nil, fmt.Errorf("unable to get scope for standard metadata: %w", err)
 	}
 	if scope == nil {
