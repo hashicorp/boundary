@@ -7,6 +7,7 @@ import (
 	"github.com/hashicorp/go-uuid"
 	"github.com/hashicorp/watchtower/internal/db"
 	"github.com/stretchr/testify/assert"
+	"google.golang.org/protobuf/proto"
 )
 
 func Test_Repository_CreateUser(t *testing.T) {
@@ -26,7 +27,7 @@ func Test_Repository_CreateUser(t *testing.T) {
 		s, err := NewOrganization()
 		s, err = repo.CreateScope(context.Background(), s)
 		assert.NoError(err)
-		assert.True(s != nil)
+		assert.NotNil(s)
 
 		u, err := NewUser(s.PublicId, WithName("fn-"+id))
 		assert.NoError(err)
@@ -35,14 +36,12 @@ func Test_Repository_CreateUser(t *testing.T) {
 
 		u, err = repo.CreateUser(context.Background(), u)
 		assert.NoError(err)
-		assert.True(u.CreateTime != nil)
-		assert.True(u.UpdateTime != nil)
+		assert.NotNil(u.CreateTime)
+		assert.NotNil(u.UpdateTime)
 
-		foundUser, err := repo.LookupUser(context.Background(), WithPublicId(u.PublicId))
+		foundUser, err := repo.LookupUser(context.Background(), u.PublicId)
 		assert.NoError(err)
-		assert.Equal(foundUser.GetPublicId(), u.GetPublicId())
-		assert.Equal(foundUser.GetScopeId(), u.GetScopeId())
-		assert.Equal(foundUser.GetName(), "fn-"+id)
+		assert.True(proto.Equal(foundUser, u))
 
 		err = db.TestVerifyOplog(rw, u.PublicId)
 		assert.NoError(err)
@@ -59,17 +58,17 @@ func Test_Repository_CreateUser(t *testing.T) {
 
 		pubId := u.PublicId
 		u, err = repo.CreateUser(context.Background(), u)
-		assert.True(err != nil)
-		assert.True(u == nil)
+		assert.Error(err)
+		assert.Nil(u)
 		// not convinced this is what we want for an error msg,
 		// but it does show the chain of errors
 		assert.Equal("failed to create user: error getting metadata for create: unable to get scope for standard metadata: error getting scope for LookupScope: record not found", err.Error())
 
-		foundUser, err := repo.LookupUser(context.Background(), WithPublicId(pubId))
-		assert.True(err != nil)
-		assert.True(foundUser == nil)
+		foundUser, err := repo.LookupUser(context.Background(), pubId)
+		assert.NotNil(err)
+		assert.Nil(foundUser)
 
 		err = db.TestVerifyOplog(rw, pubId)
-		assert.True(err != nil)
+		assert.Error(err)
 	})
 }

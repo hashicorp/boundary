@@ -34,27 +34,18 @@ func (r *Repository) UpdateUser(ctx context.Context, user *User, fieldMaskPaths 
 
 // LookupUser will look up a user in the repository.  If the user is not
 // found, it will return nil, nil.
-func (r *Repository) LookupUser(ctx context.Context, opt ...Option) (*User, error) {
-	opts := getOpts(opt...)
-	withPublicId := opts.withPublicId
-	withName := opts.withName
+func (r *Repository) LookupUser(ctx context.Context, withPublicId string, opt ...Option) (*User, error) {
+	if withPublicId == "" {
+		return nil, errors.New("you cannot lookup a user with an empty public id")
+	}
 
-	if withPublicId != "" {
-		user := allocUser()
-		user.PublicId = withPublicId
-		if err := r.reader.LookupByPublicId(ctx, &user); err != nil {
-			return nil, err
-		}
-		return &user, nil
+	user := allocUser()
+	user.PublicId = withPublicId
+	if err := r.reader.LookupByPublicId(ctx, &user); err != nil {
+		return nil, err
 	}
-	if withName != "" {
-		user := allocUser()
-		user.Name = withName
-		if err := r.reader.LookupByName(ctx, &user); err != nil {
-			return nil, err
-		}
-		return &user, nil
-	}
+	return &user, nil
+
 	return nil, errors.New("you must loop up users by id or friendly name")
 }
 
