@@ -25,7 +25,10 @@ func (s Organization) UpdateProject(ctx context.Context, project *Project) (*Pro
 
 	}
 
-	req, err := s.Client.NewRequest(ctx, "PATCH", fmt.Sprintf("projects/%s", project.Id), project)
+	id := project.Id
+	project.Id = ""
+
+	req, err := s.Client.NewRequest(ctx, "PATCH", fmt.Sprintf("projects/%s", id), project)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error creating CreateProject request: %w", err)
 	}

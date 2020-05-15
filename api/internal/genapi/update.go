@@ -78,7 +78,10 @@ func (s {{ .BaseType }}) Update{{ .TargetType }}(ctx context.Context, {{ .LowerT
 		{{ end }}
 	}
 
-	req, err := s.Client.NewRequest(ctx, "PATCH", fmt.Sprintf("{{ .Path }}", {{ .LowerTargetType }}.Id), {{ .LowerTargetType }})
+	id := {{ .LowerTargetType }}.Id
+	{{ .LowerTargetType }}.Id = ""
+
+	req, err := s.Client.NewRequest(ctx, "PATCH", fmt.Sprintf("{{ .Path }}", id), {{ .LowerTargetType }})
 	if err != nil {
 		return nil, nil, fmt.Errorf("error creating Create{{ .TargetType }} request: %w", err)
 	}
