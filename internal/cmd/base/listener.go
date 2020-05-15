@@ -3,7 +3,6 @@ package base
 import (
 	"errors"
 	"fmt"
-	"io"
 	"net"
 	"net/http"
 	"os"
@@ -37,7 +36,7 @@ type WorkerAuthCertInfo struct {
 }
 
 // Factory is the factory function to create a listener.
-type ListenerFactory func(*configutil.Listener, io.Writer, hclog.Logger, cli.Ui) (*alpnmux.ALPNMux, map[string]string, reloadutil.ReloadFunc, error)
+type ListenerFactory func(*configutil.Listener, hclog.Logger, cli.Ui) (*alpnmux.ALPNMux, map[string]string, reloadutil.ReloadFunc, error)
 
 // BuiltinListeners is the list of built-in listener types.
 var BuiltinListeners = map[string]ListenerFactory{
@@ -46,16 +45,16 @@ var BuiltinListeners = map[string]ListenerFactory{
 
 // New creates a new listener of the given type with the given
 // configuration. The type is looked up in the BuiltinListeners map.
-func NewListener(l *configutil.Listener, w io.Writer, logger hclog.Logger, ui cli.Ui) (*alpnmux.ALPNMux, map[string]string, reloadutil.ReloadFunc, error) {
+func NewListener(l *configutil.Listener, logger hclog.Logger, ui cli.Ui) (*alpnmux.ALPNMux, map[string]string, reloadutil.ReloadFunc, error) {
 	f, ok := BuiltinListeners[l.Type]
 	if !ok {
 		return nil, nil, nil, fmt.Errorf("unknown listener type: %q", l.Type)
 	}
 
-	return f(l, w, logger, ui)
+	return f(l, logger, ui)
 }
 
-func tcpListenerFactory(l *configutil.Listener, _ io.Writer, logger hclog.Logger, ui cli.Ui) (*alpnmux.ALPNMux, map[string]string, reloadutil.ReloadFunc, error) {
+func tcpListenerFactory(l *configutil.Listener, logger hclog.Logger, ui cli.Ui) (*alpnmux.ALPNMux, map[string]string, reloadutil.ReloadFunc, error) {
 	if l.Address == "" {
 		if len(l.Purpose) == 1 && l.Purpose[0] == "cluster" {
 			l.Address = "127.0.0.1:9201"
@@ -70,6 +69,15 @@ func tcpListenerFactory(l *configutil.Listener, _ io.Writer, logger hclog.Logger
 	// rather than golang's dual stack default
 	if strings.HasPrefix(l.Address, "0.0.0.0:") {
 		bindProto = "tcp4"
+	}
+
+	if l.RandomPort {
+		colon := strings.Index(l.Address, ":")
+		if colon != -1 {
+			// colon+1 because it needs to end in a colon to be automatically
+			// assigned by Go
+			l.Address = l.Address[0 : colon+1]
+		}
 	}
 
 	ln, err := net.Listen(bindProto, l.Address)
