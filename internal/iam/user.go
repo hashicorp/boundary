@@ -75,10 +75,13 @@ func (u *User) VetForWrite(ctx context.Context, r db.Reader, opType db.OpType, o
 func (u *User) scopeIsValid(ctx context.Context, r db.Reader) error {
 	ps, err := LookupScope(ctx, r, u)
 	if err != nil {
+		if errors.Is(err, db.ErrRecordNotFound) {
+			return errors.New("scope is not found")
+		}
 		return err
 	}
 	if ps.Type != OrganizationScope.String() {
-		return errors.New("error scope is not an organization")
+		return errors.New("scope is not an organization")
 	}
 	return nil
 }
