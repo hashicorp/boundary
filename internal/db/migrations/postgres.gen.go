@@ -392,4 +392,85 @@ CREATE TABLE if not exists iam_role_grant (
 
 `),
 	},
+	"migrations/10_static_host.down.sql": {
+		name: "10_static_host.down.sql",
+		bytes: []byte(`
+begin;
+
+  drop table static_host_set_member cascade;
+  drop table static_host_set cascade;
+  drop table static_host cascade;
+  drop table static_host_catalog cascade;
+
+commit;
+
+`),
+	},
+	"migrations/10_static_host.up.sql": {
+		name: "10_static_host.up.sql",
+		bytes: []byte(`
+begin;
+
+  create table static_host_catalog (
+    public_id wt_public_id primary key,
+    scope_id wt_public_id not null
+      references iam_scope (public_id)
+      on delete cascade
+      on update cascade,
+    name text,
+    description text,
+    create_time wt_timestamp,
+    update_time wt_timestamp,
+    unique(scope_id, name)
+  );
+
+  create table static_host (
+    public_id wt_public_id primary key,
+    static_host_catalog_id wt_public_id not null
+      references static_host_catalog (public_id)
+      on delete cascade
+      on update cascade,
+    name text,
+    description text,
+    address text not null
+    check(
+      length(trim(address)) > 7
+      and
+      length(trim(address)) < 256
+    ),
+    create_time wt_timestamp,
+    update_time wt_timestamp,
+    unique(static_host_catalog_id, name)
+  );
+
+  create table static_host_set (
+    public_id wt_public_id primary key,
+    static_host_catalog_id wt_public_id not null
+      references static_host_catalog (public_id)
+      on delete cascade
+      on update cascade,
+    name text,
+    description text,
+    create_time wt_timestamp,
+    update_time wt_timestamp,
+    unique(static_host_catalog_id, name)
+  );
+
+  create table static_host_set_member (
+    static_host_set_id wt_public_id
+      references static_host_set (public_id)
+      on delete cascade
+      on update cascade,
+    static_host_id wt_public_id
+      references static_host (public_id)
+      on delete cascade
+      on update cascade,
+    primary key(static_host_set_id, static_host_id)
+  );
+
+commit;
+
+
+`),
+	},
 }
