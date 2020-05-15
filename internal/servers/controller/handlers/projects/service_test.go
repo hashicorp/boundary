@@ -240,6 +240,27 @@ func TestUpdate(t *testing.T) {
 			name: "Update an Existing Project",
 			req: &pbs.UpdateProjectRequest{
 				UpdateMask: &field_mask.FieldMask{
+					Paths: []string{"name", "description"},
+				},
+				Item: &pb.Project{
+					Name:        &wrappers.StringValue{Value: "new"},
+					Description: &wrappers.StringValue{Value: "desc"},
+				},
+			},
+			res: &pbs.UpdateProjectResponse{
+				Item: &pb.Project{
+					Id:          proj.GetPublicId(),
+					Name:        &wrappers.StringValue{Value: "new"},
+					Description: &wrappers.StringValue{Value: "desc"},
+					CreatedTime: proj.GetCreateTime().GetTimestamp(),
+				},
+			},
+			errCode: codes.OK,
+		},
+		{
+			name: "Multiple Paths in single string",
+			req: &pbs.UpdateProjectRequest{
+				UpdateMask: &field_mask.FieldMask{
 					Paths: []string{"name,description"},
 				},
 				Item: &pb.Project{
