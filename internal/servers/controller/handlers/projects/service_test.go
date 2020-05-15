@@ -350,18 +350,20 @@ func TestUpdate(t *testing.T) {
 			},
 			errCode: codes.OK,
 		},
-		// TODO: This causes the tests to hang due to oplog ticketing.  Reenable when we fix the issue.
-		// {
-		// 	name: "Update a Non Existing Project",
-		// 	req: &pbs.UpdateProjectRequest{
-		// 		Id: "p_DoesntExis",
-		// 		Item: &pb.Project{
-		// 			Name:        &wrappers.StringValue{Value: "new"},
-		// 			Description: &wrappers.StringValue{Value: "desc"},
-		// 		},
-		// 	},
-		// 	errCode: codes.Unknown,
-		// },
+		{
+			name: "Update a Non Existing Project",
+			req: &pbs.UpdateProjectRequest{
+				Id: "p_DoesntExis",
+				UpdateMask: &field_mask.FieldMask{
+					Paths: []string{"description"},
+				},
+				Item: &pb.Project{
+					Name:        &wrappers.StringValue{Value: "new"},
+					Description: &wrappers.StringValue{Value: "desc"},
+				},
+			},
+			errCode: codes.Unknown,
+		},
 		{
 			name: "Cant change Id",
 			req: &pbs.UpdateProjectRequest{
