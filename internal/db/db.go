@@ -126,16 +126,16 @@ func InitStore(dialect string, cleanup func() error, url string) error {
 	// run migrations
 	source, err := migrations.NewMigrationSource(dialect)
 	if err != nil {
-		cleanup()
+		_ = cleanup()
 		return fmt.Errorf("error creating migration driver: %w", err)
 	}
 	m, err := migrate.NewWithSourceInstance("httpfs", source, url)
 	if err != nil {
-		cleanup()
+		_ = cleanup()
 		return fmt.Errorf("error creating migrations: %w", err)
 	}
 	if err := m.Up(); err != nil && err != migrate.ErrNoChange {
-		cleanup()
+		_ = cleanup()
 		return fmt.Errorf("error running migrations: %w", err)
 	}
 

@@ -9,7 +9,7 @@ func TestOpen(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer cleanup()
+	defer func() { err := cleanup(); t.Error(err) }()
 	type args struct {
 		dbType        DbType
 		connectionUrl string
@@ -60,7 +60,7 @@ func TestMigrate(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer cleanup()
+	defer func() { err := cleanup(); t.Error(err) }()
 	type args struct {
 		connectionUrl       string
 		migrationsDirectory string
