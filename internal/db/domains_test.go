@@ -22,7 +22,11 @@ returning id;
 	)
 
 	cleanup, conn, _ := TestSetup(t, "postgres")
-	defer func() { err := cleanup(); t.Error(err) }()
+	defer func() {
+		if err := cleanup(); err != nil {
+			t.Error(err)
+		}
+	}()
 	defer conn.Close()
 
 	db := conn.DB()
@@ -82,7 +86,11 @@ returning id;
 	)
 
 	cleanup, conn, _ := TestSetup(t, "postgres")
-	defer func() { err := cleanup(); t.Error(err) }()
+	defer func() {
+		if err := cleanup(); err != nil {
+			t.Error(err)
+		}
+	}()
 	defer conn.Close()
 
 	db := conn.DB()
