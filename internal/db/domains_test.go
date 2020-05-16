@@ -9,7 +9,7 @@ import (
 func TestDomain_PublicId(t *testing.T) {
 	const (
 		createTable = `
-create table if not exists test_table (
+create table test_table (
   id bigint generated always as identity primary key,
   public_id wt_public_id
 );
@@ -26,6 +26,8 @@ returning id;
 	defer conn.Close()
 
 	db := conn.DB()
+	defer db.Close()
+
 	if _, err := db.Exec(createTable); err != nil {
 		t.Fatalf("query: \n%s\n error: %s", createTable, err)
 	}
@@ -67,7 +69,7 @@ returning id;
 func TestDomain_Timestamp(t *testing.T) {
 	const (
 		createTable = `
-create table if not exists test_table (
+create table test_table (
   id bigint generated always as identity primary key,
   name text,
   good_time wt_timestamp,
@@ -86,6 +88,7 @@ returning id;
 	defer conn.Close()
 
 	db := conn.DB()
+	defer db.Close()
 	if _, err := db.Exec(createTable); err != nil {
 		t.Fatalf("query: \n%s\n error: %s", createTable, err)
 	}

@@ -6,7 +6,9 @@ import (
 	"fmt"
 	"net/url"
 	"os"
+	"strings"
 	"testing"
+	"time"
 
 	"github.com/golang-migrate/migrate/v4"
 	_ "github.com/golang-migrate/migrate/v4/database/postgres"
@@ -21,6 +23,7 @@ import (
 // TestSetup initializes the database. It returns a cleanup function, a
 // gorm db, and the url of the database.
 func TestSetup(t *testing.T, dialect string) (cleanup func(), db *gorm.DB, dbUrl string) {
+	// t.Helper()
 	if dialect != "postgres" {
 		t.Fatalf("unknown dialect %q", dialect)
 	}
@@ -34,6 +37,7 @@ func TestSetup(t *testing.T, dialect string) (cleanup func(), db *gorm.DB, dbUrl
 	var cleanupStack []func()
 	cleanup = func() {
 		for i := len(cleanupStack) - 1; i >= 0; i-- {
+			// t.Logf("cleanup[%d]", i)
 			cleanupStack[i]()
 		}
 	}
@@ -53,9 +57,10 @@ func TestSetup(t *testing.T, dialect string) (cleanup func(), db *gorm.DB, dbUrl
 	}
 
 	templateDb := "wt_template"
+	targetDb := strings.ToLower(t.Name())
 
 	// connect to the default database and create the template database
-	u.Path = ""
+	u.Path = "postgres"
 	cleanupStack = append(cleanupStack, createDatabase(t, u.String(), templateDb, "template1", true))
 
 	// connect to the template database and run the migrations
@@ -63,12 +68,13 @@ func TestSetup(t *testing.T, dialect string) (cleanup func(), db *gorm.DB, dbUrl
 	runMigrations(t, u.String())
 
 	// connect to the default database and create the test database
-	u.Path = ""
-	cleanupStack = append(cleanupStack, createDatabase(t, u.String(), t.Name(), templateDb, false))
+	u.Path = "postgres"
+	cleanupStack = append(cleanupStack, createDatabase(t, u.String(), targetDb, templateDb, false))
 
-	u.Path = t.Name()
+	u.Path = targetDb
 	dbUrl = u.String()
 
+	// t.Logf("gorm dbUrl: %s", dbUrl)
 	db, err = gorm.Open("postgres", dbUrl)
 	if err != nil {
 		t.Fatal(err)
@@ -81,14 +87,14 @@ func createDatabase(t *testing.T, dbUrl string, name string, from string, isTemp
 	t.Helper()
 
 	const (
-		dbExists = `
-select count(datname)
-  from pg_database
- where datname = $1
-; `
+		dbExists        = ` select count(datname) from pg_database where datname = $1 ; `
+		connectionCount = ` select sum(numbackends) from pg_stat_database where datname = $1 ; `
 
-		createDb = ` create database %s template %s is_template %t ; `
-		dropDb   = ` drop database if exists %s ; `
+		createDb           = ` create database %s template %s is_template %t ; `
+		dropDb             = ` drop database if exists %s ; `
+		alterTemplateDb    = ` alter database %s is_template false ; `
+		preventConnections = ` alter database %s connection limit 0 ; `
+		closeConnections   = ` select pg_terminate_backend(pid) from pg_stat_activity where datname = '%s' ; `
 	)
 
 	cleanup = func() {}
@@ -120,9 +126,10 @@ select count(datname)
 	}
 	createStatement := fmt.Sprintf(createDb, name, from, isTemplate)
 	if _, err := db.Exec(createStatement); err != nil {
-		// t.Fatalf("create database %s with template %s as template %t at %s failed: %v", name, from, isTemplate, dbUrl, err)
 		t.Fatalf("sql: %q failed: %v", createStatement, err)
 	}
+
+	// t.Logf("sql: %q worked", createStatement)
 
 	cleanup = func() {
 		db, err := sql.Open("postgres", dbUrl)
@@ -135,10 +142,39 @@ select count(datname)
 			}
 		}()
 
-		dropStatement := fmt.Sprintf(dropDb, name)
-		if _, err := db.Exec(dropStatement); err != nil {
-			// t.Fatalf("drop database %s at %s failed: %v", name, dbUrl, err)
-			t.Fatalf("sql: %q failed: %v", dropStatement, err)
+		attempts := 0
+		var connections int
+		for {
+			attempts++
+			if err := db.QueryRow(connectionCount, name).Scan(&connections); err != nil {
+				t.Fatalf("drop database %s: attempt %d: could not query number of connections: %v", name, attempts, err)
+			}
+			if connections == 0 || attempts > 10 {
+				break
+			}
+			time.Sleep(1 * time.Second)
+		}
+
+		if isTemplate {
+			alterTemplateDbQuery := fmt.Sprintf(alterTemplateDb, name)
+			if _, err := db.Exec(alterTemplateDbQuery); err != nil {
+				t.Errorf("sql: %q failed: %v", alterTemplateDbQuery, err)
+			}
+		}
+
+		preventConnectionsQuery := fmt.Sprintf(preventConnections, name)
+		if _, err := db.Exec(preventConnectionsQuery); err != nil {
+			t.Errorf("sql: %q failed: %v", preventConnectionsQuery, err)
+		}
+
+		closeConnectionsQuery := fmt.Sprintf(closeConnections, name)
+		if _, err := db.Exec(closeConnectionsQuery); err != nil {
+			t.Errorf("sql: %q failed: %v", closeConnectionsQuery, err)
+		}
+
+		dropDbQuery := fmt.Sprintf(dropDb, name)
+		if _, err := db.Exec(dropDbQuery); err != nil {
+			t.Errorf("sql: %q failed: %v", dropDbQuery, err)
 		}
 	}
 
@@ -161,7 +197,7 @@ func getDatabaseServer(t *testing.T) (cleanup func(), url string) {
 		t.Fatalf("could not connect to docker: %v", err)
 	}
 
-	resource, err := pool.Run("postgres", "latest", []string{"POSTGRES_PASSWORD=secret", "POSTGRES_DB=watchtower"})
+	resource, err := pool.Run("postgres", "latest", []string{"POSTGRES_PASSWORD=secret", "POSTGRES_DB=wt_test"})
 	if err != nil {
 		t.Fatalf("could not start docker resource: %v", err)
 	}
@@ -174,7 +210,7 @@ func getDatabaseServer(t *testing.T) (cleanup func(), url string) {
 		}
 	}
 
-	url = fmt.Sprintf("postgres://postgres:secret@localhost:%s?sslmode=disable", resource.GetPort("5432/tcp"))
+	url = fmt.Sprintf("postgres://postgres:secret@localhost:%s/wt_test?sslmode=disable", resource.GetPort("5432/tcp"))
 
 	if err := pool.Retry(func() error {
 		db, err := sql.Open("postgres", url)
@@ -195,6 +231,7 @@ func getDatabaseServer(t *testing.T) (cleanup func(), url string) {
 }
 
 func runMigrations(t *testing.T, url string) {
+	t.Helper()
 	source, err := migrations.NewMigrationSource("postgres")
 	if err != nil {
 		t.Fatalf("error creating migration driver: %v", err)
@@ -205,6 +242,9 @@ func runMigrations(t *testing.T, url string) {
 	}
 	if err := m.Up(); err != nil && err != migrate.ErrNoChange {
 		t.Fatalf("error running migrations: %v", err)
+	}
+	if _, err := m.Close(); err != nil {
+		t.Fatalf("error closing db connection for migrations: %v", err)
 	}
 }
 
