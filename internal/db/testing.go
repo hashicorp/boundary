@@ -56,22 +56,30 @@ func TestSetup(t *testing.T, dialect string) (cleanup func(), db *gorm.DB, dbUrl
 		t.Fatalf("could not parse postgres url %s: %s", dbUrl, err)
 	}
 
-	templateDb := "wt_template"
 	targetDb := strings.ToLower(t.Name())
 
+	// templateDb := "wt_template"
+
 	// connect to the default database and create the template database
-	u.Path = "postgres"
-	cleanupStack = append(cleanupStack, createDatabase(t, u.String(), templateDb, "template1", true))
+	// u.Path = "postgres"
+	// cleanupStack = append(cleanupStack, createDatabase(t, u.String(), templateDb, "template1", true))
 
 	// connect to the template database and run the migrations
-	u.Path = templateDb
-	runMigrations(t, u.String())
+	// u.Path = templateDb
+	// runMigrations(t, u.String())
 
+	// connect to the default database and create the test database
+	// u.Path = "postgres"
+	// cleanupStack = append(cleanupStack, createDatabase(t, u.String(), targetDb, templateDb, false))
+
+	templateDb := "template1"
 	// connect to the default database and create the test database
 	u.Path = "postgres"
 	cleanupStack = append(cleanupStack, createDatabase(t, u.String(), targetDb, templateDb, false))
 
+	// connect to the target database and run the migrations
 	u.Path = targetDb
+	runMigrations(t, u.String())
 	dbUrl = u.String()
 
 	// t.Logf("gorm dbUrl: %s", dbUrl)
