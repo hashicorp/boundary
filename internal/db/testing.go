@@ -11,18 +11,25 @@ import (
 	"github.com/jinzhu/gorm"
 )
 
-// setup the tests (initialize the database one-time and intialized testDatabaseURL)
-func TestSetup(t *testing.T, dialect string) (func() error, *gorm.DB, string) {
-	cleanup := func() error { return nil }
-	var url string
-	var err error
-	cleanup, url, _, err = InitDbInDocker(dialect)
+// TestSetup initializes the database. It returns a cleanup function, a
+// gorm db, and the url of the database.
+func TestSetup(t *testing.T, dialect string) (cleanup func(), db *gorm.DB, url string) {
+	dbCleanup, url, _, err := InitDbInDocker(dialect)
 	if err != nil {
+		if dbCleanup != nil {
+			_ = dbCleanup()
+		}
 		t.Fatal(err)
 	}
-	db, err := gorm.Open(dialect, url)
+	db, err = gorm.Open(dialect, url)
 	if err != nil {
+		_ = dbCleanup()
 		t.Fatal(err)
+	}
+	cleanup = func() {
+		if err := dbCleanup(); err != nil {
+			t.Errorf("unexpected error in db cleanup: %v", err)
+		}
 	}
 	return cleanup, db, url
 }
