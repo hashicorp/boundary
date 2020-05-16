@@ -22,7 +22,7 @@ import (
 
 func createDefaultProjectAndRepo(t *testing.T) (*iam.Scope, *iam.Repository) {
 	t.Helper()
-	cleanup, conn := db.TestSetup(t, "postgres")
+	cleanup, conn, _ := db.TestSetup(t, "postgres")
 	t.Cleanup(func() {
 		conn.Close()
 		cleanup()
