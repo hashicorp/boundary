@@ -18,7 +18,11 @@ import (
 func TestNewRepository(t *testing.T) {
 	t.Parallel()
 	cleanup, conn, _ := db.TestSetup(t, "postgres")
-	defer cleanup()
+	defer func() {
+		if err := cleanup(); err != nil {
+			t.Error(err)
+		}
+	}()
 	assert := assert.New(t)
 	defer conn.Close()
 
@@ -103,7 +107,11 @@ func TestNewRepository(t *testing.T) {
 func Test_Repository_create(t *testing.T) {
 	t.Parallel()
 	cleanup, conn, _ := db.TestSetup(t, "postgres")
-	defer cleanup()
+	defer func() {
+		if err := cleanup(); err != nil {
+			t.Error(err)
+		}
+	}()
 	assert := assert.New(t)
 	defer conn.Close()
 
@@ -150,7 +158,11 @@ func Test_Repository_create(t *testing.T) {
 func Test_Repository_update(t *testing.T) {
 	t.Parallel()
 	cleanup, conn, _ := db.TestSetup(t, "postgres")
-	defer cleanup()
+	defer func() {
+		if err := cleanup(); err != nil {
+			t.Error(err)
+		}
+	}()
 	assert := assert.New(t)
 	defer conn.Close()
 
@@ -205,7 +217,11 @@ func Test_Repository_update(t *testing.T) {
 func Test_Repository_delete(t *testing.T) {
 	t.Parallel()
 	cleanup, conn, _ := db.TestSetup(t, "postgres")
-	defer cleanup()
+	defer func() {
+		if err := cleanup(); err != nil {
+			t.Error(err)
+		}
+	}()
 	assert := assert.New(t)
 	defer conn.Close()
 
@@ -227,7 +243,7 @@ func Test_Repository_delete(t *testing.T) {
 		assert.NoError(err)
 		assert.Equal(1, rowsDeleted)
 
-		db.TestVerifyOplog(t, rw, s.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_DELETE), db.WithCreateNotBefore(5*time.Second))
+		err = db.TestVerifyOplog(t, rw, s.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_DELETE), db.WithCreateNotBefore(5*time.Second))
 		assert.NoError(err)
 	})
 	t.Run("nil-resource", func(t *testing.T) {

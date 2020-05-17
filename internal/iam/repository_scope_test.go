@@ -15,7 +15,11 @@ import (
 func Test_Repository_CreateScope(t *testing.T) {
 	t.Parallel()
 	cleanup, conn, _ := db.TestSetup(t, "postgres")
-	defer cleanup()
+	defer func() {
+		if err := cleanup(); err != nil {
+			t.Error(err)
+		}
+	}()
 	assert := assert.New(t)
 	defer conn.Close()
 
@@ -39,7 +43,7 @@ func Test_Repository_CreateScope(t *testing.T) {
 		assert.NoError(err)
 		assert.True(proto.Equal(foundScope, s))
 
-		db.TestVerifyOplog(t, rw, s.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_CREATE), db.WithCreateNotBefore(10*time.Second))
+		err = db.TestVerifyOplog(t, rw, s.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_CREATE), db.WithCreateNotBefore(10*time.Second))
 		assert.NoError(err)
 	})
 	t.Run("dup-org-names", func(t *testing.T) {
@@ -97,7 +101,11 @@ func Test_Repository_CreateScope(t *testing.T) {
 func Test_Repository_UpdateScope(t *testing.T) {
 	t.Parallel()
 	cleanup, conn, _ := db.TestSetup(t, "postgres")
-	defer cleanup()
+	defer func() {
+		if err := cleanup(); err != nil {
+			t.Error(err)
+		}
+	}()
 	assert := assert.New(t)
 	defer conn.Close()
 
@@ -121,8 +129,7 @@ func Test_Repository_UpdateScope(t *testing.T) {
 		assert.NoError(err)
 		assert.True(proto.Equal(foundScope, s))
 
-		assert.NoError(err)
-		db.TestVerifyOplog(t, rw, s.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_CREATE), db.WithCreateNotBefore(10*time.Second))
+		err = db.TestVerifyOplog(t, rw, s.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_CREATE), db.WithCreateNotBefore(10*time.Second))
 		assert.NoError(err)
 
 		s.Name = id
@@ -139,7 +146,7 @@ func Test_Repository_UpdateScope(t *testing.T) {
 		assert.Equal(foundScope.GetPublicId(), s.GetPublicId())
 		assert.Empty(foundScope.GetDescription())
 
-		db.TestVerifyOplog(t, rw, s.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_UPDATE), db.WithCreateNotBefore(10*time.Second))
+		err = db.TestVerifyOplog(t, rw, s.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_UPDATE), db.WithCreateNotBefore(10*time.Second))
 		assert.NoError(err)
 	})
 	t.Run("bad-parent-scope", func(t *testing.T) {
@@ -167,6 +174,7 @@ func Test_Repository_UpdateScope(t *testing.T) {
 		project.ParentId = project.PublicId
 		project, updatedRows, err := repo.UpdateScope(context.Background(), project, []string{"ParentId"})
 		assert.Error(err)
+		assert.Nil(project)
 		assert.Equal(0, updatedRows)
 		assert.Equal("failed to update scope: error on update you cannot change a scope's parent", err.Error())
 	})
@@ -175,7 +183,11 @@ func Test_Repository_UpdateScope(t *testing.T) {
 func Test_Repository_LookupScope(t *testing.T) {
 	t.Parallel()
 	cleanup, conn, _ := db.TestSetup(t, "postgres")
-	defer cleanup()
+	defer func() {
+		if err := cleanup(); err != nil {
+			t.Error(err)
+		}
+	}()
 	assert := assert.New(t)
 	defer conn.Close()
 
@@ -210,7 +222,11 @@ func Test_Repository_LookupScope(t *testing.T) {
 func Test_Repository_DeleteScope(t *testing.T) {
 	t.Parallel()
 	cleanup, conn, _ := db.TestSetup(t, "postgres")
-	defer cleanup()
+	defer func() {
+		if err := cleanup(); err != nil {
+			t.Error(err)
+		}
+	}()
 	assert := assert.New(t)
 	defer conn.Close()
 	rw := db.New(conn)
@@ -233,7 +249,7 @@ func Test_Repository_DeleteScope(t *testing.T) {
 		assert.NoError(err)
 		assert.Equal(1, rowsDeleted)
 
-		db.TestVerifyOplog(t, rw, s.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_DELETE), db.WithCreateNotBefore(10*time.Second))
+		err = db.TestVerifyOplog(t, rw, s.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_DELETE), db.WithCreateNotBefore(10*time.Second))
 		assert.NoError(err)
 
 		foundScope, err = repo.LookupScope(context.Background(), s.PublicId)
