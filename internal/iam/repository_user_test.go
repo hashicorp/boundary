@@ -145,17 +145,16 @@ func TestRepository_UpdateUser(t *testing.T) {
 			wantRowsUpdate: 1,
 		},
 		{
-			name: "proj-scope-id",
+			name: "proj-scope-id-no-mask",
 			args: args{
-				name:           "proj-scope-id" + id,
-				fieldMaskPaths: []string{"Name"},
-				ScopeId:        proj.PublicId,
+				name:    "proj-scope-id" + id,
+				ScopeId: proj.PublicId,
 			},
 			wantErr:    true,
-			wantErrMsg: "failed to update user: error on update scope is not an organization",
+			wantErrMsg: "failed to update user: error on update not allowed to change a user's scope",
 		},
 		{
-			name: "empty-scope-id", // update will look this up to validate it, so it's not an error
+			name: "empty-scope-id-with-name-mask",
 			args: args{
 				name:           "empty-scope-id" + id,
 				fieldMaskPaths: []string{"Name"},
