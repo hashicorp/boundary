@@ -61,18 +61,19 @@ func (u *User) Clone() interface{} {
 // VetForWrite implements db.VetForWrite() interface
 func (u *User) VetForWrite(ctx context.Context, r db.Reader, opType db.OpType, opt ...db.Option) error {
 	opts := db.GetOpts(opt...)
-
 	if u.PublicId == "" {
 		return errors.New("error public id is empty string for user write")
 	}
-	if u.ScopeId == "" {
-		return errors.New("error scope id not set for user write")
-	}
 
-	// make sure the scope is valid for users
-	err := u.scopeIsValid(ctx, r)
-	if err != nil {
-		return err
+	if opType == db.CreateOp {
+		if u.ScopeId == "" {
+			return errors.New("error scope id not set for user write")
+		}
+		// make sure the scope is valid for users
+		err := u.scopeIsValid(ctx, r)
+		if err != nil {
+			return err
+		}
 	}
 	if opType == db.UpdateOp && u.ScopeId != "" {
 		switch len(opts.WithFieldMaskPaths) {
