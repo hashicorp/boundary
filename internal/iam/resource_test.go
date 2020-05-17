@@ -18,7 +18,7 @@ func Test_LookupScope(t *testing.T) {
 		w := db.New(conn)
 		s, err := NewOrganization()
 		assert.NoError(err)
-		assert.True(s.Scope != nil)
+		assert.NotNil(s.Scope != nil)
 		err = w.Create(context.Background(), s)
 		assert.NoError(err)
 		assert.True(s.PublicId != "")
@@ -45,7 +45,7 @@ func Test_LookupScope(t *testing.T) {
 
 		s, err := NewOrganization()
 		assert.NoError(err)
-		assert.True(s.Scope != nil)
+		assert.NotNil(s.Scope != nil)
 		err = w.Create(context.Background(), s)
 		assert.NoError(err)
 		assert.True(s.PublicId != "")

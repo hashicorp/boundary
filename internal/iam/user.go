@@ -17,7 +17,7 @@ type User struct {
 	tableName string `gorm:"-"`
 }
 
-// ensure that User implements the interfaces of: Resource, ClonableResource and db.VetForWriter
+// ensure that User implements the interfaces of: Resource, Clonable and db.VetForWriter
 var _ Resource = (*User)(nil)
 var _ Clonable = (*User)(nil)
 var _ db.VetForWriter = (*User)(nil)
@@ -58,7 +58,8 @@ func (u *User) Clone() interface{} {
 	}
 }
 
-// VetForWrite implements db.VetForWrite() interface
+// VetForWrite implements db.VetForWrite() interface and validates the user
+// before it's written.
 func (u *User) VetForWrite(ctx context.Context, r db.Reader, opType db.OpType, opt ...db.Option) error {
 	opts := db.GetOpts(opt...)
 	if u.PublicId == "" {
