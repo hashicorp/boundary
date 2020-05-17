@@ -92,7 +92,7 @@ func TestSetup(t *testing.T, dialect string) (cleanup func(), db *gorm.DB, dbUrl
 }
 
 func createDatabase(t *testing.T, dbUrl string, name string, from string, isTemplate bool) (cleanup func()) {
-	t.Helper()
+	// t.Helper()
 
 	const (
 		dbExists        = ` select count(datname) from pg_database where datname = $1 ; `
@@ -160,6 +160,7 @@ func createDatabase(t *testing.T, dbUrl string, name string, from string, isTemp
 			if connections == 0 || attempts > 10 {
 				break
 			}
+			t.Logf("drop database %s: attempt %d", name, attempts)
 			time.Sleep(1 * time.Second)
 		}
 
@@ -190,7 +191,7 @@ func createDatabase(t *testing.T, dbUrl string, name string, from string, isTemp
 }
 
 func getDatabaseServer(t *testing.T) (cleanup func(), url string) {
-	t.Helper()
+	// t.Helper()
 
 	if os.Getenv("PG_URL") != "" {
 		url = os.Getenv("PG_URL")
@@ -239,7 +240,7 @@ func getDatabaseServer(t *testing.T) (cleanup func(), url string) {
 }
 
 func runMigrations(t *testing.T, url string) {
-	t.Helper()
+	// t.Helper()
 	source, err := migrations.NewMigrationSource("postgres")
 	if err != nil {
 		t.Fatalf("error creating migration driver: %v", err)
@@ -248,11 +249,13 @@ func runMigrations(t *testing.T, url string) {
 	if err != nil {
 		t.Fatalf("error creating migrations: %v", err)
 	}
+	defer func() {
+		if _, err := m.Close(); err != nil {
+			t.Fatalf("error closing db connection for migrations: %v", err)
+		}
+	}()
 	if err := m.Up(); err != nil && err != migrate.ErrNoChange {
 		t.Fatalf("error running migrations: %v", err)
-	}
-	if _, err := m.Close(); err != nil {
-		t.Fatalf("error closing db connection for migrations: %v", err)
 	}
 }
 
