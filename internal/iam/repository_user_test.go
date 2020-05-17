@@ -2,6 +2,7 @@ package iam
 
 import (
 	"context"
+	"errors"
 	"testing"
 	"time"
 
@@ -140,6 +141,8 @@ func TestRepository_UpdateUser(t *testing.T) {
 				fieldMaskPaths: []string{"Name"},
 				ScopeId:        org.PublicId,
 			},
+			wantErr:        false,
+			wantRowsUpdate: 1,
 		},
 		{
 			name: "proj-scope-id",
@@ -152,13 +155,14 @@ func TestRepository_UpdateUser(t *testing.T) {
 			wantErrMsg: "failed to update user: error on update scope is not an organization",
 		},
 		{
-			name: "empty-scope-id",
+			name: "empty-scope-id", // update will look this up to validate it, so it's not an error
 			args: args{
 				name:           "empty-scope-id" + id,
 				fieldMaskPaths: []string{"Name"},
 				ScopeId:        "",
 			},
-			wantErr: false,
+			wantErr:        false,
+			wantRowsUpdate: 1,
 		},
 		{
 			name: "dup-name",
@@ -202,7 +206,7 @@ func TestRepository_UpdateUser(t *testing.T) {
 				return
 			}
 			assert.NoError(err)
-			assert.Equal(1, updatedRows)
+			assert.Equal(tt.wantRowsUpdate, updatedRows)
 			assert.NotEqual(u.UpdateTime, userAfterUpdate.UpdateTime)
 			foundUser, err := repo.LookupUser(context.Background(), u.PublicId)
 			assert.NoError(err)
@@ -210,6 +214,90 @@ func TestRepository_UpdateUser(t *testing.T) {
 
 			err = db.TestVerifyOplog(rw, u.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_UPDATE), db.WithCreateNotBefore(10*time.Second))
 			assert.NoError(err)
+		})
+	}
+}
+
+func TestRepository_DeleteUser(t *testing.T) {
+	t.Parallel()
+	cleanup, conn, _ := db.TestSetup(t, "postgres")
+	defer cleanup()
+	a := assert.New(t)
+	defer conn.Close()
+
+	rw := db.New(conn)
+	wrapper := db.TestWrapper(t)
+	repo, err := NewRepository(rw, rw, wrapper)
+	a.NoError(err)
+	org, _ := TestScopes(t, conn)
+
+	type args struct {
+		user *User
+		opt  []Option
+	}
+	tests := []struct {
+		name            string
+		args            args
+		wantRowsDeleted int
+		wantErr         bool
+		wantErrMsg      string
+	}{
+		{
+			name: "valid",
+			args: args{
+				user: TestUser(t, conn, org.PublicId),
+			},
+			wantRowsDeleted: 1,
+			wantErr:         false,
+		},
+		{
+			name: "no-public-id",
+			args: args{
+				user: func() *User {
+					u := allocUser()
+					return &u
+				}(),
+			},
+			wantRowsDeleted: 0,
+			wantErr:         true,
+			wantErrMsg:      "you cannot delete a user with an empty public id",
+		},
+		{
+			name: "not-found",
+			args: args{
+				user: func() *User {
+					u, err := NewUser(org.PublicId)
+					a.NoError(err)
+					return u
+				}(),
+			},
+			wantRowsDeleted: 0,
+			wantErr:         false,
+			wantErrMsg:      "",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert := assert.New(t)
+			deletedRows, err := repo.DeleteUser(context.Background(), tt.args.user.PublicId, tt.args.opt...)
+			if tt.wantErr {
+				assert.Error(err)
+				assert.Equal(0, deletedRows)
+				assert.Equal(tt.wantErrMsg, err.Error())
+				err = db.TestVerifyOplog(rw, tt.args.user.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_DELETE), db.WithCreateNotBefore(10*time.Second))
+				assert.Error(err)
+				assert.Equal("record not found", err.Error())
+				return
+			}
+			assert.NoError(err)
+			assert.Equal(tt.wantRowsDeleted, deletedRows)
+			foundUser, err := repo.LookupUser(context.Background(), tt.args.user.PublicId)
+			assert.Error(err)
+			assert.Nil(foundUser)
+			assert.True(errors.Is(err, db.ErrRecordNotFound))
+
+			err = db.TestVerifyOplog(rw, tt.args.user.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_DELETE), db.WithCreateNotBefore(10*time.Second))
+			assert.Error(err)
 		})
 	}
 }
