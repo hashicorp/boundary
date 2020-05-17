@@ -61,6 +61,9 @@ func (r *Repository) DeleteScope(ctx context.Context, withPublicId string, opt .
 	scope.PublicId = withPublicId
 	rowsDeleted, err := r.delete(ctx, &scope)
 	if err != nil {
+		if errors.Is(err, ErrMetadataScopeNotFound) {
+			return 0, nil
+		}
 		return db.NoRowsAffected, fmt.Errorf("unable to delete scope with public id %s: %w", withPublicId, err)
 	}
 	return rowsDeleted, nil

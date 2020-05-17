@@ -11,6 +11,10 @@ import (
 	"github.com/hashicorp/watchtower/internal/oplog"
 )
 
+var (
+	ErrMetadataScopeNotFound = errors.New("scope not found for metadata")
+)
+
 // Repository is the iam database repository
 type Repository struct {
 	reader  db.Reader
@@ -151,7 +155,7 @@ func (r *Repository) stdMetadata(ctx context.Context, resource Resource) (oplog.
 	if s, ok := resource.(*Scope); ok {
 		if s.Type == "" {
 			if err := r.reader.LookupByPublicId(ctx, s); err != nil {
-				fmt.Errorf("unable to get scope by public id: %w", err)
+				return nil, ErrMetadataScopeNotFound
 			}
 		}
 		switch s.Type {
