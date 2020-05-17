@@ -223,7 +223,7 @@ func createDatabase(t *testing.T, dbUrl string, name string, from string, isTemp
 func getDatabaseServer(t *testing.T) (cleanup func(), url string) {
 	// t.Helper()
 
-	if os.Getenv("PG_URL") != "" && os.Getenv("PG_TEMPLATE") != "" {
+	if os.Getenv("PG_URL") != "" {
 		url = os.Getenv("PG_URL")
 		cleanup = func() {}
 		return
@@ -284,8 +284,23 @@ func runMigrations(t *testing.T, url string) {
 			t.Fatalf("error closing db connection for migrations: %v", err)
 		}
 	}()
-	if err := m.Up(); err != nil && err != migrate.ErrNoChange {
-		t.Fatalf("error running migrations: %v", err)
+
+	{
+		r := mrand.Float64()
+		attempts := 0
+		for {
+			attempts++
+			if err := m.Up(); err != nil && err != migrate.ErrNoChange {
+				if attempts > 100 {
+					t.Fatalf("migrations failed")
+					break
+				}
+				t.Logf("migration attempt %d failed: %v", attempts, err)
+				time.Sleep(time.Millisecond * time.Duration(math.Exp2(float64(attempts))*5*(r+0.5)))
+			} else {
+				break
+			}
+		}
 	}
 }
 
