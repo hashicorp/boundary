@@ -4,6 +4,8 @@ import (
 	"crypto/rand"
 	"database/sql"
 	"fmt"
+	"math"
+	mrand "math/rand"
 	"net/url"
 	"os"
 	"strings"
@@ -72,14 +74,24 @@ func TestSetup(t *testing.T, dialect string) (cleanup func(), db *gorm.DB, dbUrl
 	// u.Path = "postgres"
 	// cleanupStack = append(cleanupStack, createDatabase(t, u.String(), targetDb, templateDb, false))
 
-	templateDb := "template1"
-	// connect to the default database and create the test database
-	u.Path = "postgres"
-	cleanupStack = append(cleanupStack, createDatabase(t, u.String(), targetDb, templateDb, false))
+	if os.Getenv("PG_URL") != "" && os.Getenv("PG_TEMPLATE") != "" {
+		templateDb := os.Getenv("PG_TEMPLATE")
+		u.Path = "postgres"
+		t.Logf("dbUrl: %s", u.String())
+		cleanupStack = append(cleanupStack, createDatabase(t, u.String(), targetDb, templateDb, false))
 
-	// connect to the target database and run the migrations
-	u.Path = targetDb
-	runMigrations(t, u.String())
+		u.Path = targetDb
+	} else {
+
+		templateDb := "template1"
+		// connect to the default database and create the test database
+		u.Path = "postgres"
+		cleanupStack = append(cleanupStack, createDatabase(t, u.String(), targetDb, templateDb, false))
+
+		// connect to the target database and run the migrations
+		u.Path = targetDb
+		runMigrations(t, u.String())
+	}
 	dbUrl = u.String()
 
 	// t.Logf("gorm dbUrl: %s", dbUrl)
@@ -132,9 +144,26 @@ func createDatabase(t *testing.T, dbUrl string, name string, from string, isTemp
 	if count > 0 {
 		t.Fatalf("create database %s: database already exists", name)
 	}
+
 	createStatement := fmt.Sprintf(createDb, name, from, isTemplate)
-	if _, err := db.Exec(createStatement); err != nil {
-		t.Fatalf("sql: %q failed: %v", createStatement, err)
+	{
+
+		r := mrand.Float64()
+		attempts := 0
+		for {
+			attempts++
+			if _, err := db.Exec(createStatement); err != nil {
+				t.Logf("sql: %q failed: %v", createStatement, err)
+				if attempts > 100 {
+					t.Fatalf("create database %s failed", name)
+					break
+				}
+				t.Logf("create database %s: attempt %d", name, attempts)
+				time.Sleep(time.Millisecond * time.Duration(math.Exp2(float64(attempts))*5*(r+0.5)))
+			} else {
+				break
+			}
+		}
 	}
 
 	// t.Logf("sql: %q worked", createStatement)
@@ -150,6 +179,7 @@ func createDatabase(t *testing.T, dbUrl string, name string, from string, isTemp
 			}
 		}()
 
+		r := mrand.Float64()
 		attempts := 0
 		var connections int
 		for {
@@ -161,7 +191,7 @@ func createDatabase(t *testing.T, dbUrl string, name string, from string, isTemp
 				break
 			}
 			t.Logf("drop database %s: attempt %d", name, attempts)
-			time.Sleep(1 * time.Second)
+			time.Sleep(time.Millisecond * time.Duration(math.Exp2(float64(attempts))*5*(r+0.5)))
 		}
 
 		if isTemplate {
@@ -193,7 +223,7 @@ func createDatabase(t *testing.T, dbUrl string, name string, from string, isTemp
 func getDatabaseServer(t *testing.T) (cleanup func(), url string) {
 	// t.Helper()
 
-	if os.Getenv("PG_URL") != "" {
+	if os.Getenv("PG_URL") != "" && os.Getenv("PG_TEMPLATE") != "" {
 		url = os.Getenv("PG_URL")
 		cleanup = func() {}
 		return
