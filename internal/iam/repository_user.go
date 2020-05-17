@@ -45,8 +45,6 @@ func (r *Repository) LookupUser(ctx context.Context, withPublicId string, opt ..
 		return nil, err
 	}
 	return &user, nil
-
-	return nil, errors.New("you must loop up users by id or friendly name")
 }
 
 // DeleteUser will delete a user from the repository
