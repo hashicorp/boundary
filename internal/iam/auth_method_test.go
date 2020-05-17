@@ -12,7 +12,11 @@ import (
 func Test_NewAuthMethod(t *testing.T) {
 	t.Parallel()
 	cleanup, conn, _ := db.TestSetup(t, "postgres")
-	defer cleanup()
+	defer func() {
+		if err := cleanup(); err != nil {
+			t.Error(err)
+		}
+	}()
 	assert := assert.New(t)
 	defer conn.Close()
 
@@ -44,7 +48,11 @@ func Test_NewAuthMethod(t *testing.T) {
 func TestAuthMethod_GetScope(t *testing.T) {
 	t.Parallel()
 	cleanup, conn, _ := db.TestSetup(t, "postgres")
-	defer cleanup()
+	defer func() {
+		if err := cleanup(); err != nil {
+			t.Error(err)
+		}
+	}()
 	assert := assert.New(t)
 	defer conn.Close()
 
@@ -75,7 +83,11 @@ func TestAuthMethod_GetScope(t *testing.T) {
 func TestAuthMethod_ResourceType(t *testing.T) {
 	t.Parallel()
 	cleanup, conn, _ := db.TestSetup(t, "postgres")
-	defer cleanup()
+	defer func() {
+		if err := cleanup(); err != nil {
+			t.Error(err)
+		}
+	}()
 	assert := assert.New(t)
 	defer conn.Close()
 
@@ -114,7 +126,11 @@ func TestAuthMethod_Actions(t *testing.T) {
 func TestAuthMethod_Clone(t *testing.T) {
 	t.Parallel()
 	cleanup, conn, _ := db.TestSetup(t, "postgres")
-	defer cleanup()
+	defer func() {
+		if err := cleanup(); err != nil {
+			t.Error(err)
+		}
+	}()
 	assert := assert.New(t)
 	defer conn.Close()
 
