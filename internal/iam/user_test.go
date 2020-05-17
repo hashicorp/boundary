@@ -258,7 +258,7 @@ func Test_UserGetScope(t *testing.T) {
 
 		childScope, err := NewProject(org.PublicId)
 		assert.NoError(err)
-		assert.True(childScope.Scope != nil)
+		assert.NotNil(childScope.Scope)
 		assert.Equal(childScope.GetParentId(), org.PublicId)
 		err = w.Create(context.Background(), childScope)
 		assert.NoError(err)

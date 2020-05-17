@@ -34,7 +34,7 @@ func Test_UserRoles(t *testing.T) {
 
 		uRole, err := NewAssignedRole(role, user)
 		assert.NoError(err)
-		assert.True(uRole != nil)
+		assert.NotNil(uRole)
 		assert.Equal(uRole.GetRoleId(), role.PublicId)
 		assert.Equal(uRole.GetPrincipalId(), user.PublicId)
 		err = w.Create(context.Background(), uRole)

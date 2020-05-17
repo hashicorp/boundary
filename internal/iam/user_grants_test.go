@@ -61,7 +61,7 @@ func Test_UserGrants(t *testing.T) {
 
 		grp, err := NewGroup(org.PublicId, WithDescription("user grants test group"))
 		assert.NoError(err)
-		assert.True(grp != nil)
+		assert.NotNil(grp)
 		assert.Equal(grp.Description, "user grants test group")
 		assert.Equal(org.PublicId, grp.ScopeId)
 		err = w.Create(context.Background(), grp)
@@ -84,7 +84,7 @@ func Test_UserGrants(t *testing.T) {
 
 		groupGrant, err := NewRoleGrant(groupRole, "group-grant*"+id)
 		assert.NoError(err)
-		assert.True(groupGrant != nil)
+		assert.NotNil(groupGrant)
 		assert.Equal(groupGrant.RoleId, groupRole.PublicId)
 		assert.Equal(groupGrant.Grant, "group-grant*"+id)
 		err = w.Create(context.Background(), groupGrant)
