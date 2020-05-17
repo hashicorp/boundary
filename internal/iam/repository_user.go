@@ -13,7 +13,7 @@ func (r *Repository) CreateUser(ctx context.Context, user *User, opt ...Option) 
 	if user == nil {
 		return nil, errors.New("error user is nil for create")
 	}
-	resource, err := r.create(context.Background(), user)
+	resource, err := r.create(ctx, user)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create user: %w", err)
 	}
@@ -25,7 +25,7 @@ func (r *Repository) UpdateUser(ctx context.Context, user *User, fieldMaskPaths 
 	if user == nil {
 		return nil, db.NoRowsAffected, errors.New("error user is nil for update")
 	}
-	resource, rowsUpdated, err := r.update(context.Background(), user, fieldMaskPaths)
+	resource, rowsUpdated, err := r.update(ctx, user, fieldMaskPaths)
 	if err != nil {
 		return nil, db.NoRowsAffected, fmt.Errorf("failed to update user: %w", err)
 	}
