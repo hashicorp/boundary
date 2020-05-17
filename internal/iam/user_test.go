@@ -3,9 +3,11 @@ package iam
 import (
 	"context"
 	"testing"
+	"time"
 
 	"github.com/hashicorp/go-uuid"
 	"github.com/hashicorp/watchtower/internal/db"
+	"github.com/hashicorp/watchtower/internal/oplog"
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/protobuf/proto"
 )
@@ -116,50 +118,123 @@ func Test_UserCreate(t *testing.T) {
 func Test_UserUpdate(t *testing.T) {
 	t.Parallel()
 	cleanup, conn, _ := db.TestSetup(t, "postgres")
-	defer func() {
-		if err := cleanup(); err != nil {
-			t.Error(err)
-		}
-	}()
-	assert := assert.New(t)
+	defer cleanup()
+	a := assert.New(t)
 	defer conn.Close()
-	org, _ := TestScopes(t, conn)
 
+	rw := db.New(conn)
+	wrapper := db.TestWrapper(t)
+	repo, err := NewRepository(rw, rw, wrapper)
+	a.NoError(err)
 	id, err := uuid.GenerateUUID()
-	assert.NoError(err)
-	t.Run("valid-user", func(t *testing.T) {
-		w := db.New(conn)
-		u := TestUser(t, conn, org.PublicId)
-		u.Name = "valid-user" + id
-		updatedRows, err := w.Update(context.Background(), u, []string{"Name"})
-		assert.NoError(err)
-		assert.Equal(1, updatedRows)
+	a.NoError(err)
 
-		foundUser := allocUser()
-		foundUser.PublicId = u.PublicId
-		err = w.LookupByPublicId(context.Background(), &foundUser)
-		assert.NoError(err)
-		assert.True(proto.Equal(u, foundUser))
-	})
-	t.Run("scope-update-not-allowed", func(t *testing.T) {
-		w := db.New(conn)
-		u := TestUser(t, conn, org.PublicId)
+	org, proj := TestScopes(t, conn)
 
-		org2, _ := TestScopes(t, conn)
-		updateUser := u.Clone()
-		updateUser.(*User).ScopeId = org2.PublicId
-		updatedRows, err := w.Update(context.Background(), updateUser, []string{"ScopeId"})
-		assert.Error(err)
-		assert.Equal(0, updatedRows)
-		assert.Equal("error on update not allowed to change a user's scope", err.Error())
+	type args struct {
+		name           string
+		description    string
+		fieldMaskPaths []string
+		ScopeId        string
+	}
+	tests := []struct {
+		name           string
+		args           args
+		wantRowsUpdate int
+		wantErr        bool
+		wantErrMsg     string
+		wantDup        bool
+	}{
+		{
+			name: "valid",
+			args: args{
+				name:           "valid" + id,
+				fieldMaskPaths: []string{"Name"},
+				ScopeId:        org.PublicId,
+			},
+			wantErr:        false,
+			wantRowsUpdate: 1,
+		},
+		{
+			name: "proj-scope-id",
+			args: args{
+				name:           "proj-scope-id" + id,
+				fieldMaskPaths: []string{"ScopeId"},
+				ScopeId:        proj.PublicId,
+			},
+			wantErr:    true,
+			wantErrMsg: "error on update not allowed to change a user's scope",
+		},
+		{
+			name: "proj-scope-id-not-in-mask",
+			args: args{
+				name:           "proj-scope-id" + id,
+				fieldMaskPaths: []string{"Name"},
+				ScopeId:        proj.PublicId,
+			},
+			wantErr:        false,
+			wantRowsUpdate: 1,
+		},
+		{
+			name: "empty-scope-id",
+			args: args{
+				name:           "empty-scope-id" + id,
+				fieldMaskPaths: []string{"Name"},
+				ScopeId:        "",
+			},
+			wantErr:        false,
+			wantRowsUpdate: 1,
+		},
+		{
+			name: "dup-name",
+			args: args{
+				name:           "dup-name" + id,
+				fieldMaskPaths: []string{"Name"},
+				ScopeId:        org.PublicId,
+			},
+			wantErr:    true,
+			wantDup:    true,
+			wantErrMsg: `error updating: pq: duplicate key value violates unique constraint "iam_user_name_scope_id_key"`,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert := assert.New(t)
+			if tt.wantDup {
+				u := TestUser(t, conn, org.PublicId)
+				u.Name = tt.args.name
+				_, err := rw.Update(context.Background(), u, tt.args.fieldMaskPaths)
+				assert.NoError(err)
+			}
 
-		foundUser := allocUser()
-		foundUser.PublicId = u.PublicId
-		err = w.LookupByPublicId(context.Background(), &foundUser)
-		assert.NoError(err)
-		assert.True(proto.Equal(u, foundUser))
-	})
+			u := TestUser(t, conn, org.PublicId)
+
+			updateUser := allocUser()
+			updateUser.PublicId = u.PublicId
+			updateUser.ScopeId = tt.args.ScopeId
+			updateUser.Name = tt.args.name
+			updateUser.Description = tt.args.description
+
+			updatedRows, err := rw.Update(context.Background(), &updateUser, tt.args.fieldMaskPaths)
+			if tt.wantErr {
+				assert.Error(err)
+				assert.Equal(0, updatedRows)
+				assert.Equal(tt.wantErrMsg, err.Error())
+				err = db.TestVerifyOplog(rw, u.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_UPDATE), db.WithCreateNotBefore(10*time.Second))
+				assert.Error(err)
+				assert.Equal("record not found", err.Error())
+				return
+			}
+			assert.NoError(err)
+			assert.Equal(tt.wantRowsUpdate, updatedRows)
+			assert.NotEqual(u.UpdateTime, updateUser.UpdateTime)
+			foundUser, err := repo.LookupUser(context.Background(), u.PublicId)
+			assert.NoError(err)
+			assert.True(proto.Equal(updateUser, foundUser))
+		})
+	}
 }
+
 func Test_UserGetScope(t *testing.T) {
 	t.Parallel()
 	cleanup, conn, _ := db.TestSetup(t, "postgres")
