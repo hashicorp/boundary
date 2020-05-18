@@ -2,7 +2,6 @@ package db
 
 import (
 	"context"
-	"reflect"
 	"strconv"
 	"testing"
 	"time"
@@ -25,7 +24,7 @@ func Test_Utils(t *testing.T) {
 	})
 }
 
-func Test_TestVerifyOplogEntry(t *testing.T) {
+func TestVerifyOplogEntry(t *testing.T) {
 	cleanup, db, _ := TestSetup(t, "postgres")
 	defer cleanup()
 	assert := assert.New(t)
@@ -34,9 +33,9 @@ func Test_TestVerifyOplogEntry(t *testing.T) {
 	t.Run("valid", func(t *testing.T) {
 		rw := Db{underlying: db}
 		id, err := uuid.GenerateUUID()
-		assert.Nil(err)
+		assert.NoError(err)
 		user, err := db_test.NewTestUser()
-		assert.Nil(err)
+		assert.NoError(err)
 		user.Name = "foo-" + id
 		err = rw.Create(
 			context.Background(),
@@ -48,24 +47,24 @@ func Test_TestVerifyOplogEntry(t *testing.T) {
 					"resource-public-id": []string{user.GetPublicId()},
 				}),
 		)
-		assert.Nil(err)
-		assert.True(user.Id != 0)
+		assert.NoError(err)
+		assert.NotZero(user.Id)
 
 		foundUser, err := db_test.NewTestUser()
-		assert.Nil(err)
+		assert.NoError(err)
 		foundUser.PublicId = user.PublicId
 		err = rw.LookupByPublicId(context.Background(), foundUser)
-		assert.Nil(err)
+		assert.NoError(err)
 		assert.Equal(foundUser.Id, user.Id)
-		err = TestVerifyOplog(&rw, user.PublicId, WithOperation(oplog.OpType_OP_TYPE_CREATE), WithCreateNotBefore(5*time.Second))
-		assert.Nil(err)
+		TestVerifyOplog(t, &rw, user.PublicId, WithOperation(oplog.OpType_OP_TYPE_CREATE), WithCreateNotBefore(5*time.Second))
+		assert.NoError(err)
 	})
 	t.Run("should-fail", func(t *testing.T) {
 		rw := Db{underlying: db}
 		id, err := uuid.GenerateUUID()
-		assert.Nil(err)
-		err = TestVerifyOplog(&rw, id)
-		assert.True(err != nil)
+		assert.NoError(err)
+		err = TestVerifyOplog(t, &rw, id)
+		assert.Error(err)
 	})
 }
 
@@ -76,14 +75,14 @@ func Test_getTestOpts(t *testing.T) {
 		opts := getTestOpts(WithOperation(oplog.OpType_OP_TYPE_CREATE))
 		testOpts := getDefaultTestOptions()
 		testOpts.withOperation = oplog.OpType_OP_TYPE_CREATE
-		assert.True(reflect.DeepEqual(opts, testOpts))
+		assert.Equal(opts, testOpts)
 	})
 	t.Run("WithCreateNotBefore", func(t *testing.T) {
 		nbfSecs := 10
 		opts := getTestOpts(WithCreateNotBefore(time.Second * 10))
 		testOpts := getDefaultTestOptions()
 		testOpts.withCreateNotBefore = &nbfSecs
-		assert.True(reflect.DeepEqual(opts, testOpts))
+		assert.Equal(opts, testOpts)
 	})
 }
 
@@ -123,7 +122,7 @@ func TestWithCreateNotBefore(t *testing.T) {
 			opts := getTestOpts(WithCreateNotBefore(tt.args.nbfDuration))
 			testOpts := getDefaultTestOptions()
 			testOpts.withCreateNotBefore = &tt.want
-			assert.True(reflect.DeepEqual(opts, testOpts))
+			assert.Equal(opts, testOpts)
 		})
 	}
 }

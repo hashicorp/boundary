@@ -198,14 +198,14 @@ func (s *Scope) GetScope(ctx context.Context, r db.Reader) (*Scope, error) {
 	}
 	if s.Type == "" && s.ParentId == "" {
 		if err := r.LookupByPublicId(ctx, s); err != nil {
-			fmt.Errorf("unable to get scope by public id: %w", err)
+			return nil, fmt.Errorf("unable to get scope by public id: %w", err)
 		}
 	}
 	// HANDLE_ORG
-	if s.Type == OrganizationScope.String() {
+	switch s.Type {
+	case OrganizationScope.String():
 		return nil, nil
-	}
-	if s.Type == ProjectScope.String() {
+	case ProjectScope.String():
 		var p Scope
 		switch s.ParentId {
 		case "":

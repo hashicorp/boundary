@@ -90,7 +90,7 @@ func TestRepository_CreateGroup(t *testing.T) {
 				assert.Error(err)
 				assert.Nil(grp)
 				assert.Equal(tt.wantErrMsg, err.Error())
-				err = db.TestVerifyOplog(rw, pubId, db.WithOperation(oplog.OpType_OP_TYPE_CREATE), db.WithCreateNotBefore(10*time.Second))
+				err = db.TestVerifyOplog(t, rw, pubId, db.WithOperation(oplog.OpType_OP_TYPE_CREATE), db.WithCreateNotBefore(10*time.Second))
 				assert.Error(err)
 				assert.Equal("record not found", err.Error())
 				return
@@ -103,7 +103,7 @@ func TestRepository_CreateGroup(t *testing.T) {
 			assert.NoError(err)
 			assert.True(proto.Equal(foundGrp, grp))
 
-			err = db.TestVerifyOplog(rw, grp.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_CREATE), db.WithCreateNotBefore(10*time.Second))
+			err = db.TestVerifyOplog(t, rw, grp.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_CREATE), db.WithCreateNotBefore(10*time.Second))
 			assert.NoError(err)
 		})
 	}
@@ -209,7 +209,7 @@ func TestRepository_UpdateGroup(t *testing.T) {
 				assert.Nil(userAfterUpdate)
 				assert.Equal(0, updatedRows)
 				assert.Equal(tt.wantErrMsg, err.Error())
-				err = db.TestVerifyOplog(rw, u.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_UPDATE), db.WithCreateNotBefore(10*time.Second))
+				err = db.TestVerifyOplog(t, rw, u.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_UPDATE), db.WithCreateNotBefore(10*time.Second))
 				assert.Error(err)
 				assert.Equal("record not found", err.Error())
 				return
@@ -221,7 +221,7 @@ func TestRepository_UpdateGroup(t *testing.T) {
 			assert.NoError(err)
 			assert.True(proto.Equal(userAfterUpdate, foundGrp))
 
-			err = db.TestVerifyOplog(rw, u.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_UPDATE), db.WithCreateNotBefore(10*time.Second))
+			err = db.TestVerifyOplog(t, rw, u.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_UPDATE), db.WithCreateNotBefore(10*time.Second))
 			assert.NoError(err)
 		})
 	}
@@ -297,7 +297,7 @@ func TestRepository_DeleteGroup(t *testing.T) {
 				assert.Error(err)
 				assert.Equal(0, deletedRows)
 				assert.Equal(tt.wantErrMsg, err.Error())
-				err = db.TestVerifyOplog(rw, tt.args.group.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_DELETE), db.WithCreateNotBefore(10*time.Second))
+				err = db.TestVerifyOplog(t, rw, tt.args.group.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_DELETE), db.WithCreateNotBefore(10*time.Second))
 				assert.Error(err)
 				assert.Equal("record not found", err.Error())
 				return
@@ -309,7 +309,7 @@ func TestRepository_DeleteGroup(t *testing.T) {
 			assert.Nil(foundGroup)
 			assert.True(errors.Is(err, db.ErrRecordNotFound))
 
-			err = db.TestVerifyOplog(rw, tt.args.group.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_DELETE), db.WithCreateNotBefore(10*time.Second))
+			err = db.TestVerifyOplog(t, rw, tt.args.group.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_DELETE), db.WithCreateNotBefore(10*time.Second))
 			assert.Error(err)
 		})
 	}

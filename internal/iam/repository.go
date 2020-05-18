@@ -4,11 +4,14 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"strconv"
 
 	wrapping "github.com/hashicorp/go-kms-wrapping"
 	"github.com/hashicorp/watchtower/internal/db"
 	"github.com/hashicorp/watchtower/internal/oplog"
+)
+
+var (
+	ErrMetadataScopeNotFound = errors.New("scope not found for metadata")
 )
 
 // Repository is the iam database repository
@@ -49,7 +52,7 @@ func (r *Repository) create(ctx context.Context, resource Resource, opt ...Optio
 	if err != nil {
 		return nil, err
 	}
-	metadata["op-type"] = []string{strconv.Itoa(int(oplog.OpType_OP_TYPE_CREATE))}
+	metadata["op-type"] = []string{oplog.OpType_OP_TYPE_CREATE.String()}
 
 	var returnedResource interface{}
 	_, err = r.writer.DoTx(
@@ -81,7 +84,7 @@ func (r *Repository) update(ctx context.Context, resource Resource, fieldMaskPat
 	if err != nil {
 		return nil, db.NoRowsAffected, err
 	}
-	metadata["op-type"] = []string{strconv.Itoa(int(oplog.OpType_OP_TYPE_UPDATE))}
+	metadata["op-type"] = []string{oplog.OpType_OP_TYPE_UPDATE.String()}
 
 	var rowsUpdated int
 	var returnedResource interface{}
@@ -119,9 +122,9 @@ func (r *Repository) delete(ctx context.Context, resource Resource, opt ...Optio
 	}
 	metadata, err := r.stdMetadata(ctx, resource)
 	if err != nil {
-		return db.NoRowsAffected, err
+		return db.NoRowsAffected, fmt.Errorf("error getting metadata for delete: %w", err)
 	}
-	metadata["op-type"] = []string{strconv.Itoa(int(oplog.OpType_OP_TYPE_DELETE))}
+	metadata["op-type"] = []string{oplog.OpType_OP_TYPE_DELETE.String()}
 
 	var rowsDeleted int
 	var deleteResource interface{}
@@ -151,7 +154,7 @@ func (r *Repository) stdMetadata(ctx context.Context, resource Resource) (oplog.
 	if s, ok := resource.(*Scope); ok {
 		if s.Type == "" {
 			if err := r.reader.LookupByPublicId(ctx, s); err != nil {
-				fmt.Errorf("unable to get scope by public id: %w", err)
+				return nil, ErrMetadataScopeNotFound
 			}
 		}
 		switch s.Type {
@@ -162,13 +165,15 @@ func (r *Repository) stdMetadata(ctx context.Context, resource Resource) (oplog.
 				"scope-type":         []string{s.Type},
 				"resource-type":      []string{resource.ResourceType().String()},
 			}, nil
-		default:
+		case ProjectScope.String():
 			return oplog.Metadata{
 				"resource-public-id": []string{resource.GetPublicId()},
 				"scope-id":           []string{s.ParentId},
 				"scope-type":         []string{s.Type},
 				"resource-type":      []string{resource.ResourceType().String()},
 			}, nil
+		default:
+			return nil, fmt.Errorf("not a supported scope for metadata: %s", s.Type)
 		}
 	}
 

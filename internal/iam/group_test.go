@@ -221,7 +221,7 @@ func Test_GroupUpdate(t *testing.T) {
 				assert.Error(err)
 				assert.Equal(0, updatedRows)
 				assert.Equal(tt.wantErrMsg, err.Error())
-				err = db.TestVerifyOplog(rw, grp.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_UPDATE), db.WithCreateNotBefore(10*time.Second))
+				err = db.TestVerifyOplog(t, rw, grp.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_UPDATE), db.WithCreateNotBefore(10*time.Second))
 				assert.Error(err)
 				assert.Equal("record not found", err.Error())
 				return

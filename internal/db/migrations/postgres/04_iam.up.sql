@@ -1,6 +1,6 @@
 BEGIN;
 
-CREATE TABLE if not exists iam_scope_type_enm (
+CREATE TABLE iam_scope_type_enm (
   string text NOT NULL primary key CHECK(string IN ('unknown', 'organization', 'project'))
 );
 INSERT INTO iam_scope_type_enm (string)
@@ -10,7 +10,7 @@ values
   ('project');
 
  
-CREATE TABLE if not exists iam_scope (
+CREATE TABLE iam_scope (
     public_id wt_public_id primary key,
     create_time wt_timestamp,
     update_time wt_timestamp,
@@ -28,12 +28,12 @@ CREATE TABLE if not exists iam_scope (
     description text,
     parent_id text REFERENCES iam_scope(public_id) ON DELETE CASCADE ON UPDATE CASCADE
   );
-create table if not exists iam_scope_organization (
+create table iam_scope_organization (
     scope_id wt_public_id NOT NULL UNIQUE REFERENCES iam_scope(public_id) ON DELETE CASCADE ON UPDATE CASCADE,
     name text UNIQUE,
     primary key(scope_id)
   );
-create table if not exists iam_scope_project (
+create table iam_scope_project (
     scope_id wt_public_id NOT NULL REFERENCES iam_scope(public_id) ON DELETE CASCADE ON UPDATE CASCADE,
     parent_id wt_public_id NOT NULL REFERENCES iam_scope_organization(scope_id) ON DELETE CASCADE ON UPDATE CASCADE,
     name text,
