@@ -30,16 +30,9 @@ func TestSetup(t *testing.T, dialect string) (cleanup func(), db *gorm.DB, dbUrl
 		t.Fatalf("unknown dialect %q", dialect)
 	}
 
-	// Functions called from this function should never call t.Fatal.
-	// Calling t.Fatal
-	// If
-	// any of those functions call t.Fatal, it would prevent
-	// Those
-	// function should use t.Error.
 	var cleanupStack []func()
 	cleanup = func() {
 		for i := len(cleanupStack) - 1; i >= 0; i-- {
-			// t.Logf("cleanup[%d]", i)
 			cleanupStack[i]()
 		}
 	}
@@ -59,20 +52,6 @@ func TestSetup(t *testing.T, dialect string) (cleanup func(), db *gorm.DB, dbUrl
 	}
 
 	targetDb := strings.ToLower(t.Name())
-
-	// templateDb := "wt_template"
-
-	// connect to the default database and create the template database
-	// u.Path = "postgres"
-	// cleanupStack = append(cleanupStack, createDatabase(t, u.String(), templateDb, "template1", true))
-
-	// connect to the template database and run the migrations
-	// u.Path = templateDb
-	// runMigrations(t, u.String())
-
-	// connect to the default database and create the test database
-	// u.Path = "postgres"
-	// cleanupStack = append(cleanupStack, createDatabase(t, u.String(), targetDb, templateDb, false))
 
 	if os.Getenv("PG_URL") != "" && os.Getenv("PG_TEMPLATE") != "" {
 		templateDb := os.Getenv("PG_TEMPLATE")
@@ -94,7 +73,6 @@ func TestSetup(t *testing.T, dialect string) (cleanup func(), db *gorm.DB, dbUrl
 	}
 	dbUrl = u.String()
 
-	// t.Logf("gorm dbUrl: %s", dbUrl)
 	db, err = gorm.Open("postgres", dbUrl)
 	if err != nil {
 		t.Fatal(err)
@@ -118,9 +96,6 @@ func createDatabase(t *testing.T, dbUrl string, name string, from string, isTemp
 	)
 
 	cleanup = func() {}
-
-	// This function should not call t.Fatal since that would prevent
-	// other functions from being called.
 
 	db, err := sql.Open("postgres", dbUrl)
 	if err != nil {
@@ -165,8 +140,6 @@ func createDatabase(t *testing.T, dbUrl string, name string, from string, isTemp
 			}
 		}
 	}
-
-	// t.Logf("sql: %q worked", createStatement)
 
 	cleanup = func() {
 		db, err := sql.Open("postgres", dbUrl)
@@ -229,8 +202,6 @@ func getDatabaseServer(t *testing.T) (cleanup func(), url string) {
 		return
 	}
 
-	// Only this function can call t.Fatal since it is the first and no
-	// additional cleanup would need to be done.
 	pool, err := dockertest.NewPool("")
 	if err != nil {
 		t.Fatalf("could not connect to docker: %v", err)
@@ -241,8 +212,6 @@ func getDatabaseServer(t *testing.T) (cleanup func(), url string) {
 		t.Fatalf("could not start docker resource: %v", err)
 	}
 
-	// Cleanup functions should not call t.Fatal since that could prevent
-	// other cleanup functions from being called.
 	cleanup = func() {
 		if err := cleanupDockerResource(pool, resource); err != nil {
 			t.Fatalf("unexpected error in dockertest cleanup: %v", err)
