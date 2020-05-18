@@ -92,7 +92,7 @@ func (s Service) DeleteProject(ctx context.Context, req *pbs.DeleteProjectReques
 }
 
 func (s Service) getFromRepo(ctx context.Context, projId string) (*pb.Project, error) {
-	p, err := s.repo.LookupScope(ctx, iam.WithPublicId(projId))
+	p, err := s.repo.LookupScope(ctx, projId)
 	if err != nil {
 		return nil, err
 	}
@@ -154,8 +154,7 @@ func (s Service) updateInRepo(ctx context.Context, orgId, projId string, item *p
 }
 
 func (s Service) deleteFromRepo(ctx context.Context, projId string) (bool, error) {
-	//rows, err := s.repo.DeleteScope(ctx, projId)
-	rows, err := 1, error(nil)
+	rows, err := s.repo.DeleteScope(ctx, projId)
 	if err != nil {
 		return false, status.Errorf(codes.Internal, "Unable to delete project: %v", err)
 	}
