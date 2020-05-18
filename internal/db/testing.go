@@ -3,7 +3,6 @@ package db
 import (
 	"context"
 	"crypto/rand"
-	"strconv"
 	"testing"
 	"time"
 
@@ -83,7 +82,7 @@ and create_time > NOW()::timestamp - (interval '1 second' * ?)
 
 	if withOperation != oplog.OpType_OP_TYPE_UNSPECIFIED {
 		where = where + whereOptype
-		whereArgs = append(whereArgs, strconv.Itoa(int(withOperation)))
+		whereArgs = append(whereArgs, withOperation.String())
 	}
 
 	if withCreateNotBefore != nil {

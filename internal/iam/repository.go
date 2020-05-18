@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"strconv"
 
 	wrapping "github.com/hashicorp/go-kms-wrapping"
 	"github.com/hashicorp/watchtower/internal/db"
@@ -53,7 +52,7 @@ func (r *Repository) create(ctx context.Context, resource Resource, opt ...Optio
 	if err != nil {
 		return nil, fmt.Errorf("error getting metadata for create: %w", err)
 	}
-	metadata["op-type"] = []string{strconv.Itoa(int(oplog.OpType_OP_TYPE_CREATE))}
+	metadata["op-type"] = []string{oplog.OpType_OP_TYPE_CREATE.String()}
 
 	var returnedResource interface{}
 	_, err = r.writer.DoTx(
@@ -85,7 +84,7 @@ func (r *Repository) update(ctx context.Context, resource Resource, fieldMaskPat
 	if err != nil {
 		return nil, db.NoRowsAffected, fmt.Errorf("error getting metadata for update: %w", err)
 	}
-	metadata["op-type"] = []string{strconv.Itoa(int(oplog.OpType_OP_TYPE_UPDATE))}
+	metadata["op-type"] = []string{oplog.OpType_OP_TYPE_UPDATE.String()}
 
 	var rowsUpdated int
 	var returnedResource interface{}
@@ -125,7 +124,7 @@ func (r *Repository) delete(ctx context.Context, resource Resource, opt ...Optio
 	if err != nil {
 		return db.NoRowsAffected, fmt.Errorf("error getting metadata for delete: %w", err)
 	}
-	metadata["op-type"] = []string{strconv.Itoa(int(oplog.OpType_OP_TYPE_DELETE))}
+	metadata["op-type"] = []string{oplog.OpType_OP_TYPE_DELETE.String()}
 
 	var rowsDeleted int
 	var deleteResource interface{}
