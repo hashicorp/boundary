@@ -149,6 +149,7 @@ BEGIN;
 drop table if exists iam_scope CASCADE;
 drop trigger if exists iam_scope_insert;
 drop function if exists iam_sub_scopes_func;
+drop table if exists iam_user cascade;
 
 COMMIT;
 `),
@@ -157,6 +158,19 @@ COMMIT;
 		name: "04_iam.up.sql",
 		bytes: []byte(`
 BEGIN;
+
+CREATE OR REPLACE FUNCTION update_time_column() RETURNS TRIGGER 
+SET SCHEMA
+  'public' LANGUAGE plpgsql AS $$
+BEGIN
+   IF row(NEW.*) IS DISTINCT FROM row(OLD.*) THEN
+      NEW.update_time = now(); 
+      RETURN NEW;
+   ELSE
+      RETURN OLD;
+   END IF;
+END;
+$$;
 
 CREATE TABLE iam_scope_type_enm (
   string text NOT NULL primary key CHECK(string IN ('unknown', 'organization', 'project'))
@@ -240,6 +254,25 @@ $$;
 CREATE TRIGGER iam_scope_update
 BEFORE
 update ON iam_scope FOR EACH ROW EXECUTE PROCEDURE iam_immutable_scope_type_func();
+
+CREATE TRIGGER update_iam_scope_update_time 
+BEFORE 
+UPDATE ON iam_scope FOR EACH ROW EXECUTE PROCEDURE update_time_column();
+
+CREATE TABLE iam_user (
+    public_id wt_public_id not null primary key,
+    create_time wt_timestamp,
+    update_time wt_timestamp,
+    name text,
+    description text,
+    scope_id wt_public_id NOT NULL REFERENCES iam_scope_organization(scope_id) ON DELETE CASCADE ON UPDATE CASCADE,
+    unique(name, scope_id),
+    disabled BOOLEAN NOT NULL default FALSE
+  );
+
+CREATE TRIGGER update_iam_group_update_time 
+BEFORE 
+UPDATE ON iam_user FOR EACH ROW EXECUTE PROCEDURE update_time_column();
 
 COMMIT;
 
