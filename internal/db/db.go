@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/golang-migrate/migrate/v4"
+	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/watchtower/internal/db/migrations"
 	"github.com/jinzhu/gorm"
 	"github.com/ory/dockertest"
@@ -57,31 +58,31 @@ func Migrate(connectionUrl string, migrationsDirectory string) error {
 }
 
 // InitDbInDocker initializes the data store within docker or an existing PG_URL
-func InitDbInDocker(dialect string) (cleanup func() error, retURL string, err error) {
+func InitDbInDocker(dialect string) (cleanup func() error, retURL, container string, err error) {
 	switch dialect {
 	case "postgres":
 		if os.Getenv("PG_URL") != "" {
 			if err := InitStore(dialect, func() error { return nil }, os.Getenv("PG_URL")); err != nil {
-				return func() error { return nil }, os.Getenv("PG_URL"), fmt.Errorf("error initializing store: %w", err)
+				return func() error { return nil }, os.Getenv("PG_URL"), "", fmt.Errorf("error initializing store: %w", err)
 			}
-			return func() error { return nil }, os.Getenv("PG_URL"), nil
+			return func() error { return nil }, os.Getenv("PG_URL"), "", nil
 		}
 	}
-	c, url, err := StartDbInDocker(dialect)
+	c, url, container, err := StartDbInDocker(dialect)
 	if err != nil {
-		return func() error { return nil }, "", fmt.Errorf("could not start docker: %w", err)
+		return func() error { return nil }, "", "", fmt.Errorf("could not start docker: %w", err)
 	}
 	if err := InitStore(dialect, c, url); err != nil {
-		return func() error { return nil }, "", fmt.Errorf("error initializing store: %w", err)
+		return func() error { return nil }, "", "", fmt.Errorf("error initializing store: %w", err)
 	}
-	return c, url, nil
+	return c, url, container, nil
 }
 
 // StartDbInDocker
-func StartDbInDocker(dialect string) (cleanup func() error, retURL string, err error) {
+func StartDbInDocker(dialect string) (cleanup func() error, retURL, container string, err error) {
 	pool, err := dockertest.NewPool("")
 	if err != nil {
-		return func() error { return nil }, "", fmt.Errorf("could not connect to docker: %w", err)
+		return func() error { return nil }, "", "", fmt.Errorf("could not connect to docker: %w", err)
 	}
 
 	var resource *dockertest.Resource
@@ -94,7 +95,7 @@ func StartDbInDocker(dialect string) (cleanup func() error, retURL string, err e
 		panic(fmt.Sprintf("unknown dialect %q", dialect))
 	}
 	if err != nil {
-		return func() error { return nil }, "", fmt.Errorf("could not start resource: %w", err)
+		return func() error { return nil }, "", "", fmt.Errorf("could not start resource: %w", err)
 	}
 
 	cleanup = func() error {
@@ -115,31 +116,41 @@ func StartDbInDocker(dialect string) (cleanup func() error, retURL string, err e
 		defer db.Close()
 		return nil
 	}); err != nil {
-		return func() error { return nil }, "", fmt.Errorf("could not connect to docker: %w", err)
+		return func() error { return nil }, "", "", fmt.Errorf("could not connect to docker: %w", err)
 	}
 
-	return cleanup, url, nil
+	return cleanup, url, resource.Container.Name, nil
 }
 
 // InitStore will execute the migrations needed to initialize the store for tests
 func InitStore(dialect string, cleanup func() error, url string) error {
+	var mErr *multierror.Error
 	// run migrations
 	source, err := migrations.NewMigrationSource(dialect)
 	if err != nil {
-		cleanup()
-		return fmt.Errorf("error creating migration driver: %w", err)
+		mErr = multierror.Append(mErr, fmt.Errorf("error creating migration driver: %w", err))
+		if err := cleanup(); err != nil {
+			mErr = multierror.Append(mErr, fmt.Errorf("error cleaning up from creating driver: %w", err))
+		}
+		return mErr.ErrorOrNil()
 	}
 	m, err := migrate.NewWithSourceInstance("httpfs", source, url)
 	if err != nil {
-		cleanup()
-		return fmt.Errorf("error creating migrations: %w", err)
+		mErr = multierror.Append(mErr, fmt.Errorf("error creating migrations: %w", err))
+		if err := cleanup(); err != nil {
+			mErr = multierror.Append(mErr, fmt.Errorf("error cleaning up from creating migrations: %w", err))
+		}
+		return mErr.ErrorOrNil()
+
 	}
 	if err := m.Up(); err != nil && err != migrate.ErrNoChange {
-		cleanup()
-		return fmt.Errorf("error running migrations: %w", err)
+		mErr = multierror.Append(mErr, fmt.Errorf("error running migrations: %w", err))
+		if err := cleanup(); err != nil {
+			mErr = multierror.Append(mErr, fmt.Errorf("error cleaning up from running migrations: %w", err))
+		}
+		return mErr.ErrorOrNil()
 	}
-
-	return nil
+	return mErr.ErrorOrNil()
 }
 
 // cleanupDockerResource will clean up the dockertest resources (postgres)

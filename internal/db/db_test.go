@@ -5,11 +5,15 @@ import (
 )
 
 func TestOpen(t *testing.T) {
-	cleanup, url, err := StartDbInDocker("postgres")
+	cleanup, url, _, err := StartDbInDocker("postgres")
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer cleanup()
+	defer func() {
+		if err := cleanup(); err != nil {
+			t.Error(err)
+		}
+	}()
 	type args struct {
 		dbType        DbType
 		connectionUrl string
@@ -56,11 +60,15 @@ func TestOpen(t *testing.T) {
 }
 
 func TestMigrate(t *testing.T) {
-	cleanup, url, err := StartDbInDocker("postgres")
+	cleanup, url, _, err := StartDbInDocker("postgres")
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer cleanup()
+	defer func() {
+		if err := cleanup(); err != nil {
+			t.Error(err)
+		}
+	}()
 	type args struct {
 		connectionUrl       string
 		migrationsDirectory string

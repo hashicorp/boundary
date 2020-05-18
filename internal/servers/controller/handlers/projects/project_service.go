@@ -72,7 +72,7 @@ func (s Service) UpdateProject(ctx context.Context, req *pbs.UpdateProjectReques
 }
 
 func (s Service) getFromRepo(ctx context.Context, req *pbs.GetProjectRequest) (*pb.Project, error) {
-	p, err := s.repo.LookupScope(ctx, iam.WithPublicId(req.GetId()))
+	p, err := s.repo.LookupScope(ctx, req.Id)
 	if err != nil {
 		return nil, err
 	}

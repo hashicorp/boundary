@@ -17,6 +17,7 @@ import (
 	"github.com/hashicorp/errwrap"
 	"github.com/hashicorp/go-hclog"
 	wrapping "github.com/hashicorp/go-kms-wrapping"
+	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/vault/internalshared/configutil"
 	"github.com/hashicorp/vault/internalshared/gatedwriter"
 	"github.com/hashicorp/vault/internalshared/reloadutil"
@@ -239,7 +240,7 @@ func (b *Server) SetupListeners(ui cli.Ui, config *configutil.SharedConfig) erro
 			tls.TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305,
 		}
 
-		lnMux, props, reloadFunc, err := NewListener(lnConfig, b.GatedWriter, b.Logger, ui)
+		lnMux, props, reloadFunc, err := NewListener(lnConfig, b.Logger, ui)
 		if err != nil {
 			return fmt.Errorf("Error initializing listener of type %s: %w", lnConfig.Type, err)
 		}
@@ -356,16 +357,18 @@ func (b *Server) SetupKMSes(ui cli.Ui, config *configutil.SharedConfig, purposes
 	return nil
 }
 
-func (b *Server) RunShutdownFuncs(ui cli.Ui) {
+func (b *Server) RunShutdownFuncs() error {
+	var mErr *multierror.Error
 	for _, f := range b.ShutdownFuncs {
 		if err := f(); err != nil {
-			ui.Error(fmt.Sprintf("Error running a shutdown task: %s", err.Error()))
+			mErr = multierror.Append(mErr, err)
 		}
 	}
+	return mErr.ErrorOrNil()
 }
 
 func (b *Server) CreateDevDatabase(dialect string) error {
-	c, url, err := db.InitDbInDocker(dialect)
+	c, url, container, err := db.InitDbInDocker(dialect)
 	if err != nil {
 		c()
 		return fmt.Errorf("unable to start dev database with dialect %s: %w", dialect, err)
@@ -376,6 +379,10 @@ func (b *Server) CreateDevDatabase(dialect string) error {
 
 	b.InfoKeys = append(b.InfoKeys, "dev database url")
 	b.Info["dev database url"] = b.DevDatabaseUrl
+	if container != "" {
+		b.InfoKeys = append(b.InfoKeys, "dev database container")
+		b.Info["dev database container"] = strings.TrimPrefix(container, "/")
+	}
 
 	dbase, err := gorm.Open(dialect, url)
 	if err != nil {
@@ -399,7 +406,7 @@ func (b *Server) CreateDevDatabase(dialect string) error {
 
 	var scope *iam.Scope
 	if b.DefaultOrgId != "" {
-		scope, err = repo.LookupScope(ctx, iam.WithPublicId(b.DefaultOrgId))
+		scope, err = repo.LookupScope(ctx, b.DefaultOrgId)
 		if err != nil {
 			c()
 			return fmt.Errorf("error looking up existing scope with org ID %q: %w", b.DefaultOrgId, err)
