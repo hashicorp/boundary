@@ -163,7 +163,7 @@ func Test_UserUpdate(t *testing.T) {
 				ScopeId:        proj.PublicId,
 			},
 			wantErr:    true,
-			wantErrMsg: "error on update not allowed to change a user's scope",
+			wantErrMsg: "error on update not allowed to change a resource's scope",
 		},
 		{
 			name: "proj-scope-id-not-in-mask",
