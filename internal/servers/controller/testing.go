@@ -19,6 +19,7 @@ type TestController struct {
 	b      *base.Server
 	c      *Controller
 	t      *testing.T
+	addr   string // The address the Controller API is listening on
 	client *api.Client
 	ctx    context.Context
 	cancel context.CancelFunc
@@ -41,7 +42,10 @@ func (tc *TestController) Cancel() {
 	tc.cancel()
 }
 
-func (tc *TestController) buildClient() {
+func (tc *TestController) ApiAddress() string {
+	if tc.addr != "" {
+		return tc.addr
+	}
 	var apiLn *base.ServerListener
 	for _, listener := range tc.b.Listeners {
 		if listener.Config.Purpose[0] == "api" {
@@ -52,17 +56,20 @@ func (tc *TestController) buildClient() {
 	if apiLn == nil {
 		tc.t.Fatal("could not find api listener")
 	}
-
 	tcpAddr, ok := apiLn.Mux.Addr().(*net.TCPAddr)
 	if !ok {
 		tc.t.Fatal("could not parse address as a TCP addr")
 	}
-	addr := fmt.Sprintf("http://%s:%d", tcpAddr.IP.String(), tcpAddr.Port)
+	tc.addr = fmt.Sprintf("http://%s:%d", tcpAddr.IP.String(), tcpAddr.Port)
+	return tc.addr
+}
+
+func (tc *TestController) buildClient() {
 	client, err := api.NewClient(nil)
 	if err != nil {
 		tc.t.Fatal(fmt.Errorf("error creating client: %w", err))
 	}
-	if err := client.SetAddr(addr); err != nil {
+	if err := client.SetAddr(tc.ApiAddress()); err != nil {
 		tc.t.Fatal(fmt.Errorf("error setting client address: %w", err))
 	}
 
