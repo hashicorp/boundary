@@ -130,7 +130,7 @@ func InitStore(dialect string, cleanup func() error, url string) error {
 	if err != nil {
 		mErr = multierror.Append(mErr, fmt.Errorf("error creating migration driver: %w", err))
 		if err := cleanup(); err != nil {
-			mErr = multierror.Append(mErr, fmt.Errorf("error cleaning up from creating driver: %w",err)
+			mErr = multierror.Append(mErr, fmt.Errorf("error cleaning up from creating driver: %w", err))
 		}
 		return mErr.ErrorOrNil()
 	}
@@ -146,7 +146,7 @@ func InitStore(dialect string, cleanup func() error, url string) error {
 	if err := m.Up(); err != nil && err != migrate.ErrNoChange {
 		mErr = multierror.Append(mErr, fmt.Errorf("error running migrations: %w", err))
 		if err := cleanup(); err != nil {
-			mErr = multierror.Append(mErr, fmt.Errorf("error cleaning up from running migrations: %w" err))
+			mErr = multierror.Append(mErr, fmt.Errorf("error cleaning up from running migrations: %w", err))
 		}
 		return mErr.ErrorOrNil()
 	}
