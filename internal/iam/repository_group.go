@@ -21,11 +21,11 @@ func (r *Repository) CreateGroup(ctx context.Context, group *Group, opt ...Optio
 }
 
 // UpdateGroup will update a group in the repository and return the written group
-func (r *Repository) UpdateGroup(ctx context.Context, user *User, fieldMaskPaths []string, opt ...Option) (*Group, int, error) {
-	if user == nil {
+func (r *Repository) UpdateGroup(ctx context.Context, group *Group, fieldMaskPaths []string, opt ...Option) (*Group, int, error) {
+	if group == nil {
 		return nil, db.NoRowsAffected, errors.New("error group is nil for update")
 	}
-	resource, rowsUpdated, err := r.update(ctx, user, fieldMaskPaths)
+	resource, rowsUpdated, err := r.update(ctx, group, fieldMaskPaths)
 	if err != nil {
 		return nil, db.NoRowsAffected, fmt.Errorf("failed to update group: %w", err)
 	}
@@ -36,7 +36,7 @@ func (r *Repository) UpdateGroup(ctx context.Context, user *User, fieldMaskPaths
 // found, it will return nil, nil.
 func (r *Repository) LookupGroup(ctx context.Context, withPublicId string, opt ...Option) (*Group, error) {
 	if withPublicId == "" {
-		return nil, errors.New("you cannot lookup a user with an empty public id")
+		return nil, errors.New("you cannot lookup a group with an empty public id")
 	}
 
 	g := allocGroup()
