@@ -11,7 +11,7 @@ import (
 // CreateScope will create a scope in the repository and return the written scope
 func (r *Repository) CreateScope(ctx context.Context, scope *Scope, opt ...Option) (*Scope, error) {
 	if scope == nil {
-		return nil, errors.New("error scope is nil for create")
+		return nil, errors.New("scope is nil for create")
 	}
 	resource, err := r.create(ctx, scope)
 	if err != nil {
@@ -23,10 +23,10 @@ func (r *Repository) CreateScope(ctx context.Context, scope *Scope, opt ...Optio
 // UpdateScope will update a scope in the repository and return the written scope
 func (r *Repository) UpdateScope(ctx context.Context, scope *Scope, fieldMaskPaths []string, opt ...Option) (*Scope, int, error) {
 	if scope == nil {
-		return nil, db.NoRowsAffected, errors.New("error scope is nil for update")
+		return nil, db.NoRowsAffected, errors.New("scope is nil for update")
 	}
 	if scope.PublicId == "" {
-		return nil, db.NoRowsAffected, errors.New("error scope public id is unset for update")
+		return nil, db.NoRowsAffected, errors.New("scope public id is unset for update")
 	}
 	resource, rowsUpdated, err := r.update(ctx, scope, fieldMaskPaths)
 	if err != nil {
@@ -39,7 +39,7 @@ func (r *Repository) UpdateScope(ctx context.Context, scope *Scope, fieldMaskPat
 // found, it will return nil, nil.
 func (r *Repository) LookupScope(ctx context.Context, withPublicId string, opt ...Option) (*Scope, error) {
 	if withPublicId == "" {
-		return nil, errors.New("you cannot lookup a scope with an empty public id")
+		return nil, errors.New("cannot lookup a scope with an empty public id")
 	}
 	scope := allocScope()
 	scope.PublicId = withPublicId
@@ -55,7 +55,7 @@ func (r *Repository) LookupScope(ctx context.Context, withPublicId string, opt .
 // DeleteScope will delete a scope from the repository
 func (r *Repository) DeleteScope(ctx context.Context, withPublicId string, opt ...Option) (int, error) {
 	if withPublicId == "" {
-		return db.NoRowsAffected, errors.New("you cannot delete a scope with an empty public id")
+		return db.NoRowsAffected, errors.New("cannot delete a scope with an empty public id")
 	}
 	scope := allocScope()
 	scope.PublicId = withPublicId
