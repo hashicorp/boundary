@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/hashicorp/watchtower/internal/db"
 )
@@ -79,6 +80,7 @@ type Clonable interface {
 type ResourceWithScope interface {
 	GetPublicId() string
 	GetScopeId() string
+	validScopeTypes() []ScopeType
 }
 
 // LookupScope looks up the resource's  scope
@@ -107,4 +109,45 @@ func LookupScope(ctx context.Context, reader db.Reader, resource ResourceWithSco
 		return nil, err
 	}
 	return &p, nil
+}
+
+// validateScopeForWrite will validate that the scope is okay for db write operations
+func validateScopeForWrite(ctx context.Context, r db.Reader, resource ResourceWithScope, opType db.OpType, opt ...db.Option) error {
+	opts := db.GetOpts(opt...)
+
+	if opType == db.CreateOp {
+		if resource.GetScopeId() == "" {
+			return errors.New("error scope id not set for user write")
+		}
+		ps, err := LookupScope(ctx, r, resource)
+		if err != nil {
+			if errors.Is(err, db.ErrRecordNotFound) {
+				return errors.New("scope is not found")
+			}
+			return err
+		}
+		validScopeType := false
+		for _, t := range resource.validScopeTypes() {
+			if ps.Type == t.String() {
+				validScopeType = true
+			}
+		}
+		if !validScopeType {
+			return fmt.Errorf("%s not a valid scope type for this resource", ps.Type)
+		}
+
+	}
+	if opType == db.UpdateOp && resource.GetScopeId() != "" {
+		switch len(opts.WithFieldMaskPaths) {
+		case 0:
+			return errors.New("not allowed to change a user's scope")
+		default:
+			for _, mask := range opts.WithFieldMaskPaths {
+				if strings.EqualFold(mask, "ScopeId") {
+					return errors.New("not allowed to change a user's scope")
+				}
+			}
+		}
+	}
+	return nil
 }

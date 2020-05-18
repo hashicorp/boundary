@@ -10,7 +10,7 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-// Group is made up of members (users for now) and can be assigned roles
+// Group is made up of members and can be assigned roles
 type Group struct {
 	*store.Group
 	tableName string `gorm:"-"`
@@ -53,11 +53,18 @@ func (g *Group) Clone() interface{} {
 	}
 }
 
+func allocGroup() Group {
+	return Group{
+		Group: &store.Group{},
+	}
+}
+
 // Members returns the members of the group (Users)
 func (g *Group) Members(ctx context.Context, r db.Reader) ([]GroupMember, error) {
+	const where = "group_id = ? and type = ?"
 	viewMembers := []*groupMemberView{}
-	if err := r.SearchWhere(ctx, &viewMembers, "group_id = ? and type = ?", g.PublicId, UserMemberType.String()); err != nil {
-		return nil, fmt.Errorf("error getting group members %w", err)
+	if err := r.SearchWhere(ctx, &viewMembers, where, g.PublicId, UserMemberType.String()); err != nil {
+		return nil, err
 	}
 
 	members := []GroupMember{}
@@ -80,39 +87,29 @@ func (g *Group) Members(ctx context.Context, r db.Reader) ([]GroupMember, error)
 	return members, nil
 }
 
-// AddMember will add member to the group and the caller is responsible for Creating that Member via db.Writer.Create()
+// AddMember will create a new in memory GroupMember
 func (g *Group) AddMember(ctx context.Context, r db.Reader, m Resource, opt ...db.Option) (GroupMember, error) {
 	gm, err := NewGroupMember(g, m)
 	if err != nil {
-		return nil, fmt.Errorf("error while adding member %w", err)
+		return nil, err
 	}
 	return gm, nil
 }
 
-// VetForWrite implements db.VetForWrite() interface
+// VetForWrite implements db.VetForWrite() interface and validates the group
+// before it's written
 func (g *Group) VetForWrite(ctx context.Context, r db.Reader, opType db.OpType, opt ...db.Option) error {
 	if g.PublicId == "" {
 		return errors.New("error public id is empty string for group write")
 	}
-	if g.ScopeId == "" {
-		return errors.New("error scope id not set for group write")
-	}
-	// make sure the scope is valid for users
-	if err := g.scopeIsValid(ctx, r); err != nil {
+	if err := validateScopeForWrite(ctx, r, g, opType, opt...); err != nil {
 		return err
 	}
 	return nil
 }
 
-func (g *Group) scopeIsValid(ctx context.Context, r db.Reader) error {
-	ps, err := LookupScope(ctx, r, g)
-	if err != nil {
-		return err
-	}
-	if ps.Type != OrganizationScope.String() && ps.Type != ProjectScope.String() {
-		return errors.New("error scope is not an organization or project for group")
-	}
-	return nil
+func (u *Group) validScopeTypes() []ScopeType {
+	return []ScopeType{OrganizationScope, ProjectScope}
 }
 
 // GetScope returns the scope for the Group

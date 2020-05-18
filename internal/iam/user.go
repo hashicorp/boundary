@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"strings"
 
 	"github.com/hashicorp/watchtower/internal/db"
 	"github.com/hashicorp/watchtower/internal/iam/store"
@@ -61,49 +60,17 @@ func (u *User) Clone() interface{} {
 // VetForWrite implements db.VetForWrite() interface and validates the user
 // before it's written.
 func (u *User) VetForWrite(ctx context.Context, r db.Reader, opType db.OpType, opt ...db.Option) error {
-	opts := db.GetOpts(opt...)
 	if u.PublicId == "" {
 		return errors.New("error public id is empty string for user write")
 	}
-
-	if opType == db.CreateOp {
-		if u.ScopeId == "" {
-			return errors.New("error scope id not set for user write")
-		}
-		// make sure the scope is valid for users
-		err := u.scopeIsValid(ctx, r)
-		if err != nil {
-			return err
-		}
+	if err := validateScopeForWrite(ctx, r, u, opType, opt...); err != nil {
+		return err
 	}
-	if opType == db.UpdateOp && u.ScopeId != "" {
-		switch len(opts.WithFieldMaskPaths) {
-		case 0:
-			return errors.New("not allowed to change a user's scope")
-		default:
-			for _, mask := range opts.WithFieldMaskPaths {
-				if strings.EqualFold(mask, "ScopeId") {
-					return errors.New("not allowed to change a user's scope")
-				}
-			}
-		}
-	}
-
 	return nil
 }
 
-func (u *User) scopeIsValid(ctx context.Context, r db.Reader) error {
-	ps, err := LookupScope(ctx, r, u)
-	if err != nil {
-		if errors.Is(err, db.ErrRecordNotFound) {
-			return errors.New("scope is not found")
-		}
-		return err
-	}
-	if ps.Type != OrganizationScope.String() {
-		return errors.New("scope is not an organization")
-	}
-	return nil
+func (u *User) validScopeTypes() []ScopeType {
+	return []ScopeType{OrganizationScope}
 }
 
 // GetScope returns the scope for the User

@@ -103,25 +103,14 @@ func (role *Role) VetForWrite(ctx context.Context, r db.Reader, opType db.OpType
 	if role.PublicId == "" {
 		return errors.New("error public id is empty string for role write")
 	}
-	if role.ScopeId == "" {
-		return errors.New("error scope id not set for role write")
-	}
-	// make sure the scope is valid for users
-	if err := role.scopeIsValid(ctx, r); err != nil {
+	if err := validateScopeForWrite(ctx, r, role, opType, opt...); err != nil {
 		return err
 	}
 	return nil
 }
 
-func (role *Role) scopeIsValid(ctx context.Context, r db.Reader) error {
-	ps, err := LookupScope(ctx, r, role)
-	if err != nil {
-		return err
-	}
-	if ps.Type != OrganizationScope.String() && ps.Type != ProjectScope.String() {
-		return errors.New("error scope is not an organization or project for role")
-	}
-	return nil
+func (u *Role) validScopeTypes() []ScopeType {
+	return []ScopeType{OrganizationScope, ProjectScope}
 }
 
 // Getscope returns the scope for the Role

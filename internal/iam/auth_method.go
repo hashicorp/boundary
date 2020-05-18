@@ -75,28 +75,15 @@ func (a *AuthMethod) Clone() interface{} {
 // VetForWrite implements db.VetForWrite() interface
 func (a *AuthMethod) VetForWrite(ctx context.Context, r db.Reader, opType db.OpType, opt ...db.Option) error {
 	if a.PublicId == "" {
-		return errors.New("error public id is empty string for user write")
+		return errors.New("error public id is empty string for auth method write")
 	}
-	if a.ScopeId == "" {
-		return errors.New("error scope id not set for user write")
-	}
-	// make sure the scope is valid for auth methods
-	if err := a.scopeIsValid(ctx, r); err != nil {
+	if err := validateScopeForWrite(ctx, r, a, opType, opt...); err != nil {
 		return err
 	}
 	return nil
 }
-
-// scopeIsValid makes sure the scope is an Organization
-func (p *AuthMethod) scopeIsValid(ctx context.Context, r db.Reader) error {
-	ps, err := LookupScope(ctx, r, p)
-	if err != nil {
-		return err
-	}
-	if ps.Type != OrganizationScope.String() {
-		return errors.New("error scope is not an organization")
-	}
-	return nil
+func (u *AuthMethod) validScopeTypes() []ScopeType {
+	return []ScopeType{OrganizationScope}
 }
 
 // GetScope returns the scope for the AuthMethod
