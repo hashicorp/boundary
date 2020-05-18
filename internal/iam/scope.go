@@ -202,10 +202,10 @@ func (s *Scope) GetScope(ctx context.Context, r db.Reader) (*Scope, error) {
 		}
 	}
 	// HANDLE_ORG
-	if s.Type == OrganizationScope.String() {
+	switch s.Type {
+	case OrganizationScope.String():
 		return nil, nil
-	}
-	if s.Type == ProjectScope.String() {
+	case ProjectScope.String():
 		var p Scope
 		switch s.ParentId {
 		case "":
