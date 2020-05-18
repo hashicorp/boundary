@@ -49,3 +49,17 @@ func TestUser(t *testing.T, conn *gorm.DB, orgId string) *User {
 	assert.NotEmpty(user.PublicId)
 	return user
 }
+
+// TestGroup creates a group suitable for testing.
+func TestGroup(t *testing.T, conn *gorm.DB, orgId string) *Group {
+	t.Helper()
+	assert := assert.New(t)
+	rw := db.New(conn)
+
+	grp, err := NewGroup(orgId)
+	assert.NoError(err)
+	err = rw.Create(context.Background(), grp)
+	assert.NoError(err)
+	assert.NotEmpty(grp.PublicId)
+	return grp
+}
