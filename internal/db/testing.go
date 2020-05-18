@@ -298,6 +298,7 @@ func runMigrations(t *testing.T, url string) {
 				t.Logf("migration attempt %d failed: %v", attempts, err)
 				time.Sleep(time.Millisecond * time.Duration(math.Exp2(float64(attempts))*5*(r+0.5)))
 			} else {
+				t.Logf("migration attempt %d succeeded", attempts)
 				break
 			}
 		}
