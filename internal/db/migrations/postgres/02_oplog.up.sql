@@ -1,3 +1,5 @@
+begin;
+
 CREATE TABLE if not exists oplog_entry (
   id bigint generated always as identity primary key,
   create_time wt_timestamp,
@@ -37,3 +39,5 @@ values
   ('db_test_user', 1),
   ('db_test_car', 1),
   ('db_test_rental', 1);
+
+commit;

@@ -365,6 +365,9 @@ func (rw *Db) addOplog(ctx context.Context, opType OpType, opts Options, i inter
 		oplogArgs.wrapper,
 		ticketer,
 	)
+	if err != nil {
+		return err
+	}
 	var entryOp oplog.OpType
 	switch opType {
 	case CreateOp:
@@ -489,7 +492,13 @@ func (rw *Db) LookupWhere(ctx context.Context, resource interface{}, where strin
 	if reflect.ValueOf(resource).Kind() != reflect.Ptr {
 		return errors.New("error interface parameter must to be a pointer for lookup by")
 	}
-	return rw.underlying.Where(where, args...).First(resource).Error
+	if err := rw.underlying.Where(where, args...).First(resource).Error; err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return ErrRecordNotFound
+		}
+		return err
+	}
+	return nil
 }
 
 // SearchWhere will search for all the resources it can find using a where clause with parameters
@@ -500,5 +509,9 @@ func (rw *Db) SearchWhere(ctx context.Context, resources interface{}, where stri
 	if reflect.ValueOf(resources).Kind() != reflect.Ptr {
 		return errors.New("error interface parameter must to be a pointer for search by")
 	}
-	return rw.underlying.Where(where, args...).Find(resources).Error
+	if err := rw.underlying.Where(where, args...).Find(resources).Error; err != nil {
+		// searching with a slice parameter does not return a gorm.ErrRecordNotFound
+		return err
+	}
+	return nil
 }

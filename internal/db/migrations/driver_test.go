@@ -100,10 +100,10 @@ func Test_fakeFile_Read(t *testing.T) {
 	assert := assert.New(t)
 	t.Run("valid", func(t *testing.T) {
 		ff, err := newFakeFile("postgres", "migrations/01_domain_types.up.sql")
-		assert.Nil(err)
+		assert.NoError(err)
 		buf := make([]byte, len(ff.bytes))
 		n, err := ff.Read(buf)
-		assert.Nil(err)
+		assert.NoError(err)
 		assert.Equal(len(buf), n)
 	})
 }
@@ -112,14 +112,14 @@ func Test_fakeFile_Seek(t *testing.T) {
 	assert := assert.New(t)
 	t.Run("valid", func(t *testing.T) {
 		ff, err := newFakeFile("postgres", "migrations/01_domain_types.up.sql")
-		assert.Nil(err)
+		assert.NoError(err)
 		buf := make([]byte, len(ff.bytes))
 		n, err := ff.Seek(10, 0)
-		assert.Nil(err)
+		assert.NoError(err)
 		assert.Equal(int64(10), n)
 
 		n2, err := ff.Read(buf)
-		assert.Nil(err)
+		assert.NoError(err)
 		assert.Equal(len(ff.bytes)-10, n2)
 	})
 }
@@ -131,9 +131,9 @@ func Test_fakeFile_Close(t *testing.T) {
 			dialect: "postgres",
 		}
 		f, err := m.Open("migrations/01_domain_types.up.sql")
-		assert.Nil(err)
+		assert.NoError(err)
 		err = f.Close()
-		assert.Nil(err)
+		assert.NoError(err)
 	})
 }
 
@@ -142,9 +142,9 @@ func Test_fakeFile_Stat(t *testing.T) {
 	t.Run("valid", func(t *testing.T) {
 		name := "migrations/01_domain_types.up.sql"
 		ff, err := newFakeFile("postgres", name)
-		assert.Nil(err)
+		assert.NoError(err)
 		info, err := ff.Stat()
-		assert.Nil(err)
+		assert.NoError(err)
 		assert.Equal(ff.name, info.Name())
 		assert.Equal(int64(len(ff.bytes)), info.Size())
 		assert.Equal(os.ModePerm, info.Mode())
@@ -158,19 +158,19 @@ func Test_fakeFile_Readdir(t *testing.T) {
 	t.Run("valid", func(t *testing.T) {
 		name := "migrations/01_domain_types.up.sql"
 		ff, err := newFakeFile("postgres", name)
-		assert.Nil(err)
+		assert.NoError(err)
 		info, err := ff.Readdir(0)
-		assert.Nil(err)
-		assert.True(info != nil)
+		assert.NoError(err)
+		assert.NotNil(info)
 
 		info, err = ff.Readdir(1)
-		assert.Nil(err)
-		assert.True(info != nil)
+		assert.NoError(err)
+		assert.NotNil(info)
 		assert.Equal(1, len(info))
 
 		info, err = ff.Readdir(0)
-		assert.Nil(err)
-		assert.True(info != nil)
+		assert.NoError(err)
+		assert.NotNil(info)
 		// we don't want to count "migrations", so we're len - 1
 		assert.Equal(len(postgresMigrations)-1, len(info))
 	})
