@@ -9,13 +9,13 @@ import (
 func TestDomain_PublicId(t *testing.T) {
 	const (
 		createTable = `
-create table if not exists test_table (
+create table if not exists test_table_public_id (
   id bigint generated always as identity primary key,
   public_id wt_public_id
 );
 `
 		insert = `
-insert into test_table (public_id)
+insert into test_table_public_id (public_id)
 values ($1)
 returning id;
 `
@@ -71,7 +71,7 @@ returning id;
 func TestDomain_Timestamp(t *testing.T) {
 	const (
 		createTable = `
-create table if not exists test_table (
+create table if not exists test_table_timestamp (
   id bigint generated always as identity primary key,
   name text,
   good_time wt_timestamp,
@@ -79,7 +79,7 @@ create table if not exists test_table (
 );
 `
 		insert = `
-insert into test_table (name)
+insert into test_table_timestamp (name)
 values ($1)
 returning id;
 `
@@ -102,11 +102,11 @@ returning id;
 		t.Fatalf("want no error, got error %v", err)
 	}
 
-	if _, err := db.Query("select extract(timezone from good_time) from test_table;"); err != nil {
+	if _, err := db.Query("select extract(timezone from good_time) from test_table_timestamp;"); err != nil {
 		t.Errorf("want no error, got error %v", err)
 	}
 
-	if _, err := db.Query("select extract(timezone from bad_time) from test_table;"); err == nil {
+	if _, err := db.Query("select extract(timezone from bad_time) from test_table_timestamp;"); err == nil {
 		t.Errorf("want error, got no error")
 	}
 }

@@ -193,14 +193,39 @@ func (s *Scope) GetScope(ctx context.Context, r db.Reader) (*Scope, error) {
 	if r == nil {
 		return nil, errors.New("error db is nil for get scope")
 	}
-	if s.ParentId == "" {
+	if s.PublicId == "" {
+		return nil, errors.New("unable to get scope with unset public id")
+	}
+	if s.Type == "" && s.ParentId == "" {
+		if err := r.LookupByPublicId(ctx, s); err != nil {
+			return nil, fmt.Errorf("unable to get scope by public id: %w", err)
+		}
+	}
+	// HANDLE_ORG
+	switch s.Type {
+	case OrganizationScope.String():
 		return nil, nil
+	case ProjectScope.String():
+		var p Scope
+		switch s.ParentId {
+		case "":
+			// no parent id, so use the public_id to find the parent scope. This
+			// won't work for if the scope hasn't been written to the db yet,
+			// like during create but in that case the parent id should be set
+			// for all scopes which are not organizations, and the organization
+			// case was handled at HANDLE_ORG
+			where := "public_id in (select parent_id from iam_scope where public_id = ?)"
+			if err := r.LookupWhere(ctx, &p, where, s.PublicId); err != nil {
+				return nil, fmt.Errorf("unable to lookup parent public id from public id: %w", err)
+			}
+		default:
+			if err := r.LookupWhere(ctx, &p, "public_id = ?", s.ParentId); err != nil {
+				return nil, fmt.Errorf("unable to lookup parent from public id: %w", err)
+			}
+		}
+		return &p, nil
 	}
-	var p Scope
-	if err := r.LookupWhere(ctx, &p, "public_id = ?", s.ParentId); err != nil {
-		return nil, fmt.Errorf("error getting scope %w", err)
-	}
-	return &p, nil
+	return nil, fmt.Errorf("unable to get scope with type %s", s.Type)
 }
 
 // TableName returns the tablename to override the default gorm table name
