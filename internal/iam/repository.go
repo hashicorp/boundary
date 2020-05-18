@@ -166,13 +166,15 @@ func (r *Repository) stdMetadata(ctx context.Context, resource Resource) (oplog.
 				"scope-type":         []string{s.Type},
 				"resource-type":      []string{resource.ResourceType().String()},
 			}, nil
-		default:
+		case ProjectScope.String():
 			return oplog.Metadata{
 				"resource-public-id": []string{resource.GetPublicId()},
 				"scope-id":           []string{s.ParentId},
 				"scope-type":         []string{s.Type},
 				"resource-type":      []string{resource.ResourceType().String()},
 			}, nil
+		default:
+			return nil, fmt.Errorf("not a supported scope for metadata: %s", s.Type)
 		}
 	}
 
