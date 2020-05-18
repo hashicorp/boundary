@@ -149,20 +149,7 @@ BEGIN;
 drop table if exists iam_scope CASCADE;
 drop trigger if exists iam_scope_insert;
 drop function if exists iam_sub_scopes_func;
-drop table if exists iam_auth_method cascade;
-drop table if exists  iam_role cascade;
-drop table if exists iam_group_member_type_enm cascade;
-drop table if exists iam_group cascade cascade;
-drop table if exists iam_group_member_user cascade;
-drop view if exists iam_group_member;
-drop table if exists iam_auth_method_type_enm cascade;
-drop table if exists iam_action_enm cascade;
-drop table if exists iam_role_type_enm cascade;
-drop table if exists iam_role_user cascade;
-drop table if exists iam_role_group cascade;
-drop table if exists iam_role_grant cascade;
-drop view if exists iam_assigned_role;
-
+drop table if exists iam_user cascade;
 
 COMMIT;
 `),
@@ -258,7 +245,7 @@ update ON iam_scope FOR EACH ROW EXECUTE PROCEDURE iam_immutable_scope_type_func
 COMMIT;
 
 
-CREATE TABLE if not exists iam_user (
+CREATE TABLE iam_user (
     public_id wt_public_id not null primary key,
     create_time wt_timestamp,
     update_time wt_timestamp,
@@ -270,20 +257,53 @@ CREATE TABLE if not exists iam_user (
   );
 
 
-CREATE TABLE if not exists iam_auth_method (
-    public_id wt_public_id not null primary key, 
-    create_time wt_timestamp,
-    update_time wt_timestamp,
-    name text,
-    description text,
-    scope_id wt_public_id NOT NULL REFERENCES iam_scope_organization(scope_id) ON DELETE CASCADE ON UPDATE CASCADE,
-    unique(name, scope_id),
-    disabled BOOLEAN NOT NULL default FALSE,
-    type text NOT NULL
-  );
+  COMMIT;
+
+`),
+	},
+	"migrations/05_iam.down.sql": {
+		name: "05_iam.down.sql",
+		bytes: []byte(`
+BEGIN;
+
+drop table if exists iam_auth_method cascade;
+drop table if exists  iam_role cascade;
+drop table if exists iam_group_member_type_enm cascade;
+drop table if exists iam_group cascade cascade;
+drop table if exists iam_group_member_user cascade;
+drop view if exists iam_group_member;
+drop table if exists iam_auth_method_type_enm cascade;
+drop table if exists iam_action_enm cascade;
+drop table if exists iam_role_type_enm cascade;
+drop table if exists iam_role_user cascade;
+drop table if exists iam_role_group cascade;
+drop table if exists iam_role_grant cascade;
+drop view if exists iam_assigned_role;
 
 
-CREATE TABLE if not exists iam_role (
+COMMIT;
+`),
+	},
+	"migrations/05_iam.up.sql": {
+		name: "05_iam.up.sql",
+		bytes: []byte(`
+BEGIN;
+
+CREATE OR REPLACE FUNCTION update_time_column() RETURNS TRIGGER 
+SET SCHEMA
+  'public' LANGUAGE plpgsql AS $$
+BEGIN
+   IF row(NEW.*) IS DISTINCT FROM row(OLD.*) THEN
+      NEW.update_time = now(); 
+      RETURN NEW;
+   ELSE
+      RETURN OLD;
+   END IF;
+END;
+$$;
+
+
+CREATE TABLE iam_group (
     public_id wt_public_id not null primary key,
     create_time wt_timestamp,
     update_time wt_timestamp,
@@ -293,29 +313,11 @@ CREATE TABLE if not exists iam_role (
     unique(name, scope_id),
     disabled BOOLEAN NOT NULL default FALSE
   );
+  
+CREATE TRIGGER update_iam_group_update_time 
+BEFORE UPDATE ON iam_group FOR EACH ROW EXECUTE PROCEDURE update_time_column();
 
-CREATE TABLE if not exists iam_group_member_type_enm (
-    string text NOT NULL primary key CHECK(string IN ('unknown', 'user'))
-  );
-INSERT INTO iam_group_member_type_enm (string)
-values
-  ('unknown'),
-  ('user');
-
-
-CREATE TABLE if not exists iam_group (
-    public_id wt_public_id not null primary key,
-    create_time wt_timestamp,
-    update_time wt_timestamp,
-    name text,
-    description text,
-    scope_id wt_public_id NOT NULL REFERENCES iam_scope(public_id) ON DELETE CASCADE ON UPDATE CASCADE,
-    unique(name, scope_id),
-    disabled BOOLEAN NOT NULL default FALSE
-  );
-
-
-CREATE TABLE if not exists iam_group_member_user (
+CREATE TABLE iam_group_member_user (
     create_time wt_timestamp,
     group_id wt_public_id NOT NULL REFERENCES iam_group(public_id) ON DELETE CASCADE ON UPDATE CASCADE,
     member_id wt_public_id NOT NULL REFERENCES iam_user(public_id) ON DELETE CASCADE ON UPDATE CASCADE,
@@ -328,8 +330,43 @@ SELECT
   *, 'user' as type
 FROM iam_group_member_user;
 
+CREATE TABLE iam_group_member_type_enm (
+    string text NOT NULL primary key CHECK(string IN ('unknown', 'user'))
+  );
+INSERT INTO iam_group_member_type_enm (string)
+values
+  ('unknown'),
+  ('user');
 
-CREATE TABLE if not exists iam_auth_method_type_enm (
+
+
+CREATE TABLE iam_auth_method (
+    public_id wt_public_id not null primary key, 
+    create_time wt_timestamp,
+    update_time wt_timestamp,
+    name text,
+    description text,
+    scope_id wt_public_id NOT NULL REFERENCES iam_scope_organization(scope_id) ON DELETE CASCADE ON UPDATE CASCADE,
+    unique(name, scope_id),
+    disabled BOOLEAN NOT NULL default FALSE,
+    type text NOT NULL
+  );
+
+
+CREATE TABLE iam_role (
+    public_id wt_public_id not null primary key,
+    create_time wt_timestamp,
+    update_time wt_timestamp,
+    name text,
+    description text,
+    scope_id wt_public_id NOT NULL REFERENCES iam_scope(public_id) ON DELETE CASCADE ON UPDATE CASCADE,
+    unique(name, scope_id),
+    disabled BOOLEAN NOT NULL default FALSE
+  );
+
+
+
+CREATE TABLE iam_auth_method_type_enm (
     string text NOT NULL primary key CHECK(string IN ('unknown', 'userpass', 'oidc'))
   );
 INSERT INTO iam_auth_method_type_enm (string)
@@ -341,7 +378,7 @@ ALTER TABLE iam_auth_method
 ADD
   FOREIGN KEY (type) REFERENCES iam_auth_method_type_enm(string);
 
-CREATE TABLE if not exists iam_action_enm (
+CREATE TABLE iam_action_enm (
     string text NOT NULL primary key CHECK(
       string IN (
         'unknown',
@@ -365,14 +402,14 @@ values
   ('delete'),
   ('authen');
 
-CREATE TABLE if not exists iam_role_user (
+CREATE TABLE iam_role_user (
     create_time wt_timestamp,
     role_id wt_public_id NOT NULL REFERENCES iam_role(public_id) ON DELETE CASCADE ON UPDATE CASCADE,
     principal_id wt_public_id NOT NULL REFERENCES iam_user(public_id) ON DELETE CASCADE ON UPDATE CASCADE,
     primary key (role_id, principal_id)
   );
 
-CREATE TABLE if not exists iam_role_group (
+CREATE TABLE iam_role_group (
     create_time wt_timestamp,
     role_id wt_public_id NOT NULL REFERENCES iam_role(public_id) ON DELETE CASCADE ON UPDATE CASCADE,
     principal_id wt_public_id NOT NULL REFERENCES iam_group(public_id) ON DELETE CASCADE ON UPDATE CASCADE,
@@ -392,7 +429,7 @@ from iam_role_group;
 
 
 
-CREATE TABLE if not exists iam_role_grant (
+CREATE TABLE iam_role_grant (
     public_id wt_public_id not null primary key,
     create_time wt_timestamp,
     update_time wt_timestamp,

@@ -1,5 +1,56 @@
 BEGIN;
 
+CREATE OR REPLACE FUNCTION update_time_column() RETURNS TRIGGER 
+SET SCHEMA
+  'public' LANGUAGE plpgsql AS $$
+BEGIN
+   IF row(NEW.*) IS DISTINCT FROM row(OLD.*) THEN
+      NEW.update_time = now(); 
+      RETURN NEW;
+   ELSE
+      RETURN OLD;
+   END IF;
+END;
+$$;
+
+
+CREATE TABLE iam_group (
+    public_id wt_public_id not null primary key,
+    create_time wt_timestamp,
+    update_time wt_timestamp,
+    name text,
+    description text,
+    scope_id wt_public_id NOT NULL REFERENCES iam_scope(public_id) ON DELETE CASCADE ON UPDATE CASCADE,
+    unique(name, scope_id),
+    disabled BOOLEAN NOT NULL default FALSE
+  );
+  
+CREATE TRIGGER update_iam_group_update_time 
+BEFORE UPDATE ON iam_group FOR EACH ROW EXECUTE PROCEDURE update_time_column();
+
+CREATE TABLE iam_group_member_user (
+    create_time wt_timestamp,
+    group_id wt_public_id NOT NULL REFERENCES iam_group(public_id) ON DELETE CASCADE ON UPDATE CASCADE,
+    member_id wt_public_id NOT NULL REFERENCES iam_user(public_id) ON DELETE CASCADE ON UPDATE CASCADE,
+    primary key (group_id, member_id)
+  );
+
+
+CREATE VIEW iam_group_member AS
+SELECT
+  *, 'user' as type
+FROM iam_group_member_user;
+
+CREATE TABLE iam_group_member_type_enm (
+    string text NOT NULL primary key CHECK(string IN ('unknown', 'user'))
+  );
+INSERT INTO iam_group_member_type_enm (string)
+values
+  ('unknown'),
+  ('user');
+
+
+
 CREATE TABLE iam_auth_method (
     public_id wt_public_id not null primary key, 
     create_time wt_timestamp,
@@ -24,39 +75,6 @@ CREATE TABLE iam_role (
     disabled BOOLEAN NOT NULL default FALSE
   );
 
-CREATE TABLE iam_group_member_type_enm (
-    string text NOT NULL primary key CHECK(string IN ('unknown', 'user'))
-  );
-INSERT INTO iam_group_member_type_enm (string)
-values
-  ('unknown'),
-  ('user');
-
-
-CREATE TABLE iam_group (
-    public_id wt_public_id not null primary key,
-    create_time wt_timestamp,
-    update_time wt_timestamp,
-    name text,
-    description text,
-    scope_id wt_public_id NOT NULL REFERENCES iam_scope(public_id) ON DELETE CASCADE ON UPDATE CASCADE,
-    unique(name, scope_id),
-    disabled BOOLEAN NOT NULL default FALSE
-  );
-
-
-CREATE TABLE iam_group_member_user (
-    create_time wt_timestamp,
-    group_id wt_public_id NOT NULL REFERENCES iam_group(public_id) ON DELETE CASCADE ON UPDATE CASCADE,
-    member_id wt_public_id NOT NULL REFERENCES iam_user(public_id) ON DELETE CASCADE ON UPDATE CASCADE,
-    primary key (group_id, member_id)
-  );
-
-
-CREATE VIEW iam_group_member AS
-SELECT
-  *, 'user' as type
-FROM iam_group_member_user;
 
 
 CREATE TABLE iam_auth_method_type_enm (
