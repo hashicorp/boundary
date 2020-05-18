@@ -4,12 +4,13 @@ import (
 	"context"
 	"testing"
 
+	"github.com/hashicorp/go-uuid"
 	"github.com/hashicorp/watchtower/internal/db"
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/protobuf/proto"
 )
 
-func Test_NewGroup(t *testing.T) {
+func TestNewGroup(t *testing.T) {
 	t.Parallel()
 	cleanup, conn, _ := db.TestSetup(t, "postgres")
 	defer func() {
@@ -19,31 +20,59 @@ func Test_NewGroup(t *testing.T) {
 	}()
 	assert := assert.New(t)
 	defer conn.Close()
+	org, _ := TestScopes(t, conn)
 
-	t.Run("valid", func(t *testing.T) {
-		w := db.New(conn)
-		s, err := NewOrganization()
-		assert.NoError(err)
-		assert.NotNil(s.Scope != nil)
-		err = w.Create(context.Background(), s)
-		assert.NoError(err)
-		assert.NotEmpty(s.PublicId)
+	id, err := uuid.GenerateUUID()
+	assert.NoError(err)
 
-		grp, err := NewGroup(s.PublicId, WithDescription("this is a test group"))
-		assert.NoError(err)
-		assert.NotNil(grp)
-		assert.Equal(grp.Description, "this is a test group")
-		assert.Equal(s.PublicId, grp.ScopeId)
-		err = w.Create(context.Background(), grp)
-		assert.NoError(err)
-		assert.NotEmpty(grp.PublicId)
-	})
-	t.Run("no-scope", func(t *testing.T) {
-		grp, err := NewGroup("")
-		assert.Error(err)
-		assert.Nil(grp)
-		assert.Equal(err.Error(), "error the group scope id is unset")
-	})
+	type args struct {
+		organizationPublicId string
+		opt                  []Option
+	}
+	tests := []struct {
+		name       string
+		args       args
+		wantErr    bool
+		wantErrMsg string
+		wantName   string
+	}{
+		{
+			name: "valid",
+			args: args{
+				organizationPublicId: org.PublicId,
+				opt:                  []Option{WithName(id)},
+			},
+			wantErr:  false,
+			wantName: id,
+		},
+		{
+			name: "valid-with-no-name",
+			args: args{
+				organizationPublicId: org.PublicId,
+			},
+			wantErr: false,
+		},
+		{
+			name: "no-org",
+			args: args{
+				opt: []Option{WithName(id)},
+			},
+			wantErr:    true,
+			wantErrMsg: "error organization id is unset for new group",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := NewGroup(tt.args.organizationPublicId, tt.args.opt...)
+			if tt.wantErr {
+				assert.Error(err)
+				assert.Equal(tt.wantErrMsg, err.Error())
+				return
+			}
+			assert.NoError(err)
+			assert.Equal(tt.wantName, got.Name)
+		})
+	}
 }
 
 func TestGroup_Members(t *testing.T) {

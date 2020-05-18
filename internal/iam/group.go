@@ -28,7 +28,7 @@ func NewGroup(scopeId string, opt ...Option) (*Group, error) {
 	withName := opts.withName
 	withDescription := opts.withDescription
 	if scopeId == "" {
-		return nil, errors.New("error the group scope id is unset")
+		return nil, errors.New("error organization id is unset for new group")
 	}
 	publicId, err := db.NewPublicId("g")
 	if err != nil {
