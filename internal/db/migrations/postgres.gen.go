@@ -42,6 +42,8 @@ commit;
 	"migrations/02_oplog.up.sql": {
 		name: "02_oplog.up.sql",
 		bytes: []byte(`
+begin;
+
 CREATE TABLE if not exists oplog_entry (
   id bigint generated always as identity primary key,
   create_time wt_timestamp,
@@ -82,19 +84,28 @@ values
   ('db_test_car', 1),
   ('db_test_rental', 1);
 
+commit;
+
 `),
 	},
 	"migrations/03_db.down.sql": {
 		name: "03_db.down.sql",
 		bytes: []byte(`
+begin;
+
 drop table if exists db_test_user;
 drop table if exists db_test_car;
 drop table if exists db_test_rental;
+
+commit;
+
 `),
 	},
 	"migrations/03_db.up.sql": {
 		name: "03_db.up.sql",
 		bytes: []byte(`
+begin;
+
 -- create test tables used in the unit tests for the internal/db package
 -- these tables (db_test_user, db_test_car, db_test_rental) are not part
 -- of the Watchtower domain model... they are simply used for testing the internal/db package
@@ -125,6 +136,8 @@ CREATE TABLE if not exists db_test_rental (
   user_id bigint not null REFERENCES db_test_user(id),
   car_id bigint not null REFERENCES db_test_car(id)
 );
+
+commit;
 
 `),
 	},
