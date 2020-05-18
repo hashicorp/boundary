@@ -24,7 +24,7 @@ func Test_Utils(t *testing.T) {
 	})
 }
 
-func Test_TestVerifyOplogEntry(t *testing.T) {
+func TestVerifyOplogEntry(t *testing.T) {
 	cleanup, db, _ := TestSetup(t, "postgres")
 	defer cleanup()
 	assert := assert.New(t)
