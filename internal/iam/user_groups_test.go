@@ -33,7 +33,7 @@ func Test_UserGroups(t *testing.T) {
 		assert.NoError(err)
 		assert.NotEqual(grp.PublicId, "")
 
-		gm, err := NewGroupMember(grp, user)
+		gm, err := grp.AddUser(user.PublicId)
 		assert.NoError(err)
 		assert.NotNil(gm)
 		err = w.Create(context.Background(), gm)

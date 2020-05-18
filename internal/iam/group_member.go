@@ -3,6 +3,7 @@ package iam
 import (
 	"context"
 	"errors"
+	"fmt"
 
 	"github.com/hashicorp/watchtower/internal/db"
 	"github.com/hashicorp/watchtower/internal/iam/store"
@@ -24,7 +25,7 @@ func (m MemberType) String() string {
 	}[m]
 }
 
-// GroupMember declares a common interface for all members assigned to a group (which is just users for now)
+// GroupMember declares a common interface for all members assigned to a group
 type GroupMember interface {
 	GetGroupId() string
 	GetMemberId() string
@@ -39,25 +40,42 @@ type groupMemberView struct {
 // TableName provides an overridden gorm table name for group members
 func (v *groupMemberView) TableName() string { return "iam_group_member" }
 
-// NewGroupMember creates a new in memory member of the group with a scope (project/organization)
-// options include: withDescripion, WithName
-func NewGroupMember(g *Group, m Resource, opt ...Option) (GroupMember, error) {
-	if g == nil {
-		return nil, errors.New("error group is nil for group member")
+// AddUser will add a user to the group in memory, returning a GroupMember that
+// can be written to the db
+func (g *Group) AddUser(userId string, opt ...db.Option) (GroupMember, error) {
+	gm, err := newGroupMemberUser(g.PublicId, userId)
+	if err != nil {
+		return nil, err
 	}
-	if g.PublicId == "" {
-		return nil, errors.New("error group id is unset for group member")
+	return gm, nil
+}
+
+// Members returns the members of the group (Users)
+func (g *Group) Members(ctx context.Context, r db.Reader) ([]GroupMember, error) {
+	const where = "group_id = ? and type = ?"
+	viewMembers := []*groupMemberView{}
+	if err := r.SearchWhere(ctx, &viewMembers, where, g.PublicId, UserMemberType.String()); err != nil {
+		return nil, err
 	}
-	if m == nil {
-		return nil, errors.New("member is nil for group member")
-	}
-	if m.ResourceType() == ResourceTypeUser {
-		if u, ok := m.(*User); ok {
-			return newGroupMemberUser(g, u, opt...)
+
+	members := []GroupMember{}
+	for _, m := range viewMembers {
+		switch m.Type {
+		case UserMemberType.String():
+			gm := &GroupMemberUser{
+				GroupMemberUser: &store.GroupMemberUser{
+					CreateTime: m.CreateTime,
+					GroupId:    m.GroupId,
+					MemberId:   m.MemberId,
+				},
+			}
+			members = append(members, gm)
+		default:
+			return nil, fmt.Errorf("error unsupported member type: %s", m.Type)
 		}
-		return nil, errors.New("error group member is not a user ptr")
+
 	}
-	return nil, errors.New("error unknown group member type")
+	return members, nil
 }
 
 // GroupMemberUser is a group member that's a User
@@ -73,23 +91,17 @@ var _ db.VetForWriter = (*GroupMemberUser)(nil)
 
 // newGroupMemberUser creates a new in memory user member of the group
 // options include: withDescripion, WithName
-func newGroupMemberUser(g *Group, m *User, opt ...Option) (GroupMember, error) {
-	if m == nil {
-		return nil, errors.New("error the user member is nil")
+func newGroupMemberUser(groupId, userId string, opt ...Option) (*GroupMemberUser, error) {
+	if userId == "" {
+		return nil, errors.New("error the user public id is unset")
 	}
-	if m.PublicId == "" {
-		return nil, errors.New("error the user member id is unset")
-	}
-	if g == nil {
-		return nil, errors.New("error the user member group is nil")
-	}
-	if g.PublicId == "" {
+	if groupId == "" {
 		return nil, errors.New("error the user member group is unset")
 	}
 	gm := &GroupMemberUser{
 		GroupMemberUser: &store.GroupMemberUser{
-			MemberId: m.PublicId,
-			GroupId:  g.PublicId,
+			MemberId: userId,
+			GroupId:  groupId,
 		},
 	}
 	return gm, nil
