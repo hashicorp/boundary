@@ -16,13 +16,18 @@ import (
 func TestRepository_CreateUser(t *testing.T) {
 	t.Parallel()
 	cleanup, conn, _ := db.TestSetup(t, "postgres")
-	defer cleanup()
+	defer func() {
+		if err := cleanup(); err != nil {
+			t.Error(err)
+		}
+	}()
 	a := assert.New(t)
 	defer conn.Close()
 
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
 	repo, err := NewRepository(rw, rw, wrapper)
+	a.NoError(err)
 	id, err := uuid.GenerateUUID()
 	a.NoError(err)
 
@@ -107,13 +112,18 @@ func TestRepository_CreateUser(t *testing.T) {
 func TestRepository_UpdateUser(t *testing.T) {
 	t.Parallel()
 	cleanup, conn, _ := db.TestSetup(t, "postgres")
-	defer cleanup()
+	defer func() {
+		if err := cleanup(); err != nil {
+			t.Error(err)
+		}
+	}()
 	a := assert.New(t)
 	defer conn.Close()
 
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
 	repo, err := NewRepository(rw, rw, wrapper)
+	a.NoError(err)
 	id, err := uuid.GenerateUUID()
 	a.NoError(err)
 
@@ -220,7 +230,11 @@ func TestRepository_UpdateUser(t *testing.T) {
 func TestRepository_DeleteUser(t *testing.T) {
 	t.Parallel()
 	cleanup, conn, _ := db.TestSetup(t, "postgres")
-	defer cleanup()
+	defer func() {
+		if err := cleanup(); err != nil {
+			t.Error(err)
+		}
+	}()
 	a := assert.New(t)
 	defer conn.Close()
 
