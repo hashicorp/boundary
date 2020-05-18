@@ -19,10 +19,7 @@ import (
 
 // setup the tests (initialize the database one-time and intialized testDatabaseURL)
 func TestSetup(t *testing.T, dialect string) (func() error, *gorm.DB, string) {
-	cleanup := func() error { return nil }
-	var url string
-	var err error
-	cleanup, url, _, err = InitDbInDocker(dialect)
+	cleanup, url, _, err := InitDbInDocker(dialect)
 	if err != nil {
 		t.Fatal(err)
 	}

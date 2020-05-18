@@ -1,7 +1,6 @@
 package db
 
 import (
-	"reflect"
 	"testing"
 
 	"github.com/hashicorp/watchtower/internal/oplog"
@@ -17,7 +16,7 @@ func Test_getOpts(t *testing.T) {
 		opts := GetOpts()
 		testOpts := getDefaultOptions()
 		testOpts.withOplog = false
-		assert.True(reflect.DeepEqual(opts, testOpts))
+		assert.Equal(opts, testOpts)
 
 		wrapper := TestWrapper(t)
 		md := oplog.Metadata{
@@ -33,33 +32,32 @@ func Test_getOpts(t *testing.T) {
 			wrapper:  wrapper,
 			metadata: md,
 		}
-		assert.True(reflect.DeepEqual(opts, testOpts))
+		assert.Equal(opts, testOpts)
 	})
 	t.Run("WithLookup", func(t *testing.T) {
 		// test default of true
 		opts := GetOpts()
 		testOpts := getDefaultOptions()
 		testOpts.withLookup = false
-		assert.True(reflect.DeepEqual(opts, testOpts))
+		assert.Equal(opts, testOpts)
 
 		// try setting to false
 		opts = GetOpts(WithLookup(true))
 		testOpts = getDefaultOptions()
 		testOpts.withLookup = true
-		assert.True(reflect.DeepEqual(opts, testOpts))
-
+		assert.Equal(opts, testOpts)
 	})
 	t.Run("WithDebug", func(t *testing.T) {
 		// test default of false
 		opts := GetOpts()
 		testOpts := getDefaultOptions()
 		testOpts.withDebug = false
-		assert.True(reflect.DeepEqual(opts, testOpts))
+		assert.Equal(opts, testOpts)
 
 		// try setting to true
 		opts = GetOpts(WithDebug(true))
 		testOpts = getDefaultOptions()
 		testOpts.withDebug = true
-		assert.True(reflect.DeepEqual(opts, testOpts))
+		assert.Equal(opts, testOpts)
 	})
 }
