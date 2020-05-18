@@ -34,6 +34,14 @@ import (
 // be applied to the PG_TEMPLATE database manually. The cleanup function
 // will delete the created database not PG_TEMPLATE.
 func TestSetup(t *testing.T, dialect string) (cleanup func(), db *gorm.DB, dbUrl string) {
+
+	// BUG(mgaffney): There seems to be a problem with the migrations
+	// package. When PG_URL is set to an instance of PostgreSQL running
+	// locally on my machine, the tests freeze and are killed by the go
+	// testing framework after ten minutes. I also noticed advisory locks
+	// being set in PostgreSQL. Not sure but this may be related to
+	// https://github.com/golang-migrate/migrate/issues/269
+
 	// t.Helper()
 	if dialect != "postgres" {
 		t.Fatalf("unknown dialect %q", dialect)
