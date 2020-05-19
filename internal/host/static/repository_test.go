@@ -12,10 +12,10 @@ func TestRepository_New(t *testing.T) {
 
 	cleanup, conn, _ := db.TestSetup(t, "postgres")
 	defer func() {
-		if err := cleanup(); err != nil {
+		if err := conn.Close(); err != nil {
 			t.Error(err)
 		}
-		if err := conn.Close(); err != nil {
+		if err := cleanup(); err != nil {
 			t.Error(err)
 		}
 	}()
