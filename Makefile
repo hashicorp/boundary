@@ -10,9 +10,6 @@ GENERATED_CODE := $(shell  find ${THIS_DIR} -name '*.gen.go' && find ${THIS_DIR}
 
 export GEN_BASEPATH := $(shell pwd)
 
-stuff:
-	@echo ${THIS_DIR}
-
 bootstrap:
 	go generate -tags tools tools/tools.go
 
