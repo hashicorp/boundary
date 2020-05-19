@@ -8,6 +8,7 @@ import (
 	wrapping "github.com/hashicorp/go-kms-wrapping"
 	"github.com/hashicorp/watchtower/internal/db"
 	"github.com/hashicorp/watchtower/internal/oplog"
+	"github.com/lib/pq"
 )
 
 // Errors returned from this package may be tested against these errors
@@ -100,7 +101,15 @@ func (r *Repository) CreateCatalog(ctx context.Context, c *HostCatalog, opt ...O
 			)
 		},
 	)
+
 	if err != nil {
+		var e *pq.Error
+		if errors.As(err, &e) {
+			if e.Code == "23505" {
+				return nil, fmt.Errorf("%w: static host catalog: %s in scope: %s already exists",
+					ErrNotUnique, c.Name, c.ScopeId)
+			}
+		}
 		return nil, err
 	}
 	return newHostCatalog, nil
