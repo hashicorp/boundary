@@ -3,6 +3,7 @@ package static
 import (
 	"context"
 	"errors"
+	"fmt"
 
 	wrapping "github.com/hashicorp/go-kms-wrapping"
 	"github.com/hashicorp/watchtower/internal/db"
@@ -21,6 +22,9 @@ var (
 	// ErrNotUnique is returned by create and update methods when a write
 	// to the repository resulted in a unique constraint violation.
 	ErrNotUnique = errors.New("unique constraint violation")
+
+	// ErrNilParameter is returned when a required parameter is nil.
+	ErrNilParameter = errors.New("nil parameter")
 )
 
 // A Repository stores and retrieves the persistent types in the static
@@ -35,11 +39,11 @@ type Repository struct {
 func NewRepository(r db.Reader, w db.Writer, wrapper wrapping.Wrapper) (*Repository, error) {
 	switch {
 	case r == nil:
-		return nil, errors.New("nil db.Reader")
+		return nil, fmt.Errorf("db.Reader: %w", ErrNilParameter)
 	case w == nil:
-		return nil, errors.New("nil db.Writer")
+		return nil, fmt.Errorf("db.Writer: %w", ErrNilParameter)
 	case wrapper == nil:
-		return nil, errors.New("nil wrapping.Wrapper")
+		return nil, fmt.Errorf("wrapping.Wrapper: %w", ErrNilParameter)
 	}
 
 	return &Repository{

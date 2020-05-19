@@ -1,6 +1,8 @@
 package static
 
 import (
+	"context"
+	"errors"
 	"testing"
 
 	wrapping "github.com/hashicorp/go-kms-wrapping"
@@ -30,10 +32,10 @@ func TestRepository_New(t *testing.T) {
 	}
 
 	var tests = []struct {
-		name    string
-		args    args
-		want    *Repository
-		wantErr bool
+		name      string
+		args      args
+		want      *Repository
+		wantIsErr error
 	}{
 		{
 			name: "valid",
@@ -47,7 +49,6 @@ func TestRepository_New(t *testing.T) {
 				writer:  rw,
 				wrapper: wrapper,
 			},
-			wantErr: false,
 		},
 		{
 			name: "nil-reader",
@@ -56,8 +57,8 @@ func TestRepository_New(t *testing.T) {
 				w:       rw,
 				wrapper: wrapper,
 			},
-			want:    nil,
-			wantErr: true,
+			want:      nil,
+			wantIsErr: ErrNilParameter,
 		},
 		{
 			name: "nil-writer",
@@ -66,8 +67,8 @@ func TestRepository_New(t *testing.T) {
 				w:       nil,
 				wrapper: wrapper,
 			},
-			want:    nil,
-			wantErr: true,
+			want:      nil,
+			wantIsErr: ErrNilParameter,
 		},
 		{
 			name: "nil-wrapper",
@@ -76,8 +77,8 @@ func TestRepository_New(t *testing.T) {
 				w:       rw,
 				wrapper: nil,
 			},
-			want:    nil,
-			wantErr: true,
+			want:      nil,
+			wantIsErr: ErrNilParameter,
 		},
 		{
 			name: "all-nils",
@@ -86,8 +87,8 @@ func TestRepository_New(t *testing.T) {
 				w:       nil,
 				wrapper: nil,
 			},
-			want:    nil,
-			wantErr: true,
+			want:      nil,
+			wantIsErr: ErrNilParameter,
 		},
 	}
 	for _, tt := range tests {
@@ -95,8 +96,9 @@ func TestRepository_New(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			assert := assert.New(t)
 			got, err := NewRepository(tt.args.r, tt.args.w, tt.args.wrapper)
-			if tt.wantErr {
+			if tt.wantIsErr != nil {
 				assert.Error(err)
+				assert.Truef(errors.Is(err, tt.wantIsErr), "want err: %v", tt.wantIsErr)
 				assert.Nil(got)
 			} else {
 				assert.NoError(err)
