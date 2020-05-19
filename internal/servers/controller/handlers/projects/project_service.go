@@ -18,7 +18,7 @@ import (
 
 var (
 	reInvalidID = regexp.MustCompile("[^A-Za-z0-9]")
-	// TODO: Find a way to auto update these names and enforce the mappings between wire and storage.
+	// TODO(ICU-28): Find a way to auto update these names and enforce the mappings between wire and storage.
 	wireToStorageMask = map[string]string{
 		"name":        "Name",
 		"description": "Description",
