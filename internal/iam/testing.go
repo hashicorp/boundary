@@ -19,12 +19,14 @@ func TestScopes(t *testing.T, conn *gorm.DB) (org *Scope, prj *Scope) {
 	assert.NoError(err)
 
 	org, err = NewOrganization()
+	assert.NoError(err)
 	org, err = repo.CreateScope(context.Background(), org)
 	assert.NoError(err)
 	assert.NotNil(org)
 	assert.NotEmpty(org.GetPublicId())
 
 	prj, err = NewProject(org.GetPublicId())
+	assert.NoError(err)
 	prj, err = repo.CreateScope(context.Background(), prj)
 	assert.NoError(err)
 	assert.NotNil(prj)

@@ -2,6 +2,7 @@ package iam
 
 import (
 	"context"
+	"errors"
 	"testing"
 
 	"github.com/hashicorp/go-uuid"
@@ -116,7 +117,11 @@ func Test_UserCreate(t *testing.T) {
 func Test_UserUpdate(t *testing.T) {
 	t.Parallel()
 	cleanup, conn, _ := db.TestSetup(t, "postgres")
-	defer cleanup()
+	defer func() {
+		if err := cleanup(); err != nil {
+			t.Error(err)
+		}
+	}()
 	a := assert.New(t)
 	defer conn.Close()
 
@@ -233,7 +238,11 @@ func Test_UserUpdate(t *testing.T) {
 func Test_UserDelete(t *testing.T) {
 	t.Parallel()
 	cleanup, conn, _ := db.TestSetup(t, "postgres")
-	defer cleanup()
+	defer func() {
+		if err := cleanup(); err != nil {
+			t.Error(err)
+		}
+	}()
 	a := assert.New(t)
 	defer conn.Close()
 
@@ -278,7 +287,7 @@ func Test_UserDelete(t *testing.T) {
 			assert.NoError(err)
 			assert.Equal(tt.wantRowsDeleted, deletedRows)
 			foundUser, err := repo.LookupUser(context.Background(), tt.user.GetPublicId())
-			assert.Error(db.ErrRecordNotFound)
+			assert.True(errors.Is(err, db.ErrRecordNotFound))
 			assert.Nil(foundUser)
 		})
 	}

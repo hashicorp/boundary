@@ -12,7 +12,11 @@ import (
 func Test_LookupScope(t *testing.T) {
 	t.Parallel()
 	cleanup, conn, _ := db.TestSetup(t, "postgres")
-	defer cleanup()
+	defer func() {
+		if err := cleanup(); err != nil {
+			t.Error(err)
+		}
+	}()
 	assert := assert.New(t)
 	defer conn.Close()
 	t.Run("valid-scope", func(t *testing.T) {
