@@ -20,20 +20,20 @@ func NewHostCatalog(scopeId string, opt ...Option) (*HostCatalog, error) {
 	if scopeId == "" {
 		return nil, errors.New("empty scopeId")
 	}
-	id, err := db.NewPublicId("sthc")
-	if err != nil {
-		return nil, err
-	}
+
 	opts := getOpts(opt...)
 	hc := &HostCatalog{
 		HostCatalog: &store.HostCatalog{
 			ScopeId:     scopeId,
 			Name:        opts.withName,
 			Description: opts.withDescription,
-			PublicId:    id,
 		},
 	}
 	return hc, nil
+}
+
+func newHostCatalogId() (string, error) {
+	return db.NewPublicId("sthc")
 }
 
 // A Host contains a static address.
@@ -52,10 +52,7 @@ func NewHost(catalogId, address string, opt ...Option) (*Host, error) {
 	if address == "" {
 		return nil, errors.New("empty address")
 	}
-	id, err := db.NewPublicId("sth")
-	if err != nil {
-		return nil, err
-	}
+
 	opts := getOpts(opt...)
 	host := &Host{
 		Host: &store.Host{
@@ -63,10 +60,13 @@ func NewHost(catalogId, address string, opt ...Option) (*Host, error) {
 			Address:             address,
 			Name:                opts.withName,
 			Description:         opts.withDescription,
-			PublicId:            id,
 		},
 	}
 	return host, nil
+}
+
+func newHostId() (string, error) {
+	return db.NewPublicId("sth")
 }
 
 // A HostSet contains a static address.
@@ -82,23 +82,23 @@ func NewHostSet(catalogId string, opt ...Option) (*HostSet, error) {
 	if catalogId == "" {
 		return nil, errors.New("empty catalogId")
 	}
-	id, err := db.NewPublicId("sths")
-	if err != nil {
-		return nil, err
-	}
+
 	opts := getOpts(opt...)
 	set := &HostSet{
 		HostSet: &store.HostSet{
 			StaticHostCatalogId: catalogId,
 			Name:                opts.withName,
 			Description:         opts.withDescription,
-			PublicId:            id,
 		},
 	}
 	return set, nil
 }
 
-// A HostSetMember contains a static address.
+func newHostSetId() (string, error) {
+	return db.NewPublicId("sths")
+}
+
+// A HostSet contains a static address.
 type HostSetMember struct {
 	*store.HostSetMember
 	tableName string `gorm:"-"`

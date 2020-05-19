@@ -93,9 +93,15 @@ func TestHostCatalog_New(t *testing.T) {
 			} else {
 				assert.NoError(err)
 				if assert.NotNil(got) {
-					assertPublicID(t, "sthc", got.PublicId)
-					tt.want.PublicId = got.PublicId
+					assert.Emptyf(got.PublicId, "PublicID set")
 					assert.Equal(tt.want, got)
+
+					id, err := newHostCatalogId()
+					assert.NoError(err)
+
+					tt.want.PublicId = id
+					got.PublicId = id
+
 					w := db.New(conn)
 					err2 := w.Create(context.Background(), got)
 					assert.NoError(err2)
@@ -114,6 +120,10 @@ func testCatalogs(t *testing.T, conn *gorm.DB, count int) []*HostCatalog {
 		cat, err := NewHostCatalog(prj.GetPublicId())
 		assert.NoError(err)
 		assert.NotNil(cat)
+		id, err := newHostCatalogId()
+		assert.NoError(err)
+		assert.NotEmpty(id)
+		cat.PublicId = id
 
 		w := db.New(conn)
 		err2 := w.Create(context.Background(), cat)
@@ -254,9 +264,15 @@ func TestHost_New(t *testing.T) {
 			} else {
 				assert.NoError(err)
 				if assert.NotNil(got) {
-					assertPublicID(t, "sth", got.PublicId)
-					tt.want.PublicId = got.PublicId
+					assert.Emptyf(got.PublicId, "PublicID set")
 					assert.Equal(tt.want, got)
+
+					id, err := newHostId()
+					assert.NoError(err)
+
+					tt.want.PublicId = id
+					got.PublicId = id
+
 					w := db.New(conn)
 					err2 := w.Create(context.Background(), got)
 					if tt.wantWriteErr {
@@ -366,9 +382,15 @@ func TestHostSet_New(t *testing.T) {
 			} else {
 				assert.NoError(err)
 				if assert.NotNil(got) {
-					assertPublicID(t, "sths", got.PublicId)
-					tt.want.PublicId = got.PublicId
+					assert.Emptyf(got.PublicId, "PublicID set")
 					assert.Equal(tt.want, got)
+
+					id, err := newHostSetId()
+					assert.NoError(err)
+
+					tt.want.PublicId = id
+					got.PublicId = id
+
 					w := db.New(conn)
 					err2 := w.Create(context.Background(), got)
 					assert.NoError(err2)
@@ -388,6 +410,11 @@ func testHosts(t *testing.T, conn *gorm.DB, catalogId string, count int) []*Host
 		assert.NoError(err)
 		assert.NotNil(host)
 
+		id, err := newHostCatalogId()
+		assert.NoError(err)
+		assert.NotEmpty(id)
+		host.PublicId = id
+
 		w := db.New(conn)
 		err2 := w.Create(context.Background(), host)
 		assert.NoError(err2)
@@ -405,6 +432,10 @@ func testSets(t *testing.T, conn *gorm.DB, catalogId string, count int) []*HostS
 		set, err := NewHostSet(catalogId)
 		assert.NoError(err)
 		assert.NotNil(set)
+		id, err := newHostSetId()
+		assert.NoError(err)
+		assert.NotEmpty(id)
+		set.PublicId = id
 
 		w := db.New(conn)
 		err2 := w.Create(context.Background(), set)
