@@ -11,13 +11,14 @@ import (
 	pb "github.com/hashicorp/watchtower/internal/gen/controller/api/resources/scopes"
 	pbs "github.com/hashicorp/watchtower/internal/gen/controller/api/services"
 	"github.com/hashicorp/watchtower/internal/iam"
+	"google.golang.org/genproto/protobuf/field_mask"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
 
 var (
 	reInvalidID = regexp.MustCompile("[^A-Za-z0-9]")
-	// TODO: Find a way to auto update these names and enforce the mappings between wire and storage.
+	// TODO(ICU-28): Find a way to auto update these names and enforce the mappings between wire and storage.
 	wireToStorageMask = map[string]string{
 		"name":        "Name",
 		"description": "Description",
@@ -42,7 +43,7 @@ func (s Service) GetProject(ctx context.Context, req *pbs.GetProjectRequest) (*p
 	if err := validateGetProjectRequest(req); err != nil {
 		return nil, err
 	}
-	p, err := s.getFromRepo(ctx, req.GetId())
+	p, err := s.getFromRepo(ctx, req)
 	if err != nil {
 		return nil, err
 	}
@@ -55,7 +56,7 @@ func (s Service) CreateProject(ctx context.Context, req *pbs.CreateProjectReques
 	if err := validateCreateProjectRequest(req); err != nil {
 		return nil, err
 	}
-	p, err := s.createInRepo(ctx, req.GetOrgId(), req.GetItem())
+	p, err := s.createInRepo(ctx, req)
 	if err != nil {
 		return nil, err
 	}
@@ -69,7 +70,7 @@ func (s Service) UpdateProject(ctx context.Context, req *pbs.UpdateProjectReques
 	if err := validateUpdateProjectRequest(req); err != nil {
 		return nil, err
 	}
-	p, err := s.updateInRepo(ctx, req.GetOrgId(), req.GetId(), req.GetItem(), req.GetUpdateMask().GetPaths())
+	p, err := s.updateInRepo(ctx, req)
 	if err != nil {
 		return nil, err
 	}
@@ -91,26 +92,27 @@ func (s Service) DeleteProject(ctx context.Context, req *pbs.DeleteProjectReques
 	return resp, nil
 }
 
-func (s Service) getFromRepo(ctx context.Context, projId string) (*pb.Project, error) {
-	p, err := s.repo.LookupScope(ctx, projId)
+func (s Service) getFromRepo(ctx context.Context, req *pbs.GetProjectRequest) (*pb.Project, error) {
+	p, err := s.repo.LookupScope(ctx, req.Id)
 	if err != nil {
 		return nil, err
 	}
 	if p == nil {
-		return nil, status.Errorf(codes.NotFound, "Could not find Project with id %q", projId)
+		return nil, status.Errorf(codes.NotFound, "Could not find Project with id %q", req.GetId())
 	}
 	return toProto(p), nil
 }
 
-func (s Service) createInRepo(ctx context.Context, orgId string, item *pb.Project) (*pb.Project, error) {
+func (s Service) createInRepo(ctx context.Context, req *pbs.CreateProjectRequest) (*pb.Project, error) {
+	in := req.GetItem()
 	opts := []iam.Option{}
-	if item.GetName() != nil {
-		opts = append(opts, iam.WithName(item.GetName().GetValue()))
+	if in.GetName() != nil {
+		opts = append(opts, iam.WithName(in.GetName().GetValue()))
 	}
-	if item.GetDescription() != nil {
-		opts = append(opts, iam.WithDescription(item.GetDescription().GetValue()))
+	if in.GetDescription() != nil {
+		opts = append(opts, iam.WithDescription(in.GetDescription().GetValue()))
 	}
-	p, err := iam.NewProject(orgId, opts...)
+	p, err := iam.NewProject(req.GetOrgId(), opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -124,19 +126,20 @@ func (s Service) createInRepo(ctx context.Context, orgId string, item *pb.Projec
 	return toProto(out), nil
 }
 
-func (s Service) updateInRepo(ctx context.Context, orgId, projId string, item *pb.Project, mask []string) (*pb.Project, error) {
-	opts := []iam.Option{iam.WithPublicId(projId)}
+func (s Service) updateInRepo(ctx context.Context, req *pbs.UpdateProjectRequest) (*pb.Project, error) {
+	item := req.GetItem()
+	opts := []iam.Option{iam.WithPublicId(req.GetId())}
 	if desc := item.GetDescription(); desc != nil {
 		opts = append(opts, iam.WithDescription(desc.GetValue()))
 	}
 	if name := item.GetName(); name != nil {
 		opts = append(opts, iam.WithName(name.GetValue()))
 	}
-	p, err := iam.NewProject(orgId, opts...)
+	p, err := iam.NewProject(req.GetOrgId(), opts...)
 	if err != nil {
 		return nil, err
 	}
-	dbMask, err := toDbUpdateMask(mask)
+	dbMask, err := toDbUpdateMask(req.GetUpdateMask())
 	if err != nil {
 		return nil, err
 	}
@@ -162,10 +165,10 @@ func (s Service) deleteFromRepo(ctx context.Context, projId string) (bool, error
 }
 
 // toDbUpdateMask converts the wire format's FieldMask into a list of strings containing FieldMask paths used
-func toDbUpdateMask(paths []string) ([]string, error) {
+func toDbUpdateMask(fm *field_mask.FieldMask) ([]string, error) {
 	dbPaths := []string{}
 	invalid := []string{}
-	for _, p := range paths {
+	for _, p := range fm.GetPaths() {
 		for _, f := range strings.Split(p, ",") {
 			if dbField, ok := wireToStorageMask[strings.TrimSpace(f)]; ok {
 				dbPaths = append(dbPaths, dbField)
