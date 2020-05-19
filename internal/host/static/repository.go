@@ -7,6 +7,7 @@ import (
 
 	wrapping "github.com/hashicorp/go-kms-wrapping"
 	"github.com/hashicorp/watchtower/internal/db"
+	"github.com/hashicorp/watchtower/internal/oplog"
 )
 
 // Errors returned from this package may be tested against these errors
@@ -63,7 +64,46 @@ func NewRepository(r db.Reader, w db.Writer, wrapper wrapping.Wrapper) (*Reposit
 //
 // Both c.CreateTime and c.UpdateTime are ignored.
 func (r *Repository) CreateCatalog(ctx context.Context, c *HostCatalog, opt ...Option) (*HostCatalog, error) {
-	return nil, nil
+	if c == nil {
+		return nil, fmt.Errorf("create: host catalog: %w", ErrNilParameter)
+	}
+	if c.HostCatalog.ScopeId == "" {
+		return nil, fmt.Errorf("create: host catalog: no scope id: %w", ErrInvalidParameter)
+	}
+	if c.PublicId != "" {
+		return nil, fmt.Errorf("create: host catalog: public id not empty: %w", ErrInvalidParameter)
+	}
+	id, err := newHostCatalogId()
+	if err != nil {
+		return nil, err
+	}
+	c.PublicId = id
+
+	metadata := oplog.Metadata{
+		"resource-public-id": []string{c.GetPublicId()},
+		"scope-id":           []string{c.ScopeId},
+		"resource-type":      []string{"static host catalog"},
+		"op-type":            []string{oplog.OpType_OP_TYPE_CREATE.String()},
+	}
+
+	var newHostCatalog *HostCatalog
+	_, err = r.writer.DoTx(
+		ctx,
+		db.StdRetryCnt,
+		db.ExpBackoff{},
+		func(w db.Writer) error {
+			newHostCatalog = c.clone()
+			return w.Create(
+				ctx,
+				newHostCatalog,
+				db.WithOplog(r.wrapper, metadata),
+			)
+		},
+	)
+	if err != nil {
+		return nil, err
+	}
+	return newHostCatalog, nil
 }
 
 // UpdateCatalog updates the values in the repository with the values in c

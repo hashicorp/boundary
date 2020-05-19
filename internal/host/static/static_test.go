@@ -3,7 +3,6 @@ package static
 import (
 	"context"
 	"fmt"
-	"strings"
 	"testing"
 
 	"github.com/hashicorp/watchtower/internal/db"
@@ -281,24 +280,6 @@ func TestHost_New(t *testing.T) {
 				}
 			}
 		})
-	}
-}
-
-func assertPublicID(t *testing.T, prefix, actual string) {
-	t.Helper()
-	if actual == "" {
-		t.Errorf("PublicId is empty")
-	}
-	parts := strings.Split(actual, "_")
-	switch {
-	case len(parts) > 2:
-		t.Errorf("want one '_' in PublicID, got multiple in %q", actual)
-	case len(parts) < 2:
-		t.Errorf("want one '_' in PublicID, got none in %q", actual)
-	}
-
-	if prefix != parts[0] {
-		t.Errorf("PublicID want prefix: %q, got: %q in %q", prefix, parts[0], actual)
 	}
 }
 

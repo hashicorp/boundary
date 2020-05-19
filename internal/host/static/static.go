@@ -5,6 +5,7 @@ import (
 
 	"github.com/hashicorp/watchtower/internal/db"
 	"github.com/hashicorp/watchtower/internal/host/static/store"
+	"google.golang.org/protobuf/proto"
 )
 
 // A HostCatalog contains static hosts and static host sets.
@@ -34,6 +35,13 @@ func NewHostCatalog(scopeId string, opt ...Option) (*HostCatalog, error) {
 
 func newHostCatalogId() (string, error) {
 	return db.NewPublicId("sthc")
+}
+
+func (c *HostCatalog) clone() *HostCatalog {
+	cp := proto.Clone(c.HostCatalog)
+	return &HostCatalog{
+		HostCatalog: cp.(*store.HostCatalog),
+	}
 }
 
 // A Host contains a static address.
