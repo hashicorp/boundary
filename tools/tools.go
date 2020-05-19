@@ -34,4 +34,7 @@ import (
 
 	//go:generate go install golang.org/x/tools/cmd/goimports
 	_ "golang.org/x/tools/cmd/goimports"
+
+	//go:generate go install github.com/oligot/go-mod-upgrade
+	_ "github.com/oligot/go-mod-upgrade"
 )
