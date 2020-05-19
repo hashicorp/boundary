@@ -153,38 +153,47 @@ func TestRepository_CreateCatalog(t *testing.T) {
 				},
 			},
 		},
-		/*
-			{
-				name: "valid-with-name",
-				args: args{
-					scopeId: prj.GetPublicId(),
-					opts: []Option{
-						WithName("test-name"),
-					},
-				},
-				want: &HostCatalog{
-					HostCatalog: &store.HostCatalog{
-						ScopeId: prj.GetPublicId(),
-						Name:    "test-name",
-					},
+		{
+			name: "valid-with-name",
+			in: &HostCatalog{
+				HostCatalog: &store.HostCatalog{
+					ScopeId: prj.GetPublicId(),
+					Name:    "test-name-repo",
 				},
 			},
-			{
-				name: "valid-with-description",
-				args: args{
-					scopeId: prj.GetPublicId(),
-					opts: []Option{
-						WithDescription("test-description"),
-					},
-				},
-				want: &HostCatalog{
-					HostCatalog: &store.HostCatalog{
-						ScopeId:     prj.GetPublicId(),
-						Description: "test-description",
-					},
+			want: &HostCatalog{
+				HostCatalog: &store.HostCatalog{
+					ScopeId: prj.GetPublicId(),
+					Name:    "test-name-repo",
 				},
 			},
-		*/
+		},
+		{
+			name: "valid-with-description",
+
+			in: &HostCatalog{
+				HostCatalog: &store.HostCatalog{
+					ScopeId:     prj.GetPublicId(),
+					Description: ("test-description-repo"),
+				},
+			},
+			want: &HostCatalog{
+				HostCatalog: &store.HostCatalog{
+					ScopeId:     prj.GetPublicId(),
+					Description: ("test-description-repo"),
+				},
+			},
+		},
+		{
+			name: "invalid-duplicate-name",
+			in: &HostCatalog{
+				HostCatalog: &store.HostCatalog{
+					ScopeId: prj.GetPublicId(),
+					Name:    "test-name-repo",
+				},
+			},
+			wantIsErr: ErrNotUnique,
+		},
 	}
 
 	for _, tt := range tests {
@@ -194,7 +203,7 @@ func TestRepository_CreateCatalog(t *testing.T) {
 			got, err := repo.CreateCatalog(context.Background(), tt.in, tt.opts...)
 			if tt.wantIsErr != nil {
 				assert.Error(err)
-				assert.Truef(errors.Is(err, tt.wantIsErr), "want err: %v", tt.wantIsErr)
+				assert.Truef(errors.Is(err, tt.wantIsErr), "want err: %v got: %v", tt.wantIsErr, err)
 				assert.Nil(got)
 			} else {
 				assert.NoError(err)
