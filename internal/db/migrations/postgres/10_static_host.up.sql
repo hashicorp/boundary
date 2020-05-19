@@ -57,5 +57,12 @@ begin;
     primary key(static_host_set_id, static_host_id)
   );
 
+insert into oplog_ticket (name, version)
+values
+  ('static_host_catalog', 1),
+  ('static_host', 1),
+  ('static_host_set', 1),
+  ('static_host_set_member', 1);
+
 commit;
 
