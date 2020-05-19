@@ -11,7 +11,7 @@ import (
 // DeleteProject returns true iff the project existed when the delete attempt was made.
 func (s Organization) DeleteProject(ctx context.Context, project *Project) (bool, *api.Error, error) {
 	if s.Client == nil {
-		return nil, nil, fmt.Errorf("nil client in DeleteProject request")
+		return false, nil, fmt.Errorf("nil client in DeleteProject request")
 	}
 	if s.Id == "" {
 
@@ -26,17 +26,17 @@ func (s Organization) DeleteProject(ctx context.Context, project *Project) (bool
 
 	}
 	if project.Id == "" {
-		return nil, nil, fmt.Errorf("empty project ID field in DeleteProject request")
+		return false, nil, fmt.Errorf("empty project ID field in DeleteProject request")
 	}
 
 	req, err := s.Client.NewRequest(ctx, "DELETE", fmt.Sprintf("projects/%s", project.Id), nil)
 	if err != nil {
-		return nil, nil, fmt.Errorf("error creating DeleteProject request: %w", err)
+		return false, nil, fmt.Errorf("error creating DeleteProject request: %w", err)
 	}
 
 	resp, err := s.Client.Do(req)
 	if err != nil {
-		return nil, nil, fmt.Errorf("error performing client request during DeleteProject call: %w", err)
+		return false, nil, fmt.Errorf("error performing client request during DeleteProject call: %w", err)
 	}
 
 	type deleteResponse struct {
@@ -46,7 +46,7 @@ func (s Organization) DeleteProject(ctx context.Context, project *Project) (bool
 
 	apiErr, err := resp.Decode(target)
 	if err != nil {
-		return nil, nil, fmt.Errorf("error decoding DeleteProject repsonse: %w", err)
+		return false, nil, fmt.Errorf("error decoding DeleteProject repsonse: %w", err)
 	}
 
 	return target.Existed, apiErr, nil

@@ -57,7 +57,7 @@ var deleteFuncTemplate = template.Must(template.New("").Parse(
 // Delete{{ .TargetType }} returns true iff the {{ .LowerTargetType }} existed when the delete attempt was made. 
 func (s {{ .BaseType }}) Delete{{ .TargetType }}(ctx context.Context, {{ .LowerTargetType }} *{{ .TargetType }}) (bool, *api.Error, error) {
 	if s.Client == nil {
-		return nil, nil, fmt.Errorf("nil client in Delete{{ .TargetType }} request")
+		return false, nil, fmt.Errorf("nil client in Delete{{ .TargetType }} request")
 	}
 	if s.Id == "" {
 		{{ if (eq .BaseType "Organization") }}
@@ -79,17 +79,17 @@ func (s {{ .BaseType }}) Delete{{ .TargetType }}(ctx context.Context, {{ .LowerT
 		{{ end }}
 	}
 	if {{ .LowerTargetType }}.Id == "" {
-		return nil, nil, fmt.Errorf("empty {{ .LowerTargetType }} ID field in Delete{{ .TargetType }} request")
+		return false, nil, fmt.Errorf("empty {{ .LowerTargetType }} ID field in Delete{{ .TargetType }} request")
 	}
 
 	req, err := s.Client.NewRequest(ctx, "DELETE", fmt.Sprintf("{{ .Path }}", {{ .LowerTargetType }}.Id), nil)
 	if err != nil {
-		return nil, nil, fmt.Errorf("error creating Delete{{ .TargetType }} request: %w", err)
+		return false, nil, fmt.Errorf("error creating Delete{{ .TargetType }} request: %w", err)
 	}
 
 	resp, err := s.Client.Do(req)
 	if err != nil {
-		return nil, nil, fmt.Errorf("error performing client request during Delete{{ .TargetType }} call: %w", err)
+		return false, nil, fmt.Errorf("error performing client request during Delete{{ .TargetType }} call: %w", err)
 	}
 
 	type deleteResponse struct {
@@ -99,7 +99,7 @@ func (s {{ .BaseType }}) Delete{{ .TargetType }}(ctx context.Context, {{ .LowerT
 
 	apiErr, err := resp.Decode(target)
 	if err != nil {
-		return nil, nil, fmt.Errorf("error decoding Delete{{ .TargetType }} repsonse: %w", err)
+		return false, nil, fmt.Errorf("error decoding Delete{{ .TargetType }} repsonse: %w", err)
 	}
 
 	return target.Existed, apiErr, nil
