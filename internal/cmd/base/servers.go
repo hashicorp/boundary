@@ -406,7 +406,7 @@ func (b *Server) CreateDevDatabase(dialect string) error {
 
 	var scope *iam.Scope
 	if b.DefaultOrgId != "" {
-		scope, err = repo.LookupScope(ctx, iam.WithPublicId(b.DefaultOrgId))
+		scope, err = repo.LookupScope(ctx, b.DefaultOrgId)
 		if err != nil {
 			c()
 			return fmt.Errorf("error looking up existing scope with org ID %q: %w", b.DefaultOrgId, err)

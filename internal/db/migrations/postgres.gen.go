@@ -42,6 +42,8 @@ commit;
 	"migrations/02_oplog.up.sql": {
 		name: "02_oplog.up.sql",
 		bytes: []byte(`
+begin;
+
 CREATE TABLE if not exists oplog_entry (
   id bigint generated always as identity primary key,
   create_time wt_timestamp,
@@ -82,19 +84,28 @@ values
   ('db_test_car', 1),
   ('db_test_rental', 1);
 
+commit;
+
 `),
 	},
 	"migrations/03_db.down.sql": {
 		name: "03_db.down.sql",
 		bytes: []byte(`
+begin;
+
 drop table if exists db_test_user;
 drop table if exists db_test_car;
 drop table if exists db_test_rental;
+
+commit;
+
 `),
 	},
 	"migrations/03_db.up.sql": {
 		name: "03_db.up.sql",
 		bytes: []byte(`
+begin;
+
 -- create test tables used in the unit tests for the internal/db package
 -- these tables (db_test_user, db_test_car, db_test_rental) are not part
 -- of the Watchtower domain model... they are simply used for testing the internal/db package
@@ -126,6 +137,8 @@ CREATE TABLE if not exists db_test_rental (
   car_id bigint not null REFERENCES db_test_car(id)
 );
 
+commit;
+
 `),
 	},
 	"migrations/04_iam.down.sql": {
@@ -145,7 +158,7 @@ COMMIT;
 		bytes: []byte(`
 BEGIN;
 
-CREATE TABLE if not exists iam_scope_type_enm (
+CREATE TABLE iam_scope_type_enm (
   string text NOT NULL primary key CHECK(string IN ('unknown', 'organization', 'project'))
 );
 INSERT INTO iam_scope_type_enm (string)
@@ -155,7 +168,7 @@ values
   ('project');
 
  
-CREATE TABLE if not exists iam_scope (
+CREATE TABLE iam_scope (
     public_id wt_public_id primary key,
     create_time wt_timestamp,
     update_time wt_timestamp,
@@ -173,12 +186,12 @@ CREATE TABLE if not exists iam_scope (
     description text,
     parent_id text REFERENCES iam_scope(public_id) ON DELETE CASCADE ON UPDATE CASCADE
   );
-create table if not exists iam_scope_organization (
+create table iam_scope_organization (
     scope_id wt_public_id NOT NULL UNIQUE REFERENCES iam_scope(public_id) ON DELETE CASCADE ON UPDATE CASCADE,
     name text UNIQUE,
     primary key(scope_id)
   );
-create table if not exists iam_scope_project (
+create table iam_scope_project (
     scope_id wt_public_id NOT NULL REFERENCES iam_scope(public_id) ON DELETE CASCADE ON UPDATE CASCADE,
     parent_id wt_public_id NOT NULL REFERENCES iam_scope_organization(scope_id) ON DELETE CASCADE ON UPDATE CASCADE,
     name text,
