@@ -17,15 +17,15 @@ type Repository struct {
 
 // NewRepository creates a new Repository.
 func NewRepository(r db.Reader, w db.Writer, wrapper wrapping.Wrapper) (*Repository, error) {
-	if r == nil {
-		return nil, errors.New("error creating db repository with nil reader")
+	switch {
+	case r == nil:
+		return nil, errors.New("nil db.Reader")
+	case w == nil:
+		return nil, errors.New("nil db.Writer")
+	case wrapper == nil:
+		return nil, errors.New("nil wrapping.Wrapper")
 	}
-	if w == nil {
-		return nil, errors.New("error creating db repository with nil writer")
-	}
-	if wrapper == nil {
-		return nil, errors.New("error creating db repository with nil wrapper")
-	}
+
 	return &Repository{
 		reader:  r,
 		writer:  w,
