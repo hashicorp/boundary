@@ -92,7 +92,7 @@ func TestHostCatalog_New(t *testing.T) {
 			} else {
 				assert.NoError(err)
 				if assert.NotNil(got) {
-					assert.Emptyf(got.PublicId, "PublicID set")
+					assert.Emptyf(got.PublicId, "PublicId set")
 					assert.Equal(tt.want, got)
 
 					id, err := newHostCatalogId()
@@ -263,7 +263,7 @@ func TestHost_New(t *testing.T) {
 			} else {
 				assert.NoError(err)
 				if assert.NotNil(got) {
-					assert.Emptyf(got.PublicId, "PublicID set")
+					assert.Emptyf(got.PublicId, "PublicId set")
 					assert.Equal(tt.want, got)
 
 					id, err := newHostId()
@@ -363,7 +363,7 @@ func TestHostSet_New(t *testing.T) {
 			} else {
 				assert.NoError(err)
 				if assert.NotNil(got) {
-					assert.Emptyf(got.PublicId, "PublicID set")
+					assert.Emptyf(got.PublicId, "PublicId set")
 					assert.Equal(tt.want, got)
 
 					id, err := newHostSetId()

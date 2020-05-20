@@ -208,7 +208,7 @@ func TestRepository_CreateCatalog(t *testing.T) {
 			} else {
 				assert.NoError(err)
 				if assert.NotNil(got) {
-					assertPublicID(t, "sthc", got.PublicId)
+					assertPublicId(t, "sthc", got.PublicId)
 
 					assert.Equal(tt.want.Name, got.Name)
 					assert.Equal(tt.want.Description, got.Description)
@@ -220,7 +220,7 @@ func TestRepository_CreateCatalog(t *testing.T) {
 	}
 }
 
-func assertPublicID(t *testing.T, prefix, actual string) {
+func assertPublicId(t *testing.T, prefix, actual string) {
 	t.Helper()
 	if actual == "" {
 		t.Errorf("PublicId is empty")
@@ -228,12 +228,12 @@ func assertPublicID(t *testing.T, prefix, actual string) {
 	parts := strings.Split(actual, "_")
 	switch {
 	case len(parts) > 2:
-		t.Errorf("want one '_' in PublicID, got multiple in %q", actual)
+		t.Errorf("want one '_' in PublicId, got multiple in %q", actual)
 	case len(parts) < 2:
-		t.Errorf("want one '_' in PublicID, got none in %q", actual)
+		t.Errorf("want one '_' in PublicId, got none in %q", actual)
 	}
 
 	if prefix != parts[0] {
-		t.Errorf("PublicID want prefix: %q, got: %q in %q", prefix, parts[0], actual)
+		t.Errorf("PublicId want prefix: %q, got: %q in %q", prefix, parts[0], actual)
 	}
 }
