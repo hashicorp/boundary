@@ -27,8 +27,8 @@ require (
 	github.com/hashicorp/go-sockaddr v1.0.2
 	github.com/hashicorp/go-uuid v1.0.2
 	github.com/hashicorp/hcl v1.0.0
-	github.com/hashicorp/vault v1.2.1-0.20200513002223-fc89625cd196
-	github.com/hashicorp/vault/sdk v0.1.14-0.20200514164214-89b1987e38c2
+	github.com/hashicorp/vault v1.2.1-0.20200519221912-a8c2591d3641
+	github.com/hashicorp/vault/sdk v0.1.14-0.20200519221912-a8c2591d3641
 	github.com/jackc/pgx/v4 v4.6.0
 	github.com/jinzhu/gorm v1.9.12
 	github.com/kr/pretty v0.2.0
