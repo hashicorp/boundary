@@ -33,10 +33,6 @@ func NewHostCatalog(scopeId string, opt ...Option) (*HostCatalog, error) {
 	return hc, nil
 }
 
-func newHostCatalogId() (string, error) {
-	return db.NewPublicId("sthc")
-}
-
 func (c *HostCatalog) clone() *HostCatalog {
 	cp := proto.Clone(c.HostCatalog)
 	return &HostCatalog{
@@ -73,10 +69,6 @@ func NewHost(catalogId, address string, opt ...Option) (*Host, error) {
 	return host, nil
 }
 
-func newHostId() (string, error) {
-	return db.NewPublicId("sth")
-}
-
 // A HostSet contains a static address.
 type HostSet struct {
 	*store.HostSet
@@ -102,10 +94,6 @@ func NewHostSet(catalogId string, opt ...Option) (*HostSet, error) {
 	return set, nil
 }
 
-func newHostSetId() (string, error) {
-	return db.NewPublicId("sths")
-}
-
 // A HostSet contains a static address.
 type HostSetMember struct {
 	*store.HostSetMember
@@ -129,4 +117,23 @@ func NewHostSetMember(hostSetId, hostId string, opt ...Option) (*HostSetMember, 
 		},
 	}
 	return member, nil
+}
+
+// PublicID prefixes for the resources in the static package.
+const (
+	hostCatalogPrefix = "sthc"
+	hostSetPrefix     = "sths"
+	hostPrefix        = "sth"
+)
+
+func newHostCatalogId() (string, error) {
+	return db.NewPublicId(hostCatalogPrefix)
+}
+
+func newHostId() (string, error) {
+	return db.NewPublicId(hostPrefix)
+}
+
+func newHostSetId() (string, error) {
+	return db.NewPublicId(hostSetPrefix)
 }
