@@ -105,7 +105,7 @@ func (r *Repository) CreateCatalog(ctx context.Context, c *HostCatalog, opt ...O
 	if err != nil {
 		var e *pq.Error
 		if errors.As(err, &e) {
-			if e.Code == "23505" {
+			if e.Code.Name() == "unique_violation" {
 				return nil, fmt.Errorf("%w: static host catalog: %s in scope: %s already exists",
 					ErrNotUnique, c.Name, c.ScopeId)
 			}
