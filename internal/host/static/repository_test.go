@@ -122,10 +122,6 @@ func TestRepository_CreateCatalog(t *testing.T) {
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
 
-	repo, err := NewRepository(rw, rw, wrapper)
-	assert.NoError(t, err)
-	assert.NotNil(t, repo)
-
 	_, prj := iam.TestScopes(t, conn)
 
 	var tests = []struct {
@@ -200,6 +196,9 @@ func TestRepository_CreateCatalog(t *testing.T) {
 	for _, tt := range tests {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
+			repo, err := NewRepository(rw, rw, wrapper)
+			assert.NoError(t, err)
+			assert.NotNil(t, repo)
 			assert := assert.New(t)
 			got, err := repo.CreateCatalog(context.Background(), tt.in, tt.opts...)
 			if tt.wantIsErr != nil {
