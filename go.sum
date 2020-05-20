@@ -562,13 +562,12 @@ github.com/grpc-ecosystem/grpc-gateway v1.14.5 h1:aiLxiiVzAXb7wb3lAmubA69IokWOoU
 github.com/grpc-ecosystem/grpc-gateway v1.14.5/go.mod h1:UJ0EZAp832vCd54Wev9N1BMKEyvcZ5+IM0AwDrnlkEc=
 github.com/hailocab/go-hostpool v0.0.0-20160125115350-e80d13ce29ed h1:5upAirOpQc1Q53c0bnx2ufif5kANL7bfZWcc6VJWJd8=
 github.com/hailocab/go-hostpool v0.0.0-20160125115350-e80d13ce29ed/go.mod h1:tMWxXQ9wFIaZeTI9F+hmhFiGpFmhOHzyShyFUhRm0H4=
-github.com/hashicorp/consul-template v0.22.0 h1:ti5cqAekOeMfFYLJCjlPtKGwBcqwVxoZO/Y2vctwuUE=
-github.com/hashicorp/consul-template v0.22.0/go.mod h1:lHrykBIcPobCuEcIMLJryKxDyk2lUMnQWmffOEONH0k=
-github.com/hashicorp/consul/api v1.1.0/go.mod h1:VmuI/Lkw1nC05EYQWNKwWGbkg+FbDBtguAZLlVdkD9Q=
-github.com/hashicorp/consul/api v1.2.1-0.20200128105449-6681be918a6e h1:vOqdnsq53winzJDN6RTQe9n9g87S595PNsdwKyBWXRM=
-github.com/hashicorp/consul/api v1.2.1-0.20200128105449-6681be918a6e/go.mod h1:ztzLK20HA5O27oTf2j/wbNgq8qj/crN8xsSx7pzX0sc=
+github.com/hashicorp/consul-template v0.25.0 h1:wsnv4jSqBIVzlg6U0wNg+ePzfrsF3Vi9MqIqDEUrg9U=
+github.com/hashicorp/consul-template v0.25.0/go.mod h1:/vUsrJvDuuQHcxEw0zik+YXTS7ZKWZjQeaQhshBmfH0=
+github.com/hashicorp/consul/api v1.4.0 h1:jfESivXnO5uLdH650JU/6AnjRoHrLhULq0FnC3Kp9EY=
+github.com/hashicorp/consul/api v1.4.0/go.mod h1:xc8u05kyMa3Wjr9eEAsIAo3dg8+LywT5E/Cl7cNS5nU=
 github.com/hashicorp/consul/sdk v0.1.1/go.mod h1:VKf9jXwCTEY1QZP2MOLRhb5i/I/ssyNV1vwHyQBF0x8=
-github.com/hashicorp/consul/sdk v0.2.0/go.mod h1:VKf9jXwCTEY1QZP2MOLRhb5i/I/ssyNV1vwHyQBF0x8=
+github.com/hashicorp/consul/sdk v0.4.0/go.mod h1:fY08Y9z5SvJqevyZNy6WWPXiG3KwBPAvlcdx16zZ0fM=
 github.com/hashicorp/errwrap v1.0.0 h1:hLrqtEDnRye3+sgx6z4qVLNuviH3MR5aQ0ykNJa/UYA=
 github.com/hashicorp/errwrap v1.0.0/go.mod h1:YH+1FKiLXxHSkmPseP+kNlulaMuP3n2brvKWEqk/Jc4=
 github.com/hashicorp/go-alpnmux v0.0.0-20200513011953-0293f5d23c31 h1:pxqI71/0R1WIASjQEJ9W9skCKYiREEkRoXFvHCZH1pg=
@@ -657,8 +656,8 @@ github.com/hashicorp/raft-snapshot v1.0.2-0.20190827162939-8117efcc5aab/go.mod h
 github.com/hashicorp/serf v0.8.2/go.mod h1:6hOLApaqBFA1NXqRQAsxw9QxuDEvNxSQRwA/JwenrHc=
 github.com/hashicorp/serf v0.8.3 h1:MWYcmct5EtKz0efYooPcL0yNkem+7kWxqXDi/UIh+8k=
 github.com/hashicorp/serf v0.8.3/go.mod h1:UpNcs7fFbpKIyZaUuSW6EPiH+eZC7OuyFD+wc1oal+k=
-github.com/hashicorp/vault v1.2.1-0.20200519221912-a8c2591d3641 h1:sFzGh4bThye9dcV3XhO6xOtWlhXY73cgfod/B3eqdf0=
-github.com/hashicorp/vault v1.2.1-0.20200519221912-a8c2591d3641/go.mod h1:AxZRQLEuX4UQt4GIITGJE/s/dpQJjwQnPfufvchqxFM=
+github.com/hashicorp/vault v1.2.1-0.20200520190036-559b7312f18c h1:jYIqeAZzptzjn9zWoaAxhYyDmln7rnkmRslytcK+A5A=
+github.com/hashicorp/vault v1.2.1-0.20200520190036-559b7312f18c/go.mod h1:ayqGMcTz9nl/VkA1Be+buC6On63tU9La/QP2irxLaO0=
 github.com/hashicorp/vault-plugin-auth-alicloud v0.5.5 h1:JYf3VYpKs7mOdtcwZWi73S82oXrC/JR7uoPVUd8c4Hk=
 github.com/hashicorp/vault-plugin-auth-alicloud v0.5.5/go.mod h1:sQ+VNwPQlemgXHXikYH6onfH9gPwDZ1GUVRLz0ZvHx8=
 github.com/hashicorp/vault-plugin-auth-azure v0.5.5 h1:kN79ai+aMVU9hUmwscHjmweW2fGa8V/t+ScIchPZGrk=
@@ -1391,7 +1390,6 @@ golang.org/x/sys v0.0.0-20190616124812-15dcb6c0061f/go.mod h1:h1NjWce9XRLGQEsW7w
 golang.org/x/sys v0.0.0-20190624142023-c5567b49c5d0/go.mod h1:h1NjWce9XRLGQEsW7wpKNCjG9DtNlClVuFLEZdDNbEs=
 golang.org/x/sys v0.0.0-20190712062909-fae7ac547cb7/go.mod h1:h1NjWce9XRLGQEsW7wpKNCjG9DtNlClVuFLEZdDNbEs=
 golang.org/x/sys v0.0.0-20190726091711-fc99dfbffb4e/go.mod h1:h1NjWce9XRLGQEsW7wpKNCjG9DtNlClVuFLEZdDNbEs=
-golang.org/x/sys v0.0.0-20190730183949-1393eb018365/go.mod h1:h1NjWce9XRLGQEsW7wpKNCjG9DtNlClVuFLEZdDNbEs=
 golang.org/x/sys v0.0.0-20190813064441-fde4db37ae7a/go.mod h1:h1NjWce9XRLGQEsW7wpKNCjG9DtNlClVuFLEZdDNbEs=
 golang.org/x/sys v0.0.0-20190826190057-c7b8b68b1456/go.mod h1:h1NjWce9XRLGQEsW7wpKNCjG9DtNlClVuFLEZdDNbEs=
 golang.org/x/sys v0.0.0-20191001151750-bb3f8db39f24/go.mod h1:h1NjWce9XRLGQEsW7wpKNCjG9DtNlClVuFLEZdDNbEs=
