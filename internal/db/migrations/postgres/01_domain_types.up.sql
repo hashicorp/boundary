@@ -29,4 +29,17 @@ $$;
 comment on function update_time_column() is
 'function used in before update triggers to properly set update_time columns';
 
+CREATE
+  OR REPLACE FUNCTION immutable_create_time_func() RETURNS TRIGGER
+SET SCHEMA
+  'public' LANGUAGE plpgsql AS $$
+BEGIN IF COALESCE((NEW.create_time <> OLD.create_time), true) THEN
+RAISE EXCEPTION 'create_time cannot be set to %', new.create_time;
+END IF;
+return NEW;
+END;
+$$;
+comment on function immutable_create_time_func() is
+'function used in before update triggers to make create_time column immutable';
+
 commit;
