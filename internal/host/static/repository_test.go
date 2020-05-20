@@ -122,8 +122,6 @@ func TestRepository_CreateCatalog(t *testing.T) {
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
 
-	_, prj := iam.TestScopes(t, conn)
-
 	var tests = []struct {
 		name      string
 		in        *HostCatalog
@@ -140,66 +138,52 @@ func TestRepository_CreateCatalog(t *testing.T) {
 		{
 			name: "valid-no-options",
 			in: &HostCatalog{
-				HostCatalog: &store.HostCatalog{
-					ScopeId: prj.GetPublicId(),
-				},
+				HostCatalog: &store.HostCatalog{},
 			},
 			want: &HostCatalog{
-				HostCatalog: &store.HostCatalog{
-					ScopeId: prj.GetPublicId(),
-				},
+				HostCatalog: &store.HostCatalog{},
 			},
 		},
 		{
 			name: "valid-with-name",
 			in: &HostCatalog{
 				HostCatalog: &store.HostCatalog{
-					ScopeId: prj.GetPublicId(),
-					Name:    "test-name-repo",
+					Name: "test-name-repo",
 				},
 			},
 			want: &HostCatalog{
 				HostCatalog: &store.HostCatalog{
-					ScopeId: prj.GetPublicId(),
-					Name:    "test-name-repo",
+					Name: "test-name-repo",
 				},
 			},
 		},
 		{
 			name: "valid-with-description",
-
 			in: &HostCatalog{
 				HostCatalog: &store.HostCatalog{
-					ScopeId:     prj.GetPublicId(),
 					Description: ("test-description-repo"),
 				},
 			},
 			want: &HostCatalog{
 				HostCatalog: &store.HostCatalog{
-					ScopeId:     prj.GetPublicId(),
 					Description: ("test-description-repo"),
 				},
 			},
-		},
-		{
-			name: "invalid-duplicate-name",
-			in: &HostCatalog{
-				HostCatalog: &store.HostCatalog{
-					ScopeId: prj.GetPublicId(),
-					Name:    "test-name-repo",
-				},
-			},
-			wantIsErr: db.ErrNotUnique,
 		},
 	}
 
 	for _, tt := range tests {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
-			repo, err := NewRepository(rw, rw, wrapper)
-			assert.NoError(t, err)
-			assert.NotNil(t, repo)
 			assert := assert.New(t)
+			repo, err := NewRepository(rw, rw, wrapper)
+			assert.NoError(err)
+			assert.NotNil(repo)
+			_, prj := iam.TestScopes(t, conn)
+			if tt.in != nil {
+				tt.in.ScopeId = prj.GetPublicId()
+				assert.Empty(tt.in.PublicId)
+			}
 			got, err := repo.CreateCatalog(context.Background(), tt.in, tt.opts...)
 			if tt.wantIsErr != nil {
 				assert.Error(err)
@@ -207,18 +191,84 @@ func TestRepository_CreateCatalog(t *testing.T) {
 				assert.Nil(got)
 			} else {
 				assert.NoError(err)
+				assert.Empty(tt.in.PublicId)
 				if assert.NotNil(got) {
 					assertPublicId(t, "sthc", got.PublicId)
-
 					assert.NotSame(tt.in, got)
 					assert.Equal(tt.want.Name, got.Name)
 					assert.Equal(tt.want.Description, got.Description)
 					assert.Equal(got.CreateTime, got.UpdateTime)
-
 				}
 			}
 		})
 	}
+
+	t.Run("invalid-duplicate-names", func(t *testing.T) {
+		assert := assert.New(t)
+		repo, err := NewRepository(rw, rw, wrapper)
+		assert.NoError(err)
+		assert.NotNil(repo)
+
+		_, prj := iam.TestScopes(t, conn)
+		in := &HostCatalog{
+			HostCatalog: &store.HostCatalog{
+				ScopeId: prj.GetPublicId(),
+				Name:    "test-name-repo",
+			},
+		}
+
+		got, err := repo.CreateCatalog(context.Background(), in)
+		assert.NoError(err)
+		if assert.NotNil(got) {
+			assertPublicId(t, "sthc", got.PublicId)
+			assert.NotSame(in, got)
+			assert.Equal(in.Name, got.Name)
+			assert.Equal(in.Description, got.Description)
+			assert.Equal(got.CreateTime, got.UpdateTime)
+		}
+
+		got2, err := repo.CreateCatalog(context.Background(), in)
+		assert.Error(err)
+		assert.Truef(errors.Is(err, db.ErrNotUnique), "want err: %v got: %v", db.ErrNotUnique, err)
+		assert.Nil(got2)
+	})
+
+	t.Run("valid-duplicate-names-diff-scopes", func(t *testing.T) {
+		assert := assert.New(t)
+		repo, err := NewRepository(rw, rw, wrapper)
+		assert.NoError(err)
+		assert.NotNil(repo)
+
+		org, prj := iam.TestScopes(t, conn)
+		in := &HostCatalog{
+			HostCatalog: &store.HostCatalog{
+				Name: "test-name-repo",
+			},
+		}
+		in2 := in.clone()
+
+		in.ScopeId = prj.GetPublicId()
+		got, err := repo.CreateCatalog(context.Background(), in)
+		assert.NoError(err)
+		if assert.NotNil(got) {
+			assertPublicId(t, "sthc", got.PublicId)
+			assert.NotSame(in, got)
+			assert.Equal(in.Name, got.Name)
+			assert.Equal(in.Description, got.Description)
+			assert.Equal(got.CreateTime, got.UpdateTime)
+		}
+
+		in2.ScopeId = org.GetPublicId()
+		got2, err := repo.CreateCatalog(context.Background(), in2)
+		assert.NoError(err)
+		if assert.NotNil(got2) {
+			assertPublicId(t, "sthc", got2.PublicId)
+			assert.NotSame(in2, got2)
+			assert.Equal(in2.Name, got2.Name)
+			assert.Equal(in2.Description, got2.Description)
+			assert.Equal(got2.CreateTime, got2.UpdateTime)
+		}
+	})
 }
 
 func assertPublicId(t *testing.T, prefix, actual string) {
