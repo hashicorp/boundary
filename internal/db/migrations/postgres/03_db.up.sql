@@ -12,6 +12,14 @@ CREATE TABLE if not exists db_test_user (
   phone_number text,
   email text
 );
+CREATE TRIGGER update_db_test_user_update_time 
+BEFORE 
+UPDATE ON db_test_user FOR EACH ROW EXECUTE PROCEDURE update_time_column();
+
+CREATE TRIGGER update_db_test_user_create_time
+BEFORE
+UPDATE ON db_test_user FOR EACH ROW EXECUTE PROCEDURE immutable_create_time_func();
+
 CREATE TABLE if not exists db_test_car (
   id bigint generated always as identity primary key,
   create_time wt_timestamp,
@@ -21,6 +29,15 @@ CREATE TABLE if not exists db_test_car (
   model text,
   mpg smallint
 );
+
+CREATE TRIGGER update_db_test_car_update_time 
+BEFORE 
+UPDATE ON db_test_car FOR EACH ROW EXECUTE PROCEDURE update_time_column();
+
+CREATE TRIGGER update_db_test_car_create_time
+BEFORE
+UPDATE ON db_test_car FOR EACH ROW EXECUTE PROCEDURE immutable_create_time_func();
+
 CREATE TABLE if not exists db_test_rental (
   id bigint generated always as identity primary key,
   create_time wt_timestamp,
@@ -30,5 +47,14 @@ CREATE TABLE if not exists db_test_rental (
   user_id bigint not null REFERENCES db_test_user(id),
   car_id bigint not null REFERENCES db_test_car(id)
 );
+
+CREATE TRIGGER update_db_test_rental_update_time 
+BEFORE 
+UPDATE ON db_test_rental FOR EACH ROW EXECUTE PROCEDURE update_time_column();
+
+CREATE TRIGGER update_db_test_rental_create_time
+BEFORE
+UPDATE ON db_test_rental FOR EACH ROW EXECUTE PROCEDURE immutable_create_time_func();
+
 
 commit;

@@ -83,4 +83,12 @@ CREATE TRIGGER iam_scope_update
 BEFORE
 update ON iam_scope FOR EACH ROW EXECUTE PROCEDURE iam_immutable_scope_type_func();
 
+CREATE TRIGGER update_iam_scope_update_time 
+BEFORE 
+UPDATE ON iam_scope FOR EACH ROW EXECUTE PROCEDURE update_time_column();
+
+CREATE TRIGGER update_iam_scope_create_time
+BEFORE
+UPDATE ON iam_scope FOR EACH ROW EXECUTE PROCEDURE immutable_create_time_func();
+
 COMMIT;
