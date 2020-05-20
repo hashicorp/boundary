@@ -69,7 +69,7 @@ func NewHost(catalogId, address string, opt ...Option) (*Host, error) {
 	return host, nil
 }
 
-// A HostSet contains a static address.
+// A HostSet is a collection of hosts from the set's catalog.
 type HostSet struct {
 	*store.HostSet
 	tableName string `gorm:"-"`
@@ -94,15 +94,14 @@ func NewHostSet(catalogId string, opt ...Option) (*HostSet, error) {
 	return set, nil
 }
 
-// A HostSet contains a static address.
+// A HostSetMember represents the membership of a host in a host set.
 type HostSetMember struct {
 	*store.HostSetMember
 	tableName string `gorm:"-"`
 }
 
-// NewHostSetMember creates a new in memory HostSetMember assigned to catalogId.
-// Name and description are the only valid options. All other options are
-// ignored.
+// NewHostSetMember creates a new in memory HostSetMember representing the
+// membership of hostId in hostSetId.
 func NewHostSetMember(hostSetId, hostId string, opt ...Option) (*HostSetMember, error) {
 	if hostSetId == "" {
 		return nil, errors.New("empty hostSetId")
@@ -119,7 +118,7 @@ func NewHostSetMember(hostSetId, hostId string, opt ...Option) (*HostSetMember, 
 	return member, nil
 }
 
-// PublicID prefixes for the resources in the static package.
+// PublicId prefixes for the resources in the static package.
 const (
 	hostCatalogPrefix = "sthc"
 	hostSetPrefix     = "sths"
