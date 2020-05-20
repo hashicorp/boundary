@@ -7,10 +7,11 @@ import (
 	"testing"
 
 	wrapping "github.com/hashicorp/go-kms-wrapping"
+	"github.com/stretchr/testify/assert"
+
 	"github.com/hashicorp/watchtower/internal/db"
 	"github.com/hashicorp/watchtower/internal/host/static/store"
 	"github.com/hashicorp/watchtower/internal/iam"
-	"github.com/stretchr/testify/assert"
 )
 
 func TestRepository_New(t *testing.T) {
@@ -61,7 +62,7 @@ func TestRepository_New(t *testing.T) {
 				wrapper: wrapper,
 			},
 			want:      nil,
-			wantIsErr: ErrNilParameter,
+			wantIsErr: db.ErrNilParameter,
 		},
 		{
 			name: "nil-writer",
@@ -71,7 +72,7 @@ func TestRepository_New(t *testing.T) {
 				wrapper: wrapper,
 			},
 			want:      nil,
-			wantIsErr: ErrNilParameter,
+			wantIsErr: db.ErrNilParameter,
 		},
 		{
 			name: "nil-wrapper",
@@ -81,7 +82,7 @@ func TestRepository_New(t *testing.T) {
 				wrapper: nil,
 			},
 			want:      nil,
-			wantIsErr: ErrNilParameter,
+			wantIsErr: db.ErrNilParameter,
 		},
 		{
 			name: "all-nils",
@@ -91,7 +92,7 @@ func TestRepository_New(t *testing.T) {
 				wrapper: nil,
 			},
 			want:      nil,
-			wantIsErr: ErrNilParameter,
+			wantIsErr: db.ErrNilParameter,
 		},
 	}
 	for _, tt := range tests {
@@ -138,7 +139,7 @@ func TestRepository_CreateCatalog(t *testing.T) {
 			name:      "nil-catalog",
 			in:        nil,
 			want:      nil,
-			wantIsErr: ErrNilParameter,
+			wantIsErr: db.ErrNilParameter,
 		},
 		{
 			name: "valid-no-options",
@@ -192,7 +193,7 @@ func TestRepository_CreateCatalog(t *testing.T) {
 					Name:    "test-name-repo",
 				},
 			},
-			wantIsErr: ErrNotUnique,
+			wantIsErr: db.ErrNotUnique,
 		},
 	}
 

@@ -6,27 +6,10 @@ import (
 	"fmt"
 
 	wrapping "github.com/hashicorp/go-kms-wrapping"
+	"github.com/lib/pq"
+
 	"github.com/hashicorp/watchtower/internal/db"
 	"github.com/hashicorp/watchtower/internal/oplog"
-	"github.com/lib/pq"
-)
-
-// Errors returned from this package may be tested against these errors
-// with errors.Is.
-var (
-	// ErrInvalidPublicId indicates an invalid PublicId.
-	ErrInvalidPublicId = errors.New("invalid publicId")
-
-	// ErrInvalidParameter is returned by create and update methods if
-	// an attribute on a struct contains illegal or invalid values.
-	ErrInvalidParameter = errors.New("invalid parameter")
-
-	// ErrNotUnique is returned by create and update methods when a write
-	// to the repository resulted in a unique constraint violation.
-	ErrNotUnique = errors.New("unique constraint violation")
-
-	// ErrNilParameter is returned when a required parameter is nil.
-	ErrNilParameter = errors.New("nil parameter")
 )
 
 // A Repository stores and retrieves the persistent types in the static
@@ -41,11 +24,11 @@ type Repository struct {
 func NewRepository(r db.Reader, w db.Writer, wrapper wrapping.Wrapper) (*Repository, error) {
 	switch {
 	case r == nil:
-		return nil, fmt.Errorf("db.Reader: %w", ErrNilParameter)
+		return nil, fmt.Errorf("db.Reader: %w", db.ErrNilParameter)
 	case w == nil:
-		return nil, fmt.Errorf("db.Writer: %w", ErrNilParameter)
+		return nil, fmt.Errorf("db.Writer: %w", db.ErrNilParameter)
 	case wrapper == nil:
-		return nil, fmt.Errorf("wrapping.Wrapper: %w", ErrNilParameter)
+		return nil, fmt.Errorf("wrapping.Wrapper: %w", db.ErrNilParameter)
 	}
 
 	return &Repository{
@@ -66,13 +49,13 @@ func NewRepository(r db.Reader, w db.Writer, wrapper wrapping.Wrapper) (*Reposit
 // Both c.CreateTime and c.UpdateTime are ignored.
 func (r *Repository) CreateCatalog(ctx context.Context, c *HostCatalog, opt ...Option) (*HostCatalog, error) {
 	if c == nil {
-		return nil, fmt.Errorf("create: host catalog: %w", ErrNilParameter)
+		return nil, fmt.Errorf("create: host catalog: %w", db.ErrNilParameter)
 	}
 	if c.HostCatalog.ScopeId == "" {
-		return nil, fmt.Errorf("create: host catalog: no scope id: %w", ErrInvalidParameter)
+		return nil, fmt.Errorf("create: host catalog: no scope id: %w", db.ErrInvalidParameter)
 	}
 	if c.PublicId != "" {
-		return nil, fmt.Errorf("create: host catalog: public id not empty: %w", ErrInvalidParameter)
+		return nil, fmt.Errorf("create: host catalog: public id not empty: %w", db.ErrInvalidParameter)
 	}
 	id, err := newHostCatalogId()
 	if err != nil {
@@ -108,7 +91,7 @@ func (r *Repository) CreateCatalog(ctx context.Context, c *HostCatalog, opt ...O
 		if errors.As(err, &e) {
 			if e.Code.Name() == "unique_violation" {
 				return nil, fmt.Errorf("%w: static host catalog: %s in scope: %s already exists",
-					ErrNotUnique, c.Name, c.ScopeId)
+					db.ErrNotUnique, c.Name, c.ScopeId)
 			}
 		}
 		return nil, err
