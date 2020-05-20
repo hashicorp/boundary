@@ -210,6 +210,7 @@ func TestRepository_CreateCatalog(t *testing.T) {
 				if assert.NotNil(got) {
 					assertPublicId(t, "sthc", got.PublicId)
 
+					assert.NotSame(tt.in, got)
 					assert.Equal(tt.want.Name, got.Name)
 					assert.Equal(tt.want.Description, got.Description)
 					assert.Equal(got.CreateTime, got.UpdateTime)
