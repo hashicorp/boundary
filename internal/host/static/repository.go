@@ -103,6 +103,7 @@ func (r *Repository) CreateCatalog(ctx context.Context, c *HostCatalog, opt ...O
 	)
 
 	if err != nil {
+		// TODO(mgaffney): extract database specific error handing
 		var e *pq.Error
 		if errors.As(err, &e) {
 			if e.Code.Name() == "unique_violation" {
@@ -124,16 +125,19 @@ func (r *Repository) CreateCatalog(ctx context.Context, c *HostCatalog, opt ...O
 //
 // Both c.CreateTime and c.UpdateTime are ignored.
 func (r *Repository) UpdateCatalog(ctx context.Context, c *HostCatalog, fieldMask []string, opt ...Option) (*HostCatalog, error) {
+	// TODO(mgaffney): implement method
 	return nil, nil
 }
 
 // LookupCatalog returns the HostCatalog for id.
 func (r *Repository) LookupCatalog(ctx context.Context, id string, opt ...Option) (*HostCatalog, error) {
+	// TODO(mgaffney): implement method
 	return nil, nil
 }
 
 // DeleteCatalog deletes the HostCatalog for id and returns 1 if the
 // catalog was deleted or 0 if no host catalog was deleted.
 func (r *Repository) DeleteCatalog(ctx context.Context, id string, opt ...Option) (int, error) {
+	// TODO(mgaffney): implement method
 	return 0, nil
 }
