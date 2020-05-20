@@ -119,6 +119,105 @@ func TestGet(t *testing.T) {
 	}
 }
 
+func TestDelete(t *testing.T) {
+	proj, repo := createDefaultProjectAndRepo(t)
+
+	proj2, err := iam.NewProject(proj.GetParentId())
+	if err != nil {
+		t.Fatalf("Couldn't allocate a second project: %v", err)
+	}
+	proj2, err = repo.CreateScope(context.Background(), proj2)
+	if err != nil {
+		t.Fatalf("Couldn't persist a second project %v", err)
+	}
+
+	s := projects.NewService(repo)
+
+	cases := []struct {
+		name    string
+		req     *pbs.DeleteProjectRequest
+		res     *pbs.DeleteProjectResponse
+		errCode codes.Code
+	}{
+		{
+			name: "Delete an Existing Project",
+			req: &pbs.DeleteProjectRequest{
+				OrgId: proj2.GetParentId(),
+				Id:    proj2.GetPublicId(),
+			},
+			res: &pbs.DeleteProjectResponse{
+				Existed: true,
+			},
+			errCode: codes.OK,
+		},
+		{
+			name: "Delete bad project id Project",
+			req: &pbs.DeleteProjectRequest{
+				OrgId: proj2.GetParentId(),
+				Id:    "p_doesntexis",
+			},
+			res: &pbs.DeleteProjectResponse{
+				Existed: false,
+			},
+			errCode: codes.OK,
+		},
+		{
+			name: "Delete bad org id Project",
+			req: &pbs.DeleteProjectRequest{
+				OrgId: "o_doesntexis",
+				Id:    proj2.GetPublicId(),
+			},
+			res: &pbs.DeleteProjectResponse{
+				Existed: false,
+			},
+			errCode: codes.OK,
+		},
+		{
+			name: "Bad org formatting",
+			req: &pbs.DeleteProjectRequest{
+				OrgId: "bad_format",
+				Id:    proj2.GetPublicId(),
+			},
+			res:     nil,
+			errCode: codes.InvalidArgument,
+		},
+		{
+			name: "Bad Project Id formatting",
+			req: &pbs.DeleteProjectRequest{
+				OrgId: proj2.GetParentId(),
+				Id:    "bad_format",
+			},
+			res:     nil,
+			errCode: codes.InvalidArgument,
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			assert := assert.New(t)
+			got, gErr := s.DeleteProject(context.Background(), tc.req)
+			assert.Equal(tc.errCode, status.Code(gErr), "DeleteProject(%+v) got error %v, wanted %v", tc.req, gErr, tc.errCode)
+			assert.EqualValuesf(tc.res, got, "DeleteProject(%q) got response %q, wanted %q", tc.req, got, tc.res)
+		})
+	}
+}
+
+func TestDelete_twice(t *testing.T) {
+	assert := assert.New(t)
+	proj, repo := createDefaultProjectAndRepo(t)
+
+	s := projects.NewService(repo)
+	req := &pbs.DeleteProjectRequest{
+		OrgId: proj.GetParentId(),
+		Id:    proj.GetPublicId(),
+	}
+	got, gErr := s.DeleteProject(context.Background(), req)
+	assert.NoError(gErr, "First attempt")
+	assert.True(got.GetExisted(), "Expected existed to be true for the first delete.")
+	got, gErr = s.DeleteProject(context.Background(), req)
+	assert.NoError(gErr, "Second attempt")
+	assert.False(got.GetExisted(), "Expected existed to be false for the second delete.")
+}
+
 func TestCreate(t *testing.T) {
 	defaultProj, repo := createDefaultProjectAndRepo(t)
 	defaultProjCreated, err := ptypes.Timestamp(defaultProj.GetCreateTime().GetTimestamp())
