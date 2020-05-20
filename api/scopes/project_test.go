@@ -1,6 +1,7 @@
 package scopes
 
 import (
+	"net/http"
 	"testing"
 
 	"github.com/hashicorp/watchtower/api"
@@ -43,7 +44,32 @@ func TestProjects_Crud(t *testing.T) {
 	existed, apiErr, err = org.DeleteProject(tc.Context(), p)
 	assert.NoError(t, err)
 	assert.False(t, existed, "Expected project to not exist when deleted, but it did.")
+}
 
-	// TODO: Error conditions once the proper errors are being returned.
-	// Probably as parallel subtests against the same DB.
+// TODO: Get better coverage for expected errors and error formats.
+func TestProject_Errors(t *testing.T) {
+	assert := assert.New(t)
+	tc := controller.NewTestController(t, nil)
+	defer tc.Shutdown()
+	ctx := tc.Context()
+
+	client := tc.Client()
+	org := &Organization{
+		Client: client,
+	}
+	createdProj, apiErr, err := org.CreateProject(ctx, &Project{})
+	assert.NoError(err)
+	assert.NotNil(createdProj)
+	assert.Nil(apiErr)
+
+	_, apiErr, err = org.ReadProject(ctx, &Project{Id: "p_doesntexis"})
+	assert.NoError(err)
+	// TODO: Should this be nil instead of just a Project that has no values set
+	assert.NotNil(apiErr)
+	assert.EqualValues(*apiErr.Status, http.StatusNotFound)
+
+	_, apiErr, err = org.ReadProject(ctx, &Project{Id: "invalid id"})
+	assert.NoError(err)
+	assert.NotNil(apiErr)
+	assert.EqualValues(*apiErr.Status, http.StatusBadRequest)
 }
