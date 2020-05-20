@@ -58,7 +58,6 @@ func TestDb_Update(t *testing.T) {
 		user, err := db_test.NewTestUser()
 		assert.NoError(err)
 		user.Name = "foo-" + id
-		db.LogMode(true)
 		err = w.Create(context.Background(), user)
 		db.LogMode(false)
 		assert.NoError(err)
