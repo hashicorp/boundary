@@ -2,12 +2,13 @@ package handlers
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 
 	"github.com/golang/protobuf/proto"
 	"github.com/grpc-ecosystem/grpc-gateway/runtime"
+	"github.com/hashicorp/go-hclog"
 	pb "github.com/hashicorp/watchtower/internal/gen/controller/api"
 	"google.golang.org/genproto/googleapis/rpc/errdetails"
 	"google.golang.org/grpc/codes"
@@ -31,12 +32,7 @@ func InvalidArgumentErrorf(msg string, fields []string) error {
 	return st.Err()
 }
 
-func statusErrorToApiError(e error) (*pb.Error, bool) {
-	s, ok := status.FromError(e)
-	if !ok {
-		return nil, false
-	}
-
+func statusErrorToApiError(s *status.Status) *pb.Error {
 	apiErr := &pb.Error{}
 	apiErr.Status = int32(runtime.HTTPStatusFromCode(s.Code()))
 	apiErr.Message = s.Message()
@@ -58,26 +54,38 @@ func statusErrorToApiError(e error) (*pb.Error, bool) {
 	if !proto.Equal(d, &pb.ErrorDetails{}) {
 		apiErr.Details = d
 	}
-	return apiErr, true
+	return apiErr
 }
 
-func ErrorHandler(ctx context.Context, mux *runtime.ServeMux, marshaler runtime.Marshaler, w http.ResponseWriter, r *http.Request, inErr error) {
-	if inErr == runtime.ErrUnknownURI {
-		// grpc gateway uses this error when the path was not matched, but the error uses codes.Unimplemented which doesn't match the intention.
-		// Overwrite the error to match our expected behavior.
-		inErr = status.Error(codes.NotFound, "Path not found.")
-	}
+const errorFallback = `{"error": "failed to marshal error message"}`
 
-	apiErr, ok := statusErrorToApiError(inErr)
-	if !ok {
-		runtime.GlobalHTTPErrorHandler(ctx, mux, marshaler, w, r, inErr)
-		return
-	}
+func ErrorHandler(logger hclog.Logger) runtime.ProtoErrorHandlerFunc {
+	return func(ctx context.Context, _ *runtime.ServeMux, marshaler runtime.Marshaler, w http.ResponseWriter, r *http.Request, inErr error) {
+		if inErr == runtime.ErrUnknownURI {
+			// grpc gateway uses this error when the path was not matched, but the error uses codes.Unimplemented which doesn't match the intention.
+			// Overwrite the error to match our expected behavior.
+			inErr = status.Error(codes.NotFound, http.StatusText(http.StatusNotFound))
+		}
+		s, ok := status.FromError(inErr)
+		if !ok {
+			s = status.New(codes.Unknown, inErr.Error())
+		}
+		apiErr := statusErrorToApiError(s)
+		buf, merr := marshaler.Marshal(apiErr)
+		if merr != nil {
+			logger.Warn("Failed to marshal error message %q: %v", apiErr, merr)
+			w.WriteHeader(http.StatusInternalServerError)
+			if _, err := io.WriteString(w, errorFallback); err != nil {
+				logger.Warn("Failed to write response: %v", err)
+			}
+			return
+		}
 
-	w.Header().Set("Content-type", marshaler.ContentType())
-	w.WriteHeader(int(apiErr.GetStatus()))
-
-	if err := json.NewEncoder(w).Encode(apiErr); err != nil {
-		fmt.Printf("Failed encode json: %v", err)
+		w.Header().Set("Content-Type", marshaler.ContentType())
+		w.WriteHeader(int(apiErr.GetStatus()))
+		if _, err := w.Write(buf); err != nil {
+			logger.Warn("Failed to send response chunk: %v", err)
+			return
+		}
 	}
 }

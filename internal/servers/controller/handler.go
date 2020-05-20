@@ -39,7 +39,7 @@ func handleGrpcGateway(c *Controller) http.Handler {
 	// Register*ServiceHandlerServer methods ignore the passed in ctx.  Using the baseContext now just in case this changes
 	// in the future, at which point we'll want to be using the baseContext.
 	ctx := c.baseContext
-	mux := runtime.NewServeMux(runtime.WithProtoErrorHandler(handlers.ErrorHandler))
+	mux := runtime.NewServeMux(runtime.WithProtoErrorHandler(handlers.ErrorHandler(c.logger)))
 	services.RegisterHostCatalogServiceHandlerServer(ctx, mux, &host_catalogs.Service{})
 	services.RegisterHostSetServiceHandlerServer(ctx, mux, &host_sets.Service{})
 	services.RegisterHostServiceHandlerServer(ctx, mux, &hosts.Service{})
