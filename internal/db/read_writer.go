@@ -177,6 +177,10 @@ func (rw *Db) Create(ctx context.Context, i interface{}, opt ...Option) error {
 	if i == nil {
 		return errors.New("create interface is nil")
 	}
+	// these fields should be nil, since they are not writeable (we want the
+	// db to manage them)
+	setFieldsToNil(i, []string{"CreateTime", "UpdateTime"})
+
 	if vetter, ok := i.(VetForWriter); ok {
 		if err := vetter.VetForWrite(ctx, rw, CreateOp); err != nil {
 			return fmt.Errorf("error on create %w", err)
@@ -204,6 +208,11 @@ func (rw *Db) Update(ctx context.Context, i interface{}, fieldMaskPaths []string
 	if rw.underlying == nil {
 		return NoRowsAffected, errors.New("update underlying db is nil")
 	}
+	scope := rw.underlying.NewScope(i)
+	if scope.PrimaryKeyZero() {
+		return NoRowsAffected, errors.New("update without primary key set")
+	}
+
 	opts := GetOpts(opt...)
 	withDebug := opts.withDebug
 	withOplog := opts.withOplog
@@ -227,10 +236,26 @@ func (rw *Db) Update(ctx context.Context, i interface{}, fieldMaskPaths []string
 		}
 	}
 	if len(fieldMaskPaths) == 0 {
-		if err := rw.underlying.Save(i).Error; err != nil {
-			return NoRowsAffected, fmt.Errorf("error updating: %w", err)
+		// since no fieldMaskPaths were sent, we need to build a field mask with
+		// all fields except the primary key
+		scope := rw.underlying.NewScope(i)
+		fieldMaskPaths = []string{}
+		for _, f := range scope.Fields() {
+			switch {
+			case f.IsPrimaryKey:
+				continue
+			default:
+				fieldMaskPaths = append(fieldMaskPaths, f.StructField.Name)
+			}
 		}
 	}
+
+	// we need to filter out some non-updatable fields (like: CreateTime, etc)
+	fieldMaskPaths = filterFieldMask(fieldMaskPaths)
+	if len(fieldMaskPaths) == 0 {
+		return NoRowsAffected, fmt.Errorf("after filtering non-updated fields, there are no fields left in fieldMaskPaths: %s", fieldMaskPaths)
+	}
+
 	updateFields := map[string]interface{}{}
 
 	val := reflect.Indirect(reflect.ValueOf(i))
@@ -514,4 +539,63 @@ func (rw *Db) SearchWhere(ctx context.Context, resources interface{}, where stri
 		return err
 	}
 	return nil
+}
+
+// filterFieldMasks will filter out non-updatable fields
+func filterFieldMask(fieldMaskPaths []string) []string {
+	if len(fieldMaskPaths) == 0 {
+		return nil
+	}
+	filtered := []string{}
+	for _, p := range fieldMaskPaths {
+		switch {
+		case strings.EqualFold(p, "CreateTime"):
+			continue
+		case strings.EqualFold(p, "UpdateTime"):
+			continue
+		default:
+			filtered = append(filtered, p)
+		}
+	}
+	return filtered
+}
+
+// setFieldsToNil will set the fieldNames to nil. It supports embedding a struct
+// (or structPtr) one level deep.
+func setFieldsToNil(i interface{}, fieldNames []string) {
+	val := reflect.Indirect(reflect.ValueOf(i))
+	structTyp := val.Type()
+	for _, field := range fieldNames {
+		for i := 0; i < structTyp.NumField(); i++ {
+			kind := structTyp.Field(i).Type.Kind()
+			if kind == reflect.Struct || kind == reflect.Ptr {
+				// check if the embedded field is exported via CanInterface()
+				if val.Field(i).CanInterface() {
+					embVal := reflect.Indirect(reflect.ValueOf(val.Field(i).Interface()))
+					// if it's a ptr to a struct, then we need a few more bits before proceeding.
+					if kind == reflect.Ptr {
+						embVal = val.Field(i).Elem()
+						embType := embVal.Type()
+						if embType.Kind() != reflect.Struct {
+							continue
+						}
+					}
+					f := embVal.FieldByName(field)
+					if f.IsValid() {
+						if f.CanSet() {
+							f.Set(reflect.Zero(f.Type()))
+						}
+					}
+					continue
+				}
+			}
+			// it's not an embedded type, so check if the field name matches
+			f := val.FieldByName(field)
+			if f.IsValid() {
+				if f.CanSet() {
+					f.Set(reflect.Zero(f.Type()))
+				}
+			}
+		}
+	}
 }

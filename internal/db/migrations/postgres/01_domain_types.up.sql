@@ -13,4 +13,20 @@ create domain wt_timestamp as
 comment on domain wt_timestamp is
 'Standard timestamp for all create_time and update_time columns';
 
+
+CREATE OR REPLACE FUNCTION update_time_column() RETURNS TRIGGER 
+SET SCHEMA
+  'public' LANGUAGE plpgsql AS $$
+BEGIN
+   IF row(NEW.*) IS DISTINCT FROM row(OLD.*) THEN
+      NEW.update_time = now(); 
+      RETURN NEW;
+   ELSE
+      RETURN OLD;
+   END IF;
+END;
+$$;
+comment on function update_time_column() is
+'function used in before update triggers to properly set update_time columns';
+
 commit;

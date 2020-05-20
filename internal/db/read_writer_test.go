@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/golang/protobuf/ptypes"
 	"github.com/hashicorp/go-uuid"
 	"github.com/hashicorp/watchtower/internal/db/db_test"
 	"github.com/hashicorp/watchtower/internal/oplog"
@@ -49,6 +50,53 @@ func TestDb_Update(t *testing.T) {
 		err = w.LookupByPublicId(context.Background(), foundUser)
 		assert.NoError(err)
 		assert.Equal(foundUser.Name, user.Name)
+	})
+	t.Run("non-updatable-fields", func(t *testing.T) {
+		w := Db{underlying: db}
+		id, err := uuid.GenerateUUID()
+		assert.NoError(err)
+		user, err := db_test.NewTestUser()
+		assert.NoError(err)
+		user.Name = "foo-" + id
+		db.LogMode(true)
+		err = w.Create(context.Background(), user)
+		db.LogMode(false)
+		assert.NoError(err)
+		assert.NotEmpty(user.Id)
+
+		foundUser, err := db_test.NewTestUser()
+		assert.NoError(err)
+		foundUser.PublicId = user.PublicId
+		err = w.LookupByPublicId(context.Background(), foundUser)
+		assert.NoError(err)
+		assert.Equal(foundUser.Id, user.Id)
+
+		user.Name = "friendly-" + id
+		ts := &db_test.Timestamp{Timestamp: ptypes.TimestampNow()}
+		user.CreateTime = ts
+		user.UpdateTime = ts
+		rowsUpdated, err := w.Update(context.Background(), user, []string{"Name", "CreateTime", "UpdateTime"})
+		assert.NoError(err)
+		assert.Equal(1, rowsUpdated)
+
+		err = w.LookupByPublicId(context.Background(), foundUser)
+		assert.NoError(err)
+		assert.Equal(foundUser.Name, user.Name)
+		assert.NotEqual(foundUser.CreateTime, ts)
+		assert.NotEqual(foundUser.UpdateTime, ts)
+
+		ts = &db_test.Timestamp{Timestamp: ptypes.TimestampNow()}
+		user.Name = id
+		user.CreateTime = ts
+		user.UpdateTime = ts
+		rowsUpdated, err = w.Update(context.Background(), user, nil)
+		assert.NoError(err)
+		assert.Equal(1, rowsUpdated)
+		err = w.LookupByPublicId(context.Background(), foundUser)
+		assert.NoError(err)
+		assert.Equal(foundUser.Name, user.Name)
+		assert.NotEqual(foundUser.CreateTime, ts)
+		assert.NotEqual(foundUser.UpdateTime, ts)
 	})
 	t.Run("valid-WithOplog", func(t *testing.T) {
 		w := Db{underlying: db}
@@ -186,12 +234,16 @@ func TestDb_Create(t *testing.T) {
 		assert.NoError(err)
 		user, err := db_test.NewTestUser()
 		assert.NoError(err)
+		ts := &db_test.Timestamp{Timestamp: ptypes.TimestampNow()}
+		user.CreateTime = ts
+		user.UpdateTime = ts
 		user.Name = "foo-" + id
 		err = w.Create(context.Background(), user)
 		assert.NoError(err)
 		assert.NotEmpty(user.Id)
-		assert.NotEmpty(user.GetCreateTime())
-		assert.NotEmpty(user.GetUpdateTime())
+		// make sure the database controlled the timestamp values
+		assert.NotEqual(ts, user.GetCreateTime())
+		assert.NotEqual(ts, user.GetUpdateTime())
 
 		foundUser, err := db_test.NewTestUser()
 		assert.NoError(err)
