@@ -110,3 +110,74 @@ returning id;
 		t.Errorf("want error, got no error")
 	}
 }
+
+func TestDomain_immutable_create_time_func(t *testing.T) {
+	const (
+		createTable = `
+create table if not exists test_immutable_create_time (
+  id bigint generated always as identity primary key,
+  name text,
+  create_time wt_timestamp
+);
+`
+		addTriggers = `
+CREATE TRIGGER test_update_immutable_create_time
+BEFORE
+update ON test_immutable_create_time FOR EACH ROW EXECUTE PROCEDURE immutable_create_time_func();
+`
+
+		insert = `
+insert into test_immutable_create_time (name)
+values ('alice')
+returning id;
+`
+		// no where clause intentionally, since it's not needed for the test
+		update = `
+update test_immutable_create_time 
+set name = 'bob';
+`
+
+		// no where clause intentionally, since it's not needed for the test
+		bad_update = `
+update test_immutable_create_time 
+set create_time = now();
+`
+	)
+
+	cleanup, conn, _ := TestSetup(t, "postgres")
+	defer func() {
+		if err := cleanup(); err != nil {
+			t.Error(err)
+		}
+	}()
+	defer conn.Close()
+
+	db := conn.DB()
+	if _, err := db.Exec(createTable); err != nil {
+		t.Fatalf("query: \n%s\n error: %s", createTable, err)
+	}
+	if _, err := db.Exec(addTriggers); err != nil {
+		t.Fatalf("query: \n%s\n error: %s", createTable, err)
+	}
+
+	if _, err := db.Exec(insert); err != nil {
+		t.Fatalf("wanted no error, got %s", err)
+	}
+
+	var count int
+	err := db.QueryRow("select count(*) from test_immutable_create_time;").Scan(&count)
+	if err != nil {
+		t.Errorf("want no error, got error %v", err)
+	}
+	if count != 1 {
+		t.Errorf("want one row, got %d", count)
+	}
+	if _, err := db.Exec(update); err != nil {
+		t.Fatalf("want no, got %v", err)
+	}
+
+	if _, err := db.Exec(bad_update); err == nil {
+		t.Fatal("wanted an error")
+	}
+
+}

@@ -12,6 +12,7 @@ begin;
 
 drop domain wt_timestamp;
 drop domain wt_public_id;
+drop function update_time_column cascade;
 
 commit;
 
@@ -34,6 +35,35 @@ create domain wt_timestamp as
   default current_timestamp;
 comment on domain wt_timestamp is
 'Standard timestamp for all create_time and update_time columns';
+
+
+CREATE OR REPLACE FUNCTION update_time_column() RETURNS TRIGGER 
+SET SCHEMA
+  'public' LANGUAGE plpgsql AS $$
+BEGIN
+   IF row(NEW.*) IS DISTINCT FROM row(OLD.*) THEN
+      NEW.update_time = now(); 
+      RETURN NEW;
+   ELSE
+      RETURN OLD;
+   END IF;
+END;
+$$;
+comment on function update_time_column() is
+'function used in before update triggers to properly set update_time columns';
+
+CREATE
+  OR REPLACE FUNCTION immutable_create_time_func() RETURNS TRIGGER
+SET SCHEMA
+  'public' LANGUAGE plpgsql AS $$
+BEGIN IF COALESCE((NEW.create_time <> OLD.create_time), true) THEN
+RAISE EXCEPTION 'create_time cannot be set to %', new.create_time;
+END IF;
+return NEW;
+END;
+$$;
+comment on function immutable_create_time_func() is
+'function used in before update triggers to make create_time column immutable';
 
 commit;
 
@@ -240,6 +270,14 @@ $$;
 CREATE TRIGGER iam_scope_update
 BEFORE
 update ON iam_scope FOR EACH ROW EXECUTE PROCEDURE iam_immutable_scope_type_func();
+
+CREATE TRIGGER update_iam_scope_update_time 
+BEFORE 
+UPDATE ON iam_scope FOR EACH ROW EXECUTE PROCEDURE update_time_column();
+
+CREATE TRIGGER update_iam_scope_create_time
+BEFORE
+update ON iam_scope FOR EACH ROW EXECUTE PROCEDURE immutable_create_time_func();
 
 COMMIT;
 
