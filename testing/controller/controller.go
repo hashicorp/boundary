@@ -94,7 +94,7 @@ func WithDefaultOrgId(id string) Option {
 func NewTestController(t *testing.T, opt ...Option) (string, func()) {
 	conf, err := getOpts(opt...)
 	if err != nil {
-		t.Fatal("Couldn't create TestController: %v", err)
+		t.Fatalf("Couldn't create TestController: %v", err)
 	}
 	tc := controller.NewTestController(t, conf)
 	return tc.ApiAddress(), tc.Shutdown
