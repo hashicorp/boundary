@@ -120,7 +120,7 @@ func New(underlying *gorm.DB) *Db {
 // DB returns the sql.DB
 func (rw *Db) DB() (*sql.DB, error) {
 	if rw.underlying == nil {
-		return nil, fmt.Errorf("DB: missing underlying db %w", ErrNilParameter)
+		return nil, fmt.Errorf("missing underlying db: %w", ErrNilParameter)
 	}
 	return rw.underlying.DB(), nil
 }
