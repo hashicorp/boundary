@@ -5,11 +5,13 @@ import (
 	"net"
 	"net/http"
 	"testing"
+
+	"github.com/hashicorp/vault/internalshared/configutil"
 )
 
 func TestHandleGrpcGateway(t *testing.T) {
 	var c Controller
-	h := c.handler(HandlerProperties{})
+	h := c.handler(HandlerProperties{&configutil.Listener{}})
 	l, err := net.Listen("tcp4", "127.0.0.1:0")
 	if err != nil {
 		t.Fatalf("Couldn't listen: %v", err)
@@ -48,4 +50,3 @@ func TestHandleGrpcGateway(t *testing.T) {
 		})
 	}
 }
-
