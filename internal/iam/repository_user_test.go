@@ -3,6 +3,7 @@ package iam
 import (
 	"context"
 	"errors"
+	"fmt"
 	"testing"
 	"time"
 
@@ -68,7 +69,7 @@ func TestRepository_CreateUser(t *testing.T) {
 			},
 			wantDup:    true,
 			wantErr:    true,
-			wantErrMsg: `failed to create user: error creating: pq: duplicate key value violates unique constraint "iam_user_name_scope_id_key"`,
+			wantErrMsg: `create user: user %s already exists in organization %s`,
 		},
 	}
 	for _, tt := range tests {
@@ -89,7 +90,12 @@ func TestRepository_CreateUser(t *testing.T) {
 			if tt.wantErr {
 				assert.Error(err)
 				assert.Nil(u)
-				assert.Equal(tt.wantErrMsg, err.Error())
+				switch tt.name {
+				case "dup-name":
+					assert.Equal(fmt.Sprintf(tt.wantErrMsg, "dup-name"+id, org.PublicId), err.Error())
+				default:
+					assert.Equal(tt.wantErrMsg, err.Error())
+				}
 				err = db.TestVerifyOplog(t, rw, pubId, db.WithOperation(oplog.OpType_OP_TYPE_CREATE), db.WithCreateNotBefore(10*time.Second))
 				assert.Error(err)
 				assert.Equal("record not found", err.Error())
@@ -155,13 +161,14 @@ func TestRepository_UpdateUser(t *testing.T) {
 			wantRowsUpdate: 1,
 		},
 		{
-			name: "proj-scope-id-no-mask",
+			name: "proj-scope-id",
 			args: args{
-				name:    "proj-scope-id" + id,
-				ScopeId: proj.PublicId,
+				name:           "proj-scope-id" + id,
+				fieldMaskPaths: []string{"ScopeId"},
+				ScopeId:        proj.PublicId,
 			},
 			wantErr:    true,
-			wantErrMsg: "failed to update user: error on update not allowed to change a resource's scope",
+			wantErrMsg: "update user: error on update not allowed to change a resource's scope for %s",
 		},
 		{
 			name: "empty-scope-id-with-name-mask",
@@ -182,7 +189,7 @@ func TestRepository_UpdateUser(t *testing.T) {
 			},
 			wantErr:    true,
 			wantDup:    true,
-			wantErrMsg: `failed to update user: error updating: pq: duplicate key value violates unique constraint "iam_user_name_scope_id_key"`,
+			wantErrMsg: `update user: user %s already exists in organization %s`,
 		},
 	}
 	for _, tt := range tests {
@@ -208,7 +215,14 @@ func TestRepository_UpdateUser(t *testing.T) {
 				assert.Error(err)
 				assert.Nil(userAfterUpdate)
 				assert.Equal(0, updatedRows)
-				assert.Equal(tt.wantErrMsg, err.Error())
+				switch tt.name {
+				case "dup-name":
+					assert.Equal(fmt.Sprintf(tt.wantErrMsg, "dup-name"+id, org.PublicId), err.Error())
+				case "proj-scope-id":
+					assert.Equal(fmt.Sprintf(tt.wantErrMsg, u.PublicId), err.Error())
+				default:
+					assert.Equal(tt.wantErrMsg, err.Error())
+				}
 				err = db.TestVerifyOplog(t, rw, u.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_UPDATE), db.WithCreateNotBefore(10*time.Second))
 				assert.Error(err)
 				assert.Equal("record not found", err.Error())
@@ -273,7 +287,7 @@ func TestRepository_DeleteUser(t *testing.T) {
 			},
 			wantRowsDeleted: 0,
 			wantErr:         true,
-			wantErrMsg:      "you cannot delete a user with an empty public id",
+			wantErrMsg:      "delete user: missing public id nil parameter",
 		},
 		{
 			name: "not-found",
