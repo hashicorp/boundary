@@ -108,7 +108,7 @@ func tcpListenerFactory(l *configutil.Listener, logger hclog.Logger, ui cli.Ui) 
 		return alpnMux, props, nil, nil
 	}
 
-	tlsConfig, reloadFunc, err := listenerutil.GetTLSConfig(ln, l, props, ui)
+	tlsConfig, reloadFunc, err := listenerutil.TLSConfig(l, props, ui)
 	if err != nil {
 		return nil, nil, nil, err
 	}

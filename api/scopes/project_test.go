@@ -17,24 +17,32 @@ func TestProjects_Crud(t *testing.T) {
 		Client: client,
 	}
 
-	name := "foo"
-
-	checkProject := func(step string, p *Project, apiErr *api.Error, err error) {
+	checkProject := func(step string, p *Project, apiErr *api.Error, err error, wantedName string) {
 		assert := assert.New(t)
 		assert.NoError(err, step)
 		assert.Nil(apiErr, step)
 		assert.NotNil(p, "returned project", step)
-		assert.NotNil(p, "returned project name", step)
-		assert.Equal(name, *p.Name, step)
+		assert.Equal(wantedName, *p.Name, step)
 	}
 
-	p, apiErr, err := org.CreateProject(tc.Context(), &Project{Name: api.String(name)})
-	checkProject("create", p, apiErr, err)
+	p, apiErr, err := org.CreateProject(tc.Context(), &Project{Name: api.String("foo")})
+	checkProject("create", p, apiErr, err, "foo")
 
 	p, apiErr, err = org.ReadProject(tc.Context(), &Project{Id: p.Id})
-	checkProject("read", p, apiErr, err)
+	checkProject("read", p, apiErr, err, "foo")
 
-	// TODO: Update and Delete
+	p = &Project{Id: p.Id}
+	p.Name = api.String("bar")
+	p, apiErr, err = org.UpdateProject(tc.Context(), p)
+	checkProject("update", p, apiErr, err, "bar")
+
+	existed, apiErr, err := org.DeleteProject(tc.Context(), p)
+	assert.NoError(t, err)
+	assert.True(t, existed, "Expected existing project when deleted, but it wasn't.")
+
+	existed, apiErr, err = org.DeleteProject(tc.Context(), p)
+	assert.NoError(t, err)
+	assert.False(t, existed, "Expected project to not exist when deleted, but it did.")
 
 	// TODO: Error conditions once the proper errors are being returned.
 	// Probably as parallel subtests against the same DB.
