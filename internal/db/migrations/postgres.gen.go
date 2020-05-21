@@ -12,8 +12,8 @@ begin;
 
 drop domain wt_timestamp;
 drop domain wt_public_id;
-drop function update_time_column cascade;
-
+drop function update_time_column() cascade;
+drop function immutable_create_time_func() cascade;
 commit;
 
 `),
@@ -69,6 +69,29 @@ commit;
 
 `),
 	},
+	"migrations/02_oplog.down.sql": {
+		name: "02_oplog.down.sql",
+		bytes: []byte(`
+begin;
+
+drop table if exists oplog_entry cascade;
+
+drop trigger if exists update_oplog_entry_update_time on oplog_entry;
+drop trigger if exists update_oplog_entry_create_time on oplog_entry;
+
+drop table if exists oplog_ticket cascade;
+
+drop trigger if exists update_oplog_ticket_update_time on oplog_ticket;
+drop trigger if exists update_oplog_ticket_create_time on oplog_ticket;
+
+drop table if exists oplog_metadata cascade;
+
+drop trigger if exists update_oplog_metadata_update_time on oplog_metadata;
+drop trigger if exists update_oplog_metadata_create_time on oplog_metadata;
+
+commit;
+`),
+	},
 	"migrations/02_oplog.up.sql": {
 		name: "02_oplog.up.sql",
 		bytes: []byte(`
@@ -82,6 +105,15 @@ CREATE TABLE if not exists oplog_entry (
   aggregate_name text NOT NULL,
   "data" bytea NOT NULL
 );
+
+CREATE TRIGGER update_oplog_entry_update_time 
+BEFORE 
+UPDATE ON oplog_entry FOR EACH ROW EXECUTE PROCEDURE update_time_column();
+
+CREATE TRIGGER update_oplog_entry_create_time
+BEFORE
+UPDATE ON oplog_entry FOR EACH ROW EXECUTE PROCEDURE immutable_create_time_func();
+
 CREATE TABLE if not exists oplog_ticket (
   id bigint generated always as identity primary key,
   create_time wt_timestamp,
@@ -89,6 +121,15 @@ CREATE TABLE if not exists oplog_ticket (
   "name" text NOT NULL UNIQUE,
   "version" bigint NOT NULL
 );
+
+CREATE TRIGGER update_oplog_ticket_update_time 
+BEFORE 
+UPDATE ON oplog_ticket FOR EACH ROW EXECUTE PROCEDURE update_time_column();
+
+CREATE TRIGGER update_oplog_ticket_create_time
+BEFORE
+UPDATE ON oplog_ticket FOR EACH ROW EXECUTE PROCEDURE immutable_create_time_func();
+
 CREATE TABLE if not exists oplog_metadata (
   id bigint generated always as identity primary key,
   create_time wt_timestamp,
@@ -96,8 +137,19 @@ CREATE TABLE if not exists oplog_metadata (
   "key" text NOT NULL,
   value text NULL
 );
+
+CREATE TRIGGER update_oplog_metadata_update_time 
+BEFORE 
+UPDATE ON oplog_metadata FOR EACH ROW EXECUTE PROCEDURE update_time_column();
+
+CREATE TRIGGER update_oplog_metadata_create_time
+BEFORE
+UPDATE ON oplog_metadata FOR EACH ROW EXECUTE PROCEDURE immutable_create_time_func();
+
 create index if not exists idx_oplog_metatadata_key on oplog_metadata(key);
+
 create index if not exists idx_oplog_metatadata_value on oplog_metadata(value);
+
 INSERT INTO oplog_ticket (name, version)
 values
   ('default', 1),
@@ -116,6 +168,7 @@ values
 
 commit;
 
+
 `),
 	},
 	"migrations/03_db.down.sql": {
@@ -126,6 +179,15 @@ begin;
 drop table if exists db_test_user;
 drop table if exists db_test_car;
 drop table if exists db_test_rental;
+
+drop trigger if exists update_db_test_user_update_time on db_test_user;
+drop trigger if exists update_db_test_user_create_time on db_test_user;
+
+drop trigger if exists update_db_test_car_update_time on db_test_car;
+drop trigger if exists update_db_test_car_create_time on db_test_car;
+
+drop trigger if exists update_db_test_rental_update_time on db_test_rental;
+drop trigger if exists update_db_test_rental_create_time on db_test_rental;
 
 commit;
 
@@ -148,6 +210,14 @@ CREATE TABLE if not exists db_test_user (
   phone_number text,
   email text
 );
+CREATE TRIGGER update_db_test_user_update_time 
+BEFORE 
+UPDATE ON db_test_user FOR EACH ROW EXECUTE PROCEDURE update_time_column();
+
+CREATE TRIGGER update_db_test_user_create_time
+BEFORE
+UPDATE ON db_test_user FOR EACH ROW EXECUTE PROCEDURE immutable_create_time_func();
+
 CREATE TABLE if not exists db_test_car (
   id bigint generated always as identity primary key,
   create_time wt_timestamp,
@@ -157,6 +227,15 @@ CREATE TABLE if not exists db_test_car (
   model text,
   mpg smallint
 );
+
+CREATE TRIGGER update_db_test_car_update_time 
+BEFORE 
+UPDATE ON db_test_car FOR EACH ROW EXECUTE PROCEDURE update_time_column();
+
+CREATE TRIGGER update_db_test_car_create_time
+BEFORE
+UPDATE ON db_test_car FOR EACH ROW EXECUTE PROCEDURE immutable_create_time_func();
+
 CREATE TABLE if not exists db_test_rental (
   id bigint generated always as identity primary key,
   create_time wt_timestamp,
@@ -166,6 +245,15 @@ CREATE TABLE if not exists db_test_rental (
   user_id bigint not null REFERENCES db_test_user(id),
   car_id bigint not null REFERENCES db_test_car(id)
 );
+
+CREATE TRIGGER update_db_test_rental_update_time 
+BEFORE 
+UPDATE ON db_test_rental FOR EACH ROW EXECUTE PROCEDURE update_time_column();
+
+CREATE TRIGGER update_db_test_rental_create_time
+BEFORE
+UPDATE ON db_test_rental FOR EACH ROW EXECUTE PROCEDURE immutable_create_time_func();
+
 
 commit;
 
@@ -179,6 +267,9 @@ BEGIN;
 drop table if exists iam_scope CASCADE;
 drop trigger if exists iam_scope_insert;
 drop function if exists iam_sub_scopes_func;
+
+drop trigger if exists update_iam_scope_update_time on iam_scope;
+drop trigger if exists update_iam_scope_create_time on iam_scope;
 
 COMMIT;
 `),
@@ -277,7 +368,7 @@ UPDATE ON iam_scope FOR EACH ROW EXECUTE PROCEDURE update_time_column();
 
 CREATE TRIGGER update_iam_scope_create_time
 BEFORE
-update ON iam_scope FOR EACH ROW EXECUTE PROCEDURE immutable_create_time_func();
+UPDATE ON iam_scope FOR EACH ROW EXECUTE PROCEDURE immutable_create_time_func();
 
 COMMIT;
 
