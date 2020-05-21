@@ -19,7 +19,7 @@ type TestController struct {
 	b      *base.Server
 	c      *Controller
 	t      *testing.T
-	addr   string // The address the Controller API is listening on
+	addrs  []string // The address the Controller API is listening on
 	client *api.Client
 	ctx    context.Context
 	cancel context.CancelFunc
@@ -42,27 +42,23 @@ func (tc *TestController) Cancel() {
 	tc.cancel()
 }
 
-func (tc *TestController) ApiAddress() string {
-	if tc.addr != "" {
-		return tc.addr
-	}
-	var apiLn *base.ServerListener
-	for _, listener := range tc.b.Listeners {
-		if listener.Config.Purpose[0] == "api" {
-			apiLn = listener
-			break
-		}
-	}
-	if apiLn == nil {
-		tc.t.Fatal("could not find api listener")
+func (tc *TestController) ApiAddrs() []string {
+	if tc.addrs != nil {
+		return tc.addrs
 	}
 
-	tcpAddr, ok := apiLn.Mux.Addr().(*net.TCPAddr)
-	if !ok {
-		tc.t.Fatal("could not parse address as a TCP addr")
+	for _, listener := range tc.b.Listeners {
+		if listener.Config.Purpose[0] == "api" {
+			tcpAddr, ok := listener.Mux.Addr().(*net.TCPAddr)
+			if !ok {
+				tc.t.Fatal("could not parse address as a TCP addr")
+			}
+			addr := fmt.Sprintf("http://%s:%d", tcpAddr.IP.String(), tcpAddr.Port)
+			tc.addrs = append(tc.addrs, addr)
+		}
 	}
-	tc.addr = fmt.Sprintf("http://%s:%d", tcpAddr.IP.String(), tcpAddr.Port)
-	return tc.addr
+
+	return tc.addrs
 }
 
 func (tc *TestController) buildClient() {
@@ -70,7 +66,11 @@ func (tc *TestController) buildClient() {
 	if err != nil {
 		tc.t.Fatal(fmt.Errorf("error creating client: %w", err))
 	}
-	if err := client.SetAddr(tc.ApiAddress()); err != nil {
+	apiAddrs := tc.ApiAddrs()
+	if len(apiAddrs) == 0 {
+		tc.t.Fatal("no API addresses found")
+	}
+	if err := client.SetAddr(apiAddrs[0]); err != nil {
 		tc.t.Fatal(fmt.Errorf("error setting client address: %w", err))
 	}
 

@@ -40,6 +40,8 @@ listener "tcp" {
 	tls_disable = true
 	proxy_protocol_behavior = "allow_authorized"
 	proxy_protocol_authorized_addrs = "127.0.0.1"
+	cors_enabled = true
+	cors_allowed_origins = ["*"]
 }
 
 listener "tcp" {
