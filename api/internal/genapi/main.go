@@ -5,4 +5,6 @@ func main() {
 	writeStructTemplates()
 	writeCreateFuncs()
 	writeReadFuncs()
+	writeUpdateFuncs()
+	writeDeleteFuncs()
 }
