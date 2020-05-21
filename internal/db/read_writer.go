@@ -215,6 +215,8 @@ func (rw *Db) Update(ctx context.Context, i interface{}, fieldMaskPaths []string
 		return NoRowsAffected, fmt.Errorf("update: missing fieldMaskPaths %w", ErrNilParameter)
 	}
 
+	// This is not a watchtower scope, but rather a gorm Scope:
+	// https://godoc.org/github.com/jinzhu/gorm#DB.NewScope
 	scope := rw.underlying.NewScope(i)
 	if scope.PrimaryKeyZero() {
 		return NoRowsAffected, fmt.Errorf("update: primary key is not set")
@@ -312,6 +314,8 @@ func (rw *Db) Delete(ctx context.Context, i interface{}, opt ...Option) (int, er
 	if i == nil {
 		return NoRowsAffected, fmt.Errorf("delete: interface is missing %w", ErrNilParameter)
 	}
+	// This is not a watchtower scope, but rather a gorm Scope:
+	// https://godoc.org/github.com/jinzhu/gorm#DB.NewScope
 	scope := rw.underlying.NewScope(i)
 	if scope.PrimaryKeyZero() {
 		return NoRowsAffected, fmt.Errorf("delete: primary key is not set")
