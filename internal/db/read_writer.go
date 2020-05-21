@@ -551,7 +551,7 @@ func filterFieldMask(fieldMaskPaths []string) []string {
 			continue
 		case strings.EqualFold(p, "UpdateTime"):
 			continue
-		case strings.EqualFold("PublicId"):
+		case strings.EqualFold(p, "PublicId"):
 			continue
 		default:
 			filtered = append(filtered, p)
