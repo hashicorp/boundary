@@ -234,9 +234,6 @@ func (rw *Db) Update(ctx context.Context, i interface{}, fieldMaskPaths []string
 		rw.underlying.LogMode(true)
 		defer rw.underlying.LogMode(false)
 	}
-	if i == nil {
-		return NoRowsAffected, fmt.Errorf("update: missing interface %w", ErrNilParameter)
-	}
 	if vetter, ok := i.(VetForWriter); ok {
 		if err := vetter.VetForWrite(ctx, rw, UpdateOp, WithFieldMaskPaths(fieldMaskPaths)); err != nil {
 			return NoRowsAffected, fmt.Errorf("update: vet for write failed %w", err)
@@ -549,6 +546,8 @@ func filterFieldMask(fieldMaskPaths []string) []string {
 		case strings.EqualFold(p, "CreateTime"):
 			continue
 		case strings.EqualFold(p, "UpdateTime"):
+			continue
+		case strings.EqualFold("PublicId"):
 			continue
 		default:
 			filtered = append(filtered, p)
