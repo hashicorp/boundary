@@ -15,7 +15,7 @@ message ErrorDetails {
 // Error is returned by the JSON API when an error occurs.
 message Error {
 	// The HTTP Status code applicable to this error
-	int64 status = 1;
+	int32 status = 1;
 	// An application-specific error string
 	string code = 2;
 	// A human readable explanation specific to this occurrence of the error

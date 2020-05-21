@@ -34,7 +34,7 @@ func InvalidArgumentErrorf(msg string, fields []string) error {
 
 func statusErrorToApiError(s *status.Status) *pb.Error {
 	apiErr := &pb.Error{}
-	apiErr.Status = int64(runtime.HTTPStatusFromCode(s.Code()))
+	apiErr.Status = int32(runtime.HTTPStatusFromCode(s.Code()))
 	apiErr.Message = s.Message()
 	apiErr.Code = s.Code().String()
 

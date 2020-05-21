@@ -222,8 +222,7 @@ func parsePBs() {
 				}
 
 			TAGMODIFY:
-				// TraceId needs to be handled differently because it's a
-				// specific value used by OpenTelemetry
+				// TraceId needs to be handled differently because it's a specific value used by OpenTelemetry
 				st.Fields.List[i].Tag.Value = "`" + strings.Replace(regex.FindString(st.Fields.List[i].Tag.Value), "trace_id", "TraceId", 1) + "`"
 			}
 		}), inAst)

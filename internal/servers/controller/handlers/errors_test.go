@@ -93,6 +93,7 @@ func TestApiErrorHandler(t *testing.T) {
 			got, err := ioutil.ReadAll(resp.Body)
 			assert.NoError(err)
 			want, err := outMarsh.Marshal(tc.expected)
+			t.Logf("Got marshaled error: %q", want)
 			assert.NoError(err)
 			assert.JSONEq(string(want), string(got))
 		})
