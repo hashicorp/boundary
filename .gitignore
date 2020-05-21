@@ -114,7 +114,9 @@ Sessionx.vim
 # Persistent undo
 [._]*.un~
 
-# Default output of command compilation
+# Compilation outputs
 main
+/pkg/
+/bin/
 
 # vim: set filetype=conf :
