@@ -59,7 +59,7 @@ func TestNewUser(t *testing.T) {
 				opt: []Option{WithName(id)},
 			},
 			wantErr:    true,
-			wantErrMsg: "error organization id is unset for new user",
+			wantErrMsg: "new user: missing organization id nil parameter",
 		},
 	}
 	for _, tt := range tests {
