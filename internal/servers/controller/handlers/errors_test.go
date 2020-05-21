@@ -17,7 +17,7 @@ import (
 	"google.golang.org/grpc/status"
 )
 
-func TestNotFoundErrorf(t *testing.T) {
+func TestApiErrorHandler(t *testing.T) {
 	ctx := context.Background()
 	req, err := http.NewRequest("GET", "madeup/for/the/test", nil)
 	if err != nil {

@@ -46,8 +46,6 @@ func statusErrorToApiError(s *status.Status) *pb.Error {
 			for _, fv := range br.GetFieldViolations() {
 				d.RequestFields = append(d.RequestFields, fv.GetField())
 			}
-		default:
-			// We don't know what this is... do nothing.
 		}
 	}
 
@@ -57,9 +55,8 @@ func statusErrorToApiError(s *status.Status) *pb.Error {
 	return apiErr
 }
 
-const errorFallback = `{"error": "failed to marshal error message"}`
-
 func ErrorHandler(logger hclog.Logger) runtime.ProtoErrorHandlerFunc {
+	const errorFallback = `{"error": "failed to marshal error message"}`
 	return func(ctx context.Context, _ *runtime.ServeMux, marshaler runtime.Marshaler, w http.ResponseWriter, r *http.Request, inErr error) {
 		if inErr == runtime.ErrUnknownURI {
 			// grpc gateway uses this error when the path was not matched, but the error uses codes.Unimplemented which doesn't match the intention.
