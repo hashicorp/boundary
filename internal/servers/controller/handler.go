@@ -109,11 +109,11 @@ func wrapHandlerWithCors(h http.Handler, c *Controller, props HandlerProperties)
 
 	allowedOrigins := props.ListenerConfig.CorsAllowedOrigins
 
-	allowedHeaders := append(props.ListenerConfig.CorsAllowedHeaders, []string{
+	allowedHeaders := append([]string{
 		"Content-Type",
 		"X-Requested-With",
 		"Authorization",
-	}...)
+	}, props.ListenerConfig.CorsAllowedHeaders...)
 
 	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
 		if !props.ListenerConfig.CorsEnabled {
@@ -166,9 +166,10 @@ func wrapHandlerWithCors(h http.Handler, c *Controller, props HandlerProperties)
 
 		// Apply headers for preflight requests
 		if req.Method == http.MethodOptions {
-			w.Header().Set("Access-Control-Allow-Methods", strings.Join(allowedMethods, ","))
-			w.Header().Set("Access-Control-Allow-Headers", strings.Join(allowedHeaders, ","))
+			w.Header().Set("Access-Control-Allow-Methods", strings.Join(allowedMethods, ", "))
+			w.Header().Set("Access-Control-Allow-Headers", strings.Join(allowedHeaders, ", "))
 			w.Header().Set("Access-Control-Max-Age", "300")
+			w.WriteHeader(http.StatusNoContent)
 			return
 		}
 

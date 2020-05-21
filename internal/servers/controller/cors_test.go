@@ -1,6 +1,7 @@
 package controller
 
 import (
+	"fmt"
 	"net/http"
 	"testing"
 
@@ -54,6 +55,7 @@ listener "tcp" {
         tls_disable = true
         cors_enabled = true
         cors_allowed_origins = ["*"]
+		cors_allowed_headers = ["x-foobar"]
 }
 `
 
@@ -69,17 +71,21 @@ func TestHandler_CORS(t *testing.T) {
 	defer tc.Shutdown()
 
 	cases := []struct {
-		name        string
-		method      string
-		origin      string
-		code        int
-		listenerNum int
+		name          string
+		method        string
+		origin        string
+		code          int
+		acrmHeader    string
+		allowedHeader string
+		listenerNum   int
 	}{
 		{
 			"disabled no origin",
 			http.MethodPost,
 			"",
 			http.StatusOK,
+			"",
+			"",
 			1,
 		},
 		{
@@ -87,6 +93,8 @@ func TestHandler_CORS(t *testing.T) {
 			http.MethodPost,
 			"foobar.com",
 			http.StatusOK,
+			"",
+			"",
 			1,
 		},
 		{
@@ -94,6 +102,8 @@ func TestHandler_CORS(t *testing.T) {
 			http.MethodPost,
 			"",
 			http.StatusOK,
+			"",
+			"",
 			2,
 		},
 		{
@@ -101,6 +111,8 @@ func TestHandler_CORS(t *testing.T) {
 			http.MethodPost,
 			"foobar.com",
 			http.StatusForbidden,
+			"",
+			"",
 			2,
 		},
 		{
@@ -108,6 +120,8 @@ func TestHandler_CORS(t *testing.T) {
 			http.MethodPost,
 			"",
 			http.StatusOK,
+			"",
+			"",
 			3,
 		},
 		{
@@ -115,6 +129,8 @@ func TestHandler_CORS(t *testing.T) {
 			http.MethodPost,
 			"flubber.com",
 			http.StatusForbidden,
+			"",
+			"",
 			3,
 		},
 		{
@@ -122,6 +138,8 @@ func TestHandler_CORS(t *testing.T) {
 			http.MethodPost,
 			"barfoo.com",
 			http.StatusOK,
+			"",
+			"",
 			3,
 		},
 		{
@@ -129,6 +147,8 @@ func TestHandler_CORS(t *testing.T) {
 			http.MethodPost,
 			"",
 			http.StatusOK,
+			"",
+			"",
 			4,
 		},
 		{
@@ -136,22 +156,65 @@ func TestHandler_CORS(t *testing.T) {
 			http.MethodPost,
 			"flubber.com",
 			http.StatusOK,
+			"",
+			"",
+			4,
+		},
+		{
+			"wildcard origins with method list and good method",
+			http.MethodOptions,
+			"flubber.com",
+			http.StatusNoContent,
+			"DELETE",
+			"",
+			4,
+		},
+		{
+			"wildcard origins with method list and bad method",
+			http.MethodOptions,
+			"flubber.com",
+			http.StatusMethodNotAllowed,
+			"BADSTUFF",
+			"X-Foobar",
 			4,
 		},
 	}
 
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
+			// Create a client with the right address
 			client := tc.Client()
 			client.SetAddr(tc.ApiAddrs()[c.listenerNum-1])
+
+			// Create the request
 			req, err := client.NewRequest(tc.Context(), c.method, "orgs/o_1234567890/projects", nil)
 			assert.NoError(t, err)
+
+			// Append headers
 			if c.origin != "" {
 				req.Header.Add("Origin", c.origin)
 			}
+			if c.acrmHeader != "" {
+				req.Header.Add("Access-Control-Request-Method", c.acrmHeader)
+			}
+
+			// Run the request, do basic checks
 			resp, err := client.Do(req)
 			assert.NoError(t, err)
 			assert.Equal(t, c.code, resp.HttpResponse().StatusCode)
+
+			// If options and we expect it to be successful, run some checks
+			if req.Method == http.MethodOptions && c.code == http.StatusNoContent {
+				assert.Equal(t, fmt.Sprintf("%s, %s, %s, %s, %s", http.MethodDelete, http.MethodGet, http.MethodOptions, http.MethodPost, http.MethodPatch), resp.HttpResponse().Header.Get("Access-Control-Allow-Methods"))
+				assert.Equal(t, fmt.Sprintf("%s, %s, %s, %s", "Content-Type", "X-Requested-With", "Authorization", "X-Foobar"), resp.HttpResponse().Header.Get("Access-Control-Allow-Headers"))
+				assert.Equal(t, "300", resp.HttpResponse().Header.Get("Access-Control-Max-Age"))
+			}
+
+			// If origin was set and we expect it to be successful, run some more checks
+			if c.origin != "" && c.code == http.StatusOK && c.listenerNum > 1 {
+				assert.Equal(t, c.origin, resp.HttpResponse().Header.Get("Access-Control-Allow-Origin"))
+				assert.Equal(t, "Origin", resp.HttpResponse().Header.Get("Vary"))
+			}
 		})
 	}
 
