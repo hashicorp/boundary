@@ -581,7 +581,7 @@ func TestDb_DB(t *testing.T) {
 		d, err := w.DB()
 		assert.Error(err)
 		assert.Nil(d)
-		assert.Equal("DB: missing underlying db nil parameter", err.Error())
+		assert.Equal("missing underlying db: nil parameter", err.Error())
 	})
 }
 
