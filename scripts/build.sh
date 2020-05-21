@@ -56,7 +56,7 @@ gox \
     -output "pkg/{{.OS}}_{{.Arch}}/watchtower" \
     ${GOX_PARALLEL_BUILDS+-parallel="${GOX_PARALLEL_BUILDS}"} \
     -tags="${BUILD_TAGS}" \
-    cmd/watchtower/main.go
+    ./cmd/watchtower
 
 # Move all the compiled things to the $GOPATH/bin
 OLDIFS=$IFS
