@@ -32,7 +32,7 @@ func (c *Controller) handler(props HandlerProperties) http.Handler {
 
 	mux.Handle("/v1/", handleGrpcGateway(c))
 
-	corsWrappedHandler := wrapHandlerWithCors(mux, c, props)
+	corsWrappedHandler := wrapHandlerWithCors(mux, props)
 	commonWrappedHandler := wrapHandlerWithCommonFuncs(corsWrappedHandler, c, props)
 
 	return commonWrappedHandler
@@ -98,7 +98,7 @@ func wrapHandlerWithCommonFuncs(h http.Handler, c *Controller, props HandlerProp
 	})
 }
 
-func wrapHandlerWithCors(h http.Handler, c *Controller, props HandlerProperties) http.Handler {
+func wrapHandlerWithCors(h http.Handler, props HandlerProperties) http.Handler {
 	allowedMethods := []string{
 		http.MethodDelete,
 		http.MethodGet,
