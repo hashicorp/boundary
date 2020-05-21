@@ -20,15 +20,15 @@ require (
 	github.com/hashicorp/go-alpnmux v0.0.0-20200513011953-0293f5d23c31
 	github.com/hashicorp/go-cleanhttp v0.5.1
 	github.com/hashicorp/go-hclog v0.13.0
-	github.com/hashicorp/go-kms-wrapping v0.5.9
+	github.com/hashicorp/go-kms-wrapping v0.5.10
 	github.com/hashicorp/go-multierror v1.1.0
 	github.com/hashicorp/go-retryablehttp v0.6.6
 	github.com/hashicorp/go-rootcerts v1.0.2
 	github.com/hashicorp/go-sockaddr v1.0.2
 	github.com/hashicorp/go-uuid v1.0.2
 	github.com/hashicorp/hcl v1.0.0
-	github.com/hashicorp/vault v1.2.1-0.20200513002223-fc89625cd196
-	github.com/hashicorp/vault/sdk v0.1.14-0.20200514164214-89b1987e38c2
+	github.com/hashicorp/vault v1.2.1-0.20200521015612-812a92b26b19
+	github.com/hashicorp/vault/sdk v0.1.14-0.20200519221912-a8c2591d3641
 	github.com/jackc/pgx/v4 v4.6.0
 	github.com/jinzhu/gorm v1.9.12
 	github.com/kr/pretty v0.2.0
@@ -37,6 +37,7 @@ require (
 	github.com/mattn/go-colorable v0.1.6
 	github.com/mitchellh/cli v1.1.1
 	github.com/mitchellh/go-homedir v1.1.0
+	github.com/mitchellh/gox v1.0.1
 	github.com/mitchellh/mapstructure v1.3.0
 	github.com/niemeyer/pretty v0.0.0-20200227124842-a10e7caefd8e // indirect
 	github.com/oligot/go-mod-upgrade v0.1.2

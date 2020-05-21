@@ -2,13 +2,17 @@ package controller
 
 import (
 	"context"
+	"encoding/json"
 	"net/http"
 	"path"
+	"path/filepath"
 	"strings"
 	"time"
 
 	"github.com/grpc-ecosystem/grpc-gateway/runtime"
 	"github.com/hashicorp/vault/internalshared/configutil"
+	"github.com/hashicorp/vault/sdk/helper/strutil"
+	"github.com/hashicorp/watchtower/api"
 	"github.com/hashicorp/watchtower/globals"
 	"github.com/hashicorp/watchtower/internal/gen/controller/api/services"
 	"github.com/hashicorp/watchtower/internal/servers/controller/handlers/host_catalogs"
@@ -27,11 +31,26 @@ func (c *Controller) handler(props HandlerProperties) http.Handler {
 	// Create the muxer to handle the actual endpoints
 	mux := http.NewServeMux()
 
+	if c.conf.RawConfig.PassthroughDirectory != "" {
+		// Panic may not be ideal but this is never a production call and it'll
+		// panic on startup. We could also just change the function to return
+		// an error.
+		abs, err := filepath.Abs(c.conf.RawConfig.PassthroughDirectory)
+		if err != nil {
+			panic(err)
+		}
+		c.logger.Warn("serving passthrough files at /passthrough", "path", abs)
+		fs := http.FileServer(http.Dir(abs))
+		prefixHandler := http.StripPrefix("/passthrough/", fs)
+		mux.Handle("/passthrough/", prefixHandler)
+	}
+
 	mux.Handle("/v1/", handleGrpcGateway(c))
 
-	genericWrappedHandler := wrapGenericHandler(mux, c, props)
+	corsWrappedHandler := wrapHandlerWithCors(mux, props)
+	commonWrappedHandler := wrapHandlerWithCommonFuncs(corsWrappedHandler, c, props)
 
-	return genericWrappedHandler
+	return commonWrappedHandler
 }
 
 func handleGrpcGateway(c *Controller) http.Handler {
@@ -47,7 +66,7 @@ func handleGrpcGateway(c *Controller) http.Handler {
 	return mux
 }
 
-func wrapGenericHandler(h http.Handler, c *Controller, props HandlerProperties) http.Handler {
+func wrapHandlerWithCommonFuncs(h http.Handler, c *Controller, props HandlerProperties) http.Handler {
 	var maxRequestDuration time.Duration
 	var maxRequestSize int64
 	if props.ListenerConfig != nil {
@@ -90,6 +109,86 @@ func wrapGenericHandler(h http.Handler, c *Controller, props HandlerProperties) 
 
 		h.ServeHTTP(w, r)
 		cancelFunc()
+		return
+	})
+}
+
+func wrapHandlerWithCors(h http.Handler, props HandlerProperties) http.Handler {
+	allowedMethods := []string{
+		http.MethodDelete,
+		http.MethodGet,
+		http.MethodOptions,
+		http.MethodPost,
+		http.MethodPatch,
+	}
+
+	allowedOrigins := props.ListenerConfig.CorsAllowedOrigins
+
+	allowedHeaders := append([]string{
+		"Content-Type",
+		"X-Requested-With",
+		"Authorization",
+	}, props.ListenerConfig.CorsAllowedHeaders...)
+
+	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+		if !props.ListenerConfig.CorsEnabled {
+			h.ServeHTTP(w, req)
+			return
+		}
+
+		origin := req.Header.Get("Origin")
+
+		if origin == "" {
+			// Serve directly
+			h.ServeHTTP(w, req)
+			return
+		}
+
+		// Check origin
+		var valid bool
+		switch {
+		case len(allowedOrigins) == 0:
+			// not valid
+
+		case len(allowedOrigins) == 1 && allowedOrigins[0] == "*":
+			valid = true
+
+		default:
+			valid = strutil.StrListContains(allowedOrigins, origin)
+		}
+		if !valid {
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusForbidden)
+
+			err := &api.Error{
+				Status: api.Int(http.StatusForbidden),
+				Code:   api.String("origin forbidden"),
+			}
+
+			enc := json.NewEncoder(w)
+			enc.Encode(err)
+			return
+		}
+
+		if req.Method == http.MethodOptions &&
+			!strutil.StrListContains(allowedMethods, req.Header.Get("Access-Control-Request-Method")) {
+			w.WriteHeader(http.StatusMethodNotAllowed)
+			return
+		}
+
+		w.Header().Set("Access-Control-Allow-Origin", origin)
+		w.Header().Set("Vary", "Origin")
+
+		// Apply headers for preflight requests
+		if req.Method == http.MethodOptions {
+			w.Header().Set("Access-Control-Allow-Methods", strings.Join(allowedMethods, ", "))
+			w.Header().Set("Access-Control-Allow-Headers", strings.Join(allowedHeaders, ", "))
+			w.Header().Set("Access-Control-Max-Age", "300")
+			w.WriteHeader(http.StatusNoContent)
+			return
+		}
+
+		h.ServeHTTP(w, req)
 		return
 	})
 }

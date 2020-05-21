@@ -36,7 +36,13 @@ func TestProjects_Crud(t *testing.T) {
 	p, apiErr, err = org.UpdateProject(tc.Context(), p)
 	checkProject("update", p, apiErr, err, "bar")
 
-	// TODO: Delete
+	existed, apiErr, err := org.DeleteProject(tc.Context(), p)
+	assert.NoError(t, err)
+	assert.True(t, existed, "Expected existing project when deleted, but it wasn't.")
+
+	existed, apiErr, err = org.DeleteProject(tc.Context(), p)
+	assert.NoError(t, err)
+	assert.False(t, existed, "Expected project to not exist when deleted, but it did.")
 
 	// TODO: Error conditions once the proper errors are being returned.
 	// Probably as parallel subtests against the same DB.
