@@ -7,11 +7,18 @@ import (
 	"testing"
 
 	"github.com/hashicorp/vault/internalshared/configutil"
+	"github.com/hashicorp/watchtower/internal/cmd/base"
+	"github.com/hashicorp/watchtower/internal/cmd/config"
 )
 
 func TestHandleGrpcGateway(t *testing.T) {
-	var c Controller
-	h := c.handler(HandlerProperties{&configutil.Listener{}})
+	c := &Controller{
+		conf: &Config{
+			Server:    new(base.Server),
+			RawConfig: config.New(),
+		},
+	}
+	h := c.handler(HandlerProperties{ListenerConfig: new(configutil.Listener)})
 	l, err := net.Listen("tcp4", "127.0.0.1:0")
 	if err != nil {
 		t.Fatalf("Couldn't listen: %v", err)

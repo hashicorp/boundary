@@ -8,38 +8,41 @@ REPO_PATH := github.com/hashicorp/watchtower
 
 GENERATED_CODE := $(shell  find ${THIS_DIR} -name '*.gen.go' && find ${THIS_DIR} -name '*.pb.go' && find ${THIS_DIR} -name '*.pb.gw.go')
 
+CGO_ENABLED?=0
+
 export GEN_BASEPATH := $(shell pwd)
-
-bootstrap:
-	go generate -tags tools tools/tools.go
-
-gen: cleangen proto api migrations
 
 api:
 	$(MAKE) --environment-overrides -C api/internal/genapi api
 
-migrations:
-	$(MAKE) --environment-overrides -C internal/db/migrations/genmigrations migrations
+bootstrap:
+	go generate -tags tools tools/tools.go
 
 cleangen:
 	@rm -f ${GENERATED_CODE}
+
+dev: BUILD_TAGS+=dev
+dev:
+	@CGO_ENABLED=$(CGO_ENABLED) BUILD_TAGS='$(BUILD_TAGS)' WATCHTOWER_DEV_BUILD=1 sh -c "'$(CURDIR)/scripts/build.sh'"
+
+gen: cleangen proto api migrations
+
+migrations:
+	$(MAKE) --environment-overrides -C internal/db/migrations/genmigrations migrations
 
 ### oplog requires protoc-gen-go v1.20.0 or later
 # GO111MODULE=on go get -u github.com/golang/protobuf/protoc-gen-go@v1.40
 proto: protolint protobuild
 
-protolint:
-	@buf check lint
-
 protobuild:
 	# To add a new directory containing a proto pass the  proto's root path in
 	# through the --proto_path flag.
-	@bash make/protoc_gen_plugin.bash \
+	@bash scripts/protoc_gen_plugin.bash \
 		"--proto_path=internal/proto/local" \
 		"--proto_include_path=internal/proto/third_party" \
 		"--plugin_name=go" \
 		"--plugin_out=plugins=grpc:${TMP_DIR}"
-	@bash make/protoc_gen_plugin.bash \
+	@bash scripts/protoc_gen_plugin.bash \
 		"--proto_path=internal/proto/local/" \
 		"--proto_include_path=internal/proto/third_party" \
 		"--plugin_name=grpc-gateway" \
@@ -55,6 +58,8 @@ protobuild:
 	@protoc-go-inject-tag -input=./internal/db/db_test/db_test.pb.go
 	@rm -R ${TMP_DIR}
 
+protolint:
+	@buf check lint
 
 .PHONY: api bootstrap gen migrations proto
 

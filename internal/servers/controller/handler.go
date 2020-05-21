@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"path"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -30,6 +31,20 @@ type HandlerProperties struct {
 func (c *Controller) handler(props HandlerProperties) http.Handler {
 	// Create the muxer to handle the actual endpoints
 	mux := http.NewServeMux()
+
+	if c.conf.RawConfig.PassthroughDirectory != "" {
+		// Panic may not be ideal but this is never a production call and it'll
+		// panic on startup. We could also just change the function to return
+		// an error.
+		abs, err := filepath.Abs(c.conf.RawConfig.PassthroughDirectory)
+		if err != nil {
+			panic(err)
+		}
+		c.logger.Warn("serving passthrough files at /passthrough", "path", abs)
+		fs := http.FileServer(http.Dir(abs))
+		prefixHandler := http.StripPrefix("/passthrough/", fs)
+		mux.Handle("/passthrough/", prefixHandler)
+	}
 
 	mux.Handle("/v1/", handleGrpcGateway(c))
 
