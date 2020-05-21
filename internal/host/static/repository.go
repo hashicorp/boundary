@@ -4,11 +4,13 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 
 	wrapping "github.com/hashicorp/go-kms-wrapping"
 	"github.com/lib/pq"
 
 	"github.com/hashicorp/watchtower/internal/db"
+	"github.com/hashicorp/watchtower/internal/host/static/store"
 	"github.com/hashicorp/watchtower/internal/oplog"
 )
 
@@ -49,13 +51,13 @@ func NewRepository(r db.Reader, w db.Writer, wrapper wrapping.Wrapper) (*Reposit
 // Both c.CreateTime and c.UpdateTime are ignored.
 func (r *Repository) CreateCatalog(ctx context.Context, c *HostCatalog, opt ...Option) (*HostCatalog, error) {
 	if c == nil {
-		return nil, fmt.Errorf("create: host catalog: %w", db.ErrNilParameter)
+		return nil, fmt.Errorf("create: static host catalog: %w", db.ErrNilParameter)
 	}
 	if c.HostCatalog.ScopeId == "" {
-		return nil, fmt.Errorf("create: host catalog: no scope id: %w", db.ErrInvalidParameter)
+		return nil, fmt.Errorf("create: static host catalog: no scope id: %w", db.ErrInvalidParameter)
 	}
 	if c.PublicId != "" {
-		return nil, fmt.Errorf("create: host catalog: public id not empty: %w", db.ErrInvalidParameter)
+		return nil, fmt.Errorf("create: static host catalog: public id not empty: %w", db.ErrInvalidParameter)
 	}
 	c = c.clone()
 
@@ -88,7 +90,7 @@ func (r *Repository) CreateCatalog(ctx context.Context, c *HostCatalog, opt ...O
 	)
 
 	if err != nil {
-		// TODO(mgaffney): extract database specific error handing
+		// TODO(mgaffney) 05/2020: extract database specific error handing
 		var e *pq.Error
 		if errors.As(err, &e) {
 			if e.Code.Name() == "unique_violation" {
@@ -103,26 +105,121 @@ func (r *Repository) CreateCatalog(ctx context.Context, c *HostCatalog, opt ...O
 
 // UpdateCatalog updates the values in the repository with the values in c
 // for c.PublicId and returns a new HostCatalog containing the updated
-// values. c must contain a valid PublicId.
+// values. c is not changed. c must contain a valid PublicId.
 //
 // Only c.Name and c.Description can be updated. All other values are
 // ignored. If c.Name is set, it must be unique within c.ScopeID.
 //
+// An attributed of c will be set to NULL in the database if the attribute
+// in c is the zero value and it is included in fieldMask.
+//
 // Both c.CreateTime and c.UpdateTime are ignored.
 func (r *Repository) UpdateCatalog(ctx context.Context, c *HostCatalog, fieldMask []string, opt ...Option) (*HostCatalog, error) {
-	// TODO(mgaffney): implement method
-	return nil, nil
+	if c == nil {
+		return nil, fmt.Errorf("update: static host catalog: %w", db.ErrNilParameter)
+	}
+	if c.PublicId == "" {
+		return nil, fmt.Errorf("update: static host catalog: missing public id: %w", db.ErrInvalidParameter)
+	}
+	c = c.clone()
+
+	metadata := oplog.Metadata{
+		"resource-public-id": []string{c.GetPublicId()},
+		"scope-id":           []string{c.ScopeId},
+		"resource-type":      []string{"static host catalog"},
+		"op-type":            []string{oplog.OpType_OP_TYPE_UPDATE.String()},
+	}
+
+	var dbMask, nullFields []string
+	empty := len(fieldMask) == 0
+
+	switch {
+	case c.Name == "" && contains(fieldMask, "name"):
+		nullFields = append(nullFields, "name")
+	case c.Name != "" && (empty || contains(fieldMask, "name")):
+		dbMask = append(dbMask, "name")
+	}
+
+	switch {
+	case c.Description == "" && contains(fieldMask, "description"):
+		nullFields = append(nullFields, "description")
+	case c.Description != "" && (empty || contains(fieldMask, "description")):
+		dbMask = append(dbMask, "description")
+	}
+
+	// Nothing to update
+	if len(dbMask) == 0 {
+		fresh := HostCatalog{
+			HostCatalog: &store.HostCatalog{},
+		}
+		fresh.PublicId = c.PublicId
+		if err := r.reader.LookupByPublicId(ctx, &fresh); err != nil {
+			if err == db.ErrRecordNotFound {
+				return nil, fmt.Errorf("update: static host catalog: %w", db.ErrInvalidPublicId)
+			}
+			return nil, fmt.Errorf("update: static host catalog: public id %s: %w", fresh.PublicId, err)
+		}
+		return &fresh, nil
+	}
+
+	// TODO(mgaffney,jimlambrt) 05/2020: uncomment the nullFields line
+	// below once support for setting columns to nil is added to db.Update.
+	var rowsUpdated int
+	var returnedCatalog *HostCatalog
+	_, err := r.writer.DoTx(
+		ctx,
+		db.StdRetryCnt,
+		db.ExpBackoff{},
+		func(w db.Writer) error {
+			returnedCatalog = c.clone()
+			var err error
+			rowsUpdated, err = w.Update(
+				ctx,
+				returnedCatalog,
+				dbMask,
+				// nullFields,
+				db.WithOplog(r.wrapper, metadata),
+			)
+			if err == nil && rowsUpdated > 1 {
+				return errors.New("update: static host catalog: error more than 1 resource would have been updated")
+			}
+			return err
+		},
+	)
+
+	if err != nil {
+		// TODO(mgaffney) 05/2020: extract database specific error handing
+		var e *pq.Error
+		if errors.As(err, &e) {
+			if e.Code.Name() == "unique_violation" {
+				return nil, fmt.Errorf("update: static host catalog: %s in scope: %s already exists: %w",
+					c.PublicId, c.ScopeId, db.ErrNotUnique)
+			}
+		}
+		return nil, fmt.Errorf("update: static host catalog: %s in scope: %s: %w", c.PublicId, c.ScopeId, err)
+	}
+
+	return returnedCatalog, nil
 }
 
 // LookupCatalog returns the HostCatalog for id.
 func (r *Repository) LookupCatalog(ctx context.Context, id string, opt ...Option) (*HostCatalog, error) {
-	// TODO(mgaffney): implement method
+	// TODO(mgaffney) 05/2020: implement method
 	return nil, nil
 }
 
 // DeleteCatalog deletes the HostCatalog for id and returns 1 if the
 // catalog was deleted or 0 if no host catalog was deleted.
 func (r *Repository) DeleteCatalog(ctx context.Context, id string, opt ...Option) (int, error) {
-	// TODO(mgaffney): implement method
+	// TODO(mgaffney) 05/2020: implement method
 	return 0, nil
+}
+
+func contains(ss []string, t string) bool {
+	for _, s := range ss {
+		if strings.EqualFold(s, t) {
+			return true
+		}
+	}
+	return false
 }

@@ -3,10 +3,12 @@ package static
 import (
 	"context"
 	"errors"
+	"fmt"
 	"strings"
 	"testing"
 
 	wrapping "github.com/hashicorp/go-kms-wrapping"
+	"github.com/jinzhu/gorm"
 	"github.com/stretchr/testify/assert"
 
 	"github.com/hashicorp/watchtower/internal/db"
@@ -102,7 +104,9 @@ func TestRepository_New(t *testing.T) {
 			got, err := NewRepository(tt.args.r, tt.args.w, tt.args.wrapper)
 			if tt.wantIsErr != nil {
 				assert.Error(err)
-				assert.Truef(errors.Is(err, tt.wantIsErr), "want err: %v", tt.wantIsErr)
+				if assert.Error(err) {
+					assert.Truef(errors.Is(err, tt.wantIsErr), "want err: %q got: %q", tt.wantIsErr, err)
+				}
 				assert.Nil(got)
 			} else {
 				assert.NoError(err)
@@ -131,8 +135,6 @@ func TestRepository_CreateCatalog(t *testing.T) {
 	}{
 		{
 			name:      "nil-catalog",
-			in:        nil,
-			want:      nil,
 			wantIsErr: db.ErrNilParameter,
 		},
 		{
@@ -187,7 +189,9 @@ func TestRepository_CreateCatalog(t *testing.T) {
 			got, err := repo.CreateCatalog(context.Background(), tt.in, tt.opts...)
 			if tt.wantIsErr != nil {
 				assert.Error(err)
-				assert.Truef(errors.Is(err, tt.wantIsErr), "want err: %v got: %v", tt.wantIsErr, err)
+				if assert.Error(err) {
+					assert.Truef(errors.Is(err, tt.wantIsErr), "want err: %q got: %q", tt.wantIsErr, err)
+				}
 				assert.Nil(got)
 			} else {
 				assert.NoError(err)
@@ -286,5 +290,386 @@ func assertPublicId(t *testing.T, prefix, actual string) {
 
 	if prefix != parts[0] {
 		t.Errorf("PublicId want prefix: %q, got: %q in %q", prefix, parts[0], actual)
+	}
+}
+
+func TestRepository_UpdateCatalog(t *testing.T) {
+	cleanup, conn, _ := db.TestSetup(t, "postgres")
+	defer cleanup()
+	defer conn.Close()
+
+	rw := db.New(conn)
+	wrapper := db.TestWrapper(t)
+
+	changeName := func(s string) func(*HostCatalog) *HostCatalog {
+		return func(c *HostCatalog) *HostCatalog {
+			c.Name = s
+			return c
+		}
+	}
+
+	changeDescription := func(s string) func(*HostCatalog) *HostCatalog {
+		return func(c *HostCatalog) *HostCatalog {
+			c.Description = s
+			return c
+		}
+	}
+
+	makeNil := func() func(*HostCatalog) *HostCatalog {
+		return func(c *HostCatalog) *HostCatalog {
+			return nil
+		}
+	}
+
+	deletePublicId := func() func(*HostCatalog) *HostCatalog {
+		return func(c *HostCatalog) *HostCatalog {
+			c.PublicId = ""
+			return c
+		}
+	}
+
+	combine := func(fns ...func(c *HostCatalog) *HostCatalog) func(*HostCatalog) *HostCatalog {
+		return func(c *HostCatalog) *HostCatalog {
+			for _, fn := range fns {
+				c = fn(c)
+			}
+			return c
+		}
+	}
+
+	var tests = []struct {
+		name      string
+		orig      *HostCatalog
+		masks     []string
+		chgFn     func(*HostCatalog) *HostCatalog
+		want      *HostCatalog
+		wantIsErr error
+	}{
+		{
+			name: "nil-catalog",
+			orig: &HostCatalog{
+				HostCatalog: &store.HostCatalog{},
+			},
+			chgFn:     makeNil(),
+			wantIsErr: db.ErrNilParameter,
+		},
+		{
+			name: "no-public-id",
+			orig: &HostCatalog{
+				HostCatalog: &store.HostCatalog{},
+			},
+			chgFn:     deletePublicId(),
+			wantIsErr: db.ErrInvalidParameter,
+		},
+		{
+			name: "change-name",
+			orig: &HostCatalog{
+				HostCatalog: &store.HostCatalog{
+					Name: "test-name-repo",
+				},
+			},
+			chgFn: changeName("test-update-name-repo"),
+			want: &HostCatalog{
+				HostCatalog: &store.HostCatalog{
+					Name: "test-update-name-repo",
+				},
+			},
+		},
+		{
+			name: "change-description",
+			orig: &HostCatalog{
+				HostCatalog: &store.HostCatalog{
+					Description: "test-description-repo",
+				},
+			},
+			chgFn: changeDescription("test-update-description-repo"),
+			want: &HostCatalog{
+				HostCatalog: &store.HostCatalog{
+					Description: "test-update-description-repo",
+				},
+			},
+		},
+		{
+			name: "fieldMask-change-both",
+			orig: &HostCatalog{
+				HostCatalog: &store.HostCatalog{
+					Name:        "test-name-repo",
+					Description: "test-description-repo",
+				},
+			},
+			masks: []string{"Name", "Description"},
+			chgFn: combine(changeDescription("test-update-description-repo"), changeName("test-update-name-repo")),
+			want: &HostCatalog{
+				HostCatalog: &store.HostCatalog{
+					Name:        "test-update-name-repo",
+					Description: "test-update-description-repo",
+				},
+			},
+		},
+		{
+			name: "fieldMask-change-name",
+			orig: &HostCatalog{
+				HostCatalog: &store.HostCatalog{
+					Name:        "test-name-repo",
+					Description: "test-description-repo",
+				},
+			},
+			masks: []string{"Name"},
+			chgFn: combine(changeDescription("test-update-description-repo"), changeName("test-update-name-repo")),
+			want: &HostCatalog{
+				HostCatalog: &store.HostCatalog{
+					Name:        "test-update-name-repo",
+					Description: "test-description-repo",
+				},
+			},
+		},
+		{
+			name: "fieldMask-change-description",
+			orig: &HostCatalog{
+				HostCatalog: &store.HostCatalog{
+					Name:        "test-name-repo",
+					Description: "test-description-repo",
+				},
+			},
+			masks: []string{"Description"},
+			chgFn: combine(changeDescription("test-update-description-repo"), changeName("test-update-name-repo")),
+			want: &HostCatalog{
+				HostCatalog: &store.HostCatalog{
+					Name:        "test-name-repo",
+					Description: "test-update-description-repo",
+				},
+			},
+		},
+		// TODO(mgaffney,jimlambrt) 05/2020: enable these tests once
+		// support for setting columns to nil is added to db.Update.
+		/*
+			{
+				name: "delete-name",
+				orig: &HostCatalog{
+					HostCatalog: &store.HostCatalog{
+						Name:        "test-name-repo",
+						Description: "test-description-repo",
+					},
+				},
+				masks: []string{"Name"},
+				chgFn: combine(changeDescription("test-update-description-repo"), changeName("")),
+				want: &HostCatalog{
+					HostCatalog: &store.HostCatalog{
+						Description: "test-description-repo",
+					},
+				},
+			},
+			{
+				name: "delete-description",
+				orig: &HostCatalog{
+					HostCatalog: &store.HostCatalog{
+						Name:        "test-name-repo",
+						Description: "test-description-repo",
+					},
+				},
+				masks: []string{"Description"},
+				chgFn: combine(changeDescription(""), changeName("test-update-name-repo")),
+				want: &HostCatalog{
+					HostCatalog: &store.HostCatalog{
+						Name: "test-name-repo",
+					},
+				},
+			},
+			{
+				name: "do-not-delete-name",
+				orig: &HostCatalog{
+					HostCatalog: &store.HostCatalog{
+						Name:        "test-name-repo",
+						Description: "test-description-repo",
+					},
+				},
+				chgFn: combine(changeDescription("test-update-description-repo"), changeName("")),
+				want: &HostCatalog{
+					HostCatalog: &store.HostCatalog{
+						Name:        "test-name-repo",
+						Description: "test-update-description-repo",
+					},
+				},
+			},
+			{
+				name: "do-not-delete-description",
+				orig: &HostCatalog{
+					HostCatalog: &store.HostCatalog{
+						Name:        "test-name-repo",
+						Description: "test-description-repo",
+					},
+				},
+				chgFn: combine(changeDescription(""), changeName("test-update-name-repo")),
+				want: &HostCatalog{
+					HostCatalog: &store.HostCatalog{
+						Name:        "test-update-name-repo",
+						Description: "test-description-repo",
+					},
+				},
+			},
+		*/
+	}
+
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			assert := assert.New(t)
+			repo, err := NewRepository(rw, rw, wrapper)
+			assert.NoError(err)
+			assert.NotNil(repo)
+			_, prj := iam.TestScopes(t, conn)
+			tt.orig.ScopeId = prj.GetPublicId()
+			orig, err := repo.CreateCatalog(context.Background(), tt.orig)
+			assert.NoError(err)
+			assert.NotNil(orig)
+
+			if tt.chgFn != nil {
+				orig = tt.chgFn(orig)
+			}
+			got, err := repo.UpdateCatalog(context.Background(), orig, tt.masks)
+			if tt.wantIsErr != nil {
+				if assert.Error(err) {
+					assert.Truef(errors.Is(err, tt.wantIsErr), "want err: %q got: %q", tt.wantIsErr, err)
+				}
+				assert.Nil(got)
+			} else {
+				assert.NoError(err)
+				assert.Empty(tt.orig.PublicId)
+				if assert.NotNil(got) {
+					assertPublicId(t, "sthc", got.PublicId)
+					assert.NotSame(tt.orig, got)
+					assert.Equal(tt.orig.ScopeId, got.ScopeId)
+					if tt.want.Name == "" {
+						assertColumnIsNull(t, conn, got, "name")
+					} else {
+						assert.Equal(tt.want.Name, got.Name)
+					}
+
+					if tt.want.Description == "" {
+						assertColumnIsNull(t, conn, got, "description")
+					} else {
+						assert.Equal(tt.want.Description, got.Description)
+					}
+				}
+			}
+		})
+	}
+
+	t.Run("invalid-duplicate-names", func(t *testing.T) {
+		assert := assert.New(t)
+		repo, err := NewRepository(rw, rw, wrapper)
+		assert.NoError(err)
+		assert.NotNil(repo)
+
+		name := "test-dup-name"
+		cats := testCatalogs(t, conn, 2)
+		c1 := cats[0]
+		c1.Name = name
+		got1, err := repo.UpdateCatalog(context.Background(), c1, nil)
+		assert.NoError(err)
+		assert.NotNil(got1)
+		assert.Equal(name, got1.Name)
+
+		c2 := cats[1]
+		c2.Name = name
+		got2, err := repo.UpdateCatalog(context.Background(), c2, nil)
+		assert.Error(err)
+		assert.Truef(errors.Is(err, db.ErrNotUnique), "want err: %v got: %v", db.ErrNotUnique, err)
+		assert.Nil(got2)
+	})
+
+	t.Run("valid-duplicate-names-diff-scopes", func(t *testing.T) {
+		assert := assert.New(t)
+		repo, err := NewRepository(rw, rw, wrapper)
+		assert.NoError(err)
+		assert.NotNil(repo)
+
+		org, prj := iam.TestScopes(t, conn)
+		in := &HostCatalog{
+			HostCatalog: &store.HostCatalog{
+				Name: "test-name-repo",
+			},
+		}
+		in2 := in.clone()
+
+		in.ScopeId = prj.GetPublicId()
+		got, err := repo.CreateCatalog(context.Background(), in)
+		assert.NoError(err)
+		if assert.NotNil(got) {
+			assertPublicId(t, "sthc", got.PublicId)
+			assert.NotSame(in, got)
+			assert.Equal(in.Name, got.Name)
+			assert.Equal(in.Description, got.Description)
+		}
+
+		in2.ScopeId = org.GetPublicId()
+		in2.Name = "first-name"
+		got2, err := repo.CreateCatalog(context.Background(), in2)
+		assert.NoError(err)
+		if assert.NotNil(got2) {
+			got2.Name = got.Name
+			got3, err := repo.UpdateCatalog(context.Background(), got2, nil)
+			assert.NoError(err)
+			if assert.NotNil(got3) {
+				assert.NotSame(got2, got3)
+				assert.Equal(got.Name, got3.Name)
+				assert.Equal(got2.Description, got3.Description)
+			}
+		}
+	})
+
+	t.Run("change-scope-id", func(t *testing.T) {
+		assert := assert.New(t)
+		repo, err := NewRepository(rw, rw, wrapper)
+		assert.NoError(err)
+		assert.NotNil(repo)
+
+		c1, c2 := testCatalog(t, conn), testCatalog(t, conn)
+		assert.NotEqual(c1.ScopeId, c2.ScopeId)
+		orig := c1.clone()
+
+		c1.ScopeId = c2.ScopeId
+		assert.Equal(c1.ScopeId, c2.ScopeId)
+
+		got1, err := repo.UpdateCatalog(context.Background(), c1, nil)
+
+		assert.NoError(err)
+		assert.NotNil(got1)
+		assert.Equal(orig.ScopeId, got1.ScopeId)
+	})
+}
+
+// TODO(mgaffney,jimlambrt) 05/2020: delete after support for setting
+// columns to nil is added to db.Update.
+/*
+func TestNullAssert(t *testing.T) {
+	cleanup, conn, _ := db.TestSetup(t, "postgres")
+	defer cleanup()
+	defer conn.Close()
+
+	isNotNull := &HostCatalog{HostCatalog: &store.HostCatalog{PublicId: "sthc_JSH52G07wI"}}
+	m := isNotNull
+	if err := conn.Model(m).Where("public_id = ?", m.GetPublicId()).UpdateColumn("name", gorm.Expr("NULL")).Error; err != nil {
+		t.Fatalf("could not set to null: %v", err)
+	}
+
+	assertColumnIsNull(t, conn, isNotNull, "name")
+}
+*/
+
+type resource interface {
+	GetPublicId() string
+	TableName() string
+}
+
+func assertColumnIsNull(t *testing.T, db *gorm.DB, m resource, column string) {
+	query := fmt.Sprintf("public_id = ? AND %s is null", column)
+	var count int
+
+	if err := db.Model(m).Where(query, m.GetPublicId()).Count(&count).Error; err != nil {
+		t.Fatalf("could not query: table: %s, column: %s, public_id: %s err: %v", m.TableName(), column, m.GetPublicId(), err)
+	}
+	if count != 1 {
+		t.Errorf("want NULL, got NOT NULL - table: %s, column: %s, public_id: %s", m.TableName(), column, m.GetPublicId())
 	}
 }

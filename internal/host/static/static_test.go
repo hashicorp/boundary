@@ -438,6 +438,7 @@ func TestHostSetMember_New(t *testing.T) {
 	blueSets := testSets(t, conn, blueCat.GetPublicId(), 2)
 	blueHosts := testHosts(t, conn, blueCat.GetPublicId(), 2)
 
+	// TODO(mgaffney) 05/2020:
 	// these will be needed when the repository code is done
 	// greenCat := cats[1]
 	// greenSets := testSets(t, conn, greenCat.GetPublicId(), 2)
