@@ -11,6 +11,7 @@ import (
 	pb "github.com/hashicorp/watchtower/internal/gen/controller/api/resources/scopes"
 	pbs "github.com/hashicorp/watchtower/internal/gen/controller/api/services"
 	"github.com/hashicorp/watchtower/internal/iam"
+	"github.com/hashicorp/watchtower/internal/servers/controller/handlers"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
@@ -97,7 +98,7 @@ func (s Service) getFromRepo(ctx context.Context, id string) (*pb.Project, error
 		return nil, err
 	}
 	if p == nil {
-		return nil, status.Errorf(codes.NotFound, "Could not find Project with id %q", id)
+		return nil, handlers.NotFoundErrorf("Project %q doesn't exist.", id)
 	}
 	return toProto(p), nil
 }
@@ -112,20 +113,20 @@ func (s Service) createInRepo(ctx context.Context, orgID string, item *pb.Projec
 	}
 	p, err := iam.NewProject(orgID, opts...)
 	if err != nil {
-		return nil, err
+		return nil, status.Errorf(codes.Internal, "Unable to build project for creation: %v", err)
 	}
 	out, err := s.repo.CreateScope(ctx, p)
 	if err != nil {
-		return nil, err
+		return nil, status.Errorf(codes.Internal, "Unable to create project: %v", err)
 	}
 	if out == nil {
-		return nil, status.Error(codes.Internal, "Unable to create scope but no error returned from repository.")
+		return nil, status.Error(codes.Internal, "Unable to create project but no error returned from repository.")
 	}
 	return toProto(out), nil
 }
 
-func (s Service) updateInRepo(ctx context.Context, orgID, projID string, mask []string, item *pb.Project) (*pb.Project, error) {
-	opts := []iam.Option{iam.WithPublicId(projID)}
+func (s Service) updateInRepo(ctx context.Context, orgID, projId string, mask []string, item *pb.Project) (*pb.Project, error) {
+	opts := []iam.Option{iam.WithPublicId(projId)}
 	if desc := item.GetDescription(); desc != nil {
 		opts = append(opts, iam.WithDescription(desc.GetValue()))
 	}
@@ -134,21 +135,21 @@ func (s Service) updateInRepo(ctx context.Context, orgID, projID string, mask []
 	}
 	p, err := iam.NewProject(orgID, opts...)
 	if err != nil {
-		return nil, err
+		return nil, status.Errorf(codes.Internal, "Unable to build project for update: %v", err)
 	}
 	dbMask, err := toDbUpdateMask(mask)
 	if err != nil {
 		return nil, err
 	}
 	if len(dbMask) == 0 {
-		return nil, status.Errorf(codes.InvalidArgument, "No valid fields included in the update mask.")
+		return nil, handlers.InvalidArgumentErrorf("No valid fields included in the update mask.", []string{"update_mask"})
 	}
-	out, _, err := s.repo.UpdateScope(ctx, p, dbMask)
+	out, rowsUpdated, err := s.repo.UpdateScope(ctx, p, dbMask)
 	if err != nil {
-		return nil, err
+		return nil, status.Errorf(codes.Internal, "Unable to update project: %v", err)
 	}
-	if out == nil {
-		return nil, status.Error(codes.NotFound, "Project doesn't exist.")
+	if rowsUpdated == 0 {
+		return nil, handlers.NotFoundErrorf("Project %q doesn't exist.", projId)
 	}
 	return toProto(out), nil
 }
@@ -175,7 +176,7 @@ func toDbUpdateMask(paths []string) ([]string, error) {
 		}
 	}
 	if len(invalid) > 0 {
-		return nil, status.Errorf(codes.InvalidArgument, "Invalid fields passed in update_update mask: %v", invalid)
+		return nil, handlers.InvalidArgumentErrorf(fmt.Sprintf("Invalid fields passed in update_update mask: %v", invalid), []string{"update_mask"})
 	}
 	return dbPaths, nil
 }
@@ -203,11 +204,15 @@ func validateGetProjectRequest(req *pbs.GetProjectRequest) error {
 	if err := validateAncestors(req); err != nil {
 		return err
 	}
-	if err := validateID(req.GetOrgId(), "o_"); err != nil {
-		return err
+	badFormat := []string{}
+	if !validID(req.GetId(), "p_") {
+		badFormat = append(badFormat, "id")
 	}
-	if err := validateID(req.GetId(), "p_"); err != nil {
-		return err
+	if !validID(req.GetOrgId(), "o_") {
+		badFormat = append(badFormat, "id")
+	}
+	if len(badFormat) > 0 {
+		return handlers.InvalidArgumentErrorf("Improperly formatted identifer", badFormat)
 	}
 	return nil
 }
@@ -216,18 +221,25 @@ func validateCreateProjectRequest(req *pbs.CreateProjectRequest) error {
 	if err := validateAncestors(req); err != nil {
 		return err
 	}
-	if err := validateID(req.GetOrgId(), "o_"); err != nil {
-		return err
+	if !validID(req.GetOrgId(), "o_") {
+		handlers.InvalidArgumentErrorf("Improperly formatted identifer", []string{"org_id"})
 	}
 	item := req.GetItem()
 	if item == nil {
 		return status.Errorf(codes.InvalidArgument, "A project's fields must be set to something .")
 	}
+	immutableFieldsSet := []string{}
 	if item.GetId() != "" {
-		return status.Errorf(codes.InvalidArgument, "Cannot set ID when creating a new project.")
+		immutableFieldsSet = append(immutableFieldsSet, "id")
 	}
-	if item.GetCreatedTime() != nil || item.GetUpdatedTime() != nil {
-		return status.Errorf(codes.InvalidArgument, "Cannot set Created or Updated time when creating a new project.")
+	if item.GetCreatedTime() != nil {
+		immutableFieldsSet = append(immutableFieldsSet, "created_time")
+	}
+	if item.GetUpdatedTime() != nil {
+		immutableFieldsSet = append(immutableFieldsSet, "updated_time")
+	}
+	if len(immutableFieldsSet) > 0 {
+		return handlers.InvalidArgumentErrorf("Cannot specify read only fields at creation time.", immutableFieldsSet)
 	}
 	return nil
 }
@@ -236,30 +248,42 @@ func validateUpdateProjectRequest(req *pbs.UpdateProjectRequest) error {
 	if err := validateAncestors(req); err != nil {
 		return err
 	}
-	if err := validateID(req.GetId(), "p_"); err != nil {
-		return err
+	badFormat := []string{}
+	if !validID(req.GetId(), "p_") {
+		badFormat = append(badFormat, "id")
 	}
-	if err := validateID(req.GetOrgId(), "o_"); err != nil {
-		return err
+	if !validID(req.GetOrgId(), "o_") {
+		badFormat = append(badFormat, "id")
 	}
+	if len(badFormat) > 0 {
+		handlers.InvalidArgumentErrorf("Improperly formatted identifer", badFormat)
+	}
+
 	if req.GetUpdateMask() == nil {
-		return status.Errorf(codes.InvalidArgument, "UpdateMask not provided but is required to update a project.")
+		return handlers.InvalidArgumentErrorf("UpdateMask not provided but is required to update a project.", []string{"update_mask"})
 	}
+
 	item := req.GetItem()
 	if item == nil {
 		// It is legitimate for no item to be specified in an update request as it indicates all fields provided in
 		// the mask will be marked as unset.
 		return nil
 	}
-
-	if err := validateID(item.GetId(), "p_"); item.GetId() != "" && err != nil {
-		return err
-	}
 	if item.GetId() != "" && item.GetId() != req.GetId() {
-		return status.Errorf(codes.InvalidArgument, "Id in provided item and url must match. Item Id was %q, url id was %q", item.GetId(), req.GetId())
+		return handlers.InvalidArgumentErrorf("Id in provided item and url do not match", []string{"id"})
 	}
-	if item.GetCreatedTime() != nil || item.GetUpdatedTime() != nil {
-		return status.Errorf(codes.InvalidArgument, "Cannot set Created or Updated time when updating a project.")
+	immutableFieldsSet := []string{}
+	if item.GetId() != "" {
+		immutableFieldsSet = append(immutableFieldsSet, "id")
+	}
+	if item.GetCreatedTime() != nil {
+		immutableFieldsSet = append(immutableFieldsSet, "created_time")
+	}
+	if item.GetUpdatedTime() != nil {
+		immutableFieldsSet = append(immutableFieldsSet, "updated_time")
+	}
+	if len(immutableFieldsSet) > 0 {
+		return handlers.InvalidArgumentErrorf("Cannot specify read only fields at update time.", immutableFieldsSet)
 	}
 
 	return nil
@@ -269,24 +293,28 @@ func validateDeleteProjectRequest(req *pbs.DeleteProjectRequest) error {
 	if err := validateAncestors(req); err != nil {
 		return err
 	}
-	if err := validateID(req.GetId(), "p_"); err != nil {
-		return err
+	badFields := []string{}
+	if !validID(req.GetId(), "p_") {
+		badFields = append(badFields, "id")
 	}
-	if err := validateID(req.GetOrgId(), "o_"); err != nil {
-		return err
+	if !validID(req.GetOrgId(), "o_") {
+		badFields = append(badFields, "org_id")
+	}
+	if len(badFields) > 0 {
+		return handlers.InvalidArgumentErrorf("Improperly formatted id", badFields)
 	}
 	return nil
 }
 
-func validateID(id, prefix string) error {
+func validID(id, prefix string) bool {
 	if !strings.HasPrefix(id, prefix) {
-		return status.Errorf(codes.InvalidArgument, "ID start with a %q prefix, provided %q", prefix, id)
+		return false
 	}
 	id = strings.TrimPrefix(id, prefix)
 	if reInvalidID.Match([]byte(id)) {
-		return status.Errorf(codes.InvalidArgument, "Improperly formatted ID: %q", id)
+		return false
 	}
-	return nil
+	return true
 }
 
 type ancestorProvider interface {
@@ -296,7 +324,7 @@ type ancestorProvider interface {
 // validateAncestors verifies that the ancestors of this call are properly set and provided.
 func validateAncestors(r ancestorProvider) error {
 	if r.GetOrgId() == "" {
-		return status.Errorf(codes.InvalidArgument, "org_id must be provided.")
+		return handlers.InvalidArgumentErrorf("Missing organization id.", []string{"org_id"})
 	}
 	return nil
 }
