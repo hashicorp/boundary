@@ -22,7 +22,9 @@ func (r *Repository) CreateUser(ctx context.Context, user *User, opt ...Option) 
 	return resource.(*User), err
 }
 
-// UpdateUser will update a user in the repository and return the written user
+// UpdateUser will update a user in the repository and return the written user.
+// If fieldMaskPaths is unset, the updatable fields will be updated(Name,
+// Description and Disabled).
 func (r *Repository) UpdateUser(ctx context.Context, user *User, fieldMaskPaths []string, opt ...Option) (*User, int, error) {
 	if user == nil {
 		return nil, db.NoRowsAffected, fmt.Errorf("update user: missing user %w", db.ErrNilParameter)
