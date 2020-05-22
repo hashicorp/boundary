@@ -17,6 +17,18 @@ const (
 	ActionConnect Action = 8
 )
 
+var ActionMap = map[string]Action{
+	"unknown": ActionUnknown,
+	"list":    ActionList,
+	"create":  ActionCreate,
+	"update":  ActionUpdate,
+	"read":    ActionRead,
+	"delete":  ActionDelete,
+	"authen":  ActionAuthen,
+	"all":     ActionAll,
+	"connect": ActionConnect,
+}
+
 func (a Action) String() string {
 	return [...]string{
 		"unknown",
