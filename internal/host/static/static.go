@@ -8,7 +8,8 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-// A HostCatalog contains static hosts and static host sets.
+// A HostCatalog contains static hosts and static host sets. It is owned by
+// a scope.
 type HostCatalog struct {
 	*store.HostCatalog
 	tableName string `gorm:"-"`

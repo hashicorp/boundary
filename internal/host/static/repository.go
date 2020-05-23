@@ -13,14 +13,16 @@ import (
 )
 
 // A Repository stores and retrieves the persistent types in the static
-// package.
+// package. It is not safe to use a repository concurrently.
 type Repository struct {
 	reader  db.Reader
 	writer  db.Writer
 	wrapper wrapping.Wrapper
 }
 
-// NewRepository creates a new Repository.
+// NewRepository creates a new Repository. The returned repository should
+// only be used for one transaction and it is not safe for concurrent go
+// routines to access it.
 func NewRepository(r db.Reader, w db.Writer, wrapper wrapping.Wrapper) (*Repository, error) {
 	switch {
 	case r == nil:
