@@ -1,6 +1,10 @@
 package db
 
-import "errors"
+import (
+	"errors"
+
+	"github.com/lib/pq"
+)
 
 // Errors returned from this package may be tested against these errors
 // with errors.Is.
@@ -29,3 +33,20 @@ var (
 	// changed.
 	ErrMultipleRecords = errors.New("multiple records")
 )
+
+// IsUnique returns a boolean indicating whether the error is known to
+// report a unique constraint violation.
+func IsUnique(err error) bool {
+	if err == nil {
+		return false
+	}
+
+	var pqError *pq.Error
+	if errors.As(err, &pqError) {
+		if pqError.Code.Name() == "unique_violation" {
+			return true
+		}
+	}
+
+	return false
+}

@@ -2,12 +2,10 @@ package static
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"strings"
 
 	wrapping "github.com/hashicorp/go-kms-wrapping"
-	"github.com/lib/pq"
 
 	"github.com/hashicorp/watchtower/internal/db"
 	"github.com/hashicorp/watchtower/internal/host/static/store"
@@ -85,13 +83,9 @@ func (r *Repository) CreateCatalog(ctx context.Context, c *HostCatalog, opt ...O
 	)
 
 	if err != nil {
-		// TODO(mgaffney) 05/2020: extract database specific error handing
-		var e *pq.Error
-		if errors.As(err, &e) {
-			if e.Code.Name() == "unique_violation" {
-				return nil, fmt.Errorf("create: static host catalog: in scope: %s: name %s already exists: %w",
-					c.ScopeId, c.Name, db.ErrNotUnique)
-			}
+		if db.IsUnique(err) {
+			return nil, fmt.Errorf("create: static host catalog: in scope: %s: name %s already exists: %w",
+				c.ScopeId, c.Name, db.ErrNotUnique)
 		}
 		return nil, fmt.Errorf("create: static host catalog: in scope: %s: %w", c.ScopeId, err)
 	}
@@ -177,13 +171,9 @@ func (r *Repository) UpdateCatalog(ctx context.Context, c *HostCatalog, fieldMas
 	)
 
 	if err != nil {
-		// TODO(mgaffney) 05/2020: extract database specific error handing
-		var e *pq.Error
-		if errors.As(err, &e) {
-			if e.Code.Name() == "unique_violation" {
-				return nil, fmt.Errorf("update: static host catalog: %s in scope: %s: name %s already exists: %w",
-					c.PublicId, c.ScopeId, c.Name, db.ErrNotUnique)
-			}
+		if db.IsUnique(err) {
+			return nil, fmt.Errorf("update: static host catalog: %s in scope: %s: name %s already exists: %w",
+				c.PublicId, c.ScopeId, c.Name, db.ErrNotUnique)
 		}
 		return nil, fmt.Errorf("update: static host catalog: %s in scope: %s: %w", c.PublicId, c.ScopeId, err)
 	}
