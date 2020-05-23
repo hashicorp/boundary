@@ -704,7 +704,7 @@ func TestRepository_LookupCatalog(t *testing.T) {
 			want: nil,
 		},
 		{
-			name:    "bad-pulic-id",
+			name:    "bad-public-id",
 			id:      "",
 			want:    nil,
 			wantErr: db.ErrInvalidParameter,
@@ -736,6 +736,64 @@ func TestRepository_LookupCatalog(t *testing.T) {
 					assert.Equal(got, tt.want)
 				}
 			}
+		})
+	}
+}
+
+func TestRepository_DeleteCatalog(t *testing.T) {
+	cleanup, conn, _ := db.TestSetup(t, "postgres")
+	defer cleanup()
+	defer conn.Close()
+
+	cat := testCatalog(t, conn)
+	badId, err := newHostCatalogId()
+	assert.NoError(t, err)
+	assert.NotNil(t, badId)
+
+	rw := db.New(conn)
+	wrapper := db.TestWrapper(t)
+
+	var tests = []struct {
+		name    string
+		id      string
+		want    bool
+		wantErr error
+	}{
+		{
+			name: "found",
+			id:   cat.GetPublicId(),
+			want: true,
+		},
+		{
+			name: "not-found",
+			id:   badId,
+			want: false,
+		},
+		{
+			name:    "bad-public-id",
+			id:      "",
+			want:    false,
+			wantErr: db.ErrInvalidParameter,
+		},
+	}
+
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			assert := assert.New(t)
+			repo, err := NewRepository(rw, rw, wrapper)
+			assert.NoError(err)
+			assert.NotNil(repo)
+
+			got, err := repo.DeleteCatalog(context.Background(), tt.id)
+			if tt.wantErr != nil {
+				if assert.Error(err) {
+					assert.Truef(errors.Is(err, tt.wantErr), "want err: %q got: %q", tt.wantErr, err)
+				}
+			} else {
+				assert.NoError(err)
+			}
+			assert.Equal(tt.want, got)
 		})
 	}
 }

@@ -172,10 +172,10 @@ func (r *Repository) UpdateCatalog(ctx context.Context, c *HostCatalog, fieldMas
 
 	if err != nil {
 		if db.IsUnique(err) {
-			return nil, fmt.Errorf("update: static host catalog: %s in scope: %s: name %s already exists: %w",
-				c.PublicId, c.ScopeId, c.Name, db.ErrNotUnique)
+			return nil, fmt.Errorf("update: static host catalog: %s: name %s already exists: %w",
+				c.PublicId, c.Name, db.ErrNotUnique)
 		}
-		return nil, fmt.Errorf("update: static host catalog: %s in scope: %s: %w", c.PublicId, c.ScopeId, err)
+		return nil, fmt.Errorf("update: static host catalog: %s: %w", c.PublicId, err)
 	}
 
 	return returnedCatalog, nil
@@ -187,22 +187,55 @@ func (r *Repository) LookupCatalog(ctx context.Context, id string, opt ...Option
 	if id == "" {
 		return nil, fmt.Errorf("lookup: static host catalog: missing public id: %w", db.ErrInvalidParameter)
 	}
-	hc := allocCatalog()
-	hc.PublicId = id
-	if err := r.reader.LookupByPublicId(ctx, hc); err != nil {
+	c := allocCatalog()
+	c.PublicId = id
+	if err := r.reader.LookupByPublicId(ctx, c); err != nil {
 		if err == db.ErrRecordNotFound {
 			return nil, nil
 		}
 		return nil, fmt.Errorf("lookup: static host catalog: %s: %w", id, err)
 	}
-	return hc, nil
+	return c, nil
 }
 
 // DeleteCatalog deletes id from the repository returning a boolean to
 // indicate if the id existed.
 func (r *Repository) DeleteCatalog(ctx context.Context, id string, opt ...Option) (bool, error) {
-	// TODO(mgaffney) 05/2020: implement method
-	return false, nil
+	if id == "" {
+		return false, fmt.Errorf("delete: static host catalog: missing public id: %w", db.ErrInvalidParameter)
+	}
+
+	c := allocCatalog()
+	c.PublicId = id
+
+	metadata := newCatalogMetadata(c, oplog.OpType_OP_TYPE_DELETE)
+
+	var rowsDeleted int
+	var deleteCatalog *HostCatalog
+	_, err := r.writer.DoTx(
+		ctx,
+		db.StdRetryCnt,
+		db.ExpBackoff{},
+		func(w db.Writer) error {
+			deleteCatalog = c.clone()
+			var err error
+			rowsDeleted, err = w.Delete(
+				ctx,
+				deleteCatalog,
+				db.WithOplog(r.wrapper, metadata),
+			)
+			if err == nil && rowsDeleted > 1 {
+				return db.ErrMultipleRecords
+			}
+			return err
+		},
+	)
+
+	if err != nil {
+		return false, fmt.Errorf("delete: static host catalog: %s: %w", c.PublicId, err)
+	}
+
+	return rowsDeleted != 0, nil
 }
 
 func contains(ss []string, t string) bool {
@@ -224,9 +257,11 @@ func allocCatalog() *HostCatalog {
 func newCatalogMetadata(c *HostCatalog, op oplog.OpType) oplog.Metadata {
 	metadata := oplog.Metadata{
 		"resource-public-id": []string{c.GetPublicId()},
-		"scope-id":           []string{c.ScopeId},
 		"resource-type":      []string{"static host catalog"},
 		"op-type":            []string{op.String()},
+	}
+	if c.ScopeId != "" {
+		metadata["scope-id"] = []string{c.ScopeId}
 	}
 	return metadata
 }
