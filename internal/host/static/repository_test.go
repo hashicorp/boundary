@@ -641,21 +641,21 @@ func TestRepository_UpdateCatalog(t *testing.T) {
 
 // TODO(mgaffney,jimlambrt) 05/2020: delete after support for setting
 // columns to nil is added to db.Update.
-/*
 func TestNullAssert(t *testing.T) {
-	cleanup, conn, _ := db.TestSetup(t, "postgres")
-	defer cleanup()
-	defer conn.Close()
+	/*
+		cleanup, conn, _ := db.TestSetup(t, "postgres")
+		defer cleanup()
+		defer conn.Close()
 
-	isNotNull := &HostCatalog{HostCatalog: &store.HostCatalog{PublicId: "sthc_JSH52G07wI"}}
-	m := isNotNull
-	if err := conn.Model(m).Where("public_id = ?", m.GetPublicId()).UpdateColumn("name", gorm.Expr("NULL")).Error; err != nil {
-		t.Fatalf("could not set to null: %v", err)
-	}
+		isNotNull := &HostCatalog{HostCatalog: &store.HostCatalog{PublicId: "sthc_JSH52G07wI"}}
+		m := isNotNull
+		if err := conn.Model(m).Where("public_id = ?", m.GetPublicId()).UpdateColumn("name", gorm.Expr("NULL")).Error; err != nil {
+			t.Fatalf("could not set to null: %v", err)
+		}
 
-	assertColumnIsNull(t, conn, isNotNull, "name")
+		assertColumnIsNull(t, conn, isNotNull, "name")
+	*/
 }
-*/
 
 type resource interface {
 	GetPublicId() string
