@@ -198,11 +198,11 @@ func (r *Repository) LookupCatalog(ctx context.Context, id string, opt ...Option
 	return hc, nil
 }
 
-// DeleteCatalog deletes the HostCatalog for id and returns 1 if the
-// catalog was deleted or 0 if no host catalog was deleted.
-func (r *Repository) DeleteCatalog(ctx context.Context, id string, opt ...Option) (int, error) {
+// DeleteCatalog deletes id from the repository returning a boolean to
+// indicate if the id existed.
+func (r *Repository) DeleteCatalog(ctx context.Context, id string, opt ...Option) (bool, error) {
 	// TODO(mgaffney) 05/2020: implement method
-	return 0, nil
+	return false, nil
 }
 
 func contains(ss []string, t string) bool {
