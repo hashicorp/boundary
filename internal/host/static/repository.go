@@ -149,17 +149,15 @@ func (r *Repository) UpdateCatalog(ctx context.Context, c *HostCatalog, fieldMas
 
 	// Nothing to update
 	if len(dbMask) == 0 {
-		fresh := HostCatalog{
-			HostCatalog: &store.HostCatalog{},
-		}
+		fresh := allocCatalog()
 		fresh.PublicId = c.PublicId
-		if err := r.reader.LookupByPublicId(ctx, &fresh); err != nil {
+		if err := r.reader.LookupByPublicId(ctx, fresh); err != nil {
 			if err == db.ErrRecordNotFound {
 				return nil, fmt.Errorf("update: static host catalog: %w", db.ErrInvalidPublicId)
 			}
 			return nil, fmt.Errorf("update: static host catalog: public id %s: %w", fresh.PublicId, err)
 		}
-		return &fresh, nil
+		return fresh, nil
 	}
 
 	// TODO(mgaffney,jimlambrt) 05/2020: uncomment the nullFields line
@@ -208,9 +206,7 @@ func (r *Repository) LookupCatalog(ctx context.Context, id string, opt ...Option
 	if id == "" {
 		return nil, fmt.Errorf("lookup: static host catalog: missing public id: %w", db.ErrInvalidParameter)
 	}
-	hc := &HostCatalog{
-		HostCatalog: &store.HostCatalog{},
-	}
+	hc := allocCatalog()
 	hc.PublicId = id
 	if err := r.reader.LookupByPublicId(ctx, hc); err != nil {
 		if err == db.ErrRecordNotFound {
@@ -235,4 +231,11 @@ func contains(ss []string, t string) bool {
 		}
 	}
 	return false
+}
+
+func allocCatalog() *HostCatalog {
+	fresh := &HostCatalog{
+		HostCatalog: &store.HostCatalog{},
+	}
+	return fresh
 }
