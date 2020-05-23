@@ -1,7 +1,6 @@
 package static
 
 import (
-	"errors"
 	"fmt"
 
 	"github.com/hashicorp/watchtower/internal/db"
@@ -20,7 +19,7 @@ type HostCatalog struct {
 // ignored.
 func NewHostCatalog(scopeId string, opt ...Option) (*HostCatalog, error) {
 	if scopeId == "" {
-		return nil, errors.New("empty scopeId")
+		return nil, fmt.Errorf("new: static host catalog: no scope id: %w", db.ErrInvalidParameter)
 	}
 
 	opts := getOpts(opt...)
@@ -52,10 +51,10 @@ type Host struct {
 // ignored.
 func NewHost(catalogId, address string, opt ...Option) (*Host, error) {
 	if catalogId == "" {
-		return nil, errors.New("empty catalogId")
+		return nil, fmt.Errorf("new: static host: no catalog id: %w", db.ErrInvalidParameter)
 	}
 	if address == "" {
-		return nil, errors.New("empty address")
+		return nil, fmt.Errorf("new: static host: no address: %w", db.ErrInvalidParameter)
 	}
 
 	opts := getOpts(opt...)
@@ -81,7 +80,7 @@ type HostSet struct {
 // ignored.
 func NewHostSet(catalogId string, opt ...Option) (*HostSet, error) {
 	if catalogId == "" {
-		return nil, errors.New("empty catalogId")
+		return nil, fmt.Errorf("new: static host set: no catalog id: %w", db.ErrInvalidParameter)
 	}
 
 	opts := getOpts(opt...)
@@ -105,10 +104,10 @@ type HostSetMember struct {
 // membership of hostId in hostSetId.
 func NewHostSetMember(hostSetId, hostId string, opt ...Option) (*HostSetMember, error) {
 	if hostSetId == "" {
-		return nil, errors.New("empty hostSetId")
+		return nil, fmt.Errorf("new: static host set member: no host set id: %w", db.ErrInvalidParameter)
 	}
 	if hostId == "" {
-		return nil, errors.New("empty hostId")
+		return nil, fmt.Errorf("new: static host set member: no host id: %w", db.ErrInvalidParameter)
 	}
 	member := &HostSetMember{
 		HostSetMember: &store.HostSetMember{
