@@ -18,17 +18,22 @@ var (
 )
 
 // Updatefields will create a map[string]interface of the update values to be
-// sent to the db.  The map keys will be the field names.  The caller provided
-// fieldMaskPaths and setToNullPaths which must not intersect.
+// sent to the db.  The map keys will be the field names for the fields to be
+// updated.   The caller provided fieldMaskPaths and setToNullPaths must not
+// intersect.  fieldMaskPaths is required, and setToNullPaths may be nil or zero
+// len.
 func UpdateFields(i interface{}, fieldMaskPaths []string, setToNullPaths []string) (map[string]interface{}, error) {
 	if i == nil {
 		return nil, fmt.Errorf("interface is missing: %w", ErrNilParameter)
 	}
 	if fieldMaskPaths == nil {
-		return nil, fmt.Errorf("fieldMaskPaths is missing: %w", ErrNilParameter)
+		fieldMaskPaths = []string{}
 	}
 	if setToNullPaths == nil {
-		return nil, fmt.Errorf("setToNullPaths is missing: %w", ErrNilParameter)
+		setToNullPaths = []string{}
+	}
+	if len(fieldMaskPaths) == 0 && len(setToNullPaths) == 0 {
+		return nil, errors.New("both fieldMaskPaths and setToNullPaths are zero len")
 	}
 
 	inter, maskPaths, nullPaths, err := intersection(fieldMaskPaths, setToNullPaths)
