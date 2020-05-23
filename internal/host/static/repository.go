@@ -63,7 +63,7 @@ func (r *Repository) CreateCatalog(ctx context.Context, c *HostCatalog, opt ...O
 
 	id, err := newHostCatalogId()
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("create: static host catalog: %w", err)
 	}
 	c.PublicId = id
 
@@ -89,11 +89,11 @@ func (r *Repository) CreateCatalog(ctx context.Context, c *HostCatalog, opt ...O
 		var e *pq.Error
 		if errors.As(err, &e) {
 			if e.Code.Name() == "unique_violation" {
-				return nil, fmt.Errorf("%w: static host catalog: %s in scope: %s already exists",
-					db.ErrNotUnique, c.Name, c.ScopeId)
+				return nil, fmt.Errorf("create: static host catalog: in scope: %s: name %s already exists: %w",
+					c.ScopeId, c.Name, db.ErrNotUnique)
 			}
 		}
-		return nil, err
+		return nil, fmt.Errorf("create: static host catalog: in scope: %s: %w", c.ScopeId, err)
 	}
 	return newHostCatalog, nil
 }
@@ -144,9 +144,9 @@ func (r *Repository) UpdateCatalog(ctx context.Context, c *HostCatalog, fieldMas
 		fresh.PublicId = c.PublicId
 		if err := r.reader.LookupByPublicId(ctx, fresh); err != nil {
 			if err == db.ErrRecordNotFound {
-				return nil, fmt.Errorf("update: static host catalog: %w", db.ErrInvalidPublicId)
+				return nil, fmt.Errorf("update: static host catalog: %s: %w", fresh.PublicId, db.ErrInvalidPublicId)
 			}
-			return nil, fmt.Errorf("update: static host catalog: public id %s: %w", fresh.PublicId, err)
+			return nil, fmt.Errorf("update: static host catalog: %s: %w", fresh.PublicId, err)
 		}
 		return fresh, nil
 	}
@@ -170,7 +170,7 @@ func (r *Repository) UpdateCatalog(ctx context.Context, c *HostCatalog, fieldMas
 				db.WithOplog(r.wrapper, metadata),
 			)
 			if err == nil && rowsUpdated > 1 {
-				return errors.New("update: static host catalog: error more than 1 resource would have been updated")
+				return db.ErrMultipleRecords
 			}
 			return err
 		},
@@ -181,8 +181,8 @@ func (r *Repository) UpdateCatalog(ctx context.Context, c *HostCatalog, fieldMas
 		var e *pq.Error
 		if errors.As(err, &e) {
 			if e.Code.Name() == "unique_violation" {
-				return nil, fmt.Errorf("update: static host catalog: %s in scope: %s already exists: %w",
-					c.PublicId, c.ScopeId, db.ErrNotUnique)
+				return nil, fmt.Errorf("update: static host catalog: %s in scope: %s: name %s already exists: %w",
+					c.PublicId, c.ScopeId, c.Name, db.ErrNotUnique)
 			}
 		}
 		return nil, fmt.Errorf("update: static host catalog: %s in scope: %s: %w", c.PublicId, c.ScopeId, err)
@@ -203,7 +203,7 @@ func (r *Repository) LookupCatalog(ctx context.Context, id string, opt ...Option
 		if err == db.ErrRecordNotFound {
 			return nil, nil
 		}
-		return nil, fmt.Errorf("lookup: static host catalog: public id %s: %w", id, err)
+		return nil, fmt.Errorf("lookup: static host catalog: %s: %w", id, err)
 	}
 	return hc, nil
 }

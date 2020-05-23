@@ -2,6 +2,7 @@ package static
 
 import (
 	"errors"
+	"fmt"
 
 	"github.com/hashicorp/watchtower/internal/db"
 	"github.com/hashicorp/watchtower/internal/host/static/store"
@@ -126,13 +127,25 @@ const (
 )
 
 func newHostCatalogId() (string, error) {
-	return db.NewPublicId(hostCatalogPrefix)
+	id, err := db.NewPublicId(hostCatalogPrefix)
+	if err != nil {
+		return "", fmt.Errorf("new host catalog id: %w", err)
+	}
+	return id, err
 }
 
 func newHostId() (string, error) {
-	return db.NewPublicId(hostPrefix)
+	id, err := db.NewPublicId(hostPrefix)
+	if err != nil {
+		return "", fmt.Errorf("new host id: %w", err)
+	}
+	return id, err
 }
 
 func newHostSetId() (string, error) {
-	return db.NewPublicId(hostSetPrefix)
+	id, err := db.NewPublicId(hostSetPrefix)
+	if err != nil {
+		return "", fmt.Errorf("new host set id: %w", err)
+	}
+	return id, err
 }

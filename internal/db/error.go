@@ -23,4 +23,9 @@ var (
 	// when attempting to read from the database into struct.
 	// When reading into a slice it won't return this error.
 	ErrRecordNotFound = errors.New("record not found")
+
+	// ErrMultipleRecords is returned by update and delete methods when a
+	// write to the repository would result in more than one record being
+	// changed.
+	ErrMultipleRecords = errors.New("multiple records")
 )
