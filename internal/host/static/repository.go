@@ -147,7 +147,8 @@ func (r *Repository) UpdateCatalog(ctx context.Context, c *HostCatalog, fieldMas
 		dbMask = append(dbMask, "description")
 	}
 
-	// Nothing to update
+	// Nothing to update. The caller may have changed attributes which are
+	// not allowed to be updated so return a fresh copy.
 	if len(dbMask) == 0 {
 		fresh := allocCatalog()
 		fresh.PublicId = c.PublicId
