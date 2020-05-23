@@ -202,10 +202,23 @@ func (r *Repository) UpdateCatalog(ctx context.Context, c *HostCatalog, fieldMas
 	return returnedCatalog, nil
 }
 
-// LookupCatalog returns the HostCatalog for id.
+// LookupCatalog returns the HostCatalog for id. Returns nil, nil if no
+// HostCatalog is found for id.
 func (r *Repository) LookupCatalog(ctx context.Context, id string, opt ...Option) (*HostCatalog, error) {
-	// TODO(mgaffney) 05/2020: implement method
-	return nil, nil
+	if id == "" {
+		return nil, fmt.Errorf("lookup: static host catalog: missing public id: %w", db.ErrInvalidParameter)
+	}
+	hc := &HostCatalog{
+		HostCatalog: &store.HostCatalog{},
+	}
+	hc.PublicId = id
+	if err := r.reader.LookupByPublicId(ctx, hc); err != nil {
+		if err == db.ErrRecordNotFound {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("lookup: static host catalog: public id %s: %w", id, err)
+	}
+	return hc, nil
 }
 
 // DeleteCatalog deletes the HostCatalog for id and returns 1 if the

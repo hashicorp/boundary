@@ -673,3 +673,69 @@ func assertColumnIsNull(t *testing.T, db *gorm.DB, m resource, column string) {
 		t.Errorf("want NULL, got NOT NULL - table: %s, column: %s, public_id: %s", m.TableName(), column, m.GetPublicId())
 	}
 }
+
+func TestRepository_LookupCatalog(t *testing.T) {
+	cleanup, conn, _ := db.TestSetup(t, "postgres")
+	defer cleanup()
+	defer conn.Close()
+
+	cat := testCatalog(t, conn)
+	badId, err := newHostCatalogId()
+	assert.NoError(t, err)
+	assert.NotNil(t, badId)
+
+	rw := db.New(conn)
+	wrapper := db.TestWrapper(t)
+
+	var tests = []struct {
+		name    string
+		id      string
+		want    *HostCatalog
+		wantErr error
+	}{
+		{
+			name: "found",
+			id:   cat.GetPublicId(),
+			want: cat,
+		},
+		{
+			name: "not-found",
+			id:   badId,
+			want: nil,
+		},
+		{
+			name:    "bad-pulic-id",
+			id:      "",
+			want:    nil,
+			wantErr: db.ErrInvalidParameter,
+		},
+	}
+
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			assert := assert.New(t)
+			repo, err := NewRepository(rw, rw, wrapper)
+			assert.NoError(err)
+			assert.NotNil(repo)
+
+			got, err := repo.LookupCatalog(context.Background(), tt.id)
+			if tt.wantErr != nil {
+				if assert.Error(err) {
+					assert.Truef(errors.Is(err, tt.wantErr), "want err: %q got: %q", tt.wantErr, err)
+				}
+			} else {
+				assert.NoError(err)
+			}
+
+			switch {
+			case tt.want == nil:
+				assert.Nil(got)
+			case tt.want != nil:
+				if assert.NotNil(got) {
+					assert.Equal(got, tt.want)
+				}
+			}
+		})
+	}
+}
