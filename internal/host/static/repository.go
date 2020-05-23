@@ -67,12 +67,7 @@ func (r *Repository) CreateCatalog(ctx context.Context, c *HostCatalog, opt ...O
 	}
 	c.PublicId = id
 
-	metadata := oplog.Metadata{
-		"resource-public-id": []string{c.GetPublicId()},
-		"scope-id":           []string{c.ScopeId},
-		"resource-type":      []string{"static host catalog"},
-		"op-type":            []string{oplog.OpType_OP_TYPE_CREATE.String()},
-	}
+	metadata := newCatalogMetadata(c, oplog.OpType_OP_TYPE_CREATE)
 
 	var newHostCatalog *HostCatalog
 	_, err = r.writer.DoTx(
@@ -123,12 +118,7 @@ func (r *Repository) UpdateCatalog(ctx context.Context, c *HostCatalog, fieldMas
 	}
 	c = c.clone()
 
-	metadata := oplog.Metadata{
-		"resource-public-id": []string{c.GetPublicId()},
-		"scope-id":           []string{c.ScopeId},
-		"resource-type":      []string{"static host catalog"},
-		"op-type":            []string{oplog.OpType_OP_TYPE_UPDATE.String()},
-	}
+	metadata := newCatalogMetadata(c, oplog.OpType_OP_TYPE_UPDATE)
 
 	var dbMask, nullFields []string
 	empty := len(fieldMask) == 0
@@ -239,4 +229,14 @@ func allocCatalog() *HostCatalog {
 		HostCatalog: &store.HostCatalog{},
 	}
 	return fresh
+}
+
+func newCatalogMetadata(c *HostCatalog, op oplog.OpType) oplog.Metadata {
+	metadata := oplog.Metadata{
+		"resource-public-id": []string{c.GetPublicId()},
+		"scope-id":           []string{c.ScopeId},
+		"resource-type":      []string{"static host catalog"},
+		"op-type":            []string{op.String()},
+	}
+	return metadata
 }
