@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/hashicorp/watchtower/internal/db/common"
 	"github.com/hashicorp/watchtower/internal/oplog"
 	"github.com/jinzhu/gorm"
 	"google.golang.org/protobuf/proto"
@@ -42,13 +43,16 @@ type Writer interface {
 	// DoTx will wrap the TxHandler in a retryable transaction
 	DoTx(ctx context.Context, retries uint, backOff Backoff, Handler TxHandler) (RetryInfo, error)
 
-	// Update an object in the db, if there's a fieldMask then only the
-	// field_mask.proto paths are updated, otherwise it will send every field to
-	// the DB.  options: WithOplog the caller is responsible for the transaction
-	// life cycle of the writer and if an error is returned the caller must
-	// decide what to do with the transaction, which almost always should be to
-	// rollback.  Update returns the number of rows updated or an error.
-	Update(ctx context.Context, i interface{}, fieldMaskPaths []string, opt ...Option) (int, error)
+	// Update an object in the db, fieldMask is required and provides
+	// field_mask.proto paths for fields that should be updated.  setToNullPaths
+	// is optional and provides field_mask.proto paths for the fields that
+	// should be set to null.  fieldMaskPaths and setToNullPaths must not
+	// intersect.   options: WithOplog the caller is responsible for the
+	// transaction life cycle of the writer and if an error is returned the
+	// caller must decide what to do with the transaction, which almost always
+	// should be to rollback.  Update returns the number of rows updated or an
+	// error.
+	Update(ctx context.Context, i interface{}, fieldMaskPaths []string, setToNullPaths []string, opt ...Option) (int, error)
 
 	// Create an object in the db with options: WithOplog
 	// the caller is responsible for the transaction life cycle of the writer
@@ -99,7 +103,8 @@ const (
 	DeleteOp  OpType = 3
 )
 
-// VetForWriter provides an interface that Create and Update can use to vet the resource before sending it to the db
+// VetForWriter provides an interface that Create and Update can use to vet the
+// resource before sending it to the db
 type VetForWriter interface {
 	VetForWrite(ctx context.Context, r Reader, opType OpType, opt ...Option) error
 }
@@ -152,7 +157,8 @@ func (rw *Db) lookupAfterWrite(ctx context.Context, i interface{}, opt ...Option
 	return errors.New("not a resource with an id")
 }
 
-// Create an object in the db with options: WithOplog and WithLookup (to force a lookup after create))
+// Create an object in the db with options: WithOplog and WithLookup (to force a
+// lookup after create)
 func (rw *Db) Create(ctx context.Context, i interface{}, opt ...Option) error {
 	if rw.underlying == nil {
 		return fmt.Errorf("create: missing underlying db %w", ErrNilParameter)
@@ -200,19 +206,24 @@ func (rw *Db) Create(ctx context.Context, i interface{}, opt ...Option) error {
 	return nil
 }
 
-// Update an object in the db, if there's a fieldMask then only the
-// field_mask.proto paths are updated, otherwise it will send every field to the
-// DB.  Update supports embedding a struct (or structPtr) one level deep for
-// updating. Update returns the number of rows updated and any errors.
-func (rw *Db) Update(ctx context.Context, i interface{}, fieldMaskPaths []string, opt ...Option) (int, error) {
+// Update an object in the db, fieldMask is required and provides
+// field_mask.proto paths for fields that should be updated.  setToNullPaths
+// is optional and provides field_mask.proto paths for the fields that
+// should be set to null.  fieldMaskPaths and setToNullPaths must not
+// intersect.   options: WithOplog the caller is responsible for the
+// transaction life cycle of the writer and if an error is returned the
+// caller must decide what to do with the transaction, which almost always
+// should be to rollback.  Update returns the number of rows updated or an
+// error.
+func (rw *Db) Update(ctx context.Context, i interface{}, fieldMaskPaths []string, setToNullPaths []string, opt ...Option) (int, error) {
 	if rw.underlying == nil {
 		return NoRowsAffected, fmt.Errorf("update: missing underlying db %w", ErrNilParameter)
 	}
 	if i == nil {
 		return NoRowsAffected, fmt.Errorf("update: interface is missing %w", ErrNilParameter)
 	}
-	if len(fieldMaskPaths) == 0 {
-		return NoRowsAffected, fmt.Errorf("update: missing fieldMaskPaths %w", ErrNilParameter)
+	if len(fieldMaskPaths) == 0 && len(setToNullPaths) == 0 {
+		return NoRowsAffected, errors.New("update: both fieldMaskPaths and setToNullPaths are missing")
 	}
 
 	// This is not a watchtower scope, but rather a gorm Scope:
@@ -243,44 +254,15 @@ func (rw *Db) Update(ctx context.Context, i interface{}, fieldMaskPaths []string
 	}
 
 	// we need to filter out some non-updatable fields (like: CreateTime, etc)
-	fieldMaskPaths = filterFieldMask(fieldMaskPaths)
-	if len(fieldMaskPaths) == 0 {
-		return NoRowsAffected, fmt.Errorf("update: after filtering non-updated fields, there are no fields left in fieldMaskPaths: %s", fieldMaskPaths)
+	fieldMaskPaths = filterPaths(fieldMaskPaths)
+	setToNullPaths = filterPaths(setToNullPaths)
+	if len(fieldMaskPaths) == 0 && len(setToNullPaths) == 0 {
+		return NoRowsAffected, fmt.Errorf("update: after filtering non-updated fields, there are no fields left in fieldMaskPaths or setToNullPaths")
 	}
 
-	updateFields := map[string]interface{}{}
-
-	val := reflect.Indirect(reflect.ValueOf(i))
-	structTyp := val.Type()
-	for _, field := range fieldMaskPaths {
-		for i := 0; i < structTyp.NumField(); i++ {
-			kind := structTyp.Field(i).Type.Kind()
-			if kind == reflect.Struct || kind == reflect.Ptr {
-				embType := structTyp.Field(i).Type
-				// check if the embedded field is exported via CanInterface()
-				if val.Field(i).CanInterface() {
-					embVal := reflect.Indirect(reflect.ValueOf(val.Field(i).Interface()))
-					// if it's a ptr to a struct, then we need a few more bits before proceeding.
-					if kind == reflect.Ptr {
-						embVal = val.Field(i).Elem()
-						embType = embVal.Type()
-						if embType.Kind() != reflect.Struct {
-							continue
-						}
-					}
-					for embFieldNum := 0; embFieldNum < embType.NumField(); embFieldNum++ {
-						if strings.EqualFold(embType.Field(embFieldNum).Name, field) {
-							updateFields[field] = embVal.Field(embFieldNum).Interface()
-						}
-					}
-					continue
-				}
-			}
-			// it's not an embedded type, so check if the field name matches
-			if strings.EqualFold(structTyp.Field(i).Name, field) {
-				updateFields[field] = val.Field(i).Interface()
-			}
-		}
+	updateFields, err := common.UpdateFields(i, fieldMaskPaths, setToNullPaths)
+	if err != nil {
+		return NoRowsAffected, fmt.Errorf("update: getting update fields failed: %w", err)
 	}
 	if len(updateFields) == 0 {
 		return NoRowsAffected, fmt.Errorf("update: no fields matched using fieldMaskPaths %s", fieldMaskPaths)
@@ -539,13 +521,13 @@ func (rw *Db) SearchWhere(ctx context.Context, resources interface{}, where stri
 	return nil
 }
 
-// filterFieldMasks will filter out non-updatable fields
-func filterFieldMask(fieldMaskPaths []string) []string {
-	if len(fieldMaskPaths) == 0 {
+// filterPaths will filter out non-updatable fields
+func filterPaths(paths []string) []string {
+	if len(paths) == 0 {
 		return nil
 	}
 	filtered := []string{}
-	for _, p := range fieldMaskPaths {
+	for _, p := range paths {
 		switch {
 		case strings.EqualFold(p, "CreateTime"):
 			continue
