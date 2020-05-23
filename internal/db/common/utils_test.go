@@ -183,18 +183,29 @@ func TestUpdateFields(t *testing.T) {
 			},
 			want:       nil,
 			wantErr:    true,
-			wantErrMsg: "fieldMaskPaths is missing: nil parameter",
+			wantErrMsg: "both fieldMaskPaths and setToNullPaths are zero len",
 		},
 		{
 			name: "missing null fields",
 			args: args{
 				i:              testUser(t, id, id),
+				fieldMaskPaths: []string{"Name"},
+				setToNullPaths: nil,
+			},
+			want: map[string]interface{}{
+				"Name": id,
+			},
+			wantErr: false,
+		},
+		{
+			name: "all zero len",
+			args: args{
+				i:              testUser(t, id, id),
 				fieldMaskPaths: []string{},
 				setToNullPaths: nil,
 			},
-			want:       nil,
 			wantErr:    true,
-			wantErrMsg: "setToNullPaths is missing: nil parameter",
+			wantErrMsg: "both fieldMaskPaths and setToNullPaths are zero len",
 		},
 		{
 			name: "not found masks",
