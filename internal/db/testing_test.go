@@ -2,7 +2,6 @@ package db
 
 import (
 	"context"
-	"strconv"
 	"testing"
 	"time"
 
@@ -51,7 +50,7 @@ func TestVerifyOplogEntry(t *testing.T) {
 			WithOplog(
 				TestWrapper(t),
 				oplog.Metadata{
-					"op-type":            []string{strconv.Itoa(int(oplog.OpType_OP_TYPE_CREATE))},
+					"op-type":            []string{oplog.OpType_OP_TYPE_CREATE.String()},
 					"resource-public-id": []string{user.GetPublicId()},
 				}),
 		)
