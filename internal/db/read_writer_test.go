@@ -43,13 +43,19 @@ func TestDb_Update(t *testing.T) {
 		assert.Equal(foundUser.Id, user.Id)
 
 		user.Name = "friendly-" + id
-		rowsUpdated, err := w.Update(context.Background(), user, []string{"Name"})
+		rowsUpdated, err := w.Update(context.Background(), user, []string{"Name"}, nil)
 		assert.NoError(err)
 		assert.Equal(1, rowsUpdated)
 
 		err = w.LookupByPublicId(context.Background(), foundUser)
 		assert.NoError(err)
 		assert.Equal(foundUser.Name, user.Name)
+
+		user.Name = "friendly-" + id
+		rowsUpdated, err = w.Update(context.Background(), user, nil, []string{"Name"})
+		assert.NoError(err)
+		assert.Equal(1, rowsUpdated)
+
 	})
 	t.Run("non-updatable-fields", func(t *testing.T) {
 		w := Db{underlying: db}
@@ -74,7 +80,7 @@ func TestDb_Update(t *testing.T) {
 		ts := &db_test.Timestamp{Timestamp: ptypes.TimestampNow()}
 		user.CreateTime = ts
 		user.UpdateTime = ts
-		rowsUpdated, err := w.Update(context.Background(), user, []string{"Name", "CreateTime", "UpdateTime"})
+		rowsUpdated, err := w.Update(context.Background(), user, []string{"Name", "CreateTime", "UpdateTime"}, nil)
 		assert.NoError(err)
 		assert.Equal(1, rowsUpdated)
 
@@ -88,10 +94,10 @@ func TestDb_Update(t *testing.T) {
 		user.Name = id
 		user.CreateTime = ts
 		user.UpdateTime = ts
-		rowsUpdated, err = w.Update(context.Background(), user, nil)
+		rowsUpdated, err = w.Update(context.Background(), user, nil, nil)
 		assert.Error(err)
 		assert.Equal(0, rowsUpdated)
-		assert.Equal("update: missing fieldMaskPaths nil parameter", err.Error())
+		assert.Equal("update: both fieldMaskPaths and setToNullPaths are missing", err.Error())
 		assert.NotEqual(foundUser.CreateTime, ts)
 		assert.NotEqual(foundUser.UpdateTime, ts)
 	})
@@ -114,7 +120,7 @@ func TestDb_Update(t *testing.T) {
 		assert.Equal(foundUser.Id, user.Id)
 
 		user.Name = "friendly-" + id
-		rowsUpdated, err := w.Update(context.Background(), user, []string{"Name"},
+		rowsUpdated, err := w.Update(context.Background(), user, []string{"Name"}, nil,
 			// write oplogs for this update
 			WithOplog(
 				TestWrapper(t),
@@ -147,7 +153,7 @@ func TestDb_Update(t *testing.T) {
 		user, err := db_test.NewTestUser()
 		assert.NoError(err)
 		user.Name = "foo-" + id
-		rowsUpdated, err := w.Update(context.Background(), user, nil)
+		rowsUpdated, err := w.Update(context.Background(), user, []string{"Name"}, nil)
 		assert.Error(err)
 		assert.Equal(0, rowsUpdated)
 		assert.Equal("update: missing underlying db nil parameter", err.Error())
@@ -172,6 +178,7 @@ func TestDb_Update(t *testing.T) {
 
 		user.Name = "friendly-" + id
 		rowsUpdated, err := w.Update(context.Background(), user, []string{"Name"},
+			nil,
 			WithOplog(
 				nil,
 				oplog.Metadata{
@@ -203,7 +210,7 @@ func TestDb_Update(t *testing.T) {
 		assert.Equal(foundUser.Id, user.Id)
 
 		user.Name = "friendly-" + id
-		rowsUpdated, err := w.Update(context.Background(), user, []string{"Name"},
+		rowsUpdated, err := w.Update(context.Background(), user, []string{"Name"}, nil,
 			WithOplog(
 				TestWrapper(t),
 				nil,
@@ -700,7 +707,7 @@ func TestDb_DoTx(t *testing.T) {
 
 		_, err = w.DoTx(context.Background(), 10, ExpBackoff{}, func(w Writer) error {
 			user.Name = "friendly-" + id
-			rowsUpdated, err := w.Update(context.Background(), user, []string{"Name"})
+			rowsUpdated, err := w.Update(context.Background(), user, []string{"Name"}, nil)
 			if err != nil {
 				return err
 			}
@@ -722,7 +729,7 @@ func TestDb_DoTx(t *testing.T) {
 		assert.NoError(err)
 		_, err = w.DoTx(context.Background(), 10, ExpBackoff{}, func(w Writer) error {
 			user2.Name = "friendly2-" + id
-			rowsUpdated, err := w.Update(context.Background(), user2, []string{"Name"})
+			rowsUpdated, err := w.Update(context.Background(), user2, []string{"Name"}, nil)
 			if err != nil {
 				return err
 			}
@@ -738,7 +745,7 @@ func TestDb_DoTx(t *testing.T) {
 
 		_, err = w.DoTx(context.Background(), 10, ExpBackoff{}, func(w Writer) error {
 			user.Name = "friendly2-" + id
-			rowsUpdated, err := w.Update(context.Background(), user, []string{"Name"})
+			rowsUpdated, err := w.Update(context.Background(), user, []string{"Name"}, nil)
 			if err != nil {
 				return err
 			}
