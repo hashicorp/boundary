@@ -4,120 +4,185 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 	"testing"
+	"time"
 
 	"github.com/golang/protobuf/ptypes"
 	"github.com/hashicorp/go-uuid"
+	"github.com/hashicorp/vault/sdk/helper/base62"
 	"github.com/hashicorp/watchtower/internal/db/db_test"
 	"github.com/hashicorp/watchtower/internal/oplog"
-	"github.com/hashicorp/watchtower/internal/oplog/store"
+	"github.com/jinzhu/gorm"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestDb_Update(t *testing.T) {
-	// intentionally not run with t.Parallel so we don't need to use DoTx for the Update tests
 	cleanup, db, _ := TestSetup(t, "postgres")
+	now := &db_test.Timestamp{Timestamp: ptypes.TimestampNow()}
+	publicId, err := NewPublicId("testuser")
+	if err != nil {
+		t.Error(err)
+	}
 	defer func() {
 		if err := cleanup(); err != nil {
 			t.Error(err)
 		}
 	}()
+	defer func() {
+		if err := db.Close(); err != nil {
+			t.Error(err)
+		}
+	}()
+	id := testId(t)
+	type args struct {
+		i              *db_test.TestUser
+		fieldMaskPaths []string
+		setToNullPaths []string
+		opt            []Option
+	}
+	tests := []struct {
+		name            string
+		args            args
+		want            int
+		wantErr         bool
+		wantErrMsg      string
+		wantName        string
+		wantEmail       string
+		wantPhoneNumber string
+	}{
+		{
+			name: "simple",
+			args: args{
+				i: &db_test.TestUser{
+					StoreTestUser: &db_test.StoreTestUser{
+						Name:        "simple-updated" + id,
+						Email:       "updated" + id,
+						PhoneNumber: "updated" + id,
+					},
+				},
+				fieldMaskPaths: []string{"Name", "PhoneNumber"},
+				setToNullPaths: []string{"Email"},
+			},
+			want:            1,
+			wantErr:         false,
+			wantErrMsg:      "",
+			wantName:        "simple-updated" + id,
+			wantEmail:       "",
+			wantPhoneNumber: "updated" + id,
+		},
+		{
+			name: "multiple-null",
+			args: args{
+				i: &db_test.TestUser{
+					StoreTestUser: &db_test.StoreTestUser{
+						Name:        "multiple-null-updated" + id,
+						Email:       "updated" + id,
+						PhoneNumber: "updated" + id,
+					},
+				},
+				fieldMaskPaths: []string{"Name"},
+				setToNullPaths: []string{"Email", "PhoneNumber"},
+			},
+			want:            1,
+			wantErr:         false,
+			wantErrMsg:      "",
+			wantName:        "multiple-null-updated" + id,
+			wantEmail:       "",
+			wantPhoneNumber: "",
+		},
+		{
+			name: "non-updatable",
+			args: args{
+				i: &db_test.TestUser{
+					StoreTestUser: &db_test.StoreTestUser{
+						Name:        "non-updatable" + id,
+						Email:       "updated" + id,
+						PhoneNumber: "updated" + id,
+						PublicId:    publicId,
+						CreateTime:  now,
+						UpdateTime:  now,
+					},
+				},
+				fieldMaskPaths: []string{"Name", "PhoneNumber", "CreateTime", "UpdateTime", "PublicId"},
+				setToNullPaths: []string{"Email"},
+			},
+			want:            1,
+			wantErr:         false,
+			wantErrMsg:      "",
+			wantName:        "non-updatable" + id,
+			wantEmail:       "",
+			wantPhoneNumber: "updated" + id,
+		},
+		{
+			name: "both are missing",
+			args: args{
+				i: &db_test.TestUser{
+					StoreTestUser: &db_test.StoreTestUser{
+						Name:        "both are missing-updated" + id,
+						Email:       id,
+						PhoneNumber: id,
+					},
+				},
+				fieldMaskPaths: nil,
+				setToNullPaths: []string{},
+			},
+			want:       0,
+			wantErr:    true,
+			wantErrMsg: "update: both fieldMaskPaths and setToNullPaths are missing",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert := assert.New(t)
+			rw := &Db{
+				underlying: db,
+			}
+			u := testUser(t, db, tt.name+id, id, id)
+			tt.args.i.Id = u.Id
+			tt.args.i.PublicId = u.PublicId
+			rowsUpdated, err := rw.Update(context.Background(), tt.args.i, tt.args.fieldMaskPaths, tt.args.setToNullPaths, tt.args.opt...)
+			if err == nil && tt.wantErr {
+				assert.Error(err)
+			}
+			if tt.wantErr {
+				assert.Error(err)
+				assert.Equal(tt.want, rowsUpdated)
+				assert.Equal(tt.wantErrMsg, err.Error())
+				return
+			}
+			assert.NoError(err)
+			assert.Equal(tt.want, rowsUpdated)
+
+			foundUser, err := db_test.NewTestUser()
+			assert.NoError(err)
+			foundUser.PublicId = tt.args.i.PublicId
+			where := "public_id = ?"
+			for _, f := range tt.args.setToNullPaths {
+				switch {
+				case strings.EqualFold(f, "phonenumber"):
+					f = "phone_number"
+				}
+				where = fmt.Sprintf("%s and %s is null", where, f)
+			}
+			err = rw.LookupWhere(context.Background(), foundUser, where, tt.args.i.PublicId)
+			assert.NoError(err)
+			assert.Equal(tt.args.i.Id, foundUser.Id)
+			assert.Equal(tt.wantName, foundUser.Name)
+			assert.Equal(tt.wantEmail, foundUser.Email)
+			assert.Equal(tt.wantPhoneNumber, foundUser.PhoneNumber)
+			assert.NotEqual(now, foundUser.CreateTime)
+			assert.NotEqual(now, foundUser.UpdateTime)
+			assert.NotEqual(now, foundUser.PublicId)
+		})
+	}
+
 	assert := assert.New(t)
-	defer db.Close()
-	t.Run("simple", func(t *testing.T) {
-		w := Db{underlying: db}
-		id, err := uuid.GenerateUUID()
-		assert.NoError(err)
-		user, err := db_test.NewTestUser()
-		assert.NoError(err)
-		user.Name = "foo-" + id
-		err = w.Create(context.Background(), user)
-		assert.NoError(err)
-		assert.NotEmpty(user.Id)
-
-		foundUser, err := db_test.NewTestUser()
-		assert.NoError(err)
-		foundUser.PublicId = user.PublicId
-		err = w.LookupByPublicId(context.Background(), foundUser)
-		assert.NoError(err)
-		assert.Equal(foundUser.Id, user.Id)
-
-		user.Name = "friendly-" + id
-		rowsUpdated, err := w.Update(context.Background(), user, []string{"Name"}, nil)
-		assert.NoError(err)
-		assert.Equal(1, rowsUpdated)
-
-		err = w.LookupByPublicId(context.Background(), foundUser)
-		assert.NoError(err)
-		assert.Equal(foundUser.Name, user.Name)
-
-		user.Name = "friendly-" + id
-		rowsUpdated, err = w.Update(context.Background(), user, nil, []string{"Name"})
-		assert.NoError(err)
-		assert.Equal(1, rowsUpdated)
-
-	})
-	t.Run("non-updatable-fields", func(t *testing.T) {
-		w := Db{underlying: db}
-		id, err := uuid.GenerateUUID()
-		assert.NoError(err)
-		user, err := db_test.NewTestUser()
-		assert.NoError(err)
-		user.Name = "foo-" + id
-		err = w.Create(context.Background(), user)
-		db.LogMode(false)
-		assert.NoError(err)
-		assert.NotEmpty(user.Id)
-
-		foundUser, err := db_test.NewTestUser()
-		assert.NoError(err)
-		foundUser.PublicId = user.PublicId
-		err = w.LookupByPublicId(context.Background(), foundUser)
-		assert.NoError(err)
-		assert.Equal(foundUser.Id, user.Id)
-
-		user.Name = "friendly-" + id
-		ts := &db_test.Timestamp{Timestamp: ptypes.TimestampNow()}
-		user.CreateTime = ts
-		user.UpdateTime = ts
-		rowsUpdated, err := w.Update(context.Background(), user, []string{"Name", "CreateTime", "UpdateTime"}, nil)
-		assert.NoError(err)
-		assert.Equal(1, rowsUpdated)
-
-		err = w.LookupByPublicId(context.Background(), foundUser)
-		assert.NoError(err)
-		assert.Equal(foundUser.Name, user.Name)
-		assert.NotEqual(foundUser.CreateTime, ts)
-		assert.NotEqual(foundUser.UpdateTime, ts)
-
-		ts = &db_test.Timestamp{Timestamp: ptypes.TimestampNow()}
-		user.Name = id
-		user.CreateTime = ts
-		user.UpdateTime = ts
-		rowsUpdated, err = w.Update(context.Background(), user, nil, nil)
-		assert.Error(err)
-		assert.Equal(0, rowsUpdated)
-		assert.Equal("update: both fieldMaskPaths and setToNullPaths are missing", err.Error())
-		assert.NotEqual(foundUser.CreateTime, ts)
-		assert.NotEqual(foundUser.UpdateTime, ts)
-	})
 	t.Run("valid-WithOplog", func(t *testing.T) {
 		w := Db{underlying: db}
 		id, err := uuid.GenerateUUID()
 		assert.NoError(err)
-		user, err := db_test.NewTestUser()
-		assert.NoError(err)
-		user.Name = "foo-" + id
-		err = w.Create(context.Background(), user)
-		assert.NoError(err)
-		assert.NotEmpty(user.Id)
-
-		foundUser, err := db_test.NewTestUser()
-		assert.NoError(err)
-		foundUser.PublicId = user.PublicId
-		err = w.LookupByPublicId(context.Background(), foundUser)
-		assert.NoError(err)
-		assert.Equal(foundUser.Id, user.Id)
+		user := testUser(t, db, "foo-"+id, id, id)
 
 		user.Name = "friendly-" + id
 		rowsUpdated, err := w.Update(context.Background(), user, []string{"Name"}, nil,
@@ -128,31 +193,29 @@ func TestDb_Update(t *testing.T) {
 					"key-only":           nil,
 					"deployment":         []string{"amex"},
 					"project":            []string{"central-info-systems", "local-info-systems"},
-					"resource-public-id": []string{user.GetPublicId()},
+					"resource-public-id": []string{user.PublicId},
+					"op-type":            []string{oplog.OpType_OP_TYPE_UPDATE.String()},
 				}),
 		)
 		assert.NoError(err)
 		assert.Equal(1, rowsUpdated)
 
+		foundUser, err := db_test.NewTestUser()
+		assert.NoError(err)
+		foundUser.PublicId = user.PublicId
 		err = w.LookupByPublicId(context.Background(), foundUser)
 		assert.NoError(err)
 		assert.Equal(foundUser.Name, user.Name)
 
-		var metadata store.Metadata
-		err = db.Where("key = ? and value = ?", "resource-public-id", user.PublicId).First(&metadata).Error
-		assert.NoError(err)
-
-		var foundEntry oplog.Entry
-		err = db.Where("id = ?", metadata.EntryId).First(&foundEntry).Error
+		err = TestVerifyOplog(t, &w, user.PublicId, WithOperation(oplog.OpType_OP_TYPE_UPDATE), WithCreateNotBefore(10*time.Second))
 		assert.NoError(err)
 	})
 	t.Run("nil-tx", func(t *testing.T) {
 		w := Db{underlying: nil}
 		id, err := uuid.GenerateUUID()
 		assert.NoError(err)
-		user, err := db_test.NewTestUser()
-		assert.NoError(err)
-		user.Name = "foo-" + id
+
+		user := testUser(t, db, "foo-"+id, id, id)
 		rowsUpdated, err := w.Update(context.Background(), user, []string{"Name"}, nil)
 		assert.Error(err)
 		assert.Equal(0, rowsUpdated)
@@ -162,19 +225,7 @@ func TestDb_Update(t *testing.T) {
 		w := Db{underlying: db}
 		id, err := uuid.GenerateUUID()
 		assert.NoError(err)
-		user, err := db_test.NewTestUser()
-		assert.NoError(err)
-		user.Name = "foo-" + id
-		err = w.Create(context.Background(), user)
-		assert.NoError(err)
-		assert.NotEmpty(user.Id)
-
-		foundUser, err := db_test.NewTestUser()
-		assert.NoError(err)
-		foundUser.PublicId = user.PublicId
-		err = w.LookupByPublicId(context.Background(), foundUser)
-		assert.NoError(err)
-		assert.Equal(foundUser.Id, user.Id)
+		user := testUser(t, db, "foo-"+id, id, id)
 
 		user.Name = "friendly-" + id
 		rowsUpdated, err := w.Update(context.Background(), user, []string{"Name"},
@@ -195,20 +246,7 @@ func TestDb_Update(t *testing.T) {
 		w := Db{underlying: db}
 		id, err := uuid.GenerateUUID()
 		assert.NoError(err)
-		user, err := db_test.NewTestUser()
-		assert.NoError(err)
-		user.Name = "foo-" + id
-		err = w.Create(context.Background(), user)
-		assert.NoError(err)
-		assert.NotEmpty(user.Id)
-
-		foundUser, err := db_test.NewTestUser()
-		assert.NoError(err)
-		foundUser.PublicId = user.PublicId
-		err = w.LookupByPublicId(context.Background(), foundUser)
-		assert.NoError(err)
-		assert.Equal(foundUser.Id, user.Id)
-
+		user := testUser(t, db, "foo-"+id, id, id)
 		user.Name = "friendly-" + id
 		rowsUpdated, err := w.Update(context.Background(), user, []string{"Name"}, nil,
 			WithOplog(
@@ -980,4 +1018,33 @@ func TestDb_ScanRows(t *testing.T) {
 			assert.Equal(user.PublicId, u.PublicId)
 		}
 	})
+}
+
+func testUser(t *testing.T, conn *gorm.DB, name, email, phoneNumber string) *db_test.TestUser {
+	t.Helper()
+	assert := assert.New(t)
+
+	publicId, err := base62.Random(20)
+	assert.NoError(err)
+	u := &db_test.TestUser{
+		StoreTestUser: &db_test.StoreTestUser{
+			PublicId:    publicId,
+			Name:        name,
+			Email:       email,
+			PhoneNumber: phoneNumber,
+		},
+	}
+	if conn != nil {
+		err = conn.Create(u).Error
+		assert.NoError(err)
+	}
+	return u
+}
+
+func testId(t *testing.T) string {
+	t.Helper()
+	assert := assert.New(t)
+	id, err := uuid.GenerateUUID()
+	assert.NoError(err)
+	return id
 }
