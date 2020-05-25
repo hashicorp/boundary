@@ -118,7 +118,7 @@ func Test_ScopeUpdate(t *testing.T) {
 		id, err := uuid.GenerateUUID()
 		assert.NoError(err)
 		s.Name = id
-		updatedRows, err := w.Update(context.Background(), s, []string{"Name"})
+		updatedRows, err := w.Update(context.Background(), s, []string{"Name"}, nil)
 		assert.NoError(err)
 		assert.Equal(1, updatedRows)
 	})
@@ -132,7 +132,7 @@ func Test_ScopeUpdate(t *testing.T) {
 		assert.NotEmpty(s.PublicId)
 
 		s.Type = ProjectScope.String()
-		updatedRows, err := w.Update(context.Background(), s, []string{"Type"})
+		updatedRows, err := w.Update(context.Background(), s, []string{"Type"}, nil)
 		assert.NotNil(err)
 		assert.Equal(0, updatedRows)
 	})
