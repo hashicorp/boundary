@@ -20,7 +20,13 @@ func (r *Repository) CreateScope(ctx context.Context, scope *Scope, opt ...Optio
 	return resource.(*Scope), nil
 }
 
-// UpdateScope will update a scope in the repository and return the written scope
+// UpdateScope will update a scope in the repository and return the written
+// scope.  fieldMaskPaths provides field_mask.proto paths for fields that should
+// be updated.  Fields will be set to NULL if the field is a zero value and
+// included in fieldMask. Name and Description are the only updatable fields,
+// and everything else is ignored.  If no updatable fields are included in the
+// fieldMaskPaths, then a refreshed copy of the Scope from the db will be
+// returned.
 func (r *Repository) UpdateScope(ctx context.Context, scope *Scope, fieldMaskPaths []string, opt ...Option) (*Scope, int, error) {
 	if scope == nil {
 		return nil, db.NoRowsAffected, fmt.Errorf("update scope: missing scope: %w", db.ErrNilParameter)
