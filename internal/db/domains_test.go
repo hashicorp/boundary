@@ -2,8 +2,10 @@ package db
 
 import (
 	"testing"
+	"time"
 
 	_ "github.com/jackc/pgx/v4"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestDomain_PublicId(t *testing.T) {
@@ -112,6 +114,8 @@ returning id;
 }
 
 func TestDomain_immutable_create_time_func(t *testing.T) {
+	assert := assert.New(t)
+
 	const (
 		createTable = `
 create table if not exists test_immutable_create_time (
@@ -125,7 +129,9 @@ CREATE TRIGGER test_update_immutable_create_time
 BEFORE
 update ON test_immutable_create_time FOR EACH ROW EXECUTE PROCEDURE immutable_create_time_func();
 `
-
+		query = `
+select create_time from test_immutable_create_time where id = $1
+`
 		insert = `
 insert into test_immutable_create_time (name)
 values ('alice')
@@ -142,6 +148,11 @@ set name = 'bob';
 update test_immutable_create_time 
 set create_time = now();
 `
+		// no where clause intentionally, since it's not needed for the test
+		bad_update_null = `
+update test_immutable_create_time 
+set create_time = null;
+`
 	)
 
 	cleanup, conn, _ := TestSetup(t, "postgres")
@@ -153,31 +164,41 @@ set create_time = now();
 	defer conn.Close()
 
 	db := conn.DB()
-	if _, err := db.Exec(createTable); err != nil {
-		t.Fatalf("query: \n%s\n error: %s", createTable, err)
-	}
-	if _, err := db.Exec(addTriggers); err != nil {
-		t.Fatalf("query: \n%s\n error: %s", createTable, err)
-	}
+	_, err := db.Exec(createTable)
+	assert.NoError(err)
 
-	if _, err := db.Exec(insert); err != nil {
-		t.Fatalf("wanted no error, got %s", err)
-	}
+	_, err = db.Exec(addTriggers)
+	assert.NoError(err)
+
+	var id int
+	err = db.QueryRow(insert).Scan(&id)
+	assert.NoError(err)
+
+	var origTime time.Time
+	err = db.QueryRow(query, id).Scan(&origTime)
+	assert.NoError(err)
 
 	var count int
-	err := db.QueryRow("select count(*) from test_immutable_create_time;").Scan(&count)
-	if err != nil {
-		t.Errorf("want no error, got error %v", err)
-	}
-	if count != 1 {
-		t.Errorf("want one row, got %d", count)
-	}
-	if _, err := db.Exec(update); err != nil {
-		t.Fatalf("want no, got %v", err)
-	}
+	err = db.QueryRow("select count(*) from test_immutable_create_time;").Scan(&count)
+	assert.NoError(err)
+	assert.Equal(1, count)
 
-	if _, err := db.Exec(bad_update); err != nil {
-		t.Fatalf("want no, got %v", err)
-	}
+	_, err = db.Exec(update)
+	assert.NoError(err)
+
+	_, err = db.Exec(bad_update)
+	assert.NoError(err)
+
+	var updateTime time.Time
+	err = db.QueryRow(query, id).Scan(&updateTime)
+	assert.NoError(err)
+	assert.Equal(origTime, updateTime)
+
+	_, err = db.Exec(bad_update_null)
+	assert.NoError(err)
+
+	err = db.QueryRow(query, id).Scan(&updateTime)
+	assert.NoError(err)
+	assert.Equal(origTime, updateTime)
 
 }
