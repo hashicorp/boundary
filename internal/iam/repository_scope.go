@@ -23,14 +23,35 @@ func (r *Repository) CreateScope(ctx context.Context, scope *Scope, opt ...Optio
 // UpdateScope will update a scope in the repository and return the written scope
 func (r *Repository) UpdateScope(ctx context.Context, scope *Scope, fieldMaskPaths []string, opt ...Option) (*Scope, int, error) {
 	if scope == nil {
-		return nil, db.NoRowsAffected, errors.New("scope is nil for update")
+		return nil, db.NoRowsAffected, fmt.Errorf("update scope: missing scope: %w", db.ErrNilParameter)
 	}
 	if scope.PublicId == "" {
-		return nil, db.NoRowsAffected, errors.New("scope public id is unset for update")
+		return nil, db.NoRowsAffected, fmt.Errorf("update scope: missing public id: %w", db.ErrNilParameter)
 	}
-	resource, rowsUpdated, err := r.update(ctx, scope, fieldMaskPaths)
+	if contains(fieldMaskPaths, "ParentId") {
+		return nil, db.NoRowsAffected, fmt.Errorf("update scope: you cannot change a scope's parent: %w", db.ErrInvalidParameter)
+	}
+	var dbMask, nullFields []string
+	dbMask, nullFields = buildUpdatePaths(
+		map[string]interface{}{
+			"name":        scope.Name,
+			"description": scope.Description,
+		},
+		fieldMaskPaths,
+	)
+	// nada to update, so reload scope from db and return it
+	if len(dbMask) == 0 && len(nullFields) == 0 {
+		foundScope := allocScope()
+		foundScope.PublicId = scope.PublicId
+		if err := r.reader.LookupByPublicId(ctx, &foundScope); err != nil {
+			return nil, db.NoRowsAffected, fmt.Errorf("update scope: failed for public id %s: %w", scope.PublicId, err)
+		}
+		return &foundScope, db.NoRowsAffected, nil
+	}
+
+	resource, rowsUpdated, err := r.update(ctx, scope, dbMask, nullFields)
 	if err != nil {
-		return nil, db.NoRowsAffected, fmt.Errorf("failed to update scope: %w", err)
+		return nil, db.NoRowsAffected, fmt.Errorf("update scope: failed for public id %s: %w", scope.PublicId, err)
 	}
 	return resource.(*Scope), rowsUpdated, err
 }
