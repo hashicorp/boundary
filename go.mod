@@ -14,6 +14,7 @@ require (
 	github.com/go-openapi/validate v0.19.8 // indirect
 	github.com/go-swagger/go-swagger v0.23.0
 	github.com/golang-migrate/migrate/v4 v4.11.0
+	github.com/golang-sql/civil v0.0.0-20190719163853-cb61b32ac6fe
 	github.com/golang/protobuf v1.4.2
 	github.com/grpc-ecosystem/grpc-gateway v1.14.5
 	github.com/hashicorp/errwrap v1.0.0
