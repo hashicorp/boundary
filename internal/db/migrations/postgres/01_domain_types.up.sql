@@ -15,8 +15,7 @@ comment on domain wt_timestamp is
 
 
 CREATE OR REPLACE FUNCTION update_time_column() RETURNS TRIGGER 
-SET SCHEMA
-  'public' LANGUAGE plpgsql AS $$
+LANGUAGE plpgsql AS $$
 BEGIN
    IF row(NEW.*) IS DISTINCT FROM row(OLD.*) THEN
       NEW.update_time = now(); 
@@ -31,8 +30,7 @@ comment on function update_time_column() is
 
 CREATE
   OR REPLACE FUNCTION immutable_create_time_func() RETURNS TRIGGER
-SET SCHEMA
-  'public' LANGUAGE plpgsql AS $$
+LANGUAGE plpgsql AS $$
 BEGIN IF NEW.create_time IS DISTINCT FROM OLD.create_time THEN
 NEW.create_time = OLD.create_time;
 RAISE WARNING 'create_time cannot be set to %', new.create_time;

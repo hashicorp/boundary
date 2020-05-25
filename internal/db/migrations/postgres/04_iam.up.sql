@@ -44,8 +44,7 @@ create table iam_scope_project (
 
 CREATE
   OR REPLACE FUNCTION iam_sub_scopes_func() RETURNS TRIGGER
-SET SCHEMA
-  'public' LANGUAGE plpgsql AS $$ DECLARE parent_type INT;
+LANGUAGE plpgsql AS $$ DECLARE parent_type INT;
 BEGIN IF new.type = 'organization' THEN
 insert into iam_scope_organization (scope_id, name)
 values
@@ -70,8 +69,7 @@ insert ON iam_scope FOR EACH ROW EXECUTE PROCEDURE iam_sub_scopes_func();
 
 CREATE
   OR REPLACE FUNCTION iam_immutable_scope_type_func() RETURNS TRIGGER
-SET SCHEMA
-  'public' LANGUAGE plpgsql AS $$ DECLARE parent_type INT;
+LANGUAGE plpgsql AS $$ DECLARE parent_type INT;
 BEGIN IF new.type != old.type THEN
 RAISE EXCEPTION 'scope type cannot be updated';
 END IF;
