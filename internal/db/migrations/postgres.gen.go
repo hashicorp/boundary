@@ -56,8 +56,9 @@ CREATE
   OR REPLACE FUNCTION immutable_create_time_func() RETURNS TRIGGER
 SET SCHEMA
   'public' LANGUAGE plpgsql AS $$
-BEGIN IF COALESCE((NEW.create_time <> OLD.create_time), true) THEN
-RAISE EXCEPTION 'create_time cannot be set to %', new.create_time;
+BEGIN IF NEW.create_time IS DISTINCT FROM OLD.create_time THEN
+NEW.create_time = OLD.create_time;
+RAISE WARNING 'create_time cannot be set to %', new.create_time;
 END IF;
 return NEW;
 END;

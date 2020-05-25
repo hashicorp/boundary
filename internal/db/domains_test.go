@@ -176,8 +176,8 @@ set create_time = now();
 		t.Fatalf("want no, got %v", err)
 	}
 
-	if _, err := db.Exec(bad_update); err == nil {
-		t.Fatal("wanted an error")
+	if _, err := db.Exec(bad_update); err != nil {
+		t.Fatalf("want no, got %v", err)
 	}
 
 }
