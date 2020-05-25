@@ -176,7 +176,7 @@ func Test_Repository_UpdateScope(t *testing.T) {
 		assert.Error(err)
 		assert.Nil(project)
 		assert.Equal(0, updatedRows)
-		assert.Equal("failed to update scope: update: vet for write failed you cannot change a scope's parent", err.Error())
+		assert.Equal("update scope: you cannot change a scope's parent: invalid parameter", err.Error())
 	})
 }
 
