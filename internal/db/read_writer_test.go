@@ -173,7 +173,7 @@ func TestDb_Update(t *testing.T) {
 			assert.Equal(tt.wantPhoneNumber, foundUser.PhoneNumber)
 			assert.NotEqual(now, foundUser.CreateTime)
 			assert.NotEqual(now, foundUser.UpdateTime)
-			assert.NotEqual(now, foundUser.PublicId)
+			assert.NotEqual(publicId, foundUser.PublicId)
 		})
 	}
 
