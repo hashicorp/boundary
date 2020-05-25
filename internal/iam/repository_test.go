@@ -27,8 +27,11 @@ func TestNewRepository(t *testing.T) {
 		}
 	}()
 	assert := assert.New(t)
-	defer conn.Close()
-
+	defer func() {
+		if err := conn.Close(); err != nil {
+			t.Error(err)
+		}
+	}()
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
 	type args struct {
@@ -116,8 +119,11 @@ func Test_Repository_create(t *testing.T) {
 		}
 	}()
 	assert := assert.New(t)
-	defer conn.Close()
-
+	defer func() {
+		if err := conn.Close(); err != nil {
+			t.Error(err)
+		}
+	}()
 	t.Run("valid-scope", func(t *testing.T) {
 		rw := db.New(conn)
 		wrapper := db.TestWrapper(t)
@@ -167,8 +173,11 @@ func Test_Repository_delete(t *testing.T) {
 		}
 	}()
 	assert := assert.New(t)
-	defer conn.Close()
-
+	defer func() {
+		if err := conn.Close(); err != nil {
+			t.Error(err)
+		}
+	}()
 	t.Run("valid-org", func(t *testing.T) {
 		rw := db.New(conn)
 		wrapper := db.TestWrapper(t)

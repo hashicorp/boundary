@@ -21,7 +21,11 @@ func Test_Utils(t *testing.T) {
 			t.Error(err)
 		}
 	}()
-	defer conn.Close()
+	defer func() {
+		if err := conn.Close(); err != nil {
+			t.Error(err)
+		}
+	}()
 	t.Run("nothing", func(t *testing.T) {
 
 	})

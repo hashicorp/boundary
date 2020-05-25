@@ -19,8 +19,11 @@ func Test_NewScope(t *testing.T) {
 		}
 	}()
 	assert := assert.New(t)
-	defer conn.Close()
-
+	defer func() {
+		if err := conn.Close(); err != nil {
+			t.Error(err)
+		}
+	}()
 	t.Run("valid-org-with-project", func(t *testing.T) {
 		w := db.New(conn)
 		s, err := NewOrganization()
@@ -60,8 +63,11 @@ func Test_ScopeCreate(t *testing.T) {
 		}
 	}()
 	assert := assert.New(t)
-	defer conn.Close()
-
+	defer func() {
+		if err := conn.Close(); err != nil {
+			t.Error(err)
+		}
+	}()
 	t.Run("valid", func(t *testing.T) {
 		w := db.New(conn)
 		s, err := NewOrganization()
@@ -104,8 +110,11 @@ func Test_ScopeUpdate(t *testing.T) {
 		}
 	}()
 	assert := assert.New(t)
-	defer conn.Close()
-
+	defer func() {
+		if err := conn.Close(); err != nil {
+			t.Error(err)
+		}
+	}()
 	t.Run("valid", func(t *testing.T) {
 		w := db.New(conn)
 		s, err := NewOrganization()
@@ -146,7 +155,11 @@ func Test_ScopeGetScope(t *testing.T) {
 		}
 	}()
 	assert := assert.New(t)
-	defer conn.Close()
+	defer func() {
+		if err := conn.Close(); err != nil {
+			t.Error(err)
+		}
+	}()
 	t.Run("valid-scope", func(t *testing.T) {
 		w := db.New(conn)
 		s, err := NewOrganization()
@@ -212,8 +225,11 @@ func TestScope_Clone(t *testing.T) {
 		}
 	}()
 	assert := assert.New(t)
-	defer conn.Close()
-
+	defer func() {
+		if err := conn.Close(); err != nil {
+			t.Error(err)
+		}
+	}()
 	t.Run("valid", func(t *testing.T) {
 		w := db.New(conn)
 		s, err := NewOrganization()

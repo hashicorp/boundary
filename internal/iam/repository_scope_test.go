@@ -24,7 +24,11 @@ func Test_Repository_CreateScope(t *testing.T) {
 		}
 	}()
 	assert := assert.New(t)
-	defer conn.Close()
+	defer func() {
+		if err := conn.Close(); err != nil {
+			t.Error(err)
+		}
+	}()
 
 	t.Run("valid-scope", func(t *testing.T) {
 		rw := db.New(conn)
@@ -110,7 +114,11 @@ func Test_Repository_UpdateScope(t *testing.T) {
 		}
 	}()
 	assert := assert.New(t)
-	defer conn.Close()
+	defer func() {
+		if err := conn.Close(); err != nil {
+			t.Error(err)
+		}
+	}()
 
 	t.Run("valid-scope", func(t *testing.T) {
 		rw := db.New(conn)
@@ -191,8 +199,12 @@ func Test_Repository_LookupScope(t *testing.T) {
 			t.Error(err)
 		}
 	}()
+	defer func() {
+		if err := conn.Close(); err != nil {
+			t.Error(err)
+		}
+	}()
 	assert := assert.New(t)
-	defer conn.Close()
 
 	t.Run("found-and-not-found", func(t *testing.T) {
 		rw := db.New(conn)
@@ -231,7 +243,11 @@ func Test_Repository_DeleteScope(t *testing.T) {
 		}
 	}()
 	assert := assert.New(t)
-	defer conn.Close()
+	defer func() {
+		if err := conn.Close(); err != nil {
+			t.Error(err)
+		}
+	}()
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
 	repo, err := NewRepository(rw, rw, wrapper)
