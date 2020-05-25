@@ -47,11 +47,11 @@ type Writer interface {
 	// field_mask.proto paths for fields that should be updated.  setToNullPaths
 	// is optional and provides field_mask.proto paths for the fields that
 	// should be set to null.  fieldMaskPaths and setToNullPaths must not
-	// intersect.   options: WithOplog the caller is responsible for the
-	// transaction life cycle of the writer and if an error is returned the
-	// caller must decide what to do with the transaction, which almost always
-	// should be to rollback.  Update returns the number of rows updated or an
-	// error.
+	// intersect. The caller is responsible for the transaction life cycle of
+	// the writer and if an error is returned the caller must decide what to do
+	// with the transaction, which almost always should be to rollback.  Update
+	// returns the number of rows updated or an error. Supported options:
+	// WithOplog
 	Update(ctx context.Context, i interface{}, fieldMaskPaths []string, setToNullPaths []string, opt ...Option) (int, error)
 
 	// Create an object in the db with options: WithOplog
@@ -210,11 +210,11 @@ func (rw *Db) Create(ctx context.Context, i interface{}, opt ...Option) error {
 // field_mask.proto paths for fields that should be updated.  setToNullPaths
 // is optional and provides field_mask.proto paths for the fields that
 // should be set to null.  fieldMaskPaths and setToNullPaths must not
-// intersect.   options: WithOplog the caller is responsible for the
-// transaction life cycle of the writer and if an error is returned the
-// caller must decide what to do with the transaction, which almost always
-// should be to rollback.  Update returns the number of rows updated or an
-// error.
+// intersect. The caller is responsible for the transaction life cycle of
+// the writer and if an error is returned the caller must decide what to do
+// with the transaction, which almost always should be to rollback.  Update
+// returns the number of rows updated or an error. Supported options:
+// WithOplog.  Update returns the number of rows updated or an error.
 func (rw *Db) Update(ctx context.Context, i interface{}, fieldMaskPaths []string, setToNullPaths []string, opt ...Option) (int, error) {
 	if rw.underlying == nil {
 		return NoRowsAffected, fmt.Errorf("update: missing underlying db %w", ErrNilParameter)
