@@ -27,8 +27,11 @@ begin
   end if;
 end;
 $$ language plpgsql;
-comment on function update_time_column() is
-'function used in before update triggers to properly set update_time columns';
+
+comment on function
+  update_time_column()
+is
+  'function used in before update triggers to properly set update_time columns';
 
 create
   or replace function immutable_create_time_func() returns trigger
