@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"context"
+	"fmt"
 	"io"
 	"net/http"
 
@@ -67,10 +68,10 @@ func ErrorHandler(logger hclog.Logger) runtime.ProtoErrorHandlerFunc {
 		apiErr := statusErrorToApiError(s)
 		buf, merr := marshaler.Marshal(apiErr)
 		if merr != nil {
-			logger.Warn("failed to marshal error response", "response", apiErr, "error", merr)
+			logger.Error("failed to marshal error response", "response", fmt.Sprintf("%#v", apiErr), "error", merr)
 			w.WriteHeader(http.StatusInternalServerError)
 			if _, err := io.WriteString(w, errorFallback); err != nil {
-				logger.Warn("failed to write response", "error", err)
+				logger.Error("failed to write response", "error", err)
 			}
 			return
 		}
@@ -78,7 +79,7 @@ func ErrorHandler(logger hclog.Logger) runtime.ProtoErrorHandlerFunc {
 		w.Header().Set("Content-Type", marshaler.ContentType())
 		w.WriteHeader(int(apiErr.GetStatus()))
 		if _, err := w.Write(buf); err != nil {
-			logger.Warn("failed to send response chunk", "error", err)
+			logger.Error("failed to send response chunk", "error", err)
 			return
 		}
 	}
