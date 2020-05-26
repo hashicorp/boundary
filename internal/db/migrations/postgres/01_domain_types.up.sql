@@ -33,17 +33,22 @@ comment on function
 is
   'function used in before update triggers to properly set update_time columns';
 
-create
-  or replace function immutable_create_time_func() returns trigger
-language plpgsql as $$
-begin if new.create_time is distinct from old.create_time then
-new.create_time = old.create_time;
-raise warning 'create_time cannot be set to %', new.create_time;
-end if;
-return new;
+create or replace function
+  immutable_create_time_func()
+  returns trigger
+as $$
+begin
+  if new.create_time is distinct from old.create_time then
+    new.create_time = old.create_time;
+    raise warning 'create_time cannot be set to %', new.create_time;
+  end if;
+  return new;
 end;
-$$;
-comment on function immutable_create_time_func() is
-'function used in before update triggers to make create_time column immutable';
+$$ language plpgsql;
+
+comment on function
+  immutable_create_time_func()
+is
+  'function used in before update triggers to make create_time column immutable';
 
 commit;
