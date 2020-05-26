@@ -14,31 +14,41 @@ comment on domain wt_timestamp is
 'Standard timestamp for all create_time and update_time columns';
 
 
-CREATE OR REPLACE FUNCTION update_time_column() RETURNS TRIGGER 
-LANGUAGE plpgsql AS $$
-BEGIN
-   IF row(NEW.*) IS DISTINCT FROM row(OLD.*) THEN
-      NEW.update_time = now(); 
-      RETURN NEW;
-   ELSE
-      RETURN OLD;
-   END IF;
-END;
-$$;
-comment on function update_time_column() is
-'function used in before update triggers to properly set update_time columns';
+create or replace function
+  update_time_column()
+  returns trigger
+as $$
+begin
+  if row(new.*) is distinct from row(old.*) then
+    new.update_time = now();
+    return new;
+  else
+    return old;
+  end if;
+end;
+$$ language plpgsql;
 
-CREATE
-  OR REPLACE FUNCTION immutable_create_time_func() RETURNS TRIGGER
-LANGUAGE plpgsql AS $$
-BEGIN IF NEW.create_time IS DISTINCT FROM OLD.create_time THEN
-NEW.create_time = OLD.create_time;
-RAISE WARNING 'create_time cannot be set to %', new.create_time;
-END IF;
-return NEW;
-END;
-$$;
-comment on function immutable_create_time_func() is
-'function used in before update triggers to make create_time column immutable';
+comment on function
+  update_time_column()
+is
+  'function used in before update triggers to properly set update_time columns';
+
+create or replace function
+  immutable_create_time_func()
+  returns trigger
+as $$
+begin
+  if new.create_time is distinct from old.create_time then
+    new.create_time = old.create_time;
+    raise warning 'create_time cannot be set to %', new.create_time;
+  end if;
+  return new;
+end;
+$$ language plpgsql;
+
+comment on function
+  immutable_create_time_func()
+is
+  'function used in before update triggers to make create_time column immutable';
 
 commit;
