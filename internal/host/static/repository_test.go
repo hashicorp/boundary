@@ -103,7 +103,6 @@ func TestRepository_New(t *testing.T) {
 			assert := assert.New(t)
 			got, err := NewRepository(tt.args.r, tt.args.w, tt.args.wrapper)
 			if tt.wantIsErr != nil {
-				assert.Error(err)
 				if assert.Error(err) {
 					assert.Truef(errors.Is(err, tt.wantIsErr), "want err: %q got: %q", tt.wantIsErr, err)
 				}
@@ -188,7 +187,6 @@ func TestRepository_CreateCatalog(t *testing.T) {
 			}
 			got, err := repo.CreateCatalog(context.Background(), tt.in, tt.opts...)
 			if tt.wantIsErr != nil {
-				assert.Error(err)
 				if assert.Error(err) {
 					assert.Truef(errors.Is(err, tt.wantIsErr), "want err: %q got: %q", tt.wantIsErr, err)
 				}
