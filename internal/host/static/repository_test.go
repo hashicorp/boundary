@@ -106,11 +106,11 @@ func TestRepository_New(t *testing.T) {
 				assert.Error(err)
 				assert.Truef(errors.Is(err, tt.wantIsErr), "want err: %q got: %q", tt.wantIsErr, err)
 				assert.Nil(got)
-			} else {
-				assert.NoError(err)
-				if assert.NotNil(got) {
-					assert.Equal(tt.want, got)
-				}
+				return
+			}
+			assert.NoError(err)
+			if assert.NotNil(got) {
+				assert.Equal(tt.want, got)
 			}
 		})
 	}
@@ -189,16 +189,16 @@ func TestRepository_CreateCatalog(t *testing.T) {
 				assert.Error(err)
 				assert.Truef(errors.Is(err, tt.wantIsErr), "want err: %q got: %q", tt.wantIsErr, err)
 				assert.Nil(got)
-			} else {
-				assert.NoError(err)
-				assert.Empty(tt.in.PublicId)
-				if assert.NotNil(got) {
-					assertPublicId(t, "sthc", got.PublicId)
-					assert.NotSame(tt.in, got)
-					assert.Equal(tt.want.Name, got.Name)
-					assert.Equal(tt.want.Description, got.Description)
-					assert.Equal(got.CreateTime, got.UpdateTime)
-				}
+				return
+			}
+			assert.NoError(err)
+			assert.Empty(tt.in.PublicId)
+			if assert.NotNil(got) {
+				assertPublicId(t, "sthc", got.PublicId)
+				assert.NotSame(tt.in, got)
+				assert.Equal(tt.want.Name, got.Name)
+				assert.Equal(tt.want.Description, got.Description)
+				assert.Equal(got.CreateTime, got.UpdateTime)
 			}
 		})
 	}
@@ -527,26 +527,26 @@ func TestRepository_UpdateCatalog(t *testing.T) {
 				assert.Error(err)
 				assert.Truef(errors.Is(err, tt.wantIsErr), "want err: %q got: %q", tt.wantIsErr, err)
 				assert.Nil(got)
-			} else {
-				assert.NoError(err)
-				assert.Empty(tt.orig.PublicId)
-				if assert.NotNil(got) {
-					assertPublicId(t, "sthc", got.PublicId)
-					assert.NotSame(tt.orig, got)
-					assert.Equal(tt.orig.ScopeId, got.ScopeId)
-					if tt.want.Name == "" {
-						assertColumnIsNull(t, conn, got, "name")
-					} else {
-						assert.Equal(tt.want.Name, got.Name)
-					}
-
-					if tt.want.Description == "" {
-						assertColumnIsNull(t, conn, got, "description")
-					} else {
-						assert.Equal(tt.want.Description, got.Description)
-					}
-				}
+				return
 			}
+			assert.NoError(err)
+			assert.Empty(tt.orig.PublicId)
+			if assert.NotNil(got) {
+				assertPublicId(t, "sthc", got.PublicId)
+				assert.NotSame(tt.orig, got)
+				assert.Equal(tt.orig.ScopeId, got.ScopeId)
+				if tt.want.Name == "" {
+					assertColumnIsNull(t, conn, got, "name")
+					return
+				}
+				assert.Equal(tt.want.Name, got.Name)
+				if tt.want.Description == "" {
+					assertColumnIsNull(t, conn, got, "description")
+					return
+				}
+				assert.Equal(tt.want.Description, got.Description)
+			}
+
 		})
 	}
 
@@ -718,9 +718,9 @@ func TestRepository_LookupCatalog(t *testing.T) {
 			if tt.wantErr != nil {
 				assert.Error(err)
 				assert.Truef(errors.Is(err, tt.wantErr), "want err: %q got: %q", tt.wantErr, err)
-			} else {
-				assert.NoError(err)
+				return
 			}
+			assert.NoError(err)
 
 			switch {
 			case tt.want == nil:
