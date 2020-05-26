@@ -54,6 +54,7 @@ func statusErrorToApiError(s *status.Status) *pb.Error {
 	return apiErr
 }
 
+// TODO(ICU-194): Remove all information from internal errors.
 func ErrorHandler(logger hclog.Logger) runtime.ProtoErrorHandlerFunc {
 	const errorFallback = `{"error": "failed to marshal error message"}`
 	return func(ctx context.Context, _ *runtime.ServeMux, marshaler runtime.Marshaler, w http.ResponseWriter, r *http.Request, inErr error) {
