@@ -30,7 +30,7 @@ var (
 
 	// ErrMultipleRecords is returned by update and delete methods when a
 	// write to the repository would result in more than one record being
-	// changed.
+	// changed resulting in the transaction being rolled back.
 	ErrMultipleRecords = errors.New("multiple records")
 )
 
