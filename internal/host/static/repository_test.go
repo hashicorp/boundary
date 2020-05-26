@@ -103,9 +103,8 @@ func TestRepository_New(t *testing.T) {
 			assert := assert.New(t)
 			got, err := NewRepository(tt.args.r, tt.args.w, tt.args.wrapper)
 			if tt.wantIsErr != nil {
-				if assert.Error(err) {
-					assert.Truef(errors.Is(err, tt.wantIsErr), "want err: %q got: %q", tt.wantIsErr, err)
-				}
+				assert.Error(err)
+				assert.Truef(errors.Is(err, tt.wantIsErr), "want err: %q got: %q", tt.wantIsErr, err)
 				assert.Nil(got)
 			} else {
 				assert.NoError(err)
@@ -187,9 +186,8 @@ func TestRepository_CreateCatalog(t *testing.T) {
 			}
 			got, err := repo.CreateCatalog(context.Background(), tt.in, tt.opts...)
 			if tt.wantIsErr != nil {
-				if assert.Error(err) {
-					assert.Truef(errors.Is(err, tt.wantIsErr), "want err: %q got: %q", tt.wantIsErr, err)
-				}
+				assert.Error(err)
+				assert.Truef(errors.Is(err, tt.wantIsErr), "want err: %q got: %q", tt.wantIsErr, err)
 				assert.Nil(got)
 			} else {
 				assert.NoError(err)
@@ -526,9 +524,8 @@ func TestRepository_UpdateCatalog(t *testing.T) {
 			}
 			got, err := repo.UpdateCatalog(context.Background(), orig, tt.masks)
 			if tt.wantIsErr != nil {
-				if assert.Error(err) {
-					assert.Truef(errors.Is(err, tt.wantIsErr), "want err: %q got: %q", tt.wantIsErr, err)
-				}
+				assert.Error(err)
+				assert.Truef(errors.Is(err, tt.wantIsErr), "want err: %q got: %q", tt.wantIsErr, err)
 				assert.Nil(got)
 			} else {
 				assert.NoError(err)
@@ -719,9 +716,8 @@ func TestRepository_LookupCatalog(t *testing.T) {
 
 			got, err := repo.LookupCatalog(context.Background(), tt.id)
 			if tt.wantErr != nil {
-				if assert.Error(err) {
-					assert.Truef(errors.Is(err, tt.wantErr), "want err: %q got: %q", tt.wantErr, err)
-				}
+				assert.Error(err)
+				assert.Truef(errors.Is(err, tt.wantErr), "want err: %q got: %q", tt.wantErr, err)
 			} else {
 				assert.NoError(err)
 			}
@@ -785,9 +781,8 @@ func TestRepository_DeleteCatalog(t *testing.T) {
 
 			got, err := repo.DeleteCatalog(context.Background(), tt.id)
 			if tt.wantErr != nil {
-				if assert.Error(err) {
-					assert.Truef(errors.Is(err, tt.wantErr), "want err: %q got: %q", tt.wantErr, err)
-				}
+				assert.Error(err)
+				assert.Truef(errors.Is(err, tt.wantErr), "want err: %q got: %q", tt.wantErr, err)
 			} else {
 				assert.NoError(err)
 			}
