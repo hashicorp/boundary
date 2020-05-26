@@ -15,14 +15,14 @@ comment on domain wt_timestamp is
 
 
 create or replace function update_time_column() returns trigger
-language plpgsql as $$
+  language plpgsql as $$
 begin
-   if row(new.*) is distinct from row(old.*) then
-      new.update_time = now();
-      return new;
-   else
-      return old;
-   end if;
+  if row(new.*) is distinct from row(old.*) then
+    new.update_time = now();
+    return new;
+  else
+    return old;
+  end if;
 end;
 $$;
 comment on function update_time_column() is
