@@ -113,11 +113,11 @@ func (s Service) createInRepo(ctx context.Context, orgID string, item *pb.Projec
 	}
 	p, err := iam.NewProject(orgID, opts...)
 	if err != nil {
-		return nil, status.Errorf(codes.Internal, "Unable to build project for creation: %v", err)
+		return nil, status.Errorf(codes.Internal, "Unable to build project for creation: %v.", err)
 	}
 	out, err := s.repo.CreateScope(ctx, p)
 	if err != nil {
-		return nil, status.Errorf(codes.Internal, "Unable to create project: %v", err)
+		return nil, status.Errorf(codes.Internal, "Unable to create project: %v.", err)
 	}
 	if out == nil {
 		return nil, status.Error(codes.Internal, "Unable to create project but no error returned from repository.")
@@ -135,7 +135,7 @@ func (s Service) updateInRepo(ctx context.Context, orgID, projId string, mask []
 	}
 	p, err := iam.NewProject(orgID, opts...)
 	if err != nil {
-		return nil, status.Errorf(codes.Internal, "Unable to build project for update: %v", err)
+		return nil, status.Errorf(codes.Internal, "Unable to build project for update: %v.", err)
 	}
 	dbMask, err := toDbUpdateMask(mask)
 	if err != nil {
@@ -146,7 +146,7 @@ func (s Service) updateInRepo(ctx context.Context, orgID, projId string, mask []
 	}
 	out, rowsUpdated, err := s.repo.UpdateScope(ctx, p, dbMask)
 	if err != nil {
-		return nil, status.Errorf(codes.Internal, "Unable to update project: %v", err)
+		return nil, status.Errorf(codes.Internal, "Unable to update project: %v.", err)
 	}
 	if rowsUpdated == 0 {
 		return nil, handlers.NotFoundErrorf("Project %q doesn't exist.", projId)
@@ -157,7 +157,7 @@ func (s Service) updateInRepo(ctx context.Context, orgID, projId string, mask []
 func (s Service) deleteFromRepo(ctx context.Context, projId string) (bool, error) {
 	rows, err := s.repo.DeleteScope(ctx, projId)
 	if err != nil {
-		return false, status.Errorf(codes.Internal, "Unable to delete project: %v", err)
+		return false, status.Errorf(codes.Internal, "Unable to delete project: %v.", err)
 	}
 	return rows > 0, nil
 }
@@ -176,7 +176,7 @@ func toDbUpdateMask(paths []string) ([]string, error) {
 		}
 	}
 	if len(invalid) > 0 {
-		return nil, handlers.InvalidArgumentErrorf(fmt.Sprintf("Invalid fields passed in update_update mask: %v", invalid), []string{"update_mask"})
+		return nil, handlers.InvalidArgumentErrorf(fmt.Sprintf("Invalid fields passed in update_update mask: %v.", invalid), []string{"update_mask"})
 	}
 	return dbPaths, nil
 }
@@ -212,7 +212,7 @@ func validateGetProjectRequest(req *pbs.GetProjectRequest) error {
 		badFormat = append(badFormat, "id")
 	}
 	if len(badFormat) > 0 {
-		return handlers.InvalidArgumentErrorf("Improperly formatted identifer", badFormat)
+		return handlers.InvalidArgumentErrorf("Improperly formatted identifier.", badFormat)
 	}
 	return nil
 }
@@ -222,11 +222,11 @@ func validateCreateProjectRequest(req *pbs.CreateProjectRequest) error {
 		return err
 	}
 	if !validID(req.GetOrgId(), "o_") {
-		handlers.InvalidArgumentErrorf("Improperly formatted identifer", []string{"org_id"})
+		handlers.InvalidArgumentErrorf("Improperly formatted identifier.", []string{"org_id"})
 	}
 	item := req.GetItem()
 	if item == nil {
-		return status.Errorf(codes.InvalidArgument, "A project's fields must be set to something .")
+		return handlers.InvalidArgumentErrorf("A project's fields must be set to something.", []string{"item"})
 	}
 	immutableFieldsSet := []string{}
 	if item.GetId() != "" {
@@ -256,7 +256,7 @@ func validateUpdateProjectRequest(req *pbs.UpdateProjectRequest) error {
 		badFormat = append(badFormat, "id")
 	}
 	if len(badFormat) > 0 {
-		handlers.InvalidArgumentErrorf("Improperly formatted identifer", badFormat)
+		handlers.InvalidArgumentErrorf("Improperly formatted identifier.", badFormat)
 	}
 
 	if req.GetUpdateMask() == nil {
@@ -270,7 +270,7 @@ func validateUpdateProjectRequest(req *pbs.UpdateProjectRequest) error {
 		return nil
 	}
 	if item.GetId() != "" && item.GetId() != req.GetId() {
-		return handlers.InvalidArgumentErrorf("Id in provided item and url do not match", []string{"id"})
+		return handlers.InvalidArgumentErrorf("Id in provided item and url do not match.", []string{"id"})
 	}
 	immutableFieldsSet := []string{}
 	if item.GetId() != "" {
@@ -301,7 +301,7 @@ func validateDeleteProjectRequest(req *pbs.DeleteProjectRequest) error {
 		badFields = append(badFields, "org_id")
 	}
 	if len(badFields) > 0 {
-		return handlers.InvalidArgumentErrorf("Improperly formatted id", badFields)
+		return handlers.InvalidArgumentErrorf("Improperly formatted id.", badFields)
 	}
 	return nil
 }
