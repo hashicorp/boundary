@@ -14,8 +14,10 @@ comment on domain wt_timestamp is
 'Standard timestamp for all create_time and update_time columns';
 
 
-create or replace function update_time_column() returns trigger
-  language plpgsql as $$
+create or replace function
+  update_time_column()
+  returns trigger
+as $$
 begin
   if row(new.*) is distinct from row(old.*) then
     new.update_time = now();
@@ -24,7 +26,7 @@ begin
     return old;
   end if;
 end;
-$$;
+$$ language plpgsql;
 comment on function update_time_column() is
 'function used in before update triggers to properly set update_time columns';
 
