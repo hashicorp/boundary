@@ -15,6 +15,7 @@ import (
 	"github.com/hashicorp/watchtower/api"
 	"github.com/hashicorp/watchtower/globals"
 	"github.com/hashicorp/watchtower/internal/gen/controller/api/services"
+	"github.com/hashicorp/watchtower/internal/servers/controller/handlers"
 	"github.com/hashicorp/watchtower/internal/servers/controller/handlers/host_catalogs"
 	"github.com/hashicorp/watchtower/internal/servers/controller/handlers/host_sets"
 	"github.com/hashicorp/watchtower/internal/servers/controller/handlers/hosts"
@@ -57,7 +58,7 @@ func handleGrpcGateway(c *Controller) http.Handler {
 	// Register*ServiceHandlerServer methods ignore the passed in ctx.  Using the baseContext now just in case this changes
 	// in the future, at which point we'll want to be using the baseContext.
 	ctx := c.baseContext
-	mux := runtime.NewServeMux()
+	mux := runtime.NewServeMux(runtime.WithProtoErrorHandler(handlers.ErrorHandler(c.logger)))
 	services.RegisterHostCatalogServiceHandlerServer(ctx, mux, &host_catalogs.Service{})
 	services.RegisterHostSetServiceHandlerServer(ctx, mux, &host_sets.Service{})
 	services.RegisterHostServiceHandlerServer(ctx, mux, &hosts.Service{})

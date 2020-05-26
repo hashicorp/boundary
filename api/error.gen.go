@@ -13,7 +13,7 @@ type Error struct {
 	defaultFields []string
 
 	// The HTTP Status code applicable to this error
-	Status *int64 `json:"status,omitempty"`
+	Status *int32 `json:"status,omitempty"`
 	// An application-specific error string
 	Code *string `json:"code,omitempty"`
 	// A human readable explanation specific to this occurrence of the error
