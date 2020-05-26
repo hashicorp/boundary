@@ -39,8 +39,26 @@ create or replace function
 as $$
 begin
   if new.create_time is distinct from old.create_time then
-    new.create_time = old.create_time;
     raise warning 'create_time cannot be set to %', new.create_time;
+    new.create_time = old.create_time;
+  end if;
+  return new;
+end;
+$$ language plpgsql;
+
+comment on function
+  immutable_create_time_func()
+is
+  'function used in before update triggers to make create_time column immutable';
+  
+create or replace function
+  default_create_time()
+  returns trigger
+as $$
+begin
+  if new.create_time is distinct from now() then
+    raise warning 'create_time cannot be set to %', new.create_time;
+    new.create_time = now();
   end if;
   return new;
 end;

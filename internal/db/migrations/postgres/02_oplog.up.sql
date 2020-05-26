@@ -21,6 +21,12 @@ before
 update on oplog_entry 
   for each row execute procedure immutable_create_time_func();
 
+create trigger 
+  default_create_time_column
+before
+insert on oplog_entry
+  for each row execute procedure default_create_time();
+
 create table if not exists oplog_ticket (
   id bigint generated always as identity primary key,
   create_time wt_timestamp,
@@ -41,9 +47,16 @@ before
 update on oplog_ticket 
   for each row execute procedure immutable_create_time_func();
 
+create trigger 
+  default_create_time_column
+before
+insert on oplog_ticket
+  for each row execute procedure default_create_time();
+
 create table if not exists oplog_metadata (
   id bigint generated always as identity primary key,
   create_time wt_timestamp,
+  update_time wt_timestamp,
   entry_id bigint not null references oplog_entry(id) on delete cascade on update cascade,
   "key" text not null,
   value text null
@@ -60,6 +73,12 @@ create trigger
 before
 update on oplog_metadata 
   for each row execute procedure immutable_create_time_func();
+
+create trigger 
+  default_create_time_column
+before
+insert on oplog_metadata 
+  for each row execute procedure default_create_time();
 
 create index if not exists idx_oplog_metatadata_key on oplog_metadata(key);
 

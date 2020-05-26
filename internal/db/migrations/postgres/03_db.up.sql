@@ -25,6 +25,12 @@ before
 update on db_test_user 
   for each row execute procedure immutable_create_time_func();
 
+create trigger 
+  default_create_time_column
+before
+insert on db_test_user 
+  for each row execute procedure default_create_time();
+
 create table if not exists db_test_car (
   id bigint generated always as identity primary key,
   create_time wt_timestamp,
@@ -47,6 +53,12 @@ before
 update on db_test_car 
   for each row execute procedure immutable_create_time_func();
 
+create trigger 
+  default_create_time_column
+before
+insert on db_test_car
+  for each row execute procedure default_create_time();
+
 create table if not exists db_test_rental (
   id bigint generated always as identity primary key,
   create_time wt_timestamp,
@@ -68,6 +80,12 @@ create trigger
 before
 update on db_test_rental 
   for each row execute procedure immutable_create_time_func();
+
+create trigger 
+  default_create_time_column
+before
+insert on db_test_rental
+  for each row execute procedure default_create_time();
 
 
 commit;

@@ -103,5 +103,11 @@ create trigger
 before
 update on iam_scope 
   for each row execute procedure immutable_create_time_func();
+  
+create trigger 
+  default_create_time_column
+before
+insert on iam_scope
+  for each row execute procedure default_create_time();
 
 commit;
