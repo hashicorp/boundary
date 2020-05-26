@@ -103,8 +103,6 @@ func (r *Repository) CreateCatalog(ctx context.Context, c *HostCatalog, opt ...O
 //
 // An attributed of c will be set to NULL in the database if the attribute
 // in c is the zero value and it is included in fieldMask.
-//
-// Both c.CreateTime and c.UpdateTime are ignored.
 func (r *Repository) UpdateCatalog(ctx context.Context, c *HostCatalog, fieldMask []string, opt ...Option) (*HostCatalog, error) {
 	if c == nil {
 		return nil, fmt.Errorf("update: static host catalog: %w", db.ErrNilParameter)
