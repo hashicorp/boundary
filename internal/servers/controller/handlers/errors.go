@@ -36,6 +36,7 @@ func statusErrorToApiError(s *status.Status) *pb.Error {
 	apiErr := &pb.Error{}
 	apiErr.Status = int32(runtime.HTTPStatusFromCode(s.Code()))
 	apiErr.Message = s.Message()
+	// TODO(ICU-193): Decouple from the status codes and instead use codes defined specifically for our API.
 	apiErr.Code = s.Code().String()
 
 	for _, ed := range s.Details() {
