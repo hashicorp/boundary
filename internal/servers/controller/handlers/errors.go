@@ -2,11 +2,9 @@ package handlers
 
 import (
 	"context"
-	"fmt"
 	"io"
 	"net/http"
 
-	"github.com/golang/protobuf/proto"
 	"github.com/grpc-ecosystem/grpc-gateway/runtime"
 	"github.com/hashicorp/go-hclog"
 	pb "github.com/hashicorp/watchtower/internal/gen/controller/api"
@@ -27,7 +25,8 @@ func InvalidArgumentErrorf(msg string, fields []string) error {
 	}
 	st, err := st.WithDetails(br)
 	if err != nil {
-		panic(fmt.Sprintf("Unexpected error attaching metadata: %v", err))
+		hclog.Default().Error("failure building status with details", "details", br, "error", err)
+		return status.Error(codes.Internal, "Failed to build InvalidArgument error.")
 	}
 	return st.Err()
 }
@@ -38,19 +37,17 @@ func statusErrorToApiError(s *status.Status) *pb.Error {
 	apiErr.Message = s.Message()
 	apiErr.Code = s.Code().String()
 
-	d := &pb.ErrorDetails{}
 	for _, ed := range s.Details() {
 		switch ed.(type) {
 		case *errdetails.BadRequest:
 			br := ed.(*errdetails.BadRequest)
 			for _, fv := range br.GetFieldViolations() {
-				d.RequestFields = append(d.RequestFields, fv.GetField())
+				if apiErr.Details == nil {
+					apiErr.Details = &pb.ErrorDetails{}
+				}
+				apiErr.Details.RequestFields = append(apiErr.Details.RequestFields, fv.GetField())
 			}
 		}
-	}
-
-	if !proto.Equal(d, &pb.ErrorDetails{}) {
-		apiErr.Details = d
 	}
 	return apiErr
 }
@@ -70,10 +67,10 @@ func ErrorHandler(logger hclog.Logger) runtime.ProtoErrorHandlerFunc {
 		apiErr := statusErrorToApiError(s)
 		buf, merr := marshaler.Marshal(apiErr)
 		if merr != nil {
-			logger.Warn("Failed to marshal error message %q: %v", apiErr, merr)
+			logger.Warn("failed to marshal error response", "response", apiErr, "error", merr)
 			w.WriteHeader(http.StatusInternalServerError)
 			if _, err := io.WriteString(w, errorFallback); err != nil {
-				logger.Warn("Failed to write response: %v", err)
+				logger.Warn("failed to write response", "error", err)
 			}
 			return
 		}
@@ -81,7 +78,7 @@ func ErrorHandler(logger hclog.Logger) runtime.ProtoErrorHandlerFunc {
 		w.Header().Set("Content-Type", marshaler.ContentType())
 		w.WriteHeader(int(apiErr.GetStatus()))
 		if _, err := w.Write(buf); err != nil {
-			logger.Warn("Failed to send response chunk: %v", err)
+			logger.Warn("failed to send response chunk", "error", err)
 			return
 		}
 	}
