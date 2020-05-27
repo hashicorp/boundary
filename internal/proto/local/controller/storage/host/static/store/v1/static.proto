@@ -17,7 +17,7 @@ message Timestamp {
 }
 
 message HostCatalog {
-  // public_is is generated and assigned to the host catalog during insert.
+  // public_is is a surrogate key suitable for use in a public API.
   // @inject_tag: gorm:"primary_key"
   string public_id = 1;
 
@@ -43,7 +43,7 @@ message HostCatalog {
 }
 
 message Host {
-  // public_is is generated and assigned to the host during insert.
+  // public_is is a surrogate key suitable for use in a public API.
   // @inject_tag: gorm:"primary_key"
   string public_id = 1;
 
@@ -76,7 +76,7 @@ message Host {
 }
 
 message HostSet {
-  // public_is is generated and assigned to the host set during insert.
+  // public_is is a surrogate key suitable for use in a public API.
   // @inject_tag: gorm:"primary_key"
   string public_id = 1;
 
