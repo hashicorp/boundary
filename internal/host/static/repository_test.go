@@ -118,9 +118,14 @@ func TestRepository_New(t *testing.T) {
 
 func TestRepository_CreateCatalog(t *testing.T) {
 	cleanup, conn, _ := db.TestSetup(t, "postgres")
-	defer cleanup()
-	defer conn.Close()
-
+	defer func() {
+		if err := cleanup(); err != nil {
+			t.Error(err)
+		}
+		if err := conn.Close(); err != nil {
+			t.Error(err)
+		}
+	}()
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
 
@@ -291,8 +296,14 @@ func assertPublicId(t *testing.T, prefix, actual string) {
 
 func TestRepository_UpdateCatalog(t *testing.T) {
 	cleanup, conn, _ := db.TestSetup(t, "postgres")
-	defer cleanup()
-	defer conn.Close()
+	defer func() {
+		if err := cleanup(); err != nil {
+			t.Error(err)
+		}
+		if err := conn.Close(); err != nil {
+			t.Error(err)
+		}
+	}()
 
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
@@ -639,8 +650,14 @@ func TestRepository_UpdateCatalog(t *testing.T) {
 func TestNullAssert(t *testing.T) {
 	/*
 		cleanup, conn, _ := db.TestSetup(t, "postgres")
-		defer cleanup()
-		defer conn.Close()
+		defer func() {
+		if err := cleanup(); err != nil {
+			t.Error(err)
+		}
+		if err := conn.Close(); err != nil {
+			t.Error(err)
+		}
+		}()
 
 		isNotNull := &HostCatalog{HostCatalog: &store.HostCatalog{PublicId: "sthc_JSH52G07wI"}}
 		m := isNotNull
@@ -671,8 +688,14 @@ func assertColumnIsNull(t *testing.T, db *gorm.DB, m resource, column string) {
 
 func TestRepository_LookupCatalog(t *testing.T) {
 	cleanup, conn, _ := db.TestSetup(t, "postgres")
-	defer cleanup()
-	defer conn.Close()
+	defer func() {
+		if err := cleanup(); err != nil {
+			t.Error(err)
+		}
+		if err := conn.Close(); err != nil {
+			t.Error(err)
+		}
+	}()
 
 	cat := testCatalog(t, conn)
 	badId, err := newHostCatalogId()
@@ -736,8 +759,14 @@ func TestRepository_LookupCatalog(t *testing.T) {
 
 func TestRepository_DeleteCatalog(t *testing.T) {
 	cleanup, conn, _ := db.TestSetup(t, "postgres")
-	defer cleanup()
-	defer conn.Close()
+	defer func() {
+		if err := cleanup(); err != nil {
+			t.Error(err)
+		}
+		if err := conn.Close(); err != nil {
+			t.Error(err)
+		}
+	}()
 
 	cat := testCatalog(t, conn)
 	badId, err := newHostCatalogId()
