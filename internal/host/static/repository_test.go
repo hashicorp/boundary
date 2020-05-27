@@ -336,8 +336,8 @@ func TestRepository_UpdateCatalog(t *testing.T) {
 	var tests = []struct {
 		name      string
 		orig      *HostCatalog
-		masks     []string
 		chgFn     func(*HostCatalog) *HostCatalog
+		masks     []string
 		want      *HostCatalog
 		wantCount int
 		wantIsErr error
@@ -348,6 +348,7 @@ func TestRepository_UpdateCatalog(t *testing.T) {
 				HostCatalog: &store.HostCatalog{},
 			},
 			chgFn:     makeNil(),
+			masks:     []string{"Name", "Description"},
 			wantIsErr: db.ErrNilParameter,
 		},
 		{
@@ -356,6 +357,7 @@ func TestRepository_UpdateCatalog(t *testing.T) {
 				HostCatalog: &store.HostCatalog{},
 			},
 			chgFn:     deletePublicId(),
+			masks:     []string{"Name", "Description"},
 			wantIsErr: db.ErrInvalidParameter,
 		},
 		{
@@ -366,7 +368,40 @@ func TestRepository_UpdateCatalog(t *testing.T) {
 				},
 			},
 			chgFn:     combine(nonExistentPublicId(), changeName("test-update-name-repo")),
+			masks:     []string{"Name"},
 			wantIsErr: db.ErrRecordNotFound,
+		},
+		{
+			name: "empty-field-mask",
+			orig: &HostCatalog{
+				HostCatalog: &store.HostCatalog{
+					Name: "test-name-repo",
+				},
+			},
+			chgFn:     changeName("test-update-name-repo"),
+			wantIsErr: db.ErrEmptyFieldMask,
+		},
+		{
+			name: "read-only-fields-in-field-mask",
+			orig: &HostCatalog{
+				HostCatalog: &store.HostCatalog{
+					Name: "test-name-repo",
+				},
+			},
+			chgFn:     changeName("test-update-name-repo"),
+			masks:     []string{"PublicId", "CreateTime", "UpdateTime", "ScopeId"},
+			wantIsErr: db.ErrInvalidFieldMask,
+		},
+		{
+			name: "unknown-field-in-field-mask",
+			orig: &HostCatalog{
+				HostCatalog: &store.HostCatalog{
+					Name: "test-name-repo",
+				},
+			},
+			chgFn:     changeName("test-update-name-repo"),
+			masks:     []string{"Bilbo"},
+			wantIsErr: db.ErrInvalidFieldMask,
 		},
 		{
 			name: "change-name",
@@ -376,6 +411,7 @@ func TestRepository_UpdateCatalog(t *testing.T) {
 				},
 			},
 			chgFn: changeName("test-update-name-repo"),
+			masks: []string{"Name"},
 			want: &HostCatalog{
 				HostCatalog: &store.HostCatalog{
 					Name: "test-update-name-repo",
@@ -391,62 +427,27 @@ func TestRepository_UpdateCatalog(t *testing.T) {
 				},
 			},
 			chgFn: changeDescription("test-update-description-repo"),
-			want: &HostCatalog{
-				HostCatalog: &store.HostCatalog{
-					Description: "test-update-description-repo",
-				},
-			},
-			wantCount: 1,
-		},
-		{
-			name: "fieldMask-change-both",
-			orig: &HostCatalog{
-				HostCatalog: &store.HostCatalog{
-					Name:        "test-name-repo",
-					Description: "test-description-repo",
-				},
-			},
-			masks: []string{"Name", "Description"},
-			chgFn: combine(changeDescription("test-update-description-repo"), changeName("test-update-name-repo")),
-			want: &HostCatalog{
-				HostCatalog: &store.HostCatalog{
-					Name:        "test-update-name-repo",
-					Description: "test-update-description-repo",
-				},
-			},
-			wantCount: 1,
-		},
-		{
-			name: "fieldMask-change-name",
-			orig: &HostCatalog{
-				HostCatalog: &store.HostCatalog{
-					Name:        "test-name-repo",
-					Description: "test-description-repo",
-				},
-			},
-			masks: []string{"Name"},
-			chgFn: combine(changeDescription("test-update-description-repo"), changeName("test-update-name-repo")),
-			want: &HostCatalog{
-				HostCatalog: &store.HostCatalog{
-					Name:        "test-update-name-repo",
-					Description: "test-description-repo",
-				},
-			},
-			wantCount: 1,
-		},
-		{
-			name: "fieldMask-change-description",
-			orig: &HostCatalog{
-				HostCatalog: &store.HostCatalog{
-					Name:        "test-name-repo",
-					Description: "test-description-repo",
-				},
-			},
 			masks: []string{"Description"},
-			chgFn: combine(changeDescription("test-update-description-repo"), changeName("test-update-name-repo")),
 			want: &HostCatalog{
 				HostCatalog: &store.HostCatalog{
+					Description: "test-update-description-repo",
+				},
+			},
+			wantCount: 1,
+		},
+		{
+			name: "change-name-and-description",
+			orig: &HostCatalog{
+				HostCatalog: &store.HostCatalog{
 					Name:        "test-name-repo",
+					Description: "test-description-repo",
+				},
+			},
+			chgFn: combine(changeDescription("test-update-description-repo"), changeName("test-update-name-repo")),
+			masks: []string{"Name", "Description"},
+			want: &HostCatalog{
+				HostCatalog: &store.HostCatalog{
+					Name:        "test-update-name-repo",
 					Description: "test-update-description-repo",
 				},
 			},
@@ -575,7 +576,7 @@ func TestRepository_UpdateCatalog(t *testing.T) {
 		cats := testCatalogs(t, conn, 2)
 		c1 := cats[0]
 		c1.Name = name
-		got1, gotCount1, err := repo.UpdateCatalog(context.Background(), c1, nil)
+		got1, gotCount1, err := repo.UpdateCatalog(context.Background(), c1, []string{"name"})
 		assert.NoError(err)
 		assert.NotNil(got1)
 		assert.Equal(name, got1.Name)
@@ -583,7 +584,7 @@ func TestRepository_UpdateCatalog(t *testing.T) {
 
 		c2 := cats[1]
 		c2.Name = name
-		got2, gotCount2, err := repo.UpdateCatalog(context.Background(), c2, nil)
+		got2, gotCount2, err := repo.UpdateCatalog(context.Background(), c2, []string{"name"})
 		assert.Truef(errors.Is(err, db.ErrNotUnique), "want err: %v got: %v", db.ErrNotUnique, err)
 		assert.Nil(got2)
 		assert.Equal(db.NoRowsAffected, gotCount2, "row count")
@@ -618,7 +619,7 @@ func TestRepository_UpdateCatalog(t *testing.T) {
 		assert.NoError(err)
 		assert.NotNil(got2)
 		got2.Name = got.Name
-		got3, gotCount3, err := repo.UpdateCatalog(context.Background(), got2, nil)
+		got3, gotCount3, err := repo.UpdateCatalog(context.Background(), got2, []string{"name"})
 		assert.NoError(err)
 		assert.NotNil(got3)
 		assert.NotSame(got2, got3)
@@ -640,12 +641,12 @@ func TestRepository_UpdateCatalog(t *testing.T) {
 		c1.ScopeId = c2.ScopeId
 		assert.Equal(c1.ScopeId, c2.ScopeId)
 
-		got1, gotCount1, err := repo.UpdateCatalog(context.Background(), c1, nil)
+		got1, gotCount1, err := repo.UpdateCatalog(context.Background(), c1, []string{"name"})
 
 		assert.NoError(err)
 		assert.NotNil(got1)
 		assert.Equal(orig.ScopeId, got1.ScopeId)
-		assert.Equal(db.NoRowsAffected, gotCount1, "row count")
+		assert.Equal(1, gotCount1, "row count")
 	})
 }
 

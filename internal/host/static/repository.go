@@ -112,40 +112,21 @@ func (r *Repository) UpdateCatalog(ctx context.Context, c *HostCatalog, fieldMas
 	if c.PublicId == "" {
 		return nil, db.NoRowsAffected, fmt.Errorf("update: static host catalog: missing public id: %w", db.ErrInvalidParameter)
 	}
+	if len(fieldMask) == 0 {
+		return nil, db.NoRowsAffected, fmt.Errorf("update: static host catalog: %w", db.ErrEmptyFieldMask)
+	}
+
+	for _, f := range fieldMask {
+		switch {
+		case strings.EqualFold("name", f):
+		case strings.EqualFold("description", f):
+		default:
+			return nil, db.NoRowsAffected, fmt.Errorf("update: static host catalog: field: %s: %w", f, db.ErrInvalidFieldMask)
+		}
+	}
 	c = c.clone()
 
 	metadata := newCatalogMetadata(c, oplog.OpType_OP_TYPE_UPDATE)
-
-	var dbMask, nullFields []string
-	empty := len(fieldMask) == 0
-
-	switch {
-	case c.Name == "" && contains(fieldMask, "name"):
-		nullFields = append(nullFields, "name")
-	case c.Name != "" && (empty || contains(fieldMask, "name")):
-		dbMask = append(dbMask, "name")
-	}
-
-	switch {
-	case c.Description == "" && contains(fieldMask, "description"):
-		nullFields = append(nullFields, "description")
-	case c.Description != "" && (empty || contains(fieldMask, "description")):
-		dbMask = append(dbMask, "description")
-	}
-
-	// Nothing to update. The caller may have changed attributes which are
-	// not allowed to be updated so return a fresh copy.
-	if len(dbMask) == 0 {
-		fresh := allocCatalog()
-		fresh.PublicId = c.PublicId
-		if err := r.reader.LookupByPublicId(ctx, fresh); err != nil {
-			if err == db.ErrRecordNotFound {
-				return nil, db.NoRowsAffected, fmt.Errorf("update: static host catalog: %s: %w", fresh.PublicId, db.ErrInvalidPublicId)
-			}
-			return nil, db.NoRowsAffected, fmt.Errorf("update: static host catalog: %s: %w", fresh.PublicId, err)
-		}
-		return fresh, db.NoRowsAffected, nil
-	}
 
 	// TODO(mgaffney,jimlambrt) 05/2020: uncomment the nullFields line
 	// below once support for setting columns to nil is added to db.Update.
@@ -161,7 +142,7 @@ func (r *Repository) UpdateCatalog(ctx context.Context, c *HostCatalog, fieldMas
 			rowsUpdated, err = w.Update(
 				ctx,
 				returnedCatalog,
-				dbMask,
+				fieldMask,
 				// nullFields,
 				db.WithOplog(r.wrapper, metadata),
 			)
