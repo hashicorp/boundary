@@ -126,9 +126,11 @@ create table if not exists test_immutable_create_time (
 );
 `
 		addTriggers = `
-CREATE TRIGGER test_update_immutable_create_time
-BEFORE
-update ON test_immutable_create_time FOR EACH ROW EXECUTE PROCEDURE immutable_create_time_func();
+create trigger
+  test_update_immutable_create_time
+before
+update on test_immutable_create_time
+  for each row execute procedure immutable_create_time_func();
 `
 		query = `
 select create_time from test_immutable_create_time where id = $1
@@ -143,29 +145,31 @@ returning id;
 `
 		// no where clause intentionally, since it's not needed for the test
 		update = `
-update test_immutable_create_time 
+update test_immutable_create_time
 set name = 'bob';
 `
 
 		// no where clause intentionally, since it's not needed for the test
 		bad_update = `
-update test_immutable_create_time 
+update test_immutable_create_time
 set create_time = now();
 `
 		// no where clause intentionally, since it's not needed for the test
 		bad_update_null = `
-update test_immutable_create_time 
+update test_immutable_create_time
 set create_time = null;
 `
 	)
 
 	cleanup, conn, _ := TestSetup(t, "postgres")
 	defer func() {
+		if err := conn.Close(); err != nil {
+			t.Error(err)
+		}
 		if err := cleanup(); err != nil {
 			t.Error(err)
 		}
 	}()
-	defer conn.Close()
 
 	db := conn.DB()
 	_, err := db.Exec(createTable)
@@ -219,9 +223,11 @@ create table if not exists test_update_time_column (
 );
 `
 		addTriggers = `
-CREATE TRIGGER test_update_time_column
-BEFORE
-update ON test_update_time_column FOR EACH ROW EXECUTE PROCEDURE update_time_column();
+create trigger
+  test_update_time_column
+before
+update on test_update_time_column
+  for each row execute procedure update_time_column();
 `
 		countQuery = `
 select count(*) from test_update_time_column
@@ -236,29 +242,31 @@ returning id;
 `
 		// no where clause intentionally, since it's not needed for the test
 		update = `
-update test_update_time_column 
+update test_update_time_column
 set name = 'alice';
 `
 
 		// no where clause intentionally, since it's not needed for the test
 		bad_update = `
-update test_update_time_column 
+update test_update_time_column
 set update_time = now() - interval '3 days';
 `
 		// no where clause intentionally, since it's not needed for the test
 		bad_update_null = `
-update test_update_time_column 
+update test_update_time_column
 set update_time = null;
 `
 	)
 
 	cleanup, conn, _ := TestSetup(t, "postgres")
 	defer func() {
+		if err := conn.Close(); err != nil {
+			t.Error(err)
+		}
 		if err := cleanup(); err != nil {
 			t.Error(err)
 		}
 	}()
-	defer conn.Close()
 
 	db := conn.DB()
 	_, err := db.Exec(createTable)
