@@ -21,10 +21,4 @@ func Test_GetOpts(t *testing.T) {
 		testOpts.withDescription = "test desc"
 		assert.Equal(opts, testOpts)
 	})
-	t.Run("WithPublicId", func(t *testing.T) {
-		opts := getOpts(WithPublicId("1234567890"))
-		testOpts := getDefaultOptions()
-		testOpts.withPublicId = "1234567890"
-		assert.Equal(opts, testOpts)
-	})
 }
