@@ -680,9 +680,15 @@ type resource interface {
 }
 
 func assertColumnIsNull(t *testing.T, db *gorm.DB, m resource, column string) {
+
 	query := fmt.Sprintf("public_id = ? AND %s is null", column)
 	var count int
 
+	// TODO(mgaffney) 05/2020: There is a good chance this test method will be
+	// needed in other packages. If and when that happens, this method
+	// should be moved to the db package. If the method is not needed, then
+	// the method should be refactored to eliminate the direct call on
+	// gorm.
 	if err := db.Model(m).Where(query, m.GetPublicId()).Count(&count).Error; err != nil {
 		t.Fatalf("could not query: table: %s, column: %s, public_id: %s err: %v", m.TableName(), column, m.GetPublicId(), err)
 	}
