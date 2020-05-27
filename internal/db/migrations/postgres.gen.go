@@ -62,8 +62,26 @@ create or replace function
 as $$
 begin
   if new.create_time is distinct from old.create_time then
-    new.create_time = old.create_time;
     raise warning 'create_time cannot be set to %', new.create_time;
+    new.create_time = old.create_time;
+  end if;
+  return new;
+end;
+$$ language plpgsql;
+
+comment on function
+  immutable_create_time_func()
+is
+  'function used in before update triggers to make create_time column immutable';
+  
+create or replace function
+  default_create_time()
+  returns trigger
+as $$
+begin
+  if new.create_time is distinct from now() then
+    raise warning 'create_time cannot be set to %', new.create_time;
+    new.create_time = now();
   end if;
   return new;
 end;
@@ -127,6 +145,12 @@ before
 update on oplog_entry 
   for each row execute procedure immutable_create_time_func();
 
+create trigger 
+  default_create_time_column
+before
+insert on oplog_entry
+  for each row execute procedure default_create_time();
+
 create table if not exists oplog_ticket (
   id bigint generated always as identity primary key,
   create_time wt_timestamp,
@@ -147,9 +171,16 @@ before
 update on oplog_ticket 
   for each row execute procedure immutable_create_time_func();
 
+create trigger 
+  default_create_time_column
+before
+insert on oplog_ticket
+  for each row execute procedure default_create_time();
+
 create table if not exists oplog_metadata (
   id bigint generated always as identity primary key,
   create_time wt_timestamp,
+  update_time wt_timestamp,
   entry_id bigint not null references oplog_entry(id) on delete cascade on update cascade,
   "key" text not null,
   value text null
@@ -166,6 +197,12 @@ create trigger
 before
 update on oplog_metadata 
   for each row execute procedure immutable_create_time_func();
+
+create trigger 
+  default_create_time_column
+before
+insert on oplog_metadata 
+  for each row execute procedure default_create_time();
 
 create index if not exists idx_oplog_metatadata_key on oplog_metadata(key);
 
@@ -244,6 +281,12 @@ before
 update on db_test_user 
   for each row execute procedure immutable_create_time_func();
 
+create trigger 
+  default_create_time_column
+before
+insert on db_test_user 
+  for each row execute procedure default_create_time();
+
 create table if not exists db_test_car (
   id bigint generated always as identity primary key,
   create_time wt_timestamp,
@@ -266,6 +309,12 @@ before
 update on db_test_car 
   for each row execute procedure immutable_create_time_func();
 
+create trigger 
+  default_create_time_column
+before
+insert on db_test_car
+  for each row execute procedure default_create_time();
+
 create table if not exists db_test_rental (
   id bigint generated always as identity primary key,
   create_time wt_timestamp,
@@ -287,6 +336,12 @@ create trigger
 before
 update on db_test_rental 
   for each row execute procedure immutable_create_time_func();
+
+create trigger 
+  default_create_time_column
+before
+insert on db_test_rental
+  for each row execute procedure default_create_time();
 
 
 commit;
@@ -357,7 +412,6 @@ create table iam_scope_project (
     primary key(scope_id, parent_id)
   );
 
-
 create or replace function 
   iam_sub_scopes_func() 
   returns trigger
@@ -417,6 +471,12 @@ create trigger
 before
 update on iam_scope 
   for each row execute procedure immutable_create_time_func();
+  
+create trigger 
+  default_create_time_column
+before
+insert on iam_scope
+  for each row execute procedure default_create_time();
 
 commit;
 
