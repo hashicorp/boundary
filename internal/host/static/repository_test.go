@@ -103,7 +103,6 @@ func TestRepository_New(t *testing.T) {
 			assert := assert.New(t)
 			got, err := NewRepository(tt.args.r, tt.args.w, tt.args.wrapper)
 			if tt.wantIsErr != nil {
-				assert.Error(err)
 				assert.Truef(errors.Is(err, tt.wantIsErr), "want err: %q got: %q", tt.wantIsErr, err)
 				assert.Nil(got)
 				return
@@ -190,7 +189,6 @@ func TestRepository_CreateCatalog(t *testing.T) {
 			}
 			got, err := repo.CreateCatalog(context.Background(), tt.in, tt.opts...)
 			if tt.wantIsErr != nil {
-				assert.Error(err)
 				assert.Truef(errors.Is(err, tt.wantIsErr), "want err: %q got: %q", tt.wantIsErr, err)
 				assert.Nil(got)
 				return
@@ -230,7 +228,6 @@ func TestRepository_CreateCatalog(t *testing.T) {
 		assert.Equal(got.CreateTime, got.UpdateTime)
 
 		got2, err := repo.CreateCatalog(context.Background(), in)
-		assert.Error(err)
 		assert.Truef(errors.Is(err, db.ErrNotUnique), "want err: %v got: %v", db.ErrNotUnique, err)
 		assert.Nil(got2)
 	})
@@ -543,7 +540,6 @@ func TestRepository_UpdateCatalog(t *testing.T) {
 			}
 			got, gotCount, err := repo.UpdateCatalog(context.Background(), orig, tt.masks)
 			if tt.wantIsErr != nil {
-				assert.Error(err)
 				assert.Truef(errors.Is(err, tt.wantIsErr), "want err: %q got: %q", tt.wantIsErr, err)
 				assert.Equal(tt.wantCount, gotCount, "row count")
 				assert.Nil(got)
@@ -588,7 +584,6 @@ func TestRepository_UpdateCatalog(t *testing.T) {
 		c2 := cats[1]
 		c2.Name = name
 		got2, gotCount2, err := repo.UpdateCatalog(context.Background(), c2, nil)
-		assert.Error(err)
 		assert.Truef(errors.Is(err, db.ErrNotUnique), "want err: %v got: %v", db.ErrNotUnique, err)
 		assert.Nil(got2)
 		assert.Equal(db.NoRowsAffected, gotCount2, "row count")
@@ -748,7 +743,6 @@ func TestRepository_LookupCatalog(t *testing.T) {
 
 			got, err := repo.LookupCatalog(context.Background(), tt.id)
 			if tt.wantErr != nil {
-				assert.Error(err)
 				assert.Truef(errors.Is(err, tt.wantErr), "want err: %q got: %q", tt.wantErr, err)
 				return
 			}
@@ -818,7 +812,6 @@ func TestRepository_DeleteCatalog(t *testing.T) {
 
 			got, err := repo.DeleteCatalog(context.Background(), tt.id)
 			if tt.wantErr != nil {
-				assert.Error(err)
 				assert.Truef(errors.Is(err, tt.wantErr), "want err: %q got: %q", tt.wantErr, err)
 				return
 			}
