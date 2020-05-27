@@ -11,17 +11,24 @@ option go_package = "github.com/hashicorp/watchtower/internal/kms/store;store";
 // database encryption of sensitive values would be wrapped by a root key and
 // would be "db_1", "db_2", etc.
 message KeyEntry {
-	// ParentKeyId is the parent key ID. An empty string means the top-level
-	// KMS.
-	string parent_key_id = 1;
+  // ParentKeyId is the parent key ID. An empty string means the top-level
+  // KMS.
+  // @inject_tag: `gorm:"default:null"`
+  string parent_key_id = 1;
 
-	// KeyId is this key's ID. This can be used to form a key tree. For
-	// instance, first we'd unwrap existing "root_X" keys and put into a
-	// multiwrapper; then we can use those keys to decrypt other keys whose
-	// parent_key_id starts with "root_".
-	string key_id = 2;
+  // KeyId is this key's ID. This can be used to form a key tree. For
+  // instance, first we'd unwrap existing "root_X" keys and put into a
+  // multiwrapper; then we can use those keys to decrypt other keys whose
+  // parent_key_id starts with "root_".
+  // @inject_tag: gorm:"primary_key"
+  string key_id = 2;
 
-	// Key is the key itself. This should be a marshaled
-	// wrapping.EncryptedBlobInfo.
-	bytes key = 3;
+  // Key is the key itself. This should be a marshaled
+  // wrapping.EncryptedBlobInfo.
+  // @inject_tag: `gorm:"default:null"`
+  bytes key = 3;
+
+  // scope_id  is the key's scope id (an organization).
+  // @inject_tag: `gorm:"default:null"`
+  string scope_id = 4;
 }
