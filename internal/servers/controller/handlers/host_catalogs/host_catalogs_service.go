@@ -10,7 +10,8 @@ import (
 	"github.com/grpc-ecosystem/grpc-gateway/runtime"
 	pb "github.com/hashicorp/watchtower/internal/gen/controller/api/resources/hosts"
 	pbs "github.com/hashicorp/watchtower/internal/gen/controller/api/services"
-	"github.com/hashicorp/watchtower/internal/iam/store"
+	"github.com/hashicorp/watchtower/internal/host/static"
+	"github.com/hashicorp/watchtower/internal/host/static/store"
 	"github.com/hashicorp/watchtower/internal/servers/controller/handlers"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -29,7 +30,7 @@ type hostTypeValidator interface {
 
 func getType(r hostTypeValidator) hostType {
 	switch {
-	case strings.HasPrefix(r.GetId(), "sthc_"):
+	case strings.HasPrefix(r.GetId(), static.HostCatalogPrefix):
 		return staticType
 	}
 	return unknownType
@@ -112,7 +113,7 @@ func (s Service) DeleteHostCatalog(ctx context.Context, req *pbs.DeleteHostCatal
 }
 
 func (s Service) getFromRepo(ctx context.Context, id string) (*pb.HostCatalog, error) {
-	p, err := s.staticRepo.LookupHostCatalog(ctx, id)
+	p, err := s.staticRepo.LookupCatalog(ctx, id)
 	if err != nil {
 		return nil, err
 	}
@@ -134,7 +135,7 @@ func (s Service) createInRepo(ctx context.Context, projId string, item *pb.HostC
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "Unable to build host for creation: %v.", err)
 	}
-	out, err := s.staticRepo.CreateHostCatalog(ctx, h)
+	out, err := s.staticRepo.CreateCatalog(ctx, h)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "Unable to create host: %v.", err)
 	}
@@ -145,7 +146,7 @@ func (s Service) createInRepo(ctx context.Context, projId string, item *pb.HostC
 }
 
 func (s Service) updateInRepo(ctx context.Context, projId, id string, mask []string, item *pb.HostCatalog) (*pb.HostCatalog, error) {
-	opts := []static.Option{static.WithPublicId(id)}
+	var opts []static.Option
 	if desc := item.GetDescription(); desc != nil {
 		opts = append(opts, static.WithDescription(desc.GetValue()))
 	}
@@ -153,6 +154,7 @@ func (s Service) updateInRepo(ctx context.Context, projId, id string, mask []str
 		opts = append(opts, static.WithName(name.GetValue()))
 	}
 	h, err := static.NewHostCatalog(projId, opts...)
+	h.PublicId = id
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "Unable to build host for update: %v.", err)
 	}
@@ -164,7 +166,7 @@ func (s Service) updateInRepo(ctx context.Context, projId, id string, mask []str
 	if len(dbMask) == 0 {
 		return nil, handlers.InvalidArgumentErrorf("No valid fields included in the update mask.", []string{"update_mask"})
 	}
-	out, rowsUpdated, err := s.staticRepo.UpdateHostCatalog(ctx, h, dbMask)
+	out, rowsUpdated, err := s.staticRepo.UpdateCatalog(ctx, h, dbMask)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "Unable to update host: %v.", err)
 	}
@@ -175,7 +177,7 @@ func (s Service) updateInRepo(ctx context.Context, projId, id string, mask []str
 }
 
 func (s Service) deleteFromRepo(ctx context.Context, id string) (bool, error) {
-	rows, err := s.staticRepo.DeleteHostCatalog(ctx, id)
+	rows, err := s.staticRepo.DeleteCatalog(ctx, id)
 	if err != nil {
 		return false, status.Errorf(codes.Internal, "Unable to delete host: %v.", err)
 	}
