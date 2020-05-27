@@ -1,0 +1,112 @@
+syntax = "proto3";
+
+// Package store provides protobufs for storing types in the static host
+// package.
+package controller.storage.host.static.store.v1;
+option go_package = "github.com/hashicorp/watchtower/internal/host/static/store;store";
+
+import "google/protobuf/timestamp.proto";
+
+// Timestamp for static host messages.  We've defined a new local type wrapper
+// of google.protobuf.Timestamp so we can implement sql.Scanner and sql.Valuer
+// interfaces.  See:
+// https://golang.org/pkg/database/sql/#Scanner
+// https://golang.org/pkg/database/sql/driver/#Valuer
+message Timestamp {
+  google.protobuf.Timestamp timestamp = 1;
+}
+
+message HostCatalog {
+  // public_is is a surrogate key suitable for use in a public API.
+  // @inject_tag: gorm:"primary_key"
+  string public_id = 1;
+
+  // The create_time is set by the database.
+  // @inject_tag: `gorm:"default:current_timestamp"`
+  Timestamp create_time = 2;
+
+  // The update_time is set by the database.
+  // @inject_tag: `gorm:"default:current_timestamp"`
+  Timestamp update_time = 3;
+
+  // name is optional. If set, it must be unique within scope_id.
+  // @inject_tag: `gorm:"default:null"`
+  string name = 4;
+
+  // description is optional.
+  // @inject_tag: `gorm:"default:null"`
+  string description = 5;
+
+  // The scope_id of the owning scope and must be set.
+  // @inject_tag: gorm:"not_null"
+  string scope_id = 6;
+}
+
+message Host {
+  // public_is is a surrogate key suitable for use in a public API.
+  // @inject_tag: gorm:"primary_key"
+  string public_id = 1;
+
+  // The create_time is set by the database.
+  // @inject_tag: `gorm:"default:current_timestamp"`
+  Timestamp create_time = 2;
+
+  // The update_time is set by the database.
+  // @inject_tag: `gorm:"default:current_timestamp"`
+  Timestamp update_time = 3;
+
+  // name is optional. If set, it must be unique within
+  // static_host_catalog_id.
+  // @inject_tag: `gorm:"default:null"`
+  string name = 4;
+
+  // description is optional.
+  // @inject_tag: `gorm:"default:null"`
+  string description = 5;
+
+  // static_host_catalog_id is the public_id of the owning
+  // static_host_catalog and must be set.
+  // @inject_tag: gorm:"not_null"
+  string static_host_catalog_id = 6;
+
+  // address is the IP Address or DNS name of the host. It must be set and
+  // it must be unique within static_host_catalog_id.
+  // @inject_tag: gorm:"not_null"
+  string address = 7;
+}
+
+message HostSet {
+  // public_is is a surrogate key suitable for use in a public API.
+  // @inject_tag: gorm:"primary_key"
+  string public_id = 1;
+
+  // The create_time is set by the database.
+  // @inject_tag: `gorm:"default:current_timestamp"`
+  Timestamp create_time = 2;
+
+  // The update_time is set by the database.
+  // @inject_tag: `gorm:"default:current_timestamp"`
+  Timestamp update_time = 3;
+
+  // name is optional. If set, it must be unique within
+  // static_host_catalog_id.
+  // @inject_tag: `gorm:"default:null"`
+  string name = 4;
+
+  // description is optional.
+  // @inject_tag: `gorm:"default:null"`
+  string description = 5;
+
+  // static_host_catalog_id is the public_id of the owning
+  // static_host_catalog and must be set.
+  // @inject_tag: gorm:"not_null"
+  string static_host_catalog_id = 6;
+}
+
+message HostSetMember {
+  // @inject_tag: gorm:"primary_key"
+  string static_host_set_id = 1;
+
+  // @inject_tag: gorm:"primary_key"
+  string static_host_id = 2;
+}
