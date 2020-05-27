@@ -80,7 +80,7 @@ func (s Service) CreateHostCatalog(ctx context.Context, req *pbs.CreateHostCatal
 		return nil, err
 	}
 	resp := &pbs.CreateHostCatalogResponse{}
-	resp.Uri = fmt.Sprintf("orgs/%s/projects/%s/host-catalogs/%s/hosts/%s", req.GetOrgId(), p.GetId())
+	resp.Uri = fmt.Sprintf("orgs/%s/projects/%s/host-catalogs/%s", req.GetOrgId(), req.GetProjectId(), h.GetId())
 	resp.Item = h
 	return resp, nil
 }
