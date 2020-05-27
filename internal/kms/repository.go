@@ -20,6 +20,24 @@ type Repository struct {
 	wrapper wrapping.Wrapper
 }
 
+// NewRepository creates a new kms Repository
+func NewRepository(r db.Reader, w db.Writer, wrapper wrapping.Wrapper) (*Repository, error) {
+	if r == nil {
+		return nil, fmt.Errorf("new repository: db reader: %w", db.ErrNilParameter)
+	}
+	if w == nil {
+		return nil, fmt.Errorf("new repository: db writer: %w", db.ErrNilParameter)
+	}
+	if wrapper == nil {
+		return nil, fmt.Errorf("new repository: wrapper: %w", db.ErrNilParameter)
+	}
+	return &Repository{
+		reader:  r,
+		writer:  w,
+		wrapper: wrapper,
+	}, nil
+}
+
 // CreateKeyEntry will create a key entry in the repository and return the written entry
 func (r *Repository) CreateKeyEntry(ctx context.Context, k *KeyEntry, opt ...Option) (*KeyEntry, error) {
 	if k == nil {
