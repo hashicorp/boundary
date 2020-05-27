@@ -339,6 +339,7 @@ func TestRepository_UpdateCatalog(t *testing.T) {
 		masks     []string
 		chgFn     func(*HostCatalog) *HostCatalog
 		want      *HostCatalog
+		wantCount int
 		wantIsErr error
 	}{
 		{
@@ -370,6 +371,7 @@ func TestRepository_UpdateCatalog(t *testing.T) {
 					Name: "test-update-name-repo",
 				},
 			},
+			wantCount: 1,
 		},
 		{
 			name: "change-description",
@@ -384,6 +386,7 @@ func TestRepository_UpdateCatalog(t *testing.T) {
 					Description: "test-update-description-repo",
 				},
 			},
+			wantCount: 1,
 		},
 		{
 			name: "fieldMask-change-both",
@@ -401,6 +404,7 @@ func TestRepository_UpdateCatalog(t *testing.T) {
 					Description: "test-update-description-repo",
 				},
 			},
+			wantCount: 1,
 		},
 		{
 			name: "fieldMask-change-name",
@@ -418,6 +422,7 @@ func TestRepository_UpdateCatalog(t *testing.T) {
 					Description: "test-description-repo",
 				},
 			},
+			wantCount: 1,
 		},
 		{
 			name: "fieldMask-change-description",
@@ -435,6 +440,7 @@ func TestRepository_UpdateCatalog(t *testing.T) {
 					Description: "test-update-description-repo",
 				},
 			},
+			wantCount: 1,
 		},
 		// TODO(mgaffney,jimlambrt) 05/2020: enable these tests once
 		// support for setting columns to nil is added to db.Update.
@@ -522,10 +528,11 @@ func TestRepository_UpdateCatalog(t *testing.T) {
 			if tt.chgFn != nil {
 				orig = tt.chgFn(orig)
 			}
-			got, err := repo.UpdateCatalog(context.Background(), orig, tt.masks)
+			got, gotCount, err := repo.UpdateCatalog(context.Background(), orig, tt.masks)
 			if tt.wantIsErr != nil {
 				assert.Error(err)
 				assert.Truef(errors.Is(err, tt.wantIsErr), "want err: %q got: %q", tt.wantIsErr, err)
+				assert.Equal(tt.wantCount, gotCount, "row count")
 				assert.Nil(got)
 				return
 			}
@@ -533,6 +540,7 @@ func TestRepository_UpdateCatalog(t *testing.T) {
 			assert.Empty(tt.orig.PublicId)
 			if assert.NotNil(got) {
 				assertPublicId(t, "sthc", got.PublicId)
+				assert.Equal(tt.wantCount, gotCount, "row count")
 				assert.NotSame(tt.orig, got)
 				assert.Equal(tt.orig.ScopeId, got.ScopeId)
 				if tt.want.Name == "" {
@@ -560,17 +568,19 @@ func TestRepository_UpdateCatalog(t *testing.T) {
 		cats := testCatalogs(t, conn, 2)
 		c1 := cats[0]
 		c1.Name = name
-		got1, err := repo.UpdateCatalog(context.Background(), c1, nil)
+		got1, gotCount1, err := repo.UpdateCatalog(context.Background(), c1, nil)
 		assert.NoError(err)
 		assert.NotNil(got1)
 		assert.Equal(name, got1.Name)
+		assert.Equal(1, gotCount1, "row count")
 
 		c2 := cats[1]
 		c2.Name = name
-		got2, err := repo.UpdateCatalog(context.Background(), c2, nil)
+		got2, gotCount2, err := repo.UpdateCatalog(context.Background(), c2, nil)
 		assert.Error(err)
 		assert.Truef(errors.Is(err, db.ErrNotUnique), "want err: %v got: %v", db.ErrNotUnique, err)
 		assert.Nil(got2)
+		assert.Equal(db.NoRowsAffected, gotCount2, "row count")
 	})
 
 	t.Run("valid-duplicate-names-diff-scopes", func(t *testing.T) {
@@ -603,12 +613,13 @@ func TestRepository_UpdateCatalog(t *testing.T) {
 		assert.NoError(err)
 		if assert.NotNil(got2) {
 			got2.Name = got.Name
-			got3, err := repo.UpdateCatalog(context.Background(), got2, nil)
+			got3, gotCount3, err := repo.UpdateCatalog(context.Background(), got2, nil)
 			assert.NoError(err)
 			if assert.NotNil(got3) {
 				assert.NotSame(got2, got3)
 				assert.Equal(got.Name, got3.Name)
 				assert.Equal(got2.Description, got3.Description)
+				assert.Equal(1, gotCount3, "row count")
 			}
 		}
 	})
@@ -626,11 +637,12 @@ func TestRepository_UpdateCatalog(t *testing.T) {
 		c1.ScopeId = c2.ScopeId
 		assert.Equal(c1.ScopeId, c2.ScopeId)
 
-		got1, err := repo.UpdateCatalog(context.Background(), c1, nil)
+		got1, gotCount1, err := repo.UpdateCatalog(context.Background(), c1, nil)
 
 		assert.NoError(err)
 		assert.NotNil(got1)
 		assert.Equal(orig.ScopeId, got1.ScopeId)
+		assert.Equal(db.NoRowsAffected, gotCount1, "row count")
 	})
 }
 
@@ -750,23 +762,23 @@ func TestRepository_DeleteCatalog(t *testing.T) {
 	var tests = []struct {
 		name    string
 		id      string
-		want    bool
+		want    int
 		wantErr error
 	}{
 		{
 			name: "found",
 			id:   cat.GetPublicId(),
-			want: true,
+			want: 1,
 		},
 		{
 			name: "not-found",
 			id:   badId,
-			want: false,
+			want: 0,
 		},
 		{
 			name:    "bad-public-id",
 			id:      "",
-			want:    false,
+			want:    0,
 			wantErr: db.ErrInvalidParameter,
 		},
 	}
@@ -786,7 +798,7 @@ func TestRepository_DeleteCatalog(t *testing.T) {
 			} else {
 				assert.NoError(err)
 			}
-			assert.Equal(tt.want, got)
+			assert.Equal(tt.want, got, "row count")
 		})
 	}
 }

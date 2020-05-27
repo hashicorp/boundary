@@ -96,19 +96,20 @@ func (r *Repository) CreateCatalog(ctx context.Context, c *HostCatalog, opt ...O
 
 // UpdateCatalog updates the values in the repository with the values in c
 // for c.PublicId and returns a new HostCatalog containing the updated
-// values. c is not changed. c must contain a valid PublicId.
+// values and a count of the number of records updated. c is not changed. c
+// must contain a valid PublicId.
 //
 // Only c.Name and c.Description can be updated. All other values are
 // ignored. If c.Name is set, it must be unique within c.ScopeID.
 //
 // An attributed of c will be set to NULL in the database if the attribute
 // in c is the zero value and it is included in fieldMask.
-func (r *Repository) UpdateCatalog(ctx context.Context, c *HostCatalog, fieldMask []string, opt ...Option) (*HostCatalog, error) {
+func (r *Repository) UpdateCatalog(ctx context.Context, c *HostCatalog, fieldMask []string, opt ...Option) (*HostCatalog, int, error) {
 	if c == nil {
-		return nil, fmt.Errorf("update: static host catalog: %w", db.ErrNilParameter)
+		return nil, db.NoRowsAffected, fmt.Errorf("update: static host catalog: %w", db.ErrNilParameter)
 	}
 	if c.PublicId == "" {
-		return nil, fmt.Errorf("update: static host catalog: missing public id: %w", db.ErrInvalidParameter)
+		return nil, db.NoRowsAffected, fmt.Errorf("update: static host catalog: missing public id: %w", db.ErrInvalidParameter)
 	}
 	c = c.clone()
 
@@ -138,11 +139,11 @@ func (r *Repository) UpdateCatalog(ctx context.Context, c *HostCatalog, fieldMas
 		fresh.PublicId = c.PublicId
 		if err := r.reader.LookupByPublicId(ctx, fresh); err != nil {
 			if err == db.ErrRecordNotFound {
-				return nil, fmt.Errorf("update: static host catalog: %s: %w", fresh.PublicId, db.ErrInvalidPublicId)
+				return nil, db.NoRowsAffected, fmt.Errorf("update: static host catalog: %s: %w", fresh.PublicId, db.ErrInvalidPublicId)
 			}
-			return nil, fmt.Errorf("update: static host catalog: %s: %w", fresh.PublicId, err)
+			return nil, db.NoRowsAffected, fmt.Errorf("update: static host catalog: %s: %w", fresh.PublicId, err)
 		}
-		return fresh, nil
+		return fresh, db.NoRowsAffected, nil
 	}
 
 	// TODO(mgaffney,jimlambrt) 05/2020: uncomment the nullFields line
@@ -172,13 +173,13 @@ func (r *Repository) UpdateCatalog(ctx context.Context, c *HostCatalog, fieldMas
 
 	if err != nil {
 		if db.IsUnique(err) {
-			return nil, fmt.Errorf("update: static host catalog: %s: name %s already exists: %w",
+			return nil, db.NoRowsAffected, fmt.Errorf("update: static host catalog: %s: name %s already exists: %w",
 				c.PublicId, c.Name, db.ErrNotUnique)
 		}
-		return nil, fmt.Errorf("update: static host catalog: %s: %w", c.PublicId, err)
+		return nil, db.NoRowsAffected, fmt.Errorf("update: static host catalog: %s: %w", c.PublicId, err)
 	}
 
-	return returnedCatalog, nil
+	return returnedCatalog, rowsUpdated, nil
 }
 
 // LookupCatalog returns the HostCatalog for id. Returns nil, nil if no
@@ -198,11 +199,11 @@ func (r *Repository) LookupCatalog(ctx context.Context, id string, opt ...Option
 	return c, nil
 }
 
-// DeleteCatalog deletes id from the repository returning a boolean to
-// indicate if the id existed.
-func (r *Repository) DeleteCatalog(ctx context.Context, id string, opt ...Option) (bool, error) {
+// DeleteCatalog deletes id from the repository returning a count of the
+// number of records deleted.
+func (r *Repository) DeleteCatalog(ctx context.Context, id string, opt ...Option) (int, error) {
 	if id == "" {
-		return false, fmt.Errorf("delete: static host catalog: missing public id: %w", db.ErrInvalidParameter)
+		return db.NoRowsAffected, fmt.Errorf("delete: static host catalog: missing public id: %w", db.ErrInvalidParameter)
 	}
 
 	c := allocCatalog()
@@ -232,10 +233,10 @@ func (r *Repository) DeleteCatalog(ctx context.Context, id string, opt ...Option
 	)
 
 	if err != nil {
-		return false, fmt.Errorf("delete: static host catalog: %s: %w", c.PublicId, err)
+		return db.NoRowsAffected, fmt.Errorf("delete: static host catalog: %s: %w", c.PublicId, err)
 	}
 
-	return rowsDeleted != 0, nil
+	return rowsDeleted, nil
 }
 
 func contains(ss []string, t string) bool {
