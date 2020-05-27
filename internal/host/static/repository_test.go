@@ -109,9 +109,8 @@ func TestRepository_New(t *testing.T) {
 				return
 			}
 			assert.NoError(err)
-			if assert.NotNil(got) {
-				assert.Equal(tt.want, got)
-			}
+			assert.NotNil(got)
+			assert.Equal(tt.want, got)
 		})
 	}
 }
@@ -198,13 +197,12 @@ func TestRepository_CreateCatalog(t *testing.T) {
 			}
 			assert.NoError(err)
 			assert.Empty(tt.in.PublicId)
-			if assert.NotNil(got) {
-				assertPublicId(t, "sthc", got.PublicId)
-				assert.NotSame(tt.in, got)
-				assert.Equal(tt.want.Name, got.Name)
-				assert.Equal(tt.want.Description, got.Description)
-				assert.Equal(got.CreateTime, got.UpdateTime)
-			}
+			assert.NotNil(got)
+			assertPublicId(t, "sthc", got.PublicId)
+			assert.NotSame(tt.in, got)
+			assert.Equal(tt.want.Name, got.Name)
+			assert.Equal(tt.want.Description, got.Description)
+			assert.Equal(got.CreateTime, got.UpdateTime)
 		})
 	}
 
@@ -224,13 +222,12 @@ func TestRepository_CreateCatalog(t *testing.T) {
 
 		got, err := repo.CreateCatalog(context.Background(), in)
 		assert.NoError(err)
-		if assert.NotNil(got) {
-			assertPublicId(t, "sthc", got.PublicId)
-			assert.NotSame(in, got)
-			assert.Equal(in.Name, got.Name)
-			assert.Equal(in.Description, got.Description)
-			assert.Equal(got.CreateTime, got.UpdateTime)
-		}
+		assert.NotNil(got)
+		assertPublicId(t, "sthc", got.PublicId)
+		assert.NotSame(in, got)
+		assert.Equal(in.Name, got.Name)
+		assert.Equal(in.Description, got.Description)
+		assert.Equal(got.CreateTime, got.UpdateTime)
 
 		got2, err := repo.CreateCatalog(context.Background(), in)
 		assert.Error(err)
@@ -255,24 +252,22 @@ func TestRepository_CreateCatalog(t *testing.T) {
 		in.ScopeId = prj.GetPublicId()
 		got, err := repo.CreateCatalog(context.Background(), in)
 		assert.NoError(err)
-		if assert.NotNil(got) {
-			assertPublicId(t, "sthc", got.PublicId)
-			assert.NotSame(in, got)
-			assert.Equal(in.Name, got.Name)
-			assert.Equal(in.Description, got.Description)
-			assert.Equal(got.CreateTime, got.UpdateTime)
-		}
+		assert.NotNil(got)
+		assertPublicId(t, "sthc", got.PublicId)
+		assert.NotSame(in, got)
+		assert.Equal(in.Name, got.Name)
+		assert.Equal(in.Description, got.Description)
+		assert.Equal(got.CreateTime, got.UpdateTime)
 
 		in2.ScopeId = org.GetPublicId()
 		got2, err := repo.CreateCatalog(context.Background(), in2)
 		assert.NoError(err)
-		if assert.NotNil(got2) {
-			assertPublicId(t, "sthc", got2.PublicId)
-			assert.NotSame(in2, got2)
-			assert.Equal(in2.Name, got2.Name)
-			assert.Equal(in2.Description, got2.Description)
-			assert.Equal(got2.CreateTime, got2.UpdateTime)
-		}
+		assert.NotNil(got2)
+		assertPublicId(t, "sthc", got2.PublicId)
+		assert.NotSame(in2, got2)
+		assert.Equal(in2.Name, got2.Name)
+		assert.Equal(in2.Description, got2.Description)
+		assert.Equal(got2.CreateTime, got2.UpdateTime)
 	})
 }
 
@@ -549,23 +544,21 @@ func TestRepository_UpdateCatalog(t *testing.T) {
 			}
 			assert.NoError(err)
 			assert.Empty(tt.orig.PublicId)
-			if assert.NotNil(got) {
-				assertPublicId(t, "sthc", got.PublicId)
-				assert.Equal(tt.wantCount, gotCount, "row count")
-				assert.NotSame(tt.orig, got)
-				assert.Equal(tt.orig.ScopeId, got.ScopeId)
-				if tt.want.Name == "" {
-					assertColumnIsNull(t, conn, got, "name")
-					return
-				}
-				assert.Equal(tt.want.Name, got.Name)
-				if tt.want.Description == "" {
-					assertColumnIsNull(t, conn, got, "description")
-					return
-				}
-				assert.Equal(tt.want.Description, got.Description)
+			assert.NotNil(got)
+			assertPublicId(t, "sthc", got.PublicId)
+			assert.Equal(tt.wantCount, gotCount, "row count")
+			assert.NotSame(tt.orig, got)
+			assert.Equal(tt.orig.ScopeId, got.ScopeId)
+			if tt.want.Name == "" {
+				assertColumnIsNull(t, conn, got, "name")
+				return
 			}
-
+			assert.Equal(tt.want.Name, got.Name)
+			if tt.want.Description == "" {
+				assertColumnIsNull(t, conn, got, "description")
+				return
+			}
+			assert.Equal(tt.want.Description, got.Description)
 		})
 	}
 
@@ -611,28 +604,25 @@ func TestRepository_UpdateCatalog(t *testing.T) {
 		in.ScopeId = prj.GetPublicId()
 		got, err := repo.CreateCatalog(context.Background(), in)
 		assert.NoError(err)
-		if assert.NotNil(got) {
-			assertPublicId(t, "sthc", got.PublicId)
-			assert.NotSame(in, got)
-			assert.Equal(in.Name, got.Name)
-			assert.Equal(in.Description, got.Description)
-		}
+		assert.NotNil(got)
+		assertPublicId(t, "sthc", got.PublicId)
+		assert.NotSame(in, got)
+		assert.Equal(in.Name, got.Name)
+		assert.Equal(in.Description, got.Description)
 
 		in2.ScopeId = org.GetPublicId()
 		in2.Name = "first-name"
 		got2, err := repo.CreateCatalog(context.Background(), in2)
 		assert.NoError(err)
-		if assert.NotNil(got2) {
-			got2.Name = got.Name
-			got3, gotCount3, err := repo.UpdateCatalog(context.Background(), got2, nil)
-			assert.NoError(err)
-			if assert.NotNil(got3) {
-				assert.NotSame(got2, got3)
-				assert.Equal(got.Name, got3.Name)
-				assert.Equal(got2.Description, got3.Description)
-				assert.Equal(1, gotCount3, "row count")
-			}
-		}
+		assert.NotNil(got2)
+		got2.Name = got.Name
+		got3, gotCount3, err := repo.UpdateCatalog(context.Background(), got2, nil)
+		assert.NoError(err)
+		assert.NotNil(got3)
+		assert.NotSame(got2, got3)
+		assert.Equal(got.Name, got3.Name)
+		assert.Equal(got2.Description, got3.Description)
+		assert.Equal(1, gotCount3, "row count")
 	})
 
 	t.Run("change-scope-id", func(t *testing.T) {
@@ -761,9 +751,8 @@ func TestRepository_LookupCatalog(t *testing.T) {
 			case tt.want == nil:
 				assert.Nil(got)
 			case tt.want != nil:
-				if assert.NotNil(got) {
-					assert.Equal(got, tt.want)
-				}
+				assert.NotNil(got)
+				assert.Equal(got, tt.want)
 			}
 		})
 	}
@@ -824,9 +813,9 @@ func TestRepository_DeleteCatalog(t *testing.T) {
 			if tt.wantErr != nil {
 				assert.Error(err)
 				assert.Truef(errors.Is(err, tt.wantErr), "want err: %q got: %q", tt.wantErr, err)
-			} else {
-				assert.NoError(err)
+				return
 			}
+			assert.NoError(err)
 			assert.Equal(tt.want, got, "row count")
 		})
 	}
