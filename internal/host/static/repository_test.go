@@ -320,6 +320,13 @@ func TestRepository_UpdateCatalog(t *testing.T) {
 		}
 	}
 
+	nonExistentPublicId := func() func(*HostCatalog) *HostCatalog {
+		return func(c *HostCatalog) *HostCatalog {
+			c.PublicId = "sthc_OOOOOOOOOO"
+			return c
+		}
+	}
+
 	combine := func(fns ...func(c *HostCatalog) *HostCatalog) func(*HostCatalog) *HostCatalog {
 		return func(c *HostCatalog) *HostCatalog {
 			for _, fn := range fns {
@@ -353,6 +360,16 @@ func TestRepository_UpdateCatalog(t *testing.T) {
 			},
 			chgFn:     deletePublicId(),
 			wantIsErr: db.ErrInvalidParameter,
+		},
+		{
+			name: "updating-non-existent-catalog",
+			orig: &HostCatalog{
+				HostCatalog: &store.HostCatalog{
+					Name: "test-name-repo",
+				},
+			},
+			chgFn:     combine(nonExistentPublicId(), changeName("test-update-name-repo")),
+			wantIsErr: db.ErrRecordNotFound,
 		},
 		{
 			name: "change-name",
