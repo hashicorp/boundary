@@ -121,13 +121,13 @@ func NewHostSetMember(hostSetId, hostId string, opt ...Option) (*HostSetMember, 
 
 // PublicId prefixes for the resources in the static package.
 const (
-	hostCatalogPrefix = "sthc"
-	hostSetPrefix     = "sths"
-	hostPrefix        = "sth"
+	HostCatalogPrefix = "sthc"
+	HostSetPrefix     = "sths"
+	HostPrefix        = "sth"
 )
 
 func newHostCatalogId() (string, error) {
-	id, err := db.NewPublicId(hostCatalogPrefix)
+	id, err := db.NewPublicId(HostCatalogPrefix)
 	if err != nil {
 		return "", fmt.Errorf("new host catalog id: %w", err)
 	}
@@ -135,7 +135,7 @@ func newHostCatalogId() (string, error) {
 }
 
 func newHostId() (string, error) {
-	id, err := db.NewPublicId(hostPrefix)
+	id, err := db.NewPublicId(HostPrefix)
 	if err != nil {
 		return "", fmt.Errorf("new host id: %w", err)
 	}
@@ -143,7 +143,7 @@ func newHostId() (string, error) {
 }
 
 func newHostSetId() (string, error) {
-	id, err := db.NewPublicId(hostSetPrefix)
+	id, err := db.NewPublicId(HostSetPrefix)
 	if err != nil {
 		return "", fmt.Errorf("new host set id: %w", err)
 	}
