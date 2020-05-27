@@ -14,8 +14,14 @@ import (
 
 func TestHostCatalog_New(t *testing.T) {
 	cleanup, conn, _ := db.TestSetup(t, "postgres")
-	defer cleanup()
-	defer conn.Close()
+	defer func() {
+		if err := cleanup(); err != nil {
+			t.Error(err)
+		}
+		if err := conn.Close(); err != nil {
+			t.Error(err)
+		}
+	}()
 
 	_, prj := iam.TestScopes(t, conn)
 
@@ -140,8 +146,14 @@ func testCatalog(t *testing.T, conn *gorm.DB) *HostCatalog {
 
 func TestHost_New(t *testing.T) {
 	cleanup, conn, _ := db.TestSetup(t, "postgres")
-	defer cleanup()
-	defer conn.Close()
+	defer func() {
+		if err := cleanup(); err != nil {
+			t.Error(err)
+		}
+		if err := conn.Close(); err != nil {
+			t.Error(err)
+		}
+	}()
 	cat := testCatalog(t, conn)
 
 	conn.LogMode(false)
@@ -285,8 +297,14 @@ func TestHost_New(t *testing.T) {
 
 func TestHostSet_New(t *testing.T) {
 	cleanup, conn, _ := db.TestSetup(t, "postgres")
-	defer cleanup()
-	defer conn.Close()
+	defer func() {
+		if err := cleanup(); err != nil {
+			t.Error(err)
+		}
+		if err := conn.Close(); err != nil {
+			t.Error(err)
+		}
+	}()
 	cat := testCatalog(t, conn)
 
 	conn.LogMode(false)
@@ -428,8 +446,14 @@ func testSets(t *testing.T, conn *gorm.DB, catalogId string, count int) []*HostS
 
 func TestHostSetMember_New(t *testing.T) {
 	cleanup, conn, _ := db.TestSetup(t, "postgres")
-	defer cleanup()
-	defer conn.Close()
+	defer func() {
+		if err := cleanup(); err != nil {
+			t.Error(err)
+		}
+		if err := conn.Close(); err != nil {
+			t.Error(err)
+		}
+	}()
 	conn.LogMode(false)
 
 	cats := testCatalogs(t, conn, 2)
