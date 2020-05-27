@@ -94,15 +94,16 @@ func (r *Repository) CreateCatalog(ctx context.Context, c *HostCatalog, opt ...O
 	return newHostCatalog, nil
 }
 
-// UpdateCatalog updates the values in the repository with the values in c
-// for c.PublicId and returns a new HostCatalog containing the updated
-// values and a count of the number of records updated. c is not changed. c
-// must contain a valid PublicId.
+// UpdateCatalog updates the repository entry for c.PublicId with the
+// values in c for the fields listed in fieldMask. It returns a new
+// HostCatalog containing the updated values and a count of the number of
+// records updated. c is not changed.
 //
-// Only c.Name and c.Description can be updated. All other values are
-// ignored. If c.Name is set, it must be unique within c.ScopeID.
+// c must contain a valid PublicId. Only c.Name and c.Description can be
+// updated. If c.Name is set to a non-empty string, it must be unique
+// within c.ScopeID.
 //
-// An attributed of c will be set to NULL in the database if the attribute
+// An attribute of c will be set to NULL in the database if the attribute
 // in c is the zero value and it is included in fieldMask.
 func (r *Repository) UpdateCatalog(ctx context.Context, c *HostCatalog, fieldMask []string, opt ...Option) (*HostCatalog, int, error) {
 	if c == nil {
