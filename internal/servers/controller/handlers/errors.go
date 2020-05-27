@@ -35,6 +35,10 @@ func InvalidArgumentErrorf(msg string, fields []string) error {
 func statusErrorToApiError(s *status.Status) *pb.Error {
 	apiErr := &pb.Error{}
 	apiErr.Status = int32(runtime.HTTPStatusFromCode(s.Code()))
+	if s.Code() == codes.Unimplemented {
+		// Instead of returning a 501 we always want to return a 405 when a method isn't implemented.
+		apiErr.Status = http.StatusMethodNotAllowed
+	}
 	apiErr.Message = s.Message()
 	// TODO(ICU-193): Decouple from the status codes and instead use codes defined specifically for our API.
 	apiErr.Code = s.Code().String()
