@@ -82,7 +82,8 @@ values
   ('iam_role_user', 1),
   ('db_test_user', 1),
   ('db_test_car', 1),
-  ('db_test_rental', 1);
+  ('db_test_rental', 1),
+  ('kms_key_entry', 1);
 
 commit;
 
@@ -245,6 +246,17 @@ COMMIT;
 
 `),
 	},
+	"migrations/20_keys.down.sql": {
+		name: "20_keys.down.sql",
+		bytes: []byte(`
+begin;
+
+drop table kms_key_entry cascade;
+
+commit;
+
+`),
+	},
 	"migrations/20_keys.up.sql": {
 		name: "20_keys.up.sql",
 		bytes: []byte(`
@@ -254,7 +266,7 @@ create table kms_key_entry (
     key_id text primary key,
     key bytea not null,
     parent_key_id text references kms_key_entry(key_id) on delete cascade on update cascade,
-    scope_id wt_public_id not null unique references iam_scope_organization(scope_id) on delete cascade on update cascade
+    scope_id wt_public_id not null references iam_scope_organization(scope_id) on delete cascade on update cascade
 );
 
 commit;
