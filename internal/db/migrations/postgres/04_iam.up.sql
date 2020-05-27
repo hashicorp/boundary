@@ -1,86 +1,113 @@
-BEGIN;
+begin;
 
-CREATE TABLE iam_scope_type_enm (
-  string text NOT NULL primary key CHECK(string IN ('unknown', 'organization', 'project'))
+create table iam_scope_type_enm (
+  string text not null primary key check(string in ('unknown', 'organization', 'project'))
 );
-INSERT INTO iam_scope_type_enm (string)
+
+insert into iam_scope_type_enm (string)
 values
   ('unknown'),
   ('organization'),
   ('project');
 
  
-CREATE TABLE iam_scope (
+create table iam_scope (
     public_id wt_public_id primary key,
     create_time wt_timestamp,
     update_time wt_timestamp,
     name text,
-    type text NOT NULL REFERENCES iam_scope_type_enm(string) CHECK(
+    type text not null references iam_scope_type_enm(string) check(
       (
         type = 'organization'
-        and parent_id = NULL
+        and parent_id = null
       )
       or (
         type = 'project'
-        and parent_id IS NOT NULL
+        and parent_id is not null
       )
     ),
     description text,
-    parent_id text REFERENCES iam_scope(public_id) ON DELETE CASCADE ON UPDATE CASCADE
+    parent_id text references iam_scope(public_id) on delete cascade on update cascade
   );
+
 create table iam_scope_organization (
-    scope_id wt_public_id NOT NULL UNIQUE REFERENCES iam_scope(public_id) ON DELETE CASCADE ON UPDATE CASCADE,
-    name text UNIQUE,
+    scope_id wt_public_id not null unique references iam_scope(public_id) on delete cascade on update cascade,
+    name text unique,
     primary key(scope_id)
   );
+
 create table iam_scope_project (
-    scope_id wt_public_id NOT NULL REFERENCES iam_scope(public_id) ON DELETE CASCADE ON UPDATE CASCADE,
-    parent_id wt_public_id NOT NULL REFERENCES iam_scope_organization(scope_id) ON DELETE CASCADE ON UPDATE CASCADE,
+    scope_id wt_public_id not null references iam_scope(public_id) on delete cascade on update cascade,
+    parent_id wt_public_id not null references iam_scope_organization(scope_id) on delete cascade on update cascade,
     name text,
     unique(parent_id, name),
     primary key(scope_id, parent_id)
   );
 
-
-CREATE
-  OR REPLACE FUNCTION iam_sub_scopes_func() RETURNS TRIGGER
-SET SCHEMA
-  'public' LANGUAGE plpgsql AS $$ DECLARE parent_type INT;
-BEGIN IF new.type = 'organization' THEN
-insert into iam_scope_organization (scope_id, name)
-values
-  (new.public_id, new.name);
-return NEW;
-END IF;
-IF new.type = 'project' THEN
-insert into iam_scope_project (scope_id, parent_id, name)
-values
-  (new.public_id, new.parent_id, new.name);
-return NEW;
-END IF;
-RAISE EXCEPTION 'unknown scope type';
-END;
-$$;
-
-
-CREATE TRIGGER iam_scope_insert
-AFTER
-insert ON iam_scope FOR EACH ROW EXECUTE PROCEDURE iam_sub_scopes_func();
+create or replace function 
+  iam_sub_scopes_func() 
+  returns trigger
+as $$ 
+declare parent_type int;
+begin 
+  if new.type = 'organization' then
+    insert into iam_scope_organization (scope_id, name)
+    values
+      (new.public_id, new.name);
+    return new;
+  end if;
+  if new.type = 'project' then
+    insert into iam_scope_project (scope_id, parent_id, name)
+    values
+      (new.public_id, new.parent_id, new.name);
+    return new;
+  end if;
+  raise exception 'unknown scope type';
+end;
+$$ language plpgsql;
 
 
-CREATE
-  OR REPLACE FUNCTION iam_immutable_scope_type_func() RETURNS TRIGGER
-SET SCHEMA
-  'public' LANGUAGE plpgsql AS $$ DECLARE parent_type INT;
-BEGIN IF new.type != old.type THEN
-RAISE EXCEPTION 'scope type cannot be updated';
-END IF;
-return NEW;
-END;
-$$;
+create trigger 
+  iam_scope_insert
+after
+insert on iam_scope 
+  for each row execute procedure iam_sub_scopes_func();
 
-CREATE TRIGGER iam_scope_update
-BEFORE
-update ON iam_scope FOR EACH ROW EXECUTE PROCEDURE iam_immutable_scope_type_func();
 
-COMMIT;
+create or replace function 
+  iam_immutable_scope_type_func() 
+  returns trigger
+as $$ 
+declare parent_type int;
+begin 
+  if new.type != old.type then
+    raise exception 'scope type cannot be updated';
+  end if;
+  return new;
+end;
+$$ language plpgsql;
+
+create trigger 
+  iam_scope_update
+before 
+update on iam_scope 
+  for each row execute procedure iam_immutable_scope_type_func();
+
+create trigger 
+  update_time_column 
+before update on iam_scope 
+  for each row execute procedure update_time_column();
+
+create trigger 
+  immutable_create_time
+before
+update on iam_scope 
+  for each row execute procedure immutable_create_time_func();
+  
+create trigger 
+  default_create_time_column
+before
+insert on iam_scope
+  for each row execute procedure default_create_time();
+
+commit;

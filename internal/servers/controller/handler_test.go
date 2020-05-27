@@ -41,7 +41,7 @@ func TestHandleGrpcGateway(t *testing.T) {
 		{
 			"Unimplemented path",
 			"v1/orgs/1/projects/2/host-catalogs/3/host-sets/4",
-			http.StatusNotImplemented,
+			http.StatusMethodNotAllowed,
 		},
 	}
 	for _, tc := range cases {
