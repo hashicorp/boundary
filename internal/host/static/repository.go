@@ -116,10 +116,18 @@ func (r *Repository) UpdateCatalog(ctx context.Context, c *HostCatalog, fieldMas
 		return nil, db.NoRowsAffected, fmt.Errorf("update: static host catalog: %w", db.ErrEmptyFieldMask)
 	}
 
+	var dbMask, nullFields []string
 	for _, f := range fieldMask {
 		switch {
-		case strings.EqualFold("name", f):
-		case strings.EqualFold("description", f):
+		case strings.EqualFold("name", f) && c.Name == "":
+			nullFields = append(nullFields, "name")
+		case strings.EqualFold("name", f) && c.Name != "":
+			dbMask = append(dbMask, "name")
+		case strings.EqualFold("description", f) && c.Description == "":
+			nullFields = append(nullFields, "description")
+		case strings.EqualFold("description", f) && c.Description != "":
+			dbMask = append(dbMask, "description")
+
 		default:
 			return nil, db.NoRowsAffected, fmt.Errorf("update: static host catalog: field: %s: %w", f, db.ErrInvalidFieldMask)
 		}
@@ -128,8 +136,6 @@ func (r *Repository) UpdateCatalog(ctx context.Context, c *HostCatalog, fieldMas
 
 	metadata := newCatalogMetadata(c, oplog.OpType_OP_TYPE_UPDATE)
 
-	// TODO(mgaffney,jimlambrt) 05/2020: uncomment the nullFields line
-	// below once support for setting columns to nil is added to db.Update.
 	var rowsUpdated int
 	var returnedCatalog *HostCatalog
 	_, err := r.writer.DoTx(
@@ -142,8 +148,8 @@ func (r *Repository) UpdateCatalog(ctx context.Context, c *HostCatalog, fieldMas
 			rowsUpdated, err = w.Update(
 				ctx,
 				returnedCatalog,
-				fieldMask,
-				// nullFields,
+				dbMask,
+				nullFields,
 				db.WithOplog(r.wrapper, metadata),
 			)
 			if err == nil && rowsUpdated > 1 {
