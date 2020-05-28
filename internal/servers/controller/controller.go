@@ -8,6 +8,7 @@ import (
 	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/vault/sdk/helper/mlock"
 	"github.com/hashicorp/watchtower/internal/db"
+	"github.com/hashicorp/watchtower/internal/host/static"
 	"github.com/hashicorp/watchtower/internal/iam"
 )
 
@@ -19,7 +20,8 @@ type Controller struct {
 	baseCancel  context.CancelFunc
 
 	// Repos
-	IamRepo *iam.Repository
+	IamRepo        *iam.Repository
+	StaticHostRepo *static.Repository
 }
 
 func New(conf *Config) (*Controller, error) {
@@ -57,6 +59,10 @@ func New(conf *Config) (*Controller, error) {
 	c.IamRepo, err = iam.NewRepository(dbase, dbase, c.conf.ControllerKMS)
 	if err != nil {
 		return nil, fmt.Errorf("unable to create iam repo: %w", err)
+	}
+	c.StaticHostRepo, err = static.NewRepository(dbase, dbase, c.conf.ControllerKMS)
+	if err != nil {
+		return nil, fmt.Errorf("unable to create static host repo: %w", err)
 	}
 
 	return c, nil

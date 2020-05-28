@@ -59,7 +59,7 @@ func handleGrpcGateway(c *Controller) http.Handler {
 	// in the future, at which point we'll want to be using the baseContext.
 	ctx := c.baseContext
 	mux := runtime.NewServeMux(runtime.WithProtoErrorHandler(handlers.ErrorHandler(c.logger)))
-	services.RegisterHostCatalogServiceHandlerServer(ctx, mux, &host_catalogs.Service{})
+	services.RegisterHostCatalogServiceHandlerServer(ctx, mux, host_catalogs.NewService(c.StaticHostRepo))
 	services.RegisterHostSetServiceHandlerServer(ctx, mux, &host_sets.Service{})
 	services.RegisterHostServiceHandlerServer(ctx, mux, &hosts.Service{})
 	services.RegisterProjectServiceHandlerServer(ctx, mux, projects.NewService(c.IamRepo))
