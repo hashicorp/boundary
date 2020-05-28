@@ -5,12 +5,10 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/hashicorp/go-uuid"
 	"github.com/hashicorp/watchtower/internal/db"
-	"github.com/hashicorp/watchtower/internal/iam"
 	"github.com/hashicorp/watchtower/internal/kms/store"
-	"github.com/jinzhu/gorm"
 	"github.com/stretchr/testify/assert"
+	"google.golang.org/protobuf/proto"
 )
 
 func TestNewKeyEntry(t *testing.T) {
@@ -253,39 +251,159 @@ func Test_KeyEntryDelete(t *testing.T) {
 	}
 }
 
-func testOrg(t *testing.T, conn *gorm.DB) (org *iam.Scope) {
-	t.Helper()
-	assert := assert.New(t)
-	rw := db.New(conn)
-	wrapper := db.TestWrapper(t)
-	repo, err := iam.NewRepository(rw, rw, wrapper)
-	assert.NoError(err)
+func Test_KeyEntryUpdate(t *testing.T) {
+	t.Parallel()
+	cleanup, conn, _ := db.TestSetup(t, "postgres")
+	defer func() {
+		if err := cleanup(); err != nil {
+			t.Error(err)
+		}
+		if err := conn.Close(); err != nil {
+			t.Error(err)
+		}
+	}()
 
-	o, err := iam.NewOrganization()
-	assert.NoError(err)
-	o, err = repo.CreateScope(context.Background(), o)
-	assert.NoError(err)
-	assert.NotNil(o)
-	assert.NotEmpty(o.GetPublicId())
-	return o
-}
-func testId(t *testing.T) string {
-	id, err := uuid.GenerateUUID()
-	assert.NoError(t, err)
-	return id
-}
-func testKeyEntry(t *testing.T, conn *gorm.DB, orgId, keyId string, key []byte) *KeyEntry {
-	assert := assert.New(t)
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
 	repo, err := NewRepository(rw, rw, wrapper)
-	assert.NoError(err)
+	assert.NoError(t, err)
+	id := testId(t)
+	org := testOrg(t, conn)
 
-	entry, err := NewKeyEntry(orgId, keyId, key)
-	assert.NoError(err)
+	type args struct {
+		keyId          string
+		key            []byte
+		parentId       string
+		fieldMaskPaths []string
+		ScopeId        string
+	}
+	tests := []struct {
+		name           string
+		args           args
+		wantRowsUpdate int
+		wantErr        bool
+		wantErrMsg     string
+		wantDup        bool
+	}{
+		{
+			name: "valid",
+			args: args{
+				keyId:          "valid-" + id,
+				key:            []byte("valid-" + id),
+				parentId:       "",
+				fieldMaskPaths: []string{"key"},
+				ScopeId:        org.PublicId,
+			},
+			wantErr:        false,
+			wantRowsUpdate: 1,
+		},
+		{
+			name: "bad-scope",
+			args: args{
+				keyId:          "bad-scope-" + id,
+				key:            []byte("bad-scope-" + id),
+				parentId:       "",
+				fieldMaskPaths: []string{"ScopeId"},
+				ScopeId:        "bad-scope-" + id,
+			},
+			wantErr:        true,
+			wantRowsUpdate: 0,
+			wantErrMsg:     "update: vet for write failed not allowed to change a key entry's scope",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert := assert.New(t)
+			e := testKeyEntry(t, conn, org.PublicId, tt.args.keyId, tt.args.key)
 
-	createdEntry, err := repo.CreateKeyEntry(context.Background(), entry)
-	assert.NoError(err)
-	return createdEntry
+			updateEntry := allocKeyEntry()
+			updateEntry.KeyId = e.KeyId
+			updateEntry.Key = append(tt.args.key, []byte("-updated")...)
+			updateEntry.ScopeId = tt.args.ScopeId
 
+			// TODO (jimlambrt 5/2020) Need to add nullFields parameter when
+			// support is merged to master
+			updatedRows, err := rw.Update(context.Background(), &updateEntry, tt.args.fieldMaskPaths)
+			if tt.wantErr {
+				assert.Error(err)
+				assert.Equal(0, updatedRows)
+				assert.Equal(tt.wantErrMsg, err.Error())
+				return
+			}
+			assert.NoError(err)
+			assert.Equal(tt.wantRowsUpdate, updatedRows)
+			found, err := repo.LookupKeyEntry(context.Background(), e.KeyId)
+			assert.NoError(err)
+			assert.True(proto.Equal(updateEntry, found))
+		})
+	}
+}
+
+func Test_KeyEntryGetScope(t *testing.T) {
+	t.Parallel()
+	cleanup, conn, _ := db.TestSetup(t, "postgres")
+	defer func() {
+		if err := cleanup(); err != nil {
+			t.Error(err)
+		}
+		if err := conn.Close(); err != nil {
+			t.Error(err)
+		}
+	}()
+	org := testOrg(t, conn)
+
+	t.Run("valid-scope", func(t *testing.T) {
+		assert := assert.New(t)
+		rw := db.New(conn)
+		id := testId(t)
+
+		e := testKeyEntry(t, conn, org.PublicId, id, []byte(id))
+		s, err := e.GetScope(context.Background(), rw)
+		assert.NoError(err)
+		assert.Equal(e.ScopeId, s.PublicId)
+	})
+	t.Run("valid-no-scopeId-in-entry", func(t *testing.T) {
+		assert := assert.New(t)
+		rw := db.New(conn)
+		id := testId(t)
+
+		e := testKeyEntry(t, conn, org.PublicId, id, []byte(id))
+		e.ScopeId = ""
+		s, err := e.GetScope(context.Background(), rw)
+		assert.NoError(err)
+		assert.Equal(e.ScopeId, s.PublicId)
+	})
+
+}
+
+func Test_KeyEntryClone(t *testing.T) {
+	t.Parallel()
+	cleanup, conn, _ := db.TestSetup(t, "postgres")
+	defer func() {
+		if err := cleanup(); err != nil {
+			t.Error(err)
+		}
+		if err := conn.Close(); err != nil {
+			t.Error(err)
+		}
+	}()
+	org := testOrg(t, conn)
+
+	t.Run("valid", func(t *testing.T) {
+		assert := assert.New(t)
+		id := testId(t)
+		e := testKeyEntry(t, conn, org.PublicId, id, []byte(id))
+
+		cp := e.Clone()
+		assert.True(proto.Equal(cp.KeyEntry, e.KeyEntry))
+	})
+	t.Run("not-equal", func(t *testing.T) {
+		assert := assert.New(t)
+		id := testId(t)
+		e := testKeyEntry(t, conn, org.PublicId, id, []byte(id))
+		e2 := testKeyEntry(t, conn, org.PublicId, "second-"+id, []byte(id))
+
+		cp := e.Clone()
+		assert.True(!proto.Equal(cp.KeyEntry, e2.KeyEntry))
+	})
 }
