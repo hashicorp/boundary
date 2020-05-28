@@ -331,9 +331,9 @@ func TestCreate(t *testing.T) {
 				if err != nil {
 					t.Fatalf("Error converting proto to timestamp: %v", err)
 				}
-				// Verify it is a project created after the test setup's default project
-				assert.True(gotCreateTime.After(defaultHcCreated), "New project should have been created after default project. Was created %v, which is after %v", gotCreateTime, defaultHcCreated)
-				assert.True(gotUpdateTime.After(defaultHcCreated), "New project should have been updated after default project. Was updated %v, which is after %v", gotUpdateTime, defaultHcCreated)
+				// Verify it is a catalog created after the test setup's default catalog
+				assert.True(gotCreateTime.After(defaultHcCreated), "New catalog should have been created after default catalog. Was created %v, which is after %v", gotCreateTime, defaultHcCreated)
+				assert.True(gotUpdateTime.After(defaultHcCreated), "New catalog should have been updated after default catalog. Was updated %v, which is after %v", gotUpdateTime, defaultHcCreated)
 
 				// Clear all values which are hard to compare against.
 				got.Uri, tc.res.Uri = "", ""
@@ -352,11 +352,11 @@ func TestUpdate(t *testing.T) {
 	var err error
 	resetHostCatalog := func() {
 		if hc, _, err = repo.UpdateCatalog(context.Background(), hc, []string{"Name", "Description"}); err != nil {
-			t.Fatalf("Failed to reset the project")
+			t.Fatalf("Failed to reset the catalog")
 		}
 	}
 
-	projCreated, err := ptypes.Timestamp(hc.GetCreateTime().GetTimestamp())
+	hcCreated, err := ptypes.Timestamp(hc.GetCreateTime().GetTimestamp())
 	if err != nil {
 		t.Fatalf("Error converting proto to timestamp: %v", err)
 	}
@@ -415,7 +415,7 @@ func TestUpdate(t *testing.T) {
 			errCode: codes.OK,
 		},
 		{
-			name: "No Update Mask Is Invalid Argument",
+			name: "No Update Mask",
 			req: &pbs.UpdateHostCatalogRequest{
 				Item: &pb.HostCatalog{
 					Name:        &wrappers.StringValue{Value: "updated name"},
@@ -425,7 +425,7 @@ func TestUpdate(t *testing.T) {
 			errCode: codes.InvalidArgument,
 		},
 		{
-			name: "No Paths in Mask Is Invalid Argument",
+			name: "Empty Path",
 			req: &pbs.UpdateHostCatalogRequest{
 				UpdateMask: &field_mask.FieldMask{Paths: []string{}},
 				Item: &pb.HostCatalog{
@@ -436,7 +436,7 @@ func TestUpdate(t *testing.T) {
 			errCode: codes.InvalidArgument,
 		},
 		{
-			name: "Only non-existant paths in Mask Is Invalid Argument",
+			name: "Only non-existant paths in Mask",
 			req: &pbs.UpdateHostCatalogRequest{
 				UpdateMask: &field_mask.FieldMask{Paths: []string{"nonexistant_field"}},
 				Item: &pb.HostCatalog{
@@ -460,6 +460,25 @@ func TestUpdate(t *testing.T) {
 				Item: &pb.HostCatalog{
 					Id:          hc.GetPublicId(),
 					Description: &wrappers.StringValue{Value: "default"},
+					CreatedTime: hc.GetCreateTime().GetTimestamp(),
+				},
+			},
+			errCode: codes.OK,
+		},
+		{
+			name: "Unset Description",
+			req: &pbs.UpdateHostCatalogRequest{
+				UpdateMask: &field_mask.FieldMask{
+					Paths: []string{"description"},
+				},
+				Item: &pb.HostCatalog{
+					Name: &wrappers.StringValue{Value: "ignored"},
+				},
+			},
+			res: &pbs.UpdateHostCatalogResponse{
+				Item: &pb.HostCatalog{
+					Id:          hc.GetPublicId(),
+					Name:        &wrappers.StringValue{Value: "default"},
 					CreatedTime: hc.GetCreateTime().GetTimestamp(),
 				},
 			},
@@ -507,7 +526,7 @@ func TestUpdate(t *testing.T) {
 			},
 			errCode: codes.OK,
 		},
-		// TODO: Updating a non existant project should result in a NotFound exception but currently results in
+		// TODO: Updating a non existant catalog should result in a NotFound exception but currently results in
 		// the repo returning an internal error.
 		{
 			name: "Update a Non Existing HostCatalog",
@@ -583,9 +602,9 @@ func TestUpdate(t *testing.T) {
 				}
 				// Verify it is a project updated after it was created
 				// TODO: This is currently failing.
-				//assert.True(gotUpdateTime.After(projCreated), "Updated project should have been updated after it's creation. Was updated %v, which is after %v", gotUpdateTime, projCreated)
+				//assert.True(gotUpdateTime.After(hcCreated), "Updated project should have been updated after it's creation. Was updated %v, which is after %v", gotUpdateTime, hcCreated)
 				_ = gotUpdateTime
-				_ = projCreated
+				_ = hcCreated
 
 				// Clear all values which are hard to compare against.
 				got.Item.UpdatedTime, tc.res.Item.UpdatedTime = nil, nil

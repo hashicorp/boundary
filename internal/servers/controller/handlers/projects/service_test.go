@@ -378,7 +378,7 @@ func TestUpdate(t *testing.T) {
 			errCode: codes.OK,
 		},
 		{
-			name: "No Update Mask Is Invalid Argument",
+			name: "No Update Mask",
 			req: &pbs.UpdateProjectRequest{
 				Item: &pb.Project{
 					Name:        &wrappers.StringValue{Value: "updated name"},
@@ -388,7 +388,7 @@ func TestUpdate(t *testing.T) {
 			errCode: codes.InvalidArgument,
 		},
 		{
-			name: "No Paths in Mask Is Invalid Argument",
+			name: "No Paths in Mask",
 			req: &pbs.UpdateProjectRequest{
 				UpdateMask: &field_mask.FieldMask{Paths: []string{}},
 				Item: &pb.Project{
@@ -399,7 +399,7 @@ func TestUpdate(t *testing.T) {
 			errCode: codes.InvalidArgument,
 		},
 		{
-			name: "Only non-existant paths in Mask Is Invalid Argument",
+			name: "Only non-existant paths in Mask",
 			req: &pbs.UpdateProjectRequest{
 				UpdateMask: &field_mask.FieldMask{Paths: []string{"nonexistant_field"}},
 				Item: &pb.Project{
@@ -423,6 +423,25 @@ func TestUpdate(t *testing.T) {
 				Item: &pb.Project{
 					Id:          proj.GetPublicId(),
 					Description: &wrappers.StringValue{Value: "default"},
+					CreatedTime: proj.GetCreateTime().GetTimestamp(),
+				},
+			},
+			errCode: codes.OK,
+		},
+		{
+			name: "Unset Description",
+			req: &pbs.UpdateProjectRequest{
+				UpdateMask: &field_mask.FieldMask{
+					Paths: []string{"description"},
+				},
+				Item: &pb.Project{
+					Name: &wrappers.StringValue{Value: "ignored"},
+				},
+			},
+			res: &pbs.UpdateProjectResponse{
+				Item: &pb.Project{
+					Id:          proj.GetPublicId(),
+					Name:        &wrappers.StringValue{Value: "default"},
 					CreatedTime: proj.GetCreateTime().GetTimestamp(),
 				},
 			},
