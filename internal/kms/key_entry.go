@@ -116,7 +116,7 @@ func (k *KeyEntry) validateScopeForWrite(ctx context.Context, r db.Reader, opTyp
 	return nil
 }
 
-// GetScope returns the scope for the User
+// GetScope returns the scope for the key entry
 func (k *KeyEntry) GetScope(ctx context.Context, r db.Reader) (*iam.Scope, error) {
 	if r == nil {
 		return nil, errors.New("error reader is nil for for getting scope")
