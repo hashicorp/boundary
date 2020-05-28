@@ -39,13 +39,9 @@ func (t catalogType) idPrefix() string {
 	return "unknown"
 }
 
-type typeValidator interface {
-	GetId() string
-}
-
 func typeFromTypeField(t string) catalogType {
 	switch {
-	case strings.EqualFold(strings.TrimSpace(t), static.HostCatalogPrefix):
+	case strings.EqualFold(strings.TrimSpace(t), staticType.String()):
 		return staticType
 	}
 	return unknownType
@@ -53,7 +49,7 @@ func typeFromTypeField(t string) catalogType {
 
 func typeFromId(id string) catalogType {
 	switch {
-	case strings.HasPrefix(id, static.HostCatalogPrefix):
+	case strings.HasPrefix(id, staticType.idPrefix()):
 		return staticType
 	}
 	return unknownType
@@ -83,7 +79,11 @@ func NewService(repo *static.Repository) *Service {
 var _ pbs.HostCatalogServiceServer = &Service{}
 
 func (s Service) GetHostCatalog(ctx context.Context, req *pbs.GetHostCatalogRequest) (*pbs.GetHostCatalogResponse, error) {
-	if err := validateGetHostCatalogRequest(req); err != nil {
+	ct := typeFromId(req.GetId())
+	if ct == unknownType {
+		handlers.NotFoundErrorf("Host catalog not found.")
+	}
+	if err := validateGetHostCatalogRequest(req, ct); err != nil {
 		return nil, err
 	}
 	hc, err := s.getFromRepo(ctx, req.GetId())
@@ -110,7 +110,11 @@ func (s Service) CreateHostCatalog(ctx context.Context, req *pbs.CreateHostCatal
 }
 
 func (s Service) UpdateHostCatalog(ctx context.Context, req *pbs.UpdateHostCatalogRequest) (*pbs.UpdateHostCatalogResponse, error) {
-	if err := validateUpdateHostCatalogRequest(req); err != nil {
+	ct := typeFromId(req.GetId())
+	if ct == unknownType {
+		handlers.NotFoundErrorf("Host catalog not found.")
+	}
+	if err := validateUpdateHostCatalogRequest(req, ct); err != nil {
 		return nil, err
 	}
 	p, err := s.updateInRepo(ctx, req.GetProjectId(), req.GetId(), req.GetUpdateMask().GetPaths(), req.GetItem())
@@ -123,7 +127,11 @@ func (s Service) UpdateHostCatalog(ctx context.Context, req *pbs.UpdateHostCatal
 }
 
 func (s Service) DeleteHostCatalog(ctx context.Context, req *pbs.DeleteHostCatalogRequest) (*pbs.DeleteHostCatalogResponse, error) {
-	if err := validateDeleteHostCatalogRequest(req); err != nil {
+	ct := typeFromId(req.GetId())
+	if ct == unknownType {
+		handlers.NotFoundErrorf("Host catalog not found.")
+	}
+	if err := validateDeleteHostCatalogRequest(req, ct); err != nil {
 		return nil, err
 	}
 	existed, err := s.deleteFromRepo(ctx, req.GetId())
@@ -245,18 +253,13 @@ func toProto(in *static.HostCatalog) *pb.HostCatalog {
 //  * The path passed in is correctly formatted
 //  * All required parameters are set
 //  * There are no conflicting parameters provided
-func validateGetHostCatalogRequest(req *pbs.GetHostCatalogRequest) error {
+func validateGetHostCatalogRequest(req *pbs.GetHostCatalogRequest, ct catalogType) error {
 	if err := validateAncestors(req); err != nil {
 		return err
 	}
 	var badFormat []string
-	switch getType(req) {
-	case staticType:
-		if !validID(req.GetId(), static.HostCatalogPrefix+"_") {
-			badFormat = append(badFormat, "id")
-		}
-	default:
-		return status.Error(codes.Unimplemented, "No host catalog type identified for provided host catalog prefix.")
+	if !validID(req.GetId(), ct.idPrefix()) {
+		badFormat = append(badFormat, "id")
 	}
 	if !validID(req.GetOrgId(), "o_") {
 		badFormat = append(badFormat, "org_id")
@@ -290,6 +293,12 @@ func validateCreateHostCatalogRequest(req *pbs.CreateHostCatalogRequest) error {
 	if item == nil {
 		return handlers.InvalidArgumentErrorf("The catalog's fields must be set to something.", []string{"item"})
 	}
+	if item.GetType() == nil {
+		return handlers.InvalidArgumentErrorf("Type must be specified when creating a Host Catalog.", []string{"type"})
+	}
+	if typeFromTypeField(item.GetType().GetValue()) == unknownType {
+		return handlers.InvalidArgumentErrorf("Provided Host Catalog type is unknown.", []string{"type"})
+	}
 	immutableFieldsSet := []string{}
 	if item.GetId() != "" {
 		immutableFieldsSet = append(immutableFieldsSet, "id")
@@ -306,18 +315,13 @@ func validateCreateHostCatalogRequest(req *pbs.CreateHostCatalogRequest) error {
 	return nil
 }
 
-func validateUpdateHostCatalogRequest(req *pbs.UpdateHostCatalogRequest) error {
+func validateUpdateHostCatalogRequest(req *pbs.UpdateHostCatalogRequest, ct catalogType) error {
 	if err := validateAncestors(req); err != nil {
 		return err
 	}
 	var badFormat []string
-	switch getType(req) {
-	case staticType:
-		if !validID(req.GetId(), static.HostCatalogPrefix+"_") {
-			badFormat = append(badFormat, "host_catalog")
-		}
-	default:
-		return status.Error(codes.Unimplemented, "No host catalog type identified for provided host catalog prefix.")
+	if !validID(req.GetId(), ct.idPrefix()) {
+		badFormat = append(badFormat, "host_catalog")
 	}
 	if !validID(req.GetOrgId(), "o_") {
 		badFormat = append(badFormat, "org_id")
@@ -343,6 +347,9 @@ func validateUpdateHostCatalogRequest(req *pbs.UpdateHostCatalogRequest) error {
 		return handlers.InvalidArgumentErrorf("Id in provided item and url do not match.", []string{"id"})
 	}
 	immutableFieldsSet := []string{}
+	if item.GetType() != nil {
+		immutableFieldsSet = append(immutableFieldsSet, "type")
+	}
 	if item.GetId() != "" {
 		immutableFieldsSet = append(immutableFieldsSet, "id")
 	}
@@ -359,18 +366,13 @@ func validateUpdateHostCatalogRequest(req *pbs.UpdateHostCatalogRequest) error {
 	return nil
 }
 
-func validateDeleteHostCatalogRequest(req *pbs.DeleteHostCatalogRequest) error {
+func validateDeleteHostCatalogRequest(req *pbs.DeleteHostCatalogRequest, ct catalogType) error {
 	if err := validateAncestors(req); err != nil {
 		return err
 	}
 	var badFormat []string
-	switch getType(req) {
-	case staticType:
-		if !validID(req.GetId(), static.HostCatalogPrefix+"_") {
-			badFormat = append(badFormat, "id")
-		}
-	default:
-		return status.Error(codes.Unimplemented, "No host catalog type identified for provided host catalog prefix.")
+	if !validID(req.GetId(), ct.idPrefix()) {
+		badFormat = append(badFormat, "id")
 	}
 	if !validID(req.GetOrgId(), "o_") {
 		badFormat = append(badFormat, "org_id")

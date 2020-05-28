@@ -84,6 +84,7 @@ func TestGet(t *testing.T) {
 		Description: &wrappers.StringValue{Value: hc.GetDescription()},
 		CreatedTime: hc.CreateTime.GetTimestamp(),
 		UpdatedTime: hc.UpdateTime.GetTimestamp(),
+		Type:        &wrappers.StringValue{Value: "Static"},
 	}
 
 	cases := []struct {
@@ -275,15 +276,34 @@ func TestCreate(t *testing.T) {
 			req: &pbs.CreateHostCatalogRequest{Item: &pb.HostCatalog{
 				Name:        &wrappers.StringValue{Value: "name"},
 				Description: &wrappers.StringValue{Value: "desc"},
+				Type:        &wrappers.StringValue{Value: "Static"},
 			}},
 			res: &pbs.CreateHostCatalogResponse{
 				Uri: fmt.Sprintf("orgs/%s/projects/%s/host-catalogs/%s_", proj.GetParentId(), proj.GetPublicId(), static.HostCatalogPrefix),
 				Item: &pb.HostCatalog{
 					Name:        &wrappers.StringValue{Value: "name"},
 					Description: &wrappers.StringValue{Value: "desc"},
+					Type:        &wrappers.StringValue{Value: "Static"},
 				},
 			},
 			errCode: codes.OK,
+		},
+		{
+			name: "Create with unknown type",
+			req: &pbs.CreateHostCatalogRequest{Item: &pb.HostCatalog{
+				Name:        &wrappers.StringValue{Value: "name"},
+				Description: &wrappers.StringValue{Value: "desc"},
+				Type:        &wrappers.StringValue{Value: "ThisIsMadeUp"},
+			}},
+			errCode: codes.InvalidArgument,
+		},
+		{
+			name: "Create with no type",
+			req: &pbs.CreateHostCatalogRequest{Item: &pb.HostCatalog{
+				Name:        &wrappers.StringValue{Value: "name"},
+				Description: &wrappers.StringValue{Value: "desc"},
+			}},
+			errCode: codes.InvalidArgument,
 		},
 		{
 			name: "Can't specify Id",
@@ -389,6 +409,7 @@ func TestUpdate(t *testing.T) {
 					Name:        &wrappers.StringValue{Value: "new"},
 					Description: &wrappers.StringValue{Value: "desc"},
 					CreatedTime: hc.GetCreateTime().GetTimestamp(),
+					Type:        &wrappers.StringValue{Value: "Static"},
 				},
 			},
 			errCode: codes.OK,
@@ -410,6 +431,7 @@ func TestUpdate(t *testing.T) {
 					Name:        &wrappers.StringValue{Value: "new"},
 					Description: &wrappers.StringValue{Value: "desc"},
 					CreatedTime: hc.GetCreateTime().GetTimestamp(),
+					Type:        &wrappers.StringValue{Value: "Static"},
 				},
 			},
 			errCode: codes.OK,
@@ -461,6 +483,7 @@ func TestUpdate(t *testing.T) {
 					Id:          hc.GetPublicId(),
 					Description: &wrappers.StringValue{Value: "default"},
 					CreatedTime: hc.GetCreateTime().GetTimestamp(),
+					Type:        &wrappers.StringValue{Value: "Static"},
 				},
 			},
 			errCode: codes.OK,
@@ -480,6 +503,7 @@ func TestUpdate(t *testing.T) {
 					Id:          hc.GetPublicId(),
 					Name:        &wrappers.StringValue{Value: "default"},
 					CreatedTime: hc.GetCreateTime().GetTimestamp(),
+					Type:        &wrappers.StringValue{Value: "Static"},
 				},
 			},
 			errCode: codes.OK,
@@ -501,6 +525,7 @@ func TestUpdate(t *testing.T) {
 					Name:        &wrappers.StringValue{Value: "updated"},
 					Description: &wrappers.StringValue{Value: "default"},
 					CreatedTime: hc.GetCreateTime().GetTimestamp(),
+					Type:        &wrappers.StringValue{Value: "Static"},
 				},
 			},
 			errCode: codes.OK,
@@ -522,6 +547,7 @@ func TestUpdate(t *testing.T) {
 					Name:        &wrappers.StringValue{Value: "default"},
 					Description: &wrappers.StringValue{Value: "notignored"},
 					CreatedTime: hc.GetCreateTime().GetTimestamp(),
+					Type:        &wrappers.StringValue{Value: "Static"},
 				},
 			},
 			errCode: codes.OK,
@@ -578,6 +604,19 @@ func TestUpdate(t *testing.T) {
 				},
 				Item: &pb.HostCatalog{
 					UpdatedTime: ptypes.TimestampNow(),
+				},
+			},
+			res:     nil,
+			errCode: codes.InvalidArgument,
+		},
+		{
+			name: "Valid mask, cant specify type",
+			req: &pbs.UpdateHostCatalogRequest{
+				UpdateMask: &field_mask.FieldMask{
+					Paths: []string{"name"},
+				},
+				Item: &pb.HostCatalog{
+					Type: &wrappers.StringValue{Value: "Unknown"},
 				},
 			},
 			res:     nil,
