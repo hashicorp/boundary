@@ -347,7 +347,10 @@ func TestUpdate(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Error converting proto to timestamp: %v", err)
 	}
-	toMerge := &pbs.UpdateHostCatalogRequest{}
+	toMerge := &pbs.UpdateHostCatalogRequest{
+		OrgId:     proj.GetParentId(),
+		ProjectId: proj.GetPublicId(),
+	}
 
 	cases := []struct {
 		name    string
