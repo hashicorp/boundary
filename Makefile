@@ -56,6 +56,7 @@ protobuild:
 	@protoc-go-inject-tag -input=./internal/oplog/oplog_test/oplog_test.pb.go
 	@protoc-go-inject-tag -input=./internal/iam/store/scope.pb.go
 	@protoc-go-inject-tag -input=./internal/db/db_test/db_test.pb.go
+	@protoc-go-inject-tag -input=./internal/host/static/store/static.pb.go
 	@rm -R ${TMP_DIR}
 
 protolint:

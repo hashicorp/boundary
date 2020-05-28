@@ -15,3 +15,5 @@ lint:
       - controller/api/view/v1/view.proto
     ENUM_ZERO_VALUE_SUFFIX:
       - controller/api/view/v1/view.proto
+    FIELD_LOWER_SNAKE_CASE:
+      - controller/api/v1/error.proto
