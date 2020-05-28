@@ -121,9 +121,6 @@ func (k *KeyEntry) GetScope(ctx context.Context, r db.Reader) (*iam.Scope, error
 	if r == nil {
 		return nil, errors.New("error reader is nil for for getting scope")
 	}
-	if k.ScopeId == "" {
-		return nil, fmt.Errorf("error scope id is not set for getting scope: %w", db.ErrInvalidParameter)
-	}
 	if k.KeyId == "" {
 		return nil, fmt.Errorf("error key id is not set for getting scope: %w", db.ErrInvalidParameter)
 	}
@@ -138,6 +135,7 @@ func (k *KeyEntry) GetScope(ctx context.Context, r db.Reader) (*iam.Scope, error
 		if foundEntry.ScopeId == "" {
 			return nil, errors.New("error scope is unset for getting scope")
 		}
+		k.ScopeId = foundEntry.ScopeId
 	}
 	var s iam.Scope
 	if err := r.LookupWhere(ctx, &s, "public_id = ?", k.ScopeId); err != nil {
