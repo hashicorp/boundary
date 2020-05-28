@@ -7,7 +7,6 @@ import (
 	"strings"
 
 	"github.com/golang/protobuf/ptypes/wrappers"
-	"github.com/grpc-ecosystem/grpc-gateway/runtime"
 	pb "github.com/hashicorp/watchtower/internal/gen/controller/api/resources/hosts"
 	pbs "github.com/hashicorp/watchtower/internal/gen/controller/api/services"
 	"github.com/hashicorp/watchtower/internal/host/static"
@@ -411,9 +410,4 @@ func validateAncestors(r ancestorProvider) error {
 		return handlers.InvalidArgumentErrorf("Missing project id.", []string{"project_id"})
 	}
 	return nil
-}
-
-// RegisterGrpcGateway satisfies the RegisterGrpcGatewayer interface.
-func (s *Service) RegisterGrpcGateway(mux *runtime.ServeMux) error {
-	return pbs.RegisterHostCatalogServiceHandlerServer(context.Background(), mux, s)
 }
