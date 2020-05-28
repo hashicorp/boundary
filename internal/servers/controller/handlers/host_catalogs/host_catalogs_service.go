@@ -23,21 +23,37 @@ const (
 	staticType
 )
 
-func (ht catalogType) String() string {
-	switch ht {
+func (t catalogType) String() string {
+	switch t {
 	case staticType:
 		return "Static"
 	}
 	return "Unknown"
 }
 
+func (t catalogType) idPrefix() string {
+	switch t {
+	case staticType:
+		return static.HostCatalogPrefix + "_"
+	}
+	return "unknown"
+}
+
 type typeValidator interface {
 	GetId() string
 }
 
-func getType(r typeValidator) catalogType {
+func typeFromTypeField(t string) catalogType {
 	switch {
-	case strings.HasPrefix(r.GetId(), static.HostCatalogPrefix):
+	case strings.EqualFold(strings.TrimSpace(t), static.HostCatalogPrefix):
+		return staticType
+	}
+	return unknownType
+}
+
+func typeFromId(id string) catalogType {
+	switch {
+	case strings.HasPrefix(id, static.HostCatalogPrefix):
 		return staticType
 	}
 	return unknownType
