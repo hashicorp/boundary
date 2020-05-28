@@ -2,6 +2,7 @@ package kms
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"testing"
 
@@ -114,7 +115,96 @@ func TestRepository_CreateKeyEntry(t *testing.T) {
 	}
 }
 
+func TestRepository_DeleteKeyEntry(t *testing.T) {
+	t.Parallel()
+	cleanup, conn, _ := db.TestSetup(t, "postgres")
+	defer func() {
+		if err := cleanup(); err != nil {
+			t.Error(err)
+		}
+		if err := conn.Close(); err != nil {
+			t.Error(err)
+		}
+	}()
+	org := testOrg(t, conn)
+	id := testId(t)
+	rw := db.New(conn)
+	wrapper := db.TestWrapper(t)
+	repo, err := NewRepository(rw, rw, wrapper)
+	assert.NoError(t, err)
+
+	type args struct {
+		entry *KeyEntry
+		opt   []Option
+	}
+	tests := []struct {
+		name            string
+		args            args
+		wantRowsDeleted int
+		wantErr         bool
+		wantErrMsg      string
+	}{
+		{
+			name: "valid",
+			args: args{
+				entry: testKeyEntry(t, conn, org.PublicId, "valid-"+id, []byte(id)),
+			},
+			wantRowsDeleted: 1,
+			wantErr:         false,
+		},
+		{
+			name: "no-key-id",
+			args: args{
+				entry: func() *KeyEntry {
+					e := allocKeyEntry()
+					return &e
+				}(),
+			},
+			wantRowsDeleted: 0,
+			wantErr:         true,
+			wantErrMsg:      "delete kms key entry: missing key id nil parameter",
+		},
+		{
+			name: "not-found",
+			args: args{
+				entry: func() *KeyEntry {
+					e, err := NewKeyEntry(org.PublicId, "not-found-"+id, []byte(id))
+					assert.NoError(t, err)
+					return e
+				}(),
+			},
+			wantRowsDeleted: 0,
+			wantErr:         false,
+			wantErrMsg:      "",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert := assert.New(t)
+			deletedRows, err := repo.DeleteKeyEntry(context.Background(), tt.args.entry.KeyId, tt.args.opt...)
+			if tt.wantErr {
+				assert.Error(err)
+				assert.Equal(0, deletedRows)
+				assert.Equal(tt.wantErrMsg, err.Error())
+				err = testVerifyOplog(t, rw, tt.args.entry.KeyId, oplog.OpType_OP_TYPE_DELETE)
+				assert.Error(err)
+				assert.Equal("record not found", err.Error())
+				return
+			}
+			assert.NoError(err)
+			assert.Equal(tt.wantRowsDeleted, deletedRows)
+			foundUser, err := repo.LookupKeyEntry(context.Background(), tt.args.entry.KeyId)
+			assert.Error(err)
+			assert.Nil(foundUser)
+			assert.True(errors.Is(err, db.ErrRecordNotFound))
+			err = testVerifyOplog(t, rw, tt.args.entry.KeyId, oplog.OpType_OP_TYPE_DELETE)
+			assert.Error(err)
+		})
+	}
+}
 func testVerifyOplog(t *testing.T, r db.Reader, keyId string, withOperation oplog.OpType) error {
+	// intentionally not a t.Helper()
+
 	// sql where clauses
 	const (
 		whereBase = `
