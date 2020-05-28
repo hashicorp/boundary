@@ -236,7 +236,7 @@ func validateGetHostCatalogRequest(req *pbs.GetHostCatalogRequest) error {
 	var badFormat []string
 	switch getType(req) {
 	case staticType:
-		if !validID(req.GetId(), "sthc_") {
+		if !validID(req.GetId(), static.HostCatalogPrefix+"_") {
 			badFormat = append(badFormat, "id")
 		}
 	default:
@@ -297,7 +297,7 @@ func validateUpdateHostCatalogRequest(req *pbs.UpdateHostCatalogRequest) error {
 	var badFormat []string
 	switch getType(req) {
 	case staticType:
-		if !validID(req.GetId(), "sthc_") {
+		if !validID(req.GetId(), static.HostCatalogPrefix+"_") {
 			badFormat = append(badFormat, "host_catalog")
 		}
 	default:
@@ -350,7 +350,7 @@ func validateDeleteHostCatalogRequest(req *pbs.DeleteHostCatalogRequest) error {
 	var badFormat []string
 	switch getType(req) {
 	case staticType:
-		if !validID(req.GetId(), "sthc_") {
+		if !validID(req.GetId(), static.HostCatalogPrefix+"_") {
 			badFormat = append(badFormat, "id")
 		}
 	default:

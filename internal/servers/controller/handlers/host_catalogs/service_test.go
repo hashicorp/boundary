@@ -100,11 +100,12 @@ func TestGet(t *testing.T) {
 		},
 		{
 			name: "Get a non existant Host Catalog",
-			req:  &pbs.GetHostCatalogRequest{Id: "p_DoesntExis"},
+			req:  &pbs.GetHostCatalogRequest{Id: static.HostCatalogPrefix + "_DoesntExis"},
 			res:  nil,
 			// This will be fixed with PR 42
 			errCode: codes.NotFound,
 		},
+		// TODO: Decide if this should be an invalid argument or unimplemented exception when the prefix doesn't match a known subtype.
 		{
 			name: "Wrong id prefix",
 			req:  &pbs.GetHostCatalogRequest{Id: "j_1234567890"},
@@ -114,7 +115,7 @@ func TestGet(t *testing.T) {
 		},
 		{
 			name: "space in id",
-			req:  &pbs.GetHostCatalogRequest{Id: "p_1 23456789"},
+			req:  &pbs.GetHostCatalogRequest{Id: static.HostCatalogPrefix + "_1 23456789"},
 			res:  nil,
 			// This will be fixed with PR 42
 			errCode: codes.InvalidArgument,
@@ -168,11 +169,11 @@ func TestDelete(t *testing.T) {
 			errCode: codes.OK,
 		},
 		{
-			name: "Delete bad project id HostCatalog",
+			name: "Delete bad id HostCatalog",
 			req: &pbs.DeleteHostCatalogRequest{
 				OrgId:     proj.GetParentId(),
 				ProjectId: proj.GetPublicId(),
-				Id:        "p_doesntexis",
+				Id:        static.HostCatalogPrefix + "_doesntexis",
 			},
 			res: &pbs.DeleteHostCatalogResponse{
 				Existed: false,
@@ -180,10 +181,22 @@ func TestDelete(t *testing.T) {
 			errCode: codes.OK,
 		},
 		{
-			name: "Delete bad org id HostCatalog",
+			name: "Delete bad org id in HostCatalog",
 			req: &pbs.DeleteHostCatalogRequest{
 				OrgId:     "o_doesntexis",
 				ProjectId: proj.GetPublicId(),
+				Id:        hc.GetPublicId(),
+			},
+			res: &pbs.DeleteHostCatalogResponse{
+				Existed: false,
+			},
+			errCode: codes.OK,
+		},
+		{
+			name: "Delete bad project id in HostCatalog",
+			req: &pbs.DeleteHostCatalogRequest{
+				OrgId:     proj.GetParentId(),
+				ProjectId: "p_doesntexis",
 				Id:        hc.GetPublicId(),
 			},
 			res: &pbs.DeleteHostCatalogResponse{
@@ -206,7 +219,7 @@ func TestDelete(t *testing.T) {
 			req: &pbs.DeleteHostCatalogRequest{
 				OrgId:     proj.GetParentId(),
 				ProjectId: proj.GetPublicId(),
-				Id:        "bad_format",
+				Id:        static.HostCatalogPrefix + "_bad_format",
 			},
 			res:     nil,
 			errCode: codes.InvalidArgument,
@@ -350,6 +363,7 @@ func TestUpdate(t *testing.T) {
 	toMerge := &pbs.UpdateHostCatalogRequest{
 		OrgId:     proj.GetParentId(),
 		ProjectId: proj.GetPublicId(),
+		Id:        hc.GetPublicId(),
 	}
 
 	cases := []struct {
@@ -498,7 +512,7 @@ func TestUpdate(t *testing.T) {
 		{
 			name: "Update a Non Existing HostCatalog",
 			req: &pbs.UpdateHostCatalogRequest{
-				Id: "p_DoesntExis",
+				Id: static.HostCatalogPrefix + "_DoesntExis",
 				UpdateMask: &field_mask.FieldMask{
 					Paths: []string{"description"},
 				},
