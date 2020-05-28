@@ -489,7 +489,7 @@ func TestUpdate(t *testing.T) {
 			},
 			errCode: codes.OK,
 		},
-		// TODO: Updating a non existant project should result in a NotFound exception but currently results in
+		// TODO: Updating a non existing project should result in a NotFound exception but currently results in
 		// the repo returning an internal error.
 		{
 			name: "Update a Non Existing Project",
