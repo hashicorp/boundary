@@ -16,18 +16,26 @@ import (
 	"google.golang.org/grpc/status"
 )
 
-type hostType int
+type catalogType int
 
 const (
-	unknownType hostType = iota
+	unknownType catalogType = iota
 	staticType
 )
 
-type hostTypeValidator interface {
+func (ht catalogType) String() string {
+	switch ht {
+	case staticType:
+		return "Static"
+	}
+	return "Unknown"
+}
+
+type typeValidator interface {
 	GetId() string
 }
 
-func getType(r hostTypeValidator) hostType {
+func getType(r typeValidator) catalogType {
 	switch {
 	case strings.HasPrefix(r.GetId(), static.HostCatalogPrefix):
 		return staticType
@@ -212,6 +220,7 @@ func toProto(in *static.HostCatalog) *pb.HostCatalog {
 	}
 	out.CreatedTime = in.GetCreateTime().GetTimestamp()
 	out.UpdatedTime = in.GetUpdateTime().GetTimestamp()
+	out.Type = &wrappers.StringValue{Value: staticType.String()}
 	return &out
 }
 
