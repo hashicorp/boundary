@@ -202,6 +202,129 @@ func TestRepository_DeleteKeyEntry(t *testing.T) {
 		})
 	}
 }
+
+func TestRepository_UpdateKeyEntry(t *testing.T) {
+	t.Parallel()
+	cleanup, conn, _ := db.TestSetup(t, "postgres")
+	defer func() {
+		if err := cleanup(); err != nil {
+			t.Error(err)
+		}
+		if err := conn.Close(); err != nil {
+			t.Error(err)
+		}
+	}()
+	org := testOrg(t, conn)
+	id := testId(t)
+	rw := db.New(conn)
+	wrapper := db.TestWrapper(t)
+	repo, err := NewRepository(rw, rw, wrapper)
+	assert.NoError(t, err)
+
+	type args struct {
+		keyId          string
+		key            []byte
+		fieldMaskPaths []string
+		opt            []Option
+		ScopeId        string
+	}
+	tests := []struct {
+		name           string
+		args           args
+		wantRowsUpdate int
+		wantErr        bool
+		wantErrMsg     string
+		wantDup        bool
+	}{
+		{
+			name: "valid",
+			args: args{
+				keyId:          "valid-" + id,
+				key:            []byte("valid" + id),
+				fieldMaskPaths: []string{"key"},
+				ScopeId:        org.PublicId,
+			},
+			wantErr:        false,
+			wantRowsUpdate: 1,
+		},
+		{
+			name: "scope-id",
+			args: args{
+				keyId:          "scope-id-" + id,
+				key:            []byte("scope-id" + id),
+				fieldMaskPaths: []string{"scopeid"},
+				ScopeId:        id,
+			},
+			wantErr:    true,
+			wantErrMsg: "update kms key entry: scope not updatable invalid parameter",
+		},
+		{
+			name: "no-field-mask",
+			args: args{
+				keyId:          "no-field-mask-" + id,
+				key:            []byte("no-field-mask" + id),
+				fieldMaskPaths: nil,
+				ScopeId:        org.PublicId,
+			},
+			wantErr:        true,
+			wantRowsUpdate: 0,
+			wantErrMsg:     "update kms key entry: missing field masks nil parameter",
+		},
+		{
+			name: "dup",
+			args: args{
+				keyId:          "dup" + id,
+				key:            []byte("dup" + id),
+				fieldMaskPaths: []string{"KeyId"},
+				ScopeId:        org.PublicId,
+			},
+			wantErr:    true,
+			wantDup:    true,
+			wantErrMsg: "update kms key entry: key id not updatable invalid parameter",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert := assert.New(t)
+			if tt.wantDup {
+				_ = testKeyEntry(t, conn, org.PublicId, tt.args.keyId+"-updated", tt.args.key)
+			}
+			e := testKeyEntry(t, conn, org.PublicId, tt.args.keyId, tt.args.key)
+			updateEntry := allocKeyEntry()
+			updateEntry.KeyId = e.KeyId
+			updateEntry.ScopeId = tt.args.ScopeId
+			updateEntry.Key = append(tt.args.key, []byte("-updated")...)
+
+			entryAfterUpdate, updatedRows, err := repo.UpdateKeyEntry(context.Background(), &updateEntry, tt.args.fieldMaskPaths, tt.args.opt...)
+			if tt.wantErr {
+				assert.Error(err)
+				assert.Nil(entryAfterUpdate)
+				assert.Equal(0, updatedRows)
+				switch tt.name {
+				case "dup-name":
+					assert.Equal(fmt.Sprintf(tt.wantErrMsg, "dup-name"+id, org.PublicId), err.Error())
+				case "proj-scope-id":
+					assert.Equal(fmt.Sprintf(tt.wantErrMsg, e.ScopeId), err.Error())
+				default:
+					assert.Equal(tt.wantErrMsg, err.Error())
+				}
+				err = testVerifyOplog(t, rw, tt.args.keyId, oplog.OpType_OP_TYPE_UPDATE)
+				assert.Error(err)
+				assert.Equal("record not found", err.Error())
+				return
+			}
+			assert.NoError(err)
+			assert.Equal(tt.wantRowsUpdate, updatedRows)
+			found, err := repo.LookupKeyEntry(context.Background(), e.KeyId)
+			assert.NoError(err)
+			assert.True(proto.Equal(entryAfterUpdate, found))
+
+			err = testVerifyOplog(t, rw, tt.args.keyId, oplog.OpType_OP_TYPE_UPDATE)
+			assert.NoError(err)
+		})
+	}
+}
+
 func testVerifyOplog(t *testing.T, r db.Reader, keyId string, withOperation oplog.OpType) error {
 	// intentionally not a t.Helper()
 

@@ -112,6 +112,12 @@ func (r *Repository) UpdateKeyEntry(ctx context.Context, k *KeyEntry, fieldMaskP
 	if len(fieldMaskPaths) == 0 {
 		return nil, db.NoRowsAffected, fmt.Errorf("update kms key entry: missing field masks %w", db.ErrNilParameter)
 	}
+	if contains(fieldMaskPaths, "scopeid") {
+		return nil, db.NoRowsAffected, fmt.Errorf("update kms key entry: scope not updatable %w", db.ErrInvalidParameter)
+	}
+	if contains(fieldMaskPaths, "keyid") {
+		return nil, db.NoRowsAffected, fmt.Errorf("update kms key entry: key id not updatable %w", db.ErrInvalidParameter)
+	}
 	var dbMask, nullFields []string
 	dbMask, nullFields = buildUpdatePaths(
 		map[string]interface{}{
@@ -132,7 +138,30 @@ func (r *Repository) UpdateKeyEntry(ctx context.Context, k *KeyEntry, fieldMaskP
 	// master
 	// updatedEntry, rowsUpdated, err := r.writer.Update(ctx, clone, dbMask,
 	// nullFields)
-	rowsUpdated, err := r.writer.Update(ctx, updatedEntry, fieldMaskPaths)
+	metadata := newKeyEntryMetadata(updatedEntry, oplog.OpType_OP_TYPE_UPDATE)
+
+	var rowsUpdated int
+	_, err := r.writer.DoTx(
+		ctx,
+		db.StdRetryCnt,
+		db.ExpBackoff{},
+		func(w db.Writer) error {
+			updatedEntry = updatedEntry.Clone()
+			var err error
+			rowsUpdated, err = w.Update(
+				ctx,
+				updatedEntry,
+				fieldMaskPaths,
+				// nullFields,
+				db.WithOplog(r.wrapper, metadata),
+			)
+			if err == nil && rowsUpdated > 1 {
+				// return err, which will result in a rollback of the update
+				return errors.New("error more than 1 resource would have been updated ")
+			}
+			return err
+		},
+	)
 	if err != nil {
 		if uniqueError(err) {
 			return nil, db.NoRowsAffected, fmt.Errorf("update kms key entry: key entry %s already exists in organization %s", k.KeyId, k.ScopeId)
