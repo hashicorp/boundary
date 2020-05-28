@@ -600,9 +600,9 @@ func TestUpdate(t *testing.T) {
 				if err != nil {
 					t.Fatalf("Error converting proto to timestamp: %v", err)
 				}
-				// Verify it is a project updated after it was created
+				// Verify it is a catalog updated after it was created
 				// TODO: This is currently failing.
-				//assert.True(gotUpdateTime.After(hcCreated), "Updated project should have been updated after it's creation. Was updated %v, which is after %v", gotUpdateTime, hcCreated)
+				//assert.True(gotUpdateTime.After(hcCreated), "Updated catalog should have been updated after it's creation. Was updated %v, which is after %v", gotUpdateTime, hcCreated)
 				_ = gotUpdateTime
 				_ = hcCreated
 

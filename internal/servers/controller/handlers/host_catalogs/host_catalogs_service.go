@@ -11,7 +11,6 @@ import (
 	pb "github.com/hashicorp/watchtower/internal/gen/controller/api/resources/hosts"
 	pbs "github.com/hashicorp/watchtower/internal/gen/controller/api/services"
 	"github.com/hashicorp/watchtower/internal/host/static"
-	"github.com/hashicorp/watchtower/internal/host/static/store"
 	"github.com/hashicorp/watchtower/internal/servers/controller/handlers"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -63,12 +62,12 @@ func (s Service) GetHostCatalog(ctx context.Context, req *pbs.GetHostCatalogRequ
 	if err := validateGetHostCatalogRequest(req); err != nil {
 		return nil, err
 	}
-	p, err := s.getFromRepo(ctx, req.GetId())
+	hc, err := s.getFromRepo(ctx, req.GetId())
 	if err != nil {
 		return nil, err
 	}
 	resp := &pbs.GetHostCatalogResponse{}
-	resp.Item = p
+	resp.Item = hc
 	return resp, nil
 }
 
@@ -113,14 +112,14 @@ func (s Service) DeleteHostCatalog(ctx context.Context, req *pbs.DeleteHostCatal
 }
 
 func (s Service) getFromRepo(ctx context.Context, id string) (*pb.HostCatalog, error) {
-	p, err := s.staticRepo.LookupCatalog(ctx, id)
+	hc, err := s.staticRepo.LookupCatalog(ctx, id)
 	if err != nil {
 		return nil, err
 	}
-	if p == nil {
+	if hc == nil {
 		return nil, handlers.NotFoundErrorf("HostCatalog %q doesn't exist.", id)
 	}
-	return toProto(p), nil
+	return toProto(hc), nil
 }
 
 func (s Service) createInRepo(ctx context.Context, projId string, item *pb.HostCatalog) (*pb.HostCatalog, error) {
@@ -203,15 +202,7 @@ func toDbUpdateMask(paths []string) ([]string, error) {
 	return dbPaths, nil
 }
 
-type dbHostCatalog interface {
-	GetPublicId() string
-	GetName() string
-	GetDescription() string
-	GetCreateTime() *store.Timestamp
-	GetUpdateTime() *store.Timestamp
-}
-
-func toProto(in dbHostCatalog) *pb.HostCatalog {
+func toProto(in *static.HostCatalog) *pb.HostCatalog {
 	out := pb.HostCatalog{Id: in.GetPublicId()}
 	if in.GetDescription() != "" {
 		out.Description = &wrappers.StringValue{Value: in.GetDescription()}
@@ -272,7 +263,7 @@ func validateCreateHostCatalogRequest(req *pbs.CreateHostCatalogRequest) error {
 
 	item := req.GetItem()
 	if item == nil {
-		return handlers.InvalidArgumentErrorf("A host's fields must be set to something.", []string{"item"})
+		return handlers.InvalidArgumentErrorf("The catalog's fields must be set to something.", []string{"item"})
 	}
 	immutableFieldsSet := []string{}
 	if item.GetId() != "" {
