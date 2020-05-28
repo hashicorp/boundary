@@ -285,8 +285,8 @@ func TestCreate(t *testing.T) {
 			got, gErr := s.CreateProject(context.Background(), req)
 			assert.Equal(tc.errCode, status.Code(gErr), "CreateProject(%+v) got error %v, wanted %v", req, gErr, tc.errCode)
 			if got != nil {
-				strings.HasPrefix(got.GetUri(), tc.res.Uri)
-				strings.HasPrefix(got.GetItem().GetId(), "p_")
+				assert.True(strings.HasPrefix(got.GetUri(), tc.res.Uri))
+				assert.True(strings.HasPrefix(got.GetItem().GetId(), "p_"))
 				gotCreateTime, err := ptypes.Timestamp(got.GetItem().GetCreatedTime())
 				if err != nil {
 					t.Fatalf("Error converting proto to timestamp: %v", err)

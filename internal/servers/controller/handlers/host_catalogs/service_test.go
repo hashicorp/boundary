@@ -141,11 +141,11 @@ func TestDelete(t *testing.T) {
 
 	hc2, err := static.NewHostCatalog(hc.GetScopeId())
 	if err != nil {
-		t.Fatalf("Couldn't allocate a second project: %v", err)
+		t.Fatalf("Couldn't allocate a second host catalog: %v", err)
 	}
 	hc2, err = repo.CreateCatalog(context.Background(), hc2)
 	if err != nil {
-		t.Fatalf("Couldn't persist a second project %v", err)
+		t.Fatalf("Couldn't persist a second host catalog %v", err)
 	}
 
 	s := host_catalogs.NewService(repo)
@@ -255,7 +255,7 @@ func TestDelete_twice(t *testing.T) {
 
 func TestCreate(t *testing.T) {
 	defaultHc, proj, repo := createDefaultHostCatalogAndRepo(t)
-	defaultProjCreated, err := ptypes.Timestamp(defaultHc.GetCreateTime().GetTimestamp())
+	defaultHcCreated, err := ptypes.Timestamp(defaultHc.GetCreateTime().GetTimestamp())
 	if err != nil {
 		t.Fatalf("Error converting proto to timestamp: %v", err)
 	}
@@ -277,7 +277,7 @@ func TestCreate(t *testing.T) {
 				Description: &wrappers.StringValue{Value: "desc"},
 			}},
 			res: &pbs.CreateHostCatalogResponse{
-				Uri: fmt.Sprintf("orgs/%s/projects/%s/host-catalogs/", proj.GetParentId(), proj.GetPublicId()),
+				Uri: fmt.Sprintf("orgs/%s/projects/%s/host-catalogs/%s_", proj.GetParentId(), proj.GetPublicId(), static.HostCatalogPrefix),
 				Item: &pb.HostCatalog{
 					Name:        &wrappers.StringValue{Value: "name"},
 					Description: &wrappers.StringValue{Value: "desc"},
@@ -321,8 +321,8 @@ func TestCreate(t *testing.T) {
 			got, gErr := s.CreateHostCatalog(context.Background(), req)
 			assert.Equal(tc.errCode, status.Code(gErr), "CreateHostCatalog(%+v) got error %v, wanted %v", req, gErr, tc.errCode)
 			if got != nil {
-				strings.HasPrefix(got.GetUri(), tc.res.Uri)
-				strings.HasPrefix(got.GetItem().GetId(), "p_")
+				assert.True(strings.HasPrefix(got.GetUri(), tc.res.GetUri()))
+				assert.True(strings.HasPrefix(got.GetItem().GetId(), static.HostCatalogPrefix))
 				gotCreateTime, err := ptypes.Timestamp(got.GetItem().GetCreatedTime())
 				if err != nil {
 					t.Fatalf("Error converting proto to timestamp: %v", err)
@@ -332,8 +332,8 @@ func TestCreate(t *testing.T) {
 					t.Fatalf("Error converting proto to timestamp: %v", err)
 				}
 				// Verify it is a project created after the test setup's default project
-				assert.True(gotCreateTime.After(defaultProjCreated), "New project should have been created after default project. Was created %v, which is after %v", gotCreateTime, defaultProjCreated)
-				assert.True(gotUpdateTime.After(defaultProjCreated), "New project should have been updated after default project. Was updated %v, which is after %v", gotUpdateTime, defaultProjCreated)
+				assert.True(gotCreateTime.After(defaultHcCreated), "New project should have been created after default project. Was created %v, which is after %v", gotCreateTime, defaultHcCreated)
+				assert.True(gotUpdateTime.After(defaultHcCreated), "New project should have been updated after default project. Was updated %v, which is after %v", gotUpdateTime, defaultHcCreated)
 
 				// Clear all values which are hard to compare against.
 				got.Uri, tc.res.Uri = "", ""
