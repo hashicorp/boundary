@@ -149,7 +149,20 @@ func (rw *Db) lookupAfterWrite(ctx context.Context, i interface{}, opt ...Option
 		}
 		return nil
 	}
-	return errors.New("not a resource with an id")
+	var where string
+	var primaryFields []interface{}
+	scope := rw.underlying.NewScope(i)
+	for _, f := range scope.PrimaryFields() {
+		if where != "" {
+			where = fmt.Sprintf("%s and ", where)
+		}
+		where = fmt.Sprintf("%s %s = ?", where, f.DBName)
+		primaryFields = append(primaryFields, f.Field.Interface())
+	}
+	if err := rw.LookupWhere(ctx, i, where, primaryFields); err != nil {
+		return fmt.Errorf("lookup after write: failed %w", err)
+	}
+	return nil
 }
 
 // Create an object in the db with options: WithOplog and WithLookup (to force a lookup after create))
