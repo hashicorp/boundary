@@ -252,6 +252,8 @@ func toProto(in *static.HostCatalog) *pb.HostCatalog {
 //  * The path passed in is correctly formatted
 //  * All required parameters are set
 //  * There are no conflicting parameters provided
+//  * The type asserted by the ID and/or field is known
+//  * If relevant, the type derived from the id prefix matches what is claimed by the type field
 func validateGetHostCatalogRequest(req *pbs.GetHostCatalogRequest, ct catalogType) error {
 	if err := validateAncestors(req); err != nil {
 		return err
