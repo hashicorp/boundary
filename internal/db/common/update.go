@@ -17,11 +17,10 @@ var (
 	ErrNilParameter = errors.New("nil parameter")
 )
 
-// Updatefields will create a map[string]interface of the update values to be
+// UpdateFields will create a map[string]interface of the update values to be
 // sent to the db.  The map keys will be the field names for the fields to be
 // updated.   The caller provided fieldMaskPaths and setToNullPaths must not
-// intersect.  fieldMaskPaths is required, and setToNullPaths may be nil or zero
-// len.
+// intersect.  fieldMaskPaths and setToNullPaths cannot both be zero len.
 func UpdateFields(i interface{}, fieldMaskPaths []string, setToNullPaths []string) (map[string]interface{}, error) {
 	if i == nil {
 		return nil, fmt.Errorf("interface is missing: %w", ErrNilParameter)
@@ -60,6 +59,9 @@ func UpdateFields(i interface{}, fieldMaskPaths []string, setToNullPaths []strin
 				// if it's a ptr to a struct, then we need a few more bits before proceeding.
 				if kind == reflect.Ptr {
 					embVal = val.Field(i).Elem()
+					if !embVal.IsValid() {
+						continue
+					}
 					embType = embVal.Type()
 					if embType.Kind() != reflect.Struct {
 						continue
@@ -110,8 +112,9 @@ func findMissingPaths(paths []string, foundPaths map[string]struct{}) []string {
 }
 
 // intersection is a case-insensitive search for intersecting values.  Returns
-// []string of the intersection, and  map[string]string of the original av and
-// bv, with the key set to uppercase and value set to the original
+// []string of the intersection with values in lowercase, and  map[string]string
+// of the original av and bv, with the key set to uppercase and value set to the
+// original
 func intersection(av, bv []string) ([]string, map[string]string, map[string]string, error) {
 	if av == nil {
 		return nil, nil, nil, fmt.Errorf("av is missing: %w", ErrNilParameter)
@@ -133,7 +136,7 @@ func intersection(av, bv []string) ([]string, map[string]string, map[string]stri
 		k := strings.ToUpper(bv[i])
 		bh[k] = bv[i]
 		if _, found := ah[k]; found {
-			s = append(s, bh[k])
+			s = append(s, strings.ToLower(bh[k]))
 		}
 	}
 	return s, ah, bh, nil
