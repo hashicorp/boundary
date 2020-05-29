@@ -53,7 +53,7 @@ func (r *Repository) CreateCatalog(ctx context.Context, c *HostCatalog, opt ...O
 	if c == nil {
 		return nil, fmt.Errorf("create: static host catalog: %w", db.ErrNilParameter)
 	}
-	if c.HostCatalog.ScopeId == "" {
+	if c.ScopeId == "" {
 		return nil, fmt.Errorf("create: static host catalog: no scope id: %w", db.ErrInvalidParameter)
 	}
 	if c.PublicId != "" {
