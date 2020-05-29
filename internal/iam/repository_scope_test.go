@@ -187,7 +187,7 @@ func Test_Repository_UpdateScope(t *testing.T) {
 		assert.Error(err)
 		assert.Nil(project)
 		assert.Equal(0, updatedRows)
-		assert.Equal("update scope: you cannot change a scope's parent: invalid parameter", err.Error())
+		assert.Equal("update scope: you cannot change a scope's parent: invalid field mask", err.Error())
 	})
 }
 
@@ -367,11 +367,9 @@ func TestRepository_UpdateScope(t *testing.T) {
 				},
 				fieldMaskPaths: []string{"CreateTime"},
 			},
-			wantName:        "no-updates-orig-" + id,
-			wantDescription: "orig-" + id,
 			wantUpdatedRows: 0,
-			wantErr:         false,
-			wantErrMsg:      "",
+			wantErr:         true,
+			wantErrMsg:      "update scope: empty field mask",
 			wantNullFields:  nil,
 		},
 		{
@@ -435,7 +433,7 @@ func TestRepository_UpdateScope(t *testing.T) {
 			wantDescription: "orig-" + id,
 			wantUpdatedRows: 0,
 			wantErr:         true,
-			wantErrMsg:      "update scope: you cannot change a scope's parent: invalid parameter",
+			wantErrMsg:      "update scope: you cannot change a scope's parent: invalid field mask",
 			wantNullFields:  nil,
 		},
 		{
@@ -453,11 +451,9 @@ func TestRepository_UpdateScope(t *testing.T) {
 				},
 				fieldMaskPaths: []string{"Type", "CreateTime", "UpdateTime", "PublicId"},
 			},
-			wantName:        "type-orig-" + id,
-			wantDescription: "orig-" + id,
 			wantUpdatedRows: 0,
-			wantErr:         false,
-			wantErrMsg:      "",
+			wantErr:         true,
+			wantErrMsg:      "update scope: empty field mask",
 			wantNullFields:  nil,
 		},
 	}
