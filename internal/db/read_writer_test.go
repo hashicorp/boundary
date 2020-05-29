@@ -321,8 +321,8 @@ func TestDb_Update(t *testing.T) {
 	})
 }
 
-// testUserWithVet implements a testUser with VetForWrite.  We can't just
-// implement VetForWrite() in db_test because of cyclic dependencies
+// testUserWithVet gives us a model that implements VetForWrite() without any
+// cyclic dependencies.
 type testUserWithVet struct {
 	Id          uint32 `gorm:"primary_key"`
 	PublicId    string
