@@ -27,6 +27,7 @@ func Test_testOrg(t *testing.T) {
 	assert.Equal(id, org.Description)
 	assert.NotEmpty(org.PublicId)
 }
+
 func Test_testId(t *testing.T) {
 	assert := assert.New(t)
 	id := testId(t)
