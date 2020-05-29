@@ -498,4 +498,20 @@ func TestRepository_UpdateScope(t *testing.T) {
 			assert.NotEqual(now, foundScope.UpdateTime)
 		})
 	}
+	t.Run("dup-name", func(t *testing.T) {
+		assert := assert.New(t)
+		r := &Repository{
+			reader:  rw,
+			writer:  rw,
+			wrapper: wrapper,
+		}
+		id := testId(t)
+		_ = testOrg(t, conn, id, id)
+		org2 := testOrg(t, conn, "dup-"+id, id)
+		org2.Name = id
+		updatedScope, rowsUpdated, err := r.UpdateScope(context.Background(), org2, []string{"Name"})
+		assert.Error(err)
+		assert.Equal(0, rowsUpdated, "updated rows should be 0")
+		assert.Nil(updatedScope, "scope should be nil")
+	})
 }
