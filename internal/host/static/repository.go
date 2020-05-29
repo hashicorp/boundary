@@ -221,15 +221,6 @@ func (r *Repository) DeleteCatalog(ctx context.Context, id string, opt ...Option
 	return rowsDeleted, nil
 }
 
-func contains(ss []string, t string) bool {
-	for _, s := range ss {
-		if strings.EqualFold(s, t) {
-			return true
-		}
-	}
-	return false
-}
-
 func allocCatalog() *HostCatalog {
 	fresh := &HostCatalog{
 		HostCatalog: &store.HostCatalog{},
