@@ -61,6 +61,40 @@ func Test_intersection(t *testing.T) {
 			},
 		},
 		{
+			name: "intersect-mixed-case",
+			args: args{
+				av: []string{"AlicE"},
+				bv: []string{"alICe", "Bob"},
+			},
+			want: []string{"alice"},
+			want1: map[string]string{
+				"ALICE": "AlicE",
+			},
+			want2: map[string]string{
+				"ALICE": "alICe",
+				"BOB":   "Bob",
+			},
+		},
+		{
+			name: "no-intersect-mixed-case",
+			args: args{
+				av: []string{"AliCe", "BOb", "jaNe", "DOE"},
+				bv: []string{"beRt", "ERnie", "bigBIRD"},
+			},
+			want: []string{},
+			want1: map[string]string{
+				"ALICE": "AliCe",
+				"BOB":   "BOb",
+				"JANE":  "jaNe",
+				"DOE":   "DOE",
+			},
+			want2: map[string]string{
+				"BERT":    "beRt",
+				"ERNIE":   "ERnie",
+				"BIGBIRD": "bigBIRD",
+			},
+		},
+		{
 			name: "no-intersect-1",
 			args: args{
 				av: []string{"alice", "bob", "jane", "doe"},
@@ -282,6 +316,73 @@ func TestUpdateFields(t *testing.T) {
 			wantErr:    false,
 			wantErrMsg: "",
 		},
+		{
+			name: "valid-not-embedded",
+			args: args{
+				i: db_test.StoreTestUser{
+					PublicId: testPublicId(t),
+					Name:     id,
+					Email:    "",
+				},
+				fieldMaskPaths: []string{"name"},
+				setToNullPaths: []string{"email"},
+			},
+			want: map[string]interface{}{
+				"name":  id,
+				"email": gorm.Expr("NULL"),
+			},
+			wantErr:    false,
+			wantErrMsg: "",
+		},
+		{
+			name: "valid-not-embedded-just-masks",
+			args: args{
+				i: db_test.StoreTestUser{
+					PublicId: testPublicId(t),
+					Name:     id,
+					Email:    "",
+				},
+				fieldMaskPaths: []string{"name"},
+				setToNullPaths: nil,
+			},
+			want: map[string]interface{}{
+				"name": id,
+			},
+			wantErr:    false,
+			wantErrMsg: "",
+		},
+		{
+			name: "valid-not-embedded-just-nulls",
+			args: args{
+				i: db_test.StoreTestUser{
+					PublicId: testPublicId(t),
+					Name:     id,
+					Email:    "",
+				},
+				fieldMaskPaths: nil,
+				setToNullPaths: []string{"email"},
+			},
+			want: map[string]interface{}{
+				"email": gorm.Expr("NULL"),
+			},
+			wantErr:    false,
+			wantErrMsg: "",
+		},
+		{
+			name: "not found null paths - not embedded",
+			args: args{
+				i: db_test.StoreTestUser{
+					PublicId: testPublicId(t),
+					Name:     id,
+					Email:    "",
+				},
+				fieldMaskPaths: []string{"name"},
+				setToNullPaths: []string{"invalidFieldName"},
+			},
+			want:       nil,
+			wantErr:    true,
+			wantErrMsg: "null paths not found in resource: [invalidFieldName]",
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -301,15 +402,18 @@ func TestUpdateFields(t *testing.T) {
 
 func testUser(t *testing.T, name, email string) *db_test.TestUser {
 	t.Helper()
-	assert := assert.New(t)
-
-	publicId, err := base62.Random(20)
-	assert.NoError(err)
 	return &db_test.TestUser{
 		StoreTestUser: &db_test.StoreTestUser{
-			PublicId: publicId,
+			PublicId: testPublicId(t),
 			Name:     name,
 			Email:    email,
 		},
 	}
+}
+
+func testPublicId(t *testing.T) string {
+	t.Helper()
+	publicId, err := base62.Random(20)
+	assert.NoError(t, err)
+	return publicId
 }
