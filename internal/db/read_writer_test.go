@@ -131,6 +131,34 @@ func TestDb_Update(t *testing.T) {
 			wantErr:    true,
 			wantErrMsg: "update: both fieldMaskPaths and setToNullPaths are missing",
 		},
+		{
+			name: "i is nil",
+			args: args{
+				i:              nil,
+				fieldMaskPaths: []string{"Name", "PhoneNumber"},
+				setToNullPaths: []string{"Email"},
+			},
+			want:       0,
+			wantErr:    true,
+			wantErrMsg: "update: interface is missing nil parameter",
+		},
+		{
+			name: "only read-only",
+			args: args{
+				i: &db_test.TestUser{
+					StoreTestUser: &db_test.StoreTestUser{
+						Name:        "only read-only" + id,
+						Email:       id,
+						PhoneNumber: id,
+					},
+				},
+				fieldMaskPaths: []string{"CreateTime"},
+				setToNullPaths: []string{"UpdateTime"},
+			},
+			want:       0,
+			wantErr:    true,
+			wantErrMsg: "update: after filtering non-updated fields, there are no fields left in fieldMaskPaths or setToNullPaths",
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -139,12 +167,15 @@ func TestDb_Update(t *testing.T) {
 				underlying: db,
 			}
 			u := testUser(t, db, tt.name+id, id, id)
-			tt.args.i.Id = u.Id
-			tt.args.i.PublicId = u.PublicId
-			rowsUpdated, err := rw.Update(context.Background(), tt.args.i, tt.args.fieldMaskPaths, tt.args.setToNullPaths, tt.args.opt...)
-			if err == nil && tt.wantErr {
-				assert.Error(err)
+
+			if tt.args.i != nil {
+				tt.args.i.Id = u.Id
+				tt.args.i.PublicId = u.PublicId
 			}
+			rowsUpdated, err := rw.Update(context.Background(), tt.args.i, tt.args.fieldMaskPaths, tt.args.setToNullPaths, tt.args.opt...)
+			// if err == nil && tt.wantErr {
+			// 	assert.Error(err)
+			// }
 			if tt.wantErr {
 				assert.Error(err)
 				assert.Equal(tt.want, rowsUpdated)
@@ -210,6 +241,36 @@ func TestDb_Update(t *testing.T) {
 		err = TestVerifyOplog(t, &w, user.PublicId, WithOperation(oplog.OpType_OP_TYPE_UPDATE), WithCreateNotBefore(10*time.Second))
 		assert.NoError(err)
 	})
+	t.Run("vet-for-write", func(t *testing.T) {
+		w := Db{underlying: db}
+		id, err := uuid.GenerateUUID()
+		assert.NoError(err)
+		user := &testUserWithVet{
+			PublicId:    id,
+			Name:        id,
+			PhoneNumber: id,
+			Email:       id,
+		}
+		err = db.Create(user).Error
+		assert.NoError(err)
+
+		user.Name = "friendly-" + id
+		rowsUpdated, err := w.Update(context.Background(), user, []string{"Name"}, nil)
+		assert.NoError(err)
+		assert.Equal(1, rowsUpdated)
+
+		foundUser := &testUserWithVet{PublicId: user.PublicId}
+		assert.NoError(err)
+		foundUser.PublicId = user.PublicId
+		err = w.LookupByPublicId(context.Background(), foundUser)
+		assert.NoError(err)
+		assert.Equal(foundUser.Name, user.Name)
+
+		user.PublicId = "not-allowed-by-vet-for-write"
+		rowsUpdated, err = w.Update(context.Background(), user, []string{"PublicId"}, nil)
+		assert.Error(err)
+		assert.Equal(0, rowsUpdated)
+	})
 	t.Run("nil-tx", func(t *testing.T) {
 		w := Db{underlying: nil}
 		id, err := uuid.GenerateUUID()
@@ -258,6 +319,43 @@ func TestDb_Update(t *testing.T) {
 		assert.Equal(0, rowsUpdated)
 		assert.Equal("update: oplog validation failed error no metadata for WithOplog", err.Error())
 	})
+}
+
+// testUserWithVet implements a testUser with VetForWrite.  We can't just
+// implement VetForWrite() in db_test because of cyclic dependencies
+type testUserWithVet struct {
+	Id          uint32 `gorm:"primary_key"`
+	PublicId    string
+	Name        string `gorm:"default:null"`
+	PhoneNumber string `gorm:"default:null"`
+	Email       string `gorm:"default:null"`
+}
+
+func (u *testUserWithVet) GetPublicId() string {
+	return u.PublicId
+}
+func (u *testUserWithVet) TableName() string {
+	return "db_test_user"
+}
+func (u *testUserWithVet) VetForWrite(ctx context.Context, r Reader, opType OpType, opt ...Option) error {
+	if u.PublicId == "" {
+		return errors.New("public id is empty string for user write")
+	}
+	if opType == UpdateOp {
+		dbOptions := GetOpts(opt...)
+		for _, path := range dbOptions.WithFieldMaskPaths {
+			switch path {
+			case "PublicId":
+				return errors.New("you cannot change the public id")
+			}
+		}
+	}
+	if opType == CreateOp {
+		if u.Id != 0 {
+			return errors.New("id is a db sequence")
+		}
+	}
+	return nil
 }
 
 func TestDb_Create(t *testing.T) {
