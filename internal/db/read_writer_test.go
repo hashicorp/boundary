@@ -9,6 +9,7 @@ import (
 	"github.com/golang/protobuf/ptypes"
 	"github.com/hashicorp/go-uuid"
 	"github.com/hashicorp/watchtower/internal/db/db_test"
+	"github.com/hashicorp/watchtower/internal/db/timestamp"
 	"github.com/hashicorp/watchtower/internal/oplog"
 	"github.com/hashicorp/watchtower/internal/oplog/store"
 	"github.com/stretchr/testify/assert"
@@ -71,7 +72,7 @@ func TestDb_Update(t *testing.T) {
 		assert.Equal(foundUser.Id, user.Id)
 
 		user.Name = "friendly-" + id
-		ts := &db_test.Timestamp{Timestamp: ptypes.TimestampNow()}
+		ts := &timestamp.Timestamp{Timestamp: ptypes.TimestampNow()}
 		user.CreateTime = ts
 		user.UpdateTime = ts
 		rowsUpdated, err := w.Update(context.Background(), user, []string{"Name", "CreateTime", "UpdateTime"})
@@ -84,7 +85,7 @@ func TestDb_Update(t *testing.T) {
 		assert.NotEqual(foundUser.CreateTime, ts)
 		assert.NotEqual(foundUser.UpdateTime, ts)
 
-		ts = &db_test.Timestamp{Timestamp: ptypes.TimestampNow()}
+		ts = &timestamp.Timestamp{Timestamp: ptypes.TimestampNow()}
 		user.Name = id
 		user.CreateTime = ts
 		user.UpdateTime = ts
@@ -231,7 +232,7 @@ func TestDb_Create(t *testing.T) {
 		assert.NoError(err)
 		user, err := db_test.NewTestUser()
 		assert.NoError(err)
-		ts := &db_test.Timestamp{Timestamp: ptypes.TimestampNow()}
+		ts := &timestamp.Timestamp{Timestamp: ptypes.TimestampNow()}
 		user.CreateTime = ts
 		user.UpdateTime = ts
 		user.Name = "foo-" + id

@@ -2,12 +2,6 @@
 package db_test
 
 import (
-	"database/sql/driver"
-	"errors"
-	"fmt"
-	"time"
-
-	"github.com/golang/protobuf/ptypes"
 	"github.com/hashicorp/vault/sdk/helper/base62"
 	"google.golang.org/protobuf/proto"
 )
@@ -106,27 +100,4 @@ func (r *TestRental) SetTableName(name string) {
 	if name != "" {
 		r.table = name
 	}
-}
-
-// Scan supports Timestamps for oplogs
-func (ts *Timestamp) Scan(value interface{}) error {
-	switch t := value.(type) {
-	case time.Time:
-		var err error
-		ts.Timestamp, err = ptypes.TimestampProto(t) // google proto version
-		if err != nil {
-			return fmt.Errorf("error converting the timestamp: %w", err)
-		}
-	default:
-		return errors.New("Not a protobuf Timestamp")
-	}
-	return nil
-}
-
-// Value supports Timestamps for oplogs
-func (ts *Timestamp) Value() (driver.Value, error) {
-	if ts == nil {
-		return nil, nil
-	}
-	return ptypes.Timestamp(ts.Timestamp)
 }
