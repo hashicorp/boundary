@@ -44,14 +44,15 @@ type Writer interface {
 	DoTx(ctx context.Context, retries uint, backOff Backoff, Handler TxHandler) (RetryInfo, error)
 
 	// Update an object in the db, fieldMask is required and provides
-	// field_mask.proto paths for fields that should be updated.  setToNullPaths
-	// is optional and provides field_mask.proto paths for the fields that
-	// should be set to null.  fieldMaskPaths and setToNullPaths must not
-	// intersect. The caller is responsible for the transaction life cycle of
-	// the writer and if an error is returned the caller must decide what to do
-	// with the transaction, which almost always should be to rollback.  Update
-	// returns the number of rows updated or an error. Supported options:
-	// WithOplog
+	// field_mask.proto paths for fields that should be updated. The i interface
+	// parameter is the type the caller wants to update in the db and its
+	// fields are set to the update values. setToNullPaths is optional and
+	// provides field_mask.proto paths for the fields that should be set to
+	// null.  fieldMaskPaths and setToNullPaths must not intersect. The caller
+	// is responsible for the transaction life cycle of the writer and if an
+	// error is returned the caller must decide what to do with the transaction,
+	// which almost always should be to rollback.  Update returns the number of
+	// rows updated or an error. Supported options: WithOplog.
 	Update(ctx context.Context, i interface{}, fieldMaskPaths []string, setToNullPaths []string, opt ...Option) (int, error)
 
 	// Create an object in the db with options: WithOplog
@@ -104,7 +105,9 @@ const (
 )
 
 // VetForWriter provides an interface that Create and Update can use to vet the
-// resource before sending it to the db
+// resource before before writing it to the db.  For optType == UpdateOp,
+// options WithFieldMaskPath and WithNullPaths are supported.  For optType ==
+// CreateOp, no options are supported
 type VetForWriter interface {
 	VetForWrite(ctx context.Context, r Reader, opType OpType, opt ...Option) error
 }
@@ -135,7 +138,7 @@ func (rw *Db) ScanRows(rows *sql.Rows, result interface{}) error {
 	if rw.underlying == nil {
 		return fmt.Errorf("scan rows: missing underlying db %w", ErrNilParameter)
 	}
-	if result == nil {
+	if isNil(result) {
 		return fmt.Errorf("scan rows: result is missing %w", ErrNilParameter)
 	}
 	return rw.underlying.ScanRows(rows, result)
@@ -158,12 +161,12 @@ func (rw *Db) lookupAfterWrite(ctx context.Context, i interface{}, opt ...Option
 }
 
 // Create an object in the db with options: WithOplog and WithLookup (to force a
-// lookup after create)
+// lookup after create).
 func (rw *Db) Create(ctx context.Context, i interface{}, opt ...Option) error {
 	if rw.underlying == nil {
 		return fmt.Errorf("create: missing underlying db %w", ErrNilParameter)
 	}
-	if i == nil {
+	if isNil(i) {
 		return fmt.Errorf("create: interface is missing %w", ErrNilParameter)
 	}
 	opts := GetOpts(opt...)
@@ -207,19 +210,20 @@ func (rw *Db) Create(ctx context.Context, i interface{}, opt ...Option) error {
 }
 
 // Update an object in the db, fieldMask is required and provides
-// field_mask.proto paths for fields that should be updated.  setToNullPaths
-// is optional and provides field_mask.proto paths for the fields that
-// should be set to null.  fieldMaskPaths and setToNullPaths must not
-// intersect. The caller is responsible for the transaction life cycle of
-// the writer and if an error is returned the caller must decide what to do
-// with the transaction, which almost always should be to rollback.  Update
-// returns the number of rows updated or an error. Supported options:
-// WithOplog.  Update returns the number of rows updated or an error.
+// field_mask.proto paths for fields that should be updated. The i interface
+// parameter is the type the caller wants to update in the db and its
+// fields are set to the update values. setToNullPaths is optional and
+// provides field_mask.proto paths for the fields that should be set to
+// null.  fieldMaskPaths and setToNullPaths must not intersect. The caller
+// is responsible for the transaction life cycle of the writer and if an
+// error is returned the caller must decide what to do with the transaction,
+// which almost always should be to rollback.  Update returns the number of
+// rows updated. Supported options: WithOplog.
 func (rw *Db) Update(ctx context.Context, i interface{}, fieldMaskPaths []string, setToNullPaths []string, opt ...Option) (int, error) {
 	if rw.underlying == nil {
 		return NoRowsAffected, fmt.Errorf("update: missing underlying db %w", ErrNilParameter)
 	}
-	if i == nil {
+	if isNil(i) {
 		return NoRowsAffected, fmt.Errorf("update: interface is missing %w", ErrNilParameter)
 	}
 	if len(fieldMaskPaths) == 0 && len(setToNullPaths) == 0 {
@@ -248,7 +252,7 @@ func (rw *Db) Update(ctx context.Context, i interface{}, fieldMaskPaths []string
 		defer rw.underlying.LogMode(false)
 	}
 	if vetter, ok := i.(VetForWriter); ok {
-		if err := vetter.VetForWrite(ctx, rw, UpdateOp, WithFieldMaskPaths(fieldMaskPaths)); err != nil {
+		if err := vetter.VetForWrite(ctx, rw, UpdateOp, WithFieldMaskPaths(fieldMaskPaths), WithNullPaths(setToNullPaths)); err != nil {
 			return NoRowsAffected, fmt.Errorf("update: vet for write failed %w", err)
 		}
 	}
@@ -293,7 +297,7 @@ func (rw *Db) Delete(ctx context.Context, i interface{}, opt ...Option) (int, er
 	if rw.underlying == nil {
 		return NoRowsAffected, fmt.Errorf("delete: missing underlying db %w", ErrNilParameter)
 	}
-	if i == nil {
+	if isNil(i) {
 		return NoRowsAffected, fmt.Errorf("delete: interface is missing %w", ErrNilParameter)
 	}
 	// This is not a watchtower scope, but rather a gorm Scope:
@@ -580,4 +584,15 @@ func setFieldsToNil(i interface{}, fieldNames []string) {
 			}
 		}
 	}
+}
+
+func isNil(i interface{}) bool {
+	if i == nil {
+		return true
+	}
+	switch reflect.TypeOf(i).Kind() {
+	case reflect.Ptr, reflect.Map, reflect.Array, reflect.Chan, reflect.Slice:
+		return reflect.ValueOf(i).IsNil()
+	}
+	return false
 }
