@@ -88,9 +88,9 @@ end;
 $$ language plpgsql;
 
 comment on function
-  immutable_create_time_func()
+  default_create_time()
 is
-  'function used in before update triggers to make create_time column immutable';
+  'function used in before insert triggers to set create_time column to now';
 
 commit;
 
