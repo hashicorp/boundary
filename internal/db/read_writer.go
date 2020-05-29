@@ -183,9 +183,6 @@ func (rw *Db) Create(ctx context.Context, i interface{}, opt ...Option) error {
 		rw.underlying.LogMode(true)
 		defer rw.underlying.LogMode(false)
 	}
-	if i == nil {
-		return fmt.Errorf("create: missing interface %w", ErrNilParameter)
-	}
 	// these fields should be nil, since they are not writeable and we want the
 	// db to manage them
 	setFieldsToNil(i, []string{"CreateTime", "UpdateTime"})
@@ -230,6 +227,21 @@ func (rw *Db) Update(ctx context.Context, i interface{}, fieldMaskPaths []string
 		return NoRowsAffected, errors.New("update: both fieldMaskPaths and setToNullPaths are missing")
 	}
 
+	// we need to filter out some non-updatable fields (like: CreateTime, etc)
+	fieldMaskPaths = filterPaths(fieldMaskPaths)
+	setToNullPaths = filterPaths(setToNullPaths)
+	if len(fieldMaskPaths) == 0 && len(setToNullPaths) == 0 {
+		return NoRowsAffected, fmt.Errorf("update: after filtering non-updated fields, there are no fields left in fieldMaskPaths or setToNullPaths")
+	}
+
+	updateFields, err := common.UpdateFields(i, fieldMaskPaths, setToNullPaths)
+	if err != nil {
+		return NoRowsAffected, fmt.Errorf("update: getting update fields failed: %w", err)
+	}
+	if len(updateFields) == 0 {
+		return NoRowsAffected, fmt.Errorf("update: no fields matched using fieldMaskPaths %s", fieldMaskPaths)
+	}
+
 	// This is not a watchtower scope, but rather a gorm Scope:
 	// https://godoc.org/github.com/jinzhu/gorm#DB.NewScope
 	scope := rw.underlying.NewScope(i)
@@ -257,20 +269,6 @@ func (rw *Db) Update(ctx context.Context, i interface{}, fieldMaskPaths []string
 		}
 	}
 
-	// we need to filter out some non-updatable fields (like: CreateTime, etc)
-	fieldMaskPaths = filterPaths(fieldMaskPaths)
-	setToNullPaths = filterPaths(setToNullPaths)
-	if len(fieldMaskPaths) == 0 && len(setToNullPaths) == 0 {
-		return NoRowsAffected, fmt.Errorf("update: after filtering non-updated fields, there are no fields left in fieldMaskPaths or setToNullPaths")
-	}
-
-	updateFields, err := common.UpdateFields(i, fieldMaskPaths, setToNullPaths)
-	if err != nil {
-		return NoRowsAffected, fmt.Errorf("update: getting update fields failed: %w", err)
-	}
-	if len(updateFields) == 0 {
-		return NoRowsAffected, fmt.Errorf("update: no fields matched using fieldMaskPaths %s", fieldMaskPaths)
-	}
 	underlying := rw.underlying.Model(i).Updates(updateFields)
 	if underlying.Error != nil {
 		return NoRowsAffected, fmt.Errorf("update: failed %w", underlying.Error)

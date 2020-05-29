@@ -173,9 +173,6 @@ func TestDb_Update(t *testing.T) {
 				tt.args.i.PublicId = u.PublicId
 			}
 			rowsUpdated, err := rw.Update(context.Background(), tt.args.i, tt.args.fieldMaskPaths, tt.args.setToNullPaths, tt.args.opt...)
-			// if err == nil && tt.wantErr {
-			// 	assert.Error(err)
-			// }
 			if tt.wantErr {
 				assert.Error(err)
 				assert.Equal(tt.want, rowsUpdated)
