@@ -1,6 +1,6 @@
 // common package contains functions from internal/db which need to be shared
 // commonly with other packages that have a cyclic dependency on internal/db
-// like internal/oplog
+// like internal/oplog.
 package common
 
 import (
