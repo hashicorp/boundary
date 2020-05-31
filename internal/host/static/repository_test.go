@@ -453,74 +453,76 @@ func TestRepository_UpdateCatalog(t *testing.T) {
 			},
 			wantCount: 1,
 		},
-		// TODO(mgaffney,jimlambrt) 05/2020: enable these tests once
-		// support for setting columns to nil is added to db.Update.
-		/*
-			{
-				name: "delete-name",
-				orig: &HostCatalog{
-					HostCatalog: &store.HostCatalog{
-						Name:        "test-name-repo",
-						Description: "test-description-repo",
-					},
-				},
-				masks: []string{"Name"},
-				chgFn: combine(changeDescription("test-update-description-repo"), changeName("")),
-				want: &HostCatalog{
-					HostCatalog: &store.HostCatalog{
-						Description: "test-description-repo",
-					},
+		{
+			name: "delete-name",
+			orig: &HostCatalog{
+				HostCatalog: &store.HostCatalog{
+					Name:        "test-name-repo",
+					Description: "test-description-repo",
 				},
 			},
-			{
-				name: "delete-description",
-				orig: &HostCatalog{
-					HostCatalog: &store.HostCatalog{
-						Name:        "test-name-repo",
-						Description: "test-description-repo",
-					},
-				},
-				masks: []string{"Description"},
-				chgFn: combine(changeDescription(""), changeName("test-update-name-repo")),
-				want: &HostCatalog{
-					HostCatalog: &store.HostCatalog{
-						Name: "test-name-repo",
-					},
+			masks: []string{"Name"},
+			chgFn: combine(changeDescription("test-update-description-repo"), changeName("")),
+			want: &HostCatalog{
+				HostCatalog: &store.HostCatalog{
+					Description: "test-description-repo",
 				},
 			},
-			{
-				name: "do-not-delete-name",
-				orig: &HostCatalog{
-					HostCatalog: &store.HostCatalog{
-						Name:        "test-name-repo",
-						Description: "test-description-repo",
-					},
-				},
-				chgFn: combine(changeDescription("test-update-description-repo"), changeName("")),
-				want: &HostCatalog{
-					HostCatalog: &store.HostCatalog{
-						Name:        "test-name-repo",
-						Description: "test-update-description-repo",
-					},
+			wantCount: 1,
+		},
+		{
+			name: "delete-description",
+			orig: &HostCatalog{
+				HostCatalog: &store.HostCatalog{
+					Name:        "test-name-repo",
+					Description: "test-description-repo",
 				},
 			},
-			{
-				name: "do-not-delete-description",
-				orig: &HostCatalog{
-					HostCatalog: &store.HostCatalog{
-						Name:        "test-name-repo",
-						Description: "test-description-repo",
-					},
-				},
-				chgFn: combine(changeDescription(""), changeName("test-update-name-repo")),
-				want: &HostCatalog{
-					HostCatalog: &store.HostCatalog{
-						Name:        "test-update-name-repo",
-						Description: "test-description-repo",
-					},
+			masks: []string{"Description"},
+			chgFn: combine(changeDescription(""), changeName("test-update-name-repo")),
+			want: &HostCatalog{
+				HostCatalog: &store.HostCatalog{
+					Name: "test-name-repo",
 				},
 			},
-		*/
+			wantCount: 1,
+		},
+		{
+			name: "do-not-delete-name",
+			orig: &HostCatalog{
+				HostCatalog: &store.HostCatalog{
+					Name:        "test-name-repo",
+					Description: "test-description-repo",
+				},
+			},
+			masks: []string{"Description"},
+			chgFn: combine(changeDescription("test-update-description-repo"), changeName("")),
+			want: &HostCatalog{
+				HostCatalog: &store.HostCatalog{
+					Name:        "test-name-repo",
+					Description: "test-update-description-repo",
+				},
+			},
+			wantCount: 1,
+		},
+		{
+			name: "do-not-delete-description",
+			orig: &HostCatalog{
+				HostCatalog: &store.HostCatalog{
+					Name:        "test-name-repo",
+					Description: "test-description-repo",
+				},
+			},
+			masks: []string{"Name"},
+			chgFn: combine(changeDescription(""), changeName("test-update-name-repo")),
+			want: &HostCatalog{
+				HostCatalog: &store.HostCatalog{
+					Name:        "test-update-name-repo",
+					Description: "test-description-repo",
+				},
+			},
+			wantCount: 1,
+		},
 	}
 
 	for _, tt := range tests {

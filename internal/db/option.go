@@ -25,6 +25,8 @@ type Options struct {
 	withLookup bool
 	// WithFieldMaskPaths must be accessible from other packages
 	WithFieldMaskPaths []string
+	// WithNullPaths must be accessible from other packages
+	WithNullPaths []string
 }
 
 type oplogOpts struct {
@@ -42,6 +44,7 @@ func getDefaultOptions() Options {
 		withDebug:          false,
 		withLookup:         false,
 		WithFieldMaskPaths: []string{},
+		WithNullPaths:      []string{},
 	}
 }
 
@@ -70,9 +73,16 @@ func WithOplog(wrapper wrapping.Wrapper, md oplog.Metadata) Option {
 	}
 }
 
-// WithOplog provides an option to provide field mask paths
+// WithFieldMaskPaths provides an option to provide field mask paths
 func WithFieldMaskPaths(paths []string) Option {
 	return func(o *Options) {
 		o.WithFieldMaskPaths = paths
+	}
+}
+
+// WithNullPaths provides an option to provide null paths
+func WithNullPaths(paths []string) Option {
+	return func(o *Options) {
+		o.WithNullPaths = paths
 	}
 }

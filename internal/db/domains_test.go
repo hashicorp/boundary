@@ -30,8 +30,11 @@ returning id;
 			t.Error(err)
 		}
 	}()
-	defer conn.Close()
-
+	defer func() {
+		if err := conn.Close(); err != nil {
+			t.Error(err)
+		}
+	}()
 	db := conn.DB()
 	if _, err := db.Exec(createTable); err != nil {
 		t.Fatalf("query: \n%s\n error: %s", createTable, err)
@@ -94,8 +97,11 @@ returning id;
 			t.Error(err)
 		}
 	}()
-	defer conn.Close()
-
+	defer func() {
+		if err := conn.Close(); err != nil {
+			t.Error(err)
+		}
+	}()
 	db := conn.DB()
 	if _, err := db.Exec(createTable); err != nil {
 		t.Fatalf("query: \n%s\n error: %s", createTable, err)
