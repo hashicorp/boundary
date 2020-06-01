@@ -409,7 +409,7 @@ func TestRepository_DeleteUser(t *testing.T) {
 			if tt.wantErr {
 				assert.Error(err)
 				assert.Equal(0, deletedRows)
-				assert.Equal(tt.wantErrMsg, err.Error())
+				assert.True(strings.HasPrefix(err.Error(), tt.wantErrMsg))
 				err = db.TestVerifyOplog(t, rw, tt.args.user.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_DELETE), db.WithCreateNotBefore(10*time.Second))
 				assert.Error(err)
 				assert.Equal("record not found", err.Error())
@@ -423,7 +423,7 @@ func TestRepository_DeleteUser(t *testing.T) {
 			assert.True(errors.Is(err, db.ErrRecordNotFound))
 
 			err = db.TestVerifyOplog(t, rw, tt.args.user.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_DELETE), db.WithCreateNotBefore(10*time.Second))
-			assert.Error(err)
+			assert.NoError(err)
 		})
 	}
 }
