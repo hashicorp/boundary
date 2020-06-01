@@ -24,22 +24,22 @@ func New(t dbassert.TestingT, r db.Reader) *DbAsserts {
 	}
 }
 
-// FieldIsNull asserts that the resource fieldName is null in the db.
-func (a *DbAsserts) FieldIsNull(resource interface{}, fieldName string) bool {
+// IsNull asserts that the resource fieldName is null in the db.
+func (a *DbAsserts) IsNull(resource interface{}, fieldName string) bool {
 	return a.asserts.FieldIsNull(resource, fieldName)
 }
 
-// FieldNotNull asserts that the resource fieldName is not null in the db.
-func (a *DbAsserts) FieldNotNull(resource interface{}, fieldName string) bool {
+// NotNull asserts that the resource fieldName is not null in the db.
+func (a *DbAsserts) NotNull(resource interface{}, fieldName string) bool {
 	return a.asserts.FieldNotNull(resource, fieldName)
 }
 
-// FieldNullable asserts that the resource fieldName is nullable in the db.
-func (a *DbAsserts) FieldNullable(resource interface{}, fieldName string) bool {
+// Nullable asserts that the resource fieldName is nullable in the db.
+func (a *DbAsserts) Nullable(resource interface{}, fieldName string) bool {
 	return a.asserts.FieldNullable(resource, fieldName)
 }
 
-// FieldDomain asserts that the resource fieldName is the domainName in the db.
-func (a *DbAsserts) FieldDomain(resource interface{}, fieldName, domainName string) bool {
+// Domain asserts that the resource fieldName is the domainName in the db.
+func (a *DbAsserts) Domain(resource interface{}, fieldName, domainName string) bool {
 	return a.asserts.FieldDomain(resource, fieldName, domainName)
 }

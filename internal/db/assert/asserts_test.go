@@ -29,11 +29,11 @@ func Test_FieldDomain(t *testing.T) {
 	mockery := new(dbassert.MockTesting)
 	dbassert := New(mockery, r)
 
-	dbassert.FieldDomain(&gormAssert.TestModel{}, "PublicId", "dbasserts_public_id")
+	dbassert.Domain(&gormAssert.TestModel{}, "PublicId", "dbasserts_public_id")
 	mockery.AssertNoError(t)
 
 	mockery.Reset()
-	dbassert.FieldDomain(&gormAssert.TestModel{}, "nullable", "dbasserts_public_id")
+	dbassert.Domain(&gormAssert.TestModel{}, "nullable", "dbasserts_public_id")
 	mockery.AssertError(t)
 }
 
@@ -55,11 +55,11 @@ func Test_FieldNullable(t *testing.T) {
 	mockery := new(dbassert.MockTesting)
 	dbassert := New(mockery, r)
 
-	dbassert.FieldNullable(&gormAssert.TestModel{}, "Nullable")
+	dbassert.Nullable(&gormAssert.TestModel{}, "Nullable")
 	mockery.AssertNoError(t)
 
 	mockery.Reset()
-	dbassert.FieldNullable(&gormAssert.TestModel{}, "PublicId")
+	dbassert.Nullable(&gormAssert.TestModel{}, "PublicId")
 	mockery.AssertError(t)
 }
 
@@ -84,11 +84,11 @@ func Test_FieldIsNull(t *testing.T) {
 	v := 1
 	m := gormAssert.CreateTestModel(t, gormDb, nil, &v)
 
-	dbassert.FieldIsNull(&m, "Nullable")
+	dbassert.IsNull(&m, "Nullable")
 	mockery.AssertNoError(t)
 
 	mockery.Reset()
-	dbassert.FieldIsNull(&m, "typeint")
+	dbassert.IsNull(&m, "typeint")
 	mockery.AssertError(t)
 }
 
@@ -113,10 +113,10 @@ func Test_FieldNotNull(t *testing.T) {
 	v := 1
 	m := gormAssert.CreateTestModel(t, gormDb, nil, &v)
 
-	dbassert.FieldNotNull(&m, "Nullable")
+	dbassert.NotNull(&m, "Nullable")
 	mockery.AssertError(t)
 
 	mockery.Reset()
-	dbassert.FieldNotNull(&m, "typeint")
+	dbassert.NotNull(&m, "typeint")
 	mockery.AssertNoError(t)
 }
