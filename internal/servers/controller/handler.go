@@ -66,12 +66,20 @@ func handleGrpcGateway(c *Controller) (http.Handler, error) {
 	mux := runtime.NewServeMux(runtime.WithProtoErrorHandler(handlers.ErrorHandler(c.logger)))
 	hcs, err := host_catalogs.NewService(c.StaticHostRepo)
 	if err != nil {
-		return nil, fmt.Errorf("failed to register host catalog handler service: %w", err)
+		return nil, fmt.Errorf("failed to create host catalog handler service: %w", err)
 	}
-	services.RegisterHostCatalogServiceHandlerServer(ctx, mux, hcs)
-	services.RegisterHostSetServiceHandlerServer(ctx, mux, &host_sets.Service{})
-	services.RegisterHostServiceHandlerServer(ctx, mux, &hosts.Service{})
-	services.RegisterProjectServiceHandlerServer(ctx, mux, projects.NewService(c.IamRepo))
+	if err := services.RegisterHostCatalogServiceHandlerServer(ctx, mux, hcs); err != nil {
+		return nil, fmt.Errorf("failed to register host catalog service handler: %w", err)
+	}
+	if err := services.RegisterHostSetServiceHandlerServer(ctx, mux, &host_sets.Service{}); err != nil {
+		return nil, fmt.Errorf("failed to register host set service handler: %w", err)
+	}
+	if err := services.RegisterHostServiceHandlerServer(ctx, mux, &hosts.Service{}); err != nil {
+		return nil, fmt.Errorf("failed to register host service handler: %w", err)
+	}
+	if err := services.RegisterProjectServiceHandlerServer(ctx, mux, projects.NewService(c.IamRepo)); err != nil {
+		return nil, fmt.Errorf("failed to register project service handler: %w", err)
+	}
 
 	return mux, nil
 }
