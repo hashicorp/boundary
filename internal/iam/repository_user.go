@@ -96,7 +96,10 @@ func (r *Repository) DeleteUser(ctx context.Context, withPublicId string, opt ..
 	}
 	user := allocUser()
 	user.PublicId = withPublicId
-	rowsDeleted, err := r.writer.Delete(ctx, &user)
+	if err := r.reader.LookupByPublicId(ctx, &user); err != nil {
+		return db.NoRowsAffected, fmt.Errorf("delete user: failed %w for %s", err, withPublicId)
+	}
+	rowsDeleted, err := r.delete(ctx, &user)
 	if err != nil {
 		return db.NoRowsAffected, fmt.Errorf("delete user: failed %w for %s", err, withPublicId)
 	}
