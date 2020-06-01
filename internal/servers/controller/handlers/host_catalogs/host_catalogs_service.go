@@ -15,6 +15,11 @@ import (
 	"google.golang.org/grpc/status"
 )
 
+const (
+	orgIdFieldName     = "org_id"
+	projectIdFieldName = "project_id"
+)
+
 type catalogType int
 
 const (
@@ -267,18 +272,8 @@ func validateGetHostCatalogRequest(req *pbs.GetHostCatalogRequest, ct catalogTyp
 	if err := validateAncestors(req); err != nil {
 		return err
 	}
-	var badFormat []string
 	if !validID(req.GetId(), ct.idPrefix()) {
-		badFormat = append(badFormat, "id")
-	}
-	if !validID(req.GetOrgId(), "o_") {
-		badFormat = append(badFormat, "org_id")
-	}
-	if !validID(req.GetProjectId(), "p_") {
-		badFormat = append(badFormat, "project_id")
-	}
-	if len(badFormat) > 0 {
-		return handlers.InvalidArgumentErrorf("Improperly formatted identifier.", badFormat)
+		return handlers.InvalidArgumentErrorf("Improperly formatted identifier.", []string{"id"})
 	}
 	return nil
 }
@@ -287,18 +282,6 @@ func validateCreateHostCatalogRequest(req *pbs.CreateHostCatalogRequest) error {
 	if err := validateAncestors(req); err != nil {
 		return err
 	}
-
-	var badFormat []string
-	if !validID(req.GetOrgId(), "o_") {
-		badFormat = append(badFormat, "org_id")
-	}
-	if !validID(req.GetProjectId(), "p_") {
-		badFormat = append(badFormat, "project_id")
-	}
-	if len(badFormat) > 0 {
-		return handlers.InvalidArgumentErrorf("Improperly formatted identifier.", badFormat)
-	}
-
 	item := req.GetItem()
 	if item == nil {
 		return handlers.InvalidArgumentErrorf("The catalog's fields must be set to something.", []string{"item"})
@@ -329,18 +312,8 @@ func validateUpdateHostCatalogRequest(req *pbs.UpdateHostCatalogRequest, ct cata
 	if err := validateAncestors(req); err != nil {
 		return err
 	}
-	var badFormat []string
 	if !validID(req.GetId(), ct.idPrefix()) {
-		badFormat = append(badFormat, "host_catalog")
-	}
-	if !validID(req.GetOrgId(), "o_") {
-		badFormat = append(badFormat, "org_id")
-	}
-	if !validID(req.GetProjectId(), "p_") {
-		badFormat = append(badFormat, "project_id")
-	}
-	if len(badFormat) > 0 {
-		return handlers.InvalidArgumentErrorf("Improperly formatted identifier.", badFormat)
+		return handlers.InvalidArgumentErrorf("Improperly formatted identifier.", []string{"id"})
 	}
 
 	if req.GetUpdateMask() == nil {
@@ -380,18 +353,8 @@ func validateDeleteHostCatalogRequest(req *pbs.DeleteHostCatalogRequest, ct cata
 	if err := validateAncestors(req); err != nil {
 		return err
 	}
-	var badFormat []string
 	if !validID(req.GetId(), ct.idPrefix()) {
-		badFormat = append(badFormat, "id")
-	}
-	if !validID(req.GetOrgId(), "o_") {
-		badFormat = append(badFormat, "org_id")
-	}
-	if !validID(req.GetProjectId(), "p_") {
-		badFormat = append(badFormat, "project_id")
-	}
-	if len(badFormat) > 0 {
-		return handlers.InvalidArgumentErrorf("Improperly formatted identifier.", badFormat)
+		return handlers.InvalidArgumentErrorf("Improperly formatted identifier.", []string{"id"})
 	}
 	return nil
 }
@@ -412,13 +375,25 @@ type ancestorProvider interface {
 	GetProjectId() string
 }
 
-// validateAncestors verifies that the ancestors of this call are properly set and provided.
+// validateAncestors verifies that the ancestors of this call are set and formatted correctly.
 func validateAncestors(r ancestorProvider) error {
 	if r.GetOrgId() == "" {
-		return handlers.InvalidArgumentErrorf("Missing organization id.", []string{"org_id"})
+		return handlers.InvalidArgumentErrorf("Missing organization id.", []string{orgIdFieldName})
 	}
 	if r.GetProjectId() == "" {
-		return handlers.InvalidArgumentErrorf("Missing project id.", []string{"project_id"})
+		return handlers.InvalidArgumentErrorf("Missing project id.", []string{projectIdFieldName})
 	}
+
+	var badFormat []string
+	if !validID(r.GetOrgId(), "o_") {
+		badFormat = append(badFormat, orgIdFieldName)
+	}
+	if !validID(r.GetProjectId(), "p_") {
+		badFormat = append(badFormat, projectIdFieldName)
+	}
+	if len(badFormat) > 0 {
+		return handlers.InvalidArgumentErrorf("Improperly formatted identifier.", badFormat)
+	}
+
 	return nil
 }
