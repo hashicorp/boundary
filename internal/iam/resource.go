@@ -6,8 +6,6 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/lib/pq"
-
 	"github.com/hashicorp/watchtower/internal/db"
 )
 
@@ -152,14 +150,4 @@ func validateScopeForWrite(ctx context.Context, r db.Reader, resource ResourceWi
 		}
 	}
 	return nil
-}
-
-func uniqueError(err error) bool {
-	var e *pq.Error
-	if errors.As(err, &e) {
-		if e.Code.Name() == "unique_violation" {
-			return true
-		}
-	}
-	return false
 }
