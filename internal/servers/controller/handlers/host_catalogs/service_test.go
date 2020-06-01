@@ -26,8 +26,12 @@ func createDefaultHostCatalogAndRepo(t *testing.T) (*static.HostCatalog, *iam.Sc
 	t.Helper()
 	cleanup, conn, _ := db.TestSetup(t, "postgres")
 	t.Cleanup(func() {
-		conn.Close()
-		cleanup()
+		if err := conn.Close(); err != nil {
+			t.Logf("failed closing the gorm db: %v", err)
+		}
+		if err := cleanup(); err != nil {
+			t.Logf("failed to clean up TestSetup: %v", err)
+		}
 	})
 	rw := db.New(conn)
 	wrap := db.TestWrapper(t)
