@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 	"testing"
 	"time"
 
@@ -35,8 +36,8 @@ func TestRepository_CreateUser(t *testing.T) {
 	org, _ := TestScopes(t, conn)
 
 	type args struct {
-		orgId string
-		opt   []Option
+		user *User
+		opt  []Option
 	}
 	tests := []struct {
 		name       string
@@ -48,28 +49,38 @@ func TestRepository_CreateUser(t *testing.T) {
 		{
 			name: "valid",
 			args: args{
-				orgId: org.PublicId,
-				opt:   []Option{WithName("valid" + id), WithDescription(id)},
+				user: func() *User {
+					u, err := NewUser(org.PublicId, WithName("valid"+id), WithDescription(id))
+					assert.NoError(t, err)
+					return u
+				}(),
 			},
 			wantErr: false,
 		},
 		{
 			name: "bad-scope-id",
 			args: args{
-				orgId: id,
+				user: func() *User {
+					u, err := NewUser(id)
+					assert.NoError(t, err)
+					return u
+				}(),
 			},
-			wantErr:    false,
-			wantErrMsg: "",
+			wantErr:    true,
+			wantErrMsg: "create user: error getting metadata for create: unable to get scope for standard metadata: record not found for",
 		},
 		{
 			name: "dup-name",
 			args: args{
-				orgId: id,
-				opt:   []Option{WithName("dup-name" + id)},
+				user: func() *User {
+					u, err := NewUser(org.PublicId, WithName("dup-name"+id))
+					assert.NoError(t, err)
+					return u
+				}(),
 			},
 			wantDup:    true,
 			wantErr:    true,
-			wantErrMsg: `create user: user %s already exists in organization %s`,
+			wantErrMsg: "create user: user %s already exists in organization %s",
 		},
 	}
 	for _, tt := range tests {
@@ -77,16 +88,11 @@ func TestRepository_CreateUser(t *testing.T) {
 			assert := assert.New(t)
 
 			if tt.wantDup {
-				dup, err := NewUser(org.PublicId, tt.args.opt...)
-				assert.NoError(err)
-				dup, err = repo.CreateUser(context.Background(), dup, tt.args.opt...)
+				dup, err := repo.CreateUser(context.Background(), tt.args.user, tt.args.opt...)
 				assert.NoError(err)
 				assert.NotNil(dup)
 			}
-			u, err := NewUser(org.PublicId, tt.args.opt...)
-			pubId := u.PublicId
-			assert.NoError(err)
-			u, err = repo.CreateUser(context.Background(), u, tt.args.opt...)
+			u, err := repo.CreateUser(context.Background(), tt.args.user, tt.args.opt...)
 			if tt.wantErr {
 				assert.Error(err)
 				assert.Nil(u)
@@ -94,11 +100,8 @@ func TestRepository_CreateUser(t *testing.T) {
 				case "dup-name":
 					assert.Equal(fmt.Sprintf(tt.wantErrMsg, "dup-name"+id, org.PublicId), err.Error())
 				default:
-					assert.Equal(tt.wantErrMsg, err.Error())
+					assert.True(strings.HasPrefix(err.Error(), tt.wantErrMsg))
 				}
-				err = db.TestVerifyOplog(t, rw, pubId, db.WithOperation(oplog.OpType_OP_TYPE_CREATE), db.WithCreateNotBefore(10*time.Second))
-				assert.Error(err)
-				assert.Equal("record not found", err.Error())
 				return
 			}
 			assert.NoError(err)
@@ -295,6 +298,9 @@ func TestRepository_DeleteUser(t *testing.T) {
 				user: func() *User {
 					u, err := NewUser(org.PublicId)
 					a.NoError(err)
+					id, err := newUserId()
+					a.NoError(err)
+					u.PublicId = id
 					return u
 				}(),
 			},
