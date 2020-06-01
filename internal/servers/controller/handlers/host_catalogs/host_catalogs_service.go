@@ -68,7 +68,7 @@ type service struct {
 	staticRepo *static.Repository
 }
 
-// NewService returns a HostCatalog Service which handles HostCatalog related requests to watchtower and uses the provided
+// NewService returns a host catalog Service which handles host catalog related requests to watchtower and uses the provided
 // repositories for storage and retrieval.
 func NewService(repo *static.Repository) pbs.HostCatalogServiceServer {
 	if repo == nil {
@@ -81,7 +81,7 @@ func NewService(repo *static.Repository) pbs.HostCatalogServiceServer {
 func (s service) GetHostCatalog(ctx context.Context, req *pbs.GetHostCatalogRequest) (*pbs.GetHostCatalogResponse, error) {
 	ct := typeFromId(req.GetId())
 	if ct == unknownType {
-		return nil, handlers.NotFoundErrorf("Host Catalog not found.")
+		return nil, handlers.NotFoundErrorf("Host catalog not found.")
 	}
 	if err := validateGetHostCatalogRequest(req, ct); err != nil {
 		return nil, err
@@ -114,7 +114,7 @@ func (s service) CreateHostCatalog(ctx context.Context, req *pbs.CreateHostCatal
 func (s service) UpdateHostCatalog(ctx context.Context, req *pbs.UpdateHostCatalogRequest) (*pbs.UpdateHostCatalogResponse, error) {
 	ct := typeFromId(req.GetId())
 	if ct == unknownType {
-		return nil, handlers.NotFoundErrorf("Host Catalog not found.")
+		return nil, handlers.NotFoundErrorf("Host catalog not found.")
 	}
 	if err := validateUpdateHostCatalogRequest(req, ct); err != nil {
 		return nil, err
@@ -132,7 +132,7 @@ func (s service) UpdateHostCatalog(ctx context.Context, req *pbs.UpdateHostCatal
 func (s service) DeleteHostCatalog(ctx context.Context, req *pbs.DeleteHostCatalogRequest) (*pbs.DeleteHostCatalogResponse, error) {
 	ct := typeFromId(req.GetId())
 	if ct == unknownType {
-		return nil, handlers.NotFoundErrorf("Host Catalog not found.")
+		return nil, handlers.NotFoundErrorf("Host catalog not found.")
 	}
 	if err := validateDeleteHostCatalogRequest(req, ct); err != nil {
 		return nil, err
@@ -152,7 +152,7 @@ func (s service) getFromRepo(ctx context.Context, id string) (*pb.HostCatalog, e
 		return nil, err
 	}
 	if hc == nil {
-		return nil, handlers.NotFoundErrorf("HostCatalog %q doesn't exist.", id)
+		return nil, handlers.NotFoundErrorf("Host catalog %q doesn't exist.", id)
 	}
 	return toProto(hc), nil
 }
@@ -167,14 +167,14 @@ func (s service) createInRepo(ctx context.Context, projId string, item *pb.HostC
 	}
 	h, err := static.NewHostCatalog(projId, opts...)
 	if err != nil {
-		return nil, status.Errorf(codes.Internal, "Unable to build host for creation: %v.", err)
+		return nil, status.Errorf(codes.Internal, "Unable to build host catalog for creation: %v.", err)
 	}
 	out, err := s.staticRepo.CreateCatalog(ctx, h)
 	if err != nil {
-		return nil, status.Errorf(codes.Internal, "Unable to create host: %v.", err)
+		return nil, status.Errorf(codes.Internal, "Unable to create host catalog: %v.", err)
 	}
 	if out == nil {
-		return nil, status.Error(codes.Internal, "Unable to create host but no error returned from repository.")
+		return nil, status.Error(codes.Internal, "Unable to create host catalog but no error returned from repository.")
 	}
 	return toProto(out), nil
 }
@@ -190,7 +190,7 @@ func (s service) updateInRepo(ctx context.Context, projId, id string, mask []str
 	h, err := static.NewHostCatalog(projId, opts...)
 	h.PublicId = id
 	if err != nil {
-		return nil, status.Errorf(codes.Internal, "Unable to build host for update: %v.", err)
+		return nil, status.Errorf(codes.Internal, "Unable to build host catalog for update: %v.", err)
 	}
 	h.PublicId = id
 	dbMask, err := toDbUpdateMask(mask)
@@ -202,10 +202,10 @@ func (s service) updateInRepo(ctx context.Context, projId, id string, mask []str
 	}
 	out, rowsUpdated, err := s.staticRepo.UpdateCatalog(ctx, h, dbMask)
 	if err != nil {
-		return nil, status.Errorf(codes.Internal, "Unable to update host: %v.", err)
+		return nil, status.Errorf(codes.Internal, "Unable to update host catalog: %v.", err)
 	}
 	if rowsUpdated == 0 {
-		return nil, handlers.NotFoundErrorf("HostCatalog %q doesn't exist.", id)
+		return nil, handlers.NotFoundErrorf("Host catalog %q doesn't exist.", id)
 	}
 	return toProto(out), nil
 }
@@ -299,10 +299,10 @@ func validateCreateHostCatalogRequest(req *pbs.CreateHostCatalogRequest) error {
 		return handlers.InvalidArgumentErrorf("The catalog's fields must be set to something.", []string{"item"})
 	}
 	if item.GetType() == nil {
-		return handlers.InvalidArgumentErrorf("Type must be specified when creating a Host Catalog.", []string{"type"})
+		return handlers.InvalidArgumentErrorf("Type must be specified when creating a host catalog.", []string{"type"})
 	}
 	if typeFromTypeField(item.GetType().GetValue()) == unknownType {
-		return handlers.InvalidArgumentErrorf("Provided Host Catalog type is unknown.", []string{"type"})
+		return handlers.InvalidArgumentErrorf("Provided host catalog type is unknown.", []string{"type"})
 	}
 	immutableFieldsSet := []string{}
 	if item.GetId() != "" {
