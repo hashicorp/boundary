@@ -88,7 +88,7 @@ func (r *Repository) CreateCatalog(ctx context.Context, c *HostCatalog, opt ...O
 	)
 
 	if err != nil {
-		if db.IsUnique(err) {
+		if db.IsUniqueError(err) {
 			return nil, fmt.Errorf("create: static host catalog: in scope: %s: name %s already exists: %w",
 				c.ScopeId, c.Name, db.ErrNotUnique)
 		}
@@ -166,7 +166,7 @@ func (r *Repository) UpdateCatalog(ctx context.Context, c *HostCatalog, fieldMas
 	)
 
 	if err != nil {
-		if db.IsUnique(err) {
+		if db.IsUniqueError(err) {
 			return nil, db.NoRowsAffected, fmt.Errorf("update: static host catalog: %s: name %s already exists: %w",
 				c.PublicId, c.Name, db.ErrNotUnique)
 		}

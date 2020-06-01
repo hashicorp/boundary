@@ -38,7 +38,7 @@ func TestError_IsUnique(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			assert := assert.New(t)
 			err := tt.in
-			got := IsUnique(err)
+			got := IsUniqueError(err)
 			assert.Equal(tt.want, got)
 		})
 	}
