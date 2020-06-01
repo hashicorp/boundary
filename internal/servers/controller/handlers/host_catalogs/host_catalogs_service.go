@@ -63,21 +63,22 @@ var (
 	}
 )
 
-type Service struct {
+type service struct {
 	pbs.UnimplementedHostCatalogServiceServer
 	staticRepo *static.Repository
 }
 
-func NewService(repo *static.Repository) *Service {
+// NewService returns a HostCatalog Service which handles HostCatalog related requests to watchtower and uses the provided
+// repositories for storage and retrieval.
+func NewService(repo *static.Repository) pbs.HostCatalogServiceServer {
 	if repo == nil {
 		return nil
 	}
-	return &Service{staticRepo: repo}
+	return &service{staticRepo: repo}
 }
 
-var _ pbs.HostCatalogServiceServer = &Service{}
-
-func (s Service) GetHostCatalog(ctx context.Context, req *pbs.GetHostCatalogRequest) (*pbs.GetHostCatalogResponse, error) {
+// GetHostCatalog implements the interface pbs.HostCatalogServiceServer.
+func (s service) GetHostCatalog(ctx context.Context, req *pbs.GetHostCatalogRequest) (*pbs.GetHostCatalogResponse, error) {
 	ct := typeFromId(req.GetId())
 	if ct == unknownType {
 		handlers.NotFoundErrorf("Host catalog not found.")
@@ -94,7 +95,8 @@ func (s Service) GetHostCatalog(ctx context.Context, req *pbs.GetHostCatalogRequ
 	return resp, nil
 }
 
-func (s Service) CreateHostCatalog(ctx context.Context, req *pbs.CreateHostCatalogRequest) (*pbs.CreateHostCatalogResponse, error) {
+// CreateHostCatalog implements the interface pbs.HostCatalogServiceServer.
+func (s service) CreateHostCatalog(ctx context.Context, req *pbs.CreateHostCatalogRequest) (*pbs.CreateHostCatalogResponse, error) {
 	if err := validateCreateHostCatalogRequest(req); err != nil {
 		return nil, err
 	}
@@ -108,7 +110,8 @@ func (s Service) CreateHostCatalog(ctx context.Context, req *pbs.CreateHostCatal
 	return resp, nil
 }
 
-func (s Service) UpdateHostCatalog(ctx context.Context, req *pbs.UpdateHostCatalogRequest) (*pbs.UpdateHostCatalogResponse, error) {
+// UpdateHostCatalog implements the interface pbs.HostCatalogServiceServer.
+func (s service) UpdateHostCatalog(ctx context.Context, req *pbs.UpdateHostCatalogRequest) (*pbs.UpdateHostCatalogResponse, error) {
 	ct := typeFromId(req.GetId())
 	if ct == unknownType {
 		handlers.NotFoundErrorf("Host catalog not found.")
@@ -125,7 +128,8 @@ func (s Service) UpdateHostCatalog(ctx context.Context, req *pbs.UpdateHostCatal
 	return resp, nil
 }
 
-func (s Service) DeleteHostCatalog(ctx context.Context, req *pbs.DeleteHostCatalogRequest) (*pbs.DeleteHostCatalogResponse, error) {
+// DeleteHostCatalog implements the interface pbs.HostCatalogServiceServer.
+func (s service) DeleteHostCatalog(ctx context.Context, req *pbs.DeleteHostCatalogRequest) (*pbs.DeleteHostCatalogResponse, error) {
 	ct := typeFromId(req.GetId())
 	if ct == unknownType {
 		handlers.NotFoundErrorf("Host catalog not found.")
@@ -142,7 +146,7 @@ func (s Service) DeleteHostCatalog(ctx context.Context, req *pbs.DeleteHostCatal
 	return resp, nil
 }
 
-func (s Service) getFromRepo(ctx context.Context, id string) (*pb.HostCatalog, error) {
+func (s service) getFromRepo(ctx context.Context, id string) (*pb.HostCatalog, error) {
 	hc, err := s.staticRepo.LookupCatalog(ctx, id)
 	if err != nil {
 		return nil, err
@@ -153,7 +157,7 @@ func (s Service) getFromRepo(ctx context.Context, id string) (*pb.HostCatalog, e
 	return toProto(hc), nil
 }
 
-func (s Service) createInRepo(ctx context.Context, projId string, item *pb.HostCatalog) (*pb.HostCatalog, error) {
+func (s service) createInRepo(ctx context.Context, projId string, item *pb.HostCatalog) (*pb.HostCatalog, error) {
 	var opts []static.Option
 	if item.GetName() != nil {
 		opts = append(opts, static.WithName(item.GetName().GetValue()))
@@ -175,7 +179,7 @@ func (s Service) createInRepo(ctx context.Context, projId string, item *pb.HostC
 	return toProto(out), nil
 }
 
-func (s Service) updateInRepo(ctx context.Context, projId, id string, mask []string, item *pb.HostCatalog) (*pb.HostCatalog, error) {
+func (s service) updateInRepo(ctx context.Context, projId, id string, mask []string, item *pb.HostCatalog) (*pb.HostCatalog, error) {
 	var opts []static.Option
 	if desc := item.GetDescription(); desc != nil {
 		opts = append(opts, static.WithDescription(desc.GetValue()))
@@ -206,7 +210,7 @@ func (s Service) updateInRepo(ctx context.Context, projId, id string, mask []str
 	return toProto(out), nil
 }
 
-func (s Service) deleteFromRepo(ctx context.Context, id string) (bool, error) {
+func (s service) deleteFromRepo(ctx context.Context, id string) (bool, error) {
 	rows, err := s.staticRepo.DeleteCatalog(ctx, id)
 	if err != nil {
 		return false, status.Errorf(codes.Internal, "Unable to delete host: %v.", err)
