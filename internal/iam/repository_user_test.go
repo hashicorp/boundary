@@ -10,6 +10,7 @@ import (
 
 	"github.com/hashicorp/go-uuid"
 	"github.com/hashicorp/watchtower/internal/db"
+	dbassert "github.com/hashicorp/watchtower/internal/db/assert"
 	"github.com/hashicorp/watchtower/internal/oplog"
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/protobuf/proto"
@@ -296,6 +297,16 @@ func TestRepository_UpdateUser(t *testing.T) {
 			foundUser, err := repo.LookupUser(context.Background(), u.PublicId)
 			assert.NoError(err)
 			assert.True(proto.Equal(userAfterUpdate, foundUser))
+
+			conn.LogMode(true)
+			dbassert := dbassert.New(t, rw)
+			if tt.args.name == "" {
+				dbassert.IsNull(foundUser, "name")
+			}
+			if tt.args.description == "" {
+				dbassert.IsNull(foundUser, "description")
+			}
+			conn.LogMode(false)
 
 			err = db.TestVerifyOplog(t, rw, u.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_UPDATE), db.WithCreateNotBefore(10*time.Second))
 			assert.NoError(err)
