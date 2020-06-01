@@ -24,6 +24,11 @@ func New(t dbassert.TestingT, r db.Reader) *DbAsserts {
 	}
 }
 
+// Log enable/disable log of database queries.
+func (a *DbAsserts) Log(enable bool) {
+	a.asserts.DbLog(enable)
+}
+
 // IsNull asserts that the resource fieldName is null in the db.
 func (a *DbAsserts) IsNull(resource interface{}, fieldName string) bool {
 	return a.asserts.FieldIsNull(resource, fieldName)
