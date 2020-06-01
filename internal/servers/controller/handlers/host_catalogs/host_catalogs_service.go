@@ -91,7 +91,7 @@ func (s Service) ListHostCatalogs(ctx context.Context, req *pbs.ListHostCatalogs
 func (s Service) GetHostCatalog(ctx context.Context, req *pbs.GetHostCatalogRequest) (*pbs.GetHostCatalogResponse, error) {
 	ct := typeFromId(req.GetId())
 	if ct == unknownType {
-		return nil, handlers.NotFoundErrorf("Host catalog not found.")
+		return nil, handlers.InvalidArgumentErrorf("Unknown host catalog type.", []string{"id"})
 	}
 	if err := validateGetHostCatalogRequest(req, ct); err != nil {
 		return nil, err
@@ -124,7 +124,7 @@ func (s Service) CreateHostCatalog(ctx context.Context, req *pbs.CreateHostCatal
 func (s Service) UpdateHostCatalog(ctx context.Context, req *pbs.UpdateHostCatalogRequest) (*pbs.UpdateHostCatalogResponse, error) {
 	ct := typeFromId(req.GetId())
 	if ct == unknownType {
-		return nil, handlers.NotFoundErrorf("Host catalog not found.")
+		return nil, handlers.InvalidArgumentErrorf("Unknown host catalog type.", []string{"id"})
 	}
 	if err := validateUpdateHostCatalogRequest(req, ct); err != nil {
 		return nil, err
@@ -142,7 +142,7 @@ func (s Service) UpdateHostCatalog(ctx context.Context, req *pbs.UpdateHostCatal
 func (s Service) DeleteHostCatalog(ctx context.Context, req *pbs.DeleteHostCatalogRequest) (*pbs.DeleteHostCatalogResponse, error) {
 	ct := typeFromId(req.GetId())
 	if ct == unknownType {
-		return nil, handlers.NotFoundErrorf("Host catalog not found.")
+		return nil, handlers.InvalidArgumentErrorf("Unknown host catalog type.", []string{"id"})
 	}
 	if err := validateDeleteHostCatalogRequest(req, ct); err != nil {
 		return nil, err

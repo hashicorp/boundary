@@ -63,6 +63,7 @@ func createDefaultHostCatalogAndRepo(t *testing.T) (*static.HostCatalog, *iam.Sc
 }
 
 func TestGet(t *testing.T) {
+	t.Parallel()
 	hc, proj, repo := createDefaultHostCatalogAndRepo(t)
 	toMerge := &pbs.GetHostCatalogRequest{
 		OrgId:     proj.GetParentId(),
@@ -98,13 +99,12 @@ func TestGet(t *testing.T) {
 			// This will be fixed with PR 42
 			errCode: codes.NotFound,
 		},
-		// TODO: Decide if this should be an invalid argument or not found when the prefix doesn't match a known subtype.
 		{
 			name: "Wrong id prefix",
 			req:  &pbs.GetHostCatalogRequest{Id: "j_1234567890"},
 			res:  nil,
 			// This will be fixed with PR 42
-			errCode: codes.NotFound,
+			errCode: codes.InvalidArgument,
 		},
 		{
 			name: "space in id",
@@ -131,6 +131,7 @@ func TestGet(t *testing.T) {
 }
 
 func TestDelete(t *testing.T) {
+	t.Parallel()
 	require := require.New(t)
 	hc, proj, repo := createDefaultHostCatalogAndRepo(t)
 
@@ -228,6 +229,7 @@ func TestDelete(t *testing.T) {
 }
 
 func TestDelete_twice(t *testing.T) {
+	t.Parallel()
 	assert := assert.New(t)
 	hc, proj, repo := createDefaultHostCatalogAndRepo(t)
 
@@ -247,6 +249,7 @@ func TestDelete_twice(t *testing.T) {
 }
 
 func TestCreate(t *testing.T) {
+	t.Parallel()
 	require := require.New(t)
 	assert := assert.New(t)
 	defaultHc, proj, repo := createDefaultHostCatalogAndRepo(t)
@@ -356,6 +359,7 @@ func TestCreate(t *testing.T) {
 }
 
 func TestUpdate(t *testing.T) {
+	t.Parallel()
 	require := require.New(t)
 	assert := assert.New(t)
 	hc, proj, repo := createDefaultHostCatalogAndRepo(t)
