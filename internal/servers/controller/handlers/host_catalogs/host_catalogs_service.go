@@ -198,7 +198,6 @@ func (s Service) updateInRepo(ctx context.Context, projId, id string, mask []str
 		opts = append(opts, static.WithName(name.GetValue()))
 	}
 	h, err := static.NewHostCatalog(projId, opts...)
-	h.PublicId = id
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "Unable to build host catalog for update: %v.", err)
 	}
