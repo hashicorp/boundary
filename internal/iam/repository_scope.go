@@ -51,7 +51,7 @@ func (r *Repository) UpdateScope(ctx context.Context, scope *Scope, fieldMaskPat
 
 	resource, rowsUpdated, err := r.update(ctx, scope, dbMask, nullFields)
 	if err != nil {
-		if db.IsUnique(err) {
+		if db.IsUniqueError(err) {
 			return nil, db.NoRowsAffected, fmt.Errorf("update scope: %s name %s already exists: %w", scope.PublicId, scope.Name, db.ErrNotUnique)
 		}
 		return nil, db.NoRowsAffected, fmt.Errorf("update scope: failed for public id %s: %w", scope.PublicId, err)
