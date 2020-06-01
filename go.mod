@@ -17,6 +17,7 @@ require (
 	github.com/golang-sql/civil v0.0.0-20190719163853-cb61b32ac6fe
 	github.com/golang/protobuf v1.4.2
 	github.com/grpc-ecosystem/grpc-gateway v1.14.6
+	github.com/hashicorp/dbassert v0.0.0-20200601131634-c3045f4c81e8
 	github.com/hashicorp/errwrap v1.0.0
 	github.com/hashicorp/go-alpnmux v0.0.0-20200513011953-0293f5d23c31
 	github.com/hashicorp/go-cleanhttp v0.5.1
@@ -34,7 +35,7 @@ require (
 	github.com/jinzhu/gorm v1.9.12
 	github.com/kr/pretty v0.2.0
 	github.com/kr/text v0.2.0
-	github.com/lib/pq v1.5.2
+	github.com/lib/pq v1.6.0
 	github.com/mattn/go-colorable v0.1.6
 	github.com/mitchellh/cli v1.1.1
 	github.com/mitchellh/go-homedir v1.1.0
