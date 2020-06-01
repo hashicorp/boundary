@@ -11,6 +11,7 @@ import (
 	wrapping "github.com/hashicorp/go-kms-wrapping"
 	"github.com/hashicorp/go-uuid"
 	"github.com/hashicorp/watchtower/internal/db"
+	"github.com/hashicorp/watchtower/internal/db/timestamp"
 	iam_store "github.com/hashicorp/watchtower/internal/iam/store"
 	"github.com/hashicorp/watchtower/internal/oplog"
 	"github.com/hashicorp/watchtower/internal/oplog/store"
@@ -213,7 +214,7 @@ func Test_Repository_delete(t *testing.T) {
 
 func TestRepository_update(t *testing.T) {
 	cleanup, conn, _ := db.TestSetup(t, "postgres")
-	now := &iam_store.Timestamp{Timestamp: ptypes.TimestampNow()}
+	now := &timestamp.Timestamp{Timestamp: ptypes.TimestampNow()}
 	id := testId(t)
 	defer func() {
 		if err := cleanup(); err != nil {

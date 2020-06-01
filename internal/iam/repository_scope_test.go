@@ -9,6 +9,7 @@ import (
 	"github.com/golang/protobuf/ptypes"
 	"github.com/hashicorp/go-uuid"
 	"github.com/hashicorp/watchtower/internal/db"
+	"github.com/hashicorp/watchtower/internal/db/timestamp"
 	iam_store "github.com/hashicorp/watchtower/internal/iam/store"
 	"github.com/hashicorp/watchtower/internal/oplog"
 	"github.com/stretchr/testify/assert"
@@ -290,7 +291,7 @@ func Test_Repository_DeleteScope(t *testing.T) {
 
 func TestRepository_UpdateScope(t *testing.T) {
 	cleanup, conn, _ := db.TestSetup(t, "postgres")
-	now := &iam_store.Timestamp{Timestamp: ptypes.TimestampNow()}
+	now := &timestamp.Timestamp{Timestamp: ptypes.TimestampNow()}
 	id := testId(t)
 	defer func() {
 		if err := cleanup(); err != nil {
