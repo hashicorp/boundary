@@ -2,31 +2,13 @@ package controller
 
 import (
 	"fmt"
-	"net"
 	"net/http"
 	"testing"
-
-	"github.com/hashicorp/vault/internalshared/configutil"
-	"github.com/hashicorp/watchtower/internal/cmd/base"
-	"github.com/hashicorp/watchtower/internal/cmd/config"
 )
 
 func TestHandleGrpcGateway(t *testing.T) {
-	c := &Controller{
-		conf: &Config{
-			Server:    new(base.Server),
-			RawConfig: config.New(),
-		},
-	}
-	h := c.handler(HandlerProperties{ListenerConfig: new(configutil.Listener)})
-	l, err := net.Listen("tcp4", "127.0.0.1:0")
-	if err != nil {
-		t.Fatalf("Couldn't listen: %v", err)
-	}
-	defer l.Close()
-	go func() {
-		http.Serve(l, h)
-	}()
+	c := NewTestController(t, nil)
+	defer c.Shutdown()
 
 	cases := []struct {
 		name string
@@ -46,7 +28,7 @@ func TestHandleGrpcGateway(t *testing.T) {
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			url := fmt.Sprintf("http://%s/%s", l.Addr(), tc.path)
+			url := fmt.Sprintf("%s/%s", c.ApiAddrs()[0], tc.path)
 			resp, err := http.Get(url)
 			if err != nil {
 				t.Errorf("Got error: %v when non was expected.", err)

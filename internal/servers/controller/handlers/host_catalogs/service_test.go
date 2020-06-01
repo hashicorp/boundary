@@ -128,7 +128,8 @@ func TestGet(t *testing.T) {
 			req := proto.Clone(toMerge).(*pbs.GetHostCatalogRequest)
 			proto.Merge(req, tc.req)
 
-			s := host_catalogs.NewService(repo)
+			s, err := host_catalogs.NewService(repo)
+			assert.NoError(err)
 
 			got, gErr := s.GetHostCatalog(context.Background(), req)
 			assert.Equal(tc.errCode, status.Code(gErr), "GetHostCatalog(%+v) got error %v, wanted %v", req, gErr, tc.errCode)
@@ -149,7 +150,8 @@ func TestDelete(t *testing.T) {
 		t.Fatalf("Couldn't persist a second host catalog %v", err)
 	}
 
-	s := host_catalogs.NewService(repo)
+	s, err := host_catalogs.NewService(repo)
+	assert.NoError(t, err)
 
 	cases := []struct {
 		name    string
@@ -240,7 +242,8 @@ func TestDelete_twice(t *testing.T) {
 	assert := assert.New(t)
 	hc, proj, repo := createDefaultHostCatalogAndRepo(t)
 
-	s := host_catalogs.NewService(repo)
+	s, err := host_catalogs.NewService(repo)
+	assert.NoError(err)
 	req := &pbs.DeleteHostCatalogRequest{
 		OrgId:     proj.GetParentId(),
 		ProjectId: proj.GetPublicId(),
@@ -336,7 +339,8 @@ func TestCreate(t *testing.T) {
 			req := proto.Clone(toMerge).(*pbs.CreateHostCatalogRequest)
 			proto.Merge(req, tc.req)
 
-			s := host_catalogs.NewService(repo)
+			s, err := host_catalogs.NewService(repo)
+			assert.NoError(err)
 
 			got, gErr := s.CreateHostCatalog(context.Background(), req)
 			assert.Equal(tc.errCode, status.Code(gErr), "CreateHostCatalog(%+v) got error %v, wanted %v", req, gErr, tc.errCode)
@@ -367,9 +371,11 @@ func TestCreate(t *testing.T) {
 
 func TestUpdate(t *testing.T) {
 	hc, proj, repo := createDefaultHostCatalogAndRepo(t)
-	tested := host_catalogs.NewService(repo)
+	tested, err := host_catalogs.NewService(repo)
+	if err != nil {
+		t.Fatalf("Couldn't create host catalog service: %v", err)
+	}
 
-	var err error
 	resetHostCatalog := func() {
 		if hc, _, err = repo.UpdateCatalog(context.Background(), hc, []string{"Name", "Description"}); err != nil {
 			t.Fatalf("Failed to reset the catalog")
