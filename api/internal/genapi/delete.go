@@ -20,7 +20,12 @@ var deleteFuncs = map[string][]*deleteInfo{
 		{
 			"Organization",
 			"Project",
-			"projects/%s",
+			"projects",
+		},
+		{
+			"Project",
+			"hosts.HostCatalog",
+			"host-catalogs",
 		},
 	},
 }
@@ -34,15 +39,15 @@ package %s
 `, outPkg)))
 		for _, deleteInfo := range funcs {
 			deleteFuncTemplate.Execute(outBuf, struct {
-				BaseType        string
-				TargetType      string
-				LowerTargetType string
-				Path            string
+				BaseType   string
+				TargetType string
+				TargetName string
+				Path       string
 			}{
-				BaseType:        deleteInfo.baseType,
-				TargetType:      deleteInfo.targetType,
-				LowerTargetType: strings.ToLower(deleteInfo.targetType),
-				Path:            deleteInfo.path,
+				BaseType:   deleteInfo.baseType,
+				TargetType: deleteInfo.targetType,
+				TargetName: strings.Split(deleteInfo.targetType, ".")[strings.Count(deleteInfo.targetType, ".")],
+				Path:       deleteInfo.path,
 			})
 		}
 		if err := ioutil.WriteFile(outFile, outBuf.Bytes(), 0644); err != nil {
@@ -54,10 +59,10 @@ package %s
 
 var deleteFuncTemplate = template.Must(template.New("").Parse(
 	`
-// Delete{{ .TargetType }} returns true iff the {{ .LowerTargetType }} existed when the delete attempt was made. 
-func (s {{ .BaseType }}) Delete{{ .TargetType }}(ctx context.Context, {{ .LowerTargetType }} *{{ .TargetType }}) (bool, *api.Error, error) {
+// Delete{{ .TargetName }} returns true iff the {{ .TargetType }} existed when the delete attempt was made. 
+func (s {{ .BaseType }}) Delete{{ .TargetName }}(ctx context.Context, r *{{ .TargetType }}) (bool, *api.Error, error) {
 	if s.Client == nil {
-		return false, nil, fmt.Errorf("nil client in Delete{{ .TargetType }} request")
+		return false, nil, fmt.Errorf("nil client in Delete{{ .TargetName }} request")
 	}
 	if s.Id == "" {
 		{{ if (eq .BaseType "Organization") }}
@@ -67,7 +72,7 @@ func (s {{ .BaseType }}) Delete{{ .TargetType }}(ctx context.Context, {{ .LowerT
 		// Assume the client has been configured with project already and move
 		// on
 		{{ else }}
-		return nil, nil, fmt.Errorf("missing {{ .BaseType }} ID in Delete{{ .TargetType }} request")
+		return nil, nil, fmt.Errorf("missing {{ .BaseType }} ID in Delete{{ .TargetName }} request")
 		{{ end }}
 	} else {
 		// If it's explicitly set here, override anything that might be in the
@@ -78,18 +83,18 @@ func (s {{ .BaseType }}) Delete{{ .TargetType }}(ctx context.Context, {{ .LowerT
 		ctx = context.WithValue(ctx, "project", s.Id)
 		{{ end }}
 	}
-	if {{ .LowerTargetType }}.Id == "" {
-		return false, nil, fmt.Errorf("empty {{ .LowerTargetType }} ID field in Delete{{ .TargetType }} request")
+	if r.Id == "" {
+		return false, nil, fmt.Errorf("empty {{ .TargetType }} ID field in Delete{{ .TargetName }} request")
 	}
 
-	req, err := s.Client.NewRequest(ctx, "DELETE", fmt.Sprintf("{{ .Path }}", {{ .LowerTargetType }}.Id), nil)
+	req, err := s.Client.NewRequest(ctx, "DELETE", fmt.Sprintf("%s/%s", "{{ .Path }}", r.Id), nil)
 	if err != nil {
-		return false, nil, fmt.Errorf("error creating Delete{{ .TargetType }} request: %w", err)
+		return false, nil, fmt.Errorf("error creating Delete{{ .TargetName }} request: %w", err)
 	}
 
 	resp, err := s.Client.Do(req)
 	if err != nil {
-		return false, nil, fmt.Errorf("error performing client request during Delete{{ .TargetType }} call: %w", err)
+		return false, nil, fmt.Errorf("error performing client request during Delete{{ .TargetName }} call: %w", err)
 	}
 
 	type deleteResponse struct {
@@ -99,7 +104,7 @@ func (s {{ .BaseType }}) Delete{{ .TargetType }}(ctx context.Context, {{ .LowerT
 
 	apiErr, err := resp.Decode(target)
 	if err != nil {
-		return false, nil, fmt.Errorf("error decoding Delete{{ .TargetType }} repsonse: %w", err)
+		return false, nil, fmt.Errorf("error decoding Delete{{ .TargetName }} repsonse: %w", err)
 	}
 
 	return target.Existed, apiErr, nil
