@@ -110,7 +110,7 @@ func Test_UserCreate(t *testing.T) {
 		assert.NoError(err)
 		err = w.Create(context.Background(), user)
 		assert.Error(err)
-		assert.Equal("error on create scope is not found", err.Error())
+		assert.Equal("create: vet for write failed scope is not found", err.Error())
 	})
 }
 
@@ -166,7 +166,7 @@ func Test_UserUpdate(t *testing.T) {
 				ScopeId:        proj.PublicId,
 			},
 			wantErr:    true,
-			wantErrMsg: "error on update not allowed to change a resource's scope",
+			wantErrMsg: "update: vet for write failed not allowed to change a resource's scope",
 		},
 		{
 			name: "proj-scope-id-not-in-mask",
@@ -197,7 +197,7 @@ func Test_UserUpdate(t *testing.T) {
 			},
 			wantErr:    true,
 			wantDup:    true,
-			wantErrMsg: `error updating: pq: duplicate key value violates unique constraint "iam_user_name_scope_id_key"`,
+			wantErrMsg: `update: failed pq: duplicate key value violates unique constraint "iam_user_name_scope_id_key"`,
 		},
 	}
 	for _, tt := range tests {
@@ -206,7 +206,7 @@ func Test_UserUpdate(t *testing.T) {
 			if tt.wantDup {
 				u := TestUser(t, conn, org.PublicId)
 				u.Name = tt.args.name
-				_, err := rw.Update(context.Background(), u, tt.args.fieldMaskPaths)
+				_, err := rw.Update(context.Background(), u, tt.args.fieldMaskPaths, nil)
 				assert.NoError(err)
 			}
 
@@ -218,7 +218,7 @@ func Test_UserUpdate(t *testing.T) {
 			updateUser.Name = tt.args.name
 			updateUser.Description = tt.args.description
 
-			updatedRows, err := rw.Update(context.Background(), &updateUser, tt.args.fieldMaskPaths)
+			updatedRows, err := rw.Update(context.Background(), &updateUser, tt.args.fieldMaskPaths, nil)
 			if tt.wantErr {
 				assert.Error(err)
 				assert.Equal(0, updatedRows)

@@ -39,7 +39,7 @@ func (r *Repository) UpdateUser(ctx context.Context, user *User, fieldMaskPaths 
 			"Disabled",
 		}
 	}
-	resource, rowsUpdated, err := r.update(ctx, user, fieldMaskPaths)
+	resource, rowsUpdated, err := r.update(ctx, user, fieldMaskPaths, nil)
 	if err != nil {
 		if uniqueError(err) {
 			return nil, db.NoRowsAffected, fmt.Errorf("update user: user %s already exists in organization %s", user.Name, user.ScopeId)

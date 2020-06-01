@@ -168,7 +168,7 @@ func TestRepository_UpdateUser(t *testing.T) {
 				ScopeId:        proj.PublicId,
 			},
 			wantErr:    true,
-			wantErrMsg: "update user: error on update not allowed to change a resource's scope for %s",
+			wantErrMsg: "update user: update: vet for write failed not allowed to change a resource's scope for %s",
 		},
 		{
 			name: "empty-scope-id-with-name-mask",
