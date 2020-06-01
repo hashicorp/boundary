@@ -30,15 +30,15 @@ func StringOrNil(in string) *string {
 }
 
 // Int returns the given int64 as an int64 pointer
-func Int(in int64) *int64 {
-	ret := new(int64)
+func Int(in int32) *int32 {
+	ret := new(int32)
 	*ret = in
 	return ret
 }
 
 // IntOrNil is like Int, but the returned pointer will be nil if the integer is
 // 0
-func IntOrNil(in int64) *int64 {
+func IntOrNil(in int32) *int32 {
 	if in == 0 {
 		return nil
 	}

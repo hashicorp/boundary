@@ -470,6 +470,8 @@ func TestUpdate(t *testing.T) {
 			},
 			errCode: codes.OK,
 		},
+		// TODO: Updating a non existant project should result in a NotFound exception but currently results in
+		// the repo returning an internal error.
 		{
 			name: "Update a Non Existing Project",
 			req: &pbs.UpdateProjectRequest{
@@ -482,7 +484,7 @@ func TestUpdate(t *testing.T) {
 					Description: &wrappers.StringValue{Value: "desc"},
 				},
 			},
-			errCode: codes.Unknown,
+			errCode: codes.Internal,
 		},
 		{
 			name: "Cant change Id",
