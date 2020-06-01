@@ -1,6 +1,7 @@
 package db
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -9,6 +10,7 @@ import (
 	"time"
 
 	"github.com/golang/protobuf/ptypes"
+	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/go-uuid"
 	"github.com/hashicorp/vault/sdk/helper/base62"
 	"github.com/hashicorp/watchtower/internal/db/db_test"
@@ -655,6 +657,18 @@ func TestDb_SearchWhere(t *testing.T) {
 	}()
 	assert := assert.New(t)
 	defer db.Close()
+
+	buf := new(bytes.Buffer)
+	log := hclog.New(&hclog.LoggerOptions{
+		Output: buf,
+		Level:  hclog.Trace,
+	})
+	gorm.LogFormatter = GetGormLogFormatter(log)
+	db.LogMode(true)
+	defer func() {
+		assert.True(strings.Contains(buf.String(), "syntax error at or near"))
+	}()
+
 	t.Run("simple", func(t *testing.T) {
 		w := Db{underlying: db}
 		id, err := uuid.GenerateUUID()

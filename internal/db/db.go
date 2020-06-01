@@ -8,9 +8,11 @@ import (
 	"strings"
 
 	"github.com/golang-migrate/migrate/v4"
+	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/watchtower/internal/db/migrations"
 	"github.com/jinzhu/gorm"
+	"github.com/lib/pq"
 	"github.com/ory/dockertest"
 )
 
@@ -166,4 +168,17 @@ func cleanupDockerResource(pool *dockertest.Pool, resource *dockertest.Resource)
 		return nil
 	}
 	return fmt.Errorf("Failed to cleanup local container: %s", err)
+}
+
+func GetGormLogFormatter(log hclog.Logger) func(values ...interface{}) (messages []interface{}) {
+	return func(values ...interface{}) (messages []interface{}) {
+		if len(values) > 2 && values[0].(string) == "log" {
+			switch values[2].(type) {
+			case *pq.Error:
+				log.Trace("error from database adapter", "location", values[1], "error", values[2])
+			}
+			return nil
+		}
+		return nil
+	}
 }
