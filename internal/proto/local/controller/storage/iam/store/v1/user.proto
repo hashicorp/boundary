@@ -3,8 +3,9 @@ syntax = "proto3";
 package controller.storage.iam.store.v1;
 option go_package = "github.com/hashicorp/watchtower/internal/iam/store;store";
 
-import "controller/storage/iam/store/v1/timestamp.proto";
 import "controller/storage/iam/store/v1/scope.proto";
+
+import "controller/storage/timestamp/v1/timestamp.proto";
 
 message User {
   // public_id is used to access the User via an API
@@ -13,11 +14,11 @@ message User {
 
   // create_time from the RDBMS
   // @inject_tag: `gorm:"default:current_timestamp"`
-  Timestamp create_time = 2;
+  timestamp.v1.Timestamp create_time = 2;
 
   // update_time from the RDBMS
   // @inject_tag: `gorm:"default:current_timestamp"`
-  Timestamp update_time = 3;
+  timestamp.v1.Timestamp update_time = 3;
 
   // name is the optional friendly name used to
   // access the User via an API
