@@ -247,16 +247,18 @@ func toDbUpdateMask(paths []string) ([]string, error) {
 }
 
 func toProto(in *static.HostCatalog) *pb.HostCatalog {
-	out := pb.HostCatalog{Id: in.GetPublicId()}
+	out := pb.HostCatalog{
+		Id:          in.GetPublicId(),
+		Type:        &wrapperspb.StringValue{Value: staticType.String()},
+		CreatedTime: in.GetCreateTime().GetTimestamp(),
+		UpdatedTime: in.GetUpdateTime().GetTimestamp(),
+	}
 	if in.GetDescription() != "" {
 		out.Description = &wrapperspb.StringValue{Value: in.GetDescription()}
 	}
 	if in.GetName() != "" {
 		out.Name = &wrapperspb.StringValue{Value: in.GetName()}
 	}
-	out.CreatedTime = in.GetCreateTime().GetTimestamp()
-	out.UpdatedTime = in.GetUpdateTime().GetTimestamp()
-	out.Type = &wrapperspb.StringValue{Value: staticType.String()}
 	return &out
 }
 
