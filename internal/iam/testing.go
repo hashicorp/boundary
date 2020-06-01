@@ -68,7 +68,7 @@ func testPublicId(t *testing.T, prefix string) string {
 }
 
 // TestUser creates a user suitable for testing.
-func TestUser(t *testing.T, conn *gorm.DB, orgId string) *User {
+func TestUser(t *testing.T, conn *gorm.DB, orgId string, opt ...Option) *User {
 	t.Helper()
 	assert := assert.New(t)
 	rw := db.New(conn)
@@ -76,7 +76,7 @@ func TestUser(t *testing.T, conn *gorm.DB, orgId string) *User {
 	repo, err := NewRepository(rw, rw, wrapper)
 	assert.NoError(err)
 
-	user, err := NewUser(orgId)
+	user, err := NewUser(orgId, opt...)
 	assert.NoError(err)
 	user, err = repo.CreateUser(context.Background(), user)
 	assert.NoError(err)
