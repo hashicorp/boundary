@@ -229,8 +229,8 @@ func (s Service) deleteFromRepo(ctx context.Context, id string) (bool, error) {
 
 // toDbUpdateMask converts the wire format's FieldMask into a list of strings containing FieldMask paths used
 func toDbUpdateMask(paths []string) ([]string, error) {
-	dbPaths := []string{}
-	invalid := []string{}
+	var dbPaths []string
+	var invalid []string
 	for _, p := range paths {
 		for _, f := range strings.Split(p, ",") {
 			if dbField, ok := wireToStorageMask[strings.TrimSpace(f)]; ok {
@@ -291,7 +291,7 @@ func validateCreateHostCatalogRequest(req *pbs.CreateHostCatalogRequest) error {
 	if typeFromTypeField(item.GetType().GetValue()) == unknownType {
 		return handlers.InvalidArgumentErrorf("Provided host catalog type is unknown.", []string{"type"})
 	}
-	immutableFieldsSet := []string{}
+	var immutableFieldsSet []string
 	if item.GetId() != "" {
 		immutableFieldsSet = append(immutableFieldsSet, "id")
 	}
@@ -328,7 +328,7 @@ func validateUpdateHostCatalogRequest(req *pbs.UpdateHostCatalogRequest, ct cata
 	if item.GetId() != "" && item.GetId() != req.GetId() {
 		return handlers.InvalidArgumentErrorf("Id in provided item and url do not match.", []string{"id"})
 	}
-	immutableFieldsSet := []string{}
+	var immutableFieldsSet []string
 	if item.GetType() != nil {
 		immutableFieldsSet = append(immutableFieldsSet, "type")
 	}
