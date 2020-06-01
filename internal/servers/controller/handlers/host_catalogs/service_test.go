@@ -20,10 +20,12 @@ import (
 	"google.golang.org/protobuf/proto"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func createDefaultHostCatalogAndRepo(t *testing.T) (*static.HostCatalog, *iam.Scope, *static.Repository) {
 	t.Helper()
+	require := require.New(t)
 	cleanup, conn, _ := db.TestSetup(t, "postgres")
 	t.Cleanup(func() {
 		if err := conn.Close(); err != nil {
@@ -36,40 +38,26 @@ func createDefaultHostCatalogAndRepo(t *testing.T) (*static.HostCatalog, *iam.Sc
 	rw := db.New(conn)
 	wrap := db.TestWrapper(t)
 	iamRepo, err := iam.NewRepository(rw, rw, wrap)
-	assert.Nil(t, err, "Unable to create new repo")
+	require.NoError(err, "Unable to create new scope repo.")
 
 	// Create a default org and project for our tests.
 	o, err := iam.NewOrganization(iam.WithName("default"))
-	if err != nil {
-		t.Fatalf("Could not get new org: %v", err)
-	}
+	require.NoError(err, "Couldn't get new org.")
 	oRes, err := iamRepo.CreateScope(context.Background(), o)
-	if err != nil {
-		t.Fatalf("Could not create org scope: %v", err)
-	}
+	require.NoError(err, "Couldn't persist new org.")
 
 	p, err := iam.NewProject(oRes.GetPublicId(), iam.WithName("default"), iam.WithDescription("default"))
-	if err != nil {
-		t.Fatalf("Could not get new project: %v", err)
-	}
+	require.NoError(err, "Couldn't get new project.")
 	pRes, err := iamRepo.CreateScope(context.Background(), p)
-	if err != nil {
-		t.Fatalf("Could not create project scope: %v", err)
-	}
+	require.NoError(err, "Couldn't persist new project.")
 
 	repo, err := static.NewRepository(rw, rw, wrap)
-	if err != nil {
-		t.Fatalf("Couldn't create static host catalog repo: %v", err)
-	}
+	require.NoError(err, "Couldn't create static repo.")
 
 	hc, err := static.NewHostCatalog(pRes.GetPublicId(), static.WithName("default"), static.WithDescription("default"))
-	if err != nil {
-		t.Fatalf("Could not get new host catalog: %v", err)
-	}
+	require.NoError(err, "Couldn't get new catalog.")
 	hcRes, err := repo.CreateCatalog(context.Background(), hc)
-	if err != nil {
-		t.Fatalf("Could not create host catalog: %v", err)
-	}
+	require.NoError(err, "Couldn't persist new catalog.")
 
 	return hcRes, pRes, repo
 }
@@ -133,7 +121,7 @@ func TestGet(t *testing.T) {
 			proto.Merge(req, tc.req)
 
 			s, err := host_catalogs.NewService(repo)
-			assert.NoError(err)
+			require.NoError(t, err, "Couldn't create a new host catalog service.")
 
 			got, gErr := s.GetHostCatalog(context.Background(), req)
 			assert.Equal(tc.errCode, status.Code(gErr), "GetHostCatalog(%+v) got error %v, wanted %v", req, gErr, tc.errCode)
@@ -143,19 +131,16 @@ func TestGet(t *testing.T) {
 }
 
 func TestDelete(t *testing.T) {
+	require := require.New(t)
 	hc, proj, repo := createDefaultHostCatalogAndRepo(t)
 
 	hc2, err := static.NewHostCatalog(hc.GetScopeId())
-	if err != nil {
-		t.Fatalf("Couldn't allocate a second host catalog: %v", err)
-	}
+	require.NoError(err, "Couldn't create a new host catalog.")
 	hc2, err = repo.CreateCatalog(context.Background(), hc2)
-	if err != nil {
-		t.Fatalf("Couldn't persist a second host catalog %v", err)
-	}
+	require.NoError(err, "Couldn't persist a new host catalog.")
 
 	s, err := host_catalogs.NewService(repo)
-	assert.NoError(t, err)
+	require.NoError(err, "Couldn't create a new host catalog service.")
 
 	cases := []struct {
 		name    string
@@ -247,7 +232,7 @@ func TestDelete_twice(t *testing.T) {
 	hc, proj, repo := createDefaultHostCatalogAndRepo(t)
 
 	s, err := host_catalogs.NewService(repo)
-	assert.NoError(err)
+	require.NoError(t, err, "Couldn't create a new host catalog service.")
 	req := &pbs.DeleteHostCatalogRequest{
 		OrgId:     proj.GetParentId(),
 		ProjectId: proj.GetPublicId(),
@@ -262,11 +247,11 @@ func TestDelete_twice(t *testing.T) {
 }
 
 func TestCreate(t *testing.T) {
+	require := require.New(t)
+	assert := assert.New(t)
 	defaultHc, proj, repo := createDefaultHostCatalogAndRepo(t)
 	defaultHcCreated, err := ptypes.Timestamp(defaultHc.GetCreateTime().GetTimestamp())
-	if err != nil {
-		t.Fatalf("Error converting proto to timestamp: %v", err)
-	}
+	require.NoError(err, "Error converting proto to timestamp.")
 	toMerge := &pbs.CreateHostCatalogRequest{
 		OrgId:     proj.GetParentId(),
 		ProjectId: proj.GetPublicId(),
@@ -339,12 +324,11 @@ func TestCreate(t *testing.T) {
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			assert := assert.New(t)
 			req := proto.Clone(toMerge).(*pbs.CreateHostCatalogRequest)
 			proto.Merge(req, tc.req)
 
 			s, err := host_catalogs.NewService(repo)
-			assert.NoError(err)
+			require.NoError(err, "Failed to create a new host catalog service.")
 
 			got, gErr := s.CreateHostCatalog(context.Background(), req)
 			assert.Equal(tc.errCode, status.Code(gErr), "CreateHostCatalog(%+v) got error %v, wanted %v", req, gErr, tc.errCode)
@@ -356,9 +340,7 @@ func TestCreate(t *testing.T) {
 					t.Fatalf("Error converting proto to timestamp: %v", err)
 				}
 				gotUpdateTime, err := ptypes.Timestamp(got.GetItem().GetUpdatedTime())
-				if err != nil {
-					t.Fatalf("Error converting proto to timestamp: %v", err)
-				}
+				require.NoError(err, "Error converting proto to timestamp")
 				// Verify it is a catalog created after the test setup's default catalog
 				assert.True(gotCreateTime.After(defaultHcCreated), "New catalog should have been created after default catalog. Was created %v, which is after %v", gotCreateTime, defaultHcCreated)
 				assert.True(gotUpdateTime.After(defaultHcCreated), "New catalog should have been updated after default catalog. Was updated %v, which is after %v", gotUpdateTime, defaultHcCreated)
@@ -374,22 +356,19 @@ func TestCreate(t *testing.T) {
 }
 
 func TestUpdate(t *testing.T) {
+	require := require.New(t)
+	assert := assert.New(t)
 	hc, proj, repo := createDefaultHostCatalogAndRepo(t)
 	tested, err := host_catalogs.NewService(repo)
-	if err != nil {
-		t.Fatalf("Couldn't create host catalog service: %v", err)
-	}
+	require.NoError(err, "Failed to create a new host catalog service.")
 
 	resetHostCatalog := func() {
-		if hc, _, err = repo.UpdateCatalog(context.Background(), hc, []string{"Name", "Description"}); err != nil {
-			t.Fatalf("Failed to reset the catalog")
-		}
+		hc, _, err = repo.UpdateCatalog(context.Background(), hc, []string{"Name", "Description"})
+		require.NoError(err, "Failed to reset host catalog.")
 	}
 
 	hcCreated, err := ptypes.Timestamp(hc.GetCreateTime().GetTimestamp())
-	if err != nil {
-		t.Fatalf("Error converting proto to timestamp: %v", err)
-	}
+	require.NoError(err, "Failed to convert proto to timestamp")
 	toMerge := &pbs.UpdateHostCatalogRequest{
 		OrgId:     proj.GetParentId(),
 		ProjectId: proj.GetPublicId(),
@@ -636,7 +615,6 @@ func TestUpdate(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			defer resetHostCatalog()
-			assert := assert.New(t)
 			req := proto.Clone(toMerge).(*pbs.UpdateHostCatalogRequest)
 			proto.Merge(req, tc.req)
 
@@ -646,9 +624,7 @@ func TestUpdate(t *testing.T) {
 			if got != nil {
 				assert.NotNilf(tc.res, "Expected UpdateHostCatalog response to be nil, but was %v", got)
 				gotUpdateTime, err := ptypes.Timestamp(got.GetItem().GetUpdatedTime())
-				if err != nil {
-					t.Fatalf("Error converting proto to timestamp: %v", err)
-				}
+				require.NoError(err, "Failed to convert proto to timestamp")
 				// Verify it is a catalog updated after it was created
 				// TODO: This is currently failing.
 				//assert.True(gotUpdateTime.After(hcCreated), "Updated catalog should have been updated after it's creation. Was updated %v, which is after %v", gotUpdateTime, hcCreated)
