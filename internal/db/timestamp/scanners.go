@@ -1,4 +1,4 @@
-package store
+package timestamp
 
 import (
 	"database/sql/driver"
@@ -9,7 +9,7 @@ import (
 	"github.com/golang/protobuf/ptypes"
 )
 
-// Scan supports Timestamps for oplogs
+// Scan implements sql.Scanner for protobuf Timestamp.
 func (ts *Timestamp) Scan(value interface{}) error {
 	switch t := value.(type) {
 	case time.Time:
@@ -24,7 +24,7 @@ func (ts *Timestamp) Scan(value interface{}) error {
 	return nil
 }
 
-// Value supports Timestamps for oplogs
+// Scan implements driver.Valuer for protobuf Timestamp.
 func (ts *Timestamp) Value() (driver.Value, error) {
 	if ts == nil {
 		return nil, nil
