@@ -138,8 +138,8 @@ func TestRepository_UpdateUser(t *testing.T) {
 	a.NoError(err)
 
 	org, proj := TestScopes(t, conn)
-
 	pubId := func(s string) *string { return &s }
+
 	type args struct {
 		name           string
 		description    string
@@ -150,6 +150,7 @@ func TestRepository_UpdateUser(t *testing.T) {
 	}
 	tests := []struct {
 		name           string
+		newUserOpts    []Option
 		args           args
 		wantRowsUpdate int
 		wantErr        bool
@@ -163,6 +164,28 @@ func TestRepository_UpdateUser(t *testing.T) {
 				fieldMaskPaths: []string{"Name"},
 				ScopeId:        org.PublicId,
 			},
+			wantErr:        false,
+			wantRowsUpdate: 1,
+		},
+		{
+			name: "null-name",
+			args: args{
+				name:           "",
+				fieldMaskPaths: []string{"Name"},
+				ScopeId:        org.PublicId,
+			},
+			newUserOpts:    []Option{WithName("null-name" + id)},
+			wantErr:        false,
+			wantRowsUpdate: 1,
+		},
+		{
+			name: "null-description",
+			args: args{
+				name:           "",
+				fieldMaskPaths: []string{"Description"},
+				ScopeId:        org.PublicId,
+			},
+			newUserOpts:    []Option{WithDescription("null-description" + id)},
 			wantErr:        false,
 			wantRowsUpdate: 1,
 		},
@@ -258,13 +281,13 @@ func TestRepository_UpdateUser(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			assert := assert.New(t)
 			if tt.wantDup {
-				u := TestUser(t, conn, org.PublicId)
+				u := TestUser(t, conn, org.PublicId, tt.newUserOpts...)
 				u.Name = tt.args.name
 				_, _, err := repo.UpdateUser(context.Background(), u, tt.args.fieldMaskPaths, tt.args.opt...)
 				assert.NoError(err)
 			}
 
-			u := TestUser(t, conn, org.PublicId)
+			u := TestUser(t, conn, org.PublicId, tt.newUserOpts...)
 
 			updateUser := allocUser()
 			updateUser.PublicId = u.PublicId

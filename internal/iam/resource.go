@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"strings"
 
 	"github.com/hashicorp/watchtower/internal/db"
 )
@@ -138,15 +137,8 @@ func validateScopeForWrite(ctx context.Context, r db.Reader, resource ResourceWi
 
 	}
 	if opType == db.UpdateOp && resource.GetScopeId() != "" {
-		switch len(opts.WithFieldMaskPaths) {
-		case 0:
+		if contains(opts.WithFieldMaskPaths, "ScopeId") || contains(opts.WithNullPaths, "ScopeId") {
 			return errors.New("not allowed to change a resource's scope")
-		default:
-			for _, mask := range opts.WithFieldMaskPaths {
-				if strings.EqualFold(mask, "ScopeId") {
-					return errors.New("not allowed to change a resource's scope")
-				}
-			}
 		}
 	}
 	return nil
