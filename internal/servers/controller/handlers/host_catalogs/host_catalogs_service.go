@@ -6,13 +6,13 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/golang/protobuf/ptypes/wrappers"
 	pb "github.com/hashicorp/watchtower/internal/gen/controller/api/resources/hosts"
 	pbs "github.com/hashicorp/watchtower/internal/gen/controller/api/services"
 	"github.com/hashicorp/watchtower/internal/host/static"
 	"github.com/hashicorp/watchtower/internal/servers/controller/handlers"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/types/known/wrapperspb"
 )
 
 const (
@@ -249,14 +249,14 @@ func toDbUpdateMask(paths []string) ([]string, error) {
 func toProto(in *static.HostCatalog) *pb.HostCatalog {
 	out := pb.HostCatalog{Id: in.GetPublicId()}
 	if in.GetDescription() != "" {
-		out.Description = &wrappers.StringValue{Value: in.GetDescription()}
+		out.Description = &wrapperspb.StringValue{Value: in.GetDescription()}
 	}
 	if in.GetName() != "" {
-		out.Name = &wrappers.StringValue{Value: in.GetName()}
+		out.Name = &wrapperspb.StringValue{Value: in.GetName()}
 	}
 	out.CreatedTime = in.GetCreateTime().GetTimestamp()
 	out.UpdatedTime = in.GetUpdateTime().GetTimestamp()
-	out.Type = &wrappers.StringValue{Value: staticType.String()}
+	out.Type = &wrapperspb.StringValue{Value: staticType.String()}
 	return &out
 }
 
