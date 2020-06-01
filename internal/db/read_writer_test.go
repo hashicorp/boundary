@@ -115,6 +115,26 @@ func TestDb_Update(t *testing.T) {
 			wantPhoneNumber: "updated" + id,
 		},
 		{
+			name: "primary-key",
+			args: args{
+				i: &db_test.TestUser{
+					StoreTestUser: &db_test.StoreTestUser{
+						Name:        "primary-key" + id,
+						Email:       "updated" + id,
+						PhoneNumber: "updated" + id,
+						PublicId:    publicId,
+						CreateTime:  now,
+						UpdateTime:  now,
+					},
+				},
+				fieldMaskPaths: []string{"Id"},
+				setToNullPaths: []string{"Email"},
+			},
+			want:       0,
+			wantErr:    true,
+			wantErrMsg: "update: not allowed on primary key field: Id",
+		},
+		{
 			name: "both are missing",
 			args: args{
 				i: &db_test.TestUser{
