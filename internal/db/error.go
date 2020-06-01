@@ -42,9 +42,9 @@ var (
 	ErrMultipleRecords = errors.New("multiple records")
 )
 
-// IsUnique returns a boolean indicating whether the error is known to
+// IsUniqueError returns a boolean indicating whether the error is known to
 // report a unique constraint violation.
-func IsUnique(err error) bool {
+func IsUniqueError(err error) bool {
 	if err == nil {
 		return false
 	}

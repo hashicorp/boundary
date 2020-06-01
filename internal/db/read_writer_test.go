@@ -1,6 +1,7 @@
 package db
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -9,9 +10,11 @@ import (
 	"time"
 
 	"github.com/golang/protobuf/ptypes"
+	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/go-uuid"
 	"github.com/hashicorp/vault/sdk/helper/base62"
 	"github.com/hashicorp/watchtower/internal/db/db_test"
+	"github.com/hashicorp/watchtower/internal/db/timestamp"
 	"github.com/hashicorp/watchtower/internal/oplog"
 	"github.com/jinzhu/gorm"
 	"github.com/stretchr/testify/assert"
@@ -19,7 +22,7 @@ import (
 
 func TestDb_Update(t *testing.T) {
 	cleanup, db, _ := TestSetup(t, "postgres")
-	now := &db_test.Timestamp{Timestamp: ptypes.TimestampNow()}
+	now := &timestamp.Timestamp{Timestamp: ptypes.TimestampNow()}
 	publicId, err := NewPublicId("testuser")
 	if err != nil {
 		t.Error(err)
@@ -371,7 +374,7 @@ func TestDb_Create(t *testing.T) {
 		assert.NoError(err)
 		user, err := db_test.NewTestUser()
 		assert.NoError(err)
-		ts := &db_test.Timestamp{Timestamp: ptypes.TimestampNow()}
+		ts := &timestamp.Timestamp{Timestamp: ptypes.TimestampNow()}
 		user.CreateTime = ts
 		user.UpdateTime = ts
 		user.Name = "foo-" + id
@@ -654,6 +657,18 @@ func TestDb_SearchWhere(t *testing.T) {
 	}()
 	assert := assert.New(t)
 	defer db.Close()
+
+	buf := new(bytes.Buffer)
+	log := hclog.New(&hclog.LoggerOptions{
+		Output: buf,
+		Level:  hclog.Trace,
+	})
+	gorm.LogFormatter = GetGormLogFormatter(log)
+	db.LogMode(true)
+	defer func() {
+		assert.True(strings.Contains(buf.String(), "syntax error at or near"))
+	}()
+
 	t.Run("simple", func(t *testing.T) {
 		w := Db{underlying: db}
 		id, err := uuid.GenerateUUID()
