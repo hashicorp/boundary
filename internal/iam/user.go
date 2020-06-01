@@ -26,17 +26,12 @@ func NewUser(organizationPublicId string, opt ...Option) (*User, error) {
 	opts := getOpts(opt...)
 	withName := opts.withName
 	if organizationPublicId == "" {
-		return nil, fmt.Errorf("new user: missing organization id %w", db.ErrNilParameter)
-	}
-	publicId, err := db.NewPublicId("u")
-	if err != nil {
-		return nil, fmt.Errorf("new user: failed to generate public ID %w", err)
+		return nil, fmt.Errorf("new user: missing organization id %w", db.ErrInvalidParameter)
 	}
 	u := &User{
 		User: &store.User{
-			PublicId: publicId,
-			Name:     withName,
-			ScopeId:  organizationPublicId,
+			Name:    withName,
+			ScopeId: organizationPublicId,
 		},
 	}
 	return u, nil
@@ -98,4 +93,14 @@ func (u *User) SetTableName(n string) {
 	if n != "" {
 		u.tableName = n
 	}
+}
+
+const UserPrefix = "u"
+
+func newUserId() (string, error) {
+	id, err := db.NewPublicId(UserPrefix)
+	if err != nil {
+		return "", fmt.Errorf("new user id: %w", err)
+	}
+	return id, nil
 }

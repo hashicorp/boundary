@@ -59,7 +59,7 @@ func TestNewUser(t *testing.T) {
 				opt: []Option{WithName(id)},
 			},
 			wantErr:    true,
-			wantErrMsg: "new user: missing organization id nil parameter",
+			wantErrMsg: "new user: missing organization id invalid parameter",
 		},
 	}
 	for _, tt := range tests {
@@ -72,6 +72,7 @@ func TestNewUser(t *testing.T) {
 			}
 			assert.NoError(err)
 			assert.Equal(tt.wantName, got.Name)
+			assert.Empty(got.PublicId)
 		})
 	}
 }
@@ -94,6 +95,9 @@ func Test_UserCreate(t *testing.T) {
 		w := db.New(conn)
 		user, err := NewUser(org.PublicId)
 		assert.NoError(err)
+		id, err := newUserId()
+		assert.NoError(err)
+		user.PublicId = id
 		err = w.Create(context.Background(), user)
 		assert.NoError(err)
 		assert.NotEmpty(user.PublicId)
@@ -108,6 +112,9 @@ func Test_UserCreate(t *testing.T) {
 		w := db.New(conn)
 		user, err := NewUser(id)
 		assert.NoError(err)
+		id, err := newUserId()
+		assert.NoError(err)
+		user.PublicId = id
 		err = w.Create(context.Background(), user)
 		assert.Error(err)
 		assert.Equal("create: vet for write failed scope is not found", err.Error())
@@ -309,6 +316,9 @@ func Test_UserGetScope(t *testing.T) {
 		w := db.New(conn)
 		user, err := NewUser(org.PublicId)
 		assert.NoError(err)
+		id, err := newUserId()
+		assert.NoError(err)
+		user.PublicId = id
 		err = w.Create(context.Background(), user)
 		assert.NoError(err)
 		assert.NotEmpty(user.PublicId)
@@ -344,6 +354,9 @@ func TestUser_Clone(t *testing.T) {
 		w := db.New(conn)
 		user, err := NewUser(org.PublicId)
 		assert.NoError(err)
+		id, err := newUserId()
+		assert.NoError(err)
+		user.PublicId = id
 		err = w.Create(context.Background(), user)
 		assert.NoError(err)
 
@@ -355,11 +368,17 @@ func TestUser_Clone(t *testing.T) {
 
 		user, err := NewUser(org.PublicId)
 		assert.NoError(err)
+		id, err := newUserId()
+		assert.NoError(err)
+		user.PublicId = id
 		err = w.Create(context.Background(), user)
 		assert.NoError(err)
 
 		user2, err := NewUser(org.PublicId)
 		assert.NoError(err)
+		id, err = newUserId()
+		assert.NoError(err)
+		user2.PublicId = id
 		err = w.Create(context.Background(), user2)
 		assert.NoError(err)
 
