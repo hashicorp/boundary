@@ -5,16 +5,7 @@ syntax = "proto3";
 package controller.storage.host.static.store.v1;
 option go_package = "github.com/hashicorp/watchtower/internal/host/static/store;store";
 
-import "google/protobuf/timestamp.proto";
-
-// Timestamp for static host messages.  We've defined a new local type wrapper
-// of google.protobuf.Timestamp so we can implement sql.Scanner and sql.Valuer
-// interfaces.  See:
-// https://golang.org/pkg/database/sql/#Scanner
-// https://golang.org/pkg/database/sql/driver/#Valuer
-message Timestamp {
-  google.protobuf.Timestamp timestamp = 1;
-}
+import "controller/storage/timestamp/v1/timestamp.proto";
 
 message HostCatalog {
   // public_is is a surrogate key suitable for use in a public API.
@@ -23,11 +14,11 @@ message HostCatalog {
 
   // The create_time is set by the database.
   // @inject_tag: `gorm:"default:current_timestamp"`
-  Timestamp create_time = 2;
+  timestamp.v1.Timestamp create_time = 2;
 
   // The update_time is set by the database.
   // @inject_tag: `gorm:"default:current_timestamp"`
-  Timestamp update_time = 3;
+  timestamp.v1.Timestamp update_time = 3;
 
   // name is optional. If set, it must be unique within scope_id.
   // @inject_tag: `gorm:"default:null"`
@@ -49,11 +40,11 @@ message Host {
 
   // The create_time is set by the database.
   // @inject_tag: `gorm:"default:current_timestamp"`
-  Timestamp create_time = 2;
+  timestamp.v1.Timestamp create_time = 2;
 
   // The update_time is set by the database.
   // @inject_tag: `gorm:"default:current_timestamp"`
-  Timestamp update_time = 3;
+  timestamp.v1.Timestamp update_time = 3;
 
   // name is optional. If set, it must be unique within
   // static_host_catalog_id.
@@ -82,11 +73,11 @@ message HostSet {
 
   // The create_time is set by the database.
   // @inject_tag: `gorm:"default:current_timestamp"`
-  Timestamp create_time = 2;
+  timestamp.v1.Timestamp create_time = 2;
 
   // The update_time is set by the database.
   // @inject_tag: `gorm:"default:current_timestamp"`
-  Timestamp update_time = 3;
+  timestamp.v1.Timestamp update_time = 3;
 
   // name is optional. If set, it must be unique within
   // static_host_catalog_id.

@@ -12,6 +12,7 @@ import (
 	"github.com/hashicorp/go-uuid"
 	"github.com/hashicorp/vault/sdk/helper/base62"
 	"github.com/hashicorp/watchtower/internal/db/db_test"
+	"github.com/hashicorp/watchtower/internal/db/timestamp"
 	"github.com/hashicorp/watchtower/internal/oplog"
 	"github.com/jinzhu/gorm"
 	"github.com/stretchr/testify/assert"
@@ -19,7 +20,7 @@ import (
 
 func TestDb_Update(t *testing.T) {
 	cleanup, db, _ := TestSetup(t, "postgres")
-	now := &db_test.Timestamp{Timestamp: ptypes.TimestampNow()}
+	now := &timestamp.Timestamp{Timestamp: ptypes.TimestampNow()}
 	publicId, err := NewPublicId("testuser")
 	if err != nil {
 		t.Error(err)
@@ -371,7 +372,7 @@ func TestDb_Create(t *testing.T) {
 		assert.NoError(err)
 		user, err := db_test.NewTestUser()
 		assert.NoError(err)
-		ts := &db_test.Timestamp{Timestamp: ptypes.TimestampNow()}
+		ts := &timestamp.Timestamp{Timestamp: ptypes.TimestampNow()}
 		user.CreateTime = ts
 		user.UpdateTime = ts
 		user.Name = "foo-" + id

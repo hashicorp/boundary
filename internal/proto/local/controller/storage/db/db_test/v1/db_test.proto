@@ -6,12 +6,7 @@ syntax = "proto3";
 package controller.storage.db.db_test.v1;
 option go_package = "github.com/hashicorp/watchtower/internal/db/db_test;db_test";
 
-import "google/protobuf/timestamp.proto";
-
-// Timestamp for oplog messages
-message Timestamp {
-  google.protobuf.Timestamp timestamp = 1;
-}
+import "controller/storage/timestamp/v1/timestamp.proto";
 
 // TestUser for gorm test user model
 message StoreTestUser {
@@ -20,11 +15,11 @@ message StoreTestUser {
 
   // create_time from the RDBMS
   // @inject_tag: `gorm:"default:CURRENT_TIMESTAMP"`
-  Timestamp create_time = 2;
+  timestamp.v1.Timestamp create_time = 2;
 
   // update_time from the RDBMS
   // @inject_tag: `gorm:"default:CURRENT_TIMESTAMP"`
-  Timestamp update_time = 3;
+  timestamp.v1.Timestamp update_time = 3;
 
   // public_id is the used to access the AssignablScope via an API
   string public_id = 4;
@@ -44,11 +39,11 @@ message StoreTestCar {
 
   // create_time from the RDBMS
   // @inject_tag: `gorm:"default:CURRENT_TIMESTAMP"`
-  Timestamp create_time = 2;
+  timestamp.v1.Timestamp create_time = 2;
 
   // update_time from the RDBMS
   // @inject_tag: `gorm:"default:CURRENT_TIMESTAMP"`
-  Timestamp update_time = 3;
+  timestamp.v1.Timestamp update_time = 3;
 
   // public_id is the used to access the AssignablScope via an API
   string public_id = 4;
@@ -68,11 +63,11 @@ message StoreTestRental {
 
   // create_time from the RDBMS
   // @inject_tag: `gorm:"default:CURRENT_TIMESTAMP"`
-  Timestamp create_time = 2;
+  timestamp.v1.Timestamp create_time = 2;
 
   // update_time from the RDBMS
   // @inject_tag: `gorm:"default:CURRENT_TIMESTAMP"`
-  Timestamp update_time = 3;
+  timestamp.v1.Timestamp update_time = 3;
 
   // public_id is the used to access the AssignablScope via an API
   string public_id = 4;
