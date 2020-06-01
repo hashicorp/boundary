@@ -106,13 +106,13 @@ func TestGet(t *testing.T) {
 			// This will be fixed with PR 42
 			errCode: codes.NotFound,
 		},
-		// TODO: Decide if this should be an invalid argument or unimplemented exception when the prefix doesn't match a known subtype.
+		// TODO: Decide if this should be an invalid argument or not found when the prefix doesn't match a known subtype.
 		{
 			name: "Wrong id prefix",
 			req:  &pbs.GetHostCatalogRequest{Id: "j_1234567890"},
 			res:  nil,
 			// This will be fixed with PR 42
-			errCode: codes.InvalidArgument,
+			errCode: codes.NotFound,
 		},
 		{
 			name: "space in id",
