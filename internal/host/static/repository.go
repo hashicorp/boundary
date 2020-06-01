@@ -53,6 +53,9 @@ func (r *Repository) CreateCatalog(ctx context.Context, c *HostCatalog, opt ...O
 	if c == nil {
 		return nil, fmt.Errorf("create: static host catalog: %w", db.ErrNilParameter)
 	}
+	if c.HostCatalog == nil {
+		return nil, fmt.Errorf("create: static host catalog: embedded HostCatalog: %w", db.ErrNilParameter)
+	}
 	if c.ScopeId == "" {
 		return nil, fmt.Errorf("create: static host catalog: no scope id: %w", db.ErrInvalidParameter)
 	}
@@ -85,7 +88,7 @@ func (r *Repository) CreateCatalog(ctx context.Context, c *HostCatalog, opt ...O
 	)
 
 	if err != nil {
-		if db.IsUnique(err) {
+		if db.IsUniqueError(err) {
 			return nil, fmt.Errorf("create: static host catalog: in scope: %s: name %s already exists: %w",
 				c.ScopeId, c.Name, db.ErrNotUnique)
 		}
@@ -109,6 +112,9 @@ func (r *Repository) UpdateCatalog(ctx context.Context, c *HostCatalog, fieldMas
 	if c == nil {
 		return nil, db.NoRowsAffected, fmt.Errorf("update: static host catalog: %w", db.ErrNilParameter)
 	}
+	if c.HostCatalog == nil {
+		return nil, db.NoRowsAffected, fmt.Errorf("update: static host catalog: embedded HostCatalog: %w", db.ErrNilParameter)
+	}
 	if c.PublicId == "" {
 		return nil, db.NoRowsAffected, fmt.Errorf("update: static host catalog: missing public id: %w", db.ErrInvalidParameter)
 	}
@@ -116,10 +122,18 @@ func (r *Repository) UpdateCatalog(ctx context.Context, c *HostCatalog, fieldMas
 		return nil, db.NoRowsAffected, fmt.Errorf("update: static host catalog: %w", db.ErrEmptyFieldMask)
 	}
 
+	var dbMask, nullFields []string
 	for _, f := range fieldMask {
 		switch {
-		case strings.EqualFold("name", f):
-		case strings.EqualFold("description", f):
+		case strings.EqualFold("name", f) && c.Name == "":
+			nullFields = append(nullFields, "name")
+		case strings.EqualFold("name", f) && c.Name != "":
+			dbMask = append(dbMask, "name")
+		case strings.EqualFold("description", f) && c.Description == "":
+			nullFields = append(nullFields, "description")
+		case strings.EqualFold("description", f) && c.Description != "":
+			dbMask = append(dbMask, "description")
+
 		default:
 			return nil, db.NoRowsAffected, fmt.Errorf("update: static host catalog: field: %s: %w", f, db.ErrInvalidFieldMask)
 		}
@@ -128,8 +142,6 @@ func (r *Repository) UpdateCatalog(ctx context.Context, c *HostCatalog, fieldMas
 
 	metadata := newCatalogMetadata(c, oplog.OpType_OP_TYPE_UPDATE)
 
-	// TODO(mgaffney,jimlambrt) 05/2020: uncomment the nullFields line
-	// below once support for setting columns to nil is added to db.Update.
 	var rowsUpdated int
 	var returnedCatalog *HostCatalog
 	_, err := r.writer.DoTx(
@@ -142,8 +154,8 @@ func (r *Repository) UpdateCatalog(ctx context.Context, c *HostCatalog, fieldMas
 			rowsUpdated, err = w.Update(
 				ctx,
 				returnedCatalog,
-				fieldMask,
-				// nullFields,
+				dbMask,
+				nullFields,
 				db.WithOplog(r.wrapper, metadata),
 			)
 			if err == nil && rowsUpdated > 1 {
@@ -154,7 +166,7 @@ func (r *Repository) UpdateCatalog(ctx context.Context, c *HostCatalog, fieldMas
 	)
 
 	if err != nil {
-		if db.IsUnique(err) {
+		if db.IsUniqueError(err) {
 			return nil, db.NoRowsAffected, fmt.Errorf("update: static host catalog: %s: name %s already exists: %w",
 				c.PublicId, c.Name, db.ErrNotUnique)
 		}
@@ -219,15 +231,6 @@ func (r *Repository) DeleteCatalog(ctx context.Context, id string, opt ...Option
 	}
 
 	return rowsDeleted, nil
-}
-
-func contains(ss []string, t string) bool {
-	for _, s := range ss {
-		if strings.EqualFold(s, t) {
-			return true
-		}
-	}
-	return false
 }
 
 func allocCatalog() *HostCatalog {
