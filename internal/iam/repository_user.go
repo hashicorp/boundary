@@ -3,6 +3,7 @@ package iam
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/hashicorp/watchtower/internal/db"
 )
@@ -32,23 +33,38 @@ func (r *Repository) CreateUser(ctx context.Context, user *User, opt ...Option) 
 }
 
 // UpdateUser will update a user in the repository and return the written user.
-// If fieldMaskPaths is unset, the updatable fields will be updated(Name,
-// Description and Disabled).
+// fieldMaskPaths provides field_mask.proto paths for fields that should
+// be updated.  Fields will be set to NULL if the field is a zero value and
+// included in fieldMask. Name and Description are the only updatable fields,
+// If no updatable fields are included in the fieldMaskPaths, then an error is returned.
 func (r *Repository) UpdateUser(ctx context.Context, user *User, fieldMaskPaths []string, opt ...Option) (*User, int, error) {
 	if user == nil {
 		return nil, db.NoRowsAffected, fmt.Errorf("update user: missing user %w", db.ErrNilParameter)
 	}
 	if user.PublicId == "" {
-		return nil, db.NoRowsAffected, fmt.Errorf("update user: missing user public id %w", db.ErrNilParameter)
+		return nil, db.NoRowsAffected, fmt.Errorf("update user: missing user public id %w", db.ErrInvalidParameter)
 	}
-	if len(fieldMaskPaths) == 0 {
-		fieldMaskPaths = []string{
-			"Name",
-			"Description",
-			"Disabled",
+	for _, f := range fieldMaskPaths {
+		switch {
+		case strings.EqualFold("name", f):
+		case strings.EqualFold("description", f):
+		default:
+			return nil, db.NoRowsAffected, fmt.Errorf("update user: field: %s: %w", f, db.ErrInvalidFieldMask)
 		}
 	}
-	resource, rowsUpdated, err := r.update(ctx, user, fieldMaskPaths, nil)
+	var dbMask, nullFields []string
+	dbMask, nullFields = buildUpdatePaths(
+		map[string]interface{}{
+			"name":        user.Name,
+			"description": user.Description,
+		},
+		fieldMaskPaths,
+	)
+	if len(dbMask) == 0 && len(nullFields) == 0 {
+		return nil, db.NoRowsAffected, fmt.Errorf("update user: %w", db.ErrEmptyFieldMask)
+	}
+	u := user.Clone()
+	resource, rowsUpdated, err := r.update(ctx, u.(*User), dbMask, nullFields)
 	if err != nil {
 		if db.IsUnique(err) {
 			return nil, db.NoRowsAffected, fmt.Errorf("update user: user %s already exists in organization %s", user.Name, user.ScopeId)

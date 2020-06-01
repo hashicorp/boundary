@@ -138,12 +138,14 @@ func TestRepository_UpdateUser(t *testing.T) {
 
 	org, proj := TestScopes(t, conn)
 
+	pubId := func(s string) *string { return &s }
 	type args struct {
 		name           string
 		description    string
 		fieldMaskPaths []string
 		opt            []Option
 		ScopeId        string
+		PublicId       *string
 	}
 	tests := []struct {
 		name           string
@@ -164,6 +166,62 @@ func TestRepository_UpdateUser(t *testing.T) {
 			wantRowsUpdate: 1,
 		},
 		{
+			name: "empty-field-mask",
+			args: args{
+				name:           "valid" + id,
+				fieldMaskPaths: []string{},
+				ScopeId:        org.PublicId,
+			},
+			wantErr:        true,
+			wantRowsUpdate: 0,
+			wantErrMsg:     "update user: empty field mask",
+		},
+		{
+			name: "nil-fieldmask",
+			args: args{
+				name:           "valid" + id,
+				fieldMaskPaths: nil,
+				ScopeId:        org.PublicId,
+			},
+			wantErr:        true,
+			wantRowsUpdate: 0,
+			wantErrMsg:     "update user: empty field mask",
+		},
+		{
+			name: "read-only-fields",
+			args: args{
+				name:           "valid" + id,
+				fieldMaskPaths: []string{"CreateTime"},
+				ScopeId:        org.PublicId,
+			},
+			wantErr:        true,
+			wantRowsUpdate: 0,
+			wantErrMsg:     "update user: field: CreateTime: invalid field mask",
+		},
+		{
+			name: "unknown-fields",
+			args: args{
+				name:           "valid" + id,
+				fieldMaskPaths: []string{"Alice"},
+				ScopeId:        org.PublicId,
+			},
+			wantErr:        true,
+			wantRowsUpdate: 0,
+			wantErrMsg:     "update user: field: Alice: invalid field mask",
+		},
+		{
+			name: "no-public-id",
+			args: args{
+				name:           "valid" + id,
+				fieldMaskPaths: []string{"Name"},
+				ScopeId:        org.PublicId,
+				PublicId:       pubId(""),
+			},
+			wantErr:        true,
+			wantErrMsg:     "update user: missing user public id invalid parameter",
+			wantRowsUpdate: 0,
+		},
+		{
 			name: "proj-scope-id",
 			args: args{
 				name:           "proj-scope-id" + id,
@@ -171,7 +229,7 @@ func TestRepository_UpdateUser(t *testing.T) {
 				ScopeId:        proj.PublicId,
 			},
 			wantErr:    true,
-			wantErrMsg: "update user: update: vet for write failed not allowed to change a resource's scope for %s",
+			wantErrMsg: "update user: field: ScopeId: invalid field mask",
 		},
 		{
 			name: "empty-scope-id-with-name-mask",
@@ -209,6 +267,9 @@ func TestRepository_UpdateUser(t *testing.T) {
 
 			updateUser := allocUser()
 			updateUser.PublicId = u.PublicId
+			if tt.args.PublicId != nil {
+				updateUser.PublicId = *tt.args.PublicId
+			}
 			updateUser.ScopeId = tt.args.ScopeId
 			updateUser.Name = tt.args.name
 			updateUser.Description = tt.args.description
@@ -221,8 +282,6 @@ func TestRepository_UpdateUser(t *testing.T) {
 				switch tt.name {
 				case "dup-name":
 					assert.Equal(fmt.Sprintf(tt.wantErrMsg, "dup-name"+id, org.PublicId), err.Error())
-				case "proj-scope-id":
-					assert.Equal(fmt.Sprintf(tt.wantErrMsg, u.PublicId), err.Error())
 				default:
 					assert.Equal(tt.wantErrMsg, err.Error())
 				}
