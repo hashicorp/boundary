@@ -12,12 +12,21 @@ func (r *Repository) CreateUser(ctx context.Context, user *User, opt ...Option) 
 	if user == nil {
 		return nil, fmt.Errorf("create user: missing user %w", db.ErrNilParameter)
 	}
-	resource, err := r.create(ctx, user)
+	if user.PublicId != "" {
+		return nil, fmt.Errorf("create user: public id is not empty %w", db.ErrInvalidParameter)
+	}
+	id, err := newUserId()
 	if err != nil {
-		if uniqueError(err) {
+		return nil, fmt.Errorf("create user: %w", err)
+	}
+	u := user.Clone()
+	u.(*User).PublicId = id
+	resource, err := r.create(ctx, u.(*User))
+	if err != nil {
+		if db.IsUnique(err) {
 			return nil, fmt.Errorf("create user: user %s already exists in organization %s", user.Name, user.ScopeId)
 		}
-		return nil, fmt.Errorf("create user: %w for %s", err, user.PublicId)
+		return nil, fmt.Errorf("create user: %w for %s", err, u.(*User).PublicId)
 	}
 	return resource.(*User), err
 }
@@ -41,7 +50,7 @@ func (r *Repository) UpdateUser(ctx context.Context, user *User, fieldMaskPaths 
 	}
 	resource, rowsUpdated, err := r.update(ctx, user, fieldMaskPaths, nil)
 	if err != nil {
-		if uniqueError(err) {
+		if db.IsUnique(err) {
 			return nil, db.NoRowsAffected, fmt.Errorf("update user: user %s already exists in organization %s", user.Name, user.ScopeId)
 		}
 		return nil, db.NoRowsAffected, fmt.Errorf("update user: %w for %s", err, user.PublicId)
