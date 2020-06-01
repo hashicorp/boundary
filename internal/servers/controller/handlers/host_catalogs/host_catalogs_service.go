@@ -206,9 +206,6 @@ func (s Service) updateInRepo(ctx context.Context, projId, id string, mask []str
 	if err != nil {
 		return nil, err
 	}
-	if len(dbMask) == 0 {
-		return nil, handlers.InvalidArgumentErrorf("No valid fields included in the update mask.", []string{"update_mask"})
-	}
 	out, rowsUpdated, err := s.staticRepo.UpdateCatalog(ctx, h, dbMask)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "Unable to update host catalog: %v.", err)
@@ -242,6 +239,9 @@ func toDbUpdateMask(paths []string) ([]string, error) {
 	}
 	if len(invalid) > 0 {
 		return nil, handlers.InvalidArgumentErrorf(fmt.Sprintf("Invalid fields passed in update_update mask: %v.", invalid), []string{"update_mask"})
+	}
+	if len(dbPaths) == 0 {
+		return nil, handlers.InvalidArgumentErrorf("No valid paths included in the update mask.", []string{"update_mask"})
 	}
 	return dbPaths, nil
 }
