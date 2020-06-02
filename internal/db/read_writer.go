@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/hashicorp/watchtower/internal/db/common"
 	"github.com/hashicorp/watchtower/internal/oplog"
 	"github.com/jinzhu/gorm"
 	"google.golang.org/protobuf/proto"
@@ -42,13 +43,17 @@ type Writer interface {
 	// DoTx will wrap the TxHandler in a retryable transaction
 	DoTx(ctx context.Context, retries uint, backOff Backoff, Handler TxHandler) (RetryInfo, error)
 
-	// Update an object in the db, if there's a fieldMask then only the
-	// field_mask.proto paths are updated, otherwise it will send every field to
-	// the DB.  options: WithOplog the caller is responsible for the transaction
-	// life cycle of the writer and if an error is returned the caller must
-	// decide what to do with the transaction, which almost always should be to
-	// rollback.  Update returns the number of rows updated or an error.
-	Update(ctx context.Context, i interface{}, fieldMaskPaths []string, opt ...Option) (int, error)
+	// Update an object in the db, fieldMask is required and provides
+	// field_mask.proto paths for fields that should be updated. The i interface
+	// parameter is the type the caller wants to update in the db and its
+	// fields are set to the update values. setToNullPaths is optional and
+	// provides field_mask.proto paths for the fields that should be set to
+	// null.  fieldMaskPaths and setToNullPaths must not intersect. The caller
+	// is responsible for the transaction life cycle of the writer and if an
+	// error is returned the caller must decide what to do with the transaction,
+	// which almost always should be to rollback.  Update returns the number of
+	// rows updated or an error. Supported options: WithOplog.
+	Update(ctx context.Context, i interface{}, fieldMaskPaths []string, setToNullPaths []string, opt ...Option) (int, error)
 
 	// Create an object in the db with options: WithOplog
 	// the caller is responsible for the transaction life cycle of the writer
@@ -99,7 +104,10 @@ const (
 	DeleteOp  OpType = 3
 )
 
-// VetForWriter provides an interface that Create and Update can use to vet the resource before sending it to the db
+// VetForWriter provides an interface that Create and Update can use to vet the
+// resource before before writing it to the db.  For optType == UpdateOp,
+// options WithFieldMaskPath and WithNullPaths are supported.  For optType ==
+// CreateOp, no options are supported
 type VetForWriter interface {
 	VetForWrite(ctx context.Context, r Reader, opType OpType, opt ...Option) error
 }
@@ -130,7 +138,7 @@ func (rw *Db) ScanRows(rows *sql.Rows, result interface{}) error {
 	if rw.underlying == nil {
 		return fmt.Errorf("scan rows: missing underlying db %w", ErrNilParameter)
 	}
-	if result == nil {
+	if isNil(result) {
 		return fmt.Errorf("scan rows: result is missing %w", ErrNilParameter)
 	}
 	return rw.underlying.ScanRows(rows, result)
@@ -152,12 +160,13 @@ func (rw *Db) lookupAfterWrite(ctx context.Context, i interface{}, opt ...Option
 	return errors.New("not a resource with an id")
 }
 
-// Create an object in the db with options: WithOplog and WithLookup (to force a lookup after create))
+// Create an object in the db with options: WithOplog and WithLookup (to force a
+// lookup after create).
 func (rw *Db) Create(ctx context.Context, i interface{}, opt ...Option) error {
 	if rw.underlying == nil {
 		return fmt.Errorf("create: missing underlying db %w", ErrNilParameter)
 	}
-	if i == nil {
+	if isNil(i) {
 		return fmt.Errorf("create: interface is missing %w", ErrNilParameter)
 	}
 	opts := GetOpts(opt...)
@@ -173,9 +182,6 @@ func (rw *Db) Create(ctx context.Context, i interface{}, opt ...Option) error {
 	if withDebug {
 		rw.underlying.LogMode(true)
 		defer rw.underlying.LogMode(false)
-	}
-	if i == nil {
-		return fmt.Errorf("create: missing interface %w", ErrNilParameter)
 	}
 	// these fields should be nil, since they are not writeable and we want the
 	// db to manage them
@@ -200,19 +206,40 @@ func (rw *Db) Create(ctx context.Context, i interface{}, opt ...Option) error {
 	return nil
 }
 
-// Update an object in the db, if there's a fieldMask then only the
-// field_mask.proto paths are updated, otherwise it will send every field to the
-// DB.  Update supports embedding a struct (or structPtr) one level deep for
-// updating. Update returns the number of rows updated and any errors.
-func (rw *Db) Update(ctx context.Context, i interface{}, fieldMaskPaths []string, opt ...Option) (int, error) {
+// Update an object in the db, fieldMask is required and provides
+// field_mask.proto paths for fields that should be updated. The i interface
+// parameter is the type the caller wants to update in the db and its
+// fields are set to the update values. setToNullPaths is optional and
+// provides field_mask.proto paths for the fields that should be set to
+// null.  fieldMaskPaths and setToNullPaths must not intersect. The caller
+// is responsible for the transaction life cycle of the writer and if an
+// error is returned the caller must decide what to do with the transaction,
+// which almost always should be to rollback.  Update returns the number of
+// rows updated. Supported options: WithOplog.
+func (rw *Db) Update(ctx context.Context, i interface{}, fieldMaskPaths []string, setToNullPaths []string, opt ...Option) (int, error) {
 	if rw.underlying == nil {
 		return NoRowsAffected, fmt.Errorf("update: missing underlying db %w", ErrNilParameter)
 	}
-	if i == nil {
+	if isNil(i) {
 		return NoRowsAffected, fmt.Errorf("update: interface is missing %w", ErrNilParameter)
 	}
-	if len(fieldMaskPaths) == 0 {
-		return NoRowsAffected, fmt.Errorf("update: missing fieldMaskPaths %w", ErrNilParameter)
+	if len(fieldMaskPaths) == 0 && len(setToNullPaths) == 0 {
+		return NoRowsAffected, errors.New("update: both fieldMaskPaths and setToNullPaths are missing")
+	}
+
+	// we need to filter out some non-updatable fields (like: CreateTime, etc)
+	fieldMaskPaths = filterPaths(fieldMaskPaths)
+	setToNullPaths = filterPaths(setToNullPaths)
+	if len(fieldMaskPaths) == 0 && len(setToNullPaths) == 0 {
+		return NoRowsAffected, fmt.Errorf("update: after filtering non-updated fields, there are no fields left in fieldMaskPaths or setToNullPaths")
+	}
+
+	updateFields, err := common.UpdateFields(i, fieldMaskPaths, setToNullPaths)
+	if err != nil {
+		return NoRowsAffected, fmt.Errorf("update: getting update fields failed: %w", err)
+	}
+	if len(updateFields) == 0 {
+		return NoRowsAffected, fmt.Errorf("update: no fields matched using fieldMaskPaths %s", fieldMaskPaths)
 	}
 
 	// This is not a watchtower scope, but rather a gorm Scope:
@@ -237,54 +264,11 @@ func (rw *Db) Update(ctx context.Context, i interface{}, fieldMaskPaths []string
 		defer rw.underlying.LogMode(false)
 	}
 	if vetter, ok := i.(VetForWriter); ok {
-		if err := vetter.VetForWrite(ctx, rw, UpdateOp, WithFieldMaskPaths(fieldMaskPaths)); err != nil {
+		if err := vetter.VetForWrite(ctx, rw, UpdateOp, WithFieldMaskPaths(fieldMaskPaths), WithNullPaths(setToNullPaths)); err != nil {
 			return NoRowsAffected, fmt.Errorf("update: vet for write failed %w", err)
 		}
 	}
 
-	// we need to filter out some non-updatable fields (like: CreateTime, etc)
-	fieldMaskPaths = filterFieldMask(fieldMaskPaths)
-	if len(fieldMaskPaths) == 0 {
-		return NoRowsAffected, fmt.Errorf("update: after filtering non-updated fields, there are no fields left in fieldMaskPaths: %s", fieldMaskPaths)
-	}
-
-	updateFields := map[string]interface{}{}
-
-	val := reflect.Indirect(reflect.ValueOf(i))
-	structTyp := val.Type()
-	for _, field := range fieldMaskPaths {
-		for i := 0; i < structTyp.NumField(); i++ {
-			kind := structTyp.Field(i).Type.Kind()
-			if kind == reflect.Struct || kind == reflect.Ptr {
-				embType := structTyp.Field(i).Type
-				// check if the embedded field is exported via CanInterface()
-				if val.Field(i).CanInterface() {
-					embVal := reflect.Indirect(reflect.ValueOf(val.Field(i).Interface()))
-					// if it's a ptr to a struct, then we need a few more bits before proceeding.
-					if kind == reflect.Ptr {
-						embVal = val.Field(i).Elem()
-						embType = embVal.Type()
-						if embType.Kind() != reflect.Struct {
-							continue
-						}
-					}
-					for embFieldNum := 0; embFieldNum < embType.NumField(); embFieldNum++ {
-						if strings.EqualFold(embType.Field(embFieldNum).Name, field) {
-							updateFields[field] = embVal.Field(embFieldNum).Interface()
-						}
-					}
-					continue
-				}
-			}
-			// it's not an embedded type, so check if the field name matches
-			if strings.EqualFold(structTyp.Field(i).Name, field) {
-				updateFields[field] = val.Field(i).Interface()
-			}
-		}
-	}
-	if len(updateFields) == 0 {
-		return NoRowsAffected, fmt.Errorf("update: no fields matched using fieldMaskPaths %s", fieldMaskPaths)
-	}
 	underlying := rw.underlying.Model(i).Updates(updateFields)
 	if underlying.Error != nil {
 		return NoRowsAffected, fmt.Errorf("update: failed %w", underlying.Error)
@@ -311,7 +295,7 @@ func (rw *Db) Delete(ctx context.Context, i interface{}, opt ...Option) (int, er
 	if rw.underlying == nil {
 		return NoRowsAffected, fmt.Errorf("delete: missing underlying db %w", ErrNilParameter)
 	}
-	if i == nil {
+	if isNil(i) {
 		return NoRowsAffected, fmt.Errorf("delete: interface is missing %w", ErrNilParameter)
 	}
 	// This is not a watchtower scope, but rather a gorm Scope:
@@ -539,13 +523,13 @@ func (rw *Db) SearchWhere(ctx context.Context, resources interface{}, where stri
 	return nil
 }
 
-// filterFieldMasks will filter out non-updatable fields
-func filterFieldMask(fieldMaskPaths []string) []string {
-	if len(fieldMaskPaths) == 0 {
+// filterPaths will filter out non-updatable fields
+func filterPaths(paths []string) []string {
+	if len(paths) == 0 {
 		return nil
 	}
 	filtered := []string{}
-	for _, p := range fieldMaskPaths {
+	for _, p := range paths {
 		switch {
 		case strings.EqualFold(p, "CreateTime"):
 			continue
@@ -598,4 +582,15 @@ func setFieldsToNil(i interface{}, fieldNames []string) {
 			}
 		}
 	}
+}
+
+func isNil(i interface{}) bool {
+	if i == nil {
+		return true
+	}
+	switch reflect.TypeOf(i).Kind() {
+	case reflect.Ptr, reflect.Map, reflect.Array, reflect.Chan, reflect.Slice:
+		return reflect.ValueOf(i).IsNil()
+	}
+	return false
 }

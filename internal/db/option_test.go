@@ -60,4 +60,30 @@ func Test_getOpts(t *testing.T) {
 		testOpts.withDebug = true
 		assert.Equal(opts, testOpts)
 	})
+	t.Run("WithFieldMaskPaths", func(t *testing.T) {
+		// test default of []string{}
+		opts := GetOpts()
+		testOpts := getDefaultOptions()
+		testOpts.WithFieldMaskPaths = []string{}
+		assert.Equal(opts, testOpts)
+
+		testPaths := []string{"alice", "bob"}
+		opts = GetOpts(WithFieldMaskPaths(testPaths))
+		testOpts = getDefaultOptions()
+		testOpts.WithFieldMaskPaths = testPaths
+		assert.Equal(opts, testOpts)
+	})
+	t.Run("WithNullPaths", func(t *testing.T) {
+		// test default of []string{}
+		opts := GetOpts()
+		testOpts := getDefaultOptions()
+		testOpts.WithNullPaths = []string{}
+		assert.Equal(opts, testOpts)
+
+		testPaths := []string{"alice", "bob"}
+		opts = GetOpts(WithNullPaths(testPaths))
+		testOpts = getDefaultOptions()
+		testOpts.WithNullPaths = testPaths
+		assert.Equal(opts, testOpts)
+	})
 }
