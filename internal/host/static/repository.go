@@ -251,3 +251,52 @@ func newCatalogMetadata(c *HostCatalog, op oplog.OpType) oplog.Metadata {
 	}
 	return metadata
 }
+
+// CreateHost inserts h into the repository and returns a new Host
+// containing the host's PublicId. h is not changed. h must contain a valid
+// StaticHostCatalogId. h must not contain a PublicId. The PublicId is
+// generated and assigned by this method. opt is ignored.
+//
+// h.Address must contain a string where 7 < len(h.Address) < 256. Both
+// h.Name and h.Description are optional. If h.Name is set, it must be
+// unique within h.StaticHostCatalogId. There are no unique constraints on
+// the Address of a host.
+//
+// Both h.CreateTime and h.UpdateTime are ignored.
+func (r *Repository) CreateHost(ctx context.Context, h *Host, opt ...Option) (*Host, error) {
+	return nil, nil
+}
+
+// UpdateHost updates the repository entry for h.PublicId with the values
+// in h for the fields listed in fieldMask. It returns a new Host
+// containing the updated values and a count of the number of records
+// updated. h is not changed.
+//
+// h must contain a valid PublicId. Only h.Name, h.Description, and
+// h.Address can be updated. If h.Name is set to a non-empty string, it
+// must be unique within h.StaticHostCatalogId. h.Address must contain a
+// string where 7 < len(h.Address) < 256.
+//
+// An attribute of h will be set to NULL in the database if the attribute
+// in h is the zero value and it is included in fieldMask.
+func (r *Repository) UpdateHost(ctx context.Context, h *Host, fieldMask []string, opt ...Option) (*Host, int, error) {
+	return nil, 0, nil
+}
+
+// DeleteHost deletes id from the repository returning a count of the
+// number of records deleted.
+func (r *Repository) DeleteHost(ctx context.Context, id string, opt ...Option) (int, error) {
+	return 0, nil
+}
+
+// LookupHost returns the host for id. Returns nil, nil if no host is found
+// for id.
+func (r *Repository) LookupHost(ctx context.Context, id string) (*Host, error) {
+	return nil, nil
+}
+
+// GetHosts retrieves all hosts for c and returns them in a slice. Returns
+// nil, nil if no hosts are found for c.
+func (r *Repository) GetHosts(ctx context.Context, c *HostCatalog) ([]*Host, error) {
+	return nil, nil
+}
