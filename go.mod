@@ -17,7 +17,7 @@ require (
 	github.com/golang-sql/civil v0.0.0-20190719163853-cb61b32ac6fe
 	github.com/golang/protobuf v1.4.2
 	github.com/grpc-ecosystem/grpc-gateway v1.14.6
-	github.com/hashicorp/dbassert v0.0.0-20200601131634-c3045f4c81e8
+	github.com/hashicorp/dbassert v0.0.0-20200602132714-30dfb78f0133
 	github.com/hashicorp/errwrap v1.0.0
 	github.com/hashicorp/go-alpnmux v0.0.0-20200513011953-0293f5d23c31
 	github.com/hashicorp/go-cleanhttp v0.5.1
