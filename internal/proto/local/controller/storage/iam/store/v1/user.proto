@@ -34,5 +34,6 @@ message User {
   string scope_id = 6;
 
   // disabled is by default false and allows a User to be marked disabled.
+  // @inject_tag: `gorm:"default:null"`
   bool disabled = 7;
 }

@@ -51,7 +51,8 @@ type User struct {
 	// @inject_tag: `gorm:"default:null"`
 	ScopeId string `protobuf:"bytes,6,opt,name=scope_id,json=scopeId,proto3" json:"scope_id,omitempty" gorm:"default:null"`
 	// disabled is by default false and allows a User to be marked disabled.
-	Disabled bool `protobuf:"varint,7,opt,name=disabled,proto3" json:"disabled,omitempty"`
+	// @inject_tag: `gorm:"default:null"`
+	Disabled bool `protobuf:"varint,7,opt,name=disabled,proto3" json:"disabled,omitempty" gorm:"default:null"`
 }
 
 func (x *User) Reset() {
