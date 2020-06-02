@@ -154,7 +154,7 @@ type Host struct {
 	// @inject_tag: gorm:"not_null"
 	StaticHostCatalogId string `protobuf:"bytes,6,opt,name=static_host_catalog_id,json=staticHostCatalogId,proto3" json:"static_host_catalog_id,omitempty" gorm:"not_null"`
 	// address is the IP Address or DNS name of the host. It must be set and
-	// it must be unique within static_host_catalog_id.
+	// it must be 7 < len(address) < 256.
 	// @inject_tag: gorm:"not_null"
 	Address string `protobuf:"bytes,7,opt,name=address,proto3" json:"address,omitempty" gorm:"not_null"`
 }
