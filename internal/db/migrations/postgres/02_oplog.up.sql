@@ -1,30 +1,90 @@
 begin;
 
-CREATE TABLE if not exists oplog_entry (
+create table if not exists oplog_entry (
   id bigint generated always as identity primary key,
   create_time wt_timestamp,
   update_time wt_timestamp,
-  version text NOT NULL,
-  aggregate_name text NOT NULL,
-  "data" bytea NOT NULL
+  version text not null,
+  aggregate_name text not null,
+  "data" bytea not null
 );
-CREATE TABLE if not exists oplog_ticket (
+
+create trigger 
+  update_time_column 
+before 
+update on oplog_entry 
+  for each row execute procedure update_time_column();
+
+create trigger 
+  create_time_column
+before
+update on oplog_entry 
+  for each row execute procedure immutable_create_time_func();
+
+create trigger 
+  default_create_time_column
+before
+insert on oplog_entry
+  for each row execute procedure default_create_time();
+
+create table if not exists oplog_ticket (
   id bigint generated always as identity primary key,
   create_time wt_timestamp,
   update_time wt_timestamp,
-  "name" text NOT NULL UNIQUE,
-  "version" bigint NOT NULL
+  "name" text not null unique,
+  "version" bigint not null
 );
-CREATE TABLE if not exists oplog_metadata (
+
+create trigger 
+  update_time_column 
+before 
+update on oplog_ticket 
+  for each row execute procedure update_time_column();
+
+create trigger 
+  create_time_column
+before
+update on oplog_ticket 
+  for each row execute procedure immutable_create_time_func();
+
+create trigger 
+  default_create_time_column
+before
+insert on oplog_ticket
+  for each row execute procedure default_create_time();
+
+create table if not exists oplog_metadata (
   id bigint generated always as identity primary key,
   create_time wt_timestamp,
-  entry_id bigint NOT NULL REFERENCES oplog_entry(id) ON DELETE CASCADE ON UPDATE CASCADE,
-  "key" text NOT NULL,
-  value text NULL
+  update_time wt_timestamp,
+  entry_id bigint not null references oplog_entry(id) on delete cascade on update cascade,
+  "key" text not null,
+  value text null
 );
+
+create trigger 
+  update_time_column 
+before 
+update on oplog_metadata 
+  for each row execute procedure update_time_column();
+
+create trigger 
+  create_time_column
+before
+update on oplog_metadata 
+  for each row execute procedure immutable_create_time_func();
+
+create trigger 
+  default_create_time_column
+before
+insert on oplog_metadata 
+  for each row execute procedure default_create_time();
+
 create index if not exists idx_oplog_metatadata_key on oplog_metadata(key);
+
 create index if not exists idx_oplog_metatadata_value on oplog_metadata(value);
-INSERT INTO oplog_ticket (name, version)
+
+insert into oplog_ticket (name, version)
 values
   ('default', 1),
   ('iam_scope', 1),
@@ -42,3 +102,4 @@ values
   ('kms_key_entry', 1);
 
 commit;
+
