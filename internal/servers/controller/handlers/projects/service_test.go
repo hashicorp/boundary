@@ -6,9 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/golang/protobuf/proto"
 	"github.com/golang/protobuf/ptypes"
-	"github.com/golang/protobuf/ptypes/wrappers"
 	"github.com/hashicorp/watchtower/internal/db"
 	pb "github.com/hashicorp/watchtower/internal/gen/controller/api/resources/scopes"
 	pbs "github.com/hashicorp/watchtower/internal/gen/controller/api/services"
@@ -17,6 +15,8 @@ import (
 	"google.golang.org/genproto/protobuf/field_mask"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/types/known/wrapperspb"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -64,8 +64,8 @@ func TestGet(t *testing.T) {
 
 	pProject := &pb.Project{
 		Id:          proj.GetPublicId(),
-		Name:        &wrappers.StringValue{Value: proj.GetName()},
-		Description: &wrappers.StringValue{Value: proj.GetDescription()},
+		Name:        &wrapperspb.StringValue{Value: proj.GetName()},
+		Description: &wrapperspb.StringValue{Value: proj.GetDescription()},
 		CreatedTime: proj.CreateTime.GetTimestamp(),
 		UpdatedTime: proj.UpdateTime.GetTimestamp(),
 	}
@@ -236,14 +236,14 @@ func TestCreate(t *testing.T) {
 		{
 			name: "Create a valid Project",
 			req: &pbs.CreateProjectRequest{Item: &pb.Project{
-				Name:        &wrappers.StringValue{Value: "name"},
-				Description: &wrappers.StringValue{Value: "desc"},
+				Name:        &wrapperspb.StringValue{Value: "name"},
+				Description: &wrapperspb.StringValue{Value: "desc"},
 			}},
 			res: &pbs.CreateProjectResponse{
 				Uri: fmt.Sprintf("orgs/%s/projects/p_", defaultProj.GetParentId()),
 				Item: &pb.Project{
-					Name:        &wrappers.StringValue{Value: "name"},
-					Description: &wrappers.StringValue{Value: "desc"},
+					Name:        &wrapperspb.StringValue{Value: "name"},
+					Description: &wrapperspb.StringValue{Value: "desc"},
 				},
 			},
 			errCode: codes.OK,
@@ -336,15 +336,15 @@ func TestUpdate(t *testing.T) {
 					Paths: []string{"name", "description"},
 				},
 				Item: &pb.Project{
-					Name:        &wrappers.StringValue{Value: "new"},
-					Description: &wrappers.StringValue{Value: "desc"},
+					Name:        &wrapperspb.StringValue{Value: "new"},
+					Description: &wrapperspb.StringValue{Value: "desc"},
 				},
 			},
 			res: &pbs.UpdateProjectResponse{
 				Item: &pb.Project{
 					Id:          proj.GetPublicId(),
-					Name:        &wrappers.StringValue{Value: "new"},
-					Description: &wrappers.StringValue{Value: "desc"},
+					Name:        &wrapperspb.StringValue{Value: "new"},
+					Description: &wrapperspb.StringValue{Value: "desc"},
 					CreatedTime: proj.GetCreateTime().GetTimestamp(),
 				},
 			},
@@ -357,15 +357,15 @@ func TestUpdate(t *testing.T) {
 					Paths: []string{"name,description"},
 				},
 				Item: &pb.Project{
-					Name:        &wrappers.StringValue{Value: "new"},
-					Description: &wrappers.StringValue{Value: "desc"},
+					Name:        &wrapperspb.StringValue{Value: "new"},
+					Description: &wrapperspb.StringValue{Value: "desc"},
 				},
 			},
 			res: &pbs.UpdateProjectResponse{
 				Item: &pb.Project{
 					Id:          proj.GetPublicId(),
-					Name:        &wrappers.StringValue{Value: "new"},
-					Description: &wrappers.StringValue{Value: "desc"},
+					Name:        &wrapperspb.StringValue{Value: "new"},
+					Description: &wrapperspb.StringValue{Value: "desc"},
 					CreatedTime: proj.GetCreateTime().GetTimestamp(),
 				},
 			},
@@ -375,8 +375,8 @@ func TestUpdate(t *testing.T) {
 			name: "No Update Mask Is Invalid Argument",
 			req: &pbs.UpdateProjectRequest{
 				Item: &pb.Project{
-					Name:        &wrappers.StringValue{Value: "updated name"},
-					Description: &wrappers.StringValue{Value: "updated desc"},
+					Name:        &wrapperspb.StringValue{Value: "updated name"},
+					Description: &wrapperspb.StringValue{Value: "updated desc"},
 				},
 			},
 			errCode: codes.InvalidArgument,
@@ -386,8 +386,8 @@ func TestUpdate(t *testing.T) {
 			req: &pbs.UpdateProjectRequest{
 				UpdateMask: &field_mask.FieldMask{Paths: []string{}},
 				Item: &pb.Project{
-					Name:        &wrappers.StringValue{Value: "updated name"},
-					Description: &wrappers.StringValue{Value: "updated desc"},
+					Name:        &wrapperspb.StringValue{Value: "updated name"},
+					Description: &wrapperspb.StringValue{Value: "updated desc"},
 				},
 			},
 			errCode: codes.InvalidArgument,
@@ -397,8 +397,8 @@ func TestUpdate(t *testing.T) {
 			req: &pbs.UpdateProjectRequest{
 				UpdateMask: &field_mask.FieldMask{Paths: []string{"nonexistant_field"}},
 				Item: &pb.Project{
-					Name:        &wrappers.StringValue{Value: "updated name"},
-					Description: &wrappers.StringValue{Value: "updated desc"},
+					Name:        &wrapperspb.StringValue{Value: "updated name"},
+					Description: &wrapperspb.StringValue{Value: "updated desc"},
 				},
 			},
 			errCode: codes.InvalidArgument,
@@ -410,13 +410,13 @@ func TestUpdate(t *testing.T) {
 					Paths: []string{"name"},
 				},
 				Item: &pb.Project{
-					Description: &wrappers.StringValue{Value: "ignored"},
+					Description: &wrapperspb.StringValue{Value: "ignored"},
 				},
 			},
 			res: &pbs.UpdateProjectResponse{
 				Item: &pb.Project{
 					Id:          proj.GetPublicId(),
-					Description: &wrappers.StringValue{Value: "default"},
+					Description: &wrapperspb.StringValue{Value: "default"},
 					CreatedTime: proj.GetCreateTime().GetTimestamp(),
 				},
 			},
@@ -429,15 +429,15 @@ func TestUpdate(t *testing.T) {
 					Paths: []string{"name"},
 				},
 				Item: &pb.Project{
-					Name:        &wrappers.StringValue{Value: "updated"},
-					Description: &wrappers.StringValue{Value: "ignored"},
+					Name:        &wrapperspb.StringValue{Value: "updated"},
+					Description: &wrapperspb.StringValue{Value: "ignored"},
 				},
 			},
 			res: &pbs.UpdateProjectResponse{
 				Item: &pb.Project{
 					Id:          proj.GetPublicId(),
-					Name:        &wrappers.StringValue{Value: "updated"},
-					Description: &wrappers.StringValue{Value: "default"},
+					Name:        &wrapperspb.StringValue{Value: "updated"},
+					Description: &wrapperspb.StringValue{Value: "default"},
 					CreatedTime: proj.GetCreateTime().GetTimestamp(),
 				},
 			},
@@ -450,15 +450,15 @@ func TestUpdate(t *testing.T) {
 					Paths: []string{"description"},
 				},
 				Item: &pb.Project{
-					Name:        &wrappers.StringValue{Value: "ignored"},
-					Description: &wrappers.StringValue{Value: "notignored"},
+					Name:        &wrapperspb.StringValue{Value: "ignored"},
+					Description: &wrapperspb.StringValue{Value: "notignored"},
 				},
 			},
 			res: &pbs.UpdateProjectResponse{
 				Item: &pb.Project{
 					Id:          proj.GetPublicId(),
-					Name:        &wrappers.StringValue{Value: "default"},
-					Description: &wrappers.StringValue{Value: "notignored"},
+					Name:        &wrapperspb.StringValue{Value: "default"},
+					Description: &wrapperspb.StringValue{Value: "notignored"},
 					CreatedTime: proj.GetCreateTime().GetTimestamp(),
 				},
 			},
@@ -474,8 +474,8 @@ func TestUpdate(t *testing.T) {
 					Paths: []string{"description"},
 				},
 				Item: &pb.Project{
-					Name:        &wrappers.StringValue{Value: "new"},
-					Description: &wrappers.StringValue{Value: "desc"},
+					Name:        &wrapperspb.StringValue{Value: "new"},
+					Description: &wrapperspb.StringValue{Value: "desc"},
 				},
 			},
 			errCode: codes.Internal,
@@ -489,8 +489,8 @@ func TestUpdate(t *testing.T) {
 				},
 				Item: &pb.Project{
 					Id:          "p_somethinge",
-					Name:        &wrappers.StringValue{Value: "new"},
-					Description: &wrappers.StringValue{Value: "new desc"},
+					Name:        &wrapperspb.StringValue{Value: "new"},
+					Description: &wrapperspb.StringValue{Value: "new desc"},
 				}},
 			res:     nil,
 			errCode: codes.InvalidArgument,

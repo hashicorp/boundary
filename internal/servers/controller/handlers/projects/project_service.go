@@ -6,7 +6,6 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/golang/protobuf/ptypes/wrappers"
 	"github.com/grpc-ecosystem/grpc-gateway/runtime"
 	pb "github.com/hashicorp/watchtower/internal/gen/controller/api/resources/scopes"
 	pbs "github.com/hashicorp/watchtower/internal/gen/controller/api/services"
@@ -14,6 +13,7 @@ import (
 	"github.com/hashicorp/watchtower/internal/servers/controller/handlers"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/types/known/wrapperspb"
 )
 
 var (
@@ -188,10 +188,10 @@ func toDbUpdateMask(paths []string) ([]string, error) {
 func toProto(in *iam.Scope) *pb.Project {
 	out := pb.Project{Id: in.GetPublicId()}
 	if in.GetDescription() != "" {
-		out.Description = &wrappers.StringValue{Value: in.GetDescription()}
+		out.Description = &wrapperspb.StringValue{Value: in.GetDescription()}
 	}
 	if in.GetName() != "" {
-		out.Name = &wrappers.StringValue{Value: in.GetName()}
+		out.Name = &wrapperspb.StringValue{Value: in.GetName()}
 	}
 	out.CreatedTime = in.GetCreateTime().GetTimestamp()
 	out.UpdatedTime = in.GetUpdateTime().GetTimestamp()
@@ -243,7 +243,7 @@ func validateUpdateProjectRequest(req *pbs.UpdateProjectRequest) error {
 		return err
 	}
 	if !validID(req.GetId(), iam.ProjectScope.Prefix()+"_") {
-		handlers.InvalidArgumentErrorf("Improperly formatted identifier.", []string{"id"})
+		return handlers.InvalidArgumentErrorf("Improperly formatted identifier.", []string{"id"})
 	}
 
 	if req.GetUpdateMask() == nil {
@@ -307,7 +307,7 @@ func validateAncestors(r ancestorProvider) error {
 		return handlers.InvalidArgumentErrorf("Missing organization id.", []string{"org_id"})
 	}
 	if !validID(r.GetOrgId(), iam.OrganizationScope.Prefix()+"_") {
-		handlers.InvalidArgumentErrorf("Poorly formatted org id.", []string{"org_id"})
+		return handlers.InvalidArgumentErrorf("Poorly formatted org id.", []string{"org_id"})
 	}
 	return nil
 }
