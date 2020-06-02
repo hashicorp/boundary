@@ -107,7 +107,7 @@ func (s Service) getFromRepo(ctx context.Context, id string) (*pb.Project, error
 }
 
 func (s Service) createInRepo(ctx context.Context, orgID string, item *pb.Project) (*pb.Project, error) {
-	opts := []iam.Option{}
+	var opts []iam.Option
 	if item.GetName() != nil {
 		opts = append(opts, iam.WithName(item.GetName().GetValue()))
 	}
@@ -129,7 +129,7 @@ func (s Service) createInRepo(ctx context.Context, orgID string, item *pb.Projec
 }
 
 func (s Service) updateInRepo(ctx context.Context, orgID, projId string, mask []string, item *pb.Project) (*pb.Project, error) {
-	opts := []iam.Option{iam.WithPublicId(projId)}
+	var opts []iam.Option
 	if desc := item.GetDescription(); desc != nil {
 		opts = append(opts, iam.WithDescription(desc.GetValue()))
 	}
@@ -140,6 +140,7 @@ func (s Service) updateInRepo(ctx context.Context, orgID, projId string, mask []
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "Unable to build project for update: %v.", err)
 	}
+	p.PublicId = projId
 	dbMask, err := toDbUpdateMask(mask)
 	if err != nil {
 		return nil, err
@@ -167,8 +168,8 @@ func (s Service) deleteFromRepo(ctx context.Context, projId string) (bool, error
 
 // toDbUpdateMask converts the wire format's FieldMask into a list of strings containing FieldMask paths used
 func toDbUpdateMask(paths []string) ([]string, error) {
-	dbPaths := []string{}
-	invalid := []string{}
+	var dbPaths []string
+	var invalid []string
 	for _, p := range paths {
 		for _, f := range strings.Split(p, ",") {
 			if dbField, ok := wireToStorageMask[strings.TrimSpace(f)]; ok {
@@ -207,15 +208,8 @@ func validateGetProjectRequest(req *pbs.GetProjectRequest) error {
 	if err := validateAncestors(req); err != nil {
 		return err
 	}
-	badFormat := []string{}
 	if !validID(req.GetId(), "p_") {
-		badFormat = append(badFormat, "id")
-	}
-	if !validID(req.GetOrgId(), "o_") {
-		badFormat = append(badFormat, "id")
-	}
-	if len(badFormat) > 0 {
-		return handlers.InvalidArgumentErrorf("Improperly formatted identifier.", badFormat)
+		return handlers.InvalidArgumentErrorf("Improperly formatted identifier.", []string{"id"})
 	}
 	return nil
 }
@@ -224,14 +218,11 @@ func validateCreateProjectRequest(req *pbs.CreateProjectRequest) error {
 	if err := validateAncestors(req); err != nil {
 		return err
 	}
-	if !validID(req.GetOrgId(), "o_") {
-		handlers.InvalidArgumentErrorf("Improperly formatted identifier.", []string{"org_id"})
-	}
 	item := req.GetItem()
 	if item == nil {
 		return handlers.InvalidArgumentErrorf("A project's fields must be set to something.", []string{"item"})
 	}
-	immutableFieldsSet := []string{}
+	var immutableFieldsSet []string
 	if item.GetId() != "" {
 		immutableFieldsSet = append(immutableFieldsSet, "id")
 	}
@@ -251,15 +242,8 @@ func validateUpdateProjectRequest(req *pbs.UpdateProjectRequest) error {
 	if err := validateAncestors(req); err != nil {
 		return err
 	}
-	badFormat := []string{}
 	if !validID(req.GetId(), "p_") {
-		badFormat = append(badFormat, "id")
-	}
-	if !validID(req.GetOrgId(), "o_") {
-		badFormat = append(badFormat, "id")
-	}
-	if len(badFormat) > 0 {
-		handlers.InvalidArgumentErrorf("Improperly formatted identifier.", badFormat)
+		handlers.InvalidArgumentErrorf("Improperly formatted identifier.", []string{"id"})
 	}
 
 	if req.GetUpdateMask() == nil {
@@ -275,7 +259,7 @@ func validateUpdateProjectRequest(req *pbs.UpdateProjectRequest) error {
 	if item.GetId() != "" && item.GetId() != req.GetId() {
 		return handlers.InvalidArgumentErrorf("Id in provided item and url do not match.", []string{"id"})
 	}
-	immutableFieldsSet := []string{}
+	var immutableFieldsSet []string
 	if item.GetId() != "" {
 		immutableFieldsSet = append(immutableFieldsSet, "id")
 	}
@@ -296,15 +280,8 @@ func validateDeleteProjectRequest(req *pbs.DeleteProjectRequest) error {
 	if err := validateAncestors(req); err != nil {
 		return err
 	}
-	badFields := []string{}
 	if !validID(req.GetId(), "p_") {
-		badFields = append(badFields, "id")
-	}
-	if !validID(req.GetOrgId(), "o_") {
-		badFields = append(badFields, "org_id")
-	}
-	if len(badFields) > 0 {
-		return handlers.InvalidArgumentErrorf("Improperly formatted id.", badFields)
+		return handlers.InvalidArgumentErrorf("Improperly formatted id.", []string{"id"})
 	}
 	return nil
 }
@@ -328,6 +305,9 @@ type ancestorProvider interface {
 func validateAncestors(r ancestorProvider) error {
 	if r.GetOrgId() == "" {
 		return handlers.InvalidArgumentErrorf("Missing organization id.", []string{"org_id"})
+	}
+	if !validID(r.GetOrgId(), "o_") {
+		handlers.InvalidArgumentErrorf("Poorly formatted org id.", []string{"org_id"})
 	}
 	return nil
 }
