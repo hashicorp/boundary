@@ -31,20 +31,20 @@ func (a *DbAsserts) Log(enable bool) {
 
 // IsNull asserts that the resource fieldName is null in the db.
 func (a *DbAsserts) IsNull(resource interface{}, fieldName string) bool {
-	return a.asserts.FieldIsNull(resource, fieldName)
+	return a.asserts.IsNull(resource, fieldName)
 }
 
 // NotNull asserts that the resource fieldName is not null in the db.
 func (a *DbAsserts) NotNull(resource interface{}, fieldName string) bool {
-	return a.asserts.FieldNotNull(resource, fieldName)
+	return a.asserts.NotNull(resource, fieldName)
 }
 
 // Nullable asserts that the resource fieldName is nullable in the db.
 func (a *DbAsserts) Nullable(resource interface{}, fieldName string) bool {
-	return a.asserts.FieldNullable(resource, fieldName)
+	return a.asserts.Nullable(resource, fieldName)
 }
 
 // Domain asserts that the resource fieldName is the domainName in the db.
 func (a *DbAsserts) Domain(resource interface{}, fieldName, domainName string) bool {
-	return a.asserts.FieldDomain(resource, fieldName, domainName)
+	return a.asserts.Domain(resource, fieldName, domainName)
 }
