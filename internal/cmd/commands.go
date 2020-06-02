@@ -7,11 +7,13 @@ import (
 	"syscall"
 
 	"github.com/hashicorp/watchtower/internal/cmd/base"
+	"github.com/hashicorp/watchtower/internal/cmd/commands/config"
 	"github.com/hashicorp/watchtower/internal/cmd/commands/controller"
 	"github.com/hashicorp/watchtower/internal/cmd/commands/dev"
 	"github.com/hashicorp/watchtower/internal/cmd/commands/hosts"
 	"github.com/hashicorp/watchtower/internal/cmd/commands/scopes"
 	"github.com/hashicorp/watchtower/internal/cmd/commands/worker"
+
 	"github.com/mitchellh/cli"
 )
 
@@ -78,6 +80,22 @@ func initCommands(ui, serverCmdUi cli.Ui, runOpts *RunOptions) {
 		},
 		"projects read": func() (cli.Command, error) {
 			return &scopes.ReadProjectCommand{
+				Command: getBaseCommand(),
+			}, nil
+		},
+		"config": func() (cli.Command, error) {
+			return &config.Command{
+				Command: getBaseCommand(),
+			}, nil
+		},
+		"config encrypt": func() (cli.Command, error) {
+			return &config.EncryptDecryptCommand{
+				Command: getBaseCommand(),
+				Encrypt: true,
+			}, nil
+		},
+		"config decrypt": func() (cli.Command, error) {
+			return &config.EncryptDecryptCommand{
 				Command: getBaseCommand(),
 			}, nil
 		},
