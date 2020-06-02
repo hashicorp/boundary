@@ -27,8 +27,12 @@ func createDefaultProjectAndRepo(t *testing.T) (*iam.Scope, *iam.Repository) {
 	require := require.New(t)
 	cleanup, conn, _ := db.TestSetup(t, "postgres")
 	t.Cleanup(func() {
-		conn.Close()
-		cleanup()
+		if err := conn.Close(); err != nil {
+			t.Logf("Error when closing gorm DB: %v", err)
+		}
+		if err := cleanup(); err != nil {
+			t.Logf("Error when cleaning up TestSetup: %v", err)
+		}
 	})
 	rw := db.New(conn)
 	wrap := db.TestWrapper(t)
