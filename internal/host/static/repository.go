@@ -43,7 +43,7 @@ func NewRepository(r db.Reader, w db.Writer, wrapper wrapping.Wrapper) (*Reposit
 // CreateCatalog inserts c into the repository and returns a new
 // HostCatalog containing the catalog's PublicId. c is not changed. c must
 // contain a valid ScopeId. c must not contain a PublicId. The PublicId is
-// generated and assigned by the this method. opt is ignored.
+// generated and assigned by this method. opt is ignored.
 //
 // Both c.Name and c.Description are optional. If c.Name is set, it must be
 // unique within c.ScopeId.
