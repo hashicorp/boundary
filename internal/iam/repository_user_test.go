@@ -397,9 +397,9 @@ func TestRepository_DeleteUser(t *testing.T) {
 					return u
 				}(),
 			},
-			wantRowsDeleted: 0,
-			wantErr:         false,
-			wantErrMsg:      "",
+			wantRowsDeleted: 1,
+			wantErr:         true,
+			wantErrMsg:      "delete user: failed record not found for",
 		},
 	}
 	for _, tt := range tests {
