@@ -110,7 +110,10 @@ func TestGet(t *testing.T) {
 			req := proto.Clone(toMerge).(*pbs.GetProjectRequest)
 			proto.Merge(req, tc.req)
 
-			s := projects.NewService(repo)
+			s, err := projects.NewService(repo)
+			if err != nil {
+				t.Fatalf("Error when getting new project service: %v", err)
+			}
 
 			got, gErr := s.GetProject(context.Background(), req)
 			assert.Equal(tc.errCode, status.Code(gErr), "GetProject(%+v) got error %v, wanted %v", req, gErr, tc.errCode)
@@ -131,7 +134,10 @@ func TestDelete(t *testing.T) {
 		t.Fatalf("Couldn't persist a second project %v", err)
 	}
 
-	s := projects.NewService(repo)
+	s, err := projects.NewService(repo)
+	if err != nil {
+		t.Fatalf("Error when getting new project service: %v", err)
+	}
 
 	cases := []struct {
 		name    string
@@ -205,7 +211,10 @@ func TestDelete_twice(t *testing.T) {
 	assert := assert.New(t)
 	proj, repo := createDefaultProjectAndRepo(t)
 
-	s := projects.NewService(repo)
+	s, err := projects.NewService(repo)
+	if err != nil {
+		t.Fatalf("Error when getting new project service: %v", err)
+	}
 	req := &pbs.DeleteProjectRequest{
 		OrgId: proj.GetParentId(),
 		Id:    proj.GetPublicId(),
@@ -280,7 +289,10 @@ func TestCreate(t *testing.T) {
 			req := proto.Clone(toMerge).(*pbs.CreateProjectRequest)
 			proto.Merge(req, tc.req)
 
-			s := projects.NewService(repo)
+			s, err := projects.NewService(repo)
+			if err != nil {
+				t.Fatalf("Error when getting new project service: %v", err)
+			}
 
 			got, gErr := s.CreateProject(context.Background(), req)
 			assert.Equal(tc.errCode, status.Code(gErr), "CreateProject(%+v) got error %v, wanted %v", req, gErr, tc.errCode)
@@ -311,9 +323,11 @@ func TestCreate(t *testing.T) {
 
 func TestUpdate(t *testing.T) {
 	proj, repo := createDefaultProjectAndRepo(t)
-	tested := projects.NewService(repo)
+	tested, err := projects.NewService(repo)
+	if err != nil {
+		t.Fatalf("Error when getting new project service: %v", err)
+	}
 
-	var err error
 	resetProject := func() {
 		if proj, _, err = repo.UpdateScope(context.Background(), proj, []string{"Name", "Description"}); err != nil {
 			t.Fatalf("Failed to reset the project")

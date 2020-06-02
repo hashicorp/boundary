@@ -28,7 +28,7 @@ type HandlerProperties struct {
 
 // Handler returns an http.Handler for the services. This can be used on
 // its own to mount the Vault API within another web server.
-func (c *Controller) handler(props HandlerProperties) http.Handler {
+func (c *Controller) handler(props HandlerProperties) (http.Handler, error) {
 	// Create the muxer to handle the actual endpoints
 	mux := http.NewServeMux()
 
@@ -46,15 +46,19 @@ func (c *Controller) handler(props HandlerProperties) http.Handler {
 		mux.Handle("/passthrough/", prefixHandler)
 	}
 
-	mux.Handle("/v1/", handleGrpcGateway(c))
+	gh, err := handleGrpcGateway(c)
+	if err != nil {
+		return nil, err
+	}
+	mux.Handle("/v1/", gh)
 
 	corsWrappedHandler := wrapHandlerWithCors(mux, props)
 	commonWrappedHandler := wrapHandlerWithCommonFuncs(corsWrappedHandler, c, props)
 
-	return commonWrappedHandler
+	return commonWrappedHandler, nil
 }
 
-func handleGrpcGateway(c *Controller) http.Handler {
+func handleGrpcGateway(c *Controller) (http.Handler, error) {
 	// Register*ServiceHandlerServer methods ignore the passed in ctx.  Using the baseContext now just in case this changes
 	// in the future, at which point we'll want to be using the baseContext.
 	ctx := c.baseContext
@@ -62,9 +66,15 @@ func handleGrpcGateway(c *Controller) http.Handler {
 	services.RegisterHostCatalogServiceHandlerServer(ctx, mux, &host_catalogs.Service{})
 	services.RegisterHostSetServiceHandlerServer(ctx, mux, &host_sets.Service{})
 	services.RegisterHostServiceHandlerServer(ctx, mux, &hosts.Service{})
-	services.RegisterProjectServiceHandlerServer(ctx, mux, projects.NewService(c.IamRepo))
+	ps, err := projects.NewService(c.IamRepo)
+	if err != nil {
+		return nil, err
+	}
+	if err := services.RegisterProjectServiceHandlerServer(ctx, mux, ps); err != nil {
+		return nil, err
+	}
 
-	return mux
+	return mux, nil
 }
 
 func wrapHandlerWithCommonFuncs(h http.Handler, c *Controller, props HandlerProperties) http.Handler {

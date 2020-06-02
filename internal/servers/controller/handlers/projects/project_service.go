@@ -26,18 +26,21 @@ var (
 )
 
 type Service struct {
-	pbs.UnimplementedProjectServiceServer
 	repo *iam.Repository
 }
 
-func NewService(repo *iam.Repository) *Service {
+func NewService(repo *iam.Repository) (Service, error) {
 	if repo == nil {
-		return nil
+		return Service{}, fmt.Errorf("nil iam repostiroy provided")
 	}
-	return &Service{repo: repo}
+	return Service{repo: repo}, nil
 }
 
-var _ pbs.ProjectServiceServer = &Service{}
+var _ pbs.ProjectServiceServer = Service{}
+
+func (s Service) ListProjects(ctx context.Context, req *pbs.ListProjectsRequest) (*pbs.ListProjectsResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "List not enabled for this resource.")
+}
 
 func (s Service) GetProject(ctx context.Context, req *pbs.GetProjectRequest) (*pbs.GetProjectResponse, error) {
 	if err := validateGetProjectRequest(req); err != nil {
