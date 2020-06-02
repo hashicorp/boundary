@@ -28,6 +28,14 @@ func (s ScopeType) String() string {
 	}[s]
 }
 
+func (s ScopeType) Prefix() string {
+	return [...]string{
+		"unknown",
+		"o",
+		"p",
+	}[s]
+}
+
 // Scope is used to create a hierarchy of "containers" that encompass the scope of
 // an IAM resource.  Scopes are Organizations and Projects.
 type Scope struct {

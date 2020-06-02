@@ -208,7 +208,7 @@ func validateGetProjectRequest(req *pbs.GetProjectRequest) error {
 	if err := validateAncestors(req); err != nil {
 		return err
 	}
-	if !validID(req.GetId(), "p_") {
+	if !validID(req.GetId(), iam.ProjectScope.Prefix()+"_") {
 		return handlers.InvalidArgumentErrorf("Improperly formatted identifier.", []string{"id"})
 	}
 	return nil
@@ -242,7 +242,7 @@ func validateUpdateProjectRequest(req *pbs.UpdateProjectRequest) error {
 	if err := validateAncestors(req); err != nil {
 		return err
 	}
-	if !validID(req.GetId(), "p_") {
+	if !validID(req.GetId(), iam.ProjectScope.Prefix()+"_") {
 		handlers.InvalidArgumentErrorf("Improperly formatted identifier.", []string{"id"})
 	}
 
@@ -280,7 +280,7 @@ func validateDeleteProjectRequest(req *pbs.DeleteProjectRequest) error {
 	if err := validateAncestors(req); err != nil {
 		return err
 	}
-	if !validID(req.GetId(), "p_") {
+	if !validID(req.GetId(), iam.ProjectScope.Prefix()+"_") {
 		return handlers.InvalidArgumentErrorf("Improperly formatted id.", []string{"id"})
 	}
 	return nil
@@ -306,7 +306,7 @@ func validateAncestors(r ancestorProvider) error {
 	if r.GetOrgId() == "" {
 		return handlers.InvalidArgumentErrorf("Missing organization id.", []string{"org_id"})
 	}
-	if !validID(r.GetOrgId(), "o_") {
+	if !validID(r.GetOrgId(), iam.OrganizationScope.Prefix()+"_") {
 		handlers.InvalidArgumentErrorf("Poorly formatted org id.", []string{"org_id"})
 	}
 	return nil
