@@ -31,20 +31,22 @@ func TestNewUser(t *testing.T) {
 		opt                  []Option
 	}
 	tests := []struct {
-		name       string
-		args       args
-		wantErr    bool
-		wantErrMsg string
-		wantName   string
+		name            string
+		args            args
+		wantErr         bool
+		wantErrMsg      string
+		wantName        string
+		wantDescription string
 	}{
 		{
 			name: "valid",
 			args: args{
 				organizationPublicId: org.PublicId,
-				opt:                  []Option{WithName(id)},
+				opt:                  []Option{WithName(id), WithDescription(id)},
 			},
-			wantErr:  false,
-			wantName: id,
+			wantErr:         false,
+			wantName:        id,
+			wantDescription: id,
 		},
 		{
 			name: "valid-with-no-name",
