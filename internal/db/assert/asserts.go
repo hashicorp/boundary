@@ -8,12 +8,12 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-// // DbAsserts provides database assertion methods
+// DbAsserts provides database assertion methods.
 type DbAsserts struct {
 	asserts *gormAssert.GormAsserts
 }
 
-// New creates a new DbAsserts
+// New creates a new DbAsserts.
 func New(t dbassert.TestingT, r db.Reader) *DbAsserts {
 	assert.NotNil(t, r, "db.Reader is nill")
 
