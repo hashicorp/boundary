@@ -537,10 +537,7 @@ func TestUpdate(t *testing.T) {
 				gotUpdateTime, err := ptypes.Timestamp(got.GetItem().GetUpdatedTime())
 				require.NoError(err, "Error converting proto to timestamp")
 				// Verify it is a project updated after it was created
-				// TODO: This is currently failing.
-				//assert.True(gotUpdateTime.After(projCreated), "Updated project should have been updated after it's creation. Was updated %v, which is after %v", gotUpdateTime, projCreated)
-				_ = gotUpdateTime
-				_ = projCreated
+				assert.True(gotUpdateTime.After(projCreated), "Updated project should have been updated after it's creation. Was updated %v, which is after %v", gotUpdateTime, projCreated)
 
 				// Clear all values which are hard to compare against.
 				got.Item.UpdatedTime, tc.res.Item.UpdatedTime = nil, nil
