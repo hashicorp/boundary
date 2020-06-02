@@ -19,10 +19,12 @@ import (
 	"google.golang.org/grpc/status"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func createDefaultProjectAndRepo(t *testing.T) (*iam.Scope, *iam.Repository) {
 	t.Helper()
+	require := require.New(t)
 	cleanup, conn, _ := db.TestSetup(t, "postgres")
 	t.Cleanup(func() {
 		conn.Close()
@@ -35,27 +37,21 @@ func createDefaultProjectAndRepo(t *testing.T) (*iam.Scope, *iam.Repository) {
 
 	// Create a default org and project for our tests.
 	o, err := iam.NewOrganization(iam.WithName("default"))
-	if err != nil {
-		t.Fatalf("Could not get new org: %v", err)
-	}
+	require.NoError(err, "Could not get new org.")
 	oRes, err := repo.CreateScope(context.Background(), o)
-	if err != nil {
-		t.Fatalf("Could not create org scope: %v", err)
-	}
+	require.NoError(err, "Could not create org scope.")
 
 	p, err := iam.NewProject(oRes.GetPublicId(), iam.WithName("default"), iam.WithDescription("default"))
-	if err != nil {
-		t.Fatalf("Could not get new project: %v", err)
-	}
+	require.NoError(err, "Could not get new project.")
 	pRes, err := repo.CreateScope(context.Background(), p)
-	if err != nil {
-		t.Fatalf("Could not create project scope: %v", err)
-	}
+	require.NoError(err, "Could not create new project.")
 
 	return pRes, repo
 }
 
 func TestGet(t *testing.T) {
+	assert := assert.New(t)
+	require := require.New(t)
 	proj, repo := createDefaultProjectAndRepo(t)
 	toMerge := &pbs.GetProjectRequest{
 		OrgId: proj.GetParentId(),
@@ -106,14 +102,11 @@ func TestGet(t *testing.T) {
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			assert := assert.New(t)
 			req := proto.Clone(toMerge).(*pbs.GetProjectRequest)
 			proto.Merge(req, tc.req)
 
 			s, err := projects.NewService(repo)
-			if err != nil {
-				t.Fatalf("Error when getting new project service: %v", err)
-			}
+			require.NoError(err, "Couldn't create new project service.")
 
 			got, gErr := s.GetProject(context.Background(), req)
 			assert.Equal(tc.errCode, status.Code(gErr), "GetProject(%+v) got error %v, wanted %v", req, gErr, tc.errCode)
@@ -123,21 +116,16 @@ func TestGet(t *testing.T) {
 }
 
 func TestDelete(t *testing.T) {
+	require := require.New(t)
 	proj, repo := createDefaultProjectAndRepo(t)
 
 	proj2, err := iam.NewProject(proj.GetParentId())
-	if err != nil {
-		t.Fatalf("Couldn't allocate a second project: %v", err)
-	}
+	require.NoError(err, "Couldn't allocate a second project.")
 	proj2, err = repo.CreateScope(context.Background(), proj2)
-	if err != nil {
-		t.Fatalf("Couldn't persist a second project %v", err)
-	}
+	require.NoError(err, "Couldn't create new project.")
 
 	s, err := projects.NewService(repo)
-	if err != nil {
-		t.Fatalf("Error when getting new project service: %v", err)
-	}
+	require.NoError(err, "Error when getting new project service.")
 
 	cases := []struct {
 		name    string
@@ -209,12 +197,11 @@ func TestDelete(t *testing.T) {
 
 func TestDelete_twice(t *testing.T) {
 	assert := assert.New(t)
+	require := require.New(t)
 	proj, repo := createDefaultProjectAndRepo(t)
 
 	s, err := projects.NewService(repo)
-	if err != nil {
-		t.Fatalf("Error when getting new project service: %v", err)
-	}
+	require.NoError(err, "Error when getting new project service")
 	req := &pbs.DeleteProjectRequest{
 		OrgId: proj.GetParentId(),
 		Id:    proj.GetPublicId(),
@@ -228,11 +215,10 @@ func TestDelete_twice(t *testing.T) {
 }
 
 func TestCreate(t *testing.T) {
+	require := require.New(t)
 	defaultProj, repo := createDefaultProjectAndRepo(t)
 	defaultProjCreated, err := ptypes.Timestamp(defaultProj.GetCreateTime().GetTimestamp())
-	if err != nil {
-		t.Fatalf("Error converting proto to timestamp: %v", err)
-	}
+	require.NoError(err, "Error converting proto to timestamp.")
 	toMerge := &pbs.CreateProjectRequest{
 		OrgId: defaultProj.GetParentId(),
 	}
@@ -290,9 +276,7 @@ func TestCreate(t *testing.T) {
 			proto.Merge(req, tc.req)
 
 			s, err := projects.NewService(repo)
-			if err != nil {
-				t.Fatalf("Error when getting new project service: %v", err)
-			}
+			require.NoError(err, "Error when getting new project service.")
 
 			got, gErr := s.CreateProject(context.Background(), req)
 			assert.Equal(tc.errCode, status.Code(gErr), "CreateProject(%+v) got error %v, wanted %v", req, gErr, tc.errCode)
@@ -300,13 +284,9 @@ func TestCreate(t *testing.T) {
 				strings.HasPrefix(got.GetUri(), tc.res.Uri)
 				strings.HasPrefix(got.GetItem().GetId(), "p_")
 				gotCreateTime, err := ptypes.Timestamp(got.GetItem().GetCreatedTime())
-				if err != nil {
-					t.Fatalf("Error converting proto to timestamp: %v", err)
-				}
+				require.NoError(err, "Error converting proto to timestamp.")
 				gotUpdateTime, err := ptypes.Timestamp(got.GetItem().GetUpdatedTime())
-				if err != nil {
-					t.Fatalf("Error converting proto to timestamp: %v", err)
-				}
+				require.NoError(err, "Error converting proto to timestamp.")
 				// Verify it is a project created after the test setup's default project
 				assert.True(gotCreateTime.After(defaultProjCreated), "New project should have been created after default project. Was created %v, which is after %v", gotCreateTime, defaultProjCreated)
 				assert.True(gotUpdateTime.After(defaultProjCreated), "New project should have been updated after default project. Was updated %v, which is after %v", gotUpdateTime, defaultProjCreated)
@@ -322,22 +302,18 @@ func TestCreate(t *testing.T) {
 }
 
 func TestUpdate(t *testing.T) {
+	require := require.New(t)
 	proj, repo := createDefaultProjectAndRepo(t)
 	tested, err := projects.NewService(repo)
-	if err != nil {
-		t.Fatalf("Error when getting new project service: %v", err)
-	}
+	require.NoError(err, "Error when getting new project service.")
 
 	resetProject := func() {
-		if proj, _, err = repo.UpdateScope(context.Background(), proj, []string{"Name", "Description"}); err != nil {
-			t.Fatalf("Failed to reset the project")
-		}
+		proj, _, err = repo.UpdateScope(context.Background(), proj, []string{"Name", "Description"})
+		require.NoError(err, "Failed to reset the project")
 	}
 
 	projCreated, err := ptypes.Timestamp(proj.GetCreateTime().GetTimestamp())
-	if err != nil {
-		t.Fatalf("Error converting proto to timestamp: %v", err)
-	}
+	require.NoError(err, "Error converting proto to timestamp")
 	toMerge := &pbs.UpdateProjectRequest{
 		OrgId: proj.GetParentId(),
 		Id:    proj.GetPublicId(),
@@ -555,9 +531,7 @@ func TestUpdate(t *testing.T) {
 			if got != nil {
 				assert.NotNilf(tc.res, "Expected UpdateProject response to be nil, but was %v", got)
 				gotUpdateTime, err := ptypes.Timestamp(got.GetItem().GetUpdatedTime())
-				if err != nil {
-					t.Fatalf("Error converting proto to timestamp: %v", err)
-				}
+				require.NoError(err, "Error converting proto to timestamp")
 				// Verify it is a project updated after it was created
 				// TODO: This is currently failing.
 				//assert.True(gotUpdateTime.After(projCreated), "Updated project should have been updated after it's creation. Was updated %v, which is after %v", gotUpdateTime, projCreated)
