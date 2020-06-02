@@ -577,6 +577,8 @@ github.com/hashicorp/consul/sdk v0.1.1/go.mod h1:VKf9jXwCTEY1QZP2MOLRhb5i/I/ssyN
 github.com/hashicorp/consul/sdk v0.4.0/go.mod h1:fY08Y9z5SvJqevyZNy6WWPXiG3KwBPAvlcdx16zZ0fM=
 github.com/hashicorp/dbassert v0.0.0-20200601131634-c3045f4c81e8 h1:0R3FvnfT4FC2abVevODTZ22zzhguKM2K5aufuysG0oo=
 github.com/hashicorp/dbassert v0.0.0-20200601131634-c3045f4c81e8/go.mod h1:+B5eZq7vXqN4Gxkgjm4ub1bwG6OTcYzFL0r+bMvWorg=
+github.com/hashicorp/dbassert v0.0.0-20200602132714-30dfb78f0133 h1:NT2GV/LkzarLLGLYf/+HdqazyFEuuGDA7tOZ2Jyo+80=
+github.com/hashicorp/dbassert v0.0.0-20200602132714-30dfb78f0133/go.mod h1:+B5eZq7vXqN4Gxkgjm4ub1bwG6OTcYzFL0r+bMvWorg=
 github.com/hashicorp/errwrap v1.0.0 h1:hLrqtEDnRye3+sgx6z4qVLNuviH3MR5aQ0ykNJa/UYA=
 github.com/hashicorp/errwrap v1.0.0/go.mod h1:YH+1FKiLXxHSkmPseP+kNlulaMuP3n2brvKWEqk/Jc4=
 github.com/hashicorp/go-alpnmux v0.0.0-20200513011953-0293f5d23c31 h1:pxqI71/0R1WIASjQEJ9W9skCKYiREEkRoXFvHCZH1pg=
