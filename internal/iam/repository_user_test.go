@@ -155,6 +155,7 @@ func TestRepository_UpdateUser(t *testing.T) {
 		wantRowsUpdate int
 		wantErr        bool
 		wantErrMsg     string
+		wantIsErr      error
 		wantDup        bool
 	}{
 		{
@@ -166,6 +167,30 @@ func TestRepository_UpdateUser(t *testing.T) {
 			},
 			wantErr:        false,
 			wantRowsUpdate: 1,
+		},
+		{
+			name: "valid-no-op",
+			args: args{
+				name:           "valid-no-op" + id,
+				fieldMaskPaths: []string{"Name"},
+				ScopeId:        org.PublicId,
+			},
+			newUserOpts:    []Option{WithName("valid-no-op" + id)},
+			wantErr:        false,
+			wantRowsUpdate: 1,
+		},
+		{
+			name: "not-found",
+			args: args{
+				name:           "not-found" + id,
+				fieldMaskPaths: []string{"Name"},
+				ScopeId:        org.PublicId,
+				PublicId:       func() *string { s := "1"; return &s }(),
+			},
+			wantErr:        true,
+			wantRowsUpdate: 0,
+			wantErrMsg:     "update user: update: lookup error lookup after write: failed record not found for 1",
+			wantIsErr:      db.ErrRecordNotFound,
 		},
 		{
 			name: "null-name",
@@ -301,6 +326,9 @@ func TestRepository_UpdateUser(t *testing.T) {
 			userAfterUpdate, updatedRows, err := repo.UpdateUser(context.Background(), &updateUser, tt.args.fieldMaskPaths, tt.args.opt...)
 			if tt.wantErr {
 				assert.Error(err)
+				if tt.wantIsErr != nil {
+					assert.True(errors.Is(err, db.ErrRecordNotFound))
+				}
 				assert.Nil(userAfterUpdate)
 				assert.Equal(0, updatedRows)
 				switch tt.name {
