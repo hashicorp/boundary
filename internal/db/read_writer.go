@@ -251,7 +251,7 @@ func (rw *Db) Update(ctx context.Context, i interface{}, fieldMaskPaths []string
 
 	for _, f := range scope.PrimaryFields() {
 		if contains(fieldMaskPaths, f.Name) {
-			return NoRowsAffected, fmt.Errorf("update: not allowed on primary key field: %s", f.Name)
+			return NoRowsAffected, fmt.Errorf("update: not allowed on primary key field %s: %w", f.Name, ErrInvalidFieldMask)
 		}
 	}
 

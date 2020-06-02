@@ -132,7 +132,7 @@ func TestDb_Update(t *testing.T) {
 			},
 			want:       0,
 			wantErr:    true,
-			wantErrMsg: "update: not allowed on primary key field: Id",
+			wantErrMsg: "update: not allowed on primary key field Id: invalid field mask",
 		},
 		{
 			name: "both are missing",
