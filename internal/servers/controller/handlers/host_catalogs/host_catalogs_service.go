@@ -6,13 +6,18 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/golang/protobuf/ptypes/wrappers"
 	pb "github.com/hashicorp/watchtower/internal/gen/controller/api/resources/hosts"
 	pbs "github.com/hashicorp/watchtower/internal/gen/controller/api/services"
 	"github.com/hashicorp/watchtower/internal/host/static"
 	"github.com/hashicorp/watchtower/internal/servers/controller/handlers"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/types/known/wrapperspb"
+)
+
+const (
+	orgIdFieldName     = "org_id"
+	projectIdFieldName = "project_id"
 )
 
 type catalogType int
@@ -64,23 +69,29 @@ var (
 )
 
 type Service struct {
-	pbs.UnimplementedHostCatalogServiceServer
 	staticRepo *static.Repository
 }
 
-func NewService(repo *static.Repository) *Service {
+var _ pbs.HostCatalogServiceServer = Service{}
+
+// NewService returns a host catalog Service which handles host catalog related requests to watchtower and uses the provided
+// repositories for storage and retrieval.
+func NewService(repo *static.Repository) (Service, error) {
 	if repo == nil {
-		return nil
+		return Service{}, fmt.Errorf("nil static repository provided")
 	}
-	return &Service{staticRepo: repo}
+	return Service{staticRepo: repo}, nil
 }
 
-var _ pbs.HostCatalogServiceServer = &Service{}
+func (s Service) ListHostCatalogs(ctx context.Context, req *pbs.ListHostCatalogsRequest) (*pbs.ListHostCatalogsResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "Requested method is unimplemented for Host Catalogs.")
+}
 
+// GetHostCatalog implements the interface pbs.HostCatalogServiceServer.
 func (s Service) GetHostCatalog(ctx context.Context, req *pbs.GetHostCatalogRequest) (*pbs.GetHostCatalogResponse, error) {
 	ct := typeFromId(req.GetId())
 	if ct == unknownType {
-		handlers.NotFoundErrorf("Host catalog not found.")
+		return nil, handlers.InvalidArgumentErrorf("Unknown host catalog type.", []string{"id"})
 	}
 	if err := validateGetHostCatalogRequest(req, ct); err != nil {
 		return nil, err
@@ -94,6 +105,7 @@ func (s Service) GetHostCatalog(ctx context.Context, req *pbs.GetHostCatalogRequ
 	return resp, nil
 }
 
+// CreateHostCatalog implements the interface pbs.HostCatalogServiceServer.
 func (s Service) CreateHostCatalog(ctx context.Context, req *pbs.CreateHostCatalogRequest) (*pbs.CreateHostCatalogResponse, error) {
 	if err := validateCreateHostCatalogRequest(req); err != nil {
 		return nil, err
@@ -108,10 +120,11 @@ func (s Service) CreateHostCatalog(ctx context.Context, req *pbs.CreateHostCatal
 	return resp, nil
 }
 
+// UpdateHostCatalog implements the interface pbs.HostCatalogServiceServer.
 func (s Service) UpdateHostCatalog(ctx context.Context, req *pbs.UpdateHostCatalogRequest) (*pbs.UpdateHostCatalogResponse, error) {
 	ct := typeFromId(req.GetId())
 	if ct == unknownType {
-		handlers.NotFoundErrorf("Host catalog not found.")
+		return nil, handlers.InvalidArgumentErrorf("Unknown host catalog type.", []string{"id"})
 	}
 	if err := validateUpdateHostCatalogRequest(req, ct); err != nil {
 		return nil, err
@@ -125,10 +138,11 @@ func (s Service) UpdateHostCatalog(ctx context.Context, req *pbs.UpdateHostCatal
 	return resp, nil
 }
 
+// DeleteHostCatalog implements the interface pbs.HostCatalogServiceServer.
 func (s Service) DeleteHostCatalog(ctx context.Context, req *pbs.DeleteHostCatalogRequest) (*pbs.DeleteHostCatalogResponse, error) {
 	ct := typeFromId(req.GetId())
 	if ct == unknownType {
-		handlers.NotFoundErrorf("Host catalog not found.")
+		return nil, handlers.InvalidArgumentErrorf("Unknown host catalog type.", []string{"id"})
 	}
 	if err := validateDeleteHostCatalogRequest(req, ct); err != nil {
 		return nil, err
@@ -148,7 +162,7 @@ func (s Service) getFromRepo(ctx context.Context, id string) (*pb.HostCatalog, e
 		return nil, err
 	}
 	if hc == nil {
-		return nil, handlers.NotFoundErrorf("HostCatalog %q doesn't exist.", id)
+		return nil, handlers.NotFoundErrorf("Host catalog %q doesn't exist.", id)
 	}
 	return toProto(hc), nil
 }
@@ -163,14 +177,14 @@ func (s Service) createInRepo(ctx context.Context, projId string, item *pb.HostC
 	}
 	h, err := static.NewHostCatalog(projId, opts...)
 	if err != nil {
-		return nil, status.Errorf(codes.Internal, "Unable to build host for creation: %v.", err)
+		return nil, status.Errorf(codes.Internal, "Unable to build host catalog for creation: %v.", err)
 	}
 	out, err := s.staticRepo.CreateCatalog(ctx, h)
 	if err != nil {
-		return nil, status.Errorf(codes.Internal, "Unable to create host: %v.", err)
+		return nil, status.Errorf(codes.Internal, "Unable to create host catalog: %v.", err)
 	}
 	if out == nil {
-		return nil, status.Error(codes.Internal, "Unable to create host but no error returned from repository.")
+		return nil, status.Error(codes.Internal, "Unable to create host catalog but no error returned from repository.")
 	}
 	return toProto(out), nil
 }
@@ -184,24 +198,20 @@ func (s Service) updateInRepo(ctx context.Context, projId, id string, mask []str
 		opts = append(opts, static.WithName(name.GetValue()))
 	}
 	h, err := static.NewHostCatalog(projId, opts...)
-	h.PublicId = id
 	if err != nil {
-		return nil, status.Errorf(codes.Internal, "Unable to build host for update: %v.", err)
+		return nil, status.Errorf(codes.Internal, "Unable to build host catalog for update: %v.", err)
 	}
 	h.PublicId = id
 	dbMask, err := toDbUpdateMask(mask)
 	if err != nil {
 		return nil, err
 	}
-	if len(dbMask) == 0 {
-		return nil, handlers.InvalidArgumentErrorf("No valid fields included in the update mask.", []string{"update_mask"})
-	}
 	out, rowsUpdated, err := s.staticRepo.UpdateCatalog(ctx, h, dbMask)
 	if err != nil {
-		return nil, status.Errorf(codes.Internal, "Unable to update host: %v.", err)
+		return nil, status.Errorf(codes.Internal, "Unable to update host catalog: %v.", err)
 	}
 	if rowsUpdated == 0 {
-		return nil, handlers.NotFoundErrorf("HostCatalog %q doesn't exist.", id)
+		return nil, handlers.NotFoundErrorf("Host catalog %q doesn't exist.", id)
 	}
 	return toProto(out), nil
 }
@@ -216,8 +226,8 @@ func (s Service) deleteFromRepo(ctx context.Context, id string) (bool, error) {
 
 // toDbUpdateMask converts the wire format's FieldMask into a list of strings containing FieldMask paths used
 func toDbUpdateMask(paths []string) ([]string, error) {
-	dbPaths := []string{}
-	invalid := []string{}
+	var dbPaths []string
+	var invalid []string
 	for _, p := range paths {
 		for _, f := range strings.Split(p, ",") {
 			if dbField, ok := wireToStorageMask[strings.TrimSpace(f)]; ok {
@@ -230,20 +240,25 @@ func toDbUpdateMask(paths []string) ([]string, error) {
 	if len(invalid) > 0 {
 		return nil, handlers.InvalidArgumentErrorf(fmt.Sprintf("Invalid fields passed in update_update mask: %v.", invalid), []string{"update_mask"})
 	}
+	if len(dbPaths) == 0 {
+		return nil, handlers.InvalidArgumentErrorf("No valid paths included in the update mask.", []string{"update_mask"})
+	}
 	return dbPaths, nil
 }
 
 func toProto(in *static.HostCatalog) *pb.HostCatalog {
-	out := pb.HostCatalog{Id: in.GetPublicId()}
+	out := pb.HostCatalog{
+		Id:          in.GetPublicId(),
+		Type:        &wrapperspb.StringValue{Value: staticType.String()},
+		CreatedTime: in.GetCreateTime().GetTimestamp(),
+		UpdatedTime: in.GetUpdateTime().GetTimestamp(),
+	}
 	if in.GetDescription() != "" {
-		out.Description = &wrappers.StringValue{Value: in.GetDescription()}
+		out.Description = &wrapperspb.StringValue{Value: in.GetDescription()}
 	}
 	if in.GetName() != "" {
-		out.Name = &wrappers.StringValue{Value: in.GetName()}
+		out.Name = &wrapperspb.StringValue{Value: in.GetName()}
 	}
-	out.CreatedTime = in.GetCreateTime().GetTimestamp()
-	out.UpdatedTime = in.GetUpdateTime().GetTimestamp()
-	out.Type = &wrappers.StringValue{Value: staticType.String()}
 	return &out
 }
 
@@ -258,18 +273,8 @@ func validateGetHostCatalogRequest(req *pbs.GetHostCatalogRequest, ct catalogTyp
 	if err := validateAncestors(req); err != nil {
 		return err
 	}
-	var badFormat []string
 	if !validID(req.GetId(), ct.idPrefix()) {
-		badFormat = append(badFormat, "id")
-	}
-	if !validID(req.GetOrgId(), "o_") {
-		badFormat = append(badFormat, "org_id")
-	}
-	if !validID(req.GetProjectId(), "p_") {
-		badFormat = append(badFormat, "project_id")
-	}
-	if len(badFormat) > 0 {
-		return handlers.InvalidArgumentErrorf("Improperly formatted identifier.", badFormat)
+		return handlers.InvalidArgumentErrorf("Improperly formatted identifier.", []string{"id"})
 	}
 	return nil
 }
@@ -278,29 +283,17 @@ func validateCreateHostCatalogRequest(req *pbs.CreateHostCatalogRequest) error {
 	if err := validateAncestors(req); err != nil {
 		return err
 	}
-
-	var badFormat []string
-	if !validID(req.GetOrgId(), "o_") {
-		badFormat = append(badFormat, "org_id")
-	}
-	if !validID(req.GetProjectId(), "p_") {
-		badFormat = append(badFormat, "project_id")
-	}
-	if len(badFormat) > 0 {
-		return handlers.InvalidArgumentErrorf("Improperly formatted identifier.", badFormat)
-	}
-
 	item := req.GetItem()
 	if item == nil {
 		return handlers.InvalidArgumentErrorf("The catalog's fields must be set to something.", []string{"item"})
 	}
 	if item.GetType() == nil {
-		return handlers.InvalidArgumentErrorf("Type must be specified when creating a Host Catalog.", []string{"type"})
+		return handlers.InvalidArgumentErrorf("Type must be specified when creating a host catalog.", []string{"type"})
 	}
 	if typeFromTypeField(item.GetType().GetValue()) == unknownType {
-		return handlers.InvalidArgumentErrorf("Provided Host Catalog type is unknown.", []string{"type"})
+		return handlers.InvalidArgumentErrorf("Provided host catalog type is unknown.", []string{"type"})
 	}
-	immutableFieldsSet := []string{}
+	var immutableFieldsSet []string
 	if item.GetId() != "" {
 		immutableFieldsSet = append(immutableFieldsSet, "id")
 	}
@@ -320,18 +313,8 @@ func validateUpdateHostCatalogRequest(req *pbs.UpdateHostCatalogRequest, ct cata
 	if err := validateAncestors(req); err != nil {
 		return err
 	}
-	var badFormat []string
 	if !validID(req.GetId(), ct.idPrefix()) {
-		badFormat = append(badFormat, "host_catalog")
-	}
-	if !validID(req.GetOrgId(), "o_") {
-		badFormat = append(badFormat, "org_id")
-	}
-	if !validID(req.GetProjectId(), "p_") {
-		badFormat = append(badFormat, "project_id")
-	}
-	if len(badFormat) > 0 {
-		return handlers.InvalidArgumentErrorf("Improperly formatted identifier.", badFormat)
+		return handlers.InvalidArgumentErrorf("Improperly formatted identifier.", []string{"id"})
 	}
 
 	if req.GetUpdateMask() == nil {
@@ -347,7 +330,7 @@ func validateUpdateHostCatalogRequest(req *pbs.UpdateHostCatalogRequest, ct cata
 	if item.GetId() != "" && item.GetId() != req.GetId() {
 		return handlers.InvalidArgumentErrorf("Id in provided item and url do not match.", []string{"id"})
 	}
-	immutableFieldsSet := []string{}
+	var immutableFieldsSet []string
 	if item.GetType() != nil {
 		immutableFieldsSet = append(immutableFieldsSet, "type")
 	}
@@ -371,18 +354,8 @@ func validateDeleteHostCatalogRequest(req *pbs.DeleteHostCatalogRequest, ct cata
 	if err := validateAncestors(req); err != nil {
 		return err
 	}
-	var badFormat []string
 	if !validID(req.GetId(), ct.idPrefix()) {
-		badFormat = append(badFormat, "id")
-	}
-	if !validID(req.GetOrgId(), "o_") {
-		badFormat = append(badFormat, "org_id")
-	}
-	if !validID(req.GetProjectId(), "p_") {
-		badFormat = append(badFormat, "project_id")
-	}
-	if len(badFormat) > 0 {
-		return handlers.InvalidArgumentErrorf("Improperly formatted identifier.", badFormat)
+		return handlers.InvalidArgumentErrorf("Improperly formatted identifier.", []string{"id"})
 	}
 	return nil
 }
@@ -403,13 +376,25 @@ type ancestorProvider interface {
 	GetProjectId() string
 }
 
-// validateAncestors verifies that the ancestors of this call are properly set and provided.
+// validateAncestors verifies that the ancestors of this call are set and formatted correctly.
 func validateAncestors(r ancestorProvider) error {
 	if r.GetOrgId() == "" {
-		return handlers.InvalidArgumentErrorf("Missing organization id.", []string{"org_id"})
+		return handlers.InvalidArgumentErrorf("Missing organization id.", []string{orgIdFieldName})
 	}
 	if r.GetProjectId() == "" {
-		return handlers.InvalidArgumentErrorf("Missing project id.", []string{"project_id"})
+		return handlers.InvalidArgumentErrorf("Missing project id.", []string{projectIdFieldName})
 	}
+
+	var badFormat []string
+	if !validID(r.GetOrgId(), "o_") {
+		badFormat = append(badFormat, orgIdFieldName)
+	}
+	if !validID(r.GetProjectId(), "p_") {
+		badFormat = append(badFormat, projectIdFieldName)
+	}
+	if len(badFormat) > 0 {
+		return handlers.InvalidArgumentErrorf("Improperly formatted identifier.", badFormat)
+	}
+
 	return nil
 }

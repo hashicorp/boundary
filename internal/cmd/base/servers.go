@@ -30,10 +30,7 @@ import (
 	"github.com/hashicorp/watchtower/version"
 	"github.com/jinzhu/gorm"
 	"github.com/mitchellh/cli"
-	"golang.org/x/net/http/httpproxy"
 	"google.golang.org/grpc/grpclog"
-
-	_ "github.com/lib/pq"
 )
 
 type Server struct {
@@ -114,9 +111,16 @@ func (b *Server) SetupLogging(flagLogLevel, flagLogFormat, configLogLevel, confi
 	b.LogLevel = logLevel
 
 	// log proxy settings
-	proxyCfg := httpproxy.FromEnvironment()
-	b.Logger.Info("proxy environment", "http_proxy", proxyCfg.HTTPProxy,
-		"https_proxy", proxyCfg.HTTPSProxy, "no_proxy", proxyCfg.NoProxy)
+	// TODO: It would be good to show this but Vault has, or will soon, address
+	// the fact that this can log users/passwords if they are part of the proxy
+	// URL. When they change things to address that we should update the below
+	// logic and re-enable.
+	/*
+		proxyCfg := httpproxy.FromEnvironment()
+		b.Logger.Info("proxy environment", "http_proxy", proxyCfg.HTTPProxy,
+			"https_proxy", proxyCfg.HTTPSProxy, "no_proxy", proxyCfg.NoProxy)
+	*/
+	// Setup gorm logging
 
 	return nil
 }
@@ -396,6 +400,9 @@ func (b *Server) CreateDevDatabase(dialect string) error {
 		return fmt.Errorf("unable to create db object with dialect %s: %w", dialect, err)
 	}
 	b.Database = dbase
+
+	gorm.LogFormatter = db.GetGormLogFormatter(b.Logger)
+	b.Database.LogMode(true)
 
 	rw := db.New(b.Database)
 	repo, err := iam.NewRepository(rw, rw, b.ControllerKMS)

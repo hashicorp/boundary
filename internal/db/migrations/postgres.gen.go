@@ -88,9 +88,9 @@ end;
 $$ language plpgsql;
 
 comment on function
-  immutable_create_time_func()
+  default_create_time()
 is
-  'function used in before update triggers to make create_time column immutable';
+  'function used in before insert triggers to set create_time column to now';
 
 commit;
 
@@ -477,6 +477,36 @@ create trigger
 before
 insert on iam_scope
   for each row execute procedure default_create_time();
+
+
+-- iam_sub_names will allow us to enforce the different name constraints for
+-- organizations and projects via a before update trigger on the iam_scope
+-- table. 
+create or replace function 
+  iam_sub_names() 
+  returns trigger
+as $$ 
+begin 
+  if new.name != old.name then
+    if new.type = 'organization' then
+      update iam_scope_organization set name = new.name where scope_id = old.public_id;
+      return new;
+    end if;
+    if new.type = 'project' then
+      update iam_scope_project set name = new.name where scope_id = old.public_id;
+      return new;
+    end if;
+    raise exception 'unknown scope type';
+  end if;
+  return new;
+end;
+$$ language plpgsql;
+
+create trigger 
+  iam_sub_names 
+before 
+update on iam_scope
+  for each row execute procedure iam_sub_names();
 
 commit;
 

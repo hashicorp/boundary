@@ -2,7 +2,6 @@ package db
 
 import (
 	"context"
-	"strconv"
 	"testing"
 	"time"
 
@@ -17,8 +16,16 @@ import (
 func Test_Utils(t *testing.T) {
 	t.Parallel()
 	cleanup, conn, _ := TestSetup(t, "postgres")
-	defer cleanup()
-	defer conn.Close()
+	defer func() {
+		if err := cleanup(); err != nil {
+			t.Error(err)
+		}
+	}()
+	defer func() {
+		if err := conn.Close(); err != nil {
+			t.Error(err)
+		}
+	}()
 	t.Run("nothing", func(t *testing.T) {
 
 	})
@@ -26,7 +33,11 @@ func Test_Utils(t *testing.T) {
 
 func TestVerifyOplogEntry(t *testing.T) {
 	cleanup, db, _ := TestSetup(t, "postgres")
-	defer cleanup()
+	defer func() {
+		if err := cleanup(); err != nil {
+			t.Error(err)
+		}
+	}()
 	assert := assert.New(t)
 	defer db.Close()
 
@@ -43,7 +54,7 @@ func TestVerifyOplogEntry(t *testing.T) {
 			WithOplog(
 				TestWrapper(t),
 				oplog.Metadata{
-					"op-type":            []string{strconv.Itoa(int(oplog.OpType_OP_TYPE_CREATE))},
+					"op-type":            []string{oplog.OpType_OP_TYPE_CREATE.String()},
 					"resource-public-id": []string{user.GetPublicId()},
 				}),
 		)
@@ -56,7 +67,7 @@ func TestVerifyOplogEntry(t *testing.T) {
 		err = rw.LookupByPublicId(context.Background(), foundUser)
 		assert.NoError(err)
 		assert.Equal(foundUser.Id, user.Id)
-		TestVerifyOplog(t, &rw, user.PublicId, WithOperation(oplog.OpType_OP_TYPE_CREATE), WithCreateNotBefore(5*time.Second))
+		err = TestVerifyOplog(t, &rw, user.PublicId, WithOperation(oplog.OpType_OP_TYPE_CREATE), WithCreateNotBefore(5*time.Second))
 		assert.NoError(err)
 	})
 	t.Run("should-fail", func(t *testing.T) {
