@@ -15,11 +15,13 @@ type Option func(*Options)
 // Options = how Options are represented
 type Options struct {
 	withParentKeyId string
+	withKmsId       string
 }
 
 func getDefaultOptions() Options {
 	return Options{
 		withParentKeyId: "",
+		withKmsId:       "",
 	}
 }
 
@@ -27,5 +29,12 @@ func getDefaultOptions() Options {
 func WithParentKeyId(id string) Option {
 	return func(o *Options) {
 		o.withParentKeyId = id
+	}
+}
+
+// WithKmsId provides an optional kms key id
+func WithKmsId(id string) Option {
+	return func(o *Options) {
+		o.withKmsId = id
 	}
 }

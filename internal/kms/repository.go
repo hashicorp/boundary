@@ -10,7 +10,6 @@ import (
 	wrapping "github.com/hashicorp/go-kms-wrapping"
 	"github.com/hashicorp/watchtower/internal/db"
 	"github.com/hashicorp/watchtower/internal/oplog"
-	"github.com/lib/pq"
 )
 
 // Repository is the kms database repository
@@ -43,12 +42,20 @@ func (r *Repository) CreateKeyEntry(ctx context.Context, k *KeyEntry, opt ...Opt
 	if k == nil {
 		return nil, fmt.Errorf("create key entry: missing entry %w", db.ErrNilParameter)
 	}
+	if k.PublicId != "" {
+		return nil, fmt.Errorf("create key entry: public id is not empty %w", db.ErrInvalidParameter)
+	}
+	id, err := newKmsKeyEntryId()
+	if err != nil {
+		return nil, fmt.Errorf("create key entry: %w", err)
+	}
 	c := k.Clone()
+	c.PublicId = id
 
 	metadata := newKeyEntryMetadata(c, oplog.OpType_OP_TYPE_CREATE)
 
 	var returnedEntry *KeyEntry
-	_, err := r.writer.DoTx(
+	_, err = r.writer.DoTx(
 		ctx,
 		db.StdRetryCnt,
 		db.ExpBackoff{},
@@ -62,29 +69,12 @@ func (r *Repository) CreateKeyEntry(ctx context.Context, k *KeyEntry, opt ...Opt
 		},
 	)
 	if err != nil {
-		if uniqueError(err) {
+		if db.IsUniqueError(err) {
 			return nil, fmt.Errorf("create: kms key entry: key entry %s already exists in organization %s", k.KeyId, k.ScopeId)
 		}
 		return nil, fmt.Errorf("create: kms key entry: %w for %s", err, k.KeyId)
 	}
 	return returnedEntry, err
-}
-
-// TODO (jlambert 5/2020) uniqueError should be removed in favor of
-// db.IsUnique(err) once the function has been merged to master
-func uniqueError(err error) bool {
-	if err == nil {
-		return false
-	}
-
-	var pqError *pq.Error
-	if errors.As(err, &pqError) {
-		if pqError.Code.Name() == "unique_violation" {
-			return true
-		}
-	}
-
-	return false
 }
 
 func newKeyEntryMetadata(k *KeyEntry, op oplog.OpType) oplog.Metadata {
@@ -105,6 +95,9 @@ func newKeyEntryMetadata(k *KeyEntry, op oplog.OpType) oplog.Metadata {
 func (r *Repository) UpdateKeyEntry(ctx context.Context, k *KeyEntry, fieldMaskPaths []string, opt ...Option) (*KeyEntry, int, error) {
 	if k == nil {
 		return nil, db.NoRowsAffected, fmt.Errorf("update kms key entry: missing key entry %w", db.ErrNilParameter)
+	}
+	if k.PublicId == "" {
+		return nil, db.NoRowsAffected, fmt.Errorf("update kms key entry: missing public id %w", db.ErrNilParameter)
 	}
 	if k.KeyId == "" {
 		return nil, db.NoRowsAffected, fmt.Errorf("update kms key entry: missing key id %w", db.ErrNilParameter)
@@ -152,7 +145,7 @@ func (r *Repository) UpdateKeyEntry(ctx context.Context, k *KeyEntry, fieldMaskP
 				ctx,
 				updatedEntry,
 				fieldMaskPaths,
-				// nullFields,
+				nullFields,
 				db.WithOplog(r.wrapper, metadata),
 			)
 			if err == nil && rowsUpdated > 1 {
@@ -163,7 +156,7 @@ func (r *Repository) UpdateKeyEntry(ctx context.Context, k *KeyEntry, fieldMaskP
 		},
 	)
 	if err != nil {
-		if uniqueError(err) {
+		if db.IsUniqueError(err) {
 			return nil, db.NoRowsAffected, fmt.Errorf("update kms key entry: key entry %s already exists in organization %s", k.KeyId, k.ScopeId)
 		}
 		return nil, db.NoRowsAffected, fmt.Errorf("update kms key entry: %w for %s", err, k.KeyId)

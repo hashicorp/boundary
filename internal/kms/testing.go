@@ -32,14 +32,14 @@ func testId(t *testing.T) string {
 	assert.NoError(t, err)
 	return id
 }
-func testKeyEntry(t *testing.T, conn *gorm.DB, orgId, keyId string, key []byte) *KeyEntry {
+func testKeyEntry(t *testing.T, conn *gorm.DB, orgId, keyId string, key []byte, purpose KeyPurpose) *KeyEntry {
 	assert := assert.New(t)
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
 	repo, err := NewRepository(rw, rw, wrapper)
 	assert.NoError(err)
 
-	entry, err := NewKeyEntry(orgId, keyId, key)
+	entry, err := NewKeyEntry(OrganizationKeyEntry, orgId, keyId, key, purpose)
 	assert.NoError(err)
 
 	createdEntry, err := repo.CreateKeyEntry(context.Background(), entry)

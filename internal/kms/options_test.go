@@ -16,4 +16,10 @@ func Test_GetOpts(t *testing.T) {
 		testOpts.withParentKeyId = "test"
 		assert.Equal(opts, testOpts)
 	})
+	t.Run("WithKmsId", func(t *testing.T) {
+		opts := getOpts(WithKmsId("test"))
+		testOpts := getDefaultOptions()
+		testOpts.withKmsId = "test"
+		assert.Equal(opts, testOpts)
+	})
 }

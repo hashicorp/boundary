@@ -12,6 +12,46 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
+// KeyEntryType defines the possible types for key entries.
+type KeyEntryType uint32
+
+const (
+	UnknownKeyEntryType  KeyEntryType = 0
+	MspKeyEntry          KeyEntryType = 1
+	OrganizationKeyEntry KeyEntryType = 2
+)
+
+func (k KeyEntryType) String() string {
+	return [...]string{
+		"unknown",
+		"msp",
+		"organization",
+	}[k]
+}
+
+// KeyPurpose defines the possible purposes for key entries.
+type KeyPurpose uint32
+
+const (
+	UnknownKeyPurpose KeyPurpose = 0
+	RootKey           KeyPurpose = 1
+	MspKey            KeyPurpose = 2
+	OrganizationKey   KeyPurpose = 3
+	OplogKey          KeyPurpose = 4
+	Database          KeyPurpose = 5
+)
+
+func (k KeyPurpose) String() string {
+	return [...]string{
+		"unknown",
+		"root",
+		"msp",
+		"organization",
+		"oplog",
+		"database",
+	}[k]
+}
+
 // KeyEntry defines watchtower key entry
 type KeyEntry struct {
 	*store.KeyEntry
@@ -21,12 +61,13 @@ type KeyEntry struct {
 var _ db.VetForWriter = (*KeyEntry)(nil)
 
 // NewKeyEntry creates a new in memory key entry and allows options:
-// WithParentKeyId - to specify the entry's parent key id
-func NewKeyEntry(organizationPublicId, keyId string, key []byte, opt ...Option) (*KeyEntry, error) {
+// WithParentKeyId to specify the entry's parent key id.  WithKmsId to specify
+// the entry's kms key id.
+func NewKeyEntry(entryType KeyEntryType, scopeId, keyId string, key []byte, purpose KeyPurpose, opt ...Option) (*KeyEntry, error) {
 	opts := getOpts(opt...)
 
-	if organizationPublicId == "" {
-		return nil, fmt.Errorf("new key entry: missing organization id %w", db.ErrNilParameter)
+	if scopeId == "" {
+		return nil, fmt.Errorf("new key entry: missing scope id %w", db.ErrNilParameter)
 	}
 	if keyId == "" {
 		return nil, fmt.Errorf("new key entry: missing key id %w", db.ErrNilParameter)
@@ -36,10 +77,12 @@ func NewKeyEntry(organizationPublicId, keyId string, key []byte, opt ...Option) 
 	}
 	u := &KeyEntry{
 		KeyEntry: &store.KeyEntry{
+			Type:        entryType.String(),
 			ParentKeyId: opts.withParentKeyId,
 			KeyId:       keyId,
 			Key:         key,
-			ScopeId:     organizationPublicId,
+			ScopeId:     scopeId,
+			Purpose:     purpose.String(),
 		},
 	}
 	return u, nil
@@ -157,4 +200,14 @@ func (k *KeyEntry) SetTableName(n string) {
 	if n != "" {
 		k.tableName = n
 	}
+}
+
+const entryPrefix = "kmske"
+
+func newKmsKeyEntryId() (string, error) {
+	id, err := db.NewPublicId(entryPrefix)
+	if err != nil {
+		return "", fmt.Errorf("new kms key entry id: %w", err)
+	}
+	return id, nil
 }

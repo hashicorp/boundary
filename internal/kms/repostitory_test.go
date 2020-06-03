@@ -32,10 +32,12 @@ func TestRepository_CreateKeyEntry(t *testing.T) {
 	assert.NoError(t, err)
 
 	type args struct {
-		organizationPublicId string
-		keyId                string
-		key                  []byte
-		opt                  []Option
+		entryType KeyEntryType
+		scopeId   string
+		keyId     string
+		key       []byte
+		purpose   KeyPurpose
+		opt       []Option
 	}
 	tests := []struct {
 		name       string
@@ -47,20 +49,22 @@ func TestRepository_CreateKeyEntry(t *testing.T) {
 		{
 			name: "valid",
 			args: args{
-				key:                  []byte("valid-" + id),
-				keyId:                "valid-" + id,
-				organizationPublicId: org.PublicId,
-				opt:                  []Option{WithParentKeyId("valid-" + id)},
+				entryType: OrganizationKeyEntry,
+				key:       []byte("valid-" + id),
+				keyId:     "valid-" + id,
+				scopeId:   org.PublicId,
+				opt:       []Option{WithParentKeyId("valid-" + id)},
 			},
 			wantErr: false,
 		},
 		{
 			name: "bad-scope-id",
 			args: args{
-				key:                  []byte("bad-scope-id-" + id),
-				keyId:                "bad-scope-id-" + id,
-				organizationPublicId: "bad-scope-id-" + id,
-				opt:                  []Option{WithParentKeyId("bad-scope-id-" + id)},
+				entryType: OrganizationKeyEntry,
+				key:       []byte("bad-scope-id-" + id),
+				keyId:     "bad-scope-id-" + id,
+				scopeId:   "bad-scope-id-" + id,
+				opt:       []Option{WithParentKeyId("bad-scope-id-" + id)},
 			},
 			wantErr:    true,
 			wantErrMsg: "create: kms key entry: create: vet for write failed scope is not found for " + "bad-scope-id-" + id,
@@ -68,10 +72,11 @@ func TestRepository_CreateKeyEntry(t *testing.T) {
 		{
 			name: "dup-key-id",
 			args: args{
-				key:                  []byte("dup-key-id-" + id),
-				keyId:                "dup-key-id-" + id,
-				organizationPublicId: org.PublicId,
-				opt:                  []Option{WithParentKeyId("dup-key-id-" + id)},
+				entryType: OrganizationKeyEntry,
+				key:       []byte("dup-key-id-" + id),
+				keyId:     "dup-key-id-" + id,
+				scopeId:   org.PublicId,
+				opt:       []Option{WithParentKeyId("dup-key-id-" + id)},
 			},
 			wantDup:    true,
 			wantErr:    true,
@@ -83,13 +88,13 @@ func TestRepository_CreateKeyEntry(t *testing.T) {
 			assert := assert.New(t)
 
 			if tt.wantDup {
-				dup, err := NewKeyEntry(tt.args.organizationPublicId, tt.args.keyId, tt.args.key)
+				dup, err := NewKeyEntry(tt.args.entryType, tt.args.scopeId, tt.args.keyId, tt.args.key, tt.args.purpose)
 				assert.NoError(err)
 				dup, err = repo.CreateKeyEntry(context.Background(), dup, tt.args.opt...)
 				assert.NoError(err)
 				assert.NotNil(dup)
 			}
-			e, err := NewKeyEntry(tt.args.organizationPublicId, tt.args.keyId, tt.args.key)
+			e, err := NewKeyEntry(tt.args.entryType, tt.args.scopeId, tt.args.keyId, tt.args.key, tt.args.purpose)
 			keyId := e.KeyId
 			assert.NoError(err)
 			e, err = repo.CreateKeyEntry(context.Background(), e, tt.args.opt...)
@@ -147,7 +152,7 @@ func TestRepository_DeleteKeyEntry(t *testing.T) {
 		{
 			name: "valid",
 			args: args{
-				entry: testKeyEntry(t, conn, org.PublicId, "valid-"+id, []byte(id)),
+				entry: testKeyEntry(t, conn, org.PublicId, "valid-"+id, []byte(id), OrganizationKey),
 			},
 			wantRowsDeleted: 1,
 			wantErr:         false,
@@ -168,7 +173,7 @@ func TestRepository_DeleteKeyEntry(t *testing.T) {
 			name: "not-found",
 			args: args{
 				entry: func() *KeyEntry {
-					e, err := NewKeyEntry(org.PublicId, "not-found-"+id, []byte(id))
+					e, err := NewKeyEntry(OrganizationKeyEntry, org.PublicId, "not-found-"+id, []byte(id), OrganizationKey)
 					assert.NoError(t, err)
 					return e
 				}(),
@@ -227,6 +232,7 @@ func TestRepository_UpdateKeyEntry(t *testing.T) {
 		fieldMaskPaths []string
 		opt            []Option
 		ScopeId        string
+		purpose        KeyPurpose
 	}
 	tests := []struct {
 		name           string
@@ -243,6 +249,7 @@ func TestRepository_UpdateKeyEntry(t *testing.T) {
 				key:            []byte("valid" + id),
 				fieldMaskPaths: []string{"key"},
 				ScopeId:        org.PublicId,
+				purpose:        OrganizationKey,
 			},
 			wantErr:        false,
 			wantRowsUpdate: 1,
@@ -287,10 +294,11 @@ func TestRepository_UpdateKeyEntry(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			assert := assert.New(t)
 			if tt.wantDup {
-				_ = testKeyEntry(t, conn, org.PublicId, tt.args.keyId+"-updated", tt.args.key)
+				_ = testKeyEntry(t, conn, org.PublicId, tt.args.keyId+"-updated", tt.args.key, tt.args.purpose)
 			}
-			e := testKeyEntry(t, conn, org.PublicId, tt.args.keyId, tt.args.key)
+			e := testKeyEntry(t, conn, org.PublicId, tt.args.keyId, tt.args.key, tt.args.purpose)
 			updateEntry := allocKeyEntry()
+			updateEntry.PublicId = e.PublicId
 			updateEntry.KeyId = e.KeyId
 			updateEntry.ScopeId = tt.args.ScopeId
 			updateEntry.Key = append(tt.args.key, []byte("-updated")...)

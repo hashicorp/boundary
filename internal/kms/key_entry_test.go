@@ -28,10 +28,12 @@ func TestNewKeyEntry(t *testing.T) {
 	id := testId(t)
 
 	type args struct {
-		organizationPublicId string
-		keyId                string
-		key                  []byte
-		opt                  []Option
+		entryType KeyEntryType
+		scopeId   string
+		keyId     string
+		key       []byte
+		purpose   KeyPurpose
+		opt       []Option
 	}
 	tests := []struct {
 		name       string
@@ -43,14 +45,16 @@ func TestNewKeyEntry(t *testing.T) {
 		{
 			name: "valid",
 			args: args{
-				key:                  []byte("valid-" + id),
-				keyId:                "valid-" + id,
-				organizationPublicId: org.PublicId,
-				opt:                  []Option{WithParentKeyId("valid-" + id)},
+				entryType: OrganizationKeyEntry,
+				key:       []byte("valid-" + id),
+				keyId:     "valid-" + id,
+				scopeId:   org.PublicId,
+				opt:       []Option{WithParentKeyId("valid-" + id)},
 			},
 			wantErr: false,
 			want: &KeyEntry{
 				KeyEntry: &store.KeyEntry{
+					Type:        OrganizationKeyEntry.String(),
 					Key:         []byte("valid-" + id),
 					KeyId:       "valid-" + id,
 					ScopeId:     org.PublicId,
@@ -61,13 +65,15 @@ func TestNewKeyEntry(t *testing.T) {
 		{
 			name: "valid-no-parent",
 			args: args{
-				key:                  []byte("valid-no-parent-" + id),
-				keyId:                "valid-no-parent-" + id,
-				organizationPublicId: org.PublicId,
+				entryType: OrganizationKeyEntry,
+				key:       []byte("valid-no-parent-" + id),
+				keyId:     "valid-no-parent-" + id,
+				scopeId:   org.PublicId,
 			},
 			wantErr: false,
 			want: &KeyEntry{
 				KeyEntry: &store.KeyEntry{
+					Type:    OrganizationKeyEntry.String(),
 					Key:     []byte("valid-no-parent-" + id),
 					KeyId:   "valid-no-parent-" + id,
 					ScopeId: org.PublicId,
@@ -77,10 +83,11 @@ func TestNewKeyEntry(t *testing.T) {
 		{
 			name: "nil-key",
 			args: args{
-				key:                  nil,
-				keyId:                "nil-key-" + id,
-				organizationPublicId: org.PublicId,
-				opt:                  []Option{WithParentKeyId("nil-key-" + id)},
+				entryType: OrganizationKeyEntry,
+				key:       nil,
+				keyId:     "nil-key-" + id,
+				scopeId:   org.PublicId,
+				opt:       []Option{WithParentKeyId("nil-key-" + id)},
 			},
 			wantErr:    true,
 			wantErrMsg: "new key entry: missing key nil parameter",
@@ -89,10 +96,11 @@ func TestNewKeyEntry(t *testing.T) {
 		{
 			name: "no-key-id",
 			args: args{
-				key:                  []byte("no-key-id-" + id),
-				keyId:                "",
-				organizationPublicId: org.PublicId,
-				opt:                  []Option{WithParentKeyId("no-key-id-" + id)},
+				entryType: OrganizationKeyEntry,
+				key:       []byte("no-key-id-" + id),
+				keyId:     "",
+				scopeId:   org.PublicId,
+				opt:       []Option{WithParentKeyId("no-key-id-" + id)},
 			},
 			wantErr:    true,
 			wantErrMsg: "new key entry: missing key id nil parameter",
@@ -101,10 +109,11 @@ func TestNewKeyEntry(t *testing.T) {
 		{
 			name: "no-org-id",
 			args: args{
-				key:                  []byte("no-org-id-" + id),
-				keyId:                "no-org-id-" + id,
-				organizationPublicId: "",
-				opt:                  []Option{WithParentKeyId("no-org-id-" + id)},
+				entryType: OrganizationKeyEntry,
+				key:       []byte("no-org-id-" + id),
+				keyId:     "no-org-id-" + id,
+				scopeId:   "",
+				opt:       []Option{WithParentKeyId("no-org-id-" + id)},
 			},
 			wantErr:    true,
 			wantErrMsg: "new key entry: missing organization id nil parameter",
@@ -113,7 +122,7 @@ func TestNewKeyEntry(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := NewKeyEntry(tt.args.organizationPublicId, tt.args.keyId, tt.args.key, tt.args.opt...)
+			got, err := NewKeyEntry(tt.args.entryType, tt.args.scopeId, tt.args.keyId, tt.args.key, tt.args.purpose, tt.args.opt...)
 			if tt.wantErr {
 				assert.Error(err)
 				assert.Equal(tt.wantErrMsg, err.Error())
@@ -143,7 +152,7 @@ func Test_KeyEntryCreate(t *testing.T) {
 
 	t.Run("valid", func(t *testing.T) {
 		w := db.New(conn)
-		entry, err := NewKeyEntry(org.PublicId, "valid-"+id, []byte(id))
+		entry, err := NewKeyEntry(OrganizationKeyEntry, org.PublicId, "valid-"+id, []byte(id), OrganizationKey)
 		assert.NoError(err)
 		err = w.Create(context.Background(), entry)
 		assert.NoError(err)
@@ -153,7 +162,7 @@ func Test_KeyEntryCreate(t *testing.T) {
 		assert.NoError(err)
 		assert.Equal(entry, &found)
 
-		subKey, err := NewKeyEntry(org.PublicId, "valid-sub-"+id, []byte(id), WithParentKeyId(entry.KeyId))
+		subKey, err := NewKeyEntry(OrganizationKeyEntry, org.PublicId, "valid-sub-"+id, []byte(id), OrganizationKey, WithParentKeyId(entry.KeyId))
 		assert.NoError(err)
 		err = w.Create(context.Background(), subKey)
 		assert.NoError(err)
@@ -164,7 +173,7 @@ func Test_KeyEntryCreate(t *testing.T) {
 	})
 	t.Run("dup", func(t *testing.T) {
 		w := db.New(conn)
-		entry, err := NewKeyEntry(org.PublicId, "dup-"+id, []byte(id))
+		entry, err := NewKeyEntry(OrganizationKeyEntry, org.PublicId, "dup-"+id, []byte(id), OrganizationKey)
 		assert.NoError(err)
 		err = w.Create(context.Background(), entry)
 		assert.NoError(err)
@@ -174,14 +183,14 @@ func Test_KeyEntryCreate(t *testing.T) {
 		assert.NoError(err)
 		assert.Equal(entry, &found)
 
-		entryWithParent, err := NewKeyEntry(org.PublicId, "dup-"+id, []byte(id))
+		entryWithParent, err := NewKeyEntry(OrganizationKeyEntry, org.PublicId, "dup-"+id, []byte(id), OrganizationKey)
 		assert.NoError(err)
 		err = w.Create(context.Background(), entryWithParent)
 		assert.Error(err)
 	})
 	t.Run("bad-org", func(t *testing.T) {
 		w := db.New(conn)
-		entry, err := NewKeyEntry(id, "bad-org-"+id, []byte(id))
+		entry, err := NewKeyEntry(OrganizationKeyEntry, id, "bad-org-"+id, []byte(id), OrganizationKey)
 		assert.NoError(err)
 		err = w.Create(context.Background(), entry)
 		assert.Error(err)
@@ -221,7 +230,7 @@ func Test_KeyEntryDelete(t *testing.T) {
 	}{
 		{
 			name:            "valid",
-			keyEntry:        testKeyEntry(t, conn, org.PublicId, "valid-"+id, []byte("valid-"+id)),
+			keyEntry:        testKeyEntry(t, conn, org.PublicId, "valid-"+id, []byte("valid-"+id), OrganizationKey),
 			wantErr:         false,
 			wantRowsDeleted: 1,
 		},
@@ -276,6 +285,7 @@ func Test_KeyEntryUpdate(t *testing.T) {
 		parentId       string
 		fieldMaskPaths []string
 		ScopeId        string
+		purpose        KeyPurpose
 	}
 	tests := []struct {
 		name           string
@@ -314,7 +324,7 @@ func Test_KeyEntryUpdate(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			assert := assert.New(t)
-			e := testKeyEntry(t, conn, org.PublicId, tt.args.keyId, tt.args.key)
+			e := testKeyEntry(t, conn, org.PublicId, tt.args.keyId, tt.args.key, tt.args.purpose)
 
 			updateEntry := allocKeyEntry()
 			updateEntry.KeyId = e.KeyId
@@ -323,7 +333,7 @@ func Test_KeyEntryUpdate(t *testing.T) {
 
 			// TODO (jimlambrt 5/2020) Need to add nullFields parameter when
 			// support is merged to master
-			updatedRows, err := rw.Update(context.Background(), &updateEntry, tt.args.fieldMaskPaths)
+			updatedRows, err := rw.Update(context.Background(), &updateEntry, tt.args.fieldMaskPaths, nil)
 			if tt.wantErr {
 				assert.Error(err)
 				assert.Equal(0, updatedRows)
@@ -357,7 +367,7 @@ func Test_KeyEntryGetScope(t *testing.T) {
 		rw := db.New(conn)
 		id := testId(t)
 
-		e := testKeyEntry(t, conn, org.PublicId, id, []byte(id))
+		e := testKeyEntry(t, conn, org.PublicId, id, []byte(id), OrganizationKey)
 		s, err := e.GetScope(context.Background(), rw)
 		assert.NoError(err)
 		assert.Equal(e.ScopeId, s.PublicId)
@@ -367,7 +377,7 @@ func Test_KeyEntryGetScope(t *testing.T) {
 		rw := db.New(conn)
 		id := testId(t)
 
-		e := testKeyEntry(t, conn, org.PublicId, id, []byte(id))
+		e := testKeyEntry(t, conn, org.PublicId, id, []byte(id), OrganizationKey)
 		e.ScopeId = ""
 		s, err := e.GetScope(context.Background(), rw)
 		assert.NoError(err)
@@ -392,7 +402,7 @@ func Test_KeyEntryClone(t *testing.T) {
 	t.Run("valid", func(t *testing.T) {
 		assert := assert.New(t)
 		id := testId(t)
-		e := testKeyEntry(t, conn, org.PublicId, id, []byte(id))
+		e := testKeyEntry(t, conn, org.PublicId, id, []byte(id), OrganizationKey)
 
 		cp := e.Clone()
 		assert.True(proto.Equal(cp.KeyEntry, e.KeyEntry))
@@ -400,8 +410,8 @@ func Test_KeyEntryClone(t *testing.T) {
 	t.Run("not-equal", func(t *testing.T) {
 		assert := assert.New(t)
 		id := testId(t)
-		e := testKeyEntry(t, conn, org.PublicId, id, []byte(id))
-		e2 := testKeyEntry(t, conn, org.PublicId, "second-"+id, []byte(id))
+		e := testKeyEntry(t, conn, org.PublicId, id, []byte(id), OrganizationKey)
+		e2 := testKeyEntry(t, conn, org.PublicId, "second-"+id, []byte(id), OrganizationKey)
 
 		cp := e.Clone()
 		assert.True(!proto.Equal(cp.KeyEntry, e2.KeyEntry))
