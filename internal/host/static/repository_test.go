@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"math/rand"
 	"strings"
 	"testing"
 
@@ -849,6 +850,17 @@ func TestRepository_DeleteCatalog(t *testing.T) {
 	}
 }
 
+func randomString(size int) string {
+	r := rand.New(rand.NewSource(42))
+	const letters = "abcdefghijklmnopqrstuvwxyz0123456789"
+	sb := strings.Builder{}
+	sb.Grow(size)
+	for i := 0; i < size; i++ {
+		sb.WriteByte(letters[r.Intn(len(letters))])
+	}
+	return sb.String()
+}
+
 func TestRepository_CreateHost(t *testing.T) {
 	cleanup, conn, _ := db.TestSetup(t, "postgres")
 	defer func() {
@@ -861,6 +873,8 @@ func TestRepository_CreateHost(t *testing.T) {
 	}()
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
+
+	minAddress, maxAddress := randomString(7), randomString(255)
 
 	var tests = []struct {
 		name      string
@@ -879,24 +893,74 @@ func TestRepository_CreateHost(t *testing.T) {
 			wantIsErr: db.ErrNilParameter,
 		},
 		{
-			name: "valid-no-options",
+			name: "address-to-small",
 			in: &Host{
-				Host: &store.Host{},
+				Host: &store.Host{
+					Address: randomString(6),
+				},
+			},
+			wantIsErr: db.ErrInvalidParameter,
+		},
+		{
+			name: "address-to-large",
+			in: &Host{
+				Host: &store.Host{
+					Address: randomString(256),
+				},
+			},
+			wantIsErr: db.ErrInvalidParameter,
+		},
+		{
+			name: "valid-minimum-address",
+			in: &Host{
+				Host: &store.Host{
+					Address: minAddress,
+				},
 			},
 			want: &Host{
-				Host: &store.Host{},
+				Host: &store.Host{
+					Address: minAddress,
+				},
+			},
+		},
+		{
+			name: "valid-maximum-address",
+			in: &Host{
+				Host: &store.Host{
+					Address: maxAddress,
+				},
+			},
+			want: &Host{
+				Host: &store.Host{
+					Address: maxAddress,
+				},
+			},
+		},
+		{
+			name: "valid-no-options",
+			in: &Host{
+				Host: &store.Host{
+					Address: "1.1.1.1",
+				},
+			},
+			want: &Host{
+				Host: &store.Host{
+					Address: "1.1.1.1",
+				},
 			},
 		},
 		{
 			name: "valid-with-name",
 			in: &Host{
 				Host: &store.Host{
-					Name: "test-name-repo",
+					Name:    "test-name-repo",
+					Address: "1.1.1.1",
 				},
 			},
 			want: &Host{
 				Host: &store.Host{
-					Name: "test-name-repo",
+					Name:    "test-name-repo",
+					Address: "1.1.1.1",
 				},
 			},
 		},
@@ -905,11 +969,13 @@ func TestRepository_CreateHost(t *testing.T) {
 			in: &Host{
 				Host: &store.Host{
 					Description: ("test-description-repo"),
+					Address:     "1.1.1.1",
 				},
 			},
 			want: &Host{
 				Host: &store.Host{
 					Description: ("test-description-repo"),
+					Address:     "1.1.1.1",
 				},
 			},
 		},
@@ -940,6 +1006,7 @@ func TestRepository_CreateHost(t *testing.T) {
 			assert.NotSame(tt.in, got)
 			assert.Equal(tt.want.Name, got.Name)
 			assert.Equal(tt.want.Description, got.Description)
+			assert.Equal(tt.want.Address, got.Address)
 			assert.Equal(got.CreateTime, got.UpdateTime)
 		})
 	}
@@ -955,6 +1022,7 @@ func TestRepository_CreateHost(t *testing.T) {
 			Host: &store.Host{
 				StaticHostCatalogId: cat.GetPublicId(),
 				Name:                "test-name-repo",
+				Address:             minAddress,
 			},
 		}
 
@@ -982,7 +1050,8 @@ func TestRepository_CreateHost(t *testing.T) {
 		cat1, cat2 := cats[0], cats[1]
 		in := &Host{
 			Host: &store.Host{
-				Name: "test-name-repo",
+				Name:    "test-name-repo",
+				Address: minAddress,
 			},
 		}
 		in2 := in.clone()

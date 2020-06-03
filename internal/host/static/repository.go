@@ -264,7 +264,67 @@ func newCatalogMetadata(c *HostCatalog, op oplog.OpType) oplog.Metadata {
 //
 // Both h.CreateTime and h.UpdateTime are ignored.
 func (r *Repository) CreateHost(ctx context.Context, h *Host, opt ...Option) (*Host, error) {
-	return nil, nil
+	if h == nil {
+		return nil, fmt.Errorf("create: static host: %w", db.ErrNilParameter)
+	}
+	if h.Host == nil {
+		return nil, fmt.Errorf("create: static host: embedded Host: %w", db.ErrNilParameter)
+	}
+	if h.StaticHostCatalogId == "" {
+		return nil, fmt.Errorf("create: static host: no host catalog id: %w", db.ErrInvalidParameter)
+	}
+	if h.PublicId != "" {
+		return nil, fmt.Errorf("create: static host: public id not empty: %w", db.ErrInvalidParameter)
+	}
+	h = h.clone()
+
+	id, err := newHostId()
+	if err != nil {
+		return nil, fmt.Errorf("create: static host: %w", err)
+	}
+	h.PublicId = id
+
+	metadata := newHostMetadata(h, oplog.OpType_OP_TYPE_CREATE)
+
+	var newHost *Host
+	_, err = r.writer.DoTx(
+		ctx,
+		db.StdRetryCnt,
+		db.ExpBackoff{},
+		func(w db.Writer) error {
+			newHost = h.clone()
+			return w.Create(
+				ctx,
+				newHost,
+				db.WithOplog(r.wrapper, metadata),
+			)
+		},
+	)
+
+	if err != nil {
+		if db.IsUniqueError(err) {
+			return nil, fmt.Errorf("create: static host: in catalog: %s: name %s already exists: %w",
+				h.StaticHostCatalogId, h.Name, db.ErrNotUnique)
+		}
+		if db.IsCheckConstraintError(err) {
+			return nil, fmt.Errorf("create: static host: in catalog: %s: address %s: %w",
+				h.StaticHostCatalogId, h.Address, db.ErrInvalidParameter)
+		}
+		return nil, fmt.Errorf("create: static host: in catalog: %s: %w", h.StaticHostCatalogId, err)
+	}
+	return newHost, nil
+}
+
+func newHostMetadata(h *Host, op oplog.OpType) oplog.Metadata {
+	metadata := oplog.Metadata{
+		"resource-public-id": []string{h.GetPublicId()},
+		"resource-type":      []string{"static host"},
+		"op-type":            []string{op.String()},
+	}
+	if h.StaticHostCatalogId != "" {
+		metadata["static-host-catalog-id"] = []string{h.StaticHostCatalogId}
+	}
+	return metadata
 }
 
 // UpdateHost updates the repository entry for h.PublicId with the values
