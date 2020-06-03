@@ -10,6 +10,7 @@ import (
 	"github.com/hashicorp/watchtower/internal/host/static"
 	"github.com/hashicorp/watchtower/internal/servers/controller"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestCatalogs_Crud(t *testing.T) {
@@ -21,6 +22,9 @@ func TestCatalogs_Crud(t *testing.T) {
 		Client: client,
 	}
 	p, apiErr, err := org.CreateProject(tc.Context(), &scopes.Project{})
+	require.NoError(t, err)
+	require.Nil(t, apiErr)
+	require.NotNil(t, p)
 
 	checkCatalog := func(step string, hc *hosts.HostCatalog, apiErr *api.Error, err error, wantedName string) {
 		assert := assert.New(t)
