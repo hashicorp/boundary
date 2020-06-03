@@ -70,6 +70,13 @@ func NewHost(catalogId, address string, opt ...Option) (*Host, error) {
 	return host, nil
 }
 
+func (c *Host) clone() *Host {
+	cp := proto.Clone(c.Host)
+	return &Host{
+		Host: cp.(*store.Host),
+	}
+}
+
 // A HostSet is a collection of hosts from the set's catalog.
 type HostSet struct {
 	*store.HostSet

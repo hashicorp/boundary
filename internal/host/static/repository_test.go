@@ -848,3 +848,163 @@ func TestRepository_DeleteCatalog(t *testing.T) {
 		})
 	}
 }
+
+func TestRepository_CreateHost(t *testing.T) {
+	cleanup, conn, _ := db.TestSetup(t, "postgres")
+	defer func() {
+		if err := cleanup(); err != nil {
+			t.Error(err)
+		}
+		if err := conn.Close(); err != nil {
+			t.Error(err)
+		}
+	}()
+	rw := db.New(conn)
+	wrapper := db.TestWrapper(t)
+
+	var tests = []struct {
+		name      string
+		in        *Host
+		opts      []Option
+		want      *Host
+		wantIsErr error
+	}{
+		{
+			name:      "nil-host",
+			wantIsErr: db.ErrNilParameter,
+		},
+		{
+			name:      "nil-embedded-host",
+			in:        &Host{},
+			wantIsErr: db.ErrNilParameter,
+		},
+		{
+			name: "valid-no-options",
+			in: &Host{
+				Host: &store.Host{},
+			},
+			want: &Host{
+				Host: &store.Host{},
+			},
+		},
+		{
+			name: "valid-with-name",
+			in: &Host{
+				Host: &store.Host{
+					Name: "test-name-repo",
+				},
+			},
+			want: &Host{
+				Host: &store.Host{
+					Name: "test-name-repo",
+				},
+			},
+		},
+		{
+			name: "valid-with-description",
+			in: &Host{
+				Host: &store.Host{
+					Description: ("test-description-repo"),
+				},
+			},
+			want: &Host{
+				Host: &store.Host{
+					Description: ("test-description-repo"),
+				},
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+			repo, err := NewRepository(rw, rw, wrapper)
+			require.NoError(err)
+			require.NotNil(repo)
+			cat := testCatalog(t, conn)
+			if tt.in != nil && tt.in.Host != nil {
+				tt.in.StaticHostCatalogId = cat.GetPublicId()
+				assert.Empty(tt.in.PublicId)
+			}
+			got, err := repo.CreateHost(context.Background(), tt.in, tt.opts...)
+			if tt.wantIsErr != nil {
+				assert.Truef(errors.Is(err, tt.wantIsErr), "want err: %q got: %q", tt.wantIsErr, err)
+				assert.Nil(got)
+				return
+			}
+			require.NoError(err)
+			assert.Empty(tt.in.PublicId)
+			require.NotNil(got)
+			assertPublicId(t, HostPrefix, got.PublicId)
+			assert.NotSame(tt.in, got)
+			assert.Equal(tt.want.Name, got.Name)
+			assert.Equal(tt.want.Description, got.Description)
+			assert.Equal(got.CreateTime, got.UpdateTime)
+		})
+	}
+
+	t.Run("invalid-duplicate-names", func(t *testing.T) {
+		assert, require := assert.New(t), require.New(t)
+		repo, err := NewRepository(rw, rw, wrapper)
+		assert.NoError(err)
+		require.NotNil(repo)
+
+		cat := testCatalog(t, conn)
+		in := &Host{
+			Host: &store.Host{
+				StaticHostCatalogId: cat.GetPublicId(),
+				Name:                "test-name-repo",
+			},
+		}
+
+		got, err := repo.CreateHost(context.Background(), in)
+		assert.NoError(err)
+		require.NotNil(got)
+		assertPublicId(t, HostPrefix, got.PublicId)
+		assert.NotSame(in, got)
+		assert.Equal(in.Name, got.Name)
+		assert.Equal(in.Description, got.Description)
+		assert.Equal(got.CreateTime, got.UpdateTime)
+
+		got2, err := repo.CreateHost(context.Background(), in)
+		assert.Truef(errors.Is(err, db.ErrNotUnique), "want err: %v got: %v", db.ErrNotUnique, err)
+		assert.Nil(got2)
+	})
+
+	t.Run("valid-duplicate-names-diff-catalogs", func(t *testing.T) {
+		assert, require := assert.New(t), require.New(t)
+		repo, err := NewRepository(rw, rw, wrapper)
+		assert.NoError(err)
+		require.NotNil(repo)
+
+		cats := testCatalogs(t, conn, 2)
+		cat1, cat2 := cats[0], cats[1]
+		in := &Host{
+			Host: &store.Host{
+				Name: "test-name-repo",
+			},
+		}
+		in2 := in.clone()
+
+		in.StaticHostCatalogId = cat2.GetPublicId()
+		got, err := repo.CreateHost(context.Background(), in)
+		assert.NoError(err)
+		require.NotNil(got)
+		assertPublicId(t, HostPrefix, got.PublicId)
+		assert.NotSame(in, got)
+		assert.Equal(in.Name, got.Name)
+		assert.Equal(in.Description, got.Description)
+		assert.Equal(got.CreateTime, got.UpdateTime)
+
+		in2.StaticHostCatalogId = cat1.GetPublicId()
+		got2, err := repo.CreateHost(context.Background(), in2)
+		assert.NoError(err)
+		require.NotNil(got2)
+		assertPublicId(t, HostPrefix, got2.PublicId)
+		assert.NotSame(in2, got2)
+		assert.Equal(in2.Name, got2.Name)
+		assert.Equal(in2.Description, got2.Description)
+		assert.Equal(got2.CreateTime, got2.UpdateTime)
+	})
+}
