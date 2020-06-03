@@ -24,7 +24,11 @@ func TestProjects_Crud(t *testing.T) {
 		assert.NoError(err, step)
 		assert.Nil(apiErr, step)
 		assert.NotNil(p, "returned project", step)
-		assert.Equal(wantedName, *p.Name, step)
+		gotName := ""
+		if p.Name != nil {
+			gotName = *p.Name
+		}
+		assert.Equal(wantedName, gotName, step)
 	}
 
 	p, apiErr, err := org.CreateProject(tc.Context(), &scopes.Project{Name: api.String("foo")})
@@ -37,6 +41,11 @@ func TestProjects_Crud(t *testing.T) {
 	p.Name = api.String("bar")
 	p, apiErr, err = org.UpdateProject(tc.Context(), p)
 	checkProject("update", p, apiErr, err, "bar")
+
+	p = &scopes.Project{Id: p.Id}
+	p.SetDefault("name")
+	p, apiErr, err = org.UpdateProject(tc.Context(), p)
+	checkProject("update, unset name", p, apiErr, err, "")
 
 	existed, apiErr, err := org.DeleteProject(tc.Context(), p)
 	assert.NoError(t, err)

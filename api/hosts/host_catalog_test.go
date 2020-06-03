@@ -25,9 +25,15 @@ func TestCatalogs_Crud(t *testing.T) {
 	checkCatalog := func(step string, hc *hosts.HostCatalog, apiErr *api.Error, err error, wantedName string) {
 		assert := assert.New(t)
 		assert.NoError(err, step)
-		assert.Nil(apiErr, step)
+		if !assert.Nil(apiErr, step) && apiErr.Message != nil {
+			t.Errorf("ApiError message: %q", *apiErr.Message)
+		}
 		assert.NotNil(hc, "returned project", step)
-		assert.Equal(wantedName, *hc.Name, step)
+		gotName := ""
+		if hc.Name != nil {
+			gotName = *hc.Name
+		}
+		assert.Equal(wantedName, gotName, step)
 	}
 
 	hc, apiErr, err := p.CreateHostCatalog(tc.Context(), &hosts.HostCatalog{Name: api.String("foo"), Type: api.String("Static")})
@@ -40,6 +46,11 @@ func TestCatalogs_Crud(t *testing.T) {
 	hc.Name = api.String("bar")
 	hc, apiErr, err = p.UpdateHostCatalog(tc.Context(), hc)
 	checkCatalog("update", hc, apiErr, err, "bar")
+
+	hc = &hosts.HostCatalog{Id: hc.Id}
+	hc.SetDefault("name")
+	hc, apiErr, err = p.UpdateHostCatalog(tc.Context(), hc)
+	checkCatalog("update", hc, apiErr, err, "")
 
 	existed, apiErr, err := p.DeleteHostCatalog(tc.Context(), hc)
 	assert.NoError(t, err)
