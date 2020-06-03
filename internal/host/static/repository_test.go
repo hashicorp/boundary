@@ -10,6 +10,7 @@ import (
 	wrapping "github.com/hashicorp/go-kms-wrapping"
 	"github.com/jinzhu/gorm"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/hashicorp/watchtower/internal/db"
 	"github.com/hashicorp/watchtower/internal/host/static/store"
@@ -100,7 +101,7 @@ func TestRepository_New(t *testing.T) {
 	for _, tt := range tests {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
-			assert := assert.New(t)
+			assert, require := assert.New(t), require.New(t)
 			got, err := NewRepository(tt.args.r, tt.args.w, tt.args.wrapper)
 			if tt.wantIsErr != nil {
 				assert.Truef(errors.Is(err, tt.wantIsErr), "want err: %q got: %q", tt.wantIsErr, err)
@@ -108,7 +109,7 @@ func TestRepository_New(t *testing.T) {
 				return
 			}
 			assert.NoError(err)
-			assert.NotNil(got)
+			require.NotNil(got)
 			assert.Equal(tt.want, got)
 		})
 	}
@@ -183,10 +184,10 @@ func TestRepository_CreateCatalog(t *testing.T) {
 	for _, tt := range tests {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
-			assert := assert.New(t)
+			assert, require := assert.New(t), require.New(t)
 			repo, err := NewRepository(rw, rw, wrapper)
 			assert.NoError(err)
-			assert.NotNil(repo)
+			require.NotNil(repo)
 			_, prj := iam.TestScopes(t, conn)
 			if tt.in != nil && tt.in.HostCatalog != nil {
 				tt.in.ScopeId = prj.GetPublicId()
@@ -200,8 +201,8 @@ func TestRepository_CreateCatalog(t *testing.T) {
 			}
 			assert.NoError(err)
 			assert.Empty(tt.in.PublicId)
-			assert.NotNil(got)
-			assertPublicId(t, "sthc", got.PublicId)
+			require.NotNil(got)
+			assertPublicId(t, HostCatalogPrefix, got.PublicId)
 			assert.NotSame(tt.in, got)
 			assert.Equal(tt.want.Name, got.Name)
 			assert.Equal(tt.want.Description, got.Description)
@@ -210,10 +211,10 @@ func TestRepository_CreateCatalog(t *testing.T) {
 	}
 
 	t.Run("invalid-duplicate-names", func(t *testing.T) {
-		assert := assert.New(t)
+		assert, require := assert.New(t), require.New(t)
 		repo, err := NewRepository(rw, rw, wrapper)
 		assert.NoError(err)
-		assert.NotNil(repo)
+		require.NotNil(repo)
 
 		_, prj := iam.TestScopes(t, conn)
 		in := &HostCatalog{
@@ -225,8 +226,8 @@ func TestRepository_CreateCatalog(t *testing.T) {
 
 		got, err := repo.CreateCatalog(context.Background(), in)
 		assert.NoError(err)
-		assert.NotNil(got)
-		assertPublicId(t, "sthc", got.PublicId)
+		require.NotNil(got)
+		assertPublicId(t, HostCatalogPrefix, got.PublicId)
 		assert.NotSame(in, got)
 		assert.Equal(in.Name, got.Name)
 		assert.Equal(in.Description, got.Description)
@@ -238,10 +239,10 @@ func TestRepository_CreateCatalog(t *testing.T) {
 	})
 
 	t.Run("valid-duplicate-names-diff-scopes", func(t *testing.T) {
-		assert := assert.New(t)
+		assert, require := assert.New(t), require.New(t)
 		repo, err := NewRepository(rw, rw, wrapper)
 		assert.NoError(err)
-		assert.NotNil(repo)
+		require.NotNil(repo)
 
 		org, prj := iam.TestScopes(t, conn)
 		in := &HostCatalog{
@@ -254,8 +255,8 @@ func TestRepository_CreateCatalog(t *testing.T) {
 		in.ScopeId = prj.GetPublicId()
 		got, err := repo.CreateCatalog(context.Background(), in)
 		assert.NoError(err)
-		assert.NotNil(got)
-		assertPublicId(t, "sthc", got.PublicId)
+		require.NotNil(got)
+		assertPublicId(t, HostCatalogPrefix, got.PublicId)
 		assert.NotSame(in, got)
 		assert.Equal(in.Name, got.Name)
 		assert.Equal(in.Description, got.Description)
@@ -264,8 +265,8 @@ func TestRepository_CreateCatalog(t *testing.T) {
 		in2.ScopeId = org.GetPublicId()
 		got2, err := repo.CreateCatalog(context.Background(), in2)
 		assert.NoError(err)
-		assert.NotNil(got2)
-		assertPublicId(t, "sthc", got2.PublicId)
+		require.NotNil(got2)
+		assertPublicId(t, HostCatalogPrefix, got2.PublicId)
 		assert.NotSame(in2, got2)
 		assert.Equal(in2.Name, got2.Name)
 		assert.Equal(in2.Description, got2.Description)
@@ -548,15 +549,15 @@ func TestRepository_UpdateCatalog(t *testing.T) {
 	for _, tt := range tests {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
-			assert := assert.New(t)
+			assert, require := assert.New(t), require.New(t)
 			repo, err := NewRepository(rw, rw, wrapper)
 			assert.NoError(err)
-			assert.NotNil(repo)
+			require.NotNil(repo)
 			_, prj := iam.TestScopes(t, conn)
 			tt.orig.ScopeId = prj.GetPublicId()
 			orig, err := repo.CreateCatalog(context.Background(), tt.orig)
 			assert.NoError(err)
-			assert.NotNil(orig)
+			require.NotNil(orig)
 
 			if tt.chgFn != nil {
 				orig = tt.chgFn(orig)
@@ -570,8 +571,8 @@ func TestRepository_UpdateCatalog(t *testing.T) {
 			}
 			assert.NoError(err)
 			assert.Empty(tt.orig.PublicId)
-			assert.NotNil(got)
-			assertPublicId(t, "sthc", got.PublicId)
+			require.NotNil(got)
+			assertPublicId(t, HostCatalogPrefix, got.PublicId)
 			assert.Equal(tt.wantCount, gotCount, "row count")
 			assert.NotSame(tt.orig, got)
 			assert.Equal(tt.orig.ScopeId, got.ScopeId)
@@ -589,10 +590,10 @@ func TestRepository_UpdateCatalog(t *testing.T) {
 	}
 
 	t.Run("invalid-duplicate-names", func(t *testing.T) {
-		assert := assert.New(t)
+		assert, require := assert.New(t), require.New(t)
 		repo, err := NewRepository(rw, rw, wrapper)
 		assert.NoError(err)
-		assert.NotNil(repo)
+		require.NotNil(repo)
 
 		name := "test-dup-name"
 		cats := testCatalogs(t, conn, 2)
@@ -600,7 +601,7 @@ func TestRepository_UpdateCatalog(t *testing.T) {
 		c1.Name = name
 		got1, gotCount1, err := repo.UpdateCatalog(context.Background(), c1, []string{"name"})
 		assert.NoError(err)
-		assert.NotNil(got1)
+		require.NotNil(got1)
 		assert.Equal(name, got1.Name)
 		assert.Equal(1, gotCount1, "row count")
 
@@ -613,10 +614,10 @@ func TestRepository_UpdateCatalog(t *testing.T) {
 	})
 
 	t.Run("valid-duplicate-names-diff-scopes", func(t *testing.T) {
-		assert := assert.New(t)
+		assert, require := assert.New(t), require.New(t)
 		repo, err := NewRepository(rw, rw, wrapper)
 		assert.NoError(err)
-		assert.NotNil(repo)
+		require.NotNil(repo)
 
 		org, prj := iam.TestScopes(t, conn)
 		in := &HostCatalog{
@@ -629,8 +630,8 @@ func TestRepository_UpdateCatalog(t *testing.T) {
 		in.ScopeId = prj.GetPublicId()
 		got, err := repo.CreateCatalog(context.Background(), in)
 		assert.NoError(err)
-		assert.NotNil(got)
-		assertPublicId(t, "sthc", got.PublicId)
+		require.NotNil(got)
+		assertPublicId(t, HostCatalogPrefix, got.PublicId)
 		assert.NotSame(in, got)
 		assert.Equal(in.Name, got.Name)
 		assert.Equal(in.Description, got.Description)
@@ -639,11 +640,11 @@ func TestRepository_UpdateCatalog(t *testing.T) {
 		in2.Name = "first-name"
 		got2, err := repo.CreateCatalog(context.Background(), in2)
 		assert.NoError(err)
-		assert.NotNil(got2)
+		require.NotNil(got2)
 		got2.Name = got.Name
 		got3, gotCount3, err := repo.UpdateCatalog(context.Background(), got2, []string{"name"})
 		assert.NoError(err)
-		assert.NotNil(got3)
+		require.NotNil(got3)
 		assert.NotSame(got2, got3)
 		assert.Equal(got.Name, got3.Name)
 		assert.Equal(got2.Description, got3.Description)
@@ -651,10 +652,10 @@ func TestRepository_UpdateCatalog(t *testing.T) {
 	})
 
 	t.Run("change-scope-id", func(t *testing.T) {
-		assert := assert.New(t)
+		assert, require := assert.New(t), require.New(t)
 		repo, err := NewRepository(rw, rw, wrapper)
 		assert.NoError(err)
-		assert.NotNil(repo)
+		require.NotNil(repo)
 
 		c1, c2 := testCatalog(t, conn), testCatalog(t, conn)
 		assert.NotEqual(c1.ScopeId, c2.ScopeId)
@@ -666,7 +667,7 @@ func TestRepository_UpdateCatalog(t *testing.T) {
 		got1, gotCount1, err := repo.UpdateCatalog(context.Background(), c1, []string{"name"})
 
 		assert.NoError(err)
-		assert.NotNil(got1)
+		require.NotNil(got1)
 		assert.Equal(orig.ScopeId, got1.ScopeId)
 		assert.Equal(1, gotCount1, "row count")
 	})
@@ -731,7 +732,7 @@ func TestRepository_LookupCatalog(t *testing.T) {
 	cat := testCatalog(t, conn)
 	badId, err := newHostCatalogId()
 	assert.NoError(t, err)
-	assert.NotNil(t, badId)
+	require.NotNil(t, badId)
 
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
@@ -763,10 +764,10 @@ func TestRepository_LookupCatalog(t *testing.T) {
 	for _, tt := range tests {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
-			assert := assert.New(t)
+			assert, require := assert.New(t), require.New(t)
 			repo, err := NewRepository(rw, rw, wrapper)
 			assert.NoError(err)
-			assert.NotNil(repo)
+			require.NotNil(repo)
 
 			got, err := repo.LookupCatalog(context.Background(), tt.id)
 			if tt.wantErr != nil {
@@ -779,7 +780,7 @@ func TestRepository_LookupCatalog(t *testing.T) {
 			case tt.want == nil:
 				assert.Nil(got)
 			case tt.want != nil:
-				assert.NotNil(got)
+				require.NotNil(got)
 				assert.Equal(got, tt.want)
 			}
 		})
@@ -800,7 +801,7 @@ func TestRepository_DeleteCatalog(t *testing.T) {
 	cat := testCatalog(t, conn)
 	badId, err := newHostCatalogId()
 	assert.NoError(t, err)
-	assert.NotNil(t, badId)
+	require.NotNil(t, badId)
 
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
@@ -832,10 +833,10 @@ func TestRepository_DeleteCatalog(t *testing.T) {
 	for _, tt := range tests {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
-			assert := assert.New(t)
+			assert, require := assert.New(t), require.New(t)
 			repo, err := NewRepository(rw, rw, wrapper)
 			assert.NoError(err)
-			assert.NotNil(repo)
+			require.NotNil(repo)
 
 			got, err := repo.DeleteCatalog(context.Background(), tt.id)
 			if tt.wantErr != nil {
