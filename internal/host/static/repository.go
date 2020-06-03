@@ -264,6 +264,9 @@ func newCatalogMetadata(c *HostCatalog, op oplog.OpType) oplog.Metadata {
 //
 // Both h.CreateTime and h.UpdateTime are ignored.
 func (r *Repository) CreateHost(ctx context.Context, h *Host, opt ...Option) (*Host, error) {
+	// TODO(mgaffney) 06/2020: refactor: extract code that is common with
+	// the CreateCatalog function.
+
 	if h == nil {
 		return nil, fmt.Errorf("create: static host: %w", db.ErrNilParameter)
 	}

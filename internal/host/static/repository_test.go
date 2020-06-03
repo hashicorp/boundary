@@ -862,6 +862,9 @@ func randomString(size int) string {
 }
 
 func TestRepository_CreateHost(t *testing.T) {
+	// TODO(mgaffney) 06/2020: refactor: extract code that is common with
+	// the TestRepository_CreateCatalog function.
+
 	cleanup, conn, _ := db.TestSetup(t, "postgres")
 	defer func() {
 		if err := cleanup(); err != nil {
