@@ -192,12 +192,12 @@ func TestHost_New(t *testing.T) {
 			name: "address-to-short",
 			args: args{
 				catalogId: cat.GetPublicId(),
-				address:   "1234567",
+				address:   "123456",
 			},
 			want: &Host{
 				Host: &store.Host{
 					StaticHostCatalogId: cat.GetPublicId(),
-					Address:             "1234567",
+					Address:             "123456",
 				},
 			},
 			wantWriteErr: true,
@@ -206,12 +206,12 @@ func TestHost_New(t *testing.T) {
 			name: "minimum-address",
 			args: args{
 				catalogId: cat.GetPublicId(),
-				address:   "12345678",
+				address:   "1234567",
 			},
 			want: &Host{
 				Host: &store.Host{
 					StaticHostCatalogId: cat.GetPublicId(),
-					Address:             "12345678",
+					Address:             "1234567",
 				},
 			},
 		},

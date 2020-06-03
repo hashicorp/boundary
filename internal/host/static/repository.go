@@ -275,7 +275,7 @@ func (r *Repository) CreateHost(ctx context.Context, h *Host, opt ...Option) (*H
 // h must contain a valid PublicId. Only h.Name, h.Description, and
 // h.Address can be updated. If h.Name is set to a non-empty string, it
 // must be unique within h.StaticHostCatalogId. h.Address must contain a
-// string where 7 < len(h.Address) < 256.
+// string where 6 < len(h.Address) < 256.
 //
 // An attribute of h will be set to NULL in the database if the attribute
 // in h is the zero value and it is included in fieldMask.

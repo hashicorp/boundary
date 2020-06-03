@@ -61,7 +61,7 @@ message Host {
   string static_host_catalog_id = 6;
 
   // address is the IP Address or DNS name of the host. It must be set and
-  // it must be 7 < len(address) < 256.
+  // it must be 6 < len(address) < 256.
   // @inject_tag: gorm:"not_null"
   string address = 7;
 }
