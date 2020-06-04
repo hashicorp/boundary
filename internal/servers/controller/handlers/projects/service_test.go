@@ -24,7 +24,6 @@ import (
 
 func createDefaultProjectAndRepo(t *testing.T) (*iam.Scope, func() (*iam.Repository, error)) {
 	t.Helper()
-	require := require.New(t)
 	cleanup, conn, _ := db.TestSetup(t, "postgres")
 	t.Cleanup(func() {
 		if err := conn.Close(); err != nil {
@@ -36,24 +35,11 @@ func createDefaultProjectAndRepo(t *testing.T) (*iam.Scope, func() (*iam.Reposit
 	})
 	rw := db.New(conn)
 	wrap := db.TestWrapper(t)
-
 	repoFn := func() (*iam.Repository, error) {
 		return iam.NewRepository(rw, rw, wrap)
 	}
-	repo, err := repoFn()
-	assert.Nil(t, err, "Unable to create new repo")
 
-	// Create a default org and project for our tests.
-	o, err := iam.NewOrganization(iam.WithName("default"))
-	require.NoError(err, "Could not get new org.")
-	oRes, err := repo.CreateScope(context.Background(), o)
-	require.NoError(err, "Could not create org scope.")
-
-	p, err := iam.NewProject(oRes.GetPublicId(), iam.WithName("default"), iam.WithDescription("default"))
-	require.NoError(err, "Could not get new project.")
-	pRes, err := repo.CreateScope(context.Background(), p)
-	require.NoError(err, "Could not create new project.")
-
+	_, pRes := iam.TestScopes(t, conn)
 	return pRes, repoFn
 }
 
