@@ -100,9 +100,7 @@ func (s Service) GetHostCatalog(ctx context.Context, req *pbs.GetHostCatalogRequ
 	if err != nil {
 		return nil, err
 	}
-	resp := &pbs.GetHostCatalogResponse{}
-	resp.Item = hc
-	return resp, nil
+	return &pbs.GetHostCatalogResponse{Item: hc}, nil
 }
 
 // CreateHostCatalog implements the interface pbs.HostCatalogServiceServer.
@@ -110,14 +108,14 @@ func (s Service) CreateHostCatalog(ctx context.Context, req *pbs.CreateHostCatal
 	if err := validateCreateRequest(req); err != nil {
 		return nil, err
 	}
-	h, err := s.createInRepo(ctx, req.GetProjectId(), req.GetItem())
+	hc, err := s.createInRepo(ctx, req.GetProjectId(), req.GetItem())
 	if err != nil {
 		return nil, err
 	}
-	resp := &pbs.CreateHostCatalogResponse{}
-	resp.Uri = fmt.Sprintf("orgs/%s/projects/%s/host-catalogs/%s", req.GetOrgId(), req.GetProjectId(), h.GetId())
-	resp.Item = h
-	return resp, nil
+	return &pbs.CreateHostCatalogResponse{
+		Item: hc,
+		Uri:  fmt.Sprintf("orgs/%s/projects/%s/host-catalogs/%s", req.GetOrgId(), req.GetProjectId(), hc.GetId()),
+	}, nil
 }
 
 // UpdateHostCatalog implements the interface pbs.HostCatalogServiceServer.
@@ -129,13 +127,11 @@ func (s Service) UpdateHostCatalog(ctx context.Context, req *pbs.UpdateHostCatal
 	if err := validateUpdateRequest(req, ct); err != nil {
 		return nil, err
 	}
-	p, err := s.updateInRepo(ctx, req.GetProjectId(), req.GetId(), req.GetUpdateMask().GetPaths(), req.GetItem())
+	hc, err := s.updateInRepo(ctx, req.GetProjectId(), req.GetId(), req.GetUpdateMask().GetPaths(), req.GetItem())
 	if err != nil {
 		return nil, err
 	}
-	resp := &pbs.UpdateHostCatalogResponse{}
-	resp.Item = p
-	return resp, nil
+	return &pbs.UpdateHostCatalogResponse{Item: hc}, nil
 }
 
 // DeleteHostCatalog implements the interface pbs.HostCatalogServiceServer.
@@ -151,9 +147,7 @@ func (s Service) DeleteHostCatalog(ctx context.Context, req *pbs.DeleteHostCatal
 	if err != nil {
 		return nil, err
 	}
-	resp := &pbs.DeleteHostCatalogResponse{}
-	resp.Existed = existed
-	return resp, nil
+	return &pbs.DeleteHostCatalogResponse{Existed: existed}, nil
 }
 
 func (s Service) getFromRepo(ctx context.Context, id string) (*pb.HostCatalog, error) {
