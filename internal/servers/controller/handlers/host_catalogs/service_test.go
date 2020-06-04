@@ -135,11 +135,6 @@ func TestDelete(t *testing.T) {
 	require := require.New(t)
 	hc, proj, repo := createDefaultHostCatalogAndRepo(t)
 
-	hc2, err := static.NewHostCatalog(hc.GetScopeId())
-	require.NoError(err, "Couldn't create a new host catalog.")
-	hc2, err = repo.CreateCatalog(context.Background(), hc2)
-	require.NoError(err, "Couldn't persist a new host catalog.")
-
 	s, err := host_catalogs.NewService(repo)
 	require.NoError(err, "Couldn't create a new host catalog service.")
 
