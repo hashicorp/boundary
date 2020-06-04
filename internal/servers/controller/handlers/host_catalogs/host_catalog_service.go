@@ -60,8 +60,7 @@ func typeFromId(id string) catalogType {
 }
 
 var (
-	reInvalidID = regexp.MustCompile("[^A-Za-z0-9]")
-	// TODO(ICU-28): Find a way to auto update these names and enforce the mappings between wire and storage.
+	reInvalidID       = regexp.MustCompile("[^A-Za-z0-9]")
 	wireToStorageMask = map[string]string{
 		"name":        "Name",
 		"description": "Description",
