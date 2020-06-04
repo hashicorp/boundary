@@ -303,7 +303,7 @@ func TestDb_Update(t *testing.T) {
 		)
 		assert.Error(err)
 		assert.Equal(0, rowsUpdated)
-		assert.Equal("update: oplog validation failed error no wrapper WithOplog", err.Error())
+		assert.Equal("update: oplog validation failed error no wrapper WithOplog: nil parameter", err.Error())
 	})
 	t.Run("no-metadata-WithOplog", func(t *testing.T) {
 		w := Db{underlying: db}
@@ -319,7 +319,7 @@ func TestDb_Update(t *testing.T) {
 		)
 		assert.Error(err)
 		assert.Equal(0, rowsUpdated)
-		assert.Equal("update: oplog validation failed error no metadata for WithOplog", err.Error())
+		assert.Equal("update: oplog validation failed error no metadata for WithOplog: invalid parameter", err.Error())
 	})
 }
 
@@ -443,7 +443,7 @@ func TestDb_Create(t *testing.T) {
 			),
 		)
 		assert.Error(err)
-		assert.Equal("create: oplog validation failed error no wrapper WithOplog", err.Error())
+		assert.Equal("create: oplog validation failed error no wrapper WithOplog: nil parameter", err.Error())
 	})
 	t.Run("no-metadata-WithOplog", func(t *testing.T) {
 		w := Db{underlying: db}
@@ -461,7 +461,7 @@ func TestDb_Create(t *testing.T) {
 			),
 		)
 		assert.Error(err)
-		assert.Equal("create: oplog validation failed error no metadata for WithOplog", err.Error())
+		assert.Equal("create: oplog validation failed error no metadata for WithOplog: invalid parameter", err.Error())
 	})
 	t.Run("nil-tx", func(t *testing.T) {
 		w := Db{underlying: nil}
@@ -939,20 +939,27 @@ func TestDb_Delete(t *testing.T) {
 		u.Id = 1111111
 		return u
 	}
+
+	newMetadata := func(publicId string) oplog.Metadata {
+		return oplog.Metadata{
+			"op-type":            []string{oplog.OpType_OP_TYPE_DELETE.String()},
+			"resource-public-id": []string{publicId},
+		}
+	}
 	type args struct {
-		i   *db_test.TestUser
-		opt []Option
+		i        *db_test.TestUser
+		opt      []Option
+		metadata func(publicId string) oplog.Metadata
 	}
 	tests := []struct {
-		name        string
-		underlying  *gorm.DB
-		wrapper     wrapping.Wrapper
-		badMetadata bool
-		args        args
-		want        int
-		wantOplog   bool
-		wantErr     bool
-		wantErrIs   error
+		name       string
+		underlying *gorm.DB
+		wrapper    wrapping.Wrapper
+		args       args
+		want       int
+		wantOplog  bool
+		wantErr    bool
+		wantErrIs  error
 	}{
 		{
 			name:       "simple-no-oplog",
@@ -969,7 +976,8 @@ func TestDb_Delete(t *testing.T) {
 			underlying: db,
 			wrapper:    TestWrapper(t),
 			args: args{
-				i: newUser(),
+				i:        newUser(),
+				metadata: newMetadata,
 			},
 			wantOplog: true,
 			want:      1,
@@ -980,23 +988,26 @@ func TestDb_Delete(t *testing.T) {
 			underlying: db,
 			wrapper:    nil,
 			args: args{
-				i: newUser(),
+				i:        newUser(),
+				metadata: newMetadata,
 			},
 			wantOplog: true,
 			want:      0,
 			wantErr:   true,
+			wantErrIs: ErrNilParameter,
 		},
 		{
-			name:        "nil-metadata",
-			underlying:  db,
-			badMetadata: true,
-			wrapper:     nil,
+			name:       "nil-metadata",
+			underlying: db,
+			wrapper:    nil,
 			args: args{
-				i: newUser(),
+				i:        newUser(),
+				metadata: func(string) oplog.Metadata { return nil },
 			},
 			wantOplog: true,
 			want:      0,
 			wantErr:   true,
+			wantErrIs: ErrNilParameter,
 		},
 		{
 			name:       "nil-underlying",
@@ -1005,8 +1016,9 @@ func TestDb_Delete(t *testing.T) {
 			args: args{
 				i: newUser(),
 			},
-			want:    0,
-			wantErr: true,
+			want:      0,
+			wantErr:   true,
+			wantErrIs: ErrNilParameter,
 		},
 		{
 			name:       "not-found",
@@ -1027,13 +1039,7 @@ func TestDb_Delete(t *testing.T) {
 				underlying: tt.underlying,
 			}
 			if tt.wantOplog {
-				metadata := oplog.Metadata{
-					"op-type":            []string{oplog.OpType_OP_TYPE_DELETE.String()},
-					"resource-public-id": []string{tt.args.i.GetPublicId()},
-				}
-				if tt.badMetadata {
-					metadata = nil
-				}
+				metadata := tt.args.metadata(tt.args.i.PublicId)
 				opLog := WithOplog(tt.wrapper, metadata)
 				tt.args.opt = append(tt.args.opt, opLog)
 			}
