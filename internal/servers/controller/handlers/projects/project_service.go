@@ -25,10 +25,12 @@ var (
 	}
 )
 
+// Service handles request as described by the pbs.ProjectServiceServer interface.
 type Service struct {
 	repo func() (*iam.Repository, error)
 }
 
+// NewService returns a project service which handles project related requests to watchtower.
 func NewService(repo func() (*iam.Repository, error)) (Service, error) {
 	if repo == nil {
 		return Service{}, fmt.Errorf("nil iam repostiroy provided")
@@ -38,10 +40,12 @@ func NewService(repo func() (*iam.Repository, error)) (Service, error) {
 
 var _ pbs.ProjectServiceServer = Service{}
 
+// CreateProject is not yet implemented but will implement the interface pbs.ProjectServiceServer.
 func (s Service) ListProjects(ctx context.Context, req *pbs.ListProjectsRequest) (*pbs.ListProjectsResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "List not enabled for this resource.")
 }
 
+// GetProjects implements the interface pbs.ProjectServiceServer.
 func (s Service) GetProject(ctx context.Context, req *pbs.GetProjectRequest) (*pbs.GetProjectResponse, error) {
 	if err := validateGetRequest(req); err != nil {
 		return nil, err
@@ -53,6 +57,7 @@ func (s Service) GetProject(ctx context.Context, req *pbs.GetProjectRequest) (*p
 	return &pbs.GetProjectResponse{Item: p}, nil
 }
 
+// CreateProject implements the interface pbs.ProjectServiceServer.
 func (s Service) CreateProject(ctx context.Context, req *pbs.CreateProjectRequest) (*pbs.CreateProjectResponse, error) {
 	if err := validateCreateRequest(req); err != nil {
 		return nil, err
@@ -64,6 +69,7 @@ func (s Service) CreateProject(ctx context.Context, req *pbs.CreateProjectReques
 	return &pbs.CreateProjectResponse{Item: p, Uri: fmt.Sprintf("orgs/%s/projects/%s", req.GetOrgId(), p.GetId())}, nil
 }
 
+// UpdateProject implements the interface pbs.ProjectServiceServer.
 func (s Service) UpdateProject(ctx context.Context, req *pbs.UpdateProjectRequest) (*pbs.UpdateProjectResponse, error) {
 	if err := validateUpdateRequest(req); err != nil {
 		return nil, err
@@ -75,6 +81,7 @@ func (s Service) UpdateProject(ctx context.Context, req *pbs.UpdateProjectReques
 	return &pbs.UpdateProjectResponse{Item: p}, nil
 }
 
+// DeleteProject implements the interface pbs.ProjectServiceServer.
 func (s Service) DeleteProject(ctx context.Context, req *pbs.DeleteProjectRequest) (*pbs.DeleteProjectResponse, error) {
 	if err := validateDeleteRequest(req); err != nil {
 		return nil, err
