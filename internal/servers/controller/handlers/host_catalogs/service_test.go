@@ -96,24 +96,21 @@ func TestGet(t *testing.T) {
 			errCode: codes.OK,
 		},
 		{
-			name: "Get a non existant Host Catalog",
-			req:  &pbs.GetHostCatalogRequest{Id: static.HostCatalogPrefix + "_DoesntExis"},
-			res:  nil,
-			// This will be fixed with PR 42
+			name:    "Get a non existing Host Catalog",
+			req:     &pbs.GetHostCatalogRequest{Id: static.HostCatalogPrefix + "_DoesntExis"},
+			res:     nil,
 			errCode: codes.NotFound,
 		},
 		{
-			name: "Wrong id prefix",
-			req:  &pbs.GetHostCatalogRequest{Id: "j_1234567890"},
-			res:  nil,
-			// This will be fixed with PR 42
+			name:    "Wrong id prefix",
+			req:     &pbs.GetHostCatalogRequest{Id: "j_1234567890"},
+			res:     nil,
 			errCode: codes.InvalidArgument,
 		},
 		{
-			name: "space in id",
-			req:  &pbs.GetHostCatalogRequest{Id: static.HostCatalogPrefix + "_1 23456789"},
-			res:  nil,
-			// This will be fixed with PR 42
+			name:    "space in id",
+			req:     &pbs.GetHostCatalogRequest{Id: static.HostCatalogPrefix + "_1 23456789"},
+			res:     nil,
 			errCode: codes.InvalidArgument,
 		},
 	}
