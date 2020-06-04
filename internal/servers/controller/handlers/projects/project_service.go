@@ -43,7 +43,7 @@ func (s Service) ListProjects(ctx context.Context, req *pbs.ListProjectsRequest)
 }
 
 func (s Service) GetProject(ctx context.Context, req *pbs.GetProjectRequest) (*pbs.GetProjectResponse, error) {
-	if err := validateGetProjectRequest(req); err != nil {
+	if err := validateGetRequest(req); err != nil {
 		return nil, err
 	}
 	p, err := s.getFromRepo(ctx, req.GetId())
@@ -56,7 +56,7 @@ func (s Service) GetProject(ctx context.Context, req *pbs.GetProjectRequest) (*p
 }
 
 func (s Service) CreateProject(ctx context.Context, req *pbs.CreateProjectRequest) (*pbs.CreateProjectResponse, error) {
-	if err := validateCreateProjectRequest(req); err != nil {
+	if err := validateCreateRequest(req); err != nil {
 		return nil, err
 	}
 	p, err := s.createInRepo(ctx, req.GetOrgId(), req.GetItem())
@@ -70,7 +70,7 @@ func (s Service) CreateProject(ctx context.Context, req *pbs.CreateProjectReques
 }
 
 func (s Service) UpdateProject(ctx context.Context, req *pbs.UpdateProjectRequest) (*pbs.UpdateProjectResponse, error) {
-	if err := validateUpdateProjectRequest(req); err != nil {
+	if err := validateUpdateRequest(req); err != nil {
 		return nil, err
 	}
 	p, err := s.updateInRepo(ctx, req.GetOrgId(), req.GetId(), req.GetUpdateMask().GetPaths(), req.GetItem())
@@ -83,7 +83,7 @@ func (s Service) UpdateProject(ctx context.Context, req *pbs.UpdateProjectReques
 }
 
 func (s Service) DeleteProject(ctx context.Context, req *pbs.DeleteProjectRequest) (*pbs.DeleteProjectResponse, error) {
-	if err := validateDeleteProjectRequest(req); err != nil {
+	if err := validateDeleteRequest(req); err != nil {
 		return nil, err
 	}
 	existed, err := s.deleteFromRepo(ctx, req.GetId())
@@ -204,17 +204,17 @@ func toProto(in *iam.Scope) *pb.Project {
 //  * All required parameters are set
 //  * There are no conflicting parameters provided
 // TODO: Populate the error in a way to allow it to be converted to the previously described error format and include all invalid fields instead of just the most recent.
-func validateGetProjectRequest(req *pbs.GetProjectRequest) error {
+func validateGetRequest(req *pbs.GetProjectRequest) error {
 	if err := validateAncestors(req); err != nil {
 		return err
 	}
-	if !validID(req.GetId(), iam.ProjectScope.Prefix()+"_") {
+	if !validId(req.GetId(), iam.ProjectScope.Prefix()+"_") {
 		return handlers.InvalidArgumentErrorf("Improperly formatted identifier.", []string{"id"})
 	}
 	return nil
 }
 
-func validateCreateProjectRequest(req *pbs.CreateProjectRequest) error {
+func validateCreateRequest(req *pbs.CreateProjectRequest) error {
 	if err := validateAncestors(req); err != nil {
 		return err
 	}
@@ -238,11 +238,11 @@ func validateCreateProjectRequest(req *pbs.CreateProjectRequest) error {
 	return nil
 }
 
-func validateUpdateProjectRequest(req *pbs.UpdateProjectRequest) error {
+func validateUpdateRequest(req *pbs.UpdateProjectRequest) error {
 	if err := validateAncestors(req); err != nil {
 		return err
 	}
-	if !validID(req.GetId(), iam.ProjectScope.Prefix()+"_") {
+	if !validId(req.GetId(), iam.ProjectScope.Prefix()+"_") {
 		return handlers.InvalidArgumentErrorf("Improperly formatted identifier.", []string{"id"})
 	}
 
@@ -276,17 +276,17 @@ func validateUpdateProjectRequest(req *pbs.UpdateProjectRequest) error {
 	return nil
 }
 
-func validateDeleteProjectRequest(req *pbs.DeleteProjectRequest) error {
+func validateDeleteRequest(req *pbs.DeleteProjectRequest) error {
 	if err := validateAncestors(req); err != nil {
 		return err
 	}
-	if !validID(req.GetId(), iam.ProjectScope.Prefix()+"_") {
+	if !validId(req.GetId(), iam.ProjectScope.Prefix()+"_") {
 		return handlers.InvalidArgumentErrorf("Improperly formatted id.", []string{"id"})
 	}
 	return nil
 }
 
-func validID(id, prefix string) bool {
+func validId(id, prefix string) bool {
 	if !strings.HasPrefix(id, prefix) {
 		return false
 	}
@@ -306,7 +306,7 @@ func validateAncestors(r ancestorProvider) error {
 	if r.GetOrgId() == "" {
 		return handlers.InvalidArgumentErrorf("Missing organization id.", []string{"org_id"})
 	}
-	if !validID(r.GetOrgId(), iam.OrganizationScope.Prefix()+"_") {
+	if !validId(r.GetOrgId(), iam.OrganizationScope.Prefix()+"_") {
 		return handlers.InvalidArgumentErrorf("Poorly formatted org id.", []string{"org_id"})
 	}
 	return nil
