@@ -22,7 +22,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func createDefaultProjectAndRepo(t *testing.T) (*iam.Scope, *iam.Repository) {
+func createDefaultProjectAndRepo(t *testing.T) (*iam.Scope, func() (*iam.Repository, error)) {
 	t.Helper()
 	require := require.New(t)
 	cleanup, conn, _ := db.TestSetup(t, "postgres")
@@ -36,7 +36,11 @@ func createDefaultProjectAndRepo(t *testing.T) (*iam.Scope, *iam.Repository) {
 	})
 	rw := db.New(conn)
 	wrap := db.TestWrapper(t)
-	repo, err := iam.NewRepository(rw, rw, wrap)
+
+	repoFn := func() (*iam.Repository, error) {
+		return iam.NewRepository(rw, rw, wrap)
+	}
+	repo, err := repoFn()
 	assert.Nil(t, err, "Unable to create new repo")
 
 	// Create a default org and project for our tests.
@@ -50,7 +54,7 @@ func createDefaultProjectAndRepo(t *testing.T) (*iam.Scope, *iam.Repository) {
 	pRes, err := repo.CreateScope(context.Background(), p)
 	require.NoError(err, "Could not create new project.")
 
-	return pRes, repo
+	return pRes, repoFn
 }
 
 func TestGet(t *testing.T) {
@@ -302,11 +306,13 @@ func TestCreate(t *testing.T) {
 
 func TestUpdate(t *testing.T) {
 	require := require.New(t)
-	proj, repo := createDefaultProjectAndRepo(t)
-	tested, err := projects.NewService(repo)
+	proj, repoFn := createDefaultProjectAndRepo(t)
+	tested, err := projects.NewService(repoFn)
 	require.NoError(err, "Error when getting new project service.")
 
 	resetProject := func() {
+		repo, err := repoFn()
+		require.NoError(err, "Couldn't get a new repo")
 		proj, _, err = repo.UpdateScope(context.Background(), proj, []string{"Name", "Description"})
 		require.NoError(err, "Failed to reset the project")
 	}
@@ -460,7 +466,7 @@ func TestUpdate(t *testing.T) {
 			errCode: codes.OK,
 		},
 		// TODO: Updating a non existant project should result in a NotFound exception but currently results in
-		// the repo returning an internal error.
+		// the repoFn returning an internal error.
 		{
 			name: "Update a Non Existing Project",
 			req: &pbs.UpdateProjectRequest{
