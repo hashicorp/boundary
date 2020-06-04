@@ -123,11 +123,6 @@ func TestDelete(t *testing.T) {
 	require := require.New(t)
 	proj, repo := createDefaultProjectAndRepo(t)
 
-	proj2, err := iam.NewProject(proj.GetParentId())
-	require.NoError(err, "Couldn't allocate a second project.")
-	proj2, err = repo.CreateScope(context.Background(), proj2)
-	require.NoError(err, "Couldn't create new project.")
-
 	s, err := projects.NewService(repo)
 	require.NoError(err, "Error when getting new project service.")
 
@@ -140,8 +135,8 @@ func TestDelete(t *testing.T) {
 		{
 			name: "Delete an Existing Project",
 			req: &pbs.DeleteProjectRequest{
-				OrgId: proj2.GetParentId(),
-				Id:    proj2.GetPublicId(),
+				OrgId: proj.GetParentId(),
+				Id:    proj.GetPublicId(),
 			},
 			res: &pbs.DeleteProjectResponse{
 				Existed: true,
@@ -151,7 +146,7 @@ func TestDelete(t *testing.T) {
 		{
 			name: "Delete bad project id Project",
 			req: &pbs.DeleteProjectRequest{
-				OrgId: proj2.GetParentId(),
+				OrgId: proj.GetParentId(),
 				Id:    "p_doesntexis",
 			},
 			res: &pbs.DeleteProjectResponse{
@@ -163,7 +158,7 @@ func TestDelete(t *testing.T) {
 			name: "Delete bad org id Project",
 			req: &pbs.DeleteProjectRequest{
 				OrgId: "o_doesntexis",
-				Id:    proj2.GetPublicId(),
+				Id:    proj.GetPublicId(),
 			},
 			res: &pbs.DeleteProjectResponse{
 				Existed: false,
@@ -174,7 +169,7 @@ func TestDelete(t *testing.T) {
 			name: "Bad org formatting",
 			req: &pbs.DeleteProjectRequest{
 				OrgId: "bad_format",
-				Id:    proj2.GetPublicId(),
+				Id:    proj.GetPublicId(),
 			},
 			res:     nil,
 			errCode: codes.InvalidArgument,
@@ -182,7 +177,7 @@ func TestDelete(t *testing.T) {
 		{
 			name: "Bad Project Id formatting",
 			req: &pbs.DeleteProjectRequest{
-				OrgId: proj2.GetParentId(),
+				OrgId: proj.GetParentId(),
 				Id:    "bad_format",
 			},
 			res:     nil,
