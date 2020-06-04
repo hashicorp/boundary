@@ -334,9 +334,7 @@ func TestCreate(t *testing.T) {
 				assert.True(strings.HasPrefix(got.GetUri(), tc.res.GetUri()))
 				assert.True(strings.HasPrefix(got.GetItem().GetId(), static.HostCatalogPrefix))
 				gotCreateTime, err := ptypes.Timestamp(got.GetItem().GetCreatedTime())
-				if err != nil {
-					t.Fatalf("Error converting proto to timestamp: %v", err)
-				}
+				require.NoError(err, "Error converting proto to timestamp.")
 				gotUpdateTime, err := ptypes.Timestamp(got.GetItem().GetUpdatedTime())
 				require.NoError(err, "Error converting proto to timestamp")
 				// Verify it is a catalog created after the test setup's default catalog
