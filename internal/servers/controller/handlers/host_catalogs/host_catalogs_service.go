@@ -69,6 +69,7 @@ var (
 )
 
 type Service struct {
+	// TODO(ICU-223): A new repo should be generated for every request.
 	staticRepo *static.Repository
 }
 
