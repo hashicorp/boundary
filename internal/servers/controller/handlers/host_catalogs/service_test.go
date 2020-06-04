@@ -35,22 +35,10 @@ func createDefaultHostCatalogAndRepo(t *testing.T) (*static.HostCatalog, *iam.Sc
 			t.Errorf("failed to clean up TestSetup: %v", err)
 		}
 	})
-	rw := db.New(conn)
+	_, pRes := iam.TestScopes(t, conn)
+
 	wrap := db.TestWrapper(t)
-	iamRepo, err := iam.NewRepository(rw, rw, wrap)
-	require.NoError(err, "Unable to create new scope repo.")
-
-	// Create a default org and project for our tests.
-	o, err := iam.NewOrganization(iam.WithName("default"))
-	require.NoError(err, "Couldn't get new org.")
-	oRes, err := iamRepo.CreateScope(context.Background(), o)
-	require.NoError(err, "Couldn't persist new org.")
-
-	p, err := iam.NewProject(oRes.GetPublicId(), iam.WithName("default"), iam.WithDescription("default"))
-	require.NoError(err, "Couldn't get new project.")
-	pRes, err := iamRepo.CreateScope(context.Background(), p)
-	require.NoError(err, "Couldn't persist new project.")
-
+	rw := db.New(conn)
 	repoFn := func() (*static.Repository, error) {
 		return static.NewRepository(rw, rw, wrap)
 	}
