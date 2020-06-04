@@ -64,7 +64,7 @@ func handleGrpcGateway(c *Controller) (http.Handler, error) {
 	// in the future, at which point we'll want to be using the baseContext.
 	ctx := c.baseContext
 	mux := runtime.NewServeMux(runtime.WithProtoErrorHandler(handlers.ErrorHandler(c.logger)))
-	hcs, err := host_catalogs.NewService(c.StaticHostRepo)
+	hcs, err := host_catalogs.NewService(c.StaticHostRepoFn)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create host catalog handler service: %w", err)
 	}
@@ -77,7 +77,7 @@ func handleGrpcGateway(c *Controller) (http.Handler, error) {
 	if err := services.RegisterHostServiceHandlerServer(ctx, mux, &hosts.Service{}); err != nil {
 		return nil, fmt.Errorf("failed to register host service handler: %w", err)
 	}
-	if err := services.RegisterProjectServiceHandlerServer(ctx, mux, projects.NewService(c.IamRepo)); err != nil {
+	if err := services.RegisterProjectServiceHandlerServer(ctx, mux, projects.NewService(c.IamRepoFn)); err != nil {
 		return nil, fmt.Errorf("failed to register project service handler: %w", err)
 	}
 

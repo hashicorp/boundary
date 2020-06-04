@@ -70,18 +70,18 @@ var (
 
 type Service struct {
 	// TODO(ICU-223): A new repo should be generated for every request.
-	staticRepo *static.Repository
+	staticRepoFn func() (*static.Repository, error)
 }
 
 var _ pbs.HostCatalogServiceServer = Service{}
 
 // NewService returns a host catalog Service which handles host catalog related requests to watchtower and uses the provided
 // repositories for storage and retrieval.
-func NewService(repo *static.Repository) (Service, error) {
-	if repo == nil {
+func NewService(repoFn func() (*static.Repository, error)) (Service, error) {
+	if repoFn == nil {
 		return Service{}, fmt.Errorf("nil static repository provided")
 	}
-	return Service{staticRepo: repo}, nil
+	return Service{staticRepoFn: repoFn}, nil
 }
 
 func (s Service) ListHostCatalogs(ctx context.Context, req *pbs.ListHostCatalogsRequest) (*pbs.ListHostCatalogsResponse, error) {
@@ -152,7 +152,11 @@ func (s Service) DeleteHostCatalog(ctx context.Context, req *pbs.DeleteHostCatal
 }
 
 func (s Service) getFromRepo(ctx context.Context, id string) (*pb.HostCatalog, error) {
-	hc, err := s.staticRepo.LookupCatalog(ctx, id)
+	repo, err := s.staticRepoFn()
+	if err != nil {
+		return nil, err
+	}
+	hc, err := repo.LookupCatalog(ctx, id)
 	if err != nil {
 		return nil, err
 	}
@@ -174,7 +178,11 @@ func (s Service) createInRepo(ctx context.Context, projId string, item *pb.HostC
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "Unable to build host catalog for creation: %v.", err)
 	}
-	out, err := s.staticRepo.CreateCatalog(ctx, h)
+	repo, err := s.staticRepoFn()
+	if err != nil {
+		return nil, err
+	}
+	out, err := repo.CreateCatalog(ctx, h)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "Unable to create host catalog: %v.", err)
 	}
@@ -201,7 +209,11 @@ func (s Service) updateInRepo(ctx context.Context, projId, id string, mask []str
 	if err != nil {
 		return nil, err
 	}
-	out, rowsUpdated, err := s.staticRepo.UpdateCatalog(ctx, h, dbMask)
+	repo, err := s.staticRepoFn()
+	if err != nil {
+		return nil, err
+	}
+	out, rowsUpdated, err := repo.UpdateCatalog(ctx, h, dbMask)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "Unable to update host catalog: %v.", err)
 	}
@@ -212,7 +224,11 @@ func (s Service) updateInRepo(ctx context.Context, projId, id string, mask []str
 }
 
 func (s Service) deleteFromRepo(ctx context.Context, id string) (bool, error) {
-	rows, err := s.staticRepo.DeleteCatalog(ctx, id)
+	repo, err := s.staticRepoFn()
+	if err != nil {
+		return false, err
+	}
+	rows, err := repo.DeleteCatalog(ctx, id)
 	if err != nil {
 		return false, status.Errorf(codes.Internal, "Unable to delete host: %v.", err)
 	}
