@@ -199,7 +199,6 @@ func toProto(in *iam.Scope) *pb.Project {
 //  * The path passed in is correctly formatted
 //  * All required parameters are set
 //  * There are no conflicting parameters provided
-// TODO: Populate the error in a way to allow it to be converted to the previously described error format and include all invalid fields instead of just the most recent.
 func validateGetProjectRequest(req *pbs.GetProjectRequest) error {
 	badFields := validateAncestors(req)
 	if !validID(req.GetId(), "p_") {
