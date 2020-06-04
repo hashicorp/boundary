@@ -177,15 +177,17 @@ func toDbUpdateMask(paths []string) ([]string, error) {
 }
 
 func toProto(in *iam.Scope) *pb.Project {
-	out := pb.Project{Id: in.GetPublicId()}
+	out := pb.Project{
+		Id:          in.GetPublicId(),
+		CreatedTime: in.GetCreateTime().GetTimestamp(),
+		UpdatedTime: in.GetUpdateTime().GetTimestamp(),
+	}
 	if in.GetDescription() != "" {
 		out.Description = &wrapperspb.StringValue{Value: in.GetDescription()}
 	}
 	if in.GetName() != "" {
 		out.Name = &wrapperspb.StringValue{Value: in.GetName()}
 	}
-	out.CreatedTime = in.GetCreateTime().GetTimestamp()
-	out.UpdatedTime = in.GetUpdateTime().GetTimestamp()
 	return &out
 }
 
