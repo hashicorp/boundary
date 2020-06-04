@@ -50,9 +50,7 @@ func (s Service) GetProject(ctx context.Context, req *pbs.GetProjectRequest) (*p
 	if err != nil {
 		return nil, err
 	}
-	resp := &pbs.GetProjectResponse{}
-	resp.Item = p
-	return resp, nil
+	return &pbs.GetProjectResponse{Item: p}, nil
 }
 
 func (s Service) CreateProject(ctx context.Context, req *pbs.CreateProjectRequest) (*pbs.CreateProjectResponse, error) {
@@ -63,10 +61,7 @@ func (s Service) CreateProject(ctx context.Context, req *pbs.CreateProjectReques
 	if err != nil {
 		return nil, err
 	}
-	resp := &pbs.CreateProjectResponse{}
-	resp.Uri = fmt.Sprintf("orgs/%s/projects/%s", req.GetOrgId(), p.GetId())
-	resp.Item = p
-	return resp, nil
+	return &pbs.CreateProjectResponse{Item: p, Uri: fmt.Sprintf("orgs/%s/projects/%s", req.GetOrgId(), p.GetId())}, nil
 }
 
 func (s Service) UpdateProject(ctx context.Context, req *pbs.UpdateProjectRequest) (*pbs.UpdateProjectResponse, error) {
@@ -77,9 +72,7 @@ func (s Service) UpdateProject(ctx context.Context, req *pbs.UpdateProjectReques
 	if err != nil {
 		return nil, err
 	}
-	resp := &pbs.UpdateProjectResponse{}
-	resp.Item = p
-	return resp, nil
+	return &pbs.UpdateProjectResponse{Item: p}, nil
 }
 
 func (s Service) DeleteProject(ctx context.Context, req *pbs.DeleteProjectRequest) (*pbs.DeleteProjectResponse, error) {
@@ -90,9 +83,7 @@ func (s Service) DeleteProject(ctx context.Context, req *pbs.DeleteProjectReques
 	if err != nil {
 		return nil, err
 	}
-	resp := &pbs.DeleteProjectResponse{}
-	resp.Existed = existed
-	return resp, nil
+	return &pbs.DeleteProjectResponse{Existed: existed}, nil
 }
 
 func (s Service) getFromRepo(ctx context.Context, id string) (*pb.Project, error) {
