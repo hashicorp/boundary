@@ -74,10 +74,10 @@ service HostCatalogService {
   }
 
   // UpdateHostCatalog updates an exist HostCatalog in Watchtower.  The
-  // provided HostCatalog must not have any read only fields set except for
-  // potentially the id.  The update mask must be provided and include at
-  // least 1 mutable field.  To unset a field's value include that field
-  // name in the update mask and don't set the field in the HostCatalog.
+  // provided HostCatalog must not have any read only fields set.
+  // The update mask must be provided and include at least 1 mutable field.
+  // To unset a field's value include that field name in the update mask
+  // and don't set the field in the HostCatalog.
   rpc UpdateHostCatalog(UpdateHostCatalogRequest) returns (UpdateHostCatalogResponse) {
     option (google.api.http) = {
       patch: "/v1/orgs/{org_id}/projects/{project_id}/host-catalogs/{id}"
