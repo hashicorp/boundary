@@ -93,7 +93,7 @@ func (s Service) GetHostCatalog(ctx context.Context, req *pbs.GetHostCatalogRequ
 	if ct == unknownType {
 		return nil, handlers.InvalidArgumentErrorf("Unknown host catalog type.", []string{"id"})
 	}
-	if err := validateGetHostCatalogRequest(req, ct); err != nil {
+	if err := validateGetRequest(req, ct); err != nil {
 		return nil, err
 	}
 	hc, err := s.getFromRepo(ctx, req.GetId())
@@ -107,7 +107,7 @@ func (s Service) GetHostCatalog(ctx context.Context, req *pbs.GetHostCatalogRequ
 
 // CreateHostCatalog implements the interface pbs.HostCatalogServiceServer.
 func (s Service) CreateHostCatalog(ctx context.Context, req *pbs.CreateHostCatalogRequest) (*pbs.CreateHostCatalogResponse, error) {
-	if err := validateCreateHostCatalogRequest(req); err != nil {
+	if err := validateCreateRequest(req); err != nil {
 		return nil, err
 	}
 	h, err := s.createInRepo(ctx, req.GetProjectId(), req.GetItem())
@@ -126,7 +126,7 @@ func (s Service) UpdateHostCatalog(ctx context.Context, req *pbs.UpdateHostCatal
 	if ct == unknownType {
 		return nil, handlers.InvalidArgumentErrorf("Unknown host catalog type.", []string{"id"})
 	}
-	if err := validateUpdateHostCatalogRequest(req, ct); err != nil {
+	if err := validateUpdateRequest(req, ct); err != nil {
 		return nil, err
 	}
 	p, err := s.updateInRepo(ctx, req.GetProjectId(), req.GetId(), req.GetUpdateMask().GetPaths(), req.GetItem())
@@ -144,7 +144,7 @@ func (s Service) DeleteHostCatalog(ctx context.Context, req *pbs.DeleteHostCatal
 	if ct == unknownType {
 		return nil, handlers.InvalidArgumentErrorf("Unknown host catalog type.", []string{"id"})
 	}
-	if err := validateDeleteHostCatalogRequest(req, ct); err != nil {
+	if err := validateDeleteRequest(req, ct); err != nil {
 		return nil, err
 	}
 	existed, err := s.deleteFromRepo(ctx, req.GetId())
@@ -269,17 +269,17 @@ func toProto(in *static.HostCatalog) *pb.HostCatalog {
 //  * There are no conflicting parameters provided
 //  * The type asserted by the ID and/or field is known
 //  * If relevant, the type derived from the id prefix matches what is claimed by the type field
-func validateGetHostCatalogRequest(req *pbs.GetHostCatalogRequest, ct catalogType) error {
+func validateGetRequest(req *pbs.GetHostCatalogRequest, ct catalogType) error {
 	if err := validateAncestors(req); err != nil {
 		return err
 	}
-	if !validID(req.GetId(), ct.idPrefix()) {
+	if !validId(req.GetId(), ct.idPrefix()) {
 		return handlers.InvalidArgumentErrorf("Improperly formatted identifier.", []string{"id"})
 	}
 	return nil
 }
 
-func validateCreateHostCatalogRequest(req *pbs.CreateHostCatalogRequest) error {
+func validateCreateRequest(req *pbs.CreateHostCatalogRequest) error {
 	if err := validateAncestors(req); err != nil {
 		return err
 	}
@@ -309,11 +309,11 @@ func validateCreateHostCatalogRequest(req *pbs.CreateHostCatalogRequest) error {
 	return nil
 }
 
-func validateUpdateHostCatalogRequest(req *pbs.UpdateHostCatalogRequest, ct catalogType) error {
+func validateUpdateRequest(req *pbs.UpdateHostCatalogRequest, ct catalogType) error {
 	if err := validateAncestors(req); err != nil {
 		return err
 	}
-	if !validID(req.GetId(), ct.idPrefix()) {
+	if !validId(req.GetId(), ct.idPrefix()) {
 		return handlers.InvalidArgumentErrorf("Improperly formatted identifier.", []string{"id"})
 	}
 
@@ -350,17 +350,17 @@ func validateUpdateHostCatalogRequest(req *pbs.UpdateHostCatalogRequest, ct cata
 	return nil
 }
 
-func validateDeleteHostCatalogRequest(req *pbs.DeleteHostCatalogRequest, ct catalogType) error {
+func validateDeleteRequest(req *pbs.DeleteHostCatalogRequest, ct catalogType) error {
 	if err := validateAncestors(req); err != nil {
 		return err
 	}
-	if !validID(req.GetId(), ct.idPrefix()) {
+	if !validId(req.GetId(), ct.idPrefix()) {
 		return handlers.InvalidArgumentErrorf("Improperly formatted identifier.", []string{"id"})
 	}
 	return nil
 }
 
-func validID(id, prefix string) bool {
+func validId(id, prefix string) bool {
 	if !strings.HasPrefix(id, prefix) {
 		return false
 	}
@@ -386,10 +386,10 @@ func validateAncestors(r ancestorProvider) error {
 	}
 
 	var badFormat []string
-	if !validID(r.GetOrgId(), "o_") {
+	if !validId(r.GetOrgId(), "o_") {
 		badFormat = append(badFormat, orgIdFieldName)
 	}
-	if !validID(r.GetProjectId(), "p_") {
+	if !validId(r.GetProjectId(), "p_") {
 		badFormat = append(badFormat, projectIdFieldName)
 	}
 	if len(badFormat) > 0 {
