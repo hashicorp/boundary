@@ -282,10 +282,7 @@ func validId(id, prefix string) bool {
 		return false
 	}
 	id = strings.TrimPrefix(id, prefix)
-	if reInvalidID.Match([]byte(id)) {
-		return false
-	}
-	return true
+	return !reInvalidID.Match([]byte(id))
 }
 
 type ancestorProvider interface {
