@@ -18,11 +18,11 @@ func NotFoundErrorf(msg string, a ...interface{}) error {
 	return status.Errorf(codes.NotFound, msg, a...)
 }
 
-func InvalidArgumentErrorf(msg string, fields []string) error {
+func InvalidArgumentErrorf(msg string, fields map[string]string) error {
 	st := status.New(codes.InvalidArgument, msg)
 	br := &errdetails.BadRequest{}
-	for _, f := range fields {
-		br.FieldViolations = append(br.FieldViolations, &errdetails.BadRequest_FieldViolation{Field: f})
+	for k, v := range fields {
+		br.FieldViolations = append(br.FieldViolations, &errdetails.BadRequest_FieldViolation{Field: k, Description: v})
 	}
 	st, err := st.WithDetails(br)
 	if err != nil {
@@ -51,7 +51,7 @@ func statusErrorToApiError(s *status.Status) *pb.Error {
 				if apiErr.Details == nil {
 					apiErr.Details = &pb.ErrorDetails{}
 				}
-				apiErr.Details.RequestFields = append(apiErr.Details.RequestFields, fv.GetField())
+				apiErr.Details.RequestFields = append(apiErr.Details.RequestFields, &pb.FieldErrors{Name: fv.GetField(), Description: fv.GetDescription()})
 			}
 		}
 	}

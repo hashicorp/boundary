@@ -142,7 +142,7 @@ func (s Service) updateInRepo(ctx context.Context, orgID, projId string, mask []
 		return nil, err
 	}
 	if len(dbMask) == 0 {
-		return nil, handlers.InvalidArgumentErrorf("No valid fields included in the update mask.", []string{"update_mask"})
+		return nil, handlers.InvalidArgumentErrorf("No valid fields included in the update mask.", map[string]string{"update_mask": "No valid paths provided in the update mask."})
 	}
 	out, rowsUpdated, err := s.repo.UpdateScope(ctx, p, dbMask)
 	if err != nil {
@@ -176,7 +176,7 @@ func toDbUpdateMask(paths []string) ([]string, error) {
 		}
 	}
 	if len(invalid) > 0 {
-		return nil, handlers.InvalidArgumentErrorf(fmt.Sprintf("Invalid fields passed in update_update mask: %v.", invalid), []string{"update_mask"})
+		return nil, handlers.InvalidArgumentErrorf(fmt.Sprintf("Invalid fields passed in update_update mask: %v.", invalid), map[string]string{"update_mask": fmt.Sprintf("Unknown paths provided in update mask: %q", strings.Join(invalid, ","))})
 	}
 	return dbPaths, nil
 }
@@ -201,107 +201,75 @@ func toProto(in *iam.Scope) *pb.Project {
 //  * There are no conflicting parameters provided
 // TODO: Populate the error in a way to allow it to be converted to the previously described error format and include all invalid fields instead of just the most recent.
 func validateGetProjectRequest(req *pbs.GetProjectRequest) error {
-	if err := validateAncestors(req); err != nil {
-		return err
-	}
-	badFormat := []string{}
+	badFields := validateAncestors(req)
 	if !validID(req.GetId(), "p_") {
-		badFormat = append(badFormat, "id")
+		badFields["id"] = "Invalid formatted project id."
 	}
-	if !validID(req.GetOrgId(), "o_") {
-		badFormat = append(badFormat, "id")
-	}
-	if len(badFormat) > 0 {
-		return handlers.InvalidArgumentErrorf("Improperly formatted identifier.", badFormat)
+	if len(badFields) > 0 {
+		return handlers.InvalidArgumentErrorf("Improperly formatted identifier.", badFields)
 	}
 	return nil
 }
 
 func validateCreateProjectRequest(req *pbs.CreateProjectRequest) error {
-	if err := validateAncestors(req); err != nil {
-		return err
-	}
-	if !validID(req.GetOrgId(), "o_") {
-		handlers.InvalidArgumentErrorf("Improperly formatted identifier.", []string{"org_id"})
-	}
+	badFields := validateAncestors(req)
 	item := req.GetItem()
-	if item == nil {
-		return handlers.InvalidArgumentErrorf("A project's fields must be set to something.", []string{"item"})
-	}
-	immutableFieldsSet := []string{}
 	if item.GetId() != "" {
-		immutableFieldsSet = append(immutableFieldsSet, "id")
+		badFields["id"] = "This is a read only field."
 	}
 	if item.GetCreatedTime() != nil {
-		immutableFieldsSet = append(immutableFieldsSet, "created_time")
+		badFields["created_time"] = "This is a read only field."
 	}
 	if item.GetUpdatedTime() != nil {
-		immutableFieldsSet = append(immutableFieldsSet, "updated_time")
+		badFields["updated_time"] = "This is a read only field."
 	}
-	if len(immutableFieldsSet) > 0 {
-		return handlers.InvalidArgumentErrorf("Cannot specify read only fields at creation time.", immutableFieldsSet)
+	if len(badFields) > 0 {
+		return handlers.InvalidArgumentErrorf("Argument errors found in the request.", badFields)
 	}
 	return nil
 }
 
 func validateUpdateProjectRequest(req *pbs.UpdateProjectRequest) error {
-	if err := validateAncestors(req); err != nil {
-		return err
-	}
-	badFormat := []string{}
+	badFields := validateAncestors(req)
 	if !validID(req.GetId(), "p_") {
-		badFormat = append(badFormat, "id")
+		badFields["project_id"] = "Improperly formatted path identifier."
 	}
-	if !validID(req.GetOrgId(), "o_") {
-		badFormat = append(badFormat, "id")
-	}
-	if len(badFormat) > 0 {
-		handlers.InvalidArgumentErrorf("Improperly formatted identifier.", badFormat)
-	}
-
 	if req.GetUpdateMask() == nil {
-		return handlers.InvalidArgumentErrorf("UpdateMask not provided but is required to update a project.", []string{"update_mask"})
+		badFields["update_mask"] = "UpdateMask not provided but is required to update a project."
 	}
 
 	item := req.GetItem()
 	if item == nil {
+		if len(badFields) > 0 {
+			return handlers.InvalidArgumentErrorf("Errors in provided fields.", badFields)
+		}
 		// It is legitimate for no item to be specified in an update request as it indicates all fields provided in
 		// the mask will be marked as unset.
 		return nil
 	}
-	if item.GetId() != "" && item.GetId() != req.GetId() {
-		return handlers.InvalidArgumentErrorf("Id in provided item and url do not match.", []string{"id"})
-	}
-	immutableFieldsSet := []string{}
 	if item.GetId() != "" {
-		immutableFieldsSet = append(immutableFieldsSet, "id")
+		badFields["id"] = "This is a read only field and cannot be specified in an update request."
 	}
 	if item.GetCreatedTime() != nil {
-		immutableFieldsSet = append(immutableFieldsSet, "created_time")
+		badFields["created_time"] = "This is a read only field and cannot be specified in an update request."
 	}
 	if item.GetUpdatedTime() != nil {
-		immutableFieldsSet = append(immutableFieldsSet, "updated_time")
+		badFields["updated_time"] = "This is a read only field and cannot be specified in an update request."
 	}
-	if len(immutableFieldsSet) > 0 {
-		return handlers.InvalidArgumentErrorf("Cannot specify read only fields at update time.", immutableFieldsSet)
+	if len(badFields) > 0 {
+		return handlers.InvalidArgumentErrorf("Errors in provided fields.", badFields)
 	}
 
 	return nil
 }
 
 func validateDeleteProjectRequest(req *pbs.DeleteProjectRequest) error {
-	if err := validateAncestors(req); err != nil {
-		return err
-	}
-	badFields := []string{}
+	badFields := validateAncestors(req)
 	if !validID(req.GetId(), "p_") {
-		badFields = append(badFields, "id")
-	}
-	if !validID(req.GetOrgId(), "o_") {
-		badFields = append(badFields, "org_id")
+		badFields["id"] = "Incorrectly formatted project."
 	}
 	if len(badFields) > 0 {
-		return handlers.InvalidArgumentErrorf("Improperly formatted id.", badFields)
+		return handlers.InvalidArgumentErrorf("Errors in provided fields.", badFields)
 	}
 	return nil
 }
@@ -322,11 +290,14 @@ type ancestorProvider interface {
 }
 
 // validateAncestors verifies that the ancestors of this call are properly set and provided.
-func validateAncestors(r ancestorProvider) error {
+func validateAncestors(r ancestorProvider) map[string]string {
 	if r.GetOrgId() == "" {
-		return handlers.InvalidArgumentErrorf("Missing organization id.", []string{"org_id"})
+		return map[string]string{"org_id": "Missing organization id."}
 	}
-	return nil
+	if !validID(r.GetOrgId(), "o_") {
+		return map[string]string{"org_id": "Improperly formatted identifier."}
+	}
+	return map[string]string{}
 }
 
 // RegisterGrpcGateway satisfies the RegisterGrpcGatewayer interface.

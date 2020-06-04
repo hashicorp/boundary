@@ -12,9 +12,9 @@ import (
 type ErrorDetails struct {
 	defaultFields []string
 
-	TraceId       *string  `json:"TraceId,omitempty"`
-	RequestId     *string  `json:"request_id,omitempty"`
-	RequestFields []string `json:"request_fields,omitempty"`
+	TraceId       *string        `json:"TraceId,omitempty"`
+	RequestId     *string        `json:"request_id,omitempty"`
+	RequestFields []*FieldErrors `json:"request_fields,omitempty"`
 }
 
 func (s *ErrorDetails) SetDefault(key string) {
