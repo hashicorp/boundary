@@ -693,10 +693,10 @@ func (c *Client) NewRequest(ctx context.Context, method, requestPath string, bod
 	}
 
 	var orgProjPath string
-	if org != "" {
+	if org != "" && !strings.Contains(requestPath, "orgs/") {
 		orgProjPath = path.Join(orgProjPath, "orgs", org)
 	}
-	if project != "" {
+	if project != "" && !strings.Contains(requestPath, "projects/") {
 		orgProjPath = path.Join(orgProjPath, "projects", project)
 	}
 
