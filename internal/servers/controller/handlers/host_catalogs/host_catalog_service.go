@@ -248,7 +248,7 @@ func toDbUpdateMask(paths []string) ([]string, error) {
 		}
 	}
 	if len(invalid) > 0 {
-		return nil, handlers.InvalidArgumentErrorf(fmt.Sprintf("Invalid fields passed in update_update mask: %v.", invalid), []string{"update_mask"})
+		return nil, handlers.InvalidArgumentErrorf(fmt.Sprintf("Invalid fields passed in update mask: %v.", invalid), []string{"update_mask"})
 	}
 	if len(dbPaths) == 0 {
 		return nil, handlers.InvalidArgumentErrorf("No valid paths included in the update mask.", []string{"update_mask"})
