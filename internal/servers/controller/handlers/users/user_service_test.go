@@ -204,7 +204,7 @@ func TestDelete_twice(t *testing.T) {
 func TestCreate(t *testing.T) {
 	require := require.New(t)
 	defaultUser, repo := createDefaultUserAndRepo(t)
-	defaultProjCreated, err := ptypes.Timestamp(defaultUser.GetCreateTime().GetTimestamp())
+	defaultCreated, err := ptypes.Timestamp(defaultUser.GetCreateTime().GetTimestamp())
 	require.NoError(err, "Error converting proto to timestamp.")
 	toMerge := &pbs.CreateUserRequest{
 		OrgId: defaultUser.GetScopeId(),
@@ -275,8 +275,8 @@ func TestCreate(t *testing.T) {
 				gotUpdateTime, err := ptypes.Timestamp(got.GetItem().GetUpdatedTime())
 				require.NoError(err, "Error converting proto to timestamp.")
 				// Verify it is a user created after the test setup's default user
-				assert.True(gotCreateTime.After(defaultProjCreated), "New user should have been created after default user. Was created %v, which is after %v", gotCreateTime, defaultProjCreated)
-				assert.True(gotUpdateTime.After(defaultProjCreated), "New user should have been updated after default user. Was updated %v, which is after %v", gotUpdateTime, defaultProjCreated)
+				assert.True(gotCreateTime.After(defaultCreated), "New user should have been created after default user. Was created %v, which is after %v", gotCreateTime, defaultCreated)
+				assert.True(gotUpdateTime.After(defaultCreated), "New user should have been updated after default user. Was updated %v, which is after %v", gotUpdateTime, defaultCreated)
 
 				// Clear all values which are hard to compare against.
 				got.Uri, tc.res.Uri = "", ""
@@ -301,7 +301,7 @@ func TestUpdate(t *testing.T) {
 		require.NoError(err, "Failed to reset the user")
 	}
 
-	projCreated, err := ptypes.Timestamp(u.GetCreateTime().GetTimestamp())
+	created, err := ptypes.Timestamp(u.GetCreateTime().GetTimestamp())
 	require.NoError(err, "Error converting proto to timestamp")
 	toMerge := &pbs.UpdateUserRequest{
 		OrgId: u.GetScopeId(),
@@ -522,7 +522,7 @@ func TestUpdate(t *testing.T) {
 				gotUpdateTime, err := ptypes.Timestamp(got.GetItem().GetUpdatedTime())
 				require.NoError(err, "Error converting proto to timestamp")
 				// Verify it is a user updated after it was created
-				assert.True(gotUpdateTime.After(projCreated), "Updated user should have been updated after it's creation. Was updated %v, which is after %v", gotUpdateTime, projCreated)
+				assert.True(gotUpdateTime.After(created), "Updated user should have been updated after it's creation. Was updated %v, which is after %v", gotUpdateTime, created)
 
 				// Clear all values which are hard to compare against.
 				got.Item.UpdatedTime, tc.res.Item.UpdatedTime = nil, nil

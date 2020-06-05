@@ -51,11 +51,11 @@ func (s Service) GetUser(ctx context.Context, req *pbs.GetUserRequest) (*pbs.Get
 	if err := validateGetRequest(req); err != nil {
 		return nil, err
 	}
-	p, err := s.getFromRepo(ctx, req.GetId())
+	u, err := s.getFromRepo(ctx, req.GetId())
 	if err != nil {
 		return nil, err
 	}
-	return &pbs.GetUserResponse{Item: p}, nil
+	return &pbs.GetUserResponse{Item: u}, nil
 }
 
 // CreateUser implements the interface pbs.UserServiceServer.
@@ -63,11 +63,11 @@ func (s Service) CreateUser(ctx context.Context, req *pbs.CreateUserRequest) (*p
 	if err := validateCreateRequest(req); err != nil {
 		return nil, err
 	}
-	p, err := s.createInRepo(ctx, req.GetOrgId(), req.GetItem())
+	u, err := s.createInRepo(ctx, req.GetOrgId(), req.GetItem())
 	if err != nil {
 		return nil, err
 	}
-	return &pbs.CreateUserResponse{Item: p, Uri: fmt.Sprintf("orgs/%s/users/%s", req.GetOrgId(), p.GetId())}, nil
+	return &pbs.CreateUserResponse{Item: u, Uri: fmt.Sprintf("orgs/%s/users/%s", req.GetOrgId(), u.GetId())}, nil
 }
 
 // UpdateUser implements the interface pbs.UserServiceServer.
@@ -75,11 +75,11 @@ func (s Service) UpdateUser(ctx context.Context, req *pbs.UpdateUserRequest) (*p
 	if err := validateUpdateRequest(req); err != nil {
 		return nil, err
 	}
-	p, err := s.updateInRepo(ctx, req.GetOrgId(), req.GetId(), req.GetUpdateMask().GetPaths(), req.GetItem())
+	u, err := s.updateInRepo(ctx, req.GetOrgId(), req.GetId(), req.GetUpdateMask().GetPaths(), req.GetItem())
 	if err != nil {
 		return nil, err
 	}
-	return &pbs.UpdateUserResponse{Item: p}, nil
+	return &pbs.UpdateUserResponse{Item: u}, nil
 }
 
 // DeleteUser implements the interface pbs.UserServiceServer.
