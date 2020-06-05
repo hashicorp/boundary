@@ -132,7 +132,7 @@ func TestDelete(t *testing.T) {
 			errCode: codes.OK,
 		},
 		{
-			name: "Delete bad user id User",
+			name: "Delete bad user id",
 			req: &pbs.DeleteUserRequest{
 				OrgId: u.GetScopeId(),
 				Id:    iam.UserPrefix + "_doesntexis",
@@ -143,7 +143,7 @@ func TestDelete(t *testing.T) {
 			errCode: codes.OK,
 		},
 		{
-			name: "Delete bad org id User",
+			name: "Delete bad org id",
 			req: &pbs.DeleteUserRequest{
 				OrgId: "o_doesntexis",
 				Id:    u.GetPublicId(),

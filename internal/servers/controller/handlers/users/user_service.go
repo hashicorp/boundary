@@ -2,10 +2,12 @@ package users
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"regexp"
 	"strings"
 
+	"github.com/hashicorp/watchtower/internal/db"
 	pb "github.com/hashicorp/watchtower/internal/gen/controller/api/resources/scopes"
 	pbs "github.com/hashicorp/watchtower/internal/gen/controller/api/services"
 	"github.com/hashicorp/watchtower/internal/iam"
@@ -99,6 +101,9 @@ func (s Service) getFromRepo(ctx context.Context, id string) (*pb.User, error) {
 	}
 	u, err := repo.LookupUser(ctx, id)
 	if err != nil {
+		if errors.Is(err, db.ErrRecordNotFound) {
+			return nil, handlers.NotFoundErrorf("User %q doesn't exist.", id)
+		}
 		return nil, err
 	}
 	if u == nil {
@@ -107,7 +112,7 @@ func (s Service) getFromRepo(ctx context.Context, id string) (*pb.User, error) {
 	return toProto(u), nil
 }
 
-func (s Service) createInRepo(ctx context.Context, orgID string, item *pb.User) (*pb.User, error) {
+func (s Service) createInRepo(ctx context.Context, orgId string, item *pb.User) (*pb.User, error) {
 	var opts []iam.Option
 	if item.GetName() != nil {
 		opts = append(opts, iam.WithName(item.GetName().GetValue()))
@@ -115,7 +120,7 @@ func (s Service) createInRepo(ctx context.Context, orgID string, item *pb.User) 
 	if item.GetDescription() != nil {
 		opts = append(opts, iam.WithDescription(item.GetDescription().GetValue()))
 	}
-	u, err := iam.NewUser(orgID, opts...)
+	u, err := iam.NewUser(orgId, opts...)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "Unable to build user for creation: %v.", err)
 	}
@@ -133,7 +138,7 @@ func (s Service) createInRepo(ctx context.Context, orgID string, item *pb.User) 
 	return toProto(out), nil
 }
 
-func (s Service) updateInRepo(ctx context.Context, orgID, projId string, mask []string, item *pb.User) (*pb.User, error) {
+func (s Service) updateInRepo(ctx context.Context, orgId, id string, mask []string, item *pb.User) (*pb.User, error) {
 	var opts []iam.Option
 	if desc := item.GetDescription(); desc != nil {
 		opts = append(opts, iam.WithDescription(desc.GetValue()))
@@ -141,11 +146,11 @@ func (s Service) updateInRepo(ctx context.Context, orgID, projId string, mask []
 	if name := item.GetName(); name != nil {
 		opts = append(opts, iam.WithName(name.GetValue()))
 	}
-	u, err := iam.NewUser(orgID, opts...)
+	u, err := iam.NewUser(orgId, opts...)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "Unable to build user for update: %v.", err)
 	}
-	u.PublicId = projId
+	u.PublicId = id
 	dbMask, err := toDbUpdateMask(mask)
 	if err != nil {
 		return nil, err
@@ -162,18 +167,21 @@ func (s Service) updateInRepo(ctx context.Context, orgID, projId string, mask []
 		return nil, status.Errorf(codes.Internal, "Unable to update user: %v.", err)
 	}
 	if rowsUpdated == 0 {
-		return nil, handlers.NotFoundErrorf("User %q doesn't exist.", projId)
+		return nil, handlers.NotFoundErrorf("User %q doesn't exist.", id)
 	}
 	return toProto(out), nil
 }
 
-func (s Service) deleteFromRepo(ctx context.Context, projId string) (bool, error) {
+func (s Service) deleteFromRepo(ctx context.Context, id string) (bool, error) {
 	repo, err := s.repo()
 	if err != nil {
 		return false, err
 	}
-	rows, err := repo.DeleteScope(ctx, projId)
+	rows, err := repo.DeleteUser(ctx, id)
 	if err != nil {
+		if errors.Is(err, db.ErrRecordNotFound) {
+			return false, nil
+		}
 		return false, status.Errorf(codes.Internal, "Unable to delete user: %v.", err)
 	}
 	return rows > 0, nil
