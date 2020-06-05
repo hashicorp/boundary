@@ -356,6 +356,13 @@ BEGIN;
 drop table if exists iam_scope CASCADE;
 drop trigger if exists iam_scope_insert;
 drop function if exists iam_sub_scopes_func;
+drop table if exists iam_user cascade;
+drop function iam_sub_scopes_func cascade;
+
+-- TODO: we cannot "drop function update_time_column cascade" since it will
+-- affect more that this migration.  It would delete any table in any migration
+-- that depends on it.  We need to move this drop function up to the 01
+-- migration, so it's at the top level.  Need to discuss with mgaffney
 
 drop trigger if exists update_iam_scope_update_time on iam_scope;
 drop trigger if exists update_iam_scope_create_time on iam_scope;
@@ -507,6 +514,36 @@ create trigger
 before 
 update on iam_scope
   for each row execute procedure iam_sub_names();
+
+
+create table iam_user (
+    public_id wt_public_id not null primary key,
+    create_time wt_timestamp,
+    update_time wt_timestamp,
+    name text,
+    description text,
+    scope_id wt_public_id not null references iam_scope_organization(scope_id) on delete cascade on update cascade,
+    unique(name, scope_id),
+    disabled boolean not null default false
+  );
+
+create trigger 
+  update_time_column 
+before update on iam_user 
+  for each row execute procedure update_time_column();
+
+create trigger 
+  immutable_create_time
+before
+update on iam_user 
+  for each row execute procedure immutable_create_time_func();
+  
+create trigger 
+  default_create_time_column
+before
+insert on iam_user
+  for each row execute procedure default_create_time();
+
 
 commit;
 

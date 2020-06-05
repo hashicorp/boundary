@@ -56,7 +56,7 @@ func (r *Repository) CreateCatalog(ctx context.Context, c *HostCatalog, opt ...O
 	if c.HostCatalog == nil {
 		return nil, fmt.Errorf("create: static host catalog: embedded HostCatalog: %w", db.ErrNilParameter)
 	}
-	if c.HostCatalog.ScopeId == "" {
+	if c.ScopeId == "" {
 		return nil, fmt.Errorf("create: static host catalog: no scope id: %w", db.ErrInvalidParameter)
 	}
 	if c.PublicId != "" {

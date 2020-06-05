@@ -249,6 +249,12 @@ func (rw *Db) Update(ctx context.Context, i interface{}, fieldMaskPaths []string
 		return NoRowsAffected, fmt.Errorf("update: primary key is not set")
 	}
 
+	for _, f := range scope.PrimaryFields() {
+		if contains(fieldMaskPaths, f.Name) {
+			return NoRowsAffected, fmt.Errorf("update: not allowed on primary key field %s: %w", f.Name, ErrInvalidFieldMask)
+		}
+	}
+
 	opts := GetOpts(opt...)
 	withDebug := opts.withDebug
 	withOplog := opts.withOplog
@@ -271,6 +277,9 @@ func (rw *Db) Update(ctx context.Context, i interface{}, fieldMaskPaths []string
 
 	underlying := rw.underlying.Model(i).Updates(updateFields)
 	if underlying.Error != nil {
+		if err == gorm.ErrRecordNotFound {
+			return NoRowsAffected, fmt.Errorf("update: failed %w", ErrRecordNotFound)
+		}
 		return NoRowsAffected, fmt.Errorf("update: failed %w", underlying.Error)
 	}
 	rowsUpdated := int(underlying.RowsAffected)
@@ -591,6 +600,15 @@ func isNil(i interface{}) bool {
 	switch reflect.TypeOf(i).Kind() {
 	case reflect.Ptr, reflect.Map, reflect.Array, reflect.Chan, reflect.Slice:
 		return reflect.ValueOf(i).IsNil()
+	}
+	return false
+}
+
+func contains(ss []string, t string) bool {
+	for _, s := range ss {
+		if strings.EqualFold(s, t) {
+			return true
+		}
 	}
 	return false
 }
