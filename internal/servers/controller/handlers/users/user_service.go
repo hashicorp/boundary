@@ -28,7 +28,7 @@ var (
 
 // Service handles request as described by the pbs.UserServiceServer interface.
 type Service struct {
-	repo func() (*iam.Repository, error)
+	repoFn func() (*iam.Repository, error)
 }
 
 // NewService returns a user service which handles user related requests to watchtower.
@@ -36,7 +36,7 @@ func NewService(repo func() (*iam.Repository, error)) (Service, error) {
 	if repo == nil {
 		return Service{}, fmt.Errorf("nil iam repostiroy provided")
 	}
-	return Service{repo: repo}, nil
+	return Service{repoFn: repo}, nil
 }
 
 var _ pbs.UserServiceServer = Service{}
@@ -95,7 +95,7 @@ func (s Service) DeleteUser(ctx context.Context, req *pbs.DeleteUserRequest) (*p
 }
 
 func (s Service) getFromRepo(ctx context.Context, id string) (*pb.User, error) {
-	repo, err := s.repo()
+	repo, err := s.repoFn()
 	if err != nil {
 		return nil, err
 	}
@@ -124,7 +124,7 @@ func (s Service) createInRepo(ctx context.Context, orgId string, item *pb.User) 
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "Unable to build user for creation: %v.", err)
 	}
-	repo, err := s.repo()
+	repo, err := s.repoFn()
 	if err != nil {
 		return nil, err
 	}
@@ -158,7 +158,7 @@ func (s Service) updateInRepo(ctx context.Context, orgId, id string, mask []stri
 	if len(dbMask) == 0 {
 		return nil, handlers.InvalidArgumentErrorf("No valid fields included in the update mask.", []string{"update_mask"})
 	}
-	repo, err := s.repo()
+	repo, err := s.repoFn()
 	if err != nil {
 		return nil, err
 	}
@@ -173,7 +173,7 @@ func (s Service) updateInRepo(ctx context.Context, orgId, id string, mask []stri
 }
 
 func (s Service) deleteFromRepo(ctx context.Context, id string) (bool, error) {
-	repo, err := s.repo()
+	repo, err := s.repoFn()
 	if err != nil {
 		return false, err
 	}
