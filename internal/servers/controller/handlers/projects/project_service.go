@@ -6,7 +6,6 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/golang/protobuf/ptypes/wrappers"
 	pb "github.com/hashicorp/watchtower/internal/gen/controller/api/resources/scopes"
 	pbs "github.com/hashicorp/watchtower/internal/gen/controller/api/services"
 	"github.com/hashicorp/watchtower/internal/iam"
