@@ -277,6 +277,9 @@ func (rw *Db) Update(ctx context.Context, i interface{}, fieldMaskPaths []string
 
 	underlying := rw.underlying.Model(i).Updates(updateFields)
 	if underlying.Error != nil {
+		if err == gorm.ErrRecordNotFound {
+			return NoRowsAffected, fmt.Errorf("update: failed %w", ErrRecordNotFound)
+		}
 		return NoRowsAffected, fmt.Errorf("update: failed %w", underlying.Error)
 	}
 	rowsUpdated := int(underlying.RowsAffected)
