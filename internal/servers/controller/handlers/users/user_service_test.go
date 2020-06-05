@@ -234,7 +234,7 @@ func TestCreate(t *testing.T) {
 		{
 			name: "Can't specify Id",
 			req: &pbs.CreateUserRequest{Item: &pb.User{
-				Id: "not allowed to be set",
+				Id: iam.UserPrefix + "_notallowed",
 			}},
 			res:     nil,
 			errCode: codes.InvalidArgument,
@@ -268,8 +268,8 @@ func TestCreate(t *testing.T) {
 			got, gErr := s.CreateUser(context.Background(), req)
 			assert.Equal(tc.errCode, status.Code(gErr), "CreateUser(%+v) got error %v, wanted %v", req, gErr, tc.errCode)
 			if got != nil {
-				strings.HasPrefix(got.GetUri(), tc.res.Uri)
-				strings.HasPrefix(got.GetItem().GetId(), iam.UserPrefix+"_")
+				assert.True(strings.HasPrefix(got.GetUri(), tc.res.Uri))
+				assert.True(strings.HasPrefix(got.GetItem().GetId(), iam.UserPrefix+"_"))
 				gotCreateTime, err := ptypes.Timestamp(got.GetItem().GetCreatedTime())
 				require.NoError(err, "Error converting proto to timestamp.")
 				gotUpdateTime, err := ptypes.Timestamp(got.GetItem().GetUpdatedTime())
@@ -357,7 +357,7 @@ func TestUpdate(t *testing.T) {
 			errCode: codes.OK,
 		},
 		{
-			name: "No Update Mask Is Invalid Argument",
+			name: "No Update Mask",
 			req: &pbs.UpdateUserRequest{
 				Item: &pb.User{
 					Name:        &wrapperspb.StringValue{Value: "updated name"},
@@ -367,7 +367,7 @@ func TestUpdate(t *testing.T) {
 			errCode: codes.InvalidArgument,
 		},
 		{
-			name: "No Paths in Mask Is Invalid Argument",
+			name: "No Paths in Mask",
 			req: &pbs.UpdateUserRequest{
 				UpdateMask: &field_mask.FieldMask{Paths: []string{}},
 				Item: &pb.User{
@@ -378,7 +378,7 @@ func TestUpdate(t *testing.T) {
 			errCode: codes.InvalidArgument,
 		},
 		{
-			name: "Only non-existant paths in Mask Is Invalid Argument",
+			name: "Only non-existant paths in Mask",
 			req: &pbs.UpdateUserRequest{
 				UpdateMask: &field_mask.FieldMask{Paths: []string{"nonexistant_field"}},
 				Item: &pb.User{
