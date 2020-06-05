@@ -14,6 +14,7 @@ import (
 	pbs "github.com/hashicorp/watchtower/internal/gen/controller/api/services"
 	"github.com/hashicorp/watchtower/internal/iam"
 	"github.com/hashicorp/watchtower/internal/servers/controller/handlers/projects"
+	"github.com/stretchr/testify/require"
 	"google.golang.org/genproto/protobuf/field_mask"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -21,7 +22,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func createDefaultProjectAndRepo(t *testing.T) (*iam.Scope, *iam.Repository) {
+func createDefaultProjectAndRepo(t *testing.T) (*iam.Scope, func() (*iam.Repository, error)) {
 	t.Helper()
 	cleanup, conn, _ := db.TestSetup(t, "postgres")
 	t.Cleanup(func() {
@@ -30,8 +31,11 @@ func createDefaultProjectAndRepo(t *testing.T) (*iam.Scope, *iam.Repository) {
 	})
 	rw := db.New(conn)
 	wrap := db.TestWrapper(t)
-	repo, err := iam.NewRepository(rw, rw, wrap)
-	assert.Nil(t, err, "Unable to create new repo")
+	repoFn := func() (*iam.Repository, error) {
+		return iam.NewRepository(rw, rw, wrap)
+	}
+	repo, err := repoFn()
+	assert.Nil(t, err, "Unable to create new repoFn")
 
 	// Create a default org and project for our tests.
 	o, err := iam.NewOrganization(iam.WithName("default"))
@@ -52,7 +56,7 @@ func createDefaultProjectAndRepo(t *testing.T) (*iam.Scope, *iam.Repository) {
 		t.Fatalf("Could not create project scope: %v", err)
 	}
 
-	return pRes, repo
+	return pRes, repoFn
 }
 
 func TestGet(t *testing.T) {
@@ -120,18 +124,20 @@ func TestGet(t *testing.T) {
 }
 
 func TestDelete(t *testing.T) {
-	proj, repo := createDefaultProjectAndRepo(t)
+	proj, repoFn := createDefaultProjectAndRepo(t)
 
 	proj2, err := iam.NewProject(proj.GetParentId())
 	if err != nil {
 		t.Fatalf("Couldn't allocate a second project: %v", err)
 	}
+	repo, err := repoFn()
+	require.NoError(t, err, "Error creating new iam repo.")
 	proj2, err = repo.CreateScope(context.Background(), proj2)
 	if err != nil {
 		t.Fatalf("Couldn't persist a second project %v", err)
 	}
 
-	s := projects.NewService(repo)
+	s := projects.NewService(repoFn)
 
 	cases := []struct {
 		name    string
@@ -310,11 +316,13 @@ func TestCreate(t *testing.T) {
 }
 
 func TestUpdate(t *testing.T) {
-	proj, repo := createDefaultProjectAndRepo(t)
-	tested := projects.NewService(repo)
+	proj, repoFn := createDefaultProjectAndRepo(t)
+	tested := projects.NewService(repoFn)
 
 	var err error
 	resetProject := func() {
+		repo, err := repoFn()
+		require.NoError(t, err, "Error creating new iam repo.")
 		if proj, _, err = repo.UpdateScope(context.Background(), proj, []string{"Name", "Description"}); err != nil {
 			t.Fatalf("Failed to reset the project")
 		}
@@ -490,7 +498,7 @@ func TestUpdate(t *testing.T) {
 			errCode: codes.OK,
 		},
 		// TODO: Updating a non existing project should result in a NotFound exception but currently results in
-		// the repo returning an internal error.
+		// the repoFn returning an internal error.
 		{
 			name: "Update a Non Existing Project",
 			req: &pbs.UpdateProjectRequest{

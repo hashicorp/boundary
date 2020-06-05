@@ -23,43 +23,34 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func createDefaultHostCatalogAndRepo(t *testing.T) (*static.HostCatalog, *iam.Scope, *static.Repository) {
+func createDefaultHostCatalogAndRepo(t *testing.T) (*static.HostCatalog, *iam.Scope, func() (*static.Repository, error)) {
 	t.Helper()
 	require := require.New(t)
 	cleanup, conn, _ := db.TestSetup(t, "postgres")
 	t.Cleanup(func() {
 		if err := conn.Close(); err != nil {
-			t.Logf("failed closing the gorm db: %v", err)
+			t.Errorf("failed closing the gorm db: %v", err)
 		}
 		if err := cleanup(); err != nil {
-			t.Logf("failed to clean up TestSetup: %v", err)
+			t.Errorf("failed to clean up TestSetup: %v", err)
 		}
 	})
-	rw := db.New(conn)
+	_, pRes := iam.TestScopes(t, conn)
+
 	wrap := db.TestWrapper(t)
-	iamRepo, err := iam.NewRepository(rw, rw, wrap)
-	require.NoError(err, "Unable to create new scope repo.")
-
-	// Create a default org and project for our tests.
-	o, err := iam.NewOrganization(iam.WithName("default"))
-	require.NoError(err, "Couldn't get new org.")
-	oRes, err := iamRepo.CreateScope(context.Background(), o)
-	require.NoError(err, "Couldn't persist new org.")
-
-	p, err := iam.NewProject(oRes.GetPublicId(), iam.WithName("default"), iam.WithDescription("default"))
-	require.NoError(err, "Couldn't get new project.")
-	pRes, err := iamRepo.CreateScope(context.Background(), p)
-	require.NoError(err, "Couldn't persist new project.")
-
-	repo, err := static.NewRepository(rw, rw, wrap)
-	require.NoError(err, "Couldn't create static repo.")
+	rw := db.New(conn)
+	repoFn := func() (*static.Repository, error) {
+		return static.NewRepository(rw, rw, wrap)
+	}
 
 	hc, err := static.NewHostCatalog(pRes.GetPublicId(), static.WithName("default"), static.WithDescription("default"))
 	require.NoError(err, "Couldn't get new catalog.")
+	repo, err := repoFn()
+	require.NoError(err, "Couldn't create static repostitory")
 	hcRes, err := repo.CreateCatalog(context.Background(), hc)
 	require.NoError(err, "Couldn't persist new catalog.")
 
-	return hcRes, pRes, repo
+	return hcRes, pRes, repoFn
 }
 
 func TestGet(t *testing.T) {
@@ -93,24 +84,21 @@ func TestGet(t *testing.T) {
 			errCode: codes.OK,
 		},
 		{
-			name: "Get a non existant Host Catalog",
-			req:  &pbs.GetHostCatalogRequest{Id: static.HostCatalogPrefix + "_DoesntExis"},
-			res:  nil,
-			// This will be fixed with PR 42
+			name:    "Get a non existing Host Catalog",
+			req:     &pbs.GetHostCatalogRequest{Id: static.HostCatalogPrefix + "_DoesntExis"},
+			res:     nil,
 			errCode: codes.NotFound,
 		},
 		{
-			name: "Wrong id prefix",
-			req:  &pbs.GetHostCatalogRequest{Id: "j_1234567890"},
-			res:  nil,
-			// This will be fixed with PR 42
+			name:    "Wrong id prefix",
+			req:     &pbs.GetHostCatalogRequest{Id: "j_1234567890"},
+			res:     nil,
 			errCode: codes.InvalidArgument,
 		},
 		{
-			name: "space in id",
-			req:  &pbs.GetHostCatalogRequest{Id: static.HostCatalogPrefix + "_1 23456789"},
-			res:  nil,
-			// This will be fixed with PR 42
+			name:    "space in id",
+			req:     &pbs.GetHostCatalogRequest{Id: static.HostCatalogPrefix + "_1 23456789"},
+			res:     nil,
 			errCode: codes.InvalidArgument,
 		},
 	}
@@ -134,11 +122,6 @@ func TestDelete(t *testing.T) {
 	t.Parallel()
 	require := require.New(t)
 	hc, proj, repo := createDefaultHostCatalogAndRepo(t)
-
-	hc2, err := static.NewHostCatalog(hc.GetScopeId())
-	require.NoError(err, "Couldn't create a new host catalog.")
-	hc2, err = repo.CreateCatalog(context.Background(), hc2)
-	require.NoError(err, "Couldn't persist a new host catalog.")
 
 	s, err := host_catalogs.NewService(repo)
 	require.NoError(err, "Couldn't create a new host catalog service.")
@@ -339,9 +322,7 @@ func TestCreate(t *testing.T) {
 				assert.True(strings.HasPrefix(got.GetUri(), tc.res.GetUri()))
 				assert.True(strings.HasPrefix(got.GetItem().GetId(), static.HostCatalogPrefix))
 				gotCreateTime, err := ptypes.Timestamp(got.GetItem().GetCreatedTime())
-				if err != nil {
-					t.Fatalf("Error converting proto to timestamp: %v", err)
-				}
+				require.NoError(err, "Error converting proto to timestamp.")
 				gotUpdateTime, err := ptypes.Timestamp(got.GetItem().GetUpdatedTime())
 				require.NoError(err, "Error converting proto to timestamp")
 				// Verify it is a catalog created after the test setup's default catalog
@@ -362,11 +343,13 @@ func TestUpdate(t *testing.T) {
 	t.Parallel()
 	require := require.New(t)
 	assert := assert.New(t)
-	hc, proj, repo := createDefaultHostCatalogAndRepo(t)
-	tested, err := host_catalogs.NewService(repo)
+	hc, proj, repoFn := createDefaultHostCatalogAndRepo(t)
+	tested, err := host_catalogs.NewService(repoFn)
 	require.NoError(err, "Failed to create a new host catalog service.")
 
 	resetHostCatalog := func() {
+		repo, err := repoFn()
+		require.NoError(err, "Couldn't create new static repo.")
 		hc, _, err = repo.UpdateCatalog(context.Background(), hc, []string{"Name", "Description"})
 		require.NoError(err, "Failed to reset host catalog.")
 	}
@@ -546,7 +529,7 @@ func TestUpdate(t *testing.T) {
 			errCode: codes.OK,
 		},
 		// TODO: Updating a non existing catalog should result in a NotFound exception but currently results in
-		// the repo returning an internal error.
+		// the repoFn returning an internal error.
 		{
 			name: "Update a Non Existing HostCatalog",
 			req: &pbs.UpdateHostCatalogRequest{

@@ -14,9 +14,10 @@ service HostCatalogService {
 		description: "The host catalog service allows you to get/mutate Host catalogs of every type."
 	};
 
-  // GetHostCatalog returns a stored Host Catalog if present.  The provided request must include the org, project, and
-  // catalog id for the host catalog being retrieved. If any of those ids are missing, malformed, or reference a non
-  // existing resource an error is returned.
+  // GetHostCatalog returns a stored Host Catalog if present.  The provided
+  // request must include the org, project, and catalog id for the host catalog
+  //being retrieved. If any of those ids are missing, malformed, or reference a
+  // non existing resource an error is returned.
   rpc GetHostCatalog(GetHostCatalogRequest) returns (GetHostCatalogResponse) {
     // Gets the host as specified int he url.
     option (google.api.http) = {
@@ -33,9 +34,11 @@ service HostCatalogService {
     };
   }
 
-  // ListHostCatalogs returns a list of stored HostCatalogs which exist inside the project referenced in the request.
-  // The request must include the org and project ids for the HostCatalogs being retrieved.
-  // If any of those ids are missing, malformed, or reference a non existing parent resource an error is returned.
+  // ListHostCatalogs returns a list of stored HostCatalogs which exist inside
+  // the project referenced in the request. The request must include the org
+  // and project ids for the HostCatalogs being retrieved. If any of those ids
+  // are missing, malformed, or reference a non existing parent resource an
+  // error is returned.
   rpc ListHostCatalogs(ListHostCatalogsRequest) returns (ListHostCatalogsResponse) {
     option (google.api.http) = {
       get: "/v1/orgs/{org_id}/projects/{project_id}/host-catalogs"
@@ -48,9 +51,11 @@ service HostCatalogService {
     };
   }
 
-  // CreateHostCatalog creates and stores a HostCatalog in watchtower.  The provided request must include the org, and
-  // project id in which the catalog will be created and the catalog type to be created. If any of these required fields
-  // are missing, malformed, or reference a non existing parent resource an error is returned.
+  // CreateHostCatalog creates and stores a HostCatalog in watchtower.  The
+  // provided request must include the org, and project id in which the catalog
+  // will be created and the catalog type to be created. If any of these
+  // required fields are missing, malformed, or reference a non existing parent
+  // resource an error is returned.
   rpc CreateHostCatalog(CreateHostCatalogRequest) returns (CreateHostCatalogResponse) {
     option (google.api.http) = {
       post: "/v1/orgs/{org_id}/projects/{project_id}/host-catalogs"
@@ -68,9 +73,11 @@ service HostCatalogService {
     };
   }
 
-  // UpdateHostCatalog updates an exist HostCatalog in Watchtower.  The provided HostCatalog must not have any read only
-  // fields set except for potentially the id.  The update mask must be provided and include at least 1 mutable
-  // field.  To unset a field's value include that field name in the update mask and don't set the field in the HostCatalog.
+  // UpdateHostCatalog updates an exist HostCatalog in Watchtower.  The
+  // provided HostCatalog must not have any read only fields set.
+  // The update mask must be provided and include at least 1 mutable field.
+  // To unset a field's value include that field name in the update mask
+  // and don't set the field in the HostCatalog.
   rpc UpdateHostCatalog(UpdateHostCatalogRequest) returns (UpdateHostCatalogResponse) {
     option (google.api.http) = {
       patch: "/v1/orgs/{org_id}/projects/{project_id}/host-catalogs/{id}"
@@ -87,10 +94,11 @@ service HostCatalogService {
     };
   }
 
-  // DeleteHostCatalog removes a HostCatalog and all associated hosts and host sets from Watchtower.  If the provided
-  // Org, Project, or HostCatalog ids are malformed or not provided DeleteHostCatalog returns an error.  It is not
-  // an error to call DeleteHostCatalog for an Org, Project, or HostCatalog that does not exist as the response indicates
-  // if it existed or not.
+  // DeleteHostCatalog removes a HostCatalog and all associated hosts and host
+  // sets from Watchtower.  If the provided Org, Project, or HostCatalog ids
+  // are malformed or not provided DeleteHostCatalog returns an error.  It is
+  // not an error to call DeleteHostCatalog for an Org, Project, or HostCatalog
+  // that does not exist as the response indicates if it existed or not.
   rpc DeleteHostCatalog(DeleteHostCatalogRequest) returns (DeleteHostCatalogResponse) {
     option (google.api.http) = {
       delete: "/v1/orgs/{org_id}/projects/{project_id}/host-catalogs/{id}"
