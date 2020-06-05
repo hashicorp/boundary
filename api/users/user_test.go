@@ -83,7 +83,6 @@ func TestUser_Errors(t *testing.T) {
 
 	_, apiErr, err = org.ReadUser(ctx, &users.User{Id: iam.UserPrefix + "_doesntexis"})
 	assert.NoError(err)
-	// TODO: Should this be nil instead of just a user that has no values set
 	assert.NotNil(apiErr)
 	assert.EqualValues(*apiErr.Status, http.StatusNotFound)
 
