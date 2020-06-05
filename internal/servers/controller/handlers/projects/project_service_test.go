@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/golang/protobuf/ptypes"
+	"github.com/golang/protobuf/ptypes/wrappers"
 	"github.com/hashicorp/watchtower/internal/db"
 	pb "github.com/hashicorp/watchtower/internal/gen/controller/api/resources/scopes"
 	pbs "github.com/hashicorp/watchtower/internal/gen/controller/api/services"
@@ -273,8 +274,8 @@ func TestCreate(t *testing.T) {
 			got, gErr := s.CreateProject(context.Background(), req)
 			assert.Equal(tc.errCode, status.Code(gErr), "CreateProject(%+v) got error %v, wanted %v", req, gErr, tc.errCode)
 			if got != nil {
-				strings.HasPrefix(got.GetUri(), tc.res.Uri)
-				strings.HasPrefix(got.GetItem().GetId(), "p_")
+				assert.True(strings.HasPrefix(got.GetUri(), tc.res.Uri))
+				assert.True(strings.HasPrefix(got.GetItem().GetId(), "p_"))
 				gotCreateTime, err := ptypes.Timestamp(got.GetItem().GetCreatedTime())
 				require.NoError(err, "Error converting proto to timestamp.")
 				gotUpdateTime, err := ptypes.Timestamp(got.GetItem().GetUpdatedTime())
@@ -362,7 +363,7 @@ func TestUpdate(t *testing.T) {
 			errCode: codes.OK,
 		},
 		{
-			name: "No Update Mask Is Invalid Argument",
+			name: "No Update Mask",
 			req: &pbs.UpdateProjectRequest{
 				Item: &pb.Project{
 					Name:        &wrapperspb.StringValue{Value: "updated name"},
@@ -372,7 +373,7 @@ func TestUpdate(t *testing.T) {
 			errCode: codes.InvalidArgument,
 		},
 		{
-			name: "No Paths in Mask Is Invalid Argument",
+			name: "No Paths in Mask",
 			req: &pbs.UpdateProjectRequest{
 				UpdateMask: &field_mask.FieldMask{Paths: []string{}},
 				Item: &pb.Project{
@@ -383,7 +384,7 @@ func TestUpdate(t *testing.T) {
 			errCode: codes.InvalidArgument,
 		},
 		{
-			name: "Only non-existant paths in Mask Is Invalid Argument",
+			name: "Only non-existant paths in Mask",
 			req: &pbs.UpdateProjectRequest{
 				UpdateMask: &field_mask.FieldMask{Paths: []string{"nonexistant_field"}},
 				Item: &pb.Project{
@@ -407,6 +408,25 @@ func TestUpdate(t *testing.T) {
 				Item: &pb.Project{
 					Id:          proj.GetPublicId(),
 					Description: &wrapperspb.StringValue{Value: "default"},
+					CreatedTime: proj.GetCreateTime().GetTimestamp(),
+				},
+			},
+			errCode: codes.OK,
+		},
+		{
+			name: "Unset Description",
+			req: &pbs.UpdateProjectRequest{
+				UpdateMask: &field_mask.FieldMask{
+					Paths: []string{"description"},
+				},
+				Item: &pb.Project{
+					Name: &wrappers.StringValue{Value: "ignored"},
+				},
+			},
+			res: &pbs.UpdateProjectResponse{
+				Item: &pb.Project{
+					Id:          proj.GetPublicId(),
+					Name:        &wrappers.StringValue{Value: "default"},
 					CreatedTime: proj.GetCreateTime().GetTimestamp(),
 				},
 			},
