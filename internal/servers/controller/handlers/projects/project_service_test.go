@@ -40,6 +40,12 @@ func createDefaultProjectAndRepo(t *testing.T) (*iam.Scope, func() (*iam.Reposit
 	}
 
 	_, pRes := iam.TestScopes(t, conn)
+	pRes.Name = "default"
+	pRes.Description = "default"
+	repo, err := repoFn()
+	require.NoError(t, err)
+	pRes, _, err = repo.UpdateScope(context.Background(), pRes, []string{"Name", "Description"})
+	require.NoError(t, err)
 	return pRes, repoFn
 }
 
