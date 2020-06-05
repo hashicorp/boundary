@@ -3,6 +3,7 @@ package controller
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"path"
 	"path/filepath"
@@ -46,11 +47,11 @@ func (c *Controller) handler(props HandlerProperties) (http.Handler, error) {
 		mux.Handle("/passthrough/", prefixHandler)
 	}
 
-	gh, err := handleGrpcGateway(c)
+	h, err := handleGrpcGateway(c)
 	if err != nil {
 		return nil, err
 	}
-	mux.Handle("/v1/", gh)
+	mux.Handle("/v1/", h)
 
 	corsWrappedHandler := wrapHandlerWithCors(mux, props)
 	commonWrappedHandler := wrapHandlerWithCommonFuncs(corsWrappedHandler, c, props)
@@ -63,15 +64,21 @@ func handleGrpcGateway(c *Controller) (http.Handler, error) {
 	// in the future, at which point we'll want to be using the baseContext.
 	ctx := c.baseContext
 	mux := runtime.NewServeMux(runtime.WithProtoErrorHandler(handlers.ErrorHandler(c.logger)))
-	services.RegisterHostCatalogServiceHandlerServer(ctx, mux, &host_catalogs.Service{})
-	services.RegisterHostSetServiceHandlerServer(ctx, mux, &host_sets.Service{})
-	services.RegisterHostServiceHandlerServer(ctx, mux, &hosts.Service{})
-	ps, err := projects.NewService(c.IamRepo)
+	hcs, err := host_catalogs.NewService(c.StaticHostRepoFn)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to create host catalog handler service: %w", err)
 	}
-	if err := services.RegisterProjectServiceHandlerServer(ctx, mux, ps); err != nil {
-		return nil, err
+	if err := services.RegisterHostCatalogServiceHandlerServer(ctx, mux, hcs); err != nil {
+		return nil, fmt.Errorf("failed to register host catalog service handler: %w", err)
+	}
+	if err := services.RegisterHostSetServiceHandlerServer(ctx, mux, &host_sets.Service{}); err != nil {
+		return nil, fmt.Errorf("failed to register host set service handler: %w", err)
+	}
+	if err := services.RegisterHostServiceHandlerServer(ctx, mux, &hosts.Service{}); err != nil {
+		return nil, fmt.Errorf("failed to register host service handler: %w", err)
+	}
+	if err := services.RegisterProjectServiceHandlerServer(ctx, mux, projects.NewService(c.IamRepoFn)); err != nil {
+		return nil, fmt.Errorf("failed to register project service handler: %w", err)
 	}
 
 	return mux, nil

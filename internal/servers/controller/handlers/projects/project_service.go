@@ -6,7 +6,7 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/grpc-ecosystem/grpc-gateway/runtime"
+	"github.com/golang/protobuf/ptypes/wrappers"
 	pb "github.com/hashicorp/watchtower/internal/gen/controller/api/resources/scopes"
 	pbs "github.com/hashicorp/watchtower/internal/gen/controller/api/services"
 	"github.com/hashicorp/watchtower/internal/iam"
@@ -323,9 +323,4 @@ func validateAncestors(r ancestorProvider) error {
 		return handlers.InvalidArgumentErrorf("Poorly formatted org id.", []string{"org_id"})
 	}
 	return nil
-}
-
-// RegisterGrpcGateway satisfies the RegisterGrpcGatewayer interface.
-func (s *Service) RegisterGrpcGateway(mux *runtime.ServeMux) error {
-	return pbs.RegisterProjectServiceHandlerServer(context.Background(), mux, s)
 }
