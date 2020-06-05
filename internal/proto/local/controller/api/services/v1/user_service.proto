@@ -1,0 +1,108 @@
+syntax = "proto3";
+
+package controller.api.services.v1;
+
+option go_package = "github.com/hashicorp/watchtower/internal/gen/controller/api/services;services";
+
+import "protoc-gen-swagger/options/annotations.proto";
+import "google/api/annotations.proto";
+import "google/protobuf/field_mask.proto";
+import "google/protobuf/wrappers.proto";
+import "controller/api/resources/users/v1/user.proto";
+
+service UserService {
+  rpc GetUser(GetUserRequest) returns (GetUserResponse) {
+    option (google.api.http) = {
+      get: "/v1/orgs/{org_id}/users/{id}"
+      response_body: "item"
+    };
+    option (grpc.gateway.protoc_gen_swagger.options.openapiv2_operation) = {
+      summary: "Gets a single User"
+    };
+  }
+  rpc ListUsers(ListUsersRequest) returns (ListUsersResponse) {
+    option (google.api.http) = {
+      get: "/v1/orgs/{org_id}/users"
+    };
+    option (grpc.gateway.protoc_gen_swagger.options.openapiv2_operation) = {
+      summary: "Lists all Users"
+    };
+  }
+  rpc CreateUser(CreateUserRequest) returns (CreateUserResponse) {
+    option (google.api.http) = {
+      post: "/v1/orgs/{org_id}/users"
+      body: "item"
+      response_body: "item"
+    };
+    option (grpc.gateway.protoc_gen_swagger.options.openapiv2_operation) = {
+      summary: "Creates a single User"
+    };
+  }
+  rpc UpdateUser(UpdateUserRequest) returns (UpdateUserResponse) {
+    option (google.api.http) = {
+      patch: "/v1/orgs/{org_id}/users/{id}"
+      body: "item"
+      response_body: "item"
+    };
+    option (grpc.gateway.protoc_gen_swagger.options.openapiv2_operation) = {
+      summary: "Updates a User"
+    };
+  }
+  rpc DeleteUser(DeleteUserRequest) returns (DeleteUserResponse) {
+    option (google.api.http) = {
+      delete: "/v1/orgs/{org_id}/users/{id}"
+    };
+    option (grpc.gateway.protoc_gen_swagger.options.openapiv2_operation) = {
+      summary: "Deletes a User"
+    };
+  }
+}
+
+message GetUserRequest {
+  string org_id = 1;
+  string id = 2;
+  string view = 3;
+}
+
+message GetUserResponse {
+  resources.users.v1.User item = 1;
+}
+
+message ListUsersRequest {
+  string org_id = 1;
+  string view = 2;
+}
+
+message ListUsersResponse {
+  repeated resources.users.v1.User items = 1;
+}
+
+message CreateUserRequest {
+  string org_id = 1;
+  resources.users.v1.User item = 2;
+}
+
+message CreateUserResponse {
+  string uri = 1;
+  resources.users.v1.User item = 2;
+}
+
+message UpdateUserRequest {
+  string org_id = 1;
+  string id = 2;
+  resources.users.v1.User item = 3;
+  google.protobuf.FieldMask update_mask = 4;
+}
+
+message UpdateUserResponse {
+  resources.users.v1.User item = 1;
+}
+
+message DeleteUserRequest {
+  string org_id = 1;
+  string id = 2;
+}
+
+message DeleteUserResponse {
+  bool existed = 1;
+}
