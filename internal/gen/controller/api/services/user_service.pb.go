@@ -11,7 +11,7 @@ import (
 	proto "github.com/golang/protobuf/proto"
 	_ "github.com/golang/protobuf/ptypes/wrappers"
 	_ "github.com/grpc-ecosystem/grpc-gateway/protoc-gen-swagger/options"
-	scopes "github.com/hashicorp/watchtower/internal/gen/controller/api/resources/scopes"
+	users "github.com/hashicorp/watchtower/internal/gen/controller/api/resources/users"
 	_ "google.golang.org/genproto/googleapis/api/annotations"
 	field_mask "google.golang.org/genproto/protobuf/field_mask"
 	grpc "google.golang.org/grpc"
@@ -102,7 +102,7 @@ type GetUserResponse struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	Item *scopes.User `protobuf:"bytes,1,opt,name=item,proto3" json:"item,omitempty"`
+	Item *users.User `protobuf:"bytes,1,opt,name=item,proto3" json:"item,omitempty"`
 }
 
 func (x *GetUserResponse) Reset() {
@@ -137,7 +137,7 @@ func (*GetUserResponse) Descriptor() ([]byte, []int) {
 	return file_controller_api_services_v1_user_service_proto_rawDescGZIP(), []int{1}
 }
 
-func (x *GetUserResponse) GetItem() *scopes.User {
+func (x *GetUserResponse) GetItem() *users.User {
 	if x != nil {
 		return x.Item
 	}
@@ -204,7 +204,7 @@ type ListUsersResponse struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	Items []*scopes.User `protobuf:"bytes,1,rep,name=items,proto3" json:"items,omitempty"`
+	Items []*users.User `protobuf:"bytes,1,rep,name=items,proto3" json:"items,omitempty"`
 }
 
 func (x *ListUsersResponse) Reset() {
@@ -239,7 +239,7 @@ func (*ListUsersResponse) Descriptor() ([]byte, []int) {
 	return file_controller_api_services_v1_user_service_proto_rawDescGZIP(), []int{3}
 }
 
-func (x *ListUsersResponse) GetItems() []*scopes.User {
+func (x *ListUsersResponse) GetItems() []*users.User {
 	if x != nil {
 		return x.Items
 	}
@@ -251,8 +251,8 @@ type CreateUserRequest struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	OrgId string       `protobuf:"bytes,1,opt,name=org_id,json=orgId,proto3" json:"org_id,omitempty"`
-	Item  *scopes.User `protobuf:"bytes,2,opt,name=item,proto3" json:"item,omitempty"`
+	OrgId string      `protobuf:"bytes,1,opt,name=org_id,json=orgId,proto3" json:"org_id,omitempty"`
+	Item  *users.User `protobuf:"bytes,2,opt,name=item,proto3" json:"item,omitempty"`
 }
 
 func (x *CreateUserRequest) Reset() {
@@ -294,7 +294,7 @@ func (x *CreateUserRequest) GetOrgId() string {
 	return ""
 }
 
-func (x *CreateUserRequest) GetItem() *scopes.User {
+func (x *CreateUserRequest) GetItem() *users.User {
 	if x != nil {
 		return x.Item
 	}
@@ -306,8 +306,8 @@ type CreateUserResponse struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	Uri  string       `protobuf:"bytes,1,opt,name=uri,proto3" json:"uri,omitempty"`
-	Item *scopes.User `protobuf:"bytes,2,opt,name=item,proto3" json:"item,omitempty"`
+	Uri  string      `protobuf:"bytes,1,opt,name=uri,proto3" json:"uri,omitempty"`
+	Item *users.User `protobuf:"bytes,2,opt,name=item,proto3" json:"item,omitempty"`
 }
 
 func (x *CreateUserResponse) Reset() {
@@ -349,7 +349,7 @@ func (x *CreateUserResponse) GetUri() string {
 	return ""
 }
 
-func (x *CreateUserResponse) GetItem() *scopes.User {
+func (x *CreateUserResponse) GetItem() *users.User {
 	if x != nil {
 		return x.Item
 	}
@@ -363,7 +363,7 @@ type UpdateUserRequest struct {
 
 	OrgId      string                `protobuf:"bytes,1,opt,name=org_id,json=orgId,proto3" json:"org_id,omitempty"`
 	Id         string                `protobuf:"bytes,2,opt,name=id,proto3" json:"id,omitempty"`
-	Item       *scopes.User          `protobuf:"bytes,3,opt,name=item,proto3" json:"item,omitempty"`
+	Item       *users.User           `protobuf:"bytes,3,opt,name=item,proto3" json:"item,omitempty"`
 	UpdateMask *field_mask.FieldMask `protobuf:"bytes,4,opt,name=update_mask,json=updateMask,proto3" json:"update_mask,omitempty"`
 }
 
@@ -413,7 +413,7 @@ func (x *UpdateUserRequest) GetId() string {
 	return ""
 }
 
-func (x *UpdateUserRequest) GetItem() *scopes.User {
+func (x *UpdateUserRequest) GetItem() *users.User {
 	if x != nil {
 		return x.Item
 	}
@@ -432,7 +432,7 @@ type UpdateUserResponse struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	Item *scopes.User `protobuf:"bytes,1,opt,name=item,proto3" json:"item,omitempty"`
+	Item *users.User `protobuf:"bytes,1,opt,name=item,proto3" json:"item,omitempty"`
 }
 
 func (x *UpdateUserResponse) Reset() {
@@ -467,7 +467,7 @@ func (*UpdateUserResponse) Descriptor() ([]byte, []int) {
 	return file_controller_api_services_v1_user_service_proto_rawDescGZIP(), []int{7}
 }
 
-func (x *UpdateUserResponse) GetItem() *scopes.User {
+func (x *UpdateUserResponse) GetItem() *users.User {
 	if x != nil {
 		return x.Item
 	}
@@ -737,7 +737,7 @@ var file_controller_api_services_v1_user_service_proto_goTypes = []interface{}{
 	(*UpdateUserResponse)(nil),   // 7: controller.api.services.v1.UpdateUserResponse
 	(*DeleteUserRequest)(nil),    // 8: controller.api.services.v1.DeleteUserRequest
 	(*DeleteUserResponse)(nil),   // 9: controller.api.services.v1.DeleteUserResponse
-	(*scopes.User)(nil),          // 10: controller.api.resources.users.v1.User
+	(*users.User)(nil),           // 10: controller.api.resources.users.v1.User
 	(*field_mask.FieldMask)(nil), // 11: google.protobuf.FieldMask
 }
 var file_controller_api_services_v1_user_service_proto_depIdxs = []int32{

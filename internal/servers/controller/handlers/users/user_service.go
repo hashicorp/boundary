@@ -8,7 +8,7 @@ import (
 	"strings"
 
 	"github.com/hashicorp/watchtower/internal/db"
-	pb "github.com/hashicorp/watchtower/internal/gen/controller/api/resources/scopes"
+	pb "github.com/hashicorp/watchtower/internal/gen/controller/api/resources/users"
 	pbs "github.com/hashicorp/watchtower/internal/gen/controller/api/services"
 	"github.com/hashicorp/watchtower/internal/iam"
 	"github.com/hashicorp/watchtower/internal/servers/controller/handlers"
@@ -42,7 +42,7 @@ func NewService(repo func() (*iam.Repository, error)) (Service, error) {
 var _ pbs.UserServiceServer = Service{}
 
 // CreateUser is not yet implemented but will implement the interface pbs.UserServiceServer.
-func (s Service) ListUsers(ctx context.Context, req *pbs.ListUsersRequest) (*pbs.ListUsersResponse, error) {
+func (s Service) ListUsers(context.Context, *pbs.ListUsersRequest) (*pbs.ListUsersResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "List not enabled for this resource.")
 }
 
