@@ -11,6 +11,11 @@ import "google/protobuf/wrappers.proto";
 import "controller/api/resources/users/v1/user.proto";
 
 service UserService {
+
+  // GetUser returns a stored User if present.  The provided request
+  // must include the org and user id for the user being retrieved. If
+  // any of those ids are missing, malformed or reference a non existing
+  // resource an error is returned.
   rpc GetUser(GetUserRequest) returns (GetUserResponse) {
     option (google.api.http) = {
       get: "/v1/orgs/{org_id}/users/{id}"
@@ -20,6 +25,11 @@ service UserService {
       summary: "Gets a single User"
     };
   }
+
+  // ListUsers returns a list of stored users which exist inside the org
+  // referenced inside the request.  The request must include the org id for
+  // the users being retrieved.  If the org id is missing, malformed, or
+  // reference a non existing organization, an error is returned.
   rpc ListUsers(ListUsersRequest) returns (ListUsersResponse) {
     option (google.api.http) = {
       get: "/v1/orgs/{org_id}/users"
@@ -28,6 +38,12 @@ service UserService {
       summary: "Lists all Users"
     };
   }
+
+  // CreateUser creates and stores a user in watchtower.  The provided
+  // request must include the org id in which the user will be created.
+  // If the org id is missing, malformed or references a non existing
+  // organization, an error is returned.  If a name is provided that is in
+  // use in another user in the same organization, an error is returned.
   rpc CreateUser(CreateUserRequest) returns (CreateUserResponse) {
     option (google.api.http) = {
       post: "/v1/orgs/{org_id}/users"
@@ -38,6 +54,15 @@ service UserService {
       summary: "Creates a single User"
     };
   }
+
+  // UpdateUser updates an existing user in watchtower.  The provided
+  // user must not have any read only fields set.  The update mask must be
+  // included in the request and contain at least 1 mutable field.  To unset
+  // a field's value, include the field in the update mask and don't set it
+  // in the provided user. An error is returned if either the organization
+  // or user ids are missing or reference a non existing resource.  An error
+  // is also returned if the request attempts to update the name to one that is
+  // already in use in this organization.
   rpc UpdateUser(UpdateUserRequest) returns (UpdateUserResponse) {
     option (google.api.http) = {
       patch: "/v1/orgs/{org_id}/users/{id}"
@@ -48,6 +73,12 @@ service UserService {
       summary: "Updates a User"
     };
   }
+
+  // DeleteUser removes a user from Watchtower. If the provided org or user ids
+  // are malformed or not provided an error is returned.  No error is returned
+  // if either ids reference resources that do not exist as the response itself
+  // specifies if the resource existed before the DeleteUser request was
+  // received.
   rpc DeleteUser(DeleteUserRequest) returns (DeleteUserResponse) {
     option (google.api.http) = {
       delete: "/v1/orgs/{org_id}/users/{id}"
