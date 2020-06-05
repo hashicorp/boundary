@@ -23,14 +23,14 @@ var updateFuncs = map[string][]*updateInfo{
 			path:       "projects",
 		},
 		{
+			baseType:   "Organization",
+			targetType: "users.User",
+			path:       "users",
+		},
+		{
 			baseType:   "Project",
 			targetType: "hosts.HostCatalog",
 			path:       "host-catalogs",
-		},
-		{
-			baseType:   "User",
-			targetType: "users.User",
-			path:       "users",
 		},
 	},
 }

@@ -23,14 +23,14 @@ var readFuncs = map[string][]*readInfo{
 			path:       "projects",
 		},
 		{
+			baseType:   "Organization",
+			targetType: "users.User",
+			path:       "users",
+		},
+		{
 			baseType:   "Project",
 			targetType: "hosts.HostCatalog",
 			path:       "host-catalogs",
-		},
-		{
-			baseType:   "User",
-			targetType: "users.User",
-			path:       "users",
 		},
 	},
 }

@@ -49,6 +49,44 @@ func (s Organization) CreateProject(ctx context.Context, r *Project) (*Project, 
 	return target, apiErr, nil
 }
 
+func (s Organization) CreateUser(ctx context.Context, r *users.User) (*users.User, *api.Error, error) {
+	if s.Client == nil {
+		return nil, nil, fmt.Errorf("nil client in Createusers.User request")
+	}
+	if s.Id == "" {
+
+		// Assume the client has been configured with organization already and
+		// move on
+
+	} else {
+		// If it's explicitly set here, override anything that might be in the
+		// client
+
+		ctx = context.WithValue(ctx, "org", s.Id)
+
+	}
+
+	req, err := s.Client.NewRequest(ctx, "POST", "users", r)
+	if err != nil {
+		return nil, nil, fmt.Errorf("error creating Createusers.User request: %w", err)
+	}
+
+	resp, err := s.Client.Do(req)
+	if err != nil {
+		return nil, nil, fmt.Errorf("error performing client request during Createusers.User call: %w", err)
+	}
+
+	target := new(users.User)
+	apiErr, err := resp.Decode(target)
+	if err != nil {
+		return nil, nil, fmt.Errorf("error decoding Createusers.User repsonse: %w", err)
+	}
+
+	target.Client = s.Client
+
+	return target, apiErr, nil
+}
+
 func (s Project) CreateHostCatalog(ctx context.Context, r *hosts.HostCatalog) (*hosts.HostCatalog, *api.Error, error) {
 	if s.Client == nil {
 		return nil, nil, fmt.Errorf("nil client in Createhosts.HostCatalog request")
@@ -80,44 +118,6 @@ func (s Project) CreateHostCatalog(ctx context.Context, r *hosts.HostCatalog) (*
 	apiErr, err := resp.Decode(target)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error decoding Createhosts.HostCatalog repsonse: %w", err)
-	}
-
-	target.Client = s.Client
-
-	return target, apiErr, nil
-}
-
-func (s Project) CreateUser(ctx context.Context, r *users.User) (*users.User, *api.Error, error) {
-	if s.Client == nil {
-		return nil, nil, fmt.Errorf("nil client in Createusers.User request")
-	}
-	if s.Id == "" {
-
-		// Assume the client has been configured with project already and move
-		// on
-
-	} else {
-		// If it's explicitly set here, override anything that might be in the
-		// client
-
-		ctx = context.WithValue(ctx, "project", s.Id)
-
-	}
-
-	req, err := s.Client.NewRequest(ctx, "POST", "users", r)
-	if err != nil {
-		return nil, nil, fmt.Errorf("error creating Createusers.User request: %w", err)
-	}
-
-	resp, err := s.Client.Do(req)
-	if err != nil {
-		return nil, nil, fmt.Errorf("error performing client request during Createusers.User call: %w", err)
-	}
-
-	target := new(users.User)
-	apiErr, err := resp.Decode(target)
-	if err != nil {
-		return nil, nil, fmt.Errorf("error decoding Createusers.User repsonse: %w", err)
 	}
 
 	target.Client = s.Client

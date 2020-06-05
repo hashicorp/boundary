@@ -35,14 +35,14 @@ var createFuncs = map[string][]*createInfo{
 			path:       `"projects"`,
 		},
 		{
-			baseType:   "Project",
-			targetType: "hosts.HostCatalog",
-			path:       `"host-catalogs"`,
+			baseType:   "Organization",
+			targetType: "users.User",
+			path:       `"users"`,
 		},
 		{
 			baseType:   "Project",
-			targetType: "users.User",
-			path:       `"users"`,
+			targetType: "hosts.HostCatalog",
+			path:       `"host-catalogs"`,
 		},
 	},
 }
