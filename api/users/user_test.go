@@ -21,43 +21,43 @@ func TestUser_Crud(t *testing.T) {
 		Client: client,
 	}
 
-	checkUser := func(step string, hc *users.User, apiErr *api.Error, err error, wantedName string) {
+	checkUser := func(step string, u *users.User, apiErr *api.Error, err error, wantedName string) {
 		assert := assert.New(t)
 		assert.NoError(err, step)
 		if !assert.Nil(apiErr, step) && apiErr.Message != nil {
 			t.Errorf("ApiError message: %q", *apiErr.Message)
 		}
-		assert.NotNil(hc, "returned project", step)
+		assert.NotNil(u, "returned project", step)
 		gotName := ""
-		if hc.Name != nil {
-			gotName = *hc.Name
+		if u.Name != nil {
+			gotName = *u.Name
 		}
 		assert.Equal(wantedName, gotName, step)
 	}
 
-	hc, apiErr, err := org.CreateUser(tc.Context(), &users.User{Name: api.String("foo")})
-	checkUser("create", hc, apiErr, err, "foo")
+	u, apiErr, err := org.CreateUser(tc.Context(), &users.User{Name: api.String("foo")})
+	checkUser("create", u, apiErr, err, "foo")
 
-	hc, apiErr, err = org.ReadUser(tc.Context(), &users.User{Id: hc.Id})
-	checkUser("read", hc, apiErr, err, "foo")
+	u, apiErr, err = org.ReadUser(tc.Context(), &users.User{Id: u.Id})
+	checkUser("read", u, apiErr, err, "foo")
 
-	hc = &users.User{Id: hc.Id}
-	hc.Name = api.String("bar")
-	hc, apiErr, err = org.UpdateUser(tc.Context(), hc)
-	checkUser("update", hc, apiErr, err, "bar")
+	u = &users.User{Id: u.Id}
+	u.Name = api.String("bar")
+	u, apiErr, err = org.UpdateUser(tc.Context(), u)
+	checkUser("update", u, apiErr, err, "bar")
 
-	hc = &users.User{Id: hc.Id}
-	hc.SetDefault("name")
-	hc, apiErr, err = org.UpdateUser(tc.Context(), hc)
-	checkUser("update", hc, apiErr, err, "")
+	u = &users.User{Id: u.Id}
+	u.SetDefault("name")
+	u, apiErr, err = org.UpdateUser(tc.Context(), u)
+	checkUser("update", u, apiErr, err, "")
 
-	existed, apiErr, err := org.DeleteUser(tc.Context(), hc)
+	existed, apiErr, err := org.DeleteUser(tc.Context(), u)
 	assert.NoError(t, err)
-	assert.True(t, existed, "Expected existing catalog when deleted, but it wasn't.")
+	assert.True(t, existed, "Expected existing user when deleted, but it wasn't.")
 
-	existed, apiErr, err = org.DeleteUser(tc.Context(), hc)
+	existed, apiErr, err = org.DeleteUser(tc.Context(), u)
 	assert.NoError(t, err)
-	assert.False(t, existed, "Expected catalog to not exist when deleted, but it did.")
+	assert.False(t, existed, "Expected user to not exist when deleted, but it did.")
 }
 
 func TestUser_Errors(t *testing.T) {
@@ -70,23 +70,20 @@ func TestUser_Errors(t *testing.T) {
 	org := &scopes.Organization{
 		Client: client,
 	}
-	p, apiErr, err := org.CreateProject(ctx, &scopes.Project{})
-	assert.NoError(err)
-	assert.NotNil(p)
-	assert.Nil(apiErr)
 
-	hc, apiErr, err := org.CreateUser(ctx, &users.User{})
+	u, apiErr, err := org.CreateUser(ctx, &users.User{Name: api.String("first")})
 	assert.NoError(err)
 	assert.Nil(apiErr)
-	assert.NotNil(hc)
+	assert.NotNil(u)
 
-	_, apiErr, err = org.CreateUser(ctx, &users.User{})
+	// Create another resource with the same name.
+	_, apiErr, err = org.CreateUser(ctx, &users.User{Name: api.String("first")})
 	assert.NoError(err)
 	assert.NotNil(apiErr)
 
 	_, apiErr, err = org.ReadUser(ctx, &users.User{Id: iam.UserPrefix + "_doesntexis"})
 	assert.NoError(err)
-	// TODO: Should this be nil instead of just a catalog that has no values set
+	// TODO: Should this be nil instead of just a user that has no values set
 	assert.NotNil(apiErr)
 	assert.EqualValues(*apiErr.Status, http.StatusNotFound)
 
@@ -95,7 +92,7 @@ func TestUser_Errors(t *testing.T) {
 	assert.NotNil(apiErr)
 	assert.EqualValues(*apiErr.Status, http.StatusBadRequest)
 
-	_, apiErr, err = org.UpdateUser(ctx, &users.User{Id: hc.Id})
+	_, apiErr, err = org.UpdateUser(ctx, &users.User{Id: u.Id})
 	assert.NoError(err)
 	assert.NotNil(apiErr)
 	assert.EqualValues(*apiErr.Status, http.StatusBadRequest)
