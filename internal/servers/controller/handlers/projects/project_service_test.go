@@ -73,13 +73,13 @@ func TestGet(t *testing.T) {
 		errCode codes.Code
 	}{
 		{
-			name:    "Get an Existing Project",
+			name:    "Get an Existing project",
 			req:     &pbs.GetProjectRequest{Id: proj.GetPublicId()},
 			res:     &pbs.GetProjectResponse{Item: pProject},
 			errCode: codes.OK,
 		},
 		{
-			name:    "Get a non existant Host Catalog",
+			name:    "Get a non existing project",
 			req:     &pbs.GetProjectRequest{Id: "p_DoesntExis"},
 			res:     nil,
 			errCode: codes.NotFound,
