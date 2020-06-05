@@ -18,21 +18,31 @@ type createInfo struct {
 var createFuncs = map[string][]*createInfo{
 	"hosts": {
 		{
-			"HostCatalog",
-			"Host",
-			`fmt.Sprintf("host-catalogs/%s/hosts", s.Id)`,
+			baseType:   "HostCatalog",
+			targetType: "Host",
+			path:       `fmt.Sprintf("host-catalogs/%s/hosts", s.Id)`,
 		},
 		{
-			"HostCatalog",
-			"HostSet",
-			`fmt.Sprintf("host-catalogs/%s/host-sets", s.Id)`,
+			baseType:   "HostCatalog",
+			targetType: "HostSet",
+			path:       `fmt.Sprintf("host-catalogs/%s/host-sets", s.Id)`,
 		},
 	},
 	"scopes": {
 		{
-			"Organization",
-			"Project",
-			`"projects"`,
+			baseType:   "Organization",
+			targetType: "Project",
+			path:       `"projects"`,
+		},
+		{
+			baseType:   "Project",
+			targetType: "hosts.HostCatalog",
+			path:       `"host-catalogs"`,
+		},
+		{
+			baseType:   "Project",
+			targetType: "users.User",
+			path:       `"users"`,
 		},
 	},
 }
@@ -46,15 +56,15 @@ package %s
 `, outPkg)))
 		for _, createInfo := range funcs {
 			createFuncTemplate.Execute(outBuf, struct {
-				BaseType        string
-				TargetType      string
-				LowerTargetType string
-				Path            string
+				BaseType   string
+				TargetType string
+				TargetName string
+				Path       string
 			}{
-				BaseType:        createInfo.baseType,
-				TargetType:      createInfo.targetType,
-				LowerTargetType: strings.ToLower(createInfo.targetType),
-				Path:            createInfo.path,
+				BaseType:   createInfo.baseType,
+				TargetType: createInfo.targetType,
+				TargetName: strings.Split(createInfo.targetType, ".")[strings.Count(createInfo.targetType, ".")],
+				Path:       createInfo.path,
 			})
 		}
 		if err := ioutil.WriteFile(outFile, outBuf.Bytes(), 0644); err != nil {
@@ -66,7 +76,7 @@ package %s
 
 var createFuncTemplate = template.Must(template.New("").Parse(
 	`
-func (s {{ .BaseType }}) Create{{ .TargetType }}(ctx context.Context, {{ .LowerTargetType }} *{{ .TargetType }}) (*{{ .TargetType }}, *api.Error, error) {
+func (s {{ .BaseType }}) Create{{ .TargetName }}(ctx context.Context, r *{{ .TargetType }}) (*{{ .TargetType }}, *api.Error, error) {
 	if s.Client == nil {
 		return nil, nil, fmt.Errorf("nil client in Create{{ .TargetType }} request")
 	}
@@ -90,7 +100,7 @@ func (s {{ .BaseType }}) Create{{ .TargetType }}(ctx context.Context, {{ .LowerT
 		{{ end }}
 	}
 
-	req, err := s.Client.NewRequest(ctx, "POST", {{ .Path }}, {{ .LowerTargetType }})
+	req, err := s.Client.NewRequest(ctx, "POST", {{ .Path }}, r)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error creating Create{{ .TargetType }} request: %w", err)
 	}

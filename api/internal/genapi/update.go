@@ -18,9 +18,19 @@ type updateInfo struct {
 var updateFuncs = map[string][]*updateInfo{
 	"scopes": {
 		{
-			"Organization",
-			"Project",
-			"projects/%s",
+			baseType:   "Organization",
+			targetType: "Project",
+			path:       "projects",
+		},
+		{
+			baseType:   "Project",
+			targetType: "hosts.HostCatalog",
+			path:       "host-catalogs",
+		},
+		{
+			baseType:   "User",
+			targetType: "users.User",
+			path:       "users",
 		},
 	},
 }
@@ -34,15 +44,15 @@ package %s
 `, outPkg)))
 		for _, updateInfo := range funcs {
 			updateFuncTemplate.Execute(outBuf, struct {
-				BaseType        string
-				TargetType      string
-				LowerTargetType string
-				Path            string
+				BaseType   string
+				TargetType string
+				TargetName string
+				Path       string
 			}{
-				BaseType:        updateInfo.baseType,
-				TargetType:      updateInfo.targetType,
-				LowerTargetType: strings.ToLower(updateInfo.targetType),
-				Path:            updateInfo.path,
+				BaseType:   updateInfo.baseType,
+				TargetType: updateInfo.targetType,
+				TargetName: strings.Split(updateInfo.targetType, ".")[strings.Count(updateInfo.targetType, ".")],
+				Path:       updateInfo.path,
 			})
 		}
 		if err := ioutil.WriteFile(outFile, outBuf.Bytes(), 0644); err != nil {
@@ -54,9 +64,9 @@ package %s
 
 var updateFuncTemplate = template.Must(template.New("").Parse(
 	`
-func (s {{ .BaseType }}) Update{{ .TargetType }}(ctx context.Context, {{ .LowerTargetType }} *{{ .TargetType }}) (*{{ .TargetType }}, *api.Error, error) {
+func (s {{ .BaseType }}) Update{{ .TargetName }}(ctx context.Context, r *{{ .TargetType }}) (*{{ .TargetType }}, *api.Error, error) {
 	if s.Client == nil {
-		return nil, nil, fmt.Errorf("nil client in Create{{ .TargetType }} request")
+		return nil, nil, fmt.Errorf("nil client in Create{{ .TargetName }} request")
 	}
 	if s.Id == "" {
 		{{ if (eq .BaseType "Organization") }}
@@ -66,7 +76,7 @@ func (s {{ .BaseType }}) Update{{ .TargetType }}(ctx context.Context, {{ .LowerT
 		// Assume the client has been configured with project already and move
 		// on
 		{{ else }}
-		return nil, nil, fmt.Errorf("missing {{ .BaseType}} ID in Create{{ .TargetType }} request")
+		return nil, nil, fmt.Errorf("missing {{ .BaseType}} ID in Create{{ .TargetName }} request")
 		{{ end }}
 	} else {
 		// If it's explicitly set here, override anything that might be in the
@@ -78,23 +88,23 @@ func (s {{ .BaseType }}) Update{{ .TargetType }}(ctx context.Context, {{ .LowerT
 		{{ end }}
 	}
 
-	id := {{ .LowerTargetType }}.Id
-	{{ .LowerTargetType }}.Id = ""
+	id := r.Id
+	r.Id = ""
 
-	req, err := s.Client.NewRequest(ctx, "PATCH", fmt.Sprintf("{{ .Path }}", id), {{ .LowerTargetType }})
+	req, err := s.Client.NewRequest(ctx, "PATCH", fmt.Sprintf("%s/%s", "{{ .Path }}", id), r)
 	if err != nil {
-		return nil, nil, fmt.Errorf("error creating Create{{ .TargetType }} request: %w", err)
+		return nil, nil, fmt.Errorf("error creating Create{{ .TargetName }} request: %w", err)
 	}
 
 	resp, err := s.Client.Do(req)
 	if err != nil {
-		return nil, nil, fmt.Errorf("error performing client request during Update{{ .TargetType }} call: %w", err)
+		return nil, nil, fmt.Errorf("error performing client request during Update{{ .TargetName }} call: %w", err)
 	}
 
 	target := new({{ .TargetType }})
 	apiErr, err := resp.Decode(target)
 	if err != nil {
-		return nil, nil, fmt.Errorf("error decoding Update{{ .TargetType }} repsonse: %w", err)
+		return nil, nil, fmt.Errorf("error decoding Update{{ .TargetName }} repsonse: %w", err)
 	}
 
 	{{ if (eq .TargetType "Organization") }}

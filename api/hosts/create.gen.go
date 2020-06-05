@@ -8,7 +8,7 @@ import (
 	"github.com/hashicorp/watchtower/api"
 )
 
-func (s HostCatalog) CreateHost(ctx context.Context, host *Host) (*Host, *api.Error, error) {
+func (s HostCatalog) CreateHost(ctx context.Context, r *Host) (*Host, *api.Error, error) {
 	if s.Client == nil {
 		return nil, nil, fmt.Errorf("nil client in CreateHost request")
 	}
@@ -22,7 +22,7 @@ func (s HostCatalog) CreateHost(ctx context.Context, host *Host) (*Host, *api.Er
 
 	}
 
-	req, err := s.Client.NewRequest(ctx, "POST", fmt.Sprintf("host-catalogs/%s/hosts", s.Id), host)
+	req, err := s.Client.NewRequest(ctx, "POST", fmt.Sprintf("host-catalogs/%s/hosts", s.Id), r)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error creating CreateHost request: %w", err)
 	}
@@ -43,7 +43,7 @@ func (s HostCatalog) CreateHost(ctx context.Context, host *Host) (*Host, *api.Er
 	return target, apiErr, nil
 }
 
-func (s HostCatalog) CreateHostSet(ctx context.Context, hostset *HostSet) (*HostSet, *api.Error, error) {
+func (s HostCatalog) CreateHostSet(ctx context.Context, r *HostSet) (*HostSet, *api.Error, error) {
 	if s.Client == nil {
 		return nil, nil, fmt.Errorf("nil client in CreateHostSet request")
 	}
@@ -57,7 +57,7 @@ func (s HostCatalog) CreateHostSet(ctx context.Context, hostset *HostSet) (*Host
 
 	}
 
-	req, err := s.Client.NewRequest(ctx, "POST", fmt.Sprintf("host-catalogs/%s/host-sets", s.Id), hostset)
+	req, err := s.Client.NewRequest(ctx, "POST", fmt.Sprintf("host-catalogs/%s/host-sets", s.Id), r)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error creating CreateHostSet request: %w", err)
 	}
