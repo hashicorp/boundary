@@ -7,7 +7,6 @@ import (
 
 	"github.com/hashicorp/watchtower/api"
 	"github.com/hashicorp/watchtower/api/hosts"
-	"github.com/hashicorp/watchtower/api/users"
 )
 
 // DeleteProject returns true iff the Project existed when the delete attempt was made.
@@ -49,50 +48,6 @@ func (s Organization) DeleteProject(ctx context.Context, r *Project) (bool, *api
 	apiErr, err := resp.Decode(target)
 	if err != nil {
 		return false, nil, fmt.Errorf("error decoding DeleteProject repsonse: %w", err)
-	}
-
-	return target.Existed, apiErr, nil
-}
-
-// DeleteUser returns true iff the users.User existed when the delete attempt was made.
-func (s Organization) DeleteUser(ctx context.Context, r *users.User) (bool, *api.Error, error) {
-	if s.Client == nil {
-		return false, nil, fmt.Errorf("nil client in DeleteUser request")
-	}
-	if s.Id == "" {
-
-		// Assume the client has been configured with organization already and
-		// move on
-
-	} else {
-		// If it's explicitly set here, override anything that might be in the
-		// client
-
-		ctx = context.WithValue(ctx, "org", s.Id)
-
-	}
-	if r.Id == "" {
-		return false, nil, fmt.Errorf("empty users.User ID field in DeleteUser request")
-	}
-
-	req, err := s.Client.NewRequest(ctx, "DELETE", fmt.Sprintf("%s/%s", "users", r.Id), nil)
-	if err != nil {
-		return false, nil, fmt.Errorf("error creating DeleteUser request: %w", err)
-	}
-
-	resp, err := s.Client.Do(req)
-	if err != nil {
-		return false, nil, fmt.Errorf("error performing client request during DeleteUser call: %w", err)
-	}
-
-	type deleteResponse struct {
-		Existed bool
-	}
-	target := &deleteResponse{}
-
-	apiErr, err := resp.Decode(target)
-	if err != nil {
-		return false, nil, fmt.Errorf("error decoding DeleteUser repsonse: %w", err)
 	}
 
 	return target.Existed, apiErr, nil

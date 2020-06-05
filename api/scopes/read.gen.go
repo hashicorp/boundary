@@ -7,7 +7,6 @@ import (
 
 	"github.com/hashicorp/watchtower/api"
 	"github.com/hashicorp/watchtower/api/hosts"
-	"github.com/hashicorp/watchtower/api/users"
 )
 
 func (s Organization) ReadProject(ctx context.Context, r *Project) (*Project, *api.Error, error) {
@@ -48,47 +47,6 @@ func (s Organization) ReadProject(ctx context.Context, r *Project) (*Project, *a
 
 	target.Client = s.Client.Clone()
 	target.Client.SetProject(target.Id)
-
-	return target, apiErr, nil
-}
-
-func (s Organization) ReadUser(ctx context.Context, r *users.User) (*users.User, *api.Error, error) {
-	if s.Client == nil {
-		return nil, nil, fmt.Errorf("nil client in ReadUser request")
-	}
-	if s.Id == "" {
-
-		// Assume the client has been configured with organization already and
-		// move on
-
-	} else {
-		// If it's explicitly set here, override anything that might be in the
-		// client
-
-		ctx = context.WithValue(ctx, "org", s.Id)
-
-	}
-	if r.Id == "" {
-		return nil, nil, fmt.Errorf("empty users.User ID field in ReadUser request")
-	}
-
-	req, err := s.Client.NewRequest(ctx, "GET", fmt.Sprintf("%s/%s", "users", r.Id), r)
-	if err != nil {
-		return nil, nil, fmt.Errorf("error creating ReadUser request: %w", err)
-	}
-
-	resp, err := s.Client.Do(req)
-	if err != nil {
-		return nil, nil, fmt.Errorf("error performing client request during ReadUser call: %w", err)
-	}
-
-	target := new(users.User)
-	apiErr, err := resp.Decode(target)
-	if err != nil {
-		return nil, nil, fmt.Errorf("error decoding ReadUser repsonse: %w", err)
-	}
-
-	target.Client = s.Client
 
 	return target, apiErr, nil
 }
