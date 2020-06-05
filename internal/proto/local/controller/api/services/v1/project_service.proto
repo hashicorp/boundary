@@ -62,7 +62,7 @@ service ProjectService {
   // in the provided project. An error is returned if either the organization
   // or project ids are missing or reference a non existing resource.  An error
   // is also returned if the request attempts to update the name to one that is
-  // already in use in this project.
+  // already in use in this organization.
   rpc UpdateProject(UpdateProjectRequest) returns (UpdateProjectResponse) {
     option (google.api.http) = {
       patch: "/v1/orgs/{org_id}/projects/{id}"

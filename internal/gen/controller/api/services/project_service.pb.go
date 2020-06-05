@@ -956,7 +956,7 @@ type ProjectServiceClient interface {
 	// in the provided project. An error is returned if either the organization
 	// or project ids are missing or reference a non existing resource.  An error
 	// is also returned if the request attempts to update the name to one that is
-	// already in use in this project.
+	// already in use in this organization.
 	UpdateProject(ctx context.Context, in *UpdateProjectRequest, opts ...grpc.CallOption) (*UpdateProjectResponse, error)
 	// DeleteProject remotes a project and all child resources from Watchtower.
 	// If the provided org or project ids are malformed or not provided an error
@@ -1044,7 +1044,7 @@ type ProjectServiceServer interface {
 	// in the provided project. An error is returned if either the organization
 	// or project ids are missing or reference a non existing resource.  An error
 	// is also returned if the request attempts to update the name to one that is
-	// already in use in this project.
+	// already in use in this organization.
 	UpdateProject(context.Context, *UpdateProjectRequest) (*UpdateProjectResponse, error)
 	// DeleteProject remotes a project and all child resources from Watchtower.
 	// If the provided org or project ids are malformed or not provided an error
