@@ -28,6 +28,14 @@ func (s ScopeType) String() string {
 	}[s]
 }
 
+func (s ScopeType) Prefix() string {
+	return [...]string{
+		"unknown",
+		"o",
+		"p",
+	}[s]
+}
+
 // Scope is used to create a hierarchy of "containers" that encompass the scope of
 // an IAM resource.  Scopes are Organizations and Projects.
 type Scope struct {
@@ -79,19 +87,15 @@ func newScope(scopeType ScopeType, opt ...Option) (*Scope, error) {
 			return nil, errors.New("error project scope parent id is unset")
 		}
 	}
-	prefix := "p"
-	if scopeType == OrganizationScope {
-		prefix = "o"
-	}
 	var publicId string
 	if withPublicId != "" {
-		if !strings.HasPrefix(withPublicId, prefix+"_") {
-			return nil, errors.New("passed-in public ID has wrong prefix for type")
+		if !strings.HasPrefix(withPublicId, scopeType.Prefix()+"_") {
+			return nil, fmt.Errorf("passed-in public ID %q has wrong prefix for type %q which uses prefix %q", withPublicId, scopeType.String(), scopeType.Prefix())
 		}
 		publicId = withPublicId
 	} else {
 		var err error
-		publicId, err = db.NewPublicId(prefix)
+		publicId, err = db.NewPublicId(scopeType.Prefix())
 		if err != nil {
 			return nil, fmt.Errorf("error generating public id %w for new scope", err)
 		}

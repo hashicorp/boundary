@@ -10,6 +10,7 @@ import (
 	"github.com/hashicorp/watchtower/internal/db"
 	"github.com/hashicorp/watchtower/internal/host/static"
 	"github.com/hashicorp/watchtower/internal/iam"
+	"github.com/hashicorp/watchtower/internal/servers/controller/common"
 )
 
 type Controller struct {
@@ -19,9 +20,9 @@ type Controller struct {
 	baseContext context.Context
 	baseCancel  context.CancelFunc
 
-	// Repos
-	IamRepoFn        func() (*iam.Repository, error)
-	StaticHostRepoFn func() (*static.Repository, error)
+	// Repo factory methods
+	IamRepoFn        common.IamRepoFactory
+	StaticHostRepoFn common.StaticRepoFactory
 }
 
 func New(conf *Config) (*Controller, error) {
