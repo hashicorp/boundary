@@ -3,8 +3,8 @@ package oplog
 import (
 	"errors"
 	"fmt"
-	"reflect"
-	"strings"
+
+	"github.com/hashicorp/watchtower/internal/db/common"
 
 	"github.com/jinzhu/gorm"
 )
@@ -14,8 +14,11 @@ type Writer interface {
 	// Create the entry
 	Create(interface{}) error
 
-	// Update the entry using the fieldMaskPaths, which are Paths from field_mask.proto
-	Update(entry interface{}, fieldMaskPaths []string) error
+	// Update the entry using the fieldMaskPaths and setNullPaths, which are
+	// Paths from field_mask.proto.  fieldMaskPaths is required.  setToNullPaths
+	// is optional.  fieldMaskPaths and setNullPaths cannot instersect and both
+	// cannot be zero len.
+	Update(entry interface{}, fieldMaskPaths, setToNullPaths []string) error
 
 	// Delete the entry
 	Delete(interface{}) error
@@ -23,7 +26,8 @@ type Writer interface {
 	// HasTable checks if tableName exists
 	hasTable(tableName string) bool
 
-	// CreateTableLike will create a newTableName using the existing table as a starting point
+	// CreateTableLike will create a newTableName using the existing table as a
+	// starting point
 	createTableLike(existingTableName string, newTableName string) error
 
 	// DropTableIfExists will drop the table if it exists
@@ -49,45 +53,23 @@ func (w *GormWriter) Create(i interface{}) error {
 	return nil
 }
 
-// Update an object in storage, if there's a fieldMask then only the field_mask.proto paths are updated, otherwise
-// we will send every field to the DB.
-func (w *GormWriter) Update(i interface{}, fieldMaskPaths []string) error {
+// Update the entry using the fieldMaskPaths and setNullPaths, which are
+// Paths from field_mask.proto.  fieldMaskPaths is required.  setToNullPaths is
+// optional. fieldMaskPaths and setNullPaths cannot intersect and both cannot be
+// zero len.
+func (w *GormWriter) Update(i interface{}, fieldMaskPaths, setToNullPaths []string) error {
 	if w.Tx == nil {
 		return errors.New("update Tx is nil")
 	}
 	if i == nil {
 		return errors.New("update interface is nil")
 	}
-	if len(fieldMaskPaths) == 0 {
-		if err := w.Tx.Save(i).Error; err != nil {
-			return fmt.Errorf("error updating: %w", err)
-		}
+	if len(fieldMaskPaths) == 0 && len(setToNullPaths) == 0 {
+		return errors.New("update both fieldMaskPaths and setToNullPaths are missing")
 	}
-	updateFields := map[string]interface{}{}
-
-	val := reflect.Indirect(reflect.ValueOf(i))
-	structTyp := val.Type()
-	for _, field := range fieldMaskPaths {
-		for i := 0; i < structTyp.NumField(); i++ {
-			// support for an embedded a gorm type
-			if structTyp.Field(i).Type.Kind() == reflect.Struct {
-				embType := structTyp.Field(i).Type
-				// check if the embedded field is exported via CanInterface()
-				if val.Field(i).CanInterface() {
-					embVal := reflect.Indirect(reflect.ValueOf(val.Field(i).Interface()))
-					for embFieldNum := 0; embFieldNum < embType.NumField(); embFieldNum++ {
-						if strings.EqualFold(embType.Field(embFieldNum).Name, field) {
-							updateFields[field] = embVal.Field(embFieldNum).Interface()
-						}
-					}
-					continue
-				}
-			}
-			// it's not an embedded type, so check if the field name matches
-			if strings.EqualFold(structTyp.Field(i).Name, field) {
-				updateFields[field] = val.Field(i).Interface()
-			}
-		}
+	updateFields, err := common.UpdateFields(i, fieldMaskPaths, setToNullPaths)
+	if err != nil {
+		return fmt.Errorf("error updating: unable to build update fields %w", err)
 	}
 	if err := w.Tx.Model(i).Updates(updateFields).Error; err != nil {
 		return fmt.Errorf("error updating: %w", err)
