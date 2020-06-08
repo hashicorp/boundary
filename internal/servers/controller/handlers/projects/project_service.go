@@ -32,14 +32,14 @@ type Service struct {
 // NewService returns a project service which handles project related requests to watchtower.
 func NewService(repo func() (*iam.Repository, error)) (Service, error) {
 	if repo == nil {
-		return Service{}, fmt.Errorf("nil iam repostiroy provided")
+		return Service{}, fmt.Errorf("nil iam repository provided")
 	}
 	return Service{repo: repo}, nil
 }
 
 var _ pbs.ProjectServiceServer = Service{}
 
-// CreateProject is not yet implemented but will implement the interface pbs.ProjectServiceServer.
+// ListProjects is not yet implemented but will implement the interface pbs.ProjectServiceServer.
 func (s Service) ListProjects(ctx context.Context, req *pbs.ListProjectsRequest) (*pbs.ListProjectsResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "List not enabled for this resource.")
 }
