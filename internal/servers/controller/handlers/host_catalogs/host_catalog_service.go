@@ -320,15 +320,13 @@ func validateCreateRequest(req *pbs.CreateHostCatalogRequest) error {
 }
 
 func validateUpdateRequest(req *pbs.UpdateHostCatalogRequest, ct catalogType) error {
-	if err := validateAncestors(req); err != nil {
-		return err
-	}
+	badFields := validateAncestors(req)
 	if !validId(req.GetId(), ct.idPrefix()) {
-		return handlers.InvalidArgumentErrorf("Improperly formatted identifier.", []string{"id"})
+		badFields["id"] = "The field is incorrectly formatted."
 	}
 
 	if req.GetUpdateMask() == nil {
-		return handlers.InvalidArgumentErrorf("UpdateMask not provided but is required to update a host.", []string{"update_mask"})
+		badFields["update_mask"] = "This field is required."
 	}
 
 	item := req.GetItem()
@@ -337,35 +335,32 @@ func validateUpdateRequest(req *pbs.UpdateHostCatalogRequest, ct catalogType) er
 		// the mask will be marked as unset.
 		return nil
 	}
-	if item.GetId() != "" && item.GetId() != req.GetId() {
-		return handlers.InvalidArgumentErrorf("Id in provided item and url do not match.", []string{"id"})
-	}
-	var immutableFieldsSet []string
 	if item.GetType() != nil {
-		immutableFieldsSet = append(immutableFieldsSet, "type")
+		badFields["type"] = "This is a read only field and cannot be specified in an update request."
 	}
 	if item.GetId() != "" {
-		immutableFieldsSet = append(immutableFieldsSet, "id")
+		badFields["id"] = "This is a read only field and cannot be specified in an update request."
 	}
 	if item.GetCreatedTime() != nil {
-		immutableFieldsSet = append(immutableFieldsSet, "created_time")
+		badFields["created_time"] = "This is a read only field and cannot be specified in an update request."
 	}
 	if item.GetUpdatedTime() != nil {
-		immutableFieldsSet = append(immutableFieldsSet, "updated_time")
+		badFields["updated_time"] = "This is a read only field and cannot be specified in an update request."
 	}
-	if len(immutableFieldsSet) > 0 {
-		return handlers.InvalidArgumentErrorf("Cannot specify read only fields at update time.", immutableFieldsSet)
+	if len(badFields) > 0 {
+		return handlers.InvalidArgumentErrorf("Errors in provided fields.", badFields)
 	}
 
 	return nil
 }
 
 func validateDeleteRequest(req *pbs.DeleteHostCatalogRequest, ct catalogType) error {
-	if err := validateAncestors(req); err != nil {
-		return err
-	}
+	badFields := validateAncestors(req)
 	if !validId(req.GetId(), ct.idPrefix()) {
-		return handlers.InvalidArgumentErrorf("Improperly formatted identifier.", []string{"id"})
+		badFields["id"] = "The field is incorrectly formatted."
+	}
+	if len(badFields) > 0 {
+		return handlers.InvalidArgumentErrorf("Invalid arguments provided.", badFields)
 	}
 	return nil
 }
@@ -384,24 +379,23 @@ type ancestorProvider interface {
 }
 
 // validateAncestors verifies that the ancestors of this call are set and formatted correctly.
-func validateAncestors(r ancestorProvider) error {
+func validateAncestors(r ancestorProvider) map[string]string {
+	badFields := make(map[string]string)
 	if r.GetOrgId() == "" {
-		return handlers.InvalidArgumentErrorf("Missing organization id.", []string{orgIdFieldName})
+		badFields[orgIdFieldName] = "The field is missing but required."
 	}
 	if r.GetProjectId() == "" {
-		return handlers.InvalidArgumentErrorf("Missing project id.", []string{projectIdFieldName})
+		badFields[projectIdFieldName] = "The field is missing but required."
+	}
+	if len(badFields) > 0 {
+		return badFields
 	}
 
-	var badFormat []string
 	if !validId(r.GetOrgId(), "o_") {
-		badFormat = append(badFormat, orgIdFieldName)
+		badFields[orgIdFieldName] = "The field is incorrectly formatted."
 	}
 	if !validId(r.GetProjectId(), "p_") {
-		badFormat = append(badFormat, projectIdFieldName)
+		badFields[projectIdFieldName] = "The field is incorrectly formatted."
 	}
-	if len(badFormat) > 0 {
-		return handlers.InvalidArgumentErrorf("Improperly formatted identifier.", badFormat)
-	}
-
-	return nil
+	return badFields
 }
