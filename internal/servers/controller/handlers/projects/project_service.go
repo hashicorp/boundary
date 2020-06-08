@@ -221,7 +221,7 @@ func toProto(in *iam.Scope) *pb.Project {
 //  * There are no conflicting parameters provided
 func validateGetRequest(req *pbs.GetProjectRequest) error {
 	badFields := validateAncestors(req)
-	if !validID(req.GetId(), "p_") {
+	if !validId(req.GetId(), "p_") {
 		badFields["id"] = "Invalid formatted project id."
 	}
 	if len(badFields) > 0 {
@@ -310,7 +310,7 @@ func validateAncestors(r ancestorProvider) map[string]string {
 	if r.GetOrgId() == "" {
 		return map[string]string{"org_id": "Missing organization id."}
 	}
-	if !validId(r.GetOrgId(),iam.OrganizationScope.Prefix()+"_") {
+	if !validId(r.GetOrgId(), iam.OrganizationScope.Prefix()+"_") {
 		return map[string]string{"org_id": "Improperly formatted identifier."}
 	}
 	return map[string]string{}
