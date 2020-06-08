@@ -70,23 +70,41 @@ following properties:
 * The Controller will use an internal KMS with an ephemeral key
 
 ## Trying out Watchtower
-
-### Starting Watchtower in Dev Mode
-
-The following steps assume that you are running Watchtower in `dev` mode.
 Running Watchtower in a more permanent context requires a few more steps, such
 as writing some simple configuration files to tell the nodes how to reach their
 database and KMS. The steps below, along with the extra information for needed
 for permanent installations, are detailed in our [Installation Guide].
 
-1. Download the latest release of the server binary and appropriate desktop
-   client(s) from our [releases page]
-2. Start the server binary with `watchtower dev`. This will start a Controller
-   service listening on `http://127.0.0.1:9200` for incoming API requests and a
-   Worker service listening on the same address/port for incoming session
-   requests. It will also create various default Catalogs and Sets, and display
-   various bits of information, such as a username and password that can be
-   used to log in.
+### Build and Start Watchtower in Dev Mode
+
+If you have the following requirements met locally:
+- Golang v1.14 or greater
+- Docker
+
+You can get up and running with Watchtower quickly. Simply run:
+
+  ```make dev```
+
+This will build Watchtower. Once complete, run Watchtower in `dev` mode:
+
+  ```./$GOPATH/bin/watchtower dev```
+
+### Download and Run from Release Page
+
+Download the latest release of the server binary and appropriate desktop
+client(s) from our [releases page]
+
+### Start Watchtower
+
+Start the server binary with: 
+
+  ```watchtower dev```
+
+This will start a Controller service listening on `http://127.0.0.1:9200` for 
+incoming API requests and a Worker service listening on the same address/port for 
+incoming session requests. It will also create various default Catalogs and Sets, 
+and display various bits of information, such as a username and password that can 
+be used to log in.
 
 ### Configuring Resources 
 
