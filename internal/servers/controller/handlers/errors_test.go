@@ -14,6 +14,8 @@ import (
 	pb "github.com/hashicorp/watchtower/internal/gen/controller/api"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/testing/protocmp"
 )
 
@@ -72,6 +74,15 @@ func TestApiErrorHandler(t *testing.T) {
 				Status:  http.StatusNotFound,
 				Code:    "NotFound",
 				Message: http.StatusText(http.StatusNotFound),
+			},
+		},
+		{
+			name: "Unimplemented error",
+			err:  status.Error(codes.Unimplemented, "Test"),
+			expected: &pb.Error{
+				Status:  http.StatusMethodNotAllowed,
+				Code:    "Unimplemented",
+				Message: "Test",
 			},
 		},
 		{
