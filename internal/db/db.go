@@ -182,3 +182,21 @@ func GetGormLogFormatter(log hclog.Logger) func(values ...interface{}) (messages
 		return nil
 	}
 }
+
+type gormLogger struct {
+	logger hclog.Logger
+}
+
+func (g gormLogger) Print(values ...interface{}) {
+	formatted := gorm.LogFormatter(values...)
+	if formatted == nil {
+		return
+	}
+	// Our formatter should elide anything we don't want so this should never
+	// happen, panic if so so we catch/fix
+	panic("unhandled error case")
+}
+
+func GetGormLogger(log hclog.Logger) gormLogger {
+	return gormLogger{logger: log}
+}
