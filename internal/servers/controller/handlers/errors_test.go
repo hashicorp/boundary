@@ -52,14 +52,16 @@ func TestApiErrorHandler(t *testing.T) {
 				Code:    "InvalidArgument",
 				Message: "Test",
 				Details: &pb.ErrorDetails{
-					RequestFields: []*pb.FieldError{{
-						Name:        "k1",
-						Description: "v1",
-					},
+					RequestFields: []*pb.FieldError{
+						{
+							Name:        "k1",
+							Description: "v1",
+						},
 						{
 							Name:        "k2",
 							Description: "v2",
-						}},
+						},
+					},
 				},
 			},
 		},
