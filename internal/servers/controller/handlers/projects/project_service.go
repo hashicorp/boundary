@@ -7,7 +7,6 @@ import (
 	"strings"
 
 	"github.com/golang/protobuf/ptypes/wrappers"
-	"github.com/grpc-ecosystem/grpc-gateway/runtime"
 	pb "github.com/hashicorp/watchtower/internal/gen/controller/api/resources/scopes"
 	pbs "github.com/hashicorp/watchtower/internal/gen/controller/api/services"
 	"github.com/hashicorp/watchtower/internal/iam"
@@ -27,14 +26,14 @@ var (
 
 type Service struct {
 	pbs.UnimplementedProjectServiceServer
-	repo *iam.Repository
+	repoFn func() (*iam.Repository, error)
 }
 
-func NewService(repo *iam.Repository) *Service {
-	if repo == nil {
+func NewService(repoFn func() (*iam.Repository, error)) *Service {
+	if repoFn == nil {
 		return nil
 	}
-	return &Service{repo: repo}
+	return &Service{repoFn: repoFn}
 }
 
 var _ pbs.ProjectServiceServer = &Service{}
@@ -93,7 +92,11 @@ func (s Service) DeleteProject(ctx context.Context, req *pbs.DeleteProjectReques
 }
 
 func (s Service) getFromRepo(ctx context.Context, id string) (*pb.Project, error) {
-	p, err := s.repo.LookupScope(ctx, id)
+	repo, err := s.repoFn()
+	if err != nil {
+		return nil, err
+	}
+	p, err := repo.LookupScope(ctx, id)
 	if err != nil {
 		return nil, err
 	}
@@ -115,7 +118,11 @@ func (s Service) createInRepo(ctx context.Context, orgID string, item *pb.Projec
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "Unable to build project for creation: %v.", err)
 	}
-	out, err := s.repo.CreateScope(ctx, p)
+	repo, err := s.repoFn()
+	if err != nil {
+		return nil, err
+	}
+	out, err := repo.CreateScope(ctx, p)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "Unable to create project: %v.", err)
 	}
@@ -144,7 +151,11 @@ func (s Service) updateInRepo(ctx context.Context, orgID, projId string, mask []
 	if len(dbMask) == 0 {
 		return nil, handlers.InvalidArgumentErrorf("No valid fields included in the update mask.", map[string]string{"update_mask": "No valid paths provided in the update mask."})
 	}
-	out, rowsUpdated, err := s.repo.UpdateScope(ctx, p, dbMask)
+	repo, err := s.repoFn()
+	if err != nil {
+		return nil, err
+	}
+	out, rowsUpdated, err := repo.UpdateScope(ctx, p, dbMask)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "Unable to update project: %v.", err)
 	}
@@ -155,7 +166,11 @@ func (s Service) updateInRepo(ctx context.Context, orgID, projId string, mask []
 }
 
 func (s Service) deleteFromRepo(ctx context.Context, projId string) (bool, error) {
-	rows, err := s.repo.DeleteScope(ctx, projId)
+	repo, err := s.repoFn()
+	if err != nil {
+		return false, err
+	}
+	rows, err := repo.DeleteScope(ctx, projId)
 	if err != nil {
 		return false, status.Errorf(codes.Internal, "Unable to delete project: %v.", err)
 	}
@@ -297,9 +312,4 @@ func validateAncestors(r ancestorProvider) map[string]string {
 		return map[string]string{"org_id": "Improperly formatted identifier."}
 	}
 	return map[string]string{}
-}
-
-// RegisterGrpcGateway satisfies the RegisterGrpcGatewayer interface.
-func (s *Service) RegisterGrpcGateway(mux *runtime.ServeMux) error {
-	return pbs.RegisterProjectServiceHandlerServer(context.Background(), mux, s)
 }

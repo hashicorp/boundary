@@ -21,9 +21,12 @@ func (c *Controller) startListeners() error {
 	servers := make([]func(), 0, len(c.conf.Listeners))
 
 	configureForAPI := func(ln *base.ServerListener) error {
-		handler := c.handler(HandlerProperties{
+		handler, err := c.handler(HandlerProperties{
 			ListenerConfig: ln.Config,
 		})
+		if err != nil {
+			return err
+		}
 
 		/*
 			// TODO: As I write this Vault's having this code audited, make sure to

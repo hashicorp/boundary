@@ -3,6 +3,7 @@ package controller
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"path"
 	"path/filepath"
@@ -28,7 +29,7 @@ type HandlerProperties struct {
 
 // Handler returns an http.Handler for the services. This can be used on
 // its own to mount the Vault API within another web server.
-func (c *Controller) handler(props HandlerProperties) http.Handler {
+func (c *Controller) handler(props HandlerProperties) (http.Handler, error) {
 	// Create the muxer to handle the actual endpoints
 	mux := http.NewServeMux()
 
@@ -46,25 +47,41 @@ func (c *Controller) handler(props HandlerProperties) http.Handler {
 		mux.Handle("/passthrough/", prefixHandler)
 	}
 
-	mux.Handle("/v1/", handleGrpcGateway(c))
+	h, err := handleGrpcGateway(c)
+	if err != nil {
+		return nil, err
+	}
+	mux.Handle("/v1/", h)
 
 	corsWrappedHandler := wrapHandlerWithCors(mux, props)
 	commonWrappedHandler := wrapHandlerWithCommonFuncs(corsWrappedHandler, c, props)
 
-	return commonWrappedHandler
+	return commonWrappedHandler, nil
 }
 
-func handleGrpcGateway(c *Controller) http.Handler {
+func handleGrpcGateway(c *Controller) (http.Handler, error) {
 	// Register*ServiceHandlerServer methods ignore the passed in ctx.  Using the baseContext now just in case this changes
 	// in the future, at which point we'll want to be using the baseContext.
 	ctx := c.baseContext
 	mux := runtime.NewServeMux(runtime.WithProtoErrorHandler(handlers.ErrorHandler(c.logger)))
-	services.RegisterHostCatalogServiceHandlerServer(ctx, mux, &host_catalogs.Service{})
-	services.RegisterHostSetServiceHandlerServer(ctx, mux, &host_sets.Service{})
-	services.RegisterHostServiceHandlerServer(ctx, mux, &hosts.Service{})
-	services.RegisterProjectServiceHandlerServer(ctx, mux, projects.NewService(c.IamRepo))
+	hcs, err := host_catalogs.NewService(c.StaticHostRepoFn)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create host catalog handler service: %w", err)
+	}
+	if err := services.RegisterHostCatalogServiceHandlerServer(ctx, mux, hcs); err != nil {
+		return nil, fmt.Errorf("failed to register host catalog service handler: %w", err)
+	}
+	if err := services.RegisterHostSetServiceHandlerServer(ctx, mux, &host_sets.Service{}); err != nil {
+		return nil, fmt.Errorf("failed to register host set service handler: %w", err)
+	}
+	if err := services.RegisterHostServiceHandlerServer(ctx, mux, &hosts.Service{}); err != nil {
+		return nil, fmt.Errorf("failed to register host service handler: %w", err)
+	}
+	if err := services.RegisterProjectServiceHandlerServer(ctx, mux, projects.NewService(c.IamRepoFn)); err != nil {
+		return nil, fmt.Errorf("failed to register project service handler: %w", err)
+	}
 
-	return mux
+	return mux, nil
 }
 
 func wrapHandlerWithCommonFuncs(h http.Handler, c *Controller, props HandlerProperties) http.Handler {
