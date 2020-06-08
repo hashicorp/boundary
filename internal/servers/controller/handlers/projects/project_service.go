@@ -9,6 +9,7 @@ import (
 	pb "github.com/hashicorp/watchtower/internal/gen/controller/api/resources/scopes"
 	pbs "github.com/hashicorp/watchtower/internal/gen/controller/api/services"
 	"github.com/hashicorp/watchtower/internal/iam"
+	"github.com/hashicorp/watchtower/internal/servers/controller/common"
 	"github.com/hashicorp/watchtower/internal/servers/controller/handlers"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -26,11 +27,11 @@ var (
 
 // Service handles request as described by the pbs.ProjectServiceServer interface.
 type Service struct {
-	repo func() (*iam.Repository, error)
+	repo common.IamRepoFactory
 }
 
 // NewService returns a project service which handles project related requests to watchtower.
-func NewService(repo func() (*iam.Repository, error)) (Service, error) {
+func NewService(repo common.IamRepoFactory) (Service, error) {
 	if repo == nil {
 		return Service{}, fmt.Errorf("nil iam repository provided")
 	}

@@ -9,6 +9,7 @@ import (
 	pb "github.com/hashicorp/watchtower/internal/gen/controller/api/resources/hosts"
 	pbs "github.com/hashicorp/watchtower/internal/gen/controller/api/services"
 	"github.com/hashicorp/watchtower/internal/host/static"
+	"github.com/hashicorp/watchtower/internal/servers/controller/common"
 	"github.com/hashicorp/watchtower/internal/servers/controller/handlers"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -69,14 +70,14 @@ var (
 )
 
 type Service struct {
-	staticRepoFn func() (*static.Repository, error)
+	staticRepoFn common.StaticRepoFactory
 }
 
 var _ pbs.HostCatalogServiceServer = Service{}
 
 // NewService returns a host catalog Service which handles host catalog related requests to watchtower and uses the provided
 // repositories for storage and retrieval.
-func NewService(repoFn func() (*static.Repository, error)) (Service, error) {
+func NewService(repoFn common.StaticRepoFactory) (Service, error) {
 	if repoFn == nil {
 		return Service{}, fmt.Errorf("nil static repository provided")
 	}
