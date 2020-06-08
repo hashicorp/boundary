@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"sort"
 
 	"github.com/grpc-ecosystem/grpc-gateway/runtime"
 	"github.com/hashicorp/go-hclog"
@@ -25,6 +26,9 @@ func InvalidArgumentErrorf(msg string, fields map[string]string) error {
 	for k, v := range fields {
 		br.FieldViolations = append(br.FieldViolations, &errdetails.BadRequest_FieldViolation{Field: k, Description: v})
 	}
+	sort.Slice(br.FieldViolations, func(i, j int) bool {
+		return br.FieldViolations[i].GetField() < br.FieldViolations[j].GetField()
+	})
 	st, err := st.WithDetails(br)
 	if err != nil {
 		hclog.Default().Error("failure building status with details", "details", br, "error", err)
