@@ -54,7 +54,7 @@ require (
 	github.com/spf13/viper v1.6.3 // indirect
 	github.com/stretchr/testify v1.6.0
 	go.mongodb.org/mongo-driver v1.3.2 // indirect
-	golang.org/x/net v0.0.0-20200519113804-d87ec0cfa476
+	golang.org/x/net v0.0.0-20200519113804-d87ec0cfa476 // indirect
 	golang.org/x/sys v0.0.0-20200509044756-6aff5f38e54f // indirect
 	golang.org/x/time v0.0.0-20200416051211-89c76fbcd5d1
 	golang.org/x/tools v0.0.0-20200519175826-7521f6f42533
@@ -63,5 +63,4 @@ require (
 	google.golang.org/protobuf v1.24.0
 	gopkg.in/check.v1 v1.0.0-20200227125254-8fa46927fb4f // indirect
 	gopkg.in/ini.v1 v1.55.0 // indirect
-	gotest.tools v2.2.0+incompatible
 )
