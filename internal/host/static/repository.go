@@ -358,8 +358,8 @@ func (r *Repository) LookupHost(ctx context.Context, id string) (*Host, error) {
 	return nil, nil
 }
 
-// GetHosts retrieves all hosts for c and returns them in a slice. Returns
-// nil, nil if no hosts are found for c.
-func (r *Repository) GetHosts(ctx context.Context, c *HostCatalog) ([]*Host, error) {
+// GetHosts retrieves all hosts for catalogId and returns them in a slice.
+// Returns nil, nil if no hosts are found for catalogId.
+func (r *Repository) GetHosts(ctx context.Context, catalogId string) ([]*Host, error) {
 	return nil, nil
 }
