@@ -227,9 +227,8 @@ func TestDb_Update(t *testing.T) {
 			assert.NotEqual(publicId, foundUser.PublicId)
 		})
 	}
-
-	assert := assert.New(t)
 	t.Run("valid-WithOplog", func(t *testing.T) {
+		assert := assert.New(t)
 		w := Db{underlying: db}
 		id, err := uuid.GenerateUUID()
 		assert.NoError(err)
@@ -262,6 +261,7 @@ func TestDb_Update(t *testing.T) {
 		assert.NoError(err)
 	})
 	t.Run("vet-for-write", func(t *testing.T) {
+		assert := assert.New(t)
 		w := Db{underlying: db}
 		id, err := uuid.GenerateUUID()
 		assert.NoError(err)
@@ -292,6 +292,7 @@ func TestDb_Update(t *testing.T) {
 		assert.Equal(0, rowsUpdated)
 	})
 	t.Run("nil-tx", func(t *testing.T) {
+		assert := assert.New(t)
 		w := Db{underlying: nil}
 		id, err := uuid.GenerateUUID()
 		assert.NoError(err)
@@ -303,6 +304,7 @@ func TestDb_Update(t *testing.T) {
 		assert.Equal("update: missing underlying db nil parameter", err.Error())
 	})
 	t.Run("no-wrapper-WithOplog", func(t *testing.T) {
+		assert := assert.New(t)
 		w := Db{underlying: db}
 		id, err := uuid.GenerateUUID()
 		assert.NoError(err)
@@ -324,6 +326,7 @@ func TestDb_Update(t *testing.T) {
 		assert.Equal("update: oplog validation failed error no wrapper WithOplog", err.Error())
 	})
 	t.Run("no-metadata-WithOplog", func(t *testing.T) {
+		assert := assert.New(t)
 		w := Db{underlying: db}
 		id, err := uuid.GenerateUUID()
 		assert.NoError(err)
