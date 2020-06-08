@@ -124,6 +124,6 @@ func Test_Queue(t *testing.T) {
 		assert.Equal(err.Error(), "error <nil> is not a ReplayableMessage")
 	})
 	t.Run("missing both field mask and null paths for update", func(t *testing.T) {
-		require.Error(t, queue.Add(userNilUpdate, "user", OpType_OP_TYPE_UPDATE))
+		require.Error(t, queue.Add(userUpdate, "user", OpType_OP_TYPE_UPDATE))
 	})
 }
