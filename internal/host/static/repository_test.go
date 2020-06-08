@@ -129,6 +129,8 @@ func TestRepository_CreateCatalog(t *testing.T) {
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
 
+	_, prj := iam.TestScopes(t, conn)
+
 	var tests = []struct {
 		name      string
 		in        *HostCatalog
@@ -146,24 +148,47 @@ func TestRepository_CreateCatalog(t *testing.T) {
 			wantIsErr: db.ErrNilParameter,
 		},
 		{
-			name: "valid-no-options",
+			name: "invalid-no-scope-id",
 			in: &HostCatalog{
 				HostCatalog: &store.HostCatalog{},
 			},
+			wantIsErr: db.ErrInvalidParameter,
+		},
+		{
+			name: "invalid-public-id-set",
+			in: &HostCatalog{
+				HostCatalog: &store.HostCatalog{
+					ScopeId:  prj.PublicId,
+					PublicId: "sthc_OOOOOOOOOO",
+				},
+			},
+			wantIsErr: db.ErrInvalidParameter,
+		},
+		{
+			name: "valid-no-options",
+			in: &HostCatalog{
+				HostCatalog: &store.HostCatalog{
+					ScopeId: prj.PublicId,
+				},
+			},
 			want: &HostCatalog{
-				HostCatalog: &store.HostCatalog{},
+				HostCatalog: &store.HostCatalog{
+					ScopeId: prj.PublicId,
+				},
 			},
 		},
 		{
 			name: "valid-with-name",
 			in: &HostCatalog{
 				HostCatalog: &store.HostCatalog{
-					Name: "test-name-repo",
+					ScopeId: prj.PublicId,
+					Name:    "test-name-repo",
 				},
 			},
 			want: &HostCatalog{
 				HostCatalog: &store.HostCatalog{
-					Name: "test-name-repo",
+					ScopeId: prj.PublicId,
+					Name:    "test-name-repo",
 				},
 			},
 		},
@@ -171,11 +196,13 @@ func TestRepository_CreateCatalog(t *testing.T) {
 			name: "valid-with-description",
 			in: &HostCatalog{
 				HostCatalog: &store.HostCatalog{
+					ScopeId:     prj.PublicId,
 					Description: ("test-description-repo"),
 				},
 			},
 			want: &HostCatalog{
 				HostCatalog: &store.HostCatalog{
+					ScopeId:     prj.PublicId,
 					Description: ("test-description-repo"),
 				},
 			},
@@ -189,11 +216,6 @@ func TestRepository_CreateCatalog(t *testing.T) {
 			repo, err := NewRepository(rw, rw, wrapper)
 			assert.NoError(err)
 			require.NotNil(repo)
-			_, prj := iam.TestScopes(t, conn)
-			if tt.in != nil && tt.in.HostCatalog != nil {
-				tt.in.ScopeId = prj.GetPublicId()
-				assert.Empty(tt.in.PublicId)
-			}
 			got, err := repo.CreateCatalog(context.Background(), tt.in, tt.opts...)
 			if tt.wantIsErr != nil {
 				assert.Truef(errors.Is(err, tt.wantIsErr), "want err: %q got: %q", tt.wantIsErr, err)
@@ -877,6 +899,8 @@ func TestRepository_CreateHost(t *testing.T) {
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
 
+	cat := testCatalog(t, conn)
+
 	minAddress, maxAddress := randomString(7), randomString(255)
 
 	var tests = []struct {
@@ -896,10 +920,31 @@ func TestRepository_CreateHost(t *testing.T) {
 			wantIsErr: db.ErrNilParameter,
 		},
 		{
+			name: "invalid-no-catalog-id",
+			in: &Host{
+				Host: &store.Host{
+					Address: "1.1.1.1",
+				},
+			},
+			wantIsErr: db.ErrInvalidParameter,
+		},
+		{
+			name: "invalid-public-id-set",
+			in: &Host{
+				Host: &store.Host{
+					StaticHostCatalogId: cat.PublicId,
+					PublicId:            "sth_OOOOOOOOOO",
+					Address:             "1.1.1.1",
+				},
+			},
+			wantIsErr: db.ErrInvalidParameter,
+		},
+		{
 			name: "address-to-small",
 			in: &Host{
 				Host: &store.Host{
-					Address: randomString(6),
+					StaticHostCatalogId: cat.PublicId,
+					Address:             randomString(6),
 				},
 			},
 			wantIsErr: db.ErrInvalidParameter,
@@ -908,7 +953,8 @@ func TestRepository_CreateHost(t *testing.T) {
 			name: "address-to-large",
 			in: &Host{
 				Host: &store.Host{
-					Address: randomString(256),
+					StaticHostCatalogId: cat.PublicId,
+					Address:             randomString(256),
 				},
 			},
 			wantIsErr: db.ErrInvalidParameter,
@@ -917,12 +963,14 @@ func TestRepository_CreateHost(t *testing.T) {
 			name: "valid-minimum-address",
 			in: &Host{
 				Host: &store.Host{
-					Address: minAddress,
+					StaticHostCatalogId: cat.PublicId,
+					Address:             minAddress,
 				},
 			},
 			want: &Host{
 				Host: &store.Host{
-					Address: minAddress,
+					StaticHostCatalogId: cat.PublicId,
+					Address:             minAddress,
 				},
 			},
 		},
@@ -930,12 +978,14 @@ func TestRepository_CreateHost(t *testing.T) {
 			name: "valid-maximum-address",
 			in: &Host{
 				Host: &store.Host{
-					Address: maxAddress,
+					StaticHostCatalogId: cat.PublicId,
+					Address:             maxAddress,
 				},
 			},
 			want: &Host{
 				Host: &store.Host{
-					Address: maxAddress,
+					StaticHostCatalogId: cat.PublicId,
+					Address:             maxAddress,
 				},
 			},
 		},
@@ -943,12 +993,14 @@ func TestRepository_CreateHost(t *testing.T) {
 			name: "valid-no-options",
 			in: &Host{
 				Host: &store.Host{
-					Address: "1.1.1.1",
+					StaticHostCatalogId: cat.PublicId,
+					Address:             "1.1.1.1",
 				},
 			},
 			want: &Host{
 				Host: &store.Host{
-					Address: "1.1.1.1",
+					StaticHostCatalogId: cat.PublicId,
+					Address:             "1.1.1.1",
 				},
 			},
 		},
@@ -956,14 +1008,16 @@ func TestRepository_CreateHost(t *testing.T) {
 			name: "valid-with-name",
 			in: &Host{
 				Host: &store.Host{
-					Name:    "test-name-repo",
-					Address: "1.1.1.1",
+					StaticHostCatalogId: cat.PublicId,
+					Name:                "test-name-repo",
+					Address:             "1.1.1.1",
 				},
 			},
 			want: &Host{
 				Host: &store.Host{
-					Name:    "test-name-repo",
-					Address: "1.1.1.1",
+					StaticHostCatalogId: cat.PublicId,
+					Name:                "test-name-repo",
+					Address:             "1.1.1.1",
 				},
 			},
 		},
@@ -971,14 +1025,16 @@ func TestRepository_CreateHost(t *testing.T) {
 			name: "valid-with-description",
 			in: &Host{
 				Host: &store.Host{
-					Description: ("test-description-repo"),
-					Address:     "1.1.1.1",
+					StaticHostCatalogId: cat.PublicId,
+					Description:         ("test-description-repo"),
+					Address:             "1.1.1.1",
 				},
 			},
 			want: &Host{
 				Host: &store.Host{
-					Description: ("test-description-repo"),
-					Address:     "1.1.1.1",
+					StaticHostCatalogId: cat.PublicId,
+					Description:         ("test-description-repo"),
+					Address:             "1.1.1.1",
 				},
 			},
 		},
@@ -991,11 +1047,6 @@ func TestRepository_CreateHost(t *testing.T) {
 			repo, err := NewRepository(rw, rw, wrapper)
 			require.NoError(err)
 			require.NotNil(repo)
-			cat := testCatalog(t, conn)
-			if tt.in != nil && tt.in.Host != nil {
-				tt.in.StaticHostCatalogId = cat.GetPublicId()
-				assert.Empty(tt.in.PublicId)
-			}
 			got, err := repo.CreateHost(context.Background(), tt.in, tt.opts...)
 			if tt.wantIsErr != nil {
 				assert.Truef(errors.Is(err, tt.wantIsErr), "want err: %q got: %q", tt.wantIsErr, err)
