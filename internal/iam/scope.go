@@ -90,7 +90,7 @@ func newScope(scopeType ScopeType, opt ...Option) (*Scope, error) {
 	var publicId string
 	if withPublicId != "" {
 		if !strings.HasPrefix(withPublicId, scopeType.Prefix()+"_") {
-			return nil, errors.New("passed-in public ID has wrong prefix for type")
+			return nil, fmt.Errorf("passed-in public ID %q has wrong prefix for type %q which uses prefix %q", withPublicId, scopeType.String(), scopeType.Prefix())
 		}
 		publicId = withPublicId
 	} else {
