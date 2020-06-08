@@ -12,17 +12,17 @@ import (
 	"github.com/hashicorp/go-hclog"
 	pb "github.com/hashicorp/watchtower/internal/gen/controller/api"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	sdpb "google.golang.org/genproto/googleapis/rpc/errdetails"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
 
 func TestApiErrorHandler(t *testing.T) {
+	assert, require := assert.New(t), require.New(t)
 	ctx := context.Background()
 	req, err := http.NewRequest("GET", "madeup/for/the/test", nil)
-	if err != nil {
-		t.Fatalf("Couldn't create test request")
-	}
+	require.NoError(err)
 	mux := runtime.NewServeMux()
 	_, outMarsh := runtime.MarshalerForRequest(mux, req)
 
@@ -82,8 +82,6 @@ func TestApiErrorHandler(t *testing.T) {
 	}
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			assert := assert.New(t)
-
 			if tc.statusDetails != nil {
 				s, ok := status.FromError(tc.err)
 				assert.True(ok)
@@ -105,4 +103,66 @@ func TestApiErrorHandler(t *testing.T) {
 			assert.JSONEq(string(want), string(got))
 		})
 	}
+}
+
+func TestNotFoundErrorf(t *testing.T) {
+	assert, require := assert.New(t), require.New(t)
+	ctx := context.Background()
+	req, err := http.NewRequest("GET", "madeup/for/the/test", nil)
+	require.NoError(err)
+	mux := runtime.NewServeMux()
+	inMarsh, outMarsh := runtime.MarshalerForRequest(mux, req)
+	tested := ErrorHandler(hclog.L())
+	w := httptest.NewRecorder()
+
+	in := NotFoundErrorf("Not found error message %s %s", "with", "params")
+	tested(ctx, mux, outMarsh, w, req, in)
+	resp := w.Result()
+	gotBody, err := ioutil.ReadAll(resp.Body)
+	require.NoError(err)
+
+	wantErr := &pb.Error{
+		Status:  http.StatusNotFound,
+		Code:    "Not found error message with params",
+		Message: "NotFound",
+	}
+
+	gotErr := &pb.Error{}
+	err = inMarsh.Unmarshal(gotBody, gotErr)
+	require.NoError(err)
+	_ = wantErr
+	//assert.Equal(wantErr, gotErr)
+	assert.EqualValues(http.StatusNotFound, resp.StatusCode)
+	assert.Equal("Not found error message with params", gotErr.GetMessage())
+	assert.EqualValues(http.StatusNotFound, gotErr.GetStatus())
+	assert.Equal("NotFound", gotErr.GetCode())
+	assert.Nil(gotErr.Details)
+}
+
+func TestInvalidArgumentErrorf(t *testing.T) {
+	assert, require := assert.New(t), require.New(t)
+	ctx := context.Background()
+	req, err := http.NewRequest("GET", "madeup/for/the/test", nil)
+	if err != nil {
+		t.Fatalf("Couldn't create test request")
+	}
+	mux := runtime.NewServeMux()
+	inMarsh, outMarsh := runtime.MarshalerForRequest(mux, req)
+	tested := ErrorHandler(hclog.L())
+	w := httptest.NewRecorder()
+
+	in := InvalidArgumentErrorf("Test", map[string]string{"k": "v", "k2": "v2"})
+	tested(ctx, mux, outMarsh, w, req, in)
+	resp := w.Result()
+	gotBody, err := ioutil.ReadAll(resp.Body)
+	require.NoError(err)
+
+	gotErr := &pb.Error{}
+	err = inMarsh.Unmarshal(gotBody, gotErr)
+	require.NoError(err)
+	assert.EqualValues(http.StatusBadRequest, resp.StatusCode)
+	assert.Equal("Test", gotErr.GetMessage())
+	assert.EqualValues(http.StatusBadRequest, gotErr.GetStatus())
+	assert.Equal("BadRequest", gotErr.GetCode())
+	assert.NotNil(gotErr.Details)
 }
