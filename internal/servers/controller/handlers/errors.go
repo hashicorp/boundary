@@ -14,73 +14,6 @@ import (
 	"google.golang.org/grpc/status"
 )
 
-type apiCode int
-
-const (
-	ok apiCode = iota
-	timeout
-	notFound
-	unimplemented
-	duplicateName
-	invalidArgument
-	unknown
-)
-
-// String is the code in string format as described by the API.
-func (c apiCode) String() string {
-	switch c {
-	case ok:
-		return "OK"
-	case notFound:
-		return "resource_not_found"
-	case timeout:
-		return "request_timed_out"
-	case duplicateName:
-		return "duplicate_name"
-	case unimplemented:
-		return "unimplmeneted"
-	case invalidArgument:
-		return "invalid_request"
-	}
-	return "unknown"
-}
-
-func (c apiCode) httpStatus() int32 {
-	switch c {
-	case ok:
-		return http.StatusOK
-	case timeout:
-		return http.StatusRequestTimeout
-	case notFound:
-		return http.StatusNotFound
-	case duplicateName, invalidArgument:
-		return http.StatusBadRequest
-	case unimplemented:
-		return http.StatusMethodNotAllowed
-	}
-	return http.StatusInternalServerError
-}
-
-// ApiError is an error to capture the information that should be returned to external users.
-type ApiError struct {
-	inner pb.Error
-	code  apiCode
-}
-
-var _ error = ApiError{}
-
-func (e ApiError) Error() string {
-	return e.inner.GetMessage()
-}
-
-// An error is the same as this error if it is an ApiError and has the same code.
-func (e ApiError) Is(target error) bool {
-	if t, ok := target.(ApiError); ok {
-		return t.code == e.code
-	}
-	return false
-}
-
 // NotFoundError returns an ApiError indicating a resource couldn't be found.
 func NotFoundErrorf(msg string, a ...interface{}) error {
 	return status.Errorf(codes.NotFound, msg, a...)
@@ -119,7 +52,7 @@ func statusErrorToApiError(s *status.Status) *pb.Error {
 				if apiErr.Details == nil {
 					apiErr.Details = &pb.ErrorDetails{}
 				}
-				apiErr.Details.RequestFields = append(apiErr.Details.RequestFields, &pb.FieldErrors{Name: fv.GetField(), Description: fv.GetDescription()})
+				apiErr.Details.RequestFields = append(apiErr.Details.RequestFields, &pb.FieldError{Name: fv.GetField(), Description: fv.GetDescription()})
 			}
 		}
 	}

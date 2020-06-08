@@ -58,8 +58,8 @@ func TestApiErrorHandler(t *testing.T) {
 			statusDetails: []proto.Message{
 				&sdpb.BadRequest{
 					FieldViolations: []*sdpb.BadRequest_FieldViolation{
-						{Field: "first"},
-						{Field: "second"},
+						{Field: "first", Description: "first desc"},
+						{Field: "second", Description: "second desc"},
 					},
 				},
 			},
@@ -68,7 +68,14 @@ func TestApiErrorHandler(t *testing.T) {
 				Code:    codes.InvalidArgument.String(),
 				Message: "test",
 				Details: &pb.ErrorDetails{
-					RequestFields: []string{"first", "second"},
+					RequestFields: []*pb.FieldError{{
+						Name:        "first",
+						Description: "first desc",
+					},
+						{
+							Name:        "second",
+							Description: "second desc",
+						}},
 				},
 			},
 		},
