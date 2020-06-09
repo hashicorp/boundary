@@ -36,19 +36,19 @@ type Scope struct {
 // Grant is a Go representation of a parsed grant
 type Grant struct {
 	// The scope ID, which will be a project ID or an org ID
-	Scope Scope
+	scope Scope
 
 	// Project, if defined
-	Project string
+	project string
 
 	// The ID in the grant, if provided.
-	Id string
+	id string
 
 	// The type, if provided
-	Type string
+	typ string
 
 	// The set of actions being granted
-	Actions map[iam.Action]bool
+	actions map[iam.Action]bool
 
 	// This is used as a temporary staging area before validating permissions to
 	// allow the same validation code across grant string formats
@@ -57,18 +57,18 @@ type Grant struct {
 
 func (g Grant) clone() *Grant {
 	ret := &Grant{
-		Scope:   g.Scope,
-		Project: g.Project,
-		Id:      g.Id,
-		Type:    g.Type,
+		scope:   g.scope,
+		project: g.project,
+		id:      g.id,
+		typ:     g.typ,
 	}
 	if g.actionsBeingParsed != nil {
 		ret.actionsBeingParsed = append(ret.actionsBeingParsed, g.actionsBeingParsed...)
 	}
-	if g.Actions != nil {
-		ret.Actions = make(map[iam.Action]bool, len(g.Actions))
-		for action := range g.Actions {
-			ret.Actions[action] = true
+	if g.actions != nil {
+		ret.actions = make(map[iam.Action]bool, len(g.actions))
+		for action := range g.actions {
+			ret.actions[action] = true
 		}
 	}
 	return ret
@@ -77,21 +77,21 @@ func (g Grant) clone() *Grant {
 // CanonicalString returns the canonical representation of the grant
 func (g Grant) CanonicalString() string {
 	var builder []string
-	if g.Project != "" {
-		builder = append(builder, fmt.Sprintf("project=%s", g.Project))
+	if g.project != "" {
+		builder = append(builder, fmt.Sprintf("project=%s", g.project))
 	}
 
-	if g.Id != "" {
-		builder = append(builder, fmt.Sprintf("id=%s", g.Id))
+	if g.id != "" {
+		builder = append(builder, fmt.Sprintf("id=%s", g.id))
 	}
 
-	if g.Type != TypeNone {
-		builder = append(builder, fmt.Sprintf("type=%s", g.Type))
+	if g.typ != TypeNone {
+		builder = append(builder, fmt.Sprintf("type=%s", g.typ))
 	}
 
-	if len(g.Actions) > 0 {
-		actions := make([]string, 0, len(g.Actions))
-		for action := range g.Actions {
+	if len(g.actions) > 0 {
+		actions := make([]string, 0, len(g.actions))
+		for action := range g.actions {
 			actions = append(actions, action.String())
 		}
 		sort.Strings(actions)
@@ -104,18 +104,18 @@ func (g Grant) CanonicalString() string {
 // MarshalJSON provides a custom marshaller for grants
 func (g Grant) MarshalJSON() ([]byte, error) {
 	res := make(map[string]interface{}, 4)
-	if g.Project != "" {
-		res["project"] = g.Project
+	if g.project != "" {
+		res["project"] = g.project
 	}
-	if g.Id != "" {
-		res["id"] = g.Id
+	if g.id != "" {
+		res["id"] = g.id
 	}
-	if g.Type != "" {
-		res["type"] = g.Type
+	if g.typ != "" {
+		res["type"] = g.typ
 	}
-	if len(g.Actions) > 0 {
-		actions := make([]string, 0, len(g.Actions))
-		for action := range g.Actions {
+	if len(g.actions) > 0 {
+		actions := make([]string, 0, len(g.actions))
+		for action := range g.actions {
 			actions = append(actions, action.String())
 		}
 		sort.Strings(actions)
@@ -137,21 +137,21 @@ func (g *Grant) unmarshalJSON(data []byte) error {
 		if !ok {
 			return fmt.Errorf("unable to interpret %q as string", "project")
 		}
-		g.Project = strings.ToLower(project)
+		g.project = strings.ToLower(project)
 	}
 	if rawId, ok := raw["id"]; ok {
 		id, ok := rawId.(string)
 		if !ok {
 			return fmt.Errorf("unable to interpret %q as string", "id")
 		}
-		g.Id = strings.ToLower(id)
+		g.id = strings.ToLower(id)
 	}
 	if rawType, ok := raw["type"]; ok {
 		typ, ok := rawType.(string)
 		if !ok {
 			return fmt.Errorf("unable to interpret %q as string", "type")
 		}
-		g.Type = strings.ToLower(typ)
+		g.typ = strings.ToLower(typ)
 	}
 	if rawActions, ok := raw["actions"]; ok {
 		interfaceActions, ok := rawActions.([]interface{})
@@ -193,13 +193,13 @@ func (g *Grant) unmarshalText(grantString string) error {
 
 		switch kv[0] {
 		case "project":
-			g.Project = strings.ToLower(kv[1])
+			g.project = strings.ToLower(kv[1])
 
 		case "id":
-			g.Id = strings.ToLower(kv[1])
+			g.id = strings.ToLower(kv[1])
 
 		case "type":
-			g.Type = strings.ToLower(kv[1])
+			g.typ = strings.ToLower(kv[1])
 
 		case "actions":
 			actions := strings.Split(kv[1], ",")
@@ -250,7 +250,7 @@ func ParseGrantString(scope Scope, userId, grantString string) (Grant, error) {
 	}
 
 	grant := Grant{
-		Scope: scope,
+		scope: scope,
 	}
 
 	switch {
@@ -267,14 +267,14 @@ func ParseGrantString(scope Scope, userId, grantString string) (Grant, error) {
 
 	// Check for templated user ID, and subtitute in with the authenticated user
 	// if so
-	if grant.Id != "" && userId != "" && strings.HasPrefix(grant.Id, "{{") {
-		id := strings.TrimSuffix(strings.TrimPrefix(grant.Id, "{{"), "}}")
+	if grant.id != "" && userId != "" && strings.HasPrefix(grant.id, "{{") {
+		id := strings.TrimSuffix(strings.TrimPrefix(grant.id, "{{"), "}}")
 		id = strings.ToLower(strings.TrimSpace(id))
 		switch id {
 		case "user.id":
-			grant.Id = userId
+			grant.id = userId
 		default:
-			return Grant{}, fmt.Errorf("unknown template %q in grant %q value", grant.Id, "id")
+			return Grant{}, fmt.Errorf("unknown template %q in grant %q value", grant.id, "id")
 		}
 	}
 
@@ -294,19 +294,19 @@ func ParseGrantString(scope Scope, userId, grantString string) (Grant, error) {
 }
 
 func (g *Grant) validateAndModifyProject() error {
-	if g.Project == "" {
+	if g.project == "" {
 		return nil
 	}
-	if g.Scope.Type != iam.OrganizationScope {
+	if g.scope.Type != iam.OrganizationScope {
 		return errors.New("cannot specify a project in the grant when the scope is not an organization")
 	}
-	g.Scope.Type = iam.ProjectScope
-	g.Scope.Id = g.Project
+	g.scope.Type = iam.ProjectScope
+	g.scope.Id = g.project
 	return nil
 }
 
 func (g Grant) validateType() error {
-	switch g.Type {
+	switch g.typ {
 	case TypeNone,
 		TypeAll,
 		TypeRole,
@@ -319,7 +319,7 @@ func (g Grant) validateType() error {
 		TypeTarget:
 		return nil
 	}
-	return fmt.Errorf("unknown type specifier %q", g.Type)
+	return fmt.Errorf("unknown type specifier %q", g.typ)
 }
 
 func (g *Grant) parseAndValidateActions() error {
@@ -331,17 +331,17 @@ func (g *Grant) parseAndValidateActions() error {
 		if action == "" {
 			return errors.New("empty action found")
 		}
-		if g.Actions == nil {
-			g.Actions = make(map[iam.Action]bool, len(g.actionsBeingParsed))
+		if g.actions == nil {
+			g.actions = make(map[iam.Action]bool, len(g.actionsBeingParsed))
 		}
 		if a := iam.ActionMap[action]; a == iam.ActionUnknown {
 			return fmt.Errorf("unknown action %q", action)
 		} else {
-			g.Actions[a] = true
+			g.actions[a] = true
 		}
 	}
 
-	if len(g.Actions) > 1 && g.Actions[iam.ActionAll] {
+	if len(g.actions) > 1 && g.actions[iam.ActionAll] {
 		return fmt.Errorf("%q cannot be specified with other actions", iam.ActionAll.String())
 	}
 

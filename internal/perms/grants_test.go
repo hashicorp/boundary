@@ -43,7 +43,7 @@ func Test_ActionParsingValidation(t *testing.T) {
 				actionsBeingParsed: []string{"*"},
 			},
 			result: Grant{
-				Actions: map[iam.Action]bool{
+				actions: map[iam.Action]bool{
 					iam.ActionAll: true,
 				},
 			},
@@ -61,7 +61,7 @@ func Test_ActionParsingValidation(t *testing.T) {
 				actionsBeingParsed: []string{"list", "create", "update", "read", "delete", "authen", "connect"},
 			},
 			result: Grant{
-				Actions: map[iam.Action]bool{
+				actions: map[iam.Action]bool{
 					iam.ActionList:    true,
 					iam.ActionCreate:  true,
 					iam.ActionUpdate:  true,
@@ -104,14 +104,14 @@ func Test_ValidateType(t *testing.T) {
 		{
 			name: "unknown specifier",
 			input: Grant{
-				Type: "foobar",
+				typ: "foobar",
 			},
 			errResult: `unknown type specifier "foobar"`,
 		},
 		{
 			name: "valid specifier",
 			input: Grant{
-				Type: TypeHostCatalog,
+				typ: TypeHostCatalog,
 			},
 		},
 	}
@@ -143,12 +143,12 @@ func Test_ValidateProject(t *testing.T) {
 		{
 			name: "no project",
 			input: Grant{
-				Scope: Scope{
+				scope: Scope{
 					Type: iam.OrganizationScope,
 				},
 			},
 			output: Grant{
-				Scope: Scope{
+				scope: Scope{
 					Type: iam.OrganizationScope,
 				},
 			},
@@ -156,14 +156,14 @@ func Test_ValidateProject(t *testing.T) {
 		{
 			name: "project, organization scope",
 			input: Grant{
-				Project: "foobar",
-				Scope: Scope{
+				project: "foobar",
+				scope: Scope{
 					Type: iam.OrganizationScope,
 				},
 			},
 			output: Grant{
-				Project: "foobar",
-				Scope: Scope{
+				project: "foobar",
+				scope: Scope{
 					Type: iam.ProjectScope,
 					Id:   "foobar",
 				},
@@ -172,8 +172,8 @@ func Test_ValidateProject(t *testing.T) {
 		{
 			name: "project, non-organization scope",
 			input: Grant{
-				Project: "foobar",
-				Scope: Scope{
+				project: "foobar",
+				scope: Scope{
 					Type: iam.ProjectScope,
 				},
 			},
@@ -209,7 +209,7 @@ func Test_MarshallingAndCloning(t *testing.T) {
 		{
 			name: "empty",
 			input: Grant{
-				Scope: Scope{
+				scope: Scope{
 					Type: iam.OrganizationScope,
 				},
 			},
@@ -219,8 +219,8 @@ func Test_MarshallingAndCloning(t *testing.T) {
 		{
 			name: "project",
 			input: Grant{
-				Project: "foobar",
-				Scope: Scope{
+				project: "foobar",
+				scope: Scope{
 					Type: iam.OrganizationScope,
 				},
 			},
@@ -230,11 +230,11 @@ func Test_MarshallingAndCloning(t *testing.T) {
 		{
 			name: "project and type",
 			input: Grant{
-				Project: "foobar",
-				Scope: Scope{
+				project: "foobar",
+				scope: Scope{
 					Type: iam.ProjectScope,
 				},
-				Type: TypeGroup,
+				typ: TypeGroup,
 			},
 			jsonOutput:      `{"project":"foobar","type":"group"}`,
 			canonicalString: `project=foobar;type=group`,
@@ -242,12 +242,12 @@ func Test_MarshallingAndCloning(t *testing.T) {
 		{
 			name: "project, type, and id",
 			input: Grant{
-				Id:      "baz",
-				Project: "foobar",
-				Scope: Scope{
+				id:      "baz",
+				project: "foobar",
+				scope: Scope{
 					Type: iam.ProjectScope,
 				},
-				Type: TypeGroup,
+				typ: TypeGroup,
 			},
 			jsonOutput:      `{"id":"baz","project":"foobar","type":"group"}`,
 			canonicalString: `project=foobar;id=baz;type=group`,
@@ -255,13 +255,13 @@ func Test_MarshallingAndCloning(t *testing.T) {
 		{
 			name: "everything",
 			input: Grant{
-				Id:      "baz",
-				Project: "foobar",
-				Scope: Scope{
+				id:      "baz",
+				project: "foobar",
+				scope: Scope{
 					Type: iam.ProjectScope,
 				},
-				Type: TypeGroup,
-				Actions: map[iam.Action]bool{
+				typ: TypeGroup,
+				actions: map[iam.Action]bool{
 					iam.ActionCreate: true,
 					iam.ActionRead:   true,
 				},
@@ -311,7 +311,7 @@ func Test_Unmarshaling(t *testing.T) {
 		{
 			name: "good project",
 			expected: Grant{
-				Project: "foobar",
+				project: "foobar",
 			},
 			jsonInput: `{"project":"foobar"}`,
 			textInput: `project=foobar`,
@@ -326,7 +326,7 @@ func Test_Unmarshaling(t *testing.T) {
 		{
 			name: "good id",
 			expected: Grant{
-				Id: "foobar",
+				id: "foobar",
 			},
 			jsonInput: `{"id":"foobar"}`,
 			textInput: `id=foobar`,
@@ -341,7 +341,7 @@ func Test_Unmarshaling(t *testing.T) {
 		{
 			name: "good type",
 			expected: Grant{
-				Type: "host-catalog",
+				typ: "host-catalog",
 			},
 			jsonInput: `{"type":"host-catalog"}`,
 			textInput: `type=host-catalog`,
@@ -450,14 +450,14 @@ func Test_ParseGrantString(t *testing.T) {
 			name:  "good json",
 			input: `{"project":"proj","id":"foobar","type":"host-catalog","actions":["create","read"]}`,
 			expected: Grant{
-				Scope: Scope{
+				scope: Scope{
 					Id:   "proj",
 					Type: iam.ProjectScope,
 				},
-				Project: "proj",
-				Id:      "foobar",
-				Type:    "host-catalog",
-				Actions: map[iam.Action]bool{
+				project: "proj",
+				id:      "foobar",
+				typ:     "host-catalog",
+				actions: map[iam.Action]bool{
 					iam.ActionCreate: true,
 					iam.ActionRead:   true,
 				},
@@ -467,14 +467,14 @@ func Test_ParseGrantString(t *testing.T) {
 			name:  "good text",
 			input: `project=proj;id=foobar;type=host-catalog;actions=create,read`,
 			expected: Grant{
-				Scope: Scope{
+				scope: Scope{
 					Id:   "proj",
 					Type: iam.ProjectScope,
 				},
-				Project: "proj",
-				Id:      "foobar",
-				Type:    "host-catalog",
-				Actions: map[iam.Action]bool{
+				project: "proj",
+				id:      "foobar",
+				typ:     "host-catalog",
+				actions: map[iam.Action]bool{
 					iam.ActionCreate: true,
 					iam.ActionRead:   true,
 				},
@@ -491,12 +491,12 @@ func Test_ParseGrantString(t *testing.T) {
 			input:  `id={{    user.id}};actions=create,read`,
 			userId: "u_abcd1234",
 			expected: Grant{
-				Scope: Scope{
+				scope: Scope{
 					Id:   "scope",
 					Type: iam.OrganizationScope,
 				},
-				Id: "u_abcd1234",
-				Actions: map[iam.Action]bool{
+				id: "u_abcd1234",
+				actions: map[iam.Action]bool{
 					iam.ActionCreate: true,
 					iam.ActionRead:   true,
 				},

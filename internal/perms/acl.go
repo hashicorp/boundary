@@ -62,7 +62,7 @@ func NewACL(grants ...Grant) ACL {
 	}
 
 	for _, grant := range grants {
-		ret.scopeMap[grant.Scope.Id] = append(ret.scopeMap[grant.Scope.Id], grant)
+		ret.scopeMap[grant.scope.Id] = append(ret.scopeMap[grant.scope.Id], grant)
 	}
 
 	return ret
@@ -76,25 +76,25 @@ func (a ACL) Allowed(resource Resource, action iam.Action) (results ACLResults) 
 
 	// Now, go through and check the cases indicated above
 	for _, grant := range grants {
-		if !(grant.Actions[action] || grant.Actions[iam.ActionAll]) {
+		if !(grant.actions[action] || grant.actions[iam.ActionAll]) {
 			continue
 		}
 		switch {
 		// type=<resource.type>;actions=<action>
-		case grant.Id == "" &&
-			grant.Type == resource.Type:
+		case grant.id == "" &&
+			grant.typ == resource.Type:
 			results.Allowed = true
 			return
 
 		// id=<resource.id>;actions=<action>
-		case (grant.Id == resource.Id || grant.Id == "*") &&
-			grant.Type == "":
+		case (grant.id == resource.Id || grant.id == "*") &&
+			grant.typ == "":
 			results.Allowed = true
 			return
 
 		// id=<pin>;type=<resource.type>;actions=<action>
-		case grant.Id == resource.Pin &&
-			grant.Type == resource.Type:
+		case grant.id == resource.Pin &&
+			grant.typ == resource.Type:
 			results.Allowed = true
 			return
 		}
