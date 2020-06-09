@@ -545,6 +545,33 @@ insert on iam_user
   for each row execute procedure default_create_time();
 
 
+create table iam_group (
+    public_id wt_public_id not null primary key,
+    create_time wt_timestamp,
+    update_time wt_timestamp,
+    name text,
+    description text,
+    scope_id wt_public_id not null references iam_scope(public_id) on delete cascade on update cascade,
+    unique(name, scope_id),
+    disabled boolean not null default false
+  );
+  
+create trigger 
+  update_time_column 
+before update on iam_group
+  for each row execute procedure update_time_column();
+
+create trigger 
+  immutable_create_time
+before
+update on iam_group
+  for each row execute procedure immutable_create_time_func();
+  
+create trigger 
+  default_create_time_column
+before
+insert on iam_group
+  for each row execute procedure default_create_time();
 commit;
 
 `),
@@ -577,33 +604,6 @@ COMMIT;
 		bytes: []byte(`
 BEGIN;
 
-CREATE OR REPLACE FUNCTION update_time_column() RETURNS TRIGGER 
-SET SCHEMA
-  'public' LANGUAGE plpgsql AS $$
-BEGIN
-   IF row(NEW.*) IS DISTINCT FROM row(OLD.*) THEN
-      NEW.update_time = now(); 
-      RETURN NEW;
-   ELSE
-      RETURN OLD;
-   END IF;
-END;
-$$;
-
-
-CREATE TABLE iam_group (
-    public_id wt_public_id not null primary key,
-    create_time wt_timestamp,
-    update_time wt_timestamp,
-    name text,
-    description text,
-    scope_id wt_public_id NOT NULL REFERENCES iam_scope(public_id) ON DELETE CASCADE ON UPDATE CASCADE,
-    unique(name, scope_id),
-    disabled BOOLEAN NOT NULL default FALSE
-  );
-  
-CREATE TRIGGER update_iam_group_update_time 
-BEFORE UPDATE ON iam_group FOR EACH ROW EXECUTE PROCEDURE update_time_column();
 
 CREATE TABLE iam_group_member_user (
     create_time wt_timestamp,
