@@ -20,23 +20,37 @@ construction is thus synthesizing something reasonable from a set of Grants.
 
 import "github.com/hashicorp/watchtower/internal/iam"
 
+// ACL provides an entry point into the permissions engine for determining if an
+// action is allowed on a resource based on a principal's (user or group) grants.
 type ACL struct {
 	scopeMap map[string][]Grant
 }
 
-// This is a struct so that we can pass more detailed information along in the
-// future if we want. It was useful in Vault, may be useful here.
+// ACLResults provides a type for the permission's engine results so that we can
+// pass more detailed information along in the future if we want. It was useful
+// in Vault, may be useful here.
 type ACLResults struct {
 	Allowed bool
 }
 
+// Resource defines something within watchtower that requires authorization
+// capabilities.  Resources must have a ScopeId.
 type Resource struct {
+	// ScopeId is the scope that contains the Resource.
 	ScopeId string
-	Id      string
-	Type    string
-	Pin     string
+
+	// Id is the public id of the resource.
+	Id string
+
+	// Type of resource.
+	Type string
+
+	// Pin if defined would constrain the resource within the collection of the
+	// pin id.
+	Pin string
 }
 
+// NewACL creates an ACL from the grants provided.
 func NewACL(grants ...Grant) ACL {
 	ret := ACL{
 		scopeMap: make(map[string][]Grant, len(grants)),
@@ -49,6 +63,7 @@ func NewACL(grants ...Grant) ACL {
 	return ret
 }
 
+// Allowed determines if the grants for an ACL allow an action for a resource.
 func (a ACL) Allowed(resource Resource, action iam.Action) (results ACLResults) {
 	// First, get the grants within the specified scope
 	grants := a.scopeMap[resource.ScopeId]
