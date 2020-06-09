@@ -217,6 +217,15 @@ func (g *Grant) unmarshalText(grantString string) error {
 //
 // The scope must be the org and project where this grant originated, not the
 // request.
+//
+// WARNING: It is the responsibility of the caller to validate that a returned
+// Grant matches the incoming scope and if not that the relationship is valid.
+// Specifically, if a project is specified as part of a grant, the grant's
+// returned scope will be a project scope with the associated project ID. The
+// caller must validate that the project ID is valid and that its enclosing
+// organization is the original organization scope. Likely this can be done in a
+// centralized helper context; however it's not done here to avoid reaching into
+// the database from within this package.
 func ParseGrantString(scope Scope, grantString string) (Grant, error) {
 	if len(grantString) == 0 {
 		return Grant{}, errors.New("grant string is empty")
@@ -277,9 +286,8 @@ func (g *Grant) validateAndModifyProject() error {
 
 func (g Grant) validateType() error {
 	switch g.Type {
-	case TypeNone:
-		return errors.New("empty type specifier")
-	case TypeAll,
+	case TypeNone,
+		TypeAll,
 		TypeRole,
 		TypeGroup,
 		TypeUser,
@@ -307,11 +315,13 @@ func (g *Grant) parseAndValidateActions() error {
 		}
 		if a := iam.ActionMap[action]; a == iam.ActionUnknown {
 			return fmt.Errorf("unknown action %q", action)
-		} else if a == iam.ActionAll && len(g.actionsBeingParsed) > 1 {
-			return fmt.Errorf("%q cannot be specified with other actions", a.String())
 		} else {
 			g.Actions[a] = true
 		}
+	}
+
+	if len(g.Actions) > 1 && g.Actions[iam.ActionAll] {
+		return fmt.Errorf("%q cannot be specified with other actions", iam.ActionAll.String())
 	}
 
 	g.actionsBeingParsed = nil

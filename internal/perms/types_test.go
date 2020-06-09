@@ -38,6 +38,17 @@ func Test_ActionParsingValidation(t *testing.T) {
 			errResult: `unknown action "foobar"`,
 		},
 		{
+			name: "all",
+			input: Grant{
+				actionsBeingParsed: []string{"all"},
+			},
+			result: Grant{
+				Actions: map[iam.Action]bool{
+					iam.ActionAll: true,
+				},
+			},
+		},
+		{
 			name: "all valid plus all",
 			input: Grant{
 				actionsBeingParsed: []string{"list", "create", "update", "all", "read", "delete", "authen", "connect"},
@@ -88,8 +99,7 @@ func Test_ValidateType(t *testing.T) {
 
 	tests := []input{
 		{
-			name:      "no specifier",
-			errResult: "empty type specifier",
+			name: "no specifier",
 		},
 		{
 			name: "unknown specifier",
