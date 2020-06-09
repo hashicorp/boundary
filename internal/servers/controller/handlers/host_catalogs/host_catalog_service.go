@@ -9,6 +9,7 @@ import (
 	pb "github.com/hashicorp/watchtower/internal/gen/controller/api/resources/hosts"
 	pbs "github.com/hashicorp/watchtower/internal/gen/controller/api/services"
 	"github.com/hashicorp/watchtower/internal/host/static"
+	"github.com/hashicorp/watchtower/internal/iam"
 	"github.com/hashicorp/watchtower/internal/servers/controller/common"
 	"github.com/hashicorp/watchtower/internal/servers/controller/handlers"
 	"google.golang.org/grpc/codes"
@@ -390,10 +391,10 @@ func validateAncestors(r ancestorProvider) map[string]string {
 		return badFields
 	}
 
-	if !validId(r.GetOrgId(), "o_") {
+	if !validId(r.GetOrgId(), iam.OrganizationScope.Prefix()+"_") {
 		badFields[orgIdFieldName] = "The field is incorrectly formatted."
 	}
-	if !validId(r.GetProjectId(), "p_") {
+	if !validId(r.GetProjectId(), iam.ProjectScope.Prefix()+"_") {
 		badFields[projectIdFieldName] = "The field is incorrectly formatted."
 	}
 	return badFields
