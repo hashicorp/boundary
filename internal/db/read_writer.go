@@ -286,12 +286,16 @@ func (rw *Db) Update(ctx context.Context, i interface{}, fieldMaskPaths []string
 	if withOplog && rowsUpdated > 0 {
 		// we don't want to change the inbound slices in opts, so we'll make our
 		// own copy to pass to addOplog()
+		oplogFieldMasks := make([]string, len(fieldMaskPaths))
+		copy(oplogFieldMasks, fieldMaskPaths)
+		oplogNullPaths := make([]string, len(setToNullPaths))
+		copy(oplogNullPaths, setToNullPaths)
 		oplogOpts := Options{
 			oplogOpts:          opts.oplogOpts,
 			withOplog:          opts.withOplog,
 			withDebug:          opts.withDebug,
-			WithFieldMaskPaths: fieldMaskPaths,
-			WithNullPaths:      setToNullPaths,
+			WithFieldMaskPaths: oplogFieldMasks,
+			WithNullPaths:      oplogNullPaths,
 		}
 		if err := rw.addOplog(ctx, UpdateOp, oplogOpts, i); err != nil {
 			return rowsUpdated, fmt.Errorf("update: add oplog failed %w", err)
