@@ -684,6 +684,7 @@ func TestDb_SearchWhere(t *testing.T) {
 		Level:  hclog.Trace,
 	})
 	gorm.LogFormatter = GetGormLogFormatter(log)
+	db.SetLogger(GetGormLogger(log))
 	db.LogMode(true)
 	defer func() {
 		assert.True(strings.Contains(buf.String(), "syntax error at or near"))
