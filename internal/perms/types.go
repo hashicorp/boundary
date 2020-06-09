@@ -23,8 +23,13 @@ const (
 	TypeTarget      = "target"
 )
 
+// Scope provides an in-memory representation of iam.Scope without the
+// underlying storage references or capabilities.
 type Scope struct {
-	Id   string
+	// Id is the public id of the iam.Scope
+	Id string
+
+	// Type is the scope's type (org or project)
 	Type iam.ScopeType
 }
 
@@ -69,6 +74,7 @@ func (g Grant) clone() *Grant {
 	return ret
 }
 
+// CanonicalString returns the canonical representation of the grant
 func (g Grant) CanonicalString() string {
 	var builder []string
 	if g.Project != "" {
@@ -95,6 +101,7 @@ func (g Grant) CanonicalString() string {
 	return strings.Join(builder, ";")
 }
 
+// MarshalJSON provides a custom marshaller for grants
 func (g Grant) MarshalJSON() ([]byte, error) {
 	res := make(map[string]interface{}, 4)
 	if g.Project != "" {
