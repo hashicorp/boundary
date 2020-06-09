@@ -9,6 +9,7 @@ import (
 	pb "github.com/hashicorp/watchtower/internal/gen/controller/api/resources/hosts"
 	pbs "github.com/hashicorp/watchtower/internal/gen/controller/api/services"
 	"github.com/hashicorp/watchtower/internal/host/static"
+	"github.com/hashicorp/watchtower/internal/iam"
 	"github.com/hashicorp/watchtower/internal/servers/controller/common"
 	"github.com/hashicorp/watchtower/internal/servers/controller/handlers"
 	"google.golang.org/grpc/codes"
@@ -92,7 +93,7 @@ func (s Service) ListHostCatalogs(ctx context.Context, req *pbs.ListHostCatalogs
 func (s Service) GetHostCatalog(ctx context.Context, req *pbs.GetHostCatalogRequest) (*pbs.GetHostCatalogResponse, error) {
 	ct := typeFromId(req.GetId())
 	if ct == unknownType {
-		return nil, handlers.InvalidArgumentErrorf("Unknown host catalog type.", []string{"id"})
+		return nil, handlers.InvalidArgumentErrorf("Invalid argument provided.", map[string]string{"id": "Improperly formatted identifier used."})
 	}
 	if err := validateGetRequest(req, ct); err != nil {
 		return nil, err
@@ -123,7 +124,7 @@ func (s Service) CreateHostCatalog(ctx context.Context, req *pbs.CreateHostCatal
 func (s Service) UpdateHostCatalog(ctx context.Context, req *pbs.UpdateHostCatalogRequest) (*pbs.UpdateHostCatalogResponse, error) {
 	ct := typeFromId(req.GetId())
 	if ct == unknownType {
-		return nil, handlers.InvalidArgumentErrorf("Unknown host catalog type.", []string{"id"})
+		return nil, handlers.InvalidArgumentErrorf("Invalid argument provided.", map[string]string{"id": "Improperly formatted identifier used."})
 	}
 	if err := validateUpdateRequest(req, ct); err != nil {
 		return nil, err
@@ -139,7 +140,7 @@ func (s Service) UpdateHostCatalog(ctx context.Context, req *pbs.UpdateHostCatal
 func (s Service) DeleteHostCatalog(ctx context.Context, req *pbs.DeleteHostCatalogRequest) (*pbs.DeleteHostCatalogResponse, error) {
 	ct := typeFromId(req.GetId())
 	if ct == unknownType {
-		return nil, handlers.InvalidArgumentErrorf("Unknown host catalog type.", []string{"id"})
+		return nil, handlers.InvalidArgumentErrorf("Invalid argument provided.", map[string]string{"id": "Improperly formatted identifier used."})
 	}
 	if err := validateDeleteRequest(req, ct); err != nil {
 		return nil, err
@@ -249,10 +250,10 @@ func toDbUpdateMask(paths []string) ([]string, error) {
 		}
 	}
 	if len(invalid) > 0 {
-		return nil, handlers.InvalidArgumentErrorf(fmt.Sprintf("Invalid fields passed in update mask: %v.", invalid), []string{"update_mask"})
+		return nil, handlers.InvalidArgumentErrorf("Invalid argument provided.", map[string]string{"update_mask": fmt.Sprintf("Invalid paths provided: %q", invalid)})
 	}
 	if len(dbPaths) == 0 {
-		return nil, handlers.InvalidArgumentErrorf("No valid paths included in the update mask.", []string{"update_mask"})
+		return nil, handlers.InvalidArgumentErrorf("Invalid argument provided.", map[string]string{"update_mask": "No valid paths provided."})
 	}
 	return dbPaths, nil
 }
@@ -281,55 +282,51 @@ func toProto(in *static.HostCatalog) *pb.HostCatalog {
 //  * The type asserted by the ID and/or field is known
 //  * If relevant, the type derived from the id prefix matches what is claimed by the type field
 func validateGetRequest(req *pbs.GetHostCatalogRequest, ct catalogType) error {
-	if err := validateAncestors(req); err != nil {
-		return err
-	}
+	badFields := validateAncestors(req)
 	if !validId(req.GetId(), ct.idPrefix()) {
-		return handlers.InvalidArgumentErrorf("Improperly formatted identifier.", []string{"id"})
+		badFields["id"] = "Invalid formatted identifier."
+	}
+	if len(badFields) > 0 {
+		return handlers.InvalidArgumentErrorf("Invalid arguments provided.", badFields)
 	}
 	return nil
 }
 
 func validateCreateRequest(req *pbs.CreateHostCatalogRequest) error {
-	if err := validateAncestors(req); err != nil {
-		return err
-	}
+	badFields := validateAncestors(req)
 	item := req.GetItem()
 	if item == nil {
-		return handlers.InvalidArgumentErrorf("The catalog's fields must be set to something.", []string{"item"})
+		badFields["item"] = "This field is required."
 	}
 	if item.GetType() == nil {
-		return handlers.InvalidArgumentErrorf("Type must be specified when creating a host catalog.", []string{"type"})
+		badFields["type"] = "This field is required."
 	}
 	if typeFromTypeField(item.GetType().GetValue()) == unknownType {
-		return handlers.InvalidArgumentErrorf("Provided host catalog type is unknown.", []string{"type"})
+		badFields["type"] = "Provided type is unknown."
 	}
-	var immutableFieldsSet []string
 	if item.GetId() != "" {
-		immutableFieldsSet = append(immutableFieldsSet, "id")
+		badFields["id"] = "This field is read only."
 	}
 	if item.GetCreatedTime() != nil {
-		immutableFieldsSet = append(immutableFieldsSet, "created_time")
+		badFields["created_time"] = "This field is read only."
 	}
 	if item.GetUpdatedTime() != nil {
-		immutableFieldsSet = append(immutableFieldsSet, "updated_time")
+		badFields["updated_time"] = "This field is read only."
 	}
-	if len(immutableFieldsSet) > 0 {
-		return handlers.InvalidArgumentErrorf("Cannot specify read only fields at creation time.", immutableFieldsSet)
+	if len(badFields) > 0 {
+		return handlers.InvalidArgumentErrorf("Invalid arguments provided.", badFields)
 	}
 	return nil
 }
 
 func validateUpdateRequest(req *pbs.UpdateHostCatalogRequest, ct catalogType) error {
-	if err := validateAncestors(req); err != nil {
-		return err
-	}
+	badFields := validateAncestors(req)
 	if !validId(req.GetId(), ct.idPrefix()) {
-		return handlers.InvalidArgumentErrorf("Improperly formatted identifier.", []string{"id"})
+		badFields["id"] = "The field is incorrectly formatted."
 	}
 
 	if req.GetUpdateMask() == nil {
-		return handlers.InvalidArgumentErrorf("UpdateMask not provided but is required to update a host.", []string{"update_mask"})
+		badFields["update_mask"] = "This field is required."
 	}
 
 	item := req.GetItem()
@@ -338,35 +335,32 @@ func validateUpdateRequest(req *pbs.UpdateHostCatalogRequest, ct catalogType) er
 		// the mask will be marked as unset.
 		return nil
 	}
-	if item.GetId() != "" && item.GetId() != req.GetId() {
-		return handlers.InvalidArgumentErrorf("Id in provided item and url do not match.", []string{"id"})
-	}
-	var immutableFieldsSet []string
 	if item.GetType() != nil {
-		immutableFieldsSet = append(immutableFieldsSet, "type")
+		badFields["type"] = "This is a read only field and cannot be specified in an update request."
 	}
 	if item.GetId() != "" {
-		immutableFieldsSet = append(immutableFieldsSet, "id")
+		badFields["id"] = "This is a read only field and cannot be specified in an update request."
 	}
 	if item.GetCreatedTime() != nil {
-		immutableFieldsSet = append(immutableFieldsSet, "created_time")
+		badFields["created_time"] = "This is a read only field and cannot be specified in an update request."
 	}
 	if item.GetUpdatedTime() != nil {
-		immutableFieldsSet = append(immutableFieldsSet, "updated_time")
+		badFields["updated_time"] = "This is a read only field and cannot be specified in an update request."
 	}
-	if len(immutableFieldsSet) > 0 {
-		return handlers.InvalidArgumentErrorf("Cannot specify read only fields at update time.", immutableFieldsSet)
+	if len(badFields) > 0 {
+		return handlers.InvalidArgumentErrorf("Errors in provided fields.", badFields)
 	}
 
 	return nil
 }
 
 func validateDeleteRequest(req *pbs.DeleteHostCatalogRequest, ct catalogType) error {
-	if err := validateAncestors(req); err != nil {
-		return err
-	}
+	badFields := validateAncestors(req)
 	if !validId(req.GetId(), ct.idPrefix()) {
-		return handlers.InvalidArgumentErrorf("Improperly formatted identifier.", []string{"id"})
+		badFields["id"] = "The field is incorrectly formatted."
+	}
+	if len(badFields) > 0 {
+		return handlers.InvalidArgumentErrorf("Invalid arguments provided.", badFields)
 	}
 	return nil
 }
@@ -385,24 +379,23 @@ type ancestorProvider interface {
 }
 
 // validateAncestors verifies that the ancestors of this call are set and formatted correctly.
-func validateAncestors(r ancestorProvider) error {
+func validateAncestors(r ancestorProvider) map[string]string {
+	badFields := make(map[string]string)
 	if r.GetOrgId() == "" {
-		return handlers.InvalidArgumentErrorf("Missing organization id.", []string{orgIdFieldName})
+		badFields[orgIdFieldName] = "The field is missing but required."
 	}
 	if r.GetProjectId() == "" {
-		return handlers.InvalidArgumentErrorf("Missing project id.", []string{projectIdFieldName})
+		badFields[projectIdFieldName] = "The field is missing but required."
+	}
+	if len(badFields) > 0 {
+		return badFields
 	}
 
-	var badFormat []string
-	if !validId(r.GetOrgId(), "o_") {
-		badFormat = append(badFormat, orgIdFieldName)
+	if !validId(r.GetOrgId(), iam.OrganizationScope.Prefix()+"_") {
+		badFields[orgIdFieldName] = "The field is incorrectly formatted."
 	}
-	if !validId(r.GetProjectId(), "p_") {
-		badFormat = append(badFormat, projectIdFieldName)
+	if !validId(r.GetProjectId(), iam.ProjectScope.Prefix()+"_") {
+		badFields[projectIdFieldName] = "The field is incorrectly formatted."
 	}
-	if len(badFormat) > 0 {
-		return handlers.InvalidArgumentErrorf("Improperly formatted identifier.", badFormat)
-	}
-
-	return nil
+	return badFields
 }

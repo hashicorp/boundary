@@ -16,6 +16,7 @@ require (
 	github.com/golang-migrate/migrate/v4 v4.11.0
 	github.com/golang-sql/civil v0.0.0-20190719163853-cb61b32ac6fe
 	github.com/golang/protobuf v1.4.2
+	github.com/google/go-cmp v0.4.0
 	github.com/grpc-ecosystem/grpc-gateway v1.14.6
 	github.com/hashicorp/dbassert v0.0.0-20200602132714-30dfb78f0133
 	github.com/hashicorp/errwrap v1.0.0

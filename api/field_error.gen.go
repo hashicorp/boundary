@@ -9,23 +9,22 @@ import (
 	"github.com/hashicorp/watchtower/api/internal/strutil"
 )
 
-type ErrorDetails struct {
+type FieldError struct {
 	defaultFields []string
 
-	TraceId       *string       `json:"TraceId,omitempty"`
-	RequestId     *string       `json:"request_id,omitempty"`
-	RequestFields []*FieldError `json:"request_fields,omitempty"`
+	Name        *string `json:"name,omitempty"`
+	Description *string `json:"description,omitempty"`
 }
 
-func (s *ErrorDetails) SetDefault(key string) {
+func (s *FieldError) SetDefault(key string) {
 	s.defaultFields = strutil.AppendIfMissing(s.defaultFields, key)
 }
 
-func (s *ErrorDetails) UnsetDefault(key string) {
+func (s *FieldError) UnsetDefault(key string) {
 	s.defaultFields = strutil.StrListDelete(s.defaultFields, key)
 }
 
-func (s ErrorDetails) MarshalJSON() ([]byte, error) {
+func (s FieldError) MarshalJSON() ([]byte, error) {
 	m := structs.Map(s)
 	if m == nil {
 		m = make(map[string]interface{})
