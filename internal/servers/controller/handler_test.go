@@ -2,22 +2,13 @@ package controller
 
 import (
 	"fmt"
-	"net"
 	"net/http"
 	"testing"
 )
 
 func TestHandleGrpcGateway(t *testing.T) {
-	var c Controller
-	h := c.handler(HandlerProperties{})
-	l, err := net.Listen("tcp4", "127.0.0.1:0")
-	if err != nil {
-		t.Fatalf("Couldn't listen: %v", err)
-	}
-	defer l.Close()
-	go func() {
-		http.Serve(l, h)
-	}()
+	c := NewTestController(t, nil)
+	defer c.Shutdown()
 
 	cases := []struct {
 		name string
@@ -32,12 +23,12 @@ func TestHandleGrpcGateway(t *testing.T) {
 		{
 			"Unimplemented path",
 			"v1/orgs/1/projects/2/host-catalogs/3/host-sets/4",
-			http.StatusNotImplemented,
+			http.StatusMethodNotAllowed,
 		},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			url := fmt.Sprintf("http://%s/%s", l.Addr(), tc.path)
+			url := fmt.Sprintf("%s/%s", c.ApiAddrs()[0], tc.path)
 			resp, err := http.Get(url)
 			if err != nil {
 				t.Errorf("Got error: %v when non was expected.", err)

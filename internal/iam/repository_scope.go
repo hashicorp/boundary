@@ -20,20 +20,41 @@ func (r *Repository) CreateScope(ctx context.Context, scope *Scope, opt ...Optio
 	return resource.(*Scope), nil
 }
 
-// UpdateScope will update a scope in the repository and return the written scope
+// UpdateScope will update a scope in the repository and return the written
+// scope.  fieldMaskPaths provides field_mask.proto paths for fields that should
+// be updated.  Fields will be set to NULL if the field is a zero value and
+// included in fieldMask. Name and Description are the only updatable fields,
+// and everything else is ignored.  If no updatable fields are included in the
+// fieldMaskPaths, then an error is returned.
 func (r *Repository) UpdateScope(ctx context.Context, scope *Scope, fieldMaskPaths []string, opt ...Option) (*Scope, int, error) {
 	if scope == nil {
-		return nil, db.NoRowsAffected, errors.New("scope is nil for update")
+		return nil, db.NoRowsAffected, fmt.Errorf("update scope: missing scope: %w", db.ErrNilParameter)
 	}
 	if scope.PublicId == "" {
-		return nil, db.NoRowsAffected, errors.New("scope public id is unset for update")
+		return nil, db.NoRowsAffected, fmt.Errorf("update scope: missing public id: %w", db.ErrNilParameter)
 	}
-	if scope.PublicId == "" {
-		return nil, db.NoRowsAffected, errors.New("error scope public id is unset for update")
+	if contains(fieldMaskPaths, "ParentId") {
+		return nil, db.NoRowsAffected, fmt.Errorf("update scope: you cannot change a scope's parent: %w", db.ErrInvalidFieldMask)
 	}
-	resource, rowsUpdated, err := r.update(ctx, scope, fieldMaskPaths)
+	var dbMask, nullFields []string
+	dbMask, nullFields = buildUpdatePaths(
+		map[string]interface{}{
+			"name":        scope.Name,
+			"description": scope.Description,
+		},
+		fieldMaskPaths,
+	)
+	// nada to update, so reload scope from db and return it
+	if len(dbMask) == 0 && len(nullFields) == 0 {
+		return nil, db.NoRowsAffected, fmt.Errorf("update scope: %w", db.ErrEmptyFieldMask)
+	}
+
+	resource, rowsUpdated, err := r.update(ctx, scope, dbMask, nullFields)
 	if err != nil {
-		return nil, db.NoRowsAffected, fmt.Errorf("failed to update scope: %w", err)
+		if db.IsUniqueError(err) {
+			return nil, db.NoRowsAffected, fmt.Errorf("update scope: %s name %s already exists: %w", scope.PublicId, scope.Name, db.ErrNotUnique)
+		}
+		return nil, db.NoRowsAffected, fmt.Errorf("update scope: failed for public id %s: %w", scope.PublicId, err)
 	}
 	return resource.(*Scope), rowsUpdated, err
 }

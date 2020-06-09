@@ -2,7 +2,6 @@ package iam
 
 import (
 	"context"
-	"errors"
 	"fmt"
 
 	"github.com/hashicorp/watchtower/internal/db"
@@ -22,22 +21,18 @@ var _ Clonable = (*User)(nil)
 var _ db.VetForWriter = (*User)(nil)
 
 // NewUser creates a new in memory user and allows options:
-// WithName - to specify the user's friendly name
+// WithName - to specify the user's friendly name and WithDescription - to
+// specify a user description
 func NewUser(organizationPublicId string, opt ...Option) (*User, error) {
 	opts := getOpts(opt...)
-	withName := opts.withName
 	if organizationPublicId == "" {
-		return nil, errors.New("error organization id is unset for new user")
-	}
-	publicId, err := db.NewPublicId("u")
-	if err != nil {
-		return nil, fmt.Errorf("error generating public ID %w for new user", err)
+		return nil, fmt.Errorf("new user: missing organization id %w", db.ErrInvalidParameter)
 	}
 	u := &User{
 		User: &store.User{
-			PublicId: publicId,
-			Name:     withName,
-			ScopeId:  organizationPublicId,
+			Name:        opts.withName,
+			Description: opts.withDescription,
+			ScopeId:     organizationPublicId,
 		},
 	}
 	return u, nil
@@ -61,7 +56,7 @@ func (u *User) Clone() interface{} {
 // before it's written.
 func (u *User) VetForWrite(ctx context.Context, r db.Reader, opType db.OpType, opt ...db.Option) error {
 	if u.PublicId == "" {
-		return errors.New("error public id is empty string for user write")
+		return fmt.Errorf("user vet for write: missing public id: %w", db.ErrNilParameter)
 	}
 	if err := validateScopeForWrite(ctx, r, u, opType, opt...); err != nil {
 		return err
@@ -99,4 +94,14 @@ func (u *User) SetTableName(n string) {
 	if n != "" {
 		u.tableName = n
 	}
+}
+
+const UserPrefix = "u"
+
+func newUserId() (string, error) {
+	id, err := db.NewPublicId(UserPrefix)
+	if err != nil {
+		return "", fmt.Errorf("new user id: %w", err)
+	}
+	return id, nil
 }

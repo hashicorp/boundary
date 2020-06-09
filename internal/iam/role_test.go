@@ -106,10 +106,7 @@ func TestRole_AssignedRoles(t *testing.T) {
 		assert.NoError(err)
 		assert.NotEmpty(s.PublicId)
 
-		user, err := NewUser(s.PublicId)
-		assert.NoError(err)
-		err = w.Create(context.Background(), user)
-		assert.NoError(err)
+		user := TestUser(t, conn, s.PublicId)
 
 		role, err := NewRole(s.PublicId, WithDescription("this is a test role"))
 		assert.NoError(err)

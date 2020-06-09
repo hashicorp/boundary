@@ -18,10 +18,7 @@ func Test_UserRoles(t *testing.T) {
 
 	t.Run("valid", func(t *testing.T) {
 		w := db.New(conn)
-		user, err := NewUser(org.PublicId)
-		assert.NoError(err)
-		err = w.Create(context.Background(), user)
-		assert.NoError(err)
+		user := TestUser(t, conn, org.PublicId)
 
 		role, err := NewRole(org.PublicId, WithDescription("this is a test role"))
 		assert.NoError(err)

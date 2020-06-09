@@ -4,6 +4,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"reflect"
+	"strings"
 
 	wrapping "github.com/hashicorp/go-kms-wrapping"
 	"github.com/hashicorp/watchtower/internal/db"
@@ -72,7 +74,7 @@ func (r *Repository) create(ctx context.Context, resource Resource, opt ...Optio
 }
 
 // update will update an iam resource in the db repository with an oplog entry
-func (r *Repository) update(ctx context.Context, resource Resource, fieldMaskPaths []string, opt ...Option) (Resource, int, error) {
+func (r *Repository) update(ctx context.Context, resource Resource, fieldMaskPaths []string, setToNullPaths []string, opt ...Option) (Resource, int, error) {
 	if resource == nil {
 		return nil, db.NoRowsAffected, errors.New("error updating resource that is nil")
 	}
@@ -99,6 +101,7 @@ func (r *Repository) update(ctx context.Context, resource Resource, fieldMaskPat
 				ctx,
 				returnedResource,
 				fieldMaskPaths,
+				setToNullPaths,
 				db.WithOplog(r.wrapper, metadata),
 			)
 			if err == nil && rowsUpdated > 1 {
@@ -152,24 +155,27 @@ func (r *Repository) delete(ctx context.Context, resource Resource, opt ...Optio
 
 func (r *Repository) stdMetadata(ctx context.Context, resource Resource) (oplog.Metadata, error) {
 	if s, ok := resource.(*Scope); ok {
-		if s.Type == "" {
-			if err := r.reader.LookupByPublicId(ctx, s); err != nil {
+		scope := allocScope()
+		scope.PublicId = s.PublicId
+		scope.Type = s.Type
+		if scope.Type == "" {
+			if err := r.reader.LookupByPublicId(ctx, &scope); err != nil {
 				return nil, ErrMetadataScopeNotFound
 			}
 		}
-		switch s.Type {
+		switch scope.Type {
 		case OrganizationScope.String():
 			return oplog.Metadata{
 				"resource-public-id": []string{resource.GetPublicId()},
-				"scope-id":           []string{s.PublicId},
-				"scope-type":         []string{s.Type},
+				"scope-id":           []string{scope.PublicId},
+				"scope-type":         []string{scope.Type},
 				"resource-type":      []string{resource.ResourceType().String()},
 			}, nil
 		case ProjectScope.String():
 			return oplog.Metadata{
 				"resource-public-id": []string{resource.GetPublicId()},
-				"scope-id":           []string{s.ParentId},
-				"scope-type":         []string{s.Type},
+				"scope-id":           []string{scope.ParentId},
+				"scope-type":         []string{scope.Type},
 				"resource-type":      []string{resource.ResourceType().String()},
 			}, nil
 		default:
@@ -193,4 +199,32 @@ func (r *Repository) stdMetadata(ctx context.Context, resource Resource) (oplog.
 		"scope-type":         []string{scope.Type},
 		"resource-type":      []string{resource.ResourceType().String()},
 	}, nil
+}
+
+func contains(ss []string, t string) bool {
+	for _, s := range ss {
+		if strings.EqualFold(s, t) {
+			return true
+		}
+	}
+	return false
+}
+
+func buildUpdatePaths(fieldValues map[string]interface{}, fieldMask []string) (masks []string, nulls []string) {
+	for f, v := range fieldValues {
+		if !contains(fieldMask, f) {
+			continue
+		}
+		switch {
+		case isZero(v):
+			nulls = append(nulls, f)
+		default:
+			masks = append(masks, f)
+		}
+	}
+	return masks, nulls
+}
+
+func isZero(i interface{}) bool {
+	return i == nil || reflect.DeepEqual(i, reflect.Zero(reflect.TypeOf(i)).Interface())
 }

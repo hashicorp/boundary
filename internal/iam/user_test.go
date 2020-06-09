@@ -2,6 +2,7 @@ package iam
 
 import (
 	"context"
+	"errors"
 	"testing"
 
 	"github.com/hashicorp/go-uuid"
@@ -30,20 +31,22 @@ func TestNewUser(t *testing.T) {
 		opt                  []Option
 	}
 	tests := []struct {
-		name       string
-		args       args
-		wantErr    bool
-		wantErrMsg string
-		wantName   string
+		name            string
+		args            args
+		wantErr         bool
+		wantErrMsg      string
+		wantName        string
+		wantDescription string
 	}{
 		{
 			name: "valid",
 			args: args{
 				organizationPublicId: org.PublicId,
-				opt:                  []Option{WithName(id)},
+				opt:                  []Option{WithName(id), WithDescription(id)},
 			},
-			wantErr:  false,
-			wantName: id,
+			wantErr:         false,
+			wantName:        id,
+			wantDescription: id,
 		},
 		{
 			name: "valid-with-no-name",
@@ -58,7 +61,7 @@ func TestNewUser(t *testing.T) {
 				opt: []Option{WithName(id)},
 			},
 			wantErr:    true,
-			wantErrMsg: "error organization id is unset for new user",
+			wantErrMsg: "new user: missing organization id invalid parameter",
 		},
 	}
 	for _, tt := range tests {
@@ -71,6 +74,7 @@ func TestNewUser(t *testing.T) {
 			}
 			assert.NoError(err)
 			assert.Equal(tt.wantName, got.Name)
+			assert.Empty(got.PublicId)
 		})
 	}
 }
@@ -93,6 +97,9 @@ func Test_UserCreate(t *testing.T) {
 		w := db.New(conn)
 		user, err := NewUser(org.PublicId)
 		assert.NoError(err)
+		id, err := newUserId()
+		assert.NoError(err)
+		user.PublicId = id
 		err = w.Create(context.Background(), user)
 		assert.NoError(err)
 		assert.NotEmpty(user.PublicId)
@@ -107,16 +114,23 @@ func Test_UserCreate(t *testing.T) {
 		w := db.New(conn)
 		user, err := NewUser(id)
 		assert.NoError(err)
+		id, err := newUserId()
+		assert.NoError(err)
+		user.PublicId = id
 		err = w.Create(context.Background(), user)
 		assert.Error(err)
-		assert.Equal("error on create scope is not found", err.Error())
+		assert.Equal("create: vet for write failed scope is not found", err.Error())
 	})
 }
 
 func Test_UserUpdate(t *testing.T) {
 	t.Parallel()
 	cleanup, conn, _ := db.TestSetup(t, "postgres")
-	defer cleanup()
+	defer func() {
+		if err := cleanup(); err != nil {
+			t.Error(err)
+		}
+	}()
 	a := assert.New(t)
 	defer conn.Close()
 
@@ -161,7 +175,7 @@ func Test_UserUpdate(t *testing.T) {
 				ScopeId:        proj.PublicId,
 			},
 			wantErr:    true,
-			wantErrMsg: "error on update not allowed to change a resource's scope",
+			wantErrMsg: "update: vet for write failed not allowed to change a resource's scope",
 		},
 		{
 			name: "proj-scope-id-not-in-mask",
@@ -192,7 +206,7 @@ func Test_UserUpdate(t *testing.T) {
 			},
 			wantErr:    true,
 			wantDup:    true,
-			wantErrMsg: `error updating: pq: duplicate key value violates unique constraint "iam_user_name_scope_id_key"`,
+			wantErrMsg: `update: failed pq: duplicate key value violates unique constraint "iam_user_name_scope_id_key"`,
 		},
 	}
 	for _, tt := range tests {
@@ -201,7 +215,7 @@ func Test_UserUpdate(t *testing.T) {
 			if tt.wantDup {
 				u := TestUser(t, conn, org.PublicId)
 				u.Name = tt.args.name
-				_, err := rw.Update(context.Background(), u, tt.args.fieldMaskPaths)
+				_, err := rw.Update(context.Background(), u, tt.args.fieldMaskPaths, nil)
 				assert.NoError(err)
 			}
 
@@ -213,7 +227,7 @@ func Test_UserUpdate(t *testing.T) {
 			updateUser.Name = tt.args.name
 			updateUser.Description = tt.args.description
 
-			updatedRows, err := rw.Update(context.Background(), &updateUser, tt.args.fieldMaskPaths)
+			updatedRows, err := rw.Update(context.Background(), &updateUser, tt.args.fieldMaskPaths, nil)
 			if tt.wantErr {
 				assert.Error(err)
 				assert.Equal(0, updatedRows)
@@ -233,7 +247,11 @@ func Test_UserUpdate(t *testing.T) {
 func Test_UserDelete(t *testing.T) {
 	t.Parallel()
 	cleanup, conn, _ := db.TestSetup(t, "postgres")
-	defer cleanup()
+	defer func() {
+		if err := cleanup(); err != nil {
+			t.Error(err)
+		}
+	}()
 	a := assert.New(t)
 	defer conn.Close()
 
@@ -278,7 +296,7 @@ func Test_UserDelete(t *testing.T) {
 			assert.NoError(err)
 			assert.Equal(tt.wantRowsDeleted, deletedRows)
 			foundUser, err := repo.LookupUser(context.Background(), tt.user.GetPublicId())
-			assert.Error(db.ErrRecordNotFound)
+			assert.True(errors.Is(err, db.ErrRecordNotFound))
 			assert.Nil(foundUser)
 		})
 	}
@@ -300,6 +318,9 @@ func Test_UserGetScope(t *testing.T) {
 		w := db.New(conn)
 		user, err := NewUser(org.PublicId)
 		assert.NoError(err)
+		id, err := newUserId()
+		assert.NoError(err)
+		user.PublicId = id
 		err = w.Create(context.Background(), user)
 		assert.NoError(err)
 		assert.NotEmpty(user.PublicId)
@@ -335,6 +356,9 @@ func TestUser_Clone(t *testing.T) {
 		w := db.New(conn)
 		user, err := NewUser(org.PublicId)
 		assert.NoError(err)
+		id, err := newUserId()
+		assert.NoError(err)
+		user.PublicId = id
 		err = w.Create(context.Background(), user)
 		assert.NoError(err)
 
@@ -346,11 +370,17 @@ func TestUser_Clone(t *testing.T) {
 
 		user, err := NewUser(org.PublicId)
 		assert.NoError(err)
+		id, err := newUserId()
+		assert.NoError(err)
+		user.PublicId = id
 		err = w.Create(context.Background(), user)
 		assert.NoError(err)
 
 		user2, err := NewUser(org.PublicId)
 		assert.NoError(err)
+		id, err = newUserId()
+		assert.NoError(err)
+		user2.PublicId = id
 		err = w.Create(context.Background(), user2)
 		assert.NoError(err)
 

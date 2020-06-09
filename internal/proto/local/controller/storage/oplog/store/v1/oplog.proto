@@ -4,25 +4,16 @@ syntax = "proto3";
 package controller.storage.oplog.store.v1;
 option go_package = "github.com/hashicorp/watchtower/internal/oplog/store;store";
 
-import "google/protobuf/timestamp.proto";
-
-// Timestamp for oplog messages.  We've defined a new local type wrapper
-// of google.protobuf.Timestamp so we can implement sql.Scanner and sql.Valuer
-// interfaces.  See:
-// https://golang.org/pkg/database/sql/#Scanner
-// https://golang.org/pkg/database/sql/driver/#Valuer
-message Timestamp {
-  google.protobuf.Timestamp timestamp = 1;
-}
+import "controller/storage/timestamp/v1/timestamp.proto";
 
 // Entry provides a message for oplog entries that's compatible with gorm
 message Entry {
   // @inject_tag: gorm:"primary_key"
   uint32 id = 1;
   // @inject_tag: `gorm:"default:current_timestamp"`
-  Timestamp create_time = 2;
+  timestamp.v1.Timestamp create_time = 2;
   // @inject_tag: `gorm:"default:current_timestamp"`
-  Timestamp update_time = 3;
+  timestamp.v1.Timestamp update_time = 3;
 
   // @inject_tag: gorm:"not_null"
   string version = 4;
@@ -49,7 +40,7 @@ message Metadata {
   // @inject_tag: gorm:"primary_key"
   uint32 id = 1;
   // @inject_tag: `gorm:"default:current_timestamp"`
-  Timestamp create_time = 2;
+  timestamp.v1.Timestamp create_time = 2;
   // @inject_tag: gorm:"not_nul
 
   uint32 entry_id = 3;
@@ -67,9 +58,9 @@ message Ticket {
   // @inject_tag: gorm:"primary_key"
   uint32 id = 1;
   // @inject_tag: `gorm:"default:current_timestamp"`
-  Timestamp create_time = 2;
+  timestamp.v1.Timestamp create_time = 2;
   // @inject_tag: `gorm:"default:current_timestamp"`
-  Timestamp update_time = 3;
+  timestamp.v1.Timestamp update_time = 3;
 
   // @inject_tat: gorm:"not_null"
   string name = 6;

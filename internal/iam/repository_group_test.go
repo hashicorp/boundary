@@ -68,7 +68,7 @@ func TestRepository_CreateGroup(t *testing.T) {
 			},
 			wantDup:    true,
 			wantErr:    true,
-			wantErrMsg: `failed to create group: error creating: pq: duplicate key value violates unique constraint "iam_group_name_scope_id_key"`,
+			wantErrMsg: `failed to create group: create: failed pq: duplicate key value violates unique constraint "iam_group_name_scope_id_key"`,
 		},
 	}
 	for _, tt := range tests {
@@ -161,7 +161,7 @@ func TestRepository_UpdateGroup(t *testing.T) {
 				ScopeId: proj.PublicId,
 			},
 			wantErr:    true,
-			wantErrMsg: "failed to update group: error on update not allowed to change a resource's scope",
+			wantErrMsg: "failed to update group: update: both fieldMaskPaths and setToNullPaths are missing",
 		},
 		{
 			name: "empty-scope-id-with-name-mask",
@@ -182,7 +182,7 @@ func TestRepository_UpdateGroup(t *testing.T) {
 			},
 			wantErr:    true,
 			wantDup:    true,
-			wantErrMsg: `failed to update group: error updating: pq: duplicate key value violates unique constraint "iam_group_name_scope_id_key"`,
+			wantErrMsg: `failed to update group: update: failed pq: duplicate key value violates unique constraint "iam_group_name_scope_id_key"`,
 		},
 	}
 	for _, tt := range tests {

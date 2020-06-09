@@ -21,6 +21,8 @@ import (
 var _ cli.Command = (*Command)(nil)
 var _ cli.CommandAutocomplete = (*Command)(nil)
 
+var devOnlyControllerFlags = func(*Command, *base.FlagSet) {}
+
 type Command struct {
 	*base.Server
 
@@ -37,12 +39,13 @@ type Command struct {
 	flagConfig                         string
 	flagLogLevel                       string
 	flagLogFormat                      string
+	flagCombineLogs                    bool
 	flagDev                            bool
 	flagDevAdminPassword               string
 	flagDevControllerAPIListenAddr     string
 	flagDevControllerClusterListenAddr string
 	flagDevOrgId                       string
-	flagCombineLogs                    bool
+	flagDevPassthroughDirectory        string
 }
 
 func (c *Command) Synopsis() string {
@@ -106,19 +109,17 @@ func (c *Command) Flags() *base.FlagSets {
 	})
 
 	f.StringVar(&base.StringVar{
-		Name:    "dev-org-id",
-		Target:  &c.flagDevOrgId,
-		Default: "",
-		EnvVar:  "WATCHTWER_DEV_ORG_ID",
+		Name:   "dev-org-id",
+		Target: &c.flagDevOrgId,
+		EnvVar: "WATCHTWER_DEV_ORG_ID",
 		Usage: "Auto-created organization ID. This only applies when running in \"dev\" " +
 			"mode.",
 	})
 
 	f.StringVar(&base.StringVar{
-		Name:    "dev-admin-password",
-		Target:  &c.flagDevAdminPassword,
-		Default: "",
-		EnvVar:  "WATCHTWER_DEV_ADMIN_PASSWORD",
+		Name:   "dev-admin-password",
+		Target: &c.flagDevAdminPassword,
+		EnvVar: "WATCHTWER_DEV_ADMIN_PASSWORD",
 		Usage: "Initial admin password. This only applies when running in \"dev\" " +
 			"mode.",
 	})
@@ -138,11 +139,12 @@ func (c *Command) Flags() *base.FlagSets {
 	})
 
 	f.BoolVar(&base.BoolVar{
-		Name:    "combine-logs",
-		Target:  &c.flagCombineLogs,
-		Default: false,
-		Usage:   "If set, both startup information and logs will be sent to stdout. If not set (the default), startup information will go to stdout and logs will be sent to stderr.",
+		Name:   "combine-logs",
+		Target: &c.flagCombineLogs,
+		Usage:  "If set, both startup information and logs will be sent to stdout. If not set (the default), startup information will go to stdout and logs will be sent to stderr.",
 	})
+
+	devOnlyControllerFlags(c, f)
 
 	return set
 }
@@ -315,6 +317,7 @@ func (c *Command) ParseFlagsAndConfig(args []string) int {
 		if c.flagDevOrgId != "" {
 			c.Config.DefaultOrgId = c.flagDevOrgId
 		}
+		c.Config.PassthroughDirectory = c.flagDevPassthroughDirectory
 
 		for _, l := range c.Config.Listeners {
 			if len(l.Purpose) != 1 {

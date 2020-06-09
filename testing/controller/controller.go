@@ -91,11 +91,15 @@ func WithDefaultOrgId(id string) Option {
 
 // NewTestController blocks until a new TestController is created, returns the url for the TestController and a function
 // that can be called to tear down the controller after it has been used for testing.
-func NewTestController(t *testing.T, opt ...Option) (string, func()) {
+func NewTestController(t *testing.T, opt ...Option) *TestController {
 	conf, err := getOpts(opt...)
 	if err != nil {
 		t.Fatalf("Couldn't create TestController: %v", err)
 	}
 	tc := controller.NewTestController(t, conf)
-	return tc.ApiAddress(), tc.Shutdown
+	return &TestController{TestController: tc}
+}
+
+type TestController struct {
+	*controller.TestController
 }

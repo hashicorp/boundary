@@ -19,10 +19,7 @@ func Test_UserGroups(t *testing.T) {
 
 	t.Run("valid", func(t *testing.T) {
 		w := db.New(conn)
-		user, err := NewUser(org.PublicId)
-		assert.NoError(err)
-		err = w.Create(context.Background(), user)
-		assert.NoError(err)
+		user := TestUser(t, conn, org.PublicId)
 
 		grp, err := NewGroup(org.PublicId, WithDescription("this is a test group"))
 		assert.NoError(err)

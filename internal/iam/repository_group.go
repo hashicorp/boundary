@@ -25,7 +25,7 @@ func (r *Repository) UpdateGroup(ctx context.Context, group *Group, fieldMaskPat
 	if group == nil {
 		return nil, db.NoRowsAffected, errors.New("error group is nil for update")
 	}
-	resource, rowsUpdated, err := r.update(ctx, group, fieldMaskPaths)
+	resource, rowsUpdated, err := r.update(ctx, group, fieldMaskPaths, nil)
 	if err != nil {
 		return nil, db.NoRowsAffected, fmt.Errorf("failed to update group: %w", err)
 	}

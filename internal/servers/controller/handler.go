@@ -2,15 +2,21 @@ package controller
 
 import (
 	"context"
+	"encoding/json"
+	"fmt"
 	"net/http"
 	"path"
+	"path/filepath"
 	"strings"
 	"time"
 
 	"github.com/grpc-ecosystem/grpc-gateway/runtime"
 	"github.com/hashicorp/vault/internalshared/configutil"
+	"github.com/hashicorp/vault/sdk/helper/strutil"
+	"github.com/hashicorp/watchtower/api"
 	"github.com/hashicorp/watchtower/globals"
 	"github.com/hashicorp/watchtower/internal/gen/controller/api/services"
+	"github.com/hashicorp/watchtower/internal/servers/controller/handlers"
 	"github.com/hashicorp/watchtower/internal/servers/controller/handlers/host_catalogs"
 	"github.com/hashicorp/watchtower/internal/servers/controller/handlers/host_sets"
 	"github.com/hashicorp/watchtower/internal/servers/controller/handlers/hosts"
@@ -23,31 +29,62 @@ type HandlerProperties struct {
 
 // Handler returns an http.Handler for the services. This can be used on
 // its own to mount the Vault API within another web server.
-func (c *Controller) handler(props HandlerProperties) http.Handler {
+func (c *Controller) handler(props HandlerProperties) (http.Handler, error) {
 	// Create the muxer to handle the actual endpoints
 	mux := http.NewServeMux()
 
-	mux.Handle("/v1/", handleGrpcGateway(c))
+	if c.conf.RawConfig.PassthroughDirectory != "" {
+		// Panic may not be ideal but this is never a production call and it'll
+		// panic on startup. We could also just change the function to return
+		// an error.
+		abs, err := filepath.Abs(c.conf.RawConfig.PassthroughDirectory)
+		if err != nil {
+			panic(err)
+		}
+		c.logger.Warn("serving passthrough files at /passthrough", "path", abs)
+		fs := http.FileServer(http.Dir(abs))
+		prefixHandler := http.StripPrefix("/passthrough/", fs)
+		mux.Handle("/passthrough/", prefixHandler)
+	}
 
-	genericWrappedHandler := wrapGenericHandler(mux, c, props)
+	h, err := handleGrpcGateway(c)
+	if err != nil {
+		return nil, err
+	}
+	mux.Handle("/v1/", h)
 
-	return genericWrappedHandler
+	corsWrappedHandler := wrapHandlerWithCors(mux, props)
+	commonWrappedHandler := wrapHandlerWithCommonFuncs(corsWrappedHandler, c, props)
+
+	return commonWrappedHandler, nil
 }
 
-func handleGrpcGateway(c *Controller) http.Handler {
+func handleGrpcGateway(c *Controller) (http.Handler, error) {
 	// Register*ServiceHandlerServer methods ignore the passed in ctx.  Using the baseContext now just in case this changes
 	// in the future, at which point we'll want to be using the baseContext.
 	ctx := c.baseContext
-	mux := runtime.NewServeMux()
-	services.RegisterHostCatalogServiceHandlerServer(ctx, mux, &host_catalogs.Service{})
-	services.RegisterHostSetServiceHandlerServer(ctx, mux, &host_sets.Service{})
-	services.RegisterHostServiceHandlerServer(ctx, mux, &hosts.Service{})
-	services.RegisterProjectServiceHandlerServer(ctx, mux, projects.NewService(c.IamRepo))
+	mux := runtime.NewServeMux(runtime.WithProtoErrorHandler(handlers.ErrorHandler(c.logger)))
+	hcs, err := host_catalogs.NewService(c.StaticHostRepoFn)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create host catalog handler service: %w", err)
+	}
+	if err := services.RegisterHostCatalogServiceHandlerServer(ctx, mux, hcs); err != nil {
+		return nil, fmt.Errorf("failed to register host catalog service handler: %w", err)
+	}
+	if err := services.RegisterHostSetServiceHandlerServer(ctx, mux, &host_sets.Service{}); err != nil {
+		return nil, fmt.Errorf("failed to register host set service handler: %w", err)
+	}
+	if err := services.RegisterHostServiceHandlerServer(ctx, mux, &hosts.Service{}); err != nil {
+		return nil, fmt.Errorf("failed to register host service handler: %w", err)
+	}
+	if err := services.RegisterProjectServiceHandlerServer(ctx, mux, projects.NewService(c.IamRepoFn)); err != nil {
+		return nil, fmt.Errorf("failed to register project service handler: %w", err)
+	}
 
-	return mux
+	return mux, nil
 }
 
-func wrapGenericHandler(h http.Handler, c *Controller, props HandlerProperties) http.Handler {
+func wrapHandlerWithCommonFuncs(h http.Handler, c *Controller, props HandlerProperties) http.Handler {
 	var maxRequestDuration time.Duration
 	var maxRequestSize int64
 	if props.ListenerConfig != nil {
@@ -90,6 +127,86 @@ func wrapGenericHandler(h http.Handler, c *Controller, props HandlerProperties) 
 
 		h.ServeHTTP(w, r)
 		cancelFunc()
+		return
+	})
+}
+
+func wrapHandlerWithCors(h http.Handler, props HandlerProperties) http.Handler {
+	allowedMethods := []string{
+		http.MethodDelete,
+		http.MethodGet,
+		http.MethodOptions,
+		http.MethodPost,
+		http.MethodPatch,
+	}
+
+	allowedOrigins := props.ListenerConfig.CorsAllowedOrigins
+
+	allowedHeaders := append([]string{
+		"Content-Type",
+		"X-Requested-With",
+		"Authorization",
+	}, props.ListenerConfig.CorsAllowedHeaders...)
+
+	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+		if !props.ListenerConfig.CorsEnabled {
+			h.ServeHTTP(w, req)
+			return
+		}
+
+		origin := req.Header.Get("Origin")
+
+		if origin == "" {
+			// Serve directly
+			h.ServeHTTP(w, req)
+			return
+		}
+
+		// Check origin
+		var valid bool
+		switch {
+		case len(allowedOrigins) == 0:
+			// not valid
+
+		case len(allowedOrigins) == 1 && allowedOrigins[0] == "*":
+			valid = true
+
+		default:
+			valid = strutil.StrListContains(allowedOrigins, origin)
+		}
+		if !valid {
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusForbidden)
+
+			err := &api.Error{
+				Status: api.Int(http.StatusForbidden),
+				Code:   api.String("origin forbidden"),
+			}
+
+			enc := json.NewEncoder(w)
+			enc.Encode(err)
+			return
+		}
+
+		if req.Method == http.MethodOptions &&
+			!strutil.StrListContains(allowedMethods, req.Header.Get("Access-Control-Request-Method")) {
+			w.WriteHeader(http.StatusMethodNotAllowed)
+			return
+		}
+
+		w.Header().Set("Access-Control-Allow-Origin", origin)
+		w.Header().Set("Vary", "Origin")
+
+		// Apply headers for preflight requests
+		if req.Method == http.MethodOptions {
+			w.Header().Set("Access-Control-Allow-Methods", strings.Join(allowedMethods, ", "))
+			w.Header().Set("Access-Control-Allow-Headers", strings.Join(allowedHeaders, ", "))
+			w.Header().Set("Access-Control-Max-Age", "300")
+			w.WriteHeader(http.StatusNoContent)
+			return
+		}
+
+		h.ServeHTTP(w, req)
 		return
 	})
 }

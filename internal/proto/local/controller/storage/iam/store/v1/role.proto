@@ -3,7 +3,7 @@ syntax = "proto3";
 package controller.storage.iam.store.v1;
 option go_package = "github.com/hashicorp/watchtower/internal/iam/store;store";
 
-import "controller/storage/iam/store/v1/timestamp.proto";
+import "controller/storage/timestamp/v1/timestamp.proto";
 import "controller/storage/iam/store/v1/scope.proto";
 
 message Role {
@@ -13,11 +13,11 @@ message Role {
 
   // create_time from the RDBMS
   // @inject_tag: `gorm:"default:current_timestamp"`
-  Timestamp create_time = 2;
+  timestamp.v1.Timestamp create_time = 2;
 
   // update_time from the RDBMS
   // @inject_tag: `gorm:"default:current_timestamp"`
-  Timestamp update_time = 3;
+  timestamp.v1.Timestamp update_time = 3;
 
   // name is the optional friendly name used to
   // access the Role via an API
@@ -38,7 +38,7 @@ message Role {
 message UserRole {
   // create_time from the RDBMS
   // @inject_tag: `gorm:"default:current_timestamp"`
-  Timestamp create_time = 1;
+  timestamp.v1.Timestamp create_time = 1;
 
   // role_id is the role of this principal.
   string role_id = 2;
@@ -50,7 +50,7 @@ message UserRole {
 message GroupRole {
   // create_time from the RDBMS
   // @inject_tag: `gorm:"default:current_timestamp"`
-  Timestamp create_time = 1;
+  timestamp.v1.Timestamp create_time = 1;
 
   // role_id is the role of this principal.
   string role_id = 2;
@@ -62,7 +62,7 @@ message GroupRole {
 message AssignedRoleView {
   // create_time from the RDBMS
   // @inject_tag: `gorm:"default:current_timestamp"`
-  Timestamp create_time = 1;
+  timestamp.v1.Timestamp create_time = 1;
 
   // role_id is the role of this principal.
   string role_id = 2;

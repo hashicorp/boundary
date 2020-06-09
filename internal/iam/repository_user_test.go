@@ -3,11 +3,14 @@ package iam
 import (
 	"context"
 	"errors"
+	"fmt"
+	"strings"
 	"testing"
 	"time"
 
 	"github.com/hashicorp/go-uuid"
 	"github.com/hashicorp/watchtower/internal/db"
+	dbassert "github.com/hashicorp/watchtower/internal/db/assert"
 	"github.com/hashicorp/watchtower/internal/oplog"
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/protobuf/proto"
@@ -34,8 +37,8 @@ func TestRepository_CreateUser(t *testing.T) {
 	org, _ := TestScopes(t, conn)
 
 	type args struct {
-		orgId string
-		opt   []Option
+		user *User
+		opt  []Option
 	}
 	tests := []struct {
 		name       string
@@ -47,28 +50,38 @@ func TestRepository_CreateUser(t *testing.T) {
 		{
 			name: "valid",
 			args: args{
-				orgId: org.PublicId,
-				opt:   []Option{WithName("valid" + id), WithDescription(id)},
+				user: func() *User {
+					u, err := NewUser(org.PublicId, WithName("valid"+id), WithDescription(id))
+					assert.NoError(t, err)
+					return u
+				}(),
 			},
 			wantErr: false,
 		},
 		{
 			name: "bad-scope-id",
 			args: args{
-				orgId: id,
+				user: func() *User {
+					u, err := NewUser(id)
+					assert.NoError(t, err)
+					return u
+				}(),
 			},
-			wantErr:    false,
-			wantErrMsg: "",
+			wantErr:    true,
+			wantErrMsg: "create user: scope not found for",
 		},
 		{
 			name: "dup-name",
 			args: args{
-				orgId: id,
-				opt:   []Option{WithName("dup-name" + id)},
+				user: func() *User {
+					u, err := NewUser(org.PublicId, WithName("dup-name"+id))
+					assert.NoError(t, err)
+					return u
+				}(),
 			},
 			wantDup:    true,
 			wantErr:    true,
-			wantErrMsg: `failed to create user: error creating: pq: duplicate key value violates unique constraint "iam_user_name_scope_id_key"`,
+			wantErrMsg: "create user: user %s already exists in organization %s",
 		},
 	}
 	for _, tt := range tests {
@@ -76,23 +89,20 @@ func TestRepository_CreateUser(t *testing.T) {
 			assert := assert.New(t)
 
 			if tt.wantDup {
-				dup, err := NewUser(org.PublicId, tt.args.opt...)
-				assert.NoError(err)
-				dup, err = repo.CreateUser(context.Background(), dup, tt.args.opt...)
+				dup, err := repo.CreateUser(context.Background(), tt.args.user, tt.args.opt...)
 				assert.NoError(err)
 				assert.NotNil(dup)
 			}
-			u, err := NewUser(org.PublicId, tt.args.opt...)
-			pubId := u.PublicId
-			assert.NoError(err)
-			u, err = repo.CreateUser(context.Background(), u, tt.args.opt...)
+			u, err := repo.CreateUser(context.Background(), tt.args.user, tt.args.opt...)
 			if tt.wantErr {
 				assert.Error(err)
 				assert.Nil(u)
-				assert.Equal(tt.wantErrMsg, err.Error())
-				err = db.TestVerifyOplog(t, rw, pubId, db.WithOperation(oplog.OpType_OP_TYPE_CREATE), db.WithCreateNotBefore(10*time.Second))
-				assert.Error(err)
-				assert.Equal("record not found", err.Error())
+				switch tt.name {
+				case "dup-name":
+					assert.Equal(fmt.Sprintf(tt.wantErrMsg, "dup-name"+id, org.PublicId), err.Error())
+				default:
+					assert.True(strings.HasPrefix(err.Error(), tt.wantErrMsg))
+				}
 				return
 			}
 			assert.NoError(err)
@@ -128,6 +138,7 @@ func TestRepository_UpdateUser(t *testing.T) {
 	a.NoError(err)
 
 	org, proj := TestScopes(t, conn)
+	pubId := func(s string) *string { return &s }
 
 	type args struct {
 		name           string
@@ -135,13 +146,16 @@ func TestRepository_UpdateUser(t *testing.T) {
 		fieldMaskPaths []string
 		opt            []Option
 		ScopeId        string
+		PublicId       *string
 	}
 	tests := []struct {
 		name           string
+		newUserOpts    []Option
 		args           args
 		wantRowsUpdate int
 		wantErr        bool
 		wantErrMsg     string
+		wantIsErr      error
 		wantDup        bool
 	}{
 		{
@@ -155,13 +169,116 @@ func TestRepository_UpdateUser(t *testing.T) {
 			wantRowsUpdate: 1,
 		},
 		{
-			name: "proj-scope-id-no-mask",
+			name: "valid-no-op",
 			args: args{
-				name:    "proj-scope-id" + id,
-				ScopeId: proj.PublicId,
+				name:           "valid-no-op" + id,
+				fieldMaskPaths: []string{"Name"},
+				ScopeId:        org.PublicId,
+			},
+			newUserOpts:    []Option{WithName("valid-no-op" + id)},
+			wantErr:        false,
+			wantRowsUpdate: 1,
+		},
+		{
+			name: "not-found",
+			args: args{
+				name:           "not-found" + id,
+				fieldMaskPaths: []string{"Name"},
+				ScopeId:        org.PublicId,
+				PublicId:       func() *string { s := "1"; return &s }(),
+			},
+			wantErr:        true,
+			wantRowsUpdate: 0,
+			wantErrMsg:     "update user: update: lookup error lookup after write: failed record not found for 1",
+			wantIsErr:      db.ErrRecordNotFound,
+		},
+		{
+			name: "null-name",
+			args: args{
+				name:           "",
+				fieldMaskPaths: []string{"Name"},
+				ScopeId:        org.PublicId,
+			},
+			newUserOpts:    []Option{WithName("null-name" + id)},
+			wantErr:        false,
+			wantRowsUpdate: 1,
+		},
+		{
+			name: "null-description",
+			args: args{
+				name:           "",
+				fieldMaskPaths: []string{"Description"},
+				ScopeId:        org.PublicId,
+			},
+			newUserOpts:    []Option{WithDescription("null-description" + id)},
+			wantErr:        false,
+			wantRowsUpdate: 1,
+		},
+		{
+			name: "empty-field-mask",
+			args: args{
+				name:           "valid" + id,
+				fieldMaskPaths: []string{},
+				ScopeId:        org.PublicId,
+			},
+			wantErr:        true,
+			wantRowsUpdate: 0,
+			wantErrMsg:     "update user: empty field mask",
+		},
+		{
+			name: "nil-fieldmask",
+			args: args{
+				name:           "valid" + id,
+				fieldMaskPaths: nil,
+				ScopeId:        org.PublicId,
+			},
+			wantErr:        true,
+			wantRowsUpdate: 0,
+			wantErrMsg:     "update user: empty field mask",
+		},
+		{
+			name: "read-only-fields",
+			args: args{
+				name:           "valid" + id,
+				fieldMaskPaths: []string{"CreateTime"},
+				ScopeId:        org.PublicId,
+			},
+			wantErr:        true,
+			wantRowsUpdate: 0,
+			wantErrMsg:     "update user: field: CreateTime: invalid field mask",
+		},
+		{
+			name: "unknown-fields",
+			args: args{
+				name:           "valid" + id,
+				fieldMaskPaths: []string{"Alice"},
+				ScopeId:        org.PublicId,
+			},
+			wantErr:        true,
+			wantRowsUpdate: 0,
+			wantErrMsg:     "update user: field: Alice: invalid field mask",
+		},
+		{
+			name: "no-public-id",
+			args: args{
+				name:           "valid" + id,
+				fieldMaskPaths: []string{"Name"},
+				ScopeId:        org.PublicId,
+				PublicId:       pubId(""),
+			},
+			wantErr:        true,
+			wantErrMsg:     "update user: missing user public id invalid parameter",
+			wantRowsUpdate: 0,
+		},
+		{
+			name: "proj-scope-id",
+			args: args{
+				name:           "proj-scope-id" + id,
+				fieldMaskPaths: []string{"ScopeId"},
+				ScopeId:        proj.PublicId,
 			},
 			wantErr:    true,
-			wantErrMsg: "failed to update user: error on update not allowed to change a resource's scope",
+			wantErrMsg: "update user: field: ScopeId: invalid field mask",
 		},
 		{
 			name: "empty-scope-id-with-name-mask",
@@ -182,23 +299,26 @@ func TestRepository_UpdateUser(t *testing.T) {
 			},
 			wantErr:    true,
 			wantDup:    true,
-			wantErrMsg: `failed to update user: error updating: pq: duplicate key value violates unique constraint "iam_user_name_scope_id_key"`,
+			wantErrMsg: `update user: user %s already exists in organization %s`,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			assert := assert.New(t)
 			if tt.wantDup {
-				u := TestUser(t, conn, org.PublicId)
+				u := TestUser(t, conn, org.PublicId, tt.newUserOpts...)
 				u.Name = tt.args.name
 				_, _, err := repo.UpdateUser(context.Background(), u, tt.args.fieldMaskPaths, tt.args.opt...)
 				assert.NoError(err)
 			}
 
-			u := TestUser(t, conn, org.PublicId)
+			u := TestUser(t, conn, org.PublicId, tt.newUserOpts...)
 
 			updateUser := allocUser()
 			updateUser.PublicId = u.PublicId
+			if tt.args.PublicId != nil {
+				updateUser.PublicId = *tt.args.PublicId
+			}
 			updateUser.ScopeId = tt.args.ScopeId
 			updateUser.Name = tt.args.name
 			updateUser.Description = tt.args.description
@@ -206,9 +326,17 @@ func TestRepository_UpdateUser(t *testing.T) {
 			userAfterUpdate, updatedRows, err := repo.UpdateUser(context.Background(), &updateUser, tt.args.fieldMaskPaths, tt.args.opt...)
 			if tt.wantErr {
 				assert.Error(err)
+				if tt.wantIsErr != nil {
+					assert.True(errors.Is(err, db.ErrRecordNotFound))
+				}
 				assert.Nil(userAfterUpdate)
 				assert.Equal(0, updatedRows)
-				assert.Equal(tt.wantErrMsg, err.Error())
+				switch tt.name {
+				case "dup-name":
+					assert.Equal(fmt.Sprintf(tt.wantErrMsg, "dup-name"+id, org.PublicId), err.Error())
+				default:
+					assert.Equal(tt.wantErrMsg, err.Error())
+				}
 				err = db.TestVerifyOplog(t, rw, u.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_UPDATE), db.WithCreateNotBefore(10*time.Second))
 				assert.Error(err)
 				assert.Equal("record not found", err.Error())
@@ -220,6 +348,16 @@ func TestRepository_UpdateUser(t *testing.T) {
 			foundUser, err := repo.LookupUser(context.Background(), u.PublicId)
 			assert.NoError(err)
 			assert.True(proto.Equal(userAfterUpdate, foundUser))
+
+			conn.LogMode(true)
+			dbassert := dbassert.New(t, rw)
+			if tt.args.name == "" {
+				dbassert.IsNull(foundUser, "name")
+			}
+			if tt.args.description == "" {
+				dbassert.IsNull(foundUser, "description")
+			}
+			conn.LogMode(false)
 
 			err = db.TestVerifyOplog(t, rw, u.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_UPDATE), db.WithCreateNotBefore(10*time.Second))
 			assert.NoError(err)
@@ -273,7 +411,7 @@ func TestRepository_DeleteUser(t *testing.T) {
 			},
 			wantRowsDeleted: 0,
 			wantErr:         true,
-			wantErrMsg:      "you cannot delete a user with an empty public id",
+			wantErrMsg:      "delete user: missing public id nil parameter",
 		},
 		{
 			name: "not-found",
@@ -281,12 +419,15 @@ func TestRepository_DeleteUser(t *testing.T) {
 				user: func() *User {
 					u, err := NewUser(org.PublicId)
 					a.NoError(err)
+					id, err := newUserId()
+					a.NoError(err)
+					u.PublicId = id
 					return u
 				}(),
 			},
-			wantRowsDeleted: 0,
-			wantErr:         false,
-			wantErrMsg:      "",
+			wantRowsDeleted: 1,
+			wantErr:         true,
+			wantErrMsg:      "delete user: failed record not found for",
 		},
 	}
 	for _, tt := range tests {
@@ -296,7 +437,7 @@ func TestRepository_DeleteUser(t *testing.T) {
 			if tt.wantErr {
 				assert.Error(err)
 				assert.Equal(0, deletedRows)
-				assert.Equal(tt.wantErrMsg, err.Error())
+				assert.True(strings.HasPrefix(err.Error(), tt.wantErrMsg))
 				err = db.TestVerifyOplog(t, rw, tt.args.user.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_DELETE), db.WithCreateNotBefore(10*time.Second))
 				assert.Error(err)
 				assert.Equal("record not found", err.Error())
@@ -310,7 +451,7 @@ func TestRepository_DeleteUser(t *testing.T) {
 			assert.True(errors.Is(err, db.ErrRecordNotFound))
 
 			err = db.TestVerifyOplog(t, rw, tt.args.user.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_DELETE), db.WithCreateNotBefore(10*time.Second))
-			assert.Error(err)
+			assert.NoError(err)
 		})
 	}
 }

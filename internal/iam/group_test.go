@@ -112,7 +112,7 @@ func Test_GroupCreate(t *testing.T) {
 		assert.NoError(err)
 		err = w.Create(context.Background(), grp)
 		assert.Error(err)
-		assert.Equal("error on create scope is not found", err.Error())
+		assert.Equal("create: vet for write failed scope is not found", err.Error())
 	})
 }
 func Test_GroupUpdate(t *testing.T) {
@@ -164,7 +164,7 @@ func Test_GroupUpdate(t *testing.T) {
 				ScopeId:        proj.PublicId,
 			},
 			wantErr:    true,
-			wantErrMsg: "error on update not allowed to change a resource's scope",
+			wantErrMsg: "update: vet for write failed not allowed to change a resource's scope",
 		},
 		{
 			name: "proj-scope-id-not-in-mask",
@@ -195,7 +195,7 @@ func Test_GroupUpdate(t *testing.T) {
 			},
 			wantErr:    true,
 			wantDup:    true,
-			wantErrMsg: `error updating: pq: duplicate key value violates unique constraint "iam_group_name_scope_id_key"`,
+			wantErrMsg: `update: failed pq: duplicate key value violates unique constraint "iam_group_name_scope_id_key"`,
 		},
 	}
 	for _, tt := range tests {
@@ -204,7 +204,7 @@ func Test_GroupUpdate(t *testing.T) {
 			if tt.wantDup {
 				grp := TestGroup(t, conn, org.PublicId)
 				grp.Name = tt.args.name
-				_, err := rw.Update(context.Background(), grp, tt.args.fieldMaskPaths)
+				_, err := rw.Update(context.Background(), grp, tt.args.fieldMaskPaths, nil)
 				assert.NoError(err)
 			}
 
@@ -216,7 +216,7 @@ func Test_GroupUpdate(t *testing.T) {
 			updateGrp.Name = tt.args.name
 			updateGrp.Description = tt.args.description
 
-			updatedRows, err := rw.Update(context.Background(), &updateGrp, tt.args.fieldMaskPaths)
+			updatedRows, err := rw.Update(context.Background(), &updateGrp, tt.args.fieldMaskPaths, nil)
 			if tt.wantErr {
 				assert.Error(err)
 				assert.Equal(0, updatedRows)

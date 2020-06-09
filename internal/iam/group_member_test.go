@@ -28,10 +28,7 @@ func TestGroup_AddUser(t *testing.T) {
 		assert.NoError(err)
 		assert.NotEmpty(s.PublicId)
 
-		user, err := NewUser(s.PublicId)
-		assert.NoError(err)
-		err = w.Create(context.Background(), user)
-		assert.NoError(err)
+		user := TestUser(t, conn, s.PublicId)
 
 		grp, err := NewGroup(s.PublicId, WithDescription("this is a test group"))
 		assert.NoError(err)
@@ -72,10 +69,7 @@ func Test_NewGroupMember(t *testing.T) {
 		assert.NoError(err)
 		assert.NotEmpty(s.PublicId)
 
-		user, err := NewUser(s.PublicId)
-		assert.NoError(err)
-		err = w.Create(context.Background(), user)
-		assert.NoError(err)
+		user := TestUser(t, conn, s.PublicId)
 
 		grp, err := NewGroup(s.PublicId, WithDescription("this is a test group"))
 		assert.NoError(err)
@@ -136,7 +130,7 @@ func Test_NewGroupMember(t *testing.T) {
 		assert.NotNil(gm)
 		err = w.Create(context.Background(), gm)
 		assert.Error(err)
-		assert.Equal(err.Error(), `error creating: pq: insert or update on table "iam_group_member_user" violates foreign key constraint "iam_group_member_user_member_id_fkey"`)
+		assert.Equal(err.Error(), `create: failed pq: insert or update on table "iam_group_member_user" violates foreign key constraint "iam_group_member_user_member_id_fkey"`)
 
 	})
 	t.Run("nil-user", func(t *testing.T) {

@@ -40,10 +40,7 @@ func Test_UserGrants(t *testing.T) {
 		assert.NoError(err)
 		assert.NotEqual(g.PublicId, "")
 
-		user, err := NewUser(org.PublicId)
-		assert.NoError(err)
-		err = w.Create(context.Background(), user)
-		assert.NoError(err)
+		user := TestUser(t, conn, org.PublicId)
 		uRole, err := NewAssignedRole(role, user)
 		assert.NoError(err)
 		assert.NotNil(uRole)

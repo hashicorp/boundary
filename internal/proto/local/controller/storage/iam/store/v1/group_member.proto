@@ -3,13 +3,13 @@ syntax = "proto3";
 package controller.storage.iam.store.v1;
 option go_package = "github.com/hashicorp/watchtower/internal/iam/store;store";
 
-import "controller/storage/iam/store/v1/timestamp.proto";
+import "controller/storage/timestamp/v1/timestamp.proto";
 import "controller/storage/iam/store/v1/scope.proto";
 
 message GroupMemberUser {
   // create_time from the RDBMS
   // @inject_tag: `gorm:"default:current_timestamp"`
-  Timestamp create_time = 1;
+  timestamp.v1.Timestamp create_time = 1;
 
   // group_id is the Group of this GroupMemberUser.
   // @inject_tag: gorm:"primary_key"
@@ -22,7 +22,7 @@ message GroupMemberUser {
 message GroupMemberView {
   // create_time from the RDBMS
   // @inject_tag: `gorm:"default:current_timestamp"`
-  Timestamp create_time = 1;
+  timestamp.v1.Timestamp create_time = 1;
 
   // group_id is the Group of this GroupMember.
   string group_id = 2;
