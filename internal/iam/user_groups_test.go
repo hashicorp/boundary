@@ -11,24 +11,19 @@ import (
 func Test_UserGroups(t *testing.T) {
 	t.Parallel()
 	cleanup, conn, _ := db.TestSetup(t, "postgres")
-	defer cleanup()
-	assert := assert.New(t)
-	defer conn.Close()
-
+	defer func() {
+		err := cleanup()
+		assert.NoError(t, err)
+		err = conn.Close()
+		assert.NoError(t, err)
+	}()
 	org, _ := TestScopes(t, conn)
-
 	t.Run("valid", func(t *testing.T) {
+		assert := assert.New(t)
 		w := db.New(conn)
 		user := TestUser(t, conn, org.PublicId)
 
-		grp, err := NewGroup(org.PublicId, WithDescription("this is a test group"))
-		assert.NoError(err)
-		assert.NotNil(grp)
-		assert.Equal(grp.Description, "this is a test group")
-		assert.Equal(org.PublicId, grp.ScopeId)
-		err = w.Create(context.Background(), grp)
-		assert.NoError(err)
-		assert.NotEqual(grp.PublicId, "")
+		grp := TestGroup(t, conn, org.PublicId)
 
 		gm, err := grp.AddUser(user.PublicId)
 		assert.NoError(err)

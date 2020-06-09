@@ -12,33 +12,17 @@ func TestGroup_AddUser(t *testing.T) {
 	t.Parallel()
 	cleanup, conn, _ := db.TestSetup(t, "postgres")
 	defer func() {
-		if err := cleanup(); err != nil {
-			t.Error(err)
-		}
+		err := cleanup()
+		assert.NoError(t, err)
+		err = conn.Close()
+		assert.NoError(t, err)
 	}()
-	assert := assert.New(t)
-	defer conn.Close()
-
 	t.Run("valid", func(t *testing.T) {
+		assert := assert.New(t)
 		w := db.New(conn)
-		s, err := NewOrganization()
-		assert.NoError(err)
-		assert.NotNil(s.Scope != nil)
-		err = w.Create(context.Background(), s)
-		assert.NoError(err)
-		assert.NotEmpty(s.PublicId)
-
-		user := TestUser(t, conn, s.PublicId)
-
-		grp, err := NewGroup(s.PublicId, WithDescription("this is a test group"))
-		assert.NoError(err)
-		assert.NotNil(grp)
-		assert.Equal(grp.Description, "this is a test group")
-		assert.Equal(s.PublicId, grp.ScopeId)
-		err = w.Create(context.Background(), grp)
-		assert.NoError(err)
-		assert.NotEmpty(grp.PublicId)
-
+		org, _ := TestScopes(t, conn)
+		user := TestUser(t, conn, org.PublicId)
+		grp := TestGroup(t, conn, org.PublicId)
 		gm, err := grp.AddUser(user.PublicId)
 		assert.NoError(err)
 		assert.NotNil(gm)
@@ -53,32 +37,17 @@ func Test_NewGroupMember(t *testing.T) {
 	t.Parallel()
 	cleanup, conn, _ := db.TestSetup(t, "postgres")
 	defer func() {
-		if err := cleanup(); err != nil {
-			t.Error(err)
-		}
+		err := cleanup()
+		assert.NoError(t, err)
+		err = conn.Close()
+		assert.NoError(t, err)
 	}()
-	assert := assert.New(t)
-	defer conn.Close()
-
 	t.Run("valid", func(t *testing.T) {
+		assert := assert.New(t)
 		w := db.New(conn)
-		s, err := NewOrganization()
-		assert.NoError(err)
-		assert.NotNil(s.Scope != nil)
-		err = w.Create(context.Background(), s)
-		assert.NoError(err)
-		assert.NotEmpty(s.PublicId)
-
+		s := testOrg(t, conn, "", "")
 		user := TestUser(t, conn, s.PublicId)
-
-		grp, err := NewGroup(s.PublicId, WithDescription("this is a test group"))
-		assert.NoError(err)
-		assert.NotNil(grp)
-		assert.Equal(grp.Description, "this is a test group")
-		assert.Equal(s.PublicId, grp.ScopeId)
-		err = w.Create(context.Background(), grp)
-		assert.NoError(err)
-		assert.NotEmpty(grp.PublicId)
+		grp := TestGroup(t, conn, s.PublicId)
 
 		gm, err := grp.AddUser(user.PublicId)
 		assert.NoError(err)
@@ -101,13 +70,9 @@ func Test_NewGroupMember(t *testing.T) {
 		assert.Equal(0, len(members))
 	})
 	t.Run("bad-type", func(t *testing.T) {
+		assert := assert.New(t)
 		w := db.New(conn)
-		s, err := NewOrganization()
-		assert.NoError(err)
-		assert.NotNil(s.Scope != nil)
-		err = w.Create(context.Background(), s)
-		assert.NoError(err)
-		assert.NotEmpty(s.PublicId)
+		s := testOrg(t, conn, "", "")
 
 		role, err := NewRole(s.PublicId)
 		assert.NoError(err)
@@ -117,14 +82,7 @@ func Test_NewGroupMember(t *testing.T) {
 		assert.NoError(err)
 		assert.NotEmpty(role.PublicId)
 
-		grp, err := NewGroup(s.PublicId)
-		assert.NoError(err)
-		assert.NotNil(grp)
-		assert.Equal(s.PublicId, grp.ScopeId)
-		err = w.Create(context.Background(), grp)
-		assert.NoError(err)
-		assert.NotEmpty(grp.PublicId)
-
+		grp := TestGroup(t, conn, s.PublicId)
 		gm, err := grp.AddUser(role.PublicId)
 		assert.NoError(err)
 		assert.NotNil(gm)
@@ -134,21 +92,9 @@ func Test_NewGroupMember(t *testing.T) {
 
 	})
 	t.Run("nil-user", func(t *testing.T) {
-		w := db.New(conn)
-		s, err := NewOrganization()
-		assert.NoError(err)
-		assert.NotNil(s.Scope != nil)
-		err = w.Create(context.Background(), s)
-		assert.NoError(err)
-		assert.NotEmpty(s.PublicId)
-
-		grp, err := NewGroup(s.PublicId)
-		assert.NoError(err)
-		assert.NotNil(grp)
-		assert.Equal(s.PublicId, grp.ScopeId)
-		err = w.Create(context.Background(), grp)
-		assert.NoError(err)
-		assert.NotEmpty(grp.PublicId)
+		assert := assert.New(t)
+		s := testOrg(t, conn, "", "")
+		grp := TestGroup(t, conn, s.PublicId)
 
 		gm, err := grp.AddUser("")
 		assert.Error(err)

@@ -17,13 +17,12 @@ func TestRepository_CreateGroup(t *testing.T) {
 	t.Parallel()
 	cleanup, conn, _ := db.TestSetup(t, "postgres")
 	defer func() {
-		if err := cleanup(); err != nil {
-			t.Error(err)
-		}
+		err := cleanup()
+		assert.NoError(t, err)
+		err = conn.Close()
+		assert.NoError(t, err)
 	}()
 	a := assert.New(t)
-	defer conn.Close()
-
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
 	repo, err := NewRepository(rw, rw, wrapper)
@@ -113,13 +112,12 @@ func TestRepository_UpdateGroup(t *testing.T) {
 	t.Parallel()
 	cleanup, conn, _ := db.TestSetup(t, "postgres")
 	defer func() {
-		if err := cleanup(); err != nil {
-			t.Error(err)
-		}
+		err := cleanup()
+		assert.NoError(t, err)
+		err = conn.Close()
+		assert.NoError(t, err)
 	}()
 	a := assert.New(t)
-	defer conn.Close()
-
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
 	repo, err := NewRepository(rw, rw, wrapper)
@@ -231,13 +229,12 @@ func TestRepository_DeleteGroup(t *testing.T) {
 	t.Parallel()
 	cleanup, conn, _ := db.TestSetup(t, "postgres")
 	defer func() {
-		if err := cleanup(); err != nil {
-			t.Error(err)
-		}
+		err := cleanup()
+		assert.NoError(t, err)
+		err = conn.Close()
+		assert.NoError(t, err)
 	}()
 	a := assert.New(t)
-	defer conn.Close()
-
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
 	repo, err := NewRepository(rw, rw, wrapper)
@@ -279,7 +276,10 @@ func TestRepository_DeleteGroup(t *testing.T) {
 			name: "not-found",
 			args: args{
 				group: func() *Group {
+					id, err := newGroupId()
+					a.NoError(err)
 					g, err := NewGroup(org.PublicId)
+					g.PublicId = id
 					a.NoError(err)
 					return g
 				}(),

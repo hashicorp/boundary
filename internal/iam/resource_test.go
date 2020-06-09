@@ -13,13 +13,13 @@ func Test_LookupScope(t *testing.T) {
 	t.Parallel()
 	cleanup, conn, _ := db.TestSetup(t, "postgres")
 	defer func() {
-		if err := cleanup(); err != nil {
-			t.Error(err)
-		}
+		err := cleanup()
+		assert.NoError(t, err)
+		err = conn.Close()
+		assert.NoError(t, err)
 	}()
-	assert := assert.New(t)
-	defer conn.Close()
 	t.Run("valid-scope", func(t *testing.T) {
+		assert := assert.New(t)
 		w := db.New(conn)
 		org, _ := TestScopes(t, conn)
 		user := TestUser(t, conn, org.PublicId)
@@ -35,6 +35,7 @@ func Test_LookupScope(t *testing.T) {
 		assert.True(proto.Equal(foundScope, org))
 	})
 	t.Run("bad-scope", func(t *testing.T) {
+		assert := assert.New(t)
 		w := db.New(conn)
 		org, _ := TestScopes(t, conn)
 		user := TestUser(t, conn, org.PublicId)

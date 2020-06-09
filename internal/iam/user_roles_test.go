@@ -11,12 +11,15 @@ import (
 func Test_UserRoles(t *testing.T) {
 	t.Parallel()
 	cleanup, conn, _ := db.TestSetup(t, "postgres")
-	defer cleanup()
-	assert := assert.New(t)
-	defer conn.Close()
+	defer func() {
+		err := cleanup()
+		assert.NoError(t, err)
+		err = conn.Close()
+		assert.NoError(t, err)
+	}()
 	org, _ := TestScopes(t, conn)
-
 	t.Run("valid", func(t *testing.T) {
+		assert := assert.New(t)
 		w := db.New(conn)
 		user := TestUser(t, conn, org.PublicId)
 

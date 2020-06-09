@@ -14,22 +14,15 @@ func Test_NewAssignedRole(t *testing.T) {
 	t.Parallel()
 	cleanup, conn, _ := db.TestSetup(t, "postgres")
 	defer func() {
-		if err := cleanup(); err != nil {
-			t.Error(err)
-		}
+		err := cleanup()
+		assert.NoError(t, err)
+		err = conn.Close()
+		assert.NoError(t, err)
 	}()
-	assert := assert.New(t)
-	defer conn.Close()
-
 	t.Run("valid", func(t *testing.T) {
+		assert := assert.New(t)
 		w := db.New(conn)
-		s, err := NewOrganization()
-		assert.NoError(err)
-		assert.NotNil(s.Scope != nil)
-		err = w.Create(context.Background(), s)
-		assert.NoError(err)
-		assert.NotEmpty(s.PublicId)
-
+		s := testOrg(t, conn, "", "")
 		user := TestUser(t, conn, s.PublicId)
 
 		role, err := NewRole(s.PublicId, WithDescription("this is a test role"))
@@ -51,14 +44,7 @@ func Test_NewAssignedRole(t *testing.T) {
 		assert.NotNil(uRole)
 		assert.Equal(uRole.GetPrincipalId(), user.PublicId)
 
-		grp, err := NewGroup(s.PublicId, WithDescription("this is a test group"))
-		assert.NoError(err)
-		assert.NotNil(grp)
-		assert.Equal(grp.Description, "this is a test group")
-		assert.Equal(s.PublicId, grp.ScopeId)
-		err = w.Create(context.Background(), grp)
-		assert.NoError(err)
-		assert.NotEmpty(grp.PublicId)
+		grp := TestGroup(t, conn, s.PublicId)
 
 		gRole, err := NewAssignedRole(role, grp)
 		assert.NoError(err)
@@ -71,21 +57,10 @@ func Test_NewAssignedRole(t *testing.T) {
 		assert.Equal(gRole.GetPrincipalId(), grp.PublicId)
 	})
 	t.Run("bad-resource-type", func(t *testing.T) {
+		assert := assert.New(t)
 		w := db.New(conn)
-		s, err := NewOrganization()
-		assert.NoError(err)
-		assert.NotNil(s.Scope != nil)
-		err = w.Create(context.Background(), s)
-		assert.NoError(err)
-		assert.NotEmpty(s.PublicId)
-
-		secondScope, err := NewOrganization()
-		assert.NoError(err)
-		assert.NotNil(secondScope.Scope)
-		err = w.Create(context.Background(), secondScope)
-		assert.NoError(err)
-		assert.NotEmpty(secondScope.PublicId)
-
+		s := testOrg(t, conn, "", "")
+		secondScope := testOrg(t, conn, "", "")
 		role, err := NewRole(s.PublicId, WithDescription("this is a test role"))
 		assert.NoError(err)
 		assert.NotNil(role)
@@ -101,14 +76,8 @@ func Test_NewAssignedRole(t *testing.T) {
 		assert.Equal(err.Error(), "error unknown principal type for assigning role")
 	})
 	t.Run("nil-role", func(t *testing.T) {
-		w := db.New(conn)
-		s, err := NewOrganization()
-		assert.NoError(err)
-		assert.NotNil(s.Scope != nil)
-		err = w.Create(context.Background(), s)
-		assert.NoError(err)
-		assert.NotEmpty(s.PublicId)
-
+		assert := assert.New(t)
+		s := testOrg(t, conn, "", "")
 		user := TestUser(t, conn, s.PublicId)
 
 		uRole, err := NewAssignedRole(nil, user)
@@ -117,13 +86,9 @@ func Test_NewAssignedRole(t *testing.T) {
 		assert.Equal(err.Error(), "error role is nil for assigning role")
 	})
 	t.Run("nil-principal", func(t *testing.T) {
+		assert := assert.New(t)
 		w := db.New(conn)
-		s, err := NewOrganization()
-		assert.NoError(err)
-		assert.NotNil(s.Scope != nil)
-		err = w.Create(context.Background(), s)
-		assert.NoError(err)
-		assert.NotEmpty(s.PublicId)
+		s := testOrg(t, conn, "", "")
 
 		role, err := NewRole(s.PublicId, WithDescription("this is a test role"))
 		assert.NoError(err)
@@ -140,13 +105,9 @@ func Test_NewAssignedRole(t *testing.T) {
 		assert.Equal(err.Error(), "principal is nil for assigning role")
 	})
 	t.Run("nil-scope", func(t *testing.T) {
+		assert := assert.New(t)
 		w := db.New(conn)
-		s, err := NewOrganization()
-		assert.NoError(err)
-		assert.NotNil(s.Scope != nil)
-		err = w.Create(context.Background(), s)
-		assert.NoError(err)
-		assert.NotEmpty(s.PublicId)
+		s := testOrg(t, conn, "", "")
 
 		role, err := NewRole(s.PublicId, WithDescription("this is a test role"))
 		assert.NoError(err)

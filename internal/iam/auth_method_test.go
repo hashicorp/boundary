@@ -13,21 +13,15 @@ func Test_NewAuthMethod(t *testing.T) {
 	t.Parallel()
 	cleanup, conn, _ := db.TestSetup(t, "postgres")
 	defer func() {
-		if err := cleanup(); err != nil {
-			t.Error(err)
-		}
+		err := cleanup()
+		assert.NoError(t, err)
+		err = conn.Close()
+		assert.NoError(t, err)
 	}()
-	assert := assert.New(t)
-	defer conn.Close()
-
 	t.Run("valid", func(t *testing.T) {
+		assert := assert.New(t)
 		w := db.New(conn)
-		s, err := NewOrganization()
-		assert.NoError(err)
-		assert.NotNil(s.Scope != nil)
-		err = w.Create(context.Background(), s)
-		assert.NoError(err)
-		assert.NotEmpty(s.PublicId)
+		s := testOrg(t, conn, "", "")
 
 		meth, err := NewAuthMethod(s.PublicId, AuthUserPass)
 		assert.NoError(err)
@@ -38,6 +32,7 @@ func Test_NewAuthMethod(t *testing.T) {
 		assert.Equal(meth.Type, AuthUserPass.String())
 	})
 	t.Run("no-scope", func(t *testing.T) {
+		assert := assert.New(t)
 		meth, err := NewAuthMethod("", AuthUserPass)
 		assert.Error(err)
 		assert.Nil(meth)
@@ -49,21 +44,15 @@ func TestAuthMethod_GetScope(t *testing.T) {
 	t.Parallel()
 	cleanup, conn, _ := db.TestSetup(t, "postgres")
 	defer func() {
-		if err := cleanup(); err != nil {
-			t.Error(err)
-		}
+		err := cleanup()
+		assert.NoError(t, err)
+		err = conn.Close()
+		assert.NoError(t, err)
 	}()
-	assert := assert.New(t)
-	defer conn.Close()
-
 	t.Run("valid", func(t *testing.T) {
+		assert := assert.New(t)
 		w := db.New(conn)
-		s, err := NewOrganization()
-		assert.NoError(err)
-		assert.NotNil(s.Scope != nil)
-		err = w.Create(context.Background(), s)
-		assert.NoError(err)
-		assert.NotEmpty(s.PublicId)
+		s := testOrg(t, conn, "", "")
 
 		meth, err := NewAuthMethod(s.PublicId, AuthUserPass)
 		assert.NoError(err)
@@ -77,28 +66,21 @@ func TestAuthMethod_GetScope(t *testing.T) {
 		assert.NoError(err)
 		assert.Equal(scope.GetPublicId(), s.PublicId)
 	})
-
 }
 
 func TestAuthMethod_ResourceType(t *testing.T) {
 	t.Parallel()
 	cleanup, conn, _ := db.TestSetup(t, "postgres")
 	defer func() {
-		if err := cleanup(); err != nil {
-			t.Error(err)
-		}
+		err := cleanup()
+		assert.NoError(t, err)
+		err = conn.Close()
+		assert.NoError(t, err)
 	}()
-	assert := assert.New(t)
-	defer conn.Close()
-
 	t.Run("valid", func(t *testing.T) {
+		assert := assert.New(t)
 		w := db.New(conn)
-		s, err := NewOrganization()
-		assert.NoError(err)
-		assert.NotNil(s.Scope != nil)
-		err = w.Create(context.Background(), s)
-		assert.NoError(err)
-		assert.NotEmpty(s.PublicId)
+		s := testOrg(t, conn, "", "")
 
 		meth, err := NewAuthMethod(s.PublicId, AuthUserPass)
 		assert.NoError(err)
@@ -127,21 +109,15 @@ func TestAuthMethod_Clone(t *testing.T) {
 	t.Parallel()
 	cleanup, conn, _ := db.TestSetup(t, "postgres")
 	defer func() {
-		if err := cleanup(); err != nil {
-			t.Error(err)
-		}
+		err := cleanup()
+		assert.NoError(t, err)
+		err = conn.Close()
+		assert.NoError(t, err)
 	}()
-	assert := assert.New(t)
-	defer conn.Close()
-
 	t.Run("valid", func(t *testing.T) {
+		assert := assert.New(t)
 		w := db.New(conn)
-		s, err := NewOrganization()
-		assert.NoError(err)
-		assert.NotNil(s.Scope != nil)
-		err = w.Create(context.Background(), s)
-		assert.NoError(err)
-		assert.NotEmpty(s.PublicId)
+		s := testOrg(t, conn, "", "")
 
 		meth, err := NewAuthMethod(s.PublicId, AuthUserPass)
 		assert.NoError(err)
@@ -155,13 +131,9 @@ func TestAuthMethod_Clone(t *testing.T) {
 		assert.True(proto.Equal(cp.(*AuthMethod).AuthMethod, meth.AuthMethod))
 	})
 	t.Run("not-equal", func(t *testing.T) {
+		assert := assert.New(t)
 		w := db.New(conn)
-		s, err := NewOrganization()
-		assert.NoError(err)
-		assert.NotNil(s.Scope != nil)
-		err = w.Create(context.Background(), s)
-		assert.NoError(err)
-		assert.NotEmpty(s.PublicId)
+		s := testOrg(t, conn, "", "")
 
 		meth, err := NewAuthMethod(s.PublicId, AuthUserPass)
 		assert.NoError(err)

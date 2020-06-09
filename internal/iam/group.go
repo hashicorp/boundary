@@ -2,7 +2,6 @@ package iam
 
 import (
 	"context"
-	"errors"
 	"fmt"
 
 	"github.com/hashicorp/watchtower/internal/db"
@@ -10,7 +9,7 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-// Group is made up of members and can be assigned roles
+// Group is made up of principals which are scoped to an organization
 type Group struct {
 	*store.Group
 	tableName string `gorm:"-"`
@@ -22,24 +21,17 @@ var _ Clonable = (*Group)(nil)
 var _ db.VetForWriter = (*Group)(nil)
 
 // NewGroup creates a new in memory group with a scope (project/organization)
-// options include: withDescripion, WithName
+// and allowed options include: withDescripion, WithName
 func NewGroup(scopeId string, opt ...Option) (*Group, error) {
 	opts := getOpts(opt...)
-	withName := opts.withName
-	withDescription := opts.withDescription
 	if scopeId == "" {
-		return nil, errors.New("error organization id is unset for new group")
-	}
-	publicId, err := db.NewPublicId("g")
-	if err != nil {
-		return nil, fmt.Errorf("error generating public id %w for new group", err)
+		return nil, fmt.Errorf("new group: missing scope id %w", db.ErrInvalidParameter)
 	}
 	g := &Group{
 		Group: &store.Group{
-			PublicId:    publicId,
+			Name:        opts.withName,
+			Description: opts.withDescription,
 			ScopeId:     scopeId,
-			Name:        withName,
-			Description: withDescription,
 		},
 	}
 	return g, nil
@@ -63,7 +55,7 @@ func allocGroup() Group {
 // before it's written
 func (g *Group) VetForWrite(ctx context.Context, r db.Reader, opType db.OpType, opt ...db.Option) error {
 	if g.PublicId == "" {
-		return errors.New("error public id is empty string for group write")
+		return fmt.Errorf("group vet for write: missing public id: %w", db.ErrInvalidParameter)
 	}
 	if err := validateScopeForWrite(ctx, r, g, opType, opt...); err != nil {
 		return err
@@ -101,4 +93,14 @@ func (g *Group) SetTableName(n string) {
 	if n != "" {
 		g.tableName = n
 	}
+}
+
+const GroupPrefix = "g"
+
+func newGroupId() (string, error) {
+	id, err := db.NewPublicId(GroupPrefix)
+	if err != nil {
+		return "", fmt.Errorf("new group id: %w", err)
+	}
+	return id, nil
 }

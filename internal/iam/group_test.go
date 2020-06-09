@@ -6,10 +6,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/hashicorp/go-uuid"
 	"github.com/hashicorp/watchtower/internal/db"
 	"github.com/hashicorp/watchtower/internal/oplog"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -17,63 +17,65 @@ func TestNewGroup(t *testing.T) {
 	t.Parallel()
 	cleanup, conn, _ := db.TestSetup(t, "postgres")
 	defer func() {
-		if err := cleanup(); err != nil {
-			t.Error(err)
-		}
+		err := cleanup()
+		assert.NoError(t, err)
+		err = conn.Close()
+		assert.NoError(t, err)
 	}()
-	assert := assert.New(t)
-	defer conn.Close()
 	org, _ := TestScopes(t, conn)
-
-	id, err := uuid.GenerateUUID()
-	assert.NoError(err)
+	id := testId(t)
 
 	type args struct {
 		organizationPublicId string
 		opt                  []Option
 	}
 	tests := []struct {
-		name       string
-		args       args
-		wantErr    bool
-		wantErrMsg string
-		wantName   string
+		name            string
+		args            args
+		wantErr         bool
+		wantErrMsg      string
+		wantName        string
+		wantDescription string
 	}{
 		{
 			name: "valid",
 			args: args{
 				organizationPublicId: org.PublicId,
-				opt:                  []Option{WithName(id)},
+				opt:                  []Option{WithName(id), WithDescription(id)},
 			},
-			wantErr:  false,
-			wantName: id,
+			wantErr:         false,
+			wantName:        id,
+			wantDescription: id,
 		},
 		{
-			name: "valid-with-no-name",
+			name: "valid-with-no-options",
 			args: args{
 				organizationPublicId: org.PublicId,
 			},
 			wantErr: false,
 		},
 		{
-			name: "no-org",
+			name: "no-scope",
 			args: args{
 				opt: []Option{WithName(id)},
 			},
 			wantErr:    true,
-			wantErrMsg: "error organization id is unset for new group",
+			wantErrMsg: "new group: missing scope id invalid parameter",
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
 			got, err := NewGroup(tt.args.organizationPublicId, tt.args.opt...)
 			if tt.wantErr {
-				assert.Error(err)
+				require.Error(err)
 				assert.Equal(tt.wantErrMsg, err.Error())
 				return
 			}
-			assert.NoError(err)
+			require.NoError(err)
 			assert.Equal(tt.wantName, got.Name)
+			assert.Equal(tt.wantDescription, got.Description)
+			assert.Empty(got.PublicId)
 		})
 	}
 }
@@ -82,36 +84,59 @@ func Test_GroupCreate(t *testing.T) {
 	t.Parallel()
 	cleanup, conn, _ := db.TestSetup(t, "postgres")
 	defer func() {
-		if err := cleanup(); err != nil {
-			t.Error(err)
-		}
+		err := cleanup()
+		assert.NoError(t, err)
+		err = conn.Close()
+		assert.NoError(t, err)
 	}()
-	assert := assert.New(t)
-	defer conn.Close()
-	org, _ := TestScopes(t, conn)
-
-	id, err := uuid.GenerateUUID()
-	assert.NoError(err)
-	t.Run("valid", func(t *testing.T) {
+	org, proj := TestScopes(t, conn)
+	id := testId(t)
+	t.Run("valid-with-org", func(t *testing.T) {
+		assert, require := assert.New(t), require.New(t)
 		w := db.New(conn)
 		grp, err := NewGroup(org.PublicId, WithName(id), WithDescription(id))
-		assert.NoError(err)
+		require.NoError(err)
+		id, err := newGroupId()
+		require.NoError(err)
+		grp.PublicId = id
 		err = w.Create(context.Background(), grp)
-		assert.NoError(err)
+		require.NoError(err)
 		assert.NotEmpty(grp.PublicId)
 
 		foundGrp := allocGroup()
 		foundGrp.PublicId = grp.PublicId
 		err = w.LookupByPublicId(context.Background(), &foundGrp)
-		assert.NoError(err)
+		require.NoError(err)
 		assert.Equal(grp, &foundGrp)
 	})
-	t.Run("bad-orgid", func(t *testing.T) {
+	t.Run("valid-with-proj", func(t *testing.T) {
+		assert, require := assert.New(t), require.New(t)
+		w := db.New(conn)
+		grp, err := NewGroup(proj.PublicId, WithName(id), WithDescription(id))
+		require.NoError(err)
+		id, err := newGroupId()
+		require.NoError(err)
+		grp.PublicId = id
+		err = w.Create(context.Background(), grp)
+		require.NoError(err)
+		assert.NotEmpty(grp.PublicId)
+
+		foundGrp := allocGroup()
+		foundGrp.PublicId = grp.PublicId
+		err = w.LookupByPublicId(context.Background(), &foundGrp)
+		require.NoError(err)
+		assert.Equal(grp, &foundGrp)
+	})
+	t.Run("bad-scope-id", func(t *testing.T) {
+		assert, require := assert.New(t), require.New(t)
 		w := db.New(conn)
 		grp, err := NewGroup(id)
-		assert.NoError(err)
+		require.NoError(err)
+		id, err := newGroupId()
+		require.NoError(err)
+		grp.PublicId = id
 		err = w.Create(context.Background(), grp)
-		assert.Error(err)
+		require.Error(err)
 		assert.Equal("create: vet for write failed scope is not found", err.Error())
 	})
 }
@@ -119,19 +144,14 @@ func Test_GroupUpdate(t *testing.T) {
 	t.Parallel()
 	cleanup, conn, _ := db.TestSetup(t, "postgres")
 	defer func() {
-		if err := cleanup(); err != nil {
-			t.Error(err)
-		}
+		err := cleanup()
+		assert.NoError(t, err)
+		err = conn.Close()
+		assert.NoError(t, err)
 	}()
-	a := assert.New(t)
-	defer conn.Close()
-
-	rw := db.New(conn)
-	id, err := uuid.GenerateUUID()
-	a.NoError(err)
-
+	id := testId(t)
 	org, proj := TestScopes(t, conn)
-
+	rw := db.New(conn)
 	type args struct {
 		name           string
 		description    string
@@ -242,16 +262,14 @@ func Test_GroupDelete(t *testing.T) {
 	t.Parallel()
 	cleanup, conn, _ := db.TestSetup(t, "postgres")
 	defer func() {
-		if err := cleanup(); err != nil {
-			t.Error(err)
-		}
+		err := cleanup()
+		assert.NoError(t, err)
+		err = conn.Close()
+		assert.NoError(t, err)
 	}()
-	a := assert.New(t)
-	defer conn.Close()
 
 	rw := db.New(conn)
-	id, err := uuid.GenerateUUID()
-	a.NoError(err)
+	id := testId(t)
 	org, _ := TestScopes(t, conn)
 
 	tests := []struct {
@@ -321,26 +339,17 @@ func TestGroup_GetScope(t *testing.T) {
 	t.Parallel()
 	cleanup, conn, _ := db.TestSetup(t, "postgres")
 	defer func() {
-		if err := cleanup(); err != nil {
-			t.Error(err)
-		}
+		err := cleanup()
+		assert.NoError(t, err)
+		err = conn.Close()
+		assert.NoError(t, err)
 	}()
-	assert := assert.New(t)
-	defer conn.Close()
-
 	org, _ := TestScopes(t, conn)
 
 	t.Run("valid", func(t *testing.T) {
+		assert := assert.New(t)
 		w := db.New(conn)
-
-		grp, err := NewGroup(org.PublicId)
-		assert.NoError(err)
-		assert.NotNil(grp)
-		assert.Equal(org.PublicId, grp.ScopeId)
-		err = w.Create(context.Background(), grp)
-		assert.NoError(err)
-		assert.NotEmpty(grp.PublicId)
-
+		grp := TestGroup(t, conn, org.PublicId)
 		scope, err := grp.GetScope(context.Background(), w)
 		assert.NoError(err)
 		assert.True(proto.Equal(org, scope))
@@ -351,47 +360,23 @@ func TestGroup_Clone(t *testing.T) {
 	t.Parallel()
 	cleanup, conn, _ := db.TestSetup(t, "postgres")
 	defer func() {
-		if err := cleanup(); err != nil {
-			t.Error(err)
-		}
+		err := cleanup()
+		assert.NoError(t, err)
+		err = conn.Close()
+		assert.NoError(t, err)
 	}()
-	assert := assert.New(t)
-	defer conn.Close()
 	org, _ := TestScopes(t, conn)
 
 	t.Run("valid", func(t *testing.T) {
-		w := db.New(conn)
-
-		grp, err := NewGroup(org.PublicId, WithDescription("this is a test group"))
-		assert.NoError(err)
-		assert.NotNil(grp)
-		assert.Equal(grp.Description, "this is a test group")
-		assert.Equal(org.PublicId, grp.ScopeId)
-		err = w.Create(context.Background(), grp)
-		assert.NoError(err)
-		assert.NotEmpty(grp.PublicId)
-
+		assert := assert.New(t)
+		grp := TestGroup(t, conn, org.PublicId)
 		cp := grp.Clone()
 		assert.True(proto.Equal(cp.(*Group).Group, grp.Group))
 	})
 	t.Run("not-equal", func(t *testing.T) {
-		w := db.New(conn)
-
-		grp, err := NewGroup(org.PublicId, WithDescription("this is a test group"))
-		assert.NoError(err)
-		assert.NotNil(grp)
-		assert.Equal(grp.Description, "this is a test group")
-		assert.Equal(org.PublicId, grp.ScopeId)
-		err = w.Create(context.Background(), grp)
-		assert.NoError(err)
-		assert.NotEmpty(grp.PublicId)
-
-		grp2, err := NewGroup(org.PublicId, WithDescription("second group"))
-		assert.NoError(err)
-		assert.NotNil(grp2)
-		err = w.Create(context.Background(), grp2)
-		assert.NoError(err)
-		assert.NotEmpty(grp2.PublicId)
+		assert := assert.New(t)
+		grp := TestGroup(t, conn, org.PublicId)
+		grp2 := TestGroup(t, conn, org.PublicId)
 
 		cp := grp.Clone()
 		assert.True(!proto.Equal(cp.(*Group).Group, grp2.Group))

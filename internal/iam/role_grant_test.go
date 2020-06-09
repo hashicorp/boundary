@@ -12,18 +12,16 @@ import (
 func TestNewRoleGrant(t *testing.T) {
 	t.Parallel()
 	cleanup, conn, _ := db.TestSetup(t, "postgres")
-	defer cleanup()
-	assert := assert.New(t)
-	defer conn.Close()
-
+	defer func() {
+		err := cleanup()
+		assert.NoError(t, err)
+		err = conn.Close()
+		assert.NoError(t, err)
+	}()
 	t.Run("valid", func(t *testing.T) {
+		assert := assert.New(t)
 		w := db.New(conn)
-		s, err := NewOrganization()
-		assert.NoError(err)
-		assert.NotNil(s.Scope != nil)
-		err = w.Create(context.Background(), s)
-		assert.NoError(err)
-		assert.NotEmpty(s.PublicId)
+		s := testOrg(t, conn, "", "")
 
 		role, err := NewRole(s.PublicId)
 		assert.NoError(err)
@@ -54,13 +52,9 @@ func TestNewRoleGrant(t *testing.T) {
 		assert.Equal(uRole.GetPrincipalId(), user.PublicId)
 	})
 	t.Run("nil-scope", func(t *testing.T) {
+		assert := assert.New(t)
 		w := db.New(conn)
-		s, err := NewOrganization()
-		assert.NoError(err)
-		assert.NotNil(s.Scope != nil)
-		err = w.Create(context.Background(), s)
-		assert.NoError(err)
-		assert.NotEmpty(s.PublicId)
+		s := testOrg(t, conn, "", "")
 
 		role, err := NewRole(s.PublicId)
 		assert.NoError(err)
@@ -71,14 +65,7 @@ func TestNewRoleGrant(t *testing.T) {
 		assert.NotEmpty(role.PublicId)
 	})
 	t.Run("nil-role", func(t *testing.T) {
-		w := db.New(conn)
-		s, err := NewOrganization()
-		assert.NoError(err)
-		assert.NotNil(s.Scope != nil)
-		err = w.Create(context.Background(), s)
-		assert.NoError(err)
-		assert.NotEmpty(s.PublicId)
-
+		assert := assert.New(t)
 		g, err := NewRoleGrant(nil, "everything*")
 		assert.Error(err)
 		assert.Nil(g)
@@ -106,18 +93,17 @@ func TestRoleGrant_ResourceType(t *testing.T) {
 func TestRoleGrant_GetScope(t *testing.T) {
 	t.Parallel()
 	cleanup, conn, _ := db.TestSetup(t, "postgres")
-	defer cleanup()
-	assert := assert.New(t)
-	defer conn.Close()
+	defer func() {
+		err := cleanup()
+		assert.NoError(t, err)
+		err = conn.Close()
+		assert.NoError(t, err)
+	}()
 
 	t.Run("valid", func(t *testing.T) {
+		assert := assert.New(t)
 		w := db.New(conn)
-		s, err := NewOrganization()
-		assert.NoError(err)
-		assert.NotNil(s.Scope != nil)
-		err = w.Create(context.Background(), s)
-		assert.NoError(err)
-		assert.NotEmpty(s.PublicId)
+		s := testOrg(t, conn, "", "")
 
 		role, err := NewRole(s.PublicId)
 		assert.NoError(err)
@@ -143,18 +129,16 @@ func TestRoleGrant_GetScope(t *testing.T) {
 func TestRoleGrant_Clone(t *testing.T) {
 	t.Parallel()
 	cleanup, conn, _ := db.TestSetup(t, "postgres")
-	defer cleanup()
-	assert := assert.New(t)
-	defer conn.Close()
-
+	defer func() {
+		err := cleanup()
+		assert.NoError(t, err)
+		err = conn.Close()
+		assert.NoError(t, err)
+	}()
 	t.Run("valid", func(t *testing.T) {
+		assert := assert.New(t)
 		w := db.New(conn)
-		s, err := NewOrganization()
-		assert.NoError(err)
-		assert.NotNil(s.Scope != nil)
-		err = w.Create(context.Background(), s)
-		assert.NoError(err)
-		assert.NotEmpty(s.PublicId)
+		s := testOrg(t, conn, "", "")
 
 		role, err := NewRole(s.PublicId)
 		assert.NoError(err)
@@ -174,13 +158,9 @@ func TestRoleGrant_Clone(t *testing.T) {
 		assert.True(proto.Equal(cp.(*RoleGrant).RoleGrant, g.RoleGrant))
 	})
 	t.Run("not-equal", func(t *testing.T) {
+		assert := assert.New(t)
 		w := db.New(conn)
-		s, err := NewOrganization()
-		assert.NoError(err)
-		assert.NotNil(s.Scope != nil)
-		err = w.Create(context.Background(), s)
-		assert.NoError(err)
-		assert.NotEmpty(s.PublicId)
+		s := testOrg(t, conn, "", "")
 
 		role, err := NewRole(s.PublicId)
 		assert.NoError(err)

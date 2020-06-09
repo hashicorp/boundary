@@ -12,13 +12,16 @@ import (
 func Test_UserGrants(t *testing.T) {
 	t.Parallel()
 	cleanup, conn, _ := db.TestSetup(t, "postgres")
-	defer cleanup()
-	assert := assert.New(t)
-	defer conn.Close()
-
+	defer func() {
+		err := cleanup()
+		assert.NoError(t, err)
+		err = conn.Close()
+		assert.NoError(t, err)
+	}()
 	org, _ := TestScopes(t, conn)
 
 	t.Run("valid", func(t *testing.T) {
+		assert := assert.New(t)
 		id, err := uuid.GenerateUUID()
 		assert.NoError(err)
 		w := db.New(conn)
@@ -56,14 +59,7 @@ func Test_UserGrants(t *testing.T) {
 		assert.Equal(len(userGrants), 1)
 		assert.Equal(userGrants[0], g)
 
-		grp, err := NewGroup(org.PublicId, WithDescription("user grants test group"))
-		assert.NoError(err)
-		assert.NotNil(grp)
-		assert.Equal(grp.Description, "user grants test group")
-		assert.Equal(org.PublicId, grp.ScopeId)
-		err = w.Create(context.Background(), grp)
-		assert.NoError(err)
-		assert.NotEqual(grp.PublicId, "")
+		grp := TestGroup(t, conn, org.PublicId)
 
 		gm, err := grp.AddUser(user.PublicId)
 		assert.NoError(err)

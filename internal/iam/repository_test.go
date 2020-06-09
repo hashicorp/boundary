@@ -185,14 +185,7 @@ func Test_Repository_delete(t *testing.T) {
 		repo, err := NewRepository(rw, rw, wrapper)
 		assert.NoError(err)
 
-		s, err := NewOrganization()
-		assert.NoError(err)
-		retScope, err := repo.create(context.Background(), s)
-		assert.NoError(err)
-		assert.NotNil(retScope)
-		assert.NotEmpty(retScope.GetPublicId())
-		assert.Equal(retScope.GetName(), "")
-
+		s := testOrg(t, conn, "", "")
 		rowsDeleted, err := repo.delete(context.Background(), s)
 		assert.NoError(err)
 		assert.Equal(1, rowsDeleted)

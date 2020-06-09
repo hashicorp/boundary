@@ -12,18 +12,16 @@ import (
 func Test_NewRole(t *testing.T) {
 	t.Parallel()
 	cleanup, conn, _ := db.TestSetup(t, "postgres")
-	defer cleanup()
-	assert := assert.New(t)
-	defer conn.Close()
-
+	defer func() {
+		err := cleanup()
+		assert.NoError(t, err)
+		err = conn.Close()
+		assert.NoError(t, err)
+	}()
 	t.Run("valid", func(t *testing.T) {
+		assert := assert.New(t)
 		w := db.New(conn)
-		s, err := NewOrganization()
-		assert.NoError(err)
-		assert.NotNil(s.Scope != nil)
-		err = w.Create(context.Background(), s)
-		assert.NoError(err)
-		assert.NotEmpty(s.PublicId)
+		s := testOrg(t, conn, "", "")
 
 		role, err := NewRole(s.PublicId, WithDescription("this is a test role"))
 		assert.NoError(err)
@@ -35,6 +33,7 @@ func Test_NewRole(t *testing.T) {
 		assert.NotEmpty(role.PublicId)
 	})
 	t.Run("no-scope", func(t *testing.T) {
+		assert := assert.New(t)
 		role, err := NewRole("")
 		assert.Error(err)
 		assert.Nil(role)
@@ -62,18 +61,16 @@ func TestRole_ResourceType(t *testing.T) {
 func TestRole_GetScope(t *testing.T) {
 	t.Parallel()
 	cleanup, conn, _ := db.TestSetup(t, "postgres")
-	defer cleanup()
-	assert := assert.New(t)
-	defer conn.Close()
-
+	defer func() {
+		err := cleanup()
+		assert.NoError(t, err)
+		err = conn.Close()
+		assert.NoError(t, err)
+	}()
 	t.Run("valid", func(t *testing.T) {
+		assert := assert.New(t)
 		w := db.New(conn)
-		s, err := NewOrganization()
-		assert.NoError(err)
-		assert.NotNil(s.Scope != nil)
-		err = w.Create(context.Background(), s)
-		assert.NoError(err)
-		assert.NotEmpty(s.PublicId)
+		s := testOrg(t, conn, "", "")
 
 		role, err := NewRole(s.PublicId, WithDescription("this is a test role"))
 		assert.NoError(err)
@@ -93,19 +90,16 @@ func TestRole_GetScope(t *testing.T) {
 func TestRole_AssignedRoles(t *testing.T) {
 	t.Parallel()
 	cleanup, conn, _ := db.TestSetup(t, "postgres")
-	defer cleanup()
-	assert := assert.New(t)
-	defer conn.Close()
-
+	defer func() {
+		err := cleanup()
+		assert.NoError(t, err)
+		err = conn.Close()
+		assert.NoError(t, err)
+	}()
 	t.Run("valid", func(t *testing.T) {
+		assert := assert.New(t)
 		w := db.New(conn)
-		s, err := NewOrganization()
-		assert.NoError(err)
-		assert.NotNil(s.Scope != nil)
-		err = w.Create(context.Background(), s)
-		assert.NoError(err)
-		assert.NotEmpty(s.PublicId)
-
+		s := testOrg(t, conn, "", "")
 		user := TestUser(t, conn, s.PublicId)
 
 		role, err := NewRole(s.PublicId, WithDescription("this is a test role"))
@@ -127,14 +121,7 @@ func TestRole_AssignedRoles(t *testing.T) {
 		assert.NotNil(uRole)
 		assert.Equal(uRole.GetPrincipalId(), user.PublicId)
 
-		grp, err := NewGroup(s.PublicId, WithDescription("this is a test group"))
-		assert.NoError(err)
-		assert.NotNil(grp)
-		assert.Equal(grp.Description, "this is a test group")
-		assert.Equal(s.PublicId, grp.ScopeId)
-		err = w.Create(context.Background(), grp)
-		assert.NoError(err)
-		assert.NotEmpty(grp.PublicId)
+		grp := TestGroup(t, conn, s.PublicId)
 
 		gRole, err := NewAssignedRole(role, grp)
 		assert.NoError(err)
@@ -155,18 +142,16 @@ func TestRole_AssignedRoles(t *testing.T) {
 func TestRole_Clone(t *testing.T) {
 	t.Parallel()
 	cleanup, conn, _ := db.TestSetup(t, "postgres")
-	defer cleanup()
-	assert := assert.New(t)
-	defer conn.Close()
-
+	defer func() {
+		err := cleanup()
+		assert.NoError(t, err)
+		err = conn.Close()
+		assert.NoError(t, err)
+	}()
 	t.Run("valid", func(t *testing.T) {
+		assert := assert.New(t)
 		w := db.New(conn)
-		s, err := NewOrganization()
-		assert.NoError(err)
-		assert.NotNil(s.Scope != nil)
-		err = w.Create(context.Background(), s)
-		assert.NoError(err)
-		assert.NotEmpty(s.PublicId)
+		s := testOrg(t, conn, "", "")
 
 		role, err := NewRole(s.PublicId, WithDescription("this is a test role"))
 		assert.NoError(err)
@@ -181,13 +166,9 @@ func TestRole_Clone(t *testing.T) {
 		assert.True(proto.Equal(cp.(*Role).Role, role.Role))
 	})
 	t.Run("not-equal", func(t *testing.T) {
+		assert := assert.New(t)
 		w := db.New(conn)
-		s, err := NewOrganization()
-		assert.NoError(err)
-		assert.NotNil(s.Scope != nil)
-		err = w.Create(context.Background(), s)
-		assert.NoError(err)
-		assert.NotEmpty(s.PublicId)
+		s := testOrg(t, conn, "", "")
 
 		role, err := NewRole(s.PublicId, WithDescription("this is a test role"))
 		assert.NoError(err)

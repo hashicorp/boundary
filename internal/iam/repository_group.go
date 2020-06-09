@@ -13,6 +13,11 @@ func (r *Repository) CreateGroup(ctx context.Context, group *Group, opt ...Optio
 	if group == nil {
 		return nil, errors.New("error group is nil for create")
 	}
+	id, err := newGroupId()
+	if err != nil {
+		return nil, fmt.Errorf("create group: %w", err)
+	}
+	group.PublicId = id
 	resource, err := r.create(ctx, group)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create group: %w", err)
