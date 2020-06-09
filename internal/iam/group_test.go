@@ -22,7 +22,7 @@ func TestNewGroup(t *testing.T) {
 		err = conn.Close()
 		assert.NoError(t, err)
 	}()
-	org, _ := TestScopes(t, conn)
+	org, proj := TestScopes(t, conn)
 	id := testId(t)
 
 	type args struct {
@@ -41,6 +41,16 @@ func TestNewGroup(t *testing.T) {
 			name: "valid",
 			args: args{
 				organizationPublicId: org.PublicId,
+				opt:                  []Option{WithName(id), WithDescription(id)},
+			},
+			wantErr:         false,
+			wantName:        id,
+			wantDescription: id,
+		},
+		{
+			name: "valid-proj",
+			args: args{
+				organizationPublicId: proj.PublicId,
 				opt:                  []Option{WithName(id), WithDescription(id)},
 			},
 			wantErr:         false,
@@ -90,15 +100,15 @@ func Test_GroupCreate(t *testing.T) {
 		assert.NoError(t, err)
 	}()
 	org, proj := TestScopes(t, conn)
-	id := testId(t)
 	t.Run("valid-with-org", func(t *testing.T) {
+		id := testId(t)
 		assert, require := assert.New(t), require.New(t)
 		w := db.New(conn)
 		grp, err := NewGroup(org.PublicId, WithName(id), WithDescription(id))
 		require.NoError(err)
-		id, err := newGroupId()
+		grpId, err := newGroupId()
 		require.NoError(err)
-		grp.PublicId = id
+		grp.PublicId = grpId
 		err = w.Create(context.Background(), grp)
 		require.NoError(err)
 		assert.NotEmpty(grp.PublicId)
@@ -112,11 +122,12 @@ func Test_GroupCreate(t *testing.T) {
 	t.Run("valid-with-proj", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
 		w := db.New(conn)
+		id := testId(t)
 		grp, err := NewGroup(proj.PublicId, WithName(id), WithDescription(id))
 		require.NoError(err)
-		id, err := newGroupId()
+		grpId, err := newGroupId()
 		require.NoError(err)
-		grp.PublicId = id
+		grp.PublicId = grpId
 		err = w.Create(context.Background(), grp)
 		require.NoError(err)
 		assert.NotEmpty(grp.PublicId)
@@ -130,11 +141,12 @@ func Test_GroupCreate(t *testing.T) {
 	t.Run("bad-scope-id", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
 		w := db.New(conn)
+		id := testId(t)
 		grp, err := NewGroup(id)
 		require.NoError(err)
-		id, err := newGroupId()
+		grpId, err := newGroupId()
 		require.NoError(err)
-		grp.PublicId = id
+		grp.PublicId = grpId
 		err = w.Create(context.Background(), grp)
 		require.Error(err)
 		assert.Equal("create: vet for write failed scope is not found", err.Error())
@@ -220,12 +232,12 @@ func Test_GroupUpdate(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			assert := assert.New(t)
+			assert, require := assert.New(t), require.New(t)
 			if tt.wantDup {
 				grp := TestGroup(t, conn, org.PublicId)
 				grp.Name = tt.args.name
 				_, err := rw.Update(context.Background(), grp, tt.args.fieldMaskPaths, nil)
-				assert.NoError(err)
+				require.NoError(err)
 			}
 
 			grp := TestGroup(t, conn, org.PublicId)
@@ -238,21 +250,21 @@ func Test_GroupUpdate(t *testing.T) {
 
 			updatedRows, err := rw.Update(context.Background(), &updateGrp, tt.args.fieldMaskPaths, nil)
 			if tt.wantErr {
-				assert.Error(err)
+				require.Error(err)
 				assert.Equal(0, updatedRows)
 				assert.Equal(tt.wantErrMsg, err.Error())
 				err = db.TestVerifyOplog(t, rw, grp.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_UPDATE), db.WithCreateNotBefore(10*time.Second))
-				assert.Error(err)
+				require.Error(err)
 				assert.Equal("record not found", err.Error())
 				return
 			}
-			assert.NoError(err)
+			require.NoError(err)
 			assert.Equal(tt.wantRowsUpdate, updatedRows)
 			assert.NotEqual(grp.UpdateTime, updateGrp.UpdateTime)
 			foundGrp := allocGroup()
 			foundGrp.PublicId = grp.GetPublicId()
 			err = rw.LookupByPublicId(context.Background(), &foundGrp)
-			assert.NoError(err)
+			require.NoError(err)
 			assert.True(proto.Equal(updateGrp, foundGrp))
 		})
 	}
@@ -294,25 +306,24 @@ func Test_GroupDelete(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			assert := assert.New(t)
+			assert, require := assert.New(t), require.New(t)
 			deleteGroup := allocGroup()
 			deleteGroup.PublicId = tt.group.GetPublicId()
 			deletedRows, err := rw.Delete(context.Background(), &deleteGroup)
 			if tt.wantErr {
-				assert.Error(err)
+				require.Error(err)
 				return
 			}
-			assert.NoError(err)
+			require.NoError(err)
 			if tt.wantRowsDeleted == 0 {
 				assert.Equal(tt.wantRowsDeleted, deletedRows)
 				return
 			}
-			assert.NoError(err)
 			assert.Equal(tt.wantRowsDeleted, deletedRows)
 			foundGrp := allocGroup()
 			foundGrp.PublicId = tt.group.GetPublicId()
 			err = rw.LookupByPublicId(context.Background(), &foundGrp)
-			assert.Error(err)
+			require.Error(err)
 			assert.True(errors.Is(db.ErrRecordNotFound, err))
 		})
 	}
@@ -344,15 +355,23 @@ func TestGroup_GetScope(t *testing.T) {
 		err = conn.Close()
 		assert.NoError(t, err)
 	}()
-	org, _ := TestScopes(t, conn)
+	org, proj := TestScopes(t, conn)
 
-	t.Run("valid", func(t *testing.T) {
-		assert := assert.New(t)
+	t.Run("valid-org", func(t *testing.T) {
+		assert, require := assert.New(t), require.New(t)
 		w := db.New(conn)
 		grp := TestGroup(t, conn, org.PublicId)
 		scope, err := grp.GetScope(context.Background(), w)
-		assert.NoError(err)
+		require.NoError(err)
 		assert.True(proto.Equal(org, scope))
+	})
+	t.Run("valid-proj", func(t *testing.T) {
+		assert, require := assert.New(t), require.New(t)
+		w := db.New(conn)
+		grp := TestGroup(t, conn, proj.PublicId)
+		scope, err := grp.GetScope(context.Background(), w)
+		require.NoError(err)
+		assert.True(proto.Equal(proj, scope))
 	})
 }
 
