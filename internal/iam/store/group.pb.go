@@ -45,12 +45,14 @@ type Group struct {
 	// @inject_tag: `gorm:"default:null"`
 	Name string `protobuf:"bytes,4,opt,name=name,proto3" json:"name,omitempty" gorm:"default:null"`
 	// description of the group
-	Description string `protobuf:"bytes,5,opt,name=description,proto3" json:"description,omitempty"`
+	// @inject_tag: `gorm:"default:null"`
+	Description string `protobuf:"bytes,5,opt,name=description,proto3" json:"description,omitempty" gorm:"default:null"`
 	// scope id for the group
 	// @inject_tag: `gorm:"default:null"`
 	ScopeId string `protobuf:"bytes,6,opt,name=scope_id,json=scopeId,proto3" json:"scope_id,omitempty" gorm:"default:null"`
 	// disabled is by default false and allows a Group to be marked disabled.
-	Disabled bool `protobuf:"varint,7,opt,name=disabled,proto3" json:"disabled,omitempty"`
+	// @inject_tag: `gorm:"default:null"`
+	Disabled bool `protobuf:"varint,7,opt,name=disabled,proto3" json:"disabled,omitempty" gorm:"default:null"`
 }
 
 func (x *Group) Reset() {
