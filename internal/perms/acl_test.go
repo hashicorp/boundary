@@ -23,6 +23,7 @@ func Test_ACLAllowed(t *testing.T) {
 		scopeGrants    []scopeGrant
 		resource       Resource
 		actionsAllowed []actionAllowed
+		userId         string
 	}
 
 	// A set of common grants to use in the following tests
@@ -41,6 +42,12 @@ func Test_ACLAllowed(t *testing.T) {
 				"project=proj_x;type=host-set;actions=list,create",
 				"type=host;actions=*",
 				"id=*;actions=authen",
+			},
+		},
+		{
+			scope: Scope{Type: iam.OrganizationScope, Id: "org_c"},
+			grants: []string{
+				"id={{user.id }};actions=create,update",
 			},
 		},
 	}
@@ -193,6 +200,27 @@ func Test_ACLAllowed(t *testing.T) {
 				{action: iam.ActionDelete},
 			},
 		},
+		{
+			name:        "bad templated user id",
+			resource:    Resource{ScopeId: "org_c"},
+			scopeGrants: commonGrants,
+			actionsAllowed: []actionAllowed{
+				{action: iam.ActionList},
+				{action: iam.ActionAuthen},
+				{action: iam.ActionDelete},
+			},
+			userId: "u_abcd1234",
+		},
+		{
+			name:        "good templated user id",
+			resource:    Resource{ScopeId: "org_c", Id: "u_abcd1234"},
+			scopeGrants: commonGrants,
+			actionsAllowed: []actionAllowed{
+				{action: iam.ActionCreate, allowed: true},
+				{action: iam.ActionUpdate, allowed: true},
+			},
+			userId: "u_abcd1234",
+		},
 	}
 
 	for _, test := range tests {
@@ -201,7 +229,7 @@ func Test_ACLAllowed(t *testing.T) {
 			for _, sg := range test.scopeGrants {
 				scope := sg.scope
 				for _, g := range sg.grants {
-					grant, err := ParseGrantString(scope, g)
+					grant, err := ParseGrantString(scope, test.userId, g)
 					assert.NoError(t, err)
 					grants = append(grants, grant)
 				}

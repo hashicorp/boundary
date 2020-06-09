@@ -233,7 +233,7 @@ func (g *Grant) unmarshalText(grantString string) error {
 // organization is the original organization scope. Likely this can be done in a
 // centralized helper context; however it's not done here to avoid reaching into
 // the database from within this package.
-func ParseGrantString(scope Scope, grantString string) (Grant, error) {
+func ParseGrantString(scope Scope, userId, grantString string) (Grant, error) {
 	if len(grantString) == 0 {
 		return Grant{}, errors.New("grant string is empty")
 	}
@@ -261,6 +261,19 @@ func ParseGrantString(scope Scope, grantString string) (Grant, error) {
 	default:
 		if err := grant.unmarshalText(grantString); err != nil {
 			return Grant{}, fmt.Errorf("unable to parse grant string: %w", err)
+		}
+	}
+
+	// Check for templated user ID, and subtitute in with the authenticated user
+	// if so
+	if grant.Id != "" && userId != "" && strings.HasPrefix(grant.Id, "{{") {
+		id := strings.TrimSuffix(strings.TrimPrefix(grant.Id, "{{"), "}}")
+		id = strings.ToLower(strings.TrimSpace(id))
+		switch id {
+		case "user.id":
+			grant.Id = userId
+		default:
+			return Grant{}, fmt.Errorf("unknown template %q in grant %q value", grant.Id, "id")
 		}
 	}
 

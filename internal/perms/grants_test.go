@@ -416,6 +416,7 @@ func Test_ParseGrantString(t *testing.T) {
 	type input struct {
 		name     string
 		input    string
+		userId   string
 		err      string
 		expected Grant
 	}
@@ -479,27 +480,49 @@ func Test_ParseGrantString(t *testing.T) {
 				},
 			},
 		},
+		{
+			name:   "bad user id template",
+			input:  `id={{superman}};actions=create,read`,
+			userId: "u_abcd1234",
+			err:    `unknown template "{{superman}}" in grant "id" value`,
+		},
+		{
+			name:   "good user id template",
+			input:  `id={{    user.id}};actions=create,read`,
+			userId: "u_abcd1234",
+			expected: Grant{
+				Scope: Scope{
+					Id:   "scope",
+					Type: iam.OrganizationScope,
+				},
+				Id: "u_abcd1234",
+				Actions: map[iam.Action]bool{
+					iam.ActionCreate: true,
+					iam.ActionRead:   true,
+				},
+			},
+		},
 	}
 
-	_, err := ParseGrantString(Scope{}, "")
+	_, err := ParseGrantString(Scope{}, "", "")
 	assert.Error(t, err)
 	assert.Equal(t, "grant string is empty", err.Error())
 
-	_, err = ParseGrantString(Scope{}, "{}")
+	_, err = ParseGrantString(Scope{}, "", "{}")
 	assert.Error(t, err)
 	assert.Equal(t, "invalid scope type", err.Error())
 
-	_, err = ParseGrantString(Scope{Type: iam.OrganizationScope}, "{}")
+	_, err = ParseGrantString(Scope{Type: iam.OrganizationScope}, "", "{}")
 	assert.Error(t, err)
 	assert.Equal(t, "no scope ID provided", err.Error())
 
-	_, err = ParseGrantString(Scope{Id: "foobar", Type: iam.ProjectScope}, `project=foobar`)
+	_, err = ParseGrantString(Scope{Id: "foobar", Type: iam.ProjectScope}, "", `project=foobar`)
 	assert.Error(t, err)
 	assert.Equal(t, "cannot specify a project in the grant when the scope is not an organization", err.Error())
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			grant, err := ParseGrantString(Scope{Id: "scope", Type: iam.OrganizationScope}, test.input)
+			grant, err := ParseGrantString(Scope{Id: "scope", Type: iam.OrganizationScope}, test.userId, test.input)
 			if test.err != "" {
 				assert.Error(t, err)
 				assert.True(t, strings.HasPrefix(err.Error(), test.err))

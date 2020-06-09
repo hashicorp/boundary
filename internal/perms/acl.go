@@ -18,7 +18,9 @@ This makes it actually quite simple to perform the ACL checking. Much of ACL
 construction is thus synthesizing something reasonable from a set of Grants.
 */
 
-import "github.com/hashicorp/watchtower/internal/iam"
+import (
+	"github.com/hashicorp/watchtower/internal/iam"
+)
 
 // ACL provides an entry point into the permissions engine for determining if an
 // action is allowed on a resource based on a principal's (user or group) grants.
@@ -31,6 +33,9 @@ type ACL struct {
 // in Vault, may be useful here.
 type ACLResults struct {
 	Allowed bool
+
+	// This is included but unexported for testing/debugging
+	scopeMap map[string][]Grant
 }
 
 // Resource defines something within watchtower that requires authorization
@@ -67,6 +72,7 @@ func NewACL(grants ...Grant) ACL {
 func (a ACL) Allowed(resource Resource, action iam.Action) (results ACLResults) {
 	// First, get the grants within the specified scope
 	grants := a.scopeMap[resource.ScopeId]
+	results.scopeMap = a.scopeMap
 
 	// Now, go through and check the cases indicated above
 	for _, grant := range grants {
