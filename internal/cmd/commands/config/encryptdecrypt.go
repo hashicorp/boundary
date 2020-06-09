@@ -1,7 +1,6 @@
 package config
 
 import (
-	"context"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -122,14 +121,14 @@ func (c *EncryptDecryptCommand) Run(args []string) (ret int) {
 	for _, v := range kmses {
 		if strutil.StrListContains(v.Purpose, "config") {
 			if kms != nil {
-				c.UI.Error("Only one seal/kms block marked for \"config\" purpose is allowed")
+				c.UI.Error("Only one kms block marked for \"config\" purpose is allowed")
 				return 1
 			}
 			kms = v
 		}
 	}
 	if kms == nil {
-		c.UI.Error("No seal/kms block with \"config\" purpose defined in the configuration file")
+		c.UI.Error("No kms block with \"config\" purpose defined in the configuration file")
 		return 1
 	}
 
@@ -147,8 +146,8 @@ func (c *EncryptDecryptCommand) Run(args []string) (ret int) {
 		return 1
 	}
 
-	wrapper.Init(context.Background())
-	defer wrapper.Finalize(context.Background())
+	wrapper.Init(c.Context)
+	defer wrapper.Finalize(c.Context)
 
 	raw, err = configutil.EncryptDecrypt(raw, !c.Encrypt, c.flagStrip, wrapper)
 	if err != nil {

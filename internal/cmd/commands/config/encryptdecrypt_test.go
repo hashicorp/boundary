@@ -29,12 +29,16 @@ func TestEncryptDecrypt(t *testing.T) {
 		config  string
 		exp     string
 	}{
-		{encrypt: true,
-			config: configEncryptPath,
-			exp:    ""},
-		{encrypt: false,
-			config: configDecryptPath,
-			exp:    configEncryptPath},
+		{
+			encrypt: true,
+			config:  configEncryptPath,
+			exp:     "",
+		},
+		{
+			encrypt: false,
+			config:  configDecryptPath,
+			exp:     configEncryptPath,
+		},
 	}
 
 	for _, c := range cases {

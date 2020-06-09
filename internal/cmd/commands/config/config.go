@@ -14,7 +14,7 @@ type Command struct {
 }
 
 func (c *Command) Synopsis() string {
-	return "Manage sensitive values in watchtower's configuration files"
+	return "Manage sensitive values in Watchtower's configuration files"
 }
 
 func (c *Command) Help() string {
