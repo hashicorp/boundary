@@ -124,7 +124,7 @@ func (g Grant) MarshalJSON() ([]byte, error) {
 	return json.Marshal(res)
 }
 
-// This is purposfully unexported since the values being set here are not being
+// This is purposefully unexported since the values being set here are not being
 // checked for validity. This should only be called by the main parsing function
 // when JSON is detected.
 func (g *Grant) unmarshalJSON(data []byte) error {
@@ -162,13 +162,14 @@ func (g *Grant) unmarshalJSON(data []byte) error {
 			g.actionsBeingParsed = make([]string, 0, len(interfaceActions))
 			for _, v := range interfaceActions {
 				actionStr, ok := v.(string)
-				if !ok {
+				switch {
+				case !ok:
 					return fmt.Errorf("unable to interpret %v in actions array as string", v)
-				}
-				if actionStr == "" {
+				case actionStr == "":
 					return errors.New("empty action found")
+				default:
+					g.actionsBeingParsed = append(g.actionsBeingParsed, strings.ToLower(actionStr))
 				}
-				g.actionsBeingParsed = append(g.actionsBeingParsed, strings.ToLower(actionStr))
 			}
 		}
 	}
