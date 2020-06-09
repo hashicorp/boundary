@@ -40,7 +40,7 @@ func Test_ActionParsingValidation(t *testing.T) {
 		{
 			name: "all",
 			input: Grant{
-				actionsBeingParsed: []string{"all"},
+				actionsBeingParsed: []string{"*"},
 			},
 			result: Grant{
 				Actions: map[iam.Action]bool{
@@ -51,9 +51,9 @@ func Test_ActionParsingValidation(t *testing.T) {
 		{
 			name: "all valid plus all",
 			input: Grant{
-				actionsBeingParsed: []string{"list", "create", "update", "all", "read", "delete", "authen", "connect"},
+				actionsBeingParsed: []string{"list", "create", "update", "*", "read", "delete", "authen", "connect"},
 			},
-			errResult: `"all" cannot be specified with other actions`,
+			errResult: `"*" cannot be specified with other actions`,
 		},
 		{
 			name: "all valid",

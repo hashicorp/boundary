@@ -81,7 +81,7 @@ func (a ACL) Allowed(resource Resource, action iam.Action) (results ACLResults) 
 			return
 
 		// id=<resource.id>;actions=<action>
-		case grant.Id == resource.Id &&
+		case (grant.Id == resource.Id || grant.Id == "*") &&
 			grant.Type == "":
 			results.Allowed = true
 			return

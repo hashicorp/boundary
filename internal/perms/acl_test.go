@@ -39,7 +39,8 @@ func Test_ACLAllowed(t *testing.T) {
 			scope: Scope{Type: iam.OrganizationScope, Id: "org_b"},
 			grants: []string{
 				"project=proj_x;type=host-set;actions=list,create",
-				"type=host;actions=all",
+				"type=host;actions=*",
+				"id=*;actions=authen",
 			},
 		},
 	}
@@ -179,6 +180,16 @@ func Test_ACLAllowed(t *testing.T) {
 			actionsAllowed: []actionAllowed{
 				{action: iam.ActionList, allowed: true},
 				{action: iam.ActionCreate, allowed: true},
+				{action: iam.ActionDelete},
+			},
+		},
+		{
+			name:        "any id",
+			resource:    Resource{ScopeId: "org_b", Type: "host-set"},
+			scopeGrants: commonGrants,
+			actionsAllowed: []actionAllowed{
+				{action: iam.ActionList},
+				{action: iam.ActionAuthen, allowed: true},
 				{action: iam.ActionDelete},
 			},
 		},

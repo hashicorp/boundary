@@ -25,7 +25,7 @@ var ActionMap = map[string]Action{
 	"read":    ActionRead,
 	"delete":  ActionDelete,
 	"authen":  ActionAuthen,
-	"all":     ActionAll,
+	"*":       ActionAll,
 	"connect": ActionConnect,
 }
 
@@ -38,7 +38,7 @@ func (a Action) String() string {
 		"read",
 		"delete",
 		"authen",
-		"all",
+		"*",
 		"connect",
 	}[a]
 }
