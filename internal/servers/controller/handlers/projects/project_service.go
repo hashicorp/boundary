@@ -223,7 +223,7 @@ func toProto(in *iam.Scope) *pb.Project {
 //  * There are no conflicting parameters provided
 func validateGetRequest(req *pbs.GetProjectRequest) error {
 	badFields := validateAncestors(req)
-	if !validId(req.GetId(), "p_") {
+	if !validId(req.GetId(), iam.ProjectScope.Prefix()+"_") {
 		badFields["id"] = "Invalid formatted project id."
 	}
 	if len(badFields) > 0 {
@@ -252,7 +252,7 @@ func validateCreateRequest(req *pbs.CreateProjectRequest) error {
 
 func validateUpdateRequest(req *pbs.UpdateProjectRequest) error {
 	badFields := validateAncestors(req)
-	if !validId(req.GetId(), "p_") {
+	if !validId(req.GetId(), iam.ProjectScope.Prefix()+"_") {
 		badFields["project_id"] = "Improperly formatted path identifier."
 	}
 	if req.GetUpdateMask() == nil {
@@ -286,7 +286,7 @@ func validateUpdateRequest(req *pbs.UpdateProjectRequest) error {
 
 func validateDeleteRequest(req *pbs.DeleteProjectRequest) error {
 	badFields := validateAncestors(req)
-	if !validId(req.GetId(), "p_") {
+	if !validId(req.GetId(), iam.ProjectScope.Prefix()+"_") {
 		badFields["id"] = "Incorrectly formatted project."
 	}
 	if len(badFields) > 0 {

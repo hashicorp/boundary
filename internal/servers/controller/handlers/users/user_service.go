@@ -17,6 +17,8 @@ import (
 	"google.golang.org/protobuf/types/known/wrapperspb"
 )
 
+const orgIdFieldName = "org_id"
+
 var (
 	reInvalidID = regexp.MustCompile("[^A-Za-z0-9]")
 	// TODO(ICU-28): Find a way to auto update these names and enforce the mappings between wire and storage.
@@ -156,7 +158,7 @@ func (s Service) updateInRepo(ctx context.Context, orgId, id string, mask []stri
 		return nil, err
 	}
 	if len(dbMask) == 0 {
-		return nil, handlers.InvalidArgumentErrorf("No valid fields included in the update mask.", []string{"update_mask"})
+		return nil, handlers.InvalidArgumentErrorf("No valid fields included in the update mask.", map[string]string{"update_mask": "No valid paths provided in the update mask."})
 	}
 	repo, err := s.repoFn()
 	if err != nil {
@@ -201,7 +203,7 @@ func toDbUpdateMask(paths []string) ([]string, error) {
 		}
 	}
 	if len(invalid) > 0 {
-		return nil, handlers.InvalidArgumentErrorf(fmt.Sprintf("Invalid fields passed in update mask: %v.", invalid), []string{"update_mask"})
+		return nil, handlers.InvalidArgumentErrorf(fmt.Sprintf("Invalid fields passed in update_update mask: %v.", invalid), map[string]string{"update_mask": fmt.Sprintf("Unknown paths provided in update mask: %q", strings.Join(invalid, ","))})
 	}
 	return dbPaths, nil
 }
@@ -226,51 +228,42 @@ func toProto(in *iam.User) *pb.User {
 //  * The path passed in is correctly formatted
 //  * All required parameters are set
 //  * There are no conflicting parameters provided
-// TODO: Populate the error in a way to allow it to be converted to the previously described error format and include all invalid fields instead of just the most recent.
 func validateGetRequest(req *pbs.GetUserRequest) error {
-	if err := validateAncestors(req); err != nil {
-		return err
-	}
+	badFields := validateAncestors(req)
 	if !validId(req.GetId(), iam.UserPrefix+"_") {
-		return handlers.InvalidArgumentErrorf("Improperly formatted identifier.", []string{"id"})
+		badFields["id"] = "Invalid formatted user id."
+	}
+	if len(badFields) > 0 {
+		return handlers.InvalidArgumentErrorf("Improperly formatted identifier.", badFields)
 	}
 	return nil
 }
 
 func validateCreateRequest(req *pbs.CreateUserRequest) error {
-	if err := validateAncestors(req); err != nil {
-		return err
-	}
+	badFields := validateAncestors(req)
 	item := req.GetItem()
-	if item == nil {
-		return handlers.InvalidArgumentErrorf("A user's fields must be set to something.", []string{"item"})
-	}
-	var immutableFieldsSet []string
 	if item.GetId() != "" {
-		immutableFieldsSet = append(immutableFieldsSet, "id")
+		badFields["id"] = "This is a read only field."
 	}
 	if item.GetCreatedTime() != nil {
-		immutableFieldsSet = append(immutableFieldsSet, "created_time")
+		badFields["created_time"] = "This is a read only field."
 	}
 	if item.GetUpdatedTime() != nil {
-		immutableFieldsSet = append(immutableFieldsSet, "updated_time")
+		badFields["updated_time"] = "This is a read only field."
 	}
-	if len(immutableFieldsSet) > 0 {
-		return handlers.InvalidArgumentErrorf("Cannot specify read only fields at creation time.", immutableFieldsSet)
+	if len(badFields) > 0 {
+		return handlers.InvalidArgumentErrorf("Argument errors found in the request.", badFields)
 	}
 	return nil
 }
 
 func validateUpdateRequest(req *pbs.UpdateUserRequest) error {
-	if err := validateAncestors(req); err != nil {
-		return err
-	}
+	badFields := validateAncestors(req)
 	if !validId(req.GetId(), iam.UserPrefix+"_") {
-		return handlers.InvalidArgumentErrorf("Improperly formatted identifier.", []string{"id"})
+		badFields["user_id"] = "Improperly formatted path identifier."
 	}
-
 	if req.GetUpdateMask() == nil {
-		return handlers.InvalidArgumentErrorf("UpdateMask not provided but is required to update a user.", []string{"update_mask"})
+		badFields["update_mask"] = "UpdateMask not provided but is required to update a user."
 	}
 
 	item := req.GetItem()
@@ -279,32 +272,29 @@ func validateUpdateRequest(req *pbs.UpdateUserRequest) error {
 		// the mask will be marked as unset.
 		return nil
 	}
-	if item.GetId() != "" && item.GetId() != req.GetId() {
-		return handlers.InvalidArgumentErrorf("Id in provided item and url do not match.", []string{"id"})
-	}
-	var immutableFieldsSet []string
 	if item.GetId() != "" {
-		immutableFieldsSet = append(immutableFieldsSet, "id")
+		badFields["id"] = "This is a read only field and cannot be specified in an update request."
 	}
 	if item.GetCreatedTime() != nil {
-		immutableFieldsSet = append(immutableFieldsSet, "created_time")
+		badFields["created_time"] = "This is a read only field and cannot be specified in an update request."
 	}
 	if item.GetUpdatedTime() != nil {
-		immutableFieldsSet = append(immutableFieldsSet, "updated_time")
+		badFields["updated_time"] = "This is a read only field and cannot be specified in an update request."
 	}
-	if len(immutableFieldsSet) > 0 {
-		return handlers.InvalidArgumentErrorf("Cannot specify read only fields at update time.", immutableFieldsSet)
+	if len(badFields) > 0 {
+		return handlers.InvalidArgumentErrorf("Errors in provided fields.", badFields)
 	}
 
 	return nil
 }
 
 func validateDeleteRequest(req *pbs.DeleteUserRequest) error {
-	if err := validateAncestors(req); err != nil {
-		return err
-	}
+	badFields := validateAncestors(req)
 	if !validId(req.GetId(), iam.UserPrefix+"_") {
-		return handlers.InvalidArgumentErrorf("Improperly formatted id.", []string{"id"})
+		badFields["id"] = "Incorrectly formatted identifier."
+	}
+	if len(badFields) > 0 {
+		return handlers.InvalidArgumentErrorf("Errors in provided fields.", badFields)
 	}
 	return nil
 }
@@ -322,12 +312,12 @@ type ancestorProvider interface {
 }
 
 // validateAncestors verifies that the ancestors of this call are properly set and provided.
-func validateAncestors(r ancestorProvider) error {
+func validateAncestors(r ancestorProvider) map[string]string {
 	if r.GetOrgId() == "" {
-		return handlers.InvalidArgumentErrorf("Missing organization id.", []string{"org_id"})
+		return map[string]string{orgIdFieldName: "Missing organization id."}
 	}
-	if !validId(r.GetOrgId(), "o_") {
-		return handlers.InvalidArgumentErrorf("Poorly formatted org id.", []string{"org_id"})
+	if !validId(r.GetOrgId(), iam.OrganizationScope.Prefix()+"_") {
+		return map[string]string{orgIdFieldName: "Improperly formatted identifier."}
 	}
-	return nil
+	return map[string]string{}
 }
