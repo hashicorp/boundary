@@ -1569,6 +1569,171 @@
           "controller.api.services.v1.HostCatalogService"
         ]
       }
+    },
+    "/v1/orgs/{org_id}/users": {
+      "get": {
+        "summary": "Lists all Users",
+        "operationId": "UserService_ListUsers",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.services.v1.ListUsersResponse"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "org_id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "view",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "controller.api.services.v1.UserService"
+        ]
+      },
+      "post": {
+        "summary": "Creates a single User",
+        "operationId": "UserService_CreateUser",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/controller.api.resources.users.v1.User"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "org_id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/controller.api.resources.users.v1.User"
+            }
+          }
+        ],
+        "tags": [
+          "controller.api.services.v1.UserService"
+        ]
+      }
+    },
+    "/v1/orgs/{org_id}/users/{id}": {
+      "get": {
+        "summary": "Gets a single User",
+        "operationId": "UserService_GetUser",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/controller.api.resources.users.v1.User"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "org_id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "view",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "controller.api.services.v1.UserService"
+        ]
+      },
+      "delete": {
+        "summary": "Deletes a User",
+        "operationId": "UserService_DeleteUser",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.services.v1.DeleteUserResponse"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "org_id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "controller.api.services.v1.UserService"
+        ]
+      },
+      "patch": {
+        "summary": "Updates a User",
+        "operationId": "UserService_UpdateUser",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/controller.api.resources.users.v1.User"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "org_id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/controller.api.resources.users.v1.User"
+            }
+          }
+        ],
+        "tags": [
+          "controller.api.services.v1.UserService"
+        ]
+      }
     }
   },
   "definitions": {
@@ -1750,6 +1915,42 @@
       },
       "title": "Project contains all fields related to a Project resource"
     },
+    "controller.api.resources.users.v1.User": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "The ID of the Project\nOutput only.",
+          "readOnly": true
+        },
+        "name": {
+          "type": "string",
+          "title": "Optional name for identification purposes"
+        },
+        "description": {
+          "type": "string",
+          "title": "Optional user-set descripton for identification purposes"
+        },
+        "created_time": {
+          "type": "string",
+          "format": "date-time",
+          "description": "The time this resource was created\nOutput only.",
+          "readOnly": true
+        },
+        "updated_time": {
+          "type": "string",
+          "format": "date-time",
+          "description": "The time this resource was last updated.\nOutput only.",
+          "readOnly": true
+        },
+        "disabled": {
+          "type": "boolean",
+          "format": "boolean",
+          "title": "Whether the resource is disabled"
+        }
+      },
+      "title": "User contains all fields related to a User resource"
+    },
     "controller.api.services.v1.AddToHostSetResponse": {
       "type": "object"
     },
@@ -1797,6 +1998,17 @@
         }
       }
     },
+    "controller.api.services.v1.CreateUserResponse": {
+      "type": "object",
+      "properties": {
+        "uri": {
+          "type": "string"
+        },
+        "item": {
+          "$ref": "#/definitions/controller.api.resources.users.v1.User"
+        }
+      }
+    },
     "controller.api.services.v1.DeleteHostCatalogResponse": {
       "type": "object",
       "properties": {
@@ -1825,6 +2037,15 @@
       }
     },
     "controller.api.services.v1.DeleteProjectResponse": {
+      "type": "object",
+      "properties": {
+        "existed": {
+          "type": "boolean",
+          "format": "boolean"
+        }
+      }
+    },
+    "controller.api.services.v1.DeleteUserResponse": {
       "type": "object",
       "properties": {
         "existed": {
@@ -1862,6 +2083,14 @@
       "properties": {
         "item": {
           "$ref": "#/definitions/controller.api.resources.scopes.v1.Project"
+        }
+      }
+    },
+    "controller.api.services.v1.GetUserResponse": {
+      "type": "object",
+      "properties": {
+        "item": {
+          "$ref": "#/definitions/controller.api.resources.users.v1.User"
         }
       }
     },
@@ -1909,6 +2138,17 @@
         }
       }
     },
+    "controller.api.services.v1.ListUsersResponse": {
+      "type": "object",
+      "properties": {
+        "items": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/controller.api.resources.users.v1.User"
+          }
+        }
+      }
+    },
     "controller.api.services.v1.RemoveFromHostSetResponse": {
       "type": "object"
     },
@@ -1941,6 +2181,14 @@
       "properties": {
         "item": {
           "$ref": "#/definitions/controller.api.resources.scopes.v1.Project"
+        }
+      }
+    },
+    "controller.api.services.v1.UpdateUserResponse": {
+      "type": "object",
+      "properties": {
+        "item": {
+          "$ref": "#/definitions/controller.api.resources.users.v1.User"
         }
       }
     },

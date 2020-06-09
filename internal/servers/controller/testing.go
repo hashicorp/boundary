@@ -73,6 +73,9 @@ func (tc *TestController) buildClient() {
 	if err := client.SetAddr(apiAddrs[0]); err != nil {
 		tc.t.Fatal(fmt.Errorf("error setting client address: %w", err))
 	}
+	if tc.b.DefaultOrgId != "" {
+		client.SetOrg(tc.b.DefaultOrgId)
+	}
 
 	tc.client = client
 }
