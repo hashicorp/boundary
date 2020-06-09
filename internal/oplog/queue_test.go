@@ -126,4 +126,7 @@ func Test_Queue(t *testing.T) {
 	t.Run("missing both field mask and null paths for update", func(t *testing.T) {
 		require.Error(t, queue.Add(userUpdate, "user", OpType_OP_TYPE_UPDATE))
 	})
+	t.Run("intersecting field masks and null paths", func(t *testing.T) {
+		require.Error(t, queue.Add(userNilUpdate, "user", OpType_OP_TYPE_UPDATE, WithFieldMaskPaths([]string{"Name"}), WithSetToNullPaths([]string{"Name"})))
+	})
 }

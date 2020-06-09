@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"sync"
 
+	common "github.com/hashicorp/watchtower/internal/db/common"
 	"google.golang.org/genproto/protobuf/field_mask"
 	"google.golang.org/protobuf/proto"
 )
@@ -41,8 +42,26 @@ func (q *Queue) Add(m proto.Message, typeName string, t OpType, opt ...Option) e
 	if err != nil {
 		return fmt.Errorf("error marshaling add parameter: %w", err)
 	}
-	if t == OpType_OP_TYPE_UPDATE && len(withFieldMasks) == 0 && len(withNullPaths) == 0 {
-		return fmt.Errorf("queue add: missing field mask for update")
+	if t == OpType_OP_TYPE_UPDATE {
+		if len(withFieldMasks) == 0 && len(withNullPaths) == 0 {
+			return fmt.Errorf("queue add: missing field masks or null paths for update")
+		}
+		fMasks := withFieldMasks
+		if fMasks == nil {
+			fMasks = []string{}
+		}
+		nullPaths := withNullPaths
+		if nullPaths == nil {
+			nullPaths = []string{}
+		}
+		i, _, _, err := common.Intersection(fMasks, nullPaths)
+		if err != nil {
+			return fmt.Errorf("queue add: %w", err)
+		}
+		if len(i) != 0 {
+			return fmt.Errorf("queue add: field masks and null paths intersect with: %s", i)
+		}
+
 	}
 	msg := &AnyOperation{
 		TypeName:      typeName,
