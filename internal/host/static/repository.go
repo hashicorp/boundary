@@ -73,17 +73,10 @@ func (r *Repository) CreateCatalog(ctx context.Context, c *HostCatalog, opt ...O
 	metadata := newCatalogMetadata(c, oplog.OpType_OP_TYPE_CREATE)
 
 	var newHostCatalog *HostCatalog
-	_, err = r.writer.DoTx(
-		ctx,
-		db.StdRetryCnt,
-		db.ExpBackoff{},
+	_, err = r.writer.DoTx(ctx, db.StdRetryCnt, db.ExpBackoff{},
 		func(w db.Writer) error {
 			newHostCatalog = c.clone()
-			return w.Create(
-				ctx,
-				newHostCatalog,
-				db.WithOplog(r.wrapper, metadata),
-			)
+			return w.Create(ctx, newHostCatalog, db.WithOplog(r.wrapper, metadata))
 		},
 	)
 
@@ -144,20 +137,11 @@ func (r *Repository) UpdateCatalog(ctx context.Context, c *HostCatalog, fieldMas
 
 	var rowsUpdated int
 	var returnedCatalog *HostCatalog
-	_, err := r.writer.DoTx(
-		ctx,
-		db.StdRetryCnt,
-		db.ExpBackoff{},
+	_, err := r.writer.DoTx(ctx, db.StdRetryCnt, db.ExpBackoff{},
 		func(w db.Writer) error {
 			returnedCatalog = c.clone()
 			var err error
-			rowsUpdated, err = w.Update(
-				ctx,
-				returnedCatalog,
-				dbMask,
-				nullFields,
-				db.WithOplog(r.wrapper, metadata),
-			)
+			rowsUpdated, err = w.Update(ctx, returnedCatalog, dbMask, nullFields, db.WithOplog(r.wrapper, metadata))
 			if err == nil && rowsUpdated > 1 {
 				return db.ErrMultipleRecords
 			}
@@ -207,18 +191,11 @@ func (r *Repository) DeleteCatalog(ctx context.Context, id string, opt ...Option
 
 	var rowsDeleted int
 	var deleteCatalog *HostCatalog
-	_, err := r.writer.DoTx(
-		ctx,
-		db.StdRetryCnt,
-		db.ExpBackoff{},
+	_, err := r.writer.DoTx(ctx, db.StdRetryCnt, db.ExpBackoff{},
 		func(w db.Writer) error {
 			deleteCatalog = c.clone()
 			var err error
-			rowsDeleted, err = w.Delete(
-				ctx,
-				deleteCatalog,
-				db.WithOplog(r.wrapper, metadata),
-			)
+			rowsDeleted, err = w.Delete(ctx, deleteCatalog, db.WithOplog(r.wrapper, metadata))
 			if err == nil && rowsDeleted > 1 {
 				return db.ErrMultipleRecords
 			}
@@ -290,17 +267,10 @@ func (r *Repository) CreateHost(ctx context.Context, h *Host, opt ...Option) (*H
 	metadata := newHostMetadata(h, oplog.OpType_OP_TYPE_CREATE)
 
 	var newHost *Host
-	_, err = r.writer.DoTx(
-		ctx,
-		db.StdRetryCnt,
-		db.ExpBackoff{},
+	_, err = r.writer.DoTx(ctx, db.StdRetryCnt, db.ExpBackoff{},
 		func(w db.Writer) error {
 			newHost = h.clone()
-			return w.Create(
-				ctx,
-				newHost,
-				db.WithOplog(r.wrapper, metadata),
-			)
+			return w.Create(ctx, newHost, db.WithOplog(r.wrapper, metadata))
 		},
 	)
 
