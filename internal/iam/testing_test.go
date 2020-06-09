@@ -66,12 +66,11 @@ func Test_TestUser(t *testing.T) {
 	assert := assert.New(t)
 	cleanup, conn, _ := db.TestSetup(t, "postgres")
 	defer func() {
-		if err := cleanup(); err != nil {
-			t.Error(err)
-		}
+		err := cleanup()
+		assert.NoError(err)
+		err = conn.Close()
+		assert.NoError(err)
 	}()
-	defer conn.Close()
-
 	org, _ := TestScopes(t, conn)
 
 	assert.NotNil(org)

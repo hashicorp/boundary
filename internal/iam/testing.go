@@ -8,28 +8,33 @@ import (
 	"github.com/hashicorp/watchtower/internal/db"
 	"github.com/jinzhu/gorm"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 // TestScopes creates an organization and project suitable for testing.
 func TestScopes(t *testing.T, conn *gorm.DB) (org *Scope, prj *Scope) {
 	t.Helper()
-	assert := assert.New(t)
+	require := require.New(t)
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
 	repo, err := NewRepository(rw, rw, wrapper)
-	assert.NoError(err)
+	require.NoError(err)
 
 	org, err = NewOrganization()
+	require.NoError(err)
+
 	org, err = repo.CreateScope(context.Background(), org)
-	assert.NoError(err)
-	assert.NotNil(org)
-	assert.NotEmpty(org.GetPublicId())
+	require.NoError(err)
+	require.NotNil(org)
+	require.NotEmpty(org.GetPublicId())
 
 	prj, err = NewProject(org.GetPublicId())
+	require.NoError(err)
+
 	prj, err = repo.CreateScope(context.Background(), prj)
-	assert.NoError(err)
-	assert.NotNil(prj)
-	assert.NotEmpty(prj.GetPublicId())
+	require.NoError(err)
+	require.NotNil(prj)
+	require.NotEmpty(prj.GetPublicId())
 
 	return
 }
@@ -87,13 +92,16 @@ func TestUser(t *testing.T, conn *gorm.DB, orgId string, opt ...Option) *User {
 // TestGroup creates a group suitable for testing.
 func TestGroup(t *testing.T, conn *gorm.DB, orgId string) *Group {
 	t.Helper()
-	assert := assert.New(t)
+	require := require.New(t)
 	rw := db.New(conn)
 
 	grp, err := NewGroup(orgId)
-	assert.NoError(err)
+	require.NoError(err)
+	id, err := newGroupId()
+	require.NoError(err)
+	grp.PublicId = id
 	err = rw.Create(context.Background(), grp)
-	assert.NoError(err)
-	assert.NotEmpty(grp.PublicId)
+	require.NoError(err)
+	require.NotEmpty(grp.PublicId)
 	return grp
 }
