@@ -67,6 +67,8 @@ func (w *GormWriter) Update(i interface{}, fieldMaskPaths, setToNullPaths []stri
 	if len(fieldMaskPaths) == 0 && len(setToNullPaths) == 0 {
 		return errors.New("update both fieldMaskPaths and setToNullPaths are missing")
 	}
+	// common.UpdateFields will also check to ensure that fieldMaskPaths and
+	// setToNullPaths do not intersect.
 	updateFields, err := common.UpdateFields(i, fieldMaskPaths, setToNullPaths)
 	if err != nil {
 		return fmt.Errorf("error updating: unable to build update fields %w", err)
