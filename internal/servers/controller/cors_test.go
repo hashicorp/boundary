@@ -162,9 +162,10 @@ func TestHandler_CORS(t *testing.T) {
 			// Create a client with the right address
 			client := tc.Client()
 			client.SetAddr(tc.ApiAddrs()[c.listenerNum-1])
+			client.SetOrg("o_1234567890")
 
 			// Create the request
-			req, err := client.NewRequest(tc.Context(), c.method, "orgs/o_1234567890/projects", nil)
+			req, err := client.NewRequest(tc.Context(), c.method, "projects", nil)
 			assert.NoError(t, err)
 
 			// Append headers
