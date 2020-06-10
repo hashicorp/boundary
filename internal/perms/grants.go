@@ -218,7 +218,7 @@ func (g *Grant) unmarshalText(grantString string) error {
 	return nil
 }
 
-// ParseGrantString parses a grant string. Note that this does not do checking
+// Parse parses a grant string. Note that this does not do checking
 // of the validity of IDs and such; that's left for other parts of the system.
 // We may not check at all (e.g. let it be an authz-time failure) or could check
 // after submission to catch errors.
@@ -234,7 +234,7 @@ func (g *Grant) unmarshalText(grantString string) error {
 // organization is the original organization scope. Likely this can be done in a
 // centralized helper context; however it's not done here to avoid reaching into
 // the database from within this package.
-func ParseGrantString(scope Scope, userId, grantString string) (Grant, error) {
+func Parse(scope Scope, userId, grantString string) (Grant, error) {
 	if len(grantString) == 0 {
 		return Grant{}, errors.New("grant string is empty")
 	}

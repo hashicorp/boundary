@@ -229,7 +229,7 @@ func Test_ACLAllowed(t *testing.T) {
 			for _, sg := range test.scopeGrants {
 				scope := sg.scope
 				for _, g := range sg.grants {
-					grant, err := ParseGrantString(scope, test.userId, g)
+					grant, err := Parse(scope, test.userId, g)
 					assert.NoError(t, err)
 					grants = append(grants, grant)
 				}

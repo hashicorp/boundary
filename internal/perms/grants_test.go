@@ -410,7 +410,7 @@ func Test_Unmarshaling(t *testing.T) {
 	}
 }
 
-func Test_ParseGrantString(t *testing.T) {
+func Test_Parse(t *testing.T) {
 	t.Parallel()
 
 	type input struct {
@@ -504,25 +504,25 @@ func Test_ParseGrantString(t *testing.T) {
 		},
 	}
 
-	_, err := ParseGrantString(Scope{}, "", "")
+	_, err := Parse(Scope{}, "", "")
 	assert.Error(t, err)
 	assert.Equal(t, "grant string is empty", err.Error())
 
-	_, err = ParseGrantString(Scope{}, "", "{}")
+	_, err = Parse(Scope{}, "", "{}")
 	assert.Error(t, err)
 	assert.Equal(t, "invalid scope type", err.Error())
 
-	_, err = ParseGrantString(Scope{Type: iam.OrganizationScope}, "", "{}")
+	_, err = Parse(Scope{Type: iam.OrganizationScope}, "", "{}")
 	assert.Error(t, err)
 	assert.Equal(t, "no scope ID provided", err.Error())
 
-	_, err = ParseGrantString(Scope{Id: "foobar", Type: iam.ProjectScope}, "", `project=foobar`)
+	_, err = Parse(Scope{Id: "foobar", Type: iam.ProjectScope}, "", `project=foobar`)
 	assert.Error(t, err)
 	assert.Equal(t, "cannot specify a project in the grant when the scope is not an organization", err.Error())
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			grant, err := ParseGrantString(Scope{Id: "scope", Type: iam.OrganizationScope}, test.userId, test.input)
+			grant, err := Parse(Scope{Id: "scope", Type: iam.OrganizationScope}, test.userId, test.input)
 			if test.err != "" {
 				assert.Error(t, err)
 				assert.True(t, strings.HasPrefix(err.Error(), test.err))
