@@ -106,57 +106,85 @@ func Test_GroupCreate(t *testing.T) {
 		assert.NoError(t, err)
 	}()
 	org, proj := TestScopes(t, conn)
-	t.Run("valid-with-org", func(t *testing.T) {
-		id := testId(t)
-		assert, require := assert.New(t), require.New(t)
-		w := db.New(conn)
-		grp, err := NewGroup(org.PublicId, WithName(id), WithDescription("description-"+id))
-		require.NoError(err)
-		grpId, err := newGroupId()
-		require.NoError(err)
-		grp.PublicId = grpId
-		err = w.Create(context.Background(), grp)
-		require.NoError(err)
-		assert.NotEmpty(grp.PublicId)
+	type args struct {
+		group *Group
+	}
+	tests := []struct {
+		name        string
+		args        args
+		wantDup     bool
+		wantErr     bool
+		wantErrMsg  string
+		wantIsError error
+	}{
+		{
+			name: "valid-with-org",
+			args: args{
+				group: func() *Group {
+					id := testId(t)
+					grp, err := NewGroup(org.PublicId, WithName(id), WithDescription("description-"+id))
+					require.NoError(t, err)
+					grpId, err := newGroupId()
+					require.NoError(t, err)
+					grp.PublicId = grpId
+					return grp
+				}(),
+			},
+			wantErr: false,
+		},
+		{
+			name: "valid-with-proj",
+			args: args{
+				group: func() *Group {
+					id := testId(t)
+					grp, err := NewGroup(proj.PublicId, WithName(id), WithDescription("description-"+id))
+					require.NoError(t, err)
+					grpId, err := newGroupId()
+					require.NoError(t, err)
+					grp.PublicId = grpId
+					return grp
+				}(),
+			},
+			wantErr: false,
+		},
+		{
+			name: "bad-scope-id",
+			args: args{
+				group: func() *Group {
+					id := testId(t)
+					grp, err := NewGroup(id)
+					require.NoError(t, err)
+					grpId, err := newGroupId()
+					require.NoError(t, err)
+					grp.PublicId = grpId
+					return grp
+				}(),
+			},
+			wantErr:    true,
+			wantErrMsg: "create: vet for write failed scope is not found",
+		},
+	}
 
-		foundGrp := allocGroup()
-		foundGrp.PublicId = grp.PublicId
-		err = w.LookupByPublicId(context.Background(), &foundGrp)
-		require.NoError(err)
-		assert.Equal(grp, &foundGrp)
-	})
-	t.Run("valid-with-proj", func(t *testing.T) {
-		assert, require := assert.New(t), require.New(t)
-		w := db.New(conn)
-		id := testId(t)
-		grp, err := NewGroup(proj.PublicId, WithName(id), WithDescription("description-"+id))
-		require.NoError(err)
-		grpId, err := newGroupId()
-		require.NoError(err)
-		grp.PublicId = grpId
-		err = w.Create(context.Background(), grp)
-		require.NoError(err)
-		assert.NotEmpty(grp.PublicId)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+			w := db.New(conn)
+			err := w.Create(context.Background(), tt.args.group)
+			if tt.wantErr {
+				require.Error(err)
+				assert.Equal(tt.wantErrMsg, err.Error())
+				return
+			}
+			assert.NoError(err)
+			assert.NotEmpty(tt.args.group.PublicId)
 
-		foundGrp := allocGroup()
-		foundGrp.PublicId = grp.PublicId
-		err = w.LookupByPublicId(context.Background(), &foundGrp)
-		require.NoError(err)
-		assert.Equal(grp, &foundGrp)
-	})
-	t.Run("bad-scope-id", func(t *testing.T) {
-		assert, require := assert.New(t), require.New(t)
-		w := db.New(conn)
-		id := testId(t)
-		grp, err := NewGroup(id)
-		require.NoError(err)
-		grpId, err := newGroupId()
-		require.NoError(err)
-		grp.PublicId = grpId
-		err = w.Create(context.Background(), grp)
-		require.Error(err)
-		assert.Equal("create: vet for write failed scope is not found", err.Error())
-	})
+			foundGrp := allocGroup()
+			foundGrp.PublicId = tt.args.group.PublicId
+			err = w.LookupByPublicId(context.Background(), &foundGrp)
+			require.NoError(err)
+			assert.Equal(tt.args.group, &foundGrp)
+		})
+	}
 }
 
 func Test_GroupUpdate(t *testing.T) {
