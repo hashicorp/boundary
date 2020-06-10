@@ -206,6 +206,22 @@ func (c *Command) ParseFlagsAndConfig(args []string) int {
 		return 1
 	}
 
+	// preload the KMS for encrypting/decrypting the config parameters
+	kmss, err := configutil.LoadConfigKMSes(c.flagConfig)
+	if err != nil {
+		c.UI.Error("error loading KMS config: " + err.Error())
+		return 1
+	}
+
+	for _, kms := range kmss {
+		for _, purpose := range kms.Purpose {
+			if purpose == "config" {
+				c.configKMS = kms
+				break
+			}
+		}
+	}
+
 	// Validation
 	if !c.flagDev {
 		if len(c.flagConfig) == 0 {
