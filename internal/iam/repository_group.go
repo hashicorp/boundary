@@ -8,7 +8,8 @@ import (
 	"github.com/hashicorp/watchtower/internal/db"
 )
 
-// CreateGroup will create a group in the repository and return the written group.
+// CreateGroup will create a group in the repository and return the written
+// group.  No options are currently supported.
 func (r *Repository) CreateGroup(ctx context.Context, group *Group, opt ...Option) (*Group, error) {
 	if group == nil {
 		return nil, fmt.Errorf("create group: missing group %w", db.ErrNilParameter)
@@ -19,6 +20,9 @@ func (r *Repository) CreateGroup(ctx context.Context, group *Group, opt ...Optio
 	if group.PublicId != "" {
 		return nil, fmt.Errorf("create group: public id not empty: %w", db.ErrInvalidParameter)
 	}
+	if group.ScopeId == "" {
+		return nil, fmt.Errorf("create group: missing group scope id: %w", db.ErrNilParameter)
+	}
 	id, err := newGroupId()
 	if err != nil {
 		return nil, fmt.Errorf("create group: %w", err)
@@ -28,7 +32,7 @@ func (r *Repository) CreateGroup(ctx context.Context, group *Group, opt ...Optio
 	resource, err := r.create(ctx, g)
 	if err != nil {
 		if db.IsUniqueError(err) {
-			return nil, fmt.Errorf("create group: group %s already exists in scope %s: %w", group.Name, group.ScopeId, err)
+			return nil, fmt.Errorf("create group: group %s already exists in scope %s: %w", group.Name, group.ScopeId, db.ErrNotUnique)
 		}
 		return nil, fmt.Errorf("create group: %w for %s", err, g.PublicId)
 	}
@@ -43,6 +47,9 @@ func (r *Repository) CreateGroup(ctx context.Context, group *Group, opt ...Optio
 func (r *Repository) UpdateGroup(ctx context.Context, group *Group, fieldMaskPaths []string, opt ...Option) (*Group, int, error) {
 	if group == nil {
 		return nil, db.NoRowsAffected, fmt.Errorf("update group: missing group %w", db.ErrNilParameter)
+	}
+	if group.Group == nil {
+		return nil, db.NoRowsAffected, fmt.Errorf("update group: missing group store %w", db.ErrNilParameter)
 	}
 	if group.PublicId == "" {
 		return nil, db.NoRowsAffected, fmt.Errorf("update group: missing group public id %w", db.ErrInvalidParameter)
@@ -101,7 +108,7 @@ func (r *Repository) DeleteGroup(ctx context.Context, withPublicId string, opt .
 	if err := r.reader.LookupByPublicId(ctx, &g); err != nil {
 		return db.NoRowsAffected, fmt.Errorf("delete group: failed %w for %s", err, withPublicId)
 	}
-	rowsDeleted, err := r.writer.Delete(ctx, &g)
+	rowsDeleted, err := r.delete(ctx, &g)
 	if err != nil {
 		return db.NoRowsAffected, fmt.Errorf("delete group: failed %w for %s", err, withPublicId)
 	}
