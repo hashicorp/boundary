@@ -6,8 +6,10 @@ import (
 	"github.com/hashicorp/watchtower/internal/db"
 )
 
-const UserPrefix = "u"
-const GroupPrefix = "g"
+const (
+	UserPrefix  = "u"
+	GroupPrefix = "g"
+)
 
 func newUserId() (string, error) {
 	id, err := db.NewPublicId(UserPrefix)
