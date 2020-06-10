@@ -10,6 +10,7 @@ import (
 	"github.com/hashicorp/watchtower/internal/db"
 	"github.com/hashicorp/watchtower/internal/oplog"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -22,13 +23,11 @@ func TestRepository_CreateGroup(t *testing.T) {
 		err = conn.Close()
 		assert.NoError(t, err)
 	}()
-	a := assert.New(t)
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
 	repo, err := NewRepository(rw, rw, wrapper)
-	a.NoError(err)
-	id, err := uuid.GenerateUUID()
-	a.NoError(err)
+	require.NoError(t, err)
+	id := testId(t)
 
 	org, _ := TestScopes(t, conn)
 
