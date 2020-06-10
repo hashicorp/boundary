@@ -110,6 +110,7 @@ func newGroupMemberUser(groupId, userId string, opt ...Option) (*GroupMemberUser
 func (m *GroupMemberUser) GetType() string {
 	return UserMemberType.String()
 }
+
 func allocGroupMemberUser() GroupMemberUser {
 	return GroupMemberUser{
 		GroupMemberUser: &store.GroupMemberUser{},
