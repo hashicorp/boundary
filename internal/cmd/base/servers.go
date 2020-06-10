@@ -402,6 +402,7 @@ func (b *Server) CreateDevDatabase(dialect string) error {
 	b.Database = dbase
 
 	gorm.LogFormatter = db.GetGormLogFormatter(b.Logger)
+	b.Database.SetLogger(db.GetGormLogger(b.Logger))
 	b.Database.LogMode(true)
 
 	rw := db.New(b.Database)

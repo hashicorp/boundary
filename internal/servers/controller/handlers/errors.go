@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"sort"
 
 	"github.com/grpc-ecosystem/grpc-gateway/runtime"
 	"github.com/hashicorp/go-hclog"
@@ -14,16 +15,20 @@ import (
 	"google.golang.org/grpc/status"
 )
 
+// NotFoundError returns an ApiError indicating a resource couldn't be found.
 func NotFoundErrorf(msg string, a ...interface{}) error {
 	return status.Errorf(codes.NotFound, msg, a...)
 }
 
-func InvalidArgumentErrorf(msg string, fields []string) error {
+func InvalidArgumentErrorf(msg string, fields map[string]string) error {
 	st := status.New(codes.InvalidArgument, msg)
 	br := &errdetails.BadRequest{}
-	for _, f := range fields {
-		br.FieldViolations = append(br.FieldViolations, &errdetails.BadRequest_FieldViolation{Field: f})
+	for k, v := range fields {
+		br.FieldViolations = append(br.FieldViolations, &errdetails.BadRequest_FieldViolation{Field: k, Description: v})
 	}
+	sort.Slice(br.FieldViolations, func(i, j int) bool {
+		return br.FieldViolations[i].GetField() < br.FieldViolations[j].GetField()
+	})
 	st, err := st.WithDetails(br)
 	if err != nil {
 		hclog.Default().Error("failure building status with details", "details", br, "error", err)
@@ -51,7 +56,7 @@ func statusErrorToApiError(s *status.Status) *pb.Error {
 				if apiErr.Details == nil {
 					apiErr.Details = &pb.ErrorDetails{}
 				}
-				apiErr.Details.RequestFields = append(apiErr.Details.RequestFields, fv.GetField())
+				apiErr.Details.RequestFields = append(apiErr.Details.RequestFields, &pb.FieldError{Name: fv.GetField(), Description: fv.GetDescription()})
 			}
 		}
 	}

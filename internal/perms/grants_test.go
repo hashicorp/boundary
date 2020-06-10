@@ -6,6 +6,7 @@ import (
 
 	"github.com/hashicorp/watchtower/internal/iam"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func Test_ActionParsingValidation(t *testing.T) {
@@ -78,10 +79,10 @@ func Test_ActionParsingValidation(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			err := test.input.parseAndValidateActions()
 			if test.errResult == "" {
-				assert.NoError(t, err)
+				require.NoError(t, err)
 				assert.Equal(t, test.result, test.input)
 			} else {
-				assert.Error(t, err)
+				require.Error(t, err)
 				assert.Equal(t, test.errResult, err.Error())
 			}
 		})
@@ -120,9 +121,9 @@ func Test_ValidateType(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			err := test.input.validateType()
 			if test.errResult == "" {
-				assert.NoError(t, err)
+				require.NoError(t, err)
 			} else {
-				assert.Error(t, err)
+				require.Error(t, err)
 				assert.Equal(t, test.errResult, err.Error())
 			}
 		})
@@ -185,10 +186,10 @@ func Test_ValidateProject(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			err := test.input.validateAndModifyProject()
 			if test.errResult == "" {
-				assert.NoError(t, err)
+				require.NoError(t, err)
 				assert.Equal(t, test.output, test.input)
 			} else {
-				assert.Error(t, err)
+				require.Error(t, err)
 				assert.Equal(t, test.errResult, err.Error())
 			}
 		})
@@ -275,7 +276,7 @@ func Test_MarshallingAndCloning(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			output, err := test.input.MarshalJSON()
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			assert.Equal(t, test.jsonOutput, string(output))
 			assert.Equal(t, test.canonicalString, test.input.CanonicalString())
 			assert.Equal(t, &test.input, test.input.clone())
@@ -382,28 +383,31 @@ func Test_Unmarshaling(t *testing.T) {
 		},
 	}
 
+	assert := assert.New(t)
+	require := require.New(t)
+
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			var g Grant
 			if test.jsonInput != "" {
 				err := g.unmarshalJSON([]byte(test.jsonInput))
 				if test.jsonErr != "" {
-					assert.Error(t, err)
-					assert.Equal(t, test.jsonErr, err.Error())
+					require.Error(err)
+					assert.Equal(test.jsonErr, err.Error())
 				} else {
-					assert.NoError(t, err)
-					assert.Equal(t, test.expected, g)
+					require.NoError(err)
+					assert.Equal(test.expected, g)
 				}
 			}
 			g = Grant{}
 			if test.textInput != "" {
 				err := g.unmarshalText(test.textInput)
 				if test.textErr != "" {
-					assert.Error(t, err)
-					assert.Equal(t, test.textErr, err.Error())
+					require.Error(err)
+					assert.Equal(test.textErr, err.Error())
 				} else {
-					assert.NoError(t, err)
-					assert.Equal(t, test.expected, g)
+					require.NoError(err)
+					assert.Equal(test.expected, g)
 				}
 			}
 		})
@@ -504,31 +508,34 @@ func Test_Parse(t *testing.T) {
 		},
 	}
 
+	assert := assert.New(t)
+	require := require.New(t)
+
 	_, err := Parse(Scope{}, "", "")
-	assert.Error(t, err)
-	assert.Equal(t, "grant string is empty", err.Error())
+	require.Error(err)
+	assert.Equal("grant string is empty", err.Error())
 
 	_, err = Parse(Scope{}, "", "{}")
-	assert.Error(t, err)
-	assert.Equal(t, "invalid scope type", err.Error())
+	require.Error(err)
+	assert.Equal("invalid scope type", err.Error())
 
 	_, err = Parse(Scope{Type: iam.OrganizationScope}, "", "{}")
-	assert.Error(t, err)
-	assert.Equal(t, "no scope ID provided", err.Error())
+	require.Error(err)
+	assert.Equal("no scope ID provided", err.Error())
 
 	_, err = Parse(Scope{Id: "foobar", Type: iam.ProjectScope}, "", `project=foobar`)
-	assert.Error(t, err)
-	assert.Equal(t, "cannot specify a project in the grant when the scope is not an organization", err.Error())
+	require.Error(err)
+	assert.Equal("cannot specify a project in the grant when the scope is not an organization", err.Error())
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			grant, err := Parse(Scope{Id: "scope", Type: iam.OrganizationScope}, test.userId, test.input)
 			if test.err != "" {
-				assert.Error(t, err)
-				assert.True(t, strings.HasPrefix(err.Error(), test.err))
+				require.Error(err)
+				assert.True(strings.HasPrefix(err.Error(), test.err))
 			} else {
-				assert.NoError(t, err)
-				assert.Equal(t, test.expected, grant)
+				require.NoError(err)
+				assert.Equal(test.expected, grant)
 			}
 		})
 	}

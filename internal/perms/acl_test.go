@@ -5,6 +5,7 @@ import (
 
 	"github.com/hashicorp/watchtower/internal/iam"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func Test_ACLAllowed(t *testing.T) {
@@ -230,7 +231,7 @@ func Test_ACLAllowed(t *testing.T) {
 				scope := sg.scope
 				for _, g := range sg.grants {
 					grant, err := Parse(scope, test.userId, g)
-					assert.NoError(t, err)
+					require.NoError(t, err)
 					grants = append(grants, grant)
 				}
 			}

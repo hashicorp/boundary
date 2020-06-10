@@ -6,7 +6,6 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/golang/protobuf/proto"
 	"github.com/golang/protobuf/ptypes"
 	"github.com/golang/protobuf/ptypes/wrappers"
 	"github.com/hashicorp/watchtower/internal/db"
@@ -14,52 +13,46 @@ import (
 	pbs "github.com/hashicorp/watchtower/internal/gen/controller/api/services"
 	"github.com/hashicorp/watchtower/internal/iam"
 	"github.com/hashicorp/watchtower/internal/servers/controller/handlers/projects"
-	"github.com/stretchr/testify/require"
 	"google.golang.org/genproto/protobuf/field_mask"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/types/known/wrapperspb"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func createDefaultProjectAndRepo(t *testing.T) (*iam.Scope, func() (*iam.Repository, error)) {
 	t.Helper()
 	cleanup, conn, _ := db.TestSetup(t, "postgres")
 	t.Cleanup(func() {
-		conn.Close()
-		cleanup()
+		if err := conn.Close(); err != nil {
+			t.Errorf("Error when closing gorm DB: %v", err)
+		}
+		if err := cleanup(); err != nil {
+			t.Errorf("Error when cleaning up TestSetup: %v", err)
+		}
 	})
 	rw := db.New(conn)
 	wrap := db.TestWrapper(t)
 	repoFn := func() (*iam.Repository, error) {
 		return iam.NewRepository(rw, rw, wrap)
 	}
+
+	_, pRes := iam.TestScopes(t, conn)
+	pRes.Name = "default"
+	pRes.Description = "default"
 	repo, err := repoFn()
-	assert.Nil(t, err, "Unable to create new repoFn")
-
-	// Create a default org and project for our tests.
-	o, err := iam.NewOrganization(iam.WithName("default"))
-	if err != nil {
-		t.Fatalf("Could not get new org: %v", err)
-	}
-	oRes, err := repo.CreateScope(context.Background(), o)
-	if err != nil {
-		t.Fatalf("Could not create org scope: %v", err)
-	}
-
-	p, err := iam.NewProject(oRes.GetPublicId(), iam.WithName("default"), iam.WithDescription("default"))
-	if err != nil {
-		t.Fatalf("Could not get new project: %v", err)
-	}
-	pRes, err := repo.CreateScope(context.Background(), p)
-	if err != nil {
-		t.Fatalf("Could not create project scope: %v", err)
-	}
-
+	require.NoError(t, err)
+	pRes, _, err = repo.UpdateScope(context.Background(), pRes, []string{"Name", "Description"})
+	require.NoError(t, err)
 	return pRes, repoFn
 }
 
 func TestGet(t *testing.T) {
+	assert := assert.New(t)
+	require := require.New(t)
 	proj, repo := createDefaultProjectAndRepo(t)
 	toMerge := &pbs.GetProjectRequest{
 		OrgId: proj.GetParentId(),
@@ -68,8 +61,8 @@ func TestGet(t *testing.T) {
 
 	pProject := &pb.Project{
 		Id:          proj.GetPublicId(),
-		Name:        &wrappers.StringValue{Value: proj.GetName()},
-		Description: &wrappers.StringValue{Value: proj.GetDescription()},
+		Name:        &wrapperspb.StringValue{Value: proj.GetName()},
+		Description: &wrapperspb.StringValue{Value: proj.GetDescription()},
 		CreatedTime: proj.CreateTime.GetTimestamp(),
 		UpdatedTime: proj.UpdateTime.GetTimestamp(),
 	}
@@ -81,40 +74,37 @@ func TestGet(t *testing.T) {
 		errCode codes.Code
 	}{
 		{
-			name:    "Get an Existing Project",
+			name:    "Get an Existing project",
 			req:     &pbs.GetProjectRequest{Id: proj.GetPublicId()},
 			res:     &pbs.GetProjectResponse{Item: pProject},
 			errCode: codes.OK,
 		},
 		{
-			name: "Get a non existant Host Catalog",
-			req:  &pbs.GetProjectRequest{Id: "p_DoesntExis"},
-			res:  nil,
-			// This will be fixed with PR 42
+			name:    "Get a non existing project",
+			req:     &pbs.GetProjectRequest{Id: "p_DoesntExis"},
+			res:     nil,
 			errCode: codes.NotFound,
 		},
 		{
-			name: "Wrong id prefix",
-			req:  &pbs.GetProjectRequest{Id: "j_1234567890"},
-			res:  nil,
-			// This will be fixed with PR 42
+			name:    "Wrong id prefix",
+			req:     &pbs.GetProjectRequest{Id: "j_1234567890"},
+			res:     nil,
 			errCode: codes.InvalidArgument,
 		},
 		{
-			name: "space in id",
-			req:  &pbs.GetProjectRequest{Id: "p_1 23456789"},
-			res:  nil,
-			// This will be fixed with PR 42
+			name:    "space in id",
+			req:     &pbs.GetProjectRequest{Id: "p_1 23456789"},
+			res:     nil,
 			errCode: codes.InvalidArgument,
 		},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			assert := assert.New(t)
 			req := proto.Clone(toMerge).(*pbs.GetProjectRequest)
 			proto.Merge(req, tc.req)
 
-			s := projects.NewService(repo)
+			s, err := projects.NewService(repo)
+			require.NoError(err, "Couldn't create new project service.")
 
 			got, gErr := s.GetProject(context.Background(), req)
 			assert.Equal(tc.errCode, status.Code(gErr), "GetProject(%+v) got error %v, wanted %v", req, gErr, tc.errCode)
@@ -124,20 +114,11 @@ func TestGet(t *testing.T) {
 }
 
 func TestDelete(t *testing.T) {
-	proj, repoFn := createDefaultProjectAndRepo(t)
+	require := require.New(t)
+	proj, repo := createDefaultProjectAndRepo(t)
 
-	proj2, err := iam.NewProject(proj.GetParentId())
-	if err != nil {
-		t.Fatalf("Couldn't allocate a second project: %v", err)
-	}
-	repo, err := repoFn()
-	require.NoError(t, err, "Error creating new iam repo.")
-	proj2, err = repo.CreateScope(context.Background(), proj2)
-	if err != nil {
-		t.Fatalf("Couldn't persist a second project %v", err)
-	}
-
-	s := projects.NewService(repoFn)
+	s, err := projects.NewService(repo)
+	require.NoError(err, "Error when getting new project service.")
 
 	cases := []struct {
 		name    string
@@ -148,8 +129,8 @@ func TestDelete(t *testing.T) {
 		{
 			name: "Delete an Existing Project",
 			req: &pbs.DeleteProjectRequest{
-				OrgId: proj2.GetParentId(),
-				Id:    proj2.GetPublicId(),
+				OrgId: proj.GetParentId(),
+				Id:    proj.GetPublicId(),
 			},
 			res: &pbs.DeleteProjectResponse{
 				Existed: true,
@@ -159,7 +140,7 @@ func TestDelete(t *testing.T) {
 		{
 			name: "Delete bad project id Project",
 			req: &pbs.DeleteProjectRequest{
-				OrgId: proj2.GetParentId(),
+				OrgId: proj.GetParentId(),
 				Id:    "p_doesntexis",
 			},
 			res: &pbs.DeleteProjectResponse{
@@ -171,7 +152,7 @@ func TestDelete(t *testing.T) {
 			name: "Delete bad org id Project",
 			req: &pbs.DeleteProjectRequest{
 				OrgId: "o_doesntexis",
-				Id:    proj2.GetPublicId(),
+				Id:    proj.GetPublicId(),
 			},
 			res: &pbs.DeleteProjectResponse{
 				Existed: false,
@@ -182,7 +163,7 @@ func TestDelete(t *testing.T) {
 			name: "Bad org formatting",
 			req: &pbs.DeleteProjectRequest{
 				OrgId: "bad_format",
-				Id:    proj2.GetPublicId(),
+				Id:    proj.GetPublicId(),
 			},
 			res:     nil,
 			errCode: codes.InvalidArgument,
@@ -190,7 +171,7 @@ func TestDelete(t *testing.T) {
 		{
 			name: "Bad Project Id formatting",
 			req: &pbs.DeleteProjectRequest{
-				OrgId: proj2.GetParentId(),
+				OrgId: proj.GetParentId(),
 				Id:    "bad_format",
 			},
 			res:     nil,
@@ -209,9 +190,11 @@ func TestDelete(t *testing.T) {
 
 func TestDelete_twice(t *testing.T) {
 	assert := assert.New(t)
+	require := require.New(t)
 	proj, repo := createDefaultProjectAndRepo(t)
 
-	s := projects.NewService(repo)
+	s, err := projects.NewService(repo)
+	require.NoError(err, "Error when getting new project service")
 	req := &pbs.DeleteProjectRequest{
 		OrgId: proj.GetParentId(),
 		Id:    proj.GetPublicId(),
@@ -225,11 +208,10 @@ func TestDelete_twice(t *testing.T) {
 }
 
 func TestCreate(t *testing.T) {
+	require := require.New(t)
 	defaultProj, repo := createDefaultProjectAndRepo(t)
 	defaultProjCreated, err := ptypes.Timestamp(defaultProj.GetCreateTime().GetTimestamp())
-	if err != nil {
-		t.Fatalf("Error converting proto to timestamp: %v", err)
-	}
+	require.NoError(err, "Error converting proto to timestamp.")
 	toMerge := &pbs.CreateProjectRequest{
 		OrgId: defaultProj.GetParentId(),
 	}
@@ -243,14 +225,14 @@ func TestCreate(t *testing.T) {
 		{
 			name: "Create a valid Project",
 			req: &pbs.CreateProjectRequest{Item: &pb.Project{
-				Name:        &wrappers.StringValue{Value: "name"},
-				Description: &wrappers.StringValue{Value: "desc"},
+				Name:        &wrapperspb.StringValue{Value: "name"},
+				Description: &wrapperspb.StringValue{Value: "desc"},
 			}},
 			res: &pbs.CreateProjectResponse{
 				Uri: fmt.Sprintf("orgs/%s/projects/p_", defaultProj.GetParentId()),
 				Item: &pb.Project{
-					Name:        &wrappers.StringValue{Value: "name"},
-					Description: &wrappers.StringValue{Value: "desc"},
+					Name:        &wrapperspb.StringValue{Value: "name"},
+					Description: &wrapperspb.StringValue{Value: "desc"},
 				},
 			},
 			errCode: codes.OK,
@@ -286,7 +268,8 @@ func TestCreate(t *testing.T) {
 			req := proto.Clone(toMerge).(*pbs.CreateProjectRequest)
 			proto.Merge(req, tc.req)
 
-			s := projects.NewService(repo)
+			s, err := projects.NewService(repo)
+			require.NoError(err, "Error when getting new project service.")
 
 			got, gErr := s.CreateProject(context.Background(), req)
 			assert.Equal(tc.errCode, status.Code(gErr), "CreateProject(%+v) got error %v, wanted %v", req, gErr, tc.errCode)
@@ -294,13 +277,9 @@ func TestCreate(t *testing.T) {
 				assert.True(strings.HasPrefix(got.GetUri(), tc.res.Uri))
 				assert.True(strings.HasPrefix(got.GetItem().GetId(), "p_"))
 				gotCreateTime, err := ptypes.Timestamp(got.GetItem().GetCreatedTime())
-				if err != nil {
-					t.Fatalf("Error converting proto to timestamp: %v", err)
-				}
+				require.NoError(err, "Error converting proto to timestamp.")
 				gotUpdateTime, err := ptypes.Timestamp(got.GetItem().GetUpdatedTime())
-				if err != nil {
-					t.Fatalf("Error converting proto to timestamp: %v", err)
-				}
+				require.NoError(err, "Error converting proto to timestamp.")
 				// Verify it is a project created after the test setup's default project
 				assert.True(gotCreateTime.After(defaultProjCreated), "New project should have been created after default project. Was created %v, which is after %v", gotCreateTime, defaultProjCreated)
 				assert.True(gotUpdateTime.After(defaultProjCreated), "New project should have been updated after default project. Was updated %v, which is after %v", gotUpdateTime, defaultProjCreated)
@@ -316,22 +295,20 @@ func TestCreate(t *testing.T) {
 }
 
 func TestUpdate(t *testing.T) {
+	require := require.New(t)
 	proj, repoFn := createDefaultProjectAndRepo(t)
-	tested := projects.NewService(repoFn)
+	tested, err := projects.NewService(repoFn)
+	require.NoError(err, "Error when getting new project service.")
 
-	var err error
 	resetProject := func() {
 		repo, err := repoFn()
-		require.NoError(t, err, "Error creating new iam repo.")
-		if proj, _, err = repo.UpdateScope(context.Background(), proj, []string{"Name", "Description"}); err != nil {
-			t.Fatalf("Failed to reset the project")
-		}
+		require.NoError(err, "Couldn't get a new repo")
+		proj, _, err = repo.UpdateScope(context.Background(), proj, []string{"Name", "Description"})
+		require.NoError(err, "Failed to reset the project")
 	}
 
 	projCreated, err := ptypes.Timestamp(proj.GetCreateTime().GetTimestamp())
-	if err != nil {
-		t.Fatalf("Error converting proto to timestamp: %v", err)
-	}
+	require.NoError(err, "Error converting proto to timestamp")
 	toMerge := &pbs.UpdateProjectRequest{
 		OrgId: proj.GetParentId(),
 		Id:    proj.GetPublicId(),
@@ -350,15 +327,15 @@ func TestUpdate(t *testing.T) {
 					Paths: []string{"name", "description"},
 				},
 				Item: &pb.Project{
-					Name:        &wrappers.StringValue{Value: "new"},
-					Description: &wrappers.StringValue{Value: "desc"},
+					Name:        &wrapperspb.StringValue{Value: "new"},
+					Description: &wrapperspb.StringValue{Value: "desc"},
 				},
 			},
 			res: &pbs.UpdateProjectResponse{
 				Item: &pb.Project{
 					Id:          proj.GetPublicId(),
-					Name:        &wrappers.StringValue{Value: "new"},
-					Description: &wrappers.StringValue{Value: "desc"},
+					Name:        &wrapperspb.StringValue{Value: "new"},
+					Description: &wrapperspb.StringValue{Value: "desc"},
 					CreatedTime: proj.GetCreateTime().GetTimestamp(),
 				},
 			},
@@ -371,15 +348,15 @@ func TestUpdate(t *testing.T) {
 					Paths: []string{"name,description"},
 				},
 				Item: &pb.Project{
-					Name:        &wrappers.StringValue{Value: "new"},
-					Description: &wrappers.StringValue{Value: "desc"},
+					Name:        &wrapperspb.StringValue{Value: "new"},
+					Description: &wrapperspb.StringValue{Value: "desc"},
 				},
 			},
 			res: &pbs.UpdateProjectResponse{
 				Item: &pb.Project{
 					Id:          proj.GetPublicId(),
-					Name:        &wrappers.StringValue{Value: "new"},
-					Description: &wrappers.StringValue{Value: "desc"},
+					Name:        &wrapperspb.StringValue{Value: "new"},
+					Description: &wrapperspb.StringValue{Value: "desc"},
 					CreatedTime: proj.GetCreateTime().GetTimestamp(),
 				},
 			},
@@ -389,8 +366,8 @@ func TestUpdate(t *testing.T) {
 			name: "No Update Mask",
 			req: &pbs.UpdateProjectRequest{
 				Item: &pb.Project{
-					Name:        &wrappers.StringValue{Value: "updated name"},
-					Description: &wrappers.StringValue{Value: "updated desc"},
+					Name:        &wrapperspb.StringValue{Value: "updated name"},
+					Description: &wrapperspb.StringValue{Value: "updated desc"},
 				},
 			},
 			errCode: codes.InvalidArgument,
@@ -400,8 +377,8 @@ func TestUpdate(t *testing.T) {
 			req: &pbs.UpdateProjectRequest{
 				UpdateMask: &field_mask.FieldMask{Paths: []string{}},
 				Item: &pb.Project{
-					Name:        &wrappers.StringValue{Value: "updated name"},
-					Description: &wrappers.StringValue{Value: "updated desc"},
+					Name:        &wrapperspb.StringValue{Value: "updated name"},
+					Description: &wrapperspb.StringValue{Value: "updated desc"},
 				},
 			},
 			errCode: codes.InvalidArgument,
@@ -411,8 +388,8 @@ func TestUpdate(t *testing.T) {
 			req: &pbs.UpdateProjectRequest{
 				UpdateMask: &field_mask.FieldMask{Paths: []string{"nonexistant_field"}},
 				Item: &pb.Project{
-					Name:        &wrappers.StringValue{Value: "updated name"},
-					Description: &wrappers.StringValue{Value: "updated desc"},
+					Name:        &wrapperspb.StringValue{Value: "updated name"},
+					Description: &wrapperspb.StringValue{Value: "updated desc"},
 				},
 			},
 			errCode: codes.InvalidArgument,
@@ -424,13 +401,13 @@ func TestUpdate(t *testing.T) {
 					Paths: []string{"name"},
 				},
 				Item: &pb.Project{
-					Description: &wrappers.StringValue{Value: "ignored"},
+					Description: &wrapperspb.StringValue{Value: "ignored"},
 				},
 			},
 			res: &pbs.UpdateProjectResponse{
 				Item: &pb.Project{
 					Id:          proj.GetPublicId(),
-					Description: &wrappers.StringValue{Value: "default"},
+					Description: &wrapperspb.StringValue{Value: "default"},
 					CreatedTime: proj.GetCreateTime().GetTimestamp(),
 				},
 			},
@@ -462,15 +439,15 @@ func TestUpdate(t *testing.T) {
 					Paths: []string{"name"},
 				},
 				Item: &pb.Project{
-					Name:        &wrappers.StringValue{Value: "updated"},
-					Description: &wrappers.StringValue{Value: "ignored"},
+					Name:        &wrapperspb.StringValue{Value: "updated"},
+					Description: &wrapperspb.StringValue{Value: "ignored"},
 				},
 			},
 			res: &pbs.UpdateProjectResponse{
 				Item: &pb.Project{
 					Id:          proj.GetPublicId(),
-					Name:        &wrappers.StringValue{Value: "updated"},
-					Description: &wrappers.StringValue{Value: "default"},
+					Name:        &wrapperspb.StringValue{Value: "updated"},
+					Description: &wrapperspb.StringValue{Value: "default"},
 					CreatedTime: proj.GetCreateTime().GetTimestamp(),
 				},
 			},
@@ -483,21 +460,21 @@ func TestUpdate(t *testing.T) {
 					Paths: []string{"description"},
 				},
 				Item: &pb.Project{
-					Name:        &wrappers.StringValue{Value: "ignored"},
-					Description: &wrappers.StringValue{Value: "notignored"},
+					Name:        &wrapperspb.StringValue{Value: "ignored"},
+					Description: &wrapperspb.StringValue{Value: "notignored"},
 				},
 			},
 			res: &pbs.UpdateProjectResponse{
 				Item: &pb.Project{
 					Id:          proj.GetPublicId(),
-					Name:        &wrappers.StringValue{Value: "default"},
-					Description: &wrappers.StringValue{Value: "notignored"},
+					Name:        &wrapperspb.StringValue{Value: "default"},
+					Description: &wrapperspb.StringValue{Value: "notignored"},
 					CreatedTime: proj.GetCreateTime().GetTimestamp(),
 				},
 			},
 			errCode: codes.OK,
 		},
-		// TODO: Updating a non existing project should result in a NotFound exception but currently results in
+		// TODO: Updating a non existant project should result in a NotFound exception but currently results in
 		// the repoFn returning an internal error.
 		{
 			name: "Update a Non Existing Project",
@@ -507,8 +484,8 @@ func TestUpdate(t *testing.T) {
 					Paths: []string{"description"},
 				},
 				Item: &pb.Project{
-					Name:        &wrappers.StringValue{Value: "new"},
-					Description: &wrappers.StringValue{Value: "desc"},
+					Name:        &wrapperspb.StringValue{Value: "new"},
+					Description: &wrapperspb.StringValue{Value: "desc"},
 				},
 			},
 			errCode: codes.Internal,
@@ -522,8 +499,8 @@ func TestUpdate(t *testing.T) {
 				},
 				Item: &pb.Project{
 					Id:          "p_somethinge",
-					Name:        &wrappers.StringValue{Value: "new"},
-					Description: &wrappers.StringValue{Value: "new desc"},
+					Name:        &wrapperspb.StringValue{Value: "new"},
+					Description: &wrapperspb.StringValue{Value: "new desc"},
 				}},
 			res:     nil,
 			errCode: codes.InvalidArgument,
@@ -568,14 +545,9 @@ func TestUpdate(t *testing.T) {
 			if got != nil {
 				assert.NotNilf(tc.res, "Expected UpdateProject response to be nil, but was %v", got)
 				gotUpdateTime, err := ptypes.Timestamp(got.GetItem().GetUpdatedTime())
-				if err != nil {
-					t.Fatalf("Error converting proto to timestamp: %v", err)
-				}
+				require.NoError(err, "Error converting proto to timestamp")
 				// Verify it is a project updated after it was created
-				// TODO: This is currently failing.
-				//assert.True(gotUpdateTime.After(projCreated), "Updated project should have been updated after it's creation. Was updated %v, which is after %v", gotUpdateTime, projCreated)
-				_ = gotUpdateTime
-				_ = projCreated
+				assert.True(gotUpdateTime.After(projCreated), "Updated project should have been updated after it's creation. Was updated %v, which is after %v", gotUpdateTime, projCreated)
 
 				// Clear all values which are hard to compare against.
 				got.Item.UpdatedTime, tc.res.Item.UpdatedTime = nil, nil

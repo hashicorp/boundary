@@ -1025,26 +1025,34 @@ const _ = grpc.SupportPackageIsVersion6
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://godoc.org/google.golang.org/grpc#ClientConn.NewStream.
 type HostCatalogServiceClient interface {
-	// GetHostCatalog returns a stored Host Catalog if present.  The provided request must include the org, project, and
-	// catalog id for the host catalog being retrieved. If any of those ids are missing, malformed, or reference a non
-	// existing resource an error is returned.
+	// GetHostCatalog returns a stored Host Catalog if present.  The provided
+	// request must include the org, project, and catalog id for the host catalog
+	//being retrieved. If any of those ids are missing, malformed, or reference a
+	// non existing resource an error is returned.
 	GetHostCatalog(ctx context.Context, in *GetHostCatalogRequest, opts ...grpc.CallOption) (*GetHostCatalogResponse, error)
-	// ListHostCatalogs returns a list of stored HostCatalogs which exist inside the project referenced in the request.
-	// The request must include the org and project ids for the HostCatalogs being retrieved.
-	// If any of those ids are missing, malformed, or reference a non existing parent resource an error is returned.
+	// ListHostCatalogs returns a list of stored HostCatalogs which exist inside
+	// the project referenced in the request. The request must include the org
+	// and project ids for the HostCatalogs being retrieved. If any of those ids
+	// are missing, malformed, or reference a non existing parent resource an
+	// error is returned.
 	ListHostCatalogs(ctx context.Context, in *ListHostCatalogsRequest, opts ...grpc.CallOption) (*ListHostCatalogsResponse, error)
-	// CreateHostCatalog creates and stores a HostCatalog in watchtower.  The provided request must include the org, and
-	// project id in which the catalog will be created and the catalog type to be created. If any of these required fields
-	// are missing, malformed, or reference a non existing parent resource an error is returned.
+	// CreateHostCatalog creates and stores a HostCatalog in watchtower.  The
+	// provided request must include the org, and project id in which the catalog
+	// will be created and the catalog type to be created. If any of these
+	// required fields are missing, malformed, or reference a non existing parent
+	// resource an error is returned.
 	CreateHostCatalog(ctx context.Context, in *CreateHostCatalogRequest, opts ...grpc.CallOption) (*CreateHostCatalogResponse, error)
-	// UpdateHostCatalog updates an exist HostCatalog in Watchtower.  The provided HostCatalog must not have any read only
-	// fields set except for potentially the id.  The update mask must be provided and include at least 1 mutable
-	// field.  To unset a field's value include that field name in the update mask and don't set the field in the HostCatalog.
+	// UpdateHostCatalog updates an exist HostCatalog in Watchtower.  The
+	// provided HostCatalog must not have any read only fields set.
+	// The update mask must be provided and include at least 1 mutable field.
+	// To unset a field's value include that field name in the update mask
+	// and don't set the field in the HostCatalog.
 	UpdateHostCatalog(ctx context.Context, in *UpdateHostCatalogRequest, opts ...grpc.CallOption) (*UpdateHostCatalogResponse, error)
-	// DeleteHostCatalog removes a HostCatalog and all associated hosts and host sets from Watchtower.  If the provided
-	// Org, Project, or HostCatalog ids are malformed or not provided DeleteHostCatalog returns an error.  It is not
-	// an error to call DeleteHostCatalog for an Org, Project, or HostCatalog that does not exist as the response indicates
-	// if it existed or not.
+	// DeleteHostCatalog removes a HostCatalog and all associated hosts and host
+	// sets from Watchtower.  If the provided Org, Project, or HostCatalog ids
+	// are malformed or not provided DeleteHostCatalog returns an error.  It is
+	// not an error to call DeleteHostCatalog for an Org, Project, or HostCatalog
+	// that does not exist as the response indicates if it existed or not.
 	DeleteHostCatalog(ctx context.Context, in *DeleteHostCatalogRequest, opts ...grpc.CallOption) (*DeleteHostCatalogResponse, error)
 }
 
@@ -1103,26 +1111,34 @@ func (c *hostCatalogServiceClient) DeleteHostCatalog(ctx context.Context, in *De
 
 // HostCatalogServiceServer is the server API for HostCatalogService service.
 type HostCatalogServiceServer interface {
-	// GetHostCatalog returns a stored Host Catalog if present.  The provided request must include the org, project, and
-	// catalog id for the host catalog being retrieved. If any of those ids are missing, malformed, or reference a non
-	// existing resource an error is returned.
+	// GetHostCatalog returns a stored Host Catalog if present.  The provided
+	// request must include the org, project, and catalog id for the host catalog
+	//being retrieved. If any of those ids are missing, malformed, or reference a
+	// non existing resource an error is returned.
 	GetHostCatalog(context.Context, *GetHostCatalogRequest) (*GetHostCatalogResponse, error)
-	// ListHostCatalogs returns a list of stored HostCatalogs which exist inside the project referenced in the request.
-	// The request must include the org and project ids for the HostCatalogs being retrieved.
-	// If any of those ids are missing, malformed, or reference a non existing parent resource an error is returned.
+	// ListHostCatalogs returns a list of stored HostCatalogs which exist inside
+	// the project referenced in the request. The request must include the org
+	// and project ids for the HostCatalogs being retrieved. If any of those ids
+	// are missing, malformed, or reference a non existing parent resource an
+	// error is returned.
 	ListHostCatalogs(context.Context, *ListHostCatalogsRequest) (*ListHostCatalogsResponse, error)
-	// CreateHostCatalog creates and stores a HostCatalog in watchtower.  The provided request must include the org, and
-	// project id in which the catalog will be created and the catalog type to be created. If any of these required fields
-	// are missing, malformed, or reference a non existing parent resource an error is returned.
+	// CreateHostCatalog creates and stores a HostCatalog in watchtower.  The
+	// provided request must include the org, and project id in which the catalog
+	// will be created and the catalog type to be created. If any of these
+	// required fields are missing, malformed, or reference a non existing parent
+	// resource an error is returned.
 	CreateHostCatalog(context.Context, *CreateHostCatalogRequest) (*CreateHostCatalogResponse, error)
-	// UpdateHostCatalog updates an exist HostCatalog in Watchtower.  The provided HostCatalog must not have any read only
-	// fields set except for potentially the id.  The update mask must be provided and include at least 1 mutable
-	// field.  To unset a field's value include that field name in the update mask and don't set the field in the HostCatalog.
+	// UpdateHostCatalog updates an exist HostCatalog in Watchtower.  The
+	// provided HostCatalog must not have any read only fields set.
+	// The update mask must be provided and include at least 1 mutable field.
+	// To unset a field's value include that field name in the update mask
+	// and don't set the field in the HostCatalog.
 	UpdateHostCatalog(context.Context, *UpdateHostCatalogRequest) (*UpdateHostCatalogResponse, error)
-	// DeleteHostCatalog removes a HostCatalog and all associated hosts and host sets from Watchtower.  If the provided
-	// Org, Project, or HostCatalog ids are malformed or not provided DeleteHostCatalog returns an error.  It is not
-	// an error to call DeleteHostCatalog for an Org, Project, or HostCatalog that does not exist as the response indicates
-	// if it existed or not.
+	// DeleteHostCatalog removes a HostCatalog and all associated hosts and host
+	// sets from Watchtower.  If the provided Org, Project, or HostCatalog ids
+	// are malformed or not provided DeleteHostCatalog returns an error.  It is
+	// not an error to call DeleteHostCatalog for an Org, Project, or HostCatalog
+	// that does not exist as the response indicates if it existed or not.
 	DeleteHostCatalog(context.Context, *DeleteHostCatalogRequest) (*DeleteHostCatalogResponse, error)
 }
 
