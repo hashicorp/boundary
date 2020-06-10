@@ -342,10 +342,10 @@ func (rw *Db) Delete(ctx context.Context, i interface{}, opt ...Option) (int, er
 func validateOplogArgs(i interface{}, opts Options) (oplog.ReplayableMessage, error) {
 	oplogArgs := opts.oplogOpts
 	if oplogArgs.wrapper == nil {
-		return nil, errors.New("error no wrapper WithOplog")
+		return nil, fmt.Errorf("error no wrapper WithOplog: %w", ErrNilParameter)
 	}
 	if len(oplogArgs.metadata) == 0 {
-		return nil, errors.New("error no metadata for WithOplog")
+		return nil, fmt.Errorf("error no metadata for WithOplog: %w", ErrInvalidParameter)
 	}
 	replayable, ok := i.(oplog.ReplayableMessage)
 	if !ok {
