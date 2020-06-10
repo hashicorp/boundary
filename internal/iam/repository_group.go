@@ -16,6 +16,9 @@ func (r *Repository) CreateGroup(ctx context.Context, group *Group, opt ...Optio
 	if group.Group == nil {
 		return nil, fmt.Errorf("create group: missing group store %w", db.ErrNilParameter)
 	}
+	if group.PublicId != "" {
+		return nil, fmt.Errorf("create group: public id not empty: %w", db.ErrInvalidParameter)
+	}
 	id, err := newGroupId()
 	if err != nil {
 		return nil, fmt.Errorf("create group: %w", err)

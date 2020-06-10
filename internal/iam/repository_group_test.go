@@ -67,6 +67,20 @@ func TestRepository_CreateGroup(t *testing.T) {
 			wantErr: false,
 		},
 		{
+			name: "bad-public-id",
+			args: args{
+				group: func() *Group {
+					g, err := NewGroup(proj.PublicId, WithName("valid-proj"+id), WithDescription(id))
+					assert.NoError(t, err)
+					g.PublicId = id
+					return g
+				}(),
+			},
+			wantErrMsg:  "create group: public id not empty: invalid parameter",
+			wantIsError: db.ErrInvalidParameter,
+			wantErr:     true,
+		},
+		{
 			name: "nil-group",
 			args: args{
 				group: nil,
