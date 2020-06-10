@@ -308,6 +308,7 @@ func Test_GroupUpdate(t *testing.T) {
 				nullPaths:      []string{"Name"},
 				ScopeId:        org.PublicId,
 			},
+			wantDup:        true,
 			wantErr:        false,
 			wantRowsUpdate: 1,
 		},
