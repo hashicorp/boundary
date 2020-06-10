@@ -54,9 +54,8 @@ func (w *GormWriter) Create(i interface{}) error {
 }
 
 // Update the entry using the fieldMaskPaths and setNullPaths, which are
-// Paths from field_mask.proto.  fieldMaskPaths is required.  setToNullPaths is
-// optional. fieldMaskPaths and setNullPaths cannot intersect and both cannot be
-// zero len.
+// Paths from field_mask.proto.  fieldMaskPaths and setNullPaths cannot
+// intersect and both cannot be zero len.
 func (w *GormWriter) Update(i interface{}, fieldMaskPaths, setToNullPaths []string) error {
 	if w.Tx == nil {
 		return errors.New("update Tx is nil")
