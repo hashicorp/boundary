@@ -536,7 +536,7 @@ func TestRepository_DeleteGroup(t *testing.T) {
 			assert.True(errors.Is(err, db.ErrRecordNotFound))
 
 			err = db.TestVerifyOplog(t, rw, tt.args.group.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_DELETE), db.WithCreateNotBefore(10*time.Second))
-			assert.Error(err)
+			assert.NoError(err)
 		})
 	}
 }
