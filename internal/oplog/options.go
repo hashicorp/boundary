@@ -18,6 +18,7 @@ type Options map[string]interface{}
 func getDefaultOptions() Options {
 	return Options{
 		optionWithFieldMaskPaths: []string{},
+		optionWithSetToNullPaths: []string{},
 		optionWithAggregateNames: false,
 	}
 }
@@ -29,6 +30,16 @@ const optionWithFieldMaskPaths = "optionWithFieldMaskPaths"
 func WithFieldMaskPaths(fieldMaskPaths []string) Option {
 	return func(o Options) {
 		o[optionWithFieldMaskPaths] = fieldMaskPaths
+	}
+}
+
+const optionWithSetToNullPaths = "optionWithSetToNullPaths"
+
+// WithSetToNullPaths represents an optional set of symbolic field paths (for example: "f.a", "f.b.d") used
+// to specify a subset of fields that should be set to null. (see google.golang.org/genproto/protobuf/field_mask)
+func WithSetToNullPaths(setToNullPaths []string) Option {
+	return func(o Options) {
+		o[optionWithSetToNullPaths] = setToNullPaths
 	}
 }
 

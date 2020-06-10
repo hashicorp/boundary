@@ -5,21 +5,37 @@ import "google/protobuf/field_mask.proto";
 package controller.storage.oplog.v1;
 option go_package = "github.com/hashicorp/watchtower/internal/oplog;oplog";
 
-// OpType provides the type of database operation the Any message represents (create,
-// update, delete)
+// OpType provides the type of database operation the Any message represents
+// (create, update, delete)
 enum OpType {
+  // OP_TYPE_UNSPECIFIED defines an unspecified operation.
   OP_TYPE_UNSPECIFIED = 0;
+
+  // OP_TYPE_CREATE defines a create operation.
   OP_TYPE_CREATE = 1;
+
+  // OP_TYPE_UPDATE defines an update operation.
   OP_TYPE_UPDATE = 2;
+
+  // OP_TYPE_DELETE defines a delete operation.
   OP_TYPE_DELETE = 3;
 }
 
 // AnyOperation provides a message for anything and the type of operation it
 // represents.
 message AnyOperation {
+  // type_name defines type of operation.
   string type_name = 1;
+
+  // value are the bytes of a marshalled proto buff.
   bytes value = 2;
+
+  // operation_type defines the type of database operation.
   OpType operation_type = 3;
-  // mask is the mask of fields to update.
+
+  // field_mask is the mask of fields to update.
   google.protobuf.FieldMask field_mask = 4;
+
+  // null_mask is the mask of fields to set to null.
+  google.protobuf.FieldMask null_mask = 5;
 }

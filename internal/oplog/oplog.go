@@ -24,6 +24,7 @@ type Message struct {
 	TypeName       string
 	OpType         OpType
 	FieldMaskPaths []string
+	SetToNullPaths []string
 }
 
 // Entry represents an oplog entry
@@ -98,7 +99,7 @@ func (e *Entry) UnmarshalData(types *TypeCatalog) ([]Message, error) {
 		Catalog: types,
 	}
 	for {
-		m, typ, fieldMaskPaths, err := queue.Remove()
+		m, typ, fieldMaskPaths, nullPaths, err := queue.Remove()
 		if err == io.EOF {
 			break
 		}
@@ -109,7 +110,7 @@ func (e *Entry) UnmarshalData(types *TypeCatalog) ([]Message, error) {
 		if err != nil {
 			return nil, fmt.Errorf("error getting TypeName: %w", err)
 		}
-		msgs = append(msgs, Message{Message: m, TypeName: name, OpType: typ, FieldMaskPaths: fieldMaskPaths})
+		msgs = append(msgs, Message{Message: m, TypeName: name, OpType: typ, FieldMaskPaths: fieldMaskPaths, SetToNullPaths: nullPaths})
 	}
 	return msgs, nil
 }
@@ -131,7 +132,7 @@ func (e *Entry) WriteEntryWith(ctx context.Context, tx Writer, ticket *store.Tic
 		if m == nil {
 			return errors.New("bad message")
 		}
-		if err := queue.Add(m.Message, m.TypeName, m.OpType, WithFieldMaskPaths(m.FieldMaskPaths)); err != nil {
+		if err := queue.Add(m.Message, m.TypeName, m.OpType, WithFieldMaskPaths(m.FieldMaskPaths), WithSetToNullPaths(m.SetToNullPaths)); err != nil {
 			return fmt.Errorf("error adding message to queue: %w", err)
 		}
 	}
@@ -214,7 +215,9 @@ func (e *Entry) Replay(ctx context.Context, tx Writer, types *TypeCatalog, table
 		*/
 		replayTable := origTableName + tableSuffix
 		if !tx.hasTable(replayTable) {
-			tx.createTableLike(origTableName, replayTable)
+			if err := tx.createTableLike(origTableName, replayTable); err != nil {
+				return fmt.Errorf("replay: %w", err)
+			}
 		}
 
 		em.SetTableName(replayTable)
@@ -224,7 +227,7 @@ func (e *Entry) Replay(ctx context.Context, tx Writer, types *TypeCatalog, table
 				return fmt.Errorf("replay error: %w", err)
 			}
 		case OpType_OP_TYPE_UPDATE:
-			if err := tx.Update(m.Message, m.FieldMaskPaths); err != nil {
+			if err := tx.Update(m.Message, m.FieldMaskPaths, m.SetToNullPaths); err != nil {
 				return fmt.Errorf("replay error: %w", err)
 			}
 		case OpType_OP_TYPE_DELETE:
