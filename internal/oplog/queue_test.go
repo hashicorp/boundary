@@ -1,12 +1,12 @@
 package oplog
 
 import (
-	reflect "reflect"
 	"testing"
 
 	"github.com/hashicorp/watchtower/internal/oplog/oplog_test"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/proto"
-	"gotest.tools/assert"
 )
 
 // Test_Queue provides basic tests for the Queue type
@@ -17,7 +17,7 @@ func Test_Queue(t *testing.T) {
 		Type{new(oplog_test.TestCar), "car"},
 		Type{new(oplog_test.TestRental), "rental"},
 	)
-	assert.NilError(t, err)
+	require.NoError(t, err)
 	queue := Queue{Catalog: types}
 
 	user := &oplog_test.TestUser{
@@ -41,64 +41,92 @@ func Test_Queue(t *testing.T) {
 		Name:  "bob",
 		Email: "bob@alice.com",
 	}
+
+	userNilUpdate := &oplog_test.TestUser{
+		Id:   1,
+		Name: "bob",
+	}
 	t.Run("add/remove", func(t *testing.T) {
+		assert, require := assert.New(t), require.New(t)
 		err = queue.Add(user, "user", OpType_OP_TYPE_CREATE)
-		assert.NilError(t, err)
+		require.NoError(err)
 		err = queue.Add(car, "car", OpType_OP_TYPE_CREATE)
-		assert.NilError(t, err)
+		require.NoError(err)
 		err = queue.Add(rental, "rental", OpType_OP_TYPE_CREATE)
-		assert.NilError(t, err)
+		require.NoError(err)
 		err = queue.Add(userUpdate, "user", OpType_OP_TYPE_UPDATE, WithFieldMaskPaths([]string{"Name", "Email"}))
-		assert.NilError(t, err)
+		require.NoError(err)
+		err = queue.Add(userNilUpdate, "user", OpType_OP_TYPE_UPDATE, WithFieldMaskPaths([]string{"Name"}), WithSetToNullPaths([]string{"Email"}))
+		require.NoError(err)
 
-		queuedUser, ty, fm, err := queue.Remove()
-		assert.NilError(t, err)
-		assert.Assert(t, proto.Equal(user, queuedUser))
-		assert.Assert(t, ty == OpType_OP_TYPE_CREATE)
-		assert.Assert(t, fm == nil)
+		queuedUser, ty, fm, nm, err := queue.Remove()
+		require.NoError(err)
+		assert.True(proto.Equal(user, queuedUser))
+		assert.Equal(ty, OpType_OP_TYPE_CREATE)
+		assert.Nil(fm)
+		assert.Nil(nm)
 
-		queuedCar, ty, fm, err := queue.Remove()
-		assert.NilError(t, err)
-		assert.Assert(t, proto.Equal(car, queuedCar))
-		assert.Assert(t, ty == OpType_OP_TYPE_CREATE)
-		assert.Assert(t, fm == nil)
+		queuedCar, ty, fm, nm, err := queue.Remove()
+		require.NoError(err)
+		assert.True(proto.Equal(car, queuedCar))
+		assert.Equal(ty, OpType_OP_TYPE_CREATE)
+		assert.Nil(fm)
+		assert.Nil(nm)
 
-		queuedRental, ty, fm, err := queue.Remove()
-		assert.NilError(t, err)
-		assert.Assert(t, proto.Equal(rental, queuedRental))
-		assert.Assert(t, ty == OpType_OP_TYPE_CREATE)
-		assert.Assert(t, fm == nil)
+		queuedRental, ty, fm, nm, err := queue.Remove()
+		require.NoError(err)
+		assert.True(proto.Equal(rental, queuedRental))
+		assert.Equal(ty, OpType_OP_TYPE_CREATE)
+		assert.Nil(fm)
+		assert.Nil(nm)
 
-		queuedUserUpdate, ty, fm, err := queue.Remove()
-		assert.NilError(t, err)
-		assert.Assert(t, proto.Equal(userUpdate, queuedUserUpdate))
-		assert.Assert(t, ty == OpType_OP_TYPE_UPDATE)
-		assert.Assert(t, reflect.DeepEqual(fm, []string{"Name", "Email"}))
+		queuedUserUpdate, ty, fm, nm, err := queue.Remove()
+		require.NoError(err)
+		assert.True(proto.Equal(userUpdate, queuedUserUpdate))
+		assert.Equal(ty, OpType_OP_TYPE_UPDATE)
+		assert.Equal(fm, []string{"Name", "Email"})
+		assert.Nil(nm)
+
+		queuedUserNilUpdate, ty, fm, nm, err := queue.Remove()
+		require.NoError(err)
+		assert.True(proto.Equal(userNilUpdate, queuedUserNilUpdate))
+		assert.Equal(ty, OpType_OP_TYPE_UPDATE)
+		assert.Equal(fm, []string{"Name"})
+		assert.Equal(nm, []string{"Email"})
 	})
 	t.Run("valid with nil type catalog", func(t *testing.T) {
+		require := require.New(t)
 		queue := Queue{}
-		assert.NilError(t, queue.Add(user, "user", OpType_OP_TYPE_CREATE))
+		require.NoError(queue.Add(user, "user", OpType_OP_TYPE_CREATE))
 	})
 	t.Run("error with nil type catalog", func(t *testing.T) {
+		assert, require := assert.New(t), require.New(t)
 		queue := Queue{}
-		_, _, _, err := queue.Remove()
-		assert.Check(t, err != nil)
-		assert.Equal(t, err.Error(), "remove Catalog is nil")
+		_, _, _, _, err = queue.Remove()
+		require.Error(err)
+		assert.Equal(err.Error(), "remove Catalog is nil")
 	})
 	t.Run("not replayable", func(t *testing.T) {
+		assert, require := assert.New(t), require.New(t)
 		u := &oplog_test.TestNonReplayableUser{
 			Name:        "Alice",
 			PhoneNumber: "867-5309",
 			Email:       "alice@bob.com",
 		}
 		err = queue.Add(u, "user", OpType_OP_TYPE_CREATE)
-		assert.Check(t, err != nil)
-		assert.Equal(t, err.Error(), "error *oplog_test.TestNonReplayableUser is not a ReplayableMessage")
+		require.Error(err)
+		assert.Equal(err.Error(), "error *oplog_test.TestNonReplayableUser is not a ReplayableMessage")
 	})
 	t.Run("nil message", func(t *testing.T) {
+		assert, require := assert.New(t), require.New(t)
 		err = queue.Add(nil, "user", OpType_OP_TYPE_CREATE)
-		assert.Check(t, err != nil)
-		assert.Equal(t, err.Error(), "error <nil> is not a ReplayableMessage")
+		require.Error(err)
+		assert.Equal(err.Error(), "error <nil> is not a ReplayableMessage")
 	})
-
+	t.Run("missing both field mask and null paths for update", func(t *testing.T) {
+		require.Error(t, queue.Add(userUpdate, "user", OpType_OP_TYPE_UPDATE))
+	})
+	t.Run("intersecting field masks and null paths", func(t *testing.T) {
+		require.Error(t, queue.Add(userNilUpdate, "user", OpType_OP_TYPE_UPDATE, WithFieldMaskPaths([]string{"Name"}), WithSetToNullPaths([]string{"Name"})))
+	})
 }

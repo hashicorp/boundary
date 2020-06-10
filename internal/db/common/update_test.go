@@ -165,7 +165,7 @@ func Test_intersection(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			assert := assert.New(t)
-			got, got1, got2, err := intersection(tt.args.av, tt.args.bv)
+			got, got1, got2, err := Intersection(tt.args.av, tt.args.bv)
 			if err == nil && tt.wantErr {
 				assert.Error(err)
 			}
