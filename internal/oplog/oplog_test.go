@@ -430,7 +430,6 @@ func Test_Replay(t *testing.T) {
 
 		assert.Equal(foundUser.Id, foundReplayedUser.Id)
 		assert.Equal(foundUser.Name, foundReplayedUser.Name)
-		// assert.Equal(foundUser.Name, userName)
 		assert.Equal(foundUser.PhoneNumber, foundReplayedUser.PhoneNumber)
 		assert.Equal(foundReplayedUser.PhoneNumber, "867-5309")
 		assert.Equal(foundUser.Email, foundReplayedUser.Email)
