@@ -284,7 +284,20 @@ func (rw *Db) Update(ctx context.Context, i interface{}, fieldMaskPaths []string
 	}
 	rowsUpdated := int(underlying.RowsAffected)
 	if withOplog && rowsUpdated > 0 {
-		if err := rw.addOplog(ctx, UpdateOp, opts, i); err != nil {
+		// we don't want to change the inbound slices in opts, so we'll make our
+		// own copy to pass to addOplog()
+		oplogFieldMasks := make([]string, len(fieldMaskPaths))
+		copy(oplogFieldMasks, fieldMaskPaths)
+		oplogNullPaths := make([]string, len(setToNullPaths))
+		copy(oplogNullPaths, setToNullPaths)
+		oplogOpts := Options{
+			oplogOpts:          opts.oplogOpts,
+			withOplog:          opts.withOplog,
+			withDebug:          opts.withDebug,
+			WithFieldMaskPaths: oplogFieldMasks,
+			WithNullPaths:      oplogNullPaths,
+		}
+		if err := rw.addOplog(ctx, UpdateOp, oplogOpts, i); err != nil {
 			return rowsUpdated, fmt.Errorf("update: add oplog failed %w", err)
 		}
 	}
@@ -342,10 +355,10 @@ func (rw *Db) Delete(ctx context.Context, i interface{}, opt ...Option) (int, er
 func validateOplogArgs(i interface{}, opts Options) (oplog.ReplayableMessage, error) {
 	oplogArgs := opts.oplogOpts
 	if oplogArgs.wrapper == nil {
-		return nil, errors.New("error no wrapper WithOplog")
+		return nil, fmt.Errorf("error no wrapper WithOplog: %w", ErrNilParameter)
 	}
 	if len(oplogArgs.metadata) == 0 {
-		return nil, errors.New("error no metadata for WithOplog")
+		return nil, fmt.Errorf("error no metadata for WithOplog: %w", ErrInvalidParameter)
 	}
 	replayable, ok := i.(oplog.ReplayableMessage)
 	if !ok {
@@ -384,14 +397,19 @@ func (rw *Db) addOplog(ctx context.Context, opType OpType, opts Options, i inter
 	if err != nil {
 		return err
 	}
-	var entryOp oplog.OpType
+	msg := oplog.Message{
+		Message:  i.(proto.Message),
+		TypeName: replayable.TableName(),
+	}
 	switch opType {
 	case CreateOp:
-		entryOp = oplog.OpType_OP_TYPE_CREATE
+		msg.OpType = oplog.OpType_OP_TYPE_CREATE
 	case UpdateOp:
-		entryOp = oplog.OpType_OP_TYPE_UPDATE
+		msg.OpType = oplog.OpType_OP_TYPE_UPDATE
+		msg.FieldMaskPaths = opts.WithFieldMaskPaths
+		msg.SetToNullPaths = opts.WithNullPaths
 	case DeleteOp:
-		entryOp = oplog.OpType_OP_TYPE_DELETE
+		msg.OpType = oplog.OpType_OP_TYPE_DELETE
 	default:
 		return fmt.Errorf("error operation type %v is not supported", opType)
 	}
@@ -399,7 +417,7 @@ func (rw *Db) addOplog(ctx context.Context, opType OpType, opts Options, i inter
 		ctx,
 		&oplog.GormWriter{Tx: gdb},
 		ticket,
-		&oplog.Message{Message: i.(proto.Message), TypeName: replayable.TableName(), OpType: entryOp},
+		&msg,
 	)
 	if err != nil {
 		return fmt.Errorf("error creating oplog entry %w for WithOplog", err)

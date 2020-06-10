@@ -22,7 +22,6 @@ func TestScopes(t *testing.T, conn *gorm.DB) (org *Scope, prj *Scope) {
 
 	org, err = NewOrganization()
 	require.NoError(err)
-
 	org, err = repo.CreateScope(context.Background(), org)
 	require.NoError(err)
 	require.NotNil(org)
@@ -30,7 +29,6 @@ func TestScopes(t *testing.T, conn *gorm.DB) (org *Scope, prj *Scope) {
 
 	prj, err = NewProject(org.GetPublicId())
 	require.NoError(err)
-
 	prj, err = repo.CreateScope(context.Background(), prj)
 	require.NoError(err)
 	require.NotNil(prj)
@@ -41,51 +39,49 @@ func TestScopes(t *testing.T, conn *gorm.DB) (org *Scope, prj *Scope) {
 
 func testOrg(t *testing.T, conn *gorm.DB, name, description string) (org *Scope) {
 	t.Helper()
-	assert := assert.New(t)
+	require := require.New(t)
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
 	repo, err := NewRepository(rw, rw, wrapper)
-	assert.NoError(err)
+	require.NoError(err)
 
 	o, err := NewOrganization(WithDescription(description), WithName(name))
-	assert.NoError(err)
+	require.NoError(err)
 	o, err = repo.CreateScope(context.Background(), o)
-	assert.NoError(err)
-	assert.NotNil(o)
-	assert.NotEmpty(o.GetPublicId())
+	require.NoError(err)
+	require.NotNil(o)
+	require.NotEmpty(o.GetPublicId())
 	return o
 }
 
 func testId(t *testing.T) string {
 	t.Helper()
-	assert := assert.New(t)
 	id, err := uuid.GenerateUUID()
-	assert.NoError(err)
+	require.NoError(t, err)
 	return id
 }
 
 func testPublicId(t *testing.T, prefix string) string {
 	t.Helper()
-	assert := assert.New(t)
 	publicId, err := db.NewPublicId(prefix)
-	assert.NoError(err)
+	require.NoError(t, err)
 	return publicId
 }
 
 // TestUser creates a user suitable for testing.
 func TestUser(t *testing.T, conn *gorm.DB, orgId string, opt ...Option) *User {
 	t.Helper()
-	assert := assert.New(t)
+	require := assert.New(t)
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
 	repo, err := NewRepository(rw, rw, wrapper)
-	assert.NoError(err)
+	require.NoError(err)
 
 	user, err := NewUser(orgId, opt...)
-	assert.NoError(err)
+	require.NoError(err)
 	user, err = repo.CreateUser(context.Background(), user)
-	assert.NoError(err)
-	assert.NotEmpty(user.PublicId)
+	require.NoError(err)
+	require.NotEmpty(user.PublicId)
 	return user
 }
 

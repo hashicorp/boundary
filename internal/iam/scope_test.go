@@ -4,9 +4,9 @@ import (
 	"context"
 	"testing"
 
-	"github.com/hashicorp/go-uuid"
 	"github.com/hashicorp/watchtower/internal/db"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -14,43 +14,40 @@ func Test_NewScope(t *testing.T) {
 	t.Parallel()
 	cleanup, conn, _ := db.TestSetup(t, "postgres")
 	defer func() {
-		if err := cleanup(); err != nil {
-			t.Error(err)
-		}
-	}()
-	assert := assert.New(t)
-	defer func() {
-		if err := conn.Close(); err != nil {
-			t.Error(err)
-		}
+		err := cleanup()
+		assert.NoError(t, err)
+		err = conn.Close()
+		assert.NoError(t, err)
 	}()
 	t.Run("valid-org-with-project", func(t *testing.T) {
+		assert, require := assert.New(t), require.New(t)
 		w := db.New(conn)
 		s, err := NewOrganization()
-		assert.NoError(err)
-		assert.NotNil(s.Scope)
+		require.NoError(err)
+		require.NotNil(s.Scope)
 		err = w.Create(context.Background(), s)
-		assert.NoError(err)
-		assert.NotEmpty(s.PublicId)
+		require.NoError(err)
+		require.NotEmpty(s.PublicId)
 
-		id, err := uuid.GenerateUUID()
-		assert.NoError(err)
+		id := testId(t)
 		projScope, err := NewProject(s.PublicId, WithDescription(id))
-		assert.NoError(err)
-		assert.NotNil(projScope.Scope)
+		require.NoError(err)
+		require.NotNil(projScope.Scope)
 		assert.Equal(projScope.GetParentId(), s.PublicId)
 		assert.Equal(projScope.GetDescription(), id)
 	})
 	t.Run("unknown-scope", func(t *testing.T) {
+		assert, require := assert.New(t), require.New(t)
 		s, err := newScope(UnknownScope)
-		assert.NotNil(err)
-		assert.Nil(s)
+		require.Error(err)
+		require.Nil(s)
 		assert.Equal(err.Error(), "error unknown scope type for new scope")
 	})
 	t.Run("proj-scope-with-no-org", func(t *testing.T) {
+		assert, require := assert.New(t), require.New(t)
 		s, err := NewProject("")
-		assert.NotNil(err)
-		assert.Nil(s)
+		require.Error(err)
+		require.Nil(s)
 		assert.Equal(err.Error(), "error creating new project: error project scope parent id is unset")
 	})
 }
@@ -58,45 +55,40 @@ func Test_ScopeCreate(t *testing.T) {
 	t.Parallel()
 	cleanup, conn, _ := db.TestSetup(t, "postgres")
 	defer func() {
-		if err := cleanup(); err != nil {
-			t.Error(err)
-		}
-	}()
-	assert := assert.New(t)
-	defer func() {
-		if err := conn.Close(); err != nil {
-			t.Error(err)
-		}
+		err := cleanup()
+		assert.NoError(t, err)
+		err = conn.Close()
+		assert.NoError(t, err)
 	}()
 	t.Run("valid", func(t *testing.T) {
+		assert, require := assert.New(t), require.New(t)
 		w := db.New(conn)
 		s, err := NewOrganization()
-		assert.NoError(err)
-		assert.NotNil(s.Scope)
+		require.NoError(err)
+		require.NotNil(s.Scope)
 		err = w.Create(context.Background(), s)
-		assert.NoError(err)
+		require.NoError(err)
 		assert.NotEmpty(s.PublicId)
 	})
 	t.Run("valid-with-parent", func(t *testing.T) {
+		assert, require := assert.New(t), require.New(t)
 		w := db.New(conn)
 		s, err := NewOrganization()
-		assert.NoError(err)
-		assert.NotNil(s.Scope)
+		require.NoError(err)
+		require.NotNil(s.Scope)
 		err = w.Create(context.Background(), s)
-		assert.NoError(err)
-		assert.NotEmpty(s.PublicId)
+		require.NoError(err)
+		require.NotEmpty(s.PublicId)
 
-		id, err := uuid.GenerateUUID()
-		assert.NoError(err)
-
+		id := testId(t)
 		project, err := NewProject(s.PublicId, WithDescription(id))
-		assert.NoError(err)
-		assert.NotNil(project.Scope)
+		require.NoError(err)
+		require.NotNil(project.Scope)
 		assert.Equal(project.Scope.ParentId, s.PublicId)
 		assert.Equal(project.GetDescription(), id)
 
 		err = w.Create(context.Background(), project)
-		assert.NoError(err)
+		require.NoError(err)
 		assert.Equal(project.ParentId, s.PublicId)
 	})
 }
@@ -105,44 +97,29 @@ func Test_ScopeUpdate(t *testing.T) {
 	t.Parallel()
 	cleanup, conn, _ := db.TestSetup(t, "postgres")
 	defer func() {
-		if err := cleanup(); err != nil {
-			t.Error(err)
-		}
-	}()
-	assert := assert.New(t)
-	defer func() {
-		if err := conn.Close(); err != nil {
-			t.Error(err)
-		}
+		err := cleanup()
+		assert.NoError(t, err)
+		err = conn.Close()
+		assert.NoError(t, err)
 	}()
 	t.Run("valid", func(t *testing.T) {
+		assert, require := assert.New(t), require.New(t)
 		w := db.New(conn)
-		s, err := NewOrganization()
-		assert.NoError(err)
-		assert.NotNil(s.Scope)
-		err = w.Create(context.Background(), s)
-		assert.NoError(err)
-		assert.NotEmpty(s.PublicId)
+		s, _ := TestScopes(t, conn)
 
-		id, err := uuid.GenerateUUID()
-		assert.NoError(err)
-		s.Name = id
+		s.Name = testId(t)
 		updatedRows, err := w.Update(context.Background(), s, []string{"Name"}, nil)
-		assert.NoError(err)
+		require.NoError(err)
 		assert.Equal(1, updatedRows)
 	})
 	t.Run("type-update-not-allowed", func(t *testing.T) {
+		assert, require := assert.New(t), require.New(t)
 		w := db.New(conn)
-		s, err := NewOrganization()
-		assert.NoError(err)
-		assert.NotNil(s.Scope)
-		err = w.Create(context.Background(), s)
-		assert.NoError(err)
-		assert.NotEmpty(s.PublicId)
+		s, _ := TestScopes(t, conn)
 
 		s.Type = ProjectScope.String()
 		updatedRows, err := w.Update(context.Background(), s, []string{"Type"}, nil)
-		assert.NotNil(err)
+		require.Error(err)
 		assert.Equal(0, updatedRows)
 	})
 }
@@ -150,47 +127,30 @@ func Test_ScopeGetScope(t *testing.T) {
 	t.Parallel()
 	cleanup, conn, _ := db.TestSetup(t, "postgres")
 	defer func() {
-		if err := cleanup(); err != nil {
-			t.Error(err)
-		}
-	}()
-	assert := assert.New(t)
-	defer func() {
-		if err := conn.Close(); err != nil {
-			t.Error(err)
-		}
+		err := cleanup()
+		assert.NoError(t, err)
+		err = conn.Close()
+		assert.NoError(t, err)
 	}()
 	t.Run("valid-scope", func(t *testing.T) {
+		assert, require := assert.New(t), require.New(t)
 		w := db.New(conn)
-		s, err := NewOrganization()
-		assert.NoError(err)
-		assert.NotNil(s.Scope)
-		err = w.Create(context.Background(), s)
-		assert.NoError(err)
-		assert.NotEmpty(s.PublicId)
-
-		foundScope, err := s.GetScope(context.Background(), w)
-		assert.NoError(err)
+		org, proj := TestScopes(t, conn)
+		foundScope, err := org.GetScope(context.Background(), w)
+		require.NoError(err)
 		assert.Nil(foundScope)
 
-		project, err := NewProject(s.PublicId)
-		assert.NoError(err)
-		assert.NotNil(project.Scope)
-		assert.Equal(project.ParentId, s.PublicId)
-		err = w.Create(context.Background(), project)
-		assert.NoError(err)
-
-		projectOrg, err := project.GetScope(context.Background(), w)
-		assert.NoError(err)
+		projectOrg, err := proj.GetScope(context.Background(), w)
+		require.NoError(err)
 		assert.NotNil(projectOrg)
-		assert.Equal(projectOrg.PublicId, project.ParentId)
+		assert.Equal(projectOrg.PublicId, proj.ParentId)
 
 		p := allocScope()
-		p.PublicId = project.PublicId
+		p.PublicId = proj.PublicId
 		p.Type = ProjectScope.String()
 		projectOrg, err = p.GetScope(context.Background(), w)
-		assert.NoError(err)
-		assert.Equal(s.PublicId, projectOrg.PublicId)
+		require.NoError(err)
+		assert.Equal(org.PublicId, projectOrg.PublicId)
 	})
 }
 
@@ -209,55 +169,30 @@ func TestScope_Actions(t *testing.T) {
 }
 
 func TestScope_ResourceType(t *testing.T) {
-	assert := assert.New(t)
 	o, err := NewOrganization()
-	assert.NoError(err)
-	ty := o.ResourceType()
-	assert.Equal(ty, ResourceTypeOrganization)
+	require.NoError(t, err)
+	assert.Equal(t, o.ResourceType(), ResourceTypeOrganization)
 }
 
 func TestScope_Clone(t *testing.T) {
 	t.Parallel()
 	cleanup, conn, _ := db.TestSetup(t, "postgres")
 	defer func() {
-		if err := cleanup(); err != nil {
-			t.Error(err)
-		}
-	}()
-	assert := assert.New(t)
-	defer func() {
-		if err := conn.Close(); err != nil {
-			t.Error(err)
-		}
+		err := cleanup()
+		assert.NoError(t, err)
+		err = conn.Close()
+		assert.NoError(t, err)
 	}()
 	t.Run("valid", func(t *testing.T) {
-		w := db.New(conn)
-		s, err := NewOrganization()
-		assert.NoError(err)
-		assert.NotNil(s.Scope)
-		err = w.Create(context.Background(), s)
-		assert.NoError(err)
-		assert.NotEmpty(s.PublicId)
-
+		assert := assert.New(t)
+		s, _ := TestScopes(t, conn)
 		cp := s.Clone()
 		assert.True(proto.Equal(cp.(*Scope).Scope, s.Scope))
 	})
 	t.Run("not-equal", func(t *testing.T) {
-		w := db.New(conn)
-		s, err := NewOrganization()
-		assert.NoError(err)
-		assert.NotNil(s.Scope)
-		err = w.Create(context.Background(), s)
-		assert.NoError(err)
-		assert.NotEmpty(s.PublicId)
-
-		s2, err := NewOrganization()
-		assert.NoError(err)
-		assert.NotNil(s2.Scope)
-		err = w.Create(context.Background(), s2)
-		assert.NoError(err)
-		assert.NotEmpty(s2.PublicId)
-
+		assert := assert.New(t)
+		s, _ := TestScopes(t, conn)
+		s2, _ := TestScopes(t, conn)
 		cp := s.Clone()
 		assert.True(!proto.Equal(cp.(*Scope).Scope, s2.Scope))
 	})

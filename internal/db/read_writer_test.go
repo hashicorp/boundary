@@ -11,6 +11,7 @@ import (
 
 	"github.com/golang/protobuf/ptypes"
 	"github.com/hashicorp/go-hclog"
+	wrapping "github.com/hashicorp/go-kms-wrapping"
 	"github.com/hashicorp/go-uuid"
 	"github.com/hashicorp/vault/sdk/helper/base62"
 	"github.com/hashicorp/watchtower/internal/db/db_test"
@@ -18,6 +19,7 @@ import (
 	"github.com/hashicorp/watchtower/internal/oplog"
 	"github.com/jinzhu/gorm"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestDb_Update(t *testing.T) {
@@ -227,9 +229,8 @@ func TestDb_Update(t *testing.T) {
 			assert.NotEqual(publicId, foundUser.PublicId)
 		})
 	}
-
-	assert := assert.New(t)
 	t.Run("valid-WithOplog", func(t *testing.T) {
+		assert := assert.New(t)
 		w := Db{underlying: db}
 		id, err := uuid.GenerateUUID()
 		assert.NoError(err)
@@ -262,6 +263,7 @@ func TestDb_Update(t *testing.T) {
 		assert.NoError(err)
 	})
 	t.Run("vet-for-write", func(t *testing.T) {
+		assert := assert.New(t)
 		w := Db{underlying: db}
 		id, err := uuid.GenerateUUID()
 		assert.NoError(err)
@@ -292,6 +294,7 @@ func TestDb_Update(t *testing.T) {
 		assert.Equal(0, rowsUpdated)
 	})
 	t.Run("nil-tx", func(t *testing.T) {
+		assert := assert.New(t)
 		w := Db{underlying: nil}
 		id, err := uuid.GenerateUUID()
 		assert.NoError(err)
@@ -303,6 +306,7 @@ func TestDb_Update(t *testing.T) {
 		assert.Equal("update: missing underlying db nil parameter", err.Error())
 	})
 	t.Run("no-wrapper-WithOplog", func(t *testing.T) {
+		assert := assert.New(t)
 		w := Db{underlying: db}
 		id, err := uuid.GenerateUUID()
 		assert.NoError(err)
@@ -321,9 +325,10 @@ func TestDb_Update(t *testing.T) {
 		)
 		assert.Error(err)
 		assert.Equal(0, rowsUpdated)
-		assert.Equal("update: oplog validation failed error no wrapper WithOplog", err.Error())
+		assert.Equal("update: oplog validation failed error no wrapper WithOplog: nil parameter", err.Error())
 	})
 	t.Run("no-metadata-WithOplog", func(t *testing.T) {
+		assert := assert.New(t)
 		w := Db{underlying: db}
 		id, err := uuid.GenerateUUID()
 		assert.NoError(err)
@@ -337,7 +342,7 @@ func TestDb_Update(t *testing.T) {
 		)
 		assert.Error(err)
 		assert.Equal(0, rowsUpdated)
-		assert.Equal("update: oplog validation failed error no metadata for WithOplog", err.Error())
+		assert.Equal("update: oplog validation failed error no metadata for WithOplog: invalid parameter", err.Error())
 	})
 }
 
@@ -461,7 +466,7 @@ func TestDb_Create(t *testing.T) {
 			),
 		)
 		assert.Error(err)
-		assert.Equal("create: oplog validation failed error no wrapper WithOplog", err.Error())
+		assert.Equal("create: oplog validation failed error no wrapper WithOplog: nil parameter", err.Error())
 	})
 	t.Run("no-metadata-WithOplog", func(t *testing.T) {
 		w := Db{underlying: db}
@@ -479,7 +484,7 @@ func TestDb_Create(t *testing.T) {
 			),
 		)
 		assert.Error(err)
-		assert.Equal("create: oplog validation failed error no metadata for WithOplog", err.Error())
+		assert.Equal("create: oplog validation failed error no metadata for WithOplog: invalid parameter", err.Error())
 	})
 	t.Run("nil-tx", func(t *testing.T) {
 		w := Db{underlying: nil}
@@ -931,188 +936,166 @@ func TestDb_DoTx(t *testing.T) {
 }
 
 func TestDb_Delete(t *testing.T) {
-	// intentionally not run with t.Parallel so we don't need to use DoTx for the Create tests
 	cleanup, db, _ := TestSetup(t, "postgres")
 	defer func() {
 		if err := cleanup(); err != nil {
 			t.Error(err)
 		}
 	}()
-	assert := assert.New(t)
-	defer db.Close()
-	t.Run("simple", func(t *testing.T) {
-		w := Db{underlying: db}
-		id, err := uuid.GenerateUUID()
-		assert.NoError(err)
-		user, err := db_test.NewTestUser()
-		assert.NoError(err)
-		user.Name = "foo-" + id
-		err = w.Create(context.Background(), user)
-		assert.NoError(err)
-		assert.NotEmpty(user.Id)
-		assert.NotNil(user.GetCreateTime())
-		assert.NotNil(user.GetUpdateTime())
+	defer func() {
+		if err := db.Close(); err != nil {
+			t.Error(err)
+		}
+	}()
+	newUser := func() *db_test.TestUser {
+		w := &Db{
+			underlying: db,
+		}
+		u, err := db_test.NewTestUser()
+		assert.NoError(t, err)
+		err = w.Create(context.Background(), u)
+		assert.NoError(t, err)
+		return u
+	}
+	notFoundUser := func() *db_test.TestUser {
+		u, err := db_test.NewTestUser()
+		assert.NoError(t, err)
+		u.Id = 1111111
+		return u
+	}
 
-		foundUser, err := db_test.NewTestUser()
-		assert.NoError(err)
-		foundUser.PublicId = user.PublicId
-		err = w.LookupByPublicId(context.Background(), foundUser)
-		assert.NoError(err)
-		assert.Equal(foundUser.Id, user.Id)
+	newMetadata := func(publicId string) oplog.Metadata {
+		return oplog.Metadata{
+			"op-type":            []string{oplog.OpType_OP_TYPE_DELETE.String()},
+			"resource-public-id": []string{publicId},
+		}
+	}
+	type args struct {
+		i        *db_test.TestUser
+		opt      []Option
+		metadata func(publicId string) oplog.Metadata
+	}
+	tests := []struct {
+		name       string
+		underlying *gorm.DB
+		wrapper    wrapping.Wrapper
+		args       args
+		want       int
+		wantOplog  bool
+		wantErr    bool
+		wantErrIs  error
+	}{
+		{
+			name:       "simple-no-oplog",
+			underlying: db,
+			wrapper:    TestWrapper(t),
+			args: args{
+				i: newUser(),
+			},
+			want:    1,
+			wantErr: false,
+		},
+		{
+			name:       "valid-with-oplog",
+			underlying: db,
+			wrapper:    TestWrapper(t),
+			args: args{
+				i:        newUser(),
+				metadata: newMetadata,
+			},
+			wantOplog: true,
+			want:      1,
+			wantErr:   false,
+		},
+		{
+			name:       "nil-wrapper",
+			underlying: db,
+			wrapper:    nil,
+			args: args{
+				i:        newUser(),
+				metadata: newMetadata,
+			},
+			wantOplog: true,
+			want:      0,
+			wantErr:   true,
+			wantErrIs: ErrNilParameter,
+		},
+		{
+			name:       "nil-metadata",
+			underlying: db,
+			wrapper:    nil,
+			args: args{
+				i:        newUser(),
+				metadata: func(string) oplog.Metadata { return nil },
+			},
+			wantOplog: true,
+			want:      0,
+			wantErr:   true,
+			wantErrIs: ErrNilParameter,
+		},
+		{
+			name:       "nil-underlying",
+			underlying: nil,
+			wrapper:    TestWrapper(t),
+			args: args{
+				i: newUser(),
+			},
+			want:      0,
+			wantErr:   true,
+			wantErrIs: ErrNilParameter,
+		},
+		{
+			name:       "not-found",
+			underlying: db,
+			wrapper:    TestWrapper(t),
+			args: args{
+				i: notFoundUser(),
+			},
+			want:    0,
+			wantErr: false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			require := require.New(t)
+			assert := assert.New(t)
+			rw := &Db{
+				underlying: tt.underlying,
+			}
+			if tt.wantOplog {
+				metadata := tt.args.metadata(tt.args.i.PublicId)
+				opLog := WithOplog(tt.wrapper, metadata)
+				tt.args.opt = append(tt.args.opt, opLog)
+			}
+			got, err := rw.Delete(context.Background(), tt.args.i, tt.args.opt...)
+			assert.Equal(tt.want, got)
+			if tt.wantErr {
+				require.Error(err)
+				if tt.wantErrIs != nil {
+					assert.Truef(errors.Is(err, tt.wantErrIs), "received unexpected error: %v", err)
+				}
+				err := TestVerifyOplog(t, rw, tt.args.i.GetPublicId(), WithOperation(oplog.OpType_OP_TYPE_DELETE), WithCreateNotBefore(5*time.Second))
+				assert.Error(err)
+				return
+			}
+			require.NoError(err)
+			assert.Equal(tt.want, got)
 
-		rowsDeleted, err := w.Delete(context.Background(), user)
-		assert.NoError(err)
-		assert.Equal(1, rowsDeleted)
+			foundUser := tt.args.i.Clone()
+			foundUser.PublicId = tt.args.i.PublicId
+			err = rw.LookupByPublicId(context.Background(), foundUser)
+			assert.Error(err)
+			assert.Equal(ErrRecordNotFound, err)
 
-		err = w.LookupByPublicId(context.Background(), foundUser)
-		assert.Error(err)
-		assert.Equal(ErrRecordNotFound, err)
-	})
-	t.Run("valid-WithOplog", func(t *testing.T) {
-		w := Db{underlying: db}
-		id, err := uuid.GenerateUUID()
-		assert.NoError(err)
-		user, err := db_test.NewTestUser()
-		assert.NoError(err)
-		user.Name = "foo-" + id
-		err = w.Create(
-			context.Background(),
-			user,
-			WithOplog(
-				TestWrapper(t),
-				oplog.Metadata{
-					"key-only":   nil,
-					"deployment": []string{"amex"},
-					"project":    []string{"central-info-systems", "local-info-systems"},
-				},
-			),
-		)
-		assert.NoError(err)
-		assert.NotEmpty(user.Id)
-
-		foundUser, err := db_test.NewTestUser()
-		assert.NoError(err)
-		foundUser.PublicId = user.PublicId
-		err = w.LookupByPublicId(context.Background(), foundUser)
-		assert.NoError(err)
-		assert.Equal(foundUser.Id, user.Id)
-
-		rowsDeleted, err := w.Delete(
-			context.Background(),
-			user,
-			WithOplog(
-				TestWrapper(t),
-				oplog.Metadata{
-					"key-only":   nil,
-					"deployment": []string{"amex"},
-					"project":    []string{"central-info-systems", "local-info-systems"},
-				},
-			),
-		)
-		assert.NoError(err)
-		assert.Equal(1, rowsDeleted)
-
-		err = w.LookupByPublicId(context.Background(), foundUser)
-		assert.Error(err)
-		assert.Equal(ErrRecordNotFound, err)
-	})
-	t.Run("no-wrapper-WithOplog", func(t *testing.T) {
-		w := Db{underlying: db}
-		id, err := uuid.GenerateUUID()
-		assert.NoError(err)
-		user, err := db_test.NewTestUser()
-		assert.NoError(err)
-		user.Name = "foo-" + id
-		err = w.Create(
-			context.Background(),
-			user,
-			WithOplog(
-				TestWrapper(t),
-				oplog.Metadata{
-					"key-only":   nil,
-					"deployment": []string{"amex"},
-					"project":    []string{"central-info-systems", "local-info-systems"},
-				},
-			),
-		)
-		assert.NoError(err)
-		assert.NotEmpty(user.Id)
-
-		foundUser, err := db_test.NewTestUser()
-		assert.NoError(err)
-		foundUser.PublicId = user.PublicId
-		err = w.LookupByPublicId(context.Background(), foundUser)
-		assert.NoError(err)
-		assert.Equal(foundUser.Id, user.Id)
-
-		rowsDeleted, err := w.Delete(
-			context.Background(),
-			user,
-			WithOplog(
-				nil,
-				oplog.Metadata{
-					"key-only":   nil,
-					"deployment": []string{"amex"},
-					"project":    []string{"central-info-systems", "local-info-systems"},
-				},
-			),
-		)
-		assert.Error(err)
-		assert.Equal(0, rowsDeleted)
-		assert.Equal("delete: oplog validation failed error no wrapper WithOplog", err.Error())
-	})
-	t.Run("no-metadata-WithOplog", func(t *testing.T) {
-		w := Db{underlying: db}
-		id, err := uuid.GenerateUUID()
-		assert.NoError(err)
-		user, err := db_test.NewTestUser()
-		assert.NoError(err)
-		user.Name = "foo-" + id
-		err = w.Create(
-			context.Background(),
-			user,
-			WithOplog(
-				TestWrapper(t),
-				oplog.Metadata{
-					"key-only":   nil,
-					"deployment": []string{"amex"},
-					"project":    []string{"central-info-systems", "local-info-systems"},
-				},
-			),
-		)
-		assert.NoError(err)
-		assert.NotEmpty(user.Id)
-
-		foundUser, err := db_test.NewTestUser()
-		assert.NoError(err)
-		foundUser.PublicId = user.PublicId
-		err = w.LookupByPublicId(context.Background(), foundUser)
-		assert.NoError(err)
-		assert.Equal(foundUser.Id, user.Id)
-
-		rowsDeleted, err := w.Delete(
-			context.Background(),
-			user,
-			WithOplog(
-				TestWrapper(t),
-				nil,
-			),
-		)
-		assert.Error(err)
-		assert.Equal(0, rowsDeleted)
-		assert.Equal("delete: oplog validation failed error no metadata for WithOplog", err.Error())
-	})
-	t.Run("nil-tx", func(t *testing.T) {
-		w := Db{underlying: nil}
-		id, err := uuid.GenerateUUID()
-		assert.NoError(err)
-		user, err := db_test.NewTestUser()
-		assert.NoError(err)
-		user.Name = "foo-" + id
-		err = w.Create(context.Background(), user)
-		assert.Error(err)
-		assert.Equal("create: missing underlying db nil parameter", err.Error())
-	})
+			err = TestVerifyOplog(t, rw, tt.args.i.GetPublicId(), WithOperation(oplog.OpType_OP_TYPE_DELETE), WithCreateNotBefore(5*time.Second))
+			switch {
+			case tt.wantOplog:
+				assert.NoError(err)
+			default:
+				assert.Error(err)
+			}
+		})
+	}
 }
 
 func TestDb_ScanRows(t *testing.T) {
