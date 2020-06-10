@@ -58,10 +58,10 @@ func (r *Repository) UpdateGroup(ctx context.Context, group *Group, fieldMaskPat
 		fieldMaskPaths,
 	)
 	if len(dbMask) == 0 && len(nullFields) == 0 {
-		return nil, db.NoRowsAffected, fmt.Errorf("update user: %w", db.ErrEmptyFieldMask)
+		return nil, db.NoRowsAffected, fmt.Errorf("update group: %w", db.ErrEmptyFieldMask)
 	}
 	g := group.Clone().(*Group)
-	resource, rowsUpdated, err := r.update(ctx, g, fieldMaskPaths, nil)
+	resource, rowsUpdated, err := r.update(ctx, g, dbMask, nullFields)
 	if err != nil {
 		if db.IsUniqueError(err) {
 			return nil, db.NoRowsAffected, fmt.Errorf("update group: group %s already exists in organization %s", group.Name, group.ScopeId)
