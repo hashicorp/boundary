@@ -27,7 +27,7 @@ func TestNewGroup(t *testing.T) {
 	id := testId(t)
 
 	type args struct {
-		organizationPublicId string
+		scopePublicId string
 		opt                  []Option
 	}
 	tests := []struct {
