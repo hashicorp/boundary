@@ -148,6 +148,21 @@ func Test_GroupCreate(t *testing.T) {
 			wantErr: false,
 		},
 		{
+			name: "valid-with-dup-null-names-and-descriptions",
+			args: args{
+				group: func() *Group {
+					grp, err := NewGroup(org.PublicId)
+					require.NoError(t, err)
+					grpId, err := newGroupId()
+					require.NoError(t, err)
+					grp.PublicId = grpId
+					return grp
+				}(),
+			},
+			wantDup: true,
+			wantErr: false,
+		},
+		{
 			name: "bad-scope-id",
 			args: args{
 				group: func() *Group {
@@ -169,7 +184,16 @@ func Test_GroupCreate(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 			w := db.New(conn)
-			err := w.Create(context.Background(), tt.args.group)
+			if tt.wantDup {
+				g := tt.args.group.Clone().(*Group)
+				grpId, err := newGroupId()
+				require.NoError(err)
+				g.PublicId = grpId
+				err = w.Create(context.Background(), g)
+				require.NoError(err)
+			}
+			g := tt.args.group.Clone().(*Group)
+			err := w.Create(context.Background(), g)
 			if tt.wantErr {
 				require.Error(err)
 				assert.Equal(tt.wantErrMsg, err.Error())
@@ -182,7 +206,7 @@ func Test_GroupCreate(t *testing.T) {
 			foundGrp.PublicId = tt.args.group.PublicId
 			err = w.LookupByPublicId(context.Background(), &foundGrp)
 			require.NoError(err)
-			assert.Equal(tt.args.group, &foundGrp)
+			assert.Equal(g, &foundGrp)
 		})
 	}
 }
@@ -344,6 +368,22 @@ func Test_GroupUpdate(t *testing.T) {
 			}
 		})
 	}
+	t.Run("update dup names in diff scopes", func(t *testing.T) {
+		assert, require := assert.New(t), require.New(t)
+		id := testId(t)
+		_ = TestGroup(t, conn, org.PublicId, WithDescription(id), WithName(id))
+		projGrp := TestGroup(t, conn, proj.PublicId)
+		projGrp.Name = id
+		updatedRows, err := rw.Update(context.Background(), projGrp, []string{"Name"}, nil)
+		require.NoError(err)
+		assert.Equal(1, updatedRows)
+
+		foundGrp := allocGroup()
+		foundGrp.PublicId = projGrp.GetPublicId()
+		err = rw.LookupByPublicId(context.Background(), &foundGrp)
+		require.NoError(err)
+		assert.Equal(id, projGrp.Name)
+	})
 }
 
 func Test_GroupDelete(t *testing.T) {
