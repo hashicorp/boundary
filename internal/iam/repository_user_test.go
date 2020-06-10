@@ -8,11 +8,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/hashicorp/go-uuid"
 	"github.com/hashicorp/watchtower/internal/db"
 	dbassert "github.com/hashicorp/watchtower/internal/db/assert"
 	"github.com/hashicorp/watchtower/internal/oplog"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -20,20 +20,17 @@ func TestRepository_CreateUser(t *testing.T) {
 	t.Parallel()
 	cleanup, conn, _ := db.TestSetup(t, "postgres")
 	defer func() {
-		if err := cleanup(); err != nil {
-			t.Error(err)
-		}
+		err := cleanup()
+		assert.NoError(t, err)
+		err = conn.Close()
+		assert.NoError(t, err)
 	}()
-	a := assert.New(t)
-	defer conn.Close()
 
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
 	repo, err := NewRepository(rw, rw, wrapper)
-	a.NoError(err)
-	id, err := uuid.GenerateUUID()
-	a.NoError(err)
-
+	require.NoError(t, err)
+	id := testId(t)
 	org, _ := TestScopes(t, conn)
 
 	type args struct {
@@ -86,16 +83,15 @@ func TestRepository_CreateUser(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			assert := assert.New(t)
-
+			assert, require := assert.New(t), require.New(t)
 			if tt.wantDup {
 				dup, err := repo.CreateUser(context.Background(), tt.args.user, tt.args.opt...)
-				assert.NoError(err)
-				assert.NotNil(dup)
+				require.NoError(err)
+				require.NotNil(dup)
 			}
 			u, err := repo.CreateUser(context.Background(), tt.args.user, tt.args.opt...)
 			if tt.wantErr {
-				assert.Error(err)
+				require.Error(err)
 				assert.Nil(u)
 				switch tt.name {
 				case "dup-name":
@@ -105,12 +101,12 @@ func TestRepository_CreateUser(t *testing.T) {
 				}
 				return
 			}
-			assert.NoError(err)
+			require.NoError(err)
 			assert.NotNil(u.CreateTime)
 			assert.NotNil(u.UpdateTime)
 
 			foundUser, err := repo.LookupUser(context.Background(), u.PublicId)
-			assert.NoError(err)
+			require.NoError(err)
 			assert.True(proto.Equal(foundUser, u))
 
 			err = db.TestVerifyOplog(t, rw, u.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_CREATE), db.WithCreateNotBefore(10*time.Second))
@@ -123,20 +119,17 @@ func TestRepository_UpdateUser(t *testing.T) {
 	t.Parallel()
 	cleanup, conn, _ := db.TestSetup(t, "postgres")
 	defer func() {
-		if err := cleanup(); err != nil {
-			t.Error(err)
-		}
+		err := cleanup()
+		assert.NoError(t, err)
+		err = conn.Close()
+		assert.NoError(t, err)
 	}()
-	a := assert.New(t)
-	defer conn.Close()
 
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
 	repo, err := NewRepository(rw, rw, wrapper)
-	a.NoError(err)
-	id, err := uuid.GenerateUUID()
-	a.NoError(err)
-
+	require.NoError(t, err)
+	id := testId(t)
 	org, proj := TestScopes(t, conn)
 	pubId := func(s string) *string { return &s }
 
@@ -304,12 +297,12 @@ func TestRepository_UpdateUser(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			assert := assert.New(t)
+			assert, require := assert.New(t), require.New(t)
 			if tt.wantDup {
 				u := TestUser(t, conn, org.PublicId, tt.newUserOpts...)
 				u.Name = tt.args.name
 				_, _, err := repo.UpdateUser(context.Background(), u, tt.args.fieldMaskPaths, tt.args.opt...)
-				assert.NoError(err)
+				require.NoError(err)
 			}
 
 			u := TestUser(t, conn, org.PublicId, tt.newUserOpts...)
@@ -325,7 +318,7 @@ func TestRepository_UpdateUser(t *testing.T) {
 
 			userAfterUpdate, updatedRows, err := repo.UpdateUser(context.Background(), &updateUser, tt.args.fieldMaskPaths, tt.args.opt...)
 			if tt.wantErr {
-				assert.Error(err)
+				require.Error(err)
 				if tt.wantIsErr != nil {
 					assert.True(errors.Is(err, db.ErrRecordNotFound))
 				}
@@ -338,18 +331,17 @@ func TestRepository_UpdateUser(t *testing.T) {
 					assert.Equal(tt.wantErrMsg, err.Error())
 				}
 				err = db.TestVerifyOplog(t, rw, u.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_UPDATE), db.WithCreateNotBefore(10*time.Second))
-				assert.Error(err)
+				require.Error(err)
 				assert.Equal("record not found", err.Error())
 				return
 			}
-			assert.NoError(err)
+			require.NoError(err)
 			assert.Equal(tt.wantRowsUpdate, updatedRows)
 			assert.NotEqual(u.UpdateTime, userAfterUpdate.UpdateTime)
 			foundUser, err := repo.LookupUser(context.Background(), u.PublicId)
-			assert.NoError(err)
+			require.NoError(err)
 			assert.True(proto.Equal(userAfterUpdate, foundUser))
 
-			conn.LogMode(true)
 			dbassert := dbassert.New(t, rw)
 			if tt.args.name == "" {
 				dbassert.IsNull(foundUser, "name")
@@ -357,7 +349,6 @@ func TestRepository_UpdateUser(t *testing.T) {
 			if tt.args.description == "" {
 				dbassert.IsNull(foundUser, "description")
 			}
-			conn.LogMode(false)
 
 			err = db.TestVerifyOplog(t, rw, u.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_UPDATE), db.WithCreateNotBefore(10*time.Second))
 			assert.NoError(err)
@@ -369,17 +360,16 @@ func TestRepository_DeleteUser(t *testing.T) {
 	t.Parallel()
 	cleanup, conn, _ := db.TestSetup(t, "postgres")
 	defer func() {
-		if err := cleanup(); err != nil {
-			t.Error(err)
-		}
+		err := cleanup()
+		assert.NoError(t, err)
+		err = conn.Close()
+		assert.NoError(t, err)
 	}()
-	a := assert.New(t)
-	defer conn.Close()
 
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
 	repo, err := NewRepository(rw, rw, wrapper)
-	a.NoError(err)
+	require.NoError(t, err)
 	org, _ := TestScopes(t, conn)
 
 	type args struct {
@@ -418,9 +408,9 @@ func TestRepository_DeleteUser(t *testing.T) {
 			args: args{
 				user: func() *User {
 					u, err := NewUser(org.PublicId)
-					a.NoError(err)
+					require.NoError(t, err)
 					id, err := newUserId()
-					a.NoError(err)
+					require.NoError(t, err)
 					u.PublicId = id
 					return u
 				}(),
@@ -432,26 +422,26 @@ func TestRepository_DeleteUser(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			assert := assert.New(t)
+			assert, require := assert.New(t), require.New(t)
 			deletedRows, err := repo.DeleteUser(context.Background(), tt.args.user.PublicId, tt.args.opt...)
 			if tt.wantErr {
-				assert.Error(err)
+				require.Error(err)
 				assert.Equal(0, deletedRows)
 				assert.True(strings.HasPrefix(err.Error(), tt.wantErrMsg))
 				err = db.TestVerifyOplog(t, rw, tt.args.user.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_DELETE), db.WithCreateNotBefore(10*time.Second))
-				assert.Error(err)
+				require.Error(err)
 				assert.Equal("record not found", err.Error())
 				return
 			}
-			assert.NoError(err)
+			require.NoError(err)
 			assert.Equal(tt.wantRowsDeleted, deletedRows)
 			foundUser, err := repo.LookupUser(context.Background(), tt.args.user.PublicId)
-			assert.Error(err)
+			require.Error(err)
 			assert.Nil(foundUser)
 			assert.True(errors.Is(err, db.ErrRecordNotFound))
 
 			err = db.TestVerifyOplog(t, rw, tt.args.user.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_DELETE), db.WithCreateNotBefore(10*time.Second))
-			assert.NoError(err)
+			require.NoError(err)
 		})
 	}
 }

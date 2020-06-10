@@ -5,9 +5,9 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/hashicorp/go-uuid"
 	"github.com/hashicorp/watchtower/internal/db"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -15,16 +15,13 @@ func TestNewUser(t *testing.T) {
 	t.Parallel()
 	cleanup, conn, _ := db.TestSetup(t, "postgres")
 	defer func() {
-		if err := cleanup(); err != nil {
-			t.Error(err)
-		}
+		err := cleanup()
+		assert.NoError(t, err)
+		err = conn.Close()
+		assert.NoError(t, err)
 	}()
-	assert := assert.New(t)
-	defer conn.Close()
 	org, _ := TestScopes(t, conn)
-
-	id, err := uuid.GenerateUUID()
-	assert.NoError(err)
+	id := testId(t)
 
 	type args struct {
 		organizationPublicId string
@@ -66,13 +63,14 @@ func TestNewUser(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
 			got, err := NewUser(tt.args.organizationPublicId, tt.args.opt...)
 			if tt.wantErr {
 				assert.Error(err)
 				assert.Equal(tt.wantErrMsg, err.Error())
 				return
 			}
-			assert.NoError(err)
+			require.NoError(err)
 			assert.Equal(tt.wantName, got.Name)
 			assert.Empty(got.PublicId)
 		})
@@ -83,42 +81,41 @@ func Test_UserCreate(t *testing.T) {
 	t.Parallel()
 	cleanup, conn, _ := db.TestSetup(t, "postgres")
 	defer func() {
-		if err := cleanup(); err != nil {
-			t.Error(err)
-		}
+		err := cleanup()
+		assert.NoError(t, err)
+		err = conn.Close()
+		assert.NoError(t, err)
 	}()
-	assert := assert.New(t)
-	defer conn.Close()
 	org, _ := TestScopes(t, conn)
-
-	id, err := uuid.GenerateUUID()
-	assert.NoError(err)
+	id := testId(t)
 	t.Run("valid-user", func(t *testing.T) {
+		assert, require := assert.New(t), require.New(t)
 		w := db.New(conn)
 		user, err := NewUser(org.PublicId)
-		assert.NoError(err)
+		require.NoError(err)
 		id, err := newUserId()
-		assert.NoError(err)
+		require.NoError(err)
 		user.PublicId = id
 		err = w.Create(context.Background(), user)
-		assert.NoError(err)
-		assert.NotEmpty(user.PublicId)
+		require.NoError(err)
+		require.NotEmpty(user.PublicId)
 
 		foundUser := allocUser()
 		foundUser.PublicId = user.PublicId
 		err = w.LookupByPublicId(context.Background(), &foundUser)
-		assert.NoError(err)
+		require.NoError(err)
 		assert.Equal(user, &foundUser)
 	})
 	t.Run("bad-orgid", func(t *testing.T) {
+		assert, require := assert.New(t), require.New(t)
 		w := db.New(conn)
 		user, err := NewUser(id)
-		assert.NoError(err)
+		require.NoError(err)
 		id, err := newUserId()
-		assert.NoError(err)
+		require.NoError(err)
 		user.PublicId = id
 		err = w.Create(context.Background(), user)
-		assert.Error(err)
+		require.Error(err)
 		assert.Equal("create: vet for write failed scope is not found", err.Error())
 	})
 }
@@ -127,20 +124,17 @@ func Test_UserUpdate(t *testing.T) {
 	t.Parallel()
 	cleanup, conn, _ := db.TestSetup(t, "postgres")
 	defer func() {
-		if err := cleanup(); err != nil {
-			t.Error(err)
-		}
+		err := cleanup()
+		assert.NoError(t, err)
+		err = conn.Close()
+		assert.NoError(t, err)
 	}()
-	a := assert.New(t)
-	defer conn.Close()
 
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
 	repo, err := NewRepository(rw, rw, wrapper)
-	a.NoError(err)
-	id, err := uuid.GenerateUUID()
-	a.NoError(err)
-
+	require.NoError(t, err)
+	id := testId(t)
 	org, proj := TestScopes(t, conn)
 
 	type args struct {
@@ -211,12 +205,12 @@ func Test_UserUpdate(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			assert := assert.New(t)
+			assert, require := assert.New(t), require.New(t)
 			if tt.wantDup {
 				u := TestUser(t, conn, org.PublicId)
 				u.Name = tt.args.name
 				_, err := rw.Update(context.Background(), u, tt.args.fieldMaskPaths, nil)
-				assert.NoError(err)
+				require.NoError(err)
 			}
 
 			u := TestUser(t, conn, org.PublicId)
@@ -229,16 +223,16 @@ func Test_UserUpdate(t *testing.T) {
 
 			updatedRows, err := rw.Update(context.Background(), &updateUser, tt.args.fieldMaskPaths, nil)
 			if tt.wantErr {
-				assert.Error(err)
+				require.Error(err)
 				assert.Equal(0, updatedRows)
 				assert.Equal(tt.wantErrMsg, err.Error())
 				return
 			}
-			assert.NoError(err)
+			require.NoError(err)
 			assert.Equal(tt.wantRowsUpdate, updatedRows)
 			assert.NotEqual(u.UpdateTime, updateUser.UpdateTime)
 			foundUser, err := repo.LookupUser(context.Background(), u.PublicId)
-			assert.NoError(err)
+			require.NoError(err)
 			assert.True(proto.Equal(updateUser, foundUser))
 		})
 	}
@@ -248,19 +242,17 @@ func Test_UserDelete(t *testing.T) {
 	t.Parallel()
 	cleanup, conn, _ := db.TestSetup(t, "postgres")
 	defer func() {
-		if err := cleanup(); err != nil {
-			t.Error(err)
-		}
+		err := cleanup()
+		assert.NoError(t, err)
+		err = conn.Close()
+		assert.NoError(t, err)
 	}()
-	a := assert.New(t)
-	defer conn.Close()
 
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
 	repo, err := NewRepository(rw, rw, wrapper)
-	a.NoError(err)
-	id, err := uuid.GenerateUUID()
-	a.NoError(err)
+	require.NoError(t, err)
+	id := testId(t)
 	org, _ := TestScopes(t, conn)
 
 	tests := []struct {
@@ -285,7 +277,7 @@ func Test_UserDelete(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			assert := assert.New(t)
+			assert, require := assert.New(t), require.New(t)
 			deleteUser := allocUser()
 			deleteUser.PublicId = tt.user.GetPublicId()
 			deletedRows, err := rw.Delete(context.Background(), &deleteUser)
@@ -293,7 +285,7 @@ func Test_UserDelete(t *testing.T) {
 				assert.Equal(tt.wantRowsDeleted, deletedRows)
 				return
 			}
-			assert.NoError(err)
+			require.NoError(err)
 			assert.Equal(tt.wantRowsDeleted, deletedRows)
 			foundUser, err := repo.LookupUser(context.Background(), tt.user.GetPublicId())
 			assert.True(errors.Is(err, db.ErrRecordNotFound))
@@ -306,35 +298,19 @@ func Test_UserGetScope(t *testing.T) {
 	t.Parallel()
 	cleanup, conn, _ := db.TestSetup(t, "postgres")
 	defer func() {
-		if err := cleanup(); err != nil {
-			t.Error(err)
-		}
+		err := cleanup()
+		assert.NoError(t, err)
+		err = conn.Close()
+		assert.NoError(t, err)
 	}()
-	defer conn.Close()
-	assert := assert.New(t)
 
 	org, _ := TestScopes(t, conn)
 	t.Run("valid-scope", func(t *testing.T) {
+		assert, require := assert.New(t), require.New(t)
 		w := db.New(conn)
-		user, err := NewUser(org.PublicId)
-		assert.NoError(err)
-		id, err := newUserId()
-		assert.NoError(err)
-		user.PublicId = id
-		err = w.Create(context.Background(), user)
-		assert.NoError(err)
-		assert.NotEmpty(user.PublicId)
-		assert.Equal(user.ScopeId, org.PublicId)
-
-		childScope, err := NewProject(org.PublicId)
-		assert.NoError(err)
-		assert.NotNil(childScope.Scope)
-		assert.Equal(childScope.GetParentId(), org.PublicId)
-		err = w.Create(context.Background(), childScope)
-		assert.NoError(err)
-
+		user := TestUser(t, conn, org.PublicId)
 		userScope, err := user.GetScope(context.Background(), w)
-		assert.NoError(err)
+		require.NoError(err)
 		assert.True(proto.Equal(org, userScope))
 	})
 
@@ -344,28 +320,21 @@ func TestUser_Clone(t *testing.T) {
 	t.Parallel()
 	cleanup, conn, _ := db.TestSetup(t, "postgres")
 	defer func() {
-		if err := cleanup(); err != nil {
-			t.Error(err)
-		}
+		err := cleanup()
+		assert.NoError(t, err)
+		err = conn.Close()
+		assert.NoError(t, err)
 	}()
-	assert := assert.New(t)
-	defer conn.Close()
 	org, _ := TestScopes(t, conn)
 
 	t.Run("valid", func(t *testing.T) {
-		w := db.New(conn)
-		user, err := NewUser(org.PublicId)
-		assert.NoError(err)
-		id, err := newUserId()
-		assert.NoError(err)
-		user.PublicId = id
-		err = w.Create(context.Background(), user)
-		assert.NoError(err)
-
+		assert := assert.New(t)
+		user := TestUser(t, conn, org.PublicId)
 		cp := user.Clone()
 		assert.True(proto.Equal(cp.(*User).User, user.User))
 	})
 	t.Run("not-equal-test", func(t *testing.T) {
+		assert := assert.New(t)
 		w := db.New(conn)
 
 		user, err := NewUser(org.PublicId)
@@ -405,18 +374,6 @@ func TestUser_Actions(t *testing.T) {
 
 func TestUser_ResourceType(t *testing.T) {
 	t.Parallel()
-	cleanup, conn, _ := db.TestSetup(t, "postgres")
-	defer func() {
-		if err := cleanup(); err != nil {
-			t.Error(err)
-		}
-	}()
-	assert := assert.New(t)
-	defer conn.Close()
-	org, _ := TestScopes(t, conn)
-
-	u, err := NewUser(org.PublicId)
-	assert.NoError(err)
-	ty := u.ResourceType()
-	assert.Equal(ty, ResourceTypeUser)
+	u := allocUser()
+	assert.Equal(t, ResourceTypeUser, u.ResourceType())
 }
