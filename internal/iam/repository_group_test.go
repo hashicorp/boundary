@@ -8,6 +8,7 @@ import (
 
 	"github.com/hashicorp/go-uuid"
 	"github.com/hashicorp/watchtower/internal/db"
+	dbassert "github.com/hashicorp/watchtower/internal/db/assert"
 	"github.com/hashicorp/watchtower/internal/oplog"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -29,10 +30,10 @@ func TestRepository_CreateGroup(t *testing.T) {
 	require.NoError(t, err)
 	id := testId(t)
 
-	org, _ := TestScopes(t, conn)
+	org, proj := TestScopes(t, conn)
 
 	type args struct {
-		orgId string
+		group *Group
 		opt   []Option
 	}
 	tests := []struct {
@@ -43,26 +44,48 @@ func TestRepository_CreateGroup(t *testing.T) {
 		wantErrMsg string
 	}{
 		{
-			name: "valid",
+			name: "valid-org",
 			args: args{
-				orgId: org.PublicId,
-				opt:   []Option{WithName("valid" + id), WithDescription(id)},
+				group: func() *Group {
+					g, err := NewGroup(org.PublicId, WithName("valid-org"+id), WithDescription(id))
+					assert.NoError(t, err)
+					return g
+				}(),
+			},
+			wantErr: false,
+		},
+		{
+			name: "valid-proj",
+			args: args{
+				group: func() *Group {
+					g, err := NewGroup(proj.PublicId, WithName("valid-proj"+id), WithDescription(id))
+					assert.NoError(t, err)
+					return g
+				}(),
 			},
 			wantErr: false,
 		},
 		{
 			name: "bad-scope-id",
 			args: args{
-				orgId: id,
+				group: func() *Group {
+					g, err := NewGroup(id)
+					assert.NoError(t, err)
+					return g
+				}(),
 			},
-			wantErr:    false,
-			wantErrMsg: "",
+			wantErr:    true,
+			wantErrMsg: "create group: scope not found for",
 		},
 		{
 			name: "dup-name",
 			args: args{
-				orgId: id,
-				opt:   []Option{WithName("dup-name" + id)},
+				group: func() *Group {
+					g, err := NewGroup(org.PublicId, WithName("dup-name"+id), WithDescription(id))
+					assert.NoError(t, err)
+					return g
+				}(),
+				opt: []Option{WithName("dup-name" + id)},
 			},
 			wantDup:    true,
 			wantErr:    true,
@@ -80,17 +103,11 @@ func TestRepository_CreateGroup(t *testing.T) {
 				assert.NoError(err)
 				assert.NotNil(dup)
 			}
-			grp, err := NewGroup(org.PublicId, tt.args.opt...)
-			pubId := grp.PublicId
-			assert.NoError(err)
-			grp, err = repo.CreateGroup(context.Background(), grp, tt.args.opt...)
+			grp, err := repo.CreateGroup(context.Background(), tt.args.group, tt.args.opt...)
 			if tt.wantErr {
 				assert.Error(err)
 				assert.Nil(grp)
 				assert.Contains(err.Error(), tt.wantErrMsg)
-				err = db.TestVerifyOplog(t, rw, pubId, db.WithOperation(oplog.OpType_OP_TYPE_CREATE), db.WithCreateNotBefore(10*time.Second))
-				assert.Error(err)
-				assert.True(errors.Is(db.ErrRecordNotFound, err))
 				return
 			}
 			assert.NoError(err)
@@ -125,6 +142,7 @@ func TestRepository_UpdateGroup(t *testing.T) {
 	a.NoError(err)
 
 	org, proj := TestScopes(t, conn)
+	pubId := func(s string) *string { return &s }
 
 	type args struct {
 		name           string
@@ -132,13 +150,16 @@ func TestRepository_UpdateGroup(t *testing.T) {
 		fieldMaskPaths []string
 		opt            []Option
 		ScopeId        string
+		PublicId       *string
 	}
 	tests := []struct {
 		name           string
+		newGrpOpts     []Option
 		args           args
 		wantRowsUpdate int
 		wantErr        bool
 		wantErrMsg     string
+		wantIsErr      error
 		wantDup        bool
 	}{
 		{
@@ -152,13 +173,115 @@ func TestRepository_UpdateGroup(t *testing.T) {
 			wantRowsUpdate: 1,
 		},
 		{
+			name: "valid-no-op",
+			args: args{
+				name:           "valid-no-op" + id,
+				fieldMaskPaths: []string{"Name"},
+				ScopeId:        org.PublicId,
+			},
+			newGrpOpts:     []Option{WithName("valid-no-op" + id)},
+			wantErr:        false,
+			wantRowsUpdate: 1,
+		},
+		{
+			name: "not-found",
+			args: args{
+				name:           "not-found" + id,
+				fieldMaskPaths: []string{"Name"},
+				ScopeId:        org.PublicId,
+				PublicId:       func() *string { s := "1"; return &s }(),
+			},
+			wantErr:        true,
+			wantRowsUpdate: 0,
+			wantErrMsg:     "update group: update: lookup error lookup after write: failed record not found for 1",
+			wantIsErr:      db.ErrRecordNotFound,
+		},
+		{
+			name: "null-name",
+			args: args{
+				name:           "",
+				fieldMaskPaths: []string{"Name"},
+				ScopeId:        org.PublicId,
+			},
+			newGrpOpts:     []Option{WithName("null-name" + id)},
+			wantErr:        false,
+			wantRowsUpdate: 1,
+		},
+		{
+			name: "null-description",
+			args: args{
+				name:           "",
+				fieldMaskPaths: []string{"Description"},
+				ScopeId:        org.PublicId,
+			},
+			newGrpOpts:     []Option{WithDescription("null-description" + id)},
+			wantErr:        false,
+			wantRowsUpdate: 1,
+		},
+		{
+			name: "empty-field-mask",
+			args: args{
+				name:           "valid" + id,
+				fieldMaskPaths: []string{},
+				ScopeId:        org.PublicId,
+			},
+			wantErr:        true,
+			wantRowsUpdate: 0,
+			wantErrMsg:     "update group: empty field mask",
+		},
+		{
+			name: "nil-fieldmask",
+			args: args{
+				name:           "valid" + id,
+				fieldMaskPaths: nil,
+				ScopeId:        org.PublicId,
+			},
+			wantErr:        true,
+			wantRowsUpdate: 0,
+			wantErrMsg:     "update group: empty field mask",
+		},
+		{
+			name: "read-only-fields",
+			args: args{
+				name:           "valid" + id,
+				fieldMaskPaths: []string{"CreateTime"},
+				ScopeId:        org.PublicId,
+			},
+			wantErr:        true,
+			wantRowsUpdate: 0,
+			wantErrMsg:     "update group: field: CreateTime: invalid field mask",
+		},
+		{
+			name: "unknown-fields",
+			args: args{
+				name:           "valid" + id,
+				fieldMaskPaths: []string{"Alice"},
+				ScopeId:        org.PublicId,
+			},
+			wantErr:        true,
+			wantRowsUpdate: 0,
+			wantErrMsg:     "update group: field: Alice: invalid field mask",
+		},
+		{
+			name: "no-public-id",
+			args: args{
+				name:           "valid" + id,
+				fieldMaskPaths: []string{"Name"},
+				ScopeId:        org.PublicId,
+				PublicId:       pubId(""),
+			},
+			wantErr:        true,
+			wantErrMsg:     "update group: missing group public id invalid parameter",
+			wantRowsUpdate: 0,
+		},
+		{
 			name: "proj-scope-id-no-mask",
 			args: args{
 				name:    "proj-scope-id" + id,
 				ScopeId: proj.PublicId,
 			},
 			wantErr:    true,
-			wantErrMsg: "update user: empty field mask",
+			wantErrMsg: "update group: empty field mask",
 		},
 		{
 			name: "empty-scope-id-with-name-mask",
@@ -192,10 +315,13 @@ func TestRepository_UpdateGroup(t *testing.T) {
 				assert.NoError(err)
 			}
 
-			u := TestGroup(t, conn, org.PublicId)
+			u := TestGroup(t, conn, org.PublicId, tt.newGrpOpts...)
 
 			updateGrp := allocGroup()
 			updateGrp.PublicId = u.PublicId
+			if tt.args.PublicId != nil {
+				updateGrp.PublicId = *tt.args.PublicId
+			}
 			updateGrp.ScopeId = tt.args.ScopeId
 			updateGrp.Name = tt.args.name
 			updateGrp.Description = tt.args.description
@@ -203,6 +329,9 @@ func TestRepository_UpdateGroup(t *testing.T) {
 			userAfterUpdate, updatedRows, err := repo.UpdateGroup(context.Background(), &updateGrp, tt.args.fieldMaskPaths, tt.args.opt...)
 			if tt.wantErr {
 				assert.Error(err)
+				if tt.wantIsErr != nil {
+					assert.True(errors.Is(err, db.ErrRecordNotFound))
+				}
 				assert.Nil(userAfterUpdate)
 				assert.Equal(0, updatedRows)
 				assert.Contains(err.Error(), tt.wantErrMsg)
@@ -213,10 +342,22 @@ func TestRepository_UpdateGroup(t *testing.T) {
 			}
 			assert.NoError(err)
 			assert.Equal(tt.wantRowsUpdate, updatedRows)
-			assert.NotEqual(u.UpdateTime, userAfterUpdate.UpdateTime)
+			switch tt.name {
+			case "valid-no-op":
+				assert.Equal(u.UpdateTime, userAfterUpdate.UpdateTime)
+			default:
+				assert.NotEqual(u.UpdateTime, userAfterUpdate.UpdateTime)
+			}
 			foundGrp, err := repo.LookupGroup(context.Background(), u.PublicId)
 			assert.NoError(err)
 			assert.True(proto.Equal(userAfterUpdate, foundGrp))
+			dbassert := dbassert.New(t, rw)
+			if tt.args.name == "" {
+				dbassert.IsNull(foundGrp, "name")
+			}
+			if tt.args.description == "" {
+				dbassert.IsNull(foundGrp, "description")
+			}
 
 			err = db.TestVerifyOplog(t, rw, u.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_UPDATE), db.WithCreateNotBefore(10*time.Second))
 			assert.NoError(err)
