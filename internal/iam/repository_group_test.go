@@ -66,7 +66,7 @@ func TestRepository_CreateGroup(t *testing.T) {
 			},
 			wantDup:    true,
 			wantErr:    true,
-			wantErrMsg: `failed to create group: create: failed pq: duplicate key value violates unique constraint "iam_group_name_scope_id_key"`,
+			wantErrMsg: "already exists in scope ",
 		},
 	}
 	for _, tt := range tests {
@@ -87,10 +87,10 @@ func TestRepository_CreateGroup(t *testing.T) {
 			if tt.wantErr {
 				assert.Error(err)
 				assert.Nil(grp)
-				assert.Equal(tt.wantErrMsg, err.Error())
+				assert.Contains(err.Error(), tt.wantErrMsg)
 				err = db.TestVerifyOplog(t, rw, pubId, db.WithOperation(oplog.OpType_OP_TYPE_CREATE), db.WithCreateNotBefore(10*time.Second))
 				assert.Error(err)
-				assert.Equal("record not found", err.Error())
+				assert.True(errors.Is(db.ErrRecordNotFound, err))
 				return
 			}
 			assert.NoError(err)
@@ -158,7 +158,7 @@ func TestRepository_UpdateGroup(t *testing.T) {
 				ScopeId: proj.PublicId,
 			},
 			wantErr:    true,
-			wantErrMsg: "failed to update group: update: both fieldMaskPaths and setToNullPaths are missing",
+			wantErrMsg: "update user: empty field mask",
 		},
 		{
 			name: "empty-scope-id-with-name-mask",
@@ -179,7 +179,7 @@ func TestRepository_UpdateGroup(t *testing.T) {
 			},
 			wantErr:    true,
 			wantDup:    true,
-			wantErrMsg: `failed to update group: update: failed pq: duplicate key value violates unique constraint "iam_group_name_scope_id_key"`,
+			wantErrMsg: " already exists in organization " + org.PublicId,
 		},
 	}
 	for _, tt := range tests {
@@ -205,10 +205,10 @@ func TestRepository_UpdateGroup(t *testing.T) {
 				assert.Error(err)
 				assert.Nil(userAfterUpdate)
 				assert.Equal(0, updatedRows)
-				assert.Equal(tt.wantErrMsg, err.Error())
+				assert.Contains(err.Error(), tt.wantErrMsg)
 				err = db.TestVerifyOplog(t, rw, u.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_UPDATE), db.WithCreateNotBefore(10*time.Second))
 				assert.Error(err)
-				assert.Equal("record not found", err.Error())
+				assert.True(errors.Is(db.ErrRecordNotFound, err))
 				return
 			}
 			assert.NoError(err)
@@ -269,7 +269,7 @@ func TestRepository_DeleteGroup(t *testing.T) {
 			},
 			wantRowsDeleted: 0,
 			wantErr:         true,
-			wantErrMsg:      "you cannot delete a group with an empty public id",
+			wantErrMsg:      "delete group: missing public id nil parameter",
 		},
 		{
 			name: "not-found",
@@ -284,8 +284,8 @@ func TestRepository_DeleteGroup(t *testing.T) {
 				}(),
 			},
 			wantRowsDeleted: 0,
-			wantErr:         false,
-			wantErrMsg:      "",
+			wantErr:         true,
+			wantErrMsg:      "delete group: failed record not found for ",
 		},
 	}
 	for _, tt := range tests {
@@ -295,10 +295,10 @@ func TestRepository_DeleteGroup(t *testing.T) {
 			if tt.wantErr {
 				assert.Error(err)
 				assert.Equal(0, deletedRows)
-				assert.Equal(tt.wantErrMsg, err.Error())
+				assert.Contains(err.Error(), tt.wantErrMsg)
 				err = db.TestVerifyOplog(t, rw, tt.args.group.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_DELETE), db.WithCreateNotBefore(10*time.Second))
 				assert.Error(err)
-				assert.Equal("record not found", err.Error())
+				assert.True(errors.Is(db.ErrRecordNotFound, err))
 				return
 			}
 			assert.NoError(err)
