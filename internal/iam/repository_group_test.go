@@ -37,11 +37,12 @@ func TestRepository_CreateGroup(t *testing.T) {
 		opt   []Option
 	}
 	tests := []struct {
-		name       string
-		args       args
-		wantDup    bool
-		wantErr    bool
-		wantErrMsg string
+		name        string
+		args        args
+		wantDup     bool
+		wantErr     bool
+		wantErrMsg  string
+		wantIsError error
 	}{
 		{
 			name: "valid-org",
@@ -66,6 +67,28 @@ func TestRepository_CreateGroup(t *testing.T) {
 			wantErr: false,
 		},
 		{
+			name: "nil-group",
+			args: args{
+				group: nil,
+			},
+			wantErr:     true,
+			wantErrMsg:  "create group: missing group nil parameter",
+			wantIsError: db.ErrNilParameter,
+		},
+		{
+			name: "nil-store",
+			args: args{
+				group: func() *Group {
+					return &Group{
+						Group: nil,
+					}
+				}(),
+			},
+			wantErr:     true,
+			wantErrMsg:  "create group: missing group store nil parameter",
+			wantIsError: db.ErrNilParameter,
+		},
+		{
 			name: "bad-scope-id",
 			args: args{
 				group: func() *Group {
@@ -74,8 +97,9 @@ func TestRepository_CreateGroup(t *testing.T) {
 					return g
 				}(),
 			},
-			wantErr:    true,
-			wantErrMsg: "create group: error getting metadata for create: unable to get scope for standard metadata: record not found for",
+			wantErr:     true,
+			wantErrMsg:  "create group: error getting metadata for create: unable to get scope for standard metadata: record not found for",
+			wantIsError: db.ErrInvalidParameter,
 		},
 		{
 			name: "dup-name",
@@ -87,9 +111,23 @@ func TestRepository_CreateGroup(t *testing.T) {
 				}(),
 				opt: []Option{WithName("dup-name" + id)},
 			},
-			wantDup:    true,
-			wantErr:    true,
-			wantErrMsg: "already exists in scope ",
+			wantDup:     true,
+			wantErr:     true,
+			wantErrMsg:  "already exists in scope ",
+			wantIsError: db.ErrNotUnique,
+		},
+		{
+			name: "dup-name-but-diff-scope",
+			args: args{
+				group: func() *Group {
+					g, err := NewGroup(proj.PublicId, WithName("dup-name-but-diff-scope"+id), WithDescription(id))
+					assert.NoError(t, err)
+					return g
+				}(),
+				opt: []Option{WithName("dup-name-but-diff-scope" + id)},
+			},
+			wantDup: true,
+			wantErr: false,
 		},
 	}
 	for _, tt := range tests {
@@ -154,12 +192,13 @@ func TestRepository_UpdateGroup(t *testing.T) {
 	}
 	tests := []struct {
 		name           string
+		newScopeId     string
 		newGrpOpts     []Option
 		args           args
 		wantRowsUpdate int
 		wantErr        bool
 		wantErrMsg     string
-		wantIsErr      error
+		wantIsError    error
 		wantDup        bool
 	}{
 		{
@@ -169,6 +208,7 @@ func TestRepository_UpdateGroup(t *testing.T) {
 				fieldMaskPaths: []string{"Name"},
 				ScopeId:        org.PublicId,
 			},
+			newScopeId:     org.PublicId,
 			wantErr:        false,
 			wantRowsUpdate: 1,
 		},
@@ -179,6 +219,7 @@ func TestRepository_UpdateGroup(t *testing.T) {
 				fieldMaskPaths: []string{"Name"},
 				ScopeId:        org.PublicId,
 			},
+			newScopeId:     org.PublicId,
 			newGrpOpts:     []Option{WithName("valid-no-op" + id)},
 			wantErr:        false,
 			wantRowsUpdate: 1,
@@ -191,10 +232,11 @@ func TestRepository_UpdateGroup(t *testing.T) {
 				ScopeId:        org.PublicId,
 				PublicId:       func() *string { s := "1"; return &s }(),
 			},
+			newScopeId:     org.PublicId,
 			wantErr:        true,
 			wantRowsUpdate: 0,
 			wantErrMsg:     "update group: update: lookup error lookup after write: failed record not found for 1",
-			wantIsErr:      db.ErrRecordNotFound,
+			wantIsError:    db.ErrRecordNotFound,
 		},
 		{
 			name: "null-name",
@@ -203,6 +245,7 @@ func TestRepository_UpdateGroup(t *testing.T) {
 				fieldMaskPaths: []string{"Name"},
 				ScopeId:        org.PublicId,
 			},
+			newScopeId:     org.PublicId,
 			newGrpOpts:     []Option{WithName("null-name" + id)},
 			wantErr:        false,
 			wantRowsUpdate: 1,
@@ -214,6 +257,7 @@ func TestRepository_UpdateGroup(t *testing.T) {
 				fieldMaskPaths: []string{"Description"},
 				ScopeId:        org.PublicId,
 			},
+			newScopeId:     org.PublicId,
 			newGrpOpts:     []Option{WithDescription("null-description" + id)},
 			wantErr:        false,
 			wantRowsUpdate: 1,
@@ -225,9 +269,11 @@ func TestRepository_UpdateGroup(t *testing.T) {
 				fieldMaskPaths: []string{},
 				ScopeId:        org.PublicId,
 			},
+			newScopeId:     org.PublicId,
 			wantErr:        true,
 			wantRowsUpdate: 0,
 			wantErrMsg:     "update group: empty field mask",
+			wantIsError:    db.ErrEmptyFieldMask,
 		},
 		{
 			name: "nil-fieldmask",
@@ -236,9 +282,11 @@ func TestRepository_UpdateGroup(t *testing.T) {
 				fieldMaskPaths: nil,
 				ScopeId:        org.PublicId,
 			},
+			newScopeId:     org.PublicId,
 			wantErr:        true,
 			wantRowsUpdate: 0,
 			wantErrMsg:     "update group: empty field mask",
+			wantIsError:    db.ErrEmptyFieldMask,
 		},
 		{
 			name: "read-only-fields",
@@ -247,9 +295,11 @@ func TestRepository_UpdateGroup(t *testing.T) {
 				fieldMaskPaths: []string{"CreateTime"},
 				ScopeId:        org.PublicId,
 			},
+			newScopeId:     org.PublicId,
 			wantErr:        true,
 			wantRowsUpdate: 0,
 			wantErrMsg:     "update group: field: CreateTime: invalid field mask",
+			wantIsError:    db.ErrInvalidFieldMask,
 		},
 		{
 			name: "unknown-fields",
@@ -258,9 +308,11 @@ func TestRepository_UpdateGroup(t *testing.T) {
 				fieldMaskPaths: []string{"Alice"},
 				ScopeId:        org.PublicId,
 			},
+			newScopeId:     org.PublicId,
 			wantErr:        true,
 			wantRowsUpdate: 0,
 			wantErrMsg:     "update group: field: Alice: invalid field mask",
+			wantIsError:    db.ErrInvalidFieldMask,
 		},
 		{
 			name: "no-public-id",
@@ -270,8 +322,10 @@ func TestRepository_UpdateGroup(t *testing.T) {
 				ScopeId:        org.PublicId,
 				PublicId:       pubId(""),
 			},
+			newScopeId:     org.PublicId,
 			wantErr:        true,
 			wantErrMsg:     "update group: missing group public id invalid parameter",
+			wantIsError:    db.ErrInvalidParameter,
 			wantRowsUpdate: 0,
 		},
 		{
@@ -280,8 +334,10 @@ func TestRepository_UpdateGroup(t *testing.T) {
 				name:    "proj-scope-id" + id,
 				ScopeId: proj.PublicId,
 			},
-			wantErr:    true,
-			wantErrMsg: "update group: empty field mask",
+			newScopeId:  org.PublicId,
+			wantErr:     true,
+			wantErrMsg:  "update group: empty field mask",
+			wantIsError: db.ErrEmptyFieldMask,
 		},
 		{
 			name: "empty-scope-id-with-name-mask",
@@ -290,8 +346,22 @@ func TestRepository_UpdateGroup(t *testing.T) {
 				fieldMaskPaths: []string{"Name"},
 				ScopeId:        "",
 			},
+			newScopeId:     org.PublicId,
 			wantErr:        false,
 			wantRowsUpdate: 1,
+		},
+		{
+			name: "dup-name-in-diff-scope",
+			args: args{
+				name:           "dup-name-in-diff-scope" + id,
+				fieldMaskPaths: []string{"Name"},
+				ScopeId:        proj.PublicId,
+			},
+			newScopeId:     proj.PublicId,
+			newGrpOpts:     []Option{WithName("dup-name-in-diff-scope-pre-update" + id)},
+			wantErr:        false,
+			wantRowsUpdate: 1,
+			wantDup:        true,
 		},
 		{
 			name: "dup-name",
@@ -300,9 +370,11 @@ func TestRepository_UpdateGroup(t *testing.T) {
 				fieldMaskPaths: []string{"Name"},
 				ScopeId:        org.PublicId,
 			},
-			wantErr:    true,
-			wantDup:    true,
-			wantErrMsg: " already exists in organization " + org.PublicId,
+			newScopeId:  org.PublicId,
+			wantErr:     true,
+			wantDup:     true,
+			wantErrMsg:  " already exists in organization " + org.PublicId,
+			wantIsError: db.ErrNotUnique,
 		},
 	}
 	for _, tt := range tests {
@@ -315,7 +387,7 @@ func TestRepository_UpdateGroup(t *testing.T) {
 				assert.NoError(err)
 			}
 
-			u := TestGroup(t, conn, org.PublicId, tt.newGrpOpts...)
+			u := TestGroup(t, conn, tt.newScopeId, tt.newGrpOpts...)
 
 			updateGrp := allocGroup()
 			updateGrp.PublicId = u.PublicId
@@ -329,8 +401,8 @@ func TestRepository_UpdateGroup(t *testing.T) {
 			userAfterUpdate, updatedRows, err := repo.UpdateGroup(context.Background(), &updateGrp, tt.args.fieldMaskPaths, tt.args.opt...)
 			if tt.wantErr {
 				assert.Error(err)
-				if tt.wantIsErr != nil {
-					assert.True(errors.Is(err, db.ErrRecordNotFound))
+				if tt.wantIsError != nil {
+					assert.True(errors.Is(err, tt.wantIsError))
 				}
 				assert.Nil(userAfterUpdate)
 				assert.Equal(0, updatedRows)
