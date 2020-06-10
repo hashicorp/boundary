@@ -9,8 +9,8 @@ import (
 // Test_CrudActions provides unit tests for CrudActions()
 func Test_CrudActions(t *testing.T) {
 	t.Parallel()
-	assert := assert.New(t)
 	t.Run("valid", func(t *testing.T) {
+		assert := assert.New(t)
 		a := CrudlActions()
 		assert.Equal(a[ActionCreate.String()], ActionCreate)
 		assert.Equal(a[ActionUpdate.String()], ActionUpdate)
@@ -18,6 +18,7 @@ func Test_CrudActions(t *testing.T) {
 		assert.Equal(a[ActionDelete.String()], ActionDelete)
 	})
 	t.Run("invalid", func(t *testing.T) {
+		assert := assert.New(t)
 		a := CrudlActions()
 		action, ok := a["invalid"]
 		assert.Equal(ok, false)
@@ -28,8 +29,8 @@ func Test_CrudActions(t *testing.T) {
 // Test_CrudlActions provides unit tests for CrudlActions()
 func Test_CrudlActions(t *testing.T) {
 	t.Parallel()
-	assert := assert.New(t)
 	t.Run("valid", func(t *testing.T) {
+		assert := assert.New(t)
 		a := CrudlActions()
 		assert.Equal(a[ActionList.String()], ActionList)
 		assert.Equal(a[ActionCreate.String()], ActionCreate)
@@ -38,6 +39,7 @@ func Test_CrudlActions(t *testing.T) {
 		assert.Equal(a[ActionDelete.String()], ActionDelete)
 	})
 	t.Run("invalid", func(t *testing.T) {
+		assert := assert.New(t)
 		a := CrudlActions()
 		action, ok := a["invalid"]
 		assert.Equal(ok, false)
