@@ -84,3 +84,41 @@ func TestUser(t *testing.T, conn *gorm.DB, orgId string, opt ...Option) *User {
 	require.NotEmpty(user.PublicId)
 	return user
 }
+
+// TestGroup creates a group suitable for testing.
+func TestGroup(t *testing.T, conn *gorm.DB, orgId string, opt ...Option) *Group {
+	t.Helper()
+	require := require.New(t)
+	rw := db.New(conn)
+
+	grp, err := NewGroup(orgId, opt...)
+	require.NoError(err)
+	id, err := newGroupId()
+	require.NoError(err)
+	grp.PublicId = id
+	err = rw.Create(context.Background(), grp)
+	require.NoError(err)
+	require.NotEmpty(grp.PublicId)
+	return grp
+}
+
+// TestRole creates a role suitable for testing.
+func TestRole(t *testing.T, conn *gorm.DB, scopeId string, opt ...Option) *Role {
+	t.Helper()
+	require := require.New(t)
+	rw := db.New(conn)
+
+	role, err := NewRole(scopeId, opt...)
+	require.NoError(err)
+	id, err := newRoleId()
+	require.NoError(err)
+	role.PublicId = id
+	err = rw.Create(context.Background(), role)
+	require.NoError(err)
+	require.NotEmpty(role.PublicId)
+
+	opts := getOpts(opt...)
+	require.Equal(opts.withDescription, role.Description)
+	require.Equal(opts.withName, role.Name)
+	return role
+}
