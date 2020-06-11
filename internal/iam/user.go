@@ -95,13 +95,3 @@ func (u *User) SetTableName(n string) {
 		u.tableName = n
 	}
 }
-
-const UserPrefix = "u"
-
-func newUserId() (string, error) {
-	id, err := db.NewPublicId(UserPrefix)
-	if err != nil {
-		return "", fmt.Errorf("new user id: %w", err)
-	}
-	return id, nil
-}
