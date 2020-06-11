@@ -21,7 +21,7 @@ func (r *Repository) CreateRole(ctx context.Context, role *Role, opt ...Option) 
 		return nil, fmt.Errorf("create role: public id not empty: %w", db.ErrInvalidParameter)
 	}
 	if role.ScopeId == "" {
-		return nil, fmt.Errorf("create role: missing role scope id: %w", db.ErrNilParameter)
+		return nil, fmt.Errorf("create role: missing role scope id: %w", db.ErrInvalidParameter)
 	}
 	id, err := newRoleId()
 	if err != nil {
