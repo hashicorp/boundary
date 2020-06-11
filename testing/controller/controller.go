@@ -29,6 +29,7 @@ type option struct {
 	setWithConfigText          bool
 	setDisableDatabaseCreation bool
 	setDefaultOrgId            bool
+	setDatabaseURL             bool
 }
 
 type Option func(*option) error
@@ -85,6 +86,18 @@ func WithDefaultOrgId(id string) Option {
 		}
 		c.setDefaultOrgId = true
 		c.tcOptions.DefaultOrgId = id
+		return nil
+	}
+}
+
+// WithDatabaseURL sets the database URL if running externally
+func WithDatabaseURL(url string) Option {
+	return func(c *option) error {
+		if c.setDatabaseURL {
+			return fmt.Errorf("WithDatabaseURL provided more than once.")
+		}
+		c.setDatabaseURL = true
+		c.tcOptions.DatabaseURL = url
 		return nil
 	}
 }

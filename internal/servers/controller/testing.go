@@ -114,6 +114,10 @@ type TestControllerOpts struct {
 	// DisableDatabaseCreation can be set true to disable creating a dev
 	// database
 	DisableDatabaseCreation bool
+
+	// DatabaseURL can be optionally set to point the dev server at an external
+	// database instance. This is overwritten if DisableDatabaseCreation is false.
+	DatabaseURL string
 }
 
 func NewTestController(t *testing.T, opts *TestControllerOpts) *TestController {
@@ -168,6 +172,10 @@ func NewTestController(t *testing.T, opts *TestControllerOpts) *TestController {
 	}
 	if err := tc.b.SetupListeners(nil, opts.Config.SharedConfig); err != nil {
 		t.Fatal(err)
+	}
+
+	if opts.DatabaseURL != "" {
+		tc.b.DevDatabaseUrl = opts.DatabaseURL
 	}
 
 	if !opts.DisableDatabaseCreation {

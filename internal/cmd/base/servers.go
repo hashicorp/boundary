@@ -462,5 +462,7 @@ func (b *Server) DestroyDevDatabase() error {
 	if b.DevDatabaseCleanupFunc != nil {
 		return b.DevDatabaseCleanupFunc()
 	}
-	return errors.New("no dev database cleanup function found")
+	// allow the use of out-of-tree databases such as external dev
+	// database instances not forked by the underlying testing lib
+	return nil
 }
