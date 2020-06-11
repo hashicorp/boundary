@@ -21,7 +21,7 @@ func (r *Repository) CreateGroup(ctx context.Context, group *Group, opt ...Optio
 		return nil, fmt.Errorf("create group: public id not empty: %w", db.ErrInvalidParameter)
 	}
 	if group.ScopeId == "" {
-		return nil, fmt.Errorf("create group: missing group scope id: %w", db.ErrNilParameter)
+		return nil, fmt.Errorf("create group: missing group scope id: %w", db.ErrInvalidParameter)
 	}
 	id, err := newGroupId()
 	if err != nil {
