@@ -1,0 +1,17 @@
+syntax = "proto3";
+package controller.custom_options.v1;
+
+import "google/protobuf/descriptor.proto";
+
+option go_package = "github.com/hashicorp/watchtower/internal/gen/controller/protooptions;protooptions";
+
+extend google.protobuf.FieldOptions {
+	// mask_mapping is an option which tags a field with the expected field mask used by a storage proto if applied
+	// in a wire proto, or in a wire proto if applied in a storage proto.
+	string mask_mapping = 85464;
+}
+
+
+message MyMessage {
+	string field1 = 1 [(mask_mapping) = "hello"];
+}
