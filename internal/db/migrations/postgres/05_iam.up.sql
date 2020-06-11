@@ -36,20 +36,6 @@ CREATE TABLE iam_auth_method (
     type text NOT NULL
   );
 
-
-CREATE TABLE iam_role (
-    public_id wt_public_id not null primary key,
-    create_time wt_timestamp,
-    update_time wt_timestamp,
-    name text,
-    description text,
-    scope_id wt_public_id NOT NULL REFERENCES iam_scope(public_id) ON DELETE CASCADE ON UPDATE CASCADE,
-    unique(name, scope_id),
-    disabled BOOLEAN NOT NULL default FALSE
-  );
-
-
-
 CREATE TABLE iam_auth_method_type_enm (
     string text NOT NULL primary key CHECK(string IN ('unknown', 'userpass', 'oidc'))
   );
