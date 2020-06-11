@@ -28,7 +28,7 @@ func TestNewGroup(t *testing.T) {
 
 	type args struct {
 		scopePublicId string
-		opt                  []Option
+		opt           []Option
 	}
 	tests := []struct {
 		name            string
@@ -42,8 +42,8 @@ func TestNewGroup(t *testing.T) {
 		{
 			name: "valid",
 			args: args{
-				organizationPublicId: org.PublicId,
-				opt:                  []Option{WithName(id), WithDescription("description-" + id)},
+				scopePublicId: org.PublicId,
+				opt:           []Option{WithName(id), WithDescription("description-" + id)},
 			},
 			wantErr:         false,
 			wantName:        id,
@@ -52,8 +52,8 @@ func TestNewGroup(t *testing.T) {
 		{
 			name: "valid-proj",
 			args: args{
-				organizationPublicId: proj.PublicId,
-				opt:                  []Option{WithName(id), WithDescription("description-" + id)},
+				scopePublicId: proj.PublicId,
+				opt:           []Option{WithName(id), WithDescription("description-" + id)},
 			},
 			wantErr:         false,
 			wantName:        id,
@@ -62,7 +62,7 @@ func TestNewGroup(t *testing.T) {
 		{
 			name: "valid-with-no-options" + id,
 			args: args{
-				organizationPublicId: org.PublicId,
+				scopePublicId: org.PublicId,
 			},
 			wantErr: false,
 		},
@@ -79,7 +79,7 @@ func TestNewGroup(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			got, err := NewGroup(tt.args.organizationPublicId, tt.args.opt...)
+			got, err := NewGroup(tt.args.scopePublicId, tt.args.opt...)
 			if tt.wantErr {
 				require.Error(err)
 				assert.Equal(tt.wantErrMsg, err.Error())
