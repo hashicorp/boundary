@@ -52,7 +52,7 @@ func (r *Repository) create(ctx context.Context, resource Resource, opt ...Optio
 	}
 	metadata, err := r.stdMetadata(ctx, resource)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("error getting metadata for create: %w", err)
 	}
 	metadata["op-type"] = []string{oplog.OpType_OP_TYPE_CREATE.String()}
 
@@ -84,7 +84,7 @@ func (r *Repository) update(ctx context.Context, resource Resource, fieldMaskPat
 	}
 	metadata, err := r.stdMetadata(ctx, resource)
 	if err != nil {
-		return nil, db.NoRowsAffected, err
+		return nil, db.NoRowsAffected, fmt.Errorf("error getting metadata for update: %w", err)
 	}
 	metadata["op-type"] = []string{oplog.OpType_OP_TYPE_UPDATE.String()}
 
@@ -185,9 +185,6 @@ func (r *Repository) stdMetadata(ctx context.Context, resource Resource) (oplog.
 
 	scope, err := resource.GetScope(ctx, r.reader)
 	if err != nil {
-		if errors.Is(err, db.ErrRecordNotFound) {
-			return nil, errors.New("scope not found")
-		}
 		return nil, fmt.Errorf("unable to get scope for standard metadata: %w", err)
 	}
 	if scope == nil {
