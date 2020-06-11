@@ -25,6 +25,7 @@ message Role {
   string name = 5;
 
   // description of the role
+  // @inject_tag: `gorm:"default:null"`
   string description = 6;
 
   // scope id for the role
@@ -32,43 +33,6 @@ message Role {
   string scope_id = 7;
 
   // disabled is by default false and allows a Role to be marked disabled.
+  // @inject_tag: `gorm:"default:null"`
   bool disabled = 9;
-}
-
-message UserRole {
-  // create_time from the RDBMS
-  // @inject_tag: `gorm:"default:current_timestamp"`
-  timestamp.v1.Timestamp create_time = 1;
-
-  // role_id is the role of this principal.
-  string role_id = 2;
-
-  // principal_id is the public_id of the user (which is the principal)
-  string principal_id = 3;
-}
-
-message GroupRole {
-  // create_time from the RDBMS
-  // @inject_tag: `gorm:"default:current_timestamp"`
-  timestamp.v1.Timestamp create_time = 1;
-
-  // role_id is the role of this principal.
-  string role_id = 2;
-
-  // principal_id is the public_id of the group (which is the principal)
-  string principal_id = 3;
-}
-
-message AssignedRoleView {
-  // create_time from the RDBMS
-  // @inject_tag: `gorm:"default:current_timestamp"`
-  timestamp.v1.Timestamp create_time = 1;
-
-  // role_id is the role of this principal.
-  string role_id = 2;
-
-  // Principal type (User or Group)
-  string type = 3;
-
-  string principal_id = 4;
 }
