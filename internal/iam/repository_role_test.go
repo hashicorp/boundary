@@ -529,7 +529,7 @@ func TestRepository_DeleteRole(t *testing.T) {
 			}
 			assert.NoError(err)
 			assert.Equal(tt.wantRowsDeleted, deletedRows)
-			foundRole, err := repo.LookupGroup(context.Background(), tt.args.role.PublicId)
+			foundRole, err := repo.LookupRole(context.Background(), tt.args.role.PublicId)
 			assert.Error(err)
 			assert.Nil(foundRole)
 			assert.True(errors.Is(err, db.ErrRecordNotFound))
