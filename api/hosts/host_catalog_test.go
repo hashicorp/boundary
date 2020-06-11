@@ -66,7 +66,7 @@ func TestCatalogs_Crud(t *testing.T) {
 }
 
 // TODO: Get better coverage for expected errors and error formats.
-func TestProject_Errors(t *testing.T) {
+func TestCatalogs_Errors(t *testing.T) {
 	assert := assert.New(t)
 	tc := controller.NewTestController(t, nil)
 	defer tc.Shutdown()

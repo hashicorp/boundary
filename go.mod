@@ -16,6 +16,7 @@ require (
 	github.com/golang-migrate/migrate/v4 v4.11.0
 	github.com/golang-sql/civil v0.0.0-20190719163853-cb61b32ac6fe
 	github.com/golang/protobuf v1.4.2
+	github.com/google/go-cmp v0.4.0
 	github.com/grpc-ecosystem/grpc-gateway v1.14.6
 	github.com/hashicorp/dbassert v0.0.0-20200602132714-30dfb78f0133
 	github.com/hashicorp/errwrap v1.0.0
@@ -54,7 +55,7 @@ require (
 	github.com/spf13/viper v1.6.3 // indirect
 	github.com/stretchr/testify v1.6.0
 	go.mongodb.org/mongo-driver v1.3.2 // indirect
-	golang.org/x/net v0.0.0-20200519113804-d87ec0cfa476
+	golang.org/x/net v0.0.0-20200519113804-d87ec0cfa476 // indirect
 	golang.org/x/sys v0.0.0-20200509044756-6aff5f38e54f // indirect
 	golang.org/x/time v0.0.0-20200416051211-89c76fbcd5d1
 	golang.org/x/tools v0.0.0-20200519175826-7521f6f42533
@@ -63,5 +64,4 @@ require (
 	google.golang.org/protobuf v1.24.0
 	gopkg.in/check.v1 v1.0.0-20200227125254-8fa46927fb4f // indirect
 	gopkg.in/ini.v1 v1.55.0 // indirect
-	gotest.tools v2.2.0+incompatible
 )

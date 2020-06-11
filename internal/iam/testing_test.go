@@ -6,6 +6,7 @@ import (
 
 	"github.com/hashicorp/watchtower/internal/db"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func Test_testOrg(t *testing.T) {
@@ -15,9 +16,7 @@ func Test_testOrg(t *testing.T) {
 	defer func() {
 		err := cleanup()
 		assert.NoError(err)
-	}()
-	defer func() {
-		err := conn.Close()
+		err = conn.Close()
 		assert.NoError(err)
 	}()
 	id := testId(t)
@@ -35,35 +34,32 @@ func Test_testId(t *testing.T) {
 }
 
 func Test_testPublicId(t *testing.T) {
-	assert := assert.New(t)
+	assert, require := assert.New(t), require.New(t)
 	id := testPublicId(t, "test")
-	assert.NotEmpty(id)
+	require.NotEmpty(id)
 	assert.True(strings.HasPrefix(id, "test_"))
 }
 func Test_TestScopes(t *testing.T) {
-	assert := assert.New(t)
-
+	assert, require := assert.New(t), require.New(t)
 	cleanup, conn, _ := db.TestSetup(t, "postgres")
 	defer func() {
-		if err := cleanup(); err != nil {
-			t.Error(err)
-		}
-		if err := conn.Close(); err != nil {
-			t.Error(err)
-		}
+		err := cleanup()
+		assert.NoError(err)
+		err = conn.Close()
+		assert.NoError(err)
 	}()
 
 	org, prj := TestScopes(t, conn)
 
-	assert.NotNil(org)
+	require.NotNil(org)
 	assert.NotEmpty(org.GetPublicId())
 
-	assert.NotNil(prj)
+	require.NotNil(prj)
 	assert.NotEmpty(prj.GetPublicId())
 }
 func Test_TestUser(t *testing.T) {
 	t.Helper()
-	assert := assert.New(t)
+	assert, require := assert.New(t), require.New(t)
 	cleanup, conn, _ := db.TestSetup(t, "postgres")
 	defer func() {
 		err := cleanup()
@@ -73,10 +69,10 @@ func Test_TestUser(t *testing.T) {
 	}()
 	org, _ := TestScopes(t, conn)
 
-	assert.NotNil(org)
+	require.NotNil(org)
 	assert.NotEmpty(org.GetPublicId())
 
 	user := TestUser(t, conn, org.PublicId)
-	assert.NotNil(user)
+	require.NotNil(user)
 	assert.NotEmpty(user.PublicId)
 }

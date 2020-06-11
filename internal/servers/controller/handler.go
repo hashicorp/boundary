@@ -21,6 +21,7 @@ import (
 	"github.com/hashicorp/watchtower/internal/servers/controller/handlers/host_sets"
 	"github.com/hashicorp/watchtower/internal/servers/controller/handlers/hosts"
 	"github.com/hashicorp/watchtower/internal/servers/controller/handlers/projects"
+	"github.com/hashicorp/watchtower/internal/servers/controller/handlers/users"
 )
 
 type HandlerProperties struct {
@@ -77,8 +78,19 @@ func handleGrpcGateway(c *Controller) (http.Handler, error) {
 	if err := services.RegisterHostServiceHandlerServer(ctx, mux, &hosts.Service{}); err != nil {
 		return nil, fmt.Errorf("failed to register host service handler: %w", err)
 	}
-	if err := services.RegisterProjectServiceHandlerServer(ctx, mux, projects.NewService(c.IamRepoFn)); err != nil {
+	ps, err := projects.NewService(c.IamRepoFn)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create project handler service: %w", err)
+	}
+	if err := services.RegisterProjectServiceHandlerServer(ctx, mux, ps); err != nil {
 		return nil, fmt.Errorf("failed to register project service handler: %w", err)
+	}
+	us, err := users.NewService(c.IamRepoFn)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create user handler service: %w", err)
+	}
+	if err := services.RegisterUserServiceHandlerServer(ctx, mux, us); err != nil {
+		return nil, fmt.Errorf("failed to register user service handler: %w", err)
 	}
 
 	return mux, nil
