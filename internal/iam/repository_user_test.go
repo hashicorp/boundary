@@ -65,7 +65,7 @@ func TestRepository_CreateUser(t *testing.T) {
 				}(),
 			},
 			wantErr:    true,
-			wantErrMsg: "create user: scope not found for",
+			wantErrMsg: "create user: error getting metadata for create: unable to get scope for standard metadata: record not found for",
 		},
 		{
 			name: "dup-name",
@@ -97,7 +97,7 @@ func TestRepository_CreateUser(t *testing.T) {
 				case "dup-name":
 					assert.Equal(fmt.Sprintf(tt.wantErrMsg, "dup-name"+id, org.PublicId), err.Error())
 				default:
-					assert.True(strings.HasPrefix(err.Error(), tt.wantErrMsg))
+					assert.Contains(err.Error(), tt.wantErrMsg)
 				}
 				return
 			}

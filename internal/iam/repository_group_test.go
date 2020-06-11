@@ -75,7 +75,7 @@ func TestRepository_CreateGroup(t *testing.T) {
 				}(),
 			},
 			wantErr:    true,
-			wantErrMsg: "create group: scope not found for",
+			wantErrMsg: "create group: error getting metadata for create: unable to get scope for standard metadata: record not found for",
 		},
 		{
 			name: "dup-name",
