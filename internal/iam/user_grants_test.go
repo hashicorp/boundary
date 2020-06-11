@@ -25,14 +25,7 @@ func Test_UserGrants(t *testing.T) {
 		id, err := uuid.GenerateUUID()
 		assert.NoError(err)
 		w := db.New(conn)
-
-		role, err := NewRole(org.PublicId)
-		assert.NoError(err)
-		assert.NotNil(role)
-		assert.Equal(org.PublicId, role.ScopeId)
-		err = w.Create(context.Background(), role)
-		assert.NoError(err)
-		assert.NotEqual(role.PublicId, "")
+		role := TestRole(t, conn, org.PublicId)
 
 		g, err := NewRoleGrant(role, "everything*"+id)
 		assert.NoError(err)
@@ -67,14 +60,7 @@ func Test_UserGrants(t *testing.T) {
 		err = w.Create(context.Background(), gm)
 		assert.NoError(err)
 
-		groupRole, err := NewRole(org.PublicId)
-		assert.NoError(err)
-		assert.NotNil(role)
-		assert.Equal(org.PublicId, groupRole.ScopeId)
-		err = w.Create(context.Background(), groupRole)
-		assert.NoError(err)
-		assert.NotEqual(groupRole.PublicId, "")
-
+		groupRole := TestRole(t, conn, org.PublicId)
 		groupGrant, err := NewRoleGrant(groupRole, "group-grant*"+id)
 		assert.NoError(err)
 		assert.NotNil(groupGrant)

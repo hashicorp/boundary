@@ -73,14 +73,7 @@ func Test_NewGroupMember(t *testing.T) {
 		assert := assert.New(t)
 		w := db.New(conn)
 		s := testOrg(t, conn, "", "")
-
-		role, err := NewRole(s.PublicId)
-		assert.NoError(err)
-		assert.NotNil(role)
-		assert.Equal(s.PublicId, role.ScopeId)
-		err = w.Create(context.Background(), role)
-		assert.NoError(err)
-		assert.NotEmpty(role.PublicId)
+		role := TestRole(t, conn, s.PublicId)
 
 		grp := TestGroup(t, conn, s.PublicId)
 		gm, err := grp.AddUser(role.PublicId)

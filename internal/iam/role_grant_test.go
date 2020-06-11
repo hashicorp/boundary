@@ -22,14 +22,7 @@ func TestNewRoleGrant(t *testing.T) {
 		assert := assert.New(t)
 		w := db.New(conn)
 		s := testOrg(t, conn, "", "")
-
-		role, err := NewRole(s.PublicId)
-		assert.NoError(err)
-		assert.NotNil(role)
-		assert.Equal(s.PublicId, role.ScopeId)
-		err = w.Create(context.Background(), role)
-		assert.NoError(err)
-		assert.NotEmpty(role.PublicId)
+		role := TestRole(t, conn, s.PublicId)
 
 		g, err := NewRoleGrant(role, "everything*")
 		assert.NoError(err)
@@ -50,19 +43,6 @@ func TestNewRoleGrant(t *testing.T) {
 		assert.NoError(err)
 		assert.NotNil(uRole)
 		assert.Equal(uRole.GetPrincipalId(), user.PublicId)
-	})
-	t.Run("nil-scope", func(t *testing.T) {
-		assert := assert.New(t)
-		w := db.New(conn)
-		s := testOrg(t, conn, "", "")
-
-		role, err := NewRole(s.PublicId)
-		assert.NoError(err)
-		assert.NotNil(role)
-		assert.Equal(s.PublicId, role.ScopeId)
-		err = w.Create(context.Background(), role)
-		assert.NoError(err)
-		assert.NotEmpty(role.PublicId)
 	})
 	t.Run("nil-role", func(t *testing.T) {
 		assert := assert.New(t)
@@ -104,14 +84,7 @@ func TestRoleGrant_GetScope(t *testing.T) {
 		assert := assert.New(t)
 		w := db.New(conn)
 		s := testOrg(t, conn, "", "")
-
-		role, err := NewRole(s.PublicId)
-		assert.NoError(err)
-		assert.NotNil(role)
-		assert.Equal(s.PublicId, role.ScopeId)
-		err = w.Create(context.Background(), role)
-		assert.NoError(err)
-		assert.NotEmpty(role.PublicId)
+		role := TestRole(t, conn, s.PublicId)
 
 		g, err := NewRoleGrant(role, "everything*")
 		assert.NoError(err)
@@ -137,16 +110,8 @@ func TestRoleGrant_Clone(t *testing.T) {
 	}()
 	t.Run("valid", func(t *testing.T) {
 		assert := assert.New(t)
-		w := db.New(conn)
 		s := testOrg(t, conn, "", "")
-
-		role, err := NewRole(s.PublicId)
-		assert.NoError(err)
-		assert.NotNil(role)
-		assert.Equal(s.PublicId, role.ScopeId)
-		err = w.Create(context.Background(), role)
-		assert.NoError(err)
-		assert.NotEmpty(role.PublicId)
+		role := TestRole(t, conn, s.PublicId)
 
 		g, err := NewRoleGrant(role, "everything*")
 		assert.NoError(err)
@@ -159,16 +124,8 @@ func TestRoleGrant_Clone(t *testing.T) {
 	})
 	t.Run("not-equal", func(t *testing.T) {
 		assert := assert.New(t)
-		w := db.New(conn)
 		s := testOrg(t, conn, "", "")
-
-		role, err := NewRole(s.PublicId)
-		assert.NoError(err)
-		assert.NotNil(role)
-		assert.Equal(s.PublicId, role.ScopeId)
-		err = w.Create(context.Background(), role)
-		assert.NoError(err)
-		assert.NotEmpty(role.PublicId)
+		role := TestRole(t, conn, s.PublicId)
 
 		g, err := NewRoleGrant(role, "everything*")
 		assert.NoError(err)

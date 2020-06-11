@@ -24,15 +24,7 @@ func Test_NewAssignedRole(t *testing.T) {
 		w := db.New(conn)
 		s := testOrg(t, conn, "", "")
 		user := TestUser(t, conn, s.PublicId)
-
-		role, err := NewRole(s.PublicId, WithDescription("this is a test role"))
-		assert.NoError(err)
-		assert.NotNil(role)
-		assert.Equal(role.Description, "this is a test role")
-		assert.Equal(s.PublicId, role.ScopeId)
-		err = w.Create(context.Background(), role)
-		assert.NoError(err)
-		assert.NotEmpty(role.PublicId)
+		role := TestRole(t, conn, s.PublicId, WithDescription("this is a test role"))
 
 		uRole, err := NewAssignedRole(role, user)
 		assert.NoError(err)
@@ -58,17 +50,9 @@ func Test_NewAssignedRole(t *testing.T) {
 	})
 	t.Run("bad-resource-type", func(t *testing.T) {
 		assert := assert.New(t)
-		w := db.New(conn)
 		s := testOrg(t, conn, "", "")
 		secondScope := testOrg(t, conn, "", "")
-		role, err := NewRole(s.PublicId, WithDescription("this is a test role"))
-		assert.NoError(err)
-		assert.NotNil(role)
-		assert.Equal(role.Description, "this is a test role")
-		assert.Equal(s.PublicId, role.ScopeId)
-		err = w.Create(context.Background(), role)
-		assert.NoError(err)
-		assert.NotEmpty(role.PublicId)
+		role := TestRole(t, conn, s.PublicId, WithDescription("this is a test role"))
 
 		uRole, err := NewAssignedRole(role, secondScope)
 		assert.Error(err)
@@ -87,36 +71,12 @@ func Test_NewAssignedRole(t *testing.T) {
 	})
 	t.Run("nil-principal", func(t *testing.T) {
 		assert := assert.New(t)
-		w := db.New(conn)
 		s := testOrg(t, conn, "", "")
-
-		role, err := NewRole(s.PublicId, WithDescription("this is a test role"))
-		assert.NoError(err)
-		assert.NotNil(role)
-		assert.Equal(role.Description, "this is a test role")
-		assert.Equal(s.PublicId, role.ScopeId)
-		err = w.Create(context.Background(), role)
-		assert.NoError(err)
-		assert.NotEmpty(role.PublicId)
+		role := TestRole(t, conn, s.PublicId, WithDescription("this is a test role"))
 
 		uRole, err := NewAssignedRole(role, nil)
 		assert.Error(err)
 		assert.Nil(uRole)
 		assert.Equal(err.Error(), "principal is nil for assigning role")
-	})
-	t.Run("nil-scope", func(t *testing.T) {
-		assert := assert.New(t)
-		w := db.New(conn)
-		s := testOrg(t, conn, "", "")
-
-		role, err := NewRole(s.PublicId, WithDescription("this is a test role"))
-		assert.NoError(err)
-		assert.NotNil(role)
-		assert.Equal(role.Description, "this is a test role")
-		assert.Equal(s.PublicId, role.ScopeId)
-		err = w.Create(context.Background(), role)
-		assert.NoError(err)
-		assert.NotEmpty(role.PublicId)
-
 	})
 }

@@ -22,15 +22,7 @@ func Test_UserRoles(t *testing.T) {
 		assert := assert.New(t)
 		w := db.New(conn)
 		user := TestUser(t, conn, org.PublicId)
-
-		role, err := NewRole(org.PublicId, WithDescription("this is a test role"))
-		assert.NoError(err)
-		assert.NotEqual(role, nil)
-		assert.Equal(role.Description, "this is a test role")
-		assert.Equal(org.PublicId, role.ScopeId)
-		err = w.Create(context.Background(), role)
-		assert.NoError(err)
-		assert.NotEqual(role.PublicId, "")
+		role := TestRole(t, conn, org.PublicId, WithDescription("this is a test role"))
 
 		uRole, err := NewAssignedRole(role, user)
 		assert.NoError(err)
