@@ -16,7 +16,7 @@ type MaskManager map[string]string
 // NewMaskManager returns a mask manager that can translate field masks from the first proto to the second assuming
 // they are both using the mask_mapping custom option.  Error is returned if no mappings are found or if one of the
 // passed protos has a mapping that doesn't reciprocate.
-// The MaskManager can be used
+// TODO: Handle masks for nested messages.
 func NewMaskManager(src, dest protoreflect.ProtoMessage) (MaskManager, error) {
 	srcToDest := mapFromProto(src)
 	destToSrc := mapFromProto(dest)
