@@ -26,3 +26,11 @@ func newGroupId() (string, error) {
 	}
 	return id, nil
 }
+
+func newScopeId(scopeType ScopeType) (string, error) {
+	id, err := db.NewPublicId(scopeType.Prefix())
+	if err != nil {
+		return "", fmt.Errorf("new %s id: %w", scopeType.String(), err)
+	}
+	return id, nil
+}
