@@ -16,6 +16,171 @@
     "application/json"
   ],
   "paths": {
+    "/v1/orgs/{org_id}/groups": {
+      "get": {
+        "summary": "Lists all Groups",
+        "operationId": "GroupService_ListGroups",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.services.v1.ListGroupsResponse"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "org_id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "view",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "controller.api.services.v1.GroupService"
+        ]
+      },
+      "post": {
+        "summary": "Creates a single Group",
+        "operationId": "GroupService_CreateGroup",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/controller.api.resources.groups.v1.Group"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "org_id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/controller.api.resources.groups.v1.Group"
+            }
+          }
+        ],
+        "tags": [
+          "controller.api.services.v1.GroupService"
+        ]
+      }
+    },
+    "/v1/orgs/{org_id}/groups/{id}": {
+      "get": {
+        "summary": "Gets a single Group",
+        "operationId": "GroupService_GetGroup",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/controller.api.resources.groups.v1.Group"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "org_id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "view",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "controller.api.services.v1.GroupService"
+        ]
+      },
+      "delete": {
+        "summary": "Deletes a Group",
+        "operationId": "GroupService_DeleteGroup",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.services.v1.DeleteGroupResponse"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "org_id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "controller.api.services.v1.GroupService"
+        ]
+      },
+      "patch": {
+        "summary": "Updates a Group",
+        "operationId": "GroupService_UpdateGroup",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/controller.api.resources.groups.v1.Group"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "org_id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/controller.api.resources.groups.v1.Group"
+            }
+          }
+        ],
+        "tags": [
+          "controller.api.services.v1.GroupService"
+        ]
+      }
+    },
     "/v1/orgs/{org_id}/host-catalogs": {
       "get": {
         "summary": "List all Hosts for the specified catalog",
@@ -1737,6 +1902,42 @@
     }
   },
   "definitions": {
+    "controller.api.resources.groups.v1.Group": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "The ID of the Project\nOutput only.",
+          "readOnly": true
+        },
+        "name": {
+          "type": "string",
+          "title": "Optional name for identification purposes"
+        },
+        "description": {
+          "type": "string",
+          "title": "Optional user-set descripton for identification purposes"
+        },
+        "created_time": {
+          "type": "string",
+          "format": "date-time",
+          "description": "The time this resource was created\nOutput only.",
+          "readOnly": true
+        },
+        "updated_time": {
+          "type": "string",
+          "format": "date-time",
+          "description": "The time this resource was last updated.\nOutput only.",
+          "readOnly": true
+        },
+        "disabled": {
+          "type": "boolean",
+          "format": "boolean",
+          "title": "Whether the resource is disabled"
+        }
+      },
+      "title": "Group contains all fields related to a Group resource"
+    },
     "controller.api.resources.hosts.v1.Host": {
       "type": "object",
       "properties": {
@@ -1954,6 +2155,17 @@
     "controller.api.services.v1.AddToHostSetResponse": {
       "type": "object"
     },
+    "controller.api.services.v1.CreateGroupResponse": {
+      "type": "object",
+      "properties": {
+        "uri": {
+          "type": "string"
+        },
+        "item": {
+          "$ref": "#/definitions/controller.api.resources.groups.v1.Group"
+        }
+      }
+    },
     "controller.api.services.v1.CreateHostCatalogResponse": {
       "type": "object",
       "properties": {
@@ -2009,6 +2221,15 @@
         }
       }
     },
+    "controller.api.services.v1.DeleteGroupResponse": {
+      "type": "object",
+      "properties": {
+        "existed": {
+          "type": "boolean",
+          "format": "boolean"
+        }
+      }
+    },
     "controller.api.services.v1.DeleteHostCatalogResponse": {
       "type": "object",
       "properties": {
@@ -2054,6 +2275,14 @@
         }
       }
     },
+    "controller.api.services.v1.GetGroupResponse": {
+      "type": "object",
+      "properties": {
+        "item": {
+          "$ref": "#/definitions/controller.api.resources.groups.v1.Group"
+        }
+      }
+    },
     "controller.api.services.v1.GetHostCatalogResponse": {
       "type": "object",
       "properties": {
@@ -2091,6 +2320,17 @@
       "properties": {
         "item": {
           "$ref": "#/definitions/controller.api.resources.users.v1.User"
+        }
+      }
+    },
+    "controller.api.services.v1.ListGroupsResponse": {
+      "type": "object",
+      "properties": {
+        "items": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/controller.api.resources.groups.v1.Group"
+          }
         }
       }
     },
@@ -2151,6 +2391,14 @@
     },
     "controller.api.services.v1.RemoveFromHostSetResponse": {
       "type": "object"
+    },
+    "controller.api.services.v1.UpdateGroupResponse": {
+      "type": "object",
+      "properties": {
+        "item": {
+          "$ref": "#/definitions/controller.api.resources.groups.v1.Group"
+        }
+      }
     },
     "controller.api.services.v1.UpdateHostCatalogResponse": {
       "type": "object",
