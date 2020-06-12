@@ -16,6 +16,7 @@ type MaskManager map[string]string
 // NewMaskManager returns a mask manager that can translate field masks from the first proto to the second assuming
 // they are both using the mask_mapping custom option.  Error is returned if no mappings are found or if one of the
 // passed protos has a mapping that doesn't reciprocate.
+// The MaskManager can be used
 func NewMaskManager(src, dest protoreflect.ProtoMessage) (MaskManager, error) {
 	srcToDest := mapFromProto(src)
 	destToSrc := mapFromProto(dest)
@@ -52,18 +53,20 @@ func mapFromProto(p protoreflect.ProtoMessage) map[string]string {
 		name := string(f.Name())
 		opts := f.Options().(*descriptorpb.FieldOptions)
 		if otherName := proto.GetExtension(opts, pb.E_MaskMapping).(string); otherName != "" {
-			mapping[name] = otherName
+			mapping[strings.ToLower(name)] = strings.ToLower(otherName)
 		}
 	}
 	return mapping
 }
 
+// Translate takes a field mask's paths and returns paths translated for the destination's protobuf.  The destination
+// paths will always be in lowercase.
 func (m MaskManager) Translate(paths []string) []string {
 	var result []string
 	for _, v := range paths {
 		vSplit := strings.Split(v, ",")
 		for _, v := range vSplit {
-			if ov, ok := m[strings.TrimSpace(v)]; ok {
+			if ov, ok := m[strings.TrimSpace(strings.ToLower(v))]; ok {
 				result = append(result, ov)
 			}
 		}

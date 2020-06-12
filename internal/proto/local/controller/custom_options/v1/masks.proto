@@ -6,12 +6,8 @@ import "google/protobuf/descriptor.proto";
 option go_package = "github.com/hashicorp/watchtower/internal/gen/controller/protooptions;protooptions";
 
 extend google.protobuf.FieldOptions {
-	// mask_mapping is an option which tags a field with the expected field mask used by a storage proto if applied
-	// in a wire proto, or in a wire proto if applied in a storage proto.
+	// mask_mapping is an option which tags a field with the expected field mask used by a companion proto if applied
+	// on the field this option is for.  The value of this option should be for the field name itself and not for
+	// the json name.
 	string mask_mapping = 85464;
-}
-
-
-message MyMessage {
-	string field1 = 1 [(mask_mapping) = "hello"];
 }

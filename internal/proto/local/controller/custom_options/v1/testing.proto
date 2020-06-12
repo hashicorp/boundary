@@ -1,0 +1,40 @@
+syntax = "proto3";
+package controller.custom_options.v1;
+
+option go_package = "github.com/hashicorp/watchtower/internal/gen/controller/protooptions;protooptions";
+
+import "controller/custom_options/v1/masks.proto";
+
+message TestBase {
+	string first_field = 1 [(mask_mapping) = "other_first_field"];
+	string StrangeFormatField = 2 [(mask_mapping) = "other_second_field"];
+	string field_with_different_json_name = 3 [json_name="json_name", (mask_mapping) = "other_third_field"];
+	string extra_field = 4;
+}
+
+message TestProperlyNamedFields {
+	string other_first_field = 1 [(mask_mapping) = "first_field"];
+	string other_second_field = 2 [(mask_mapping) = "StrangeFormatField"];
+	string other_third_field = 3 [(mask_mapping) = "field_with_different_json_name"];
+	string another_extra_field = 4;
+}
+
+message TestNameDoesntMap {
+	string first_doesnt_map = 1 [(mask_mapping) = "first_field"];
+	string second_doesnt_map = 2 [(mask_mapping) = "StrangeFormatField"];
+	string third_doesnt_map = 3 [(mask_mapping) = "field_with_different_json_name"];
+	string another_extra_field = 4;
+}
+
+message TestNotEnoughFields {
+	string other_first_field = 1 [(mask_mapping) = "first_field"];
+	string other_second_field = 2 [(mask_mapping) = "StrangeFormatField"];
+}
+
+message TestManyToOneMappings {
+	string other_first_field = 1 [(mask_mapping) = "first_field"];
+	string other_second_field = 2 [(mask_mapping) = "StrangeFormatField"];
+	string other_third_field = 3 [(mask_mapping) = "field_with_different_json_name"];
+	// this field maps to the first_field like 'other_first_field'
+	string extra_field = 4 [(mask_mapping) = "first_field"];
+}
