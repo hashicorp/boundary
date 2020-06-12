@@ -27,7 +27,7 @@ func TestUser_Crud(t *testing.T) {
 		if !assert.Nil(apiErr, step) && apiErr.Message != nil {
 			t.Errorf("ApiError message: %q", *apiErr.Message)
 		}
-		assert.NotNil(u, "returned project", step)
+		assert.NotNil(u, "returned resource", step)
 		gotName := ""
 		if u.Name != nil {
 			gotName = *u.Name

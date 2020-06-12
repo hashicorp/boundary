@@ -21,16 +21,16 @@ func TestGroup_Crud(t *testing.T) {
 		Client: client,
 	}
 
-	checkGroup := func(step string, u *groups.Group, apiErr *api.Error, err error, wantedName string) {
+	checkGroup := func(step string, g *groups.Group, apiErr *api.Error, err error, wantedName string) {
 		assert := assert.New(t)
 		assert.NoError(err, step)
 		if !assert.Nil(apiErr, step) && apiErr.Message != nil {
 			t.Errorf("ApiError message: %q", *apiErr.Message)
 		}
-		assert.NotNil(u, "returned project", step)
+		assert.NotNil(g, "returned no resource", step)
 		gotName := ""
-		if u.Name != nil {
-			gotName = *u.Name
+		if g.Name != nil {
+			gotName = *g.Name
 		}
 		assert.Equal(wantedName, gotName, step)
 	}
