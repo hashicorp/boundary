@@ -18,6 +18,9 @@ func (r *Repository) CreateScope(ctx context.Context, scope *Scope, opt ...Optio
 	if scope.Scope == nil {
 		return nil, fmt.Errorf("create scope: missing group store %w", db.ErrNilParameter)
 	}
+	if scope.PublicId != "" {
+		return nil, fmt.Errorf("create scope: public id not empty: %w", db.ErrInvalidParameter)
+	}
 	opts := getOpts(opt...)
 	var publicId string
 	t := stringToScopeType(scope.Type)
