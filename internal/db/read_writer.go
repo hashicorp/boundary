@@ -15,7 +15,12 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-const NoRowsAffected = 0
+const (
+	NoRowsAffected = 0
+
+	// DefaultLimit is the default for results for watchtower
+	DefaultLimit = 10000
+)
 
 // Reader interface defines lookups/searching for resources
 type Reader interface {
@@ -28,8 +33,11 @@ type Reader interface {
 	// LookupWhere will lookup and return the first resource using a where clause with parameters
 	LookupWhere(ctx context.Context, resource interface{}, where string, args ...interface{}) error
 
-	// SearchWhere will search for all the resources it can find using a where clause with parameters
-	SearchWhere(ctx context.Context, resources interface{}, where string, args ...interface{}) error
+	// SearchWhere will search for all the resources it can find using a where
+	// clause with parameters. Support the options of: WithDebug and WithLimit.  If
+	// WithLimit < 0, then unlimited results are returned.  If WithLimit == 0, then
+	// default limits are used for results.
+	SearchWhere(ctx context.Context, resources interface{}, where string, args []interface{}, opt ...Option) error
 
 	// ScanRows will scan sql rows into the interface provided
 	ScanRows(rows *sql.Rows, result interface{}) error
@@ -535,15 +543,32 @@ func (rw *Db) LookupWhere(ctx context.Context, resource interface{}, where strin
 	return nil
 }
 
-// SearchWhere will search for all the resources it can find using a where clause with parameters
-func (rw *Db) SearchWhere(ctx context.Context, resources interface{}, where string, args ...interface{}) error {
+// SearchWhere will search for all the resources it can find using a where
+// clause with parameters.  Support the options of: WithDebug and WithLimit.  If
+// WithLimit < 0, then unlimited results are returned.  If WithLimit == 0, then
+// default limits are used for results.
+func (rw *Db) SearchWhere(ctx context.Context, resources interface{}, where string, args []interface{}, opt ...Option) error {
+	opts := GetOpts(opt...)
+	if opts.withDebug {
+		rw.underlying.LogMode(true)
+		defer rw.underlying.LogMode(false)
+	}
 	if rw.underlying == nil {
 		return errors.New("error underlying db nil for search by")
 	}
 	if reflect.ValueOf(resources).Kind() != reflect.Ptr {
 		return errors.New("error interface parameter must to be a pointer for search by")
 	}
-	if err := rw.underlying.Where(where, args...).Find(resources).Error; err != nil {
+	var err error
+	switch {
+	case opts.WithLimit < 0: // any negative number signals unlimited results
+		err = rw.underlying.Where(where, args...).Find(resources).Error
+	case opts.WithLimit == 0: // zero signals the default value and default limits
+		err = rw.underlying.Limit(DefaultLimit).Where(where, args...).Find(resources).Error
+	default:
+		err = rw.underlying.Limit(opts.WithLimit).Where(where, args...).Find(resources).Error
+	}
+	if err != nil {
 		// searching with a slice parameter does not return a gorm.ErrRecordNotFound
 		return err
 	}

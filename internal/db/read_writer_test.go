@@ -707,14 +707,14 @@ func TestDb_SearchWhere(t *testing.T) {
 		assert.NotEmpty(user.PublicId)
 
 		var foundUsers []db_test.TestUser
-		err = w.SearchWhere(context.Background(), &foundUsers, "public_id = ?", user.PublicId)
+		err = w.SearchWhere(context.Background(), &foundUsers, "public_id = ?", []interface{}{user.PublicId})
 		assert.NoError(err)
 		assert.Equal(foundUsers[0].Id, user.Id)
 	})
 	t.Run("tx-nil,", func(t *testing.T) {
 		w := Db{}
 		var foundUsers []db_test.TestUser
-		err := w.SearchWhere(context.Background(), &foundUsers, "public_id = ?", 1)
+		err := w.SearchWhere(context.Background(), &foundUsers, "public_id = ?", []interface{}{1})
 		assert.Error(err)
 		assert.Equal("error underlying db nil for search by", err.Error())
 	})
@@ -724,7 +724,7 @@ func TestDb_SearchWhere(t *testing.T) {
 		assert.NoError(err)
 
 		var foundUsers []db_test.TestUser
-		err = w.SearchWhere(context.Background(), &foundUsers, "public_id = ?", id)
+		err = w.SearchWhere(context.Background(), &foundUsers, "public_id = ?", []interface{}{id})
 		assert.NoError(err)
 		assert.Equal(0, len(foundUsers))
 	})
@@ -734,7 +734,7 @@ func TestDb_SearchWhere(t *testing.T) {
 		assert.NoError(err)
 
 		var foundUsers []db_test.TestUser
-		err = w.SearchWhere(context.Background(), &foundUsers, "? = ?", id)
+		err = w.SearchWhere(context.Background(), &foundUsers, "? = ?", []interface{}{id})
 		assert.Error(err)
 	})
 }
