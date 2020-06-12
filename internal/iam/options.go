@@ -19,6 +19,7 @@ type options struct {
 	withScope       *Scope
 	withDescription string
 	withParentId    *string
+	withLimit       int
 }
 
 func getDefaultOptions() options {
@@ -28,6 +29,7 @@ func getDefaultOptions() options {
 		withDescription: "",
 		withName:        "",
 		withParentId:    nil,
+		withLimit:       0,
 	}
 }
 
@@ -56,5 +58,14 @@ func withScope(s *Scope) Option {
 func WithName(name string) Option {
 	return func(o *options) {
 		o.withName = name
+	}
+}
+
+// WithLimit provides an option to provide a limit.  Intentionally allowing
+// negative integers.   If WithLimit < 0, then unlimited results are returned.
+// If WithLimit == 0, then default limits are used for results.
+func WithLimit(limit int) Option {
+	return func(o *options) {
+		o.withLimit = limit
 	}
 }

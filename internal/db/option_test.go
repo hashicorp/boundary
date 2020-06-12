@@ -9,9 +9,9 @@ import (
 
 // Test_getOpts provides unit tests for GetOpts and all the options
 func Test_getOpts(t *testing.T) {
-	assert := assert.New(t)
 	t.Parallel()
 	t.Run("WithOplog", func(t *testing.T) {
+		assert := assert.New(t)
 		// test default of false
 		opts := GetOpts()
 		testOpts := getDefaultOptions()
@@ -35,6 +35,7 @@ func Test_getOpts(t *testing.T) {
 		assert.Equal(opts, testOpts)
 	})
 	t.Run("WithLookup", func(t *testing.T) {
+		assert := assert.New(t)
 		// test default of true
 		opts := GetOpts()
 		testOpts := getDefaultOptions()
@@ -48,6 +49,7 @@ func Test_getOpts(t *testing.T) {
 		assert.Equal(opts, testOpts)
 	})
 	t.Run("WithDebug", func(t *testing.T) {
+		assert := assert.New(t)
 		// test default of false
 		opts := GetOpts()
 		testOpts := getDefaultOptions()
@@ -61,6 +63,7 @@ func Test_getOpts(t *testing.T) {
 		assert.Equal(opts, testOpts)
 	})
 	t.Run("WithFieldMaskPaths", func(t *testing.T) {
+		assert := assert.New(t)
 		// test default of []string{}
 		opts := GetOpts()
 		testOpts := getDefaultOptions()
@@ -74,6 +77,7 @@ func Test_getOpts(t *testing.T) {
 		assert.Equal(opts, testOpts)
 	})
 	t.Run("WithNullPaths", func(t *testing.T) {
+		assert := assert.New(t)
 		// test default of []string{}
 		opts := GetOpts()
 		testOpts := getDefaultOptions()
@@ -84,6 +88,24 @@ func Test_getOpts(t *testing.T) {
 		opts = GetOpts(WithNullPaths(testPaths))
 		testOpts = getDefaultOptions()
 		testOpts.WithNullPaths = testPaths
+		assert.Equal(opts, testOpts)
+	})
+	t.Run("WithLimit", func(t *testing.T) {
+		assert := assert.New(t)
+		// test default of 0
+		opts := GetOpts()
+		testOpts := getDefaultOptions()
+		testOpts.WithLimit = 0
+		assert.Equal(opts, testOpts)
+
+		opts = GetOpts(WithLimit(-1))
+		testOpts = getDefaultOptions()
+		testOpts.WithLimit = -1
+		assert.Equal(opts, testOpts)
+
+		opts = GetOpts(WithLimit(1))
+		testOpts = getDefaultOptions()
+		testOpts.WithLimit = 1
 		assert.Equal(opts, testOpts)
 	})
 }
