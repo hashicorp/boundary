@@ -377,7 +377,19 @@ func (b *Server) RunShutdownFuncs() error {
 	return mErr.ErrorOrNil()
 }
 
+func (b *Server) initDBInDocker(dialect string) error {
+
+	return nil
+}
+
+func (b *Server) initDB(dialect string) error {
+
+	return nil
+}
+
+// Add a string for discerning where the DB is created. Proposing: docker, basic.
 func (b *Server) CreateDevDatabase(dialect string) error {
+	// Move the following to initDBInDocker
 	c, url, container, err := db.InitDbInDocker(dialect)
 	if err != nil {
 		c()
@@ -386,6 +398,10 @@ func (b *Server) CreateDevDatabase(dialect string) error {
 
 	b.DevDatabaseCleanupFunc = c
 	b.DevDatabaseUrl = url
+	// end moved code
+
+	// Add switch on DB creation type to choose initDB() for the basic type or
+	// initDBInDocker() for the docker type.
 
 	b.InfoKeys = append(b.InfoKeys, "dev database url")
 	b.Info["dev database url"] = b.DevDatabaseUrl
