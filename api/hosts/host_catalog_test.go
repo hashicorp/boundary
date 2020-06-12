@@ -32,7 +32,7 @@ func TestCatalogs_Crud(t *testing.T) {
 		if !assert.Nil(apiErr, step) && apiErr.Message != nil {
 			t.Errorf("ApiError message: %q", *apiErr.Message)
 		}
-		assert.NotNil(hc, "returned resource", step)
+		assert.NotNil(hc, "returned no resource", step)
 		gotName := ""
 		if hc.Name != nil {
 			gotName = *hc.Name
