@@ -41,7 +41,7 @@ func (r *Repository) CreateScope(ctx context.Context, scope *Scope, opt ...Optio
 	resource, err := r.create(ctx, s)
 	if err != nil {
 		if db.IsUniqueError(err) {
-			return nil, fmt.Errorf("create scope: scope %s already exists: %w", s.Name, db.ErrNotUnique)
+			return nil, fmt.Errorf("create scope: scope %s/%s already exists: %w", s.PublicId, s.Name, db.ErrNotUnique)
 		}
 		return nil, fmt.Errorf("create scope: %w for %s", err, s.PublicId)
 	}
