@@ -1,9 +1,11 @@
 package iam
 
 import (
+	"errors"
 	"strings"
 	"testing"
 
+	"github.com/hashicorp/watchtower/internal/db"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -27,5 +29,10 @@ func Test_PublicIds(t *testing.T) {
 		id, err = newScopeId(ProjectScope)
 		require.NoError(t, err)
 		assert.True(t, strings.HasPrefix(id, ProjectScope.Prefix()))
+
+		id, err = newScopeId(UnknownScope)
+		require.Error(t, err)
+		assert.Empty(t, id)
+		assert.True(t, errors.Is(err, db.ErrInvalidParameter))
 	})
 }
