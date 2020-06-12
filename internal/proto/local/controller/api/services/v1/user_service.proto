@@ -7,7 +7,6 @@ option go_package = "github.com/hashicorp/watchtower/internal/gen/controller/api
 import "protoc-gen-swagger/options/annotations.proto";
 import "google/api/annotations.proto";
 import "google/protobuf/field_mask.proto";
-import "google/protobuf/wrappers.proto";
 import "controller/api/resources/users/v1/user.proto";
 
 service UserService {
