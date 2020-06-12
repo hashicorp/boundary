@@ -122,6 +122,8 @@ func Test_Repository_create(t *testing.T) {
 
 		s, err := NewOrganization(WithName("fname-" + id))
 		assert.NoError(err)
+		s.PublicId, err = newScopeId(OrganizationScope)
+		require.NoError(err)
 		retScope, err := repo.create(context.Background(), s)
 		require.NoError(err)
 		require.NotNil(retScope)
