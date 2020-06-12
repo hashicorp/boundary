@@ -20,6 +20,10 @@ func TestMaskManager(t *testing.T) {
 }
 
 func TestMaskManager_errors(t *testing.T) {
-	_, err := NewMaskManager(&pb.TestBase{}, &pb.TestProperlyNamedFields{})
+	_, err := NewMaskManager(&pb.TestBase{}, &pb.TestManyToOneMappings{})
+	assert.Error(t, err)
+	_, err = NewMaskManager(&pb.TestBase{}, &pb.TestNameDoesntMap{})
+	assert.Error(t, err)
+	_, err = NewMaskManager(&pb.TestBase{}, &pb.TestNotEnoughFields{})
 	assert.Error(t, err)
 }
