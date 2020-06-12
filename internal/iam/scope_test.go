@@ -25,6 +25,8 @@ func Test_NewScope(t *testing.T) {
 		s, err := NewOrganization()
 		require.NoError(err)
 		require.NotNil(s.Scope)
+		s.PublicId, err = newScopeId(OrganizationScope)
+		require.NoError(err)
 		err = w.Create(context.Background(), s)
 		require.NoError(err)
 		require.NotEmpty(s.PublicId)
@@ -41,14 +43,14 @@ func Test_NewScope(t *testing.T) {
 		s, err := newScope(UnknownScope)
 		require.Error(err)
 		require.Nil(s)
-		assert.Equal(err.Error(), "error unknown scope type for new scope")
+		assert.Equal(err.Error(), "new scope: unknown scope type invalid parameter")
 	})
 	t.Run("proj-scope-with-no-org", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
 		s, err := NewProject("")
 		require.Error(err)
 		require.Nil(s)
-		assert.Equal(err.Error(), "error creating new project: error project scope parent id is unset")
+		assert.Equal(err.Error(), "error creating new project: new scope: with scope's parent id is missing invalid parameter")
 	})
 }
 func Test_ScopeCreate(t *testing.T) {
@@ -66,6 +68,8 @@ func Test_ScopeCreate(t *testing.T) {
 		s, err := NewOrganization()
 		require.NoError(err)
 		require.NotNil(s.Scope)
+		s.PublicId, err = newScopeId(OrganizationScope)
+		require.NoError(err)
 		err = w.Create(context.Background(), s)
 		require.NoError(err)
 		assert.NotEmpty(s.PublicId)
@@ -76,6 +80,8 @@ func Test_ScopeCreate(t *testing.T) {
 		s, err := NewOrganization()
 		require.NoError(err)
 		require.NotNil(s.Scope)
+		s.PublicId, err = newScopeId(OrganizationScope)
+		require.NoError(err)
 		err = w.Create(context.Background(), s)
 		require.NoError(err)
 		require.NotEmpty(s.PublicId)
@@ -86,6 +92,8 @@ func Test_ScopeCreate(t *testing.T) {
 		require.NotNil(project.Scope)
 		assert.Equal(project.Scope.ParentId, s.PublicId)
 		assert.Equal(project.GetDescription(), id)
+		project.PublicId, err = newScopeId(OrganizationScope)
+		require.NoError(err)
 
 		err = w.Create(context.Background(), project)
 		require.NoError(err)
@@ -196,4 +204,35 @@ func TestScope_Clone(t *testing.T) {
 		cp := s.Clone()
 		assert.True(!proto.Equal(cp.(*Scope).Scope, s2.Scope))
 	})
+}
+
+func Test_stringToScopeType(t *testing.T) {
+	tests := []struct {
+		name string
+		s    string
+		want ScopeType
+	}{
+		{
+			name: "org",
+			s:    "organization",
+			want: OrganizationScope,
+		},
+		{
+			name: "proj",
+			s:    "project",
+			want: ProjectScope,
+		},
+		{
+			name: "unknown",
+			s:    "org",
+			want: UnknownScope,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert := assert.New(t)
+			got := stringToScopeType(tt.s)
+			assert.Equal(tt.want, got)
+		})
+	}
 }
