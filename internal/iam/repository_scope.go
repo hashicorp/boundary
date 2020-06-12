@@ -4,18 +4,43 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/hashicorp/watchtower/internal/db"
 )
 
-// CreateScope will create a scope in the repository and return the written scope
+// CreateScope will create a scope in the repository and return the written
+// scope.  Supported options include: WithPublicId.
 func (r *Repository) CreateScope(ctx context.Context, scope *Scope, opt ...Option) (*Scope, error) {
 	if scope == nil {
-		return nil, errors.New("scope is nil for create")
+		return nil, fmt.Errorf("create scope: missing scope %w", db.ErrNilParameter)
 	}
-	resource, err := r.create(ctx, scope)
+	if scope.Scope == nil {
+		return nil, fmt.Errorf("create scope: missing group store %w", db.ErrNilParameter)
+	}
+	opts := getOpts(opt...)
+	var publicId string
+	t := stringToScopeType(scope.Type)
+	if opts.withPublicId != "" {
+		if !strings.HasPrefix(opts.withPublicId, t.Prefix()+"_") {
+			return nil, fmt.Errorf("create scope: passed-in public ID %q has wrong prefix for type %q which uses prefix %q", opts.withPublicId, t.String(), t.Prefix())
+		}
+		publicId = opts.withPublicId
+	} else {
+		var err error
+		publicId, err = newScopeId(t)
+		if err != nil {
+			return nil, fmt.Errorf("create scope: error generating public id %w for new scope", err)
+		}
+	}
+	s := scope.Clone().(*Scope)
+	s.PublicId = publicId
+	resource, err := r.create(ctx, s)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create scope: %w", err)
+		if db.IsUniqueError(err) {
+			return nil, fmt.Errorf("create scope: scope %s already exists: %w", s.Name, db.ErrNotUnique)
+		}
+		return nil, fmt.Errorf("create scope: %w for %s", err, s.PublicId)
 	}
 	return resource.(*Scope), nil
 }
@@ -63,7 +88,7 @@ func (r *Repository) UpdateScope(ctx context.Context, scope *Scope, fieldMaskPat
 // found, it will return nil, nil.
 func (r *Repository) LookupScope(ctx context.Context, withPublicId string, opt ...Option) (*Scope, error) {
 	if withPublicId == "" {
-		return nil, errors.New("cannot lookup a scope with an empty public id")
+		return nil, fmt.Errorf("lookup scope: missing public id %w", db.ErrInvalidParameter)
 	}
 	scope := allocScope()
 	scope.PublicId = withPublicId
@@ -71,7 +96,7 @@ func (r *Repository) LookupScope(ctx context.Context, withPublicId string, opt .
 		if err == db.ErrRecordNotFound {
 			return nil, nil
 		}
-		return nil, fmt.Errorf("unable to lookup scope by public id %s: %w", withPublicId, err)
+		return nil, fmt.Errorf("lookup group: failed %w fo %s", err, withPublicId)
 	}
 	return &scope, nil
 }
@@ -79,7 +104,7 @@ func (r *Repository) LookupScope(ctx context.Context, withPublicId string, opt .
 // DeleteScope will delete a scope from the repository
 func (r *Repository) DeleteScope(ctx context.Context, withPublicId string, opt ...Option) (int, error) {
 	if withPublicId == "" {
-		return db.NoRowsAffected, errors.New("cannot delete a scope with an empty public id")
+		return db.NoRowsAffected, fmt.Errorf("delete scope: missing public id %w", db.ErrInvalidParameter)
 	}
 	scope := allocScope()
 	scope.PublicId = withPublicId
@@ -88,7 +113,7 @@ func (r *Repository) DeleteScope(ctx context.Context, withPublicId string, opt .
 		if errors.Is(err, ErrMetadataScopeNotFound) {
 			return 0, nil
 		}
-		return db.NoRowsAffected, fmt.Errorf("unable to delete scope with public id %s: %w", withPublicId, err)
+		return db.NoRowsAffected, fmt.Errorf("delete scope: failed %w for %s", err, withPublicId)
 	}
 	return rowsDeleted, nil
 }
