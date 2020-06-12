@@ -1,25 +1,5 @@
 begin;
 
-  create table auth_usrpass_argon2_conf (
-    id bigint generated always as identity primary key,
-    iam_scope_id wt_public_id not null
-      references iam_scope(public_id)
-      on delete cascade
-      on update cascade,
-    create_time wt_timestamp,
-    iterations int not null
-      check(iterations > 0),
-    memory int not null
-      check(memory > 0),
-    threads int not null
-      check(threads > 0),
-    -- key_length unit is bytes
-    key_length int not null
-    -- minimum of 16 bytes (128 bits)
-      check(key_length >= 16),
-    unique(iam_scope_id, iterations, memory, threads, key_length)
-  );
-
   -- TODO(mgaffney) 06/2020: create, no updates
 
   -- an iam_user can have 0 to 1 auth_method
@@ -58,6 +38,25 @@ begin;
     unique(iam_scope_id, user_name)
   );
 
+  create table auth_usrpass_argon2_conf (
+    id bigint generated always as identity primary key,
+    iam_scope_id wt_public_id not null
+      references iam_scope(public_id)
+      on delete cascade
+      on update cascade,
+    create_time wt_timestamp,
+    iterations int not null
+      check(iterations > 0),
+    memory int not null
+      check(memory > 0),
+    threads int not null
+      check(threads > 0),
+    -- key_length unit is bytes
+    key_length int not null
+    -- minimum of 16 bytes (128 bits)
+      check(key_length >= 16),
+    unique(iam_scope_id, iterations, memory, threads, key_length)
+  );
 
   -- auth_usrpass_argon2 is a auth_usrpass
   create table auth_usrpass_argon2 (
