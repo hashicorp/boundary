@@ -11,6 +11,18 @@ begin;
     create_time wt_timestamp
   );
 
+  create trigger
+    immutable_create_time
+  before
+  update on auth_method
+    for each row execute procedure immutable_create_time_func();
+
+  create trigger
+    default_create_time_column
+  before
+  insert on auth_method
+    for each row execute procedure default_create_time();
+
   -- auth_usrpass is a auth_method
   -- a user_name is unique within a scope
   create table auth_usrpass (
@@ -36,6 +48,24 @@ begin;
     unique(iam_scope_id, user_name)
   );
 
+  create trigger
+    update_time_column
+  before
+  update on auth_usrpass
+    for each row execute procedure update_time_column();
+
+  create trigger
+    immutable_create_time
+  before
+  update on auth_usrpass
+    for each row execute procedure immutable_create_time_func();
+
+  create trigger
+    default_create_time_column
+  before
+  insert on auth_usrpass
+    for each row execute procedure default_create_time();
+
   -- TODO(mgaffney) 06/2020: insert and delete only, no updates
   create table auth_usrpass_argon2_conf (
     id bigint generated always as identity primary key,
@@ -57,6 +87,18 @@ begin;
     unique(iam_scope_id, iterations, memory, threads, key_length)
   );
 
+  create trigger
+    immutable_create_time
+  before
+  update on auth_usrpass_argon2_conf
+    for each row execute procedure immutable_create_time_func();
+
+  create trigger
+    default_create_time_column
+  before
+  insert on auth_usrpass_argon2_conf
+    for each row execute procedure default_create_time();
+
   -- auth_usrpass_argon2 is a auth_usrpass
   create table auth_usrpass_argon2 (
     auth_method_id wt_private_id primary key
@@ -76,6 +118,24 @@ begin;
     -- the database DEK. Add foreign key to database DEK.
 
   );
+
+  create trigger
+    update_time_column
+  before
+  update on auth_usrpass_argon2
+    for each row execute procedure update_time_column();
+
+  create trigger
+    immutable_create_time
+  before
+  update on auth_usrpass_argon2
+    for each row execute procedure immutable_create_time_func();
+
+  create trigger
+    default_create_time_column
+  before
+  insert on auth_usrpass_argon2
+    for each row execute procedure default_create_time();
 
   /*
   TODO(mgaffney) 06/2020: auth_usrpass_argon2_conf needs a trigger to prevent
