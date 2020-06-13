@@ -9,18 +9,16 @@ import (
 const (
 	UserPrefix  = "u"
 	GroupPrefix = "g"
-	RolePrefix = "r"
+	RolePrefix  = "r"
 )
 
 func newRoleId() (string, error) {
-	publicId, err := db.NewPublicId(RolePrefix)
+	id, err := db.NewPublicId(RolePrefix)
 	if err != nil {
 		return "", fmt.Errorf("new role id: %w", err)
 	}
-	return publicId, nil
-	UserPrefix  = "u"
-	GroupPrefix = "g"
-)
+	return id, nil
+}
 
 func newUserId() (string, error) {
 	id, err := db.NewPublicId(UserPrefix)
