@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"strings"
 
 	"github.com/hashicorp/watchtower/internal/db"
 	"github.com/hashicorp/watchtower/internal/iam/store"
@@ -34,6 +33,17 @@ func (s ScopeType) Prefix() string {
 		"o",
 		"p",
 	}[s]
+}
+
+func stringToScopeType(s string) ScopeType {
+	switch s {
+	case OrganizationScope.String():
+		return OrganizationScope
+	case ProjectScope.String():
+		return ProjectScope
+	default:
+		return UnknownScope
+	}
 }
 
 // Scope is used to create a hierarchy of "containers" that encompass the scope of
@@ -67,57 +77,28 @@ func NewProject(organizationPublicId string, opt ...Option) (*Scope, error) {
 }
 
 // newScope creates a new Scope of the specified ScopeType with options:
-// WithName specifies the Scope's friendly name.
-// WithScope specifies the Scope's parent
+// WithName specifies the Scope's friendly name. WithDescription specifies the
+// scope's description. WithScope specifies the Scope's parent
 func newScope(scopeType ScopeType, opt ...Option) (*Scope, error) {
 	opts := getOpts(opt...)
-	withPublicId := opts.withPublicId
-	withName := opts.withName
-	withScope := opts.withScope
-	withDescription := opts.withDescription
-
 	if scopeType == UnknownScope {
-		return nil, errors.New("error unknown scope type for new scope")
+		return nil, fmt.Errorf("new scope: unknown scope type %w", db.ErrInvalidParameter)
 	}
-	if scopeType == ProjectScope {
-		if withScope == nil {
-			return nil, errors.New("error project scope must be with a scope")
-		}
-		if withScope.PublicId == "" {
-			return nil, errors.New("error project scope parent id is unset")
-		}
+	if opts.withScope != nil && opts.withScope.PublicId == "" {
+		return nil, fmt.Errorf("new scope: with scope's parent id is missing %w", db.ErrInvalidParameter)
 	}
-	var publicId string
-	if withPublicId != "" {
-		if !strings.HasPrefix(withPublicId, scopeType.Prefix()+"_") {
-			return nil, fmt.Errorf("passed-in public ID %q has wrong prefix for type %q which uses prefix %q", withPublicId, scopeType.String(), scopeType.Prefix())
-		}
-		publicId = withPublicId
-	} else {
-		var err error
-		publicId, err = db.NewPublicId(scopeType.Prefix())
-		if err != nil {
-			return nil, fmt.Errorf("error generating public id %w for new scope", err)
-		}
+	if scopeType == ProjectScope && opts.withScope == nil {
+		return nil, fmt.Errorf("new scope: project scope is missing its parent %w", db.ErrInvalidParameter)
 	}
-
 	s := &Scope{
 		Scope: &store.Scope{
-			PublicId: publicId,
-			Type:     scopeType.String(),
+			Type:        scopeType.String(),
+			Name:        opts.withName,
+			Description: opts.withDescription,
 		},
 	}
-	if withScope != nil {
-		if withScope.PublicId == "" {
-			return nil, errors.New("error assigning scope parent id to a scope with unset id")
-		}
-		s.ParentId = withScope.PublicId
-	}
-	if withName != "" {
-		s.Name = withName
-	}
-	if withDescription != "" {
-		s.Description = withDescription
+	if opts.withScope != nil {
+		s.ParentId = opts.withScope.PublicId
 	}
 	return s, nil
 }
