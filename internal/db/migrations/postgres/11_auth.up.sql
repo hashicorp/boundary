@@ -1,12 +1,10 @@
 begin;
 
-  -- TODO(mgaffney) 06/2020: create, no updates
-
   -- an iam_user can have 0 to 1 auth_method
   -- an auth_method belongs to 1 and only 1 iam_user
   create table auth_method (
     auth_method_id wt_private_id primary key,
-    iam_user_id wt_public_id not null unique
+    iam_user_id wt_public_id not null unique -- read only
       references iam_user (public_id)
       on delete cascade
       on update cascade,
@@ -22,7 +20,7 @@ begin;
       on update cascade,
     -- NOTE: there is no constraint to enforce the user is in this scope
     -- TODO(mgaffney) 06/2020: add insert trigger to check user is in scope
-    iam_scope_id wt_public_id not null
+    iam_scope_id wt_public_id not null -- read only
       references iam_scope(public_id)
       on delete cascade
       on update cascade,
@@ -38,6 +36,7 @@ begin;
     unique(iam_scope_id, user_name)
   );
 
+  -- TODO(mgaffney) 06/2020: insert and delete only, no updates
   create table auth_usrpass_argon2_conf (
     id bigint generated always as identity primary key,
     iam_scope_id wt_public_id not null
@@ -64,17 +63,14 @@ begin;
       references auth_usrpass (auth_method_id)
       on delete cascade
       on update cascade,
-    argon2_conf_id bigint not null
+    argon2_conf_id bigint not null -- cannot be changed unless hashed_password is changed too
       references auth_usrpass_argon2_conf (id)
       on delete restrict
       on update restrict,
     create_time wt_timestamp,
     update_time wt_timestamp,
-    salt bytea not null,
+    salt bytea not null, -- cannot be changed unless hashed_password is changed too
     hashed_password bytea not null
-
-    -- TODO(mgaffney) 06/2020: look at protobuf for oplog entry for encryption tags
-    -- TODO(mgaffney) 06/2020: trigger - prevent changes to scope id
 
     -- TODO(mgaffney) 06/2020: Salt and hashed_password will be encrypted with
     -- the database DEK. Add foreign key to database DEK.
