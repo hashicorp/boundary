@@ -1,0 +1,27 @@
+syntax = "proto3";
+
+// Package store provides protobufs for storing types in the userpass package.
+package controller.storage.auth.userpass.store.v1;
+option go_package = "github.com/hashicorp/watchtower/internal/auth/userpass/store;store";
+
+import "controller/storage/timestamp/v1/timestamp.proto";
+
+message UserPass {
+  // @inject_tag: gorm:"primary_key"
+  string auth_method_id = 1;
+
+  // The create_time is set by the database.
+  // @inject_tag: `gorm:"default:current_timestamp"`
+  timestamp.v1.Timestamp create_time = 2;
+
+  // The update_time is set by the database.
+  // @inject_tag: `gorm:"default:current_timestamp"`
+  timestamp.v1.Timestamp update_time = 3;
+
+  // The iam_scope_id of the owning scope and must be set.
+  // @inject_tag: gorm:"not_null"
+  string iam_scope_id = 4;
+
+  // @inject_tag: gorm:"not_null"
+  string user_name = 5;
+}

@@ -1,0 +1,20 @@
+syntax = "proto3";
+
+// Package store provides protobufs for storing types in the auth package.
+package controller.storage.auth.store.v1;
+option go_package = "github.com/hashicorp/watchtower/internal/auth/store;store";
+
+import "controller/storage/timestamp/v1/timestamp.proto";
+
+message Method {
+  // @inject_tag: gorm:"primary_key"
+  string auth_method_id = 1;
+
+  // The create_time is set by the database.
+  // @inject_tag: `gorm:"default:current_timestamp"`
+  timestamp.v1.Timestamp create_time = 2;
+
+  // @inject_tag: gorm:"not_null"
+  string iam_user_id = 3;
+}
+

@@ -1,0 +1,32 @@
+syntax = "proto3";
+
+// Package store provides protobufs for storing types in the argon2 package.
+package controller.storage.auth.userpass.argon2.store.v1;
+option go_package = "github.com/hashicorp/watchtower/internal/auth/userpass/argon2/store;store";
+
+import "controller/storage/timestamp/v1/timestamp.proto";
+
+message Configuration {
+  // @inject_tag: gorm:"primary_key"
+  uint32 id = 1;
+
+  // The create_time is set by the database.
+  // @inject_tag: `gorm:"default:current_timestamp"`
+  timestamp.v1.Timestamp create_time = 2;
+
+  // The iam_scope_id of the owning scope and must be set.
+  // @inject_tag: gorm:"not_null"
+  string iam_scope_id = 3;
+
+  // @inject_tag: gorm:"not_null"
+  uint32 iterations = 4;
+
+  // @inject_tag: gorm:"not_null"
+  uint32 memory = 5;
+
+  // @inject_tag: gorm:"not_null"
+  uint32 threads = 6;
+
+  // @inject_tag: gorm:"not_null"
+  uint32 key_length = 7;
+}
