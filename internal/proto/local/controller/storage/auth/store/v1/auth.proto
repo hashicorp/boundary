@@ -2,7 +2,7 @@ syntax = "proto3";
 
 // Package store provides protobufs for storing types in the auth package.
 package controller.storage.auth.store.v1;
-option go_package = "github.com/hashicorp/watchtower/internal/auth/store;store";
+option go_package = "github.com/hashicorp/watchtower/internal/auth/internal/store;store";
 
 import "controller/storage/timestamp/v1/timestamp.proto";
 

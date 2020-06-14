@@ -59,9 +59,9 @@ protobuild:
 	@protoc-go-inject-tag -input=./internal/iam/store/group.pb.go
 	@protoc-go-inject-tag -input=./internal/db/db_test/db_test.pb.go
 	@protoc-go-inject-tag -input=./internal/host/static/store/static.pb.go
-	@protoc-go-inject-tag -input=./internal/auth/store/auth.pb.go
-	@protoc-go-inject-tag -input=./internal/auth/userpass/store/userpass.pb.go
-	@protoc-go-inject-tag -input=./internal/auth/userpass/argon2/store/argon2.pb.go
+	@protoc-go-inject-tag -input=./internal/auth/internal/store/auth.pb.go
+	@protoc-go-inject-tag -input=./internal/auth/userpass/internal/store/userpass.pb.go
+	@protoc-go-inject-tag -input=./internal/auth/userpass/internal/argon2/store/argon2.pb.go
 	@rm -R ${TMP_DIR}
 
 protolint:
