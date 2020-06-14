@@ -834,6 +834,11 @@ begin;
       on update restrict,
     create_time wt_timestamp,
     update_time wt_timestamp,
+    -- password_change_time is a timestamp of when the password was changed.
+    -- The hashed_password field will change if the same password is hashed
+    -- using different argon2 conf parameters. Therefore, only the domain layer
+    -- can know when to set this value.
+    password_change_time wt_timestamp,
     salt bytea not null, -- cannot be changed unless hashed_password is changed too
     hashed_password bytea not null
 
