@@ -28,7 +28,10 @@ message Configuration {
   uint32 threads = 6;
 
   // @inject_tag: gorm:"not_null"
-  uint32 key_length = 7;
+  uint32 salt_length = 7;
+
+  // @inject_tag: gorm:"not_null"
+  uint32 key_length = 8;
 }
 
 message PasswordEntry {

@@ -80,11 +80,15 @@ begin;
       check(memory > 0),
     threads int not null
       check(threads > 0),
+    -- salt_length unit is bytes
+    salt_length int not null
+    -- minimum of 16 bytes (128 bits)
+      check(salt_length >= 16),
     -- key_length unit is bytes
     key_length int not null
     -- minimum of 16 bytes (128 bits)
       check(key_length >= 16),
-    unique(iam_scope_id, iterations, memory, threads, key_length)
+    unique(iam_scope_id, iterations, memory, threads, salt_length, key_length)
   );
 
   create trigger
