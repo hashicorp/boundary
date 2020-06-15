@@ -1,9 +1,10 @@
 package iam
 
 import (
-	"errors"
 	"strings"
 	"testing"
+
+	"errors"
 
 	"github.com/hashicorp/watchtower/internal/db"
 	"github.com/stretchr/testify/assert"
@@ -11,6 +12,11 @@ import (
 )
 
 func Test_PublicIds(t *testing.T) {
+	t.Run("role", func(t *testing.T) {
+		id, err := newRoleId()
+		require.NoError(t, err)
+		assert.True(t, strings.HasPrefix(id, RolePrefix+"_"))
+	})
 	t.Run("user", func(t *testing.T) {
 		id, err := newUserId()
 		require.NoError(t, err)
