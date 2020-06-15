@@ -21,7 +21,6 @@ type Option func(*Options)
 type Options struct {
 	withOplog  bool
 	oplogOpts  oplogOpts
-	withDebug  bool
 	withLookup bool
 	// WithLimit must be accessible in other packages.
 	WithLimit int
@@ -43,7 +42,6 @@ func getDefaultOptions() Options {
 			wrapper:  nil,
 			metadata: oplog.Metadata{},
 		},
-		withDebug:          false,
 		withLookup:         false,
 		WithFieldMaskPaths: []string{},
 		WithNullPaths:      []string{},
@@ -55,13 +53,6 @@ func getDefaultOptions() Options {
 func WithLookup(enable bool) Option {
 	return func(o *Options) {
 		o.withLookup = enable
-	}
-}
-
-// WithDebug enables debug.
-func WithDebug(enable bool) Option {
-	return func(o *Options) {
-		o.withDebug = enable
 	}
 }
 
