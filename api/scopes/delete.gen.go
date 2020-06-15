@@ -6,6 +6,7 @@ import (
 	"fmt"
 
 	"github.com/hashicorp/watchtower/api"
+	"github.com/hashicorp/watchtower/api/groups"
 	"github.com/hashicorp/watchtower/api/hosts"
 	"github.com/hashicorp/watchtower/api/users"
 )
@@ -49,6 +50,50 @@ func (s Organization) DeleteProject(ctx context.Context, r *Project) (bool, *api
 	apiErr, err := resp.Decode(target)
 	if err != nil {
 		return false, nil, fmt.Errorf("error decoding DeleteProject repsonse: %w", err)
+	}
+
+	return target.Existed, apiErr, nil
+}
+
+// DeleteGroup returns true iff the groups.Group existed when the delete attempt was made.
+func (s Organization) DeleteGroup(ctx context.Context, r *groups.Group) (bool, *api.Error, error) {
+	if s.Client == nil {
+		return false, nil, fmt.Errorf("nil client in DeleteGroup request")
+	}
+	if s.Id == "" {
+
+		// Assume the client has been configured with organization already and
+		// move on
+
+	} else {
+		// If it's explicitly set here, override anything that might be in the
+		// client
+
+		ctx = context.WithValue(ctx, "org", s.Id)
+
+	}
+	if r.Id == "" {
+		return false, nil, fmt.Errorf("empty groups.Group ID field in DeleteGroup request")
+	}
+
+	req, err := s.Client.NewRequest(ctx, "DELETE", fmt.Sprintf("%s/%s", "groups", r.Id), nil)
+	if err != nil {
+		return false, nil, fmt.Errorf("error creating DeleteGroup request: %w", err)
+	}
+
+	resp, err := s.Client.Do(req)
+	if err != nil {
+		return false, nil, fmt.Errorf("error performing client request during DeleteGroup call: %w", err)
+	}
+
+	type deleteResponse struct {
+		Existed bool
+	}
+	target := &deleteResponse{}
+
+	apiErr, err := resp.Decode(target)
+	if err != nil {
+		return false, nil, fmt.Errorf("error decoding DeleteGroup repsonse: %w", err)
 	}
 
 	return target.Existed, apiErr, nil

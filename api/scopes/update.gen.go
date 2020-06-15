@@ -6,6 +6,7 @@ import (
 	"fmt"
 
 	"github.com/hashicorp/watchtower/api"
+	"github.com/hashicorp/watchtower/api/groups"
 	"github.com/hashicorp/watchtower/api/hosts"
 	"github.com/hashicorp/watchtower/api/users"
 )
@@ -48,6 +49,47 @@ func (s Organization) UpdateProject(ctx context.Context, r *Project) (*Project, 
 
 	target.Client = s.Client.Clone()
 	target.Client.SetProject(target.Id)
+
+	return target, apiErr, nil
+}
+
+func (s Organization) UpdateGroup(ctx context.Context, r *groups.Group) (*groups.Group, *api.Error, error) {
+	if s.Client == nil {
+		return nil, nil, fmt.Errorf("nil client in CreateGroup request")
+	}
+	if s.Id == "" {
+
+		// Assume the client has been configured with organization already and
+		// move on
+
+	} else {
+		// If it's explicitly set here, override anything that might be in the
+		// client
+
+		ctx = context.WithValue(ctx, "org", s.Id)
+
+	}
+
+	id := r.Id
+	r.Id = ""
+
+	req, err := s.Client.NewRequest(ctx, "PATCH", fmt.Sprintf("%s/%s", "groups", id), r)
+	if err != nil {
+		return nil, nil, fmt.Errorf("error creating CreateGroup request: %w", err)
+	}
+
+	resp, err := s.Client.Do(req)
+	if err != nil {
+		return nil, nil, fmt.Errorf("error performing client request during UpdateGroup call: %w", err)
+	}
+
+	target := new(groups.Group)
+	apiErr, err := resp.Decode(target)
+	if err != nil {
+		return nil, nil, fmt.Errorf("error decoding UpdateGroup repsonse: %w", err)
+	}
+
+	target.Client = s.Client
 
 	return target, apiErr, nil
 }
