@@ -544,7 +544,7 @@ func (rw *Db) LookupWhere(ctx context.Context, resource interface{}, where strin
 }
 
 // SearchWhere will search for all the resources it can find using a where
-// clause with parameters.  Support the options of: WithDebug and WithLimit.  If
+// clause with parameters.  Supports the options of: WithDebug and WithLimit.  If
 // WithLimit < 0, then unlimited results are returned.  If WithLimit == 0, then
 // default limits are used for results.
 func (rw *Db) SearchWhere(ctx context.Context, resources interface{}, where string, args []interface{}, opt ...Option) error {
