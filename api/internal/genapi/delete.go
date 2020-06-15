@@ -24,6 +24,11 @@ var deleteFuncs = map[string][]*deleteInfo{
 		},
 		{
 			"Organization",
+			"groups.Group",
+			"groups",
+		},
+		{
+			"Organization",
 			"users.User",
 			"users",
 		},

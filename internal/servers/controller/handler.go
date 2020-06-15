@@ -17,6 +17,7 @@ import (
 	"github.com/hashicorp/watchtower/globals"
 	"github.com/hashicorp/watchtower/internal/gen/controller/api/services"
 	"github.com/hashicorp/watchtower/internal/servers/controller/handlers"
+	"github.com/hashicorp/watchtower/internal/servers/controller/handlers/groups"
 	"github.com/hashicorp/watchtower/internal/servers/controller/handlers/host_catalogs"
 	"github.com/hashicorp/watchtower/internal/servers/controller/handlers/host_sets"
 	"github.com/hashicorp/watchtower/internal/servers/controller/handlers/hosts"
@@ -91,6 +92,13 @@ func handleGrpcGateway(c *Controller) (http.Handler, error) {
 	}
 	if err := services.RegisterUserServiceHandlerServer(ctx, mux, us); err != nil {
 		return nil, fmt.Errorf("failed to register user service handler: %w", err)
+	}
+	gs, err := groups.NewService(c.IamRepoFn)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create group handler service: %w", err)
+	}
+	if err := services.RegisterGroupServiceHandlerServer(ctx, mux, gs); err != nil {
+		return nil, fmt.Errorf("failed to register group service handler: %w", err)
 	}
 
 	return mux, nil
