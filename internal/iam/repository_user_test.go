@@ -97,7 +97,7 @@ func TestRepository_CreateUser(t *testing.T) {
 				case "dup-name":
 					assert.Equal(fmt.Sprintf(tt.wantErrMsg, "dup-name"+id, org.PublicId), err.Error())
 				default:
-					assert.Contains(err.Error(), tt.wantErrMsg)
+					assert.True(strings.HasPrefix(err.Error(), tt.wantErrMsg))
 				}
 				return
 			}
