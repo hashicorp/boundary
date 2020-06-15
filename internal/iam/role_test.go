@@ -96,77 +96,6 @@ func TestNewRole(t *testing.T) {
 	}
 }
 
-func TestRole_Actions(t *testing.T) {
-	assert := assert.New(t)
-	r := &Role{}
-	a := r.Actions()
-	assert.Equal(a[ActionCreate.String()], ActionCreate)
-	assert.Equal(a[ActionUpdate.String()], ActionUpdate)
-	assert.Equal(a[ActionRead.String()], ActionRead)
-	assert.Equal(a[ActionDelete.String()], ActionDelete)
-}
-
-func TestRole_ResourceType(t *testing.T) {
-	assert := assert.New(t)
-	r := &Role{}
-	ty := r.ResourceType()
-	assert.Equal(ty, ResourceTypeRole)
-}
-
-func TestRole_GetScope(t *testing.T) {
-	t.Parallel()
-	cleanup, conn, _ := db.TestSetup(t, "postgres")
-	defer func() {
-		err := cleanup()
-		assert.NoError(t, err)
-		err = conn.Close()
-		assert.NoError(t, err)
-	}()
-	org, proj := TestScopes(t, conn)
-
-	t.Run("valid-org", func(t *testing.T) {
-		assert, require := assert.New(t), require.New(t)
-		w := db.New(conn)
-		role := TestRole(t, conn, org.PublicId)
-		scope, err := role.GetScope(context.Background(), w)
-		require.NoError(err)
-		assert.True(proto.Equal(org, scope))
-	})
-	t.Run("valid-proj", func(t *testing.T) {
-		assert, require := assert.New(t), require.New(t)
-		w := db.New(conn)
-		role := TestRole(t, conn, proj.PublicId)
-		scope, err := role.GetScope(context.Background(), w)
-		require.NoError(err)
-		assert.True(proto.Equal(proj, scope))
-	})
-}
-
-func TestRole_Clone(t *testing.T) {
-	t.Parallel()
-	cleanup, conn, _ := db.TestSetup(t, "postgres")
-	defer func() {
-		err := cleanup()
-		assert.NoError(t, err)
-		err = conn.Close()
-		assert.NoError(t, err)
-	}()
-	org, _ := TestScopes(t, conn)
-	t.Run("valid", func(t *testing.T) {
-		assert := assert.New(t)
-		role := TestRole(t, conn, org.PublicId, WithDescription("this is a test role"))
-		cp := role.Clone()
-		assert.True(proto.Equal(cp.(*Role).Role, role.Role))
-	})
-	t.Run("not-equal", func(t *testing.T) {
-		assert := assert.New(t)
-		role := TestRole(t, conn, org.PublicId)
-		role2 := TestRole(t, conn, org.PublicId)
-		cp := role.Clone()
-		assert.True(!proto.Equal(cp.(*Role).Role, role2.Role))
-	})
-}
-
 func Test_RoleCreate(t *testing.T) {
 	t.Parallel()
 	cleanup, conn, _ := db.TestSetup(t, "postgres")
@@ -453,5 +382,135 @@ func Test_RoleUpdate(t *testing.T) {
 		err = rw.LookupByPublicId(context.Background(), &foundRole)
 		require.NoError(err)
 		assert.Equal(id, projRole.Name)
+	})
+}
+
+func Test_RoleDelete(t *testing.T) {
+	t.Parallel()
+	cleanup, conn, _ := db.TestSetup(t, "postgres")
+	defer func() {
+		err := cleanup()
+		assert.NoError(t, err)
+		err = conn.Close()
+		assert.NoError(t, err)
+	}()
+
+	rw := db.New(conn)
+	id := testId(t)
+	org, _ := TestScopes(t, conn)
+
+	tests := []struct {
+		name            string
+		role            *Role
+		wantRowsDeleted int
+		wantErr         bool
+		wantErrMsg      string
+	}{
+		{
+			name:            "valid",
+			role:            TestRole(t, conn, org.PublicId),
+			wantErr:         false,
+			wantRowsDeleted: 1,
+		},
+		{
+			name:            "bad-id",
+			role:            func() *Role { r := allocRole(); r.PublicId = id; return &r }(),
+			wantErr:         false,
+			wantRowsDeleted: 0,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+			deleteRole := allocRole()
+			deleteRole.PublicId = tt.role.GetPublicId()
+			deletedRows, err := rw.Delete(context.Background(), &deleteRole)
+			if tt.wantErr {
+				require.Error(err)
+				return
+			}
+			require.NoError(err)
+			if tt.wantRowsDeleted == 0 {
+				assert.Equal(tt.wantRowsDeleted, deletedRows)
+				return
+			}
+			assert.Equal(tt.wantRowsDeleted, deletedRows)
+			foundRole := allocRole()
+			foundRole.PublicId = tt.role.GetPublicId()
+			err = rw.LookupByPublicId(context.Background(), &foundRole)
+			require.Error(err)
+			assert.True(errors.Is(db.ErrRecordNotFound, err))
+		})
+	}
+}
+
+func TestRole_Actions(t *testing.T) {
+	assert := assert.New(t)
+	r := &Role{}
+	a := r.Actions()
+	assert.Equal(a[ActionCreate.String()], ActionCreate)
+	assert.Equal(a[ActionUpdate.String()], ActionUpdate)
+	assert.Equal(a[ActionRead.String()], ActionRead)
+	assert.Equal(a[ActionDelete.String()], ActionDelete)
+}
+
+func TestRole_ResourceType(t *testing.T) {
+	assert := assert.New(t)
+	r := &Role{}
+	ty := r.ResourceType()
+	assert.Equal(ty, ResourceTypeRole)
+}
+
+func TestRole_GetScope(t *testing.T) {
+	t.Parallel()
+	cleanup, conn, _ := db.TestSetup(t, "postgres")
+	defer func() {
+		err := cleanup()
+		assert.NoError(t, err)
+		err = conn.Close()
+		assert.NoError(t, err)
+	}()
+	org, proj := TestScopes(t, conn)
+
+	t.Run("valid-org", func(t *testing.T) {
+		assert, require := assert.New(t), require.New(t)
+		w := db.New(conn)
+		role := TestRole(t, conn, org.PublicId)
+		scope, err := role.GetScope(context.Background(), w)
+		require.NoError(err)
+		assert.True(proto.Equal(org, scope))
+	})
+	t.Run("valid-proj", func(t *testing.T) {
+		assert, require := assert.New(t), require.New(t)
+		w := db.New(conn)
+		role := TestRole(t, conn, proj.PublicId)
+		scope, err := role.GetScope(context.Background(), w)
+		require.NoError(err)
+		assert.True(proto.Equal(proj, scope))
+	})
+}
+
+func TestRole_Clone(t *testing.T) {
+	t.Parallel()
+	cleanup, conn, _ := db.TestSetup(t, "postgres")
+	defer func() {
+		err := cleanup()
+		assert.NoError(t, err)
+		err = conn.Close()
+		assert.NoError(t, err)
+	}()
+	org, _ := TestScopes(t, conn)
+	t.Run("valid", func(t *testing.T) {
+		assert := assert.New(t)
+		role := TestRole(t, conn, org.PublicId, WithDescription("this is a test role"))
+		cp := role.Clone()
+		assert.True(proto.Equal(cp.(*Role).Role, role.Role))
+	})
+	t.Run("not-equal", func(t *testing.T) {
+		assert := assert.New(t)
+		role := TestRole(t, conn, org.PublicId)
+		role2 := TestRole(t, conn, org.PublicId)
+		cp := role.Clone()
+		assert.True(!proto.Equal(cp.(*Role).Role, role2.Role))
 	})
 }

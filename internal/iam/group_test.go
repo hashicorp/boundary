@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/hashicorp/watchtower/internal/db"
+	dbassert "github.com/hashicorp/watchtower/internal/db/assert"
 	"github.com/hashicorp/watchtower/internal/oplog"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -26,41 +27,42 @@ func TestNewGroup(t *testing.T) {
 	id := testId(t)
 
 	type args struct {
-		organizationPublicId string
-		opt                  []Option
+		scopePublicId string
+		opt           []Option
 	}
 	tests := []struct {
 		name            string
 		args            args
 		wantErr         bool
 		wantErrMsg      string
+		wantIsErr       error
 		wantName        string
 		wantDescription string
 	}{
 		{
 			name: "valid",
 			args: args{
-				organizationPublicId: org.PublicId,
-				opt:                  []Option{WithName(id), WithDescription(id)},
+				scopePublicId: org.PublicId,
+				opt:           []Option{WithName(id), WithDescription("description-" + id)},
 			},
 			wantErr:         false,
 			wantName:        id,
-			wantDescription: id,
+			wantDescription: "description-" + id,
 		},
 		{
 			name: "valid-proj",
 			args: args{
-				organizationPublicId: proj.PublicId,
-				opt:                  []Option{WithName(id), WithDescription(id)},
+				scopePublicId: proj.PublicId,
+				opt:           []Option{WithName(id), WithDescription("description-" + id)},
 			},
 			wantErr:         false,
 			wantName:        id,
-			wantDescription: id,
+			wantDescription: "description-" + id,
 		},
 		{
-			name: "valid-with-no-options",
+			name: "valid-with-no-options" + id,
 			args: args{
-				organizationPublicId: org.PublicId,
+				scopePublicId: org.PublicId,
 			},
 			wantErr: false,
 		},
@@ -71,15 +73,19 @@ func TestNewGroup(t *testing.T) {
 			},
 			wantErr:    true,
 			wantErrMsg: "new group: missing scope id invalid parameter",
+			wantIsErr:  db.ErrInvalidParameter,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			got, err := NewGroup(tt.args.organizationPublicId, tt.args.opt...)
+			got, err := NewGroup(tt.args.scopePublicId, tt.args.opt...)
 			if tt.wantErr {
 				require.Error(err)
 				assert.Equal(tt.wantErrMsg, err.Error())
+				if tt.wantIsErr != nil {
+					assert.True(errors.Is(err, tt.wantIsErr))
+				}
 				return
 			}
 			require.NoError(err)
@@ -100,58 +106,111 @@ func Test_GroupCreate(t *testing.T) {
 		assert.NoError(t, err)
 	}()
 	org, proj := TestScopes(t, conn)
-	t.Run("valid-with-org", func(t *testing.T) {
-		id := testId(t)
-		assert, require := assert.New(t), require.New(t)
-		w := db.New(conn)
-		grp, err := NewGroup(org.PublicId, WithName(id), WithDescription(id))
-		require.NoError(err)
-		grpId, err := newGroupId()
-		require.NoError(err)
-		grp.PublicId = grpId
-		err = w.Create(context.Background(), grp)
-		require.NoError(err)
-		assert.NotEmpty(grp.PublicId)
+	type args struct {
+		group *Group
+	}
+	tests := []struct {
+		name        string
+		args        args
+		wantDup     bool
+		wantErr     bool
+		wantErrMsg  string
+		wantIsError error
+	}{
+		{
+			name: "valid-with-org",
+			args: args{
+				group: func() *Group {
+					id := testId(t)
+					grp, err := NewGroup(org.PublicId, WithName(id), WithDescription("description-"+id))
+					require.NoError(t, err)
+					grpId, err := newGroupId()
+					require.NoError(t, err)
+					grp.PublicId = grpId
+					return grp
+				}(),
+			},
+			wantErr: false,
+		},
+		{
+			name: "valid-with-proj",
+			args: args{
+				group: func() *Group {
+					id := testId(t)
+					grp, err := NewGroup(proj.PublicId, WithName(id), WithDescription("description-"+id))
+					require.NoError(t, err)
+					grpId, err := newGroupId()
+					require.NoError(t, err)
+					grp.PublicId = grpId
+					return grp
+				}(),
+			},
+			wantErr: false,
+		},
+		{
+			name: "valid-with-dup-null-names-and-descriptions",
+			args: args{
+				group: func() *Group {
+					grp, err := NewGroup(org.PublicId)
+					require.NoError(t, err)
+					grpId, err := newGroupId()
+					require.NoError(t, err)
+					grp.PublicId = grpId
+					return grp
+				}(),
+			},
+			wantDup: true,
+			wantErr: false,
+		},
+		{
+			name: "bad-scope-id",
+			args: args{
+				group: func() *Group {
+					id := testId(t)
+					grp, err := NewGroup(id)
+					require.NoError(t, err)
+					grpId, err := newGroupId()
+					require.NoError(t, err)
+					grp.PublicId = grpId
+					return grp
+				}(),
+			},
+			wantErr:    true,
+			wantErrMsg: "create: vet for write failed scope is not found",
+		},
+	}
 
-		foundGrp := allocGroup()
-		foundGrp.PublicId = grp.PublicId
-		err = w.LookupByPublicId(context.Background(), &foundGrp)
-		require.NoError(err)
-		assert.Equal(grp, &foundGrp)
-	})
-	t.Run("valid-with-proj", func(t *testing.T) {
-		assert, require := assert.New(t), require.New(t)
-		w := db.New(conn)
-		id := testId(t)
-		grp, err := NewGroup(proj.PublicId, WithName(id), WithDescription(id))
-		require.NoError(err)
-		grpId, err := newGroupId()
-		require.NoError(err)
-		grp.PublicId = grpId
-		err = w.Create(context.Background(), grp)
-		require.NoError(err)
-		assert.NotEmpty(grp.PublicId)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+			w := db.New(conn)
+			if tt.wantDup {
+				g := tt.args.group.Clone().(*Group)
+				grpId, err := newGroupId()
+				require.NoError(err)
+				g.PublicId = grpId
+				err = w.Create(context.Background(), g)
+				require.NoError(err)
+			}
+			g := tt.args.group.Clone().(*Group)
+			err := w.Create(context.Background(), g)
+			if tt.wantErr {
+				require.Error(err)
+				assert.Equal(tt.wantErrMsg, err.Error())
+				return
+			}
+			assert.NoError(err)
+			assert.NotEmpty(tt.args.group.PublicId)
 
-		foundGrp := allocGroup()
-		foundGrp.PublicId = grp.PublicId
-		err = w.LookupByPublicId(context.Background(), &foundGrp)
-		require.NoError(err)
-		assert.Equal(grp, &foundGrp)
-	})
-	t.Run("bad-scope-id", func(t *testing.T) {
-		assert, require := assert.New(t), require.New(t)
-		w := db.New(conn)
-		id := testId(t)
-		grp, err := NewGroup(id)
-		require.NoError(err)
-		grpId, err := newGroupId()
-		require.NoError(err)
-		grp.PublicId = grpId
-		err = w.Create(context.Background(), grp)
-		require.Error(err)
-		assert.Equal("create: vet for write failed scope is not found", err.Error())
-	})
+			foundGrp := allocGroup()
+			foundGrp.PublicId = tt.args.group.PublicId
+			err = w.LookupByPublicId(context.Background(), &foundGrp)
+			require.NoError(err)
+			assert.Equal(g, &foundGrp)
+		})
+	}
 }
+
 func Test_GroupUpdate(t *testing.T) {
 	t.Parallel()
 	cleanup, conn, _ := db.TestSetup(t, "postgres")
@@ -168,6 +227,7 @@ func Test_GroupUpdate(t *testing.T) {
 		name           string
 		description    string
 		fieldMaskPaths []string
+		nullPaths      []string
 		ScopeId        string
 	}
 	tests := []struct {
@@ -229,6 +289,40 @@ func Test_GroupUpdate(t *testing.T) {
 			wantDup:    true,
 			wantErrMsg: `update: failed pq: duplicate key value violates unique constraint "iam_group_name_scope_id_key"`,
 		},
+		{
+			name: "set description null",
+			args: args{
+				name:           "set description null" + id,
+				fieldMaskPaths: []string{"Name"},
+				nullPaths:      []string{"Description"},
+				ScopeId:        org.PublicId,
+			},
+			wantErr:        false,
+			wantRowsUpdate: 1,
+		},
+		{
+			name: "set name null",
+			args: args{
+				description:    "set description null" + id,
+				fieldMaskPaths: []string{"Description"},
+				nullPaths:      []string{"Name"},
+				ScopeId:        org.PublicId,
+			},
+			wantDup:        true,
+			wantErr:        false,
+			wantRowsUpdate: 1,
+		},
+		{
+			name: "set description null",
+			args: args{
+				name:           "set name null" + id,
+				fieldMaskPaths: []string{"Name"},
+				nullPaths:      []string{"Description"},
+				ScopeId:        org.PublicId,
+			},
+			wantErr:        false,
+			wantRowsUpdate: 1,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -236,11 +330,12 @@ func Test_GroupUpdate(t *testing.T) {
 			if tt.wantDup {
 				grp := TestGroup(t, conn, org.PublicId)
 				grp.Name = tt.args.name
-				_, err := rw.Update(context.Background(), grp, tt.args.fieldMaskPaths, nil)
+				_, err := rw.Update(context.Background(), grp, tt.args.fieldMaskPaths, tt.args.nullPaths)
 				require.NoError(err)
 			}
 
-			grp := TestGroup(t, conn, org.PublicId)
+			id := testId(t)
+			grp := TestGroup(t, conn, org.PublicId, WithDescription(id), WithName(id))
 
 			updateGrp := allocGroup()
 			updateGrp.PublicId = grp.PublicId
@@ -248,7 +343,7 @@ func Test_GroupUpdate(t *testing.T) {
 			updateGrp.Name = tt.args.name
 			updateGrp.Description = tt.args.description
 
-			updatedRows, err := rw.Update(context.Background(), &updateGrp, tt.args.fieldMaskPaths, nil)
+			updatedRows, err := rw.Update(context.Background(), &updateGrp, tt.args.fieldMaskPaths, tt.args.nullPaths)
 			if tt.wantErr {
 				require.Error(err)
 				assert.Equal(0, updatedRows)
@@ -266,8 +361,30 @@ func Test_GroupUpdate(t *testing.T) {
 			err = rw.LookupByPublicId(context.Background(), &foundGrp)
 			require.NoError(err)
 			assert.True(proto.Equal(updateGrp, foundGrp))
+			if len(tt.args.nullPaths) != 0 {
+				dbassert := dbassert.New(t, rw)
+				for _, f := range tt.args.nullPaths {
+					dbassert.IsNull(&foundGrp, f)
+				}
+			}
 		})
 	}
+	t.Run("update dup names in diff scopes", func(t *testing.T) {
+		assert, require := assert.New(t), require.New(t)
+		id := testId(t)
+		_ = TestGroup(t, conn, org.PublicId, WithDescription(id), WithName(id))
+		projGrp := TestGroup(t, conn, proj.PublicId)
+		projGrp.Name = id
+		updatedRows, err := rw.Update(context.Background(), projGrp, []string{"Name"}, nil)
+		require.NoError(err)
+		assert.Equal(1, updatedRows)
+
+		foundGrp := allocGroup()
+		foundGrp.PublicId = projGrp.GetPublicId()
+		err = rw.LookupByPublicId(context.Background(), &foundGrp)
+		require.NoError(err)
+		assert.Equal(id, projGrp.Name)
+	})
 }
 
 func Test_GroupDelete(t *testing.T) {

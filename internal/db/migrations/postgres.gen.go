@@ -12,8 +12,11 @@ begin;
 
 drop domain wt_timestamp;
 drop domain wt_public_id;
-drop function update_time_column() cascade;
-drop function immutable_create_time_func() cascade;
+
+drop function default_create_time;
+drop function immutable_create_time_func;
+drop function update_time_column;
+
 commit;
 
 `),
@@ -101,22 +104,12 @@ commit;
 		bytes: []byte(`
 begin;
 
-drop table if exists oplog_entry cascade;
-
-drop trigger if exists update_oplog_entry_update_time on oplog_entry;
-drop trigger if exists update_oplog_entry_create_time on oplog_entry;
-
-drop table if exists oplog_ticket cascade;
-
-drop trigger if exists update_oplog_ticket_update_time on oplog_ticket;
-drop trigger if exists update_oplog_ticket_create_time on oplog_ticket;
-
-drop table if exists oplog_metadata cascade;
-
-drop trigger if exists update_oplog_metadata_update_time on oplog_metadata;
-drop trigger if exists update_oplog_metadata_create_time on oplog_metadata;
+drop table oplog_metadata cascade;
+drop table oplog_ticket cascade;
+drop table oplog_entry cascade;
 
 commit;
+
 `),
 	},
 	"migrations/02_oplog.up.sql": {
@@ -234,18 +227,9 @@ commit;
 		bytes: []byte(`
 begin;
 
-drop table if exists db_test_user;
-drop table if exists db_test_car;
-drop table if exists db_test_rental;
-
-drop trigger if exists update_db_test_user_update_time on db_test_user;
-drop trigger if exists update_db_test_user_create_time on db_test_user;
-
-drop trigger if exists update_db_test_car_update_time on db_test_car;
-drop trigger if exists update_db_test_car_create_time on db_test_car;
-
-drop trigger if exists update_db_test_rental_update_time on db_test_rental;
-drop trigger if exists update_db_test_rental_create_time on db_test_rental;
+drop table db_test_rental;
+drop table db_test_car;
+drop table db_test_user;
 
 commit;
 
@@ -353,23 +337,21 @@ commit;
 		bytes: []byte(`
 BEGIN;
 
-drop table if exists iam_scope CASCADE;
-drop trigger if exists iam_scope_insert;
-drop function if exists iam_sub_scopes_func;
-drop table if exists iam_user cascade;
-drop table if exists iam_group cascade;
-drop table if exists iam_role cascade;
+drop table iam_group cascade;
+drop table iam_user cascade;
+drop table iam_scope_project cascade;
+drop table iam_scope_organization cascade;
+drop table iam_scope cascade;
+drop table iam_scope_type_enm cascade;
+drop table iam_role cascade;
+
+
+drop function iam_sub_names cascade;
+drop function iam_immutable_scope_type_func cascade;
 drop function iam_sub_scopes_func cascade;
 
--- TODO: we cannot "drop function update_time_column cascade" since it will
--- affect more that this migration.  It would delete any table in any migration
--- that depends on it.  We need to move this drop function up to the 01
--- migration, so it's at the top level.  Need to discuss with mgaffney
-
-drop trigger if exists update_iam_scope_update_time on iam_scope;
-drop trigger if exists update_iam_scope_create_time on iam_scope;
-
 COMMIT;
+
 `),
 	},
 	"migrations/04_iam.up.sql": {
@@ -546,35 +528,6 @@ before
 insert on iam_user
   for each row execute procedure default_create_time();
 
-
-create table iam_group (
-    public_id wt_public_id not null primary key,
-    create_time wt_timestamp,
-    update_time wt_timestamp,
-    name text,
-    description text,
-    scope_id wt_public_id not null references iam_scope(public_id) on delete cascade on update cascade,
-    unique(name, scope_id),
-    disabled boolean not null default false
-  );
-  
-create trigger 
-  update_time_column 
-before update on iam_group
-  for each row execute procedure update_time_column();
-
-create trigger 
-  immutable_create_time
-before
-update on iam_group
-  for each row execute procedure immutable_create_time_func();
-  
-create trigger 
-  default_create_time_column
-before
-insert on iam_group
-  for each row execute procedure default_create_time();
-
 create table iam_role (
     public_id wt_public_id not null primary key,
     create_time wt_timestamp,
@@ -603,6 +556,34 @@ before
 insert on iam_role
   for each row execute procedure default_create_time();
 
+create table iam_group (
+    public_id wt_public_id not null primary key,
+    create_time wt_timestamp,
+    update_time wt_timestamp,
+    name text,
+    description text,
+    scope_id wt_public_id not null references iam_scope(public_id) on delete cascade on update cascade,
+    unique(name, scope_id),
+    disabled boolean not null default false
+  );
+  
+create trigger 
+  update_time_column 
+before update on iam_group
+  for each row execute procedure update_time_column();
+
+create trigger 
+  immutable_create_time
+before
+update on iam_group
+  for each row execute procedure immutable_create_time_func();
+  
+create trigger 
+  default_create_time_column
+before
+insert on iam_group
+  for each row execute procedure default_create_time();
+  
 commit;
 
 `),
