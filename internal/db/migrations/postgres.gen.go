@@ -12,8 +12,11 @@ begin;
 
 drop domain wt_timestamp;
 drop domain wt_public_id;
-drop function update_time_column() cascade;
-drop function immutable_create_time_func() cascade;
+
+drop function default_create_time;
+drop function immutable_create_time_func;
+drop function update_time_column;
+
 commit;
 
 `),
@@ -101,22 +104,12 @@ commit;
 		bytes: []byte(`
 begin;
 
-drop table if exists oplog_entry cascade;
-
-drop trigger if exists update_oplog_entry_update_time on oplog_entry;
-drop trigger if exists update_oplog_entry_create_time on oplog_entry;
-
-drop table if exists oplog_ticket cascade;
-
-drop trigger if exists update_oplog_ticket_update_time on oplog_ticket;
-drop trigger if exists update_oplog_ticket_create_time on oplog_ticket;
-
-drop table if exists oplog_metadata cascade;
-
-drop trigger if exists update_oplog_metadata_update_time on oplog_metadata;
-drop trigger if exists update_oplog_metadata_create_time on oplog_metadata;
+drop table oplog_metadata cascade;
+drop table oplog_ticket cascade;
+drop table oplog_entry cascade;
 
 commit;
+
 `),
 	},
 	"migrations/02_oplog.up.sql": {
@@ -234,18 +227,9 @@ commit;
 		bytes: []byte(`
 begin;
 
-drop table if exists db_test_user;
-drop table if exists db_test_car;
-drop table if exists db_test_rental;
-
-drop trigger if exists update_db_test_user_update_time on db_test_user;
-drop trigger if exists update_db_test_user_create_time on db_test_user;
-
-drop trigger if exists update_db_test_car_update_time on db_test_car;
-drop trigger if exists update_db_test_car_create_time on db_test_car;
-
-drop trigger if exists update_db_test_rental_update_time on db_test_rental;
-drop trigger if exists update_db_test_rental_create_time on db_test_rental;
+drop table db_test_rental;
+drop table db_test_car;
+drop table db_test_user;
 
 commit;
 
@@ -353,15 +337,19 @@ commit;
 		bytes: []byte(`
 BEGIN;
 
-drop table if exists iam_scope CASCADE;
-drop table if exists iam_user cascade;
-drop table if exists iam_group cascade;
+drop table iam_group cascade;
+drop table iam_user cascade;
+drop table iam_scope_project cascade;
+drop table iam_scope_organization cascade;
+drop table iam_scope cascade;
+drop table iam_scope_type_enm cascade;
 
-drop function iam_sub_scopes_func cascade;
-drop function iam_immutable_scope_type_func cascade;
 drop function iam_sub_names cascade;
+drop function iam_immutable_scope_type_func cascade;
+drop function iam_sub_scopes_func cascade;
 
 COMMIT;
+
 `),
 	},
 	"migrations/04_iam.up.sql": {

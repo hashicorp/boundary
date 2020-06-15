@@ -3,8 +3,6 @@ syntax = "proto3";
 package controller.storage.iam.store.v1;
 option go_package = "github.com/hashicorp/watchtower/internal/iam/store;store";
 
-import "controller/storage/iam/store/v1/scope.proto";
-
 import "controller/storage/timestamp/v1/timestamp.proto";
 
 message User {
