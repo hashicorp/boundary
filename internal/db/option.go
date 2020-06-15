@@ -17,7 +17,7 @@ func GetOpts(opt ...Option) Options {
 // Option - how Options are passed as arguments.
 type Option func(*Options)
 
-// Options = how Options are represented.
+// Options - how Options are represented.
 type Options struct {
 	withOplog  bool
 	oplogOpts  oplogOpts
