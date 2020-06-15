@@ -49,9 +49,10 @@ func TestNewRepository(t *testing.T) {
 				wrapper: wrapper,
 			},
 			want: &Repository{
-				reader:  rw,
-				writer:  rw,
-				wrapper: wrapper,
+				reader:       rw,
+				writer:       rw,
+				wrapper:      wrapper,
+				defaultLimit: db.DefaultLimit,
 			},
 			wantErr: false,
 		},
