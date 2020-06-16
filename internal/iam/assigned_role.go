@@ -2,14 +2,14 @@ package iam
 
 import (
 	"context"
-	"errors"
+	"fmt"
 
 	"github.com/hashicorp/watchtower/internal/db"
 	"github.com/hashicorp/watchtower/internal/iam/store"
 	"google.golang.org/protobuf/proto"
 )
 
-// RoleType defines the possible types for roles
+// RoleType defines the possible types for roles.
 type RoleType uint32
 
 const (
@@ -18,6 +18,7 @@ const (
 	GroupRoleType   RoleType = 2
 )
 
+// String returns a string representation of the role type.
 func (r RoleType) String() string {
 	return [...]string{
 		"unknown",
@@ -26,44 +27,20 @@ func (r RoleType) String() string {
 	}[r]
 }
 
-// AssignedRole declares a common interface for all roles assigned to resources (Users and Groups for now)
-type AssignedRole interface {
+// PrincipalRole declares a common interface for all roles assigned to resources (Users and Groups).
+type PrincipalRole interface {
 	GetRoleId() string
 	GetPrincipalId() string
 	GetType() string
 }
 
-// assignedRoleView provides a common way to return roles regardless of their underlying type
-type assignedRoleView struct {
+// principalRoleView provides a common way to return roles regardless of their underlying type.
+type principalRoleView struct {
 	*store.AssignedRoleView
 }
 
-// TableName provides an overridden gorm table name for assigned roles
-func (v *assignedRoleView) TableName() string { return "iam_assigned_role" }
-
-// NewAssignedRole creates a new in memory assigned role for the principal (User,Group)
-// options include: WithName
-func NewAssignedRole(role *Role, principal Resource, opt ...Option) (AssignedRole, error) {
-	if role == nil {
-		return nil, errors.New("error role is nil for assigning role")
-	}
-	if principal == nil {
-		return nil, errors.New("principal is nil for assigning role")
-	}
-	if principal.ResourceType() == ResourceTypeUser {
-		if u, ok := principal.(*User); ok {
-			return newUserRole(role, u, opt...)
-		}
-		return nil, errors.New("error principal is not a user ptr for assigning role")
-	}
-	if principal.ResourceType() == ResourceTypeGroup {
-		if a, ok := principal.(*Group); ok {
-			return newGroupRole(role, a, opt...)
-		}
-		return nil, errors.New("error principal is not a group ptr for assigning role")
-	}
-	return nil, errors.New("error unknown principal type for assigning role")
-}
+// TableName provides an overridden gorm table name for principal roles.
+func (v *principalRoleView) TableName() string { return "iam_principal_role" }
 
 // UserRole is a role assigned to a user
 type UserRole struct {
@@ -73,35 +50,34 @@ type UserRole struct {
 
 // ensure that UserRole implements the interfaces of:  Clonable, AssignedRole and db.VetForWriter
 var _ Clonable = (*UserRole)(nil)
-var _ AssignedRole = (*UserRole)(nil)
+var _ PrincipalRole = (*UserRole)(nil)
 var _ db.VetForWriter = (*UserRole)(nil)
 
-// newUserRole creates a new user role. options include:  WithName
-func newUserRole(r *Role, u *User, opt ...Option) (AssignedRole, error) {
-	if u.PublicId == "" {
-		return nil, errors.New("error the user id is unset")
+// NewUserRole creates a new user role in memory.  User's can be assigned roles
+// which are within its organization, or the role is within a project within its
+// organization. This relationship will not be enforced until the user role is
+// written to the database.  No options are supported currently.
+func NewUserRole(roleId, userId string, opt ...Option) (PrincipalRole, error) {
+	if roleId == "" {
+		return nil, fmt.Errorf("new user role: missing role id %w", db.ErrInvalidParameter)
 	}
-	if r == nil {
-		return nil, errors.New("error the user role is nil")
+	if userId == "" {
+		return nil, fmt.Errorf("new user role: missing user id %w", db.ErrInvalidParameter)
 	}
-	if r.PublicId == "" {
-		return nil, errors.New("error the user role id is unset")
-	}
-	ur := &UserRole{
+	return &UserRole{
 		UserRole: &store.UserRole{
-			PrincipalId: u.PublicId,
-			RoleId:      r.PublicId,
+			PrincipalId: userId,
+			RoleId:      roleId,
 		},
-	}
-	return ur, nil
+	}, nil
 }
 
-// GetType returns the principal role type
+// GetType returns the user role type.
 func (r *UserRole) GetType() string {
 	return UserRoleType.String()
 }
 
-// Clone creates a clone of the UserRole
+// Clone creates a clone of the UserRole.
 func (r *UserRole) Clone() interface{} {
 	cp := proto.Clone(r.UserRole)
 	return &UserRole{
@@ -109,17 +85,26 @@ func (r *UserRole) Clone() interface{} {
 	}
 }
 
-// VetForWrite implements db.VetForWrite() interface
+// VetForWrite implements db.VetForWrite() interface for user roles.  The
+// constraint between user and role scopes will be enforced by the database via
+// constraints and triggers.
 func (role *UserRole) VetForWrite(ctx context.Context, r db.Reader, opType db.OpType, opt ...db.Option) error {
+	if role.RoleId == "" {
+		return fmt.Errorf("new user role: missing role id %w", db.ErrInvalidParameter)
+	}
+	if role.PrincipalId == "" {
+		return fmt.Errorf("new user role: missing user id %w", db.ErrInvalidParameter)
+	}
 	return nil
 }
 
-// TableName returns the tablename to override the default gorm table name
+// TableName returns the tablename to override the default gorm table name for
+// user roles.
 func (r *UserRole) TableName() string {
 	if r.tableName != "" {
 		return r.tableName
 	}
-	return "iam_role_user"
+	return "iam_user_role"
 }
 
 // SetTableName sets the tablename and satisfies the ReplayableMessage interface
@@ -137,39 +122,34 @@ type GroupRole struct {
 
 // ensure that GroupRole implements the interfaces of: Clonable, AssignedRole and db.VetForWriter
 var _ Clonable = (*GroupRole)(nil)
-var _ AssignedRole = (*GroupRole)(nil)
+var _ PrincipalRole = (*GroupRole)(nil)
 var _ db.VetForWriter = (*GroupRole)(nil)
 
-// newGroupRole creates a new group role.
-// options include:  WithName
-func newGroupRole(r *Role, g *Group, opt ...Option) (AssignedRole, error) {
-	if g == nil {
-		return nil, errors.New("error the group is nil")
+// NewGroupRole creates a new group role in memory.  Group's can only be
+// assigned roles within its scope (org or project). This relationship will not
+// be enforced until the group role is written to the database. No options are
+// supported currently.
+func NewGroupRole(roleId, groupId string, opt ...Option) (PrincipalRole, error) {
+	if roleId == "" {
+		return nil, fmt.Errorf("new group role: missing role id %w", db.ErrInvalidParameter)
 	}
-	if g.PublicId == "" {
-		return nil, errors.New("error the group id is unset")
+	if groupId == "" {
+		return nil, fmt.Errorf("new group role: missing group id %w", db.ErrInvalidParameter)
 	}
-	if r == nil {
-		return nil, errors.New("error the group role is nil")
-	}
-	if r.PublicId == "" {
-		return nil, errors.New("error the group role id is unset")
-	}
-	gr := &GroupRole{
+	return &GroupRole{
 		GroupRole: &store.GroupRole{
-			PrincipalId: g.PublicId,
-			RoleId:      r.PublicId,
+			PrincipalId: groupId,
+			RoleId:      roleId,
 		},
-	}
-	return gr, nil
+	}, nil
 }
 
-// GetType returns the principal role type
+// GetType returns the group role type.
 func (r *GroupRole) GetType() string {
 	return GroupRoleType.String()
 }
 
-// Clone creates a clone of the GroupRole
+// Clone creates a clone of the GroupRole.
 func (r *GroupRole) Clone() interface{} {
 	cp := proto.Clone(r.GroupRole)
 	return &GroupRole{
@@ -177,20 +157,30 @@ func (r *GroupRole) Clone() interface{} {
 	}
 }
 
-// VetForWrite implements db.VetForWrite() interface
+// VetForWrite implements db.VetForWrite() interface for group roles. The
+// constraint between groups and role scopes will be enforced by the database via
+// constraints and triggers.
 func (role *GroupRole) VetForWrite(ctx context.Context, r db.Reader, opType db.OpType, opt ...db.Option) error {
+	if role.RoleId == "" {
+		return fmt.Errorf("new group role: missing role id %w", db.ErrInvalidParameter)
+	}
+	if role.PrincipalId == "" {
+		return fmt.Errorf("new group role: missing user id %w", db.ErrInvalidParameter)
+	}
 	return nil
 }
 
-// TableName returns the tablename to override the default gorm table name
+// TableName returns the tablename to override the default gorm table name for
+// group roles.
 func (r *GroupRole) TableName() string {
 	if r.tableName != "" {
 		return r.tableName
 	}
-	return "iam_role_group"
+	return "iam_group_role"
 }
 
 // SetTableName sets the tablename and satisfies the ReplayableMessage interface
+// for group roles.
 func (r *GroupRole) SetTableName(n string) {
 	if r.tableName != "" {
 		r.tableName = n
