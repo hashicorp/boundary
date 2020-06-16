@@ -208,6 +208,21 @@ func Test_UserRoleCreate(t *testing.T) {
 			wantErrMsg: "create: vet for write failed new user role: missing user id invalid parameter",
 			wantIsErr:  db.ErrInvalidParameter,
 		},
+		{
+			name: "dup-at-org",
+			args: args{
+				role: func() *UserRole {
+					role := TestRole(t, conn, org.PublicId)
+					principal := TestUser(t, conn, org.PublicId)
+					principalRole, err := NewUserRole(role.PublicId, principal.PublicId)
+					require.NoError(t, err)
+					return principalRole.(*UserRole)
+				}(),
+			},
+			wantDup:    true,
+			wantErr:    true,
+			wantErrMsg: `create: failed pq: duplicate key value violates unique constraint "iam_user_role_pkey"`,
+		},
 	}
 
 	for _, tt := range tests {
@@ -223,7 +238,7 @@ func Test_UserRoleCreate(t *testing.T) {
 			err := w.Create(context.Background(), r)
 			if tt.wantErr {
 				require.Error(err)
-				assert.Contains(tt.wantErrMsg, err.Error())
+				assert.Contains(err.Error(), tt.wantErrMsg)
 				if tt.wantIsErr != nil {
 					assert.True(errors.Is(err, tt.wantIsErr))
 				}
@@ -436,6 +451,36 @@ func Test_GroupRoleCreate(t *testing.T) {
 			wantErrMsg: "create: vet for write failed new group role: missing user id invalid parameter",
 			wantIsErr:  db.ErrInvalidParameter,
 		},
+		{
+			name: "dup-at-org",
+			args: args{
+				role: func() *GroupRole {
+					role := TestRole(t, conn, org.PublicId)
+					principal := TestGroup(t, conn, org.PublicId)
+					principalRole, err := NewGroupRole(role.PublicId, principal.PublicId)
+					require.NoError(t, err)
+					return principalRole.(*GroupRole)
+				}(),
+			},
+			wantDup:    true,
+			wantErr:    true,
+			wantErrMsg: `create: failed pq: duplicate key value violates unique constraint`,
+		},
+		{
+			name: "dup-at-proj",
+			args: args{
+				role: func() *GroupRole {
+					role := TestRole(t, conn, proj.PublicId)
+					principal := TestGroup(t, conn, proj.PublicId)
+					principalRole, err := NewGroupRole(role.PublicId, principal.PublicId)
+					require.NoError(t, err)
+					return principalRole.(*GroupRole)
+				}(),
+			},
+			wantDup:    true,
+			wantErr:    true,
+			wantErrMsg: `create: failed pq: duplicate key value violates unique constraint`,
+		},
 	}
 
 	for _, tt := range tests {
@@ -451,7 +496,7 @@ func Test_GroupRoleCreate(t *testing.T) {
 			err := w.Create(context.Background(), r)
 			if tt.wantErr {
 				require.Error(err)
-				assert.Contains(tt.wantErrMsg, err.Error())
+				assert.Contains(err.Error(), tt.wantErrMsg)
 				if tt.wantIsErr != nil {
 					assert.True(errors.Is(err, tt.wantIsErr))
 				}
