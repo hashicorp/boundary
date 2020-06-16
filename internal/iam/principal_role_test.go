@@ -9,6 +9,7 @@ import (
 	"github.com/hashicorp/watchtower/internal/iam/store"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/protobuf/proto"
 )
 
 func TestNewUserRole(t *testing.T) {
@@ -340,6 +341,43 @@ func Test_UserRoleDelete(t *testing.T) {
 	}
 }
 
+func TestUserRole_Clone(t *testing.T) {
+	t.Parallel()
+	cleanup, conn, _ := db.TestSetup(t, "postgres")
+	defer func() {
+		err := cleanup()
+		assert.NoError(t, err)
+		err = conn.Close()
+		assert.NoError(t, err)
+	}()
+	org, proj := TestScopes(t, conn)
+	user := TestUser(t, conn, org.PublicId)
+	t.Run("valid", func(t *testing.T) {
+		assert := assert.New(t)
+		role := TestRole(t, conn, org.PublicId)
+		userRole := TestUserRole(t, conn, role.PublicId, user.PublicId)
+		cp := userRole.Clone()
+		assert.True(proto.Equal(cp.(*UserRole).UserRole, userRole.UserRole))
+	})
+	t.Run("not-equal", func(t *testing.T) {
+		assert := assert.New(t)
+		role := TestRole(t, conn, org.PublicId)
+		role2 := TestRole(t, conn, proj.PublicId)
+		userRole := TestUserRole(t, conn, role.PublicId, user.PublicId)
+		userRole2 := TestUserRole(t, conn, role2.PublicId, user.PublicId)
+		cp := userRole.Clone()
+		assert.True(!proto.Equal(cp.(*UserRole).UserRole, userRole2.UserRole))
+	})
+}
+
+func TestUserRole_GetType(t *testing.T) {
+	t.Parallel()
+	assert := assert.New(t)
+	r := &UserRole{}
+	ty := r.GetType()
+	assert.Equal("user", ty)
+}
+
 func TestNewGroupRole(t *testing.T) {
 	t.Parallel()
 	cleanup, conn, _ := db.TestSetup(t, "postgres")
@@ -615,8 +653,8 @@ func Test_GroupRoleUpdate(t *testing.T) {
 		r := TestRole(t, conn, org.PublicId)
 		g := TestGroup(t, conn, org.PublicId)
 		g2 := TestGroup(t, conn, org.PublicId)
-		userRole := TestUserRole(t, conn, r.PublicId, g.PublicId)
-		updateRole := userRole.Clone().(*UserRole)
+		userRole := TestGroupRole(t, conn, r.PublicId, g.PublicId)
+		updateRole := userRole.Clone().(*GroupRole)
 		updateRole.PrincipalId = g2.PublicId
 		updatedRows, err := rw.Update(context.Background(), updateRole, []string{"PrincipalId"}, nil)
 		require.Error(err)
@@ -682,4 +720,43 @@ func Test_GroupRoleDelete(t *testing.T) {
 			assert.True(errors.Is(db.ErrRecordNotFound, err))
 		})
 	}
+}
+
+func TestGroupRole_Clone(t *testing.T) {
+	t.Parallel()
+	cleanup, conn, _ := db.TestSetup(t, "postgres")
+	defer func() {
+		err := cleanup()
+		assert.NoError(t, err)
+		err = conn.Close()
+		assert.NoError(t, err)
+	}()
+	org, proj := TestScopes(t, conn)
+	t.Run("valid", func(t *testing.T) {
+		assert := assert.New(t)
+		grp := TestGroup(t, conn, org.PublicId)
+		role := TestRole(t, conn, org.PublicId)
+		grpRole := TestGroupRole(t, conn, role.PublicId, grp.PublicId)
+		cp := grpRole.Clone()
+		assert.True(proto.Equal(cp.(*GroupRole).GroupRole, grpRole.GroupRole))
+	})
+	t.Run("not-equal", func(t *testing.T) {
+		assert := assert.New(t)
+		grp := TestGroup(t, conn, org.PublicId)
+		grp2 := TestGroup(t, conn, proj.PublicId)
+		role := TestRole(t, conn, org.PublicId)
+		role2 := TestRole(t, conn, proj.PublicId)
+		grpRole := TestGroupRole(t, conn, role.PublicId, grp.PublicId)
+		grpRole2 := TestGroupRole(t, conn, role2.PublicId, grp2.PublicId)
+		cp := grpRole.Clone()
+		assert.True(!proto.Equal(cp.(*GroupRole).GroupRole, grpRole2.GroupRole))
+	})
+}
+
+func TestGroupRole_GetType(t *testing.T) {
+	t.Parallel()
+	assert := assert.New(t)
+	r := &GroupRole{}
+	ty := r.GetType()
+	assert.Equal("group", ty)
 }
