@@ -34,4 +34,22 @@ func Test_GetOpts(t *testing.T) {
 		testOpts.withDescription = "test desc"
 		assert.Equal(opts, testOpts)
 	})
+	t.Run("WithLimit", func(t *testing.T) {
+		assert := assert.New(t)
+		// test default of 0
+		opts := getOpts()
+		testOpts := getDefaultOptions()
+		testOpts.withLimit = 0
+		assert.Equal(opts, testOpts)
+
+		opts = getOpts(WithLimit(-1))
+		testOpts = getDefaultOptions()
+		testOpts.withLimit = -1
+		assert.Equal(opts, testOpts)
+
+		opts = getOpts(WithLimit(1))
+		testOpts = getDefaultOptions()
+		testOpts.withLimit = 1
+		assert.Equal(opts, testOpts)
+	})
 }
