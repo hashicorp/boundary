@@ -77,6 +77,12 @@ func (r *UserRole) GetType() string {
 	return UserRoleType.String()
 }
 
+func allocUserRole() UserRole {
+	return UserRole{
+		UserRole: &store.UserRole{},
+	}
+}
+
 // Clone creates a clone of the UserRole.
 func (r *UserRole) Clone() interface{} {
 	cp := proto.Clone(r.UserRole)
@@ -147,6 +153,12 @@ func NewGroupRole(roleId, groupId string, opt ...Option) (PrincipalRole, error) 
 // GetType returns the group role type.
 func (r *GroupRole) GetType() string {
 	return GroupRoleType.String()
+}
+
+func allocGroupRole() GroupRole {
+	return GroupRole{
+		GroupRole: &store.GroupRole{},
+	}
 }
 
 // Clone creates a clone of the GroupRole.
