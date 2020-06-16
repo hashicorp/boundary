@@ -36,7 +36,7 @@ type PrincipalRole interface {
 
 // principalRoleView provides a common way to return roles regardless of their underlying type.
 type principalRoleView struct {
-	*store.AssignedRoleView
+	*store.PrincipalRoleView
 }
 
 // TableName provides an overridden gorm table name for principal roles.

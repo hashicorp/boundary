@@ -254,6 +254,32 @@ func Test_UserRoleCreate(t *testing.T) {
 	}
 }
 
+func Test_UserRoleUpdate(t *testing.T) {
+	t.Parallel()
+	cleanup, conn, _ := db.TestSetup(t, "postgres")
+	defer func() {
+		err := cleanup()
+		assert.NoError(t, err)
+		err = conn.Close()
+		assert.NoError(t, err)
+	}()
+	org, _ := TestScopes(t, conn)
+	rw := db.New(conn)
+
+	t.Run("updates not allowed", func(t *testing.T) {
+		assert, require := assert.New(t), require.New(t)
+		r := TestRole(t, conn, org.PublicId)
+		u := TestUser(t, conn, org.PublicId)
+		u2 := TestUser(t, conn, org.PublicId)
+		userRole := TestUserRole(t, conn, r.PublicId, u.PublicId)
+		updateRole := userRole.Clone().(*UserRole)
+		updateRole.PrincipalId = u2.PublicId
+		updatedRows, err := rw.Update(context.Background(), updateRole, []string{"PrincipalId"}, nil)
+		require.Error(err)
+		assert.Equal(0, updatedRows)
+	})
+}
+
 func TestNewGroupRole(t *testing.T) {
 	t.Parallel()
 	cleanup, conn, _ := db.TestSetup(t, "postgres")
@@ -510,4 +536,30 @@ func Test_GroupRoleCreate(t *testing.T) {
 			assert.Equal(r, &found)
 		})
 	}
+}
+
+func Test_GroupRoleUpdate(t *testing.T) {
+	t.Parallel()
+	cleanup, conn, _ := db.TestSetup(t, "postgres")
+	defer func() {
+		err := cleanup()
+		assert.NoError(t, err)
+		err = conn.Close()
+		assert.NoError(t, err)
+	}()
+	org, _ := TestScopes(t, conn)
+	rw := db.New(conn)
+
+	t.Run("updates not allowed", func(t *testing.T) {
+		assert, require := assert.New(t), require.New(t)
+		r := TestRole(t, conn, org.PublicId)
+		g := TestGroup(t, conn, org.PublicId)
+		g2 := TestGroup(t, conn, org.PublicId)
+		userRole := TestUserRole(t, conn, r.PublicId, g.PublicId)
+		updateRole := userRole.Clone().(*UserRole)
+		updateRole.PrincipalId = g2.PublicId
+		updatedRows, err := rw.Update(context.Background(), updateRole, []string{"PrincipalId"}, nil)
+		require.Error(err)
+		assert.Equal(0, updatedRows)
+	})
 }
