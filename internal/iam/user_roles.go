@@ -18,7 +18,7 @@ func (u *User) Roles(ctx context.Context, r db.Reader, opt ...Option) (map[strin
 		return nil, errors.New("error user id is unset for finding roles")
 	}
 	roles := []*Role{}
-	if err := r.SearchWhere(ctx, &roles, where, u.PublicId, UserRoleType.String()); err != nil {
+	if err := r.SearchWhere(ctx, &roles, where, []interface{}{u.PublicId, UserRoleType.String()}); err != nil {
 		return nil, err
 	}
 	results := map[string]*Role{}

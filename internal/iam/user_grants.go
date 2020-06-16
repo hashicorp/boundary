@@ -70,7 +70,7 @@ where
 	}
 
 	grants := []*RoleGrant{}
-	if err := r.SearchWhere(ctx, &grants, whereBase, u.PublicId, UserRoleType.String()); err != nil {
+	if err := r.SearchWhere(ctx, &grants, whereBase, []interface{}{u.PublicId, UserRoleType.String()}); err != nil {
 		return nil, err
 	}
 	return grants, nil

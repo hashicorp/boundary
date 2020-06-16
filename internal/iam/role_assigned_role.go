@@ -15,7 +15,7 @@ func (role *Role) AssignedRoles(ctx context.Context, r db.Reader) ([]PrincipalRo
 		ctx,
 		&viewRoles,
 		"role_id = ? and type in(?, ?)",
-		role.PublicId, UserRoleType.String(), GroupRoleType.String()); err != nil {
+		[]interface{}{role.PublicId, UserRoleType.String(), GroupRoleType.String()}); err != nil {
 		return nil, fmt.Errorf("error getting assigned roles %w", err)
 	}
 

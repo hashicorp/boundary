@@ -54,7 +54,7 @@ func (g *Group) AddUser(userId string, opt ...db.Option) (GroupMember, error) {
 func (g *Group) Members(ctx context.Context, r db.Reader) ([]GroupMember, error) {
 	const where = "group_id = ? and type = ?"
 	viewMembers := []*groupMemberView{}
-	if err := r.SearchWhere(ctx, &viewMembers, where, g.PublicId, UserMemberType.String()); err != nil {
+	if err := r.SearchWhere(ctx, &viewMembers, where, []interface{}{g.PublicId, UserMemberType.String()}); err != nil {
 		return nil, err
 	}
 

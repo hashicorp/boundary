@@ -18,7 +18,7 @@ func (u *User) Groups(ctx context.Context, r db.Reader) ([]*Group, error) {
 		return nil, errors.New("error user id is unset for finding user groups")
 	}
 	groups := []*Group{}
-	if err := r.SearchWhere(ctx, &groups, where, u.PublicId, UserMemberType.String()); err != nil {
+	if err := r.SearchWhere(ctx, &groups, where, []interface{}{u.PublicId, UserMemberType.String()}); err != nil {
 		return nil, err
 	}
 	return groups, nil
