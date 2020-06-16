@@ -105,3 +105,16 @@ func (r *Repository) DeleteUser(ctx context.Context, withPublicId string, opt ..
 	}
 	return rowsDeleted, nil
 }
+
+// ListUsers in an organization and supports the WithLimit option.
+func (r *Repository) ListUsers(ctx context.Context, withOrganizationId string, opt ...Option) ([]*User, error) {
+	if withOrganizationId == "" {
+		return nil, fmt.Errorf("list users: missing organization id %w", db.ErrInvalidParameter)
+	}
+	var users []*User
+	err := r.list(ctx, &users, "scope_id = ?", []interface{}{withOrganizationId}, opt...)
+	if err != nil {
+		return nil, fmt.Errorf("list users: %w", err)
+	}
+	return users, nil
+}

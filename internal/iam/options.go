@@ -20,6 +20,7 @@ type options struct {
 	withDescription string
 	withParentId    *string
 	withGroupGrants bool
+	withLimit       int
 }
 
 func getDefaultOptions() options {
@@ -30,6 +31,7 @@ func getDefaultOptions() options {
 		withGroupGrants: false,
 		withName:        "",
 		withParentId:    nil,
+		withLimit:       0,
 	}
 }
 
@@ -74,5 +76,14 @@ func WithParentId(id string) Option {
 		if id != "" {
 			o.withParentId = &id
 		}
+	}
+}
+
+// WithLimit provides an option to provide a limit.  Intentionally allowing
+// negative integers.   If WithLimit < 0, then unlimited results are returned.
+// If WithLimit == 0, then default limits are used for results.
+func WithLimit(limit int) Option {
+	return func(o *options) {
+		o.withLimit = limit
 	}
 }
