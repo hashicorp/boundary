@@ -99,7 +99,6 @@ func TestNewUserRole(t *testing.T) {
 	}
 }
 
-// TODO - test dup role+user
 func Test_UserRoleCreate(t *testing.T) {
 	t.Parallel()
 	cleanup, conn, _ := db.TestSetup(t, "postgres")
@@ -324,6 +323,146 @@ func TestNewGroupRole(t *testing.T) {
 			}
 			require.NoError(err)
 			assert.Equal(tt.want, got)
+		})
+	}
+}
+
+func Test_GroupRoleCreate(t *testing.T) {
+	t.Parallel()
+	cleanup, conn, _ := db.TestSetup(t, "postgres")
+	defer func() {
+		err := cleanup()
+		assert.NoError(t, err)
+		err = conn.Close()
+		assert.NoError(t, err)
+	}()
+	org, proj := TestScopes(t, conn)
+	type args struct {
+		role *GroupRole
+	}
+	tests := []struct {
+		name       string
+		args       args
+		wantDup    bool
+		wantErr    bool
+		wantErrMsg string
+		wantIsErr  error
+	}{
+		{
+			name: "valid-with-org",
+			args: args{
+				role: func() *GroupRole {
+					role := TestRole(t, conn, org.PublicId)
+					principal := TestGroup(t, conn, org.PublicId)
+					principalRole, err := NewGroupRole(role.PublicId, principal.PublicId)
+					require.NoError(t, err)
+					return principalRole.(*GroupRole)
+				}(),
+			},
+			wantErr: false,
+		},
+		{
+			name: "valid-with-proj",
+			args: args{
+				role: func() *GroupRole {
+					role := TestRole(t, conn, proj.PublicId)
+					principal := TestGroup(t, conn, proj.PublicId)
+					principalRole, err := NewGroupRole(role.PublicId, principal.PublicId)
+					require.NoError(t, err)
+					return principalRole.(*GroupRole)
+				}(),
+			},
+			wantErr: false,
+		},
+		{
+			name: "bad-role-id",
+			args: args{
+				role: func() *GroupRole {
+					id := testId(t)
+					principal := TestGroup(t, conn, org.PublicId)
+					principalRole, err := NewGroupRole(id, principal.PublicId)
+					require.NoError(t, err)
+					return principalRole.(*GroupRole)
+				}(),
+			},
+			wantErr:    true,
+			wantErrMsg: "create: failed pq: group and role do not belong to the same scope",
+		},
+		{
+			name: "bad-user-id",
+			args: args{
+				role: func() *GroupRole {
+					id := testId(t)
+					role := TestRole(t, conn, proj.PublicId)
+					principalRole, err := NewGroupRole(role.PublicId, id)
+					require.NoError(t, err)
+					return principalRole.(*GroupRole)
+				}(),
+			},
+			wantErr:    true,
+			wantErrMsg: "create: failed pq: group and role do not belong to the same scope",
+		},
+		{
+			name: "missing-role-id",
+			args: args{
+				role: func() *GroupRole {
+					principal := TestGroup(t, conn, org.PublicId)
+					return &GroupRole{
+						GroupRole: &store.GroupRole{
+							RoleId:      "",
+							PrincipalId: principal.PublicId,
+						},
+					}
+				}(),
+			},
+			wantErr:    true,
+			wantErrMsg: "create: vet for write failed new group role: missing role id invalid parameter",
+			wantIsErr:  db.ErrInvalidParameter,
+		},
+		{
+			name: "missing-user-id",
+			args: args{
+				role: func() *GroupRole {
+					role := TestRole(t, conn, proj.PublicId)
+					return &GroupRole{
+						GroupRole: &store.GroupRole{
+							RoleId:      role.PublicId,
+							PrincipalId: "",
+						},
+					}
+				}(),
+			},
+			wantErr:    true,
+			wantErrMsg: "create: vet for write failed new group role: missing user id invalid parameter",
+			wantIsErr:  db.ErrInvalidParameter,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+			w := db.New(conn)
+			if tt.wantDup {
+				r := tt.args.role.Clone().(*GroupRole)
+				err := w.Create(context.Background(), r)
+				require.NoError(err)
+			}
+			r := tt.args.role.Clone().(*GroupRole)
+			err := w.Create(context.Background(), r)
+			if tt.wantErr {
+				require.Error(err)
+				assert.Contains(tt.wantErrMsg, err.Error())
+				if tt.wantIsErr != nil {
+					assert.True(errors.Is(err, tt.wantIsErr))
+				}
+				return
+			}
+			assert.NoError(err)
+
+			found := allocGroupRole()
+			err = w.LookupWhere(context.Background(), &found, "role_id = ? and principal_id = ?", r.RoleId, r.PrincipalId)
+			require.NoError(err)
+			assert.Equal(r, &found)
 		})
 	}
 }
