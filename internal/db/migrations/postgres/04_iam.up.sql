@@ -304,7 +304,7 @@ declare cnt int;
 begin
   select count(*) into cnt
     from iam_role r, iam_group g
-    where r.scope_id = g.scope_id and g.public_id = new.principal_id;
+    where r.scope_id = g.scope_id and g.public_id = new.principal_id and r.public_id = new.role_id;
   if cnt = 0 then
     raise exception 'group and role do not belong to the same scope';
   end if;
