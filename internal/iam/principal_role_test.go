@@ -280,6 +280,66 @@ func Test_UserRoleUpdate(t *testing.T) {
 	})
 }
 
+func Test_UserRoleDelete(t *testing.T) {
+	t.Parallel()
+	cleanup, conn, _ := db.TestSetup(t, "postgres")
+	defer func() {
+		err := cleanup()
+		assert.NoError(t, err)
+		err = conn.Close()
+		assert.NoError(t, err)
+	}()
+	rw := db.New(conn)
+	id := testId(t)
+	org, _ := TestScopes(t, conn)
+	u := TestUser(t, conn, org.PublicId)
+	r := TestRole(t, conn, org.PublicId)
+
+	tests := []struct {
+		name            string
+		role            *UserRole
+		wantRowsDeleted int
+		wantErr         bool
+		wantErrMsg      string
+	}{
+		{
+			name:            "valid",
+			role:            TestUserRole(t, conn, r.PublicId, u.PublicId),
+			wantErr:         false,
+			wantRowsDeleted: 1,
+		},
+		{
+			name:            "bad-id",
+			role:            func() *UserRole { r := allocUserRole(); r.PrincipalId = id; r.RoleId = id; return &r }(),
+			wantErr:         false,
+			wantRowsDeleted: 0,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+			deleteRole := allocUserRole()
+			deleteRole.RoleId = tt.role.GetRoleId()
+			deleteRole.PrincipalId = tt.role.GetPrincipalId()
+			deletedRows, err := rw.Delete(context.Background(), &deleteRole)
+			if tt.wantErr {
+				require.Error(err)
+				return
+			}
+			require.NoError(err)
+			if tt.wantRowsDeleted == 0 {
+				assert.Equal(tt.wantRowsDeleted, deletedRows)
+				return
+			}
+			assert.Equal(tt.wantRowsDeleted, deletedRows)
+			found := allocUserRole()
+			err = rw.LookupWhere(context.Background(), &found, "role_id = ? and principal_id = ?", tt.role.GetRoleId(), tt.role.GetPrincipalId())
+			require.Error(err)
+			assert.True(errors.Is(db.ErrRecordNotFound, err))
+		})
+	}
+}
+
 func TestNewGroupRole(t *testing.T) {
 	t.Parallel()
 	cleanup, conn, _ := db.TestSetup(t, "postgres")
@@ -562,4 +622,64 @@ func Test_GroupRoleUpdate(t *testing.T) {
 		require.Error(err)
 		assert.Equal(0, updatedRows)
 	})
+}
+
+func Test_GroupRoleDelete(t *testing.T) {
+	t.Parallel()
+	cleanup, conn, _ := db.TestSetup(t, "postgres")
+	defer func() {
+		err := cleanup()
+		assert.NoError(t, err)
+		err = conn.Close()
+		assert.NoError(t, err)
+	}()
+	rw := db.New(conn)
+	id := testId(t)
+	org, _ := TestScopes(t, conn)
+	g := TestGroup(t, conn, org.PublicId)
+	r := TestRole(t, conn, org.PublicId)
+
+	tests := []struct {
+		name            string
+		role            *GroupRole
+		wantRowsDeleted int
+		wantErr         bool
+		wantErrMsg      string
+	}{
+		{
+			name:            "valid",
+			role:            TestGroupRole(t, conn, r.PublicId, g.PublicId),
+			wantErr:         false,
+			wantRowsDeleted: 1,
+		},
+		{
+			name:            "bad-id",
+			role:            func() *GroupRole { r := allocGroupRole(); r.PrincipalId = id; r.RoleId = id; return &r }(),
+			wantErr:         false,
+			wantRowsDeleted: 0,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+			deleteRole := allocGroupRole()
+			deleteRole.RoleId = tt.role.GetRoleId()
+			deleteRole.PrincipalId = tt.role.GetPrincipalId()
+			deletedRows, err := rw.Delete(context.Background(), &deleteRole)
+			if tt.wantErr {
+				require.Error(err)
+				return
+			}
+			require.NoError(err)
+			if tt.wantRowsDeleted == 0 {
+				assert.Equal(tt.wantRowsDeleted, deletedRows)
+				return
+			}
+			assert.Equal(tt.wantRowsDeleted, deletedRows)
+			found := allocGroupRole()
+			err = rw.LookupWhere(context.Background(), &found, "role_id = ? and principal_id = ?", tt.role.GetRoleId(), tt.role.GetPrincipalId())
+			require.Error(err)
+			assert.True(errors.Is(db.ErrRecordNotFound, err))
+		})
+	}
 }
