@@ -225,4 +225,148 @@ before
 insert on iam_group
   for each row execute procedure default_create_time();
   
+-- iam_user_role contains roles that have been assigned to users. Users can only
+-- be assigned roles which are within its organization, or the role is within a project within its
+-- organization. There's no way to declare this constraint, so it will be
+-- maintained with a before insert trigger using iam_user_role_scope_check().
+-- The rows in this table must be immutable after insert, which will be ensured
+-- with a before update trigger using iam_immutable_role(). 
+create table iam_user_role (
+    create_time wt_timestamp,
+    role_id wt_public_id not null references iam_role(public_id) on delete cascade on update cascade,
+    principal_id wt_public_id not null references iam_user(public_id) on delete cascade on update cascade,
+    primary key (role_id, principal_id)
+  );
+
+-- iam_group_role contains roles that have been assigned to groups. Groups can
+-- only beassigned roles which are within its scope (organization or project).
+-- There's no way to declare this constraint, so it will be maintained with a
+-- before insert trigger using iam_group_role_scope_check(). 
+-- The rows in this table must be immutable after insert, which will be ensured
+-- with a before update trigger using iam_immutable_role().
+create table iam_group_role (
+    create_time wt_timestamp,
+    role_id wt_public_id not null references iam_role(public_id) on delete cascade on update cascade,
+    principal_id wt_public_id not null references iam_group(public_id) on delete cascade on update cascade,
+    primary key (role_id, principal_id)
+  );
+
+-- iam_principle_role provides a consolidated view all principal roles assigned
+-- (user and group roles).
+create view iam_principal_role as
+select
+  -- intentionally using * to specify the view which requires that the concrete role assignment tables match
+  *, 'user' as type
+from iam_user_role
+union
+select
+  -- intentionally using * to specify the view which requires that the concrete role assignment tables match
+  *, 'group' as type
+from iam_group_role;
+
+-- iam_user_role_scope_check() ensures that the user is only assigned roles
+-- which are within its organization, or the role is within a project within its
+-- organization. 
+create or replace function 
+  iam_user_role_scope_check() 
+  returns trigger
+as $$ 
+declare cnt int;
+begin
+  select count(*) into cnt
+  from iam_user 
+  where public_id = new.principal_id and 
+  scope_id in(
+    -- check to see if they have the same org scope
+    select s.public_id 
+      from iam_scope s, iam_role r 
+      where s.public_id = r.scope_id and r.public_id = new.role_id  
+    union
+    -- check to see if the role has a parent that's the same org
+    select s.parent_id as public_id 
+      from iam_role r, iam_scope s 
+      where r.scope_id = s.public_id and r.public_id = new.role_id
+  );
+  if cnt = 0 then
+    raise exception 'user and role do not belong to the same organization';
+  end if;
+  return new;
+end;
+$$ language plpgsql;
+
+-- iam_group_role_scope_check() ensures that the group is only assigned roles
+-- which are within its scope (organization or project).
+create or replace function 
+  iam_group_role_scope_check() 
+  returns trigger
+as $$ 
+declare cnt int;
+begin
+  select count(*) into cnt
+    from iam_role r, iam_group g
+    where r.scope_id = g.scope_id and g.public_id = new.principal_id;
+  if cnt = 0 then
+    raise exception 'group and role do not belong to the same scope';
+  end if;
+  return new;
+end;
+$$ language plpgsql;
+
+-- iam_immutable_role() ensures that roles assigned to principals are immutable. 
+create or replace function
+  iam_immutable_role()
+  returns trigger
+as $$
+begin
+  if row(new.*) is distinct from row(old.*) then
+    raise exception 'roles are immutable';
+  end if;
+  return new;
+end;
+$$ language plpgsql;
+
+create trigger iam_user_role_scope_check
+before
+insert on iam_user_role
+  for each row execute procedure iam_user_role_scope_check();
+
+create trigger immutable_role
+before
+update on iam_user_role
+  for each row execute procedure iam_immutable_role();
+
+create trigger 
+  immutable_create_time
+before
+update on iam_user_role
+  for each row execute procedure immutable_create_time_func();
+  
+create trigger 
+  default_create_time_column
+before
+insert on iam_user_role
+  for each row execute procedure default_create_time();
+
+create trigger iam_group_role_scope_check
+before
+insert on iam_user_role
+  for each row execute procedure iam_group_role_scope_check();
+
+create trigger immutable_role
+before
+update on iam_group_role
+  for each row execute procedure iam_immutable_role();
+
+create trigger 
+  immutable_create_time
+before
+update on iam_group_role
+  for each row execute procedure immutable_create_time_func();
+  
+create trigger 
+  default_create_time_column
+before
+insert on iam_group_role
+  for each row execute procedure default_create_time();
+
 commit;
