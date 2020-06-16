@@ -9,8 +9,8 @@ import (
 )
 
 // AssignedRoles returns a list of principal roles (Users and Groups) for the Role.
-func (role *Role) AssignedRoles(ctx context.Context, r db.Reader) ([]AssignedRole, error) {
-	viewRoles := []*assignedRoleView{}
+func (role *Role) AssignedRoles(ctx context.Context, r db.Reader) ([]PrincipalRole, error) {
+	viewRoles := []*principalRoleView{}
 	if err := r.SearchWhere(
 		ctx,
 		&viewRoles,
@@ -19,7 +19,7 @@ func (role *Role) AssignedRoles(ctx context.Context, r db.Reader) ([]AssignedRol
 		return nil, fmt.Errorf("error getting assigned roles %w", err)
 	}
 
-	pRoles := []AssignedRole{}
+	pRoles := []PrincipalRole{}
 	for _, vr := range viewRoles {
 		switch vr.Type {
 		case UserRoleType.String():
