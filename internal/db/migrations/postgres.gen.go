@@ -713,7 +713,7 @@ insert on iam_user_role
 
 create trigger iam_group_role_scope_check
 before
-insert on iam_user_role
+insert on iam_group_role
   for each row execute procedure iam_group_role_scope_check();
 
 create trigger immutable_role
