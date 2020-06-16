@@ -122,3 +122,11 @@ func TestGroup(t *testing.T, conn *gorm.DB, orgId string, opt ...Option) *Group 
 	require.NotEmpty(grp.PublicId)
 	return grp
 }
+
+func TestUserRole(t *testing.T, conn *gorm.DB, roleId, userId string, opt ...Option) *UserRole {
+	t.Helper()
+	require := require.New(t)
+	r, err := NewUserRole(roleId, userId, opt...)
+	require.NoError(err)
+	return r.(*UserRole)
+}

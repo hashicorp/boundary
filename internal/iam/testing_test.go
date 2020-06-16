@@ -99,3 +99,29 @@ func Test_TestRole(t *testing.T) {
 	require.NotNil(projRole)
 	assert.NotEmpty(projRole.PublicId)
 }
+
+func Test_TestUserRole(t *testing.T) {
+	t.Helper()
+	assert, require := assert.New(t), require.New(t)
+	cleanup, conn, _ := db.TestSetup(t, "postgres")
+	defer func() {
+		err := cleanup()
+		assert.NoError(err)
+		err = conn.Close()
+		assert.NoError(err)
+	}()
+	org, proj := TestScopes(t, conn)
+	projRole := TestRole(t, conn, org.PublicId)
+	orgRole := TestRole(t, conn, proj.PublicId)
+	user := TestUser(t, conn, org.PublicId)
+
+	userRole := TestUserRole(t, conn, orgRole.PublicId, user.PublicId)
+	require.NotNil(userRole)
+	require.Equal(orgRole.PublicId, userRole.RoleId)
+	require.Equal(user.PublicId, userRole.PrincipalId)
+
+	userRole = TestUserRole(t, conn, projRole.PublicId, user.PublicId)
+	require.NotNil(userRole)
+	require.Equal(projRole.PublicId, userRole.RoleId)
+	require.Equal(user.PublicId, userRole.PrincipalId)
+}
