@@ -107,12 +107,12 @@ func TestRole(t *testing.T, conn *gorm.DB, scopeId string, opt ...Option) *Role 
 }
 
 // TestGroup creates a group suitable for testing.
-func TestGroup(t *testing.T, conn *gorm.DB, orgId string, opt ...Option) *Group {
+func TestGroup(t *testing.T, conn *gorm.DB, scopeId string, opt ...Option) *Group {
 	t.Helper()
 	require := require.New(t)
 	rw := db.New(conn)
 
-	grp, err := NewGroup(orgId, opt...)
+	grp, err := NewGroup(scopeId, opt...)
 	require.NoError(err)
 	id, err := newGroupId()
 	require.NoError(err)
@@ -126,7 +126,23 @@ func TestGroup(t *testing.T, conn *gorm.DB, orgId string, opt ...Option) *Group 
 func TestUserRole(t *testing.T, conn *gorm.DB, roleId, userId string, opt ...Option) *UserRole {
 	t.Helper()
 	require := require.New(t)
+	rw := db.New(conn)
 	r, err := NewUserRole(roleId, userId, opt...)
 	require.NoError(err)
+
+	err = rw.Create(context.Background(), r)
+	require.NoError(err)
 	return r.(*UserRole)
+}
+
+func TestGroupRole(t *testing.T, conn *gorm.DB, roleId, grpId string, opt ...Option) *GroupRole {
+	t.Helper()
+	require := require.New(t)
+	rw := db.New(conn)
+	r, err := NewGroupRole(roleId, grpId, opt...)
+	require.NoError(err)
+
+	err = rw.Create(context.Background(), r)
+	require.NoError(err)
+	return r.(*GroupRole)
 }
