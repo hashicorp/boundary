@@ -54,6 +54,23 @@ func testOrg(t *testing.T, conn *gorm.DB, name, description string) (org *Scope)
 	return o
 }
 
+func testProject(t *testing.T, conn *gorm.DB, orgId string, opt ...Option) *Scope {
+	t.Helper()
+	require := require.New(t)
+	rw := db.New(conn)
+	wrapper := db.TestWrapper(t)
+	repo, err := NewRepository(rw, rw, wrapper)
+	require.NoError(err)
+
+	p, err := NewProject(orgId, opt...)
+	require.NoError(err)
+	p, err = repo.CreateScope(context.Background(), p)
+	require.NoError(err)
+	require.NotNil(p)
+	require.NotEmpty(p.GetPublicId())
+	return p
+}
+
 func testId(t *testing.T) string {
 	t.Helper()
 	id, err := uuid.GenerateUUID()
