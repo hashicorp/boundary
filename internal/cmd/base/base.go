@@ -8,9 +8,11 @@ import (
 	"io"
 	"io/ioutil"
 	"os"
+	"os/signal"
 	"regexp"
 	"strings"
 	"sync"
+	"syscall"
 
 	"github.com/hashicorp/watchtower/api"
 	"github.com/mitchellh/cli"
@@ -54,6 +56,38 @@ type Command struct {
 	flagOutputCurlString bool
 
 	client *api.Client
+}
+
+// New returns a new instance of a base.Command type
+func New(ui cli.Ui) *Command {
+	ctx, cancel := context.WithCancel(context.Background())
+	ret := &Command{
+		UI:         ui,
+		ShutdownCh: MakeShutdownCh(),
+		Context:    ctx,
+	}
+
+	go func() {
+		<-ret.ShutdownCh
+		cancel()
+	}()
+
+	return ret
+}
+
+// MakeShutdownCh returns a channel that can be used for shutdown
+// notifications for commands. This channel will send a message for every
+// SIGINT or SIGTERM received.
+func MakeShutdownCh() chan struct{} {
+	resultCh := make(chan struct{})
+
+	shutdownCh := make(chan os.Signal, 4)
+	signal.Notify(shutdownCh, os.Interrupt, syscall.SIGTERM)
+	go func() {
+		<-shutdownCh
+		close(resultCh)
+	}()
+	return resultCh
 }
 
 // Client returns the HTTP API client. The client is cached on the command to

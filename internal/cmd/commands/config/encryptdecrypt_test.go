@@ -3,13 +3,10 @@ package config
 import (
 	"bufio"
 	"bytes"
-	"context"
 	"fmt"
 	"io/ioutil"
 	"os"
-	"os/signal"
 	"strings"
-	"syscall"
 	"testing"
 
 	"github.com/hashicorp/watchtower/internal/cmd/base"
@@ -46,8 +43,14 @@ func TestEncryptDecrypt(t *testing.T) {
 
 			var b bytes.Buffer
 
+			ui := &cli.BasicUi{
+				Reader:      bufio.NewReader(os.Stdin),
+				Writer:      &b,
+				ErrorWriter: &b,
+			}
+
 			cmd := &EncryptDecryptCommand{
-				Command: getBaseCommand(&b),
+				Command: base.New(ui),
 				Encrypt: c.encrypt}
 
 			if err := cmd.Run([]string{c.config}); err != 0 {
@@ -69,37 +72,4 @@ func TestEncryptDecrypt(t *testing.T) {
 			}
 		})
 	}
-}
-
-func getBaseCommand(out *bytes.Buffer) *base.Command {
-	ctx, cancel := context.WithCancel(context.Background())
-
-	ret := &base.Command{
-		UI: &cli.BasicUi{
-			Reader:      bufio.NewReader(os.Stdin),
-			Writer:      out,
-			ErrorWriter: out,
-		},
-		ShutdownCh: makeShutdownCh(),
-		Context:    ctx,
-	}
-
-	go func() {
-		<-ret.ShutdownCh
-		cancel()
-	}()
-
-	return ret
-}
-
-func makeShutdownCh() chan struct{} {
-	resultCh := make(chan struct{})
-
-	shutdownCh := make(chan os.Signal, 4)
-	signal.Notify(shutdownCh, os.Interrupt, syscall.SIGTERM)
-	go func() {
-		<-shutdownCh
-		close(resultCh)
-	}()
-	return resultCh
 }

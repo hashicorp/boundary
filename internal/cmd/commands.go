@@ -1,7 +1,6 @@
 package cmd
 
 import (
-	"context"
 	"os"
 	"os/signal"
 	"syscall"
@@ -21,28 +20,12 @@ import (
 var Commands map[string]cli.CommandFactory
 
 func initCommands(ui, serverCmdUi cli.Ui, runOpts *RunOptions) {
-	getBaseCommand := func() *base.Command {
-		ctx, cancel := context.WithCancel(context.Background())
-		ret := &base.Command{
-			UI:         ui,
-			ShutdownCh: MakeShutdownCh(),
-			Context:    ctx,
-		}
-
-		go func() {
-			<-ret.ShutdownCh
-			cancel()
-		}()
-
-		return ret
-	}
-
 	Commands = map[string]cli.CommandFactory{
 		"controller": func() (cli.Command, error) {
 			return &controller.Command{
 				Server: base.NewServer(&base.Command{
 					UI:         serverCmdUi,
-					ShutdownCh: MakeShutdownCh(),
+					ShutdownCh: base.MakeShutdownCh(),
 				}),
 				SighupCh:  MakeSighupCh(),
 				SigUSR2Ch: MakeSigUSR2Ch(),
@@ -52,7 +35,7 @@ func initCommands(ui, serverCmdUi cli.Ui, runOpts *RunOptions) {
 			return &worker.Command{
 				Server: base.NewServer(&base.Command{
 					UI:         serverCmdUi,
-					ShutdownCh: MakeShutdownCh(),
+					ShutdownCh: base.MakeShutdownCh(),
 				}),
 				SighupCh:  MakeSighupCh(),
 				SigUSR2Ch: MakeSigUSR2Ch(),
@@ -62,7 +45,7 @@ func initCommands(ui, serverCmdUi cli.Ui, runOpts *RunOptions) {
 			return &dev.Command{
 				Server: base.NewServer(&base.Command{
 					UI:         serverCmdUi,
-					ShutdownCh: MakeShutdownCh(),
+					ShutdownCh: base.MakeShutdownCh(),
 				}),
 				SighupCh:  MakeSighupCh(),
 				SigUSR2Ch: MakeSigUSR2Ch(),
@@ -70,51 +53,36 @@ func initCommands(ui, serverCmdUi cli.Ui, runOpts *RunOptions) {
 		},
 		"hosts create": func() (cli.Command, error) {
 			return &hosts.CreateCommand{
-				Command: getBaseCommand(),
+				Command: base.New(ui),
 			}, nil
 		},
 		"projects create": func() (cli.Command, error) {
 			return &scopes.CreateProjectCommand{
-				Command: getBaseCommand(),
+				Command: base.New(ui),
 			}, nil
 		},
 		"projects read": func() (cli.Command, error) {
 			return &scopes.ReadProjectCommand{
-				Command: getBaseCommand(),
+				Command: base.New(ui),
 			}, nil
 		},
 		"config": func() (cli.Command, error) {
 			return &config.Command{
-				Command: getBaseCommand(),
+				Command: base.New(ui),
 			}, nil
 		},
 		"config encrypt": func() (cli.Command, error) {
 			return &config.EncryptDecryptCommand{
-				Command: getBaseCommand(),
+				Command: base.New(ui),
 				Encrypt: true,
 			}, nil
 		},
 		"config decrypt": func() (cli.Command, error) {
 			return &config.EncryptDecryptCommand{
-				Command: getBaseCommand(),
+				Command: base.New(ui),
 			}, nil
 		},
 	}
-}
-
-// MakeShutdownCh returns a channel that can be used for shutdown
-// notifications for commands. This channel will send a message for every
-// SIGINT or SIGTERM received.
-func MakeShutdownCh() chan struct{} {
-	resultCh := make(chan struct{})
-
-	shutdownCh := make(chan os.Signal, 4)
-	signal.Notify(shutdownCh, os.Interrupt, syscall.SIGTERM)
-	go func() {
-		<-shutdownCh
-		close(resultCh)
-	}()
-	return resultCh
 }
 
 // MakeSighupCh returns a channel that can be used for SIGHUP
