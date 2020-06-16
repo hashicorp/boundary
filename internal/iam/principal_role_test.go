@@ -26,7 +26,7 @@ func Test_NewAssignedRole(t *testing.T) {
 		user := TestUser(t, conn, s.PublicId)
 		role := TestRole(t, conn, s.PublicId, WithDescription("this is a test role"))
 
-		uRole, err := NewAssignedRole(role, user)
+		uRole, err := NewUserRole(role.PublicId, user.PublicId)
 		assert.NoError(err)
 		assert.NotNil(uRole)
 		assert.Equal(uRole.GetRoleId(), role.PublicId)
@@ -38,7 +38,7 @@ func Test_NewAssignedRole(t *testing.T) {
 
 		grp := TestGroup(t, conn, s.PublicId)
 
-		gRole, err := NewAssignedRole(role, grp)
+		gRole, err := NewGroupRole(role.PublicId, grp.PublicId)
 		assert.NoError(err)
 		assert.NotNil(gRole)
 		assert.Equal(gRole.GetRoleId(), role.PublicId)
@@ -48,35 +48,21 @@ func Test_NewAssignedRole(t *testing.T) {
 		assert.NotNil(gRole)
 		assert.Equal(gRole.GetPrincipalId(), grp.PublicId)
 	})
-	t.Run("bad-resource-type", func(t *testing.T) {
-		assert := assert.New(t)
-		s := testOrg(t, conn, "", "")
-		secondScope := testOrg(t, conn, "", "")
-		role := TestRole(t, conn, s.PublicId, WithDescription("this is a test role"))
-
-		uRole, err := NewAssignedRole(role, secondScope)
-		assert.Error(err)
-		assert.Nil(uRole)
-		assert.Equal(err.Error(), "error unknown principal type for assigning role")
-	})
-	t.Run("nil-role", func(t *testing.T) {
+	t.Run("empty-role-id", func(t *testing.T) {
 		assert := assert.New(t)
 		s := testOrg(t, conn, "", "")
 		user := TestUser(t, conn, s.PublicId)
 
-		uRole, err := NewAssignedRole(nil, user)
+		uRole, err := NewUserRole("", user.PublicId)
 		assert.Error(err)
 		assert.Nil(uRole)
-		assert.Equal(err.Error(), "error role is nil for assigning role")
 	})
-	t.Run("nil-principal", func(t *testing.T) {
+	t.Run("empty-user-id", func(t *testing.T) {
 		assert := assert.New(t)
 		s := testOrg(t, conn, "", "")
 		role := TestRole(t, conn, s.PublicId, WithDescription("this is a test role"))
-
-		uRole, err := NewAssignedRole(role, nil)
+		uRole, err := NewUserRole(role.PublicId, "")
 		assert.Error(err)
 		assert.Nil(uRole)
-		assert.Equal(err.Error(), "principal is nil for assigning role")
 	})
 }

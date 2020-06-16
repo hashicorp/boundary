@@ -12,7 +12,7 @@ import (
 func (u *User) Grants(ctx context.Context, r db.Reader, opt ...Option) ([]*RoleGrant, error) {
 	const (
 		whereBase = `
-role_id in (select role_id from iam_assigned_role ipr where principal_id  = ? and type = ?)
+role_id in (select role_id from iam_principal_role ipr where principal_id  = ? and type = ?)
 `
 
 		whereWithGrpGrants = `
@@ -20,7 +20,7 @@ select
 	rg.*
 from
 	iam_role_grant rg,
-	iam_assigned_role ipr, 
+	iam_principal_role ipr, 
 	iam_group grp, 
 	iam_group_member gm 
 where 
@@ -34,7 +34,7 @@ select
 	rg.*
 from 
 	iam_role_grant rg,
-	iam_assigned_role ipr 
+	iam_principal_role ipr 
 where 
 	ipr.role_id  = rg.role_id and 
 	ipr.principal_id  = $2 and ipr.type = 'user'

@@ -37,7 +37,7 @@ func Test_UserGrants(t *testing.T) {
 		assert.NotEqual(g.PublicId, "")
 
 		user := TestUser(t, conn, org.PublicId)
-		uRole, err := NewAssignedRole(role, user)
+		uRole, err := NewUserRole(role.PublicId, user.PublicId)
 		assert.NoError(err)
 		assert.NotNil(uRole)
 		assert.Equal(uRole.GetRoleId(), role.PublicId)
@@ -70,7 +70,7 @@ func Test_UserGrants(t *testing.T) {
 		assert.NoError(err)
 		assert.NotEqual(groupGrant.PublicId, "")
 
-		gRole, err := NewAssignedRole(groupRole, grp)
+		gRole, err := NewGroupRole(groupRole.PublicId, grp.PublicId)
 		assert.NoError(err)
 		assert.NotNil(gRole)
 		assert.Equal(gRole.GetRoleId(), groupRole.PublicId)

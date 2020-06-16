@@ -34,7 +34,7 @@ func TestNewRoleGrant(t *testing.T) {
 		assert.NotEmpty(g.PublicId)
 
 		user := TestUser(t, conn, s.PublicId)
-		uRole, err := NewAssignedRole(role, user)
+		uRole, err := NewUserRole(role.PublicId, user.PublicId)
 		assert.NoError(err)
 		assert.NotNil(uRole)
 		assert.Equal(uRole.GetRoleId(), role.PublicId)

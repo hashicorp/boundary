@@ -9,7 +9,7 @@ import (
 
 // Roles gets the roles for the user (we should/can support options to include roles associated with the user's groups)
 func (u *User) Roles(ctx context.Context, r db.Reader, opt ...Option) (map[string]*Role, error) {
-	const where = "public_id in (select role_id from iam_assigned_role ipr where principal_id  = ? and type = ?)"
+	const where = "public_id in (select role_id from iam_principal_role ipr where principal_id  = ? and type = ?)"
 
 	if r == nil {
 		return nil, errors.New("reader is nil for getting the user's roles")
