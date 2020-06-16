@@ -72,30 +72,6 @@ values
   ('delete'),
   ('authen');
 
-CREATE TABLE iam_role_user (
-    create_time wt_timestamp,
-    role_id wt_public_id NOT NULL REFERENCES iam_role(public_id) ON DELETE CASCADE ON UPDATE CASCADE,
-    principal_id wt_public_id NOT NULL REFERENCES iam_user(public_id) ON DELETE CASCADE ON UPDATE CASCADE,
-    primary key (role_id, principal_id)
-  );
-
-CREATE TABLE iam_role_group (
-    create_time wt_timestamp,
-    role_id wt_public_id NOT NULL REFERENCES iam_role(public_id) ON DELETE CASCADE ON UPDATE CASCADE,
-    principal_id wt_public_id NOT NULL REFERENCES iam_group(public_id) ON DELETE CASCADE ON UPDATE CASCADE,
-    primary key (role_id, principal_id)
-  );
-
-CREATE VIEW iam_assigned_role AS
-SELECT
-  -- intentionally using * to specify the view which requires that the concrete role assignment tables match
-  *, 'user' as type
-FROM iam_role_user
-UNION
-select
-  -- intentionally using * to specify the view which requires that the concrete role assignment tables match
-  *, 'group' as type
-from iam_role_group;
 
 
 
