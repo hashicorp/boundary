@@ -13,9 +13,11 @@ message UserRole {
   timestamp.v1.Timestamp create_time = 1;
 
   // role_id is the role of this principal.
+  // @inject_tag: gorm:"primary_key"
   string role_id = 2;
 
   // principal_id is the public_id of the user (which is the principal)
+  // @inject_tag: gorm:"primary_key"
   string principal_id = 3;
 }
 
@@ -25,22 +27,26 @@ message GroupRole {
   timestamp.v1.Timestamp create_time = 1;
 
   // role_id is the role of this principal.
+  // @inject_tag: gorm:"primary_key"
   string role_id = 2;
 
   // principal_id is the public_id of the group (which is the principal)
+  // @inject_tag: gorm:"primary_key"
   string principal_id = 3;
 }
 
-message AssignedRoleView {
+message PrincipalRoleView {
   // create_time from the RDBMS
   // @inject_tag: `gorm:"default:current_timestamp"`
   timestamp.v1.Timestamp create_time = 1;
 
   // role_id is the role of this principal.
+  // @inject_tag: gorm:"primary_key"
   string role_id = 2;
 
   // Principal type (User or Group)
   string type = 3;
 
+  // @inject_tag: gorm:"primary_key"
   string principal_id = 4;
 }
