@@ -16,6 +16,7 @@ drop domain wt_public_id;
 drop function default_create_time;
 drop function immutable_create_time_func;
 drop function update_time_column;
+drop function update_version_column;
 
 commit;
 
@@ -94,6 +95,26 @@ comment on function
   default_create_time()
 is
   'function used in before insert triggers to set create_time column to now';
+
+
+create or replace function
+  update_version_column()
+  returns trigger
+as $$
+begin
+  if row(new.*) is distinct from row(old.*) then
+    new.version = old.version + 1;
+    return new;
+  else
+    return old;
+  end if;
+end;
+$$ language plpgsql;
+
+comment on function
+  update_time_column()
+is
+  'function used in before update triggers to properly set version columns';
 
 commit;
 
@@ -250,7 +271,8 @@ create table if not exists db_test_user (
   public_id text not null unique,
   name text unique,
   phone_number text,
-  email text
+  email text,
+  version int default 1
 );
 
 create trigger 
@@ -271,6 +293,11 @@ before
 insert on db_test_user 
   for each row execute procedure default_create_time();
 
+create trigger 
+  update_version_column
+before update on db_test_user
+  for each row execute procedure update_version_column();
+  
 create table if not exists db_test_car (
   id bigint generated always as identity primary key,
   create_time wt_timestamp,
