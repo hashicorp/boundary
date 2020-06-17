@@ -34,9 +34,9 @@ message Configuration {
   uint32 key_length = 8;
 }
 
-message PasswordEntry {
+message Credential {
   // @inject_tag: gorm:"primary_key"
-  string auth_method_id = 1;
+  string auth_usrpass_credential_id = 1;
 
   // The create_time is set by the database.
   // @inject_tag: `gorm:"default:current_timestamp"`
@@ -49,20 +49,16 @@ message PasswordEntry {
   // @inject_tag: gorm:"not_null"
   uint32 argon2_conf_id = 4;
 
-  // The password_change_time is set by the application.
-  // @inject_tag: `gorm:"default:current_timestamp"`
-  timestamp.v1.Timestamp password_change_time = 5;
-
   // ct_salt is the encrypted salt which is stored in the database.
   // @inject_tag: gorm:"column:data;not_null" wrapping:"ct,entry_salt"
-  bytes ct_salt = 6;
+  bytes ct_salt = 5;
 
   // salt is the unencrypted salt which is not stored in the database.
   // @inject_tag: gorm:"-" wrapping:"pt,entry_salt"
-  bytes salt = 7;
+  bytes salt = 6;
 
   // hashed_password is the derived key produced by the Argon2id key
   // derivation function.
   // @inject_tag: gorm:"not_null"
-  bytes hashed_password = 8;
+  bytes hashed_password = 7;
 }

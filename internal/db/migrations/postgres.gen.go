@@ -789,6 +789,27 @@ begin;
   insert on auth_usrpass
     for each row execute procedure default_create_time();
 
+  create table auth_usrpass_credential (
+    id wt_private_id primary key,
+    auth_method_id wt_private_id not null unique
+      references auth_usrpass (auth_method_id)
+      on delete cascade
+      on update cascade,
+    create_time wt_timestamp
+  );
+
+  create trigger
+    immutable_create_time
+  before
+  update on auth_usrpass_credential
+    for each row execute procedure immutable_create_time_func();
+
+  create trigger
+    default_create_time_column
+  before
+  insert on auth_usrpass_credential
+    for each row execute procedure default_create_time();
+
   -- TODO(mgaffney) 06/2020: insert and delete only, no updates
   create table auth_usrpass_argon2_conf (
     id bigint generated always as identity primary key,
@@ -826,23 +847,19 @@ begin;
   insert on auth_usrpass_argon2_conf
     for each row execute procedure default_create_time();
 
-  -- auth_usrpass_argon2 is a auth_usrpass
-  create table auth_usrpass_argon2 (
-    auth_method_id wt_private_id primary key
-      references auth_usrpass (auth_method_id)
+  -- auth_usrpass_argon2_credential is a auth_usrpass
+  create table auth_usrpass_argon2_credential (
+    auth_usrpass_credential_id wt_private_id primary key
+      references auth_usrpass_credential (id)
       on delete cascade
       on update cascade,
     argon2_conf_id bigint not null -- cannot be changed unless hashed_password is changed too
       references auth_usrpass_argon2_conf (id)
       on delete restrict
       on update restrict,
+    -- create_time is a timestamp of when the password was changed
     create_time wt_timestamp,
     update_time wt_timestamp,
-    -- password_change_time is a timestamp of when the password was changed.
-    -- The hashed_password field will change if the same password is hashed
-    -- using different argon2 conf parameters. Therefore, only the domain layer
-    -- can know when to set this value.
-    password_change_time wt_timestamp,
     salt bytea not null, -- cannot be changed unless hashed_password is changed too
     hashed_password bytea not null
 
@@ -854,19 +871,19 @@ begin;
   create trigger
     update_time_column
   before
-  update on auth_usrpass_argon2
+  update on auth_usrpass_argon2_credential
     for each row execute procedure update_time_column();
 
   create trigger
     immutable_create_time
   before
-  update on auth_usrpass_argon2
+  update on auth_usrpass_argon2_credential
     for each row execute procedure immutable_create_time_func();
 
   create trigger
     default_create_time_column
   before
-  insert on auth_usrpass_argon2
+  insert on auth_usrpass_argon2_credential
     for each row execute procedure default_create_time();
 
   /*

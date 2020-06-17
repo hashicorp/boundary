@@ -48,16 +48,36 @@ func NewRepository(r db.Reader, w db.Writer, wrapper wrapping.Wrapper) (*Reposit
 	}, nil
 }
 
+// A User represents an IAM User configured for username/password
+// authentication.
 type User struct {
-	UserID   string // IAM UserID
+	// UserID is the iam.UserID of the user.
+	UserID string
+
+	// UserName is the username used for username/password authentication.
+	// The UserName must be unique within the scope of the UserID.
 	UserName string
-	Password string // Password must >= 8
+
+	// Password is the password used for username/password authentication.
+	// If set, the password must contain at least 8 characters.
+	//
+	// Password is never returned from any method.
+	Password string
+
+	// CredentialID is a unique ID representing the user's current
+	// password. A new CredentialID is created when a user's password is
+	// changed. If the user's password is not set, the CredentialID will be
+	// empty.
+	CredentialID string
 }
 
 // CreateUser inserts u into the repository and returns a new User with an
 // empty password. u is not changed. u must contain a valid iam UserID. u
 // must contain a UserName unique with the scope of the UserID. opt is
 // ignored.
+//
+// If u.Password is empty, a user will be created but username/password
+// authentication will be disabled for the user.
 func (r *Repository) CreateUser(ctx context.Context, u *User, opt ...Option) (*User, error) {
 	panic("not implemented")
 }
@@ -71,9 +91,13 @@ func (r *Repository) CreateUser(ctx context.Context, u *User, opt ...Option) (*U
 // updated. If u.UserName is set to a non-empty string, it must be unique
 // within the scope of the UserId.
 //
-// An attribute of u set to the zero and included in the fieldMask will
-// result in a db.ErrInvalidFieldMask. No attribute in u can be set to NULL
-// in the database.
+// If u.Password is set to the zero value and included in fieldMask, the
+// user's password will be deleted and username/password authentication
+// will be disabled for the user.
+//
+// Any other attributes of u set to the zero value and included in the
+// fieldMask will result in a db.ErrInvalidFieldMask. Only password can be
+// set to NULL in the database.
 func (r *Repository) UpdateUser(ctx context.Context, u *User, fieldMask []string, opt ...Option) (*User, int, error) {
 	panic("not implemented")
 }
@@ -90,20 +114,25 @@ func (r *Repository) DeleteUser(ctx context.Context, id string, opt ...Option) (
 	panic("not implemented")
 }
 
-// Authenticate returns true if password matches the password for userName
-// in scopeId.
+// Authenticate returns true and a CredentialID if password matches the
+// password for userName in scopeId.
+//
+// A CredentialID represents a user's current password. A new CredentialID
+// is generated when a user's password is changed.
 //
 // Authenticate will update the stored values for password to the current
 // password settings for scopeId if authentication is successful and the
 // stored values are not using the current password settings.
-func (r *Repository) Authenticate(ctx context.Context, scopeId string, userName string, password string) (bool, error) {
+func (r *Repository) Authenticate(ctx context.Context, scopeId string, userName string, password string) (bool, string, error) {
 	panic("not implemented")
 }
 
 // ChangePassword updates the password for userName in scopeId to new if
-// old equals the stored password. Returns false if old does not match the
-// stored password for userName.
-func (r *Repository) ChangePassword(ctx context.Context, scopeId string, userName string, old, new string) (bool, error) {
+// old equals the stored password. Returns true and a CredentialID if
+// password is successfully changed.
+//
+// Returns false if old does not match the stored password for userName.
+func (r *Repository) ChangePassword(ctx context.Context, scopeId string, userName string, old, new string) (bool, string, error) {
 	panic("not implemented")
 }
 

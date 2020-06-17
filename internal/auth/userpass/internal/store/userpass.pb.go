@@ -115,6 +115,73 @@ func (x *UserPass) GetUserName() string {
 	return ""
 }
 
+type Credential struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	// @inject_tag: gorm:"primary_key"
+	Id string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty" gorm:"primary_key"`
+	// The create_time is set by the database.
+	// @inject_tag: `gorm:"default:current_timestamp"`
+	CreateTime *timestamp.Timestamp `protobuf:"bytes,2,opt,name=create_time,json=createTime,proto3" json:"create_time,omitempty" gorm:"default:current_timestamp"`
+	// @inject_tag: gorm:"not_null"
+	AuthMethodId string `protobuf:"bytes,3,opt,name=auth_method_id,json=authMethodId,proto3" json:"auth_method_id,omitempty" gorm:"not_null"`
+}
+
+func (x *Credential) Reset() {
+	*x = Credential{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_controller_storage_auth_userpass_store_v1_userpass_proto_msgTypes[1]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *Credential) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*Credential) ProtoMessage() {}
+
+func (x *Credential) ProtoReflect() protoreflect.Message {
+	mi := &file_controller_storage_auth_userpass_store_v1_userpass_proto_msgTypes[1]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use Credential.ProtoReflect.Descriptor instead.
+func (*Credential) Descriptor() ([]byte, []int) {
+	return file_controller_storage_auth_userpass_store_v1_userpass_proto_rawDescGZIP(), []int{1}
+}
+
+func (x *Credential) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+func (x *Credential) GetCreateTime() *timestamp.Timestamp {
+	if x != nil {
+		return x.CreateTime
+	}
+	return nil
+}
+
+func (x *Credential) GetAuthMethodId() string {
+	if x != nil {
+		return x.AuthMethodId
+	}
+	return ""
+}
+
 var File_controller_storage_auth_userpass_store_v1_userpass_proto protoreflect.FileDescriptor
 
 var file_controller_storage_auth_userpass_store_v1_userpass_proto_rawDesc = []byte{
@@ -144,12 +211,21 @@ var file_controller_storage_auth_userpass_store_v1_userpass_proto_rawDesc = []by
 	0x5f, 0x69, 0x64, 0x18, 0x04, 0x20, 0x01, 0x28, 0x09, 0x52, 0x0a, 0x69, 0x61, 0x6d, 0x53, 0x63,
 	0x6f, 0x70, 0x65, 0x49, 0x64, 0x12, 0x1b, 0x0a, 0x09, 0x75, 0x73, 0x65, 0x72, 0x5f, 0x6e, 0x61,
 	0x6d, 0x65, 0x18, 0x05, 0x20, 0x01, 0x28, 0x09, 0x52, 0x08, 0x75, 0x73, 0x65, 0x72, 0x4e, 0x61,
-	0x6d, 0x65, 0x42, 0x4d, 0x5a, 0x4b, 0x67, 0x69, 0x74, 0x68, 0x75, 0x62, 0x2e, 0x63, 0x6f, 0x6d,
-	0x2f, 0x68, 0x61, 0x73, 0x68, 0x69, 0x63, 0x6f, 0x72, 0x70, 0x2f, 0x77, 0x61, 0x74, 0x63, 0x68,
-	0x74, 0x6f, 0x77, 0x65, 0x72, 0x2f, 0x69, 0x6e, 0x74, 0x65, 0x72, 0x6e, 0x61, 0x6c, 0x2f, 0x61,
-	0x75, 0x74, 0x68, 0x2f, 0x75, 0x73, 0x65, 0x72, 0x70, 0x61, 0x73, 0x73, 0x2f, 0x69, 0x6e, 0x74,
-	0x65, 0x72, 0x6e, 0x61, 0x6c, 0x2f, 0x73, 0x74, 0x6f, 0x72, 0x65, 0x3b, 0x73, 0x74, 0x6f, 0x72,
-	0x65, 0x62, 0x06, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x33,
+	0x6d, 0x65, 0x22, 0x8f, 0x01, 0x0a, 0x0a, 0x43, 0x72, 0x65, 0x64, 0x65, 0x6e, 0x74, 0x69, 0x61,
+	0x6c, 0x12, 0x0e, 0x0a, 0x02, 0x69, 0x64, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x02, 0x69,
+	0x64, 0x12, 0x4b, 0x0a, 0x0b, 0x63, 0x72, 0x65, 0x61, 0x74, 0x65, 0x5f, 0x74, 0x69, 0x6d, 0x65,
+	0x18, 0x02, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x2a, 0x2e, 0x63, 0x6f, 0x6e, 0x74, 0x72, 0x6f, 0x6c,
+	0x6c, 0x65, 0x72, 0x2e, 0x73, 0x74, 0x6f, 0x72, 0x61, 0x67, 0x65, 0x2e, 0x74, 0x69, 0x6d, 0x65,
+	0x73, 0x74, 0x61, 0x6d, 0x70, 0x2e, 0x76, 0x31, 0x2e, 0x54, 0x69, 0x6d, 0x65, 0x73, 0x74, 0x61,
+	0x6d, 0x70, 0x52, 0x0a, 0x63, 0x72, 0x65, 0x61, 0x74, 0x65, 0x54, 0x69, 0x6d, 0x65, 0x12, 0x24,
+	0x0a, 0x0e, 0x61, 0x75, 0x74, 0x68, 0x5f, 0x6d, 0x65, 0x74, 0x68, 0x6f, 0x64, 0x5f, 0x69, 0x64,
+	0x18, 0x03, 0x20, 0x01, 0x28, 0x09, 0x52, 0x0c, 0x61, 0x75, 0x74, 0x68, 0x4d, 0x65, 0x74, 0x68,
+	0x6f, 0x64, 0x49, 0x64, 0x42, 0x4d, 0x5a, 0x4b, 0x67, 0x69, 0x74, 0x68, 0x75, 0x62, 0x2e, 0x63,
+	0x6f, 0x6d, 0x2f, 0x68, 0x61, 0x73, 0x68, 0x69, 0x63, 0x6f, 0x72, 0x70, 0x2f, 0x77, 0x61, 0x74,
+	0x63, 0x68, 0x74, 0x6f, 0x77, 0x65, 0x72, 0x2f, 0x69, 0x6e, 0x74, 0x65, 0x72, 0x6e, 0x61, 0x6c,
+	0x2f, 0x61, 0x75, 0x74, 0x68, 0x2f, 0x75, 0x73, 0x65, 0x72, 0x70, 0x61, 0x73, 0x73, 0x2f, 0x69,
+	0x6e, 0x74, 0x65, 0x72, 0x6e, 0x61, 0x6c, 0x2f, 0x73, 0x74, 0x6f, 0x72, 0x65, 0x3b, 0x73, 0x74,
+	0x6f, 0x72, 0x65, 0x62, 0x06, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x33,
 }
 
 var (
@@ -164,19 +240,21 @@ func file_controller_storage_auth_userpass_store_v1_userpass_proto_rawDescGZIP()
 	return file_controller_storage_auth_userpass_store_v1_userpass_proto_rawDescData
 }
 
-var file_controller_storage_auth_userpass_store_v1_userpass_proto_msgTypes = make([]protoimpl.MessageInfo, 1)
+var file_controller_storage_auth_userpass_store_v1_userpass_proto_msgTypes = make([]protoimpl.MessageInfo, 2)
 var file_controller_storage_auth_userpass_store_v1_userpass_proto_goTypes = []interface{}{
 	(*UserPass)(nil),            // 0: controller.storage.auth.userpass.store.v1.UserPass
-	(*timestamp.Timestamp)(nil), // 1: controller.storage.timestamp.v1.Timestamp
+	(*Credential)(nil),          // 1: controller.storage.auth.userpass.store.v1.Credential
+	(*timestamp.Timestamp)(nil), // 2: controller.storage.timestamp.v1.Timestamp
 }
 var file_controller_storage_auth_userpass_store_v1_userpass_proto_depIdxs = []int32{
-	1, // 0: controller.storage.auth.userpass.store.v1.UserPass.create_time:type_name -> controller.storage.timestamp.v1.Timestamp
-	1, // 1: controller.storage.auth.userpass.store.v1.UserPass.update_time:type_name -> controller.storage.timestamp.v1.Timestamp
-	2, // [2:2] is the sub-list for method output_type
-	2, // [2:2] is the sub-list for method input_type
-	2, // [2:2] is the sub-list for extension type_name
-	2, // [2:2] is the sub-list for extension extendee
-	0, // [0:2] is the sub-list for field type_name
+	2, // 0: controller.storage.auth.userpass.store.v1.UserPass.create_time:type_name -> controller.storage.timestamp.v1.Timestamp
+	2, // 1: controller.storage.auth.userpass.store.v1.UserPass.update_time:type_name -> controller.storage.timestamp.v1.Timestamp
+	2, // 2: controller.storage.auth.userpass.store.v1.Credential.create_time:type_name -> controller.storage.timestamp.v1.Timestamp
+	3, // [3:3] is the sub-list for method output_type
+	3, // [3:3] is the sub-list for method input_type
+	3, // [3:3] is the sub-list for extension type_name
+	3, // [3:3] is the sub-list for extension extendee
+	0, // [0:3] is the sub-list for field type_name
 }
 
 func init() { file_controller_storage_auth_userpass_store_v1_userpass_proto_init() }
@@ -197,6 +275,18 @@ func file_controller_storage_auth_userpass_store_v1_userpass_proto_init() {
 				return nil
 			}
 		}
+		file_controller_storage_auth_userpass_store_v1_userpass_proto_msgTypes[1].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*Credential); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
 	}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
@@ -204,7 +294,7 @@ func file_controller_storage_auth_userpass_store_v1_userpass_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: file_controller_storage_auth_userpass_store_v1_userpass_proto_rawDesc,
 			NumEnums:      0,
-			NumMessages:   1,
+			NumMessages:   2,
 			NumExtensions: 0,
 			NumServices:   0,
 		},
