@@ -696,8 +696,8 @@ commit;
 
 `),
 	},
-	"migrations/15_user_session.down.sql": {
-		name: "15_user_session.down.sql",
+	"migrations/12_user_session.down.sql": {
+		name: "12_user_session.down.sql",
 		bytes: []byte(`
 begin;
 
@@ -707,8 +707,8 @@ commit;
 
 `),
 	},
-	"migrations/15_user_session.up.sql": {
-		name: "15_user_session.up.sql",
+	"migrations/12_user_session.up.sql": {
+		name: "12_user_session.up.sql",
 		bytes: []byte(`
 begin;
 
@@ -718,22 +718,21 @@ begin;
   -- a user session belongs to 1 and only 1 auth methods
   create table user_session (
     public_id wt_public_id primary key,
+    token text not null unique,
     iam_scope_id wt_public_id not null
       references iam_scope (public_id)
       on delete cascade
       on update cascade,
-    token text,
     iam_user_id wt_public_id not null unique -- read only
         references iam_user (public_id)
         on delete cascade
         on update cascade,
-    auth_method_id wt_private_id not null
-        references auth_method (auth_method_id)
-        on delete cascade
-        on update cascade,
+    -- TODO: Add an auth_method_id as a FK column that cascades.
+    auth_method_id text,
     create_time wt_timestamp,
     update_time wt_timestamp,
-    unique(scope_id, name)
+    last_used_time wt_timestamp,
+    expiration_time wt_timestamp
   );
 
   create trigger

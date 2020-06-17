@@ -15,13 +15,12 @@ begin;
         references iam_user (public_id)
         on delete cascade
         on update cascade,
-    auth_method_id wt_private_id not null
-        references auth_method (auth_method_id)
-        on delete cascade
-        on update cascade,
+    -- TODO: Add an auth_method_id as a FK column that cascades.
+    auth_method_id text,
     create_time wt_timestamp,
     update_time wt_timestamp,
-    unique(scope_id, name)
+    last_used_time wt_timestamp,
+    expiration_time wt_timestamp
   );
 
   create trigger

@@ -3,6 +3,7 @@ package usersessions
 import (
 	"fmt"
 
+	"github.com/hashicorp/vault/sdk/helper/base62"
 	"github.com/hashicorp/watchtower/internal/db"
 	"github.com/hashicorp/watchtower/internal/usersessions/store"
 	"google.golang.org/protobuf/proto"
@@ -15,26 +16,31 @@ type Session struct {
 	tableName string `gorm:"-"`
 }
 
-// NewSession creates a new in memory Session assigned to scopeId.
-// Name and description are the only valid options. All other options are
-// ignored.
-func NewSession(scopeId, userId, authMethodId string, opt ...Option) (*Session, error) {
+// NewSession creates a new in memory Session assigned to scopeId for the user id and authmethod used.
+// All options are ignored.
+func NewSession(scopeId, userId, authMethodVersion string, opt ...Option) (*Session, error) {
 	if scopeId == "" {
 		return nil, fmt.Errorf("new: static host catalog: no scope id: %w", db.ErrInvalidParameter)
 	}
+	if userId == "" {
+		return nil, fmt.Errorf("new: static host catalog: no user id: %w", db.ErrInvalidParameter)
+	}
+	if authMethodVersion == "" {
+		return nil, fmt.Errorf("new: static host catalog: no auth method id: %w", db.ErrInvalidParameter)
+	}
 
-	hc := &Session{
+	s := &Session{
 		Session: &store.Session{
 			IamScopeId:   scopeId,
 			IamUserId:    userId,
-			AuthMethodId: authMethodId,
+			AuthMethodId: authMethodVersion,
 		},
 	}
-	return hc, nil
+	return s, nil
 }
 
-func (c *Session) clone() *Session {
-	cp := proto.Clone(c.Session)
+func (s *Session) clone() *Session {
+	cp := proto.Clone(s.Session)
 	return &Session{
 		Session: cp.(*store.Session),
 	}
@@ -54,10 +60,12 @@ func newSessionId() (string, error) {
 	return id, err
 }
 
+// newSessionToken generates a token of length 20 not counting the session token prefix.
 func newSessionToken() (string, error) {
-	id, err := db.NewPublicId(SessionTokenPrefix)
+	// TODO: figure out if this provides enough randomness.
+	token, err := base62.Random(20)
 	if err != nil {
-		return "", fmt.Errorf("new session token: %w", err)
+		return "", fmt.Errorf("Unable to generate session token: %w", err)
 	}
-	return id, err
+	return fmt.Sprintf("%s_%s", SessionTokenPrefix, token), nil
 }

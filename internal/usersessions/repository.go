@@ -39,15 +39,11 @@ func NewRepository(r db.Reader, w db.Writer, wrapper wrapping.Wrapper) (*Reposit
 	}, nil
 }
 
-// CreateSession inserts s into the repository and returns a new
-// Session containing the session's PublicId. c is not changed. c must
-// contain a valid ScopeID. c must not contain a PublicId. The PublicId is
-// generated and assigned by the this method. opt is ignored.
+// CreateSession inserts s into the repository and returns a new Session containing the session's PublicId
+// and token. s is not changed. s must contain a valid ScopeID, UserID, and AuthMethodID. s must not contain
+// a PublicId nor a Token. The PublicId and token are generated and assigned by this method. opt is ignored.
 //
-// Both c.Name and c.Description are optional. If c.Name is set, it must be
-// unique within c.ScopeID.
-//
-// Both c.CreateTime and c.UpdateTime are ignored.
+// Both s.CreateTime and s.UpdateTime are ignored.
 func (r *Repository) CreateSession(ctx context.Context, s *Session, opt ...Option) (*Session, error) {
 	if s == nil {
 		return nil, fmt.Errorf("create: user session: %w", db.ErrNilParameter)
@@ -107,21 +103,40 @@ func (r *Repository) CreateSession(ctx context.Context, s *Session, opt ...Optio
 	return newSession, nil
 }
 
-// LookupSession returns the Session for id. Returns nil, nil if no
-// Session is found for id.
+// LookupSession returns the Session for id. Returns nil, nil if no Session is found for id.
+// Token is not returned in the returned Session.
 func (r *Repository) LookupSession(ctx context.Context, id string, opt ...Option) (*Session, error) {
 	if id == "" {
 		return nil, fmt.Errorf("lookup: user session: missing public id: %w", db.ErrInvalidParameter)
 	}
-	c := allocSession()
-	c.PublicId = id
-	if err := r.reader.LookupByPublicId(ctx, c); err != nil {
+	s := allocSession()
+	s.PublicId = id
+	if err := r.reader.LookupByPublicId(ctx, s); err != nil {
 		if err == db.ErrRecordNotFound {
 			return nil, nil
 		}
 		return nil, fmt.Errorf("lookup: user session: %s: %w", id, err)
 	}
-	return c, nil
+	s.Token = ""
+	return s, nil
+}
+
+// LookupSessionByToken returns the Session for the provided token. Returns nil, nil if no
+// Session is found for the token.
+// TODO: Decide if this API is the correct one which updates the last used time field in a session.
+func (r *Repository) LookupSessionByToken(ctx context.Context, token string, opt ...Option) (*Session, error) {
+	if token == "" {
+		return nil, fmt.Errorf("lookup: user session: missing token: %w", db.ErrInvalidParameter)
+	}
+	s := allocSession()
+	if err := r.reader.LookupWhere(ctx, &s, "token = ?", token); err != nil {
+		if err == db.ErrRecordNotFound {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("lookup by token: user session: %w", err)
+	}
+	s.Token = ""
+	return s, nil
 }
 
 // DeleteSession deletes id from the repository returning a count of the
@@ -131,10 +146,10 @@ func (r *Repository) DeleteSession(ctx context.Context, id string, opt ...Option
 		return db.NoRowsAffected, fmt.Errorf("delete: user session: missing public id: %w", db.ErrInvalidParameter)
 	}
 
-	c := allocSession()
-	c.PublicId = id
+	s := allocSession()
+	s.PublicId = id
 
-	metadata := newSessionMetadata(c, oplog.OpType_OP_TYPE_DELETE)
+	metadata := newSessionMetadata(s, oplog.OpType_OP_TYPE_DELETE)
 
 	var rowsDeleted int
 	var deleteSession *Session
@@ -143,7 +158,7 @@ func (r *Repository) DeleteSession(ctx context.Context, id string, opt ...Option
 		db.StdRetryCnt,
 		db.ExpBackoff{},
 		func(w db.Writer) error {
-			deleteSession = c.clone()
+			deleteSession = s.clone()
 			var err error
 			rowsDeleted, err = w.Delete(
 				ctx,
@@ -158,7 +173,7 @@ func (r *Repository) DeleteSession(ctx context.Context, id string, opt ...Option
 	)
 
 	if err != nil {
-		return db.NoRowsAffected, fmt.Errorf("delete: user session: %s: %w", c.PublicId, err)
+		return db.NoRowsAffected, fmt.Errorf("delete: user session: %s: %w", s.PublicId, err)
 	}
 
 	return rowsDeleted, nil
@@ -174,7 +189,7 @@ func allocSession() *Session {
 func newSessionMetadata(c *Session, op oplog.OpType) oplog.Metadata {
 	metadata := oplog.Metadata{
 		"resource-public-id": []string{c.GetPublicId()},
-		"resource-type":      []string{"user sessions"},
+		"resource-type":      []string{"user session"},
 		"op-type":            []string{op.String()},
 	}
 	if c.IamScopeId != "" {

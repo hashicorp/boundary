@@ -18,19 +18,28 @@ message Session {
 	// @inject_tag: `gorm:"default:current_timestamp"`
 	timestamp.v1.Timestamp update_time = 3;
 
+	// last_used_time indicates the last time the session token was used on the watchtower API.
+	// @inject_tag: `gorm:"default:current_timestamp"`
+	timestamp.v1.Timestamp last_used_time = 4;
+
+	// expiration_time indicates when this session will expire.
+	// If null a default duration and create_time is used to calculate expiration.
+	// @inject_tag: `gorm:"default:null"`
+	timestamp.v1.Timestamp expiration_time = 5;
+
 	// token is the field stored by the client and used
 	// @inject_tag: `gorm:"default:not_null"`
-	string token = 5;
+	string token = 6;
 
 	// The iam_scope_id of the owning scope and must be set.
 	// @inject_tag: `gorm:"default:not_null"`
-	string iam_scope_id = 6;
+	string iam_scope_id = 7;
 
 	// iam_user_id is the public id for the iam user this session is for.
 	// @inject_tag: `gorm:"default:not_null"`
-	string iam_user_id = 7;
+	string iam_user_id = 8;
 
 	// user id is the public id for the iam user this session is for.
 	// @inject_tag: `gorm:"default:not_null"`
-	string auth_method_id = 8;
+	string auth_method_id = 9;
 }

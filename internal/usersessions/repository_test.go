@@ -15,16 +15,15 @@ import (
 )
 
 func TestRepository_New(t *testing.T) {
-
 	cleanup, conn, _ := db.TestSetup(t, "postgres")
-	defer func() {
+	t.Cleanup(func() {
 		if err := conn.Close(); err != nil {
 			t.Error(err)
 		}
 		if err := cleanup(); err != nil {
 			t.Error(err)
 		}
-	}()
+	})
 
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
@@ -125,6 +124,9 @@ func TestRepository_CreateSession(t *testing.T) {
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
 
+	org, _ := iam.TestScopes(t, conn)
+	u := iam.TestUser(t, conn, org.GetPublicId())
+
 	var tests = []struct {
 		name      string
 		in        *Session
@@ -133,39 +135,29 @@ func TestRepository_CreateSession(t *testing.T) {
 		wantIsErr error
 	}{
 		{
-			name:      "nil-catalog",
+			name:      "nil-session",
 			wantIsErr: db.ErrNilParameter,
 		},
 		{
-			name:      "nil-embedded-catalog",
+			name:      "nil-embedded-session",
 			in:        &Session{},
 			wantIsErr: db.ErrNilParameter,
 		},
 		{
 			name: "valid-no-options",
 			in: &Session{
-				Session: &store.Session{},
+				Session: &store.Session{
+					IamScopeId:   org.GetPublicId(),
+					IamUserId:    u.GetPublicId(),
+					AuthMethodId: "something",
+				},
 			},
 			want: &Session{
-				Session: &store.Session{},
-			},
-		},
-		{
-			name: "valid-with-name",
-			in: &Session{
-				Session: &store.Session{},
-			},
-			want: &Session{
-				Session: &store.Session{},
-			},
-		},
-		{
-			name: "valid-with-description",
-			in: &Session{
-				Session: &store.Session{},
-			},
-			want: &Session{
-				Session: &store.Session{},
+				Session: &store.Session{
+					IamScopeId:   org.GetPublicId(),
+					IamUserId:    u.GetPublicId(),
+					AuthMethodId: "something",
+				},
 			},
 		},
 	}
@@ -193,63 +185,9 @@ func TestRepository_CreateSession(t *testing.T) {
 			assert.NotNil(got)
 			assertPublicId(t, SessionPrefix, got.PublicId)
 			assert.NotSame(tt.in, got)
-			assert.Equal(got.CreateTime, got.UpdateTime)
+			assert.Equal(got.CreateTime, got.LastUsedTime)
 		})
 	}
-
-	t.Run("invalid-duplicate-names", func(t *testing.T) {
-		assert := assert.New(t)
-		repo, err := NewRepository(rw, rw, wrapper)
-		assert.NoError(err)
-		assert.NotNil(repo)
-
-		_, prj := iam.TestScopes(t, conn)
-		in := &Session{
-			Session: &store.Session{
-				IamScopeId: prj.GetPublicId(),
-			},
-		}
-
-		got, err := repo.CreateSession(context.Background(), in)
-		assert.NoError(err)
-		assert.NotNil(got)
-		assertPublicId(t, SessionPrefix, got.PublicId)
-		assert.NotSame(in, got)
-		assert.Equal(got.CreateTime, got.UpdateTime)
-
-		got2, err := repo.CreateSession(context.Background(), in)
-		assert.Truef(errors.Is(err, db.ErrNotUnique), "want err: %v got: %v", db.ErrNotUnique, err)
-		assert.Nil(got2)
-	})
-
-	t.Run("valid-duplicate-names-diff-scopes", func(t *testing.T) {
-		assert := assert.New(t)
-		repo, err := NewRepository(rw, rw, wrapper)
-		assert.NoError(err)
-		assert.NotNil(repo)
-
-		org, prj := iam.TestScopes(t, conn)
-		in := &Session{
-			Session: &store.Session{},
-		}
-		in2 := in.clone()
-
-		in.IamScopeId = prj.GetPublicId()
-		got, err := repo.CreateSession(context.Background(), in)
-		assert.NoError(err)
-		assert.NotNil(got)
-		assertPublicId(t, SessionPrefix, got.PublicId)
-		assert.NotSame(in, got)
-		assert.Equal(got.CreateTime, got.UpdateTime)
-
-		in2.IamScopeId = org.GetPublicId()
-		got2, err := repo.CreateSession(context.Background(), in2)
-		assert.NoError(err)
-		assert.NotNil(got2)
-		assertPublicId(t, SessionPrefix, got2.PublicId)
-		assert.NotSame(in2, got2)
-		assert.Equal(got2.CreateTime, got2.UpdateTime)
-	})
 }
 
 func assertPublicId(t *testing.T, prefix, actual string) {
@@ -262,16 +200,18 @@ func assertPublicId(t *testing.T, prefix, actual string) {
 
 func TestRepository_LookupSession(t *testing.T) {
 	cleanup, conn, _ := db.TestSetup(t, "postgres")
-	defer func() {
+	t.Cleanup(func() {
 		if err := cleanup(); err != nil {
 			t.Error(err)
 		}
 		if err := conn.Close(); err != nil {
 			t.Error(err)
 		}
-	}()
+	})
 
 	sess := testSession(t, conn)
+	sess.Token = ""
+
 	badId, err := newSessionId()
 	assert.NoError(t, err)
 	assert.NotNil(t, badId)
@@ -317,30 +257,86 @@ func TestRepository_LookupSession(t *testing.T) {
 				return
 			}
 			assert.NoError(err)
-
-			switch {
-			case tt.want == nil:
-				assert.Nil(got)
-			case tt.want != nil:
-				assert.NotNil(got)
-				assert.Equal(got, tt.want)
-			}
+			assert.Equal(tt.want, got)
 		})
 	}
 }
-
-func TestRepository_DeleteSession(t *testing.T) {
+func TestRepository_LookupSessionByToken(t *testing.T) {
 	cleanup, conn, _ := db.TestSetup(t, "postgres")
-	defer func() {
+	t.Cleanup(func() {
 		if err := cleanup(); err != nil {
 			t.Error(err)
 		}
 		if err := conn.Close(); err != nil {
 			t.Error(err)
 		}
-	}()
+	})
 
-	cat := testSession(t, conn)
+	sess := testSession(t, conn)
+	sessToken := sess.GetToken()
+	sess.Token = ""
+	badToken, err := newSessionToken()
+	assert.NoError(t, err)
+	assert.NotNil(t, badToken)
+
+	rw := db.New(conn)
+	wrapper := db.TestWrapper(t)
+
+	var tests = []struct {
+		name    string
+		token   string
+		want    *Session
+		wantErr error
+	}{
+		{
+			name:  "found",
+			token: sessToken,
+			want:  sess,
+		},
+		{
+			name:  "not-found",
+			token: badToken,
+			want:  nil,
+		},
+		{
+			name:    "bad-token",
+			token:   "",
+			want:    nil,
+			wantErr: db.ErrInvalidParameter,
+		},
+	}
+
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			assert := assert.New(t)
+			repo, err := NewRepository(rw, rw, wrapper)
+			assert.NoError(err)
+			assert.NotNil(repo)
+
+			got, err := repo.LookupSessionByToken(context.Background(), tt.token)
+			if tt.wantErr != nil {
+				assert.Truef(errors.Is(err, tt.wantErr), "want err: %q got: %q", tt.wantErr, err)
+				return
+			}
+			assert.NoError(err)
+			assert.Equal(tt.want, got)
+		})
+	}
+}
+
+func TestRepository_DeleteSession(t *testing.T) {
+	cleanup, conn, _ := db.TestSetup(t, "postgres")
+	t.Cleanup(func() {
+		if err := cleanup(); err != nil {
+			t.Error(err)
+		}
+		if err := conn.Close(); err != nil {
+			t.Error(err)
+		}
+	})
+
+	sess := testSession(t, conn)
 	badId, err := newSessionId()
 	assert.NoError(t, err)
 	assert.NotNil(t, badId)
@@ -356,7 +352,7 @@ func TestRepository_DeleteSession(t *testing.T) {
 	}{
 		{
 			name: "found",
-			id:   cat.GetPublicId(),
+			id:   sess.GetPublicId(),
 			want: 1,
 		},
 		{
