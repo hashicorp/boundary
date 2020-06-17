@@ -53,6 +53,7 @@ func TestDb_Update(t *testing.T) {
 		wantName        string
 		wantEmail       string
 		wantPhoneNumber string
+		wantVersion     int
 	}{
 		{
 			name: "simple",
@@ -94,6 +95,7 @@ func TestDb_Update(t *testing.T) {
 			wantName:        "simple-with-version" + id,
 			wantEmail:       "",
 			wantPhoneNumber: "updated" + id,
+			wantVersion:     2,
 		},
 		{
 			name: "simple-with-bad-version",
@@ -266,6 +268,7 @@ func TestDb_Update(t *testing.T) {
 			assert.NotEqual(now, foundUser.CreateTime)
 			assert.NotEqual(now, foundUser.UpdateTime)
 			assert.NotEqual(publicId, foundUser.PublicId)
+			assert.Equal(u.Version+1, foundUser.Version)
 		})
 	}
 	t.Run("no-version-field", func(t *testing.T) {

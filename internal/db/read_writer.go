@@ -218,7 +218,11 @@ func (rw *Db) Create(ctx context.Context, i interface{}, opt ...Option) error {
 // is responsible for the transaction life cycle of the writer and if an
 // error is returned the caller must decide what to do with the transaction,
 // which almost always should be to rollback.  Update returns the number of
-// rows updated. Supported options: WithOplog.
+// rows updated. Supported options: WithOplog and WithVersion.  If WithVersion
+// is used, then the update will include the version number in the update where
+// clause, which basically makes the update use optimistic locking and the
+// update will only succeed if the existing rows version matches the WithVersion
+// option.
 func (rw *Db) Update(ctx context.Context, i interface{}, fieldMaskPaths []string, setToNullPaths []string, opt ...Option) (int, error) {
 	if rw.underlying == nil {
 		return NoRowsAffected, fmt.Errorf("update: missing underlying db %w", ErrNilParameter)
