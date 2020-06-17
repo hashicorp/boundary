@@ -69,4 +69,24 @@ comment on function
 is
   'function used in before insert triggers to set create_time column to now';
 
+
+create or replace function
+  update_version_column()
+  returns trigger
+as $$
+begin
+  if row(new.*) is distinct from row(old.*) then
+    new.version = old.version + 1;
+    return new;
+  else
+    return old;
+  end if;
+end;
+$$ language plpgsql;
+
+comment on function
+  update_time_column()
+is
+  'function used in before update triggers to properly set version columns';
+
 commit;

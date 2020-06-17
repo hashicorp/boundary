@@ -6,5 +6,6 @@ drop domain wt_public_id;
 drop function default_create_time;
 drop function immutable_create_time_func;
 drop function update_time_column;
+drop function update_version_column;
 
 commit;
