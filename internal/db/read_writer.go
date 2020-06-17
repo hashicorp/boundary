@@ -272,8 +272,16 @@ func (rw *Db) Update(ctx context.Context, i interface{}, fieldMaskPaths []string
 			return NoRowsAffected, fmt.Errorf("update: vet for write failed %w", err)
 		}
 	}
-
-	underlying := rw.underlying.Model(i).Updates(updateFields)
+	var underlying *gorm.DB
+	switch {
+	case opts.WithVersion > 0:
+		if _, ok := scope.FieldByName("version"); !ok {
+			return NoRowsAffected, fmt.Errorf("update: ")
+		}
+		underlying = rw.underlying.Model(i).Where("version = ?", opts.WithVersion).Updates(updateFields)
+	default:
+		underlying = rw.underlying.Model(i).Updates(updateFields)
+	}
 	if underlying.Error != nil {
 		if err == gorm.ErrRecordNotFound {
 			return NoRowsAffected, fmt.Errorf("update: failed %w", ErrRecordNotFound)

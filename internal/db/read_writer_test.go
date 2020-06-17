@@ -75,6 +75,45 @@ func TestDb_Update(t *testing.T) {
 			wantPhoneNumber: "updated" + id,
 		},
 		{
+			name: "simple-with-version",
+			args: args{
+				i: &db_test.TestUser{
+					StoreTestUser: &db_test.StoreTestUser{
+						Name:        "simple-with-version" + id,
+						Email:       "updated" + id,
+						PhoneNumber: "updated" + id,
+					},
+				},
+				fieldMaskPaths: []string{"Name", "PhoneNumber"},
+				setToNullPaths: []string{"Email"},
+				opt:            []Option{WithVersion(1)},
+			},
+			want:            1,
+			wantErr:         false,
+			wantErrMsg:      "",
+			wantName:        "simple-with-version" + id,
+			wantEmail:       "",
+			wantPhoneNumber: "updated" + id,
+		},
+		{
+			name: "simple-with-bad-version",
+			args: args{
+				i: &db_test.TestUser{
+					StoreTestUser: &db_test.StoreTestUser{
+						Name:        "simple-with-bad-version" + id,
+						Email:       "updated" + id,
+						PhoneNumber: "updated" + id,
+					},
+				},
+				fieldMaskPaths: []string{"Name", "PhoneNumber"},
+				setToNullPaths: []string{"Email"},
+				opt:            []Option{WithVersion(22)},
+			},
+			want:       0,
+			wantErr:    false,
+			wantErrMsg: "",
+		},
+		{
 			name: "multiple-null",
 			args: args{
 				i: &db_test.TestUser{
@@ -204,7 +243,9 @@ func TestDb_Update(t *testing.T) {
 			}
 			assert.NoError(err)
 			assert.Equal(tt.want, rowsUpdated)
-
+			if tt.want == 0 {
+				return
+			}
 			foundUser, err := db_test.NewTestUser()
 			assert.NoError(err)
 			foundUser.PublicId = tt.args.i.PublicId
@@ -227,6 +268,19 @@ func TestDb_Update(t *testing.T) {
 			assert.NotEqual(publicId, foundUser.PublicId)
 		})
 	}
+	t.Run("no-version-field", func(t *testing.T) {
+		assert := assert.New(t)
+		w := Db{underlying: db}
+		id, err := uuid.GenerateUUID()
+		assert.NoError(err)
+		car := testCar(t, db, "foo-"+id, id, int32(100))
+
+		car.Name = "friendly-" + id
+		rowsUpdated, err := w.Update(context.Background(), car, []string{"Name"}, nil, WithVersion(1))
+		assert.Error(err)
+		assert.Equal(0, rowsUpdated)
+	})
+
 	t.Run("valid-WithOplog", func(t *testing.T) {
 		assert := assert.New(t)
 		w := Db{underlying: db}
@@ -1200,6 +1254,26 @@ func testUser(t *testing.T, conn *gorm.DB, name, email, phoneNumber string) *db_
 		assert.NoError(err)
 	}
 	return u
+}
+func testCar(t *testing.T, conn *gorm.DB, name, model string, mpg int32) *db_test.TestCar {
+	t.Helper()
+	require := require.New(t)
+
+	publicId, err := base62.Random(20)
+	require.NoError(err)
+	c := &db_test.TestCar{
+		StoreTestCar: &db_test.StoreTestCar{
+			PublicId: publicId,
+			Name:     name,
+			Model:    model,
+			Mpg:      mpg,
+		},
+	}
+	if conn != nil {
+		err = conn.Create(c).Error
+		require.NoError(err)
+	}
+	return c
 }
 
 func testId(t *testing.T) string {
