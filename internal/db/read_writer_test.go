@@ -1,7 +1,6 @@
 package db
 
 import (
-	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -10,7 +9,6 @@ import (
 	"time"
 
 	"github.com/golang/protobuf/ptypes"
-	"github.com/hashicorp/go-hclog"
 	wrapping "github.com/hashicorp/go-kms-wrapping"
 	"github.com/hashicorp/go-uuid"
 	"github.com/hashicorp/vault/sdk/helper/base62"
@@ -676,67 +674,116 @@ func TestDb_SearchWhere(t *testing.T) {
 	t.Parallel()
 	cleanup, db, _ := TestSetup(t, "postgres")
 	defer func() {
-		if err := cleanup(); err != nil {
-			t.Error(err)
-		}
+		err := cleanup()
+		assert.NoError(t, err)
+		err = db.Close()
+		assert.NoError(t, err)
 	}()
-	assert := assert.New(t)
-	defer db.Close()
+	knownUser := testUser(t, db, "", "", "")
 
-	buf := new(bytes.Buffer)
-	log := hclog.New(&hclog.LoggerOptions{
-		Output: buf,
-		Level:  hclog.Trace,
-	})
-	gorm.LogFormatter = GetGormLogFormatter(log)
-	db.SetLogger(GetGormLogger(log))
-	db.LogMode(true)
-	defer func() {
-		assert.True(strings.Contains(buf.String(), "syntax error at or near"))
-	}()
+	type args struct {
+		where string
+		arg   []interface{}
+		opt   []Option
+	}
+	tests := []struct {
+		name      string
+		db        Db
+		createCnt int
+		args      args
+		wantCnt   int
+		wantErr   bool
+	}{
+		{
+			name:      "no-limit",
+			db:        Db{underlying: db},
+			createCnt: 10,
+			args: args{
+				where: "1=1",
+				opt:   []Option{WithLimit(-1)},
+			},
+			wantCnt: 11, // there's an additional knownUser
+			wantErr: false,
+		},
+		{
+			name:      "custom-limit",
+			db:        Db{underlying: db},
+			createCnt: 10,
+			args: args{
+				where: "1=1",
+				opt:   []Option{WithLimit(3)},
+			},
+			wantCnt: 3,
+			wantErr: false,
+		},
+		{
+			name:      "simple",
+			db:        Db{underlying: db},
+			createCnt: 1,
+			args: args{
+				where: "public_id = ?",
+				arg:   []interface{}{knownUser.PublicId},
+				opt:   []Option{WithLimit(3)},
+			},
+			wantCnt: 1,
+			wantErr: false,
+		},
+		{
+			name:      "not-found",
+			db:        Db{underlying: db},
+			createCnt: 1,
+			args: args{
+				where: "public_id = ?",
+				arg:   []interface{}{"bad-id"},
+				opt:   []Option{WithLimit(3)},
+			},
+			wantCnt: 0,
+			wantErr: false,
+		},
+		{
+			name:      "bad-where",
+			db:        Db{underlying: db},
+			createCnt: 1,
+			args: args{
+				where: "bad_column_name = ?",
+				arg:   []interface{}{knownUser.PublicId},
+				opt:   []Option{WithLimit(3)},
+			},
+			wantCnt: 0,
+			wantErr: true,
+		},
+		{
+			name:      "nil-underlying",
+			db:        Db{},
+			createCnt: 1,
+			args: args{
+				where: "public_id = ?",
+				arg:   []interface{}{knownUser.PublicId},
+				opt:   []Option{WithLimit(3)},
+			},
+			wantCnt: 0,
+			wantErr: true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+			testUsers := []*db_test.TestUser{}
+			for i := 0; i < tt.createCnt; i++ {
+				testUsers = append(testUsers, testUser(t, db, "", "", ""))
+			}
+			assert.Equal(tt.createCnt, len(testUsers))
 
-	t.Run("simple", func(t *testing.T) {
-		w := Db{underlying: db}
-		id, err := uuid.GenerateUUID()
-		assert.NoError(err)
-		user, err := db_test.NewTestUser()
-		assert.NoError(err)
-		user.Name = "foo-" + id
-		err = w.Create(context.Background(), user)
-		assert.NoError(err)
-		assert.NotEmpty(user.PublicId)
-
-		var foundUsers []db_test.TestUser
-		err = w.SearchWhere(context.Background(), &foundUsers, "public_id = ?", user.PublicId)
-		assert.NoError(err)
-		assert.Equal(foundUsers[0].Id, user.Id)
-	})
-	t.Run("tx-nil,", func(t *testing.T) {
-		w := Db{}
-		var foundUsers []db_test.TestUser
-		err := w.SearchWhere(context.Background(), &foundUsers, "public_id = ?", 1)
-		assert.Error(err)
-		assert.Equal("error underlying db nil for search by", err.Error())
-	})
-	t.Run("not-found", func(t *testing.T) {
-		w := Db{underlying: db}
-		id, err := uuid.GenerateUUID()
-		assert.NoError(err)
-
-		var foundUsers []db_test.TestUser
-		err = w.SearchWhere(context.Background(), &foundUsers, "public_id = ?", id)
-		assert.NoError(err)
-		assert.Equal(0, len(foundUsers))
-	})
-	t.Run("bad-where", func(t *testing.T) {
-		w := Db{underlying: db}
-		id, err := uuid.GenerateUUID()
-		assert.NoError(err)
-
-		var foundUsers []db_test.TestUser
-		err = w.SearchWhere(context.Background(), &foundUsers, "? = ?", id)
-		assert.Error(err)
-	})
+			var foundUsers []db_test.TestUser
+			err := tt.db.SearchWhere(context.Background(), &foundUsers, tt.args.where, tt.args.arg, tt.args.opt...)
+			if tt.wantErr {
+				require.Error(err)
+				return
+			}
+			require.NoError(err)
+			assert.Equal(tt.wantCnt, len(foundUsers))
+		})
+	}
 }
 
 func TestDb_DB(t *testing.T) {

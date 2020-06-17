@@ -1,18 +1,18 @@
-package users_test
+package groups_test
 
 import (
 	"net/http"
 	"testing"
 
 	"github.com/hashicorp/watchtower/api"
+	"github.com/hashicorp/watchtower/api/groups"
 	"github.com/hashicorp/watchtower/api/scopes"
-	"github.com/hashicorp/watchtower/api/users"
 	"github.com/hashicorp/watchtower/internal/iam"
 	"github.com/hashicorp/watchtower/internal/servers/controller"
 	"github.com/stretchr/testify/assert"
 )
 
-func TestUser_Crud(t *testing.T) {
+func TestGroup_Crud(t *testing.T) {
 	tc := controller.NewTestController(t, nil)
 	defer tc.Shutdown()
 
@@ -21,46 +21,46 @@ func TestUser_Crud(t *testing.T) {
 		Client: client,
 	}
 
-	checkUser := func(step string, u *users.User, apiErr *api.Error, err error, wantedName string) {
+	checkGroup := func(step string, g *groups.Group, apiErr *api.Error, err error, wantedName string) {
 		assert := assert.New(t)
 		assert.NoError(err, step)
 		if !assert.Nil(apiErr, step) && apiErr.Message != nil {
 			t.Errorf("ApiError message: %q", *apiErr.Message)
 		}
-		assert.NotNil(u, "returned no resource", step)
+		assert.NotNil(g, "returned no resource", step)
 		gotName := ""
-		if u.Name != nil {
-			gotName = *u.Name
+		if g.Name != nil {
+			gotName = *g.Name
 		}
 		assert.Equal(wantedName, gotName, step)
 	}
 
-	u, apiErr, err := org.CreateUser(tc.Context(), &users.User{Name: api.String("foo")})
-	checkUser("create", u, apiErr, err, "foo")
+	g, apiErr, err := org.CreateGroup(tc.Context(), &groups.Group{Name: api.String("foo")})
+	checkGroup("create", g, apiErr, err, "foo")
 
-	u, apiErr, err = org.ReadUser(tc.Context(), &users.User{Id: u.Id})
-	checkUser("read", u, apiErr, err, "foo")
+	g, apiErr, err = org.ReadGroup(tc.Context(), &groups.Group{Id: g.Id})
+	checkGroup("read", g, apiErr, err, "foo")
 
-	u = &users.User{Id: u.Id}
-	u.Name = api.String("bar")
-	u, apiErr, err = org.UpdateUser(tc.Context(), u)
-	checkUser("update", u, apiErr, err, "bar")
+	g = &groups.Group{Id: g.Id}
+	g.Name = api.String("bar")
+	g, apiErr, err = org.UpdateGroup(tc.Context(), g)
+	checkGroup("update", g, apiErr, err, "bar")
 
-	u = &users.User{Id: u.Id}
-	u.SetDefault("name")
-	u, apiErr, err = org.UpdateUser(tc.Context(), u)
-	checkUser("update", u, apiErr, err, "")
+	g = &groups.Group{Id: g.Id}
+	g.SetDefault("name")
+	g, apiErr, err = org.UpdateGroup(tc.Context(), g)
+	checkGroup("update", g, apiErr, err, "")
 
-	existed, apiErr, err := org.DeleteUser(tc.Context(), u)
+	existed, apiErr, err := org.DeleteGroup(tc.Context(), g)
 	assert.NoError(t, err)
 	assert.True(t, existed, "Expected existing user when deleted, but it wasn't.")
 
-	existed, apiErr, err = org.DeleteUser(tc.Context(), u)
+	existed, apiErr, err = org.DeleteGroup(tc.Context(), g)
 	assert.NoError(t, err)
 	assert.False(t, existed, "Expected user to not exist when deleted, but it did.")
 }
 
-func TestUser_Errors(t *testing.T) {
+func TestGroup_Errors(t *testing.T) {
 	assert := assert.New(t)
 	tc := controller.NewTestController(t, nil)
 	defer tc.Shutdown()
@@ -71,27 +71,27 @@ func TestUser_Errors(t *testing.T) {
 		Client: client,
 	}
 
-	u, apiErr, err := org.CreateUser(ctx, &users.User{Name: api.String("first")})
+	u, apiErr, err := org.CreateGroup(ctx, &groups.Group{Name: api.String("first")})
 	assert.NoError(err)
 	assert.Nil(apiErr)
 	assert.NotNil(u)
 
 	// Create another resource with the same name.
-	_, apiErr, err = org.CreateUser(ctx, &users.User{Name: api.String("first")})
+	_, apiErr, err = org.CreateGroup(ctx, &groups.Group{Name: api.String("first")})
 	assert.NoError(err)
 	assert.NotNil(apiErr)
 
-	_, apiErr, err = org.ReadUser(ctx, &users.User{Id: iam.UserPrefix + "_doesntexis"})
+	_, apiErr, err = org.ReadGroup(ctx, &groups.Group{Id: iam.GroupPrefix + "_doesntexis"})
 	assert.NoError(err)
 	assert.NotNil(apiErr)
 	assert.EqualValues(*apiErr.Status, http.StatusNotFound)
 
-	_, apiErr, err = org.ReadUser(ctx, &users.User{Id: "invalid id"})
+	_, apiErr, err = org.ReadGroup(ctx, &groups.Group{Id: "invalid id"})
 	assert.NoError(err)
 	assert.NotNil(apiErr)
 	assert.EqualValues(*apiErr.Status, http.StatusBadRequest)
 
-	_, apiErr, err = org.UpdateUser(ctx, &users.User{Id: u.Id})
+	_, apiErr, err = org.UpdateGroup(ctx, &groups.Group{Id: u.Id})
 	assert.NoError(err)
 	assert.NotNil(apiErr)
 	assert.EqualValues(*apiErr.Status, http.StatusBadRequest)

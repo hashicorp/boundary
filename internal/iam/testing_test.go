@@ -67,7 +67,6 @@ func Test_TestUser(t *testing.T) {
 		err = conn.Close()
 		assert.NoError(err)
 	}()
-
 	org, _ := TestScopes(t, conn)
 
 	require.NotNil(org)
@@ -76,4 +75,27 @@ func Test_TestUser(t *testing.T) {
 	user := TestUser(t, conn, org.PublicId)
 	require.NotNil(user)
 	assert.NotEmpty(user.PublicId)
+}
+
+func Test_TestRole(t *testing.T) {
+	t.Helper()
+	assert, require := assert.New(t), require.New(t)
+	cleanup, conn, _ := db.TestSetup(t, "postgres")
+	defer func() {
+		err := cleanup()
+		assert.NoError(err)
+		err = conn.Close()
+		assert.NoError(err)
+	}()
+	id := testId(t)
+	org, proj := TestScopes(t, conn)
+	role := TestRole(t, conn, org.PublicId, WithDescription(id), WithName(id))
+	require.NotNil(role)
+	assert.Equal(id, role.Description)
+	assert.Equal(id, role.Name)
+	assert.NotEmpty(role.PublicId)
+
+	projRole := TestRole(t, conn, proj.PublicId)
+	require.NotNil(projRole)
+	assert.NotEmpty(projRole.PublicId)
 }
