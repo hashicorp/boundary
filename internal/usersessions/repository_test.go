@@ -113,14 +113,14 @@ func TestRepository_New(t *testing.T) {
 
 func TestRepository_CreateSession(t *testing.T) {
 	cleanup, conn, _ := db.TestSetup(t, "postgres")
-	defer func() {
+	t.Cleanup(func() {
 		if err := cleanup(); err != nil {
 			t.Error(err)
 		}
 		if err := conn.Close(); err != nil {
 			t.Error(err)
 		}
-	}()
+	})
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
 
