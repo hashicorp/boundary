@@ -25,11 +25,11 @@ type Repository struct {
 func NewRepository(r db.Reader, w db.Writer, wrapper wrapping.Wrapper) (*Repository, error) {
 	switch {
 	case r == nil:
-		return nil, fmt.Errorf("db.Reader: %w", db.ErrNilParameter)
+		return nil, fmt.Errorf("db.Reader: user session: %w", db.ErrNilParameter)
 	case w == nil:
-		return nil, fmt.Errorf("db.Writer: %w", db.ErrNilParameter)
+		return nil, fmt.Errorf("db.Writer: user session: %w", db.ErrNilParameter)
 	case wrapper == nil:
-		return nil, fmt.Errorf("wrapping.Wrapper: %w", db.ErrNilParameter)
+		return nil, fmt.Errorf("wrapping.Wrapper: user session: %w", db.ErrNilParameter)
 	}
 
 	return &Repository{
