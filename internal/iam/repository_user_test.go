@@ -515,6 +515,7 @@ func TestRepository_ListUsers(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
+			conn.Where("1=1").Delete(allocUser())
 			testUsers := []*User{}
 			for i := 0; i < tt.createCnt; i++ {
 				testUsers = append(testUsers, TestUser(t, conn, org.PublicId))
