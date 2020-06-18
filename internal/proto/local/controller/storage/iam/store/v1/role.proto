@@ -35,4 +35,8 @@ message Role {
   // disabled is by default false and allows a Role to be marked disabled.
   // @inject_tag: `gorm:"default:null"`
   bool disabled = 9;
+
+  // version allows optimistic locking of the role when modifying the role
+  // itself and when modifying dependent items like principal roles.
+  uint32 version = 10;
 }

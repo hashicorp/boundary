@@ -177,8 +177,19 @@ create table iam_role (
     description text,
     scope_id wt_public_id not null references iam_scope(public_id) on delete cascade on update cascade,
     unique(name, scope_id),
-    disabled boolean not null default false
+    disabled boolean not null default false,
+    -- version allows optimistic locking of the role when modifying the role
+    -- itself and when modifying dependent items like principal roles. 
+    -- TODO (jlambert 6/2020) add before update trigger to automatically
+    -- increment the version when needed.  This trigger can be addded when PR
+    -- #126 is merged and update_version_column() is available.
+    version bigint not null default 1
   );
+
+-- create trigger 
+--   update_version_column
+-- before update on iam_role
+--   for each row execute procedure update_version_column();
 
 create trigger 
   update_time_column 
