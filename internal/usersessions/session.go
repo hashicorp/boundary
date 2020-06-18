@@ -18,14 +18,14 @@ type Session struct {
 
 // NewSession creates a new in memory Session assigned to scopeId for the user id and authmethod used.
 // All options are ignored.
-func NewSession(scopeId, userId, authMethodVersion string, opt ...Option) (*Session, error) {
+func NewSession(scopeId, userId, authMethodId string, opt ...Option) (*Session, error) {
 	if scopeId == "" {
 		return nil, fmt.Errorf("new: static host catalog: no scope id: %w", db.ErrInvalidParameter)
 	}
 	if userId == "" {
 		return nil, fmt.Errorf("new: static host catalog: no user id: %w", db.ErrInvalidParameter)
 	}
-	if authMethodVersion == "" {
+	if authMethodId == "" {
 		return nil, fmt.Errorf("new: static host catalog: no auth method id: %w", db.ErrInvalidParameter)
 	}
 
@@ -33,7 +33,7 @@ func NewSession(scopeId, userId, authMethodVersion string, opt ...Option) (*Sess
 		Session: &store.Session{
 			IamScopeId:   scopeId,
 			IamUserId:    userId,
-			AuthMethodId: authMethodVersion,
+			AuthMethodId: authMethodId,
 		},
 	}
 	return s, nil
