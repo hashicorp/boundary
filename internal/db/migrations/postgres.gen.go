@@ -332,8 +332,8 @@ commit;
 
 `),
 	},
-	"migrations/04_iam.down.sql": {
-		name: "04_iam.down.sql",
+	"migrations/06_iam.down.sql": {
+		name: "06_iam.down.sql",
 		bytes: []byte(`
 BEGIN;
 
@@ -354,8 +354,8 @@ COMMIT;
 
 `),
 	},
-	"migrations/04_iam.up.sql": {
-		name: "04_iam.up.sql",
+	"migrations/06_iam.up.sql": {
+		name: "06_iam.up.sql",
 		bytes: []byte(`
 begin;
 
