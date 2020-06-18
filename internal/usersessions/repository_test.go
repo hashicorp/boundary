@@ -6,8 +6,12 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/golang/protobuf/ptypes"
+	"github.com/google/go-cmp/cmp"
 	wrapping "github.com/hashicorp/go-kms-wrapping"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+	"google.golang.org/protobuf/testing/protocmp"
 
 	"github.com/hashicorp/watchtower/internal/db"
 	"github.com/hashicorp/watchtower/internal/iam"
@@ -124,8 +128,10 @@ func TestRepository_CreateSession(t *testing.T) {
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
 
-	org, _ := iam.TestScopes(t, conn)
-	u := iam.TestUser(t, conn, org.GetPublicId())
+	org1, _ := iam.TestScopes(t, conn)
+	u1 := iam.TestUser(t, conn, org1.GetPublicId())
+	org2, _ := iam.TestScopes(t, conn)
+	u2 := iam.TestUser(t, conn, org2.GetPublicId())
 
 	var tests = []struct {
 		name      string
@@ -147,33 +153,39 @@ func TestRepository_CreateSession(t *testing.T) {
 			name: "valid-no-options",
 			in: &Session{
 				Session: &store.Session{
-					IamScopeId:   org.GetPublicId(),
-					IamUserId:    u.GetPublicId(),
+					IamScopeId:   org1.GetPublicId(),
+					IamUserId:    u1.GetPublicId(),
 					AuthMethodId: "something",
 				},
 			},
 			want: &Session{
 				Session: &store.Session{
-					IamScopeId:   org.GetPublicId(),
-					IamUserId:    u.GetPublicId(),
+					IamScopeId:   org1.GetPublicId(),
+					IamUserId:    u1.GetPublicId(),
 					AuthMethodId: "something",
 				},
 			},
 		},
+		{
+			name: "scope-mismatch-with-iam-user",
+			in: &Session{
+				Session: &store.Session{
+					IamScopeId:   org1.GetPublicId(),
+					IamUserId:    u2.GetPublicId(),
+					AuthMethodId: "something",
+				},
+			},
+			wantIsErr: db.ErrNilParameter,
+		},
+		// TODO: Test scope mismatch with auth method.
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			assert := assert.New(t)
 			repo, err := NewRepository(rw, rw, wrapper)
 			assert.NoError(err)
 			assert.NotNil(repo)
-			_, prj := iam.TestScopes(t, conn)
-			if tt.in != nil && tt.in.Session != nil {
-				tt.in.IamScopeId = prj.GetPublicId()
-				assert.Empty(tt.in.PublicId)
-			}
 			got, err := repo.CreateSession(context.Background(), tt.in, tt.opts...)
 			if tt.wantIsErr != nil {
 				assert.Truef(errors.Is(err, tt.wantIsErr), "want err: %q got: %q", tt.wantIsErr, err)
@@ -261,7 +273,9 @@ func TestRepository_LookupSession(t *testing.T) {
 		})
 	}
 }
-func TestRepository_LookupSessionByToken(t *testing.T) {
+
+func TestRepository_UpdateLastUsed(t *testing.T) {
+	assert, require := assert.New(t), require.New(t)
 	cleanup, conn, _ := db.TestSetup(t, "postgres")
 	t.Cleanup(func() {
 		if err := cleanup(); err != nil {
@@ -276,8 +290,8 @@ func TestRepository_LookupSessionByToken(t *testing.T) {
 	sessToken := sess.GetToken()
 	sess.Token = ""
 	badToken, err := newSessionToken()
-	assert.NoError(t, err)
-	assert.NotNil(t, badToken)
+	assert.NoError(err)
+	assert.NotNil(badToken)
 
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
@@ -289,12 +303,12 @@ func TestRepository_LookupSessionByToken(t *testing.T) {
 		wantErr error
 	}{
 		{
-			name:  "found",
+			name:  "exists",
 			token: sessToken,
 			want:  sess,
 		},
 		{
-			name:  "not-found",
+			name:  "doesnt-exist",
 			token: badToken,
 			want:  nil,
 		},
@@ -309,18 +323,34 @@ func TestRepository_LookupSessionByToken(t *testing.T) {
 	for _, tt := range tests {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
-			assert := assert.New(t)
 			repo, err := NewRepository(rw, rw, wrapper)
 			assert.NoError(err)
 			assert.NotNil(repo)
 
-			got, err := repo.LookupSessionByToken(context.Background(), tt.token)
+			got, err := repo.UpdateLastUsed(context.Background(), tt.token)
 			if tt.wantErr != nil {
 				assert.Truef(errors.Is(err, tt.wantErr), "want err: %q got: %q", tt.wantErr, err)
 				return
 			}
 			assert.NoError(err)
-			assert.Equal(tt.want, got)
+			if tt.want == nil {
+				assert.Nil(got)
+				// No need to compare updated time if we didn't get an initial session to compare against.
+				return
+			}
+			assert.Empty(cmp.Diff(tt.want.Session, got.Session, protocmp.Transform()))
+
+			got2, err := repo.UpdateLastUsed(context.Background(), tt.token)
+			if tt.wantErr != nil {
+				assert.Truef(errors.Is(err, tt.wantErr), "want err: %q got: %q", tt.wantErr, err)
+				return
+			}
+			assert.NoError(err)
+			time1, err := ptypes.Timestamp(got.GetLastUsedTime().GetTimestamp())
+			require.NoError(err)
+			time2, err := ptypes.Timestamp(got2.GetLastUsedTime().GetTimestamp())
+			require.NoError(err)
+			assert.True(time2.After(time1), "Second last update time %q was not after first time %q", time2, time1)
 		})
 	}
 }

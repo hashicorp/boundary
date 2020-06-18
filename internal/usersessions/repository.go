@@ -40,8 +40,9 @@ func NewRepository(r db.Reader, w db.Writer, wrapper wrapping.Wrapper) (*Reposit
 }
 
 // CreateSession inserts s into the repository and returns a new Session containing the session's PublicId
-// and token. s is not changed. s must contain a valid ScopeID, UserID, and AuthMethodID. s must not contain
-// a PublicId nor a Token. The PublicId and token are generated and assigned by this method. opt is ignored.
+// and token. s is not changed. s must contain a valid ScopeID, UserID, and AuthMethodID.  The scopes for
+// the user, auth method, and this session must all be the same.  s must not contain a PublicId nor a Token.
+// The PublicId and token are generated and assigned by this method. opt is ignored.
 //
 // Both s.CreateTime and s.UpdateTime are ignored.
 func (r *Repository) CreateSession(ctx context.Context, s *Session, opt ...Option) (*Session, error) {
@@ -104,7 +105,7 @@ func (r *Repository) CreateSession(ctx context.Context, s *Session, opt ...Optio
 }
 
 // LookupSession returns the Session for id. Returns nil, nil if no Session is found for id.
-// Token is not returned in the returned Session.
+// Token is not returned in the returned Session. All options are ignored.
 func (r *Repository) LookupSession(ctx context.Context, id string, opt ...Option) (*Session, error) {
 	if id == "" {
 		return nil, fmt.Errorf("lookup: user session: missing public id: %w", db.ErrInvalidParameter)
@@ -121,10 +122,9 @@ func (r *Repository) LookupSession(ctx context.Context, id string, opt ...Option
 	return s, nil
 }
 
-// LookupSessionByToken returns the Session for the provided token. Returns nil, nil if no
-// Session is found for the token.
-// TODO: Decide if this API is the correct one which updates the last used time field in a session.
-func (r *Repository) LookupSessionByToken(ctx context.Context, token string, opt ...Option) (*Session, error) {
+// UpdateLastAccessed updates the last accessed field and returns a Session with the previous value for Last Accessed
+// populated. Returns nil, nil if no Session is found for the token.  All options are ignored.
+func (r *Repository) UpdateLastUsed(ctx context.Context, token string, opt ...Option) (*Session, error) {
 	if token == "" {
 		return nil, fmt.Errorf("lookup: user session: missing token: %w", db.ErrInvalidParameter)
 	}
@@ -136,11 +136,42 @@ func (r *Repository) LookupSessionByToken(ctx context.Context, token string, opt
 		return nil, fmt.Errorf("lookup by token: user session: %w", err)
 	}
 	s.Token = ""
+	metadata := newSessionMetadata(s, oplog.OpType_OP_TYPE_UPDATE)
+
+	// TODO: Issue the lookup in the same transaction as the Update.
+	var rowsUpdated int
+	var sess *Session
+	_, err := r.writer.DoTx(
+		ctx,
+		0,
+		db.ExpBackoff{},
+		func(w db.Writer) error {
+			sess = s.clone()
+			var err error
+			rowsUpdated, err = w.Update(
+				ctx,
+				sess,
+				nil,
+				[]string{"LastUsedTime"},
+				db.WithOplog(r.wrapper, metadata),
+			)
+			if err == nil && rowsUpdated > 1 {
+				return db.ErrMultipleRecords
+			}
+			return err
+		},
+	)
+
+	if err != nil {
+		return nil, fmt.Errorf("update: user session: %s: %w", s.PublicId, err)
+	}
 	return s, nil
 }
 
+// TODO(ICU-344): Add ListSessions
+
 // DeleteSession deletes id from the repository returning a count of the
-// number of records deleted.
+// number of records deleted.  All options are ignored.
 func (r *Repository) DeleteSession(ctx context.Context, id string, opt ...Option) (int, error) {
 	if id == "" {
 		return db.NoRowsAffected, fmt.Errorf("delete: user session: missing public id: %w", db.ErrInvalidParameter)
@@ -186,14 +217,14 @@ func allocSession() *Session {
 	return fresh
 }
 
-func newSessionMetadata(c *Session, op oplog.OpType) oplog.Metadata {
+func newSessionMetadata(s *Session, op oplog.OpType) oplog.Metadata {
 	metadata := oplog.Metadata{
-		"resource-public-id": []string{c.GetPublicId()},
+		"resource-public-id": []string{s.GetPublicId()},
 		"resource-type":      []string{"user session"},
 		"op-type":            []string{op.String()},
 	}
-	if c.IamScopeId != "" {
-		metadata["scope-id"] = []string{c.IamScopeId}
+	if s.IamScopeId != "" {
+		metadata["scope-id"] = []string{s.IamScopeId}
 	}
 	return metadata
 }
