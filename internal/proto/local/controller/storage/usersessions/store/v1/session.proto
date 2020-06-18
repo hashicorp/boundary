@@ -18,9 +18,9 @@ message Session {
 	// @inject_tag: `gorm:"default:current_timestamp"`
 	timestamp.v1.Timestamp update_time = 3;
 
-	// last_used_time indicates the last time the session token was used on the watchtower API.
+	// last_access_time indicates the last time the session token was used on the watchtower API.
 	// @inject_tag: `gorm:"default:current_timestamp"`
-	timestamp.v1.Timestamp last_used_time = 4;
+	timestamp.v1.Timestamp last_access_time = 4;
 
 	// expiration_time indicates when this session will expire.
 	// If null a default duration and create_time is used to calculate expiration.

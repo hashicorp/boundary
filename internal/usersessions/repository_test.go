@@ -197,7 +197,8 @@ func TestRepository_CreateSession(t *testing.T) {
 			assert.NotNil(got)
 			assertPublicId(t, SessionPrefix, got.PublicId)
 			assert.NotSame(tt.in, got)
-			assert.Equal(got.CreateTime, got.LastUsedTime)
+			assert.Equal(got.CreateTime, got.UpdateTime)
+			assert.Equal(got.CreateTime, got.LastAccessTime)
 		})
 	}
 }
@@ -346,9 +347,9 @@ func TestRepository_UpdateLastUsed(t *testing.T) {
 				return
 			}
 			assert.NoError(err)
-			time1, err := ptypes.Timestamp(got.GetLastUsedTime().GetTimestamp())
+			time1, err := ptypes.Timestamp(got.GetLastAccessTime().GetTimestamp())
 			require.NoError(err)
-			time2, err := ptypes.Timestamp(got2.GetLastUsedTime().GetTimestamp())
+			time2, err := ptypes.Timestamp(got2.GetLastAccessTime().GetTimestamp())
 			require.NoError(err)
 			assert.True(time2.After(time1), "Second last update time %q was not after first time %q", time2, time1)
 		})

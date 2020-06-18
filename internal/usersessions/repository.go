@@ -152,7 +152,7 @@ func (r *Repository) UpdateLastUsed(ctx context.Context, token string, opt ...Op
 				ctx,
 				sess,
 				nil,
-				[]string{"LastUsedTime"},
+				[]string{"LastAccessTime"},
 				db.WithOplog(r.wrapper, metadata),
 			)
 			if err == nil && rowsUpdated > 1 {

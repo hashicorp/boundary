@@ -761,29 +761,29 @@ begin;
     auth_method_id text,
     create_time wt_timestamp,
     update_time wt_timestamp,
-    last_used_time wt_timestamp,
+    last_access_time wt_timestamp,
     expiration_time wt_timestamp
   );
 
 
-create or replace function
-  update_last_used_column()
-  returns trigger
-as $$
-begin
-  if row(new.last_used_time) is distinct from row(old.last_used_time) then
-    new.last_used_time = now();
-    return new;
-  else
-    return old;
-  end if;
-end;
-$$ language plpgsql;
+  create or replace function
+    update_last_access_time_column()
+    returns trigger
+  as $$
+  begin
+    if row(new.last_access_time) is distinct from row(old.last_access_time) then
+      new.last_access_time = now();
+      return new;
+    else
+      return old;
+    end if;
+  end;
+  $$ language plpgsql;
 
-comment on function
-  update_last_used_column()
-is
-  'function used in before update triggers to properly set last_used columns';
+  comment on function
+    update_last_access_time_column()
+  is
+    'function used in before update triggers to properly set last_access_time columns';
 
   create or replace function
     immutable_iam_user_id()
@@ -879,9 +879,9 @@ is
     for each row execute procedure update_time_column();
 
   create trigger
-    update_last_used_column
+    update_last_access_time_column
   before update on user_session
-    for each row execute procedure update_last_used_column();
+    for each row execute procedure update_last_access_time_column();
 
   create trigger
     immutable_create_time
