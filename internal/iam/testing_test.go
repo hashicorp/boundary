@@ -27,6 +27,24 @@ func Test_testOrg(t *testing.T) {
 	assert.NotEmpty(org.PublicId)
 }
 
+func Test_testProj(t *testing.T) {
+	assert := assert.New(t)
+
+	cleanup, conn, _ := db.TestSetup(t, "postgres")
+	defer func() {
+		err := cleanup()
+		assert.NoError(err)
+		err = conn.Close()
+		assert.NoError(err)
+	}()
+	id := testId(t)
+
+	org := testOrg(t, conn, id, id)
+	proj := testProject(t, conn, org.PublicId, WithName(id), WithDescription(id))
+	assert.Equal(id, proj.Name)
+	assert.Equal(id, proj.Description)
+	assert.NotEmpty(proj.PublicId)
+}
 func Test_testId(t *testing.T) {
 	assert := assert.New(t)
 	id := testId(t)
