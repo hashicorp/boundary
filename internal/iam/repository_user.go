@@ -118,3 +118,21 @@ func (r *Repository) ListUsers(ctx context.Context, withOrganizationId string, o
 	}
 	return users, nil
 }
+
+// ObtainUserByLogin will attempt to LookupUserByLogin within the scope and
+// authMethod with a matching LoginId and return the user if found.  If a user
+// is not found then a new User will be created in the scope provided and
+// associated the authMethod and LoginId provided.  WithCredentialId is a
+// supported option and if not empty will be included in the search criteria and
+// association data when it's necessary to crate a new user.
+func (r *Repository) ObtainUserByLogin(ctx context.Context, withScope, withAuthMethodId, withLoginId string, opt ...Option) (*User, error) {
+	panic("not implemented.")
+}
+
+// LookupUserByLogin within the scope and authMethod with a matching LoginId.
+// WithCredentialId is a supported option and if not empty will be included in
+// the search criteria.  The function will return nil, nil when a user is not
+// found matching the provided criteria.
+func (r *Repository) LookupUserByLogin(ctx context.Context, withScope, withAuthMethodId, withLoginId string, opt ...Option) (*User, error) {
+	panic("not implemented.")
+}
