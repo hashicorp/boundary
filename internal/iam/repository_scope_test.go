@@ -563,6 +563,7 @@ func TestRepository_ListProjects(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
+			require.NoError(conn.Where("public_id != ?", org.PublicId).Delete(allocScope()).Error)
 			testProjects := []*Scope{}
 			for i := 0; i < tt.createCnt; i++ {
 				testProjects = append(testProjects, testProject(t, conn, org.PublicId))
@@ -632,6 +633,7 @@ func TestRepository_ListOrganizations(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
+			require.NoError(conn.Where("1=1").Delete(allocScope()).Error)
 			testOrgs := []*Scope{}
 			for i := 0; i < tt.createCnt; i++ {
 				testOrgs = append(testOrgs, testOrg(t, conn, "", ""))
