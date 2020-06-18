@@ -48,8 +48,8 @@ func (s *Session) clone() *Session {
 
 // PublicId prefixes for the resources in the static package.
 const (
-	SessionPrefix      = "sess"
-	SessionTokenPrefix = "sesstok"
+	SessionPrefix      = "s"
+	SessionTokenPrefix = "t"
 )
 
 func newSessionId() (string, error) {
@@ -63,7 +63,7 @@ func newSessionId() (string, error) {
 // newSessionToken generates a token of length 20 not counting the session token prefix.
 func newSessionToken() (string, error) {
 	// TODO: figure out if this provides enough randomness.
-	token, err := base62.Random(20)
+	token, err := base62.Random(30)
 	if err != nil {
 		return "", fmt.Errorf("Unable to generate session token: %w", err)
 	}
