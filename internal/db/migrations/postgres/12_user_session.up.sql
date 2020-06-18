@@ -8,7 +8,7 @@ begin;
     public_id wt_public_id primary key,
     token text not null unique,
     iam_scope_id wt_public_id not null
-      references iam_scope (public_id)
+      references iam_scope_organization (scope_id)
       on delete cascade
       on update cascade,
     iam_user_id wt_public_id not null unique -- read only
