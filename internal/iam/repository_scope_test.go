@@ -632,6 +632,7 @@ func TestRepository_ListOrganizations(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
+			conn.Where("1=1", nil).Delete(allocScope())
 			testOrgs := []*Scope{}
 			for i := 0; i < tt.createCnt; i++ {
 				testOrgs = append(testOrgs, testOrg(t, conn, "", ""))
