@@ -61,7 +61,7 @@ type Server struct {
 
 	DefaultOrgId string
 
-	DevDatabaseUrl         string
+	DatabaseUrl            string
 	DevDatabaseCleanupFunc func() error
 
 	Database *gorm.DB
@@ -378,39 +378,35 @@ func (b *Server) RunShutdownFuncs() error {
 }
 
 func (b *Server) initDBInDocker(dialect string) error {
+	c, url, container, err := db.InitDbInDocker(dialect)
+	if err != nil {
+		c()
+		return fmt.Errorf("unable to start dev database with dialect %s: %w", dialect, err)
+	}
+	b.InfoKeys = append(b.InfoKeys, "dev database url")
+	b.Info["dev database url"] = b.DatabaseUrl
+	if container != "" {
+		b.InfoKeys = append(b.InfoKeys, "dev database container")
+		b.Info["dev database container"] = strings.TrimPrefix(container, "/")
+	}
 
-	return nil
-}
-
-func (b *Server) initDB(dialect string) error {
+	b.DevDatabaseCleanupFunc = c
+	b.DatabaseUrl = url
 
 	return nil
 }
 
 // Add a string for discerning where the DB is created. Proposing: docker, basic.
 func (b *Server) CreateDevDatabase(dialect string) error {
-	// Move the following to initDBInDocker
-	c, url, container, err := db.InitDbInDocker(dialect)
-	if err != nil {
-		c()
-		return fmt.Errorf("unable to start dev database with dialect %s: %w", dialect, err)
+	// if the database URL isn't pre-set, assume no config exists for it and init start
+	// PG in docker
+	if b.DatabaseUrl == "" {
+		if err := b.initDBInDocker(dialect); err != nil {
+			return err
+		}
 	}
 
-	b.DevDatabaseCleanupFunc = c
-	b.DevDatabaseUrl = url
-	// end moved code
-
-	// Add switch on DB creation type to choose initDB() for the basic type or
-	// initDBInDocker() for the docker type.
-
-	b.InfoKeys = append(b.InfoKeys, "dev database url")
-	b.Info["dev database url"] = b.DevDatabaseUrl
-	if container != "" {
-		b.InfoKeys = append(b.InfoKeys, "dev database container")
-		b.Info["dev database container"] = strings.TrimPrefix(container, "/")
-	}
-
-	dbase, err := gorm.Open(dialect, url)
+	dbase, err := gorm.Open(dialect, b.DatabaseUrl)
 	if err != nil {
 		c()
 		return fmt.Errorf("unable to create db object with dialect %s: %w", dialect, err)

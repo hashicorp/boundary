@@ -68,6 +68,7 @@ type Config struct {
 	DevController        bool   `hcl:"-"`
 	DefaultOrgId         string `hcl:"default_org_id"`
 	PassthroughDirectory string `hcl:"-"`
+	DatabaseURL          string `hcl:"database_url"`
 }
 
 // DevWorker is a Config that is used for dev mode of Watchtower

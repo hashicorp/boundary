@@ -91,6 +91,7 @@ func WithDefaultOrgId(id string) Option {
 }
 
 // WithDatabaseURL sets the database URL if running externally
+// Should be passed with DisableDatabaseCreation().
 func WithDatabaseURL(url string) Option {
 	return func(c *option) error {
 		if c.setDatabaseURL {
@@ -98,6 +99,7 @@ func WithDatabaseURL(url string) Option {
 		}
 		c.setDatabaseURL = true
 		c.tcOptions.DatabaseURL = url
+
 		return nil
 	}
 }
