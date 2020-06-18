@@ -114,3 +114,16 @@ func (r *Repository) DeleteGroup(ctx context.Context, withPublicId string, opt .
 	}
 	return rowsDeleted, nil
 }
+
+// ListGroups in a scope and supports WithLimit option.
+func (r *Repository) ListGroups(ctx context.Context, withScopeId string, opt ...Option) ([]*Group, error) {
+	if withScopeId == "" {
+		return nil, fmt.Errorf("list groups: missing scope id %w", db.ErrInvalidParameter)
+	}
+	var grps []*Group
+	err := r.list(ctx, &grps, "scope_id = ?", []interface{}{withScopeId}, opt...)
+	if err != nil {
+		return nil, fmt.Errorf("list groups: %w", err)
+	}
+	return grps, nil
+}
