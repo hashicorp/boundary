@@ -169,6 +169,41 @@ before
 insert on iam_user
   for each row execute procedure default_create_time();
 
+-- iam_user_login contains associations between logins by auth methods and users
+create table iam_user_login (
+  private_id wt_public_id primary key,
+  create_time wt_timestamp,
+  scope_id wt_public_id not null references iam_scope_organization(scope_id) on delete cascade on update cascade,
+  user_id wt_public_id references iam_user(public_id) on delete cascade on update cascade,
+  
+  -- TODO: declare fk to auth_method pk
+  auth_method_id wt_public_id not null,
+  
+  -- TODO: declare fk to auth_login pk
+  auth_login_id wt_public_id not null,
+  
+  -- auth_credential_id can be null, since not every auth method will need
+  -- and/or support it.
+  -- TODO: declare fk to authpass credential table/key with on delete set null
+  -- on update cascade
+  auth_credential_id wt_public_id, 
+  unique(auth_method_id, auth_login_id, auth_credential_id)
+);
+-- TODO: trigger that ensures that the scope_id in iam_user_login matches the
+-- scopes of its: user_id, auth_method_id and auth_login_id
+
+create trigger 
+  immutable_create_time
+before
+update on iam_user_login 
+  for each row execute procedure immutable_create_time_func();
+  
+create trigger 
+  default_create_time_column
+before
+insert on iam_user_login
+  for each row execute procedure default_create_time();
+
 create table iam_role (
     public_id wt_public_id not null primary key,
     create_time wt_timestamp,
