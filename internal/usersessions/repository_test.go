@@ -9,6 +9,7 @@ import (
 	"github.com/golang/protobuf/ptypes"
 	"github.com/google/go-cmp/cmp"
 	wrapping "github.com/hashicorp/go-kms-wrapping"
+	"github.com/hashicorp/watchtower/internal/oplog"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/testing/protocmp"
@@ -199,6 +200,7 @@ func TestRepository_CreateSession(t *testing.T) {
 			assert.NotSame(tt.in, got)
 			assert.Equal(got.CreateTime, got.UpdateTime)
 			assert.Equal(got.CreateTime, got.LastAccessTime)
+			assert.NoError(db.TestVerifyOplog(t, rw, got.GetPublicId(), db.WithOperation(oplog.OpType_OP_TYPE_CREATE)))
 		})
 	}
 }
@@ -352,6 +354,7 @@ func TestRepository_UpdateLastUsed(t *testing.T) {
 			time2, err := ptypes.Timestamp(got2.GetLastAccessTime().GetTimestamp())
 			require.NoError(err)
 			assert.True(time2.After(time1), "Second last update time %q was not after first time %q", time2, time1)
+			assert.NoError(db.TestVerifyOplog(t, rw, got.GetPublicId(), db.WithOperation(oplog.OpType_OP_TYPE_UPDATE)))
 		})
 	}
 }
@@ -414,6 +417,9 @@ func TestRepository_DeleteSession(t *testing.T) {
 			}
 			assert.NoError(err)
 			assert.Equal(tt.want, got, "row count")
+			if tt.want != 0 {
+				assert.NoError(db.TestVerifyOplog(t, rw, tt.id, db.WithOperation(oplog.OpType_OP_TYPE_DELETE)))
+			}
 		})
 	}
 }
