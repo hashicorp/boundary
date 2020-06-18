@@ -332,6 +332,38 @@ commit;
 
 `),
 	},
+	"migrations/04_auth.down.sql": {
+		name: "04_auth.down.sql",
+		bytes: []byte(`
+begin;
+
+  drop table auth_account cascade;
+  drop table auth_method cascade;
+
+commit;
+
+`),
+	},
+	"migrations/04_auth.up.sql": {
+		name: "04_auth.up.sql",
+		bytes: []byte(`
+begin;
+
+  -- base table for auth methods
+  create table auth_method (
+    public_id wt_public_id primary key
+  );
+
+
+  -- base table for auth accounts
+  create table auth_account (
+    public_id wt_public_id primary key
+  );
+
+commit;
+
+`),
+	},
 	"migrations/06_iam.down.sql": {
 		name: "06_iam.down.sql",
 		bytes: []byte(`
