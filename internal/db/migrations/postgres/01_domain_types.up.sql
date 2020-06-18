@@ -70,15 +70,26 @@ is
   'function used in before insert triggers to set create_time column to now';
 
 
+-- update_version_column() will increment the version column whenever row data
+-- is updated.  Additionally, it allows the version column to be explicitly
+-- updated. 
 create or replace function
   update_version_column()
   returns trigger
 as $$
 begin
   if row(new.*) is distinct from row(old.*) then
-    new.version = old.version + 1;
-    return new;
+    -- check if we're not trying to explicitly update the version column, which
+    -- should be allowed. 
+    if new.version = old.version then
+      new.version = old.version + 1;
+      return new;
+    else
+      -- return new, so version can be explicitly updated.
+      return new;
+    end if;
   else
+    -- nothing was updated, so return the old row data
     return old;
   end if;
 end;
