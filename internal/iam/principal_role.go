@@ -32,6 +32,7 @@ type PrincipalRole interface {
 	GetRoleId() string
 	GetPrincipalId() string
 	GetType() string
+	Clone() interface{}
 }
 
 // principalRoleView provides a common way to return roles regardless of their underlying type.
