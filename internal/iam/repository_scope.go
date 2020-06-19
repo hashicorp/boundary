@@ -120,3 +120,26 @@ func (r *Repository) DeleteScope(ctx context.Context, withPublicId string, opt .
 	}
 	return rowsDeleted, nil
 }
+
+// ListProjects in an organization and supports the WithLimit option.
+func (r *Repository) ListProjects(ctx context.Context, withOrganizationId string, opt ...Option) ([]*Scope, error) {
+	if withOrganizationId == "" {
+		return nil, fmt.Errorf("list projects: missing organization id %w", db.ErrInvalidParameter)
+	}
+	var projects []*Scope
+	err := r.list(ctx, &projects, "parent_id = ? and type = ?", []interface{}{withOrganizationId, ProjectScope.String()}, opt...)
+	if err != nil {
+		return nil, fmt.Errorf("list projects: %w", err)
+	}
+	return projects, nil
+}
+
+// ListOrganizations and supports the WithLimit option.
+func (r *Repository) ListOrganizations(ctx context.Context, opt ...Option) ([]*Scope, error) {
+	var projects []*Scope
+	err := r.list(ctx, &projects, "type = ?", []interface{}{OrganizationScope.String()}, opt...)
+	if err != nil {
+		return nil, fmt.Errorf("list organizations: %w", err)
+	}
+	return projects, nil
+}
