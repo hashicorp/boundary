@@ -140,5 +140,5 @@ func TestList(t *testing.T) {
 	}
 	resp, err = s.ListOrganizations(ctx, &pbs.ListOrganizationsRequest{})
 	assert.NoError(err)
-	assert.Empty(cmp.Diff(resp, &pbs.ListOrganizationsResponse{Items: orgs}, protocmp.Transform()))
+	assert.Empty(cmp.Diff(resp, &pbs.ListOrganizationsResponse{Items: orgs}, protocmp.Transform(), protocmp.SortRepeatedFields(&pbs.ListOrganizationsResponse{}, "items")))
 }
