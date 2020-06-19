@@ -252,13 +252,9 @@ func TestDb_Update(t *testing.T) {
 	t.Run("valid-WithVersion", func(t *testing.T) {
 		assert := assert.New(t)
 		w := Db{underlying: db}
-		db.LogMode(true)
-		defer db.LogMode(false)
 		id, err := uuid.GenerateUUID()
 		assert.NoError(err)
 		user := testUser(t, db, "foo-"+id, id, id)
-		fmt.Println(user.Version)
-
 		u := user.Clone()
 		u.Name = "friendly-" + id
 		rowsUpdated, err := w.Update(context.Background(), u, []string{"Name"}, nil, WithVersion(user.Version))
@@ -271,7 +267,6 @@ func TestDb_Update(t *testing.T) {
 		err = w.LookupByPublicId(context.Background(), foundUser)
 		assert.NoError(err)
 		assert.Equal("friendly-"+id, foundUser.Name)
-		fmt.Println("versions: ", user.Version, foundUser.Version)
 		assert.NotEqual(user.Version, foundUser.Version)
 	})
 	t.Run("no-version-field", func(t *testing.T) {
