@@ -25,7 +25,7 @@ type Service struct {
 	repo common.IamRepoFactory
 }
 
-// NewService returns a project service which handles project related requests to watchtower.
+// NewService returns an organization service which handles organization related requests to watchtower.
 func NewService(repo common.IamRepoFactory) (Service, error) {
 	if repo == nil {
 		return Service{}, fmt.Errorf("nil iam repository provided")
@@ -110,7 +110,7 @@ func toProto(in *iam.Scope) *pb.Organization {
 func validateGetRequest(req *pbs.GetOrganizationRequest) error {
 	badFields := make(map[string]string)
 	if !validId(req.GetId(), iam.OrganizationScope.Prefix()+"_") {
-		badFields["id"] = "Invalid formatted project id."
+		badFields["id"] = "Invalid formatted organization id."
 	}
 	if len(badFields) > 0 {
 		return handlers.InvalidArgumentErrorf("Improperly formatted identifier.", badFields)
