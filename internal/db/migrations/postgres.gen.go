@@ -139,7 +139,7 @@ end;
 $$ language plpgsql;
 
 comment on function
-  update_time_column()
+  update_version_column()
 is
   'function used in after update triggers to properly set version columns';
 
