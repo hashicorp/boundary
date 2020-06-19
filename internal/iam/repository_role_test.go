@@ -539,3 +539,105 @@ func TestRepository_DeleteRole(t *testing.T) {
 		})
 	}
 }
+
+func TestRepository_ListRoles(t *testing.T) {
+	t.Parallel()
+	cleanup, conn, _ := db.TestSetup(t, "postgres")
+	defer func() {
+		err := cleanup()
+		assert.NoError(t, err)
+		err = conn.Close()
+		assert.NoError(t, err)
+	}()
+	const testLimit = 10
+	rw := db.New(conn)
+	wrapper := db.TestWrapper(t)
+	repo, err := NewRepository(rw, rw, wrapper, WithLimit(testLimit))
+	require.NoError(t, err)
+	org, proj := TestScopes(t, conn)
+
+	type args struct {
+		withScopeId string
+		opt         []Option
+	}
+	tests := []struct {
+		name          string
+		createCnt     int
+		createScopeId string
+		args          args
+		wantCnt       int
+		wantErr       bool
+	}{
+		{
+			name:          "no-limit",
+			createCnt:     repo.defaultLimit + 1,
+			createScopeId: org.PublicId,
+			args: args{
+				withScopeId: org.PublicId,
+				opt:         []Option{WithLimit(-1)},
+			},
+			wantCnt: repo.defaultLimit + 1,
+			wantErr: false,
+		},
+		{
+			name:          "no-limit-proj-group",
+			createCnt:     repo.defaultLimit + 1,
+			createScopeId: proj.PublicId,
+			args: args{
+				withScopeId: proj.PublicId,
+				opt:         []Option{WithLimit(-1)},
+			},
+			wantCnt: repo.defaultLimit + 1,
+			wantErr: false,
+		},
+		{
+			name:          "default-limit",
+			createCnt:     repo.defaultLimit + 1,
+			createScopeId: org.PublicId,
+			args: args{
+				withScopeId: org.PublicId,
+			},
+			wantCnt: repo.defaultLimit,
+			wantErr: false,
+		},
+		{
+			name:          "custom-limit",
+			createCnt:     repo.defaultLimit + 1,
+			createScopeId: org.PublicId,
+			args: args{
+				withScopeId: org.PublicId,
+				opt:         []Option{WithLimit(3)},
+			},
+			wantCnt: 3,
+			wantErr: false,
+		},
+		{
+			name:          "bad-org",
+			createCnt:     1,
+			createScopeId: org.PublicId,
+			args: args{
+				withScopeId: "bad-id",
+			},
+			wantCnt: 0,
+			wantErr: false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+			require.NoError(conn.Where("1=1").Delete(allocGroup()).Error)
+			testRoles := []*Role{}
+			for i := 0; i < tt.createCnt; i++ {
+				testRoles = append(testRoles, TestRole(t, conn, tt.createScopeId))
+			}
+			assert.Equal(tt.createCnt, len(testRoles))
+			got, err := repo.ListRoles(context.Background(), tt.args.withScopeId, tt.args.opt...)
+			if tt.wantErr {
+				require.Error(err)
+				return
+			}
+			require.NoError(err)
+			assert.Equal(tt.wantCnt, len(got))
+		})
+	}
+}
