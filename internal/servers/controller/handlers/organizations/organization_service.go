@@ -11,8 +11,6 @@ import (
 	"github.com/hashicorp/watchtower/internal/iam"
 	"github.com/hashicorp/watchtower/internal/servers/controller/common"
 	"github.com/hashicorp/watchtower/internal/servers/controller/handlers"
-	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 )
 
@@ -39,7 +37,11 @@ var _ pbs.OrganizationServiceServer = Service{}
 
 // ListOrganizations is not yet implemented but will implement the interface pbs.OrganizationServiceServer.
 func (s Service) ListOrganizations(ctx context.Context, req *pbs.ListOrganizationsRequest) (*pbs.ListOrganizationsResponse, error) {
-	return nil, status.Error(codes.Unimplemented, "List not enabled for this resource.")
+	ol, err := s.listFromRepo(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return &pbs.ListOrganizationsResponse{Items: ol}, nil
 }
 
 // GetOrganizations implements the interface pbs.OrganizationServiceServer.
@@ -47,11 +49,11 @@ func (s Service) GetOrganization(ctx context.Context, req *pbs.GetOrganizationRe
 	if err := validateGetRequest(req); err != nil {
 		return nil, err
 	}
-	p, err := s.getFromRepo(ctx, req.GetId())
+	o, err := s.getFromRepo(ctx, req.GetId())
 	if err != nil {
 		return nil, err
 	}
-	return &pbs.GetOrganizationResponse{Item: p}, nil
+	return &pbs.GetOrganizationResponse{Item: o}, nil
 }
 
 func (s Service) getFromRepo(ctx context.Context, id string) (*pb.Organization, error) {
@@ -67,6 +69,22 @@ func (s Service) getFromRepo(ctx context.Context, id string) (*pb.Organization, 
 		return nil, handlers.NotFoundErrorf("Organization %q doesn't exist.", id)
 	}
 	return toProto(p), nil
+}
+
+func (s Service) listFromRepo(ctx context.Context) ([]*pb.Organization, error) {
+	repo, err := s.repo()
+	if err != nil {
+		return nil, err
+	}
+	ol, err := repo.ListOrganizations(ctx)
+	if err != nil {
+		return nil, err
+	}
+	var outOl []*pb.Organization
+	for _, o := range ol {
+		outOl = append(outOl, toProto(o))
+	}
+	return outOl, nil
 }
 
 func toProto(in *iam.Scope) *pb.Organization {

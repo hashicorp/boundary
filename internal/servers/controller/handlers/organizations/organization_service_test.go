@@ -4,6 +4,7 @@ import (
 	"context"
 	"testing"
 
+	"github.com/google/go-cmp/cmp"
 	"github.com/hashicorp/watchtower/internal/db"
 	pb "github.com/hashicorp/watchtower/internal/gen/controller/api/resources/scopes"
 	pbs "github.com/hashicorp/watchtower/internal/gen/controller/api/services"
@@ -12,6 +13,7 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/testing/protocmp"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 
 	"github.com/stretchr/testify/assert"
@@ -105,4 +107,38 @@ func TestGet(t *testing.T) {
 			assert.True(proto.Equal(got, tc.res), "GetOrganization(%q) got response %q, wanted %q", req, got, tc.res)
 		})
 	}
+}
+
+func TestList(t *testing.T) {
+	assert, require := assert.New(t), require.New(t)
+	cleanup, conn, _ := db.TestSetup(t, "postgres")
+	t.Cleanup(func() {
+		if err := conn.Close(); err != nil {
+			t.Errorf("Error when closing gorm DB: %v", err)
+		}
+		if err := cleanup(); err != nil {
+			t.Errorf("Error when cleaning up TestSetup: %v", err)
+		}
+	})
+	rw := db.New(conn)
+	wrap := db.TestWrapper(t)
+	repoFn := func() (*iam.Repository, error) {
+		return iam.NewRepository(rw, rw, wrap)
+	}
+
+	s, err := organizations.NewService(repoFn)
+	require.NoError(err)
+	ctx := context.Background()
+	resp, err := s.ListOrganizations(ctx, &pbs.ListOrganizationsRequest{})
+	assert.NoError(err)
+	assert.Equal(&pbs.ListOrganizationsResponse{}, resp)
+
+	var orgs []*pb.Organization
+	for i := 0; i < 10; i++ {
+		o, _ := iam.TestScopes(t, conn)
+		orgs = append(orgs, &pb.Organization{Id: o.PublicId, CreatedTime: o.GetCreateTime().GetTimestamp(), UpdatedTime: o.GetUpdateTime().GetTimestamp()})
+	}
+	resp, err = s.ListOrganizations(ctx, &pbs.ListOrganizationsRequest{})
+	assert.NoError(err)
+	assert.Empty(cmp.Diff(resp, &pbs.ListOrganizationsResponse{Items: orgs}, protocmp.Transform()))
 }
