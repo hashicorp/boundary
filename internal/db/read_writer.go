@@ -280,7 +280,7 @@ func (rw *Db) Update(ctx context.Context, i interface{}, fieldMaskPaths []string
 	switch {
 	case opts.WithVersion != "":
 		if _, ok := scope.FieldByName("version"); !ok {
-			return NoRowsAffected, fmt.Errorf("update: ")
+			return NoRowsAffected, fmt.Errorf("update: %s does not have a version field", scope.TableName())
 		}
 		underlying = rw.underlying.Model(i).Where("version = ?", opts.WithVersion).Updates(updateFields)
 	default:
