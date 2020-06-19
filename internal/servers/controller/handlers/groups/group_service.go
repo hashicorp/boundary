@@ -43,16 +43,16 @@ func NewService(repo func() (*iam.Repository, error)) (Service, error) {
 
 var _ pbs.GroupServiceServer = Service{}
 
-// CreateGroup is not yet implemented but will implement the interface pbs.GroupServiceServer.
+// ListGroups implements the interface pbs.GroupServiceServer.
 func (s Service) ListGroups(ctx context.Context, req *pbs.ListGroupsRequest) (*pbs.ListGroupsResponse, error) {
 	if err := validateListRequest(req); err != nil {
 		return nil, err
 	}
-	u, err := s.listFromRepo(ctx, req.GetOrgId())
+	gl, err := s.listFromRepo(ctx, req.GetOrgId())
 	if err != nil {
 		return nil, err
 	}
-	return &pbs.ListGroupsResponse{Items: u}, nil
+	return &pbs.ListGroupsResponse{Items: gl}, nil
 }
 
 // GetGroups implements the interface pbs.GroupServiceServer.
