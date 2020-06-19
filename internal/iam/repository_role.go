@@ -114,3 +114,16 @@ func (r *Repository) DeleteRole(ctx context.Context, withPublicId string, opt ..
 	}
 	return rowsDeleted, nil
 }
+
+// ListRoles in a scope and supports WithLimit option.
+func (r *Repository) ListRoles(ctx context.Context, withScopeId string, opt ...Option) ([]*Role, error) {
+	if withScopeId == "" {
+		return nil, fmt.Errorf("list roles: missing scope id %w", db.ErrInvalidParameter)
+	}
+	var roles []*Role
+	err := r.list(ctx, &roles, "scope_id = ?", []interface{}{withScopeId}, opt...)
+	if err != nil {
+		return nil, fmt.Errorf("list roles: %w", err)
+	}
+	return roles, nil
+}
