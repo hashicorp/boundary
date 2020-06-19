@@ -37,10 +37,15 @@ func (r *Repository) AddPrincipalRoles(ctx context.Context, roleId string, userI
 		return nil, fmt.Errorf("add principal roles: unable to get role %s scope to create metadata: %w", roleId, err)
 	}
 	metadata := oplog.Metadata{
-		"op-type":    []string{oplog.OpType_OP_TYPE_CREATE.String()},
-		"scope-id":   []string{scope.PublicId},
-		"scope-type": []string{scope.Type},
+		"op-type":                      []string{oplog.OpType_OP_TYPE_CREATE.String()},
+		"scope-id":                     []string{scope.PublicId},
+		"scope-type":                   []string{scope.Type},
+		"aggregate-resource-public-id": []string{roleId},
 	}
+	// rawDB, err := r.writer.DB()
+	// gdb, err := gorm.Open("postgres", rawDB)
+	// ticketer, err := oplog.NewGormTicketer(gdb, oplog.WithAggregateNames(true))
+	// ticket, err := ticketer.GetTicket(allocRole().tableName)
 
 	resultPrincipalRoles := make([]PrincipalRole, 0, len(userIds)+len(groupIds))
 	_, err = r.writer.DoTx(
