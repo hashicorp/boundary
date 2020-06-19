@@ -136,10 +136,10 @@ func (r *Repository) ListProjects(ctx context.Context, withOrganizationId string
 
 // ListOrganizations and supports the WithLimit option.
 func (r *Repository) ListOrganizations(ctx context.Context, opt ...Option) ([]*Scope, error) {
-	var projects []*Scope
-	err := r.list(ctx, &projects, "type = ?", []interface{}{OrganizationScope.String()}, opt...)
+	var organizations []*Scope
+	err := r.list(ctx, &organizations, "type = ?", []interface{}{OrganizationScope.String()}, opt...)
 	if err != nil {
 		return nil, fmt.Errorf("list organizations: %w", err)
 	}
-	return projects, nil
+	return organizations, nil
 }
