@@ -107,6 +107,78 @@ func TestGet(t *testing.T) {
 	}
 }
 
+func TestList(t *testing.T) {
+	assert, require := assert.New(t), require.New(t)
+	cleanup, conn, _ := db.TestSetup(t, "postgres")
+	t.Cleanup(func() {
+		if err := conn.Close(); err != nil {
+			t.Errorf("Error when closing gorm DB: %v", err)
+		}
+		if err := cleanup(); err != nil {
+			t.Errorf("Error when cleaning up TestSetup: %v", err)
+		}
+	})
+	rw := db.New(conn)
+	wrap := db.TestWrapper(t)
+	repoFn := func() (*iam.Repository, error) {
+		return iam.NewRepository(rw, rw, wrap)
+	}
+	oNoRoles, _ := iam.TestScopes(t, conn)
+	oWithRoles, _ := iam.TestScopes(t, conn)
+	var wantRoles []*pb.Role
+	for i := 0; i < 10; i++ {
+		g := iam.TestRole(t, conn, oWithRoles.GetPublicId())
+		wantRoles = append(wantRoles, &pb.Role{
+			Id:          g.GetPublicId(),
+			CreatedTime: g.GetCreateTime().GetTimestamp(),
+			UpdatedTime: g.GetUpdateTime().GetTimestamp(),
+		})
+	}
+
+	cases := []struct {
+		name    string
+		req     *pbs.ListRolesRequest
+		res     *pbs.ListRolesResponse
+		errCode codes.Code
+	}{
+		{
+			name:    "List Many Role",
+			req:     &pbs.ListRolesRequest{OrgId: oWithRoles.GetPublicId()},
+			res:     &pbs.ListRolesResponse{Items: wantRoles},
+			errCode: codes.OK,
+		},
+		{
+			name:    "List No Roles",
+			req:     &pbs.ListRolesRequest{OrgId: oNoRoles.GetPublicId()},
+			res:     &pbs.ListRolesResponse{},
+			errCode: codes.OK,
+		},
+		{
+			name:    "Invalid Org Id",
+			req:     &pbs.ListRolesRequest{OrgId: iam.OrganizationScope.Prefix() + "_this is invalid"},
+			res:     nil,
+			errCode: codes.InvalidArgument,
+		},
+		// TODO: When an org doesn't exist, we should return a 404 instead of an empty list.
+		{
+			name:    "Unfound Org",
+			req:     &pbs.ListRolesRequest{OrgId: iam.OrganizationScope.Prefix() + "_DoesntExis"},
+			res:     &pbs.ListRolesResponse{},
+			errCode: codes.OK,
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			s, err := roles.NewService(repoFn)
+			require.NoError(err, "Couldn't create new role service.")
+
+			got, gErr := s.ListRoles(context.Background(), tc.req)
+			assert.Equal(tc.errCode, status.Code(gErr), "ListRoles(%+v) got error %v, wanted %v", tc.req, gErr, tc.errCode)
+			assert.True(proto.Equal(got, tc.res), "ListRoles(%q) got response %q, wanted %q", tc.req, got, tc.res)
+		})
+	}
+}
+
 func TestDelete(t *testing.T) {
 	require := require.New(t)
 	u, repo := createDefaultRoleAndRepo(t)
@@ -223,7 +295,7 @@ func TestCreate(t *testing.T) {
 				Description: &wrapperspb.StringValue{Value: "desc"},
 			}},
 			res: &pbs.CreateRoleResponse{
-				Uri: fmt.Sprintf("orgs/%s/roles/%s_", iam.RolePrefix, defaultRole.GetScopeId()),
+				Uri: fmt.Sprintf("orgs/%s/roles/%s_", defaultRole.GetScopeId(), iam.RolePrefix),
 				Item: &pb.Role{
 					Name:        &wrapperspb.StringValue{Value: "name"},
 					Description: &wrapperspb.StringValue{Value: "desc"},
@@ -268,8 +340,8 @@ func TestCreate(t *testing.T) {
 			got, gErr := s.CreateRole(context.Background(), req)
 			assert.Equal(tc.errCode, status.Code(gErr), "CreateRole(%+v) got error %v, wanted %v", req, gErr, tc.errCode)
 			if got != nil {
-				assert.True(strings.HasPrefix(got.GetUri(), tc.res.Uri))
-				assert.True(strings.HasPrefix(got.GetItem().GetId(), iam.RolePrefix+"_"))
+				assert.True(strings.HasPrefix(got.GetUri(), tc.res.Uri), "Expected %q to have the prefix %q", got.GetUri(), tc.res.GetUri())
+				assert.True(strings.HasPrefix(got.GetItem().GetId(), iam.RolePrefix+"_"), "Expected %q to have the prefix %q", got.GetItem().GetId(), iam.RolePrefix+"_")
 				gotCreateTime, err := ptypes.Timestamp(got.GetItem().GetCreatedTime())
 				require.NoError(err, "Error converting proto to timestamp.")
 				gotUpdateTime, err := ptypes.Timestamp(got.GetItem().GetUpdatedTime())
