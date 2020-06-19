@@ -23,8 +23,7 @@ service OrganizationService {
     };
   }
 
-  // ListOrganizations returns a list of stored projects which exist inside the org
-  // referenced inside the request.
+  // ListOrganizations returns a list of stored organizations which exist in watchtower.
   rpc ListOrganizations(ListOrganizationsRequest) returns (ListOrganizationsResponse) {
     option (google.api.http) = {
       get: "/v1/orgs"

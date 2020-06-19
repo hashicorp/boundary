@@ -421,8 +421,7 @@ type OrganizationServiceClient interface {
 	// must include the org id for the organization being retrieved. If
 	// that id is missing, malformed or reference a non existing resource an error is returned.
 	GetOrganization(ctx context.Context, in *GetOrganizationRequest, opts ...grpc.CallOption) (*GetOrganizationResponse, error)
-	// ListOrganizations returns a list of stored projects which exist inside the org
-	// referenced inside the request.
+	// ListOrganizations returns a list of stored organizations which exist in watchtower.
 	ListOrganizations(ctx context.Context, in *ListOrganizationsRequest, opts ...grpc.CallOption) (*ListOrganizationsResponse, error)
 }
 
@@ -458,8 +457,7 @@ type OrganizationServiceServer interface {
 	// must include the org id for the organization being retrieved. If
 	// that id is missing, malformed or reference a non existing resource an error is returned.
 	GetOrganization(context.Context, *GetOrganizationRequest) (*GetOrganizationResponse, error)
-	// ListOrganizations returns a list of stored projects which exist inside the org
-	// referenced inside the request.
+	// ListOrganizations returns a list of stored organizations which exist in watchtower.
 	ListOrganizations(context.Context, *ListOrganizationsRequest) (*ListOrganizationsResponse, error)
 }
 
