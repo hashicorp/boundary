@@ -9,6 +9,8 @@ import (
 	"github.com/hashicorp/watchtower/internal/usersessions/store"
 	"github.com/jinzhu/gorm"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+	"google.golang.org/protobuf/proto"
 )
 
 func TestSession_New(t *testing.T) {
@@ -24,6 +26,7 @@ func TestSession_New(t *testing.T) {
 
 	org, _ := iam.TestScopes(t, conn)
 	u := iam.TestUser(t, conn, org.GetPublicId())
+	org2, _ := iam.TestScopes(t, conn)
 
 	type args struct {
 		scopeId      string
@@ -60,6 +63,15 @@ func TestSession_New(t *testing.T) {
 			name: "blank-authMethodId",
 			args: args{
 				scopeId: org.GetPublicId(),
+				userId:  u.GetPublicId(),
+			},
+			want:    nil,
+			wantErr: true,
+		},
+		{
+			name: "nonmatching-userid-scope",
+			args: args{
+				scopeId: org2.GetPublicId(),
 				userId:  u.GetPublicId(),
 			},
 			want:    nil,
@@ -111,6 +123,99 @@ func TestSession_New(t *testing.T) {
 					assert.NoError(err2)
 				}
 			}
+		})
+	}
+}
+
+func TestSession_Update(t *testing.T) {
+	assert, require := assert.New(t), require.New(t)
+	cleanup, conn, _ := db.TestSetup(t, "postgres")
+	t.Cleanup(func() {
+		if err := cleanup(); err != nil {
+			t.Error(err)
+		}
+		if err := conn.Close(); err != nil {
+			t.Error(err)
+		}
+	})
+
+	orgs, _ := iam.TestScopes(t, conn)
+	u := iam.TestUser(t, conn, orgs.GetPublicId())
+
+	newSessId, err := newSessionId()
+	require.NoError(err)
+
+	type args struct {
+		fieldMask []string
+		nullMask  []string
+		session   *store.Session
+	}
+
+	var tests = []struct {
+		name    string
+		args    args
+		want    *Session
+		cnt     int
+		wantErr bool
+	}{
+		{
+			name: "immutable-userid",
+			args: args{
+				fieldMask: []string{"IamUserId"},
+				session:   &store.Session{IamUserId: u.GetPublicId()},
+			},
+			wantErr: true,
+		},
+		{
+			name: "immutable-authmethodid",
+			args: args{
+				fieldMask: []string{"AuthMethodId"},
+				session:   &store.Session{AuthMethodId: "a changed id"},
+			},
+			wantErr: true,
+		},
+		{
+			name: "immutable-scopeid",
+			args: args{
+				fieldMask: []string{"IamScopeId"},
+				session:   &store.Session{IamScopeId: u.GetScopeId()},
+			},
+			wantErr: true,
+		},
+		{
+			name: "immutable-publicid",
+			args: args{
+				fieldMask: []string{"PublicId"},
+				session:   &store.Session{PublicId: newSessId},
+			},
+			wantErr: true,
+		},
+		{
+			name: "update-last-access-time",
+			args: args{
+				nullMask: []string{"LastAccessTime"},
+				session:  &store.Session{},
+			},
+			cnt: 1,
+		},
+	}
+
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			w := db.New(conn)
+
+			sess := testSession(t, conn)
+			proto.Merge(sess.Session, tt.args.session)
+
+			cnt, err := w.Update(context.Background(), sess, tt.args.fieldMask, tt.args.nullMask)
+			if tt.wantErr {
+				t.Logf("Got error :%v", err)
+				assert.Error(err)
+			} else {
+				assert.NoError(err)
+			}
+			assert.Equal(tt.cnt, cnt)
 		})
 	}
 }

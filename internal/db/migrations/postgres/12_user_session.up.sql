@@ -49,7 +49,7 @@ begin;
   as $$
   begin
     if new.iam_user_id is distinct from old.iam_user_id then
-      raise warning 'iam_user_id cannot be set to %', new.iam_user_id;
+      raise exception 'iam_user_id cannot be set to %', new.iam_user_id;
       new.iam_user_id = old.iam_user_id;
     end if;
     return new;
@@ -67,7 +67,7 @@ begin;
   as $$
   begin
     if new.auth_method_id is distinct from old.auth_method_id then
-      raise warning 'auth_method_id cannot be set to %', new.auth_method_id;
+      raise exception 'auth_method_id cannot be set to %', new.auth_method_id;
       new.auth_method_id = old.auth_method_id;
     end if;
     return new;
@@ -85,7 +85,7 @@ begin;
   as $$
   begin
     if new.iam_scope_id is distinct from old.iam_scope_id then
-      raise warning 'iam_scope_id cannot be set to %', new.iam_scope_id;
+      raise exception 'iam_scope_id cannot be set to %', new.iam_scope_id;
       new.iam_scope_id = old.iam_scope_id;
     end if;
     return new;
