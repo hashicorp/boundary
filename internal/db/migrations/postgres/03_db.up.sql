@@ -11,7 +11,7 @@ create table if not exists db_test_user (
   name text unique,
   phone_number text,
   email text,
-  version int default 1
+  version text default rand_version_string(20)
 );
 
 create trigger 
@@ -34,7 +34,7 @@ insert on db_test_user
 
 create trigger 
   update_version_column
-before update on db_test_user
+after update on db_test_user
   for each row execute procedure update_version_column();
   
 create table if not exists db_test_car (

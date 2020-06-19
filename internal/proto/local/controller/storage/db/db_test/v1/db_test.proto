@@ -36,7 +36,7 @@ message StoreTestUser {
   string email = 7;
 
   // @inject_tag: `gorm:"default:null"`
-  uint32 version = 8;
+  string version = 8;
 }
 // TestCar for gorm test car model
 message StoreTestCar {

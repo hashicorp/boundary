@@ -96,36 +96,52 @@ comment on function
 is
   'function used in before insert triggers to set create_time column to now';
 
+-- rand_version_string(length) will create a new random version string.  The
+-- returned string will be lower cased characters and integers.
+create or replace function rand_version_string(length integer)
+returns text
+language plpgsql
+as $$
+declare 
+ 	char_set text := '0123456789abcdefghijklmnopqrstuvqxyz';
+	set_size integer := length(char_set);
+	result text;
+begin
+	select array_to_string(
+		array(
+			select substr(char_set, round(random() * set_size)::integer, 1)
+			from generate_series(1, length)
+		),
+		'') into result;
+	return result;
+end;
+$$;
 
 -- update_version_column() will increment the version column whenever row data
--- is updated.  Additionally, it allows the version column to be explicitly
--- updated. 
+-- is updated and should only be used in an update after trigger.  This function
+-- will overwrite any explicit updates to the version column. 
 create or replace function
   update_version_column()
   returns trigger
 as $$
+declare 
+ 	new_version text := rand_version_string(20);
 begin
-  if row(new.*) is distinct from row(old.*) then
-    -- check if we're not trying to explicitly update the version column, which
-    -- should be allowed. 
-    if new.version = old.version then
-      new.version = old.version + 1;
-      return new;
-    else
-      -- return new, so version can be explicitly updated.
+  if pg_trigger_depth() = 1 then
+    if row(new.*) is distinct from row(old.*) then
+      execute format('update %I set version = $1 where public_id = $2', tg_relid::regclass) using new_version, new.public_id;
+      new.version = new_version;
       return new;
     end if;
-  else
-    -- nothing was updated, so return the old row data
-    return old;
   end if;
+  return new;
 end;
 $$ language plpgsql;
 
 comment on function
   update_time_column()
 is
-  'function used in before update triggers to properly set version columns';
+  'function used in after update triggers to properly set version columns';
 
 commit;
 
@@ -283,7 +299,7 @@ create table if not exists db_test_user (
   name text unique,
   phone_number text,
   email text,
-  version int default 1
+  version text default rand_version_string(20)
 );
 
 create trigger 
@@ -306,7 +322,7 @@ insert on db_test_user
 
 create trigger 
   update_version_column
-before update on db_test_user
+after update on db_test_user
   for each row execute procedure update_version_column();
   
 create table if not exists db_test_car (
