@@ -2,15 +2,16 @@ begin;
 
   -- base table for auth methods
   create table auth_method (
-    auth_method_id wt_public_id primary key
+    public_id wt_public_id primary key,
+    scope_id wt_public_id not null
   );
 
 
   -- base table for auth accounts
   create table auth_account (
-    auth_account_id wt_public_id primary key
+    public_id wt_public_id primary key,
+    scope_id wt_public_id not null
   );
-
 
   create or replace function
     insert_auth_method_subtype()
