@@ -354,13 +354,15 @@ begin;
 
   -- base table for auth methods
   create table auth_method (
-    auth_method_id wt_public_id primary key
+    public_id wt_public_id primary key,
+    scope_id wt_public_id not null
   );
 
 
   -- base table for auth accounts
   create table auth_account (
-    auth_account_id wt_public_id primary key
+    public_id wt_public_id primary key,
+    scope_id wt_public_id not null
   );
 
 
@@ -588,39 +590,76 @@ before
 insert on iam_user
   for each row execute procedure default_create_time();
 
--- iam_user_login contains associations between logins by auth methods and users
-create table iam_user_login (
+-- iam_user_login contains associations between auth methods accounts and users
+create table iam_user_account (
   private_id wt_public_id primary key,
   create_time wt_timestamp,
-  scope_id wt_public_id not null references iam_scope_organization(scope_id) on delete cascade on update cascade,
   user_id wt_public_id references iam_user(public_id) on delete cascade on update cascade,
-  
-  -- TODO: declare fk to auth_method pk
-  auth_method_id wt_public_id not null,
-  
-  -- TODO: declare fk to auth_login pk
-  auth_login_id wt_public_id not null,
-  
-  -- auth_credential_id can be null, since not every auth method will need
-  -- and/or support it.
-  -- TODO: declare fk to authpass credential table/key with on delete set null
-  -- on update cascade
-  auth_credential_id wt_public_id, 
-  unique(auth_method_id, auth_login_id, auth_credential_id)
+  scope_id wt_public_id not null references iam_scope_organization(scope_id) on delete cascade on update cascade,
+  auth_method_id wt_public_id not null references auth_method(public_id) on delete cascade on update cascade,
+  auth_account_id wt_public_id not null references auth_account(public_id) on delete cascade on update cascade,
+  unique(user_id, scope_id, auth_method_id, auth_account_id)
 );
--- TODO: trigger that ensures that the scope_id in iam_user_login matches the
--- scopes of its: user_id, auth_method_id and auth_login_id
+
+-- iam_user_account_scope_check ensures that user account, user, auth method and
+-- auth account all belong to the same scope.
+create or replace function
+  iam_user_account_scope_check()
+  returns trigger
+as $$
+declare cnt int;
+begin
+  select count(*) into cnt
+    from iam_user u, auth_method am, auth_account aa
+    where
+      new.scope_id = u.scope_id and 
+      new.user_id = u.public_id and 
+      new_auth_account_id = aa.public_id and
+      new.auth_method_id = am.public_id and 
+      u.scope_id = am.scope_id and
+      am.scope_id = aa.scope_id;
+  if cnt = 0 then 
+    raise exception 'user, auth method, auth account do not belong to the same scope';
+  end if;
+end;
+$$ language plpgsql;
+
+-- iam_immutable_user_account ensures that auth method accounts assigned to
+-- iam_users are immutable 
+create or replace function
+  iam_immutable_user_account()
+  returns trigger
+as $$
+begin 
+  if row(new.*) is distinct from row(old.*) then
+    raise exception 'accounts are immutable';
+  end if;
+  return new;
+end;
+$$ language plpgsql;
+
+create trigger 
+  iam_user_account_scope_check
+before 
+insert on iam_user_account 
+  for each row execute procedure iam_user_account_scope_check();
+
+create trigger 
+  immutable_iam_user_account
+before
+update on iam_user_account
+  for each row execute procedure iam_immutable_user_account();
 
 create trigger 
   immutable_create_time
 before
-update on iam_user_login 
+update on iam_user_account 
   for each row execute procedure immutable_create_time_func();
   
 create trigger 
   default_create_time_column
 before
-insert on iam_user_login
+insert on iam_user_account
   for each row execute procedure default_create_time();
 
 create table iam_role (
