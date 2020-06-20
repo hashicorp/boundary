@@ -177,7 +177,7 @@ create table iam_user_login (
   user_id wt_public_id references iam_user(public_id) on delete cascade on update cascade,
   
   -- TODO: declare fk to auth_method pk
-  auth_method_id wt_public_id not null,
+  auth_method_id wt_public_id not null references auth_account(auth_account_id),
   
   -- TODO: declare fk to auth_login pk
   auth_login_id wt_public_id not null,
