@@ -591,7 +591,7 @@ func TestDb_LookupByPublicId(t *testing.T) {
 		assert.NoError(err)
 		err = w.LookupByPublicId(context.Background(), foundUser)
 		assert.Error(err)
-		assert.Equal("error underlying db nil for lookup by public id", err.Error())
+		assert.Equal("lookup by id: underlying db nil nil parameter", err.Error())
 	})
 	t.Run("no-public-id-set", func(t *testing.T) {
 		w := Db{underlying: db}
@@ -600,7 +600,7 @@ func TestDb_LookupByPublicId(t *testing.T) {
 		assert.NoError(err)
 		err = w.LookupByPublicId(context.Background(), foundUser)
 		assert.Error(err)
-		assert.Equal("error public id empty string for lookup by public id", err.Error())
+		assert.Equal("lookup by id: primary key unset invalid parameter", err.Error())
 	})
 	t.Run("not-found", func(t *testing.T) {
 		w := Db{underlying: db}
