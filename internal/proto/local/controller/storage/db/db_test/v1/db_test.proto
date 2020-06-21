@@ -21,17 +21,21 @@ message StoreTestUser {
   // @inject_tag: `gorm:"default:CURRENT_TIMESTAMP"`
   timestamp.v1.Timestamp update_time = 3;
 
-  // public_id is the used to access the AssignablScope via an API
+  // public_id is the used to access the user via an API
   string public_id = 4;
 
   // name is the optional friendly name used to
-  // access the Scope via an API
+  // access the user via an API
   // @inject_tag: `gorm:"default:null"`
   string name = 5;
 
+  // @inject_tag: `gorm:"default:null"`
   string phone_number = 6;
+
+  // @inject_tag: `gorm:"default:null"`
   string email = 7;
 }
+
 // TestCar for gorm test car model
 message StoreTestCar {
   // @inject_tag: gorm:"primary_key"
@@ -45,7 +49,7 @@ message StoreTestCar {
   // @inject_tag: `gorm:"default:CURRENT_TIMESTAMP"`
   timestamp.v1.Timestamp update_time = 3;
 
-  // public_id is the used to access the AssignablScope via an API
+  // public_id is the used to access the car via an API
   string public_id = 4;
 
   // name is the optional friendly name used to
@@ -53,9 +57,13 @@ message StoreTestCar {
   // @inject_tag: `gorm:"default:null"`
   string name = 5;
 
+  // @inject_tag: `gorm:"default:null"`
   string model = 6;
+
+  // @inject_tag: `gorm:"default:null"`
   int32 mpg = 7;
 }
+
 // TestRental for gorm test rental model
 message StoreTestRental {
   // @inject_tag: gorm:"primary_key"
@@ -69,14 +77,41 @@ message StoreTestRental {
   // @inject_tag: `gorm:"default:CURRENT_TIMESTAMP"`
   timestamp.v1.Timestamp update_time = 3;
 
-  // public_id is the used to access the AssignablScope via an API
+  // public_id is the used to access the rental via an API
   string public_id = 4;
 
   // name is the optional friendly name used to
-  // access the Scope via an API
+  // access the rental via an API
   // @inject_tag: `gorm:"default:null"`
   string name = 5;
 
+  // @inject_tag: `gorm:"default:null"`
   uint32 user_id = 6;
+
+  // @inject_tag: `gorm:"default:null"`
   uint32 car_id = 7;
+}
+
+// Test for gorm test car scooter
+message StoreTestScooter {
+  // @inject_tag: gorm:"primary_key"
+  uint32 id = 1;
+
+  // create_time from the RDBMS
+  // @inject_tag: `gorm:"default:CURRENT_TIMESTAMP"`
+  timestamp.v1.Timestamp create_time = 2;
+
+  // update_time from the RDBMS
+  // @inject_tag: `gorm:"default:CURRENT_TIMESTAMP"`
+  timestamp.v1.Timestamp update_time = 3;
+
+  // private_id is the used to access scooter, but not intended to be available
+  // via the API
+  string private_id = 4;
+
+  // @inject_tag: `gorm:"default:null"`
+  string model = 6;
+
+  // @inject_tag: `gorm:"default:null"`
+  int32 mpg = 7;
 }
