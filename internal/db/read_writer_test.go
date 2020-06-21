@@ -18,6 +18,7 @@ import (
 	"github.com/jinzhu/gorm"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/protobuf/proto"
 )
 
 func TestDb_Update(t *testing.T) {
@@ -1128,7 +1129,7 @@ func TestDb_Delete(t *testing.T) {
 			require.NoError(err)
 			assert.Equal(tt.want, got)
 
-			foundUser := tt.args.i.Clone()
+			foundUser := tt.args.i.Clone().(*db_test.TestUser)
 			foundUser.PublicId = tt.args.i.PublicId
 			err = rw.LookupByPublicId(context.Background(), foundUser)
 			assert.Error(err)
@@ -1208,4 +1209,136 @@ func testId(t *testing.T) string {
 	id, err := uuid.GenerateUUID()
 	assert.NoError(err)
 	return id
+}
+
+func testScooter(t *testing.T, conn *gorm.DB, model string, mpg int32) *db_test.TestScooter {
+	t.Helper()
+	require := require.New(t)
+
+	privateId, err := base62.Random(20)
+	require.NoError(err)
+	u := &db_test.TestScooter{
+		StoreTestScooter: &db_test.StoreTestScooter{
+			PrivateId: privateId,
+			Model:     model,
+			Mpg:       mpg,
+		},
+	}
+	if conn != nil {
+		err = conn.Create(u).Error
+		require.NoError(err)
+	}
+	return u
+}
+
+func TestDb_LookupById(t *testing.T) {
+	t.Parallel()
+	cleanup, db, _ := TestSetup(t, "postgres")
+	defer func() {
+		err := cleanup()
+		assert.NoError(t, err)
+		err = db.Close()
+		assert.NoError(t, err)
+	}()
+	scooter := testScooter(t, db, "", 0)
+	user := testUser(t, db, "", "", "")
+	type args struct {
+		resourceWithIder interface{}
+		opt              []Option
+	}
+	tests := []struct {
+		name       string
+		underlying *gorm.DB
+		args       args
+		wantErr    bool
+		want       proto.Message
+		wantIsErr  error
+	}{
+		{
+			name:       "simple-private-id",
+			underlying: db,
+			args: args{
+				resourceWithIder: scooter,
+			},
+			wantErr: false,
+			want:    scooter,
+		},
+		{
+			name:       "simple-public-id",
+			underlying: db,
+			args: args{
+				resourceWithIder: user,
+			},
+			wantErr: false,
+			want:    user,
+		},
+		{
+			name:       "missing-public-id",
+			underlying: db,
+			args: args{
+				resourceWithIder: &db_test.TestUser{
+					StoreTestUser: &db_test.StoreTestUser{},
+				},
+			},
+			wantErr:   true,
+			wantIsErr: ErrInvalidParameter,
+		},
+		{
+			name:       "missing-private-id",
+			underlying: db,
+			args: args{
+				resourceWithIder: &db_test.TestScooter{
+					StoreTestScooter: &db_test.StoreTestScooter{},
+				},
+			},
+			wantErr:   true,
+			wantIsErr: ErrInvalidParameter,
+		},
+		{
+			name:       "not-an-ider",
+			underlying: db,
+			args: args{
+				resourceWithIder: &db_test.NotIder{},
+			},
+			wantErr:   true,
+			wantIsErr: ErrInvalidParameter,
+		},
+		{
+			name:       "missing-underlying-db",
+			underlying: nil,
+			args: args{
+				resourceWithIder: user,
+			},
+			wantErr:   true,
+			wantIsErr: ErrNilParameter,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+			rw := &Db{
+				underlying: tt.underlying,
+			}
+			cloner, ok := tt.args.resourceWithIder.(db_test.Cloner)
+			require.True(ok)
+			cp := cloner.Clone()
+			err := rw.LookupById(context.Background(), cp, tt.args.opt...)
+			if tt.wantErr {
+				require.Error(err)
+				require.True(errors.Is(err, tt.wantIsErr))
+				return
+			}
+			require.NoError(err)
+			assert.True(proto.Equal(tt.want, cp.(proto.Message)))
+		})
+	}
+	t.Run("not-ptr", func(t *testing.T) {
+		u := testUser(t, db, "", "", "")
+		rw := &Db{
+			underlying: db,
+		}
+		err := rw.LookupById(context.Background(), *u)
+		require.Error(t, err)
+		assert.True(t, errors.Is(err, ErrInvalidParameter))
+	})
 }

@@ -28,7 +28,12 @@ type Reader interface {
 	// LookupByName will lookup resource by its friendly name which must be unique
 	LookupByName(ctx context.Context, resource ResourceNamer, opt ...Option) error
 
-	// LookupByPublicId will lookup resource by its public_id which must be unique
+	// LookupById will lookup a resource by its primary key id, which must be
+	// unique. The resourceWithIder must implement either ResourcePublicIder or
+	// ResourcePrivateIder interface.
+	LookupById(ctx context.Context, resourceWithIder interface{}, opt ...Option) error
+
+	// LookupByPublicId will lookup resource by its public_id which must be unique.
 	LookupByPublicId(ctx context.Context, resource ResourcePublicIder, opt ...Option) error
 
 	// LookupWhere will lookup and return the first resource using a where clause with parameters
@@ -94,9 +99,16 @@ type RetryInfo struct {
 // TxHandler defines a handler for a func that writes a transaction for use with DoTx
 type TxHandler func(Writer) error
 
-// ResourcePublicIder defines an interface that LookupByPublicId() can use to get the resource's public id
+// ResourcePublicIder defines an interface that LookupByPublicId() can use to
+// get the resource's public id.
 type ResourcePublicIder interface {
 	GetPublicId() string
+}
+
+// ResourcePrivateIder defines an interface that LookupById() can use to get the
+// resource's private id.
+type ResourcePrivateIder interface {
+	GetPrivateId() string
 }
 
 // ResourceNamer defines an interface that LookupByName() can use to get the resource's friendly name
@@ -513,24 +525,49 @@ func (rw *Db) LookupByName(ctx context.Context, resource ResourceNamer, opt ...O
 	return nil
 }
 
-// LookupByPublicId will lookup resource my its public_id which must be unique
-func (rw *Db) LookupByPublicId(ctx context.Context, resource ResourcePublicIder, opt ...Option) error {
+// LookupByPublicId will lookup resource by its public_id or private_id, which
+// must be unique. Options are ignored.
+func (rw *Db) LookupById(ctx context.Context, resourceWithIder interface{}, opt ...Option) error {
 	if rw.underlying == nil {
-		return errors.New("error underlying db nil for lookup by public id")
+		return fmt.Errorf("lookup by id: underlying db nil %w", ErrNilParameter)
 	}
-	if reflect.ValueOf(resource).Kind() != reflect.Ptr {
-		return errors.New("error interface parameter must to be a pointer for lookup by public id")
+	if reflect.ValueOf(resourceWithIder).Kind() != reflect.Ptr {
+		return fmt.Errorf("lookup by id: interface parameter must to be a pointer %w", ErrInvalidParameter)
 	}
-	if resource.GetPublicId() == "" {
-		return errors.New("error public id empty string for lookup by public id")
+	primaryKey, where, err := primaryKeyWhere(resourceWithIder)
+	if err != nil {
+		return fmt.Errorf("lookup by id: %w", err)
 	}
-	if err := rw.underlying.Where("public_id = ?", resource.GetPublicId()).First(resource).Error; err != nil {
+	if err := rw.underlying.Where(where, primaryKey).First(resourceWithIder).Error; err != nil {
 		if err == gorm.ErrRecordNotFound {
 			return ErrRecordNotFound
 		}
 		return err
 	}
 	return nil
+}
+func primaryKeyWhere(resourceWithIder interface{}) (pkey string, w string, e error) {
+	var primaryKey, where string
+	switch resourceType := resourceWithIder.(type) {
+	case ResourcePublicIder:
+		primaryKey = resourceType.GetPublicId()
+		where = "public_id = ?"
+	case ResourcePrivateIder:
+		primaryKey = resourceType.GetPrivateId()
+		where = "private_id = ?"
+	default:
+		return "", "", fmt.Errorf("unsupported interface type %w", ErrInvalidParameter)
+	}
+	if primaryKey == "" {
+		return "", "", fmt.Errorf("primary key unset %w", ErrInvalidParameter)
+	}
+	return primaryKey, where, nil
+}
+
+// LookupByPublicId will lookup resource by its public_id, which must be unique.
+// Options are ignored.
+func (rw *Db) LookupByPublicId(ctx context.Context, resource ResourcePublicIder, opt ...Option) error {
+	return rw.LookupById(ctx, resource, opt...)
 }
 
 // LookupWhere will lookup the first resource using a where clause with parameters (it only returns the first one)
