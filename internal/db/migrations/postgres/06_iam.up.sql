@@ -149,7 +149,12 @@ create table iam_user (
     description text,
     scope_id wt_public_id not null references iam_scope_organization(scope_id) on delete cascade on update cascade,
     unique(name, scope_id),
-    disabled boolean not null default false
+    disabled boolean not null default false,
+
+    -- The order of columns is important for performance. See:
+    -- https://dba.stackexchange.com/questions/58970/enforcing-constraints-two-tables-away/58972#58972
+    -- https://dba.stackexchange.com/questions/27481/is-a-composite-index-also-good-for-queries-on-the-first-field
+    unique(scope_id, public_id)
   );
 
 create trigger 
