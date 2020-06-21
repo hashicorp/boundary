@@ -7,9 +7,10 @@ import (
 )
 
 const (
-	UserPrefix  = "u"
-	GroupPrefix = "g"
-	RolePrefix  = "r"
+	UserPrefix        = "u"
+	GroupPrefix       = "g"
+	RolePrefix        = "r"
+	UserAccountPrefix = "ua_"
 )
 
 func newRoleId() (string, error) {
@@ -43,6 +44,14 @@ func newScopeId(scopeType ScopeType) (string, error) {
 	id, err := db.NewPublicId(scopeType.Prefix())
 	if err != nil {
 		return "", fmt.Errorf("new %s id: %w", scopeType.String(), err)
+	}
+	return id, nil
+}
+
+func newUserAccountId() (string, error) {
+	id, err := db.NewPrivateId(UserAccountPrefix)
+	if err != nil {
+		return "", fmt.Errorf("new user account id: %w", err)
 	}
 	return id, nil
 }
