@@ -139,3 +139,19 @@ func TestGroup(t *testing.T, conn *gorm.DB, scopeId string, opt ...Option) *Grou
 	require.NotEmpty(grp.PublicId)
 	return grp
 }
+
+func TestUserAccount(t *testing.T, conn *gorm.DB, scopeId, userId, authMethodId, authAccountId string) *UserAccount {
+	t.Helper()
+	require := require.New(t)
+
+	acct, err := NewUserAccount(scopeId, userId, authMethodId, authAccountId)
+	require.NoError(err)
+	id, err := newUserAccountId()
+	require.NoError(err)
+	acct.PrivateId = id
+	rw := db.New(conn)
+	err = rw.Create(context.Background(), acct)
+	require.NoError(err)
+	require.NotEmpty(acct.PrivateId)
+	return acct
+}
