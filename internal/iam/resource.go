@@ -77,9 +77,18 @@ type Clonable interface {
 
 // ResourceWithScope defines an interface for Resources that have a scope
 type ResourceWithScope interface {
-	GetPublicId() string
 	GetScopeId() string
 	validScopeTypes() []ScopeType
+}
+
+// ResourcePublicIder defines an interface that can be use to get the resource's public id
+type PublicIder interface {
+	GetPublicId() string
+}
+
+// ResourcePrivateIder defines an interface that can be use to get the resource's private id
+type PrivateIder interface {
+	GetPrivateId() string
 }
 
 // LookupScope looks up the resource's  scope
@@ -90,12 +99,21 @@ func LookupScope(ctx context.Context, reader db.Reader, resource ResourceWithSco
 	if resource == nil {
 		return nil, errors.New("error resource is nil for LookupScope")
 	}
-	if resource.GetPublicId() == "" {
-		return nil, errors.New("error resource has an unset public id")
+	var primaryKey string
+	switch resourceType := resource.(type) {
+	case db.ResourcePublicIder:
+		primaryKey = resourceType.GetPublicId()
+	case db.ResourcePrivateIder:
+		primaryKey = resourceType.GetPrivateId()
+	default:
+		return nil, fmt.Errorf("LookupScope: unsupported interface type %w", db.ErrInvalidParameter)
+	}
+	if primaryKey == "" {
+		return nil, fmt.Errorf("lookup by id: primary key is unset %w", db.ErrInvalidParameter)
 	}
 	if resource.GetScopeId() == "" {
 		// try to retrieve it from db with it's scope id
-		if err := reader.LookupByPublicId(ctx, resource); err != nil {
+		if err := reader.LookupById(ctx, resource); err != nil {
 			return nil, fmt.Errorf("unable to get resource by public id: %w", err)
 		}
 		// if it's still not set after getting it from the db...
