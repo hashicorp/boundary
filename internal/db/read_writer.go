@@ -295,7 +295,7 @@ func (rw *Db) Update(ctx context.Context, i interface{}, fieldMaskPaths []string
 	}
 	var underlying *gorm.DB
 	switch {
-	case opts.WithVersion != "":
+	case opts.WithVersion > 0:
 		if _, ok := scope.FieldByName("version"); !ok {
 			return NoRowsAffected, fmt.Errorf("update: %s does not have a version field", scope.TableName())
 		}

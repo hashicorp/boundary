@@ -96,27 +96,6 @@ comment on function
 is
   'function used in before insert triggers to set create_time column to now';
 
--- rand_version_string(length) will create a new random version string.  The
--- returned string will be lower cased characters and integers.
-create or replace function rand_version_string(length integer)
-returns text
-language plpgsql
-as $$
-declare 
- 	char_set text := '0123456789abcdefghijklmnopqrstuvqxyz';
-	set_size integer := length(char_set);
-	result text;
-begin
-	select array_to_string(
-		array(
-			select substr(char_set, round(random() * set_size)::integer, 1)
-			from generate_series(1, length)
-		),
-		'') into result;
-	return result;
-end;
-$$;
-
 -- update_version_column() will increment the version column whenever row data
 -- is updated and should only be used in an update after trigger.  This function
 -- will overwrite any explicit updates to the version column. 
@@ -124,13 +103,11 @@ create or replace function
   update_version_column()
   returns trigger
 as $$
-declare 
- 	new_version text := rand_version_string(20);
 begin
   if pg_trigger_depth() = 1 then
     if row(new.*) is distinct from row(old.*) then
-      execute format('update %I set version = $1 where public_id = $2', tg_relid::regclass) using new_version, new.public_id;
-      new.version = new_version;
+      execute format('update %I set version = $1 where public_id = $2', tg_relid::regclass) using old.version+1, new.public_id;
+      new.version = old.version + 1;
       return new;
     end if;
   end if;
@@ -299,7 +276,7 @@ create table if not exists db_test_user (
   name text unique,
   phone_number text,
   email text,
-  version text default rand_version_string(20)
+  version int default 1
 );
 
 create trigger 

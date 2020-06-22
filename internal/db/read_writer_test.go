@@ -87,11 +87,33 @@ func TestDb_Update(t *testing.T) {
 				},
 				fieldMaskPaths: []string{"Name", "PhoneNumber"},
 				setToNullPaths: []string{"Email"},
-				opt:            []Option{WithVersion(testId(t))},
+				opt:            []Option{WithVersion(22)},
 			},
 			want:       0,
 			wantErr:    false,
 			wantErrMsg: "",
+		},
+		{
+			name: "simple-with-version",
+			args: args{
+				i: &db_test.TestUser{
+					StoreTestUser: &db_test.StoreTestUser{
+						Name:        "simple-with-version" + id,
+						Email:       "updated" + id,
+						PhoneNumber: "updated" + id,
+					},
+				},
+				fieldMaskPaths: []string{"Name", "PhoneNumber"},
+				setToNullPaths: []string{"Email"},
+				opt:            []Option{WithVersion(1)},
+			},
+			want:            1,
+			wantErr:         false,
+			wantErrMsg:      "",
+			wantName:        "simple-with-version" + id,
+			wantEmail:       "",
+			wantPhoneNumber: "updated" + id,
+			wantVersion:     2,
 		},
 		{
 			name: "multiple-null",
@@ -246,29 +268,9 @@ func TestDb_Update(t *testing.T) {
 			assert.NotEqual(now, foundUser.CreateTime)
 			assert.NotEqual(now, foundUser.UpdateTime)
 			assert.NotEqual(publicId, foundUser.PublicId)
-			assert.NotEqual(u.Version, foundUser.Version)
+			assert.Equal(u.Version+1, foundUser.Version)
 		})
 	}
-	t.Run("valid-WithVersion", func(t *testing.T) {
-		assert := assert.New(t)
-		w := Db{underlying: db}
-		id, err := uuid.GenerateUUID()
-		assert.NoError(err)
-		user := testUser(t, db, "foo-"+id, id, id)
-		u := user.Clone()
-		u.Name = "friendly-" + id
-		rowsUpdated, err := w.Update(context.Background(), u, []string{"Name"}, nil, WithVersion(user.Version))
-		assert.NoError(err)
-		assert.Equal(1, rowsUpdated)
-
-		foundUser, err := db_test.NewTestUser()
-		assert.NoError(err)
-		foundUser.PublicId = user.PublicId
-		err = w.LookupByPublicId(context.Background(), foundUser)
-		assert.NoError(err)
-		assert.Equal("friendly-"+id, foundUser.Name)
-		assert.NotEqual(user.Version, foundUser.Version)
-	})
 	t.Run("no-version-field", func(t *testing.T) {
 		assert := assert.New(t)
 		w := Db{underlying: db}
@@ -277,7 +279,7 @@ func TestDb_Update(t *testing.T) {
 		car := testCar(t, db, "foo-"+id, id, int32(100))
 
 		car.Name = "friendly-" + id
-		rowsUpdated, err := w.Update(context.Background(), car, []string{"Name"}, nil, WithVersion(testId(t)))
+		rowsUpdated, err := w.Update(context.Background(), car, []string{"Name"}, nil, WithVersion(1))
 		assert.Error(err)
 		assert.Equal(0, rowsUpdated)
 	})

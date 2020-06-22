@@ -29,7 +29,7 @@ type Options struct {
 	// WithNullPaths must be accessible from other packages.
 	WithNullPaths []string
 	// WithVersion must be accessible from other packages
-	WithVersion string
+	WithVersion int
 }
 
 type oplogOpts struct {
@@ -48,7 +48,7 @@ func getDefaultOptions() Options {
 		WithFieldMaskPaths: []string{},
 		WithNullPaths:      []string{},
 		WithLimit:          0,
-		WithVersion:        "",
+		WithVersion:        0,
 	}
 }
 
@@ -94,7 +94,7 @@ func WithLimit(limit int) Option {
 }
 
 // WithVersion provides an option version number for update operations.
-func WithVersion(version string) Option {
+func WithVersion(version int) Option {
 	return func(o *Options) {
 		o.WithVersion = version
 	}

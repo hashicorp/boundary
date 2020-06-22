@@ -99,13 +99,11 @@ func Test_getOpts(t *testing.T) {
 		// test default of 0
 		opts := GetOpts()
 		testOpts := getDefaultOptions()
-		testOpts.WithVersion = ""
+		testOpts.WithVersion = 0
 		assert.Equal(opts, testOpts)
-
-		id := testId(t)
-		opts = GetOpts(WithVersion(id))
+		opts = GetOpts(WithVersion(2))
 		testOpts = getDefaultOptions()
-		testOpts.WithVersion = id
+		testOpts.WithVersion = 2
 		assert.Equal(opts, testOpts)
 	})
 }
