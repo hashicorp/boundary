@@ -117,7 +117,3 @@ func Test_TestRole(t *testing.T) {
 	require.NotNil(projRole)
 	assert.NotEmpty(projRole.PublicId)
 }
-
-func Test_TestUserAccount(t *testing.T) {
-	panic("not implemented")
-}
