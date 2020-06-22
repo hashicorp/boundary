@@ -9,56 +9,33 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-type UserAccount struct {
-	*store.UserAccount
+// AuthAccount is from the auth subsystem and iam is only allowed to: lookup and
+// update auth accounts.  That's why there is no "new" factory for AuthAccounts.
+type AuthAccount struct {
+	*store.AuthAccount
 	tableName string `gorm:-`
 }
 
-var _ Clonable = (*UserAccount)(nil)
-var _ db.VetForWriter = (*UserAccount)(nil)
+var _ Clonable = (*AuthAccount)(nil)
+var _ db.VetForWriter = (*AuthAccount)(nil)
 
-// NewUserAccount creates a new in memory user account within a scope
-// (organization) and associated with an authMethod and an authMethod account.
-func NewUserAccount(scopeId, userId, authMethodId, authAccountId string) (*UserAccount, error) {
-	if scopeId == "" {
-		return nil, fmt.Errorf("new user account: missing scope id %w", db.ErrInvalidParameter)
-	}
-	if userId == "" {
-		return nil, fmt.Errorf("new user account: missing user id %w", db.ErrInvalidParameter)
-	}
-	if authMethodId == "" {
-		return nil, fmt.Errorf("new user account: missing auth method id %w", db.ErrInvalidParameter)
-	}
-	if authAccountId == "" {
-		return nil, fmt.Errorf("new user account: missing auth account id %w", db.ErrInvalidParameter)
-	}
-	return &UserAccount{
-		UserAccount: &store.UserAccount{
-			ScopeId:       scopeId,
-			UserId:        userId,
-			AuthMethodId:  authMethodId,
-			AuthAccountId: authAccountId,
-		},
-	}, nil
-}
-
-func allocUserAccount() UserAccount {
-	return UserAccount{
-		UserAccount: &store.UserAccount{},
+func allocAuthAccount() AuthAccount {
+	return AuthAccount{
+		AuthAccount: &store.AuthAccount{},
 	}
 }
 
 // Clone creates a clone of the user account.
-func (a *UserAccount) Clone() interface{} {
-	cp := proto.Clone(a.UserAccount)
-	return &UserAccount{
-		UserAccount: cp.(*store.UserAccount),
+func (a *AuthAccount) Clone() interface{} {
+	cp := proto.Clone(a.AuthAccount)
+	return &AuthAccount{
+		AuthAccount: cp.(*store.AuthAccount),
 	}
 }
 
 // VetForWrite implements db.VetForWrite() interface.
-func (a *UserAccount) VetForWrite(ctx context.Context, r db.Reader, opType db.OpType, opt ...db.Option) error {
-	if a.PrivateId == "" {
+func (a *AuthAccount) VetForWrite(ctx context.Context, r db.Reader, opType db.OpType, opt ...db.Option) error {
+	if a.PublicId == "" {
 		return fmt.Errorf("error private id is empty string for user account write: %w", db.ErrInvalidParameter)
 	}
 	if err := validateScopeForWrite(ctx, r, a, opType, opt...); err != nil {
@@ -67,25 +44,25 @@ func (a *UserAccount) VetForWrite(ctx context.Context, r db.Reader, opType db.Op
 	return nil
 }
 
-func (a *UserAccount) validScopeTypes() []ScopeType {
+func (a *AuthAccount) validScopeTypes() []ScopeType {
 	return []ScopeType{OrganizationScope}
 }
 
 // Getscope returns the scope for the Role.
-func (a *UserAccount) GetScope(ctx context.Context, r db.Reader) (*Scope, error) {
+func (a *AuthAccount) GetScope(ctx context.Context, r db.Reader) (*Scope, error) {
 	return LookupScope(ctx, r, a)
 }
 
 // TableName returns the tablename to override the default gorm table name.
-func (a *UserAccount) TableName() string {
+func (a *AuthAccount) TableName() string {
 	if a.tableName != "" {
 		return a.tableName
 	}
-	return "iam_user_account"
+	return "auth_account"
 }
 
 // SetTableName sets the tablename and satisfies the ReplayableMessage interface.
-func (a *UserAccount) SetTableName(n string) {
+func (a *AuthAccount) SetTableName(n string) {
 	if n != "" {
 		a.tableName = n
 	}
