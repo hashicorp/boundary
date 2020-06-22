@@ -13,6 +13,7 @@ import (
 	"github.com/hashicorp/watchtower/internal/oplog"
 	"github.com/hashicorp/watchtower/internal/oplog/store"
 	"github.com/jinzhu/gorm"
+	gormbulk "github.com/t-tiger/gorm-bulk-insert/v2"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -218,6 +219,71 @@ func (rw *Db) Create(ctx context.Context, i interface{}, opt ...Option) error {
 	return nil
 }
 
+// Supported options: WithOplog
+func (rw *Db) CreateMany(ctx context.Context, aggregateName string, createItems []interface{}, opt ...Option) error {
+	if rw.underlying == nil {
+		return fmt.Errorf("create many: missing underlying db %w", ErrNilParameter)
+	}
+	if isNil(createItems) {
+		return fmt.Errorf("create many: interfaces is missing %w", ErrNilParameter)
+	}
+	if len(createItems) == 0 {
+		return fmt.Errorf("create many: no interfaces to create %w", ErrInvalidParameter)
+	}
+	opts := GetOpts(opt...)
+	if opts.withLookup {
+		return fmt.Errorf("create many: withLookup not a supported option %w", ErrInvalidParameter)
+	}
+	var ticket *store.Ticket
+	if opts.withOplog {
+		var err error
+		ticket, err = rw.getTicketFor(aggregateName)
+		if err != nil {
+			return fmt.Errorf("create many: unable to get ticket: %w", err)
+		}
+	}
+	if err := gormbulk.BulkInsert(rw.underlying, createItems, 3000); err != nil {
+		return fmt.Errorf("create many: failed %w", err)
+	}
+	if opts.withOplog {
+		oplogArgs := opts.oplogOpts
+		ticketer, err := oplog.NewGormTicketer(rw.underlying, oplog.WithAggregateNames(true))
+		if err != nil {
+			return fmt.Errorf("add oplog: unable to get Ticketer %w", err)
+		}
+		entry, err := oplog.NewEntry(
+			aggregateName,
+			oplogArgs.metadata,
+			oplogArgs.wrapper,
+			ticketer,
+		)
+		if err != nil {
+			return fmt.Errorf("create many: unable to create oplog entry %w", err)
+		}
+		oplogMsgs := []*oplog.Message{}
+		for i, item := range createItems {
+			replayable, ok := item.(oplog.ReplayableMessage)
+			if !ok {
+				return fmt.Errorf("create many: item %d not a replayable oplog message %w", i, ErrInvalidParameter)
+			}
+			oplogMsgs = append(oplogMsgs, &oplog.Message{
+				Message:  item.(proto.Message),
+				TypeName: replayable.TableName(),
+				OpType:   oplog.OpType_OP_TYPE_CREATE,
+			})
+		}
+		if err := entry.WriteEntryWith(
+			ctx,
+			&oplog.GormWriter{Tx: rw.underlying},
+			ticket,
+			oplogMsgs...,
+		); err != nil {
+			return fmt.Errorf("create many: unable to write oplog entry %w", err)
+		}
+	}
+	return nil
+}
+
 // Update an object in the db, fieldMask is required and provides
 // field_mask.proto paths for fields that should be updated. The i interface
 // parameter is the type the caller wants to update in the db and its
@@ -383,6 +449,20 @@ func validateOplogArgs(i interface{}, opts Options) (oplog.ReplayableMessage, er
 	return replayable, nil
 }
 
+func (rw *Db) getTicketFor(aggregateName string) (*store.Ticket, error) {
+	if rw.underlying == nil {
+		return nil, fmt.Errorf("get ticket for %s: underlying db missing: %w", aggregateName, ErrNilParameter)
+	}
+	ticketer, err := oplog.NewGormTicketer(rw.underlying, oplog.WithAggregateNames(true))
+	if err != nil {
+		return nil, fmt.Errorf("get ticket for %s: unable to get Ticketer %w", aggregateName, err)
+	}
+	ticket, err := ticketer.GetTicket(aggregateName)
+	if err != nil {
+		return nil, fmt.Errorf("get ticket for %s: unable to get ticket %w", aggregateName, err)
+	}
+	return ticket, nil
+}
 func (rw *Db) getTicket(i interface{}) (*store.Ticket, error) {
 	if rw.underlying == nil {
 		return nil, fmt.Errorf("get ticket: underlying db missing: %w", ErrNilParameter)
@@ -391,15 +471,7 @@ func (rw *Db) getTicket(i interface{}) (*store.Ticket, error) {
 	if !ok {
 		return nil, fmt.Errorf("get ticket: not a replayable message %w", ErrInvalidParameter)
 	}
-	ticketer, err := oplog.NewGormTicketer(rw.underlying, oplog.WithAggregateNames(true))
-	if err != nil {
-		return nil, fmt.Errorf("get ticket: unable to get Ticketer %w", err)
-	}
-	ticket, err := ticketer.GetTicket(replayable.TableName())
-	if err != nil {
-		return nil, fmt.Errorf("get ticket: unable to get ticket %w", err)
-	}
-	return ticket, nil
+	return rw.getTicketFor(replayable.TableName())
 }
 
 func (rw *Db) addOplog(ctx context.Context, opType OpType, opts Options, ticket *store.Ticket, i interface{}) error {
