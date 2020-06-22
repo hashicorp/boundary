@@ -41,9 +41,4 @@ func Test_PublicIds(t *testing.T) {
 		assert.Empty(t, id)
 		assert.True(t, errors.Is(err, db.ErrInvalidParameter))
 	})
-	t.Run("user account", func(t *testing.T) {
-		id, err := newUserAccountId()
-		require.NoError(t, err)
-		assert.True(t, strings.HasPrefix(id, UserAccountPrefix+"_"))
-	})
 }
