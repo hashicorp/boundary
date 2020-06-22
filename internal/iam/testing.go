@@ -6,6 +6,7 @@ import (
 
 	"github.com/hashicorp/go-uuid"
 	"github.com/hashicorp/watchtower/internal/db"
+	"github.com/hashicorp/watchtower/internal/iam/store"
 	"github.com/jinzhu/gorm"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -140,18 +141,50 @@ func TestGroup(t *testing.T, conn *gorm.DB, scopeId string, opt ...Option) *Grou
 	return grp
 }
 
-func TestUserAccount(t *testing.T, conn *gorm.DB, scopeId, userId, authMethodId, authAccountId string) *UserAccount {
+// testAuthAccount is a temporary test function.  TODO - replace with an auth
+// subsystem testAuthAccount function.
+func testAuthAccount(t *testing.T, conn *gorm.DB, scopeId, authMethodId, userId string) *AuthAccount {
 	t.Helper()
+	const authAccountPrefix = "aa_"
 	require := require.New(t)
+	require.NotNil(conn)
+	require.NotEmpty(scopeId)
+	require.NotEmpty(userId)
+	require.NotEmpty(authMethodId)
 
-	acct, err := NewUserAccount(scopeId, userId, authMethodId, authAccountId)
+	id, err := db.NewPublicId(authAccountPrefix)
 	require.NoError(err)
-	id, err := newUserAccountId()
-	require.NoError(err)
-	acct.PrivateId = id
+
+	acct := &AuthAccount{
+		AuthAccount: &store.AuthAccount{
+			PublicId:     id,
+			ScopeId:      scopeId,
+			AuthMethodId: authMethodId,
+			IamUserId:    userId,
+		},
+	}
 	rw := db.New(conn)
 	err = rw.Create(context.Background(), acct)
 	require.NoError(err)
-	require.NotEmpty(acct.PrivateId)
+	require.NotEmpty(acct.PublicId)
 	return acct
+}
+
+// testAuthMethod is a temporary test function.  TODO - replace with an auth
+// subsystem testAuthMethod function.
+func testAuthMethod(t *testing.T, conn *gorm.DB, scopeId string) string {
+	t.Helper()
+	require := require.New(t)
+	require.NotNil(conn)
+	require.NotEmpty(scopeId)
+	const (
+		authMethodPrefix = "am_"
+		insert           = `insert into auth_method (public_id, scope_id) values ($1, $2)`
+	)
+	id, err := db.NewPublicId(authMethodPrefix)
+	require.NoError(err)
+
+	_, err = conn.DB().Exec(insert, id, scopeId)
+	require.NoError(err)
+	return id
 }
