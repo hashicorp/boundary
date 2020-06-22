@@ -493,3 +493,159 @@ func TestRepository_UpdateScope(t *testing.T) {
 		assert.Nil(updatedScope, "scope should be nil")
 	})
 }
+
+func TestRepository_ListProjects(t *testing.T) {
+	t.Parallel()
+	cleanup, conn, _ := db.TestSetup(t, "postgres")
+	defer func() {
+		err := cleanup()
+		assert.NoError(t, err)
+		err = conn.Close()
+		assert.NoError(t, err)
+	}()
+	const testLimit = 10
+	rw := db.New(conn)
+	wrapper := db.TestWrapper(t)
+	repo, err := NewRepository(rw, rw, wrapper, WithLimit(testLimit))
+	require.NoError(t, err)
+	org := testOrg(t, conn, "", "")
+
+	type args struct {
+		withOrganizationId string
+		opt                []Option
+	}
+	tests := []struct {
+		name      string
+		createCnt int
+		args      args
+		wantCnt   int
+		wantErr   bool
+	}{
+		{
+			name:      "no-limit",
+			createCnt: repo.defaultLimit + 1,
+			args: args{
+				withOrganizationId: org.PublicId,
+				opt:                []Option{WithLimit(-1)},
+			},
+			wantCnt: repo.defaultLimit + 1,
+			wantErr: false,
+		},
+		{
+			name:      "default-limit",
+			createCnt: repo.defaultLimit + 1,
+			args: args{
+				withOrganizationId: org.PublicId,
+			},
+			wantCnt: repo.defaultLimit,
+			wantErr: false,
+		},
+		{
+			name:      "custom-limit",
+			createCnt: repo.defaultLimit + 1,
+			args: args{
+				withOrganizationId: org.PublicId,
+				opt:                []Option{WithLimit(3)},
+			},
+			wantCnt: 3,
+			wantErr: false,
+		},
+		{
+			name:      "bad-org",
+			createCnt: 1,
+			args: args{
+				withOrganizationId: "bad-id",
+			},
+			wantCnt: 0,
+			wantErr: false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+			require.NoError(conn.Where("public_id != ?", org.PublicId).Delete(allocScope()).Error)
+			testProjects := []*Scope{}
+			for i := 0; i < tt.createCnt; i++ {
+				testProjects = append(testProjects, testProject(t, conn, org.PublicId))
+			}
+			assert.Equal(tt.createCnt, len(testProjects))
+			got, err := repo.ListProjects(context.Background(), tt.args.withOrganizationId, tt.args.opt...)
+			if tt.wantErr {
+				require.Error(err)
+				return
+			}
+			require.NoError(err)
+			assert.Equal(tt.wantCnt, len(got))
+		})
+	}
+}
+
+func TestRepository_ListOrganizations(t *testing.T) {
+	t.Parallel()
+	cleanup, conn, _ := db.TestSetup(t, "postgres")
+	defer func() {
+		err := cleanup()
+		assert.NoError(t, err)
+		err = conn.Close()
+		assert.NoError(t, err)
+	}()
+	const testLimit = 10
+	rw := db.New(conn)
+	wrapper := db.TestWrapper(t)
+	repo, err := NewRepository(rw, rw, wrapper, WithLimit(testLimit))
+	require.NoError(t, err)
+	type args struct {
+		opt []Option
+	}
+	tests := []struct {
+		name      string
+		createCnt int
+		args      args
+		wantCnt   int
+		wantErr   bool
+	}{
+		{
+			name:      "no-limit",
+			createCnt: repo.defaultLimit + 1,
+			args: args{
+				opt: []Option{WithLimit(-1)},
+			},
+			wantCnt: repo.defaultLimit + 1,
+			wantErr: false,
+		},
+		{
+			name:      "default-limit",
+			createCnt: repo.defaultLimit + 1,
+			args:      args{},
+			wantCnt:   repo.defaultLimit,
+			wantErr:   false,
+		},
+		{
+			name:      "custom-limit",
+			createCnt: repo.defaultLimit + 1,
+			args: args{
+				opt: []Option{WithLimit(3)},
+			},
+			wantCnt: 3,
+			wantErr: false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+			require.NoError(conn.Where("1=1").Delete(allocScope()).Error)
+			testOrgs := []*Scope{}
+			for i := 0; i < tt.createCnt; i++ {
+				testOrgs = append(testOrgs, testOrg(t, conn, "", ""))
+			}
+			assert.Equal(tt.createCnt, len(testOrgs))
+			got, err := repo.ListOrganizations(context.Background(), tt.args.opt...)
+			if tt.wantErr {
+				require.Error(err)
+				return
+			}
+			require.NoError(err)
+			assert.Equal(tt.wantCnt, len(got))
+		})
+	}
+}

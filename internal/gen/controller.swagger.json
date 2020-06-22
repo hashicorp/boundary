@@ -16,6 +16,62 @@
     "application/json"
   ],
   "paths": {
+    "/v1/orgs": {
+      "get": {
+        "summary": "Lists all Organizations",
+        "operationId": "OrganizationService_ListOrganizations",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.services.v1.ListOrganizationsResponse"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "view",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "controller.api.services.v1.OrganizationService"
+        ]
+      }
+    },
+    "/v1/orgs/{id}": {
+      "get": {
+        "summary": "Gets a single Organization",
+        "operationId": "OrganizationService_GetOrganization",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/controller.api.resources.scopes.v1.Organization"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "view",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "controller.api.services.v1.OrganizationService"
+        ]
+      }
+    },
     "/v1/orgs/{org_id}/groups": {
       "get": {
         "summary": "Lists all Groups",
@@ -2080,6 +2136,37 @@
       },
       "title": "HostSet is a collection of Hosts created and managed by a HostCatalog"
     },
+    "controller.api.resources.scopes.v1.Organization": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "The ID of the Organization\nOutput only.",
+          "readOnly": true
+        },
+        "name": {
+          "type": "string",
+          "title": "Optional name for identification purposes"
+        },
+        "description": {
+          "type": "string",
+          "title": "Optional user-set descripton for identification purposes"
+        },
+        "created_time": {
+          "type": "string",
+          "format": "date-time",
+          "description": "The time this resource was created\nOutput only.",
+          "readOnly": true
+        },
+        "updated_time": {
+          "type": "string",
+          "format": "date-time",
+          "description": "The time this resource was last updated.\nOutput only.",
+          "readOnly": true
+        }
+      },
+      "title": "Organization contains all fields related to an Organization resource"
+    },
     "controller.api.resources.scopes.v1.Project": {
       "type": "object",
       "properties": {
@@ -2307,6 +2394,14 @@
         }
       }
     },
+    "controller.api.services.v1.GetOrganizationResponse": {
+      "type": "object",
+      "properties": {
+        "item": {
+          "$ref": "#/definitions/controller.api.resources.scopes.v1.Organization"
+        }
+      }
+    },
     "controller.api.services.v1.GetProjectResponse": {
       "type": "object",
       "properties": {
@@ -2363,6 +2458,17 @@
           "type": "array",
           "items": {
             "$ref": "#/definitions/controller.api.resources.hosts.v1.Host"
+          }
+        }
+      }
+    },
+    "controller.api.services.v1.ListOrganizationsResponse": {
+      "type": "object",
+      "properties": {
+        "items": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/controller.api.resources.scopes.v1.Organization"
           }
         }
       }
