@@ -844,20 +844,22 @@ begin;
   create table user_session (
     public_id wt_public_id primary key,
     token text not null unique,
-    iam_scope_id wt_public_id not null
-      references iam_scope_organization (scope_id)
-      on delete cascade
-      on update cascade,
-    iam_user_id wt_public_id not null unique -- read only
-        references iam_user (public_id)
-        on delete cascade
-        on update cascade,
-    -- TODO: Add an auth_method_id as a FK column that cascades.
-    auth_method_id text,
+    scope_id wt_public_id not null,
+    iam_user_id wt_public_id not null,
+    auth_method_id wt_public_id not null,
     create_time wt_timestamp,
     update_time wt_timestamp,
     last_access_time wt_timestamp,
-    expiration_time wt_timestamp
+    expiration_time wt_timestamp,
+    foreign key (scope_id, auth_method_id)
+      references auth_method (scope_id, public_id)
+      on delete cascade
+      on update cascade,
+    foreign key (scope_id, iam_user_id)
+      references iam_user (scope_id, public_id)
+      on delete cascade
+      on update cascade,
+    unique(scope_id, public_id)
   );
 
 
@@ -917,56 +919,27 @@ begin;
     'function used in before update triggers to make auth_method_id column immutable';
 
   create or replace function
-    immutable_iam_scope_id()
+    immutable_scope_id()
     returns trigger
   as $$
   begin
-    if new.iam_scope_id is distinct from old.iam_scope_id then
-      raise exception 'iam_scope_id cannot be set to %', new.iam_scope_id;
-      new.iam_scope_id = old.iam_scope_id;
+    if new.scope_id is distinct from old.scope_id then
+      raise exception 'scope_id cannot be set to %', new.scope_id;
+      new.scope_id = old.scope_id;
     end if;
     return new;
   end;
   $$ language plpgsql;
 
   comment on function
-    immutable_iam_scope_id()
+    immutable_scope_id()
   is
-    'function used in before update triggers to make iam_scope_id column immutable';
-
-  create or replace function
-    user_session_iam_user_scope_check()
-    returns trigger
-  as $$
-  declare cnt int;
-  begin
-    select count(*) into cnt
-    from iam_user
-    where public_id = new.iam_user_id and
-    scope_id = new.iam_scope_id;
-    if cnt = 0 then
-      raise exception 'session and user do not belong to the same organization';
-    end if;
-    return new;
-  end;
-  $$ language plpgsql;
-
-  comment on function
-    user_session_iam_user_scope_check()
-  is
-    'function used in before insert triggers to check the iam user and the session are in the same scope.';
-
--- TODO: Create a similar function as above for the auth_method table when it exists.
+    'function used in before update triggers to make scope_id column immutable';
 
   create trigger
     default_create_time_column
   before insert on user_session
     for each row execute procedure default_create_time();
-
-  create trigger
-    user_session_iam_user_scope_check
-  before insert on user_session
-    for each row execute procedure user_session_iam_user_scope_check();
 
   create trigger
     update_time_column
@@ -994,9 +967,9 @@ begin;
     for each row execute procedure immutable_auth_method_id();
 
   create trigger
-    immutable_iam_scope_id
+    immutable_scope_id
   before update on user_session
-    for each row execute procedure immutable_iam_scope_id();
+    for each row execute procedure immutable_scope_id();
 
   insert into oplog_ticket (name, version)
   values

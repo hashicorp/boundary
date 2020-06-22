@@ -131,8 +131,8 @@ func TestRepository_CreateSession(t *testing.T) {
 
 	org1, _ := iam.TestScopes(t, conn)
 	u1 := iam.TestUser(t, conn, org1.GetPublicId())
-	org2, _ := iam.TestScopes(t, conn)
-	u2 := iam.TestUser(t, conn, org2.GetPublicId())
+
+	authmethod_id := setupAuthMethod(t, conn, org1.GetPublicId())
 
 	var tests = []struct {
 		name      string
@@ -154,31 +154,19 @@ func TestRepository_CreateSession(t *testing.T) {
 			name: "valid-no-options",
 			in: &Session{
 				Session: &store.Session{
-					IamScopeId:   org1.GetPublicId(),
+					ScopeId:      org1.GetPublicId(),
 					IamUserId:    u1.GetPublicId(),
-					AuthMethodId: "something",
+					AuthMethodId: authmethod_id,
 				},
 			},
 			want: &Session{
 				Session: &store.Session{
-					IamScopeId:   org1.GetPublicId(),
+					ScopeId:      org1.GetPublicId(),
 					IamUserId:    u1.GetPublicId(),
-					AuthMethodId: "something",
+					AuthMethodId: authmethod_id,
 				},
 			},
 		},
-		{
-			name: "scope-mismatch-with-iam-user",
-			in: &Session{
-				Session: &store.Session{
-					IamScopeId:   org1.GetPublicId(),
-					IamUserId:    u2.GetPublicId(),
-					AuthMethodId: "something",
-				},
-			},
-			wantIsErr: db.ErrNilParameter,
-		},
-		// TODO: Test scope mismatch with auth method.
 	}
 
 	for _, tt := range tests {
@@ -193,7 +181,7 @@ func TestRepository_CreateSession(t *testing.T) {
 				assert.Nil(got)
 				return
 			}
-			assert.NoError(err)
+			assert.NoError(err, "Got error for CreateSession(ctx, %v, %v)", tt.in, tt.opts)
 			assert.Empty(tt.in.PublicId)
 			assert.NotNil(got)
 			assertPublicId(t, SessionPrefix, got.PublicId)

@@ -52,7 +52,7 @@ func (r *Repository) CreateSession(ctx context.Context, s *Session, opt ...Optio
 	if s.Session == nil {
 		return nil, fmt.Errorf("create: user session: embedded Session: %w", db.ErrNilParameter)
 	}
-	if s.IamScopeId == "" {
+	if s.ScopeId == "" {
 		return nil, fmt.Errorf("create: user session: no scope id: %w", db.ErrInvalidParameter)
 	}
 	if s.IamUserId == "" {
@@ -99,7 +99,7 @@ func (r *Repository) CreateSession(ctx context.Context, s *Session, opt ...Optio
 	)
 
 	if err != nil {
-		return nil, fmt.Errorf("create: user session: in scope: %s: %w", s.IamScopeId, err)
+		return nil, fmt.Errorf("create: user session: %v: %w", s, err)
 	}
 	return newSession, nil
 }
@@ -223,8 +223,8 @@ func newSessionMetadata(s *Session, op oplog.OpType) oplog.Metadata {
 		"resource-type":      []string{"user session"},
 		"op-type":            []string{op.String()},
 	}
-	if s.IamScopeId != "" {
-		metadata["scope-id"] = []string{s.IamScopeId}
+	if s.ScopeId != "" {
+		metadata["scope-id"] = []string{s.ScopeId}
 	}
 	return metadata
 }

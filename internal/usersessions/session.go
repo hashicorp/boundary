@@ -31,7 +31,7 @@ func NewSession(scopeId, userId, authMethodId string, opt ...Option) (*Session, 
 
 	s := &Session{
 		Session: &store.Session{
-			IamScopeId:   scopeId,
+			ScopeId:      scopeId,
 			IamUserId:    userId,
 			AuthMethodId: authMethodId,
 		},

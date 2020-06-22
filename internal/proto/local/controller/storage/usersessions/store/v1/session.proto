@@ -33,7 +33,7 @@ message Session {
 
 	// The iam_scope_id of the owning scope and must be set.
 	// @inject_tag: `gorm:"default:not_null"`
-	string iam_scope_id = 7;
+	string scope_id = 7;
 
 	// iam_user_id is the public id for the iam user this session is for.
 	// @inject_tag: `gorm:"default:not_null"`

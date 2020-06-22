@@ -4,6 +4,7 @@ import (
 	"context"
 	"testing"
 
+	"github.com/hashicorp/vault/sdk/helper/base62"
 	"github.com/hashicorp/watchtower/internal/db"
 	"github.com/hashicorp/watchtower/internal/iam"
 	"github.com/hashicorp/watchtower/internal/usersessions/store"
@@ -27,6 +28,8 @@ func TestSession_New(t *testing.T) {
 	org, _ := iam.TestScopes(t, conn)
 	u := iam.TestUser(t, conn, org.GetPublicId())
 	org2, _ := iam.TestScopes(t, conn)
+	amId1 := setupAuthMethod(t, conn, org.GetPublicId())
+	amId2 := setupAuthMethod(t, conn, org2.GetPublicId())
 
 	type args struct {
 		scopeId      string
@@ -45,7 +48,7 @@ func TestSession_New(t *testing.T) {
 			name: "blank-scopeId",
 			args: args{
 				userId:       u.GetPublicId(),
-				authMethodId: "something",
+				authMethodId: amId1,
 			},
 			want:    nil,
 			wantErr: true,
@@ -54,7 +57,7 @@ func TestSession_New(t *testing.T) {
 			name: "blank-userId",
 			args: args{
 				scopeId:      org.GetPublicId(),
-				authMethodId: "something",
+				authMethodId: amId1,
 			},
 			want:    nil,
 			wantErr: true,
@@ -71,8 +74,19 @@ func TestSession_New(t *testing.T) {
 		{
 			name: "nonmatching-userid-scope",
 			args: args{
-				scopeId: org2.GetPublicId(),
-				userId:  u.GetPublicId(),
+				scopeId:      org2.GetPublicId(),
+				userId:       u.GetPublicId(),
+				authMethodId: amId1,
+			},
+			want:    nil,
+			wantErr: true,
+		},
+		{
+			name: "nonmatching-authmethodid-scope",
+			args: args{
+				scopeId:      org.GetPublicId(),
+				userId:       u.GetPublicId(),
+				authMethodId: amId2,
 			},
 			want:    nil,
 			wantErr: true,
@@ -82,13 +96,13 @@ func TestSession_New(t *testing.T) {
 			args: args{
 				scopeId:      org.GetPublicId(),
 				userId:       u.GetPublicId(),
-				authMethodId: "something",
+				authMethodId: amId1,
 			},
 			want: &Session{
 				Session: &store.Session{
-					IamScopeId:   org.GetPublicId(),
+					ScopeId:      org.GetPublicId(),
 					IamUserId:    u.GetPublicId(),
-					AuthMethodId: "something",
+					AuthMethodId: amId1,
 				},
 			},
 		},
@@ -139,8 +153,9 @@ func TestSession_Update(t *testing.T) {
 		}
 	})
 
-	orgs, _ := iam.TestScopes(t, conn)
-	u := iam.TestUser(t, conn, orgs.GetPublicId())
+	org, _ := iam.TestScopes(t, conn)
+	u := iam.TestUser(t, conn, org.GetPublicId())
+	amId := setupAuthMethod(t, conn, org.GetPublicId())
 
 	newSessId, err := newSessionId()
 	require.NoError(err)
@@ -170,7 +185,7 @@ func TestSession_Update(t *testing.T) {
 			name: "immutable-authmethodid",
 			args: args{
 				fieldMask: []string{"AuthMethodId"},
-				session:   &store.Session{AuthMethodId: "a changed id"},
+				session:   &store.Session{AuthMethodId: amId},
 			},
 			wantErr: true,
 		},
@@ -178,7 +193,7 @@ func TestSession_Update(t *testing.T) {
 			name: "immutable-scopeid",
 			args: args{
 				fieldMask: []string{"IamScopeId"},
-				session:   &store.Session{IamScopeId: u.GetScopeId()},
+				session:   &store.Session{ScopeId: u.GetScopeId()},
 			},
 			wantErr: true,
 		},
@@ -225,7 +240,8 @@ func testSession(t *testing.T, conn *gorm.DB) *Session {
 	assert := assert.New(t)
 	org, _ := iam.TestScopes(t, conn)
 	u := iam.TestUser(t, conn, org.GetPublicId())
-	sess, err := NewSession(org.GetPublicId(), u.GetPublicId(), "something")
+	amId := setupAuthMethod(t, conn, org.GetPublicId())
+	sess, err := NewSession(org.GetPublicId(), u.GetPublicId(), amId)
 	assert.NoError(err)
 	assert.NotNil(sess)
 	id, err := newSessionId()
@@ -242,4 +258,29 @@ func testSession(t *testing.T, conn *gorm.DB) *Session {
 	err2 := w.Create(context.Background(), sess)
 	assert.NoError(err2)
 	return sess
+}
+
+// Returns auth method id
+// TODO: Remove this when the auth method repos are created with the relevant test methods.
+func setupAuthMethod(t *testing.T, conn *gorm.DB, scope string) string {
+	t.Helper()
+	require := require.New(t)
+	insert := `insert into auth_method
+	(public_id, scope_id)
+	values
+	($1, $2);`
+	amId, err := authMethodId()
+	require.NoError(err)
+	db := conn.DB()
+	_, err = db.Query(insert, amId, scope)
+	require.NoError(err)
+	return amId
+}
+
+func authMethodId() (string, error) {
+	id, err := base62.Random(10)
+	if err != nil {
+		return "", err
+	}
+	return "am_" + id, nil
 }
