@@ -1,7 +1,6 @@
 BEGIN;
 
 drop table if exists iam_auth_method cascade;
-drop table if exists  iam_role cascade;
 drop table if exists iam_group_member_type_enm cascade;
 drop table if exists iam_group cascade cascade;
 drop table if exists iam_group_member_user cascade;
