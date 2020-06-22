@@ -66,14 +66,4 @@ begin;
   $$ language plpgsql;
 
 
-alter table iam_user_account 
-   add constraint fk_auth_method
-   foreign key (auth_method_id) 
-   references auth_method(auth_method_id);
-
-alter table iam_user_account 
-   add constraint fk_auth_account
-   foreign key (auth_account_id) 
-   references auth_account(auth_account_id);
-
 commit;
