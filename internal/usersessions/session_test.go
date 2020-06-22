@@ -27,9 +27,7 @@ func TestSession_New(t *testing.T) {
 
 	org, _ := iam.TestScopes(t, conn)
 	u := iam.TestUser(t, conn, org.GetPublicId())
-	org2, _ := iam.TestScopes(t, conn)
 	amId1 := setupAuthMethod(t, conn, org.GetPublicId())
-	amId2 := setupAuthMethod(t, conn, org2.GetPublicId())
 
 	type args struct {
 		scopeId      string
@@ -67,26 +65,6 @@ func TestSession_New(t *testing.T) {
 			args: args{
 				scopeId: org.GetPublicId(),
 				userId:  u.GetPublicId(),
-			},
-			want:    nil,
-			wantErr: true,
-		},
-		{
-			name: "nonmatching-userid-scope",
-			args: args{
-				scopeId:      org2.GetPublicId(),
-				userId:       u.GetPublicId(),
-				authMethodId: amId1,
-			},
-			want:    nil,
-			wantErr: true,
-		},
-		{
-			name: "nonmatching-authmethodid-scope",
-			args: args{
-				scopeId:      org.GetPublicId(),
-				userId:       u.GetPublicId(),
-				authMethodId: amId2,
 			},
 			want:    nil,
 			wantErr: true,

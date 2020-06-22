@@ -131,24 +131,47 @@ func TestRepository_CreateSession(t *testing.T) {
 
 	org1, _ := iam.TestScopes(t, conn)
 	u1 := iam.TestUser(t, conn, org1.GetPublicId())
+	amId1 := setupAuthMethod(t, conn, org1.GetPublicId())
 
-	authmethod_id := setupAuthMethod(t, conn, org1.GetPublicId())
+	org2, _ := iam.TestScopes(t, conn)
+	u2 := iam.TestUser(t, conn, org2.GetPublicId())
+	amId2 := setupAuthMethod(t, conn, org2.GetPublicId())
 
 	var tests = []struct {
-		name      string
-		in        *Session
-		opts      []Option
-		want      *Session
-		wantIsErr error
+		name    string
+		in      *Session
+		opts    []Option
+		want    *Session
+		wantErr bool
 	}{
 		{
-			name:      "nil-session",
-			wantIsErr: db.ErrNilParameter,
+			name:    "nil-session",
+			wantErr: true,
 		},
 		{
-			name:      "nil-embedded-session",
-			in:        &Session{},
-			wantIsErr: db.ErrNilParameter,
+			name:    "nil-embedded-session",
+			in:      &Session{},
+			wantErr: true,
+		},
+		{
+			name: "unmatched-session-user-scopes",
+			in: &Session{
+				Session: &store.Session{
+					ScopeId:      org1.GetPublicId(),
+					IamUserId:    u2.GetPublicId(),
+					AuthMethodId: amId1,
+				}},
+			wantErr: true,
+		},
+		{
+			name: "unmatched-session-authmethod-scopes",
+			in: &Session{
+				Session: &store.Session{
+					ScopeId:      org1.GetPublicId(),
+					IamUserId:    u1.GetPublicId(),
+					AuthMethodId: amId2,
+				}},
+			wantErr: true,
 		},
 		{
 			name: "valid-no-options",
@@ -156,14 +179,14 @@ func TestRepository_CreateSession(t *testing.T) {
 				Session: &store.Session{
 					ScopeId:      org1.GetPublicId(),
 					IamUserId:    u1.GetPublicId(),
-					AuthMethodId: authmethod_id,
+					AuthMethodId: amId1,
 				},
 			},
 			want: &Session{
 				Session: &store.Session{
 					ScopeId:      org1.GetPublicId(),
 					IamUserId:    u1.GetPublicId(),
-					AuthMethodId: authmethod_id,
+					AuthMethodId: amId1,
 				},
 			},
 		},
@@ -176,8 +199,8 @@ func TestRepository_CreateSession(t *testing.T) {
 			assert.NoError(err)
 			assert.NotNil(repo)
 			got, err := repo.CreateSession(context.Background(), tt.in, tt.opts...)
-			if tt.wantIsErr != nil {
-				assert.Truef(errors.Is(err, tt.wantIsErr), "want err: %q got: %q", tt.wantIsErr, err)
+			if tt.wantErr {
+				assert.Error(err)
 				assert.Nil(got)
 				return
 			}
