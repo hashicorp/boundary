@@ -180,8 +180,8 @@ create table iam_user_account (
   create_time wt_timestamp,
   user_id wt_public_id references iam_user(public_id) on delete cascade on update cascade,
   scope_id wt_public_id not null references iam_scope_organization(scope_id) on delete cascade on update cascade,
-  auth_method_id wt_public_id not null references auth_method(public_id) on delete cascade on update cascade,
-  auth_account_id wt_public_id not null references auth_account(public_id) on delete cascade on update cascade,
+  auth_method_id wt_public_id not null,
+  auth_account_id wt_public_id not null,
   unique(user_id, scope_id, auth_method_id, auth_account_id)
 );
 
