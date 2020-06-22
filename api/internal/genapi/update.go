@@ -29,6 +29,11 @@ var updateFuncs = map[string][]*updateInfo{
 		},
 		{
 			baseType:   "Organization",
+			targetType: "roles.Role",
+			path:       "roles",
+		},
+		{
+			baseType:   "Organization",
 			targetType: "users.User",
 			path:       "users",
 		},

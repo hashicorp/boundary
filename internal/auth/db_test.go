@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/hashicorp/watchtower/internal/db"
+	"github.com/hashicorp/watchtower/internal/iam"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -12,12 +13,15 @@ func TestDB_AuthMethodIDTrigger(t *testing.T) {
 	const (
 		createTable = `
 create table if not exists test_auth_method (
-    auth_method_id wt_public_id primary key
+    auth_method_id wt_public_id primary key,
+    iam_scope_id wt_public_id not null references iam_scope(public_id)
 );
 `
 		insert = `
-insert into test_auth_method (auth_method_id)
-values ($1);
+insert into test_auth_method
+  (auth_method_id, iam_scope_id)
+values
+  ($1, $2);
 `
 		addTriggers = `
 create trigger
@@ -55,8 +59,10 @@ select count(*) from test_auth_method where auth_method_id = $1;
 	_, err = db.Exec(addTriggers)
 	require.NoError(err)
 
+	org, _ := iam.TestScopes(t, conn)
+
 	id := "l1Ocw0TpHn800CekIxIXlmQqRDgFDfYl"
-	_, err = db.Query(insert, id)
+	_, err = db.Query(insert, id, org.GetPublicId())
 	require.NoError(err)
 
 	var count int
@@ -75,12 +81,16 @@ func TestDB_AuthAccountIDTrigger(t *testing.T) {
 	const (
 		createTable = `
 create table if not exists test_auth_account (
-    auth_account_id wt_public_id primary key
+    auth_account_id wt_public_id primary key,
+    auth_method_id wt_public_id not null,
+    iam_scope_id wt_public_id not null
 );
 `
 		insert = `
-insert into test_auth_account (auth_account_id)
-values ($1);
+insert into test_auth_account
+  (auth_account_id, auth_method_id, iam_scope_id)
+values
+  ($1, $2, $3);
 `
 		addTriggers = `
 create trigger
@@ -94,6 +104,12 @@ select count(*) from auth_account where auth_account_id = $1;
 `
 		testTableQuery = `
 select count(*) from test_auth_account where auth_account_id = $1;
+`
+		insertAuthMethod = `
+insert into auth_method
+  (auth_method_id, iam_scope_id)
+values
+  ($1, $2);
 `
 	)
 
@@ -118,8 +134,13 @@ select count(*) from test_auth_account where auth_account_id = $1;
 	_, err = db.Exec(addTriggers)
 	require.NoError(err)
 
+	org, _ := iam.TestScopes(t, conn)
+	meth_id := "31Ocw0TpHn800CekIxIXlmQqRDgFDfYl"
+	_, err = db.Query(insertAuthMethod, meth_id, org.GetPublicId())
+	require.NoError(err)
+
 	id := "l1Ocw0TpHn800CekIxIXlmQqRDgFDfYl"
-	_, err = db.Query(insert, id)
+	_, err = db.Query(insert, id, meth_id, org.GetPublicId())
 	require.NoError(err)
 
 	var count int
