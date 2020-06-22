@@ -8,6 +8,7 @@ import (
 	"github.com/hashicorp/watchtower/api"
 	"github.com/hashicorp/watchtower/api/groups"
 	"github.com/hashicorp/watchtower/api/hosts"
+	"github.com/hashicorp/watchtower/api/roles"
 	"github.com/hashicorp/watchtower/api/users"
 )
 
@@ -81,6 +82,44 @@ func (s Organization) CreateGroup(ctx context.Context, r *groups.Group) (*groups
 	apiErr, err := resp.Decode(target)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error decoding Creategroups.Group repsonse: %w", err)
+	}
+
+	target.Client = s.Client
+
+	return target, apiErr, nil
+}
+
+func (s Organization) CreateRole(ctx context.Context, r *roles.Role) (*roles.Role, *api.Error, error) {
+	if s.Client == nil {
+		return nil, nil, fmt.Errorf("nil client in Createroles.Role request")
+	}
+	if s.Id == "" {
+
+		// Assume the client has been configured with organization already and
+		// move on
+
+	} else {
+		// If it's explicitly set here, override anything that might be in the
+		// client
+
+		ctx = context.WithValue(ctx, "org", s.Id)
+
+	}
+
+	req, err := s.Client.NewRequest(ctx, "POST", "roles", r)
+	if err != nil {
+		return nil, nil, fmt.Errorf("error creating Createroles.Role request: %w", err)
+	}
+
+	resp, err := s.Client.Do(req)
+	if err != nil {
+		return nil, nil, fmt.Errorf("error performing client request during Createroles.Role call: %w", err)
+	}
+
+	target := new(roles.Role)
+	apiErr, err := resp.Decode(target)
+	if err != nil {
+		return nil, nil, fmt.Errorf("error decoding Createroles.Role repsonse: %w", err)
 	}
 
 	target.Client = s.Client
