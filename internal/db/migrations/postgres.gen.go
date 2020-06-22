@@ -206,7 +206,6 @@ values
   ('default', 1),
   ('iam_scope', 1),
   ('iam_user', 1),
-  ('iam_auth_method', 1),
   ('iam_group', 1),
   ('iam_group_member_user', 1),
   ('iam_role', 1),
@@ -215,7 +214,9 @@ values
   ('iam_role_user', 1),
   ('db_test_user', 1),
   ('db_test_car', 1),
-  ('db_test_rental', 1);
+  ('db_test_rental', 1),
+  ('db_test_scooter', 1);
+  
 
 commit;
 
@@ -357,53 +358,6 @@ create trigger
 before
 insert on db_test_scooter
   for each row execute procedure default_create_time();
-
-commit;
-
-`),
-	},
-	"migrations/04_auth.up.sql": {
-		name: "04_auth.up.sql",
-		bytes: []byte(`
-begin;
-
-  -- base table for auth methods
-  create table auth_method (
-    public_id wt_public_id primary key,
-    scope_id wt_public_id not null
-  );
-
-
-  -- base table for auth accounts
-  create table auth_account (
-    public_id wt_public_id primary key,
-    scope_id wt_public_id not null
-  );
-
-
-  create or replace function
-    insert_auth_method_subtype()
-    returns trigger
-  as $$
-  begin
-    insert into auth_method (auth_method_id)
-    values
-      (new.auth_method_id);
-    return new;
-  end;
-  $$ language plpgsql;
-
-  create or replace function
-    insert_auth_account_subtype()
-    returns trigger
-  as $$
-  begin
-    insert into auth_account (auth_account_id)
-    values
-      (new.auth_account_id);
-    return new;
-  end;
-  $$ language plpgsql;
 
 commit;
 
@@ -616,8 +570,8 @@ create table iam_user_account (
   create_time wt_timestamp,
   user_id wt_public_id references iam_user(public_id) on delete cascade on update cascade,
   scope_id wt_public_id not null references iam_scope_organization(scope_id) on delete cascade on update cascade,
-  auth_method_id wt_public_id not null references auth_method(public_id) on delete cascade on update cascade,
-  auth_account_id wt_public_id not null references auth_account(public_id) on delete cascade on update cascade,
+  auth_method_id wt_public_id not null,
+  auth_account_id wt_public_id not null,
   unique(user_id, scope_id, auth_method_id, auth_account_id)
 );
 
@@ -826,6 +780,17 @@ begin;
     return new;
   end;
   $$ language plpgsql;
+
+
+alter table iam_user_account 
+   add constraint fk_auth_method
+   foreign key (auth_method_id) 
+   references auth_method(auth_method_id);
+
+alter table iam_user_account 
+   add constraint fk_auth_account
+   foreign key (auth_account_id) 
+   references auth_account(auth_account_id);
 
 commit;
 
