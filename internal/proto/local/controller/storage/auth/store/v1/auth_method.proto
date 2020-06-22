@@ -1,0 +1,32 @@
+syntax = "proto3";
+
+package controller.storage.auth.store.v1;
+option go_package = "github.com/hashicorp/watchtower/internal/auth/store;store";
+
+import "controller/storage/timestamp/v1/timestamp.proto";
+
+// TODO - fill out the comments for these protobufs... at this point, I'm just
+// trying to get aligned on the basic data structures so we can keep moving
+// forward to the prototype at the end of next week.
+
+message AuthMethod {
+  // @inject_tag: gorm:"primary_key"
+  string auth_account_id = 1;
+
+  // @inject_tag: `gorm:"default:null"`
+  string iam_scope_id = 2;
+}
+
+message AuthAccount {
+  // @inject_tag: gorm:"primary_key"
+  string auth_account_id = 1;
+
+  // @inject_tag: `gorm:"default:null"`
+  string auth_method_id = 2;
+
+  // @inject_tag: `gorm:"default:null"`
+  string iam_scope_id = 3;
+
+  // @inject_tag: `gorm:"default:null"`
+  string iam_user_id = 4;
+}
