@@ -42,11 +42,6 @@ func (r *Repository) AddPrincipalRoles(ctx context.Context, roleId string, userI
 		"scope-type":                   []string{scope.Type},
 		"aggregate-resource-public-id": []string{roleId},
 	}
-	// rawDB, err := r.writer.DB()
-	// gdb, err := gorm.Open("postgres", rawDB)
-	// ticketer, err := oplog.NewGormTicketer(gdb, oplog.WithAggregateNames(true))
-	// ticket, err := ticketer.GetTicket(allocRole().tableName)
-
 	resultPrincipalRoles := make([]PrincipalRole, 0, len(userIds)+len(groupIds))
 	_, err = r.writer.DoTx(
 		ctx,
@@ -77,7 +72,7 @@ func (r *Repository) AddPrincipalRoles(ctx context.Context, roleId string, userI
 	return resultPrincipalRoles, nil
 }
 
-func (r *Repository) SetPrincipalRoles(ctx context.Context, roleId string, userIds []string, opt ...Option) ([]*PrincipalRole, int, error) {
+func (r *Repository) SetPrincipalRoles(ctx context.Context, roleId string, userIds, groupIds []string, opt ...Option) ([]*PrincipalRole, int, error) {
 	panic("not implemented")
 }
 
@@ -85,6 +80,6 @@ func (r *Repository) LookupPrincipalRoles(ctx context.Context, roleId string) ([
 	// see role_assigned_role.go for query
 	panic("not implemented")
 }
-func (r *Repository) DeleteUserRoles(ctx context.Context, roleId string, userIds []string, opt ...Option) (int, error) {
+func (r *Repository) DeletePrincipalRoles(ctx context.Context, roleId string, userIds, groupIds []string, opt ...Option) (int, error) {
 	panic("not implemented")
 }
