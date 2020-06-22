@@ -89,7 +89,6 @@ values
   ('default', 1),
   ('iam_scope', 1),
   ('iam_user', 1),
-  ('iam_auth_method', 1),
   ('iam_group', 1),
   ('iam_group_member_user', 1),
   ('iam_role', 1),
@@ -99,6 +98,8 @@ values
   ('db_test_user', 1),
   ('db_test_car', 1),
   ('db_test_rental', 1);
+  ('db_test_scooter', 1);
+  
 
 commit;
 
