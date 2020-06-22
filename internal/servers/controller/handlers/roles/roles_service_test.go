@@ -1,4 +1,4 @@
-package groups_test
+package roles_test
 
 import (
 	"context"
@@ -8,10 +8,10 @@ import (
 
 	"github.com/golang/protobuf/ptypes"
 	"github.com/hashicorp/watchtower/internal/db"
-	pb "github.com/hashicorp/watchtower/internal/gen/controller/api/resources/groups"
+	pb "github.com/hashicorp/watchtower/internal/gen/controller/api/resources/roles"
 	pbs "github.com/hashicorp/watchtower/internal/gen/controller/api/services"
 	"github.com/hashicorp/watchtower/internal/iam"
-	"github.com/hashicorp/watchtower/internal/servers/controller/handlers/groups"
+	"github.com/hashicorp/watchtower/internal/servers/controller/handlers/roles"
 	"google.golang.org/genproto/protobuf/field_mask"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -22,7 +22,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func createDefaultGroupAndRepo(t *testing.T) (*iam.Group, func() (*iam.Repository, error)) {
+func createDefaultRoleAndRepo(t *testing.T) (*iam.Role, func() (*iam.Repository, error)) {
 	t.Helper()
 	cleanup, conn, _ := db.TestSetup(t, "postgres")
 	t.Cleanup(func() {
@@ -40,69 +40,69 @@ func createDefaultGroupAndRepo(t *testing.T) (*iam.Group, func() (*iam.Repositor
 	}
 
 	o, _ := iam.TestScopes(t, conn)
-	g := iam.TestGroup(t, conn, o.GetPublicId(), iam.WithDescription("default"), iam.WithName("default"))
-	return g, repoFn
+	u := iam.TestRole(t, conn, o.GetPublicId(), iam.WithDescription("default"), iam.WithName("default"))
+	return u, repoFn
 }
 
 func TestGet(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
-	g, repo := createDefaultGroupAndRepo(t)
-	toMerge := &pbs.GetGroupRequest{
-		OrgId: g.GetScopeId(),
-		Id:    g.GetPublicId(),
+	u, repo := createDefaultRoleAndRepo(t)
+	toMerge := &pbs.GetRoleRequest{
+		OrgId: u.GetScopeId(),
+		Id:    u.GetPublicId(),
 	}
 
-	wantU := &pb.Group{
-		Id:          g.GetPublicId(),
-		Name:        &wrapperspb.StringValue{Value: g.GetName()},
-		Description: &wrapperspb.StringValue{Value: g.GetDescription()},
-		CreatedTime: g.CreateTime.GetTimestamp(),
-		UpdatedTime: g.UpdateTime.GetTimestamp(),
+	wantU := &pb.Role{
+		Id:          u.GetPublicId(),
+		Name:        &wrapperspb.StringValue{Value: u.GetName()},
+		Description: &wrapperspb.StringValue{Value: u.GetDescription()},
+		CreatedTime: u.CreateTime.GetTimestamp(),
+		UpdatedTime: u.UpdateTime.GetTimestamp(),
 	}
 
 	cases := []struct {
 		name    string
-		req     *pbs.GetGroupRequest
-		res     *pbs.GetGroupResponse
+		req     *pbs.GetRoleRequest
+		res     *pbs.GetRoleResponse
 		errCode codes.Code
 	}{
 		{
-			name:    "Get an Existing Group",
-			req:     &pbs.GetGroupRequest{Id: g.GetPublicId()},
-			res:     &pbs.GetGroupResponse{Item: wantU},
+			name:    "Get an Existing Role",
+			req:     &pbs.GetRoleRequest{Id: u.GetPublicId()},
+			res:     &pbs.GetRoleResponse{Item: wantU},
 			errCode: codes.OK,
 		},
 		{
-			name:    "Get a non existant Group",
-			req:     &pbs.GetGroupRequest{Id: iam.GroupPrefix + "_DoesntExis"},
+			name:    "Get a non existant Role",
+			req:     &pbs.GetRoleRequest{Id: iam.RolePrefix + "_DoesntExis"},
 			res:     nil,
 			errCode: codes.NotFound,
 		},
 		{
 			name:    "Wrong id prefix",
-			req:     &pbs.GetGroupRequest{Id: "j_1234567890"},
+			req:     &pbs.GetRoleRequest{Id: "j_1234567890"},
 			res:     nil,
 			errCode: codes.InvalidArgument,
 		},
 		{
 			name:    "space in id",
-			req:     &pbs.GetGroupRequest{Id: iam.GroupPrefix + "_1 23456789"},
+			req:     &pbs.GetRoleRequest{Id: iam.RolePrefix + "_1 23456789"},
 			res:     nil,
 			errCode: codes.InvalidArgument,
 		},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			req := proto.Clone(toMerge).(*pbs.GetGroupRequest)
+			req := proto.Clone(toMerge).(*pbs.GetRoleRequest)
 			proto.Merge(req, tc.req)
 
-			s, err := groups.NewService(repo)
-			require.NoError(err, "Couldn't create new group service.")
+			s, err := roles.NewService(repo)
+			require.NoError(err, "Couldn't create new role service.")
 
-			got, gErr := s.GetGroup(context.Background(), req)
-			assert.Equal(tc.errCode, status.Code(gErr), "GetGroup(%+v) got error %v, wanted %v", req, gErr, tc.errCode)
-			assert.True(proto.Equal(got, tc.res), "GetGroup(%q) got response %q, wanted %q", req, got, tc.res)
+			got, gErr := s.GetRole(context.Background(), req)
+			assert.Equal(tc.errCode, status.Code(gErr), "GetRole(%+v) got error %v, wanted %v", req, gErr, tc.errCode)
+			assert.True(proto.Equal(got, tc.res), "GetRole(%q) got response %q, wanted %q", req, got, tc.res)
 		})
 	}
 }
@@ -123,12 +123,12 @@ func TestList(t *testing.T) {
 	repoFn := func() (*iam.Repository, error) {
 		return iam.NewRepository(rw, rw, wrap)
 	}
-	oNoGroups, _ := iam.TestScopes(t, conn)
-	oWithGroups, _ := iam.TestScopes(t, conn)
-	var wantGroups []*pb.Group
+	oNoRoles, _ := iam.TestScopes(t, conn)
+	oWithRoles, _ := iam.TestScopes(t, conn)
+	var wantRoles []*pb.Role
 	for i := 0; i < 10; i++ {
-		g := iam.TestGroup(t, conn, oWithGroups.GetPublicId())
-		wantGroups = append(wantGroups, &pb.Group{
+		g := iam.TestRole(t, conn, oWithRoles.GetPublicId())
+		wantRoles = append(wantRoles, &pb.Role{
 			Id:          g.GetPublicId(),
 			CreatedTime: g.GetCreateTime().GetTimestamp(),
 			UpdatedTime: g.GetUpdateTime().GetTimestamp(),
@@ -137,107 +137,107 @@ func TestList(t *testing.T) {
 
 	cases := []struct {
 		name    string
-		req     *pbs.ListGroupsRequest
-		res     *pbs.ListGroupsResponse
+		req     *pbs.ListRolesRequest
+		res     *pbs.ListRolesResponse
 		errCode codes.Code
 	}{
 		{
-			name:    "List Many Group",
-			req:     &pbs.ListGroupsRequest{OrgId: oWithGroups.GetPublicId()},
-			res:     &pbs.ListGroupsResponse{Items: wantGroups},
+			name:    "List Many Role",
+			req:     &pbs.ListRolesRequest{OrgId: oWithRoles.GetPublicId()},
+			res:     &pbs.ListRolesResponse{Items: wantRoles},
 			errCode: codes.OK,
 		},
 		{
-			name:    "List No Groups",
-			req:     &pbs.ListGroupsRequest{OrgId: oNoGroups.GetPublicId()},
-			res:     &pbs.ListGroupsResponse{},
+			name:    "List No Roles",
+			req:     &pbs.ListRolesRequest{OrgId: oNoRoles.GetPublicId()},
+			res:     &pbs.ListRolesResponse{},
 			errCode: codes.OK,
 		},
 		{
 			name:    "Invalid Org Id",
-			req:     &pbs.ListGroupsRequest{OrgId: iam.OrganizationScope.Prefix() + "_this is invalid"},
+			req:     &pbs.ListRolesRequest{OrgId: iam.OrganizationScope.Prefix() + "_this is invalid"},
 			res:     nil,
 			errCode: codes.InvalidArgument,
 		},
 		// TODO: When an org doesn't exist, we should return a 404 instead of an empty list.
 		{
 			name:    "Unfound Org",
-			req:     &pbs.ListGroupsRequest{OrgId: iam.OrganizationScope.Prefix() + "_DoesntExis"},
-			res:     &pbs.ListGroupsResponse{},
+			req:     &pbs.ListRolesRequest{OrgId: iam.OrganizationScope.Prefix() + "_DoesntExis"},
+			res:     &pbs.ListRolesResponse{},
 			errCode: codes.OK,
 		},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			s, err := groups.NewService(repoFn)
-			require.NoError(err, "Couldn't create new group service.")
+			s, err := roles.NewService(repoFn)
+			require.NoError(err, "Couldn't create new role service.")
 
-			got, gErr := s.ListGroups(context.Background(), tc.req)
-			assert.Equal(tc.errCode, status.Code(gErr), "ListGroups(%+v) got error %v, wanted %v", tc.req, gErr, tc.errCode)
-			assert.True(proto.Equal(got, tc.res), "ListGroups(%q) got response %q, wanted %q", tc.req, got, tc.res)
+			got, gErr := s.ListRoles(context.Background(), tc.req)
+			assert.Equal(tc.errCode, status.Code(gErr), "ListRoles(%+v) got error %v, wanted %v", tc.req, gErr, tc.errCode)
+			assert.True(proto.Equal(got, tc.res), "ListRoles(%q) got response %q, wanted %q", tc.req, got, tc.res)
 		})
 	}
 }
 
 func TestDelete(t *testing.T) {
 	require := require.New(t)
-	g, repo := createDefaultGroupAndRepo(t)
+	u, repo := createDefaultRoleAndRepo(t)
 
-	s, err := groups.NewService(repo)
-	require.NoError(err, "Error when getting new group service.")
+	s, err := roles.NewService(repo)
+	require.NoError(err, "Error when getting new role service.")
 
 	cases := []struct {
 		name    string
-		req     *pbs.DeleteGroupRequest
-		res     *pbs.DeleteGroupResponse
+		req     *pbs.DeleteRoleRequest
+		res     *pbs.DeleteRoleResponse
 		errCode codes.Code
 	}{
 		{
-			name: "Delete an Existing Group",
-			req: &pbs.DeleteGroupRequest{
-				OrgId: g.GetScopeId(),
-				Id:    g.GetPublicId(),
+			name: "Delete an Existing Role",
+			req: &pbs.DeleteRoleRequest{
+				OrgId: u.GetScopeId(),
+				Id:    u.GetPublicId(),
 			},
-			res: &pbs.DeleteGroupResponse{
+			res: &pbs.DeleteRoleResponse{
 				Existed: true,
 			},
 			errCode: codes.OK,
 		},
 		{
-			name: "Delete bad group id",
-			req: &pbs.DeleteGroupRequest{
-				OrgId: g.GetScopeId(),
-				Id:    iam.GroupPrefix + "_doesntexis",
+			name: "Delete bad role id",
+			req: &pbs.DeleteRoleRequest{
+				OrgId: u.GetScopeId(),
+				Id:    iam.RolePrefix + "_doesntexis",
 			},
-			res: &pbs.DeleteGroupResponse{
+			res: &pbs.DeleteRoleResponse{
 				Existed: false,
 			},
 			errCode: codes.OK,
 		},
 		{
 			name: "Delete bad org id",
-			req: &pbs.DeleteGroupRequest{
+			req: &pbs.DeleteRoleRequest{
 				OrgId: "o_doesntexis",
-				Id:    g.GetPublicId(),
+				Id:    u.GetPublicId(),
 			},
-			res: &pbs.DeleteGroupResponse{
+			res: &pbs.DeleteRoleResponse{
 				Existed: false,
 			},
 			errCode: codes.OK,
 		},
 		{
 			name: "Bad org formatting",
-			req: &pbs.DeleteGroupRequest{
+			req: &pbs.DeleteRoleRequest{
 				OrgId: "bad_format",
-				Id:    g.GetPublicId(),
+				Id:    u.GetPublicId(),
 			},
 			res:     nil,
 			errCode: codes.InvalidArgument,
 		},
 		{
-			name: "Bad Group Id formatting",
-			req: &pbs.DeleteGroupRequest{
-				OrgId: g.GetScopeId(),
+			name: "Bad Role Id formatting",
+			req: &pbs.DeleteRoleRequest{
+				OrgId: u.GetScopeId(),
 				Id:    "bad_format",
 			},
 			res:     nil,
@@ -247,9 +247,9 @@ func TestDelete(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			assert := assert.New(t)
-			got, gErr := s.DeleteGroup(context.Background(), tc.req)
-			assert.Equal(tc.errCode, status.Code(gErr), "DeleteGroup(%+v) got error %v, wanted %v", tc.req, gErr, tc.errCode)
-			assert.EqualValuesf(tc.res, got, "DeleteGroup(%q) got response %q, wanted %q", tc.req, got, tc.res)
+			got, gErr := s.DeleteRole(context.Background(), tc.req)
+			assert.Equal(tc.errCode, status.Code(gErr), "DeleteRole(%+v) got error %v, wanted %v", tc.req, gErr, tc.errCode)
+			assert.EqualValuesf(tc.res, got, "DeleteRole(%q) got response %q, wanted %q", tc.req, got, tc.res)
 		})
 	}
 }
@@ -257,46 +257,46 @@ func TestDelete(t *testing.T) {
 func TestDelete_twice(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
-	g, repo := createDefaultGroupAndRepo(t)
+	u, repo := createDefaultRoleAndRepo(t)
 
-	s, err := groups.NewService(repo)
-	require.NoError(err, "Error when getting new group service")
-	req := &pbs.DeleteGroupRequest{
-		OrgId: g.GetScopeId(),
-		Id:    g.GetPublicId(),
+	s, err := roles.NewService(repo)
+	require.NoError(err, "Error when getting new role service")
+	req := &pbs.DeleteRoleRequest{
+		OrgId: u.GetScopeId(),
+		Id:    u.GetPublicId(),
 	}
-	got, gErr := s.DeleteGroup(context.Background(), req)
+	got, gErr := s.DeleteRole(context.Background(), req)
 	assert.NoError(gErr, "First attempt")
 	assert.True(got.GetExisted(), "Expected existed to be true for the first delete.")
-	got, gErr = s.DeleteGroup(context.Background(), req)
+	got, gErr = s.DeleteRole(context.Background(), req)
 	assert.NoError(gErr, "Second attempt")
 	assert.False(got.GetExisted(), "Expected existed to be false for the second delete.")
 }
 
 func TestCreate(t *testing.T) {
 	require := require.New(t)
-	defaultGroup, repo := createDefaultGroupAndRepo(t)
-	defaultCreated, err := ptypes.Timestamp(defaultGroup.GetCreateTime().GetTimestamp())
+	defaultRole, repo := createDefaultRoleAndRepo(t)
+	defaultCreated, err := ptypes.Timestamp(defaultRole.GetCreateTime().GetTimestamp())
 	require.NoError(err, "Error converting proto to timestamp.")
-	toMerge := &pbs.CreateGroupRequest{
-		OrgId: defaultGroup.GetScopeId(),
+	toMerge := &pbs.CreateRoleRequest{
+		OrgId: defaultRole.GetScopeId(),
 	}
 
 	cases := []struct {
 		name    string
-		req     *pbs.CreateGroupRequest
-		res     *pbs.CreateGroupResponse
+		req     *pbs.CreateRoleRequest
+		res     *pbs.CreateRoleResponse
 		errCode codes.Code
 	}{
 		{
-			name: "Create a valid Group",
-			req: &pbs.CreateGroupRequest{Item: &pb.Group{
+			name: "Create a valid Role",
+			req: &pbs.CreateRoleRequest{Item: &pb.Role{
 				Name:        &wrapperspb.StringValue{Value: "name"},
 				Description: &wrapperspb.StringValue{Value: "desc"},
 			}},
-			res: &pbs.CreateGroupResponse{
-				Uri: fmt.Sprintf("orgs/%s/groups/%s_", defaultGroup.GetScopeId(), iam.GroupPrefix),
-				Item: &pb.Group{
+			res: &pbs.CreateRoleResponse{
+				Uri: fmt.Sprintf("orgs/%s/roles/%s_", defaultRole.GetScopeId(), iam.RolePrefix),
+				Item: &pb.Role{
 					Name:        &wrapperspb.StringValue{Value: "name"},
 					Description: &wrapperspb.StringValue{Value: "desc"},
 				},
@@ -305,15 +305,15 @@ func TestCreate(t *testing.T) {
 		},
 		{
 			name: "Can't specify Id",
-			req: &pbs.CreateGroupRequest{Item: &pb.Group{
-				Id: iam.GroupPrefix + "_notallowed",
+			req: &pbs.CreateRoleRequest{Item: &pb.Role{
+				Id: iam.RolePrefix + "_notallowed",
 			}},
 			res:     nil,
 			errCode: codes.InvalidArgument,
 		},
 		{
 			name: "Can't specify Created Time",
-			req: &pbs.CreateGroupRequest{Item: &pb.Group{
+			req: &pbs.CreateRoleRequest{Item: &pb.Role{
 				CreatedTime: ptypes.TimestampNow(),
 			}},
 			res:     nil,
@@ -321,7 +321,7 @@ func TestCreate(t *testing.T) {
 		},
 		{
 			name: "Can't specify Update Time",
-			req: &pbs.CreateGroupRequest{Item: &pb.Group{
+			req: &pbs.CreateRoleRequest{Item: &pb.Role{
 				UpdatedTime: ptypes.TimestampNow(),
 			}},
 			res:     nil,
@@ -331,107 +331,107 @@ func TestCreate(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			assert := assert.New(t)
-			req := proto.Clone(toMerge).(*pbs.CreateGroupRequest)
+			req := proto.Clone(toMerge).(*pbs.CreateRoleRequest)
 			proto.Merge(req, tc.req)
 
-			s, err := groups.NewService(repo)
-			require.NoError(err, "Error when getting new group service.")
+			s, err := roles.NewService(repo)
+			require.NoError(err, "Error when getting new role service.")
 
-			got, gErr := s.CreateGroup(context.Background(), req)
-			assert.Equal(tc.errCode, status.Code(gErr), "CreateGroup(%+v) got error %v, wanted %v", req, gErr, tc.errCode)
+			got, gErr := s.CreateRole(context.Background(), req)
+			assert.Equal(tc.errCode, status.Code(gErr), "CreateRole(%+v) got error %v, wanted %v", req, gErr, tc.errCode)
 			if got != nil {
-				assert.True(strings.HasPrefix(got.GetUri(), tc.res.Uri))
-				assert.True(strings.HasPrefix(got.GetItem().GetId(), iam.GroupPrefix+"_"))
+				assert.True(strings.HasPrefix(got.GetUri(), tc.res.Uri), "Expected %q to have the prefix %q", got.GetUri(), tc.res.GetUri())
+				assert.True(strings.HasPrefix(got.GetItem().GetId(), iam.RolePrefix+"_"), "Expected %q to have the prefix %q", got.GetItem().GetId(), iam.RolePrefix+"_")
 				gotCreateTime, err := ptypes.Timestamp(got.GetItem().GetCreatedTime())
 				require.NoError(err, "Error converting proto to timestamp.")
 				gotUpdateTime, err := ptypes.Timestamp(got.GetItem().GetUpdatedTime())
 				require.NoError(err, "Error converting proto to timestamp.")
-				// Verify it is a group created after the test setup's default group
-				assert.True(gotCreateTime.After(defaultCreated), "New group should have been created after default group. Was created %v, which is after %v", gotCreateTime, defaultCreated)
-				assert.True(gotUpdateTime.After(defaultCreated), "New group should have been updated after default group. Was updated %v, which is after %v", gotUpdateTime, defaultCreated)
+				// Verify it is a role created after the test setup's default role
+				assert.True(gotCreateTime.After(defaultCreated), "New role should have been created after default role. Was created %v, which is after %v", gotCreateTime, defaultCreated)
+				assert.True(gotUpdateTime.After(defaultCreated), "New role should have been updated after default role. Was updated %v, which is after %v", gotUpdateTime, defaultCreated)
 
 				// Clear all values which are hard to compare against.
 				got.Uri, tc.res.Uri = "", ""
 				got.Item.Id, tc.res.Item.Id = "", ""
 				got.Item.CreatedTime, got.Item.UpdatedTime, tc.res.Item.CreatedTime, tc.res.Item.UpdatedTime = nil, nil, nil, nil
 			}
-			assert.True(proto.Equal(got, tc.res), "CreateGroup(%q) got response %q, wanted %q", req, got, tc.res)
+			assert.True(proto.Equal(got, tc.res), "CreateRole(%q) got response %q, wanted %q", req, got, tc.res)
 		})
 	}
 }
 
 func TestUpdate(t *testing.T) {
 	require := require.New(t)
-	g, repoFn := createDefaultGroupAndRepo(t)
-	tested, err := groups.NewService(repoFn)
-	require.NoError(err, "Error when getting new group service.")
+	u, repoFn := createDefaultRoleAndRepo(t)
+	tested, err := roles.NewService(repoFn)
+	require.NoError(err, "Error when getting new role service.")
 
-	resetGroup := func() {
+	resetRole := func() {
 		repo, err := repoFn()
 		require.NoError(err, "Couldn't get a new repo")
-		g, _, err = repo.UpdateGroup(context.Background(), g, []string{"Name", "Description"})
-		require.NoError(err, "Failed to reset the group")
+		u, _, err = repo.UpdateRole(context.Background(), u, []string{"Name", "Description"})
+		require.NoError(err, "Failed to reset the role")
 	}
 
-	created, err := ptypes.Timestamp(g.GetCreateTime().GetTimestamp())
+	created, err := ptypes.Timestamp(u.GetCreateTime().GetTimestamp())
 	require.NoError(err, "Error converting proto to timestamp")
-	toMerge := &pbs.UpdateGroupRequest{
-		OrgId: g.GetScopeId(),
-		Id:    g.GetPublicId(),
+	toMerge := &pbs.UpdateRoleRequest{
+		OrgId: u.GetScopeId(),
+		Id:    u.GetPublicId(),
 	}
 
 	cases := []struct {
 		name    string
-		req     *pbs.UpdateGroupRequest
-		res     *pbs.UpdateGroupResponse
+		req     *pbs.UpdateRoleRequest
+		res     *pbs.UpdateRoleResponse
 		errCode codes.Code
 	}{
 		{
-			name: "Update an Existing Group",
-			req: &pbs.UpdateGroupRequest{
+			name: "Update an Existing Role",
+			req: &pbs.UpdateRoleRequest{
 				UpdateMask: &field_mask.FieldMask{
 					Paths: []string{"name", "description"},
 				},
-				Item: &pb.Group{
+				Item: &pb.Role{
 					Name:        &wrapperspb.StringValue{Value: "new"},
 					Description: &wrapperspb.StringValue{Value: "desc"},
 				},
 			},
-			res: &pbs.UpdateGroupResponse{
-				Item: &pb.Group{
-					Id:          g.GetPublicId(),
+			res: &pbs.UpdateRoleResponse{
+				Item: &pb.Role{
+					Id:          u.GetPublicId(),
 					Name:        &wrapperspb.StringValue{Value: "new"},
 					Description: &wrapperspb.StringValue{Value: "desc"},
-					CreatedTime: g.GetCreateTime().GetTimestamp(),
+					CreatedTime: u.GetCreateTime().GetTimestamp(),
 				},
 			},
 			errCode: codes.OK,
 		},
 		{
 			name: "Multiple Paths in single string",
-			req: &pbs.UpdateGroupRequest{
+			req: &pbs.UpdateRoleRequest{
 				UpdateMask: &field_mask.FieldMask{
 					Paths: []string{"name,description"},
 				},
-				Item: &pb.Group{
+				Item: &pb.Role{
 					Name:        &wrapperspb.StringValue{Value: "new"},
 					Description: &wrapperspb.StringValue{Value: "desc"},
 				},
 			},
-			res: &pbs.UpdateGroupResponse{
-				Item: &pb.Group{
-					Id:          g.GetPublicId(),
+			res: &pbs.UpdateRoleResponse{
+				Item: &pb.Role{
+					Id:          u.GetPublicId(),
 					Name:        &wrapperspb.StringValue{Value: "new"},
 					Description: &wrapperspb.StringValue{Value: "desc"},
-					CreatedTime: g.GetCreateTime().GetTimestamp(),
+					CreatedTime: u.GetCreateTime().GetTimestamp(),
 				},
 			},
 			errCode: codes.OK,
 		},
 		{
 			name: "No Update Mask",
-			req: &pbs.UpdateGroupRequest{
-				Item: &pb.Group{
+			req: &pbs.UpdateRoleRequest{
+				Item: &pb.Role{
 					Name:        &wrapperspb.StringValue{Value: "updated name"},
 					Description: &wrapperspb.StringValue{Value: "updated desc"},
 				},
@@ -440,9 +440,9 @@ func TestUpdate(t *testing.T) {
 		},
 		{
 			name: "No Paths in Mask",
-			req: &pbs.UpdateGroupRequest{
+			req: &pbs.UpdateRoleRequest{
 				UpdateMask: &field_mask.FieldMask{Paths: []string{}},
-				Item: &pb.Group{
+				Item: &pb.Role{
 					Name:        &wrapperspb.StringValue{Value: "updated name"},
 					Description: &wrapperspb.StringValue{Value: "updated desc"},
 				},
@@ -451,9 +451,9 @@ func TestUpdate(t *testing.T) {
 		},
 		{
 			name: "Only non-existant paths in Mask",
-			req: &pbs.UpdateGroupRequest{
+			req: &pbs.UpdateRoleRequest{
 				UpdateMask: &field_mask.FieldMask{Paths: []string{"nonexistant_field"}},
-				Item: &pb.Group{
+				Item: &pb.Role{
 					Name:        &wrapperspb.StringValue{Value: "updated name"},
 					Description: &wrapperspb.StringValue{Value: "updated desc"},
 				},
@@ -462,75 +462,75 @@ func TestUpdate(t *testing.T) {
 		},
 		{
 			name: "Unset Name",
-			req: &pbs.UpdateGroupRequest{
+			req: &pbs.UpdateRoleRequest{
 				UpdateMask: &field_mask.FieldMask{
 					Paths: []string{"name"},
 				},
-				Item: &pb.Group{
+				Item: &pb.Role{
 					Description: &wrapperspb.StringValue{Value: "ignored"},
 				},
 			},
-			res: &pbs.UpdateGroupResponse{
-				Item: &pb.Group{
-					Id:          g.GetPublicId(),
+			res: &pbs.UpdateRoleResponse{
+				Item: &pb.Role{
+					Id:          u.GetPublicId(),
 					Description: &wrapperspb.StringValue{Value: "default"},
-					CreatedTime: g.GetCreateTime().GetTimestamp(),
+					CreatedTime: u.GetCreateTime().GetTimestamp(),
 				},
 			},
 			errCode: codes.OK,
 		},
 		{
 			name: "Update Only Name",
-			req: &pbs.UpdateGroupRequest{
+			req: &pbs.UpdateRoleRequest{
 				UpdateMask: &field_mask.FieldMask{
 					Paths: []string{"name"},
 				},
-				Item: &pb.Group{
+				Item: &pb.Role{
 					Name:        &wrapperspb.StringValue{Value: "updated"},
 					Description: &wrapperspb.StringValue{Value: "ignored"},
 				},
 			},
-			res: &pbs.UpdateGroupResponse{
-				Item: &pb.Group{
-					Id:          g.GetPublicId(),
+			res: &pbs.UpdateRoleResponse{
+				Item: &pb.Role{
+					Id:          u.GetPublicId(),
 					Name:        &wrapperspb.StringValue{Value: "updated"},
 					Description: &wrapperspb.StringValue{Value: "default"},
-					CreatedTime: g.GetCreateTime().GetTimestamp(),
+					CreatedTime: u.GetCreateTime().GetTimestamp(),
 				},
 			},
 			errCode: codes.OK,
 		},
 		{
 			name: "Update Only Description",
-			req: &pbs.UpdateGroupRequest{
+			req: &pbs.UpdateRoleRequest{
 				UpdateMask: &field_mask.FieldMask{
 					Paths: []string{"description"},
 				},
-				Item: &pb.Group{
+				Item: &pb.Role{
 					Name:        &wrapperspb.StringValue{Value: "ignored"},
 					Description: &wrapperspb.StringValue{Value: "notignored"},
 				},
 			},
-			res: &pbs.UpdateGroupResponse{
-				Item: &pb.Group{
-					Id:          g.GetPublicId(),
+			res: &pbs.UpdateRoleResponse{
+				Item: &pb.Role{
+					Id:          u.GetPublicId(),
 					Name:        &wrapperspb.StringValue{Value: "default"},
 					Description: &wrapperspb.StringValue{Value: "notignored"},
-					CreatedTime: g.GetCreateTime().GetTimestamp(),
+					CreatedTime: u.GetCreateTime().GetTimestamp(),
 				},
 			},
 			errCode: codes.OK,
 		},
-		// TODO: Updating a non existant group should result in a NotFound exception but currently results in
+		// TODO: Updating a non existant role should result in a NotFound exception but currently results in
 		// the repoFn returning an internal error.
 		{
-			name: "Update a Non Existing Group",
-			req: &pbs.UpdateGroupRequest{
-				Id: iam.GroupPrefix + "_DoesntExis",
+			name: "Update a Non Existing Role",
+			req: &pbs.UpdateRoleRequest{
+				Id: iam.RolePrefix + "_DoesntExis",
 				UpdateMask: &field_mask.FieldMask{
 					Paths: []string{"description"},
 				},
-				Item: &pb.Group{
+				Item: &pb.Role{
 					Name:        &wrapperspb.StringValue{Value: "new"},
 					Description: &wrapperspb.StringValue{Value: "desc"},
 				},
@@ -539,13 +539,13 @@ func TestUpdate(t *testing.T) {
 		},
 		{
 			name: "Cant change Id",
-			req: &pbs.UpdateGroupRequest{
-				Id: g.GetPublicId(),
+			req: &pbs.UpdateRoleRequest{
+				Id: u.GetPublicId(),
 				UpdateMask: &field_mask.FieldMask{
 					Paths: []string{"id"},
 				},
-				Item: &pb.Group{
-					Id:          iam.GroupPrefix + "_somethinge",
+				Item: &pb.Role{
+					Id:          iam.RolePrefix + "_somethinge",
 					Name:        &wrapperspb.StringValue{Value: "new"},
 					Description: &wrapperspb.StringValue{Value: "new desc"},
 				}},
@@ -554,11 +554,11 @@ func TestUpdate(t *testing.T) {
 		},
 		{
 			name: "Cant specify Created Time",
-			req: &pbs.UpdateGroupRequest{
+			req: &pbs.UpdateRoleRequest{
 				UpdateMask: &field_mask.FieldMask{
 					Paths: []string{"created_time"},
 				},
-				Item: &pb.Group{
+				Item: &pb.Role{
 					CreatedTime: ptypes.TimestampNow(),
 				},
 			},
@@ -567,11 +567,11 @@ func TestUpdate(t *testing.T) {
 		},
 		{
 			name: "Cant specify Updated Time",
-			req: &pbs.UpdateGroupRequest{
+			req: &pbs.UpdateRoleRequest{
 				UpdateMask: &field_mask.FieldMask{
 					Paths: []string{"updated_time"},
 				},
-				Item: &pb.Group{
+				Item: &pb.Role{
 					UpdatedTime: ptypes.TimestampNow(),
 				},
 			},
@@ -581,25 +581,25 @@ func TestUpdate(t *testing.T) {
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			defer resetGroup()
+			defer resetRole()
 			assert := assert.New(t)
-			req := proto.Clone(toMerge).(*pbs.UpdateGroupRequest)
+			req := proto.Clone(toMerge).(*pbs.UpdateRoleRequest)
 			proto.Merge(req, tc.req)
 
-			got, gErr := tested.UpdateGroup(context.Background(), req)
-			assert.Equal(tc.errCode, status.Code(gErr), "UpdateGroup(%+v) got error %v, wanted %v", req, gErr, tc.errCode)
+			got, gErr := tested.UpdateRole(context.Background(), req)
+			assert.Equal(tc.errCode, status.Code(gErr), "UpdateRole(%+v) got error %v, wanted %v", req, gErr, tc.errCode)
 
 			if got != nil {
-				assert.NotNilf(tc.res, "Expected UpdateGroup response to be nil, but was %v", got)
+				assert.NotNilf(tc.res, "Expected UpdateRole response to be nil, but was %v", got)
 				gotUpdateTime, err := ptypes.Timestamp(got.GetItem().GetUpdatedTime())
 				require.NoError(err, "Error converting proto to timestamp")
-				// Verify it is a group updated after it was created
-				assert.True(gotUpdateTime.After(created), "Updated group should have been updated after it's creation. Was updated %v, which is after %v", gotUpdateTime, created)
+				// Verify it is a role updated after it was created
+				assert.True(gotUpdateTime.After(created), "Updated role should have been updated after it's creation. Was updated %v, which is after %v", gotUpdateTime, created)
 
 				// Clear all values which are hard to compare against.
 				got.Item.UpdatedTime, tc.res.Item.UpdatedTime = nil, nil
 			}
-			assert.True(proto.Equal(got, tc.res), "UpdateGroup(%q) got response %q, wanted %q", req, got, tc.res)
+			assert.True(proto.Equal(got, tc.res), "UpdateRole(%q) got response %q, wanted %q", req, got, tc.res)
 		})
 	}
 }

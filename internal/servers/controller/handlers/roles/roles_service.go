@@ -1,4 +1,4 @@
-package groups
+package roles
 
 import (
 	"context"
@@ -8,7 +8,7 @@ import (
 	"strings"
 
 	"github.com/hashicorp/watchtower/internal/db"
-	pb "github.com/hashicorp/watchtower/internal/gen/controller/api/resources/groups"
+	pb "github.com/hashicorp/watchtower/internal/gen/controller/api/resources/roles"
 	pbs "github.com/hashicorp/watchtower/internal/gen/controller/api/services"
 	"github.com/hashicorp/watchtower/internal/iam"
 	"github.com/hashicorp/watchtower/internal/servers/controller/handlers"
@@ -28,12 +28,12 @@ var (
 	}
 )
 
-// Service handles request as described by the pbs.GroupServiceServer interface.
+// Service handles request as described by the pbs.RoleServiceServer interface.
 type Service struct {
 	repoFn func() (*iam.Repository, error)
 }
 
-// NewService returns a group service which handles group related requests to watchtower.
+// NewService returns a role service which handles role related requests to watchtower.
 func NewService(repo func() (*iam.Repository, error)) (Service, error) {
 	if repo == nil {
 		return Service{}, fmt.Errorf("nil iam repostiroy provided")
@@ -41,10 +41,10 @@ func NewService(repo func() (*iam.Repository, error)) (Service, error) {
 	return Service{repoFn: repo}, nil
 }
 
-var _ pbs.GroupServiceServer = Service{}
+var _ pbs.RoleServiceServer = Service{}
 
-// ListGroups implements the interface pbs.GroupServiceServer.
-func (s Service) ListGroups(ctx context.Context, req *pbs.ListGroupsRequest) (*pbs.ListGroupsResponse, error) {
+// ListRoles implements the interface pbs.RoleServiceServer.
+func (s Service) ListRoles(ctx context.Context, req *pbs.ListRolesRequest) (*pbs.ListRolesResponse, error) {
 	if err := validateListRequest(req); err != nil {
 		return nil, err
 	}
@@ -52,11 +52,11 @@ func (s Service) ListGroups(ctx context.Context, req *pbs.ListGroupsRequest) (*p
 	if err != nil {
 		return nil, err
 	}
-	return &pbs.ListGroupsResponse{Items: gl}, nil
+	return &pbs.ListRolesResponse{Items: gl}, nil
 }
 
-// GetGroups implements the interface pbs.GroupServiceServer.
-func (s Service) GetGroup(ctx context.Context, req *pbs.GetGroupRequest) (*pbs.GetGroupResponse, error) {
+// GetRoles implements the interface pbs.RoleServiceServer.
+func (s Service) GetRole(ctx context.Context, req *pbs.GetRoleRequest) (*pbs.GetRoleResponse, error) {
 	if err := validateGetRequest(req); err != nil {
 		return nil, err
 	}
@@ -64,23 +64,23 @@ func (s Service) GetGroup(ctx context.Context, req *pbs.GetGroupRequest) (*pbs.G
 	if err != nil {
 		return nil, err
 	}
-	return &pbs.GetGroupResponse{Item: u}, nil
+	return &pbs.GetRoleResponse{Item: u}, nil
 }
 
-// CreateGroup implements the interface pbs.GroupServiceServer.
-func (s Service) CreateGroup(ctx context.Context, req *pbs.CreateGroupRequest) (*pbs.CreateGroupResponse, error) {
+// CreateRole implements the interface pbs.RoleServiceServer.
+func (s Service) CreateRole(ctx context.Context, req *pbs.CreateRoleRequest) (*pbs.CreateRoleResponse, error) {
 	if err := validateCreateRequest(req); err != nil {
 		return nil, err
 	}
-	u, err := s.createInRepo(ctx, req.GetOrgId(), req.GetItem())
+	r, err := s.createInRepo(ctx, req.GetOrgId(), req.GetItem())
 	if err != nil {
 		return nil, err
 	}
-	return &pbs.CreateGroupResponse{Item: u, Uri: fmt.Sprintf("orgs/%s/groups/%s", req.GetOrgId(), u.GetId())}, nil
+	return &pbs.CreateRoleResponse{Item: r, Uri: fmt.Sprintf("orgs/%s/roles/%s", req.GetOrgId(), r.GetId())}, nil
 }
 
-// UpdateGroup implements the interface pbs.GroupServiceServer.
-func (s Service) UpdateGroup(ctx context.Context, req *pbs.UpdateGroupRequest) (*pbs.UpdateGroupResponse, error) {
+// UpdateRole implements the interface pbs.RoleServiceServer.
+func (s Service) UpdateRole(ctx context.Context, req *pbs.UpdateRoleRequest) (*pbs.UpdateRoleResponse, error) {
 	if err := validateUpdateRequest(req); err != nil {
 		return nil, err
 	}
@@ -88,11 +88,11 @@ func (s Service) UpdateGroup(ctx context.Context, req *pbs.UpdateGroupRequest) (
 	if err != nil {
 		return nil, err
 	}
-	return &pbs.UpdateGroupResponse{Item: u}, nil
+	return &pbs.UpdateRoleResponse{Item: u}, nil
 }
 
-// DeleteGroup implements the interface pbs.GroupServiceServer.
-func (s Service) DeleteGroup(ctx context.Context, req *pbs.DeleteGroupRequest) (*pbs.DeleteGroupResponse, error) {
+// DeleteRole implements the interface pbs.RoleServiceServer.
+func (s Service) DeleteRole(ctx context.Context, req *pbs.DeleteRoleRequest) (*pbs.DeleteRoleResponse, error) {
 	if err := validateDeleteRequest(req); err != nil {
 		return nil, err
 	}
@@ -100,28 +100,28 @@ func (s Service) DeleteGroup(ctx context.Context, req *pbs.DeleteGroupRequest) (
 	if err != nil {
 		return nil, err
 	}
-	return &pbs.DeleteGroupResponse{Existed: existed}, nil
+	return &pbs.DeleteRoleResponse{Existed: existed}, nil
 }
 
-func (s Service) getFromRepo(ctx context.Context, id string) (*pb.Group, error) {
+func (s Service) getFromRepo(ctx context.Context, id string) (*pb.Role, error) {
 	repo, err := s.repoFn()
 	if err != nil {
 		return nil, err
 	}
-	u, err := repo.LookupGroup(ctx, id)
+	u, err := repo.LookupRole(ctx, id)
 	if err != nil {
 		if errors.Is(err, db.ErrRecordNotFound) {
-			return nil, handlers.NotFoundErrorf("Group %q doesn't exist.", id)
+			return nil, handlers.NotFoundErrorf("Role %q doesn't exist.", id)
 		}
 		return nil, err
 	}
 	if u == nil {
-		return nil, handlers.NotFoundErrorf("Group %q doesn't exist.", id)
+		return nil, handlers.NotFoundErrorf("Role %q doesn't exist.", id)
 	}
 	return toProto(u), nil
 }
 
-func (s Service) createInRepo(ctx context.Context, orgId string, item *pb.Group) (*pb.Group, error) {
+func (s Service) createInRepo(ctx context.Context, orgId string, item *pb.Role) (*pb.Role, error) {
 	var opts []iam.Option
 	if item.GetName() != nil {
 		opts = append(opts, iam.WithName(item.GetName().GetValue()))
@@ -129,25 +129,25 @@ func (s Service) createInRepo(ctx context.Context, orgId string, item *pb.Group)
 	if item.GetDescription() != nil {
 		opts = append(opts, iam.WithDescription(item.GetDescription().GetValue()))
 	}
-	u, err := iam.NewGroup(orgId, opts...)
+	u, err := iam.NewRole(orgId, opts...)
 	if err != nil {
-		return nil, status.Errorf(codes.Internal, "Unable to build group for creation: %v.", err)
+		return nil, status.Errorf(codes.Internal, "Unable to build role for creation: %v.", err)
 	}
 	repo, err := s.repoFn()
 	if err != nil {
 		return nil, err
 	}
-	out, err := repo.CreateGroup(ctx, u)
+	out, err := repo.CreateRole(ctx, u)
 	if err != nil {
-		return nil, status.Errorf(codes.Internal, "Unable to create group: %v.", err)
+		return nil, status.Errorf(codes.Internal, "Unable to create role: %v.", err)
 	}
 	if out == nil {
-		return nil, status.Error(codes.Internal, "Unable to create group but no error returned from repository.")
+		return nil, status.Error(codes.Internal, "Unable to create role but no error returned from repository.")
 	}
 	return toProto(out), nil
 }
 
-func (s Service) updateInRepo(ctx context.Context, orgId, id string, mask []string, item *pb.Group) (*pb.Group, error) {
+func (s Service) updateInRepo(ctx context.Context, orgId, id string, mask []string, item *pb.Role) (*pb.Role, error) {
 	var opts []iam.Option
 	if desc := item.GetDescription(); desc != nil {
 		opts = append(opts, iam.WithDescription(desc.GetValue()))
@@ -155,9 +155,9 @@ func (s Service) updateInRepo(ctx context.Context, orgId, id string, mask []stri
 	if name := item.GetName(); name != nil {
 		opts = append(opts, iam.WithName(name.GetValue()))
 	}
-	u, err := iam.NewGroup(orgId, opts...)
+	u, err := iam.NewRole(orgId, opts...)
 	if err != nil {
-		return nil, status.Errorf(codes.Internal, "Unable to build group for update: %v.", err)
+		return nil, status.Errorf(codes.Internal, "Unable to build role for update: %v.", err)
 	}
 	u.PublicId = id
 	dbMask, err := toDbUpdateMask(mask)
@@ -171,12 +171,12 @@ func (s Service) updateInRepo(ctx context.Context, orgId, id string, mask []stri
 	if err != nil {
 		return nil, err
 	}
-	out, rowsUpdated, err := repo.UpdateGroup(ctx, u, dbMask)
+	out, rowsUpdated, err := repo.UpdateRole(ctx, u, dbMask)
 	if err != nil {
-		return nil, status.Errorf(codes.Internal, "Unable to update group: %v.", err)
+		return nil, status.Errorf(codes.Internal, "Unable to update role: %v.", err)
 	}
 	if rowsUpdated == 0 {
-		return nil, handlers.NotFoundErrorf("Group %q doesn't exist.", id)
+		return nil, handlers.NotFoundErrorf("Role %q doesn't exist.", id)
 	}
 	return toProto(out), nil
 }
@@ -186,30 +186,30 @@ func (s Service) deleteFromRepo(ctx context.Context, id string) (bool, error) {
 	if err != nil {
 		return false, err
 	}
-	rows, err := repo.DeleteGroup(ctx, id)
+	rows, err := repo.DeleteRole(ctx, id)
 	if err != nil {
 		if errors.Is(err, db.ErrRecordNotFound) {
 			return false, nil
 		}
-		return false, status.Errorf(codes.Internal, "Unable to delete group: %v.", err)
+		return false, status.Errorf(codes.Internal, "Unable to delete role: %v.", err)
 	}
 	return rows > 0, nil
 }
 
-func (s Service) listFromRepo(ctx context.Context, orgId string) ([]*pb.Group, error) {
+func (s Service) listFromRepo(ctx context.Context, orgId string) ([]*pb.Role, error) {
 	repo, err := s.repoFn()
 	if err != nil {
 		return nil, err
 	}
-	gl, err := repo.ListGroups(ctx, orgId)
+	rl, err := repo.ListRoles(ctx, orgId)
 	if err != nil {
 		return nil, err
 	}
-	var outGl []*pb.Group
-	for _, g := range gl {
-		outGl = append(outGl, toProto(g))
+	var outRl []*pb.Role
+	for _, g := range rl {
+		outRl = append(outRl, toProto(g))
 	}
-	return outGl, nil
+	return outRl, nil
 }
 
 // toDbUpdateMask converts the wire format's FieldMask into a list of strings containing FieldMask paths used
@@ -231,8 +231,8 @@ func toDbUpdateMask(paths []string) ([]string, error) {
 	return dbPaths, nil
 }
 
-func toProto(in *iam.Group) *pb.Group {
-	out := pb.Group{
+func toProto(in *iam.Role) *pb.Role {
+	out := pb.Role{
 		Id:          in.GetPublicId(),
 		CreatedTime: in.GetCreateTime().GetTimestamp(),
 		UpdatedTime: in.GetUpdateTime().GetTimestamp(),
@@ -251,10 +251,10 @@ func toProto(in *iam.Group) *pb.Group {
 //  * The path passed in is correctly formatted
 //  * All required parameters are set
 //  * There are no conflicting parameters provided
-func validateGetRequest(req *pbs.GetGroupRequest) error {
+func validateGetRequest(req *pbs.GetRoleRequest) error {
 	badFields := validateAncestors(req)
-	if !validId(req.GetId(), iam.GroupPrefix+"_") {
-		badFields["id"] = "Invalid formatted group id."
+	if !validId(req.GetId(), iam.RolePrefix+"_") {
+		badFields["id"] = "Invalid formatted role id."
 	}
 	if len(badFields) > 0 {
 		return handlers.InvalidArgumentErrorf("Improperly formatted identifier.", badFields)
@@ -262,7 +262,7 @@ func validateGetRequest(req *pbs.GetGroupRequest) error {
 	return nil
 }
 
-func validateCreateRequest(req *pbs.CreateGroupRequest) error {
+func validateCreateRequest(req *pbs.CreateRoleRequest) error {
 	badFields := validateAncestors(req)
 	item := req.GetItem()
 	if item.GetId() != "" {
@@ -280,13 +280,13 @@ func validateCreateRequest(req *pbs.CreateGroupRequest) error {
 	return nil
 }
 
-func validateUpdateRequest(req *pbs.UpdateGroupRequest) error {
+func validateUpdateRequest(req *pbs.UpdateRoleRequest) error {
 	badFields := validateAncestors(req)
-	if !validId(req.GetId(), iam.GroupPrefix+"_") {
-		badFields["group_id"] = "Improperly formatted path identifier."
+	if !validId(req.GetId(), iam.RolePrefix+"_") {
+		badFields["role_id"] = "Improperly formatted path identifier."
 	}
 	if req.GetUpdateMask() == nil {
-		badFields["update_mask"] = "UpdateMask not provided but is required to update a group."
+		badFields["update_mask"] = "UpdateMask not provided but is required to update a role."
 	}
 
 	item := req.GetItem()
@@ -311,9 +311,9 @@ func validateUpdateRequest(req *pbs.UpdateGroupRequest) error {
 	return nil
 }
 
-func validateDeleteRequest(req *pbs.DeleteGroupRequest) error {
+func validateDeleteRequest(req *pbs.DeleteRoleRequest) error {
 	badFields := validateAncestors(req)
-	if !validId(req.GetId(), iam.GroupPrefix+"_") {
+	if !validId(req.GetId(), iam.RolePrefix+"_") {
 		badFields["id"] = "Incorrectly formatted identifier."
 	}
 	if len(badFields) > 0 {
@@ -322,7 +322,7 @@ func validateDeleteRequest(req *pbs.DeleteGroupRequest) error {
 	return nil
 }
 
-func validateListRequest(req *pbs.ListGroupsRequest) error {
+func validateListRequest(req *pbs.ListRolesRequest) error {
 	badFields := validateAncestors(req)
 	if len(badFields) > 0 {
 		return handlers.InvalidArgumentErrorf("Improperly formatted identifier.", badFields)
