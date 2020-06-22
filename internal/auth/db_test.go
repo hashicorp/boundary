@@ -13,13 +13,13 @@ func TestDB_AuthMethodIDTrigger(t *testing.T) {
 	const (
 		createTable = `
 create table if not exists test_auth_method (
-    auth_method_id wt_public_id primary key,
-    iam_scope_id wt_public_id not null references iam_scope(public_id)
+    public_id wt_public_id primary key,
+    scope_id wt_public_id not null references iam_scope(public_id)
 );
 `
 		insert = `
 insert into test_auth_method
-  (auth_method_id, iam_scope_id)
+  (public_id, scope_id)
 values
   ($1, $2);
 `
@@ -31,10 +31,10 @@ insert on test_auth_method
   for each row execute procedure insert_auth_method_subtype();
 `
 		baseTableQuery = `
-select count(*) from auth_method where auth_method_id = $1;
+select count(*) from auth_method where public_id = $1;
 `
 		testTableQuery = `
-select count(*) from test_auth_method where auth_method_id = $1;
+select count(*) from test_auth_method where public_id = $1;
 `
 	)
 
@@ -81,14 +81,14 @@ func TestDB_AuthAccountIDTrigger(t *testing.T) {
 	const (
 		createTable = `
 create table if not exists test_auth_account (
-    auth_account_id wt_public_id primary key,
+    public_id wt_public_id primary key,
     auth_method_id wt_public_id not null,
-    iam_scope_id wt_public_id not null
+    scope_id wt_public_id not null
 );
 `
 		insert = `
 insert into test_auth_account
-  (auth_account_id, auth_method_id, iam_scope_id)
+  (public_id, auth_method_id, scope_id)
 values
   ($1, $2, $3);
 `
@@ -100,14 +100,14 @@ insert on test_auth_account
   for each row execute procedure insert_auth_account_subtype();
 `
 		baseTableQuery = `
-select count(*) from auth_account where auth_account_id = $1;
+select count(*) from auth_account where public_id = $1;
 `
 		testTableQuery = `
-select count(*) from test_auth_account where auth_account_id = $1;
+select count(*) from test_auth_account where public_id = $1;
 `
 		insertAuthMethod = `
 insert into auth_method
-  (auth_method_id, iam_scope_id)
+  (public_id, scope_id)
 values
   ($1, $2);
 `
