@@ -531,3 +531,110 @@ func TestRepository_ListUsers(t *testing.T) {
 		})
 	}
 }
+
+func TestRepository_LookupUserWithLogin(t *testing.T) {
+	t.Parallel()
+	cleanup, conn, _ := db.TestSetup(t, "postgres")
+	defer func() {
+		err := cleanup()
+		assert.NoError(t, err)
+		err = conn.Close()
+		assert.NoError(t, err)
+	}()
+	rw := db.New(conn)
+	wrapper := db.TestWrapper(t)
+	repo, err := NewRepository(rw, rw, wrapper)
+	require.NoError(t, err)
+
+	org, proj := TestScopes(t, conn)
+	user := TestUser(t, conn, org.PublicId)
+	authMethodId := testAuthMethod(t, conn, org.PublicId)
+	newAuthAcct := testAuthAccount(t, conn, org.PublicId, authMethodId, "")
+	existingAuthAcct := testAuthAccount(t, conn, org.PublicId, authMethodId, user.PublicId)
+
+	type args struct {
+		withScope         string
+		withAuthMethodId  string
+		withAuthAccountId string
+		opt               []Option
+	}
+	tests := []struct {
+		name      string
+		args      args
+		want      *User
+		wantErr   bool
+		wantErrIs error
+	}{
+		{
+			name: "valid",
+			args: args{
+				withScope:         org.PublicId,
+				withAuthMethodId:  authMethodId,
+				withAuthAccountId: existingAuthAcct.PublicId,
+			},
+			want:    user,
+			wantErr: false,
+		},
+		{
+			name: "new-auth-account",
+			args: args{
+				withScope:         org.PublicId,
+				withAuthMethodId:  authMethodId,
+				withAuthAccountId: newAuthAcct.PublicId,
+			},
+			wantErr: false,
+			want:    nil,
+		},
+		{
+			name: "bad-auth-account-id",
+			args: args{
+				withScope:         org.PublicId,
+				withAuthMethodId:  authMethodId,
+				withAuthAccountId: testId(t),
+			},
+			wantErr:   true,
+			wantErrIs: db.ErrInvalidParameter,
+		},
+		{
+			name: "bad-auth-method-id",
+			args: args{
+				withScope:         org.PublicId,
+				withAuthMethodId:  testId(t),
+				withAuthAccountId: existingAuthAcct.PublicId,
+			},
+			wantErr:   true,
+			wantErrIs: db.ErrInvalidParameter,
+		},
+		{
+			name: "bad-scope",
+			args: args{
+				withScope:         proj.PublicId,
+				withAuthMethodId:  authMethodId,
+				withAuthAccountId: existingAuthAcct.PublicId,
+			},
+			wantErr:   true,
+			wantErrIs: db.ErrInvalidParameter,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+
+			got, err := repo.LookupUserWithLogin(context.Background(), tt.args.withScope, tt.args.withAuthMethodId, tt.args.withAuthAccountId, tt.args.opt...)
+			if tt.wantErr {
+				require.Error(err)
+				assert.Nil(got)
+				if tt.wantErrIs != nil {
+					assert.Truef(errors.Is(err, tt.wantErrIs), "unexpected error %s", err.Error())
+				}
+				return
+			}
+			require.NoError(err)
+			if tt.want == nil {
+				assert.Equal(tt.want, got)
+			} else {
+				assert.True(proto.Equal(tt.want.User, got.User))
+			}
+		})
+	}
+}
