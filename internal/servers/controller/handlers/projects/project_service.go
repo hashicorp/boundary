@@ -42,9 +42,16 @@ func NewService(repo common.IamRepoFactory) (Service, error) {
 
 var _ pbs.ProjectServiceServer = Service{}
 
-// ListProjects is not yet implemented but will implement the interface pbs.ProjectServiceServer.
+// ListProjects implements the interface pbs.ProjectServiceServer.
 func (s Service) ListProjects(ctx context.Context, req *pbs.ListProjectsRequest) (*pbs.ListProjectsResponse, error) {
-	return nil, status.Error(codes.Unimplemented, "List not enabled for this resource.")
+	if err := validateListRequest(req); err != nil {
+		return nil, err
+	}
+	pl, err := s.listFromRepo(ctx, req.GetOrgId())
+	if err != nil {
+		return nil, err
+	}
+	return &pbs.ListProjectsResponse{Items: pl}, nil
 }
 
 // GetProjects implements the interface pbs.ProjectServiceServer.
@@ -182,6 +189,22 @@ func (s Service) deleteFromRepo(ctx context.Context, projId string) (bool, error
 	return rows > 0, nil
 }
 
+func (s Service) listFromRepo(ctx context.Context, orgId string) ([]*pb.Project, error) {
+	repo, err := s.repo()
+	if err != nil {
+		return nil, err
+	}
+	pl, err := repo.ListProjects(ctx, orgId)
+	if err != nil {
+		return nil, err
+	}
+	var outPl []*pb.Project
+	for _, p := range pl {
+		outPl = append(outPl, toProto(p))
+	}
+	return outPl, nil
+}
+
 // toDbUpdateMask converts the wire format's FieldMask into a list of strings containing FieldMask paths used
 func toDbUpdateMask(paths []string) ([]string, error) {
 	var dbPaths []string
@@ -291,6 +314,14 @@ func validateDeleteRequest(req *pbs.DeleteProjectRequest) error {
 	}
 	if len(badFields) > 0 {
 		return handlers.InvalidArgumentErrorf("Errors in provided fields.", badFields)
+	}
+	return nil
+}
+
+func validateListRequest(req *pbs.ListProjectsRequest) error {
+	badFields := validateAncestors(req)
+	if len(badFields) > 0 {
+		return handlers.InvalidArgumentErrorf("Improperly formatted identifier.", badFields)
 	}
 	return nil
 }
