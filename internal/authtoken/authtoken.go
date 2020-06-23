@@ -9,7 +9,7 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-// A AuthToken contains static hosts and static host sets. It is owned by a scope.
+// A AuthToken contains auth tokens. It is owned by a scope.
 type AuthToken struct {
 	*store.AuthToken
 	tableName string `gorm:"-"`

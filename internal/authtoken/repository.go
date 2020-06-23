@@ -88,7 +88,7 @@ func (r *Repository) CreateAuthToken(ctx context.Context, at *AuthToken, opt ...
 		ctx,
 		db.StdRetryCnt,
 		db.ExpBackoff{},
-		func(w db.Writer) error {
+		func(_ db.Reader, w db.Writer) error {
 			newAuthToken = at.clone()
 			return w.Create(
 				ctx,
@@ -145,7 +145,7 @@ func (r *Repository) UpdateLastUsed(ctx context.Context, token string, opt ...Op
 		ctx,
 		0,
 		db.ExpBackoff{},
-		func(w db.Writer) error {
+		func(_ db.Reader, w db.Writer) error {
 			at = authToken.clone()
 			var err error
 			rowsUpdated, err = w.Update(
@@ -188,7 +188,7 @@ func (r *Repository) DeleteAuthToken(ctx context.Context, id string, opt ...Opti
 		ctx,
 		db.StdRetryCnt,
 		db.ExpBackoff{},
-		func(w db.Writer) error {
+		func(_ db.Reader, w db.Writer) error {
 			deleteAT = at.clone()
 			var err error
 			rowsDeleted, err = w.Delete(

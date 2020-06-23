@@ -6,7 +6,7 @@ option go_package = "github.com/hashicorp/watchtower/internal/authtoken/store;st
 import "controller/storage/timestamp/v1/timestamp.proto";
 
 message AuthToken {
-	// public_id is used to access the Session via an API
+	// public_id is used to access the auth token via an API
 	// @inject_tag: gorm:"primary_key"
 	string public_id = 1;
 
@@ -18,7 +18,7 @@ message AuthToken {
 	// @inject_tag: `gorm:"default:current_timestamp"`
 	timestamp.v1.Timestamp update_time = 3;
 
-	// last_access_time indicates the last time the session token was used on the watchtower API.
+	// last_access_time indicates the last time the auth token was used on the watchtower API.
 	// @inject_tag: `gorm:"default:current_timestamp"`
 	timestamp.v1.Timestamp last_access_time = 4;
 
@@ -35,11 +35,11 @@ message AuthToken {
 	// @inject_tag: `gorm:"default:not_null"`
 	string scope_id = 7;
 
-	// iam_user_id is the public id for the iam user this session is for.
+	// iam_user_id is the public id for the iam user this auth token is for.
 	// @inject_tag: `gorm:"default:not_null"`
 	string iam_user_id = 8;
 
-	// user id is the public id for the iam user this session is for.
+	// user id is the public id for the iam user this auth token is for.
 	// @inject_tag: `gorm:"default:not_null"`
 	string auth_method_id = 9;
 }

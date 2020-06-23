@@ -31,7 +31,7 @@ type AuthToken struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	// public_id is used to access the Session via an API
+	// public_id is used to access the auth token via an API
 	// @inject_tag: gorm:"primary_key"
 	PublicId string `protobuf:"bytes,1,opt,name=public_id,json=publicId,proto3" json:"public_id,omitempty" gorm:"primary_key"`
 	// create_time from the RDBMS
@@ -40,7 +40,7 @@ type AuthToken struct {
 	// update_time from the RDBMS
 	// @inject_tag: `gorm:"default:current_timestamp"`
 	UpdateTime *timestamp.Timestamp `protobuf:"bytes,3,opt,name=update_time,json=updateTime,proto3" json:"update_time,omitempty" gorm:"default:current_timestamp"`
-	// last_access_time indicates the last time the session token was used on the watchtower API.
+	// last_access_time indicates the last time the auth token was used on the watchtower API.
 	// @inject_tag: `gorm:"default:current_timestamp"`
 	LastAccessTime *timestamp.Timestamp `protobuf:"bytes,4,opt,name=last_access_time,json=lastAccessTime,proto3" json:"last_access_time,omitempty" gorm:"default:current_timestamp"`
 	// expiration_time indicates when this session will expire.
@@ -53,10 +53,10 @@ type AuthToken struct {
 	// The iam_scope_id of the owning scope and must be set.
 	// @inject_tag: `gorm:"default:not_null"`
 	ScopeId string `protobuf:"bytes,7,opt,name=scope_id,json=scopeId,proto3" json:"scope_id,omitempty" gorm:"default:not_null"`
-	// iam_user_id is the public id for the iam user this session is for.
+	// iam_user_id is the public id for the iam user this auth token is for.
 	// @inject_tag: `gorm:"default:not_null"`
 	IamUserId string `protobuf:"bytes,8,opt,name=iam_user_id,json=iamUserId,proto3" json:"iam_user_id,omitempty" gorm:"default:not_null"`
-	// user id is the public id for the iam user this session is for.
+	// user id is the public id for the iam user this auth token is for.
 	// @inject_tag: `gorm:"default:not_null"`
 	AuthMethodId string `protobuf:"bytes,9,opt,name=auth_method_id,json=authMethodId,proto3" json:"auth_method_id,omitempty" gorm:"default:not_null"`
 }
