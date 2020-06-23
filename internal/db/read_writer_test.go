@@ -261,6 +261,49 @@ func TestDb_Update(t *testing.T) {
 		err = TestVerifyOplog(t, &w, user.PublicId, WithOperation(oplog.OpType_OP_TYPE_UPDATE), WithCreateNotBefore(10*time.Second))
 		assert.NoError(err)
 	})
+	t.Run("valid-NewOplogMsg", func(t *testing.T) {
+		assert, require := assert.New(t), require.New(t)
+		w := Db{underlying: db}
+
+		ticket, err := w.GetTicket(&db_test.TestUser{})
+		require.NoError(err)
+
+		id, err := uuid.GenerateUUID()
+		assert.NoError(err)
+		user, err := db_test.NewTestUser()
+		assert.NoError(err)
+		user.Name = "foo-" + id
+		createMsg := oplog.Message{}
+		err = w.Create(
+			context.Background(),
+			user,
+			NewOplogMsg(&createMsg),
+		)
+		require.NoError(err)
+
+		updateMsg := oplog.Message{}
+		user.Name = "friendly-" + id
+		rowsUpdated, err := w.Update(context.Background(), user, []string{"Name"}, nil, NewOplogMsg(&updateMsg))
+		assert.NoError(err)
+		assert.Equal(1, rowsUpdated)
+
+		foundUser, err := db_test.NewTestUser()
+		assert.NoError(err)
+		foundUser.PublicId = user.PublicId
+		err = w.LookupByPublicId(context.Background(), foundUser)
+		assert.NoError(err)
+		assert.Equal(foundUser.Name, user.Name)
+
+		metadata := oplog.Metadata{
+			"resource-public-id": []string{user.PublicId},
+			// "op-type":            []string{oplog.OpType_OP_TYPE_UPDATE.String()},
+		}
+		err = w.WriteOplogEntryWith(context.Background(), TestWrapper(t), ticket, metadata, []*oplog.Message{&createMsg, &updateMsg})
+		require.NoError(err)
+
+		err = TestVerifyOplog(t, &w, user.PublicId, WithOperation(oplog.OpType_OP_TYPE_UNSPECIFIED), WithCreateNotBefore(10*time.Second))
+		assert.NoError(err)
+	})
 	t.Run("vet-for-write", func(t *testing.T) {
 		assert := assert.New(t)
 		w := Db{underlying: db}
