@@ -1,11 +1,11 @@
 syntax = "proto3";
 
-package controller.storage.usersessions.store.v1;
-option go_package = "github.com/hashicorp/watchtower/internal/usersessions/store;store";
+package controller.storage.authtoken.store.v1;
+option go_package = "github.com/hashicorp/watchtower/internal/authtoken/store;store";
 
 import "controller/storage/timestamp/v1/timestamp.proto";
 
-message Session {
+message AuthToken {
 	// public_id is used to access the Session via an API
 	// @inject_tag: gorm:"primary_key"
 	string public_id = 1;

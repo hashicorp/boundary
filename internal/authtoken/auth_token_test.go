@@ -1,20 +1,20 @@
-package usersessions
+package authtoken
 
 import (
 	"context"
 	"testing"
 
 	"github.com/hashicorp/vault/sdk/helper/base62"
+	"github.com/hashicorp/watchtower/internal/authtoken/store"
 	"github.com/hashicorp/watchtower/internal/db"
 	"github.com/hashicorp/watchtower/internal/iam"
-	"github.com/hashicorp/watchtower/internal/usersessions/store"
 	"github.com/jinzhu/gorm"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/proto"
 )
 
-func TestSession_New(t *testing.T) {
+func TestAuthToken_New(t *testing.T) {
 	cleanup, conn, _ := db.TestSetup(t, "postgres")
 	t.Cleanup(func() {
 		if err := cleanup(); err != nil {
@@ -39,7 +39,7 @@ func TestSession_New(t *testing.T) {
 	var tests = []struct {
 		name    string
 		args    args
-		want    *Session
+		want    *AuthToken
 		wantErr bool
 	}{
 		{
@@ -76,8 +76,8 @@ func TestSession_New(t *testing.T) {
 				userId:       u.GetPublicId(),
 				authMethodId: amId1,
 			},
-			want: &Session{
-				Session: &store.Session{
+			want: &AuthToken{
+				AuthToken: &store.AuthToken{
 					ScopeId:      org.GetPublicId(),
 					IamUserId:    u.GetPublicId(),
 					AuthMethodId: amId1,
@@ -90,7 +90,7 @@ func TestSession_New(t *testing.T) {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			assert := assert.New(t)
-			got, err := NewSession(tt.args.scopeId, tt.args.userId, tt.args.authMethodId, tt.args.opts...)
+			got, err := NewAuthToken(tt.args.scopeId, tt.args.userId, tt.args.authMethodId, tt.args.opts...)
 			if tt.wantErr {
 				assert.Error(err)
 				assert.Nil(got)
@@ -100,12 +100,12 @@ func TestSession_New(t *testing.T) {
 					assert.Emptyf(got.PublicId, "PublicId set")
 					assert.Equal(tt.want, got)
 
-					id, err := newSessionId()
+					id, err := newAuthTokenId()
 					assert.NoError(err)
 					tt.want.PublicId = id
 					got.PublicId = id
 
-					token, err := newSessionToken()
+					token, err := newAuthToken()
 					assert.NoError(err)
 					tt.want.Token = token
 					got.Token = token
@@ -119,7 +119,7 @@ func TestSession_New(t *testing.T) {
 	}
 }
 
-func TestSession_Update(t *testing.T) {
+func TestAuthToken_Update(t *testing.T) {
 	assert, require := assert.New(t), require.New(t)
 	cleanup, conn, _ := db.TestSetup(t, "postgres")
 	t.Cleanup(func() {
@@ -135,19 +135,19 @@ func TestSession_Update(t *testing.T) {
 	u := iam.TestUser(t, conn, org.GetPublicId())
 	amId := setupAuthMethod(t, conn, org.GetPublicId())
 
-	newSessId, err := newSessionId()
+	newSessId, err := newAuthTokenId()
 	require.NoError(err)
 
 	type args struct {
 		fieldMask []string
 		nullMask  []string
-		session   *store.Session
+		session   *store.AuthToken
 	}
 
 	var tests = []struct {
 		name    string
 		args    args
-		want    *Session
+		want    *AuthToken
 		cnt     int
 		wantErr bool
 	}{
@@ -155,7 +155,7 @@ func TestSession_Update(t *testing.T) {
 			name: "immutable-userid",
 			args: args{
 				fieldMask: []string{"IamUserId"},
-				session:   &store.Session{IamUserId: u.GetPublicId()},
+				session:   &store.AuthToken{IamUserId: u.GetPublicId()},
 			},
 			wantErr: true,
 		},
@@ -163,7 +163,7 @@ func TestSession_Update(t *testing.T) {
 			name: "immutable-authmethodid",
 			args: args{
 				fieldMask: []string{"AuthMethodId"},
-				session:   &store.Session{AuthMethodId: amId},
+				session:   &store.AuthToken{AuthMethodId: amId},
 			},
 			wantErr: true,
 		},
@@ -171,7 +171,7 @@ func TestSession_Update(t *testing.T) {
 			name: "immutable-scopeid",
 			args: args{
 				fieldMask: []string{"IamScopeId"},
-				session:   &store.Session{ScopeId: u.GetScopeId()},
+				session:   &store.AuthToken{ScopeId: u.GetScopeId()},
 			},
 			wantErr: true,
 		},
@@ -179,7 +179,7 @@ func TestSession_Update(t *testing.T) {
 			name: "immutable-publicid",
 			args: args{
 				fieldMask: []string{"PublicId"},
-				session:   &store.Session{PublicId: newSessId},
+				session:   &store.AuthToken{PublicId: newSessId},
 			},
 			wantErr: true,
 		},
@@ -187,7 +187,7 @@ func TestSession_Update(t *testing.T) {
 			name: "update-last-access-time",
 			args: args{
 				nullMask: []string{"LastAccessTime"},
-				session:  &store.Session{},
+				session:  &store.AuthToken{},
 			},
 			cnt: 1,
 		},
@@ -198,8 +198,8 @@ func TestSession_Update(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			w := db.New(conn)
 
-			sess := testSession(t, conn)
-			proto.Merge(sess.Session, tt.args.session)
+			sess := testAuthToken(t, conn)
+			proto.Merge(sess.AuthToken, tt.args.session)
 
 			cnt, err := w.Update(context.Background(), sess, tt.args.fieldMask, tt.args.nullMask)
 			if tt.wantErr {
@@ -213,21 +213,21 @@ func TestSession_Update(t *testing.T) {
 	}
 }
 
-func testSession(t *testing.T, conn *gorm.DB) *Session {
+func testAuthToken(t *testing.T, conn *gorm.DB) *AuthToken {
 	t.Helper()
 	assert := assert.New(t)
 	org, _ := iam.TestScopes(t, conn)
 	u := iam.TestUser(t, conn, org.GetPublicId())
 	amId := setupAuthMethod(t, conn, org.GetPublicId())
-	sess, err := NewSession(org.GetPublicId(), u.GetPublicId(), amId)
+	sess, err := NewAuthToken(org.GetPublicId(), u.GetPublicId(), amId)
 	assert.NoError(err)
 	assert.NotNil(sess)
-	id, err := newSessionId()
+	id, err := newAuthTokenId()
 	assert.NoError(err)
 	assert.NotEmpty(id)
 	sess.PublicId = id
 
-	token, err := newSessionToken()
+	token, err := newAuthToken()
 	assert.NoError(err)
 	assert.NotEmpty(token)
 	sess.Token = token

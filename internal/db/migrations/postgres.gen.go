@@ -821,8 +821,8 @@ commit;
 
 `),
 	},
-	"migrations/12_user_session.down.sql": {
-		name: "12_user_session.down.sql",
+	"migrations/11_auth_token.down.sql": {
+		name: "11_auth_token.down.sql",
 		bytes: []byte(`
 begin;
 
@@ -832,16 +832,16 @@ commit;
 
 `),
 	},
-	"migrations/12_user_session.up.sql": {
-		name: "12_user_session.up.sql",
+	"migrations/11_auth_token.up.sql": {
+		name: "11_auth_token.up.sql",
 		bytes: []byte(`
 begin;
 
-  -- an iam_user can have 0 to many user_sessions
-  -- an auth method can have 0 to many user_sessions
+  -- an iam_user can have 0 to many auth_tokens
+  -- an auth method can have 0 to many auth_tokens
   -- a user session belongs to 1 and only 1 iam_user
   -- a user session belongs to 1 and only 1 auth methods
-  create table user_session (
+  create table auth_token (
     public_id wt_public_id primary key,
     token text not null unique,
     scope_id wt_public_id not null,
@@ -938,42 +938,42 @@ begin;
 
   create trigger
     default_create_time_column
-  before insert on user_session
+  before insert on auth_token
     for each row execute procedure default_create_time();
 
   create trigger
     update_time_column
-  before update on user_session
+  before update on auth_token
     for each row execute procedure update_time_column();
 
   create trigger
     update_last_access_time_column
-  before update on user_session
+  before update on auth_token
     for each row execute procedure update_last_access_time_column();
 
   create trigger
     immutable_create_time
-  before update on user_session
+  before update on auth_token
     for each row execute procedure immutable_create_time_func();
 
   create trigger
     immutable_iam_user_id
-  before update on user_session
+  before update on auth_token
     for each row execute procedure immutable_iam_user_id();
 
   create trigger
     immutable_auth_method_id
-  before update on user_session
+  before update on auth_token
     for each row execute procedure immutable_auth_method_id();
 
   create trigger
     immutable_scope_id
-  before update on user_session
+  before update on auth_token
     for each row execute procedure immutable_scope_id();
 
   insert into oplog_ticket (name, version)
   values
-    ('user_session', 1);
+    ('auth_token', 1);
 
 commit;
 

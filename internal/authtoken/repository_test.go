@@ -1,4 +1,4 @@
-package usersessions
+package authtoken
 
 import (
 	"context"
@@ -14,9 +14,9 @@ import (
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/testing/protocmp"
 
+	"github.com/hashicorp/watchtower/internal/authtoken/store"
 	"github.com/hashicorp/watchtower/internal/db"
 	"github.com/hashicorp/watchtower/internal/iam"
-	"github.com/hashicorp/watchtower/internal/usersessions/store"
 )
 
 func TestRepository_New(t *testing.T) {
@@ -116,7 +116,7 @@ func TestRepository_New(t *testing.T) {
 	}
 }
 
-func TestRepository_CreateSession(t *testing.T) {
+func TestRepository_CreateAuthToken(t *testing.T) {
 	cleanup, conn, _ := db.TestSetup(t, "postgres")
 	t.Cleanup(func() {
 		if err := cleanup(); err != nil {
@@ -139,24 +139,24 @@ func TestRepository_CreateSession(t *testing.T) {
 
 	var tests = []struct {
 		name    string
-		in      *Session
+		in      *AuthToken
 		opts    []Option
-		want    *Session
+		want    *AuthToken
 		wantErr bool
 	}{
 		{
-			name:    "nil-session",
+			name:    "nil-authtoken",
 			wantErr: true,
 		},
 		{
-			name:    "nil-embedded-session",
-			in:      &Session{},
+			name:    "nil-embedded-authtoken",
+			in:      &AuthToken{},
 			wantErr: true,
 		},
 		{
-			name: "unmatched-session-user-scopes",
-			in: &Session{
-				Session: &store.Session{
+			name: "unmatched-authtoken-user-scopes",
+			in: &AuthToken{
+				AuthToken: &store.AuthToken{
 					ScopeId:      org1.GetPublicId(),
 					IamUserId:    u2.GetPublicId(),
 					AuthMethodId: amId1,
@@ -164,9 +164,9 @@ func TestRepository_CreateSession(t *testing.T) {
 			wantErr: true,
 		},
 		{
-			name: "unmatched-session-authmethod-scopes",
-			in: &Session{
-				Session: &store.Session{
+			name: "unmatched-authtoken-authmethod-scopes",
+			in: &AuthToken{
+				AuthToken: &store.AuthToken{
 					ScopeId:      org1.GetPublicId(),
 					IamUserId:    u1.GetPublicId(),
 					AuthMethodId: amId2,
@@ -175,15 +175,15 @@ func TestRepository_CreateSession(t *testing.T) {
 		},
 		{
 			name: "valid-no-options",
-			in: &Session{
-				Session: &store.Session{
+			in: &AuthToken{
+				AuthToken: &store.AuthToken{
 					ScopeId:      org1.GetPublicId(),
 					IamUserId:    u1.GetPublicId(),
 					AuthMethodId: amId1,
 				},
 			},
-			want: &Session{
-				Session: &store.Session{
+			want: &AuthToken{
+				AuthToken: &store.AuthToken{
 					ScopeId:      org1.GetPublicId(),
 					IamUserId:    u1.GetPublicId(),
 					AuthMethodId: amId1,
@@ -198,16 +198,16 @@ func TestRepository_CreateSession(t *testing.T) {
 			repo, err := NewRepository(rw, rw, wrapper)
 			assert.NoError(err)
 			assert.NotNil(repo)
-			got, err := repo.CreateSession(context.Background(), tt.in, tt.opts...)
+			got, err := repo.CreateAuthToken(context.Background(), tt.in, tt.opts...)
 			if tt.wantErr {
 				assert.Error(err)
 				assert.Nil(got)
 				return
 			}
-			assert.NoError(err, "Got error for CreateSession(ctx, %v, %v)", tt.in, tt.opts)
+			assert.NoError(err, "Got error for CreateAuthToken(ctx, %v, %v)", tt.in, tt.opts)
 			assert.Empty(tt.in.PublicId)
 			assert.NotNil(got)
-			assertPublicId(t, SessionPrefix, got.PublicId)
+			assertPublicId(t, AuthTokenPublicIdPrefix, got.PublicId)
 			assert.NotSame(tt.in, got)
 			assert.Equal(got.CreateTime, got.UpdateTime)
 			assert.Equal(got.CreateTime, got.LastAccessTime)
@@ -224,7 +224,7 @@ func assertPublicId(t *testing.T, prefix, actual string) {
 	assert.Equalf(t, prefix, parts[0], "PublicId want prefix: %q, got: %q in %q", prefix, parts[0], actual)
 }
 
-func TestRepository_LookupSession(t *testing.T) {
+func TestRepository_LookupAuthToken(t *testing.T) {
 	cleanup, conn, _ := db.TestSetup(t, "postgres")
 	t.Cleanup(func() {
 		if err := cleanup(); err != nil {
@@ -235,10 +235,10 @@ func TestRepository_LookupSession(t *testing.T) {
 		}
 	})
 
-	sess := testSession(t, conn)
-	sess.Token = ""
+	at := testAuthToken(t, conn)
+	at.Token = ""
 
-	badId, err := newSessionId()
+	badId, err := newAuthTokenId()
 	assert.NoError(t, err)
 	assert.NotNil(t, badId)
 
@@ -248,13 +248,13 @@ func TestRepository_LookupSession(t *testing.T) {
 	var tests = []struct {
 		name    string
 		id      string
-		want    *Session
+		want    *AuthToken
 		wantErr error
 	}{
 		{
 			name: "found",
-			id:   sess.GetPublicId(),
-			want: sess,
+			id:   at.GetPublicId(),
+			want: at,
 		},
 		{
 			name: "not-found",
@@ -277,7 +277,7 @@ func TestRepository_LookupSession(t *testing.T) {
 			assert.NoError(err)
 			assert.NotNil(repo)
 
-			got, err := repo.LookupSession(context.Background(), tt.id)
+			got, err := repo.LookupAuthToken(context.Background(), tt.id)
 			if tt.wantErr != nil {
 				assert.Truef(errors.Is(err, tt.wantErr), "want err: %q got: %q", tt.wantErr, err)
 				return
@@ -300,10 +300,10 @@ func TestRepository_UpdateLastUsed(t *testing.T) {
 		}
 	})
 
-	sess := testSession(t, conn)
-	sessToken := sess.GetToken()
-	sess.Token = ""
-	badToken, err := newSessionToken()
+	at := testAuthToken(t, conn)
+	atToken := at.GetToken()
+	at.Token = ""
+	badToken, err := newAuthToken()
 	assert.NoError(err)
 	assert.NotNil(badToken)
 
@@ -313,13 +313,13 @@ func TestRepository_UpdateLastUsed(t *testing.T) {
 	var tests = []struct {
 		name    string
 		token   string
-		want    *Session
+		want    *AuthToken
 		wantErr error
 	}{
 		{
 			name:  "exists",
-			token: sessToken,
-			want:  sess,
+			token: atToken,
+			want:  at,
 		},
 		{
 			name:  "doesnt-exist",
@@ -349,10 +349,10 @@ func TestRepository_UpdateLastUsed(t *testing.T) {
 			assert.NoError(err)
 			if tt.want == nil {
 				assert.Nil(got)
-				// No need to compare updated time if we didn't get an initial session to compare against.
+				// No need to compare updated time if we didn't get an initial auth token to compare against.
 				return
 			}
-			assert.Empty(cmp.Diff(tt.want.Session, got.Session, protocmp.Transform()))
+			assert.Empty(cmp.Diff(tt.want.AuthToken, got.AuthToken, protocmp.Transform()))
 
 			got2, err := repo.UpdateLastUsed(context.Background(), tt.token)
 			if tt.wantErr != nil {
@@ -370,7 +370,7 @@ func TestRepository_UpdateLastUsed(t *testing.T) {
 	}
 }
 
-func TestRepository_DeleteSession(t *testing.T) {
+func TestRepository_DeleteAuthToken(t *testing.T) {
 	cleanup, conn, _ := db.TestSetup(t, "postgres")
 	t.Cleanup(func() {
 		if err := cleanup(); err != nil {
@@ -381,8 +381,8 @@ func TestRepository_DeleteSession(t *testing.T) {
 		}
 	})
 
-	sess := testSession(t, conn)
-	badId, err := newSessionId()
+	at := testAuthToken(t, conn)
+	badId, err := newAuthTokenId()
 	assert.NoError(t, err)
 	assert.NotNil(t, badId)
 
@@ -397,7 +397,7 @@ func TestRepository_DeleteSession(t *testing.T) {
 	}{
 		{
 			name: "found",
-			id:   sess.GetPublicId(),
+			id:   at.GetPublicId(),
 			want: 1,
 		},
 		{
@@ -421,7 +421,7 @@ func TestRepository_DeleteSession(t *testing.T) {
 			assert.NoError(err)
 			assert.NotNil(repo)
 
-			got, err := repo.DeleteSession(context.Background(), tt.id)
+			got, err := repo.DeleteAuthToken(context.Background(), tt.id)
 			if tt.wantErr != nil {
 				assert.Truef(errors.Is(err, tt.wantErr), "want err: %q got: %q", tt.wantErr, err)
 				return
