@@ -2,8 +2,8 @@ begin;
 
   -- an iam_user can have 0 to many auth_tokens
   -- an auth method can have 0 to many auth_tokens
-  -- a user session belongs to 1 and only 1 iam_user
-  -- a user session belongs to 1 and only 1 auth methods
+  -- an auth token belongs to 1 and only 1 iam_user
+  -- an auth token belongs to 1 and only 1 auth methods
   create table auth_token (
     public_id wt_public_id primary key,
     token text not null unique,
