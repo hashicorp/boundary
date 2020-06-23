@@ -151,4 +151,9 @@ begin;
   insert on auth_password_account
     for each row execute procedure default_create_time();
 
+  insert into oplog_ticket (name, version)
+  values
+    ('auth_password_method', 1),
+    ('auth_password_account', 1);
+
 commit;
