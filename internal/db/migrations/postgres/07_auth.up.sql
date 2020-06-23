@@ -58,11 +58,19 @@ begin;
     returns trigger
   as $$
   begin
+
+    select auth_method.scope_id
+      into new.scope_id
+    from auth_method
+    where auth_method.public_id = new.auth_method_id;
+
     insert into auth_account
       (public_id, auth_method_id, scope_id)
     values
       (new.public_id, new.auth_method_id, new.scope_id);
+
     return new;
+
   end;
   $$ language plpgsql;
 

@@ -8,6 +8,7 @@ import (
 	"github.com/hashicorp/watchtower/internal/db"
 	"github.com/hashicorp/watchtower/internal/iam"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestAuthMethod_New(t *testing.T) {
@@ -88,28 +89,28 @@ func TestAuthMethod_New(t *testing.T) {
 	for _, tt := range tests {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
-			assert := assert.New(t)
+			assert, require := assert.New(t), require.New(t)
 			got, err := NewAuthMethod(tt.args.scopeId, tt.args.opts...)
 			if tt.wantErr {
 				assert.Error(err)
-				assert.Nil(got)
-			} else {
-				assert.NoError(err)
-				if assert.NotNil(got) {
-					assert.Emptyf(got.PublicId, "PublicId set")
-					assert.Equal(tt.want, got)
-
-					id, err := newAuthMethodId()
-					assert.NoError(err)
-
-					tt.want.PublicId = id
-					got.PublicId = id
-
-					w := db.New(conn)
-					err2 := w.Create(context.Background(), got)
-					assert.NoError(err2)
-				}
+				require.Nil(got)
+				return
 			}
+			assert.NoError(err)
+			require.NotNil(got)
+
+			assert.Emptyf(got.PublicId, "PublicId set")
+			assert.Equal(tt.want, got)
+
+			id, err := newAuthMethodId()
+			assert.NoError(err)
+
+			tt.want.PublicId = id
+			got.PublicId = id
+
+			w := db.New(conn)
+			err2 := w.Create(context.Background(), got)
+			assert.NoError(err2)
 		})
 	}
 }

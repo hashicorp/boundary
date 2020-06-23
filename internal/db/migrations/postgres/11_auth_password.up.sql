@@ -35,7 +35,10 @@ begin;
       on delete cascade
       on update cascade,
     auth_method_id wt_public_id not null,
-    scope_id wt_public_id not null,
+    -- NOTE(mgaffney): The scope_id type is not wt_public_id because the domain
+    -- check is executed before the insert trigger which retrieves the scope_id
+    -- causing an insert to fail.
+    scope_id text not null,
     name text,
     description text,
     create_time wt_timestamp,
