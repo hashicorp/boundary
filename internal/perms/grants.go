@@ -38,9 +38,6 @@ type Grant struct {
 	// The scope ID, which will be a project ID or an org ID
 	scope Scope
 
-	// Project, if defined
-	project string
-
 	// The ID in the grant, if provided.
 	id string
 
@@ -57,10 +54,9 @@ type Grant struct {
 
 func (g Grant) clone() *Grant {
 	ret := &Grant{
-		scope:   g.scope,
-		project: g.project,
-		id:      g.id,
-		typ:     g.typ,
+		scope: g.scope,
+		id:    g.id,
+		typ:   g.typ,
 	}
 	if g.actionsBeingParsed != nil {
 		ret.actionsBeingParsed = append(ret.actionsBeingParsed, g.actionsBeingParsed...)
@@ -77,9 +73,6 @@ func (g Grant) clone() *Grant {
 // CanonicalString returns the canonical representation of the grant
 func (g Grant) CanonicalString() string {
 	var builder []string
-	if g.project != "" {
-		builder = append(builder, fmt.Sprintf("project=%s", g.project))
-	}
 
 	if g.id != "" {
 		builder = append(builder, fmt.Sprintf("id=%s", g.id))
@@ -104,9 +97,6 @@ func (g Grant) CanonicalString() string {
 // MarshalJSON provides a custom marshaller for grants
 func (g Grant) MarshalJSON() ([]byte, error) {
 	res := make(map[string]interface{}, 4)
-	if g.project != "" {
-		res["project"] = g.project
-	}
 	if g.id != "" {
 		res["id"] = g.id
 	}
@@ -131,13 +121,6 @@ func (g *Grant) unmarshalJSON(data []byte) error {
 	raw := make(map[string]interface{}, 4)
 	if err := json.Unmarshal(data, &raw); err != nil {
 		return err
-	}
-	if rawProj, ok := raw["project"]; ok {
-		project, ok := rawProj.(string)
-		if !ok {
-			return fmt.Errorf("unable to interpret %q as string", "project")
-		}
-		g.project = strings.ToLower(project)
 	}
 	if rawId, ok := raw["id"]; ok {
 		id, ok := rawId.(string)
@@ -192,9 +175,6 @@ func (g *Grant) unmarshalText(grantString string) error {
 		}
 
 		switch kv[0] {
-		case "project":
-			g.project = strings.ToLower(kv[1])
-
 		case "id":
 			g.id = strings.ToLower(kv[1])
 
@@ -225,15 +205,6 @@ func (g *Grant) unmarshalText(grantString string) error {
 //
 // The scope must be the org and project where this grant originated, not the
 // request.
-//
-// WARNING: It is the responsibility of the caller to validate that a returned
-// Grant matches the incoming scope and if not that the relationship is valid.
-// Specifically, if a project is specified as part of a grant, the grant's
-// returned scope will be a project scope with the associated project ID. The
-// caller must validate that the project ID is valid and that its enclosing
-// organization is the original organization scope. Likely this can be done in a
-// centralized helper context; however it's not done here to avoid reaching into
-// the database from within this package.
 func Parse(scope Scope, userId, grantString string) (Grant, error) {
 	if len(grantString) == 0 {
 		return Grant{}, errors.New("grant string is empty")
@@ -278,8 +249,8 @@ func Parse(scope Scope, userId, grantString string) (Grant, error) {
 		}
 	}
 
-	if err := grant.validateAndModifyProject(); err != nil {
-		return Grant{}, err
+	if grant.id == "" && grant.typ == "" {
+		return Grant{}, errors.New(`"id" and "type" cannot both be empty`)
 	}
 
 	if err := grant.validateType(); err != nil {
@@ -291,18 +262,6 @@ func Parse(scope Scope, userId, grantString string) (Grant, error) {
 	}
 
 	return grant, nil
-}
-
-func (g *Grant) validateAndModifyProject() error {
-	if g.project == "" {
-		return nil
-	}
-	if g.scope.Type != iam.OrganizationScope {
-		return errors.New("cannot specify a project in the grant when the scope is not an organization")
-	}
-	g.scope.Type = iam.ProjectScope
-	g.scope.Id = g.project
-	return nil
 }
 
 func (g Grant) validateType() error {
