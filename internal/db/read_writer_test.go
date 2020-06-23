@@ -1342,3 +1342,70 @@ func TestDb_LookupById(t *testing.T) {
 		assert.True(t, errors.Is(err, ErrInvalidParameter))
 	})
 }
+
+func TestDb_GetTicket(t *testing.T) {
+	cleanup, db, _ := TestSetup(t, "postgres")
+	defer func() {
+		err := cleanup()
+		assert.NoError(t, err)
+		err = db.Close()
+		assert.NoError(t, err)
+	}()
+	type notReplayable struct{}
+	tests := []struct {
+		name          string
+		underlying    *gorm.DB
+		aggregateType interface{}
+		wantErr       bool
+		wantErrIs     error
+	}{
+		{
+			name:          "simple",
+			underlying:    db,
+			aggregateType: &db_test.TestUser{},
+			wantErr:       false,
+		},
+		{
+			name:          "not-replayable",
+			underlying:    db,
+			aggregateType: &notReplayable{},
+			wantErr:       true,
+			wantErrIs:     ErrInvalidParameter,
+		},
+		{
+			name:          "nil-aggregate-type",
+			underlying:    db,
+			aggregateType: nil,
+			wantErr:       true,
+			wantErrIs:     ErrNilParameter,
+		},
+		{
+			name:          "no-underlying",
+			underlying:    nil,
+			aggregateType: &db_test.TestUser{},
+			wantErr:       true,
+			wantErrIs:     ErrNilParameter,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+			rw := &Db{
+				underlying: tt.underlying,
+			}
+			got, err := rw.GetTicket(tt.aggregateType)
+			if tt.wantErr {
+				require.Error(err)
+				if tt.wantErrIs != nil {
+					assert.Truef(errors.Is(err, tt.wantErrIs), "unexpected error type: %s", err.Error())
+				}
+				return
+			}
+			require.NoError(err)
+			assert.NotEmpty(got.Name)
+			assert.NotEmpty(got.Version)
+			assert.NotEmpty(got.CreateTime)
+			assert.NotEmpty(got.UpdateTime)
+		})
+	}
+}
