@@ -6,6 +6,7 @@ import (
 
 	"github.com/hashicorp/go-uuid"
 	"github.com/hashicorp/watchtower/internal/db"
+	dbassert "github.com/hashicorp/watchtower/internal/db/assert"
 	"github.com/hashicorp/watchtower/internal/iam/store"
 	"github.com/jinzhu/gorm"
 	"github.com/stretchr/testify/assert"
@@ -142,15 +143,32 @@ func TestGroup(t *testing.T, conn *gorm.DB, scopeId string, opt ...Option) *Grou
 }
 
 // testAuthAccount is a temporary test function.  TODO - replace with an auth
-// subsystem testAuthAccount function.
+// subsystem testAuthAccount function.  If userId is zero value, then an auth
+// account will be created with a null IamUserId
 func testAuthAccount(t *testing.T, conn *gorm.DB, scopeId, authMethodId, userId string) *AuthAccount {
+	const (
+		authAccountPrefix = "aa_"
+		where             = `select count(*) from auth_method where public_id = $1 and scope_id = $2`
+	)
 	t.Helper()
-	const authAccountPrefix = "aa_"
+	rw := db.New(conn)
 	require := require.New(t)
 	require.NotNil(conn)
 	require.NotEmpty(scopeId)
-	require.NotEmpty(userId)
 	require.NotEmpty(authMethodId)
+
+	if userId != "" {
+		foundUser := allocUser()
+		foundUser.PublicId = userId
+		err := rw.LookupByPublicId(context.Background(), &foundUser)
+		require.NoError(err)
+		require.Equal(scopeId, foundUser.ScopeId)
+	}
+
+	var count int
+	err := conn.DB().QueryRow(where, authMethodId, scopeId).Scan(&count)
+	require.NoError(err)
+	require.Equal(1, count)
 
 	id, err := db.NewPublicId(authAccountPrefix)
 	require.NoError(err)
@@ -163,24 +181,28 @@ func testAuthAccount(t *testing.T, conn *gorm.DB, scopeId, authMethodId, userId 
 			IamUserId:    userId,
 		},
 	}
-	rw := db.New(conn)
 	err = rw.Create(context.Background(), acct)
 	require.NoError(err)
 	require.NotEmpty(acct.PublicId)
+
+	if userId == "" {
+		dbassert := dbassert.New(t, rw)
+		dbassert.IsNull(acct, "IamUserId")
+	}
 	return acct
 }
 
 // testAuthMethod is a temporary test function.  TODO - replace with an auth
 // subsystem testAuthMethod function.
 func testAuthMethod(t *testing.T, conn *gorm.DB, scopeId string) string {
-	t.Helper()
-	require := require.New(t)
-	require.NotNil(conn)
-	require.NotEmpty(scopeId)
 	const (
 		authMethodPrefix = "am_"
 		insert           = `insert into auth_method (public_id, scope_id) values ($1, $2)`
 	)
+	t.Helper()
+	require := require.New(t)
+	require.NotNil(conn)
+	require.NotEmpty(scopeId)
 	id, err := db.NewPublicId(authMethodPrefix)
 	require.NoError(err)
 
