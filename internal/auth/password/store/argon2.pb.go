@@ -40,15 +40,15 @@ type Argon2Configuration struct {
 	CreateTime *timestamp.Timestamp `protobuf:"bytes,2,opt,name=create_time,json=createTime,proto3" json:"create_time,omitempty"`
 	// @inject_tag: gorm:"not_null"
 	AuthPasswordMethodId string `protobuf:"bytes,3,opt,name=auth_password_method_id,json=authPasswordMethodId,proto3" json:"auth_password_method_id,omitempty"`
-	// @inject_tag: gorm:"not_null"
+	// @inject_tag: `gorm:"default:null"`
 	Iterations uint32 `protobuf:"varint,4,opt,name=iterations,proto3" json:"iterations,omitempty"`
-	// @inject_tag: gorm:"not_null"
+	// @inject_tag: `gorm:"default:null"`
 	Memory uint32 `protobuf:"varint,5,opt,name=memory,proto3" json:"memory,omitempty"`
-	// @inject_tag: gorm:"not_null"
+	// @inject_tag: `gorm:"default:null"`
 	Threads uint32 `protobuf:"varint,6,opt,name=threads,proto3" json:"threads,omitempty"`
-	// @inject_tag: gorm:"not_null"
+	// @inject_tag: `gorm:"default:null"`
 	SaltLength uint32 `protobuf:"varint,7,opt,name=salt_length,json=saltLength,proto3" json:"salt_length,omitempty"`
-	// @inject_tag: gorm:"not_null"
+	// @inject_tag: `gorm:"default:null"`
 	KeyLength uint32 `protobuf:"varint,8,opt,name=key_length,json=keyLength,proto3" json:"key_length,omitempty"`
 }
 

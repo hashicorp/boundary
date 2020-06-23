@@ -17,19 +17,19 @@ message Argon2Configuration {
   // @inject_tag: gorm:"not_null"
   string auth_password_method_id = 3;
 
-  // @inject_tag: gorm:"not_null"
+  // @inject_tag: `gorm:"default:null"`
   uint32 iterations = 4;
 
-  // @inject_tag: gorm:"not_null"
+  // @inject_tag: `gorm:"default:null"`
   uint32 memory = 5;
 
-  // @inject_tag: gorm:"not_null"
+  // @inject_tag: `gorm:"default:null"`
   uint32 threads = 6;
 
-  // @inject_tag: gorm:"not_null"
+  // @inject_tag: `gorm:"default:null"`
   uint32 salt_length = 7;
 
-  // @inject_tag: gorm:"not_null"
+  // @inject_tag: `gorm:"default:null"`
   uint32 key_length = 8;
 }
 

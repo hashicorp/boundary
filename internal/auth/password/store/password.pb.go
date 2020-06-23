@@ -50,10 +50,10 @@ type AuthMethod struct {
 	// The scope_id of the owning scope. Must be set.
 	// @inject_tag: gorm:"not_null"
 	ScopeId string `protobuf:"bytes,6,opt,name=scope_id,json=scopeId,proto3" json:"scope_id,omitempty" gorm:"not_null"`
-	// @inject_tag: gorm:"not_null"
-	MinUserNameLength string `protobuf:"bytes,7,opt,name=min_user_name_length,json=minUserNameLength,proto3" json:"min_user_name_length,omitempty" gorm:"not_null"`
-	// @inject_tag: gorm:"not_null"
-	MinPasswordLength string `protobuf:"bytes,8,opt,name=min_password_length,json=minPasswordLength,proto3" json:"min_password_length,omitempty" gorm:"not_null"`
+	// @inject_tag: `gorm:"default:null"`
+	MinUserNameLength string `protobuf:"bytes,7,opt,name=min_user_name_length,json=minUserNameLength,proto3" json:"min_user_name_length,omitempty" gorm:"default:null"`
+	// @inject_tag: `gorm:"default:null"`
+	MinPasswordLength string `protobuf:"bytes,8,opt,name=min_password_length,json=minPasswordLength,proto3" json:"min_password_length,omitempty" gorm:"default:null"`
 }
 
 func (x *AuthMethod) Reset() {
