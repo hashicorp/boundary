@@ -1357,6 +1357,8 @@ func TestDb_Delete(t *testing.T) {
 }
 
 func TestDb_ScanRows(t *testing.T) {
+	t.Parallel()
+	cleanup, db, _ := TestSetup(t, "postgres")
 	defer func() {
 		require := require.New(t)
 		err := cleanup()
@@ -1365,26 +1367,27 @@ func TestDb_ScanRows(t *testing.T) {
 		require.NoError(err)
 	}()
 	t.Run("valid", func(t *testing.T) {
+		assert, require := assert.New(t), require.New(t)
 		w := Db{underlying: db}
 		user, err := db_test.NewTestUser()
-		assert.NoError(err)
+		require.NoError(err)
 		err = w.Create(context.Background(), user)
-		assert.NoError(err)
+		require.NoError(err)
 		assert.NotEmpty(user.Id)
 
 		tx, err := w.DB()
-		assert.NoError(err)
+		require.NoError(err)
 		where := "select * from db_test_user where name in ($1, $2)"
 		rows, err := tx.Query(where, "alice", "bob")
-		assert.NoError(err)
+		require.NoError(err)
 		defer func() { err := rows.Close(); assert.NoError(err) }()
 		for rows.Next() {
 			u, err := db_test.NewTestUser()
-			assert.NoError(err)
+			require.NoError(err)
 
 			// scan the row into your Gorm struct
 			err = w.ScanRows(rows, &u)
-			assert.NoError(err)
+			require.NoError(err)
 			assert.Equal(user.PublicId, u.PublicId)
 		}
 	})
@@ -1392,10 +1395,10 @@ func TestDb_ScanRows(t *testing.T) {
 
 func testUser(t *testing.T, conn *gorm.DB, name, email, phoneNumber string) *db_test.TestUser {
 	t.Helper()
-	assert := assert.New(t)
+	require := require.New(t)
 
 	publicId, err := base62.Random(20)
-	assert.NoError(err)
+	require.NoError(err)
 	u := &db_test.TestUser{
 		StoreTestUser: &db_test.StoreTestUser{
 			PublicId:    publicId,
@@ -1406,16 +1409,16 @@ func testUser(t *testing.T, conn *gorm.DB, name, email, phoneNumber string) *db_
 	}
 	if conn != nil {
 		err = conn.Create(u).Error
-		assert.NoError(err)
+		require.NoError(err)
 	}
 	return u
 }
 
 func testId(t *testing.T) string {
 	t.Helper()
-	assert := assert.New(t)
+	require := require.New(t)
 	id, err := uuid.GenerateUUID()
-	assert.NoError(err)
+	require.NoError(err)
 	return id
 }
 
