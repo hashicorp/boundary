@@ -13,7 +13,7 @@ import (
 // update auth accounts.  That's why there is no "new" factory for AuthAccounts.
 type AuthAccount struct {
 	*store.AuthAccount
-	tableName string `gorm:-`
+	tableName string `gorm:"-"`
 }
 
 var _ Clonable = (*AuthAccount)(nil)
