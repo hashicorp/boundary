@@ -130,6 +130,72 @@ func Test_ValidateType(t *testing.T) {
 	}
 }
 
+func Test_ValidateProject(t *testing.T) {
+	t.Parallel()
+
+	type input struct {
+		name      string
+		input     Grant
+		output    Grant
+		errResult string
+	}
+
+	tests := []input{
+		{
+			name: "no project",
+			input: Grant{
+				scope: Scope{
+					Type: iam.OrganizationScope,
+				},
+			},
+			output: Grant{
+				scope: Scope{
+					Type: iam.OrganizationScope,
+				},
+			},
+		},
+		{
+			name: "project, organization scope",
+			input: Grant{
+				project: "foobar",
+				scope: Scope{
+					Type: iam.OrganizationScope,
+				},
+			},
+			output: Grant{
+				project: "foobar",
+				scope: Scope{
+					Type: iam.ProjectScope,
+					Id:   "foobar",
+				},
+			},
+		},
+		{
+			name: "project, non-organization scope",
+			input: Grant{
+				project: "foobar",
+				scope: Scope{
+					Type: iam.ProjectScope,
+				},
+			},
+			errResult: "cannot specify a project in the grant when the scope is not an organization",
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			err := test.input.validateAndModifyProject()
+			if test.errResult == "" {
+				require.NoError(t, err)
+				assert.Equal(t, test.output, test.input)
+			} else {
+				require.Error(t, err)
+				assert.Equal(t, test.errResult, err.Error())
+			}
+		})
+	}
+}
+
 func Test_MarshallingAndCloning(t *testing.T) {
 	t.Parallel()
 
@@ -152,21 +218,46 @@ func Test_MarshallingAndCloning(t *testing.T) {
 			canonicalString: ``,
 		},
 		{
-			name: "type and id",
+			name: "project",
 			input: Grant{
-				id: "baz",
+				project: "foobar",
+				scope: Scope{
+					Type: iam.OrganizationScope,
+				},
+			},
+			jsonOutput:      `{"project":"foobar"}`,
+			canonicalString: `project=foobar`,
+		},
+		{
+			name: "project and type",
+			input: Grant{
+				project: "foobar",
 				scope: Scope{
 					Type: iam.ProjectScope,
 				},
 				typ: TypeGroup,
 			},
-			jsonOutput:      `{"id":"baz","type":"group"}`,
-			canonicalString: `id=baz;type=group`,
+			jsonOutput:      `{"project":"foobar","type":"group"}`,
+			canonicalString: `project=foobar;type=group`,
+		},
+		{
+			name: "project, type, and id",
+			input: Grant{
+				id:      "baz",
+				project: "foobar",
+				scope: Scope{
+					Type: iam.ProjectScope,
+				},
+				typ: TypeGroup,
+			},
+			jsonOutput:      `{"id":"baz","project":"foobar","type":"group"}`,
+			canonicalString: `project=foobar;id=baz;type=group`,
 		},
 		{
 			name: "everything",
 			input: Grant{
-				id: "baz",
+				id:      "baz",
+				project: "foobar",
 				scope: Scope{
 					Type: iam.ProjectScope,
 				},
@@ -177,8 +268,8 @@ func Test_MarshallingAndCloning(t *testing.T) {
 				},
 				actionsBeingParsed: []string{"create", "read"},
 			},
-			jsonOutput:      `{"actions":["create","read"],"id":"baz","type":"group"}`,
-			canonicalString: `id=baz;type=group;actions=create,read`,
+			jsonOutput:      `{"actions":["create","read"],"id":"baz","project":"foobar","type":"group"}`,
+			canonicalString: `project=foobar;id=baz;type=group;actions=create,read`,
 		},
 	}
 
@@ -219,11 +310,19 @@ func Test_Unmarshaling(t *testing.T) {
 			jsonErr:   "invalid character 'w' looking for beginning of value",
 		},
 		{
-			name:      "bad segment",
-			jsonInput: `{"id":true}`,
-			jsonErr:   `unable to interpret "id" as string`,
-			textInput: `id=`,
-			textErr:   `segment "id=" not formatted correctly, missing value`,
+			name: "good project",
+			expected: Grant{
+				project: "foobar",
+			},
+			jsonInput: `{"project":"foobar"}`,
+			textInput: `project=foobar`,
+		},
+		{
+			name:      "bad project",
+			jsonInput: `{"project":true}`,
+			jsonErr:   `unable to interpret "project" as string`,
+			textInput: `project=`,
+			textErr:   `segment "project=" not formatted correctly, missing value`,
 		},
 		{
 			name: "good id",
@@ -352,20 +451,16 @@ func Test_Parse(t *testing.T) {
 			err:   `unknown action "createread"`,
 		},
 		{
-			name:  "empty id and type",
-			input: "actions=create",
-			err:   `"id" and "type" cannot both be empty`,
-		},
-		{
 			name:  "good json",
-			input: `{"id":"foobar","type":"host-catalog","actions":["create","read"]}`,
+			input: `{"project":"proj","id":"foobar","type":"host-catalog","actions":["create","read"]}`,
 			expected: Grant{
 				scope: Scope{
-					Id:   "scope",
-					Type: iam.OrganizationScope,
+					Id:   "proj",
+					Type: iam.ProjectScope,
 				},
-				id:  "foobar",
-				typ: "host-catalog",
+				project: "proj",
+				id:      "foobar",
+				typ:     "host-catalog",
 				actions: map[iam.Action]bool{
 					iam.ActionCreate: true,
 					iam.ActionRead:   true,
@@ -374,14 +469,15 @@ func Test_Parse(t *testing.T) {
 		},
 		{
 			name:  "good text",
-			input: `id=foobar;type=host-catalog;actions=create,read`,
+			input: `project=proj;id=foobar;type=host-catalog;actions=create,read`,
 			expected: Grant{
 				scope: Scope{
-					Id:   "scope",
-					Type: iam.OrganizationScope,
+					Id:   "proj",
+					Type: iam.ProjectScope,
 				},
-				id:  "foobar",
-				typ: "host-catalog",
+				project: "proj",
+				id:      "foobar",
+				typ:     "host-catalog",
 				actions: map[iam.Action]bool{
 					iam.ActionCreate: true,
 					iam.ActionRead:   true,
@@ -426,6 +522,10 @@ func Test_Parse(t *testing.T) {
 	_, err = Parse(Scope{Type: iam.OrganizationScope}, "", "{}")
 	require.Error(err)
 	assert.Equal("no scope ID provided", err.Error())
+
+	_, err = Parse(Scope{Id: "foobar", Type: iam.ProjectScope}, "", `project=foobar`)
+	require.Error(err)
+	assert.Equal("cannot specify a project in the grant when the scope is not an organization", err.Error())
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
