@@ -31,7 +31,7 @@ begin;
 
   create trigger
     insert_auth_password_conf_subtype
-  before update on auth_password_argon2_conf
+  before insert on auth_password_argon2_conf
     for each row execute procedure insert_auth_password_conf_subtype();
 
   create table auth_password_argon2_cred (
@@ -58,7 +58,7 @@ begin;
 
   create trigger
     insert_auth_password_credential_subtype
-  before update on auth_password_argon2_cred
+  before insert on auth_password_argon2_cred
     for each row execute procedure insert_auth_password_credential_subtype();
 
   --

@@ -869,7 +869,7 @@ begin;
 
   create trigger
     insert_auth_method_subtype
-  before update on auth_password_method
+  before insert on auth_password_method
     for each row execute procedure insert_auth_method_subtype();
 
   create table auth_password_account (
@@ -900,7 +900,7 @@ begin;
 
   create trigger
     insert_auth_account_subtype
-  before update on auth_password_account
+  before insert on auth_password_account
     for each row execute procedure insert_auth_account_subtype();
 
   create table auth_password_conf (
@@ -1046,7 +1046,7 @@ begin;
 
   create trigger
     insert_auth_password_conf_subtype
-  before update on auth_password_argon2_conf
+  before insert on auth_password_argon2_conf
     for each row execute procedure insert_auth_password_conf_subtype();
 
   create table auth_password_argon2_cred (
@@ -1073,7 +1073,7 @@ begin;
 
   create trigger
     insert_auth_password_credential_subtype
-  before update on auth_password_argon2_cred
+  before insert on auth_password_argon2_cred
     for each row execute procedure insert_auth_password_credential_subtype();
 
   --

@@ -26,7 +26,7 @@ begin;
 
   create trigger
     insert_auth_method_subtype
-  before update on auth_password_method
+  before insert on auth_password_method
     for each row execute procedure insert_auth_method_subtype();
 
   create table auth_password_account (
@@ -57,7 +57,7 @@ begin;
 
   create trigger
     insert_auth_account_subtype
-  before update on auth_password_account
+  before insert on auth_password_account
     for each row execute procedure insert_auth_account_subtype();
 
   create table auth_password_conf (
