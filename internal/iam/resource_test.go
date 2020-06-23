@@ -55,7 +55,4 @@ func Test_LookupScope(t *testing.T) {
 		assert.Nil(s)
 		assert.Equal("lookup by id: primary key is unset invalid parameter", err.Error())
 	})
-	t.Run("test resource with private id", func(t *testing.T) {
-		panic("not implemented yet.")
-	})
 }
