@@ -576,6 +576,36 @@ func TestRepository_LookupUserWithLogin(t *testing.T) {
 			wantErr: false,
 		},
 		{
+			name: "missing auth acct id",
+			args: args{
+				withScope:         org.PublicId,
+				withAuthMethodId:  authMethodId,
+				withAuthAccountId: "",
+			},
+			wantErr:   true,
+			wantErrIs: db.ErrInvalidParameter,
+		},
+		{
+			name: "missing auth method id",
+			args: args{
+				withScope:         org.PublicId,
+				withAuthMethodId:  "",
+				withAuthAccountId: existingAuthAcct.PublicId,
+			},
+			wantErr:   true,
+			wantErrIs: db.ErrInvalidParameter,
+		},
+		{
+			name: "missing scope",
+			args: args{
+				withScope:         "",
+				withAuthMethodId:  authMethodId,
+				withAuthAccountId: existingAuthAcct.PublicId,
+			},
+			wantErr:   true,
+			wantErrIs: db.ErrInvalidParameter,
+		},
+		{
 			name: "new-auth-account",
 			args: args{
 				withScope:         org.PublicId,
