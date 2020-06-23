@@ -28,6 +28,8 @@ type Options struct {
 	WithFieldMaskPaths []string
 	// WithNullPaths must be accessible from other packages.
 	WithNullPaths []string
+
+	newOplogMsg *oplog.Message
 }
 
 type oplogOpts struct {
@@ -64,6 +66,14 @@ func WithOplog(wrapper wrapping.Wrapper, md oplog.Metadata) Option {
 			wrapper:  wrapper,
 			metadata: md,
 		}
+	}
+}
+
+// NewOplogMsg provides an option to ask for a new in-memory oplog message.  The
+// new msg will be returned in the provided *oplog.Message parameter.
+func NewOplogMsg(msg *oplog.Message) Option {
+	return func(o *Options) {
+		o.newOplogMsg = msg
 	}
 }
 
