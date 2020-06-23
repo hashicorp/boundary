@@ -7,6 +7,7 @@ option go_package = "github.com/hashicorp/watchtower/internal/gen/controller/api
 import "protoc-gen-swagger/options/annotations.proto";
 import "google/api/annotations.proto";
 import "controller/api/resources/scopes/v1/organization.proto";
+import "controller/api/resources/authtokens/v1/authtoken.proto";
 
 service OrganizationService {
 
@@ -32,6 +33,27 @@ service OrganizationService {
       summary: "Lists all Organizations"
     };
   }
+
+  // Authenticate validates credentials provided.
+  rpc Authenticate(AuthenticateRequest) returns (AuthenticateResponse) {
+    option (google.api.http) = {
+      post: "/v1/orgs/{org_id}:authenticate"
+      body: "*"
+    };
+    option (grpc.gateway.protoc_gen_swagger.options.openapiv2_operation) = {
+      summary: "Authenticate a user to an Organization and retrieve an authentication token."
+    };
+  }
+
+  // Logout terminates a user's current session.
+  rpc Unauthenticate(UnauthenticateRequest) returns (UnauthenticateResponse) {
+    option (google.api.http) = {
+      post: "/v1/orgs/{org_id}:unauthenticate"
+    };
+    option (grpc.gateway.protoc_gen_swagger.options.openapiv2_operation) = {
+      summary: "Unauthenticate an authentication token from an Organization."
+    };
+  }
 }
 
 message GetOrganizationRequest {
@@ -50,3 +72,28 @@ message ListOrganizationsRequest {
 message ListOrganizationsResponse {
   repeated resources.scopes.v1.Organization items = 1;
 }
+
+message PasswordCredential {
+  string login_name = 1;
+  string password = 2;
+}
+
+message AuthenticateRequest {
+  string org_id = 1;
+  // The id to the authmethod in the system being used for authentication.  The auth method must be in the org
+  // being logged in to.
+  string auth_method_id = 2;
+  // This can be "cookie" or "token".  If not provided, "token" will be used.
+  string token_type = 3;
+
+  PasswordCredential password_credential = 4;
+}
+
+message AuthenticateResponse {
+  resources.authtokens.v1.AuthToken auth_token = 1;
+}
+
+message UnauthenticateRequest {
+  string org_id = 1;
+}
+message UnauthenticateResponse {}
