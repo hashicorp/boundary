@@ -143,7 +143,7 @@ func (r *Repository) UpdateLastUsed(ctx context.Context, token string, opt ...Op
 	var at *AuthToken
 	_, err := r.writer.DoTx(
 		ctx,
-		0,
+		db.StdRetryCnt,
 		db.ExpBackoff{},
 		func(_ db.Reader, w db.Writer) error {
 			at = authToken.clone()
