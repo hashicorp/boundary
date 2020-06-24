@@ -1,5 +1,9 @@
 package authtoken
 
+// This file contains tests for methods defined in authtoken.go as well as tests which exercise the db
+// functionality directly without going through the respository.  Repository centric tests should be
+// placed in repository_test.go
+
 import (
 	"context"
 	"testing"
@@ -117,7 +121,7 @@ func TestAuthToken_New(t *testing.T) {
 	}
 }
 
-func TestAuthToken_Update(t *testing.T) {
+func TestAuthToken_DbUpdate(t *testing.T) {
 	assert, require := assert.New(t), require.New(t)
 	cleanup, conn, _ := db.TestSetup(t, "postgres")
 	t.Cleanup(func() {
@@ -133,13 +137,13 @@ func TestAuthToken_Update(t *testing.T) {
 	u := iam.TestUser(t, conn, org.GetPublicId())
 	amId := setupAuthMethod(t, conn, org.GetPublicId())
 
-	newSessId, err := newAuthTokenId()
+	newAuthTokId, err := newAuthTokenId()
 	require.NoError(err)
 
 	type args struct {
 		fieldMask []string
 		nullMask  []string
-		session   *store.AuthToken
+		authTok   *store.AuthToken
 	}
 
 	var tests = []struct {
@@ -153,7 +157,7 @@ func TestAuthToken_Update(t *testing.T) {
 			name: "immutable-userid",
 			args: args{
 				fieldMask: []string{"IamUserId"},
-				session:   &store.AuthToken{IamUserId: u.GetPublicId()},
+				authTok:   &store.AuthToken{IamUserId: u.GetPublicId()},
 			},
 			wantErr: true,
 		},
@@ -161,7 +165,7 @@ func TestAuthToken_Update(t *testing.T) {
 			name: "immutable-authmethodid",
 			args: args{
 				fieldMask: []string{"AuthMethodId"},
-				session:   &store.AuthToken{AuthMethodId: amId},
+				authTok:   &store.AuthToken{AuthMethodId: amId},
 			},
 			wantErr: true,
 		},
@@ -169,7 +173,7 @@ func TestAuthToken_Update(t *testing.T) {
 			name: "immutable-scopeid",
 			args: args{
 				fieldMask: []string{"IamScopeId"},
-				session:   &store.AuthToken{ScopeId: u.GetScopeId()},
+				authTok:   &store.AuthToken{ScopeId: u.GetScopeId()},
 			},
 			wantErr: true,
 		},
@@ -177,7 +181,7 @@ func TestAuthToken_Update(t *testing.T) {
 			name: "immutable-publicid",
 			args: args{
 				fieldMask: []string{"PublicId"},
-				session:   &store.AuthToken{PublicId: newSessId},
+				authTok:   &store.AuthToken{PublicId: newAuthTokId},
 			},
 			wantErr: true,
 		},
@@ -185,7 +189,7 @@ func TestAuthToken_Update(t *testing.T) {
 			name: "update-last-access-time",
 			args: args{
 				nullMask: []string{"LastAccessTime"},
-				session:  &store.AuthToken{},
+				authTok:  &store.AuthToken{},
 			},
 			cnt: 1,
 		},
@@ -196,10 +200,10 @@ func TestAuthToken_Update(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			w := db.New(conn)
 
-			sess := testAuthToken(t, conn)
-			proto.Merge(sess.AuthToken, tt.args.session)
+			authTok := testAuthToken(t, conn)
+			proto.Merge(authTok.AuthToken, tt.args.authTok)
 
-			cnt, err := w.Update(context.Background(), sess, tt.args.fieldMask, tt.args.nullMask)
+			cnt, err := w.Update(context.Background(), authTok, tt.args.fieldMask, tt.args.nullMask)
 			if tt.wantErr {
 				t.Logf("Got error :%v", err)
 				assert.Error(err)
@@ -207,6 +211,69 @@ func TestAuthToken_Update(t *testing.T) {
 				assert.NoError(err)
 			}
 			assert.Equal(tt.cnt, cnt)
+		})
+	}
+}
+
+func TestAuthToken_DbCreate(t *testing.T) {
+	assert, require := assert.New(t), require.New(t)
+	_, _ = assert, require
+	cleanup, conn, _ := db.TestSetup(t, "postgres")
+	t.Cleanup(func() {
+		if err := cleanup(); err != nil {
+			t.Error(err)
+		}
+		if err := conn.Close(); err != nil {
+			t.Error(err)
+		}
+	})
+
+	org, _ := iam.TestScopes(t, conn)
+	u := iam.TestUser(t, conn, org.GetPublicId())
+	amId := setupAuthMethod(t, conn, org.GetPublicId())
+
+	testAuthTokenId := func() string {
+		id, err := newAuthTokenId()
+		require.NoError(err)
+		return id
+	}
+
+	var tests = []struct {
+		name string
+		in   []*store.AuthToken
+		// contains which authTokens above should result in errors
+		wantError map[int]bool
+	}{
+		{
+			name: "create_basic",
+			in: []*store.AuthToken{
+				{
+					PublicId:     testAuthTokenId(),
+					Token:        "anything",
+					ScopeId:      org.GetPublicId(),
+					IamUserId:    u.GetPublicId(),
+					AuthMethodId: amId,
+				},
+			},
+			wantError: map[int]bool{},
+		},
+	}
+
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+
+			w := db.New(conn)
+
+			for i, at := range tt.in {
+				at := &AuthToken{AuthToken: at}
+				err := w.Create(context.Background(), at)
+				if tt.wantError[i] {
+					assert.Error(err)
+				} else {
+					assert.NoError(err)
+				}
+			}
 		})
 	}
 }
