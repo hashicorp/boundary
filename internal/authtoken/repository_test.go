@@ -3,7 +3,6 @@ package authtoken
 import (
 	"context"
 	"errors"
-	"strings"
 	"testing"
 
 	"github.com/golang/protobuf/ptypes"
@@ -214,14 +213,6 @@ func TestRepository_CreateAuthToken(t *testing.T) {
 			assert.NoError(db.TestVerifyOplog(t, rw, got.GetPublicId(), db.WithOperation(oplog.OpType_OP_TYPE_CREATE)))
 		})
 	}
-}
-
-func assertPublicId(t *testing.T, prefix, actual string) {
-	t.Helper()
-	assert.NotEmpty(t, actual)
-	parts := strings.Split(actual, "_")
-	assert.Equalf(t, 2, len(parts), "want one '_' in PublicId, got multiple in %q", actual)
-	assert.Equalf(t, prefix, parts[0], "PublicId want prefix: %q, got: %q in %q", prefix, parts[0], actual)
 }
 
 func TestRepository_LookupAuthToken(t *testing.T) {
