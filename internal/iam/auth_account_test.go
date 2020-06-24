@@ -11,9 +11,11 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-// this is a very limited test, since the auth subsystem actually owns that the
-// auth account has proper error checking for updates.  we just want to make
-// sure that the iam subsystem can update the IamUserId field successfully.
+// this is a very limited test.  we are not testing the auth account triggers
+// and integrity checks (we will leave that to the auth subsystem, since that's
+// where they are implemented). we just want to make sure that the iam subsystem
+// can update the IamUserId field successfully since that's what the iam system
+// relies on.
 func Test_AuthAccountUpdate(t *testing.T) {
 	t.Parallel()
 	cleanup, conn, _ := db.TestSetup(t, "postgres")
@@ -25,7 +27,7 @@ func Test_AuthAccountUpdate(t *testing.T) {
 	}()
 	org, _ := TestScopes(t, conn)
 	rw := db.New(conn)
-	t.Run("simple", func(t *testing.T) {
+	t.Run("simple-update", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
 		u := TestUser(t, conn, org.PublicId)
 		authMethodPublicId := testAuthMethod(t, conn, org.PublicId)
