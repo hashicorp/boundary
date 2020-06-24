@@ -324,7 +324,7 @@ func RegisterOrganizationServiceHandlerServer(ctx context.Context, mux *runtime.
 			return
 		}
 
-		forward_OrganizationService_Authenticate_0(ctx, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+		forward_OrganizationService_Authenticate_0(ctx, mux, outboundMarshaler, w, req, response_OrganizationService_Authenticate_0{resp}, mux.GetForwardResponseOptions()...)
 
 	})
 
@@ -445,7 +445,7 @@ func RegisterOrganizationServiceHandlerClient(ctx context.Context, mux *runtime.
 			return
 		}
 
-		forward_OrganizationService_Authenticate_0(ctx, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+		forward_OrganizationService_Authenticate_0(ctx, mux, outboundMarshaler, w, req, response_OrganizationService_Authenticate_0{resp}, mux.GetForwardResponseOptions()...)
 
 	})
 
@@ -478,6 +478,15 @@ type response_OrganizationService_GetOrganization_0 struct {
 
 func (m response_OrganizationService_GetOrganization_0) XXX_ResponseBody() interface{} {
 	response := m.Message.(*GetOrganizationResponse)
+	return response.Item
+}
+
+type response_OrganizationService_Authenticate_0 struct {
+	proto.Message
+}
+
+func (m response_OrganizationService_Authenticate_0) XXX_ResponseBody() interface{} {
+	response := m.Message.(*AuthenticateResponse)
 	return response.Item
 }
 
