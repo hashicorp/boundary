@@ -40,7 +40,6 @@ create domain wt_timestamp as
 comment on domain wt_timestamp is
 'Standard timestamp for all create_time and update_time columns';
 
-
 create or replace function
   update_time_column()
   returns trigger
@@ -95,6 +94,15 @@ comment on function
   default_create_time()
 is
   'function used in before insert triggers to set create_time column to now';
+
+
+create domain wt_version as bigint
+default 1 
+check(
+  value > 0
+);
+comment on domain wt_version is
+'standard column for row version';
 
 -- update_version_column() will increment the version column whenever row data
 -- is updated and should only be used in an update after trigger.  This function
@@ -276,7 +284,7 @@ create table if not exists db_test_user (
   name text unique,
   phone_number text,
   email text,
-  version int default 1
+  version wt_version
 );
 
 create trigger 

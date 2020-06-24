@@ -11,7 +11,7 @@ create table if not exists db_test_user (
   name text unique,
   phone_number text,
   email text,
-  version int default 1
+  version wt_version
 );
 
 create trigger 
