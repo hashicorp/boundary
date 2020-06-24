@@ -668,3 +668,156 @@ func TestRepository_LookupUserWithLogin(t *testing.T) {
 		})
 	}
 }
+
+func TestRepository_CreateUserWithLogin(t *testing.T) {
+	t.Parallel()
+	cleanup, conn, _ := db.TestSetup(t, "postgres")
+	defer func() {
+		err := cleanup()
+		assert.NoError(t, err)
+		err = conn.Close()
+		assert.NoError(t, err)
+	}()
+	rw := db.New(conn)
+	wrapper := db.TestWrapper(t)
+	repo, err := NewRepository(rw, rw, wrapper)
+	require.NoError(t, err)
+
+	id := testId(t)
+	org, proj := TestScopes(t, conn)
+	authMethodId := testAuthMethod(t, conn, org.PublicId)
+	newAuthAcct := testAuthAccount(t, conn, org.PublicId, authMethodId, "")
+	negativeTestAuthAcct := testAuthAccount(t, conn, org.PublicId, authMethodId, "")
+
+	fmt.Println(newAuthAcct)
+
+	user := TestUser(t, conn, org.PublicId, WithName("existing-"+id))
+	existingAuthAcct := testAuthAccount(t, conn, org.PublicId, authMethodId, user.PublicId)
+	require.Equal(t, user.PublicId, existingAuthAcct.IamUserId)
+
+	type args struct {
+		withScope         string
+		withAuthMethodId  string
+		withAuthAccountId string
+		opt               []Option
+	}
+	tests := []struct {
+		name      string
+		args      args
+		wantName  string
+		wantErr   bool
+		wantErrIs error
+	}{
+		{
+			name: "valid",
+			args: args{
+				withScope:         org.PublicId,
+				withAuthMethodId:  authMethodId,
+				withAuthAccountId: newAuthAcct.PublicId,
+				opt:               []Option{WithName("valid-" + id), WithDescription("valid-" + id)},
+			},
+			wantName: "valid-" + id,
+			wantErr:  false,
+		},
+		{
+			name: "missing auth acct id",
+			args: args{
+				withScope:         org.PublicId,
+				withAuthMethodId:  authMethodId,
+				withAuthAccountId: "",
+			},
+			wantErr:   true,
+			wantErrIs: db.ErrInvalidParameter,
+		},
+		{
+			name: "missing auth method id",
+			args: args{
+				withScope:         org.PublicId,
+				withAuthMethodId:  "",
+				withAuthAccountId: negativeTestAuthAcct.PublicId,
+			},
+			wantErr:   true,
+			wantErrIs: db.ErrInvalidParameter,
+		},
+		{
+			name: "missing scope",
+			args: args{
+				withScope:         "",
+				withAuthMethodId:  authMethodId,
+				withAuthAccountId: negativeTestAuthAcct.PublicId,
+			},
+			wantErr:   true,
+			wantErrIs: db.ErrInvalidParameter,
+		},
+		{
+			name: "existing-auth-account",
+			args: args{
+				withScope:         org.PublicId,
+				withAuthMethodId:  authMethodId,
+				withAuthAccountId: existingAuthAcct.PublicId,
+			},
+			wantErr:  false,
+			wantName: "existing-" + id,
+		},
+		{
+			name: "bad-auth-account-id",
+			args: args{
+				withScope:         org.PublicId,
+				withAuthMethodId:  authMethodId,
+				withAuthAccountId: id,
+			},
+			wantErr:   true,
+			wantErrIs: db.ErrInvalidParameter,
+		},
+		{
+			name: "bad-auth-method-id",
+			args: args{
+				withScope:         org.PublicId,
+				withAuthMethodId:  id,
+				withAuthAccountId: negativeTestAuthAcct.PublicId,
+			},
+			wantErr:   true,
+			wantErrIs: db.ErrInvalidParameter,
+		},
+		{
+			name: "bad-scope",
+			args: args{
+				withScope:         proj.PublicId,
+				withAuthMethodId:  authMethodId,
+				withAuthAccountId: negativeTestAuthAcct.PublicId,
+			},
+			wantErr: true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+			dbassert := dbassert.New(t, rw)
+			got, err := repo.ObtainUserWithLogin(context.Background(), tt.args.withScope, tt.args.withAuthMethodId, tt.args.withAuthAccountId, tt.args.opt...)
+			if tt.wantErr {
+				require.Error(err)
+				assert.Nil(got)
+				if tt.wantErrIs != nil {
+					assert.Truef(errors.Is(err, tt.wantErrIs), "unexpected error %s", err.Error())
+				}
+				if tt.args.withAuthAccountId != "" && tt.args.withAuthAccountId != id {
+					// need to assert that userid in auth_account is still null
+					acct := allocAuthAccount()
+					acct.PublicId = tt.args.withAuthAccountId
+					dbassert.IsNull(&acct, "IamUserId")
+				}
+				return
+			}
+			require.NoError(err)
+			if tt.wantName != "" {
+				assert.Equal(tt.wantName, got.Name)
+			}
+			require.NotEmpty(got.PublicId)
+			acct := allocAuthAccount()
+			acct.PublicId = tt.args.withAuthAccountId
+			err = rw.LookupByPublicId(context.Background(), &acct)
+			require.NoError(err)
+			assert.Equal(got.PublicId, acct.IamUserId)
+		})
+	}
+}
