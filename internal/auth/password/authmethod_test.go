@@ -96,7 +96,7 @@ func TestAuthMethod_New(t *testing.T) {
 				require.Nil(got)
 				return
 			}
-			assert.NoError(err)
+			require.NoError(err)
 			require.NotNil(got)
 
 			assert.Emptyf(got.PublicId, "PublicId set")

@@ -111,7 +111,7 @@ func TestRepository_CreateAuthMethod(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 			repo, err := NewRepository(rw, rw, wrapper)
-			assert.NoError(err)
+			require.NoError(err)
 			require.NotNil(repo)
 			got, err := repo.CreateAuthMethod(context.Background(), tt.in, tt.opts...)
 			if tt.wantIsErr != nil {
@@ -119,7 +119,7 @@ func TestRepository_CreateAuthMethod(t *testing.T) {
 				assert.Nil(got)
 				return
 			}
-			assert.NoError(err)
+			require.NoError(err)
 			assert.Empty(tt.in.PublicId)
 			require.NotNil(got)
 			assertPublicId(t, AuthMethodPrefix, got.PublicId)
@@ -133,7 +133,7 @@ func TestRepository_CreateAuthMethod(t *testing.T) {
 	t.Run("invalid-duplicate-names", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
 		repo, err := NewRepository(rw, rw, wrapper)
-		assert.NoError(err)
+		require.NoError(err)
 		require.NotNil(repo)
 
 		_, prj := iam.TestScopes(t, conn)
@@ -145,7 +145,7 @@ func TestRepository_CreateAuthMethod(t *testing.T) {
 		}
 
 		got, err := repo.CreateAuthMethod(context.Background(), in)
-		assert.NoError(err)
+		require.NoError(err)
 		require.NotNil(got)
 		assertPublicId(t, AuthMethodPrefix, got.PublicId)
 		assert.NotSame(in, got)
@@ -161,7 +161,7 @@ func TestRepository_CreateAuthMethod(t *testing.T) {
 	t.Run("valid-duplicate-names-diff-scopes", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
 		repo, err := NewRepository(rw, rw, wrapper)
-		assert.NoError(err)
+		require.NoError(err)
 		require.NotNil(repo)
 
 		org, prj := iam.TestScopes(t, conn)
@@ -174,7 +174,7 @@ func TestRepository_CreateAuthMethod(t *testing.T) {
 
 		in.ScopeId = prj.GetPublicId()
 		got, err := repo.CreateAuthMethod(context.Background(), in)
-		assert.NoError(err)
+		require.NoError(err)
 		require.NotNil(got)
 		assertPublicId(t, AuthMethodPrefix, got.PublicId)
 		assert.NotSame(in, got)
@@ -184,7 +184,7 @@ func TestRepository_CreateAuthMethod(t *testing.T) {
 
 		in2.ScopeId = org.GetPublicId()
 		got2, err := repo.CreateAuthMethod(context.Background(), in2)
-		assert.NoError(err)
+		require.NoError(err)
 		require.NotNil(got2)
 		assertPublicId(t, AuthMethodPrefix, got2.PublicId)
 		assert.NotSame(in2, got2)
