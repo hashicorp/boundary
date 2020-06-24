@@ -185,7 +185,7 @@ func (r *Repository) ObtainUserWithLogin(ctx context.Context, withScope, withAut
 		ctx,
 		db.StdRetryCnt,
 		db.ExpBackoff{},
-		func(w db.Writer) error {
+		func(_ db.Reader, w db.Writer) error {
 			msgs := []*oplog.Message{}
 			ticket, err := w.GetTicket(&acct)
 			if err != nil {
