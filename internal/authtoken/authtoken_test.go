@@ -231,6 +231,7 @@ func TestAuthToken_DbCreate(t *testing.T) {
 	org, _ := iam.TestScopes(t, conn)
 	u := iam.TestUser(t, conn, org.GetPublicId())
 	amId := setupAuthMethod(t, conn, org.GetPublicId())
+	createdAuthToken := testAuthToken(t, conn)
 
 	testAuthTokenId := func() string {
 		id, err := newAuthTokenId()
@@ -240,39 +241,53 @@ func TestAuthToken_DbCreate(t *testing.T) {
 
 	var tests = []struct {
 		name string
-		in   []*store.AuthToken
+		in   *store.AuthToken
 		// contains which authTokens above should result in errors
-		wantError map[int]bool
+		wantError bool
 	}{
 		{
-			name: "create_basic",
-			in: []*store.AuthToken{
-				{
-					PublicId:     testAuthTokenId(),
-					Token:        "anything",
-					ScopeId:      org.GetPublicId(),
-					IamUserId:    u.GetPublicId(),
-					AuthMethodId: amId,
-				},
+			name: "basic",
+			in: &store.AuthToken{
+				PublicId:     testAuthTokenId(),
+				Token:        "anything",
+				ScopeId:      org.GetPublicId(),
+				IamUserId:    u.GetPublicId(),
+				AuthMethodId: amId,
 			},
-			wantError: map[int]bool{},
+		},
+		{
+			name: "duplicate-token",
+			in: &store.AuthToken{
+				PublicId:     testAuthTokenId(),
+				Token:        createdAuthToken.GetToken(),
+				ScopeId:      org.GetPublicId(),
+				IamUserId:    u.GetPublicId(),
+				AuthMethodId: amId,
+			},
+			wantError: true,
+		},
+		{
+			name: "duplicate-id",
+			in: &store.AuthToken{
+				PublicId:     createdAuthToken.GetPublicId(),
+				Token:        "duplicateid_test",
+				ScopeId:      org.GetPublicId(),
+				IamUserId:    u.GetPublicId(),
+				AuthMethodId: amId,
+			},
+			wantError: true,
 		},
 	}
 
 	for _, tt := range tests {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
-
-			w := db.New(conn)
-
-			for i, at := range tt.in {
-				at := &AuthToken{AuthToken: at}
-				err := w.Create(context.Background(), at)
-				if tt.wantError[i] {
-					assert.Error(err)
-				} else {
-					assert.NoError(err)
-				}
+			at := &AuthToken{AuthToken: tt.in}
+			err := db.New(conn).Create(context.Background(), at)
+			if tt.wantError {
+				assert.Error(err)
+			} else {
+				assert.NoError(err)
 			}
 		})
 	}
