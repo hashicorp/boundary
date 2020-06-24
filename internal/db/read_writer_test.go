@@ -971,7 +971,7 @@ func TestDb_DoTx(t *testing.T) {
 		w := &Db{underlying: db}
 		attempts := 0
 		got, err := w.DoTx(context.Background(), 10, ExpBackoff{},
-			func(Writer) error {
+			func(Reader, Writer) error {
 				attempts += 1
 				if attempts < 9 {
 					return oplog.ErrTicketAlreadyRedeemed
@@ -987,7 +987,7 @@ func TestDb_DoTx(t *testing.T) {
 		w := &Db{underlying: db}
 		attempts := 0
 		got, err := w.DoTx(context.Background(), 1, ExpBackoff{},
-			func(Writer) error {
+			func(Reader, Writer) error {
 				attempts += 1
 				if attempts < 2 {
 					return oplog.ErrTicketAlreadyRedeemed
@@ -1003,7 +1003,7 @@ func TestDb_DoTx(t *testing.T) {
 		w := &Db{underlying: db}
 		attempts := 0
 		got, err := w.DoTx(context.Background(), 3, ExpBackoff{},
-			func(Writer) error {
+			func(Reader, Writer) error {
 				attempts += 1
 				if attempts < 3 {
 					return oplog.ErrTicketAlreadyRedeemed
@@ -1019,7 +1019,7 @@ func TestDb_DoTx(t *testing.T) {
 		w := &Db{underlying: db}
 		attempts := 0
 		got, err := w.DoTx(context.Background(), 4, ExpBackoff{},
-			func(Writer) error {
+			func(Reader, Writer) error {
 				attempts += 1
 				if attempts < 4 {
 					return oplog.ErrTicketAlreadyRedeemed
@@ -1034,7 +1034,7 @@ func TestDb_DoTx(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
 		w := &Db{underlying: db}
 		attempts := 0
-		got, err := w.DoTx(context.Background(), 0, ExpBackoff{}, func(Writer) error { attempts += 1; return nil })
+		got, err := w.DoTx(context.Background(), 0, ExpBackoff{}, func(Reader, Writer) error { attempts += 1; return nil })
 		require.NoError(err)
 		assert.Equal(RetryInfo{}, got)
 		assert.Equal(1, attempts)
@@ -1043,7 +1043,7 @@ func TestDb_DoTx(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
 		w := &Db{nil}
 		attempts := 0
-		got, err := w.DoTx(context.Background(), 1, ExpBackoff{}, func(Writer) error { attempts += 1; return nil })
+		got, err := w.DoTx(context.Background(), 1, ExpBackoff{}, func(Reader, Writer) error { attempts += 1; return nil })
 		require.Error(err)
 		assert.Equal(RetryInfo{}, got)
 		assert.Equal("do underlying db is nil", err.Error())
@@ -1051,7 +1051,7 @@ func TestDb_DoTx(t *testing.T) {
 	t.Run("not-a-retry-err", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
 		w := &Db{underlying: db}
-		got, err := w.DoTx(context.Background(), 1, ExpBackoff{}, func(Writer) error { return errors.New("not a retry error") })
+		got, err := w.DoTx(context.Background(), 1, ExpBackoff{}, func(Reader, Writer) error { return errors.New("not a retry error") })
 		require.Error(err)
 		assert.Equal(RetryInfo{}, got)
 		assert.NotEqual(err, oplog.ErrTicketAlreadyRedeemed)
@@ -1060,24 +1060,24 @@ func TestDb_DoTx(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
 		w := &Db{underlying: db}
 		attempts := 0
-		got, err := w.DoTx(context.Background(), 2, ExpBackoff{}, func(Writer) error { attempts += 1; return oplog.ErrTicketAlreadyRedeemed })
+		got, err := w.DoTx(context.Background(), 2, ExpBackoff{}, func(Reader, Writer) error { attempts += 1; return oplog.ErrTicketAlreadyRedeemed })
 		require.Error(err)
 		assert.Equal(3, got.Retries)
 		assert.Equal("Too many retries: 3 of 3", err.Error())
 	})
 	t.Run("updating-good-bad-good", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
-		w := Db{underlying: db}
+		rw := Db{underlying: db}
 		id, err := uuid.GenerateUUID()
 		require.NoError(err)
 		user, err := db_test.NewTestUser()
 		require.NoError(err)
 		user.Name = "foo-" + id
-		err = w.Create(context.Background(), user)
+		err = rw.Create(context.Background(), user)
 		require.NoError(err)
 		require.NotZero(user.Id)
 
-		_, err = w.DoTx(context.Background(), 10, ExpBackoff{}, func(w Writer) error {
+		_, err = rw.DoTx(context.Background(), 10, ExpBackoff{}, func(r Reader, w Writer) error {
 			user.Name = "friendly-" + id
 			rowsUpdated, err := w.Update(context.Background(), user, []string{"Name"}, nil)
 			if err != nil {
@@ -1093,13 +1093,13 @@ func TestDb_DoTx(t *testing.T) {
 		foundUser, err := db_test.NewTestUser()
 		assert.NoError(err)
 		foundUser.PublicId = user.PublicId
-		err = w.LookupByPublicId(context.Background(), foundUser)
+		err = rw.LookupByPublicId(context.Background(), foundUser)
 		require.NoError(err)
 		assert.Equal(foundUser.Name, user.Name)
 
 		user2, err := db_test.NewTestUser()
 		require.NoError(err)
-		_, err = w.DoTx(context.Background(), 10, ExpBackoff{}, func(w Writer) error {
+		_, err = rw.DoTx(context.Background(), 10, ExpBackoff{}, func(_ Reader, w Writer) error {
 			user2.Name = "friendly2-" + id
 			rowsUpdated, err := w.Update(context.Background(), user2, []string{"Name"}, nil)
 			if err != nil {
@@ -1111,11 +1111,11 @@ func TestDb_DoTx(t *testing.T) {
 			return nil
 		})
 		require.Error(err)
-		err = w.LookupByPublicId(context.Background(), foundUser)
+		err = rw.LookupByPublicId(context.Background(), foundUser)
 		require.NoError(err)
 		assert.NotEqual(foundUser.Name, user2.Name)
 
-		_, err = w.DoTx(context.Background(), 10, ExpBackoff{}, func(w Writer) error {
+		_, err = rw.DoTx(context.Background(), 10, ExpBackoff{}, func(r Reader, w Writer) error {
 			user.Name = "friendly2-" + id
 			rowsUpdated, err := w.Update(context.Background(), user, []string{"Name"}, nil)
 			if err != nil {
@@ -1127,7 +1127,7 @@ func TestDb_DoTx(t *testing.T) {
 			return nil
 		})
 		require.NoError(err)
-		err = w.LookupByPublicId(context.Background(), foundUser)
+		err = rw.LookupByPublicId(context.Background(), foundUser)
 		require.NoError(err)
 		assert.Equal(foundUser.Name, user.Name)
 	})

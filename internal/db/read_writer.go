@@ -113,7 +113,7 @@ type RetryInfo struct {
 }
 
 // TxHandler defines a handler for a func that writes a transaction for use with DoTx
-type TxHandler func(Writer) error
+type TxHandler func(Reader, Writer) error
 
 // ResourcePublicIder defines an interface that LookupByPublicId() can use to
 // get the resource's public id.
@@ -609,7 +609,8 @@ func (w *Db) DoTx(ctx context.Context, retries uint, backOff Backoff, Handler Tx
 		// step one of this, start a transaction...
 		newTx := w.underlying.BeginTx(ctx, nil)
 
-		if err := Handler(&Db{newTx}); err != nil {
+		rw := &Db{newTx}
+		if err := Handler(rw, rw); err != nil {
 			if err := newTx.Rollback().Error; err != nil {
 				return info, err
 			}

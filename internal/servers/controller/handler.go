@@ -45,10 +45,10 @@ func (c *Controller) handler(props HandlerProperties) (http.Handler, error) {
 		if err != nil {
 			panic(err)
 		}
-		c.logger.Warn("serving passthrough files at /passthrough", "path", abs)
+		c.logger.Warn("serving passthrough files at /", "path", abs)
 		fs := http.FileServer(http.Dir(abs))
-		prefixHandler := http.StripPrefix("/passthrough/", fs)
-		mux.Handle("/passthrough/", prefixHandler)
+		prefixHandler := http.StripPrefix("/", fs)
+		mux.Handle("/", prefixHandler)
 	}
 
 	h, err := handleGrpcGateway(c)
