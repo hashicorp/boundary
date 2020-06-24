@@ -129,23 +129,20 @@ func (r *Repository) UpdateLastUsed(ctx context.Context, token string, opt ...Op
 		return nil, fmt.Errorf("lookup: auth token: missing token: %w", db.ErrInvalidParameter)
 	}
 	authToken := allocAuthToken()
-	if err := r.reader.LookupWhere(ctx, &authToken, "token = ?", token); err != nil {
-		if err == db.ErrRecordNotFound {
-			return nil, nil
-		}
-		return nil, fmt.Errorf("lookup by token: auth token: %w", err)
-	}
-	authToken.Token = ""
-	metadata := newAuthTokenMetadata(authToken, oplog.OpType_OP_TYPE_UPDATE)
 
-	// TODO: Issue the lookup in the same transaction as the Update.
 	var rowsUpdated int
 	var at *AuthToken
 	_, err := r.writer.DoTx(
 		ctx,
 		db.StdRetryCnt,
 		db.ExpBackoff{},
-		func(_ db.Reader, w db.Writer) error {
+		func(read db.Reader, w db.Writer) error {
+			if err := read.LookupWhere(ctx, &authToken, "token = ?", token); err != nil {
+				return fmt.Errorf("lookup by token: auth token: %w", err)
+			}
+			authToken.Token = ""
+			metadata := newAuthTokenMetadata(authToken, oplog.OpType_OP_TYPE_UPDATE)
+
 			at = authToken.clone()
 			var err error
 			rowsUpdated, err = w.Update(
