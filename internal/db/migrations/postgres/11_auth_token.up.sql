@@ -31,7 +31,7 @@ begin;
     returns trigger
   as $$
   begin
-    if row(new.last_access_time) is distinct from row(old.last_access_time) then
+    if new.last_access_time is null then
       new.last_access_time = now();
       return new;
     else
