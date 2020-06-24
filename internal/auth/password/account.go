@@ -14,9 +14,9 @@ type Account struct {
 	tableName string
 }
 
-// NewAccount creates a new in memory Account assigned to authMethodId.
-// Name and description are the only valid options. All other options are
-// ignored.
+// NewAccount creates a new in memory Account with userName assigned to
+// authMethodId. Name and description are the only valid options. All other
+// options are ignored.
 func NewAccount(authMethodId string, userName string, opt ...Option) (*Account, error) {
 	if authMethodId == "" {
 		return nil, fmt.Errorf("new: password account: no auth method id: %w", db.ErrInvalidParameter)
