@@ -38,7 +38,7 @@ func (a *AuthAccount) Clone() interface{} {
 // VetForWrite implements db.VetForWrite() interface.
 func (a *AuthAccount) VetForWrite(ctx context.Context, r db.Reader, opType db.OpType, opt ...db.Option) error {
 	if a.PublicId == "" {
-		return fmt.Errorf("error private id is empty string for user account write: %w", db.ErrInvalidParameter)
+		return fmt.Errorf("error public id is empty string for auth account write: %w", db.ErrInvalidParameter)
 	}
 	if err := validateScopeForWrite(ctx, r, a, opType, opt...); err != nil {
 		return err
