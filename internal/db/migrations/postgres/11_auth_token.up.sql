@@ -132,8 +132,4 @@ begin;
   before update on auth_token
     for each row execute procedure immutable_scope_id();
 
-  insert into oplog_ticket (name, version)
-  values
-    ('auth_token', 1);
-
 commit;

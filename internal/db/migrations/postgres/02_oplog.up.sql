@@ -86,6 +86,7 @@ create index if not exists idx_oplog_metatadata_value on oplog_metadata(value);
 
 insert into oplog_ticket (name, version)
 values
+  ('auth_token', 1),
   ('default', 1),
   ('iam_scope', 1),
   ('iam_user', 1),
