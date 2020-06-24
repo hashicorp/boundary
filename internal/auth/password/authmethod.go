@@ -19,6 +19,8 @@ type AuthMethod struct {
 // Name and description are the only valid options. All other options are
 // ignored.
 func NewAuthMethod(scopeId string, opt ...Option) (*AuthMethod, error) {
+	// TODO(mgaffney) 06/2020: add support for min_user_name_length and
+	// min_password_length.
 	if scopeId == "" {
 		return nil, fmt.Errorf("new: password auth method: no scope id: %w", db.ErrInvalidParameter)
 	}
