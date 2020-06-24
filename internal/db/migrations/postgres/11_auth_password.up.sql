@@ -44,7 +44,11 @@ begin;
     create_time wt_timestamp,
     update_time wt_timestamp,
     user_name text not null
-      check(length(trim(user_name)) > 0),
+      check(
+        lower(trim(user_name)) = user_name
+        and
+        length(user_name) > 0
+      ),
     foreign key (scope_id, auth_method_id)
       references auth_password_method (scope_id, public_id)
       on delete cascade
