@@ -70,7 +70,6 @@ begin;
   begin
     if new.auth_method_id is distinct from old.auth_method_id then
       raise exception 'auth_method_id cannot be set to %', new.auth_method_id;
-      new.auth_method_id = old.auth_method_id;
     end if;
     return new;
   end;
@@ -88,7 +87,6 @@ begin;
   begin
     if new.scope_id is distinct from old.scope_id then
       raise exception 'scope_id cannot be set to %', new.scope_id;
-      new.scope_id = old.scope_id;
     end if;
     return new;
   end;
