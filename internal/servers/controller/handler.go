@@ -69,7 +69,16 @@ func handleUi(c *Controller) http.Handler {
 
 	returnIndexBytes := func(w http.ResponseWriter, r *http.Request) {
 		_, file := filepath.Split(r.URL.Path)
-		http.ServeContent(w, r, file, modTime, bytes.NewReader(indexBytes))
+		rw := newIndexResponseWriter()
+		http.ServeContent(rw, r, file, modTime, bytes.NewReader(indexBytes))
+		for k, v := range rw.header {
+			for _, i := range v {
+				w.Header().Add(k, i)
+			}
+		}
+		w.Header().Set("content-type", "text/html; charset=utf-8")
+		w.WriteHeader(rw.statusCode)
+		w.Write(rw.body.Bytes())
 	}
 
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -118,7 +127,6 @@ func handleUi(c *Controller) http.Handler {
 
 		// Fall through to the next handler
 		nextHandler.ServeHTTP(w, r)
-		return
 	})
 }
 
