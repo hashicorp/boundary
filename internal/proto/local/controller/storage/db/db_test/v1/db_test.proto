@@ -92,7 +92,8 @@ message StoreTestRental {
   uint32 car_id = 7;
 }
 
-// Test for gorm test car scooter
+// StoreTestScooter used in the db tests only and provides a gorm resource with
+// a private id.
 message StoreTestScooter {
   // @inject_tag: gorm:"primary_key"
   uint32 id = 1;
