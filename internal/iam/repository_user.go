@@ -2,10 +2,12 @@ package iam
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 
 	"github.com/hashicorp/watchtower/internal/db"
+	"github.com/hashicorp/watchtower/internal/oplog"
 )
 
 // CreateUser will create a user in the repository and return the written user
@@ -119,20 +121,176 @@ func (r *Repository) ListUsers(ctx context.Context, withOrganizationId string, o
 	return users, nil
 }
 
-// ObtainUserByLogin will attempt to LookupUserByLogin within the scope and
-// authMethod with a matching LoginId and return the user if found.  If a user
-// is not found then a new User will be created in the scope provided and
-// associated the authMethod and LoginId provided.  WithCredentialId is a
-// supported option and if not empty will be included in the search criteria and
-// association data when it's necessary to crate a new user.
-func (r *Repository) ObtainUserByLogin(ctx context.Context, withScope, withAuthMethodId, withLoginId string, opt ...Option) (*User, error) {
-	panic("not implemented.")
+// ObtainUserWithLogin will attempt to lookup the user within the scope and
+// authMethod with a matching auth account id and return the user if found.  If
+// a user is not found then a new User will be created in the scope provided and
+// associated the authMethod and authAccountId provided.  If a new user is
+// created, then the WithName and WithDescription options are supported.
+func (r *Repository) ObtainUserWithLogin(ctx context.Context, withScope, withAuthMethodId, withAuthAccountId string, opt ...Option) (*User, error) {
+	if withScope == "" {
+		return nil, fmt.Errorf("create user with login: missing scope id %w", db.ErrInvalidParameter)
+	}
+	if withAuthMethodId == "" {
+		return nil, fmt.Errorf("create user with login: missing auth method id %w", db.ErrInvalidParameter)
+	}
+	if withAuthAccountId == "" {
+		return nil, fmt.Errorf("create user with login: missing auth account id %w", db.ErrInvalidParameter)
+
+	}
+	ok, err := r.validateAuthMethodId(ctx, withScope, withAuthMethodId)
+	if err != nil {
+		return nil, fmt.Errorf("create user with login: unable to validate auth method %s in scope %s: %w", withAuthMethodId, withScope, err)
+	}
+	if !ok {
+		return nil, fmt.Errorf("create user with login: auth method id %s in scope %s is not valid: %w", withAuthMethodId, withScope, db.ErrInvalidParameter)
+	}
+	acct := allocAuthAccount()
+	err = r.reader.LookupWhere(context.Background(), &acct, "public_id = ? and auth_method_id = ?", withAuthAccountId, withAuthMethodId)
+	if err != nil {
+		if errors.Is(err, db.ErrRecordNotFound) {
+			return nil, fmt.Errorf("create user with login: unable to search for auth account %s in auth method %s: %w", withAuthAccountId, withAuthMethodId, db.ErrInvalidParameter)
+		}
+		return nil, fmt.Errorf("create user with login: unable to search for auth account %s in auth method %s: %w", withAuthAccountId, withAuthMethodId, err)
+	}
+	if acct.IamUserId != "" {
+		u, err := r.LookupUser(ctx, acct.IamUserId)
+		if err != nil {
+			return nil, fmt.Errorf("create user with login: unable to lookup user %s for auth account %s", acct.IamUserId, acct.PublicId)
+		}
+		// LookupUser will return a nil user and no error if the user is not found.
+		if u == nil {
+			return nil, nil
+		}
+		if u.ScopeId != withScope {
+			return nil, fmt.Errorf("create user with login: user scope %s doesn't match scope %s: %w", u.ScopeId, withScope, db.ErrInvalidParameter)
+		}
+		return u, nil
+	}
+
+	s, err := r.LookupScope(ctx, withScope)
+	if err != nil {
+		return nil, fmt.Errorf("create user with login: %w", err)
+	}
+	metadata := oplog.Metadata{
+		"resource-public-id": []string{acct.PublicId},
+		"scope-id":           []string{s.PublicId},
+		"scope-type":         []string{s.Type},
+		"resource-type":      []string{"auth-account"},
+	}
+
+	// We will create a new user and associate the user with the auth account
+	// within one retryable transaction using writer.DoTx
+	var obtainedUser *User
+	_, err = r.writer.DoTx(
+		ctx,
+		db.StdRetryCnt,
+		db.ExpBackoff{},
+		func(w db.Writer) error {
+			msgs := []*oplog.Message{}
+			ticket, err := w.GetTicket(&acct)
+			if err != nil {
+				return err
+			}
+			obtainedUser, err = NewUser(withScope, opt...)
+			if err != nil {
+				return err
+			}
+			id, err := newUserId()
+			if err != nil {
+				return err
+			}
+			var createMsg oplog.Message
+			obtainedUser.PublicId = id
+			err = w.Create(ctx, obtainedUser, db.NewOplogMsg(&createMsg))
+			if err != nil {
+				return err
+			}
+			msgs = append(msgs, &createMsg)
+
+			var updateMsg oplog.Message
+			updateAcct := acct.Clone().(*AuthAccount)
+			updateAcct.IamUserId = id
+			updatedRows, err := w.Update(ctx, updateAcct, []string{"IamUserId"}, nil, db.NewOplogMsg(&updateMsg))
+			if err != nil {
+				return err
+			}
+			if updatedRows != 1 {
+				return fmt.Errorf("auth account update affected %d rows", updatedRows)
+			}
+			msgs = append(msgs, &updateMsg)
+			if err := w.WriteOplogEntryWith(ctx, r.wrapper, ticket, metadata, msgs); err != nil {
+				return err
+			}
+			return nil
+		},
+	)
+	if err != nil {
+		return nil, fmt.Errorf("create user with login: unable to associate user and account: %w", err)
+	}
+	return obtainedUser, nil
 }
 
-// LookupUserByLogin within the scope and authMethod with a matching LoginId.
-// WithCredentialId is a supported option and if not empty will be included in
-// the search criteria.  The function will return nil, nil when a user is not
-// found matching the provided criteria.
-func (r *Repository) LookupUserByLogin(ctx context.Context, withScope, withAuthMethodId, withLoginId string, opt ...Option) (*User, error) {
-	panic("not implemented.")
+// LookupUserWithLogin within the scope and authMethod with a matching authAccountId.
+// The function will return nil, nil when a user is not found matching the
+// provided criteria. No options are supported.
+func (r *Repository) LookupUserWithLogin(ctx context.Context, withScope, withAuthMethodId, withAuthAccountId string, opt ...Option) (*User, error) {
+	if withScope == "" {
+		return nil, fmt.Errorf("lookup user with login: missing scope id %w", db.ErrInvalidParameter)
+	}
+	if withAuthMethodId == "" {
+		return nil, fmt.Errorf("lookup user with login: missing auth method id %w", db.ErrInvalidParameter)
+	}
+	if withAuthAccountId == "" {
+		return nil, fmt.Errorf("lookup user with login: missing auth account id %w", db.ErrInvalidParameter)
+	}
+	ok, err := r.validateAuthMethodId(ctx, withScope, withAuthMethodId)
+	if err != nil {
+		return nil, fmt.Errorf("lookup user with login: unable to validate auth method %s in scope %s: %w", withAuthMethodId, withScope, err)
+	}
+	if !ok {
+		return nil, fmt.Errorf("lookup user with login: auth method id %s in scope %s is not valid: %w", withAuthMethodId, withScope, db.ErrInvalidParameter)
+	}
+	acct := allocAuthAccount()
+	err = r.reader.LookupWhere(context.Background(), &acct, "public_id = ? and auth_method_id = ?", withAuthAccountId, withAuthMethodId)
+	if err != nil {
+		if errors.Is(err, db.ErrRecordNotFound) {
+			return nil, fmt.Errorf("lookup user with login: unable to search for auth account %s in auth method %s: %w", withAuthAccountId, withAuthMethodId, db.ErrInvalidParameter)
+		}
+		return nil, fmt.Errorf("lookup user with login: unable to search for auth account %s in auth method %s: %w", withAuthAccountId, withAuthMethodId, err)
+	}
+	if acct.IamUserId == "" {
+		return nil, nil
+	}
+	u, err := r.LookupUser(ctx, acct.IamUserId)
+	if err != nil {
+		return nil, fmt.Errorf("lookup user with login: unable to lookup user %s for auth account %s: %w", acct.IamUserId, acct.PublicId, err)
+	}
+	if u.ScopeId != withScope {
+		return nil, fmt.Errorf("lookup user with login: user scope %s doesn't match scope %s: %w", u.ScopeId, withScope, db.ErrInvalidParameter)
+	}
+	return u, nil
+}
+
+// TODO (jimlambrt 6/2020) replace the raw query with a Lookup using
+// the auth method repo.
+func (r *Repository) validateAuthMethodId(ctx context.Context, scopeId, authMethodId string) (bool, error) {
+	if scopeId == "" {
+		return false, fmt.Errorf("scope id is unset: %w", db.ErrInvalidParameter)
+	}
+	if authMethodId == "" {
+		return false, fmt.Errorf("auth method id is unset: %w", db.ErrInvalidParameter)
+	}
+	const where = `select count(*) from auth_method where public_id = $1 and scope_id = $2`
+	db, err := r.reader.DB()
+	if err != nil {
+		return false, err
+	}
+	var cnt int
+	if err := db.QueryRow(where, authMethodId, scopeId).Scan(&cnt); err != nil {
+		return false, err
+	}
+	if cnt == 0 {
+		return false, nil
+	}
+	return true, nil
 }
