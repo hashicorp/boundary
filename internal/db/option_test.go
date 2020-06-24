@@ -109,4 +109,16 @@ func Test_getOpts(t *testing.T) {
 		testOpts.newOplogMsg = &msg
 		assert.Equal(opts, testOpts)
 	})
+	t.Run("WithVersion", func(t *testing.T) {
+		assert := assert.New(t)
+		// test default of 0
+		opts := GetOpts()
+		testOpts := getDefaultOptions()
+		testOpts.WithVersion = 0
+		assert.Equal(opts, testOpts)
+		opts = GetOpts(WithVersion(2))
+		testOpts = getDefaultOptions()
+		testOpts.WithVersion = 2
+		assert.Equal(opts, testOpts)
+	})
 }

@@ -26,6 +26,9 @@ const (
 // of the legacy proto package is being used.
 const _ = proto.ProtoPackageIsVersion4
 
+// AuthAccount is a "shared table" between the iam and auth subsystems.  The
+// auth system is responsible for creating entries.  The iam system is only
+// responsible/allowed to update the iam_user_id.
 type AuthAccount struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache

@@ -12,10 +12,12 @@ begin;
 
 drop domain wt_timestamp;
 drop domain wt_public_id;
+drop domain wt_version;
 
 drop function default_create_time;
 drop function immutable_create_time_func;
 drop function update_time_column;
+drop function update_version_column;
 
 commit;
 
@@ -38,7 +40,6 @@ create domain wt_timestamp as
   default current_timestamp;
 comment on domain wt_timestamp is
 'Standard timestamp for all create_time and update_time columns';
-
 
 create or replace function
   update_time_column()
@@ -94,6 +95,39 @@ comment on function
   default_create_time()
 is
   'function used in before insert triggers to set create_time column to now';
+
+
+create domain wt_version as bigint
+default 1 
+check(
+  value > 0
+);
+comment on domain wt_version is
+'standard column for row version';
+
+-- update_version_column() will increment the version column whenever row data
+-- is updated and should only be used in an update after trigger.  This function
+-- will overwrite any explicit updates to the version column. 
+create or replace function
+  update_version_column()
+  returns trigger
+as $$
+begin
+  if pg_trigger_depth() = 1 then
+    if row(new.*) is distinct from row(old.*) then
+      execute format('update %I set version = $1 where public_id = $2', tg_relid::regclass) using old.version+1, new.public_id;
+      new.version = old.version + 1;
+      return new;
+    end if;
+  end if;
+  return new;
+end;
+$$ language plpgsql;
+
+comment on function
+  update_version_column()
+is
+  'function used in after update triggers to properly set version columns';
 
 commit;
 
@@ -255,7 +289,8 @@ create table if not exists db_test_user (
   public_id text not null unique,
   name text unique,
   phone_number text,
-  email text
+  email text,
+  version wt_version
 );
 
 create trigger 
@@ -276,6 +311,11 @@ before
 insert on db_test_user 
   for each row execute procedure default_create_time();
 
+create trigger 
+  update_version_column
+after update on db_test_user
+  for each row execute procedure update_version_column();
+  
 create table if not exists db_test_car (
   id bigint generated always as identity primary key,
   create_time wt_timestamp,
