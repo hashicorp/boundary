@@ -92,7 +92,7 @@ type RetryInfo struct {
 }
 
 // TxHandler defines a handler for a func that writes a transaction for use with DoTx
-type TxHandler func(Writer) error
+type TxHandler func(Reader, Writer) error
 
 // ResourcePublicIder defines an interface that LookupByPublicId() can use to get the resource's public id
 type ResourcePublicIder interface {
@@ -227,7 +227,11 @@ func (rw *Db) Create(ctx context.Context, i interface{}, opt ...Option) error {
 // is responsible for the transaction life cycle of the writer and if an
 // error is returned the caller must decide what to do with the transaction,
 // which almost always should be to rollback.  Update returns the number of
-// rows updated. Supported options: WithOplog.
+// rows updated. Supported options: WithOplog and WithVersion.  If WithVersion
+// is used, then the update will include the version number in the update where
+// clause, which basically makes the update use optimistic locking and the
+// update will only succeed if the existing rows version matches the WithVersion
+// option.
 func (rw *Db) Update(ctx context.Context, i interface{}, fieldMaskPaths []string, setToNullPaths []string, opt ...Option) (int, error) {
 	if rw.underlying == nil {
 		return NoRowsAffected, fmt.Errorf("update: missing underlying db %w", ErrNilParameter)
@@ -289,7 +293,16 @@ func (rw *Db) Update(ctx context.Context, i interface{}, fieldMaskPaths []string
 			return NoRowsAffected, fmt.Errorf("update: unable to get ticket: %w", err)
 		}
 	}
-	underlying := rw.underlying.Model(i).Updates(updateFields)
+	var underlying *gorm.DB
+	switch {
+	case opts.WithVersion > 0:
+		if _, ok := scope.FieldByName("version"); !ok {
+			return NoRowsAffected, fmt.Errorf("update: %s does not have a version field", scope.TableName())
+		}
+		underlying = rw.underlying.Model(i).Where("version = ?", opts.WithVersion).Updates(updateFields)
+	default:
+		underlying = rw.underlying.Model(i).Updates(updateFields)
+	}
 	if underlying.Error != nil {
 		if err == gorm.ErrRecordNotFound {
 			return NoRowsAffected, fmt.Errorf("update: failed %w", ErrRecordNotFound)
@@ -469,7 +482,8 @@ func (w *Db) DoTx(ctx context.Context, retries uint, backOff Backoff, Handler Tx
 		// step one of this, start a transaction...
 		newTx := w.underlying.BeginTx(ctx, nil)
 
-		if err := Handler(&Db{newTx}); err != nil {
+		rw := &Db{newTx}
+		if err := Handler(rw, rw); err != nil {
 			if err := newTx.Rollback().Error; err != nil {
 				return info, err
 			}

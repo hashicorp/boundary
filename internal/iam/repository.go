@@ -83,7 +83,7 @@ func (r *Repository) create(ctx context.Context, resource Resource, opt ...Optio
 		ctx,
 		db.StdRetryCnt,
 		db.ExpBackoff{},
-		func(w db.Writer) error {
+		func(_ db.Reader, w db.Writer) error {
 			returnedResource = resourceCloner.Clone()
 			return w.Create(
 				ctx,
@@ -116,7 +116,7 @@ func (r *Repository) update(ctx context.Context, resource Resource, fieldMaskPat
 		ctx,
 		db.StdRetryCnt,
 		db.ExpBackoff{},
-		func(w db.Writer) error {
+		func(_ db.Reader, w db.Writer) error {
 			returnedResource = resourceCloner.Clone()
 			var err error
 			rowsUpdated, err = w.Update(
@@ -157,7 +157,7 @@ func (r *Repository) delete(ctx context.Context, resource Resource, opt ...Optio
 		ctx,
 		db.StdRetryCnt,
 		db.ExpBackoff{},
-		func(w db.Writer) error {
+		func(_ db.Reader, w db.Writer) error {
 			deleteResource = resourceCloner.Clone()
 			var err error
 			rowsDeleted, err = w.Delete(

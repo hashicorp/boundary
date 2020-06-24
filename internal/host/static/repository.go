@@ -77,7 +77,7 @@ func (r *Repository) CreateCatalog(ctx context.Context, c *HostCatalog, opt ...O
 		ctx,
 		db.StdRetryCnt,
 		db.ExpBackoff{},
-		func(w db.Writer) error {
+		func(_ db.Reader, w db.Writer) error {
 			newHostCatalog = c.clone()
 			return w.Create(
 				ctx,
@@ -148,7 +148,7 @@ func (r *Repository) UpdateCatalog(ctx context.Context, c *HostCatalog, fieldMas
 		ctx,
 		db.StdRetryCnt,
 		db.ExpBackoff{},
-		func(w db.Writer) error {
+		func(_ db.Reader, w db.Writer) error {
 			returnedCatalog = c.clone()
 			var err error
 			rowsUpdated, err = w.Update(
@@ -211,7 +211,7 @@ func (r *Repository) DeleteCatalog(ctx context.Context, id string, opt ...Option
 		ctx,
 		db.StdRetryCnt,
 		db.ExpBackoff{},
-		func(w db.Writer) error {
+		func(_ db.Reader, w db.Writer) error {
 			deleteCatalog = c.clone()
 			var err error
 			rowsDeleted, err = w.Delete(

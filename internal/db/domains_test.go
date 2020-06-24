@@ -7,6 +7,7 @@ import (
 	"github.com/golang-sql/civil"
 	_ "github.com/jackc/pgx/v4"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestDomain_PublicId(t *testing.T) {
@@ -315,4 +316,67 @@ set update_time = null;
 	assert.NoError(err)
 	nextUpdated := civil.DateTimeOf(nextUpdateTime)
 	assert.True(nextUpdated.After(updated))
+}
+
+func TestDomain_wt_version(t *testing.T) {
+	const (
+		createTable = `
+create table if not exists test_table_wt_version(
+	public_id bigint generated always as identity primary key,
+	name text,
+	version wt_version
+);
+`
+		addTrigger = `
+create trigger 
+  update_version_column
+after update on test_table_wt_version
+  for each row execute procedure update_version_column();
+`
+		insert = `
+insert into test_table_wt_version (name)
+values ($1)
+returning public_id;
+`
+		update = `update test_table_wt_version set name = $1 where public_id = $2;`
+
+		updateVersion = `update test_table_wt_version set version = $1 where public_id = $2;`
+
+		search = `select version from test_table_wt_version where public_id = $1`
+	)
+	cleanup, conn, _ := TestSetup(t, "postgres")
+	assert, require := assert.New(t), require.New(t)
+	defer func() {
+		assert.NoError(conn.Close())
+		assert.NoError(cleanup())
+	}()
+
+	db := conn.DB()
+	_, err := db.Exec(createTable)
+	require.NoError(err)
+
+	_, err = db.Exec(addTrigger)
+	require.NoError(err)
+
+	var id int
+	err = db.QueryRow(insert, "alice").Scan(&id)
+	require.NoError(err)
+	require.NotEmpty(id)
+
+	var v int
+	err = db.QueryRow(search, id).Scan(&v)
+	require.NoError(err)
+	assert.Equal(1, v)
+
+	_, err = db.Exec(update, "bob", id)
+	require.NoError(err)
+	err = db.QueryRow(search, id).Scan(&v)
+	require.NoError(err)
+	assert.Equal(2, v)
+
+	_, err = db.Exec(updateVersion, 22, id)
+	require.NoError(err)
+	err = db.QueryRow(search, id).Scan(&v)
+	require.NoError(err)
+	assert.Equal(3, v)
 }

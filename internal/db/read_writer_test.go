@@ -53,6 +53,7 @@ func TestDb_Update(t *testing.T) {
 		wantName        string
 		wantEmail       string
 		wantPhoneNumber string
+		wantVersion     int
 	}{
 		{
 			name: "simple",
@@ -73,6 +74,46 @@ func TestDb_Update(t *testing.T) {
 			wantName:        "simple-updated" + id,
 			wantEmail:       "",
 			wantPhoneNumber: "updated" + id,
+		},
+		{
+			name: "simple-with-bad-version",
+			args: args{
+				i: &db_test.TestUser{
+					StoreTestUser: &db_test.StoreTestUser{
+						Name:        "simple-with-bad-version" + id,
+						Email:       "updated" + id,
+						PhoneNumber: "updated" + id,
+					},
+				},
+				fieldMaskPaths: []string{"Name", "PhoneNumber"},
+				setToNullPaths: []string{"Email"},
+				opt:            []Option{WithVersion(22)},
+			},
+			want:       0,
+			wantErr:    false,
+			wantErrMsg: "",
+		},
+		{
+			name: "simple-with-version",
+			args: args{
+				i: &db_test.TestUser{
+					StoreTestUser: &db_test.StoreTestUser{
+						Name:        "simple-with-version" + id,
+						Email:       "updated" + id,
+						PhoneNumber: "updated" + id,
+					},
+				},
+				fieldMaskPaths: []string{"Name", "PhoneNumber"},
+				setToNullPaths: []string{"Email"},
+				opt:            []Option{WithVersion(1)},
+			},
+			want:            1,
+			wantErr:         false,
+			wantErrMsg:      "",
+			wantName:        "simple-with-version" + id,
+			wantEmail:       "",
+			wantPhoneNumber: "updated" + id,
+			wantVersion:     2,
 		},
 		{
 			name: "multiple-null",
@@ -204,7 +245,9 @@ func TestDb_Update(t *testing.T) {
 			}
 			assert.NoError(err)
 			assert.Equal(tt.want, rowsUpdated)
-
+			if tt.want == 0 {
+				return
+			}
 			foundUser, err := db_test.NewTestUser()
 			assert.NoError(err)
 			foundUser.PublicId = tt.args.i.PublicId
@@ -225,8 +268,21 @@ func TestDb_Update(t *testing.T) {
 			assert.NotEqual(now, foundUser.CreateTime)
 			assert.NotEqual(now, foundUser.UpdateTime)
 			assert.NotEqual(publicId, foundUser.PublicId)
+			assert.Equal(u.Version+1, foundUser.Version)
 		})
 	}
+	t.Run("no-version-field", func(t *testing.T) {
+		assert := assert.New(t)
+		w := Db{underlying: db}
+		id, err := uuid.GenerateUUID()
+		assert.NoError(err)
+		car := testCar(t, db, "foo-"+id, id, int32(100))
+
+		car.Name = "friendly-" + id
+		rowsUpdated, err := w.Update(context.Background(), car, []string{"Name"}, nil, WithVersion(1))
+		assert.Error(err)
+		assert.Equal(0, rowsUpdated)
+	})
 	t.Run("valid-WithOplog", func(t *testing.T) {
 		assert := assert.New(t)
 		w := Db{underlying: db}
@@ -828,7 +884,7 @@ func TestDb_DoTx(t *testing.T) {
 		w := &Db{underlying: db}
 		attempts := 0
 		got, err := w.DoTx(context.Background(), 10, ExpBackoff{},
-			func(Writer) error {
+			func(Reader, Writer) error {
 				attempts += 1
 				if attempts < 9 {
 					return oplog.ErrTicketAlreadyRedeemed
@@ -843,7 +899,7 @@ func TestDb_DoTx(t *testing.T) {
 		w := &Db{underlying: db}
 		attempts := 0
 		got, err := w.DoTx(context.Background(), 1, ExpBackoff{},
-			func(Writer) error {
+			func(Reader, Writer) error {
 				attempts += 1
 				if attempts < 2 {
 					return oplog.ErrTicketAlreadyRedeemed
@@ -858,7 +914,7 @@ func TestDb_DoTx(t *testing.T) {
 		w := &Db{underlying: db}
 		attempts := 0
 		got, err := w.DoTx(context.Background(), 3, ExpBackoff{},
-			func(Writer) error {
+			func(Reader, Writer) error {
 				attempts += 1
 				if attempts < 3 {
 					return oplog.ErrTicketAlreadyRedeemed
@@ -873,7 +929,7 @@ func TestDb_DoTx(t *testing.T) {
 		w := &Db{underlying: db}
 		attempts := 0
 		got, err := w.DoTx(context.Background(), 4, ExpBackoff{},
-			func(Writer) error {
+			func(Reader, Writer) error {
 				attempts += 1
 				if attempts < 4 {
 					return oplog.ErrTicketAlreadyRedeemed
@@ -887,7 +943,7 @@ func TestDb_DoTx(t *testing.T) {
 	t.Run("zero-retries", func(t *testing.T) {
 		w := &Db{underlying: db}
 		attempts := 0
-		got, err := w.DoTx(context.Background(), 0, ExpBackoff{}, func(Writer) error { attempts += 1; return nil })
+		got, err := w.DoTx(context.Background(), 0, ExpBackoff{}, func(Reader, Writer) error { attempts += 1; return nil })
 		assert.NoError(err)
 		assert.Equal(RetryInfo{}, got)
 		assert.Equal(1, attempts)
@@ -895,14 +951,14 @@ func TestDb_DoTx(t *testing.T) {
 	t.Run("nil-tx", func(t *testing.T) {
 		w := &Db{nil}
 		attempts := 0
-		got, err := w.DoTx(context.Background(), 1, ExpBackoff{}, func(Writer) error { attempts += 1; return nil })
+		got, err := w.DoTx(context.Background(), 1, ExpBackoff{}, func(Reader, Writer) error { attempts += 1; return nil })
 		assert.Error(err)
 		assert.Equal(RetryInfo{}, got)
 		assert.Equal("do underlying db is nil", err.Error())
 	})
 	t.Run("not-a-retry-err", func(t *testing.T) {
 		w := &Db{underlying: db}
-		got, err := w.DoTx(context.Background(), 1, ExpBackoff{}, func(Writer) error { return errors.New("not a retry error") })
+		got, err := w.DoTx(context.Background(), 1, ExpBackoff{}, func(Reader, Writer) error { return errors.New("not a retry error") })
 		assert.Error(err)
 		assert.Equal(RetryInfo{}, got)
 		assert.NotEqual(err, oplog.ErrTicketAlreadyRedeemed)
@@ -910,23 +966,23 @@ func TestDb_DoTx(t *testing.T) {
 	t.Run("too-many-retries", func(t *testing.T) {
 		w := &Db{underlying: db}
 		attempts := 0
-		got, err := w.DoTx(context.Background(), 2, ExpBackoff{}, func(Writer) error { attempts += 1; return oplog.ErrTicketAlreadyRedeemed })
+		got, err := w.DoTx(context.Background(), 2, ExpBackoff{}, func(Reader, Writer) error { attempts += 1; return oplog.ErrTicketAlreadyRedeemed })
 		assert.Error(err)
 		assert.Equal(3, got.Retries)
 		assert.Equal("Too many retries: 3 of 3", err.Error())
 	})
 	t.Run("updating-good-bad-good", func(t *testing.T) {
-		w := Db{underlying: db}
+		rw := Db{underlying: db}
 		id, err := uuid.GenerateUUID()
 		assert.NoError(err)
 		user, err := db_test.NewTestUser()
 		assert.NoError(err)
 		user.Name = "foo-" + id
-		err = w.Create(context.Background(), user)
+		err = rw.Create(context.Background(), user)
 		assert.NoError(err)
 		assert.NotZero(user.Id)
 
-		_, err = w.DoTx(context.Background(), 10, ExpBackoff{}, func(w Writer) error {
+		_, err = rw.DoTx(context.Background(), 10, ExpBackoff{}, func(r Reader, w Writer) error {
 			user.Name = "friendly-" + id
 			rowsUpdated, err := w.Update(context.Background(), user, []string{"Name"}, nil)
 			if err != nil {
@@ -942,13 +998,13 @@ func TestDb_DoTx(t *testing.T) {
 		foundUser, err := db_test.NewTestUser()
 		assert.NoError(err)
 		foundUser.PublicId = user.PublicId
-		err = w.LookupByPublicId(context.Background(), foundUser)
+		err = rw.LookupByPublicId(context.Background(), foundUser)
 		assert.NoError(err)
 		assert.Equal(foundUser.Name, user.Name)
 
 		user2, err := db_test.NewTestUser()
 		assert.NoError(err)
-		_, err = w.DoTx(context.Background(), 10, ExpBackoff{}, func(w Writer) error {
+		_, err = rw.DoTx(context.Background(), 10, ExpBackoff{}, func(_ Reader, w Writer) error {
 			user2.Name = "friendly2-" + id
 			rowsUpdated, err := w.Update(context.Background(), user2, []string{"Name"}, nil)
 			if err != nil {
@@ -960,11 +1016,11 @@ func TestDb_DoTx(t *testing.T) {
 			return nil
 		})
 		assert.Error(err)
-		err = w.LookupByPublicId(context.Background(), foundUser)
+		err = rw.LookupByPublicId(context.Background(), foundUser)
 		assert.NoError(err)
 		assert.NotEqual(foundUser.Name, user2.Name)
 
-		_, err = w.DoTx(context.Background(), 10, ExpBackoff{}, func(w Writer) error {
+		_, err = rw.DoTx(context.Background(), 10, ExpBackoff{}, func(r Reader, w Writer) error {
 			user.Name = "friendly2-" + id
 			rowsUpdated, err := w.Update(context.Background(), user, []string{"Name"}, nil)
 			if err != nil {
@@ -976,7 +1032,7 @@ func TestDb_DoTx(t *testing.T) {
 			return nil
 		})
 		assert.NoError(err)
-		err = w.LookupByPublicId(context.Background(), foundUser)
+		err = rw.LookupByPublicId(context.Background(), foundUser)
 		assert.NoError(err)
 		assert.Equal(foundUser.Name, user.Name)
 	})
@@ -1200,6 +1256,26 @@ func testUser(t *testing.T, conn *gorm.DB, name, email, phoneNumber string) *db_
 		assert.NoError(err)
 	}
 	return u
+}
+func testCar(t *testing.T, conn *gorm.DB, name, model string, mpg int32) *db_test.TestCar {
+	t.Helper()
+	require := require.New(t)
+
+	publicId, err := base62.Random(20)
+	require.NoError(err)
+	c := &db_test.TestCar{
+		StoreTestCar: &db_test.StoreTestCar{
+			PublicId: publicId,
+			Name:     name,
+			Model:    model,
+			Mpg:      mpg,
+		},
+	}
+	if conn != nil {
+		err = conn.Create(c).Error
+		require.NoError(err)
+	}
+	return c
 }
 
 func testId(t *testing.T) string {
