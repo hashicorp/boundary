@@ -243,9 +243,8 @@ func TestAuthToken_DbCreate(t *testing.T) {
 	}
 
 	var tests = []struct {
-		name string
-		in   *store.AuthToken
-		// contains which authTokens above should result in errors
+		name      string
+		in        *store.AuthToken
 		wantError bool
 	}{
 		{
@@ -309,6 +308,71 @@ func TestAuthToken_DbCreate(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			at := &AuthToken{AuthToken: tt.in}
 			err := db.New(conn).Create(context.Background(), at)
+			if tt.wantError {
+				assert.Error(err)
+			} else {
+				assert.NoError(err)
+			}
+		})
+	}
+}
+
+func TestAuthToken_DbDelete(t *testing.T) {
+	assert, require := assert.New(t), require.New(t)
+	_, _ = assert, require
+	cleanup, conn, _ := db.TestSetup(t, "postgres")
+	t.Cleanup(func() {
+		if err := cleanup(); err != nil {
+			t.Error(err)
+		}
+		if err := conn.Close(); err != nil {
+			t.Error(err)
+		}
+	})
+
+	testAuthTokenId := func() string {
+		id, err := newAuthTokenId()
+		require.NoError(err)
+		return id
+	}
+
+	existingAuthTok := testAuthToken(t, conn)
+
+	var tests = []struct {
+		name      string
+		at        *AuthToken
+		wantError bool
+		wantCnt   int
+	}{
+		{
+			name:    "basic",
+			at:      &AuthToken{AuthToken: &store.AuthToken{PublicId: existingAuthTok.GetPublicId()}},
+			wantCnt: 1,
+		},
+		{
+			name:    "delete-nothing",
+			at:      &AuthToken{AuthToken: &store.AuthToken{PublicId: testAuthTokenId()}},
+			wantCnt: 0,
+		},
+		{
+			name:      "delete-nil",
+			at:        nil,
+			wantCnt:   0,
+			wantError: true,
+		},
+		{
+			name:      "delete-no-public-id",
+			at:        &AuthToken{AuthToken: &store.AuthToken{}},
+			wantCnt:   0,
+			wantError: true,
+		},
+	}
+
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			cnt, err := db.New(conn).Delete(context.Background(), tt.at)
+			assert.Equal(tt.wantCnt, cnt)
 			if tt.wantError {
 				assert.Error(err)
 			} else {
