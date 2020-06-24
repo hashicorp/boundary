@@ -215,7 +215,9 @@ values
   ('db_test_user', 1),
   ('db_test_car', 1),
   ('db_test_rental', 1),
-  ('db_test_scooter', 1);
+  ('db_test_scooter', 1),
+  ('auth_account', 1);
+;
   
 
 commit;
