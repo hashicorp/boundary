@@ -10,7 +10,8 @@ create table if not exists db_test_user (
   public_id text not null unique,
   name text unique,
   phone_number text,
-  email text
+  email text,
+  version wt_version
 );
 
 create trigger 
@@ -31,6 +32,11 @@ before
 insert on db_test_user 
   for each row execute procedure default_create_time();
 
+create trigger 
+  update_version_column
+after update on db_test_user
+  for each row execute procedure update_version_column();
+  
 create table if not exists db_test_car (
   id bigint generated always as identity primary key,
   create_time wt_timestamp,
