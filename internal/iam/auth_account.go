@@ -6,6 +6,7 @@ import (
 
 	"github.com/hashicorp/watchtower/internal/db"
 	"github.com/hashicorp/watchtower/internal/iam/store"
+	"github.com/hashicorp/watchtower/internal/oplog"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -18,6 +19,7 @@ type AuthAccount struct {
 
 var _ Clonable = (*AuthAccount)(nil)
 var _ db.VetForWriter = (*AuthAccount)(nil)
+var _ oplog.ReplayableMessage = (*AuthAccount)(nil)
 
 func allocAuthAccount() AuthAccount {
 	return AuthAccount{
