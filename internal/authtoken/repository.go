@@ -174,14 +174,16 @@ func (r *Repository) DeleteAuthToken(ctx context.Context, id string, opt ...Opti
 		return db.NoRowsAffected, fmt.Errorf("delete: auth token: missing public id: %w", db.ErrInvalidParameter)
 	}
 
-	at := allocAuthToken()
-	at.PublicId = id
+	at, err := r.LookupAuthToken(ctx, id)
+	if err != nil {
+		return 0, fmt.Errorf("delete: auth token: lookup %w", err)
+	}
 
 	metadata := newAuthTokenMetadata(at, oplog.OpType_OP_TYPE_DELETE)
 
 	var rowsDeleted int
 	var deleteAT *AuthToken
-	_, err := r.writer.DoTx(
+	_, err = r.writer.DoTx(
 		ctx,
 		db.StdRetryCnt,
 		db.ExpBackoff{},
@@ -214,14 +216,12 @@ func allocAuthToken() *AuthToken {
 	return fresh
 }
 
-func newAuthTokenMetadata(s *AuthToken, op oplog.OpType) oplog.Metadata {
+func newAuthTokenMetadata(a *AuthToken, op oplog.OpType) oplog.Metadata {
 	metadata := oplog.Metadata{
-		"resource-public-id": []string{s.GetPublicId()},
+		"scope-id":           []string{a.ScopeId},
+		"resource-public-id": []string{a.GetPublicId()},
 		"resource-type":      []string{"auth token"},
 		"op-type":            []string{op.String()},
-	}
-	if s.ScopeId != "" {
-		metadata["scope-id"] = []string{s.ScopeId}
 	}
 	return metadata
 }
