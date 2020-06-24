@@ -2,6 +2,7 @@ package authtoken
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	wrapping "github.com/hashicorp/go-kms-wrapping"
@@ -123,7 +124,8 @@ func (r *Repository) LookupAuthToken(ctx context.Context, id string, opt ...Opti
 }
 
 // UpdateLastAccessed updates the last accessed field and returns a AuthToken with the previous value for Last Accessed
-// populated. Returns nil, nil if no AuthToken is found for the token.  All options are ignored.
+// populated. For security reasons, the actual token is not included in the returned AuthToken.
+// Returns nil, nil if no AuthToken is found for the token.  All options are ignored.
 func (r *Repository) UpdateLastUsed(ctx context.Context, token string, opt ...Option) (*AuthToken, error) {
 	if token == "" {
 		return nil, fmt.Errorf("lookup: auth token: missing token: %w", db.ErrInvalidParameter)
@@ -140,6 +142,7 @@ func (r *Repository) UpdateLastUsed(ctx context.Context, token string, opt ...Op
 			if err := read.LookupWhere(ctx, &authToken, "token = ?", token); err != nil {
 				return fmt.Errorf("lookup by token: auth token: %w", err)
 			}
+			// authToken.Token set to empty string so the value is not returned as described in the methods' doc.
 			authToken.Token = ""
 			metadata := newAuthTokenMetadata(authToken, oplog.OpType_OP_TYPE_UPDATE)
 
@@ -176,7 +179,13 @@ func (r *Repository) DeleteAuthToken(ctx context.Context, id string, opt ...Opti
 
 	at, err := r.LookupAuthToken(ctx, id)
 	if err != nil {
+		if errors.Is(err, db.ErrRecordNotFound) {
+			return db.NoRowsAffected, nil
+		}
 		return 0, fmt.Errorf("delete: auth token: lookup %w", err)
+	}
+	if at == nil {
+		return db.NoRowsAffected, nil
 	}
 
 	metadata := newAuthTokenMetadata(at, oplog.OpType_OP_TYPE_DELETE)

@@ -313,9 +313,10 @@ func TestRepository_UpdateLastUsed(t *testing.T) {
 			want:  at,
 		},
 		{
-			name:  "doesnt-exist",
-			token: badToken,
-			want:  nil,
+			name:    "doesnt-exist",
+			token:   badToken,
+			want:    nil,
+			wantErr: db.ErrRecordNotFound,
 		},
 		{
 			name:    "bad-token",
