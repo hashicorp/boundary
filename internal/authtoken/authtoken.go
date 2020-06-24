@@ -19,13 +19,13 @@ type AuthToken struct {
 // All options are ignored.
 func NewAuthToken(scopeId, userId, authMethodId string, opt ...Option) (*AuthToken, error) {
 	if scopeId == "" {
-		return nil, fmt.Errorf("new: static host catalog: no scope id: %w", db.ErrInvalidParameter)
+		return nil, fmt.Errorf("new: auth token: no scope id: %w", db.ErrInvalidParameter)
 	}
 	if userId == "" {
-		return nil, fmt.Errorf("new: static host catalog: no user id: %w", db.ErrInvalidParameter)
+		return nil, fmt.Errorf("new: auth token: no user id: %w", db.ErrInvalidParameter)
 	}
 	if authMethodId == "" {
-		return nil, fmt.Errorf("new: static host catalog: no auth method id: %w", db.ErrInvalidParameter)
+		return nil, fmt.Errorf("new: auth token: no auth method id: %w", db.ErrInvalidParameter)
 	}
 
 	s := &AuthToken{
@@ -45,7 +45,6 @@ func (s *AuthToken) clone() *AuthToken {
 	}
 }
 
-// PublicId prefixes for the resources in the static package.
 const (
 	AuthTokenPublicIdPrefix = "s"
 	AuthTokenPrefix         = "t"
