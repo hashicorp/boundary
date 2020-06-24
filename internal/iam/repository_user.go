@@ -230,9 +230,9 @@ func (r *Repository) ObtainUserWithLogin(ctx context.Context, withScope, withAut
 	return obtainedUser, nil
 }
 
-// LookupUserWithLogin within the scope and authMethod with a matching authAccountId.
-// The function will return nil, nil when a user is not found matching the
-// provided criteria. No options are supported.
+// LookupUserWithLogin within the scope and authMethod with a matching
+// authAccountId. The function will return nil, nil when a user is not found
+// matching the provided criteria. No options are supported.
 func (r *Repository) LookupUserWithLogin(ctx context.Context, withScope, withAuthMethodId, withAuthAccountId string, opt ...Option) (*User, error) {
 	if withScope == "" {
 		return nil, fmt.Errorf("lookup user with login: missing scope id %w", db.ErrInvalidParameter)
@@ -271,8 +271,8 @@ func (r *Repository) LookupUserWithLogin(ctx context.Context, withScope, withAut
 	return u, nil
 }
 
-// TODO (jimlambrt 6/2020) replace the raw query with a Lookup using
-// the auth method repo.
+// TODO (jimlambrt 6/2020) replace the raw query with a Lookup using the auth
+// method repo.
 func (r *Repository) validateAuthMethodId(ctx context.Context, scopeId, authMethodId string) (bool, error) {
 	if scopeId == "" {
 		return false, fmt.Errorf("scope id is unset: %w", db.ErrInvalidParameter)
