@@ -87,7 +87,7 @@ type Writer interface {
 	DB() (*sql.DB, error)
 
 	// GetTicket returns an oplog ticket for the aggregate root of "i" which can
-	// be used for to WriteOplogEntryWith for that aggregate root.
+	// be used to WriteOplogEntryWith for that aggregate root.
 	GetTicket(i interface{}) (*store.Ticket, error)
 
 	// WriteOplogEntryWith will write an oplog entry with the msgs provided for
@@ -446,7 +446,7 @@ func validateOplogArgs(i interface{}, opts Options) (oplog.ReplayableMessage, er
 }
 
 // GetTicket returns an oplog ticket for the aggregate root of "i" which can
-// be used for to WriteOplogEntryWith for that aggregate root.
+// be used to WriteOplogEntryWith for that aggregate root.
 func (rw *Db) GetTicket(i interface{}) (*store.Ticket, error) {
 	if rw.underlying == nil {
 		return nil, fmt.Errorf("get ticket: underlying db missing: %w", ErrNilParameter)
