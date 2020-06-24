@@ -29,6 +29,11 @@ var readFuncs = map[string][]*readInfo{
 		},
 		{
 			baseType:   "Organization",
+			targetType: "roles.Role",
+			path:       "roles",
+		},
+		{
+			baseType:   "Organization",
 			targetType: "users.User",
 			path:       "users",
 		},

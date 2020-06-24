@@ -41,6 +41,11 @@ var createFuncs = map[string][]*createInfo{
 		},
 		{
 			baseType:   "Organization",
+			targetType: "roles.Role",
+			path:       `"roles"`,
+		},
+		{
+			baseType:   "Organization",
 			targetType: "users.User",
 			path:       `"users"`,
 		},
