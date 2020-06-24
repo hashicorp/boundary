@@ -231,6 +231,9 @@ func TestAuthToken_DbCreate(t *testing.T) {
 	org, _ := iam.TestScopes(t, conn)
 	u := iam.TestUser(t, conn, org.GetPublicId())
 	amId := setupAuthMethod(t, conn, org.GetPublicId())
+	org2, _ := iam.TestScopes(t, conn)
+	u2 := iam.TestUser(t, conn, org2.GetPublicId())
+	amId2 := setupAuthMethod(t, conn, org2.GetPublicId())
 	createdAuthToken := testAuthToken(t, conn)
 
 	testAuthTokenId := func() string {
@@ -274,6 +277,28 @@ func TestAuthToken_DbCreate(t *testing.T) {
 				ScopeId:      org.GetPublicId(),
 				IamUserId:    u.GetPublicId(),
 				AuthMethodId: amId,
+			},
+			wantError: true,
+		},
+		{
+			name: "mismatch-user-scope",
+			in: &store.AuthToken{
+				PublicId:     testAuthTokenId(),
+				Token:        "mismatch-user-scope",
+				ScopeId:      org.GetPublicId(),
+				IamUserId:    u2.GetPublicId(),
+				AuthMethodId: amId,
+			},
+			wantError: true,
+		},
+		{
+			name: "mismatch-authmethod-scope",
+			in: &store.AuthToken{
+				PublicId:     testAuthTokenId(),
+				Token:        "mismatch-authmethod-scope",
+				ScopeId:      org.GetPublicId(),
+				IamUserId:    u.GetPublicId(),
+				AuthMethodId: amId2,
 			},
 			wantError: true,
 		},
