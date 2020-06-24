@@ -105,7 +105,7 @@ func (r *Repository) CreateAuthToken(ctx context.Context, at *AuthToken, opt ...
 }
 
 // LookupAuthToken returns the AuthToken for id. Returns nil, nil if no AuthToken is found for id.
-// Token is not returned in the returned AuthToken. All options are ignored.
+// For security reasons, the actual token is not included in the returned AuthToken.
 func (r *Repository) LookupAuthToken(ctx context.Context, id string, opt ...Option) (*AuthToken, error) {
 	if id == "" {
 		return nil, fmt.Errorf("lookup: auth token: missing public id: %w", db.ErrInvalidParameter)
