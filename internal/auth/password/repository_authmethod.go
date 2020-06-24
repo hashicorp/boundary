@@ -45,7 +45,7 @@ func (r *Repository) CreateAuthMethod(ctx context.Context, m *AuthMethod, opt ..
 
 	var newAuthMethod *AuthMethod
 	_, err = r.writer.DoTx(ctx, db.StdRetryCnt, db.ExpBackoff{},
-		func(w db.Writer) error {
+		func(_ db.Reader, w db.Writer) error {
 			newAuthMethod = m.clone()
 			return w.Create(ctx, newAuthMethod, db.WithOplog(r.wrapper, metadata))
 		},

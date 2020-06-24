@@ -43,7 +43,7 @@ func (r *Repository) CreateAccount(ctx context.Context, a *Account, opt ...Optio
 
 	var newAccount *Account
 	_, err = r.writer.DoTx(ctx, db.StdRetryCnt, db.ExpBackoff{},
-		func(w db.Writer) error {
+		func(_ db.Reader, w db.Writer) error {
 			newAccount = a.clone()
 			return w.Create(ctx, newAccount, db.WithOplog(r.wrapper, metadata))
 		},
