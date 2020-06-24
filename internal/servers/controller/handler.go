@@ -23,6 +23,7 @@ import (
 	"github.com/hashicorp/watchtower/internal/servers/controller/handlers/hosts"
 	"github.com/hashicorp/watchtower/internal/servers/controller/handlers/organizations"
 	"github.com/hashicorp/watchtower/internal/servers/controller/handlers/projects"
+	"github.com/hashicorp/watchtower/internal/servers/controller/handlers/roles"
 	"github.com/hashicorp/watchtower/internal/servers/controller/handlers/users"
 )
 
@@ -44,10 +45,10 @@ func (c *Controller) handler(props HandlerProperties) (http.Handler, error) {
 		if err != nil {
 			panic(err)
 		}
-		c.logger.Warn("serving passthrough files at /passthrough", "path", abs)
+		c.logger.Warn("serving passthrough files at /", "path", abs)
 		fs := http.FileServer(http.Dir(abs))
-		prefixHandler := http.StripPrefix("/passthrough/", fs)
-		mux.Handle("/passthrough/", prefixHandler)
+		prefixHandler := http.StripPrefix("/", fs)
+		mux.Handle("/", prefixHandler)
 	}
 
 	h, err := handleGrpcGateway(c)
@@ -107,6 +108,13 @@ func handleGrpcGateway(c *Controller) (http.Handler, error) {
 	}
 	if err := services.RegisterGroupServiceHandlerServer(ctx, mux, gs); err != nil {
 		return nil, fmt.Errorf("failed to register group service handler: %w", err)
+	}
+	rs, err := roles.NewService(c.IamRepoFn)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create role handler service: %w", err)
+	}
+	if err := services.RegisterRoleServiceHandlerServer(ctx, mux, rs); err != nil {
+		return nil, fmt.Errorf("failed to register role service handler: %w", err)
 	}
 
 	return mux, nil

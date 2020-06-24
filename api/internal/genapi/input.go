@@ -126,6 +126,17 @@ var inputStructs = []*structInfo{
 		templateTypeResource,
 	},
 	{
+		os.Getenv("GEN_BASEPATH") + "/internal/gen/controller/api/resources/roles/role.pb.go",
+		"Role",
+		os.Getenv("GEN_BASEPATH") + "/api/roles/role.gen.go",
+		"Role",
+		"roles",
+		"",
+		"",
+		"",
+		templateTypeResource,
+	},
+	{
 		os.Getenv("GEN_BASEPATH") + "/internal/gen/controller/api/resources/hosts/host_catalog.pb.go",
 		"StaticHostCatalogDetails",
 		os.Getenv("GEN_BASEPATH") + "/api/hosts/static_host_catalog.gen.go",
