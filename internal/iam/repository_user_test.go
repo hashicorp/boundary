@@ -689,8 +689,6 @@ func TestRepository_CreateUserWithLogin(t *testing.T) {
 	newAuthAcct := testAuthAccount(t, conn, org.PublicId, authMethodId, "")
 	negativeTestAuthAcct := testAuthAccount(t, conn, org.PublicId, authMethodId, "")
 
-	fmt.Println(newAuthAcct)
-
 	user := TestUser(t, conn, org.PublicId, WithName("existing-"+id))
 	existingAuthAcct := testAuthAccount(t, conn, org.PublicId, authMethodId, user.PublicId)
 	require.Equal(t, user.PublicId, existingAuthAcct.IamUserId)
