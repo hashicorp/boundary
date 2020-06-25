@@ -20,7 +20,7 @@ message AuthToken {
 
 	// last_access_time indicates the last time the auth token was used on the watchtower API.
 	// @inject_tag: `gorm:"default:current_timestamp"`
-	timestamp.v1.Timestamp last_access_time = 4;
+	timestamp.v1.Timestamp approximate_last_access_time = 4;
 
 	// expiration_time indicates when this session will expire.
 	// If null a default duration and create_time is used to calculate expiration.

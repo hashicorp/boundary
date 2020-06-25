@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"testing"
+	"time"
 
 	"github.com/golang/protobuf/ptypes"
 	"github.com/google/go-cmp/cmp"
@@ -284,7 +285,7 @@ func TestRepository_CreateAuthToken(t *testing.T) {
 			db.AssertPublicId(t, AuthTokenPrefix, got.PublicId)
 			assert.NotSame(tt.in, got)
 			assert.Equal(got.CreateTime, got.UpdateTime)
-			assert.Equal(got.CreateTime, got.LastAccessTime)
+			assert.Equal(got.CreateTime, got.ApproximateLastAccessTime)
 			assert.NoError(db.TestVerifyOplog(t, rw, got.GetPublicId(), db.WithOperation(oplog.OpType_OP_TYPE_CREATE)))
 		})
 	}
@@ -354,7 +355,7 @@ func TestRepository_LookupAuthToken(t *testing.T) {
 	}
 }
 
-func TestRepository_UpdateLastUsed(t *testing.T) {
+func TestRepository_UpdateLastAccessed(t *testing.T) {
 	assert, require := assert.New(t), require.New(t)
 	cleanup, conn, _ := db.TestSetup(t, "postgres")
 	t.Cleanup(func() {
@@ -366,9 +367,13 @@ func TestRepository_UpdateLastUsed(t *testing.T) {
 		}
 	})
 
+	lastUsedUpdateDuration = 0
+
 	at := testAuthToken(t, conn)
 	atToken := at.GetToken()
 	at.Token = ""
+	atTime, err := ptypes.Timestamp(at.GetApproximateLastAccessTime().GetTimestamp())
+	require.NoError(err)
 	badToken, err := newAuthToken()
 	assert.NoError(err)
 	assert.NotNil(badToken)
@@ -408,7 +413,7 @@ func TestRepository_UpdateLastUsed(t *testing.T) {
 			require.NoError(err)
 			require.NotNil(repo)
 
-			got, err := repo.UpdateLastUsed(context.Background(), tt.token)
+			got, err := repo.MaybeUpdateLastAccessed(context.Background(), tt.token)
 			if tt.wantErr != nil {
 				assert.Truef(errors.Is(err, tt.wantErr), "want err: %q got: %q", tt.wantErr, err)
 				return
@@ -420,19 +425,27 @@ func TestRepository_UpdateLastUsed(t *testing.T) {
 				return
 			}
 			assert.Empty(cmp.Diff(tt.want.AuthToken, got.AuthToken, protocmp.Transform()))
+			// preTime1 should be the value prior to the MaybeUpdateLastAccessed was called so it should equal creation time
+			preTime1, err := ptypes.Timestamp(got.GetApproximateLastAccessTime().GetTimestamp())
+			require.NoError(err)
+			assert.True(preTime1.Equal(atTime), "Create time %q doesn't match the time from the first call to MaybeUpdateLastAccesssed: %q.", atTime, preTime1)
 
-			got2, err := repo.UpdateLastUsed(context.Background(), tt.token)
-			if tt.wantErr != nil {
-				assert.Truef(errors.Is(err, tt.wantErr), "want err: %q got: %q", tt.wantErr, err)
-				return
-			}
+			// Enable the duration which limits how frequently a token's approximate last accessed time can be updated
+			// so the next call doesn't cause the last accessed time to be updated.
+			lastUsedUpdateDuration = 1 * time.Hour
+
+			got2, err := repo.MaybeUpdateLastAccessed(context.Background(), tt.token)
 			assert.NoError(err)
-			time1, err := ptypes.Timestamp(got.GetLastAccessTime().GetTimestamp())
+			preTime2, err := ptypes.Timestamp(got2.GetApproximateLastAccessTime().GetTimestamp())
 			require.NoError(err)
-			time2, err := ptypes.Timestamp(got2.GetLastAccessTime().GetTimestamp())
-			require.NoError(err)
-			assert.True(time2.After(time1), "Second last update time %q was not after first time %q", time2, time1)
+			assert.True(preTime2.After(preTime1), "First updated time %q was not after the creation time %q", preTime2, preTime1)
+
 			assert.NoError(db.TestVerifyOplog(t, rw, got.GetPublicId(), db.WithOperation(oplog.OpType_OP_TYPE_UPDATE)))
+
+			got3, err := repo.MaybeUpdateLastAccessed(context.Background(), tt.token)
+			preTime3, err := ptypes.Timestamp(got3.GetApproximateLastAccessTime().GetTimestamp())
+			require.NoError(err)
+			assert.True(preTime3.Equal(preTime2), "The 3rd timestamp %q was not equal to the second time %q", preTime3, preTime2)
 		})
 	}
 }

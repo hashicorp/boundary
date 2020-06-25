@@ -4,7 +4,9 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"time"
 
+	"github.com/golang/protobuf/ptypes"
 	wrapping "github.com/hashicorp/go-kms-wrapping"
 	"github.com/hashicorp/watchtower/internal/iam"
 
@@ -14,7 +16,7 @@ import (
 )
 
 var (
-	ErrScopeMismatch = errors.New("scope for referenced resource doesn't match scope provided")
+	lastUsedUpdateDuration = 10 * time.Minute
 )
 
 // A Repository stores and retrieves the persistent types in the authtoken
@@ -82,13 +84,13 @@ func (r *Repository) CreateAuthToken(ctx context.Context, at *AuthToken, opt ...
 
 	id, err := newAuthTokenId()
 	if err != nil {
-		return nil, fmt.Errorf("create: auth token: %w", err)
+		return nil, fmt.Errorf("create: auth token id: %w", err)
 	}
 	at.PublicId = id
 
 	token, err := newAuthToken()
 	if err != nil {
-		return nil, fmt.Errorf("create: auth token: %w", err)
+		return nil, fmt.Errorf("create: auth token value: %w", err)
 	}
 	at.Token = token
 
@@ -108,7 +110,7 @@ func (r *Repository) CreateAuthToken(ctx context.Context, at *AuthToken, opt ...
 				return fmt.Errorf("create: auth token: user not found: %w", err)
 			}
 			if u.GetScopeId() != at.GetScopeId() {
-				return ErrScopeMismatch
+				return fmt.Errorf("create: auth token: user's scope doesn't match provided: %w", db.ErrInvalidParameter)
 			}
 			// TODO: Lookup and verify that AuthMethod's scope matches the provided scope.
 
@@ -145,10 +147,11 @@ func (r *Repository) LookupAuthToken(ctx context.Context, id string, opt ...Opti
 	return at, nil
 }
 
-// UpdateLastAccessed updates the last accessed field and returns a AuthToken with the previous value for Last Accessed
-// populated. For security reasons, the actual token is not included in the returned AuthToken.
+// MaybeUpdateLastAccessed updates the approximate last accessed field and returns a AuthToken with the
+// previous value for Last Accessed populated. For security reasons, the actual token value is not included
+// in the returned AuthToken.
 // Returns nil, nil if no AuthToken is found for the token.  All options are ignored.
-func (r *Repository) UpdateLastUsed(ctx context.Context, token string, opt ...Option) (*AuthToken, error) {
+func (r *Repository) MaybeUpdateLastAccessed(ctx context.Context, token string, opt ...Option) (*AuthToken, error) {
 	// Do not log or add the token string to any errors.
 	if token == "" {
 		return nil, fmt.Errorf("lookup: auth token: missing token: %w", db.ErrInvalidParameter)
@@ -169,15 +172,26 @@ func (r *Repository) UpdateLastUsed(ctx context.Context, token string, opt ...Op
 			authToken.Token = ""
 			metadata := newAuthTokenMetadata(authToken, oplog.OpType_OP_TYPE_UPDATE)
 
-			// Setting the LastAccessTime to null through using the null mask allows a defined db's
-			// trigger to set LastAccessTime to the commit timestamp.
+			t, err := ptypes.Timestamp(authToken.GetApproximateLastAccessTime().GetTimestamp())
+			if err != nil {
+				return err
+			}
+
+			if t.Sub(time.Now()) < lastUsedUpdateDuration {
+				// To save the db from being updated to frequently, we only update the
+				// LastAccessTime if it hasn't been updated within the last X minutes.
+				// TODO: Make this duration configurable.
+				return nil
+			}
+
+			// Setting the ApproximateLastAccessTime to null through using the null mask allows a defined db's
+			// trigger to set ApproximateLastAccessTime to the commit timestamp.
 			at = authToken.clone()
-			var err error
 			rowsUpdated, err = w.Update(
 				ctx,
 				at,
 				nil,
-				[]string{"LastAccessTime"},
+				[]string{"ApproximateLastAccessTime"},
 				db.WithOplog(r.wrapper, metadata),
 			)
 			if err == nil && rowsUpdated > 1 {

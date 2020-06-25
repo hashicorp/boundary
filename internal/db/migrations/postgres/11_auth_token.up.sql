@@ -12,7 +12,7 @@ begin;
     auth_method_id wt_public_id not null,
     create_time wt_timestamp,
     update_time wt_timestamp,
-    last_access_time wt_timestamp,
+    approximate_last_access_time wt_timestamp,
     expiration_time wt_timestamp,
     foreign key (scope_id, auth_method_id)
       references auth_method (scope_id, public_id)
@@ -30,8 +30,8 @@ begin;
     returns trigger
   as $$
   begin
-    if new.last_access_time is null then
-      new.last_access_time = now();
+    if new.approximate_last_access_time is null then
+      new.approximate_last_access_time = now();
       return new;
     else
       return old;
