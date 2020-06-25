@@ -669,7 +669,7 @@ func TestRepository_LookupUserWithLogin(t *testing.T) {
 	}
 }
 
-func TestRepository_CreateUserWithLogin(t *testing.T) {
+func TestRepository_ObtainUserWithLogin(t *testing.T) {
 	t.Parallel()
 	cleanup, conn, _ := db.TestSetup(t, "postgres")
 	defer func() {
