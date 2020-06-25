@@ -117,6 +117,9 @@ type TestControllerOpts struct {
 	// DisableDatabaseCreation can be set true to disable creating a dev
 	// database
 	DisableDatabaseCreation bool
+
+	// If true, the controller will not be started
+	DisableAutoStart bool
 }
 
 func NewTestController(t *testing.T, opts *TestControllerOpts) *TestController {
@@ -192,9 +195,11 @@ func NewTestController(t *testing.T, opts *TestControllerOpts) *TestController {
 
 	tc.buildClient()
 
-	if err := tc.c.Start(); err != nil {
-		tc.Shutdown()
-		t.Fatal(err)
+	if !opts.DisableAutoStart {
+		if err := tc.c.Start(); err != nil {
+			tc.Shutdown()
+			t.Fatal(err)
+		}
 	}
 
 	return tc
