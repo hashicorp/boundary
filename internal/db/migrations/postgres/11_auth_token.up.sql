@@ -21,8 +21,7 @@ begin;
     foreign key (scope_id, iam_user_id)
       references iam_user (scope_id, public_id)
       on delete cascade
-      on update cascade,
-    unique(scope_id, public_id)
+      on update cascade
   );
 
 
