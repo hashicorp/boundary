@@ -2,7 +2,6 @@ package authtoken
 
 import (
 	"context"
-	"strings"
 	"testing"
 
 	"github.com/hashicorp/watchtower/internal/db"
@@ -51,12 +50,4 @@ func setupAuthMethod(t *testing.T, conn *gorm.DB, scope string) string {
 	_, err = conn.DB().Exec(insert, amId, scope)
 	require.NoError(err)
 	return amId
-}
-
-func assertPublicId(t *testing.T, prefix, actual string) {
-	t.Helper()
-	assert.NotEmpty(t, actual)
-	parts := strings.Split(actual, "_")
-	assert.Equalf(t, 2, len(parts), "want one '_' in PublicId, got multiple in %q", actual)
-	assert.Equalf(t, prefix, parts[0], "PublicId want prefix: %q, got: %q in %q", prefix, parts[0], actual)
 }
