@@ -50,7 +50,7 @@ func (a *AuthAccount) validScopeTypes() []ScopeType {
 	return []ScopeType{OrganizationScope}
 }
 
-// Getscope returns the scope for the Role.
+// GetScope returns the scope for the Role.
 func (a *AuthAccount) GetScope(ctx context.Context, r db.Reader) (*Scope, error) {
 	return LookupScope(ctx, r, a)
 }
