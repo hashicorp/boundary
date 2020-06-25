@@ -127,6 +127,7 @@ func (r *Repository) LookupAuthToken(ctx context.Context, id string, opt ...Opti
 // populated. For security reasons, the actual token is not included in the returned AuthToken.
 // Returns nil, nil if no AuthToken is found for the token.  All options are ignored.
 func (r *Repository) UpdateLastUsed(ctx context.Context, token string, opt ...Option) (*AuthToken, error) {
+	// Do not log or add the token string to any errors.
 	if token == "" {
 		return nil, fmt.Errorf("lookup: auth token: missing token: %w", db.ErrInvalidParameter)
 	}
@@ -146,6 +147,8 @@ func (r *Repository) UpdateLastUsed(ctx context.Context, token string, opt ...Op
 			authToken.Token = ""
 			metadata := newAuthTokenMetadata(authToken, oplog.OpType_OP_TYPE_UPDATE)
 
+			// Setting the LastAccessTime to null through using the null mask allows a defined db's
+			// trigger to set LastAccessTime to the commit timestamp.
 			at = authToken.clone()
 			var err error
 			rowsUpdated, err = w.Update(
