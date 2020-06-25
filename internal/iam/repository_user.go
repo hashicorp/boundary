@@ -136,9 +136,11 @@ func (r *Repository) ObtainUserWithLogin(ctx context.Context, withScope, withAut
 		if err != nil {
 			return nil, fmt.Errorf("create user with login: unable to lookup user %s for auth account %s", acct.IamUserId, acct.PublicId)
 		}
-		// LookupUser will return a nil user and no error if the user is not found.
+		// LookupUser will return a nil user and no error if the user associated
+		// with the auth account is not found. A user should always be found, so
+		// if we get nil, nil back there be dragons and we'll return an error.
 		if u == nil {
-			return nil, nil
+			return nil, fmt.Errorf("create user: user %s associated with auth account %s was not found", acct.IamUserId, withAuthAccountId)
 		}
 		if u.ScopeId != withScope {
 			return nil, fmt.Errorf("create user with login: user scope %s doesn't match scope %s: %w", u.ScopeId, withScope, db.ErrInvalidParameter)
