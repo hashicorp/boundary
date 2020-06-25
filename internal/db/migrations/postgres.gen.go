@@ -237,6 +237,7 @@ create index if not exists idx_oplog_metatadata_value on oplog_metadata(value);
 
 insert into oplog_ticket (name, version)
 values
+  ('auth_token', 1),
   ('default', 1),
   ('iam_scope', 1),
   ('iam_user', 1),
@@ -898,8 +899,7 @@ begin;
     foreign key (scope_id, iam_user_id)
       references iam_user (scope_id, public_id)
       on delete cascade
-      on update cascade,
-    unique(scope_id, public_id)
+      on update cascade
   );
 
 
@@ -908,7 +908,7 @@ begin;
     returns trigger
   as $$
   begin
-    if row(new.last_access_time) is distinct from row(old.last_access_time) then
+    if new.last_access_time is null then
       new.last_access_time = now();
       return new;
     else
@@ -923,58 +923,30 @@ begin;
     'function used in before update triggers to properly set last_access_time columns';
 
   create or replace function
-    immutable_iam_user_id()
+    immutable_auth_token_columns()
     returns trigger
   as $$
   begin
     if new.iam_user_id is distinct from old.iam_user_id then
       raise exception 'iam_user_id cannot be set to %', new.iam_user_id;
-      new.iam_user_id = old.iam_user_id;
     end if;
-    return new;
-  end;
-  $$ language plpgsql;
-
-  comment on function
-    immutable_iam_user_id()
-  is
-    'function used in before update triggers to make iam_user_id column immutable';
-
-  create or replace function
-    immutable_auth_method_id()
-    returns trigger
-  as $$
-  begin
     if new.auth_method_id is distinct from old.auth_method_id then
-      raise exception 'auth_method_id cannot be set to %', new.auth_method_id;
-      new.auth_method_id = old.auth_method_id;
+        raise exception 'auth_method_id cannot be set to %', new.auth_method_id;
     end if;
-    return new;
-  end;
-  $$ language plpgsql;
-
-  comment on function
-    immutable_auth_method_id()
-  is
-    'function used in before update triggers to make auth_method_id column immutable';
-
-  create or replace function
-    immutable_scope_id()
-    returns trigger
-  as $$
-  begin
     if new.scope_id is distinct from old.scope_id then
-      raise exception 'scope_id cannot be set to %', new.scope_id;
-      new.scope_id = old.scope_id;
+        raise exception 'scope_id cannot be set to %', new.scope_id;
+    end if;
+    if new.token is distinct from old.token then
+        raise exception 'token cannot be set to %', new.token;
     end if;
     return new;
   end;
   $$ language plpgsql;
 
   comment on function
-    immutable_scope_id()
+      immutable_auth_token_columns()
   is
-    'function used in before update triggers to make scope_id column immutable';
+    'function used in before update triggers to make specific columns immutable';
 
   create trigger
     default_create_time_column
@@ -997,23 +969,9 @@ begin;
     for each row execute procedure immutable_create_time_func();
 
   create trigger
-    immutable_iam_user_id
+    immutable_auth_token_columns
   before update on auth_token
-    for each row execute procedure immutable_iam_user_id();
-
-  create trigger
-    immutable_auth_method_id
-  before update on auth_token
-    for each row execute procedure immutable_auth_method_id();
-
-  create trigger
-    immutable_scope_id
-  before update on auth_token
-    for each row execute procedure immutable_scope_id();
-
-  insert into oplog_ticket (name, version)
-  values
-    ('auth_token', 1);
+    for each row execute procedure immutable_auth_token_columns();
 
 commit;
 
