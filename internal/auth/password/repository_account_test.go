@@ -11,6 +11,26 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func TestCheckUserName(t *testing.T) {
+	var tests = []struct {
+		in   string
+		want bool
+	}{
+		{"", false},
+		{" leading-spaces", false},
+		{"trailing-spaces ", false},
+		{"contains spaces", false},
+		{"NotLowerCase", false},
+		{"valid.username", true},
+	}
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.in, func(t *testing.T) {
+			assert.Equal(t, tt.want, validUserName(tt.in))
+		})
+	}
+}
+
 func TestRepository_CreateAccount(t *testing.T) {
 	cleanup, conn, _ := db.TestSetup(t, "postgres")
 	defer func() {
@@ -26,6 +46,10 @@ func TestRepository_CreateAccount(t *testing.T) {
 
 	authMethods := testAuthMethods(t, conn, 1)
 	authMethod := authMethods[0]
+
+	// TODO(mgaffney) 06/2020: add tests for:
+	// - username to small for default min length
+	// - username to small for custom min length
 
 	var tests = []struct {
 		name      string
@@ -56,6 +80,46 @@ func TestRepository_CreateAccount(t *testing.T) {
 				Account: &store.Account{
 					AuthMethodId: authMethod.PublicId,
 					PublicId:     "sthc_OOOOOOOOOO",
+				},
+			},
+			wantIsErr: db.ErrInvalidParameter,
+		},
+		{
+			name: "invalid-username-uppercase",
+			in: &Account{
+				Account: &store.Account{
+					AuthMethodId: authMethod.PublicId,
+					UserName:     "KaZmiErcZak11",
+				},
+			},
+			wantIsErr: db.ErrInvalidParameter,
+		},
+		{
+			name: "invalid-username-leading-space",
+			in: &Account{
+				Account: &store.Account{
+					AuthMethodId: authMethod.PublicId,
+					UserName:     " kazmierczak12",
+				},
+			},
+			wantIsErr: db.ErrInvalidParameter,
+		},
+		{
+			name: "invalid-username-trailing-space",
+			in: &Account{
+				Account: &store.Account{
+					AuthMethodId: authMethod.PublicId,
+					UserName:     "kazmierczak13 ",
+				},
+			},
+			wantIsErr: db.ErrInvalidParameter,
+		},
+		{
+			name: "invalid-username-space-in-name",
+			in: &Account{
+				Account: &store.Account{
+					AuthMethodId: authMethod.PublicId,
+					UserName:     "kazmier czak14",
 				},
 			},
 			wantIsErr: db.ErrInvalidParameter,

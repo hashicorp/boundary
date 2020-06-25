@@ -3,6 +3,7 @@ package password
 import (
 	"context"
 	"fmt"
+	"regexp"
 
 	"github.com/hashicorp/watchtower/internal/auth/password/store"
 	"github.com/hashicorp/watchtower/internal/db"
@@ -31,6 +32,10 @@ func (r *Repository) CreateAccount(ctx context.Context, a *Account, opt ...Optio
 	if a.PublicId != "" {
 		return nil, fmt.Errorf("create: password account: public id not empty: %w", db.ErrInvalidParameter)
 	}
+	if !validUserName(a.UserName) {
+		return nil, fmt.Errorf("create: password account: invalid user name: %w", db.ErrInvalidParameter)
+	}
+
 	a = a.clone()
 
 	id, err := newAccountId()
@@ -76,4 +81,13 @@ func newAccountMetadata(a *Account, op oplog.OpType) oplog.Metadata {
 		metadata["auth-method-id"] = []string{a.AuthMethodId}
 	}
 	return metadata
+}
+
+var reInvalidUserName = regexp.MustCompile("[^a-z0-9.]")
+
+func validUserName(u string) bool {
+	if u == "" {
+		return false
+	}
+	return !reInvalidUserName.Match([]byte(u))
 }
