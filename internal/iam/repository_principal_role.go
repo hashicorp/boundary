@@ -47,7 +47,7 @@ func (r *Repository) AddPrincipalRoles(ctx context.Context, roleId string, userI
 		ctx,
 		db.StdRetryCnt,
 		db.ExpBackoff{},
-		func(w db.Writer) error {
+		func(reader db.Reader, w db.Writer) error {
 			for _, principalRole := range newPrincipalRoles {
 				returnedPrincipalRole := principalRole.Clone()
 				err := w.Create(
