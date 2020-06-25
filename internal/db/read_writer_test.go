@@ -1382,7 +1382,7 @@ func TestDb_CreateItems(t *testing.T) {
 				createItems: nil,
 			},
 			wantErr:   true,
-			wantErrIs: ErrNilParameter,
+			wantErrIs: ErrInvalidParameter,
 		},
 	}
 	for _, tt := range tests {
@@ -1542,7 +1542,7 @@ func TestDb_DeleteItems(t *testing.T) {
 				deleteItems: nil,
 			},
 			wantErr:   true,
-			wantErrIs: ErrNilParameter,
+			wantErrIs: ErrInvalidParameter,
 		},
 	}
 	for _, tt := range tests {

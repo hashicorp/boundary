@@ -222,17 +222,14 @@ func (rw *Db) Create(ctx context.Context, i interface{}, opt ...Option) error {
 // Supported options: WithOplog.  WithLookup is not a supported option.
 func (rw *Db) CreateItems(ctx context.Context, createItems []interface{}, opt ...Option) error {
 	if rw.underlying == nil {
-		return fmt.Errorf("create items: missing underlying db %w", ErrNilParameter)
-	}
-	if isNil(createItems) {
-		return fmt.Errorf("create items: interfaces is missing %w", ErrNilParameter)
+		return fmt.Errorf("create items: missing underlying db: %w", ErrNilParameter)
 	}
 	if len(createItems) == 0 {
-		return fmt.Errorf("create items: no interfaces to create %w", ErrInvalidParameter)
+		return fmt.Errorf("create items: no interfaces to create: %w", ErrInvalidParameter)
 	}
 	opts := GetOpts(opt...)
 	if opts.withLookup {
-		return fmt.Errorf("create items: withLookup not a supported option %w", ErrInvalidParameter)
+		return fmt.Errorf("create items: withLookup not a supported option: %w", ErrInvalidParameter)
 	}
 	// verify that createItems are all the same type.
 	var foundType reflect.Type
@@ -249,7 +246,7 @@ func (rw *Db) CreateItems(ctx context.Context, createItems []interface{}, opt ..
 	if opts.withOplog {
 		_, err := validateOplogArgs(createItems[0], opts)
 		if err != nil {
-			return fmt.Errorf("create items: oplog validation failed %w", err)
+			return fmt.Errorf("create items: oplog validation failed: %w", err)
 		}
 		ticket, err = rw.getTicket(createItems[0])
 		if err != nil {
@@ -261,7 +258,7 @@ func (rw *Db) CreateItems(ctx context.Context, createItems []interface{}, opt ..
 	}
 	if opts.withOplog {
 		if err := rw.addOplogForItems(ctx, CreateOp, opts, ticket, createItems); err != nil {
-			return fmt.Errorf("create items: unable to add oplog %w", err)
+			return fmt.Errorf("create items: unable to add oplog: %w", err)
 		}
 	}
 	return nil
@@ -430,17 +427,14 @@ func (rw *Db) Delete(ctx context.Context, i interface{}, opt ...Option) (int, er
 	return rowsDeleted, nil
 }
 
-// DeleteItems will deletes multiple items of the same type.
+// DeleteItems will delete multiple items of the same type.
 // Supported options: WithOplog.
 func (rw *Db) DeleteItems(ctx context.Context, deleteItems []interface{}, opt ...Option) (int, error) {
 	if rw.underlying == nil {
-		return NoRowsAffected, fmt.Errorf("delete items: missing underlying db %w", ErrNilParameter)
-	}
-	if isNil(deleteItems) {
-		return NoRowsAffected, fmt.Errorf("delete items: interfaces is missing %w", ErrNilParameter)
+		return NoRowsAffected, fmt.Errorf("delete items: missing underlying db: %w", ErrNilParameter)
 	}
 	if len(deleteItems) == 0 {
-		return NoRowsAffected, fmt.Errorf("delete items: no interfaces to delete %w", ErrInvalidParameter)
+		return NoRowsAffected, fmt.Errorf("delete items: no interfaces to delete: %w", ErrInvalidParameter)
 	}
 	// verify that createItems are all the same type.
 	var foundType reflect.Type
@@ -458,7 +452,7 @@ func (rw *Db) DeleteItems(ctx context.Context, deleteItems []interface{}, opt ..
 	if opts.withOplog {
 		_, err := validateOplogArgs(deleteItems[0], opts)
 		if err != nil {
-			return NoRowsAffected, fmt.Errorf("delete items: oplog validation failed %w", err)
+			return NoRowsAffected, fmt.Errorf("delete items: oplog validation failed: %w", err)
 		}
 		ticket, err = rw.getTicket(deleteItems[0])
 		if err != nil {
@@ -469,13 +463,13 @@ func (rw *Db) DeleteItems(ctx context.Context, deleteItems []interface{}, opt ..
 	for _, item := range deleteItems {
 		underlying := rw.underlying.Delete(item)
 		if underlying.Error != nil {
-			return rowsDeleted, fmt.Errorf("delete: failed %w", underlying.Error)
+			return rowsDeleted, fmt.Errorf("delete: failed: %w", underlying.Error)
 		}
 		rowsDeleted += int(underlying.RowsAffected)
 	}
 	if opts.withOplog && rowsDeleted > 0 {
 		if err := rw.addOplogForItems(ctx, DeleteOp, opts, ticket, deleteItems); err != nil {
-			return rowsDeleted, fmt.Errorf("delete items: unable to add oplog %w", err)
+			return rowsDeleted, fmt.Errorf("delete items: unable to add oplog: %w", err)
 		}
 	}
 	return rowsDeleted, nil
@@ -575,7 +569,6 @@ func (rw *Db) addOplogForItems(ctx context.Context, opType OpType, opts Options,
 		msg := &oplog.Message{
 			Message:  item.(proto.Message),
 			TypeName: replayable.TableName(),
-			OpType:   oplog.OpType_OP_TYPE_CREATE,
 		}
 		switch opType {
 		case CreateOp:
