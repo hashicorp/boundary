@@ -278,7 +278,7 @@ func TestRepository_CreateAuthToken(t *testing.T) {
 				assert.Nil(got)
 				return
 			}
-			require.NoError(t, err, "Got error for CreateAuthToken(ctx, %v, %v)", tt.in, tt.opts)
+			require.NoError(err, "Got error for CreateAuthToken(ctx, %v, %v)", tt.in, tt.opts)
 			assert.Empty(tt.in.PublicId)
 			assert.NotNil(got)
 			db.AssertPublicId(t, AuthTokenPublicIdPrefix, got.PublicId)
