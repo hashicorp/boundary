@@ -306,8 +306,8 @@ func TestRepository_LookupAuthToken(t *testing.T) {
 	at.Token = ""
 
 	badId, err := newAuthTokenId()
-	assert.NoError(t, err)
-	assert.NotNil(t, badId)
+	require.NoError(err)
+	require.NotNil(badId)
 
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
@@ -451,8 +451,8 @@ func TestRepository_DeleteAuthToken(t *testing.T) {
 
 	at := testAuthToken(t, conn)
 	badId, err := newAuthTokenId()
-	assert.NoError(t, err)
-	assert.NotNil(t, badId)
+	require.NoError(err)
+	require.NotNil(badId)
 
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
