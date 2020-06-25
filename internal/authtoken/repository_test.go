@@ -144,6 +144,23 @@ func TestRepository_CreateAuthToken(t *testing.T) {
 		wantErr bool
 	}{
 		{
+			name: "valid-no-options",
+			in: &AuthToken{
+				AuthToken: &store.AuthToken{
+					ScopeId:      org1.GetPublicId(),
+					IamUserId:    u1.GetPublicId(),
+					AuthMethodId: amId1,
+				},
+			},
+			want: &AuthToken{
+				AuthToken: &store.AuthToken{
+					ScopeId:      org1.GetPublicId(),
+					IamUserId:    u1.GetPublicId(),
+					AuthMethodId: amId1,
+				},
+			},
+		},
+		{
 			name:    "nil-authtoken",
 			wantErr: true,
 		},
@@ -173,21 +190,79 @@ func TestRepository_CreateAuthToken(t *testing.T) {
 			wantErr: true,
 		},
 		{
-			name: "valid-no-options",
+			name: "no-scopeid",
+			in: &AuthToken{
+				AuthToken: &store.AuthToken{
+					IamUserId:    u1.GetPublicId(),
+					AuthMethodId: amId1,
+				},
+			},
+			wantErr: true,
+		},
+		{
+			name: "no-authmethodid",
+			in: &AuthToken{
+				AuthToken: &store.AuthToken{
+					ScopeId:   org1.GetPublicId(),
+					IamUserId: u1.GetPublicId(),
+				},
+			},
+			wantErr: true,
+		},
+		{
+			name: "no-userid",
+			in: &AuthToken{
+				AuthToken: &store.AuthToken{
+					ScopeId:      org1.GetPublicId(),
+					AuthMethodId: amId1,
+				},
+			},
+			wantErr: true,
+		},
+		{
+			name: "invalid-scopeid",
+			in: &AuthToken{
+				AuthToken: &store.AuthToken{
+					IamUserId:    u1.GetPublicId(),
+					AuthMethodId: amId1,
+					ScopeId:      "this_is_invalid",
+				},
+			},
+			wantErr: true,
+		},
+		{
+			name: "invalid-authmethodid",
+			in: &AuthToken{
+				AuthToken: &store.AuthToken{
+					ScopeId:      org1.GetPublicId(),
+					IamUserId:    u1.GetPublicId(),
+					AuthMethodId: "this_is_invalid",
+				},
+			},
+			wantErr: true,
+		},
+		{
+			name: "invalid-userid",
+			in: &AuthToken{
+				AuthToken: &store.AuthToken{
+					ScopeId:      org1.GetPublicId(),
+					AuthMethodId: amId1,
+					IamUserId:    "this_is_invalid",
+				},
+			},
+			wantErr: true,
+		},
+		{
+			name: "token-specified",
 			in: &AuthToken{
 				AuthToken: &store.AuthToken{
 					ScopeId:      org1.GetPublicId(),
 					IamUserId:    u1.GetPublicId(),
 					AuthMethodId: amId1,
+					Token:        "anything_here_should_result_in_an_error",
 				},
 			},
-			want: &AuthToken{
-				AuthToken: &store.AuthToken{
-					ScopeId:      org1.GetPublicId(),
-					IamUserId:    u1.GetPublicId(),
-					AuthMethodId: amId1,
-				},
-			},
+			wantErr: true,
 		},
 	}
 
@@ -203,7 +278,7 @@ func TestRepository_CreateAuthToken(t *testing.T) {
 				assert.Nil(got)
 				return
 			}
-			assert.NoError(err, "Got error for CreateAuthToken(ctx, %v, %v)", tt.in, tt.opts)
+			require.NoError(t, err, "Got error for CreateAuthToken(ctx, %v, %v)", tt.in, tt.opts)
 			assert.Empty(tt.in.PublicId)
 			assert.NotNil(got)
 			assertPublicId(t, AuthTokenPublicIdPrefix, got.PublicId)
