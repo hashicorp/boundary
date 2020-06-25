@@ -1,13 +1,10 @@
 package controller
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"net/http"
-	"os"
 	"path"
 	"path/filepath"
 	"strings"
@@ -61,24 +58,8 @@ func handleUi(c *Controller) http.Handler {
 	// TODO: Do stuff with real UI data when it's bundled. We may also have to
 	// do a similar thing with fetching index.html in advance.
 	var nextHandler http.Handler
-	var indexBytes []byte
-	var modTime time.Time
 	if c.conf.RawConfig.PassthroughDirectory != "" {
-		nextHandler, indexBytes, modTime = devPassthroughHandler(c)
-	}
-
-	returnIndexBytes := func(w http.ResponseWriter, r *http.Request) {
-		_, file := filepath.Split(r.URL.Path)
-		rw := newIndexResponseWriter()
-		http.ServeContent(rw, r, file, modTime, bytes.NewReader(indexBytes))
-		for k, v := range rw.header {
-			for _, i := range v {
-				w.Header().Add(k, i)
-			}
-		}
-		w.Header().Set("content-type", "text/html; charset=utf-8")
-		w.WriteHeader(rw.statusCode)
-		w.Write(rw.body.Bytes())
+		nextHandler = devPassthroughHandler(c)
 	}
 
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -91,22 +72,11 @@ func handleUi(c *Controller) http.Handler {
 		switch dotIndex {
 		case -1:
 			// For all paths without an extension serve /index.html
-			returnIndexBytes(w, r)
-			return
+			r.URL.Path = "/"
 
 		default:
 			switch r.URL.Path {
-			case "/index.html":
-				// Because of the special handling of http.FileServer this fails
-				// in dev passthrough mode so we handle it specifically
-				returnIndexBytes(w, r)
-				return
-
-			case "/favicon.png", "/assets/styles.css":
-				// This is purely an optimization, it'd fall through below
-				// outside of this case
-				nextHandler.ServeHTTP(w, r)
-				return
+			case "/", "/favicon.png", "/assets/styles.css":
 
 			default:
 				for i := dotIndex + 1; i < len(r.URL.Path); i++ {
@@ -118,8 +88,7 @@ func handleUi(c *Controller) http.Handler {
 						(intVal > 'Z' && intVal < 'a') ||
 						intVal > 'z' {
 						// Not an extension. Serve the contents of index.html
-						returnIndexBytes(w, r)
-						return
+						r.URL.Path = "/"
 					}
 				}
 			}
@@ -130,7 +99,7 @@ func handleUi(c *Controller) http.Handler {
 	})
 }
 
-func devPassthroughHandler(c *Controller) (http.Handler, []byte, time.Time) {
+func devPassthroughHandler(c *Controller) http.Handler {
 	// Panic may not be ideal but this is never a production call and it'll
 	// panic on startup. We could also just change the function to return
 	// an error.
@@ -142,31 +111,7 @@ func devPassthroughHandler(c *Controller) (http.Handler, []byte, time.Time) {
 	fs := http.FileServer(http.Dir(abs))
 	prefixHandler := http.StripPrefix("/", fs)
 
-	// We need to read index.html because http.ServeFile has special handling
-	// for that file that we don't want
-	file, err := os.Open(filepath.Join(abs, "index.html"))
-	if err != nil {
-		c.logger.Warn("unable to open index.html in the dev passthrough directory, if it exists")
-		return prefixHandler, nil, time.Time{}
-	}
-	defer file.Close()
-
-	fileInfo, err := file.Stat()
-	if err != nil {
-		c.logger.Warn("unable to stat index.html in the dev passthrough directory, if it exists")
-		return prefixHandler, nil, time.Time{}
-	}
-	modTime := fileInfo.ModTime()
-
-	// Easier to just do an ioutil.ReadAll than deal with the lower level read
-	// methods, even though we're opening twice
-	indexBytes, err := ioutil.ReadFile(filepath.Join(abs, "index.html"))
-	if err != nil {
-		c.logger.Warn("unable to read index.html bytes in the dev passthrough directory, if it exists")
-		return prefixHandler, nil, time.Time{}
-	}
-
-	return prefixHandler, indexBytes, modTime
+	return prefixHandler
 }
 
 func handleGrpcGateway(c *Controller) (http.Handler, error) {
