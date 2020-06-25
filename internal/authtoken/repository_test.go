@@ -394,7 +394,7 @@ func TestRepository_UpdateLastUsed(t *testing.T) {
 			wantErr: db.ErrRecordNotFound,
 		},
 		{
-			name:    "bad-token",
+			name:    "empty-token",
 			token:   "",
 			want:    nil,
 			wantErr: db.ErrInvalidParameter,
