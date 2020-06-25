@@ -6,10 +6,15 @@ import (
 	"fmt"
 
 	wrapping "github.com/hashicorp/go-kms-wrapping"
+	"github.com/hashicorp/watchtower/internal/iam"
 
 	"github.com/hashicorp/watchtower/internal/authtoken/store"
 	"github.com/hashicorp/watchtower/internal/db"
 	"github.com/hashicorp/watchtower/internal/oplog"
+)
+
+var (
+	ErrScopeMismatch = errors.New("scope for referenced resource doesn't match scope provided")
 )
 
 // A Repository stores and retrieves the persistent types in the authtoken
@@ -70,6 +75,11 @@ func (r *Repository) CreateAuthToken(ctx context.Context, at *AuthToken, opt ...
 	}
 	at = at.clone()
 
+	iamRepo, err := iam.NewRepository(r.reader, r.writer, r.wrapper)
+	if err != nil {
+		return nil, fmt.Errorf("create: auth token: iam repo creation: %w", err)
+	}
+
 	id, err := newAuthTokenId()
 	if err != nil {
 		return nil, fmt.Errorf("create: auth token: %w", err)
@@ -90,6 +100,18 @@ func (r *Repository) CreateAuthToken(ctx context.Context, at *AuthToken, opt ...
 		db.StdRetryCnt,
 		db.ExpBackoff{},
 		func(_ db.Reader, w db.Writer) error {
+			u, err := iamRepo.LookupUser(ctx, at.IamUserId)
+			if err != nil {
+				return fmt.Errorf("create: auth token: looking up user: %w", err)
+			}
+			if u == nil {
+				return fmt.Errorf("create: auth token: user not found: %w", err)
+			}
+			if u.GetScopeId() != at.GetScopeId() {
+				return ErrScopeMismatch
+			}
+			// TODO: Lookup and verify that AuthMethod's scope matches the provided scope.
+
 			newAuthToken = at.clone()
 			return w.Create(
 				ctx,
