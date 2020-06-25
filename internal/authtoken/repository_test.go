@@ -19,6 +19,7 @@ import (
 )
 
 func TestRepository_New(t *testing.T) {
+	assert := assert.New(t)
 	cleanup, conn, _ := db.TestSetup(t, "postgres")
 	t.Cleanup(func() {
 		if err := conn.Close(); err != nil {
@@ -101,7 +102,6 @@ func TestRepository_New(t *testing.T) {
 	for _, tt := range tests {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
-			assert := assert.New(t)
 			got, err := NewRepository(tt.args.r, tt.args.w, tt.args.wrapper)
 			if tt.wantIsErr != nil {
 				assert.Truef(errors.Is(err, tt.wantIsErr), "want err: %q got: %q", tt.wantIsErr, err)
@@ -116,6 +116,7 @@ func TestRepository_New(t *testing.T) {
 }
 
 func TestRepository_CreateAuthToken(t *testing.T) {
+	assert, require := assert.New(t), require.New(t)
 	cleanup, conn, _ := db.TestSetup(t, "postgres")
 	t.Cleanup(func() {
 		if err := cleanup(); err != nil {
@@ -268,10 +269,9 @@ func TestRepository_CreateAuthToken(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			assert := assert.New(t)
 			repo, err := NewRepository(rw, rw, wrapper)
-			assert.NoError(err)
-			assert.NotNil(repo)
+			require.NoError(err)
+			require.NotNil(repo)
 			got, err := repo.CreateAuthToken(context.Background(), tt.in, tt.opts...)
 			if tt.wantErr {
 				assert.Error(err)
@@ -291,6 +291,7 @@ func TestRepository_CreateAuthToken(t *testing.T) {
 }
 
 func TestRepository_LookupAuthToken(t *testing.T) {
+	assert, require := assert.New(t), require.New(t)
 	cleanup, conn, _ := db.TestSetup(t, "postgres")
 	t.Cleanup(func() {
 		if err := cleanup(); err != nil {
@@ -338,10 +339,9 @@ func TestRepository_LookupAuthToken(t *testing.T) {
 	for _, tt := range tests {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
-			assert := assert.New(t)
 			repo, err := NewRepository(rw, rw, wrapper)
-			assert.NoError(err)
-			assert.NotNil(repo)
+			require.NoError(err)
+			require.NotNil(repo)
 
 			got, err := repo.LookupAuthToken(context.Background(), tt.id)
 			if tt.wantErr != nil {
@@ -405,8 +405,8 @@ func TestRepository_UpdateLastUsed(t *testing.T) {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			repo, err := NewRepository(rw, rw, wrapper)
-			assert.NoError(err)
-			assert.NotNil(repo)
+			require.NoError(err)
+			require.NotNil(repo)
 
 			got, err := repo.UpdateLastUsed(context.Background(), tt.token)
 			if tt.wantErr != nil {
@@ -438,6 +438,7 @@ func TestRepository_UpdateLastUsed(t *testing.T) {
 }
 
 func TestRepository_DeleteAuthToken(t *testing.T) {
+	assert, require := assert.New(t), require.New(t)
 	cleanup, conn, _ := db.TestSetup(t, "postgres")
 	t.Cleanup(func() {
 		if err := cleanup(); err != nil {
@@ -483,10 +484,9 @@ func TestRepository_DeleteAuthToken(t *testing.T) {
 	for _, tt := range tests {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
-			assert := assert.New(t)
 			repo, err := NewRepository(rw, rw, wrapper)
-			assert.NoError(err)
-			assert.NotNil(repo)
+			require.NoError(err)
+			require.NotNil(repo)
 
 			got, err := repo.DeleteAuthToken(context.Background(), tt.id)
 			if tt.wantErr != nil {
