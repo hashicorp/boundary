@@ -46,24 +46,24 @@ func (s *AuthToken) clone() *AuthToken {
 }
 
 const (
-	AuthTokenPublicIdPrefix = "s"
-	AuthTokenPrefix         = "t"
+	AuthTokenPrefix = "t"
+	// The version prefix is used to differentiate token versions just for future proofing.
+	TokenValueVersionPrefix = "0"
 )
 
 func newAuthTokenId() (string, error) {
-	id, err := db.NewPublicId(AuthTokenPublicIdPrefix)
+	id, err := db.NewPublicId(AuthTokenPrefix)
 	if err != nil {
 		return "", fmt.Errorf("new auth token id: %w", err)
 	}
 	return id, err
 }
 
-// newAuthToken generates a token of length 20 not counting the prefix.
+// newAuthToken generates a token of length 24 not counting the version prefix.
 func newAuthToken() (string, error) {
-	// TODO: figure out if this provides enough randomness.
-	token, err := base62.Random(30)
+	token, err := base62.Random(24)
 	if err != nil {
 		return "", fmt.Errorf("Unable to generate auth token: %w", err)
 	}
-	return fmt.Sprintf("%s_%s", AuthTokenPrefix, token), nil
+	return fmt.Sprintf("%s%s", TokenValueVersionPrefix, token), nil
 }
