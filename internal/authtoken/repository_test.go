@@ -474,7 +474,7 @@ func TestRepository_DeleteAuthToken(t *testing.T) {
 			want: 0,
 		},
 		{
-			name:    "bad-public-id",
+			name:    "empty-public-id",
 			id:      "",
 			want:    0,
 			wantErr: db.ErrInvalidParameter,
