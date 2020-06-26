@@ -22,6 +22,9 @@ const (
 	defaultAuthTokenDuration = time.Hour * 24
 )
 
+// TokenAuthenticator returns a function that can be used in grpc-gateway's runtime.WithMetadata ServerOption.
+// It looks at the cookies and headers of the incoming request and returns metadata that can later be
+// used by handlers to build a TokenMetadata using the ToTokenMetadata function.
 func TokenAuthenticator(l hclog.Logger) func(context.Context, *http.Request) metadata.MD {
 	return func(ctx context.Context, req *http.Request) metadata.MD {
 		tMD := TokenMetadata{}
@@ -90,6 +93,9 @@ const (
 	mdAuthTokenTypeKey        = "wt-authtoken-type-key"
 )
 
+// ToTokenMetadata takes an incoming context and builds a TokenMetadata based on the metadata attached to it.
+// If the context has no incoming metadata attached to it an error is returned.  If no TokenMetadata related
+// // metadata is attached to it an empty TokenMetadata is returned.
 func ToTokenMetadata(ctx context.Context) (TokenMetadata, error) {
 	md, ok := metadata.FromIncomingContext(ctx)
 	if !ok {
