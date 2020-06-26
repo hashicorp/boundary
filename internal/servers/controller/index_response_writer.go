@@ -3,19 +3,24 @@ package controller
 import (
 	"bytes"
 	"net/http"
+	"strings"
 )
 
+const magicValue = `{{DEFAULT_ORG_ID}}`
+
 type indexResponseWriter struct {
-	statusCode int
-	header     http.Header
-	body       *bytes.Buffer
+	statusCode   int
+	header       http.Header
+	body         *bytes.Buffer
+	defaultOrgId string
 }
 
 // newindexResponseWriter returns an initialized indexResponseWriter
-func newIndexResponseWriter() *indexResponseWriter {
+func newIndexResponseWriter(defaultOrgId string) *indexResponseWriter {
 	return &indexResponseWriter{
-		header: make(http.Header),
-		body:   new(bytes.Buffer),
+		header:       make(http.Header),
+		body:         new(bytes.Buffer),
+		defaultOrgId: defaultOrgId,
 	}
 }
 
@@ -38,5 +43,9 @@ func (i *indexResponseWriter) writeToWriter(w http.ResponseWriter) {
 		}
 	}
 	w.WriteHeader(i.statusCode)
-	w.Write(i.body.Bytes())
+	w.Write(
+		[]byte(
+			strings.Replace(i.body.String(), magicValue, i.defaultOrgId, 1),
+		),
+	)
 }

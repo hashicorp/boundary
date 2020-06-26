@@ -27,8 +27,6 @@ import (
 	"github.com/hashicorp/watchtower/internal/ui"
 )
 
-const DefaultOrgHeader = "WATCHTOWER-DEFAULT-ORG"
-
 type HandlerProperties struct {
 	ListenerConfig *configutil.Listener
 }
@@ -64,9 +62,8 @@ func handleUi(c *Controller) http.Handler {
 	rootHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case "/":
-			irw := newIndexResponseWriter()
+			irw := newIndexResponseWriter(c.conf.DefaultOrgId)
 			nextHandler.ServeHTTP(irw, r)
-			irw.header.Set(DefaultOrgHeader, c.conf.DefaultOrgId)
 			irw.writeToWriter(w)
 
 		default:
