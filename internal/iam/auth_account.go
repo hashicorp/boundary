@@ -28,7 +28,7 @@ func allocAuthAccount() AuthAccount {
 	}
 }
 
-// Clone creates a clone of the user account.
+// Clone creates a clone of the auth account.
 func (a *AuthAccount) Clone() interface{} {
 	cp := proto.Clone(a.AuthAccount)
 	return &AuthAccount{
@@ -51,7 +51,7 @@ func (a *AuthAccount) validScopeTypes() []scope.Type {
 	return []scope.Type{scope.Organization}
 }
 
-// GetScope returns the scope for the Role.
+// GetScope returns the scope for the auth account.
 func (a *AuthAccount) GetScope(ctx context.Context, r db.Reader) (*Scope, error) {
 	return LookupScope(ctx, r, a)
 }
