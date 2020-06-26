@@ -47,12 +47,12 @@ service OrganizationService {
   }
 
   // Logout terminates a user's current session.
-  rpc Unauthenticate(UnauthenticateRequest) returns (UnauthenticateResponse) {
+  rpc Deauthenticate(DeauthenticateRequest) returns (DeauthenticateResponse) {
     option (google.api.http) = {
-      post: "/v1/orgs/{org_id}:unauthenticate"
+      post: "/v1/orgs/{org_id}:deauthenticate"
     };
     option (grpc.gateway.protoc_gen_swagger.options.openapiv2_operation) = {
-      summary: "Unauthenticate an authentication token from an Organization."
+      summary: "Deauthenticate an authentication token from an Organization."
     };
   }
 }
@@ -94,7 +94,7 @@ message AuthenticateResponse {
   resources.authtokens.v1.AuthToken item = 1;
 }
 
-message UnauthenticateRequest {
+message DeauthenticateRequest {
   string org_id = 1;
 }
-message UnauthenticateResponse {}
+message DeauthenticateResponse {}

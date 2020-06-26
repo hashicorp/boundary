@@ -63,8 +63,8 @@ func (s Service) Authenticate(ctx context.Context, req *pbs.AuthenticateRequest)
 	return nil, status.Error(codes.Unimplemented, "Requested method is unimplemented for Organization.")
 }
 
-// Unauthenticate implements the interface pbs.OrganizationServiceServer.
-func (s Service) Unauthenticate(ctx context.Context, req *pbs.UnauthenticateRequest) (*pbs.UnauthenticateResponse, error) {
+// Deauthenticate implements the interface pbs.OrganizationServiceServer.
+func (s Service) Deauthenticate(ctx context.Context, req *pbs.DeauthenticateRequest) (*pbs.DeauthenticateResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "Requested method is unimplemented for Organization.")
 }
 

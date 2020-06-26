@@ -405,7 +405,7 @@ func (x *AuthenticateResponse) GetItem() *authtokens.AuthToken {
 	return nil
 }
 
-type UnauthenticateRequest struct {
+type DeauthenticateRequest struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
@@ -413,8 +413,8 @@ type UnauthenticateRequest struct {
 	OrgId string `protobuf:"bytes,1,opt,name=org_id,json=orgId,proto3" json:"org_id,omitempty"`
 }
 
-func (x *UnauthenticateRequest) Reset() {
-	*x = UnauthenticateRequest{}
+func (x *DeauthenticateRequest) Reset() {
+	*x = DeauthenticateRequest{}
 	if protoimpl.UnsafeEnabled {
 		mi := &file_controller_api_services_v1_organization_service_proto_msgTypes[7]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -422,13 +422,13 @@ func (x *UnauthenticateRequest) Reset() {
 	}
 }
 
-func (x *UnauthenticateRequest) String() string {
+func (x *DeauthenticateRequest) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*UnauthenticateRequest) ProtoMessage() {}
+func (*DeauthenticateRequest) ProtoMessage() {}
 
-func (x *UnauthenticateRequest) ProtoReflect() protoreflect.Message {
+func (x *DeauthenticateRequest) ProtoReflect() protoreflect.Message {
 	mi := &file_controller_api_services_v1_organization_service_proto_msgTypes[7]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -440,26 +440,26 @@ func (x *UnauthenticateRequest) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use UnauthenticateRequest.ProtoReflect.Descriptor instead.
-func (*UnauthenticateRequest) Descriptor() ([]byte, []int) {
+// Deprecated: Use DeauthenticateRequest.ProtoReflect.Descriptor instead.
+func (*DeauthenticateRequest) Descriptor() ([]byte, []int) {
 	return file_controller_api_services_v1_organization_service_proto_rawDescGZIP(), []int{7}
 }
 
-func (x *UnauthenticateRequest) GetOrgId() string {
+func (x *DeauthenticateRequest) GetOrgId() string {
 	if x != nil {
 		return x.OrgId
 	}
 	return ""
 }
 
-type UnauthenticateResponse struct {
+type DeauthenticateResponse struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 }
 
-func (x *UnauthenticateResponse) Reset() {
-	*x = UnauthenticateResponse{}
+func (x *DeauthenticateResponse) Reset() {
+	*x = DeauthenticateResponse{}
 	if protoimpl.UnsafeEnabled {
 		mi := &file_controller_api_services_v1_organization_service_proto_msgTypes[8]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -467,13 +467,13 @@ func (x *UnauthenticateResponse) Reset() {
 	}
 }
 
-func (x *UnauthenticateResponse) String() string {
+func (x *DeauthenticateResponse) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*UnauthenticateResponse) ProtoMessage() {}
+func (*DeauthenticateResponse) ProtoMessage() {}
 
-func (x *UnauthenticateResponse) ProtoReflect() protoreflect.Message {
+func (x *DeauthenticateResponse) ProtoReflect() protoreflect.Message {
 	mi := &file_controller_api_services_v1_organization_service_proto_msgTypes[8]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -485,8 +485,8 @@ func (x *UnauthenticateResponse) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use UnauthenticateResponse.ProtoReflect.Descriptor instead.
-func (*UnauthenticateResponse) Descriptor() ([]byte, []int) {
+// Deprecated: Use DeauthenticateResponse.ProtoReflect.Descriptor instead.
+func (*DeauthenticateResponse) Descriptor() ([]byte, []int) {
 	return file_controller_api_services_v1_organization_service_proto_rawDescGZIP(), []int{8}
 }
 
@@ -553,10 +553,10 @@ var file_controller_api_services_v1_organization_service_proto_rawDesc = []byte{
 	0x2e, 0x63, 0x6f, 0x6e, 0x74, 0x72, 0x6f, 0x6c, 0x6c, 0x65, 0x72, 0x2e, 0x61, 0x70, 0x69, 0x2e,
 	0x72, 0x65, 0x73, 0x6f, 0x75, 0x72, 0x63, 0x65, 0x73, 0x2e, 0x61, 0x75, 0x74, 0x68, 0x74, 0x6f,
 	0x6b, 0x65, 0x6e, 0x73, 0x2e, 0x76, 0x31, 0x2e, 0x41, 0x75, 0x74, 0x68, 0x54, 0x6f, 0x6b, 0x65,
-	0x6e, 0x52, 0x04, 0x69, 0x74, 0x65, 0x6d, 0x22, 0x2e, 0x0a, 0x15, 0x55, 0x6e, 0x61, 0x75, 0x74,
+	0x6e, 0x52, 0x04, 0x69, 0x74, 0x65, 0x6d, 0x22, 0x2e, 0x0a, 0x15, 0x44, 0x65, 0x61, 0x75, 0x74,
 	0x68, 0x65, 0x6e, 0x74, 0x69, 0x63, 0x61, 0x74, 0x65, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74,
 	0x12, 0x15, 0x0a, 0x06, 0x6f, 0x72, 0x67, 0x5f, 0x69, 0x64, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09,
-	0x52, 0x05, 0x6f, 0x72, 0x67, 0x49, 0x64, 0x22, 0x18, 0x0a, 0x16, 0x55, 0x6e, 0x61, 0x75, 0x74,
+	0x52, 0x05, 0x6f, 0x72, 0x67, 0x49, 0x64, 0x22, 0x18, 0x0a, 0x16, 0x44, 0x65, 0x61, 0x75, 0x74,
 	0x68, 0x65, 0x6e, 0x74, 0x69, 0x63, 0x61, 0x74, 0x65, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73,
 	0x65, 0x32, 0xdb, 0x06, 0x0a, 0x13, 0x4f, 0x72, 0x67, 0x61, 0x6e, 0x69, 0x7a, 0x61, 0x74, 0x69,
 	0x6f, 0x6e, 0x53, 0x65, 0x72, 0x76, 0x69, 0x63, 0x65, 0x12, 0xb6, 0x01, 0x0a, 0x0f, 0x47, 0x65,
@@ -597,18 +597,18 @@ var file_controller_api_services_v1_organization_service_proto_rawDesc = []byte{
 	0x72, 0x20, 0x74, 0x6f, 0x20, 0x61, 0x6e, 0x20, 0x4f, 0x72, 0x67, 0x61, 0x6e, 0x69, 0x7a, 0x61,
 	0x74, 0x69, 0x6f, 0x6e, 0x20, 0x61, 0x6e, 0x64, 0x20, 0x72, 0x65, 0x74, 0x72, 0x69, 0x65, 0x76,
 	0x65, 0x20, 0x61, 0x6e, 0x20, 0x61, 0x75, 0x74, 0x68, 0x65, 0x6e, 0x74, 0x69, 0x63, 0x61, 0x74,
-	0x69, 0x6f, 0x6e, 0x20, 0x74, 0x6f, 0x6b, 0x65, 0x6e, 0x2e, 0x12, 0xe2, 0x01, 0x0a, 0x0e, 0x55,
-	0x6e, 0x61, 0x75, 0x74, 0x68, 0x65, 0x6e, 0x74, 0x69, 0x63, 0x61, 0x74, 0x65, 0x12, 0x31, 0x2e,
+	0x69, 0x6f, 0x6e, 0x20, 0x74, 0x6f, 0x6b, 0x65, 0x6e, 0x2e, 0x12, 0xe2, 0x01, 0x0a, 0x0e, 0x44,
+	0x65, 0x61, 0x75, 0x74, 0x68, 0x65, 0x6e, 0x74, 0x69, 0x63, 0x61, 0x74, 0x65, 0x12, 0x31, 0x2e,
 	0x63, 0x6f, 0x6e, 0x74, 0x72, 0x6f, 0x6c, 0x6c, 0x65, 0x72, 0x2e, 0x61, 0x70, 0x69, 0x2e, 0x73,
-	0x65, 0x72, 0x76, 0x69, 0x63, 0x65, 0x73, 0x2e, 0x76, 0x31, 0x2e, 0x55, 0x6e, 0x61, 0x75, 0x74,
+	0x65, 0x72, 0x76, 0x69, 0x63, 0x65, 0x73, 0x2e, 0x76, 0x31, 0x2e, 0x44, 0x65, 0x61, 0x75, 0x74,
 	0x68, 0x65, 0x6e, 0x74, 0x69, 0x63, 0x61, 0x74, 0x65, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74,
 	0x1a, 0x32, 0x2e, 0x63, 0x6f, 0x6e, 0x74, 0x72, 0x6f, 0x6c, 0x6c, 0x65, 0x72, 0x2e, 0x61, 0x70,
-	0x69, 0x2e, 0x73, 0x65, 0x72, 0x76, 0x69, 0x63, 0x65, 0x73, 0x2e, 0x76, 0x31, 0x2e, 0x55, 0x6e,
+	0x69, 0x2e, 0x73, 0x65, 0x72, 0x76, 0x69, 0x63, 0x65, 0x73, 0x2e, 0x76, 0x31, 0x2e, 0x44, 0x65,
 	0x61, 0x75, 0x74, 0x68, 0x65, 0x6e, 0x74, 0x69, 0x63, 0x61, 0x74, 0x65, 0x52, 0x65, 0x73, 0x70,
 	0x6f, 0x6e, 0x73, 0x65, 0x22, 0x69, 0x82, 0xd3, 0xe4, 0x93, 0x02, 0x22, 0x22, 0x20, 0x2f, 0x76,
 	0x31, 0x2f, 0x6f, 0x72, 0x67, 0x73, 0x2f, 0x7b, 0x6f, 0x72, 0x67, 0x5f, 0x69, 0x64, 0x7d, 0x3a,
-	0x75, 0x6e, 0x61, 0x75, 0x74, 0x68, 0x65, 0x6e, 0x74, 0x69, 0x63, 0x61, 0x74, 0x65, 0x92, 0x41,
-	0x3e, 0x12, 0x3c, 0x55, 0x6e, 0x61, 0x75, 0x74, 0x68, 0x65, 0x6e, 0x74, 0x69, 0x63, 0x61, 0x74,
+	0x64, 0x65, 0x61, 0x75, 0x74, 0x68, 0x65, 0x6e, 0x74, 0x69, 0x63, 0x61, 0x74, 0x65, 0x92, 0x41,
+	0x3e, 0x12, 0x3c, 0x44, 0x65, 0x61, 0x75, 0x74, 0x68, 0x65, 0x6e, 0x74, 0x69, 0x63, 0x61, 0x74,
 	0x65, 0x20, 0x61, 0x6e, 0x20, 0x61, 0x75, 0x74, 0x68, 0x65, 0x6e, 0x74, 0x69, 0x63, 0x61, 0x74,
 	0x69, 0x6f, 0x6e, 0x20, 0x74, 0x6f, 0x6b, 0x65, 0x6e, 0x20, 0x66, 0x72, 0x6f, 0x6d, 0x20, 0x61,
 	0x6e, 0x20, 0x4f, 0x72, 0x67, 0x61, 0x6e, 0x69, 0x7a, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x2e, 0x42,
@@ -641,8 +641,8 @@ var file_controller_api_services_v1_organization_service_proto_goTypes = []inter
 	(*PasswordCredential)(nil),        // 4: controller.api.services.v1.PasswordCredential
 	(*AuthenticateRequest)(nil),       // 5: controller.api.services.v1.AuthenticateRequest
 	(*AuthenticateResponse)(nil),      // 6: controller.api.services.v1.AuthenticateResponse
-	(*UnauthenticateRequest)(nil),     // 7: controller.api.services.v1.UnauthenticateRequest
-	(*UnauthenticateResponse)(nil),    // 8: controller.api.services.v1.UnauthenticateResponse
+	(*DeauthenticateRequest)(nil),     // 7: controller.api.services.v1.DeauthenticateRequest
+	(*DeauthenticateResponse)(nil),    // 8: controller.api.services.v1.DeauthenticateResponse
 	(*scopes.Organization)(nil),       // 9: controller.api.resources.scopes.v1.Organization
 	(*authtokens.AuthToken)(nil),      // 10: controller.api.resources.authtokens.v1.AuthToken
 }
@@ -654,11 +654,11 @@ var file_controller_api_services_v1_organization_service_proto_depIdxs = []int32
 	0,  // 4: controller.api.services.v1.OrganizationService.GetOrganization:input_type -> controller.api.services.v1.GetOrganizationRequest
 	2,  // 5: controller.api.services.v1.OrganizationService.ListOrganizations:input_type -> controller.api.services.v1.ListOrganizationsRequest
 	5,  // 6: controller.api.services.v1.OrganizationService.Authenticate:input_type -> controller.api.services.v1.AuthenticateRequest
-	7,  // 7: controller.api.services.v1.OrganizationService.Unauthenticate:input_type -> controller.api.services.v1.UnauthenticateRequest
+	7,  // 7: controller.api.services.v1.OrganizationService.Deauthenticate:input_type -> controller.api.services.v1.DeauthenticateRequest
 	1,  // 8: controller.api.services.v1.OrganizationService.GetOrganization:output_type -> controller.api.services.v1.GetOrganizationResponse
 	3,  // 9: controller.api.services.v1.OrganizationService.ListOrganizations:output_type -> controller.api.services.v1.ListOrganizationsResponse
 	6,  // 10: controller.api.services.v1.OrganizationService.Authenticate:output_type -> controller.api.services.v1.AuthenticateResponse
-	8,  // 11: controller.api.services.v1.OrganizationService.Unauthenticate:output_type -> controller.api.services.v1.UnauthenticateResponse
+	8,  // 11: controller.api.services.v1.OrganizationService.Deauthenticate:output_type -> controller.api.services.v1.DeauthenticateResponse
 	8,  // [8:12] is the sub-list for method output_type
 	4,  // [4:8] is the sub-list for method input_type
 	4,  // [4:4] is the sub-list for extension type_name
@@ -757,7 +757,7 @@ func file_controller_api_services_v1_organization_service_proto_init() {
 			}
 		}
 		file_controller_api_services_v1_organization_service_proto_msgTypes[7].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*UnauthenticateRequest); i {
+			switch v := v.(*DeauthenticateRequest); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -769,7 +769,7 @@ func file_controller_api_services_v1_organization_service_proto_init() {
 			}
 		}
 		file_controller_api_services_v1_organization_service_proto_msgTypes[8].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*UnauthenticateResponse); i {
+			switch v := v.(*DeauthenticateResponse); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -822,7 +822,7 @@ type OrganizationServiceClient interface {
 	// Authenticate validates credentials provided.
 	Authenticate(ctx context.Context, in *AuthenticateRequest, opts ...grpc.CallOption) (*AuthenticateResponse, error)
 	// Logout terminates a user's current session.
-	Unauthenticate(ctx context.Context, in *UnauthenticateRequest, opts ...grpc.CallOption) (*UnauthenticateResponse, error)
+	Deauthenticate(ctx context.Context, in *DeauthenticateRequest, opts ...grpc.CallOption) (*DeauthenticateResponse, error)
 }
 
 type organizationServiceClient struct {
@@ -860,9 +860,9 @@ func (c *organizationServiceClient) Authenticate(ctx context.Context, in *Authen
 	return out, nil
 }
 
-func (c *organizationServiceClient) Unauthenticate(ctx context.Context, in *UnauthenticateRequest, opts ...grpc.CallOption) (*UnauthenticateResponse, error) {
-	out := new(UnauthenticateResponse)
-	err := c.cc.Invoke(ctx, "/controller.api.services.v1.OrganizationService/Unauthenticate", in, out, opts...)
+func (c *organizationServiceClient) Deauthenticate(ctx context.Context, in *DeauthenticateRequest, opts ...grpc.CallOption) (*DeauthenticateResponse, error) {
+	out := new(DeauthenticateResponse)
+	err := c.cc.Invoke(ctx, "/controller.api.services.v1.OrganizationService/Deauthenticate", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -880,7 +880,7 @@ type OrganizationServiceServer interface {
 	// Authenticate validates credentials provided.
 	Authenticate(context.Context, *AuthenticateRequest) (*AuthenticateResponse, error)
 	// Logout terminates a user's current session.
-	Unauthenticate(context.Context, *UnauthenticateRequest) (*UnauthenticateResponse, error)
+	Deauthenticate(context.Context, *DeauthenticateRequest) (*DeauthenticateResponse, error)
 }
 
 // UnimplementedOrganizationServiceServer can be embedded to have forward compatible implementations.
@@ -896,8 +896,8 @@ func (*UnimplementedOrganizationServiceServer) ListOrganizations(context.Context
 func (*UnimplementedOrganizationServiceServer) Authenticate(context.Context, *AuthenticateRequest) (*AuthenticateResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Authenticate not implemented")
 }
-func (*UnimplementedOrganizationServiceServer) Unauthenticate(context.Context, *UnauthenticateRequest) (*UnauthenticateResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method Unauthenticate not implemented")
+func (*UnimplementedOrganizationServiceServer) Deauthenticate(context.Context, *DeauthenticateRequest) (*DeauthenticateResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method Deauthenticate not implemented")
 }
 
 func RegisterOrganizationServiceServer(s *grpc.Server, srv OrganizationServiceServer) {
@@ -958,20 +958,20 @@ func _OrganizationService_Authenticate_Handler(srv interface{}, ctx context.Cont
 	return interceptor(ctx, in, info, handler)
 }
 
-func _OrganizationService_Unauthenticate_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(UnauthenticateRequest)
+func _OrganizationService_Deauthenticate_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(DeauthenticateRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(OrganizationServiceServer).Unauthenticate(ctx, in)
+		return srv.(OrganizationServiceServer).Deauthenticate(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/controller.api.services.v1.OrganizationService/Unauthenticate",
+		FullMethod: "/controller.api.services.v1.OrganizationService/Deauthenticate",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(OrganizationServiceServer).Unauthenticate(ctx, req.(*UnauthenticateRequest))
+		return srv.(OrganizationServiceServer).Deauthenticate(ctx, req.(*DeauthenticateRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -993,8 +993,8 @@ var _OrganizationService_serviceDesc = grpc.ServiceDesc{
 			Handler:    _OrganizationService_Authenticate_Handler,
 		},
 		{
-			MethodName: "Unauthenticate",
-			Handler:    _OrganizationService_Unauthenticate_Handler,
+			MethodName: "Deauthenticate",
+			Handler:    _OrganizationService_Deauthenticate_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

@@ -18,10 +18,6 @@ message AuthToken {
 	// Output only.
 	string token = 2;
 
-	// The type of the token generated.  This can be "cookie" or "token"
-	// Output only.
-	string token_type = 3 [json_name="token_type"];
-
 	// The id of the user of this AuthToken.
 	// Output only.
 	string user_id = 4 [json_name="user_id"];
@@ -38,9 +34,9 @@ message AuthToken {
 	// Output only.
 	google.protobuf.Timestamp updated_time = 7 [json_name="updated_time"];
 
-	// The time this AuthToken was last used.
+	// The approximate time this AuthToken was last used.
 	// Output only.
-	google.protobuf.Timestamp last_used_time = 8 [json_name="last_used_time"];
+	google.protobuf.Timestamp approximate_last_used_time = 8 [json_name = "approximate_last_used_time"];
 
 	// The time this AuthToken expires.
 	// Output only.

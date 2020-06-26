@@ -2154,15 +2154,15 @@
         ]
       }
     },
-    "/v1/orgs/{org_id}:unauthenticate": {
+    "/v1/orgs/{org_id}:deauthenticate": {
       "post": {
-        "summary": "Unauthenticate an authentication token from an Organization.",
-        "operationId": "OrganizationService_Unauthenticate",
+        "summary": "Deauthenticate an authentication token from an Organization.",
+        "operationId": "OrganizationService_Deauthenticate",
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
-              "$ref": "#/definitions/controller.api.services.v1.UnauthenticateResponse"
+              "$ref": "#/definitions/controller.api.services.v1.DeauthenticateResponse"
             }
           }
         },
@@ -2194,11 +2194,6 @@
           "description": "The token.  This will only be populated after login and is only ever visible to the end user whose login\nrequest resulted in this auth token being created.\nOutput only.",
           "readOnly": true
         },
-        "token_type": {
-          "type": "string",
-          "description": "The type of the token generated.  This can be \"cookie\" or \"token\"\nOutput only.",
-          "readOnly": true
-        },
         "user_id": {
           "type": "string",
           "description": "The id of the user of this AuthToken.\nOutput only.",
@@ -2221,10 +2216,10 @@
           "description": "The time this resource was last updated.\nOutput only.",
           "readOnly": true
         },
-        "last_used_time": {
+        "approximate_last_used_time": {
           "type": "string",
           "format": "date-time",
-          "description": "The time this AuthToken was last used.\nOutput only.",
+          "description": "The approximate time this AuthToken was last used.\nOutput only.",
           "readOnly": true
         },
         "expiration_time": {
@@ -2660,6 +2655,9 @@
         }
       }
     },
+    "controller.api.services.v1.DeauthenticateResponse": {
+      "type": "object"
+    },
     "controller.api.services.v1.DeleteGroupResponse": {
       "type": "object",
       "properties": {
@@ -2887,9 +2885,6 @@
       }
     },
     "controller.api.services.v1.RemoveFromHostSetResponse": {
-      "type": "object"
-    },
-    "controller.api.services.v1.UnauthenticateResponse": {
       "type": "object"
     },
     "controller.api.services.v1.UpdateGroupResponse": {
