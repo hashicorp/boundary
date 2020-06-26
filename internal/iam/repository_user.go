@@ -205,7 +205,7 @@ func (r *Repository) LookupUserWithLogin(ctx context.Context, withAuthAccountId 
 		},
 	)
 	if err != nil {
-		return nil, fmt.Errorf("create user with login: unable to associate user and account: %w", err)
+		return nil, fmt.Errorf("lookup user with login: unable to associate user and account: %w", err)
 	}
 	return obtainedUser, nil
 }
