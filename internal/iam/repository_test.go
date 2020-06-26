@@ -13,6 +13,7 @@ import (
 	iam_store "github.com/hashicorp/watchtower/internal/iam/store"
 	"github.com/hashicorp/watchtower/internal/oplog"
 	"github.com/hashicorp/watchtower/internal/oplog/store"
+	"github.com/hashicorp/watchtower/internal/types/scope"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/proto"
@@ -123,7 +124,7 @@ func Test_Repository_create(t *testing.T) {
 
 		s, err := NewOrganization(WithName("fname-" + id))
 		assert.NoError(err)
-		s.PublicId, err = newScopeId(OrganizationScope)
+		s.PublicId, err = newScopeId(scope.Organization)
 		require.NoError(err)
 		retScope, err := repo.create(context.Background(), s)
 		require.NoError(err)

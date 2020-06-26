@@ -11,6 +11,7 @@ import (
 	"github.com/hashicorp/watchtower/internal/iam"
 	"github.com/hashicorp/watchtower/internal/servers/controller/common"
 	"github.com/hashicorp/watchtower/internal/servers/controller/handlers"
+	"github.com/hashicorp/watchtower/internal/types/scope"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 )
 
@@ -109,7 +110,7 @@ func toProto(in *iam.Scope) *pb.Organization {
 //  * There are no conflicting parameters provided
 func validateGetRequest(req *pbs.GetOrganizationRequest) error {
 	badFields := make(map[string]string)
-	if !validId(req.GetId(), iam.OrganizationScope.Prefix()+"_") {
+	if !validId(req.GetId(), scope.Organization.Prefix()+"_") {
 		badFields["id"] = "Invalid formatted organization id."
 	}
 	if len(badFields) > 0 {

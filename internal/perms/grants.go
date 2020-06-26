@@ -7,20 +7,9 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/hashicorp/watchtower/internal/iam"
-)
-
-const (
-	TypeNone        = ""
-	TypeAll         = "*"
-	TypeRole        = "role"
-	TypeGroup       = "group"
-	TypeUser        = "user"
-	TypeAuthMethod  = "auth-method"
-	TypeHostCatalog = "host-catalog"
-	TypeHostSet     = "host-set"
-	TypeHost        = "host"
-	TypeTarget      = "target"
+	"github.com/hashicorp/watchtower/internal/types/action"
+	"github.com/hashicorp/watchtower/internal/types/resource"
+	"github.com/hashicorp/watchtower/internal/types/scope"
 )
 
 // Scope provides an in-memory representation of iam.Scope without the
@@ -30,7 +19,7 @@ type Scope struct {
 	Id string
 
 	// Type is the scope's type (org or project)
-	Type iam.ScopeType
+	Type scope.Type
 }
 
 // Grant is a Go representation of a parsed grant
@@ -42,10 +31,10 @@ type Grant struct {
 	id string
 
 	// The type, if provided
-	typ string
+	typ resource.Type
 
 	// The set of actions being granted
-	actions map[iam.Action]bool
+	actions map[action.Type]bool
 
 	// This is used as a temporary staging area before validating permissions to
 	// allow the same validation code across grant string formats
@@ -62,7 +51,7 @@ func (g Grant) clone() *Grant {
 		ret.actionsBeingParsed = append(ret.actionsBeingParsed, g.actionsBeingParsed...)
 	}
 	if g.actions != nil {
-		ret.actions = make(map[iam.Action]bool, len(g.actions))
+		ret.actions = make(map[action.Type]bool, len(g.actions))
 		for action := range g.actions {
 			ret.actions[action] = true
 		}
@@ -78,8 +67,8 @@ func (g Grant) CanonicalString() string {
 		builder = append(builder, fmt.Sprintf("id=%s", g.id))
 	}
 
-	if g.typ != TypeNone {
-		builder = append(builder, fmt.Sprintf("type=%s", g.typ))
+	if g.typ != resource.Unknown {
+		builder = append(builder, fmt.Sprintf("type=%s", g.typ.String()))
 	}
 
 	if len(g.actions) > 0 {
@@ -100,8 +89,8 @@ func (g Grant) MarshalJSON() ([]byte, error) {
 	if g.id != "" {
 		res["id"] = g.id
 	}
-	if g.typ != "" {
-		res["type"] = g.typ
+	if g.typ != resource.Unknown {
+		res["type"] = g.typ.String()
 	}
 	if len(g.actions) > 0 {
 		actions := make([]string, 0, len(g.actions))
@@ -134,7 +123,7 @@ func (g *Grant) unmarshalJSON(data []byte) error {
 		if !ok {
 			return fmt.Errorf("unable to interpret %q as string", "type")
 		}
-		g.typ = strings.ToLower(typ)
+		g.typ = resource.StringToResourceType(typ)
 	}
 	if rawActions, ok := raw["actions"]; ok {
 		interfaceActions, ok := rawActions.([]interface{})
@@ -179,7 +168,11 @@ func (g *Grant) unmarshalText(grantString string) error {
 			g.id = strings.ToLower(kv[1])
 
 		case "type":
-			g.typ = strings.ToLower(kv[1])
+			typeString := strings.ToLower(kv[1])
+			g.typ = resource.StringToResourceType(typeString)
+			if g.typ == resource.Unknown {
+				return fmt.Errorf("unknown type specifier %q", typeString)
+			}
 
 		case "actions":
 			actions := strings.Split(kv[1], ",")
@@ -205,23 +198,23 @@ func (g *Grant) unmarshalText(grantString string) error {
 //
 // The scope must be the org and project where this grant originated, not the
 // request.
-func Parse(scope Scope, userId, grantString string) (Grant, error) {
+func Parse(s Scope, userId, grantString string) (Grant, error) {
 	if len(grantString) == 0 {
 		return Grant{}, errors.New("grant string is empty")
 	}
 
-	switch scope.Type {
-	case iam.ProjectScope, iam.OrganizationScope:
+	switch s.Type {
+	case scope.Project, scope.Organization:
 	default:
 		return Grant{}, errors.New("invalid scope type")
 	}
 
-	if scope.Id == "" {
+	if s.Id == "" {
 		return Grant{}, errors.New("no scope ID provided")
 	}
 
 	grant := Grant{
-		scope: scope,
+		scope: s,
 	}
 
 	switch {
@@ -249,7 +242,7 @@ func Parse(scope Scope, userId, grantString string) (Grant, error) {
 		}
 	}
 
-	if grant.id == "" && grant.typ == "" {
+	if grant.id == "" && grant.typ == resource.Unknown {
 		return Grant{}, errors.New(`"id" and "type" cannot both be empty`)
 	}
 
@@ -266,16 +259,16 @@ func Parse(scope Scope, userId, grantString string) (Grant, error) {
 
 func (g Grant) validateType() error {
 	switch g.typ {
-	case TypeNone,
-		TypeAll,
-		TypeRole,
-		TypeGroup,
-		TypeUser,
-		TypeAuthMethod,
-		TypeHostCatalog,
-		TypeHostSet,
-		TypeHost,
-		TypeTarget:
+	case resource.Unknown,
+		resource.All,
+		resource.Role,
+		resource.StaticGroup,
+		resource.User,
+		resource.AuthMethod,
+		resource.HostCatalog,
+		resource.HostSet,
+		resource.Host,
+		resource.Target:
 		return nil
 	}
 	return fmt.Errorf("unknown type specifier %q", g.typ)
@@ -286,22 +279,22 @@ func (g *Grant) parseAndValidateActions() error {
 		return errors.New("no actions specified")
 	}
 
-	for _, action := range g.actionsBeingParsed {
-		if action == "" {
+	for _, a := range g.actionsBeingParsed {
+		if a == "" {
 			return errors.New("empty action found")
 		}
 		if g.actions == nil {
-			g.actions = make(map[iam.Action]bool, len(g.actionsBeingParsed))
+			g.actions = make(map[action.Type]bool, len(g.actionsBeingParsed))
 		}
-		if a := iam.ActionMap[action]; a == iam.ActionUnknown {
-			return fmt.Errorf("unknown action %q", action)
+		if am := action.Map[a]; am == action.Unknown {
+			return fmt.Errorf("unknown action %q", a)
 		} else {
-			g.actions[a] = true
+			g.actions[am] = true
 		}
 	}
 
-	if len(g.actions) > 1 && g.actions[iam.ActionAll] {
-		return fmt.Errorf("%q cannot be specified with other actions", iam.ActionAll.String())
+	if len(g.actions) > 1 && g.actions[action.All] {
+		return fmt.Errorf("%q cannot be specified with other actions", action.All.String())
 	}
 
 	g.actionsBeingParsed = nil
