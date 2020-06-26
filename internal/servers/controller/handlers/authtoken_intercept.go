@@ -28,21 +28,22 @@ const (
 func TokenAuthenticator(l hclog.Logger) func(context.Context, *http.Request) metadata.MD {
 	return func(ctx context.Context, req *http.Request) metadata.MD {
 		tMD := TokenMetadata{}
-		if hc, err := req.Cookie(httpOnlyCookieName); err == nil {
-			tMD.httpCookiePayload = hc.Value
-		}
-		if jc, err := req.Cookie(jsVisibleCookieName); err == nil {
-			tMD.jsCookiePayload = jc.Value
-		}
-		if tMD.httpCookiePayload != "" && tMD.jsCookiePayload != "" {
-			tMD.recievedTokenType = authTokenTypeSplitCookie
-		}
-
 		if authHeader := req.Header.Get(headerAuthMethod); authHeader != "" {
 			headerSplit := strings.SplitN(strings.TrimSpace(authHeader), " ", 2)
 			if len(headerSplit) == 2 && strings.EqualFold(strings.TrimSpace(headerSplit[0]), "bearer") {
 				tMD.recievedTokenType = authTokenTypeBearer
 				tMD.bearerPayload = strings.TrimSpace(headerSplit[1])
+			}
+		}
+		if tMD.recievedTokenType != authTokenTypeBearer {
+			if hc, err := req.Cookie(httpOnlyCookieName); err == nil {
+				tMD.httpCookiePayload = hc.Value
+			}
+			if jc, err := req.Cookie(jsVisibleCookieName); err == nil {
+				tMD.jsCookiePayload = jc.Value
+			}
+			if tMD.httpCookiePayload != "" && tMD.jsCookiePayload != "" {
+				tMD.recievedTokenType = authTokenTypeSplitCookie
 			}
 		}
 
