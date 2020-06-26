@@ -152,14 +152,15 @@ func (r *Repository) LookupAuthToken(ctx context.Context, id string, opt ...Opti
 	return at, nil
 }
 
-// MaybeUpdateLastAccessed updates the approximate last accessed field and returns a AuthToken with the
-// previous value for Last Accessed populated. For security reasons, the actual token value is not included
-// in the returned AuthToken.
+// ValidateToken returns a token from storage if the auth token with the provided id and token exists.  The
+// approximate last accessed time may be updated depending on how long it has been since the last time the token
+// was validated.  A token being returned does not mean that it hasn't expired.
+// For security reasons, the actual token value is not included in the returned AuthToken.
 // Returns nil, nil if no AuthToken is found for the token.  All options are ignored.
-func (r *Repository) MaybeUpdateLastAccessed(ctx context.Context, id, token string, opt ...Option) (*AuthToken, error) {
+func (r *Repository) ValidateToken(ctx context.Context, id, token string, opt ...Option) (*AuthToken, error) {
 	// Do not log or add the token string to any errors.
 	if token == "" {
-		return nil, fmt.Errorf("lookup: auth token: missing token: %w", db.ErrInvalidParameter)
+		return nil, fmt.Errorf("validate token: auth token: missing token: %w", db.ErrInvalidParameter)
 	}
 	retAT := allocAuthToken()
 	retAT.PublicId = id
@@ -171,7 +172,7 @@ func (r *Repository) MaybeUpdateLastAccessed(ctx context.Context, id, token stri
 		db.ExpBackoff{},
 		func(read db.Reader, w db.Writer) error {
 			if err := r.reader.LookupByPublicId(ctx, retAT); err != nil {
-				return fmt.Errorf("lookup: auth token: %s: %w", id, err)
+				return fmt.Errorf("validate token: auth token: %s: %w", id, err)
 			}
 			if err := retAT.DecryptData(ctx, r.wrapper); err != nil {
 				return err
@@ -215,7 +216,7 @@ func (r *Repository) MaybeUpdateLastAccessed(ctx context.Context, id, token stri
 	)
 
 	if err != nil {
-		return nil, fmt.Errorf("update: auth token: %s: %w", retAT.PublicId, err)
+		return nil, fmt.Errorf("validate token: auth token: %s: %w", retAT.PublicId, err)
 	}
 	return retAT, nil
 }
