@@ -17,23 +17,23 @@ func testAuthToken(t *testing.T, conn *gorm.DB) *AuthToken {
 	org, _ := iam.TestScopes(t, conn)
 	u := iam.TestUser(t, conn, org.GetPublicId())
 	amId := setupAuthMethod(t, conn, org.GetPublicId())
-	sess, err := NewAuthToken(org.GetPublicId(), u.GetPublicId(), amId)
+	at, err := NewAuthToken(org.GetPublicId(), u.GetPublicId(), amId)
 	assert.NoError(err)
-	assert.NotNil(sess)
+	assert.NotNil(at)
 	id, err := newAuthTokenId()
 	assert.NoError(err)
 	assert.NotEmpty(id)
-	sess.PublicId = id
+	at.PublicId = id
 
 	token, err := newAuthToken()
 	assert.NoError(err)
 	assert.NotEmpty(token)
-	sess.Token = token
+	at.Token = token
 
 	w := db.New(conn)
-	err2 := w.Create(context.Background(), sess)
+	err2 := w.Create(context.Background(), at)
 	assert.NoError(err2)
-	return sess
+	return at
 }
 
 // Returns auth method id

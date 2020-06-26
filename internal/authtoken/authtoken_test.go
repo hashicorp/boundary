@@ -122,7 +122,6 @@ func TestAuthToken_New(t *testing.T) {
 }
 
 func TestAuthToken_DbUpdate(t *testing.T) {
-	assert, require := assert.New(t), require.New(t)
 	cleanup, conn, _ := db.TestSetup(t, "postgres")
 	t.Cleanup(func() {
 		if err := cleanup(); err != nil {
@@ -138,7 +137,7 @@ func TestAuthToken_DbUpdate(t *testing.T) {
 	amId := setupAuthMethod(t, conn, org.GetPublicId())
 
 	newAuthTokId, err := newAuthTokenId()
-	require.NoError(err)
+	require.NoError(t, err)
 
 	type args struct {
 		fieldMask []string
@@ -188,7 +187,7 @@ func TestAuthToken_DbUpdate(t *testing.T) {
 		{
 			name: "update-last-access-time",
 			args: args{
-				nullMask: []string{"LastAccessTime"},
+				nullMask: []string{"ApproximateLastAccessTime"},
 				authTok:  &store.AuthToken{},
 			},
 			cnt: 1,
@@ -198,6 +197,7 @@ func TestAuthToken_DbUpdate(t *testing.T) {
 	for _, tt := range tests {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
+			assert := assert.New(t)
 			w := db.New(conn)
 
 			authTok := testAuthToken(t, conn)
@@ -216,8 +216,6 @@ func TestAuthToken_DbUpdate(t *testing.T) {
 }
 
 func TestAuthToken_DbCreate(t *testing.T) {
-	assert, require := assert.New(t), require.New(t)
-	_, _ = assert, require
 	cleanup, conn, _ := db.TestSetup(t, "postgres")
 	t.Cleanup(func() {
 		if err := cleanup(); err != nil {
@@ -238,7 +236,7 @@ func TestAuthToken_DbCreate(t *testing.T) {
 
 	testAuthTokenId := func() string {
 		id, err := newAuthTokenId()
-		require.NoError(err)
+		require.NoError(t, err)
 		return id
 	}
 
@@ -306,6 +304,7 @@ func TestAuthToken_DbCreate(t *testing.T) {
 	for _, tt := range tests {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
+			assert := assert.New(t)
 			at := &AuthToken{AuthToken: tt.in}
 			err := db.New(conn).Create(context.Background(), at)
 			if tt.wantError {
@@ -318,8 +317,6 @@ func TestAuthToken_DbCreate(t *testing.T) {
 }
 
 func TestAuthToken_DbDelete(t *testing.T) {
-	assert, require := assert.New(t), require.New(t)
-	_, _ = assert, require
 	cleanup, conn, _ := db.TestSetup(t, "postgres")
 	t.Cleanup(func() {
 		if err := cleanup(); err != nil {
@@ -332,7 +329,7 @@ func TestAuthToken_DbDelete(t *testing.T) {
 
 	testAuthTokenId := func() string {
 		id, err := newAuthTokenId()
-		require.NoError(err)
+		require.NoError(t, err)
 		return id
 	}
 
@@ -371,6 +368,7 @@ func TestAuthToken_DbDelete(t *testing.T) {
 	for _, tt := range tests {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
+			assert := assert.New(t)
 			cnt, err := db.New(conn).Delete(context.Background(), tt.at)
 			assert.Equal(tt.wantCnt, cnt)
 			if tt.wantError {
