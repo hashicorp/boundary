@@ -8,6 +8,7 @@ import (
 
 	"github.com/hashicorp/watchtower/internal/db"
 	"github.com/hashicorp/watchtower/internal/oplog"
+	"github.com/hashicorp/watchtower/internal/types/scope"
 )
 
 // CreateUser will create a user in the repository and return the written user
@@ -121,41 +122,39 @@ func (r *Repository) ListUsers(ctx context.Context, withOrganizationId string, o
 	return users, nil
 }
 
-// ObtainUserWithLogin will attempt to lookup the user within the scope and
-// authMethod with a matching auth account id and return the user if found.  If
-// a user is not found then a new User will be created in the scope provided and
-// associated the authMethod and authAccountId provided.  If a new user is
-// created, then the WithName and WithDescription options are supported.
-func (r *Repository) ObtainUserWithLogin(ctx context.Context, withScope, withAuthMethodId, withAuthAccountId string, opt ...Option) (*User, error) {
-	acct, err := r.validateLoginParameters(ctx, withScope, withAuthMethodId, withAuthAccountId)
-	if err != nil {
-		return nil, fmt.Errorf("create user with login: %w", err)
+// LookupUserWithLogin will attempt to lookup the user with a matching auth
+// account id and return the user if found. If a user is not found and the
+// WithAutoVivify() option is true, then a new iam User will be
+// created in the scope of the auth account, and associated with the auth
+// account. If a new user is auto vivified, then the WithName and
+// WithDescription options are supported as well.
+func (r *Repository) LookupUserWithLogin(ctx context.Context, withAuthAccountId string, opt ...Option) (*User, error) {
+	opts := getOpts(opt...)
+	if withAuthAccountId == "" {
+		return nil, fmt.Errorf("lookup user with login: missing auth account id %w", db.ErrInvalidParameter)
 	}
-	if acct.IamUserId != "" {
-		u, err := r.LookupUser(ctx, acct.IamUserId)
-		if err != nil {
-			return nil, fmt.Errorf("create user with login: unable to lookup user %s for auth account %s: %w", acct.IamUserId, acct.PublicId, err)
-		}
-		// LookupUser will return a nil user and no error if the user associated
-		// with the auth account is not found. A user should always be found, so
-		// if we get nil, nil back there be dragons and we'll return an error.
-		if u == nil {
-			return nil, fmt.Errorf("create user: user %s associated with auth account %s was not found", acct.IamUserId, withAuthAccountId)
-		}
-		if u.ScopeId != withScope {
-			return nil, fmt.Errorf("create user with login: user scope %s doesn't match scope %s: %w", u.ScopeId, withScope, db.ErrInvalidParameter)
-		}
+	u, err := r.getUserWithAuthAccount(ctx, withAuthAccountId)
+	if err != nil {
+		return nil, fmt.Errorf("lookup user with login: %w", err)
+	}
+	if u != nil {
 		return u, nil
 	}
-
-	s, err := r.LookupScope(ctx, withScope)
-	if err != nil {
-		return nil, fmt.Errorf("create user with login: %w", err)
+	if !opts.withAutoVivify {
+		return nil, fmt.Errorf("lookup user with login: user not found for auth account %s: %w", withAuthAccountId, db.ErrRecordNotFound)
 	}
+
+	acct := allocAuthAccount()
+	acct.PublicId = withAuthAccountId
+	err = r.reader.LookupByPublicId(context.Background(), &acct)
+	if err != nil {
+		return nil, fmt.Errorf("lookup user with login: unable to lookup auth account %s: %w", withAuthAccountId, err)
+	}
+
 	metadata := oplog.Metadata{
-		"resource-public-id": []string{acct.PublicId},
-		"scope-id":           []string{s.PublicId},
-		"scope-type":         []string{s.Type},
+		"resource-public-id": []string{withAuthAccountId},
+		"scope-id":           []string{acct.ScopeId},
+		"scope-type":         []string{scope.Organization.String()},
 		"resource-type":      []string{"auth-account"},
 	}
 
@@ -168,11 +167,11 @@ func (r *Repository) ObtainUserWithLogin(ctx context.Context, withScope, withAut
 		db.ExpBackoff{},
 		func(_ db.Reader, w db.Writer) error {
 			msgs := make([]*oplog.Message, 0, 2)
-			ticket, err := w.GetTicket(acct)
+			ticket, err := w.GetTicket(&acct)
 			if err != nil {
 				return err
 			}
-			obtainedUser, err = NewUser(withScope, opt...)
+			obtainedUser, err = NewUser(acct.ScopeId, opt...)
 			if err != nil {
 				return err
 			}
@@ -211,25 +210,46 @@ func (r *Repository) ObtainUserWithLogin(ctx context.Context, withScope, withAut
 	return obtainedUser, nil
 }
 
-// LookupUserWithLogin within the scope and authMethod with a matching
-// authAccountId. The function will return nil, nil when a user is not found
-// matching the provided criteria. No options are supported.
-func (r *Repository) LookupUserWithLogin(ctx context.Context, withScope, withAuthMethodId, withAuthAccountId string, opt ...Option) (*User, error) {
-	acct, err := r.validateLoginParameters(ctx, withScope, withAuthMethodId, withAuthAccountId)
-	if err != nil {
-		return nil, fmt.Errorf("lookup user with login: %w", err)
+func (r *Repository) getUserWithAuthAccount(ctx context.Context, withAuthAccountId string, opt ...Option) (*User, error) {
+	if withAuthAccountId == "" {
+		return nil, fmt.Errorf("missing auth account id %w", db.ErrInvalidParameter)
 	}
-	if acct.IamUserId == "" {
+	underlying, err := r.reader.DB()
+	if err != nil {
+		return nil, fmt.Errorf("unable to get underlying db for auth account search: %w", err)
+	}
+	userTable := func() *User { u := allocUser(); return &u }().TableName()
+	acctTable := func() *AuthAccount { a := allocAuthAccount(); return &a }().TableName()
+
+	where := fmt.Sprintf(`	
+	select %[1]s.*
+		from %[1]s 
+	inner join %[2]s 
+		on %[1]s.public_id = %[2]s.iam_user_id
+	where 
+		%[1]s.scope_id = %[2]s.scope_id and
+		%[2]s.public_id = $1`, userTable, acctTable)
+	rows, err := underlying.Query(where, withAuthAccountId)
+	if err != nil {
+		return nil, fmt.Errorf("unable to query auth account %s", withAuthAccountId)
+	}
+	defer rows.Close()
+	u := allocUser()
+	if rows.Next() {
+		err = r.reader.ScanRows(rows, &u)
+		if err != nil {
+			return nil, fmt.Errorf("unable to scan rows for auth account %s: %w", withAuthAccountId, err)
+		}
+	} else {
+		if err := rows.Err(); err != nil {
+			return nil, fmt.Errorf("unable to get next auth account: %w", err)
+		}
 		return nil, nil
 	}
-	u, err := r.LookupUser(ctx, acct.IamUserId)
 	if err != nil {
-		return nil, fmt.Errorf("lookup user with login: unable to lookup user %s for auth account %s: %w", acct.IamUserId, acct.PublicId, err)
+		return nil, fmt.Errorf("unable to get next row for auth accounts %s: %w", withAuthAccountId, err)
 	}
-	if u.ScopeId != withScope {
-		return nil, fmt.Errorf("lookup user with login: user scope %s doesn't match scope %s: %w", u.ScopeId, withScope, db.ErrInvalidParameter)
-	}
-	return u, nil
+	return &u, nil
 }
 
 func (r *Repository) validateLoginParameters(ctx context.Context, withScope, withAuthMethodId, withAuthAccountId string) (*AuthAccount, error) {
