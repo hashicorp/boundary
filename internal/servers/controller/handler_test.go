@@ -32,6 +32,12 @@ func TestHandleGrpcGateway(t *testing.T) {
 			"v1/orgs/1/projects/2/host-catalogs/3/host-sets/4",
 			http.StatusMethodNotAllowed,
 		},
+		// TODO: This should actually return a 404 since the org and project dont exist.
+		{
+			"Invalid orgs path",
+			"v1/orgs/o_1234567890/projects/p_0987654321/groups",
+			http.StatusOK,
+		},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -43,6 +49,7 @@ func TestHandleGrpcGateway(t *testing.T) {
 			if got, want := resp.StatusCode, tc.code; got != want {
 				t.Errorf("GET on %q got code %d, wanted %d", tc.path, got, want)
 			}
+
 		})
 	}
 }

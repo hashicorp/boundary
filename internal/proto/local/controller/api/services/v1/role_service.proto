@@ -19,6 +19,10 @@ service RoleService {
     option (google.api.http) = {
       get: "/v1/orgs/{org_id}/roles/{id}"
       response_body: "item"
+      additional_bindings {
+        get: "/v1/orgs/{org_id}/projects/{project_id}/roles/{id}"
+        response_body: "item"
+      }
     };
     option (grpc.gateway.protoc_gen_swagger.options.openapiv2_operation) = {
       summary: "Gets a single Role"
@@ -32,6 +36,9 @@ service RoleService {
   rpc ListRoles(ListRolesRequest) returns (ListRolesResponse) {
     option (google.api.http) = {
       get: "/v1/orgs/{org_id}/roles"
+      additional_bindings {
+        get: "/v1/orgs/{org_id}/projects/{project_id}/roles"
+      }
     };
     option (grpc.gateway.protoc_gen_swagger.options.openapiv2_operation) = {
       summary: "Lists all Roles"
@@ -48,6 +55,11 @@ service RoleService {
       post: "/v1/orgs/{org_id}/roles"
       body: "item"
       response_body: "item"
+      additional_bindings {
+        post: "/v1/orgs/{org_id}/projects/{project_id}/roles"
+        body: "item"
+        response_body: "item"
+      }
     };
     option (grpc.gateway.protoc_gen_swagger.options.openapiv2_operation) = {
       summary: "Creates a single Role"
@@ -67,6 +79,11 @@ service RoleService {
       patch: "/v1/orgs/{org_id}/roles/{id}"
       body: "item"
       response_body: "item"
+      additional_bindings {
+        patch: "/v1/orgs/{org_id}/projects/{project_id}/roles/{id}"
+        body: "item"
+        response_body: "item"
+      }
     };
     option (grpc.gateway.protoc_gen_swagger.options.openapiv2_operation) = {
       summary: "Updates a Role"
@@ -81,6 +98,9 @@ service RoleService {
   rpc DeleteRole(DeleteRoleRequest) returns (DeleteRoleResponse) {
     option (google.api.http) = {
       delete: "/v1/orgs/{org_id}/roles/{id}"
+      additional_bindings {
+        delete: "/v1/orgs/{org_id}/projects/{project_id}/roles/{id}"
+      }
     };
     option (grpc.gateway.protoc_gen_swagger.options.openapiv2_operation) = {
       summary: "Deletes a Role"
@@ -90,8 +110,9 @@ service RoleService {
 
 message GetRoleRequest {
   string org_id = 1;
-  string id = 2;
-  string view = 3;
+  string project_id = 2;
+  string id = 3;
+  string view = 4;
 }
 
 message GetRoleResponse {
@@ -100,7 +121,8 @@ message GetRoleResponse {
 
 message ListRolesRequest {
   string org_id = 1;
-  string view = 2;
+  string project_id = 2;
+  string view = 3;
 }
 
 message ListRolesResponse {
@@ -109,7 +131,8 @@ message ListRolesResponse {
 
 message CreateRoleRequest {
   string org_id = 1;
-  resources.roles.v1.Role item = 2;
+  string project_id = 2;
+  resources.roles.v1.Role item = 3;
 }
 
 message CreateRoleResponse {
@@ -119,9 +142,10 @@ message CreateRoleResponse {
 
 message UpdateRoleRequest {
   string org_id = 1;
-  string id = 2;
-  resources.roles.v1.Role item = 3;
-  google.protobuf.FieldMask update_mask = 4;
+  string project_id = 2;
+  string id = 3;
+  resources.roles.v1.Role item = 4;
+  google.protobuf.FieldMask update_mask = 5;
 }
 
 message UpdateRoleResponse {
@@ -130,7 +154,8 @@ message UpdateRoleResponse {
 
 message DeleteRoleRequest {
   string org_id = 1;
-  string id = 2;
+  string project_id = 2;
+  string id = 3;
 }
 
 message DeleteRoleResponse {
