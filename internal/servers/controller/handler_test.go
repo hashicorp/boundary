@@ -17,8 +17,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-type methodActions func(url string) (httpMethod string, newUrl string)
-
 func TestGrpcGatewayRouting(t *testing.T) {
 	ctx := context.Background()
 	// The unimplemented result indicates the grpc routing is happening successfully otherwise it would return NotFound.
