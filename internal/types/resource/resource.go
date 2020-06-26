@@ -68,7 +68,7 @@ func StringToResourceType(s string) Type {
 	case AssignedRole.String():
 		return AssignedRole
 	case AssignedUserRole.String():
-		return AssignedRole
+		return AssignedUserRole
 	case AssignedStaticGroupRole.String():
 		return AssignedStaticGroupRole
 	case RoleGrant.String():

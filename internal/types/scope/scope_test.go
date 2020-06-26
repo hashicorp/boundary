@@ -8,24 +8,28 @@ import (
 
 func Test_StringToScopeType(t *testing.T) {
 	tests := []struct {
-		name string
-		s    string
-		want Type
+		name       string
+		s          string
+		want       Type
+		wantPrefix string
 	}{
 		{
-			name: "org",
-			s:    "organization",
-			want: Organization,
+			name:       "org",
+			s:          "organization",
+			want:       Organization,
+			wantPrefix: "o",
 		},
 		{
-			name: "proj",
-			s:    "project",
-			want: Project,
+			name:       "proj",
+			s:          "project",
+			want:       Project,
+			wantPrefix: "p",
 		},
 		{
-			name: "unknown",
-			s:    "org",
-			want: Unknown,
+			name:       "unknown",
+			s:          "org",
+			want:       Unknown,
+			wantPrefix: "unknown",
 		},
 	}
 	for _, tt := range tests {
@@ -33,6 +37,7 @@ func Test_StringToScopeType(t *testing.T) {
 			assert := assert.New(t)
 			got := StringToScopeType(tt.s)
 			assert.Equal(tt.want, got)
+			assert.Equalf(tt.wantPrefix, got.Prefix(), "unexpected prefix for %s", tt.s)
 		})
 	}
 }
