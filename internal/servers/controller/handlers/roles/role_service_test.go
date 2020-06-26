@@ -515,7 +515,7 @@ func TestUpdate(t *testing.T) {
 		or, _, err = repo.UpdateRole(context.Background(), or, []string{"Name", "Description"})
 		require.NoError(err, "Failed to reset the role")
 		pr, _, err = repo.UpdateRole(context.Background(), pr, []string{"Name", "Description"})
-		require.NoError(err, "Failed to reset the group")
+		require.NoError(err, "Failed to reset the role")
 	}
 
 	created, err := ptypes.Timestamp(or.GetCreateTime().GetTimestamp())
