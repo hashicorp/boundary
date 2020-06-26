@@ -7,6 +7,7 @@ import (
 	"github.com/hashicorp/watchtower/internal/db"
 	"github.com/hashicorp/watchtower/internal/iam/store"
 	"github.com/hashicorp/watchtower/internal/oplog"
+	"github.com/hashicorp/watchtower/internal/types/scope"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -46,8 +47,8 @@ func (a *AuthAccount) VetForWrite(ctx context.Context, r db.Reader, opType db.Op
 	return nil
 }
 
-func (a *AuthAccount) validScopeTypes() []ScopeType {
-	return []ScopeType{OrganizationScope}
+func (a *AuthAccount) validScopeTypes() []scope.Type {
+	return []scope.Type{scope.Organization}
 }
 
 // GetScope returns the scope for the Role.
