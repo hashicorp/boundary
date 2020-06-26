@@ -91,6 +91,13 @@ func TestHandleDevPassthrough(t *testing.T) {
 			"text/html; charset=utf-8",
 		},
 		{
+			"base slash",
+			"",
+			"index.html",
+			http.StatusOK,
+			"text/html; charset=utf-8",
+		},
+		{
 			"no extension",
 			"orgs",
 			"index.html",
