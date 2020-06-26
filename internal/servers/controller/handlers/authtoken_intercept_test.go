@@ -82,10 +82,9 @@ func TestAuthTokenAuthenticator(t *testing.T) {
 				{Name: httpOnlyCookieName, Value: "httpcookie"},
 				{Name: jsVisibleCookieName, Value: "jscookie"},
 			},
+			// We prioritize the auth header over the cookie and if the header is set we ignore the cookies completely.
 			wantAuthTokMd: TokenMetadata{
 				recievedTokenType: authTokenTypeBearer,
-				httpCookiePayload: "httpcookie",
-				jsCookiePayload:   "jscookie",
 				bearerPayload:     "sometokenfortests",
 			},
 		},
