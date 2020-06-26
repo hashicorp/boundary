@@ -34,7 +34,7 @@ service OrganizationService {
     };
   }
 
-  // Authenticate validates credentials provided.
+  // Authenticate validates credentials provided and returns an auth token.
   rpc Authenticate(AuthenticateRequest) returns (AuthenticateResponse) {
     option (google.api.http) = {
       post: "/v1/orgs/{org_id}:authenticate"
@@ -84,7 +84,7 @@ message AuthenticateRequest {
   // The id to the authmethod in the system being used for authentication.  The auth method must be in the org
   // being logged in to.
   string auth_method_id = 2;
-  // This can be "cookie" or "token".  If not provided, "token" will be used.
+  // This can be "cookie" or "token".  If not provided, "token" will be used.  For now only type "token" is returned.
   string token_type = 3;
 
   PasswordCredential password_credential = 4;

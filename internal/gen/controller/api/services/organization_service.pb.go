@@ -293,7 +293,7 @@ type AuthenticateRequest struct {
 	// The id to the authmethod in the system being used for authentication.  The auth method must be in the org
 	// being logged in to.
 	AuthMethodId string `protobuf:"bytes,2,opt,name=auth_method_id,json=authMethodId,proto3" json:"auth_method_id,omitempty"`
-	// This can be "cookie" or "token".  If not provided, "token" will be used.
+	// This can be "cookie" or "token".  If not provided, "token" will be used.  For now only type "token" is returned.
 	TokenType          string              `protobuf:"bytes,3,opt,name=token_type,json=tokenType,proto3" json:"token_type,omitempty"`
 	PasswordCredential *PasswordCredential `protobuf:"bytes,4,opt,name=password_credential,json=passwordCredential,proto3" json:"password_credential,omitempty"`
 }
@@ -819,7 +819,7 @@ type OrganizationServiceClient interface {
 	GetOrganization(ctx context.Context, in *GetOrganizationRequest, opts ...grpc.CallOption) (*GetOrganizationResponse, error)
 	// ListOrganizations returns a list of stored organizations which exist in watchtower.
 	ListOrganizations(ctx context.Context, in *ListOrganizationsRequest, opts ...grpc.CallOption) (*ListOrganizationsResponse, error)
-	// Authenticate validates credentials provided.
+	// Authenticate validates credentials provided and returns an auth token.
 	Authenticate(ctx context.Context, in *AuthenticateRequest, opts ...grpc.CallOption) (*AuthenticateResponse, error)
 	// Logout terminates a user's current session.
 	Deauthenticate(ctx context.Context, in *DeauthenticateRequest, opts ...grpc.CallOption) (*DeauthenticateResponse, error)
@@ -877,7 +877,7 @@ type OrganizationServiceServer interface {
 	GetOrganization(context.Context, *GetOrganizationRequest) (*GetOrganizationResponse, error)
 	// ListOrganizations returns a list of stored organizations which exist in watchtower.
 	ListOrganizations(context.Context, *ListOrganizationsRequest) (*ListOrganizationsResponse, error)
-	// Authenticate validates credentials provided.
+	// Authenticate validates credentials provided and returns an auth token.
 	Authenticate(context.Context, *AuthenticateRequest) (*AuthenticateResponse, error)
 	// Logout terminates a user's current session.
 	Deauthenticate(context.Context, *DeauthenticateRequest) (*DeauthenticateResponse, error)

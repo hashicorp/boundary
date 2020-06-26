@@ -2563,7 +2563,7 @@
         },
         "token_type": {
           "type": "string",
-          "description": "This can be \"cookie\" or \"token\".  If not provided, \"token\" will be used."
+          "description": "This can be \"cookie\" or \"token\".  If not provided, \"token\" will be used.  For now only type \"token\" is returned."
         },
         "password_credential": {
           "$ref": "#/definitions/controller.api.services.v1.PasswordCredential"
