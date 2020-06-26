@@ -12,12 +12,18 @@ import (
 type Account struct {
 	*store.Account
 	tableName string
+
+	// CredentialID is included when Authenticate or ChangePassword is
+	// called. A new CredentialID is generated when a password is changed.
+	CredentialID string `gorm:"-"`
 }
 
 // NewAccount creates a new in memory Account with userName assigned to
 // authMethodId. Name and description are the only valid options. All other
 // options are ignored.
 func NewAccount(authMethodId string, userName string, opt ...Option) (*Account, error) {
+	// NOTE(mgaffney): The scopeId in the embedded *store.Account is
+	// populated by a trigger in the database.
 	if authMethodId == "" {
 		return nil, fmt.Errorf("new: password account: no auth method id: %w", db.ErrInvalidParameter)
 	}
