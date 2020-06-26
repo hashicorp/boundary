@@ -10,6 +10,7 @@ import (
 	wrapping "github.com/hashicorp/go-kms-wrapping"
 	"github.com/hashicorp/watchtower/internal/db"
 	"github.com/hashicorp/watchtower/internal/oplog"
+	"github.com/hashicorp/watchtower/internal/types/scope"
 )
 
 var (
@@ -177,27 +178,27 @@ func (r *Repository) delete(ctx context.Context, resource Resource, opt ...Optio
 
 func (r *Repository) stdMetadata(ctx context.Context, resource Resource) (oplog.Metadata, error) {
 	if s, ok := resource.(*Scope); ok {
-		scope := allocScope()
-		scope.PublicId = s.PublicId
-		scope.Type = s.Type
-		if scope.Type == "" {
-			if err := r.reader.LookupByPublicId(ctx, &scope); err != nil {
+		newScope := allocScope()
+		newScope.PublicId = s.PublicId
+		newScope.Type = s.Type
+		if newScope.Type == "" {
+			if err := r.reader.LookupByPublicId(ctx, &newScope); err != nil {
 				return nil, ErrMetadataScopeNotFound
 			}
 		}
-		switch scope.Type {
-		case OrganizationScope.String():
+		switch newScope.Type {
+		case scope.Organization.String():
 			return oplog.Metadata{
 				"resource-public-id": []string{resource.GetPublicId()},
-				"scope-id":           []string{scope.PublicId},
-				"scope-type":         []string{scope.Type},
+				"scope-id":           []string{newScope.PublicId},
+				"scope-type":         []string{newScope.Type},
 				"resource-type":      []string{resource.ResourceType().String()},
 			}, nil
-		case ProjectScope.String():
+		case scope.Project.String():
 			return oplog.Metadata{
 				"resource-public-id": []string{resource.GetPublicId()},
-				"scope-id":           []string{scope.ParentId},
-				"scope-type":         []string{scope.Type},
+				"scope-id":           []string{newScope.ParentId},
+				"scope-type":         []string{newScope.Type},
 				"resource-type":      []string{resource.ResourceType().String()},
 			}, nil
 		default:

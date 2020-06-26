@@ -37,30 +37,81 @@ func (c *Controller) handler(props HandlerProperties) (http.Handler, error) {
 	// Create the muxer to handle the actual endpoints
 	mux := http.NewServeMux()
 
-	if c.conf.RawConfig.PassthroughDirectory != "" {
-		// Panic may not be ideal but this is never a production call and it'll
-		// panic on startup. We could also just change the function to return
-		// an error.
-		abs, err := filepath.Abs(c.conf.RawConfig.PassthroughDirectory)
-		if err != nil {
-			panic(err)
-		}
-		c.logger.Warn("serving passthrough files at /", "path", abs)
-		fs := http.FileServer(http.Dir(abs))
-		prefixHandler := http.StripPrefix("/", fs)
-		mux.Handle("/", prefixHandler)
-	}
-
 	h, err := handleGrpcGateway(c)
 	if err != nil {
 		return nil, err
 	}
 	mux.Handle("/v1/", h)
 
+	// TODO: enable when not in this mode, when we bundle the assets
+	if c.conf.RawConfig.PassthroughDirectory != "" {
+		mux.Handle("/", handleUi(c))
+	}
+
 	corsWrappedHandler := wrapHandlerWithCors(mux, props)
 	commonWrappedHandler := wrapHandlerWithCommonFuncs(corsWrappedHandler, c, props)
 
 	return commonWrappedHandler, nil
+}
+
+func handleUi(c *Controller) http.Handler {
+	// TODO: Do stuff with real UI data when it's bundled. We may also have to
+	// do a similar thing with fetching index.html in advance.
+	var nextHandler http.Handler
+	if c.conf.RawConfig.PassthroughDirectory != "" {
+		nextHandler = devPassthroughHandler(c)
+	}
+
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet {
+			w.WriteHeader(http.StatusMethodNotAllowed)
+			return
+		}
+
+		dotIndex := strings.LastIndex(r.URL.Path, ".")
+		switch dotIndex {
+		case -1:
+			// For all paths without an extension serve /index.html
+			r.URL.Path = "/"
+
+		default:
+			switch r.URL.Path {
+			case "/", "/favicon.png", "/assets/styles.css":
+
+			default:
+				for i := dotIndex + 1; i < len(r.URL.Path); i++ {
+					intVal := r.URL.Path[i]
+					// Current guidance from FE is if it's only alphanum after
+					// the last dot, treat it as an extension
+					if intVal < '0' ||
+						(intVal > '9' && intVal < 'A') ||
+						(intVal > 'Z' && intVal < 'a') ||
+						intVal > 'z' {
+						// Not an extension. Serve the contents of index.html
+						r.URL.Path = "/"
+					}
+				}
+			}
+		}
+
+		// Fall through to the next handler
+		nextHandler.ServeHTTP(w, r)
+	})
+}
+
+func devPassthroughHandler(c *Controller) http.Handler {
+	// Panic may not be ideal but this is never a production call and it'll
+	// panic on startup. We could also just change the function to return
+	// an error.
+	abs, err := filepath.Abs(c.conf.RawConfig.PassthroughDirectory)
+	if err != nil {
+		panic(err)
+	}
+	c.logger.Warn("serving passthrough files at /", "path", abs)
+	fs := http.FileServer(http.Dir(abs))
+	prefixHandler := http.StripPrefix("/", fs)
+
+	return prefixHandler
 }
 
 func handleGrpcGateway(c *Controller) (http.Handler, error) {
