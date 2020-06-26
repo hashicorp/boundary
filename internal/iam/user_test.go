@@ -6,6 +6,8 @@ import (
 	"testing"
 
 	"github.com/hashicorp/watchtower/internal/db"
+	"github.com/hashicorp/watchtower/internal/types/action"
+	"github.com/hashicorp/watchtower/internal/types/resource"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/proto"
@@ -362,18 +364,18 @@ func TestUser_Actions(t *testing.T) {
 	assert := assert.New(t)
 	u := &User{}
 	a := u.Actions()
-	assert.Equal(a[ActionCreate.String()], ActionCreate)
-	assert.Equal(a[ActionUpdate.String()], ActionUpdate)
-	assert.Equal(a[ActionRead.String()], ActionRead)
-	assert.Equal(a[ActionDelete.String()], ActionDelete)
+	assert.Equal(a[action.Create.String()], action.Create)
+	assert.Equal(a[action.Update.String()], action.Update)
+	assert.Equal(a[action.Read.String()], action.Read)
+	assert.Equal(a[action.Delete.String()], action.Delete)
 
-	if _, ok := a[ActionList.String()]; ok {
-		t.Errorf("users should not include %s as an action", ActionList.String())
+	if _, ok := a[action.List.String()]; ok {
+		t.Errorf("users should not include %s as an action", action.List.String())
 	}
 }
 
 func TestUser_ResourceType(t *testing.T) {
 	t.Parallel()
 	u := allocUser()
-	assert.Equal(t, ResourceTypeUser, u.ResourceType())
+	assert.Equal(t, resource.User, u.ResourceType())
 }
