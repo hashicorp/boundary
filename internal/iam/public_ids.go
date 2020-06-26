@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/hashicorp/watchtower/internal/db"
+	"github.com/hashicorp/watchtower/internal/types/scope"
 )
 
 const (
@@ -36,8 +37,8 @@ func newGroupId() (string, error) {
 	return id, nil
 }
 
-func newScopeId(scopeType ScopeType) (string, error) {
-	if scopeType == UnknownScope {
+func newScopeId(scopeType scope.Type) (string, error) {
+	if scopeType == scope.Unknown {
 		return "", fmt.Errorf("new scope id: unknown is not supported %w", db.ErrInvalidParameter)
 	}
 	id, err := db.NewPublicId(scopeType.Prefix())

@@ -7,6 +7,9 @@ import (
 
 	"github.com/hashicorp/watchtower/internal/db"
 	"github.com/hashicorp/watchtower/internal/iam/store"
+	"github.com/hashicorp/watchtower/internal/types/action"
+	"github.com/hashicorp/watchtower/internal/types/resource"
+	"github.com/hashicorp/watchtower/internal/types/scope"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -63,8 +66,8 @@ func (role *Role) VetForWrite(ctx context.Context, r db.Reader, opType db.OpType
 	return nil
 }
 
-func (u *Role) validScopeTypes() []ScopeType {
-	return []ScopeType{OrganizationScope, ProjectScope}
+func (u *Role) validScopeTypes() []scope.Type {
+	return []scope.Type{scope.Organization, scope.Project}
 }
 
 // Getscope returns the scope for the Role.
@@ -73,10 +76,10 @@ func (role *Role) GetScope(ctx context.Context, r db.Reader) (*Scope, error) {
 }
 
 // ResourceType returns the type of the Role.
-func (*Role) ResourceType() ResourceType { return ResourceTypeRole }
+func (*Role) ResourceType() resource.Type { return resource.Role }
 
 // Actions returns the  available actions for Role.
-func (*Role) Actions() map[string]Action {
+func (*Role) Actions() map[string]action.Type {
 	return CrudActions()
 }
 

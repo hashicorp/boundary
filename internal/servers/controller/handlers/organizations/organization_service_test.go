@@ -10,6 +10,7 @@ import (
 	pbs "github.com/hashicorp/watchtower/internal/gen/controller/api/services"
 	"github.com/hashicorp/watchtower/internal/iam"
 	"github.com/hashicorp/watchtower/internal/servers/controller/handlers/organizations"
+	"github.com/hashicorp/watchtower/internal/types/scope"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/proto"
@@ -77,7 +78,7 @@ func TestGet(t *testing.T) {
 		},
 		{
 			name:    "Get a non existing organization",
-			req:     &pbs.GetOrganizationRequest{Id: iam.OrganizationScope.Prefix() + "_DoesntExis"},
+			req:     &pbs.GetOrganizationRequest{Id: scope.Organization.Prefix() + "_DoesntExis"},
 			res:     nil,
 			errCode: codes.NotFound,
 		},
@@ -89,7 +90,7 @@ func TestGet(t *testing.T) {
 		},
 		{
 			name:    "space in id",
-			req:     &pbs.GetOrganizationRequest{Id: iam.OrganizationScope.Prefix() + "_1 23456789"},
+			req:     &pbs.GetOrganizationRequest{Id: scope.Organization.Prefix() + "_1 23456789"},
 			res:     nil,
 			errCode: codes.InvalidArgument,
 		},

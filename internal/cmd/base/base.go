@@ -59,7 +59,7 @@ type Command struct {
 }
 
 // New returns a new instance of a base.Command type
-func New(ui cli.Ui) *Command {
+func NewCommand(ui cli.Ui) *Command {
 	ctx, cancel := context.WithCancel(context.Background())
 	ret := &Command{
 		UI:         ui,

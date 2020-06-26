@@ -53,33 +53,33 @@ func initCommands(ui, serverCmdUi cli.Ui, runOpts *RunOptions) {
 		},
 		"hosts create": func() (cli.Command, error) {
 			return &hosts.CreateCommand{
-				Command: base.New(ui),
+				Command: base.NewCommand(ui),
 			}, nil
 		},
 		"projects create": func() (cli.Command, error) {
 			return &scopes.CreateProjectCommand{
-				Command: base.New(ui),
+				Command: base.NewCommand(ui),
 			}, nil
 		},
 		"projects read": func() (cli.Command, error) {
 			return &scopes.ReadProjectCommand{
-				Command: base.New(ui),
+				Command: base.NewCommand(ui),
 			}, nil
 		},
 		"config": func() (cli.Command, error) {
 			return &config.Command{
-				Command: base.New(ui),
+				Command: base.NewCommand(ui),
 			}, nil
 		},
 		"config encrypt": func() (cli.Command, error) {
 			return &config.EncryptDecryptCommand{
-				Command: base.New(ui),
+				Command: base.NewCommand(ui),
 				Encrypt: true,
 			}, nil
 		},
 		"config decrypt": func() (cli.Command, error) {
 			return &config.EncryptDecryptCommand{
-				Command: base.New(ui),
+				Command: base.NewCommand(ui),
 			}, nil
 		},
 	}

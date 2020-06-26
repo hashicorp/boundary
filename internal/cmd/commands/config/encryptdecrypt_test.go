@@ -50,7 +50,7 @@ func TestEncryptDecrypt(t *testing.T) {
 			}
 
 			cmd := &EncryptDecryptCommand{
-				Command: base.New(ui),
+				Command: base.NewCommand(ui),
 				Encrypt: c.encrypt}
 
 			if err := cmd.Run([]string{c.config}); err != 0 {
