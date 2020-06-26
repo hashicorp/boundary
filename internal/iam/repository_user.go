@@ -134,7 +134,7 @@ func (r *Repository) ObtainUserWithLogin(ctx context.Context, withScope, withAut
 	if acct.IamUserId != "" {
 		u, err := r.LookupUser(ctx, acct.IamUserId)
 		if err != nil {
-			return nil, fmt.Errorf("create user with login: unable to lookup user %s for auth account %s", acct.IamUserId, acct.PublicId)
+			return nil, fmt.Errorf("create user with login: unable to lookup user %s for auth account %s: %w", acct.IamUserId, acct.PublicId, err)
 		}
 		// LookupUser will return a nil user and no error if the user associated
 		// with the auth account is not found. A user should always be found, so
@@ -167,7 +167,7 @@ func (r *Repository) ObtainUserWithLogin(ctx context.Context, withScope, withAut
 		db.StdRetryCnt,
 		db.ExpBackoff{},
 		func(_ db.Reader, w db.Writer) error {
-			msgs := []*oplog.Message{}
+			msgs := make([]*oplog.Message, 0, 2)
 			ticket, err := w.GetTicket(acct)
 			if err != nil {
 				return err
