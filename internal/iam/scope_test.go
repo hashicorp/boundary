@@ -5,6 +5,9 @@ import (
 	"testing"
 
 	"github.com/hashicorp/watchtower/internal/db"
+	"github.com/hashicorp/watchtower/internal/types/action"
+	"github.com/hashicorp/watchtower/internal/types/resource"
+	"github.com/hashicorp/watchtower/internal/types/scope"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/proto"
@@ -25,7 +28,7 @@ func Test_NewScope(t *testing.T) {
 		s, err := NewOrganization()
 		require.NoError(err)
 		require.NotNil(s.Scope)
-		s.PublicId, err = newScopeId(OrganizationScope)
+		s.PublicId, err = newScopeId(scope.Organization)
 		require.NoError(err)
 		err = w.Create(context.Background(), s)
 		require.NoError(err)
@@ -40,7 +43,7 @@ func Test_NewScope(t *testing.T) {
 	})
 	t.Run("unknown-scope", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
-		s, err := newScope(UnknownScope)
+		s, err := newScope(scope.Unknown)
 		require.Error(err)
 		require.Nil(s)
 		assert.Equal(err.Error(), "new scope: unknown scope type invalid parameter")
@@ -68,7 +71,7 @@ func Test_ScopeCreate(t *testing.T) {
 		s, err := NewOrganization()
 		require.NoError(err)
 		require.NotNil(s.Scope)
-		s.PublicId, err = newScopeId(OrganizationScope)
+		s.PublicId, err = newScopeId(scope.Organization)
 		require.NoError(err)
 		err = w.Create(context.Background(), s)
 		require.NoError(err)
@@ -80,7 +83,7 @@ func Test_ScopeCreate(t *testing.T) {
 		s, err := NewOrganization()
 		require.NoError(err)
 		require.NotNil(s.Scope)
-		s.PublicId, err = newScopeId(OrganizationScope)
+		s.PublicId, err = newScopeId(scope.Organization)
 		require.NoError(err)
 		err = w.Create(context.Background(), s)
 		require.NoError(err)
@@ -92,7 +95,7 @@ func Test_ScopeCreate(t *testing.T) {
 		require.NotNil(project.Scope)
 		assert.Equal(project.Scope.ParentId, s.PublicId)
 		assert.Equal(project.GetDescription(), id)
-		project.PublicId, err = newScopeId(OrganizationScope)
+		project.PublicId, err = newScopeId(scope.Organization)
 		require.NoError(err)
 
 		err = w.Create(context.Background(), project)
@@ -125,7 +128,7 @@ func Test_ScopeUpdate(t *testing.T) {
 		w := db.New(conn)
 		s, _ := TestScopes(t, conn)
 
-		s.Type = ProjectScope.String()
+		s.Type = scope.Project.String()
 		updatedRows, err := w.Update(context.Background(), s, []string{"Type"}, nil)
 		require.Error(err)
 		assert.Equal(0, updatedRows)
@@ -155,7 +158,7 @@ func Test_ScopeGetScope(t *testing.T) {
 
 		p := allocScope()
 		p.PublicId = proj.PublicId
-		p.Type = ProjectScope.String()
+		p.Type = scope.Project.String()
 		projectOrg, err = p.GetScope(context.Background(), w)
 		require.NoError(err)
 		assert.Equal(org.PublicId, projectOrg.PublicId)
@@ -166,20 +169,20 @@ func TestScope_Actions(t *testing.T) {
 	assert := assert.New(t)
 	s := &Scope{}
 	a := s.Actions()
-	assert.Equal(a[ActionCreate.String()], ActionCreate)
-	assert.Equal(a[ActionUpdate.String()], ActionUpdate)
-	assert.Equal(a[ActionRead.String()], ActionRead)
-	assert.Equal(a[ActionDelete.String()], ActionDelete)
+	assert.Equal(a[action.Create.String()], action.Create)
+	assert.Equal(a[action.Update.String()], action.Update)
+	assert.Equal(a[action.Read.String()], action.Read)
+	assert.Equal(a[action.Delete.String()], action.Delete)
 
-	if _, ok := a[ActionList.String()]; ok {
-		t.Errorf("scopes should not include %s as an action", ActionList.String())
+	if _, ok := a[action.List.String()]; ok {
+		t.Errorf("scopes should not include %s as an action", action.List.String())
 	}
 }
 
 func TestScope_ResourceType(t *testing.T) {
 	o, err := NewOrganization()
 	require.NoError(t, err)
-	assert.Equal(t, o.ResourceType(), ResourceTypeOrganization)
+	assert.Equal(t, o.ResourceType(), resource.Organization)
 }
 
 func TestScope_Clone(t *testing.T) {
@@ -204,35 +207,4 @@ func TestScope_Clone(t *testing.T) {
 		cp := s.Clone()
 		assert.True(!proto.Equal(cp.(*Scope).Scope, s2.Scope))
 	})
-}
-
-func Test_stringToScopeType(t *testing.T) {
-	tests := []struct {
-		name string
-		s    string
-		want ScopeType
-	}{
-		{
-			name: "org",
-			s:    "organization",
-			want: OrganizationScope,
-		},
-		{
-			name: "proj",
-			s:    "project",
-			want: ProjectScope,
-		},
-		{
-			name: "unknown",
-			s:    "org",
-			want: UnknownScope,
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			assert := assert.New(t)
-			got := stringToScopeType(tt.s)
-			assert.Equal(tt.want, got)
-		})
-	}
 }

@@ -7,6 +7,7 @@ import (
 	"errors"
 
 	"github.com/hashicorp/watchtower/internal/db"
+	"github.com/hashicorp/watchtower/internal/types/scope"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -28,15 +29,15 @@ func Test_PublicIds(t *testing.T) {
 		assert.True(t, strings.HasPrefix(id, GroupPrefix+"_"))
 	})
 	t.Run("scopes", func(t *testing.T) {
-		id, err := newScopeId(OrganizationScope)
+		id, err := newScopeId(scope.Organization)
 		require.NoError(t, err)
-		assert.True(t, strings.HasPrefix(id, OrganizationScope.Prefix()))
+		assert.True(t, strings.HasPrefix(id, scope.Organization.Prefix()))
 
-		id, err = newScopeId(ProjectScope)
+		id, err = newScopeId(scope.Project)
 		require.NoError(t, err)
-		assert.True(t, strings.HasPrefix(id, ProjectScope.Prefix()))
+		assert.True(t, strings.HasPrefix(id, scope.Project.Prefix()))
 
-		id, err = newScopeId(UnknownScope)
+		id, err = newScopeId(scope.Unknown)
 		require.Error(t, err)
 		assert.Empty(t, id)
 		assert.True(t, errors.Is(err, db.ErrInvalidParameter))

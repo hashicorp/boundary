@@ -4,7 +4,9 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/hashicorp/watchtower/internal/iam"
+	"github.com/hashicorp/watchtower/internal/types/action"
+	"github.com/hashicorp/watchtower/internal/types/resource"
+	"github.com/hashicorp/watchtower/internal/types/scope"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -44,8 +46,8 @@ func Test_ActionParsingValidation(t *testing.T) {
 				actionsBeingParsed: []string{"*"},
 			},
 			result: Grant{
-				actions: map[iam.Action]bool{
-					iam.ActionAll: true,
+				actions: map[action.Type]bool{
+					action.All: true,
 				},
 			},
 		},
@@ -62,14 +64,14 @@ func Test_ActionParsingValidation(t *testing.T) {
 				actionsBeingParsed: []string{"list", "create", "update", "read", "delete", "authen", "connect"},
 			},
 			result: Grant{
-				actions: map[iam.Action]bool{
-					iam.ActionList:    true,
-					iam.ActionCreate:  true,
-					iam.ActionUpdate:  true,
-					iam.ActionRead:    true,
-					iam.ActionDelete:  true,
-					iam.ActionAuthen:  true,
-					iam.ActionConnect: true,
+				actions: map[action.Type]bool{
+					action.List:    true,
+					action.Create:  true,
+					action.Update:  true,
+					action.Read:    true,
+					action.Delete:  true,
+					action.Authen:  true,
+					action.Connect: true,
 				},
 			},
 		},
@@ -105,14 +107,14 @@ func Test_ValidateType(t *testing.T) {
 		{
 			name: "unknown specifier",
 			input: Grant{
-				typ: "foobar",
+				typ: resource.RoleGrant,
 			},
-			errResult: `unknown type specifier "foobar"`,
+			errResult: `unknown type specifier "role-grant"`,
 		},
 		{
 			name: "valid specifier",
 			input: Grant{
-				typ: TypeHostCatalog,
+				typ: resource.HostCatalog,
 			},
 		},
 	}
@@ -145,7 +147,7 @@ func Test_MarshallingAndCloning(t *testing.T) {
 			name: "empty",
 			input: Grant{
 				scope: Scope{
-					Type: iam.OrganizationScope,
+					Type: scope.Organization,
 				},
 			},
 			jsonOutput:      `{}`,
@@ -156,29 +158,29 @@ func Test_MarshallingAndCloning(t *testing.T) {
 			input: Grant{
 				id: "baz",
 				scope: Scope{
-					Type: iam.ProjectScope,
+					Type: scope.Project,
 				},
-				typ: TypeGroup,
+				typ: resource.StaticGroup,
 			},
-			jsonOutput:      `{"id":"baz","type":"group"}`,
-			canonicalString: `id=baz;type=group`,
+			jsonOutput:      `{"id":"baz","type":"static-group"}`,
+			canonicalString: `id=baz;type=static-group`,
 		},
 		{
 			name: "everything",
 			input: Grant{
 				id: "baz",
 				scope: Scope{
-					Type: iam.ProjectScope,
+					Type: scope.Project,
 				},
-				typ: TypeGroup,
-				actions: map[iam.Action]bool{
-					iam.ActionCreate: true,
-					iam.ActionRead:   true,
+				typ: resource.StaticGroup,
+				actions: map[action.Type]bool{
+					action.Create: true,
+					action.Read:   true,
 				},
 				actionsBeingParsed: []string{"create", "read"},
 			},
-			jsonOutput:      `{"actions":["create","read"],"id":"baz","type":"group"}`,
-			canonicalString: `id=baz;type=group;actions=create,read`,
+			jsonOutput:      `{"actions":["create","read"],"id":"baz","type":"static-group"}`,
+			canonicalString: `id=baz;type=static-group;actions=create,read`,
 		},
 	}
 
@@ -243,7 +245,7 @@ func Test_Unmarshaling(t *testing.T) {
 		{
 			name: "good type",
 			expected: Grant{
-				typ: "host-catalog",
+				typ: resource.HostCatalog,
 			},
 			jsonInput: `{"type":"host-catalog"}`,
 			textInput: `type=host-catalog`,
@@ -284,11 +286,10 @@ func Test_Unmarshaling(t *testing.T) {
 		},
 	}
 
-	assert := assert.New(t)
-	require := require.New(t)
-
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
+			assert := assert.New(t)
+			require := require.New(t)
 			var g Grant
 			if test.jsonInput != "" {
 				err := g.unmarshalJSON([]byte(test.jsonInput))
@@ -362,13 +363,13 @@ func Test_Parse(t *testing.T) {
 			expected: Grant{
 				scope: Scope{
 					Id:   "scope",
-					Type: iam.OrganizationScope,
+					Type: scope.Organization,
 				},
 				id:  "foobar",
-				typ: "host-catalog",
-				actions: map[iam.Action]bool{
-					iam.ActionCreate: true,
-					iam.ActionRead:   true,
+				typ: resource.HostCatalog,
+				actions: map[action.Type]bool{
+					action.Create: true,
+					action.Read:   true,
 				},
 			},
 		},
@@ -378,13 +379,13 @@ func Test_Parse(t *testing.T) {
 			expected: Grant{
 				scope: Scope{
 					Id:   "scope",
-					Type: iam.OrganizationScope,
+					Type: scope.Organization,
 				},
 				id:  "foobar",
-				typ: "host-catalog",
-				actions: map[iam.Action]bool{
-					iam.ActionCreate: true,
-					iam.ActionRead:   true,
+				typ: resource.HostCatalog,
+				actions: map[action.Type]bool{
+					action.Create: true,
+					action.Read:   true,
 				},
 			},
 		},
@@ -401,38 +402,37 @@ func Test_Parse(t *testing.T) {
 			expected: Grant{
 				scope: Scope{
 					Id:   "scope",
-					Type: iam.OrganizationScope,
+					Type: scope.Organization,
 				},
 				id: "u_abcd1234",
-				actions: map[iam.Action]bool{
-					iam.ActionCreate: true,
-					iam.ActionRead:   true,
+				actions: map[action.Type]bool{
+					action.Create: true,
+					action.Read:   true,
 				},
 			},
 		},
 	}
 
-	assert := assert.New(t)
-	require := require.New(t)
-
 	_, err := Parse(Scope{}, "", "")
-	require.Error(err)
-	assert.Equal("grant string is empty", err.Error())
+	require.Error(t, err)
+	assert.Equal(t, "grant string is empty", err.Error())
 
 	_, err = Parse(Scope{}, "", "{}")
-	require.Error(err)
-	assert.Equal("invalid scope type", err.Error())
+	require.Error(t, err)
+	assert.Equal(t, "invalid scope type", err.Error())
 
-	_, err = Parse(Scope{Type: iam.OrganizationScope}, "", "{}")
-	require.Error(err)
-	assert.Equal("no scope ID provided", err.Error())
+	_, err = Parse(Scope{Type: scope.Organization}, "", "{}")
+	require.Error(t, err)
+	assert.Equal(t, "no scope ID provided", err.Error())
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			grant, err := Parse(Scope{Id: "scope", Type: iam.OrganizationScope}, test.userId, test.input)
+			assert := assert.New(t)
+			require := require.New(t)
+			grant, err := Parse(Scope{Id: "scope", Type: scope.Organization}, test.userId, test.input)
 			if test.err != "" {
 				require.Error(err)
-				assert.True(strings.HasPrefix(err.Error(), test.err))
+				assert.True(strings.Contains(err.Error(), test.err))
 			} else {
 				require.NoError(err)
 				assert.Equal(test.expected, grant)
