@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"net/http"
 	"path"
-	"path/filepath"
 	"strings"
 	"time"
 
@@ -25,7 +24,10 @@ import (
 	"github.com/hashicorp/watchtower/internal/servers/controller/handlers/projects"
 	"github.com/hashicorp/watchtower/internal/servers/controller/handlers/roles"
 	"github.com/hashicorp/watchtower/internal/servers/controller/handlers/users"
+	"github.com/hashicorp/watchtower/internal/ui"
 )
+
+const DefaultOrgHeader = "WATCHTOWER-DEFAULT-ORG"
 
 type HandlerProperties struct {
 	ListenerConfig *configutil.Listener
@@ -43,10 +45,7 @@ func (c *Controller) handler(props HandlerProperties) (http.Handler, error) {
 	}
 	mux.Handle("/v1/", h)
 
-	// TODO: enable when not in this mode, when we bundle the assets
-	if c.conf.RawConfig.PassthroughDirectory != "" {
-		mux.Handle("/", handleUi(c))
-	}
+	mux.Handle("/", handleUi(c))
 
 	corsWrappedHandler := wrapHandlerWithCors(mux, props)
 	commonWrappedHandler := wrapHandlerWithCommonFuncs(corsWrappedHandler, c, props)
@@ -55,12 +54,25 @@ func (c *Controller) handler(props HandlerProperties) (http.Handler, error) {
 }
 
 func handleUi(c *Controller) http.Handler {
-	// TODO: Do stuff with real UI data when it's bundled. We may also have to
-	// do a similar thing with fetching index.html in advance.
 	var nextHandler http.Handler
 	if c.conf.RawConfig.PassthroughDirectory != "" {
-		nextHandler = devPassthroughHandler(c)
+		nextHandler = ui.DevPassthroughHandler(c.logger, c.conf.RawConfig.PassthroughDirectory)
+	} else {
+		nextHandler = http.FileServer(ui.AssetFile())
 	}
+
+	rootHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/":
+			irw := newIndexResponseWriter()
+			nextHandler.ServeHTTP(irw, r)
+			irw.header.Set(DefaultOrgHeader, c.conf.DefaultOrgId)
+			irw.writeToWriter(w)
+
+		default:
+			nextHandler.ServeHTTP(w, r)
+		}
+	})
 
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet {
@@ -95,23 +107,8 @@ func handleUi(c *Controller) http.Handler {
 		}
 
 		// Fall through to the next handler
-		nextHandler.ServeHTTP(w, r)
+		rootHandler.ServeHTTP(w, r)
 	})
-}
-
-func devPassthroughHandler(c *Controller) http.Handler {
-	// Panic may not be ideal but this is never a production call and it'll
-	// panic on startup. We could also just change the function to return
-	// an error.
-	abs, err := filepath.Abs(c.conf.RawConfig.PassthroughDirectory)
-	if err != nil {
-		panic(err)
-	}
-	c.logger.Warn("serving passthrough files at /", "path", abs)
-	fs := http.FileServer(http.Dir(abs))
-	prefixHandler := http.StripPrefix("/", fs)
-
-	return prefixHandler
 }
 
 func handleGrpcGateway(c *Controller) (http.Handler, error) {

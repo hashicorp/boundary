@@ -118,5 +118,6 @@ Sessionx.vim
 main
 /pkg/
 /bin/
+internal/ui/assets.go
 
 # vim: set filetype=conf :
