@@ -115,11 +115,15 @@ func (r *Repository) CreateAuthToken(ctx context.Context, at *AuthToken, opt ...
 			// TODO: Lookup and verify that AuthMethod's scope matches the provided scope.
 
 			newAuthToken = at.clone()
-			return w.Create(
-				ctx,
-				newAuthToken,
-				db.WithOplog(r.wrapper, metadata),
-			)
+			if err := newAuthToken.EncryptData(ctx, r.wrapper); err != nil {
+				return err
+			}
+			if err := w.Create(ctx, newAuthToken, db.WithOplog(r.wrapper, metadata)); err != nil {
+				return err
+			}
+			newAuthToken.CtToken = nil
+
+			return nil
 		},
 	)
 
@@ -144,6 +148,7 @@ func (r *Repository) LookupAuthToken(ctx context.Context, id string, opt ...Opti
 		return nil, fmt.Errorf("lookup: auth token: %s: %w", id, err)
 	}
 	at.Token = ""
+	at.CtToken = nil
 	return at, nil
 }
 
@@ -151,33 +156,41 @@ func (r *Repository) LookupAuthToken(ctx context.Context, id string, opt ...Opti
 // previous value for Last Accessed populated. For security reasons, the actual token value is not included
 // in the returned AuthToken.
 // Returns nil, nil if no AuthToken is found for the token.  All options are ignored.
-func (r *Repository) MaybeUpdateLastAccessed(ctx context.Context, token string, opt ...Option) (*AuthToken, error) {
+func (r *Repository) MaybeUpdateLastAccessed(ctx context.Context, id, token string, opt ...Option) (*AuthToken, error) {
 	// Do not log or add the token string to any errors.
 	if token == "" {
 		return nil, fmt.Errorf("lookup: auth token: missing token: %w", db.ErrInvalidParameter)
 	}
-	authToken := allocAuthToken()
+	retAT := allocAuthToken()
+	retAT.PublicId = id
 
 	var rowsUpdated int
-	var at *AuthToken
 	_, err := r.writer.DoTx(
 		ctx,
 		db.StdRetryCnt,
 		db.ExpBackoff{},
 		func(read db.Reader, w db.Writer) error {
-			if err := read.LookupWhere(ctx, &authToken, "token = ?", token); err != nil {
-				return fmt.Errorf("lookup by token: auth token: %w", err)
+			if err := r.reader.LookupByPublicId(ctx, retAT); err != nil {
+				return fmt.Errorf("lookup: auth token: %s: %w", id, err)
 			}
-			// authToken.Token set to empty string so the value is not returned as described in the methods' doc.
-			authToken.Token = ""
-			metadata := newAuthTokenMetadata(authToken, oplog.OpType_OP_TYPE_UPDATE)
+			if err := retAT.DecryptData(ctx, r.wrapper); err != nil {
+				return err
+			}
+			if retAT.GetToken() != token {
+				return db.ErrInvalidParameter
+			}
+			// retAT.Token set to empty string so the value is not returned as described in the methods' doc.
+			retAT.Token = ""
+			retAT.CtToken = nil
 
-			t, err := ptypes.Timestamp(authToken.GetApproximateLastAccessTime().GetTimestamp())
+			metadata := newAuthTokenMetadata(retAT, oplog.OpType_OP_TYPE_UPDATE)
+
+			t, err := ptypes.Timestamp(retAT.GetApproximateLastAccessTime().GetTimestamp())
 			if err != nil {
 				return err
 			}
 
-			if t.Sub(time.Now()) < lastUsedUpdateDuration {
+			if time.Now().Sub(t) < lastUsedUpdateDuration {
 				// To save the db from being updated to frequently, we only update the
 				// LastAccessTime if it hasn't been updated within the last X minutes.
 				// TODO: Make this duration configurable.
@@ -186,7 +199,7 @@ func (r *Repository) MaybeUpdateLastAccessed(ctx context.Context, token string, 
 
 			// Setting the ApproximateLastAccessTime to null through using the null mask allows a defined db's
 			// trigger to set ApproximateLastAccessTime to the commit timestamp.
-			at = authToken.clone()
+			at := retAT.clone()
 			rowsUpdated, err = w.Update(
 				ctx,
 				at,
@@ -202,9 +215,9 @@ func (r *Repository) MaybeUpdateLastAccessed(ctx context.Context, token string, 
 	)
 
 	if err != nil {
-		return nil, fmt.Errorf("update: auth token: %s: %w", authToken.PublicId, err)
+		return nil, fmt.Errorf("update: auth token: %s: %w", retAT.PublicId, err)
 	}
-	return authToken, nil
+	return retAT, nil
 }
 
 // TODO(ICU-344): Add ListAuthTokens

@@ -27,6 +27,8 @@ func TestAuthToken_New(t *testing.T) {
 		}
 	})
 
+	wrapper := db.TestWrapper(t)
+
 	org, _ := iam.TestScopes(t, conn)
 	u := iam.TestUser(t, conn, org.GetPublicId())
 	amId1 := setupAuthMethod(t, conn, org.GetPublicId())
@@ -111,6 +113,8 @@ func TestAuthToken_New(t *testing.T) {
 					assert.NoError(err)
 					tt.want.Token = token
 					got.Token = token
+					err = got.EncryptData(context.Background(), wrapper)
+					require.NoError(t, err)
 
 					w := db.New(conn)
 					err2 := w.Create(context.Background(), got)
@@ -131,6 +135,8 @@ func TestAuthToken_DbUpdate(t *testing.T) {
 			t.Error(err)
 		}
 	})
+
+	wrapper := db.TestWrapper(t)
 
 	org, _ := iam.TestScopes(t, conn)
 	u := iam.TestUser(t, conn, org.GetPublicId())
@@ -203,6 +209,8 @@ func TestAuthToken_DbUpdate(t *testing.T) {
 			authTok := testAuthToken(t, conn)
 			proto.Merge(authTok.AuthToken, tt.args.authTok)
 
+			err := authTok.EncryptData(context.Background(), wrapper)
+			require.NoError(t, err)
 			cnt, err := w.Update(context.Background(), authTok, tt.args.fieldMask, tt.args.nullMask)
 			if tt.wantErr {
 				t.Logf("Got error :%v", err)
@@ -225,6 +233,8 @@ func TestAuthToken_DbCreate(t *testing.T) {
 			t.Error(err)
 		}
 	})
+
+	wrapper := db.TestWrapper(t)
 
 	org, _ := iam.TestScopes(t, conn)
 	u := iam.TestUser(t, conn, org.GetPublicId())
@@ -254,17 +264,6 @@ func TestAuthToken_DbCreate(t *testing.T) {
 				IamUserId:    u.GetPublicId(),
 				AuthMethodId: amId,
 			},
-		},
-		{
-			name: "duplicate-token",
-			in: &store.AuthToken{
-				PublicId:     testAuthTokenId(),
-				Token:        createdAuthToken.GetToken(),
-				ScopeId:      org.GetPublicId(),
-				IamUserId:    u.GetPublicId(),
-				AuthMethodId: amId,
-			},
-			wantError: true,
 		},
 		{
 			name: "duplicate-id",
@@ -306,7 +305,9 @@ func TestAuthToken_DbCreate(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			assert := assert.New(t)
 			at := &AuthToken{AuthToken: tt.in}
-			err := db.New(conn).Create(context.Background(), at)
+			err := at.EncryptData(context.Background(), wrapper)
+			require.NoError(t, err)
+			err = db.New(conn).Create(context.Background(), at)
 			if tt.wantError {
 				assert.Error(err)
 			} else {

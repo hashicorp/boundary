@@ -27,19 +27,25 @@ message AuthToken {
 	// @inject_tag: `gorm:"default:null"`
 	timestamp.v1.Timestamp expiration_time = 5;
 
-	// token is the field stored by the client and used
-	// @inject_tag: `gorm:"default:not_null"`
-	string token = 6;
+	// ciphertext token value stored in the database
+	// @inject_tag: gorm:"column:token;not_null" wrapping:"ct,authtoken_token"
+	bytes ct_token = 6;
+
+	// plain text version of the decrypted authtoken value
+	// we are NOT storing this plain-text entry data in the db
+	// token is the field stored and used by the client
+	// @inject_tag: gorm:"-" wrapping:"pt,authtoken_token"
+	string token = 7;
 
 	// The iam_scope_id of the owning scope and must be set.
 	// @inject_tag: `gorm:"default:not_null"`
-	string scope_id = 7;
+	string scope_id = 8;
 
 	// iam_user_id is the public id for the iam user this auth token is for.
 	// @inject_tag: `gorm:"default:not_null"`
-	string iam_user_id = 8;
+	string iam_user_id = 9;
 
 	// user id is the public id for the iam user this auth token is for.
 	// @inject_tag: `gorm:"default:not_null"`
-	string auth_method_id = 9;
+	string auth_method_id = 10;
 }

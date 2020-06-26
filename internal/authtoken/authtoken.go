@@ -1,8 +1,11 @@
 package authtoken
 
 import (
+	"context"
 	"fmt"
 
+	wrapping "github.com/hashicorp/go-kms-wrapping"
+	"github.com/hashicorp/go-kms-wrapping/structwrapping"
 	"github.com/hashicorp/vault/sdk/helper/base62"
 	"github.com/hashicorp/watchtower/internal/authtoken/store"
 	"github.com/hashicorp/watchtower/internal/db"
@@ -43,6 +46,24 @@ func (s *AuthToken) clone() *AuthToken {
 	return &AuthToken{
 		AuthToken: cp.(*store.AuthToken),
 	}
+}
+
+// EncryptData the entry's data using the provided cipher (wrapping.Wrapper)
+func (s *AuthToken) EncryptData(ctx context.Context, cipher wrapping.Wrapper) error {
+	// structwrapping doesn't support embedding, so we'll pass in the store.Entry directly
+	if err := structwrapping.WrapStruct(ctx, cipher, s.AuthToken, nil); err != nil {
+		return fmt.Errorf("error encrypting auth token: %w", err)
+	}
+	return nil
+}
+
+// DecryptData will decrypt the auth token's value using the provided cipher (wrapping.Wrapper)
+func (s *AuthToken) DecryptData(ctx context.Context, cipher wrapping.Wrapper) error {
+	// structwrapping doesn't support embedding, so we'll pass in the store.Entry directly
+	if err := structwrapping.UnwrapStruct(ctx, cipher, s.AuthToken, nil); err != nil {
+		return fmt.Errorf("error decrypting auth token: %w", err)
+	}
+	return nil
 }
 
 const (

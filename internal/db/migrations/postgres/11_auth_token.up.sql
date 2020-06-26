@@ -6,7 +6,7 @@ begin;
   -- an auth token belongs to 1 and only 1 auth methods
   create table auth_token (
     public_id wt_public_id primary key,
-    token text not null unique,
+    token bytea not null unique,
     scope_id wt_public_id not null,
     iam_user_id wt_public_id not null,
     auth_method_id wt_public_id not null,

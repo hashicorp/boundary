@@ -30,6 +30,9 @@ func testAuthToken(t *testing.T, conn *gorm.DB) *AuthToken {
 	assert.NotEmpty(token)
 	at.Token = token
 
+	wrapper := db.TestWrapper(t)
+	at.EncryptData(context.Background(), wrapper)
+
 	w := db.New(conn)
 	err2 := w.Create(context.Background(), at)
 	assert.NoError(err2)
