@@ -13,6 +13,7 @@ import (
 	pbs "github.com/hashicorp/watchtower/internal/gen/controller/api/services"
 	"github.com/hashicorp/watchtower/internal/iam"
 	"github.com/hashicorp/watchtower/internal/servers/controller/handlers/projects"
+	"github.com/hashicorp/watchtower/internal/types/scope"
 	"google.golang.org/genproto/protobuf/field_mask"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -172,14 +173,14 @@ func TestList(t *testing.T) {
 		},
 		{
 			name:    "Invalid Org Id",
-			req:     &pbs.ListProjectsRequest{OrgId: iam.OrganizationScope.Prefix() + "_this is invalid"},
+			req:     &pbs.ListProjectsRequest{OrgId: scope.Organization.Prefix() + "_this is invalid"},
 			res:     nil,
 			errCode: codes.InvalidArgument,
 		},
 		// TODO: When an org doesn't exist, we should return a 404 instead of an empty list.
 		{
 			name:    "Unfound Org",
-			req:     &pbs.ListProjectsRequest{OrgId: iam.OrganizationScope.Prefix() + "_DoesntExis"},
+			req:     &pbs.ListProjectsRequest{OrgId: scope.Organization.Prefix() + "_DoesntExis"},
 			res:     &pbs.ListProjectsResponse{},
 			errCode: codes.OK,
 		},

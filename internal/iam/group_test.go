@@ -9,6 +9,8 @@ import (
 	"github.com/hashicorp/watchtower/internal/db"
 	dbassert "github.com/hashicorp/watchtower/internal/db/assert"
 	"github.com/hashicorp/watchtower/internal/oplog"
+	"github.com/hashicorp/watchtower/internal/types/action"
+	"github.com/hashicorp/watchtower/internal/types/resource"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/proto"
@@ -450,17 +452,17 @@ func TestGroup_Actions(t *testing.T) {
 	assert := assert.New(t)
 	r := &Group{}
 	a := r.Actions()
-	assert.Equal(a[ActionCreate.String()], ActionCreate)
-	assert.Equal(a[ActionUpdate.String()], ActionUpdate)
-	assert.Equal(a[ActionRead.String()], ActionRead)
-	assert.Equal(a[ActionDelete.String()], ActionDelete)
+	assert.Equal(a[action.Create.String()], action.Create)
+	assert.Equal(a[action.Update.String()], action.Update)
+	assert.Equal(a[action.Read.String()], action.Read)
+	assert.Equal(a[action.Delete.String()], action.Delete)
 }
 
 func TestGroup_ResourceType(t *testing.T) {
 	assert := assert.New(t)
 	r := &Group{}
 	ty := r.ResourceType()
-	assert.Equal(ty, ResourceTypeGroup)
+	assert.Equal(ty, resource.StaticGroup)
 }
 
 func TestGroup_GetScope(t *testing.T) {

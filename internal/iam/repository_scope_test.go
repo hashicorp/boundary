@@ -11,6 +11,7 @@ import (
 	"github.com/hashicorp/watchtower/internal/db/timestamp"
 	iam_store "github.com/hashicorp/watchtower/internal/iam/store"
 	"github.com/hashicorp/watchtower/internal/oplog"
+	"github.com/hashicorp/watchtower/internal/types/scope"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/proto"
@@ -55,7 +56,7 @@ func Test_Repository_CreateScope(t *testing.T) {
 		wrapper := db.TestWrapper(t)
 		repo, err := NewRepository(rw, rw, wrapper)
 		require.NoError(err)
-		publicId, err := newScopeId(OrganizationScope)
+		publicId, err := newScopeId(scope.Organization)
 		require.NoError(err)
 		s, err := NewOrganization()
 		require.NoError(err)
@@ -421,7 +422,7 @@ func TestRepository_UpdateScope(t *testing.T) {
 					Scope: &iam_store.Scope{
 						Name:        "type" + id,
 						Description: "",
-						Type:        ProjectScope.String(),
+						Type:        scope.Project.String(),
 						CreateTime:  now,
 						UpdateTime:  now,
 						PublicId:    publicId,

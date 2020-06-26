@@ -8,6 +8,7 @@ import (
 
 	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/go-multierror"
+	"github.com/hashicorp/vault/internalshared/configutil"
 	"github.com/hashicorp/vault/sdk/helper/mlock"
 	"github.com/hashicorp/watchtower/internal/cmd/base"
 	"github.com/hashicorp/watchtower/internal/cmd/config"
@@ -31,6 +32,8 @@ type Command struct {
 
 	Config *config.Config
 	worker *worker.Worker
+
+	configKMS *configutil.KMS
 
 	flagConfig              string
 	flagLogLevel            string
@@ -203,13 +206,29 @@ func (c *Command) ParseFlagsAndConfig(args []string) int {
 		return 1
 	}
 
+	// preload the KMS for encrypting/decrypting the config parameters
+	kmss, err := configutil.LoadConfigKMSes(c.flagConfig)
+	if err != nil {
+		c.UI.Error("error loading KMS config: " + err.Error())
+		return 1
+	}
+
+	for _, kms := range kmss {
+		for _, purpose := range kms.Purpose {
+			if purpose == "config" {
+				c.configKMS = kms
+				break
+			}
+		}
+	}
+
 	// Validation
 	if !c.flagDev {
 		if len(c.flagConfig) == 0 {
 			c.UI.Error("Must supply a config file with -config")
 			return 1
 		}
-		c.Config, err = config.LoadFile(c.flagConfig)
+		c.Config, err = config.LoadFile(c.flagConfig, c.configKMS)
 		if err != nil {
 			c.UI.Error("Error parsing config: " + err.Error())
 			return 1
@@ -288,7 +307,7 @@ func (c *Command) WaitForInterrupt() int {
 				goto RUNRELOADFUNCS
 			}
 
-			newConf, err = config.LoadFile(c.flagConfig)
+			newConf, err = config.LoadFile(c.flagConfig, c.configKMS)
 			if err != nil {
 				c.Logger.Error("could not reload config", "path", c.flagConfig, "error", err)
 				goto RUNRELOADFUNCS
