@@ -15,14 +15,12 @@ import (
 
 func TestRepository_CreateAuthMethod(t *testing.T) {
 	cleanup, conn, _ := db.TestSetup(t, "postgres")
-	defer func() {
-		if err := cleanup(); err != nil {
-			t.Error(err)
-		}
-		if err := conn.Close(); err != nil {
-			t.Error(err)
-		}
-	}()
+	t.Cleanup(func() {
+		err := cleanup()
+		assert.NoError(t, err)
+		err = conn.Close()
+		assert.NoError(t, err)
+	})
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
 

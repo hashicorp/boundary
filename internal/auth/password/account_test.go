@@ -15,6 +15,7 @@ import (
 func testAuthMethods(t *testing.T, conn *gorm.DB, count int) []*AuthMethod {
 	t.Helper()
 	assert, require := assert.New(t), require.New(t)
+	w := db.New(conn)
 	_, prj := iam.TestScopes(t, conn)
 	var auts []*AuthMethod
 	for i := 0; i < count; i++ {
@@ -26,7 +27,6 @@ func testAuthMethods(t *testing.T, conn *gorm.DB, count int) []*AuthMethod {
 		require.NotEmpty(id)
 		cat.PublicId = id
 
-		w := db.New(conn)
 		err2 := w.Create(context.Background(), cat)
 		assert.NoError(err2)
 		auts = append(auts, cat)
@@ -35,15 +35,14 @@ func testAuthMethods(t *testing.T, conn *gorm.DB, count int) []*AuthMethod {
 }
 func TestAccount_New(t *testing.T) {
 	cleanup, conn, _ := db.TestSetup(t, "postgres")
-	defer func() {
-		if err := cleanup(); err != nil {
-			t.Error(err)
-		}
-		if err := conn.Close(); err != nil {
-			t.Error(err)
-		}
-	}()
+	t.Cleanup(func() {
+		err := cleanup()
+		assert.NoError(t, err)
+		err = conn.Close()
+		assert.NoError(t, err)
+	})
 
+	w := db.New(conn)
 	auts := testAuthMethods(t, conn, 1)
 	aut := auts[0]
 
@@ -138,7 +137,6 @@ func TestAccount_New(t *testing.T) {
 			tt.want.PublicId = id
 			got.PublicId = id
 
-			w := db.New(conn)
 			err2 := w.Create(context.Background(), got)
 			assert.NoError(err2)
 		})
