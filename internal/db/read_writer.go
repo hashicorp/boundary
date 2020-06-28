@@ -461,6 +461,9 @@ func (rw *Db) DeleteItems(ctx context.Context, deleteItems []interface{}, opt ..
 	}
 	rowsDeleted := 0
 	for _, item := range deleteItems {
+		// calling delete directly on the underlying db, since the writer.Delete
+		// doesn't provide capabilities needed here (which is different from the
+		// relationship between Create and CreateItems).
 		underlying := rw.underlying.Delete(item)
 		if underlying.Error != nil {
 			return rowsDeleted, fmt.Errorf("delete: failed: %w", underlying.Error)
