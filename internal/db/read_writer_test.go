@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"strings"
 	"testing"
 	"time"
@@ -1284,4 +1285,491 @@ func testId(t *testing.T) string {
 	id, err := uuid.GenerateUUID()
 	assert.NoError(err)
 	return id
+}
+
+func TestClear_InputTypes(t *testing.T) {
+	type Z struct {
+		F string
+	}
+
+	var nilZ *Z
+	s := "test-string"
+
+	type args struct {
+		v interface{}
+		f []string
+		d int
+	}
+
+	var tests = []struct {
+		name string
+		args args
+		want interface{}
+		err  error
+	}{
+		{
+			name: "nil",
+			args: args{
+				v: nil,
+				f: []string{"field"},
+				d: 1,
+			},
+			err: ErrInvalidParameter,
+		},
+		{
+			name: "string",
+			args: args{
+				v: "blank",
+				f: []string{"field"},
+				d: 1,
+			},
+			err: ErrInvalidParameter,
+		},
+		{
+			name: "pointer-to-nil-struct",
+			args: args{
+				v: nilZ,
+				f: []string{"field"},
+				d: 1,
+			},
+			err: ErrInvalidParameter,
+		},
+		{
+			name: "pointer-to-string",
+			args: args{
+				v: &s,
+				f: []string{"field"},
+				d: 1,
+			},
+			err: ErrInvalidParameter,
+		},
+		{
+			name: "not-pointer",
+			args: args{
+				v: Z{
+					F: "foo",
+				},
+				f: []string{"field"},
+				d: 1,
+			},
+			err: ErrInvalidParameter,
+		},
+		{
+			name: "map",
+			args: args{
+				v: map[string]int{
+					"A": 31,
+					"B": 34,
+				},
+				f: []string{"field"},
+				d: 1,
+			},
+			err: ErrInvalidParameter,
+		},
+		{
+			name: "pointer-to-struct",
+			args: args{
+				v: &Z{
+					F: "foo",
+				},
+				f: []string{"field"},
+				d: 1,
+			},
+			want: &Z{
+				F: "foo",
+			},
+		},
+	}
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+			input := tt.args.v
+			err := Clear(input, tt.args.f, tt.args.d)
+			if tt.err != nil {
+				assert.Error(err)
+				return
+			}
+			require.NoError(err)
+			assert.Equal(tt.want, input)
+		})
+	}
+}
+
+func TestClear_Structs(t *testing.T) {
+	s := "test-string"
+
+	type A struct{ F string }
+	type B struct{ F *string }
+
+	type AB struct {
+		A A
+		B *B
+		F string
+
+		IN io.Reader
+		MP map[int]int
+		SL []string
+		AR [1]int
+		CH chan int
+		FN func()
+	}
+
+	type AFB struct {
+		F A
+		B *B
+	}
+
+	type ABF struct {
+		A A
+		F *B
+	}
+
+	type C struct {
+		F  string
+		NF string
+	}
+
+	type EA struct {
+		A
+		M  string
+		NF string
+	}
+
+	type EAP struct {
+		*A
+		M  string
+		NF string
+	}
+
+	type DEA struct {
+		EA
+		F string
+	}
+
+	type DEAP struct {
+		*EAP
+		F string
+	}
+
+	type args struct {
+		v interface{}
+		f []string
+		d int
+	}
+	var tests = []struct {
+		name string
+		args args
+		want interface{}
+	}{
+		{
+			name: "blank-A",
+			args: args{
+				v: &A{},
+				f: []string{"F"},
+				d: 1,
+			},
+			want: &A{},
+		},
+		{
+			name: "clear-A",
+			args: args{
+				v: &A{"clear"},
+				f: []string{"F"},
+				d: 1,
+			},
+			want: &A{},
+		},
+		{
+			name: "clear-B",
+			args: args{
+				v: &B{&s},
+				f: []string{"F"},
+				d: 1,
+			},
+			want: &B{},
+		},
+		{
+			name: "clear-C",
+			args: args{
+				v: &C{"clear", "notclear"},
+				f: []string{"F"},
+				d: 1,
+			},
+			want: &C{"", "notclear"},
+		},
+		{
+			name: "shallow-clear-AB",
+			args: args{
+				v: &AB{
+					A: A{"notclear"},
+					B: &B{&s},
+					F: "clear",
+				},
+				f: []string{"F"},
+				d: 1,
+			},
+			want: &AB{
+				A: A{"notclear"},
+				B: &B{&s},
+				F: "",
+			},
+		},
+		{
+			name: "deep-clear-AB",
+			args: args{
+				v: &AB{
+					A: A{"clear"},
+					B: &B{&s},
+					F: "clear",
+				},
+				f: []string{"F"},
+				d: 2,
+			},
+			want: &AB{
+				A: A{""},
+				B: &B{},
+				F: "",
+			},
+		},
+		{
+			name: "clear-AFB",
+			args: args{
+				v: &AFB{
+					F: A{"clear"},
+					B: &B{&s},
+				},
+				f: []string{"F"},
+				d: 2,
+			},
+			want: &AFB{
+				F: A{""},
+				B: &B{},
+			},
+		},
+		{
+			name: "clear-ABF",
+			args: args{
+				v: &ABF{
+					A: A{"clear"},
+					F: &B{&s},
+				},
+				f: []string{"F"},
+				d: 2,
+			},
+			want: &ABF{
+				A: A{""},
+				F: nil,
+			},
+		},
+		{
+			name: "embedded-struct",
+			args: args{
+				v: &EA{
+					A:  A{"clear"},
+					M:  "clear",
+					NF: "notclear",
+				},
+				f: []string{"F", "M"},
+				d: 2,
+			},
+			want: &EA{
+				A:  A{""},
+				M:  "",
+				NF: "notclear",
+			},
+		},
+		{
+			name: "embedded-struct-pointer",
+			args: args{
+				v: &EAP{
+					A:  &A{"clear"},
+					M:  "clear",
+					NF: "notclear",
+				},
+				f: []string{"F", "M"},
+				d: 2,
+			},
+			want: &EAP{
+				A:  &A{""},
+				M:  "",
+				NF: "notclear",
+			},
+		},
+		{
+			name: "embedded-struct-pointer-extra-depth",
+			args: args{
+				v: &EAP{
+					A:  &A{"clear"},
+					M:  "clear",
+					NF: "notclear",
+				},
+				f: []string{"F", "M"},
+				d: 12,
+			},
+			want: &EAP{
+				A:  &A{""},
+				M:  "",
+				NF: "notclear",
+			},
+		},
+		{
+			name: "deep-embedded-struct",
+			args: args{
+				v: &DEA{
+					EA: EA{
+						A:  A{"clear"},
+						M:  "clear",
+						NF: "notclear",
+					},
+					F: "clear",
+				},
+				f: []string{"F", "M"},
+				d: 3,
+			},
+			want: &DEA{
+				EA: EA{
+					A:  A{""},
+					M:  "",
+					NF: "notclear",
+				},
+				F: "",
+			},
+		},
+		{
+			name: "deep-embedded-struct-pointer",
+			args: args{
+				v: &DEAP{
+					EAP: &EAP{
+						A:  &A{"clear"},
+						M:  "clear",
+						NF: "notclear",
+					},
+					F: "clear",
+				},
+				f: []string{"F", "M"},
+				d: 3,
+			},
+			want: &DEAP{
+				EAP: &EAP{
+					A:  &A{""},
+					M:  "",
+					NF: "notclear",
+				},
+				F: "",
+			},
+		},
+	}
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+			input := tt.args.v
+			err := Clear(input, tt.args.f, tt.args.d)
+			assert.NotEmpty(s)
+			require.NoError(err)
+			assert.Equal(tt.want, input)
+		})
+	}
+}
+
+func TestClear_SetFieldsToNil(t *testing.T) {
+	type P struct{ F *string }
+	type A struct{ F string }
+
+	type EA struct {
+		A
+		M  string
+		NF string
+	}
+
+	type EAP struct {
+		*A
+		M  string
+		NF string
+	}
+
+	type DEA struct {
+		EA
+		F string
+	}
+
+	type DEAP struct {
+		*EAP
+		F string
+	}
+
+	type args struct {
+		v interface{}
+		f []string
+	}
+	var tests = []struct {
+		name string
+		args args
+		want interface{}
+	}{
+		{
+			name: "dont-panic",
+			args: args{
+				v: P{},
+				f: []string{"F"},
+			},
+			want: P{},
+		},
+		{
+			name: "deep-embedded-struct",
+			args: args{
+				v: &DEA{
+					EA: EA{
+						A:  A{"notclear"},
+						M:  "clear",
+						NF: "notclear",
+					},
+					F: "clear",
+				},
+				f: []string{"F", "M"},
+			},
+			want: &DEA{
+				EA: EA{
+					A:  A{"notclear"},
+					M:  "",
+					NF: "notclear",
+				},
+				F: "",
+			},
+		},
+		{
+			name: "deep-embedded-struct-pointer",
+			args: args{
+				v: &DEAP{
+					EAP: &EAP{
+						A:  &A{"notclear"},
+						M:  "clear",
+						NF: "notclear",
+					},
+					F: "clear",
+				},
+				f: []string{"F", "M"},
+			},
+			want: &DEAP{
+				EAP: &EAP{
+					A:  &A{"notclear"},
+					M:  "",
+					NF: "notclear",
+				},
+				F: "",
+			},
+		},
+	}
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+			input := tt.args.v
+			require.NotPanics(func() {
+				setFieldsToNil(input, tt.args.f)
+			})
+			assert.Equal(tt.want, input)
+		})
+	}
 }

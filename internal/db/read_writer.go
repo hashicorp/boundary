@@ -613,43 +613,9 @@ func filterPaths(paths []string) []string {
 	return filtered
 }
 
-// setFieldsToNil will set the fieldNames to nil. It supports embedding a struct
-// (or structPtr) one level deep.
 func setFieldsToNil(i interface{}, fieldNames []string) {
-	val := reflect.Indirect(reflect.ValueOf(i))
-	structTyp := val.Type()
-	for _, field := range fieldNames {
-		for i := 0; i < structTyp.NumField(); i++ {
-			kind := structTyp.Field(i).Type.Kind()
-			if kind == reflect.Struct || kind == reflect.Ptr {
-				// check if the embedded field is exported via CanInterface()
-				if val.Field(i).CanInterface() {
-					embVal := reflect.Indirect(reflect.ValueOf(val.Field(i).Interface()))
-					// if it's a ptr to a struct, then we need a few more bits before proceeding.
-					if kind == reflect.Ptr {
-						embVal = val.Field(i).Elem()
-						embType := embVal.Type()
-						if embType.Kind() != reflect.Struct {
-							continue
-						}
-					}
-					f := embVal.FieldByName(field)
-					if f.IsValid() {
-						if f.CanSet() {
-							f.Set(reflect.Zero(f.Type()))
-						}
-					}
-					continue
-				}
-			}
-			// it's not an embedded type, so check if the field name matches
-			f := val.FieldByName(field)
-			if f.IsValid() {
-				if f.CanSet() {
-					f.Set(reflect.Zero(f.Type()))
-				}
-			}
-		}
+	if err := Clear(i, fieldNames, 2); err != nil {
+		// do nothing
 	}
 }
 
@@ -671,4 +637,57 @@ func contains(ss []string, t string) bool {
 		}
 	}
 	return false
+}
+
+// Clear sets fields in the value pointed to by i to their zero value.
+// Clear descends i to depth clearing fields at each level. i must be a
+// pointer to a struct. Cycles in i are not detected.
+//
+// A depth of 2 will change i and i's children. A depth of 1 will change i
+// but no children of i. A depth of 0 will return with no changes to i.
+func Clear(i interface{}, fields []string, depth int) error {
+	if len(fields) == 0 || depth == 0 {
+		return nil
+	}
+	fm := make(map[string]bool)
+	for _, f := range fields {
+		fm[f] = true
+	}
+
+	v := reflect.ValueOf(i)
+
+	switch v.Kind() {
+	default:
+		return ErrInvalidParameter
+	case reflect.Ptr:
+		if v.IsNil() || v.Elem().Kind() != reflect.Struct {
+			return ErrInvalidParameter
+		}
+		clear(v, fm, depth)
+	}
+	return nil
+}
+
+func clear(v reflect.Value, fields map[string]bool, depth int) {
+	if depth == 0 {
+		return
+	}
+	depth--
+
+	switch v.Kind() {
+	case reflect.Ptr:
+		clear(v.Elem(), fields, depth+1)
+	case reflect.Struct:
+		typeOfT := v.Type()
+		for i := 0; i < v.NumField(); i++ {
+			f := v.Field(i)
+			if ok := fields[typeOfT.Field(i).Name]; ok {
+				if f.IsValid() && f.CanSet() {
+					f.Set(reflect.Zero(f.Type()))
+				}
+				continue
+			}
+			clear(f, fields, depth)
+		}
+	}
 }
