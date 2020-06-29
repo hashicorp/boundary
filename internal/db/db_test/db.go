@@ -23,6 +23,12 @@ func NewTestUser() (*TestUser, error) {
 	}, nil
 }
 
+func AllocTestUser() TestUser {
+	return TestUser{
+		StoreTestUser: &StoreTestUser{},
+	}
+}
+
 // Clone is useful when you're retrying transactions and you need to send the user several times
 func (u *TestUser) Clone() interface{} {
 	s := proto.Clone(u.StoreTestUser)

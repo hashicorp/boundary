@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"strings"
 	"testing"
 	"time"
@@ -1449,6 +1450,345 @@ func TestDb_ScanRows(t *testing.T) {
 	})
 }
 
+func TestDb_CreateItems(t *testing.T) {
+	cleanup, db, _ := TestSetup(t, "postgres")
+	defer func() {
+		err := cleanup()
+		assert.NoError(t, err)
+		err = db.Close()
+		assert.NoError(t, err)
+	}()
+	testOplogResourceId := testId(t)
+
+	createFn := func() []interface{} {
+		results := []interface{}{}
+		for i := 0; i < 10; i++ {
+			u, err := db_test.NewTestUser()
+			require.NoError(t, err)
+			results = append(results, u)
+		}
+		return results
+	}
+	createMixedFn := func() []interface{} {
+		u, err := db_test.NewTestUser()
+		require.NoError(t, err)
+		c, err := db_test.NewTestCar()
+		require.NoError(t, err)
+		return []interface{}{
+			u,
+			c,
+		}
+
+	}
+	type args struct {
+		createItems []interface{}
+		opt         []Option
+	}
+	tests := []struct {
+		name        string
+		underlying  *gorm.DB
+		args        args
+		wantOplogId string
+		wantErr     bool
+		wantErrIs   error
+	}{
+		{
+			name:       "simple",
+			underlying: db,
+			args: args{
+				createItems: createFn(),
+			},
+			wantErr: false,
+		},
+		{
+			name:       "withOplog",
+			underlying: db,
+			args: args{
+				createItems: createFn(),
+				opt: []Option{
+					WithOplog(
+						TestWrapper(t),
+						oplog.Metadata{
+							"resource-public-id": []string{testOplogResourceId},
+							"op-type":            []string{oplog.OpType_OP_TYPE_CREATE.String()},
+						},
+					),
+				},
+			},
+			wantOplogId: testOplogResourceId,
+			wantErr:     false,
+		},
+		{
+			name:       "mixed items",
+			underlying: db,
+			args: args{
+				createItems: createMixedFn(),
+			},
+			wantErr:   true,
+			wantErrIs: ErrInvalidParameter,
+		},
+		{
+			name:       "bad oplog opt: nil metadata",
+			underlying: nil,
+			args: args{
+				createItems: createFn(),
+				opt: []Option{
+					WithOplog(
+						TestWrapper(t),
+						nil,
+					),
+				},
+			},
+			wantErr:   true,
+			wantErrIs: ErrNilParameter,
+		},
+		{
+			name:       "bad oplog opt: nil wrapper",
+			underlying: nil,
+			args: args{
+				createItems: createFn(),
+				opt: []Option{
+					WithOplog(
+						nil,
+						oplog.Metadata{
+							"resource-public-id": []string{"doesn't matter since wrapper is nil"},
+							"op-type":            []string{oplog.OpType_OP_TYPE_CREATE.String()},
+						},
+					),
+				},
+			},
+			wantErr:   true,
+			wantErrIs: ErrNilParameter,
+		},
+		{
+			name:       "bad opt: WithLookup",
+			underlying: nil,
+			args: args{
+				createItems: createFn(),
+				opt:         []Option{WithLookup(true)},
+			},
+			wantErr:   true,
+			wantErrIs: ErrNilParameter,
+		},
+		{
+			name:       "nil underlying",
+			underlying: nil,
+			args: args{
+				createItems: createFn(),
+			},
+			wantErr:   true,
+			wantErrIs: ErrNilParameter,
+		},
+		{
+			name:       "empty items",
+			underlying: db,
+			args: args{
+				createItems: []interface{}{},
+			},
+			wantErr:   true,
+			wantErrIs: ErrInvalidParameter,
+		},
+		{
+			name:       "nil items",
+			underlying: db,
+			args: args{
+				createItems: nil,
+			},
+			wantErr:   true,
+			wantErrIs: ErrInvalidParameter,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+			rw := &Db{
+				underlying: tt.underlying,
+			}
+			err := rw.CreateItems(context.Background(), tt.args.createItems, tt.args.opt...)
+			if tt.wantErr {
+				require.Error(err)
+				if tt.wantErrIs != nil {
+					assert.Truef(errors.Is(err, tt.wantErrIs), "unexpected error: %s", err.Error())
+				}
+				return
+			}
+			require.NoError(err)
+			for _, item := range tt.args.createItems {
+				u := db_test.AllocTestUser()
+				u.PublicId = item.(*db_test.TestUser).PublicId
+				err := rw.LookupByPublicId(context.Background(), &u)
+				assert.NoError(err)
+			}
+			if tt.wantOplogId != "" {
+				err = TestVerifyOplog(t, rw, tt.wantOplogId, WithOperation(oplog.OpType_OP_TYPE_CREATE), WithCreateNotBefore(10*time.Second))
+				assert.NoError(err)
+			}
+		})
+	}
+}
+
+func TestDb_DeleteItems(t *testing.T) {
+	cleanup, db, _ := TestSetup(t, "postgres")
+	defer func() {
+		err := cleanup()
+		assert.NoError(t, err)
+		err = db.Close()
+		assert.NoError(t, err)
+	}()
+
+	testOplogResourceId := testId(t)
+
+	createFn := func() []interface{} {
+		results := []interface{}{}
+		for i := 0; i < 10; i++ {
+			u := testUser(t, db, "", "", "")
+			results = append(results, u)
+		}
+		return results
+	}
+	type args struct {
+		deleteItems []interface{}
+		opt         []Option
+	}
+	tests := []struct {
+		name            string
+		underlying      *gorm.DB
+		args            args
+		wantRowsDeleted int
+		wantOplogId     string
+		wantErr         bool
+		wantErrIs       error
+	}{
+		{
+			name:       "simple",
+			underlying: db,
+			args: args{
+				deleteItems: createFn(),
+			},
+			wantRowsDeleted: 10,
+			wantErr:         false,
+		},
+		{
+			name:       "withOplog",
+			underlying: db,
+			args: args{
+				deleteItems: createFn(),
+				opt: []Option{
+					WithOplog(
+						TestWrapper(t),
+						oplog.Metadata{
+							"resource-public-id": []string{testOplogResourceId},
+							"op-type":            []string{oplog.OpType_OP_TYPE_DELETE.String()},
+						},
+					),
+				},
+			},
+			wantRowsDeleted: 10,
+			wantOplogId:     testOplogResourceId,
+			wantErr:         false,
+		},
+		{
+			name:       "bad oplog opt: nil metadata",
+			underlying: nil,
+			args: args{
+				deleteItems: createFn(),
+				opt: []Option{
+					WithOplog(
+						TestWrapper(t),
+						nil,
+					),
+				},
+			},
+			wantErr:   true,
+			wantErrIs: ErrNilParameter,
+		},
+		{
+			name:       "bad oplog opt: nil wrapper",
+			underlying: nil,
+			args: args{
+				deleteItems: createFn(),
+				opt: []Option{
+					WithOplog(
+						nil,
+						oplog.Metadata{
+							"resource-public-id": []string{"doesn't matter since wrapper is nil"},
+							"op-type":            []string{oplog.OpType_OP_TYPE_CREATE.String()},
+						},
+					),
+				},
+			},
+			wantErr:   true,
+			wantErrIs: ErrNilParameter,
+		},
+		{
+			name:       "bad opt: WithLookup",
+			underlying: nil,
+			args: args{
+				deleteItems: createFn(),
+				opt:         []Option{WithLookup(true)},
+			},
+			wantErr:   true,
+			wantErrIs: ErrNilParameter,
+		},
+		{
+			name:       "nil underlying",
+			underlying: nil,
+			args: args{
+				deleteItems: createFn(),
+			},
+			wantErr:   true,
+			wantErrIs: ErrNilParameter,
+		},
+		{
+			name:       "empty items",
+			underlying: db,
+			args: args{
+				deleteItems: []interface{}{},
+			},
+			wantErr:   true,
+			wantErrIs: ErrInvalidParameter,
+		},
+		{
+			name:       "nil items",
+			underlying: db,
+			args: args{
+				deleteItems: nil,
+			},
+			wantErr:   true,
+			wantErrIs: ErrInvalidParameter,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+			rw := &Db{
+				underlying: tt.underlying,
+			}
+			rowsDeleted, err := rw.DeleteItems(context.Background(), tt.args.deleteItems, tt.args.opt...)
+			if tt.wantErr {
+				require.Error(err)
+				if tt.wantErrIs != nil {
+					assert.Truef(errors.Is(err, tt.wantErrIs), "unexpected error: %s", err.Error())
+				}
+				return
+			}
+			require.NoError(err)
+			assert.Equal(tt.wantRowsDeleted, rowsDeleted)
+			for _, item := range tt.args.deleteItems {
+				u := db_test.AllocTestUser()
+				u.PublicId = item.(*db_test.TestUser).PublicId
+				err := rw.LookupByPublicId(context.Background(), &u)
+				require.Error(err)
+				require.Truef(errors.Is(err, ErrRecordNotFound), "found item %s that should be deleted", u.PublicId)
+			}
+			if tt.wantOplogId != "" {
+				err = TestVerifyOplog(t, rw, tt.wantOplogId, WithOperation(oplog.OpType_OP_TYPE_DELETE), WithCreateNotBefore(10*time.Second))
+				assert.NoError(err)
+			}
+		})
+	}
+}
+
 func testUser(t *testing.T, conn *gorm.DB, name, email, phoneNumber string) *db_test.TestUser {
 	t.Helper()
 	require := require.New(t)
@@ -1843,6 +2183,493 @@ func TestDb_WriteOplogEntryWith(t *testing.T) {
 				return
 			}
 			require.NoError(err)
+		})
+	}
+}
+
+func TestClear_InputTypes(t *testing.T) {
+	type Z struct {
+		F string
+	}
+
+	var nilZ *Z
+	s := "test-string"
+
+	type args struct {
+		v interface{}
+		f []string
+		d int
+	}
+
+	var tests = []struct {
+		name string
+		args args
+		want interface{}
+		err  error
+	}{
+		{
+			name: "nil",
+			args: args{
+				v: nil,
+				f: []string{"field"},
+				d: 1,
+			},
+			err: ErrInvalidParameter,
+		},
+		{
+			name: "string",
+			args: args{
+				v: "blank",
+				f: []string{"field"},
+				d: 1,
+			},
+			err: ErrInvalidParameter,
+		},
+		{
+			name: "pointer-to-nil-struct",
+			args: args{
+				v: nilZ,
+				f: []string{"field"},
+				d: 1,
+			},
+			err: ErrInvalidParameter,
+		},
+		{
+			name: "pointer-to-string",
+			args: args{
+				v: &s,
+				f: []string{"field"},
+				d: 1,
+			},
+			err: ErrInvalidParameter,
+		},
+		{
+			name: "not-pointer",
+			args: args{
+				v: Z{
+					F: "foo",
+				},
+				f: []string{"field"},
+				d: 1,
+			},
+			err: ErrInvalidParameter,
+		},
+		{
+			name: "map",
+			args: args{
+				v: map[string]int{
+					"A": 31,
+					"B": 34,
+				},
+				f: []string{"field"},
+				d: 1,
+			},
+			err: ErrInvalidParameter,
+		},
+		{
+			name: "pointer-to-struct",
+			args: args{
+				v: &Z{
+					F: "foo",
+				},
+				f: []string{"field"},
+				d: 1,
+			},
+			want: &Z{
+				F: "foo",
+			},
+		},
+	}
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+			input := tt.args.v
+			err := Clear(input, tt.args.f, tt.args.d)
+			if tt.err != nil {
+				assert.Error(err)
+				return
+			}
+			require.NoError(err)
+			assert.Equal(tt.want, input)
+		})
+	}
+}
+
+func TestClear_Structs(t *testing.T) {
+	s := "test-string"
+
+	type A struct{ F string }
+	type B struct{ F *string }
+
+	type AB struct {
+		A A
+		B *B
+		F string
+
+		IN io.Reader
+		MP map[int]int
+		SL []string
+		AR [1]int
+		CH chan int
+		FN func()
+	}
+
+	type AFB struct {
+		F A
+		B *B
+	}
+
+	type ABF struct {
+		A A
+		F *B
+	}
+
+	type C struct {
+		F  string
+		NF string
+	}
+
+	type EA struct {
+		A
+		M  string
+		NF string
+	}
+
+	type EAP struct {
+		*A
+		M  string
+		NF string
+	}
+
+	type DEA struct {
+		EA
+		F string
+	}
+
+	type DEAP struct {
+		*EAP
+		F string
+	}
+
+	type args struct {
+		v interface{}
+		f []string
+		d int
+	}
+	var tests = []struct {
+		name string
+		args args
+		want interface{}
+	}{
+		{
+			name: "blank-A",
+			args: args{
+				v: &A{},
+				f: []string{"F"},
+				d: 1,
+			},
+			want: &A{},
+		},
+		{
+			name: "clear-A",
+			args: args{
+				v: &A{"clear"},
+				f: []string{"F"},
+				d: 1,
+			},
+			want: &A{},
+		},
+		{
+			name: "clear-B",
+			args: args{
+				v: &B{&s},
+				f: []string{"F"},
+				d: 1,
+			},
+			want: &B{},
+		},
+		{
+			name: "clear-C",
+			args: args{
+				v: &C{"clear", "notclear"},
+				f: []string{"F"},
+				d: 1,
+			},
+			want: &C{"", "notclear"},
+		},
+		{
+			name: "shallow-clear-AB",
+			args: args{
+				v: &AB{
+					A: A{"notclear"},
+					B: &B{&s},
+					F: "clear",
+				},
+				f: []string{"F"},
+				d: 1,
+			},
+			want: &AB{
+				A: A{"notclear"},
+				B: &B{&s},
+				F: "",
+			},
+		},
+		{
+			name: "deep-clear-AB",
+			args: args{
+				v: &AB{
+					A: A{"clear"},
+					B: &B{&s},
+					F: "clear",
+				},
+				f: []string{"F"},
+				d: 2,
+			},
+			want: &AB{
+				A: A{""},
+				B: &B{},
+				F: "",
+			},
+		},
+		{
+			name: "clear-AFB",
+			args: args{
+				v: &AFB{
+					F: A{"clear"},
+					B: &B{&s},
+				},
+				f: []string{"F"},
+				d: 2,
+			},
+			want: &AFB{
+				F: A{""},
+				B: &B{},
+			},
+		},
+		{
+			name: "clear-ABF",
+			args: args{
+				v: &ABF{
+					A: A{"clear"},
+					F: &B{&s},
+				},
+				f: []string{"F"},
+				d: 2,
+			},
+			want: &ABF{
+				A: A{""},
+				F: nil,
+			},
+		},
+		{
+			name: "embedded-struct",
+			args: args{
+				v: &EA{
+					A:  A{"clear"},
+					M:  "clear",
+					NF: "notclear",
+				},
+				f: []string{"F", "M"},
+				d: 2,
+			},
+			want: &EA{
+				A:  A{""},
+				M:  "",
+				NF: "notclear",
+			},
+		},
+		{
+			name: "embedded-struct-pointer",
+			args: args{
+				v: &EAP{
+					A:  &A{"clear"},
+					M:  "clear",
+					NF: "notclear",
+				},
+				f: []string{"F", "M"},
+				d: 2,
+			},
+			want: &EAP{
+				A:  &A{""},
+				M:  "",
+				NF: "notclear",
+			},
+		},
+		{
+			name: "embedded-struct-pointer-extra-depth",
+			args: args{
+				v: &EAP{
+					A:  &A{"clear"},
+					M:  "clear",
+					NF: "notclear",
+				},
+				f: []string{"F", "M"},
+				d: 12,
+			},
+			want: &EAP{
+				A:  &A{""},
+				M:  "",
+				NF: "notclear",
+			},
+		},
+		{
+			name: "deep-embedded-struct",
+			args: args{
+				v: &DEA{
+					EA: EA{
+						A:  A{"clear"},
+						M:  "clear",
+						NF: "notclear",
+					},
+					F: "clear",
+				},
+				f: []string{"F", "M"},
+				d: 3,
+			},
+			want: &DEA{
+				EA: EA{
+					A:  A{""},
+					M:  "",
+					NF: "notclear",
+				},
+				F: "",
+			},
+		},
+		{
+			name: "deep-embedded-struct-pointer",
+			args: args{
+				v: &DEAP{
+					EAP: &EAP{
+						A:  &A{"clear"},
+						M:  "clear",
+						NF: "notclear",
+					},
+					F: "clear",
+				},
+				f: []string{"F", "M"},
+				d: 3,
+			},
+			want: &DEAP{
+				EAP: &EAP{
+					A:  &A{""},
+					M:  "",
+					NF: "notclear",
+				},
+				F: "",
+			},
+		},
+	}
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+			input := tt.args.v
+			err := Clear(input, tt.args.f, tt.args.d)
+			assert.NotEmpty(s)
+			require.NoError(err)
+			assert.Equal(tt.want, input)
+		})
+	}
+}
+
+func TestClear_SetFieldsToNil(t *testing.T) {
+	type P struct{ F *string }
+	type A struct{ F string }
+
+	type EA struct {
+		A
+		M  string
+		NF string
+	}
+
+	type EAP struct {
+		*A
+		M  string
+		NF string
+	}
+
+	type DEA struct {
+		EA
+		F string
+	}
+
+	type DEAP struct {
+		*EAP
+		F string
+	}
+
+	type args struct {
+		v interface{}
+		f []string
+	}
+	var tests = []struct {
+		name string
+		args args
+		want interface{}
+	}{
+		{
+			name: "dont-panic",
+			args: args{
+				v: P{},
+				f: []string{"F"},
+			},
+			want: P{},
+		},
+		{
+			name: "deep-embedded-struct",
+			args: args{
+				v: &DEA{
+					EA: EA{
+						A:  A{"notclear"},
+						M:  "clear",
+						NF: "notclear",
+					},
+					F: "clear",
+				},
+				f: []string{"F", "M"},
+			},
+			want: &DEA{
+				EA: EA{
+					A:  A{"notclear"},
+					M:  "",
+					NF: "notclear",
+				},
+				F: "",
+			},
+		},
+		{
+			name: "deep-embedded-struct-pointer",
+			args: args{
+				v: &DEAP{
+					EAP: &EAP{
+						A:  &A{"notclear"},
+						M:  "clear",
+						NF: "notclear",
+					},
+					F: "clear",
+				},
+				f: []string{"F", "M"},
+			},
+			want: &DEAP{
+				EAP: &EAP{
+					A:  &A{"notclear"},
+					M:  "",
+					NF: "notclear",
+				},
+				F: "",
+			},
+		},
+	}
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+			input := tt.args.v
+			require.NotPanics(func() {
+				setFieldsToNil(input, tt.args.f)
+			})
+			assert.Equal(tt.want, input)
 		})
 	}
 }
