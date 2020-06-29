@@ -299,7 +299,7 @@ func TestRepository_ValidateToken(t *testing.T) {
 		}
 	})
 
-	lastUsedUpdateDuration = 0
+	lastAccessedUpdateDuration = 0
 
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
@@ -382,7 +382,7 @@ func TestRepository_ValidateToken(t *testing.T) {
 
 			// Enable the duration which limits how frequently a token's approximate last accessed time can be updated
 			// so the next call doesn't cause the last accessed time to be updated.
-			lastUsedUpdateDuration = 1 * time.Hour
+			lastAccessedUpdateDuration = 1 * time.Hour
 
 			got2, err := repo.ValidateToken(context.Background(), tt.id, tt.token)
 			assert.NoError(err)
@@ -420,7 +420,7 @@ func TestRepository_ValidateToken_expired(t *testing.T) {
 	baseAT := testAuthToken(t, conn, wrapper)
 
 	defaultStaleTime := maxStaleness
-	defaultExpireDuration := validTokenDuration
+	defaultExpireDuration := maxTokenDuration
 
 	var tests = []struct {
 		name               string
@@ -431,13 +431,13 @@ func TestRepository_ValidateToken_expired(t *testing.T) {
 		{
 			name:               "not stale or expired",
 			staleDuration:      maxStaleness,
-			expirationDuration: validTokenDuration,
+			expirationDuration: maxTokenDuration,
 			wantReturned:       true,
 		},
 		{
 			name:               "stale",
 			staleDuration:      0,
-			expirationDuration: validTokenDuration,
+			expirationDuration: maxTokenDuration,
 			wantReturned:       false,
 		},
 		{
@@ -453,7 +453,7 @@ func TestRepository_ValidateToken_expired(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 
 			maxStaleness = tt.staleDuration
-			validTokenDuration = tt.expirationDuration
+			maxTokenDuration = tt.expirationDuration
 
 			ctx := context.Background()
 			at, err := repo.CreateAuthToken(ctx, baseAT.GetIamUserId(), baseAT.GetAuthMethodId())
@@ -471,7 +471,7 @@ func TestRepository_ValidateToken_expired(t *testing.T) {
 
 			// reset the system default params
 			maxStaleness = defaultStaleTime
-			validTokenDuration = defaultExpireDuration
+			maxTokenDuration = defaultExpireDuration
 		})
 	}
 }

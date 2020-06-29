@@ -17,10 +17,11 @@ import (
 	"github.com/hashicorp/watchtower/internal/oplog"
 )
 
+// TODO: Make these fields configurable.
 var (
-	lastUsedUpdateDuration = 10 * time.Minute
-	maxStaleness           = 24 * time.Hour
-	validTokenDuration     = 7 * 24 * time.Hour
+	lastAccessedUpdateDuration = 10 * time.Minute
+	maxStaleness               = 24 * time.Hour
+	maxTokenDuration           = 7 * 24 * time.Hour
 )
 
 // A Repository stores and retrieves the persistent types in the authtoken
@@ -91,7 +92,7 @@ func (r *Repository) CreateAuthToken(ctx context.Context, withIamUserId, withAut
 	at.Token = token
 
 	// TODO: Allow the caller to specify something different than the default duration.
-	expiration, err := ptypes.TimestampProto(time.Now().Add(validTokenDuration))
+	expiration, err := ptypes.TimestampProto(time.Now().Add(maxTokenDuration))
 	if err != nil {
 		return nil, err
 	}
@@ -199,9 +200,9 @@ func (r *Repository) ValidateToken(ctx context.Context, id, token string, opt ..
 			retAT.Token = ""
 			retAT.CtToken = nil
 
-			if sinceLastAccessed < lastUsedUpdateDuration {
+			if sinceLastAccessed < lastAccessedUpdateDuration {
 				// To save the db from being updated to frequently, we only update the
-				// LastAccessTime if it hasn't been updated within lastUsedUpdateDuration.
+				// LastAccessTime if it hasn't been updated within lastAccessedUpdateDuration.
 				// TODO: Make this duration configurable.
 				return nil
 			}
