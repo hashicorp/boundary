@@ -19,6 +19,10 @@ service GroupService {
     option (google.api.http) = {
       get: "/v1/orgs/{org_id}/groups/{id}"
       response_body: "item"
+      additional_bindings {
+        get: "/v1/orgs/{org_id}/projects/{project_id}/groups/{id}"
+        response_body: "item"
+      }
     };
     option (grpc.gateway.protoc_gen_swagger.options.openapiv2_operation) = {
       summary: "Gets a single Group"
@@ -32,6 +36,9 @@ service GroupService {
   rpc ListGroups(ListGroupsRequest) returns (ListGroupsResponse) {
     option (google.api.http) = {
       get: "/v1/orgs/{org_id}/groups"
+      additional_bindings {
+        get: "/v1/orgs/{org_id}/projects/{project_id}/groups"
+      }
     };
     option (grpc.gateway.protoc_gen_swagger.options.openapiv2_operation) = {
       summary: "Lists all Groups"
@@ -48,6 +55,11 @@ service GroupService {
       post: "/v1/orgs/{org_id}/groups"
       body: "item"
       response_body: "item"
+      additional_bindings {
+        post: "/v1/orgs/{org_id}/projects/{project_id}/groups"
+        body: "item"
+        response_body: "item"
+      }
     };
     option (grpc.gateway.protoc_gen_swagger.options.openapiv2_operation) = {
       summary: "Creates a single Group"
@@ -67,6 +79,11 @@ service GroupService {
       patch: "/v1/orgs/{org_id}/groups/{id}"
       body: "item"
       response_body: "item"
+      additional_bindings {
+        patch: "/v1/orgs/{org_id}/projects/{project_id}/groups/{id}"
+        body: "item"
+        response_body: "item"
+      }
     };
     option (grpc.gateway.protoc_gen_swagger.options.openapiv2_operation) = {
       summary: "Updates a Group"
@@ -81,6 +98,9 @@ service GroupService {
   rpc DeleteGroup(DeleteGroupRequest) returns (DeleteGroupResponse) {
     option (google.api.http) = {
       delete: "/v1/orgs/{org_id}/groups/{id}"
+      additional_bindings {
+        delete: "/v1/orgs/{org_id}/projects/{project_id}/groups/{id}"
+      }
     };
     option (grpc.gateway.protoc_gen_swagger.options.openapiv2_operation) = {
       summary: "Deletes a Group"
@@ -90,8 +110,9 @@ service GroupService {
 
 message GetGroupRequest {
   string org_id = 1;
-  string id = 2;
-  string view = 3;
+  string project_id = 2;
+  string id = 3;
+  string view = 4;
 }
 
 message GetGroupResponse {
@@ -100,7 +121,8 @@ message GetGroupResponse {
 
 message ListGroupsRequest {
   string org_id = 1;
-  string view = 2;
+  string project_id = 2;
+  string view = 3;
 }
 
 message ListGroupsResponse {
@@ -109,7 +131,8 @@ message ListGroupsResponse {
 
 message CreateGroupRequest {
   string org_id = 1;
-  resources.groups.v1.Group item = 2;
+  string project_id = 2;
+  resources.groups.v1.Group item = 3;
 }
 
 message CreateGroupResponse {
@@ -119,9 +142,10 @@ message CreateGroupResponse {
 
 message UpdateGroupRequest {
   string org_id = 1;
-  string id = 2;
-  resources.groups.v1.Group item = 3;
-  google.protobuf.FieldMask update_mask = 4;
+  string project_id = 2;
+  string id = 3;
+  resources.groups.v1.Group item = 4;
+  google.protobuf.FieldMask update_mask = 5;
 }
 
 message UpdateGroupResponse {
@@ -130,7 +154,8 @@ message UpdateGroupResponse {
 
 message DeleteGroupRequest {
   string org_id = 1;
-  string id = 2;
+  string project_id = 2;
+  string id = 3;
 }
 
 message DeleteGroupResponse {
