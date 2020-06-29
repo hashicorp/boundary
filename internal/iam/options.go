@@ -20,6 +20,7 @@ type options struct {
 	withDescription string
 	withParentId    *string
 	withLimit       int
+	withAutoVivify  bool
 }
 
 func getDefaultOptions() options {
@@ -30,6 +31,7 @@ func getDefaultOptions() options {
 		withName:        "",
 		withParentId:    nil,
 		withLimit:       0,
+		withAutoVivify:  false,
 	}
 }
 
@@ -67,5 +69,13 @@ func WithName(name string) Option {
 func WithLimit(limit int) Option {
 	return func(o *options) {
 		o.withLimit = limit
+	}
+}
+
+// WithAutoVivify provides an option to enable user auto vivification when
+// calling repo.LookupUserWithLogin().
+func WithAutoVivify(enable bool) Option {
+	return func(o *options) {
+		o.withAutoVivify = enable
 	}
 }

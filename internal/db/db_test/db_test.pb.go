@@ -44,10 +44,10 @@ type StoreTestUser struct {
 	// update_time from the RDBMS
 	// @inject_tag: `gorm:"default:CURRENT_TIMESTAMP"`
 	UpdateTime *timestamp.Timestamp `protobuf:"bytes,3,opt,name=update_time,json=updateTime,proto3" json:"update_time,omitempty" gorm:"default:CURRENT_TIMESTAMP"`
-	// public_id is the used to access the AssignablScope via an API
+	// public_id is the used to access the user via an API
 	PublicId string `protobuf:"bytes,4,opt,name=public_id,json=publicId,proto3" json:"public_id,omitempty"`
 	// name is the optional friendly name used to
-	// access the Scope via an API
+	// access the user via an API
 	// @inject_tag: `gorm:"default:null"`
 	Name string `protobuf:"bytes,5,opt,name=name,proto3" json:"name,omitempty" gorm:"default:null"`
 	// @inject_tag: `gorm:"default:null"`
@@ -160,14 +160,16 @@ type StoreTestCar struct {
 	// update_time from the RDBMS
 	// @inject_tag: `gorm:"default:CURRENT_TIMESTAMP"`
 	UpdateTime *timestamp.Timestamp `protobuf:"bytes,3,opt,name=update_time,json=updateTime,proto3" json:"update_time,omitempty" gorm:"default:CURRENT_TIMESTAMP"`
-	// public_id is the used to access the AssignablScope via an API
+	// public_id is the used to access the car via an API
 	PublicId string `protobuf:"bytes,4,opt,name=public_id,json=publicId,proto3" json:"public_id,omitempty"`
 	// name is the optional friendly name used to
 	// access the Scope via an API
 	// @inject_tag: `gorm:"default:null"`
-	Name  string `protobuf:"bytes,5,opt,name=name,proto3" json:"name,omitempty" gorm:"default:null"`
-	Model string `protobuf:"bytes,6,opt,name=model,proto3" json:"model,omitempty"`
-	Mpg   int32  `protobuf:"varint,7,opt,name=mpg,proto3" json:"mpg,omitempty"`
+	Name string `protobuf:"bytes,5,opt,name=name,proto3" json:"name,omitempty" gorm:"default:null"`
+	// @inject_tag: `gorm:"default:null"`
+	Model string `protobuf:"bytes,6,opt,name=model,proto3" json:"model,omitempty" gorm:"default:null"`
+	// @inject_tag: `gorm:"default:null"`
+	Mpg int32 `protobuf:"varint,7,opt,name=mpg,proto3" json:"mpg,omitempty" gorm:"default:null"`
 }
 
 func (x *StoreTestCar) Reset() {
@@ -265,14 +267,16 @@ type StoreTestRental struct {
 	// update_time from the RDBMS
 	// @inject_tag: `gorm:"default:CURRENT_TIMESTAMP"`
 	UpdateTime *timestamp.Timestamp `protobuf:"bytes,3,opt,name=update_time,json=updateTime,proto3" json:"update_time,omitempty" gorm:"default:CURRENT_TIMESTAMP"`
-	// public_id is the used to access the AssignablScope via an API
+	// public_id is the used to access the rental via an API
 	PublicId string `protobuf:"bytes,4,opt,name=public_id,json=publicId,proto3" json:"public_id,omitempty"`
 	// name is the optional friendly name used to
-	// access the Scope via an API
+	// access the rental via an API
 	// @inject_tag: `gorm:"default:null"`
-	Name   string `protobuf:"bytes,5,opt,name=name,proto3" json:"name,omitempty" gorm:"default:null"`
-	UserId uint32 `protobuf:"varint,6,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
-	CarId  uint32 `protobuf:"varint,7,opt,name=car_id,json=carId,proto3" json:"car_id,omitempty"`
+	Name string `protobuf:"bytes,5,opt,name=name,proto3" json:"name,omitempty" gorm:"default:null"`
+	// @inject_tag: `gorm:"default:null"`
+	UserId uint32 `protobuf:"varint,6,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty" gorm:"default:null"`
+	// @inject_tag: `gorm:"default:null"`
+	CarId uint32 `protobuf:"varint,7,opt,name=car_id,json=carId,proto3" json:"car_id,omitempty" gorm:"default:null"`
 }
 
 func (x *StoreTestRental) Reset() {
@@ -356,6 +360,104 @@ func (x *StoreTestRental) GetCarId() uint32 {
 	return 0
 }
 
+// StoreTestScooter used in the db tests only and provides a gorm resource with
+// a private id.
+type StoreTestScooter struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	// @inject_tag: gorm:"primary_key"
+	Id uint32 `protobuf:"varint,1,opt,name=id,proto3" json:"id,omitempty" gorm:"primary_key"`
+	// create_time from the RDBMS
+	// @inject_tag: `gorm:"default:CURRENT_TIMESTAMP"`
+	CreateTime *timestamp.Timestamp `protobuf:"bytes,2,opt,name=create_time,json=createTime,proto3" json:"create_time,omitempty" gorm:"default:CURRENT_TIMESTAMP"`
+	// update_time from the RDBMS
+	// @inject_tag: `gorm:"default:CURRENT_TIMESTAMP"`
+	UpdateTime *timestamp.Timestamp `protobuf:"bytes,3,opt,name=update_time,json=updateTime,proto3" json:"update_time,omitempty" gorm:"default:CURRENT_TIMESTAMP"`
+	// private_id is the used to access scooter, but not intended to be available
+	// via the API
+	PrivateId string `protobuf:"bytes,4,opt,name=private_id,json=privateId,proto3" json:"private_id,omitempty"`
+	// @inject_tag: `gorm:"default:null"`
+	Model string `protobuf:"bytes,6,opt,name=model,proto3" json:"model,omitempty" gorm:"default:null"`
+	// @inject_tag: `gorm:"default:null"`
+	Mpg int32 `protobuf:"varint,7,opt,name=mpg,proto3" json:"mpg,omitempty" gorm:"default:null"`
+}
+
+func (x *StoreTestScooter) Reset() {
+	*x = StoreTestScooter{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_controller_storage_db_db_test_v1_db_test_proto_msgTypes[3]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *StoreTestScooter) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*StoreTestScooter) ProtoMessage() {}
+
+func (x *StoreTestScooter) ProtoReflect() protoreflect.Message {
+	mi := &file_controller_storage_db_db_test_v1_db_test_proto_msgTypes[3]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use StoreTestScooter.ProtoReflect.Descriptor instead.
+func (*StoreTestScooter) Descriptor() ([]byte, []int) {
+	return file_controller_storage_db_db_test_v1_db_test_proto_rawDescGZIP(), []int{3}
+}
+
+func (x *StoreTestScooter) GetId() uint32 {
+	if x != nil {
+		return x.Id
+	}
+	return 0
+}
+
+func (x *StoreTestScooter) GetCreateTime() *timestamp.Timestamp {
+	if x != nil {
+		return x.CreateTime
+	}
+	return nil
+}
+
+func (x *StoreTestScooter) GetUpdateTime() *timestamp.Timestamp {
+	if x != nil {
+		return x.UpdateTime
+	}
+	return nil
+}
+
+func (x *StoreTestScooter) GetPrivateId() string {
+	if x != nil {
+		return x.PrivateId
+	}
+	return ""
+}
+
+func (x *StoreTestScooter) GetModel() string {
+	if x != nil {
+		return x.Model
+	}
+	return ""
+}
+
+func (x *StoreTestScooter) GetMpg() int32 {
+	if x != nil {
+		return x.Mpg
+	}
+	return 0
+}
+
 var File_controller_storage_db_db_test_v1_db_test_proto protoreflect.FileDescriptor
 
 var file_controller_storage_db_db_test_v1_db_test_proto_rawDesc = []byte{
@@ -422,11 +524,28 @@ var file_controller_storage_db_db_test_v1_db_test_proto_rawDesc = []byte{
 	0x52, 0x04, 0x6e, 0x61, 0x6d, 0x65, 0x12, 0x17, 0x0a, 0x07, 0x75, 0x73, 0x65, 0x72, 0x5f, 0x69,
 	0x64, 0x18, 0x06, 0x20, 0x01, 0x28, 0x0d, 0x52, 0x06, 0x75, 0x73, 0x65, 0x72, 0x49, 0x64, 0x12,
 	0x15, 0x0a, 0x06, 0x63, 0x61, 0x72, 0x5f, 0x69, 0x64, 0x18, 0x07, 0x20, 0x01, 0x28, 0x0d, 0x52,
-	0x05, 0x63, 0x61, 0x72, 0x49, 0x64, 0x42, 0x3d, 0x5a, 0x3b, 0x67, 0x69, 0x74, 0x68, 0x75, 0x62,
-	0x2e, 0x63, 0x6f, 0x6d, 0x2f, 0x68, 0x61, 0x73, 0x68, 0x69, 0x63, 0x6f, 0x72, 0x70, 0x2f, 0x77,
-	0x61, 0x74, 0x63, 0x68, 0x74, 0x6f, 0x77, 0x65, 0x72, 0x2f, 0x69, 0x6e, 0x74, 0x65, 0x72, 0x6e,
-	0x61, 0x6c, 0x2f, 0x64, 0x62, 0x2f, 0x64, 0x62, 0x5f, 0x74, 0x65, 0x73, 0x74, 0x3b, 0x64, 0x62,
-	0x5f, 0x74, 0x65, 0x73, 0x74, 0x62, 0x06, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x33,
+	0x05, 0x63, 0x61, 0x72, 0x49, 0x64, 0x22, 0x83, 0x02, 0x0a, 0x10, 0x53, 0x74, 0x6f, 0x72, 0x65,
+	0x54, 0x65, 0x73, 0x74, 0x53, 0x63, 0x6f, 0x6f, 0x74, 0x65, 0x72, 0x12, 0x0e, 0x0a, 0x02, 0x69,
+	0x64, 0x18, 0x01, 0x20, 0x01, 0x28, 0x0d, 0x52, 0x02, 0x69, 0x64, 0x12, 0x4b, 0x0a, 0x0b, 0x63,
+	0x72, 0x65, 0x61, 0x74, 0x65, 0x5f, 0x74, 0x69, 0x6d, 0x65, 0x18, 0x02, 0x20, 0x01, 0x28, 0x0b,
+	0x32, 0x2a, 0x2e, 0x63, 0x6f, 0x6e, 0x74, 0x72, 0x6f, 0x6c, 0x6c, 0x65, 0x72, 0x2e, 0x73, 0x74,
+	0x6f, 0x72, 0x61, 0x67, 0x65, 0x2e, 0x74, 0x69, 0x6d, 0x65, 0x73, 0x74, 0x61, 0x6d, 0x70, 0x2e,
+	0x76, 0x31, 0x2e, 0x54, 0x69, 0x6d, 0x65, 0x73, 0x74, 0x61, 0x6d, 0x70, 0x52, 0x0a, 0x63, 0x72,
+	0x65, 0x61, 0x74, 0x65, 0x54, 0x69, 0x6d, 0x65, 0x12, 0x4b, 0x0a, 0x0b, 0x75, 0x70, 0x64, 0x61,
+	0x74, 0x65, 0x5f, 0x74, 0x69, 0x6d, 0x65, 0x18, 0x03, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x2a, 0x2e,
+	0x63, 0x6f, 0x6e, 0x74, 0x72, 0x6f, 0x6c, 0x6c, 0x65, 0x72, 0x2e, 0x73, 0x74, 0x6f, 0x72, 0x61,
+	0x67, 0x65, 0x2e, 0x74, 0x69, 0x6d, 0x65, 0x73, 0x74, 0x61, 0x6d, 0x70, 0x2e, 0x76, 0x31, 0x2e,
+	0x54, 0x69, 0x6d, 0x65, 0x73, 0x74, 0x61, 0x6d, 0x70, 0x52, 0x0a, 0x75, 0x70, 0x64, 0x61, 0x74,
+	0x65, 0x54, 0x69, 0x6d, 0x65, 0x12, 0x1d, 0x0a, 0x0a, 0x70, 0x72, 0x69, 0x76, 0x61, 0x74, 0x65,
+	0x5f, 0x69, 0x64, 0x18, 0x04, 0x20, 0x01, 0x28, 0x09, 0x52, 0x09, 0x70, 0x72, 0x69, 0x76, 0x61,
+	0x74, 0x65, 0x49, 0x64, 0x12, 0x14, 0x0a, 0x05, 0x6d, 0x6f, 0x64, 0x65, 0x6c, 0x18, 0x06, 0x20,
+	0x01, 0x28, 0x09, 0x52, 0x05, 0x6d, 0x6f, 0x64, 0x65, 0x6c, 0x12, 0x10, 0x0a, 0x03, 0x6d, 0x70,
+	0x67, 0x18, 0x07, 0x20, 0x01, 0x28, 0x05, 0x52, 0x03, 0x6d, 0x70, 0x67, 0x42, 0x3d, 0x5a, 0x3b,
+	0x67, 0x69, 0x74, 0x68, 0x75, 0x62, 0x2e, 0x63, 0x6f, 0x6d, 0x2f, 0x68, 0x61, 0x73, 0x68, 0x69,
+	0x63, 0x6f, 0x72, 0x70, 0x2f, 0x77, 0x61, 0x74, 0x63, 0x68, 0x74, 0x6f, 0x77, 0x65, 0x72, 0x2f,
+	0x69, 0x6e, 0x74, 0x65, 0x72, 0x6e, 0x61, 0x6c, 0x2f, 0x64, 0x62, 0x2f, 0x64, 0x62, 0x5f, 0x74,
+	0x65, 0x73, 0x74, 0x3b, 0x64, 0x62, 0x5f, 0x74, 0x65, 0x73, 0x74, 0x62, 0x06, 0x70, 0x72, 0x6f,
+	0x74, 0x6f, 0x33,
 }
 
 var (
@@ -441,25 +560,28 @@ func file_controller_storage_db_db_test_v1_db_test_proto_rawDescGZIP() []byte {
 	return file_controller_storage_db_db_test_v1_db_test_proto_rawDescData
 }
 
-var file_controller_storage_db_db_test_v1_db_test_proto_msgTypes = make([]protoimpl.MessageInfo, 3)
+var file_controller_storage_db_db_test_v1_db_test_proto_msgTypes = make([]protoimpl.MessageInfo, 4)
 var file_controller_storage_db_db_test_v1_db_test_proto_goTypes = []interface{}{
 	(*StoreTestUser)(nil),       // 0: controller.storage.db.db_test.v1.StoreTestUser
 	(*StoreTestCar)(nil),        // 1: controller.storage.db.db_test.v1.StoreTestCar
 	(*StoreTestRental)(nil),     // 2: controller.storage.db.db_test.v1.StoreTestRental
-	(*timestamp.Timestamp)(nil), // 3: controller.storage.timestamp.v1.Timestamp
+	(*StoreTestScooter)(nil),    // 3: controller.storage.db.db_test.v1.StoreTestScooter
+	(*timestamp.Timestamp)(nil), // 4: controller.storage.timestamp.v1.Timestamp
 }
 var file_controller_storage_db_db_test_v1_db_test_proto_depIdxs = []int32{
-	3, // 0: controller.storage.db.db_test.v1.StoreTestUser.create_time:type_name -> controller.storage.timestamp.v1.Timestamp
-	3, // 1: controller.storage.db.db_test.v1.StoreTestUser.update_time:type_name -> controller.storage.timestamp.v1.Timestamp
-	3, // 2: controller.storage.db.db_test.v1.StoreTestCar.create_time:type_name -> controller.storage.timestamp.v1.Timestamp
-	3, // 3: controller.storage.db.db_test.v1.StoreTestCar.update_time:type_name -> controller.storage.timestamp.v1.Timestamp
-	3, // 4: controller.storage.db.db_test.v1.StoreTestRental.create_time:type_name -> controller.storage.timestamp.v1.Timestamp
-	3, // 5: controller.storage.db.db_test.v1.StoreTestRental.update_time:type_name -> controller.storage.timestamp.v1.Timestamp
-	6, // [6:6] is the sub-list for method output_type
-	6, // [6:6] is the sub-list for method input_type
-	6, // [6:6] is the sub-list for extension type_name
-	6, // [6:6] is the sub-list for extension extendee
-	0, // [0:6] is the sub-list for field type_name
+	4, // 0: controller.storage.db.db_test.v1.StoreTestUser.create_time:type_name -> controller.storage.timestamp.v1.Timestamp
+	4, // 1: controller.storage.db.db_test.v1.StoreTestUser.update_time:type_name -> controller.storage.timestamp.v1.Timestamp
+	4, // 2: controller.storage.db.db_test.v1.StoreTestCar.create_time:type_name -> controller.storage.timestamp.v1.Timestamp
+	4, // 3: controller.storage.db.db_test.v1.StoreTestCar.update_time:type_name -> controller.storage.timestamp.v1.Timestamp
+	4, // 4: controller.storage.db.db_test.v1.StoreTestRental.create_time:type_name -> controller.storage.timestamp.v1.Timestamp
+	4, // 5: controller.storage.db.db_test.v1.StoreTestRental.update_time:type_name -> controller.storage.timestamp.v1.Timestamp
+	4, // 6: controller.storage.db.db_test.v1.StoreTestScooter.create_time:type_name -> controller.storage.timestamp.v1.Timestamp
+	4, // 7: controller.storage.db.db_test.v1.StoreTestScooter.update_time:type_name -> controller.storage.timestamp.v1.Timestamp
+	8, // [8:8] is the sub-list for method output_type
+	8, // [8:8] is the sub-list for method input_type
+	8, // [8:8] is the sub-list for extension type_name
+	8, // [8:8] is the sub-list for extension extendee
+	0, // [0:8] is the sub-list for field type_name
 }
 
 func init() { file_controller_storage_db_db_test_v1_db_test_proto_init() }
@@ -504,6 +626,18 @@ func file_controller_storage_db_db_test_v1_db_test_proto_init() {
 				return nil
 			}
 		}
+		file_controller_storage_db_db_test_v1_db_test_proto_msgTypes[3].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*StoreTestScooter); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
 	}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
@@ -511,7 +645,7 @@ func file_controller_storage_db_db_test_v1_db_test_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: file_controller_storage_db_db_test_v1_db_test_proto_rawDesc,
 			NumEnums:      0,
-			NumMessages:   3,
+			NumMessages:   4,
 			NumExtensions: 0,
 			NumServices:   0,
 		},
