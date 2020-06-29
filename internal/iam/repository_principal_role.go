@@ -15,20 +15,21 @@ func (r *Repository) AddPrincipalRoles(ctx context.Context, roleId string, userI
 	if len(userIds) == 0 && len(groupIds) == 0 {
 		return nil, fmt.Errorf("add principal roles: missing either user or groups to add %w", db.ErrInvalidParameter)
 	}
-	newPrincipalRoles := make([]PrincipalRole, 0, len(userIds)+len(groupIds))
+	newUserRoles := make([]interface{}, 0, len(userIds))
 	for _, id := range userIds {
-		userRole, err := NewUserRole(roleId, id)
+		userRoles, err := NewUserRole(roleId, id)
 		if err != nil {
 			panic(err.Error())
 		}
-		newPrincipalRoles = append(newPrincipalRoles, userRole)
+		newUserRoles = append(newUserRoles, userRoles)
 	}
+	newGrpRoles := make([]PrincipalRole, 0, len(groupIds))
 	for _, id := range groupIds {
 		grpRole, err := NewGroupRole(roleId, id)
 		if err != nil {
 			panic(err.Error())
 		}
-		newPrincipalRoles = append(newPrincipalRoles, grpRole)
+		newGrpRoles = append(newGrpRoles, grpRole)
 	}
 	role := allocRole()
 	role.PublicId = roleId
@@ -48,21 +49,22 @@ func (r *Repository) AddPrincipalRoles(ctx context.Context, roleId string, userI
 		db.StdRetryCnt,
 		db.ExpBackoff{},
 		func(reader db.Reader, w db.Writer) error {
-			for _, principalRole := range newPrincipalRoles {
-				returnedPrincipalRole := principalRole.Clone()
-				err := w.Create(
-					ctx,
-					returnedPrincipalRole,
-					db.WithOplog(r.wrapper, metadata),
-				)
-				if err != nil {
-					if db.IsUniqueError(err) {
-						return fmt.Errorf("add principal role: unable to add principal %s to role %s : %w", principalRole.GetPrincipalId(), roleId, db.ErrNotUnique)
-					}
-					return fmt.Errorf("add principal role: %w when attempting to add principal %s to role %s", err, principalRole.GetPrincipalId(), roleId)
-				}
-				resultPrincipalRoles = append(resultPrincipalRoles, returnedPrincipalRole.(PrincipalRole))
-			}
+			w.CreateItems(ctx, newUserRoles)
+			// for _, principalRole := range newPrincipalRoles {
+			// 	returnedPrincipalRole := principalRole.Clone()
+			// 	err := w.Create(
+			// 		ctx,
+			// 		returnedPrincipalRole,
+			// 		db.WithOplog(r.wrapper, metadata),
+			// 	)
+			// 	if err != nil {
+			// 		if db.IsUniqueError(err) {
+			// 			return fmt.Errorf("add principal role: unable to add principal %s to role %s : %w", principalRole.GetPrincipalId(), roleId, db.ErrNotUnique)
+			// 		}
+			// 		return fmt.Errorf("add principal role: %w when attempting to add principal %s to role %s", err, principalRole.GetPrincipalId(), roleId)
+			// 	}
+			// 	resultPrincipalRoles = append(resultPrincipalRoles, returnedPrincipalRole.(PrincipalRole))
+			// }
 			return nil
 		},
 	)
