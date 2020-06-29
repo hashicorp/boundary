@@ -17,7 +17,7 @@ import (
 	"github.com/hashicorp/watchtower/internal/oplog"
 )
 
-// TODO: Make these fields configurable.
+// TODO (ICU-406): Make these fields configurable.
 var (
 	lastAccessedUpdateDuration = 10 * time.Minute
 	maxStaleness               = 24 * time.Hour
