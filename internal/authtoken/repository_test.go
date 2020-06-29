@@ -132,27 +132,23 @@ func TestRepository_CreateAuthToken(t *testing.T) {
 	org1, _ := iam.TestScopes(t, conn)
 	u1 := iam.TestUser(t, conn, org1.GetPublicId())
 	amId1 := setupAuthMethod(t, conn, org1.GetPublicId())
+	_ = setupAuthAccount(t, conn, org1.GetPublicId(), amId1, u1.GetPublicId())
 
 	org2, _ := iam.TestScopes(t, conn)
 	u2 := iam.TestUser(t, conn, org2.GetPublicId())
 	amId2 := setupAuthMethod(t, conn, org2.GetPublicId())
 
 	var tests = []struct {
-		name    string
-		in      *AuthToken
-		opts    []Option
-		want    *AuthToken
-		wantErr bool
+		name         string
+		iamUserId    string
+		authMethodId string
+		want         *AuthToken
+		wantErr      bool
 	}{
 		{
-			name: "valid-no-options",
-			in: &AuthToken{
-				AuthToken: &store.AuthToken{
-					ScopeId:      org1.GetPublicId(),
-					IamUserId:    u1.GetPublicId(),
-					AuthMethodId: amId1,
-				},
-			},
+			name:         "valid",
+			iamUserId:    u1.GetPublicId(),
+			authMethodId: amId1,
 			want: &AuthToken{
 				AuthToken: &store.AuthToken{
 					ScopeId:      org1.GetPublicId(),
@@ -162,108 +158,38 @@ func TestRepository_CreateAuthToken(t *testing.T) {
 			},
 		},
 		{
-			name:    "nil-authtoken",
-			wantErr: true,
+			name:         "unconnected-authmethod-user",
+			iamUserId:    u2.GetPublicId(),
+			authMethodId: amId2,
+			wantErr:      true,
 		},
 		{
-			name:    "nil-embedded-authtoken",
-			in:      &AuthToken{},
-			wantErr: true,
+			name:         "unmatched-authtoken-user-scopes",
+			iamUserId:    u2.GetPublicId(),
+			authMethodId: amId1,
+			wantErr:      true,
 		},
 		{
-			name: "unmatched-authtoken-user-scopes",
-			in: &AuthToken{
-				AuthToken: &store.AuthToken{
-					ScopeId:      org1.GetPublicId(),
-					IamUserId:    u2.GetPublicId(),
-					AuthMethodId: amId1,
-				}},
-			wantErr: true,
+			name:      "no-authmethodid",
+			iamUserId: u1.GetPublicId(),
+			wantErr:   true,
 		},
 		{
-			name: "unmatched-authtoken-authmethod-scopes",
-			in: &AuthToken{
-				AuthToken: &store.AuthToken{
-					ScopeId:      org1.GetPublicId(),
-					IamUserId:    u1.GetPublicId(),
-					AuthMethodId: amId2,
-				}},
-			wantErr: true,
+			name:         "no-userid",
+			authMethodId: amId1,
+			wantErr:      true,
 		},
 		{
-			name: "no-scopeid",
-			in: &AuthToken{
-				AuthToken: &store.AuthToken{
-					IamUserId:    u1.GetPublicId(),
-					AuthMethodId: amId1,
-				},
-			},
-			wantErr: true,
+			name:         "invalid-authmethodid",
+			iamUserId:    u1.GetPublicId(),
+			authMethodId: "this_is_invalid",
+			wantErr:      true,
 		},
 		{
-			name: "no-authmethodid",
-			in: &AuthToken{
-				AuthToken: &store.AuthToken{
-					ScopeId:   org1.GetPublicId(),
-					IamUserId: u1.GetPublicId(),
-				},
-			},
-			wantErr: true,
-		},
-		{
-			name: "no-userid",
-			in: &AuthToken{
-				AuthToken: &store.AuthToken{
-					ScopeId:      org1.GetPublicId(),
-					AuthMethodId: amId1,
-				},
-			},
-			wantErr: true,
-		},
-		{
-			name: "invalid-scopeid",
-			in: &AuthToken{
-				AuthToken: &store.AuthToken{
-					IamUserId:    u1.GetPublicId(),
-					AuthMethodId: amId1,
-					ScopeId:      "this_is_invalid",
-				},
-			},
-			wantErr: true,
-		},
-		{
-			name: "invalid-authmethodid",
-			in: &AuthToken{
-				AuthToken: &store.AuthToken{
-					ScopeId:      org1.GetPublicId(),
-					IamUserId:    u1.GetPublicId(),
-					AuthMethodId: "this_is_invalid",
-				},
-			},
-			wantErr: true,
-		},
-		{
-			name: "invalid-userid",
-			in: &AuthToken{
-				AuthToken: &store.AuthToken{
-					ScopeId:      org1.GetPublicId(),
-					AuthMethodId: amId1,
-					IamUserId:    "this_is_invalid",
-				},
-			},
-			wantErr: true,
-		},
-		{
-			name: "token-specified",
-			in: &AuthToken{
-				AuthToken: &store.AuthToken{
-					ScopeId:      org1.GetPublicId(),
-					IamUserId:    u1.GetPublicId(),
-					AuthMethodId: amId1,
-					Token:        "anything_here_should_result_in_an_error",
-				},
-			},
-			wantErr: true,
+			name:         "invalid-userid",
+			iamUserId:    "this_is_invalid",
+			authMethodId: amId1,
+			wantErr:      true,
 		},
 	}
 
@@ -273,17 +199,18 @@ func TestRepository_CreateAuthToken(t *testing.T) {
 			repo, err := NewRepository(rw, rw, wrapper)
 			require.NoError(err)
 			require.NotNil(repo)
-			got, err := repo.CreateAuthToken(context.Background(), tt.in, tt.opts...)
+			got, err := repo.CreateAuthToken(context.Background(), tt.iamUserId, tt.authMethodId)
 			if tt.wantErr {
 				assert.Error(err)
 				assert.Nil(got)
 				return
 			}
-			require.NoError(err, "Got error for CreateAuthToken(ctx, %v, %v)", tt.in, tt.opts)
-			assert.Empty(tt.in.PublicId)
+			require.NoError(err, "Got error for CreateAuthToken(ctx, %v, %v)", tt.iamUserId, tt.authMethodId)
 			assert.NotNil(got)
 			db.AssertPublicId(t, AuthTokenPrefix, got.PublicId)
-			assert.NotSame(tt.in, got)
+			assert.Equal(tt.iamUserId, got.GetIamUserId())
+			assert.Equal(tt.authMethodId, got.GetAuthMethodId())
+			assert.Equal(org1.GetPublicId(), got.GetScopeId())
 			assert.Equal(got.CreateTime, got.UpdateTime)
 			assert.Equal(got.CreateTime, got.ApproximateLastAccessTime)
 			assert.NoError(db.TestVerifyOplog(t, rw, got.GetPublicId(), db.WithOperation(oplog.OpType_OP_TYPE_CREATE)))
@@ -529,9 +456,7 @@ func TestRepository_ValidateToken_expired(t *testing.T) {
 			validTokenDuration = tt.expirationDuration
 
 			ctx := context.Background()
-			at, err := NewAuthToken(baseAT.GetScopeId(), baseAT.GetIamUserId(), baseAT.GetAuthMethodId())
-			require.NoError(err)
-			at, err = repo.CreateAuthToken(ctx, at)
+			at, err := repo.CreateAuthToken(ctx, baseAT.GetIamUserId(), baseAT.GetAuthMethodId())
 			require.NoError(err)
 
 			got, err := repo.ValidateToken(ctx, at.GetPublicId(), at.GetToken())

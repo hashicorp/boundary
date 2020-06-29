@@ -10,6 +10,7 @@ import (
 	wrapping "github.com/hashicorp/go-kms-wrapping"
 	"github.com/hashicorp/watchtower/internal/db/timestamp"
 	"github.com/hashicorp/watchtower/internal/iam"
+	iamStore "github.com/hashicorp/watchtower/internal/iam/store"
 
 	"github.com/hashicorp/watchtower/internal/authtoken/store"
 	"github.com/hashicorp/watchtower/internal/db"
@@ -56,34 +57,26 @@ func NewRepository(r db.Reader, w db.Writer, wrapper wrapping.Wrapper) (*Reposit
 // The PublicId and token are generated and assigned by this method. opt is ignored.
 //
 // Both s.CreateTime and s.UpdateTime are ignored.
-func (r *Repository) CreateAuthToken(ctx context.Context, at *AuthToken, opt ...Option) (*AuthToken, error) {
-	if at == nil {
-		return nil, fmt.Errorf("create: auth token: %w", db.ErrNilParameter)
-	}
-	if at.AuthToken == nil {
-		return nil, fmt.Errorf("create: auth token: embedded AuthToken: %w", db.ErrNilParameter)
-	}
-	if at.ScopeId == "" {
-		return nil, fmt.Errorf("create: auth token: no scope id: %w", db.ErrInvalidParameter)
-	}
-	if at.IamUserId == "" {
+func (r *Repository) CreateAuthToken(ctx context.Context, withIamUserId, withAuthMethodId string, opt ...Option) (*AuthToken, error) {
+	if withIamUserId == "" {
 		return nil, fmt.Errorf("create: auth token: no user id: %w", db.ErrInvalidParameter)
 	}
-	if at.AuthMethodId == "" {
+	if withAuthMethodId == "" {
 		return nil, fmt.Errorf("create: auth token: no auth method id: %w", db.ErrInvalidParameter)
 	}
-	if at.PublicId != "" {
-		return nil, fmt.Errorf("create: auth token: public id not empty: %w", db.ErrInvalidParameter)
-	}
-	if at.Token != "" {
-		return nil, fmt.Errorf("create: auth token: token not empty: %w", db.ErrInvalidParameter)
-	}
-	at = at.clone()
 
-	iamRepo, err := iam.NewRepository(r.reader, r.writer, r.wrapper)
+	user, err := r.getUserWithIdAndAuthMethod(withIamUserId, withAuthMethodId)
 	if err != nil {
-		return nil, fmt.Errorf("create: auth token: iam repo creation: %w", err)
+		return nil, fmt.Errorf("create: auth token: user lookup: %w", err)
 	}
+	if user == nil {
+		return nil, fmt.Errorf("create: auth token: user lookup: user not found with auth method")
+	}
+
+	at := allocAuthToken()
+	at.IamUserId = user.GetPublicId()
+	at.ScopeId = user.GetScopeId()
+	at.AuthMethodId = withAuthMethodId
 
 	id, err := newAuthTokenId()
 	if err != nil {
@@ -112,17 +105,6 @@ func (r *Repository) CreateAuthToken(ctx context.Context, at *AuthToken, opt ...
 		db.StdRetryCnt,
 		db.ExpBackoff{},
 		func(_ db.Reader, w db.Writer) error {
-			u, err := iamRepo.LookupUser(ctx, at.IamUserId)
-			if err != nil {
-				return fmt.Errorf("create: auth token: looking up user: %w", err)
-			}
-			if u == nil {
-				return fmt.Errorf("create: auth token: user not found: %w", err)
-			}
-			if u.GetScopeId() != at.GetScopeId() {
-				return fmt.Errorf("create: auth token: user's scope doesn't match provided: %w", db.ErrInvalidParameter)
-			}
-			// TODO: Lookup and verify that AuthMethod's scope matches the provided scope.
 
 			newAuthToken = at.clone()
 			if err := newAuthToken.EncryptData(ctx, r.wrapper); err != nil {
@@ -296,6 +278,58 @@ func (r *Repository) DeleteAuthToken(ctx context.Context, id string, opt ...Opti
 	}
 
 	return rowsDeleted, nil
+}
+
+// getUserWithIdAndAuthMethod returns a user only if the user with the provided id currently has the provided
+// auth method and they are both in the same scope.  If that is not the case a nil iam.User will be returned.
+func (r *Repository) getUserWithIdAndAuthMethod(withIamUserId, withAuthMethodId string, opt ...Option) (*iam.User, error) {
+	if withAuthMethodId == "" {
+		return nil, fmt.Errorf("missing auth method id %w", db.ErrInvalidParameter)
+	}
+	if withIamUserId == "" {
+		return nil, fmt.Errorf("missing iam user id %w", db.ErrInvalidParameter)
+	}
+	underlying, err := r.reader.DB()
+	if err != nil {
+		return nil, fmt.Errorf("unable to get underlying db for auth account search: %w", err)
+	}
+	userTable := (&iam.User{}).TableName()
+	acctTable := (&iam.AuthAccount{}).TableName()
+	authMethodTable := "auth_method"
+
+	q := fmt.Sprintf(`	
+	select %[1]s.*
+		from %[1]s 
+	inner join %[2]s 
+			on %[1]s.public_id = %[2]s.iam_user_id
+	inner join %[3]s 
+			on %[2]s.auth_method_id = %[3]s.public_id 
+	where 
+		%[1]s.scope_id = %[2]s.scope_id
+		and %[2]s.scope_id = %[3]s.scope_id
+		and %[1]s.public_id = $1
+		and %[3]s.public_id = $2`, userTable, acctTable, authMethodTable)
+	rows, err := underlying.Query(q, withIamUserId, withAuthMethodId)
+	if err != nil {
+		return nil, fmt.Errorf("unable to query iam user %s", withIamUserId)
+	}
+	defer rows.Close()
+	u := &iam.User{User: &iamStore.User{}}
+	if rows.Next() {
+		err = r.reader.ScanRows(rows, u)
+		if err != nil {
+			return nil, fmt.Errorf("unable to scan rows for iam user %s, auth method %s: %w", withIamUserId, withAuthMethodId, err)
+		}
+	} else {
+		if err := rows.Err(); err != nil {
+			return nil, fmt.Errorf("unable to get next iam user: %w", err)
+		}
+		return nil, nil
+	}
+	if err != nil {
+		return nil, fmt.Errorf("unable to get next row for iam user %s, auth method %s: %w", withIamUserId, withAuthMethodId, err)
+	}
+	return u, nil
 }
 
 func allocAuthToken() *AuthToken {
