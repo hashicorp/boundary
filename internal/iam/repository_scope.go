@@ -7,23 +7,24 @@ import (
 	"strings"
 
 	"github.com/hashicorp/watchtower/internal/db"
+	"github.com/hashicorp/watchtower/internal/types/scope"
 )
 
 // CreateScope will create a scope in the repository and return the written
 // scope.  Supported options include: WithPublicId.
-func (r *Repository) CreateScope(ctx context.Context, scope *Scope, opt ...Option) (*Scope, error) {
-	if scope == nil {
+func (r *Repository) CreateScope(ctx context.Context, s *Scope, opt ...Option) (*Scope, error) {
+	if s == nil {
 		return nil, fmt.Errorf("create scope: missing scope %w", db.ErrNilParameter)
 	}
-	if scope.Scope == nil {
+	if s.Scope == nil {
 		return nil, fmt.Errorf("create scope: missing scope store %w", db.ErrNilParameter)
 	}
-	if scope.PublicId != "" {
+	if s.PublicId != "" {
 		return nil, fmt.Errorf("create scope: public id not empty: %w", db.ErrInvalidParameter)
 	}
 	opts := getOpts(opt...)
 	var publicId string
-	t := stringToScopeType(scope.Type)
+	t := scope.StringToScopeType(s.Type)
 	if opts.withPublicId != "" {
 		if !strings.HasPrefix(opts.withPublicId, t.Prefix()+"_") {
 			return nil, fmt.Errorf("create scope: passed-in public ID %q has wrong prefix for type %q which uses prefix %q", opts.withPublicId, t.String(), t.Prefix())
@@ -36,14 +37,14 @@ func (r *Repository) CreateScope(ctx context.Context, scope *Scope, opt ...Optio
 			return nil, fmt.Errorf("create scope: error generating public id %w for new scope", err)
 		}
 	}
-	s := scope.Clone().(*Scope)
-	s.PublicId = publicId
-	resource, err := r.create(ctx, s)
+	sc := s.Clone().(*Scope)
+	sc.PublicId = publicId
+	resource, err := r.create(ctx, sc)
 	if err != nil {
 		if db.IsUniqueError(err) {
-			return nil, fmt.Errorf("create scope: scope %s/%s already exists: %w", s.PublicId, s.Name, db.ErrNotUnique)
+			return nil, fmt.Errorf("create scope: scope %s/%s already exists: %w", sc.PublicId, sc.Name, db.ErrNotUnique)
 		}
-		return nil, fmt.Errorf("create scope: %w for %s", err, s.PublicId)
+		return nil, fmt.Errorf("create scope: %w for %s", err, sc.PublicId)
 	}
 	return resource.(*Scope), nil
 }
@@ -99,7 +100,7 @@ func (r *Repository) LookupScope(ctx context.Context, withPublicId string, opt .
 		if err == db.ErrRecordNotFound {
 			return nil, nil
 		}
-		return nil, fmt.Errorf("lookup group: failed %w fo %s", err, withPublicId)
+		return nil, fmt.Errorf("lookup scope: failed %w fo %s", err, withPublicId)
 	}
 	return &scope, nil
 }
@@ -127,7 +128,7 @@ func (r *Repository) ListProjects(ctx context.Context, withOrganizationId string
 		return nil, fmt.Errorf("list projects: missing organization id %w", db.ErrInvalidParameter)
 	}
 	var projects []*Scope
-	err := r.list(ctx, &projects, "parent_id = ? and type = ?", []interface{}{withOrganizationId, ProjectScope.String()}, opt...)
+	err := r.list(ctx, &projects, "parent_id = ? and type = ?", []interface{}{withOrganizationId, scope.Project.String()}, opt...)
 	if err != nil {
 		return nil, fmt.Errorf("list projects: %w", err)
 	}
@@ -137,7 +138,7 @@ func (r *Repository) ListProjects(ctx context.Context, withOrganizationId string
 // ListOrganizations and supports the WithLimit option.
 func (r *Repository) ListOrganizations(ctx context.Context, opt ...Option) ([]*Scope, error) {
 	var organizations []*Scope
-	err := r.list(ctx, &organizations, "type = ?", []interface{}{OrganizationScope.String()}, opt...)
+	err := r.list(ctx, &organizations, "type = ?", []interface{}{scope.Organization.String()}, opt...)
 	if err != nil {
 		return nil, fmt.Errorf("list organizations: %w", err)
 	}

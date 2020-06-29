@@ -11,6 +11,7 @@ import (
 	"github.com/hashicorp/watchtower/internal/iam"
 	"github.com/hashicorp/watchtower/internal/servers/controller/common"
 	"github.com/hashicorp/watchtower/internal/servers/controller/handlers"
+	"github.com/hashicorp/watchtower/internal/types/scope"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/wrapperspb"
@@ -246,7 +247,7 @@ func toProto(in *iam.Scope) *pb.Project {
 //  * There are no conflicting parameters provided
 func validateGetRequest(req *pbs.GetProjectRequest) error {
 	badFields := validateAncestors(req)
-	if !validId(req.GetId(), iam.ProjectScope.Prefix()+"_") {
+	if !validId(req.GetId(), scope.Project.Prefix()+"_") {
 		badFields["id"] = "Invalid formatted project id."
 	}
 	if len(badFields) > 0 {
@@ -275,7 +276,7 @@ func validateCreateRequest(req *pbs.CreateProjectRequest) error {
 
 func validateUpdateRequest(req *pbs.UpdateProjectRequest) error {
 	badFields := validateAncestors(req)
-	if !validId(req.GetId(), iam.ProjectScope.Prefix()+"_") {
+	if !validId(req.GetId(), scope.Project.Prefix()+"_") {
 		badFields["project_id"] = "Improperly formatted path identifier."
 	}
 	if req.GetUpdateMask() == nil {
@@ -309,7 +310,7 @@ func validateUpdateRequest(req *pbs.UpdateProjectRequest) error {
 
 func validateDeleteRequest(req *pbs.DeleteProjectRequest) error {
 	badFields := validateAncestors(req)
-	if !validId(req.GetId(), iam.ProjectScope.Prefix()+"_") {
+	if !validId(req.GetId(), scope.Project.Prefix()+"_") {
 		badFields["id"] = "Incorrectly formatted project."
 	}
 	if len(badFields) > 0 {
@@ -343,7 +344,7 @@ func validateAncestors(r ancestorProvider) map[string]string {
 	if r.GetOrgId() == "" {
 		return map[string]string{orgIdFieldName: "Missing organization id."}
 	}
-	if !validId(r.GetOrgId(), iam.OrganizationScope.Prefix()+"_") {
+	if !validId(r.GetOrgId(), scope.Organization.Prefix()+"_") {
 		return map[string]string{orgIdFieldName: "Improperly formatted identifier."}
 	}
 	return map[string]string{}

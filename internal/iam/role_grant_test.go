@@ -5,6 +5,8 @@ import (
 	"testing"
 
 	"github.com/hashicorp/watchtower/internal/db"
+	"github.com/hashicorp/watchtower/internal/types/action"
+	"github.com/hashicorp/watchtower/internal/types/resource"
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/protobuf/proto"
 )
@@ -57,17 +59,17 @@ func TestRoleGrant_Actions(t *testing.T) {
 	assert := assert.New(t)
 	g := &RoleGrant{}
 	a := g.Actions()
-	assert.Equal(a[ActionCreate.String()], ActionCreate)
-	assert.Equal(a[ActionUpdate.String()], ActionUpdate)
-	assert.Equal(a[ActionRead.String()], ActionRead)
-	assert.Equal(a[ActionDelete.String()], ActionDelete)
+	assert.Equal(a[action.Create.String()], action.Create)
+	assert.Equal(a[action.Update.String()], action.Update)
+	assert.Equal(a[action.Read.String()], action.Read)
+	assert.Equal(a[action.Delete.String()], action.Delete)
 }
 
 func TestRoleGrant_ResourceType(t *testing.T) {
 	assert := assert.New(t)
 	r := &RoleGrant{}
 	ty := r.ResourceType()
-	assert.Equal(ty, ResourceTypeRoleGrant)
+	assert.Equal(ty, resource.RoleGrant)
 }
 
 func TestRoleGrant_GetScope(t *testing.T) {

@@ -3,7 +3,9 @@ package perms
 import (
 	"testing"
 
-	"github.com/hashicorp/watchtower/internal/iam"
+	"github.com/hashicorp/watchtower/internal/types/action"
+	"github.com/hashicorp/watchtower/internal/types/resource"
+	"github.com/hashicorp/watchtower/internal/types/scope"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -16,7 +18,7 @@ func Test_ACLAllowed(t *testing.T) {
 		grants []string
 	}
 	type actionAllowed struct {
-		action  iam.Action
+		action  action.Type
 		allowed bool
 	}
 	type input struct {
@@ -30,7 +32,7 @@ func Test_ACLAllowed(t *testing.T) {
 	// A set of common grants to use in the following tests
 	commonGrants := []scopeGrant{
 		{
-			scope: Scope{Type: iam.OrganizationScope, Id: "org_a"},
+			scope: Scope{Type: scope.Organization, Id: "org_a"},
 			grants: []string{
 				"id=a_bar;actions=read,update",
 				"id=a_foo;type=host-catalog;actions=update,delete",
@@ -38,7 +40,7 @@ func Test_ACLAllowed(t *testing.T) {
 			},
 		},
 		{
-			scope: Scope{Type: iam.OrganizationScope, Id: "org_b"},
+			scope: Scope{Type: scope.Organization, Id: "org_b"},
 			grants: []string{
 				"type=host-set;actions=list,create",
 				"type=host;actions=*",
@@ -46,7 +48,7 @@ func Test_ACLAllowed(t *testing.T) {
 			},
 		},
 		{
-			scope: Scope{Type: iam.OrganizationScope, Id: "org_c"},
+			scope: Scope{Type: scope.Organization, Id: "org_c"},
 			grants: []string{
 				"id={{user.id }};actions=create,update",
 			},
@@ -58,19 +60,19 @@ func Test_ACLAllowed(t *testing.T) {
 	tests := []input{
 		{
 			name:     "no grants",
-			resource: Resource{ScopeId: "foo", Id: "bar", Type: "typ"},
+			resource: Resource{ScopeId: "foo", Id: "bar", Type: resource.HostCatalog},
 			actionsAllowed: []actionAllowed{
-				{action: iam.ActionCreate},
-				{action: iam.ActionRead},
+				{action: action.Create},
+				{action: action.Read},
 			},
 		},
 		{
 			name:        "no overlap",
-			resource:    Resource{ScopeId: "foo", Id: "bar", Type: "typ"},
+			resource:    Resource{ScopeId: "foo", Id: "bar", Type: resource.HostCatalog},
 			scopeGrants: commonGrants,
 			actionsAllowed: []actionAllowed{
-				{action: iam.ActionCreate},
-				{action: iam.ActionRead},
+				{action: action.Create},
+				{action: action.Read},
 			},
 		},
 		{
@@ -78,8 +80,8 @@ func Test_ACLAllowed(t *testing.T) {
 			resource:    Resource{ScopeId: "org_a", Id: "a_foo"},
 			scopeGrants: commonGrants,
 			actionsAllowed: []actionAllowed{
-				{action: iam.ActionUpdate},
-				{action: iam.ActionDelete},
+				{action: action.Update},
+				{action: action.Delete},
 			},
 		},
 		{
@@ -87,19 +89,19 @@ func Test_ACLAllowed(t *testing.T) {
 			resource:    Resource{ScopeId: "org_a", Id: "a_bar"},
 			scopeGrants: commonGrants,
 			actionsAllowed: []actionAllowed{
-				{action: iam.ActionRead, allowed: true},
-				{action: iam.ActionUpdate, allowed: true},
-				{action: iam.ActionDelete},
+				{action: action.Read, allowed: true},
+				{action: action.Update, allowed: true},
+				{action: action.Delete},
 			},
 		},
 		{
 			name:        "matching scope and id and all action",
-			resource:    Resource{ScopeId: "org_b", Type: "host"},
+			resource:    Resource{ScopeId: "org_b", Type: resource.Host},
 			scopeGrants: commonGrants,
 			actionsAllowed: []actionAllowed{
-				{action: iam.ActionRead, allowed: true},
-				{action: iam.ActionUpdate, allowed: true},
-				{action: iam.ActionDelete, allowed: true},
+				{action: action.Read, allowed: true},
+				{action: action.Update, allowed: true},
+				{action: action.Delete, allowed: true},
 			},
 		},
 		{
@@ -107,78 +109,78 @@ func Test_ACLAllowed(t *testing.T) {
 			resource:    Resource{ScopeId: "org_b", Id: "id_g"},
 			scopeGrants: commonGrants,
 			actionsAllowed: []actionAllowed{
-				{action: iam.ActionRead},
-				{action: iam.ActionUpdate},
-				{action: iam.ActionDelete},
+				{action: action.Read},
+				{action: action.Update},
+				{action: action.Delete},
 			},
 		},
 		{
 			name:        "matching scope and not matching type",
-			resource:    Resource{ScopeId: "org_a", Type: "host-catalog"},
+			resource:    Resource{ScopeId: "org_a", Type: resource.HostCatalog},
 			scopeGrants: commonGrants,
 			actionsAllowed: []actionAllowed{
-				{action: iam.ActionUpdate},
-				{action: iam.ActionDelete},
+				{action: action.Update},
+				{action: action.Delete},
 			},
 		},
 		{
 			name:        "matching scope and matching type",
-			resource:    Resource{ScopeId: "org_a", Type: "host-set"},
+			resource:    Resource{ScopeId: "org_a", Type: resource.HostSet},
 			scopeGrants: commonGrants,
 			actionsAllowed: []actionAllowed{
-				{action: iam.ActionList, allowed: true},
-				{action: iam.ActionCreate, allowed: true},
-				{action: iam.ActionDelete},
+				{action: action.List, allowed: true},
+				{action: action.Create, allowed: true},
+				{action: action.Delete},
 			},
 		},
 		{
 			name:        "matching scope, type, action, bad pin",
-			resource:    Resource{ScopeId: "org_a", Id: "a_foo", Type: "host-catalog"},
+			resource:    Resource{ScopeId: "org_a", Id: "a_foo", Type: resource.HostCatalog},
 			scopeGrants: commonGrants,
 			actionsAllowed: []actionAllowed{
-				{action: iam.ActionUpdate},
-				{action: iam.ActionDelete},
-				{action: iam.ActionRead},
+				{action: action.Update},
+				{action: action.Delete},
+				{action: action.Read},
 			},
 		},
 		{
 			name:        "matching scope, type, action, random id and bad pin",
-			resource:    Resource{ScopeId: "org_a", Id: "anything", Type: "host-catalog", Pin: "a_bar"},
+			resource:    Resource{ScopeId: "org_a", Id: "anything", Type: resource.HostCatalog, Pin: "a_bar"},
 			scopeGrants: commonGrants,
 			actionsAllowed: []actionAllowed{
-				{action: iam.ActionUpdate},
-				{action: iam.ActionDelete},
-				{action: iam.ActionRead},
+				{action: action.Update},
+				{action: action.Delete},
+				{action: action.Read},
 			},
 		},
 		{
 			name:        "matching scope, type, action, random id and good pin",
-			resource:    Resource{ScopeId: "org_a", Id: "anything", Type: "host-catalog", Pin: "a_foo"},
+			resource:    Resource{ScopeId: "org_a", Id: "anything", Type: resource.HostCatalog, Pin: "a_foo"},
 			scopeGrants: commonGrants,
 			actionsAllowed: []actionAllowed{
-				{action: iam.ActionUpdate, allowed: true},
-				{action: iam.ActionDelete, allowed: true},
-				{action: iam.ActionRead},
+				{action: action.Update, allowed: true},
+				{action: action.Delete, allowed: true},
+				{action: action.Read},
 			},
 		},
 		{
 			name:        "wrong scope and matching type",
-			resource:    Resource{ScopeId: "org_bad", Type: "host-set"},
+			resource:    Resource{ScopeId: "org_bad", Type: resource.HostSet},
 			scopeGrants: commonGrants,
 			actionsAllowed: []actionAllowed{
-				{action: iam.ActionList},
-				{action: iam.ActionCreate},
-				{action: iam.ActionDelete},
+				{action: action.List},
+				{action: action.Create},
+				{action: action.Delete},
 			},
 		},
 		{
 			name:        "any id",
-			resource:    Resource{ScopeId: "org_b", Type: "auth-method"},
+			resource:    Resource{ScopeId: "org_b", Type: resource.AuthMethod},
 			scopeGrants: commonGrants,
 			actionsAllowed: []actionAllowed{
-				{action: iam.ActionList},
-				{action: iam.ActionAuthen, allowed: true},
-				{action: iam.ActionDelete},
+				{action: action.List},
+				{action: action.Authen, allowed: true},
+				{action: action.Delete},
 			},
 		},
 		{
@@ -186,9 +188,9 @@ func Test_ACLAllowed(t *testing.T) {
 			resource:    Resource{ScopeId: "org_c"},
 			scopeGrants: commonGrants,
 			actionsAllowed: []actionAllowed{
-				{action: iam.ActionList},
-				{action: iam.ActionAuthen},
-				{action: iam.ActionDelete},
+				{action: action.List},
+				{action: action.Authen},
+				{action: action.Delete},
 			},
 			userId: "u_abcd1234",
 		},
@@ -197,8 +199,8 @@ func Test_ACLAllowed(t *testing.T) {
 			resource:    Resource{ScopeId: "org_c", Id: "u_abcd1234"},
 			scopeGrants: commonGrants,
 			actionsAllowed: []actionAllowed{
-				{action: iam.ActionCreate, allowed: true},
-				{action: iam.ActionUpdate, allowed: true},
+				{action: action.Create, allowed: true},
+				{action: action.Update, allowed: true},
 			},
 			userId: "u_abcd1234",
 		},

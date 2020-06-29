@@ -7,6 +7,8 @@ import (
 
 	"github.com/hashicorp/watchtower/internal/db"
 	"github.com/hashicorp/watchtower/internal/iam/store"
+	"github.com/hashicorp/watchtower/internal/types/action"
+	"github.com/hashicorp/watchtower/internal/types/resource"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -83,10 +85,10 @@ func (g *RoleGrant) GetScope(ctx context.Context, r db.Reader) (*Scope, error) {
 }
 
 // ResourceType returns the type of the RoleGrant
-func (*RoleGrant) ResourceType() ResourceType { return ResourceTypeRoleGrant }
+func (*RoleGrant) ResourceType() resource.Type { return resource.RoleGrant }
 
 // Actions returns the  available actions for RoleGrant
-func (*RoleGrant) Actions() map[string]Action {
+func (*RoleGrant) Actions() map[string]action.Type {
 	return CrudActions()
 }
 

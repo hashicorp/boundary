@@ -12,6 +12,7 @@ import (
 	pbs "github.com/hashicorp/watchtower/internal/gen/controller/api/services"
 	"github.com/hashicorp/watchtower/internal/iam"
 	"github.com/hashicorp/watchtower/internal/servers/controller/handlers"
+	"github.com/hashicorp/watchtower/internal/types/scope"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/wrapperspb"
@@ -347,7 +348,7 @@ func validateAncestors(r ancestorProvider) map[string]string {
 	if r.GetOrgId() == "" {
 		return map[string]string{orgIdFieldName: "Missing organization id."}
 	}
-	if !validId(r.GetOrgId(), iam.OrganizationScope.Prefix()+"_") {
+	if !validId(r.GetOrgId(), scope.Organization.Prefix()+"_") {
 		return map[string]string{orgIdFieldName: "Improperly formatted identifier."}
 	}
 	return map[string]string{}
