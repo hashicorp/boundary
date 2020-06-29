@@ -1618,6 +1618,9 @@ func TestDb_CreateItems(t *testing.T) {
 				u.PublicId = item.(*db_test.TestUser).PublicId
 				err := rw.LookupByPublicId(context.Background(), &u)
 				assert.NoError(err)
+				if _, ok := item.(*db_test.TestUser); ok {
+					assert.Truef(proto.Equal(item.(*db_test.TestUser).StoreTestUser, u.StoreTestUser), "%s and %s should be equal", item, u)
+				}
 			}
 			if tt.wantOplogId != "" {
 				err = TestVerifyOplog(t, rw, tt.wantOplogId, WithOperation(oplog.OpType_OP_TYPE_CREATE), WithCreateNotBefore(10*time.Second))
