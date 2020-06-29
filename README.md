@@ -91,8 +91,10 @@ This will build Watchtower. Once complete, run Watchtower in `dev` mode:
 
 #### Specify a UI Commitish at Build Time
 
-The default UI build branch is `develop` from [the UI repo](https://github.com/hashicorp/watchtower-ui).  A different commitish from which to build UI assets may be
-specified via the UI_COMMITISH environment variable.  For example:
+The default UI build branch is `develop` from [the UI
+repo](https://github.com/hashicorp/watchtower-ui). A different commitish from
+which to build UI assets may be specified via the UI_COMMITISH environment
+variable. For example:
 
   ```UI_COMMITISH=feature-branch make dev```
 
