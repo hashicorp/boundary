@@ -119,5 +119,6 @@ main
 /pkg/
 /bin/
 internal/ui/assets.go
+update-ui-assets*
 
 # vim: set filetype=conf :
