@@ -37,7 +37,7 @@ type Service struct {
 // NewService returns a user service which handles user related requests to watchtower.
 func NewService(repo func() (*iam.Repository, error)) (Service, error) {
 	if repo == nil {
-		return Service{}, fmt.Errorf("nil iam repostiroy provided")
+		return Service{}, fmt.Errorf("nil iam repository provided")
 	}
 	return Service{repoFn: repo}, nil
 }
