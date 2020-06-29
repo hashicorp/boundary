@@ -4,7 +4,7 @@ set -e
 
 origdir=$(pwd)
 tempdir=$(mktemp -d update-ui-assets.XXXXXX)
-ui_commitish=${UI_COMMITISH:develop}
+ui_commitish=${UI_COMMITISH:-develop}
 
 cd $tempdir
 git clone https://github.com/hashicorp/watchtower-ui
