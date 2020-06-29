@@ -308,7 +308,10 @@ func (rw *Db) CreateItems(ctx context.Context, createItems []interface{}, opt ..
 		}
 	}
 	for _, item := range createItems {
-		rw.Create(ctx, item)
+		if err := rw.Create(ctx, item); err != nil {
+			return fmt.Errorf("create items: %w", err)
+		}
+
 	}
 	if opts.withOplog {
 		if err := rw.addOplogForItems(ctx, CreateOp, opts, ticket, createItems); err != nil {
