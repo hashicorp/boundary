@@ -1238,6 +1238,345 @@ func TestDb_ScanRows(t *testing.T) {
 	})
 }
 
+func TestDb_CreateItems(t *testing.T) {
+	cleanup, db, _ := TestSetup(t, "postgres")
+	defer func() {
+		err := cleanup()
+		assert.NoError(t, err)
+		err = db.Close()
+		assert.NoError(t, err)
+	}()
+	testOplogResourceId := testId(t)
+
+	createFn := func() []interface{} {
+		results := []interface{}{}
+		for i := 0; i < 10; i++ {
+			u, err := db_test.NewTestUser()
+			require.NoError(t, err)
+			results = append(results, u)
+		}
+		return results
+	}
+	createMixedFn := func() []interface{} {
+		u, err := db_test.NewTestUser()
+		require.NoError(t, err)
+		c, err := db_test.NewTestCar()
+		require.NoError(t, err)
+		return []interface{}{
+			u,
+			c,
+		}
+
+	}
+	type args struct {
+		createItems []interface{}
+		opt         []Option
+	}
+	tests := []struct {
+		name        string
+		underlying  *gorm.DB
+		args        args
+		wantOplogId string
+		wantErr     bool
+		wantErrIs   error
+	}{
+		{
+			name:       "simple",
+			underlying: db,
+			args: args{
+				createItems: createFn(),
+			},
+			wantErr: false,
+		},
+		{
+			name:       "withOplog",
+			underlying: db,
+			args: args{
+				createItems: createFn(),
+				opt: []Option{
+					WithOplog(
+						TestWrapper(t),
+						oplog.Metadata{
+							"resource-public-id": []string{testOplogResourceId},
+							"op-type":            []string{oplog.OpType_OP_TYPE_CREATE.String()},
+						},
+					),
+				},
+			},
+			wantOplogId: testOplogResourceId,
+			wantErr:     false,
+		},
+		{
+			name:       "mixed items",
+			underlying: db,
+			args: args{
+				createItems: createMixedFn(),
+			},
+			wantErr:   true,
+			wantErrIs: ErrInvalidParameter,
+		},
+		{
+			name:       "bad oplog opt: nil metadata",
+			underlying: nil,
+			args: args{
+				createItems: createFn(),
+				opt: []Option{
+					WithOplog(
+						TestWrapper(t),
+						nil,
+					),
+				},
+			},
+			wantErr:   true,
+			wantErrIs: ErrNilParameter,
+		},
+		{
+			name:       "bad oplog opt: nil wrapper",
+			underlying: nil,
+			args: args{
+				createItems: createFn(),
+				opt: []Option{
+					WithOplog(
+						nil,
+						oplog.Metadata{
+							"resource-public-id": []string{"doesn't matter since wrapper is nil"},
+							"op-type":            []string{oplog.OpType_OP_TYPE_CREATE.String()},
+						},
+					),
+				},
+			},
+			wantErr:   true,
+			wantErrIs: ErrNilParameter,
+		},
+		{
+			name:       "bad opt: WithLookup",
+			underlying: nil,
+			args: args{
+				createItems: createFn(),
+				opt:         []Option{WithLookup(true)},
+			},
+			wantErr:   true,
+			wantErrIs: ErrNilParameter,
+		},
+		{
+			name:       "nil underlying",
+			underlying: nil,
+			args: args{
+				createItems: createFn(),
+			},
+			wantErr:   true,
+			wantErrIs: ErrNilParameter,
+		},
+		{
+			name:       "empty items",
+			underlying: db,
+			args: args{
+				createItems: []interface{}{},
+			},
+			wantErr:   true,
+			wantErrIs: ErrInvalidParameter,
+		},
+		{
+			name:       "nil items",
+			underlying: db,
+			args: args{
+				createItems: nil,
+			},
+			wantErr:   true,
+			wantErrIs: ErrInvalidParameter,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+			rw := &Db{
+				underlying: tt.underlying,
+			}
+			err := rw.CreateItems(context.Background(), tt.args.createItems, tt.args.opt...)
+			if tt.wantErr {
+				require.Error(err)
+				if tt.wantErrIs != nil {
+					assert.Truef(errors.Is(err, tt.wantErrIs), "unexpected error: %s", err.Error())
+				}
+				return
+			}
+			require.NoError(err)
+			for _, item := range tt.args.createItems {
+				u := db_test.AllocTestUser()
+				u.PublicId = item.(*db_test.TestUser).PublicId
+				err := rw.LookupByPublicId(context.Background(), &u)
+				assert.NoError(err)
+			}
+			if tt.wantOplogId != "" {
+				err = TestVerifyOplog(t, rw, tt.wantOplogId, WithOperation(oplog.OpType_OP_TYPE_CREATE), WithCreateNotBefore(10*time.Second))
+				assert.NoError(err)
+			}
+		})
+	}
+}
+
+func TestDb_DeleteItems(t *testing.T) {
+	cleanup, db, _ := TestSetup(t, "postgres")
+	defer func() {
+		err := cleanup()
+		assert.NoError(t, err)
+		err = db.Close()
+		assert.NoError(t, err)
+	}()
+
+	testOplogResourceId := testId(t)
+
+	createFn := func() []interface{} {
+		results := []interface{}{}
+		for i := 0; i < 10; i++ {
+			u := testUser(t, db, "", "", "")
+			results = append(results, u)
+		}
+		return results
+	}
+	type args struct {
+		deleteItems []interface{}
+		opt         []Option
+	}
+	tests := []struct {
+		name            string
+		underlying      *gorm.DB
+		args            args
+		wantRowsDeleted int
+		wantOplogId     string
+		wantErr         bool
+		wantErrIs       error
+	}{
+		{
+			name:       "simple",
+			underlying: db,
+			args: args{
+				deleteItems: createFn(),
+			},
+			wantRowsDeleted: 10,
+			wantErr:         false,
+		},
+		{
+			name:       "withOplog",
+			underlying: db,
+			args: args{
+				deleteItems: createFn(),
+				opt: []Option{
+					WithOplog(
+						TestWrapper(t),
+						oplog.Metadata{
+							"resource-public-id": []string{testOplogResourceId},
+							"op-type":            []string{oplog.OpType_OP_TYPE_DELETE.String()},
+						},
+					),
+				},
+			},
+			wantRowsDeleted: 10,
+			wantOplogId:     testOplogResourceId,
+			wantErr:         false,
+		},
+		{
+			name:       "bad oplog opt: nil metadata",
+			underlying: nil,
+			args: args{
+				deleteItems: createFn(),
+				opt: []Option{
+					WithOplog(
+						TestWrapper(t),
+						nil,
+					),
+				},
+			},
+			wantErr:   true,
+			wantErrIs: ErrNilParameter,
+		},
+		{
+			name:       "bad oplog opt: nil wrapper",
+			underlying: nil,
+			args: args{
+				deleteItems: createFn(),
+				opt: []Option{
+					WithOplog(
+						nil,
+						oplog.Metadata{
+							"resource-public-id": []string{"doesn't matter since wrapper is nil"},
+							"op-type":            []string{oplog.OpType_OP_TYPE_CREATE.String()},
+						},
+					),
+				},
+			},
+			wantErr:   true,
+			wantErrIs: ErrNilParameter,
+		},
+		{
+			name:       "bad opt: WithLookup",
+			underlying: nil,
+			args: args{
+				deleteItems: createFn(),
+				opt:         []Option{WithLookup(true)},
+			},
+			wantErr:   true,
+			wantErrIs: ErrNilParameter,
+		},
+		{
+			name:       "nil underlying",
+			underlying: nil,
+			args: args{
+				deleteItems: createFn(),
+			},
+			wantErr:   true,
+			wantErrIs: ErrNilParameter,
+		},
+		{
+			name:       "empty items",
+			underlying: db,
+			args: args{
+				deleteItems: []interface{}{},
+			},
+			wantErr:   true,
+			wantErrIs: ErrInvalidParameter,
+		},
+		{
+			name:       "nil items",
+			underlying: db,
+			args: args{
+				deleteItems: nil,
+			},
+			wantErr:   true,
+			wantErrIs: ErrInvalidParameter,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+			rw := &Db{
+				underlying: tt.underlying,
+			}
+			rowsDeleted, err := rw.DeleteItems(context.Background(), tt.args.deleteItems, tt.args.opt...)
+			if tt.wantErr {
+				require.Error(err)
+				if tt.wantErrIs != nil {
+					assert.Truef(errors.Is(err, tt.wantErrIs), "unexpected error: %s", err.Error())
+				}
+				return
+			}
+			require.NoError(err)
+			assert.Equal(tt.wantRowsDeleted, rowsDeleted)
+			for _, item := range tt.args.deleteItems {
+				u := db_test.AllocTestUser()
+				u.PublicId = item.(*db_test.TestUser).PublicId
+				err := rw.LookupByPublicId(context.Background(), &u)
+				require.Error(err)
+				require.Truef(errors.Is(err, ErrRecordNotFound), "found item %s that should be deleted", u.PublicId)
+			}
+			if tt.wantOplogId != "" {
+				err = TestVerifyOplog(t, rw, tt.wantOplogId, WithOperation(oplog.OpType_OP_TYPE_DELETE), WithCreateNotBefore(10*time.Second))
+				assert.NoError(err)
+			}
+		})
+	}
+}
+
 func testUser(t *testing.T, conn *gorm.DB, name, email, phoneNumber string) *db_test.TestUser {
 	t.Helper()
 	assert := assert.New(t)
