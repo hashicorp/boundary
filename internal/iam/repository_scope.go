@@ -100,7 +100,7 @@ func (r *Repository) LookupScope(ctx context.Context, withPublicId string, opt .
 		if err == db.ErrRecordNotFound {
 			return nil, nil
 		}
-		return nil, fmt.Errorf("lookup group: failed %w fo %s", err, withPublicId)
+		return nil, fmt.Errorf("lookup scope: failed %w fo %s", err, withPublicId)
 	}
 	return &scope, nil
 }

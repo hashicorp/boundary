@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	wrapping "github.com/hashicorp/go-kms-wrapping"
 	"github.com/hashicorp/watchtower/internal/db/common"
 	"github.com/hashicorp/watchtower/internal/oplog"
 	"github.com/hashicorp/watchtower/internal/oplog/store"
@@ -28,7 +29,12 @@ type Reader interface {
 	// LookupByName will lookup resource by its friendly name which must be unique
 	LookupByName(ctx context.Context, resource ResourceNamer, opt ...Option) error
 
-	// LookupByPublicId will lookup resource by its public_id which must be unique
+	// LookupById will lookup a resource by its primary key id, which must be
+	// unique. The resourceWithIder must implement either ResourcePublicIder or
+	// ResourcePrivateIder interface.
+	LookupById(ctx context.Context, resourceWithIder interface{}, opt ...Option) error
+
+	// LookupByPublicId will lookup resource by its public_id which must be unique.
 	LookupByPublicId(ctx context.Context, resource ResourcePublicIder, opt ...Option) error
 
 	// LookupWhere will lookup and return the first resource using a where clause with parameters
@@ -79,6 +85,21 @@ type Writer interface {
 
 	// DB returns the sql.DB
 	DB() (*sql.DB, error)
+
+	// GetTicket returns an oplog ticket for the aggregate root of "i" which can
+	// be used to WriteOplogEntryWith for that aggregate root.
+	GetTicket(i interface{}) (*store.Ticket, error)
+
+	// WriteOplogEntryWith will write an oplog entry with the msgs provided for
+	// the ticket's aggregateName. No options are currently supported.
+	WriteOplogEntryWith(
+		ctx context.Context,
+		wrapper wrapping.Wrapper,
+		ticket *store.Ticket,
+		metadata oplog.Metadata,
+		msgs []*oplog.Message,
+		opt ...Option,
+	) error
 }
 
 const (
@@ -94,9 +115,16 @@ type RetryInfo struct {
 // TxHandler defines a handler for a func that writes a transaction for use with DoTx
 type TxHandler func(Reader, Writer) error
 
-// ResourcePublicIder defines an interface that LookupByPublicId() can use to get the resource's public id
+// ResourcePublicIder defines an interface that LookupByPublicId() can use to
+// get the resource's public id.
 type ResourcePublicIder interface {
 	GetPublicId() string
+}
+
+// ResourcePrivateIder defines an interface that LookupById() can use to get the
+// resource's private id.
+type ResourcePrivateIder interface {
+	GetPrivateId() string
 }
 
 // ResourceNamer defines an interface that LookupByName() can use to get the resource's friendly name
@@ -169,8 +197,10 @@ func (rw *Db) lookupAfterWrite(ctx context.Context, i interface{}, opt ...Option
 	return errors.New("not a resource with an id")
 }
 
-// Create an object in the db with options: WithOplog and WithLookup (to force a
-// lookup after create).
+// Create an object in the db with options: WithOplog, NewOplogMsg and
+// WithLookup.  WithOplog will write an oplog entry for the create.
+// NewOplogMsg will return in-memory oplog message.  WithOplog and NewOplogMsg
+// cannot be used together.  WithLookup with to force a lookup after create.
 func (rw *Db) Create(ctx context.Context, i interface{}, opt ...Option) error {
 	if rw.underlying == nil {
 		return fmt.Errorf("create: missing underlying db %w", ErrNilParameter)
@@ -180,6 +210,9 @@ func (rw *Db) Create(ctx context.Context, i interface{}, opt ...Option) error {
 	}
 	opts := GetOpts(opt...)
 	withOplog := opts.withOplog
+	if withOplog && opts.newOplogMsg != nil {
+		return fmt.Errorf("create: both WithOplog and NewOplogMsg options have been specified: %w", ErrInvalidParameter)
+	}
 	if withOplog {
 		// let's validate oplog options before we start writing to the database
 		_, err := validateOplogArgs(i, opts)
@@ -199,7 +232,7 @@ func (rw *Db) Create(ctx context.Context, i interface{}, opt ...Option) error {
 	var ticket *store.Ticket
 	if withOplog {
 		var err error
-		ticket, err = rw.getTicket(i)
+		ticket, err = rw.GetTicket(i)
 		if err != nil {
 			return fmt.Errorf("create: unable to get ticket: %w", err)
 		}
@@ -211,6 +244,13 @@ func (rw *Db) Create(ctx context.Context, i interface{}, opt ...Option) error {
 		if err := rw.addOplog(ctx, CreateOp, opts, ticket, i); err != nil {
 			return err
 		}
+	}
+	if opts.newOplogMsg != nil {
+		msg, err := rw.newOplogMessage(ctx, CreateOp, i)
+		if err != nil {
+			return fmt.Errorf("create: returning oplog failed %w", err)
+		}
+		*opts.newOplogMsg = *msg
 	}
 	if err := rw.lookupAfterWrite(ctx, i, opt...); err != nil {
 		return fmt.Errorf("create: lookup error %w", err)
@@ -248,7 +288,7 @@ func (rw *Db) CreateItems(ctx context.Context, createItems []interface{}, opt ..
 		if err != nil {
 			return fmt.Errorf("create items: oplog validation failed: %w", err)
 		}
-		ticket, err = rw.getTicket(createItems[0])
+		ticket, err = rw.GetTicket(createItems[0])
 		if err != nil {
 			return fmt.Errorf("create items: unable to get ticket: %w", err)
 		}
@@ -273,11 +313,15 @@ func (rw *Db) CreateItems(ctx context.Context, createItems []interface{}, opt ..
 // is responsible for the transaction life cycle of the writer and if an
 // error is returned the caller must decide what to do with the transaction,
 // which almost always should be to rollback.  Update returns the number of
-// rows updated. Supported options: WithOplog and WithVersion.  If WithVersion
-// is used, then the update will include the version number in the update where
-// clause, which basically makes the update use optimistic locking and the
-// update will only succeed if the existing rows version matches the WithVersion
-// option.
+// rows updated.
+//
+// Supported options: WithOplog, NewOplogMsg and WithVersion.
+// WithOplog will write an oplog entry for the update. NewOplogMsg
+// will return in-memory oplog message.  WithOplog and NewOplogMsg cannot be
+// used together.   If WithVersion is used, then the update will include the
+// version number in the update where clause, which basically makes the update
+// use optimistic locking and the update will only succeed if the existing rows
+// version matches the WithVersion option.
 func (rw *Db) Update(ctx context.Context, i interface{}, fieldMaskPaths []string, setToNullPaths []string, opt ...Option) (int, error) {
 	if rw.underlying == nil {
 		return NoRowsAffected, fmt.Errorf("update: missing underlying db %w", ErrNilParameter)
@@ -287,6 +331,11 @@ func (rw *Db) Update(ctx context.Context, i interface{}, fieldMaskPaths []string
 	}
 	if len(fieldMaskPaths) == 0 && len(setToNullPaths) == 0 {
 		return NoRowsAffected, errors.New("update: both fieldMaskPaths and setToNullPaths are missing")
+	}
+	opts := GetOpts(opt...)
+	withOplog := opts.withOplog
+	if withOplog && opts.newOplogMsg != nil {
+		return NoRowsAffected, fmt.Errorf("update: both WithOplog and NewOplogMsg options have been specified: %w", ErrInvalidParameter)
 	}
 
 	// we need to filter out some non-updatable fields (like: CreateTime, etc)
@@ -317,8 +366,6 @@ func (rw *Db) Update(ctx context.Context, i interface{}, fieldMaskPaths []string
 		}
 	}
 
-	opts := GetOpts(opt...)
-	withOplog := opts.withOplog
 	if withOplog {
 		// let's validate oplog options before we start writing to the database
 		_, err := validateOplogArgs(i, opts)
@@ -334,7 +381,7 @@ func (rw *Db) Update(ctx context.Context, i interface{}, fieldMaskPaths []string
 	var ticket *store.Ticket
 	if withOplog {
 		var err error
-		ticket, err = rw.getTicket(i)
+		ticket, err = rw.GetTicket(i)
 		if err != nil {
 			return NoRowsAffected, fmt.Errorf("update: unable to get ticket: %w", err)
 		}
@@ -356,7 +403,7 @@ func (rw *Db) Update(ctx context.Context, i interface{}, fieldMaskPaths []string
 		return NoRowsAffected, fmt.Errorf("update: failed %w", underlying.Error)
 	}
 	rowsUpdated := int(underlying.RowsAffected)
-	if withOplog && rowsUpdated > 0 {
+	if rowsUpdated > 0 && (withOplog || opts.newOplogMsg != nil) {
 		// we don't want to change the inbound slices in opts, so we'll make our
 		// own copy to pass to addOplog()
 		oplogFieldMasks := make([]string, len(fieldMaskPaths))
@@ -369,8 +416,17 @@ func (rw *Db) Update(ctx context.Context, i interface{}, fieldMaskPaths []string
 			WithFieldMaskPaths: oplogFieldMasks,
 			WithNullPaths:      oplogNullPaths,
 		}
-		if err := rw.addOplog(ctx, UpdateOp, oplogOpts, ticket, i); err != nil {
-			return rowsUpdated, fmt.Errorf("update: add oplog failed %w", err)
+		if withOplog {
+			if err := rw.addOplog(ctx, UpdateOp, oplogOpts, ticket, i); err != nil {
+				return rowsUpdated, fmt.Errorf("update: add oplog failed %w", err)
+			}
+		}
+		if opts.newOplogMsg != nil {
+			msg, err := rw.newOplogMessage(ctx, UpdateOp, i, WithFieldMaskPaths(oplogFieldMasks), WithNullPaths(oplogNullPaths))
+			if err != nil {
+				return rowsUpdated, fmt.Errorf("update: returning oplog failed %w", err)
+			}
+			*opts.newOplogMsg = *msg
 		}
 	}
 	// we need to force a lookupAfterWrite so the resource returned is correctly initialized
@@ -382,9 +438,10 @@ func (rw *Db) Update(ctx context.Context, i interface{}, fieldMaskPaths []string
 	return rowsUpdated, nil
 }
 
-// Delete an object in the db with options: WithOplog (which requires
-// WithMetadata, WithWrapper). Delete returns the number of rows deleted and
-// any errors.
+// Delete an object in the db with options: WithOplog and NewOplogMsg. WithOplog
+// will write an oplog entry for the delete. NewOplogMsg will return in-memory
+// oplog message.  WithOplog and NewOplogMsg cannot be used together. Delete
+// returns the number of rows deleted and any errors.
 func (rw *Db) Delete(ctx context.Context, i interface{}, opt ...Option) (int, error) {
 	if rw.underlying == nil {
 		return NoRowsAffected, fmt.Errorf("delete: missing underlying db %w", ErrNilParameter)
@@ -392,14 +449,17 @@ func (rw *Db) Delete(ctx context.Context, i interface{}, opt ...Option) (int, er
 	if isNil(i) {
 		return NoRowsAffected, fmt.Errorf("delete: interface is missing %w", ErrNilParameter)
 	}
+	opts := GetOpts(opt...)
+	withOplog := opts.withOplog
+	if withOplog && opts.newOplogMsg != nil {
+		return NoRowsAffected, fmt.Errorf("delete: both WithOplog and NewOplogMsg options have been specified: %w", ErrInvalidParameter)
+	}
 	// This is not a watchtower scope, but rather a gorm Scope:
 	// https://godoc.org/github.com/jinzhu/gorm#DB.NewScope
 	scope := rw.underlying.NewScope(i)
 	if scope.PrimaryKeyZero() {
 		return NoRowsAffected, fmt.Errorf("delete: primary key is not set")
 	}
-	opts := GetOpts(opt...)
-	withOplog := opts.withOplog
 	if withOplog {
 		_, err := validateOplogArgs(i, opts)
 		if err != nil {
@@ -409,7 +469,7 @@ func (rw *Db) Delete(ctx context.Context, i interface{}, opt ...Option) (int, er
 	var ticket *store.Ticket
 	if withOplog {
 		var err error
-		ticket, err = rw.getTicket(i)
+		ticket, err = rw.GetTicket(i)
 		if err != nil {
 			return NoRowsAffected, fmt.Errorf("delete: unable to get ticket: %w", err)
 		}
@@ -419,9 +479,18 @@ func (rw *Db) Delete(ctx context.Context, i interface{}, opt ...Option) (int, er
 		return NoRowsAffected, fmt.Errorf("delete: failed %w", underlying.Error)
 	}
 	rowsDeleted := int(underlying.RowsAffected)
-	if withOplog && rowsDeleted > 0 {
-		if err := rw.addOplog(ctx, DeleteOp, opts, ticket, i); err != nil {
-			return rowsDeleted, fmt.Errorf("delete: add oplog failed %w", err)
+	if rowsDeleted > 0 && (withOplog || opts.newOplogMsg != nil) {
+		if withOplog {
+			if err := rw.addOplog(ctx, DeleteOp, opts, ticket, i); err != nil {
+				return rowsDeleted, fmt.Errorf("delete: add oplog failed %w", err)
+			}
+		}
+		if opts.newOplogMsg != nil {
+			msg, err := rw.newOplogMessage(ctx, DeleteOp, i)
+			if err != nil {
+				return rowsDeleted, fmt.Errorf("delete: returning oplog failed %w", err)
+			}
+			*opts.newOplogMsg = *msg
 		}
 	}
 	return rowsDeleted, nil
@@ -454,7 +523,7 @@ func (rw *Db) DeleteItems(ctx context.Context, deleteItems []interface{}, opt ..
 		if err != nil {
 			return NoRowsAffected, fmt.Errorf("delete items: oplog validation failed: %w", err)
 		}
-		ticket, err = rw.getTicket(deleteItems[0])
+		ticket, err = rw.GetTicket(deleteItems[0])
 		if err != nil {
 			return NoRowsAffected, fmt.Errorf("delete items: unable to get ticket: %w", err)
 		}
@@ -507,9 +576,15 @@ func (rw *Db) getTicketFor(aggregateName string) (*store.Ticket, error) {
 	}
 	return ticket, nil
 }
-func (rw *Db) getTicket(i interface{}) (*store.Ticket, error) {
+
+// GetTicket returns an oplog ticket for the aggregate root of "i" which can
+// be used to WriteOplogEntryWith for that aggregate root.
+func (rw *Db) GetTicket(i interface{}) (*store.Ticket, error) {
 	if rw.underlying == nil {
 		return nil, fmt.Errorf("get ticket: underlying db missing: %w", ErrNilParameter)
+	}
+	if isNil(i) {
+		return nil, fmt.Errorf("get ticket: interface is missing %w", ErrNilParameter)
 	}
 	replayable, ok := i.(oplog.ReplayableMessage)
 	if !ok {
@@ -643,6 +718,79 @@ func (rw *Db) addOplog(ctx context.Context, opType OpType, opts Options, ticket 
 	return nil
 }
 
+// WriteOplogEntryWith will write an oplog entry with the msgs provided for
+// the ticket's aggregateName. No options are currently supported.
+func (rw *Db) WriteOplogEntryWith(ctx context.Context, wrapper wrapping.Wrapper, ticket *store.Ticket, metadata oplog.Metadata, msgs []*oplog.Message, opt ...Option) error {
+	if wrapper == nil {
+		return fmt.Errorf("write oplog: wrapper is unset %w", ErrNilParameter)
+	}
+	if ticket == nil {
+		return fmt.Errorf("write oplog: ticket is unset %w", ErrNilParameter)
+	}
+	if len(msgs) == 0 {
+		return fmt.Errorf("write oplog: msgs are empty %w", ErrInvalidParameter)
+	}
+	if rw.underlying == nil {
+		return fmt.Errorf("write oplog: underlying is unset %w", ErrNilParameter)
+	}
+	if metadata == nil {
+		return fmt.Errorf("write oplog: metadata is unset %w", ErrNilParameter)
+	}
+	if len(metadata) == 0 {
+		return fmt.Errorf("write oplog: metadata is empty %w", ErrInvalidParameter)
+	}
+
+	ticketer, err := oplog.NewGormTicketer(rw.underlying, oplog.WithAggregateNames(true))
+	if err != nil {
+		return fmt.Errorf("write oplog: unable to get Ticketer %w", err)
+	}
+
+	entry, err := oplog.NewEntry(
+		ticket.Name,
+		metadata,
+		wrapper,
+		ticketer,
+	)
+	if err != nil {
+		return fmt.Errorf("write oplog: unable to create oplog entry: %w", err)
+	}
+	err = entry.WriteEntryWith(
+		ctx,
+		&oplog.GormWriter{Tx: rw.underlying},
+		ticket,
+		msgs...,
+	)
+	if err != nil {
+		return fmt.Errorf("write oplog: unable to write oplog entry: %w", err)
+	}
+	return nil
+}
+
+func (rw *Db) newOplogMessage(ctx context.Context, opType OpType, i interface{}, opt ...Option) (*oplog.Message, error) {
+	opts := GetOpts(opt...)
+	replayable, ok := i.(oplog.ReplayableMessage)
+	if !ok {
+		return nil, errors.New("error not a replayable interface")
+	}
+	msg := oplog.Message{
+		Message:  i.(proto.Message),
+		TypeName: replayable.TableName(),
+	}
+	switch opType {
+	case CreateOp:
+		msg.OpType = oplog.OpType_OP_TYPE_CREATE
+	case UpdateOp:
+		msg.OpType = oplog.OpType_OP_TYPE_UPDATE
+		msg.FieldMaskPaths = opts.WithFieldMaskPaths
+		msg.SetToNullPaths = opts.WithNullPaths
+	case DeleteOp:
+		msg.OpType = oplog.OpType_OP_TYPE_DELETE
+	default:
+		return nil, fmt.Errorf("add oplog: operation type %v is not supported", opType)
+	}
+	return &msg, nil
+}
+
 // DoTx will wrap the Handler func passed within a transaction with retries
 // you should ensure that any objects written to the db in your TxHandler are retryable, which
 // means that the object may be sent to the db several times (retried), so things like the primary key must
@@ -705,24 +853,50 @@ func (rw *Db) LookupByName(ctx context.Context, resource ResourceNamer, opt ...O
 	return nil
 }
 
-// LookupByPublicId will lookup resource my its public_id which must be unique
-func (rw *Db) LookupByPublicId(ctx context.Context, resource ResourcePublicIder, opt ...Option) error {
+// LookupByPublicId will lookup resource by its public_id or private_id, which
+// must be unique. Options are ignored.
+func (rw *Db) LookupById(ctx context.Context, resourceWithIder interface{}, opt ...Option) error {
 	if rw.underlying == nil {
-		return errors.New("error underlying db nil for lookup by public id")
+		return fmt.Errorf("lookup by id: underlying db nil %w", ErrNilParameter)
 	}
-	if reflect.ValueOf(resource).Kind() != reflect.Ptr {
-		return errors.New("error interface parameter must to be a pointer for lookup by public id")
+	if reflect.ValueOf(resourceWithIder).Kind() != reflect.Ptr {
+		return fmt.Errorf("lookup by id: interface parameter must to be a pointer %w", ErrInvalidParameter)
 	}
-	if resource.GetPublicId() == "" {
-		return errors.New("error public id empty string for lookup by public id")
+	primaryKey, where, err := primaryKeyWhere(resourceWithIder)
+	if err != nil {
+		return fmt.Errorf("lookup by id: %w", err)
 	}
-	if err := rw.underlying.Where("public_id = ?", resource.GetPublicId()).First(resource).Error; err != nil {
+	if err := rw.underlying.Where(where, primaryKey).First(resourceWithIder).Error; err != nil {
 		if err == gorm.ErrRecordNotFound {
 			return ErrRecordNotFound
 		}
 		return err
 	}
 	return nil
+}
+
+func primaryKeyWhere(resourceWithIder interface{}) (pkey string, w string, e error) {
+	var primaryKey, where string
+	switch resourceType := resourceWithIder.(type) {
+	case ResourcePublicIder:
+		primaryKey = resourceType.GetPublicId()
+		where = "public_id = ?"
+	case ResourcePrivateIder:
+		primaryKey = resourceType.GetPrivateId()
+		where = "private_id = ?"
+	default:
+		return "", "", fmt.Errorf("unsupported interface type %w", ErrInvalidParameter)
+	}
+	if primaryKey == "" {
+		return "", "", fmt.Errorf("primary key unset %w", ErrInvalidParameter)
+	}
+	return primaryKey, where, nil
+}
+
+// LookupByPublicId will lookup resource by its public_id, which must be unique.
+// Options are ignored.
+func (rw *Db) LookupByPublicId(ctx context.Context, resource ResourcePublicIder, opt ...Option) error {
+	return rw.LookupById(ctx, resource, opt...)
 }
 
 // LookupWhere will lookup the first resource using a where clause with parameters (it only returns the first one)

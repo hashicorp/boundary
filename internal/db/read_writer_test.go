@@ -16,27 +16,23 @@ import (
 	"github.com/hashicorp/watchtower/internal/db/db_test"
 	"github.com/hashicorp/watchtower/internal/db/timestamp"
 	"github.com/hashicorp/watchtower/internal/oplog"
+	"github.com/hashicorp/watchtower/internal/oplog/store"
 	"github.com/jinzhu/gorm"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/protobuf/proto"
 )
 
 func TestDb_Update(t *testing.T) {
 	cleanup, db, _ := TestSetup(t, "postgres")
 	now := &timestamp.Timestamp{Timestamp: ptypes.TimestampNow()}
 	publicId, err := NewPublicId("testuser")
-	if err != nil {
-		t.Error(err)
-	}
+	require.NoError(t, err)
 	defer func() {
-		if err := cleanup(); err != nil {
-			t.Error(err)
-		}
-	}()
-	defer func() {
-		if err := db.Close(); err != nil {
-			t.Error(err)
-		}
+		err := cleanup()
+		assert.NoError(t, err)
+		err = db.Close()
+		assert.NoError(t, err)
 	}()
 	id := testId(t)
 	type args struct {
@@ -227,7 +223,7 @@ func TestDb_Update(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			assert := assert.New(t)
+			assert, require := assert.New(t), require.New(t)
 			rw := &Db{
 				underlying: db,
 			}
@@ -239,18 +235,18 @@ func TestDb_Update(t *testing.T) {
 			}
 			rowsUpdated, err := rw.Update(context.Background(), tt.args.i, tt.args.fieldMaskPaths, tt.args.setToNullPaths, tt.args.opt...)
 			if tt.wantErr {
-				assert.Error(err)
+				require.Error(err)
 				assert.Equal(tt.want, rowsUpdated)
 				assert.Equal(tt.wantErrMsg, err.Error())
 				return
 			}
-			assert.NoError(err)
+			require.NoError(err)
 			assert.Equal(tt.want, rowsUpdated)
 			if tt.want == 0 {
 				return
 			}
 			foundUser, err := db_test.NewTestUser()
-			assert.NoError(err)
+			require.NoError(err)
 			foundUser.PublicId = tt.args.i.PublicId
 			where := "public_id = ?"
 			for _, f := range tt.args.setToNullPaths {
@@ -261,7 +257,7 @@ func TestDb_Update(t *testing.T) {
 				where = fmt.Sprintf("%s and %s is null", where, f)
 			}
 			err = rw.LookupWhere(context.Background(), foundUser, where, tt.args.i.PublicId)
-			assert.NoError(err)
+			require.NoError(err)
 			assert.Equal(tt.args.i.Id, foundUser.Id)
 			assert.Equal(tt.wantName, foundUser.Name)
 			assert.Equal(tt.wantEmail, foundUser.Email)
@@ -285,10 +281,10 @@ func TestDb_Update(t *testing.T) {
 		assert.Equal(0, rowsUpdated)
 	})
 	t.Run("valid-WithOplog", func(t *testing.T) {
-		assert := assert.New(t)
+		assert, require := assert.New(t), require.New(t)
 		w := Db{underlying: db}
 		id, err := uuid.GenerateUUID()
-		assert.NoError(err)
+		require.NoError(err)
 		user := testUser(t, db, "foo-"+id, id, id)
 
 		user.Name = "friendly-" + id
@@ -304,21 +300,93 @@ func TestDb_Update(t *testing.T) {
 					"op-type":            []string{oplog.OpType_OP_TYPE_UPDATE.String()},
 				}),
 		)
-		assert.NoError(err)
+		require.NoError(err)
 		assert.Equal(1, rowsUpdated)
 
 		foundUser, err := db_test.NewTestUser()
-		assert.NoError(err)
+		require.NoError(err)
 		foundUser.PublicId = user.PublicId
 		err = w.LookupByPublicId(context.Background(), foundUser)
-		assert.NoError(err)
+		require.NoError(err)
 		assert.Equal(foundUser.Name, user.Name)
 
 		err = TestVerifyOplog(t, &w, user.PublicId, WithOperation(oplog.OpType_OP_TYPE_UPDATE), WithCreateNotBefore(10*time.Second))
+		require.NoError(err)
+	})
+	t.Run("both-WithOplog-NewOplogMsg", func(t *testing.T) {
+		assert, require := assert.New(t), require.New(t)
+		w := Db{underlying: db}
+		id, err := uuid.GenerateUUID()
+		require.NoError(err)
+		user, err := db_test.NewTestUser()
+		require.NoError(err)
+		user.Name = "foo-" + id
+		createMsg := oplog.Message{}
+		err = w.Create(
+			context.Background(),
+			user,
+			NewOplogMsg(&createMsg),
+		)
+		require.NoError(err)
+
+		updateMsg := oplog.Message{}
+		user.Name = "friendly-" + id
+		rowsUpdated, err := w.Update(
+			context.Background(),
+			user,
+			[]string{"Name"}, nil,
+			NewOplogMsg(&updateMsg),
+			WithOplog(TestWrapper(t), oplog.Metadata{"alice": []string{"bob"}}),
+		)
+		require.Error(err)
+		assert.Equal(0, rowsUpdated)
+		assert.True(errors.Is(err, ErrInvalidParameter))
+	})
+	t.Run("valid-NewOplogMsg", func(t *testing.T) {
+		assert, require := assert.New(t), require.New(t)
+		w := Db{underlying: db}
+
+		ticket, err := w.GetTicket(&db_test.TestUser{})
+		require.NoError(err)
+
+		id, err := uuid.GenerateUUID()
+		require.NoError(err)
+		user, err := db_test.NewTestUser()
+		require.NoError(err)
+		user.Name = "foo-" + id
+		createMsg := oplog.Message{}
+		err = w.Create(
+			context.Background(),
+			user,
+			NewOplogMsg(&createMsg),
+		)
+		require.NoError(err)
+
+		updateMsg := oplog.Message{}
+		user.Name = "friendly-" + id
+		rowsUpdated, err := w.Update(context.Background(), user, []string{"Name"}, nil, NewOplogMsg(&updateMsg))
+		require.NoError(err)
+		assert.Equal(1, rowsUpdated)
+
+		foundUser, err := db_test.NewTestUser()
+		require.NoError(err)
+		foundUser.PublicId = user.PublicId
+		err = w.LookupByPublicId(context.Background(), foundUser)
+		require.NoError(err)
+		assert.Equal(foundUser.Name, user.Name)
+
+		metadata := oplog.Metadata{
+			"resource-public-id": []string{user.PublicId},
+			// "op-type":            []string{oplog.OpType_OP_TYPE_UPDATE.String()},
+		}
+		err = w.WriteOplogEntryWith(context.Background(), TestWrapper(t), ticket, metadata, []*oplog.Message{&createMsg, &updateMsg})
+		require.NoError(err)
+
+		err = TestVerifyOplog(t, &w, user.PublicId, WithOperation(oplog.OpType_OP_TYPE_UNSPECIFIED), WithCreateNotBefore(10*time.Second))
 		assert.NoError(err)
 	})
 	t.Run("vet-for-write", func(t *testing.T) {
-		assert := assert.New(t)
+		assert, require := assert.New(t), require.New(t)
 		w := Db{underlying: db}
 		id, err := uuid.GenerateUUID()
 		assert.NoError(err)
@@ -329,23 +397,23 @@ func TestDb_Update(t *testing.T) {
 			Email:       id,
 		}
 		err = db.Create(user).Error
-		assert.NoError(err)
+		require.NoError(err)
 
 		user.Name = "friendly-" + id
 		rowsUpdated, err := w.Update(context.Background(), user, []string{"Name"}, nil)
-		assert.NoError(err)
+		require.NoError(err)
 		assert.Equal(1, rowsUpdated)
 
 		foundUser := &testUserWithVet{PublicId: user.PublicId}
-		assert.NoError(err)
+		require.NoError(err)
 		foundUser.PublicId = user.PublicId
 		err = w.LookupByPublicId(context.Background(), foundUser)
-		assert.NoError(err)
+		require.NoError(err)
 		assert.Equal(foundUser.Name, user.Name)
 
 		user.PublicId = "not-allowed-by-vet-for-write"
 		rowsUpdated, err = w.Update(context.Background(), user, []string{"PublicId"}, nil)
-		assert.Error(err)
+		require.Error(err)
 		assert.Equal(0, rowsUpdated)
 	})
 	t.Run("nil-tx", func(t *testing.T) {
@@ -361,10 +429,10 @@ func TestDb_Update(t *testing.T) {
 		assert.Equal("update: missing underlying db nil parameter", err.Error())
 	})
 	t.Run("no-wrapper-WithOplog", func(t *testing.T) {
-		assert := assert.New(t)
+		assert, require := assert.New(t), require.New(t)
 		w := Db{underlying: db}
 		id, err := uuid.GenerateUUID()
-		assert.NoError(err)
+		require.NoError(err)
 		user := testUser(t, db, "foo-"+id, id, id)
 
 		user.Name = "friendly-" + id
@@ -378,15 +446,15 @@ func TestDb_Update(t *testing.T) {
 					"project":    []string{"central-info-systems", "local-info-systems"},
 				}),
 		)
-		assert.Error(err)
+		require.Error(err)
 		assert.Equal(0, rowsUpdated)
 		assert.Equal("update: oplog validation failed error no wrapper WithOplog: nil parameter", err.Error())
 	})
 	t.Run("no-metadata-WithOplog", func(t *testing.T) {
-		assert := assert.New(t)
+		assert, require := assert.New(t), require.New(t)
 		w := Db{underlying: db}
 		id, err := uuid.GenerateUUID()
-		assert.NoError(err)
+		require.NoError(err)
 		user := testUser(t, db, "foo-"+id, id, id)
 		user.Name = "friendly-" + id
 		rowsUpdated, err := w.Update(context.Background(), user, []string{"Name"}, nil,
@@ -395,7 +463,7 @@ func TestDb_Update(t *testing.T) {
 				nil,
 			),
 		)
-		assert.Error(err)
+		require.Error(err)
 		assert.Equal(0, rowsUpdated)
 		assert.Equal("update: oplog validation failed error no metadata for WithOplog: invalid parameter", err.Error())
 	})
@@ -442,42 +510,43 @@ func TestDb_Create(t *testing.T) {
 	// intentionally not run with t.Parallel so we don't need to use DoTx for the Create tests
 	cleanup, db, _ := TestSetup(t, "postgres")
 	defer func() {
-		if err := cleanup(); err != nil {
-			t.Error(err)
-		}
+		err := cleanup()
+		assert.NoError(t, err)
+		err = db.Close()
+		assert.NoError(t, err)
 	}()
-	assert := assert.New(t)
-	defer db.Close()
 	t.Run("simple", func(t *testing.T) {
+		assert, require := assert.New(t), require.New(t)
 		w := Db{underlying: db}
 		id, err := uuid.GenerateUUID()
-		assert.NoError(err)
+		require.NoError(err)
 		user, err := db_test.NewTestUser()
-		assert.NoError(err)
+		require.NoError(err)
 		ts := &timestamp.Timestamp{Timestamp: ptypes.TimestampNow()}
 		user.CreateTime = ts
 		user.UpdateTime = ts
 		user.Name = "foo-" + id
 		err = w.Create(context.Background(), user)
-		assert.NoError(err)
+		require.NoError(err)
 		assert.NotEmpty(user.Id)
 		// make sure the database controlled the timestamp values
 		assert.NotEqual(ts, user.GetCreateTime())
 		assert.NotEqual(ts, user.GetUpdateTime())
 
 		foundUser, err := db_test.NewTestUser()
-		assert.NoError(err)
+		require.NoError(err)
 		foundUser.PublicId = user.PublicId
 		err = w.LookupByPublicId(context.Background(), foundUser)
-		assert.NoError(err)
+		require.NoError(err)
 		assert.Equal(foundUser.Id, user.Id)
 	})
 	t.Run("valid-WithOplog", func(t *testing.T) {
+		assert, require := assert.New(t), require.New(t)
 		w := Db{underlying: db}
 		id, err := uuid.GenerateUUID()
-		assert.NoError(err)
+		require.NoError(err)
 		user, err := db_test.NewTestUser()
-		assert.NoError(err)
+		require.NoError(err)
 		user.Name = "foo-" + id
 		err = w.Create(
 			context.Background(),
@@ -491,22 +560,84 @@ func TestDb_Create(t *testing.T) {
 				},
 			),
 		)
-		assert.NoError(err)
-		assert.NotEmpty(user.Id)
+		require.NoError(err)
+		require.NotEmpty(user.Id)
 
 		foundUser, err := db_test.NewTestUser()
-		assert.NoError(err)
+		require.NoError(err)
 		foundUser.PublicId = user.PublicId
 		err = w.LookupByPublicId(context.Background(), foundUser)
-		assert.NoError(err)
+		require.NoError(err)
 		assert.Equal(foundUser.Id, user.Id)
 	})
-	t.Run("no-wrapper-WithOplog", func(t *testing.T) {
+	t.Run("both-Oplog-NewOplogMsg", func(t *testing.T) {
+		assert, require := assert.New(t), require.New(t)
 		w := Db{underlying: db}
 		id, err := uuid.GenerateUUID()
-		assert.NoError(err)
+		require.NoError(err)
 		user, err := db_test.NewTestUser()
-		assert.NoError(err)
+		require.NoError(err)
+		user.Name = "foo-" + id
+		createMsg := oplog.Message{}
+		err = w.Create(
+			context.Background(),
+			user,
+			NewOplogMsg(&createMsg),
+			WithOplog(TestWrapper(t), oplog.Metadata{"alice": []string{"bob"}}),
+		)
+		require.Error(err)
+		assert.True(errors.Is(err, ErrInvalidParameter))
+	})
+	t.Run("valid-NewOplogMsg", func(t *testing.T) {
+		assert, require := assert.New(t), require.New(t)
+		w := Db{underlying: db}
+
+		ticket, err := w.GetTicket(&db_test.TestUser{})
+		require.NoError(err)
+
+		id, err := uuid.GenerateUUID()
+		require.NoError(err)
+		user, err := db_test.NewTestUser()
+		require.NoError(err)
+		user.Name = "foo-" + id
+		createMsg := oplog.Message{}
+		err = w.Create(
+			context.Background(),
+			user,
+			NewOplogMsg(&createMsg),
+		)
+		require.NoError(err)
+
+		updateMsg := oplog.Message{}
+		user.Name = "friendly-" + id
+		rowsUpdated, err := w.Update(context.Background(), user, []string{"Name"}, nil, NewOplogMsg(&updateMsg))
+		require.NoError(err)
+		assert.Equal(1, rowsUpdated)
+
+		foundUser, err := db_test.NewTestUser()
+		require.NoError(err)
+		foundUser.PublicId = user.PublicId
+		err = w.LookupByPublicId(context.Background(), foundUser)
+		require.NoError(err)
+		assert.Equal(foundUser.Name, user.Name)
+
+		metadata := oplog.Metadata{
+			"resource-public-id": []string{user.PublicId},
+			// "op-type":            []string{oplog.OpType_OP_TYPE_UPDATE.String()},
+		}
+		err = w.WriteOplogEntryWith(context.Background(), TestWrapper(t), ticket, metadata, []*oplog.Message{&createMsg, &updateMsg})
+		require.NoError(err)
+
+		err = TestVerifyOplog(t, &w, user.PublicId, WithOperation(oplog.OpType_OP_TYPE_UNSPECIFIED), WithCreateNotBefore(10*time.Second))
+		require.NoError(err)
+	})
+	t.Run("no-wrapper-WithOplog", func(t *testing.T) {
+		assert, require := assert.New(t), require.New(t)
+		w := Db{underlying: db}
+		id, err := uuid.GenerateUUID()
+		require.NoError(err)
+		user, err := db_test.NewTestUser()
+		require.NoError(err)
 		user.Name = "foo-" + id
 		err = w.Create(
 			context.Background(),
@@ -520,15 +651,16 @@ func TestDb_Create(t *testing.T) {
 				},
 			),
 		)
-		assert.Error(err)
+		require.Error(err)
 		assert.Equal("create: oplog validation failed error no wrapper WithOplog: nil parameter", err.Error())
 	})
 	t.Run("no-metadata-WithOplog", func(t *testing.T) {
+		assert, require := assert.New(t), require.New(t)
 		w := Db{underlying: db}
 		id, err := uuid.GenerateUUID()
-		assert.NoError(err)
+		require.NoError(err)
 		user, err := db_test.NewTestUser()
-		assert.NoError(err)
+		require.NoError(err)
 		user.Name = "foo-" + id
 		err = w.Create(
 			context.Background(),
@@ -538,18 +670,19 @@ func TestDb_Create(t *testing.T) {
 				nil,
 			),
 		)
-		assert.Error(err)
+		require.Error(err)
 		assert.Equal("create: oplog validation failed error no metadata for WithOplog: invalid parameter", err.Error())
 	})
 	t.Run("nil-tx", func(t *testing.T) {
+		assert, require := assert.New(t), require.New(t)
 		w := Db{underlying: nil}
 		id, err := uuid.GenerateUUID()
-		assert.NoError(err)
+		require.NoError(err)
 		user, err := db_test.NewTestUser()
-		assert.NoError(err)
+		require.NoError(err)
 		user.Name = "foo-" + id
 		err = w.Create(context.Background(), user)
-		assert.Error(err)
+		require.Error(err)
 		assert.Equal("create: missing underlying db nil parameter", err.Error())
 	})
 }
@@ -558,57 +691,60 @@ func TestDb_LookupByName(t *testing.T) {
 	t.Parallel()
 	cleanup, db, _ := TestSetup(t, "postgres")
 	defer func() {
-		if err := cleanup(); err != nil {
-			t.Error(err)
-		}
+		err := cleanup()
+		assert.NoError(t, err)
+		err = db.Close()
+		assert.NoError(t, err)
 	}()
-	assert := assert.New(t)
-	defer db.Close()
 	t.Run("simple", func(t *testing.T) {
+		assert, require := assert.New(t), require.New(t)
 		w := Db{underlying: db}
 		id, err := uuid.GenerateUUID()
-		assert.NoError(err)
+		require.NoError(err)
 		user, err := db_test.NewTestUser()
-		assert.NoError(err)
+		require.NoError(err)
 		user.Name = "fn-" + id
 		err = w.Create(context.Background(), user)
-		assert.NoError(err)
+		require.NoError(err)
 		assert.NotEmpty(user.Id)
 
 		foundUser, err := db_test.NewTestUser()
-		assert.NoError(err)
+		require.NoError(err)
 		foundUser.Name = "fn-" + id
 		err = w.LookupByName(context.Background(), foundUser)
-		assert.NoError(err)
+		require.NoError(err)
 		assert.Equal(foundUser.Id, user.Id)
 	})
 	t.Run("tx-nil,", func(t *testing.T) {
+		assert, require := assert.New(t), require.New(t)
 		w := Db{}
 		foundUser, err := db_test.NewTestUser()
-		assert.NoError(err)
+		require.NoError(err)
 		foundUser.Name = "fn-name"
 		err = w.LookupByName(context.Background(), foundUser)
-		assert.Error(err)
+		require.Error(err)
 		assert.Equal("error underlying db nil for lookup by name", err.Error())
 	})
 	t.Run("no-friendly-name-set", func(t *testing.T) {
+		assert, require := assert.New(t), require.New(t)
 		w := Db{underlying: db}
 		foundUser, err := db_test.NewTestUser()
-		assert.NoError(err)
+		require.NoError(err)
 		err = w.LookupByName(context.Background(), foundUser)
-		assert.Error(err)
+		require.Error(err)
 		assert.Equal("error name empty string for lookup by name", err.Error())
 	})
 	t.Run("not-found", func(t *testing.T) {
+		assert, require := assert.New(t), require.New(t)
 		w := Db{underlying: db}
 		id, err := uuid.GenerateUUID()
-		assert.NoError(err)
+		require.NoError(err)
 
 		foundUser, err := db_test.NewTestUser()
-		assert.NoError(err)
+		require.NoError(err)
 		foundUser.Name = "fn-" + id
 		err = w.LookupByName(context.Background(), foundUser)
-		assert.Error(err)
+		require.Error(err)
 		assert.Equal(ErrRecordNotFound, err)
 	})
 }
@@ -617,57 +753,59 @@ func TestDb_LookupByPublicId(t *testing.T) {
 	t.Parallel()
 	cleanup, db, _ := TestSetup(t, "postgres")
 	defer func() {
-		if err := cleanup(); err != nil {
-			t.Error(err)
-		}
+		err := cleanup()
+		assert.NoError(t, err)
+		err = db.Close()
+		assert.NoError(t, err)
 	}()
-	assert := assert.New(t)
-	defer db.Close()
 	t.Run("simple", func(t *testing.T) {
+		assert, require := assert.New(t), require.New(t)
 		w := Db{underlying: db}
 		id, err := uuid.GenerateUUID()
-		assert.NoError(err)
+		require.NoError(err)
 		user, err := db_test.NewTestUser()
-		assert.NoError(err)
+		require.NoError(err)
 		user.Name = "foo-" + id
 		err = w.Create(context.Background(), user)
-		assert.NoError(err)
+		require.NoError(err)
 		assert.NotEmpty(user.PublicId)
 
 		foundUser, err := db_test.NewTestUser()
-		assert.NoError(err)
+		require.NoError(err)
 		foundUser.PublicId = user.PublicId
 		err = w.LookupByPublicId(context.Background(), foundUser)
-		assert.NoError(err)
+		require.NoError(err)
 		assert.Equal(foundUser.Id, user.Id)
 	})
 	t.Run("tx-nil,", func(t *testing.T) {
+		assert, require := assert.New(t), require.New(t)
 		w := Db{}
 		foundUser, err := db_test.NewTestUser()
-		assert.NoError(err)
+		require.NoError(err)
 		err = w.LookupByPublicId(context.Background(), foundUser)
-		assert.Error(err)
-		assert.Equal("error underlying db nil for lookup by public id", err.Error())
+		require.Error(err)
+		assert.Equal("lookup by id: underlying db nil nil parameter", err.Error())
 	})
 	t.Run("no-public-id-set", func(t *testing.T) {
+		assert, require := assert.New(t), require.New(t)
 		w := Db{underlying: db}
 		foundUser, err := db_test.NewTestUser()
 		foundUser.PublicId = ""
-		assert.NoError(err)
+		require.NoError(err)
 		err = w.LookupByPublicId(context.Background(), foundUser)
-		assert.Error(err)
-		assert.Equal("error public id empty string for lookup by public id", err.Error())
+		require.Error(err)
+		assert.Equal("lookup by id: primary key unset invalid parameter", err.Error())
 	})
 	t.Run("not-found", func(t *testing.T) {
+		assert, require := assert.New(t), require.New(t)
 		w := Db{underlying: db}
 		id, err := uuid.GenerateUUID()
-		assert.NoError(err)
-
+		require.NoError(err)
 		foundUser, err := db_test.NewTestUser()
-		assert.NoError(err)
+		require.NoError(err)
 		foundUser.PublicId = id
 		err = w.LookupByPublicId(context.Background(), foundUser)
-		assert.Error(err)
+		require.Error(err)
 		assert.Equal(ErrRecordNotFound, err)
 	})
 }
@@ -676,54 +814,57 @@ func TestDb_LookupWhere(t *testing.T) {
 	t.Parallel()
 	cleanup, db, _ := TestSetup(t, "postgres")
 	defer func() {
-		if err := cleanup(); err != nil {
-			t.Error(err)
-		}
+		err := cleanup()
+		assert.NoError(t, err)
+		err = db.Close()
+		assert.NoError(t, err)
 	}()
-	assert := assert.New(t)
-	defer db.Close()
 	t.Run("simple", func(t *testing.T) {
+		assert, require := assert.New(t), require.New(t)
 		w := Db{underlying: db}
 		id, err := uuid.GenerateUUID()
-		assert.NoError(err)
+		require.NoError(err)
 		user, err := db_test.NewTestUser()
-		assert.NoError(err)
+		require.NoError(err)
 		user.Name = "foo-" + id
 		err = w.Create(context.Background(), user)
-		assert.NoError(err)
+		require.NoError(err)
 		assert.NotEmpty(user.PublicId)
 
 		var foundUser db_test.TestUser
 		err = w.LookupWhere(context.Background(), &foundUser, "public_id = ?", user.PublicId)
-		assert.NoError(err)
+		require.NoError(err)
 		assert.Equal(foundUser.Id, user.Id)
 	})
 	t.Run("tx-nil,", func(t *testing.T) {
+		assert, require := assert.New(t), require.New(t)
 		w := Db{}
 		var foundUser db_test.TestUser
 		err := w.LookupWhere(context.Background(), &foundUser, "public_id = ?", 1)
-		assert.Error(err)
+		require.Error(err)
 		assert.Equal("error underlying db nil for lookup by", err.Error())
 	})
 	t.Run("not-found", func(t *testing.T) {
+		assert, require := assert.New(t), require.New(t)
 		w := Db{underlying: db}
 		id, err := uuid.GenerateUUID()
-		assert.NoError(err)
+		require.NoError(err)
 
 		var foundUser db_test.TestUser
 		err = w.LookupWhere(context.Background(), &foundUser, "public_id = ?", id)
-		assert.Error(err)
+		require.Error(err)
 		assert.Equal(ErrRecordNotFound, err)
 		assert.True(errors.Is(err, ErrRecordNotFound))
 	})
 	t.Run("bad-where", func(t *testing.T) {
+		require := require.New(t)
 		w := Db{underlying: db}
 		id, err := uuid.GenerateUUID()
-		assert.NoError(err)
+		require.NoError(err)
 
 		var foundUser db_test.TestUser
 		err = w.LookupWhere(context.Background(), &foundUser, "? = ?", id)
-		assert.Error(err)
+		require.Error(err)
 	})
 }
 
@@ -847,24 +988,26 @@ func TestDb_DB(t *testing.T) {
 	t.Parallel()
 	cleanup, db, _ := TestSetup(t, "postgres")
 	defer func() {
-		if err := cleanup(); err != nil {
-			t.Error(err)
-		}
+		require := require.New(t)
+		err := cleanup()
+		require.NoError(err)
+		err = db.Close()
+		require.NoError(err)
 	}()
-	assert := assert.New(t)
-	defer db.Close()
 	t.Run("valid", func(t *testing.T) {
+		require := require.New(t)
 		w := Db{underlying: db}
 		d, err := w.DB()
-		assert.NoError(err)
-		assert.NotNil(d)
+		require.NoError(err)
+		require.NotNil(d)
 		err = d.Ping()
-		assert.NoError(err)
+		require.NoError(err)
 	})
 	t.Run("nil-tx", func(t *testing.T) {
+		assert, require := assert.New(t), require.New(t)
 		w := Db{underlying: nil}
 		d, err := w.DB()
-		assert.Error(err)
+		require.Error(err)
 		assert.Nil(d)
 		assert.Equal("missing underlying db: nil parameter", err.Error())
 	})
@@ -874,14 +1017,14 @@ func TestDb_DoTx(t *testing.T) {
 	t.Parallel()
 	cleanup, db, _ := TestSetup(t, "postgres")
 	defer func() {
-		if err := cleanup(); err != nil {
-			t.Error(err)
-		}
+		require := require.New(t)
+		err := cleanup()
+		require.NoError(err)
+		err = db.Close()
+		require.NoError(err)
 	}()
-	assert := assert.New(t)
-	defer db.Close()
-
 	t.Run("valid-with-10-retries", func(t *testing.T) {
+		assert, require := assert.New(t), require.New(t)
 		w := &Db{underlying: db}
 		attempts := 0
 		got, err := w.DoTx(context.Background(), 10, ExpBackoff{},
@@ -892,11 +1035,12 @@ func TestDb_DoTx(t *testing.T) {
 				}
 				return nil
 			})
-		assert.NoError(err)
+		require.NoError(err)
 		assert.Equal(8, got.Retries)
 		assert.Equal(9, attempts) // attempted 1 + 8 retries
 	})
 	t.Run("valid-with-1-retries", func(t *testing.T) {
+		assert, require := assert.New(t), require.New(t)
 		w := &Db{underlying: db}
 		attempts := 0
 		got, err := w.DoTx(context.Background(), 1, ExpBackoff{},
@@ -907,11 +1051,12 @@ func TestDb_DoTx(t *testing.T) {
 				}
 				return nil
 			})
-		assert.NoError(err)
+		require.NoError(err)
 		assert.Equal(1, got.Retries)
 		assert.Equal(2, attempts) // attempted 1 + 8 retries
 	})
 	t.Run("valid-with-2-retries", func(t *testing.T) {
+		assert, require := assert.New(t), require.New(t)
 		w := &Db{underlying: db}
 		attempts := 0
 		got, err := w.DoTx(context.Background(), 3, ExpBackoff{},
@@ -922,11 +1067,12 @@ func TestDb_DoTx(t *testing.T) {
 				}
 				return nil
 			})
-		assert.NoError(err)
+		require.NoError(err)
 		assert.Equal(2, got.Retries)
 		assert.Equal(3, attempts) // attempted 1 + 8 retries
 	})
 	t.Run("valid-with-4-retries", func(t *testing.T) {
+		assert, require := assert.New(t), require.New(t)
 		w := &Db{underlying: db}
 		attempts := 0
 		got, err := w.DoTx(context.Background(), 4, ExpBackoff{},
@@ -937,51 +1083,56 @@ func TestDb_DoTx(t *testing.T) {
 				}
 				return nil
 			})
-		assert.NoError(err)
+		require.NoError(err)
 		assert.Equal(3, got.Retries)
 		assert.Equal(4, attempts) // attempted 1 + 8 retries
 	})
 	t.Run("zero-retries", func(t *testing.T) {
+		assert, require := assert.New(t), require.New(t)
 		w := &Db{underlying: db}
 		attempts := 0
 		got, err := w.DoTx(context.Background(), 0, ExpBackoff{}, func(Reader, Writer) error { attempts += 1; return nil })
-		assert.NoError(err)
+		require.NoError(err)
 		assert.Equal(RetryInfo{}, got)
 		assert.Equal(1, attempts)
 	})
 	t.Run("nil-tx", func(t *testing.T) {
+		assert, require := assert.New(t), require.New(t)
 		w := &Db{nil}
 		attempts := 0
 		got, err := w.DoTx(context.Background(), 1, ExpBackoff{}, func(Reader, Writer) error { attempts += 1; return nil })
-		assert.Error(err)
+		require.Error(err)
 		assert.Equal(RetryInfo{}, got)
 		assert.Equal("do underlying db is nil", err.Error())
 	})
 	t.Run("not-a-retry-err", func(t *testing.T) {
+		assert, require := assert.New(t), require.New(t)
 		w := &Db{underlying: db}
 		got, err := w.DoTx(context.Background(), 1, ExpBackoff{}, func(Reader, Writer) error { return errors.New("not a retry error") })
-		assert.Error(err)
+		require.Error(err)
 		assert.Equal(RetryInfo{}, got)
 		assert.NotEqual(err, oplog.ErrTicketAlreadyRedeemed)
 	})
 	t.Run("too-many-retries", func(t *testing.T) {
+		assert, require := assert.New(t), require.New(t)
 		w := &Db{underlying: db}
 		attempts := 0
 		got, err := w.DoTx(context.Background(), 2, ExpBackoff{}, func(Reader, Writer) error { attempts += 1; return oplog.ErrTicketAlreadyRedeemed })
-		assert.Error(err)
+		require.Error(err)
 		assert.Equal(3, got.Retries)
 		assert.Equal("Too many retries: 3 of 3", err.Error())
 	})
 	t.Run("updating-good-bad-good", func(t *testing.T) {
+		assert, require := assert.New(t), require.New(t)
 		rw := Db{underlying: db}
 		id, err := uuid.GenerateUUID()
-		assert.NoError(err)
+		require.NoError(err)
 		user, err := db_test.NewTestUser()
-		assert.NoError(err)
+		require.NoError(err)
 		user.Name = "foo-" + id
 		err = rw.Create(context.Background(), user)
-		assert.NoError(err)
-		assert.NotZero(user.Id)
+		require.NoError(err)
+		require.NotZero(user.Id)
 
 		_, err = rw.DoTx(context.Background(), 10, ExpBackoff{}, func(r Reader, w Writer) error {
 			user.Name = "friendly-" + id
@@ -994,17 +1145,17 @@ func TestDb_DoTx(t *testing.T) {
 			}
 			return nil
 		})
-		assert.NoError(err)
+		require.NoError(err)
 
 		foundUser, err := db_test.NewTestUser()
 		assert.NoError(err)
 		foundUser.PublicId = user.PublicId
 		err = rw.LookupByPublicId(context.Background(), foundUser)
-		assert.NoError(err)
+		require.NoError(err)
 		assert.Equal(foundUser.Name, user.Name)
 
 		user2, err := db_test.NewTestUser()
-		assert.NoError(err)
+		require.NoError(err)
 		_, err = rw.DoTx(context.Background(), 10, ExpBackoff{}, func(_ Reader, w Writer) error {
 			user2.Name = "friendly2-" + id
 			rowsUpdated, err := w.Update(context.Background(), user2, []string{"Name"}, nil)
@@ -1016,9 +1167,9 @@ func TestDb_DoTx(t *testing.T) {
 			}
 			return nil
 		})
-		assert.Error(err)
+		require.Error(err)
 		err = rw.LookupByPublicId(context.Background(), foundUser)
-		assert.NoError(err)
+		require.NoError(err)
 		assert.NotEqual(foundUser.Name, user2.Name)
 
 		_, err = rw.DoTx(context.Background(), 10, ExpBackoff{}, func(r Reader, w Writer) error {
@@ -1032,9 +1183,9 @@ func TestDb_DoTx(t *testing.T) {
 			}
 			return nil
 		})
-		assert.NoError(err)
+		require.NoError(err)
 		err = rw.LookupByPublicId(context.Background(), foundUser)
-		assert.NoError(err)
+		require.NoError(err)
 		assert.Equal(foundUser.Name, user.Name)
 	})
 }
@@ -1042,28 +1193,25 @@ func TestDb_DoTx(t *testing.T) {
 func TestDb_Delete(t *testing.T) {
 	cleanup, db, _ := TestSetup(t, "postgres")
 	defer func() {
-		if err := cleanup(); err != nil {
-			t.Error(err)
-		}
-	}()
-	defer func() {
-		if err := db.Close(); err != nil {
-			t.Error(err)
-		}
+		require := require.New(t)
+		err := cleanup()
+		require.NoError(err)
+		err = db.Close()
+		require.NoError(err)
 	}()
 	newUser := func() *db_test.TestUser {
 		w := &Db{
 			underlying: db,
 		}
 		u, err := db_test.NewTestUser()
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		err = w.Create(context.Background(), u)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		return u
 	}
 	notFoundUser := func() *db_test.TestUser {
 		u, err := db_test.NewTestUser()
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		u.Id = 1111111
 		return u
 	}
@@ -1185,7 +1333,7 @@ func TestDb_Delete(t *testing.T) {
 			require.NoError(err)
 			assert.Equal(tt.want, got)
 
-			foundUser := tt.args.i.Clone()
+			foundUser := tt.args.i.Clone().(*db_test.TestUser)
 			foundUser.PublicId = tt.args.i.PublicId
 			err = rw.LookupByPublicId(context.Background(), foundUser)
 			assert.Error(err)
@@ -1199,6 +1347,69 @@ func TestDb_Delete(t *testing.T) {
 				assert.Error(err)
 			}
 		})
+		t.Run("both-WithOplog-NewOplogMsg", func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+			w := Db{underlying: db}
+			id, err := uuid.GenerateUUID()
+			require.NoError(err)
+			user, err := db_test.NewTestUser()
+			require.NoError(err)
+			user.Name = "foo-" + id
+			createMsg := oplog.Message{}
+			err = w.Create(
+				context.Background(),
+				user,
+				NewOplogMsg(&createMsg),
+			)
+			require.NoError(err)
+
+			deleteMsg := oplog.Message{}
+			rowsDeleted, err := w.Delete(context.Background(), user, NewOplogMsg(&deleteMsg), WithOplog(TestWrapper(t), oplog.Metadata{"alice": []string{"bob"}}))
+			require.Error(err)
+			assert.Equal(0, rowsDeleted)
+			assert.True(errors.Is(err, ErrInvalidParameter))
+		})
+		t.Run("valid-NewOplogMsg", func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+			w := Db{underlying: db}
+
+			ticket, err := w.GetTicket(&db_test.TestUser{})
+			require.NoError(err)
+
+			id, err := uuid.GenerateUUID()
+			require.NoError(err)
+			user, err := db_test.NewTestUser()
+			require.NoError(err)
+			user.Name = "foo-" + id
+			createMsg := oplog.Message{}
+			err = w.Create(
+				context.Background(),
+				user,
+				NewOplogMsg(&createMsg),
+			)
+			require.NoError(err)
+
+			deleteMsg := oplog.Message{}
+			rowsDeleted, err := w.Delete(context.Background(), user, NewOplogMsg(&deleteMsg))
+			require.NoError(err)
+			assert.Equal(1, rowsDeleted)
+
+			foundUser, err := db_test.NewTestUser()
+			require.NoError(err)
+			foundUser.PublicId = user.PublicId
+			err = w.LookupByPublicId(context.Background(), foundUser)
+			require.Error(err)
+			assert.True(errors.Is(err, ErrRecordNotFound))
+
+			metadata := oplog.Metadata{
+				"resource-public-id": []string{user.PublicId},
+			}
+			err = w.WriteOplogEntryWith(context.Background(), TestWrapper(t), ticket, metadata, []*oplog.Message{&createMsg, &deleteMsg})
+			require.NoError(err)
+
+			err = TestVerifyOplog(t, &w, user.PublicId, WithOperation(oplog.OpType_OP_TYPE_UNSPECIFIED), WithCreateNotBefore(10*time.Second))
+			require.NoError(err)
+		})
 	}
 }
 
@@ -1206,33 +1417,34 @@ func TestDb_ScanRows(t *testing.T) {
 	t.Parallel()
 	cleanup, db, _ := TestSetup(t, "postgres")
 	defer func() {
-		if err := cleanup(); err != nil {
-			t.Error(err)
-		}
+		require := require.New(t)
+		err := cleanup()
+		require.NoError(err)
+		err = db.Close()
+		require.NoError(err)
 	}()
-	assert := assert.New(t)
-	defer db.Close()
 	t.Run("valid", func(t *testing.T) {
+		assert, require := assert.New(t), require.New(t)
 		w := Db{underlying: db}
 		user, err := db_test.NewTestUser()
-		assert.NoError(err)
+		require.NoError(err)
 		err = w.Create(context.Background(), user)
-		assert.NoError(err)
+		require.NoError(err)
 		assert.NotEmpty(user.Id)
 
 		tx, err := w.DB()
-		assert.NoError(err)
+		require.NoError(err)
 		where := "select * from db_test_user where name in ($1, $2)"
 		rows, err := tx.Query(where, "alice", "bob")
-		assert.NoError(err)
+		require.NoError(err)
 		defer func() { err := rows.Close(); assert.NoError(err) }()
 		for rows.Next() {
 			u, err := db_test.NewTestUser()
-			assert.NoError(err)
+			require.NoError(err)
 
 			// scan the row into your Gorm struct
 			err = w.ScanRows(rows, &u)
-			assert.NoError(err)
+			require.NoError(err)
 			assert.Equal(user.PublicId, u.PublicId)
 		}
 	})
@@ -1579,10 +1791,10 @@ func TestDb_DeleteItems(t *testing.T) {
 
 func testUser(t *testing.T, conn *gorm.DB, name, email, phoneNumber string) *db_test.TestUser {
 	t.Helper()
-	assert := assert.New(t)
+	require := require.New(t)
 
 	publicId, err := base62.Random(20)
-	assert.NoError(err)
+	require.NoError(err)
 	u := &db_test.TestUser{
 		StoreTestUser: &db_test.StoreTestUser{
 			PublicId:    publicId,
@@ -1593,7 +1805,7 @@ func testUser(t *testing.T, conn *gorm.DB, name, email, phoneNumber string) *db_
 	}
 	if conn != nil {
 		err = conn.Create(u).Error
-		assert.NoError(err)
+		require.NoError(err)
 	}
 	return u
 }
@@ -1620,10 +1832,359 @@ func testCar(t *testing.T, conn *gorm.DB, name, model string, mpg int32) *db_tes
 
 func testId(t *testing.T) string {
 	t.Helper()
-	assert := assert.New(t)
+	require := require.New(t)
 	id, err := uuid.GenerateUUID()
-	assert.NoError(err)
+	require.NoError(err)
 	return id
+}
+
+func testScooter(t *testing.T, conn *gorm.DB, model string, mpg int32) *db_test.TestScooter {
+	t.Helper()
+	require := require.New(t)
+
+	privateId, err := base62.Random(20)
+	require.NoError(err)
+	u := &db_test.TestScooter{
+		StoreTestScooter: &db_test.StoreTestScooter{
+			PrivateId: privateId,
+			Model:     model,
+			Mpg:       mpg,
+		},
+	}
+	if conn != nil {
+		err = conn.Create(u).Error
+		require.NoError(err)
+	}
+	return u
+}
+
+func TestDb_LookupById(t *testing.T) {
+	t.Parallel()
+	cleanup, db, _ := TestSetup(t, "postgres")
+	defer func() {
+		err := cleanup()
+		assert.NoError(t, err)
+		err = db.Close()
+		assert.NoError(t, err)
+	}()
+	scooter := testScooter(t, db, "", 0)
+	user := testUser(t, db, "", "", "")
+	type args struct {
+		resourceWithIder interface{}
+		opt              []Option
+	}
+	tests := []struct {
+		name       string
+		underlying *gorm.DB
+		args       args
+		wantErr    bool
+		want       proto.Message
+		wantIsErr  error
+	}{
+		{
+			name:       "simple-private-id",
+			underlying: db,
+			args: args{
+				resourceWithIder: scooter,
+			},
+			wantErr: false,
+			want:    scooter,
+		},
+		{
+			name:       "simple-public-id",
+			underlying: db,
+			args: args{
+				resourceWithIder: user,
+			},
+			wantErr: false,
+			want:    user,
+		},
+		{
+			name:       "missing-public-id",
+			underlying: db,
+			args: args{
+				resourceWithIder: &db_test.TestUser{
+					StoreTestUser: &db_test.StoreTestUser{},
+				},
+			},
+			wantErr:   true,
+			wantIsErr: ErrInvalidParameter,
+		},
+		{
+			name:       "missing-private-id",
+			underlying: db,
+			args: args{
+				resourceWithIder: &db_test.TestScooter{
+					StoreTestScooter: &db_test.StoreTestScooter{},
+				},
+			},
+			wantErr:   true,
+			wantIsErr: ErrInvalidParameter,
+		},
+		{
+			name:       "not-an-ider",
+			underlying: db,
+			args: args{
+				resourceWithIder: &db_test.NotIder{},
+			},
+			wantErr:   true,
+			wantIsErr: ErrInvalidParameter,
+		},
+		{
+			name:       "missing-underlying-db",
+			underlying: nil,
+			args: args{
+				resourceWithIder: user,
+			},
+			wantErr:   true,
+			wantIsErr: ErrNilParameter,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+			rw := &Db{
+				underlying: tt.underlying,
+			}
+			cloner, ok := tt.args.resourceWithIder.(db_test.Cloner)
+			require.True(ok)
+			cp := cloner.Clone()
+			err := rw.LookupById(context.Background(), cp, tt.args.opt...)
+			if tt.wantErr {
+				require.Error(err)
+				require.True(errors.Is(err, tt.wantIsErr))
+				return
+			}
+			require.NoError(err)
+			assert.True(proto.Equal(tt.want, cp.(proto.Message)))
+		})
+	}
+	t.Run("not-ptr", func(t *testing.T) {
+		u := testUser(t, db, "", "", "")
+		rw := &Db{
+			underlying: db,
+		}
+		err := rw.LookupById(context.Background(), *u)
+		require.Error(t, err)
+		assert.True(t, errors.Is(err, ErrInvalidParameter))
+	})
+}
+
+func TestDb_GetTicket(t *testing.T) {
+	cleanup, db, _ := TestSetup(t, "postgres")
+	defer func() {
+		err := cleanup()
+		assert.NoError(t, err)
+		err = db.Close()
+		assert.NoError(t, err)
+	}()
+	type notReplayable struct{}
+	tests := []struct {
+		name          string
+		underlying    *gorm.DB
+		aggregateType interface{}
+		wantErr       bool
+		wantErrIs     error
+	}{
+		{
+			name:          "simple",
+			underlying:    db,
+			aggregateType: &db_test.TestUser{},
+			wantErr:       false,
+		},
+		{
+			name:          "not-replayable",
+			underlying:    db,
+			aggregateType: &notReplayable{},
+			wantErr:       true,
+			wantErrIs:     ErrInvalidParameter,
+		},
+		{
+			name:          "nil-aggregate-type",
+			underlying:    db,
+			aggregateType: nil,
+			wantErr:       true,
+			wantErrIs:     ErrNilParameter,
+		},
+		{
+			name:          "no-underlying",
+			underlying:    nil,
+			aggregateType: &db_test.TestUser{},
+			wantErr:       true,
+			wantErrIs:     ErrNilParameter,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+			rw := &Db{
+				underlying: tt.underlying,
+			}
+			got, err := rw.GetTicket(tt.aggregateType)
+			if tt.wantErr {
+				require.Error(err)
+				if tt.wantErrIs != nil {
+					assert.Truef(errors.Is(err, tt.wantErrIs), "unexpected error type: %s", err.Error())
+				}
+				return
+			}
+			require.NoError(err)
+			assert.NotEmpty(got.Name)
+			assert.NotEmpty(got.Version)
+			assert.NotEmpty(got.CreateTime)
+			assert.NotEmpty(got.UpdateTime)
+		})
+	}
+}
+
+func TestDb_WriteOplogEntryWith(t *testing.T) {
+	cleanup, db, _ := TestSetup(t, "postgres")
+	defer func() {
+		err := cleanup()
+		assert.NoError(t, err)
+		err = db.Close()
+		assert.NoError(t, err)
+	}()
+
+	w := Db{underlying: db}
+
+	ticket, err := w.GetTicket(&db_test.TestUser{})
+	require.NoError(t, err)
+
+	id, err := uuid.GenerateUUID()
+	assert.NoError(t, err)
+	user, err := db_test.NewTestUser()
+	assert.NoError(t, err)
+	user.Name = "foo-" + id
+	createMsg := oplog.Message{}
+	err = w.Create(
+		context.Background(),
+		user,
+		NewOplogMsg(&createMsg),
+	)
+	require.NoError(t, err)
+	metadata := oplog.Metadata{
+		"resource-public-id": []string{user.PublicId},
+	}
+
+	type args struct {
+		wrapper  wrapping.Wrapper
+		ticket   *store.Ticket
+		metadata oplog.Metadata
+		msgs     []*oplog.Message
+		opt      []Option
+	}
+	tests := []struct {
+		name            string
+		underlying      *gorm.DB
+		args            args
+		wantErr         bool
+		wantErrIs       error
+		wantErrContains string
+	}{
+		{
+			name:       "valid",
+			underlying: db,
+			args: args{
+				wrapper:  TestWrapper(t),
+				ticket:   ticket,
+				metadata: metadata,
+				msgs:     []*oplog.Message{&createMsg},
+			},
+			wantErr: false,
+		},
+		{
+			name:       "valid-multiple",
+			underlying: db,
+			args: args{
+				wrapper:  TestWrapper(t),
+				ticket:   ticket,
+				metadata: metadata,
+				msgs:     []*oplog.Message{&createMsg, &createMsg},
+			},
+			wantErr: false,
+		},
+		{
+			name:       "missing-ticket",
+			underlying: db,
+			args: args{
+				wrapper:  TestWrapper(t),
+				ticket:   nil,
+				metadata: metadata,
+				msgs:     []*oplog.Message{&createMsg},
+			},
+			wantErr:   true,
+			wantErrIs: ErrNilParameter,
+		},
+		{
+			name:       "missing-db",
+			underlying: nil,
+			args: args{
+				wrapper:  TestWrapper(t),
+				ticket:   ticket,
+				metadata: metadata,
+				msgs:     []*oplog.Message{&createMsg},
+			},
+			wantErr:   true,
+			wantErrIs: ErrNilParameter,
+		},
+		{
+			name:       "missing-wrapper",
+			underlying: db,
+			args: args{
+				wrapper:  nil,
+				ticket:   ticket,
+				metadata: metadata,
+				msgs:     []*oplog.Message{&createMsg},
+			},
+			wantErr:   true,
+			wantErrIs: ErrNilParameter,
+		},
+		{
+			name:       "nil-metadata",
+			underlying: db,
+			args: args{
+				wrapper:  TestWrapper(t),
+				ticket:   ticket,
+				metadata: nil,
+				msgs:     []*oplog.Message{&createMsg},
+			},
+			wantErr:   true,
+			wantErrIs: ErrNilParameter,
+		},
+		{
+			name:       "empty-metadata",
+			underlying: db,
+			args: args{
+				wrapper:  TestWrapper(t),
+				ticket:   ticket,
+				metadata: oplog.Metadata{},
+				msgs:     []*oplog.Message{&createMsg},
+			},
+			wantErr:   true,
+			wantErrIs: ErrInvalidParameter,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+			rw := &Db{
+				underlying: tt.underlying,
+			}
+			err := rw.WriteOplogEntryWith(context.Background(), tt.args.wrapper, tt.args.ticket, tt.args.metadata, tt.args.msgs, tt.args.opt...)
+			if tt.wantErr {
+				require.Error(err)
+				if tt.wantErrIs != nil {
+					assert.Truef(errors.Is(err, tt.wantErrIs), "unexpected error %s", err.Error())
+				}
+				if tt.wantErrContains != "" {
+					assert.Contains(err.Error(), tt.wantErrContains)
+				}
+				return
+			}
+			require.NoError(err)
+		})
+	}
 }
 
 func TestClear_InputTypes(t *testing.T) {
