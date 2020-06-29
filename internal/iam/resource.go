@@ -55,11 +55,11 @@ func LookupScope(ctx context.Context, reader db.Reader, resource ResourceWithSco
 		return nil, errors.New("error resource is nil for LookupScope")
 	}
 	if resource.GetPublicId() == "" {
-		return nil, errors.New("error resource has an unset public id")
+		return nil, fmt.Errorf("LookupScope: scope id is unset %w", db.ErrInvalidParameter)
 	}
 	if resource.GetScopeId() == "" {
 		// try to retrieve it from db with it's scope id
-		if err := reader.LookupByPublicId(ctx, resource); err != nil {
+		if err := reader.LookupById(ctx, resource); err != nil {
 			return nil, fmt.Errorf("unable to get resource by public id: %w", err)
 		}
 		// if it's still not set after getting it from the db...
