@@ -206,7 +206,7 @@ func TestAuthToken_DbUpdate(t *testing.T) {
 			assert := assert.New(t)
 			w := db.New(conn)
 
-			authTok := testAuthToken(t, conn)
+			authTok := testAuthToken(t, conn, wrapper)
 			proto.Merge(authTok.AuthToken, tt.args.authTok)
 
 			err := authTok.EncryptData(context.Background(), wrapper)
@@ -242,7 +242,7 @@ func TestAuthToken_DbCreate(t *testing.T) {
 	org2, _ := iam.TestScopes(t, conn)
 	u2 := iam.TestUser(t, conn, org2.GetPublicId())
 	amId2 := setupAuthMethod(t, conn, org2.GetPublicId())
-	createdAuthToken := testAuthToken(t, conn)
+	createdAuthToken := testAuthToken(t, conn, wrapper)
 
 	testAuthTokenId := func() string {
 		id, err := newAuthTokenId()
@@ -334,7 +334,8 @@ func TestAuthToken_DbDelete(t *testing.T) {
 		return id
 	}
 
-	existingAuthTok := testAuthToken(t, conn)
+	wrapper := db.TestWrapper(t)
+	existingAuthTok := testAuthToken(t, conn, wrapper)
 
 	var tests = []struct {
 		name      string

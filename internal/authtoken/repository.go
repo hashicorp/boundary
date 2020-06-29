@@ -8,6 +8,7 @@ import (
 
 	"github.com/golang/protobuf/ptypes"
 	wrapping "github.com/hashicorp/go-kms-wrapping"
+	"github.com/hashicorp/watchtower/internal/db/timestamp"
 	"github.com/hashicorp/watchtower/internal/iam"
 
 	"github.com/hashicorp/watchtower/internal/authtoken/store"
@@ -17,6 +18,8 @@ import (
 
 var (
 	lastUsedUpdateDuration = 10 * time.Minute
+	maxStaleness           = 24 * time.Hour
+	validTokenDuration     = 7 * 24 * time.Hour
 )
 
 // A Repository stores and retrieves the persistent types in the authtoken
@@ -93,6 +96,13 @@ func (r *Repository) CreateAuthToken(ctx context.Context, at *AuthToken, opt ...
 		return nil, fmt.Errorf("create: auth token value: %w", err)
 	}
 	at.Token = token
+
+	// TODO: Allow the caller to specify something different than the default duration.
+	expiration, err := ptypes.TimestampProto(time.Now().Add(validTokenDuration))
+	if err != nil {
+		return nil, err
+	}
+	at.ExpirationTime = &timestamp.Timestamp{Timestamp: expiration}
 
 	metadata := newAuthTokenMetadata(at, oplog.OpType_OP_TYPE_CREATE)
 
@@ -172,8 +182,31 @@ func (r *Repository) ValidateToken(ctx context.Context, id, token string, opt ..
 		db.ExpBackoff{},
 		func(read db.Reader, w db.Writer) error {
 			if err := r.reader.LookupByPublicId(ctx, retAT); err != nil {
-				return fmt.Errorf("validate token: auth token: %s: %w", id, err)
+				return fmt.Errorf("validate token: lookup auth token: %s: %w", id, err)
 			}
+
+			// If the token is to old or stale invalidate it and return nothing.
+			exp, err := ptypes.Timestamp(retAT.GetExpirationTime().GetTimestamp())
+			if err != nil {
+				return err
+			}
+			lastAccessed, err := ptypes.Timestamp(retAT.GetApproximateLastAccessTime().GetTimestamp())
+			if err != nil {
+				return err
+			}
+
+			now := time.Now()
+			sinceLastAccessed := now.Sub(lastAccessed)
+			if now.After(exp) || sinceLastAccessed > maxStaleness {
+				metadata := newAuthTokenMetadata(retAT, oplog.OpType_OP_TYPE_DELETE)
+				delAt := retAT.clone()
+				if _, err := w.Delete(ctx, delAt, db.WithOplog(r.wrapper, metadata)); err != nil {
+					return fmt.Errorf("validate token: delete auth token: %w", err)
+				}
+				retAT = nil
+				return nil
+			}
+
 			if err := retAT.DecryptData(ctx, r.wrapper); err != nil {
 				return err
 			}
@@ -184,20 +217,14 @@ func (r *Repository) ValidateToken(ctx context.Context, id, token string, opt ..
 			retAT.Token = ""
 			retAT.CtToken = nil
 
-			metadata := newAuthTokenMetadata(retAT, oplog.OpType_OP_TYPE_UPDATE)
-
-			t, err := ptypes.Timestamp(retAT.GetApproximateLastAccessTime().GetTimestamp())
-			if err != nil {
-				return err
-			}
-
-			if time.Now().Sub(t) < lastUsedUpdateDuration {
+			if sinceLastAccessed < lastUsedUpdateDuration {
 				// To save the db from being updated to frequently, we only update the
-				// LastAccessTime if it hasn't been updated within the last X minutes.
+				// LastAccessTime if it hasn't been updated within lastUsedUpdateDuration.
 				// TODO: Make this duration configurable.
 				return nil
 			}
 
+			metadata := newAuthTokenMetadata(retAT, oplog.OpType_OP_TYPE_UPDATE)
 			// Setting the ApproximateLastAccessTime to null through using the null mask allows a defined db's
 			// trigger to set ApproximateLastAccessTime to the commit timestamp.
 			at := retAT.clone()

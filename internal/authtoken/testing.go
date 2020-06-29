@@ -4,38 +4,31 @@ import (
 	"context"
 	"testing"
 
+	wrapping "github.com/hashicorp/go-kms-wrapping"
 	"github.com/hashicorp/watchtower/internal/db"
 	"github.com/hashicorp/watchtower/internal/iam"
 	"github.com/jinzhu/gorm"
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
-func testAuthToken(t *testing.T, conn *gorm.DB) *AuthToken {
+func testAuthToken(t *testing.T, conn *gorm.DB, wrapper wrapping.Wrapper) *AuthToken {
 	t.Helper()
-	assert := assert.New(t)
+	require := require.New(t)
 	org, _ := iam.TestScopes(t, conn)
 	u := iam.TestUser(t, conn, org.GetPublicId())
 	amId := setupAuthMethod(t, conn, org.GetPublicId())
 	at, err := NewAuthToken(org.GetPublicId(), u.GetPublicId(), amId)
-	assert.NoError(err)
-	assert.NotNil(at)
-	id, err := newAuthTokenId()
-	assert.NoError(err)
-	assert.NotEmpty(id)
-	at.PublicId = id
+	require.NoError(err)
+	require.NotNil(at)
 
-	token, err := newAuthToken()
-	assert.NoError(err)
-	assert.NotEmpty(token)
-	at.Token = token
+	ctx := context.Background()
 
-	wrapper := db.TestWrapper(t)
-	at.EncryptData(context.Background(), wrapper)
+	rw := db.New(conn)
+	repo, err := NewRepository(rw, rw, wrapper)
+	require.NoError(err)
 
-	w := db.New(conn)
-	err2 := w.Create(context.Background(), at)
-	assert.NoError(err2)
+	at, err = repo.CreateAuthToken(ctx, at)
+	require.NoError(err)
 	return at
 }
 

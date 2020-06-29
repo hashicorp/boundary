@@ -302,16 +302,16 @@ func TestRepository_LookupAuthToken(t *testing.T) {
 		}
 	})
 
-	at := testAuthToken(t, conn)
+	rw := db.New(conn)
+	wrapper := db.TestWrapper(t)
+
+	at := testAuthToken(t, conn, wrapper)
 	at.Token = ""
 	at.CtToken = nil
 
 	badId, err := newAuthTokenId()
 	require.NoError(t, err)
 	require.NotNil(t, badId)
-
-	rw := db.New(conn)
-	wrapper := db.TestWrapper(t)
 
 	var tests = []struct {
 		name    string
@@ -380,15 +380,10 @@ func TestRepository_ValidateToken(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, repo)
 
-	tmp := testAuthToken(t, conn)
-	// Create a new auth token using the repo's wrapper
-	at, err := NewAuthToken(tmp.GetScopeId(), tmp.GetIamUserId(), tmp.GetAuthMethodId())
-	require.NoError(t, err)
-	at, err = repo.CreateAuthToken(context.Background(), at)
-	require.NoError(t, err)
-	require.NotNil(t, at)
+	at := testAuthToken(t, conn, wrapper)
 	atToken := at.GetToken()
 	at.Token = ""
+	at.CtToken = nil
 	atTime, err := ptypes.Timestamp(at.GetApproximateLastAccessTime().GetTimestamp())
 	require.NoError(t, err)
 	require.NotNil(t, atTime)
@@ -478,6 +473,84 @@ func TestRepository_ValidateToken(t *testing.T) {
 	}
 }
 
+func TestRepository_ValidateToken_expired(t *testing.T) {
+	cleanup, conn, _ := db.TestSetup(t, "postgres")
+	t.Cleanup(func() {
+		if err := cleanup(); err != nil {
+			t.Error(err)
+		}
+		if err := conn.Close(); err != nil {
+			t.Error(err)
+		}
+	})
+
+	rw := db.New(conn)
+	wrapper := db.TestWrapper(t)
+	repo, err := NewRepository(rw, rw, wrapper)
+	require.NoError(t, err)
+	require.NotNil(t, repo)
+
+	baseAT := testAuthToken(t, conn, wrapper)
+
+	defaultStaleTime := maxStaleness
+	defaultExpireDuration := validTokenDuration
+
+	var tests = []struct {
+		name               string
+		staleDuration      time.Duration
+		expirationDuration time.Duration
+		wantReturned       bool
+	}{
+		{
+			name:               "not stale or expired",
+			staleDuration:      maxStaleness,
+			expirationDuration: validTokenDuration,
+			wantReturned:       true,
+		},
+		{
+			name:               "stale",
+			staleDuration:      0,
+			expirationDuration: validTokenDuration,
+			wantReturned:       false,
+		},
+		{
+			name:               "expired",
+			staleDuration:      maxStaleness,
+			expirationDuration: 0,
+			wantReturned:       false,
+		},
+	}
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+
+			maxStaleness = tt.staleDuration
+			validTokenDuration = tt.expirationDuration
+
+			ctx := context.Background()
+			at, err := NewAuthToken(baseAT.GetScopeId(), baseAT.GetIamUserId(), baseAT.GetAuthMethodId())
+			require.NoError(err)
+			at, err = repo.CreateAuthToken(ctx, at)
+			require.NoError(err)
+
+			got, err := repo.ValidateToken(ctx, at.GetPublicId(), at.GetToken())
+			require.NoError(err)
+
+			if tt.wantReturned {
+				assert.NotNil(got)
+			} else {
+				assert.NoError(db.TestVerifyOplog(t, rw, at.GetPublicId(), db.WithOperation(oplog.OpType_OP_TYPE_DELETE)))
+				assert.Nil(got)
+			}
+
+			// reset the system default params
+			maxStaleness = defaultStaleTime
+			validTokenDuration = defaultExpireDuration
+		})
+	}
+}
+
 func TestRepository_DeleteAuthToken(t *testing.T) {
 	cleanup, conn, _ := db.TestSetup(t, "postgres")
 	t.Cleanup(func() {
@@ -489,13 +562,13 @@ func TestRepository_DeleteAuthToken(t *testing.T) {
 		}
 	})
 
-	at := testAuthToken(t, conn)
+	rw := db.New(conn)
+	wrapper := db.TestWrapper(t)
+
+	at := testAuthToken(t, conn, wrapper)
 	badId, err := newAuthTokenId()
 	require.NoError(t, err)
 	require.NotNil(t, badId)
-
-	rw := db.New(conn)
-	wrapper := db.TestWrapper(t)
 
 	var tests = []struct {
 		name    string
