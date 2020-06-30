@@ -52,10 +52,9 @@ func NewRepository(r db.Reader, w db.Writer, wrapper wrapping.Wrapper) (*Reposit
 	}, nil
 }
 
-// CreateAuthToken inserts s into the repository and returns a new AuthToken containing the auth token's PublicId
-// and token. s is not changed. s must contain a valid ScopeID, UserID, and AuthMethodID.  The scopes for
-// the user, auth method, and this auth token must all be the same.  s must not contain a PublicId nor a Token.
-// The PublicId and token are generated and assigned by this method. opt is ignored.
+// CreateAuthToken persists in the repo and returns an AuthToken containing the auth token's PublicId and token.
+// The provided IAM User ID provided must be associated to the provided auth account id or an error will be returned.
+// All options are ignored.
 func (r *Repository) CreateAuthToken(ctx context.Context, withIamUserId, withAuthAccountId string, opt ...Option) (*AuthToken, error) {
 	if withIamUserId == "" {
 		return nil, fmt.Errorf("create: auth token: no user id: %w", db.ErrInvalidParameter)
@@ -124,44 +123,69 @@ func (r *Repository) CreateAuthToken(ctx context.Context, withIamUserId, withAut
 	return newAuthToken, nil
 }
 
-// LookupAuthToken returns the AuthToken for id. Returns nil, nil if no AuthToken is found for id.
+// LookupAuthToken returns the AuthToken for the provided id. Returns nil, nil if no AuthToken is found for id.
 // For security reasons, the actual token is not included in the returned AuthToken.
+// All exported options are ignored.
 func (r *Repository) LookupAuthToken(ctx context.Context, id string, opt ...Option) (*AuthToken, error) {
-	opts := getOpts(opt...)
 	if id == "" {
 		return nil, fmt.Errorf("lookup: auth token: missing public id: %w", db.ErrInvalidParameter)
 	}
+
+	var at *AuthToken
+	_, err := r.writer.DoTx(
+		ctx,
+		db.StdRetryCnt,
+		db.ExpBackoff{},
+		func(read db.Reader, _ db.Writer) error {
+			var err error
+			if at, err = r.lookupAuthToken(ctx, read, id, opt...); err != nil {
+				at = nil
+				return err
+			}
+			return nil
+		},
+	)
+
+	if errors.Is(err, db.ErrRecordNotFound) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+
+	return at, nil
+}
+
+func (r *Repository) lookupAuthToken(ctx context.Context, read db.Reader, id string, opt ...Option) (*AuthToken, error) {
+	opts := getOpts(opt...)
 	at := allocAuthToken()
 	at.PublicId = id
-	if err := r.reader.LookupByPublicId(ctx, at); err != nil {
-		if err == db.ErrRecordNotFound {
-			return nil, nil
-		}
+	if err := read.LookupByPublicId(ctx, at); err != nil {
 		return nil, fmt.Errorf("lookup: auth token: %s: %w", id, err)
 	}
 	if opts.withTokenValue {
-		if err := at.DecryptData(ctx, r.wrapper); err != nil {
+		if err := at.Decrypt(ctx, r.wrapper); err != nil {
 			return nil, fmt.Errorf("lookup: auth token: cant decrypt auth token value: %w", err)
 		}
 	}
 	at.CtToken = nil
 
+	// TODO: Use the auth repo's methods here.
 	acct := &iam.AuthAccount{AuthAccount: &iamStore.AuthAccount{PublicId: at.GetAuthAccountId()}}
-	if err := r.reader.LookupByPublicId(ctx, acct); err != nil {
+	if err := read.LookupByPublicId(ctx, acct); err != nil {
 		return nil, fmt.Errorf("lookup: auth token: auth account lookup: %w", err)
 	}
 	at.AuthMethodId = acct.GetAuthMethodId()
 	at.IamUserId = acct.GetIamUserId()
 	at.ScopeId = acct.GetScopeId()
-
 	return at, nil
 }
 
 // ValidateToken returns a token from storage if the auth token with the provided id and token exists.  The
 // approximate last accessed time may be updated depending on how long it has been since the last time the token
-// was validated.  A token being returned does not mean that it hasn't expired.
-// For security reasons, the actual token value is not included in the returned AuthToken.
-// Returns nil, nil if no AuthToken is found for the token.  All options are ignored.
+// was validated.  If a token is returned it is guaranteed to be valid. For security reasons, the actual token
+// value is not included in the returned AuthToken. If no valid auth token is found nil, nil is returned.
+// All options are ignored.
 func (r *Repository) ValidateToken(ctx context.Context, id, token string, opt ...Option) (*AuthToken, error) {
 	// Do not log or add the token string to any errors.
 	if token == "" {
@@ -177,16 +201,17 @@ func (r *Repository) ValidateToken(ctx context.Context, id, token string, opt ..
 		db.StdRetryCnt,
 		db.ExpBackoff{},
 		func(read db.Reader, w db.Writer) error {
-			repo, err := NewRepository(read, w, r.wrapper)
-			if err != nil {
-				return fmt.Errorf("validate token: create repository: %w", err)
-			}
-			retAT, err = repo.LookupAuthToken(ctx, id, withTokenValue())
-			if err != nil {
+			// TODO: Since this is called frequently optimize the number of calls to the DB this makes.
+			var err error
+			if retAT, err = r.lookupAuthToken(ctx, read, id, withTokenValue()); err != nil {
+				retAT = nil
+				if errors.Is(err, db.ErrRecordNotFound) {
+					return nil
+				}
 				return fmt.Errorf("validate token: %w", err)
 			}
 			if retAT == nil {
-				return fmt.Errorf("validate token: lookup authtoken: %w", db.ErrRecordNotFound)
+				return nil
 			}
 
 			// If the token is to old or stale invalidate it and return nothing.
@@ -250,7 +275,7 @@ func (r *Repository) ValidateToken(ctx context.Context, id, token string, opt ..
 
 // TODO(ICU-344): Add ListAuthTokens
 
-// DeleteAuthToken deletes id from the repository returning a count of the
+// DeleteAuthToken deletes the token with the provided id from the repository returning a count of the
 // number of records deleted.  All options are ignored.
 func (r *Repository) DeleteAuthToken(ctx context.Context, id string, opt ...Option) (int, error) {
 	if id == "" {
@@ -263,11 +288,7 @@ func (r *Repository) DeleteAuthToken(ctx context.Context, id string, opt ...Opti
 		db.StdRetryCnt,
 		db.ExpBackoff{},
 		func(read db.Reader, w db.Writer) error {
-			repo, err := NewRepository(read, w, r.wrapper)
-			if err != nil {
-				return err
-			}
-			at, err := repo.LookupAuthToken(ctx, id)
+			at, err := r.lookupAuthToken(ctx, read, id)
 			if err != nil {
 				if errors.Is(err, db.ErrRecordNotFound) {
 					return nil
