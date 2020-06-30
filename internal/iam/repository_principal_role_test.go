@@ -110,8 +110,7 @@ func TestRepository_AddPrincipalRoles(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			require.NoError(conn.Where("1=1").Delete(allocUserRole()).Error)
-			require.NoError(conn.Where("1=1").Delete(allocGroupRole()).Error)
+			require.NoError(conn.Where("1=1").Delete(allocRole()).Error)
 			got, err := repo.AddPrincipalRoles(context.Background(), tt.args.roleId, tt.args.roleVersion, tt.args.userIds, tt.args.groupIds, tt.args.opt...)
 			if tt.wantErr {
 				require.Error(err)
@@ -149,6 +148,117 @@ func TestRepository_AddPrincipalRoles(t *testing.T) {
 				assert.Equal(gotPrincipal[r.GetPrincipalId()].GetType(), r.GetType())
 			}
 
+		})
+	}
+}
+
+func TestRepository_ListPrincipalRoles(t *testing.T) {
+	t.Parallel()
+	cleanup, conn, _ := db.TestSetup(t, "postgres")
+	defer func() {
+		err := cleanup()
+		assert.NoError(t, err)
+		err = conn.Close()
+		assert.NoError(t, err)
+	}()
+	const testLimit = 10
+	rw := db.New(conn)
+	wrapper := db.TestWrapper(t)
+	repo, err := NewRepository(rw, rw, wrapper, WithLimit(testLimit))
+	require.NoError(t, err)
+	org, proj := TestScopes(t, conn)
+
+	type args struct {
+		withRoleId string
+		opt        []Option
+	}
+	tests := []struct {
+		name          string
+		createCnt     int
+		createScopeId string
+		args          args
+		wantCnt       int
+		wantErr       bool
+	}{
+		{
+			name:          "no-limit",
+			createCnt:     repo.defaultLimit + 2,
+			createScopeId: org.PublicId,
+			args: args{
+				opt: []Option{WithLimit(-1)},
+			},
+			wantCnt: repo.defaultLimit + 2,
+			wantErr: false,
+		},
+		{
+			name:          "no-limit-proj-group",
+			createCnt:     repo.defaultLimit + 2,
+			createScopeId: proj.PublicId,
+			args: args{
+				opt: []Option{WithLimit(-1)},
+			},
+			wantCnt: repo.defaultLimit + 2,
+			wantErr: false,
+		},
+		{
+			name:          "default-limit",
+			createCnt:     repo.defaultLimit + 2,
+			createScopeId: org.PublicId,
+			wantCnt:       repo.defaultLimit,
+			wantErr:       false,
+		},
+		{
+			name:          "custom-limit",
+			createCnt:     repo.defaultLimit + 2,
+			createScopeId: org.PublicId,
+			args: args{
+				opt: []Option{WithLimit(3)},
+			},
+			wantCnt: 3,
+			wantErr: false,
+		},
+		{
+			name:          "bad-role-id",
+			createCnt:     2,
+			createScopeId: org.PublicId,
+			args: args{
+				withRoleId: "bad-id",
+			},
+			wantCnt: 0,
+			wantErr: false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+			require.NoError(conn.Where("1=1").Delete(allocRole()).Error)
+			role := TestRole(t, conn, tt.createScopeId)
+			userRoles := make([]string, 0, tt.createCnt)
+			groupRoles := make([]string, 0, tt.createCnt)
+			for i := 0; i < tt.createCnt/2; i++ {
+				u := TestUser(t, conn, org.PublicId)
+				userRoles = append(userRoles, u.PublicId)
+				g := TestGroup(t, conn, tt.createScopeId)
+				groupRoles = append(groupRoles, g.PublicId)
+			}
+			testRoles, err := repo.AddPrincipalRoles(context.Background(), role.PublicId, int(role.Version), userRoles, groupRoles, tt.args.opt...)
+			require.NoError(err)
+			assert.Equal(tt.createCnt, len(testRoles))
+
+			var roleId string
+			switch {
+			case tt.args.withRoleId != "":
+				roleId = tt.args.withRoleId
+			default:
+				roleId = role.PublicId
+			}
+			got, err := repo.ListPrincipalRoles(context.Background(), roleId, tt.args.opt...)
+			if tt.wantErr {
+				require.Error(err)
+				return
+			}
+			require.NoError(err)
+			assert.Equal(tt.wantCnt, len(got))
 		})
 	}
 }

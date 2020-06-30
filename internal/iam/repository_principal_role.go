@@ -115,12 +115,12 @@ func (r *Repository) SetPrincipalRoles(ctx context.Context, roleId string, userI
 }
 
 // ListPrincipalRoles returns the principal roles for the roleId and supports the WithLimit option.
-func (r *Repository) ListPrincipalRoles(ctx context.Context, roleId string) ([]PrincipalRole, error) {
+func (r *Repository) ListPrincipalRoles(ctx context.Context, roleId string, opt ...Option) ([]PrincipalRole, error) {
 	if roleId == "" {
 		return nil, fmt.Errorf("lookup principal roles: missing role id %w", db.ErrInvalidParameter)
 	}
 	var roles []principalRoleView
-	if err := r.reader.SearchWhere(ctx, &roles, "role_id = ?", []interface{}{roleId}); err != nil {
+	if err := r.list(ctx, &roles, "role_id = ?", []interface{}{roleId}, opt...); err != nil {
 		return nil, fmt.Errorf("lookup principal role: unable to lookup roles: %w", err)
 	}
 	principals := make([]PrincipalRole, 0, len(roles))
