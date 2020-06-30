@@ -99,8 +99,11 @@ func (r *Repository) CreateAuthToken(ctx context.Context, withIamUserId, withAut
 			if acct.GetIamUserId() != withIamUserId {
 				return fmt.Errorf("create: auth token: auth account %q mismatch with iam user %q", withAuthAccountId, withIamUserId)
 			}
+			at.ScopeId = acct.GetScopeId()
+			at.AuthMethodId = acct.GetAuthMethodId()
+			at.IamUserId = acct.GetIamUserId()
 
-			metadata := newAuthTokenMetadata(acct.GetScopeId(), at.GetPublicId(), oplog.OpType_OP_TYPE_CREATE)
+			metadata := newAuthTokenMetadata(at, oplog.OpType_OP_TYPE_CREATE)
 
 			newAuthToken = at.clone()
 			if err := newAuthToken.EncryptData(ctx, r.wrapper); err != nil {
@@ -110,9 +113,6 @@ func (r *Repository) CreateAuthToken(ctx context.Context, withIamUserId, withAut
 				return err
 			}
 			newAuthToken.CtToken = nil
-			newAuthToken.ScopeId = acct.GetScopeId()
-			newAuthToken.IamUserId = acct.GetIamUserId()
-			newAuthToken.AuthMethodId = acct.GetAuthMethodId()
 
 			return nil
 		},
@@ -127,6 +127,7 @@ func (r *Repository) CreateAuthToken(ctx context.Context, withIamUserId, withAut
 // LookupAuthToken returns the AuthToken for id. Returns nil, nil if no AuthToken is found for id.
 // For security reasons, the actual token is not included in the returned AuthToken.
 func (r *Repository) LookupAuthToken(ctx context.Context, id string, opt ...Option) (*AuthToken, error) {
+	opts := getOpts(opt...)
 	if id == "" {
 		return nil, fmt.Errorf("lookup: auth token: missing public id: %w", db.ErrInvalidParameter)
 	}
@@ -138,12 +139,17 @@ func (r *Repository) LookupAuthToken(ctx context.Context, id string, opt ...Opti
 		}
 		return nil, fmt.Errorf("lookup: auth token: %s: %w", id, err)
 	}
+	if opts.withTokenValue {
+		if err := at.DecryptData(ctx, r.wrapper); err != nil {
+			return nil, fmt.Errorf("lookup: auth token: cant decrypt auth token value: %w", err)
+		}
+	}
+	at.CtToken = nil
+
 	acct := &iam.AuthAccount{AuthAccount: &iamStore.AuthAccount{PublicId: at.GetAuthAccountId()}}
 	if err := r.reader.LookupByPublicId(ctx, acct); err != nil {
 		return nil, fmt.Errorf("lookup: auth token: auth account lookup: %w", err)
 	}
-	at.Token = ""
-	at.CtToken = nil
 	at.AuthMethodId = acct.GetAuthMethodId()
 	at.IamUserId = acct.GetIamUserId()
 	at.ScopeId = acct.GetScopeId()
@@ -161,37 +167,42 @@ func (r *Repository) ValidateToken(ctx context.Context, id, token string, opt ..
 	if token == "" {
 		return nil, fmt.Errorf("validate token: auth token: missing token: %w", db.ErrInvalidParameter)
 	}
-	retAT := allocAuthToken()
-	retAT.PublicId = id
+	if id == "" {
+		return nil, fmt.Errorf("validate token: auth token: missing public id: %w", db.ErrInvalidParameter)
+	}
 
-	var rowsUpdated int
+	var retAT *AuthToken
 	_, err := r.writer.DoTx(
 		ctx,
 		db.StdRetryCnt,
 		db.ExpBackoff{},
 		func(read db.Reader, w db.Writer) error {
-			if err := r.reader.LookupByPublicId(ctx, retAT); err != nil {
-				return fmt.Errorf("validate token: lookup auth token: %s: %w", id, err)
+			repo, err := NewRepository(read, w, r.wrapper)
+			if err != nil {
+				return fmt.Errorf("validate token: create repository: %w", err)
 			}
-			acct := &iam.AuthAccount{AuthAccount: &iamStore.AuthAccount{PublicId: retAT.GetAuthAccountId()}}
-			if err := read.LookupByPublicId(ctx, acct); err != nil {
-				return fmt.Errorf("validate token: auth token: auth account lookup: %w", err)
+			retAT, err = repo.LookupAuthToken(ctx, id, withTokenValue())
+			if err != nil {
+				return fmt.Errorf("validate token: %w", err)
+			}
+			if retAT == nil {
+				return fmt.Errorf("validate token: lookup authtoken: %w", db.ErrRecordNotFound)
 			}
 
 			// If the token is to old or stale invalidate it and return nothing.
 			exp, err := ptypes.Timestamp(retAT.GetExpirationTime().GetTimestamp())
 			if err != nil {
-				return err
+				return fmt.Errorf("validate token: expiration time : %w", err)
 			}
 			lastAccessed, err := ptypes.Timestamp(retAT.GetApproximateLastAccessTime().GetTimestamp())
 			if err != nil {
-				return err
+				return fmt.Errorf("validate token: last accessed time : %w", err)
 			}
 
 			now := time.Now()
 			sinceLastAccessed := now.Sub(lastAccessed)
 			if now.After(exp) || sinceLastAccessed > maxStaleness {
-				metadata := newAuthTokenMetadata(acct.GetScopeId(), retAT.GetPublicId(), oplog.OpType_OP_TYPE_DELETE)
+				metadata := newAuthTokenMetadata(retAT, oplog.OpType_OP_TYPE_DELETE)
 				delAt := retAT.clone()
 				if _, err := w.Delete(ctx, delAt, db.WithOplog(r.wrapper, metadata)); err != nil {
 					return fmt.Errorf("validate token: delete auth token: %w", err)
@@ -200,18 +211,11 @@ func (r *Repository) ValidateToken(ctx context.Context, id, token string, opt ..
 				return nil
 			}
 
-			if err := retAT.DecryptData(ctx, r.wrapper); err != nil {
-				return err
-			}
 			if retAT.GetToken() != token {
-				return db.ErrInvalidParameter
+				return fmt.Errorf("validate token: auth token mismatch: %w", db.ErrInvalidParameter)
 			}
 			// retAT.Token set to empty string so the value is not returned as described in the methods' doc.
 			retAT.Token = ""
-			retAT.CtToken = nil
-			retAT.ScopeId = acct.GetScopeId()
-			retAT.IamUserId = acct.GetIamUserId()
-			retAT.AuthMethodId = acct.GetAuthMethodId()
 
 			if sinceLastAccessed < lastAccessedUpdateDuration {
 				// To save the db from being updated to frequently, we only update the
@@ -220,11 +224,11 @@ func (r *Repository) ValidateToken(ctx context.Context, id, token string, opt ..
 				return nil
 			}
 
-			metadata := newAuthTokenMetadata(acct.GetScopeId(), retAT.GetPublicId(), oplog.OpType_OP_TYPE_UPDATE)
+			metadata := newAuthTokenMetadata(retAT, oplog.OpType_OP_TYPE_UPDATE)
 			// Setting the ApproximateLastAccessTime to null through using the null mask allows a defined db's
 			// trigger to set ApproximateLastAccessTime to the commit timestamp.
 			at := retAT.clone()
-			rowsUpdated, err = w.Update(
+			rowsUpdated, err := w.Update(
 				ctx,
 				at,
 				nil,
@@ -239,7 +243,7 @@ func (r *Repository) ValidateToken(ctx context.Context, id, token string, opt ..
 	)
 
 	if err != nil {
-		return nil, fmt.Errorf("validate token: auth token: %s: %w", retAT.PublicId, err)
+		return nil, fmt.Errorf("validate token: auth token: %s: %w", id, err)
 	}
 	return retAT, nil
 }
@@ -254,7 +258,6 @@ func (r *Repository) DeleteAuthToken(ctx context.Context, id string, opt ...Opti
 	}
 
 	var rowsDeleted int
-	var deleteAT *AuthToken
 	_, err := r.writer.DoTx(
 		ctx,
 		db.StdRetryCnt,
@@ -275,9 +278,9 @@ func (r *Repository) DeleteAuthToken(ctx context.Context, id string, opt ...Opti
 				return nil
 			}
 
-			metadata := newAuthTokenMetadata(at.GetScopeId(), at.GetPublicId(), oplog.OpType_OP_TYPE_DELETE)
+			metadata := newAuthTokenMetadata(at, oplog.OpType_OP_TYPE_DELETE)
 
-			deleteAT = at.clone()
+			deleteAT := at.clone()
 			rowsDeleted, err = w.Delete(ctx, deleteAT, db.WithOplog(r.wrapper, metadata))
 			if err == nil && rowsDeleted > 1 {
 				return db.ErrMultipleRecords
@@ -300,10 +303,10 @@ func allocAuthToken() *AuthToken {
 	return fresh
 }
 
-func newAuthTokenMetadata(scopeId, authTokenId string, op oplog.OpType) oplog.Metadata {
+func newAuthTokenMetadata(at *AuthToken, op oplog.OpType) oplog.Metadata {
 	metadata := oplog.Metadata{
-		"scope-id":           []string{scopeId},
-		"resource-public-id": []string{authTokenId},
+		"scope-id":           []string{at.GetScopeId()},
+		"resource-public-id": []string{at.GetPublicId()},
 		"resource-type":      []string{"auth token"},
 		"op-type":            []string{op.String()},
 	}
