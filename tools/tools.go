@@ -22,6 +22,7 @@ package tools
 //go:generate go install golang.org/x/tools/cmd/goimports
 //go:generate go install github.com/oligot/go-mod-upgrade
 //go:generate go install github.com/mitchellh/gox
+//go:generate go install github.com/go-bindata/go-bindata/v3/go-bindata
 
 import (
 	_ "github.com/bufbuild/buf/cmd/buf"
@@ -44,4 +45,6 @@ import (
 	_ "github.com/oligot/go-mod-upgrade"
 
 	_ "github.com/mitchellh/gox"
+
+	_ "github.com/go-bindata/go-bindata/v3/go-bindata"
 )

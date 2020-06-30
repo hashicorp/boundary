@@ -3,30 +3,49 @@ package controller
 import (
 	"bytes"
 	"net/http"
+	"strings"
 )
 
+const magicValue = `{{DEFAULT_ORG_ID}}`
+
 type indexResponseWriter struct {
-	statusCode int
-	header     http.Header
-	body       *bytes.Buffer
+	statusCode   int
+	header       http.Header
+	body         *bytes.Buffer
+	defaultOrgId string
 }
 
 // newindexResponseWriter returns an initialized indexResponseWriter
-func newIndexResponseWriter() *indexResponseWriter {
+func newIndexResponseWriter(defaultOrgId string) *indexResponseWriter {
 	return &indexResponseWriter{
-		header: make(http.Header),
-		body:   new(bytes.Buffer),
+		header:       make(http.Header),
+		body:         new(bytes.Buffer),
+		defaultOrgId: defaultOrgId,
 	}
 }
 
-func (w *indexResponseWriter) Header() http.Header {
-	return w.header
+func (i *indexResponseWriter) Header() http.Header {
+	return i.header
 }
 
-func (w *indexResponseWriter) Write(buf []byte) (int, error) {
-	return w.body.Write(buf)
+func (i *indexResponseWriter) Write(buf []byte) (int, error) {
+	return i.body.Write(buf)
 }
 
-func (w *indexResponseWriter) WriteHeader(code int) {
-	w.statusCode = code
+func (i *indexResponseWriter) WriteHeader(code int) {
+	i.statusCode = code
+}
+
+func (i *indexResponseWriter) writeToWriter(w http.ResponseWriter) {
+	for k, v := range i.header {
+		for _, h := range v {
+			w.Header().Add(k, h)
+		}
+	}
+	w.WriteHeader(i.statusCode)
+	w.Write(
+		[]byte(
+			strings.Replace(i.body.String(), magicValue, i.defaultOrgId, 1),
+		),
+	)
 }
