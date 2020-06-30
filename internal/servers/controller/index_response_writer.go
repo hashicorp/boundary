@@ -2,6 +2,7 @@ package controller
 
 import (
 	"bytes"
+	"fmt"
 	"net/http"
 	"strings"
 )
@@ -42,10 +43,8 @@ func (i *indexResponseWriter) writeToWriter(w http.ResponseWriter) {
 			w.Header().Add(k, h)
 		}
 	}
+	newBody := []byte(strings.Replace(i.body.String(), magicValue, i.defaultOrgId, 1))
+	w.Header().Set("content-length", fmt.Sprintf("%d", len(newBody)))
 	w.WriteHeader(i.statusCode)
-	w.Write(
-		[]byte(
-			strings.Replace(i.body.String(), magicValue, i.defaultOrgId, 1),
-		),
-	)
+	w.Write(newBody)
 }
