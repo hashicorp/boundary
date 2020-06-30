@@ -67,28 +67,30 @@ func (r *Repository) AddPrincipalRoles(ctx context.Context, roleId string, roleV
 			}
 			updatedRole := allocRole()
 			updatedRole.PublicId = roleId
-			updatedRole.Version = uint32(roleVersion)
+			updatedRole.Version = uint32(roleVersion) + 1
 			var roleOplogMsg oplog.Message
-			rowsUpdated, err := w.Update(ctx, &role, []string{"Version"}, nil, db.NewOplogMsg(&roleOplogMsg))
+			rowsUpdated, err := w.Update(ctx, &updatedRole, []string{"Version"}, nil, db.NewOplogMsg(&roleOplogMsg), db.WithVersion(roleVersion))
 			if err != nil {
 				return fmt.Errorf("add principal roles: unable to update role version: %w", err)
 			}
 			if rowsUpdated != 1 {
-				return fmt.Errorf("add principal roles: updated role and %d rows updated: %w", rowsUpdated, err)
+				return fmt.Errorf("add principal roles: updated role and %d rows updated", rowsUpdated)
 			}
 			msgs = append(msgs, &roleOplogMsg)
-			userOplogMsgs := make([]*oplog.Message, 0, len(newUserRoles))
-			if err := w.CreateItems(ctx, newUserRoles, db.NewOplogMsgs(&userOplogMsgs)); err != nil {
-				return fmt.Errorf("add principal roles: unable to add users: %w", err)
+			if len(newUserRoles) > 0 {
+				userOplogMsgs := make([]*oplog.Message, 0, len(newUserRoles))
+				if err := w.CreateItems(ctx, newUserRoles, db.NewOplogMsgs(&userOplogMsgs)); err != nil {
+					return fmt.Errorf("add principal roles: unable to add users: %w", err)
+				}
+				msgs = append(msgs, userOplogMsgs...)
 			}
-			msgs = append(msgs, userOplogMsgs...)
-
-			grpOplogMsgs := make([]*oplog.Message, 0, len(newGrpRoles))
-			if err := w.CreateItems(ctx, newGrpRoles, db.NewOplogMsgs(&grpOplogMsgs)); err != nil {
-				return fmt.Errorf("add principal roles: unable to add groups: %w", err)
+			if len(newGrpRoles) > 0 {
+				grpOplogMsgs := make([]*oplog.Message, 0, len(newGrpRoles))
+				if err := w.CreateItems(ctx, newGrpRoles, db.NewOplogMsgs(&grpOplogMsgs)); err != nil {
+					return fmt.Errorf("add principal roles: unable to add groups: %w", err)
+				}
+				msgs = append(msgs, grpOplogMsgs...)
 			}
-			msgs = append(msgs, grpOplogMsgs...)
-
 			if err := w.WriteOplogEntryWith(ctx, r.wrapper, roleTicket, metadata, msgs); err != nil {
 				return fmt.Errorf("add principal roles: unable to write oplog: %w", err)
 			}
