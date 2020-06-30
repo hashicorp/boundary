@@ -188,7 +188,10 @@ create table iam_role (
     -- TODO (jlambert 6/2020) add before update trigger to automatically
     -- increment the version when needed.  This trigger can be addded when PR
     -- #126 is merged and update_version_column() is available.
-    version bigint not null default 1
+    version bigint not null default 1,
+    
+    -- add unique index so a composite fk can be declared.
+    unique(scope_id, public_id)
   );
 
 -- create trigger 
@@ -196,6 +199,11 @@ create table iam_role (
 -- before update on iam_role
 --   for each row execute procedure update_version_column();
 
+create trigger 
+  update_version_column
+after update on iam_role
+  for each row execute procedure update_version_column();
+  
 create trigger 
   update_time_column 
 before update on iam_role
@@ -221,7 +229,9 @@ create table iam_group (
     description text,
     scope_id wt_public_id not null references iam_scope(public_id) on delete cascade on update cascade,
     unique(name, scope_id),
-    disabled boolean not null default false
+    disabled boolean not null default false,
+    -- add unique index so a composite fk can be declared.
+    unique(scope_id, public_id)
   );
   
 create trigger 
@@ -248,23 +258,36 @@ insert on iam_group
 -- The rows in this table must be immutable after insert, which will be ensured
 -- with a before update trigger using iam_immutable_role(). 
 create table iam_user_role (
-    create_time wt_timestamp,
-    role_id wt_public_id not null references iam_role(public_id) on delete cascade on update cascade,
-    principal_id wt_public_id not null references iam_user(public_id) on delete cascade on update cascade,
-    primary key (role_id, principal_id)
+  create_time wt_timestamp,
+  scope_id wt_public_id not null,
+  role_id wt_public_id not null,
+  principal_id wt_public_id not null references iam_user(public_id) on delete cascade on update cascade,
+  primary key (role_id, principal_id),
+  foreign key (scope_id, role_id)
+    references iam_role(scope_id, public_id)
+    on delete cascade
+    on update cascade
   );
 
 -- iam_group_role contains roles that have been assigned to groups. Groups can
--- only beassigned roles which are within its scope (organization or project).
--- There's no way to declare this constraint, so it will be maintained with a
--- before insert trigger using iam_group_role_scope_check(). 
--- The rows in this table must be immutable after insert, which will be ensured
--- with a before update trigger using iam_immutable_role().
+-- only be assigned roles which are within its scope (organization or project)
+-- and that integrity can be maintained with a foreign key. The rows in this
+-- table must be immutable after insert, which will be ensured with a before
+-- update trigger using iam_immutable_role().
 create table iam_group_role (
-    create_time wt_timestamp,
-    role_id wt_public_id not null references iam_role(public_id) on delete cascade on update cascade,
-    principal_id wt_public_id not null references iam_group(public_id) on delete cascade on update cascade,
-    primary key (role_id, principal_id)
+  create_time wt_timestamp,
+  scope_id wt_public_id not null,
+  role_id wt_public_id not null,
+  principal_id wt_public_id not null,
+  primary key (role_id, principal_id),
+  foreign key (scope_id, role_id)
+    references iam_role(scope_id, public_id)
+    on delete cascade
+    on update cascade,
+  foreign key (scope_id, principal_id)
+    references iam_group(scope_id, public_id)
+    on delete cascade
+    on update cascade
   );
 
 -- iam_principle_role provides a consolidated view all principal roles assigned
@@ -291,38 +314,21 @@ declare cnt int;
 begin
   select count(*) into cnt
   from iam_user 
-  where public_id = new.principal_id and 
+  where 
+    public_id = new.principal_id and 
   scope_id in(
     -- check to see if they have the same org scope
     select s.public_id 
       from iam_scope s, iam_role r 
-      where s.public_id = r.scope_id and r.public_id = new.role_id  
+      where s.public_id = r.scope_id and r.public_id = new.role_id and r.scope_id = new.scope_id
     union
     -- check to see if the role has a parent that's the same org
     select s.parent_id as public_id 
       from iam_role r, iam_scope s 
-      where r.scope_id = s.public_id and r.public_id = new.role_id
+      where r.scope_id = s.public_id and r.public_id = new.role_id and r.scope_id = new.scope_id
   );
   if cnt = 0 then
     raise exception 'user and role do not belong to the same organization';
-  end if;
-  return new;
-end;
-$$ language plpgsql;
-
--- iam_group_role_scope_check() ensures that the group is only assigned roles
--- which are within its scope (organization or project).
-create or replace function 
-  iam_group_role_scope_check() 
-  returns trigger
-as $$ 
-declare cnt int;
-begin
-  select count(*) into cnt
-    from iam_role r, iam_group g
-    where r.scope_id = g.scope_id and g.public_id = new.principal_id and r.public_id = new.role_id;
-  if cnt = 0 then
-    raise exception 'group and role do not belong to the same scope';
   end if;
   return new;
 end;
@@ -362,11 +368,6 @@ create trigger
 before
 insert on iam_user_role
   for each row execute procedure default_create_time();
-
-create trigger iam_group_role_scope_check
-before
-insert on iam_group_role
-  for each row execute procedure iam_group_role_scope_check();
 
 create trigger immutable_role
 before
