@@ -112,6 +112,7 @@ func (r *Repository) SetPrincipalRoles(ctx context.Context, roleId string, userI
 	panic("not implemented")
 }
 
+// ListPrincipalRoles returns the principal roles for the roleId and supports the WithLimit option.
 func (r *Repository) ListPrincipalRoles(ctx context.Context, roleId string) ([]PrincipalRole, error) {
 	if roleId == "" {
 		return nil, fmt.Errorf("lookup principal roles: missing role id %w", db.ErrInvalidParameter)
