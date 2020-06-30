@@ -29,7 +29,9 @@ type Options struct {
 	// WithNullPaths must be accessible from other packages.
 	WithNullPaths []string
 
-	newOplogMsg *oplog.Message
+	newOplogMsg  *oplog.Message
+	newOplogMsgs *[]*oplog.Message
+
 	// WithVersion must be accessible from other packages
 	WithVersion int
 }
@@ -79,6 +81,17 @@ func WithOplog(wrapper wrapping.Wrapper, md oplog.Metadata) Option {
 func NewOplogMsg(msg *oplog.Message) Option {
 	return func(o *Options) {
 		o.newOplogMsg = msg
+	}
+}
+
+// NewOplogMsgs provides an option to ask for multiple new in-memory oplog
+// messages.  The new msgs will be returned in the provided *[]oplog.Message
+// parameter. NewOplogMsgs can only be used with write functions that operate on
+// multiple items(CreateItems, DeleteItems). WithOplog and NewOplogMsgs cannot
+// be used together.
+func NewOplogMsgs(msgs *[]*oplog.Message) Option {
+	return func(o *Options) {
+		o.newOplogMsgs = msgs
 	}
 }
 
