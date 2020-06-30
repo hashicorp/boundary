@@ -631,10 +631,7 @@ create table iam_role (
     unique(scope_id, public_id)
   );
 
--- create trigger 
---   update_version_column
--- before update on iam_role
---   for each row execute procedure update_version_column();
+
 
 create trigger 
   update_version_column
