@@ -42,7 +42,7 @@ func (r *Repository) AddPrincipalRoles(ctx context.Context, roleId string, roleV
 	for _, id := range userIds {
 		usrRole, err := NewUserRole(scope.PublicId, roleId, id)
 		if err != nil {
-			return nil, fmt.Errorf("add principal roles: unable to create new in memory user role: %w", err)
+			return nil, fmt.Errorf("add principal roles: unable to create in memory user role: %w", err)
 		}
 		newUserRoles = append(newUserRoles, usrRole)
 	}
@@ -50,7 +50,7 @@ func (r *Repository) AddPrincipalRoles(ctx context.Context, roleId string, roleV
 	for _, id := range groupIds {
 		grpRole, err := NewGroupRole(scope.PublicId, roleId, id)
 		if err != nil {
-			return nil, fmt.Errorf("add principal roles: unable to create new in memory group role: %w", err)
+			return nil, fmt.Errorf("add principal roles: unable to create in memory group role: %w", err)
 		}
 		newGrpRoles = append(newGrpRoles, grpRole)
 	}
@@ -98,7 +98,7 @@ func (r *Repository) AddPrincipalRoles(ctx context.Context, roleId string, roleV
 		},
 	)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("add principal roles: error creating roles: %w", err)
 	}
 	principalRoles := make([]PrincipalRole, 0, len(newUserRoles)+len(newUserRoles))
 	for _, role := range newUserRoles {
@@ -110,7 +110,7 @@ func (r *Repository) AddPrincipalRoles(ctx context.Context, roleId string, roleV
 	return principalRoles, nil
 }
 
-func (r *Repository) SetPrincipalRoles(ctx context.Context, roleId string, userIds, groupIds []string, opt ...Option) ([]*PrincipalRole, int, error) {
+func (r *Repository) SetPrincipalRoles(ctx context.Context, roleId string, userIds, groupIds []string, opt ...Option) ([]PrincipalRole, int, error) {
 	panic("not implemented")
 }
 
@@ -129,6 +129,97 @@ func (r *Repository) ListPrincipalRoles(ctx context.Context, roleId string, opt 
 	}
 	return principals, nil
 }
-func (r *Repository) DeletePrincipalRoles(ctx context.Context, roleId string, userIds, groupIds []string, opt ...Option) (int, error) {
-	panic("not implemented")
+func (r *Repository) DeletePrincipalRoles(ctx context.Context, roleId string, roleVersion int, userIds, groupIds []string, opt ...Option) (int, error) {
+	if roleId == "" {
+		return db.NoRowsAffected, fmt.Errorf("delete principal roles: missing role id: %w", db.ErrInvalidParameter)
+	}
+	if len(userIds) == 0 && len(groupIds) == 0 {
+		return db.NoRowsAffected, fmt.Errorf("delete principal roles: missing either user or groups to delete %w", db.ErrInvalidParameter)
+	}
+	role := allocRole()
+	role.PublicId = roleId
+	scope, err := role.GetScope(ctx, r.reader)
+	if err != nil {
+		return db.NoRowsAffected, fmt.Errorf("delete principal roles: unable to get role %s scope to create metadata: %w", roleId, err)
+	}
+	metadata := oplog.Metadata{
+		"op-type":            []string{oplog.OpType_OP_TYPE_DELETE.String()},
+		"scope-id":           []string{scope.PublicId},
+		"scope-type":         []string{scope.Type},
+		"resource-public-id": []string{roleId},
+	}
+	deleteUserRoles := make([]interface{}, 0, len(userIds))
+	for _, id := range userIds {
+		usrRole, err := NewUserRole(scope.PublicId, roleId, id)
+		if err != nil {
+			return db.NoRowsAffected, fmt.Errorf("delete principal roles: unable to create in memory user role: %w", err)
+		}
+		deleteUserRoles = append(deleteUserRoles, usrRole)
+	}
+	deleteGrpRoles := make([]interface{}, 0, len(groupIds))
+	for _, id := range groupIds {
+		grpRole, err := NewGroupRole(scope.PublicId, roleId, id)
+		if err != nil {
+			return db.NoRowsAffected, fmt.Errorf("delete principal roles: unable to create in memory group role: %w", err)
+		}
+		deleteGrpRoles = append(deleteGrpRoles, grpRole)
+	}
+
+	var totalRowsDeleted int
+	_, err = r.writer.DoTx(
+		ctx,
+		db.StdRetryCnt,
+		db.ExpBackoff{},
+		func(reader db.Reader, w db.Writer) error {
+			msgs := make([]*oplog.Message, 0, 2)
+			roleTicket, err := w.GetTicket(&role)
+			if err != nil {
+				return fmt.Errorf("delete principal roles: unable to get ticket: %w", err)
+			}
+			updatedRole := allocRole()
+			updatedRole.PublicId = roleId
+			updatedRole.Version = uint32(roleVersion) + 1
+			var roleOplogMsg oplog.Message
+			rowsUpdated, err := w.Update(ctx, &updatedRole, []string{"Version"}, nil, db.NewOplogMsg(&roleOplogMsg), db.WithVersion(roleVersion))
+			if err != nil {
+				return fmt.Errorf("delete principal roles: unable to update role version: %w", err)
+			}
+			if rowsUpdated != 1 {
+				return fmt.Errorf("delete principal roles: updated role and %d rows updated", rowsUpdated)
+			}
+			msgs = append(msgs, &roleOplogMsg)
+			if len(deleteUserRoles) > 0 {
+				userOplogMsgs := make([]*oplog.Message, 0, len(deleteUserRoles))
+				rowsDeleted, err := w.DeleteItems(ctx, deleteUserRoles, db.NewOplogMsgs(&userOplogMsgs))
+				if err != nil {
+					return fmt.Errorf("delete principal roles: unable to delete user roles: %w", err)
+				}
+				if rowsDeleted != len(deleteUserRoles) {
+					return fmt.Errorf("delete principal roles: user roles deleted %d did not match request for %d", rowsDeleted, len(deleteUserRoles))
+				}
+				totalRowsDeleted += rowsDeleted
+				msgs = append(msgs, userOplogMsgs...)
+			}
+			if len(deleteGrpRoles) > 0 {
+				grpOplogMsgs := make([]*oplog.Message, 0, len(deleteGrpRoles))
+				rowsDeleted, err := w.DeleteItems(ctx, deleteGrpRoles, db.NewOplogMsgs(&grpOplogMsgs))
+				if err != nil {
+					return fmt.Errorf("delete principal roles: unable to delete groups: %w", err)
+				}
+				if rowsDeleted != len(deleteGrpRoles) {
+					return fmt.Errorf("delete principal roles: group roles deleted %d did not match request for %d", rowsDeleted, len(deleteGrpRoles))
+				}
+				totalRowsDeleted += rowsDeleted
+				msgs = append(msgs, grpOplogMsgs...)
+			}
+			if err := w.WriteOplogEntryWith(ctx, r.wrapper, roleTicket, metadata, msgs); err != nil {
+				return fmt.Errorf("delete principal roles: unable to write oplog: %w", err)
+			}
+			return nil
+		},
+	)
+	if err != nil {
+		return db.NoRowsAffected, fmt.Errorf("delete principal roles: error deleting roles: %w", err)
+	}
+	return totalRowsDeleted, nil
 }

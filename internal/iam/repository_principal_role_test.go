@@ -263,3 +263,159 @@ func TestRepository_ListPrincipalRoles(t *testing.T) {
 		})
 	}
 }
+
+func TestRepository_DeletePrincipalRoles(t *testing.T) {
+	t.Parallel()
+	cleanup, conn, _ := db.TestSetup(t, "postgres")
+	defer func() {
+		err := cleanup()
+		assert.NoError(t, err)
+		err = conn.Close()
+		assert.NoError(t, err)
+	}()
+	rw := db.New(conn)
+	wrapper := db.TestWrapper(t)
+	repo, err := NewRepository(rw, rw, wrapper)
+	require.NoError(t, err)
+	org, _ := TestScopes(t, conn)
+
+	type args struct {
+		role           *Role
+		roleIdOverride *string
+		createUserCnt  int
+		createGroupCnt int
+		deleteUserCnt  int
+		deleteGroupCnt int
+		opt            []Option
+	}
+	tests := []struct {
+		name            string
+		args            args
+		wantRowsDeleted int
+		wantErr         bool
+		wantIsErr       error
+	}{
+		{
+			name: "valid",
+			args: args{
+				role:           TestRole(t, conn, org.PublicId),
+				createUserCnt:  5,
+				createGroupCnt: 5,
+				deleteUserCnt:  5,
+				deleteGroupCnt: 5,
+			},
+			wantRowsDeleted: 10,
+			wantErr:         false,
+		},
+		{
+			name: "valid-keeping-some",
+			args: args{
+				role:           TestRole(t, conn, org.PublicId),
+				createUserCnt:  5,
+				createGroupCnt: 5,
+				deleteUserCnt:  2,
+				deleteGroupCnt: 2,
+			},
+			wantRowsDeleted: 4,
+			wantErr:         false,
+		},
+		{
+			name: "just-user-roles",
+			args: args{
+				role:          TestRole(t, conn, org.PublicId),
+				createUserCnt: 5,
+				deleteUserCnt: 5,
+			},
+			wantRowsDeleted: 5,
+			wantErr:         false,
+		},
+		{
+			name: "just-group-roles",
+			args: args{
+				role:           TestRole(t, conn, org.PublicId),
+				createGroupCnt: 5,
+				deleteGroupCnt: 5,
+			},
+			wantRowsDeleted: 5,
+			wantErr:         false,
+		},
+		{
+			name: "not-found",
+			args: args{
+				role:           TestRole(t, conn, org.PublicId),
+				roleIdOverride: func() *string { id := testId(t); return &id }(),
+				createUserCnt:  5,
+				createGroupCnt: 5,
+				deleteUserCnt:  5,
+				deleteGroupCnt: 5,
+			},
+			wantRowsDeleted: 0,
+			wantErr:         true,
+		},
+		{
+			name: "missing-role-id",
+			args: args{
+				role:           TestRole(t, conn, org.PublicId),
+				roleIdOverride: func() *string { id := ""; return &id }(),
+				createUserCnt:  5,
+				createGroupCnt: 5,
+				deleteUserCnt:  5,
+				deleteGroupCnt: 5,
+			},
+			wantRowsDeleted: 0,
+			wantErr:         true,
+			wantIsErr:       db.ErrInvalidParameter,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+			userIds := make([]string, 0, tt.args.createUserCnt)
+			for i := 0; i < tt.args.createUserCnt; i++ {
+				u := TestUser(t, conn, org.PublicId)
+				userIds = append(userIds, u.PublicId)
+			}
+			groupIds := make([]string, 0, tt.args.createGroupCnt)
+			for i := 0; i < tt.args.createGroupCnt; i++ {
+				g := TestGroup(t, conn, tt.args.role.ScopeId)
+				groupIds = append(groupIds, g.PublicId)
+			}
+			principalRoles, err := repo.AddPrincipalRoles(context.Background(), tt.args.role.PublicId, 1, userIds, groupIds, tt.args.opt...)
+			require.NoError(err)
+			assert.Equal(tt.args.createUserCnt+tt.args.createGroupCnt, len(principalRoles))
+
+			deleteUserIds := make([]string, 0, tt.args.deleteUserCnt)
+			for i := 0; i < tt.args.deleteUserCnt; i++ {
+				deleteUserIds = append(deleteUserIds, userIds[i])
+			}
+			deleteGroupIds := make([]string, 0, tt.args.deleteGroupCnt)
+			for i := 0; i < tt.args.deleteGroupCnt; i++ {
+				deleteGroupIds = append(deleteGroupIds, groupIds[i])
+			}
+			var roleId string
+			switch {
+			case tt.args.roleIdOverride != nil:
+				roleId = *tt.args.roleIdOverride
+			default:
+				roleId = tt.args.role.PublicId
+			}
+			deletedRows, err := repo.DeletePrincipalRoles(context.Background(), roleId, 2, deleteUserIds, deleteGroupIds, tt.args.opt...)
+			if tt.wantErr {
+				assert.Error(err)
+				assert.Equal(0, deletedRows)
+				if tt.wantIsErr != nil {
+					assert.Truef(errors.Is(err, tt.wantIsErr), "unexpected error %s", err.Error())
+				}
+				err = db.TestVerifyOplog(t, rw, tt.args.role.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_DELETE), db.WithCreateNotBefore(10*time.Second))
+				assert.Error(err)
+				assert.True(errors.Is(db.ErrRecordNotFound, err))
+				return
+			}
+			require.NoError(err)
+			assert.Equal(tt.wantRowsDeleted, deletedRows)
+
+			err = db.TestVerifyOplog(t, rw, tt.args.role.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_DELETE), db.WithCreateNotBefore(10*time.Second))
+			assert.NoError(err)
+		})
+	}
+}
