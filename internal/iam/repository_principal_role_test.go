@@ -27,7 +27,6 @@ func TestRepository_AddPrincipalRoles(t *testing.T) {
 	require.NoError(t, err)
 	org, proj := TestScopes(t, conn)
 	role := TestRole(t, conn, proj.PublicId)
-
 	createUsersFn := func() []string {
 		results := []string{}
 		for i := 0; i < 5; i++ {
@@ -61,7 +60,7 @@ func TestRepository_AddPrincipalRoles(t *testing.T) {
 			name: "valid-both-users-and-groups",
 			args: args{
 				roleId:      role.PublicId,
-				roleVersion: 0,
+				roleVersion: 1,
 				userIds:     createUsersFn(),
 				groupIds:    createGrpsFn(),
 			},
@@ -71,7 +70,7 @@ func TestRepository_AddPrincipalRoles(t *testing.T) {
 			name: "valid-just-groups",
 			args: args{
 				roleId:      role.PublicId,
-				roleVersion: 1,
+				roleVersion: 2,
 				userIds:     nil,
 				groupIds:    createGrpsFn(),
 			},
@@ -81,7 +80,7 @@ func TestRepository_AddPrincipalRoles(t *testing.T) {
 			name: "valid-just-users",
 			args: args{
 				roleId:      role.PublicId,
-				roleVersion: 2,
+				roleVersion: 3,
 				userIds:     createUsersFn(),
 				groupIds:    nil,
 			},
@@ -110,7 +109,6 @@ func TestRepository_AddPrincipalRoles(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			conn.LogMode(true)
 			assert, require := assert.New(t), require.New(t)
 			require.NoError(conn.Where("1=1").Delete(allocUserRole()).Error)
 			require.NoError(conn.Where("1=1").Delete(allocGroupRole()).Error)

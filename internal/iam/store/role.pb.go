@@ -55,7 +55,8 @@ type Role struct {
 	Disabled bool `protobuf:"varint,9,opt,name=disabled,proto3" json:"disabled,omitempty" gorm:"default:null"`
 	// version allows optimistic locking of the role when modifying the role
 	// itself and when modifying dependent items like principal roles.
-	Version uint32 `protobuf:"varint,10,opt,name=version,proto3" json:"version,omitempty"`
+	// @inject_tag: `gorm:"default:null"`
+	Version uint32 `protobuf:"varint,10,opt,name=version,proto3" json:"version,omitempty" gorm:"default:null"`
 }
 
 func (x *Role) Reset() {

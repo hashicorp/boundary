@@ -38,5 +38,6 @@ message Role {
 
   // version allows optimistic locking of the role when modifying the role
   // itself and when modifying dependent items like principal roles.
+  // @inject_tag: `gorm:"default:null"`
   uint32 version = 10;
 }
