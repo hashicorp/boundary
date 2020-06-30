@@ -1478,19 +1478,22 @@ func TestDb_CreateItems(t *testing.T) {
 			u,
 			c,
 		}
-
 	}
+
+	returnedMsgs := []*oplog.Message{}
+
 	type args struct {
 		createItems []interface{}
 		opt         []Option
 	}
 	tests := []struct {
-		name        string
-		underlying  *gorm.DB
-		args        args
-		wantOplogId string
-		wantErr     bool
-		wantErrIs   error
+		name          string
+		underlying    *gorm.DB
+		args          args
+		wantOplogId   string
+		wantOplogMsgs bool
+		wantErr       bool
+		wantErrIs     error
 	}{
 		{
 			name:       "simple",
@@ -1517,6 +1520,37 @@ func TestDb_CreateItems(t *testing.T) {
 			},
 			wantOplogId: testOplogResourceId,
 			wantErr:     false,
+		},
+		{
+			name:       "NewOplogMsgs",
+			underlying: db,
+			args: args{
+				createItems: createFn(),
+				opt: []Option{
+					NewOplogMsgs(&returnedMsgs),
+				},
+			},
+			wantOplogMsgs: true,
+			wantErr:       false,
+		},
+		{
+			name:       "withOplog and NewOplogMsgs",
+			underlying: db,
+			args: args{
+				createItems: createFn(),
+				opt: []Option{
+					NewOplogMsgs(&[]*oplog.Message{}),
+					WithOplog(
+						TestWrapper(t),
+						oplog.Metadata{
+							"resource-public-id": []string{testOplogResourceId},
+							"op-type":            []string{oplog.OpType_OP_TYPE_CREATE.String()},
+						},
+					),
+				},
+			},
+			wantErrIs: ErrInvalidParameter,
+			wantErr:   true,
 		},
 		{
 			name:       "mixed items",
@@ -1626,6 +1660,12 @@ func TestDb_CreateItems(t *testing.T) {
 				err = TestVerifyOplog(t, rw, tt.wantOplogId, WithOperation(oplog.OpType_OP_TYPE_CREATE), WithCreateNotBefore(10*time.Second))
 				assert.NoError(err)
 			}
+			if tt.wantOplogMsgs {
+				assert.Equal(len(tt.args.createItems), len(returnedMsgs))
+				for _, m := range returnedMsgs {
+					assert.Equal(m.OpType, oplog.OpType_OP_TYPE_CREATE)
+				}
+			}
 		})
 	}
 }
@@ -1649,6 +1689,9 @@ func TestDb_DeleteItems(t *testing.T) {
 		}
 		return results
 	}
+
+	returnedMsgs := []*oplog.Message{}
+
 	type args struct {
 		deleteItems []interface{}
 		opt         []Option
@@ -1659,6 +1702,7 @@ func TestDb_DeleteItems(t *testing.T) {
 		args            args
 		wantRowsDeleted int
 		wantOplogId     string
+		wantOplogMsgs   bool
 		wantErr         bool
 		wantErrIs       error
 	}{
@@ -1670,6 +1714,37 @@ func TestDb_DeleteItems(t *testing.T) {
 			},
 			wantRowsDeleted: 10,
 			wantErr:         false,
+		},
+		{
+			name:       "NewOplogMsgs",
+			underlying: db,
+			args: args{
+				deleteItems: createFn(),
+				opt: []Option{
+					NewOplogMsgs(&returnedMsgs),
+				},
+			},
+			wantRowsDeleted: 10,
+			wantErr:         false,
+		},
+		{
+			name:       "withOplog and NewOplogMsgs",
+			underlying: db,
+			args: args{
+				deleteItems: createFn(),
+				opt: []Option{
+					NewOplogMsgs(&[]*oplog.Message{}),
+					WithOplog(
+						TestWrapper(t),
+						oplog.Metadata{
+							"resource-public-id": []string{testOplogResourceId},
+							"op-type":            []string{oplog.OpType_OP_TYPE_DELETE.String()},
+						},
+					),
+				},
+			},
+			wantErr:   true,
+			wantErrIs: ErrInvalidParameter,
 		},
 		{
 			name:       "withOplog",
@@ -1787,6 +1862,12 @@ func TestDb_DeleteItems(t *testing.T) {
 			if tt.wantOplogId != "" {
 				err = TestVerifyOplog(t, rw, tt.wantOplogId, WithOperation(oplog.OpType_OP_TYPE_DELETE), WithCreateNotBefore(10*time.Second))
 				assert.NoError(err)
+			}
+			if tt.wantOplogMsgs {
+				assert.Equal(len(tt.args.deleteItems), len(returnedMsgs))
+				for _, m := range returnedMsgs {
+					assert.Equal(m.OpType, oplog.OpType_OP_TYPE_DELETE)
+				}
 			}
 		})
 	}
@@ -2673,6 +2754,109 @@ func TestClear_SetFieldsToNil(t *testing.T) {
 				setFieldsToNil(input, tt.args.f)
 			})
 			assert.Equal(tt.want, input)
+		})
+	}
+}
+
+func TestDb_oplogMsgsForItems(t *testing.T) {
+	t.Parallel()
+
+	// underlying isn't used at this point, so it can just be nil
+	rw := Db{underlying: nil}
+	var users []interface{}
+	var wantUsrMsgs []*oplog.Message
+	for i := 0; i < 5; i++ {
+		publicId, err := base62.Random(20)
+		require.NoError(t, err)
+		u := &db_test.TestUser{StoreTestUser: &db_test.StoreTestUser{PublicId: publicId}}
+		users = append(users, u)
+		wantUsrMsgs = append(
+			wantUsrMsgs,
+			&oplog.Message{
+				Message:  users[i].(proto.Message),
+				TypeName: u.TableName(),
+				OpType:   oplog.OpType_OP_TYPE_CREATE,
+			},
+		)
+	}
+
+	publicId, err := base62.Random(20)
+	require.NoError(t, err)
+	mixed := []interface{}{
+		&db_test.TestUser{StoreTestUser: &db_test.StoreTestUser{PublicId: publicId}},
+		&db_test.TestCar{StoreTestCar: &db_test.StoreTestCar{PublicId: publicId}},
+	}
+
+	type args struct {
+		opType OpType
+		opts   Options
+		items  []interface{}
+	}
+	tests := []struct {
+		name      string
+		args      args
+		want      []*oplog.Message
+		wantErr   bool
+		wantIsErr error
+	}{
+		{
+			name: "valid",
+			args: args{
+				opType: CreateOp,
+				items:  users,
+			},
+			wantErr: false,
+			want:    wantUsrMsgs,
+		},
+		{
+			name: "nil items",
+			args: args{
+				opType: CreateOp,
+				items:  nil,
+			},
+			wantErr:   true,
+			wantIsErr: ErrInvalidParameter,
+		},
+		{
+			name: "zero items",
+			args: args{
+				opType: CreateOp,
+				items:  []interface{}{},
+			},
+			wantErr:   true,
+			wantIsErr: ErrInvalidParameter,
+		},
+		{
+			name: "mixed items",
+			args: args{
+				opType: CreateOp,
+				items:  mixed,
+			},
+			wantErr:   true,
+			wantIsErr: ErrInvalidParameter,
+		},
+		{
+			name: "bad op",
+			args: args{
+				opType: UnknownOp,
+				items:  users,
+			},
+			wantErr: true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+			got, err := rw.oplogMsgsForItems(context.Background(), tt.args.opType, tt.args.opts, tt.args.items)
+			if tt.wantErr {
+				require.Error(err)
+				if tt.wantIsErr != nil {
+					assert.Truef(errors.Is(err, tt.wantIsErr), "unexpected error %s", err.Error())
+				}
+				return
+			}
+			require.NoError(err)
+			assert.Equal(tt.want, got)
 		})
 	}
 }
