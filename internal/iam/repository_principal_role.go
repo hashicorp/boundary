@@ -8,28 +8,23 @@ import (
 	"github.com/hashicorp/watchtower/internal/oplog"
 )
 
-func (r *Repository) AddPrincipalRoles(ctx context.Context, roleId string, userIds, groupIds []string, opt ...Option) ([]PrincipalRole, error) {
+// AddPrincipalRoles provides the ability to add principals (userIds and
+// groupIds) to a role (roleId).  The role's current db version must match the
+// roleVersion or an error will be returned.  The role, users and groups must
+// all be in the same scope
+func (r *Repository) AddPrincipalRoles(ctx context.Context, roleId string, roleVersion int, userIds, groupIds []string, opt ...Option) ([]PrincipalRole, error) {
+	// NOTE - we are intentionally not going to check that the scopes are
+	// correct for the userIds and groupIds, given the roleId.  We are going to
+	// rely on the database constraints and triggers to maintain the integrity
+	// of these scope relationships.  The users and role need to either be in
+	// the same organization or the role needs to be in a project of the user's
+	// org.  The groups and role have to be in the same scope (org or project).
+	// There are constraints and triggers to enforce these relationships.
 	if roleId == "" {
-		return nil, fmt.Errorf("add principal role: missing role id %w", db.ErrInvalidParameter)
+		return nil, fmt.Errorf("add principal roles: missing role id %w", db.ErrInvalidParameter)
 	}
 	if len(userIds) == 0 && len(groupIds) == 0 {
 		return nil, fmt.Errorf("add principal roles: missing either user or groups to add %w", db.ErrInvalidParameter)
-	}
-	newUserRoles := make([]interface{}, 0, len(userIds))
-	for _, id := range userIds {
-		userRoles, err := NewUserRole(roleId, id)
-		if err != nil {
-			panic(err.Error())
-		}
-		newUserRoles = append(newUserRoles, userRoles)
-	}
-	newGrpRoles := make([]PrincipalRole, 0, len(groupIds))
-	for _, id := range groupIds {
-		grpRole, err := NewGroupRole(roleId, id)
-		if err != nil {
-			panic(err.Error())
-		}
-		newGrpRoles = append(newGrpRoles, grpRole)
 	}
 	role := allocRole()
 	role.PublicId = roleId
@@ -38,49 +33,98 @@ func (r *Repository) AddPrincipalRoles(ctx context.Context, roleId string, userI
 		return nil, fmt.Errorf("add principal roles: unable to get role %s scope to create metadata: %w", roleId, err)
 	}
 	metadata := oplog.Metadata{
-		"op-type":                      []string{oplog.OpType_OP_TYPE_CREATE.String()},
-		"scope-id":                     []string{scope.PublicId},
-		"scope-type":                   []string{scope.Type},
-		"aggregate-resource-public-id": []string{roleId},
+		"op-type":            []string{oplog.OpType_OP_TYPE_CREATE.String()},
+		"scope-id":           []string{scope.PublicId},
+		"scope-type":         []string{scope.Type},
+		"resource-public-id": []string{roleId},
 	}
-	resultPrincipalRoles := make([]PrincipalRole, 0, len(userIds)+len(groupIds))
+	newUserRoles := make([]interface{}, 0, len(userIds))
+	for _, id := range userIds {
+		usrRole, err := NewUserRole(scope.PublicId, roleId, id)
+		if err != nil {
+			return nil, fmt.Errorf("add principal roles: unable to create new in memory user role: %w", err)
+		}
+		newUserRoles = append(newUserRoles, usrRole)
+	}
+	newGrpRoles := make([]interface{}, 0, len(groupIds))
+	for _, id := range groupIds {
+		grpRole, err := NewGroupRole(scope.PublicId, roleId, id)
+		if err != nil {
+			return nil, fmt.Errorf("add principal roles: unable to create new in memory group role: %w", err)
+		}
+		newGrpRoles = append(newGrpRoles, grpRole)
+	}
+
 	_, err = r.writer.DoTx(
 		ctx,
 		db.StdRetryCnt,
 		db.ExpBackoff{},
 		func(reader db.Reader, w db.Writer) error {
-			w.CreateItems(ctx, newUserRoles)
-			// for _, principalRole := range newPrincipalRoles {
-			// 	returnedPrincipalRole := principalRole.Clone()
-			// 	err := w.Create(
-			// 		ctx,
-			// 		returnedPrincipalRole,
-			// 		db.WithOplog(r.wrapper, metadata),
-			// 	)
-			// 	if err != nil {
-			// 		if db.IsUniqueError(err) {
-			// 			return fmt.Errorf("add principal role: unable to add principal %s to role %s : %w", principalRole.GetPrincipalId(), roleId, db.ErrNotUnique)
-			// 		}
-			// 		return fmt.Errorf("add principal role: %w when attempting to add principal %s to role %s", err, principalRole.GetPrincipalId(), roleId)
-			// 	}
-			// 	resultPrincipalRoles = append(resultPrincipalRoles, returnedPrincipalRole.(PrincipalRole))
-			// }
+			msgs := make([]*oplog.Message, 0, 2)
+			roleTicket, err := w.GetTicket(&role)
+			if err != nil {
+				return fmt.Errorf("add principal roles: unable to get ticket: %w", err)
+			}
+			updatedRole := allocRole()
+			updatedRole.PublicId = roleId
+			updatedRole.Version = uint32(roleVersion)
+			var roleOplogMsg oplog.Message
+			rowsUpdated, err := w.Update(ctx, &role, []string{"Version"}, nil, db.NewOplogMsg(&roleOplogMsg))
+			if err != nil {
+				return fmt.Errorf("add principal roles: unable to update role version: %w", err)
+			}
+			if rowsUpdated != 1 {
+				return fmt.Errorf("add principal roles: updated role and %d rows updated: %w", rowsUpdated, err)
+			}
+			msgs = append(msgs, &roleOplogMsg)
+			userOplogMsgs := make([]*oplog.Message, 0, len(newUserRoles))
+			if err := w.CreateItems(ctx, newUserRoles, db.NewOplogMsgs(&userOplogMsgs)); err != nil {
+				return fmt.Errorf("add principal roles: unable to add users: %w", err)
+			}
+			msgs = append(msgs, userOplogMsgs...)
+
+			grpOplogMsgs := make([]*oplog.Message, 0, len(newGrpRoles))
+			if err := w.CreateItems(ctx, newGrpRoles, db.NewOplogMsgs(&grpOplogMsgs)); err != nil {
+				return fmt.Errorf("add principal roles: unable to add groups: %w", err)
+			}
+			msgs = append(msgs, grpOplogMsgs...)
+
+			if err := w.WriteOplogEntryWith(ctx, r.wrapper, roleTicket, metadata, msgs); err != nil {
+				return fmt.Errorf("add principal roles: unable to write oplog: %w", err)
+			}
 			return nil
 		},
 	)
 	if err != nil {
 		return nil, err
 	}
-	return resultPrincipalRoles, nil
+	principalRoles := make([]PrincipalRole, 0, len(newUserRoles)+len(newUserRoles))
+	for _, role := range newUserRoles {
+		principalRoles = append(principalRoles, role.(*UserRole))
+	}
+	for _, role := range newGrpRoles {
+		principalRoles = append(principalRoles, role.(*GroupRole))
+	}
+	return principalRoles, nil
 }
 
 func (r *Repository) SetPrincipalRoles(ctx context.Context, roleId string, userIds, groupIds []string, opt ...Option) ([]*PrincipalRole, int, error) {
 	panic("not implemented")
 }
 
-func (r *Repository) LookupPrincipalRoles(ctx context.Context, roleId string) ([]*PrincipalRole, error) {
-	// see role_assigned_role.go for query
-	panic("not implemented")
+func (r *Repository) ListPrincipalRoles(ctx context.Context, roleId string) ([]PrincipalRole, error) {
+	if roleId == "" {
+		return nil, fmt.Errorf("lookup principal roles: missing role id %w", db.ErrInvalidParameter)
+	}
+	var roles []principalRoleView
+	if err := r.reader.SearchWhere(ctx, &roles, "role_id = ?", []interface{}{roleId}); err != nil {
+		return nil, fmt.Errorf("lookup principal role: unable to lookup roles: %w", err)
+	}
+	principals := make([]PrincipalRole, 0, len(roles))
+	for _, r := range roles {
+		principals = append(principals, r)
+	}
+	return principals, nil
 }
 func (r *Repository) DeletePrincipalRoles(ctx context.Context, roleId string, userIds, groupIds []string, opt ...Option) (int, error) {
 	panic("not implemented")
