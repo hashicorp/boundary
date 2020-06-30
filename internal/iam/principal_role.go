@@ -32,6 +32,7 @@ type PrincipalRole interface {
 	GetRoleId() string
 	GetPrincipalId() string
 	GetType() string
+	GetScopeId() string
 	Clone() interface{}
 }
 
@@ -42,6 +43,13 @@ type principalRoleView struct {
 
 // TableName provides an overridden gorm table name for principal roles.
 func (v *principalRoleView) TableName() string { return "iam_principal_role" }
+
+func (v principalRoleView) Clone() interface{} {
+	cp := proto.Clone(v.PrincipalRoleView)
+	return &principalRoleView{
+		PrincipalRoleView: cp.(*store.PrincipalRoleView),
+	}
+}
 
 // UserRole is a role assigned to a user
 type UserRole struct {
@@ -58,7 +66,7 @@ var _ db.VetForWriter = (*UserRole)(nil)
 // which are within its organization, or the role is within a project within its
 // organization. This relationship will not be enforced until the user role is
 // written to the database.  No options are supported currently.
-func NewUserRole(roleId, userId string, opt ...Option) (PrincipalRole, error) {
+func NewUserRole(scopeId, roleId, userId string, opt ...Option) (PrincipalRole, error) {
 	if roleId == "" {
 		return nil, fmt.Errorf("new user role: missing role id %w", db.ErrInvalidParameter)
 	}
@@ -69,6 +77,7 @@ func NewUserRole(roleId, userId string, opt ...Option) (PrincipalRole, error) {
 		UserRole: &store.UserRole{
 			PrincipalId: userId,
 			RoleId:      roleId,
+			ScopeId:     scopeId,
 		},
 	}, nil
 }
@@ -136,7 +145,7 @@ var _ db.VetForWriter = (*GroupRole)(nil)
 // assigned roles within its scope (org or project). This relationship will not
 // be enforced until the group role is written to the database. No options are
 // supported currently.
-func NewGroupRole(roleId, groupId string, opt ...Option) (PrincipalRole, error) {
+func NewGroupRole(scopeId, roleId, groupId string, opt ...Option) (PrincipalRole, error) {
 	if roleId == "" {
 		return nil, fmt.Errorf("new group role: missing role id %w", db.ErrInvalidParameter)
 	}
@@ -147,6 +156,7 @@ func NewGroupRole(roleId, groupId string, opt ...Option) (PrincipalRole, error) 
 		GroupRole: &store.GroupRole{
 			PrincipalId: groupId,
 			RoleId:      roleId,
+			ScopeId:     scopeId,
 		},
 	}, nil
 }
