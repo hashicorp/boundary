@@ -58,25 +58,69 @@ func TestRepository_AddPrincipalRoles(t *testing.T) {
 		wantErrIs error
 	}{
 		{
-			name: "one",
+			name: "valid-both-users-and-groups",
 			args: args{
 				roleId:      role.PublicId,
-				roleVersion: 1,
+				roleVersion: 0,
 				userIds:     createUsersFn(),
 				groupIds:    createGrpsFn(),
 			},
 			wantErr: false,
 		},
+		{
+			name: "valid-just-groups",
+			args: args{
+				roleId:      role.PublicId,
+				roleVersion: 1,
+				userIds:     nil,
+				groupIds:    createGrpsFn(),
+			},
+			wantErr: false,
+		},
+		{
+			name: "valid-just-users",
+			args: args{
+				roleId:      role.PublicId,
+				roleVersion: 2,
+				userIds:     createUsersFn(),
+				groupIds:    nil,
+			},
+			wantErr: false,
+		},
+		{
+			name: "bad-version",
+			args: args{
+				roleId:      role.PublicId,
+				roleVersion: 1000,
+				userIds:     createUsersFn(),
+				groupIds:    createGrpsFn(),
+			},
+			wantErr: true,
+		},
+		{
+			name: "no-principals",
+			args: args{
+				roleId:      role.PublicId,
+				roleVersion: 1,
+				userIds:     nil,
+				groupIds:    nil,
+			},
+			wantErr: true,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			conn.LogMode(true)
 			assert, require := assert.New(t), require.New(t)
+			require.NoError(conn.Where("1=1").Delete(allocUserRole()).Error)
+			require.NoError(conn.Where("1=1").Delete(allocGroupRole()).Error)
 			got, err := repo.AddPrincipalRoles(context.Background(), tt.args.roleId, tt.args.roleVersion, tt.args.userIds, tt.args.groupIds, tt.args.opt...)
 			if tt.wantErr {
 				require.Error(err)
 				if tt.wantErrIs != nil {
 					assert.Truef(errors.Is(err, tt.wantErrIs), "unexpected error %s", err.Error())
 				}
+				return
 			}
 			require.NoError(err)
 			gotPrincipal := map[string]PrincipalRole{}
