@@ -56,28 +56,16 @@ func NewRepository(r db.Reader, w db.Writer, wrapper wrapping.Wrapper) (*Reposit
 // and token. s is not changed. s must contain a valid ScopeID, UserID, and AuthMethodID.  The scopes for
 // the user, auth method, and this auth token must all be the same.  s must not contain a PublicId nor a Token.
 // The PublicId and token are generated and assigned by this method. opt is ignored.
-//
-// Both s.CreateTime and s.UpdateTime are ignored.
-func (r *Repository) CreateAuthToken(ctx context.Context, withIamUserId, withAuthMethodId string, opt ...Option) (*AuthToken, error) {
+func (r *Repository) CreateAuthToken(ctx context.Context, withIamUserId, withAuthAccountId string, opt ...Option) (*AuthToken, error) {
 	if withIamUserId == "" {
 		return nil, fmt.Errorf("create: auth token: no user id: %w", db.ErrInvalidParameter)
 	}
-	if withAuthMethodId == "" {
-		return nil, fmt.Errorf("create: auth token: no auth method id: %w", db.ErrInvalidParameter)
-	}
-
-	user, err := r.getUserWithIdAndAuthMethod(withIamUserId, withAuthMethodId)
-	if err != nil {
-		return nil, fmt.Errorf("create: auth token: user lookup: %w", err)
-	}
-	if user == nil {
-		return nil, fmt.Errorf("create: auth token: user lookup: user not found with auth method")
+	if withAuthAccountId == "" {
+		return nil, fmt.Errorf("create: auth token: no auth account id: %w", db.ErrInvalidParameter)
 	}
 
 	at := allocAuthToken()
-	at.IamUserId = user.GetPublicId()
-	at.ScopeId = user.GetScopeId()
-	at.AuthMethodId = withAuthMethodId
+	at.AuthAccountId = withAuthAccountId
 
 	id, err := newAuthTokenId()
 	if err != nil {
@@ -98,14 +86,21 @@ func (r *Repository) CreateAuthToken(ctx context.Context, withIamUserId, withAut
 	}
 	at.ExpirationTime = &timestamp.Timestamp{Timestamp: expiration}
 
-	metadata := newAuthTokenMetadata(at, oplog.OpType_OP_TYPE_CREATE)
-
 	var newAuthToken *AuthToken
 	_, err = r.writer.DoTx(
 		ctx,
 		db.StdRetryCnt,
 		db.ExpBackoff{},
-		func(_ db.Reader, w db.Writer) error {
+		func(read db.Reader, w db.Writer) error {
+			acct := &iam.AuthAccount{AuthAccount: &iamStore.AuthAccount{PublicId: withAuthAccountId}}
+			if err := read.LookupByPublicId(ctx, acct); err != nil {
+				return fmt.Errorf("create: auth token: auth account lookup: %w", err)
+			}
+			if acct.GetIamUserId() != withIamUserId {
+				return fmt.Errorf("create: auth token: auth account %q mismatch with iam user %q", withAuthAccountId, withIamUserId)
+			}
+
+			metadata := newAuthTokenMetadata(acct.GetScopeId(), at.GetPublicId(), oplog.OpType_OP_TYPE_CREATE)
 
 			newAuthToken = at.clone()
 			if err := newAuthToken.EncryptData(ctx, r.wrapper); err != nil {
@@ -115,6 +110,9 @@ func (r *Repository) CreateAuthToken(ctx context.Context, withIamUserId, withAut
 				return err
 			}
 			newAuthToken.CtToken = nil
+			newAuthToken.ScopeId = acct.GetScopeId()
+			newAuthToken.IamUserId = acct.GetIamUserId()
+			newAuthToken.AuthMethodId = acct.GetAuthMethodId()
 
 			return nil
 		},
@@ -140,8 +138,16 @@ func (r *Repository) LookupAuthToken(ctx context.Context, id string, opt ...Opti
 		}
 		return nil, fmt.Errorf("lookup: auth token: %s: %w", id, err)
 	}
+	acct := &iam.AuthAccount{AuthAccount: &iamStore.AuthAccount{PublicId: at.GetAuthAccountId()}}
+	if err := r.reader.LookupByPublicId(ctx, acct); err != nil {
+		return nil, fmt.Errorf("lookup: auth token: auth account lookup: %w", err)
+	}
 	at.Token = ""
 	at.CtToken = nil
+	at.AuthMethodId = acct.GetAuthMethodId()
+	at.IamUserId = acct.GetIamUserId()
+	at.ScopeId = acct.GetScopeId()
+
 	return at, nil
 }
 
@@ -167,6 +173,10 @@ func (r *Repository) ValidateToken(ctx context.Context, id, token string, opt ..
 			if err := r.reader.LookupByPublicId(ctx, retAT); err != nil {
 				return fmt.Errorf("validate token: lookup auth token: %s: %w", id, err)
 			}
+			acct := &iam.AuthAccount{AuthAccount: &iamStore.AuthAccount{PublicId: retAT.GetAuthAccountId()}}
+			if err := read.LookupByPublicId(ctx, acct); err != nil {
+				return fmt.Errorf("validate token: auth token: auth account lookup: %w", err)
+			}
 
 			// If the token is to old or stale invalidate it and return nothing.
 			exp, err := ptypes.Timestamp(retAT.GetExpirationTime().GetTimestamp())
@@ -181,7 +191,7 @@ func (r *Repository) ValidateToken(ctx context.Context, id, token string, opt ..
 			now := time.Now()
 			sinceLastAccessed := now.Sub(lastAccessed)
 			if now.After(exp) || sinceLastAccessed > maxStaleness {
-				metadata := newAuthTokenMetadata(retAT, oplog.OpType_OP_TYPE_DELETE)
+				metadata := newAuthTokenMetadata(acct.GetScopeId(), retAT.GetPublicId(), oplog.OpType_OP_TYPE_DELETE)
 				delAt := retAT.clone()
 				if _, err := w.Delete(ctx, delAt, db.WithOplog(r.wrapper, metadata)); err != nil {
 					return fmt.Errorf("validate token: delete auth token: %w", err)
@@ -199,6 +209,9 @@ func (r *Repository) ValidateToken(ctx context.Context, id, token string, opt ..
 			// retAT.Token set to empty string so the value is not returned as described in the methods' doc.
 			retAT.Token = ""
 			retAT.CtToken = nil
+			retAT.ScopeId = acct.GetScopeId()
+			retAT.IamUserId = acct.GetIamUserId()
+			retAT.AuthMethodId = acct.GetAuthMethodId()
 
 			if sinceLastAccessed < lastAccessedUpdateDuration {
 				// To save the db from being updated to frequently, we only update the
@@ -207,7 +220,7 @@ func (r *Repository) ValidateToken(ctx context.Context, id, token string, opt ..
 				return nil
 			}
 
-			metadata := newAuthTokenMetadata(retAT, oplog.OpType_OP_TYPE_UPDATE)
+			metadata := newAuthTokenMetadata(acct.GetScopeId(), retAT.GetPublicId(), oplog.OpType_OP_TYPE_UPDATE)
 			// Setting the ApproximateLastAccessTime to null through using the null mask allows a defined db's
 			// trigger to set ApproximateLastAccessTime to the commit timestamp.
 			at := retAT.clone()
@@ -240,33 +253,32 @@ func (r *Repository) DeleteAuthToken(ctx context.Context, id string, opt ...Opti
 		return db.NoRowsAffected, fmt.Errorf("delete: auth token: missing public id: %w", db.ErrInvalidParameter)
 	}
 
-	at, err := r.LookupAuthToken(ctx, id)
-	if err != nil {
-		if errors.Is(err, db.ErrRecordNotFound) {
-			return db.NoRowsAffected, nil
-		}
-		return 0, fmt.Errorf("delete: auth token: lookup %w", err)
-	}
-	if at == nil {
-		return db.NoRowsAffected, nil
-	}
-
-	metadata := newAuthTokenMetadata(at, oplog.OpType_OP_TYPE_DELETE)
-
 	var rowsDeleted int
 	var deleteAT *AuthToken
-	_, err = r.writer.DoTx(
+	_, err := r.writer.DoTx(
 		ctx,
 		db.StdRetryCnt,
 		db.ExpBackoff{},
-		func(_ db.Reader, w db.Writer) error {
+		func(read db.Reader, w db.Writer) error {
+			repo, err := NewRepository(read, w, r.wrapper)
+			if err != nil {
+				return err
+			}
+			at, err := repo.LookupAuthToken(ctx, id)
+			if err != nil {
+				if errors.Is(err, db.ErrRecordNotFound) {
+					return nil
+				}
+				return fmt.Errorf("delete: auth token: lookup %w", err)
+			}
+			if at == nil {
+				return nil
+			}
+
+			metadata := newAuthTokenMetadata(at.GetScopeId(), at.GetPublicId(), oplog.OpType_OP_TYPE_DELETE)
+
 			deleteAT = at.clone()
-			var err error
-			rowsDeleted, err = w.Delete(
-				ctx,
-				deleteAT,
-				db.WithOplog(r.wrapper, metadata),
-			)
+			rowsDeleted, err = w.Delete(ctx, deleteAT, db.WithOplog(r.wrapper, metadata))
 			if err == nil && rowsDeleted > 1 {
 				return db.ErrMultipleRecords
 			}
@@ -275,62 +287,10 @@ func (r *Repository) DeleteAuthToken(ctx context.Context, id string, opt ...Opti
 	)
 
 	if err != nil {
-		return db.NoRowsAffected, fmt.Errorf("delete: auth token: %s: %w", at.PublicId, err)
+		return db.NoRowsAffected, fmt.Errorf("delete: auth token: %s: %w", id, err)
 	}
 
 	return rowsDeleted, nil
-}
-
-// getUserWithIdAndAuthMethod returns a user only if the user with the provided id currently has the provided
-// auth method and they are both in the same scope.  If that is not the case a nil iam.User will be returned.
-func (r *Repository) getUserWithIdAndAuthMethod(withIamUserId, withAuthMethodId string, opt ...Option) (*iam.User, error) {
-	if withAuthMethodId == "" {
-		return nil, fmt.Errorf("missing auth method id %w", db.ErrInvalidParameter)
-	}
-	if withIamUserId == "" {
-		return nil, fmt.Errorf("missing iam user id %w", db.ErrInvalidParameter)
-	}
-	underlying, err := r.reader.DB()
-	if err != nil {
-		return nil, fmt.Errorf("unable to get underlying db for auth account search: %w", err)
-	}
-	userTable := (&iam.User{}).TableName()
-	acctTable := (&iam.AuthAccount{}).TableName()
-	authMethodTable := "auth_method"
-
-	q := fmt.Sprintf(`	
-	select %[1]s.*
-		from %[1]s 
-	inner join %[2]s 
-			on %[1]s.public_id = %[2]s.iam_user_id
-	inner join %[3]s 
-			on %[2]s.auth_method_id = %[3]s.public_id 
-	where 
-		%[1]s.scope_id = %[2]s.scope_id
-		and %[2]s.scope_id = %[3]s.scope_id
-		and %[1]s.public_id = $1
-		and %[3]s.public_id = $2`, userTable, acctTable, authMethodTable)
-	rows, err := underlying.Query(q, withIamUserId, withAuthMethodId)
-	if err != nil {
-		return nil, fmt.Errorf("unable to query iam user %s", withIamUserId)
-	}
-	defer rows.Close()
-	u := &iam.User{User: &iamStore.User{}}
-	if rows.Next() {
-		err = r.reader.ScanRows(rows, u)
-		if err != nil {
-			return nil, fmt.Errorf("unable to scan rows for iam user %s, auth method %s: %w", withIamUserId, withAuthMethodId, err)
-		}
-	} else {
-		if err := rows.Err(); err != nil {
-			return nil, fmt.Errorf("unable to get next iam user: %w", err)
-		}
-		return nil, nil
-	}
-	if err != nil {
-		return nil, fmt.Errorf("unable to get next row for iam user %s, auth method %s: %w", withIamUserId, withAuthMethodId, err)
-	}
-	return u, nil
 }
 
 func allocAuthToken() *AuthToken {
@@ -340,10 +300,10 @@ func allocAuthToken() *AuthToken {
 	return fresh
 }
 
-func newAuthTokenMetadata(a *AuthToken, op oplog.OpType) oplog.Metadata {
+func newAuthTokenMetadata(scopeId, authTokenId string, op oplog.OpType) oplog.Metadata {
 	metadata := oplog.Metadata{
-		"scope-id":           []string{a.ScopeId},
-		"resource-public-id": []string{a.GetPublicId()},
+		"scope-id":           []string{scopeId},
+		"resource-public-id": []string{authTokenId},
 		"resource-type":      []string{"auth token"},
 		"op-type":            []string{op.String()},
 	}

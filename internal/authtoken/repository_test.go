@@ -9,6 +9,7 @@ import (
 	"github.com/golang/protobuf/ptypes"
 	"github.com/google/go-cmp/cmp"
 	wrapping "github.com/hashicorp/go-kms-wrapping"
+	iamStore "github.com/hashicorp/watchtower/internal/iam/store"
 	"github.com/hashicorp/watchtower/internal/oplog"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -132,64 +133,55 @@ func TestRepository_CreateAuthToken(t *testing.T) {
 	org1, _ := iam.TestScopes(t, conn)
 	u1 := iam.TestUser(t, conn, org1.GetPublicId())
 	amId1 := setupAuthMethod(t, conn, org1.GetPublicId())
-	_ = setupAuthAccount(t, conn, org1.GetPublicId(), amId1, u1.GetPublicId())
+	aAcct := setupAuthAccount(t, conn, org1.GetPublicId(), amId1, u1.GetPublicId())
 
 	org2, _ := iam.TestScopes(t, conn)
 	u2 := iam.TestUser(t, conn, org2.GetPublicId())
-	amId2 := setupAuthMethod(t, conn, org2.GetPublicId())
 
 	var tests = []struct {
-		name         string
-		iamUserId    string
-		authMethodId string
-		want         *AuthToken
-		wantErr      bool
+		name       string
+		iamUserId  string
+		authAcctId string
+		want       *AuthToken
+		wantErr    bool
 	}{
 		{
-			name:         "valid",
-			iamUserId:    u1.GetPublicId(),
-			authMethodId: amId1,
+			name:       "valid",
+			iamUserId:  u1.GetPublicId(),
+			authAcctId: aAcct.GetPublicId(),
 			want: &AuthToken{
 				AuthToken: &store.AuthToken{
-					ScopeId:      org1.GetPublicId(),
-					IamUserId:    u1.GetPublicId(),
-					AuthMethodId: amId1,
+					AuthAccountId: aAcct.GetPublicId(),
 				},
 			},
 		},
 		{
-			name:         "unconnected-authmethod-user",
-			iamUserId:    u2.GetPublicId(),
-			authMethodId: amId2,
-			wantErr:      true,
+			name:       "unconnected-authaccount-user",
+			iamUserId:  u2.GetPublicId(),
+			authAcctId: aAcct.GetPublicId(),
+			wantErr:    true,
 		},
 		{
-			name:         "unmatched-authtoken-user-scopes",
-			iamUserId:    u2.GetPublicId(),
-			authMethodId: amId1,
-			wantErr:      true,
-		},
-		{
-			name:      "no-authmethodid",
+			name:      "no-authacctid",
 			iamUserId: u1.GetPublicId(),
 			wantErr:   true,
 		},
 		{
-			name:         "no-userid",
-			authMethodId: amId1,
-			wantErr:      true,
+			name:       "no-userid",
+			authAcctId: aAcct.GetPublicId(),
+			wantErr:    true,
 		},
 		{
-			name:         "invalid-authmethodid",
-			iamUserId:    u1.GetPublicId(),
-			authMethodId: "this_is_invalid",
-			wantErr:      true,
+			name:       "invalid-authacctid",
+			iamUserId:  u1.GetPublicId(),
+			authAcctId: "this_is_invalid",
+			wantErr:    true,
 		},
 		{
-			name:         "invalid-userid",
-			iamUserId:    "this_is_invalid",
-			authMethodId: amId1,
-			wantErr:      true,
+			name:       "invalid-userid",
+			iamUserId:  "this_is_invalid",
+			authAcctId: aAcct.GetPublicId(),
+			wantErr:    true,
 		},
 	}
 
@@ -199,18 +191,16 @@ func TestRepository_CreateAuthToken(t *testing.T) {
 			repo, err := NewRepository(rw, rw, wrapper)
 			require.NoError(err)
 			require.NotNil(repo)
-			got, err := repo.CreateAuthToken(context.Background(), tt.iamUserId, tt.authMethodId)
+			got, err := repo.CreateAuthToken(context.Background(), tt.iamUserId, tt.authAcctId)
 			if tt.wantErr {
 				assert.Error(err)
 				assert.Nil(got)
 				return
 			}
-			require.NoError(err, "Got error for CreateAuthToken(ctx, %v, %v)", tt.iamUserId, tt.authMethodId)
+			require.NoError(err, "Got error for CreateAuthToken(ctx, %v, %v)", tt.iamUserId, tt.authAcctId)
 			assert.NotNil(got)
 			db.AssertPublicId(t, AuthTokenPrefix, got.PublicId)
-			assert.Equal(tt.iamUserId, got.GetIamUserId())
-			assert.Equal(tt.authMethodId, got.GetAuthMethodId())
-			assert.Equal(org1.GetPublicId(), got.GetScopeId())
+			assert.Equal(tt.authAcctId, got.GetAuthAccountId())
 			assert.Equal(got.CreateTime, got.UpdateTime)
 			assert.Equal(got.CreateTime, got.ApproximateLastAccessTime)
 			assert.NoError(db.TestVerifyOplog(t, rw, got.GetPublicId(), db.WithOperation(oplog.OpType_OP_TYPE_CREATE)))
@@ -418,6 +408,10 @@ func TestRepository_ValidateToken_expired(t *testing.T) {
 	require.NotNil(t, repo)
 
 	baseAT := testAuthToken(t, conn, wrapper)
+	baseAT.GetAuthAccountId()
+	aAcct := &iam.AuthAccount{AuthAccount: &iamStore.AuthAccount{PublicId: baseAT.GetAuthAccountId()}}
+	require.NoError(t, rw.LookupByPublicId(context.Background(), aAcct))
+	iamUserId := aAcct.GetIamUserId()
 
 	defaultStaleTime := maxStaleness
 	defaultExpireDuration := maxTokenDuration
@@ -456,7 +450,7 @@ func TestRepository_ValidateToken_expired(t *testing.T) {
 			maxTokenDuration = tt.expirationDuration
 
 			ctx := context.Background()
-			at, err := repo.CreateAuthToken(ctx, baseAT.GetIamUserId(), baseAT.GetAuthMethodId())
+			at, err := repo.CreateAuthToken(ctx, iamUserId, baseAT.GetAuthAccountId())
 			require.NoError(err)
 
 			got, err := repo.ValidateToken(ctx, at.GetPublicId(), at.GetToken())

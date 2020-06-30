@@ -37,15 +37,20 @@ message AuthToken {
 	// @inject_tag: gorm:"-" wrapping:"pt,authtoken_token"
 	string token = 7;
 
-	// The iam_scope_id of the owning scope and must be set.
+	// auth_account_id is the public id for the auth account this auth token
+	// was generated for.
 	// @inject_tag: `gorm:"default:not_null"`
-	string scope_id = 8;
+	string auth_account_id = 10;
 
-	// iam_user_id is the public id for the iam user this auth token is for.
-	// @inject_tag: `gorm:"default:not_null"`
-	string iam_user_id = 9;
+	// scope_id is not stored in the backing DB but it derived from the linked to auth account.
+	// @inject_tag: gorm:"-"
+	string scope_id = 11;
 
-	// user id is the public id for the iam user this auth token is for.
-	// @inject_tag: `gorm:"default:not_null"`
-	string auth_method_id = 10;
+	// auth_method_id is not stored in the backing DB but it derived from the linked to auth account.
+	// @inject_tag: gorm:"-"
+	string auth_method_id = 12;
+
+	// iam_user_id is not stored in the backing DB but it derived from the linked to auth account.
+	// @inject_tag: gorm:"-"
+	string iam_user_id = 13;
 }

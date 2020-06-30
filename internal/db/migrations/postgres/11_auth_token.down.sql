@@ -1,5 +1,5 @@
 begin;
 
-  drop table user_session cascade;
+  drop table auth_token cascade;
 
 commit;

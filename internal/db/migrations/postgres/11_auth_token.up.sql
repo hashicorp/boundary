@@ -7,23 +7,18 @@ begin;
   create table auth_token (
     public_id wt_public_id primary key,
     token bytea not null unique,
-    scope_id wt_public_id not null,
-    iam_user_id wt_public_id not null,
-    auth_method_id wt_public_id not null,
+    auth_account_id wt_public_id not null
+        references auth_account(public_id)
+        on delete cascade
+        on update cascade,
     create_time wt_timestamp,
     update_time wt_timestamp,
+    -- This column is not updated every time this auth token is accessed.
+    -- It is updated after X minutes from the last time it was updated on
+    -- a per row basis.
     approximate_last_access_time wt_timestamp,
-    expiration_time wt_timestamp,
-    foreign key (scope_id, auth_method_id)
-      references auth_method (scope_id, public_id)
-      on delete cascade
-      on update cascade,
-    foreign key (scope_id, iam_user_id)
-      references iam_user (scope_id, public_id)
-      on delete cascade
-      on update cascade
+    expiration_time wt_timestamp
   );
-
 
   create or replace function
     update_last_access_time_column()
@@ -49,14 +44,8 @@ begin;
     returns trigger
   as $$
   begin
-    if new.iam_user_id is distinct from old.iam_user_id then
-      raise exception 'iam_user_id cannot be set to %', new.iam_user_id;
-    end if;
-    if new.auth_method_id is distinct from old.auth_method_id then
-        raise exception 'auth_method_id cannot be set to %', new.auth_method_id;
-    end if;
-    if new.scope_id is distinct from old.scope_id then
-        raise exception 'scope_id cannot be set to %', new.scope_id;
+    if new.auth_account_id is distinct from old.auth_account_id then
+      raise exception 'auth_account_id cannot be set to %', new.auth_account_id;
     end if;
     if new.token is distinct from old.token then
         raise exception 'token cannot be set to %', new.token;

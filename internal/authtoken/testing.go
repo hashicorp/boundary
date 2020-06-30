@@ -21,14 +21,14 @@ func testAuthToken(t *testing.T, conn *gorm.DB, wrapper wrapping.Wrapper) *AuthT
 
 	// auth account is only used to join auth method to user.
 	// We don't do anything else with the auth account in the test setup.
-	_ = setupAuthAccount(t, conn, org.GetPublicId(), amId, u.GetPublicId())
+	acct := setupAuthAccount(t, conn, org.GetPublicId(), amId, u.GetPublicId())
 
 	rw := db.New(conn)
 	repo, err := NewRepository(rw, rw, wrapper)
 	require.NoError(err)
 
 	ctx := context.Background()
-	at, err := repo.CreateAuthToken(ctx, u.GetPublicId(), amId)
+	at, err := repo.CreateAuthToken(ctx, u.GetPublicId(), acct.GetPublicId())
 	require.NoError(err)
 	return at
 }
