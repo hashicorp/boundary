@@ -47,6 +47,8 @@ func TestWrapper(t *testing.T) wrapping.Wrapper {
 	return root
 }
 
+// AssertPublicId is a test helper that asserts that the provided id is in
+// the format of a public id.
 func AssertPublicId(t *testing.T, prefix, actual string) {
 	t.Helper()
 	assert.NotEmpty(t, actual)
