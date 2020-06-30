@@ -15,15 +15,27 @@ export GEN_BASEPATH := $(shell pwd)
 api:
 	$(MAKE) --environment-overrides -C api/internal/genapi api
 
-bootstrap:
+tools:
 	go generate -tags tools tools/tools.go
 
 cleangen:
 	@rm -f ${GENERATED_CODE}
 
 dev: BUILD_TAGS+=dev
-dev:
+dev: build-ui-ifne
+	@echo "==> Building Watchtower with dev features enabled"
 	@CGO_ENABLED=$(CGO_ENABLED) BUILD_TAGS='$(BUILD_TAGS)' WATCHTOWER_DEV_BUILD=1 sh -c "'$(CURDIR)/scripts/build.sh'"
+
+build-ui:
+	@scripts/uigen.sh
+
+build-ui-ifne:
+ifeq (,$(wildcard internal/ui/assets.go))
+	@echo "==> No UI assets found, building..."
+	@scripts/uigen.sh
+else
+	@echo "==> UI assets found, use build-ui target to update"
+endif
 
 gen: cleangen proto api migrations
 
@@ -66,6 +78,6 @@ protobuild:
 protolint:
 	@buf check lint
 
-.PHONY: api bootstrap gen migrations proto
+.PHONY: api tools gen migrations proto
 
 .NOTPARALLEL:
