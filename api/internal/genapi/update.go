@@ -42,6 +42,16 @@ var updateFuncs = map[string][]*updateInfo{
 			targetType: "hosts.HostCatalog",
 			path:       "host-catalogs",
 		},
+		{
+			baseType:   "Project",
+			targetType: "groups.Group",
+			path:       "groups",
+		},
+		{
+			baseType:   "Project",
+			targetType: "roles.Role",
+			path:       "roles",
+		},
 	},
 }
 
