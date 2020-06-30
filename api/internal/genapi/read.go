@@ -42,6 +42,16 @@ var readFuncs = map[string][]*readInfo{
 			targetType: "hosts.HostCatalog",
 			path:       "host-catalogs",
 		},
+		{
+			baseType:   "Project",
+			targetType: "groups.Group",
+			path:       "groups",
+		},
+		{
+			baseType:   "Project",
+			targetType: "roles.Role",
+			path:       "roles",
+		},
 	},
 }
 
