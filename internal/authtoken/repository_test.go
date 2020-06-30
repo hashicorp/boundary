@@ -327,11 +327,10 @@ func TestRepository_ValidateToken(t *testing.T) {
 			want:  at,
 		},
 		{
-			name:    "doesnt-exist",
-			id:      badId,
-			token:   badToken,
-			want:    nil,
-			wantErr: db.ErrRecordNotFound,
+			name:  "doesnt-exist",
+			id:    badId,
+			token: badToken,
+			want:  nil,
 		},
 		{
 			name:    "empty-token",
@@ -359,7 +358,7 @@ func TestRepository_ValidateToken(t *testing.T) {
 			}
 			assert.NoError(err)
 			if got == nil {
-				assert.Nil(tt.want, "Got nil but wanted %v", tt.want.AuthToken)
+				assert.Nil(tt.want)
 				// No need to compare updated time if we didn't get an initial auth token to compare against.
 				return
 			}

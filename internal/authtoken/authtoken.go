@@ -25,8 +25,8 @@ func (s *AuthToken) clone() *AuthToken {
 	}
 }
 
-// EncryptData the entry's data using the provided cipher (wrapping.Wrapper)
-func (s *AuthToken) EncryptData(ctx context.Context, cipher wrapping.Wrapper) error {
+// Encrypt the entry's data using the provided cipher (wrapping.Wrapper)
+func (s *AuthToken) Encrypt(ctx context.Context, cipher wrapping.Wrapper) error {
 	// structwrapping doesn't support embedding, so we'll pass in the store.Entry directly
 	if err := structwrapping.WrapStruct(ctx, cipher, s.AuthToken, nil); err != nil {
 		return fmt.Errorf("error encrypting auth token: %w", err)
@@ -34,8 +34,8 @@ func (s *AuthToken) EncryptData(ctx context.Context, cipher wrapping.Wrapper) er
 	return nil
 }
 
-// DecryptData will decrypt the auth token's value using the provided cipher (wrapping.Wrapper)
-func (s *AuthToken) DecryptData(ctx context.Context, cipher wrapping.Wrapper) error {
+// Decrypt will decrypt the auth token's value using the provided cipher (wrapping.Wrapper)
+func (s *AuthToken) Decrypt(ctx context.Context, cipher wrapping.Wrapper) error {
 	// structwrapping doesn't support embedding, so we'll pass in the store.Entry directly
 	if err := structwrapping.UnwrapStruct(ctx, cipher, s.AuthToken, nil); err != nil {
 		return fmt.Errorf("error decrypting auth token: %w", err)

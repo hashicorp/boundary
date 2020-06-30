@@ -106,7 +106,7 @@ func (r *Repository) CreateAuthToken(ctx context.Context, withIamUserId, withAut
 			metadata := newAuthTokenMetadata(at, oplog.OpType_OP_TYPE_CREATE)
 
 			newAuthToken = at.clone()
-			if err := newAuthToken.EncryptData(ctx, r.wrapper); err != nil {
+			if err := newAuthToken.Encrypt(ctx, r.wrapper); err != nil {
 				return err
 			}
 			if err := w.Create(ctx, newAuthToken, db.WithOplog(r.wrapper, metadata)); err != nil {
