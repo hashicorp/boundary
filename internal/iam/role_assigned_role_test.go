@@ -35,7 +35,7 @@ func TestRole_AssignedRoles(t *testing.T) {
 		assert.NoError(err)
 		assert.NotEmpty(role.PublicId)
 
-		uRole, err := NewUserRole(role.PublicId, user.PublicId)
+		uRole, err := NewUserRole(s.PublicId, role.PublicId, user.PublicId)
 		assert.NoError(err)
 		assert.NotNil(uRole)
 		assert.Equal(uRole.GetRoleId(), role.PublicId)
@@ -47,7 +47,7 @@ func TestRole_AssignedRoles(t *testing.T) {
 
 		grp := TestGroup(t, conn, s.PublicId)
 
-		gRole, err := NewGroupRole(role.PublicId, grp.PublicId)
+		gRole, err := NewGroupRole(s.PublicId, role.PublicId, grp.PublicId)
 		assert.NoError(err)
 		assert.NotNil(gRole)
 		assert.Equal(gRole.GetRoleId(), role.PublicId)

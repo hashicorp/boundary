@@ -27,9 +27,10 @@ func TestNewUserRole(t *testing.T) {
 	user := TestUser(t, conn, org.PublicId)
 
 	type args struct {
-		roleId string
-		userId string
-		opt    []Option
+		roleId  string
+		userId  string
+		scopeId string
+		opt     []Option
 	}
 	tests := []struct {
 		name      string
@@ -41,34 +42,39 @@ func TestNewUserRole(t *testing.T) {
 		{
 			name: "valid-org",
 			args: args{
-				roleId: orgRole.PublicId,
-				userId: user.PublicId,
+				roleId:  orgRole.PublicId,
+				userId:  user.PublicId,
+				scopeId: org.PublicId,
 			},
 			want: func() PrincipalRole {
 				r := allocUserRole()
 				r.RoleId = orgRole.PublicId
 				r.PrincipalId = user.PublicId
+				r.ScopeId = org.PublicId
 				return &r
 			}(),
 		},
 		{
 			name: "valid-proj",
 			args: args{
-				roleId: projRole.PublicId,
-				userId: user.PublicId,
+				roleId:  projRole.PublicId,
+				userId:  user.PublicId,
+				scopeId: proj.PublicId,
 			},
 			want: func() PrincipalRole {
 				r := allocUserRole()
 				r.RoleId = projRole.PublicId
 				r.PrincipalId = user.PublicId
+				r.ScopeId = proj.PublicId
 				return &r
 			}(),
 		},
 		{
 			name: "empty-role-id",
 			args: args{
-				roleId: "",
-				userId: user.PublicId,
+				roleId:  "",
+				userId:  user.PublicId,
+				scopeId: org.PublicId,
 			},
 			want:      nil,
 			wantErr:   true,
@@ -77,8 +83,9 @@ func TestNewUserRole(t *testing.T) {
 		{
 			name: "empty-user-id",
 			args: args{
-				roleId: orgRole.PublicId,
-				userId: "",
+				roleId:  orgRole.PublicId,
+				userId:  "",
+				scopeId: org.PublicId,
 			},
 			want:      nil,
 			wantErr:   true,
@@ -88,7 +95,7 @@ func TestNewUserRole(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			got, err := NewUserRole(tt.args.roleId, tt.args.userId, tt.args.opt...)
+			got, err := NewUserRole(tt.args.scopeId, tt.args.roleId, tt.args.userId, tt.args.opt...)
 			if tt.wantErr {
 				require.Error(err)
 				assert.True(errors.Is(err, tt.wantIsErr))
@@ -127,7 +134,7 @@ func Test_UserRoleCreate(t *testing.T) {
 				role: func() *UserRole {
 					role := TestRole(t, conn, org.PublicId)
 					principal := TestUser(t, conn, org.PublicId)
-					principalRole, err := NewUserRole(role.PublicId, principal.PublicId)
+					principalRole, err := NewUserRole(org.PublicId, role.PublicId, principal.PublicId)
 					require.NoError(t, err)
 					return principalRole.(*UserRole)
 				}(),
@@ -140,7 +147,7 @@ func Test_UserRoleCreate(t *testing.T) {
 				role: func() *UserRole {
 					role := TestRole(t, conn, proj.PublicId)
 					principal := TestUser(t, conn, org.PublicId)
-					principalRole, err := NewUserRole(role.PublicId, principal.PublicId)
+					principalRole, err := NewUserRole(proj.PublicId, role.PublicId, principal.PublicId)
 					require.NoError(t, err)
 					return principalRole.(*UserRole)
 				}(),
@@ -153,7 +160,7 @@ func Test_UserRoleCreate(t *testing.T) {
 				role: func() *UserRole {
 					id := testId(t)
 					principal := TestUser(t, conn, org.PublicId)
-					principalRole, err := NewUserRole(id, principal.PublicId)
+					principalRole, err := NewUserRole(org.PublicId, id, principal.PublicId)
 					require.NoError(t, err)
 					return principalRole.(*UserRole)
 				}(),
@@ -167,7 +174,7 @@ func Test_UserRoleCreate(t *testing.T) {
 				role: func() *UserRole {
 					id := testId(t)
 					role := TestRole(t, conn, proj.PublicId)
-					principalRole, err := NewUserRole(role.PublicId, id)
+					principalRole, err := NewUserRole(proj.PublicId, role.PublicId, id)
 					require.NoError(t, err)
 					return principalRole.(*UserRole)
 				}(),
@@ -184,6 +191,7 @@ func Test_UserRoleCreate(t *testing.T) {
 						UserRole: &store.UserRole{
 							RoleId:      "",
 							PrincipalId: principal.PublicId,
+							ScopeId:     org.PublicId,
 						},
 					}
 				}(),
@@ -201,6 +209,7 @@ func Test_UserRoleCreate(t *testing.T) {
 						UserRole: &store.UserRole{
 							RoleId:      role.PublicId,
 							PrincipalId: "",
+							ScopeId:     org.PublicId,
 						},
 					}
 				}(),
@@ -215,7 +224,7 @@ func Test_UserRoleCreate(t *testing.T) {
 				role: func() *UserRole {
 					role := TestRole(t, conn, org.PublicId)
 					principal := TestUser(t, conn, org.PublicId)
-					principalRole, err := NewUserRole(role.PublicId, principal.PublicId)
+					principalRole, err := NewUserRole(org.PublicId, role.PublicId, principal.PublicId)
 					require.NoError(t, err)
 					return principalRole.(*UserRole)
 				}(),
@@ -272,7 +281,7 @@ func Test_UserRoleUpdate(t *testing.T) {
 		r := TestRole(t, conn, org.PublicId)
 		u := TestUser(t, conn, org.PublicId)
 		u2 := TestUser(t, conn, org.PublicId)
-		userRole := TestUserRole(t, conn, r.PublicId, u.PublicId)
+		userRole := TestUserRole(t, conn, org.PublicId, r.PublicId, u.PublicId)
 		updateRole := userRole.Clone().(*UserRole)
 		updateRole.PrincipalId = u2.PublicId
 		updatedRows, err := rw.Update(context.Background(), updateRole, []string{"PrincipalId"}, nil)
@@ -305,7 +314,7 @@ func Test_UserRoleDelete(t *testing.T) {
 	}{
 		{
 			name:            "valid",
-			role:            TestUserRole(t, conn, r.PublicId, u.PublicId),
+			role:            TestUserRole(t, conn, org.PublicId, r.PublicId, u.PublicId),
 			wantErr:         false,
 			wantRowsDeleted: 1,
 		},
@@ -355,7 +364,7 @@ func TestUserRole_Clone(t *testing.T) {
 	t.Run("valid", func(t *testing.T) {
 		assert := assert.New(t)
 		role := TestRole(t, conn, org.PublicId)
-		userRole := TestUserRole(t, conn, role.PublicId, user.PublicId)
+		userRole := TestUserRole(t, conn, org.PublicId, role.PublicId, user.PublicId)
 		cp := userRole.Clone()
 		assert.True(proto.Equal(cp.(*UserRole).UserRole, userRole.UserRole))
 	})
@@ -363,8 +372,8 @@ func TestUserRole_Clone(t *testing.T) {
 		assert := assert.New(t)
 		role := TestRole(t, conn, org.PublicId)
 		role2 := TestRole(t, conn, proj.PublicId)
-		userRole := TestUserRole(t, conn, role.PublicId, user.PublicId)
-		userRole2 := TestUserRole(t, conn, role2.PublicId, user.PublicId)
+		userRole := TestUserRole(t, conn, org.PublicId, role.PublicId, user.PublicId)
+		userRole2 := TestUserRole(t, conn, proj.PublicId, role2.PublicId, user.PublicId)
 		cp := userRole.Clone()
 		assert.True(!proto.Equal(cp.(*UserRole).UserRole, userRole2.UserRole))
 	})
@@ -395,6 +404,7 @@ func TestNewGroupRole(t *testing.T) {
 	type args struct {
 		roleId  string
 		groupId string
+		scopeId string
 		opt     []Option
 	}
 	tests := []struct {
@@ -409,11 +419,13 @@ func TestNewGroupRole(t *testing.T) {
 			args: args{
 				roleId:  orgRole.PublicId,
 				groupId: group.PublicId,
+				scopeId: org.PublicId,
 			},
 			want: func() PrincipalRole {
 				r := allocGroupRole()
 				r.RoleId = orgRole.PublicId
 				r.PrincipalId = group.PublicId
+				r.ScopeId = org.PublicId
 				return &r
 			}(),
 		},
@@ -422,11 +434,13 @@ func TestNewGroupRole(t *testing.T) {
 			args: args{
 				roleId:  projRole.PublicId,
 				groupId: group.PublicId,
+				scopeId: proj.PublicId,
 			},
 			want: func() PrincipalRole {
 				r := allocGroupRole()
 				r.RoleId = projRole.PublicId
 				r.PrincipalId = group.PublicId
+				r.ScopeId = proj.PublicId
 				return &r
 			}(),
 		},
@@ -435,6 +449,7 @@ func TestNewGroupRole(t *testing.T) {
 			args: args{
 				roleId:  "",
 				groupId: group.PublicId,
+				scopeId: org.PublicId,
 			},
 			want:      nil,
 			wantErr:   true,
@@ -445,6 +460,7 @@ func TestNewGroupRole(t *testing.T) {
 			args: args{
 				roleId:  orgRole.PublicId,
 				groupId: "",
+				scopeId: org.PublicId,
 			},
 			want:      nil,
 			wantErr:   true,
@@ -454,7 +470,7 @@ func TestNewGroupRole(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			got, err := NewGroupRole(tt.args.roleId, tt.args.groupId, tt.args.opt...)
+			got, err := NewGroupRole(tt.args.scopeId, tt.args.roleId, tt.args.groupId, tt.args.opt...)
 			if tt.wantErr {
 				require.Error(err)
 				assert.True(errors.Is(err, tt.wantIsErr))
@@ -493,7 +509,7 @@ func Test_GroupRoleCreate(t *testing.T) {
 				role: func() *GroupRole {
 					role := TestRole(t, conn, org.PublicId)
 					principal := TestGroup(t, conn, org.PublicId)
-					principalRole, err := NewGroupRole(role.PublicId, principal.PublicId)
+					principalRole, err := NewGroupRole(org.PublicId, role.PublicId, principal.PublicId)
 					require.NoError(t, err)
 					return principalRole.(*GroupRole)
 				}(),
@@ -506,7 +522,7 @@ func Test_GroupRoleCreate(t *testing.T) {
 				role: func() *GroupRole {
 					role := TestRole(t, conn, proj.PublicId)
 					principal := TestGroup(t, conn, proj.PublicId)
-					principalRole, err := NewGroupRole(role.PublicId, principal.PublicId)
+					principalRole, err := NewGroupRole(proj.PublicId, role.PublicId, principal.PublicId)
 					require.NoError(t, err)
 					return principalRole.(*GroupRole)
 				}(),
@@ -519,13 +535,13 @@ func Test_GroupRoleCreate(t *testing.T) {
 				role: func() *GroupRole {
 					id := testId(t)
 					principal := TestGroup(t, conn, org.PublicId)
-					principalRole, err := NewGroupRole(id, principal.PublicId)
+					principalRole, err := NewGroupRole(org.PublicId, id, principal.PublicId)
 					require.NoError(t, err)
 					return principalRole.(*GroupRole)
 				}(),
 			},
 			wantErr:    true,
-			wantErrMsg: "create: failed pq: group and role do not belong to the same scope",
+			wantErrMsg: `create: failed pq: insert or update on table "iam_group_role" violates foreign key constraint "iam_group_role_scope_id_role_id_fkey"`,
 		},
 		{
 			name: "bad-user-id",
@@ -533,13 +549,13 @@ func Test_GroupRoleCreate(t *testing.T) {
 				role: func() *GroupRole {
 					id := testId(t)
 					role := TestRole(t, conn, proj.PublicId)
-					principalRole, err := NewGroupRole(role.PublicId, id)
+					principalRole, err := NewGroupRole(org.PublicId, role.PublicId, id)
 					require.NoError(t, err)
 					return principalRole.(*GroupRole)
 				}(),
 			},
 			wantErr:    true,
-			wantErrMsg: "create: failed pq: group and role do not belong to the same scope",
+			wantErrMsg: `create: failed pq: insert or update on table "iam_group_role" violates foreign key constraint "iam_group_role_scope_id_role_id_fkey"`,
 		},
 		{
 			name: "missing-role-id",
@@ -550,6 +566,7 @@ func Test_GroupRoleCreate(t *testing.T) {
 						GroupRole: &store.GroupRole{
 							RoleId:      "",
 							PrincipalId: principal.PublicId,
+							ScopeId:     org.PublicId,
 						},
 					}
 				}(),
@@ -567,6 +584,7 @@ func Test_GroupRoleCreate(t *testing.T) {
 						GroupRole: &store.GroupRole{
 							RoleId:      role.PublicId,
 							PrincipalId: "",
+							ScopeId:     proj.PublicId,
 						},
 					}
 				}(),
@@ -581,7 +599,7 @@ func Test_GroupRoleCreate(t *testing.T) {
 				role: func() *GroupRole {
 					role := TestRole(t, conn, org.PublicId)
 					principal := TestGroup(t, conn, org.PublicId)
-					principalRole, err := NewGroupRole(role.PublicId, principal.PublicId)
+					principalRole, err := NewGroupRole(org.PublicId, role.PublicId, principal.PublicId)
 					require.NoError(t, err)
 					return principalRole.(*GroupRole)
 				}(),
@@ -596,7 +614,7 @@ func Test_GroupRoleCreate(t *testing.T) {
 				role: func() *GroupRole {
 					role := TestRole(t, conn, proj.PublicId)
 					principal := TestGroup(t, conn, proj.PublicId)
-					principalRole, err := NewGroupRole(role.PublicId, principal.PublicId)
+					principalRole, err := NewGroupRole(proj.PublicId, role.PublicId, principal.PublicId)
 					require.NoError(t, err)
 					return principalRole.(*GroupRole)
 				}(),
@@ -653,7 +671,7 @@ func Test_GroupRoleUpdate(t *testing.T) {
 		r := TestRole(t, conn, org.PublicId)
 		g := TestGroup(t, conn, org.PublicId)
 		g2 := TestGroup(t, conn, org.PublicId)
-		userRole := TestGroupRole(t, conn, r.PublicId, g.PublicId)
+		userRole := TestGroupRole(t, conn, org.PublicId, r.PublicId, g.PublicId)
 		updateRole := userRole.Clone().(*GroupRole)
 		updateRole.PrincipalId = g2.PublicId
 		updatedRows, err := rw.Update(context.Background(), updateRole, []string{"PrincipalId"}, nil)
@@ -686,13 +704,13 @@ func Test_GroupRoleDelete(t *testing.T) {
 	}{
 		{
 			name:            "valid",
-			role:            TestGroupRole(t, conn, r.PublicId, g.PublicId),
+			role:            TestGroupRole(t, conn, org.PublicId, r.PublicId, g.PublicId),
 			wantErr:         false,
 			wantRowsDeleted: 1,
 		},
 		{
 			name:            "bad-id",
-			role:            func() *GroupRole { r := allocGroupRole(); r.PrincipalId = id; r.RoleId = id; return &r }(),
+			role:            func() *GroupRole { r := allocGroupRole(); r.PrincipalId = id; r.RoleId = id; r.ScopeId = id; return &r }(),
 			wantErr:         false,
 			wantRowsDeleted: 0,
 		},
@@ -736,7 +754,7 @@ func TestGroupRole_Clone(t *testing.T) {
 		assert := assert.New(t)
 		grp := TestGroup(t, conn, org.PublicId)
 		role := TestRole(t, conn, org.PublicId)
-		grpRole := TestGroupRole(t, conn, role.PublicId, grp.PublicId)
+		grpRole := TestGroupRole(t, conn, org.PublicId, role.PublicId, grp.PublicId)
 		cp := grpRole.Clone()
 		assert.True(proto.Equal(cp.(*GroupRole).GroupRole, grpRole.GroupRole))
 	})
@@ -746,8 +764,8 @@ func TestGroupRole_Clone(t *testing.T) {
 		grp2 := TestGroup(t, conn, proj.PublicId)
 		role := TestRole(t, conn, org.PublicId)
 		role2 := TestRole(t, conn, proj.PublicId)
-		grpRole := TestGroupRole(t, conn, role.PublicId, grp.PublicId)
-		grpRole2 := TestGroupRole(t, conn, role2.PublicId, grp2.PublicId)
+		grpRole := TestGroupRole(t, conn, org.PublicId, role.PublicId, grp.PublicId)
+		grpRole2 := TestGroupRole(t, conn, proj.PublicId, role2.PublicId, grp2.PublicId)
 		cp := grpRole.Clone()
 		assert.True(!proto.Equal(cp.(*GroupRole).GroupRole, grpRole2.GroupRole))
 	})

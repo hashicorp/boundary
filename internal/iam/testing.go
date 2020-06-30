@@ -142,11 +142,11 @@ func TestGroup(t *testing.T, conn *gorm.DB, scopeId string, opt ...Option) *Grou
 	return grp
 }
 
-func TestUserRole(t *testing.T, conn *gorm.DB, roleId, userId string, opt ...Option) *UserRole {
+func TestUserRole(t *testing.T, conn *gorm.DB, scopeId, roleId, userId string, opt ...Option) *UserRole {
 	t.Helper()
 	require := require.New(t)
 	rw := db.New(conn)
-	r, err := NewUserRole(roleId, userId, opt...)
+	r, err := NewUserRole(scopeId, roleId, userId, opt...)
 	require.NoError(err)
 
 	err = rw.Create(context.Background(), r)
@@ -154,11 +154,11 @@ func TestUserRole(t *testing.T, conn *gorm.DB, roleId, userId string, opt ...Opt
 	return r.(*UserRole)
 }
 
-func TestGroupRole(t *testing.T, conn *gorm.DB, roleId, grpId string, opt ...Option) *GroupRole {
+func TestGroupRole(t *testing.T, conn *gorm.DB, scopeId, roleId, grpId string, opt ...Option) *GroupRole {
 	t.Helper()
 	require := require.New(t)
 	rw := db.New(conn)
-	r, err := NewGroupRole(roleId, grpId, opt...)
+	r, err := NewGroupRole(scopeId, roleId, grpId, opt...)
 	require.NoError(err)
 
 	err = rw.Create(context.Background(), r)

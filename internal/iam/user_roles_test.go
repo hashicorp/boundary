@@ -24,7 +24,7 @@ func Test_UserRoles(t *testing.T) {
 		user := TestUser(t, conn, org.PublicId)
 		role := TestRole(t, conn, org.PublicId, WithDescription("this is a test role"))
 
-		uRole, err := NewUserRole(role.PublicId, user.PublicId)
+		uRole, err := NewUserRole(org.PublicId, role.PublicId, user.PublicId)
 		assert.NoError(err)
 		assert.NotNil(uRole)
 		assert.Equal(uRole.GetRoleId(), role.PublicId)
