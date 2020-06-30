@@ -31,15 +31,15 @@ func NewRoleGrant(role *Role, grant string, opt ...Option) (*RoleGrant, error) {
 	if role.PublicId == "" {
 		return nil, errors.New("error role id is unset")
 	}
-	publicId, err := db.NewPublicId("rg")
+	privateId, err := db.NewPrivateId("rg")
 	if err != nil {
 		return nil, fmt.Errorf("error generating public id %w for new role grant", err)
 	}
 	rg := &RoleGrant{
 		RoleGrant: &store.RoleGrant{
-			PublicId: publicId,
-			RoleId:   role.PublicId,
-			Grant:    grant,
+			PrivateId: privateId,
+			RoleId:    role.PublicId,
+			Grant:     grant,
 		},
 	}
 	return rg, nil
@@ -61,8 +61,8 @@ func (g *RoleGrant) Clone() interface{} {
 
 // VetForWrite implements db.VetForWrite() interface
 func (g *RoleGrant) VetForWrite(ctx context.Context, r db.Reader, opType db.OpType, opt ...db.Option) error {
-	if g.PublicId == "" {
-		return errors.New("error public id is empty string for grant write")
+	if g.PrivateId == "" {
+		return errors.New("error private id is empty string for grant write")
 	}
 	return nil
 }

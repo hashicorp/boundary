@@ -76,7 +76,7 @@ values
 
 
 CREATE TABLE iam_role_grant (
-    public_id wt_public_id not null primary key,
+    private_id wt_private_id not null primary key,
     create_time wt_timestamp,
     update_time wt_timestamp,
     description text,

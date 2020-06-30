@@ -5,6 +5,7 @@ go 1.13
 require (
 	github.com/armon/go-metrics v0.3.3
 	github.com/bufbuild/buf v0.16.0
+	github.com/denisenkom/go-mssqldb v0.0.0-20200206145737-bbfc9a55622e // indirect
 	github.com/fatih/color v1.9.0
 	github.com/fatih/structs v1.1.0
 	github.com/favadi/protoc-go-inject-tag v1.0.0
@@ -35,14 +36,17 @@ require (
 	github.com/hashicorp/vault/sdk v0.1.14-0.20200519221912-a8c2591d3641
 	github.com/jackc/pgx/v4 v4.6.0
 	github.com/jinzhu/gorm v1.9.12
+	github.com/jinzhu/now v1.1.1 // indirect
 	github.com/kr/pretty v0.2.0
 	github.com/kr/text v0.2.0
 	github.com/lib/pq v1.7.0
 	github.com/mattn/go-colorable v0.1.6
+	github.com/mattn/go-sqlite3 v2.0.3+incompatible // indirect
 	github.com/mitchellh/cli v1.1.1
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/mitchellh/gox v1.0.1
 	github.com/mitchellh/mapstructure v1.3.2
+	github.com/niemeyer/pretty v0.0.0-20200227124842-a10e7caefd8e // indirect
 	github.com/oligot/go-mod-upgrade v0.1.2
 	github.com/ory/dockertest v3.3.5+incompatible
 	github.com/ory/dockertest/v3 v3.6.0
@@ -54,7 +58,6 @@ require (
 	github.com/ryanuber/go-glob v1.0.0
 	github.com/spf13/viper v1.6.3 // indirect
 	github.com/stretchr/testify v1.6.1
-	github.com/t-tiger/gorm-bulk-insert/v2 v2.0.1
 	go.mongodb.org/mongo-driver v1.3.2 // indirect
 	golang.org/x/net v0.0.0-20200519113804-d87ec0cfa476 // indirect
 	golang.org/x/sys v0.0.0-20200509044756-6aff5f38e54f // indirect
@@ -63,6 +66,7 @@ require (
 	google.golang.org/genproto v0.0.0-20200610104632-a5b850bcf112
 	google.golang.org/grpc v1.29.1
 	google.golang.org/protobuf v1.24.0
+	gopkg.in/check.v1 v1.0.0-20200227125254-8fa46927fb4f // indirect
 	gopkg.in/ini.v1 v1.55.0 // indirect
 	gopkg.in/yaml.v2 v2.3.0 // indirect
 )

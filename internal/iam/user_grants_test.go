@@ -34,7 +34,7 @@ func Test_UserGrants(t *testing.T) {
 		assert.Equal(g.Grant, "everything*"+id)
 		err = w.Create(context.Background(), g)
 		assert.NoError(err)
-		assert.NotEqual(g.PublicId, "")
+		assert.NotEqual(g.PrivateId, "")
 
 		user := TestUser(t, conn, org.PublicId)
 		uRole, err := NewUserRole(org.PublicId, role.PublicId, user.PublicId)
@@ -68,7 +68,7 @@ func Test_UserGrants(t *testing.T) {
 		assert.Equal(groupGrant.Grant, "group-grant*"+id)
 		err = w.Create(context.Background(), groupGrant)
 		assert.NoError(err)
-		assert.NotEqual(groupGrant.PublicId, "")
+		assert.NotEqual(groupGrant.PrivateId, "")
 
 		gRole, err := NewGroupRole(org.PublicId, groupRole.PublicId, grp.PublicId)
 		assert.NoError(err)
@@ -84,7 +84,7 @@ func Test_UserGrants(t *testing.T) {
 		assert.NoError(err)
 		assert.Equal(len(allGrants), 2)
 		for _, grant := range allGrants {
-			assert.True(grant.PublicId == g.PublicId || grant.PublicId == groupGrant.PublicId)
+			assert.True(grant.PrivateId == g.PrivateId || grant.PrivateId == groupGrant.PrivateId)
 		}
 	})
 }
