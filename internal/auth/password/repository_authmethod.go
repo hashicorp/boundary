@@ -19,10 +19,6 @@ import (
 //
 // Both m.CreateTime and m.UpdateTime are ignored.
 func (r *Repository) CreateAuthMethod(ctx context.Context, m *AuthMethod, opt ...Option) (*AuthMethod, error) {
-	// TODO(mgaffney) 06/2020: Add WithConfig option
-
-	// TODO(mgaffney) 06/2020: add support for min_user_name_length and
-	// min_password_length.
 	if m == nil {
 		return nil, fmt.Errorf("create: password auth method: %w", db.ErrNilParameter)
 	}
