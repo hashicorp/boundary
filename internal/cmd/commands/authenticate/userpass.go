@@ -28,7 +28,7 @@ func (c *PasswordCommand) Help() string {
 Usage: watchtower authenticate password [options] [args]
 
   Invoke the password auth method to authenticate the Watchtower
-	commandline:
+  commandline:
 
 	$ watchtower authenticate password -username=foo -password=bar
 
