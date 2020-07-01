@@ -2,6 +2,7 @@ package roles_test
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"testing"
 
@@ -19,6 +20,84 @@ type roleCrud interface {
 	ReadRole(context.Context, *roles.Role) (*roles.Role, *api.Error, error)
 	UpdateRole(context.Context, *roles.Role) (*roles.Role, *api.Error, error)
 	DeleteRole(context.Context, *roles.Role) (bool, *api.Error, error)
+	ListRole(ctx context.Context) ([]*roles.Role, *api.Error, error)
+}
+
+func TestRole_List(t *testing.T) {
+	assert := assert.New(t)
+	tc := controller.NewTestController(t, nil)
+	defer tc.Shutdown()
+
+	client := tc.Client()
+	org := &scopes.Organization{
+		Client: client,
+	}
+	proj, apiErr, err := org.CreateProject(context.Background(), &scopes.Project{})
+	require.NoError(t, err)
+	require.Nil(t, apiErr)
+
+	cases := []struct {
+		name  string
+		scope roleCrud
+	}{
+		{
+			name:  "org",
+			scope: org,
+		},
+		{
+			name:  "proj",
+			scope: proj,
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			ctx := context.Background()
+
+			pl, apiErr, err := tc.scope.ListRole(ctx)
+			assert.NoError(err)
+			assert.Nil(apiErr)
+			assert.Empty(pl)
+
+			var expected []*roles.Role
+			for i := 0; i < 10; i++ {
+				expected = append(expected, &roles.Role{Name: api.String(fmt.Sprint(i))})
+			}
+
+			expected[0], apiErr, err = tc.scope.CreateRole(ctx, expected[0])
+			assert.NoError(err)
+			assert.Nil(apiErr)
+
+			pl, apiErr, err = tc.scope.ListRole(ctx)
+			assert.NoError(err)
+			assert.Nil(apiErr)
+			assert.ElementsMatch(comparableSlice(expected[:1]), comparableSlice(pl))
+
+			for i := 1; i < 10; i++ {
+				expected[i], apiErr, err = tc.scope.CreateRole(ctx, expected[i])
+				assert.NoError(err)
+				assert.Nil(apiErr)
+			}
+			pl, apiErr, err = tc.scope.ListRole(ctx)
+			assert.ElementsMatch(comparableSlice(expected), comparableSlice(pl))
+		})
+	}
+}
+
+func comparableSlice(in []*roles.Role) []roles.Role {
+	var filtered []roles.Role
+	for _, i := range in {
+		p := roles.Role{
+			Id:          i.Id,
+			Name:        i.Name,
+			Description: i.Description,
+			CreatedTime: i.CreatedTime,
+			UpdatedTime: i.UpdatedTime,
+			Disabled:    i.Disabled,
+		}
+		filtered = append(filtered, p)
+	}
+	return filtered
 }
 
 func TestRole_Crud(t *testing.T) {
