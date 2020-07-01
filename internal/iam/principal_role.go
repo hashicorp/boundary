@@ -39,10 +39,16 @@ type PrincipalRole interface {
 // principalRoleView provides a common way to return roles regardless of their underlying type.
 type principalRoleView struct {
 	*store.PrincipalRoleView
+	tableName string `gorm:"-"`
 }
 
 // TableName provides an overridden gorm table name for principal roles.
 func (v *principalRoleView) TableName() string { return "iam_principal_role" }
+func (v *principalRoleView) SetTableName(n string) {
+	if v.tableName != "" {
+		v.tableName = n
+	}
+}
 
 func (v principalRoleView) Clone() interface{} {
 	cp := proto.Clone(v.PrincipalRoleView)
