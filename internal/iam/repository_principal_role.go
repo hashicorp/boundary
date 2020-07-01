@@ -26,18 +26,14 @@ func (r *Repository) AddPrincipalRoles(ctx context.Context, roleId string, roleV
 	if len(userIds) == 0 && len(groupIds) == 0 {
 		return nil, fmt.Errorf("add principal roles: missing either user or groups to add %w", db.ErrInvalidParameter)
 	}
+
 	role := allocRole()
 	role.PublicId = roleId
 	scope, err := role.GetScope(ctx, r.reader)
 	if err != nil {
-		return nil, fmt.Errorf("add principal roles: unable to get role %s scope to create metadata: %w", roleId, err)
+		return nil, fmt.Errorf("add principal roles: unable to get role %s scope: %w", roleId, err)
 	}
-	metadata := oplog.Metadata{
-		"op-type":            []string{oplog.OpType_OP_TYPE_CREATE.String()},
-		"scope-id":           []string{scope.PublicId},
-		"scope-type":         []string{scope.Type},
-		"resource-public-id": []string{roleId},
-	}
+
 	newUserRoles := make([]interface{}, 0, len(userIds))
 	for _, id := range userIds {
 		usrRole, err := NewUserRole(scope.PublicId, roleId, id)
@@ -91,6 +87,12 @@ func (r *Repository) AddPrincipalRoles(ctx context.Context, roleId string, roleV
 				}
 				msgs = append(msgs, grpOplogMsgs...)
 			}
+			metadata := oplog.Metadata{
+				"op-type":            []string{oplog.OpType_OP_TYPE_CREATE.String()},
+				"scope-id":           []string{scope.PublicId},
+				"scope-type":         []string{scope.Type},
+				"resource-public-id": []string{roleId},
+			}
 			if err := w.WriteOplogEntryWith(ctx, r.wrapper, roleTicket, metadata, msgs); err != nil {
 				return fmt.Errorf("add principal roles: unable to write oplog: %w", err)
 			}
@@ -113,6 +115,13 @@ func (r *Repository) AddPrincipalRoles(ctx context.Context, roleId string, roleV
 // SetPrincipalRoles will set the role's principals.  If both userIds and
 // groupIds are empty, the principal roles will be cleared.
 func (r *Repository) SetPrincipalRoles(ctx context.Context, roleId string, roleVersion int, userIds, groupIds []string, opt ...Option) ([]PrincipalRole, int, error) {
+	// NOTE - we are intentionally not going to check that the scopes are
+	// correct for the userIds and groupIds, given the roleId.  We are going to
+	// rely on the database constraints and triggers to maintain the integrity
+	// of these scope relationships.  The users and role need to either be in
+	// the same organization or the role needs to be in a project of the user's
+	// org.  The groups and role have to be in the same scope (org or project).
+	// There are constraints and triggers to enforce these relationships.
 	if roleId == "" {
 		return nil, db.NoRowsAffected, fmt.Errorf("set principal roles: missing role id: %w", db.ErrInvalidParameter)
 	}
