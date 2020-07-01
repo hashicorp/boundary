@@ -47,6 +47,18 @@ func TestAction(t *testing.T) {
 			action: Connect,
 			want:   "connect",
 		},
+		{
+			action: AddGrant,
+			want:   "add-grant",
+		},
+		{
+			action: DeleteGrant,
+			want:   "delete-grant",
+		},
+		{
+			action: SetGrants,
+			want:   "set-grants",
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.want, func(t *testing.T) {

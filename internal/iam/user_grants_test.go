@@ -27,7 +27,7 @@ func Test_UserGrants(t *testing.T) {
 		w := db.New(conn)
 		role := TestRole(t, conn, org.PublicId)
 
-		g, err := NewRoleGrant(role, "everything*"+id)
+		g, err := NewRoleGrant(role.PublicId, "everything*"+id)
 		assert.NoError(err)
 		assert.NotNil(g)
 		assert.Equal(g.RoleId, role.PublicId)
@@ -61,7 +61,7 @@ func Test_UserGrants(t *testing.T) {
 		assert.NoError(err)
 
 		groupRole := TestRole(t, conn, org.PublicId)
-		groupGrant, err := NewRoleGrant(groupRole, "group-grant*"+id)
+		groupGrant, err := NewRoleGrant(groupRole.PublicId, "group-grant*"+id)
 		assert.NoError(err)
 		assert.NotNil(groupGrant)
 		assert.Equal(groupGrant.RoleId, groupRole.PublicId)

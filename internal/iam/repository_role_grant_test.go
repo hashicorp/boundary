@@ -1,0 +1,224 @@
+package iam
+
+import (
+	"context"
+	"errors"
+	"fmt"
+	"testing"
+	"time"
+
+	"github.com/hashicorp/watchtower/internal/db"
+	"github.com/hashicorp/watchtower/internal/oplog"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+)
+
+func TestRepository_AddRoleGrants(t *testing.T) {
+	t.Parallel()
+	cleanup, conn, _ := db.TestSetup(t, "postgres")
+	defer func() {
+		err := cleanup()
+		assert.NoError(t, err)
+		err = conn.Close()
+		assert.NoError(t, err)
+	}()
+	rw := db.New(conn)
+	wrapper := db.TestWrapper(t)
+	repo, err := NewRepository(rw, rw, wrapper)
+	require.NoError(t, err)
+	_, proj := TestScopes(t, conn)
+	role := TestRole(t, conn, proj.PublicId)
+	createGrantsFn := func() []string {
+		results := []string{}
+		for i := 0; i < 5; i++ {
+			g := fmt.Sprintf("id=hc_%d;actions=*", i)
+			results = append(results, g)
+		}
+		return results
+	}
+	type args struct {
+		roleId      string
+		roleVersion int
+		grants      []string
+		opt         []Option
+	}
+	tests := []struct {
+		name      string
+		args      args
+		wantErr   bool
+		wantErrIs error
+	}{
+		{
+			name: "valid",
+			args: args{
+				roleId:      role.PublicId,
+				roleVersion: 1,
+				grants:      createGrantsFn(),
+			},
+			wantErr: false,
+		},
+		{
+			name: "no-grants",
+			args: args{
+				roleId:      role.PublicId,
+				roleVersion: 2,
+				grants:      nil,
+			},
+			wantErr: true,
+		},
+		{
+			name: "bad-version",
+			args: args{
+				roleId:      role.PublicId,
+				roleVersion: 1000,
+				grants:      createGrantsFn(),
+			},
+			wantErr: true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+			require.NoError(conn.Where("1=1").Delete(allocRoleGrant()).Error)
+			got, err := repo.AddRoleGrants(context.Background(), tt.args.roleId, tt.args.roleVersion, tt.args.grants, tt.args.opt...)
+			if tt.wantErr {
+				require.Error(err)
+				if tt.wantErrIs != nil {
+					assert.Truef(errors.Is(err, tt.wantErrIs), "unexpected error %s", err.Error())
+				}
+				return
+			}
+			require.NoError(err)
+			gotRoleGrant := map[string]*RoleGrant{}
+			for _, r := range got {
+				gotRoleGrant[r.PrivateId] = r
+			}
+
+			err = db.TestVerifyOplog(t, rw, role.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_CREATE), db.WithCreateNotBefore(10*time.Second))
+			assert.NoError(err)
+
+			foundRoleGrants, err := repo.ListRoleGrants(context.Background(), role.PublicId)
+			require.NoError(err)
+			// Create a map of grants to check against
+			grantSet := make(map[string]bool, len(tt.args.grants))
+			for _, grant := range tt.args.grants {
+				grantSet[grant] = true
+			}
+			for _, r := range foundRoleGrants {
+				roleGrant := gotRoleGrant[r.PrivateId]
+				assert.NotEmpty(roleGrant)
+				assert.Equal(roleGrant.GetRoleId(), r.GetRoleId())
+				assert.NotEmpty(grantSet[roleGrant.Grant])
+				delete(grantSet, roleGrant.Grant)
+			}
+			assert.Empty(grantSet)
+		})
+	}
+}
+
+func TestRepository_ListRoleGrants(t *testing.T) {
+	t.Parallel()
+	cleanup, conn, _ := db.TestSetup(t, "postgres")
+	defer func() {
+		err := cleanup()
+		assert.NoError(t, err)
+		err = conn.Close()
+		assert.NoError(t, err)
+	}()
+	const testLimit = 10
+	rw := db.New(conn)
+	wrapper := db.TestWrapper(t)
+	repo, err := NewRepository(rw, rw, wrapper, WithLimit(testLimit))
+	require.NoError(t, err)
+	org, proj := TestScopes(t, conn)
+
+	type args struct {
+		withRoleId string
+		opt        []Option
+	}
+	tests := []struct {
+		name          string
+		createCnt     int
+		createScopeId string
+		args          args
+		wantCnt       int
+		wantErr       bool
+	}{
+		{
+			name:          "no-limit",
+			createCnt:     repo.defaultLimit + 2,
+			createScopeId: org.PublicId,
+			args: args{
+				opt: []Option{WithLimit(-1)},
+			},
+			wantCnt: repo.defaultLimit + 2,
+			wantErr: false,
+		},
+		{
+			name:          "no-limit-proj-group",
+			createCnt:     repo.defaultLimit + 2,
+			createScopeId: proj.PublicId,
+			args: args{
+				opt: []Option{WithLimit(-1)},
+			},
+			wantCnt: repo.defaultLimit + 2,
+			wantErr: false,
+		},
+		{
+			name:          "default-limit",
+			createCnt:     repo.defaultLimit + 2,
+			createScopeId: org.PublicId,
+			wantCnt:       repo.defaultLimit,
+			wantErr:       false,
+		},
+		{
+			name:          "custom-limit",
+			createCnt:     repo.defaultLimit + 2,
+			createScopeId: org.PublicId,
+			args: args{
+				opt: []Option{WithLimit(3)},
+			},
+			wantCnt: 3,
+			wantErr: false,
+		},
+		{
+			name:          "bad-role-id",
+			createCnt:     2,
+			createScopeId: org.PublicId,
+			args: args{
+				withRoleId: "bad-id",
+			},
+			wantCnt: 0,
+			wantErr: false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+			require.NoError(conn.Where("1=1").Delete(allocRole()).Error)
+			role := TestRole(t, conn, tt.createScopeId)
+			roleGrants := make([]string, 0, tt.createCnt)
+			for i := 0; i < tt.createCnt; i++ {
+				roleGrants = append(roleGrants, fmt.Sprintf("id=h_%d;actions=*", i))
+			}
+			testRoles, err := repo.AddRoleGrants(context.Background(), role.PublicId, int(role.Version), roleGrants, tt.args.opt...)
+			require.NoError(err)
+			assert.Equal(tt.createCnt, len(testRoles))
+
+			var roleId string
+			switch {
+			case tt.args.withRoleId != "":
+				roleId = tt.args.withRoleId
+			default:
+				roleId = role.PublicId
+			}
+			got, err := repo.ListRoleGrants(context.Background(), roleId, tt.args.opt...)
+			if tt.wantErr {
+				require.Error(err)
+				return
+			}
+			require.NoError(err)
+			assert.Equal(tt.wantCnt, len(got))
+		})
+	}
+}
