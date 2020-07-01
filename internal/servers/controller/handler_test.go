@@ -9,6 +9,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/grpc-ecosystem/grpc-gateway/runtime"
@@ -121,6 +122,19 @@ func TestGrpcGatewayRouting(t *testing.T) {
 			assert.Equal(t, tc.expectedResult, resp.Result().StatusCode, "Got response %v", resp)
 		})
 	}
+}
+
+func TestAuthenticationHandler(t *testing.T) {
+	c := NewTestController(t, &TestControllerOpts{DefaultOrgId: "o_1234567890"})
+	defer c.Shutdown()
+
+	resp, err := http.Post(fmt.Sprintf("%s/v1/orgs/o_1234567890:authenticate", c.ApiAddrs()[0]), "application/json",
+		strings.NewReader("{\"auth_method_id\": \"whatever\", \"password_credential\": {\"login_name\":\"admin\", \"password\": \"hunter2\"}}"))
+	require.NoError(t, err)
+	t.Logf("Got response: %#v", resp)
+	body, err := ioutil.ReadAll(resp.Body)
+	require.NoError(t, err)
+	t.Logf("Got response: %q", body)
 }
 
 func TestHandleGrpcGateway(t *testing.T) {

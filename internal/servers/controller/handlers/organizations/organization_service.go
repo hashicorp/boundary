@@ -6,6 +6,8 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/hashicorp/watchtower/internal/authtoken"
+	pba "github.com/hashicorp/watchtower/internal/gen/controller/api/resources/authtokens"
 	pb "github.com/hashicorp/watchtower/internal/gen/controller/api/resources/scopes"
 	pbs "github.com/hashicorp/watchtower/internal/gen/controller/api/services"
 	"github.com/hashicorp/watchtower/internal/iam"
@@ -25,15 +27,20 @@ var (
 
 // Service handles request as described by the pbs.OrganizationServiceServer interface.
 type Service struct {
-	repo common.IamRepoFactory
+	iamRepo       common.IamRepoFactory
+	authTokenRepo common.AuthTokenRepoFactory
+	authAcctId    string
 }
 
 // NewService returns an organization service which handles organization related requests to watchtower.
-func NewService(repo common.IamRepoFactory) (Service, error) {
-	if repo == nil {
+func NewService(iamRepo common.IamRepoFactory, atRepo common.AuthTokenRepoFactory, authAccountId string) (Service, error) {
+	if iamRepo == nil {
 		return Service{}, fmt.Errorf("nil iam repository provided")
 	}
-	return Service{repo: repo}, nil
+	if atRepo == nil {
+		return Service{}, fmt.Errorf("nil auth token repository provided")
+	}
+	return Service{iamRepo: iamRepo, authTokenRepo: atRepo, authAcctId: authAccountId}, nil
 }
 
 var _ pbs.OrganizationServiceServer = Service{}
@@ -61,7 +68,14 @@ func (s Service) GetOrganization(ctx context.Context, req *pbs.GetOrganizationRe
 
 // Authenticate implements the interface pbs.OrganizationServiceServer.
 func (s Service) Authenticate(ctx context.Context, req *pbs.AuthenticateRequest) (*pbs.AuthenticateResponse, error) {
-	return nil, status.Error(codes.Unimplemented, "Requested method is unimplemented for Organization.")
+	if err := validateAuthenticateRequest(req); err != nil {
+		return nil, err
+	}
+	tok, err := s.authenticateWithRepo(ctx, req)
+	if err != nil {
+		return nil, err
+	}
+	return &pbs.AuthenticateResponse{Item: tok}, nil
 }
 
 // Deauthenticate implements the interface pbs.OrganizationServiceServer.
@@ -70,7 +84,7 @@ func (s Service) Deauthenticate(ctx context.Context, req *pbs.DeauthenticateRequ
 }
 
 func (s Service) getFromRepo(ctx context.Context, id string) (*pb.Organization, error) {
-	repo, err := s.repo()
+	repo, err := s.iamRepo()
 	if err != nil {
 		return nil, err
 	}
@@ -85,7 +99,7 @@ func (s Service) getFromRepo(ctx context.Context, id string) (*pb.Organization, 
 }
 
 func (s Service) listFromRepo(ctx context.Context) ([]*pb.Organization, error) {
-	repo, err := s.repo()
+	repo, err := s.iamRepo()
 	if err != nil {
 		return nil, err
 	}
@@ -98,6 +112,33 @@ func (s Service) listFromRepo(ctx context.Context) ([]*pb.Organization, error) {
 		outOl = append(outOl, toProto(o))
 	}
 	return outOl, nil
+}
+
+func (s Service) authenticateWithRepo(ctx context.Context, req *pbs.AuthenticateRequest) (*pba.AuthToken, error) {
+	userRepo, err := s.iamRepo()
+	if err != nil {
+		return nil, err
+	}
+	atRepo, err := s.authTokenRepo()
+	if err != nil {
+		return nil, err
+	}
+	// Place holder for making a request to authenticate
+	pwCreds := req.GetPasswordCredential()
+	if s.authAcctId == "" || (pwCreds.GetLoginName() != "admin" && pwCreds.GetPassword() != "hunter2") {
+		return nil, status.Error(codes.Unauthenticated, "Unable to authenticate.")
+	}
+	// Get back a password.Account with a CredentialId string and a public Id
+	u, err := userRepo.LookupUserWithLogin(ctx, s.authAcctId, iam.WithAutoVivify(true))
+	if err != nil {
+		return nil, err
+	}
+	tok, err := atRepo.CreateAuthToken(ctx, u.GetPublicId(), s.authAcctId)
+	if err != nil {
+		return nil, err
+	}
+	tok.Token = tok.GetPublicId() + "." + tok.GetToken()
+	return toWireToken(tok), nil
 }
 
 func toProto(in *iam.Scope) *pb.Organization {
@@ -115,6 +156,19 @@ func toProto(in *iam.Scope) *pb.Organization {
 	return &out
 }
 
+func toWireToken(t *authtoken.AuthToken) *pba.AuthToken {
+	return &pba.AuthToken{
+		Id:                      t.GetPublicId(),
+		Token:                   t.GetToken(),
+		UserId:                  t.GetIamUserId(),
+		AuthMethodId:            t.GetAuthMethodId(),
+		CreatedTime:             t.GetCreateTime().GetTimestamp(),
+		UpdatedTime:             t.GetUpdateTime().GetTimestamp(),
+		ApproximateLastUsedTime: t.GetApproximateLastAccessTime().GetTimestamp(),
+		ExpirationTime:          t.GetExpirationTime().GetTimestamp(),
+	}
+}
+
 // A validateX method should exist for each method above.  These methods do not make calls to any backing service but enforce
 // requirements on the structure of the request.  They verify that:
 //  * The path passed in is correctly formatted
@@ -123,10 +177,35 @@ func toProto(in *iam.Scope) *pb.Organization {
 func validateGetRequest(req *pbs.GetOrganizationRequest) error {
 	badFields := make(map[string]string)
 	if !validId(req.GetId(), scope.Organization.Prefix()+"_") {
-		badFields["id"] = "Invalid formatted organization id."
+		badFields["id"] = "Invalid formatted identifier."
 	}
 	if len(badFields) > 0 {
 		return handlers.InvalidArgumentErrorf("Improperly formatted identifier.", badFields)
+	}
+	return nil
+}
+
+func validateAuthenticateRequest(req *pbs.AuthenticateRequest) error {
+	badFields := make(map[string]string)
+	if !validId(req.GetOrgId(), scope.Organization.Prefix()+"_") {
+		badFields[orgIdFieldName] = "Invalid formatted identifier."
+	}
+	if strings.TrimSpace(req.GetAuthMethodId()) == "" {
+		badFields["auth_method_id"] = "This is a required field."
+	} else if validId(req.GetAuthMethodId(), "am") {
+		badFields["auth_method_id"] = "Invalid formatted identifier."
+	}
+	// TODO: Update this when we enable different auth method types.
+	if req.GetPasswordCredential() == nil {
+		badFields["password_credential"] = "This is a required field."
+	}
+	// TODO: Update this when we enable split cookie token types.
+	tType := strings.ToLower(strings.TrimSpace(req.GetTokenType()))
+	if tType != "" && tType != "token" {
+		badFields["token_type"] = "The only accepted type is 'token'."
+	}
+	if len(badFields) > 0 {
+		return handlers.InvalidArgumentErrorf("Invalid fields provided in request.", badFields)
 	}
 	return nil
 }

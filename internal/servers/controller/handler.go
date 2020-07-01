@@ -126,7 +126,7 @@ func handleGrpcGateway(c *Controller) (http.Handler, error) {
 	if err := services.RegisterHostServiceHandlerServer(ctx, mux, &hosts.Service{}); err != nil {
 		return nil, fmt.Errorf("failed to register host service handler: %w", err)
 	}
-	os, err := organizations.NewService(c.IamRepoFn)
+	os, err := organizations.NewService(c.IamRepoFn, c.AuthTokenRepoFn, c.conf.DefaultAuthAccountId)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create organization handler service: %w", err)
 	}

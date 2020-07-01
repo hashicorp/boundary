@@ -3,6 +3,7 @@ package db
 import (
 	"context"
 	"crypto/rand"
+	"strings"
 	"testing"
 	"time"
 
@@ -13,6 +14,7 @@ import (
 	"github.com/hashicorp/watchtower/internal/oplog"
 	"github.com/hashicorp/watchtower/internal/oplog/store"
 	"github.com/jinzhu/gorm"
+	"github.com/stretchr/testify/assert"
 )
 
 // setup the tests (initialize the database one-time and intialized testDatabaseURL)
@@ -43,6 +45,16 @@ func TestWrapper(t *testing.T) wrapping.Wrapper {
 		t.Fatal(err)
 	}
 	return root
+}
+
+// AssertPublicId is a test helper that asserts that the provided id is in
+// the format of a public id.
+func AssertPublicId(t *testing.T, prefix, actual string) {
+	t.Helper()
+	assert.NotEmpty(t, actual)
+	parts := strings.Split(actual, "_")
+	assert.Equalf(t, 2, len(parts), "want one '_' in PublicId, got multiple in %q", actual)
+	assert.Equalf(t, prefix, parts[0], "PublicId want prefix: %q, got: %q in %q", prefix, parts[0], actual)
 }
 
 // TestVerifyOplog will verify that there is an oplog entry. An error is

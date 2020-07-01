@@ -7,6 +7,7 @@ import (
 
 	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/vault/sdk/helper/mlock"
+	"github.com/hashicorp/watchtower/internal/authtoken"
 	"github.com/hashicorp/watchtower/internal/db"
 	"github.com/hashicorp/watchtower/internal/host/static"
 	"github.com/hashicorp/watchtower/internal/iam"
@@ -23,6 +24,7 @@ type Controller struct {
 	// Repo factory methods
 	IamRepoFn        common.IamRepoFactory
 	StaticHostRepoFn common.StaticRepoFactory
+	AuthTokenRepoFn  common.AuthTokenRepoFactory
 }
 
 func New(conf *Config) (*Controller, error) {
@@ -61,7 +63,9 @@ func New(conf *Config) (*Controller, error) {
 	c.StaticHostRepoFn = func() (*static.Repository, error) {
 		return static.NewRepository(dbase, dbase, c.conf.ControllerKMS)
 	}
-
+	c.AuthTokenRepoFn = func() (*authtoken.Repository, error) {
+		return authtoken.NewRepository(dbase, dbase, c.conf.ControllerKMS)
+	}
 	return c, nil
 }
 
