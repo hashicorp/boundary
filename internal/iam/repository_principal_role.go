@@ -110,13 +110,11 @@ func (r *Repository) AddPrincipalRoles(ctx context.Context, roleId string, roleV
 	return principalRoles, nil
 }
 
-// SetPrincipalRoles will set the role's principals
+// SetPrincipalRoles will set the role's principals.  If both userIds and
+// groupIds are empty, the principal roles will be cleared.
 func (r *Repository) SetPrincipalRoles(ctx context.Context, roleId string, roleVersion int, userIds, groupIds []string, opt ...Option) ([]PrincipalRole, int, error) {
 	if roleId == "" {
 		return nil, db.NoRowsAffected, fmt.Errorf("set principal roles: missing role id: %w", db.ErrInvalidParameter)
-	}
-	if len(userIds) == 0 && len(groupIds) == 0 {
-		return nil, db.NoRowsAffected, fmt.Errorf("set principal roles: missing either user or groups to delete %w", db.ErrInvalidParameter)
 	}
 	role := allocRole()
 	role.PublicId = roleId
@@ -159,7 +157,7 @@ func (r *Repository) SetPrincipalRoles(ctx context.Context, roleId string, roleV
 			// we need a roleTicket, which won't be redeemed until all the other
 			// writes are successful.  We can't just use a single ticket because
 			// we need to write oplog entries for deletes and adds
-			roleTicket, err := w.GetTicket(role)
+			roleTicket, err := w.GetTicket(&role)
 			if err != nil {
 				return fmt.Errorf("set principal roles: unable to get ticket for role: %w", err)
 			}
@@ -231,6 +229,7 @@ func (r *Repository) SetPrincipalRoles(ctx context.Context, roleId string, roleV
 					if err := w.CreateItems(ctx, toSet.addUserRoles, db.NewOplogMsgs(&userOplogMsgs)); err != nil {
 						return fmt.Errorf("set principal roles: unable to add users: %w", err)
 					}
+					totalRowsAffected += len(toSet.addUserRoles)
 					msgs = append(msgs, userOplogMsgs...)
 				}
 				if len(toSet.addGroupRoles) > 0 {
@@ -238,6 +237,7 @@ func (r *Repository) SetPrincipalRoles(ctx context.Context, roleId string, roleV
 					if err := w.CreateItems(ctx, toSet.addGroupRoles, db.NewOplogMsgs(&grpOplogMsgs)); err != nil {
 						return fmt.Errorf("set principal roles: unable to add groups: %w", err)
 					}
+					totalRowsAffected += len(toSet.addGroupRoles)
 					msgs = append(msgs, grpOplogMsgs...)
 				}
 				metadata := oplog.Metadata{
@@ -273,85 +273,6 @@ func (r *Repository) SetPrincipalRoles(ctx context.Context, roleId string, roleV
 		return nil, db.NoRowsAffected, fmt.Errorf("set principal roles: unable to set principals: %w", err)
 	}
 	return currentPrincipals, totalRowsAffected, nil
-}
-
-type principalSet struct {
-	addUserRoles     []interface{}
-	addGroupRoles    []interface{}
-	deleteUserRoles  []interface{}
-	deleteGroupRoles []interface{}
-}
-
-func (r *Repository) principalsToSet(ctx context.Context, role *Role, userIds, groupIds []string) (*principalSet, error) {
-	if role == nil {
-		return nil, fmt.Errorf("missing role %w", db.ErrNilParameter)
-	}
-	existing, err := r.ListPrincipalRoles(ctx, role.PublicId)
-	if err != nil {
-		return nil, fmt.Errorf("unable to list existing principal role %s: %w", role.PublicId, err)
-	}
-	existingUsers := map[string]PrincipalRole{}
-	existingGroups := map[string]PrincipalRole{}
-	for _, p := range existing {
-		switch p.GetType() {
-		case UserRoleType.String():
-			existingUsers[p.GetPrincipalId()] = p
-		case GroupRoleType.String():
-			existingGroups[p.GetPrincipalId()] = p
-		default:
-			return nil, fmt.Errorf("%s is unknown principal type %s", p.GetPrincipalId(), p.GetType())
-		}
-	}
-	var newUserRoles []interface{}
-	userIdsMap := map[string]struct{}{}
-	for _, id := range userIds {
-		userIdsMap[id] = struct{}{}
-		if _, ok := existingUsers[id]; !ok {
-			usrRole, err := NewUserRole(role.ScopeId, role.PublicId, id)
-			if err != nil {
-				return nil, fmt.Errorf("unable to create in memory user role for add: %w", err)
-			}
-			newUserRoles = append(newUserRoles, usrRole)
-		}
-	}
-	var newGrpRoles []interface{}
-	groupIdsMap := map[string]struct{}{}
-	for _, id := range groupIds {
-		groupIdsMap[id] = struct{}{}
-		if _, ok := existingGroups[id]; !ok {
-			grpRole, err := NewGroupRole(role.ScopeId, role.PublicId, id)
-			if err != nil {
-				return nil, fmt.Errorf("unable to create in memory group role for add: %w", err)
-			}
-			newGrpRoles = append(newGrpRoles, grpRole)
-		}
-	}
-	var deleteUserRoles []interface{}
-	for _, p := range existingUsers {
-		if _, ok := userIdsMap[p.GetPrincipalId()]; !ok {
-			usrRole, err := NewUserRole(p.GetScopeId(), p.GetRoleId(), p.GetPrincipalId())
-			if err != nil {
-				return nil, fmt.Errorf("unable to create in memory user role for delete: %w", err)
-			}
-			deleteUserRoles = append(deleteUserRoles, usrRole)
-		}
-	}
-	var deleteGrpRoles []interface{}
-	for _, p := range existingGroups {
-		if _, ok := groupIdsMap[p.GetPrincipalId()]; !ok {
-			grpRole, err := NewGroupRole(p.GetScopeId(), p.GetRoleId(), p.GetPrincipalId())
-			if err != nil {
-				return nil, fmt.Errorf("unable to create in memory group role for delete: %w", err)
-			}
-			deleteGrpRoles = append(deleteGrpRoles, grpRole)
-		}
-	}
-	return &principalSet{
-		addUserRoles:     newUserRoles,
-		addGroupRoles:    newGrpRoles,
-		deleteUserRoles:  deleteUserRoles,
-		deleteGroupRoles: deleteGrpRoles,
-	}, nil
 }
 
 // DeletePrincipalRoles principals (userIds and/or groupIds) from a role
@@ -466,4 +387,83 @@ func (r *Repository) ListPrincipalRoles(ctx context.Context, roleId string, opt 
 		principals = append(principals, r)
 	}
 	return principals, nil
+}
+
+type principalSet struct {
+	addUserRoles     []interface{}
+	addGroupRoles    []interface{}
+	deleteUserRoles  []interface{}
+	deleteGroupRoles []interface{}
+}
+
+func (r *Repository) principalsToSet(ctx context.Context, role *Role, userIds, groupIds []string) (*principalSet, error) {
+	if role == nil {
+		return nil, fmt.Errorf("missing role %w", db.ErrNilParameter)
+	}
+	existing, err := r.ListPrincipalRoles(ctx, role.PublicId)
+	if err != nil {
+		return nil, fmt.Errorf("unable to list existing principal role %s: %w", role.PublicId, err)
+	}
+	existingUsers := map[string]PrincipalRole{}
+	existingGroups := map[string]PrincipalRole{}
+	for _, p := range existing {
+		switch p.GetType() {
+		case UserRoleType.String():
+			existingUsers[p.GetPrincipalId()] = p
+		case GroupRoleType.String():
+			existingGroups[p.GetPrincipalId()] = p
+		default:
+			return nil, fmt.Errorf("%s is unknown principal type %s", p.GetPrincipalId(), p.GetType())
+		}
+	}
+	var newUserRoles []interface{}
+	userIdsMap := map[string]struct{}{}
+	for _, id := range userIds {
+		userIdsMap[id] = struct{}{}
+		if _, ok := existingUsers[id]; !ok {
+			usrRole, err := NewUserRole(role.ScopeId, role.PublicId, id)
+			if err != nil {
+				return nil, fmt.Errorf("unable to create in memory user role for add: %w", err)
+			}
+			newUserRoles = append(newUserRoles, usrRole)
+		}
+	}
+	var newGrpRoles []interface{}
+	groupIdsMap := map[string]struct{}{}
+	for _, id := range groupIds {
+		groupIdsMap[id] = struct{}{}
+		if _, ok := existingGroups[id]; !ok {
+			grpRole, err := NewGroupRole(role.ScopeId, role.PublicId, id)
+			if err != nil {
+				return nil, fmt.Errorf("unable to create in memory group role for add: %w", err)
+			}
+			newGrpRoles = append(newGrpRoles, grpRole)
+		}
+	}
+	var deleteUserRoles []interface{}
+	for _, p := range existingUsers {
+		if _, ok := userIdsMap[p.GetPrincipalId()]; !ok {
+			usrRole, err := NewUserRole(p.GetScopeId(), p.GetRoleId(), p.GetPrincipalId())
+			if err != nil {
+				return nil, fmt.Errorf("unable to create in memory user role for delete: %w", err)
+			}
+			deleteUserRoles = append(deleteUserRoles, usrRole)
+		}
+	}
+	var deleteGrpRoles []interface{}
+	for _, p := range existingGroups {
+		if _, ok := groupIdsMap[p.GetPrincipalId()]; !ok {
+			grpRole, err := NewGroupRole(p.GetScopeId(), p.GetRoleId(), p.GetPrincipalId())
+			if err != nil {
+				return nil, fmt.Errorf("unable to create in memory group role for delete: %w", err)
+			}
+			deleteGrpRoles = append(deleteGrpRoles, grpRole)
+		}
+	}
+	return &principalSet{
+		addUserRoles:     newUserRoles,
+		addGroupRoles:    newGrpRoles,
+		deleteUserRoles:  deleteUserRoles,
+		deleteGroupRoles: deleteGrpRoles,
+	}, nil
 }
