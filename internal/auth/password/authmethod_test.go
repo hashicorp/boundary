@@ -20,8 +20,20 @@ func TestAuthMethod_New(t *testing.T) {
 		assert.NoError(t, err)
 	})
 
+	// conn.LogMode(true)
 	w := db.New(conn)
-	_, prj := iam.TestScopes(t, conn)
+
+	/*
+		- minUserNameLength default is 5
+		- minPasswordLength is 8
+		- duplicate name in scope
+
+		insert new method, verify argon2 conf with default parameters created
+		update authMethod with new conf
+		verify new conf
+		update authMethod with old conf params
+		verify old config set
+	*/
 
 	type args struct {
 		scopeId string
@@ -35,51 +47,42 @@ func TestAuthMethod_New(t *testing.T) {
 		wantErr bool
 	}{
 		{
-			name: "blank-scopeId",
-			args: args{
-				scopeId: "",
-			},
-			want:    nil,
-			wantErr: true,
-		},
-		{
 			name: "valid-no-options",
-			args: args{
-				scopeId: prj.GetPublicId(),
-			},
+			args: args{},
 			want: &AuthMethod{
 				AuthMethod: &store.AuthMethod{
-					ScopeId: prj.GetPublicId(),
+					MinUserNameLength: 5,
+					MinPasswordLength: 8,
 				},
 			},
 		},
 		{
 			name: "valid-with-name",
 			args: args{
-				scopeId: prj.GetPublicId(),
 				opts: []Option{
 					WithName("test-name"),
 				},
 			},
 			want: &AuthMethod{
 				AuthMethod: &store.AuthMethod{
-					ScopeId: prj.GetPublicId(),
-					Name:    "test-name",
+					Name:              "test-name",
+					MinUserNameLength: 5,
+					MinPasswordLength: 8,
 				},
 			},
 		},
 		{
 			name: "valid-with-description",
 			args: args{
-				scopeId: prj.GetPublicId(),
 				opts: []Option{
 					WithDescription("test-description"),
 				},
 			},
 			want: &AuthMethod{
 				AuthMethod: &store.AuthMethod{
-					ScopeId:     prj.GetPublicId(),
-					Description: "test-description",
+					Description:       "test-description",
+					MinUserNameLength: 5,
+					MinPasswordLength: 8,
 				},
 			},
 		},
@@ -89,7 +92,8 @@ func TestAuthMethod_New(t *testing.T) {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			got, err := NewAuthMethod(tt.args.scopeId, tt.args.opts...)
+			_, prj := iam.TestScopes(t, conn)
+			got, err := NewAuthMethod(prj.GetPublicId(), tt.args.opts...)
 			if tt.wantErr {
 				assert.Error(err)
 				require.Nil(got)
@@ -97,6 +101,8 @@ func TestAuthMethod_New(t *testing.T) {
 			}
 			require.NoError(err)
 			require.NotNil(got)
+
+			tt.want.ScopeId = prj.GetPublicId()
 
 			assert.Emptyf(got.PublicId, "PublicId set")
 			assert.Equal(tt.want, got)
@@ -107,8 +113,30 @@ func TestAuthMethod_New(t *testing.T) {
 			tt.want.PublicId = id
 			got.PublicId = id
 
-			err2 := w.Create(context.Background(), got)
+			conf, err := NewArgon2Configuration(id)
+			require.NoError(err)
+			require.NotNil(conf)
+
+			got.PasswordConfId = conf.PublicId
+
+			ctx := context.Background()
+			_, err2 := w.DoTx(ctx, db.StdRetryCnt, db.ExpBackoff{},
+				func(_ db.Reader, iw db.Writer) error {
+					if err := iw.Create(ctx, conf); err != nil {
+						t.Log(err)
+						return err
+					}
+					return iw.Create(ctx, got)
+				},
+			)
 			assert.NoError(err2)
 		})
 	}
+
+	t.Run("blank-scopeId", func(t *testing.T) {
+		assert, require := assert.New(t), require.New(t)
+		got, err := NewAuthMethod("")
+		assert.Error(err)
+		require.Nil(got)
+	})
 }

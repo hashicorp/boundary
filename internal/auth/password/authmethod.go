@@ -8,11 +8,18 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
+// A Configuration is an interface holding one of the configuration types
+// for a specific key derivation function. Argon2 is currently the only
+// configuration type.
+type Configuration interface{}
+
 // A AuthMethod contains accounts and password configurations. It is owned
 // by a scope.
 type AuthMethod struct {
 	*store.AuthMethod
 	tableName string
+
+	Config Configuration `gorm:"-"`
 }
 
 // NewAuthMethod creates a new in memory AuthMethod assigned to scopeId.
@@ -28,9 +35,11 @@ func NewAuthMethod(scopeId string, opt ...Option) (*AuthMethod, error) {
 	opts := getOpts(opt...)
 	a := &AuthMethod{
 		AuthMethod: &store.AuthMethod{
-			ScopeId:     scopeId,
-			Name:        opts.withName,
-			Description: opts.withDescription,
+			ScopeId:           scopeId,
+			Name:              opts.withName,
+			Description:       opts.withDescription,
+			MinUserNameLength: 5,
+			MinPasswordLength: 8,
 		},
 	}
 	return a, nil

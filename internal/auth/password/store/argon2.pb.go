@@ -33,23 +33,23 @@ type Argon2Configuration struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	// @inject_tag: gorm:"primary_key"
-	PublicId string `protobuf:"bytes,1,opt,name=public_id,json=publicId,proto3" json:"public_id,omitempty"`
+	// @inject_tag: `gorm:"primary_key"`
+	PublicId string `protobuf:"bytes,1,opt,name=public_id,json=publicId,proto3" json:"public_id,omitempty" gorm:"primary_key"`
 	// The create_time is set by the database.
 	// @inject_tag: `gorm:"default:current_timestamp"`
-	CreateTime *timestamp.Timestamp `protobuf:"bytes,2,opt,name=create_time,json=createTime,proto3" json:"create_time,omitempty"`
-	// @inject_tag: gorm:"not_null"
-	AuthPasswordMethodId string `protobuf:"bytes,3,opt,name=auth_password_method_id,json=authPasswordMethodId,proto3" json:"auth_password_method_id,omitempty"`
+	CreateTime *timestamp.Timestamp `protobuf:"bytes,2,opt,name=create_time,json=createTime,proto3" json:"create_time,omitempty" gorm:"default:current_timestamp"`
+	// @inject_tag: `gorm:"not_null"`
+	AuthPasswordMethodId string `protobuf:"bytes,3,opt,name=auth_password_method_id,json=authPasswordMethodId,proto3" json:"auth_password_method_id,omitempty" gorm:"not_null"`
 	// @inject_tag: `gorm:"default:null"`
-	Iterations uint32 `protobuf:"varint,4,opt,name=iterations,proto3" json:"iterations,omitempty"`
+	Iterations uint32 `protobuf:"varint,4,opt,name=iterations,proto3" json:"iterations,omitempty" gorm:"default:null"`
 	// @inject_tag: `gorm:"default:null"`
-	Memory uint32 `protobuf:"varint,5,opt,name=memory,proto3" json:"memory,omitempty"`
+	Memory uint32 `protobuf:"varint,5,opt,name=memory,proto3" json:"memory,omitempty" gorm:"default:null"`
 	// @inject_tag: `gorm:"default:null"`
-	Threads uint32 `protobuf:"varint,6,opt,name=threads,proto3" json:"threads,omitempty"`
+	Threads uint32 `protobuf:"varint,6,opt,name=threads,proto3" json:"threads,omitempty" gorm:"default:null"`
 	// @inject_tag: `gorm:"default:null"`
-	SaltLength uint32 `protobuf:"varint,7,opt,name=salt_length,json=saltLength,proto3" json:"salt_length,omitempty"`
+	SaltLength uint32 `protobuf:"varint,7,opt,name=salt_length,json=saltLength,proto3" json:"salt_length,omitempty" gorm:"default:null"`
 	// @inject_tag: `gorm:"default:null"`
-	KeyLength uint32 `protobuf:"varint,8,opt,name=key_length,json=keyLength,proto3" json:"key_length,omitempty"`
+	KeyLength uint32 `protobuf:"varint,8,opt,name=key_length,json=keyLength,proto3" json:"key_length,omitempty" gorm:"default:null"`
 }
 
 func (x *Argon2Configuration) Reset() {
@@ -145,30 +145,30 @@ type Argon2Credential struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	// @inject_tag: gorm:"primary_key"
-	PublicId string `protobuf:"bytes,1,opt,name=public_id,json=publicId,proto3" json:"public_id,omitempty"`
+	// @inject_tag: `gorm:"primary_key"`
+	PublicId string `protobuf:"bytes,1,opt,name=public_id,json=publicId,proto3" json:"public_id,omitempty" gorm:"primary_key"`
 	// The create_time is set by the database.
 	// @inject_tag: `gorm:"default:current_timestamp"`
-	CreateTime *timestamp.Timestamp `protobuf:"bytes,2,opt,name=create_time,json=createTime,proto3" json:"create_time,omitempty"`
+	CreateTime *timestamp.Timestamp `protobuf:"bytes,2,opt,name=create_time,json=createTime,proto3" json:"create_time,omitempty" gorm:"default:current_timestamp"`
 	// The update_time is set by the database.
 	// @inject_tag: `gorm:"default:current_timestamp"`
-	UpdateTime *timestamp.Timestamp `protobuf:"bytes,3,opt,name=update_time,json=updateTime,proto3" json:"update_time,omitempty"`
-	// @inject_tag: gorm:"not_null"
-	AuthPasswordAccountId string `protobuf:"bytes,4,opt,name=auth_password_account_id,json=authPasswordAccountId,proto3" json:"auth_password_account_id,omitempty"`
-	// @inject_tag: gorm:"not_null"
-	AuthPasswordArgon2ConfId string `protobuf:"bytes,5,opt,name=auth_password_argon2_conf_id,json=authPasswordArgon2ConfId,proto3" json:"auth_password_argon2_conf_id,omitempty"`
-	// @inject_tag: gorm:"not_null"
-	AuthPasswordMethodId string `protobuf:"bytes,6,opt,name=auth_password_method_id,json=authPasswordMethodId,proto3" json:"auth_password_method_id,omitempty"`
+	UpdateTime *timestamp.Timestamp `protobuf:"bytes,3,opt,name=update_time,json=updateTime,proto3" json:"update_time,omitempty" gorm:"default:current_timestamp"`
+	// @inject_tag: `gorm:"not_null"`
+	AuthPasswordAccountId string `protobuf:"bytes,4,opt,name=auth_password_account_id,json=authPasswordAccountId,proto3" json:"auth_password_account_id,omitempty" gorm:"not_null"`
+	// @inject_tag: `gorm:"not_null"`
+	AuthPasswordArgon2ConfId string `protobuf:"bytes,5,opt,name=auth_password_argon2_conf_id,json=authPasswordArgon2ConfId,proto3" json:"auth_password_argon2_conf_id,omitempty" gorm:"not_null"`
+	// @inject_tag: `gorm:"not_null"`
+	AuthPasswordMethodId string `protobuf:"bytes,6,opt,name=auth_password_method_id,json=authPasswordMethodId,proto3" json:"auth_password_method_id,omitempty" gorm:"not_null"`
 	// ct_salt is the encrypted salt which is stored in the database.
-	// @inject_tag: gorm:"column:data;not_null" wrapping:"ct,entry_salt"
-	CtSalt []byte `protobuf:"bytes,7,opt,name=ct_salt,json=ctSalt,proto3" json:"ct_salt,omitempty"`
+	// @inject_tag: `gorm:"column:data;not_null" wrapping:"ct,entry_salt"`
+	CtSalt []byte `protobuf:"bytes,7,opt,name=ct_salt,json=ctSalt,proto3" json:"ct_salt,omitempty" gorm:"column:data;not_null" wrapping:"ct,entry_salt"`
 	// salt is the unencrypted salt which is not stored in the database.
-	// @inject_tag: gorm:"-" wrapping:"pt,entry_salt"
-	Salt []byte `protobuf:"bytes,8,opt,name=salt,proto3" json:"salt,omitempty"`
+	// @inject_tag: `gorm:"-" wrapping:"pt,entry_salt"`
+	Salt []byte `protobuf:"bytes,8,opt,name=salt,proto3" json:"salt,omitempty" gorm:"-" wrapping:"pt,entry_salt"`
 	// hashed_password is the derived key produced by the Argon2id key
 	// derivation function.
-	// @inject_tag: gorm:"not_null"
-	HashedPassword []byte `protobuf:"bytes,9,opt,name=hashed_password,json=hashedPassword,proto3" json:"hashed_password,omitempty"`
+	// @inject_tag: `gorm:"not_null"`
+	HashedPassword []byte `protobuf:"bytes,9,opt,name=hashed_password,json=hashedPassword,proto3" json:"hashed_password,omitempty" gorm:"not_null"`
 }
 
 func (x *Argon2Credential) Reset() {

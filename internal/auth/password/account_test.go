@@ -27,12 +27,28 @@ func testAuthMethods(t *testing.T, conn *gorm.DB, count int) []*AuthMethod {
 		require.NotEmpty(id)
 		cat.PublicId = id
 
-		err2 := w.Create(context.Background(), cat)
-		assert.NoError(err2)
+		conf, err := NewArgon2Configuration(id)
+		require.NoError(err)
+		require.NotNil(conf)
+		cat.PasswordConfId = conf.PublicId
+
+		ctx := context.Background()
+		_, err2 := w.DoTx(ctx, db.StdRetryCnt, db.ExpBackoff{},
+			func(_ db.Reader, iw db.Writer) error {
+				if err := iw.Create(ctx, conf); err != nil {
+					t.Log(err)
+					return err
+				}
+				return iw.Create(ctx, cat)
+			},
+		)
+
+		require.NoError(err2)
 		auts = append(auts, cat)
 	}
 	return auts
 }
+
 func TestAccount_New(t *testing.T) {
 	cleanup, conn, _ := db.TestSetup(t, "postgres")
 	t.Cleanup(func() {

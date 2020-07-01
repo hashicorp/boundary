@@ -10,6 +10,7 @@ begin;
       on delete cascade
       on update cascade,
     scope_id wt_public_id not null,
+    password_conf_id wt_public_id not null, -- FK to auth_password_conf added below
     name text,
     description text,
     create_time wt_timestamp,
@@ -72,9 +73,18 @@ begin;
     auth_password_method_id wt_public_id not null
       references auth_password_method (public_id)
       on delete cascade
-      on update cascade,
+      on update cascade
+      deferrable initially deferred,
     unique(auth_password_method_id, public_id)
   );
+
+  alter table auth_password_method
+    add constraint current_conf_fkey
+    foreign key (public_id, password_conf_id)
+    references auth_password_conf (auth_password_method_id, public_id)
+    on delete cascade
+    on update cascade
+    deferrable initially deferred;
 
   create or replace function
     insert_auth_password_conf_subtype()
