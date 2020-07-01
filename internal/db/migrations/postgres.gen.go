@@ -1230,6 +1230,11 @@ begin;
   insert on auth_password_argon2_cred
     for each row execute procedure default_create_time();
 
+  insert into oplog_ticket (name, version)
+  values
+    ('auth_password_argon2_conf', 1),
+    ('auth_password_argon2_cred', 1);
+
 commit;
 
 `),
