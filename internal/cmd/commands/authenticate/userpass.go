@@ -8,32 +8,38 @@ import (
 	"github.com/posener/complete"
 )
 
-var _ cli.Command = (*UserpassCommand)(nil)
-var _ cli.CommandAutocomplete = (*UserpassCommand)(nil)
+var _ cli.Command = (*PasswordCommand)(nil)
+var _ cli.CommandAutocomplete = (*PasswordCommand)(nil)
 
-type UserpassCommand struct {
+type PasswordCommand struct {
 	*base.Command
 
 	flagUsername string
 	flagPassword string
+	flagID       string
 }
 
-func (c *UserpassCommand) Synopsis() string {
-	return "Invoke the userpass auth method to authenticate with Watchtower"
+func (c *PasswordCommand) Synopsis() string {
+	return "Invoke the password auth method to authenticate with Watchtower"
 }
 
-func (c *UserpassCommand) Help() string {
+func (c *PasswordCommand) Help() string {
 	return strings.TrimSpace(`
-Usage: watchtower authenticate userpass [options] [args]
+Usage: watchtower authenticate password [options] [args]
 
-  Invoke the userpass auth method to authenticate the Watchtower
-	commandline. 
+  Invoke the password auth method to authenticate the Watchtower
+	commandline:
 
-	$ watchtower authenticate userpass -username=foo -password=bar
+	$ watchtower authenticate password -username=foo -password=bar
+
+	If more than one instance of the password auth method exists, use 
+	the -id flag:
+
+	$ watchtower authenticate password -id=am_12345 -username=foo -password=bar
 `)
 }
 
-func (c *UserpassCommand) Flags() *base.FlagSets {
+func (c *PasswordCommand) Flags() *base.FlagSets {
 	set := c.FlagSet(0)
 
 	f := set.NewFlagSet("Command Options")
@@ -41,26 +47,32 @@ func (c *UserpassCommand) Flags() *base.FlagSets {
 	f.StringVar(&base.StringVar{
 		Name:   "username",
 		Target: &c.flagUsername,
-		Usage:  "Username for the userpass auth method",
+		Usage:  "Username for the password auth method",
 	})
 
 	f.StringVar(&base.StringVar{
 		Name:   "password",
 		Target: &c.flagPassword,
-		Usage:  "Password for the userpass auth method",
+		Usage:  "Password for the password auth method",
+	})
+
+	f.StringVar(&base.StringVar{
+		Name:   "id",
+		Target: &c.flagPassword,
+		Usage:  "ID is only required if more than one instance of the auth method exists",
 	})
 
 	return set
 }
 
-func (c *UserpassCommand) AutocompleteArgs() complete.Predictor {
+func (c *PasswordCommand) AutocompleteArgs() complete.Predictor {
 	return complete.PredictAnything
 }
 
-func (c *UserpassCommand) AutocompleteFlags() complete.Flags {
+func (c *PasswordCommand) AutocompleteFlags() complete.Flags {
 	return c.Flags().Completions()
 }
 
-func (c *UserpassCommand) Run(args []string) (ret int) {
+func (c *PasswordCommand) Run(args []string) (ret int) {
 	return ret
 }
