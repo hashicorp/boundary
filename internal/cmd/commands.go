@@ -6,6 +6,7 @@ import (
 	"syscall"
 
 	"github.com/hashicorp/watchtower/internal/cmd/base"
+	"github.com/hashicorp/watchtower/internal/cmd/commands/authenticate"
 	"github.com/hashicorp/watchtower/internal/cmd/commands/config"
 	"github.com/hashicorp/watchtower/internal/cmd/commands/controller"
 	"github.com/hashicorp/watchtower/internal/cmd/commands/dev"
@@ -79,6 +80,16 @@ func initCommands(ui, serverCmdUi cli.Ui, runOpts *RunOptions) {
 		},
 		"config decrypt": func() (cli.Command, error) {
 			return &config.EncryptDecryptCommand{
+				Command: base.NewCommand(ui),
+			}, nil
+		},
+		"authenticate": func() (cli.Command, error) {
+			return &authenticate.Command{
+				Command: base.NewCommand(ui),
+			}, nil
+		},
+		"authenticate password": func() (cli.Command, error) {
+			return &authenticate.PasswordCommand{
 				Command: base.NewCommand(ui),
 			}, nil
 		},

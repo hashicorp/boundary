@@ -1,6 +1,9 @@
-package config
+package authenticate
 
 import (
+	"bufio"
+	"fmt"
+	"os"
 	"strings"
 
 	"github.com/hashicorp/watchtower/internal/cmd/base"
@@ -10,6 +13,8 @@ import (
 
 var _ cli.Command = (*PasswordCommand)(nil)
 var _ cli.CommandAutocomplete = (*PasswordCommand)(nil)
+
+var envPassword = "WATCHTOWER_PASSWORD_PASSWORD"
 
 type PasswordCommand struct {
 	*base.Command
@@ -74,5 +79,18 @@ func (c *PasswordCommand) AutocompleteFlags() complete.Flags {
 }
 
 func (c *PasswordCommand) Run(args []string) (ret int) {
+	if c.flagPassword == "" {
+		c.flagPassword = os.Getenv(envPassword)
+	}
+
+	if c.flagPassword == "" {
+		reader := bufio.NewReader(os.Stdin)
+		fmt.Print("Password is not set as flag or in env, please enter it now: ")
+		text, _ := reader.ReadString('\n')
+		c.flagPassword = text
+	}
+
+	fmt.Printf("password is set to '%s'", c.flagPassword)
+
 	return ret
 }
