@@ -250,8 +250,8 @@ values
   ('db_test_car', 1),
   ('db_test_rental', 1),
   ('db_test_scooter', 1),
-  ('auth_account', 1);
-;
+  ('auth_account', 1),
+  ('iam_principal_role', 1);
   
 
 commit;
@@ -630,8 +630,6 @@ create table iam_role (
     -- add unique index so a composite fk can be declared.
     unique(scope_id, public_id)
   );
-
-
 
 create trigger 
   update_version_column
