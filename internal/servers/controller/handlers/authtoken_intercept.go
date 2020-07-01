@@ -95,33 +95,32 @@ const (
 )
 
 // ToTokenMetadata takes an incoming context and builds a TokenMetadata based on the metadata attached to it.
-// If the context has no incoming metadata attached to it an error is returned.  If no TokenMetadata related
-// // metadata is attached to it an empty TokenMetadata is returned.
-func ToTokenMetadata(ctx context.Context) (TokenMetadata, error) {
+// If the context has no TokenMetadata attached to it an empty TokenMetadata is returned.
+func ToTokenMetadata(ctx context.Context) TokenMetadata {
 	md, ok := metadata.FromIncomingContext(ctx)
 	if !ok {
-		return TokenMetadata{}, fmt.Errorf("Provided context was not an incoming grpc metadta")
+		return TokenMetadata{}
 	}
-	s := TokenMetadata{}
+	tMD := TokenMetadata{}
 	if uid := md.Get(mdAuthTokenUserKey); len(uid) > 0 {
-		s.UserId = uid[0]
+		tMD.UserId = uid[0]
 	}
 	if token := md.Get(mdAuthTokenBearerTokenKey); len(token) > 0 {
-		s.bearerPayload = token[0]
+		tMD.bearerPayload = token[0]
 	}
 	if token := md.Get(mdAuthTokenHttpTokenKey); len(token) > 0 {
-		s.httpCookiePayload = token[0]
+		tMD.httpCookiePayload = token[0]
 	}
 	if token := md.Get(mdAuthTokenJsTokenKey); len(token) > 0 {
-		s.jsCookiePayload = token[0]
+		tMD.jsCookiePayload = token[0]
 	}
 	if sType := md.Get(mdAuthTokenTypeKey); len(sType) > 0 {
 		if st, err := strconv.Atoi(sType[0]); err == nil {
-			s.recievedTokenType = tokenFormat(st)
+			tMD.recievedTokenType = tokenFormat(st)
 		}
 	}
 
-	return s, nil
+	return tMD
 }
 
 func (s TokenMetadata) toMetadata() metadata.MD {

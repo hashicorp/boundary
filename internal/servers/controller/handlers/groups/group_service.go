@@ -46,6 +46,8 @@ var _ pbs.GroupServiceServer = Service{}
 
 // ListGroups implements the interface pbs.GroupServiceServer.
 func (s Service) ListGroups(ctx context.Context, req *pbs.ListGroupsRequest) (*pbs.ListGroupsResponse, error) {
+	auth := handlers.ToTokenMetadata(ctx)
+	_ = auth
 	if err := validateListRequest(req); err != nil {
 		return nil, err
 	}
@@ -58,6 +60,8 @@ func (s Service) ListGroups(ctx context.Context, req *pbs.ListGroupsRequest) (*p
 
 // GetGroups implements the interface pbs.GroupServiceServer.
 func (s Service) GetGroup(ctx context.Context, req *pbs.GetGroupRequest) (*pbs.GetGroupResponse, error) {
+	auth := handlers.ToTokenMetadata(ctx)
+	_ = auth
 	if err := validateGetRequest(req); err != nil {
 		return nil, err
 	}
@@ -70,6 +74,8 @@ func (s Service) GetGroup(ctx context.Context, req *pbs.GetGroupRequest) (*pbs.G
 
 // CreateGroup implements the interface pbs.GroupServiceServer.
 func (s Service) CreateGroup(ctx context.Context, req *pbs.CreateGroupRequest) (*pbs.CreateGroupResponse, error) {
+	auth := handlers.ToTokenMetadata(ctx)
+	_ = auth
 	if err := validateCreateRequest(req); err != nil {
 		return nil, err
 	}
@@ -82,6 +88,8 @@ func (s Service) CreateGroup(ctx context.Context, req *pbs.CreateGroupRequest) (
 
 // UpdateGroup implements the interface pbs.GroupServiceServer.
 func (s Service) UpdateGroup(ctx context.Context, req *pbs.UpdateGroupRequest) (*pbs.UpdateGroupResponse, error) {
+	auth := handlers.ToTokenMetadata(ctx)
+	_ = auth
 	if err := validateUpdateRequest(req); err != nil {
 		return nil, err
 	}
@@ -94,6 +102,8 @@ func (s Service) UpdateGroup(ctx context.Context, req *pbs.UpdateGroupRequest) (
 
 // DeleteGroup implements the interface pbs.GroupServiceServer.
 func (s Service) DeleteGroup(ctx context.Context, req *pbs.DeleteGroupRequest) (*pbs.DeleteGroupResponse, error) {
+	auth := handlers.ToTokenMetadata(ctx)
+	_ = auth
 	if err := validateDeleteRequest(req); err != nil {
 		return nil, err
 	}

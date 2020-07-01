@@ -45,6 +45,8 @@ var _ pbs.ProjectServiceServer = Service{}
 
 // ListProjects implements the interface pbs.ProjectServiceServer.
 func (s Service) ListProjects(ctx context.Context, req *pbs.ListProjectsRequest) (*pbs.ListProjectsResponse, error) {
+	auth := handlers.ToTokenMetadata(ctx)
+	_ = auth
 	if err := validateListRequest(req); err != nil {
 		return nil, err
 	}
@@ -57,6 +59,8 @@ func (s Service) ListProjects(ctx context.Context, req *pbs.ListProjectsRequest)
 
 // GetProjects implements the interface pbs.ProjectServiceServer.
 func (s Service) GetProject(ctx context.Context, req *pbs.GetProjectRequest) (*pbs.GetProjectResponse, error) {
+	auth := handlers.ToTokenMetadata(ctx)
+	_ = auth
 	if err := validateGetRequest(req); err != nil {
 		return nil, err
 	}
@@ -69,6 +73,8 @@ func (s Service) GetProject(ctx context.Context, req *pbs.GetProjectRequest) (*p
 
 // CreateProject implements the interface pbs.ProjectServiceServer.
 func (s Service) CreateProject(ctx context.Context, req *pbs.CreateProjectRequest) (*pbs.CreateProjectResponse, error) {
+	auth := handlers.ToTokenMetadata(ctx)
+	_ = auth
 	if err := validateCreateRequest(req); err != nil {
 		return nil, err
 	}
@@ -81,6 +87,8 @@ func (s Service) CreateProject(ctx context.Context, req *pbs.CreateProjectReques
 
 // UpdateProject implements the interface pbs.ProjectServiceServer.
 func (s Service) UpdateProject(ctx context.Context, req *pbs.UpdateProjectRequest) (*pbs.UpdateProjectResponse, error) {
+	auth := handlers.ToTokenMetadata(ctx)
+	_ = auth
 	if err := validateUpdateRequest(req); err != nil {
 		return nil, err
 	}
@@ -93,6 +101,8 @@ func (s Service) UpdateProject(ctx context.Context, req *pbs.UpdateProjectReques
 
 // DeleteProject implements the interface pbs.ProjectServiceServer.
 func (s Service) DeleteProject(ctx context.Context, req *pbs.DeleteProjectRequest) (*pbs.DeleteProjectResponse, error) {
+	auth := handlers.ToTokenMetadata(ctx)
+	_ = auth
 	if err := validateDeleteRequest(req); err != nil {
 		return nil, err
 	}

@@ -93,8 +93,7 @@ func TestAuthTokenAuthenticator(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			hook := &fakeHandler{validateFn: func(ctx context.Context) {
-				tMD, err := ToTokenMetadata(ctx)
-				assert.NoError(t, err)
+				tMD := ToTokenMetadata(ctx)
 				assert.Equal(t, tc.wantAuthTokMd, tMD)
 			}}
 			mux := runtime.NewServeMux(runtime.WithMetadata(TokenAuthenticator(hclog.L())))
