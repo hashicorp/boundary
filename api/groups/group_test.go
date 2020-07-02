@@ -2,6 +2,7 @@ package groups_test
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"testing"
 
@@ -19,6 +20,84 @@ type groupCrud interface {
 	ReadGroup(context.Context, *groups.Group) (*groups.Group, *api.Error, error)
 	UpdateGroup(context.Context, *groups.Group) (*groups.Group, *api.Error, error)
 	DeleteGroup(context.Context, *groups.Group) (bool, *api.Error, error)
+	ListGroups(ctx context.Context) ([]*groups.Group, *api.Error, error)
+}
+
+func TestGroup_List(t *testing.T) {
+	assert := assert.New(t)
+	tc := controller.NewTestController(t, nil)
+	defer tc.Shutdown()
+
+	client := tc.Client()
+	org := &scopes.Organization{
+		Client: client,
+	}
+	proj, apiErr, err := org.CreateProject(context.Background(), &scopes.Project{})
+	require.NoError(t, err)
+	require.Nil(t, apiErr)
+
+	cases := []struct {
+		name  string
+		scope groupCrud
+	}{
+		{
+			name:  "org",
+			scope: org,
+		},
+		{
+			name:  "proj",
+			scope: proj,
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			ctx := context.Background()
+
+			pl, apiErr, err := tc.scope.ListGroups(ctx)
+			assert.NoError(err)
+			assert.Nil(apiErr)
+			assert.Empty(pl)
+
+			var expected []*groups.Group
+			for i := 0; i < 10; i++ {
+				expected = append(expected, &groups.Group{Name: api.String(fmt.Sprint(i))})
+			}
+
+			expected[0], apiErr, err = tc.scope.CreateGroup(ctx, expected[0])
+			assert.NoError(err)
+			assert.Nil(apiErr)
+
+			pl, apiErr, err = tc.scope.ListGroups(ctx)
+			assert.NoError(err)
+			assert.Nil(apiErr)
+			assert.ElementsMatch(comparableSlice(expected[:1]), comparableSlice(pl))
+
+			for i := 1; i < 10; i++ {
+				expected[i], apiErr, err = tc.scope.CreateGroup(ctx, expected[i])
+				assert.NoError(err)
+				assert.Nil(apiErr)
+			}
+			pl, apiErr, err = tc.scope.ListGroups(ctx)
+			assert.ElementsMatch(comparableSlice(expected), comparableSlice(pl))
+		})
+	}
+}
+
+func comparableSlice(in []*groups.Group) []groups.Group {
+	var filtered []groups.Group
+	for _, i := range in {
+		p := groups.Group{
+			Id:          i.Id,
+			Name:        i.Name,
+			Description: i.Description,
+			CreatedTime: i.CreatedTime,
+			UpdatedTime: i.UpdatedTime,
+			Disabled:    i.Disabled,
+		}
+		filtered = append(filtered, p)
+	}
+	return filtered
 }
 
 func TestGroup_Crud(t *testing.T) {
