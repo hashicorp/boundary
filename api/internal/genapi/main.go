@@ -6,5 +6,6 @@ func main() {
 	writeCreateFuncs()
 	writeReadFuncs()
 	writeUpdateFuncs()
+	writeListFuncs()
 	writeDeleteFuncs()
 }
