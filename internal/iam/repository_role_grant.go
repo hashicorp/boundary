@@ -171,18 +171,21 @@ func (r *Repository) DeleteRoleGrants(ctx context.Context, roleId string, roleVe
 				deleteRoleGrants = append(deleteRoleGrants, roleGrant)
 			}
 
-			if len(deleteRoleGrants) > 0 {
-				roleGrantOplogMsgs := make([]*oplog.Message, 0, len(deleteRoleGrants))
-				rowsDeleted, err := w.DeleteItems(ctx, deleteRoleGrants, db.NewOplogMsgs(&roleGrantOplogMsgs))
-				if err != nil {
-					return fmt.Errorf("delete role grants: unable to delete role grant: %w", err)
-				}
-				if rowsDeleted != len(deleteRoleGrants) {
-					return fmt.Errorf("delete role grants: user roles deleted %d did not match request for %d", rowsDeleted, len(deleteRoleGrants))
-				}
-				totalRowsDeleted = rowsDeleted
-				msgs = append(msgs, roleGrantOplogMsgs...)
+			if len(deleteRoleGrants) == 0 {
+				return nil
 			}
+
+			roleGrantOplogMsgs := make([]*oplog.Message, 0, len(deleteRoleGrants))
+			rowsDeleted, err := w.DeleteItems(ctx, deleteRoleGrants, db.NewOplogMsgs(&roleGrantOplogMsgs))
+			if err != nil {
+				return fmt.Errorf("delete role grants: unable to delete role grant: %w", err)
+			}
+			if rowsDeleted != len(deleteRoleGrants) {
+				return fmt.Errorf("delete role grants: user roles deleted %d did not match request for %d", rowsDeleted, len(deleteRoleGrants))
+			}
+			totalRowsDeleted = rowsDeleted
+			msgs = append(msgs, roleGrantOplogMsgs...)
+
 			metadata := oplog.Metadata{
 				"op-type":            []string{oplog.OpType_OP_TYPE_DELETE.String()},
 				"scope-id":           []string{s.PublicId},
