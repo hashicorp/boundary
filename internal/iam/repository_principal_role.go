@@ -10,8 +10,9 @@ import (
 
 // AddPrincipalRoles provides the ability to add principals (userIds and
 // groupIds) to a role (roleId).  The role's current db version must match the
-// roleVersion or an error will be returned.  The role, users and groups must
-// all be in the same scope
+// roleVersion or an error will be returned.  The roles and groups must be in
+// the same scope.  User can only be added to roles which are within the user's
+// organization, or the role is within a project within the user's organization.
 func (r *Repository) AddPrincipalRoles(ctx context.Context, roleId string, roleVersion int, userIds, groupIds []string, opt ...Option) ([]PrincipalRole, error) {
 	// NOTE - we are intentionally not going to check that the scopes are
 	// correct for the userIds and groupIds, given the roleId.  We are going to
