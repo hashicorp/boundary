@@ -48,12 +48,12 @@ func TestAction(t *testing.T) {
 			want:   "connect",
 		},
 		{
-			action: AddGrant,
-			want:   "add-grant",
+			action: AddGrants,
+			want:   "add-grants",
 		},
 		{
-			action: DeleteGrant,
-			want:   "delete-grant",
+			action: DeleteGrants,
+			want:   "delete-grants",
 		},
 		{
 			action: SetGrants,

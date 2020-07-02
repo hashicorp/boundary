@@ -81,8 +81,8 @@ func (*Role) ResourceType() resource.Type { return resource.Role }
 // Actions returns the available actions for Role.
 func (*Role) Actions() map[string]action.Type {
 	ret := CrudActions()
-	ret[action.AddGrant.String()] = action.AddGrant
-	ret[action.DeleteGrant.String()] = action.DeleteGrant
+	ret[action.AddGrants.String()] = action.AddGrants
+	ret[action.DeleteGrants.String()] = action.DeleteGrants
 	ret[action.SetGrants.String()] = action.SetGrants
 	return ret
 }

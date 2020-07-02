@@ -454,8 +454,8 @@ func TestRole_Actions(t *testing.T) {
 	assert.Equal(a[action.Update.String()], action.Update)
 	assert.Equal(a[action.Read.String()], action.Read)
 	assert.Equal(a[action.Delete.String()], action.Delete)
-	assert.Equal(a[action.AddGrant.String()], action.AddGrant)
-	assert.Equal(a[action.DeleteGrant.String()], action.DeleteGrant)
+	assert.Equal(a[action.AddGrants.String()], action.AddGrants)
+	assert.Equal(a[action.DeleteGrants.String()], action.DeleteGrants)
 	assert.Equal(a[action.SetGrants.String()], action.SetGrants)
 }
 

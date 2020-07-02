@@ -194,6 +194,16 @@ create table iam_role (
     unique(scope_id, public_id)
   );
 
+create table iam_role_grant (
+    private_id wt_private_id primary key,
+    create_time wt_timestamp,
+    update_time wt_timestamp,
+    role_id wt_public_id not null references iam_role(public_id) on delete cascade on update cascade,
+    "grant" text not null,
+    unique (role_id, "grant")
+  );
+
+
 create trigger 
   update_version_column
 after update on iam_role

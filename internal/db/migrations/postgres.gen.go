@@ -427,6 +427,7 @@ drop table iam_scope_type_enm cascade;
 drop table iam_role cascade;
 drop table iam_group_role cascade;
 drop table iam_user_role cascade;
+drop table iam_role_grant cascade;
 drop view iam_principal_role cascade;
 
 drop function iam_sub_names cascade;
@@ -638,6 +639,16 @@ create table iam_role (
     -- add unique index so a composite fk can be declared.
     unique(scope_id, public_id)
   );
+
+create table iam_role_grant (
+    private_id wt_private_id primary key,
+    create_time wt_timestamp,
+    update_time wt_timestamp,
+    role_id wt_public_id not null references iam_role(public_id) on delete cascade on update cascade,
+    "grant" text not null,
+    unique (role_id, "grant")
+  );
+
 
 create trigger 
   update_version_column
@@ -933,7 +944,6 @@ drop table if exists iam_group_member_user cascade;
 drop view if exists iam_group_member;
 drop table if exists iam_auth_method_type_enm cascade;
 drop table if exists iam_action_enm cascade;
-drop table if exists iam_role_grant cascade;
 drop view if exists iam_assigned_role;
 
 
@@ -982,12 +992,12 @@ CREATE TABLE iam_auth_method (
   );
 
 CREATE TABLE iam_auth_method_type_enm (
-    string text NOT NULL primary key CHECK(string IN ('unknown', 'userpass', 'oidc'))
+    string text NOT NULL primary key CHECK(string IN ('unknown', 'password', 'oidc'))
   );
 INSERT INTO iam_auth_method_type_enm (string)
 values
   ('unknown'),
-  ('userpass'),
+  ('password'),
   ('oidc');
 ALTER TABLE iam_auth_method
 ADD
@@ -1000,9 +1010,14 @@ CREATE TABLE iam_action_enm (
         'list',
         'create',
         'update',
-        'edit',
+        'read',
         'delete',
-        'authen'
+        'authenticate',
+        'all',
+        'connect',
+        'add-grants',
+        'delete-grants',
+        'set-grants',
       )
     )
   );
@@ -1013,21 +1028,14 @@ values
   ('list'),
   ('create'),
   ('update'),
-  ('edit'),
+  ('read'),
   ('delete'),
-  ('authen');
-
-
-
-
-CREATE TABLE iam_role_grant (
-    private_id wt_private_id not null primary key,
-    create_time wt_timestamp,
-    update_time wt_timestamp,
-    role_id wt_public_id NOT NULL REFERENCES iam_role(public_id) ON DELETE CASCADE ON UPDATE CASCADE,
-    "grant" text NOT NULL,
-    UNIQUE (role_id, "grant")
-  );
+  ('authenticate'),
+  ('all'),
+  ('connect'),
+  ('add-grants'),
+  ('delete-grants'),
+  ('set-grants');
 
   COMMIT;
 

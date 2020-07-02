@@ -37,12 +37,12 @@ CREATE TABLE iam_auth_method (
   );
 
 CREATE TABLE iam_auth_method_type_enm (
-    string text NOT NULL primary key CHECK(string IN ('unknown', 'userpass', 'oidc'))
+    string text NOT NULL primary key CHECK(string IN ('unknown', 'password', 'oidc'))
   );
 INSERT INTO iam_auth_method_type_enm (string)
 values
   ('unknown'),
-  ('userpass'),
+  ('password'),
   ('oidc');
 ALTER TABLE iam_auth_method
 ADD
@@ -55,9 +55,14 @@ CREATE TABLE iam_action_enm (
         'list',
         'create',
         'update',
-        'edit',
+        'read',
         'delete',
-        'authen'
+        'authenticate',
+        'all',
+        'connect',
+        'add-grants',
+        'delete-grants',
+        'set-grants',
       )
     )
   );
@@ -68,20 +73,13 @@ values
   ('list'),
   ('create'),
   ('update'),
-  ('edit'),
+  ('read'),
   ('delete'),
-  ('authen');
-
-
-
-
-CREATE TABLE iam_role_grant (
-    private_id wt_private_id not null primary key,
-    create_time wt_timestamp,
-    update_time wt_timestamp,
-    role_id wt_public_id NOT NULL REFERENCES iam_role(public_id) ON DELETE CASCADE ON UPDATE CASCADE,
-    "grant" text NOT NULL,
-    UNIQUE (role_id, "grant")
-  );
+  ('authenticate'),
+  ('all'),
+  ('connect'),
+  ('add-grants'),
+  ('delete-grants'),
+  ('set-grants');
 
   COMMIT;
