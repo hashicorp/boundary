@@ -68,6 +68,36 @@ func TestArgon2Configuration_New(t *testing.T) {
 		err = rw.Create(ctx, got)
 		assert.Error(err)
 	})
+	t.Run("multiple-configurations", func(t *testing.T) {
+		assert, require := assert.New(t), require.New(t)
+
+		var confs []*Argon2Configuration
+		err := rw.SearchWhere(ctx, &confs, "auth_password_method_id = ?", []interface{}{authMethodId})
+		require.NoError(err)
+		assert.Equal(1, len(confs))
+
+		c1, err := NewArgon2Configuration(authMethodId)
+		require.NoError(err)
+		require.NotNil(c1)
+		c1.Iterations = c1.Iterations + 1
+		c1.Threads = c1.Threads + 1
+		err = rw.Create(ctx, c1)
+		assert.NoError(err)
+
+		c2, err := NewArgon2Configuration(authMethodId)
+		require.NoError(err)
+		require.NotNil(c1)
+		c2.Memory = 32 * 1024
+		c2.SaltLength = 16
+		c2.KeyLength = 16
+		err = rw.Create(ctx, c2)
+		assert.NoError(err)
+
+		confs = nil
+		err = rw.SearchWhere(ctx, &confs, "auth_password_method_id = ?", []interface{}{authMethodId})
+		require.NoError(err)
+		assert.Equal(3, len(confs))
+	})
 }
 
 func TestArgon2Configuration_Readonly(t *testing.T) {
