@@ -52,9 +52,9 @@ func NewRepository(r db.Reader, w db.Writer, wrapper wrapping.Wrapper) (*Reposit
 	}, nil
 }
 
-// CreateAuthToken persists in the repo and returns an AuthToken containing the auth token's PublicId and token.
-// The provided IAM User ID provided must be associated to the provided auth account id or an error will be returned.
-// All options are ignored.
+// CreateAuthToken inserts an Auth Token into the repository and returns a new Auth Token.  The returned auth token
+// contains the auth token value. The provided IAM User ID provided must be associated to the provided auth
+// account id or an error will be returned. All options are ignored.
 func (r *Repository) CreateAuthToken(ctx context.Context, withIamUserId, withAuthAccountId string, opt ...Option) (*AuthToken, error) {
 	if withIamUserId == "" {
 		return nil, fmt.Errorf("create: auth token: no user id: %w", db.ErrInvalidParameter)
