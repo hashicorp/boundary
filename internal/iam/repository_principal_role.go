@@ -300,12 +300,6 @@ func (r *Repository) DeletePrincipalRoles(ctx context.Context, roleId string, ro
 	if err != nil {
 		return db.NoRowsAffected, fmt.Errorf("delete principal roles: unable to get role %s scope to create metadata: %w", roleId, err)
 	}
-	metadata := oplog.Metadata{
-		"op-type":            []string{oplog.OpType_OP_TYPE_DELETE.String()},
-		"scope-id":           []string{scope.PublicId},
-		"scope-type":         []string{scope.Type},
-		"resource-public-id": []string{roleId},
-	}
 	deleteUserRoles := make([]interface{}, 0, len(userIds))
 	for _, id := range userIds {
 		usrRole, err := NewUserRole(scope.PublicId, roleId, id)
@@ -369,6 +363,12 @@ func (r *Repository) DeletePrincipalRoles(ctx context.Context, roleId string, ro
 				}
 				totalRowsDeleted += rowsDeleted
 				msgs = append(msgs, grpOplogMsgs...)
+			}
+			metadata := oplog.Metadata{
+				"op-type":            []string{oplog.OpType_OP_TYPE_DELETE.String()},
+				"scope-id":           []string{scope.PublicId},
+				"scope-type":         []string{scope.Type},
+				"resource-public-id": []string{roleId},
 			}
 			if err := w.WriteOplogEntryWith(ctx, r.wrapper, roleTicket, metadata, msgs); err != nil {
 				return fmt.Errorf("delete principal roles: unable to write oplog: %w", err)
