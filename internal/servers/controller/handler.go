@@ -16,6 +16,7 @@ import (
 	"github.com/hashicorp/watchtower/globals"
 	"github.com/hashicorp/watchtower/internal/gen/controller/api/services"
 	"github.com/hashicorp/watchtower/internal/servers/controller/handlers"
+	"github.com/hashicorp/watchtower/internal/servers/controller/handlers/authenticate"
 	"github.com/hashicorp/watchtower/internal/servers/controller/handlers/groups"
 	"github.com/hashicorp/watchtower/internal/servers/controller/handlers/host_catalogs"
 	"github.com/hashicorp/watchtower/internal/servers/controller/handlers/host_sets"
@@ -126,7 +127,14 @@ func handleGrpcGateway(c *Controller) (http.Handler, error) {
 	if err := services.RegisterHostServiceHandlerServer(ctx, mux, &hosts.Service{}); err != nil {
 		return nil, fmt.Errorf("failed to register host service handler: %w", err)
 	}
-	os, err := organizations.NewService(c.IamRepoFn, c.AuthTokenRepoFn, c.conf.DefaultAuthAccountId)
+	auths, err := authenticate.NewService(c.IamRepoFn, c.AuthTokenRepoFn, c.conf.DefaultAuthAccountId)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create organization handler service: %w", err)
+	}
+	if err := services.RegisterAuthenticationServiceHandlerServer(ctx, mux, auths); err != nil {
+		return nil, fmt.Errorf("failed to register authenticate service handler: %w", err)
+	}
+	os, err := organizations.NewService(c.IamRepoFn)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create organization handler service: %w", err)
 	}

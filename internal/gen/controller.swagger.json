@@ -2550,7 +2550,7 @@
     "/v1/orgs/{org_id}:authenticate": {
       "post": {
         "summary": "Authenticate a user to an Organization and retrieve an authentication token.",
-        "operationId": "OrganizationService_Authenticate",
+        "operationId": "AuthenticationService_Authenticate",
         "responses": {
           "200": {
             "description": "",
@@ -2576,14 +2576,14 @@
           }
         ],
         "tags": [
-          "controller.api.services.v1.OrganizationService"
+          "controller.api.services.v1.AuthenticationService"
         ]
       }
     },
     "/v1/orgs/{org_id}:deauthenticate": {
       "post": {
         "summary": "Deauthenticate an authentication token from an Organization.",
-        "operationId": "OrganizationService_Deauthenticate",
+        "operationId": "AuthenticationService_Deauthenticate",
         "responses": {
           "200": {
             "description": "A successful response.",
@@ -2601,7 +2601,7 @@
           }
         ],
         "tags": [
-          "controller.api.services.v1.OrganizationService"
+          "controller.api.services.v1.AuthenticationService"
         ]
       }
     }

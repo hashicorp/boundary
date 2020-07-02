@@ -6,16 +6,12 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/hashicorp/watchtower/internal/authtoken"
-	pba "github.com/hashicorp/watchtower/internal/gen/controller/api/resources/authtokens"
 	pb "github.com/hashicorp/watchtower/internal/gen/controller/api/resources/scopes"
 	pbs "github.com/hashicorp/watchtower/internal/gen/controller/api/services"
 	"github.com/hashicorp/watchtower/internal/iam"
 	"github.com/hashicorp/watchtower/internal/servers/controller/common"
 	"github.com/hashicorp/watchtower/internal/servers/controller/handlers"
 	"github.com/hashicorp/watchtower/internal/types/scope"
-	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 )
 
@@ -27,20 +23,15 @@ var (
 
 // Service handles request as described by the pbs.OrganizationServiceServer interface.
 type Service struct {
-	iamRepo       common.IamRepoFactory
-	authTokenRepo common.AuthTokenRepoFactory
-	authAcctId    string
+	iamRepo common.IamRepoFactory
 }
 
 // NewService returns an organization service which handles organization related requests to watchtower.
-func NewService(iamRepo common.IamRepoFactory, atRepo common.AuthTokenRepoFactory, authAccountId string) (Service, error) {
+func NewService(iamRepo common.IamRepoFactory) (Service, error) {
 	if iamRepo == nil {
 		return Service{}, fmt.Errorf("nil iam repository provided")
 	}
-	if atRepo == nil {
-		return Service{}, fmt.Errorf("nil auth token repository provided")
-	}
-	return Service{iamRepo: iamRepo, authTokenRepo: atRepo, authAcctId: authAccountId}, nil
+	return Service{iamRepo: iamRepo}, nil
 }
 
 var _ pbs.OrganizationServiceServer = Service{}
@@ -64,23 +55,6 @@ func (s Service) GetOrganization(ctx context.Context, req *pbs.GetOrganizationRe
 		return nil, err
 	}
 	return &pbs.GetOrganizationResponse{Item: o}, nil
-}
-
-// Authenticate implements the interface pbs.OrganizationServiceServer.
-func (s Service) Authenticate(ctx context.Context, req *pbs.AuthenticateRequest) (*pbs.AuthenticateResponse, error) {
-	if err := validateAuthenticateRequest(req); err != nil {
-		return nil, err
-	}
-	tok, err := s.authenticateWithRepo(ctx, req)
-	if err != nil {
-		return nil, err
-	}
-	return &pbs.AuthenticateResponse{Item: tok}, nil
-}
-
-// Deauthenticate implements the interface pbs.OrganizationServiceServer.
-func (s Service) Deauthenticate(ctx context.Context, req *pbs.DeauthenticateRequest) (*pbs.DeauthenticateResponse, error) {
-	return nil, status.Error(codes.Unimplemented, "Requested method is unimplemented for Organization.")
 }
 
 func (s Service) getFromRepo(ctx context.Context, id string) (*pb.Organization, error) {
@@ -114,33 +88,6 @@ func (s Service) listFromRepo(ctx context.Context) ([]*pb.Organization, error) {
 	return outOl, nil
 }
 
-func (s Service) authenticateWithRepo(ctx context.Context, req *pbs.AuthenticateRequest) (*pba.AuthToken, error) {
-	userRepo, err := s.iamRepo()
-	if err != nil {
-		return nil, err
-	}
-	atRepo, err := s.authTokenRepo()
-	if err != nil {
-		return nil, err
-	}
-	// Place holder for making a request to authenticate
-	pwCreds := req.GetPasswordCredential()
-	if s.authAcctId == "" || (pwCreds.GetLoginName() != "admin" && pwCreds.GetPassword() != "hunter2") {
-		return nil, status.Error(codes.Unauthenticated, "Unable to authenticate.")
-	}
-	// Get back a password.Account with a CredentialId string and a public Id
-	u, err := userRepo.LookupUserWithLogin(ctx, s.authAcctId, iam.WithAutoVivify(true))
-	if err != nil {
-		return nil, err
-	}
-	tok, err := atRepo.CreateAuthToken(ctx, u.GetPublicId(), s.authAcctId)
-	if err != nil {
-		return nil, err
-	}
-	tok.Token = tok.GetPublicId() + "." + tok.GetToken()
-	return toWireToken(tok), nil
-}
-
 func toProto(in *iam.Scope) *pb.Organization {
 	out := pb.Organization{
 		Id:          in.GetPublicId(),
@@ -154,19 +101,6 @@ func toProto(in *iam.Scope) *pb.Organization {
 		out.Name = &wrapperspb.StringValue{Value: in.GetName()}
 	}
 	return &out
-}
-
-func toWireToken(t *authtoken.AuthToken) *pba.AuthToken {
-	return &pba.AuthToken{
-		Id:                      t.GetPublicId(),
-		Token:                   t.GetToken(),
-		UserId:                  t.GetIamUserId(),
-		AuthMethodId:            t.GetAuthMethodId(),
-		CreatedTime:             t.GetCreateTime().GetTimestamp(),
-		UpdatedTime:             t.GetUpdateTime().GetTimestamp(),
-		ApproximateLastUsedTime: t.GetApproximateLastAccessTime().GetTimestamp(),
-		ExpirationTime:          t.GetExpirationTime().GetTimestamp(),
-	}
 }
 
 // A validateX method should exist for each method above.  These methods do not make calls to any backing service but enforce
