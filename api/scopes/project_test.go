@@ -23,7 +23,7 @@ func TestProjects_List(t *testing.T) {
 	}
 	ctx := context.Background()
 
-	pl, apiErr, err := org.ListProject(ctx)
+	pl, apiErr, err := org.ListProjects(ctx)
 	assert.NoError(err)
 	assert.Nil(apiErr)
 	assert.Empty(pl)
@@ -37,7 +37,7 @@ func TestProjects_List(t *testing.T) {
 	assert.NoError(err)
 	assert.Nil(apiErr)
 
-	pl, apiErr, err = org.ListProject(ctx)
+	pl, apiErr, err = org.ListProjects(ctx)
 	assert.NoError(err)
 	assert.Nil(apiErr)
 	assert.ElementsMatch(comparableSlice(expected[:1]), comparableSlice(pl))
@@ -47,7 +47,7 @@ func TestProjects_List(t *testing.T) {
 		assert.NoError(err)
 		assert.Nil(apiErr)
 	}
-	pl, apiErr, err = org.ListProject(ctx)
+	pl, apiErr, err = org.ListProjects(ctx)
 	assert.ElementsMatch(comparableSlice(expected), comparableSlice(pl))
 }
 

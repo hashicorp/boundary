@@ -79,7 +79,7 @@ package %s
 
 var listFuncTemplate = template.Must(template.New("").Parse(
 	`
-func (s {{ .BaseType }}) List{{ .TargetName }}(ctx context.Context) ([]*{{ .TargetType }}, *api.Error, error) {
+func (s {{ .BaseType }}) List{{ .TargetName }}s(ctx context.Context) ([]*{{ .TargetType }}, *api.Error, error) {
 	if s.Client == nil {
 		return nil, nil, fmt.Errorf("nil client in List{{ .TargetName }} request")
 	}
@@ -91,7 +91,7 @@ func (s {{ .BaseType }}) List{{ .TargetName }}(ctx context.Context) ([]*{{ .Targ
 		// Assume the client has been configured with project already and move
 		// on
 		{{ else }}
-		return nil, nil, fmt.Errorf("missing {{ .BaseType }} ID in Read{{ .TargetType }} request")
+		return nil, nil, fmt.Errorf("missing {{ .BaseType }} ID in List{{ .TargetType }}s request")
 		{{ end }}
 	} else {
 		// If it's explicitly set here, override anything that might be in the
@@ -105,12 +105,12 @@ func (s {{ .BaseType }}) List{{ .TargetName }}(ctx context.Context) ([]*{{ .Targ
 
 	req, err := s.Client.NewRequest(ctx, "GET", "{{ .Path }}", nil)
 	if err != nil {
-		return nil, nil, fmt.Errorf("error creating List{{ .TargetName }} request: %w", err)
+		return nil, nil, fmt.Errorf("error creating List{{ .TargetName }}s request: %w", err)
 	}
 
 	resp, err := s.Client.Do(req)
 	if err != nil {
-		return nil, nil, fmt.Errorf("error performing client request during List{{ .TargetName }} call: %w", err)
+		return nil, nil, fmt.Errorf("error performing client request during List{{ .TargetName }}s call: %w", err)
 	}
 
 	type listResponse struct {
@@ -120,7 +120,7 @@ func (s {{ .BaseType }}) List{{ .TargetName }}(ctx context.Context) ([]*{{ .Targ
 
 	apiErr, err := resp.Decode(target)
 	if err != nil {
-		return nil, nil, fmt.Errorf("error decoding List{{ .TargetName }} response: %w", err)
+		return nil, nil, fmt.Errorf("error decoding List{{ .TargetName }}s response: %w", err)
 	}
 
 	for _, t := range target.Items {

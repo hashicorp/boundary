@@ -11,7 +11,7 @@ import (
 	"github.com/hashicorp/watchtower/api/users"
 )
 
-func (s Organization) ListProject(ctx context.Context) ([]*Project, *api.Error, error) {
+func (s Organization) ListProjects(ctx context.Context) ([]*Project, *api.Error, error) {
 	if s.Client == nil {
 		return nil, nil, fmt.Errorf("nil client in ListProject request")
 	}
@@ -30,12 +30,12 @@ func (s Organization) ListProject(ctx context.Context) ([]*Project, *api.Error, 
 
 	req, err := s.Client.NewRequest(ctx, "GET", "projects", nil)
 	if err != nil {
-		return nil, nil, fmt.Errorf("error creating ListProject request: %w", err)
+		return nil, nil, fmt.Errorf("error creating ListProjects request: %w", err)
 	}
 
 	resp, err := s.Client.Do(req)
 	if err != nil {
-		return nil, nil, fmt.Errorf("error performing client request during ListProject call: %w", err)
+		return nil, nil, fmt.Errorf("error performing client request during ListProjects call: %w", err)
 	}
 
 	type listResponse struct {
@@ -45,7 +45,7 @@ func (s Organization) ListProject(ctx context.Context) ([]*Project, *api.Error, 
 
 	apiErr, err := resp.Decode(target)
 	if err != nil {
-		return nil, nil, fmt.Errorf("error decoding ListProject response: %w", err)
+		return nil, nil, fmt.Errorf("error decoding ListProjects response: %w", err)
 	}
 
 	for _, t := range target.Items {
@@ -58,7 +58,7 @@ func (s Organization) ListProject(ctx context.Context) ([]*Project, *api.Error, 
 	return target.Items, apiErr, nil
 }
 
-func (s Organization) ListGroup(ctx context.Context) ([]*groups.Group, *api.Error, error) {
+func (s Organization) ListGroups(ctx context.Context) ([]*groups.Group, *api.Error, error) {
 	if s.Client == nil {
 		return nil, nil, fmt.Errorf("nil client in ListGroup request")
 	}
@@ -77,12 +77,12 @@ func (s Organization) ListGroup(ctx context.Context) ([]*groups.Group, *api.Erro
 
 	req, err := s.Client.NewRequest(ctx, "GET", "groups", nil)
 	if err != nil {
-		return nil, nil, fmt.Errorf("error creating ListGroup request: %w", err)
+		return nil, nil, fmt.Errorf("error creating ListGroups request: %w", err)
 	}
 
 	resp, err := s.Client.Do(req)
 	if err != nil {
-		return nil, nil, fmt.Errorf("error performing client request during ListGroup call: %w", err)
+		return nil, nil, fmt.Errorf("error performing client request during ListGroups call: %w", err)
 	}
 
 	type listResponse struct {
@@ -92,7 +92,7 @@ func (s Organization) ListGroup(ctx context.Context) ([]*groups.Group, *api.Erro
 
 	apiErr, err := resp.Decode(target)
 	if err != nil {
-		return nil, nil, fmt.Errorf("error decoding ListGroup response: %w", err)
+		return nil, nil, fmt.Errorf("error decoding ListGroups response: %w", err)
 	}
 
 	for _, t := range target.Items {
@@ -104,7 +104,7 @@ func (s Organization) ListGroup(ctx context.Context) ([]*groups.Group, *api.Erro
 	return target.Items, apiErr, nil
 }
 
-func (s Organization) ListRole(ctx context.Context) ([]*roles.Role, *api.Error, error) {
+func (s Organization) ListRoles(ctx context.Context) ([]*roles.Role, *api.Error, error) {
 	if s.Client == nil {
 		return nil, nil, fmt.Errorf("nil client in ListRole request")
 	}
@@ -123,12 +123,12 @@ func (s Organization) ListRole(ctx context.Context) ([]*roles.Role, *api.Error, 
 
 	req, err := s.Client.NewRequest(ctx, "GET", "roles", nil)
 	if err != nil {
-		return nil, nil, fmt.Errorf("error creating ListRole request: %w", err)
+		return nil, nil, fmt.Errorf("error creating ListRoles request: %w", err)
 	}
 
 	resp, err := s.Client.Do(req)
 	if err != nil {
-		return nil, nil, fmt.Errorf("error performing client request during ListRole call: %w", err)
+		return nil, nil, fmt.Errorf("error performing client request during ListRoles call: %w", err)
 	}
 
 	type listResponse struct {
@@ -138,7 +138,7 @@ func (s Organization) ListRole(ctx context.Context) ([]*roles.Role, *api.Error, 
 
 	apiErr, err := resp.Decode(target)
 	if err != nil {
-		return nil, nil, fmt.Errorf("error decoding ListRole response: %w", err)
+		return nil, nil, fmt.Errorf("error decoding ListRoles response: %w", err)
 	}
 
 	for _, t := range target.Items {
@@ -150,7 +150,7 @@ func (s Organization) ListRole(ctx context.Context) ([]*roles.Role, *api.Error, 
 	return target.Items, apiErr, nil
 }
 
-func (s Organization) ListUser(ctx context.Context) ([]*users.User, *api.Error, error) {
+func (s Organization) ListUsers(ctx context.Context) ([]*users.User, *api.Error, error) {
 	if s.Client == nil {
 		return nil, nil, fmt.Errorf("nil client in ListUser request")
 	}
@@ -169,12 +169,12 @@ func (s Organization) ListUser(ctx context.Context) ([]*users.User, *api.Error, 
 
 	req, err := s.Client.NewRequest(ctx, "GET", "users", nil)
 	if err != nil {
-		return nil, nil, fmt.Errorf("error creating ListUser request: %w", err)
+		return nil, nil, fmt.Errorf("error creating ListUsers request: %w", err)
 	}
 
 	resp, err := s.Client.Do(req)
 	if err != nil {
-		return nil, nil, fmt.Errorf("error performing client request during ListUser call: %w", err)
+		return nil, nil, fmt.Errorf("error performing client request during ListUsers call: %w", err)
 	}
 
 	type listResponse struct {
@@ -184,7 +184,7 @@ func (s Organization) ListUser(ctx context.Context) ([]*users.User, *api.Error, 
 
 	apiErr, err := resp.Decode(target)
 	if err != nil {
-		return nil, nil, fmt.Errorf("error decoding ListUser response: %w", err)
+		return nil, nil, fmt.Errorf("error decoding ListUsers response: %w", err)
 	}
 
 	for _, t := range target.Items {
@@ -196,7 +196,7 @@ func (s Organization) ListUser(ctx context.Context) ([]*users.User, *api.Error, 
 	return target.Items, apiErr, nil
 }
 
-func (s Project) ListGroup(ctx context.Context) ([]*groups.Group, *api.Error, error) {
+func (s Project) ListGroups(ctx context.Context) ([]*groups.Group, *api.Error, error) {
 	if s.Client == nil {
 		return nil, nil, fmt.Errorf("nil client in ListGroup request")
 	}
@@ -215,12 +215,12 @@ func (s Project) ListGroup(ctx context.Context) ([]*groups.Group, *api.Error, er
 
 	req, err := s.Client.NewRequest(ctx, "GET", "groups", nil)
 	if err != nil {
-		return nil, nil, fmt.Errorf("error creating ListGroup request: %w", err)
+		return nil, nil, fmt.Errorf("error creating ListGroups request: %w", err)
 	}
 
 	resp, err := s.Client.Do(req)
 	if err != nil {
-		return nil, nil, fmt.Errorf("error performing client request during ListGroup call: %w", err)
+		return nil, nil, fmt.Errorf("error performing client request during ListGroups call: %w", err)
 	}
 
 	type listResponse struct {
@@ -230,7 +230,7 @@ func (s Project) ListGroup(ctx context.Context) ([]*groups.Group, *api.Error, er
 
 	apiErr, err := resp.Decode(target)
 	if err != nil {
-		return nil, nil, fmt.Errorf("error decoding ListGroup response: %w", err)
+		return nil, nil, fmt.Errorf("error decoding ListGroups response: %w", err)
 	}
 
 	for _, t := range target.Items {
@@ -242,7 +242,7 @@ func (s Project) ListGroup(ctx context.Context) ([]*groups.Group, *api.Error, er
 	return target.Items, apiErr, nil
 }
 
-func (s Project) ListRole(ctx context.Context) ([]*roles.Role, *api.Error, error) {
+func (s Project) ListRoles(ctx context.Context) ([]*roles.Role, *api.Error, error) {
 	if s.Client == nil {
 		return nil, nil, fmt.Errorf("nil client in ListRole request")
 	}
@@ -261,12 +261,12 @@ func (s Project) ListRole(ctx context.Context) ([]*roles.Role, *api.Error, error
 
 	req, err := s.Client.NewRequest(ctx, "GET", "roles", nil)
 	if err != nil {
-		return nil, nil, fmt.Errorf("error creating ListRole request: %w", err)
+		return nil, nil, fmt.Errorf("error creating ListRoles request: %w", err)
 	}
 
 	resp, err := s.Client.Do(req)
 	if err != nil {
-		return nil, nil, fmt.Errorf("error performing client request during ListRole call: %w", err)
+		return nil, nil, fmt.Errorf("error performing client request during ListRoles call: %w", err)
 	}
 
 	type listResponse struct {
@@ -276,7 +276,7 @@ func (s Project) ListRole(ctx context.Context) ([]*roles.Role, *api.Error, error
 
 	apiErr, err := resp.Decode(target)
 	if err != nil {
-		return nil, nil, fmt.Errorf("error decoding ListRole response: %w", err)
+		return nil, nil, fmt.Errorf("error decoding ListRoles response: %w", err)
 	}
 
 	for _, t := range target.Items {

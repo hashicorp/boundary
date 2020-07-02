@@ -20,7 +20,7 @@ type roleCrud interface {
 	ReadRole(context.Context, *roles.Role) (*roles.Role, *api.Error, error)
 	UpdateRole(context.Context, *roles.Role) (*roles.Role, *api.Error, error)
 	DeleteRole(context.Context, *roles.Role) (bool, *api.Error, error)
-	ListRole(ctx context.Context) ([]*roles.Role, *api.Error, error)
+	ListRoles(ctx context.Context) ([]*roles.Role, *api.Error, error)
 }
 
 func TestRole_List(t *testing.T) {
@@ -54,7 +54,7 @@ func TestRole_List(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			ctx := context.Background()
 
-			pl, apiErr, err := tc.scope.ListRole(ctx)
+			pl, apiErr, err := tc.scope.ListRoles(ctx)
 			assert.NoError(err)
 			assert.Nil(apiErr)
 			assert.Empty(pl)
@@ -68,7 +68,7 @@ func TestRole_List(t *testing.T) {
 			assert.NoError(err)
 			assert.Nil(apiErr)
 
-			pl, apiErr, err = tc.scope.ListRole(ctx)
+			pl, apiErr, err = tc.scope.ListRoles(ctx)
 			assert.NoError(err)
 			assert.Nil(apiErr)
 			assert.ElementsMatch(comparableSlice(expected[:1]), comparableSlice(pl))
@@ -78,7 +78,7 @@ func TestRole_List(t *testing.T) {
 				assert.NoError(err)
 				assert.Nil(apiErr)
 			}
-			pl, apiErr, err = tc.scope.ListRole(ctx)
+			pl, apiErr, err = tc.scope.ListRoles(ctx)
 			assert.ElementsMatch(comparableSlice(expected), comparableSlice(pl))
 		})
 	}

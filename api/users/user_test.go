@@ -25,7 +25,7 @@ func TestUsers_List(t *testing.T) {
 	}
 	ctx := context.Background()
 
-	ul, apiErr, err := org.ListUser(ctx)
+	ul, apiErr, err := org.ListUsers(ctx)
 	assert.NoError(err)
 	assert.Nil(apiErr)
 	assert.Empty(ul)
@@ -39,7 +39,7 @@ func TestUsers_List(t *testing.T) {
 	assert.NoError(err)
 	assert.Nil(apiErr)
 
-	ul, apiErr, err = org.ListUser(ctx)
+	ul, apiErr, err = org.ListUsers(ctx)
 	assert.NoError(err)
 	assert.Nil(apiErr)
 	assert.ElementsMatch(comparableSlice(expected[:1]), comparableSlice(ul))
@@ -49,7 +49,7 @@ func TestUsers_List(t *testing.T) {
 		assert.NoError(err)
 		assert.Nil(apiErr)
 	}
-	ul, apiErr, err = org.ListUser(ctx)
+	ul, apiErr, err = org.ListUsers(ctx)
 	assert.ElementsMatch(comparableSlice(expected), comparableSlice(ul))
 }
 

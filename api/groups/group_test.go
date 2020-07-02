@@ -20,7 +20,7 @@ type groupCrud interface {
 	ReadGroup(context.Context, *groups.Group) (*groups.Group, *api.Error, error)
 	UpdateGroup(context.Context, *groups.Group) (*groups.Group, *api.Error, error)
 	DeleteGroup(context.Context, *groups.Group) (bool, *api.Error, error)
-	ListGroup(ctx context.Context) ([]*groups.Group, *api.Error, error)
+	ListGroups(ctx context.Context) ([]*groups.Group, *api.Error, error)
 }
 
 func TestGroup_List(t *testing.T) {
@@ -54,7 +54,7 @@ func TestGroup_List(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			ctx := context.Background()
 
-			pl, apiErr, err := tc.scope.ListGroup(ctx)
+			pl, apiErr, err := tc.scope.ListGroups(ctx)
 			assert.NoError(err)
 			assert.Nil(apiErr)
 			assert.Empty(pl)
@@ -68,7 +68,7 @@ func TestGroup_List(t *testing.T) {
 			assert.NoError(err)
 			assert.Nil(apiErr)
 
-			pl, apiErr, err = tc.scope.ListGroup(ctx)
+			pl, apiErr, err = tc.scope.ListGroups(ctx)
 			assert.NoError(err)
 			assert.Nil(apiErr)
 			assert.ElementsMatch(comparableSlice(expected[:1]), comparableSlice(pl))
@@ -78,7 +78,7 @@ func TestGroup_List(t *testing.T) {
 				assert.NoError(err)
 				assert.Nil(apiErr)
 			}
-			pl, apiErr, err = tc.scope.ListGroup(ctx)
+			pl, apiErr, err = tc.scope.ListGroups(ctx)
 			assert.ElementsMatch(comparableSlice(expected), comparableSlice(pl))
 		})
 	}
