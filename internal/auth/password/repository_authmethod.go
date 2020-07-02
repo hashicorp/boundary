@@ -88,8 +88,8 @@ func newArgon2ConfMetadata(c *Argon2Configuration, op oplog.OpType) oplog.Metada
 		"resource-type":      []string{"password argon2 conf"},
 		"op-type":            []string{op.String()},
 	}
-	if c.AuthPasswordMethodId != "" {
-		metadata["auth-password-method-id"] = []string{c.AuthPasswordMethodId}
+	if c.PasswordMethodId != "" {
+		metadata["password-method-id"] = []string{c.PasswordMethodId}
 	}
 	return metadata
 }

@@ -70,18 +70,18 @@ begin;
 
   create table auth_password_conf (
     public_id wt_public_id primary key,
-    auth_password_method_id wt_public_id not null
+    password_method_id wt_public_id not null
       references auth_password_method (public_id)
       on delete cascade
       on update cascade
       deferrable initially deferred,
-    unique(auth_password_method_id, public_id)
+    unique(password_method_id, public_id)
   );
 
   alter table auth_password_method
     add constraint current_conf_fkey
     foreign key (public_id, password_conf_id)
-    references auth_password_conf (auth_password_method_id, public_id)
+    references auth_password_conf (password_method_id, public_id)
     on delete cascade
     on update cascade
     deferrable initially deferred;
@@ -92,9 +92,9 @@ begin;
   as $$
   begin
     insert into auth_password_conf
-      (public_id, auth_password_method_id)
+      (public_id, password_method_id)
     values
-      (new.public_id, new.auth_password_method_id);
+      (new.public_id, new.password_method_id);
     return new;
   end;
   $$ language plpgsql;
@@ -103,16 +103,16 @@ begin;
     public_id wt_public_id primary key,
     auth_password_account_id wt_public_id not null unique,
     auth_password_conf_id wt_public_id not null,
-    auth_password_method_id wt_public_id not null,
-    foreign key (auth_password_method_id, auth_password_conf_id)
-      references auth_password_conf (auth_password_method_id, public_id)
+    password_method_id wt_public_id not null,
+    foreign key (password_method_id, auth_password_conf_id)
+      references auth_password_conf (password_method_id, public_id)
       on delete cascade
       on update cascade,
-    foreign key (auth_password_method_id, auth_password_account_id)
+    foreign key (password_method_id, auth_password_account_id)
       references auth_password_account (auth_method_id, public_id)
       on delete cascade
       on update cascade,
-    unique(auth_password_method_id, auth_password_conf_id, auth_password_account_id)
+    unique(password_method_id, auth_password_conf_id, auth_password_account_id)
   );
 
   create or replace function
@@ -121,9 +121,9 @@ begin;
   as $$
   begin
     insert into auth_password_credential
-      (public_id, auth_password_account_id, auth_password_conf_id, auth_password_method_id)
+      (public_id, auth_password_account_id, auth_password_conf_id, password_method_id)
     values
-      (new.public_id, new.auth_password_account_id, new.auth_password_conf_id, new.auth_password_method_id);
+      (new.public_id, new.auth_password_account_id, new.auth_password_conf_id, new.password_method_id);
     return new;
   end;
   $$ language plpgsql;

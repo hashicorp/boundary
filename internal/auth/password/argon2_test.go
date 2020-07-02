@@ -42,20 +42,20 @@ func TestArgon2Configuration_New(t *testing.T) {
 	t.Run("default-configuration", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
 		var confs []*Argon2Configuration
-		err := rw.SearchWhere(ctx, &confs, "auth_password_method_id = ?", []interface{}{authMethodId})
+		err := rw.SearchWhere(ctx, &confs, "password_method_id = ?", []interface{}{authMethodId})
 		require.NoError(err)
 		assert.Equal(1, len(confs))
 		got := confs[0]
 		want := &Argon2Configuration{
 			Argon2Configuration: &store.Argon2Configuration{
-				PublicId:             got.GetPublicId(),
-				CreateTime:           got.GetCreateTime(),
-				AuthPasswordMethodId: authMethodId,
-				Iterations:           3,
-				Memory:               64 * 1024,
-				Threads:              1,
-				SaltLength:           32,
-				KeyLength:            32,
+				PublicId:         got.GetPublicId(),
+				CreateTime:       got.GetCreateTime(),
+				PasswordMethodId: authMethodId,
+				Iterations:       3,
+				Memory:           64 * 1024,
+				Threads:          1,
+				SaltLength:       32,
+				KeyLength:        32,
 			},
 		}
 		require.Equal(want, got)
@@ -72,7 +72,7 @@ func TestArgon2Configuration_New(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
 
 		var confs []*Argon2Configuration
-		err := rw.SearchWhere(ctx, &confs, "auth_password_method_id = ?", []interface{}{authMethodId})
+		err := rw.SearchWhere(ctx, &confs, "password_method_id = ?", []interface{}{authMethodId})
 		require.NoError(err)
 		assert.Equal(1, len(confs))
 
@@ -94,7 +94,7 @@ func TestArgon2Configuration_New(t *testing.T) {
 		assert.NoError(err)
 
 		confs = nil
-		err = rw.SearchWhere(ctx, &confs, "auth_password_method_id = ?", []interface{}{authMethodId})
+		err = rw.SearchWhere(ctx, &confs, "password_method_id = ?", []interface{}{authMethodId})
 		require.NoError(err)
 		assert.Equal(3, len(confs))
 	})
@@ -157,7 +157,7 @@ func TestArgon2Configuration_Readonly(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 			var confs []*Argon2Configuration
-			err := rw.SearchWhere(context.Background(), &confs, "auth_password_method_id = ?", []interface{}{authMethodId})
+			err := rw.SearchWhere(context.Background(), &confs, "password_method_id = ?", []interface{}{authMethodId})
 			require.NoError(err)
 			assert.Greater(len(confs), 0)
 			orig := confs[0]

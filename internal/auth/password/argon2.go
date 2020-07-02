@@ -30,13 +30,13 @@ func NewArgon2Configuration(authMethodId string) (*Argon2Configuration, error) {
 
 	c := &Argon2Configuration{
 		Argon2Configuration: &store.Argon2Configuration{
-			AuthPasswordMethodId: authMethodId,
-			PublicId:             id,
-			Iterations:           3,
-			Memory:               64 * 1024,
-			Threads:              1,
-			SaltLength:           32,
-			KeyLength:            32,
+			PasswordMethodId: authMethodId,
+			PublicId:         id,
+			Iterations:       3,
+			Memory:           64 * 1024,
+			Threads:          1,
+			SaltLength:       32,
+			KeyLength:        32,
 		},
 	}
 
