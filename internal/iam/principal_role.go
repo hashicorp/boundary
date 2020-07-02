@@ -68,7 +68,7 @@ var _ Clonable = (*UserRole)(nil)
 var _ PrincipalRole = (*UserRole)(nil)
 var _ db.VetForWriter = (*UserRole)(nil)
 
-// NewUserRole creates a new user role in memory.  User's can be assigned roles
+// NewUserRole creates a new user role in memory.  Users can be assigned roles
 // which are within its organization, or the role is within a project within its
 // organization. This relationship will not be enforced until the user role is
 // written to the database.  No options are supported currently.
