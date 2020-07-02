@@ -53,8 +53,8 @@ func NewRepository(r db.Reader, w db.Writer, wrapper wrapping.Wrapper) (*Reposit
 }
 
 // CreateAuthToken inserts an Auth Token into the repository and returns a new Auth Token.  The returned auth token
-// contains the auth token value. The provided IAM User ID provided must be associated to the provided auth
-// account id or an error will be returned. All options are ignored.
+// contains the auth token value. The provided IAM User ID must be associated to the provided auth account id
+// or an error will be returned. All options are ignored.
 func (r *Repository) CreateAuthToken(ctx context.Context, withIamUserId, withAuthAccountId string, opt ...Option) (*AuthToken, error) {
 	if withIamUserId == "" {
 		return nil, fmt.Errorf("create: auth token: no user id: %w", db.ErrInvalidParameter)
@@ -158,8 +158,9 @@ func (r *Repository) LookupAuthToken(ctx context.Context, id string, opt ...Opti
 // was validated.  If a token is returned it is guaranteed to be valid. For security reasons, the actual token
 // value is not included in the returned AuthToken. If no valid auth token is found nil, nil is returned.
 // All options are ignored.
+//
+// NOTE: Do not log or add the token string to any errors.
 func (r *Repository) ValidateToken(ctx context.Context, id, token string, opt ...Option) (*AuthToken, error) {
-	// Do not log or add the token string to any errors.
 	if token == "" {
 		return nil, fmt.Errorf("validate token: auth token: missing token: %w", db.ErrInvalidParameter)
 	}
@@ -192,7 +193,7 @@ func (r *Repository) ValidateToken(ctx context.Context, id, token string, opt ..
 	now := time.Now()
 	sinceLastAccessed := now.Sub(lastAccessed)
 	if now.After(exp) || sinceLastAccessed > maxStaleness {
-		// If the token has expired or has become to stale, delete it from the DB.
+		// If the token has expired or has become too stale, delete it from the DB.
 		_, err = r.writer.DoTx(
 			ctx,
 			db.StdRetryCnt,
@@ -216,7 +217,7 @@ func (r *Repository) ValidateToken(ctx context.Context, id, token string, opt ..
 	retAT.Token = ""
 
 	if sinceLastAccessed >= lastAccessedUpdateDuration {
-		// To save the db from being updated to frequently, we only update the
+		// To save the db from being updated too frequently, we only update the
 		// LastAccessTime if it hasn't been updated within lastAccessedUpdateDuration.
 		// TODO: Make this duration configurable.
 		_, err = r.writer.DoTx(
