@@ -447,7 +447,7 @@ COMMIT;
 begin;
 
 create table iam_scope_type_enm (
-  string text not null primary key check(string in ('unknown', 'organization', 'project'))
+  string text primary key check(string in ('unknown', 'organization', 'project'))
 );
 
 insert into iam_scope_type_enm (string)
@@ -588,7 +588,7 @@ update on iam_scope
 
 
 create table iam_user (
-    public_id wt_public_id not null primary key,
+    public_id wt_public_id primary key,
     create_time wt_timestamp,
     update_time wt_timestamp,
     name text,
@@ -621,7 +621,7 @@ insert on iam_user
   for each row execute procedure default_create_time();
 
 create table iam_role (
-    public_id wt_public_id not null primary key,
+    public_id wt_public_id primary key,
     create_time wt_timestamp,
     update_time wt_timestamp,
     name text,
@@ -646,9 +646,8 @@ create table iam_role_grant (
     update_time wt_timestamp,
     role_id wt_public_id not null references iam_role(public_id) on delete cascade on update cascade,
     "grant" text not null,
-    unique (role_id, "grant")
+    unique(role_id, "grant")
   );
-
 
 create trigger 
   update_version_column
@@ -955,7 +954,6 @@ COMMIT;
 		bytes: []byte(`
 BEGIN;
 
-
 CREATE TABLE iam_group_member_user (
     create_time wt_timestamp,
     group_id wt_public_id NOT NULL REFERENCES iam_group(public_id) ON DELETE CASCADE ON UPDATE CASCADE,
@@ -970,7 +968,7 @@ SELECT
 FROM iam_group_member_user;
 
 CREATE TABLE iam_group_member_type_enm (
-    string text NOT NULL primary key CHECK(string IN ('unknown', 'user'))
+    string text primary key CHECK(string IN ('unknown', 'user'))
   );
 INSERT INTO iam_group_member_type_enm (string)
 values
@@ -980,7 +978,7 @@ values
 
 
 CREATE TABLE iam_auth_method (
-    public_id wt_public_id not null primary key, 
+    public_id wt_public_id primary key, 
     create_time wt_timestamp,
     update_time wt_timestamp,
     name text,
@@ -992,7 +990,7 @@ CREATE TABLE iam_auth_method (
   );
 
 CREATE TABLE iam_auth_method_type_enm (
-    string text NOT NULL primary key CHECK(string IN ('unknown', 'password', 'oidc'))
+    string text primary key CHECK(string IN ('unknown', 'password', 'oidc'))
   );
 INSERT INTO iam_auth_method_type_enm (string)
 values
@@ -1004,7 +1002,7 @@ ADD
   FOREIGN KEY (type) REFERENCES iam_auth_method_type_enm(string);
 
 CREATE TABLE iam_action_enm (
-    string text NOT NULL primary key CHECK(
+    string text primary key CHECK(
       string IN (
         'unknown',
         'list',
@@ -1017,7 +1015,7 @@ CREATE TABLE iam_action_enm (
         'connect',
         'add-grants',
         'delete-grants',
-        'set-grants',
+        'set-grants'
       )
     )
   );
