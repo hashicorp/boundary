@@ -955,27 +955,44 @@ COMMIT;
 		bytes: []byte(`
 BEGIN;
 
-CREATE TABLE iam_group_member_user (
-    create_time wt_timestamp,
-    group_id wt_public_id NOT NULL REFERENCES iam_group(public_id) ON DELETE CASCADE ON UPDATE CASCADE,
-    member_id wt_public_id NOT NULL REFERENCES iam_user(public_id) ON DELETE CASCADE ON UPDATE CASCADE,
-    primary key (group_id, member_id)
+create table iam_group_member_user (
+  create_time wt_timestamp,
+  group_id wt_public_id references iam_group(public_id) on delete cascade on update cascade,
+  member_id wt_public_id references iam_user(public_id) on delete cascade on update cascade,
+  primary key (group_id, member_id)
+);
+
+
+-- iam_group_member_user_scope_check() ensures that the user is only assigned
+-- groups which are within its organization, or the group is within a project
+-- within its organization. 
+create or replace function 
+  iam_group_member_user_scope_check() 
+  returns trigger
+as $$ 
+declare cnt int;
+begin
+  select count(*) into cnt
+  from iam_user 
+  where 
+    public_id = new.member_id and 
+  scope_id in(
+    -- check to see if they have the same org scope
+    select s.public_id 
+      from iam_scope s, iam_group g 
+      where s.public_id = g.scope_id and g.public_id = new.group_id 
+    union
+    -- check to see if the role has a parent that's the same org
+    select s.parent_id as public_id 
+      from iam_group g, iam_scope s 
+      where g.scope_id = s.public_id and g.public_id = new.role_id 
   );
-
-
-CREATE VIEW iam_group_member AS
-SELECT
-  *, 'user' as type
-FROM iam_group_member_user;
-
-CREATE TABLE iam_group_member_type_enm (
-    string text primary key CHECK(string IN ('unknown', 'user'))
-  );
-INSERT INTO iam_group_member_type_enm (string)
-values
-  ('unknown'),
-  ('user');
-
+  if cnt = 0 then
+    raise exception 'user and group do not belong to the same organization';
+  end if;
+  return new;
+end;
+$$ language plpgsql;
 
 
 CREATE TABLE iam_auth_method (
