@@ -935,6 +935,19 @@ begin;
     expiration_time wt_timestamp
   );
 
+  create view auth_token_view as
+  select at.public_id,
+         at.token,
+         at.create_time,
+         at.update_time,
+         at.approximate_last_access_time,
+         at.expiration_time,
+         at.auth_account_id,
+         aa.scope_id,
+         aa.iam_user_id,
+         aa.auth_method_id
+  from auth_token as at INNER JOIN auth_account as aa ON at.auth_account_id = aa.public_id;
+
   create or replace function
     update_last_access_time_column()
     returns trigger
