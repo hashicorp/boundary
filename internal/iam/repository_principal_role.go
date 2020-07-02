@@ -21,10 +21,10 @@ func (r *Repository) AddPrincipalRoles(ctx context.Context, roleId string, roleV
 	// org.  The groups and role have to be in the same scope (org or project).
 	// There are constraints and triggers to enforce these relationships.
 	if roleId == "" {
-		return nil, fmt.Errorf("add principal roles: missing role id %w", db.ErrInvalidParameter)
+		return nil, fmt.Errorf("add principal roles: missing role id: %w", db.ErrInvalidParameter)
 	}
 	if len(userIds) == 0 && len(groupIds) == 0 {
-		return nil, fmt.Errorf("add principal roles: missing either user or groups to add %w", db.ErrInvalidParameter)
+		return nil, fmt.Errorf("add principal roles: missing either user or groups to add: %w", db.ErrInvalidParameter)
 	}
 
 	role := allocRole()
@@ -292,7 +292,7 @@ func (r *Repository) DeletePrincipalRoles(ctx context.Context, roleId string, ro
 		return db.NoRowsAffected, fmt.Errorf("delete principal roles: missing role id: %w", db.ErrInvalidParameter)
 	}
 	if len(userIds) == 0 && len(groupIds) == 0 {
-		return db.NoRowsAffected, fmt.Errorf("delete principal roles: missing either user or groups to delete %w", db.ErrInvalidParameter)
+		return db.NoRowsAffected, fmt.Errorf("delete principal roles: missing either user or groups to delete: %w", db.ErrInvalidParameter)
 	}
 	role := allocRole()
 	role.PublicId = roleId
@@ -385,7 +385,7 @@ func (r *Repository) DeletePrincipalRoles(ctx context.Context, roleId string, ro
 // ListPrincipalRoles returns the principal roles for the roleId and supports the WithLimit option.
 func (r *Repository) ListPrincipalRoles(ctx context.Context, roleId string, opt ...Option) ([]PrincipalRole, error) {
 	if roleId == "" {
-		return nil, fmt.Errorf("lookup principal roles: missing role id %w", db.ErrInvalidParameter)
+		return nil, fmt.Errorf("lookup principal roles: missing role id: %w", db.ErrInvalidParameter)
 	}
 	var roles []principalRoleView
 	if err := r.list(ctx, &roles, "role_id = ?", []interface{}{roleId}, opt...); err != nil {
@@ -407,7 +407,7 @@ type principalSet struct {
 
 func (r *Repository) principalsToSet(ctx context.Context, role *Role, userIds, groupIds []string) (*principalSet, error) {
 	if role == nil {
-		return nil, fmt.Errorf("missing role %w", db.ErrNilParameter)
+		return nil, fmt.Errorf("missing role: %w", db.ErrNilParameter)
 	}
 	existing, err := r.ListPrincipalRoles(ctx, role.PublicId)
 	if err != nil {
