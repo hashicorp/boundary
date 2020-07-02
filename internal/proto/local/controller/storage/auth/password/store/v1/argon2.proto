@@ -48,7 +48,7 @@ message Argon2Credential {
   // @inject_tag: `gorm:"not_null"`
   string password_account_id = 4;
   // @inject_tag: `gorm:"not_null"`
-  string auth_password_argon2_conf_id = 5;
+  string password_conf_id = 5;
   // @inject_tag: `gorm:"not_null"`
   string password_method_id = 6;
 
