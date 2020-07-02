@@ -930,7 +930,9 @@ begin;
     -- This column is not updated every time this auth token is accessed.
     -- It is updated after X minutes from the last time it was updated on
     -- a per row basis.
-    approximate_last_access_time wt_timestamp,
+    approximate_last_access_time wt_timestamp check(
+        approximate_last_access_time <= expiration_time
+    ),
     expiration_time wt_timestamp
   );
 
@@ -982,10 +984,34 @@ begin;
   is
     'function used in before update triggers to make specific columns immutable';
 
+  -- This allows the expiration to be calculated on the server side and still hold the constraint that
+  -- the expiration time cant be before the creation time of the auth token.
+  create or replace function
+    expire_time_not_older_than_token()
+    returns trigger
+  as $$
+  begin
+    if new.expiration_time < new.create_time then
+        new.expiration_time = new.create_time;
+    end if;
+    return new;
+  end;
+  $$ language plpgsql;
+
+  comment on function
+    immutable_auth_token_columns()
+  is
+    'function used in before insert triggers to ensure expiration time is not older than create time';
+
   create trigger
     default_create_time_column
   before insert on auth_token
     for each row execute procedure default_create_time();
+
+  create trigger
+    expire_time_not_older_than_token
+  before insert on auth_token
+    for each row execute procedure expire_time_not_older_than_token();
 
   create trigger
     update_time_column
