@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"regexp"
 
-	"github.com/hashicorp/watchtower/internal/auth/password/store"
 	"github.com/hashicorp/watchtower/internal/db"
 	"github.com/hashicorp/watchtower/internal/oplog"
 )
@@ -62,13 +61,6 @@ func (r *Repository) CreateAccount(ctx context.Context, a *Account, opt ...Optio
 		return nil, fmt.Errorf("create: password account: in auth method: %s: %w", a.AuthMethodId, err)
 	}
 	return newAccount, nil
-}
-
-func allocAccount() *Account {
-	fresh := &Account{
-		Account: &store.Account{},
-	}
-	return fresh
 }
 
 func newAccountMetadata(a *Account, op oplog.OpType) oplog.Metadata {

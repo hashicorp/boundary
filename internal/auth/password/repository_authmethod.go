@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/hashicorp/watchtower/internal/auth/password/store"
 	"github.com/hashicorp/watchtower/internal/db"
 	"github.com/hashicorp/watchtower/internal/oplog"
 )
@@ -69,13 +68,6 @@ func (r *Repository) CreateAuthMethod(ctx context.Context, m *AuthMethod, opt ..
 		return nil, fmt.Errorf("create: password auth method: in scope: %s: %w", m.ScopeId, err)
 	}
 	return newAuthMethod, nil
-}
-
-func allocAuthMethod() *AuthMethod {
-	fresh := &AuthMethod{
-		AuthMethod: &store.AuthMethod{},
-	}
-	return fresh
 }
 
 func newAuthMethodMetadata(m *AuthMethod, op oplog.OpType) oplog.Metadata {
