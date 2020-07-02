@@ -68,7 +68,7 @@ func TestNewRoleGrant(t *testing.T) {
 			name: "create",
 			args: args{
 				roleId: projRole.PublicId,
-				grant:  "id=*;actions=*",
+				grant:  "actions=*;id=*",
 			},
 			want: func() *RoleGrant {
 				g := allocRoleGrant()
@@ -88,13 +88,14 @@ func TestNewRoleGrant(t *testing.T) {
 				return
 			}
 			require.NoError(err)
-			assert.Equal(tt.args.grant, got.Grant)
-			tt.want.Grant = got.Grant
+			assert.Equal(tt.args.grant, got.UserGrant)
+			tt.want.UserGrant = got.UserGrant
 			assert.Equal(tt.want, got)
 			if tt.create {
 				got.PrivateId, err = newRoleGrantId()
 				assert.NoError(err)
 				assert.NoError(db.New(conn).Create(context.Background(), got))
+				assert.Equal("id=*;actions=*", got.CanonicalGrant)
 
 				// also ensure duplicate grants aren't allowed
 				g2 := got.Clone().(*RoleGrant)
@@ -131,7 +132,7 @@ func TestRoleGrant_Clone(t *testing.T) {
 		assert.NoError(err)
 		assert.NotNil(g)
 		assert.Equal(g.RoleId, role.PublicId)
-		assert.Equal(g.Grant, "id=*;actions=*")
+		assert.Equal(g.UserGrant, "id=*;actions=*")
 
 		cp := g.Clone()
 		assert.True(proto.Equal(cp.(*RoleGrant).RoleGrant, g.RoleGrant))
@@ -145,13 +146,13 @@ func TestRoleGrant_Clone(t *testing.T) {
 		assert.NoError(err)
 		assert.NotNil(g)
 		assert.Equal(g.RoleId, role.PublicId)
-		assert.Equal(g.Grant, "id=*;actions=*")
+		assert.Equal(g.UserGrant, "id=*;actions=*")
 
 		g2, err := NewRoleGrant(role.PublicId, "id=foo;actions=read")
 		assert.NoError(err)
 		assert.NotNil(g2)
 		assert.Equal(g2.RoleId, role.PublicId)
-		assert.Equal(g2.Grant, "id=foo;actions=read")
+		assert.Equal(g2.UserGrant, "id=foo;actions=read")
 
 		cp := g.Clone()
 		assert.True(!proto.Equal(cp.(*RoleGrant).RoleGrant, g2.RoleGrant))

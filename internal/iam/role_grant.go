@@ -29,8 +29,8 @@ func NewRoleGrant(roleId string, grant string, opt ...Option) (*RoleGrant, error
 	}
 	rg := &RoleGrant{
 		RoleGrant: &store.RoleGrant{
-			RoleId: roleId,
-			Grant:  grant,
+			RoleId:    roleId,
+			UserGrant: grant,
 		},
 	}
 	return rg, nil
@@ -59,16 +59,18 @@ func (g *RoleGrant) VetForWrite(ctx context.Context, r db.Reader, opType db.OpTy
 	// Validate that the grant parses successfully. Note that we fake the scope
 	// here to avoid a lookup as the scope is only relevant at actual ACL
 	// checking time and we just care that it parses correctly.
-	if _, err := perms.Parse(
+	perm, err := perms.Parse(
 		perms.Scope{
 			Id:   "s_abcd1234",
 			Type: scope.Organization,
 		},
 		"",
-		g.Grant,
-	); err != nil {
+		g.UserGrant,
+	)
+	if err != nil {
 		return fmt.Errorf("vet role grant for writing: error parsing grant string: %w", err)
 	}
+	g.CanonicalGrant = perm.CanonicalString()
 
 	return nil
 }

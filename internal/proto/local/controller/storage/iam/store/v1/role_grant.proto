@@ -23,7 +23,12 @@ message RoleGrant {
   // @inject_tag: `gorm:"default:null"`
   string role_id = 5;
 
-  // grant is the actual string grant value
+  // user_grant is the string grant value as provided by the user
   // @inject_tag: `gorm:"default:null"`
-  string grant = 6;
+  string user_grant = 6;
+
+  // canonical_grant is the canonical string representation of the grant value.
+  // We use this as the unique constraint.
+  // @inject_tag: `gorm:"default:null"`
+  string canonical_grant = 7;
 }

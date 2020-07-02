@@ -108,8 +108,8 @@ func TestRepository_AddRoleGrants(t *testing.T) {
 				roleGrant := gotRoleGrant[r.PrivateId]
 				assert.NotEmpty(roleGrant)
 				assert.Equal(roleGrant.GetRoleId(), r.GetRoleId())
-				assert.NotEmpty(grantSet[roleGrant.Grant])
-				delete(grantSet, roleGrant.Grant)
+				assert.NotEmpty(grantSet[roleGrant.CanonicalGrant])
+				delete(grantSet, roleGrant.CanonicalGrant)
 			}
 			assert.Empty(grantSet)
 		})

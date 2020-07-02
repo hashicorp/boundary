@@ -199,8 +199,9 @@ create table iam_role_grant (
     create_time wt_timestamp,
     update_time wt_timestamp,
     role_id wt_public_id not null references iam_role(public_id) on delete cascade on update cascade,
-    "grant" text not null,
-    unique(role_id, "grant")
+    user_grant text not null,
+    canonical_grant text not null,
+    unique(role_id, canonical_grant)
   );
 
 create trigger 
