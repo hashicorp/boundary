@@ -36,7 +36,7 @@ func TestAction(t *testing.T) {
 			want:   "delete",
 		},
 		{
-			action: Authen,
+			action: Authenticate,
 			want:   "authen",
 		},
 		{

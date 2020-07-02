@@ -8,7 +8,7 @@ import (
 	"github.com/hashicorp/watchtower/internal/oplog"
 )
 
-// AddRoleGrant will add a role grant associated with the role ID in the
+// AddRoleGrant will add role grants associated with the role ID in the
 // repository. No options are currently supported.
 func (r *Repository) AddRoleGrants(ctx context.Context, roleId string, roleVersion int, grants []string, opt ...Option) ([]*RoleGrant, error) {
 	if roleId == "" {
@@ -21,13 +21,7 @@ func (r *Repository) AddRoleGrants(ctx context.Context, roleId string, roleVersi
 	role.PublicId = roleId
 	scope, err := role.GetScope(ctx, r.reader)
 	if err != nil {
-		return nil, fmt.Errorf("add role grants: unable to get role %s scope to create metadata: %w", roleId, err)
-	}
-	metadata := oplog.Metadata{
-		"op-type":            []string{oplog.OpType_OP_TYPE_CREATE.String()},
-		"scope-id":           []string{scope.PublicId},
-		"scope-type":         []string{scope.Type},
-		"resource-public-id": []string{roleId},
+		return nil, fmt.Errorf("add role grants: unable to get role %s scope: %w", roleId, err)
 	}
 
 	newRoleGrants := make([]interface{}, 0, len(grants))
@@ -66,7 +60,6 @@ func (r *Repository) AddRoleGrants(ctx context.Context, roleId string, roleVersi
 			if rowsUpdated != 1 {
 				return fmt.Errorf("updated role and %d rows updated", rowsUpdated)
 			}
-
 			msgs = append(msgs, &roleOplogMsg)
 			roleGrantOplogMsgs := make([]*oplog.Message, 0, len(newRoleGrants))
 			if err := w.CreateItems(ctx, newRoleGrants, db.NewOplogMsgs(&roleGrantOplogMsgs)); err != nil {
@@ -74,6 +67,12 @@ func (r *Repository) AddRoleGrants(ctx context.Context, roleId string, roleVersi
 			}
 			msgs = append(msgs, roleGrantOplogMsgs...)
 
+			metadata := oplog.Metadata{
+				"op-type":            []string{oplog.OpType_OP_TYPE_CREATE.String()},
+				"scope-id":           []string{scope.PublicId},
+				"scope-type":         []string{scope.Type},
+				"resource-public-id": []string{roleId},
+			}
 			if err := w.WriteOplogEntryWith(ctx, r.wrapper, roleTicket, metadata, msgs); err != nil {
 				return fmt.Errorf("unable to write oplog: %w", err)
 			}
