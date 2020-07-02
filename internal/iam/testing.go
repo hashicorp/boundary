@@ -125,7 +125,7 @@ func TestRole(t *testing.T, conn *gorm.DB, scopeId string, opt ...Option) *Role 
 	return role
 }
 
-func TestGrant(t *testing.T, conn *gorm.DB, roleId, grant string, opt ...Option) *RoleGrant {
+func TestRoleGrant(t *testing.T, conn *gorm.DB, roleId, grant string, opt ...Option) *RoleGrant {
 	t.Helper()
 	require := require.New(t)
 	rw := db.New(conn)

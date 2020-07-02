@@ -222,3 +222,179 @@ func TestRepository_ListRoleGrants(t *testing.T) {
 		})
 	}
 }
+
+func TestRepository_DeleteRoleGrants(t *testing.T) {
+	t.Parallel()
+	cleanup, conn, _ := db.TestSetup(t, "postgres")
+	defer func() {
+		err := cleanup()
+		assert.NoError(t, err)
+		err = conn.Close()
+		assert.NoError(t, err)
+	}()
+	rw := db.New(conn)
+	wrapper := db.TestWrapper(t)
+	repo, err := NewRepository(rw, rw, wrapper)
+	require.NoError(t, err)
+	org, _ := TestScopes(t, conn)
+
+	type args struct {
+		role           *Role
+		roleIdOverride *string
+		createCnt      int
+		deleteCnt      int
+		opt            []Option
+	}
+	tests := []struct {
+		name            string
+		args            args
+		wantRowsDeleted int
+		wantErr         bool
+		wantIsErr       error
+	}{
+		{
+			name: "valid",
+			args: args{
+				role:      TestRole(t, conn, org.PublicId),
+				createCnt: 5,
+				deleteCnt: 5,
+			},
+			wantRowsDeleted: 5,
+			wantErr:         false,
+		},
+		/*
+			{
+				name: "valid-keeping-some",
+				args: args{
+					role:           TestRole(t, conn, org.PublicId),
+					createUserCnt:  5,
+					createGroupCnt: 5,
+					deleteUserCnt:  2,
+					deleteGroupCnt: 2,
+				},
+				wantRowsDeleted: 4,
+				wantErr:         false,
+			},
+			{
+				name: "no-deletes",
+				args: args{
+					role:           TestRole(t, conn, org.PublicId),
+					createUserCnt:  5,
+					createGroupCnt: 5,
+				},
+				wantRowsDeleted: 0,
+				wantErr:         true,
+				wantIsErr:       db.ErrInvalidParameter,
+			},
+			{
+				name: "just-user-roles",
+				args: args{
+					role:          TestRole(t, conn, org.PublicId),
+					createUserCnt: 5,
+					deleteUserCnt: 5,
+				},
+				wantRowsDeleted: 5,
+				wantErr:         false,
+			},
+			{
+				name: "just-group-roles",
+				args: args{
+					role:           TestRole(t, conn, org.PublicId),
+					createGroupCnt: 5,
+					deleteGroupCnt: 5,
+				},
+				wantRowsDeleted: 5,
+				wantErr:         false,
+			},
+			{
+				name: "not-found",
+				args: args{
+					role:           TestRole(t, conn, org.PublicId),
+					roleIdOverride: func() *string { id := testId(t); return &id }(),
+					createUserCnt:  5,
+					createGroupCnt: 5,
+					deleteUserCnt:  5,
+					deleteGroupCnt: 5,
+				},
+				wantRowsDeleted: 0,
+				wantErr:         true,
+			},
+			{
+				name: "missing-role-id",
+				args: args{
+					role:           TestRole(t, conn, org.PublicId),
+					roleIdOverride: func() *string { id := ""; return &id }(),
+					createUserCnt:  5,
+					createGroupCnt: 5,
+					deleteUserCnt:  5,
+					deleteGroupCnt: 5,
+				},
+				wantRowsDeleted: 0,
+				wantErr:         true,
+				wantIsErr:       db.ErrInvalidParameter,
+			},
+		*/
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+			require.NoError(conn.Where("1=1").Delete(allocRoleGrant()).Error)
+			grants := make([]*RoleGrant, 0, tt.args.createCnt)
+			grantStrings := make([]string, 0, tt.args.createCnt)
+			for i := 0; i < tt.args.createCnt; i++ {
+				g, err := NewRoleGrant(tt.args.role.PublicId, fmt.Sprintf("actions=*;id=s_%d", i), tt.args.opt...)
+				require.NoError(err)
+				id, err := newRoleGrantId()
+				require.NoError(err)
+				g.PrivateId = id
+				grantStrings = append(grantStrings, g.UserGrant)
+				grants = append(grants, g)
+			}
+			roleGrants, err := repo.AddRoleGrants(context.Background(), tt.args.role.PublicId, 1, grantStrings, tt.args.opt...)
+			require.NoError(err)
+			assert.Equal(tt.args.createCnt, len(roleGrants))
+
+			deleteIds := make([]string, 0, tt.args.deleteCnt)
+			deleteGrants := make([]string, 0, tt.args.deleteCnt)
+			for i := 0; i < tt.args.deleteCnt; i++ {
+				deleteIds = append(deleteIds, grants[i].PrivateId)
+				deleteGrants = append(deleteGrants, fmt.Sprintf("id=s_%d;actions=*", i))
+			}
+
+			var roleId string
+			switch {
+			case tt.args.roleIdOverride != nil:
+				roleId = *tt.args.roleIdOverride
+			default:
+				roleId = tt.args.role.PublicId
+			}
+			deletedRows, err := repo.DeleteRoleGrants(context.Background(), roleId, 2, deleteGrants, tt.args.opt...)
+			if tt.wantErr {
+				assert.Error(err)
+				assert.Equal(0, deletedRows)
+				if tt.wantIsErr != nil {
+					assert.Truef(errors.Is(err, tt.wantIsErr), "unexpected error %s", err.Error())
+				}
+				err = db.TestVerifyOplog(t, rw, tt.args.role.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_DELETE), db.WithCreateNotBefore(10*time.Second))
+				assert.Error(err)
+				assert.True(errors.Is(db.ErrRecordNotFound, err))
+				return
+			}
+			require.NoError(err)
+			assert.Equal(tt.wantRowsDeleted, deletedRows)
+
+			roleGrants = []*RoleGrant{}
+			require.NoError(repo.reader.SearchWhere(context.Background(), &roleGrants, "role_id = ?", []interface{}{roleId}))
+			found := map[string]bool{}
+			for _, rg := range roleGrants {
+				found[rg.PrivateId] = true
+			}
+			for _, i := range deleteIds {
+				assert.False(found[i])
+			}
+
+			err = db.TestVerifyOplog(t, rw, tt.args.role.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_DELETE), db.WithCreateNotBefore(10*time.Second))
+			assert.NoError(err)
+		})
+	}
+}

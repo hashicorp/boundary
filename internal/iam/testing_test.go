@@ -131,7 +131,7 @@ func Test_TestRoleGrant(t *testing.T) {
 	_, proj := TestScopes(t, conn)
 	projRole := TestRole(t, conn, proj.PublicId)
 
-	grant := TestGrant(t, conn, projRole.PublicId, "actions=*;id=*")
+	grant := TestRoleGrant(t, conn, projRole.PublicId, "actions=*;id=*")
 	require.NotNil(grant)
 	require.Equal(projRole.PublicId, grant.RoleId)
 	require.Equal("actions=*;id=*", grant.UserGrant)
