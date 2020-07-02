@@ -56,18 +56,18 @@ begin;
       on delete cascade
       on update cascade,
     auth_password_account_id wt_public_id not null,
-    auth_password_conf_id wt_public_id not null,
+    password_conf_id wt_public_id not null,
     password_method_id wt_public_id not null,
     create_time wt_timestamp,
     update_time wt_timestamp,
     salt bytea not null, -- cannot be changed unless hashed_password is changed too
     hashed_password bytea not null,
-    foreign key (password_method_id, auth_password_conf_id)
+    foreign key (password_method_id, password_conf_id)
       references auth_password_argon2_conf (password_method_id, public_id)
       on delete cascade
       on update cascade,
-    foreign key (password_method_id, auth_password_conf_id, auth_password_account_id)
-      references auth_password_credential (password_method_id, auth_password_conf_id, auth_password_account_id)
+    foreign key (password_method_id, password_conf_id, auth_password_account_id)
+      references auth_password_credential (password_method_id, password_conf_id, auth_password_account_id)
       on delete cascade
       on update cascade
   );
