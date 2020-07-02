@@ -9,6 +9,7 @@ import (
 
 	"github.com/hashicorp/watchtower/internal/db"
 	"github.com/hashicorp/watchtower/internal/oplog"
+	"github.com/kr/pretty"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -239,11 +240,12 @@ func TestRepository_DeleteRoleGrants(t *testing.T) {
 	org, _ := TestScopes(t, conn)
 
 	type args struct {
-		role           *Role
-		roleIdOverride *string
-		createCnt      int
-		deleteCnt      int
-		opt            []Option
+		role                 *Role
+		roleIdOverride       *string
+		grantStringsOverride []string
+		createCnt            int
+		deleteCnt            int
+		opt                  []Option
 	}
 	tests := []struct {
 		name            string
@@ -262,78 +264,61 @@ func TestRepository_DeleteRoleGrants(t *testing.T) {
 			wantRowsDeleted: 5,
 			wantErr:         false,
 		},
-		/*
-			{
-				name: "valid-keeping-some",
-				args: args{
-					role:           TestRole(t, conn, org.PublicId),
-					createUserCnt:  5,
-					createGroupCnt: 5,
-					deleteUserCnt:  2,
-					deleteGroupCnt: 2,
-				},
-				wantRowsDeleted: 4,
-				wantErr:         false,
+		{
+			name: "valid-keeping-some",
+			args: args{
+				role:      TestRole(t, conn, org.PublicId),
+				createCnt: 5,
+				deleteCnt: 3,
 			},
-			{
-				name: "no-deletes",
-				args: args{
-					role:           TestRole(t, conn, org.PublicId),
-					createUserCnt:  5,
-					createGroupCnt: 5,
-				},
-				wantRowsDeleted: 0,
-				wantErr:         true,
-				wantIsErr:       db.ErrInvalidParameter,
+			wantRowsDeleted: 3,
+			wantErr:         false,
+		},
+
+		{
+			name: "no-deletes",
+			args: args{
+				role:      TestRole(t, conn, org.PublicId),
+				createCnt: 5,
 			},
-			{
-				name: "just-user-roles",
-				args: args{
-					role:          TestRole(t, conn, org.PublicId),
-					createUserCnt: 5,
-					deleteUserCnt: 5,
-				},
-				wantRowsDeleted: 5,
-				wantErr:         false,
+			wantRowsDeleted: 0,
+			wantErr:         true,
+			wantIsErr:       db.ErrInvalidParameter,
+		},
+
+		{
+			name: "not-found",
+			args: args{
+				role:           TestRole(t, conn, org.PublicId),
+				roleIdOverride: func() *string { id := testId(t); return &id }(),
+				createCnt:      5,
+				deleteCnt:      5,
 			},
-			{
-				name: "just-group-roles",
-				args: args{
-					role:           TestRole(t, conn, org.PublicId),
-					createGroupCnt: 5,
-					deleteGroupCnt: 5,
-				},
-				wantRowsDeleted: 5,
-				wantErr:         false,
+			wantRowsDeleted: 0,
+			wantErr:         true,
+		},
+		{
+			name: "missing-role-id",
+			args: args{
+				role:           TestRole(t, conn, org.PublicId),
+				roleIdOverride: func() *string { id := ""; return &id }(),
+				createCnt:      5,
+				deleteCnt:      5,
 			},
-			{
-				name: "not-found",
-				args: args{
-					role:           TestRole(t, conn, org.PublicId),
-					roleIdOverride: func() *string { id := testId(t); return &id }(),
-					createUserCnt:  5,
-					createGroupCnt: 5,
-					deleteUserCnt:  5,
-					deleteGroupCnt: 5,
-				},
-				wantRowsDeleted: 0,
-				wantErr:         true,
+			wantRowsDeleted: 0,
+			wantErr:         true,
+			wantIsErr:       db.ErrInvalidParameter,
+		},
+		{
+			name: "invalid-grant-strings",
+			args: args{
+				role:                 TestRole(t, conn, org.PublicId),
+				grantStringsOverride: []string{"id=s_87;actions=*"},
+				createCnt:            5,
+				deleteCnt:            3,
 			},
-			{
-				name: "missing-role-id",
-				args: args{
-					role:           TestRole(t, conn, org.PublicId),
-					roleIdOverride: func() *string { id := ""; return &id }(),
-					createUserCnt:  5,
-					createGroupCnt: 5,
-					deleteUserCnt:  5,
-					deleteGroupCnt: 5,
-				},
-				wantRowsDeleted: 0,
-				wantErr:         true,
-				wantIsErr:       db.ErrInvalidParameter,
-			},
-		*/
+			wantRowsDeleted: 2,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -360,6 +345,12 @@ func TestRepository_DeleteRoleGrants(t *testing.T) {
 				deleteIds = append(deleteIds, grants[i].PrivateId)
 				deleteGrants = append(deleteGrants, fmt.Sprintf("id=s_%d;actions=*", i))
 			}
+			for i, override := range tt.args.grantStringsOverride {
+				deleteIds = deleteIds[1:]
+				deleteGrants[i] = override
+			}
+			t.Log(pretty.Sprint(deleteIds))
+			t.Log(pretty.Sprint(deleteGrants))
 
 			var roleId string
 			switch {
@@ -385,6 +376,7 @@ func TestRepository_DeleteRoleGrants(t *testing.T) {
 
 			roleGrants = []*RoleGrant{}
 			require.NoError(repo.reader.SearchWhere(context.Background(), &roleGrants, "role_id = ?", []interface{}{roleId}))
+			t.Log(pretty.Sprint(roleGrants))
 			found := map[string]bool{}
 			for _, rg := range roleGrants {
 				found[rg.PrivateId] = true
