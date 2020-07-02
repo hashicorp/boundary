@@ -147,7 +147,7 @@ var _ Clonable = (*GroupRole)(nil)
 var _ PrincipalRole = (*GroupRole)(nil)
 var _ db.VetForWriter = (*GroupRole)(nil)
 
-// NewGroupRole creates a new group role in memory.  Group's can only be
+// NewGroupRole creates a new group role in memory.  Groups can only be
 // assigned roles within its scope (org or project). This relationship will not
 // be enforced until the group role is written to the database. No options are
 // supported currently.
