@@ -1,9 +1,7 @@
 begin;
 
-  -- an iam_user can have 0 to many auth_tokens
-  -- an auth method can have 0 to many auth_tokens
-  -- an auth token belongs to 1 and only 1 iam_user
-  -- an auth token belongs to 1 and only 1 auth methods
+  -- an auth token belongs to 1 and only 1 auth account
+  -- an auth account can have 0 to many auth tokens
   create table auth_token (
     public_id wt_public_id primary key,
     token bytea not null unique,
@@ -16,9 +14,20 @@ begin;
     -- This column is not updated every time this auth token is accessed.
     -- It is updated after X minutes from the last time it was updated on
     -- a per row basis.
-    approximate_last_access_time wt_timestamp,
+    approximate_last_access_time wt_timestamp check(
+        approximate_last_access_time <= expiration_time
+    ),
     expiration_time wt_timestamp
   );
+
+  create view auth_token_view as
+  select at.*,
+         aa.scope_id,
+         aa.iam_user_id,
+         aa.auth_method_id
+  from auth_token as at
+      INNER JOIN
+      auth_account as aa ON at.auth_account_id = aa.public_id;
 
   create or replace function
     update_last_access_time_column()
@@ -59,10 +68,34 @@ begin;
   is
     'function used in before update triggers to make specific columns immutable';
 
+  -- This allows the expiration to be calculated on the server side and still hold the constraint that
+  -- the expiration time cant be before the creation time of the auth token.
+  create or replace function
+    expire_time_not_older_than_token()
+    returns trigger
+  as $$
+  begin
+    if new.expiration_time < new.create_time then
+        new.expiration_time = new.create_time;
+    end if;
+    return new;
+  end;
+  $$ language plpgsql;
+
+  comment on function
+    immutable_auth_token_columns()
+  is
+    'function used in before insert triggers to ensure expiration time is not older than create time';
+
   create trigger
     default_create_time_column
   before insert on auth_token
     for each row execute procedure default_create_time();
+
+  create trigger
+    expire_time_not_older_than_token
+  before insert on auth_token
+    for each row execute procedure expire_time_not_older_than_token();
 
   create trigger
     update_time_column

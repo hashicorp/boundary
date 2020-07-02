@@ -47,6 +47,7 @@ const (
 	AuthTokenPrefix = "t"
 	// The version prefix is used to differentiate token versions just for future proofing.
 	TokenValueVersionPrefix = "0"
+	tokenLength             = 24
 )
 
 func newAuthTokenId() (string, error) {
@@ -57,9 +58,9 @@ func newAuthTokenId() (string, error) {
 	return id, err
 }
 
-// newAuthToken generates a token of length 24 not counting the version prefix.
+// newAuthToken generates a token with a version prefix.
 func newAuthToken() (string, error) {
-	token, err := base62.Random(24)
+	token, err := base62.Random(tokenLength)
 	if err != nil {
 		return "", fmt.Errorf("Unable to generate auth token: %w", err)
 	}

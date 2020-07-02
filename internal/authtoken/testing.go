@@ -55,6 +55,7 @@ func setupAuthAccount(t *testing.T, conn *gorm.DB, scopeId, authMethodId, userId
 	require := require.New(t)
 	require.NotEmpty(scopeId)
 	require.NotEmpty(authMethodId)
+	require.NotEmpty(userId)
 
 	authAcctId, err := db.NewPublicId("aa")
 	require.NoError(err)
@@ -64,10 +65,8 @@ func setupAuthAccount(t *testing.T, conn *gorm.DB, scopeId, authMethodId, userId
 			PublicId:     authAcctId,
 			ScopeId:      scopeId,
 			AuthMethodId: authMethodId,
+			IamUserId:    userId,
 		},
-	}
-	if userId != "" {
-		acct.IamUserId = userId
 	}
 	rw := db.New(conn)
 	err = rw.Create(context.Background(), acct)
