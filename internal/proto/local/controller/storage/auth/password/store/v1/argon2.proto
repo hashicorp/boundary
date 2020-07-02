@@ -46,7 +46,7 @@ message Argon2Credential {
   timestamp.v1.Timestamp update_time = 3;
 
   // @inject_tag: `gorm:"not_null"`
-  string auth_password_account_id = 4;
+  string password_account_id = 4;
   // @inject_tag: `gorm:"not_null"`
   string auth_password_argon2_conf_id = 5;
   // @inject_tag: `gorm:"not_null"`

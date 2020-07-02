@@ -55,7 +55,7 @@ begin;
       references auth_password_credential (public_id)
       on delete cascade
       on update cascade,
-    auth_password_account_id wt_public_id not null,
+    password_account_id wt_public_id not null,
     password_conf_id wt_public_id not null,
     password_method_id wt_public_id not null,
     create_time wt_timestamp,
@@ -66,8 +66,8 @@ begin;
       references auth_password_argon2_conf (password_method_id, public_id)
       on delete cascade
       on update cascade,
-    foreign key (password_method_id, password_conf_id, auth_password_account_id)
-      references auth_password_credential (password_method_id, password_conf_id, auth_password_account_id)
+    foreign key (password_method_id, password_conf_id, password_account_id)
+      references auth_password_credential (password_method_id, password_conf_id, password_account_id)
       on delete cascade
       on update cascade
   );
