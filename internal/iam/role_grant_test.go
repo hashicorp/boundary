@@ -8,6 +8,7 @@ import (
 	"github.com/hashicorp/watchtower/internal/db"
 	"github.com/hashicorp/watchtower/internal/types/resource"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -20,62 +21,89 @@ func TestNewRoleGrant(t *testing.T) {
 		err = conn.Close()
 		assert.NoError(t, err)
 	}()
-	t.Run("no-private-id", func(t *testing.T) {
-		assert := assert.New(t)
-		w := db.New(conn)
-		s := testOrg(t, conn, "", "")
-		role := TestRole(t, conn, s.PublicId)
 
-		g, err := NewRoleGrant(role.PublicId, "id=*;actions=*")
-		assert.NoError(err)
-		assert.NotNil(g)
-		err = w.Create(context.Background(), g)
-		assert.Error(err)
-		assert.True(errors.Is(err, db.ErrInvalidParameter), err)
-	})
-	t.Run("no-duplicate-grants", func(t *testing.T) {
-		assert := assert.New(t)
-		w := db.New(conn)
-		s := testOrg(t, conn, "", "")
-		role := TestRole(t, conn, s.PublicId)
+	_, proj := TestScopes(t, conn)
+	projRole := TestRole(t, conn, proj.PublicId)
 
-		g, err := NewRoleGrant(role.PublicId, "id=*;actions=*")
-		assert.NoError(err)
-		assert.NotNil(g)
+	type args struct {
+		roleId string
+		grant  string
+		opt    []Option
+	}
+	tests := []struct {
+		name      string
+		args      args
+		want      *RoleGrant
+		wantErr   bool
+		wantIsErr error
+		create    bool
+	}{
+		{
+			name: "valid",
+			args: args{
+				roleId: projRole.PublicId,
+				grant:  "id=*;actions=*",
+			},
+			want: func() *RoleGrant {
+				g := allocRoleGrant()
+				g.RoleId = projRole.PublicId
+				return &g
+			}(),
+		},
+		{
+			name: "nil-role",
+			args: args{
+				roleId: "",
+				grant:  "id=*;actions=*",
+			},
+			want: func() *RoleGrant {
+				g := allocRoleGrant()
+				g.RoleId = projRole.PublicId
+				return &g
+			}(),
+			wantErr:   true,
+			wantIsErr: db.ErrNilParameter,
+		},
+		{
+			name: "create",
+			args: args{
+				roleId: projRole.PublicId,
+				grant:  "id=*;actions=*",
+			},
+			want: func() *RoleGrant {
+				g := allocRoleGrant()
+				g.RoleId = projRole.PublicId
+				return &g
+			}(),
+			create: true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+			got, err := NewRoleGrant(tt.args.roleId, tt.args.grant, tt.args.opt...)
+			if tt.wantErr {
+				require.Error(err)
+				assert.True(errors.Is(err, tt.wantIsErr))
+				return
+			}
+			require.NoError(err)
+			assert.Equal(tt.args.grant, got.Grant)
+			tt.want.Grant = got.Grant
+			assert.Equal(tt.want, got)
+			if tt.create {
+				got.PrivateId, err = newRoleGrantId()
+				assert.NoError(err)
+				assert.NoError(db.New(conn).Create(context.Background(), got))
 
-		g.PrivateId, err = newRoleGrantId()
-		assert.NoError(err)
-		err = w.Create(context.Background(), g)
-		assert.NoError(err)
-
-		g2 := g.Clone().(*RoleGrant)
-		g2.PrivateId, err = newRoleGrantId()
-		assert.NoError(err)
-		err = w.Create(context.Background(), g2)
-		assert.Error(err)
-	})
-	t.Run("valid", func(t *testing.T) {
-		assert := assert.New(t)
-		w := db.New(conn)
-		s := testOrg(t, conn, "", "")
-		role := TestRole(t, conn, s.PublicId)
-
-		g, err := NewRoleGrant(role.PublicId, "id=*;actions=*")
-		assert.NoError(err)
-		assert.NotNil(g)
-		assert.Equal(g.RoleId, role.PublicId)
-		assert.Equal(g.Grant, "id=*;actions=*")
-		g.PrivateId, err = newRoleGrantId()
-		assert.NoError(err)
-		err = w.Create(context.Background(), g)
-		assert.NoError(err)
-	})
-	t.Run("nil-role", func(t *testing.T) {
-		assert := assert.New(t)
-		g, err := NewRoleGrant("", "id=*;actions=*")
-		assert.Error(err)
-		assert.Nil(g)
-	})
+				// also ensure duplicate grants aren't allowed
+				g2 := got.Clone().(*RoleGrant)
+				g2.PrivateId, err = newRoleGrantId()
+				assert.NoError(err)
+				assert.Error(db.New(conn).Create(context.Background(), got))
+			}
+		})
+	}
 }
 
 func TestRoleGrant_ResourceType(t *testing.T) {
@@ -127,6 +155,5 @@ func TestRoleGrant_Clone(t *testing.T) {
 
 		cp := g.Clone()
 		assert.True(!proto.Equal(cp.(*RoleGrant).RoleGrant, g2.RoleGrant))
-
 	})
 }
