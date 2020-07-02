@@ -117,6 +117,7 @@ func Test_UserRoleCreate(t *testing.T) {
 		assert.NoError(t, err)
 	}()
 	org, proj := TestScopes(t, conn)
+	org2, proj2 := TestScopes(t, conn)
 	type args struct {
 		role *UserRole
 	}
@@ -153,6 +154,32 @@ func Test_UserRoleCreate(t *testing.T) {
 				}(),
 			},
 			wantErr: false,
+		},
+		{
+			name: "invalid-org",
+			args: args{
+				role: func() *UserRole {
+					role := TestRole(t, conn, org2.PublicId)
+					principal := TestUser(t, conn, org.PublicId)
+					principalRole, err := NewUserRole(org.PublicId, role.PublicId, principal.PublicId)
+					require.NoError(t, err)
+					return principalRole.(*UserRole)
+				}(),
+			},
+			wantErr: true,
+		},
+		{
+			name: "invalid-proj",
+			args: args{
+				role: func() *UserRole {
+					role := TestRole(t, conn, proj2.PublicId)
+					principal := TestUser(t, conn, org.PublicId)
+					principalRole, err := NewUserRole(proj.PublicId, role.PublicId, principal.PublicId)
+					require.NoError(t, err)
+					return principalRole.(*UserRole)
+				}(),
+			},
+			wantErr: true,
 		},
 		{
 			name: "bad-role-id",
