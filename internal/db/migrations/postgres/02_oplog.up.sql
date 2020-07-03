@@ -90,7 +90,7 @@ values
   ('iam_scope', 1),
   ('iam_user', 1),
   ('iam_group', 1),
-  ('iam_group_member_user', 1),
+  ('iam_group_member', 1),
   ('iam_role', 1),
   ('iam_role_grant', 1),
   ('iam_group_role', 1),
