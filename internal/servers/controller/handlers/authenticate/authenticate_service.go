@@ -83,7 +83,7 @@ func (s Service) authenticateWithRepo(ctx context.Context, req *pbs.Authenticate
 	if err != nil {
 		return nil, err
 	}
-	tok.Token = tok.GetPublicId() + "." + tok.GetToken()
+	tok.Token = tok.GetPublicId() + "_" + tok.GetToken()
 	return toProto(tok), nil
 }
 
