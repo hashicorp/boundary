@@ -381,4 +381,68 @@ before
 insert on iam_group_role
   for each row execute procedure default_create_time();
 
+-- iam_group_member is an association table that represents group with
+-- associated users.
+create table iam_group_member (
+  create_time wt_timestamp,
+  group_id wt_public_id references iam_group(public_id) on delete cascade on update cascade,
+  member_id wt_public_id references iam_user(public_id) on delete cascade on update cascade,
+  primary key (group_id, member_id)
+);
+
+-- iam_group_member_scope_check() ensures that the user is only assigned
+-- groups which are within its organization, or the group is within a project
+-- within its organization. 
+create or replace function 
+  iam_group_member_scope_check() 
+  returns trigger
+as $$ 
+declare cnt int;
+begin
+  select count(*) into cnt
+  from iam_user 
+  where 
+    public_id = new.member_id and 
+  scope_id in(
+    -- check to see if they have the same org scope
+    select s.public_id 
+      from iam_scope s, iam_group g 
+      where s.public_id = g.scope_id and g.public_id = new.group_id 
+    union
+    -- check to see if the role has a parent that's the same org
+    select s.parent_id as public_id 
+      from iam_group g, iam_scope s 
+      where g.scope_id = s.public_id and g.public_id = new.role_id 
+  );
+  if cnt = 0 then
+    raise exception 'user and group do not belong to the same organization';
+  end if;
+  return new;
+end;
+$$ language plpgsql;
+
+-- iam_immutable_group_member() ensures that group members are immutable. 
+create or replace function
+  iam_immutable_group_member()
+  returns trigger
+as $$
+begin
+  if row(new.*) is distinct from row(old.*) then
+    raise exception 'group members are immutable';
+  end if;
+  return new;
+end;
+$$ language plpgsql;
+
+create trigger 
+  iam_group_member
+before
+insert on iam_group_role
+  for each row execute procedure default_create_time();
+
+create trigger iam_immutable_group_member
+before
+update on iam_group_member
+  for each row execute procedure iam_immutable_group_member();
+
 commit;
