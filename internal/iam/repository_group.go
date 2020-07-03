@@ -127,3 +127,15 @@ func (r *Repository) ListGroups(ctx context.Context, withScopeId string, opt ...
 	}
 	return grps, nil
 }
+
+// ListMembers of a group and supports WithLimit option.
+func (r *Repository) ListMembers(ctx context.Context, withGroupId string, opt ...Option) ([]*GroupMember, error) {
+	if withGroupId == "" {
+		return nil, fmt.Errorf("list group members: missing group id: %w", db.ErrInvalidParameter)
+	}
+	members := []*GroupMember{}
+	if err := r.list(ctx, &members, "group_id = ?", []interface{}{withGroupId}, opt...); err != nil {
+		return nil, fmt.Errorf("list group members: %w", err)
+	}
+	return members, nil
+}

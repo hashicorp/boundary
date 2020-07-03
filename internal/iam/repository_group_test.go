@@ -642,3 +642,102 @@ func TestRepository_ListGroups(t *testing.T) {
 		})
 	}
 }
+
+func TestRepository_ListMembers(t *testing.T) {
+	t.Parallel()
+	cleanup, conn, _ := db.TestSetup(t, "postgres")
+	defer func() {
+		err := cleanup()
+		assert.NoError(t, err)
+		err = conn.Close()
+		assert.NoError(t, err)
+	}()
+	const testLimit = 10
+	rw := db.New(conn)
+	wrapper := db.TestWrapper(t)
+	repo, err := NewRepository(rw, rw, wrapper, WithLimit(testLimit))
+	require.NoError(t, err)
+	org, proj := TestScopes(t, conn)
+	pg := TestGroup(t, conn, proj.PublicId)
+	og := TestGroup(t, conn, org.PublicId)
+
+	type args struct {
+		withGroupId string
+		opt         []Option
+	}
+	tests := []struct {
+		name      string
+		createCnt int
+		args      args
+		wantCnt   int
+		wantErr   bool
+	}{
+		{
+			name:      "no-limit-pg-group",
+			createCnt: repo.defaultLimit + 1,
+			args: args{
+				withGroupId: pg.PublicId,
+				opt:         []Option{WithLimit(-1)},
+			},
+			wantCnt: repo.defaultLimit + 1,
+			wantErr: false,
+		},
+		{
+			name:      "no-limit-org-group",
+			createCnt: repo.defaultLimit + 1,
+			args: args{
+				withGroupId: og.PublicId,
+				opt:         []Option{WithLimit(-1)},
+			},
+			wantCnt: repo.defaultLimit + 1,
+			wantErr: false,
+		},
+		{
+			name:      "default-limit",
+			createCnt: repo.defaultLimit + 1,
+			args: args{
+				withGroupId: pg.PublicId,
+			},
+			wantCnt: repo.defaultLimit,
+			wantErr: false,
+		},
+		{
+			name:      "custom-limit",
+			createCnt: repo.defaultLimit + 1,
+			args: args{
+				withGroupId: pg.PublicId,
+				opt:         []Option{WithLimit(3)},
+			},
+			wantCnt: 3,
+			wantErr: false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+			require.NoError(conn.Where("1=1").Delete(allocGroupMember()).Error)
+			gm := []*GroupMember{}
+			for i := 0; i < tt.createCnt; i++ {
+				u := TestUser(t, conn, org.PublicId)
+				gm = append(gm, TestGroupMember(t, conn, tt.args.withGroupId, u.PublicId))
+			}
+			assert.Equal(tt.createCnt, len(gm))
+
+			got, err := repo.ListMembers(context.Background(), tt.args.withGroupId, tt.args.opt...)
+			if tt.wantErr {
+				require.Error(err)
+				return
+			}
+			require.NoError(err)
+			assert.Equal(tt.wantCnt, len(got))
+		})
+	}
+	t.Run("missing-id", func(t *testing.T) {
+		require := require.New(t)
+		got, err := repo.ListMembers(context.Background(), "")
+		require.Error(err)
+		require.Nil(got)
+		require.Truef(errors.Is(err, db.ErrInvalidParameter), "unexpected error %s", err.Error())
+
+	})
+}
