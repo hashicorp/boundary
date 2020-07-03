@@ -132,6 +132,9 @@ func (r *Repository) SetPrincipalRoles(ctx context.Context, roleId string, roleV
 	if err != nil {
 		return nil, db.NoRowsAffected, fmt.Errorf("set principal roles: unable to get role %s scope: %w", roleId, err)
 	}
+	// it's "safe" to do this lookup outside the DoTx transaction because we
+	// have a roleVersion so the principals can’t change without the version
+	// changing.
 	toSet, err := r.principalsToSet(ctx, &role, userIds, groupIds)
 	if err != nil {
 		return nil, db.NoRowsAffected, fmt.Errorf("set principal roles: unable to determine set: %w", err)
