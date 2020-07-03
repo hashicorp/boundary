@@ -119,31 +119,6 @@ func validateGetRequest(req *pbs.GetOrganizationRequest) error {
 	return nil
 }
 
-func validateAuthenticateRequest(req *pbs.AuthenticateRequest) error {
-	badFields := make(map[string]string)
-	if !validId(req.GetOrgId(), scope.Organization.Prefix()+"_") {
-		badFields[orgIdFieldName] = "Invalid formatted identifier."
-	}
-	if strings.TrimSpace(req.GetAuthMethodId()) == "" {
-		badFields["auth_method_id"] = "This is a required field."
-	} else if validId(req.GetAuthMethodId(), "am") {
-		badFields["auth_method_id"] = "Invalid formatted identifier."
-	}
-	// TODO: Update this when we enable different auth method types.
-	if req.GetPasswordCredential() == nil {
-		badFields["password_credential"] = "This is a required field."
-	}
-	// TODO: Update this when we enable split cookie token types.
-	tType := strings.ToLower(strings.TrimSpace(req.GetTokenType()))
-	if tType != "" && tType != "token" {
-		badFields["token_type"] = "The only accepted type is 'token'."
-	}
-	if len(badFields) > 0 {
-		return handlers.InvalidArgumentErrorf("Invalid fields provided in request.", badFields)
-	}
-	return nil
-}
-
 func validId(id, prefix string) bool {
 	if !strings.HasPrefix(id, prefix) {
 		return false

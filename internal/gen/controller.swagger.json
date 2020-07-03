@@ -2991,8 +2991,8 @@
           "type": "string",
           "description": "This can be \"cookie\" or \"token\".  If not provided, \"token\" will be used.  For now only type \"token\" is returned."
         },
-        "password_credential": {
-          "$ref": "#/definitions/controller.api.services.v1.PasswordCredential"
+        "password_credentials": {
+          "$ref": "#/definitions/controller.api.services.v1.PasswordCredentials"
         }
       }
     },
@@ -3299,10 +3299,10 @@
         }
       }
     },
-    "controller.api.services.v1.PasswordCredential": {
+    "controller.api.services.v1.PasswordCredentials": {
       "type": "object",
       "properties": {
-        "login_name": {
+        "name": {
           "type": "string"
         },
         "password": {
