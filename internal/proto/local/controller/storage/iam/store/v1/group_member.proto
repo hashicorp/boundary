@@ -6,7 +6,7 @@ option go_package = "github.com/hashicorp/watchtower/internal/iam/store;store";
 import "controller/storage/timestamp/v1/timestamp.proto";
 import "controller/storage/iam/store/v1/scope.proto";
 
-message GroupMemberUser {
+message GroupMember {
   // create_time from the RDBMS
   // @inject_tag: `gorm:"default:current_timestamp"`
   timestamp.v1.Timestamp create_time = 1;
@@ -17,19 +17,4 @@ message GroupMemberUser {
 
   // @inject_tag: gorm:"primary_key"
   string member_id = 3;
-}
-
-message GroupMemberView {
-  // create_time from the RDBMS
-  // @inject_tag: `gorm:"default:current_timestamp"`
-  timestamp.v1.Timestamp create_time = 1;
-
-  // group_id is the Group of this GroupMember.
-  string group_id = 2;
-
-  // member_id of the GroupMember
-  string member_id = 3;
-
-  // GroupMember type (User)
-  string type = 4;
 }
