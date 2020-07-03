@@ -723,7 +723,7 @@ func TestRepository_ListMembers(t *testing.T) {
 			}
 			assert.Equal(tt.createCnt, len(gm))
 
-			got, err := repo.ListMembers(context.Background(), tt.args.withGroupId, tt.args.opt...)
+			got, err := repo.ListGroupMembers(context.Background(), tt.args.withGroupId, tt.args.opt...)
 			if tt.wantErr {
 				require.Error(err)
 				return
@@ -734,7 +734,7 @@ func TestRepository_ListMembers(t *testing.T) {
 	}
 	t.Run("missing-id", func(t *testing.T) {
 		require := require.New(t)
-		got, err := repo.ListMembers(context.Background(), "")
+		got, err := repo.ListGroupMembers(context.Background(), "")
 		require.Error(err)
 		require.Nil(got)
 		require.Truef(errors.Is(err, db.ErrInvalidParameter), "unexpected error %s", err.Error())
