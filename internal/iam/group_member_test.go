@@ -81,7 +81,7 @@ func Test_NewGroupMember(t *testing.T) {
 		assert.NotNil(gm)
 		err = w.Create(context.Background(), gm)
 		assert.Error(err)
-		assert.Equal(err.Error(), `create: failed pq: insert or update on table "iam_group_member_user" violates foreign key constraint "iam_group_member_user_member_id_fkey"`)
+		assert.Equal(err.Error(), `create: failed: pq: insert or update on table "iam_group_member_user" violates foreign key constraint "iam_group_member_user_member_id_fkey"`)
 
 	})
 	t.Run("nil-user", func(t *testing.T) {

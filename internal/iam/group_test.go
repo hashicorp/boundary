@@ -178,7 +178,7 @@ func Test_GroupCreate(t *testing.T) {
 				}(),
 			},
 			wantErr:    true,
-			wantErrMsg: "create: vet for write failed scope is not found",
+			wantErrMsg: "create: vet for write failed: scope is not found",
 		},
 	}
 
@@ -258,7 +258,7 @@ func Test_GroupUpdate(t *testing.T) {
 				ScopeId:        proj.PublicId,
 			},
 			wantErr:    true,
-			wantErrMsg: "update: vet for write failed not allowed to change a resource's scope",
+			wantErrMsg: "update: vet for write failed: not allowed to change a resource's scope",
 		},
 		{
 			name: "proj-scope-id-not-in-mask",
@@ -289,7 +289,7 @@ func Test_GroupUpdate(t *testing.T) {
 			},
 			wantErr:    true,
 			wantDup:    true,
-			wantErrMsg: `update: failed pq: duplicate key value violates unique constraint "iam_group_name_scope_id_key"`,
+			wantErrMsg: `update: failed: pq: duplicate key value violates unique constraint "iam_group_name_scope_id_key"`,
 		},
 		{
 			name: "set description null",

@@ -4,7 +4,6 @@ import (
 	"context"
 	"testing"
 
-	"github.com/hashicorp/go-uuid"
 	"github.com/hashicorp/watchtower/internal/db"
 	"github.com/stretchr/testify/assert"
 )
@@ -22,16 +21,18 @@ func Test_UserGrants(t *testing.T) {
 
 	t.Run("valid", func(t *testing.T) {
 		assert := assert.New(t)
-		id, err := uuid.GenerateUUID()
-		assert.NoError(err)
 		w := db.New(conn)
 		role := TestRole(t, conn, org.PublicId)
 
-		g, err := NewRoleGrant(role.PublicId, "everything*"+id)
+		g, err := NewRoleGrant(role.PublicId, "id=*;actions=*")
+		assert.NoError(err)
+		pid, err := newRoleGrantId()
+		assert.NoError(err)
+		g.PrivateId = pid
 		assert.NoError(err)
 		assert.NotNil(g)
 		assert.Equal(g.RoleId, role.PublicId)
-		assert.Equal(g.UserGrant, "everything*"+id)
+		assert.Equal(g.UserGrant, "id=*;actions=*")
 		err = w.Create(context.Background(), g)
 		assert.NoError(err)
 		assert.NotEqual(g.PrivateId, "")
@@ -61,11 +62,14 @@ func Test_UserGrants(t *testing.T) {
 		assert.NoError(err)
 
 		groupRole := TestRole(t, conn, org.PublicId)
-		groupGrant, err := NewRoleGrant(groupRole.PublicId, "group-grant*"+id)
+		groupGrant, err := NewRoleGrant(groupRole.PublicId, "id=*;actions=*")
 		assert.NoError(err)
+		pid, err = newRoleGrantId()
+		assert.NoError(err)
+		groupGrant.PrivateId = pid
 		assert.NotNil(groupGrant)
 		assert.Equal(groupGrant.RoleId, groupRole.PublicId)
-		assert.Equal(groupGrant.UserGrant, "group-grant*"+id)
+		assert.Equal(groupGrant.UserGrant, "id=*;actions=*")
 		err = w.Create(context.Background(), groupGrant)
 		assert.NoError(err)
 		assert.NotEqual(groupGrant.PrivateId, "")
