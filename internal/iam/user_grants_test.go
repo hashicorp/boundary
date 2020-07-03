@@ -54,7 +54,8 @@ func Test_UserGrants(t *testing.T) {
 
 		grp := TestGroup(t, conn, org.PublicId)
 
-		gm, err := grp.AddUser(user.PublicId)
+		gm, err := NewGroupMember(grp.PublicId, user.PublicId)
+
 		assert.NoError(err)
 		assert.NotNil(gm)
 		err = w.Create(context.Background(), gm)
