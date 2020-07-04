@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"math/rand"
 	"testing"
 	"time"
 
@@ -389,4 +390,86 @@ func TestRepository_DeleteRoleGrants(t *testing.T) {
 			assert.NoError(err)
 		})
 	}
+}
+
+func TestRepository_SetRoleGrants_Randomize(t *testing.T) {
+	t.Parallel()
+	assert, require := assert.New(t), require.New(t)
+	cleanup, conn, _ := db.TestSetup(t, "postgres")
+	defer func() {
+		err := cleanup()
+		assert.NoError(err)
+		err = conn.Close()
+		assert.NoError(err)
+	}()
+	rw := db.New(conn)
+	wrapper := db.TestWrapper(t)
+	repo, err := NewRepository(rw, rw, wrapper)
+	require.NoError(err)
+	org, _ := TestScopes(t, conn)
+	role := TestRole(t, conn, org.PublicId)
+	require.NoError(conn.Where("1=1").Delete(allocRoleGrant()).Error)
+
+	type roleGrantWrapper struct {
+		grantString string
+		enabled     bool
+	}
+
+	totalCnt := 30
+	grants := make([]*roleGrantWrapper, 0, totalCnt)
+	for i := 0; i < totalCnt; i++ {
+		g, err := NewRoleGrant(role.PublicId, fmt.Sprintf("id=s_%d;actions=*", i))
+		require.NoError(err)
+		id, err := newRoleGrantId()
+		require.NoError(err)
+		g.PrivateId = id
+		grants = append(grants, &roleGrantWrapper{
+			grantString: g.UserGrant,
+		})
+	}
+
+	// Each loop will set some number of role grants to enabled or disabled
+	// randomly and then validate after setting that what's set matches
+	var grantsToSet []string
+	var expected map[string]bool
+	for i := 1; i <= totalCnt; i++ {
+		grantsToSet = make([]string, 0, totalCnt)
+		expected = make(map[string]bool, totalCnt)
+		rand.Seed(time.Now().UnixNano())
+		for _, rgw := range grants {
+			rgw.enabled = rand.Int()%2 == 0
+			if rgw.enabled {
+				grantsToSet = append(grantsToSet, rgw.grantString)
+				expected[rgw.grantString] = true
+			}
+		}
+
+		// First time, run a couple of error conditions
+		if i == 1 {
+			_, _, err := repo.SetRoleGrants(context.Background(), "", 1, []string{})
+			require.Error(err)
+			_, _, err = repo.SetRoleGrants(context.Background(), role.PublicId, 1, nil)
+			require.Error(err)
+		}
+
+		_, _, err := repo.SetRoleGrants(context.Background(), role.PublicId, i, grantsToSet)
+		require.NoError(err)
+
+		roleGrants, err := repo.ListRoleGrants(context.Background(), role.PublicId)
+		require.NoError(err)
+		require.Equal(len(grantsToSet), len(roleGrants))
+		for _, rg := range roleGrants {
+			require.Contains(expected, rg.CanonicalGrant)
+			delete(expected, rg.CanonicalGrant)
+		}
+		require.Empty(expected)
+	}
+
+	// At the end, set to explicitly empty and make sure all are cleared out
+	_, _, err = repo.SetRoleGrants(context.Background(), role.PublicId, totalCnt+1, []string{})
+	require.NoError(err)
+
+	roleGrants, err := repo.ListRoleGrants(context.Background(), role.PublicId)
+	require.NoError(err)
+	require.Empty(roleGrants)
 }

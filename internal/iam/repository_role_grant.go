@@ -210,6 +210,12 @@ func (r *Repository) SetRoleGrants(ctx context.Context, roleId string, roleVersi
 	if roleId == "" {
 		return nil, 0, fmt.Errorf("set role grants: missing role id %w", db.ErrInvalidParameter)
 	}
+
+	// Explicitly set to zero clears, but treat nil as a mistake
+	if grants == nil {
+		return nil, 0, fmt.Errorf("set role grants: nil grants: %w", db.ErrNilParameter)
+	}
+
 	role := allocRole()
 	role.PublicId = roleId
 	s, err := role.GetScope(ctx, r.reader)
@@ -272,6 +278,12 @@ func (r *Repository) SetRoleGrants(ctx context.Context, roleId string, roleVersi
 		currentRoleGrants = append(currentRoleGrants, rg)
 	}
 
+	if len(found) > 0 {
+		for _, rg := range found {
+			deleteRoleGrants = append(deleteRoleGrants, rg)
+		}
+	}
+
 	if len(addRoleGrants) == 0 && len(deleteRoleGrants) == 0 {
 		return currentRoleGrants, 0, nil
 	}
@@ -310,10 +322,7 @@ func (r *Repository) SetRoleGrants(ctx context.Context, roleId string, roleVersi
 			}
 
 			// Anything we didn't take out of found needs to be removed
-			if len(found) > 0 {
-				for _, rg := range found {
-					deleteRoleGrants = append(deleteRoleGrants, rg)
-				}
+			if len(deleteRoleGrants) > 0 {
 				roleGrantOplogMsgs := make([]*oplog.Message, 0, len(deleteRoleGrants))
 				rowsDeleted, err := w.DeleteItems(ctx, deleteRoleGrants, db.NewOplogMsgs(&roleGrantOplogMsgs))
 				if err != nil {
