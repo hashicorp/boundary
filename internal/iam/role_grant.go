@@ -12,6 +12,8 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
+const defaultRoleGrantTable = "iam_role_grant"
+
 // RoleGrant defines the grants that are assigned to a role
 type RoleGrant struct {
 	*store.RoleGrant
@@ -83,12 +85,15 @@ func (g *RoleGrant) TableName() string {
 	if g.tableName != "" {
 		return g.tableName
 	}
-	return "iam_role_grant"
+	return defaultRoleGrantTable
 }
 
 // SetTableName sets the tablename and satisfies the ReplayableMessage interface
 func (g *RoleGrant) SetTableName(n string) {
-	if n != "" {
+	switch n {
+	case "":
+		g.tableName = defaultRoleGrantTable
+	default:
 		g.tableName = n
 	}
 }
