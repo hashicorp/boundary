@@ -27,6 +27,8 @@ func (r RoleType) String() string {
 	}[r]
 }
 
+const principalRoleViewDefaultTable = "iam_principal_role"
+
 // PrincipalRole declares a common interface for all roles assigned to resources (Users and Groups).
 type PrincipalRole interface {
 	GetRoleId() string
@@ -43,9 +45,20 @@ type principalRoleView struct {
 }
 
 // TableName provides an overridden gorm table name for principal roles.
-func (v *principalRoleView) TableName() string { return "iam_principal_role" }
-func (v *principalRoleView) SetTableName(n string) {
+func (v *principalRoleView) TableName() string {
 	if v.tableName != "" {
+		return v.tableName
+	}
+	return principalRoleViewDefaultTable
+}
+
+// SetTableName sets the table name for the resource.  If the caller attempts to
+// set the name to "" the name will be reset to the default name.
+func (v *principalRoleView) SetTableName(n string) {
+	switch n {
+	case "":
+		v.tableName = principalRoleViewDefaultTable
+	default:
 		v.tableName = n
 	}
 }
