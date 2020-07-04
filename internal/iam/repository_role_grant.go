@@ -217,8 +217,66 @@ func (r *Repository) SetRoleGrants(ctx context.Context, roleId string, roleVersi
 		return nil, 0, fmt.Errorf("set role grants: unable to get role %s scope: %w", roleId, err)
 	}
 
+	// NOTE: Set calculation can safely take place out of the transaction since
+	// we are using roleVersion to ensure that we end up operating on the same
+	// set of data from this query to the final set in the transaction function
+
+	// Find existing grants
+	roleGrants := []*RoleGrant{}
+	if err := r.reader.SearchWhere(ctx, &roleGrants, "role_id = ?", []interface{}{roleId}); err != nil {
+		return nil, 0, fmt.Errorf("set role grants: unable to search for grants: %w", err)
+	}
+	found := map[string]*RoleGrant{}
+	for _, rg := range roleGrants {
+		found[rg.CanonicalGrant] = rg
+	}
+
+	// Check incoming grants to see if they exist and if so act appropriately
+	currentRoleGrants := make([]*RoleGrant, 0, len(grants)+len(found))
+	addRoleGrants := make([]interface{}, 0, len(grants))
+	deleteRoleGrants := make([]interface{}, 0, len(grants))
+	for _, grant := range grants {
+		// Use a fake scope, just want to get out a canonical string
+		perm, err := perms.Parse(
+			perms.Scope{
+				Id:   "s_abcd1234",
+				Type: scope.Organization,
+			},
+			"",
+			grant,
+		)
+		if err != nil {
+			return nil, 0, fmt.Errorf("set role grants: error parsing grant string: %w", err)
+		}
+		canonicalString := perm.CanonicalString()
+
+		rg, ok := found[canonicalString]
+		if ok {
+			// If we have an exact match, do nothing, we want to keep
+			// it, but remove from found
+			currentRoleGrants = append(currentRoleGrants, rg)
+			delete(found, canonicalString)
+			continue
+		}
+
+		// Not found, so add
+		rg, err = NewRoleGrant(roleId, grant)
+		if err != nil {
+			return nil, 0, fmt.Errorf("set role grants: unable to create in memory role grant: %w", err)
+		}
+		rg.PrivateId, err = newRoleGrantId()
+		if err != nil {
+			return nil, 0, fmt.Errorf("set role grants: unable to generate new id: %w", err)
+		}
+		addRoleGrants = append(addRoleGrants, rg)
+		currentRoleGrants = append(currentRoleGrants, rg)
+	}
+
+	if len(addRoleGrants) == 0 && len(deleteRoleGrants) == 0 {
+		return currentRoleGrants, 0, nil
+	}
+
 	var totalRowsDeleted int
-	var currentRoleGrants []*RoleGrant
 	_, err = r.writer.DoTx(
 		ctx,
 		db.StdRetryCnt,
@@ -241,56 +299,6 @@ func (r *Repository) SetRoleGrants(ctx context.Context, roleId string, roleVersi
 				return fmt.Errorf("set roles grants: updated role and %d rows updated", rowsUpdated)
 			}
 			msgs = append(msgs, &roleOplogMsg)
-
-			// Find existing grants
-			roleGrants := []*RoleGrant{}
-			if err := reader.SearchWhere(ctx, &roleGrants, "role_id = ?", []interface{}{roleId}); err != nil {
-				return fmt.Errorf("set role grants: unable to search for grants: %w", err)
-			}
-			found := map[string]*RoleGrant{}
-			for _, rg := range roleGrants {
-				found[rg.CanonicalGrant] = rg
-			}
-
-			// Check incoming grants to see if they exist and if so act appropriately
-			addRoleGrants := make([]interface{}, 0, len(grants))
-			deleteRoleGrants := make([]interface{}, 0, len(grants))
-			for _, grant := range grants {
-				// Use a fake scope, just want to get out a canonical string
-				perm, err := perms.Parse(
-					perms.Scope{
-						Id:   "s_abcd1234",
-						Type: scope.Organization,
-					},
-					"",
-					grant,
-				)
-				if err != nil {
-					return fmt.Errorf("set role grants: error parsing grant string: %w", err)
-				}
-				canonicalString := perm.CanonicalString()
-
-				rg, ok := found[canonicalString]
-				if ok {
-					// If we have an exact match, do nothing, we want to keep
-					// it, but remove from found
-					currentRoleGrants = append(currentRoleGrants, rg)
-					delete(found, canonicalString)
-					continue
-				}
-
-				// Not found, so add
-				rg, err = NewRoleGrant(roleId, grant)
-				if err != nil {
-					return fmt.Errorf("set role grants: unable to create in memory role grant: %w", err)
-				}
-				rg.PrivateId, err = newRoleGrantId()
-				if err != nil {
-					return fmt.Errorf("set role grants: unable to generate new id: %w", err)
-				}
-				addRoleGrants = append(addRoleGrants, rg)
-				currentRoleGrants = append(currentRoleGrants, rg)
-			}
 
 			// Write the new ones in
 			if len(addRoleGrants) > 0 {
