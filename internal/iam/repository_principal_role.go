@@ -113,8 +113,10 @@ func (r *Repository) AddPrincipalRoles(ctx context.Context, roleId string, roleV
 	return principalRoles, nil
 }
 
-// SetPrincipalRoles will set the role's principals.  If both userIds and
-// groupIds are empty, the principal roles will be cleared.
+// SetPrincipalRoles will set the role's principals. Set add and/or delete
+// principals as need to reconcile the existing principals with the principals
+// requested. If both userIds and groupIds are empty, the principal roles will
+// be cleared.
 func (r *Repository) SetPrincipalRoles(ctx context.Context, roleId string, roleVersion int, userIds, groupIds []string, opt ...Option) ([]PrincipalRole, int, error) {
 	// NOTE - we are intentionally not going to check that the scopes are
 	// correct for the userIds and groupIds, given the roleId.  We are going to
