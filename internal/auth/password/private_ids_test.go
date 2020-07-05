@@ -9,14 +9,9 @@ import (
 )
 
 func Test_PrivateIds(t *testing.T) {
-	t.Run("authMethod", func(t *testing.T) {
-		id, err := newAuthMethodId()
+	t.Run("argon2Config", func(t *testing.T) {
+		id, err := newArgon2ConfigurationId()
 		require.NoError(t, err)
-		assert.True(t, strings.HasPrefix(id, AuthMethodPrefix+"_"))
-	})
-	t.Run("account", func(t *testing.T) {
-		id, err := newAccountId()
-		require.NoError(t, err)
-		assert.True(t, strings.HasPrefix(id, AccountPrefix+"_"))
+		assert.True(t, strings.HasPrefix(id, argon2ConfigurationPrefix+"_"))
 	})
 }
