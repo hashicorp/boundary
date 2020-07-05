@@ -60,8 +60,8 @@ message Argon2Credential {
   // @inject_tag: `gorm:"-" wrapping:"pt,entry_salt"`
   bytes salt = 8;
 
-  // hashed_password is the derived key produced by the Argon2id key
+  // derived_key is the derived key produced by the Argon2id key
   // derivation function.
   // @inject_tag: `gorm:"not_null"`
-  bytes hashed_password = 9;
+  bytes derived_key = 9;
 }

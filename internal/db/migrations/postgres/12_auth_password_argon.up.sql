@@ -60,8 +60,8 @@ begin;
     password_method_id wt_public_id not null,
     create_time wt_timestamp,
     update_time wt_timestamp,
-    salt bytea not null, -- cannot be changed unless hashed_password is changed too
-    hashed_password bytea not null,
+    salt bytea not null, -- cannot be changed unless derived_key is changed too
+    derived_key bytea not null,
     foreign key (password_method_id, password_conf_id)
       references auth_password_argon2_conf (password_method_id, public_id)
       on delete cascade
