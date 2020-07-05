@@ -29,4 +29,7 @@ message Role {
 
 	// Whether the resource is disabled
 	google.protobuf.BoolValue disabled = 6;
+
+	// The scope the grants will apply to
+	google.protobuf.StringValue grant_scope_id = 7 [json_name="grant_scope_id"];
 }

@@ -31,6 +31,8 @@ type Role struct {
 	UpdatedTime time.Time `json:"updated_time,omitempty"`
 	// Whether the resource is disabled
 	Disabled *bool `json:"disabled,omitempty"`
+	// The scope the grants will apply to
+	GrantScopeId *string `json:"grant_scope_id,omitempty"`
 }
 
 func (s *Role) SetDefault(key string) {

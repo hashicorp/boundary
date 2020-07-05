@@ -2867,6 +2867,10 @@
           "type": "boolean",
           "format": "boolean",
           "title": "Whether the resource is disabled"
+        },
+        "grant_scope_id": {
+          "type": "string",
+          "title": "The scope the grants will apply to"
         }
       },
       "title": "Role contains all fields related to a Role resource"
