@@ -26,6 +26,63 @@ func (s *fakeHandler) GetOrganization(ctx context.Context, _ *pbs.GetOrganizatio
 	return nil, errors.New("Doesn't matter this is just for testing input.")
 }
 
+func TestAuthTokenPublicIdTokenValue(t *testing.T) {
+	cases := []struct {
+		name      string
+		in        TokenMetadata
+		wantId    string
+		wantToken string
+	}{
+		{
+			name: "no delimeter",
+			in: TokenMetadata{
+				recievedTokenType: authTokenTypeBearer,
+				bearerPayload:     "prefix_publicid_token",
+				jsCookiePayload:   "this_is_just_junk",
+				httpCookiePayload: "this_can_be_ignored",
+			},
+			wantId:    "prefix_publicid",
+			wantToken: "token",
+		},
+		{
+			name: "no delimeter",
+			in: TokenMetadata{
+				recievedTokenType: authTokenTypeSplitCookie,
+				bearerPayload:     "this_is_just_junk_that_should_be_ignored",
+				jsCookiePayload:   "prefix_publicid_token",
+				httpCookiePayload: "cookiepayload",
+			},
+			wantId:    "prefix_publicid",
+			wantToken: "tokencookiepayload",
+		},
+		{
+			name: "no delimeter",
+			in: TokenMetadata{
+				recievedTokenType: authTokenTypeBearer,
+				bearerPayload:     "this-doesnt-have-the-expected-delimiter",
+			},
+			wantId:    "",
+			wantToken: "",
+		},
+		{
+			name: "to many delimeters",
+			in: TokenMetadata{
+				recievedTokenType: authTokenTypeBearer,
+				bearerPayload:     "this_has_to_many_delimiters",
+			},
+			wantId:    "",
+			wantToken: "",
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			assert.Equal(t, tc.wantId, tc.in.publicId(), "got wrong public id")
+			assert.Equal(t, tc.wantToken, tc.in.token(), "got wrong token value")
+		})
+	}
+}
+
 func TestAuthTokenAuthenticator(t *testing.T) {
 	cases := []struct {
 		name          string

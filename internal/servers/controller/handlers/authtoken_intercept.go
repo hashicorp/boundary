@@ -6,7 +6,6 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
-	"time"
 
 	"github.com/hashicorp/go-hclog"
 	"google.golang.org/grpc/metadata"
@@ -16,10 +15,6 @@ const (
 	headerAuthMethod    = "Authorization"
 	httpOnlyCookieName  = "wt-http-token-cookie"
 	jsVisibleCookieName = "wt-js-token-cookie"
-)
-
-const (
-	defaultAuthTokenDuration = time.Hour * 24
 )
 
 // TokenAuthenticator returns a function that can be used in grpc-gateway's runtime.WithMetadata ServerOption.
@@ -48,9 +43,7 @@ func TokenAuthenticator(l hclog.Logger) func(context.Context, *http.Request) met
 		}
 
 		// TODO: - Lookup/maybe update the last used time of this token,
-		//       - Validate the returned token's expiration time after now()
-		//       - Validate now().Sub(last used time) < defaultAuthTokenDuration
-		//       - If all those are correct, set the tMD.UserId to the returned token's userid.
+		//       - Set the tMD.UserId to the returned token's userid or 0 if no token is returned.
 
 		return tMD.toMetadata()
 	}
@@ -143,23 +136,36 @@ func (s TokenMetadata) toMetadata() metadata.MD {
 	return md
 }
 
+// publicId returns the public id parsed out of the provided auth token.  If the provided auth token
+// is malformed then this returns an empty string.
 func (s TokenMetadata) publicId() string {
+	tok := ""
 	switch s.recievedTokenType {
 	case authTokenTypeBearer:
-		return strings.Split(s.bearerPayload, ".")[0]
+		tok = s.bearerPayload
 	case authTokenTypeSplitCookie:
-		return strings.Split(s.jsCookiePayload, ".")[0]
+		tok = s.jsCookiePayload + s.httpCookiePayload
 	}
-	return ""
+	l := strings.Split(tok, "_")[:strings.Count(tok, "_")]
+	if len(l) != 2 {
+		return ""
+	}
+	return strings.Join(l, "_")
 }
 
+// token returns the token value parsed out of the provided auth token.  If the provided auth token
+// is malformed then this returns an empty string.
 func (s TokenMetadata) token() string {
+	var tok string
 	switch s.recievedTokenType {
 	case authTokenTypeBearer:
-		return strings.Split(s.bearerPayload, ".")[strings.Count(s.bearerPayload, ".")]
+		tok = s.bearerPayload
 	case authTokenTypeSplitCookie:
-		tok := s.jsCookiePayload + s.httpCookiePayload
-		return strings.Split(tok, ".")[strings.Count(tok, ".")]
+		tok = s.jsCookiePayload + s.httpCookiePayload
 	}
-	return ""
+	l := strings.Split(tok, "_")
+	if len(l) != 3 {
+		return ""
+	}
+	return l[2]
 }
