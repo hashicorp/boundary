@@ -31,8 +31,8 @@ func NewRoleGrant(roleId string, grant string, opt ...Option) (*RoleGrant, error
 	}
 	rg := &RoleGrant{
 		RoleGrant: &store.RoleGrant{
-			RoleId:    roleId,
-			UserGrant: grant,
+			RoleId:   roleId,
+			RawGrant: grant,
 		},
 	}
 	return rg, nil
@@ -67,7 +67,7 @@ func (g *RoleGrant) VetForWrite(ctx context.Context, r db.Reader, opType db.OpTy
 			Type: scope.Organization,
 		},
 		"",
-		g.UserGrant,
+		g.RawGrant,
 	)
 	if err != nil {
 		return fmt.Errorf("vet role grant for writing: error parsing grant string: %w", err)

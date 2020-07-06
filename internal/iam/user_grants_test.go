@@ -8,7 +8,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func Test_UserGrants(t *testing.T) {
+func Test_RawGrants(t *testing.T) {
 	t.Parallel()
 	cleanup, conn, _ := db.TestSetup(t, "postgres")
 	defer func() {
@@ -32,7 +32,7 @@ func Test_UserGrants(t *testing.T) {
 		assert.NoError(err)
 		assert.NotNil(g)
 		assert.Equal(g.RoleId, role.PublicId)
-		assert.Equal(g.UserGrant, "id=*;actions=*")
+		assert.Equal(g.RawGrant, "id=*;actions=*")
 		err = w.Create(context.Background(), g)
 		assert.NoError(err)
 		assert.NotEqual(g.PrivateId, "")
@@ -48,10 +48,10 @@ func Test_UserGrants(t *testing.T) {
 		assert.NotNil(uRole)
 		assert.Equal(uRole.GetPrincipalId(), user.PublicId)
 
-		userGrants, err := user.Grants(context.Background(), w)
+		rawGrants, err := user.Grants(context.Background(), w)
 		assert.NoError(err)
-		assert.Equal(len(userGrants), 1)
-		assert.Equal(userGrants[0], g)
+		assert.Equal(len(rawGrants), 1)
+		assert.Equal(rawGrants[0], g)
 
 		grp := TestGroup(t, conn, org.PublicId)
 
@@ -69,7 +69,7 @@ func Test_UserGrants(t *testing.T) {
 		groupGrant.PrivateId = pid
 		assert.NotNil(groupGrant)
 		assert.Equal(groupGrant.RoleId, groupRole.PublicId)
-		assert.Equal(groupGrant.UserGrant, "id=*;actions=*")
+		assert.Equal(groupGrant.RawGrant, "id=*;actions=*")
 		err = w.Create(context.Background(), groupGrant)
 		assert.NoError(err)
 		assert.NotEqual(groupGrant.PrivateId, "")

@@ -7,28 +7,24 @@ import "controller/storage/timestamp/v1/timestamp.proto";
 import "controller/storage/iam/store/v1/scope.proto";
 
 message RoleGrant {
-  // private_id is used to access the RoleGrant internally
-  // @inject_tag: gorm:"primary_key"
-  string private_id = 1;
-
   // create_time from the RDBMS
   // @inject_tag: `gorm:"default:current_timestamp"`
-  timestamp.v1.Timestamp create_time = 2;
+  timestamp.v1.Timestamp create_time = 1;
 
   // update_time from the RDBMS
   // @inject_tag: `gorm:"default:current_timestamp"`
-  timestamp.v1.Timestamp update_time = 3;
+  timestamp.v1.Timestamp update_time = 2;
 
   // role_id is the ID of the role this is a part of
   // @inject_tag: `gorm:"default:null"`
-  string role_id = 5;
+  string role_id = 3;
 
-  // user_grant is the string grant value as provided by the user
+  // raw_grant is the string grant value as provided by the user
   // @inject_tag: `gorm:"default:null"`
-  string user_grant = 6;
+  string raw_grant = 4;
 
   // canonical_grant is the canonical string representation of the grant value.
   // We use this as the unique constraint.
   // @inject_tag: `gorm:"default:null"`
-  string canonical_grant = 7;
+  string canonical_grant = 5;
 }

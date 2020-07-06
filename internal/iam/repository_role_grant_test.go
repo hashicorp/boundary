@@ -333,7 +333,7 @@ func TestRepository_DeleteRoleGrants(t *testing.T) {
 				id, err := newRoleGrantId()
 				require.NoError(err)
 				g.PrivateId = id
-				grantStrings = append(grantStrings, g.UserGrant)
+				grantStrings = append(grantStrings, g.RawGrant)
 				grants = append(grants, g)
 			}
 			roleGrants, err := repo.AddRoleGrants(context.Background(), tt.args.role.PublicId, 1, grantStrings, tt.args.opt...)
@@ -424,7 +424,7 @@ func TestRepository_SetRoleGrants_Randomize(t *testing.T) {
 		require.NoError(err)
 		g.PrivateId = id
 		grants = append(grants, &roleGrantWrapper{
-			grantString: g.UserGrant,
+			grantString: g.RawGrant,
 		})
 	}
 
