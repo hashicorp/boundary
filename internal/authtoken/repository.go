@@ -106,7 +106,7 @@ func (r *Repository) CreateAuthToken(ctx context.Context, withIamUserId, withAut
 			metadata := newAuthTokenMetadata(at, oplog.OpType_OP_TYPE_CREATE)
 
 			newAuthToken = at.clone()
-			if err := newAuthToken.Encrypt(ctx, r.wrapper); err != nil {
+			if err := newAuthToken.encrypt(ctx, r.wrapper); err != nil {
 				return err
 			}
 			if err := w.Create(ctx, newAuthToken, db.WithOplog(r.wrapper, metadata)); err != nil {
@@ -144,7 +144,7 @@ func (r *Repository) LookupAuthToken(ctx context.Context, id string, opt ...Opti
 		return nil, fmt.Errorf("auth token: lookup: %w", err)
 	}
 	if opts.withTokenValue {
-		if err := at.Decrypt(ctx, r.wrapper); err != nil {
+		if err := at.decrypt(ctx, r.wrapper); err != nil {
 			return nil, fmt.Errorf("lookup: auth token: cant decrypt auth token value: %w", err)
 		}
 	}

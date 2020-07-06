@@ -76,7 +76,7 @@ func TestAuthToken_DbUpdate(t *testing.T) {
 			authTok := testAuthToken(t, conn, wrapper)
 			proto.Merge(authTok.AuthToken, tt.args.authTok)
 
-			err := authTok.Encrypt(context.Background(), wrapper)
+			err := authTok.encrypt(context.Background(), wrapper)
 			require.NoError(t, err)
 			cnt, err := w.Update(context.Background(), authTok, tt.args.fieldMask, tt.args.nullMask)
 			if tt.wantErr {
@@ -135,7 +135,7 @@ func TestAuthToken_DbCreate(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			assert := assert.New(t)
 			at := &AuthToken{AuthToken: tt.in}
-			err := at.Encrypt(context.Background(), wrapper)
+			err := at.encrypt(context.Background(), wrapper)
 			require.NoError(t, err)
 			err = db.New(conn).Create(context.Background(), at)
 			if tt.wantError {
