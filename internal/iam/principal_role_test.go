@@ -14,13 +14,7 @@ import (
 
 func TestNewUserRole(t *testing.T) {
 	t.Parallel()
-	cleanup, conn, _ := db.TestSetup(t, "postgres")
-	defer func() {
-		err := cleanup()
-		assert.NoError(t, err)
-		err = conn.Close()
-		assert.NoError(t, err)
-	}()
+	conn, _ := db.TestSetup(t, "postgres")
 	org, proj := TestScopes(t, conn)
 	orgRole := TestRole(t, conn, org.PublicId)
 	projRole := TestRole(t, conn, proj.PublicId)
@@ -109,13 +103,7 @@ func TestNewUserRole(t *testing.T) {
 
 func Test_UserRoleCreate(t *testing.T) {
 	t.Parallel()
-	cleanup, conn, _ := db.TestSetup(t, "postgres")
-	defer func() {
-		err := cleanup()
-		assert.NoError(t, err)
-		err = conn.Close()
-		assert.NoError(t, err)
-	}()
+	conn, _ := db.TestSetup(t, "postgres")
 	org, proj := TestScopes(t, conn)
 	org2, proj2 := TestScopes(t, conn)
 	type args struct {
@@ -293,13 +281,7 @@ func Test_UserRoleCreate(t *testing.T) {
 
 func Test_UserRoleUpdate(t *testing.T) {
 	t.Parallel()
-	cleanup, conn, _ := db.TestSetup(t, "postgres")
-	defer func() {
-		err := cleanup()
-		assert.NoError(t, err)
-		err = conn.Close()
-		assert.NoError(t, err)
-	}()
+	conn, _ := db.TestSetup(t, "postgres")
 	org, _ := TestScopes(t, conn)
 	rw := db.New(conn)
 
@@ -319,13 +301,7 @@ func Test_UserRoleUpdate(t *testing.T) {
 
 func Test_UserRoleDelete(t *testing.T) {
 	t.Parallel()
-	cleanup, conn, _ := db.TestSetup(t, "postgres")
-	defer func() {
-		err := cleanup()
-		assert.NoError(t, err)
-		err = conn.Close()
-		assert.NoError(t, err)
-	}()
+	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	id := testId(t)
 	org, _ := TestScopes(t, conn)
@@ -379,13 +355,7 @@ func Test_UserRoleDelete(t *testing.T) {
 
 func TestUserRole_Clone(t *testing.T) {
 	t.Parallel()
-	cleanup, conn, _ := db.TestSetup(t, "postgres")
-	defer func() {
-		err := cleanup()
-		assert.NoError(t, err)
-		err = conn.Close()
-		assert.NoError(t, err)
-	}()
+	conn, _ := db.TestSetup(t, "postgres")
 	org, proj := TestScopes(t, conn)
 	user := TestUser(t, conn, org.PublicId)
 	t.Run("valid", func(t *testing.T) {
@@ -416,13 +386,7 @@ func TestUserRole_GetType(t *testing.T) {
 
 func TestNewGroupRole(t *testing.T) {
 	t.Parallel()
-	cleanup, conn, _ := db.TestSetup(t, "postgres")
-	defer func() {
-		err := cleanup()
-		assert.NoError(t, err)
-		err = conn.Close()
-		assert.NoError(t, err)
-	}()
+	conn, _ := db.TestSetup(t, "postgres")
 	org, proj := TestScopes(t, conn)
 	orgRole := TestRole(t, conn, org.PublicId)
 	projRole := TestRole(t, conn, proj.PublicId)
@@ -511,13 +475,7 @@ func TestNewGroupRole(t *testing.T) {
 
 func Test_GroupRoleCreate(t *testing.T) {
 	t.Parallel()
-	cleanup, conn, _ := db.TestSetup(t, "postgres")
-	defer func() {
-		err := cleanup()
-		assert.NoError(t, err)
-		err = conn.Close()
-		assert.NoError(t, err)
-	}()
+	conn, _ := db.TestSetup(t, "postgres")
 	org, proj := TestScopes(t, conn)
 	type args struct {
 		role *GroupRole
@@ -683,13 +641,7 @@ func Test_GroupRoleCreate(t *testing.T) {
 
 func Test_GroupRoleUpdate(t *testing.T) {
 	t.Parallel()
-	cleanup, conn, _ := db.TestSetup(t, "postgres")
-	defer func() {
-		err := cleanup()
-		assert.NoError(t, err)
-		err = conn.Close()
-		assert.NoError(t, err)
-	}()
+	conn, _ := db.TestSetup(t, "postgres")
 	org, _ := TestScopes(t, conn)
 	rw := db.New(conn)
 
@@ -709,13 +661,7 @@ func Test_GroupRoleUpdate(t *testing.T) {
 
 func Test_GroupRoleDelete(t *testing.T) {
 	t.Parallel()
-	cleanup, conn, _ := db.TestSetup(t, "postgres")
-	defer func() {
-		err := cleanup()
-		assert.NoError(t, err)
-		err = conn.Close()
-		assert.NoError(t, err)
-	}()
+	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	id := testId(t)
 	org, _ := TestScopes(t, conn)
@@ -769,13 +715,7 @@ func Test_GroupRoleDelete(t *testing.T) {
 
 func TestGroupRole_Clone(t *testing.T) {
 	t.Parallel()
-	cleanup, conn, _ := db.TestSetup(t, "postgres")
-	defer func() {
-		err := cleanup()
-		assert.NoError(t, err)
-		err = conn.Close()
-		assert.NoError(t, err)
-	}()
+	conn, _ := db.TestSetup(t, "postgres")
 	org, proj := TestScopes(t, conn)
 	t.Run("valid", func(t *testing.T) {
 		assert := assert.New(t)
