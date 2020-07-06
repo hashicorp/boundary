@@ -18,13 +18,7 @@ import (
 // relies on.
 func Test_AuthAccountUpdate(t *testing.T) {
 	t.Parallel()
-	cleanup, conn, _ := db.TestSetup(t, "postgres")
-	defer func() {
-		err := cleanup()
-		assert.NoError(t, err)
-		err = conn.Close()
-		assert.NoError(t, err)
-	}()
+	conn, _ := db.TestSetup(t, "postgres")
 	org, _ := TestScopes(t, conn)
 	rw := db.New(conn)
 	t.Run("simple-update", func(t *testing.T) {
@@ -49,13 +43,7 @@ func Test_AuthAccountUpdate(t *testing.T) {
 
 func TestAuthAccount_GetScope(t *testing.T) {
 	t.Parallel()
-	cleanup, conn, _ := db.TestSetup(t, "postgres")
-	defer func() {
-		err := cleanup()
-		assert.NoError(t, err)
-		err = conn.Close()
-		assert.NoError(t, err)
-	}()
+	conn, _ := db.TestSetup(t, "postgres")
 	org, _ := TestScopes(t, conn)
 
 	t.Run("valid-org", func(t *testing.T) {
@@ -72,13 +60,7 @@ func TestAuthAccount_GetScope(t *testing.T) {
 
 func TestAuthAccount_Clone(t *testing.T) {
 	t.Parallel()
-	cleanup, conn, _ := db.TestSetup(t, "postgres")
-	defer func() {
-		err := cleanup()
-		assert.NoError(t, err)
-		err = conn.Close()
-		assert.NoError(t, err)
-	}()
+	conn, _ := db.TestSetup(t, "postgres")
 	org, _ := TestScopes(t, conn)
 	t.Run("valid", func(t *testing.T) {
 		assert := assert.New(t)

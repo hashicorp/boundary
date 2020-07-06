@@ -13,19 +13,26 @@ import (
 	"github.com/hashicorp/watchtower/internal/oplog"
 	"github.com/hashicorp/watchtower/internal/oplog/store"
 	"github.com/jinzhu/gorm"
+	"github.com/stretchr/testify/assert"
 )
 
-// setup the tests (initialize the database one-time and intialized testDatabaseURL)
-func TestSetup(t *testing.T, dialect string) (func() error, *gorm.DB, string) {
+// setup the tests (initialize the database one-time and intialized testDatabaseURL). Do not close the returned db.
+func TestSetup(t *testing.T, dialect string) (*gorm.DB, string) {
 	cleanup, url, _, err := InitDbInDocker(dialect)
 	if err != nil {
 		t.Fatal(err)
 	}
+	t.Cleanup(func() {
+		assert.NoError(t, cleanup(), "Got error cleaning up db in docker.")
+	})
 	db, err := gorm.Open(dialect, url)
 	if err != nil {
 		t.Fatal(err)
 	}
-	return cleanup, db, url
+	t.Cleanup(func() {
+		assert.NoError(t, db.Close(), "Got error closing gorm db.")
+	})
+	return db, url
 }
 
 // TestWrapper initializes an AEAD wrapping.Wrapper for testing the oplog

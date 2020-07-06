@@ -25,17 +25,7 @@ returning id;
 `
 	)
 
-	cleanup, conn, _ := TestSetup(t, "postgres")
-	defer func() {
-		if err := cleanup(); err != nil {
-			t.Error(err)
-		}
-	}()
-	defer func() {
-		if err := conn.Close(); err != nil {
-			t.Error(err)
-		}
-	}()
+	conn, _ := TestSetup(t, "postgres")
 	db := conn.DB()
 	if _, err := db.Exec(createTable); err != nil {
 		t.Fatalf("query: \n%s\n error: %s", createTable, err)
@@ -92,17 +82,7 @@ returning id;
 `
 	)
 
-	cleanup, conn, _ := TestSetup(t, "postgres")
-	defer func() {
-		if err := cleanup(); err != nil {
-			t.Error(err)
-		}
-	}()
-	defer func() {
-		if err := conn.Close(); err != nil {
-			t.Error(err)
-		}
-	}()
+	conn, _ := TestSetup(t, "postgres")
 	db := conn.DB()
 	if _, err := db.Exec(createTable); err != nil {
 		t.Fatalf("query: \n%s\n error: %s", createTable, err)
@@ -168,16 +148,7 @@ set create_time = null;
 `
 	)
 
-	cleanup, conn, _ := TestSetup(t, "postgres")
-	defer func() {
-		if err := conn.Close(); err != nil {
-			t.Error(err)
-		}
-		if err := cleanup(); err != nil {
-			t.Error(err)
-		}
-	}()
-
+	conn, _ := TestSetup(t, "postgres")
 	db := conn.DB()
 	_, err := db.Exec(createTable)
 	assert.NoError(err)
@@ -265,16 +236,7 @@ set update_time = null;
 `
 	)
 
-	cleanup, conn, _ := TestSetup(t, "postgres")
-	defer func() {
-		if err := conn.Close(); err != nil {
-			t.Error(err)
-		}
-		if err := cleanup(); err != nil {
-			t.Error(err)
-		}
-	}()
-
+	conn, _ := TestSetup(t, "postgres")
 	db := conn.DB()
 	_, err := db.Exec(createTable)
 	assert.NoError(err)
@@ -344,12 +306,8 @@ returning public_id;
 
 		search = `select version from test_table_wt_version where public_id = $1`
 	)
-	cleanup, conn, _ := TestSetup(t, "postgres")
+	conn, _ := TestSetup(t, "postgres")
 	assert, require := assert.New(t), require.New(t)
-	defer func() {
-		assert.NoError(conn.Close())
-		assert.NoError(cleanup())
-	}()
 
 	db := conn.DB()
 	_, err := db.Exec(createTable)
