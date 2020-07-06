@@ -32,8 +32,7 @@ type Repository struct {
 	wrapper wrapping.Wrapper
 }
 
-// NewRepository creates a new Repository. The returned repository should
-// only be used for one transaction and it is not safe for concurrent go
+// NewRepository creates a new Repository. The returned repository is not safe for concurrent go
 // routines to access it.
 func NewRepository(r db.Reader, w db.Writer, wrapper wrapping.Wrapper) (*Repository, error) {
 	switch {
