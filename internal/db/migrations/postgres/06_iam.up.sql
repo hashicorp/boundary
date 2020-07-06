@@ -1,25 +1,30 @@
 begin;
 
 create table iam_scope_type_enm (
-  string text not null primary key check(string in ('unknown', 'organization', 'project'))
+  string text not null primary key check(string in ('unknown', 'msp', 'organization', 'project'))
 );
 
 insert into iam_scope_type_enm (string)
 values
   ('unknown'),
+  ('msp'),
   ('organization'),
   ('project');
 
  
 create table iam_scope (
-    public_id wt_public_id primary key,
+    public_id wt_scope_id primary key,
     create_time wt_timestamp,
     update_time wt_timestamp,
     name text,
     type text not null references iam_scope_type_enm(string) check(
       (
+        type = 'msp'
+        and parent_id is null
+      )
+      or (
         type = 'organization'
-        and parent_id = null
+        and parent_id = 'msp'
       )
       or (
         type = 'project'
@@ -30,14 +35,25 @@ create table iam_scope (
     parent_id text references iam_scope(public_id) on delete cascade on update cascade
   );
 
+create table iam_scope_msp (
+    scope_id wt_scope_id not null unique references iam_scope(public_id) on delete cascade on update cascade check(
+      scope_id = 'msp'
+    ),
+    name text unique,
+    primary key(scope_id)
+);
+
 create table iam_scope_organization (
-    scope_id wt_public_id not null unique references iam_scope(public_id) on delete cascade on update cascade,
+    scope_id wt_scope_id not null unique references iam_scope(public_id) on delete cascade on update cascade,
+    parent_id wt_scope_id not null references iam_scope_msp(scope_id) on delete cascade on update cascade check(
+      parent_id = 'msp'
+    ),
     name text unique,
     primary key(scope_id)
   );
 
 create table iam_scope_project (
-    scope_id wt_public_id not null references iam_scope(public_id) on delete cascade on update cascade,
+    scope_id wt_scope_id not null references iam_scope(public_id) on delete cascade on update cascade,
     parent_id wt_public_id not null references iam_scope_organization(scope_id) on delete cascade on update cascade,
     name text,
     unique(parent_id, name),
@@ -49,11 +65,17 @@ create or replace function
   returns trigger
 as $$ 
 declare parent_type int;
-begin 
-  if new.type = 'organization' then
-    insert into iam_scope_organization (scope_id, name)
+begin
+  if new.type = 'msp' then
+    insert into iam_scope_msp (scope_id, name)
     values
       (new.public_id, new.name);
+    return new;
+  end if;
+  if new.type = 'organization' then
+    insert into iam_scope_organization (scope_id, parent_id, name)
+    values
+      (new.public_id, new.parent_id, new.name);
     return new;
   end if;
   if new.type = 'project' then
@@ -66,13 +88,29 @@ begin
 end;
 $$ language plpgsql;
 
-
 create trigger 
   iam_scope_insert
 after
 insert on iam_scope 
   for each row execute procedure iam_sub_scopes_func();
 
+create or replace function
+  disallow_msp_scope_deletion()
+  returns trigger
+as $$
+begin
+  if new.type = 'msp' then
+    raise exception 'deletion of msp scope not allowed';
+  end if;
+  return new;
+end;
+$$ language plpgsql;
+
+create trigger
+  iam_scope_disallow_msp_deletion
+before
+delete on iam_scope
+  for each row execute procedure disallow_msp_scope_deletion();
 
 create or replace function 
   iam_immutable_scope_type_func() 
@@ -118,8 +156,12 @@ create or replace function
   iam_sub_names() 
   returns trigger
 as $$ 
-begin 
+begin
   if new.name != old.name then
+    if new.type = 'msp' then
+      update iam_scope_msp set name = new.name where scope_id = old.public_id;
+      return new;
+    end if;
     if new.type = 'organization' then
       update iam_scope_organization set name = new.name where scope_id = old.public_id;
       return new;
@@ -140,6 +182,8 @@ before
 update on iam_scope
   for each row execute procedure iam_sub_names();
 
+insert into iam_scope (public_id, name, type, description)
+  values ('msp', 'msp', 'msp', 'MSP Scope');
 
 create table iam_user (
     public_id wt_public_id not null primary key,
@@ -147,7 +191,7 @@ create table iam_user (
     update_time wt_timestamp,
     name text,
     description text,
-    scope_id wt_public_id not null references iam_scope_organization(scope_id) on delete cascade on update cascade,
+    scope_id wt_scope_id not null references iam_scope(public_id) on delete cascade on update cascade,
     unique(name, scope_id),
     disabled boolean not null default false,
 
@@ -156,6 +200,29 @@ create table iam_user (
     -- https://dba.stackexchange.com/questions/27481/is-a-composite-index-also-good-for-queries-on-the-first-field
     unique(scope_id, public_id)
   );
+
+create or replace function
+  user_scope_id_valid()
+  returns trigger
+as $$
+declare user_scope_type text;
+begin
+  select isc.type from iam_scope isc where isc.public_id = new.scope_id into user_scope_type;
+  if user_scope_type = 'msp' then
+    return new;
+  end if;
+  if user_scope_type = 'organization' then
+    return new;
+  end if;
+  raise exception 'invalid scope type for user creation';
+end;
+$$ language plpgsql;
+
+create trigger
+  ensure_user_scope_id_valid
+before
+insert or update on iam_user
+  for each row execute procedure user_scope_id_valid();
 
 create trigger 
   update_time_column 
@@ -180,7 +247,7 @@ create table iam_role (
     update_time wt_timestamp,
     name text,
     description text,
-    scope_id wt_public_id not null references iam_scope(public_id) on delete cascade on update cascade,
+    scope_id wt_scope_id not null references iam_scope(public_id) on delete cascade on update cascade,
     unique(name, scope_id),
     disabled boolean not null default false,
     -- version allows optimistic locking of the role when modifying the role
@@ -222,7 +289,7 @@ create table iam_group (
     update_time wt_timestamp,
     name text,
     description text,
-    scope_id wt_public_id not null references iam_scope(public_id) on delete cascade on update cascade,
+    scope_id wt_scope_id not null references iam_scope(public_id) on delete cascade on update cascade,
     unique(name, scope_id),
     disabled boolean not null default false,
     -- add unique index so a composite fk can be declared.
@@ -254,7 +321,7 @@ insert on iam_group
 -- with a before update trigger using iam_immutable_role(). 
 create table iam_user_role (
   create_time wt_timestamp,
-  scope_id wt_public_id not null,
+  scope_id wt_scope_id not null,
   role_id wt_public_id not null,
   principal_id wt_public_id not null references iam_user(public_id) on delete cascade on update cascade,
   primary key (role_id, principal_id),
@@ -271,7 +338,7 @@ create table iam_user_role (
 -- update trigger using iam_immutable_role().
 create table iam_group_role (
   create_time wt_timestamp,
-  scope_id wt_public_id not null,
+  scope_id wt_scope_id not null,
   role_id wt_public_id not null,
   principal_id wt_public_id not null,
   primary key (role_id, principal_id),
