@@ -15,31 +15,15 @@ import (
 
 func Test_Utils(t *testing.T) {
 	t.Parallel()
-	cleanup, conn, _ := TestSetup(t, "postgres")
-	defer func() {
-		if err := cleanup(); err != nil {
-			t.Error(err)
-		}
-	}()
-	defer func() {
-		if err := conn.Close(); err != nil {
-			t.Error(err)
-		}
-	}()
+	_, _ = TestSetup(t, "postgres")
 	t.Run("nothing", func(t *testing.T) {
 
 	})
 }
 
 func TestVerifyOplogEntry(t *testing.T) {
-	cleanup, db, _ := TestSetup(t, "postgres")
-	defer func() {
-		if err := cleanup(); err != nil {
-			t.Error(err)
-		}
-	}()
+	db, _ := TestSetup(t, "postgres")
 	assert := assert.New(t)
-	defer db.Close()
 
 	t.Run("valid", func(t *testing.T) {
 		rw := Db{underlying: db}
