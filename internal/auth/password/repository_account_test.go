@@ -123,6 +123,16 @@ func TestRepository_CreateAccount(t *testing.T) {
 			wantIsErr: db.ErrInvalidParameter,
 		},
 		{
+			name: "invalid-username-to-short",
+			in: &Account{
+				Account: &store.Account{
+					AuthMethodId: authMethod.PublicId,
+					UserName:     "kaz",
+				},
+			},
+			wantIsErr: ErrTooShort,
+		},
+		{
 			name: "valid-no-options",
 			in: &Account{
 				Account: &store.Account{

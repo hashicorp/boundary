@@ -35,6 +35,15 @@ func (r *Repository) CreateAccount(ctx context.Context, a *Account, opt ...Optio
 		return nil, fmt.Errorf("create: password account: invalid user name: %w", db.ErrInvalidParameter)
 	}
 
+	cc, err := r.currentConfig(ctx, a.AuthMethodId)
+	if err != nil {
+		return nil, fmt.Errorf("create: password account: retrieve current configuration: %w", err)
+	}
+
+	if cc.MinUserNameLength > len(a.UserName) {
+		return nil, fmt.Errorf("create: password account: user name %q: %w", a.UserName, ErrTooShort)
+	}
+
 	a = a.clone()
 
 	id, err := newAccountId()
@@ -82,4 +91,30 @@ func validUserName(u string) bool {
 		return false
 	}
 	return !reInvalidUserName.Match([]byte(u))
+}
+
+type currentConfig struct {
+	PasswordConfId    string `gorm:"primary_key"`
+	PasswordMethodId  string
+	ConfType          string
+	MinUserNameLength int
+	MinPasswordLength int
+
+	Iterations uint32
+	Memory     uint32
+	Threads    uint32
+	SaltLength uint32
+	KeyLength  uint32
+}
+
+func (c *currentConfig) TableName() string {
+	return "auth_password_current_conf"
+}
+
+func (r *Repository) currentConfig(ctx context.Context, authMethodId string) (*currentConfig, error) {
+	var cc currentConfig
+	if err := r.reader.LookupWhere(ctx, &cc, "password_method_id = ?", authMethodId); err != nil {
+		return nil, err
+	}
+	return &cc, nil
 }
