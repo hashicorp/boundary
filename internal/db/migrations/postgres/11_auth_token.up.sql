@@ -17,7 +17,9 @@ begin;
     approximate_last_access_time wt_timestamp check(
         approximate_last_access_time <= expiration_time
     ),
-    expiration_time wt_timestamp
+    expiration_time wt_timestamp check(
+            create_time <= expiration_time
+    )
   );
 
   create view auth_token_view as

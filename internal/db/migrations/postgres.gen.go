@@ -933,7 +933,9 @@ begin;
     approximate_last_access_time wt_timestamp check(
         approximate_last_access_time <= expiration_time
     ),
-    expiration_time wt_timestamp
+    expiration_time wt_timestamp check(
+            create_time <= expiration_time
+    )
   );
 
   create view auth_token_view as
@@ -942,7 +944,7 @@ begin;
          aa.iam_user_id,
          aa.auth_method_id
   from auth_token as at
-      INNER JOIN
+      inner join
       auth_account as aa ON at.auth_account_id = aa.public_id;
 
   create or replace function
