@@ -160,8 +160,8 @@ type Argon2Credential struct {
 	// @inject_tag: `gorm:"not_null"`
 	PasswordMethodId string `protobuf:"bytes,6,opt,name=password_method_id,json=passwordMethodId,proto3" json:"password_method_id,omitempty" gorm:"not_null"`
 	// ct_salt is the encrypted salt which is stored in the database.
-	// @inject_tag: `gorm:"column:data;not_null" wrapping:"ct,entry_salt"`
-	CtSalt []byte `protobuf:"bytes,7,opt,name=ct_salt,json=ctSalt,proto3" json:"ct_salt,omitempty" gorm:"column:data;not_null" wrapping:"ct,entry_salt"`
+	// @inject_tag: `gorm:"column:salt;not_null" wrapping:"ct,entry_salt"`
+	CtSalt []byte `protobuf:"bytes,7,opt,name=ct_salt,json=ctSalt,proto3" json:"ct_salt,omitempty" gorm:"column:salt;not_null" wrapping:"ct,entry_salt"`
 	// salt is the unencrypted salt which is not stored in the database.
 	// @inject_tag: `gorm:"-" wrapping:"pt,entry_salt"`
 	Salt []byte `protobuf:"bytes,8,opt,name=salt,proto3" json:"salt,omitempty" gorm:"-" wrapping:"pt,entry_salt"`

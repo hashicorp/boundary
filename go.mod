@@ -55,6 +55,7 @@ require (
 	github.com/spf13/viper v1.6.3 // indirect
 	github.com/stretchr/testify v1.6.1
 	go.mongodb.org/mongo-driver v1.3.2 // indirect
+	golang.org/x/crypto v0.0.0-20200510223506-06a226fb4e37
 	golang.org/x/net v0.0.0-20200519113804-d87ec0cfa476 // indirect
 	golang.org/x/sys v0.0.0-20200509044756-6aff5f38e54f // indirect
 	golang.org/x/time v0.0.0-20200416051211-89c76fbcd5d1

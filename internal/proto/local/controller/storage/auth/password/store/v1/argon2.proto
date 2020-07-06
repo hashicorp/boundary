@@ -53,7 +53,7 @@ message Argon2Credential {
   string password_method_id = 6;
 
   // ct_salt is the encrypted salt which is stored in the database.
-  // @inject_tag: `gorm:"column:data;not_null" wrapping:"ct,entry_salt"`
+  // @inject_tag: `gorm:"column:salt;not_null" wrapping:"ct,entry_salt"`
   bytes ct_salt = 7;
 
   // salt is the unencrypted salt which is not stored in the database.

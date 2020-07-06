@@ -120,6 +120,12 @@ begin;
     returns trigger
   as $$
   begin
+
+    select auth_password_account.auth_method_id
+      into new.password_method_id
+    from auth_password_account
+    where auth_password_account.public_id = new.password_account_id;
+
     insert into auth_password_credential
       (public_id, password_account_id, password_conf_id, password_method_id)
     values

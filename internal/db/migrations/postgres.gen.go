@@ -1045,6 +1045,12 @@ begin;
     returns trigger
   as $$
   begin
+
+    select auth_password_account.auth_method_id
+      into new.password_method_id
+    from auth_password_account
+    where auth_password_account.public_id = new.password_account_id;
+
     insert into auth_password_credential
       (public_id, password_account_id, password_conf_id, password_method_id)
     values
@@ -1176,11 +1182,16 @@ begin;
       on update cascade,
     password_account_id wt_public_id not null,
     password_conf_id wt_public_id not null,
-    password_method_id wt_public_id not null,
+    -- NOTE(mgaffney): The password_method_id type is not wt_public_id because
+    -- the domain check is executed before the insert trigger which retrieves
+    -- the password_method_id causing an insert to fail.
+    password_method_id text not null,
     create_time wt_timestamp,
     update_time wt_timestamp,
-    salt bytea not null, -- cannot be changed unless derived_key is changed too
-    derived_key bytea not null,
+    salt bytea not null -- cannot be changed unless derived_key is changed too
+      check(length(salt) > 0),
+    derived_key bytea not null
+      check(length(derived_key) > 0),
     foreign key (password_method_id, password_conf_id)
       references auth_password_argon2_conf (password_method_id, public_id)
       on delete cascade

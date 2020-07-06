@@ -1,10 +1,15 @@
 package password
 
 import (
+	"context"
+	"crypto/rand"
 	"fmt"
 
+	wrapping "github.com/hashicorp/go-kms-wrapping"
+	"github.com/hashicorp/go-kms-wrapping/structwrapping"
 	"github.com/hashicorp/watchtower/internal/auth/password/store"
 	"github.com/hashicorp/watchtower/internal/db"
+	"golang.org/x/crypto/argon2"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -63,4 +68,80 @@ func (c *Argon2Configuration) SetTableName(n string) {
 	if n != "" {
 		c.tableName = n
 	}
+}
+
+// A Argon2Credential contains a key derived from a password and the salt
+// used in the key derivation. It is owned by an Account.
+type Argon2Credential struct {
+	*store.Argon2Credential
+	tableName string
+}
+
+func newArgon2Credential(accountId string, password string, conf *Argon2Configuration) (*Argon2Credential, error) {
+	if accountId == "" {
+		return nil, fmt.Errorf("new: password argon2 credential: no accountId: %w", db.ErrInvalidParameter)
+	}
+	if password == "" {
+		return nil, fmt.Errorf("new: password argon2 credential: no password: %w", db.ErrInvalidParameter)
+	}
+	if conf == nil {
+		return nil, fmt.Errorf("new: password argon2 credential: no argon2 configuration: %w", db.ErrNilParameter)
+	}
+
+	id, err := newArgon2CredentialId()
+	if err != nil {
+		return nil, fmt.Errorf("new: password argon2 credential: %w", err)
+	}
+
+	c := &Argon2Credential{
+		Argon2Credential: &store.Argon2Credential{
+			PublicId:          id,
+			PasswordAccountId: accountId,
+			PasswordConfId:    conf.PublicId,
+		},
+	}
+
+	salt := make([]byte, conf.SaltLength)
+	if _, err := rand.Read(salt); err != nil {
+		return nil, fmt.Errorf("new: password argon2 credential: %w", err)
+	}
+	c.Salt = salt
+	c.DerivedKey = argon2.IDKey([]byte(password), c.Salt, conf.Iterations, conf.Memory, uint8(conf.Threads), conf.KeyLength)
+	return c, nil
+}
+
+func (c *Argon2Credential) clone() *Argon2Credential {
+	cp := proto.Clone(c.Argon2Credential)
+	return &Argon2Credential{
+		Argon2Credential: cp.(*store.Argon2Credential),
+	}
+}
+
+// TableName returns the table name.
+func (c *Argon2Credential) TableName() string {
+	if c.tableName != "" {
+		return c.tableName
+	}
+	return "auth_password_argon2_cred"
+}
+
+// SetTableName sets the table name.
+func (c *Argon2Credential) SetTableName(n string) {
+	if n != "" {
+		c.tableName = n
+	}
+}
+
+func (c *Argon2Credential) encrypt(ctx context.Context, cipher wrapping.Wrapper) error {
+	if err := structwrapping.WrapStruct(ctx, cipher, c.Argon2Credential, nil); err != nil {
+		return fmt.Errorf("error encrypting argon2 credential: %w", err)
+	}
+	return nil
+}
+
+func (c *Argon2Credential) decrypt(ctx context.Context, cipher wrapping.Wrapper) error {
+	if err := structwrapping.UnwrapStruct(ctx, cipher, c.Argon2Credential, nil); err != nil {
+		return fmt.Errorf("error decrypting argon2 credential: %w", err)
+	}
+	return nil
 }
