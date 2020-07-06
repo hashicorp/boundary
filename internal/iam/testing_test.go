@@ -11,14 +11,7 @@ import (
 
 func Test_testOrg(t *testing.T) {
 	assert := assert.New(t)
-
-	cleanup, conn, _ := db.TestSetup(t, "postgres")
-	defer func() {
-		err := cleanup()
-		assert.NoError(err)
-		err = conn.Close()
-		assert.NoError(err)
-	}()
+	conn, _ := db.TestSetup(t, "postgres")
 	id := testId(t)
 
 	org := testOrg(t, conn, id, id)
@@ -30,13 +23,7 @@ func Test_testOrg(t *testing.T) {
 func Test_testProj(t *testing.T) {
 	assert := assert.New(t)
 
-	cleanup, conn, _ := db.TestSetup(t, "postgres")
-	defer func() {
-		err := cleanup()
-		assert.NoError(err)
-		err = conn.Close()
-		assert.NoError(err)
-	}()
+	conn, _ := db.TestSetup(t, "postgres")
 	id := testId(t)
 
 	org := testOrg(t, conn, id, id)
@@ -59,14 +46,7 @@ func Test_testPublicId(t *testing.T) {
 }
 func Test_TestScopes(t *testing.T) {
 	assert, require := assert.New(t), require.New(t)
-	cleanup, conn, _ := db.TestSetup(t, "postgres")
-	defer func() {
-		err := cleanup()
-		assert.NoError(err)
-		err = conn.Close()
-		assert.NoError(err)
-	}()
-
+	conn, _ := db.TestSetup(t, "postgres")
 	org, prj := TestScopes(t, conn)
 
 	require.NotNil(org)
@@ -78,13 +58,7 @@ func Test_TestScopes(t *testing.T) {
 func Test_TestUser(t *testing.T) {
 	t.Helper()
 	assert, require := assert.New(t), require.New(t)
-	cleanup, conn, _ := db.TestSetup(t, "postgres")
-	defer func() {
-		err := cleanup()
-		assert.NoError(err)
-		err = conn.Close()
-		assert.NoError(err)
-	}()
+	conn, _ := db.TestSetup(t, "postgres")
 	org, _ := TestScopes(t, conn)
 
 	require.NotNil(org)
@@ -98,13 +72,7 @@ func Test_TestUser(t *testing.T) {
 func Test_TestRole(t *testing.T) {
 	t.Helper()
 	assert, require := assert.New(t), require.New(t)
-	cleanup, conn, _ := db.TestSetup(t, "postgres")
-	defer func() {
-		err := cleanup()
-		assert.NoError(err)
-		err = conn.Close()
-		assert.NoError(err)
-	}()
+	conn, _ := db.TestSetup(t, "postgres")
 	id := testId(t)
 	org, proj := TestScopes(t, conn)
 	role := TestRole(t, conn, org.PublicId, WithDescription(id), WithName(id))
