@@ -26,7 +26,7 @@ begin;
          aa.iam_user_id,
          aa.auth_method_id
   from auth_token as at
-      INNER JOIN
+      inner join
       auth_account as aa ON at.auth_account_id = aa.public_id;
 
   create or replace function
