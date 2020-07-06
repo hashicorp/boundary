@@ -180,7 +180,7 @@ func (r *Repository) ValidateToken(ctx context.Context, id, token string, opt ..
 		return nil, nil
 	}
 
-	// If the token is to old or stale invalidate it and return nothing.
+	// If the token is too old or stale invalidate it and return nothing.
 	exp, err := ptypes.Timestamp(retAT.GetExpirationTime().GetTimestamp())
 	if err != nil {
 		return nil, fmt.Errorf("validate token: expiration time : %w", err)
