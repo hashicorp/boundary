@@ -17,16 +17,7 @@ import (
 )
 
 func TestAuthToken_DbUpdate(t *testing.T) {
-	cleanup, conn, _ := db.TestSetup(t, "postgres")
-	t.Cleanup(func() {
-		if err := cleanup(); err != nil {
-			t.Error(err)
-		}
-		if err := conn.Close(); err != nil {
-			t.Error(err)
-		}
-	})
-
+	conn, _ := db.TestSetup(t, "postgres")
 	wrapper := db.TestWrapper(t)
 
 	org, _ := iam.TestScopes(t, conn)
@@ -100,16 +91,7 @@ func TestAuthToken_DbUpdate(t *testing.T) {
 }
 
 func TestAuthToken_DbCreate(t *testing.T) {
-	cleanup, conn, _ := db.TestSetup(t, "postgres")
-	t.Cleanup(func() {
-		if err := cleanup(); err != nil {
-			t.Error(err)
-		}
-		if err := conn.Close(); err != nil {
-			t.Error(err)
-		}
-	})
-
+	conn, _ := db.TestSetup(t, "postgres")
 	wrapper := db.TestWrapper(t)
 
 	org, _ := iam.TestScopes(t, conn)
@@ -166,16 +148,7 @@ func TestAuthToken_DbCreate(t *testing.T) {
 }
 
 func TestAuthToken_DbDelete(t *testing.T) {
-	cleanup, conn, _ := db.TestSetup(t, "postgres")
-	t.Cleanup(func() {
-		if err := cleanup(); err != nil {
-			t.Error(err)
-		}
-		if err := conn.Close(); err != nil {
-			t.Error(err)
-		}
-	})
-
+	conn, _ := db.TestSetup(t, "postgres")
 	testAuthTokenId := func() string {
 		id, err := newAuthTokenId()
 		require.NoError(t, err)

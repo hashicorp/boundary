@@ -21,16 +21,7 @@ import (
 )
 
 func TestRepository_New(t *testing.T) {
-	cleanup, conn, _ := db.TestSetup(t, "postgres")
-	t.Cleanup(func() {
-		if err := conn.Close(); err != nil {
-			t.Error(err)
-		}
-		if err := cleanup(); err != nil {
-			t.Error(err)
-		}
-	})
-
+	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
 
@@ -118,15 +109,7 @@ func TestRepository_New(t *testing.T) {
 }
 
 func TestRepository_CreateAuthToken(t *testing.T) {
-	cleanup, conn, _ := db.TestSetup(t, "postgres")
-	t.Cleanup(func() {
-		if err := cleanup(); err != nil {
-			t.Error(err)
-		}
-		if err := conn.Close(); err != nil {
-			t.Error(err)
-		}
-	})
+	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
 
@@ -209,16 +192,7 @@ func TestRepository_CreateAuthToken(t *testing.T) {
 }
 
 func TestRepository_LookupAuthToken(t *testing.T) {
-	cleanup, conn, _ := db.TestSetup(t, "postgres")
-	t.Cleanup(func() {
-		if err := cleanup(); err != nil {
-			t.Error(err)
-		}
-		if err := conn.Close(); err != nil {
-			t.Error(err)
-		}
-	})
-
+	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
 
@@ -279,16 +253,7 @@ func TestRepository_LookupAuthToken(t *testing.T) {
 }
 
 func TestRepository_ValidateToken(t *testing.T) {
-	cleanup, conn, _ := db.TestSetup(t, "postgres")
-	t.Cleanup(func() {
-		if err := cleanup(); err != nil {
-			t.Error(err)
-		}
-		if err := conn.Close(); err != nil {
-			t.Error(err)
-		}
-	})
-
+	conn, _ := db.TestSetup(t, "postgres")
 	lastAccessedUpdateDuration = 0
 
 	rw := db.New(conn)
@@ -390,16 +355,7 @@ func TestRepository_ValidateToken(t *testing.T) {
 }
 
 func TestRepository_ValidateToken_expired(t *testing.T) {
-	cleanup, conn, _ := db.TestSetup(t, "postgres")
-	t.Cleanup(func() {
-		if err := cleanup(); err != nil {
-			t.Error(err)
-		}
-		if err := conn.Close(); err != nil {
-			t.Error(err)
-		}
-	})
-
+	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
 	repo, err := NewRepository(rw, rw, wrapper)
@@ -470,16 +426,7 @@ func TestRepository_ValidateToken_expired(t *testing.T) {
 }
 
 func TestRepository_DeleteAuthToken(t *testing.T) {
-	cleanup, conn, _ := db.TestSetup(t, "postgres")
-	t.Cleanup(func() {
-		if err := cleanup(); err != nil {
-			t.Error(err)
-		}
-		if err := conn.Close(); err != nil {
-			t.Error(err)
-		}
-	})
-
+	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
 
