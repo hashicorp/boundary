@@ -62,7 +62,7 @@ func newAuthTokenId() (string, error) {
 func newAuthToken() (string, error) {
 	token, err := base62.Random(tokenLength)
 	if err != nil {
-		return "", fmt.Errorf("Unable to generate auth token: %w", err)
+		return "", fmt.Errorf("unable to generate auth token: %w", err)
 	}
 	return fmt.Sprintf("%s%s", TokenValueVersionPrefix, token), nil
 }
