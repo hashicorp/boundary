@@ -196,7 +196,7 @@ func TestRepository_LookupAuthToken(t *testing.T) {
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
 
-	at := testAuthToken(t, conn, wrapper)
+	at := TestAuthToken(t, conn, wrapper)
 	at.Token = ""
 	at.CtToken = nil
 
@@ -262,7 +262,7 @@ func TestRepository_ValidateToken(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, repo)
 
-	at := testAuthToken(t, conn, wrapper)
+	at := TestAuthToken(t, conn, wrapper)
 	atToken := at.GetToken()
 	at.Token = ""
 	at.CtToken = nil
@@ -362,7 +362,7 @@ func TestRepository_ValidateToken_expired(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, repo)
 
-	baseAT := testAuthToken(t, conn, wrapper)
+	baseAT := TestAuthToken(t, conn, wrapper)
 	baseAT.GetAuthAccountId()
 	aAcct := &iam.AuthAccount{AuthAccount: &iamStore.AuthAccount{PublicId: baseAT.GetAuthAccountId()}}
 	require.NoError(t, rw.LookupByPublicId(context.Background(), aAcct))
@@ -430,7 +430,7 @@ func TestRepository_DeleteAuthToken(t *testing.T) {
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
 
-	at := testAuthToken(t, conn, wrapper)
+	at := TestAuthToken(t, conn, wrapper)
 	badId, err := newAuthTokenId()
 	require.NoError(t, err)
 	require.NotNil(t, badId)
