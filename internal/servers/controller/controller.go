@@ -66,6 +66,7 @@ func New(conf *Config) (*Controller, error) {
 	c.AuthTokenRepoFn = func() (*authtoken.Repository, error) {
 		return authtoken.NewRepository(dbase, dbase, c.conf.ControllerKMS)
 	}
+
 	return c, nil
 }
 

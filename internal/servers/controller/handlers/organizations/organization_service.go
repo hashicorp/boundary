@@ -38,6 +38,8 @@ var _ pbs.OrganizationServiceServer = Service{}
 
 // ListOrganizations is not yet implemented but will implement the interface pbs.OrganizationServiceServer.
 func (s Service) ListOrganizations(ctx context.Context, req *pbs.ListOrganizationsRequest) (*pbs.ListOrganizationsResponse, error) {
+	auth := handlers.ToTokenMetadata(ctx)
+	_ = auth
 	ol, err := s.listFromRepo(ctx)
 	if err != nil {
 		return nil, err
@@ -47,6 +49,8 @@ func (s Service) ListOrganizations(ctx context.Context, req *pbs.ListOrganizatio
 
 // GetOrganizations implements the interface pbs.OrganizationServiceServer.
 func (s Service) GetOrganization(ctx context.Context, req *pbs.GetOrganizationRequest) (*pbs.GetOrganizationResponse, error) {
+	auth := handlers.ToTokenMetadata(ctx)
+	_ = auth
 	if err := validateGetRequest(req); err != nil {
 		return nil, err
 	}
