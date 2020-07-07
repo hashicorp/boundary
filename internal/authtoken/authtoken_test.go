@@ -7,9 +7,12 @@ package authtoken
 import (
 	"context"
 	"testing"
+	"time"
 
+	"github.com/golang/protobuf/ptypes"
 	"github.com/hashicorp/watchtower/internal/authtoken/store"
 	"github.com/hashicorp/watchtower/internal/db"
+	"github.com/hashicorp/watchtower/internal/db/timestamp"
 	"github.com/hashicorp/watchtower/internal/iam"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -33,6 +36,8 @@ func TestAuthToken_DbUpdate(t *testing.T) {
 		nullMask  []string
 		authTok   *store.AuthToken
 	}
+	future, err := ptypes.TimestampProto(time.Now().Add(time.Hour))
+	require.NoError(t, err)
 
 	var tests = []struct {
 		name    string
@@ -60,8 +65,24 @@ func TestAuthToken_DbUpdate(t *testing.T) {
 		{
 			name: "update-last-access-time",
 			args: args{
+				fieldMask: []string{"ApproximateLastAccessTime"},
+				authTok:   &store.AuthToken{ApproximateLastAccessTime: &timestamp.Timestamp{Timestamp: future}},
+			},
+			cnt: 1,
+		},
+		{
+			name: "nullify-last-access-time",
+			args: args{
 				nullMask: []string{"ApproximateLastAccessTime"},
 				authTok:  &store.AuthToken{},
+			},
+			cnt: 1,
+		},
+		{
+			name: "update-expiration",
+			args: args{
+				fieldMask: []string{"ExpirationTime"},
+				authTok:   &store.AuthToken{ExpirationTime: &timestamp.Timestamp{Timestamp: future}},
 			},
 			cnt: 1,
 		},
