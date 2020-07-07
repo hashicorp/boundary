@@ -64,7 +64,7 @@ func TestNewRoleGrant(t *testing.T) {
 				g := allocRoleGrant()
 				g.RoleId = projRole.PublicId
 				g.RawGrant = "actions=*;id=*"
-				g.CanonicalGrant = "actions=*;id=*"
+				g.CanonicalGrant = "id=*;actions=*"
 				return &g
 			}(),
 			create: true,
