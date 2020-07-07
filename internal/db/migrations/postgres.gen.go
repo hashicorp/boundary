@@ -963,10 +963,10 @@ begin;
   begin
     if new.approximate_last_access_time is null then
       new.approximate_last_access_time = now();
-      return new;
     else
-      return old;
+      new.approximate_last_access_time = old.approximate_last_access_time;
     end if;
+    return new;
   end;
   $$ language plpgsql;
 
