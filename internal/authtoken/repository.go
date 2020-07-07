@@ -158,7 +158,7 @@ func (r *Repository) LookupAuthToken(ctx context.Context, id string, opt ...Opti
 // value is not included in the returned AuthToken. If no valid auth token is found nil, nil is returned.
 // All options are ignored.
 //
-// NOTE: Do not log or add the token string to any errors.
+// NOTE: Do not log or add the token string to any errors to avoid leaking it as it is a secret.
 func (r *Repository) ValidateToken(ctx context.Context, id, token string, opt ...Option) (*AuthToken, error) {
 	if token == "" {
 		return nil, fmt.Errorf("validate token: auth token: missing token: %w", db.ErrInvalidParameter)
