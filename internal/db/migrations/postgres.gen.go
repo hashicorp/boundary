@@ -901,11 +901,12 @@ commit;
 		bytes: []byte(`
 begin;
 
-  drop view auth_token_view cascade;
+  drop view auth_token_account cascade;
   drop table auth_token cascade;
 
-  drop function update_last_access_time_column cascade;
+  drop function update_last_access_time cascade;
   drop function immutable_auth_token_columns cascade;
+  drop function expire_time_not_older_than_token cascade;
 
 commit;
 
@@ -922,33 +923,41 @@ begin;
     public_id wt_public_id primary key,
     token bytea not null unique,
     auth_account_id wt_public_id not null
-        references auth_account(public_id)
-        on delete cascade
-        on update cascade,
+      references auth_account(public_id)
+      on delete cascade
+      on update cascade,
     create_time wt_timestamp,
     update_time wt_timestamp,
     -- This column is not updated every time this auth token is accessed.
     -- It is updated after X minutes from the last time it was updated on
     -- a per row basis.
-    approximate_last_access_time wt_timestamp check(
+    approximate_last_access_time wt_timestamp
+      check(
         approximate_last_access_time <= expiration_time
-    ),
-    expiration_time wt_timestamp check(
-            create_time <= expiration_time
-    )
+      ),
+    expiration_time wt_timestamp
+      check(
+        create_time <= expiration_time
+      )
   );
 
-  create view auth_token_view as
-  select at.*,
-         aa.scope_id,
-         aa.iam_user_id,
-         aa.auth_method_id
-  from auth_token as at
-      inner join
-      auth_account as aa ON at.auth_account_id = aa.public_id;
+  create view auth_token_account as
+        select at.public_id,
+               at.token,
+               at.auth_account_id,
+               at.create_time,
+               at.update_time,
+               at.approximate_last_access_time,
+               at.expiration_time,
+               aa.scope_id,
+               aa.iam_user_id,
+               aa.auth_method_id
+          from auth_token as at
+    inner join auth_account as aa
+            on at.auth_account_id = aa.public_id;
 
   create or replace function
-    update_last_access_time_column()
+    update_last_access_time()
     returns trigger
   as $$
   begin
@@ -962,7 +971,7 @@ begin;
   $$ language plpgsql;
 
   comment on function
-    update_last_access_time_column()
+    update_last_access_time()
   is
     'function used in before update triggers to properly set last_access_time columns';
 
@@ -975,14 +984,14 @@ begin;
       raise exception 'auth_account_id cannot be set to %', new.auth_account_id;
     end if;
     if new.token is distinct from old.token then
-        raise exception 'token cannot be set to %', new.token;
+      raise exception 'token cannot be set to %', new.token;
     end if;
     return new;
   end;
   $$ language plpgsql;
 
   comment on function
-      immutable_auth_token_columns()
+    immutable_auth_token_columns()
   is
     'function used in before update triggers to make specific columns immutable';
 
@@ -994,7 +1003,7 @@ begin;
   as $$
   begin
     if new.expiration_time < new.create_time then
-        new.expiration_time = new.create_time;
+      new.expiration_time = new.create_time;
     end if;
     return new;
   end;
@@ -1021,9 +1030,9 @@ begin;
     for each row execute procedure update_time_column();
 
   create trigger
-    update_last_access_time_column
+    update_last_access_time
   before update on auth_token
-    for each row execute procedure update_last_access_time_column();
+    for each row execute procedure update_last_access_time();
 
   create trigger
     immutable_create_time

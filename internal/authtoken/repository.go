@@ -135,7 +135,7 @@ func (r *Repository) LookupAuthToken(ctx context.Context, id string, opt ...Opti
 	at := allocAuthToken()
 	at.PublicId = id
 	// Aggregate the fields across auth token and auth accounts by using this view instead of issuing 2 db lookups.
-	at.SetTableName("auth_token_view")
+	at.SetTableName("auth_token_account")
 	if err := r.reader.LookupByPublicId(ctx, at); err != nil {
 		if errors.Is(err, db.ErrRecordNotFound) {
 			return nil, nil
@@ -144,7 +144,7 @@ func (r *Repository) LookupAuthToken(ctx context.Context, id string, opt ...Opti
 	}
 	if opts.withTokenValue {
 		if err := at.decrypt(ctx, r.wrapper); err != nil {
-			return nil, fmt.Errorf("lookup: auth token: cant decrypt auth token value: %w", err)
+			return nil, fmt.Errorf("lookup: auth token: cannot decrypt auth token value: %w", err)
 		}
 	}
 
@@ -197,7 +197,7 @@ func (r *Repository) ValidateToken(ctx context.Context, id, token string, opt ..
 			ctx,
 			db.StdRetryCnt,
 			db.ExpBackoff{},
-			func(read db.Reader, w db.Writer) error {
+			func(_ db.Reader, w db.Writer) error {
 				metadata := newAuthTokenMetadata(retAT, oplog.OpType_OP_TYPE_DELETE)
 				delAt := retAT.clone()
 				if _, err := w.Delete(ctx, delAt, db.WithOplog(r.wrapper, metadata)); err != nil {
