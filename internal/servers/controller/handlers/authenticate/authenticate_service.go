@@ -70,8 +70,9 @@ func (s Service) authenticateWithRepo(ctx context.Context, req *pbs.Authenticate
 		return nil, err
 	}
 	// Place holder for making a request to authenticate
-	pwCreds := req.GetPasswordCredentials()
-	if s.authAcctId == "" || (pwCreds.GetName() != "admin" && pwCreds.GetPassword() != "hunter2") {
+	creds := req.GetCredentials().GetFields()
+	pwName, password := creds["name"], creds["password"]
+	if s.authAcctId == "" || (pwName.GetStringValue() != "admin" || password.GetStringValue() != "hunter2") {
 		return nil, status.Error(codes.Unauthenticated, "Unable to authenticate.")
 	}
 	// Get back a password.Account with a CredentialId string and a public Id
@@ -116,8 +117,8 @@ func validateAuthenticateRequest(req *pbs.AuthenticateRequest) error {
 		badFields["auth_method_id"] = "Invalid formatted identifier."
 	}
 	// TODO: Update this when we enable different auth method types.
-	if req.GetPasswordCredentials() == nil {
-		badFields["password_credential"] = "This is a required field."
+	if req.GetCredentials() == nil {
+		badFields["credentials"] = "This is a required field."
 	}
 	// TODO: Update this when we enable split cookie token types.
 	tType := strings.ToLower(strings.TrimSpace(req.GetTokenType()))

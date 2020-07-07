@@ -129,7 +129,7 @@ func TestAuthenticationHandler(t *testing.T) {
 	defer c.Shutdown()
 
 	resp, err := http.Post(fmt.Sprintf("%s/v1/orgs/o_1234567890:authenticate", c.ApiAddrs()[0]), "application/json",
-		strings.NewReader("{\"auth_method_id\": \"whatever\", \"token_type\": null, \"password_credentials\": {\"login_name\":\"admin\", \"password\": \"hunter2\"}}"))
+		strings.NewReader("{\"auth_method_id\": \"whatever\", \"token_type\": null, \"credentials\": {\"name\":\"admin\", \"password\": \"hunter2\"}}"))
 	require.NoError(t, err)
 	t.Logf("Got response: %#v", resp)
 	body, err := ioutil.ReadAll(resp.Body)

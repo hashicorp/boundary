@@ -2991,8 +2991,9 @@
           "type": "string",
           "description": "This can be \"cookie\" or \"token\".  If not provided, \"token\" will be used.  For now only type \"token\" is returned."
         },
-        "password_credentials": {
-          "$ref": "#/definitions/controller.api.services.v1.PasswordCredentials"
+        "credentials": {
+          "type": "object",
+          "description": "credentials are the different possible credential names depending on what type of auth method is used.\nFor password auth method: should include only \"name\" and \"password\"."
         }
       }
     },
@@ -3296,17 +3297,6 @@
           "items": {
             "$ref": "#/definitions/controller.api.resources.users.v1.User"
           }
-        }
-      }
-    },
-    "controller.api.services.v1.PasswordCredentials": {
-      "type": "object",
-      "properties": {
-        "name": {
-          "type": "string"
-        },
-        "password": {
-          "type": "string"
         }
       }
     },

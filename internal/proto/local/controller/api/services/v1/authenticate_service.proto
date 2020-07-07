@@ -6,6 +6,7 @@ option go_package = "github.com/hashicorp/watchtower/internal/gen/controller/api
 
 import "protoc-gen-swagger/options/annotations.proto";
 import "google/api/annotations.proto";
+import "google/protobuf/struct.proto";
 import "controller/api/resources/authtokens/v1/authtoken.proto";
 
 service AuthenticationService {
@@ -32,6 +33,8 @@ service AuthenticationService {
   }
 }
 
+// The organization of the struct for "credentials" field in AuthenticateRequest.  This message isn't
+// directly referenced anywhere but is used here to define the expected field names and types.
 message PasswordCredentials {
   string name = 1;
   string password = 2;
@@ -45,7 +48,9 @@ message AuthenticateRequest {
   // This can be "cookie" or "token".  If not provided, "token" will be used.  For now only type "token" is returned.
   string token_type = 3;
 
-  PasswordCredentials password_credentials = 4;
+  // credentials are the different possible credential names depending on what type of auth method is used.
+  // For password auth method: should include only "name" and "password".
+  google.protobuf.Struct credentials = 8;
 }
 
 message AuthenticateResponse {
