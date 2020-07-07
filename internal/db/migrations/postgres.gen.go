@@ -12,6 +12,7 @@ begin;
 
 drop domain wt_timestamp;
 drop domain wt_public_id;
+drop domain wt_private_id;
 drop domain wt_version;
 
 drop function default_create_time;
@@ -33,6 +34,13 @@ check(
   length(trim(value)) > 10
 );
 comment on domain wt_public_id is
+'Random ID generated with github.com/hashicorp/vault/sdk/helper/base62';
+
+create domain wt_private_id as text
+check(
+  length(trim(value)) > 10
+);
+comment on domain wt_private_id is
 'Random ID generated with github.com/hashicorp/vault/sdk/helper/base62';
 
 create domain wt_timestamp as
@@ -633,6 +641,7 @@ create table iam_role (
   );
 
 create table iam_role_grant (
+    private_id wt_private_id not null unique,
     create_time wt_timestamp,
     update_time wt_timestamp,
     role_id wt_public_id not null references iam_role(public_id) on delete cascade on update cascade,

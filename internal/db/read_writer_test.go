@@ -448,7 +448,7 @@ func TestDb_Update(t *testing.T) {
 		)
 		require.Error(err)
 		assert.Equal(0, rowsUpdated)
-		assert.Equal("update: oplog validation failed error no wrapper WithOplog: nil parameter", err.Error())
+		assert.Equal("update: oplog validation failed: error no wrapper WithOplog: nil parameter", err.Error())
 	})
 	t.Run("no-metadata-WithOplog", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
@@ -465,7 +465,7 @@ func TestDb_Update(t *testing.T) {
 		)
 		require.Error(err)
 		assert.Equal(0, rowsUpdated)
-		assert.Equal("update: oplog validation failed error no metadata for WithOplog: invalid parameter", err.Error())
+		assert.Equal("update: oplog validation failed: error no metadata for WithOplog: invalid parameter", err.Error())
 	})
 }
 
@@ -652,7 +652,7 @@ func TestDb_Create(t *testing.T) {
 			),
 		)
 		require.Error(err)
-		assert.Equal("create: oplog validation failed error no wrapper WithOplog: nil parameter", err.Error())
+		assert.Equal("create: oplog validation failed: error no wrapper WithOplog: nil parameter", err.Error())
 	})
 	t.Run("no-metadata-WithOplog", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
@@ -671,7 +671,7 @@ func TestDb_Create(t *testing.T) {
 			),
 		)
 		require.Error(err)
-		assert.Equal("create: oplog validation failed error no metadata for WithOplog: invalid parameter", err.Error())
+		assert.Equal("create: oplog validation failed: error no metadata for WithOplog: invalid parameter", err.Error())
 	})
 	t.Run("nil-tx", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
@@ -683,7 +683,7 @@ func TestDb_Create(t *testing.T) {
 		user.Name = "foo-" + id
 		err = w.Create(context.Background(), user)
 		require.Error(err)
-		assert.Equal("create: missing underlying db nil parameter", err.Error())
+		assert.Equal("create: missing underlying db: nil parameter", err.Error())
 	})
 }
 
