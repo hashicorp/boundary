@@ -23,15 +23,15 @@ var (
 
 // Service handles request as described by the pbs.OrganizationServiceServer interface.
 type Service struct {
-	iamRepo common.IamRepoFactory
+	repo common.IamRepoFactory
 }
 
 // NewService returns an organization service which handles organization related requests to watchtower.
-func NewService(iamRepo common.IamRepoFactory) (Service, error) {
-	if iamRepo == nil {
+func NewService(repo common.IamRepoFactory) (Service, error) {
+	if repo == nil {
 		return Service{}, fmt.Errorf("nil iam repository provided")
 	}
-	return Service{iamRepo: iamRepo}, nil
+	return Service{repo: repo}, nil
 }
 
 var _ pbs.OrganizationServiceServer = Service{}
@@ -58,7 +58,7 @@ func (s Service) GetOrganization(ctx context.Context, req *pbs.GetOrganizationRe
 }
 
 func (s Service) getFromRepo(ctx context.Context, id string) (*pb.Organization, error) {
-	repo, err := s.iamRepo()
+	repo, err := s.repo()
 	if err != nil {
 		return nil, err
 	}
@@ -73,7 +73,7 @@ func (s Service) getFromRepo(ctx context.Context, id string) (*pb.Organization, 
 }
 
 func (s Service) listFromRepo(ctx context.Context) ([]*pb.Organization, error) {
-	repo, err := s.iamRepo()
+	repo, err := s.repo()
 	if err != nil {
 		return nil, err
 	}
