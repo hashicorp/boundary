@@ -144,7 +144,7 @@ func (r *Repository) LookupAuthToken(ctx context.Context, id string, opt ...Opti
 	}
 	if opts.withTokenValue {
 		if err := at.decrypt(ctx, r.wrapper); err != nil {
-			return nil, fmt.Errorf("lookup: auth token: cant decrypt auth token value: %w", err)
+			return nil, fmt.Errorf("lookup: auth token: cannot decrypt auth token value: %w", err)
 		}
 	}
 
