@@ -642,7 +642,6 @@ create table iam_role (
   );
 
 create table iam_role_grant (
-    private_id wt_private_id not null unique,
     create_time wt_timestamp,
     update_time wt_timestamp,
     role_id wt_public_id not null references iam_role(public_id) on delete cascade on update cascade,

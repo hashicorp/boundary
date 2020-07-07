@@ -22,14 +22,6 @@ func newRoleId() (string, error) {
 	return id, nil
 }
 
-func newRoleGrantId() (string, error) {
-	id, err := db.NewPrivateId(RoleGrantPrefix)
-	if err != nil {
-		return "", fmt.Errorf("new role grant id: %w", err)
-	}
-	return id, nil
-}
-
 func newUserId() (string, error) {
 	id, err := db.NewPublicId(UserPrefix)
 	if err != nil {

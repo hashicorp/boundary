@@ -132,12 +132,8 @@ func TestRoleGrant(t *testing.T, conn *gorm.DB, roleId, grant string, opt ...Opt
 
 	g, err := NewRoleGrant(roleId, grant, opt...)
 	require.NoError(err)
-	id, err := newRoleGrantId()
-	require.NoError(err)
-	g.PrivateId = id
 	err = rw.Create(context.Background(), g)
 	require.NoError(err)
-	require.NotEmpty(g.PrivateId)
 	return g
 }
 

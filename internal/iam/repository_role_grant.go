@@ -32,10 +32,6 @@ func (r *Repository) AddRoleGrants(ctx context.Context, roleId string, roleVersi
 		if err != nil {
 			return nil, fmt.Errorf("add role grants: unable to create in memory role grant: %w", err)
 		}
-		roleGrant.PrivateId, err = newRoleGrantId()
-		if err != nil {
-			return nil, fmt.Errorf("add role grants: unable to generate new id: %w", err)
-		}
 		newRoleGrants = append(newRoleGrants, roleGrant)
 	}
 
@@ -136,9 +132,9 @@ func (r *Repository) DeleteRoleGrants(ctx context.Context, roleId string, roleVe
 			if err := reader.SearchWhere(ctx, &roleGrants, "role_id = ?", []interface{}{roleId}); err != nil {
 				return fmt.Errorf("delete role grants: unable to search for grants: %w", err)
 			}
-			found := map[string]string{}
+			found := map[string]bool{}
 			for _, rg := range roleGrants {
-				found[rg.CanonicalGrant] = rg.PrivateId
+				found[rg.CanonicalGrant] = true
 			}
 
 			// Check incoming grants to see if they exist and if so add to
@@ -158,8 +154,7 @@ func (r *Repository) DeleteRoleGrants(ctx context.Context, roleId string, roleVe
 					return fmt.Errorf("delete role grants: error parsing grant string: %w", err)
 				}
 				// We don't have what they want to delete, so ignore it
-				privateId := found[perm.CanonicalString()]
-				if privateId == "" {
+				if !found[perm.CanonicalString()] {
 					continue
 				}
 
@@ -167,7 +162,6 @@ func (r *Repository) DeleteRoleGrants(ctx context.Context, roleId string, roleVe
 				if err != nil {
 					return fmt.Errorf("delete role grants: unable to create in memory role grant: %w", err)
 				}
-				roleGrant.PrivateId = privateId
 				deleteRoleGrants = append(deleteRoleGrants, roleGrant)
 			}
 
@@ -269,10 +263,6 @@ func (r *Repository) SetRoleGrants(ctx context.Context, roleId string, roleVersi
 		rg, err = NewRoleGrant(roleId, grant)
 		if err != nil {
 			return nil, 0, fmt.Errorf("set role grants: unable to create in memory role grant: %w", err)
-		}
-		rg.PrivateId, err = newRoleGrantId()
-		if err != nil {
-			return nil, 0, fmt.Errorf("set role grants: unable to generate new id: %w", err)
 		}
 		addRoleGrants = append(addRoleGrants, rg)
 		currentRoleGrants = append(currentRoleGrants, rg)

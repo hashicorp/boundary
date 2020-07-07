@@ -10,13 +10,7 @@ import (
 
 func TestGroup_AddUser(t *testing.T) {
 	t.Parallel()
-	cleanup, conn, _ := db.TestSetup(t, "postgres")
-	defer func() {
-		err := cleanup()
-		assert.NoError(t, err)
-		err = conn.Close()
-		assert.NoError(t, err)
-	}()
+	conn, _ := db.TestSetup(t, "postgres")
 	t.Run("valid", func(t *testing.T) {
 		assert := assert.New(t)
 		w := db.New(conn)
@@ -35,13 +29,7 @@ func TestGroup_AddUser(t *testing.T) {
 
 func Test_NewGroupMember(t *testing.T) {
 	t.Parallel()
-	cleanup, conn, _ := db.TestSetup(t, "postgres")
-	defer func() {
-		err := cleanup()
-		assert.NoError(t, err)
-		err = conn.Close()
-		assert.NoError(t, err)
-	}()
+	conn, _ := db.TestSetup(t, "postgres")
 	t.Run("valid", func(t *testing.T) {
 		assert := assert.New(t)
 		w := db.New(conn)

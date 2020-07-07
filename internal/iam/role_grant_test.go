@@ -14,14 +14,7 @@ import (
 
 func TestNewRoleGrant(t *testing.T) {
 	t.Parallel()
-	cleanup, conn, _ := db.TestSetup(t, "postgres")
-	defer func() {
-		err := cleanup()
-		assert.NoError(t, err)
-		err = conn.Close()
-		assert.NoError(t, err)
-	}()
-
+	conn, _ := db.TestSetup(t, "postgres")
 	_, proj := TestScopes(t, conn)
 	projRole := TestRole(t, conn, proj.PublicId)
 
@@ -48,6 +41,7 @@ func TestNewRoleGrant(t *testing.T) {
 				g := allocRoleGrant()
 				g.RoleId = projRole.PublicId
 				g.RawGrant = "id=*;actions=*"
+				g.CanonicalGrant = "id=*;actions=*"
 				return &g
 			}(),
 		},
@@ -70,6 +64,7 @@ func TestNewRoleGrant(t *testing.T) {
 				g := allocRoleGrant()
 				g.RoleId = projRole.PublicId
 				g.RawGrant = "actions=*;id=*"
+				g.CanonicalGrant = "actions=*;id=*"
 				return &g
 			}(),
 			create: true,
@@ -87,16 +82,12 @@ func TestNewRoleGrant(t *testing.T) {
 			require.NoError(err)
 			assert.Equal(tt.want, got)
 			if tt.create {
-				got.PrivateId, err = newRoleGrantId()
-				assert.NoError(err)
 				assert.NoError(db.New(conn).Create(context.Background(), got))
 				assert.Equal("id=*;actions=*", got.CanonicalGrant)
 
 				// also ensure duplicate grants aren't allowed
 				g2 := got.Clone().(*RoleGrant)
-				g2.PrivateId, err = newRoleGrantId()
-				assert.NoError(err)
-				assert.Error(db.New(conn).Create(context.Background(), got))
+				assert.Error(db.New(conn).Create(context.Background(), g2))
 			}
 		})
 	}
@@ -111,13 +102,7 @@ func TestRoleGrant_ResourceType(t *testing.T) {
 
 func TestRoleGrant_Clone(t *testing.T) {
 	t.Parallel()
-	cleanup, conn, _ := db.TestSetup(t, "postgres")
-	defer func() {
-		err := cleanup()
-		assert.NoError(t, err)
-		err = conn.Close()
-		assert.NoError(t, err)
-	}()
+	conn, _ := db.TestSetup(t, "postgres")
 	t.Run("valid", func(t *testing.T) {
 		assert := assert.New(t)
 		s := testOrg(t, conn, "", "")

@@ -88,14 +88,8 @@ func Test_TestRole(t *testing.T) {
 
 func Test_TestRoleGrant(t *testing.T) {
 	t.Helper()
-	assert, require := assert.New(t), require.New(t)
-	cleanup, conn, _ := db.TestSetup(t, "postgres")
-	defer func() {
-		err := cleanup()
-		assert.NoError(err)
-		err = conn.Close()
-		assert.NoError(err)
-	}()
+	require := require.New(t)
+	conn, _ := db.TestSetup(t, "postgres")
 	_, proj := TestScopes(t, conn)
 	projRole := TestRole(t, conn, proj.PublicId)
 
@@ -108,14 +102,8 @@ func Test_TestRoleGrant(t *testing.T) {
 
 func Test_TestUserRole(t *testing.T) {
 	t.Helper()
-	assert, require := assert.New(t), require.New(t)
-	cleanup, conn, _ := db.TestSetup(t, "postgres")
-	defer func() {
-		err := cleanup()
-		assert.NoError(err)
-		err = conn.Close()
-		assert.NoError(err)
-	}()
+	require := require.New(t)
+	conn, _ := db.TestSetup(t, "postgres")
 	org, proj := TestScopes(t, conn)
 	orgRole := TestRole(t, conn, org.PublicId)
 	projRole := TestRole(t, conn, proj.PublicId)
@@ -134,14 +122,8 @@ func Test_TestUserRole(t *testing.T) {
 
 func Test_TestGroupRole(t *testing.T) {
 	t.Helper()
-	assert, require := assert.New(t), require.New(t)
-	cleanup, conn, _ := db.TestSetup(t, "postgres")
-	defer func() {
-		err := cleanup()
-		assert.NoError(err)
-		err = conn.Close()
-		assert.NoError(err)
-	}()
+	require := require.New(t)
+	conn, _ := db.TestSetup(t, "postgres")
 	org, proj := TestScopes(t, conn)
 	orgRole := TestRole(t, conn, org.PublicId)
 	orgGroup := TestGroup(t, conn, org.PublicId)

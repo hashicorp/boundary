@@ -17,13 +17,7 @@ import (
 
 func TestRepository_AddRoleGrants(t *testing.T) {
 	t.Parallel()
-	cleanup, conn, _ := db.TestSetup(t, "postgres")
-	defer func() {
-		err := cleanup()
-		assert.NoError(t, err)
-		err = conn.Close()
-		assert.NoError(t, err)
-	}()
+	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
 	repo, err := NewRepository(rw, rw, wrapper)
@@ -93,7 +87,7 @@ func TestRepository_AddRoleGrants(t *testing.T) {
 			require.NoError(err)
 			gotRoleGrant := map[string]*RoleGrant{}
 			for _, r := range got {
-				gotRoleGrant[r.PrivateId] = r
+				gotRoleGrant[r.CanonicalGrant] = r
 			}
 
 			err = db.TestVerifyOplog(t, rw, role.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_CREATE), db.WithCreateNotBefore(10*time.Second))
@@ -107,7 +101,7 @@ func TestRepository_AddRoleGrants(t *testing.T) {
 				grantSet[grant] = true
 			}
 			for _, r := range foundRoleGrants {
-				roleGrant := gotRoleGrant[r.PrivateId]
+				roleGrant := gotRoleGrant[r.CanonicalGrant]
 				assert.NotEmpty(roleGrant)
 				assert.Equal(roleGrant.GetRoleId(), r.GetRoleId())
 				assert.NotEmpty(grantSet[roleGrant.CanonicalGrant])
@@ -120,13 +114,7 @@ func TestRepository_AddRoleGrants(t *testing.T) {
 
 func TestRepository_ListRoleGrants(t *testing.T) {
 	t.Parallel()
-	cleanup, conn, _ := db.TestSetup(t, "postgres")
-	defer func() {
-		err := cleanup()
-		assert.NoError(t, err)
-		err = conn.Close()
-		assert.NoError(t, err)
-	}()
+	conn, _ := db.TestSetup(t, "postgres")
 	const testLimit = 10
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
@@ -227,13 +215,7 @@ func TestRepository_ListRoleGrants(t *testing.T) {
 
 func TestRepository_DeleteRoleGrants(t *testing.T) {
 	t.Parallel()
-	cleanup, conn, _ := db.TestSetup(t, "postgres")
-	defer func() {
-		err := cleanup()
-		assert.NoError(t, err)
-		err = conn.Close()
-		assert.NoError(t, err)
-	}()
+	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
 	repo, err := NewRepository(rw, rw, wrapper)
@@ -330,9 +312,6 @@ func TestRepository_DeleteRoleGrants(t *testing.T) {
 			for i := 0; i < tt.args.createCnt; i++ {
 				g, err := NewRoleGrant(tt.args.role.PublicId, fmt.Sprintf("actions=*;id=s_%d", i), tt.args.opt...)
 				require.NoError(err)
-				id, err := newRoleGrantId()
-				require.NoError(err)
-				g.PrivateId = id
 				grantStrings = append(grantStrings, g.RawGrant)
 				grants = append(grants, g)
 			}
@@ -340,17 +319,17 @@ func TestRepository_DeleteRoleGrants(t *testing.T) {
 			require.NoError(err)
 			assert.Equal(tt.args.createCnt, len(roleGrants))
 
-			deleteIds := make([]string, 0, tt.args.deleteCnt)
+			deleteCanonicalGrants := make([]string, 0, tt.args.deleteCnt)
 			deleteGrants := make([]string, 0, tt.args.deleteCnt)
 			for i := 0; i < tt.args.deleteCnt; i++ {
-				deleteIds = append(deleteIds, grants[i].PrivateId)
+				deleteCanonicalGrants = append(deleteCanonicalGrants, grants[i].CanonicalGrant)
 				deleteGrants = append(deleteGrants, fmt.Sprintf("id=s_%d;actions=*", i))
 			}
 			for i, override := range tt.args.grantStringsOverride {
-				deleteIds = deleteIds[1:]
+				deleteCanonicalGrants = deleteCanonicalGrants[1:]
 				deleteGrants[i] = override
 			}
-			t.Log(pretty.Sprint(deleteIds))
+			t.Log(pretty.Sprint(deleteCanonicalGrants))
 			t.Log(pretty.Sprint(deleteGrants))
 
 			var roleId string
@@ -380,9 +359,9 @@ func TestRepository_DeleteRoleGrants(t *testing.T) {
 			t.Log(pretty.Sprint(roleGrants))
 			found := map[string]bool{}
 			for _, rg := range roleGrants {
-				found[rg.PrivateId] = true
+				found[rg.CanonicalGrant] = true
 			}
-			for _, i := range deleteIds {
+			for _, i := range deleteCanonicalGrants {
 				assert.False(found[i])
 			}
 
@@ -394,14 +373,8 @@ func TestRepository_DeleteRoleGrants(t *testing.T) {
 
 func TestRepository_SetRoleGrants_Randomize(t *testing.T) {
 	t.Parallel()
-	assert, require := assert.New(t), require.New(t)
-	cleanup, conn, _ := db.TestSetup(t, "postgres")
-	defer func() {
-		err := cleanup()
-		assert.NoError(err)
-		err = conn.Close()
-		assert.NoError(err)
-	}()
+	require := require.New(t)
+	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
 	repo, err := NewRepository(rw, rw, wrapper)
@@ -420,9 +393,6 @@ func TestRepository_SetRoleGrants_Randomize(t *testing.T) {
 	for i := 0; i < totalCnt; i++ {
 		g, err := NewRoleGrant(role.PublicId, fmt.Sprintf("id=s_%d;actions=*", i))
 		require.NoError(err)
-		id, err := newRoleGrantId()
-		require.NoError(err)
-		g.PrivateId = id
 		grants = append(grants, &roleGrantWrapper{
 			grantString: g.RawGrant,
 		})
