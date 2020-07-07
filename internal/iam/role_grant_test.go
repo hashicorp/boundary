@@ -56,11 +56,6 @@ func TestNewRoleGrant(t *testing.T) {
 				roleId: "",
 				grant:  "id=*;actions=*",
 			},
-			want: func() *RoleGrant {
-				g := allocRoleGrant()
-				g.RoleId = projRole.PublicId
-				return &g
-			}(),
 			wantErr:   true,
 			wantIsErr: db.ErrNilParameter,
 		},
@@ -88,8 +83,6 @@ func TestNewRoleGrant(t *testing.T) {
 				return
 			}
 			require.NoError(err)
-			assert.Equal(tt.args.grant, got.RawGrant)
-			tt.want.RawGrant = got.RawGrant
 			assert.Equal(tt.want, got)
 			if tt.create {
 				got.PrivateId, err = newRoleGrantId()

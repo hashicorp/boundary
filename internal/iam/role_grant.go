@@ -24,7 +24,9 @@ type RoleGrant struct {
 var _ Clonable = (*RoleGrant)(nil)
 var _ db.VetForWriter = (*RoleGrant)(nil)
 
-// NewRoleGrant creates a new in memory role grant
+// NewRoleGrant creates a new in memory role grant. Note that it does not do
+// validity checking on the grant; this is performed at VetForWrite time, or
+// could be performed by the caller prior to setting here.
 func NewRoleGrant(roleId string, grant string, opt ...Option) (*RoleGrant, error) {
 	if roleId == "" {
 		return nil, fmt.Errorf("new role grant: role id is not set: %w", db.ErrNilParameter)

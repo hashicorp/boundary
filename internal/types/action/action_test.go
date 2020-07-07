@@ -37,7 +37,7 @@ func TestAction(t *testing.T) {
 		},
 		{
 			action: Authenticate,
-			want:   "authen",
+			want:   "authenticate",
 		},
 		{
 			action: All,
