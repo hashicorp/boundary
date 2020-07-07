@@ -1010,7 +1010,7 @@ begin;
   $$ language plpgsql;
 
   comment on function
-    immutable_auth_token_columns()
+      expire_time_not_older_than_token()
   is
     'function used in before insert triggers to ensure expiration time is not older than create time';
 
