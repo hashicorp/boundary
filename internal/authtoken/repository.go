@@ -223,7 +223,7 @@ func (r *Repository) ValidateToken(ctx context.Context, id, token string, opt ..
 			ctx,
 			db.StdRetryCnt,
 			db.ExpBackoff{},
-			func(read db.Reader, w db.Writer) error {
+			func(_ db.Reader, w db.Writer) error {
 				// Setting the ApproximateLastAccessTime to null through using the null mask allows a defined db's
 				// trigger to set ApproximateLastAccessTime to the commit timestamp.
 				at := retAT.clone()
