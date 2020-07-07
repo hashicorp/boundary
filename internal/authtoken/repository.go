@@ -135,7 +135,7 @@ func (r *Repository) LookupAuthToken(ctx context.Context, id string, opt ...Opti
 	at := allocAuthToken()
 	at.PublicId = id
 	// Aggregate the fields across auth token and auth accounts by using this view instead of issuing 2 db lookups.
-	at.SetTableName("auth_token_view")
+	at.SetTableName("auth_token_account")
 	if err := r.reader.LookupByPublicId(ctx, at); err != nil {
 		if errors.Is(err, db.ErrRecordNotFound) {
 			return nil, nil
