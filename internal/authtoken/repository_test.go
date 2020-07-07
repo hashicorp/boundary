@@ -378,7 +378,7 @@ func TestRepository_ValidateToken_expired(t *testing.T) {
 		wantReturned       bool
 	}{
 		{
-			name:               "not stale or expired",
+			name:               "not-stale-or-expired",
 			staleDuration:      maxStaleness,
 			expirationDuration: maxTokenDuration,
 			wantReturned:       true,
