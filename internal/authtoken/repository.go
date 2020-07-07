@@ -274,7 +274,7 @@ func (r *Repository) DeleteAuthToken(ctx context.Context, id string, opt ...Opti
 		ctx,
 		db.StdRetryCnt,
 		db.ExpBackoff{},
-		func(read db.Reader, w db.Writer) error {
+		func(_ db.Reader, w db.Writer) error {
 			metadata := newAuthTokenMetadata(at, oplog.OpType_OP_TYPE_DELETE)
 
 			deleteAT := at.clone()
