@@ -47,6 +47,7 @@ func TestNewRoleGrant(t *testing.T) {
 			want: func() *RoleGrant {
 				g := allocRoleGrant()
 				g.RoleId = projRole.PublicId
+				g.RawGrant = "id=*;actions=*"
 				return &g
 			}(),
 		},
@@ -68,6 +69,7 @@ func TestNewRoleGrant(t *testing.T) {
 			want: func() *RoleGrant {
 				g := allocRoleGrant()
 				g.RoleId = projRole.PublicId
+				g.RawGrant = "actions=*;id=*"
 				return &g
 			}(),
 			create: true,
