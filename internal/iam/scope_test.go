@@ -236,10 +236,7 @@ func TestScope_GlobalErrors(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, s.Type, scope.Global.String())
 		rows, err := w.Delete(context.Background(), &s)
-		// TODO: It seems when we raise an exception in a delete trigger we get
-		// no error back and instead just nothing deleted. This is fine behavior
-		// for the moment but could hide something deeper that is wrong.
-		require.NoError(t, err)
+		require.Error(t, err)
 		assert.Equal(t, 0, rows)
 	})
 }

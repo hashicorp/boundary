@@ -99,10 +99,10 @@ create or replace function
   returns trigger
 as $$
 begin
-  if new.type = 'global' then
+  if old.type = 'global' then
     raise exception 'deletion of global scope not allowed';
   end if;
-  return new;
+  return old;
 end;
 $$ language plpgsql;
 
