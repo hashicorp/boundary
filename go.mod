@@ -44,7 +44,6 @@ require (
 	github.com/mitchellh/gox v1.0.1
 	github.com/mitchellh/mapstructure v1.3.2
 	github.com/oligot/go-mod-upgrade v0.1.2
-	github.com/ory/dockertest v3.3.5+incompatible
 	github.com/ory/dockertest/v3 v3.6.0
 	github.com/pelletier/go-toml v1.7.0 // indirect
 	github.com/pires/go-proxyproto v0.1.3

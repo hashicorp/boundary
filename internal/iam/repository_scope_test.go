@@ -19,14 +19,7 @@ import (
 
 func Test_Repository_CreateScope(t *testing.T) {
 	t.Parallel()
-	cleanup, conn, _ := db.TestSetup(t, "postgres")
-	defer func() {
-		err := cleanup()
-		assert.NoError(t, err)
-		err = conn.Close()
-		assert.NoError(t, err)
-	}()
-
+	conn, _ := db.TestSetup(t, "postgres")
 	t.Run("valid-scope", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
 		rw := db.New(conn)
@@ -125,14 +118,7 @@ func Test_Repository_CreateScope(t *testing.T) {
 
 func Test_Repository_UpdateScope(t *testing.T) {
 	t.Parallel()
-	cleanup, conn, _ := db.TestSetup(t, "postgres")
-	defer func() {
-		err := cleanup()
-		assert.NoError(t, err)
-		err = conn.Close()
-		assert.NoError(t, err)
-	}()
-
+	conn, _ := db.TestSetup(t, "postgres")
 	t.Run("valid-scope", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
 		rw := db.New(conn)
@@ -196,14 +182,7 @@ func Test_Repository_UpdateScope(t *testing.T) {
 
 func Test_Repository_LookupScope(t *testing.T) {
 	t.Parallel()
-	cleanup, conn, _ := db.TestSetup(t, "postgres")
-	defer func() {
-		err := cleanup()
-		assert.NoError(t, err)
-		err = conn.Close()
-		assert.NoError(t, err)
-	}()
-
+	conn, _ := db.TestSetup(t, "postgres")
 	t.Run("found-and-not-found", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
 		rw := db.New(conn)
@@ -229,13 +208,7 @@ func Test_Repository_LookupScope(t *testing.T) {
 
 func Test_Repository_DeleteScope(t *testing.T) {
 	t.Parallel()
-	cleanup, conn, _ := db.TestSetup(t, "postgres")
-	defer func() {
-		err := cleanup()
-		assert.NoError(t, err)
-		err = conn.Close()
-		assert.NoError(t, err)
-	}()
+	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
 	repo, err := NewRepository(rw, rw, wrapper)
@@ -272,15 +245,9 @@ func Test_Repository_DeleteScope(t *testing.T) {
 }
 
 func TestRepository_UpdateScope(t *testing.T) {
-	cleanup, conn, _ := db.TestSetup(t, "postgres")
+	conn, _ := db.TestSetup(t, "postgres")
 	now := &timestamp.Timestamp{Timestamp: ptypes.TimestampNow()}
 	id := testId(t)
-	defer func() {
-		err := cleanup()
-		assert.NoError(t, err)
-		err = conn.Close()
-		assert.NoError(t, err)
-	}()
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
 	publicId := testPublicId(t, "o")
@@ -497,13 +464,7 @@ func TestRepository_UpdateScope(t *testing.T) {
 
 func TestRepository_ListProjects(t *testing.T) {
 	t.Parallel()
-	cleanup, conn, _ := db.TestSetup(t, "postgres")
-	defer func() {
-		err := cleanup()
-		assert.NoError(t, err)
-		err = conn.Close()
-		assert.NoError(t, err)
-	}()
+	conn, _ := db.TestSetup(t, "postgres")
 	const testLimit = 10
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
@@ -583,13 +544,7 @@ func TestRepository_ListProjects(t *testing.T) {
 
 func TestRepository_ListOrganizations(t *testing.T) {
 	t.Parallel()
-	cleanup, conn, _ := db.TestSetup(t, "postgres")
-	defer func() {
-		err := cleanup()
-		assert.NoError(t, err)
-		err = conn.Close()
-		assert.NoError(t, err)
-	}()
+	conn, _ := db.TestSetup(t, "postgres")
 	const testLimit = 10
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
