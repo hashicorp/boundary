@@ -981,10 +981,10 @@ begin;
   as $$
   begin
     if new.auth_account_id is distinct from old.auth_account_id then
-      raise exception 'auth_account_id cannot be set to %', new.auth_account_id;
+      raise exception 'auth_account_id is read-only';
     end if;
     if new.token is distinct from old.token then
-      raise exception 'token cannot be set to %', new.token;
+      raise exception 'token is read-only';
     end if;
     return new;
   end;
