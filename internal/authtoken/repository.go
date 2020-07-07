@@ -197,7 +197,7 @@ func (r *Repository) ValidateToken(ctx context.Context, id, token string, opt ..
 			ctx,
 			db.StdRetryCnt,
 			db.ExpBackoff{},
-			func(read db.Reader, w db.Writer) error {
+			func(_ db.Reader, w db.Writer) error {
 				metadata := newAuthTokenMetadata(retAT, oplog.OpType_OP_TYPE_DELETE)
 				delAt := retAT.clone()
 				if _, err := w.Delete(ctx, delAt, db.WithOplog(r.wrapper, metadata)); err != nil {
