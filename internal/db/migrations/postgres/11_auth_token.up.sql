@@ -44,10 +44,8 @@ begin;
     returns trigger
   as $$
   begin
-    if new.approximate_last_access_time is null then
+    if new.approximate_last_access_time is distinct from old.approximate_last_access_time then
       new.approximate_last_access_time = now();
-    else
-      new.approximate_last_access_time = old.approximate_last_access_time;
     end if;
     return new;
   end;
