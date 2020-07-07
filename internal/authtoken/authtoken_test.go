@@ -7,9 +7,12 @@ package authtoken
 import (
 	"context"
 	"testing"
+	"time"
 
+	"github.com/golang/protobuf/ptypes"
 	"github.com/hashicorp/watchtower/internal/authtoken/store"
 	"github.com/hashicorp/watchtower/internal/db"
+	"github.com/hashicorp/watchtower/internal/db/timestamp"
 	"github.com/hashicorp/watchtower/internal/iam"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -17,16 +20,7 @@ import (
 )
 
 func TestAuthToken_DbUpdate(t *testing.T) {
-	cleanup, conn, _ := db.TestSetup(t, "postgres")
-	t.Cleanup(func() {
-		if err := cleanup(); err != nil {
-			t.Error(err)
-		}
-		if err := conn.Close(); err != nil {
-			t.Error(err)
-		}
-	})
-
+	conn, _ := db.TestSetup(t, "postgres")
 	wrapper := db.TestWrapper(t)
 
 	org, _ := iam.TestScopes(t, conn)
@@ -42,6 +36,8 @@ func TestAuthToken_DbUpdate(t *testing.T) {
 		nullMask  []string
 		authTok   *store.AuthToken
 	}
+	future, err := ptypes.TimestampProto(time.Now().Add(time.Hour))
+	require.NoError(t, err)
 
 	var tests = []struct {
 		name    string
@@ -69,8 +65,24 @@ func TestAuthToken_DbUpdate(t *testing.T) {
 		{
 			name: "update-last-access-time",
 			args: args{
+				fieldMask: []string{"ApproximateLastAccessTime"},
+				authTok:   &store.AuthToken{ApproximateLastAccessTime: &timestamp.Timestamp{Timestamp: future}},
+			},
+			cnt: 1,
+		},
+		{
+			name: "nullify-last-access-time",
+			args: args{
 				nullMask: []string{"ApproximateLastAccessTime"},
 				authTok:  &store.AuthToken{},
+			},
+			cnt: 1,
+		},
+		{
+			name: "update-expiration",
+			args: args{
+				fieldMask: []string{"ExpirationTime"},
+				authTok:   &store.AuthToken{ExpirationTime: &timestamp.Timestamp{Timestamp: future}},
 			},
 			cnt: 1,
 		},
@@ -85,7 +97,7 @@ func TestAuthToken_DbUpdate(t *testing.T) {
 			authTok := testAuthToken(t, conn, wrapper)
 			proto.Merge(authTok.AuthToken, tt.args.authTok)
 
-			err := authTok.Encrypt(context.Background(), wrapper)
+			err := authTok.encrypt(context.Background(), wrapper)
 			require.NoError(t, err)
 			cnt, err := w.Update(context.Background(), authTok, tt.args.fieldMask, tt.args.nullMask)
 			if tt.wantErr {
@@ -100,16 +112,7 @@ func TestAuthToken_DbUpdate(t *testing.T) {
 }
 
 func TestAuthToken_DbCreate(t *testing.T) {
-	cleanup, conn, _ := db.TestSetup(t, "postgres")
-	t.Cleanup(func() {
-		if err := cleanup(); err != nil {
-			t.Error(err)
-		}
-		if err := conn.Close(); err != nil {
-			t.Error(err)
-		}
-	})
-
+	conn, _ := db.TestSetup(t, "postgres")
 	wrapper := db.TestWrapper(t)
 
 	org, _ := iam.TestScopes(t, conn)
@@ -153,7 +156,7 @@ func TestAuthToken_DbCreate(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			assert := assert.New(t)
 			at := &AuthToken{AuthToken: tt.in}
-			err := at.Encrypt(context.Background(), wrapper)
+			err := at.encrypt(context.Background(), wrapper)
 			require.NoError(t, err)
 			err = db.New(conn).Create(context.Background(), at)
 			if tt.wantError {
@@ -166,16 +169,7 @@ func TestAuthToken_DbCreate(t *testing.T) {
 }
 
 func TestAuthToken_DbDelete(t *testing.T) {
-	cleanup, conn, _ := db.TestSetup(t, "postgres")
-	t.Cleanup(func() {
-		if err := cleanup(); err != nil {
-			t.Error(err)
-		}
-		if err := conn.Close(); err != nil {
-			t.Error(err)
-		}
-	})
-
+	conn, _ := db.TestSetup(t, "postgres")
 	testAuthTokenId := func() string {
 		id, err := newAuthTokenId()
 		require.NoError(t, err)

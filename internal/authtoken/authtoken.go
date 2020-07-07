@@ -25,8 +25,8 @@ func (s *AuthToken) clone() *AuthToken {
 	}
 }
 
-// Encrypt the entry's data using the provided cipher (wrapping.Wrapper)
-func (s *AuthToken) Encrypt(ctx context.Context, cipher wrapping.Wrapper) error {
+// encrypt the entry's data using the provided cipher (wrapping.Wrapper)
+func (s *AuthToken) encrypt(ctx context.Context, cipher wrapping.Wrapper) error {
 	// structwrapping doesn't support embedding, so we'll pass in the store.Entry directly
 	if err := structwrapping.WrapStruct(ctx, cipher, s.AuthToken, nil); err != nil {
 		return fmt.Errorf("error encrypting auth token: %w", err)
@@ -34,8 +34,8 @@ func (s *AuthToken) Encrypt(ctx context.Context, cipher wrapping.Wrapper) error 
 	return nil
 }
 
-// Decrypt will decrypt the auth token's value using the provided cipher (wrapping.Wrapper)
-func (s *AuthToken) Decrypt(ctx context.Context, cipher wrapping.Wrapper) error {
+// decrypt will decrypt the auth token's value using the provided cipher (wrapping.Wrapper)
+func (s *AuthToken) decrypt(ctx context.Context, cipher wrapping.Wrapper) error {
 	// structwrapping doesn't support embedding, so we'll pass in the store.Entry directly
 	if err := structwrapping.UnwrapStruct(ctx, cipher, s.AuthToken, nil); err != nil {
 		return fmt.Errorf("error decrypting auth token: %w", err)
@@ -62,7 +62,7 @@ func newAuthTokenId() (string, error) {
 func newAuthToken() (string, error) {
 	token, err := base62.Random(tokenLength)
 	if err != nil {
-		return "", fmt.Errorf("Unable to generate auth token: %w", err)
+		return "", fmt.Errorf("unable to generate auth token: %w", err)
 	}
 	return fmt.Sprintf("%s%s", TokenValueVersionPrefix, token), nil
 }

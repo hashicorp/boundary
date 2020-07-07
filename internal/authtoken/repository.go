@@ -32,8 +32,7 @@ type Repository struct {
 	wrapper wrapping.Wrapper
 }
 
-// NewRepository creates a new Repository. The returned repository should
-// only be used for one transaction and it is not safe for concurrent go
+// NewRepository creates a new Repository. The returned repository is not safe for concurrent go
 // routines to access it.
 func NewRepository(r db.Reader, w db.Writer, wrapper wrapping.Wrapper) (*Repository, error) {
 	switch {
@@ -106,7 +105,7 @@ func (r *Repository) CreateAuthToken(ctx context.Context, withIamUserId, withAut
 			metadata := newAuthTokenMetadata(at, oplog.OpType_OP_TYPE_CREATE)
 
 			newAuthToken = at.clone()
-			if err := newAuthToken.Encrypt(ctx, r.wrapper); err != nil {
+			if err := newAuthToken.encrypt(ctx, r.wrapper); err != nil {
 				return err
 			}
 			if err := w.Create(ctx, newAuthToken, db.WithOplog(r.wrapper, metadata)); err != nil {
@@ -136,7 +135,7 @@ func (r *Repository) LookupAuthToken(ctx context.Context, id string, opt ...Opti
 	at := allocAuthToken()
 	at.PublicId = id
 	// Aggregate the fields across auth token and auth accounts by using this view instead of issuing 2 db lookups.
-	at.SetTableName("auth_token_view")
+	at.SetTableName("auth_token_account")
 	if err := r.reader.LookupByPublicId(ctx, at); err != nil {
 		if errors.Is(err, db.ErrRecordNotFound) {
 			return nil, nil
@@ -144,8 +143,8 @@ func (r *Repository) LookupAuthToken(ctx context.Context, id string, opt ...Opti
 		return nil, fmt.Errorf("auth token: lookup: %w", err)
 	}
 	if opts.withTokenValue {
-		if err := at.Decrypt(ctx, r.wrapper); err != nil {
-			return nil, fmt.Errorf("lookup: auth token: cant decrypt auth token value: %w", err)
+		if err := at.decrypt(ctx, r.wrapper); err != nil {
+			return nil, fmt.Errorf("lookup: auth token: cannot decrypt auth token value: %w", err)
 		}
 	}
 
@@ -159,7 +158,7 @@ func (r *Repository) LookupAuthToken(ctx context.Context, id string, opt ...Opti
 // value is not included in the returned AuthToken. If no valid auth token is found nil, nil is returned.
 // All options are ignored.
 //
-// NOTE: Do not log or add the token string to any errors.
+// NOTE: Do not log or add the token string to any errors to avoid leaking it as it is a secret.
 func (r *Repository) ValidateToken(ctx context.Context, id, token string, opt ...Option) (*AuthToken, error) {
 	if token == "" {
 		return nil, fmt.Errorf("validate token: auth token: missing token: %w", db.ErrInvalidParameter)
@@ -180,7 +179,7 @@ func (r *Repository) ValidateToken(ctx context.Context, id, token string, opt ..
 		return nil, nil
 	}
 
-	// If the token is to old or stale invalidate it and return nothing.
+	// If the token is too old or stale invalidate it and return nothing.
 	exp, err := ptypes.Timestamp(retAT.GetExpirationTime().GetTimestamp())
 	if err != nil {
 		return nil, fmt.Errorf("validate token: expiration time : %w", err)
@@ -198,7 +197,7 @@ func (r *Repository) ValidateToken(ctx context.Context, id, token string, opt ..
 			ctx,
 			db.StdRetryCnt,
 			db.ExpBackoff{},
-			func(read db.Reader, w db.Writer) error {
+			func(_ db.Reader, w db.Writer) error {
 				metadata := newAuthTokenMetadata(retAT, oplog.OpType_OP_TYPE_DELETE)
 				delAt := retAT.clone()
 				if _, err := w.Delete(ctx, delAt, db.WithOplog(r.wrapper, metadata)); err != nil {
@@ -224,7 +223,7 @@ func (r *Repository) ValidateToken(ctx context.Context, id, token string, opt ..
 			ctx,
 			db.StdRetryCnt,
 			db.ExpBackoff{},
-			func(read db.Reader, w db.Writer) error {
+			func(_ db.Reader, w db.Writer) error {
 				// Setting the ApproximateLastAccessTime to null through using the null mask allows a defined db's
 				// trigger to set ApproximateLastAccessTime to the commit timestamp.
 				at := retAT.clone()
@@ -275,7 +274,7 @@ func (r *Repository) DeleteAuthToken(ctx context.Context, id string, opt ...Opti
 		ctx,
 		db.StdRetryCnt,
 		db.ExpBackoff{},
-		func(read db.Reader, w db.Writer) error {
+		func(_ db.Reader, w db.Writer) error {
 			metadata := newAuthTokenMetadata(at, oplog.OpType_OP_TYPE_DELETE)
 
 			deleteAT := at.clone()

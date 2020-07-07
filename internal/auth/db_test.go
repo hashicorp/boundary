@@ -40,18 +40,7 @@ select count(*) from test_auth_method where public_id = $1;
 
 	assert, require := assert.New(t), require.New(t)
 
-	cleanup, conn, _ := db.TestSetup(t, "postgres")
-	defer func() {
-		if err := cleanup(); err != nil {
-			t.Error(err)
-		}
-	}()
-	defer func() {
-		if err := conn.Close(); err != nil {
-			t.Error(err)
-		}
-	}()
-
+	conn, _ := db.TestSetup(t, "postgres")
 	db := conn.DB()
 	_, err := db.Exec(createTable)
 	require.NoError(err)
@@ -115,18 +104,7 @@ values
 
 	assert, require := assert.New(t), require.New(t)
 
-	cleanup, conn, _ := db.TestSetup(t, "postgres")
-	defer func() {
-		if err := cleanup(); err != nil {
-			t.Error(err)
-		}
-	}()
-	defer func() {
-		if err := conn.Close(); err != nil {
-			t.Error(err)
-		}
-	}()
-
+	conn, _ := db.TestSetup(t, "postgres")
 	db := conn.DB()
 	_, err := db.Exec(createTable)
 	require.NoError(err)
