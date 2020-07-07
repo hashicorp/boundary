@@ -9,6 +9,7 @@ import (
 	"github.com/hashicorp/watchtower/internal/iam/store"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/protobuf/proto"
 )
 
 func Test_NewGroupMember(t *testing.T) {
@@ -249,4 +250,119 @@ func Test_GroupMemberCreate(t *testing.T) {
 			assert.Equal(gm, &found)
 		})
 	}
+}
+
+func Test_GroupMemberUpdate(t *testing.T) {
+	t.Parallel()
+	cleanup, conn, _ := db.TestSetup(t, "postgres")
+	defer func() {
+		err := cleanup()
+		assert.NoError(t, err)
+		err = conn.Close()
+		assert.NoError(t, err)
+	}()
+	org, _ := TestScopes(t, conn)
+	rw := db.New(conn)
+
+	t.Run("updates not allowed", func(t *testing.T) {
+		assert, require := assert.New(t), require.New(t)
+		g := TestGroup(t, conn, org.PublicId)
+		u := TestUser(t, conn, org.PublicId)
+		u2 := TestUser(t, conn, org.PublicId)
+		gm := TestGroupMember(t, conn, g.PublicId, u.PublicId)
+		updateGrpMember := gm.Clone().(*GroupMember)
+		updateGrpMember.MemberId = u2.PublicId
+		updatedRows, err := rw.Update(context.Background(), updateGrpMember, []string{"MemberId"}, nil)
+		require.Error(err)
+		assert.Equal(0, updatedRows)
+	})
+}
+
+func Test_GroupMemberDelete(t *testing.T) {
+	t.Parallel()
+	cleanup, conn, _ := db.TestSetup(t, "postgres")
+	defer func() {
+		err := cleanup()
+		assert.NoError(t, err)
+		err = conn.Close()
+		assert.NoError(t, err)
+	}()
+	rw := db.New(conn)
+	id := testId(t)
+	org, _ := TestScopes(t, conn)
+	u := TestUser(t, conn, org.PublicId)
+	g := TestRole(t, conn, org.PublicId)
+
+	tests := []struct {
+		name            string
+		gm              *GroupMember
+		wantRowsDeleted int
+		wantErr         bool
+		wantErrMsg      string
+	}{
+		{
+			name:            "valid",
+			gm:              TestGroupMember(t, conn, g.PublicId, u.PublicId),
+			wantErr:         false,
+			wantRowsDeleted: 1,
+		},
+		{
+			name:            "bad-id",
+			gm:              func() *GroupMember { gm := allocGroupMember(); gm.MemberId = id; gm.GroupId = id; return &gm }(),
+			wantErr:         false,
+			wantRowsDeleted: 0,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+			deleteRole := allocUserRole()
+			deleteRole.RoleId = tt.gm.GetGroupId()
+			deleteRole.PrincipalId = tt.gm.GetMemberId()
+			deletedRows, err := rw.Delete(context.Background(), &deleteRole)
+			if tt.wantErr {
+				require.Error(err)
+				return
+			}
+			require.NoError(err)
+			if tt.wantRowsDeleted == 0 {
+				assert.Equal(tt.wantRowsDeleted, deletedRows)
+				return
+			}
+			assert.Equal(tt.wantRowsDeleted, deletedRows)
+			found := allocUserRole()
+			err = rw.LookupWhere(context.Background(), &found, "role_id = ? and principal_id = ?", tt.gm.GetGroupId(), tt.gm.GetMemberId())
+			require.Error(err)
+			assert.True(errors.Is(db.ErrRecordNotFound, err))
+		})
+	}
+}
+
+func TestGroupMember_Clone(t *testing.T) {
+	t.Parallel()
+	cleanup, conn, _ := db.TestSetup(t, "postgres")
+	defer func() {
+		err := cleanup()
+		assert.NoError(t, err)
+		err = conn.Close()
+		assert.NoError(t, err)
+	}()
+	org, proj := TestScopes(t, conn)
+	user := TestUser(t, conn, org.PublicId)
+	t.Run("valid", func(t *testing.T) {
+		assert := assert.New(t)
+		group := TestGroup(t, conn, org.PublicId)
+		gm := TestGroupMember(t, conn, group.PublicId, user.PublicId)
+		cp := gm.Clone()
+		assert.True(proto.Equal(cp.(*GroupMember).GroupMember, gm.GroupMember))
+	})
+	t.Run("not-equal", func(t *testing.T) {
+		assert := assert.New(t)
+		g := TestGroup(t, conn, org.PublicId)
+		g2 := TestGroup(t, conn, proj.PublicId)
+		gm := TestGroupMember(t, conn, g.PublicId, user.PublicId)
+		gm2 := TestGroupMember(t, conn, g2.PublicId, user.PublicId)
+		cp := gm.Clone()
+		assert.True(!proto.Equal(cp.(*GroupMember).GroupMember, gm2.GroupMember))
+	})
 }
