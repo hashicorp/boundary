@@ -23,43 +23,44 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func createDefaultRoleAndRepo(t *testing.T) (*iam.Role, func() (*iam.Repository, error)) {
+func createDefaultRolesAndRepo(t *testing.T) (*iam.Role, *iam.Role, func() (*iam.Repository, error)) {
 	t.Helper()
-	cleanup, conn, _ := db.TestSetup(t, "postgres")
-	t.Cleanup(func() {
-		if err := conn.Close(); err != nil {
-			t.Errorf("Error when closing gorm DB: %v", err)
-		}
-		if err := cleanup(); err != nil {
-			t.Errorf("Error when cleaning up TestSetup: %v", err)
-		}
-	})
+	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrap := db.TestWrapper(t)
 	repoFn := func() (*iam.Repository, error) {
 		return iam.NewRepository(rw, rw, wrap)
 	}
 
-	o, _ := iam.TestScopes(t, conn)
-	u := iam.TestRole(t, conn, o.GetPublicId(), iam.WithDescription("default"), iam.WithName("default"))
-	return u, repoFn
+	o, p := iam.TestScopes(t, conn)
+	or := iam.TestRole(t, conn, o.GetPublicId(), iam.WithDescription("default"), iam.WithName("default"))
+	pr := iam.TestRole(t, conn, p.GetPublicId(), iam.WithDescription("default"), iam.WithName("default"))
+	return or, pr, repoFn
 }
 
 func TestGet(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
-	u, repo := createDefaultRoleAndRepo(t)
+	or, pr, repo := createDefaultRolesAndRepo(t)
 	toMerge := &pbs.GetRoleRequest{
-		OrgId: u.GetScopeId(),
-		Id:    u.GetPublicId(),
+		OrgId: or.GetScopeId(),
+		Id:    or.GetPublicId(),
 	}
 
-	wantU := &pb.Role{
-		Id:          u.GetPublicId(),
-		Name:        &wrapperspb.StringValue{Value: u.GetName()},
-		Description: &wrapperspb.StringValue{Value: u.GetDescription()},
-		CreatedTime: u.CreateTime.GetTimestamp(),
-		UpdatedTime: u.UpdateTime.GetTimestamp(),
+	wantOrgRole := &pb.Role{
+		Id:          or.GetPublicId(),
+		Name:        &wrapperspb.StringValue{Value: or.GetName()},
+		Description: &wrapperspb.StringValue{Value: or.GetDescription()},
+		CreatedTime: or.CreateTime.GetTimestamp(),
+		UpdatedTime: or.UpdateTime.GetTimestamp(),
+	}
+
+	wantProjRole := &pb.Role{
+		Id:          pr.GetPublicId(),
+		Name:        &wrapperspb.StringValue{Value: pr.GetName()},
+		Description: &wrapperspb.StringValue{Value: pr.GetDescription()},
+		CreatedTime: pr.CreateTime.GetTimestamp(),
+		UpdatedTime: pr.UpdateTime.GetTimestamp(),
 	}
 
 	cases := []struct {
@@ -70,8 +71,8 @@ func TestGet(t *testing.T) {
 	}{
 		{
 			name:    "Get an Existing Role",
-			req:     &pbs.GetRoleRequest{Id: u.GetPublicId()},
-			res:     &pbs.GetRoleResponse{Item: wantU},
+			req:     &pbs.GetRoleRequest{Id: or.GetPublicId()},
+			res:     &pbs.GetRoleResponse{Item: wantOrgRole},
 			errCode: codes.OK,
 		},
 		{
@@ -89,6 +90,30 @@ func TestGet(t *testing.T) {
 		{
 			name:    "space in id",
 			req:     &pbs.GetRoleRequest{Id: iam.RolePrefix + "_1 23456789"},
+			res:     nil,
+			errCode: codes.InvalidArgument,
+		},
+		{
+			name:    "Project Scoped Get an Existing Role",
+			req:     &pbs.GetRoleRequest{Id: pr.GetPublicId(), ProjectId: pr.GetScopeId()},
+			res:     &pbs.GetRoleResponse{Item: wantProjRole},
+			errCode: codes.OK,
+		},
+		{
+			name:    "Project Scoped Get a non existant Role",
+			req:     &pbs.GetRoleRequest{Id: iam.RolePrefix + "_DoesntExis", ProjectId: pr.GetScopeId()},
+			res:     nil,
+			errCode: codes.NotFound,
+		},
+		{
+			name:    "Project Scoped Wrong id prefix",
+			req:     &pbs.GetRoleRequest{Id: "j_1234567890", ProjectId: pr.GetScopeId()},
+			res:     nil,
+			errCode: codes.InvalidArgument,
+		},
+		{
+			name:    "Project Scoped space in id",
+			req:     &pbs.GetRoleRequest{Id: iam.RolePrefix + "_1 23456789", ProjectId: pr.GetScopeId()},
 			res:     nil,
 			errCode: codes.InvalidArgument,
 		},
@@ -110,29 +135,28 @@ func TestGet(t *testing.T) {
 
 func TestList(t *testing.T) {
 	assert, require := assert.New(t), require.New(t)
-	cleanup, conn, _ := db.TestSetup(t, "postgres")
-	t.Cleanup(func() {
-		if err := conn.Close(); err != nil {
-			t.Errorf("Error when closing gorm DB: %v", err)
-		}
-		if err := cleanup(); err != nil {
-			t.Errorf("Error when cleaning up TestSetup: %v", err)
-		}
-	})
+	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrap := db.TestWrapper(t)
 	repoFn := func() (*iam.Repository, error) {
 		return iam.NewRepository(rw, rw, wrap)
 	}
-	oNoRoles, _ := iam.TestScopes(t, conn)
-	oWithRoles, _ := iam.TestScopes(t, conn)
-	var wantRoles []*pb.Role
+	oNoRoles, pWithRoles := iam.TestScopes(t, conn)
+	oWithRoles, pNoRoles := iam.TestScopes(t, conn)
+	var wantOrgRoles []*pb.Role
+	var wantProjRoles []*pb.Role
 	for i := 0; i < 10; i++ {
-		g := iam.TestRole(t, conn, oWithRoles.GetPublicId())
-		wantRoles = append(wantRoles, &pb.Role{
-			Id:          g.GetPublicId(),
-			CreatedTime: g.GetCreateTime().GetTimestamp(),
-			UpdatedTime: g.GetUpdateTime().GetTimestamp(),
+		or := iam.TestRole(t, conn, oWithRoles.GetPublicId())
+		wantOrgRoles = append(wantOrgRoles, &pb.Role{
+			Id:          or.GetPublicId(),
+			CreatedTime: or.GetCreateTime().GetTimestamp(),
+			UpdatedTime: or.GetUpdateTime().GetTimestamp(),
+		})
+		pr := iam.TestRole(t, conn, pWithRoles.GetPublicId())
+		wantProjRoles = append(wantProjRoles, &pb.Role{
+			Id:          pr.GetPublicId(),
+			CreatedTime: pr.GetCreateTime().GetTimestamp(),
+			UpdatedTime: pr.GetUpdateTime().GetTimestamp(),
 		})
 	}
 
@@ -145,7 +169,7 @@ func TestList(t *testing.T) {
 		{
 			name:    "List Many Role",
 			req:     &pbs.ListRolesRequest{OrgId: oWithRoles.GetPublicId()},
-			res:     &pbs.ListRolesResponse{Items: wantRoles},
+			res:     &pbs.ListRolesResponse{Items: wantOrgRoles},
 			errCode: codes.OK,
 		},
 		{
@@ -167,6 +191,31 @@ func TestList(t *testing.T) {
 			res:     &pbs.ListRolesResponse{},
 			errCode: codes.OK,
 		},
+		{
+			name:    "List Many Project Role",
+			req:     &pbs.ListRolesRequest{OrgId: pWithRoles.GetParentId(), ProjectId: pWithRoles.GetPublicId()},
+			res:     &pbs.ListRolesResponse{Items: wantProjRoles},
+			errCode: codes.OK,
+		},
+		{
+			name:    "List No Project Roles",
+			req:     &pbs.ListRolesRequest{OrgId: pNoRoles.GetParentId(), ProjectId: pNoRoles.GetPublicId()},
+			res:     &pbs.ListRolesResponse{},
+			errCode: codes.OK,
+		},
+		{
+			name:    "Invalid Project Id",
+			req:     &pbs.ListRolesRequest{OrgId: oWithRoles.GetPublicId(), ProjectId: scope.Project.Prefix() + "_this is invalid"},
+			res:     nil,
+			errCode: codes.InvalidArgument,
+		},
+		// TODO: When an org doesn't exist, we should return a 404 instead of an empty list.
+		{
+			name:    "Unfound Project",
+			req:     &pbs.ListRolesRequest{OrgId: oWithRoles.GetPublicId(), ProjectId: scope.Project.Prefix() + "_DoesntExis"},
+			res:     &pbs.ListRolesResponse{},
+			errCode: codes.OK,
+		},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -182,7 +231,7 @@ func TestList(t *testing.T) {
 
 func TestDelete(t *testing.T) {
 	require := require.New(t)
-	u, repo := createDefaultRoleAndRepo(t)
+	or, pr, repo := createDefaultRolesAndRepo(t)
 
 	s, err := roles.NewService(repo)
 	require.NoError(err, "Error when getting new role service.")
@@ -196,8 +245,8 @@ func TestDelete(t *testing.T) {
 		{
 			name: "Delete an Existing Role",
 			req: &pbs.DeleteRoleRequest{
-				OrgId: u.GetScopeId(),
-				Id:    u.GetPublicId(),
+				OrgId: or.GetScopeId(),
+				Id:    or.GetPublicId(),
 			},
 			res: &pbs.DeleteRoleResponse{
 				Existed: true,
@@ -207,7 +256,7 @@ func TestDelete(t *testing.T) {
 		{
 			name: "Delete bad role id",
 			req: &pbs.DeleteRoleRequest{
-				OrgId: u.GetScopeId(),
+				OrgId: or.GetScopeId(),
 				Id:    iam.RolePrefix + "_doesntexis",
 			},
 			res: &pbs.DeleteRoleResponse{
@@ -219,7 +268,7 @@ func TestDelete(t *testing.T) {
 			name: "Delete bad org id",
 			req: &pbs.DeleteRoleRequest{
 				OrgId: "o_doesntexis",
-				Id:    u.GetPublicId(),
+				Id:    or.GetPublicId(),
 			},
 			res: &pbs.DeleteRoleResponse{
 				Existed: false,
@@ -230,7 +279,7 @@ func TestDelete(t *testing.T) {
 			name: "Bad org formatting",
 			req: &pbs.DeleteRoleRequest{
 				OrgId: "bad_format",
-				Id:    u.GetPublicId(),
+				Id:    or.GetPublicId(),
 			},
 			res:     nil,
 			errCode: codes.InvalidArgument,
@@ -238,8 +287,54 @@ func TestDelete(t *testing.T) {
 		{
 			name: "Bad Role Id formatting",
 			req: &pbs.DeleteRoleRequest{
-				OrgId: u.GetScopeId(),
+				OrgId: or.GetScopeId(),
 				Id:    "bad_format",
+			},
+			res:     nil,
+			errCode: codes.InvalidArgument,
+		},
+		{
+			name: "Project Scoped Delete an Existing Role",
+			req: &pbs.DeleteRoleRequest{
+				OrgId:     or.GetScopeId(),
+				ProjectId: pr.GetScopeId(),
+				Id:        pr.GetPublicId(),
+			},
+			res: &pbs.DeleteRoleResponse{
+				Existed: true,
+			},
+			errCode: codes.OK,
+		},
+		{
+			name: "Project Scoped Delete bad Role id",
+			req: &pbs.DeleteRoleRequest{
+				OrgId:     or.GetScopeId(),
+				ProjectId: pr.GetScopeId(),
+				Id:        iam.RolePrefix + "_doesntexis",
+			},
+			res: &pbs.DeleteRoleResponse{
+				Existed: false,
+			},
+			errCode: codes.OK,
+		},
+		{
+			name: "Project Scoped Delete bad project id",
+			req: &pbs.DeleteRoleRequest{
+				OrgId:     or.GetScopeId(),
+				ProjectId: scope.Project.Prefix() + "_doesntexis",
+				Id:        pr.GetPublicId(),
+			},
+			res: &pbs.DeleteRoleResponse{
+				Existed: false,
+			},
+			errCode: codes.OK,
+		},
+		{
+			name: "Bad project formatting",
+			req: &pbs.DeleteRoleRequest{
+				OrgId:     or.GetScopeId(),
+				ProjectId: "bad_format",
+				Id:        pr.GetPublicId(),
 			},
 			res:     nil,
 			errCode: codes.InvalidArgument,
@@ -258,13 +353,13 @@ func TestDelete(t *testing.T) {
 func TestDelete_twice(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
-	u, repo := createDefaultRoleAndRepo(t)
+	or, pr, repo := createDefaultRolesAndRepo(t)
 
 	s, err := roles.NewService(repo)
 	require.NoError(err, "Error when getting new role service")
 	req := &pbs.DeleteRoleRequest{
-		OrgId: u.GetScopeId(),
-		Id:    u.GetPublicId(),
+		OrgId: or.GetScopeId(),
+		Id:    or.GetPublicId(),
 	}
 	got, gErr := s.DeleteRole(context.Background(), req)
 	assert.NoError(gErr, "First attempt")
@@ -272,15 +367,28 @@ func TestDelete_twice(t *testing.T) {
 	got, gErr = s.DeleteRole(context.Background(), req)
 	assert.NoError(gErr, "Second attempt")
 	assert.False(got.GetExisted(), "Expected existed to be false for the second delete.")
+
+	projReq := &pbs.DeleteRoleRequest{
+		OrgId:     or.GetScopeId(),
+		ProjectId: pr.GetScopeId(),
+		Id:        pr.GetPublicId(),
+	}
+	got, gErr = s.DeleteRole(context.Background(), projReq)
+	assert.NoError(gErr, "First attempt")
+	assert.True(got.GetExisted(), "Expected existed to be true for the first delete.")
+	got, gErr = s.DeleteRole(context.Background(), projReq)
+	assert.NoError(gErr, "Second attempt")
+	assert.False(got.GetExisted(), "Expected existed to be false for the second delete.")
+
 }
 
 func TestCreate(t *testing.T) {
 	require := require.New(t)
-	defaultRole, repo := createDefaultRoleAndRepo(t)
-	defaultCreated, err := ptypes.Timestamp(defaultRole.GetCreateTime().GetTimestamp())
+	defaultOrgRole, defaultProjRole, repo := createDefaultRolesAndRepo(t)
+	defaultCreated, err := ptypes.Timestamp(defaultOrgRole.GetCreateTime().GetTimestamp())
 	require.NoError(err, "Error converting proto to timestamp.")
 	toMerge := &pbs.CreateRoleRequest{
-		OrgId: defaultRole.GetScopeId(),
+		OrgId: defaultOrgRole.GetScopeId(),
 	}
 
 	cases := []struct {
@@ -296,7 +404,25 @@ func TestCreate(t *testing.T) {
 				Description: &wrapperspb.StringValue{Value: "desc"},
 			}},
 			res: &pbs.CreateRoleResponse{
-				Uri: fmt.Sprintf("orgs/%s/roles/%s_", defaultRole.GetScopeId(), iam.RolePrefix),
+				Uri: fmt.Sprintf("orgs/%s/roles/%s_", defaultOrgRole.GetScopeId(), iam.RolePrefix),
+				Item: &pb.Role{
+					Name:        &wrapperspb.StringValue{Value: "name"},
+					Description: &wrapperspb.StringValue{Value: "desc"},
+				},
+			},
+			errCode: codes.OK,
+		},
+		{
+			name: "Create a valid Project Scoped Role",
+			req: &pbs.CreateRoleRequest{
+				ProjectId: defaultProjRole.GetScopeId(),
+				Item: &pb.Role{
+					Name:        &wrapperspb.StringValue{Value: "name"},
+					Description: &wrapperspb.StringValue{Value: "desc"},
+				},
+			},
+			res: &pbs.CreateRoleResponse{
+				Uri: fmt.Sprintf("orgs/%s/projects/%s/roles/%s_", defaultOrgRole.GetScopeId(), defaultProjRole.GetScopeId(), iam.RolePrefix),
 				Item: &pb.Role{
 					Name:        &wrapperspb.StringValue{Value: "name"},
 					Description: &wrapperspb.StringValue{Value: "desc"},
@@ -363,22 +489,24 @@ func TestCreate(t *testing.T) {
 
 func TestUpdate(t *testing.T) {
 	require := require.New(t)
-	u, repoFn := createDefaultRoleAndRepo(t)
+	or, pr, repoFn := createDefaultRolesAndRepo(t)
 	tested, err := roles.NewService(repoFn)
 	require.NoError(err, "Error when getting new role service.")
 
-	resetRole := func() {
+	resetRoles := func() {
 		repo, err := repoFn()
 		require.NoError(err, "Couldn't get a new repo")
-		u, _, err = repo.UpdateRole(context.Background(), u, []string{"Name", "Description"})
+		or, _, err = repo.UpdateRole(context.Background(), or, []string{"Name", "Description"})
+		require.NoError(err, "Failed to reset the role")
+		pr, _, err = repo.UpdateRole(context.Background(), pr, []string{"Name", "Description"})
 		require.NoError(err, "Failed to reset the role")
 	}
 
-	created, err := ptypes.Timestamp(u.GetCreateTime().GetTimestamp())
+	created, err := ptypes.Timestamp(or.GetCreateTime().GetTimestamp())
 	require.NoError(err, "Error converting proto to timestamp")
 	toMerge := &pbs.UpdateRoleRequest{
-		OrgId: u.GetScopeId(),
-		Id:    u.GetPublicId(),
+		OrgId: or.GetScopeId(),
+		Id:    or.GetPublicId(),
 	}
 
 	cases := []struct {
@@ -400,10 +528,10 @@ func TestUpdate(t *testing.T) {
 			},
 			res: &pbs.UpdateRoleResponse{
 				Item: &pb.Role{
-					Id:          u.GetPublicId(),
+					Id:          or.GetPublicId(),
 					Name:        &wrapperspb.StringValue{Value: "new"},
 					Description: &wrapperspb.StringValue{Value: "desc"},
-					CreatedTime: u.GetCreateTime().GetTimestamp(),
+					CreatedTime: or.GetCreateTime().GetTimestamp(),
 				},
 			},
 			errCode: codes.OK,
@@ -421,10 +549,56 @@ func TestUpdate(t *testing.T) {
 			},
 			res: &pbs.UpdateRoleResponse{
 				Item: &pb.Role{
-					Id:          u.GetPublicId(),
+					Id:          or.GetPublicId(),
 					Name:        &wrapperspb.StringValue{Value: "new"},
 					Description: &wrapperspb.StringValue{Value: "desc"},
-					CreatedTime: u.GetCreateTime().GetTimestamp(),
+					CreatedTime: or.GetCreateTime().GetTimestamp(),
+				},
+			},
+			errCode: codes.OK,
+		},
+		{
+			name: "Update an Existing Project Scoped Role",
+			req: &pbs.UpdateRoleRequest{
+				ProjectId: pr.GetScopeId(),
+				Id:        pr.GetPublicId(),
+				UpdateMask: &field_mask.FieldMask{
+					Paths: []string{"name", "description"},
+				},
+				Item: &pb.Role{
+					Name:        &wrapperspb.StringValue{Value: "new"},
+					Description: &wrapperspb.StringValue{Value: "desc"},
+				},
+			},
+			res: &pbs.UpdateRoleResponse{
+				Item: &pb.Role{
+					Id:          pr.GetPublicId(),
+					Name:        &wrapperspb.StringValue{Value: "new"},
+					Description: &wrapperspb.StringValue{Value: "desc"},
+					CreatedTime: pr.GetCreateTime().GetTimestamp(),
+				},
+			},
+			errCode: codes.OK,
+		},
+		{
+			name: "Multiple Paths in single string",
+			req: &pbs.UpdateRoleRequest{
+				ProjectId: pr.GetScopeId(),
+				Id:        pr.GetPublicId(),
+				UpdateMask: &field_mask.FieldMask{
+					Paths: []string{"name,description"},
+				},
+				Item: &pb.Role{
+					Name:        &wrapperspb.StringValue{Value: "new"},
+					Description: &wrapperspb.StringValue{Value: "desc"},
+				},
+			},
+			res: &pbs.UpdateRoleResponse{
+				Item: &pb.Role{
+					Id:          pr.GetPublicId(),
+					Name:        &wrapperspb.StringValue{Value: "new"},
+					Description: &wrapperspb.StringValue{Value: "desc"},
+					CreatedTime: pr.GetCreateTime().GetTimestamp(),
 				},
 			},
 			errCode: codes.OK,
@@ -473,9 +647,9 @@ func TestUpdate(t *testing.T) {
 			},
 			res: &pbs.UpdateRoleResponse{
 				Item: &pb.Role{
-					Id:          u.GetPublicId(),
+					Id:          or.GetPublicId(),
 					Description: &wrapperspb.StringValue{Value: "default"},
-					CreatedTime: u.GetCreateTime().GetTimestamp(),
+					CreatedTime: or.GetCreateTime().GetTimestamp(),
 				},
 			},
 			errCode: codes.OK,
@@ -493,10 +667,10 @@ func TestUpdate(t *testing.T) {
 			},
 			res: &pbs.UpdateRoleResponse{
 				Item: &pb.Role{
-					Id:          u.GetPublicId(),
+					Id:          or.GetPublicId(),
 					Name:        &wrapperspb.StringValue{Value: "updated"},
 					Description: &wrapperspb.StringValue{Value: "default"},
-					CreatedTime: u.GetCreateTime().GetTimestamp(),
+					CreatedTime: or.GetCreateTime().GetTimestamp(),
 				},
 			},
 			errCode: codes.OK,
@@ -514,10 +688,10 @@ func TestUpdate(t *testing.T) {
 			},
 			res: &pbs.UpdateRoleResponse{
 				Item: &pb.Role{
-					Id:          u.GetPublicId(),
+					Id:          or.GetPublicId(),
 					Name:        &wrapperspb.StringValue{Value: "default"},
 					Description: &wrapperspb.StringValue{Value: "notignored"},
-					CreatedTime: u.GetCreateTime().GetTimestamp(),
+					CreatedTime: or.GetCreateTime().GetTimestamp(),
 				},
 			},
 			errCode: codes.OK,
@@ -541,7 +715,7 @@ func TestUpdate(t *testing.T) {
 		{
 			name: "Cant change Id",
 			req: &pbs.UpdateRoleRequest{
-				Id: u.GetPublicId(),
+				Id: or.GetPublicId(),
 				UpdateMask: &field_mask.FieldMask{
 					Paths: []string{"id"},
 				},
@@ -582,7 +756,7 @@ func TestUpdate(t *testing.T) {
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			defer resetRole()
+			defer resetRoles()
 			assert := assert.New(t)
 			req := proto.Clone(toMerge).(*pbs.UpdateRoleRequest)
 			proto.Merge(req, tc.req)

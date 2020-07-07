@@ -28,6 +28,10 @@ type Options struct {
 	WithFieldMaskPaths []string
 	// WithNullPaths must be accessible from other packages.
 	WithNullPaths []string
+
+	newOplogMsg  *oplog.Message
+	newOplogMsgs *[]*oplog.Message
+
 	// WithVersion must be accessible from other packages
 	WithVersion int
 }
@@ -59,7 +63,8 @@ func WithLookup(enable bool) Option {
 	}
 }
 
-// WithOplog provides an option to write an oplog entry.
+// WithOplog provides an option to write an oplog entry. WithOplog and
+// NewOplogMsg cannot be used together.
 func WithOplog(wrapper wrapping.Wrapper, md oplog.Metadata) Option {
 	return func(o *Options) {
 		o.withOplog = true
@@ -67,6 +72,26 @@ func WithOplog(wrapper wrapping.Wrapper, md oplog.Metadata) Option {
 			wrapper:  wrapper,
 			metadata: md,
 		}
+	}
+}
+
+// NewOplogMsg provides an option to ask for a new in-memory oplog message.  The
+// new msg will be returned in the provided *oplog.Message parameter. WithOplog
+// and NewOplogMsg cannot be used together.
+func NewOplogMsg(msg *oplog.Message) Option {
+	return func(o *Options) {
+		o.newOplogMsg = msg
+	}
+}
+
+// NewOplogMsgs provides an option to ask for multiple new in-memory oplog
+// messages.  The new msgs will be returned in the provided *[]oplog.Message
+// parameter. NewOplogMsgs can only be used with write functions that operate on
+// multiple items(CreateItems, DeleteItems). WithOplog and NewOplogMsgs cannot
+// be used together.
+func NewOplogMsgs(msgs *[]*oplog.Message) Option {
+	return func(o *Options) {
+		o.newOplogMsgs = msgs
 	}
 }
 

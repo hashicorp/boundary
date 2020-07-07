@@ -92,6 +92,12 @@
             "type": "string"
           },
           {
+            "name": "project_id",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
             "name": "view",
             "in": "query",
             "required": false,
@@ -160,6 +166,12 @@
             "type": "string"
           },
           {
+            "name": "project_id",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
             "name": "view",
             "in": "query",
             "required": false,
@@ -192,6 +204,12 @@
             "name": "id",
             "in": "path",
             "required": true,
+            "type": "string"
+          },
+          {
+            "name": "project_id",
+            "in": "query",
+            "required": false,
             "type": "string"
           }
         ],
@@ -1055,6 +1073,201 @@
         ]
       }
     },
+    "/v1/orgs/{org_id}/projects/{project_id}/groups": {
+      "get": {
+        "summary": "Lists all Groups",
+        "operationId": "GroupService_ListGroups2",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.services.v1.ListGroupsResponse"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "org_id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "project_id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "view",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "controller.api.services.v1.GroupService"
+        ]
+      },
+      "post": {
+        "summary": "Creates a single Group",
+        "operationId": "GroupService_CreateGroup2",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/controller.api.resources.groups.v1.Group"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "org_id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "project_id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/controller.api.resources.groups.v1.Group"
+            }
+          }
+        ],
+        "tags": [
+          "controller.api.services.v1.GroupService"
+        ]
+      }
+    },
+    "/v1/orgs/{org_id}/projects/{project_id}/groups/{id}": {
+      "get": {
+        "summary": "Gets a single Group",
+        "operationId": "GroupService_GetGroup2",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/controller.api.resources.groups.v1.Group"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "org_id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "project_id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "view",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "controller.api.services.v1.GroupService"
+        ]
+      },
+      "delete": {
+        "summary": "Deletes a Group",
+        "operationId": "GroupService_DeleteGroup2",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.services.v1.DeleteGroupResponse"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "org_id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "project_id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "controller.api.services.v1.GroupService"
+        ]
+      },
+      "patch": {
+        "summary": "Updates a Group",
+        "operationId": "GroupService_UpdateGroup2",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/controller.api.resources.groups.v1.Group"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "org_id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "project_id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/controller.api.resources.groups.v1.Group"
+            }
+          }
+        ],
+        "tags": [
+          "controller.api.services.v1.GroupService"
+        ]
+      }
+    },
     "/v1/orgs/{org_id}/projects/{project_id}/host-catalogs": {
       "get": {
         "summary": "Gets a list of HostCatalogs",
@@ -1791,6 +2004,201 @@
         ]
       }
     },
+    "/v1/orgs/{org_id}/projects/{project_id}/roles": {
+      "get": {
+        "summary": "Lists all Roles",
+        "operationId": "RoleService_ListRoles2",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.services.v1.ListRolesResponse"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "org_id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "project_id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "view",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "controller.api.services.v1.RoleService"
+        ]
+      },
+      "post": {
+        "summary": "Creates a single Role",
+        "operationId": "RoleService_CreateRole2",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/controller.api.resources.roles.v1.Role"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "org_id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "project_id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/controller.api.resources.roles.v1.Role"
+            }
+          }
+        ],
+        "tags": [
+          "controller.api.services.v1.RoleService"
+        ]
+      }
+    },
+    "/v1/orgs/{org_id}/projects/{project_id}/roles/{id}": {
+      "get": {
+        "summary": "Gets a single Role",
+        "operationId": "RoleService_GetRole2",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/controller.api.resources.roles.v1.Role"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "org_id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "project_id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "view",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "controller.api.services.v1.RoleService"
+        ]
+      },
+      "delete": {
+        "summary": "Deletes a Role",
+        "operationId": "RoleService_DeleteRole2",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.services.v1.DeleteRoleResponse"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "org_id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "project_id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "controller.api.services.v1.RoleService"
+        ]
+      },
+      "patch": {
+        "summary": "Updates a Role",
+        "operationId": "RoleService_UpdateRole2",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/controller.api.resources.roles.v1.Role"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "org_id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "project_id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/controller.api.resources.roles.v1.Role"
+            }
+          }
+        ],
+        "tags": [
+          "controller.api.services.v1.RoleService"
+        ]
+      }
+    },
     "/v1/orgs/{org_id}/roles": {
       "get": {
         "summary": "Lists all Roles",
@@ -1808,6 +2216,12 @@
             "name": "org_id",
             "in": "path",
             "required": true,
+            "type": "string"
+          },
+          {
+            "name": "project_id",
+            "in": "query",
+            "required": false,
             "type": "string"
           },
           {
@@ -1879,6 +2293,12 @@
             "type": "string"
           },
           {
+            "name": "project_id",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
             "name": "view",
             "in": "query",
             "required": false,
@@ -1911,6 +2331,12 @@
             "name": "id",
             "in": "path",
             "required": true,
+            "type": "string"
+          },
+          {
+            "name": "project_id",
+            "in": "query",
+            "required": false,
             "type": "string"
           }
         ],
@@ -2120,9 +2546,117 @@
           "controller.api.services.v1.UserService"
         ]
       }
+    },
+    "/v1/orgs/{org_id}:authenticate": {
+      "post": {
+        "summary": "Authenticate a user to an Organization and retrieve an authentication token.",
+        "operationId": "OrganizationService_Authenticate",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/controller.api.resources.authtokens.v1.AuthToken"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "org_id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/controller.api.services.v1.AuthenticateRequest"
+            }
+          }
+        ],
+        "tags": [
+          "controller.api.services.v1.OrganizationService"
+        ]
+      }
+    },
+    "/v1/orgs/{org_id}:deauthenticate": {
+      "post": {
+        "summary": "Deauthenticate an authentication token from an Organization.",
+        "operationId": "OrganizationService_Deauthenticate",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.services.v1.DeauthenticateResponse"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "org_id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "controller.api.services.v1.OrganizationService"
+        ]
+      }
     }
   },
   "definitions": {
+    "controller.api.resources.authtokens.v1.AuthToken": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "The ID of the AuthToken\nOutput only.",
+          "readOnly": true
+        },
+        "token": {
+          "type": "string",
+          "description": "The token.  This will only be populated after login and is only ever visible to the end user whose login\nrequest resulted in this auth token being created.\nOutput only.",
+          "readOnly": true
+        },
+        "user_id": {
+          "type": "string",
+          "description": "The id of the user of this AuthToken.\nOutput only.",
+          "readOnly": true
+        },
+        "auth_method_id": {
+          "type": "string",
+          "description": "The id of the user of this AuthToken.\nOutput only.",
+          "readOnly": true
+        },
+        "created_time": {
+          "type": "string",
+          "format": "date-time",
+          "description": "The time this resource was created\nOutput only.",
+          "readOnly": true
+        },
+        "updated_time": {
+          "type": "string",
+          "format": "date-time",
+          "description": "The time this resource was last updated.\nOutput only.",
+          "readOnly": true
+        },
+        "approximate_last_used_time": {
+          "type": "string",
+          "format": "date-time",
+          "description": "The approximate time this AuthToken was last used.\nOutput only.",
+          "readOnly": true
+        },
+        "expiration_time": {
+          "type": "string",
+          "format": "date-time",
+          "description": "The time this AuthToken expires.\nOutput only.",
+          "readOnly": true
+        }
+      },
+      "title": "AuthToken contains all fields related to an AuthToken resource"
+    },
     "controller.api.resources.groups.v1.Group": {
       "type": "object",
       "properties": {
@@ -2443,6 +2977,33 @@
     "controller.api.services.v1.AddToHostSetResponse": {
       "type": "object"
     },
+    "controller.api.services.v1.AuthenticateRequest": {
+      "type": "object",
+      "properties": {
+        "org_id": {
+          "type": "string"
+        },
+        "auth_method_id": {
+          "type": "string",
+          "description": "The id to the authmethod in the system being used for authentication.  The auth method must be in the org\nbeing logged in to."
+        },
+        "token_type": {
+          "type": "string",
+          "description": "This can be \"cookie\" or \"token\".  If not provided, \"token\" will be used.  For now only type \"token\" is returned."
+        },
+        "password_credential": {
+          "$ref": "#/definitions/controller.api.services.v1.PasswordCredential"
+        }
+      }
+    },
+    "controller.api.services.v1.AuthenticateResponse": {
+      "type": "object",
+      "properties": {
+        "item": {
+          "$ref": "#/definitions/controller.api.resources.authtokens.v1.AuthToken"
+        }
+      }
+    },
     "controller.api.services.v1.CreateGroupResponse": {
       "type": "object",
       "properties": {
@@ -2519,6 +3080,9 @@
           "$ref": "#/definitions/controller.api.resources.users.v1.User"
         }
       }
+    },
+    "controller.api.services.v1.DeauthenticateResponse": {
+      "type": "object"
     },
     "controller.api.services.v1.DeleteGroupResponse": {
       "type": "object",
@@ -2732,6 +3296,17 @@
           "items": {
             "$ref": "#/definitions/controller.api.resources.users.v1.User"
           }
+        }
+      }
+    },
+    "controller.api.services.v1.PasswordCredential": {
+      "type": "object",
+      "properties": {
+        "login_name": {
+          "type": "string"
+        },
+        "password": {
+          "type": "string"
         }
       }
     },

@@ -1,6 +1,8 @@
 package roles_test
 
 import (
+	"context"
+	"fmt"
 	"net/http"
 	"testing"
 
@@ -10,7 +12,93 @@ import (
 	"github.com/hashicorp/watchtower/internal/iam"
 	"github.com/hashicorp/watchtower/internal/servers/controller"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
+
+type roleCrud interface {
+	CreateRole(context.Context, *roles.Role) (*roles.Role, *api.Error, error)
+	ReadRole(context.Context, *roles.Role) (*roles.Role, *api.Error, error)
+	UpdateRole(context.Context, *roles.Role) (*roles.Role, *api.Error, error)
+	DeleteRole(context.Context, *roles.Role) (bool, *api.Error, error)
+	ListRoles(ctx context.Context) ([]*roles.Role, *api.Error, error)
+}
+
+func TestRole_List(t *testing.T) {
+	assert := assert.New(t)
+	tc := controller.NewTestController(t, nil)
+	defer tc.Shutdown()
+
+	client := tc.Client()
+	org := &scopes.Organization{
+		Client: client,
+	}
+	proj, apiErr, err := org.CreateProject(context.Background(), &scopes.Project{})
+	require.NoError(t, err)
+	require.Nil(t, apiErr)
+
+	cases := []struct {
+		name  string
+		scope roleCrud
+	}{
+		{
+			name:  "org",
+			scope: org,
+		},
+		{
+			name:  "proj",
+			scope: proj,
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			ctx := context.Background()
+
+			pl, apiErr, err := tc.scope.ListRoles(ctx)
+			assert.NoError(err)
+			assert.Nil(apiErr)
+			assert.Empty(pl)
+
+			var expected []*roles.Role
+			for i := 0; i < 10; i++ {
+				expected = append(expected, &roles.Role{Name: api.String(fmt.Sprint(i))})
+			}
+
+			expected[0], apiErr, err = tc.scope.CreateRole(ctx, expected[0])
+			assert.NoError(err)
+			assert.Nil(apiErr)
+
+			pl, apiErr, err = tc.scope.ListRoles(ctx)
+			assert.NoError(err)
+			assert.Nil(apiErr)
+			assert.ElementsMatch(comparableSlice(expected[:1]), comparableSlice(pl))
+
+			for i := 1; i < 10; i++ {
+				expected[i], apiErr, err = tc.scope.CreateRole(ctx, expected[i])
+				assert.NoError(err)
+				assert.Nil(apiErr)
+			}
+			pl, apiErr, err = tc.scope.ListRoles(ctx)
+			assert.ElementsMatch(comparableSlice(expected), comparableSlice(pl))
+		})
+	}
+}
+
+func comparableSlice(in []*roles.Role) []roles.Role {
+	var filtered []roles.Role
+	for _, i := range in {
+		p := roles.Role{
+			Id:          i.Id,
+			Name:        i.Name,
+			Description: i.Description,
+			CreatedTime: i.CreatedTime,
+			UpdatedTime: i.UpdatedTime,
+			Disabled:    i.Disabled,
+		}
+		filtered = append(filtered, p)
+	}
+	return filtered
+}
 
 func TestRole_Crud(t *testing.T) {
 	tc := controller.NewTestController(t, nil)
@@ -20,6 +108,10 @@ func TestRole_Crud(t *testing.T) {
 	org := &scopes.Organization{
 		Client: client,
 	}
+
+	proj, apiErr, err := org.CreateProject(tc.Context(), &scopes.Project{})
+	require.NoError(t, err)
+	require.Nil(t, apiErr)
 
 	checkRole := func(step string, g *roles.Role, apiErr *api.Error, err error, wantedName string) {
 		assert := assert.New(t)
@@ -35,29 +127,47 @@ func TestRole_Crud(t *testing.T) {
 		assert.Equal(wantedName, gotName, step)
 	}
 
-	g, apiErr, err := org.CreateRole(tc.Context(), &roles.Role{Name: api.String("foo")})
-	checkRole("create", g, apiErr, err, "foo")
+	cases := []struct {
+		name  string
+		scope roleCrud
+	}{
+		{
+			name:  "org",
+			scope: org,
+		},
+		{
+			name:  "project",
+			scope: proj,
+		},
+	}
 
-	g, apiErr, err = org.ReadRole(tc.Context(), &roles.Role{Id: g.Id})
-	checkRole("read", g, apiErr, err, "foo")
+	for _, tt := range cases {
+		t.Run(tt.name, func(t *testing.T) {
+			g, apiErr, err := tt.scope.CreateRole(tc.Context(), &roles.Role{Name: api.String("foo")})
+			checkRole("create", g, apiErr, err, "foo")
 
-	g = &roles.Role{Id: g.Id}
-	g.Name = api.String("bar")
-	g, apiErr, err = org.UpdateRole(tc.Context(), g)
-	checkRole("update", g, apiErr, err, "bar")
+			g, apiErr, err = tt.scope.ReadRole(tc.Context(), &roles.Role{Id: g.Id})
+			checkRole("read", g, apiErr, err, "foo")
 
-	g = &roles.Role{Id: g.Id}
-	g.SetDefault("name")
-	g, apiErr, err = org.UpdateRole(tc.Context(), g)
-	checkRole("update", g, apiErr, err, "")
+			g = &roles.Role{Id: g.Id}
+			g.Name = api.String("bar")
+			g, apiErr, err = tt.scope.UpdateRole(tc.Context(), g)
+			checkRole("update", g, apiErr, err, "bar")
 
-	existed, apiErr, err := org.DeleteRole(tc.Context(), g)
-	assert.NoError(t, err)
-	assert.True(t, existed, "Expected existing user when deleted, but it wasn't.")
+			g = &roles.Role{Id: g.Id}
+			g.SetDefault("name")
+			g, apiErr, err = tt.scope.UpdateRole(tc.Context(), g)
+			checkRole("update", g, apiErr, err, "")
 
-	existed, apiErr, err = org.DeleteRole(tc.Context(), g)
-	assert.NoError(t, err)
-	assert.False(t, existed, "Expected user to not exist when deleted, but it did.")
+			existed, apiErr, err := tt.scope.DeleteRole(tc.Context(), g)
+			assert.NoError(t, err)
+			assert.True(t, existed, "Expected existing user when deleted, but it wasn't.")
+
+			existed, apiErr, err = tt.scope.DeleteRole(tc.Context(), g)
+			assert.NoError(t, err)
+			assert.False(t, existed, "Expected user to not exist when deleted, but it did.")
+		})
+	}
 }
 
 func TestRole_Errors(t *testing.T) {
@@ -71,28 +181,50 @@ func TestRole_Errors(t *testing.T) {
 		Client: client,
 	}
 
-	u, apiErr, err := org.CreateRole(ctx, &roles.Role{Name: api.String("first")})
-	assert.NoError(err)
-	assert.Nil(apiErr)
-	assert.NotNil(u)
+	proj, apiErr, err := org.CreateProject(tc.Context(), &scopes.Project{})
+	require.NoError(t, err)
+	require.Nil(t, apiErr)
 
-	// Create another resource with the same name.
-	_, apiErr, err = org.CreateRole(ctx, &roles.Role{Name: api.String("first")})
-	assert.NoError(err)
-	assert.NotNil(apiErr)
+	cases := []struct {
+		name  string
+		scope roleCrud
+	}{
+		{
+			name:  "org",
+			scope: org,
+		},
+		{
+			name:  "project",
+			scope: proj,
+		},
+	}
 
-	_, apiErr, err = org.ReadRole(ctx, &roles.Role{Id: iam.RolePrefix + "_doesntexis"})
-	assert.NoError(err)
-	assert.NotNil(apiErr)
-	assert.EqualValues(*apiErr.Status, http.StatusNotFound)
+	for _, tt := range cases {
+		t.Run(tt.name, func(t *testing.T) {
+			u, apiErr, err := tt.scope.CreateRole(ctx, &roles.Role{Name: api.String("first")})
+			assert.NoError(err)
+			assert.Nil(apiErr)
+			assert.NotNil(u)
 
-	_, apiErr, err = org.ReadRole(ctx, &roles.Role{Id: "invalid id"})
-	assert.NoError(err)
-	assert.NotNil(apiErr)
-	assert.EqualValues(*apiErr.Status, http.StatusBadRequest)
+			// Create another resource with the same name.
+			_, apiErr, err = tt.scope.CreateRole(ctx, &roles.Role{Name: api.String("first")})
+			assert.NoError(err)
+			assert.NotNil(apiErr)
 
-	_, apiErr, err = org.UpdateRole(ctx, &roles.Role{Id: u.Id})
-	assert.NoError(err)
-	assert.NotNil(apiErr)
-	assert.EqualValues(*apiErr.Status, http.StatusBadRequest)
+			_, apiErr, err = tt.scope.ReadRole(ctx, &roles.Role{Id: iam.RolePrefix + "_doesntexis"})
+			assert.NoError(err)
+			assert.NotNil(apiErr)
+			assert.EqualValues(*apiErr.Status, http.StatusNotFound)
+
+			_, apiErr, err = tt.scope.ReadRole(ctx, &roles.Role{Id: "invalid id"})
+			assert.NoError(err)
+			assert.NotNil(apiErr)
+			assert.EqualValues(*apiErr.Status, http.StatusBadRequest)
+
+			_, apiErr, err = tt.scope.UpdateRole(ctx, &roles.Role{Id: u.Id})
+			assert.NoError(err)
+			assert.NotNil(apiErr)
+			assert.EqualValues(*apiErr.Status, http.StatusBadRequest)
+		})
+	}
 }

@@ -15,13 +15,7 @@ import (
 
 func Test_NewScope(t *testing.T) {
 	t.Parallel()
-	cleanup, conn, _ := db.TestSetup(t, "postgres")
-	defer func() {
-		err := cleanup()
-		assert.NoError(t, err)
-		err = conn.Close()
-		assert.NoError(t, err)
-	}()
+	conn, _ := db.TestSetup(t, "postgres")
 	t.Run("valid-org-with-project", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
 		w := db.New(conn)
@@ -58,13 +52,7 @@ func Test_NewScope(t *testing.T) {
 }
 func Test_ScopeCreate(t *testing.T) {
 	t.Parallel()
-	cleanup, conn, _ := db.TestSetup(t, "postgres")
-	defer func() {
-		err := cleanup()
-		assert.NoError(t, err)
-		err = conn.Close()
-		assert.NoError(t, err)
-	}()
+	conn, _ := db.TestSetup(t, "postgres")
 	t.Run("valid", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
 		w := db.New(conn)
@@ -106,13 +94,7 @@ func Test_ScopeCreate(t *testing.T) {
 
 func Test_ScopeUpdate(t *testing.T) {
 	t.Parallel()
-	cleanup, conn, _ := db.TestSetup(t, "postgres")
-	defer func() {
-		err := cleanup()
-		assert.NoError(t, err)
-		err = conn.Close()
-		assert.NoError(t, err)
-	}()
+	conn, _ := db.TestSetup(t, "postgres")
 	t.Run("valid", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
 		w := db.New(conn)
@@ -136,13 +118,7 @@ func Test_ScopeUpdate(t *testing.T) {
 }
 func Test_ScopeGetScope(t *testing.T) {
 	t.Parallel()
-	cleanup, conn, _ := db.TestSetup(t, "postgres")
-	defer func() {
-		err := cleanup()
-		assert.NoError(t, err)
-		err = conn.Close()
-		assert.NoError(t, err)
-	}()
+	conn, _ := db.TestSetup(t, "postgres")
 	t.Run("valid-scope", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
 		w := db.New(conn)
@@ -187,13 +163,7 @@ func TestScope_ResourceType(t *testing.T) {
 
 func TestScope_Clone(t *testing.T) {
 	t.Parallel()
-	cleanup, conn, _ := db.TestSetup(t, "postgres")
-	defer func() {
-		err := cleanup()
-		assert.NoError(t, err)
-		err = conn.Close()
-		assert.NoError(t, err)
-	}()
+	conn, _ := db.TestSetup(t, "postgres")
 	t.Run("valid", func(t *testing.T) {
 		assert := assert.New(t)
 		s, _ := TestScopes(t, conn)

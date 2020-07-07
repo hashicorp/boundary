@@ -202,3 +202,79 @@ func (s Project) CreateHostCatalog(ctx context.Context, r *hosts.HostCatalog) (*
 
 	return target, apiErr, nil
 }
+
+func (s Project) CreateGroup(ctx context.Context, r *groups.Group) (*groups.Group, *api.Error, error) {
+	if s.Client == nil {
+		return nil, nil, fmt.Errorf("nil client in Creategroups.Group request")
+	}
+	if s.Id == "" {
+
+		// Assume the client has been configured with project already and move
+		// on
+
+	} else {
+		// If it's explicitly set here, override anything that might be in the
+		// client
+
+		ctx = context.WithValue(ctx, "project", s.Id)
+
+	}
+
+	req, err := s.Client.NewRequest(ctx, "POST", "groups", r)
+	if err != nil {
+		return nil, nil, fmt.Errorf("error creating Creategroups.Group request: %w", err)
+	}
+
+	resp, err := s.Client.Do(req)
+	if err != nil {
+		return nil, nil, fmt.Errorf("error performing client request during Creategroups.Group call: %w", err)
+	}
+
+	target := new(groups.Group)
+	apiErr, err := resp.Decode(target)
+	if err != nil {
+		return nil, nil, fmt.Errorf("error decoding Creategroups.Group repsonse: %w", err)
+	}
+
+	target.Client = s.Client
+
+	return target, apiErr, nil
+}
+
+func (s Project) CreateRole(ctx context.Context, r *roles.Role) (*roles.Role, *api.Error, error) {
+	if s.Client == nil {
+		return nil, nil, fmt.Errorf("nil client in Createroles.Role request")
+	}
+	if s.Id == "" {
+
+		// Assume the client has been configured with project already and move
+		// on
+
+	} else {
+		// If it's explicitly set here, override anything that might be in the
+		// client
+
+		ctx = context.WithValue(ctx, "project", s.Id)
+
+	}
+
+	req, err := s.Client.NewRequest(ctx, "POST", "roles", r)
+	if err != nil {
+		return nil, nil, fmt.Errorf("error creating Createroles.Role request: %w", err)
+	}
+
+	resp, err := s.Client.Do(req)
+	if err != nil {
+		return nil, nil, fmt.Errorf("error performing client request during Createroles.Role call: %w", err)
+	}
+
+	target := new(roles.Role)
+	apiErr, err := resp.Decode(target)
+	if err != nil {
+		return nil, nil, fmt.Errorf("error decoding Createroles.Role repsonse: %w", err)
+	}
+
+	target.Client = s.Client
+
+	return target, apiErr, nil
+}

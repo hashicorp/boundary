@@ -42,6 +42,16 @@ var deleteFuncs = map[string][]*deleteInfo{
 			"hosts.HostCatalog",
 			"host-catalogs",
 		},
+		{
+			"Project",
+			"groups.Group",
+			"groups",
+		},
+		{
+			"Project",
+			"roles.Role",
+			"roles",
+		},
 	},
 }
 

@@ -52,4 +52,17 @@ func Test_GetOpts(t *testing.T) {
 		testOpts.withLimit = 1
 		assert.Equal(opts, testOpts)
 	})
+	t.Run("WithAutoVivify", func(t *testing.T) {
+		assert := assert.New(t)
+		// test default of false
+		opts := getOpts()
+		testOpts := getDefaultOptions()
+		testOpts.withAutoVivify = false
+		assert.Equal(opts, testOpts)
+
+		opts = getOpts(WithAutoVivify(true))
+		testOpts = getDefaultOptions()
+		testOpts.withAutoVivify = true
+		assert.Equal(opts, testOpts)
+	})
 }

@@ -18,7 +18,10 @@ import (
 	"google.golang.org/protobuf/types/known/wrapperspb"
 )
 
-const orgIdFieldName = "org_id"
+const (
+	orgIdFieldName  = "org_id"
+	projIdFieldName = "project_id"
+)
 
 var (
 	reInvalidID = regexp.MustCompile("[^A-Za-z0-9]")
@@ -37,7 +40,7 @@ type Service struct {
 // NewService returns a role service which handles role related requests to watchtower.
 func NewService(repo func() (*iam.Repository, error)) (Service, error) {
 	if repo == nil {
-		return Service{}, fmt.Errorf("nil iam repostiroy provided")
+		return Service{}, fmt.Errorf("nil iam repository provided")
 	}
 	return Service{repoFn: repo}, nil
 }
@@ -51,7 +54,7 @@ func (s Service) ListRoles(ctx context.Context, req *pbs.ListRolesRequest) (*pbs
 	if err := validateListRequest(req); err != nil {
 		return nil, err
 	}
-	gl, err := s.listFromRepo(ctx, req.GetOrgId())
+	gl, err := s.listFromRepo(ctx, parentScope(req))
 	if err != nil {
 		return nil, err
 	}
@@ -79,11 +82,15 @@ func (s Service) CreateRole(ctx context.Context, req *pbs.CreateRoleRequest) (*p
 	if err := validateCreateRequest(req); err != nil {
 		return nil, err
 	}
-	r, err := s.createInRepo(ctx, req.GetOrgId(), req.GetItem())
+	r, err := s.createInRepo(ctx, parentScope(req), req.GetItem())
 	if err != nil {
 		return nil, err
 	}
-	return &pbs.CreateRoleResponse{Item: r, Uri: fmt.Sprintf("orgs/%s/roles/%s", req.GetOrgId(), r.GetId())}, nil
+	var projectPart string
+	if req.GetProjectId() != "" {
+		projectPart = fmt.Sprintf("projects/%s/", req.GetProjectId())
+	}
+	return &pbs.CreateRoleResponse{Item: r, Uri: fmt.Sprintf("orgs/%s/%sroles/%s", req.GetOrgId(), projectPart, r.GetId())}, nil
 }
 
 // UpdateRole implements the interface pbs.RoleServiceServer.
@@ -93,7 +100,7 @@ func (s Service) UpdateRole(ctx context.Context, req *pbs.UpdateRoleRequest) (*p
 	if err := validateUpdateRequest(req); err != nil {
 		return nil, err
 	}
-	u, err := s.updateInRepo(ctx, req.GetOrgId(), req.GetId(), req.GetUpdateMask().GetPaths(), req.GetItem())
+	u, err := s.updateInRepo(ctx, parentScope(req), req.GetId(), req.GetUpdateMask().GetPaths(), req.GetItem())
 	if err != nil {
 		return nil, err
 	}
@@ -132,7 +139,7 @@ func (s Service) getFromRepo(ctx context.Context, id string) (*pb.Role, error) {
 	return toProto(u), nil
 }
 
-func (s Service) createInRepo(ctx context.Context, orgId string, item *pb.Role) (*pb.Role, error) {
+func (s Service) createInRepo(ctx context.Context, scopeId string, item *pb.Role) (*pb.Role, error) {
 	var opts []iam.Option
 	if item.GetName() != nil {
 		opts = append(opts, iam.WithName(item.GetName().GetValue()))
@@ -140,7 +147,7 @@ func (s Service) createInRepo(ctx context.Context, orgId string, item *pb.Role) 
 	if item.GetDescription() != nil {
 		opts = append(opts, iam.WithDescription(item.GetDescription().GetValue()))
 	}
-	u, err := iam.NewRole(orgId, opts...)
+	u, err := iam.NewRole(scopeId, opts...)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "Unable to build role for creation: %v.", err)
 	}
@@ -158,7 +165,7 @@ func (s Service) createInRepo(ctx context.Context, orgId string, item *pb.Role) 
 	return toProto(out), nil
 }
 
-func (s Service) updateInRepo(ctx context.Context, orgId, id string, mask []string, item *pb.Role) (*pb.Role, error) {
+func (s Service) updateInRepo(ctx context.Context, scopeId, id string, mask []string, item *pb.Role) (*pb.Role, error) {
 	var opts []iam.Option
 	if desc := item.GetDescription(); desc != nil {
 		opts = append(opts, iam.WithDescription(desc.GetValue()))
@@ -166,7 +173,7 @@ func (s Service) updateInRepo(ctx context.Context, orgId, id string, mask []stri
 	if name := item.GetName(); name != nil {
 		opts = append(opts, iam.WithName(name.GetValue()))
 	}
-	u, err := iam.NewRole(orgId, opts...)
+	u, err := iam.NewRole(scopeId, opts...)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "Unable to build role for update: %v.", err)
 	}
@@ -207,12 +214,12 @@ func (s Service) deleteFromRepo(ctx context.Context, id string) (bool, error) {
 	return rows > 0, nil
 }
 
-func (s Service) listFromRepo(ctx context.Context, orgId string) ([]*pb.Role, error) {
+func (s Service) listFromRepo(ctx context.Context, scopeId string) ([]*pb.Role, error) {
 	repo, err := s.repoFn()
 	if err != nil {
 		return nil, err
 	}
-	rl, err := repo.ListRoles(ctx, orgId)
+	rl, err := repo.ListRoles(ctx, scopeId)
 	if err != nil {
 		return nil, err
 	}
@@ -351,6 +358,7 @@ func validId(id, prefix string) bool {
 
 type ancestorProvider interface {
 	GetOrgId() string
+	GetProjectId() string
 }
 
 // validateAncestors verifies that the ancestors of this call are properly set and provided.
@@ -361,5 +369,16 @@ func validateAncestors(r ancestorProvider) map[string]string {
 	if !validId(r.GetOrgId(), scope.Organization.Prefix()+"_") {
 		return map[string]string{orgIdFieldName: "Improperly formatted identifier."}
 	}
+	if r.GetProjectId() != "" && !validId(r.GetProjectId(), scope.Project.Prefix()+"_") {
+		return map[string]string{projIdFieldName: "Improperly formatted identifier."}
+	}
 	return map[string]string{}
+}
+
+// Given an ancestorProvider, return the resource's immediate parent scope
+func parentScope(r ancestorProvider) string {
+	if r.GetProjectId() != "" {
+		return r.GetProjectId()
+	}
+	return r.GetOrgId()
 }

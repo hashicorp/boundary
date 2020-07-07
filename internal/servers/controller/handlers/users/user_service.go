@@ -37,16 +37,23 @@ type Service struct {
 // NewService returns a user service which handles user related requests to watchtower.
 func NewService(repo func() (*iam.Repository, error)) (Service, error) {
 	if repo == nil {
-		return Service{}, fmt.Errorf("nil iam repostiroy provided")
+		return Service{}, fmt.Errorf("nil iam repository provided")
 	}
 	return Service{repoFn: repo}, nil
 }
 
 var _ pbs.UserServiceServer = Service{}
 
-// CreateUser is not yet implemented but will implement the interface pbs.UserServiceServer.
-func (s Service) ListUsers(context.Context, *pbs.ListUsersRequest) (*pbs.ListUsersResponse, error) {
-	return nil, status.Error(codes.Unimplemented, "List not enabled for this resource.")
+// ListUsers implements the interface pbs.UserServiceServer.
+func (s Service) ListUsers(ctx context.Context, req *pbs.ListUsersRequest) (*pbs.ListUsersResponse, error) {
+	if err := validateListRequest(req); err != nil {
+		return nil, err
+	}
+	ul, err := s.listFromRepo(ctx, req.GetOrgId())
+	if err != nil {
+		return nil, err
+	}
+	return &pbs.ListUsersResponse{Items: ul}, nil
 }
 
 // GetUsers implements the interface pbs.UserServiceServer.
@@ -198,6 +205,22 @@ func (s Service) deleteFromRepo(ctx context.Context, id string) (bool, error) {
 	return rows > 0, nil
 }
 
+func (s Service) listFromRepo(ctx context.Context, orgId string) ([]*pb.User, error) {
+	repo, err := s.repoFn()
+	if err != nil {
+		return nil, err
+	}
+	ul, err := repo.ListUsers(ctx, orgId)
+	if err != nil {
+		return nil, err
+	}
+	var outUl []*pb.User
+	for _, u := range ul {
+		outUl = append(outUl, toProto(u))
+	}
+	return outUl, nil
+}
+
 // toDbUpdateMask converts the wire format's FieldMask into a list of strings containing FieldMask paths used
 func toDbUpdateMask(paths []string) ([]string, error) {
 	var dbPaths []string
@@ -304,6 +327,14 @@ func validateDeleteRequest(req *pbs.DeleteUserRequest) error {
 	}
 	if len(badFields) > 0 {
 		return handlers.InvalidArgumentErrorf("Errors in provided fields.", badFields)
+	}
+	return nil
+}
+
+func validateListRequest(req *pbs.ListUsersRequest) error {
+	badFields := validateAncestors(req)
+	if len(badFields) > 0 {
+		return handlers.InvalidArgumentErrorf("Improperly formatted identifier.", badFields)
 	}
 	return nil
 }

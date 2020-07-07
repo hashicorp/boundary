@@ -12,6 +12,7 @@ import (
 	pbs "github.com/hashicorp/watchtower/internal/gen/controller/api/services"
 	"github.com/hashicorp/watchtower/internal/iam"
 	"github.com/hashicorp/watchtower/internal/servers/controller/handlers/users"
+	"github.com/hashicorp/watchtower/internal/types/scope"
 	"google.golang.org/genproto/protobuf/field_mask"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -24,15 +25,7 @@ import (
 
 func createDefaultUserAndRepo(t *testing.T) (*iam.User, func() (*iam.Repository, error)) {
 	t.Helper()
-	cleanup, conn, _ := db.TestSetup(t, "postgres")
-	t.Cleanup(func() {
-		if err := conn.Close(); err != nil {
-			t.Errorf("Error when closing gorm DB: %v", err)
-		}
-		if err := cleanup(); err != nil {
-			t.Errorf("Error when cleaning up TestSetup: %v", err)
-		}
-	})
+	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrap := db.TestWrapper(t)
 	repoFn := func() (*iam.Repository, error) {
@@ -103,6 +96,77 @@ func TestGet(t *testing.T) {
 			got, gErr := s.GetUser(context.Background(), req)
 			assert.Equal(tc.errCode, status.Code(gErr), "GetUser(%+v) got error %v, wanted %v", req, gErr, tc.errCode)
 			assert.True(proto.Equal(got, tc.res), "GetUser(%q) got response %q, wanted %q", req, got, tc.res)
+		})
+	}
+}
+
+func TestList(t *testing.T) {
+	assert, require := assert.New(t), require.New(t)
+	conn, _ := db.TestSetup(t, "postgres")
+	rw := db.New(conn)
+	wrap := db.TestWrapper(t)
+	repoFn := func() (*iam.Repository, error) {
+		return iam.NewRepository(rw, rw, wrap)
+	}
+	repo, err := repoFn()
+	require.NoError(err)
+
+	oNoUsers, _ := iam.TestScopes(t, conn)
+	oWithUsers, _ := iam.TestScopes(t, conn)
+
+	var wantUsers []*pb.User
+	for i := 0; i < 10; i++ {
+		newU, err := iam.NewUser(oWithUsers.GetPublicId())
+		require.NoError(err)
+		u, err := repo.CreateUser(context.Background(), newU)
+		require.NoError(err)
+		wantUsers = append(wantUsers, &pb.User{
+			Id:          u.GetPublicId(),
+			CreatedTime: u.GetCreateTime().GetTimestamp(),
+			UpdatedTime: u.GetUpdateTime().GetTimestamp(),
+		})
+	}
+
+	cases := []struct {
+		name    string
+		req     *pbs.ListUsersRequest
+		res     *pbs.ListUsersResponse
+		errCode codes.Code
+	}{
+		{
+			name:    "List Many Users",
+			req:     &pbs.ListUsersRequest{OrgId: oWithUsers.GetPublicId()},
+			res:     &pbs.ListUsersResponse{Items: wantUsers},
+			errCode: codes.OK,
+		},
+		{
+			name:    "List No Users",
+			req:     &pbs.ListUsersRequest{OrgId: oNoUsers.GetPublicId()},
+			res:     &pbs.ListUsersResponse{},
+			errCode: codes.OK,
+		},
+		{
+			name:    "Invalid Org Id",
+			req:     &pbs.ListUsersRequest{OrgId: iam.UserPrefix + "_this is invalid"},
+			res:     nil,
+			errCode: codes.InvalidArgument,
+		},
+		// TODO: When an org doesn't exist, we should return a 404 instead of an empty list.
+		{
+			name:    "Unfound Org",
+			req:     &pbs.ListUsersRequest{OrgId: scope.Organization.Prefix() + "_DoesntExis"},
+			res:     &pbs.ListUsersResponse{},
+			errCode: codes.OK,
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			s, err := users.NewService(repoFn)
+			require.NoError(err, "Couldn't create new user service.")
+
+			got, gErr := s.ListUsers(context.Background(), tc.req)
+			assert.Equal(tc.errCode, status.Code(gErr), "ListUsers(%+v) got error %v, wanted %v", tc.req, gErr, tc.errCode)
+			assert.True(proto.Equal(got, tc.res), "ListUsers(%q) got response %q, wanted %q", tc.req, got, tc.res)
 		})
 	}
 }

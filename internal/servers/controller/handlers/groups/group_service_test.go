@@ -23,43 +23,45 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func createDefaultGroupAndRepo(t *testing.T) (*iam.Group, func() (*iam.Repository, error)) {
+// Creates an org scoped group and a project scoped group.
+func createDefaultGroupsAndRepo(t *testing.T) (*iam.Group, *iam.Group, func() (*iam.Repository, error)) {
 	t.Helper()
-	cleanup, conn, _ := db.TestSetup(t, "postgres")
-	t.Cleanup(func() {
-		if err := conn.Close(); err != nil {
-			t.Errorf("Error when closing gorm DB: %v", err)
-		}
-		if err := cleanup(); err != nil {
-			t.Errorf("Error when cleaning up TestSetup: %v", err)
-		}
-	})
+	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrap := db.TestWrapper(t)
 	repoFn := func() (*iam.Repository, error) {
 		return iam.NewRepository(rw, rw, wrap)
 	}
 
-	o, _ := iam.TestScopes(t, conn)
-	g := iam.TestGroup(t, conn, o.GetPublicId(), iam.WithDescription("default"), iam.WithName("default"))
-	return g, repoFn
+	o, p := iam.TestScopes(t, conn)
+	og := iam.TestGroup(t, conn, o.GetPublicId(), iam.WithDescription("default"), iam.WithName("default"))
+	pg := iam.TestGroup(t, conn, p.GetPublicId(), iam.WithDescription("default"), iam.WithName("default"))
+	return og, pg, repoFn
 }
 
 func TestGet(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
-	g, repo := createDefaultGroupAndRepo(t)
+	og, pg, repo := createDefaultGroupsAndRepo(t)
 	toMerge := &pbs.GetGroupRequest{
-		OrgId: g.GetScopeId(),
-		Id:    g.GetPublicId(),
+		OrgId: og.GetScopeId(),
+		Id:    og.GetPublicId(),
 	}
 
-	wantU := &pb.Group{
-		Id:          g.GetPublicId(),
-		Name:        &wrapperspb.StringValue{Value: g.GetName()},
-		Description: &wrapperspb.StringValue{Value: g.GetDescription()},
-		CreatedTime: g.CreateTime.GetTimestamp(),
-		UpdatedTime: g.UpdateTime.GetTimestamp(),
+	wantOrgGroup := &pb.Group{
+		Id:          og.GetPublicId(),
+		Name:        &wrapperspb.StringValue{Value: og.GetName()},
+		Description: &wrapperspb.StringValue{Value: og.GetDescription()},
+		CreatedTime: og.CreateTime.GetTimestamp(),
+		UpdatedTime: og.UpdateTime.GetTimestamp(),
+	}
+
+	wantProjGroup := &pb.Group{
+		Id:          pg.GetPublicId(),
+		Name:        &wrapperspb.StringValue{Value: pg.GetName()},
+		Description: &wrapperspb.StringValue{Value: pg.GetDescription()},
+		CreatedTime: pg.CreateTime.GetTimestamp(),
+		UpdatedTime: pg.UpdateTime.GetTimestamp(),
 	}
 
 	cases := []struct {
@@ -70,8 +72,8 @@ func TestGet(t *testing.T) {
 	}{
 		{
 			name:    "Get an Existing Group",
-			req:     &pbs.GetGroupRequest{Id: g.GetPublicId()},
-			res:     &pbs.GetGroupResponse{Item: wantU},
+			req:     &pbs.GetGroupRequest{Id: og.GetPublicId()},
+			res:     &pbs.GetGroupResponse{Item: wantOrgGroup},
 			errCode: codes.OK,
 		},
 		{
@@ -89,6 +91,30 @@ func TestGet(t *testing.T) {
 		{
 			name:    "space in id",
 			req:     &pbs.GetGroupRequest{Id: iam.GroupPrefix + "_1 23456789"},
+			res:     nil,
+			errCode: codes.InvalidArgument,
+		},
+		{
+			name:    "Project Scoped Get an Existing Group",
+			req:     &pbs.GetGroupRequest{Id: pg.GetPublicId(), ProjectId: pg.GetScopeId()},
+			res:     &pbs.GetGroupResponse{Item: wantProjGroup},
+			errCode: codes.OK,
+		},
+		{
+			name:    "Project Scoped Get a non existant Group",
+			req:     &pbs.GetGroupRequest{Id: iam.GroupPrefix + "_DoesntExis", ProjectId: pg.GetScopeId()},
+			res:     nil,
+			errCode: codes.NotFound,
+		},
+		{
+			name:    "Project Scoped Wrong id prefix",
+			req:     &pbs.GetGroupRequest{Id: "j_1234567890", ProjectId: pg.GetScopeId()},
+			res:     nil,
+			errCode: codes.InvalidArgument,
+		},
+		{
+			name:    "Project Scoped space in id",
+			req:     &pbs.GetGroupRequest{Id: iam.GroupPrefix + "_1 23456789", ProjectId: pg.GetScopeId()},
 			res:     nil,
 			errCode: codes.InvalidArgument,
 		},
@@ -110,29 +136,28 @@ func TestGet(t *testing.T) {
 
 func TestList(t *testing.T) {
 	assert, require := assert.New(t), require.New(t)
-	cleanup, conn, _ := db.TestSetup(t, "postgres")
-	t.Cleanup(func() {
-		if err := conn.Close(); err != nil {
-			t.Errorf("Error when closing gorm DB: %v", err)
-		}
-		if err := cleanup(); err != nil {
-			t.Errorf("Error when cleaning up TestSetup: %v", err)
-		}
-	})
+	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrap := db.TestWrapper(t)
 	repoFn := func() (*iam.Repository, error) {
 		return iam.NewRepository(rw, rw, wrap)
 	}
-	oNoGroups, _ := iam.TestScopes(t, conn)
-	oWithGroups, _ := iam.TestScopes(t, conn)
-	var wantGroups []*pb.Group
+	oNoGroups, pWithGroups := iam.TestScopes(t, conn)
+	oWithGroups, pNoGroups := iam.TestScopes(t, conn)
+	var wantOrgGroups []*pb.Group
+	var wantProjGroups []*pb.Group
 	for i := 0; i < 10; i++ {
-		g := iam.TestGroup(t, conn, oWithGroups.GetPublicId())
-		wantGroups = append(wantGroups, &pb.Group{
-			Id:          g.GetPublicId(),
-			CreatedTime: g.GetCreateTime().GetTimestamp(),
-			UpdatedTime: g.GetUpdateTime().GetTimestamp(),
+		og := iam.TestGroup(t, conn, oWithGroups.GetPublicId())
+		wantOrgGroups = append(wantOrgGroups, &pb.Group{
+			Id:          og.GetPublicId(),
+			CreatedTime: og.GetCreateTime().GetTimestamp(),
+			UpdatedTime: og.GetUpdateTime().GetTimestamp(),
+		})
+		pg := iam.TestGroup(t, conn, pWithGroups.GetPublicId())
+		wantProjGroups = append(wantProjGroups, &pb.Group{
+			Id:          pg.GetPublicId(),
+			CreatedTime: pg.GetCreateTime().GetTimestamp(),
+			UpdatedTime: pg.GetUpdateTime().GetTimestamp(),
 		})
 	}
 
@@ -145,7 +170,7 @@ func TestList(t *testing.T) {
 		{
 			name:    "List Many Group",
 			req:     &pbs.ListGroupsRequest{OrgId: oWithGroups.GetPublicId()},
-			res:     &pbs.ListGroupsResponse{Items: wantGroups},
+			res:     &pbs.ListGroupsResponse{Items: wantOrgGroups},
 			errCode: codes.OK,
 		},
 		{
@@ -167,6 +192,31 @@ func TestList(t *testing.T) {
 			res:     &pbs.ListGroupsResponse{},
 			errCode: codes.OK,
 		},
+		{
+			name:    "List Many Project Group",
+			req:     &pbs.ListGroupsRequest{OrgId: pWithGroups.GetParentId(), ProjectId: pWithGroups.GetPublicId()},
+			res:     &pbs.ListGroupsResponse{Items: wantProjGroups},
+			errCode: codes.OK,
+		},
+		{
+			name:    "List No Project Groups",
+			req:     &pbs.ListGroupsRequest{OrgId: pNoGroups.GetParentId(), ProjectId: pNoGroups.GetPublicId()},
+			res:     &pbs.ListGroupsResponse{},
+			errCode: codes.OK,
+		},
+		{
+			name:    "Invalid Project Id",
+			req:     &pbs.ListGroupsRequest{OrgId: oWithGroups.GetPublicId(), ProjectId: scope.Project.Prefix() + "_this is invalid"},
+			res:     nil,
+			errCode: codes.InvalidArgument,
+		},
+		// TODO: When an org doesn't exist, we should return a 404 instead of an empty list.
+		{
+			name:    "Unfound Project",
+			req:     &pbs.ListGroupsRequest{OrgId: oWithGroups.GetPublicId(), ProjectId: scope.Project.Prefix() + "_DoesntExis"},
+			res:     &pbs.ListGroupsResponse{},
+			errCode: codes.OK,
+		},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -182,7 +232,7 @@ func TestList(t *testing.T) {
 
 func TestDelete(t *testing.T) {
 	require := require.New(t)
-	g, repo := createDefaultGroupAndRepo(t)
+	og, pg, repo := createDefaultGroupsAndRepo(t)
 
 	s, err := groups.NewService(repo)
 	require.NoError(err, "Error when getting new group service.")
@@ -196,8 +246,8 @@ func TestDelete(t *testing.T) {
 		{
 			name: "Delete an Existing Group",
 			req: &pbs.DeleteGroupRequest{
-				OrgId: g.GetScopeId(),
-				Id:    g.GetPublicId(),
+				OrgId: og.GetScopeId(),
+				Id:    og.GetPublicId(),
 			},
 			res: &pbs.DeleteGroupResponse{
 				Existed: true,
@@ -207,7 +257,7 @@ func TestDelete(t *testing.T) {
 		{
 			name: "Delete bad group id",
 			req: &pbs.DeleteGroupRequest{
-				OrgId: g.GetScopeId(),
+				OrgId: og.GetScopeId(),
 				Id:    iam.GroupPrefix + "_doesntexis",
 			},
 			res: &pbs.DeleteGroupResponse{
@@ -219,7 +269,7 @@ func TestDelete(t *testing.T) {
 			name: "Delete bad org id",
 			req: &pbs.DeleteGroupRequest{
 				OrgId: "o_doesntexis",
-				Id:    g.GetPublicId(),
+				Id:    og.GetPublicId(),
 			},
 			res: &pbs.DeleteGroupResponse{
 				Existed: false,
@@ -230,7 +280,7 @@ func TestDelete(t *testing.T) {
 			name: "Bad org formatting",
 			req: &pbs.DeleteGroupRequest{
 				OrgId: "bad_format",
-				Id:    g.GetPublicId(),
+				Id:    og.GetPublicId(),
 			},
 			res:     nil,
 			errCode: codes.InvalidArgument,
@@ -238,8 +288,54 @@ func TestDelete(t *testing.T) {
 		{
 			name: "Bad Group Id formatting",
 			req: &pbs.DeleteGroupRequest{
-				OrgId: g.GetScopeId(),
+				OrgId: og.GetScopeId(),
 				Id:    "bad_format",
+			},
+			res:     nil,
+			errCode: codes.InvalidArgument,
+		},
+		{
+			name: "Project Scoped Delete an Existing Group",
+			req: &pbs.DeleteGroupRequest{
+				OrgId:     og.GetScopeId(),
+				ProjectId: pg.GetScopeId(),
+				Id:        pg.GetPublicId(),
+			},
+			res: &pbs.DeleteGroupResponse{
+				Existed: true,
+			},
+			errCode: codes.OK,
+		},
+		{
+			name: "Project Scoped Delete bad group id",
+			req: &pbs.DeleteGroupRequest{
+				OrgId:     og.GetScopeId(),
+				ProjectId: pg.GetScopeId(),
+				Id:        iam.GroupPrefix + "_doesntexis",
+			},
+			res: &pbs.DeleteGroupResponse{
+				Existed: false,
+			},
+			errCode: codes.OK,
+		},
+		{
+			name: "Project Scoped Delete bad project id",
+			req: &pbs.DeleteGroupRequest{
+				OrgId:     og.GetScopeId(),
+				ProjectId: scope.Project.Prefix() + "_doesntexis",
+				Id:        pg.GetPublicId(),
+			},
+			res: &pbs.DeleteGroupResponse{
+				Existed: false,
+			},
+			errCode: codes.OK,
+		},
+		{
+			name: "Bad project formatting",
+			req: &pbs.DeleteGroupRequest{
+				OrgId:     og.GetScopeId(),
+				ProjectId: "bad_format",
+				Id:        pg.GetPublicId(),
 			},
 			res:     nil,
 			errCode: codes.InvalidArgument,
@@ -258,13 +354,13 @@ func TestDelete(t *testing.T) {
 func TestDelete_twice(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
-	g, repo := createDefaultGroupAndRepo(t)
+	og, pg, repo := createDefaultGroupsAndRepo(t)
 
 	s, err := groups.NewService(repo)
 	require.NoError(err, "Error when getting new group service")
 	req := &pbs.DeleteGroupRequest{
-		OrgId: g.GetScopeId(),
-		Id:    g.GetPublicId(),
+		OrgId: og.GetScopeId(),
+		Id:    og.GetPublicId(),
 	}
 	got, gErr := s.DeleteGroup(context.Background(), req)
 	assert.NoError(gErr, "First attempt")
@@ -272,15 +368,27 @@ func TestDelete_twice(t *testing.T) {
 	got, gErr = s.DeleteGroup(context.Background(), req)
 	assert.NoError(gErr, "Second attempt")
 	assert.False(got.GetExisted(), "Expected existed to be false for the second delete.")
+
+	projReq := &pbs.DeleteGroupRequest{
+		OrgId:     og.GetScopeId(),
+		ProjectId: pg.GetScopeId(),
+		Id:        pg.GetPublicId(),
+	}
+	got, gErr = s.DeleteGroup(context.Background(), projReq)
+	assert.NoError(gErr, "First attempt")
+	assert.True(got.GetExisted(), "Expected existed to be true for the first delete.")
+	got, gErr = s.DeleteGroup(context.Background(), projReq)
+	assert.NoError(gErr, "Second attempt")
+	assert.False(got.GetExisted(), "Expected existed to be false for the second delete.")
 }
 
 func TestCreate(t *testing.T) {
 	require := require.New(t)
-	defaultGroup, repo := createDefaultGroupAndRepo(t)
-	defaultCreated, err := ptypes.Timestamp(defaultGroup.GetCreateTime().GetTimestamp())
+	defaultOGroup, defaultPGroup, repo := createDefaultGroupsAndRepo(t)
+	defaultCreated, err := ptypes.Timestamp(defaultOGroup.GetCreateTime().GetTimestamp())
 	require.NoError(err, "Error converting proto to timestamp.")
 	toMerge := &pbs.CreateGroupRequest{
-		OrgId: defaultGroup.GetScopeId(),
+		OrgId: defaultOGroup.GetScopeId(),
 	}
 
 	cases := []struct {
@@ -296,7 +404,25 @@ func TestCreate(t *testing.T) {
 				Description: &wrapperspb.StringValue{Value: "desc"},
 			}},
 			res: &pbs.CreateGroupResponse{
-				Uri: fmt.Sprintf("orgs/%s/groups/%s_", defaultGroup.GetScopeId(), iam.GroupPrefix),
+				Uri: fmt.Sprintf("orgs/%s/groups/%s_", defaultOGroup.GetScopeId(), iam.GroupPrefix),
+				Item: &pb.Group{
+					Name:        &wrapperspb.StringValue{Value: "name"},
+					Description: &wrapperspb.StringValue{Value: "desc"},
+				},
+			},
+			errCode: codes.OK,
+		},
+		{
+			name: "Create a valid Project Scoped Group",
+			req: &pbs.CreateGroupRequest{
+				ProjectId: defaultPGroup.GetScopeId(),
+				Item: &pb.Group{
+					Name:        &wrapperspb.StringValue{Value: "name"},
+					Description: &wrapperspb.StringValue{Value: "desc"},
+				},
+			},
+			res: &pbs.CreateGroupResponse{
+				Uri: fmt.Sprintf("orgs/%s/projects/%s/groups/%s_", defaultOGroup.GetScopeId(), defaultPGroup.GetScopeId(), iam.GroupPrefix),
 				Item: &pb.Group{
 					Name:        &wrapperspb.StringValue{Value: "name"},
 					Description: &wrapperspb.StringValue{Value: "desc"},
@@ -363,22 +489,24 @@ func TestCreate(t *testing.T) {
 
 func TestUpdate(t *testing.T) {
 	require := require.New(t)
-	g, repoFn := createDefaultGroupAndRepo(t)
+	og, pg, repoFn := createDefaultGroupsAndRepo(t)
 	tested, err := groups.NewService(repoFn)
 	require.NoError(err, "Error when getting new group service.")
 
-	resetGroup := func() {
+	resetGroups := func() {
 		repo, err := repoFn()
 		require.NoError(err, "Couldn't get a new repo")
-		g, _, err = repo.UpdateGroup(context.Background(), g, []string{"Name", "Description"})
+		og, _, err = repo.UpdateGroup(context.Background(), og, []string{"Name", "Description"})
+		require.NoError(err, "Failed to reset the group")
+		pg, _, err = repo.UpdateGroup(context.Background(), pg, []string{"Name", "Description"})
 		require.NoError(err, "Failed to reset the group")
 	}
 
-	created, err := ptypes.Timestamp(g.GetCreateTime().GetTimestamp())
+	created, err := ptypes.Timestamp(og.GetCreateTime().GetTimestamp())
 	require.NoError(err, "Error converting proto to timestamp")
 	toMerge := &pbs.UpdateGroupRequest{
-		OrgId: g.GetScopeId(),
-		Id:    g.GetPublicId(),
+		OrgId: og.GetScopeId(),
+		Id:    og.GetPublicId(),
 	}
 
 	cases := []struct {
@@ -400,10 +528,10 @@ func TestUpdate(t *testing.T) {
 			},
 			res: &pbs.UpdateGroupResponse{
 				Item: &pb.Group{
-					Id:          g.GetPublicId(),
+					Id:          og.GetPublicId(),
 					Name:        &wrapperspb.StringValue{Value: "new"},
 					Description: &wrapperspb.StringValue{Value: "desc"},
-					CreatedTime: g.GetCreateTime().GetTimestamp(),
+					CreatedTime: og.GetCreateTime().GetTimestamp(),
 				},
 			},
 			errCode: codes.OK,
@@ -421,10 +549,56 @@ func TestUpdate(t *testing.T) {
 			},
 			res: &pbs.UpdateGroupResponse{
 				Item: &pb.Group{
-					Id:          g.GetPublicId(),
+					Id:          og.GetPublicId(),
 					Name:        &wrapperspb.StringValue{Value: "new"},
 					Description: &wrapperspb.StringValue{Value: "desc"},
-					CreatedTime: g.GetCreateTime().GetTimestamp(),
+					CreatedTime: og.GetCreateTime().GetTimestamp(),
+				},
+			},
+			errCode: codes.OK,
+		},
+		{
+			name: "Update an Existing Project Scoped Group",
+			req: &pbs.UpdateGroupRequest{
+				ProjectId: pg.GetScopeId(),
+				Id:        pg.GetPublicId(),
+				UpdateMask: &field_mask.FieldMask{
+					Paths: []string{"name", "description"},
+				},
+				Item: &pb.Group{
+					Name:        &wrapperspb.StringValue{Value: "new"},
+					Description: &wrapperspb.StringValue{Value: "desc"},
+				},
+			},
+			res: &pbs.UpdateGroupResponse{
+				Item: &pb.Group{
+					Id:          pg.GetPublicId(),
+					Name:        &wrapperspb.StringValue{Value: "new"},
+					Description: &wrapperspb.StringValue{Value: "desc"},
+					CreatedTime: pg.GetCreateTime().GetTimestamp(),
+				},
+			},
+			errCode: codes.OK,
+		},
+		{
+			name: "Multiple Paths in single string",
+			req: &pbs.UpdateGroupRequest{
+				ProjectId: pg.GetScopeId(),
+				Id:        pg.GetPublicId(),
+				UpdateMask: &field_mask.FieldMask{
+					Paths: []string{"name,description"},
+				},
+				Item: &pb.Group{
+					Name:        &wrapperspb.StringValue{Value: "new"},
+					Description: &wrapperspb.StringValue{Value: "desc"},
+				},
+			},
+			res: &pbs.UpdateGroupResponse{
+				Item: &pb.Group{
+					Id:          pg.GetPublicId(),
+					Name:        &wrapperspb.StringValue{Value: "new"},
+					Description: &wrapperspb.StringValue{Value: "desc"},
+					CreatedTime: pg.GetCreateTime().GetTimestamp(),
 				},
 			},
 			errCode: codes.OK,
@@ -473,9 +647,9 @@ func TestUpdate(t *testing.T) {
 			},
 			res: &pbs.UpdateGroupResponse{
 				Item: &pb.Group{
-					Id:          g.GetPublicId(),
+					Id:          og.GetPublicId(),
 					Description: &wrapperspb.StringValue{Value: "default"},
-					CreatedTime: g.GetCreateTime().GetTimestamp(),
+					CreatedTime: og.GetCreateTime().GetTimestamp(),
 				},
 			},
 			errCode: codes.OK,
@@ -493,10 +667,10 @@ func TestUpdate(t *testing.T) {
 			},
 			res: &pbs.UpdateGroupResponse{
 				Item: &pb.Group{
-					Id:          g.GetPublicId(),
+					Id:          og.GetPublicId(),
 					Name:        &wrapperspb.StringValue{Value: "updated"},
 					Description: &wrapperspb.StringValue{Value: "default"},
-					CreatedTime: g.GetCreateTime().GetTimestamp(),
+					CreatedTime: og.GetCreateTime().GetTimestamp(),
 				},
 			},
 			errCode: codes.OK,
@@ -514,10 +688,10 @@ func TestUpdate(t *testing.T) {
 			},
 			res: &pbs.UpdateGroupResponse{
 				Item: &pb.Group{
-					Id:          g.GetPublicId(),
+					Id:          og.GetPublicId(),
 					Name:        &wrapperspb.StringValue{Value: "default"},
 					Description: &wrapperspb.StringValue{Value: "notignored"},
-					CreatedTime: g.GetCreateTime().GetTimestamp(),
+					CreatedTime: og.GetCreateTime().GetTimestamp(),
 				},
 			},
 			errCode: codes.OK,
@@ -541,7 +715,7 @@ func TestUpdate(t *testing.T) {
 		{
 			name: "Cant change Id",
 			req: &pbs.UpdateGroupRequest{
-				Id: g.GetPublicId(),
+				Id: og.GetPublicId(),
 				UpdateMask: &field_mask.FieldMask{
 					Paths: []string{"id"},
 				},
@@ -582,7 +756,7 @@ func TestUpdate(t *testing.T) {
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			defer resetGroup()
+			defer resetGroups()
 			assert := assert.New(t)
 			req := proto.Clone(toMerge).(*pbs.UpdateGroupRequest)
 			proto.Merge(req, tc.req)

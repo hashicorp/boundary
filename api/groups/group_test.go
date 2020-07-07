@@ -1,6 +1,8 @@
 package groups_test
 
 import (
+	"context"
+	"fmt"
 	"net/http"
 	"testing"
 
@@ -10,7 +12,93 @@ import (
 	"github.com/hashicorp/watchtower/internal/iam"
 	"github.com/hashicorp/watchtower/internal/servers/controller"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
+
+type groupCrud interface {
+	CreateGroup(context.Context, *groups.Group) (*groups.Group, *api.Error, error)
+	ReadGroup(context.Context, *groups.Group) (*groups.Group, *api.Error, error)
+	UpdateGroup(context.Context, *groups.Group) (*groups.Group, *api.Error, error)
+	DeleteGroup(context.Context, *groups.Group) (bool, *api.Error, error)
+	ListGroups(ctx context.Context) ([]*groups.Group, *api.Error, error)
+}
+
+func TestGroup_List(t *testing.T) {
+	assert := assert.New(t)
+	tc := controller.NewTestController(t, nil)
+	defer tc.Shutdown()
+
+	client := tc.Client()
+	org := &scopes.Organization{
+		Client: client,
+	}
+	proj, apiErr, err := org.CreateProject(context.Background(), &scopes.Project{})
+	require.NoError(t, err)
+	require.Nil(t, apiErr)
+
+	cases := []struct {
+		name  string
+		scope groupCrud
+	}{
+		{
+			name:  "org",
+			scope: org,
+		},
+		{
+			name:  "proj",
+			scope: proj,
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			ctx := context.Background()
+
+			pl, apiErr, err := tc.scope.ListGroups(ctx)
+			assert.NoError(err)
+			assert.Nil(apiErr)
+			assert.Empty(pl)
+
+			var expected []*groups.Group
+			for i := 0; i < 10; i++ {
+				expected = append(expected, &groups.Group{Name: api.String(fmt.Sprint(i))})
+			}
+
+			expected[0], apiErr, err = tc.scope.CreateGroup(ctx, expected[0])
+			assert.NoError(err)
+			assert.Nil(apiErr)
+
+			pl, apiErr, err = tc.scope.ListGroups(ctx)
+			assert.NoError(err)
+			assert.Nil(apiErr)
+			assert.ElementsMatch(comparableSlice(expected[:1]), comparableSlice(pl))
+
+			for i := 1; i < 10; i++ {
+				expected[i], apiErr, err = tc.scope.CreateGroup(ctx, expected[i])
+				assert.NoError(err)
+				assert.Nil(apiErr)
+			}
+			pl, apiErr, err = tc.scope.ListGroups(ctx)
+			assert.ElementsMatch(comparableSlice(expected), comparableSlice(pl))
+		})
+	}
+}
+
+func comparableSlice(in []*groups.Group) []groups.Group {
+	var filtered []groups.Group
+	for _, i := range in {
+		p := groups.Group{
+			Id:          i.Id,
+			Name:        i.Name,
+			Description: i.Description,
+			CreatedTime: i.CreatedTime,
+			UpdatedTime: i.UpdatedTime,
+			Disabled:    i.Disabled,
+		}
+		filtered = append(filtered, p)
+	}
+	return filtered
+}
 
 func TestGroup_Crud(t *testing.T) {
 	tc := controller.NewTestController(t, nil)
@@ -20,6 +108,10 @@ func TestGroup_Crud(t *testing.T) {
 	org := &scopes.Organization{
 		Client: client,
 	}
+
+	proj, apiErr, err := org.CreateProject(tc.Context(), &scopes.Project{})
+	require.NoError(t, err)
+	require.Nil(t, apiErr)
 
 	checkGroup := func(step string, g *groups.Group, apiErr *api.Error, err error, wantedName string) {
 		assert := assert.New(t)
@@ -35,29 +127,49 @@ func TestGroup_Crud(t *testing.T) {
 		assert.Equal(wantedName, gotName, step)
 	}
 
-	g, apiErr, err := org.CreateGroup(tc.Context(), &groups.Group{Name: api.String("foo")})
-	checkGroup("create", g, apiErr, err, "foo")
+	cases := []struct {
+		name  string
+		scope groupCrud
+	}{
+		{
+			name:  "org",
+			scope: org,
+		},
+		{
+			name:  "project",
+			scope: proj,
+		},
+	}
 
-	g, apiErr, err = org.ReadGroup(tc.Context(), &groups.Group{Id: g.Id})
-	checkGroup("read", g, apiErr, err, "foo")
+	for _, tt := range cases {
+		t.Run(tt.name, func(t *testing.T) {
 
-	g = &groups.Group{Id: g.Id}
-	g.Name = api.String("bar")
-	g, apiErr, err = org.UpdateGroup(tc.Context(), g)
-	checkGroup("update", g, apiErr, err, "bar")
+			g, apiErr, err := tt.scope.CreateGroup(tc.Context(), &groups.Group{Name: api.String("foo")})
+			checkGroup("create", g, apiErr, err, "foo")
 
-	g = &groups.Group{Id: g.Id}
-	g.SetDefault("name")
-	g, apiErr, err = org.UpdateGroup(tc.Context(), g)
-	checkGroup("update", g, apiErr, err, "")
+			g, apiErr, err = tt.scope.ReadGroup(tc.Context(), &groups.Group{Id: g.Id})
+			checkGroup("read", g, apiErr, err, "foo")
 
-	existed, apiErr, err := org.DeleteGroup(tc.Context(), g)
-	assert.NoError(t, err)
-	assert.True(t, existed, "Expected existing user when deleted, but it wasn't.")
+			g = &groups.Group{Id: g.Id}
+			g.Name = api.String("bar")
+			g, apiErr, err = tt.scope.UpdateGroup(tc.Context(), g)
+			checkGroup("update", g, apiErr, err, "bar")
 
-	existed, apiErr, err = org.DeleteGroup(tc.Context(), g)
-	assert.NoError(t, err)
-	assert.False(t, existed, "Expected user to not exist when deleted, but it did.")
+			g = &groups.Group{Id: g.Id}
+			g.SetDefault("name")
+			g, apiErr, err = tt.scope.UpdateGroup(tc.Context(), g)
+			checkGroup("update", g, apiErr, err, "")
+
+			existed, apiErr, err := tt.scope.DeleteGroup(tc.Context(), g)
+			assert.NoError(t, err)
+			assert.True(t, existed, "Expected existing user when deleted, but it wasn't.")
+
+			existed, apiErr, err = tt.scope.DeleteGroup(tc.Context(), g)
+			assert.NoError(t, err)
+			assert.False(t, existed, "Expected user to not exist when deleted, but it did.")
+
+		})
+	}
 }
 
 func TestGroup_Errors(t *testing.T) {
@@ -71,28 +183,50 @@ func TestGroup_Errors(t *testing.T) {
 		Client: client,
 	}
 
-	u, apiErr, err := org.CreateGroup(ctx, &groups.Group{Name: api.String("first")})
-	assert.NoError(err)
-	assert.Nil(apiErr)
-	assert.NotNil(u)
+	proj, apiErr, err := org.CreateProject(tc.Context(), &scopes.Project{})
+	require.NoError(t, err)
+	require.Nil(t, apiErr)
 
-	// Create another resource with the same name.
-	_, apiErr, err = org.CreateGroup(ctx, &groups.Group{Name: api.String("first")})
-	assert.NoError(err)
-	assert.NotNil(apiErr)
+	cases := []struct {
+		name  string
+		scope groupCrud
+	}{
+		{
+			name:  "org",
+			scope: org,
+		},
+		{
+			name:  "project",
+			scope: proj,
+		},
+	}
 
-	_, apiErr, err = org.ReadGroup(ctx, &groups.Group{Id: iam.GroupPrefix + "_doesntexis"})
-	assert.NoError(err)
-	assert.NotNil(apiErr)
-	assert.EqualValues(*apiErr.Status, http.StatusNotFound)
+	for _, tt := range cases {
+		t.Run(tt.name, func(t *testing.T) {
+			u, apiErr, err := tt.scope.CreateGroup(ctx, &groups.Group{Name: api.String("first")})
+			assert.NoError(err)
+			assert.Nil(apiErr)
+			assert.NotNil(u)
 
-	_, apiErr, err = org.ReadGroup(ctx, &groups.Group{Id: "invalid id"})
-	assert.NoError(err)
-	assert.NotNil(apiErr)
-	assert.EqualValues(*apiErr.Status, http.StatusBadRequest)
+			// Create another resource with the same name.
+			_, apiErr, err = tt.scope.CreateGroup(ctx, &groups.Group{Name: api.String("first")})
+			assert.NoError(err)
+			assert.NotNil(apiErr)
 
-	_, apiErr, err = org.UpdateGroup(ctx, &groups.Group{Id: u.Id})
-	assert.NoError(err)
-	assert.NotNil(apiErr)
-	assert.EqualValues(*apiErr.Status, http.StatusBadRequest)
+			_, apiErr, err = tt.scope.ReadGroup(ctx, &groups.Group{Id: iam.GroupPrefix + "_doesntexis"})
+			assert.NoError(err)
+			assert.NotNil(apiErr)
+			assert.EqualValues(*apiErr.Status, http.StatusNotFound)
+
+			_, apiErr, err = tt.scope.ReadGroup(ctx, &groups.Group{Id: "invalid id"})
+			assert.NoError(err)
+			assert.NotNil(apiErr)
+			assert.EqualValues(*apiErr.Status, http.StatusBadRequest)
+
+			_, apiErr, err = tt.scope.UpdateGroup(ctx, &groups.Group{Id: u.Id})
+			assert.NoError(err)
+			assert.NotNil(apiErr)
+			assert.EqualValues(*apiErr.Status, http.StatusBadRequest)
+		})
+	}
 }

@@ -9,6 +9,7 @@ require (
 	github.com/fatih/structs v1.1.0
 	github.com/favadi/protoc-go-inject-tag v1.0.0
 	github.com/ghodss/yaml v1.0.1-0.20190212211648-25d852aebe32
+	github.com/go-bindata/go-bindata/v3 v3.1.3
 	github.com/go-openapi/runtime v0.19.15 // indirect
 	github.com/go-openapi/swag v0.19.9 // indirect
 	github.com/go-openapi/validate v0.19.8 // indirect
@@ -44,7 +45,6 @@ require (
 	github.com/mitchellh/mapstructure v1.3.2
 	github.com/niemeyer/pretty v0.0.0-20200227124842-a10e7caefd8e // indirect
 	github.com/oligot/go-mod-upgrade v0.1.2
-	github.com/ory/dockertest v3.3.5+incompatible
 	github.com/ory/dockertest/v3 v3.6.0
 	github.com/pelletier/go-toml v1.7.0 // indirect
 	github.com/pires/go-proxyproto v0.1.3
