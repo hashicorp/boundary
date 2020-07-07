@@ -29,6 +29,10 @@ func NewRoleGrant(roleId string, grant string, opt ...Option) (*RoleGrant, error
 	if roleId == "" {
 		return nil, fmt.Errorf("new role grant: role id is not set: %w", db.ErrNilParameter)
 	}
+	if grant == "" {
+		return nil, fmt.Errorf("new role grant: grant is empty: %w", db.ErrNilParameter)
+	}
+
 	// Validate that the grant parses successfully. Note that we fake the scope
 	// here to avoid a lookup as the scope is only relevant at actual ACL
 	// checking time and we just care that it parses correctly.
@@ -69,6 +73,10 @@ func (g *RoleGrant) Clone() interface{} {
 
 // VetForWrite implements db.VetForWrite() interface
 func (g *RoleGrant) VetForWrite(ctx context.Context, r db.Reader, opType db.OpType, opt ...db.Option) error {
+	if g.RawGrant == "" {
+		return fmt.Errorf("vet role grant for writing: grant is empty: %w", db.ErrNilParameter)
+	}
+
 	// Validate that the grant parses successfully. Note that we fake the scope
 	// here to avoid a lookup as the scope is only relevant at actual ACL
 	// checking time and we just care that it parses correctly. We may have

@@ -194,6 +194,7 @@ create table iam_role (
     unique(scope_id, public_id)
   );
 
+-- Grants are immutable, which is enforced via the trigger below
 create table iam_role_grant (
     create_time wt_timestamp,
     update_time wt_timestamp,
@@ -202,6 +203,24 @@ create table iam_role_grant (
     canonical_grant text not null,
     primary key(role_id, canonical_grant)
   );
+
+-- iam_immutable_role_grant() ensures that grants assigned to roles are immutable. 
+create or replace function
+  iam_immutable_role_grant()
+  returns trigger
+as $$
+begin
+  if row(new.*) is distinct from row(old.*) then
+    raise exception 'role grants are immutable';
+  end if;
+  return new;
+end;
+$$ language plpgsql;
+
+create trigger immutable_role_grant
+before
+update on iam_role
+  for each row execute procedure iam_immutable_role_grant();
 
 create trigger 
   update_version_column
