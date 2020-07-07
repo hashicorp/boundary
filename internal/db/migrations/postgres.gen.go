@@ -632,7 +632,7 @@ begin
   -- Fetch the type of scope
   select isc.type from iam_scope isc where isc.public_id = new.scope_id into role_scope_type;
   -- Always allowed
-  if role_scope_type = 'msp' then
+  if role_scope_type = 'global' then
     return new;
   end if;
   -- Never allowed; the case where it's set to the same scope ID as the project
