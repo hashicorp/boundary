@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/hashicorp/go-hclog"
+	"github.com/hashicorp/watchtower/internal/servers/controller/common"
 	"google.golang.org/grpc/metadata"
 )
 
@@ -20,7 +21,7 @@ const (
 // TokenAuthenticator returns a function that can be used in grpc-gateway's runtime.WithMetadata ServerOption.
 // It looks at the cookies and headers of the incoming request and returns metadata that can later be
 // used by handlers to build a TokenMetadata using the ToTokenMetadata function.
-func TokenAuthenticator(l hclog.Logger) func(context.Context, *http.Request) metadata.MD {
+func TokenAuthenticator(l hclog.Logger, tokenRepo common.AuthTokenRepoFactory) func(context.Context, *http.Request) metadata.MD {
 	return func(ctx context.Context, req *http.Request) metadata.MD {
 		tMD := TokenMetadata{}
 		if authHeader := req.Header.Get(headerAuthMethod); authHeader != "" {
@@ -42,8 +43,18 @@ func TokenAuthenticator(l hclog.Logger) func(context.Context, *http.Request) met
 			}
 		}
 
-		// TODO: - Lookup/maybe update the last used time of this token,
-		//       - Set the tMD.UserId to the returned token's userid or 0 if no token is returned.
+		repo, err := tokenRepo()
+		if err != nil {
+			l.Error("failed to get authtoken repo", "error", err)
+			return tMD.toMetadata()
+		}
+		at, err := repo.ValidateToken(ctx, tMD.publicId(), tMD.token())
+		if err != nil {
+			l.Error("failed to validate token", "error", err)
+		}
+		if at != nil {
+			tMD.UserId = at.GetIamUserId()
+		}
 
 		return tMD.toMetadata()
 	}
