@@ -125,16 +125,16 @@ func TestScope_GetScope(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
 		w := db.New(conn)
 		org, proj := TestScopes(t, conn)
-		msp := Scope{
-			Scope: &store.Scope{Type: scope.Msp.String(), PublicId: "msp"},
+		global := Scope{
+			Scope: &store.Scope{Type: scope.Global.String(), PublicId: "global"},
 		}
-		mspScope, err := msp.GetScope(context.Background(), w)
+		globalScope, err := global.GetScope(context.Background(), w)
 		require.NoError(err)
-		assert.Nil(mspScope)
+		assert.Nil(globalScope)
 
 		foundScope, err := org.GetScope(context.Background(), w)
 		require.NoError(err)
-		assert.Equal(foundScope.PublicId, "msp")
+		assert.Equal(foundScope.PublicId, "global")
 
 		projectOrg, err := proj.GetScope(context.Background(), w)
 		require.NoError(err)
@@ -168,7 +168,7 @@ func TestScope_ResourceType(t *testing.T) {
 	o, err := NewOrganization()
 	require.NoError(t, err)
 	assert.Equal(t, o.ResourceType(), resource.Organization)
-	assert.Equal(t, o.GetParentId(), resource.Msp.String())
+	assert.Equal(t, o.GetParentId(), resource.Global.String())
 }
 
 func TestScope_Clone(t *testing.T) {
@@ -189,16 +189,16 @@ func TestScope_Clone(t *testing.T) {
 	})
 }
 
-// TestScope_MspErrors tests various expected error conditions related to the
-// MSP scope at a layer below the repository, e.g. within the scope logic or the
+// TestScope_GlobalErrors tests various expected error conditions related to the
+// global scope at a layer below the repository, e.g. within the scope logic or the
 // DB itself
-func TestScope_MspErrors(t *testing.T) {
+func TestScope_GlobalErrors(t *testing.T) {
 	t.Parallel()
 	conn, _ := db.TestSetup(t, "postgres")
 	w := db.New(conn)
 	t.Run("newScope errors", func(t *testing.T) {
 		// Not allowed
-		_, err := newScope(scope.Msp)
+		_, err := newScope(scope.Global)
 		require.Error(t, err)
 
 		// Should fail as there's no scope
@@ -209,18 +209,18 @@ func TestScope_MspErrors(t *testing.T) {
 	t.Run("creation disallowed at vet time", func(t *testing.T) {
 		// Not allowed to create
 		s := allocScope()
-		s.Type = scope.Msp.String()
-		s.PublicId = "msp"
+		s.Type = scope.Global.String()
+		s.PublicId = "global"
 		err := s.VetForWrite(context.Background(), nil, db.CreateOp)
 		require.Error(t, err)
-		assert.True(t, strings.Contains(err.Error(), "msp scope cannot be created"))
+		assert.True(t, strings.Contains(err.Error(), "global scope cannot be created"))
 	})
 	t.Run("check org parent at vet time", func(t *testing.T) {
-		// Org must have msp parent
+		// Org must have global parent
 		s := allocScope()
 		s.Type = scope.Organization.String()
 		s.PublicId = "o_1234"
-		s.ParentId = "msp"
+		s.ParentId = "global"
 		err := s.VetForWrite(context.Background(), nil, db.CreateOp)
 		require.NoError(t, err)
 		s.ParentId = "o_2345"
@@ -230,11 +230,11 @@ func TestScope_MspErrors(t *testing.T) {
 	t.Run("not deletable in db", func(t *testing.T) {
 		// Should not be deletable
 		s := allocScope()
-		s.PublicId = "msp"
+		s.PublicId = "global"
 		// Add this to validate that we did in fact delete
 		err := w.LookupById(context.Background(), &s)
 		require.NoError(t, err)
-		require.Equal(t, s.Type, scope.Msp.String())
+		require.Equal(t, s.Type, scope.Global.String())
 		rows, err := w.Delete(context.Background(), &s)
 		// TODO: It seems when we raise an exception in a delete trigger we get
 		// no error back and instead just nothing deleted. This is fine behavior

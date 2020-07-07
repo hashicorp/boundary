@@ -1,13 +1,13 @@
 begin;
 
 create table iam_scope_type_enm (
-  string text not null primary key check(string in ('unknown', 'msp', 'organization', 'project'))
+  string text not null primary key check(string in ('unknown', 'global', 'organization', 'project'))
 );
 
 insert into iam_scope_type_enm (string)
 values
   ('unknown'),
-  ('msp'),
+  ('global'),
   ('organization'),
   ('project');
 
@@ -19,12 +19,12 @@ create table iam_scope (
     name text,
     type text not null references iam_scope_type_enm(string) check(
       (
-        type = 'msp'
+        type = 'global'
         and parent_id is null
       )
       or (
         type = 'organization'
-        and parent_id = 'msp'
+        and parent_id = 'global'
       )
       or (
         type = 'project'
@@ -35,9 +35,9 @@ create table iam_scope (
     parent_id text references iam_scope(public_id) on delete cascade on update cascade
   );
 
-create table iam_scope_msp (
+create table iam_scope_global (
     scope_id wt_scope_id not null unique references iam_scope(public_id) on delete cascade on update cascade check(
-      scope_id = 'msp'
+      scope_id = 'global'
     ),
     name text unique,
     primary key(scope_id)
@@ -45,8 +45,8 @@ create table iam_scope_msp (
 
 create table iam_scope_organization (
     scope_id wt_scope_id not null unique references iam_scope(public_id) on delete cascade on update cascade,
-    parent_id wt_scope_id not null references iam_scope_msp(scope_id) on delete cascade on update cascade check(
-      parent_id = 'msp'
+    parent_id wt_scope_id not null references iam_scope_global(scope_id) on delete cascade on update cascade check(
+      parent_id = 'global'
     ),
     name text unique,
     primary key(scope_id)
@@ -66,8 +66,8 @@ create or replace function
 as $$ 
 declare parent_type int;
 begin
-  if new.type = 'msp' then
-    insert into iam_scope_msp (scope_id, name)
+  if new.type = 'global' then
+    insert into iam_scope_global (scope_id, name)
     values
       (new.public_id, new.name);
     return new;
@@ -95,22 +95,22 @@ insert on iam_scope
   for each row execute procedure iam_sub_scopes_func();
 
 create or replace function
-  disallow_msp_scope_deletion()
+  disallow_global_scope_deletion()
   returns trigger
 as $$
 begin
-  if new.type = 'msp' then
-    raise exception 'deletion of msp scope not allowed';
+  if new.type = 'global' then
+    raise exception 'deletion of global scope not allowed';
   end if;
   return new;
 end;
 $$ language plpgsql;
 
 create trigger
-  iam_scope_disallow_msp_deletion
+  iam_scope_disallow_global_deletion
 before
 delete on iam_scope
-  for each row execute procedure disallow_msp_scope_deletion();
+  for each row execute procedure disallow_global_scope_deletion();
 
 create or replace function 
   iam_immutable_scope_type_func() 
@@ -158,8 +158,8 @@ create or replace function
 as $$ 
 begin
   if new.name != old.name then
-    if new.type = 'msp' then
-      update iam_scope_msp set name = new.name where scope_id = old.public_id;
+    if new.type = 'global' then
+      update iam_scope_global set name = new.name where scope_id = old.public_id;
       return new;
     end if;
     if new.type = 'organization' then
@@ -183,7 +183,7 @@ update on iam_scope
   for each row execute procedure iam_sub_names();
 
 insert into iam_scope (public_id, name, type, description)
-  values ('msp', 'msp', 'msp', 'MSP Scope');
+  values ('global', 'global', 'global', 'Global Scope');
 
 create table iam_user (
     public_id wt_public_id not null primary key,
@@ -208,7 +208,7 @@ as $$
 declare user_scope_type text;
 begin
   select isc.type from iam_scope isc where isc.public_id = new.scope_id into user_scope_type;
-  if user_scope_type = 'msp' then
+  if user_scope_type = 'global' then
     return new;
   end if;
   if user_scope_type = 'organization' then

@@ -14,7 +14,7 @@ import (
 )
 
 // Scope is used to create a hierarchy of "containers" that encompass the scope of
-// an IAM resource.  Scopes are MSP, Organizations and Projects.
+// an IAM resource.  Scopes are Global, Organizations and Projects.
 type Scope struct {
 	*store.Scope
 
@@ -29,9 +29,9 @@ var _ db.VetForWriter = (*Scope)(nil)
 var _ Clonable = (*Scope)(nil)
 
 func NewOrganization(opt ...Option) (*Scope, error) {
-	msp := allocScope()
-	msp.PublicId = "msp"
-	opt = append(opt, withScope(&msp))
+	global := allocScope()
+	global.PublicId = "global"
+	opt = append(opt, withScope(&global))
 	return newScope(scope.Organization, opt...)
 }
 
@@ -54,7 +54,7 @@ func newScope(scopeType scope.Type, opt ...Option) (*Scope, error) {
 	switch scopeType {
 	case scope.Unknown:
 		return nil, fmt.Errorf("new scope: unknown scope type: %w", db.ErrInvalidParameter)
-	case scope.Msp:
+	case scope.Global:
 		return nil, fmt.Errorf("new scope: invalid scope type: %w", db.ErrInvalidParameter)
 	default:
 		if opts.withScope == nil {
@@ -115,18 +115,18 @@ func (s *Scope) VetForWrite(ctx context.Context, r db.Reader, opType db.OpType, 
 	}
 	if opType == db.CreateOp {
 		switch {
-		case s.Type == scope.Msp.String():
-			return errors.New("msp scope cannot be created")
+		case s.Type == scope.Global.String():
+			return errors.New("global scope cannot be created")
 		case s.ParentId == "":
 			switch s.Type {
 			case scope.Organization.String():
-				return errors.New("organization must have msp parent")
+				return errors.New("organization must have global parent")
 			case scope.Project.String():
 				return errors.New("project has no organization")
 			}
 		case s.Type == scope.Organization.String():
-			if s.ParentId != "msp" {
-				return errors.New("organization's parent must be msp")
+			if s.ParentId != "global" {
+				return errors.New(`organization's parent must be "global"`)
 			}
 		case s.Type == scope.Project.String():
 			parentScope := allocScope()
@@ -145,8 +145,8 @@ func (s *Scope) VetForWrite(ctx context.Context, r db.Reader, opType db.OpType, 
 // ResourceType returns the type of scope
 func (s *Scope) ResourceType() resource.Type {
 	switch s.Type {
-	case scope.Msp.String():
-		return resource.Msp
+	case scope.Global.String():
+		return resource.Global
 	case scope.Organization.String():
 		return resource.Organization
 	case scope.Project.String():
@@ -174,9 +174,9 @@ func (s *Scope) GetScope(ctx context.Context, r db.Reader) (*Scope, error) {
 			return nil, fmt.Errorf("unable to get scope by public id: %w", err)
 		}
 	}
-	// HANDLE_MSP
+	// HANDLE_GLOBAL
 	switch s.Type {
-	case scope.Msp.String():
+	case scope.Global.String():
 		return nil, nil
 	default:
 		var p Scope
@@ -185,8 +185,8 @@ func (s *Scope) GetScope(ctx context.Context, r db.Reader) (*Scope, error) {
 			// no parent id, so use the public_id to find the parent scope. This
 			// won't work for if the scope hasn't been written to the db yet,
 			// like during create but in that case the parent id should be set
-			// for all scopes which are not msp, and the msp case was handled at
-			// HANDLE_MSP
+			// for all scopes which are not global, and the global case was
+			// handled at HANDLE_GLOBAL
 			where := "public_id in (select parent_id from iam_scope where public_id = ?)"
 			if err := r.LookupWhere(ctx, &p, where, s.PublicId); err != nil {
 				return nil, fmt.Errorf("unable to lookup parent public id from public id: %w", err)

@@ -5,7 +5,7 @@ type Type uint32
 
 const (
 	Unknown      Type = 0
-	Msp          Type = 1
+	Global       Type = 1
 	Organization Type = 2
 	Project      Type = 3
 )
@@ -13,7 +13,7 @@ const (
 func (s Type) String() string {
 	return [...]string{
 		"unknown",
-		"msp",
+		"global",
 		"organization",
 		"project",
 	}[s]
@@ -22,7 +22,7 @@ func (s Type) String() string {
 func (s Type) Prefix() string {
 	return [...]string{
 		"unknown",
-		"msp",
+		"global",
 		"o",
 		"p",
 	}[s]
@@ -30,8 +30,8 @@ func (s Type) Prefix() string {
 
 func StringToScopeType(s string) Type {
 	switch s {
-	case Msp.String():
-		return Msp
+	case Global.String():
+		return Global
 	case Organization.String():
 		return Organization
 	case Project.String():

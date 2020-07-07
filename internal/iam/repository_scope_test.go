@@ -525,7 +525,7 @@ func Test_Repository_ListProjects(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			require.NoError(conn.Where("public_id != ? and public_id != 'msp'", org.PublicId).Delete(allocScope()).Error)
+			require.NoError(conn.Where("public_id != ? and public_id != 'global'", org.PublicId).Delete(allocScope()).Error)
 			testProjects := []*Scope{}
 			for i := 0; i < tt.createCnt; i++ {
 				testProjects = append(testProjects, testProject(t, conn, org.PublicId))

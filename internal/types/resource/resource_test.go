@@ -89,8 +89,8 @@ func Test_Resource(t *testing.T) {
 			want:       Target,
 		},
 		{
-			typeString: "msp",
-			want:       Msp,
+			typeString: "global",
+			want:       Global,
 		},
 	}
 	for _, tt := range tests {

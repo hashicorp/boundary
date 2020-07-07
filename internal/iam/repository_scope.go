@@ -25,7 +25,7 @@ func (r *Repository) CreateScope(ctx context.Context, s *Scope, opt ...Option) (
 	switch s.Type {
 	case scope.Unknown.String():
 		return nil, fmt.Errorf("create scope: unknown type: %w", db.ErrInvalidParameter)
-	case scope.Msp.String():
+	case scope.Global.String():
 		return nil, fmt.Errorf("create scope: invalid type: %w", db.ErrInvalidParameter)
 	}
 	opts := getOpts(opt...)
@@ -116,8 +116,8 @@ func (r *Repository) DeleteScope(ctx context.Context, withPublicId string, opt .
 	if withPublicId == "" {
 		return db.NoRowsAffected, fmt.Errorf("delete scope: missing public id %w", db.ErrInvalidParameter)
 	}
-	if withPublicId == scope.Msp.String() {
-		return db.NoRowsAffected, fmt.Errorf("delete scope: invalid to delete msp scope: %w", db.ErrInvalidParameter)
+	if withPublicId == scope.Global.String() {
+		return db.NoRowsAffected, fmt.Errorf("delete scope: invalid to delete global scope: %w", db.ErrInvalidParameter)
 	}
 	scope := allocScope()
 	scope.PublicId = withPublicId
@@ -147,7 +147,7 @@ func (r *Repository) ListProjects(ctx context.Context, withOrganizationId string
 // ListOrganizations and supports the WithLimit option.
 func (r *Repository) ListOrganizations(ctx context.Context, opt ...Option) ([]*Scope, error) {
 	var organizations []*Scope
-	err := r.list(ctx, &organizations, "parent_id = ? and type = ?", []interface{}{"msp", scope.Organization.String()}, opt...)
+	err := r.list(ctx, &organizations, "parent_id = ? and type = ?", []interface{}{"global", scope.Organization.String()}, opt...)
 	if err != nil {
 		return nil, fmt.Errorf("list organizations: %w", err)
 	}

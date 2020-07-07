@@ -4,7 +4,7 @@ drop table iam_group cascade;
 drop table iam_user cascade;
 drop table iam_scope_project cascade;
 drop table iam_scope_organization cascade;
-drop table iam_scope_msp cascade;
+drop table iam_scope_global cascade;
 drop table iam_scope cascade;
 drop table iam_scope_type_enm cascade;
 drop table iam_role cascade;
