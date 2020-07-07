@@ -48,7 +48,6 @@ require (
 	github.com/mitchellh/mapstructure v1.3.2
 	github.com/niemeyer/pretty v0.0.0-20200227124842-a10e7caefd8e // indirect
 	github.com/oligot/go-mod-upgrade v0.1.2
-	github.com/ory/dockertest v3.3.5+incompatible
 	github.com/ory/dockertest/v3 v3.6.0
 	github.com/pelletier/go-toml v1.7.0 // indirect
 	github.com/pires/go-proxyproto v0.1.3

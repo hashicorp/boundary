@@ -17,13 +17,7 @@ import (
 
 func TestRepository_CreateGroup(t *testing.T) {
 	t.Parallel()
-	cleanup, conn, _ := db.TestSetup(t, "postgres")
-	defer func() {
-		err := cleanup()
-		assert.NoError(t, err)
-		err = conn.Close()
-		assert.NoError(t, err)
-	}()
+	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
 	repo, err := NewRepository(rw, rw, wrapper)
@@ -178,13 +172,7 @@ func TestRepository_CreateGroup(t *testing.T) {
 
 func TestRepository_UpdateGroup(t *testing.T) {
 	t.Parallel()
-	cleanup, conn, _ := db.TestSetup(t, "postgres")
-	defer func() {
-		err := cleanup()
-		assert.NoError(t, err)
-		err = conn.Close()
-		assert.NoError(t, err)
-	}()
+	conn, _ := db.TestSetup(t, "postgres")
 	a := assert.New(t)
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
@@ -453,13 +441,7 @@ func TestRepository_UpdateGroup(t *testing.T) {
 
 func TestRepository_DeleteGroup(t *testing.T) {
 	t.Parallel()
-	cleanup, conn, _ := db.TestSetup(t, "postgres")
-	defer func() {
-		err := cleanup()
-		assert.NoError(t, err)
-		err = conn.Close()
-		assert.NoError(t, err)
-	}()
+	conn, _ := db.TestSetup(t, "postgres")
 	a := assert.New(t)
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
@@ -543,13 +525,7 @@ func TestRepository_DeleteGroup(t *testing.T) {
 
 func TestRepository_ListGroups(t *testing.T) {
 	t.Parallel()
-	cleanup, conn, _ := db.TestSetup(t, "postgres")
-	defer func() {
-		err := cleanup()
-		assert.NoError(t, err)
-		err = conn.Close()
-		assert.NoError(t, err)
-	}()
+	conn, _ := db.TestSetup(t, "postgres")
 	const testLimit = 10
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)

@@ -18,13 +18,7 @@ import (
 
 func TestNewRole(t *testing.T) {
 	t.Parallel()
-	cleanup, conn, _ := db.TestSetup(t, "postgres")
-	defer func() {
-		err := cleanup()
-		assert.NoError(t, err)
-		err = conn.Close()
-		assert.NoError(t, err)
-	}()
+	conn, _ := db.TestSetup(t, "postgres")
 	org, proj := TestScopes(t, conn)
 	id := testId(t)
 
@@ -100,13 +94,7 @@ func TestNewRole(t *testing.T) {
 
 func Test_RoleCreate(t *testing.T) {
 	t.Parallel()
-	cleanup, conn, _ := db.TestSetup(t, "postgres")
-	defer func() {
-		err := cleanup()
-		assert.NoError(t, err)
-		err = conn.Close()
-		assert.NoError(t, err)
-	}()
+	conn, _ := db.TestSetup(t, "postgres")
 	org, proj := TestScopes(t, conn)
 	type args struct {
 		role *Role
@@ -215,13 +203,7 @@ func Test_RoleCreate(t *testing.T) {
 
 func Test_RoleUpdate(t *testing.T) {
 	t.Parallel()
-	cleanup, conn, _ := db.TestSetup(t, "postgres")
-	defer func() {
-		err := cleanup()
-		assert.NoError(t, err)
-		err = conn.Close()
-		assert.NoError(t, err)
-	}()
+	conn, _ := db.TestSetup(t, "postgres")
 	id := testId(t)
 	org, proj := TestScopes(t, conn)
 	org2, proj2 := TestScopes(t, conn)
@@ -456,14 +438,7 @@ func Test_RoleUpdate(t *testing.T) {
 
 func Test_RoleDelete(t *testing.T) {
 	t.Parallel()
-	cleanup, conn, _ := db.TestSetup(t, "postgres")
-	defer func() {
-		err := cleanup()
-		assert.NoError(t, err)
-		err = conn.Close()
-		assert.NoError(t, err)
-	}()
-
+	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	id := testId(t)
 	org, _ := TestScopes(t, conn)
@@ -532,13 +507,7 @@ func TestRole_ResourceType(t *testing.T) {
 
 func TestRole_GetScope(t *testing.T) {
 	t.Parallel()
-	cleanup, conn, _ := db.TestSetup(t, "postgres")
-	defer func() {
-		err := cleanup()
-		assert.NoError(t, err)
-		err = conn.Close()
-		assert.NoError(t, err)
-	}()
+	conn, _ := db.TestSetup(t, "postgres")
 	org, proj := TestScopes(t, conn)
 
 	t.Run("valid-org", func(t *testing.T) {
@@ -561,13 +530,7 @@ func TestRole_GetScope(t *testing.T) {
 
 func TestRole_Clone(t *testing.T) {
 	t.Parallel()
-	cleanup, conn, _ := db.TestSetup(t, "postgres")
-	defer func() {
-		err := cleanup()
-		assert.NoError(t, err)
-		err = conn.Close()
-		assert.NoError(t, err)
-	}()
+	conn, _ := db.TestSetup(t, "postgres")
 	org, _ := TestScopes(t, conn)
 	t.Run("valid", func(t *testing.T) {
 		assert := assert.New(t)
