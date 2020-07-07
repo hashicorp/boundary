@@ -1,4 +1,4 @@
-// Package authtoken provides an authoken with an encrypted value and
+// Package authtoken provides an authtoken with an encrypted value and
 // an associated expiration time.  It also provides a repository which
 // manages the lifetime of the token.
 //
