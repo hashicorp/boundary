@@ -72,6 +72,74 @@
         ]
       }
     },
+    "/v1/orgs/{org_id}/auth-methods": {
+      "get": {
+        "summary": "Lists all AuthMethods",
+        "operationId": "AuthMethodService_ListAuthMethods",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.services.v1.ListAuthMethodsResponse"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "org_id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "view",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "controller.api.services.v1.AuthMethodService"
+        ]
+      }
+    },
+    "/v1/orgs/{org_id}/auth-methods/{id}": {
+      "get": {
+        "summary": "Gets a single AuthMethod",
+        "operationId": "AuthMethodService_GetAuthMethod",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/controller.api.resources.auth.v1.AuthMethod"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "org_id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "view",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "controller.api.services.v1.AuthMethodService"
+        ]
+      }
+    },
     "/v1/orgs/{org_id}/groups": {
       "get": {
         "summary": "Lists all Groups",
@@ -2607,6 +2675,41 @@
     }
   },
   "definitions": {
+    "controller.api.resources.auth.v1.AuthMethod": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "The ID of the AuthMethod\nOutput only.",
+          "readOnly": true
+        },
+        "name": {
+          "type": "string",
+          "title": "Optional name for identification purposes"
+        },
+        "description": {
+          "type": "string",
+          "title": "Optional user-set descripton for identification purposes"
+        },
+        "created_time": {
+          "type": "string",
+          "format": "date-time",
+          "description": "The time this resource was created\nOutput only.",
+          "readOnly": true
+        },
+        "updated_time": {
+          "type": "string",
+          "format": "date-time",
+          "description": "The time this resource was last updated.\nOutput only.",
+          "readOnly": true
+        },
+        "type": {
+          "type": "string",
+          "description": "The auth method type.  This can be \"password\" or \"oidc\"."
+        }
+      },
+      "title": "AuthMethod contains all fields related to a AuthMethod resource"
+    },
     "controller.api.resources.authtokens.v1.AuthToken": {
       "type": "object",
       "properties": {
@@ -3147,6 +3250,14 @@
         }
       }
     },
+    "controller.api.services.v1.GetAuthMethodResponse": {
+      "type": "object",
+      "properties": {
+        "item": {
+          "$ref": "#/definitions/controller.api.resources.auth.v1.AuthMethod"
+        }
+      }
+    },
     "controller.api.services.v1.GetGroupResponse": {
       "type": "object",
       "properties": {
@@ -3208,6 +3319,17 @@
       "properties": {
         "item": {
           "$ref": "#/definitions/controller.api.resources.users.v1.User"
+        }
+      }
+    },
+    "controller.api.services.v1.ListAuthMethodsResponse": {
+      "type": "object",
+      "properties": {
+        "items": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/controller.api.resources.auth.v1.AuthMethod"
+          }
         }
       }
     },

@@ -1,0 +1,32 @@
+syntax = "proto3";
+
+package controller.api.resources.auth.v1;
+
+option go_package = "github.com/hashicorp/watchtower/internal/gen/controller/api/resources/auth;auth";
+
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/wrappers.proto";
+
+// AuthMethod contains all fields related to a AuthMethod resource
+message AuthMethod {
+	// The ID of the AuthMethod
+	// Output only.
+	string id = 1;
+
+	// Optional name for identification purposes
+	google.protobuf.StringValue name = 2;
+
+	// Optional user-set descripton for identification purposes
+	google.protobuf.StringValue description = 3;
+
+	// The time this resource was created
+	// Output only.
+	google.protobuf.Timestamp created_time = 4 [json_name="created_time"];
+
+	// The time this resource was last updated.
+	// Output only.
+	google.protobuf.Timestamp updated_time = 5 [json_name="updated_time"];
+
+	// The auth method type.  This can be "password" or "oidc".
+	string type = 6;
+}

@@ -1,0 +1,57 @@
+syntax = "proto3";
+
+package controller.api.services.v1;
+
+option go_package = "github.com/hashicorp/watchtower/internal/gen/controller/api/services;services";
+
+import "protoc-gen-swagger/options/annotations.proto";
+import "google/api/annotations.proto";
+import "controller/api/resources/auth/v1/auth_method.proto";
+
+service AuthMethodService {
+  // GetAuthMethod returns a stored AuthMethod if present.  The provided request
+  // must include the org and auth method id for the auth method being retrieved. If
+  // any of those ids are missing, malformed or reference a non existing
+  // resource an error is returned.
+  rpc GetAuthMethod(GetAuthMethodRequest) returns (GetAuthMethodResponse) {
+    option (google.api.http) = {
+      get: "/v1/orgs/{org_id}/auth-methods/{id}"
+      response_body: "item"
+    };
+    option (grpc.gateway.protoc_gen_swagger.options.openapiv2_operation) = {
+      summary: "Gets a single AuthMethod"
+    };
+  }
+
+  // ListAuthMethods returns a list of stored auth methods which exist inside the org
+  // referenced inside the request.  The request must include the org id for
+  // the auth methods being retrieved.  If the org id is missing, malformed, or
+  // reference a non existing organization, an error is returned.
+  rpc ListAuthMethods(ListAuthMethodsRequest) returns (ListAuthMethodsResponse) {
+    option (google.api.http) = {
+      get: "/v1/orgs/{org_id}/auth-methods"
+    };
+    option (grpc.gateway.protoc_gen_swagger.options.openapiv2_operation) = {
+      summary: "Lists all AuthMethods"
+    };
+  }
+}
+
+message GetAuthMethodRequest {
+  string org_id = 1;
+  string id = 2;
+  string view = 3;
+}
+
+message GetAuthMethodResponse {
+  resources.auth.v1.AuthMethod item = 1;
+}
+
+message ListAuthMethodsRequest {
+  string org_id = 1;
+  string view = 2;
+}
+
+message ListAuthMethodsResponse {
+  repeated resources.auth.v1.AuthMethod items = 1;
+}
