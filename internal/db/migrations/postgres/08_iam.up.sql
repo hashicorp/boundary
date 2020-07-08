@@ -1,6 +1,5 @@
 BEGIN;
 
-
 create table iam_group_member_user (
   create_time wt_timestamp,
   group_id wt_public_id references iam_group(public_id) on delete cascade on update cascade,
@@ -42,7 +41,7 @@ $$ language plpgsql;
 
 
 CREATE TABLE iam_auth_method (
-    public_id wt_public_id not null primary key, 
+    public_id wt_public_id primary key, 
     create_time wt_timestamp,
     update_time wt_timestamp,
     name text,
@@ -54,27 +53,32 @@ CREATE TABLE iam_auth_method (
   );
 
 CREATE TABLE iam_auth_method_type_enm (
-    string text NOT NULL primary key CHECK(string IN ('unknown', 'userpass', 'oidc'))
+    string text primary key CHECK(string IN ('unknown', 'password', 'oidc'))
   );
 INSERT INTO iam_auth_method_type_enm (string)
 values
   ('unknown'),
-  ('userpass'),
+  ('password'),
   ('oidc');
 ALTER TABLE iam_auth_method
 ADD
   FOREIGN KEY (type) REFERENCES iam_auth_method_type_enm(string);
 
 CREATE TABLE iam_action_enm (
-    string text NOT NULL primary key CHECK(
+    string text primary key CHECK(
       string IN (
         'unknown',
         'list',
         'create',
         'update',
-        'edit',
+        'read',
         'delete',
-        'authen'
+        'authenticate',
+        'all',
+        'connect',
+        'add-grants',
+        'delete-grants',
+        'set-grants'
       )
     )
   );
@@ -85,20 +89,13 @@ values
   ('list'),
   ('create'),
   ('update'),
-  ('edit'),
+  ('read'),
   ('delete'),
-  ('authen');
-
-
-
-
-CREATE TABLE iam_role_grant (
-    public_id wt_public_id not null primary key,
-    create_time wt_timestamp,
-    update_time wt_timestamp,
-    description text,
-    role_id wt_public_id NOT NULL REFERENCES iam_role(public_id) ON DELETE CASCADE ON UPDATE CASCADE,
-    "grant" text NOT NULL
-  );
+  ('authenticate'),
+  ('all'),
+  ('connect'),
+  ('add-grants'),
+  ('delete-grants'),
+  ('set-grants');
 
   COMMIT;

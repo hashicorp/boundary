@@ -166,7 +166,7 @@ func Test_RoleCreate(t *testing.T) {
 				}(),
 			},
 			wantErr:    true,
-			wantErrMsg: "create: vet for write failed scope is not found",
+			wantErrMsg: "create: vet for write failed: scope is not found",
 		},
 	}
 
@@ -244,7 +244,7 @@ func Test_RoleUpdate(t *testing.T) {
 				scopeIdOverride: org.PublicId,
 			},
 			wantErr:    true,
-			wantErrMsg: "update: vet for write failed not allowed to change a resource's scope",
+			wantErrMsg: "update: vet for write failed: not allowed to change a resource's scope",
 		},
 		{
 			name: "proj-scope-id-not-in-mask",
@@ -275,7 +275,7 @@ func Test_RoleUpdate(t *testing.T) {
 			},
 			wantErr:    true,
 			wantDup:    true,
-			wantErrMsg: `update: failed pq: duplicate key value violates unique constraint "iam_role_name_scope_id_key"`,
+			wantErrMsg: `update: failed: pq: duplicate key value violates unique constraint "iam_role_name_scope_id_key"`,
 		},
 		{
 			name: "set description null",
@@ -525,6 +525,9 @@ func TestRole_Actions(t *testing.T) {
 	assert.Equal(a[action.Update.String()], action.Update)
 	assert.Equal(a[action.Read.String()], action.Read)
 	assert.Equal(a[action.Delete.String()], action.Delete)
+	assert.Equal(a[action.AddGrants.String()], action.AddGrants)
+	assert.Equal(a[action.DeleteGrants.String()], action.DeleteGrants)
+	assert.Equal(a[action.SetGrants.String()], action.SetGrants)
 }
 
 func TestRole_ResourceType(t *testing.T) {

@@ -79,9 +79,13 @@ func (role *Role) GetScope(ctx context.Context, r db.Reader) (*Scope, error) {
 // ResourceType returns the type of the Role.
 func (*Role) ResourceType() resource.Type { return resource.Role }
 
-// Actions returns the  available actions for Role.
+// Actions returns the available actions for Role.
 func (*Role) Actions() map[string]action.Type {
-	return CrudActions()
+	ret := CrudActions()
+	ret[action.AddGrants.String()] = action.AddGrants
+	ret[action.DeleteGrants.String()] = action.DeleteGrants
+	ret[action.SetGrants.String()] = action.SetGrants
+	return ret
 }
 
 // TableName returns the tablename to override the default gorm table name.

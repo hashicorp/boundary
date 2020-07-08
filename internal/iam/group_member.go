@@ -3,7 +3,6 @@ package iam
 import (
 	"context"
 	"errors"
-	"fmt"
 
 	"github.com/hashicorp/watchtower/internal/db"
 	"github.com/hashicorp/watchtower/internal/iam/store"
@@ -52,28 +51,22 @@ func (g *Group) AddUser(userId string, opt ...db.Option) (GroupMember, error) {
 
 // Members returns the members of the group (Users)
 func (g *Group) Members(ctx context.Context, r db.Reader) ([]GroupMember, error) {
-	const where = "group_id = ? and type = ?"
-	viewMembers := []*groupMemberView{}
-	if err := r.SearchWhere(ctx, &viewMembers, where, []interface{}{g.PublicId, UserMemberType.String()}); err != nil {
+	const where = "group_id = ?"
+	viewMembers := []*GroupMemberUser{}
+	if err := r.SearchWhere(ctx, &viewMembers, where, []interface{}{g.PublicId}); err != nil {
 		return nil, err
 	}
 
 	members := []GroupMember{}
 	for _, m := range viewMembers {
-		switch m.Type {
-		case UserMemberType.String():
-			gm := &GroupMemberUser{
-				GroupMemberUser: &store.GroupMemberUser{
-					CreateTime: m.CreateTime,
-					GroupId:    m.GroupId,
-					MemberId:   m.MemberId,
-				},
-			}
-			members = append(members, gm)
-		default:
-			return nil, fmt.Errorf("error unsupported member type: %s", m.Type)
+		gm := &GroupMemberUser{
+			GroupMemberUser: &store.GroupMemberUser{
+				CreateTime: m.CreateTime,
+				GroupId:    m.GroupId,
+				MemberId:   m.MemberId,
+			},
 		}
-
+		members = append(members, gm)
 	}
 	return members, nil
 }

@@ -1,7 +1,7 @@
 begin;
 
 create table iam_scope_type_enm (
-  string text not null primary key check(string in ('unknown', 'organization', 'project'))
+  string text primary key check(string in ('unknown', 'organization', 'project'))
 );
 
 insert into iam_scope_type_enm (string)
@@ -142,7 +142,7 @@ update on iam_scope
 
 
 create table iam_user (
-    public_id wt_public_id not null primary key,
+    public_id wt_public_id primary key,
     create_time wt_timestamp,
     update_time wt_timestamp,
     name text,
@@ -217,7 +217,7 @@ end;
 $$ language plpgsql;
 
 create table iam_role (
-    public_id wt_public_id not null primary key,
+    public_id wt_public_id primary key,
     create_time wt_timestamp,
     update_time wt_timestamp,
     name text,
@@ -236,6 +236,31 @@ create table iam_role (
     -- add unique index so a composite fk can be declared.
     unique(scope_id, public_id)
   );
+
+-- Grants are immutable, which is enforced via the trigger below
+create table iam_role_grant (
+    create_time wt_timestamp,
+    update_time wt_timestamp,
+    role_id wt_public_id not null references iam_role(public_id) on delete cascade on update cascade,
+    raw_grant text not null,
+    canonical_grant text not null,
+    primary key(role_id, canonical_grant)
+  );
+
+-- iam_immutable_role_grant() ensures that grants assigned to roles are immutable. 
+create or replace function
+  iam_immutable_role_grant()
+  returns trigger
+as $$
+begin
+  raise exception 'role grants are immutable';
+end;
+$$ language plpgsql;
+
+create trigger immutable_role_grant
+before
+update on iam_role_grant
+  for each row execute procedure iam_immutable_role_grant();
 
 create trigger 
   update_version_column
@@ -384,10 +409,7 @@ create or replace function
   returns trigger
 as $$
 begin
-  if row(new.*) is distinct from row(old.*) then
     raise exception 'roles are immutable';
-  end if;
-  return new;
 end;
 $$ language plpgsql;
 

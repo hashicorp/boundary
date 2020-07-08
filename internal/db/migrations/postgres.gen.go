@@ -12,6 +12,7 @@ begin;
 
 drop domain wt_timestamp;
 drop domain wt_public_id;
+drop domain wt_private_id;
 drop domain wt_version;
 
 drop function default_create_time;
@@ -33,6 +34,13 @@ check(
   length(trim(value)) > 10
 );
 comment on domain wt_public_id is
+'Random ID generated with github.com/hashicorp/vault/sdk/helper/base62';
+
+create domain wt_private_id as text
+check(
+  length(trim(value)) > 10
+);
+comment on domain wt_private_id is
 'Random ID generated with github.com/hashicorp/vault/sdk/helper/base62';
 
 create domain wt_timestamp as
@@ -420,6 +428,7 @@ drop table iam_scope_type_enm cascade;
 drop table iam_role cascade;
 drop table iam_group_role cascade;
 drop table iam_user_role cascade;
+drop table iam_role_grant cascade;
 drop view iam_principal_role cascade;
 
 drop function iam_sub_names cascade;
@@ -440,7 +449,7 @@ COMMIT;
 begin;
 
 create table iam_scope_type_enm (
-  string text not null primary key check(string in ('unknown', 'organization', 'project'))
+  string text primary key check(string in ('unknown', 'organization', 'project'))
 );
 
 insert into iam_scope_type_enm (string)
@@ -581,7 +590,7 @@ update on iam_scope
 
 
 create table iam_user (
-    public_id wt_public_id not null primary key,
+    public_id wt_public_id primary key,
     create_time wt_timestamp,
     update_time wt_timestamp,
     name text,
@@ -656,7 +665,7 @@ end;
 $$ language plpgsql;
 
 create table iam_role (
-    public_id wt_public_id not null primary key,
+    public_id wt_public_id primary key,
     create_time wt_timestamp,
     update_time wt_timestamp,
     name text,
@@ -675,6 +684,34 @@ create table iam_role (
     -- add unique index so a composite fk can be declared.
     unique(scope_id, public_id)
   );
+
+-- Grants are immutable, which is enforced via the trigger below
+create table iam_role_grant (
+    create_time wt_timestamp,
+    update_time wt_timestamp,
+    role_id wt_public_id not null references iam_role(public_id) on delete cascade on update cascade,
+    raw_grant text not null,
+    canonical_grant text not null,
+    primary key(role_id, canonical_grant)
+  );
+
+-- iam_immutable_role_grant() ensures that grants assigned to roles are immutable. 
+create or replace function
+  iam_immutable_role_grant()
+  returns trigger
+as $$
+begin
+  if row(new.*) is distinct from row(old.*) then
+    raise exception 'role grants are immutable';
+  end if;
+  return new;
+end;
+$$ language plpgsql;
+
+create trigger immutable_role_grant
+before
+update on iam_role_grant
+  for each row execute procedure iam_immutable_role_grant();
 
 create trigger 
   update_version_column
@@ -976,7 +1013,6 @@ drop table if exists iam_group_member_user cascade;
 drop view if exists iam_group_member;
 drop table if exists iam_auth_method_type_enm cascade;
 drop table if exists iam_action_enm cascade;
-drop table if exists iam_role_grant cascade;
 drop view if exists iam_assigned_role;
 
 
@@ -987,7 +1023,6 @@ COMMIT;
 		name: "08_iam.up.sql",
 		bytes: []byte(`
 BEGIN;
-
 
 create table iam_group_member_user (
   create_time wt_timestamp,
@@ -1030,7 +1065,7 @@ $$ language plpgsql;
 
 
 CREATE TABLE iam_auth_method (
-    public_id wt_public_id not null primary key, 
+    public_id wt_public_id primary key, 
     create_time wt_timestamp,
     update_time wt_timestamp,
     name text,
@@ -1042,27 +1077,32 @@ CREATE TABLE iam_auth_method (
   );
 
 CREATE TABLE iam_auth_method_type_enm (
-    string text NOT NULL primary key CHECK(string IN ('unknown', 'userpass', 'oidc'))
+    string text primary key CHECK(string IN ('unknown', 'password', 'oidc'))
   );
 INSERT INTO iam_auth_method_type_enm (string)
 values
   ('unknown'),
-  ('userpass'),
+  ('password'),
   ('oidc');
 ALTER TABLE iam_auth_method
 ADD
   FOREIGN KEY (type) REFERENCES iam_auth_method_type_enm(string);
 
 CREATE TABLE iam_action_enm (
-    string text NOT NULL primary key CHECK(
+    string text primary key CHECK(
       string IN (
         'unknown',
         'list',
         'create',
         'update',
-        'edit',
+        'read',
         'delete',
-        'authen'
+        'authenticate',
+        'all',
+        'connect',
+        'add-grants',
+        'delete-grants',
+        'set-grants'
       )
     )
   );
@@ -1073,21 +1113,14 @@ values
   ('list'),
   ('create'),
   ('update'),
-  ('edit'),
+  ('read'),
   ('delete'),
-  ('authen');
-
-
-
-
-CREATE TABLE iam_role_grant (
-    public_id wt_public_id not null primary key,
-    create_time wt_timestamp,
-    update_time wt_timestamp,
-    description text,
-    role_id wt_public_id NOT NULL REFERENCES iam_role(public_id) ON DELETE CASCADE ON UPDATE CASCADE,
-    "grant" text NOT NULL
-  );
+  ('authenticate'),
+  ('all'),
+  ('connect'),
+  ('add-grants'),
+  ('delete-grants'),
+  ('set-grants');
 
   COMMIT;
 

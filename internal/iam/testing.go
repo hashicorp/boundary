@@ -125,6 +125,18 @@ func TestRole(t *testing.T, conn *gorm.DB, scopeId string, opt ...Option) *Role 
 	return role
 }
 
+func TestRoleGrant(t *testing.T, conn *gorm.DB, roleId, grant string, opt ...Option) *RoleGrant {
+	t.Helper()
+	require := require.New(t)
+	rw := db.New(conn)
+
+	g, err := NewRoleGrant(roleId, grant, opt...)
+	require.NoError(err)
+	err = rw.Create(context.Background(), g)
+	require.NoError(err)
+	return g
+}
+
 // TestGroup creates a group suitable for testing.
 func TestGroup(t *testing.T, conn *gorm.DB, scopeId string, opt ...Option) *Group {
 	t.Helper()

@@ -1,6 +1,7 @@
 package db
 
 import (
+	"strings"
 	"testing"
 	"time"
 
@@ -10,16 +11,16 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestDomain_PublicId(t *testing.T) {
+func TestDomain_PublicPrivateId(t *testing.T) {
 	const (
-		createTable = `
-create table if not exists test_table_public_id (
+		createTableBase = `
+create table if not exists test_table_{{rep}}_id (
   id bigint generated always as identity primary key,
-  public_id wt_public_id
+  {{rep}}_id wt_{{rep}}_id
 );
 `
-		insert = `
-insert into test_table_public_id (public_id)
+		insertBase = `
+insert into test_table_{{rep}}_id ({{rep}}_id)
 values ($1)
 returning id;
 `
@@ -27,41 +28,47 @@ returning id;
 
 	conn, _ := TestSetup(t, "postgres")
 	db := conn.DB()
-	if _, err := db.Exec(createTable); err != nil {
-		t.Fatalf("query: \n%s\n error: %s", createTable, err)
-	}
 
-	failTests := []string{
-		" ",
-		"bar",
-		"00000009",
-	}
-	for _, tt := range failTests {
-		value := tt
-		t.Run(tt, func(t *testing.T) {
-			t.Logf("insert value: %q", value)
-			if _, err := db.Query(insert, value); err == nil {
-				t.Errorf("want error, got no error for inserting public_id: %s", value)
-			}
-		})
-	}
+	for _, typ := range []string{"public", "private"} {
+		createTable := strings.Replace(createTableBase, "{{rep}}", typ, -1)
+		insert := strings.Replace(insertBase, "{{rep}}", typ, -1)
 
-	okTests := []string{
-		"l1Ocw0TpHn800CekIxIXlmQqRDgFDfYl",
-		"00000000010000000002000000000312",
-		"00000000010000000002000000000032",
-		"12345678901234567890123456789012",
-		"ec2_12345678901234567890123456789012",
-		"prj_12345678901234567890123456789012",
-	}
-	for _, tt := range okTests {
-		value := tt
-		t.Run(tt, func(t *testing.T) {
-			t.Logf("insert value: %q", value)
-			if _, err := db.Query(insert, value); err != nil {
-				t.Errorf("%s: want no error, got error %v", value, err)
-			}
-		})
+		if _, err := db.Exec(createTable); err != nil {
+			t.Fatalf("query: \n%s\n error: %s", createTable, err)
+		}
+
+		failTests := []string{
+			" ",
+			"bar",
+			"00000009",
+		}
+		for _, tt := range failTests {
+			value := tt
+			t.Run(tt, func(t *testing.T) {
+				t.Logf("insert value: %q", value)
+				if _, err := db.Query(insert, value); err == nil {
+					t.Errorf("want error, got no error for inserting public_id: %s", value)
+				}
+			})
+		}
+
+		okTests := []string{
+			"l1Ocw0TpHn800CekIxIXlmQqRDgFDfYl",
+			"00000000010000000002000000000312",
+			"00000000010000000002000000000032",
+			"12345678901234567890123456789012",
+			"ec2_12345678901234567890123456789012",
+			"prj_12345678901234567890123456789012",
+		}
+		for _, tt := range okTests {
+			value := tt
+			t.Run(tt, func(t *testing.T) {
+				t.Logf("insert value: %q", value)
+				if _, err := db.Query(insert, value); err != nil {
+					t.Errorf("%s: want no error, got error %v", value, err)
+				}
+			})
+		}
 	}
 }
 

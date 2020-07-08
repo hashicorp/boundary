@@ -380,7 +380,7 @@ func TestRepository_UpdateRole(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			assert := assert.New(t)
+			require, assert := require.New(t), assert.New(t)
 			if tt.wantDup {
 				r := TestRole(t, conn, org.PublicId)
 				r.Name = tt.args.name
@@ -413,7 +413,8 @@ func TestRepository_UpdateRole(t *testing.T) {
 				assert.True(errors.Is(db.ErrRecordNotFound, err))
 				return
 			}
-			assert.NoError(err)
+			require.NoError(err)
+			require.NotNil(roleAfterUpdate)
 			assert.Equal(tt.wantRowsUpdate, updatedRows)
 			switch tt.name {
 			case "valid-no-op":
