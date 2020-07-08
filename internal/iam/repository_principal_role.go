@@ -169,6 +169,7 @@ func (r *Repository) SetPrincipalRoles(ctx context.Context, roleId string, roleV
 		db.StdRetryCnt,
 		db.ExpBackoff{},
 		func(reader db.Reader, w db.Writer) error {
+
 			// we need a roleTicket, which won't be redeemed until all the other
 			// writes are successful.  We can't just use a single ticket because
 			// we need to write oplog entries for deletes and adds
@@ -187,14 +188,17 @@ func (r *Repository) SetPrincipalRoles(ctx context.Context, roleId string, roleV
 			if rowsUpdated != 1 {
 				return fmt.Errorf("set principal roles: updated role and %d rows updated", rowsUpdated)
 			}
+			msgs := make([]*oplog.Message, 0, 5)
+			metadata := oplog.Metadata{
+				"op-type":            []string{oplog.OpType_OP_TYPE_UPDATE.String()},
+				"scope-id":           []string{scope.PublicId},
+				"scope-type":         []string{scope.Type},
+				"resource-public-id": []string{roleId},
+			}
+			msgs = append(msgs, &roleOplogMsg)
+
 			if len(toSet.deleteUserRoles) > 0 || len(toSet.deleteGroupRoles) > 0 {
-				msgs := make([]*oplog.Message, 0, 2)
-				// deleteTicket which will be redeemed when we write the oplog
-				// for these deletes
-				deleteTicket, err := w.GetTicket(&principalRoleView{})
-				if err != nil {
-					return fmt.Errorf("set principal roles: unable to get ticket for principal role deletes: %w", err)
-				}
+				metadata["op-type"] = append(metadata["op-type"], oplog.OpType_OP_TYPE_DELETE.String())
 				if len(toSet.deleteUserRoles) > 0 {
 					userOplogMsgs := make([]*oplog.Message, 0, len(toSet.deleteUserRoles))
 					rowsDeleted, err := w.DeleteItems(ctx, toSet.deleteUserRoles, db.NewOplogMsgs(&userOplogMsgs))
@@ -219,26 +223,9 @@ func (r *Repository) SetPrincipalRoles(ctx context.Context, roleId string, roleV
 					totalRowsAffected += rowsDeleted
 					msgs = append(msgs, grpOplogMsgs...)
 				}
-
-				metadata := oplog.Metadata{
-					"op-type":            []string{oplog.OpType_OP_TYPE_DELETE.String()},
-					"scope-id":           []string{scope.PublicId},
-					"scope-type":         []string{scope.Type},
-					"resource-public-id": []string{roleId},
-				}
-				// write the oplog msgs for the deletes
-				if err := w.WriteOplogEntryWith(ctx, r.wrapper, deleteTicket, metadata, msgs); err != nil {
-					return fmt.Errorf("set principal roles: unable to write oplog for deletes: %w", err)
-				}
 			}
 			if len(toSet.addUserRoles) > 0 || len(toSet.addGroupRoles) > 0 {
-				msgs := make([]*oplog.Message, 0, 2)
-				// addTicket which will be redeemed when we write the oplog
-				// entry for these writes.
-				addTicket, err := w.GetTicket(&principalRoleView{})
-				if err != nil {
-					return fmt.Errorf("set principal roles: unable to get ticket for principal role additions: %w", err)
-				}
+				metadata["op-type"] = append(metadata["op-type"], oplog.OpType_OP_TYPE_CREATE.String())
 				if len(toSet.addUserRoles) > 0 {
 					userOplogMsgs := make([]*oplog.Message, 0, len(toSet.addUserRoles))
 					if err := w.CreateItems(ctx, toSet.addUserRoles, db.NewOplogMsgs(&userOplogMsgs)); err != nil {
@@ -255,26 +242,8 @@ func (r *Repository) SetPrincipalRoles(ctx context.Context, roleId string, roleV
 					totalRowsAffected += len(toSet.addGroupRoles)
 					msgs = append(msgs, grpOplogMsgs...)
 				}
-				metadata := oplog.Metadata{
-					"op-type":            []string{oplog.OpType_OP_TYPE_CREATE.String()},
-					"scope-id":           []string{scope.PublicId},
-					"scope-type":         []string{scope.Type},
-					"resource-public-id": []string{roleId},
-				}
-				// write the oplog msgs for the additions
-				if err := w.WriteOplogEntryWith(ctx, r.wrapper, addTicket, metadata, msgs); err != nil {
-					return fmt.Errorf("set principal roles: unable to write oplog for additions: %w", err)
-				}
 			}
-			// we're done with all the principal writes, so let's write the
-			// role's update oplog message
-			metadata := oplog.Metadata{
-				"op-type":            []string{oplog.OpType_OP_TYPE_UPDATE.String()},
-				"scope-id":           []string{scope.PublicId},
-				"scope-type":         []string{scope.Type},
-				"resource-public-id": []string{roleId},
-			}
-			if err := w.WriteOplogEntryWith(ctx, r.wrapper, roleTicket, metadata, []*oplog.Message{&roleOplogMsg}); err != nil {
+			if err := w.WriteOplogEntryWith(ctx, r.wrapper, roleTicket, metadata, msgs); err != nil {
 				return fmt.Errorf("set principal roles: unable to write oplog for additions: %w", err)
 			}
 
