@@ -88,6 +88,10 @@ func Test_Resource(t *testing.T) {
 			typeString: "target",
 			want:       Target,
 		},
+		{
+			typeString: "global",
+			want:       Global,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.typeString, func(t *testing.T) {

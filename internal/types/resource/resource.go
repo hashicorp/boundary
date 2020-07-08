@@ -23,6 +23,7 @@ const (
 	HostSet                 Type = 16
 	Host                    Type = 17
 	Target                  Type = 18
+	Global                  Type = 19
 )
 
 func (r Type) String() string {
@@ -46,6 +47,7 @@ func (r Type) String() string {
 		"host-set",
 		"host",
 		"target",
+		"global",
 	}[r]
 }
 
@@ -87,6 +89,8 @@ func StringToResourceType(s string) Type {
 		return Host
 	case Target.String():
 		return Target
+	case Global.String():
+		return Global
 	default:
 		return Unknown
 	}
