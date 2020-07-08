@@ -86,6 +86,20 @@ func Test_TestRole(t *testing.T) {
 	assert.NotEmpty(projRole.PublicId)
 }
 
+func Test_TestRoleGrant(t *testing.T) {
+	t.Helper()
+	require := require.New(t)
+	conn, _ := db.TestSetup(t, "postgres")
+	_, proj := TestScopes(t, conn)
+	projRole := TestRole(t, conn, proj.PublicId)
+
+	grant := TestRoleGrant(t, conn, projRole.PublicId, "actions=*;id=*")
+	require.NotNil(grant)
+	require.Equal(projRole.PublicId, grant.RoleId)
+	require.Equal("actions=*;id=*", grant.RawGrant)
+	require.Equal("id=*;actions=*", grant.CanonicalGrant)
+}
+
 func Test_TestUserRole(t *testing.T) {
 	t.Helper()
 	require := require.New(t)

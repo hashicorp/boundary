@@ -106,7 +106,7 @@ func Test_UserCreate(t *testing.T) {
 		user.PublicId = id
 		err = w.Create(context.Background(), user)
 		require.Error(err)
-		assert.Equal("create: vet for write failed scope is not found", err.Error())
+		assert.Equal("create: vet for write failed: scope is not found", err.Error())
 	})
 }
 
@@ -152,7 +152,7 @@ func Test_UserUpdate(t *testing.T) {
 				ScopeId:        proj.PublicId,
 			},
 			wantErr:    true,
-			wantErrMsg: "update: vet for write failed not allowed to change a resource's scope",
+			wantErrMsg: "update: vet for write failed: not allowed to change a resource's scope",
 		},
 		{
 			name: "proj-scope-id-not-in-mask",
@@ -183,7 +183,7 @@ func Test_UserUpdate(t *testing.T) {
 			},
 			wantErr:    true,
 			wantDup:    true,
-			wantErrMsg: `update: failed pq: duplicate key value violates unique constraint "iam_user_name_scope_id_key"`,
+			wantErrMsg: `update: failed: pq: duplicate key value violates unique constraint "iam_user_name_scope_id_key"`,
 		},
 	}
 	for _, tt := range tests {

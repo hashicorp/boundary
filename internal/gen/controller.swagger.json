@@ -2867,6 +2867,10 @@
           "type": "boolean",
           "format": "boolean",
           "title": "Whether the resource is disabled"
+        },
+        "grant_scope_id": {
+          "type": "string",
+          "description": "The scope the grants will apply to. If the role is at the global scope,\nthis can be an organization or project. If the role is at an organization\nscope, this can be a project within the organization. It is invalid for\nthis to be anything other than the role's scope when the role's scope is\na project."
         }
       },
       "title": "Role contains all fields related to a Role resource"

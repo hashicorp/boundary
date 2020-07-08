@@ -38,7 +38,8 @@ type PrincipalRole interface {
 	Clone() interface{}
 }
 
-// principalRoleView provides a common way to return roles regardless of their underlying type.
+// principalRoleView provides a common way to return roles regardless of their
+// underlying type.
 type principalRoleView struct {
 	*store.PrincipalRoleView
 	tableName string `gorm:"-"`
@@ -76,7 +77,8 @@ type UserRole struct {
 	tableName string `gorm:"-"`
 }
 
-// ensure that UserRole implements the interfaces of:  Clonable, AssignedRole and db.VetForWriter
+// ensure that UserRole implements the interfaces of:  Clonable, AssignedRole
+// and db.VetForWriter
 var _ Clonable = (*UserRole)(nil)
 var _ PrincipalRole = (*UserRole)(nil)
 var _ db.VetForWriter = (*UserRole)(nil)

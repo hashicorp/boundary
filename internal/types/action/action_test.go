@@ -36,8 +36,8 @@ func TestAction(t *testing.T) {
 			want:   "delete",
 		},
 		{
-			action: Authen,
-			want:   "authen",
+			action: Authenticate,
+			want:   "authenticate",
 		},
 		{
 			action: All,
@@ -46,6 +46,18 @@ func TestAction(t *testing.T) {
 		{
 			action: Connect,
 			want:   "connect",
+		},
+		{
+			action: AddGrants,
+			want:   "add-grants",
+		},
+		{
+			action: DeleteGrants,
+			want:   "delete-grants",
+		},
+		{
+			action: SetGrants,
+			want:   "set-grants",
 		},
 	}
 	for _, tt := range tests {

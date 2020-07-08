@@ -169,7 +169,6 @@ func (r *Repository) SetPrincipalRoles(ctx context.Context, roleId string, roleV
 		db.StdRetryCnt,
 		db.ExpBackoff{},
 		func(reader db.Reader, w db.Writer) error {
-
 			// we need a roleTicket, which won't be redeemed until all the other
 			// writes are successful.  We can't just use a single ticket because
 			// we need to write oplog entries for deletes and adds

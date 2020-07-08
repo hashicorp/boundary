@@ -212,7 +212,7 @@ insert into iam_scope (public_id, name, type, description)
 
 
 create table iam_user (
-    public_id wt_public_id not null primary key,
+    public_id wt_public_id primary key,
     create_time wt_timestamp,
     update_time wt_timestamp,
     name text,
@@ -237,6 +237,48 @@ begin
     raise exception 'invalid scope type for user creation';
   end if;
   return new;
+end;
+$$ language plpgsql;
+
+create or replace function
+  grant_scope_id_valid()
+  returns trigger
+as $$
+declare parent_scope_id text;
+declare role_scope_type text;
+begin
+  -- There is a not-null constraint so ensure that if the value passed in is
+  -- empty we simply set to the scope ID
+  if new.grant_scope_id = '' or new.grant_scope_id is null then
+    new.grant_scope_id = new.scope_id;
+  end if;
+  -- If the scopes match, it's allowed
+  if new.grant_scope_id = new.scope_id then
+    return new;
+  end if;
+  -- Fetch the type of scope
+  select isc.type from iam_scope isc where isc.public_id = new.scope_id into role_scope_type;
+  -- Always allowed
+  if role_scope_type = 'global' then
+    return new;
+  end if;
+  -- Never allowed; the case where it's set to the same scope ID as the project
+  -- itself is covered above
+  if role_scope_type = 'project' then
+    raise exception 'invalid to set grant_scope_id to non-same scope_id when role scope type is project';
+  end if;
+  if role_scope_type = 'organization' then
+    -- Look up the parent scope ID for the scope ID given
+    select isc.parent_id from iam_scope isc where isc.public_id = new.grant_scope_id into parent_scope_id;
+    -- Allow iff the grant scope ID's parent matches the role's scope ID; that
+    -- is, match if the role belongs to a direct child scope of this
+    -- organization
+    if parent_scope_id = new.scope_id then
+      return new;
+    end if;
+    raise exception 'grant_scope_id is not a child project of the role scope';
+  end if;
+  raise exception 'unknown scope type';
 end;
 $$ language plpgsql;
 
@@ -269,12 +311,13 @@ update on iam_user
   for each row execute procedure iam_immutable_scope_id_func();
 
 create table iam_role (
-    public_id wt_public_id not null primary key,
+    public_id wt_public_id primary key,
     create_time wt_timestamp,
     update_time wt_timestamp,
     name text,
     description text,
     scope_id wt_scope_id not null references iam_scope(public_id) on delete cascade on update cascade,
+    grant_scope_id wt_scope_id not null references iam_scope(public_id) on delete cascade on update cascade,
     unique(name, scope_id),
     disabled boolean not null default false,
     -- version allows optimistic locking of the role when modifying the role
@@ -288,6 +331,31 @@ create table iam_role (
     unique(scope_id, public_id)
   );
 
+-- Grants are immutable, which is enforced via the trigger below
+create table iam_role_grant (
+    create_time wt_timestamp,
+    update_time wt_timestamp,
+    role_id wt_public_id not null references iam_role(public_id) on delete cascade on update cascade,
+    raw_grant text not null,
+    canonical_grant text not null,
+    primary key(role_id, canonical_grant)
+  );
+
+-- iam_immutable_role_grant() ensures that grants assigned to roles are immutable. 
+create or replace function
+  iam_immutable_role_grant()
+  returns trigger
+as $$
+begin
+  raise exception 'role grants are immutable';
+end;
+$$ language plpgsql;
+
+create trigger immutable_role_grant
+before
+update on iam_role_grant
+  for each row execute procedure iam_immutable_role_grant();
+  
 create trigger 
   update_version_column
 after update on iam_role
@@ -309,6 +377,12 @@ create trigger
 before
 insert on iam_role
   for each row execute procedure default_create_time();
+
+create trigger
+  ensure_grant_scope_id_valid
+before
+insert or update on iam_role
+  for each row execute procedure grant_scope_id_valid();
 
 create table iam_group (
     public_id wt_public_id not null primary key,
@@ -434,10 +508,7 @@ create or replace function
   returns trigger
 as $$
 begin
-  if row(new.*) is distinct from row(old.*) then
     raise exception 'roles are immutable';
-  end if;
-  return new;
 end;
 $$ language plpgsql;
 
