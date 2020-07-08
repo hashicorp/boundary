@@ -55,9 +55,9 @@ create table iam_scope (
 
 create table iam_scope_global (
     scope_id wt_scope_id primary key
-      references iam_scope(public_id) 
-      on delete cascade 
-      on update cascade 
+      references iam_scope(public_id)
+      on delete cascade
+      on update cascade
       check(
         scope_id = 'global'
       ),
