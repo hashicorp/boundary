@@ -3,10 +3,26 @@ package iam
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/hashicorp/watchtower/internal/db"
 	"github.com/hashicorp/watchtower/internal/oplog"
 )
+
+func scopeAndIdForRole(scopeId, principalId string) (string, string, error) {
+	switch strings.Count(principalId, ":") {
+	case 0:
+		return scopeId, principalId, nil
+	case 1:
+		substrs := strings.Split(principalId, ":")
+		if substrs[0] == scopeId {
+			return "", "", fmt.Errorf("principal roles scope and id fetching: redundant scope ID set: %w", db.ErrInvalidParameter)
+		}
+		return substrs[0], substrs[1], nil
+	default:
+		return "", "", fmt.Errorf("principal roles scope and id fetching: invalid principal id, contains too many colons: %w", db.ErrInvalidParameter)
+	}
+}
 
 // AddPrincipalRoles provides the ability to add principals (userIds and
 // groupIds) to a role (roleId).  The role's current db version must match the
@@ -30,14 +46,18 @@ func (r *Repository) AddPrincipalRoles(ctx context.Context, roleId string, roleV
 
 	role := allocRole()
 	role.PublicId = roleId
-	scope, err := role.GetScope(ctx, r.reader)
+	roleScope, err := role.GetScope(ctx, r.reader)
 	if err != nil {
 		return nil, fmt.Errorf("add principal roles: unable to get role %s scope: %w", roleId, err)
 	}
 
 	newUserRoles := make([]interface{}, 0, len(userIds))
 	for _, id := range userIds {
-		usrRole, err := NewUserRole(scope.PublicId, roleId, id)
+		scopeId, userId, err := scopeAndIdForRole(role.ScopeId, id)
+		if err != nil {
+			return nil, err
+		}
+		usrRole, err := NewUserRole(scopeId, roleId, userId)
 		if err != nil {
 			return nil, fmt.Errorf("add principal roles: unable to create in memory user role: %w", err)
 		}
@@ -45,7 +65,11 @@ func (r *Repository) AddPrincipalRoles(ctx context.Context, roleId string, roleV
 	}
 	newGrpRoles := make([]interface{}, 0, len(groupIds))
 	for _, id := range groupIds {
-		grpRole, err := NewGroupRole(scope.PublicId, roleId, id)
+		scopeId, groupId, err := scopeAndIdForRole(role.ScopeId, id)
+		if err != nil {
+			return nil, err
+		}
+		grpRole, err := NewGroupRole(scopeId, roleId, groupId)
 		if err != nil {
 			return nil, fmt.Errorf("add principal roles: unable to create in memory group role: %w", err)
 		}
@@ -90,8 +114,8 @@ func (r *Repository) AddPrincipalRoles(ctx context.Context, roleId string, roleV
 			}
 			metadata := oplog.Metadata{
 				"op-type":            []string{oplog.OpType_OP_TYPE_CREATE.String()},
-				"scope-id":           []string{scope.PublicId},
-				"scope-type":         []string{scope.Type},
+				"scope-id":           []string{roleScope.PublicId},
+				"scope-type":         []string{roleScope.Type},
 				"resource-public-id": []string{roleId},
 			}
 			if err := w.WriteOplogEntryWith(ctx, r.wrapper, roleTicket, metadata, msgs); err != nil {
@@ -143,23 +167,8 @@ func (r *Repository) SetPrincipalRoles(ctx context.Context, roleId string, roleV
 	}
 
 	// handle no change to existing principal roles
-	if len(toSet.addUserRoles) == 0 && len(toSet.addGroupRoles) == 0 && len(toSet.deleteUserRoles) == 0 && len(toSet.deleteGroupRoles) == 0 {
-		results := make([]PrincipalRole, 0, len(userIds)+len(groupIds))
-		for _, id := range userIds {
-			role, err := NewUserRole(scope.PublicId, roleId, id)
-			if err != nil {
-				return nil, db.NoRowsAffected, fmt.Errorf("add principal roles: unable to create in memory user role: %w", err)
-			}
-			results = append(results, role)
-		}
-		for _, id := range groupIds {
-			role, err := NewGroupRole(scope.PublicId, roleId, id)
-			if err != nil {
-				return nil, db.NoRowsAffected, fmt.Errorf("add principal roles: unable to create in memory group role: %w", err)
-			}
-			results = append(results, role)
-		}
-		return results, db.NoRowsAffected, nil
+	if len(toSet.unchangedPrincipalRoles) > 0 {
+		return toSet.unchangedPrincipalRoles, db.NoRowsAffected, nil
 	}
 
 	var currentPrincipals []PrincipalRole
@@ -280,7 +289,11 @@ func (r *Repository) DeletePrincipalRoles(ctx context.Context, roleId string, ro
 	}
 	deleteUserRoles := make([]interface{}, 0, len(userIds))
 	for _, id := range userIds {
-		usrRole, err := NewUserRole(scope.PublicId, roleId, id)
+		scopeId, userId, err := scopeAndIdForRole(role.ScopeId, id)
+		if err != nil {
+			return 0, err
+		}
+		usrRole, err := NewUserRole(scopeId, roleId, userId)
 		if err != nil {
 			return db.NoRowsAffected, fmt.Errorf("delete principal roles: unable to create in memory user role: %w", err)
 		}
@@ -288,7 +301,11 @@ func (r *Repository) DeletePrincipalRoles(ctx context.Context, roleId string, ro
 	}
 	deleteGrpRoles := make([]interface{}, 0, len(groupIds))
 	for _, id := range groupIds {
-		grpRole, err := NewGroupRole(scope.PublicId, roleId, id)
+		scopeId, groupId, err := scopeAndIdForRole(role.ScopeId, id)
+		if err != nil {
+			return 0, err
+		}
+		grpRole, err := NewGroupRole(scopeId, roleId, groupId)
 		if err != nil {
 			return db.NoRowsAffected, fmt.Errorf("delete principal roles: unable to create in memory group role: %w", err)
 		}
@@ -381,8 +398,12 @@ type principalSet struct {
 	addGroupRoles    []interface{}
 	deleteUserRoles  []interface{}
 	deleteGroupRoles []interface{}
+	// unchangedPrincipalRoles is set iff there are no changes, that is, the
+	// length of all other members is zero
+	unchangedPrincipalRoles []PrincipalRole
 }
 
+// TODO: Should this be moved inside the transaction, at this point?
 func (r *Repository) principalsToSet(ctx context.Context, role *Role, userIds, groupIds []string) (*principalSet, error) {
 	if role == nil {
 		return nil, fmt.Errorf("missing role: %w", db.ErrNilParameter)
@@ -394,13 +415,17 @@ func (r *Repository) principalsToSet(ctx context.Context, role *Role, userIds, g
 	existingUsers := map[string]PrincipalRole{}
 	existingGroups := map[string]PrincipalRole{}
 	for _, p := range existing {
+		scopedPrincipalId, err := p.GetScopedPrincipalId(ctx, r.reader)
+		if err != nil {
+			return nil, fmt.Errorf("unable to look up scoped principal id for %s in role %s: %w", p.GetPrincipalId(), role.PublicId, err)
+		}
 		switch p.GetType() {
 		case UserRoleType.String():
-			existingUsers[p.GetPrincipalId()] = p
+			existingUsers[scopedPrincipalId] = p
 		case GroupRoleType.String():
-			existingGroups[p.GetPrincipalId()] = p
+			existingGroups[scopedPrincipalId] = p
 		default:
-			return nil, fmt.Errorf("%s is unknown principal type %s", p.GetPrincipalId(), p.GetType())
+			return nil, fmt.Errorf("%s is unknown principal type %s", scopedPrincipalId, p.GetType())
 		}
 	}
 	var newUserRoles []interface{}
@@ -429,7 +454,11 @@ func (r *Repository) principalsToSet(ctx context.Context, role *Role, userIds, g
 	}
 	var deleteUserRoles []interface{}
 	for _, p := range existingUsers {
-		if _, ok := userIdsMap[p.GetPrincipalId()]; !ok {
+		scopedPrincipalId, err := p.GetScopedPrincipalId(ctx, r.reader)
+		if err != nil {
+			return nil, fmt.Errorf("unable to look up scoped principal id for %s in role %s: %w", p.GetPrincipalId(), role.PublicId, err)
+		}
+		if _, ok := userIdsMap[scopedPrincipalId]; !ok {
 			usrRole, err := NewUserRole(p.GetScopeId(), p.GetRoleId(), p.GetPrincipalId())
 			if err != nil {
 				return nil, fmt.Errorf("unable to create in memory user role for delete: %w", err)
@@ -439,7 +468,11 @@ func (r *Repository) principalsToSet(ctx context.Context, role *Role, userIds, g
 	}
 	var deleteGrpRoles []interface{}
 	for _, p := range existingGroups {
-		if _, ok := groupIdsMap[p.GetPrincipalId()]; !ok {
+		scopedPrincipalId, err := p.GetScopedPrincipalId(ctx, r.reader)
+		if err != nil {
+			return nil, fmt.Errorf("unable to look up scoped principal id for %s in role %s: %w", p.GetPrincipalId(), role.PublicId, err)
+		}
+		if _, ok := groupIdsMap[scopedPrincipalId]; !ok {
 			grpRole, err := NewGroupRole(p.GetScopeId(), p.GetRoleId(), p.GetPrincipalId())
 			if err != nil {
 				return nil, fmt.Errorf("unable to create in memory group role for delete: %w", err)
@@ -447,10 +480,17 @@ func (r *Repository) principalsToSet(ctx context.Context, role *Role, userIds, g
 			deleteGrpRoles = append(deleteGrpRoles, grpRole)
 		}
 	}
-	return &principalSet{
+
+	toSet := &principalSet{
 		addUserRoles:     newUserRoles,
 		addGroupRoles:    newGrpRoles,
 		deleteUserRoles:  deleteUserRoles,
 		deleteGroupRoles: deleteGrpRoles,
-	}, nil
+	}
+
+	if len(toSet.addUserRoles) == 0 && len(toSet.addGroupRoles) == 0 && len(toSet.deleteUserRoles) == 0 && len(toSet.deleteGroupRoles) == 0 {
+		toSet.unchangedPrincipalRoles = existing
+	}
+
+	return toSet, nil
 }
