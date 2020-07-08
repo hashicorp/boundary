@@ -666,7 +666,7 @@ $$ language plpgsql;
 
 create trigger immutable_role_grant
 before
-update on iam_role
+update on iam_role_grant
   for each row execute procedure iam_immutable_role_grant();
 
 create trigger 
