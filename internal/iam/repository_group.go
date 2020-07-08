@@ -141,10 +141,10 @@ func (r *Repository) ListGroupMembers(ctx context.Context, withGroupId string, o
 	return members, nil
 }
 
-// AddGroupMembers provides the ability to add members (userIds) to a role
-// (roleId).  The role's current db version must match the roleVersion or an
-// error will be returned.  The users and groups must all be in the same
-// organization or the user must be in a project group's parent organization.
+// AddGroupMembers provides the ability to add members (userIds) to a group
+// (groupId).  The group's current db version must match the groupVersion or an
+// error will be returned.  The users and group must all be in the same
+// organization or the user must be in the project group's parent organization.
 func (r *Repository) AddGroupMembers(ctx context.Context, groupId string, groupVersion int, userIds []string, opt ...Option) ([]*GroupMember, error) {
 
 	if groupId == "" {
@@ -210,7 +210,7 @@ func (r *Repository) AddGroupMembers(ctx context.Context, groupId string, groupV
 		},
 	)
 	if err != nil {
-		return nil, fmt.Errorf("add group members: error creating roles: %w", err)
+		return nil, fmt.Errorf("add group members: error adding members: %w", err)
 	}
 	members := make([]*GroupMember, 0, len(newGroupMembers)+len(newGroupMembers))
 	for _, m := range newGroupMembers {
