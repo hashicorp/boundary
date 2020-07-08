@@ -210,7 +210,7 @@ func (r *Repository) ValidateToken(ctx context.Context, id, token string, opt ..
 	}
 
 	if retAT.GetToken() != token {
-		return nil, fmt.Errorf("validate token: auth token mismatch: %w", db.ErrInvalidParameter)
+		return nil, nil
 	}
 	// retAT.Token set to empty string so the value is not returned as described in the methods' doc.
 	retAT.Token = ""

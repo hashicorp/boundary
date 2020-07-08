@@ -43,6 +43,10 @@ func TokenAuthenticator(l hclog.Logger, tokenRepo common.AuthTokenRepoFactory) f
 			}
 		}
 
+		if tMD.recievedTokenType == authTokenTypeUnknown || tMD.token() == "" || tMD.publicId() == "" {
+			return tMD.toMetadata()
+		}
+
 		repo, err := tokenRepo()
 		if err != nil {
 			l.Error("failed to get authtoken repo", "error", err)
