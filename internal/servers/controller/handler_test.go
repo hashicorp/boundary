@@ -2,6 +2,7 @@ package controller
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"net/http"
@@ -126,12 +127,21 @@ func TestAuthenticationHandler(t *testing.T) {
 	defer c.Shutdown()
 
 	resp, err := http.Post(fmt.Sprintf("%s/v1/orgs/o_1234567890:authenticate", c.ApiAddrs()[0]), "application/json",
-		strings.NewReader("{\"auth_method_id\": \"whatever\", \"token_type\": null, \"credentials\": {\"name\":\"admin\", \"password\": \"hunter2\"}}"))
+		strings.NewReader("{\"auth_method_id\": \"whatever\", \"token_type\": null, \"credentials\": {\"name\":\"test\", \"password\": \"test\"}}"))
 	require.NoError(t, err)
-	t.Logf("Got response: %#v", resp)
-	body, err := ioutil.ReadAll(resp.Body)
+	assert.Equal(t, http.StatusOK, resp.StatusCode, "Got response: %v", resp)
+
+	b, err := ioutil.ReadAll(resp.Body)
 	require.NoError(t, err)
-	t.Logf("Got response: %q", body)
+	body := make(map[string]interface{})
+	require.NoError(t, json.Unmarshal(b, &body))
+
+	require.Contains(t, body, "id")
+	require.Contains(t, body, "token")
+	pubId, tok := body["id"].(string), body["token"].(string)
+	assert.NotEmpty(t, pubId)
+	assert.NotEmpty(t, tok)
+	assert.Truef(t, strings.HasPrefix(tok, pubId), "Token: %q, Id: %q", tok, pubId)
 }
 
 func TestHandleGrpcGateway(t *testing.T) {
