@@ -1,0 +1,82 @@
+syntax = "proto3";
+
+package controller.api.services.v1;
+
+option go_package = "github.com/hashicorp/watchtower/internal/gen/controller/api/services;services";
+
+import "protoc-gen-swagger/options/annotations.proto";
+import "google/api/annotations.proto";
+import "controller/api/resources/scopes/v1/organization.proto";
+import "controller/api/resources/authtokens/v1/auth_token.proto";
+
+service AuthTokenService {
+
+  // GetAuthToken returns a stored auth token if present.  The provided request
+  // must include the org and auth token id for the auth token being retrieved. If
+  // any of those ids are missing, malformed or reference a non existing
+  // resource an error is returned.
+  rpc GetAuthToken(GetAuthTokenRequest) returns (GetAuthTokenResponse) {
+    option (google.api.http) = {
+      get: "/v1/orgs/{org_id}/auth-tokens/{id}"
+      response_body: "item"
+    };
+    option (grpc.gateway.protoc_gen_swagger.options.openapiv2_operation) = {
+      summary: "Gets a single AuthToken"
+    };
+  }
+
+  // ListAuthTokens returns a list of stored auth tokens which exist inside the org
+  // referenced inside the request.  The request must include the org id for
+  // the auth token being retrieved.  If the org id is missing, malformed, or
+  // reference a non existing organization, an error is returned.
+  rpc ListAuthTokens(ListAuthTokensRequest) returns (ListAuthTokensResponse) {
+    option (google.api.http) = {
+      get: "/v1/orgs/{org_id}/auth-tokens"
+    };
+    option (grpc.gateway.protoc_gen_swagger.options.openapiv2_operation) = {
+      summary: "Lists all AuthTokens"
+    };
+  }
+
+  // DeleteAuthToken removes a auth token from Watchtower. If the provided org or
+  // auth token ids are malformed or not provided an error is returned.  No error is returned
+  // if either ids reference resources that do not exist as the response itself
+  // specifies if the resource existed before the DeleteAuthToken request was
+  // received.
+  rpc DeleteAuthToken(DeleteAuthTokenRequest) returns (DeleteAuthTokenResponse) {
+    option (google.api.http) = {
+      delete: "/v1/orgs/{org_id}/auth-tokens/{id}"
+    };
+    option (grpc.gateway.protoc_gen_swagger.options.openapiv2_operation) = {
+      summary: "Deletes an AuthTokens"
+    };
+  }
+}
+
+message GetAuthTokenRequest {
+  string org_id = 1;
+  string id = 2;
+  string view = 3;
+}
+
+message GetAuthTokenResponse {
+  resources.authtokens.v1.AuthToken item = 1;
+}
+
+message ListAuthTokensRequest {
+  string org_id = 1;
+  string view = 2;
+}
+
+message ListAuthTokensResponse {
+  repeated resources.authtokens.v1.AuthToken items = 1;
+}
+
+message DeleteAuthTokenRequest {
+  string org_id = 1;
+  string id = 2;
+}
+
+message DeleteAuthTokenResponse {
+  bool existed = 1;
+}
