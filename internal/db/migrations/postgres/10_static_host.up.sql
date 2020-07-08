@@ -2,7 +2,7 @@ begin;
 
   create table static_host_catalog (
     public_id wt_public_id primary key,
-    scope_id wt_public_id not null
+    scope_id wt_scope_id not null
       references iam_scope (public_id)
       on delete cascade
       on update cascade,

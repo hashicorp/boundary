@@ -12,6 +12,7 @@ begin;
 
 drop domain wt_timestamp;
 drop domain wt_public_id;
+drop domain wt_scope_id;
 drop domain wt_version;
 
 drop function default_create_time;
@@ -34,6 +35,13 @@ check(
 );
 comment on domain wt_public_id is
 'Random ID generated with github.com/hashicorp/vault/sdk/helper/base62';
+
+create domain wt_scope_id as text
+check(
+  length(trim(value)) > 10 or value = 'global'
+);
+comment on domain wt_scope_id is
+'"global" or random ID generated with github.com/hashicorp/vault/sdk/helper/base62';
 
 create domain wt_timestamp as
   timestamp with time zone
@@ -415,6 +423,7 @@ drop table iam_group cascade;
 drop table iam_user cascade;
 drop table iam_scope_project cascade;
 drop table iam_scope_organization cascade;
+drop table iam_scope_global cascade;
 drop table iam_scope cascade;
 drop table iam_scope_type_enm cascade;
 drop table iam_role cascade;
@@ -440,12 +449,13 @@ COMMIT;
 begin;
 
 create table iam_scope_type_enm (
-  string text not null primary key check(string in ('unknown', 'organization', 'project'))
+  string text not null primary key check(string in ('unknown', 'global', 'organization', 'project'))
 );
 
 insert into iam_scope_type_enm (string)
 values
   ('unknown'),
+  ('global'),
   ('organization'),
   ('project');
 
@@ -468,32 +478,55 @@ is
   'function used in before update triggers to make scope_id column is immutable';
 
 create table iam_scope (
-    public_id wt_public_id primary key,
+    public_id wt_scope_id primary key,
     create_time wt_timestamp,
     update_time wt_timestamp,
     name text,
     type text not null references iam_scope_type_enm(string) check(
       (
+        type = 'global'
+        and parent_id is null
+      )
+      or (
         type = 'organization'
-        and parent_id = null
+        and parent_id = 'global'
       )
       or (
         type = 'project'
         and parent_id is not null
+        and parent_id != 'global'
       )
     ),
     description text,
     parent_id text references iam_scope(public_id) on delete cascade on update cascade
   );
 
+create table iam_scope_global (
+    scope_id wt_scope_id primary key
+      references iam_scope(public_id)
+      on delete cascade
+      on update cascade
+      check(
+        scope_id = 'global'
+      ),
+    name text unique
+);
+
 create table iam_scope_organization (
-    scope_id wt_public_id not null unique references iam_scope(public_id) on delete cascade on update cascade,
-    name text unique,
-    primary key(scope_id)
-  );
+  scope_id wt_scope_id primary key
+    references iam_scope(public_id)
+    on delete cascade
+    on update cascade,
+  parent_id wt_scope_id not null
+    references iam_scope_global(scope_id)
+    on delete cascade
+    on update cascade,
+  name text,
+  unique (parent_id, name)
+);
 
 create table iam_scope_project (
-    scope_id wt_public_id not null references iam_scope(public_id) on delete cascade on update cascade,
+    scope_id wt_scope_id not null references iam_scope(public_id) on delete cascade on update cascade,
     parent_id wt_public_id not null references iam_scope_organization(scope_id) on delete cascade on update cascade,
     name text,
     unique(parent_id, name),
@@ -505,11 +538,17 @@ create or replace function
   returns trigger
 as $$ 
 declare parent_type int;
-begin 
-  if new.type = 'organization' then
-    insert into iam_scope_organization (scope_id, name)
+begin
+  if new.type = 'global' then
+    insert into iam_scope_global (scope_id, name)
     values
       (new.public_id, new.name);
+    return new;
+  end if;
+  if new.type = 'organization' then
+    insert into iam_scope_organization (scope_id, parent_id, name)
+    values
+      (new.public_id, new.parent_id, new.name);
     return new;
   end if;
   if new.type = 'project' then
@@ -522,13 +561,29 @@ begin
 end;
 $$ language plpgsql;
 
-
 create trigger 
   iam_scope_insert
 after
 insert on iam_scope 
   for each row execute procedure iam_sub_scopes_func();
 
+create or replace function
+  disallow_global_scope_deletion()
+  returns trigger
+as $$
+begin
+  if old.type = 'global' then
+    raise exception 'deletion of global scope not allowed';
+  end if;
+  return old;
+end;
+$$ language plpgsql;
+
+create trigger
+  iam_scope_disallow_global_deletion
+before
+delete on iam_scope
+  for each row execute procedure disallow_global_scope_deletion();
 
 create or replace function 
   iam_immutable_scope_type_func() 
@@ -574,8 +629,12 @@ create or replace function
   iam_sub_names() 
   returns trigger
 as $$ 
-begin 
+begin
   if new.name != old.name then
+    if new.type = 'global' then
+      update iam_scope_global set name = new.name where scope_id = old.public_id;
+      return new;
+    end if;
     if new.type = 'organization' then
       update iam_scope_organization set name = new.name where scope_id = old.public_id;
       return new;
@@ -596,13 +655,17 @@ before
 update on iam_scope
   for each row execute procedure iam_sub_names();
 
+insert into iam_scope (public_id, name, type, description)
+  values ('global', 'global', 'global', 'Global Scope');
+
+
 create table iam_user (
     public_id wt_public_id not null primary key,
     create_time wt_timestamp,
     update_time wt_timestamp,
     name text,
     description text,
-    scope_id wt_public_id not null references iam_scope_organization(scope_id) on delete cascade on update cascade,
+    scope_id wt_scope_id not null references iam_scope(public_id) on delete cascade on update cascade,
     unique(name, scope_id),
     disabled boolean not null default false,
 
@@ -611,6 +674,25 @@ create table iam_user (
     -- https://dba.stackexchange.com/questions/27481/is-a-composite-index-also-good-for-queries-on-the-first-field
     unique(scope_id, public_id)
   );
+
+create or replace function
+  user_scope_id_valid()
+  returns trigger
+as $$
+begin
+  perform from iam_scope where public_id = new.scope_id and type in ('global', 'organization');
+  if not found then
+    raise exception 'invalid scope type for user creation';
+  end if;
+  return new;
+end;
+$$ language plpgsql;
+
+create trigger
+  ensure_user_scope_id_valid
+before
+insert or update on iam_user
+  for each row execute procedure user_scope_id_valid();
 
 create trigger 
   update_time_column 
@@ -640,7 +722,7 @@ create table iam_role (
     update_time wt_timestamp,
     name text,
     description text,
-    scope_id wt_public_id not null references iam_scope(public_id) on delete cascade on update cascade,
+    scope_id wt_scope_id not null references iam_scope(public_id) on delete cascade on update cascade,
     unique(name, scope_id),
     disabled boolean not null default false,
     -- version allows optimistic locking of the role when modifying the role
@@ -682,7 +764,7 @@ create table iam_group (
     update_time wt_timestamp,
     name text,
     description text,
-    scope_id wt_public_id not null references iam_scope(public_id) on delete cascade on update cascade,
+    scope_id wt_scope_id not null references iam_scope(public_id) on delete cascade on update cascade,
     unique(name, scope_id),
     disabled boolean not null default false,
     -- add unique index so a composite fk can be declared.
@@ -719,7 +801,7 @@ update on iam_group
 -- with a before update trigger using iam_immutable_role(). 
 create table iam_user_role (
   create_time wt_timestamp,
-  scope_id wt_public_id not null,
+  scope_id wt_scope_id not null,
   role_id wt_public_id not null,
   principal_id wt_public_id not null references iam_user(public_id) on delete cascade on update cascade,
   primary key (role_id, principal_id),
@@ -736,7 +818,7 @@ create table iam_user_role (
 -- update trigger using iam_immutable_role().
 create table iam_group_role (
   create_time wt_timestamp,
-  scope_id wt_public_id not null,
+  scope_id wt_scope_id not null,
   role_id wt_public_id not null,
   principal_id wt_public_id not null,
   primary key (role_id, principal_id),
@@ -880,7 +962,7 @@ begin;
   -- base table for auth methods
   create table auth_method (
     public_id wt_public_id primary key,
-    scope_id wt_public_id not null
+    scope_id wt_scope_id not null
       references iam_scope(public_id)
       on delete cascade
       on update cascade,
@@ -896,7 +978,7 @@ begin;
   create table auth_account (
     public_id wt_public_id primary key,
     auth_method_id wt_public_id not null,
-    scope_id wt_public_id not null,
+    scope_id wt_scope_id not null,
     iam_user_id wt_public_id,
     foreign key (scope_id, auth_method_id)
       references auth_method (scope_id, public_id)
@@ -962,7 +1044,7 @@ begin;
 
   create table static_host_catalog (
     public_id wt_public_id primary key,
-    scope_id wt_public_id not null
+    scope_id wt_scope_id not null
       references iam_scope (public_id)
       on delete cascade
       on update cascade,

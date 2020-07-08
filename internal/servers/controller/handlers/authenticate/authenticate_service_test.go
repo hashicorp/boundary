@@ -124,31 +124,15 @@ func TestAuthenticate(t *testing.T) {
 			wantErr: status.Error(codes.InvalidArgument, "invalid argument"),
 		},
 		{
-			name: "wrong-username",
+			name: "wrong-username-password",
 			request: pbs.AuthenticateRequest{
 				OrgId:        o.GetPublicId(),
 				AuthMethodId: amId,
 				TokenType:    "token",
 				Credentials: func() *structpb.Struct {
 					creds := map[string]*structpb.Value{
-						"name":     {Kind: &structpb.Value_StringValue{StringValue: "bad-username"}},
-						"password": {Kind: &structpb.Value_StringValue{StringValue: "hunter2"}},
-					}
-					return &structpb.Struct{Fields: creds}
-				}(),
-			},
-			wantErr: status.Error(codes.Unauthenticated, "unauthenticated"),
-		},
-		{
-			name: "wrong-password",
-			request: pbs.AuthenticateRequest{
-				OrgId:        o.GetPublicId(),
-				AuthMethodId: amId,
-				TokenType:    "token",
-				Credentials: func() *structpb.Struct {
-					creds := map[string]*structpb.Value{
-						"name":     {Kind: &structpb.Value_StringValue{StringValue: "admin"}},
-						"password": {Kind: &structpb.Value_StringValue{StringValue: "bad-password"}},
+						"name":     {Kind: &structpb.Value_StringValue{StringValue: "wrong"}},
+						"password": {Kind: &structpb.Value_StringValue{StringValue: "wrong"}},
 					}
 					return &structpb.Struct{Fields: creds}
 				}(),

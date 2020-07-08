@@ -14,6 +14,12 @@ func Test_StringToScopeType(t *testing.T) {
 		wantPrefix string
 	}{
 		{
+			name:       "global",
+			s:          "global",
+			want:       Global,
+			wantPrefix: "global",
+		},
+		{
 			name:       "org",
 			s:          "organization",
 			want:       Organization,
