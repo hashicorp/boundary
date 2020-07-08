@@ -294,3 +294,162 @@ func (r *Repository) DeleteGroupMembers(ctx context.Context, groupId string, gro
 	}
 	return totalRowsDeleted, nil
 }
+
+// SetGroupMembers will set the group's members.  If userIds is empty, the
+// members will be cleared.
+func (r *Repository) SetGroupMembers(ctx context.Context, groupId string, groupVersion int, userIds []string, opt ...Option) ([]*GroupMember, int, error) {
+	// NOTE - we are intentionally not going to check that the scopes are
+	// correct for the userIds, given the groupId.  We are going to
+	// rely on the database constraints and triggers to maintain the integrity
+	// of these scope relationships.  The users and group need to either be in
+	// the same organization or the group needs to be in a project of the user's
+	// org. There are constraints and triggers to enforce these relationships.
+	if groupId == "" {
+		return nil, db.NoRowsAffected, fmt.Errorf("set group members: missing role id: %w", db.ErrInvalidParameter)
+	}
+	group := allocGroup()
+	group.PublicId = groupId
+	scope, err := group.GetScope(ctx, r.reader)
+	if err != nil {
+		return nil, db.NoRowsAffected, fmt.Errorf("set group members: unable to get role %s scope: %w", groupId, err)
+	}
+
+	// find existing members (since we're using groupVersion, we can safely do
+	// this here, outside the TxHandler)
+	members := []*GroupMember{}
+	if err := r.reader.SearchWhere(ctx, &members, "group_id = ?", []interface{}{groupId}); err != nil {
+		return nil, db.NoRowsAffected, fmt.Errorf("set group members: unable to search for existing members of group %s: %w", groupId, err)
+	}
+	found := map[string]*GroupMember{}
+	for _, m := range members {
+		found[m.GroupId+m.MemberId] = m
+	}
+	currentMembers := make([]*GroupMember, 0, len(userIds)+len(found))
+	addMembers := make([]interface{}, 0, len(userIds))
+	deleteMembers := make([]interface{}, 0, len(userIds))
+
+	for _, usrId := range userIds {
+		m, ok := found[groupId+usrId]
+		if ok {
+			// we have a match, so do nada since we want to keep it, but remove
+			// it from found.
+			currentMembers = append(currentMembers, m)
+			delete(found, groupId+usrId)
+			continue
+		}
+		// not found, so we add it
+		gm, err := NewGroupMember(groupId, usrId)
+		if err != nil {
+			return nil, db.NoRowsAffected, fmt.Errorf("add group members: unable to create in memory group member: %w", err)
+		}
+		addMembers = append(addMembers, gm)
+		currentMembers = append(currentMembers, gm)
+	}
+	if len(found) > 0 {
+		for _, gm := range found {
+			deleteMembers = append(deleteMembers, gm)
+		}
+	}
+
+	// handle no change to existing group members
+	if len(addMembers) == 0 && len(deleteMembers) == 0 {
+		return currentMembers, db.NoRowsAffected, nil
+	}
+
+	var totalRowsAffected int
+	_, err = r.writer.DoTx(
+		ctx,
+		db.StdRetryCnt,
+		db.ExpBackoff{},
+		func(reader db.Reader, w db.Writer) error {
+			// we need a group, which won't be redeemed until all the other
+			// writes are successful.  We can't just use a single ticket because
+			// we need to write oplog entries for deletes and adds
+			groupTicket, err := w.GetTicket(&group)
+			if err != nil {
+				return fmt.Errorf("set group members: unable to get ticket for group: %w", err)
+			}
+			updatedGroup := allocGroup()
+			updatedGroup.PublicId = groupId
+			updatedGroup.Version = uint32(groupVersion) + 1
+			var groupOplogMsg oplog.Message
+			rowsUpdated, err := w.Update(ctx, &updatedGroup, []string{"Version"}, nil, db.NewOplogMsg(&groupOplogMsg), db.WithVersion(groupVersion))
+			if err != nil {
+				return fmt.Errorf("set group members: unable to update group version: %w", err)
+			}
+			if rowsUpdated != 1 {
+				return fmt.Errorf("set group members: updated group and %d rows updated", rowsUpdated)
+			}
+			if len(deleteMembers) > 0 {
+				// deleteTicket which will be redeemed when we write the oplog
+				// for these deletes
+				deleteTicket, err := w.GetTicket(&GroupMember{})
+				if err != nil {
+					return fmt.Errorf("set group members: unable to get ticket for group members deletes: %w", err)
+				}
+				userOplogMsgs := make([]*oplog.Message, 0, len(deleteMembers))
+				rowsDeleted, err := w.DeleteItems(ctx, deleteMembers, db.NewOplogMsgs(&userOplogMsgs))
+				if err != nil {
+					return fmt.Errorf("set group members: unable to delete user roles: %w", err)
+				}
+				if rowsDeleted != len(deleteMembers) {
+					return fmt.Errorf("set group members: members deleted %d did not match request for %d", rowsDeleted, len(deleteMembers))
+				}
+				totalRowsAffected += rowsDeleted
+				metadata := oplog.Metadata{
+					"op-type":            []string{oplog.OpType_OP_TYPE_DELETE.String()},
+					"scope-id":           []string{scope.PublicId},
+					"scope-type":         []string{scope.Type},
+					"resource-public-id": []string{groupId},
+				}
+				// write the oplog msgs for the deletes
+				if err := w.WriteOplogEntryWith(ctx, r.wrapper, deleteTicket, metadata, userOplogMsgs); err != nil {
+					return fmt.Errorf("set group members: unable to write oplog for deletes: %w", err)
+				}
+			}
+			if len(addMembers) > 0 {
+				// addTicket which will be redeemed when we write the oplog
+				// entry for these writes.
+				addTicket, err := w.GetTicket(&GroupMember{})
+				if err != nil {
+					return fmt.Errorf("set group members: unable to get ticket for principal role additions: %w", err)
+				}
+				userOplogMsgs := make([]*oplog.Message, 0, len(addMembers))
+				if err := w.CreateItems(ctx, addMembers, db.NewOplogMsgs(&userOplogMsgs)); err != nil {
+					return fmt.Errorf("set group members: unable to add users: %w", err)
+				}
+				totalRowsAffected += len(addMembers)
+				metadata := oplog.Metadata{
+					"op-type":            []string{oplog.OpType_OP_TYPE_CREATE.String()},
+					"scope-id":           []string{scope.PublicId},
+					"scope-type":         []string{scope.Type},
+					"resource-public-id": []string{groupId},
+				}
+				// write the oplog msgs for the additions
+				if err := w.WriteOplogEntryWith(ctx, r.wrapper, addTicket, metadata, userOplogMsgs); err != nil {
+					return fmt.Errorf("set group members: unable to write oplog for additions: %w", err)
+				}
+			}
+			// we're done with all the principal writes, so let's write the
+			// role's update oplog message
+			metadata := oplog.Metadata{
+				"op-type":            []string{oplog.OpType_OP_TYPE_UPDATE.String()},
+				"scope-id":           []string{scope.PublicId},
+				"scope-type":         []string{scope.Type},
+				"resource-public-id": []string{groupId},
+			}
+			if err := w.WriteOplogEntryWith(ctx, r.wrapper, groupTicket, metadata, []*oplog.Message{&groupOplogMsg}); err != nil {
+				return fmt.Errorf("set group members: unable to write oplog for additions: %w", err)
+			}
+
+			currentMembers, err = r.ListGroupMembers(ctx, groupId)
+			if err != nil {
+				return fmt.Errorf("set group members: unable to retrieve current group members after sets: %w", err)
+			}
+			return nil
+		})
+	if err != nil {
+		return nil, db.NoRowsAffected, fmt.Errorf("set group members: unable to set group members: %w", err)
+	}
+	return currentMembers, totalRowsAffected, nil
+}

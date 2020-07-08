@@ -3,6 +3,7 @@ package iam
 import (
 	"context"
 	"errors"
+	"sort"
 	"testing"
 	"time"
 
@@ -975,6 +976,132 @@ func TestRepository_DeleteGroupMembers(t *testing.T) {
 
 			err = db.TestVerifyOplog(t, rw, tt.args.group.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_DELETE), db.WithCreateNotBefore(10*time.Second))
 			assert.NoError(err)
+		})
+	}
+}
+
+func TestRepository_SetGroupMembers(t *testing.T) {
+	t.Parallel()
+	cleanup, conn, _ := db.TestSetup(t, "postgres")
+	defer func() {
+		err := cleanup()
+		assert.NoError(t, err)
+		err = conn.Close()
+		assert.NoError(t, err)
+	}()
+	rw := db.New(conn)
+	wrapper := db.TestWrapper(t)
+
+	repo, err := NewRepository(rw, rw, wrapper)
+	require.NoError(t, err)
+
+	org, proj := TestScopes(t, conn)
+	testUser := TestUser(t, conn, org.PublicId)
+
+	createUsersFn := func() []string {
+		results := []string{}
+		for i := 0; i < 5; i++ {
+			u := TestUser(t, conn, org.PublicId)
+			results = append(results, u.PublicId)
+		}
+		return results
+	}
+	setupFn := func(groupId string) []string {
+		users := createUsersFn()
+		_, err := repo.AddGroupMembers(context.Background(), groupId, 1, users)
+		require.NoError(t, err)
+		return users
+	}
+	type args struct {
+		group          *Group
+		groupVersion   int
+		userIds        []string
+		addToOrigUsers bool
+		opt            []Option
+	}
+	tests := []struct {
+		name             string
+		setup            func(string) []string
+		args             args
+		wantAffectedRows int
+		wantErr          bool
+	}{
+		{
+			name:  "clear",
+			setup: setupFn,
+			args: args{
+				group:        TestGroup(t, conn, proj.PublicId),
+				groupVersion: 2, // yep, since setupFn will increment it to 2
+				userIds:      []string{},
+			},
+			wantErr:          false,
+			wantAffectedRows: 5,
+		},
+		{
+			name:  "no change",
+			setup: setupFn,
+			args: args{
+				group:          TestGroup(t, conn, proj.PublicId),
+				groupVersion:   2, // yep, since setupFn will increment it to 2
+				userIds:        []string{},
+				addToOrigUsers: true,
+			},
+			wantErr:          false,
+			wantAffectedRows: 0,
+		},
+		{
+			name:  "add users",
+			setup: setupFn,
+			args: args{
+				group:          TestGroup(t, conn, proj.PublicId),
+				groupVersion:   2, // yep, since setupFn will increment it to 2
+				userIds:        []string{testUser.PublicId},
+				addToOrigUsers: true,
+			},
+			wantErr:          false,
+			wantAffectedRows: 1,
+		},
+		{
+			name:  "remove existing and add users",
+			setup: setupFn,
+			args: args{
+				group:          TestGroup(t, conn, proj.PublicId),
+				groupVersion:   2, // yep, since setupFn will increment it to 2
+				userIds:        []string{testUser.PublicId},
+				addToOrigUsers: false,
+			},
+			wantErr:          false,
+			wantAffectedRows: 6,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+			var origUsers []string
+			if tt.setup != nil {
+				origUsers = tt.setup(tt.args.group.PublicId)
+			}
+			setUsers := tt.args.userIds
+			if tt.args.addToOrigUsers {
+				setUsers = append(setUsers, origUsers...)
+			}
+
+			got, affectedRows, err := repo.SetGroupMembers(context.Background(), tt.args.group.PublicId, tt.args.groupVersion, setUsers, tt.args.opt...)
+			if tt.wantErr {
+				require.Error(err)
+				return
+			}
+			require.NoError(err)
+			assert.Equal(tt.wantAffectedRows, affectedRows)
+			var gotIds []string
+			for _, r := range got {
+				gotIds = append(gotIds, r.GetMemberId())
+			}
+			var wantIds []string
+			wantIds = append(wantIds, tt.args.userIds...)
+			sort.Strings(wantIds)
+			sort.Strings(gotIds)
+			assert.Equal(wantIds, wantIds)
 		})
 	}
 }
