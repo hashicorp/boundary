@@ -54,7 +54,7 @@ func TokenAuthenticator(l hclog.Logger, tokenRepo common.AuthTokenRepoFactory) f
 		}
 		at, err := repo.ValidateToken(ctx, tMD.publicId(), tMD.token())
 		if err != nil {
-			l.Debug("failed to validate token", "error", err)
+			l.Error("failed to validate token", "error", err)
 		}
 		if at != nil {
 			tMD.UserId = at.GetIamUserId()
