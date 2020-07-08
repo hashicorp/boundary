@@ -25,7 +25,7 @@ var _ Clonable = (*Role)(nil)
 var _ db.VetForWriter = (*Role)(nil)
 
 // NewRole creates a new in memory role with a scope (project/organization)
-// allowed options include: withDescripion, WithName.
+// allowed options include: withDescripion, WithName, withGrantScopeId.
 func NewRole(scopeId string, opt ...Option) (*Role, error) {
 	if scopeId == "" {
 		return nil, fmt.Errorf("new role: missing scope id %w", db.ErrInvalidParameter)
@@ -33,9 +33,10 @@ func NewRole(scopeId string, opt ...Option) (*Role, error) {
 	opts := getOpts(opt...)
 	r := &Role{
 		Role: &store.Role{
-			ScopeId:     scopeId,
-			Name:        opts.withName,
-			Description: opts.withDescription,
+			ScopeId:      scopeId,
+			Name:         opts.withName,
+			Description:  opts.withDescription,
+			GrantScopeId: opts.withGrantScopeId,
 		},
 	}
 	return r, nil

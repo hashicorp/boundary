@@ -206,13 +206,16 @@ func Test_RoleUpdate(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	id := testId(t)
 	org, proj := TestScopes(t, conn)
+	org2, proj2 := TestScopes(t, conn)
 	rw := db.New(conn)
 	type args struct {
-		name           string
-		description    string
-		fieldMaskPaths []string
-		nullPaths      []string
-		ScopeId        string
+		name            string
+		description     string
+		fieldMaskPaths  []string
+		nullPaths       []string
+		scopeId         string
+		grantScopeId    string
+		scopeIdOverride string
 	}
 	tests := []struct {
 		name           string
@@ -227,7 +230,7 @@ func Test_RoleUpdate(t *testing.T) {
 			args: args{
 				name:           "valid" + id,
 				fieldMaskPaths: []string{"Name"},
-				ScopeId:        org.PublicId,
+				scopeId:        org.PublicId,
 			},
 			wantErr:        false,
 			wantRowsUpdate: 1,
@@ -235,9 +238,10 @@ func Test_RoleUpdate(t *testing.T) {
 		{
 			name: "proj-scope-id",
 			args: args{
-				name:           "proj-scope-id" + id,
-				fieldMaskPaths: []string{"ScopeId"},
-				ScopeId:        proj.PublicId,
+				name:            "proj-scope-id" + id,
+				fieldMaskPaths:  []string{"ScopeId"},
+				scopeId:         proj.PublicId,
+				scopeIdOverride: org.PublicId,
 			},
 			wantErr:    true,
 			wantErrMsg: "update: vet for write failed not allowed to change a resource's scope",
@@ -247,7 +251,7 @@ func Test_RoleUpdate(t *testing.T) {
 			args: args{
 				name:           "proj-scope-id" + id,
 				fieldMaskPaths: []string{"Name"},
-				ScopeId:        proj.PublicId,
+				scopeId:        proj.PublicId,
 			},
 			wantErr:        false,
 			wantRowsUpdate: 1,
@@ -257,7 +261,7 @@ func Test_RoleUpdate(t *testing.T) {
 			args: args{
 				name:           "empty-scope-id" + id,
 				fieldMaskPaths: []string{"Name"},
-				ScopeId:        "",
+				scopeId:        "",
 			},
 			wantErr:        false,
 			wantRowsUpdate: 1,
@@ -267,7 +271,7 @@ func Test_RoleUpdate(t *testing.T) {
 			args: args{
 				name:           "dup-name" + id,
 				fieldMaskPaths: []string{"Name"},
-				ScopeId:        org.PublicId,
+				scopeId:        org.PublicId,
 			},
 			wantErr:    true,
 			wantDup:    true,
@@ -279,7 +283,7 @@ func Test_RoleUpdate(t *testing.T) {
 				name:           "set description null" + id,
 				fieldMaskPaths: []string{"Name"},
 				nullPaths:      []string{"Description"},
-				ScopeId:        org.PublicId,
+				scopeId:        org.PublicId,
 			},
 			wantErr:        false,
 			wantRowsUpdate: 1,
@@ -290,7 +294,7 @@ func Test_RoleUpdate(t *testing.T) {
 				description:    "set description null" + id,
 				fieldMaskPaths: []string{"Description"},
 				nullPaths:      []string{"Name"},
-				ScopeId:        org.PublicId,
+				scopeId:        org.PublicId,
 			},
 			wantDup:        true,
 			wantErr:        false,
@@ -302,29 +306,118 @@ func Test_RoleUpdate(t *testing.T) {
 				name:           "set name null" + id,
 				fieldMaskPaths: []string{"Name"},
 				nullPaths:      []string{"Description"},
-				ScopeId:        org.PublicId,
+				scopeId:        org.PublicId,
 			},
 			wantErr:        false,
 			wantRowsUpdate: 1,
+		},
+		{
+			name: "set grant scope in project with same scope",
+			args: args{
+				name:           "set grant scope in project with same scope",
+				fieldMaskPaths: []string{"Name", "GrantScopeId"},
+				scopeId:        proj.PublicId,
+				grantScopeId:   proj.PublicId,
+			},
+			wantRowsUpdate: 1,
+		},
+		{
+			name: "set grant scope in org with same scope",
+			args: args{
+				name:           "set grant scope in org with same scope",
+				fieldMaskPaths: []string{"Name", "GrantScopeId"},
+				scopeId:        org2.PublicId,
+				grantScopeId:   org2.PublicId,
+			},
+			wantRowsUpdate: 1,
+		},
+		{
+			name: "set grant scope in project with different scope",
+			args: args{
+				name:           "set grant scope in project with different scope",
+				fieldMaskPaths: []string{"GrantScopeId"},
+				scopeId:        proj.PublicId,
+				grantScopeId:   proj2.PublicId,
+			},
+			wantErr:    true,
+			wantErrMsg: "update: failed pq: invalid to set grant_scope_id to non-same scope_id when role scope type is project",
+		},
+		{
+			name: "set grant scope in org",
+			args: args{
+				name:           "set grant scope in org",
+				fieldMaskPaths: []string{"Name", "GrantScopeId"},
+				scopeId:        org2.PublicId,
+				grantScopeId:   proj2.PublicId,
+			},
+			wantRowsUpdate: 1,
+		},
+		{
+			name: "set grant scope in external project",
+			args: args{
+				name:           "set grant scope in external project",
+				fieldMaskPaths: []string{"GrantScopeId"},
+				scopeId:        org.PublicId,
+				grantScopeId:   proj2.PublicId,
+			},
+			wantErr:    true,
+			wantErrMsg: "update: failed pq: grant_scope_id is not a child project of the role scope",
+		},
+		{
+			name: "set grant scope in global",
+			args: args{
+				name:           "set grant scope in global",
+				fieldMaskPaths: []string{"GrantScopeId"},
+				scopeId:        org.PublicId,
+				grantScopeId:   "global",
+			},
+		},
+		{
+			name: "set grant scope to parent",
+			args: args{
+				name:           "set grant scope to parent",
+				fieldMaskPaths: []string{"GrantScopeId"},
+				scopeId:        proj2.PublicId,
+				grantScopeId:   org2.PublicId,
+			},
+			wantErr:    true,
+			wantErrMsg: "update: failed pq: grant_scope_id is not a child project of the role scope",
+		},
+		{
+			name: "set grant scope from global",
+			args: args{
+				name:           "set grant scope from global",
+				fieldMaskPaths: []string{"GrantScopeId"},
+				scopeId:        "global",
+				grantScopeId:   org.PublicId,
+			},
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 			if tt.wantDup {
-				r := TestRole(t, conn, org.PublicId, WithName(tt.args.name))
+				r := TestRole(t, conn, tt.args.scopeId, WithName(tt.args.name))
 				_, err := rw.Update(context.Background(), r, tt.args.fieldMaskPaths, tt.args.nullPaths)
 				require.NoError(err)
 			}
 
 			id := testId(t)
-			role := TestRole(t, conn, org.PublicId, WithDescription(id), WithName(id))
+			scopeId := tt.args.scopeId
+			if scopeId == "" {
+				scopeId = org.PublicId
+			}
+			role := TestRole(t, conn, scopeId, WithDescription(id), WithName(id))
 
 			updateRole := allocRole()
 			updateRole.PublicId = role.PublicId
-			updateRole.ScopeId = tt.args.ScopeId
+			updateRole.ScopeId = tt.args.scopeId
+			if tt.args.scopeIdOverride != "" {
+				updateRole.ScopeId = tt.args.scopeIdOverride
+			}
 			updateRole.Name = tt.args.name
 			updateRole.Description = tt.args.description
+			updateRole.GrantScopeId = tt.args.grantScopeId
 
 			updatedRows, err := rw.Update(context.Background(), &updateRole, tt.args.fieldMaskPaths, tt.args.nullPaths)
 			if tt.wantErr {
@@ -343,6 +436,9 @@ func Test_RoleUpdate(t *testing.T) {
 			foundRole.PublicId = role.GetPublicId()
 			err = rw.LookupByPublicId(context.Background(), &foundRole)
 			require.NoError(err)
+			if tt.args.grantScopeId == "" {
+				updateRole.GrantScopeId = role.ScopeId
+			}
 			assert.True(proto.Equal(updateRole, foundRole))
 			if len(tt.args.nullPaths) != 0 {
 				dbassert := dbassert.New(t, rw)

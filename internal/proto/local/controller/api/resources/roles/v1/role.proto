@@ -29,4 +29,11 @@ message Role {
 
 	// Whether the resource is disabled
 	google.protobuf.BoolValue disabled = 6;
+
+	// The scope the grants will apply to. If the role is at the global scope,
+	// this can be an organization or project. If the role is at an organization
+	// scope, this can be a project within the organization. It is invalid for
+	// this to be anything other than the role's scope when the role's scope is
+	// a project.
+	google.protobuf.StringValue grant_scope_id = 7 [json_name="grant_scope_id"];
 }
