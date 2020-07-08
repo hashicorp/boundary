@@ -329,8 +329,6 @@ func TestRepository_DeleteRoleGrants(t *testing.T) {
 				deleteCanonicalGrants = deleteCanonicalGrants[1:]
 				deleteGrants[i] = override
 			}
-			t.Log(pretty.Sprint(deleteCanonicalGrants))
-			t.Log(pretty.Sprint(deleteGrants))
 
 			var roleId string
 			switch {
