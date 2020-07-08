@@ -286,11 +286,11 @@ func TestRepository_UpdateUser(t *testing.T) {
 			args: args{
 				name:           "modified-scope" + id,
 				fieldMaskPaths: []string{"ScopeId"},
-				ScopeId:        proj.PublicId,
+				ScopeId:        "global",
 				opt:            []Option{WithSkipVetForWrite(true)},
 			},
 			wantErr:      true,
-			wantErrMsg:   `update: failed pq: scope_id cannot be set`,
+			wantErrMsg:   `update: failed: pq: scope_id cannot be set`,
 			directUpdate: true,
 		},
 	}
@@ -339,7 +339,7 @@ func TestRepository_UpdateUser(t *testing.T) {
 				case "dup-name":
 					assert.Equal(fmt.Sprintf(tt.wantErrMsg, "dup-name"+id, org.PublicId), err.Error())
 				default:
-					assert.True(strings.Contains(err.Error(), tt.wantErrMsg))
+					assert.True(strings.Contains(err.Error(), tt.wantErrMsg), "%s", err.Error())
 				}
 				err = db.TestVerifyOplog(t, rw, u.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_UPDATE), db.WithCreateNotBefore(10*time.Second))
 				require.Error(err)
