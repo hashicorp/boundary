@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/hashicorp/watchtower/internal/db"
+	"github.com/hashicorp/watchtower/internal/oplog"
 )
 
 // CreateGroup will create a group in the repository and return the written
@@ -136,6 +137,84 @@ func (r *Repository) ListGroupMembers(ctx context.Context, withGroupId string, o
 	members := []*GroupMember{}
 	if err := r.list(ctx, &members, "group_id = ?", []interface{}{withGroupId}, opt...); err != nil {
 		return nil, fmt.Errorf("list group members: %w", err)
+	}
+	return members, nil
+}
+
+// AddGroupMembers provides the ability to add members (userIds) to a role
+// (roleId).  The role's current db version must match the roleVersion or an
+// error will be returned.  The users and groups must all be in the same
+// organization or the user must be in a project group's parent organization.
+func (r *Repository) AddGroupMembers(ctx context.Context, groupId string, groupVersion int, userIds []string, opt ...Option) ([]*GroupMember, error) {
+
+	if groupId == "" {
+		return nil, fmt.Errorf("add group members: missing group id %w", db.ErrInvalidParameter)
+	}
+	if len(userIds) == 0 {
+		return nil, fmt.Errorf("add group members: missing user ids to add %w", db.ErrInvalidParameter)
+	}
+
+	group := allocGroup()
+	group.PublicId = groupId
+	scope, err := group.GetScope(ctx, r.reader)
+	if err != nil {
+		return nil, fmt.Errorf("add group members: unable to get group %s scope: %w", groupId, err)
+	}
+
+	newGroupMembers := make([]interface{}, 0, len(userIds))
+	for _, id := range userIds {
+		gm, err := NewGroupMember(groupId, id)
+		if err != nil {
+			return nil, fmt.Errorf("add group members: unable to create in memory group member: %w", err)
+		}
+		newGroupMembers = append(newGroupMembers, gm)
+	}
+
+	_, err = r.writer.DoTx(
+		ctx,
+		db.StdRetryCnt,
+		db.ExpBackoff{},
+		func(reader db.Reader, w db.Writer) error {
+			msgs := make([]*oplog.Message, 0, 2)
+			groupTicket, err := w.GetTicket(&group)
+			if err != nil {
+				return fmt.Errorf("add group members: unable to get ticket: %w", err)
+			}
+			updatedGroup := allocGroup()
+			updatedGroup.PublicId = groupId
+			updatedGroup.Version = uint32(groupVersion) + 1
+			var groupOplogMsg oplog.Message
+			rowsUpdated, err := w.Update(ctx, &updatedGroup, []string{"Version"}, nil, db.NewOplogMsg(&groupOplogMsg), db.WithVersion(groupVersion))
+			if err != nil {
+				return fmt.Errorf("add group members: unable to update group version: %w", err)
+			}
+			if rowsUpdated != 1 {
+				return fmt.Errorf("add group members: updated group and %d rows updated", rowsUpdated)
+			}
+			msgs = append(msgs, &groupOplogMsg)
+			memberOplogMsgs := make([]*oplog.Message, 0, len(newGroupMembers))
+			if err := w.CreateItems(ctx, newGroupMembers, db.NewOplogMsgs(&memberOplogMsgs)); err != nil {
+				return fmt.Errorf("add group members: unable to add users: %w", err)
+			}
+			msgs = append(msgs, memberOplogMsgs...)
+			metadata := oplog.Metadata{
+				"op-type":            []string{oplog.OpType_OP_TYPE_CREATE.String()},
+				"scope-id":           []string{scope.PublicId},
+				"scope-type":         []string{scope.Type},
+				"resource-public-id": []string{groupId},
+			}
+			if err := w.WriteOplogEntryWith(ctx, r.wrapper, groupTicket, metadata, msgs); err != nil {
+				return fmt.Errorf("add group members: unable to write oplog: %w", err)
+			}
+			return nil
+		},
+	)
+	if err != nil {
+		return nil, fmt.Errorf("add group members: error creating roles: %w", err)
+	}
+	members := make([]*GroupMember, 0, len(newGroupMembers)+len(newGroupMembers))
+	for _, m := range newGroupMembers {
+		members = append(members, m.(*GroupMember))
 	}
 	return members, nil
 }

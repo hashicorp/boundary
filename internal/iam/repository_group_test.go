@@ -741,3 +741,118 @@ func TestRepository_ListMembers(t *testing.T) {
 
 	})
 }
+
+func TestRepository_AddGroupMembers(t *testing.T) {
+	t.Parallel()
+	cleanup, conn, _ := db.TestSetup(t, "postgres")
+	defer func() {
+		err := cleanup()
+		assert.NoError(t, err)
+		err = conn.Close()
+		assert.NoError(t, err)
+	}()
+	rw := db.New(conn)
+	wrapper := db.TestWrapper(t)
+	repo, err := NewRepository(rw, rw, wrapper)
+	require.NoError(t, err)
+	org, proj := TestScopes(t, conn)
+	group := TestGroup(t, conn, proj.PublicId)
+	createUsersFn := func() []string {
+		results := []string{}
+		for i := 0; i < 5; i++ {
+			u := TestUser(t, conn, org.PublicId)
+			results = append(results, u.PublicId)
+		}
+		return results
+	}
+	groupVersion := 0
+	type args struct {
+		groupId      string
+		groupVersion int
+		userIds      []string
+		opt          []Option
+	}
+	tests := []struct {
+		name      string
+		args      args
+		wantErr   bool
+		wantErrIs error
+	}{
+		{
+			name: "valid-members",
+			args: args{
+				groupId: group.PublicId,
+				userIds: createUsersFn(),
+			},
+			wantErr: false,
+		},
+		{
+			name: "valid-next-version",
+			args: args{
+				groupId: group.PublicId,
+				userIds: createUsersFn(),
+			},
+			wantErr: false,
+		},
+		{
+			name: "bad-version",
+			args: args{
+				groupId:      group.PublicId,
+				groupVersion: 1000,
+				userIds:      createUsersFn(),
+			},
+			wantErr: true,
+		},
+		{
+			name: "no-members",
+			args: args{
+				groupId: group.PublicId,
+				userIds: nil,
+			},
+			wantErr: true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+
+			var version int
+			if tt.args.groupVersion == 0 {
+				groupVersion += 1
+				version = groupVersion
+			} else {
+				version = tt.args.groupVersion
+			}
+			require.NoError(conn.Where("1=1").Delete(allocGroupMember()).Error)
+			got, err := repo.AddGroupMembers(context.Background(), tt.args.groupId, version, tt.args.userIds, tt.args.opt...)
+			if tt.wantErr {
+				require.Error(err)
+				if tt.wantErrIs != nil {
+					assert.Truef(errors.Is(err, tt.wantErrIs), "unexpected error %s", err.Error())
+				}
+				return
+			}
+			require.NoError(err)
+			gotMembers := map[string]*GroupMember{}
+			for _, m := range got {
+				gotMembers[m.MemberId] = m
+			}
+			for _, id := range tt.args.userIds {
+				assert.NotEmpty(gotMembers[id])
+				u, err := repo.LookupUser(context.Background(), id)
+				assert.NoError(err)
+				assert.Equal(id, u.PublicId)
+			}
+			err = db.TestVerifyOplog(t, rw, group.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_CREATE), db.WithCreateNotBefore(10*time.Second))
+			assert.NoError(err)
+
+			foundMembers, err := repo.ListGroupMembers(context.Background(), group.PublicId)
+			require.NoError(err)
+			for _, m := range foundMembers {
+				assert.NotEmpty(gotMembers[m.MemberId])
+				assert.Equal(gotMembers[m.MemberId].GetGroupId(), m.GroupId)
+			}
+
+		})
+	}
+}
