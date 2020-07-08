@@ -494,6 +494,7 @@ create table iam_scope (
       or (
         type = 'project'
         and parent_id is not null
+        and parent_id != 'global'
       )
     ),
     description text,
@@ -501,21 +502,28 @@ create table iam_scope (
   );
 
 create table iam_scope_global (
-    scope_id wt_scope_id not null unique references iam_scope(public_id) on delete cascade on update cascade check(
-      scope_id = 'global'
-    ),
-    name text unique,
-    primary key(scope_id)
+    scope_id wt_scope_id primary key
+      references iam_scope(public_id) 
+      on delete cascade 
+      on update cascade 
+      check(
+        scope_id = 'global'
+      ),
+    name text unique
 );
 
 create table iam_scope_organization (
-    scope_id wt_scope_id not null unique references iam_scope(public_id) on delete cascade on update cascade,
-    parent_id wt_scope_id not null references iam_scope_global(scope_id) on delete cascade on update cascade check(
-      parent_id = 'global'
-    ),
-    name text unique,
-    primary key(scope_id)
-  );
+  scope_id wt_scope_id primary key
+    references iam_scope(public_id)
+    on delete cascade
+    on update cascade,
+  parent_id wt_scope_id not null
+    references iam_scope_global(scope_id)
+    on delete cascade
+    on update cascade,
+  name text,
+  unique (parent_id, name)
+);
 
 create table iam_scope_project (
     scope_id wt_scope_id not null references iam_scope(public_id) on delete cascade on update cascade,
@@ -671,16 +679,12 @@ create or replace function
   user_scope_id_valid()
   returns trigger
 as $$
-declare user_scope_type text;
 begin
-  select isc.type from iam_scope isc where isc.public_id = new.scope_id into user_scope_type;
-  if user_scope_type = 'global' then
-    return new;
+  perform from iam_scope where public_id = new.scope_id and type in ('global', 'organization');
+  if not found then
+    raise exception 'invalid scope type for user creation';
   end if;
-  if user_scope_type = 'organization' then
-    return new;
-  end if;
-  raise exception 'invalid scope type for user creation';
+  return new;
 end;
 $$ language plpgsql;
 
@@ -797,11 +801,7 @@ update on iam_group
 -- with a before update trigger using iam_immutable_role(). 
 create table iam_user_role (
   create_time wt_timestamp,
-<<<<<<< HEAD
   scope_id wt_scope_id not null,
-=======
-  scope_id wt_public_id not null,
->>>>>>> origin/master
   role_id wt_public_id not null,
   principal_id wt_public_id not null references iam_user(public_id) on delete cascade on update cascade,
   primary key (role_id, principal_id),
@@ -818,11 +818,7 @@ create table iam_user_role (
 -- update trigger using iam_immutable_role().
 create table iam_group_role (
   create_time wt_timestamp,
-<<<<<<< HEAD
   scope_id wt_scope_id not null,
-=======
-  scope_id wt_public_id not null,
->>>>>>> origin/master
   role_id wt_public_id not null,
   principal_id wt_public_id not null,
   primary key (role_id, principal_id),
