@@ -34,6 +34,8 @@ type Options struct {
 
 	// WithVersion must be accessible from other packages
 	WithVersion int
+
+	withSkipVetForWrite bool
 }
 
 type oplogOpts struct {
@@ -122,5 +124,13 @@ func WithLimit(limit int) Option {
 func WithVersion(version int) Option {
 	return func(o *Options) {
 		o.WithVersion = version
+	}
+}
+
+// WithSkipVetForWrite provides an option to allow skipping vet checks to allow
+// testing lower-level SQL triggers and constraints
+func WithSkipVetForWrite(enable bool) Option {
+	return func(o *Options) {
+		o.withSkipVetForWrite = enable
 	}
 }

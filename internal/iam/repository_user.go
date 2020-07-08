@@ -66,8 +66,9 @@ func (r *Repository) UpdateUser(ctx context.Context, user *User, fieldMaskPaths 
 	if len(dbMask) == 0 && len(nullFields) == 0 {
 		return nil, db.NoRowsAffected, fmt.Errorf("update user: %w", db.ErrEmptyFieldMask)
 	}
+
 	u := user.Clone()
-	resource, rowsUpdated, err := r.update(ctx, u.(*User), dbMask, nullFields)
+	resource, rowsUpdated, err := r.update(ctx, u.(*User), dbMask, nullFields, opt...)
 	if err != nil {
 		if db.IsUniqueError(err) {
 			return nil, db.NoRowsAffected, fmt.Errorf("update user: user %s already exists in organization %s", user.Name, user.ScopeId)

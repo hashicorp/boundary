@@ -101,7 +101,7 @@ func TestNewUserRole(t *testing.T) {
 	}
 }
 
-func Test_UserRoleCreate(t *testing.T) {
+func TestUserRole_Create(t *testing.T) {
 	t.Parallel()
 	conn, _ := db.TestSetup(t, "postgres")
 	org, proj := TestScopes(t, conn)
@@ -279,7 +279,7 @@ func Test_UserRoleCreate(t *testing.T) {
 	}
 }
 
-func Test_UserRoleUpdate(t *testing.T) {
+func TestUserRole_Update(t *testing.T) {
 	t.Parallel()
 	conn, _ := db.TestSetup(t, "postgres")
 	org, _ := TestScopes(t, conn)
@@ -299,7 +299,7 @@ func Test_UserRoleUpdate(t *testing.T) {
 	})
 }
 
-func Test_UserRoleDelete(t *testing.T) {
+func TestUserRole_Delete(t *testing.T) {
 	t.Parallel()
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
@@ -473,7 +473,7 @@ func TestNewGroupRole(t *testing.T) {
 	}
 }
 
-func Test_GroupRoleCreate(t *testing.T) {
+func TestGroupRole_Create(t *testing.T) {
 	t.Parallel()
 	conn, _ := db.TestSetup(t, "postgres")
 	org, proj := TestScopes(t, conn)
@@ -639,7 +639,7 @@ func Test_GroupRoleCreate(t *testing.T) {
 	}
 }
 
-func Test_GroupRoleUpdate(t *testing.T) {
+func TestGroupRole_Update(t *testing.T) {
 	t.Parallel()
 	conn, _ := db.TestSetup(t, "postgres")
 	org, _ := TestScopes(t, conn)
@@ -659,7 +659,7 @@ func Test_GroupRoleUpdate(t *testing.T) {
 	})
 }
 
-func Test_GroupRoleDelete(t *testing.T) {
+func TestGroupRole_Delete(t *testing.T) {
 	t.Parallel()
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
