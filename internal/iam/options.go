@@ -14,24 +14,26 @@ type Option func(*options)
 
 // options = how options are represented
 type options struct {
-	withPublicId    string
-	withName        string
-	withScope       *Scope
-	withDescription string
-	withParentId    *string
-	withLimit       int
-	withAutoVivify  bool
+	withPublicId        string
+	withName            string
+	withScope           *Scope
+	withDescription     string
+	withParentId        *string
+	withLimit           int
+	withAutoVivify      bool
+	withSkipVetForWrite bool
 }
 
 func getDefaultOptions() options {
 	return options{
-		withPublicId:    "",
-		withScope:       nil,
-		withDescription: "",
-		withName:        "",
-		withParentId:    nil,
-		withLimit:       0,
-		withAutoVivify:  false,
+		withPublicId:        "",
+		withScope:           nil,
+		withDescription:     "",
+		withName:            "",
+		withParentId:        nil,
+		withLimit:           0,
+		withAutoVivify:      false,
+		withSkipVetForWrite: false,
 	}
 }
 
@@ -77,5 +79,13 @@ func WithLimit(limit int) Option {
 func WithAutoVivify(enable bool) Option {
 	return func(o *options) {
 		o.withAutoVivify = enable
+	}
+}
+
+// WithSkipVetForWrite provides an option to allow skipping vet checks to allow
+// testing lower-level SQL triggers and constraints
+func WithSkipVetForWrite(enable bool) Option {
+	return func(o *options) {
+		o.withSkipVetForWrite = enable
 	}
 }

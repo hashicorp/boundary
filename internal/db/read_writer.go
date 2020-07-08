@@ -241,9 +241,11 @@ func (rw *Db) Create(ctx context.Context, i interface{}, opt ...Option) error {
 	// db to manage them
 	setFieldsToNil(i, []string{"CreateTime", "UpdateTime"})
 
-	if vetter, ok := i.(VetForWriter); ok {
-		if err := vetter.VetForWrite(ctx, rw, CreateOp); err != nil {
-			return fmt.Errorf("create: vet for write failed %w", err)
+	if !opts.withSkipVetForWrite {
+		if vetter, ok := i.(VetForWriter); ok {
+			if err := vetter.VetForWrite(ctx, rw, CreateOp); err != nil {
+				return fmt.Errorf("create: vet for write failed %w", err)
+			}
 		}
 	}
 	var ticket *store.Ticket
@@ -407,9 +409,11 @@ func (rw *Db) Update(ctx context.Context, i interface{}, fieldMaskPaths []string
 			return NoRowsAffected, fmt.Errorf("update: oplog validation failed %w", err)
 		}
 	}
-	if vetter, ok := i.(VetForWriter); ok {
-		if err := vetter.VetForWrite(ctx, rw, UpdateOp, WithFieldMaskPaths(fieldMaskPaths), WithNullPaths(setToNullPaths)); err != nil {
-			return NoRowsAffected, fmt.Errorf("update: vet for write failed %w", err)
+	if !opts.withSkipVetForWrite {
+		if vetter, ok := i.(VetForWriter); ok {
+			if err := vetter.VetForWrite(ctx, rw, UpdateOp, WithFieldMaskPaths(fieldMaskPaths), WithNullPaths(setToNullPaths)); err != nil {
+				return NoRowsAffected, fmt.Errorf("update: vet for write failed %w", err)
+			}
 		}
 	}
 	var ticket *store.Ticket
