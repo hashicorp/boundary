@@ -428,6 +428,7 @@ drop function iam_sub_scopes_func cascade;
 drop function iam_immutable_role cascade;
 drop function iam_user_role_scope_check cascade;
 drop function iam_group_role_scope_check cascade;
+drop function immutable_scope_id_func cascade;
 
 COMMIT;
 
@@ -448,7 +449,24 @@ values
   ('organization'),
   ('project');
 
- 
+
+create or replace function
+  iam_immutable_scope_id_func()
+  returns trigger
+as $$
+begin
+  if new.scope_id is distinct from old.scope_id then
+    raise exception 'scope_id cannot be set to %', new.scope_id;
+  end if;
+  return new;
+end;
+$$ language plpgsql;
+
+comment on function
+  iam_immutable_scope_id_func()
+is
+  'function used in before update triggers to make scope_id column is immutable';
+
 create table iam_scope (
     public_id wt_public_id primary key,
     create_time wt_timestamp,
@@ -578,7 +596,6 @@ before
 update on iam_scope
   for each row execute procedure iam_sub_names();
 
-
 create table iam_user (
     public_id wt_public_id not null primary key,
     create_time wt_timestamp,
@@ -611,6 +628,11 @@ create trigger
 before
 insert on iam_user
   for each row execute procedure default_create_time();
+
+create trigger immutable_scope_id_user
+before
+update on iam_user
+  for each row execute procedure iam_immutable_scope_id_func();
 
 create table iam_role (
     public_id wt_public_id not null primary key,
@@ -683,7 +705,12 @@ create trigger
 before
 insert on iam_group
   for each row execute procedure default_create_time();
-  
+
+create trigger immutable_scope_id_group
+before
+update on iam_group
+  for each row execute procedure iam_immutable_scope_id_func();
+
 -- iam_user_role contains roles that have been assigned to users. Users can only
 -- be assigned roles which are within its organization, or the role is within a project within its
 -- organization. There's no way to declare this constraint, so it will be
