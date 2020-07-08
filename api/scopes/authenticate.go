@@ -10,9 +10,9 @@ import (
 
 // TODO: This will need to be changed when we add Auth Method API to watchtower.  We'll also need a better
 // way to handle different auth method types.
-func (s Organization) Authenticate(ctx context.Context, authMethodId, name, password string) (*api.Error, error) {
+func (s Organization) Authenticate(ctx context.Context, authMethodId, name, password string) (*authtokens.AuthToken, *api.Error, error) {
 	if s.Client == nil {
-		return nil, fmt.Errorf("nil client in Authenticate request")
+		return nil, nil, fmt.Errorf("nil client in Authenticate request")
 	}
 	if s.Id == "" {
 		// Assume the client has been configured with organization already and
@@ -33,23 +33,23 @@ func (s Organization) Authenticate(ctx context.Context, authMethodId, name, pass
 
 	req, err := s.Client.NewRequest(ctx, "POST", ":authenticate", reqBody)
 	if err != nil {
-		return nil, fmt.Errorf("error creating Authenticate request: %w", err)
+		return nil, nil, fmt.Errorf("error creating Authenticate request: %w", err)
 	}
 
 	resp, err := s.Client.Do(req)
 	if err != nil {
-		return nil, fmt.Errorf("error performing client request during Authenticate call: %w", err)
+		return nil, nil, fmt.Errorf("error performing client request during Authenticate call: %w", err)
 	}
 
 	target := new(authtokens.AuthToken)
 	apiErr, err := resp.Decode(target)
 	if err != nil {
-		return nil, fmt.Errorf("error decoding Authenticate response: %w", err)
+		return nil, nil, fmt.Errorf("error decoding Authenticate response: %w", err)
 	}
 
 	if target.Token != nil {
 		s.Client.SetToken(*target.Token)
 	}
 
-	return apiErr, nil
+	return target, apiErr, nil
 }
