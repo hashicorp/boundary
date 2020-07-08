@@ -136,6 +136,7 @@ func TestRepository_UpdateUser(t *testing.T) {
 		wantErrMsg     string
 		wantIsErr      error
 		wantDup        bool
+		directUpdate   bool
 	}{
 		{
 			name: "valid",
@@ -280,6 +281,18 @@ func TestRepository_UpdateUser(t *testing.T) {
 			wantDup:    true,
 			wantErrMsg: `update user: user %s already exists in organization %s`,
 		},
+		{
+			name: "modified-scope",
+			args: args{
+				name:           "modified-scope" + id,
+				fieldMaskPaths: []string{"ScopeId"},
+				ScopeId:        proj.PublicId,
+				opt:            []Option{WithSkipVetForWrite(true)},
+			},
+			wantErr:      true,
+			wantErrMsg:   `update: failed pq: scope_id cannot be set`,
+			directUpdate: true,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -302,7 +315,19 @@ func TestRepository_UpdateUser(t *testing.T) {
 			updateUser.Name = tt.args.name
 			updateUser.Description = tt.args.description
 
-			userAfterUpdate, updatedRows, err := repo.UpdateUser(context.Background(), &updateUser, tt.args.fieldMaskPaths, tt.args.opt...)
+			var userAfterUpdate *User
+			var updatedRows int
+			var err error
+			if tt.directUpdate {
+				u := updateUser.Clone()
+				var resource interface{}
+				resource, updatedRows, err = repo.update(context.Background(), u.(*User), tt.args.fieldMaskPaths, nil, tt.args.opt...)
+				if err == nil {
+					userAfterUpdate = resource.(*User)
+				}
+			} else {
+				userAfterUpdate, updatedRows, err = repo.UpdateUser(context.Background(), &updateUser, tt.args.fieldMaskPaths, tt.args.opt...)
+			}
 			if tt.wantErr {
 				require.Error(err)
 				if tt.wantIsErr != nil {
@@ -314,7 +339,7 @@ func TestRepository_UpdateUser(t *testing.T) {
 				case "dup-name":
 					assert.Equal(fmt.Sprintf(tt.wantErrMsg, "dup-name"+id, org.PublicId), err.Error())
 				default:
-					assert.Equal(tt.wantErrMsg, err.Error())
+					assert.True(strings.Contains(err.Error(), tt.wantErrMsg))
 				}
 				err = db.TestVerifyOplog(t, rw, u.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_UPDATE), db.WithCreateNotBefore(10*time.Second))
 				require.Error(err)

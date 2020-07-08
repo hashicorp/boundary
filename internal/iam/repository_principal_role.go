@@ -10,8 +10,9 @@ import (
 
 // AddPrincipalRoles provides the ability to add principals (userIds and
 // groupIds) to a role (roleId).  The role's current db version must match the
-// roleVersion or an error will be returned.  The role, users and groups must
-// all be in the same scope
+// roleVersion or an error will be returned.  The roles and groups must be in
+// the same scope.  User can only be added to roles which are within the user's
+// organization, or the role is within a project within the user's organization.
 func (r *Repository) AddPrincipalRoles(ctx context.Context, roleId string, roleVersion int, userIds, groupIds []string, opt ...Option) ([]PrincipalRole, error) {
 	// NOTE - we are intentionally not going to check that the scopes are
 	// correct for the userIds and groupIds, given the roleId.  We are going to
@@ -21,10 +22,10 @@ func (r *Repository) AddPrincipalRoles(ctx context.Context, roleId string, roleV
 	// org.  The groups and role have to be in the same scope (org or project).
 	// There are constraints and triggers to enforce these relationships.
 	if roleId == "" {
-		return nil, fmt.Errorf("add principal roles: missing role id %w", db.ErrInvalidParameter)
+		return nil, fmt.Errorf("add principal roles: missing role id: %w", db.ErrInvalidParameter)
 	}
 	if len(userIds) == 0 && len(groupIds) == 0 {
-		return nil, fmt.Errorf("add principal roles: missing either user or groups to add %w", db.ErrInvalidParameter)
+		return nil, fmt.Errorf("add principal roles: missing either user or groups to add: %w", db.ErrInvalidParameter)
 	}
 
 	role := allocRole()
@@ -112,8 +113,10 @@ func (r *Repository) AddPrincipalRoles(ctx context.Context, roleId string, roleV
 	return principalRoles, nil
 }
 
-// SetPrincipalRoles will set the role's principals.  If both userIds and
-// groupIds are empty, the principal roles will be cleared.
+// SetPrincipalRoles will set the role's principals. Set add and/or delete
+// principals as need to reconcile the existing principals with the principals
+// requested. If both userIds and groupIds are empty, the principal roles will
+// be cleared.
 func (r *Repository) SetPrincipalRoles(ctx context.Context, roleId string, roleVersion int, userIds, groupIds []string, opt ...Option) ([]PrincipalRole, int, error) {
 	// NOTE - we are intentionally not going to check that the scopes are
 	// correct for the userIds and groupIds, given the roleId.  We are going to
@@ -131,6 +134,9 @@ func (r *Repository) SetPrincipalRoles(ctx context.Context, roleId string, roleV
 	if err != nil {
 		return nil, db.NoRowsAffected, fmt.Errorf("set principal roles: unable to get role %s scope: %w", roleId, err)
 	}
+	// it's "safe" to do this lookup outside the DoTx transaction because we
+	// have a roleVersion so the principals can’t change without the version
+	// changing.
 	toSet, err := r.principalsToSet(ctx, &role, userIds, groupIds)
 	if err != nil {
 		return nil, db.NoRowsAffected, fmt.Errorf("set principal roles: unable to determine set: %w", err)
@@ -181,14 +187,17 @@ func (r *Repository) SetPrincipalRoles(ctx context.Context, roleId string, roleV
 			if rowsUpdated != 1 {
 				return fmt.Errorf("set principal roles: updated role and %d rows updated", rowsUpdated)
 			}
+			msgs := make([]*oplog.Message, 0, 5)
+			metadata := oplog.Metadata{
+				"op-type":            []string{oplog.OpType_OP_TYPE_UPDATE.String()},
+				"scope-id":           []string{scope.PublicId},
+				"scope-type":         []string{scope.Type},
+				"resource-public-id": []string{roleId},
+			}
+			msgs = append(msgs, &roleOplogMsg)
+
 			if len(toSet.deleteUserRoles) > 0 || len(toSet.deleteGroupRoles) > 0 {
-				msgs := make([]*oplog.Message, 0, 2)
-				// deleteTicket which will be redeemed when we write the oplog
-				// for these deletes
-				deleteTicket, err := w.GetTicket(&principalRoleView{})
-				if err != nil {
-					return fmt.Errorf("set principal roles: unable to get ticket for principal role deletes: %w", err)
-				}
+				metadata["op-type"] = append(metadata["op-type"], oplog.OpType_OP_TYPE_DELETE.String())
 				if len(toSet.deleteUserRoles) > 0 {
 					userOplogMsgs := make([]*oplog.Message, 0, len(toSet.deleteUserRoles))
 					rowsDeleted, err := w.DeleteItems(ctx, toSet.deleteUserRoles, db.NewOplogMsgs(&userOplogMsgs))
@@ -213,26 +222,9 @@ func (r *Repository) SetPrincipalRoles(ctx context.Context, roleId string, roleV
 					totalRowsAffected += rowsDeleted
 					msgs = append(msgs, grpOplogMsgs...)
 				}
-
-				metadata := oplog.Metadata{
-					"op-type":            []string{oplog.OpType_OP_TYPE_DELETE.String()},
-					"scope-id":           []string{scope.PublicId},
-					"scope-type":         []string{scope.Type},
-					"resource-public-id": []string{roleId},
-				}
-				// write the oplog msgs for the deletes
-				if err := w.WriteOplogEntryWith(ctx, r.wrapper, deleteTicket, metadata, msgs); err != nil {
-					return fmt.Errorf("set principal roles: unable to write oplog for deletes: %w", err)
-				}
 			}
 			if len(toSet.addUserRoles) > 0 || len(toSet.addGroupRoles) > 0 {
-				msgs := make([]*oplog.Message, 0, 2)
-				// addTicket which will be redeemed when we write the oplog
-				// entry for these writes.
-				addTicket, err := w.GetTicket(&principalRoleView{})
-				if err != nil {
-					return fmt.Errorf("set principal roles: unable to get ticket for principal role additions: %w", err)
-				}
+				metadata["op-type"] = append(metadata["op-type"], oplog.OpType_OP_TYPE_CREATE.String())
 				if len(toSet.addUserRoles) > 0 {
 					userOplogMsgs := make([]*oplog.Message, 0, len(toSet.addUserRoles))
 					if err := w.CreateItems(ctx, toSet.addUserRoles, db.NewOplogMsgs(&userOplogMsgs)); err != nil {
@@ -249,26 +241,8 @@ func (r *Repository) SetPrincipalRoles(ctx context.Context, roleId string, roleV
 					totalRowsAffected += len(toSet.addGroupRoles)
 					msgs = append(msgs, grpOplogMsgs...)
 				}
-				metadata := oplog.Metadata{
-					"op-type":            []string{oplog.OpType_OP_TYPE_CREATE.String()},
-					"scope-id":           []string{scope.PublicId},
-					"scope-type":         []string{scope.Type},
-					"resource-public-id": []string{roleId},
-				}
-				// write the oplog msgs for the additions
-				if err := w.WriteOplogEntryWith(ctx, r.wrapper, addTicket, metadata, msgs); err != nil {
-					return fmt.Errorf("set principal roles: unable to write oplog for additions: %w", err)
-				}
 			}
-			// we're done with all the principal writes, so let's write the
-			// role's update oplog message
-			metadata := oplog.Metadata{
-				"op-type":            []string{oplog.OpType_OP_TYPE_UPDATE.String()},
-				"scope-id":           []string{scope.PublicId},
-				"scope-type":         []string{scope.Type},
-				"resource-public-id": []string{roleId},
-			}
-			if err := w.WriteOplogEntryWith(ctx, r.wrapper, roleTicket, metadata, []*oplog.Message{&roleOplogMsg}); err != nil {
+			if err := w.WriteOplogEntryWith(ctx, r.wrapper, roleTicket, metadata, msgs); err != nil {
 				return fmt.Errorf("set principal roles: unable to write oplog for additions: %w", err)
 			}
 
@@ -292,19 +266,13 @@ func (r *Repository) DeletePrincipalRoles(ctx context.Context, roleId string, ro
 		return db.NoRowsAffected, fmt.Errorf("delete principal roles: missing role id: %w", db.ErrInvalidParameter)
 	}
 	if len(userIds) == 0 && len(groupIds) == 0 {
-		return db.NoRowsAffected, fmt.Errorf("delete principal roles: missing either user or groups to delete %w", db.ErrInvalidParameter)
+		return db.NoRowsAffected, fmt.Errorf("delete principal roles: missing either user or groups to delete: %w", db.ErrInvalidParameter)
 	}
 	role := allocRole()
 	role.PublicId = roleId
 	scope, err := role.GetScope(ctx, r.reader)
 	if err != nil {
 		return db.NoRowsAffected, fmt.Errorf("delete principal roles: unable to get role %s scope to create metadata: %w", roleId, err)
-	}
-	metadata := oplog.Metadata{
-		"op-type":            []string{oplog.OpType_OP_TYPE_DELETE.String()},
-		"scope-id":           []string{scope.PublicId},
-		"scope-type":         []string{scope.Type},
-		"resource-public-id": []string{roleId},
 	}
 	deleteUserRoles := make([]interface{}, 0, len(userIds))
 	for _, id := range userIds {
@@ -370,6 +338,12 @@ func (r *Repository) DeletePrincipalRoles(ctx context.Context, roleId string, ro
 				totalRowsDeleted += rowsDeleted
 				msgs = append(msgs, grpOplogMsgs...)
 			}
+			metadata := oplog.Metadata{
+				"op-type":            []string{oplog.OpType_OP_TYPE_DELETE.String()},
+				"scope-id":           []string{scope.PublicId},
+				"scope-type":         []string{scope.Type},
+				"resource-public-id": []string{roleId},
+			}
 			if err := w.WriteOplogEntryWith(ctx, r.wrapper, roleTicket, metadata, msgs); err != nil {
 				return fmt.Errorf("delete principal roles: unable to write oplog: %w", err)
 			}
@@ -385,7 +359,7 @@ func (r *Repository) DeletePrincipalRoles(ctx context.Context, roleId string, ro
 // ListPrincipalRoles returns the principal roles for the roleId and supports the WithLimit option.
 func (r *Repository) ListPrincipalRoles(ctx context.Context, roleId string, opt ...Option) ([]PrincipalRole, error) {
 	if roleId == "" {
-		return nil, fmt.Errorf("lookup principal roles: missing role id %w", db.ErrInvalidParameter)
+		return nil, fmt.Errorf("lookup principal roles: missing role id: %w", db.ErrInvalidParameter)
 	}
 	var roles []principalRoleView
 	if err := r.list(ctx, &roles, "role_id = ?", []interface{}{roleId}, opt...); err != nil {
@@ -407,7 +381,7 @@ type principalSet struct {
 
 func (r *Repository) principalsToSet(ctx context.Context, role *Role, userIds, groupIds []string) (*principalSet, error) {
 	if role == nil {
-		return nil, fmt.Errorf("missing role %w", db.ErrNilParameter)
+		return nil, fmt.Errorf("missing role: %w", db.ErrNilParameter)
 	}
 	existing, err := r.ListPrincipalRoles(ctx, role.PublicId)
 	if err != nil {

@@ -303,6 +303,17 @@ func TestRepository_DeletePrincipalRoles(t *testing.T) {
 			wantErr:         false,
 		},
 		{
+			name: "no-deletes",
+			args: args{
+				role:           TestRole(t, conn, org.PublicId),
+				createUserCnt:  5,
+				createGroupCnt: 5,
+			},
+			wantRowsDeleted: 0,
+			wantErr:         true,
+			wantIsErr:       db.ErrInvalidParameter,
+		},
+		{
 			name: "just-user-roles",
 			args: args{
 				role:          TestRole(t, conn, org.PublicId),

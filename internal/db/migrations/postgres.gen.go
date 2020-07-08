@@ -13,6 +13,7 @@ begin;
 drop domain wt_timestamp;
 drop domain wt_public_id;
 drop domain wt_private_id;
+drop domain wt_scope_id;
 drop domain wt_version;
 
 drop function default_create_time;
@@ -42,6 +43,13 @@ check(
 );
 comment on domain wt_private_id is
 'Random ID generated with github.com/hashicorp/vault/sdk/helper/base62';
+
+create domain wt_scope_id as text
+check(
+  length(trim(value)) > 10 or value = 'global'
+);
+comment on domain wt_scope_id is
+'"global" or random ID generated with github.com/hashicorp/vault/sdk/helper/base62';
 
 create domain wt_timestamp as
   timestamp with time zone
@@ -423,13 +431,14 @@ drop table iam_group cascade;
 drop table iam_user cascade;
 drop table iam_scope_project cascade;
 drop table iam_scope_organization cascade;
+drop table iam_scope_global cascade;
 drop table iam_scope cascade;
 drop table iam_scope_type_enm cascade;
 drop table iam_role cascade;
+drop view iam_principal_role cascade;
 drop table iam_group_role cascade;
 drop table iam_user_role cascade;
 drop table iam_role_grant cascade;
-drop view iam_principal_role cascade;
 
 drop function iam_sub_names cascade;
 drop function iam_immutable_scope_type_func cascade;
@@ -438,6 +447,7 @@ drop function iam_immutable_role cascade;
 drop function iam_user_role_scope_check cascade;
 drop function iam_group_role_scope_check cascade;
 drop function grant_scope_id_valid cascade;
+drop function immutable_scope_id_func cascade;
 
 COMMIT;
 
@@ -449,43 +459,84 @@ COMMIT;
 begin;
 
 create table iam_scope_type_enm (
-  string text primary key check(string in ('unknown', 'organization', 'project'))
+  string text not null primary key check(string in ('unknown', 'global', 'organization', 'project'))
 );
 
 insert into iam_scope_type_enm (string)
 values
   ('unknown'),
+  ('global'),
   ('organization'),
   ('project');
 
- 
+
+create or replace function
+  iam_immutable_scope_id_func()
+  returns trigger
+as $$
+begin
+  if new.scope_id is distinct from old.scope_id then
+    raise exception 'scope_id cannot be set to %', new.scope_id;
+  end if;
+  return new;
+end;
+$$ language plpgsql;
+
+comment on function
+  iam_immutable_scope_id_func()
+is
+  'function used in before update triggers to make scope_id column is immutable';
+
 create table iam_scope (
-    public_id wt_public_id primary key,
+    public_id wt_scope_id primary key,
     create_time wt_timestamp,
     update_time wt_timestamp,
     name text,
     type text not null references iam_scope_type_enm(string) check(
       (
+        type = 'global'
+        and parent_id is null
+      )
+      or (
         type = 'organization'
-        and parent_id = null
+        and parent_id = 'global'
       )
       or (
         type = 'project'
         and parent_id is not null
+        and parent_id != 'global'
       )
     ),
     description text,
     parent_id text references iam_scope(public_id) on delete cascade on update cascade
   );
 
+create table iam_scope_global (
+    scope_id wt_scope_id primary key
+      references iam_scope(public_id)
+      on delete cascade
+      on update cascade
+      check(
+        scope_id = 'global'
+      ),
+    name text unique
+);
+
 create table iam_scope_organization (
-    scope_id wt_public_id not null unique references iam_scope(public_id) on delete cascade on update cascade,
-    name text unique,
-    primary key(scope_id)
-  );
+  scope_id wt_scope_id primary key
+    references iam_scope(public_id)
+    on delete cascade
+    on update cascade,
+  parent_id wt_scope_id not null
+    references iam_scope_global(scope_id)
+    on delete cascade
+    on update cascade,
+  name text,
+  unique (parent_id, name)
+);
 
 create table iam_scope_project (
-    scope_id wt_public_id not null references iam_scope(public_id) on delete cascade on update cascade,
+    scope_id wt_scope_id not null references iam_scope(public_id) on delete cascade on update cascade,
     parent_id wt_public_id not null references iam_scope_organization(scope_id) on delete cascade on update cascade,
     name text,
     unique(parent_id, name),
@@ -497,11 +548,17 @@ create or replace function
   returns trigger
 as $$ 
 declare parent_type int;
-begin 
-  if new.type = 'organization' then
-    insert into iam_scope_organization (scope_id, name)
+begin
+  if new.type = 'global' then
+    insert into iam_scope_global (scope_id, name)
     values
       (new.public_id, new.name);
+    return new;
+  end if;
+  if new.type = 'organization' then
+    insert into iam_scope_organization (scope_id, parent_id, name)
+    values
+      (new.public_id, new.parent_id, new.name);
     return new;
   end if;
   if new.type = 'project' then
@@ -514,13 +571,29 @@ begin
 end;
 $$ language plpgsql;
 
-
 create trigger 
   iam_scope_insert
 after
 insert on iam_scope 
   for each row execute procedure iam_sub_scopes_func();
 
+create or replace function
+  disallow_global_scope_deletion()
+  returns trigger
+as $$
+begin
+  if old.type = 'global' then
+    raise exception 'deletion of global scope not allowed';
+  end if;
+  return old;
+end;
+$$ language plpgsql;
+
+create trigger
+  iam_scope_disallow_global_deletion
+before
+delete on iam_scope
+  for each row execute procedure disallow_global_scope_deletion();
 
 create or replace function 
   iam_immutable_scope_type_func() 
@@ -566,8 +639,12 @@ create or replace function
   iam_sub_names() 
   returns trigger
 as $$ 
-begin 
+begin
   if new.name != old.name then
+    if new.type = 'global' then
+      update iam_scope_global set name = new.name where scope_id = old.public_id;
+      return new;
+    end if;
     if new.type = 'organization' then
       update iam_scope_organization set name = new.name where scope_id = old.public_id;
       return new;
@@ -588,6 +665,9 @@ before
 update on iam_scope
   for each row execute procedure iam_sub_names();
 
+insert into iam_scope (public_id, name, type, description)
+  values ('global', 'global', 'global', 'Global Scope');
+
 
 create table iam_user (
     public_id wt_public_id primary key,
@@ -595,7 +675,7 @@ create table iam_user (
     update_time wt_timestamp,
     name text,
     description text,
-    scope_id wt_public_id not null references iam_scope_organization(scope_id) on delete cascade on update cascade,
+    scope_id wt_scope_id not null references iam_scope(public_id) on delete cascade on update cascade,
     unique(name, scope_id),
     disabled boolean not null default false,
 
@@ -605,22 +685,18 @@ create table iam_user (
     unique(scope_id, public_id)
   );
 
-create trigger 
-  update_time_column 
-before update on iam_user 
-  for each row execute procedure update_time_column();
-
-create trigger 
-  immutable_create_time
-before
-update on iam_user 
-  for each row execute procedure immutable_create_time_func();
-  
-create trigger 
-  default_create_time_column
-before
-insert on iam_user
-  for each row execute procedure default_create_time();
+create or replace function
+  user_scope_id_valid()
+  returns trigger
+as $$
+begin
+  perform from iam_scope where public_id = new.scope_id and type in ('global', 'organization');
+  if not found then
+    raise exception 'invalid scope type for user creation';
+  end if;
+  return new;
+end;
+$$ language plpgsql;
 
 create or replace function
   grant_scope_id_valid()
@@ -664,13 +740,41 @@ begin
 end;
 $$ language plpgsql;
 
+create trigger
+  ensure_user_scope_id_valid
+before
+insert or update on iam_user
+  for each row execute procedure user_scope_id_valid();
+
+create trigger 
+  update_time_column 
+before update on iam_user 
+  for each row execute procedure update_time_column();
+
+create trigger 
+  immutable_create_time
+before
+update on iam_user 
+  for each row execute procedure immutable_create_time_func();
+  
+create trigger 
+  default_create_time_column
+before
+insert on iam_user
+  for each row execute procedure default_create_time();
+
+create trigger immutable_scope_id_user
+before
+update on iam_user
+  for each row execute procedure iam_immutable_scope_id_func();
+
 create table iam_role (
     public_id wt_public_id primary key,
     create_time wt_timestamp,
     update_time wt_timestamp,
     name text,
     description text,
-    scope_id wt_public_id not null references iam_scope(public_id) on delete cascade on update cascade,
+    scope_id wt_scope_id not null references iam_scope(public_id) on delete cascade on update cascade,
     grant_scope_id wt_public_id not null references iam_scope(public_id) on delete cascade on update cascade,
     unique(name, scope_id),
     disabled boolean not null default false,
@@ -701,10 +805,7 @@ create or replace function
   returns trigger
 as $$
 begin
-  if row(new.*) is distinct from row(old.*) then
-    raise exception 'role grants are immutable';
-  end if;
-  return new;
+  raise exception 'role grants are immutable';
 end;
 $$ language plpgsql;
 
@@ -713,6 +814,11 @@ before
 update on iam_role_grant
   for each row execute procedure iam_immutable_role_grant();
 
+create trigger 
+  update_version_column
+after update on iam_role
+  for each row execute procedure update_version_column();
+  
 create trigger 
   update_version_column
 after update on iam_role
@@ -747,7 +853,7 @@ create table iam_group (
     update_time wt_timestamp,
     name text,
     description text,
-    scope_id wt_public_id not null references iam_scope(public_id) on delete cascade on update cascade,
+    scope_id wt_scope_id not null references iam_scope(public_id) on delete cascade on update cascade,
     unique(name, scope_id),
     disabled boolean not null default false,
     -- add unique index so a composite fk can be declared.
@@ -770,6 +876,140 @@ create trigger
 before
 insert on iam_group
   for each row execute procedure default_create_time();
+
+create trigger immutable_scope_id_group
+before
+update on iam_group
+  for each row execute procedure iam_immutable_scope_id_func();
+
+-- iam_user_role contains roles that have been assigned to users. Users can only
+-- be assigned roles which are within its organization, or the role is within a project within its
+-- organization. There's no way to declare this constraint, so it will be
+-- maintained with a before insert trigger using iam_user_role_scope_check().
+-- The rows in this table must be immutable after insert, which will be ensured
+-- with a before update trigger using iam_immutable_role(). 
+create table iam_user_role (
+  create_time wt_timestamp,
+  scope_id wt_scope_id not null,
+  role_id wt_public_id not null,
+  principal_id wt_public_id not null references iam_user(public_id) on delete cascade on update cascade,
+  primary key (role_id, principal_id),
+  foreign key (scope_id, role_id)
+    references iam_role(scope_id, public_id)
+    on delete cascade
+    on update cascade
+  );
+
+-- iam_group_role contains roles that have been assigned to groups. Groups can
+-- only be assigned roles which are within its scope (organization or project)
+-- and that integrity can be maintained with a foreign key. The rows in this
+-- table must be immutable after insert, which will be ensured with a before
+-- update trigger using iam_immutable_role().
+create table iam_group_role (
+  create_time wt_timestamp,
+  scope_id wt_scope_id not null,
+  role_id wt_public_id not null,
+  principal_id wt_public_id not null,
+  primary key (role_id, principal_id),
+  foreign key (scope_id, role_id)
+    references iam_role(scope_id, public_id)
+    on delete cascade
+    on update cascade,
+  foreign key (scope_id, principal_id)
+    references iam_group(scope_id, public_id)
+    on delete cascade
+    on update cascade
+  );
+
+-- iam_principle_role provides a consolidated view all principal roles assigned
+-- (user and group roles).
+create view iam_principal_role as
+select
+  -- intentionally using * to specify the view which requires that the concrete role assignment tables match
+  *, 'user' as type
+from iam_user_role
+union
+select
+  -- intentionally using * to specify the view which requires that the concrete role assignment tables match
+  *, 'group' as type
+from iam_group_role;
+
+-- iam_user_role_scope_check() ensures that the user is only assigned roles
+-- which are within its organization, or the role is within a project within its
+-- organization. 
+create or replace function 
+  iam_user_role_scope_check() 
+  returns trigger
+as $$ 
+declare cnt int;
+begin
+  select count(*) into cnt
+  from iam_user 
+  where 
+    public_id = new.principal_id and 
+  scope_id in(
+    -- check to see if they have the same org scope
+    select s.public_id 
+      from iam_scope s, iam_role r 
+      where s.public_id = r.scope_id and r.public_id = new.role_id and r.scope_id = new.scope_id
+    union
+    -- check to see if the role has a parent that's the same org
+    select s.parent_id as public_id 
+      from iam_scope s, iam_role r 
+      where s.public_id = r.scope_id and r.public_id = new.role_id and r.scope_id = new.scope_id
+  );
+  if cnt = 0 then
+    raise exception 'user and role do not belong to the same organization';
+  end if;
+  return new;
+end;
+$$ language plpgsql;
+
+-- iam_immutable_role() ensures that roles assigned to principals are immutable. 
+create or replace function
+  iam_immutable_role()
+  returns trigger
+as $$
+begin
+  if row(new.*) is distinct from row(old.*) then
+    raise exception 'roles are immutable';
+  end if;
+  return new;
+end;
+$$ language plpgsql;
+
+create trigger iam_user_role_scope_check
+before
+insert on iam_user_role
+  for each row execute procedure iam_user_role_scope_check();
+
+create trigger immutable_role
+before
+update on iam_user_role
+  for each row execute procedure iam_immutable_role();
+
+create trigger 
+  immutable_create_time
+before
+update on iam_user_role
+  for each row execute procedure immutable_create_time_func();
+  
+create trigger 
+  default_create_time_column
+before
+insert on iam_user_role
+  for each row execute procedure default_create_time();
+
+create trigger immutable_role
+before
+update on iam_group_role
+  for each row execute procedure iam_immutable_role();
+
+create trigger 
+  immutable_create_time
+before
+update on iam_group_role
+  for each row execute procedure immutable_create_time_func();
   
 -- iam_user_role contains roles that have been assigned to users. Users can only
 -- be assigned roles which are within its organization, or the role is within a project within its
@@ -860,10 +1100,7 @@ create or replace function
   returns trigger
 as $$
 begin
-  if row(new.*) is distinct from row(old.*) then
     raise exception 'roles are immutable';
-  end if;
-  return new;
 end;
 $$ language plpgsql;
 
@@ -940,7 +1177,7 @@ begin;
   -- base table for auth methods
   create table auth_method (
     public_id wt_public_id primary key,
-    scope_id wt_public_id not null
+    scope_id wt_scope_id not null
       references iam_scope(public_id)
       on delete cascade
       on update cascade,
@@ -956,7 +1193,7 @@ begin;
   create table auth_account (
     public_id wt_public_id primary key,
     auth_method_id wt_public_id not null,
-    scope_id wt_public_id not null,
+    scope_id wt_scope_id not null,
     iam_user_id wt_public_id,
     foreign key (scope_id, auth_method_id)
       references auth_method (scope_id, public_id)
@@ -1147,7 +1384,7 @@ begin;
 
   create table static_host_catalog (
     public_id wt_public_id primary key,
-    scope_id wt_public_id not null
+    scope_id wt_scope_id not null
       references iam_scope (public_id)
       on delete cascade
       on update cascade,
