@@ -317,7 +317,7 @@ create table iam_role (
     name text,
     description text,
     scope_id wt_scope_id not null references iam_scope(public_id) on delete cascade on update cascade,
-    grant_scope_id wt_public_id not null references iam_scope(public_id) on delete cascade on update cascade,
+    grant_scope_id wt_scope_id not null references iam_scope(public_id) on delete cascade on update cascade,
     unique(name, scope_id),
     disabled boolean not null default false,
     -- version allows optimistic locking of the role when modifying the role

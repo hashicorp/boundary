@@ -244,7 +244,7 @@ func (rw *Db) Create(ctx context.Context, i interface{}, opt ...Option) error {
 	if !opts.withSkipVetForWrite {
 		if vetter, ok := i.(VetForWriter); ok {
 			if err := vetter.VetForWrite(ctx, rw, CreateOp); err != nil {
-				return fmt.Errorf("create: vet for write failed %w", err)
+				return fmt.Errorf("create: vet for write failed: %w", err)
 			}
 		}
 	}
@@ -412,7 +412,7 @@ func (rw *Db) Update(ctx context.Context, i interface{}, fieldMaskPaths []string
 	if !opts.withSkipVetForWrite {
 		if vetter, ok := i.(VetForWriter); ok {
 			if err := vetter.VetForWrite(ctx, rw, UpdateOp, WithFieldMaskPaths(fieldMaskPaths), WithNullPaths(setToNullPaths)); err != nil {
-				return NoRowsAffected, fmt.Errorf("update: vet for write failed %w", err)
+				return NoRowsAffected, fmt.Errorf("update: vet for write failed: %w", err)
 			}
 		}
 	}

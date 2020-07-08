@@ -340,7 +340,7 @@ func Test_RoleUpdate(t *testing.T) {
 				grantScopeId:   proj2.PublicId,
 			},
 			wantErr:    true,
-			wantErrMsg: "update: failed pq: invalid to set grant_scope_id to non-same scope_id when role scope type is project",
+			wantErrMsg: "update: failed: pq: invalid to set grant_scope_id to non-same scope_id when role scope type is project",
 		},
 		{
 			name: "set grant scope in org",
@@ -361,7 +361,7 @@ func Test_RoleUpdate(t *testing.T) {
 				grantScopeId:   proj2.PublicId,
 			},
 			wantErr:    true,
-			wantErrMsg: "update: failed pq: grant_scope_id is not a child project of the role scope",
+			wantErrMsg: "update: failed: pq: grant_scope_id is not a child project of the role scope",
 		},
 		{
 			name: "set grant scope in global",
@@ -371,6 +371,8 @@ func Test_RoleUpdate(t *testing.T) {
 				scopeId:        org.PublicId,
 				grantScopeId:   "global",
 			},
+			wantErr:    true,
+			wantErrMsg: "update: failed: pq: grant_scope_id is not a child project of the role scope",
 		},
 		{
 			name: "set grant scope to parent",
@@ -381,16 +383,7 @@ func Test_RoleUpdate(t *testing.T) {
 				grantScopeId:   org2.PublicId,
 			},
 			wantErr:    true,
-			wantErrMsg: "update: failed pq: grant_scope_id is not a child project of the role scope",
-		},
-		{
-			name: "set grant scope from global",
-			args: args{
-				name:           "set grant scope from global",
-				fieldMaskPaths: []string{"GrantScopeId"},
-				scopeId:        "global",
-				grantScopeId:   org.PublicId,
-			},
+			wantErrMsg: "update: failed: pq: invalid to set grant_scope_id to non-same scope_id when role scope type is project",
 		},
 	}
 	for _, tt := range tests {
