@@ -326,13 +326,17 @@ func (r *Repository) SetRoleGrants(ctx context.Context, roleId string, roleVersi
 			}
 
 			metadata := oplog.Metadata{
-				"op-type":            []string{oplog.OpType_OP_TYPE_DELETE.String()},
+				"op-type":            []string{oplog.OpType_OP_TYPE_DELETE.String(), oplog.OpType_OP_TYPE_CREATE.String()},
 				"scope-id":           []string{s.PublicId},
 				"scope-type":         []string{s.Type},
 				"resource-public-id": []string{roleId},
 			}
 			if err := w.WriteOplogEntryWith(ctx, r.wrapper, roleTicket, metadata, msgs); err != nil {
 				return fmt.Errorf("set role grants: unable to write oplog: %w", err)
+			}
+			currentRoleGrants, err = r.ListRoleGrants(ctx, roleId)
+			if err != nil {
+				return fmt.Errorf("set role grants: unable to retrieve current role grants after set: %w", err)
 			}
 			return nil
 		},
