@@ -210,10 +210,7 @@ create or replace function
   returns trigger
 as $$
 begin
-  if row(new.*) is distinct from row(old.*) then
-    raise exception 'role grants are immutable';
-  end if;
-  return new;
+  raise exception 'role grants are immutable';
 end;
 $$ language plpgsql;
 
@@ -363,10 +360,7 @@ create or replace function
   returns trigger
 as $$
 begin
-  if row(new.*) is distinct from row(old.*) then
     raise exception 'roles are immutable';
-  end if;
-  return new;
 end;
 $$ language plpgsql;
 
