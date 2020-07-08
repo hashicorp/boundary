@@ -44,7 +44,7 @@ func Test_ACLAllowed(t *testing.T) {
 			grants: []string{
 				"type=host-set;actions=list,create",
 				"type=host;actions=*",
-				"id=*;actions=authen",
+				"id=*;actions=authenticate",
 			},
 		},
 		{
