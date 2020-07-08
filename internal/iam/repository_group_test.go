@@ -856,3 +856,125 @@ func TestRepository_AddGroupMembers(t *testing.T) {
 		})
 	}
 }
+
+func TestRepository_DeleteGroupMembers(t *testing.T) {
+	t.Parallel()
+	cleanup, conn, _ := db.TestSetup(t, "postgres")
+	defer func() {
+		err := cleanup()
+		assert.NoError(t, err)
+		err = conn.Close()
+		assert.NoError(t, err)
+	}()
+	rw := db.New(conn)
+	wrapper := db.TestWrapper(t)
+	repo, err := NewRepository(rw, rw, wrapper)
+	require.NoError(t, err)
+	org, _ := TestScopes(t, conn)
+
+	type args struct {
+		group           *Group
+		groupIdOverride *string
+		groupVersion    int
+		createUserCnt   int
+		deleteUserCnt   int
+		opt             []Option
+	}
+	tests := []struct {
+		name            string
+		args            args
+		wantRowsDeleted int
+		wantErr         bool
+		wantIsErr       error
+	}{
+		{
+			name: "valid",
+			args: args{
+				group:         TestGroup(t, conn, org.PublicId),
+				createUserCnt: 5,
+				deleteUserCnt: 5,
+				groupVersion:  2,
+			},
+			wantRowsDeleted: 5,
+			wantErr:         false,
+		},
+		{
+			name: "valid-keeping-some",
+			args: args{
+				group:         TestGroup(t, conn, org.PublicId),
+				createUserCnt: 5,
+				deleteUserCnt: 2,
+				groupVersion:  2,
+			},
+			wantRowsDeleted: 2,
+			wantErr:         false,
+		},
+		{
+			name: "not-found",
+			args: args{
+				group:           TestGroup(t, conn, org.PublicId),
+				groupVersion:    2,
+				groupIdOverride: func() *string { id := testId(t); return &id }(),
+				createUserCnt:   5,
+				deleteUserCnt:   5,
+			},
+			wantRowsDeleted: 0,
+			wantErr:         true,
+		},
+		{
+			name: "missing-group-id",
+			args: args{
+				group:           TestGroup(t, conn, org.PublicId),
+				groupVersion:    2,
+				groupIdOverride: func() *string { id := ""; return &id }(),
+				createUserCnt:   5,
+				deleteUserCnt:   5,
+			},
+			wantRowsDeleted: 0,
+			wantErr:         true,
+			wantIsErr:       db.ErrInvalidParameter,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+			userIds := make([]string, 0, tt.args.createUserCnt)
+			for i := 0; i < tt.args.createUserCnt; i++ {
+				u := TestUser(t, conn, org.PublicId)
+				userIds = append(userIds, u.PublicId)
+			}
+			members, err := repo.AddGroupMembers(context.Background(), tt.args.group.PublicId, 1, userIds, tt.args.opt...)
+			require.NoError(err)
+			assert.Equal(tt.args.createUserCnt, len(members))
+
+			deleteUserIds := make([]string, 0, tt.args.deleteUserCnt)
+			for i := 0; i < tt.args.deleteUserCnt; i++ {
+				deleteUserIds = append(deleteUserIds, userIds[i])
+			}
+			var groupId string
+			switch {
+			case tt.args.groupIdOverride != nil:
+				groupId = *tt.args.groupIdOverride
+			default:
+				groupId = tt.args.group.PublicId
+			}
+			deletedRows, err := repo.DeleteGroupMembers(context.Background(), groupId, tt.args.groupVersion, deleteUserIds, tt.args.opt...)
+			if tt.wantErr {
+				assert.Error(err)
+				assert.Equal(0, deletedRows)
+				if tt.wantIsErr != nil {
+					assert.Truef(errors.Is(err, tt.wantIsErr), "unexpected error %s", err.Error())
+				}
+				err = db.TestVerifyOplog(t, rw, tt.args.group.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_DELETE), db.WithCreateNotBefore(10*time.Second))
+				assert.Error(err)
+				assert.True(errors.Is(db.ErrRecordNotFound, err))
+				return
+			}
+			require.NoError(err)
+			assert.Equal(tt.wantRowsDeleted, deletedRows)
+
+			err = db.TestVerifyOplog(t, rw, tt.args.group.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_DELETE), db.WithCreateNotBefore(10*time.Second))
+			assert.NoError(err)
+		})
+	}
+}

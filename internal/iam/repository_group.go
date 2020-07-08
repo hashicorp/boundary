@@ -218,3 +218,79 @@ func (r *Repository) AddGroupMembers(ctx context.Context, groupId string, groupV
 	}
 	return members, nil
 }
+
+// DeleteGroupMembers (userIds) from a group (groupId). The group's current db version
+// must match the groupVersion or an error will be returned.
+func (r *Repository) DeleteGroupMembers(ctx context.Context, groupId string, groupVersion int, userIds []string, opt ...Option) (int, error) {
+	if groupId == "" {
+		return db.NoRowsAffected, fmt.Errorf("delete group members: missing group id: %w", db.ErrInvalidParameter)
+	}
+	if len(userIds) == 0 {
+		return db.NoRowsAffected, fmt.Errorf("delete group members: missing either user or groups to delete %w", db.ErrInvalidParameter)
+	}
+	group := allocGroup()
+	group.PublicId = groupId
+	scope, err := group.GetScope(ctx, r.reader)
+	if err != nil {
+		return db.NoRowsAffected, fmt.Errorf("delete group members: unable to get group %s scope: %w", groupId, err)
+	}
+
+	deleteMembers := make([]interface{}, 0, len(userIds))
+	for _, id := range userIds {
+		member, err := NewGroupMember(groupId, id)
+		if err != nil {
+			return db.NoRowsAffected, fmt.Errorf("delete group members: unable to create in memory group member: %w", err)
+		}
+		deleteMembers = append(deleteMembers, member)
+	}
+
+	var totalRowsDeleted int
+	_, err = r.writer.DoTx(
+		ctx,
+		db.StdRetryCnt,
+		db.ExpBackoff{},
+		func(reader db.Reader, w db.Writer) error {
+			msgs := make([]*oplog.Message, 0, 2)
+			groupTicket, err := w.GetTicket(&group)
+			if err != nil {
+				return fmt.Errorf("delete group members: unable to get ticket: %w", err)
+			}
+			updatedGroup := allocGroup()
+			updatedGroup.PublicId = groupId
+			updatedGroup.Version = uint32(groupVersion) + 1
+			var groupOplogMsg oplog.Message
+			rowsUpdated, err := w.Update(ctx, &updatedGroup, []string{"Version"}, nil, db.NewOplogMsg(&groupOplogMsg), db.WithVersion(groupVersion))
+			if err != nil {
+				return fmt.Errorf("delete group members: unable to update group version: %w", err)
+			}
+			if rowsUpdated != 1 {
+				return fmt.Errorf("delete group members: updated group and %d rows updated", rowsUpdated)
+			}
+			msgs = append(msgs, &groupOplogMsg)
+			userOplogMsgs := make([]*oplog.Message, 0, len(deleteMembers))
+			rowsDeleted, err := w.DeleteItems(ctx, deleteMembers, db.NewOplogMsgs(&userOplogMsgs))
+			if err != nil {
+				return fmt.Errorf("delete group members: unable to delete group members: %w", err)
+			}
+			if rowsDeleted != len(deleteMembers) {
+				return fmt.Errorf("delete group members: group members deleted %d did not match request for %d", rowsDeleted, len(deleteMembers))
+			}
+			totalRowsDeleted += rowsDeleted
+			msgs = append(msgs, userOplogMsgs...)
+			metadata := oplog.Metadata{
+				"op-type":            []string{oplog.OpType_OP_TYPE_DELETE.String()},
+				"scope-id":           []string{scope.PublicId},
+				"scope-type":         []string{scope.Type},
+				"resource-public-id": []string{groupId},
+			}
+			if err := w.WriteOplogEntryWith(ctx, r.wrapper, groupTicket, metadata, msgs); err != nil {
+				return fmt.Errorf("delete group members: unable to write oplog: %w", err)
+			}
+			return nil
+		},
+	)
+	if err != nil {
+		return db.NoRowsAffected, fmt.Errorf("delete group members: error deleting members: %w", err)
+	}
+	return totalRowsDeleted, nil
+}
