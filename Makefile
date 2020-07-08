@@ -22,8 +22,9 @@ cleangen:
 	@rm -f ${GENERATED_CODE}
 
 dev: BUILD_TAGS+=dev
+dev: BUILD_TAGS+=ui
 dev: build-ui-ifne
-	@echo "==> Building Watchtower with dev features enabled"
+	@echo "==> Building Watchtower with dev and UI features enabled"
 	@CGO_ENABLED=$(CGO_ENABLED) BUILD_TAGS='$(BUILD_TAGS)' WATCHTOWER_DEV_BUILD=1 sh -c "'$(CURDIR)/scripts/build.sh'"
 
 build-ui:

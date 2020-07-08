@@ -3,6 +3,9 @@ module github.com/hashicorp/watchtower
 go 1.13
 
 require (
+	github.com/alecthomas/assert v0.0.0-20170929043011-405dbfeb8e38
+	github.com/alecthomas/colour v0.1.0 // indirect
+	github.com/alecthomas/repr v0.0.0-20200325044227-4184120f674c // indirect
 	github.com/armon/go-metrics v0.3.3
 	github.com/bufbuild/buf v0.16.0
 	github.com/fatih/color v1.9.0

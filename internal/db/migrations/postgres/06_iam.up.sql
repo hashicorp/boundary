@@ -349,7 +349,11 @@ update on iam_group
 -- with a before update trigger using iam_immutable_role(). 
 create table iam_user_role (
   create_time wt_timestamp,
+<<<<<<< HEAD
   scope_id wt_scope_id not null,
+=======
+  scope_id wt_public_id not null,
+>>>>>>> origin/master
   role_id wt_public_id not null,
   principal_id wt_public_id not null references iam_user(public_id) on delete cascade on update cascade,
   primary key (role_id, principal_id),
@@ -366,7 +370,11 @@ create table iam_user_role (
 -- update trigger using iam_immutable_role().
 create table iam_group_role (
   create_time wt_timestamp,
+<<<<<<< HEAD
   scope_id wt_scope_id not null,
+=======
+  scope_id wt_public_id not null,
+>>>>>>> origin/master
   role_id wt_public_id not null,
   principal_id wt_public_id not null,
   primary key (role_id, principal_id),

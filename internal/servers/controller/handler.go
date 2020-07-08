@@ -24,7 +24,6 @@ import (
 	"github.com/hashicorp/watchtower/internal/servers/controller/handlers/projects"
 	"github.com/hashicorp/watchtower/internal/servers/controller/handlers/roles"
 	"github.com/hashicorp/watchtower/internal/servers/controller/handlers/users"
-	"github.com/hashicorp/watchtower/internal/ui"
 )
 
 type HandlerProperties struct {
@@ -51,68 +50,12 @@ func (c *Controller) handler(props HandlerProperties) (http.Handler, error) {
 	return commonWrappedHandler, nil
 }
 
-func handleUi(c *Controller) http.Handler {
-	var nextHandler http.Handler
-	if c.conf.RawConfig.PassthroughDirectory != "" {
-		nextHandler = ui.DevPassthroughHandler(c.logger, c.conf.RawConfig.PassthroughDirectory)
-	} else {
-		nextHandler = http.FileServer(ui.AssetFile())
-	}
-
-	rootHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		switch r.URL.Path {
-		case "/":
-			irw := newIndexResponseWriter(c.conf.DefaultOrgId)
-			nextHandler.ServeHTTP(irw, r)
-			irw.writeToWriter(w)
-
-		default:
-			nextHandler.ServeHTTP(w, r)
-		}
-	})
-
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != http.MethodGet {
-			w.WriteHeader(http.StatusMethodNotAllowed)
-			return
-		}
-
-		dotIndex := strings.LastIndex(r.URL.Path, ".")
-		switch dotIndex {
-		case -1:
-			// For all paths without an extension serve /index.html
-			r.URL.Path = "/"
-
-		default:
-			switch r.URL.Path {
-			case "/", "/favicon.png", "/assets/styles.css":
-
-			default:
-				for i := dotIndex + 1; i < len(r.URL.Path); i++ {
-					intVal := r.URL.Path[i]
-					// Current guidance from FE is if it's only alphanum after
-					// the last dot, treat it as an extension
-					if intVal < '0' ||
-						(intVal > '9' && intVal < 'A') ||
-						(intVal > 'Z' && intVal < 'a') ||
-						intVal > 'z' {
-						// Not an extension. Serve the contents of index.html
-						r.URL.Path = "/"
-					}
-				}
-			}
-		}
-
-		// Fall through to the next handler
-		rootHandler.ServeHTTP(w, r)
-	})
-}
-
 func handleGrpcGateway(c *Controller) (http.Handler, error) {
 	// Register*ServiceHandlerServer methods ignore the passed in ctx.  Using the baseContext now just in case this changes
 	// in the future, at which point we'll want to be using the baseContext.
 	ctx := c.baseContext
-	mux := runtime.NewServeMux(runtime.WithProtoErrorHandler(handlers.ErrorHandler(c.logger)))
+	mux := runtime.NewServeMux(runtime.WithMetadata(handlers.TokenAuthenticator(c.logger, c.AuthTokenRepoFn)),
+		runtime.WithProtoErrorHandler(handlers.ErrorHandler(c.logger)))
 	hcs, err := host_catalogs.NewService(c.StaticHostRepoFn)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create host catalog handler service: %w", err)

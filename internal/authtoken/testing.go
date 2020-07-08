@@ -12,7 +12,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func testAuthToken(t *testing.T, conn *gorm.DB, wrapper wrapping.Wrapper) *AuthToken {
+func TestAuthToken(t *testing.T, conn *gorm.DB, wrapper wrapping.Wrapper) *AuthToken {
 	t.Helper()
 	require := require.New(t)
 	org, _ := iam.TestScopes(t, conn)
