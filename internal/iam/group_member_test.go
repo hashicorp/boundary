@@ -291,7 +291,7 @@ func Test_GroupMemberDelete(t *testing.T) {
 	id := testId(t)
 	org, _ := TestScopes(t, conn)
 	u := TestUser(t, conn, org.PublicId)
-	g := TestRole(t, conn, org.PublicId)
+	g := TestGroup(t, conn, org.PublicId)
 
 	tests := []struct {
 		name            string
@@ -316,10 +316,10 @@ func Test_GroupMemberDelete(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			deleteRole := allocUserRole()
-			deleteRole.RoleId = tt.gm.GetGroupId()
-			deleteRole.PrincipalId = tt.gm.GetMemberId()
-			deletedRows, err := rw.Delete(context.Background(), &deleteRole)
+			deleteGroup := allocGroupMember()
+			deleteGroup.GroupId = tt.gm.GetGroupId()
+			deleteGroup.MemberId = tt.gm.GetMemberId()
+			deletedRows, err := rw.Delete(context.Background(), &deleteGroup)
 			if tt.wantErr {
 				require.Error(err)
 				return
@@ -330,8 +330,8 @@ func Test_GroupMemberDelete(t *testing.T) {
 				return
 			}
 			assert.Equal(tt.wantRowsDeleted, deletedRows)
-			found := allocUserRole()
-			err = rw.LookupWhere(context.Background(), &found, "role_id = ? and principal_id = ?", tt.gm.GetGroupId(), tt.gm.GetMemberId())
+			found := allocGroupMember()
+			err = rw.LookupWhere(context.Background(), &found, "group_id = ? and member_id = ?", tt.gm.GetGroupId(), tt.gm.GetMemberId())
 			require.Error(err)
 			assert.True(errors.Is(db.ErrRecordNotFound, err))
 		})
