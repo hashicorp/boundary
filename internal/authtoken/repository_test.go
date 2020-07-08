@@ -309,7 +309,7 @@ func TestRepository_ValidateToken(t *testing.T) {
 			id:      at.GetPublicId(),
 			token:   badToken,
 			want:    nil,
-			wantErr: db.ErrInvalidParameter,
+			wantErr: nil,
 		},
 	}
 	for _, tt := range tests {
