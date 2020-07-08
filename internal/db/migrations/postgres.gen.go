@@ -757,8 +757,8 @@ begin
     union
     -- check to see if the role has a parent that's the same org
     select s.parent_id as public_id 
-      from iam_role r, iam_scope s 
-      where r.scope_id = s.public_id and r.public_id = new.role_id and r.scope_id = new.scope_id
+      from iam_scope s, iam_role r 
+      where s.public_id = r.scope_id and r.public_id = new.role_id and r.scope_id = new.scope_id
   );
   if cnt = 0 then
     raise exception 'user and role do not belong to the same organization';
