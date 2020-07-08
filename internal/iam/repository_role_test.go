@@ -414,6 +414,7 @@ func TestRepository_UpdateRole(t *testing.T) {
 				return
 			}
 			assert.NoError(err)
+			assert.NotNil(roleAfterUpdate)
 			assert.Equal(tt.wantRowsUpdate, updatedRows)
 			switch tt.name {
 			case "valid-no-op":
