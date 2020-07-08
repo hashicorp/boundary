@@ -433,10 +433,7 @@ create or replace function
   returns trigger
 as $$
 begin
-  if row(new.*) is distinct from row(old.*) then
     raise exception 'group members are immutable';
-  end if;
-  return new;
 end;
 $$ language plpgsql;
 
