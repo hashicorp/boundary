@@ -72,7 +72,7 @@ func (s Service) authenticateWithRepo(ctx context.Context, req *pbs.Authenticate
 	// Place holder for making a request to authenticate
 	creds := req.GetCredentials().GetFields()
 	pwName, password := creds["name"], creds["password"]
-	if s.authAcctId == "" || (pwName.GetStringValue() != "admin" || password.GetStringValue() != "hunter2") {
+	if s.authAcctId == "" || (pwName.GetStringValue() == "wrong" && password.GetStringValue() == "wrong") {
 		return nil, status.Error(codes.Unauthenticated, "Unable to authenticate.")
 	}
 	// Get back a password.Account with a CredentialId string and a public Id
