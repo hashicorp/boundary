@@ -1,4 +1,4 @@
-package ui
+package controller
 
 import (
 	"net/http"
@@ -7,7 +7,7 @@ import (
 	"github.com/hashicorp/go-hclog"
 )
 
-func DevPassthroughHandler(logger hclog.Logger, passthroughDir string) http.Handler {
+func devPassthroughHandler(logger hclog.Logger, passthroughDir string) http.Handler {
 	// Panic may not be ideal but this is never a production call and it'll
 	// panic on startup. We could also just change the function to return
 	// an error.
@@ -20,4 +20,13 @@ func DevPassthroughHandler(logger hclog.Logger, passthroughDir string) http.Hand
 	prefixHandler := http.StripPrefix("/", fs)
 
 	return prefixHandler
+}
+
+var handleUi = func(c *Controller) http.Handler {
+	if c.conf.RawConfig.PassthroughDirectory != "" {
+		return devPassthroughHandler(c.logger, c.conf.RawConfig.PassthroughDirectory)
+	}
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusNotFound)
+	})
 }
