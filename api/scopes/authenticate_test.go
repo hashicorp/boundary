@@ -26,7 +26,7 @@ func TestAuthenticate(t *testing.T) {
 	assert.NoError(err)
 	assert.Nil(apiErr)
 
-	apiErr, err = org.Authenticate(ctx, "anything", "wrong username", "wrong password")
+	apiErr, err = org.Authenticate(ctx, "anything", "wrong", "wrong")
 	assert.NoError(err)
 	require.NotNil(t, apiErr)
 	assert.EqualValuesf(http.StatusUnauthorized, *apiErr.Status, "Expected unauthenticated, got %q", *apiErr.Message)
