@@ -144,7 +144,7 @@ func TestUserRole_Create(t *testing.T) {
 			wantErr: false,
 		},
 		{
-			name: "invalid-org",
+			name: "cross-org",
 			args: args{
 				role: func() *UserRole {
 					role := TestRole(t, conn, org2.PublicId)
@@ -154,10 +154,9 @@ func TestUserRole_Create(t *testing.T) {
 					return principalRole.(*UserRole)
 				}(),
 			},
-			wantErr: true,
 		},
 		{
-			name: "invalid-proj",
+			name: "cross-proj",
 			args: args{
 				role: func() *UserRole {
 					role := TestRole(t, conn, proj2.PublicId)
@@ -167,7 +166,6 @@ func TestUserRole_Create(t *testing.T) {
 					return principalRole.(*UserRole)
 				}(),
 			},
-			wantErr: true,
 		},
 		{
 			name: "bad-role-id",
@@ -181,7 +179,7 @@ func TestUserRole_Create(t *testing.T) {
 				}(),
 			},
 			wantErr:    true,
-			wantErrMsg: "create: failed: pq: user and role do not belong to the same organization",
+			wantErrMsg: "create: failed: pq: insert or update on table \"iam_user_role\" violates foreign key constraint \"iam_user_role_role_id_fkey\"",
 		},
 		{
 			name: "bad-user-id",
@@ -195,7 +193,7 @@ func TestUserRole_Create(t *testing.T) {
 				}(),
 			},
 			wantErr:    true,
-			wantErrMsg: "create: failed: pq: user and role do not belong to the same organization",
+			wantErrMsg: "create: failed: pq: insert or update on table \"iam_user_role\" violates foreign key constraint \"iam_user_role_principal_id_fkey\"",
 		},
 		{
 			name: "missing-role-id",
@@ -526,7 +524,7 @@ func TestGroupRole_Create(t *testing.T) {
 				}(),
 			},
 			wantErr:    true,
-			wantErrMsg: `create: failed: pq: insert or update on table "iam_group_role" violates foreign key constraint "iam_group_role_scope_id_role_id_fkey"`,
+			wantErrMsg: "create: failed: pq: insert or update on table \"iam_group_role\" violates foreign key constraint \"iam_group_role_role_id_fkey\"",
 		},
 		{
 			name: "bad-user-id",
@@ -540,7 +538,7 @@ func TestGroupRole_Create(t *testing.T) {
 				}(),
 			},
 			wantErr:    true,
-			wantErrMsg: `create: failed: pq: insert or update on table "iam_group_role" violates foreign key constraint "iam_group_role_scope_id_role_id_fkey"`,
+			wantErrMsg: "create: failed: pq: insert or update on table \"iam_group_role\" violates foreign key constraint \"iam_group_role_principal_id_fkey\"",
 		},
 		{
 			name: "missing-role-id",

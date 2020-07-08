@@ -23,5 +23,6 @@ drop function immutable_scope_id_func cascade;
 drop function disallow_global_scope_deletion cascade;
 drop function user_scope_id_valid cascade;
 drop function iam_immutable_role_grant cascade;
+drop function disallow_iam_anon_auth_deletion cascade;
 
 COMMIT;

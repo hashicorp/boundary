@@ -21,6 +21,13 @@ check(
 comment on domain wt_scope_id is
 '"global" or random ID generated with github.com/hashicorp/vault/sdk/helper/base62';
 
+create domain wt_user_id as text
+check(
+  length(trim(value)) > 10 or value = 'u_anon' or value = 'u_auth'
+);
+comment on domain wt_scope_id is
+'"u_anon", "u_auth", or random ID generated with github.com/hashicorp/vault/sdk/helper/base62';
+
 create domain wt_timestamp as
   timestamp with time zone
   default current_timestamp;

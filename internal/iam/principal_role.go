@@ -35,6 +35,7 @@ type PrincipalRole interface {
 	GetPrincipalId() string
 	GetType() string
 	GetScopeId() string
+	GetScopedPrincipalId(context.Context, db.Reader) (string, error)
 	Clone() interface{}
 }
 
@@ -62,6 +63,19 @@ func (v *principalRoleView) SetTableName(n string) {
 	default:
 		v.tableName = n
 	}
+}
+
+func (v principalRoleView) GetScopedPrincipalId(ctx context.Context, reader db.Reader) (string, error) {
+	role := allocRole()
+	role.PublicId = v.RoleId
+	s, err := role.GetScope(ctx, reader)
+	if err != nil {
+		return "", fmt.Errorf("get supported principal id in principal role: unable to get role %s scope: %w", role.PublicId, err)
+	}
+	if s.PublicId == v.ScopeId {
+		return v.PrincipalId, nil
+	}
+	return fmt.Sprintf("%s:%s", v.ScopeId, v.PrincipalId), nil
 }
 
 func (v principalRoleView) Clone() interface{} {
@@ -106,6 +120,20 @@ func NewUserRole(scopeId, roleId, userId string, opt ...Option) (PrincipalRole, 
 // GetType returns the user role type.
 func (r *UserRole) GetType() string {
 	return UserRoleType.String()
+}
+
+// GetScopedPrincipalId returns the scoped principal ID.
+func (r *UserRole) GetScopedPrincipalId(ctx context.Context, reader db.Reader) (string, error) {
+	role := allocRole()
+	role.PublicId = r.GetRoleId()
+	s, err := role.GetScope(ctx, reader)
+	if err != nil {
+		return "", fmt.Errorf("get supported principal id in user role: unable to get role %s scope: %w", role.PublicId, err)
+	}
+	if s.PublicId == r.ScopeId {
+		return r.PrincipalId, nil
+	}
+	return fmt.Sprintf("%s:%s", r.ScopeId, r.PrincipalId), nil
 }
 
 func allocUserRole() UserRole {
@@ -185,6 +213,19 @@ func NewGroupRole(scopeId, roleId, groupId string, opt ...Option) (PrincipalRole
 // GetType returns the group role type.
 func (r *GroupRole) GetType() string {
 	return GroupRoleType.String()
+}
+
+func (r *GroupRole) GetScopedPrincipalId(ctx context.Context, reader db.Reader) (string, error) {
+	role := allocRole()
+	role.PublicId = r.RoleId
+	s, err := role.GetScope(ctx, reader)
+	if err != nil {
+		return "", fmt.Errorf("get supported principal id in group role: unable to get role %s scope: %w", role.PublicId, err)
+	}
+	if s.PublicId == r.ScopeId {
+		return r.PrincipalId, nil
+	}
+	return fmt.Sprintf("%s:%s", r.ScopeId, r.PrincipalId), nil
 }
 
 func allocGroupRole() GroupRole {
