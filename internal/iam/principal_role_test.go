@@ -181,7 +181,7 @@ func TestUserRole_Create(t *testing.T) {
 				}(),
 			},
 			wantErr:    true,
-			wantErrMsg: "create: failed pq: user and role do not belong to the same organization",
+			wantErrMsg: "create: failed: pq: user and role do not belong to the same organization",
 		},
 		{
 			name: "bad-user-id",
@@ -195,7 +195,7 @@ func TestUserRole_Create(t *testing.T) {
 				}(),
 			},
 			wantErr:    true,
-			wantErrMsg: "create: failed pq: user and role do not belong to the same organization",
+			wantErrMsg: "create: failed: pq: user and role do not belong to the same organization",
 		},
 		{
 			name: "missing-role-id",
@@ -212,7 +212,7 @@ func TestUserRole_Create(t *testing.T) {
 				}(),
 			},
 			wantErr:    true,
-			wantErrMsg: "create: vet for write failed new user role: missing role id invalid parameter",
+			wantErrMsg: "create: vet for write failed: new user role: missing role id invalid parameter",
 			wantIsErr:  db.ErrInvalidParameter,
 		},
 		{
@@ -230,7 +230,7 @@ func TestUserRole_Create(t *testing.T) {
 				}(),
 			},
 			wantErr:    true,
-			wantErrMsg: "create: vet for write failed new user role: missing user id invalid parameter",
+			wantErrMsg: "create: vet for write failed: new user role: missing user id invalid parameter",
 			wantIsErr:  db.ErrInvalidParameter,
 		},
 		{
@@ -246,7 +246,7 @@ func TestUserRole_Create(t *testing.T) {
 			},
 			wantDup:    true,
 			wantErr:    true,
-			wantErrMsg: `create: failed pq: duplicate key value violates unique constraint "iam_user_role_pkey"`,
+			wantErrMsg: `create: failed: pq: duplicate key value violates unique constraint "iam_user_role_pkey"`,
 		},
 	}
 
