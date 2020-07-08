@@ -362,6 +362,13 @@ func (r *Repository) SetGroupMembers(ctx context.Context, groupId string, groupV
 		db.StdRetryCnt,
 		db.ExpBackoff{},
 		func(reader db.Reader, w db.Writer) error {
+			msgs := make([]*oplog.Message, 0, 2)
+			metadata := oplog.Metadata{
+				"op-type":            []string{oplog.OpType_OP_TYPE_UPDATE.String()},
+				"scope-id":           []string{scope.PublicId},
+				"scope-type":         []string{scope.Type},
+				"resource-public-id": []string{groupId},
+			}
 			// we need a group, which won't be redeemed until all the other
 			// writes are successful.  We can't just use a single ticket because
 			// we need to write oplog entries for deletes and adds
@@ -381,12 +388,6 @@ func (r *Repository) SetGroupMembers(ctx context.Context, groupId string, groupV
 				return fmt.Errorf("set group members: updated group and %d rows updated", rowsUpdated)
 			}
 			if len(deleteMembers) > 0 {
-				// deleteTicket which will be redeemed when we write the oplog
-				// for these deletes
-				deleteTicket, err := w.GetTicket(&GroupMember{})
-				if err != nil {
-					return fmt.Errorf("set group members: unable to get ticket for group members deletes: %w", err)
-				}
 				userOplogMsgs := make([]*oplog.Message, 0, len(deleteMembers))
 				rowsDeleted, err := w.DeleteItems(ctx, deleteMembers, db.NewOplogMsgs(&userOplogMsgs))
 				if err != nil {
@@ -396,49 +397,22 @@ func (r *Repository) SetGroupMembers(ctx context.Context, groupId string, groupV
 					return fmt.Errorf("set group members: members deleted %d did not match request for %d", rowsDeleted, len(deleteMembers))
 				}
 				totalRowsAffected += rowsDeleted
-				metadata := oplog.Metadata{
-					"op-type":            []string{oplog.OpType_OP_TYPE_DELETE.String()},
-					"scope-id":           []string{scope.PublicId},
-					"scope-type":         []string{scope.Type},
-					"resource-public-id": []string{groupId},
-				}
-				// write the oplog msgs for the deletes
-				if err := w.WriteOplogEntryWith(ctx, r.wrapper, deleteTicket, metadata, userOplogMsgs); err != nil {
-					return fmt.Errorf("set group members: unable to write oplog for deletes: %w", err)
-				}
+				msgs = append(msgs, userOplogMsgs...)
+				metadata["op-type"] = append(metadata["op-type"], oplog.OpType_OP_TYPE_DELETE.String())
 			}
 			if len(addMembers) > 0 {
-				// addTicket which will be redeemed when we write the oplog
-				// entry for these writes.
-				addTicket, err := w.GetTicket(&GroupMember{})
-				if err != nil {
-					return fmt.Errorf("set group members: unable to get ticket for principal role additions: %w", err)
-				}
 				userOplogMsgs := make([]*oplog.Message, 0, len(addMembers))
 				if err := w.CreateItems(ctx, addMembers, db.NewOplogMsgs(&userOplogMsgs)); err != nil {
 					return fmt.Errorf("set group members: unable to add users: %w", err)
 				}
 				totalRowsAffected += len(addMembers)
-				metadata := oplog.Metadata{
-					"op-type":            []string{oplog.OpType_OP_TYPE_CREATE.String()},
-					"scope-id":           []string{scope.PublicId},
-					"scope-type":         []string{scope.Type},
-					"resource-public-id": []string{groupId},
-				}
-				// write the oplog msgs for the additions
-				if err := w.WriteOplogEntryWith(ctx, r.wrapper, addTicket, metadata, userOplogMsgs); err != nil {
-					return fmt.Errorf("set group members: unable to write oplog for additions: %w", err)
-				}
+				msgs = append(msgs, userOplogMsgs...)
+				metadata["op-type"] = append(metadata["op-type"], oplog.OpType_OP_TYPE_CREATE.String())
+
 			}
 			// we're done with all the principal writes, so let's write the
 			// role's update oplog message
-			metadata := oplog.Metadata{
-				"op-type":            []string{oplog.OpType_OP_TYPE_UPDATE.String()},
-				"scope-id":           []string{scope.PublicId},
-				"scope-type":         []string{scope.Type},
-				"resource-public-id": []string{groupId},
-			}
-			if err := w.WriteOplogEntryWith(ctx, r.wrapper, groupTicket, metadata, []*oplog.Message{&groupOplogMsg}); err != nil {
+			if err := w.WriteOplogEntryWith(ctx, r.wrapper, groupTicket, metadata, msgs); err != nil {
 				return fmt.Errorf("set group members: unable to write oplog for additions: %w", err)
 			}
 
