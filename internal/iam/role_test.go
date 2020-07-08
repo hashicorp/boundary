@@ -363,6 +363,35 @@ func Test_RoleUpdate(t *testing.T) {
 			wantErr:    true,
 			wantErrMsg: "update: failed pq: grant_scope_id is not a child project of the role scope",
 		},
+		{
+			name: "set grant scope in global",
+			args: args{
+				name:           "set grant scope in global",
+				fieldMaskPaths: []string{"GrantScopeId"},
+				scopeId:        org.PublicId,
+				grantScopeId:   "global",
+			},
+		},
+		{
+			name: "set grant scope to parent",
+			args: args{
+				name:           "set grant scope to parent",
+				fieldMaskPaths: []string{"GrantScopeId"},
+				scopeId:        proj2.PublicId,
+				grantScopeId:   org2.PublicId,
+			},
+			wantErr:    true,
+			wantErrMsg: "update: failed pq: grant_scope_id is not a child project of the role scope",
+		},
+		{
+			name: "set grant scope from global",
+			args: args{
+				name:           "set grant scope from global",
+				fieldMaskPaths: []string{"GrantScopeId"},
+				scopeId:        "global",
+				grantScopeId:   org.PublicId,
+			},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
