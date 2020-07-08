@@ -48,7 +48,11 @@ type Role struct {
 	UpdatedTime *timestamp.Timestamp `protobuf:"bytes,5,opt,name=updated_time,proto3" json:"updated_time,omitempty"`
 	// Whether the resource is disabled
 	Disabled *wrappers.BoolValue `protobuf:"bytes,6,opt,name=disabled,proto3" json:"disabled,omitempty"`
-	// The scope the grants will apply to
+	// The scope the grants will apply to. If the role is at the global scope,
+	// this can be an organization or project. If the role is at an organization
+	// scope, this can be a project within the organization. It is invalid for
+	// this to be anything other than the role's scope when the role's scope is
+	// a project.
 	GrantScopeId *wrappers.StringValue `protobuf:"bytes,7,opt,name=grant_scope_id,proto3" json:"grant_scope_id,omitempty"`
 }
 
