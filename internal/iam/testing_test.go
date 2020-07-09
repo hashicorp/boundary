@@ -144,14 +144,8 @@ func Test_TestGroupRole(t *testing.T) {
 
 func Test_TestGroupMember(t *testing.T) {
 	t.Helper()
-	assert, require := assert.New(t), require.New(t)
-	cleanup, conn, _ := db.TestSetup(t, "postgres")
-	defer func() {
-		err := cleanup()
-		assert.NoError(err)
-		err = conn.Close()
-		assert.NoError(err)
-	}()
+	require := require.New(t)
+	conn, _ := db.TestSetup(t, "postgres")
 	org, proj := TestScopes(t, conn)
 	og := TestGroup(t, conn, org.PublicId)
 	pg := TestGroup(t, conn, proj.PublicId)

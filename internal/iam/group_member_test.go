@@ -14,13 +14,7 @@ import (
 
 func Test_NewGroupMember(t *testing.T) {
 	t.Parallel()
-	cleanup, conn, _ := db.TestSetup(t, "postgres")
-	defer func() {
-		err := cleanup()
-		assert.NoError(t, err)
-		err = conn.Close()
-		assert.NoError(t, err)
-	}()
+	conn, _ := db.TestSetup(t, "postgres")
 	org, proj := TestScopes(t, conn)
 	orgGroup := TestGroup(t, conn, org.PublicId)
 	projGroup := TestGroup(t, conn, proj.PublicId)
@@ -101,13 +95,7 @@ func Test_NewGroupMember(t *testing.T) {
 
 func Test_GroupMemberCreate(t *testing.T) {
 	t.Parallel()
-	cleanup, conn, _ := db.TestSetup(t, "postgres")
-	defer func() {
-		err := cleanup()
-		assert.NoError(t, err)
-		err = conn.Close()
-		assert.NoError(t, err)
-	}()
+	conn, _ := db.TestSetup(t, "postgres")
 	org, proj := TestScopes(t, conn)
 	type args struct {
 		gm *GroupMember
@@ -158,7 +146,7 @@ func Test_GroupMemberCreate(t *testing.T) {
 				}(),
 			},
 			wantErr:    true,
-			wantErrMsg: `create: failed pq: insert or update on table "iam_group_member" violates foreign key constraint`,
+			wantErrMsg: `create: failed: pq: insert or update on table "iam_group_member" violates foreign key constraint`,
 		},
 		{
 			name: "bad-user-id",
@@ -172,7 +160,7 @@ func Test_GroupMemberCreate(t *testing.T) {
 				}(),
 			},
 			wantErr:    true,
-			wantErrMsg: `create: failed pq: insert or update on table "iam_group_member" violates foreign key constraint`,
+			wantErrMsg: `create: failed: pq: insert or update on table "iam_group_member" violates foreign key constraint`,
 		},
 		{
 			name: "missing-group-id",
@@ -219,7 +207,7 @@ func Test_GroupMemberCreate(t *testing.T) {
 			},
 			wantDup:    true,
 			wantErr:    true,
-			wantErrMsg: `create: failed pq: duplicate key value violates unique constraint "iam_group_member_pkey"`,
+			wantErrMsg: `create: failed: pq: duplicate key value violates unique constraint "iam_group_member_pkey"`,
 		},
 	}
 
@@ -254,13 +242,7 @@ func Test_GroupMemberCreate(t *testing.T) {
 
 func Test_GroupMemberUpdate(t *testing.T) {
 	t.Parallel()
-	cleanup, conn, _ := db.TestSetup(t, "postgres")
-	defer func() {
-		err := cleanup()
-		assert.NoError(t, err)
-		err = conn.Close()
-		assert.NoError(t, err)
-	}()
+	conn, _ := db.TestSetup(t, "postgres")
 	org, _ := TestScopes(t, conn)
 	rw := db.New(conn)
 
@@ -280,13 +262,7 @@ func Test_GroupMemberUpdate(t *testing.T) {
 
 func Test_GroupMemberDelete(t *testing.T) {
 	t.Parallel()
-	cleanup, conn, _ := db.TestSetup(t, "postgres")
-	defer func() {
-		err := cleanup()
-		assert.NoError(t, err)
-		err = conn.Close()
-		assert.NoError(t, err)
-	}()
+	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	id := testId(t)
 	org, _ := TestScopes(t, conn)
@@ -340,13 +316,7 @@ func Test_GroupMemberDelete(t *testing.T) {
 
 func TestGroupMember_Clone(t *testing.T) {
 	t.Parallel()
-	cleanup, conn, _ := db.TestSetup(t, "postgres")
-	defer func() {
-		err := cleanup()
-		assert.NoError(t, err)
-		err = conn.Close()
-		assert.NoError(t, err)
-	}()
+	conn, _ := db.TestSetup(t, "postgres")
 	org, proj := TestScopes(t, conn)
 	user := TestUser(t, conn, org.PublicId)
 	t.Run("valid", func(t *testing.T) {
