@@ -114,7 +114,7 @@ func Test_TestUserRole(t *testing.T) {
 	require.Equal(orgRole.PublicId, userRole.RoleId)
 	require.Equal(user.PublicId, userRole.PrincipalId)
 
-	userRole = TestUserRole(t, conn, proj.PublicId, projRole.PublicId, user.PublicId)
+	userRole = TestUserRole(t, conn, org.PublicId, projRole.PublicId, user.PublicId)
 	require.NotNil(userRole)
 	require.Equal(projRole.PublicId, userRole.RoleId)
 	require.Equal(user.PublicId, userRole.PrincipalId)

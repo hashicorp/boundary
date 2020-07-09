@@ -136,7 +136,7 @@ func TestUserRole_Create(t *testing.T) {
 				role: func() *UserRole {
 					role := TestRole(t, conn, proj.PublicId)
 					principal := TestUser(t, conn, org.PublicId)
-					principalRole, err := NewUserRole(proj.PublicId, role.PublicId, principal.PublicId)
+					principalRole, err := NewUserRole(org.PublicId, role.PublicId, principal.PublicId)
 					require.NoError(t, err)
 					return principalRole.(*UserRole)
 				}(),
@@ -161,7 +161,7 @@ func TestUserRole_Create(t *testing.T) {
 				role: func() *UserRole {
 					role := TestRole(t, conn, proj2.PublicId)
 					principal := TestUser(t, conn, org.PublicId)
-					principalRole, err := NewUserRole(proj.PublicId, role.PublicId, principal.PublicId)
+					principalRole, err := NewUserRole(org.PublicId, role.PublicId, principal.PublicId)
 					require.NoError(t, err)
 					return principalRole.(*UserRole)
 				}(),
@@ -193,7 +193,7 @@ func TestUserRole_Create(t *testing.T) {
 				}(),
 			},
 			wantErr:    true,
-			wantErrMsg: "create: failed: pq: insert or update on table \"iam_user_role\" violates foreign key constraint \"iam_user_role_principal_id_fkey\"",
+			wantErrMsg: "create: failed: pq: insert or update on table \"iam_user_role\" violates foreign key constraint \"iam_user_role_principal_scope_id_principal_id_fkey\"",
 		},
 		{
 			name: "missing-role-id",
@@ -368,7 +368,7 @@ func TestUserRole_Clone(t *testing.T) {
 		role := TestRole(t, conn, org.PublicId)
 		role2 := TestRole(t, conn, proj.PublicId)
 		userRole := TestUserRole(t, conn, org.PublicId, role.PublicId, user.PublicId)
-		userRole2 := TestUserRole(t, conn, proj.PublicId, role2.PublicId, user.PublicId)
+		userRole2 := TestUserRole(t, conn, org.PublicId, role2.PublicId, user.PublicId)
 		cp := userRole.Clone()
 		assert.True(!proto.Equal(cp.(*UserRole).UserRole, userRole2.UserRole))
 	})
