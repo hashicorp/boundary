@@ -7,6 +7,7 @@ option go_package = "github.com/hashicorp/watchtower/internal/gen/controller/api
 import "protoc-gen-swagger/options/annotations.proto";
 import "google/api/annotations.proto";
 import "google/protobuf/field_mask.proto";
+import "google/protobuf/wrappers.proto";
 import "controller/api/resources/roles/v1/role.proto";
 
 service RoleService {
@@ -106,6 +107,57 @@ service RoleService {
       summary: "Deletes a Role"
     };
   }
+
+  // AddRolePrincipals adds users and/or groups to a role.  The provided request must include
+  // the org id and the role id which the users and/or groups will be added to. If the
+  // org id is missing, malformed or references a non existing organization,
+  // an error is returned.  It is not an error to have duplicate user/group ids.
+  rpc AddRolePrincipals(AddRolePrincipalsRequest) returns (AddRolePrincipalsResponse) {
+    option (google.api.http) = {
+      post: "/v1/orgs/{org_id}/roles/{role_id}:add-principals"
+      additional_bindings {
+        post: "/v1/orgs/{org_id}/projects/{project_id}/roles/{role_id}:add-principals"
+      }
+    };
+    option (grpc.gateway.protoc_gen_swagger.options.openapiv2_operation) = {
+      summary: "Adds Users and/or Groups to a Role"
+    };
+  }
+
+  // SetRolePrincipals sets the role's users and/or groups.  Any existing principals on
+  // the role are deleted if they are not included in this request.  The provided
+  // request must include the org id and the role id which the users and/or groups
+  // will be set to. If the org id is missing, malformed or references a non
+  // existing organization, an error is returned.  It is not an error to have duplicate
+  // user/group ids.
+  rpc SetRolePrincipals(SetRolePrincipalsRequest) returns (SetRolePrincipalsResponse) {
+    option (google.api.http) = {
+      post: "/v1/orgs/{org_id}/roles/{role_id}:set-principals"
+      additional_bindings {
+        post: "/v1/orgs/{org_id}/projects/{project_id}/roles/{role_id}:set-principals"
+      }
+    };
+    option (grpc.gateway.protoc_gen_swagger.options.openapiv2_operation) = {
+      summary: "Set Users and/or Groups to a Role, removing any principals that are not specified in the request."
+    };
+  }
+
+  // RemoveRolePrincipals removes the users and/or groups from the specified role.
+  // The provided request must include the org id and the role id which the users
+  // and/or groups will be removed from. If the org id is missing, malformed or references a non
+  // existing organization, an error is returned.  It is not an error to have duplicate
+  // user/group ids.
+  rpc RemoveRolePrincipals(RemoveRolePrincipalsRequest) returns (RemoveRolePrincipalsResponse) {
+    option (google.api.http) = {
+      post: "/v1/orgs/{org_id}/roles/{role_id}:remove-principals"
+      additional_bindings {
+        post: "/v1/orgs/{org_id}/projects/{project_id}/roles/{role_id}:remove-principals"
+      }
+    };
+    option (grpc.gateway.protoc_gen_swagger.options.openapiv2_operation) = {
+      summary: "Removes Users and/or Groups from a Role, deleting any principals"
+    };
+  }
 }
 
 message GetRoleRequest {
@@ -140,6 +192,7 @@ message CreateRoleResponse {
   resources.roles.v1.Role item = 2;
 }
 
+// TODO: Add versions to Update and Delete reole requests.
 message UpdateRoleRequest {
   string org_id = 1;
   string project_id = 2;
@@ -160,4 +213,49 @@ message DeleteRoleRequest {
 
 message DeleteRoleResponse {
   bool existed = 1;
+}
+
+message AddRolePrincipalsRequest {
+  string org_id = 1;
+  string project_id = 2;
+  string role_id = 3;
+  // The version ensures the role hasn't changed since it was last retrieved and if
+  // it has the request will fail.
+  google.protobuf.UInt32Value version = 4;
+  repeated string user_ids = 5;
+  repeated string group_ids = 6;
+}
+
+message AddRolePrincipalsResponse {
+  resources.roles.v1.Role item = 1;
+}
+
+message SetRolePrincipalsRequest {
+  string org_id = 1;
+  string project_id = 2;
+  string role_id = 3;
+  // The version ensures the role hasn't changed since it was last retrieved and if
+  // it has the request will fail.
+  google.protobuf.UInt32Value version = 4;
+  repeated string user_ids = 5;
+  repeated string group_ids = 6;
+}
+
+message SetRolePrincipalsResponse {
+  resources.roles.v1.Role item = 1;
+}
+
+message RemoveRolePrincipalsRequest {
+  string org_id = 1;
+  string project_id = 2;
+  string role_id = 3;
+  // The version ensures the role hasn't changed since it was last retrieved and if
+  // it has the request will fail.
+  google.protobuf.UInt32Value version = 4;
+  repeated string user_ids = 5;
+  repeated string group_ids = 6;
+}
+
+message RemoveRolePrincipalsResponse {
+  resources.roles.v1.Role item = 1;
 }

@@ -53,6 +53,7 @@ func TestGet(t *testing.T) {
 		Description: &wrapperspb.StringValue{Value: or.GetDescription()},
 		CreatedTime: or.CreateTime.GetTimestamp(),
 		UpdatedTime: or.UpdateTime.GetTimestamp(),
+		Version:     or.GetVersion(),
 	}
 
 	wantProjRole := &pb.Role{
@@ -61,6 +62,7 @@ func TestGet(t *testing.T) {
 		Description: &wrapperspb.StringValue{Value: pr.GetDescription()},
 		CreatedTime: pr.CreateTime.GetTimestamp(),
 		UpdatedTime: pr.UpdateTime.GetTimestamp(),
+		Version:     pr.GetVersion(),
 	}
 
 	cases := []struct {
@@ -151,12 +153,14 @@ func TestList(t *testing.T) {
 			Id:          or.GetPublicId(),
 			CreatedTime: or.GetCreateTime().GetTimestamp(),
 			UpdatedTime: or.GetUpdateTime().GetTimestamp(),
+			Version:     or.GetVersion(),
 		})
 		pr := iam.TestRole(t, conn, pWithRoles.GetPublicId())
 		wantProjRoles = append(wantProjRoles, &pb.Role{
 			Id:          pr.GetPublicId(),
 			CreatedTime: pr.GetCreateTime().GetTimestamp(),
 			UpdatedTime: pr.GetUpdateTime().GetTimestamp(),
+			Version:     pr.GetVersion(),
 		})
 	}
 
@@ -408,6 +412,7 @@ func TestCreate(t *testing.T) {
 				Item: &pb.Role{
 					Name:        &wrapperspb.StringValue{Value: "name"},
 					Description: &wrapperspb.StringValue{Value: "desc"},
+					Version:     1,
 				},
 			},
 			errCode: codes.OK,
@@ -426,6 +431,7 @@ func TestCreate(t *testing.T) {
 				Item: &pb.Role{
 					Name:        &wrapperspb.StringValue{Value: "name"},
 					Description: &wrapperspb.StringValue{Value: "desc"},
+					Version:     1,
 				},
 			},
 			errCode: codes.OK,
@@ -773,6 +779,9 @@ func TestUpdate(t *testing.T) {
 
 				// Clear all values which are hard to compare against.
 				got.Item.UpdatedTime, tc.res.Item.UpdatedTime = nil, nil
+
+				// TODO: Figure out the best way to test versions when updating roles
+				got.GetItem().Version = 0
 			}
 			assert.True(proto.Equal(got, tc.res), "UpdateRole(%q) got response %q, wanted %q", req, got, tc.res)
 		})
