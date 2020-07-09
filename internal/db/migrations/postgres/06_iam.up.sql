@@ -608,9 +608,9 @@ end;
 $$ language plpgsql;
 
 create trigger 
-  iam_group_member
+  default_create_time_column
 before
-insert on iam_group_role
+insert on iam_group_member
   for each row execute procedure default_create_time();
 
 create trigger iam_immutable_group_member
