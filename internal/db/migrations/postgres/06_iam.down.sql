@@ -18,8 +18,10 @@ drop function iam_immutable_scope_type_func cascade;
 drop function iam_sub_scopes_func cascade;
 drop function iam_immutable_role cascade;
 drop function iam_user_role_scope_check cascade;
-drop function iam_group_role_scope_check cascade;
 drop function grant_scope_id_valid cascade;
 drop function immutable_scope_id_func cascade;
+drop function disallow_global_scope_deletion cascade;
+drop function user_scope_id_valid cascade;
+drop function iam_immutable_role_grant cascade;
 
 COMMIT;
