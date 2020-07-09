@@ -254,20 +254,22 @@ func (r *Repository) SetPrincipalRoles(ctx context.Context, roleId string, roleV
 			if err := w.WriteOplogEntryWith(ctx, r.wrapper, roleTicket, metadata, msgs); err != nil {
 				return fmt.Errorf("set principal roles: unable to write oplog for additions: %w", err)
 			}
-
+			// we need a new repo, that's using the same reader/writer as this TxHandler
+			txRepo := &Repository{
+				reader:       reader,
+				writer:       w,
+				wrapper:      r.wrapper,
+				defaultLimit: r.defaultLimit,
+			}
+			currentPrincipals, err = txRepo.ListPrincipalRoles(ctx, roleId)
+			if err != nil {
+				return fmt.Errorf("set principal roles: unable to retrieve current principal roles after sets: %w", err)
+			}
 			return nil
 		})
 	if err != nil {
 		return nil, db.NoRowsAffected, fmt.Errorf("set principal roles: unable to set principals: %w", err)
 	}
-
-	// The view isn't updated until after the transaction completes, so we have
-	// to do the final listing after the transaction finishes
-	currentPrincipals, err = r.ListPrincipalRoles(ctx, roleId)
-	if err != nil {
-		return nil, 0, fmt.Errorf("set principal roles: unable to retrieve current principal roles after sets: %w", err)
-	}
-
 	return currentPrincipals, totalRowsAffected, nil
 }
 
