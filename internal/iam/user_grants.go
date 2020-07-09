@@ -12,7 +12,7 @@ import (
 func (u *User) Grants(ctx context.Context, r db.Reader, opt ...Option) ([]*RoleGrant, error) {
 	const (
 		whereBase = `
-role_id in (select role_id from iam_principal_role ipr where principal_id  = ? and type = ?)
+role_id in (select role_id from iam_principal_role ipr where principal_id  = ?)
 `
 
 		whereWithGrpGrants = `
@@ -22,7 +22,7 @@ from
 	iam_role_grant rg,
 	iam_principal_role ipr, 
 	iam_group grp, 
-	iam_group_member gm 
+	iam_group_member_user gm 
 where 
 	rg.role_id = ipr.role_id and 
 	ipr.principal_id = grp.public_id and 
@@ -70,7 +70,7 @@ where
 	}
 
 	grants := []*RoleGrant{}
-	if err := r.SearchWhere(ctx, &grants, whereBase, []interface{}{u.PublicId, UserRoleType.String()}); err != nil {
+	if err := r.SearchWhere(ctx, &grants, whereBase, []interface{}{u.PublicId}); err != nil {
 		return nil, err
 	}
 	return grants, nil

@@ -2,15 +2,17 @@ package iam
 
 import (
 	"context"
-	"errors"
 	"fmt"
 
 	"github.com/hashicorp/watchtower/internal/db"
 	"github.com/hashicorp/watchtower/internal/iam/store"
-	"github.com/hashicorp/watchtower/internal/types/action"
+	"github.com/hashicorp/watchtower/internal/perms"
 	"github.com/hashicorp/watchtower/internal/types/resource"
+	"github.com/hashicorp/watchtower/internal/types/scope"
 	"google.golang.org/protobuf/proto"
 )
+
+const defaultRoleGrantTable = "iam_role_grant"
 
 // RoleGrant defines the grants that are assigned to a role
 type RoleGrant struct {
@@ -23,23 +25,33 @@ var _ Clonable = (*RoleGrant)(nil)
 var _ db.VetForWriter = (*RoleGrant)(nil)
 
 // NewRoleGrant creates a new in memory role grant
-// options include: WithName
-func NewRoleGrant(role *Role, grant string, opt ...Option) (*RoleGrant, error) {
-	if role == nil {
-		return nil, errors.New("error role is nil")
+func NewRoleGrant(roleId string, grant string, opt ...Option) (*RoleGrant, error) {
+	if roleId == "" {
+		return nil, fmt.Errorf("new role grant: role id is not set: %w", db.ErrNilParameter)
 	}
-	if role.PublicId == "" {
-		return nil, errors.New("error role id is unset")
+	if grant == "" {
+		return nil, fmt.Errorf("new role grant: grant is empty: %w", db.ErrNilParameter)
 	}
-	publicId, err := db.NewPublicId("rg")
+
+	// Validate that the grant parses successfully. Note that we fake the scope
+	// here to avoid a lookup as the scope is only relevant at actual ACL
+	// checking time and we just care that it parses correctly.
+	perm, err := perms.Parse(
+		perms.Scope{
+			Id:   "s_abcd1234",
+			Type: scope.Organization,
+		},
+		"",
+		grant,
+	)
 	if err != nil {
-		return nil, fmt.Errorf("error generating public id %w for new role grant", err)
+		return nil, fmt.Errorf("new role grant: error parsing grant string: %w", err)
 	}
 	rg := &RoleGrant{
 		RoleGrant: &store.RoleGrant{
-			PublicId: publicId,
-			RoleId:   role.PublicId,
-			Grant:    grant,
+			RoleId:         roleId,
+			RawGrant:       grant,
+			CanonicalGrant: perm.CanonicalString(),
 		},
 	}
 	return rg, nil
@@ -61,48 +73,52 @@ func (g *RoleGrant) Clone() interface{} {
 
 // VetForWrite implements db.VetForWrite() interface
 func (g *RoleGrant) VetForWrite(ctx context.Context, r db.Reader, opType db.OpType, opt ...db.Option) error {
-	if g.PublicId == "" {
-		return errors.New("error public id is empty string for grant write")
+	if g.RawGrant == "" {
+		return fmt.Errorf("vet role grant for writing: grant is empty: %w", db.ErrNilParameter)
 	}
-	return nil
-}
 
-// GetScope returns the scope for the RoleGrant
-func (g *RoleGrant) GetScope(ctx context.Context, r db.Reader) (*Scope, error) {
-	if g.RoleId == "" {
-		return nil, errors.New("grant's role id is unset")
-	}
-	role := allocRole()
-	role.PublicId = g.RoleId
-	if err := r.LookupByPublicId(ctx, &role); err != nil {
-		return nil, fmt.Errorf("unable to look up grant's role: %w", err)
-	}
-	roleScope, err := LookupScope(ctx, r, &role)
+	// Validate that the grant parses successfully. Note that we fake the scope
+	// here to avoid a lookup as the scope is only relevant at actual ACL
+	// checking time and we just care that it parses correctly. We may have
+	// already done this in NewRoleGrant, but we re-check and set it here
+	// anyways because it should still be part of the vetting process.
+	perm, err := perms.Parse(
+		perms.Scope{
+			Id:   "s_abcd1234",
+			Type: scope.Organization,
+		},
+		"",
+		g.RawGrant,
+	)
 	if err != nil {
-		return nil, fmt.Errorf("unable to get grant's scope: %w", err)
+		return fmt.Errorf("vet role grant for writing: error parsing grant string: %w", err)
 	}
-	return roleScope, nil
+	canonical := perm.CanonicalString()
+	if g.CanonicalGrant != "" && g.CanonicalGrant != canonical {
+		return fmt.Errorf("vet role grant for writing: existing canonical grant and derived one do not match: %w", err)
+	}
+	g.CanonicalGrant = canonical
+
+	return nil
 }
 
 // ResourceType returns the type of the RoleGrant
 func (*RoleGrant) ResourceType() resource.Type { return resource.RoleGrant }
-
-// Actions returns the  available actions for RoleGrant
-func (*RoleGrant) Actions() map[string]action.Type {
-	return CrudActions()
-}
 
 // TableName returns the tablename to override the default gorm table name
 func (g *RoleGrant) TableName() string {
 	if g.tableName != "" {
 		return g.tableName
 	}
-	return "iam_role_grant"
+	return defaultRoleGrantTable
 }
 
 // SetTableName sets the tablename and satisfies the ReplayableMessage interface
 func (g *RoleGrant) SetTableName(n string) {
-	if n != "" {
+	switch n {
+	case "":
+		g.tableName = defaultRoleGrantTable
+	default:
 		g.tableName = n
 	}
 }

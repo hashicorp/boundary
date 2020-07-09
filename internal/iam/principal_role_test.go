@@ -14,13 +14,7 @@ import (
 
 func TestNewUserRole(t *testing.T) {
 	t.Parallel()
-	cleanup, conn, _ := db.TestSetup(t, "postgres")
-	defer func() {
-		err := cleanup()
-		assert.NoError(t, err)
-		err = conn.Close()
-		assert.NoError(t, err)
-	}()
+	conn, _ := db.TestSetup(t, "postgres")
 	org, proj := TestScopes(t, conn)
 	orgRole := TestRole(t, conn, org.PublicId)
 	projRole := TestRole(t, conn, proj.PublicId)
@@ -107,16 +101,11 @@ func TestNewUserRole(t *testing.T) {
 	}
 }
 
-func Test_UserRoleCreate(t *testing.T) {
+func TestUserRole_Create(t *testing.T) {
 	t.Parallel()
-	cleanup, conn, _ := db.TestSetup(t, "postgres")
-	defer func() {
-		err := cleanup()
-		assert.NoError(t, err)
-		err = conn.Close()
-		assert.NoError(t, err)
-	}()
+	conn, _ := db.TestSetup(t, "postgres")
 	org, proj := TestScopes(t, conn)
+	org2, proj2 := TestScopes(t, conn)
 	type args struct {
 		role *UserRole
 	}
@@ -155,6 +144,32 @@ func Test_UserRoleCreate(t *testing.T) {
 			wantErr: false,
 		},
 		{
+			name: "invalid-org",
+			args: args{
+				role: func() *UserRole {
+					role := TestRole(t, conn, org2.PublicId)
+					principal := TestUser(t, conn, org.PublicId)
+					principalRole, err := NewUserRole(org.PublicId, role.PublicId, principal.PublicId)
+					require.NoError(t, err)
+					return principalRole.(*UserRole)
+				}(),
+			},
+			wantErr: true,
+		},
+		{
+			name: "invalid-proj",
+			args: args{
+				role: func() *UserRole {
+					role := TestRole(t, conn, proj2.PublicId)
+					principal := TestUser(t, conn, org.PublicId)
+					principalRole, err := NewUserRole(proj.PublicId, role.PublicId, principal.PublicId)
+					require.NoError(t, err)
+					return principalRole.(*UserRole)
+				}(),
+			},
+			wantErr: true,
+		},
+		{
 			name: "bad-role-id",
 			args: args{
 				role: func() *UserRole {
@@ -166,7 +181,7 @@ func Test_UserRoleCreate(t *testing.T) {
 				}(),
 			},
 			wantErr:    true,
-			wantErrMsg: "create: failed pq: user and role do not belong to the same organization",
+			wantErrMsg: "create: failed: pq: user and role do not belong to the same organization",
 		},
 		{
 			name: "bad-user-id",
@@ -180,7 +195,7 @@ func Test_UserRoleCreate(t *testing.T) {
 				}(),
 			},
 			wantErr:    true,
-			wantErrMsg: "create: failed pq: user and role do not belong to the same organization",
+			wantErrMsg: "create: failed: pq: user and role do not belong to the same organization",
 		},
 		{
 			name: "missing-role-id",
@@ -197,7 +212,7 @@ func Test_UserRoleCreate(t *testing.T) {
 				}(),
 			},
 			wantErr:    true,
-			wantErrMsg: "create: vet for write failed new user role: missing role id invalid parameter",
+			wantErrMsg: "create: vet for write failed: new user role: missing role id invalid parameter",
 			wantIsErr:  db.ErrInvalidParameter,
 		},
 		{
@@ -215,7 +230,7 @@ func Test_UserRoleCreate(t *testing.T) {
 				}(),
 			},
 			wantErr:    true,
-			wantErrMsg: "create: vet for write failed new user role: missing user id invalid parameter",
+			wantErrMsg: "create: vet for write failed: new user role: missing user id invalid parameter",
 			wantIsErr:  db.ErrInvalidParameter,
 		},
 		{
@@ -231,7 +246,7 @@ func Test_UserRoleCreate(t *testing.T) {
 			},
 			wantDup:    true,
 			wantErr:    true,
-			wantErrMsg: `create: failed pq: duplicate key value violates unique constraint "iam_user_role_pkey"`,
+			wantErrMsg: `create: failed: pq: duplicate key value violates unique constraint "iam_user_role_pkey"`,
 		},
 	}
 
@@ -264,15 +279,9 @@ func Test_UserRoleCreate(t *testing.T) {
 	}
 }
 
-func Test_UserRoleUpdate(t *testing.T) {
+func TestUserRole_Update(t *testing.T) {
 	t.Parallel()
-	cleanup, conn, _ := db.TestSetup(t, "postgres")
-	defer func() {
-		err := cleanup()
-		assert.NoError(t, err)
-		err = conn.Close()
-		assert.NoError(t, err)
-	}()
+	conn, _ := db.TestSetup(t, "postgres")
 	org, _ := TestScopes(t, conn)
 	rw := db.New(conn)
 
@@ -290,15 +299,9 @@ func Test_UserRoleUpdate(t *testing.T) {
 	})
 }
 
-func Test_UserRoleDelete(t *testing.T) {
+func TestUserRole_Delete(t *testing.T) {
 	t.Parallel()
-	cleanup, conn, _ := db.TestSetup(t, "postgres")
-	defer func() {
-		err := cleanup()
-		assert.NoError(t, err)
-		err = conn.Close()
-		assert.NoError(t, err)
-	}()
+	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	id := testId(t)
 	org, _ := TestScopes(t, conn)
@@ -352,13 +355,7 @@ func Test_UserRoleDelete(t *testing.T) {
 
 func TestUserRole_Clone(t *testing.T) {
 	t.Parallel()
-	cleanup, conn, _ := db.TestSetup(t, "postgres")
-	defer func() {
-		err := cleanup()
-		assert.NoError(t, err)
-		err = conn.Close()
-		assert.NoError(t, err)
-	}()
+	conn, _ := db.TestSetup(t, "postgres")
 	org, proj := TestScopes(t, conn)
 	user := TestUser(t, conn, org.PublicId)
 	t.Run("valid", func(t *testing.T) {
@@ -389,13 +386,7 @@ func TestUserRole_GetType(t *testing.T) {
 
 func TestNewGroupRole(t *testing.T) {
 	t.Parallel()
-	cleanup, conn, _ := db.TestSetup(t, "postgres")
-	defer func() {
-		err := cleanup()
-		assert.NoError(t, err)
-		err = conn.Close()
-		assert.NoError(t, err)
-	}()
+	conn, _ := db.TestSetup(t, "postgres")
 	org, proj := TestScopes(t, conn)
 	orgRole := TestRole(t, conn, org.PublicId)
 	projRole := TestRole(t, conn, proj.PublicId)
@@ -482,15 +473,9 @@ func TestNewGroupRole(t *testing.T) {
 	}
 }
 
-func Test_GroupRoleCreate(t *testing.T) {
+func TestGroupRole_Create(t *testing.T) {
 	t.Parallel()
-	cleanup, conn, _ := db.TestSetup(t, "postgres")
-	defer func() {
-		err := cleanup()
-		assert.NoError(t, err)
-		err = conn.Close()
-		assert.NoError(t, err)
-	}()
+	conn, _ := db.TestSetup(t, "postgres")
 	org, proj := TestScopes(t, conn)
 	type args struct {
 		role *GroupRole
@@ -541,7 +526,7 @@ func Test_GroupRoleCreate(t *testing.T) {
 				}(),
 			},
 			wantErr:    true,
-			wantErrMsg: `create: failed pq: insert or update on table "iam_group_role" violates foreign key constraint "iam_group_role_scope_id_role_id_fkey"`,
+			wantErrMsg: `create: failed: pq: insert or update on table "iam_group_role" violates foreign key constraint "iam_group_role_scope_id_role_id_fkey"`,
 		},
 		{
 			name: "bad-user-id",
@@ -555,7 +540,7 @@ func Test_GroupRoleCreate(t *testing.T) {
 				}(),
 			},
 			wantErr:    true,
-			wantErrMsg: `create: failed pq: insert or update on table "iam_group_role" violates foreign key constraint "iam_group_role_scope_id_role_id_fkey"`,
+			wantErrMsg: `create: failed: pq: insert or update on table "iam_group_role" violates foreign key constraint "iam_group_role_scope_id_role_id_fkey"`,
 		},
 		{
 			name: "missing-role-id",
@@ -572,7 +557,7 @@ func Test_GroupRoleCreate(t *testing.T) {
 				}(),
 			},
 			wantErr:    true,
-			wantErrMsg: "create: vet for write failed new group role: missing role id invalid parameter",
+			wantErrMsg: "create: vet for write failed: new group role: missing role id invalid parameter",
 			wantIsErr:  db.ErrInvalidParameter,
 		},
 		{
@@ -590,7 +575,7 @@ func Test_GroupRoleCreate(t *testing.T) {
 				}(),
 			},
 			wantErr:    true,
-			wantErrMsg: "create: vet for write failed new group role: missing user id invalid parameter",
+			wantErrMsg: "create: vet for write failed: new group role: missing user id invalid parameter",
 			wantIsErr:  db.ErrInvalidParameter,
 		},
 		{
@@ -606,7 +591,7 @@ func Test_GroupRoleCreate(t *testing.T) {
 			},
 			wantDup:    true,
 			wantErr:    true,
-			wantErrMsg: `create: failed pq: duplicate key value violates unique constraint`,
+			wantErrMsg: `create: failed: pq: duplicate key value violates unique constraint`,
 		},
 		{
 			name: "dup-at-proj",
@@ -621,7 +606,7 @@ func Test_GroupRoleCreate(t *testing.T) {
 			},
 			wantDup:    true,
 			wantErr:    true,
-			wantErrMsg: `create: failed pq: duplicate key value violates unique constraint`,
+			wantErrMsg: `create: failed: pq: duplicate key value violates unique constraint`,
 		},
 	}
 
@@ -654,15 +639,9 @@ func Test_GroupRoleCreate(t *testing.T) {
 	}
 }
 
-func Test_GroupRoleUpdate(t *testing.T) {
+func TestGroupRole_Update(t *testing.T) {
 	t.Parallel()
-	cleanup, conn, _ := db.TestSetup(t, "postgres")
-	defer func() {
-		err := cleanup()
-		assert.NoError(t, err)
-		err = conn.Close()
-		assert.NoError(t, err)
-	}()
+	conn, _ := db.TestSetup(t, "postgres")
 	org, _ := TestScopes(t, conn)
 	rw := db.New(conn)
 
@@ -680,15 +659,9 @@ func Test_GroupRoleUpdate(t *testing.T) {
 	})
 }
 
-func Test_GroupRoleDelete(t *testing.T) {
+func TestGroupRole_Delete(t *testing.T) {
 	t.Parallel()
-	cleanup, conn, _ := db.TestSetup(t, "postgres")
-	defer func() {
-		err := cleanup()
-		assert.NoError(t, err)
-		err = conn.Close()
-		assert.NoError(t, err)
-	}()
+	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	id := testId(t)
 	org, _ := TestScopes(t, conn)
@@ -742,13 +715,7 @@ func Test_GroupRoleDelete(t *testing.T) {
 
 func TestGroupRole_Clone(t *testing.T) {
 	t.Parallel()
-	cleanup, conn, _ := db.TestSetup(t, "postgres")
-	defer func() {
-		err := cleanup()
-		assert.NoError(t, err)
-		err = conn.Close()
-		assert.NoError(t, err)
-	}()
+	conn, _ := db.TestSetup(t, "postgres")
 	org, proj := TestScopes(t, conn)
 	t.Run("valid", func(t *testing.T) {
 		assert := assert.New(t)

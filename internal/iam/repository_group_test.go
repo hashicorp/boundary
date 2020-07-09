@@ -18,13 +18,7 @@ import (
 
 func TestRepository_CreateGroup(t *testing.T) {
 	t.Parallel()
-	cleanup, conn, _ := db.TestSetup(t, "postgres")
-	defer func() {
-		err := cleanup()
-		assert.NoError(t, err)
-		err = conn.Close()
-		assert.NoError(t, err)
-	}()
+	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
 	repo, err := NewRepository(rw, rw, wrapper)
@@ -179,13 +173,7 @@ func TestRepository_CreateGroup(t *testing.T) {
 
 func TestRepository_UpdateGroup(t *testing.T) {
 	t.Parallel()
-	cleanup, conn, _ := db.TestSetup(t, "postgres")
-	defer func() {
-		err := cleanup()
-		assert.NoError(t, err)
-		err = conn.Close()
-		assert.NoError(t, err)
-	}()
+	conn, _ := db.TestSetup(t, "postgres")
 	a := assert.New(t)
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
@@ -215,6 +203,7 @@ func TestRepository_UpdateGroup(t *testing.T) {
 		wantErrMsg     string
 		wantIsError    error
 		wantDup        bool
+		directUpdate   bool
 	}{
 		{
 			name: "valid",
@@ -391,6 +380,19 @@ func TestRepository_UpdateGroup(t *testing.T) {
 			wantErrMsg:  " already exists in organization " + org.PublicId,
 			wantIsError: db.ErrNotUnique,
 		},
+		{
+			name: "modified-scope",
+			args: args{
+				name:           "modified-scope" + id,
+				fieldMaskPaths: []string{"ScopeId"},
+				ScopeId:        proj.PublicId,
+				opt:            []Option{WithSkipVetForWrite(true)},
+			},
+			newScopeId:   org.PublicId,
+			wantErr:      true,
+			wantErrMsg:   `update: failed: pq: scope_id cannot be set`,
+			directUpdate: true,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -413,13 +415,25 @@ func TestRepository_UpdateGroup(t *testing.T) {
 			updateGrp.Name = tt.args.name
 			updateGrp.Description = tt.args.description
 
-			userAfterUpdate, updatedRows, err := repo.UpdateGroup(context.Background(), &updateGrp, tt.args.fieldMaskPaths, tt.args.opt...)
+			var groupAfterUpdate *Group
+			var updatedRows int
+			var err error
+			if tt.directUpdate {
+				g := updateGrp.Clone()
+				var resource interface{}
+				resource, updatedRows, err = repo.update(context.Background(), g.(*Group), tt.args.fieldMaskPaths, nil, tt.args.opt...)
+				if err == nil {
+					groupAfterUpdate = resource.(*Group)
+				}
+			} else {
+				groupAfterUpdate, updatedRows, err = repo.UpdateGroup(context.Background(), &updateGrp, tt.args.fieldMaskPaths, tt.args.opt...)
+			}
 			if tt.wantErr {
 				assert.Error(err)
 				if tt.wantIsError != nil {
 					assert.True(errors.Is(err, tt.wantIsError))
 				}
-				assert.Nil(userAfterUpdate)
+				assert.Nil(groupAfterUpdate)
 				assert.Equal(0, updatedRows)
 				assert.Contains(err.Error(), tt.wantErrMsg)
 				err = db.TestVerifyOplog(t, rw, u.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_UPDATE), db.WithCreateNotBefore(10*time.Second))
@@ -431,13 +445,13 @@ func TestRepository_UpdateGroup(t *testing.T) {
 			assert.Equal(tt.wantRowsUpdate, updatedRows)
 			switch tt.name {
 			case "valid-no-op":
-				assert.Equal(u.UpdateTime, userAfterUpdate.UpdateTime)
+				assert.Equal(u.UpdateTime, groupAfterUpdate.UpdateTime)
 			default:
-				assert.NotEqual(u.UpdateTime, userAfterUpdate.UpdateTime)
+				assert.NotEqual(u.UpdateTime, groupAfterUpdate.UpdateTime)
 			}
 			foundGrp, err := repo.LookupGroup(context.Background(), u.PublicId)
 			assert.NoError(err)
-			assert.True(proto.Equal(userAfterUpdate, foundGrp))
+			assert.True(proto.Equal(groupAfterUpdate, foundGrp))
 			dbassert := dbassert.New(t, rw)
 			if tt.args.name == "" {
 				dbassert.IsNull(foundGrp, "name")
@@ -454,13 +468,7 @@ func TestRepository_UpdateGroup(t *testing.T) {
 
 func TestRepository_DeleteGroup(t *testing.T) {
 	t.Parallel()
-	cleanup, conn, _ := db.TestSetup(t, "postgres")
-	defer func() {
-		err := cleanup()
-		assert.NoError(t, err)
-		err = conn.Close()
-		assert.NoError(t, err)
-	}()
+	conn, _ := db.TestSetup(t, "postgres")
 	a := assert.New(t)
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
@@ -544,13 +552,7 @@ func TestRepository_DeleteGroup(t *testing.T) {
 
 func TestRepository_ListGroups(t *testing.T) {
 	t.Parallel()
-	cleanup, conn, _ := db.TestSetup(t, "postgres")
-	defer func() {
-		err := cleanup()
-		assert.NoError(t, err)
-		err = conn.Close()
-		assert.NoError(t, err)
-	}()
+	conn, _ := db.TestSetup(t, "postgres")
 	const testLimit = 10
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)

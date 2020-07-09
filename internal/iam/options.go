@@ -14,26 +14,30 @@ type Option func(*options)
 
 // options = how options are represented
 type options struct {
-	withPublicId    string
-	withName        string
-	withScope       *Scope
-	withDescription string
-	withParentId    *string
-	withGroupGrants bool
-	withLimit       int
-	withAutoVivify  bool
+	withPublicId        string
+	withName            string
+	withScope           *Scope
+	withDescription     string
+	withParentId        *string
+	withGroupGrants     bool
+	withLimit           int
+	withAutoVivify      bool
+	withGrantScopeId    string
+	withSkipVetForWrite bool
 }
 
 func getDefaultOptions() options {
 	return options{
-		withPublicId:    "",
-		withScope:       nil,
-		withDescription: "",
-		withGroupGrants: false,
-		withName:        "",
-		withParentId:    nil,
-		withLimit:       0,
-		withAutoVivify:  false,
+		withPublicId:        "",
+		withName:            "",
+		withScope:           nil,
+		withDescription:     "",
+		withParentId:        nil,
+		withGroupGrants:     false,
+		withLimit:           0,
+		withAutoVivify:      false,
+		withGrantScopeId:    "",
+		withSkipVetForWrite: false,
 	}
 }
 
@@ -95,5 +99,21 @@ func WithLimit(limit int) Option {
 func WithAutoVivify(enable bool) Option {
 	return func(o *options) {
 		o.withAutoVivify = enable
+	}
+}
+
+// WithGrantScopeId provides an option to specify the scope ID for grants in
+// roles.
+func WithGrantScopeId(id string) Option {
+	return func(o *options) {
+		o.withGrantScopeId = id
+	}
+}
+
+// WithSkipVetForWrite provides an option to allow skipping vet checks to allow
+// testing lower-level SQL triggers and constraints
+func WithSkipVetForWrite(enable bool) Option {
+	return func(o *options) {
+		o.withSkipVetForWrite = enable
 	}
 }

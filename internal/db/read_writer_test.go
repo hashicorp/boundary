@@ -24,16 +24,10 @@ import (
 )
 
 func TestDb_Update(t *testing.T) {
-	cleanup, db, _ := TestSetup(t, "postgres")
+	db, _ := TestSetup(t, "postgres")
 	now := &timestamp.Timestamp{Timestamp: ptypes.TimestampNow()}
 	publicId, err := NewPublicId("testuser")
 	require.NoError(t, err)
-	defer func() {
-		err := cleanup()
-		assert.NoError(t, err)
-		err = db.Close()
-		assert.NoError(t, err)
-	}()
 	id := testId(t)
 	type args struct {
 		i              *db_test.TestUser
@@ -448,7 +442,7 @@ func TestDb_Update(t *testing.T) {
 		)
 		require.Error(err)
 		assert.Equal(0, rowsUpdated)
-		assert.Equal("update: oplog validation failed error no wrapper WithOplog: nil parameter", err.Error())
+		assert.Equal("update: oplog validation failed: error no wrapper WithOplog: nil parameter", err.Error())
 	})
 	t.Run("no-metadata-WithOplog", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
@@ -465,7 +459,7 @@ func TestDb_Update(t *testing.T) {
 		)
 		require.Error(err)
 		assert.Equal(0, rowsUpdated)
-		assert.Equal("update: oplog validation failed error no metadata for WithOplog: invalid parameter", err.Error())
+		assert.Equal("update: oplog validation failed: error no metadata for WithOplog: invalid parameter", err.Error())
 	})
 }
 
@@ -508,13 +502,7 @@ func (u *testUserWithVet) VetForWrite(ctx context.Context, r Reader, opType OpTy
 
 func TestDb_Create(t *testing.T) {
 	// intentionally not run with t.Parallel so we don't need to use DoTx for the Create tests
-	cleanup, db, _ := TestSetup(t, "postgres")
-	defer func() {
-		err := cleanup()
-		assert.NoError(t, err)
-		err = db.Close()
-		assert.NoError(t, err)
-	}()
+	db, _ := TestSetup(t, "postgres")
 	t.Run("simple", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
 		w := Db{underlying: db}
@@ -652,7 +640,7 @@ func TestDb_Create(t *testing.T) {
 			),
 		)
 		require.Error(err)
-		assert.Equal("create: oplog validation failed error no wrapper WithOplog: nil parameter", err.Error())
+		assert.Equal("create: oplog validation failed: error no wrapper WithOplog: nil parameter", err.Error())
 	})
 	t.Run("no-metadata-WithOplog", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
@@ -671,7 +659,7 @@ func TestDb_Create(t *testing.T) {
 			),
 		)
 		require.Error(err)
-		assert.Equal("create: oplog validation failed error no metadata for WithOplog: invalid parameter", err.Error())
+		assert.Equal("create: oplog validation failed: error no metadata for WithOplog: invalid parameter", err.Error())
 	})
 	t.Run("nil-tx", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
@@ -683,19 +671,13 @@ func TestDb_Create(t *testing.T) {
 		user.Name = "foo-" + id
 		err = w.Create(context.Background(), user)
 		require.Error(err)
-		assert.Equal("create: missing underlying db nil parameter", err.Error())
+		assert.Equal("create: missing underlying db: nil parameter", err.Error())
 	})
 }
 
 func TestDb_LookupByName(t *testing.T) {
 	t.Parallel()
-	cleanup, db, _ := TestSetup(t, "postgres")
-	defer func() {
-		err := cleanup()
-		assert.NoError(t, err)
-		err = db.Close()
-		assert.NoError(t, err)
-	}()
+	db, _ := TestSetup(t, "postgres")
 	t.Run("simple", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
 		w := Db{underlying: db}
@@ -751,13 +733,7 @@ func TestDb_LookupByName(t *testing.T) {
 
 func TestDb_LookupByPublicId(t *testing.T) {
 	t.Parallel()
-	cleanup, db, _ := TestSetup(t, "postgres")
-	defer func() {
-		err := cleanup()
-		assert.NoError(t, err)
-		err = db.Close()
-		assert.NoError(t, err)
-	}()
+	db, _ := TestSetup(t, "postgres")
 	t.Run("simple", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
 		w := Db{underlying: db}
@@ -812,13 +788,7 @@ func TestDb_LookupByPublicId(t *testing.T) {
 
 func TestDb_LookupWhere(t *testing.T) {
 	t.Parallel()
-	cleanup, db, _ := TestSetup(t, "postgres")
-	defer func() {
-		err := cleanup()
-		assert.NoError(t, err)
-		err = db.Close()
-		assert.NoError(t, err)
-	}()
+	db, _ := TestSetup(t, "postgres")
 	t.Run("simple", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
 		w := Db{underlying: db}
@@ -870,13 +840,7 @@ func TestDb_LookupWhere(t *testing.T) {
 
 func TestDb_SearchWhere(t *testing.T) {
 	t.Parallel()
-	cleanup, db, _ := TestSetup(t, "postgres")
-	defer func() {
-		err := cleanup()
-		assert.NoError(t, err)
-		err = db.Close()
-		assert.NoError(t, err)
-	}()
+	db, _ := TestSetup(t, "postgres")
 	knownUser := testUser(t, db, "", "", "")
 
 	type args struct {
@@ -986,14 +950,7 @@ func TestDb_SearchWhere(t *testing.T) {
 
 func TestDb_DB(t *testing.T) {
 	t.Parallel()
-	cleanup, db, _ := TestSetup(t, "postgres")
-	defer func() {
-		require := require.New(t)
-		err := cleanup()
-		require.NoError(err)
-		err = db.Close()
-		require.NoError(err)
-	}()
+	db, _ := TestSetup(t, "postgres")
 	t.Run("valid", func(t *testing.T) {
 		require := require.New(t)
 		w := Db{underlying: db}
@@ -1015,14 +972,7 @@ func TestDb_DB(t *testing.T) {
 
 func TestDb_DoTx(t *testing.T) {
 	t.Parallel()
-	cleanup, db, _ := TestSetup(t, "postgres")
-	defer func() {
-		require := require.New(t)
-		err := cleanup()
-		require.NoError(err)
-		err = db.Close()
-		require.NoError(err)
-	}()
+	db, _ := TestSetup(t, "postgres")
 	t.Run("valid-with-10-retries", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
 		w := &Db{underlying: db}
@@ -1191,14 +1141,7 @@ func TestDb_DoTx(t *testing.T) {
 }
 
 func TestDb_Delete(t *testing.T) {
-	cleanup, db, _ := TestSetup(t, "postgres")
-	defer func() {
-		require := require.New(t)
-		err := cleanup()
-		require.NoError(err)
-		err = db.Close()
-		require.NoError(err)
-	}()
+	db, _ := TestSetup(t, "postgres")
 	newUser := func() *db_test.TestUser {
 		w := &Db{
 			underlying: db,
@@ -1415,14 +1358,7 @@ func TestDb_Delete(t *testing.T) {
 
 func TestDb_ScanRows(t *testing.T) {
 	t.Parallel()
-	cleanup, db, _ := TestSetup(t, "postgres")
-	defer func() {
-		require := require.New(t)
-		err := cleanup()
-		require.NoError(err)
-		err = db.Close()
-		require.NoError(err)
-	}()
+	db, _ := TestSetup(t, "postgres")
 	t.Run("valid", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
 		w := Db{underlying: db}
@@ -1451,13 +1387,7 @@ func TestDb_ScanRows(t *testing.T) {
 }
 
 func TestDb_CreateItems(t *testing.T) {
-	cleanup, db, _ := TestSetup(t, "postgres")
-	defer func() {
-		err := cleanup()
-		assert.NoError(t, err)
-		err = db.Close()
-		assert.NoError(t, err)
-	}()
+	db, _ := TestSetup(t, "postgres")
 	testOplogResourceId := testId(t)
 
 	createFn := func() []interface{} {
@@ -1671,14 +1601,7 @@ func TestDb_CreateItems(t *testing.T) {
 }
 
 func TestDb_DeleteItems(t *testing.T) {
-	cleanup, db, _ := TestSetup(t, "postgres")
-	defer func() {
-		err := cleanup()
-		assert.NoError(t, err)
-		err = db.Close()
-		assert.NoError(t, err)
-	}()
-
+	db, _ := TestSetup(t, "postgres")
 	testOplogResourceId := testId(t)
 
 	createFn := func() []interface{} {
@@ -1944,13 +1867,7 @@ func testScooter(t *testing.T, conn *gorm.DB, model string, mpg int32) *db_test.
 
 func TestDb_LookupById(t *testing.T) {
 	t.Parallel()
-	cleanup, db, _ := TestSetup(t, "postgres")
-	defer func() {
-		err := cleanup()
-		assert.NoError(t, err)
-		err = db.Close()
-		assert.NoError(t, err)
-	}()
+	db, _ := TestSetup(t, "postgres")
 	scooter := testScooter(t, db, "", 0)
 	user := testUser(t, db, "", "", "")
 	type args struct {
@@ -2055,13 +1972,7 @@ func TestDb_LookupById(t *testing.T) {
 }
 
 func TestDb_GetTicket(t *testing.T) {
-	cleanup, db, _ := TestSetup(t, "postgres")
-	defer func() {
-		err := cleanup()
-		assert.NoError(t, err)
-		err = db.Close()
-		assert.NoError(t, err)
-	}()
+	db, _ := TestSetup(t, "postgres")
 	type notReplayable struct{}
 	tests := []struct {
 		name          string
@@ -2122,14 +2033,7 @@ func TestDb_GetTicket(t *testing.T) {
 }
 
 func TestDb_WriteOplogEntryWith(t *testing.T) {
-	cleanup, db, _ := TestSetup(t, "postgres")
-	defer func() {
-		err := cleanup()
-		assert.NoError(t, err)
-		err = db.Close()
-		assert.NoError(t, err)
-	}()
-
+	db, _ := TestSetup(t, "postgres")
 	w := Db{underlying: db}
 
 	ticket, err := w.GetTicket(&db_test.TestUser{})

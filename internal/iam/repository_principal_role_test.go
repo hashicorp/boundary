@@ -15,13 +15,7 @@ import (
 
 func TestRepository_AddPrincipalRoles(t *testing.T) {
 	t.Parallel()
-	cleanup, conn, _ := db.TestSetup(t, "postgres")
-	defer func() {
-		err := cleanup()
-		assert.NoError(t, err)
-		err = conn.Close()
-		assert.NoError(t, err)
-	}()
+	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
 	repo, err := NewRepository(rw, rw, wrapper)
@@ -156,13 +150,7 @@ func TestRepository_AddPrincipalRoles(t *testing.T) {
 
 func TestRepository_ListPrincipalRoles(t *testing.T) {
 	t.Parallel()
-	cleanup, conn, _ := db.TestSetup(t, "postgres")
-	defer func() {
-		err := cleanup()
-		assert.NoError(t, err)
-		err = conn.Close()
-		assert.NoError(t, err)
-	}()
+	conn, _ := db.TestSetup(t, "postgres")
 	const testLimit = 10
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
@@ -267,13 +255,7 @@ func TestRepository_ListPrincipalRoles(t *testing.T) {
 
 func TestRepository_DeletePrincipalRoles(t *testing.T) {
 	t.Parallel()
-	cleanup, conn, _ := db.TestSetup(t, "postgres")
-	defer func() {
-		err := cleanup()
-		assert.NoError(t, err)
-		err = conn.Close()
-		assert.NoError(t, err)
-	}()
+	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
 	repo, err := NewRepository(rw, rw, wrapper)
@@ -319,6 +301,17 @@ func TestRepository_DeletePrincipalRoles(t *testing.T) {
 			},
 			wantRowsDeleted: 4,
 			wantErr:         false,
+		},
+		{
+			name: "no-deletes",
+			args: args{
+				role:           TestRole(t, conn, org.PublicId),
+				createUserCnt:  5,
+				createGroupCnt: 5,
+			},
+			wantRowsDeleted: 0,
+			wantErr:         true,
+			wantIsErr:       db.ErrInvalidParameter,
 		},
 		{
 			name: "just-user-roles",
@@ -423,13 +416,7 @@ func TestRepository_DeletePrincipalRoles(t *testing.T) {
 
 func TestRepository_SetPrincipalRoles(t *testing.T) {
 	t.Parallel()
-	cleanup, conn, _ := db.TestSetup(t, "postgres")
-	defer func() {
-		err := cleanup()
-		assert.NoError(t, err)
-		err = conn.Close()
-		assert.NoError(t, err)
-	}()
+	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
 
@@ -573,13 +560,7 @@ func TestRepository_SetPrincipalRoles(t *testing.T) {
 
 func TestRepository_principalsToSet(t *testing.T) {
 	t.Parallel()
-	cleanup, conn, _ := db.TestSetup(t, "postgres")
-	defer func() {
-		err := cleanup()
-		assert.NoError(t, err)
-		err = conn.Close()
-		assert.NoError(t, err)
-	}()
+	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
 	repo, err := NewRepository(rw, rw, wrapper)

@@ -4,37 +4,27 @@ import (
 	"context"
 	"testing"
 
-	"github.com/hashicorp/go-uuid"
 	"github.com/hashicorp/watchtower/internal/db"
 	"github.com/stretchr/testify/assert"
 )
 
-func Test_UserGrants(t *testing.T) {
+func Test_RawGrants(t *testing.T) {
 	t.Parallel()
-	cleanup, conn, _ := db.TestSetup(t, "postgres")
-	defer func() {
-		err := cleanup()
-		assert.NoError(t, err)
-		err = conn.Close()
-		assert.NoError(t, err)
-	}()
+	conn, _ := db.TestSetup(t, "postgres")
 	org, _ := TestScopes(t, conn)
 
 	t.Run("valid", func(t *testing.T) {
 		assert := assert.New(t)
-		id, err := uuid.GenerateUUID()
-		assert.NoError(err)
 		w := db.New(conn)
 		role := TestRole(t, conn, org.PublicId)
 
-		g, err := NewRoleGrant(role, "everything*"+id)
+		g, err := NewRoleGrant(role.PublicId, "id=*;actions=*")
 		assert.NoError(err)
 		assert.NotNil(g)
 		assert.Equal(g.RoleId, role.PublicId)
-		assert.Equal(g.Grant, "everything*"+id)
+		assert.Equal(g.RawGrant, "id=*;actions=*")
 		err = w.Create(context.Background(), g)
 		assert.NoError(err)
-		assert.NotEqual(g.PublicId, "")
 
 		user := TestUser(t, conn, org.PublicId)
 		uRole, err := NewUserRole(org.PublicId, role.PublicId, user.PublicId)
@@ -47,10 +37,10 @@ func Test_UserGrants(t *testing.T) {
 		assert.NotNil(uRole)
 		assert.Equal(uRole.GetPrincipalId(), user.PublicId)
 
-		userGrants, err := user.Grants(context.Background(), w)
+		rawGrants, err := user.Grants(context.Background(), w)
 		assert.NoError(err)
-		assert.Equal(len(userGrants), 1)
-		assert.Equal(userGrants[0], g)
+		assert.Equal(len(rawGrants), 1)
+		assert.Equal(rawGrants[0], g)
 
 		grp := TestGroup(t, conn, org.PublicId)
 
@@ -62,14 +52,13 @@ func Test_UserGrants(t *testing.T) {
 		assert.NoError(err)
 
 		groupRole := TestRole(t, conn, org.PublicId)
-		groupGrant, err := NewRoleGrant(groupRole, "group-grant*"+id)
+		groupGrant, err := NewRoleGrant(groupRole.PublicId, "id=*;actions=*")
 		assert.NoError(err)
 		assert.NotNil(groupGrant)
 		assert.Equal(groupGrant.RoleId, groupRole.PublicId)
-		assert.Equal(groupGrant.Grant, "group-grant*"+id)
+		assert.Equal(groupGrant.RawGrant, "id=*;actions=*")
 		err = w.Create(context.Background(), groupGrant)
 		assert.NoError(err)
-		assert.NotEqual(groupGrant.PublicId, "")
 
 		gRole, err := NewGroupRole(org.PublicId, groupRole.PublicId, grp.PublicId)
 		assert.NoError(err)
@@ -85,7 +74,7 @@ func Test_UserGrants(t *testing.T) {
 		assert.NoError(err)
 		assert.Equal(len(allGrants), 2)
 		for _, grant := range allGrants {
-			assert.True(grant.PublicId == g.PublicId || grant.PublicId == groupGrant.PublicId)
+			assert.True(grant.CanonicalGrant == g.CanonicalGrant || grant.CanonicalGrant == groupGrant.CanonicalGrant)
 		}
 	})
 }

@@ -18,14 +18,7 @@ import (
 
 func TestRepository_CreateUser(t *testing.T) {
 	t.Parallel()
-	cleanup, conn, _ := db.TestSetup(t, "postgres")
-	defer func() {
-		err := cleanup()
-		assert.NoError(t, err)
-		err = conn.Close()
-		assert.NoError(t, err)
-	}()
-
+	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
 	repo, err := NewRepository(rw, rw, wrapper)
@@ -117,14 +110,7 @@ func TestRepository_CreateUser(t *testing.T) {
 
 func TestRepository_UpdateUser(t *testing.T) {
 	t.Parallel()
-	cleanup, conn, _ := db.TestSetup(t, "postgres")
-	defer func() {
-		err := cleanup()
-		assert.NoError(t, err)
-		err = conn.Close()
-		assert.NoError(t, err)
-	}()
-
+	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
 	repo, err := NewRepository(rw, rw, wrapper)
@@ -150,6 +136,7 @@ func TestRepository_UpdateUser(t *testing.T) {
 		wantErrMsg     string
 		wantIsErr      error
 		wantDup        bool
+		directUpdate   bool
 	}{
 		{
 			name: "valid",
@@ -294,6 +281,18 @@ func TestRepository_UpdateUser(t *testing.T) {
 			wantDup:    true,
 			wantErrMsg: `update user: user %s already exists in organization %s`,
 		},
+		{
+			name: "modified-scope",
+			args: args{
+				name:           "modified-scope" + id,
+				fieldMaskPaths: []string{"ScopeId"},
+				ScopeId:        "global",
+				opt:            []Option{WithSkipVetForWrite(true)},
+			},
+			wantErr:      true,
+			wantErrMsg:   `update: failed: pq: scope_id cannot be set`,
+			directUpdate: true,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -316,7 +315,19 @@ func TestRepository_UpdateUser(t *testing.T) {
 			updateUser.Name = tt.args.name
 			updateUser.Description = tt.args.description
 
-			userAfterUpdate, updatedRows, err := repo.UpdateUser(context.Background(), &updateUser, tt.args.fieldMaskPaths, tt.args.opt...)
+			var userAfterUpdate *User
+			var updatedRows int
+			var err error
+			if tt.directUpdate {
+				u := updateUser.Clone()
+				var resource interface{}
+				resource, updatedRows, err = repo.update(context.Background(), u.(*User), tt.args.fieldMaskPaths, nil, tt.args.opt...)
+				if err == nil {
+					userAfterUpdate = resource.(*User)
+				}
+			} else {
+				userAfterUpdate, updatedRows, err = repo.UpdateUser(context.Background(), &updateUser, tt.args.fieldMaskPaths, tt.args.opt...)
+			}
 			if tt.wantErr {
 				require.Error(err)
 				if tt.wantIsErr != nil {
@@ -328,7 +339,7 @@ func TestRepository_UpdateUser(t *testing.T) {
 				case "dup-name":
 					assert.Equal(fmt.Sprintf(tt.wantErrMsg, "dup-name"+id, org.PublicId), err.Error())
 				default:
-					assert.Equal(tt.wantErrMsg, err.Error())
+					assert.True(strings.Contains(err.Error(), tt.wantErrMsg), "%s", err.Error())
 				}
 				err = db.TestVerifyOplog(t, rw, u.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_UPDATE), db.WithCreateNotBefore(10*time.Second))
 				require.Error(err)
@@ -358,14 +369,7 @@ func TestRepository_UpdateUser(t *testing.T) {
 
 func TestRepository_DeleteUser(t *testing.T) {
 	t.Parallel()
-	cleanup, conn, _ := db.TestSetup(t, "postgres")
-	defer func() {
-		err := cleanup()
-		assert.NoError(t, err)
-		err = conn.Close()
-		assert.NoError(t, err)
-	}()
-
+	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
 	repo, err := NewRepository(rw, rw, wrapper)
@@ -448,13 +452,7 @@ func TestRepository_DeleteUser(t *testing.T) {
 
 func TestRepository_ListUsers(t *testing.T) {
 	t.Parallel()
-	cleanup, conn, _ := db.TestSetup(t, "postgres")
-	defer func() {
-		err := cleanup()
-		assert.NoError(t, err)
-		err = conn.Close()
-		assert.NoError(t, err)
-	}()
+	conn, _ := db.TestSetup(t, "postgres")
 	const testLimit = 10
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
@@ -534,13 +532,7 @@ func TestRepository_ListUsers(t *testing.T) {
 
 func TestRepository_LookupUserWithLogin(t *testing.T) {
 	t.Parallel()
-	cleanup, conn, _ := db.TestSetup(t, "postgres")
-	defer func() {
-		err := cleanup()
-		assert.NoError(t, err)
-		err = conn.Close()
-		assert.NoError(t, err)
-	}()
+	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
 	repo, err := NewRepository(rw, rw, wrapper)

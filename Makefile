@@ -22,8 +22,9 @@ cleangen:
 	@rm -f ${GENERATED_CODE}
 
 dev: BUILD_TAGS+=dev
+dev: BUILD_TAGS+=ui
 dev: build-ui-ifne
-	@echo "==> Building Watchtower with dev features enabled"
+	@echo "==> Building Watchtower with dev and UI features enabled"
 	@CGO_ENABLED=$(CGO_ENABLED) BUILD_TAGS='$(BUILD_TAGS)' WATCHTOWER_DEV_BUILD=1 sh -c "'$(CURDIR)/scripts/build.sh'"
 
 build-ui:
@@ -77,6 +78,7 @@ protobuild:
 	@protoc-go-inject-tag -input=./internal/iam/store/group.pb.go
 	@protoc-go-inject-tag -input=./internal/db/db_test/db_test.pb.go
 	@protoc-go-inject-tag -input=./internal/host/static/store/static.pb.go
+	@protoc-go-inject-tag -input=./internal/authtoken/store/authtoken.pb.go
 	@protoc-go-inject-tag -input=./internal/iam/store/auth_account.pb.go
 	@rm -R ${TMP_DIR}
 

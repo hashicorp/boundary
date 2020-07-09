@@ -2,9 +2,11 @@ package iam
 
 import (
 	"context"
+	"strings"
 	"testing"
 
 	"github.com/hashicorp/watchtower/internal/db"
+	"github.com/hashicorp/watchtower/internal/iam/store"
 	"github.com/hashicorp/watchtower/internal/types/action"
 	"github.com/hashicorp/watchtower/internal/types/resource"
 	"github.com/hashicorp/watchtower/internal/types/scope"
@@ -13,15 +15,9 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-func Test_NewScope(t *testing.T) {
+func TestScope_New(t *testing.T) {
 	t.Parallel()
-	cleanup, conn, _ := db.TestSetup(t, "postgres")
-	defer func() {
-		err := cleanup()
-		assert.NoError(t, err)
-		err = conn.Close()
-		assert.NoError(t, err)
-	}()
+	conn, _ := db.TestSetup(t, "postgres")
 	t.Run("valid-org-with-project", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
 		w := db.New(conn)
@@ -46,25 +42,19 @@ func Test_NewScope(t *testing.T) {
 		s, err := newScope(scope.Unknown)
 		require.Error(err)
 		require.Nil(s)
-		assert.Equal(err.Error(), "new scope: unknown scope type invalid parameter")
+		assert.Equal(err.Error(), "new scope: unknown scope type: invalid parameter")
 	})
 	t.Run("proj-scope-with-no-org", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
 		s, err := NewProject("")
 		require.Error(err)
 		require.Nil(s)
-		assert.Equal(err.Error(), "error creating new project: new scope: with scope's parent id is missing invalid parameter")
+		assert.Equal(err.Error(), "error creating new project: new scope: with scope's parent id is missing: invalid parameter")
 	})
 }
-func Test_ScopeCreate(t *testing.T) {
+func TestScope_Create(t *testing.T) {
 	t.Parallel()
-	cleanup, conn, _ := db.TestSetup(t, "postgres")
-	defer func() {
-		err := cleanup()
-		assert.NoError(t, err)
-		err = conn.Close()
-		assert.NoError(t, err)
-	}()
+	conn, _ := db.TestSetup(t, "postgres")
 	t.Run("valid", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
 		w := db.New(conn)
@@ -104,15 +94,9 @@ func Test_ScopeCreate(t *testing.T) {
 	})
 }
 
-func Test_ScopeUpdate(t *testing.T) {
+func TestScope_Update(t *testing.T) {
 	t.Parallel()
-	cleanup, conn, _ := db.TestSetup(t, "postgres")
-	defer func() {
-		err := cleanup()
-		assert.NoError(t, err)
-		err = conn.Close()
-		assert.NoError(t, err)
-	}()
+	conn, _ := db.TestSetup(t, "postgres")
 	t.Run("valid", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
 		w := db.New(conn)
@@ -134,22 +118,23 @@ func Test_ScopeUpdate(t *testing.T) {
 		assert.Equal(0, updatedRows)
 	})
 }
-func Test_ScopeGetScope(t *testing.T) {
+func TestScope_GetScope(t *testing.T) {
 	t.Parallel()
-	cleanup, conn, _ := db.TestSetup(t, "postgres")
-	defer func() {
-		err := cleanup()
-		assert.NoError(t, err)
-		err = conn.Close()
-		assert.NoError(t, err)
-	}()
+	conn, _ := db.TestSetup(t, "postgres")
 	t.Run("valid-scope", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
 		w := db.New(conn)
 		org, proj := TestScopes(t, conn)
+		global := Scope{
+			Scope: &store.Scope{Type: scope.Global.String(), PublicId: "global"},
+		}
+		globalScope, err := global.GetScope(context.Background(), w)
+		require.NoError(err)
+		assert.Nil(globalScope)
+
 		foundScope, err := org.GetScope(context.Background(), w)
 		require.NoError(err)
-		assert.Nil(foundScope)
+		assert.Equal(foundScope.PublicId, "global")
 
 		projectOrg, err := proj.GetScope(context.Background(), w)
 		require.NoError(err)
@@ -183,17 +168,12 @@ func TestScope_ResourceType(t *testing.T) {
 	o, err := NewOrganization()
 	require.NoError(t, err)
 	assert.Equal(t, o.ResourceType(), resource.Organization)
+	assert.Equal(t, o.GetParentId(), resource.Global.String())
 }
 
 func TestScope_Clone(t *testing.T) {
 	t.Parallel()
-	cleanup, conn, _ := db.TestSetup(t, "postgres")
-	defer func() {
-		err := cleanup()
-		assert.NoError(t, err)
-		err = conn.Close()
-		assert.NoError(t, err)
-	}()
+	conn, _ := db.TestSetup(t, "postgres")
 	t.Run("valid", func(t *testing.T) {
 		assert := assert.New(t)
 		s, _ := TestScopes(t, conn)
@@ -206,5 +186,57 @@ func TestScope_Clone(t *testing.T) {
 		s2, _ := TestScopes(t, conn)
 		cp := s.Clone()
 		assert.True(!proto.Equal(cp.(*Scope).Scope, s2.Scope))
+	})
+}
+
+// TestScope_GlobalErrors tests various expected error conditions related to the
+// global scope at a layer below the repository, e.g. within the scope logic or the
+// DB itself
+func TestScope_GlobalErrors(t *testing.T) {
+	t.Parallel()
+	conn, _ := db.TestSetup(t, "postgres")
+	w := db.New(conn)
+	t.Run("newScope errors", func(t *testing.T) {
+		// Not allowed
+		_, err := newScope(scope.Global)
+		require.Error(t, err)
+
+		// Should fail as there's no scope
+		_, err = newScope(scope.Organization)
+		require.Error(t, err)
+		assert.True(t, strings.Contains(err.Error(), "missing its parent"))
+	})
+	t.Run("creation disallowed at vet time", func(t *testing.T) {
+		// Not allowed to create
+		s := allocScope()
+		s.Type = scope.Global.String()
+		s.PublicId = "global"
+		err := s.VetForWrite(context.Background(), nil, db.CreateOp)
+		require.Error(t, err)
+		assert.True(t, strings.Contains(err.Error(), "global scope cannot be created"))
+	})
+	t.Run("check org parent at vet time", func(t *testing.T) {
+		// Org must have global parent
+		s := allocScope()
+		s.Type = scope.Organization.String()
+		s.PublicId = "o_1234"
+		s.ParentId = "global"
+		err := s.VetForWrite(context.Background(), nil, db.CreateOp)
+		require.NoError(t, err)
+		s.ParentId = "o_2345"
+		err = s.VetForWrite(context.Background(), nil, db.CreateOp)
+		require.Error(t, err)
+	})
+	t.Run("not deletable in db", func(t *testing.T) {
+		// Should not be deletable
+		s := allocScope()
+		s.PublicId = "global"
+		// Add this to validate that we did in fact delete
+		err := w.LookupById(context.Background(), &s)
+		require.NoError(t, err)
+		require.Equal(t, s.Type, scope.Global.String())
+		rows, err := w.Delete(context.Background(), &s)
+		require.Error(t, err)
+		assert.Equal(t, 0, rows)
 	})
 }

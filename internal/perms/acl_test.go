@@ -44,7 +44,7 @@ func Test_ACLAllowed(t *testing.T) {
 			grants: []string{
 				"type=host-set;actions=list,create",
 				"type=host;actions=*",
-				"id=*;actions=authen",
+				"id=*;actions=authenticate",
 			},
 		},
 		{
@@ -179,7 +179,7 @@ func Test_ACLAllowed(t *testing.T) {
 			scopeGrants: commonGrants,
 			actionsAllowed: []actionAllowed{
 				{action: action.List},
-				{action: action.Authen, allowed: true},
+				{action: action.Authenticate, allowed: true},
 				{action: action.Delete},
 			},
 		},
@@ -189,7 +189,7 @@ func Test_ACLAllowed(t *testing.T) {
 			scopeGrants: commonGrants,
 			actionsAllowed: []actionAllowed{
 				{action: action.List},
-				{action: action.Authen},
+				{action: action.Authenticate},
 				{action: action.Delete},
 			},
 			userId: "u_abcd1234",
