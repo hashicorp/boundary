@@ -299,7 +299,7 @@ func (s Service) setPrinciplesInRepo(ctx context.Context, roleId string, userIds
 	}
 	out, pr, err := repo.LookupRole(ctx, roleId)
 	if out == nil {
-		return nil, status.Error(codes.Internal, "Unable to lookup role after adding principles to it.")
+		return nil, status.Error(codes.Internal, "Unable to lookup role after setting principles for it.")
 	}
 	return toProto(out, pr), nil
 }
@@ -311,11 +311,11 @@ func (s Service) removePrinciplesInRepo(ctx context.Context, roleId string, user
 	}
 	_, err = repo.DeletePrincipalRoles(ctx, roleId, version, userIds, groupIds)
 	if err != nil {
-		return nil, status.Errorf(codes.Internal, "Unable to add principles to role: %v.", err)
+		return nil, status.Errorf(codes.Internal, "Unable to remove principles from role: %v.", err)
 	}
 	out, pr, err := repo.LookupRole(ctx, roleId)
 	if out == nil {
-		return nil, status.Error(codes.Internal, "Unable to lookup role after adding principles to it.")
+		return nil, status.Error(codes.Internal, "Unable to lookup role after removing principles from it.")
 	}
 	return toProto(out, pr), nil
 }
@@ -356,7 +356,7 @@ func toProto(in *iam.Role, principals []iam.PrincipalRole) *pb.Role {
 		switch p.GetType() {
 		case iam.UserRoleType.String():
 			out.UserIds = append(out.UserIds, p.GetPrincipalId())
-		case iam.UserRoleType.String():
+		case iam.GroupRoleType.String():
 			out.GroupIds = append(out.GroupIds, p.GetPrincipalId())
 		}
 	}
