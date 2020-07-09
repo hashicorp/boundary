@@ -456,7 +456,7 @@ update on iam_group
 -- iam_immutable_role(). 
 create table iam_user_role (
   create_time wt_timestamp,
-  scope_id wt_scope_id not null,
+  principal_scope_id wt_scope_id not null,
   role_id wt_public_id
     references iam_role(public_id)
     on delete cascade
@@ -477,7 +477,7 @@ create table iam_user_role (
 -- iam_immutable_role().
 create table iam_group_role (
   create_time wt_timestamp,
-  scope_id wt_scope_id not null,
+  principal_scope_id wt_scope_id not null,
   role_id wt_public_id
     references iam_role(public_id)
     on delete cascade

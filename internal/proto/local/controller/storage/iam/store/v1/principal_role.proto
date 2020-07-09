@@ -20,9 +20,9 @@ message UserRole {
   // @inject_tag: gorm:"primary_key"
   string principal_id = 3;
 
-  // scope_id of the principal role
+  // scope_id of the user
   // @inject_tag: `gorm:"default:null"`
-  string scope_id = 4;
+  string principal_scope_id = 4;
 }
 
 message GroupRole {
@@ -38,9 +38,9 @@ message GroupRole {
   // @inject_tag: gorm:"primary_key"
   string principal_id = 3;
 
-  // scope_id of the principal role
+  // scope_id of the group
   // @inject_tag: `gorm:"default:null"`
-  string scope_id = 4;
+  string principal_scope_id = 4;
 }
 
 message PrincipalRoleView {
@@ -58,7 +58,7 @@ message PrincipalRoleView {
   // @inject_tag: gorm:"primary_key"
   string principal_id = 4;
 
-  // scope_id of the principal role
+  // principal_scope_id of the principal
   // @inject_tag: `gorm:"default:null"`
-  string scope_id = 5;
+  string principal_scope_id = 5;
 }

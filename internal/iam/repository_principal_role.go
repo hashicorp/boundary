@@ -461,7 +461,7 @@ func (r *Repository) principalsToSet(ctx context.Context, role *Role, userIds, g
 			return nil, fmt.Errorf("unable to look up scoped principal id for %s in role %s: %w", p.GetPrincipalId(), role.PublicId, err)
 		}
 		if _, ok := userIdsMap[scopedPrincipalId]; !ok {
-			usrRole, err := NewUserRole(p.GetScopeId(), p.GetRoleId(), p.GetPrincipalId())
+			usrRole, err := NewUserRole(p.GetPrincipalScopeId(), p.GetRoleId(), p.GetPrincipalId())
 			if err != nil {
 				return nil, fmt.Errorf("unable to create in memory user role for delete: %w", err)
 			}
@@ -475,7 +475,7 @@ func (r *Repository) principalsToSet(ctx context.Context, role *Role, userIds, g
 			return nil, fmt.Errorf("unable to look up scoped principal id for %s in role %s: %w", p.GetPrincipalId(), role.PublicId, err)
 		}
 		if _, ok := groupIdsMap[scopedPrincipalId]; !ok {
-			grpRole, err := NewGroupRole(p.GetScopeId(), p.GetRoleId(), p.GetPrincipalId())
+			grpRole, err := NewGroupRole(p.GetPrincipalScopeId(), p.GetRoleId(), p.GetPrincipalId())
 			if err != nil {
 				return nil, fmt.Errorf("unable to create in memory group role for delete: %w", err)
 			}

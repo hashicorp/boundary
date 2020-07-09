@@ -191,7 +191,7 @@ func TestRepository_AddPrincipalRoles(t *testing.T) {
 					require.NoError(err)
 					assert.NotEmpty(gotPrincipal[principalId])
 					assert.Equal(gotPrincipal[principalId].GetRoleId(), r.GetRoleId())
-					assert.Equal(gotPrincipal[principalId].GetScopeId(), r.GetScopeId())
+					assert.Equal(gotPrincipal[principalId].GetPrincipalScopeId(), r.GetPrincipalScopeId())
 					assert.Equal(gotPrincipal[principalId].GetType(), r.GetType())
 				}
 			}
