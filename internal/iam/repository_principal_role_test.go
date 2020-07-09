@@ -116,17 +116,24 @@ func TestRepository_AddPrincipalRoles(t *testing.T) {
 			orgs, projects := createScopesFn()
 			var userIds, groupIds []string
 
-			if tt.args.wantUserIds {
-				userIds = createUsersFn(orgs)
-				u := TestUser(t, conn, staticOrg.PublicId)
-				userIds = append(userIds, u.PublicId)
-			}
-
 			for _, roleId := range []string{orgRole.PublicId, projRole.PublicId} {
+				if tt.args.wantUserIds {
+					userIds = createUsersFn(orgs)
+					u := TestUser(t, conn, staticOrg.PublicId)
+					if roleId == orgRole.PublicId {
+						userIds = append(userIds, u.PublicId)
+					} else {
+						userIds = append(userIds, fmt.Sprintf("%s:%s", staticOrg.PublicId, u.PublicId))
+					}
+				}
 				if tt.args.wantGroupIds {
 					groupIds = createGrpsFn(orgs, projects)
 					g := TestGroup(t, conn, staticProj.PublicId)
-					groupIds = append(groupIds, g.PublicId)
+					if roleId == projRole.PublicId {
+						groupIds = append(groupIds, g.PublicId)
+					} else {
+						groupIds = append(groupIds, fmt.Sprintf("%s:%s", staticProj.PublicId, g.PublicId))
+					}
 				}
 				got, err := repo.AddPrincipalRoles(context.Background(), roleId, tt.args.roleVersion, userIds, groupIds, tt.args.opt...)
 				if tt.wantErr {
@@ -425,14 +432,22 @@ func TestRepository_DeletePrincipalRoles(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 			orgs, projects := createScopesFn()
 			userIds := make([]string, 0, tt.args.createUserCnt)
-			for i := 0; i < tt.args.createUserCnt; i++ {
-				u := TestUser(t, conn, orgs[i])
+			if tt.args.createUserCnt > 0 {
+				u := TestUser(t, conn, org.PublicId)
 				userIds = append(userIds, u.PublicId)
+				for i := 0; i < tt.args.createUserCnt-1; i++ {
+					u := TestUser(t, conn, orgs[i])
+					userIds = append(userIds, fmt.Sprintf("%s:%s", orgs[i], u.PublicId))
+				}
 			}
 			groupIds := make([]string, 0, tt.args.createGroupCnt)
-			for i := 0; i < tt.args.createGroupCnt; i++ {
-				g := TestGroup(t, conn, projects[i])
+			if tt.args.createGroupCnt > 0 {
+				g := TestGroup(t, conn, org.PublicId)
 				groupIds = append(groupIds, g.PublicId)
+				for i := 0; i < tt.args.createGroupCnt-1; i++ {
+					g := TestGroup(t, conn, projects[i])
+					groupIds = append(groupIds, fmt.Sprintf("%s:%s", projects[i], g.PublicId))
+				}
 			}
 			principalRoles, err := repo.AddPrincipalRoles(context.Background(), tt.args.role.PublicId, 1, userIds, groupIds, tt.args.opt...)
 			require.NoError(err)
@@ -479,7 +494,6 @@ func TestRepository_SetPrincipalRoles(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
-
 	repo, err := NewRepository(rw, rw, wrapper)
 	require.NoError(t, err)
 
@@ -491,7 +505,7 @@ func TestRepository_SetPrincipalRoles(t *testing.T) {
 		results := []string{}
 		for i := 0; i < 5; i++ {
 			u := TestUser(t, conn, org.PublicId)
-			results = append(results, u.PublicId)
+			results = append(results, fmt.Sprintf("%s:%s", org.PublicId, u.PublicId))
 		}
 		results = append(results, "global:u_anon")
 		results = append(results, "global:u_auth")
@@ -563,7 +577,7 @@ func TestRepository_SetPrincipalRoles(t *testing.T) {
 			args: args{
 				role:           TestRole(t, conn, proj.PublicId),
 				roleVersion:    2, // yep, since setupFn will increment it to 2
-				userIds:        []string{testUser.PublicId},
+				userIds:        []string{fmt.Sprintf("%s:%s", org.PublicId, testUser.PublicId)},
 				groupIds:       []string{testGrp.PublicId},
 				addToOrigUsers: true,
 				addToOrigGrps:  true,
@@ -577,7 +591,7 @@ func TestRepository_SetPrincipalRoles(t *testing.T) {
 			args: args{
 				role:           TestRole(t, conn, proj.PublicId),
 				roleVersion:    2, // yep, since setupFn will increment it to 2
-				userIds:        []string{testUser.PublicId},
+				userIds:        []string{fmt.Sprintf("%s:%s", org.PublicId, testUser.PublicId)},
 				groupIds:       []string{testGrp.PublicId},
 				addToOrigUsers: false,
 				addToOrigGrps:  false,

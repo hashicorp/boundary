@@ -435,7 +435,11 @@ func (r *Repository) principalsToSet(ctx context.Context, role *Role, userIds, g
 	for _, id := range userIds {
 		userIdsMap[id] = struct{}{}
 		if _, ok := existingUsers[id]; !ok {
-			usrRole, err := NewUserRole(role.ScopeId, role.PublicId, id)
+			scopeId, userId, err := scopeAndIdForRole(role.ScopeId, id)
+			if err != nil {
+				return nil, err
+			}
+			usrRole, err := NewUserRole(scopeId, role.PublicId, userId)
 			if err != nil {
 				return nil, fmt.Errorf("unable to create in memory user role for add: %w", err)
 			}
@@ -447,7 +451,11 @@ func (r *Repository) principalsToSet(ctx context.Context, role *Role, userIds, g
 	for _, id := range groupIds {
 		groupIdsMap[id] = struct{}{}
 		if _, ok := existingGroups[id]; !ok {
-			grpRole, err := NewGroupRole(role.ScopeId, role.PublicId, id)
+			scopeId, groupId, err := scopeAndIdForRole(role.ScopeId, id)
+			if err != nil {
+				return nil, err
+			}
+			grpRole, err := NewGroupRole(scopeId, role.PublicId, groupId)
 			if err != nil {
 				return nil, fmt.Errorf("unable to create in memory group role for add: %w", err)
 			}
