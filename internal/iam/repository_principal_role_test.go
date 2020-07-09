@@ -285,7 +285,11 @@ func TestRepository_ListPrincipalRoles(t *testing.T) {
 			groupRoles := make([]string, 0, tt.createCnt)
 			for i := 0; i < tt.createCnt/2; i++ {
 				u := TestUser(t, conn, org.PublicId)
-				userRoles = append(userRoles, u.PublicId)
+				if tt.createScopeId == proj.PublicId {
+					userRoles = append(userRoles, fmt.Sprintf("%s:%s", org.PublicId, u.PublicId))
+				} else {
+					userRoles = append(userRoles, u.PublicId)
+				}
 				g := TestGroup(t, conn, tt.createScopeId)
 				groupRoles = append(groupRoles, g.PublicId)
 			}
