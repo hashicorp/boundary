@@ -929,14 +929,14 @@ create table iam_user_role (
     references iam_role(public_id)
     on delete cascade
     on update cascade,
-  scope_id wt_scope_id not null,
+  principal_scope_id wt_scope_id not null,
   principal_id wt_user_id not null,
-  foreign key(scope_id, principal_id)
+  foreign key(principal_scope_id, principal_id)
     references iam_user(scope_id, public_id)
     on delete cascade
     on update cascade,
   primary key (role_id, principal_id),
-  unique(scope_id, role_id, principal_id)
+  unique(principal_scope_id, role_id, principal_id)
   );
 
 -- iam_group_role contains roles that have been assigned to groups. The scope is
@@ -952,14 +952,14 @@ create table iam_group_role (
     references iam_role(public_id)
     on delete cascade
     on update cascade,
-  scope_id wt_scope_id not null,
+  principal_scope_id wt_scope_id not null,
   principal_id wt_public_id not null,
-  foreign key(scope_id, principal_id)
+  foreign key(principal_scope_id, principal_id)
     references iam_group(scope_id, public_id)
     on delete cascade
     on update cascade,
   primary key (role_id, principal_id),
-  unique(scope_id, role_id, principal_id)
+  unique(principal_scope_id, role_id, principal_id)
   );
 
 -- iam_principle_role provides a consolidated view all principal roles assigned

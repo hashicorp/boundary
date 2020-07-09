@@ -44,7 +44,7 @@ func TestNewUserRole(t *testing.T) {
 				r := allocUserRole()
 				r.RoleId = orgRole.PublicId
 				r.PrincipalId = user.PublicId
-				r.ScopeId = org.PublicId
+				r.PrincipalScopeId = org.PublicId
 				return &r
 			}(),
 		},
@@ -59,7 +59,7 @@ func TestNewUserRole(t *testing.T) {
 				r := allocUserRole()
 				r.RoleId = projRole.PublicId
 				r.PrincipalId = user.PublicId
-				r.ScopeId = proj.PublicId
+				r.PrincipalScopeId = proj.PublicId
 				return &r
 			}(),
 		},
@@ -202,9 +202,9 @@ func TestUserRole_Create(t *testing.T) {
 					principal := TestUser(t, conn, org.PublicId)
 					return &UserRole{
 						UserRole: &store.UserRole{
-							RoleId:      "",
-							PrincipalId: principal.PublicId,
-							ScopeId:     org.PublicId,
+							RoleId:           "",
+							PrincipalId:      principal.PublicId,
+							PrincipalScopeId: org.PublicId,
 						},
 					}
 				}(),
@@ -220,9 +220,9 @@ func TestUserRole_Create(t *testing.T) {
 					role := TestRole(t, conn, proj.PublicId)
 					return &UserRole{
 						UserRole: &store.UserRole{
-							RoleId:      role.PublicId,
-							PrincipalId: "",
-							ScopeId:     org.PublicId,
+							RoleId:           role.PublicId,
+							PrincipalId:      "",
+							PrincipalScopeId: org.PublicId,
 						},
 					}
 				}(),
@@ -414,7 +414,7 @@ func TestNewGroupRole(t *testing.T) {
 				r := allocGroupRole()
 				r.RoleId = orgRole.PublicId
 				r.PrincipalId = group.PublicId
-				r.ScopeId = org.PublicId
+				r.PrincipalScopeId = org.PublicId
 				return &r
 			}(),
 		},
@@ -429,7 +429,7 @@ func TestNewGroupRole(t *testing.T) {
 				r := allocGroupRole()
 				r.RoleId = projRole.PublicId
 				r.PrincipalId = group.PublicId
-				r.ScopeId = proj.PublicId
+				r.PrincipalScopeId = proj.PublicId
 				return &r
 			}(),
 		},
@@ -547,9 +547,9 @@ func TestGroupRole_Create(t *testing.T) {
 					principal := TestGroup(t, conn, org.PublicId)
 					return &GroupRole{
 						GroupRole: &store.GroupRole{
-							RoleId:      "",
-							PrincipalId: principal.PublicId,
-							ScopeId:     org.PublicId,
+							RoleId:           "",
+							PrincipalId:      principal.PublicId,
+							PrincipalScopeId: org.PublicId,
 						},
 					}
 				}(),
@@ -565,9 +565,9 @@ func TestGroupRole_Create(t *testing.T) {
 					role := TestRole(t, conn, proj.PublicId)
 					return &GroupRole{
 						GroupRole: &store.GroupRole{
-							RoleId:      role.PublicId,
-							PrincipalId: "",
-							ScopeId:     proj.PublicId,
+							RoleId:           role.PublicId,
+							PrincipalId:      "",
+							PrincipalScopeId: proj.PublicId,
 						},
 					}
 				}(),
@@ -680,8 +680,14 @@ func TestGroupRole_Delete(t *testing.T) {
 			wantRowsDeleted: 1,
 		},
 		{
-			name:            "bad-id",
-			role:            func() *GroupRole { r := allocGroupRole(); r.PrincipalId = id; r.RoleId = id; r.ScopeId = id; return &r }(),
+			name: "bad-id",
+			role: func() *GroupRole {
+				r := allocGroupRole()
+				r.PrincipalId = id
+				r.RoleId = id
+				r.PrincipalScopeId = id
+				return &r
+			}(),
 			wantErr:         false,
 			wantRowsDeleted: 0,
 		},
