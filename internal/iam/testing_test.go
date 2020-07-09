@@ -141,3 +141,24 @@ func Test_TestGroupRole(t *testing.T) {
 	require.Equal(projRole.PublicId, groupRole.RoleId)
 	require.Equal(projGroup.PublicId, groupRole.PrincipalId)
 }
+
+func Test_TestGroupMember(t *testing.T) {
+	t.Helper()
+	require := require.New(t)
+	conn, _ := db.TestSetup(t, "postgres")
+	org, proj := TestScopes(t, conn)
+	og := TestGroup(t, conn, org.PublicId)
+	pg := TestGroup(t, conn, proj.PublicId)
+	u := TestUser(t, conn, org.PublicId)
+
+	gm := TestGroupMember(t, conn, og.PublicId, u.PublicId)
+	require.NotNil(gm)
+	require.Equal(og.PublicId, gm.GroupId)
+	require.Equal(u.PublicId, gm.MemberId)
+
+	gm = TestGroupMember(t, conn, pg.PublicId, u.PublicId)
+	require.NotNil(gm)
+	require.Equal(pg.PublicId, gm.GroupId)
+	require.Equal(u.PublicId, gm.MemberId)
+
+}

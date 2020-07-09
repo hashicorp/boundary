@@ -9,7 +9,7 @@ import (
 
 // Groups will get the user's groups
 func (u *User) Groups(ctx context.Context, r db.Reader) ([]*Group, error) {
-	const where = "public_id in (select distinct group_id from iam_group_member_user where member_id = ?)"
+	const where = "public_id in (select distinct group_id from iam_group_member where member_id = ?)"
 
 	if r == nil {
 		return nil, errors.New("error reader is nil for getting the user's groups")

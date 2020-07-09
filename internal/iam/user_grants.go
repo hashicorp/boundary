@@ -22,12 +22,12 @@ from
 	iam_role_grant rg,
 	iam_principal_role ipr, 
 	iam_group grp, 
-	iam_group_member_user gm 
+	iam_group_member gm 
 where 
 	rg.role_id = ipr.role_id and 
 	ipr.principal_id = grp.public_id and 
 	grp.public_id = gm.group_id and 
-	gm.member_id = $1  and
+	gm.member_id = $1 and
 	ipr."type" = 'group'
 union
 select 
