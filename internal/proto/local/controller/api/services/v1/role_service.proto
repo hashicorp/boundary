@@ -115,8 +115,12 @@ service RoleService {
   rpc AddRolePrincipals(AddRolePrincipalsRequest) returns (AddRolePrincipalsResponse) {
     option (google.api.http) = {
       post: "/v1/orgs/{org_id}/roles/{role_id}:add-principals"
+      body: "*"
+      response_body: "item"
       additional_bindings {
         post: "/v1/orgs/{org_id}/projects/{project_id}/roles/{role_id}:add-principals"
+        body: "*"
+        response_body: "item"
       }
     };
     option (grpc.gateway.protoc_gen_swagger.options.openapiv2_operation) = {
@@ -133,8 +137,12 @@ service RoleService {
   rpc SetRolePrincipals(SetRolePrincipalsRequest) returns (SetRolePrincipalsResponse) {
     option (google.api.http) = {
       post: "/v1/orgs/{org_id}/roles/{role_id}:set-principals"
+      body: "*"
+      response_body: "item"
       additional_bindings {
         post: "/v1/orgs/{org_id}/projects/{project_id}/roles/{role_id}:set-principals"
+        body: "*"
+        response_body: "item"
       }
     };
     option (grpc.gateway.protoc_gen_swagger.options.openapiv2_operation) = {
@@ -150,8 +158,12 @@ service RoleService {
   rpc RemoveRolePrincipals(RemoveRolePrincipalsRequest) returns (RemoveRolePrincipalsResponse) {
     option (google.api.http) = {
       post: "/v1/orgs/{org_id}/roles/{role_id}:remove-principals"
+      body: "*"
+      response_body: "item"
       additional_bindings {
         post: "/v1/orgs/{org_id}/projects/{project_id}/roles/{role_id}:remove-principals"
+        body: "*"
+        response_body: "item"
       }
     };
     option (grpc.gateway.protoc_gen_swagger.options.openapiv2_operation) = {
@@ -222,8 +234,8 @@ message AddRolePrincipalsRequest {
   // The version ensures the role hasn't changed since it was last retrieved and if
   // it has the request will fail.
   google.protobuf.UInt32Value version = 4;
-  repeated string user_ids = 5;
-  repeated string group_ids = 6;
+  repeated string user_ids = 5 [json_name="user_ids"];
+  repeated string group_ids = 6 [json_name="group_ids"];
 }
 
 message AddRolePrincipalsResponse {
@@ -237,8 +249,8 @@ message SetRolePrincipalsRequest {
   // The version ensures the role hasn't changed since it was last retrieved and if
   // it has the request will fail.
   google.protobuf.UInt32Value version = 4;
-  repeated string user_ids = 5;
-  repeated string group_ids = 6;
+  repeated string user_ids = 5 [json_name="user_ids"];
+  repeated string group_ids = 6 [json_name="group_ids"];
 }
 
 message SetRolePrincipalsResponse {
@@ -252,8 +264,8 @@ message RemoveRolePrincipalsRequest {
   // The version ensures the role hasn't changed since it was last retrieved and if
   // it has the request will fail.
   google.protobuf.UInt32Value version = 4;
-  repeated string user_ids = 5;
-  repeated string group_ids = 6;
+  repeated string user_ids = 5 [json_name="user_ids"];
+  repeated string group_ids = 6 [json_name="group_ids"];
 }
 
 message RemoveRolePrincipalsResponse {

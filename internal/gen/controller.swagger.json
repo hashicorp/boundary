@@ -2205,9 +2205,9 @@
         "operationId": "RoleService_AddRolePrincipals2",
         "responses": {
           "200": {
-            "description": "A successful response.",
+            "description": "",
             "schema": {
-              "$ref": "#/definitions/controller.api.services.v1.AddRolePrincipalsResponse"
+              "$ref": "#/definitions/controller.api.resources.roles.v1.Role"
             }
           }
         },
@@ -2229,6 +2229,14 @@
             "in": "path",
             "required": true,
             "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/controller.api.services.v1.AddRolePrincipalsRequest"
+            }
           }
         ],
         "tags": [
@@ -2242,9 +2250,9 @@
         "operationId": "RoleService_RemoveRolePrincipals2",
         "responses": {
           "200": {
-            "description": "A successful response.",
+            "description": "",
             "schema": {
-              "$ref": "#/definitions/controller.api.services.v1.RemoveRolePrincipalsResponse"
+              "$ref": "#/definitions/controller.api.resources.roles.v1.Role"
             }
           }
         },
@@ -2266,6 +2274,14 @@
             "in": "path",
             "required": true,
             "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/controller.api.services.v1.RemoveRolePrincipalsRequest"
+            }
           }
         ],
         "tags": [
@@ -2279,9 +2295,9 @@
         "operationId": "RoleService_SetRolePrincipals2",
         "responses": {
           "200": {
-            "description": "A successful response.",
+            "description": "",
             "schema": {
-              "$ref": "#/definitions/controller.api.services.v1.SetRolePrincipalsResponse"
+              "$ref": "#/definitions/controller.api.resources.roles.v1.Role"
             }
           }
         },
@@ -2303,6 +2319,14 @@
             "in": "path",
             "required": true,
             "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/controller.api.services.v1.SetRolePrincipalsRequest"
+            }
           }
         ],
         "tags": [
@@ -2499,9 +2523,9 @@
         "operationId": "RoleService_AddRolePrincipals",
         "responses": {
           "200": {
-            "description": "A successful response.",
+            "description": "",
             "schema": {
-              "$ref": "#/definitions/controller.api.services.v1.AddRolePrincipalsResponse"
+              "$ref": "#/definitions/controller.api.resources.roles.v1.Role"
             }
           }
         },
@@ -2517,6 +2541,14 @@
             "in": "path",
             "required": true,
             "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/controller.api.services.v1.AddRolePrincipalsRequest"
+            }
           }
         ],
         "tags": [
@@ -2530,9 +2562,9 @@
         "operationId": "RoleService_RemoveRolePrincipals",
         "responses": {
           "200": {
-            "description": "A successful response.",
+            "description": "",
             "schema": {
-              "$ref": "#/definitions/controller.api.services.v1.RemoveRolePrincipalsResponse"
+              "$ref": "#/definitions/controller.api.resources.roles.v1.Role"
             }
           }
         },
@@ -2548,6 +2580,14 @@
             "in": "path",
             "required": true,
             "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/controller.api.services.v1.RemoveRolePrincipalsRequest"
+            }
           }
         ],
         "tags": [
@@ -2561,9 +2601,9 @@
         "operationId": "RoleService_SetRolePrincipals",
         "responses": {
           "200": {
-            "description": "A successful response.",
+            "description": "",
             "schema": {
-              "$ref": "#/definitions/controller.api.services.v1.SetRolePrincipalsResponse"
+              "$ref": "#/definitions/controller.api.resources.roles.v1.Role"
             }
           }
         },
@@ -2579,6 +2619,14 @@
             "in": "path",
             "required": true,
             "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/controller.api.services.v1.SetRolePrincipalsRequest"
+            }
           }
         ],
         "tags": [
@@ -3208,6 +3256,37 @@
       },
       "title": "User contains all fields related to a User resource"
     },
+    "controller.api.services.v1.AddRolePrincipalsRequest": {
+      "type": "object",
+      "properties": {
+        "org_id": {
+          "type": "string"
+        },
+        "project_id": {
+          "type": "string"
+        },
+        "role_id": {
+          "type": "string"
+        },
+        "version": {
+          "type": "integer",
+          "format": "int64",
+          "description": "The version ensures the role hasn't changed since it was last retrieved and if\nit has the request will fail."
+        },
+        "user_ids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "group_ids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
     "controller.api.services.v1.AddRolePrincipalsResponse": {
       "type": "object",
       "properties": {
@@ -3555,11 +3634,73 @@
     "controller.api.services.v1.RemoveFromHostSetResponse": {
       "type": "object"
     },
+    "controller.api.services.v1.RemoveRolePrincipalsRequest": {
+      "type": "object",
+      "properties": {
+        "org_id": {
+          "type": "string"
+        },
+        "project_id": {
+          "type": "string"
+        },
+        "role_id": {
+          "type": "string"
+        },
+        "version": {
+          "type": "integer",
+          "format": "int64",
+          "description": "The version ensures the role hasn't changed since it was last retrieved and if\nit has the request will fail."
+        },
+        "user_ids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "group_ids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
     "controller.api.services.v1.RemoveRolePrincipalsResponse": {
       "type": "object",
       "properties": {
         "item": {
           "$ref": "#/definitions/controller.api.resources.roles.v1.Role"
+        }
+      }
+    },
+    "controller.api.services.v1.SetRolePrincipalsRequest": {
+      "type": "object",
+      "properties": {
+        "org_id": {
+          "type": "string"
+        },
+        "project_id": {
+          "type": "string"
+        },
+        "role_id": {
+          "type": "string"
+        },
+        "version": {
+          "type": "integer",
+          "format": "int64",
+          "description": "The version ensures the role hasn't changed since it was last retrieved and if\nit has the request will fail."
+        },
+        "user_ids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "group_ids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
         }
       }
     },

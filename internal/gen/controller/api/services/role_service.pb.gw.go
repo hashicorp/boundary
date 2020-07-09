@@ -1053,13 +1053,17 @@ func local_request_RoleService_DeleteRole_1(ctx context.Context, marshaler runti
 
 }
 
-var (
-	filter_RoleService_AddRolePrincipals_0 = &utilities.DoubleArray{Encoding: map[string]int{"org_id": 0, "role_id": 1}, Base: []int{1, 1, 2, 0, 0}, Check: []int{0, 1, 1, 2, 3}}
-)
-
 func request_RoleService_AddRolePrincipals_0(ctx context.Context, marshaler runtime.Marshaler, client RoleServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
 	var protoReq AddRolePrincipalsRequest
 	var metadata runtime.ServerMetadata
+
+	newReader, berr := utilities.IOReaderFactory(req.Body)
+	if berr != nil {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", berr)
+	}
+	if err := marshaler.NewDecoder(newReader()).Decode(&protoReq); err != nil && err != io.EOF {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
+	}
 
 	var (
 		val string
@@ -1088,13 +1092,6 @@ func request_RoleService_AddRolePrincipals_0(ctx context.Context, marshaler runt
 
 	if err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "role_id", err)
-	}
-
-	if err := req.ParseForm(); err != nil {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
-	}
-	if err := runtime.PopulateQueryParameters(&protoReq, req.Form, filter_RoleService_AddRolePrincipals_0); err != nil {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 
 	msg, err := client.AddRolePrincipals(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
@@ -1106,6 +1103,14 @@ func local_request_RoleService_AddRolePrincipals_0(ctx context.Context, marshale
 	var protoReq AddRolePrincipalsRequest
 	var metadata runtime.ServerMetadata
 
+	newReader, berr := utilities.IOReaderFactory(req.Body)
+	if berr != nil {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", berr)
+	}
+	if err := marshaler.NewDecoder(newReader()).Decode(&protoReq); err != nil && err != io.EOF {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
+	}
+
 	var (
 		val string
 		ok  bool
@@ -1135,25 +1140,22 @@ func local_request_RoleService_AddRolePrincipals_0(ctx context.Context, marshale
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "role_id", err)
 	}
 
-	if err := req.ParseForm(); err != nil {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
-	}
-	if err := runtime.PopulateQueryParameters(&protoReq, req.Form, filter_RoleService_AddRolePrincipals_0); err != nil {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
-	}
-
 	msg, err := server.AddRolePrincipals(ctx, &protoReq)
 	return msg, metadata, err
 
 }
 
-var (
-	filter_RoleService_AddRolePrincipals_1 = &utilities.DoubleArray{Encoding: map[string]int{"org_id": 0, "project_id": 1, "role_id": 2}, Base: []int{1, 1, 2, 3, 0, 0, 0}, Check: []int{0, 1, 1, 1, 2, 3, 4}}
-)
-
 func request_RoleService_AddRolePrincipals_1(ctx context.Context, marshaler runtime.Marshaler, client RoleServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
 	var protoReq AddRolePrincipalsRequest
 	var metadata runtime.ServerMetadata
+
+	newReader, berr := utilities.IOReaderFactory(req.Body)
+	if berr != nil {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", berr)
+	}
+	if err := marshaler.NewDecoder(newReader()).Decode(&protoReq); err != nil && err != io.EOF {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
+	}
 
 	var (
 		val string
@@ -1193,13 +1195,6 @@ func request_RoleService_AddRolePrincipals_1(ctx context.Context, marshaler runt
 
 	if err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "role_id", err)
-	}
-
-	if err := req.ParseForm(); err != nil {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
-	}
-	if err := runtime.PopulateQueryParameters(&protoReq, req.Form, filter_RoleService_AddRolePrincipals_1); err != nil {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 
 	msg, err := client.AddRolePrincipals(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
@@ -1211,6 +1206,14 @@ func local_request_RoleService_AddRolePrincipals_1(ctx context.Context, marshale
 	var protoReq AddRolePrincipalsRequest
 	var metadata runtime.ServerMetadata
 
+	newReader, berr := utilities.IOReaderFactory(req.Body)
+	if berr != nil {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", berr)
+	}
+	if err := marshaler.NewDecoder(newReader()).Decode(&protoReq); err != nil && err != io.EOF {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
+	}
+
 	var (
 		val string
 		ok  bool
@@ -1251,25 +1254,22 @@ func local_request_RoleService_AddRolePrincipals_1(ctx context.Context, marshale
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "role_id", err)
 	}
 
-	if err := req.ParseForm(); err != nil {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
-	}
-	if err := runtime.PopulateQueryParameters(&protoReq, req.Form, filter_RoleService_AddRolePrincipals_1); err != nil {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
-	}
-
 	msg, err := server.AddRolePrincipals(ctx, &protoReq)
 	return msg, metadata, err
 
 }
 
-var (
-	filter_RoleService_SetRolePrincipals_0 = &utilities.DoubleArray{Encoding: map[string]int{"org_id": 0, "role_id": 1}, Base: []int{1, 1, 2, 0, 0}, Check: []int{0, 1, 1, 2, 3}}
-)
-
 func request_RoleService_SetRolePrincipals_0(ctx context.Context, marshaler runtime.Marshaler, client RoleServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
 	var protoReq SetRolePrincipalsRequest
 	var metadata runtime.ServerMetadata
+
+	newReader, berr := utilities.IOReaderFactory(req.Body)
+	if berr != nil {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", berr)
+	}
+	if err := marshaler.NewDecoder(newReader()).Decode(&protoReq); err != nil && err != io.EOF {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
+	}
 
 	var (
 		val string
@@ -1298,13 +1298,6 @@ func request_RoleService_SetRolePrincipals_0(ctx context.Context, marshaler runt
 
 	if err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "role_id", err)
-	}
-
-	if err := req.ParseForm(); err != nil {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
-	}
-	if err := runtime.PopulateQueryParameters(&protoReq, req.Form, filter_RoleService_SetRolePrincipals_0); err != nil {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 
 	msg, err := client.SetRolePrincipals(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
@@ -1316,6 +1309,14 @@ func local_request_RoleService_SetRolePrincipals_0(ctx context.Context, marshale
 	var protoReq SetRolePrincipalsRequest
 	var metadata runtime.ServerMetadata
 
+	newReader, berr := utilities.IOReaderFactory(req.Body)
+	if berr != nil {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", berr)
+	}
+	if err := marshaler.NewDecoder(newReader()).Decode(&protoReq); err != nil && err != io.EOF {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
+	}
+
 	var (
 		val string
 		ok  bool
@@ -1345,25 +1346,22 @@ func local_request_RoleService_SetRolePrincipals_0(ctx context.Context, marshale
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "role_id", err)
 	}
 
-	if err := req.ParseForm(); err != nil {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
-	}
-	if err := runtime.PopulateQueryParameters(&protoReq, req.Form, filter_RoleService_SetRolePrincipals_0); err != nil {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
-	}
-
 	msg, err := server.SetRolePrincipals(ctx, &protoReq)
 	return msg, metadata, err
 
 }
 
-var (
-	filter_RoleService_SetRolePrincipals_1 = &utilities.DoubleArray{Encoding: map[string]int{"org_id": 0, "project_id": 1, "role_id": 2}, Base: []int{1, 1, 2, 3, 0, 0, 0}, Check: []int{0, 1, 1, 1, 2, 3, 4}}
-)
-
 func request_RoleService_SetRolePrincipals_1(ctx context.Context, marshaler runtime.Marshaler, client RoleServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
 	var protoReq SetRolePrincipalsRequest
 	var metadata runtime.ServerMetadata
+
+	newReader, berr := utilities.IOReaderFactory(req.Body)
+	if berr != nil {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", berr)
+	}
+	if err := marshaler.NewDecoder(newReader()).Decode(&protoReq); err != nil && err != io.EOF {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
+	}
 
 	var (
 		val string
@@ -1403,13 +1401,6 @@ func request_RoleService_SetRolePrincipals_1(ctx context.Context, marshaler runt
 
 	if err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "role_id", err)
-	}
-
-	if err := req.ParseForm(); err != nil {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
-	}
-	if err := runtime.PopulateQueryParameters(&protoReq, req.Form, filter_RoleService_SetRolePrincipals_1); err != nil {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 
 	msg, err := client.SetRolePrincipals(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
@@ -1421,6 +1412,14 @@ func local_request_RoleService_SetRolePrincipals_1(ctx context.Context, marshale
 	var protoReq SetRolePrincipalsRequest
 	var metadata runtime.ServerMetadata
 
+	newReader, berr := utilities.IOReaderFactory(req.Body)
+	if berr != nil {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", berr)
+	}
+	if err := marshaler.NewDecoder(newReader()).Decode(&protoReq); err != nil && err != io.EOF {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
+	}
+
 	var (
 		val string
 		ok  bool
@@ -1461,25 +1460,22 @@ func local_request_RoleService_SetRolePrincipals_1(ctx context.Context, marshale
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "role_id", err)
 	}
 
-	if err := req.ParseForm(); err != nil {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
-	}
-	if err := runtime.PopulateQueryParameters(&protoReq, req.Form, filter_RoleService_SetRolePrincipals_1); err != nil {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
-	}
-
 	msg, err := server.SetRolePrincipals(ctx, &protoReq)
 	return msg, metadata, err
 
 }
 
-var (
-	filter_RoleService_RemoveRolePrincipals_0 = &utilities.DoubleArray{Encoding: map[string]int{"org_id": 0, "role_id": 1}, Base: []int{1, 1, 2, 0, 0}, Check: []int{0, 1, 1, 2, 3}}
-)
-
 func request_RoleService_RemoveRolePrincipals_0(ctx context.Context, marshaler runtime.Marshaler, client RoleServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
 	var protoReq RemoveRolePrincipalsRequest
 	var metadata runtime.ServerMetadata
+
+	newReader, berr := utilities.IOReaderFactory(req.Body)
+	if berr != nil {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", berr)
+	}
+	if err := marshaler.NewDecoder(newReader()).Decode(&protoReq); err != nil && err != io.EOF {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
+	}
 
 	var (
 		val string
@@ -1508,13 +1504,6 @@ func request_RoleService_RemoveRolePrincipals_0(ctx context.Context, marshaler r
 
 	if err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "role_id", err)
-	}
-
-	if err := req.ParseForm(); err != nil {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
-	}
-	if err := runtime.PopulateQueryParameters(&protoReq, req.Form, filter_RoleService_RemoveRolePrincipals_0); err != nil {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 
 	msg, err := client.RemoveRolePrincipals(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
@@ -1526,6 +1515,14 @@ func local_request_RoleService_RemoveRolePrincipals_0(ctx context.Context, marsh
 	var protoReq RemoveRolePrincipalsRequest
 	var metadata runtime.ServerMetadata
 
+	newReader, berr := utilities.IOReaderFactory(req.Body)
+	if berr != nil {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", berr)
+	}
+	if err := marshaler.NewDecoder(newReader()).Decode(&protoReq); err != nil && err != io.EOF {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
+	}
+
 	var (
 		val string
 		ok  bool
@@ -1555,25 +1552,22 @@ func local_request_RoleService_RemoveRolePrincipals_0(ctx context.Context, marsh
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "role_id", err)
 	}
 
-	if err := req.ParseForm(); err != nil {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
-	}
-	if err := runtime.PopulateQueryParameters(&protoReq, req.Form, filter_RoleService_RemoveRolePrincipals_0); err != nil {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
-	}
-
 	msg, err := server.RemoveRolePrincipals(ctx, &protoReq)
 	return msg, metadata, err
 
 }
 
-var (
-	filter_RoleService_RemoveRolePrincipals_1 = &utilities.DoubleArray{Encoding: map[string]int{"org_id": 0, "project_id": 1, "role_id": 2}, Base: []int{1, 1, 2, 3, 0, 0, 0}, Check: []int{0, 1, 1, 1, 2, 3, 4}}
-)
-
 func request_RoleService_RemoveRolePrincipals_1(ctx context.Context, marshaler runtime.Marshaler, client RoleServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
 	var protoReq RemoveRolePrincipalsRequest
 	var metadata runtime.ServerMetadata
+
+	newReader, berr := utilities.IOReaderFactory(req.Body)
+	if berr != nil {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", berr)
+	}
+	if err := marshaler.NewDecoder(newReader()).Decode(&protoReq); err != nil && err != io.EOF {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
+	}
 
 	var (
 		val string
@@ -1613,13 +1607,6 @@ func request_RoleService_RemoveRolePrincipals_1(ctx context.Context, marshaler r
 
 	if err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "role_id", err)
-	}
-
-	if err := req.ParseForm(); err != nil {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
-	}
-	if err := runtime.PopulateQueryParameters(&protoReq, req.Form, filter_RoleService_RemoveRolePrincipals_1); err != nil {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 
 	msg, err := client.RemoveRolePrincipals(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
@@ -1631,6 +1618,14 @@ func local_request_RoleService_RemoveRolePrincipals_1(ctx context.Context, marsh
 	var protoReq RemoveRolePrincipalsRequest
 	var metadata runtime.ServerMetadata
 
+	newReader, berr := utilities.IOReaderFactory(req.Body)
+	if berr != nil {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", berr)
+	}
+	if err := marshaler.NewDecoder(newReader()).Decode(&protoReq); err != nil && err != io.EOF {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
+	}
+
 	var (
 		val string
 		ok  bool
@@ -1669,13 +1664,6 @@ func local_request_RoleService_RemoveRolePrincipals_1(ctx context.Context, marsh
 
 	if err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "role_id", err)
-	}
-
-	if err := req.ParseForm(); err != nil {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
-	}
-	if err := runtime.PopulateQueryParameters(&protoReq, req.Form, filter_RoleService_RemoveRolePrincipals_1); err != nil {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 
 	msg, err := server.RemoveRolePrincipals(ctx, &protoReq)
@@ -1904,7 +1892,7 @@ func RegisterRoleServiceHandlerServer(ctx context.Context, mux *runtime.ServeMux
 			return
 		}
 
-		forward_RoleService_AddRolePrincipals_0(ctx, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+		forward_RoleService_AddRolePrincipals_0(ctx, mux, outboundMarshaler, w, req, response_RoleService_AddRolePrincipals_0{resp}, mux.GetForwardResponseOptions()...)
 
 	})
 
@@ -1924,7 +1912,7 @@ func RegisterRoleServiceHandlerServer(ctx context.Context, mux *runtime.ServeMux
 			return
 		}
 
-		forward_RoleService_AddRolePrincipals_1(ctx, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+		forward_RoleService_AddRolePrincipals_1(ctx, mux, outboundMarshaler, w, req, response_RoleService_AddRolePrincipals_1{resp}, mux.GetForwardResponseOptions()...)
 
 	})
 
@@ -1944,7 +1932,7 @@ func RegisterRoleServiceHandlerServer(ctx context.Context, mux *runtime.ServeMux
 			return
 		}
 
-		forward_RoleService_SetRolePrincipals_0(ctx, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+		forward_RoleService_SetRolePrincipals_0(ctx, mux, outboundMarshaler, w, req, response_RoleService_SetRolePrincipals_0{resp}, mux.GetForwardResponseOptions()...)
 
 	})
 
@@ -1964,7 +1952,7 @@ func RegisterRoleServiceHandlerServer(ctx context.Context, mux *runtime.ServeMux
 			return
 		}
 
-		forward_RoleService_SetRolePrincipals_1(ctx, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+		forward_RoleService_SetRolePrincipals_1(ctx, mux, outboundMarshaler, w, req, response_RoleService_SetRolePrincipals_1{resp}, mux.GetForwardResponseOptions()...)
 
 	})
 
@@ -1984,7 +1972,7 @@ func RegisterRoleServiceHandlerServer(ctx context.Context, mux *runtime.ServeMux
 			return
 		}
 
-		forward_RoleService_RemoveRolePrincipals_0(ctx, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+		forward_RoleService_RemoveRolePrincipals_0(ctx, mux, outboundMarshaler, w, req, response_RoleService_RemoveRolePrincipals_0{resp}, mux.GetForwardResponseOptions()...)
 
 	})
 
@@ -2004,7 +1992,7 @@ func RegisterRoleServiceHandlerServer(ctx context.Context, mux *runtime.ServeMux
 			return
 		}
 
-		forward_RoleService_RemoveRolePrincipals_1(ctx, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+		forward_RoleService_RemoveRolePrincipals_1(ctx, mux, outboundMarshaler, w, req, response_RoleService_RemoveRolePrincipals_1{resp}, mux.GetForwardResponseOptions()...)
 
 	})
 
@@ -2265,7 +2253,7 @@ func RegisterRoleServiceHandlerClient(ctx context.Context, mux *runtime.ServeMux
 			return
 		}
 
-		forward_RoleService_AddRolePrincipals_0(ctx, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+		forward_RoleService_AddRolePrincipals_0(ctx, mux, outboundMarshaler, w, req, response_RoleService_AddRolePrincipals_0{resp}, mux.GetForwardResponseOptions()...)
 
 	})
 
@@ -2285,7 +2273,7 @@ func RegisterRoleServiceHandlerClient(ctx context.Context, mux *runtime.ServeMux
 			return
 		}
 
-		forward_RoleService_AddRolePrincipals_1(ctx, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+		forward_RoleService_AddRolePrincipals_1(ctx, mux, outboundMarshaler, w, req, response_RoleService_AddRolePrincipals_1{resp}, mux.GetForwardResponseOptions()...)
 
 	})
 
@@ -2305,7 +2293,7 @@ func RegisterRoleServiceHandlerClient(ctx context.Context, mux *runtime.ServeMux
 			return
 		}
 
-		forward_RoleService_SetRolePrincipals_0(ctx, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+		forward_RoleService_SetRolePrincipals_0(ctx, mux, outboundMarshaler, w, req, response_RoleService_SetRolePrincipals_0{resp}, mux.GetForwardResponseOptions()...)
 
 	})
 
@@ -2325,7 +2313,7 @@ func RegisterRoleServiceHandlerClient(ctx context.Context, mux *runtime.ServeMux
 			return
 		}
 
-		forward_RoleService_SetRolePrincipals_1(ctx, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+		forward_RoleService_SetRolePrincipals_1(ctx, mux, outboundMarshaler, w, req, response_RoleService_SetRolePrincipals_1{resp}, mux.GetForwardResponseOptions()...)
 
 	})
 
@@ -2345,7 +2333,7 @@ func RegisterRoleServiceHandlerClient(ctx context.Context, mux *runtime.ServeMux
 			return
 		}
 
-		forward_RoleService_RemoveRolePrincipals_0(ctx, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+		forward_RoleService_RemoveRolePrincipals_0(ctx, mux, outboundMarshaler, w, req, response_RoleService_RemoveRolePrincipals_0{resp}, mux.GetForwardResponseOptions()...)
 
 	})
 
@@ -2365,7 +2353,7 @@ func RegisterRoleServiceHandlerClient(ctx context.Context, mux *runtime.ServeMux
 			return
 		}
 
-		forward_RoleService_RemoveRolePrincipals_1(ctx, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+		forward_RoleService_RemoveRolePrincipals_1(ctx, mux, outboundMarshaler, w, req, response_RoleService_RemoveRolePrincipals_1{resp}, mux.GetForwardResponseOptions()...)
 
 	})
 
@@ -2423,6 +2411,60 @@ type response_RoleService_UpdateRole_1 struct {
 
 func (m response_RoleService_UpdateRole_1) XXX_ResponseBody() interface{} {
 	response := m.Message.(*UpdateRoleResponse)
+	return response.Item
+}
+
+type response_RoleService_AddRolePrincipals_0 struct {
+	proto.Message
+}
+
+func (m response_RoleService_AddRolePrincipals_0) XXX_ResponseBody() interface{} {
+	response := m.Message.(*AddRolePrincipalsResponse)
+	return response.Item
+}
+
+type response_RoleService_AddRolePrincipals_1 struct {
+	proto.Message
+}
+
+func (m response_RoleService_AddRolePrincipals_1) XXX_ResponseBody() interface{} {
+	response := m.Message.(*AddRolePrincipalsResponse)
+	return response.Item
+}
+
+type response_RoleService_SetRolePrincipals_0 struct {
+	proto.Message
+}
+
+func (m response_RoleService_SetRolePrincipals_0) XXX_ResponseBody() interface{} {
+	response := m.Message.(*SetRolePrincipalsResponse)
+	return response.Item
+}
+
+type response_RoleService_SetRolePrincipals_1 struct {
+	proto.Message
+}
+
+func (m response_RoleService_SetRolePrincipals_1) XXX_ResponseBody() interface{} {
+	response := m.Message.(*SetRolePrincipalsResponse)
+	return response.Item
+}
+
+type response_RoleService_RemoveRolePrincipals_0 struct {
+	proto.Message
+}
+
+func (m response_RoleService_RemoveRolePrincipals_0) XXX_ResponseBody() interface{} {
+	response := m.Message.(*RemoveRolePrincipalsResponse)
+	return response.Item
+}
+
+type response_RoleService_RemoveRolePrincipals_1 struct {
+	proto.Message
+}
+
+func (m response_RoleService_RemoveRolePrincipals_1) XXX_ResponseBody() interface{} {
+	response := m.Message.(*RemoveRolePrincipalsResponse)
 	return response.Item
 }
 
