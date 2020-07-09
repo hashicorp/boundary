@@ -415,8 +415,14 @@ func (r *Repository) SetGroupMembers(ctx context.Context, groupId string, groupV
 			if err := w.WriteOplogEntryWith(ctx, r.wrapper, groupTicket, metadata, msgs); err != nil {
 				return fmt.Errorf("set group members: unable to write oplog for additions: %w", err)
 			}
-
-			currentMembers, err = r.ListGroupMembers(ctx, groupId)
+			// we need a new repo, that's using the same reader/writer as this TxHandler
+			txRepo := Repository{
+				reader:       reader,
+				writer:       w,
+				wrapper:      r.wrapper,
+				defaultLimit: r.defaultLimit,
+			}
+			currentMembers, err = txRepo.ListGroupMembers(ctx, groupId)
 			if err != nil {
 				return fmt.Errorf("set group members: unable to retrieve current group members after sets: %w", err)
 			}
