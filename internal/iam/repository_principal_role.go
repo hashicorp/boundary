@@ -246,15 +246,19 @@ func (r *Repository) SetPrincipalRoles(ctx context.Context, roleId string, roleV
 				return fmt.Errorf("set principal roles: unable to write oplog for additions: %w", err)
 			}
 
-			currentPrincipals, err = r.ListPrincipalRoles(ctx, roleId)
-			if err != nil {
-				return fmt.Errorf("set principal roles: unable to retrieve current principal roles after sets: %w", err)
-			}
 			return nil
 		})
 	if err != nil {
 		return nil, db.NoRowsAffected, fmt.Errorf("set principal roles: unable to set principals: %w", err)
 	}
+
+	// The view isn't updated until after the transaction completes, so we have
+	// to do the final listing after the transaction finishes
+	currentPrincipals, err = r.ListPrincipalRoles(ctx, roleId)
+	if err != nil {
+		return nil, 0, fmt.Errorf("set principal roles: unable to retrieve current principal roles after sets: %w", err)
+	}
+
 	return currentPrincipals, totalRowsAffected, nil
 }
 

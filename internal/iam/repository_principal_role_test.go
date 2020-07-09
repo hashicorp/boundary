@@ -528,22 +528,21 @@ func TestRepository_SetPrincipalRoles(t *testing.T) {
 			if tt.setup != nil {
 				origUsers, origGrps = tt.setup(tt.args.role)
 			}
-			setUsers := tt.args.userIds
-			setGrps := tt.args.groupIds
 			if tt.args.addToOrigUsers {
-				setUsers = append(setUsers, origUsers...)
+				tt.args.userIds = append(tt.args.userIds, origUsers...)
 			}
 			if tt.args.addToOrigGrps {
-				setGrps = append(setGrps, origGrps...)
+				tt.args.groupIds = append(tt.args.groupIds, origGrps...)
 			}
 
-			got, affectedRows, err := repo.SetPrincipalRoles(context.Background(), tt.args.role.PublicId, tt.args.roleVersion, setUsers, setGrps, tt.args.opt...)
+			got, affectedRows, err := repo.SetPrincipalRoles(context.Background(), tt.args.role.PublicId, tt.args.roleVersion, tt.args.userIds, tt.args.groupIds, tt.args.opt...)
 			if tt.wantErr {
 				require.Error(err)
 				return
 			}
 			require.NoError(err)
 			assert.Equal(tt.wantAffectedRows, affectedRows)
+			assert.Equal(len(tt.args.userIds)+len(tt.args.groupIds), len(got))
 			var gotIds []string
 			for _, r := range got {
 				gotIds = append(gotIds, r.GetPrincipalId())
@@ -553,7 +552,7 @@ func TestRepository_SetPrincipalRoles(t *testing.T) {
 			wantIds = append(wantIds, tt.args.groupIds...)
 			sort.Strings(wantIds)
 			sort.Strings(gotIds)
-			assert.Equal(wantIds, wantIds)
+			assert.Equal(wantIds, gotIds)
 		})
 	}
 }
