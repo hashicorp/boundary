@@ -18,7 +18,6 @@ type options struct {
 	withName            string
 	withScope           *Scope
 	withDescription     string
-	withParentId        *string
 	withGroupGrants     bool
 	withLimit           int
 	withAutoVivify      bool
@@ -32,7 +31,6 @@ func getDefaultOptions() options {
 		withName:            "",
 		withScope:           nil,
 		withDescription:     "",
-		withParentId:        nil,
 		withGroupGrants:     false,
 		withLimit:           0,
 		withAutoVivify:      false,
@@ -73,15 +71,6 @@ func withScope(s *Scope) Option {
 func WithName(name string) Option {
 	return func(o *options) {
 		o.withName = name
-	}
-}
-
-// WithParentId provides an optional parent id for a scope
-func WithParentId(id string) Option {
-	return func(o *options) {
-		if id != "" {
-			o.withParentId = &id
-		}
 	}
 }
 
