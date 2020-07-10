@@ -300,7 +300,7 @@ $$ language plpgsql;
 create trigger
   ensure_user_scope_id_valid
 before
-insert on iam_user
+insert or update on iam_user
   for each row execute procedure user_scope_id_valid();
 
 create trigger 
