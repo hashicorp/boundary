@@ -27,7 +27,11 @@ func (r RoleType) String() string {
 	}[r]
 }
 
-const principalRoleViewDefaultTable = "iam_principal_role"
+const (
+	principalRoleViewDefaultTable = "iam_principal_role"
+	userRoleDefaultTable          = "iam_user_role"
+	groupRoleDefaultTable         = "iam_group_role"
+)
 
 // PrincipalRole provides a common way to return roles regardless of their
 // underlying type.
@@ -123,12 +127,15 @@ func (r *UserRole) TableName() string {
 	if r.tableName != "" {
 		return r.tableName
 	}
-	return "iam_user_role"
+	return userRoleDefaultTable
 }
 
 // SetTableName sets the tablename and satisfies the ReplayableMessage interface
 func (r *UserRole) SetTableName(n string) {
-	if r.tableName != "" {
+	switch n {
+	case "":
+		r.tableName = userRoleDefaultTable
+	default:
 		r.tableName = n
 	}
 }
@@ -199,13 +206,16 @@ func (r *GroupRole) TableName() string {
 	if r.tableName != "" {
 		return r.tableName
 	}
-	return "iam_group_role"
+	return groupRoleDefaultTable
 }
 
 // SetTableName sets the tablename and satisfies the ReplayableMessage interface
 // for group roles.
 func (r *GroupRole) SetTableName(n string) {
-	if r.tableName != "" {
+	switch n {
+	case "":
+		r.tableName = groupRoleDefaultTable
+	default:
 		r.tableName = n
 	}
 }
