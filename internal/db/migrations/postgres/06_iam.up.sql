@@ -447,64 +447,86 @@ before
 update on iam_group
   for each row execute procedure iam_immutable_scope_id_func();
 
--- iam_user_role contains roles that have been assigned to users. The scope is
--- the scope of the user, not the role. Users can be from any scope; when
--- displaying for UX purposes and ingressing for saving, we will use a colon
--- syntax like <scope_id>:<user_id> to reference users from other scopes than
--- the role's scope. The rows in this table must be immutable after insert,
--- which will be ensured with a before update trigger using
--- iam_immutable_role(). 
+-- iam_user_role contains roles that have been assigned to users. Users can be
+-- from any scope. The rows in this table must be immutable after insert, which
+-- will be ensured with a before update trigger using iam_immutable_role(). 
 create table iam_user_role (
   create_time wt_timestamp,
-   role_id wt_public_id
+  role_id wt_public_id
     references iam_role(public_id)
     on delete cascade
     on update cascade,
-  principal_scope_id wt_scope_id not null,
-  principal_id wt_user_id not null,
-  foreign key(principal_scope_id, principal_id)
-    references iam_user(scope_id, public_id)
+  principal_id wt_user_id 
+    references iam_user(public_id)
     on delete cascade
     on update cascade,
-  primary key (role_id, principal_id),
-  unique(principal_scope_id, role_id, principal_id)
+  primary key (role_id, principal_id)
   );
 
--- iam_group_role contains roles that have been assigned to groups. The scope is
--- the scope of the group, not the role. Groups can be from any scope; when
--- displaying for UX purposes and ingressing for saving, we will use a colon
--- syntax like <scope_id>:<group_id> to reference groups from other scopes than
--- the role's scope. The rows in this table must be immutable after insert,
--- which will be ensured with a before update trigger using
--- iam_immutable_role().
+-- iam_group_role contains roles that have been assigned to groups. 
+-- Groups can be from any scope. The rows in this table must be immutable after
+-- insert, which will be ensured with a before update trigger using
+-- iam_immutable_role(). 
 create table iam_group_role (
   create_time wt_timestamp,
   role_id wt_public_id
     references iam_role(public_id)
     on delete cascade
     on update cascade,
-  principal_scope_id wt_scope_id not null,
-  principal_id wt_public_id not null,
-  foreign key(principal_scope_id, principal_id)
-    references iam_group(scope_id, public_id)
+  principal_id wt_public_id 
+    references iam_group(public_id)
     on delete cascade
     on update cascade,
-  primary key (role_id, principal_id),
-  unique(principal_scope_id, role_id, principal_id)
+  primary key (role_id, principal_id)
   );
+
+-- get_scoped_principal_id is used by the iam_principle_role view as a convient
+-- way to create <scope_id>:<principal_id> to reference principals from
+-- other scopes than the role's scope. 
+create or replace function get_scoped_principal_id(role_scope text, principal_scope text, principal_id text) returns text 
+as $$
+begin
+	if role_scope = principal_scope then
+		return principal_id;
+	end if;
+	return principal_scope || ':' || principal_id;
+end;
+$$ language plpgsql;
 
 -- iam_principle_role provides a consolidated view all principal roles assigned
 -- (user and group roles).
 create view iam_principal_role as
-select
-  -- intentionally using * to specify the view which requires that the concrete role assignment tables match
-  *, text 'user' as type
-from iam_user_role
-union
-select
-  -- intentionally using * to specify the view which requires that the concrete role assignment tables match
-  *, text 'group' as type
-from iam_group_role;
+select 
+	ur.create_time, 
+	ur.principal_id,
+	ur.role_id,
+	u.scope_id as principal_scope_id, 
+	r.scope_id as role_scope_id,
+	get_scoped_principal_id(r.scope_id, u.scope_id, ur.principal_id) as scoped_principal_id,
+	'user' as type
+from 	
+	iam_user_role ur, 
+	iam_role r,
+	iam_user u
+where
+	ur.role_id = r.public_id and 
+	u.public_id = ur.principal_id
+union 
+select 
+	gr.create_time, 
+	gr.principal_id,
+	gr.role_id,
+	g.scope_id as principal_scope_id, 
+	r.scope_id as role_scope_id,
+	get_scoped_principal_id(r.scope_id, g.scope_id, gr.principal_id) as scoped_principal_id,
+	'group' as type
+from 	
+	iam_group_role gr, 
+	iam_role r,
+	iam_group g
+where
+	gr.role_id = r.public_id and 
+	g.public_id = gr.principal_id;
 
 -- iam_immutable_role() ensures that roles assigned to principals are immutable. 
 create or replace function
