@@ -186,7 +186,7 @@ func TestUserRole_Create(t *testing.T) {
 				}(),
 			},
 			wantErr:    true,
-			wantErrMsg: "create: failed: pq: insert or update on table \"iam_user_role\" violates foreign key constraint \"iam_user_role_principal_scope_id_principal_id_fkey\"",
+			wantErrMsg: "create: failed: pq: insert or update on table \"iam_user_role\" violates foreign key constraint \"iam_user_role_principal_id_fkey\"",
 		},
 		{
 			name: "missing-role-id",

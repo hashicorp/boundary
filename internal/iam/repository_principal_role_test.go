@@ -54,7 +54,6 @@ func TestRepository_AddPrincipalRoles(t *testing.T) {
 		return results
 	}
 	type args struct {
-		roleId       string
 		roleVersion  int
 		wantUserIds  bool
 		wantGroupIds bool
@@ -439,7 +438,7 @@ func TestRepository_DeletePrincipalRoles(t *testing.T) {
 				userIds = append(userIds, u.PublicId)
 				for i := 0; i < tt.args.createUserCnt-1; i++ {
 					u := TestUser(t, conn, orgs[i])
-					userIds = append(userIds, fmt.Sprintf("%s:%s", orgs[i], u.PublicId))
+					userIds = append(userIds, u.PublicId)
 				}
 			}
 			groupIds := make([]string, 0, tt.args.createGroupCnt)
@@ -448,7 +447,7 @@ func TestRepository_DeletePrincipalRoles(t *testing.T) {
 				groupIds = append(groupIds, g.PublicId)
 				for i := 0; i < tt.args.createGroupCnt-1; i++ {
 					g := TestGroup(t, conn, projects[i])
-					groupIds = append(groupIds, fmt.Sprintf("%s:%s", projects[i], g.PublicId))
+					groupIds = append(groupIds, g.PublicId)
 				}
 			}
 			principalRoles, err := repo.AddPrincipalRoles(context.Background(), tt.args.role.PublicId, 1, userIds, groupIds, tt.args.opt...)
@@ -507,10 +506,10 @@ func TestRepository_SetPrincipalRoles(t *testing.T) {
 		results := []string{}
 		for i := 0; i < 5; i++ {
 			u := TestUser(t, conn, org.PublicId)
-			results = append(results, fmt.Sprintf("%s:%s", org.PublicId, u.PublicId))
+			results = append(results, u.PublicId)
 		}
-		results = append(results, "global:u_anon")
-		results = append(results, "global:u_auth")
+		results = append(results, "u_anon")
+		results = append(results, "u_auth")
 		return results
 	}
 	createGrpsFn := func() []string {
@@ -533,9 +532,7 @@ func TestRepository_SetPrincipalRoles(t *testing.T) {
 		role           *Role
 		roleVersion    int
 		userIds        []string
-		scopedUserIds  []string
 		groupIds       []string
-		scopedGroupIds []string
 		addToOrigUsers bool
 		addToOrigGrps  bool
 		opt            []Option
@@ -579,7 +576,7 @@ func TestRepository_SetPrincipalRoles(t *testing.T) {
 			args: args{
 				role:           TestRole(t, conn, proj.PublicId),
 				roleVersion:    2, // yep, since setupFn will increment it to 2
-				userIds:        []string{fmt.Sprintf("%s:%s", org.PublicId, testUser.PublicId)},
+				userIds:        []string{testUser.PublicId},
 				groupIds:       []string{testGrp.PublicId},
 				addToOrigUsers: true,
 				addToOrigGrps:  true,
@@ -593,7 +590,7 @@ func TestRepository_SetPrincipalRoles(t *testing.T) {
 			args: args{
 				role:           TestRole(t, conn, proj.PublicId),
 				roleVersion:    2, // yep, since setupFn will increment it to 2
-				userIds:        []string{fmt.Sprintf("%s:%s", org.PublicId, testUser.PublicId)},
+				userIds:        []string{testUser.PublicId},
 				groupIds:       []string{testGrp.PublicId},
 				addToOrigUsers: false,
 				addToOrigGrps:  false,
