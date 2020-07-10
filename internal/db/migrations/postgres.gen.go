@@ -917,11 +917,8 @@ update on iam_group
   for each row execute procedure iam_immutable_scope_id_func();
 
 -- iam_user_role contains roles that have been assigned to users. Users can be
--- from any scope; when displaying for UX purposes and ingressing for saving, we
--- will use a colon syntax like <scope_id>:<user_id> to reference users from
--- other scopes than the role's scope. The rows in this table must be immutable
--- after insert, which will be ensured with a before update trigger using
--- iam_immutable_role(). 
+-- from any scope. The rows in this table must be immutable after insert, which
+-- will be ensured with a before update trigger using iam_immutable_role(). 
 create table iam_user_role (
   create_time wt_timestamp,
   role_id wt_public_id
@@ -936,11 +933,9 @@ create table iam_user_role (
   );
 
 -- iam_group_role contains roles that have been assigned to groups. 
--- Groups can be from any scope; when displaying for UX purposes and ingressing
--- for saving, we will use a colon syntax like <scope_id>:<group_id> to
--- reference groups from other scopes than the role's scope. The rows in this
--- table must be immutable after insert, which will be ensured with a before
--- update trigger using iam_immutable_role().
+-- Groups can be from any scope. The rows in this table must be immutable after
+-- insert, which will be ensured with a before update trigger using
+-- iam_immutable_role(). 
 create table iam_group_role (
   create_time wt_timestamp,
   role_id wt_public_id
@@ -954,7 +949,9 @@ create table iam_group_role (
   primary key (role_id, principal_id)
   );
 
-
+-- get_scoped_principal_id is used by the iam_principle_role view as a convient
+-- way to create <scope_id>:<principal_id> to reference principals from
+-- other scopes than the role's scope. 
 create or replace function get_scoped_principal_id(role_scope text, principal_scope text, principal_id text) returns text 
 as $$
 begin
