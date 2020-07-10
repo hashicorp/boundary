@@ -36,7 +36,7 @@ func createDefaultRolesAndRepo(t *testing.T) (*iam.Role, *iam.Role, func() (*iam
 	}
 
 	o, p := iam.TestScopes(t, conn)
-	or := iam.TestRole(t, conn, o.GetPublicId(), iam.WithDescription("default"), iam.WithName("default"))
+	or := iam.TestRole(t, conn, o.GetPublicId(), iam.WithDescription("default"), iam.WithName("default"), iam.WithGrantScopeId(p.GetPublicId()))
 	pr := iam.TestRole(t, conn, p.GetPublicId(), iam.WithDescription("default"), iam.WithName("default"))
 	return or, pr, repoFn
 }
@@ -51,21 +51,23 @@ func TestGet(t *testing.T) {
 	}
 
 	wantOrgRole := &pb.Role{
-		Id:          or.GetPublicId(),
-		Name:        &wrapperspb.StringValue{Value: or.GetName()},
-		Description: &wrapperspb.StringValue{Value: or.GetDescription()},
-		CreatedTime: or.CreateTime.GetTimestamp(),
-		UpdatedTime: or.UpdateTime.GetTimestamp(),
-		Version:     or.GetVersion(),
+		Id:           or.GetPublicId(),
+		Name:         &wrapperspb.StringValue{Value: or.GetName()},
+		Description:  &wrapperspb.StringValue{Value: or.GetDescription()},
+		GrantScopeId: &wrapperspb.StringValue{Value: pr.GetGrantScopeId()},
+		CreatedTime:  or.CreateTime.GetTimestamp(),
+		UpdatedTime:  or.UpdateTime.GetTimestamp(),
+		Version:      or.GetVersion(),
 	}
 
 	wantProjRole := &pb.Role{
-		Id:          pr.GetPublicId(),
-		Name:        &wrapperspb.StringValue{Value: pr.GetName()},
-		Description: &wrapperspb.StringValue{Value: pr.GetDescription()},
-		CreatedTime: pr.CreateTime.GetTimestamp(),
-		UpdatedTime: pr.UpdateTime.GetTimestamp(),
-		Version:     pr.GetVersion(),
+		Id:           pr.GetPublicId(),
+		Name:         &wrapperspb.StringValue{Value: pr.GetName()},
+		Description:  &wrapperspb.StringValue{Value: pr.GetDescription()},
+		GrantScopeId: &wrapperspb.StringValue{Value: pr.GetGrantScopeId()},
+		CreatedTime:  pr.CreateTime.GetTimestamp(),
+		UpdatedTime:  pr.UpdateTime.GetTimestamp(),
+		Version:      pr.GetVersion(),
 	}
 
 	cases := []struct {
@@ -153,17 +155,19 @@ func TestList(t *testing.T) {
 	for i := 0; i < 10; i++ {
 		or := iam.TestRole(t, conn, oWithRoles.GetPublicId())
 		wantOrgRoles = append(wantOrgRoles, &pb.Role{
-			Id:          or.GetPublicId(),
-			CreatedTime: or.GetCreateTime().GetTimestamp(),
-			UpdatedTime: or.GetUpdateTime().GetTimestamp(),
-			Version:     or.GetVersion(),
+			Id:           or.GetPublicId(),
+			CreatedTime:  or.GetCreateTime().GetTimestamp(),
+			UpdatedTime:  or.GetUpdateTime().GetTimestamp(),
+			GrantScopeId: &wrapperspb.StringValue{Value: or.GetGrantScopeId()},
+			Version:      or.GetVersion(),
 		})
 		pr := iam.TestRole(t, conn, pWithRoles.GetPublicId())
 		wantProjRoles = append(wantProjRoles, &pb.Role{
-			Id:          pr.GetPublicId(),
-			CreatedTime: pr.GetCreateTime().GetTimestamp(),
-			UpdatedTime: pr.GetUpdateTime().GetTimestamp(),
-			Version:     pr.GetVersion(),
+			Id:           pr.GetPublicId(),
+			CreatedTime:  pr.GetCreateTime().GetTimestamp(),
+			UpdatedTime:  pr.GetUpdateTime().GetTimestamp(),
+			GrantScopeId: &wrapperspb.StringValue{Value: pr.GetGrantScopeId()},
+			Version:      pr.GetVersion(),
 		})
 	}
 
@@ -407,15 +411,17 @@ func TestCreate(t *testing.T) {
 		{
 			name: "Create a valid Role",
 			req: &pbs.CreateRoleRequest{Item: &pb.Role{
-				Name:        &wrapperspb.StringValue{Value: "name"},
-				Description: &wrapperspb.StringValue{Value: "desc"},
+				Name:         &wrapperspb.StringValue{Value: "name"},
+				Description:  &wrapperspb.StringValue{Value: "desc"},
+				GrantScopeId: &wrapperspb.StringValue{Value: defaultProjRole.ScopeId},
 			}},
 			res: &pbs.CreateRoleResponse{
 				Uri: fmt.Sprintf("orgs/%s/roles/%s_", defaultOrgRole.GetScopeId(), iam.RolePrefix),
 				Item: &pb.Role{
-					Name:        &wrapperspb.StringValue{Value: "name"},
-					Description: &wrapperspb.StringValue{Value: "desc"},
-					Version:     1,
+					Name:         &wrapperspb.StringValue{Value: "name"},
+					Description:  &wrapperspb.StringValue{Value: "desc"},
+					GrantScopeId: &wrapperspb.StringValue{Value: defaultProjRole.ScopeId},
+					Version:      1,
 				},
 			},
 			errCode: codes.OK,
@@ -432,12 +438,26 @@ func TestCreate(t *testing.T) {
 			res: &pbs.CreateRoleResponse{
 				Uri: fmt.Sprintf("orgs/%s/projects/%s/roles/%s_", defaultOrgRole.GetScopeId(), defaultProjRole.GetScopeId(), iam.RolePrefix),
 				Item: &pb.Role{
-					Name:        &wrapperspb.StringValue{Value: "name"},
-					Description: &wrapperspb.StringValue{Value: "desc"},
-					Version:     1,
+					Name:         &wrapperspb.StringValue{Value: "name"},
+					Description:  &wrapperspb.StringValue{Value: "desc"},
+					GrantScopeId: &wrapperspb.StringValue{Value: defaultProjRole.ScopeId},
+					Version:      1,
 				},
 			},
 			errCode: codes.OK,
+		},
+		{
+			name: "Invalid grant scope ID",
+			req: &pbs.CreateRoleRequest{
+				ProjectId: defaultProjRole.GetScopeId(),
+				Item: &pb.Role{
+					Name:         &wrapperspb.StringValue{Value: "name"},
+					Description:  &wrapperspb.StringValue{Value: "desc"},
+					GrantScopeId: &wrapperspb.StringValue{Value: defaultOrgRole.GetScopeId()},
+				},
+			},
+			res:     nil,
+			errCode: codes.Internal,
 		},
 		{
 			name: "Can't specify Id",
@@ -528,19 +548,21 @@ func TestUpdate(t *testing.T) {
 			name: "Update an Existing Role",
 			req: &pbs.UpdateRoleRequest{
 				UpdateMask: &field_mask.FieldMask{
-					Paths: []string{"name", "description"},
+					Paths: []string{"name", "description", "grant_scope_id"},
 				},
 				Item: &pb.Role{
-					Name:        &wrapperspb.StringValue{Value: "new"},
-					Description: &wrapperspb.StringValue{Value: "desc"},
+					Name:         &wrapperspb.StringValue{Value: "new"},
+					Description:  &wrapperspb.StringValue{Value: "desc"},
+					GrantScopeId: &wrapperspb.StringValue{Value: or.GetScopeId()},
 				},
 			},
 			res: &pbs.UpdateRoleResponse{
 				Item: &pb.Role{
-					Id:          or.GetPublicId(),
-					Name:        &wrapperspb.StringValue{Value: "new"},
-					Description: &wrapperspb.StringValue{Value: "desc"},
-					CreatedTime: or.GetCreateTime().GetTimestamp(),
+					Id:           or.GetPublicId(),
+					Name:         &wrapperspb.StringValue{Value: "new"},
+					Description:  &wrapperspb.StringValue{Value: "desc"},
+					CreatedTime:  or.GetCreateTime().GetTimestamp(),
+					GrantScopeId: &wrapperspb.StringValue{Value: or.GetScopeId()},
 				},
 			},
 			errCode: codes.OK,
@@ -558,10 +580,11 @@ func TestUpdate(t *testing.T) {
 			},
 			res: &pbs.UpdateRoleResponse{
 				Item: &pb.Role{
-					Id:          or.GetPublicId(),
-					Name:        &wrapperspb.StringValue{Value: "new"},
-					Description: &wrapperspb.StringValue{Value: "desc"},
-					CreatedTime: or.GetCreateTime().GetTimestamp(),
+					Id:           or.GetPublicId(),
+					Name:         &wrapperspb.StringValue{Value: "new"},
+					Description:  &wrapperspb.StringValue{Value: "desc"},
+					CreatedTime:  or.GetCreateTime().GetTimestamp(),
+					GrantScopeId: &wrapperspb.StringValue{Value: pr.GetScopeId()},
 				},
 			},
 			errCode: codes.OK,
@@ -581,10 +604,11 @@ func TestUpdate(t *testing.T) {
 			},
 			res: &pbs.UpdateRoleResponse{
 				Item: &pb.Role{
-					Id:          pr.GetPublicId(),
-					Name:        &wrapperspb.StringValue{Value: "new"},
-					Description: &wrapperspb.StringValue{Value: "desc"},
-					CreatedTime: pr.GetCreateTime().GetTimestamp(),
+					Id:           pr.GetPublicId(),
+					Name:         &wrapperspb.StringValue{Value: "new"},
+					Description:  &wrapperspb.StringValue{Value: "desc"},
+					CreatedTime:  pr.GetCreateTime().GetTimestamp(),
+					GrantScopeId: &wrapperspb.StringValue{Value: pr.GetScopeId()},
 				},
 			},
 			errCode: codes.OK,
@@ -604,10 +628,11 @@ func TestUpdate(t *testing.T) {
 			},
 			res: &pbs.UpdateRoleResponse{
 				Item: &pb.Role{
-					Id:          pr.GetPublicId(),
-					Name:        &wrapperspb.StringValue{Value: "new"},
-					Description: &wrapperspb.StringValue{Value: "desc"},
-					CreatedTime: pr.GetCreateTime().GetTimestamp(),
+					Id:           pr.GetPublicId(),
+					Name:         &wrapperspb.StringValue{Value: "new"},
+					Description:  &wrapperspb.StringValue{Value: "desc"},
+					CreatedTime:  pr.GetCreateTime().GetTimestamp(),
+					GrantScopeId: &wrapperspb.StringValue{Value: pr.GetScopeId()},
 				},
 			},
 			errCode: codes.OK,
@@ -656,9 +681,10 @@ func TestUpdate(t *testing.T) {
 			},
 			res: &pbs.UpdateRoleResponse{
 				Item: &pb.Role{
-					Id:          or.GetPublicId(),
-					Description: &wrapperspb.StringValue{Value: "default"},
-					CreatedTime: or.GetCreateTime().GetTimestamp(),
+					Id:           or.GetPublicId(),
+					Description:  &wrapperspb.StringValue{Value: "default"},
+					CreatedTime:  or.GetCreateTime().GetTimestamp(),
+					GrantScopeId: &wrapperspb.StringValue{Value: pr.GetScopeId()},
 				},
 			},
 			errCode: codes.OK,
@@ -676,10 +702,11 @@ func TestUpdate(t *testing.T) {
 			},
 			res: &pbs.UpdateRoleResponse{
 				Item: &pb.Role{
-					Id:          or.GetPublicId(),
-					Name:        &wrapperspb.StringValue{Value: "updated"},
-					Description: &wrapperspb.StringValue{Value: "default"},
-					CreatedTime: or.GetCreateTime().GetTimestamp(),
+					Id:           or.GetPublicId(),
+					Name:         &wrapperspb.StringValue{Value: "updated"},
+					Description:  &wrapperspb.StringValue{Value: "default"},
+					CreatedTime:  or.GetCreateTime().GetTimestamp(),
+					GrantScopeId: &wrapperspb.StringValue{Value: pr.GetScopeId()},
 				},
 			},
 			errCode: codes.OK,
@@ -697,10 +724,11 @@ func TestUpdate(t *testing.T) {
 			},
 			res: &pbs.UpdateRoleResponse{
 				Item: &pb.Role{
-					Id:          or.GetPublicId(),
-					Name:        &wrapperspb.StringValue{Value: "default"},
-					Description: &wrapperspb.StringValue{Value: "notignored"},
-					CreatedTime: or.GetCreateTime().GetTimestamp(),
+					Id:           or.GetPublicId(),
+					Name:         &wrapperspb.StringValue{Value: "default"},
+					Description:  &wrapperspb.StringValue{Value: "notignored"},
+					CreatedTime:  or.GetCreateTime().GetTimestamp(),
+					GrantScopeId: &wrapperspb.StringValue{Value: pr.GetScopeId()},
 				},
 			},
 			errCode: codes.OK,
@@ -786,7 +814,7 @@ func TestUpdate(t *testing.T) {
 				// TODO: Figure out the best way to test versions when updating roles
 				got.GetItem().Version = 0
 			}
-			assert.True(proto.Equal(got, tc.res), "UpdateRole(%q) got response %q, wanted %q", req, got, tc.res)
+			assert.True(proto.Equal(got, tc.res), "UpdateRole(%q) got response\n%q,\nwanted\n%q", req, got, tc.res)
 		})
 	}
 }
@@ -807,24 +835,24 @@ func TestAddPrincipal(t *testing.T) {
 
 	orWithUser := iam.TestRole(t, conn, o.GetPublicId())
 	assignedUser := iam.TestUser(t, conn, o.GetPublicId())
-	_ = iam.TestUserRole(t, conn, o.GetPublicId(), orWithUser.GetPublicId(), iam.WithPublicId(assignedUser.GetPublicId()))
+	_ = iam.TestUserRole(t, conn, orWithUser.GetPublicId(), assignedUser.GetPublicId())
 
 	ou1 := iam.TestUser(t, conn, o.GetPublicId())
 	ou2 := iam.TestUser(t, conn, o.GetPublicId())
 
 	orWithGroup := iam.TestRole(t, conn, o.GetPublicId())
 	assignedOG := iam.TestGroup(t, conn, o.GetPublicId())
-	_ = iam.TestGroupRole(t, conn, o.GetPublicId(), orWithGroup.GetPublicId(), iam.WithPublicId(assignedOG.GetPublicId()))
+	_ = iam.TestGroupRole(t, conn, orWithGroup.GetPublicId(), assignedOG.GetPublicId())
 
 	og1 := iam.TestGroup(t, conn, o.GetPublicId())
 	og2 := iam.TestGroup(t, conn, o.GetPublicId())
 
 	prWithUser := iam.TestRole(t, conn, p.GetPublicId())
-	_ = iam.TestUserRole(t, conn, p.GetPublicId(), prWithUser.GetPublicId(), iam.WithPublicId(assignedUser.GetPublicId()))
+	_ = iam.TestUserRole(t, conn, prWithUser.GetPublicId(), assignedUser.GetPublicId())
 
 	prWithGroup := iam.TestRole(t, conn, p.GetPublicId())
 	assignedPG := iam.TestGroup(t, conn, p.GetPublicId())
-	_ = iam.TestGroupRole(t, conn, p.GetPublicId(), prWithGroup.GetPublicId(), iam.WithPublicId(assignedPG.GetPublicId()))
+	_ = iam.TestGroupRole(t, conn, prWithGroup.GetPublicId(), assignedPG.GetPublicId())
 
 	pg1 := iam.TestGroup(t, conn, p.GetPublicId())
 	pg2 := iam.TestGroup(t, conn, p.GetPublicId())
@@ -848,10 +876,11 @@ func TestAddPrincipal(t *testing.T) {
 			},
 			res: &pbs.AddRolePrincipalsResponse{
 				Item: &pb.Role{
-					Id:          orUserEmpty.GetPublicId(),
-					CreatedTime: orUserEmpty.GetCreateTime().GetTimestamp(),
-					Version:     orUserEmpty.GetVersion() + 1,
-					UserIds:     []string{ou1.GetPublicId(), ou2.GetPublicId()},
+					Id:           orUserEmpty.GetPublicId(),
+					CreatedTime:  orUserEmpty.GetCreateTime().GetTimestamp(),
+					Version:      orUserEmpty.GetVersion() + 1,
+					UserIds:      []string{ou1.GetPublicId(), ou2.GetPublicId()},
+					GrantScopeId: &wrapperspb.StringValue{Value: orUserEmpty.GetScopeId()},
 				},
 			},
 			errCode: codes.OK,
@@ -866,10 +895,11 @@ func TestAddPrincipal(t *testing.T) {
 			},
 			res: &pbs.AddRolePrincipalsResponse{
 				Item: &pb.Role{
-					Id:          orWithUser.GetPublicId(),
-					CreatedTime: orWithUser.GetCreateTime().GetTimestamp(),
-					Version:     orWithUser.GetVersion() + 1,
-					UserIds:     []string{assignedUser.GetPublicId(), ou1.GetPublicId(), ou2.GetPublicId()},
+					Id:           orWithUser.GetPublicId(),
+					CreatedTime:  orWithUser.GetCreateTime().GetTimestamp(),
+					Version:      orWithUser.GetVersion() + 1,
+					UserIds:      []string{assignedUser.GetPublicId(), ou1.GetPublicId(), ou2.GetPublicId()},
+					GrantScopeId: &wrapperspb.StringValue{Value: orWithUser.GetScopeId()},
 				},
 			},
 			errCode: codes.OK,
@@ -885,10 +915,11 @@ func TestAddPrincipal(t *testing.T) {
 			},
 			res: &pbs.AddRolePrincipalsResponse{
 				Item: &pb.Role{
-					Id:          prUserEmpty.GetPublicId(),
-					CreatedTime: prUserEmpty.GetCreateTime().GetTimestamp(),
-					Version:     prUserEmpty.GetVersion() + 1,
-					UserIds:     []string{ou1.GetPublicId(), ou2.GetPublicId()},
+					Id:           prUserEmpty.GetPublicId(),
+					CreatedTime:  prUserEmpty.GetCreateTime().GetTimestamp(),
+					Version:      prUserEmpty.GetVersion() + 1,
+					UserIds:      []string{ou1.GetPublicId(), ou2.GetPublicId()},
+					GrantScopeId: &wrapperspb.StringValue{Value: prUserEmpty.GetScopeId()},
 				},
 			},
 			errCode: codes.OK,
@@ -904,10 +935,11 @@ func TestAddPrincipal(t *testing.T) {
 			},
 			res: &pbs.AddRolePrincipalsResponse{
 				Item: &pb.Role{
-					Id:          prWithUser.GetPublicId(),
-					CreatedTime: prWithUser.GetCreateTime().GetTimestamp(),
-					Version:     prWithUser.GetVersion() + 1,
-					UserIds:     []string{assignedUser.GetPublicId(), ou1.GetPublicId(), ou2.GetPublicId()},
+					Id:           prWithUser.GetPublicId(),
+					CreatedTime:  prWithUser.GetCreateTime().GetTimestamp(),
+					Version:      prWithUser.GetVersion() + 1,
+					UserIds:      []string{assignedUser.GetPublicId(), ou1.GetPublicId(), ou2.GetPublicId()},
+					GrantScopeId: &wrapperspb.StringValue{Value: prWithUser.GetScopeId()},
 				},
 			},
 			errCode: codes.OK,
@@ -922,10 +954,11 @@ func TestAddPrincipal(t *testing.T) {
 			},
 			res: &pbs.AddRolePrincipalsResponse{
 				Item: &pb.Role{
-					Id:          orGroupEmpty.GetPublicId(),
-					CreatedTime: orGroupEmpty.GetCreateTime().GetTimestamp(),
-					Version:     orGroupEmpty.GetVersion() + 1,
-					GroupIds:    []string{og1.GetPublicId(), og2.GetPublicId()},
+					Id:           orGroupEmpty.GetPublicId(),
+					CreatedTime:  orGroupEmpty.GetCreateTime().GetTimestamp(),
+					Version:      orGroupEmpty.GetVersion() + 1,
+					GroupIds:     []string{og1.GetPublicId(), og2.GetPublicId()},
+					GrantScopeId: &wrapperspb.StringValue{Value: orGroupEmpty.GetScopeId()},
 				},
 			},
 			errCode: codes.OK,
@@ -940,10 +973,11 @@ func TestAddPrincipal(t *testing.T) {
 			},
 			res: &pbs.AddRolePrincipalsResponse{
 				Item: &pb.Role{
-					Id:          orWithGroup.GetPublicId(),
-					CreatedTime: orWithGroup.GetCreateTime().GetTimestamp(),
-					Version:     orWithGroup.GetVersion() + 1,
-					GroupIds:    []string{assignedOG.GetPublicId(), og1.GetPublicId(), og2.GetPublicId()},
+					Id:           orWithGroup.GetPublicId(),
+					CreatedTime:  orWithGroup.GetCreateTime().GetTimestamp(),
+					Version:      orWithGroup.GetVersion() + 1,
+					GroupIds:     []string{assignedOG.GetPublicId(), og1.GetPublicId(), og2.GetPublicId()},
+					GrantScopeId: &wrapperspb.StringValue{Value: orWithGroup.GetScopeId()},
 				},
 			},
 			errCode: codes.OK,
@@ -959,10 +993,11 @@ func TestAddPrincipal(t *testing.T) {
 			},
 			res: &pbs.AddRolePrincipalsResponse{
 				Item: &pb.Role{
-					Id:          prGroupEmpty.GetPublicId(),
-					CreatedTime: prGroupEmpty.GetCreateTime().GetTimestamp(),
-					Version:     prGroupEmpty.GetVersion() + 1,
-					GroupIds:    []string{pg1.GetPublicId(), pg2.GetPublicId()},
+					Id:           prGroupEmpty.GetPublicId(),
+					CreatedTime:  prGroupEmpty.GetCreateTime().GetTimestamp(),
+					Version:      prGroupEmpty.GetVersion() + 1,
+					GroupIds:     []string{pg1.GetPublicId(), pg2.GetPublicId()},
+					GrantScopeId: &wrapperspb.StringValue{Value: prGroupEmpty.GetScopeId()},
 				},
 			},
 			errCode: codes.OK,
@@ -978,10 +1013,11 @@ func TestAddPrincipal(t *testing.T) {
 			},
 			res: &pbs.AddRolePrincipalsResponse{
 				Item: &pb.Role{
-					Id:          prWithGroup.GetPublicId(),
-					CreatedTime: prWithGroup.GetCreateTime().GetTimestamp(),
-					Version:     prWithGroup.GetVersion() + 1,
-					GroupIds:    []string{assignedPG.GetPublicId(), pg1.GetPublicId(), pg2.GetPublicId()},
+					Id:           prWithGroup.GetPublicId(),
+					CreatedTime:  prWithGroup.GetCreateTime().GetTimestamp(),
+					Version:      prWithGroup.GetVersion() + 1,
+					GroupIds:     []string{assignedPG.GetPublicId(), pg1.GetPublicId(), pg2.GetPublicId()},
+					GrantScopeId: &wrapperspb.StringValue{Value: prWithGroup.GetScopeId()},
 				},
 			},
 			errCode: codes.OK,
@@ -1039,7 +1075,7 @@ func TestAddPrincipal(t *testing.T) {
 			sort.Strings(tc.res.Item.UserIds)
 			sort.Strings(tc.res.Item.GroupIds)
 			assert.Emptyf(cmp.Diff(tc.res, got, protocmp.Transform()),
-				"AddRolePrincipals(%+v) got response %v, wanted %v", tc.req, got, tc.res)
+				"AddRolePrincipals(%+v) got\nresponse\n%v,\nwanted\n%v", tc.req, got, tc.res)
 		})
 	}
 }
@@ -1060,24 +1096,24 @@ func TestSetPrincipal(t *testing.T) {
 
 	orWithUser := iam.TestRole(t, conn, o.GetPublicId())
 	assignedUser := iam.TestUser(t, conn, o.GetPublicId())
-	_ = iam.TestUserRole(t, conn, o.GetPublicId(), orWithUser.GetPublicId(), iam.WithPublicId(assignedUser.GetPublicId()))
+	_ = iam.TestUserRole(t, conn, orWithUser.GetPublicId(), assignedUser.GetPublicId())
 
 	ou1 := iam.TestUser(t, conn, o.GetPublicId())
 	ou2 := iam.TestUser(t, conn, o.GetPublicId())
 
 	orWithGroup := iam.TestRole(t, conn, o.GetPublicId())
 	assignedOG := iam.TestGroup(t, conn, o.GetPublicId())
-	_ = iam.TestGroupRole(t, conn, o.GetPublicId(), orWithGroup.GetPublicId(), iam.WithPublicId(assignedOG.GetPublicId()))
+	_ = iam.TestGroupRole(t, conn, orWithGroup.GetPublicId(), assignedOG.GetPublicId())
 
 	og1 := iam.TestGroup(t, conn, o.GetPublicId())
 	og2 := iam.TestGroup(t, conn, o.GetPublicId())
 
 	prWithUser := iam.TestRole(t, conn, p.GetPublicId())
-	_ = iam.TestUserRole(t, conn, p.GetPublicId(), prWithUser.GetPublicId(), iam.WithPublicId(assignedUser.GetPublicId()))
+	_ = iam.TestUserRole(t, conn, prWithUser.GetPublicId(), assignedUser.GetPublicId())
 
 	prWithGroup := iam.TestRole(t, conn, p.GetPublicId())
 	assignedPG := iam.TestGroup(t, conn, p.GetPublicId())
-	_ = iam.TestGroupRole(t, conn, p.GetPublicId(), prWithGroup.GetPublicId(), iam.WithPublicId(assignedPG.GetPublicId()))
+	_ = iam.TestGroupRole(t, conn, prWithGroup.GetPublicId(), assignedPG.GetPublicId())
 
 	pg1 := iam.TestGroup(t, conn, p.GetPublicId())
 	pg2 := iam.TestGroup(t, conn, p.GetPublicId())
@@ -1101,10 +1137,11 @@ func TestSetPrincipal(t *testing.T) {
 			},
 			res: &pbs.SetRolePrincipalsResponse{
 				Item: &pb.Role{
-					Id:          orUserEmpty.GetPublicId(),
-					CreatedTime: orUserEmpty.GetCreateTime().GetTimestamp(),
-					Version:     orUserEmpty.GetVersion() + 1,
-					UserIds:     []string{ou1.GetPublicId(), ou2.GetPublicId()},
+					Id:           orUserEmpty.GetPublicId(),
+					CreatedTime:  orUserEmpty.GetCreateTime().GetTimestamp(),
+					Version:      orUserEmpty.GetVersion() + 1,
+					UserIds:      []string{ou1.GetPublicId(), ou2.GetPublicId()},
+					GrantScopeId: &wrapperspb.StringValue{Value: orUserEmpty.GetScopeId()},
 				},
 			},
 			errCode: codes.OK,
@@ -1119,10 +1156,11 @@ func TestSetPrincipal(t *testing.T) {
 			},
 			res: &pbs.SetRolePrincipalsResponse{
 				Item: &pb.Role{
-					Id:          orWithUser.GetPublicId(),
-					CreatedTime: orWithUser.GetCreateTime().GetTimestamp(),
-					Version:     orWithUser.GetVersion() + 1,
-					UserIds:     []string{ou1.GetPublicId(), ou2.GetPublicId()},
+					Id:           orWithUser.GetPublicId(),
+					CreatedTime:  orWithUser.GetCreateTime().GetTimestamp(),
+					Version:      orWithUser.GetVersion() + 1,
+					UserIds:      []string{ou1.GetPublicId(), ou2.GetPublicId()},
+					GrantScopeId: &wrapperspb.StringValue{Value: orWithUser.GetScopeId()},
 				},
 			},
 			errCode: codes.OK,
@@ -1138,10 +1176,11 @@ func TestSetPrincipal(t *testing.T) {
 			},
 			res: &pbs.SetRolePrincipalsResponse{
 				Item: &pb.Role{
-					Id:          prUserEmpty.GetPublicId(),
-					CreatedTime: prUserEmpty.GetCreateTime().GetTimestamp(),
-					Version:     prUserEmpty.GetVersion() + 1,
-					UserIds:     []string{ou1.GetPublicId(), ou2.GetPublicId()},
+					Id:           prUserEmpty.GetPublicId(),
+					CreatedTime:  prUserEmpty.GetCreateTime().GetTimestamp(),
+					Version:      prUserEmpty.GetVersion() + 1,
+					UserIds:      []string{ou1.GetPublicId(), ou2.GetPublicId()},
+					GrantScopeId: &wrapperspb.StringValue{Value: prUserEmpty.GetScopeId()},
 				},
 			},
 			errCode: codes.OK,
@@ -1157,10 +1196,11 @@ func TestSetPrincipal(t *testing.T) {
 			},
 			res: &pbs.SetRolePrincipalsResponse{
 				Item: &pb.Role{
-					Id:          prWithUser.GetPublicId(),
-					CreatedTime: prWithUser.GetCreateTime().GetTimestamp(),
-					Version:     prWithUser.GetVersion() + 1,
-					UserIds:     []string{ou1.GetPublicId(), ou2.GetPublicId()},
+					Id:           prWithUser.GetPublicId(),
+					CreatedTime:  prWithUser.GetCreateTime().GetTimestamp(),
+					Version:      prWithUser.GetVersion() + 1,
+					UserIds:      []string{ou1.GetPublicId(), ou2.GetPublicId()},
+					GrantScopeId: &wrapperspb.StringValue{Value: prWithUser.GetScopeId()},
 				},
 			},
 			errCode: codes.OK,
@@ -1175,10 +1215,11 @@ func TestSetPrincipal(t *testing.T) {
 			},
 			res: &pbs.SetRolePrincipalsResponse{
 				Item: &pb.Role{
-					Id:          orGroupEmpty.GetPublicId(),
-					CreatedTime: orGroupEmpty.GetCreateTime().GetTimestamp(),
-					Version:     orGroupEmpty.GetVersion() + 1,
-					GroupIds:    []string{og1.GetPublicId(), og2.GetPublicId()},
+					Id:           orGroupEmpty.GetPublicId(),
+					CreatedTime:  orGroupEmpty.GetCreateTime().GetTimestamp(),
+					Version:      orGroupEmpty.GetVersion() + 1,
+					GroupIds:     []string{og1.GetPublicId(), og2.GetPublicId()},
+					GrantScopeId: &wrapperspb.StringValue{Value: orGroupEmpty.GetScopeId()},
 				},
 			},
 			errCode: codes.OK,
@@ -1193,10 +1234,11 @@ func TestSetPrincipal(t *testing.T) {
 			},
 			res: &pbs.SetRolePrincipalsResponse{
 				Item: &pb.Role{
-					Id:          orWithGroup.GetPublicId(),
-					CreatedTime: orWithGroup.GetCreateTime().GetTimestamp(),
-					Version:     orWithGroup.GetVersion() + 1,
-					GroupIds:    []string{og1.GetPublicId(), og2.GetPublicId()},
+					Id:           orWithGroup.GetPublicId(),
+					CreatedTime:  orWithGroup.GetCreateTime().GetTimestamp(),
+					Version:      orWithGroup.GetVersion() + 1,
+					GroupIds:     []string{og1.GetPublicId(), og2.GetPublicId()},
+					GrantScopeId: &wrapperspb.StringValue{Value: orWithGroup.GetScopeId()},
 				},
 			},
 			errCode: codes.OK,
@@ -1212,10 +1254,11 @@ func TestSetPrincipal(t *testing.T) {
 			},
 			res: &pbs.SetRolePrincipalsResponse{
 				Item: &pb.Role{
-					Id:          prGroupEmpty.GetPublicId(),
-					CreatedTime: prGroupEmpty.GetCreateTime().GetTimestamp(),
-					Version:     prGroupEmpty.GetVersion() + 1,
-					GroupIds:    []string{pg1.GetPublicId(), pg2.GetPublicId()},
+					Id:           prGroupEmpty.GetPublicId(),
+					CreatedTime:  prGroupEmpty.GetCreateTime().GetTimestamp(),
+					Version:      prGroupEmpty.GetVersion() + 1,
+					GroupIds:     []string{pg1.GetPublicId(), pg2.GetPublicId()},
+					GrantScopeId: &wrapperspb.StringValue{Value: prGroupEmpty.GetScopeId()},
 				},
 			},
 			errCode: codes.OK,
@@ -1231,10 +1274,11 @@ func TestSetPrincipal(t *testing.T) {
 			},
 			res: &pbs.SetRolePrincipalsResponse{
 				Item: &pb.Role{
-					Id:          prWithGroup.GetPublicId(),
-					CreatedTime: prWithGroup.GetCreateTime().GetTimestamp(),
-					Version:     prWithGroup.GetVersion() + 1,
-					GroupIds:    []string{pg1.GetPublicId(), pg2.GetPublicId()},
+					Id:           prWithGroup.GetPublicId(),
+					CreatedTime:  prWithGroup.GetCreateTime().GetTimestamp(),
+					Version:      prWithGroup.GetVersion() + 1,
+					GroupIds:     []string{pg1.GetPublicId(), pg2.GetPublicId()},
+					GrantScopeId: &wrapperspb.StringValue{Value: prWithGroup.GetScopeId()},
 				},
 			},
 			errCode: codes.OK,
@@ -1315,20 +1359,20 @@ func TestRemovePrincipal(t *testing.T) {
 
 	ou1 := iam.TestUser(t, conn, o.GetPublicId())
 	ou2 := iam.TestUser(t, conn, o.GetPublicId())
-	_ = iam.TestUserRole(t, conn, o.GetPublicId(), orgUserRoles.GetPublicId(), iam.WithPublicId(ou1.GetPublicId()))
-	_ = iam.TestUserRole(t, conn, o.GetPublicId(), orgUserRoles.GetPublicId(), iam.WithPublicId(ou2.GetPublicId()))
-	_ = iam.TestUserRole(t, conn, p.GetPublicId(), projUserRoles.GetPublicId(), iam.WithPublicId(ou1.GetPublicId()))
-	_ = iam.TestUserRole(t, conn, p.GetPublicId(), projUserRoles.GetPublicId(), iam.WithPublicId(ou2.GetPublicId()))
+	_ = iam.TestUserRole(t, conn, orgUserRoles.GetPublicId(), ou1.GetPublicId())
+	_ = iam.TestUserRole(t, conn, orgUserRoles.GetPublicId(), ou2.GetPublicId())
+	_ = iam.TestUserRole(t, conn, projUserRoles.GetPublicId(), ou1.GetPublicId())
+	_ = iam.TestUserRole(t, conn, projUserRoles.GetPublicId(), ou2.GetPublicId())
 
 	og1 := iam.TestGroup(t, conn, o.GetPublicId())
 	og2 := iam.TestGroup(t, conn, o.GetPublicId())
-	_ = iam.TestGroupRole(t, conn, o.GetPublicId(), orgGroupRoles.GetPublicId(), iam.WithPublicId(og1.GetPublicId()))
-	_ = iam.TestGroupRole(t, conn, o.GetPublicId(), orgGroupRoles.GetPublicId(), iam.WithPublicId(og2.GetPublicId()))
+	_ = iam.TestGroupRole(t, conn, orgGroupRoles.GetPublicId(), og1.GetPublicId())
+	_ = iam.TestGroupRole(t, conn, orgGroupRoles.GetPublicId(), og2.GetPublicId())
 
 	pg1 := iam.TestGroup(t, conn, p.GetPublicId())
 	pg2 := iam.TestGroup(t, conn, p.GetPublicId())
-	_ = iam.TestGroupRole(t, conn, p.GetPublicId(), projGroupRoles.GetPublicId(), iam.WithPublicId(pg1.GetPublicId()))
-	_ = iam.TestGroupRole(t, conn, p.GetPublicId(), projGroupRoles.GetPublicId(), iam.WithPublicId(pg2.GetPublicId()))
+	_ = iam.TestGroupRole(t, conn, projGroupRoles.GetPublicId(), pg1.GetPublicId())
+	_ = iam.TestGroupRole(t, conn, projGroupRoles.GetPublicId(), pg2.GetPublicId())
 
 	s, err := roles.NewService(repoFn)
 	require.NoError(t, err, "Error when getting new role service.")
@@ -1349,10 +1393,11 @@ func TestRemovePrincipal(t *testing.T) {
 			},
 			res: &pbs.RemoveRolePrincipalsResponse{
 				Item: &pb.Role{
-					Id:          orgUserRoles.GetPublicId(),
-					CreatedTime: orgUserRoles.GetCreateTime().GetTimestamp(),
-					Version:     orgUserRoles.GetVersion() + 1,
-					UserIds:     []string{ou2.GetPublicId()},
+					Id:           orgUserRoles.GetPublicId(),
+					CreatedTime:  orgUserRoles.GetCreateTime().GetTimestamp(),
+					Version:      orgUserRoles.GetVersion() + 1,
+					UserIds:      []string{ou2.GetPublicId()},
+					GrantScopeId: &wrapperspb.StringValue{Value: orgUserRoles.GetScopeId()},
 				},
 			},
 			errCode: codes.OK,
@@ -1368,10 +1413,11 @@ func TestRemovePrincipal(t *testing.T) {
 			},
 			res: &pbs.RemoveRolePrincipalsResponse{
 				Item: &pb.Role{
-					Id:          projUserRoles.GetPublicId(),
-					CreatedTime: projUserRoles.GetCreateTime().GetTimestamp(),
-					Version:     projUserRoles.GetVersion() + 1,
-					UserIds:     []string{ou2.GetPublicId()},
+					Id:           projUserRoles.GetPublicId(),
+					CreatedTime:  projUserRoles.GetCreateTime().GetTimestamp(),
+					Version:      projUserRoles.GetVersion() + 1,
+					UserIds:      []string{ou2.GetPublicId()},
+					GrantScopeId: &wrapperspb.StringValue{Value: projUserRoles.GetScopeId()},
 				},
 			},
 			errCode: codes.OK,
@@ -1386,10 +1432,11 @@ func TestRemovePrincipal(t *testing.T) {
 			},
 			res: &pbs.RemoveRolePrincipalsResponse{
 				Item: &pb.Role{
-					Id:          orgGroupRoles.GetPublicId(),
-					CreatedTime: orgGroupRoles.GetCreateTime().GetTimestamp(),
-					Version:     orgGroupRoles.GetVersion() + 1,
-					GroupIds:    []string{og2.GetPublicId()},
+					Id:           orgGroupRoles.GetPublicId(),
+					CreatedTime:  orgGroupRoles.GetCreateTime().GetTimestamp(),
+					Version:      orgGroupRoles.GetVersion() + 1,
+					GroupIds:     []string{og2.GetPublicId()},
+					GrantScopeId: &wrapperspb.StringValue{Value: orgGroupRoles.GetScopeId()},
 				},
 			},
 			errCode: codes.OK,
@@ -1405,10 +1452,11 @@ func TestRemovePrincipal(t *testing.T) {
 			},
 			res: &pbs.RemoveRolePrincipalsResponse{
 				Item: &pb.Role{
-					Id:          projGroupRoles.GetPublicId(),
-					CreatedTime: projGroupRoles.GetCreateTime().GetTimestamp(),
-					Version:     projGroupRoles.GetVersion() + 1,
-					GroupIds:    []string{pg2.GetPublicId()},
+					Id:           projGroupRoles.GetPublicId(),
+					CreatedTime:  projGroupRoles.GetCreateTime().GetTimestamp(),
+					Version:      projGroupRoles.GetVersion() + 1,
+					GroupIds:     []string{pg2.GetPublicId()},
+					GrantScopeId: &wrapperspb.StringValue{Value: projGroupRoles.GetScopeId()},
 				},
 			},
 			errCode: codes.OK,

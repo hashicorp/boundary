@@ -27,8 +27,9 @@ var (
 	reInvalidID = regexp.MustCompile("[^A-Za-z0-9]")
 	// TODO(ICU-28): Find a way to auto update these names and enforce the mappings between wire and storage.
 	wireToStorageMask = map[string]string{
-		"name":        "Name",
-		"description": "Description",
+		"name":           "Name",
+		"description":    "Description",
+		"grant_scope_id": "GrantScopeId",
 	}
 )
 
@@ -189,6 +190,9 @@ func (s Service) createInRepo(ctx context.Context, scopeId string, item *pb.Role
 	if item.GetDescription() != nil {
 		opts = append(opts, iam.WithDescription(item.GetDescription().GetValue()))
 	}
+	if item.GetGrantScopeId() != nil {
+		opts = append(opts, iam.WithGrantScopeId(item.GetGrantScopeId().GetValue()))
+	}
 	u, err := iam.NewRole(scopeId, opts...)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "Unable to build role for creation: %v.", err)
@@ -215,6 +219,10 @@ func (s Service) updateInRepo(ctx context.Context, scopeId, id string, mask []st
 	if name := item.GetName(); name != nil {
 		opts = append(opts, iam.WithName(name.GetValue()))
 	}
+	if grantScopeId := item.GetGrantScopeId(); grantScopeId != nil {
+		opts = append(opts, iam.WithGrantScopeId(grantScopeId.GetValue()))
+	}
+
 	u, err := iam.NewRole(scopeId, opts...)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "Unable to build role for update: %v.", err)
@@ -368,6 +376,9 @@ func toProto(in *iam.Role, principals []iam.PrincipalRole) *pb.Role {
 		case iam.GroupRoleType.String():
 			out.GroupIds = append(out.GroupIds, p.GetPrincipalId())
 		}
+	}
+	if in.GetGrantScopeId() != "" {
+		out.GrantScopeId = &wrapperspb.StringValue{Value: in.GetGrantScopeId()}
 	}
 	return &out
 }
