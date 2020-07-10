@@ -27,8 +27,9 @@ var (
 	reInvalidID = regexp.MustCompile("[^A-Za-z0-9]")
 	// TODO(ICU-28): Find a way to auto update these names and enforce the mappings between wire and storage.
 	wireToStorageMask = map[string]string{
-		"name":        "Name",
-		"description": "Description",
+		"name":           "Name",
+		"description":    "Description",
+		"grant_scope_id": "GrantScopeId",
 	}
 )
 
@@ -189,6 +190,9 @@ func (s Service) createInRepo(ctx context.Context, scopeId string, item *pb.Role
 	if item.GetDescription() != nil {
 		opts = append(opts, iam.WithDescription(item.GetDescription().GetValue()))
 	}
+	if item.GetGrantScopeId() != nil {
+		opts = append(opts, iam.WithGrantScopeId(item.GetGrantScopeId().GetValue()))
+	}
 	u, err := iam.NewRole(scopeId, opts...)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "Unable to build role for creation: %v.", err)
@@ -215,6 +219,10 @@ func (s Service) updateInRepo(ctx context.Context, scopeId, id string, mask []st
 	if name := item.GetName(); name != nil {
 		opts = append(opts, iam.WithName(name.GetValue()))
 	}
+	if grantScopeId := item.GetGrantScopeId(); grantScopeId != nil {
+		opts = append(opts, iam.WithGrantScopeId(grantScopeId.GetValue()))
+	}
+
 	u, err := iam.NewRole(scopeId, opts...)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "Unable to build role for update: %v.", err)
@@ -369,6 +377,9 @@ func toProto(in *iam.Role, principals []iam.PrincipalRole) *pb.Role {
 			out.GroupIds = append(out.GroupIds, p.GetPrincipalId())
 		}
 	}
+	if in.GetGrantScopeId() != "" {
+		out.GrantScopeId = &wrapperspb.StringValue{Value: in.GetGrantScopeId()}
+	}
 	return &out
 }
 
@@ -400,6 +411,11 @@ func validateCreateRequest(req *pbs.CreateRoleRequest) error {
 	if item.GetUpdatedTime() != nil {
 		badFields["updated_time"] = "This is a read only field."
 	}
+	if item.GetGrantScopeId() != nil && req.ProjectId != "" {
+		if item.GetGrantScopeId().Value != req.ProjectId {
+			badFields["grant_scope_id"] = "Must be empty or set to the project_id when the scope type is project."
+		}
+	}
 	if len(badFields) > 0 {
 		return handlers.InvalidArgumentErrorf("Argument errors found in the request.", badFields)
 	}
@@ -429,6 +445,11 @@ func validateUpdateRequest(req *pbs.UpdateRoleRequest) error {
 	}
 	if item.GetUpdatedTime() != nil {
 		badFields["updated_time"] = "This is a read only field and cannot be specified in an update request."
+	}
+	if item.GetGrantScopeId() != nil && req.ProjectId != "" {
+		if item.GetGrantScopeId().Value != req.ProjectId {
+			badFields["grant_scope_id"] = "Must be empty or set to the project_id when the scope type is project."
+		}
 	}
 	if len(badFields) > 0 {
 		return handlers.InvalidArgumentErrorf("Errors in provided fields.", badFields)

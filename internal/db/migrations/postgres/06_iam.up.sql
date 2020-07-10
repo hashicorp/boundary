@@ -398,7 +398,6 @@ before
 insert on iam_role_grant
   for each row execute procedure default_create_time();
 
-
 -- prefix a_ to make this trigger run before ensure_grant_scope_id_valid
 create trigger a_immutable_scope_id
 before
