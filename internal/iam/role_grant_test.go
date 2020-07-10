@@ -142,7 +142,6 @@ func TestRoleGrant_Delete(t *testing.T) {
 	type args struct {
 		roleId string
 		grant  string
-		opt    []Option
 	}
 	tests := []struct {
 		name        string

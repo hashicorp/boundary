@@ -216,6 +216,7 @@ func Test_RoleUpdate(t *testing.T) {
 		scopeId         string
 		grantScopeId    string
 		scopeIdOverride string
+		opts            []db.Option
 	}
 	tests := []struct {
 		name           string
@@ -385,6 +386,18 @@ func Test_RoleUpdate(t *testing.T) {
 			wantErr:    true,
 			wantErrMsg: "update: failed: pq: invalid to set grant_scope_id to non-same scope_id when role scope type is project",
 		},
+		{
+			name: "attempt scope id update",
+			args: args{
+				name:           "valid" + id,
+				fieldMaskPaths: []string{"ScopeId"},
+				scopeId:        proj.PublicId,
+				opts:           []db.Option{db.WithSkipVetForWrite(true)},
+			},
+			wantErr:        true,
+			wantErrMsg:     "update: failed pq: scope_id cannot be set to " + proj.PublicId,
+			wantRowsUpdate: 0,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -412,7 +425,7 @@ func Test_RoleUpdate(t *testing.T) {
 			updateRole.Description = tt.args.description
 			updateRole.GrantScopeId = tt.args.grantScopeId
 
-			updatedRows, err := rw.Update(context.Background(), &updateRole, tt.args.fieldMaskPaths, tt.args.nullPaths)
+			updatedRows, err := rw.Update(context.Background(), &updateRole, tt.args.fieldMaskPaths, tt.args.nullPaths, tt.args.opts...)
 			if tt.wantErr {
 				require.Error(err)
 				assert.Equal(0, updatedRows)

@@ -830,6 +830,11 @@ before
 insert on iam_role_grant
   for each row execute procedure default_create_time();
 
+create trigger immutable_scope_id
+before
+update on iam_role
+  for each row execute procedure iam_immutable_scope_id_func();
+
 create trigger 
   update_version_column
 after update on iam_role
