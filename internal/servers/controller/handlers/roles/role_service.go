@@ -210,7 +210,7 @@ func (s Service) getFromRepo(ctx context.Context, id string) (*pb.Role, error) {
 	if err != nil {
 		return nil, err
 	}
-	out, pr, err := repo.LookupRole(ctx, id)
+	out, pr, roleGrants, err := repo.LookupRole(ctx, id)
 	if err != nil {
 		if errors.Is(err, db.ErrRecordNotFound) {
 			return nil, handlers.NotFoundErrorf("Role %q doesn't exist.", id)
@@ -220,7 +220,7 @@ func (s Service) getFromRepo(ctx context.Context, id string) (*pb.Role, error) {
 	if out == nil {
 		return nil, handlers.NotFoundErrorf("Role %q doesn't exist.", id)
 	}
-	return toProto(out, pr), nil
+	return toProto(out, pr, roleGrants), nil
 }
 
 func (s Service) createInRepo(ctx context.Context, scopeId string, item *pb.Role) (*pb.Role, error) {
@@ -246,7 +246,7 @@ func (s Service) createInRepo(ctx context.Context, scopeId string, item *pb.Role
 	if out == nil {
 		return nil, status.Error(codes.Internal, "Unable to create role but no error returned from repository.")
 	}
-	return toProto(out, nil), nil
+	return toProto(out, nil, nil), nil
 }
 
 func (s Service) updateInRepo(ctx context.Context, scopeId, id string, mask []string, item *pb.Role) (*pb.Role, error) {
@@ -280,7 +280,7 @@ func (s Service) updateInRepo(ctx context.Context, scopeId, id string, mask []st
 	if rowsUpdated == 0 {
 		return nil, handlers.NotFoundErrorf("Role %q doesn't exist.", id)
 	}
-	return toProto(out, nil), nil
+	return toProto(out, nil, nil), nil
 }
 
 func (s Service) deleteFromRepo(ctx context.Context, id string) (bool, error) {
@@ -309,7 +309,7 @@ func (s Service) listFromRepo(ctx context.Context, scopeId string) ([]*pb.Role, 
 	}
 	var outRl []*pb.Role
 	for _, g := range rl {
-		outRl = append(outRl, toProto(g, nil))
+		outRl = append(outRl, toProto(g, nil, nil))
 	}
 	return outRl, nil
 }
@@ -323,14 +323,14 @@ func (s Service) addPrinciplesInRepo(ctx context.Context, roleId string, userIds
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "Unable to add principles to role: %v.", err)
 	}
-	out, pr, err := repo.LookupRole(ctx, roleId)
+	out, pr, roleGrants, err := repo.LookupRole(ctx, roleId)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "Unable to look up role: %v.", err)
 	}
 	if out == nil {
 		return nil, status.Error(codes.Internal, "Unable to lookup role after adding principles to it.")
 	}
-	return toProto(out, pr), nil
+	return toProto(out, pr, roleGrants), nil
 }
 
 func (s Service) setPrinciplesInRepo(ctx context.Context, roleId string, userIds []string, groupIds []string, version uint32) (*pb.Role, error) {
@@ -342,14 +342,14 @@ func (s Service) setPrinciplesInRepo(ctx context.Context, roleId string, userIds
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "Unable to set principles on role: %v.", err)
 	}
-	out, pr, err := repo.LookupRole(ctx, roleId)
+	out, pr, roleGrants, err := repo.LookupRole(ctx, roleId)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "Unable to look up role: %v.", err)
 	}
 	if out == nil {
 		return nil, status.Error(codes.Internal, "Unable to lookup role after setting principles for it.")
 	}
-	return toProto(out, pr), nil
+	return toProto(out, pr, roleGrants), nil
 }
 
 func (s Service) removePrinciplesInRepo(ctx context.Context, roleId string, userIds []string, groupIds []string, version uint32) (*pb.Role, error) {
@@ -361,14 +361,14 @@ func (s Service) removePrinciplesInRepo(ctx context.Context, roleId string, user
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "Unable to remove principles from role: %v.", err)
 	}
-	out, pr, err := repo.LookupRole(ctx, roleId)
+	out, pr, roleGrants, err := repo.LookupRole(ctx, roleId)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "Unable to look up role: %v.", err)
 	}
 	if out == nil {
 		return nil, status.Error(codes.Internal, "Unable to lookup role after removing principles from it.")
 	}
-	return toProto(out, pr), nil
+	return toProto(out, pr, roleGrants), nil
 }
 
 func (s Service) addGrantsInRepo(ctx context.Context, roleId string, grants []string, version uint32) (*pb.Role, error) {
@@ -378,13 +378,13 @@ func (s Service) addGrantsInRepo(ctx context.Context, roleId string, grants []st
 	}
 	_, err = repo.AddRoleGrants(ctx, roleId, version, grants)
 	if err != nil {
-		return nil, status.Errorf(codes.Internal, "Unable to add principles to role: %v.", err)
+		return nil, status.Errorf(codes.Internal, "Unable to add grants to role: %v.", err)
 	}
-	out, pr, err := repo.LookupRole(ctx, roleId)
+	out, pr, roleGrants, err := repo.LookupRole(ctx, roleId)
 	if out == nil {
-		return nil, status.Error(codes.Internal, "Unable to lookup role after adding principles to it.")
+		return nil, status.Error(codes.Internal, "Unable to lookup role after adding grants to it.")
 	}
-	return toProto(out, pr), nil
+	return toProto(out, pr, roleGrants), nil
 }
 
 func (s Service) setGrantsInRepo(ctx context.Context, roleId string, grants []string, version uint32) (*pb.Role, error) {
@@ -394,13 +394,13 @@ func (s Service) setGrantsInRepo(ctx context.Context, roleId string, grants []st
 	}
 	_, _, err = repo.SetRoleGrants(ctx, roleId, version, grants)
 	if err != nil {
-		return nil, status.Errorf(codes.Internal, "Unable to set principles on role: %v.", err)
+		return nil, status.Errorf(codes.Internal, "Unable to set grants on role: %v.", err)
 	}
-	out, pr, err := repo.LookupRole(ctx, roleId)
+	out, pr, roleGrants, err := repo.LookupRole(ctx, roleId)
 	if out == nil {
-		return nil, status.Error(codes.Internal, "Unable to lookup role after setting principles for it.")
+		return nil, status.Error(codes.Internal, "Unable to lookup role after setting grants for it.")
 	}
-	return toProto(out, pr), nil
+	return toProto(out, pr, roleGrants), nil
 }
 
 func (s Service) removeGrantsInRepo(ctx context.Context, roleId string, grants []string, version uint32) (*pb.Role, error) {
@@ -410,13 +410,13 @@ func (s Service) removeGrantsInRepo(ctx context.Context, roleId string, grants [
 	}
 	_, err = repo.DeleteRoleGrants(ctx, roleId, version, grants)
 	if err != nil {
-		return nil, status.Errorf(codes.Internal, "Unable to remove principles from role: %v.", err)
+		return nil, status.Errorf(codes.Internal, "Unable to remove grants from role: %v.", err)
 	}
-	out, pr, err := repo.LookupRole(ctx, roleId)
+	out, pr, roleGrants, err := repo.LookupRole(ctx, roleId)
 	if out == nil {
-		return nil, status.Error(codes.Internal, "Unable to lookup role after removing principles from it.")
+		return nil, status.Error(codes.Internal, "Unable to lookup role after removing grants from it.")
 	}
-	return toProto(out, pr), nil
+	return toProto(out, pr, roleGrants), nil
 }
 
 // toDbUpdateMask converts the wire format's FieldMask into a list of strings containing FieldMask paths used
@@ -438,7 +438,7 @@ func toDbUpdateMask(paths []string) ([]string, error) {
 	return dbPaths, nil
 }
 
-func toProto(in *iam.Role, principals []iam.PrincipalRole) *pb.Role {
+func toProto(in *iam.Role, principals []iam.PrincipalRole, grants []*iam.RoleGrant) *pb.Role {
 	out := pb.Role{
 		Id:          in.GetPublicId(),
 		CreatedTime: in.GetCreateTime().GetTimestamp(),
@@ -458,6 +458,10 @@ func toProto(in *iam.Role, principals []iam.PrincipalRole) *pb.Role {
 		case iam.GroupRoleType.String():
 			out.GroupIds = append(out.GroupIds, p.GetPrincipalId())
 		}
+	}
+	for _, g := range grants {
+		out.Grants = append(out.Grants, g.GetRawGrant())
+		out.CanonicalGrants = append(out.CanonicalGrants, g.GetCanonicalGrant())
 	}
 	return &out
 }

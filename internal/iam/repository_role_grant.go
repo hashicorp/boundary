@@ -291,7 +291,7 @@ func (r *Repository) SetRoleGrants(ctx context.Context, roleId string, roleVersi
 			}
 			updatedRole := allocRole()
 			updatedRole.PublicId = roleId
-			updatedRole.Version = uint32(roleVersion) + 1
+			updatedRole.Version = roleVersion + 1
 			var roleOplogMsg oplog.Message
 			rowsUpdated, err := w.Update(ctx, &updatedRole, []string{"Version"}, nil, db.NewOplogMsg(&roleOplogMsg), db.WithVersion(roleVersion))
 			if err != nil {

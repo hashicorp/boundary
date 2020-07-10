@@ -49,6 +49,9 @@ type Role struct {
 	// The grants that this role provides for it's principals.
 	// Output only.
 	Grants []string `json:"grants,omitempty"`
+	// The canonical version of the grants in the grants field with the same index.
+	// Output only.
+	CanonicalGrants []string `json:"canonical_grants,omitempty"`
 }
 
 func (s *Role) SetDefault(key string) {
