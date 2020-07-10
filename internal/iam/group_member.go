@@ -9,6 +9,8 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
+const groupMemberDefaultTable = "iam_group_member"
+
 // GroupMember is a group member that's a User
 type GroupMember struct {
 	*store.GroupMember
@@ -69,12 +71,15 @@ func (m *GroupMember) TableName() string {
 	if m.tableName != "" {
 		return m.tableName
 	}
-	return "iam_group_member"
+	return groupMemberDefaultTable
 }
 
 // SetTableName sets the tablename and satisfies the ReplayableMessage interface
 func (m *GroupMember) SetTableName(n string) {
-	if n != "" {
+	switch n {
+	case "":
+		m.tableName = groupMemberDefaultTable
+	default:
 		m.tableName = n
 	}
 }
