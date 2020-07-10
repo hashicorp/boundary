@@ -795,12 +795,12 @@ create table iam_role (
   create table iam_role_grant (
     create_time wt_timestamp,
     update_time wt_timestamp,
-    role_id wt_public_id not null
+    role_id wt_public_id -- pk
       references iam_role(public_id)
       on delete cascade
       on update cascade,
     raw_grant text not null,
-    canonical_grant text not null,
+    canonical_grant text, -- pk
     primary key(role_id, canonical_grant)
   );
 
