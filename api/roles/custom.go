@@ -32,7 +32,7 @@ func (s Role) AddPrincipals(ctx context.Context, groups, users []string) (*Role,
 	target := new(Role)
 	apiErr, err := resp.Decode(target)
 	if err != nil {
-		return nil, nil, fmt.Errorf("error decoding ReadRole repsonse: %w", err)
+		return nil, nil, fmt.Errorf("error decoding AddPrincipals repsonse: %w", err)
 	}
 
 	target.Client = s.Client
@@ -42,7 +42,7 @@ func (s Role) AddPrincipals(ctx context.Context, groups, users []string) (*Role,
 
 func (s Role) SetPrincipals(ctx context.Context, groups, users []string) (*Role, *api.Error, error) {
 	if s.Client == nil {
-		return nil, nil, fmt.Errorf("nil client in ReadRole request")
+		return nil, nil, fmt.Errorf("nil client in SetPrincipals request")
 	}
 	// We assume that the client provided has the org and optionally the project id of the request.
 
@@ -54,18 +54,18 @@ func (s Role) SetPrincipals(ctx context.Context, groups, users []string) (*Role,
 
 	req, err := s.Client.NewRequest(ctx, "POST", fmt.Sprintf("roles/%s:set-principals", s.Id), body)
 	if err != nil {
-		return nil, nil, fmt.Errorf("error creating ReadRole request: %w", err)
+		return nil, nil, fmt.Errorf("error creating SetPrincipals request: %w", err)
 	}
 
 	resp, err := s.Client.Do(req)
 	if err != nil {
-		return nil, nil, fmt.Errorf("error performing client request during ReadRole call: %w", err)
+		return nil, nil, fmt.Errorf("error performing client request during SetPrincipals call: %w", err)
 	}
 
 	target := new(Role)
 	apiErr, err := resp.Decode(target)
 	if err != nil {
-		return nil, nil, fmt.Errorf("error decoding ReadRole repsonse: %w", err)
+		return nil, nil, fmt.Errorf("error decoding SetPrincipals repsonse: %w", err)
 	}
 
 	target.Client = s.Client
@@ -75,7 +75,7 @@ func (s Role) SetPrincipals(ctx context.Context, groups, users []string) (*Role,
 
 func (s Role) RemovePrincipals(ctx context.Context, groups, users []string) (*Role, *api.Error, error) {
 	if s.Client == nil {
-		return nil, nil, fmt.Errorf("nil client in ReadRole request")
+		return nil, nil, fmt.Errorf("nil client in RemovePrincipals request")
 	}
 	// We assume that the client provided has the org and optionally the project id of the request.
 
@@ -87,18 +87,18 @@ func (s Role) RemovePrincipals(ctx context.Context, groups, users []string) (*Ro
 
 	req, err := s.Client.NewRequest(ctx, "POST", fmt.Sprintf("roles/%s:remove-principals", s.Id), body)
 	if err != nil {
-		return nil, nil, fmt.Errorf("error creating ReadRole request: %w", err)
+		return nil, nil, fmt.Errorf("error creating RemovePrincipals request: %w", err)
 	}
 
 	resp, err := s.Client.Do(req)
 	if err != nil {
-		return nil, nil, fmt.Errorf("error performing client request during ReadRole call: %w", err)
+		return nil, nil, fmt.Errorf("error performing client request during RemovePrincipals call: %w", err)
 	}
 
 	target := new(Role)
 	apiErr, err := resp.Decode(target)
 	if err != nil {
-		return nil, nil, fmt.Errorf("error decoding ReadRole repsonse: %w", err)
+		return nil, nil, fmt.Errorf("error decoding RemovePrincipals repsonse: %w", err)
 	}
 
 	target.Client = s.Client
