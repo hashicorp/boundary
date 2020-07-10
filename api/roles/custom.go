@@ -21,7 +21,7 @@ func (s Role) AddPrincipals(ctx context.Context, groups, users []string) (*Role,
 
 	req, err := s.Client.NewRequest(ctx, "POST", fmt.Sprintf("roles/%s:add-principals", s.Id), body)
 	if err != nil {
-		return nil, nil, fmt.Errorf("error creating ReadRole request: %w", err)
+		return nil, nil, fmt.Errorf("error creating AddPrincipals request: %w", err)
 	}
 
 	resp, err := s.Client.Do(req)
