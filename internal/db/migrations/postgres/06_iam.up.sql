@@ -331,11 +331,14 @@ create table iam_role (
     unique(scope_id, public_id)
   );
 
--- Grants are immutable, which is enforced via the trigger below
-create table iam_role_grant (
+  -- Grants are immutable, which is enforced via the trigger below
+  create table iam_role_grant (
     create_time wt_timestamp,
     update_time wt_timestamp,
-    role_id wt_public_id not null references iam_role(public_id) on delete cascade on update cascade,
+    role_id wt_public_id not null
+      references iam_role(public_id)
+      on delete cascade
+      on update cascade,
     raw_grant text not null,
     canonical_grant text not null,
     primary key(role_id, canonical_grant)
