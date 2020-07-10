@@ -386,18 +386,6 @@ func Test_RoleUpdate(t *testing.T) {
 			wantErr:    true,
 			wantErrMsg: "update: failed: pq: invalid to set grant_scope_id to non-same scope_id when role scope type is project",
 		},
-		{
-			name: "attempt scope id update",
-			args: args{
-				name:           "valid" + id,
-				fieldMaskPaths: []string{"ScopeId"},
-				scopeId:        proj.PublicId,
-				opts:           []db.Option{db.WithSkipVetForWrite(true)},
-			},
-			wantErr:        true,
-			wantErrMsg:     "update: failed pq: scope_id cannot be set to " + proj.PublicId,
-			wantRowsUpdate: 0,
-		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -468,6 +456,17 @@ func Test_RoleUpdate(t *testing.T) {
 		err = rw.LookupByPublicId(context.Background(), &foundRole)
 		require.NoError(err)
 		assert.Equal(id, projRole.Name)
+	})
+	t.Run("attempt scope id update", func(t *testing.T) {
+		assert, require := assert.New(t), require.New(t)
+		role := TestRole(t, conn, org.PublicId, WithDescription(id), WithName(id))
+		updateRole := allocRole()
+		updateRole.PublicId = role.PublicId
+		updateRole.ScopeId = proj.PublicId
+		updatedRows, err := rw.Update(context.Background(), &updateRole, []string{"ScopeId"}, nil, db.WithSkipVetForWrite(true))
+		require.Error(err)
+		assert.Equal(0, updatedRows)
+		assert.Equal("update: failed: pq: scope_id cannot be set to "+proj.PublicId, err.Error())
 	})
 }
 

@@ -339,7 +339,7 @@ func TestRepository_UpdateUser(t *testing.T) {
 				case "dup-name":
 					assert.Equal(fmt.Sprintf(tt.wantErrMsg, "dup-name"+id, org.PublicId), err.Error())
 				default:
-					assert.True(strings.Contains(err.Error(), tt.wantErrMsg), "%s", err.Error())
+					assert.Containsf(err.Error(), tt.wantErrMsg, "unexpected error: %s", err.Error())
 				}
 				err = db.TestVerifyOplog(t, rw, u.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_UPDATE), db.WithCreateNotBefore(10*time.Second))
 				require.Error(err)
