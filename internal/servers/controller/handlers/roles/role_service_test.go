@@ -1280,7 +1280,7 @@ func TestSetPrincipal(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			assert := assert.New(t)
 			got, gErr := s.SetRolePrincipals(context.Background(), tc.req)
-			assert.Equal(tc.errCode, status.Code(gErr), "AddRolePrincipals(%+v) got error %v, wanted %v", tc.req, gErr, tc.errCode)
+			assert.Equal(tc.errCode, status.Code(gErr), "SetRolePrincipals(%+v) got error %v, wanted %v", tc.req, gErr, tc.errCode)
 
 			if tc.res == nil {
 				require.Nil(t, got)
@@ -1292,7 +1292,7 @@ func TestSetPrincipal(t *testing.T) {
 			sort.Strings(tc.res.Item.UserIds)
 			sort.Strings(tc.res.Item.GroupIds)
 			assert.Emptyf(cmp.Diff(tc.res, got, protocmp.Transform()),
-				"AddRolePrincipals(%+v) got response %v, wanted %v", tc.req, got, tc.res)
+				"SetRolePrincipals(%+v) got response %v, wanted %v", tc.req, got, tc.res)
 		})
 	}
 }
@@ -1476,7 +1476,7 @@ func TestRemovePrincipal(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			assert := assert.New(t)
 			got, gErr := s.RemoveRolePrincipals(context.Background(), tc.req)
-			assert.Equal(tc.errCode, status.Code(gErr), "AddRolePrincipals(%+v) got error %v, wanted %v", tc.req, gErr, tc.errCode)
+			assert.Equal(tc.errCode, status.Code(gErr), "RemoveRolePrincipals(%+v) got error %v, wanted %v", tc.req, gErr, tc.errCode)
 
 			if tc.res == nil {
 				require.Nil(t, got)
@@ -1488,7 +1488,535 @@ func TestRemovePrincipal(t *testing.T) {
 			sort.Strings(tc.res.Item.UserIds)
 			sort.Strings(tc.res.Item.GroupIds)
 			assert.Emptyf(cmp.Diff(tc.res, got, protocmp.Transform()),
-				"AddRolePrincipals(%+v) got response %v, wanted %v", tc.req, got, tc.res)
+				"RemoveRolePrincipals(%+v) got response %v, wanted %v", tc.req, got, tc.res)
+		})
+	}
+}
+
+func TestAddGrants(t *testing.T) {
+	conn, _ := db.TestSetup(t, "postgres")
+	rw := db.New(conn)
+	wrap := db.TestWrapper(t)
+	repoFn := func() (*iam.Repository, error) {
+		return iam.NewRepository(rw, rw, wrap)
+	}
+	o, p := iam.TestScopes(t, conn)
+
+	orgRole := iam.TestRole(t, conn, o.GetPublicId())
+	projRole := iam.TestRole(t, conn, p.GetPublicId())
+
+	existingGrant := "id=*;action=read"
+
+	orgRoleWithGrants := iam.TestRole(t, conn, o.GetPublicId())
+	iam.TestRoleGrant(t, conn, orgRoleWithGrants.GetPublicId(), existingGrant)
+	projRoleWithGrants := iam.TestRole(t, conn, p.GetPublicId())
+	iam.TestRoleGrant(t, conn, projRoleWithGrants.GetPublicId(), existingGrant)
+
+	s, err := roles.NewService(repoFn)
+	require.NoError(t, err, "Error when getting new role service.")
+
+	cases := []struct {
+		name    string
+		req     *pbs.AddRoleGrantsRequest
+		res     *pbs.AddRoleGrantsResponse
+		errCode codes.Code
+	}{
+		{
+			name: "Add Grant Empty Org Role",
+			req: &pbs.AddRoleGrantsRequest{
+				OrgId:   orgRole.GetScopeId(),
+				RoleId:  orgRole.GetPublicId(),
+				Grants:  []string{"id=*;action=delete"},
+				Version: &wrapperspb.UInt32Value{Value: orgRole.GetVersion()},
+			},
+			res: &pbs.AddRoleGrantsResponse{
+				Item: &pb.Role{
+					Id:          orgRole.GetPublicId(),
+					CreatedTime: orgRole.GetCreateTime().GetTimestamp(),
+					Version:     orgRole.GetVersion() + 1,
+					Grants:      []string{"id=*;action=delete"},
+				},
+			},
+			errCode: codes.OK,
+		},
+		{
+			name: "Add Grant Populated Org Role",
+			req: &pbs.AddRoleGrantsRequest{
+				OrgId:   orgRoleWithGrants.GetScopeId(),
+				RoleId:  orgRoleWithGrants.GetPublicId(),
+				Grants:  []string{"id=*;actions=delete"},
+				Version: &wrapperspb.UInt32Value{Value: orgRoleWithGrants.GetVersion()},
+			},
+			res: &pbs.AddRoleGrantsResponse{
+				Item: &pb.Role{
+					Id:          orgRoleWithGrants.GetPublicId(),
+					CreatedTime: orgRoleWithGrants.GetCreateTime().GetTimestamp(),
+					Version:     orgRoleWithGrants.GetVersion() + 1,
+					Grants:      []string{"id=*;action=delete", existingGrant},
+				},
+			},
+			errCode: codes.OK,
+		},
+		{
+			name: "Add Duplicate Grant To Org Role",
+			req: &pbs.AddRoleGrantsRequest{
+				OrgId:   orgRoleWithGrants.GetScopeId(),
+				RoleId:  orgRoleWithGrants.GetPublicId(),
+				Grants:  []string{existingGrant},
+				Version: &wrapperspb.UInt32Value{Value: orgRoleWithGrants.GetVersion()},
+			},
+			res: &pbs.AddRoleGrantsResponse{
+				Item: &pb.Role{
+					Id:          orgRoleWithGrants.GetPublicId(),
+					CreatedTime: orgRoleWithGrants.GetCreateTime().GetTimestamp(),
+					Version:     orgRoleWithGrants.GetVersion() + 1,
+					Grants:      []string{existingGrant},
+				},
+			},
+			errCode: codes.OK,
+		},
+		{
+			name: "Add Grant Empty Project Role",
+			req: &pbs.AddRoleGrantsRequest{
+				OrgId:     o.GetPublicId(),
+				ProjectId: projRole.GetScopeId(),
+				RoleId:    projRole.GetPublicId(),
+				Grants:    []string{"id=*;actions=delete"},
+				Version:   &wrapperspb.UInt32Value{Value: projRole.GetVersion()},
+			},
+			res: &pbs.AddRoleGrantsResponse{
+				Item: &pb.Role{
+					Id:          projRole.GetPublicId(),
+					CreatedTime: projRole.GetCreateTime().GetTimestamp(),
+					Version:     projRole.GetVersion() + 1,
+					Grants:      []string{"id=*;action=delete"},
+				},
+			},
+			errCode: codes.OK,
+		},
+		{
+			name: "Add User Populated Project Role",
+			req: &pbs.AddRoleGrantsRequest{
+				OrgId:     o.GetPublicId(),
+				ProjectId: projRoleWithGrants.GetScopeId(),
+				RoleId:    projRoleWithGrants.GetPublicId(),
+				Grants:    []string{"id=*;actions=delete"},
+				Version:   &wrapperspb.UInt32Value{Value: projRoleWithGrants.GetVersion()},
+			},
+			res: &pbs.AddRoleGrantsResponse{
+				Item: &pb.Role{
+					Id:          projRoleWithGrants.GetPublicId(),
+					CreatedTime: projRoleWithGrants.GetCreateTime().GetTimestamp(),
+					Version:     projRoleWithGrants.GetVersion() + 1,
+					Grants:      []string{"id=*;action=delete", existingGrant},
+				},
+			},
+			errCode: codes.OK,
+		},
+		{
+			name: "Bad Org Id",
+			req: &pbs.AddRoleGrantsRequest{
+				OrgId:     "",
+				ProjectId: projRoleWithGrants.GetScopeId(),
+				RoleId:    projRoleWithGrants.GetPublicId(),
+				Grants:    []string{"id=*;actions=create"},
+				Version:   &wrapperspb.UInt32Value{Value: projRoleWithGrants.GetVersion()},
+			},
+			res:     nil,
+			errCode: codes.InvalidArgument,
+		},
+		{
+			name: "Bad Project Id",
+			req: &pbs.AddRoleGrantsRequest{
+				OrgId:     o.GetPublicId(),
+				ProjectId: "bad id",
+				RoleId:    projRoleWithGrants.GetPublicId(),
+				Grants:    []string{"id=*;actions=create"},
+				Version:   &wrapperspb.UInt32Value{Value: projRoleWithGrants.GetVersion()},
+			},
+			res:     nil,
+			errCode: codes.InvalidArgument,
+		},
+		{
+			name: "Bad Role Id",
+			req: &pbs.AddRoleGrantsRequest{
+				OrgId:     o.GetPublicId(),
+				ProjectId: projRoleWithGrants.GetScopeId(),
+				RoleId:    "bad id",
+				Grants:    []string{"id=*;actions=create"},
+				Version:   &wrapperspb.UInt32Value{Value: projRoleWithGrants.GetVersion()},
+			},
+			res:     nil,
+			errCode: codes.InvalidArgument,
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			assert := assert.New(t)
+			got, gErr := s.AddRoleGrants(context.Background(), tc.req)
+			assert.Equal(tc.errCode, status.Code(gErr), "AddRoleGrants(%+v) got error %v, wanted %v", tc.req, gErr, tc.errCode)
+
+			if tc.res == nil {
+				require.Nil(t, got)
+				return
+			}
+			got.Item.UpdatedTime = nil
+			sort.Strings(got.Item.Grants)
+			sort.Strings(tc.res.Item.Grants)
+			assert.Emptyf(cmp.Diff(tc.res, got, protocmp.Transform()),
+				"AddRoleGrants(%+v) got response %v, wanted %v", tc.req, got, tc.res)
+		})
+	}
+}
+
+func TestSetGrants(t *testing.T) {
+	conn, _ := db.TestSetup(t, "postgres")
+	rw := db.New(conn)
+	wrap := db.TestWrapper(t)
+	repoFn := func() (*iam.Repository, error) {
+		return iam.NewRepository(rw, rw, wrap)
+	}
+	o, p := iam.TestScopes(t, conn)
+
+	orgRole := iam.TestRole(t, conn, o.GetPublicId())
+	projRole := iam.TestRole(t, conn, p.GetPublicId())
+
+	existingGrant := "id=*;action=read"
+
+	orgRoleWithGrants := iam.TestRole(t, conn, o.GetPublicId())
+	iam.TestRoleGrant(t, conn, orgRoleWithGrants.GetPublicId(), existingGrant)
+	projRoleWithGrants := iam.TestRole(t, conn, p.GetPublicId())
+	iam.TestRoleGrant(t, conn, projRoleWithGrants.GetPublicId(), existingGrant)
+
+	s, err := roles.NewService(repoFn)
+	require.NoError(t, err, "Error when getting new role service.")
+
+	cases := []struct {
+		name    string
+		req     *pbs.SetRoleGrantsRequest
+		res     *pbs.SetRoleGrantsResponse
+		errCode codes.Code
+	}{
+		{
+			name: "Set Grant Empty Org Role",
+			req: &pbs.SetRoleGrantsRequest{
+				OrgId:   orgRole.GetScopeId(),
+				RoleId:  orgRole.GetPublicId(),
+				Grants:  []string{"id=*;action=delete"},
+				Version: &wrapperspb.UInt32Value{Value: orgRole.GetVersion()},
+			},
+			res: &pbs.SetRoleGrantsResponse{
+				Item: &pb.Role{
+					Id:          orgRole.GetPublicId(),
+					CreatedTime: orgRole.GetCreateTime().GetTimestamp(),
+					Version:     orgRole.GetVersion() + 1,
+					Grants:      []string{"id=*;action=delete"},
+				},
+			},
+			errCode: codes.OK,
+		},
+		{
+			name: "Set Grant Populated Org Role",
+			req: &pbs.SetRoleGrantsRequest{
+				OrgId:   orgRoleWithGrants.GetScopeId(),
+				RoleId:  orgRoleWithGrants.GetPublicId(),
+				Grants:  []string{"id=*;actions=delete"},
+				Version: &wrapperspb.UInt32Value{Value: orgRoleWithGrants.GetVersion()},
+			},
+			res: &pbs.SetRoleGrantsResponse{
+				Item: &pb.Role{
+					Id:          orgRoleWithGrants.GetPublicId(),
+					CreatedTime: orgRoleWithGrants.GetCreateTime().GetTimestamp(),
+					Version:     orgRoleWithGrants.GetVersion() + 1,
+					Grants:      []string{"id=*;action=delete"},
+				},
+			},
+			errCode: codes.OK,
+		},
+		{
+			name: "Set Duplicate Grant To Org Role",
+			req: &pbs.SetRoleGrantsRequest{
+				OrgId:   orgRoleWithGrants.GetScopeId(),
+				RoleId:  orgRoleWithGrants.GetPublicId(),
+				Grants:  []string{existingGrant},
+				Version: &wrapperspb.UInt32Value{Value: orgRoleWithGrants.GetVersion()},
+			},
+			res: &pbs.SetRoleGrantsResponse{
+				Item: &pb.Role{
+					Id:          orgRoleWithGrants.GetPublicId(),
+					CreatedTime: orgRoleWithGrants.GetCreateTime().GetTimestamp(),
+					Version:     orgRoleWithGrants.GetVersion() + 1,
+					Grants:      []string{existingGrant},
+				},
+			},
+			errCode: codes.OK,
+		},
+		{
+			name: "Set Grant Empty Project Role",
+			req: &pbs.SetRoleGrantsRequest{
+				OrgId:     o.GetPublicId(),
+				ProjectId: projRole.GetScopeId(),
+				RoleId:    projRole.GetPublicId(),
+				Grants:    []string{"id=*;actions=delete"},
+				Version:   &wrapperspb.UInt32Value{Value: projRole.GetVersion()},
+			},
+			res: &pbs.SetRoleGrantsResponse{
+				Item: &pb.Role{
+					Id:          projRole.GetPublicId(),
+					CreatedTime: projRole.GetCreateTime().GetTimestamp(),
+					Version:     projRole.GetVersion() + 1,
+					Grants:      []string{"id=*;action=delete"},
+				},
+			},
+			errCode: codes.OK,
+		},
+		{
+			name: "Set User Populated Project Role",
+			req: &pbs.SetRoleGrantsRequest{
+				OrgId:     o.GetPublicId(),
+				ProjectId: projRoleWithGrants.GetScopeId(),
+				RoleId:    projRoleWithGrants.GetPublicId(),
+				Grants:    []string{"id=*;actions=delete"},
+				Version:   &wrapperspb.UInt32Value{Value: projRoleWithGrants.GetVersion()},
+			},
+			res: &pbs.SetRoleGrantsResponse{
+				Item: &pb.Role{
+					Id:          projRoleWithGrants.GetPublicId(),
+					CreatedTime: projRoleWithGrants.GetCreateTime().GetTimestamp(),
+					Version:     projRoleWithGrants.GetVersion() + 1,
+					Grants:      []string{"id=*;action=delete"},
+				},
+			},
+			errCode: codes.OK,
+		},
+		{
+			name: "Bad Org Id",
+			req: &pbs.SetRoleGrantsRequest{
+				OrgId:     "",
+				ProjectId: projRoleWithGrants.GetScopeId(),
+				RoleId:    projRoleWithGrants.GetPublicId(),
+				Grants:    []string{"id=*;actions=create"},
+				Version:   &wrapperspb.UInt32Value{Value: projRoleWithGrants.GetVersion()},
+			},
+			res:     nil,
+			errCode: codes.InvalidArgument,
+		},
+		{
+			name: "Bad Project Id",
+			req: &pbs.SetRoleGrantsRequest{
+				OrgId:     o.GetPublicId(),
+				ProjectId: "bad id",
+				RoleId:    projRoleWithGrants.GetPublicId(),
+				Grants:    []string{"id=*;actions=create"},
+				Version:   &wrapperspb.UInt32Value{Value: projRoleWithGrants.GetVersion()},
+			},
+			res:     nil,
+			errCode: codes.InvalidArgument,
+		},
+		{
+			name: "Bad Role Id",
+			req: &pbs.SetRoleGrantsRequest{
+				OrgId:     o.GetPublicId(),
+				ProjectId: projRoleWithGrants.GetScopeId(),
+				RoleId:    "bad id",
+				Grants:    []string{"id=*;actions=create"},
+				Version:   &wrapperspb.UInt32Value{Value: projRoleWithGrants.GetVersion()},
+			},
+			res:     nil,
+			errCode: codes.InvalidArgument,
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			assert := assert.New(t)
+			got, gErr := s.SetRoleGrants(context.Background(), tc.req)
+			assert.Equal(tc.errCode, status.Code(gErr), "SetRoleGrants(%+v) got error %v, wanted %v", tc.req, gErr, tc.errCode)
+
+			if tc.res == nil {
+				require.Nil(t, got)
+				return
+			}
+			got.Item.UpdatedTime = nil
+			sort.Strings(got.Item.Grants)
+			sort.Strings(tc.res.Item.Grants)
+			assert.Emptyf(cmp.Diff(tc.res, got, protocmp.Transform()),
+				"SetRoleGrants(%+v) got response %v, wanted %v", tc.req, got, tc.res)
+		})
+	}
+}
+
+func TestRemoveGrants(t *testing.T) {
+	conn, _ := db.TestSetup(t, "postgres")
+	rw := db.New(conn)
+	wrap := db.TestWrapper(t)
+	repoFn := func() (*iam.Repository, error) {
+		return iam.NewRepository(rw, rw, wrap)
+	}
+	o, p := iam.TestScopes(t, conn)
+
+	orgRole := iam.TestRole(t, conn, o.GetPublicId())
+	projRole := iam.TestRole(t, conn, p.GetPublicId())
+
+	existingGrant := "id=*;action=read"
+
+	orgRoleWithGrants := iam.TestRole(t, conn, o.GetPublicId())
+	iam.TestRoleGrant(t, conn, orgRoleWithGrants.GetPublicId(), existingGrant)
+	projRoleWithGrants := iam.TestRole(t, conn, p.GetPublicId())
+	iam.TestRoleGrant(t, conn, projRoleWithGrants.GetPublicId(), existingGrant)
+
+	s, err := roles.NewService(repoFn)
+	require.NoError(t, err, "Error when getting new role service.")
+
+	cases := []struct {
+		name    string
+		req     *pbs.RemoveRoleGrantsRequest
+		res     *pbs.RemoveRoleGrantsResponse
+		errCode codes.Code
+	}{
+		{
+			name: "Set Grant Empty Org Role",
+			req: &pbs.RemoveRoleGrantsRequest{
+				OrgId:   orgRole.GetScopeId(),
+				RoleId:  orgRole.GetPublicId(),
+				Grants:  []string{"id=*;action=delete"},
+				Version: &wrapperspb.UInt32Value{Value: orgRole.GetVersion()},
+			},
+			res: &pbs.RemoveRoleGrantsResponse{
+				Item: &pb.Role{
+					Id:          orgRole.GetPublicId(),
+					CreatedTime: orgRole.GetCreateTime().GetTimestamp(),
+					Version:     orgRole.GetVersion() + 1,
+					Grants:      []string{"id=*;action=delete"},
+				},
+			},
+			errCode: codes.OK,
+		},
+		{
+			name: "Set Grant Populated Org Role",
+			req: &pbs.RemoveRoleGrantsRequest{
+				OrgId:   orgRoleWithGrants.GetScopeId(),
+				RoleId:  orgRoleWithGrants.GetPublicId(),
+				Grants:  []string{"id=*;actions=delete"},
+				Version: &wrapperspb.UInt32Value{Value: orgRoleWithGrants.GetVersion()},
+			},
+			res: &pbs.RemoveRoleGrantsResponse{
+				Item: &pb.Role{
+					Id:          orgRoleWithGrants.GetPublicId(),
+					CreatedTime: orgRoleWithGrants.GetCreateTime().GetTimestamp(),
+					Version:     orgRoleWithGrants.GetVersion() + 1,
+					Grants:      []string{"id=*;action=delete"},
+				},
+			},
+			errCode: codes.OK,
+		},
+		{
+			name: "Set Duplicate Grant To Org Role",
+			req: &pbs.RemoveRoleGrantsRequest{
+				OrgId:   orgRoleWithGrants.GetScopeId(),
+				RoleId:  orgRoleWithGrants.GetPublicId(),
+				Grants:  []string{existingGrant},
+				Version: &wrapperspb.UInt32Value{Value: orgRoleWithGrants.GetVersion()},
+			},
+			res: &pbs.RemoveRoleGrantsResponse{
+				Item: &pb.Role{
+					Id:          orgRoleWithGrants.GetPublicId(),
+					CreatedTime: orgRoleWithGrants.GetCreateTime().GetTimestamp(),
+					Version:     orgRoleWithGrants.GetVersion() + 1,
+					Grants:      []string{existingGrant},
+				},
+			},
+			errCode: codes.OK,
+		},
+		{
+			name: "Set Grant Empty Project Role",
+			req: &pbs.RemoveRoleGrantsRequest{
+				OrgId:     o.GetPublicId(),
+				ProjectId: projRole.GetScopeId(),
+				RoleId:    projRole.GetPublicId(),
+				Grants:    []string{"id=*;actions=delete"},
+				Version:   &wrapperspb.UInt32Value{Value: projRole.GetVersion()},
+			},
+			res: &pbs.RemoveRoleGrantsResponse{
+				Item: &pb.Role{
+					Id:          projRole.GetPublicId(),
+					CreatedTime: projRole.GetCreateTime().GetTimestamp(),
+					Version:     projRole.GetVersion() + 1,
+					Grants:      []string{"id=*;action=delete"},
+				},
+			},
+			errCode: codes.OK,
+		},
+		{
+			name: "Set User Populated Project Role",
+			req: &pbs.RemoveRoleGrantsRequest{
+				OrgId:     o.GetPublicId(),
+				ProjectId: projRoleWithGrants.GetScopeId(),
+				RoleId:    projRoleWithGrants.GetPublicId(),
+				Grants:    []string{"id=*;actions=delete"},
+				Version:   &wrapperspb.UInt32Value{Value: projRoleWithGrants.GetVersion()},
+			},
+			res: &pbs.RemoveRoleGrantsResponse{
+				Item: &pb.Role{
+					Id:          projRoleWithGrants.GetPublicId(),
+					CreatedTime: projRoleWithGrants.GetCreateTime().GetTimestamp(),
+					Version:     projRoleWithGrants.GetVersion() + 1,
+					Grants:      []string{"id=*;action=delete"},
+				},
+			},
+			errCode: codes.OK,
+		},
+		{
+			name: "Bad Org Id",
+			req: &pbs.RemoveRoleGrantsRequest{
+				OrgId:     "",
+				ProjectId: projRoleWithGrants.GetScopeId(),
+				RoleId:    projRoleWithGrants.GetPublicId(),
+				Grants:    []string{"id=*;actions=create"},
+				Version:   &wrapperspb.UInt32Value{Value: projRoleWithGrants.GetVersion()},
+			},
+			res:     nil,
+			errCode: codes.InvalidArgument,
+		},
+		{
+			name: "Bad Project Id",
+			req: &pbs.RemoveRoleGrantsRequest{
+				OrgId:     o.GetPublicId(),
+				ProjectId: "bad id",
+				RoleId:    projRoleWithGrants.GetPublicId(),
+				Grants:    []string{"id=*;actions=create"},
+				Version:   &wrapperspb.UInt32Value{Value: projRoleWithGrants.GetVersion()},
+			},
+			res:     nil,
+			errCode: codes.InvalidArgument,
+		},
+		{
+			name: "Bad Role Id",
+			req: &pbs.RemoveRoleGrantsRequest{
+				OrgId:     o.GetPublicId(),
+				ProjectId: projRoleWithGrants.GetScopeId(),
+				RoleId:    "bad id",
+				Grants:    []string{"id=*;actions=create"},
+				Version:   &wrapperspb.UInt32Value{Value: projRoleWithGrants.GetVersion()},
+			},
+			res:     nil,
+			errCode: codes.InvalidArgument,
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			assert := assert.New(t)
+			got, gErr := s.RemoveRoleGrants(context.Background(), tc.req)
+			assert.Equal(tc.errCode, status.Code(gErr), "RemoveRoleGrants(%+v) got error %v, wanted %v", tc.req, gErr, tc.errCode)
+
+			if tc.res == nil {
+				require.Nil(t, got)
+				return
+			}
+			got.Item.UpdatedTime = nil
+			sort.Strings(got.Item.Grants)
+			sort.Strings(tc.res.Item.Grants)
+			assert.Emptyf(cmp.Diff(tc.res, got, protocmp.Transform()),
+				"RemoveRoleGrants(%+v) got response %v, wanted %v", tc.req, got, tc.res)
 		})
 	}
 }
