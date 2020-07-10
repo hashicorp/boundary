@@ -339,8 +339,14 @@ create table iam_role (
       references iam_role(public_id)
       on delete cascade
       on update cascade,
-    canonical_grant text, -- pk
-    raw_grant text not null,
+    canonical_grant text -- pk
+      check(
+        length(trim(canonical_grant)) > 0
+      ),
+    raw_grant text not null
+      check(
+        length(trim(raw_grant)) > 0
+      ),
     primary key(role_id, canonical_grant)
   );
 
