@@ -59,14 +59,7 @@ func (v *PrincipalRole) SetTableName(n string) {
 	}
 }
 
-// func (v principalRoleView) Clone() interface{} {
-// 	cp := proto.Clone(v.PrincipalRoleView)
-// 	return &principalRoleView{
-// 		PrincipalRoleView: cp.(*store.PrincipalRoleView),
-// 	}
-// }
-
-// UserRole is a role assigned to a user
+// UserRole is a user assigned to a role
 type UserRole struct {
 	*store.UserRole
 	tableName string `gorm:"-"`
@@ -108,9 +101,7 @@ func (r *UserRole) Clone() interface{} {
 	}
 }
 
-// VetForWrite implements db.VetForWrite() interface for user roles.  The
-// constraint between user and role scopes will be enforced by the database via
-// constraints and triggers.
+// VetForWrite implements db.VetForWrite() interface for user roles.
 func (role *UserRole) VetForWrite(ctx context.Context, r db.Reader, opType db.OpType, opt ...db.Option) error {
 	if role.RoleId == "" {
 		return fmt.Errorf("new user role: missing role id %w", db.ErrInvalidParameter)
@@ -130,7 +121,8 @@ func (r *UserRole) TableName() string {
 	return userRoleDefaultTable
 }
 
-// SetTableName sets the tablename and satisfies the ReplayableMessage interface
+// SetTableName sets the table name for the resource.  If the caller attempts to
+// set the name to "" the name will be reset to the default name.
 func (r *UserRole) SetTableName(n string) {
 	switch n {
 	case "":
@@ -140,7 +132,7 @@ func (r *UserRole) SetTableName(n string) {
 	}
 }
 
-//  GroupRole is a role assigned to a group
+//  GroupRole is a group assigned to a role
 type GroupRole struct {
 	*store.GroupRole
 	tableName string `gorm:"-"`
@@ -187,9 +179,7 @@ func (r *GroupRole) Clone() interface{} {
 	}
 }
 
-// VetForWrite implements db.VetForWrite() interface for group roles. The
-// constraint between groups and role scopes will be enforced by the database via
-// constraints and triggers.
+// VetForWrite implements db.VetForWrite() interface for group roles.
 func (role *GroupRole) VetForWrite(ctx context.Context, r db.Reader, opType db.OpType, opt ...db.Option) error {
 	if role.RoleId == "" {
 		return fmt.Errorf("new group role: missing role id %w", db.ErrInvalidParameter)
@@ -209,8 +199,8 @@ func (r *GroupRole) TableName() string {
 	return groupRoleDefaultTable
 }
 
-// SetTableName sets the tablename and satisfies the ReplayableMessage interface
-// for group roles.
+// SetTableName sets the table name for the resource.  If the caller attempts to
+// set the name to "" the name will be reset to the default name.
 func (r *GroupRole) SetTableName(n string) {
 	switch n {
 	case "":
