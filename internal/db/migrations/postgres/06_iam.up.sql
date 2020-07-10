@@ -481,8 +481,8 @@ create table iam_group_role (
   );
 
 -- get_scoped_principal_id is used by the iam_principle_role view as a convient
--- way to create <scope_id>:<user_id> to reference users from other scopes
--- than the role's scope. 
+-- way to create <scope_id>:<principal_id> to reference principals from
+-- other scopes than the role's scope. 
 create or replace function get_scoped_principal_id(role_scope text, principal_scope text, principal_id text) returns text 
 as $$
 begin
