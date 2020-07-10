@@ -40,7 +40,7 @@ func TestRepository_AddPrincipalRoles(t *testing.T) {
 	}
 	type args struct {
 		roleId      string
-		roleVersion int
+		roleVersion uint32
 		userIds     []string
 		groupIds    []string
 		opt         []Option
@@ -231,7 +231,7 @@ func TestRepository_ListPrincipalRoles(t *testing.T) {
 				g := TestGroup(t, conn, tt.createScopeId)
 				groupRoles = append(groupRoles, g.PublicId)
 			}
-			testRoles, err := repo.AddPrincipalRoles(context.Background(), role.PublicId, int(role.Version), userRoles, groupRoles, tt.args.opt...)
+			testRoles, err := repo.AddPrincipalRoles(context.Background(), role.PublicId, role.Version, userRoles, groupRoles, tt.args.opt...)
 			require.NoError(err)
 			assert.Equal(tt.createCnt, len(testRoles))
 
@@ -452,7 +452,7 @@ func TestRepository_SetPrincipalRoles(t *testing.T) {
 	}
 	type args struct {
 		role           *Role
-		roleVersion    int
+		roleVersion    uint32
 		userIds        []string
 		groupIds       []string
 		addToOrigUsers bool
