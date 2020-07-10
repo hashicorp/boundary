@@ -39,11 +39,12 @@ func (r *Repository) CreateRole(ctx context.Context, role *Role, opt ...Option) 
 	return resource.(*Role), err
 }
 
-// UpdateRole will update a role in the repository and return the written
-// role. fieldMaskPaths provides field_mask.proto paths for fields that should
-// be updated.  Fields will be set to NULL if the field is a zero value and
-// included in fieldMask. Name and Description are the only updatable fields,
-// If no updatable fields are included in the fieldMaskPaths, then an error is returned.
+// UpdateRole will update a role in the repository and return the written role.
+// fieldMaskPaths provides field_mask.proto paths for fields that should be
+// updated.  Fields will be set to NULL if the field is a zero value and
+// included in fieldMask. Name, Description, and GrantScopeId are the only
+// updatable fields, If no updatable fields are included in the fieldMaskPaths,
+// then an error is returned.
 func (r *Repository) UpdateRole(ctx context.Context, role *Role, fieldMaskPaths []string, opt ...Option) (*Role, int, error) {
 	if role == nil {
 		return nil, db.NoRowsAffected, fmt.Errorf("update role: missing role %w", db.ErrNilParameter)
@@ -58,6 +59,7 @@ func (r *Repository) UpdateRole(ctx context.Context, role *Role, fieldMaskPaths 
 		switch {
 		case strings.EqualFold("name", f):
 		case strings.EqualFold("description", f):
+		case strings.EqualFold("grantscopeid", f):
 		default:
 			return nil, db.NoRowsAffected, fmt.Errorf("update role: field: %s: %w", f, db.ErrInvalidFieldMask)
 		}
@@ -65,8 +67,9 @@ func (r *Repository) UpdateRole(ctx context.Context, role *Role, fieldMaskPaths 
 	var dbMask, nullFields []string
 	dbMask, nullFields = buildUpdatePaths(
 		map[string]interface{}{
-			"name":        role.Name,
-			"description": role.Description,
+			"name":         role.Name,
+			"description":  role.Description,
+			"grantscopeid": role.GrantScopeId,
 		},
 		fieldMaskPaths,
 	)

@@ -31,6 +31,12 @@ type Role struct {
 	UpdatedTime time.Time `json:"updated_time,omitempty"`
 	// Whether the resource is disabled
 	Disabled *bool `json:"disabled,omitempty"`
+	// The scope the grants will apply to. If the role is at the global scope,
+	// this can be an organization or project. If the role is at an organization
+	// scope, this can be a project within the organization. It is invalid for
+	// this to be anything other than the role's scope when the role's scope is
+	// a project.
+	GrantScopeId *string `json:"grant_scope_id,omitempty"`
 	// The version can be used in subsiquent write requests to ensure this resource
 	// has not changed and to fail the write if it has.
 	// Output only.

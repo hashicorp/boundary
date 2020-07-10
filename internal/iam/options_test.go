@@ -65,4 +65,11 @@ func Test_GetOpts(t *testing.T) {
 		testOpts.withAutoVivify = true
 		assert.Equal(opts, testOpts)
 	})
+	t.Run("WithGrantScopeId", func(t *testing.T) {
+		assert := assert.New(t)
+		opts := getOpts(WithGrantScopeId("o_1234"))
+		testOpts := getDefaultOptions()
+		testOpts.withGrantScopeId = "o_1234"
+		assert.Equal(opts, testOpts)
+	})
 }

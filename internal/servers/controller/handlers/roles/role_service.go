@@ -324,6 +324,9 @@ func (s Service) addPrinciplesInRepo(ctx context.Context, roleId string, userIds
 		return nil, status.Errorf(codes.Internal, "Unable to add principles to role: %v.", err)
 	}
 	out, pr, err := repo.LookupRole(ctx, roleId)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "Unable to look up role: %v.", err)
+	}
 	if out == nil {
 		return nil, status.Error(codes.Internal, "Unable to lookup role after adding principles to it.")
 	}
@@ -340,6 +343,9 @@ func (s Service) setPrinciplesInRepo(ctx context.Context, roleId string, userIds
 		return nil, status.Errorf(codes.Internal, "Unable to set principles on role: %v.", err)
 	}
 	out, pr, err := repo.LookupRole(ctx, roleId)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "Unable to look up role: %v.", err)
+	}
 	if out == nil {
 		return nil, status.Error(codes.Internal, "Unable to lookup role after setting principles for it.")
 	}
@@ -356,6 +362,9 @@ func (s Service) removePrinciplesInRepo(ctx context.Context, roleId string, user
 		return nil, status.Errorf(codes.Internal, "Unable to remove principles from role: %v.", err)
 	}
 	out, pr, err := repo.LookupRole(ctx, roleId)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "Unable to look up role: %v.", err)
+	}
 	if out == nil {
 		return nil, status.Error(codes.Internal, "Unable to lookup role after removing principles from it.")
 	}
