@@ -98,10 +98,11 @@ func (r *Repository) AddPrincipalRoles(ctx context.Context, roleId string, roleV
 			}
 			// we need a new repo, that's using the same reader/writer as this TxHandler
 			txRepo := &Repository{
-				reader:       reader,
-				writer:       w,
-				wrapper:      r.wrapper,
-				defaultLimit: r.defaultLimit,
+				reader:  reader,
+				writer:  w,
+				wrapper: r.wrapper,
+				// intentionally not setting the defaultLimit, so we'll get all
+				// the principal roles without a limit
 			}
 			currentPrincipals, err = txRepo.ListPrincipalRoles(ctx, roleId)
 			if err != nil {
@@ -235,10 +236,11 @@ func (r *Repository) SetPrincipalRoles(ctx context.Context, roleId string, roleV
 			}
 			// we need a new repo, that's using the same reader/writer as this TxHandler
 			txRepo := &Repository{
-				reader:       reader,
-				writer:       w,
-				wrapper:      r.wrapper,
-				defaultLimit: r.defaultLimit,
+				reader:  reader,
+				writer:  w,
+				wrapper: r.wrapper,
+				// intentionally not setting the defaultLimit, so we'll get all
+				// the principal roles without a limit
 			}
 			currentPrincipals, err = txRepo.ListPrincipalRoles(ctx, roleId)
 			if err != nil {
@@ -360,9 +362,7 @@ func (r *Repository) ListPrincipalRoles(ctx context.Context, roleId string, opt 
 		return nil, fmt.Errorf("lookup principal role: unable to lookup roles: %w", err)
 	}
 	principals := make([]PrincipalRole, 0, len(roles))
-	for _, r := range roles {
-		principals = append(principals, r)
-	}
+	principals = append(principals, roles...)
 	return principals, nil
 }
 
@@ -390,11 +390,11 @@ func (r *Repository) principalsToSet(ctx context.Context, role *Role, userIds, g
 	for _, p := range existing {
 		switch p.GetType() {
 		case UserRoleType.String():
-			existingUsers[p.ScopedPrincipalId] = p
+			existingUsers[p.PrincipalId] = p
 		case GroupRoleType.String():
-			existingGroups[p.ScopedPrincipalId] = p
+			existingGroups[p.PrincipalId] = p
 		default:
-			return nil, fmt.Errorf("%s is unknown principal type %s", p.ScopedPrincipalId, p.GetType())
+			return nil, fmt.Errorf("%s is unknown principal type %s", p.PrincipalId, p.GetType())
 		}
 	}
 	var newUserRoles []interface{}
@@ -423,7 +423,7 @@ func (r *Repository) principalsToSet(ctx context.Context, role *Role, userIds, g
 	}
 	var deleteUserRoles []interface{}
 	for _, p := range existingUsers {
-		if _, ok := userIdsMap[p.ScopedPrincipalId]; !ok {
+		if _, ok := userIdsMap[p.PrincipalId]; !ok {
 			usrRole, err := NewUserRole(p.GetRoleId(), p.GetPrincipalId())
 			if err != nil {
 				return nil, fmt.Errorf("unable to create in memory user role for delete: %w", err)
@@ -433,7 +433,7 @@ func (r *Repository) principalsToSet(ctx context.Context, role *Role, userIds, g
 	}
 	var deleteGrpRoles []interface{}
 	for _, p := range existingGroups {
-		if _, ok := groupIdsMap[p.ScopedPrincipalId]; !ok {
+		if _, ok := groupIdsMap[p.PrincipalId]; !ok {
 			grpRole, err := NewGroupRole(p.GetRoleId(), p.GetPrincipalId())
 			if err != nil {
 				return nil, fmt.Errorf("unable to create in memory group role for delete: %w", err)
