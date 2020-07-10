@@ -26,16 +26,16 @@ var _ db.VetForWriter = (*User)(nil)
 // NewUser creates a new in memory user and allows options:
 // WithName - to specify the user's friendly name and WithDescription - to
 // specify a user description
-func NewUser(organizationPublicId string, opt ...Option) (*User, error) {
+func NewUser(scopeId string, opt ...Option) (*User, error) {
 	opts := getOpts(opt...)
-	if organizationPublicId == "" {
-		return nil, fmt.Errorf("new user: missing organization id %w", db.ErrInvalidParameter)
+	if scopeId == "" {
+		return nil, fmt.Errorf("new user: missing scope id %w", db.ErrInvalidParameter)
 	}
 	u := &User{
 		User: &store.User{
 			Name:        opts.withName,
 			Description: opts.withDescription,
-			ScopeId:     organizationPublicId,
+			ScopeId:     scopeId,
 		},
 	}
 	return u, nil

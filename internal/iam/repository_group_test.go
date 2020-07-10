@@ -390,7 +390,7 @@ func TestRepository_UpdateGroup(t *testing.T) {
 			},
 			newScopeId:   org.PublicId,
 			wantErr:      true,
-			wantErrMsg:   `update: failed pq: scope_id cannot be set`,
+			wantErrMsg:   `update: failed: pq: scope_id cannot be set`,
 			directUpdate: true,
 		},
 	}
@@ -756,10 +756,10 @@ func TestRepository_AddGroupMembers(t *testing.T) {
 		}
 		return results
 	}
-	groupVersion := 0
+	groupVersion := uint32(0)
 	type args struct {
 		groupId      string
-		groupVersion int
+		groupVersion uint32
 		userIds      []string
 		opt          []Option
 	}
@@ -807,7 +807,7 @@ func TestRepository_AddGroupMembers(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 
-			var version int
+			var version uint32
 			if tt.args.groupVersion == 0 {
 				groupVersion += 1
 				version = groupVersion
@@ -860,7 +860,7 @@ func TestRepository_DeleteGroupMembers(t *testing.T) {
 	type args struct {
 		group           *Group
 		groupIdOverride *string
-		groupVersion    int
+		groupVersion    uint32
 		createUserCnt   int
 		deleteUserCnt   int
 		opt             []Option
@@ -992,7 +992,7 @@ func TestRepository_SetGroupMembers(t *testing.T) {
 	}
 	type args struct {
 		group          *Group
-		groupVersion   int
+		groupVersion   uint32
 		userIds        []string
 		addToOrigUsers bool
 		opt            []Option

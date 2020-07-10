@@ -144,7 +144,7 @@ func (r *Repository) ListGroupMembers(ctx context.Context, withGroupId string, o
 // AddGroupMembers provides the ability to add members (userIds) to a group
 // (groupId).  The group's current db version must match the groupVersion or an
 // error will be returned.
-func (r *Repository) AddGroupMembers(ctx context.Context, groupId string, groupVersion int, userIds []string, opt ...Option) ([]*GroupMember, error) {
+func (r *Repository) AddGroupMembers(ctx context.Context, groupId string, groupVersion uint32, userIds []string, opt ...Option) ([]*GroupMember, error) {
 
 	if groupId == "" {
 		return nil, fmt.Errorf("add group members: missing group id %w", db.ErrInvalidParameter)
@@ -229,7 +229,7 @@ func (r *Repository) AddGroupMembers(ctx context.Context, groupId string, groupV
 
 // DeleteGroupMembers (userIds) from a group (groupId). The group's current db version
 // must match the groupVersion or an error will be returned.
-func (r *Repository) DeleteGroupMembers(ctx context.Context, groupId string, groupVersion int, userIds []string, opt ...Option) (int, error) {
+func (r *Repository) DeleteGroupMembers(ctx context.Context, groupId string, groupVersion uint32, userIds []string, opt ...Option) (int, error) {
 	if groupId == "" {
 		return db.NoRowsAffected, fmt.Errorf("delete group members: missing group id: %w", db.ErrInvalidParameter)
 	}
@@ -305,7 +305,7 @@ func (r *Repository) DeleteGroupMembers(ctx context.Context, groupId string, gro
 
 // SetGroupMembers will set the group's members.  If userIds is empty, the
 // members will be cleared.
-func (r *Repository) SetGroupMembers(ctx context.Context, groupId string, groupVersion int, userIds []string, opt ...Option) ([]*GroupMember, int, error) {
+func (r *Repository) SetGroupMembers(ctx context.Context, groupId string, groupVersion uint32, userIds []string, opt ...Option) ([]*GroupMember, int, error) {
 	if groupId == "" {
 		return nil, db.NoRowsAffected, fmt.Errorf("set group members: missing role id: %w", db.ErrInvalidParameter)
 	}

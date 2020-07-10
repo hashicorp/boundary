@@ -2199,6 +2199,141 @@
         ]
       }
     },
+    "/v1/orgs/{org_id}/projects/{project_id}/roles/{role_id}:add-principals": {
+      "post": {
+        "summary": "Adds Users and/or Groups to a Role",
+        "operationId": "RoleService_AddRolePrincipals2",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/controller.api.resources.roles.v1.Role"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "org_id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "project_id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "role_id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/controller.api.services.v1.AddRolePrincipalsRequest"
+            }
+          }
+        ],
+        "tags": [
+          "controller.api.services.v1.RoleService"
+        ]
+      }
+    },
+    "/v1/orgs/{org_id}/projects/{project_id}/roles/{role_id}:remove-principals": {
+      "post": {
+        "summary": "Removes the specified Users and/or Groups from a Role.",
+        "operationId": "RoleService_RemoveRolePrincipals2",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/controller.api.resources.roles.v1.Role"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "org_id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "project_id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "role_id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/controller.api.services.v1.RemoveRolePrincipalsRequest"
+            }
+          }
+        ],
+        "tags": [
+          "controller.api.services.v1.RoleService"
+        ]
+      }
+    },
+    "/v1/orgs/{org_id}/projects/{project_id}/roles/{role_id}:set-principals": {
+      "post": {
+        "summary": "Set Users and/or Groups to a Role, removing any principals that are not specified in the request.",
+        "operationId": "RoleService_SetRolePrincipals2",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/controller.api.resources.roles.v1.Role"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "org_id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "project_id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "role_id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/controller.api.services.v1.SetRolePrincipalsRequest"
+            }
+          }
+        ],
+        "tags": [
+          "controller.api.services.v1.RoleService"
+        ]
+      }
+    },
     "/v1/orgs/{org_id}/roles": {
       "get": {
         "summary": "Lists all Roles",
@@ -2374,6 +2509,123 @@
             "required": true,
             "schema": {
               "$ref": "#/definitions/controller.api.resources.roles.v1.Role"
+            }
+          }
+        ],
+        "tags": [
+          "controller.api.services.v1.RoleService"
+        ]
+      }
+    },
+    "/v1/orgs/{org_id}/roles/{role_id}:add-principals": {
+      "post": {
+        "summary": "Adds Users and/or Groups to a Role",
+        "operationId": "RoleService_AddRolePrincipals",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/controller.api.resources.roles.v1.Role"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "org_id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "role_id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/controller.api.services.v1.AddRolePrincipalsRequest"
+            }
+          }
+        ],
+        "tags": [
+          "controller.api.services.v1.RoleService"
+        ]
+      }
+    },
+    "/v1/orgs/{org_id}/roles/{role_id}:remove-principals": {
+      "post": {
+        "summary": "Removes the specified Users and/or Groups from a Role.",
+        "operationId": "RoleService_RemoveRolePrincipals",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/controller.api.resources.roles.v1.Role"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "org_id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "role_id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/controller.api.services.v1.RemoveRolePrincipalsRequest"
+            }
+          }
+        ],
+        "tags": [
+          "controller.api.services.v1.RoleService"
+        ]
+      }
+    },
+    "/v1/orgs/{org_id}/roles/{role_id}:set-principals": {
+      "post": {
+        "summary": "Set Users and/or Groups to a Role, removing any principals that are not specified in the request.",
+        "operationId": "RoleService_SetRolePrincipals",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/controller.api.resources.roles.v1.Role"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "org_id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "role_id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/controller.api.services.v1.SetRolePrincipalsRequest"
             }
           }
         ],
@@ -2867,6 +3119,40 @@
           "type": "boolean",
           "format": "boolean",
           "title": "Whether the resource is disabled"
+        },
+        "grant_scope_id": {
+          "type": "string",
+          "description": "The scope the grants will apply to. If the role is at the global scope,\nthis can be an organization or project. If the role is at an organization\nscope, this can be a project within the organization. It is invalid for\nthis to be anything other than the role's scope when the role's scope is\na project."
+        },
+        "version": {
+          "type": "integer",
+          "format": "int64",
+          "description": "The version can be used in subsiquent write requests to ensure this resource\nhas not changed and to fail the write if it has.\nOutput only.",
+          "readOnly": true
+        },
+        "user_ids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "The principals that are assigned this role.\nOutput only.",
+          "readOnly": true
+        },
+        "group_ids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Output only.",
+          "readOnly": true
+        },
+        "grants": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "The grants that this role provides for it's principals.\nOutput only.",
+          "readOnly": true
         }
       },
       "title": "Role contains all fields related to a Role resource"
@@ -2973,6 +3259,45 @@
         }
       },
       "title": "User contains all fields related to a User resource"
+    },
+    "controller.api.services.v1.AddRolePrincipalsRequest": {
+      "type": "object",
+      "properties": {
+        "org_id": {
+          "type": "string"
+        },
+        "project_id": {
+          "type": "string"
+        },
+        "role_id": {
+          "type": "string"
+        },
+        "version": {
+          "type": "integer",
+          "format": "int64",
+          "description": "The version ensures the role hasn't changed since it was last retrieved and if\nit has the request will fail."
+        },
+        "user_ids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "group_ids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "controller.api.services.v1.AddRolePrincipalsResponse": {
+      "type": "object",
+      "properties": {
+        "item": {
+          "$ref": "#/definitions/controller.api.resources.roles.v1.Role"
+        }
+      }
     },
     "controller.api.services.v1.AddToHostSetResponse": {
       "type": "object"
@@ -3312,6 +3637,84 @@
     },
     "controller.api.services.v1.RemoveFromHostSetResponse": {
       "type": "object"
+    },
+    "controller.api.services.v1.RemoveRolePrincipalsRequest": {
+      "type": "object",
+      "properties": {
+        "org_id": {
+          "type": "string"
+        },
+        "project_id": {
+          "type": "string"
+        },
+        "role_id": {
+          "type": "string"
+        },
+        "version": {
+          "type": "integer",
+          "format": "int64",
+          "description": "The version ensures the role hasn't changed since it was last retrieved and if\nit has the request will fail."
+        },
+        "user_ids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "group_ids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "controller.api.services.v1.RemoveRolePrincipalsResponse": {
+      "type": "object",
+      "properties": {
+        "item": {
+          "$ref": "#/definitions/controller.api.resources.roles.v1.Role"
+        }
+      }
+    },
+    "controller.api.services.v1.SetRolePrincipalsRequest": {
+      "type": "object",
+      "properties": {
+        "org_id": {
+          "type": "string"
+        },
+        "project_id": {
+          "type": "string"
+        },
+        "role_id": {
+          "type": "string"
+        },
+        "version": {
+          "type": "integer",
+          "format": "int64",
+          "description": "The version ensures the role hasn't changed since it was last retrieved and if\nit has the request will fail."
+        },
+        "user_ids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "group_ids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "controller.api.services.v1.SetRolePrincipalsResponse": {
+      "type": "object",
+      "properties": {
+        "item": {
+          "$ref": "#/definitions/controller.api.resources.roles.v1.Role"
+        }
+      }
     },
     "controller.api.services.v1.UpdateGroupResponse": {
       "type": "object",

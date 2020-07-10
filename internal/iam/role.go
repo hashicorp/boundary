@@ -25,7 +25,7 @@ var _ Clonable = (*Role)(nil)
 var _ db.VetForWriter = (*Role)(nil)
 
 // NewRole creates a new in memory role with a scope (project/organization)
-// allowed options include: withDescripion, WithName.
+// allowed options include: withDescripion, WithName, withGrantScopeId.
 func NewRole(scopeId string, opt ...Option) (*Role, error) {
 	if scopeId == "" {
 		return nil, fmt.Errorf("new role: missing scope id %w", db.ErrInvalidParameter)
@@ -33,9 +33,10 @@ func NewRole(scopeId string, opt ...Option) (*Role, error) {
 	opts := getOpts(opt...)
 	r := &Role{
 		Role: &store.Role{
-			ScopeId:     scopeId,
-			Name:        opts.withName,
-			Description: opts.withDescription,
+			ScopeId:      scopeId,
+			Name:         opts.withName,
+			Description:  opts.withDescription,
+			GrantScopeId: opts.withGrantScopeId,
 		},
 	}
 	return r, nil
@@ -78,9 +79,16 @@ func (role *Role) GetScope(ctx context.Context, r db.Reader) (*Scope, error) {
 // ResourceType returns the type of the Role.
 func (*Role) ResourceType() resource.Type { return resource.Role }
 
-// Actions returns the  available actions for Role.
+// Actions returns the available actions for Role.
 func (*Role) Actions() map[string]action.Type {
-	return CrudActions()
+	ret := CrudlActions()
+	ret[action.AddGrants.String()] = action.AddGrants
+	ret[action.RemoveGrants.String()] = action.RemoveGrants
+	ret[action.SetGrants.String()] = action.SetGrants
+	ret[action.AddPrincipals.String()] = action.AddPrincipals
+	ret[action.RemovePrincipals.String()] = action.RemovePrincipals
+	ret[action.SetPrincipals.String()] = action.SetPrincipals
+	return ret
 }
 
 // TableName returns the tablename to override the default gorm table name.

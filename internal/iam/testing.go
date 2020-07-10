@@ -88,7 +88,7 @@ func testPublicId(t *testing.T, prefix string) string {
 }
 
 // TestUser creates a user suitable for testing.
-func TestUser(t *testing.T, conn *gorm.DB, orgId string, opt ...Option) *User {
+func TestUser(t *testing.T, conn *gorm.DB, scopeId string, opt ...Option) *User {
 	t.Helper()
 	require := assert.New(t)
 	rw := db.New(conn)
@@ -96,7 +96,7 @@ func TestUser(t *testing.T, conn *gorm.DB, orgId string, opt ...Option) *User {
 	repo, err := NewRepository(rw, rw, wrapper)
 	require.NoError(err)
 
-	user, err := NewUser(orgId, opt...)
+	user, err := NewUser(scopeId, opt...)
 	require.NoError(err)
 	user, err = repo.CreateUser(context.Background(), user)
 	require.NoError(err)
@@ -123,6 +123,18 @@ func TestRole(t *testing.T, conn *gorm.DB, scopeId string, opt ...Option) *Role 
 	require.Equal(opts.withDescription, role.Description)
 	require.Equal(opts.withName, role.Name)
 	return role
+}
+
+func TestRoleGrant(t *testing.T, conn *gorm.DB, roleId, grant string, opt ...Option) *RoleGrant {
+	t.Helper()
+	require := require.New(t)
+	rw := db.New(conn)
+
+	g, err := NewRoleGrant(roleId, grant, opt...)
+	require.NoError(err)
+	err = rw.Create(context.Background(), g)
+	require.NoError(err)
+	return g
 }
 
 // TestGroup creates a group suitable for testing.
@@ -155,28 +167,28 @@ func TestGroupMember(t *testing.T, conn *gorm.DB, groupId, userId string, opt ..
 	return gm
 }
 
-func TestUserRole(t *testing.T, conn *gorm.DB, scopeId, roleId, userId string, opt ...Option) *UserRole {
+func TestUserRole(t *testing.T, conn *gorm.DB, roleId, userId string, opt ...Option) *UserRole {
 	t.Helper()
 	require := require.New(t)
 	rw := db.New(conn)
-	r, err := NewUserRole(scopeId, roleId, userId, opt...)
+	r, err := NewUserRole(roleId, userId, opt...)
 	require.NoError(err)
 
 	err = rw.Create(context.Background(), r)
 	require.NoError(err)
-	return r.(*UserRole)
+	return r
 }
 
-func TestGroupRole(t *testing.T, conn *gorm.DB, scopeId, roleId, grpId string, opt ...Option) *GroupRole {
+func TestGroupRole(t *testing.T, conn *gorm.DB, roleId, grpId string, opt ...Option) *GroupRole {
 	t.Helper()
 	require := require.New(t)
 	rw := db.New(conn)
-	r, err := NewGroupRole(scopeId, roleId, grpId, opt...)
+	r, err := NewGroupRole(roleId, grpId, opt...)
 	require.NoError(err)
 
 	err = rw.Create(context.Background(), r)
 	require.NoError(err)
-	return r.(*GroupRole)
+	return r
 }
 
 // testAuthAccount is a temporary test function.  TODO - replace with an auth

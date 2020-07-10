@@ -54,24 +54,24 @@ func Test_ActionParsingValidation(t *testing.T) {
 		{
 			name: "all valid plus all",
 			input: Grant{
-				actionsBeingParsed: []string{"list", "create", "update", "*", "read", "delete", "authen", "connect"},
+				actionsBeingParsed: []string{"list", "create", "update", "*", "read", "delete", "authenticate", "connect"},
 			},
 			errResult: `"*" cannot be specified with other actions`,
 		},
 		{
 			name: "all valid",
 			input: Grant{
-				actionsBeingParsed: []string{"list", "create", "update", "read", "delete", "authen", "connect"},
+				actionsBeingParsed: []string{"list", "create", "update", "read", "delete", "authenticate", "connect"},
 			},
 			result: Grant{
 				actions: map[action.Type]bool{
-					action.List:    true,
-					action.Create:  true,
-					action.Update:  true,
-					action.Read:    true,
-					action.Delete:  true,
-					action.Authen:  true,
-					action.Connect: true,
+					action.List:         true,
+					action.Create:       true,
+					action.Update:       true,
+					action.Read:         true,
+					action.Delete:       true,
+					action.Authenticate: true,
+					action.Connect:      true,
 				},
 			},
 		},
