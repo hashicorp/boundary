@@ -365,12 +365,18 @@ before
 update on iam_role_grant
   for each row execute procedure iam_immutable_role_grant();
   
+create trigger
+  default_create_time_column
+before
+insert on iam_role_grant
+  for each row execute procedure default_create_time();
+
 create trigger 
   update_version_column
 after update on iam_role
   for each row execute procedure update_version_column();
-  
-create trigger 
+
+create trigger
   update_time_column 
 before update on iam_role
   for each row execute procedure update_time_column();
