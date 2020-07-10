@@ -135,6 +135,12 @@ func TestGrpcGatewayRouting_CustomActions(t *testing.T) {
 				require.NoError(t, services.RegisterRoleServiceHandlerServer(ctx, mux, &services.UnimplementedRoleServiceServer{}))
 			},
 			post_urls: []string{
+				"v1/orgs/someid/roles/r_anotherid:add-principals",
+				"v1/orgs/someid/roles/r_anotherid:set-principals",
+				"v1/orgs/someid/roles/r_anotherid:remove-principals",
+				"v1/orgs/someid/projects/p_something/roles/r_anotherid:add-principals",
+				"v1/orgs/someid/projects/p_something/roles/r_anotherid:set-principals",
+				"v1/orgs/someid/projects/p_something/roles/r_anotherid:remove-principals",
 				"v1/orgs/someid/roles/r_anotherid:add-grants",
 				"v1/orgs/someid/roles/r_anotherid:set-grants",
 				"v1/orgs/someid/roles/r_anotherid:remove-grants",

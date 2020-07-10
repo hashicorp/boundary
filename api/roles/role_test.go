@@ -7,8 +7,10 @@ import (
 	"testing"
 
 	"github.com/hashicorp/watchtower/api"
+	"github.com/hashicorp/watchtower/api/groups"
 	"github.com/hashicorp/watchtower/api/roles"
 	"github.com/hashicorp/watchtower/api/scopes"
+	"github.com/hashicorp/watchtower/api/users"
 	"github.com/hashicorp/watchtower/internal/iam"
 	"github.com/hashicorp/watchtower/internal/servers/controller"
 	"github.com/stretchr/testify/assert"
@@ -16,11 +18,89 @@ import (
 )
 
 type roleCrud interface {
+	CreateGroup(context.Context, *groups.Group) (*groups.Group, *api.Error, error)
 	CreateRole(context.Context, *roles.Role) (*roles.Role, *api.Error, error)
 	ReadRole(context.Context, *roles.Role) (*roles.Role, *api.Error, error)
 	UpdateRole(context.Context, *roles.Role) (*roles.Role, *api.Error, error)
 	DeleteRole(context.Context, *roles.Role) (bool, *api.Error, error)
 	ListRoles(ctx context.Context) ([]*roles.Role, *api.Error, error)
+}
+
+func TestCustom(t *testing.T) {
+	tc := controller.NewTestController(t, nil)
+	defer tc.Shutdown()
+
+	client := tc.Client()
+	org := &scopes.Organization{
+		Client: client,
+	}
+	proj, apiErr, err := org.CreateProject(context.Background(), &scopes.Project{})
+	require.NoError(t, err)
+	require.Nil(t, apiErr)
+
+	user, apiErr, err := org.CreateUser(context.Background(), &users.User{})
+	require.NoError(t, err)
+	require.Nil(t, apiErr)
+
+	cases := []struct {
+		name  string
+		scope roleCrud
+	}{
+		{
+			name:  "org",
+			scope: org,
+		},
+		{
+			name:  "proj",
+			scope: proj,
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			require := require.New(t)
+			ctx := context.Background()
+			g, apiErr, err := tc.scope.CreateGroup(ctx, &groups.Group{})
+			require.NoError(err)
+			require.Nil(apiErr)
+			require.NotNil(g)
+
+			r, apiErr, err := tc.scope.CreateRole(ctx, &roles.Role{Name: api.String("foo")})
+			require.NoError(err)
+			require.Nil(apiErr)
+			require.NotNil(r)
+
+			updatedRole, apiErr, err := r.AddPrincipals(ctx, []string{g.Id}, nil)
+			require.NoError(err)
+			require.Nil(apiErr, "Got error ", errorMessage(apiErr))
+			assert.Equal(t, *updatedRole.Version, (*r.Version)+1)
+			assert.Contains(t, updatedRole.GroupIds, g.Id)
+			assert.Empty(t, updatedRole.UserIds)
+
+			r = updatedRole
+			updatedRole, apiErr, err = r.SetPrincipals(ctx, nil, []string{user.Id})
+			require.NoError(err)
+			require.Nil(apiErr, "Got error ", errorMessage(apiErr))
+			assert.Equal(t, *updatedRole.Version, (*r.Version)+1)
+			assert.Empty(t, updatedRole.GroupIds)
+			assert.Contains(t, updatedRole.UserIds, user.Id)
+
+			r = updatedRole
+			updatedRole, apiErr, err = r.RemovePrincipals(ctx, nil, []string{user.Id})
+			require.NoError(err)
+			require.Nil(apiErr, "Got error ", errorMessage(apiErr))
+			assert.Equal(t, *updatedRole.Version, (*r.Version)+1)
+			assert.Empty(t, updatedRole.GroupIds)
+			assert.Empty(t, updatedRole.UserIds)
+		})
+	}
+}
+
+func errorMessage(in *api.Error) string {
+	if in == nil {
+		return ""
+	}
+	return *in.Message
 }
 
 func TestRole_List(t *testing.T) {

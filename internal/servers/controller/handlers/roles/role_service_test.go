@@ -3,10 +3,12 @@ package roles_test
 import (
 	"context"
 	"fmt"
+	"sort"
 	"strings"
 	"testing"
 
 	"github.com/golang/protobuf/ptypes"
+	"github.com/google/go-cmp/cmp"
 	"github.com/hashicorp/watchtower/internal/db"
 	pb "github.com/hashicorp/watchtower/internal/gen/controller/api/resources/roles"
 	pbs "github.com/hashicorp/watchtower/internal/gen/controller/api/services"
@@ -17,6 +19,7 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/testing/protocmp"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 
 	"github.com/stretchr/testify/assert"
@@ -53,6 +56,7 @@ func TestGet(t *testing.T) {
 		Description: &wrapperspb.StringValue{Value: or.GetDescription()},
 		CreatedTime: or.CreateTime.GetTimestamp(),
 		UpdatedTime: or.UpdateTime.GetTimestamp(),
+		Version:     or.GetVersion(),
 	}
 
 	wantProjRole := &pb.Role{
@@ -61,6 +65,7 @@ func TestGet(t *testing.T) {
 		Description: &wrapperspb.StringValue{Value: pr.GetDescription()},
 		CreatedTime: pr.CreateTime.GetTimestamp(),
 		UpdatedTime: pr.UpdateTime.GetTimestamp(),
+		Version:     pr.GetVersion(),
 	}
 
 	cases := []struct {
@@ -151,12 +156,14 @@ func TestList(t *testing.T) {
 			Id:          or.GetPublicId(),
 			CreatedTime: or.GetCreateTime().GetTimestamp(),
 			UpdatedTime: or.GetUpdateTime().GetTimestamp(),
+			Version:     or.GetVersion(),
 		})
 		pr := iam.TestRole(t, conn, pWithRoles.GetPublicId())
 		wantProjRoles = append(wantProjRoles, &pb.Role{
 			Id:          pr.GetPublicId(),
 			CreatedTime: pr.GetCreateTime().GetTimestamp(),
 			UpdatedTime: pr.GetUpdateTime().GetTimestamp(),
+			Version:     pr.GetVersion(),
 		})
 	}
 
@@ -408,6 +415,7 @@ func TestCreate(t *testing.T) {
 				Item: &pb.Role{
 					Name:        &wrapperspb.StringValue{Value: "name"},
 					Description: &wrapperspb.StringValue{Value: "desc"},
+					Version:     1,
 				},
 			},
 			errCode: codes.OK,
@@ -426,6 +434,7 @@ func TestCreate(t *testing.T) {
 				Item: &pb.Role{
 					Name:        &wrapperspb.StringValue{Value: "name"},
 					Description: &wrapperspb.StringValue{Value: "desc"},
+					Version:     1,
 				},
 			},
 			errCode: codes.OK,
@@ -773,8 +782,713 @@ func TestUpdate(t *testing.T) {
 
 				// Clear all values which are hard to compare against.
 				got.Item.UpdatedTime, tc.res.Item.UpdatedTime = nil, nil
+
+				// TODO: Figure out the best way to test versions when updating roles
+				got.GetItem().Version = 0
 			}
 			assert.True(proto.Equal(got, tc.res), "UpdateRole(%q) got response %q, wanted %q", req, got, tc.res)
+		})
+	}
+}
+
+func TestAddPrincipal(t *testing.T) {
+	conn, _ := db.TestSetup(t, "postgres")
+	rw := db.New(conn)
+	wrap := db.TestWrapper(t)
+	repoFn := func() (*iam.Repository, error) {
+		return iam.NewRepository(rw, rw, wrap)
+	}
+	o, p := iam.TestScopes(t, conn)
+
+	orUserEmpty := iam.TestRole(t, conn, o.GetPublicId())
+	prUserEmpty := iam.TestRole(t, conn, p.GetPublicId())
+	orGroupEmpty := iam.TestRole(t, conn, o.GetPublicId())
+	prGroupEmpty := iam.TestRole(t, conn, p.GetPublicId())
+
+	orWithUser := iam.TestRole(t, conn, o.GetPublicId())
+	assignedUser := iam.TestUser(t, conn, o.GetPublicId())
+	_ = iam.TestUserRole(t, conn, o.GetPublicId(), orWithUser.GetPublicId(), assignedUser.GetPublicId())
+
+	ou1 := iam.TestUser(t, conn, o.GetPublicId())
+	ou2 := iam.TestUser(t, conn, o.GetPublicId())
+
+	orWithGroup := iam.TestRole(t, conn, o.GetPublicId())
+	assignedOG := iam.TestGroup(t, conn, o.GetPublicId())
+	_ = iam.TestGroupRole(t, conn, o.GetPublicId(), orWithGroup.GetPublicId(), assignedOG.GetPublicId())
+
+	og1 := iam.TestGroup(t, conn, o.GetPublicId())
+	og2 := iam.TestGroup(t, conn, o.GetPublicId())
+
+	prWithUser := iam.TestRole(t, conn, p.GetPublicId())
+	_ = iam.TestUserRole(t, conn, p.GetPublicId(), prWithUser.GetPublicId(), assignedUser.GetPublicId())
+
+	prWithGroup := iam.TestRole(t, conn, p.GetPublicId())
+	assignedPG := iam.TestGroup(t, conn, p.GetPublicId())
+	_ = iam.TestGroupRole(t, conn, p.GetPublicId(), prWithGroup.GetPublicId(), assignedPG.GetPublicId())
+
+	pg1 := iam.TestGroup(t, conn, p.GetPublicId())
+	pg2 := iam.TestGroup(t, conn, p.GetPublicId())
+
+	s, err := roles.NewService(repoFn)
+	require.NoError(t, err, "Error when getting new role service.")
+
+	cases := []struct {
+		name    string
+		req     *pbs.AddRolePrincipalsRequest
+		res     *pbs.AddRolePrincipalsResponse
+		errCode codes.Code
+	}{
+		{
+			name: "Add User Empty Org Role",
+			req: &pbs.AddRolePrincipalsRequest{
+				OrgId:   orUserEmpty.GetScopeId(),
+				RoleId:  orUserEmpty.GetPublicId(),
+				UserIds: []string{ou1.GetPublicId(), ou2.GetPublicId()},
+				Version: &wrapperspb.UInt32Value{Value: orUserEmpty.GetVersion()},
+			},
+			res: &pbs.AddRolePrincipalsResponse{
+				Item: &pb.Role{
+					Id:          orUserEmpty.GetPublicId(),
+					CreatedTime: orUserEmpty.GetCreateTime().GetTimestamp(),
+					Version:     orUserEmpty.GetVersion() + 1,
+					UserIds:     []string{ou1.GetPublicId(), ou2.GetPublicId()},
+				},
+			},
+			errCode: codes.OK,
+		},
+		{
+			name: "Add User Populated Org Role",
+			req: &pbs.AddRolePrincipalsRequest{
+				OrgId:   orWithUser.GetScopeId(),
+				RoleId:  orWithUser.GetPublicId(),
+				UserIds: []string{ou1.GetPublicId(), ou2.GetPublicId()},
+				Version: &wrapperspb.UInt32Value{Value: orWithUser.GetVersion()},
+			},
+			res: &pbs.AddRolePrincipalsResponse{
+				Item: &pb.Role{
+					Id:          orWithUser.GetPublicId(),
+					CreatedTime: orWithUser.GetCreateTime().GetTimestamp(),
+					Version:     orWithUser.GetVersion() + 1,
+					UserIds:     []string{assignedUser.GetPublicId(), ou1.GetPublicId(), ou2.GetPublicId()},
+				},
+			},
+			errCode: codes.OK,
+		},
+		{
+			name: "Add User Empty Project Role",
+			req: &pbs.AddRolePrincipalsRequest{
+				OrgId:     o.GetPublicId(),
+				ProjectId: prUserEmpty.GetScopeId(),
+				RoleId:    prUserEmpty.GetPublicId(),
+				UserIds:   []string{ou1.GetPublicId(), ou2.GetPublicId()},
+				Version:   &wrapperspb.UInt32Value{Value: prUserEmpty.GetVersion()},
+			},
+			res: &pbs.AddRolePrincipalsResponse{
+				Item: &pb.Role{
+					Id:          prUserEmpty.GetPublicId(),
+					CreatedTime: prUserEmpty.GetCreateTime().GetTimestamp(),
+					Version:     prUserEmpty.GetVersion() + 1,
+					UserIds:     []string{ou1.GetPublicId(), ou2.GetPublicId()},
+				},
+			},
+			errCode: codes.OK,
+		},
+		{
+			name: "Add User Populated Project Role",
+			req: &pbs.AddRolePrincipalsRequest{
+				OrgId:     o.GetPublicId(),
+				ProjectId: prWithUser.GetScopeId(),
+				RoleId:    prWithUser.GetPublicId(),
+				UserIds:   []string{ou1.GetPublicId(), ou2.GetPublicId()},
+				Version:   &wrapperspb.UInt32Value{Value: prWithUser.GetVersion()},
+			},
+			res: &pbs.AddRolePrincipalsResponse{
+				Item: &pb.Role{
+					Id:          prWithUser.GetPublicId(),
+					CreatedTime: prWithUser.GetCreateTime().GetTimestamp(),
+					Version:     prWithUser.GetVersion() + 1,
+					UserIds:     []string{assignedUser.GetPublicId(), ou1.GetPublicId(), ou2.GetPublicId()},
+				},
+			},
+			errCode: codes.OK,
+		},
+		{
+			name: "Add Group Empty Org Role",
+			req: &pbs.AddRolePrincipalsRequest{
+				OrgId:    orGroupEmpty.GetScopeId(),
+				RoleId:   orGroupEmpty.GetPublicId(),
+				GroupIds: []string{og1.GetPublicId(), og2.GetPublicId()},
+				Version:  &wrapperspb.UInt32Value{Value: orGroupEmpty.GetVersion()},
+			},
+			res: &pbs.AddRolePrincipalsResponse{
+				Item: &pb.Role{
+					Id:          orGroupEmpty.GetPublicId(),
+					CreatedTime: orGroupEmpty.GetCreateTime().GetTimestamp(),
+					Version:     orGroupEmpty.GetVersion() + 1,
+					GroupIds:    []string{og1.GetPublicId(), og2.GetPublicId()},
+				},
+			},
+			errCode: codes.OK,
+		},
+		{
+			name: "Add Group Populated Org Role",
+			req: &pbs.AddRolePrincipalsRequest{
+				OrgId:    orWithGroup.GetScopeId(),
+				RoleId:   orWithGroup.GetPublicId(),
+				GroupIds: []string{og1.GetPublicId(), og2.GetPublicId()},
+				Version:  &wrapperspb.UInt32Value{Value: orWithGroup.GetVersion()},
+			},
+			res: &pbs.AddRolePrincipalsResponse{
+				Item: &pb.Role{
+					Id:          orWithGroup.GetPublicId(),
+					CreatedTime: orWithGroup.GetCreateTime().GetTimestamp(),
+					Version:     orWithGroup.GetVersion() + 1,
+					GroupIds:    []string{assignedOG.GetPublicId(), og1.GetPublicId(), og2.GetPublicId()},
+				},
+			},
+			errCode: codes.OK,
+		},
+		{
+			name: "Add Group Empty Project Role",
+			req: &pbs.AddRolePrincipalsRequest{
+				OrgId:     o.GetPublicId(),
+				ProjectId: prGroupEmpty.GetScopeId(),
+				RoleId:    prGroupEmpty.GetPublicId(),
+				GroupIds:  []string{pg1.GetPublicId(), pg2.GetPublicId()},
+				Version:   &wrapperspb.UInt32Value{Value: prGroupEmpty.GetVersion()},
+			},
+			res: &pbs.AddRolePrincipalsResponse{
+				Item: &pb.Role{
+					Id:          prGroupEmpty.GetPublicId(),
+					CreatedTime: prGroupEmpty.GetCreateTime().GetTimestamp(),
+					Version:     prGroupEmpty.GetVersion() + 1,
+					GroupIds:    []string{pg1.GetPublicId(), pg2.GetPublicId()},
+				},
+			},
+			errCode: codes.OK,
+		},
+		{
+			name: "Add Group Populated Project Role",
+			req: &pbs.AddRolePrincipalsRequest{
+				OrgId:     o.GetPublicId(),
+				ProjectId: prWithGroup.GetScopeId(),
+				RoleId:    prWithGroup.GetPublicId(),
+				GroupIds:  []string{pg1.GetPublicId(), pg2.GetPublicId()},
+				Version:   &wrapperspb.UInt32Value{Value: prWithGroup.GetVersion()},
+			},
+			res: &pbs.AddRolePrincipalsResponse{
+				Item: &pb.Role{
+					Id:          prWithGroup.GetPublicId(),
+					CreatedTime: prWithGroup.GetCreateTime().GetTimestamp(),
+					Version:     prWithGroup.GetVersion() + 1,
+					GroupIds:    []string{assignedPG.GetPublicId(), pg1.GetPublicId(), pg2.GetPublicId()},
+				},
+			},
+			errCode: codes.OK,
+		},
+		{
+			name: "Bad Org Id",
+			req: &pbs.AddRolePrincipalsRequest{
+				OrgId:     "",
+				ProjectId: prWithGroup.GetScopeId(),
+				RoleId:    prWithGroup.GetPublicId(),
+				GroupIds:  []string{pg1.GetPublicId(), pg2.GetPublicId()},
+				Version:   &wrapperspb.UInt32Value{Value: prWithGroup.GetVersion()},
+			},
+			res:     nil,
+			errCode: codes.InvalidArgument,
+		},
+		{
+			name: "Bad Project Id",
+			req: &pbs.AddRolePrincipalsRequest{
+				OrgId:     o.GetPublicId(),
+				ProjectId: "bad id",
+				RoleId:    prWithGroup.GetPublicId(),
+				GroupIds:  []string{pg1.GetPublicId(), pg2.GetPublicId()},
+				Version:   &wrapperspb.UInt32Value{Value: prWithGroup.GetVersion()},
+			},
+			res:     nil,
+			errCode: codes.InvalidArgument,
+		},
+		{
+			name: "Bad Role Id",
+			req: &pbs.AddRolePrincipalsRequest{
+				OrgId:     o.GetPublicId(),
+				ProjectId: prWithGroup.GetScopeId(),
+				RoleId:    "bad id",
+				GroupIds:  []string{pg1.GetPublicId(), pg2.GetPublicId()},
+				Version:   &wrapperspb.UInt32Value{Value: prWithGroup.GetVersion()},
+			},
+			res:     nil,
+			errCode: codes.InvalidArgument,
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			assert := assert.New(t)
+			got, gErr := s.AddRolePrincipals(context.Background(), tc.req)
+			assert.Equal(tc.errCode, status.Code(gErr), "AddRolePrincipals(%+v) got error %v, wanted %v", tc.req, gErr, tc.errCode)
+
+			if tc.res == nil {
+				require.Nil(t, got)
+				return
+			}
+			got.Item.UpdatedTime = nil
+			sort.Strings(got.Item.UserIds)
+			sort.Strings(got.Item.GroupIds)
+			sort.Strings(tc.res.Item.UserIds)
+			sort.Strings(tc.res.Item.GroupIds)
+			assert.Emptyf(cmp.Diff(tc.res, got, protocmp.Transform()),
+				"AddRolePrincipals(%+v) got response %v, wanted %v", tc.req, got, tc.res)
+		})
+	}
+}
+
+func TestSetPrincipal(t *testing.T) {
+	conn, _ := db.TestSetup(t, "postgres")
+	rw := db.New(conn)
+	wrap := db.TestWrapper(t)
+	repoFn := func() (*iam.Repository, error) {
+		return iam.NewRepository(rw, rw, wrap)
+	}
+	o, p := iam.TestScopes(t, conn)
+
+	orUserEmpty := iam.TestRole(t, conn, o.GetPublicId())
+	prUserEmpty := iam.TestRole(t, conn, p.GetPublicId())
+	orGroupEmpty := iam.TestRole(t, conn, o.GetPublicId())
+	prGroupEmpty := iam.TestRole(t, conn, p.GetPublicId())
+
+	orWithUser := iam.TestRole(t, conn, o.GetPublicId())
+	assignedUser := iam.TestUser(t, conn, o.GetPublicId())
+	_ = iam.TestUserRole(t, conn, o.GetPublicId(), orWithUser.GetPublicId(), assignedUser.GetPublicId())
+
+	ou1 := iam.TestUser(t, conn, o.GetPublicId())
+	ou2 := iam.TestUser(t, conn, o.GetPublicId())
+
+	orWithGroup := iam.TestRole(t, conn, o.GetPublicId())
+	assignedOG := iam.TestGroup(t, conn, o.GetPublicId())
+	_ = iam.TestGroupRole(t, conn, o.GetPublicId(), orWithGroup.GetPublicId(), assignedOG.GetPublicId())
+
+	og1 := iam.TestGroup(t, conn, o.GetPublicId())
+	og2 := iam.TestGroup(t, conn, o.GetPublicId())
+
+	prWithUser := iam.TestRole(t, conn, p.GetPublicId())
+	_ = iam.TestUserRole(t, conn, p.GetPublicId(), prWithUser.GetPublicId(), assignedUser.GetPublicId())
+
+	prWithGroup := iam.TestRole(t, conn, p.GetPublicId())
+	assignedPG := iam.TestGroup(t, conn, p.GetPublicId())
+	_ = iam.TestGroupRole(t, conn, p.GetPublicId(), prWithGroup.GetPublicId(), assignedPG.GetPublicId())
+
+	pg1 := iam.TestGroup(t, conn, p.GetPublicId())
+	pg2 := iam.TestGroup(t, conn, p.GetPublicId())
+
+	s, err := roles.NewService(repoFn)
+	require.NoError(t, err, "Error when getting new role service.")
+
+	cases := []struct {
+		name    string
+		req     *pbs.SetRolePrincipalsRequest
+		res     *pbs.SetRolePrincipalsResponse
+		errCode codes.Code
+	}{
+		{
+			name: "Set User Empty Org Role",
+			req: &pbs.SetRolePrincipalsRequest{
+				OrgId:   orUserEmpty.GetScopeId(),
+				RoleId:  orUserEmpty.GetPublicId(),
+				UserIds: []string{ou1.GetPublicId(), ou2.GetPublicId()},
+				Version: &wrapperspb.UInt32Value{Value: orUserEmpty.GetVersion()},
+			},
+			res: &pbs.SetRolePrincipalsResponse{
+				Item: &pb.Role{
+					Id:          orUserEmpty.GetPublicId(),
+					CreatedTime: orUserEmpty.GetCreateTime().GetTimestamp(),
+					Version:     orUserEmpty.GetVersion() + 1,
+					UserIds:     []string{ou1.GetPublicId(), ou2.GetPublicId()},
+				},
+			},
+			errCode: codes.OK,
+		},
+		{
+			name: "Set User Populated Org Role",
+			req: &pbs.SetRolePrincipalsRequest{
+				OrgId:   orWithUser.GetScopeId(),
+				RoleId:  orWithUser.GetPublicId(),
+				UserIds: []string{ou1.GetPublicId(), ou2.GetPublicId()},
+				Version: &wrapperspb.UInt32Value{Value: orWithUser.GetVersion()},
+			},
+			res: &pbs.SetRolePrincipalsResponse{
+				Item: &pb.Role{
+					Id:          orWithUser.GetPublicId(),
+					CreatedTime: orWithUser.GetCreateTime().GetTimestamp(),
+					Version:     orWithUser.GetVersion() + 1,
+					UserIds:     []string{ou1.GetPublicId(), ou2.GetPublicId()},
+				},
+			},
+			errCode: codes.OK,
+		},
+		{
+			name: "Set User Empty Project Role",
+			req: &pbs.SetRolePrincipalsRequest{
+				OrgId:     o.GetPublicId(),
+				ProjectId: prUserEmpty.GetScopeId(),
+				RoleId:    prUserEmpty.GetPublicId(),
+				UserIds:   []string{ou1.GetPublicId(), ou2.GetPublicId()},
+				Version:   &wrapperspb.UInt32Value{Value: prUserEmpty.GetVersion()},
+			},
+			res: &pbs.SetRolePrincipalsResponse{
+				Item: &pb.Role{
+					Id:          prUserEmpty.GetPublicId(),
+					CreatedTime: prUserEmpty.GetCreateTime().GetTimestamp(),
+					Version:     prUserEmpty.GetVersion() + 1,
+					UserIds:     []string{ou1.GetPublicId(), ou2.GetPublicId()},
+				},
+			},
+			errCode: codes.OK,
+		},
+		{
+			name: "Set User Populated Project Role",
+			req: &pbs.SetRolePrincipalsRequest{
+				OrgId:     o.GetPublicId(),
+				ProjectId: prWithUser.GetScopeId(),
+				RoleId:    prWithUser.GetPublicId(),
+				UserIds:   []string{ou1.GetPublicId(), ou2.GetPublicId()},
+				Version:   &wrapperspb.UInt32Value{Value: prWithUser.GetVersion()},
+			},
+			res: &pbs.SetRolePrincipalsResponse{
+				Item: &pb.Role{
+					Id:          prWithUser.GetPublicId(),
+					CreatedTime: prWithUser.GetCreateTime().GetTimestamp(),
+					Version:     prWithUser.GetVersion() + 1,
+					UserIds:     []string{ou1.GetPublicId(), ou2.GetPublicId()},
+				},
+			},
+			errCode: codes.OK,
+		},
+		{
+			name: "Set Group Empty Org Role",
+			req: &pbs.SetRolePrincipalsRequest{
+				OrgId:    orGroupEmpty.GetScopeId(),
+				RoleId:   orGroupEmpty.GetPublicId(),
+				GroupIds: []string{og1.GetPublicId(), og2.GetPublicId()},
+				Version:  &wrapperspb.UInt32Value{Value: orGroupEmpty.GetVersion()},
+			},
+			res: &pbs.SetRolePrincipalsResponse{
+				Item: &pb.Role{
+					Id:          orGroupEmpty.GetPublicId(),
+					CreatedTime: orGroupEmpty.GetCreateTime().GetTimestamp(),
+					Version:     orGroupEmpty.GetVersion() + 1,
+					GroupIds:    []string{og1.GetPublicId(), og2.GetPublicId()},
+				},
+			},
+			errCode: codes.OK,
+		},
+		{
+			name: "Set Group Populated Org Role",
+			req: &pbs.SetRolePrincipalsRequest{
+				OrgId:    orWithGroup.GetScopeId(),
+				RoleId:   orWithGroup.GetPublicId(),
+				GroupIds: []string{og1.GetPublicId(), og2.GetPublicId()},
+				Version:  &wrapperspb.UInt32Value{Value: orWithGroup.GetVersion()},
+			},
+			res: &pbs.SetRolePrincipalsResponse{
+				Item: &pb.Role{
+					Id:          orWithGroup.GetPublicId(),
+					CreatedTime: orWithGroup.GetCreateTime().GetTimestamp(),
+					Version:     orWithGroup.GetVersion() + 1,
+					GroupIds:    []string{og1.GetPublicId(), og2.GetPublicId()},
+				},
+			},
+			errCode: codes.OK,
+		},
+		{
+			name: "Set Group Empty Project Role",
+			req: &pbs.SetRolePrincipalsRequest{
+				OrgId:     o.GetPublicId(),
+				ProjectId: prGroupEmpty.GetScopeId(),
+				RoleId:    prGroupEmpty.GetPublicId(),
+				GroupIds:  []string{pg1.GetPublicId(), pg2.GetPublicId()},
+				Version:   &wrapperspb.UInt32Value{Value: prGroupEmpty.GetVersion()},
+			},
+			res: &pbs.SetRolePrincipalsResponse{
+				Item: &pb.Role{
+					Id:          prGroupEmpty.GetPublicId(),
+					CreatedTime: prGroupEmpty.GetCreateTime().GetTimestamp(),
+					Version:     prGroupEmpty.GetVersion() + 1,
+					GroupIds:    []string{pg1.GetPublicId(), pg2.GetPublicId()},
+				},
+			},
+			errCode: codes.OK,
+		},
+		{
+			name: "Set Group Populated Project Role",
+			req: &pbs.SetRolePrincipalsRequest{
+				OrgId:     o.GetPublicId(),
+				ProjectId: prWithGroup.GetScopeId(),
+				RoleId:    prWithGroup.GetPublicId(),
+				GroupIds:  []string{pg1.GetPublicId(), pg2.GetPublicId()},
+				Version:   &wrapperspb.UInt32Value{Value: prWithGroup.GetVersion()},
+			},
+			res: &pbs.SetRolePrincipalsResponse{
+				Item: &pb.Role{
+					Id:          prWithGroup.GetPublicId(),
+					CreatedTime: prWithGroup.GetCreateTime().GetTimestamp(),
+					Version:     prWithGroup.GetVersion() + 1,
+					GroupIds:    []string{pg1.GetPublicId(), pg2.GetPublicId()},
+				},
+			},
+			errCode: codes.OK,
+		},
+		{
+			name: "Bad Org Id",
+			req: &pbs.SetRolePrincipalsRequest{
+				OrgId:     "",
+				ProjectId: prWithGroup.GetScopeId(),
+				RoleId:    prWithGroup.GetPublicId(),
+				GroupIds:  []string{pg1.GetPublicId(), pg2.GetPublicId()},
+				Version:   &wrapperspb.UInt32Value{Value: prWithGroup.GetVersion()},
+			},
+			res:     nil,
+			errCode: codes.InvalidArgument,
+		},
+		{
+			name: "Bad Project Id",
+			req: &pbs.SetRolePrincipalsRequest{
+				OrgId:     o.GetPublicId(),
+				ProjectId: "bad id",
+				RoleId:    prWithGroup.GetPublicId(),
+				GroupIds:  []string{pg1.GetPublicId(), pg2.GetPublicId()},
+				Version:   &wrapperspb.UInt32Value{Value: prWithGroup.GetVersion()},
+			},
+			res:     nil,
+			errCode: codes.InvalidArgument,
+		},
+		{
+			name: "Bad Role Id",
+			req: &pbs.SetRolePrincipalsRequest{
+				OrgId:     o.GetPublicId(),
+				ProjectId: prWithGroup.GetScopeId(),
+				RoleId:    "bad id",
+				GroupIds:  []string{pg1.GetPublicId(), pg2.GetPublicId()},
+				Version:   &wrapperspb.UInt32Value{Value: prWithGroup.GetVersion()},
+			},
+			res:     nil,
+			errCode: codes.InvalidArgument,
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			assert := assert.New(t)
+			got, gErr := s.SetRolePrincipals(context.Background(), tc.req)
+			assert.Equal(tc.errCode, status.Code(gErr), "AddRolePrincipals(%+v) got error %v, wanted %v", tc.req, gErr, tc.errCode)
+
+			if tc.res == nil {
+				require.Nil(t, got)
+				return
+			}
+			got.Item.UpdatedTime = nil
+			sort.Strings(got.Item.UserIds)
+			sort.Strings(got.Item.GroupIds)
+			sort.Strings(tc.res.Item.UserIds)
+			sort.Strings(tc.res.Item.GroupIds)
+			assert.Emptyf(cmp.Diff(tc.res, got, protocmp.Transform()),
+				"AddRolePrincipals(%+v) got response %v, wanted %v", tc.req, got, tc.res)
+		})
+	}
+}
+
+func TestRemovePrincipal(t *testing.T) {
+	conn, _ := db.TestSetup(t, "postgres")
+	rw := db.New(conn)
+	wrap := db.TestWrapper(t)
+	repoFn := func() (*iam.Repository, error) {
+		return iam.NewRepository(rw, rw, wrap)
+	}
+	o, p := iam.TestScopes(t, conn)
+
+	orgEmptyRole := iam.TestRole(t, conn, o.GetPublicId())
+	orgUserRoles := iam.TestRole(t, conn, o.GetPublicId())
+	orgGroupRoles := iam.TestRole(t, conn, o.GetPublicId())
+	projEmptyRole := iam.TestRole(t, conn, p.GetPublicId())
+	projUserRoles := iam.TestRole(t, conn, p.GetPublicId())
+	projGroupRoles := iam.TestRole(t, conn, p.GetPublicId())
+
+	ou1 := iam.TestUser(t, conn, o.GetPublicId())
+	ou2 := iam.TestUser(t, conn, o.GetPublicId())
+	_ = iam.TestUserRole(t, conn, o.GetPublicId(), orgUserRoles.GetPublicId(), ou1.GetPublicId())
+	_ = iam.TestUserRole(t, conn, o.GetPublicId(), orgUserRoles.GetPublicId(), ou2.GetPublicId())
+	_ = iam.TestUserRole(t, conn, p.GetPublicId(), projUserRoles.GetPublicId(), ou1.GetPublicId())
+	_ = iam.TestUserRole(t, conn, p.GetPublicId(), projUserRoles.GetPublicId(), ou2.GetPublicId())
+
+	og1 := iam.TestGroup(t, conn, o.GetPublicId())
+	og2 := iam.TestGroup(t, conn, o.GetPublicId())
+	_ = iam.TestGroupRole(t, conn, o.GetPublicId(), orgGroupRoles.GetPublicId(), og1.GetPublicId())
+	_ = iam.TestGroupRole(t, conn, o.GetPublicId(), orgGroupRoles.GetPublicId(), og2.GetPublicId())
+
+	pg1 := iam.TestGroup(t, conn, p.GetPublicId())
+	pg2 := iam.TestGroup(t, conn, p.GetPublicId())
+	_ = iam.TestGroupRole(t, conn, p.GetPublicId(), projGroupRoles.GetPublicId(), pg1.GetPublicId())
+	_ = iam.TestGroupRole(t, conn, p.GetPublicId(), projGroupRoles.GetPublicId(), pg2.GetPublicId())
+
+	s, err := roles.NewService(repoFn)
+	require.NoError(t, err, "Error when getting new role service.")
+
+	cases := []struct {
+		name    string
+		req     *pbs.RemoveRolePrincipalsRequest
+		res     *pbs.RemoveRolePrincipalsResponse
+		errCode codes.Code
+	}{
+		{
+			name: "Remove User From Org Role",
+			req: &pbs.RemoveRolePrincipalsRequest{
+				OrgId:   orgUserRoles.GetScopeId(),
+				RoleId:  orgUserRoles.GetPublicId(),
+				UserIds: []string{ou1.GetPublicId()},
+				Version: &wrapperspb.UInt32Value{Value: orgUserRoles.GetVersion()},
+			},
+			res: &pbs.RemoveRolePrincipalsResponse{
+				Item: &pb.Role{
+					Id:          orgUserRoles.GetPublicId(),
+					CreatedTime: orgUserRoles.GetCreateTime().GetTimestamp(),
+					Version:     orgUserRoles.GetVersion() + 1,
+					UserIds:     []string{ou2.GetPublicId()},
+				},
+			},
+			errCode: codes.OK,
+		},
+		{
+			name: "Remove User From Proj Role",
+			req: &pbs.RemoveRolePrincipalsRequest{
+				OrgId:     o.GetPublicId(),
+				ProjectId: projUserRoles.GetScopeId(),
+				RoleId:    projUserRoles.GetPublicId(),
+				UserIds:   []string{ou1.GetPublicId()},
+				Version:   &wrapperspb.UInt32Value{Value: projUserRoles.GetVersion()},
+			},
+			res: &pbs.RemoveRolePrincipalsResponse{
+				Item: &pb.Role{
+					Id:          projUserRoles.GetPublicId(),
+					CreatedTime: projUserRoles.GetCreateTime().GetTimestamp(),
+					Version:     projUserRoles.GetVersion() + 1,
+					UserIds:     []string{ou2.GetPublicId()},
+				},
+			},
+			errCode: codes.OK,
+		},
+		{
+			name: "Remove Group From Org Role",
+			req: &pbs.RemoveRolePrincipalsRequest{
+				OrgId:    orgGroupRoles.GetScopeId(),
+				RoleId:   orgGroupRoles.GetPublicId(),
+				GroupIds: []string{og1.GetPublicId()},
+				Version:  &wrapperspb.UInt32Value{Value: orgGroupRoles.GetVersion()},
+			},
+			res: &pbs.RemoveRolePrincipalsResponse{
+				Item: &pb.Role{
+					Id:          orgGroupRoles.GetPublicId(),
+					CreatedTime: orgGroupRoles.GetCreateTime().GetTimestamp(),
+					Version:     orgGroupRoles.GetVersion() + 1,
+					GroupIds:    []string{og2.GetPublicId()},
+				},
+			},
+			errCode: codes.OK,
+		},
+		{
+			name: "Remove Group From Proj Role",
+			req: &pbs.RemoveRolePrincipalsRequest{
+				OrgId:     o.GetPublicId(),
+				ProjectId: projGroupRoles.GetScopeId(),
+				RoleId:    projGroupRoles.GetPublicId(),
+				GroupIds:  []string{pg1.GetPublicId()},
+				Version:   &wrapperspb.UInt32Value{Value: projGroupRoles.GetVersion()},
+			},
+			res: &pbs.RemoveRolePrincipalsResponse{
+				Item: &pb.Role{
+					Id:          projGroupRoles.GetPublicId(),
+					CreatedTime: projGroupRoles.GetCreateTime().GetTimestamp(),
+					Version:     projGroupRoles.GetVersion() + 1,
+					GroupIds:    []string{pg2.GetPublicId()},
+				},
+			},
+			errCode: codes.OK,
+		},
+		// TODO: Should it be a silent noop to remove a principal from a role when the principal isn't on the role?
+		{
+			name: "Remove From Empty Org Role",
+			req: &pbs.RemoveRolePrincipalsRequest{
+				OrgId:   o.GetPublicId(),
+				RoleId:  orgEmptyRole.GetPublicId(),
+				UserIds: []string{ou1.GetPublicId()},
+				Version: &wrapperspb.UInt32Value{Value: orgEmptyRole.GetVersion()},
+			},
+			errCode: codes.Internal,
+		},
+		{
+			name: "Remove From Empty Project Role",
+			req: &pbs.RemoveRolePrincipalsRequest{
+				OrgId:     o.GetPublicId(),
+				ProjectId: projEmptyRole.GetScopeId(),
+				RoleId:    projEmptyRole.GetPublicId(),
+				UserIds:   []string{ou1.GetPublicId()},
+				Version:   &wrapperspb.UInt32Value{Value: projEmptyRole.GetVersion()},
+			},
+			errCode: codes.Internal,
+		},
+		{
+			name: "Bad Org Id",
+			req: &pbs.RemoveRolePrincipalsRequest{
+				OrgId:     "",
+				ProjectId: projGroupRoles.GetScopeId(),
+				RoleId:    projGroupRoles.GetPublicId(),
+				GroupIds:  []string{pg1.GetPublicId(), pg2.GetPublicId()},
+				Version:   &wrapperspb.UInt32Value{Value: projGroupRoles.GetVersion()},
+			},
+			res:     nil,
+			errCode: codes.InvalidArgument,
+		},
+		{
+			name: "Bad Project Id",
+			req: &pbs.RemoveRolePrincipalsRequest{
+				OrgId:     o.GetPublicId(),
+				ProjectId: "bad id",
+				RoleId:    projGroupRoles.GetPublicId(),
+				GroupIds:  []string{pg1.GetPublicId(), pg2.GetPublicId()},
+				Version:   &wrapperspb.UInt32Value{Value: projGroupRoles.GetVersion()},
+			},
+			res:     nil,
+			errCode: codes.InvalidArgument,
+		},
+		{
+			name: "Bad Role Id",
+			req: &pbs.RemoveRolePrincipalsRequest{
+				OrgId:     o.GetPublicId(),
+				ProjectId: projGroupRoles.GetScopeId(),
+				RoleId:    "bad id",
+				GroupIds:  []string{pg1.GetPublicId(), pg2.GetPublicId()},
+				Version:   &wrapperspb.UInt32Value{Value: projGroupRoles.GetVersion()},
+			},
+			res:     nil,
+			errCode: codes.InvalidArgument,
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			assert := assert.New(t)
+			got, gErr := s.RemoveRolePrincipals(context.Background(), tc.req)
+			assert.Equal(tc.errCode, status.Code(gErr), "AddRolePrincipals(%+v) got error %v, wanted %v", tc.req, gErr, tc.errCode)
+
+			if tc.res == nil {
+				require.Nil(t, got)
+				return
+			}
+			got.Item.UpdatedTime = nil
+			sort.Strings(got.Item.UserIds)
+			sort.Strings(got.Item.GroupIds)
+			sort.Strings(tc.res.Item.UserIds)
+			sort.Strings(tc.res.Item.GroupIds)
+			assert.Emptyf(cmp.Diff(tc.res, got, protocmp.Transform()),
+				"AddRolePrincipals(%+v) got response %v, wanted %v", tc.req, got, tc.res)
 		})
 	}
 }
