@@ -1652,14 +1652,13 @@ type RoleServiceClient interface {
 	// AddRolePrincipals adds users and/or groups to a role.  The provided request must include
 	// the org id and the role id which the users and/or groups will be added to. If the
 	// org id is missing, malformed or references a non existing organization,
-	// an error is returned.  It is not an error to have duplicate user/group ids.
+	// an error is returned.
 	AddRolePrincipals(ctx context.Context, in *AddRolePrincipalsRequest, opts ...grpc.CallOption) (*AddRolePrincipalsResponse, error)
 	// SetRolePrincipals sets the role's users and/or groups.  Any existing principals on
 	// the role are deleted if they are not included in this request.  The provided
 	// request must include the org id and the role id which the users and/or groups
 	// will be set to. If the org id is missing, malformed or references a non
-	// existing organization, an error is returned.  It is not an error to have duplicate
-	// user/group ids.
+	// existing organization, an error is returned.
 	SetRolePrincipals(ctx context.Context, in *SetRolePrincipalsRequest, opts ...grpc.CallOption) (*SetRolePrincipalsResponse, error)
 	// RemoveRolePrincipals removes the users and/or groups from the specified role.
 	// The provided request must include the org id and the role id which the users
@@ -1785,14 +1784,13 @@ type RoleServiceServer interface {
 	// AddRolePrincipals adds users and/or groups to a role.  The provided request must include
 	// the org id and the role id which the users and/or groups will be added to. If the
 	// org id is missing, malformed or references a non existing organization,
-	// an error is returned.  It is not an error to have duplicate user/group ids.
+	// an error is returned.
 	AddRolePrincipals(context.Context, *AddRolePrincipalsRequest) (*AddRolePrincipalsResponse, error)
 	// SetRolePrincipals sets the role's users and/or groups.  Any existing principals on
 	// the role are deleted if they are not included in this request.  The provided
 	// request must include the org id and the role id which the users and/or groups
 	// will be set to. If the org id is missing, malformed or references a non
-	// existing organization, an error is returned.  It is not an error to have duplicate
-	// user/group ids.
+	// existing organization, an error is returned.
 	SetRolePrincipals(context.Context, *SetRolePrincipalsRequest) (*SetRolePrincipalsResponse, error)
 	// RemoveRolePrincipals removes the users and/or groups from the specified role.
 	// The provided request must include the org id and the role id which the users

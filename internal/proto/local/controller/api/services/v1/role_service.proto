@@ -111,7 +111,7 @@ service RoleService {
   // AddRolePrincipals adds users and/or groups to a role.  The provided request must include
   // the org id and the role id which the users and/or groups will be added to. If the
   // org id is missing, malformed or references a non existing organization,
-  // an error is returned.  It is not an error to have duplicate user/group ids.
+  // an error is returned.
   rpc AddRolePrincipals(AddRolePrincipalsRequest) returns (AddRolePrincipalsResponse) {
     option (google.api.http) = {
       post: "/v1/orgs/{org_id}/roles/{role_id}:add-principals"
@@ -132,8 +132,7 @@ service RoleService {
   // the role are deleted if they are not included in this request.  The provided
   // request must include the org id and the role id which the users and/or groups
   // will be set to. If the org id is missing, malformed or references a non
-  // existing organization, an error is returned.  It is not an error to have duplicate
-  // user/group ids.
+  // existing organization, an error is returned.
   rpc SetRolePrincipals(SetRolePrincipalsRequest) returns (SetRolePrincipalsResponse) {
     option (google.api.http) = {
       post: "/v1/orgs/{org_id}/roles/{role_id}:set-principals"
