@@ -288,6 +288,7 @@ func (s Service) updateInRepo(ctx context.Context, scopeId, id string, mask []st
 	if rowsUpdated == 0 {
 		return nil, handlers.NotFoundErrorf("Role %q doesn't exist.", id)
 	}
+	// TODO: Attach principals and grants to UpdateRole response
 	return toProto(out, nil, nil), nil
 }
 
@@ -317,6 +318,7 @@ func (s Service) listFromRepo(ctx context.Context, scopeId string) ([]*pb.Role, 
 	}
 	var outRl []*pb.Role
 	for _, g := range rl {
+		// TODO: Attach principals and grants to ListRoles response.
 		outRl = append(outRl, toProto(g, nil, nil))
 	}
 	return outRl, nil
