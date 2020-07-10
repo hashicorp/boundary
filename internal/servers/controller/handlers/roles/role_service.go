@@ -585,6 +585,10 @@ func validateAddRolePrincipalsRequest(req *pbs.AddRolePrincipalsRequest) error {
 	if req.GetVersion() == nil {
 		badFields["version"] = "Required field."
 	}
+	if len(req.GetGroupIds()) == 0 && len(req.GetUserIds()) == 0 {
+		badFields["user_ids"] = "Either user_ids or group_ids must be non empty."
+		badFields["group_ids"] = "Either user_ids or group_ids must be non empty."
+	}
 	if len(badFields) > 0 {
 		return handlers.InvalidArgumentErrorf("Errors in provided fields.", badFields)
 	}
@@ -598,10 +602,6 @@ func validateSetRolePrincipalsRequest(req *pbs.SetRolePrincipalsRequest) error {
 	}
 	if req.GetVersion() == nil {
 		badFields["version"] = "Required field."
-	}
-	if len(req.GetGroupIds()) == 0 && len(req.GetUserIds()) == 0 {
-		badFields["user_ids"] = "Either user_ids or group_ids must be non empty."
-		badFields["group_ids"] = "Either user_ids or group_ids must be non empty."
 	}
 	if len(badFields) > 0 {
 		return handlers.InvalidArgumentErrorf("Errors in provided fields.", badFields)

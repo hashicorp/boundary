@@ -1087,212 +1087,112 @@ func TestSetPrincipal(t *testing.T) {
 	repoFn := func() (*iam.Repository, error) {
 		return iam.NewRepository(rw, rw, wrap)
 	}
-	o, p := iam.TestScopes(t, conn)
-
-	orUserEmpty := iam.TestRole(t, conn, o.GetPublicId())
-	prUserEmpty := iam.TestRole(t, conn, p.GetPublicId())
-	orGroupEmpty := iam.TestRole(t, conn, o.GetPublicId())
-	prGroupEmpty := iam.TestRole(t, conn, p.GetPublicId())
-
-	orWithUser := iam.TestRole(t, conn, o.GetPublicId())
-	assignedUser := iam.TestUser(t, conn, o.GetPublicId())
-	_ = iam.TestUserRole(t, conn, orWithUser.GetPublicId(), assignedUser.GetPublicId())
-
-	ou1 := iam.TestUser(t, conn, o.GetPublicId())
-	ou2 := iam.TestUser(t, conn, o.GetPublicId())
-
-	orWithGroup := iam.TestRole(t, conn, o.GetPublicId())
-	assignedOG := iam.TestGroup(t, conn, o.GetPublicId())
-	_ = iam.TestGroupRole(t, conn, orWithGroup.GetPublicId(), assignedOG.GetPublicId())
-
-	og1 := iam.TestGroup(t, conn, o.GetPublicId())
-	og2 := iam.TestGroup(t, conn, o.GetPublicId())
-
-	prWithUser := iam.TestRole(t, conn, p.GetPublicId())
-	_ = iam.TestUserRole(t, conn, prWithUser.GetPublicId(), assignedUser.GetPublicId())
-
-	prWithGroup := iam.TestRole(t, conn, p.GetPublicId())
-	assignedPG := iam.TestGroup(t, conn, p.GetPublicId())
-	_ = iam.TestGroupRole(t, conn, prWithGroup.GetPublicId(), assignedPG.GetPublicId())
-
-	pg1 := iam.TestGroup(t, conn, p.GetPublicId())
-	pg2 := iam.TestGroup(t, conn, p.GetPublicId())
-
 	s, err := roles.NewService(repoFn)
 	require.NoError(t, err, "Error when getting new role service.")
 
-	cases := []struct {
-		name    string
-		req     *pbs.SetRolePrincipalsRequest
-		res     *pbs.SetRolePrincipalsResponse
-		errCode codes.Code
+	o, p := iam.TestScopes(t, conn)
+	users := []*iam.User{
+		iam.TestUser(t, conn, o.GetPublicId()),
+		iam.TestUser(t, conn, o.GetPublicId()),
+		iam.TestUser(t, conn, o.GetPublicId()),
+	}
+	groups := []*iam.Group{
+		iam.TestGroup(t, conn, o.GetPublicId()),
+		iam.TestGroup(t, conn, o.GetPublicId()),
+		iam.TestGroup(t, conn, o.GetPublicId()),
+	}
+
+	setCases := []struct {
+		name         string
+		setup        func(*iam.Role)
+		setUsers     []string
+		setGroups    []string
+		resultUsers  []string
+		resultGroups []string
+		wantErr      bool
 	}{
 		{
-			name: "Set User Empty Org Role",
-			req: &pbs.SetRolePrincipalsRequest{
-				OrgId:   orUserEmpty.GetScopeId(),
-				RoleId:  orUserEmpty.GetPublicId(),
-				UserIds: []string{ou1.GetPublicId(), ou2.GetPublicId()},
-				Version: &wrapperspb.UInt32Value{Value: orUserEmpty.GetVersion()},
-			},
-			res: &pbs.SetRolePrincipalsResponse{
-				Item: &pb.Role{
-					Id:           orUserEmpty.GetPublicId(),
-					CreatedTime:  orUserEmpty.GetCreateTime().GetTimestamp(),
-					Version:      orUserEmpty.GetVersion() + 1,
-					UserIds:      []string{ou1.GetPublicId(), ou2.GetPublicId()},
-					GrantScopeId: &wrapperspb.StringValue{Value: orUserEmpty.GetScopeId()},
-				},
-			},
-			errCode: codes.OK,
+			name:        "Set user on empty role",
+			setup:       func(r *iam.Role) {},
+			setUsers:    []string{users[1].GetPublicId()},
+			resultUsers: []string{users[1].GetPublicId()},
 		},
 		{
-			name: "Set User Populated Org Role",
-			req: &pbs.SetRolePrincipalsRequest{
-				OrgId:   orWithUser.GetScopeId(),
-				RoleId:  orWithUser.GetPublicId(),
-				UserIds: []string{ou1.GetPublicId(), ou2.GetPublicId()},
-				Version: &wrapperspb.UInt32Value{Value: orWithUser.GetVersion()},
+			name: "Set user on populated role",
+			setup: func(r *iam.Role) {
+				iam.TestUserRole(t, conn, r.GetPublicId(), users[0].GetPublicId())
 			},
-			res: &pbs.SetRolePrincipalsResponse{
-				Item: &pb.Role{
-					Id:           orWithUser.GetPublicId(),
-					CreatedTime:  orWithUser.GetCreateTime().GetTimestamp(),
-					Version:      orWithUser.GetVersion() + 1,
-					UserIds:      []string{ou1.GetPublicId(), ou2.GetPublicId()},
-					GrantScopeId: &wrapperspb.StringValue{Value: orWithUser.GetScopeId()},
-				},
-			},
-			errCode: codes.OK,
+			setUsers:    []string{users[1].GetPublicId()},
+			resultUsers: []string{users[1].GetPublicId()},
 		},
 		{
-			name: "Set User Empty Project Role",
-			req: &pbs.SetRolePrincipalsRequest{
-				OrgId:     o.GetPublicId(),
-				ProjectId: prUserEmpty.GetScopeId(),
-				RoleId:    prUserEmpty.GetPublicId(),
-				UserIds:   []string{ou1.GetPublicId(), ou2.GetPublicId()},
-				Version:   &wrapperspb.UInt32Value{Value: prUserEmpty.GetVersion()},
+			name: "Set empty on populated role",
+			setup: func(r *iam.Role) {
+				iam.TestUserRole(t, conn, r.GetPublicId(), users[0].GetPublicId())
+				iam.TestUserRole(t, conn, r.GetPublicId(), users[1].GetPublicId())
 			},
-			res: &pbs.SetRolePrincipalsResponse{
-				Item: &pb.Role{
-					Id:           prUserEmpty.GetPublicId(),
-					CreatedTime:  prUserEmpty.GetCreateTime().GetTimestamp(),
-					Version:      prUserEmpty.GetVersion() + 1,
-					UserIds:      []string{ou1.GetPublicId(), ou2.GetPublicId()},
-					GrantScopeId: &wrapperspb.StringValue{Value: prUserEmpty.GetScopeId()},
-				},
-			},
-			errCode: codes.OK,
+			setUsers:    []string{},
+			resultUsers: nil,
 		},
 		{
-			name: "Set User Populated Project Role",
-			req: &pbs.SetRolePrincipalsRequest{
-				OrgId:     o.GetPublicId(),
-				ProjectId: prWithUser.GetScopeId(),
-				RoleId:    prWithUser.GetPublicId(),
-				UserIds:   []string{ou1.GetPublicId(), ou2.GetPublicId()},
-				Version:   &wrapperspb.UInt32Value{Value: prWithUser.GetVersion()},
-			},
-			res: &pbs.SetRolePrincipalsResponse{
-				Item: &pb.Role{
-					Id:           prWithUser.GetPublicId(),
-					CreatedTime:  prWithUser.GetCreateTime().GetTimestamp(),
-					Version:      prWithUser.GetVersion() + 1,
-					UserIds:      []string{ou1.GetPublicId(), ou2.GetPublicId()},
-					GrantScopeId: &wrapperspb.StringValue{Value: prWithUser.GetScopeId()},
-				},
-			},
-			errCode: codes.OK,
+			name:         "Set group on empty role",
+			setup:        func(r *iam.Role) {},
+			setGroups:    []string{groups[1].GetPublicId()},
+			resultGroups: []string{groups[1].GetPublicId()},
 		},
 		{
-			name: "Set Group Empty Org Role",
-			req: &pbs.SetRolePrincipalsRequest{
-				OrgId:    orGroupEmpty.GetScopeId(),
-				RoleId:   orGroupEmpty.GetPublicId(),
-				GroupIds: []string{og1.GetPublicId(), og2.GetPublicId()},
-				Version:  &wrapperspb.UInt32Value{Value: orGroupEmpty.GetVersion()},
+			name: "Set group on populated role",
+			setup: func(r *iam.Role) {
+				iam.TestGroupRole(t, conn, r.GetPublicId(), groups[0].GetPublicId())
 			},
-			res: &pbs.SetRolePrincipalsResponse{
-				Item: &pb.Role{
-					Id:           orGroupEmpty.GetPublicId(),
-					CreatedTime:  orGroupEmpty.GetCreateTime().GetTimestamp(),
-					Version:      orGroupEmpty.GetVersion() + 1,
-					GroupIds:     []string{og1.GetPublicId(), og2.GetPublicId()},
-					GrantScopeId: &wrapperspb.StringValue{Value: orGroupEmpty.GetScopeId()},
-				},
-			},
-			errCode: codes.OK,
+			setGroups:    []string{groups[1].GetPublicId()},
+			resultGroups: []string{groups[1].GetPublicId()},
 		},
-		{
-			name: "Set Group Populated Org Role",
-			req: &pbs.SetRolePrincipalsRequest{
-				OrgId:    orWithGroup.GetScopeId(),
-				RoleId:   orWithGroup.GetPublicId(),
-				GroupIds: []string{og1.GetPublicId(), og2.GetPublicId()},
-				Version:  &wrapperspb.UInt32Value{Value: orWithGroup.GetVersion()},
-			},
-			res: &pbs.SetRolePrincipalsResponse{
-				Item: &pb.Role{
-					Id:           orWithGroup.GetPublicId(),
-					CreatedTime:  orWithGroup.GetCreateTime().GetTimestamp(),
-					Version:      orWithGroup.GetVersion() + 1,
-					GroupIds:     []string{og1.GetPublicId(), og2.GetPublicId()},
-					GrantScopeId: &wrapperspb.StringValue{Value: orWithGroup.GetScopeId()},
-				},
-			},
-			errCode: codes.OK,
-		},
-		{
-			name: "Set Group Empty Project Role",
-			req: &pbs.SetRolePrincipalsRequest{
-				OrgId:     o.GetPublicId(),
-				ProjectId: prGroupEmpty.GetScopeId(),
-				RoleId:    prGroupEmpty.GetPublicId(),
-				GroupIds:  []string{pg1.GetPublicId(), pg2.GetPublicId()},
-				Version:   &wrapperspb.UInt32Value{Value: prGroupEmpty.GetVersion()},
-			},
-			res: &pbs.SetRolePrincipalsResponse{
-				Item: &pb.Role{
-					Id:           prGroupEmpty.GetPublicId(),
-					CreatedTime:  prGroupEmpty.GetCreateTime().GetTimestamp(),
-					Version:      prGroupEmpty.GetVersion() + 1,
-					GroupIds:     []string{pg1.GetPublicId(), pg2.GetPublicId()},
-					GrantScopeId: &wrapperspb.StringValue{Value: prGroupEmpty.GetScopeId()},
-				},
-			},
-			errCode: codes.OK,
-		},
-		{
-			name: "Set Group Populated Project Role",
-			req: &pbs.SetRolePrincipalsRequest{
-				OrgId:     o.GetPublicId(),
-				ProjectId: prWithGroup.GetScopeId(),
-				RoleId:    prWithGroup.GetPublicId(),
-				GroupIds:  []string{pg1.GetPublicId(), pg2.GetPublicId()},
-				Version:   &wrapperspb.UInt32Value{Value: prWithGroup.GetVersion()},
-			},
-			res: &pbs.SetRolePrincipalsResponse{
-				Item: &pb.Role{
-					Id:           prWithGroup.GetPublicId(),
-					CreatedTime:  prWithGroup.GetCreateTime().GetTimestamp(),
-					Version:      prWithGroup.GetVersion() + 1,
-					GroupIds:     []string{pg1.GetPublicId(), pg2.GetPublicId()},
-					GrantScopeId: &wrapperspb.StringValue{Value: prWithGroup.GetScopeId()},
-				},
-			},
-			errCode: codes.OK,
-		},
+	}
+
+	for _, tc := range setCases {
+		for _, scope := range []*iam.Scope{o, p} {
+			t.Run(tc.name+"_"+scope.GetType(), func(t *testing.T) {
+				role := iam.TestRole(t, conn, scope.GetPublicId())
+				tc.setup(role)
+				req := &pbs.SetRolePrincipalsRequest{
+					OrgId:    o.GetPublicId(),
+					RoleId:   role.GetPublicId(),
+					Version:  &wrapperspb.UInt32Value{Value: role.GetVersion()},
+					UserIds:  tc.setUsers,
+					GroupIds: tc.setGroups,
+				}
+
+				got, err := s.SetRolePrincipals(context.Background(), req)
+				if tc.wantErr {
+					assert.Error(t, err)
+				}
+				s, ok := status.FromError(err)
+				require.True(t, ok)
+				require.NoError(t, err, "Got error: %v", s)
+
+				assert.Equal(t, got.GetItem().GetUserIds(), tc.resultUsers)
+				assert.Equal(t, got.GetItem().GetGroupIds(), tc.resultGroups)
+			})
+		}
+	}
+
+	role := iam.TestRole(t, conn, p.GetPublicId())
+
+	failCases := []struct {
+		name    string
+		req     *pbs.SetRolePrincipalsRequest
+		errCode codes.Code
+	}{
 		{
 			name: "Bad Org Id",
 			req: &pbs.SetRolePrincipalsRequest{
 				OrgId:     "",
-				ProjectId: prWithGroup.GetScopeId(),
-				RoleId:    prWithGroup.GetPublicId(),
-				GroupIds:  []string{pg1.GetPublicId(), pg2.GetPublicId()},
-				Version:   &wrapperspb.UInt32Value{Value: prWithGroup.GetVersion()},
+				ProjectId: role.GetScopeId(),
+				RoleId:    role.GetPublicId(),
+				GroupIds:  []string{},
+				Version:   &wrapperspb.UInt32Value{Value: role.GetVersion()},
 			},
-			res:     nil,
 			errCode: codes.InvalidArgument,
 		},
 		{
@@ -1300,43 +1200,29 @@ func TestSetPrincipal(t *testing.T) {
 			req: &pbs.SetRolePrincipalsRequest{
 				OrgId:     o.GetPublicId(),
 				ProjectId: "bad id",
-				RoleId:    prWithGroup.GetPublicId(),
-				GroupIds:  []string{pg1.GetPublicId(), pg2.GetPublicId()},
-				Version:   &wrapperspb.UInt32Value{Value: prWithGroup.GetVersion()},
+				RoleId:    role.GetPublicId(),
+				GroupIds:  []string{},
+				Version:   &wrapperspb.UInt32Value{Value: role.GetVersion()},
 			},
-			res:     nil,
 			errCode: codes.InvalidArgument,
 		},
 		{
 			name: "Bad Role Id",
 			req: &pbs.SetRolePrincipalsRequest{
 				OrgId:     o.GetPublicId(),
-				ProjectId: prWithGroup.GetScopeId(),
+				ProjectId: role.GetScopeId(),
 				RoleId:    "bad id",
-				GroupIds:  []string{pg1.GetPublicId(), pg2.GetPublicId()},
-				Version:   &wrapperspb.UInt32Value{Value: prWithGroup.GetVersion()},
+				GroupIds:  []string{},
+				Version:   &wrapperspb.UInt32Value{Value: role.GetVersion()},
 			},
-			res:     nil,
 			errCode: codes.InvalidArgument,
 		},
 	}
-	for _, tc := range cases {
+	for _, tc := range failCases {
 		t.Run(tc.name, func(t *testing.T) {
 			assert := assert.New(t)
-			got, gErr := s.SetRolePrincipals(context.Background(), tc.req)
+			_, gErr := s.SetRolePrincipals(context.Background(), tc.req)
 			assert.Equal(tc.errCode, status.Code(gErr), "SetRolePrincipals(%+v) got error %v, wanted %v", tc.req, gErr, tc.errCode)
-
-			if tc.res == nil {
-				require.Nil(t, got)
-				return
-			}
-			got.Item.UpdatedTime = nil
-			sort.Strings(got.Item.UserIds)
-			sort.Strings(got.Item.GroupIds)
-			sort.Strings(tc.res.Item.UserIds)
-			sort.Strings(tc.res.Item.GroupIds)
-			assert.Emptyf(cmp.Diff(tc.res, got, protocmp.Transform()),
-				"SetRolePrincipals(%+v) got response %v, wanted %v", tc.req, got, tc.res)
 		})
 	}
 }
