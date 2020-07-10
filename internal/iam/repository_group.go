@@ -143,8 +143,7 @@ func (r *Repository) ListGroupMembers(ctx context.Context, withGroupId string, o
 
 // AddGroupMembers provides the ability to add members (userIds) to a group
 // (groupId).  The group's current db version must match the groupVersion or an
-// error will be returned.  The users and group must all be in the same
-// organization or the user must be in the project group's parent organization.
+// error will be returned.
 func (r *Repository) AddGroupMembers(ctx context.Context, groupId string, groupVersion int, userIds []string, opt ...Option) ([]*GroupMember, error) {
 
 	if groupId == "" {
@@ -163,13 +162,14 @@ func (r *Repository) AddGroupMembers(ctx context.Context, groupId string, groupV
 
 	newGroupMembers := make([]interface{}, 0, len(userIds))
 	for _, id := range userIds {
-		gm, err := NewGroupMember(groupId, id)
+		gm, err := NewGroupMemberUser(groupId, id)
 		if err != nil {
 			return nil, fmt.Errorf("add group members: unable to create in memory group member: %w", err)
 		}
 		newGroupMembers = append(newGroupMembers, gm)
 	}
 
+	var currentMembers []*GroupMember
 	_, err = r.writer.DoTx(
 		ctx,
 		db.StdRetryCnt,
@@ -206,17 +206,25 @@ func (r *Repository) AddGroupMembers(ctx context.Context, groupId string, groupV
 			if err := w.WriteOplogEntryWith(ctx, r.wrapper, groupTicket, metadata, msgs); err != nil {
 				return fmt.Errorf("add group members: unable to write oplog: %w", err)
 			}
+			// we need a new repo, that's using the same reader/writer as this TxHandler
+			txRepo := Repository{
+				reader:  reader,
+				writer:  w,
+				wrapper: r.wrapper,
+				// intentionally not setting the defaultLimit, so we'll get all
+				// the members without a limit
+			}
+			currentMembers, err = txRepo.ListGroupMembers(ctx, groupId)
+			if err != nil {
+				return fmt.Errorf("set group members: unable to retrieve current group members after sets: %w", err)
+			}
 			return nil
 		},
 	)
 	if err != nil {
 		return nil, fmt.Errorf("add group members: error adding members: %w", err)
 	}
-	members := make([]*GroupMember, 0, len(newGroupMembers)+len(newGroupMembers))
-	for _, m := range newGroupMembers {
-		members = append(members, m.(*GroupMember))
-	}
-	return members, nil
+	return currentMembers, nil
 }
 
 // DeleteGroupMembers (userIds) from a group (groupId). The group's current db version
@@ -237,7 +245,7 @@ func (r *Repository) DeleteGroupMembers(ctx context.Context, groupId string, gro
 
 	deleteMembers := make([]interface{}, 0, len(userIds))
 	for _, id := range userIds {
-		member, err := NewGroupMember(groupId, id)
+		member, err := NewGroupMemberUser(groupId, id)
 		if err != nil {
 			return db.NoRowsAffected, fmt.Errorf("delete group members: unable to create in memory group member: %w", err)
 		}
@@ -298,12 +306,6 @@ func (r *Repository) DeleteGroupMembers(ctx context.Context, groupId string, gro
 // SetGroupMembers will set the group's members.  If userIds is empty, the
 // members will be cleared.
 func (r *Repository) SetGroupMembers(ctx context.Context, groupId string, groupVersion int, userIds []string, opt ...Option) ([]*GroupMember, int, error) {
-	// NOTE - we are intentionally not going to check that the scopes are
-	// correct for the userIds, given the groupId.  We are going to
-	// rely on the database constraints and triggers to maintain the integrity
-	// of these scope relationships.  The users and group need to either be in
-	// the same organization or the group needs to be in a project of the user's
-	// org. There are constraints and triggers to enforce these relationships.
 	if groupId == "" {
 		return nil, db.NoRowsAffected, fmt.Errorf("set group members: missing role id: %w", db.ErrInvalidParameter)
 	}
@@ -316,37 +318,39 @@ func (r *Repository) SetGroupMembers(ctx context.Context, groupId string, groupV
 
 	// find existing members (since we're using groupVersion, we can safely do
 	// this here, outside the TxHandler)
-	members := []*GroupMember{}
-	if err := r.reader.SearchWhere(ctx, &members, "group_id = ?", []interface{}{groupId}); err != nil {
+	currentMembers := []*GroupMember{}
+	if err := r.reader.SearchWhere(ctx, &currentMembers, "group_id = ?", []interface{}{groupId}); err != nil {
 		return nil, db.NoRowsAffected, fmt.Errorf("set group members: unable to search for existing members of group %s: %w", groupId, err)
 	}
 	found := map[string]*GroupMember{}
-	for _, m := range members {
+	for _, m := range currentMembers {
 		found[m.GroupId+m.MemberId] = m
 	}
-	currentMembers := make([]*GroupMember, 0, len(userIds)+len(found))
 	addMembers := make([]interface{}, 0, len(userIds))
 	deleteMembers := make([]interface{}, 0, len(userIds))
 
 	for _, usrId := range userIds {
-		m, ok := found[groupId+usrId]
+		_, ok := found[groupId+usrId]
 		if ok {
 			// we have a match, so do nada since we want to keep it, but remove
 			// it from found.
-			currentMembers = append(currentMembers, m)
 			delete(found, groupId+usrId)
 			continue
 		}
 		// not found, so we add it
-		gm, err := NewGroupMember(groupId, usrId)
+		gm, err := NewGroupMemberUser(groupId, usrId)
 		if err != nil {
-			return nil, db.NoRowsAffected, fmt.Errorf("add group members: unable to create in memory group member: %w", err)
+			return nil, db.NoRowsAffected, fmt.Errorf("set group members: unable to create in memory group member: %w", err)
 		}
 		addMembers = append(addMembers, gm)
-		currentMembers = append(currentMembers, gm)
 	}
 	if len(found) > 0 {
-		for _, gm := range found {
+		for _, fgm := range found {
+			// not found, so we add it
+			gm, err := NewGroupMemberUser(fgm.GroupId, fgm.MemberId)
+			if err != nil {
+				return nil, db.NoRowsAffected, fmt.Errorf("set group members: unable to create in memory group member: %w", err)
+			}
 			deleteMembers = append(deleteMembers, gm)
 		}
 	}
@@ -417,10 +421,11 @@ func (r *Repository) SetGroupMembers(ctx context.Context, groupId string, groupV
 			}
 			// we need a new repo, that's using the same reader/writer as this TxHandler
 			txRepo := Repository{
-				reader:       reader,
-				writer:       w,
-				wrapper:      r.wrapper,
-				defaultLimit: r.defaultLimit,
+				reader:  reader,
+				writer:  w,
+				wrapper: r.wrapper,
+				// intentionally not setting the defaultLimit, so we'll get all
+				// the members without a limit
 			}
 			currentMembers, err = txRepo.ListGroupMembers(ctx, groupId)
 			if err != nil {

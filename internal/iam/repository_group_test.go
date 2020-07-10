@@ -713,7 +713,7 @@ func TestRepository_ListMembers(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 			require.NoError(conn.Where("1=1").Delete(allocGroupMember()).Error)
-			gm := []*GroupMember{}
+			gm := []*GroupMemberUser{}
 			for i := 0; i < tt.createCnt; i++ {
 				u := TestUser(t, conn, org.PublicId)
 				gm = append(gm, TestGroupMember(t, conn, tt.args.withGroupId, u.PublicId))

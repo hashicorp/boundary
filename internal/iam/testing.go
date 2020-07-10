@@ -142,11 +142,11 @@ func TestGroup(t *testing.T, conn *gorm.DB, scopeId string, opt ...Option) *Grou
 	return grp
 }
 
-func TestGroupMember(t *testing.T, conn *gorm.DB, groupId, userId string, opt ...Option) *GroupMember {
+func TestGroupMember(t *testing.T, conn *gorm.DB, groupId, userId string, opt ...Option) *GroupMemberUser {
 	t.Helper()
 	require := require.New(t)
 	rw := db.New(conn)
-	gm, err := NewGroupMember(groupId, userId)
+	gm, err := NewGroupMemberUser(groupId, userId)
 	require.NoError(err)
 	require.NotNil(gm)
 	err = rw.Create(context.Background(), gm)
