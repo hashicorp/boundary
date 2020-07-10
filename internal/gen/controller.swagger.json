@@ -2246,7 +2246,7 @@
     },
     "/v1/orgs/{org_id}/projects/{project_id}/roles/{role_id}:remove-principals": {
       "post": {
-        "summary": "Removes Users and/or Groups from a Role, deleting any principals",
+        "summary": "Removes the specified Users and/or Groups from a Role.",
         "operationId": "RoleService_RemoveRolePrincipals2",
         "responses": {
           "200": {
@@ -2558,7 +2558,7 @@
     },
     "/v1/orgs/{org_id}/roles/{role_id}:remove-principals": {
       "post": {
-        "summary": "Removes Users and/or Groups from a Role, deleting any principals",
+        "summary": "Removes the specified Users and/or Groups from a Role.",
         "operationId": "RoleService_RemoveRolePrincipals",
         "responses": {
           "200": {

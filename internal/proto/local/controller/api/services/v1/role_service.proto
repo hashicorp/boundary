@@ -166,7 +166,7 @@ service RoleService {
       }
     };
     option (grpc.gateway.protoc_gen_swagger.options.openapiv2_operation) = {
-      summary: "Removes Users and/or Groups from a Role, deleting any principals"
+      summary: "Removes the specified Users and/or Groups from a Role."
     };
   }
 }
@@ -203,7 +203,7 @@ message CreateRoleResponse {
   resources.roles.v1.Role item = 2;
 }
 
-// TODO: Add versions to Update and Delete reole requests.
+// TODO: Add versions to Update and Delete role requests.
 message UpdateRoleRequest {
   string org_id = 1;
   string project_id = 2;
