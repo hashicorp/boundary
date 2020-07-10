@@ -2,10 +2,12 @@ package authenticate
 
 import (
 	"bufio"
+	"context"
 	"fmt"
 	"os"
 	"strings"
 
+	"github.com/hashicorp/watchtower/api/scopes"
 	"github.com/hashicorp/watchtower/internal/cmd/base"
 	"github.com/mitchellh/cli"
 	"github.com/posener/complete"
@@ -90,7 +92,29 @@ func (c *PasswordCommand) Run(args []string) (ret int) {
 		c.flagPassword = text
 	}
 
-	fmt.Printf("password is set to '%s'", c.flagPassword)
+	client, err := c.Client()
+	if err != nil {
+		fmt.Printf(err.Error())
+		return 1
+	}
+
+	org := &scopes.Organization{
+		Client: client,
+	}
+	ctx := context.Background()
+
+	// note: Authenticate() calls SetToken() under the hood to set the
+	// auth bearer on the client so we do not need to do anything with the
+	// returned token after this call, so we ignore it
+	_, apiErr, err := org.Authenticate(ctx, c.flagID, c.flagUsername, c.flagPassword)
+	if apiErr != nil {
+		fmt.Printf(*apiErr.Message)
+		return 1
+	}
+	if err != nil {
+		fmt.Printf(err.Error())
+		return 1
+	}
 
 	return ret
 }

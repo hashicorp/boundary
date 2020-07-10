@@ -34,6 +34,7 @@ require (
 	github.com/hashicorp/go-sockaddr v1.0.2
 	github.com/hashicorp/go-uuid v1.0.2
 	github.com/hashicorp/hcl v1.0.0
+	github.com/hashicorp/terraform-plugin-sdk v1.15.0 // indirect
 	github.com/hashicorp/vault v1.2.1-0.20200521015612-812a92b26b19
 	github.com/hashicorp/vault/sdk v0.1.14-0.20200519221912-a8c2591d3641
 	github.com/jackc/pgx/v4 v4.6.0
