@@ -37,6 +37,18 @@ type Role struct {
 	// this to be anything other than the role's scope when the role's scope is
 	// a project.
 	GrantScopeId *string `json:"grant_scope_id,omitempty"`
+	// The version can be used in subsiquent write requests to ensure this resource
+	// has not changed and to fail the write if it has.
+	// Output only.
+	Version *uint32 `json:"version,omitempty"`
+	// The principals that are assigned this role.
+	// Output only.
+	UserIds []string `json:"user_ids,omitempty"`
+	// Output only.
+	GroupIds []string `json:"group_ids,omitempty"`
+	// The grants that this role provides for it's principals.
+	// Output only.
+	Grants []string `json:"grants,omitempty"`
 }
 
 func (s *Role) SetDefault(key string) {

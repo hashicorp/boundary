@@ -89,16 +89,36 @@ func (r *Repository) UpdateRole(ctx context.Context, role *Role, fieldMaskPaths 
 
 // LookupRole will look up a role in the repository.  If the role is not
 // found, it will return nil, nil.
-func (r *Repository) LookupRole(ctx context.Context, withPublicId string, opt ...Option) (*Role, error) {
+func (r *Repository) LookupRole(ctx context.Context, withPublicId string, opt ...Option) (*Role, []PrincipalRole, error) {
 	if withPublicId == "" {
-		return nil, fmt.Errorf("lookup role: missing public id %w", db.ErrNilParameter)
+		return nil, nil, fmt.Errorf("lookup role: missing public id %w", db.ErrNilParameter)
 	}
 	role := allocRole()
 	role.PublicId = withPublicId
-	if err := r.reader.LookupByPublicId(ctx, &role); err != nil {
-		return nil, fmt.Errorf("lookup role: failed %w for %s", err, withPublicId)
+	var pr []PrincipalRole
+	_, err := r.writer.DoTx(
+		ctx,
+		db.StdRetryCnt,
+		db.ExpBackoff{},
+		func(read db.Reader, w db.Writer) error {
+			if err := read.LookupByPublicId(ctx, &role); err != nil {
+				return fmt.Errorf("lookup role: failed %w for %s", err, withPublicId)
+			}
+			repo, err := NewRepository(read, w, r.wrapper)
+			if err != nil {
+				return fmt.Errorf("lookup role: failed creating inner repo: %w for %s", err, withPublicId)
+			}
+			pr, err = repo.ListPrincipalRoles(ctx, withPublicId)
+			if err != nil {
+				return fmt.Errorf("lookup role: listing principal roles: %w for %s", err, withPublicId)
+			}
+			return nil
+		},
+	)
+	if err != nil {
+		return nil, nil, err
 	}
-	return &role, nil
+	return &role, pr, nil
 }
 
 // DeleteRole will delete a role from the repository.

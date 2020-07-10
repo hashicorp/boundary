@@ -12,7 +12,7 @@ import (
 // groupIds) to a role (roleId).  The role's current db version must match the
 // roleVersion or an error will be returned.  The list of current PrincipalRoles
 // after the adds will be returned on success.
-func (r *Repository) AddPrincipalRoles(ctx context.Context, roleId string, roleVersion int, userIds, groupIds []string, opt ...Option) ([]PrincipalRole, error) {
+func (r *Repository) AddPrincipalRoles(ctx context.Context, roleId string, roleVersion uint32, userIds, groupIds []string, opt ...Option) ([]PrincipalRole, error) {
 	if roleId == "" {
 		return nil, fmt.Errorf("add principal roles: missing role id: %w", db.ErrInvalidParameter)
 	}
@@ -56,7 +56,7 @@ func (r *Repository) AddPrincipalRoles(ctx context.Context, roleId string, roleV
 			}
 			updatedRole := allocRole()
 			updatedRole.PublicId = roleId
-			updatedRole.Version = uint32(roleVersion) + 1
+			updatedRole.Version = roleVersion + 1
 			var roleOplogMsg oplog.Message
 			rowsUpdated, err := w.Update(ctx, &updatedRole, []string{"Version"}, nil, db.NewOplogMsg(&roleOplogMsg), db.WithVersion(roleVersion))
 			if err != nil {
@@ -114,7 +114,7 @@ func (r *Repository) AddPrincipalRoles(ctx context.Context, roleId string, roleV
 // principals as need to reconcile the existing principals with the principals
 // requested. If both userIds and groupIds are empty, the principal roles will
 // be cleared.
-func (r *Repository) SetPrincipalRoles(ctx context.Context, roleId string, roleVersion int, userIds, groupIds []string, opt ...Option) ([]PrincipalRole, int, error) {
+func (r *Repository) SetPrincipalRoles(ctx context.Context, roleId string, roleVersion uint32, userIds, groupIds []string, opt ...Option) ([]PrincipalRole, int, error) {
 	if roleId == "" {
 		return nil, db.NoRowsAffected, fmt.Errorf("set principal roles: missing role id: %w", db.ErrInvalidParameter)
 	}
@@ -153,7 +153,7 @@ func (r *Repository) SetPrincipalRoles(ctx context.Context, roleId string, roleV
 			}
 			updatedRole := allocRole()
 			updatedRole.PublicId = roleId
-			updatedRole.Version = uint32(roleVersion) + 1
+			updatedRole.Version = roleVersion + 1
 			var roleOplogMsg oplog.Message
 			rowsUpdated, err := w.Update(ctx, &updatedRole, []string{"Version"}, nil, db.NewOplogMsg(&roleOplogMsg), db.WithVersion(roleVersion))
 			if err != nil {
@@ -243,7 +243,7 @@ func (r *Repository) SetPrincipalRoles(ctx context.Context, roleId string, roleV
 // DeletePrincipalRoles principals (userIds and/or groupIds) from a role
 // (roleId). The role's current db version must match the roleVersion or an
 // error will be returned.
-func (r *Repository) DeletePrincipalRoles(ctx context.Context, roleId string, roleVersion int, userIds, groupIds []string, opt ...Option) (int, error) {
+func (r *Repository) DeletePrincipalRoles(ctx context.Context, roleId string, roleVersion uint32, userIds, groupIds []string, opt ...Option) (int, error) {
 	if roleId == "" {
 		return db.NoRowsAffected, fmt.Errorf("delete principal roles: missing role id: %w", db.ErrInvalidParameter)
 	}
@@ -286,7 +286,7 @@ func (r *Repository) DeletePrincipalRoles(ctx context.Context, roleId string, ro
 			}
 			updatedRole := allocRole()
 			updatedRole.PublicId = roleId
-			updatedRole.Version = uint32(roleVersion) + 1
+			updatedRole.Version = roleVersion + 1
 			var roleOplogMsg oplog.Message
 			rowsUpdated, err := w.Update(ctx, &updatedRole, []string{"Version"}, nil, db.NewOplogMsg(&roleOplogMsg), db.WithVersion(roleVersion))
 			if err != nil {

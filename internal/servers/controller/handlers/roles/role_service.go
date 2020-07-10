@@ -121,22 +121,64 @@ func (s Service) DeleteRole(ctx context.Context, req *pbs.DeleteRoleRequest) (*p
 	return &pbs.DeleteRoleResponse{Existed: existed}, nil
 }
 
+// AddRolePrincipals implements the interface pbs.RoleServiceServer.
+func (s Service) AddRolePrincipals(ctx context.Context, req *pbs.AddRolePrincipalsRequest) (*pbs.AddRolePrincipalsResponse, error) {
+	auth := handlers.ToTokenMetadata(ctx)
+	_ = auth
+	if err := validateAddRolePrincipalsRequest(req); err != nil {
+		return nil, err
+	}
+	r, err := s.addPrinciplesInRepo(ctx, req.GetRoleId(), req.GetUserIds(), req.GetGroupIds(), req.GetVersion().GetValue())
+	if err != nil {
+		return nil, err
+	}
+	return &pbs.AddRolePrincipalsResponse{Item: r}, nil
+}
+
+// SetRolePrincipals implements the interface pbs.RoleServiceServer.
+func (s Service) SetRolePrincipals(ctx context.Context, req *pbs.SetRolePrincipalsRequest) (*pbs.SetRolePrincipalsResponse, error) {
+	auth := handlers.ToTokenMetadata(ctx)
+	_ = auth
+	if err := validateSetRolePrincipalsRequest(req); err != nil {
+		return nil, err
+	}
+	r, err := s.setPrinciplesInRepo(ctx, req.GetRoleId(), req.GetUserIds(), req.GetGroupIds(), req.GetVersion().GetValue())
+	if err != nil {
+		return nil, err
+	}
+	return &pbs.SetRolePrincipalsResponse{Item: r}, nil
+}
+
+// RemoveRolePrincipals implements the interface pbs.RoleServiceServer.
+func (s Service) RemoveRolePrincipals(ctx context.Context, req *pbs.RemoveRolePrincipalsRequest) (*pbs.RemoveRolePrincipalsResponse, error) {
+	auth := handlers.ToTokenMetadata(ctx)
+	_ = auth
+	if err := validateRemoveRolePrincipalsRequest(req); err != nil {
+		return nil, err
+	}
+	r, err := s.removePrinciplesInRepo(ctx, req.GetRoleId(), req.GetUserIds(), req.GetGroupIds(), req.GetVersion().GetValue())
+	if err != nil {
+		return nil, err
+	}
+	return &pbs.RemoveRolePrincipalsResponse{Item: r}, nil
+}
+
 func (s Service) getFromRepo(ctx context.Context, id string) (*pb.Role, error) {
 	repo, err := s.repoFn()
 	if err != nil {
 		return nil, err
 	}
-	u, err := repo.LookupRole(ctx, id)
+	out, pr, err := repo.LookupRole(ctx, id)
 	if err != nil {
 		if errors.Is(err, db.ErrRecordNotFound) {
 			return nil, handlers.NotFoundErrorf("Role %q doesn't exist.", id)
 		}
 		return nil, err
 	}
-	if u == nil {
+	if out == nil {
 		return nil, handlers.NotFoundErrorf("Role %q doesn't exist.", id)
 	}
-	return toProto(u), nil
+	return toProto(out, pr), nil
 }
 
 func (s Service) createInRepo(ctx context.Context, scopeId string, item *pb.Role) (*pb.Role, error) {
@@ -162,7 +204,7 @@ func (s Service) createInRepo(ctx context.Context, scopeId string, item *pb.Role
 	if out == nil {
 		return nil, status.Error(codes.Internal, "Unable to create role but no error returned from repository.")
 	}
-	return toProto(out), nil
+	return toProto(out, nil), nil
 }
 
 func (s Service) updateInRepo(ctx context.Context, scopeId, id string, mask []string, item *pb.Role) (*pb.Role, error) {
@@ -196,7 +238,7 @@ func (s Service) updateInRepo(ctx context.Context, scopeId, id string, mask []st
 	if rowsUpdated == 0 {
 		return nil, handlers.NotFoundErrorf("Role %q doesn't exist.", id)
 	}
-	return toProto(out), nil
+	return toProto(out, nil), nil
 }
 
 func (s Service) deleteFromRepo(ctx context.Context, id string) (bool, error) {
@@ -225,9 +267,57 @@ func (s Service) listFromRepo(ctx context.Context, scopeId string) ([]*pb.Role, 
 	}
 	var outRl []*pb.Role
 	for _, g := range rl {
-		outRl = append(outRl, toProto(g))
+		outRl = append(outRl, toProto(g, nil))
 	}
 	return outRl, nil
+}
+
+func (s Service) addPrinciplesInRepo(ctx context.Context, roleId string, userIds []string, groupIds []string, version uint32) (*pb.Role, error) {
+	repo, err := s.repoFn()
+	if err != nil {
+		return nil, err
+	}
+	_, err = repo.AddPrincipalRoles(ctx, roleId, version, userIds, groupIds)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "Unable to add principles to role: %v.", err)
+	}
+	out, pr, err := repo.LookupRole(ctx, roleId)
+	if out == nil {
+		return nil, status.Error(codes.Internal, "Unable to lookup role after adding principles to it.")
+	}
+	return toProto(out, pr), nil
+}
+
+func (s Service) setPrinciplesInRepo(ctx context.Context, roleId string, userIds []string, groupIds []string, version uint32) (*pb.Role, error) {
+	repo, err := s.repoFn()
+	if err != nil {
+		return nil, err
+	}
+	_, _, err = repo.SetPrincipalRoles(ctx, roleId, version, userIds, groupIds)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "Unable to set principles on role: %v.", err)
+	}
+	out, pr, err := repo.LookupRole(ctx, roleId)
+	if out == nil {
+		return nil, status.Error(codes.Internal, "Unable to lookup role after setting principles for it.")
+	}
+	return toProto(out, pr), nil
+}
+
+func (s Service) removePrinciplesInRepo(ctx context.Context, roleId string, userIds []string, groupIds []string, version uint32) (*pb.Role, error) {
+	repo, err := s.repoFn()
+	if err != nil {
+		return nil, err
+	}
+	_, err = repo.DeletePrincipalRoles(ctx, roleId, version, userIds, groupIds)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "Unable to remove principles from role: %v.", err)
+	}
+	out, pr, err := repo.LookupRole(ctx, roleId)
+	if out == nil {
+		return nil, status.Error(codes.Internal, "Unable to lookup role after removing principles from it.")
+	}
+	return toProto(out, pr), nil
 }
 
 // toDbUpdateMask converts the wire format's FieldMask into a list of strings containing FieldMask paths used
@@ -249,17 +339,26 @@ func toDbUpdateMask(paths []string) ([]string, error) {
 	return dbPaths, nil
 }
 
-func toProto(in *iam.Role) *pb.Role {
+func toProto(in *iam.Role, principals []iam.PrincipalRole) *pb.Role {
 	out := pb.Role{
 		Id:          in.GetPublicId(),
 		CreatedTime: in.GetCreateTime().GetTimestamp(),
 		UpdatedTime: in.GetUpdateTime().GetTimestamp(),
+		Version:     in.GetVersion(),
 	}
 	if in.GetDescription() != "" {
 		out.Description = &wrapperspb.StringValue{Value: in.GetDescription()}
 	}
 	if in.GetName() != "" {
 		out.Name = &wrapperspb.StringValue{Value: in.GetName()}
+	}
+	for _, p := range principals {
+		switch p.GetType() {
+		case iam.UserRoleType.String():
+			out.UserIds = append(out.UserIds, p.GetPrincipalId())
+		case iam.GroupRoleType.String():
+			out.GroupIds = append(out.GroupIds, p.GetPrincipalId())
+		}
 	}
 	return &out
 }
@@ -344,6 +443,60 @@ func validateListRequest(req *pbs.ListRolesRequest) error {
 	badFields := validateAncestors(req)
 	if len(badFields) > 0 {
 		return handlers.InvalidArgumentErrorf("Improperly formatted identifier.", badFields)
+	}
+	return nil
+}
+
+func validateAddRolePrincipalsRequest(req *pbs.AddRolePrincipalsRequest) error {
+	badFields := validateAncestors(req)
+	if !validId(req.GetRoleId(), iam.RolePrefix+"_") {
+		badFields["id"] = "Incorrectly formatted identifier."
+	}
+	if req.GetVersion() == nil {
+		badFields["version"] = "Required field."
+	}
+	if len(req.GetGroupIds()) == 0 && len(req.GetUserIds()) == 0 {
+		badFields["user_ids"] = "Either user_ids or group_ids must be non empty."
+		badFields["group_ids"] = "Either user_ids or group_ids must be non empty."
+	}
+	if len(badFields) > 0 {
+		return handlers.InvalidArgumentErrorf("Errors in provided fields.", badFields)
+	}
+	return nil
+}
+
+func validateSetRolePrincipalsRequest(req *pbs.SetRolePrincipalsRequest) error {
+	badFields := validateAncestors(req)
+	if !validId(req.GetRoleId(), iam.RolePrefix+"_") {
+		badFields["id"] = "Incorrectly formatted identifier."
+	}
+	if req.GetVersion() == nil {
+		badFields["version"] = "Required field."
+	}
+	if len(req.GetGroupIds()) == 0 && len(req.GetUserIds()) == 0 {
+		badFields["user_ids"] = "Either user_ids or group_ids must be non empty."
+		badFields["group_ids"] = "Either user_ids or group_ids must be non empty."
+	}
+	if len(badFields) > 0 {
+		return handlers.InvalidArgumentErrorf("Errors in provided fields.", badFields)
+	}
+	return nil
+}
+
+func validateRemoveRolePrincipalsRequest(req *pbs.RemoveRolePrincipalsRequest) error {
+	badFields := validateAncestors(req)
+	if !validId(req.GetRoleId(), iam.RolePrefix+"_") {
+		badFields["id"] = "Incorrectly formatted identifier."
+	}
+	if req.GetVersion() == nil {
+		badFields["version"] = "Required field."
+	}
+	if len(req.GetGroupIds()) == 0 && len(req.GetUserIds()) == 0 {
+		badFields["user_ids"] = "Either user_ids or group_ids must be non empty."
+		badFields["group_ids"] = "Either user_ids or group_ids must be non empty."
+	}
+	if len(badFields) > 0 {
+		return handlers.InvalidArgumentErrorf("Errors in provided fields.", badFields)
 	}
 	return nil
 }
