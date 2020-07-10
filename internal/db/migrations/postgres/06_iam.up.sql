@@ -441,10 +441,19 @@ create table iam_group (
     scope_id wt_scope_id not null references iam_scope(public_id) on delete cascade on update cascade,
     unique(name, scope_id),
     disabled boolean not null default false,
+    -- version allows optimistic locking of the group when modifying the group
+    -- itself and when modifying dependent items like group members. 
+    version bigint not null default 1,
+
     -- add unique index so a composite fk can be declared.
     unique(scope_id, public_id)
   );
   
+create trigger 
+  update_version_column
+after update on iam_group
+  for each row execute procedure update_version_column();
+
 create trigger 
   update_time_column 
 before update on iam_group
@@ -591,5 +600,73 @@ create trigger
 before
 insert on iam_group_role
   for each row execute procedure default_create_time();
+
+-- iam_group_member_user is an association table that represents groups with
+-- associated users.
+create table iam_group_member_user (
+  create_time wt_timestamp,
+  group_id wt_public_id references iam_group(public_id) on delete cascade on update cascade,
+  member_id wt_public_id references iam_user(public_id) on delete cascade on update cascade,
+  primary key (group_id, member_id)
+);
+
+-- iam_immutable_group_member() ensures that group members are immutable. 
+create or replace function
+  iam_immutable_group_member()
+  returns trigger
+as $$
+begin
+    raise exception 'group members are immutable';
+end;
+$$ language plpgsql;
+
+create trigger 
+  default_create_time_column
+before
+insert on iam_group_member_user
+  for each row execute procedure default_create_time();
+
+create trigger 
+  immutable_create_time
+before
+update on iam_group_member_user
+  for each row execute procedure immutable_create_time_func();
+
+create trigger iam_immutable_group_member
+before
+update on iam_group_member_user
+  for each row execute procedure iam_immutable_group_member();
+
+-- get_scoped_principal_id is used by the iam_group_member view as a convient
+-- way to create <scope_id>:<member_id> to reference members from
+-- other scopes than the group's scope. 
+create or replace function get_scoped_member_id(group_scope text, member_scope text, member_id text) returns text 
+as $$
+begin
+	if group_scope = member_scope then
+		return member_id;
+	end if;
+	return member_scope || ':' || member_id;
+end;
+$$ language plpgsql;
+
+-- iam_group_member provides a consolidated view of group members.
+create view iam_group_member as
+select
+  gm.create_time,
+  gm.group_id,
+  gm.member_id,
+  u.scope_id as member_scope_id,
+  g.scope_id as group_scope_id,
+  get_scoped_member_id(g.scope_id, u.scope_id, gm.member_id) as scoped_member_id,
+  'user' as type
+from
+  iam_group_member_user gm,
+  iam_user u,
+  iam_group g
+where
+  gm.member_id = u.public_id and
+  gm.group_id = g.public_id;
+  
 
 commit;
