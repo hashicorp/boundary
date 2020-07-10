@@ -941,45 +941,14 @@ before
 insert on iam_group_role
   for each row execute procedure default_create_time();
 
--- iam_group_member is an association table that represents group with
+-- iam_group_member_user is an association table that represents groups with
 -- associated users.
-create table iam_group_member (
+create table iam_group_member_user (
   create_time wt_timestamp,
   group_id wt_public_id references iam_group(public_id) on delete cascade on update cascade,
   member_id wt_public_id references iam_user(public_id) on delete cascade on update cascade,
   primary key (group_id, member_id)
 );
-
--- iam_group_member_scope_check() ensures that the user is only assigned
--- groups which are within its organization, or the group is within a project
--- within its organization. 
-create or replace function 
-  iam_group_member_scope_check() 
-  returns trigger
-as $$ 
-declare cnt int;
-begin
-  select count(*) into cnt
-  from iam_user 
-  where 
-    public_id = new.member_id and 
-  scope_id in(
-    -- check to see if they have the same org scope
-    select s.public_id 
-      from iam_scope s, iam_group g 
-      where s.public_id = g.scope_id and g.public_id = new.group_id 
-    union
-    -- check to see if the role has a parent that's the same org
-    select s.parent_id as public_id 
-      from iam_group g, iam_scope s 
-      where g.scope_id = s.public_id and g.public_id = new.role_id 
-  );
-  if cnt = 0 then
-    raise exception 'user and group do not belong to the same organization';
-  end if;
-  return new;
-end;
-$$ language plpgsql;
 
 -- iam_immutable_group_member() ensures that group members are immutable. 
 create or replace function
@@ -994,13 +963,45 @@ $$ language plpgsql;
 create trigger 
   default_create_time_column
 before
-insert on iam_group_member
+insert on iam_group_member_user
   for each row execute procedure default_create_time();
 
 create trigger iam_immutable_group_member
 before
-update on iam_group_member
+update on iam_group_member_user
   for each row execute procedure iam_immutable_group_member();
+
+-- get_scoped_principal_id is used by the iam_group_member view as a convient
+-- way to create <scope_id>:<member_id> to reference members from
+-- other scopes than the group's scope. 
+create or replace function get_scoped_member_id(group_scope text, member_scope text, member_id text) returns text 
+as $$
+begin
+	if group_scope = member_scope then
+		return member_id;
+	end if;
+	return member_scope || ':' || member_id;
+end;
+$$ language plpgsql;
+
+-- iam_group_member provides a consolidated view of group members.
+create view iam_group_member as
+select
+  gm.create_time,
+  gm.group_id,
+  gm.member_id,
+  u.scope_id as member_scope_id,
+  g.scope_id as group_scope_id,
+  get_scoped_member_id(g.scope_id, u.scope_id, gm.member_id) as scoped_member_id,
+  'user' as type
+from
+  iam_group_member_user gm,
+  iam_user u,
+  iam_group g
+where
+  gm.member_id = u.public_id and
+  gm.group_id = g.public_id;
+  
 
 commit;
 
