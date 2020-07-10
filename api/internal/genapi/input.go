@@ -93,6 +93,17 @@ var inputStructs = []*structInfo{
 		templateTypeResource,
 	},
 	{
+		os.Getenv("GEN_BASEPATH") + "/internal/gen/controller/api/resources/authtokens/authtoken.pb.go",
+		"AuthToken",
+		os.Getenv("GEN_BASEPATH") + "/api/authtokens/authtoken.gen.go",
+		"AuthToken",
+		"authtokens",
+		"",
+		"",
+		"",
+		templateTypeResource,
+	},
+	{
 		os.Getenv("GEN_BASEPATH") + "/internal/gen/controller/api/resources/scopes/project.pb.go",
 		"Project",
 		os.Getenv("GEN_BASEPATH") + "/api/scopes/project.gen.go",
