@@ -411,6 +411,11 @@ func validateCreateRequest(req *pbs.CreateRoleRequest) error {
 	if item.GetUpdatedTime() != nil {
 		badFields["updated_time"] = "This is a read only field."
 	}
+	if item.GetGrantScopeId() != nil && req.ProjectId != "" {
+		if item.GetGrantScopeId().Value != req.ProjectId {
+			badFields["grant_scope_id"] = "Must be empty or set to the project_id when the scope type is project."
+		}
+	}
 	if len(badFields) > 0 {
 		return handlers.InvalidArgumentErrorf("Argument errors found in the request.", badFields)
 	}
@@ -440,6 +445,11 @@ func validateUpdateRequest(req *pbs.UpdateRoleRequest) error {
 	}
 	if item.GetUpdatedTime() != nil {
 		badFields["updated_time"] = "This is a read only field and cannot be specified in an update request."
+	}
+	if item.GetGrantScopeId() != nil && req.ProjectId != "" {
+		if item.GetGrantScopeId().Value != req.ProjectId {
+			badFields["grant_scope_id"] = "Must be empty or set to the project_id when the scope type is project."
+		}
 	}
 	if len(badFields) > 0 {
 		return handlers.InvalidArgumentErrorf("Errors in provided fields.", badFields)

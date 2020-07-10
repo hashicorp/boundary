@@ -457,7 +457,7 @@ func TestCreate(t *testing.T) {
 				},
 			},
 			res:     nil,
-			errCode: codes.Internal,
+			errCode: codes.InvalidArgument,
 		},
 		{
 			name: "Can't specify Id",
