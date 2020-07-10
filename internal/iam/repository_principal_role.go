@@ -13,13 +13,6 @@ import (
 // roleVersion or an error will be returned.  The list of current PrincipalRoles
 // after the adds will be returned on success.
 func (r *Repository) AddPrincipalRoles(ctx context.Context, roleId string, roleVersion int, userIds, groupIds []string, opt ...Option) ([]PrincipalRole, error) {
-	// NOTE - we are intentionally not going to check that the scopes are
-	// correct for the userIds and groupIds, given the roleId.  We are going to
-	// rely on the database constraints and triggers to maintain the integrity
-	// of these scope relationships.  The users and role need to either be in
-	// the same organization or the role needs to be in a project of the user's
-	// org.  The groups and role have to be in the same scope (org or project).
-	// There are constraints and triggers to enforce these relationships.
 	if roleId == "" {
 		return nil, fmt.Errorf("add principal roles: missing role id: %w", db.ErrInvalidParameter)
 	}
@@ -122,13 +115,6 @@ func (r *Repository) AddPrincipalRoles(ctx context.Context, roleId string, roleV
 // requested. If both userIds and groupIds are empty, the principal roles will
 // be cleared.
 func (r *Repository) SetPrincipalRoles(ctx context.Context, roleId string, roleVersion int, userIds, groupIds []string, opt ...Option) ([]PrincipalRole, int, error) {
-	// NOTE - we are intentionally not going to check that the scopes are
-	// correct for the userIds and groupIds, given the roleId.  We are going to
-	// rely on the database constraints and triggers to maintain the integrity
-	// of these scope relationships.  The users and role need to either be in
-	// the same organization or the role needs to be in a project of the user's
-	// org.  The groups and role have to be in the same scope (org or project).
-	// There are constraints and triggers to enforce these relationships.
 	if roleId == "" {
 		return nil, db.NoRowsAffected, fmt.Errorf("set principal roles: missing role id: %w", db.ErrInvalidParameter)
 	}
