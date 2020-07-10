@@ -33,7 +33,7 @@ func TestRepository_AddRoleGrants(t *testing.T) {
 	}
 	type args struct {
 		roleId      string
-		roleVersion int
+		roleVersion uint32
 		grants      []string
 		opt         []Option
 	}
@@ -190,7 +190,7 @@ func TestRepository_ListRoleGrants(t *testing.T) {
 			for i := 0; i < tt.createCnt; i++ {
 				roleGrants = append(roleGrants, fmt.Sprintf("id=h_%d;actions=*", i))
 			}
-			testRoles, err := repo.AddRoleGrants(context.Background(), role.PublicId, int(role.Version), roleGrants, tt.args.opt...)
+			testRoles, err := repo.AddRoleGrants(context.Background(), role.PublicId, role.Version, roleGrants, tt.args.opt...)
 			require.NoError(err)
 			assert.Equal(tt.createCnt, len(testRoles))
 
@@ -418,7 +418,7 @@ func TestRepository_SetRoleGrants_Randomize(t *testing.T) {
 			require.Error(err)
 		}
 
-		_, _, err := repo.SetRoleGrants(context.Background(), role.PublicId, i, grantsToSet)
+		_, _, err := repo.SetRoleGrants(context.Background(), role.PublicId, uint32(i), grantsToSet)
 		require.NoError(err)
 
 		roleGrants, err := repo.ListRoleGrants(context.Background(), role.PublicId)
@@ -432,7 +432,7 @@ func TestRepository_SetRoleGrants_Randomize(t *testing.T) {
 	}
 
 	// At the end, set to explicitly empty and make sure all are cleared out
-	_, _, err = repo.SetRoleGrants(context.Background(), role.PublicId, totalCnt+1, []string{})
+	_, _, err = repo.SetRoleGrants(context.Background(), role.PublicId, uint32(totalCnt+1), []string{})
 	require.NoError(err)
 
 	roleGrants, err := repo.ListRoleGrants(context.Background(), role.PublicId)

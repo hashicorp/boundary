@@ -12,7 +12,7 @@ import (
 
 // AddRoleGrant will add role grants associated with the role ID in the
 // repository. No options are currently supported.
-func (r *Repository) AddRoleGrants(ctx context.Context, roleId string, roleVersion int, grants []string, opt ...Option) ([]*RoleGrant, error) {
+func (r *Repository) AddRoleGrants(ctx context.Context, roleId string, roleVersion uint32, grants []string, opt ...Option) ([]*RoleGrant, error) {
 	if roleId == "" {
 		return nil, fmt.Errorf("add role grants: missing role id %w", db.ErrInvalidParameter)
 	}
@@ -91,7 +91,7 @@ func (r *Repository) AddRoleGrants(ctx context.Context, roleId string, roleVersi
 
 // DeleteRoleGrants deletes grants (as strings) from a role (roleId). The role's
 // current db version must match the roleVersion or an error will be returned.
-func (r *Repository) DeleteRoleGrants(ctx context.Context, roleId string, roleVersion int, grants []string, opt ...Option) (int, error) {
+func (r *Repository) DeleteRoleGrants(ctx context.Context, roleId string, roleVersion uint32, grants []string, opt ...Option) (int, error) {
 	if roleId == "" {
 		return 0, fmt.Errorf("delete role grants: missing role id %w", db.ErrInvalidParameter)
 	}
@@ -204,7 +204,7 @@ func (r *Repository) DeleteRoleGrants(ctx context.Context, roleId string, roleVe
 
 // SetRoleGrants sets grants on a role (roleId). The role's current db version
 // must match the roleVersion or an error will be returned.
-func (r *Repository) SetRoleGrants(ctx context.Context, roleId string, roleVersion int, grants []string, opt ...Option) ([]*RoleGrant, int, error) {
+func (r *Repository) SetRoleGrants(ctx context.Context, roleId string, roleVersion uint32, grants []string, opt ...Option) ([]*RoleGrant, int, error) {
 	if roleId == "" {
 		return nil, 0, fmt.Errorf("set role grants: missing role id %w", db.ErrInvalidParameter)
 	}
