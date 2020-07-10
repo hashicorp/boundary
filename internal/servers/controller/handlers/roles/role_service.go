@@ -11,6 +11,7 @@ import (
 	pb "github.com/hashicorp/watchtower/internal/gen/controller/api/resources/roles"
 	pbs "github.com/hashicorp/watchtower/internal/gen/controller/api/services"
 	"github.com/hashicorp/watchtower/internal/iam"
+	"github.com/hashicorp/watchtower/internal/perms"
 	"github.com/hashicorp/watchtower/internal/servers/controller/handlers"
 	"github.com/hashicorp/watchtower/internal/types/scope"
 	"google.golang.org/grpc/codes"
@@ -391,6 +392,9 @@ func (s Service) addGrantsInRepo(ctx context.Context, roleId string, grants []st
 		return nil, status.Errorf(codes.Internal, "Unable to add grants to role: %v.", err)
 	}
 	out, pr, roleGrants, err := repo.LookupRole(ctx, roleId)
+	if err != nil {
+		return nil, status.Error(codes.Internal, "Error looking up role after adding grants to it.")
+	}
 	if out == nil {
 		return nil, status.Error(codes.Internal, "Unable to lookup role after adding grants to it.")
 	}
@@ -411,8 +415,11 @@ func (s Service) setGrantsInRepo(ctx context.Context, roleId string, grants []st
 		return nil, status.Errorf(codes.Internal, "Unable to set grants on role: %v.", err)
 	}
 	out, pr, roleGrants, err := repo.LookupRole(ctx, roleId)
+	if err != nil {
+		return nil, status.Error(codes.Internal, "Error looking up role after setting grants on it.")
+	}
 	if out == nil {
-		return nil, status.Error(codes.Internal, "Unable to lookup role after setting grants for it.")
+		return nil, status.Error(codes.Internal, "Unable to lookup role after setting grants on it.")
 	}
 	return toProto(out, pr, roleGrants), nil
 }
@@ -427,6 +434,9 @@ func (s Service) removeGrantsInRepo(ctx context.Context, roleId string, grants [
 		return nil, status.Errorf(codes.Internal, "Unable to remove grants from role: %v.", err)
 	}
 	out, pr, roleGrants, err := repo.LookupRole(ctx, roleId)
+	if err != nil {
+		return nil, status.Error(codes.Internal, "Error looking up role after removing grants from it.")
+	}
 	if out == nil {
 		return nil, status.Error(codes.Internal, "Unable to lookup role after removing grants from it.")
 	}
@@ -475,7 +485,23 @@ func toProto(in *iam.Role, principals []iam.PrincipalRole, grants []*iam.RoleGra
 	}
 	for _, g := range grants {
 		out.Grants = append(out.Grants, g.GetRawGrant())
-		out.CanonicalGrants = append(out.CanonicalGrants, g.GetCanonicalGrant())
+		parsed, err := perms.Parse(in.GetGrantScopeId(), "", g.GetRawGrant())
+		if err != nil {
+			// This should never happen as we validate on the way in, but let's
+			// return what we can since we are still returning the raw grant
+			out.GrantsCanonical = append(out.GrantsCanonical, "<parse_error>")
+			out.GrantsJson = append(out.GrantsJson, "<parse_error>")
+		} else {
+			out.GrantsCanonical = append(out.GrantsCanonical, parsed.CanonicalString())
+			jsonGrant, err := parsed.MarshalJSON()
+			if err != nil {
+				// Again, this should never happen, but let's return what we
+				// have anyways
+				out.GrantsJson = append(out.GrantsJson, "<parse_error>")
+			} else {
+				out.GrantsJson = append(out.GrantsJson, string(jsonGrant))
+			}
+		}
 	}
 	if in.GetGrantScopeId() != "" {
 		out.GrantScopeId = &wrapperspb.StringValue{Value: in.GetGrantScopeId()}

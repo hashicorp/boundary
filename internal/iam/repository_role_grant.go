@@ -7,7 +7,6 @@ import (
 	"github.com/hashicorp/watchtower/internal/db"
 	"github.com/hashicorp/watchtower/internal/oplog"
 	"github.com/hashicorp/watchtower/internal/perms"
-	"github.com/hashicorp/watchtower/internal/types/scope"
 )
 
 // AddRoleGrant will add role grants associated with the role ID in the
@@ -140,14 +139,7 @@ func (r *Repository) DeleteRoleGrants(ctx context.Context, roleId string, roleVe
 			deleteRoleGrants := make([]interface{}, 0, len(grants))
 			for _, grant := range grants {
 				// Use a fake scope, just want to get out a canonical string
-				perm, err := perms.Parse(
-					perms.Scope{
-						Id:   "s_abcd1234",
-						Type: scope.Organization,
-					},
-					"",
-					grant,
-				)
+				perm, err := perms.Parse("o_abcd1234", "", grant)
 				if err != nil {
 					return fmt.Errorf("delete role grants: error parsing grant string: %w", err)
 				}
@@ -237,14 +229,7 @@ func (r *Repository) SetRoleGrants(ctx context.Context, roleId string, roleVersi
 	deleteRoleGrants := make([]interface{}, 0, len(grants))
 	for _, grant := range grants {
 		// Use a fake scope, just want to get out a canonical string
-		perm, err := perms.Parse(
-			perms.Scope{
-				Id:   "s_abcd1234",
-				Type: scope.Organization,
-			},
-			"",
-			grant,
-		)
+		perm, err := perms.Parse("o_abcd1234", "", grant)
 		if err != nil {
 			return nil, 0, fmt.Errorf("set role grants: error parsing grant string: %w", err)
 		}

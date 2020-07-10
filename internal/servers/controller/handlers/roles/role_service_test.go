@@ -1480,9 +1480,7 @@ func TestAddGrants(t *testing.T) {
 				if o != scope {
 					req.ProjectId = scope.GetPublicId()
 				}
-				for _, grant := range tc.add {
-					req.Grants = append(req.Grants, grant)
-				}
+				req.Grants = append(req.Grants, tc.add...)
 				got, err := s.AddRoleGrants(context.Background(), req)
 				if tc.wantErr {
 					assert.Error(err)
@@ -1605,9 +1603,7 @@ func TestSetGrants(t *testing.T) {
 				if o != scope {
 					req.ProjectId = scope.GetPublicId()
 				}
-				for _, grant := range tc.set {
-					req.Grants = append(req.Grants, grant)
-				}
+				req.Grants = append(req.Grants, tc.set...)
 				got, err := s.SetRoleGrants(context.Background(), req)
 				if tc.wantErr {
 					assert.Error(err)
@@ -1730,9 +1726,7 @@ func TestRemoveGrants(t *testing.T) {
 				if o != scope {
 					req.ProjectId = scope.GetPublicId()
 				}
-				for _, grant := range tc.remove {
-					req.Grants = append(req.Grants, grant)
-				}
+				req.Grants = append(req.Grants, tc.remove...)
 				got, err := s.RemoveRoleGrants(context.Background(), req)
 				if tc.wantErr {
 					assert.Error(err)
