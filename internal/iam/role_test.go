@@ -532,8 +532,11 @@ func TestRole_Actions(t *testing.T) {
 	assert.Equal(a[action.Read.String()], action.Read)
 	assert.Equal(a[action.Delete.String()], action.Delete)
 	assert.Equal(a[action.AddGrants.String()], action.AddGrants)
-	assert.Equal(a[action.DeleteGrants.String()], action.DeleteGrants)
+	assert.Equal(a[action.RemoveGrants.String()], action.RemoveGrants)
 	assert.Equal(a[action.SetGrants.String()], action.SetGrants)
+	assert.Equal(a[action.AddPrincipals.String()], action.AddPrincipals)
+	assert.Equal(a[action.RemovePrincipals.String()], action.RemovePrincipals)
+	assert.Equal(a[action.SetPrincipals.String()], action.SetPrincipals)
 }
 
 func TestRole_ResourceType(t *testing.T) {

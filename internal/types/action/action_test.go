@@ -52,12 +52,24 @@ func TestAction(t *testing.T) {
 			want:   "add-grants",
 		},
 		{
-			action: DeleteGrants,
-			want:   "delete-grants",
+			action: RemoveGrants,
+			want:   "remove-grants",
 		},
 		{
 			action: SetGrants,
 			want:   "set-grants",
+		},
+		{
+			action: AddPrincipals,
+			want:   "add-principals",
+		},
+		{
+			action: RemovePrincipals,
+			want:   "remove-principals",
+		},
+		{
+			action: SetPrincipals,
+			want:   "set-principals",
 		},
 	}
 	for _, tt := range tests {
