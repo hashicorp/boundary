@@ -18,22 +18,31 @@ type options struct {
 	withName            string
 	withScope           *Scope
 	withDescription     string
-	withParentId        *string
+	withGroupGrants     bool
 	withLimit           int
 	withAutoVivify      bool
+	withGrantScopeId    string
 	withSkipVetForWrite bool
 }
 
 func getDefaultOptions() options {
 	return options{
 		withPublicId:        "",
+		withName:            "",
 		withScope:           nil,
 		withDescription:     "",
-		withName:            "",
-		withParentId:        nil,
+		withGroupGrants:     false,
 		withLimit:           0,
 		withAutoVivify:      false,
+		withGrantScopeId:    "",
 		withSkipVetForWrite: false,
+	}
+}
+
+// WithGroupGrants provides and option to include group grants
+func WithGroupGrants(enable bool) Option {
+	return func(o *options) {
+		o.withGroupGrants = enable
 	}
 }
 
@@ -79,6 +88,14 @@ func WithLimit(limit int) Option {
 func WithAutoVivify(enable bool) Option {
 	return func(o *options) {
 		o.withAutoVivify = enable
+	}
+}
+
+// WithGrantScopeId provides an option to specify the scope ID for grants in
+// roles.
+func WithGrantScopeId(id string) Option {
+	return func(o *options) {
+		o.withGrantScopeId = id
 	}
 }
 

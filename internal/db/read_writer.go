@@ -220,10 +220,10 @@ func (rw *Db) lookupAfterWrite(ctx context.Context, i interface{}, opt ...Option
 // cannot be used together.  WithLookup with to force a lookup after create.
 func (rw *Db) Create(ctx context.Context, i interface{}, opt ...Option) error {
 	if rw.underlying == nil {
-		return fmt.Errorf("create: missing underlying db %w", ErrNilParameter)
+		return fmt.Errorf("create: missing underlying db: %w", ErrNilParameter)
 	}
 	if isNil(i) {
-		return fmt.Errorf("create: interface is missing %w", ErrNilParameter)
+		return fmt.Errorf("create: interface is missing: %w", ErrNilParameter)
 	}
 	opts := GetOpts(opt...)
 	withOplog := opts.withOplog
@@ -234,7 +234,7 @@ func (rw *Db) Create(ctx context.Context, i interface{}, opt ...Option) error {
 		// let's validate oplog options before we start writing to the database
 		_, err := validateOplogArgs(i, opts)
 		if err != nil {
-			return fmt.Errorf("create: oplog validation failed %w", err)
+			return fmt.Errorf("create: oplog validation failed: %w", err)
 		}
 	}
 	// these fields should be nil, since they are not writeable and we want the
@@ -244,7 +244,7 @@ func (rw *Db) Create(ctx context.Context, i interface{}, opt ...Option) error {
 	if !opts.withSkipVetForWrite {
 		if vetter, ok := i.(VetForWriter); ok {
 			if err := vetter.VetForWrite(ctx, rw, CreateOp); err != nil {
-				return fmt.Errorf("create: vet for write failed %w", err)
+				return fmt.Errorf("create: vet for write failed: %w", err)
 			}
 		}
 	}
@@ -257,7 +257,7 @@ func (rw *Db) Create(ctx context.Context, i interface{}, opt ...Option) error {
 		}
 	}
 	if err := rw.underlying.Create(i).Error; err != nil {
-		return fmt.Errorf("create: failed %w", err)
+		return fmt.Errorf("create: failed: %w", err)
 	}
 	if withOplog {
 		if err := rw.addOplog(ctx, CreateOp, opts, ticket, i); err != nil {
@@ -267,12 +267,12 @@ func (rw *Db) Create(ctx context.Context, i interface{}, opt ...Option) error {
 	if opts.newOplogMsg != nil {
 		msg, err := rw.newOplogMessage(ctx, CreateOp, i)
 		if err != nil {
-			return fmt.Errorf("create: returning oplog failed %w", err)
+			return fmt.Errorf("create: returning oplog failed: %w", err)
 		}
 		*opts.newOplogMsg = *msg
 	}
 	if err := rw.lookupAfterWrite(ctx, i, opt...); err != nil {
-		return fmt.Errorf("create: lookup error %w", err)
+		return fmt.Errorf("create: lookup error: %w", err)
 	}
 	return nil
 }
@@ -406,13 +406,13 @@ func (rw *Db) Update(ctx context.Context, i interface{}, fieldMaskPaths []string
 		// let's validate oplog options before we start writing to the database
 		_, err := validateOplogArgs(i, opts)
 		if err != nil {
-			return NoRowsAffected, fmt.Errorf("update: oplog validation failed %w", err)
+			return NoRowsAffected, fmt.Errorf("update: oplog validation failed: %w", err)
 		}
 	}
 	if !opts.withSkipVetForWrite {
 		if vetter, ok := i.(VetForWriter); ok {
 			if err := vetter.VetForWrite(ctx, rw, UpdateOp, WithFieldMaskPaths(fieldMaskPaths), WithNullPaths(setToNullPaths)); err != nil {
-				return NoRowsAffected, fmt.Errorf("update: vet for write failed %w", err)
+				return NoRowsAffected, fmt.Errorf("update: vet for write failed: %w", err)
 			}
 		}
 	}
@@ -436,9 +436,9 @@ func (rw *Db) Update(ctx context.Context, i interface{}, fieldMaskPaths []string
 	}
 	if underlying.Error != nil {
 		if err == gorm.ErrRecordNotFound {
-			return NoRowsAffected, fmt.Errorf("update: failed %w", ErrRecordNotFound)
+			return NoRowsAffected, fmt.Errorf("update: failed: %w", ErrRecordNotFound)
 		}
-		return NoRowsAffected, fmt.Errorf("update: failed %w", underlying.Error)
+		return NoRowsAffected, fmt.Errorf("update: failed: %w", underlying.Error)
 	}
 	rowsUpdated := int(underlying.RowsAffected)
 	if rowsUpdated > 0 && (withOplog || opts.newOplogMsg != nil) {

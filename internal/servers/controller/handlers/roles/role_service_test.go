@@ -807,24 +807,24 @@ func TestAddPrincipal(t *testing.T) {
 
 	orWithUser := iam.TestRole(t, conn, o.GetPublicId())
 	assignedUser := iam.TestUser(t, conn, o.GetPublicId())
-	_ = iam.TestUserRole(t, conn, o.GetPublicId(), orWithUser.GetPublicId(), assignedUser.GetPublicId())
+	_ = iam.TestUserRole(t, conn, o.GetPublicId(), orWithUser.GetPublicId(), iam.WithPublicId(assignedUser.GetPublicId()))
 
 	ou1 := iam.TestUser(t, conn, o.GetPublicId())
 	ou2 := iam.TestUser(t, conn, o.GetPublicId())
 
 	orWithGroup := iam.TestRole(t, conn, o.GetPublicId())
 	assignedOG := iam.TestGroup(t, conn, o.GetPublicId())
-	_ = iam.TestGroupRole(t, conn, o.GetPublicId(), orWithGroup.GetPublicId(), assignedOG.GetPublicId())
+	_ = iam.TestGroupRole(t, conn, o.GetPublicId(), orWithGroup.GetPublicId(), iam.WithPublicId(assignedOG.GetPublicId()))
 
 	og1 := iam.TestGroup(t, conn, o.GetPublicId())
 	og2 := iam.TestGroup(t, conn, o.GetPublicId())
 
 	prWithUser := iam.TestRole(t, conn, p.GetPublicId())
-	_ = iam.TestUserRole(t, conn, p.GetPublicId(), prWithUser.GetPublicId(), assignedUser.GetPublicId())
+	_ = iam.TestUserRole(t, conn, p.GetPublicId(), prWithUser.GetPublicId(), iam.WithPublicId(assignedUser.GetPublicId()))
 
 	prWithGroup := iam.TestRole(t, conn, p.GetPublicId())
 	assignedPG := iam.TestGroup(t, conn, p.GetPublicId())
-	_ = iam.TestGroupRole(t, conn, p.GetPublicId(), prWithGroup.GetPublicId(), assignedPG.GetPublicId())
+	_ = iam.TestGroupRole(t, conn, p.GetPublicId(), prWithGroup.GetPublicId(), iam.WithPublicId(assignedPG.GetPublicId()))
 
 	pg1 := iam.TestGroup(t, conn, p.GetPublicId())
 	pg2 := iam.TestGroup(t, conn, p.GetPublicId())
@@ -1060,24 +1060,24 @@ func TestSetPrincipal(t *testing.T) {
 
 	orWithUser := iam.TestRole(t, conn, o.GetPublicId())
 	assignedUser := iam.TestUser(t, conn, o.GetPublicId())
-	_ = iam.TestUserRole(t, conn, o.GetPublicId(), orWithUser.GetPublicId(), assignedUser.GetPublicId())
+	_ = iam.TestUserRole(t, conn, o.GetPublicId(), orWithUser.GetPublicId(), iam.WithPublicId(assignedUser.GetPublicId()))
 
 	ou1 := iam.TestUser(t, conn, o.GetPublicId())
 	ou2 := iam.TestUser(t, conn, o.GetPublicId())
 
 	orWithGroup := iam.TestRole(t, conn, o.GetPublicId())
 	assignedOG := iam.TestGroup(t, conn, o.GetPublicId())
-	_ = iam.TestGroupRole(t, conn, o.GetPublicId(), orWithGroup.GetPublicId(), assignedOG.GetPublicId())
+	_ = iam.TestGroupRole(t, conn, o.GetPublicId(), orWithGroup.GetPublicId(), iam.WithPublicId(assignedOG.GetPublicId()))
 
 	og1 := iam.TestGroup(t, conn, o.GetPublicId())
 	og2 := iam.TestGroup(t, conn, o.GetPublicId())
 
 	prWithUser := iam.TestRole(t, conn, p.GetPublicId())
-	_ = iam.TestUserRole(t, conn, p.GetPublicId(), prWithUser.GetPublicId(), assignedUser.GetPublicId())
+	_ = iam.TestUserRole(t, conn, p.GetPublicId(), prWithUser.GetPublicId(), iam.WithPublicId(assignedUser.GetPublicId()))
 
 	prWithGroup := iam.TestRole(t, conn, p.GetPublicId())
 	assignedPG := iam.TestGroup(t, conn, p.GetPublicId())
-	_ = iam.TestGroupRole(t, conn, p.GetPublicId(), prWithGroup.GetPublicId(), assignedPG.GetPublicId())
+	_ = iam.TestGroupRole(t, conn, p.GetPublicId(), prWithGroup.GetPublicId(), iam.WithPublicId(assignedPG.GetPublicId()))
 
 	pg1 := iam.TestGroup(t, conn, p.GetPublicId())
 	pg2 := iam.TestGroup(t, conn, p.GetPublicId())
@@ -1315,20 +1315,20 @@ func TestRemovePrincipal(t *testing.T) {
 
 	ou1 := iam.TestUser(t, conn, o.GetPublicId())
 	ou2 := iam.TestUser(t, conn, o.GetPublicId())
-	_ = iam.TestUserRole(t, conn, o.GetPublicId(), orgUserRoles.GetPublicId(), ou1.GetPublicId())
-	_ = iam.TestUserRole(t, conn, o.GetPublicId(), orgUserRoles.GetPublicId(), ou2.GetPublicId())
-	_ = iam.TestUserRole(t, conn, p.GetPublicId(), projUserRoles.GetPublicId(), ou1.GetPublicId())
-	_ = iam.TestUserRole(t, conn, p.GetPublicId(), projUserRoles.GetPublicId(), ou2.GetPublicId())
+	_ = iam.TestUserRole(t, conn, o.GetPublicId(), orgUserRoles.GetPublicId(), iam.WithPublicId(ou1.GetPublicId()))
+	_ = iam.TestUserRole(t, conn, o.GetPublicId(), orgUserRoles.GetPublicId(), iam.WithPublicId(ou2.GetPublicId()))
+	_ = iam.TestUserRole(t, conn, p.GetPublicId(), projUserRoles.GetPublicId(), iam.WithPublicId(ou1.GetPublicId()))
+	_ = iam.TestUserRole(t, conn, p.GetPublicId(), projUserRoles.GetPublicId(), iam.WithPublicId(ou2.GetPublicId()))
 
 	og1 := iam.TestGroup(t, conn, o.GetPublicId())
 	og2 := iam.TestGroup(t, conn, o.GetPublicId())
-	_ = iam.TestGroupRole(t, conn, o.GetPublicId(), orgGroupRoles.GetPublicId(), og1.GetPublicId())
-	_ = iam.TestGroupRole(t, conn, o.GetPublicId(), orgGroupRoles.GetPublicId(), og2.GetPublicId())
+	_ = iam.TestGroupRole(t, conn, o.GetPublicId(), orgGroupRoles.GetPublicId(), iam.WithPublicId(og1.GetPublicId()))
+	_ = iam.TestGroupRole(t, conn, o.GetPublicId(), orgGroupRoles.GetPublicId(), iam.WithPublicId(og2.GetPublicId()))
 
 	pg1 := iam.TestGroup(t, conn, p.GetPublicId())
 	pg2 := iam.TestGroup(t, conn, p.GetPublicId())
-	_ = iam.TestGroupRole(t, conn, p.GetPublicId(), projGroupRoles.GetPublicId(), pg1.GetPublicId())
-	_ = iam.TestGroupRole(t, conn, p.GetPublicId(), projGroupRoles.GetPublicId(), pg2.GetPublicId())
+	_ = iam.TestGroupRole(t, conn, p.GetPublicId(), projGroupRoles.GetPublicId(), iam.WithPublicId(pg1.GetPublicId()))
+	_ = iam.TestGroupRole(t, conn, p.GetPublicId(), projGroupRoles.GetPublicId(), iam.WithPublicId(pg2.GetPublicId()))
 
 	s, err := roles.NewService(repoFn)
 	require.NoError(t, err, "Error when getting new role service.")

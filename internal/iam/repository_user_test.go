@@ -286,11 +286,11 @@ func TestRepository_UpdateUser(t *testing.T) {
 			args: args{
 				name:           "modified-scope" + id,
 				fieldMaskPaths: []string{"ScopeId"},
-				ScopeId:        proj.PublicId,
+				ScopeId:        "global",
 				opt:            []Option{WithSkipVetForWrite(true)},
 			},
 			wantErr:      true,
-			wantErrMsg:   `update: failed pq: scope_id cannot be set`,
+			wantErrMsg:   `update: failed: pq: scope_id cannot be set`,
 			directUpdate: true,
 		},
 	}
@@ -339,7 +339,7 @@ func TestRepository_UpdateUser(t *testing.T) {
 				case "dup-name":
 					assert.Equal(fmt.Sprintf(tt.wantErrMsg, "dup-name"+id, org.PublicId), err.Error())
 				default:
-					assert.True(strings.Contains(err.Error(), tt.wantErrMsg))
+					assert.True(strings.Contains(err.Error(), tt.wantErrMsg), "%s", err.Error())
 				}
 				err = db.TestVerifyOplog(t, rw, u.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_UPDATE), db.WithCreateNotBefore(10*time.Second))
 				require.Error(err)
@@ -513,7 +513,7 @@ func TestRepository_ListUsers(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			require.NoError(conn.Where("1=1").Delete(allocUser()).Error)
+			require.NoError(conn.Where("public_id != 'u_anon' and public_id != 'u_auth'").Delete(allocUser()).Error)
 			testUsers := []*User{}
 			for i := 0; i < tt.createCnt; i++ {
 				testUsers = append(testUsers, TestUser(t, conn, org.PublicId))
