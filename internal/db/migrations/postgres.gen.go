@@ -1443,4 +1443,55 @@ commit;
 
 `),
 	},
+	"migrations/90_demo.down.sql": {
+		name: "90_demo.down.sql",
+		bytes: []byte(`
+begin;
+
+  drop table iam_group_member;
+
+commit;
+
+`),
+	},
+	"migrations/90_demo.up.sql": {
+		name: "90_demo.up.sql",
+		bytes: []byte(`
+begin;
+
+  create table iam_group_member (
+    create_time wt_timestamp,
+    group_id wt_public_id
+      references iam_group(public_id)
+      on delete cascade
+      on update cascade,
+    member_id wt_public_id
+      references iam_user(public_id)
+      on delete cascade
+      on update cascade,
+    primary key (group_id, member_id)
+  );
+
+commit;
+
+`),
+	},
+	"migrations/95_data.down.sql": {
+		name: "95_data.down.sql",
+		bytes: []byte(`
+begin;
+
+commit;
+
+`),
+	},
+	"migrations/95_data.up.sql": {
+		name: "95_data.up.sql",
+		bytes: []byte(`
+begin;
+
+commit;
+
+`),
+	},
 }
