@@ -162,7 +162,7 @@ func Test_GroupMemberCreate(t *testing.T) {
 				}(),
 			},
 			wantErr:    true,
-			wantErrMsg: `create: failed pq: insert or update on table "iam_group_member_user" violates foreign key constraint`,
+			wantErrMsg: `create: failed: pq: insert or update on table "iam_group_member_user" violates foreign key constraint`,
 		},
 		{
 			name: "bad-user-id",
@@ -176,7 +176,7 @@ func Test_GroupMemberCreate(t *testing.T) {
 				}(),
 			},
 			wantErr:    true,
-			wantErrMsg: `create: failed pq: insert or update on table "iam_group_member_user" violates foreign key constraint`,
+			wantErrMsg: `create: failed: pq: insert or update on table "iam_group_member_user" violates foreign key constraint`,
 		},
 		{
 			name: "missing-group-id",
@@ -223,7 +223,7 @@ func Test_GroupMemberCreate(t *testing.T) {
 			},
 			wantDup:    true,
 			wantErr:    true,
-			wantErrMsg: `create: failed pq: duplicate key value violates unique constraint "iam_group_member_user_pkey"`,
+			wantErrMsg: `create: failed: pq: duplicate key value violates unique constraint "iam_group_member_user_pkey"`,
 		},
 	}
 
