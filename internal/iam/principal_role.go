@@ -29,25 +29,15 @@ func (r RoleType) String() string {
 
 const principalRoleViewDefaultTable = "iam_principal_role"
 
-// PrincipalRole declares a common interface for all roles assigned to resources (Users and Groups).
-type PrincipalRole interface {
-	GetRoleId() string
-	GetPrincipalId() string
-	GetType() string
-	GetPrincipalScopeId() string
-	GetScopedPrincipalId(context.Context, db.Reader) (string, error)
-	Clone() interface{}
-}
-
-// principalRoleView provides a common way to return roles regardless of their
+// PrincipalRole provides a common way to return roles regardless of their
 // underlying type.
-type principalRoleView struct {
+type PrincipalRole struct {
 	*store.PrincipalRoleView
 	tableName string `gorm:"-"`
 }
 
 // TableName provides an overridden gorm table name for principal roles.
-func (v *principalRoleView) TableName() string {
+func (v *PrincipalRole) TableName() string {
 	if v.tableName != "" {
 		return v.tableName
 	}
@@ -56,7 +46,7 @@ func (v *principalRoleView) TableName() string {
 
 // SetTableName sets the table name for the resource.  If the caller attempts to
 // set the name to "" the name will be reset to the default name.
-func (v *principalRoleView) SetTableName(n string) {
+func (v *PrincipalRole) SetTableName(n string) {
 	switch n {
 	case "":
 		v.tableName = principalRoleViewDefaultTable
@@ -65,25 +55,12 @@ func (v *principalRoleView) SetTableName(n string) {
 	}
 }
 
-func (v principalRoleView) GetScopedPrincipalId(ctx context.Context, reader db.Reader) (string, error) {
-	role := allocRole()
-	role.PublicId = v.RoleId
-	s, err := role.GetScope(ctx, reader)
-	if err != nil {
-		return "", fmt.Errorf("get supported principal id in principal role: unable to get role %s scope: %w", role.PublicId, err)
-	}
-	if s.PublicId == v.PrincipalScopeId {
-		return v.PrincipalId, nil
-	}
-	return fmt.Sprintf("%s:%s", v.PrincipalScopeId, v.PrincipalId), nil
-}
-
-func (v principalRoleView) Clone() interface{} {
-	cp := proto.Clone(v.PrincipalRoleView)
-	return &principalRoleView{
-		PrincipalRoleView: cp.(*store.PrincipalRoleView),
-	}
-}
+// func (v principalRoleView) Clone() interface{} {
+// 	cp := proto.Clone(v.PrincipalRoleView)
+// 	return &principalRoleView{
+// 		PrincipalRoleView: cp.(*store.PrincipalRoleView),
+// 	}
+// }
 
 // UserRole is a role assigned to a user
 type UserRole struct {
@@ -91,17 +68,14 @@ type UserRole struct {
 	tableName string `gorm:"-"`
 }
 
-// ensure that UserRole implements the interfaces of:  Clonable, AssignedRole
-// and db.VetForWriter
+// ensure that UserRole implements the interfaces of:  Clonable and
+// db.VetForWriter
 var _ Clonable = (*UserRole)(nil)
-var _ PrincipalRole = (*UserRole)(nil)
 var _ db.VetForWriter = (*UserRole)(nil)
 
-// NewUserRole creates a new user role in memory.  Users can be assigned roles
-// which are within its organization, or the role is within a project within its
-// organization. This relationship will not be enforced until the user role is
-// written to the database.  No options are supported currently.
-func NewUserRole(scopeId, roleId, userId string, opt ...Option) (PrincipalRole, error) {
+// NewUserRole creates a new user role in memory. No options are supported
+// currently.
+func NewUserRole(roleId, userId string, opt ...Option) (*UserRole, error) {
 	if roleId == "" {
 		return nil, fmt.Errorf("new user role: missing role id %w", db.ErrInvalidParameter)
 	}
@@ -110,30 +84,10 @@ func NewUserRole(scopeId, roleId, userId string, opt ...Option) (PrincipalRole, 
 	}
 	return &UserRole{
 		UserRole: &store.UserRole{
-			PrincipalId:      userId,
-			RoleId:           roleId,
-			PrincipalScopeId: scopeId,
+			PrincipalId: userId,
+			RoleId:      roleId,
 		},
 	}, nil
-}
-
-// GetType returns the user role type.
-func (r *UserRole) GetType() string {
-	return UserRoleType.String()
-}
-
-// GetScopedPrincipalId returns the scoped principal ID.
-func (r *UserRole) GetScopedPrincipalId(ctx context.Context, reader db.Reader) (string, error) {
-	role := allocRole()
-	role.PublicId = r.GetRoleId()
-	s, err := role.GetScope(ctx, reader)
-	if err != nil {
-		return "", fmt.Errorf("get supported principal id in user role: unable to get role %s scope: %w", role.PublicId, err)
-	}
-	if s.PublicId == r.PrincipalScopeId {
-		return r.PrincipalId, nil
-	}
-	return fmt.Sprintf("%s:%s", r.PrincipalScopeId, r.PrincipalId), nil
 }
 
 func allocUserRole() UserRole {
@@ -185,16 +139,14 @@ type GroupRole struct {
 	tableName string `gorm:"-"`
 }
 
-// ensure that GroupRole implements the interfaces of: Clonable, AssignedRole and db.VetForWriter
+// ensure that GroupRole implements the interfaces of: Clonable and
+// db.VetForWriter
 var _ Clonable = (*GroupRole)(nil)
-var _ PrincipalRole = (*GroupRole)(nil)
 var _ db.VetForWriter = (*GroupRole)(nil)
 
-// NewGroupRole creates a new group role in memory.  Groups can only be
-// assigned roles within its scope (org or project). This relationship will not
-// be enforced until the group role is written to the database. No options are
-// supported currently.
-func NewGroupRole(scopeId, roleId, groupId string, opt ...Option) (PrincipalRole, error) {
+// NewGroupRole creates a new group role in memory. No options are supported
+// currently.
+func NewGroupRole(roleId, groupId string, opt ...Option) (*GroupRole, error) {
 	if roleId == "" {
 		return nil, fmt.Errorf("new group role: missing role id %w", db.ErrInvalidParameter)
 	}
@@ -203,9 +155,8 @@ func NewGroupRole(scopeId, roleId, groupId string, opt ...Option) (PrincipalRole
 	}
 	return &GroupRole{
 		GroupRole: &store.GroupRole{
-			PrincipalId:      groupId,
-			RoleId:           roleId,
-			PrincipalScopeId: scopeId,
+			PrincipalId: groupId,
+			RoleId:      roleId,
 		},
 	}, nil
 }
@@ -213,19 +164,6 @@ func NewGroupRole(scopeId, roleId, groupId string, opt ...Option) (PrincipalRole
 // GetType returns the group role type.
 func (r *GroupRole) GetType() string {
 	return GroupRoleType.String()
-}
-
-func (r *GroupRole) GetScopedPrincipalId(ctx context.Context, reader db.Reader) (string, error) {
-	role := allocRole()
-	role.PublicId = r.RoleId
-	s, err := role.GetScope(ctx, reader)
-	if err != nil {
-		return "", fmt.Errorf("get supported principal id in group role: unable to get role %s scope: %w", role.PublicId, err)
-	}
-	if s.PublicId == r.PrincipalScopeId {
-		return r.PrincipalId, nil
-	}
-	return fmt.Sprintf("%s:%s", r.PrincipalScopeId, r.PrincipalId), nil
 }
 
 func allocGroupRole() GroupRole {
