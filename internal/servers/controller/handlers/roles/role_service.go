@@ -121,6 +121,45 @@ func (s Service) DeleteRole(ctx context.Context, req *pbs.DeleteRoleRequest) (*p
 	return &pbs.DeleteRoleResponse{Existed: existed}, nil
 }
 
+func (s Service) AddRoleGrants(ctx context.Context, req *pbs.AddRoleGrantsRequest) (*pbs.AddRoleGrantsResponse, error) {
+	auth := handlers.ToTokenMetadata(ctx)
+	_ = auth
+	if err := validateAddRoleGrantsRequest(req); err != nil {
+		return nil, err
+	}
+	r, err := s.addGrantsInRepo(ctx, req.GetRoleId(), req.GetGrants(), req.GetVersion().GetValue())
+	if err != nil {
+		return nil, err
+	}
+	return &pbs.AddRoleGrantsResponse{Item: r}, nil
+}
+
+func (s Service) SetRoleGrants(ctx context.Context, req *pbs.SetRoleGrantsRequest) (*pbs.SetRoleGrantsResponse, error) {
+	auth := handlers.ToTokenMetadata(ctx)
+	_ = auth
+	if err := validateSetRoleGrantsRequest(req); err != nil {
+		return nil, err
+	}
+	r, err := s.setGrantsInRepo(ctx, req.GetRoleId(), req.GetGrants(), req.GetVersion().GetValue())
+	if err != nil {
+		return nil, err
+	}
+	return &pbs.SetRoleGrantsResponse{Item: r}, nil
+}
+
+func (s Service) RemoveRoleGrants(ctx context.Context, req *pbs.RemoveRoleGrantsRequest) (*pbs.RemoveRoleGrantsResponse, error) {
+	auth := handlers.ToTokenMetadata(ctx)
+	_ = auth
+	if err := validateRemoveRoleGrantsRequest(req); err != nil {
+		return nil, err
+	}
+	r, err := s.removeGrantsInRepo(ctx, req.GetRoleId(), req.GetGrants(), req.GetVersion().GetValue())
+	if err != nil {
+		return nil, err
+	}
+	return &pbs.RemoveRoleGrantsResponse{Item: r}, nil
+}
+
 func (s Service) getFromRepo(ctx context.Context, id string) (*pb.Role, error) {
 	repo, err := s.repoFn()
 	if err != nil {
@@ -228,6 +267,54 @@ func (s Service) listFromRepo(ctx context.Context, scopeId string) ([]*pb.Role, 
 		outRl = append(outRl, toProto(g))
 	}
 	return outRl, nil
+}
+
+func (s Service) addGrantsInRepo(ctx context.Context, roleId string, grants []string, version uint32) (*pb.Role, error) {
+	repo, err := s.repoFn()
+	if err != nil {
+		return nil, err
+	}
+	_, err = repo.AddRoleGrants(ctx, roleId, version, grants)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "Unable to add principles to role: %v.", err)
+	}
+	out, err := repo.LookupRole(ctx, roleId)
+	if out == nil {
+		return nil, status.Error(codes.Internal, "Unable to lookup role after adding principles to it.")
+	}
+	return toProto(out), nil
+}
+
+func (s Service) setGrantsInRepo(ctx context.Context, roleId string, grants []string, version uint32) (*pb.Role, error) {
+	repo, err := s.repoFn()
+	if err != nil {
+		return nil, err
+	}
+	_, _, err = repo.SetRoleGrants(ctx, roleId, version, grants)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "Unable to set principles on role: %v.", err)
+	}
+	out, err := repo.LookupRole(ctx, roleId)
+	if out == nil {
+		return nil, status.Error(codes.Internal, "Unable to lookup role after setting principles for it.")
+	}
+	return toProto(out), nil
+}
+
+func (s Service) removeGrantsInRepo(ctx context.Context, roleId string, grants []string, version uint32) (*pb.Role, error) {
+	repo, err := s.repoFn()
+	if err != nil {
+		return nil, err
+	}
+	_, err = repo.DeleteRoleGrants(ctx, roleId, version, grants)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "Unable to remove principles from role: %v.", err)
+	}
+	out, err := repo.LookupRole(ctx, roleId)
+	if out == nil {
+		return nil, status.Error(codes.Internal, "Unable to lookup role after removing principles from it.")
+	}
+	return toProto(out), nil
 }
 
 // toDbUpdateMask converts the wire format's FieldMask into a list of strings containing FieldMask paths used
@@ -344,6 +431,57 @@ func validateListRequest(req *pbs.ListRolesRequest) error {
 	badFields := validateAncestors(req)
 	if len(badFields) > 0 {
 		return handlers.InvalidArgumentErrorf("Improperly formatted identifier.", badFields)
+	}
+	return nil
+}
+
+func validateAddRoleGrantsRequest(req *pbs.AddRoleGrantsRequest) error {
+	badFields := validateAncestors(req)
+	if !validId(req.GetRoleId(), iam.RolePrefix+"_") {
+		badFields["id"] = "Incorrectly formatted identifier."
+	}
+	if req.GetVersion() == nil {
+		badFields["version"] = "Required field."
+	}
+	if len(req.GetGrants()) == 0 {
+		badFields["grants"] = "This must be non empty."
+	}
+	if len(badFields) > 0 {
+		return handlers.InvalidArgumentErrorf("Errors in provided fields.", badFields)
+	}
+	return nil
+}
+
+func validateSetRoleGrantsRequest(req *pbs.SetRoleGrantsRequest) error {
+	badFields := validateAncestors(req)
+	if !validId(req.GetRoleId(), iam.RolePrefix+"_") {
+		badFields["id"] = "Incorrectly formatted identifier."
+	}
+	if req.GetVersion() == nil {
+		badFields["version"] = "Required field."
+	}
+	if len(req.GetGrants()) == 0 {
+		badFields["grants"] = "This must be non empty."
+	}
+	if len(badFields) > 0 {
+		return handlers.InvalidArgumentErrorf("Errors in provided fields.", badFields)
+	}
+	return nil
+}
+
+func validateRemoveRoleGrantsRequest(req *pbs.RemoveRoleGrantsRequest) error {
+	badFields := validateAncestors(req)
+	if !validId(req.GetRoleId(), iam.RolePrefix+"_") {
+		badFields["id"] = "Incorrectly formatted identifier."
+	}
+	if req.GetVersion() == nil {
+		badFields["version"] = "Required field."
+	}
+	if len(req.GetGrants()) == 0 {
+		badFields["grants"] = "This must be non empty."
+	}
+	if len(badFields) > 0 {
+		return handlers.InvalidArgumentErrorf("Errors in provided fields.", badFields)
 	}
 	return nil
 }

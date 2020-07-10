@@ -119,6 +119,47 @@ func TestGrpcGatewayRouting(t *testing.T) {
 	}
 }
 
+func TestGrpcGatewayRouting_CustomActions(t *testing.T) {
+	ctx := context.Background()
+	// The unimplemented result indicates the grpc routing is happening successfully otherwise it would return NotFound.
+	routed := http.StatusNotImplemented
+
+	cases := []struct {
+		name      string
+		setup     func(mux *runtime.ServeMux)
+		post_urls []string
+	}{
+		{
+			name: "roles",
+			setup: func(mux *runtime.ServeMux) {
+				require.NoError(t, services.RegisterRoleServiceHandlerServer(ctx, mux, &services.UnimplementedRoleServiceServer{}))
+			},
+			post_urls: []string{
+				"v1/orgs/someid/roles/r_anotherid:add-grants",
+				"v1/orgs/someid/roles/r_anotherid:set-grants",
+				"v1/orgs/someid/roles/r_anotherid:remove-grants",
+				"v1/orgs/someid/projects/p_something/roles/r_anotherid:add-grants",
+				"v1/orgs/someid/projects/p_something/roles/r_anotherid:set-grants",
+				"v1/orgs/someid/projects/p_something/roles/r_anotherid:remove-grants",
+			},
+		},
+	}
+
+	for _, tc := range cases {
+		for _, url := range tc.post_urls {
+			t.Run(tc.name+"_"+url, func(t *testing.T) {
+				mux := runtime.NewServeMux()
+				tc.setup(mux)
+
+				req := httptest.NewRequest("POST", fmt.Sprintf("http://localhost/%s", url), nil)
+				resp := httptest.NewRecorder()
+				mux.ServeHTTP(resp, req)
+				assert.Equal(t, routed, resp.Result().StatusCode, "Got response %v", resp)
+			})
+		}
+	}
+}
+
 func TestHandleGrpcGateway(t *testing.T) {
 	c := NewTestController(t, nil)
 	defer c.Shutdown()
