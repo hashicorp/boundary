@@ -627,6 +627,12 @@ before
 insert on iam_group_member_user
   for each row execute procedure default_create_time();
 
+create trigger 
+  immutable_create_time
+before
+update on iam_group_member_user
+  for each row execute procedure immutable_create_time_func();
+
 create trigger iam_immutable_group_member
 before
 update on iam_group_member_user
