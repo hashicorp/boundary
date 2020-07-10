@@ -451,6 +451,7 @@ func TestGroupRole_Create(t *testing.T) {
 	t.Parallel()
 	conn, _ := db.TestSetup(t, "postgres")
 	org, proj := TestScopes(t, conn)
+	org2, proj2 := TestScopes(t, conn)
 	type args struct {
 		role *GroupRole
 	}
@@ -487,6 +488,30 @@ func TestGroupRole_Create(t *testing.T) {
 				}(),
 			},
 			wantErr: false,
+		},
+		{
+			name: "cross-org",
+			args: args{
+				role: func() *GroupRole {
+					role := TestRole(t, conn, org2.PublicId)
+					principal := TestGroup(t, conn, org.PublicId)
+					principalRole, err := NewGroupRole(role.PublicId, principal.PublicId)
+					require.NoError(t, err)
+					return principalRole
+				}(),
+			},
+		},
+		{
+			name: "cross-proj",
+			args: args{
+				role: func() *GroupRole {
+					role := TestRole(t, conn, proj2.PublicId)
+					principal := TestGroup(t, conn, org.PublicId)
+					principalRole, err := NewGroupRole(role.PublicId, principal.PublicId)
+					require.NoError(t, err)
+					return principalRole
+				}(),
+			},
 		},
 		{
 			name: "bad-role-id",
@@ -713,12 +738,4 @@ func TestGroupRole_Clone(t *testing.T) {
 		cp := grpRole.Clone()
 		assert.True(!proto.Equal(cp.(*GroupRole).GroupRole, grpRole2.GroupRole))
 	})
-}
-
-func TestGroupRole_GetType(t *testing.T) {
-	t.Parallel()
-	assert := assert.New(t)
-	r := &GroupRole{}
-	ty := r.GetType()
-	assert.Equal("group", ty)
 }
