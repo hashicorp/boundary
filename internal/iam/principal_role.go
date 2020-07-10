@@ -160,11 +160,6 @@ func NewGroupRole(roleId, groupId string, opt ...Option) (*GroupRole, error) {
 	}, nil
 }
 
-// GetType returns the group role type.
-func (r *GroupRole) GetType() string {
-	return GroupRoleType.String()
-}
-
 func allocGroupRole() GroupRole {
 	return GroupRole{
 		GroupRole: &store.GroupRole{},
