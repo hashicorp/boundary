@@ -26,7 +26,7 @@ func (s Role) AddPrincipals(ctx context.Context, groups, users []string) (*Role,
 
 	resp, err := s.Client.Do(req)
 	if err != nil {
-		return nil, nil, fmt.Errorf("error performing client request during ReadRole call: %w", err)
+		return nil, nil, fmt.Errorf("error performing client request during AddPrincipals call: %w", err)
 	}
 
 	target := new(Role)
