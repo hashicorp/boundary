@@ -799,8 +799,8 @@ create table iam_role (
       references iam_role(public_id)
       on delete cascade
       on update cascade,
-    raw_grant text not null,
     canonical_grant text, -- pk
+    raw_grant text not null,
     primary key(role_id, canonical_grant)
   );
 
