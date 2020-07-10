@@ -54,7 +54,7 @@ func TestNewUser(t *testing.T) {
 				opt: []Option{WithName(id)},
 			},
 			wantErr:    true,
-			wantErrMsg: "new user: missing organization id invalid parameter",
+			wantErrMsg: "new user: missing scope id invalid parameter",
 		},
 	}
 	for _, tt := range tests {
@@ -62,7 +62,7 @@ func TestNewUser(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 			got, err := NewUser(tt.args.organizationPublicId, tt.args.opt...)
 			if tt.wantErr {
-				assert.Error(err)
+				require.Error(err)
 				assert.Equal(tt.wantErrMsg, err.Error())
 				return
 			}
@@ -70,6 +70,21 @@ func TestNewUser(t *testing.T) {
 			assert.Equal(tt.wantName, got.Name)
 			assert.Empty(got.PublicId)
 		})
+	}
+}
+
+func Test_UserHardcoded(t *testing.T) {
+	t.Parallel()
+	conn, _ := db.TestSetup(t, "postgres")
+	assert, require := assert.New(t), require.New(t)
+	w := db.New(conn)
+	for _, v := range []string{"u_anon", "u_auth"} {
+		foundUser := allocUser()
+		foundUser.PublicId = v
+		err := w.LookupByPublicId(context.Background(), &foundUser)
+		require.NoError(err)
+		assert.Equal("global", foundUser.ScopeId)
+		assert.Equal(v, foundUser.PublicId)
 	}
 }
 
@@ -107,6 +122,18 @@ func Test_UserCreate(t *testing.T) {
 		err = w.Create(context.Background(), user)
 		require.Error(err)
 		assert.Equal("create: vet for write failed: scope is not found", err.Error())
+	})
+	t.Run("bad-scope", func(t *testing.T) {
+		assert, require := assert.New(t), require.New(t)
+		w := db.New(conn)
+		user, err := NewUser("global")
+		require.NoError(err)
+		id, err := newUserId()
+		require.NoError(err)
+		user.PublicId = id
+		err = w.Create(context.Background(), user)
+		require.Error(err)
+		assert.Equal("create: vet for write failed: global not a valid scope type for this resource", err.Error())
 	})
 }
 
@@ -249,6 +276,18 @@ func Test_UserDelete(t *testing.T) {
 			name:            "bad-id",
 			user:            func() *User { u := allocUser(); u.PublicId = id; return &u }(),
 			wantErr:         false,
+			wantRowsDeleted: 0,
+		},
+		{
+			name:            "anon-user",
+			user:            func() *User { u := allocUser(); u.PublicId = "u_anon"; return &u }(),
+			wantErr:         true,
+			wantRowsDeleted: 0,
+		},
+		{
+			name:            "auth-user",
+			user:            func() *User { u := allocUser(); u.PublicId = "u_auth"; return &u }(),
+			wantErr:         true,
 			wantRowsDeleted: 0,
 		},
 	}

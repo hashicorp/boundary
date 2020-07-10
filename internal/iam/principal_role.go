@@ -27,26 +27,21 @@ func (r RoleType) String() string {
 	}[r]
 }
 
-const principalRoleViewDefaultTable = "iam_principal_role"
+const (
+	principalRoleViewDefaultTable = "iam_principal_role"
+	userRoleDefaultTable          = "iam_user_role"
+	groupRoleDefaultTable         = "iam_group_role"
+)
 
-// PrincipalRole declares a common interface for all roles assigned to resources (Users and Groups).
-type PrincipalRole interface {
-	GetRoleId() string
-	GetPrincipalId() string
-	GetType() string
-	GetScopeId() string
-	Clone() interface{}
-}
-
-// principalRoleView provides a common way to return roles regardless of their
+// PrincipalRole provides a common way to return roles regardless of their
 // underlying type.
-type principalRoleView struct {
+type PrincipalRole struct {
 	*store.PrincipalRoleView
 	tableName string `gorm:"-"`
 }
 
 // TableName provides an overridden gorm table name for principal roles.
-func (v *principalRoleView) TableName() string {
+func (v *PrincipalRole) TableName() string {
 	if v.tableName != "" {
 		return v.tableName
 	}
@@ -55,7 +50,7 @@ func (v *principalRoleView) TableName() string {
 
 // SetTableName sets the table name for the resource.  If the caller attempts to
 // set the name to "" the name will be reset to the default name.
-func (v *principalRoleView) SetTableName(n string) {
+func (v *PrincipalRole) SetTableName(n string) {
 	switch n {
 	case "":
 		v.tableName = principalRoleViewDefaultTable
@@ -64,30 +59,20 @@ func (v *principalRoleView) SetTableName(n string) {
 	}
 }
 
-func (v principalRoleView) Clone() interface{} {
-	cp := proto.Clone(v.PrincipalRoleView)
-	return &principalRoleView{
-		PrincipalRoleView: cp.(*store.PrincipalRoleView),
-	}
-}
-
-// UserRole is a role assigned to a user
+// UserRole is a user assigned to a role
 type UserRole struct {
 	*store.UserRole
 	tableName string `gorm:"-"`
 }
 
-// ensure that UserRole implements the interfaces of:  Clonable, AssignedRole
-// and db.VetForWriter
+// ensure that UserRole implements the interfaces of:  Clonable and
+// db.VetForWriter
 var _ Clonable = (*UserRole)(nil)
-var _ PrincipalRole = (*UserRole)(nil)
 var _ db.VetForWriter = (*UserRole)(nil)
 
-// NewUserRole creates a new user role in memory.  Users can be assigned roles
-// which are within its organization, or the role is within a project within its
-// organization. This relationship will not be enforced until the user role is
-// written to the database.  No options are supported currently.
-func NewUserRole(scopeId, roleId, userId string, opt ...Option) (PrincipalRole, error) {
+// NewUserRole creates a new user role in memory. No options are supported
+// currently.
+func NewUserRole(roleId, userId string, opt ...Option) (*UserRole, error) {
 	if roleId == "" {
 		return nil, fmt.Errorf("new user role: missing role id %w", db.ErrInvalidParameter)
 	}
@@ -98,14 +83,8 @@ func NewUserRole(scopeId, roleId, userId string, opt ...Option) (PrincipalRole, 
 		UserRole: &store.UserRole{
 			PrincipalId: userId,
 			RoleId:      roleId,
-			ScopeId:     scopeId,
 		},
 	}, nil
-}
-
-// GetType returns the user role type.
-func (r *UserRole) GetType() string {
-	return UserRoleType.String()
 }
 
 func allocUserRole() UserRole {
@@ -122,9 +101,7 @@ func (r *UserRole) Clone() interface{} {
 	}
 }
 
-// VetForWrite implements db.VetForWrite() interface for user roles.  The
-// constraint between user and role scopes will be enforced by the database via
-// constraints and triggers.
+// VetForWrite implements db.VetForWrite() interface for user roles.
 func (role *UserRole) VetForWrite(ctx context.Context, r db.Reader, opType db.OpType, opt ...db.Option) error {
 	if role.RoleId == "" {
 		return fmt.Errorf("new user role: missing role id %w", db.ErrInvalidParameter)
@@ -141,32 +118,34 @@ func (r *UserRole) TableName() string {
 	if r.tableName != "" {
 		return r.tableName
 	}
-	return "iam_user_role"
+	return userRoleDefaultTable
 }
 
-// SetTableName sets the tablename and satisfies the ReplayableMessage interface
+// SetTableName sets the table name for the resource.  If the caller attempts to
+// set the name to "" the name will be reset to the default name.
 func (r *UserRole) SetTableName(n string) {
-	if r.tableName != "" {
+	switch n {
+	case "":
+		r.tableName = userRoleDefaultTable
+	default:
 		r.tableName = n
 	}
 }
 
-//  GroupRole is a role assigned to a group
+//  GroupRole is a group assigned to a role
 type GroupRole struct {
 	*store.GroupRole
 	tableName string `gorm:"-"`
 }
 
-// ensure that GroupRole implements the interfaces of: Clonable, AssignedRole and db.VetForWriter
+// ensure that GroupRole implements the interfaces of: Clonable and
+// db.VetForWriter
 var _ Clonable = (*GroupRole)(nil)
-var _ PrincipalRole = (*GroupRole)(nil)
 var _ db.VetForWriter = (*GroupRole)(nil)
 
-// NewGroupRole creates a new group role in memory.  Groups can only be
-// assigned roles within its scope (org or project). This relationship will not
-// be enforced until the group role is written to the database. No options are
-// supported currently.
-func NewGroupRole(scopeId, roleId, groupId string, opt ...Option) (PrincipalRole, error) {
+// NewGroupRole creates a new group role in memory. No options are supported
+// currently.
+func NewGroupRole(roleId, groupId string, opt ...Option) (*GroupRole, error) {
 	if roleId == "" {
 		return nil, fmt.Errorf("new group role: missing role id %w", db.ErrInvalidParameter)
 	}
@@ -177,14 +156,8 @@ func NewGroupRole(scopeId, roleId, groupId string, opt ...Option) (PrincipalRole
 		GroupRole: &store.GroupRole{
 			PrincipalId: groupId,
 			RoleId:      roleId,
-			ScopeId:     scopeId,
 		},
 	}, nil
-}
-
-// GetType returns the group role type.
-func (r *GroupRole) GetType() string {
-	return GroupRoleType.String()
 }
 
 func allocGroupRole() GroupRole {
@@ -201,9 +174,7 @@ func (r *GroupRole) Clone() interface{} {
 	}
 }
 
-// VetForWrite implements db.VetForWrite() interface for group roles. The
-// constraint between groups and role scopes will be enforced by the database via
-// constraints and triggers.
+// VetForWrite implements db.VetForWrite() interface for group roles.
 func (role *GroupRole) VetForWrite(ctx context.Context, r db.Reader, opType db.OpType, opt ...db.Option) error {
 	if role.RoleId == "" {
 		return fmt.Errorf("new group role: missing role id %w", db.ErrInvalidParameter)
@@ -220,13 +191,16 @@ func (r *GroupRole) TableName() string {
 	if r.tableName != "" {
 		return r.tableName
 	}
-	return "iam_group_role"
+	return groupRoleDefaultTable
 }
 
-// SetTableName sets the tablename and satisfies the ReplayableMessage interface
-// for group roles.
+// SetTableName sets the table name for the resource.  If the caller attempts to
+// set the name to "" the name will be reset to the default name.
 func (r *GroupRole) SetTableName(n string) {
-	if r.tableName != "" {
+	switch n {
+	case "":
+		r.tableName = groupRoleDefaultTable
+	default:
 		r.tableName = n
 	}
 }

@@ -10,7 +10,6 @@ import (
 
 	"github.com/hashicorp/watchtower/internal/db"
 	"github.com/hashicorp/watchtower/internal/oplog"
-	"github.com/kr/pretty"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -354,7 +353,6 @@ func TestRepository_DeleteRoleGrants(t *testing.T) {
 
 			roleGrants = []*RoleGrant{}
 			require.NoError(repo.reader.SearchWhere(context.Background(), &roleGrants, "role_id = ?", []interface{}{roleId}))
-			t.Log(pretty.Sprint(roleGrants))
 			found := map[string]bool{}
 			for _, rg := range roleGrants {
 				found[rg.CanonicalGrant] = true
