@@ -2199,6 +2199,51 @@
         ]
       }
     },
+    "/v1/orgs/{org_id}/projects/{project_id}/roles/{role_id}:add-grants": {
+      "post": {
+        "summary": "Adds grants to a role",
+        "operationId": "RoleService_AddRoleGrants2",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/controller.api.resources.roles.v1.Role"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "org_id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "project_id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "role_id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/controller.api.services.v1.AddRoleGrantsRequest"
+            }
+          }
+        ],
+        "tags": [
+          "controller.api.services.v1.RoleService"
+        ]
+      }
+    },
     "/v1/orgs/{org_id}/projects/{project_id}/roles/{role_id}:add-principals": {
       "post": {
         "summary": "Adds Users and/or Groups to a Role",
@@ -2244,6 +2289,51 @@
         ]
       }
     },
+    "/v1/orgs/{org_id}/projects/{project_id}/roles/{role_id}:remove-grants": {
+      "post": {
+        "summary": "Removes grants from a role.",
+        "operationId": "RoleService_RemoveRoleGrants2",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/controller.api.resources.roles.v1.Role"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "org_id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "project_id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "role_id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/controller.api.services.v1.RemoveRoleGrantsRequest"
+            }
+          }
+        ],
+        "tags": [
+          "controller.api.services.v1.RoleService"
+        ]
+      }
+    },
     "/v1/orgs/{org_id}/projects/{project_id}/roles/{role_id}:remove-principals": {
       "post": {
         "summary": "Removes the specified Users and/or Groups from a Role.",
@@ -2281,6 +2371,51 @@
             "required": true,
             "schema": {
               "$ref": "#/definitions/controller.api.services.v1.RemoveRolePrincipalsRequest"
+            }
+          }
+        ],
+        "tags": [
+          "controller.api.services.v1.RoleService"
+        ]
+      }
+    },
+    "/v1/orgs/{org_id}/projects/{project_id}/roles/{role_id}:set-grants": {
+      "post": {
+        "summary": "Set grants for a role, removing any grants that are not specified in the request.",
+        "operationId": "RoleService_SetRoleGrants2",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/controller.api.resources.roles.v1.Role"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "org_id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "project_id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "role_id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/controller.api.services.v1.SetRoleGrantsRequest"
             }
           }
         ],
@@ -2517,6 +2652,45 @@
         ]
       }
     },
+    "/v1/orgs/{org_id}/roles/{role_id}:add-grants": {
+      "post": {
+        "summary": "Adds grants to a role",
+        "operationId": "RoleService_AddRoleGrants",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/controller.api.resources.roles.v1.Role"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "org_id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "role_id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/controller.api.services.v1.AddRoleGrantsRequest"
+            }
+          }
+        ],
+        "tags": [
+          "controller.api.services.v1.RoleService"
+        ]
+      }
+    },
     "/v1/orgs/{org_id}/roles/{role_id}:add-principals": {
       "post": {
         "summary": "Adds Users and/or Groups to a Role",
@@ -2556,6 +2730,45 @@
         ]
       }
     },
+    "/v1/orgs/{org_id}/roles/{role_id}:remove-grants": {
+      "post": {
+        "summary": "Removes grants from a role.",
+        "operationId": "RoleService_RemoveRoleGrants",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/controller.api.resources.roles.v1.Role"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "org_id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "role_id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/controller.api.services.v1.RemoveRoleGrantsRequest"
+            }
+          }
+        ],
+        "tags": [
+          "controller.api.services.v1.RoleService"
+        ]
+      }
+    },
     "/v1/orgs/{org_id}/roles/{role_id}:remove-principals": {
       "post": {
         "summary": "Removes the specified Users and/or Groups from a Role.",
@@ -2587,6 +2800,45 @@
             "required": true,
             "schema": {
               "$ref": "#/definitions/controller.api.services.v1.RemoveRolePrincipalsRequest"
+            }
+          }
+        ],
+        "tags": [
+          "controller.api.services.v1.RoleService"
+        ]
+      }
+    },
+    "/v1/orgs/{org_id}/roles/{role_id}:set-grants": {
+      "post": {
+        "summary": "Set grants for a role, removing any grants that are not specified in the request.",
+        "operationId": "RoleService_SetRoleGrants",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/controller.api.resources.roles.v1.Role"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "org_id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "role_id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/controller.api.services.v1.SetRoleGrantsRequest"
             }
           }
         ],
@@ -3256,6 +3508,39 @@
       },
       "title": "User contains all fields related to a User resource"
     },
+    "controller.api.services.v1.AddRoleGrantsRequest": {
+      "type": "object",
+      "properties": {
+        "org_id": {
+          "type": "string"
+        },
+        "project_id": {
+          "type": "string"
+        },
+        "role_id": {
+          "type": "string"
+        },
+        "version": {
+          "type": "integer",
+          "format": "int64",
+          "description": "The version ensures the role hasn't changed since it was last retrieved and if\nit has the request will fail."
+        },
+        "grants": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "controller.api.services.v1.AddRoleGrantsResponse": {
+      "type": "object",
+      "properties": {
+        "item": {
+          "$ref": "#/definitions/controller.api.resources.roles.v1.Role"
+        }
+      }
+    },
     "controller.api.services.v1.AddRolePrincipalsRequest": {
       "type": "object",
       "properties": {
@@ -3634,6 +3919,39 @@
     "controller.api.services.v1.RemoveFromHostSetResponse": {
       "type": "object"
     },
+    "controller.api.services.v1.RemoveRoleGrantsRequest": {
+      "type": "object",
+      "properties": {
+        "org_id": {
+          "type": "string"
+        },
+        "project_id": {
+          "type": "string"
+        },
+        "role_id": {
+          "type": "string"
+        },
+        "version": {
+          "type": "integer",
+          "format": "int64",
+          "description": "The version ensures the role hasn't changed since it was last retrieved and if\nit has the request will fail."
+        },
+        "grants": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "controller.api.services.v1.RemoveRoleGrantsResponse": {
+      "type": "object",
+      "properties": {
+        "item": {
+          "$ref": "#/definitions/controller.api.resources.roles.v1.Role"
+        }
+      }
+    },
     "controller.api.services.v1.RemoveRolePrincipalsRequest": {
       "type": "object",
       "properties": {
@@ -3666,6 +3984,39 @@
       }
     },
     "controller.api.services.v1.RemoveRolePrincipalsResponse": {
+      "type": "object",
+      "properties": {
+        "item": {
+          "$ref": "#/definitions/controller.api.resources.roles.v1.Role"
+        }
+      }
+    },
+    "controller.api.services.v1.SetRoleGrantsRequest": {
+      "type": "object",
+      "properties": {
+        "org_id": {
+          "type": "string"
+        },
+        "project_id": {
+          "type": "string"
+        },
+        "role_id": {
+          "type": "string"
+        },
+        "version": {
+          "type": "integer",
+          "format": "int64",
+          "description": "The version ensures the role hasn't changed since it was last retrieved and if\nit has the request will fail."
+        },
+        "grants": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "controller.api.services.v1.SetRoleGrantsResponse": {
       "type": "object",
       "properties": {
         "item": {
