@@ -146,9 +146,7 @@ func TestRepository_AddPrincipalRoles(t *testing.T) {
 				require.NoError(err)
 				gotPrincipal := map[string]PrincipalRole{}
 				for _, r := range got {
-					principalId, err := r.GetScopedPrincipalId(context.Background(), repo.reader)
-					require.NoError(err)
-					gotPrincipal[principalId] = r
+					gotPrincipal[r.ScopedPrincipalId] = r
 				}
 				for _, userId := range userIds {
 					assert.NotEmpty(gotPrincipal[userId])
@@ -194,7 +192,7 @@ func TestRepository_AddPrincipalRoles(t *testing.T) {
 				foundRoles, err := repo.ListPrincipalRoles(context.Background(), roleId)
 				require.NoError(err)
 				for _, r := range foundRoles {
-					principalId, err := r.GetScopedPrincipalId(context.Background(), repo.reader)
+					principalId := r.ScopedPrincipalId
 					require.NoError(err)
 					assert.NotEmpty(gotPrincipal[principalId])
 					assert.Equal(gotPrincipal[principalId].GetRoleId(), r.GetRoleId())
@@ -628,9 +626,7 @@ func TestRepository_SetPrincipalRoles(t *testing.T) {
 			assert.Equal(len(tt.args.userIds)+len(tt.args.groupIds), len(got))
 			var gotIds []string
 			for _, r := range got {
-				principalId, err := r.GetScopedPrincipalId(context.Background(), repo.reader)
-				require.NoError(err)
-				gotIds = append(gotIds, principalId)
+				gotIds = append(gotIds, r.ScopedPrincipalId)
 			}
 			var wantIds []string
 			wantIds = append(wantIds, tt.args.userIds...)
