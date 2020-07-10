@@ -160,7 +160,7 @@ func TestRepository_CreateRole(t *testing.T) {
 			assert.NotNil(grp.CreateTime)
 			assert.NotNil(grp.UpdateTime)
 
-			foundGrp, err := repo.LookupRole(context.Background(), grp.PublicId)
+			foundGrp, _, err := repo.LookupRole(context.Background(), grp.PublicId)
 			assert.NoError(err)
 			assert.True(proto.Equal(foundGrp, grp))
 
@@ -380,7 +380,7 @@ func TestRepository_UpdateRole(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			assert := assert.New(t)
+			require, assert := require.New(t), assert.New(t)
 			if tt.wantDup {
 				r := TestRole(t, conn, org.PublicId)
 				r.Name = tt.args.name
@@ -413,7 +413,8 @@ func TestRepository_UpdateRole(t *testing.T) {
 				assert.True(errors.Is(db.ErrRecordNotFound, err))
 				return
 			}
-			assert.NoError(err)
+			require.NoError(err)
+			require.NotNil(roleAfterUpdate)
 			assert.Equal(tt.wantRowsUpdate, updatedRows)
 			switch tt.name {
 			case "valid-no-op":
@@ -421,7 +422,7 @@ func TestRepository_UpdateRole(t *testing.T) {
 			default:
 				assert.NotEqual(r.UpdateTime, roleAfterUpdate.UpdateTime)
 			}
-			foundRole, err := repo.LookupRole(context.Background(), r.PublicId)
+			foundRole, _, err := repo.LookupRole(context.Background(), r.PublicId)
 			assert.NoError(err)
 			assert.True(proto.Equal(roleAfterUpdate, foundRole))
 			dbassert := dbassert.New(t, rw)
@@ -511,7 +512,7 @@ func TestRepository_DeleteRole(t *testing.T) {
 			}
 			assert.NoError(err)
 			assert.Equal(tt.wantRowsDeleted, deletedRows)
-			foundRole, err := repo.LookupRole(context.Background(), tt.args.role.PublicId)
+			foundRole, _, err := repo.LookupRole(context.Background(), tt.args.role.PublicId)
 			assert.Error(err)
 			assert.Nil(foundRole)
 			assert.True(errors.Is(err, db.ErrRecordNotFound))

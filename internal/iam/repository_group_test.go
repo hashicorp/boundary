@@ -389,7 +389,7 @@ func TestRepository_UpdateGroup(t *testing.T) {
 			},
 			newScopeId:   org.PublicId,
 			wantErr:      true,
-			wantErrMsg:   `update: failed pq: scope_id cannot be set`,
+			wantErrMsg:   `update: failed: pq: scope_id cannot be set`,
 			directUpdate: true,
 		},
 	}
