@@ -736,6 +736,11 @@ create table iam_role (
     unique(scope_id, public_id)
   );
 
+create trigger immutable_scope_id
+before
+update on iam_role
+  for each row execute procedure iam_immutable_scope_id_func();
+
 create trigger 
   update_version_column
 after update on iam_role
