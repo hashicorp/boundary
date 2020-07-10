@@ -9,7 +9,7 @@ import (
 
 func (s Role) AddPrincipals(ctx context.Context, groups, users []string) (*Role, *api.Error, error) {
 	if s.Client == nil {
-		return nil, nil, fmt.Errorf("nil client in ReadRole request")
+		return nil, nil, fmt.Errorf("nil client in AddPrincipals request")
 	}
 	// We assume that the client provided has the org and optionally the project id of the request.
 
