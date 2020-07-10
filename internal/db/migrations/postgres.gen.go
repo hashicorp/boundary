@@ -691,6 +691,8 @@ begin
 end;
 $$ language plpgsql;
 
+-- user_scope_id_valid() is required for inserts, but not updates because
+-- immutable_scope_id_user makes scope_id immutable for iam_user
 create trigger
   ensure_user_scope_id_valid
 before
@@ -720,22 +722,27 @@ update on iam_user
   for each row execute procedure iam_immutable_scope_id_func();
 
 create table iam_role (
-    public_id wt_public_id not null primary key,
-    create_time wt_timestamp,
-    update_time wt_timestamp,
-    name text,
-    description text,
-    scope_id wt_scope_id not null references iam_scope(public_id) on delete cascade on update cascade,
-    unique(name, scope_id),
-    disabled boolean not null default false,
-    -- version allows optimistic locking of the role when modifying the role
-    -- itself and when modifying dependent items like principal roles. 
-    version bigint not null default 1,
-    
-    -- add unique index so a composite fk can be declared.
-    unique(scope_id, public_id)
-  );
+  public_id wt_public_id not null primary key,
+  create_time wt_timestamp,
+  update_time wt_timestamp,
+  name text,
+  description text,
+  scope_id wt_scope_id not null references iam_scope(public_id) on delete cascade on update cascade,
+  unique(name, scope_id),
+  disabled boolean not null default false,
+  -- version allows optimistic locking of the role when modifying the role
+  -- itself and when modifying dependent items like principal roles. 
+  version bigint not null default 1,
   
+  -- add unique index so a composite fk can be declared.
+  unique(scope_id, public_id)
+  );
+
+create trigger immutable_scope_id
+before
+update on iam_role
+  for each row execute procedure iam_immutable_scope_id_func();
+
 create trigger 
   update_version_column
 after update on iam_role
