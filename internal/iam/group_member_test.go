@@ -16,9 +16,12 @@ func Test_NewGroupMember(t *testing.T) {
 	t.Parallel()
 	conn, _ := db.TestSetup(t, "postgres")
 	org, proj := TestScopes(t, conn)
+	org2, _ := TestScopes(t, conn)
+
 	orgGroup := TestGroup(t, conn, org.PublicId)
 	projGroup := TestGroup(t, conn, proj.PublicId)
 	user := TestUser(t, conn, org.PublicId)
+	user2 := TestUser(t, conn, org2.PublicId)
 
 	type args struct {
 		groupId string
@@ -28,7 +31,7 @@ func Test_NewGroupMember(t *testing.T) {
 	tests := []struct {
 		name      string
 		args      args
-		want      *GroupMember
+		want      *GroupMemberUser
 		wantErr   bool
 		wantIsErr error
 	}{
@@ -38,7 +41,7 @@ func Test_NewGroupMember(t *testing.T) {
 				groupId: orgGroup.PublicId,
 				userId:  user.PublicId,
 			},
-			want: func() *GroupMember {
+			want: func() *GroupMemberUser {
 				gm := allocGroupMember()
 				gm.GroupId = orgGroup.PublicId
 				gm.MemberId = user.PublicId
@@ -51,10 +54,23 @@ func Test_NewGroupMember(t *testing.T) {
 				groupId: projGroup.PublicId,
 				userId:  user.PublicId,
 			},
-			want: func() *GroupMember {
+			want: func() *GroupMemberUser {
 				gm := allocGroupMember()
 				gm.GroupId = projGroup.PublicId
 				gm.MemberId = user.PublicId
+				return &gm
+			}(),
+		},
+		{
+			name: "cross-org",
+			args: args{
+				groupId: orgGroup.PublicId,
+				userId:  user2.PublicId,
+			},
+			want: func() *GroupMemberUser {
+				gm := allocGroupMember()
+				gm.GroupId = orgGroup.PublicId
+				gm.MemberId = user2.PublicId
 				return &gm
 			}(),
 		},
@@ -81,7 +97,7 @@ func Test_NewGroupMember(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 
-			got, err := NewGroupMember(tt.args.groupId, tt.args.userId, tt.args.opt...)
+			got, err := NewGroupMemberUser(tt.args.groupId, tt.args.userId, tt.args.opt...)
 			if tt.wantErr {
 				require.Error(err)
 				assert.True(errors.Is(err, tt.wantIsErr))
@@ -98,7 +114,7 @@ func Test_GroupMemberCreate(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	org, proj := TestScopes(t, conn)
 	type args struct {
-		gm *GroupMember
+		gm *GroupMemberUser
 	}
 	tests := []struct {
 		name       string
@@ -111,10 +127,10 @@ func Test_GroupMemberCreate(t *testing.T) {
 		{
 			name: "valid-with-org",
 			args: args{
-				gm: func() *GroupMember {
+				gm: func() *GroupMemberUser {
 					g := TestGroup(t, conn, org.PublicId)
 					u := TestUser(t, conn, org.PublicId)
-					gm, err := NewGroupMember(g.PublicId, u.PublicId)
+					gm, err := NewGroupMemberUser(g.PublicId, u.PublicId)
 					require.NoError(t, err)
 					return gm
 				}(),
@@ -124,10 +140,10 @@ func Test_GroupMemberCreate(t *testing.T) {
 		{
 			name: "valid-with-proj",
 			args: args{
-				gm: func() *GroupMember {
+				gm: func() *GroupMemberUser {
 					g := TestGroup(t, conn, proj.PublicId)
 					u := TestUser(t, conn, org.PublicId)
-					gm, err := NewGroupMember(g.PublicId, u.PublicId)
+					gm, err := NewGroupMemberUser(g.PublicId, u.PublicId)
 					require.NoError(t, err)
 					return gm
 				}(),
@@ -137,38 +153,38 @@ func Test_GroupMemberCreate(t *testing.T) {
 		{
 			name: "bad-group-id",
 			args: args{
-				gm: func() *GroupMember {
+				gm: func() *GroupMemberUser {
 					id := testId(t)
 					u := TestUser(t, conn, org.PublicId)
-					gm, err := NewGroupMember(id, u.PublicId)
+					gm, err := NewGroupMemberUser(id, u.PublicId)
 					require.NoError(t, err)
 					return gm
 				}(),
 			},
 			wantErr:    true,
-			wantErrMsg: `create: failed pq: insert or update on table "iam_group_member" violates foreign key constraint`,
+			wantErrMsg: `create: failed pq: insert or update on table "iam_group_member_user" violates foreign key constraint`,
 		},
 		{
 			name: "bad-user-id",
 			args: args{
-				gm: func() *GroupMember {
+				gm: func() *GroupMemberUser {
 					id := testId(t)
 					g := TestGroup(t, conn, proj.PublicId)
-					gm, err := NewGroupMember(g.PublicId, id)
+					gm, err := NewGroupMemberUser(g.PublicId, id)
 					require.NoError(t, err)
 					return gm
 				}(),
 			},
 			wantErr:    true,
-			wantErrMsg: `create: failed pq: insert or update on table "iam_group_member" violates foreign key constraint`,
+			wantErrMsg: `create: failed pq: insert or update on table "iam_group_member_user" violates foreign key constraint`,
 		},
 		{
 			name: "missing-group-id",
 			args: args{
-				gm: func() *GroupMember {
+				gm: func() *GroupMemberUser {
 					u := TestUser(t, conn, org.PublicId)
-					return &GroupMember{
-						GroupMember: &store.GroupMember{
+					return &GroupMemberUser{
+						GroupMemberUser: &store.GroupMemberUser{
 							GroupId:  "",
 							MemberId: u.PublicId,
 						},
@@ -181,10 +197,10 @@ func Test_GroupMemberCreate(t *testing.T) {
 		{
 			name: "missing-user-id",
 			args: args{
-				gm: func() *GroupMember {
+				gm: func() *GroupMemberUser {
 					g := TestGroup(t, conn, org.PublicId)
-					return &GroupMember{
-						GroupMember: &store.GroupMember{
+					return &GroupMemberUser{
+						GroupMemberUser: &store.GroupMemberUser{
 							GroupId:  g.PublicId,
 							MemberId: "",
 						},
@@ -197,17 +213,17 @@ func Test_GroupMemberCreate(t *testing.T) {
 		{
 			name: "dup-at-org",
 			args: args{
-				gm: func() *GroupMember {
+				gm: func() *GroupMemberUser {
 					g := TestGroup(t, conn, org.PublicId)
 					u := TestUser(t, conn, org.PublicId)
-					gm, err := NewGroupMember(g.PublicId, u.PublicId)
+					gm, err := NewGroupMemberUser(g.PublicId, u.PublicId)
 					require.NoError(t, err)
 					return gm
 				}(),
 			},
 			wantDup:    true,
 			wantErr:    true,
-			wantErrMsg: `create: failed pq: duplicate key value violates unique constraint "iam_group_member_pkey"`,
+			wantErrMsg: `create: failed pq: duplicate key value violates unique constraint "iam_group_member_user_pkey"`,
 		},
 	}
 
@@ -216,11 +232,11 @@ func Test_GroupMemberCreate(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 			w := db.New(conn)
 			if tt.wantDup {
-				gm := tt.args.gm.Clone().(*GroupMember)
+				gm := tt.args.gm.Clone().(*GroupMemberUser)
 				err := w.Create(context.Background(), gm)
 				require.NoError(err)
 			}
-			gm := tt.args.gm.Clone().(*GroupMember)
+			gm := tt.args.gm.Clone().(*GroupMemberUser)
 			err := w.Create(context.Background(), gm)
 			if tt.wantErr {
 				require.Error(err)
@@ -252,7 +268,7 @@ func Test_GroupMemberUpdate(t *testing.T) {
 		u := TestUser(t, conn, org.PublicId)
 		u2 := TestUser(t, conn, org.PublicId)
 		gm := TestGroupMember(t, conn, g.PublicId, u.PublicId)
-		updateGrpMember := gm.Clone().(*GroupMember)
+		updateGrpMember := gm.Clone().(*GroupMemberUser)
 		updateGrpMember.MemberId = u2.PublicId
 		updatedRows, err := rw.Update(context.Background(), updateGrpMember, []string{"MemberId"}, nil)
 		require.Error(err)
@@ -271,7 +287,7 @@ func Test_GroupMemberDelete(t *testing.T) {
 
 	tests := []struct {
 		name            string
-		gm              *GroupMember
+		gm              *GroupMemberUser
 		wantRowsDeleted int
 		wantErr         bool
 		wantErrMsg      string
@@ -284,7 +300,7 @@ func Test_GroupMemberDelete(t *testing.T) {
 		},
 		{
 			name:            "bad-id",
-			gm:              func() *GroupMember { gm := allocGroupMember(); gm.MemberId = id; gm.GroupId = id; return &gm }(),
+			gm:              func() *GroupMemberUser { gm := allocGroupMember(); gm.MemberId = id; gm.GroupId = id; return &gm }(),
 			wantErr:         false,
 			wantRowsDeleted: 0,
 		},
@@ -324,7 +340,7 @@ func TestGroupMember_Clone(t *testing.T) {
 		group := TestGroup(t, conn, org.PublicId)
 		gm := TestGroupMember(t, conn, group.PublicId, user.PublicId)
 		cp := gm.Clone()
-		assert.True(proto.Equal(cp.(*GroupMember).GroupMember, gm.GroupMember))
+		assert.True(proto.Equal(cp.(*GroupMemberUser).GroupMemberUser, gm.GroupMemberUser))
 	})
 	t.Run("not-equal", func(t *testing.T) {
 		assert := assert.New(t)
@@ -333,6 +349,6 @@ func TestGroupMember_Clone(t *testing.T) {
 		gm := TestGroupMember(t, conn, g.PublicId, user.PublicId)
 		gm2 := TestGroupMember(t, conn, g2.PublicId, user.PublicId)
 		cp := gm.Clone()
-		assert.True(!proto.Equal(cp.(*GroupMember).GroupMember, gm2.GroupMember))
+		assert.True(!proto.Equal(cp.(*GroupMemberUser).GroupMemberUser, gm2.GroupMemberUser))
 	})
 }
