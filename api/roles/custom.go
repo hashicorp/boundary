@@ -113,8 +113,8 @@ func (s Role) AddGrants(ctx context.Context, grants []string) (*Role, *api.Error
 	// We assume that the client provided has the org and optionally the project id of the request.
 
 	body := map[string]interface{}{
-		"group_ids": grants,
-		"version":   s.Version,
+		"grants":  grants,
+		"version": s.Version,
 	}
 
 	req, err := s.Client.NewRequest(ctx, "POST", fmt.Sprintf("roles/%s:add-grants", s.Id), body)

@@ -94,21 +94,21 @@ func TestCustom(t *testing.T) {
 			assert.Empty(t, updatedRole.UserIds)
 
 			r = updatedRole
-			updatedRole, apiErr, err = r.AddGrants(ctx, []string{"id=*;action=read"})
+			updatedRole, apiErr, err = r.AddGrants(ctx, []string{"id=*;actions=read"})
 			require.NoError(err)
 			require.Nil(apiErr, "Got error ", errorMessage(apiErr))
 			assert.Equal(t, *updatedRole.Version, (*r.Version)+1)
-			assert.Contains(t, updatedRole.Grants, "id=*;action=read")
+			assert.Contains(t, updatedRole.Grants, "id=*;actions=read")
 
 			r = updatedRole
-			updatedRole, apiErr, err = r.SetGrants(ctx, []string{"id=*;action=*"})
+			updatedRole, apiErr, err = r.SetGrants(ctx, []string{"id=*;actions=*"})
 			require.NoError(err)
 			require.Nil(apiErr, "Got error ", errorMessage(apiErr))
 			assert.Equal(t, *updatedRole.Version, (*r.Version)+1)
-			assert.Contains(t, updatedRole.Grants, "id=*;action=*")
+			assert.Contains(t, updatedRole.Grants, "id=*;actions=*")
 
 			r = updatedRole
-			updatedRole, apiErr, err = r.RemoveGrants(ctx, []string{"id=*;action=*"})
+			updatedRole, apiErr, err = r.RemoveGrants(ctx, []string{"id=*;actions=*"})
 			require.NoError(err)
 			require.Nil(apiErr, "Got error ", errorMessage(apiErr))
 			assert.Equal(t, *updatedRole.Version, (*r.Version)+1)

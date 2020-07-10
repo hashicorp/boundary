@@ -400,6 +400,10 @@ func (s Service) setGrantsInRepo(ctx context.Context, roleId string, grants []st
 	if err != nil {
 		return nil, err
 	}
+	// If no grant was provided, we clear the grants.
+	if grants == nil {
+		grants = []string{}
+	}
 	_, _, err = repo.SetRoleGrants(ctx, roleId, version, grants)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "Unable to set grants on role: %v.", err)
@@ -579,10 +583,6 @@ func validateAddRolePrincipalsRequest(req *pbs.AddRolePrincipalsRequest) error {
 	if req.GetVersion() == nil {
 		badFields["version"] = "Required field."
 	}
-	if len(req.GetGroupIds()) == 0 && len(req.GetUserIds()) == 0 {
-		badFields["user_ids"] = "Either user_ids or group_ids must be non empty."
-		badFields["group_ids"] = "Either user_ids or group_ids must be non empty."
-	}
 	if len(badFields) > 0 {
 		return handlers.InvalidArgumentErrorf("Errors in provided fields.", badFields)
 	}
@@ -649,9 +649,6 @@ func validateSetRoleGrantsRequest(req *pbs.SetRoleGrantsRequest) error {
 	}
 	if req.GetVersion() == nil {
 		badFields["version"] = "Required field."
-	}
-	if len(req.GetGrants()) == 0 {
-		badFields["grants"] = "This must be non empty."
 	}
 	if len(badFields) > 0 {
 		return handlers.InvalidArgumentErrorf("Errors in provided fields.", badFields)

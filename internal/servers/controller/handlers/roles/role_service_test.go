@@ -1694,6 +1694,12 @@ func TestSetGrants(t *testing.T) {
 			set:      []string{"id=*;actions=delete"},
 			result:   []string{"id=*;actions=delete"},
 		},
+		{
+			name:     "Set empty on role",
+			existing: []string{"id=1;actions=read", "id=*;actions=delete"},
+			set:      nil,
+			result:   nil,
+		},
 	}
 
 	for _, tc := range setCases {
