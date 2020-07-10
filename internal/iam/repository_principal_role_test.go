@@ -3,7 +3,6 @@ package iam
 import (
 	"context"
 	"errors"
-	"fmt"
 	"sort"
 	"testing"
 	"time"
@@ -557,7 +556,7 @@ func TestRepository_SetPrincipalRoles(t *testing.T) {
 		},
 	}
 	for _, tt := range tests {
-		t.Run(fmt.Sprintf(tt.name), func(t *testing.T) {
+		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 			var origUsers, origGrps []string
 			if tt.setup != nil {
