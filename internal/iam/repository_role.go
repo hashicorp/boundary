@@ -69,7 +69,7 @@ func (r *Repository) UpdateRole(ctx context.Context, role *Role, fieldMaskPaths 
 		map[string]interface{}{
 			"name":         role.Name,
 			"description":  role.Description,
-			"grantscopeid": role.GrantScopeId,
+			"GrantScopeId": role.GrantScopeId,
 		},
 		fieldMaskPaths,
 	)
