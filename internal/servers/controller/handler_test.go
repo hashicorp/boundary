@@ -166,6 +166,12 @@ func TestGrpcGatewayRouting_CustomActions(t *testing.T) {
 				"v1/orgs/someid/projects/p_something/roles/r_anotherid:add-principals",
 				"v1/orgs/someid/projects/p_something/roles/r_anotherid:set-principals",
 				"v1/orgs/someid/projects/p_something/roles/r_anotherid:remove-principals",
+				"v1/orgs/someid/roles/r_anotherid:add-grants",
+				"v1/orgs/someid/roles/r_anotherid:set-grants",
+				"v1/orgs/someid/roles/r_anotherid:remove-grants",
+				"v1/orgs/someid/projects/p_something/roles/r_anotherid:add-grants",
+				"v1/orgs/someid/projects/p_something/roles/r_anotherid:set-grants",
+				"v1/orgs/someid/projects/p_something/roles/r_anotherid:remove-grants",
 			},
 		},
 	}

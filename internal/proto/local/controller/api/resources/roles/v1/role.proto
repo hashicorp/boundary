@@ -51,4 +51,12 @@ message Role {
 	// The grants that this role provides for it's principals.
 	// Output only.
 	repeated string grants = 11;
+
+	// The canonical version of the grants in the grants field with the same index.
+	// Output only.
+	repeated string grants_canonical = 12;
+
+	// The JSON version of the grants in the grants field with the same index.
+	// Output only.
+	repeated string grants_json = 13;
 }
