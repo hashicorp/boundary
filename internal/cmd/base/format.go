@@ -8,6 +8,7 @@ import (
 
 	"github.com/ghodss/yaml"
 	"github.com/mitchellh/cli"
+	"github.com/mitchellh/go-wordwrap"
 	"github.com/ryanuber/columnize"
 )
 
@@ -16,6 +17,22 @@ const (
 	// hopeDelim because we hope that it's never contained in a secret.
 	hopeDelim = "♨"
 )
+
+func WrapForHelpText(lines []string) string {
+	var ret []string
+	for _, line := range lines {
+		trimmed := strings.TrimSpace(line)
+		diff := len(line) - len(trimmed)
+		wrapped := wordwrap.WrapString(trimmed, uint(80-diff))
+		splitWrapped := strings.Split(wrapped, "\n")
+		for i := range splitWrapped {
+			splitWrapped[i] = fmt.Sprintf("%s%s", strings.Repeat(" ", diff), splitWrapped[i])
+		}
+		ret = append(ret, strings.Join(splitWrapped, "\n"))
+	}
+
+	return strings.Join(ret, "\n\n")
+}
 
 type FormatOptions struct {
 	Format string

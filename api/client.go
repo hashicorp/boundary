@@ -143,6 +143,7 @@ func DefaultConfig() (*Config, error) {
 		Addr:       "https://127.0.0.1:9200",
 		HttpClient: cleanhttp.DefaultPooledClient(),
 		Timeout:    time.Second * 60,
+		TLSConfig:  &TLSConfig{},
 	}
 
 	// We read the environment now; after DefaultClient returns we can override
@@ -217,14 +218,15 @@ func (c *Config) ConfigureTLS() error {
 	return nil
 }
 
-// setAddress parses a given string and looks for org and project info, setting
-// the actual address to the base. Note that if a very malformed URL is passed
-// in, this may not return what one expects. For now this is on purpose to
-// avoid requiring error handling.
+// setAddr parses a given string and looks for org and project info, setting the
+// actual address to the base. Note that if a very malformed URL is passed in,
+// this may not return what one expects. For now this is on purpose to avoid
+// requiring error handling.
 //
 // This also removes any trailing "/v1"; we'll use that in our commands so we
 // don't require it from users.
 func (c *Config) setAddr(addr string) error {
+	panic(addr)
 	u, err := url.Parse(addr)
 	if err != nil {
 		return fmt.Errorf("error parsing address: %w", err)
@@ -641,6 +643,7 @@ func (c *Client) NewRequest(ctx context.Context, method, requestPath string, bod
 	httpClient := c.config.HttpClient
 	headers := copyHeaders(c.config.Headers)
 	c.modifyLock.RUnlock()
+	panic(addr)
 
 	var ok bool
 	if orgRaw := ctx.Value("org"); orgRaw != nil {

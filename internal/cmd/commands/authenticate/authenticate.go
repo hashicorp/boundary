@@ -1,10 +1,9 @@
 package authenticate
 
 import (
-	"strings"
-
 	"github.com/hashicorp/watchtower/internal/cmd/base"
 	"github.com/mitchellh/cli"
+	"github.com/mitchellh/go-wordwrap"
 )
 
 var _ cli.Command = (*Command)(nil)
@@ -14,22 +13,17 @@ type Command struct {
 }
 
 func (c *Command) Synopsis() string {
-	return "Authenticate the Watchtower commandline client"
+	return wordwrap.WrapString("Authenticate the Watchtower commandline client", 80)
 }
 
 func (c *Command) Help() string {
-	helpText := `
-Usage: watchtower authenticate [sub command] [options] [args]
-  This command authenticates the Watchtower commandline client using a 
-	specified auth method. Examples:
-	  
-		Authenticate with userpass auth method:
-
-		$ watchtower authenticate userpass username=foo password=bar
-
-  Please see the auth method subcommand help for detailed usage information.`
-
-	return strings.TrimSpace(helpText)
+	return base.WrapForHelpText([]string{
+		"Usage: watchtower authenticate [sub command] [options] [args]",
+		"  This command authenticates the Watchtower commandline client using a specified auth method. Examples:",
+		"    Authenticate with password auth method:",
+		"      $ watchtower authenticate password name=foo password=bar",
+		"  Please see the auth method subcommand help for detailed usage information.",
+	})
 }
 
 func (c *Command) Run(args []string) int {
