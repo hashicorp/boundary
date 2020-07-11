@@ -54,13 +54,13 @@ func TestAuthenticate(t *testing.T) {
 
 	cases := []struct {
 		name    string
-		request pbs.AuthenticateRequest
-		want    pbs.AuthenticateResponse
+		request *pbs.AuthenticateRequest
+		want    *pbs.AuthenticateResponse
 		wantErr error
 	}{
 		{
 			name: "basic",
-			request: pbs.AuthenticateRequest{
+			request: &pbs.AuthenticateRequest{
 				OrgId:        o.GetPublicId(),
 				AuthMethodId: amId,
 				TokenType:    "token",
@@ -72,13 +72,13 @@ func TestAuthenticate(t *testing.T) {
 					return &structpb.Struct{Fields: creds}
 				}(),
 			},
-			want: pbs.AuthenticateResponse{Item: &pba.AuthToken{
+			want: &pbs.AuthenticateResponse{Item: &pba.AuthToken{
 				AuthMethodId: amId,
 			}},
 		},
 		{
 			name: "no-token-type",
-			request: pbs.AuthenticateRequest{
+			request: &pbs.AuthenticateRequest{
 				OrgId:        o.GetPublicId(),
 				AuthMethodId: amId,
 				Credentials: func() *structpb.Struct {
@@ -89,13 +89,13 @@ func TestAuthenticate(t *testing.T) {
 					return &structpb.Struct{Fields: creds}
 				}(),
 			},
-			want: pbs.AuthenticateResponse{Item: &pba.AuthToken{
+			want: &pbs.AuthenticateResponse{Item: &pba.AuthToken{
 				AuthMethodId: amId,
 			}},
 		},
 		{
 			name: "bad-token-type",
-			request: pbs.AuthenticateRequest{
+			request: &pbs.AuthenticateRequest{
 				OrgId:        o.GetPublicId(),
 				AuthMethodId: amId,
 				TokenType:    "email",
@@ -111,7 +111,7 @@ func TestAuthenticate(t *testing.T) {
 		},
 		{
 			name: "no-authmethod",
-			request: pbs.AuthenticateRequest{
+			request: &pbs.AuthenticateRequest{
 				OrgId: o.GetPublicId(),
 				Credentials: func() *structpb.Struct {
 					creds := map[string]*structpb.Value{
@@ -125,7 +125,7 @@ func TestAuthenticate(t *testing.T) {
 		},
 		{
 			name: "wrong-username-password",
-			request: pbs.AuthenticateRequest{
+			request: &pbs.AuthenticateRequest{
 				OrgId:        o.GetPublicId(),
 				AuthMethodId: amId,
 				TokenType:    "token",
@@ -146,7 +146,7 @@ func TestAuthenticate(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 			s, err := NewService(iamRepoFn, authTokenRepoFn, acctId)
 			require.NoError(err)
-			resp, err := s.Authenticate(context.Background(), &tc.request)
+			resp, err := s.Authenticate(context.Background(), tc.request)
 			if tc.wantErr != nil {
 				assert.Error(err)
 				assert.Equal(status.Code(tc.wantErr), status.Code(err))
