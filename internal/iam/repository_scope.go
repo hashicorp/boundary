@@ -30,7 +30,7 @@ func (r *Repository) CreateScope(ctx context.Context, s *Scope, opt ...Option) (
 	}
 	opts := getOpts(opt...)
 	var publicId string
-	t := scope.StringToScopeType(s.Type)
+	t := scope.Map[s.Type]
 	if opts.withPublicId != "" {
 		if !strings.HasPrefix(opts.withPublicId, t.Prefix()+"_") {
 			return nil, fmt.Errorf("create scope: passed-in public ID %q has wrong prefix for type %q which uses prefix %q", opts.withPublicId, t.String(), t.Prefix())

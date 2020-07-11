@@ -24,7 +24,6 @@ const (
 )
 
 var Map = map[string]Type{
-	"unknown":           Unknown,
 	"list":              List,
 	"create":            Create,
 	"update":            Update,
