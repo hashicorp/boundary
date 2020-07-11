@@ -3,6 +3,7 @@ package controller
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"path"
@@ -25,6 +26,9 @@ import (
 	"github.com/hashicorp/watchtower/internal/servers/controller/handlers/projects"
 	"github.com/hashicorp/watchtower/internal/servers/controller/handlers/roles"
 	"github.com/hashicorp/watchtower/internal/servers/controller/handlers/users"
+	"github.com/hashicorp/watchtower/internal/types/action"
+	"github.com/hashicorp/watchtower/internal/types/resource"
+	"github.com/hashicorp/watchtower/internal/types/scope"
 )
 
 type HandlerProperties struct {
@@ -145,8 +149,18 @@ func wrapHandlerWithCommonFuncs(h http.Handler, c *Controller, props HandlerProp
 		// Set the Cache-Control header for all responses returned
 		w.Header().Set("Cache-Control", "no-store")
 
+		// Get auth params into the context
+		ctx, err := decorateAuthParams(r)
+		if err != nil {
+			c.logger.Trace("error reading auth parameters from URL", "error", err)
+			// Maybe this isn't the best option, but a URL we can't parse from
+			// an auth perspective is probably just an invalid URL altogether.
+			// The trace logs would help the admin figure out the problem.
+			w.WriteHeader(http.StatusNotFound)
+			return
+		}
+
 		// Start with the request context
-		ctx := r.Context()
 		var cancelFunc context.CancelFunc
 		// Add our timeout
 		ctx, cancelFunc = context.WithTimeout(ctx, maxRequestDuration)
@@ -241,6 +255,122 @@ func wrapHandlerWithCors(h http.Handler, props HandlerProperties) http.Handler {
 		h.ServeHTTP(w, req)
 		return
 	})
+}
+
+func decorateAuthParams(r *http.Request) (context.Context, error) {
+	if r == nil {
+		return nil, errors.New("decorate auth params: incoming request is nil")
+	}
+
+	out := r.Context()
+	var act action.Type
+	var typStr string
+	var typ resource.Type
+	var id string
+	scp := scope.Global
+
+	// Handle non-custom types. We'll deal with custom types, including list,
+	// after parsing the path
+	switch r.Method {
+	case "GET":
+		act = action.Read
+	case "POST":
+		act = action.Create
+	case "PATCH":
+		act = action.Update
+	case "DELETE":
+		act = action.Delete
+	default:
+		return nil, fmt.Errorf("decorate auth params: unknown method %q", r.Method)
+	}
+
+	// Remove trailing and leading slashes
+	splitPath := strings.Split(strings.Trim(r.URL.Path, "/"), "/")
+	splitLen := len(splitPath)
+	if splitLen == 0 {
+		// Return just the action and at global scope
+		out = context.WithValue(out, globals.ContextScopeValue, scp)
+		return out, nil
+	}
+
+	// Look for a custom action
+	colonSplit := strings.Split(splitPath[splitLen-1], ":")
+	switch len(colonSplit) {
+	case 1:
+	case 2:
+		actStr := colonSplit[len(colonSplit)-1]
+		act = action.Map[actStr]
+		if act == action.Unknown || act == action.All {
+			return nil, fmt.Errorf("decorate auth params: unknown action %q", actStr)
+		}
+		// Keep going with the logic without the custom action
+		splitPath[splitLen-1] = colonSplit[0]
+	default:
+		return nil, fmt.Errorf("decorate auth params: unexpected number of colons in last segment %q", colonSplit[len(colonSplit)-1])
+	}
+
+	// Walk backwards. As we walk backwards we look for scopes and figure out if
+	// we're operating on a resource or a collection.
+	for i := splitLen - 1; i >= 0; i-- {
+		segment := splitPath[i]
+
+		// Update the scope. Set it to org only if it's at global (that way we
+		// don't override project with org). We have to check if it's one less
+		// than the length of the split because operating on the id of a scope
+		// is actually in the enclosing scope (since you're in the parent scope
+		// operating on a child scope).
+		switch segment {
+		case "projects":
+			if i != splitLen-2 {
+				scp = scope.Project
+			}
+		case "orgs":
+			if scp == scope.Global {
+				if i != splitLen-2 {
+					scp = scope.Org
+				}
+			}
+		}
+
+		if typStr == "" {
+			// The resource check takes place inside the type check because if
+			// we've identified the type we have either already identified the
+			// right-most resource ID or we're operating on a collection, so
+			// this prevents us from finding a different ID earlier in the path.
+			//
+			// We continue on with the enclosing loop anyways though to ensure
+			// we find the right scope.
+			if id == "" && strings.Contains(segment, "_") {
+				// Collections don't contain underscores; every resource ID does.
+				id = segment
+			} else {
+				// Every collection is the plural of the resource type so drop
+				// the last 's'
+				if !strings.HasSuffix(segment, "s") {
+					return nil, fmt.Errorf("decorate auth params: invalid collection syntax for %q", segment)
+				}
+				typStr = strings.TrimSuffix(segment, "s")
+			}
+		}
+	}
+
+	if typStr != "" {
+		typ = resource.Map[typStr]
+		if typ == resource.Unknown {
+			return nil, fmt.Errorf("decorate auth params: unknown resource type %q", typStr)
+		}
+	} else if id == "" {
+		return nil, errors.New("decorate auth params: id and type both not found")
+	}
+
+	// TODO: Use grpc metadata? If it will preserve it all the way through to
+	// the interceptor maybe it's more efficient; not sure.
+	out = context.WithValue(out, globals.ContextResourceValue, id)
+	out = context.WithValue(out, globals.ContextTypeValue, typ)
+	out = context.WithValue(out, globals.ContextScopeValue, scp)
+	out = context.WithValue(out, globals.ContextActionValue, act)
+
+	return out, nil
 }
 
 /*

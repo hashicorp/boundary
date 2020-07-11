@@ -123,7 +123,7 @@ func (g *Grant) unmarshalJSON(data []byte) error {
 		if !ok {
 			return fmt.Errorf("unable to interpret %q as string", "type")
 		}
-		g.typ = resource.StringToResourceType(typ)
+		g.typ = resource.Map[typ]
 	}
 	if rawActions, ok := raw["actions"]; ok {
 		interfaceActions, ok := rawActions.([]interface{})
@@ -169,7 +169,7 @@ func (g *Grant) unmarshalText(grantString string) error {
 
 		case "type":
 			typeString := strings.ToLower(kv[1])
-			g.typ = resource.StringToResourceType(typeString)
+			g.typ = resource.Map[typeString]
 			if g.typ == resource.Unknown {
 				return fmt.Errorf("unknown type specifier %q", typeString)
 			}
