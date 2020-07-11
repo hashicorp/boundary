@@ -198,23 +198,28 @@ func (g *Grant) unmarshalText(grantString string) error {
 //
 // The scope must be the org and project where this grant originated, not the
 // request.
-func Parse(s Scope, userId, grantString string) (Grant, error) {
+func Parse(scopeId, userId, grantString string) (Grant, error) {
 	if len(grantString) == 0 {
 		return Grant{}, errors.New("grant string is empty")
 	}
 
-	switch s.Type {
-	case scope.Project, scope.Organization:
-	default:
-		return Grant{}, errors.New("invalid scope type")
-	}
-
-	if s.Id == "" {
+	if scopeId == "" {
 		return Grant{}, errors.New("no scope ID provided")
 	}
 
 	grant := Grant{
-		scope: s,
+		scope: Scope{Id: scopeId},
+	}
+
+	switch {
+	case scopeId == "global":
+		grant.scope.Type = scope.Global
+	case strings.HasPrefix(scopeId, scope.Org.Prefix()):
+		grant.scope.Type = scope.Org
+	case strings.HasPrefix(scopeId, scope.Project.Prefix()):
+		grant.scope.Type = scope.Project
+	default:
+		return Grant{}, errors.New("invalid scope type")
 	}
 
 	switch {

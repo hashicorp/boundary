@@ -352,9 +352,9 @@ type ancestorProvider interface {
 // validateAncestors verifies that the ancestors of this call are properly set and provided.
 func validateAncestors(r ancestorProvider) map[string]string {
 	if r.GetOrgId() == "" {
-		return map[string]string{orgIdFieldName: "Missing organization id."}
+		return map[string]string{orgIdFieldName: "Missing org id."}
 	}
-	if !validId(r.GetOrgId(), scope.Organization.Prefix()+"_") {
+	if !validId(r.GetOrgId(), scope.Org.Prefix()+"_") {
 		return map[string]string{orgIdFieldName: "Improperly formatted identifier."}
 	}
 	return map[string]string{}

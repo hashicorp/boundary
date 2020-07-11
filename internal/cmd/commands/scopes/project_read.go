@@ -30,7 +30,7 @@ func (c *ReadProjectCommand) Help() string {
 Usage: watchtower projects read 
 
   Returns information about a project specified by the ID. It is an error if
-  the project is not within the organization specified via the "org-id"
+  the project is not within the org specified via the "org-id"
   parameter or the associated environment variable.
 
   Example: 
@@ -79,7 +79,7 @@ func (c *ReadProjectCommand) Run(args []string) int {
 		return 2
 	}
 
-	org := &scopes.Organization{
+	org := &scopes.Org{
 		Client: client,
 	}
 

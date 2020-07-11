@@ -39,11 +39,12 @@ func (r *Repository) CreateRole(ctx context.Context, role *Role, opt ...Option) 
 	return resource.(*Role), err
 }
 
-// UpdateRole will update a role in the repository and return the written
-// role. fieldMaskPaths provides field_mask.proto paths for fields that should
-// be updated.  Fields will be set to NULL if the field is a zero value and
-// included in fieldMask. Name and Description are the only updatable fields,
-// If no updatable fields are included in the fieldMaskPaths, then an error is returned.
+// UpdateRole will update a role in the repository and return the written role.
+// fieldMaskPaths provides field_mask.proto paths for fields that should be
+// updated.  Fields will be set to NULL if the field is a zero value and
+// included in fieldMask. Name, Description, and GrantScopeId are the only
+// updatable fields, If no updatable fields are included in the fieldMaskPaths,
+// then an error is returned.
 func (r *Repository) UpdateRole(ctx context.Context, role *Role, fieldMaskPaths []string, opt ...Option) (*Role, int, error) {
 	if role == nil {
 		return nil, db.NoRowsAffected, fmt.Errorf("update role: missing role %w", db.ErrNilParameter)
@@ -58,6 +59,7 @@ func (r *Repository) UpdateRole(ctx context.Context, role *Role, fieldMaskPaths 
 		switch {
 		case strings.EqualFold("name", f):
 		case strings.EqualFold("description", f):
+		case strings.EqualFold("grantscopeid", f):
 		default:
 			return nil, db.NoRowsAffected, fmt.Errorf("update role: field: %s: %w", f, db.ErrInvalidFieldMask)
 		}
@@ -65,8 +67,9 @@ func (r *Repository) UpdateRole(ctx context.Context, role *Role, fieldMaskPaths 
 	var dbMask, nullFields []string
 	dbMask, nullFields = buildUpdatePaths(
 		map[string]interface{}{
-			"name":        role.Name,
-			"description": role.Description,
+			"name":         role.Name,
+			"description":  role.Description,
+			"GrantScopeId": role.GrantScopeId,
 		},
 		fieldMaskPaths,
 	)
@@ -77,7 +80,7 @@ func (r *Repository) UpdateRole(ctx context.Context, role *Role, fieldMaskPaths 
 	resource, rowsUpdated, err := r.update(ctx, c, dbMask, nullFields)
 	if err != nil {
 		if db.IsUniqueError(err) {
-			return nil, db.NoRowsAffected, fmt.Errorf("update role: role %s already exists in organization %s: %w", role.Name, role.ScopeId, db.ErrNotUnique)
+			return nil, db.NoRowsAffected, fmt.Errorf("update role: role %s already exists in org %s: %w", role.Name, role.ScopeId, db.ErrNotUnique)
 		}
 		return nil, db.NoRowsAffected, fmt.Errorf("update role: %w for %s", err, c.PublicId)
 	}
@@ -86,16 +89,41 @@ func (r *Repository) UpdateRole(ctx context.Context, role *Role, fieldMaskPaths 
 
 // LookupRole will look up a role in the repository.  If the role is not
 // found, it will return nil, nil.
-func (r *Repository) LookupRole(ctx context.Context, withPublicId string, opt ...Option) (*Role, error) {
+func (r *Repository) LookupRole(ctx context.Context, withPublicId string, opt ...Option) (*Role, []PrincipalRole, []*RoleGrant, error) {
 	if withPublicId == "" {
-		return nil, fmt.Errorf("lookup role: missing public id %w", db.ErrNilParameter)
+		return nil, nil, nil, fmt.Errorf("lookup role: missing public id %w", db.ErrNilParameter)
 	}
 	role := allocRole()
 	role.PublicId = withPublicId
-	if err := r.reader.LookupByPublicId(ctx, &role); err != nil {
-		return nil, fmt.Errorf("lookup role: failed %w for %s", err, withPublicId)
+	var pr []PrincipalRole
+	var rg []*RoleGrant
+	_, err := r.writer.DoTx(
+		ctx,
+		db.StdRetryCnt,
+		db.ExpBackoff{},
+		func(read db.Reader, w db.Writer) error {
+			if err := read.LookupByPublicId(ctx, &role); err != nil {
+				return fmt.Errorf("lookup role: failed %w for %s", err, withPublicId)
+			}
+			repo, err := NewRepository(read, w, r.wrapper)
+			if err != nil {
+				return fmt.Errorf("lookup role: failed creating inner repo: %w for %s", err, withPublicId)
+			}
+			pr, err = repo.ListPrincipalRoles(ctx, withPublicId)
+			if err != nil {
+				return fmt.Errorf("lookup role: listing principal roles: %w for %s", err, withPublicId)
+			}
+			rg, err = repo.ListRoleGrants(ctx, withPublicId)
+			if err != nil {
+				return fmt.Errorf("lookup role: listing principal roles: %w for %s", err, withPublicId)
+			}
+			return nil
+		},
+	)
+	if err != nil {
+		return nil, nil, nil, err
 	}
-	return &role, nil
+	return &role, pr, rg, nil
 }
 
 // DeleteRole will delete a role from the repository.

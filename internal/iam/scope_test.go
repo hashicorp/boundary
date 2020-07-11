@@ -21,10 +21,10 @@ func TestScope_New(t *testing.T) {
 	t.Run("valid-org-with-project", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
 		w := db.New(conn)
-		s, err := NewOrganization()
+		s, err := NewOrg()
 		require.NoError(err)
 		require.NotNil(s.Scope)
-		s.PublicId, err = newScopeId(scope.Organization)
+		s.PublicId, err = newScopeId(scope.Org)
 		require.NoError(err)
 		err = w.Create(context.Background(), s)
 		require.NoError(err)
@@ -58,10 +58,10 @@ func TestScope_Create(t *testing.T) {
 	t.Run("valid", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
 		w := db.New(conn)
-		s, err := NewOrganization()
+		s, err := NewOrg()
 		require.NoError(err)
 		require.NotNil(s.Scope)
-		s.PublicId, err = newScopeId(scope.Organization)
+		s.PublicId, err = newScopeId(scope.Org)
 		require.NoError(err)
 		err = w.Create(context.Background(), s)
 		require.NoError(err)
@@ -70,10 +70,10 @@ func TestScope_Create(t *testing.T) {
 	t.Run("valid-with-parent", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
 		w := db.New(conn)
-		s, err := NewOrganization()
+		s, err := NewOrg()
 		require.NoError(err)
 		require.NotNil(s.Scope)
-		s.PublicId, err = newScopeId(scope.Organization)
+		s.PublicId, err = newScopeId(scope.Org)
 		require.NoError(err)
 		err = w.Create(context.Background(), s)
 		require.NoError(err)
@@ -85,7 +85,7 @@ func TestScope_Create(t *testing.T) {
 		require.NotNil(project.Scope)
 		assert.Equal(project.Scope.ParentId, s.PublicId)
 		assert.Equal(project.GetDescription(), id)
-		project.PublicId, err = newScopeId(scope.Organization)
+		project.PublicId, err = newScopeId(scope.Org)
 		require.NoError(err)
 
 		err = w.Create(context.Background(), project)
@@ -165,9 +165,9 @@ func TestScope_Actions(t *testing.T) {
 }
 
 func TestScope_ResourceType(t *testing.T) {
-	o, err := NewOrganization()
+	o, err := NewOrg()
 	require.NoError(t, err)
-	assert.Equal(t, o.ResourceType(), resource.Organization)
+	assert.Equal(t, o.ResourceType(), resource.Org)
 	assert.Equal(t, o.GetParentId(), resource.Global.String())
 }
 
@@ -202,7 +202,7 @@ func TestScope_GlobalErrors(t *testing.T) {
 		require.Error(t, err)
 
 		// Should fail as there's no scope
-		_, err = newScope(scope.Organization)
+		_, err = newScope(scope.Org)
 		require.Error(t, err)
 		assert.True(t, strings.Contains(err.Error(), "missing its parent"))
 	})
@@ -218,7 +218,7 @@ func TestScope_GlobalErrors(t *testing.T) {
 	t.Run("check org parent at vet time", func(t *testing.T) {
 		// Org must have global parent
 		s := allocScope()
-		s.Type = scope.Organization.String()
+		s.Type = scope.Org.String()
 		s.PublicId = "o_1234"
 		s.ParentId = "global"
 		err := s.VetForWrite(context.Background(), nil, db.CreateOp)

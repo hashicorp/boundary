@@ -12,13 +12,13 @@ import (
 	"github.com/hashicorp/watchtower/api/users"
 )
 
-func (s Organization) CreateProject(ctx context.Context, r *Project) (*Project, *api.Error, error) {
+func (s Org) CreateProject(ctx context.Context, r *Project) (*Project, *api.Error, error) {
 	if s.Client == nil {
 		return nil, nil, fmt.Errorf("nil client in CreateProject request")
 	}
 	if s.Id == "" {
 
-		// Assume the client has been configured with organization already and
+		// Assume the client has been configured with org already and
 		// move on
 
 	} else {
@@ -51,13 +51,13 @@ func (s Organization) CreateProject(ctx context.Context, r *Project) (*Project, 
 	return target, apiErr, nil
 }
 
-func (s Organization) CreateGroup(ctx context.Context, r *groups.Group) (*groups.Group, *api.Error, error) {
+func (s Org) CreateGroup(ctx context.Context, r *groups.Group) (*groups.Group, *api.Error, error) {
 	if s.Client == nil {
 		return nil, nil, fmt.Errorf("nil client in Creategroups.Group request")
 	}
 	if s.Id == "" {
 
-		// Assume the client has been configured with organization already and
+		// Assume the client has been configured with org already and
 		// move on
 
 	} else {
@@ -89,13 +89,13 @@ func (s Organization) CreateGroup(ctx context.Context, r *groups.Group) (*groups
 	return target, apiErr, nil
 }
 
-func (s Organization) CreateRole(ctx context.Context, r *roles.Role) (*roles.Role, *api.Error, error) {
+func (s Org) CreateRole(ctx context.Context, r *roles.Role) (*roles.Role, *api.Error, error) {
 	if s.Client == nil {
 		return nil, nil, fmt.Errorf("nil client in Createroles.Role request")
 	}
 	if s.Id == "" {
 
-		// Assume the client has been configured with organization already and
+		// Assume the client has been configured with org already and
 		// move on
 
 	} else {
@@ -127,13 +127,13 @@ func (s Organization) CreateRole(ctx context.Context, r *roles.Role) (*roles.Rol
 	return target, apiErr, nil
 }
 
-func (s Organization) CreateUser(ctx context.Context, r *users.User) (*users.User, *api.Error, error) {
+func (s Org) CreateUser(ctx context.Context, r *users.User) (*users.User, *api.Error, error) {
 	if s.Client == nil {
 		return nil, nil, fmt.Errorf("nil client in Createusers.User request")
 	}
 	if s.Id == "" {
 
-		// Assume the client has been configured with organization already and
+		// Assume the client has been configured with org already and
 		// move on
 
 	} else {

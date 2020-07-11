@@ -18,7 +18,7 @@ func Test_GetOpts(t *testing.T) {
 	})
 	t.Run("withScope", func(t *testing.T) {
 		assert := assert.New(t)
-		s, err := NewOrganization()
+		s, err := NewOrg()
 		assert.NoError(err)
 		assert.NotNil(s.Scope)
 
@@ -63,6 +63,13 @@ func Test_GetOpts(t *testing.T) {
 		opts = getOpts(WithAutoVivify(true))
 		testOpts = getDefaultOptions()
 		testOpts.withAutoVivify = true
+		assert.Equal(opts, testOpts)
+	})
+	t.Run("WithGrantScopeId", func(t *testing.T) {
+		assert := assert.New(t)
+		opts := getOpts(WithGrantScopeId("o_1234"))
+		testOpts := getDefaultOptions()
+		testOpts.withGrantScopeId = "o_1234"
 		assert.Equal(opts, testOpts)
 	})
 }

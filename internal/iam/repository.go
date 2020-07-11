@@ -193,7 +193,7 @@ func (r *Repository) stdMetadata(ctx context.Context, resource Resource) (oplog.
 			}
 		}
 		switch newScope.Type {
-		case scope.Organization.String():
+		case scope.Org.String():
 			return oplog.Metadata{
 				"resource-public-id": []string{resource.GetPublicId()},
 				"scope-id":           []string{newScope.PublicId},

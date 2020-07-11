@@ -247,6 +247,17 @@ func TestRepository_LookupAuthToken(t *testing.T) {
 				return
 			}
 			require.NotNil(tt.want, "got %v, wanted nil", got)
+			// TODO: This test fails by a very small amount -- 500 nanos ish in
+			// my experience -- if they are required to be equal. I think this
+			// is because the resolution of the timestamp in the db does not
+			// match the resolution in Go code. But might be worth checking
+			// into.
+			wantGoTimeExpr, err := ptypes.Timestamp(tt.want.AuthToken.GetExpirationTime().Timestamp)
+			require.NoError(err)
+			gotGoTimeExpr, err := ptypes.Timestamp(got.AuthToken.GetExpirationTime().Timestamp)
+			require.NoError(err)
+			assert.WithinDuration(wantGoTimeExpr, gotGoTimeExpr, time.Millisecond)
+			tt.want.AuthToken.ExpirationTime = got.AuthToken.ExpirationTime
 			assert.Empty(cmp.Diff(tt.want.AuthToken, got.AuthToken, protocmp.Transform()))
 		})
 	}
@@ -328,7 +339,16 @@ func TestRepository_ValidateToken(t *testing.T) {
 				return
 			}
 			require.NotNil(tt.want, "Got %v but wanted nil", got)
+
+			// NOTE: See comment in LookupAuthToken about this logic
+			wantGoTimeExpr, err := ptypes.Timestamp(tt.want.AuthToken.GetExpirationTime().Timestamp)
+			require.NoError(err)
+			gotGoTimeExpr, err := ptypes.Timestamp(got.AuthToken.GetExpirationTime().Timestamp)
+			require.NoError(err)
+			assert.WithinDuration(wantGoTimeExpr, gotGoTimeExpr, time.Millisecond)
+			tt.want.AuthToken.ExpirationTime = got.AuthToken.ExpirationTime
 			assert.Empty(cmp.Diff(tt.want.AuthToken, got.AuthToken, protocmp.Transform()))
+
 			// preTime1 should be the value prior to the ValidateToken was called so it should equal creation time
 			preTime1, err := ptypes.Timestamp(got.GetApproximateLastAccessTime().GetTimestamp())
 			require.NoError(err)
