@@ -22,12 +22,12 @@ func TestAuthenticate(t *testing.T) {
 	}
 	ctx := context.Background()
 
-	tok, apiErr, err := org.Authenticate(ctx, "anything", "admin", "hunter2")
+	tok, apiErr, err := org.Authenticate(ctx, "am_anything", "admin", "hunter2")
 	assert.NoError(err)
 	assert.Nil(apiErr)
 	assert.NotNil(tok)
 
-	_, apiErr, err = org.Authenticate(ctx, "anything", "wrong", "wrong")
+	_, apiErr, err = org.Authenticate(ctx, "am_anything", "wrong", "wrong")
 	assert.NoError(err)
 	require.NotNil(t, apiErr)
 	assert.EqualValuesf(http.StatusUnauthorized, *apiErr.Status, "Expected unauthenticated, got %q", *apiErr.Message)

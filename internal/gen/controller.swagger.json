@@ -72,6 +72,46 @@
         ]
       }
     },
+    "/v1/orgs/{org_id}/auth-methods/{auth_method_id}:authenticate": {
+      "post": {
+        "summary": "Authenticate a user to an Org and retrieve an authentication token.",
+        "operationId": "AuthenticationService_Authenticate",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/controller.api.resources.authtokens.v1.AuthToken"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "org_id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "auth_method_id",
+            "description": "The id to the authmethod in the system being used for authentication.  The auth method must be in the org\nbeing logged in to.",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/controller.api.services.v1.AuthenticateRequest"
+            }
+          }
+        ],
+        "tags": [
+          "controller.api.services.v1.AuthenticationService"
+        ]
+      }
+    },
     "/v1/orgs/{org_id}/groups": {
       "get": {
         "summary": "Lists all Groups",
@@ -3048,39 +3088,6 @@
         ],
         "tags": [
           "controller.api.services.v1.UserService"
-        ]
-      }
-    },
-    "/v1/orgs/{org_id}:authenticate": {
-      "post": {
-        "summary": "Authenticate a user to an Org and retrieve an authentication token.",
-        "operationId": "AuthenticationService_Authenticate",
-        "responses": {
-          "200": {
-            "description": "",
-            "schema": {
-              "$ref": "#/definitions/controller.api.resources.authtokens.v1.AuthToken"
-            }
-          }
-        },
-        "parameters": [
-          {
-            "name": "org_id",
-            "in": "path",
-            "required": true,
-            "type": "string"
-          },
-          {
-            "name": "body",
-            "in": "body",
-            "required": true,
-            "schema": {
-              "$ref": "#/definitions/controller.api.services.v1.AuthenticateRequest"
-            }
-          }
-        ],
-        "tags": [
-          "controller.api.services.v1.AuthenticationService"
         ]
       }
     },

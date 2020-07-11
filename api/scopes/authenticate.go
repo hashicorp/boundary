@@ -24,14 +24,13 @@ func (s Org) Authenticate(ctx context.Context, authMethodId, name, password stri
 	}
 
 	reqBody := map[string]interface{}{
-		"auth_method_id": authMethodId,
 		"credentials": map[string]string{
 			"name":     name,
 			"password": password,
 		},
 	}
 
-	req, err := s.Client.NewRequest(ctx, "POST", ":authenticate", reqBody)
+	req, err := s.Client.NewRequest(ctx, "POST", fmt.Sprintf("auth-methods/%s:authenticate", authMethodId), reqBody)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error creating Authenticate request: %w", err)
 	}

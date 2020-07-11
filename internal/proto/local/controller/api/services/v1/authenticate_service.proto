@@ -13,7 +13,7 @@ service AuthenticationService {
   // Authenticate validates credentials provided and returns an auth token.
   rpc Authenticate(AuthenticateRequest) returns (AuthenticateResponse) {
     option (google.api.http) = {
-      post: "/v1/orgs/{org_id}:authenticate"
+      post: "/v1/orgs/{org_id}/auth-methods/{auth_method_id}:authenticate"
       body: "*"
       response_body: "item"
     };
