@@ -700,18 +700,25 @@ func (c *Client) NewRequest(ctx context.Context, method, requestPath string, bod
 		orgProjPath = path.Join(orgProjPath, "projects", project)
 	}
 
+	p := path.Join(u.Path, "/v1", orgProjPath)
+	if strings.HasPrefix(requestPath, ":") {
+		p = p + requestPath
+	} else {
+		p = path.Join(p, requestPath)
+	}
+
 	req := &http.Request{
 		Method: method,
 		URL: &url.URL{
 			User:   u.User,
 			Scheme: u.Scheme,
 			Host:   host,
-			Path:   path.Join(u.Path, "/v1", orgProjPath, requestPath),
+			Path:   p,
 		},
 		Host: u.Host,
 	}
 	req.Header = headers
-	req.Header.Add("authorization", "bearer: "+token)
+	req.Header.Add("authorization", "Bearer "+token)
 	req.Header.Set("content-type", "application/json")
 	if ctx != nil {
 		req = req.WithContext(ctx)

@@ -71,6 +71,10 @@ func TestAction(t *testing.T) {
 			action: SetPrincipals,
 			want:   "set-principals",
 		},
+		{
+			action: Deauthenticate,
+			want:   "deauthenticate",
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.want, func(t *testing.T) {

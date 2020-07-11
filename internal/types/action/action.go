@@ -21,10 +21,10 @@ const (
 	AddPrincipals    Type = 12
 	SetPrincipals    Type = 13
 	RemovePrincipals Type = 14
+	Deauthenticate   Type = 15
 )
 
 var Map = map[string]Type{
-	"unknown":           Unknown,
 	"list":              List,
 	"create":            Create,
 	"update":            Update,
@@ -39,6 +39,7 @@ var Map = map[string]Type{
 	"add-principals":    AddPrincipals,
 	"set-principals":    SetPrincipals,
 	"remove-principals": RemovePrincipals,
+	"deauthenticate":    Deauthenticate,
 }
 
 func (a Type) String() string {
@@ -58,5 +59,6 @@ func (a Type) String() string {
 		"add-principals",
 		"set-principals",
 		"remove-principals",
+		"deauthenticate",
 	}[a]
 }

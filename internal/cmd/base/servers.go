@@ -27,6 +27,7 @@ import (
 	"github.com/hashicorp/watchtower/globals"
 	"github.com/hashicorp/watchtower/internal/db"
 	"github.com/hashicorp/watchtower/internal/iam"
+	iamStore "github.com/hashicorp/watchtower/internal/iam/store"
 	"github.com/hashicorp/watchtower/version"
 	"github.com/jinzhu/gorm"
 	"github.com/mitchellh/cli"
@@ -60,6 +61,8 @@ type Server struct {
 	Listeners []*ServerListener
 
 	DefaultOrgId string
+
+	DefaultAuthAccountId string
 
 	DevDatabaseUrl         string
 	DevDatabaseCleanupFunc func() error
@@ -425,31 +428,59 @@ func (b *Server) CreateDevDatabase(dialect string) error {
 			c()
 			return fmt.Errorf("error looking up existing scope with org ID %q: %w", b.DefaultOrgId, err)
 		}
-		if scope != nil {
-			goto INFO
-		}
 	}
 
-	scope, err = iam.NewOrg()
-	if err != nil {
-		c()
-		return fmt.Errorf("error creating new org scope: %w", err)
-	}
-	scope, err = repo.CreateScope(ctx, scope, iam.WithPublicId(b.DefaultOrgId))
-	if err != nil {
-		c()
-		return fmt.Errorf("error persisting new org scope: %w", err)
-	}
-	if b.DefaultOrgId != "" {
-		if scope.GetPublicId() != b.DefaultOrgId {
+	if scope == nil {
+		scope, err = iam.NewOrg()
+		if err != nil {
 			c()
-			return fmt.Errorf("expected org ID %q, got %q after persisting", b.DefaultOrgId, scope.GetPublicId())
+			return fmt.Errorf("error creating new org scope: %w", err)
 		}
-	} else {
-		b.DefaultOrgId = scope.GetPublicId()
+		scope, err = repo.CreateScope(ctx, scope, iam.WithPublicId(b.DefaultOrgId))
+		if err != nil {
+			c()
+			return fmt.Errorf("error persisting new org scope: %w", err)
+		}
+		if b.DefaultOrgId != "" {
+			if scope.GetPublicId() != b.DefaultOrgId {
+				c()
+				return fmt.Errorf("expected org ID %q, got %q after persisting", b.DefaultOrgId, scope.GetPublicId())
+			}
+		} else {
+			b.DefaultOrgId = scope.GetPublicId()
+		}
 	}
 
-INFO:
+	// TODO: Remove this when Auth Account repo is in place.
+	insert := `insert into auth_method
+	(public_id, scope_id)
+	values
+	($1, $2);`
+	amId, err := db.NewPublicId("am")
+	if err != nil {
+		return err
+	}
+	_, err = b.Database.DB().Exec(insert, amId, scope.GetPublicId())
+	if err != nil {
+		c()
+		return err
+	}
+
+	aAcctId, err := db.NewPublicId("aact")
+	if err != nil {
+		return err
+	}
+	aAcct := &iam.AuthAccount{AuthAccount: &iamStore.AuthAccount{
+		PublicId:     aAcctId,
+		ScopeId:      b.DefaultOrgId,
+		AuthMethodId: amId,
+	}}
+	if err := rw.Create(ctx, aAcct); err != nil {
+		c()
+		return fmt.Errorf("error creating default auth account: %w", err)
+	}
+	b.DefaultAuthAccountId = aAcct.GetPublicId()
+
 	b.InfoKeys = append(b.InfoKeys, "dev org id")
 	b.Info["dev org id"] = b.DefaultOrgId
 
