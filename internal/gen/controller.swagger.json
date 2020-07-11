@@ -3406,12 +3406,20 @@
           "description": "The grants that this role provides for it's principals.\nOutput only.",
           "readOnly": true
         },
-        "canonical_grants": {
+        "grants_canonical": {
           "type": "array",
           "items": {
             "type": "string"
           },
           "description": "The canonical version of the grants in the grants field with the same index.\nOutput only.",
+          "readOnly": true
+        },
+        "grants_json": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "The JSON version of the grants in the grants field with the same index.\nOutput only.",
           "readOnly": true
         }
       },
