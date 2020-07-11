@@ -345,6 +345,13 @@ func TestHandler_AuthDecoration(t *testing.T) {
 			resource: resource.Project,
 			id:       "p_1234",
 		},
+		{
+			name:     "org scope, get on collection is list",
+			path:     "/v1/orgs/o_abc123/projects",
+			action:   action.List,
+			scope:    scope.Project,
+			resource: resource.Project,
+		},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -356,6 +363,7 @@ func TestHandler_AuthDecoration(t *testing.T) {
 			require.NoError(err)
 
 			ctx, err := decorateAuthParams(nil)
+			assert.Nil(ctx)
 			require.Error(err)
 			assert.Contains(err.Error(), "incoming request is nil")
 

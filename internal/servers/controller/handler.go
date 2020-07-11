@@ -370,6 +370,12 @@ func decorateAuthParams(r *http.Request) (context.Context, error) {
 		return nil, errors.New("decorate auth params: id and type both not found")
 	}
 
+	// If we're operating on a collection (that is, the ID is blank) and it's a
+	// GET, it's actually a list
+	if id == "" && act == action.Read {
+		act = action.List
+	}
+
 	// TODO: Use grpc metadata? If it will preserve it all the way through to
 	// the interceptor maybe it's more efficient; not sure.
 	out = context.WithValue(out, globals.ContextResourceValue, id)
