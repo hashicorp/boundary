@@ -17,6 +17,7 @@ require (
 	github.com/go-openapi/swag v0.19.9 // indirect
 	github.com/go-openapi/validate v0.19.8 // indirect
 	github.com/go-swagger/go-swagger v0.23.0
+	github.com/go-test/deep v1.0.3 // indirect
 	github.com/golang-migrate/migrate/v4 v4.11.0
 	github.com/golang-sql/civil v0.0.0-20190719163853-cb61b32ac6fe
 	github.com/golang/protobuf v1.4.2
@@ -29,12 +30,12 @@ require (
 	github.com/hashicorp/go-hclog v0.14.1
 	github.com/hashicorp/go-kms-wrapping v0.5.10
 	github.com/hashicorp/go-multierror v1.1.0
+	github.com/hashicorp/go-plugin v1.2.0 // indirect
 	github.com/hashicorp/go-retryablehttp v0.6.6
 	github.com/hashicorp/go-rootcerts v1.0.2
 	github.com/hashicorp/go-sockaddr v1.0.2
 	github.com/hashicorp/go-uuid v1.0.2
 	github.com/hashicorp/hcl v1.0.0
-	github.com/hashicorp/terraform-plugin-sdk v1.15.0 // indirect
 	github.com/hashicorp/vault v1.2.1-0.20200521015612-812a92b26b19
 	github.com/hashicorp/vault/sdk v0.1.14-0.20200519221912-a8c2591d3641
 	github.com/jackc/pgx/v4 v4.6.0
