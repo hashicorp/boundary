@@ -214,8 +214,8 @@ func Parse(scopeId, userId, grantString string) (Grant, error) {
 	switch {
 	case scopeId == "global":
 		grant.scope.Type = scope.Global
-	case strings.HasPrefix(scopeId, scope.Organization.Prefix()):
-		grant.scope.Type = scope.Organization
+	case strings.HasPrefix(scopeId, scope.Org.Prefix()):
+		grant.scope.Type = scope.Org
 	case strings.HasPrefix(scopeId, scope.Project.Prefix()):
 		grant.scope.Type = scope.Project
 	default:

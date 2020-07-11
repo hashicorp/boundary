@@ -131,25 +131,25 @@ func (r *Repository) DeleteScope(ctx context.Context, withPublicId string, opt .
 	return rowsDeleted, nil
 }
 
-// ListProjects in an organization and supports the WithLimit option.
-func (r *Repository) ListProjects(ctx context.Context, withOrganizationId string, opt ...Option) ([]*Scope, error) {
-	if withOrganizationId == "" {
-		return nil, fmt.Errorf("list projects: missing organization id %w", db.ErrInvalidParameter)
+// ListProjects in an org and supports the WithLimit option.
+func (r *Repository) ListProjects(ctx context.Context, withOrgId string, opt ...Option) ([]*Scope, error) {
+	if withOrgId == "" {
+		return nil, fmt.Errorf("list projects: missing org id %w", db.ErrInvalidParameter)
 	}
 	var projects []*Scope
-	err := r.list(ctx, &projects, "parent_id = ? and type = ?", []interface{}{withOrganizationId, scope.Project.String()}, opt...)
+	err := r.list(ctx, &projects, "parent_id = ? and type = ?", []interface{}{withOrgId, scope.Project.String()}, opt...)
 	if err != nil {
 		return nil, fmt.Errorf("list projects: %w", err)
 	}
 	return projects, nil
 }
 
-// ListOrganizations and supports the WithLimit option.
-func (r *Repository) ListOrganizations(ctx context.Context, opt ...Option) ([]*Scope, error) {
-	var organizations []*Scope
-	err := r.list(ctx, &organizations, "parent_id = ? and type = ?", []interface{}{"global", scope.Organization.String()}, opt...)
+// ListOrgs and supports the WithLimit option.
+func (r *Repository) ListOrgs(ctx context.Context, opt ...Option) ([]*Scope, error) {
+	var orgs []*Scope
+	err := r.list(ctx, &orgs, "parent_id = ? and type = ?", []interface{}{"global", scope.Org.String()}, opt...)
 	if err != nil {
-		return nil, fmt.Errorf("list organizations: %w", err)
+		return nil, fmt.Errorf("list orgs: %w", err)
 	}
-	return organizations, nil
+	return orgs, nil
 }

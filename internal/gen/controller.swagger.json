@@ -18,13 +18,13 @@
   "paths": {
     "/v1/orgs": {
       "get": {
-        "summary": "Lists all Organizations",
-        "operationId": "OrganizationService_ListOrganizations",
+        "summary": "Lists all Orgs",
+        "operationId": "OrgService_ListOrgs",
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
-              "$ref": "#/definitions/controller.api.services.v1.ListOrganizationsResponse"
+              "$ref": "#/definitions/controller.api.services.v1.ListOrgsResponse"
             }
           }
         },
@@ -37,19 +37,19 @@
           }
         ],
         "tags": [
-          "controller.api.services.v1.OrganizationService"
+          "controller.api.services.v1.OrgService"
         ]
       }
     },
     "/v1/orgs/{id}": {
       "get": {
-        "summary": "Gets a single Organization",
-        "operationId": "OrganizationService_GetOrganization",
+        "summary": "Gets a single Org",
+        "operationId": "OrgService_GetOrg",
         "responses": {
           "200": {
             "description": "",
             "schema": {
-              "$ref": "#/definitions/controller.api.resources.scopes.v1.Organization"
+              "$ref": "#/definitions/controller.api.resources.scopes.v1.Org"
             }
           }
         },
@@ -68,7 +68,7 @@
           }
         ],
         "tags": [
-          "controller.api.services.v1.OrganizationService"
+          "controller.api.services.v1.OrgService"
         ]
       }
     },
@@ -3053,8 +3053,8 @@
     },
     "/v1/orgs/{org_id}:authenticate": {
       "post": {
-        "summary": "Authenticate a user to an Organization and retrieve an authentication token.",
-        "operationId": "OrganizationService_Authenticate",
+        "summary": "Authenticate a user to an Org and retrieve an authentication token.",
+        "operationId": "OrgService_Authenticate",
         "responses": {
           "200": {
             "description": "",
@@ -3080,14 +3080,14 @@
           }
         ],
         "tags": [
-          "controller.api.services.v1.OrganizationService"
+          "controller.api.services.v1.OrgService"
         ]
       }
     },
     "/v1/orgs/{org_id}:deauthenticate": {
       "post": {
-        "summary": "Deauthenticate an authentication token from an Organization.",
-        "operationId": "OrganizationService_Deauthenticate",
+        "summary": "Deauthenticate an authentication token from an Org.",
+        "operationId": "OrgService_Deauthenticate",
         "responses": {
           "200": {
             "description": "A successful response.",
@@ -3105,7 +3105,7 @@
           }
         ],
         "tags": [
-          "controller.api.services.v1.OrganizationService"
+          "controller.api.services.v1.OrgService"
         ]
       }
     }
@@ -3374,7 +3374,7 @@
         },
         "grant_scope_id": {
           "type": "string",
-          "description": "The scope the grants will apply to. If the role is at the global scope,\nthis can be an organization or project. If the role is at an organization\nscope, this can be a project within the organization. It is invalid for\nthis to be anything other than the role's scope when the role's scope is\na project."
+          "description": "The scope the grants will apply to. If the role is at the global scope,\nthis can be an org or project. If the role is at an org\nscope, this can be a project within the org. It is invalid for\nthis to be anything other than the role's scope when the role's scope is\na project."
         },
         "version": {
           "type": "integer",
@@ -3425,12 +3425,12 @@
       },
       "title": "Role contains all fields related to a Role resource"
     },
-    "controller.api.resources.scopes.v1.Organization": {
+    "controller.api.resources.scopes.v1.Org": {
       "type": "object",
       "properties": {
         "id": {
           "type": "string",
-          "description": "The ID of the Organization\nOutput only.",
+          "description": "The ID of the Org\nOutput only.",
           "readOnly": true
         },
         "name": {
@@ -3454,7 +3454,7 @@
           "readOnly": true
         }
       },
-      "title": "Organization contains all fields related to an Organization resource"
+      "title": "Org contains all fields related to an Org resource"
     },
     "controller.api.resources.scopes.v1.Project": {
       "type": "object",
@@ -3805,11 +3805,11 @@
         }
       }
     },
-    "controller.api.services.v1.GetOrganizationResponse": {
+    "controller.api.services.v1.GetOrgResponse": {
       "type": "object",
       "properties": {
         "item": {
-          "$ref": "#/definitions/controller.api.resources.scopes.v1.Organization"
+          "$ref": "#/definitions/controller.api.resources.scopes.v1.Org"
         }
       }
     },
@@ -3881,13 +3881,13 @@
         }
       }
     },
-    "controller.api.services.v1.ListOrganizationsResponse": {
+    "controller.api.services.v1.ListOrgsResponse": {
       "type": "object",
       "properties": {
         "items": {
           "type": "array",
           "items": {
-            "$ref": "#/definitions/controller.api.resources.scopes.v1.Organization"
+            "$ref": "#/definitions/controller.api.resources.scopes.v1.Org"
           }
         }
       }

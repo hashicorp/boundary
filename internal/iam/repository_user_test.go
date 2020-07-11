@@ -71,7 +71,7 @@ func TestRepository_CreateUser(t *testing.T) {
 			},
 			wantDup:    true,
 			wantErr:    true,
-			wantErrMsg: "create user: user %s already exists in organization %s",
+			wantErrMsg: "create user: user %s already exists in org %s",
 		},
 	}
 	for _, tt := range tests {
@@ -279,7 +279,7 @@ func TestRepository_UpdateUser(t *testing.T) {
 			},
 			wantErr:    true,
 			wantDup:    true,
-			wantErrMsg: `update user: user %s already exists in organization %s`,
+			wantErrMsg: `update user: user %s already exists in org %s`,
 		},
 		{
 			name: "modified-scope",
@@ -461,8 +461,8 @@ func TestRepository_ListUsers(t *testing.T) {
 	org, _ := TestScopes(t, conn)
 
 	type args struct {
-		withOrganizationId string
-		opt                []Option
+		withOrgId string
+		opt       []Option
 	}
 	tests := []struct {
 		name      string
@@ -475,8 +475,8 @@ func TestRepository_ListUsers(t *testing.T) {
 			name:      "no-limit",
 			createCnt: repo.defaultLimit + 1,
 			args: args{
-				withOrganizationId: org.PublicId,
-				opt:                []Option{WithLimit(-1)},
+				withOrgId: org.PublicId,
+				opt:       []Option{WithLimit(-1)},
 			},
 			wantCnt: repo.defaultLimit + 1,
 			wantErr: false,
@@ -485,7 +485,7 @@ func TestRepository_ListUsers(t *testing.T) {
 			name:      "default-limit",
 			createCnt: repo.defaultLimit + 1,
 			args: args{
-				withOrganizationId: org.PublicId,
+				withOrgId: org.PublicId,
 			},
 			wantCnt: repo.defaultLimit,
 			wantErr: false,
@@ -494,8 +494,8 @@ func TestRepository_ListUsers(t *testing.T) {
 			name:      "custom-limit",
 			createCnt: repo.defaultLimit + 1,
 			args: args{
-				withOrganizationId: org.PublicId,
-				opt:                []Option{WithLimit(3)},
+				withOrgId: org.PublicId,
+				opt:       []Option{WithLimit(3)},
 			},
 			wantCnt: 3,
 			wantErr: false,
@@ -504,7 +504,7 @@ func TestRepository_ListUsers(t *testing.T) {
 			name:      "bad-org",
 			createCnt: 1,
 			args: args{
-				withOrganizationId: "bad-id",
+				withOrgId: "bad-id",
 			},
 			wantCnt: 0,
 			wantErr: false,
@@ -519,7 +519,7 @@ func TestRepository_ListUsers(t *testing.T) {
 				testUsers = append(testUsers, TestUser(t, conn, org.PublicId))
 			}
 			assert.Equal(tt.createCnt, len(testUsers))
-			got, err := repo.ListUsers(context.Background(), tt.args.withOrganizationId, tt.args.opt...)
+			got, err := repo.ListUsers(context.Background(), tt.args.withOrgId, tt.args.opt...)
 			if tt.wantErr {
 				require.Error(err)
 				return
