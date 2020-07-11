@@ -20,8 +20,8 @@ func TestNewUser(t *testing.T) {
 	id := testId(t)
 
 	type args struct {
-		organizationPublicId string
-		opt                  []Option
+		orgPublicId string
+		opt         []Option
 	}
 	tests := []struct {
 		name            string
@@ -34,8 +34,8 @@ func TestNewUser(t *testing.T) {
 		{
 			name: "valid",
 			args: args{
-				organizationPublicId: org.PublicId,
-				opt:                  []Option{WithName(id), WithDescription(id)},
+				orgPublicId: org.PublicId,
+				opt:         []Option{WithName(id), WithDescription(id)},
 			},
 			wantErr:         false,
 			wantName:        id,
@@ -44,7 +44,7 @@ func TestNewUser(t *testing.T) {
 		{
 			name: "valid-with-no-name",
 			args: args{
-				organizationPublicId: org.PublicId,
+				orgPublicId: org.PublicId,
 			},
 			wantErr: false,
 		},
@@ -60,7 +60,7 @@ func TestNewUser(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			got, err := NewUser(tt.args.organizationPublicId, tt.args.opt...)
+			got, err := NewUser(tt.args.orgPublicId, tt.args.opt...)
 			if tt.wantErr {
 				require.Error(err)
 				assert.Equal(tt.wantErrMsg, err.Error())

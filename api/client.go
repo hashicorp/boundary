@@ -99,7 +99,7 @@ type Config struct {
 	// SRVLookup enables the client to lookup the host through DNS SRV lookup
 	SRVLookup bool
 
-	// Org is the organization to use if not overridden per-call
+	// Org is the org to use if not overridden per-call
 	Org string
 
 	// Project is the project to use if not overridden per-call
@@ -449,7 +449,7 @@ func (c *Client) SetAddr(addr string) error {
 	return c.config.setAddr(addr)
 }
 
-// SetOrg sets the organization the client will use by default
+// SetOrg sets the org the client will use by default
 func (c *Client) SetOrg(org string) {
 	c.modifyLock.Lock()
 	defer c.modifyLock.Unlock()

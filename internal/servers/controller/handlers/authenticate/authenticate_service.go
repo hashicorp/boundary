@@ -23,14 +23,14 @@ var (
 	reInvalidID = regexp.MustCompile("[^A-Za-z0-9]")
 )
 
-// Service handles request as described by the pbs.OrganizationServiceServer interface.
+// Service handles request as described by the pbs.OrgServiceServer interface.
 type Service struct {
 	iamRepo       common.IamRepoFactory
 	authTokenRepo common.AuthTokenRepoFactory
 	authAcctId    string
 }
 
-// NewService returns an organization service which handles organization related requests to watchtower.
+// NewService returns an org service which handles org related requests to watchtower.
 func NewService(iamRepo common.IamRepoFactory, atRepo common.AuthTokenRepoFactory, authAccountId string) (Service, error) {
 	if iamRepo == nil {
 		return Service{}, fmt.Errorf("nil iam repository provided")
@@ -43,7 +43,7 @@ func NewService(iamRepo common.IamRepoFactory, atRepo common.AuthTokenRepoFactor
 
 var _ pbs.AuthenticationServiceServer = Service{}
 
-// Authenticate implements the interface pbs.OrganizationServiceServer.
+// Authenticate implements the interface pbs.OrgServiceServer.
 func (s Service) Authenticate(ctx context.Context, req *pbs.AuthenticateRequest) (*pbs.AuthenticateResponse, error) {
 	if err := validateAuthenticateRequest(req); err != nil {
 		return nil, err
@@ -55,9 +55,9 @@ func (s Service) Authenticate(ctx context.Context, req *pbs.AuthenticateRequest)
 	return &pbs.AuthenticateResponse{Item: tok}, nil
 }
 
-// Deauthenticate implements the interface pbs.OrganizationServiceServer.
+// Deauthenticate implements the interface pbs.OrgServiceServer.
 func (s Service) Deauthenticate(ctx context.Context, req *pbs.DeauthenticateRequest) (*pbs.DeauthenticateResponse, error) {
-	return nil, status.Error(codes.Unimplemented, "Requested method is unimplemented for Organization.")
+	return nil, status.Error(codes.Unimplemented, "Requested method is unimplemented for Org.")
 }
 
 func (s Service) authenticateWithRepo(ctx context.Context, req *pbs.AuthenticateRequest) (*pba.AuthToken, error) {
@@ -108,7 +108,7 @@ func toProto(t *authtoken.AuthToken) *pba.AuthToken {
 //  * There are no conflicting parameters provided
 func validateAuthenticateRequest(req *pbs.AuthenticateRequest) error {
 	badFields := make(map[string]string)
-	if !validId(req.GetOrgId(), scope.Organization.Prefix()+"_") {
+	if !validId(req.GetOrgId(), scope.Org.Prefix()+"_") {
 		badFields[orgIdFieldName] = "Invalid formatted identifier."
 	}
 	if strings.TrimSpace(req.GetAuthMethodId()) == "" {

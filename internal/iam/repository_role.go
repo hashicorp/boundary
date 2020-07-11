@@ -80,7 +80,7 @@ func (r *Repository) UpdateRole(ctx context.Context, role *Role, fieldMaskPaths 
 	resource, rowsUpdated, err := r.update(ctx, c, dbMask, nullFields)
 	if err != nil {
 		if db.IsUniqueError(err) {
-			return nil, db.NoRowsAffected, fmt.Errorf("update role: role %s already exists in organization %s: %w", role.Name, role.ScopeId, db.ErrNotUnique)
+			return nil, db.NoRowsAffected, fmt.Errorf("update role: role %s already exists in org %s: %w", role.Name, role.ScopeId, db.ErrNotUnique)
 		}
 		return nil, db.NoRowsAffected, fmt.Errorf("update role: %w for %s", err, c.PublicId)
 	}

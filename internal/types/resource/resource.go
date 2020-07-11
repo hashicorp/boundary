@@ -9,7 +9,7 @@ const (
 	User                    Type = 2
 	StaticGroup             Type = 3
 	Role                    Type = 4
-	Organization            Type = 5
+	Org                     Type = 5
 	StaticGroupMember       Type = 6
 	StaticGroupUserMember   Type = 7
 	AssignedRole            Type = 8
@@ -33,7 +33,7 @@ func (r Type) String() string {
 		"user",
 		"static-group",
 		"role",
-		"organization",
+		"org",
 		"static-group-member",
 		"static-group-user-member",
 		"assigned-role",
@@ -61,8 +61,8 @@ func StringToResourceType(s string) Type {
 		return StaticGroup
 	case Role.String():
 		return Role
-	case Organization.String():
-		return Organization
+	case Org.String():
+		return Org
 	case StaticGroupMember.String():
 		return StaticGroupMember
 	case StaticGroupUserMember.String():

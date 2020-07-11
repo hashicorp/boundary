@@ -1,0 +1,52 @@
+syntax = "proto3";
+
+package controller.api.services.v1;
+
+option go_package = "github.com/hashicorp/watchtower/internal/gen/controller/api/services;services";
+
+import "protoc-gen-swagger/options/annotations.proto";
+import "google/api/annotations.proto";
+import "controller/api/resources/scopes/v1/org.proto";
+
+service OrgService {
+
+  // GetOrg returns a stored Org if present.  The provided request
+  // must include the org id for the org being retrieved. If
+  // that id is missing, malformed or reference a non existing resource an error is returned.
+  rpc GetOrg(GetOrgRequest) returns (GetOrgResponse) {
+    option (google.api.http) = {
+      get: "/v1/orgs/{id}"
+      response_body: "item"
+    };
+    option (grpc.gateway.protoc_gen_swagger.options.openapiv2_operation) = {
+      summary: "Gets a single Org"
+    };
+  }
+
+  // ListOrgs returns a list of stored orgs which exist in watchtower.
+  rpc ListOrgs(ListOrgsRequest) returns (ListOrgsResponse) {
+    option (google.api.http) = {
+      get: "/v1/orgs"
+    };
+    option (grpc.gateway.protoc_gen_swagger.options.openapiv2_operation) = {
+      summary: "Lists all Orgs"
+    };
+  }
+}
+
+message GetOrgRequest {
+  string id = 1;
+  string view = 2;
+}
+
+message GetOrgResponse {
+  resources.scopes.v1.Org item = 1;
+}
+
+message ListOrgsRequest {
+  string view = 1;
+}
+
+message ListOrgsResponse {
+  repeated resources.scopes.v1.Org items = 1;
+}

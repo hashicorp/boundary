@@ -2210,22 +2210,22 @@ type RoleServiceClient interface {
 	// ListRoles returns a list of stored roles which exist inside the org
 	// referenced inside the request.  The request must include the org id for
 	// the roles being retrieved.  If the org id is missing, malformed, or
-	// reference a non existing organization, an error is returned.
+	// reference a non existing org, an error is returned.
 	ListRoles(ctx context.Context, in *ListRolesRequest, opts ...grpc.CallOption) (*ListRolesResponse, error)
 	// CreateRole creates and stores a role in watchtower.  The provided
 	// request must include the org id in which the role will be created.
 	// If the org id is missing, malformed or references a non existing
-	// organization, an error is returned.  If a name is provided that is in
-	// use in another role in the same organization, an error is returned.
+	// org, an error is returned.  If a name is provided that is in
+	// use in another role in the same org, an error is returned.
 	CreateRole(ctx context.Context, in *CreateRoleRequest, opts ...grpc.CallOption) (*CreateRoleResponse, error)
 	// UpdateRole updates an existing role in watchtower.  The provided
 	// role must not have any read only fields set.  The update mask must be
 	// included in the request and contain at least 1 mutable field.  To unset
 	// a field's value, include the field in the update mask and don't set it
-	// in the provided role. An error is returned if either the organization
+	// in the provided role. An error is returned if either the org
 	// or role ids are missing or reference a non existing resource.  An error
 	// is also returned if the request attempts to update the name to one that is
-	// already in use in this organization.
+	// already in use in this org.
 	UpdateRole(ctx context.Context, in *UpdateRoleRequest, opts ...grpc.CallOption) (*UpdateRoleResponse, error)
 	// DeleteRole removes a role from Watchtower. If the provided org or role ids
 	// are malformed or not provided an error is returned.  No error is returned
@@ -2235,36 +2235,36 @@ type RoleServiceClient interface {
 	DeleteRole(ctx context.Context, in *DeleteRoleRequest, opts ...grpc.CallOption) (*DeleteRoleResponse, error)
 	// AddRolePrincipals adds users and/or groups to a role.  The provided request must include
 	// the org id and the role id which the users and/or groups will be added to. If the
-	// org id is missing, malformed or references a non existing organization,
+	// org id is missing, malformed or references a non existing org,
 	// an error is returned.
 	AddRolePrincipals(ctx context.Context, in *AddRolePrincipalsRequest, opts ...grpc.CallOption) (*AddRolePrincipalsResponse, error)
 	// SetRolePrincipals sets the role's users and/or groups.  Any existing principals on
 	// the role are deleted if they are not included in this request.  The provided
 	// request must include the org id and the role id which the users and/or groups
 	// will be set to. If the org id is missing, malformed or references a non
-	// existing organization, an error is returned.
+	// existing org, an error is returned.
 	SetRolePrincipals(ctx context.Context, in *SetRolePrincipalsRequest, opts ...grpc.CallOption) (*SetRolePrincipalsResponse, error)
 	// RemoveRolePrincipals removes the users and/or groups from the specified role.
 	// The provided request must include the org id and the role id which the users
 	// and/or groups will be removed from. If the org id is missing, malformed or references a non
-	// existing organization, an error is returned.  It is not an error to have duplicate
+	// existing org, an error is returned.  It is not an error to have duplicate
 	// user/group ids.
 	RemoveRolePrincipals(ctx context.Context, in *RemoveRolePrincipalsRequest, opts ...grpc.CallOption) (*RemoveRolePrincipalsResponse, error)
 	// AddRoleGrants adds grants to a role.  The provided request must include
 	// the org id and the role id which the grants will be added to. If the
-	// org id is missing, malformed or references a non existing organization,
+	// org id is missing, malformed or references a non existing org,
 	// an error is returned.  It is not an error to have duplicate grants.
 	AddRoleGrants(ctx context.Context, in *AddRoleGrantsRequest, opts ...grpc.CallOption) (*AddRoleGrantsResponse, error)
 	// SetRoleGrants sets the role's grants.  Any existing grants on the role are
 	// deleted if they are not included in this request.  The provided request must
 	// include the org id and the role id which the grants will be set to. If the
-	// org id is missing, malformed or references a non existing organization, an
+	// org id is missing, malformed or references a non existing org, an
 	// error is returned.  It is not an error to have duplicate grants.
 	SetRoleGrants(ctx context.Context, in *SetRoleGrantsRequest, opts ...grpc.CallOption) (*SetRoleGrantsResponse, error)
 	// RemoveRoleGrants removes the users and/or groups from the specified role.
 	// The provided request must include the org id and the role id which the users
 	// and/or groups will be removed from. If the org id is missing, malformed or references a non
-	// existing organization, an error is returned.  It is not an error to have duplicate
+	// existing org, an error is returned.  It is not an error to have duplicate
 	// user/group ids.
 	RemoveRoleGrants(ctx context.Context, in *RemoveRoleGrantsRequest, opts ...grpc.CallOption) (*RemoveRoleGrantsResponse, error)
 }
@@ -2386,22 +2386,22 @@ type RoleServiceServer interface {
 	// ListRoles returns a list of stored roles which exist inside the org
 	// referenced inside the request.  The request must include the org id for
 	// the roles being retrieved.  If the org id is missing, malformed, or
-	// reference a non existing organization, an error is returned.
+	// reference a non existing org, an error is returned.
 	ListRoles(context.Context, *ListRolesRequest) (*ListRolesResponse, error)
 	// CreateRole creates and stores a role in watchtower.  The provided
 	// request must include the org id in which the role will be created.
 	// If the org id is missing, malformed or references a non existing
-	// organization, an error is returned.  If a name is provided that is in
-	// use in another role in the same organization, an error is returned.
+	// org, an error is returned.  If a name is provided that is in
+	// use in another role in the same org, an error is returned.
 	CreateRole(context.Context, *CreateRoleRequest) (*CreateRoleResponse, error)
 	// UpdateRole updates an existing role in watchtower.  The provided
 	// role must not have any read only fields set.  The update mask must be
 	// included in the request and contain at least 1 mutable field.  To unset
 	// a field's value, include the field in the update mask and don't set it
-	// in the provided role. An error is returned if either the organization
+	// in the provided role. An error is returned if either the org
 	// or role ids are missing or reference a non existing resource.  An error
 	// is also returned if the request attempts to update the name to one that is
-	// already in use in this organization.
+	// already in use in this org.
 	UpdateRole(context.Context, *UpdateRoleRequest) (*UpdateRoleResponse, error)
 	// DeleteRole removes a role from Watchtower. If the provided org or role ids
 	// are malformed or not provided an error is returned.  No error is returned
@@ -2411,36 +2411,36 @@ type RoleServiceServer interface {
 	DeleteRole(context.Context, *DeleteRoleRequest) (*DeleteRoleResponse, error)
 	// AddRolePrincipals adds users and/or groups to a role.  The provided request must include
 	// the org id and the role id which the users and/or groups will be added to. If the
-	// org id is missing, malformed or references a non existing organization,
+	// org id is missing, malformed or references a non existing org,
 	// an error is returned.
 	AddRolePrincipals(context.Context, *AddRolePrincipalsRequest) (*AddRolePrincipalsResponse, error)
 	// SetRolePrincipals sets the role's users and/or groups.  Any existing principals on
 	// the role are deleted if they are not included in this request.  The provided
 	// request must include the org id and the role id which the users and/or groups
 	// will be set to. If the org id is missing, malformed or references a non
-	// existing organization, an error is returned.
+	// existing org, an error is returned.
 	SetRolePrincipals(context.Context, *SetRolePrincipalsRequest) (*SetRolePrincipalsResponse, error)
 	// RemoveRolePrincipals removes the users and/or groups from the specified role.
 	// The provided request must include the org id and the role id which the users
 	// and/or groups will be removed from. If the org id is missing, malformed or references a non
-	// existing organization, an error is returned.  It is not an error to have duplicate
+	// existing org, an error is returned.  It is not an error to have duplicate
 	// user/group ids.
 	RemoveRolePrincipals(context.Context, *RemoveRolePrincipalsRequest) (*RemoveRolePrincipalsResponse, error)
 	// AddRoleGrants adds grants to a role.  The provided request must include
 	// the org id and the role id which the grants will be added to. If the
-	// org id is missing, malformed or references a non existing organization,
+	// org id is missing, malformed or references a non existing org,
 	// an error is returned.  It is not an error to have duplicate grants.
 	AddRoleGrants(context.Context, *AddRoleGrantsRequest) (*AddRoleGrantsResponse, error)
 	// SetRoleGrants sets the role's grants.  Any existing grants on the role are
 	// deleted if they are not included in this request.  The provided request must
 	// include the org id and the role id which the grants will be set to. If the
-	// org id is missing, malformed or references a non existing organization, an
+	// org id is missing, malformed or references a non existing org, an
 	// error is returned.  It is not an error to have duplicate grants.
 	SetRoleGrants(context.Context, *SetRoleGrantsRequest) (*SetRoleGrantsResponse, error)
 	// RemoveRoleGrants removes the users and/or groups from the specified role.
 	// The provided request must include the org id and the role id which the users
 	// and/or groups will be removed from. If the org id is missing, malformed or references a non
-	// existing organization, an error is returned.  It is not an error to have duplicate
+	// existing org, an error is returned.  It is not an error to have duplicate
 	// user/group ids.
 	RemoveRoleGrants(context.Context, *RemoveRoleGrantsRequest) (*RemoveRoleGrantsResponse, error)
 }

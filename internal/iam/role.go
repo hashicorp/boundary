@@ -24,7 +24,7 @@ var _ Resource = (*Role)(nil)
 var _ Clonable = (*Role)(nil)
 var _ db.VetForWriter = (*Role)(nil)
 
-// NewRole creates a new in memory role with a scope (project/organization)
+// NewRole creates a new in memory role with a scope (project/org)
 // allowed options include: withDescripion, WithName, withGrantScopeId.
 func NewRole(scopeId string, opt ...Option) (*Role, error) {
 	if scopeId == "" {
@@ -68,7 +68,7 @@ func (role *Role) VetForWrite(ctx context.Context, r db.Reader, opType db.OpType
 }
 
 func (u *Role) validScopeTypes() []scope.Type {
-	return []scope.Type{scope.Organization, scope.Project}
+	return []scope.Type{scope.Org, scope.Project}
 }
 
 // Getscope returns the scope for the Role.

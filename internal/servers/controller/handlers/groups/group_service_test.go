@@ -181,14 +181,14 @@ func TestList(t *testing.T) {
 		},
 		{
 			name:    "Invalid Org Id",
-			req:     &pbs.ListGroupsRequest{OrgId: scope.Organization.Prefix() + "_this is invalid"},
+			req:     &pbs.ListGroupsRequest{OrgId: scope.Org.Prefix() + "_this is invalid"},
 			res:     nil,
 			errCode: codes.InvalidArgument,
 		},
 		// TODO: When an org doesn't exist, we should return a 404 instead of an empty list.
 		{
 			name:    "Unfound Org",
-			req:     &pbs.ListGroupsRequest{OrgId: scope.Organization.Prefix() + "_DoesntExis"},
+			req:     &pbs.ListGroupsRequest{OrgId: scope.Org.Prefix() + "_DoesntExis"},
 			res:     &pbs.ListGroupsResponse{},
 			errCode: codes.OK,
 		},

@@ -10,12 +10,12 @@ import (
 
 // TODO: This will need to be changed when we add Auth Method API to watchtower.  We'll also need a better
 // way to handle different auth method types.
-func (s Organization) Authenticate(ctx context.Context, authMethodId, name, password string) (*authtokens.AuthToken, *api.Error, error) {
+func (s Org) Authenticate(ctx context.Context, authMethodId, name, password string) (*authtokens.AuthToken, *api.Error, error) {
 	if s.Client == nil {
 		return nil, nil, fmt.Errorf("nil client in Authenticate request")
 	}
 	if s.Id == "" {
-		// Assume the client has been configured with organization already and
+		// Assume the client has been configured with org already and
 		// move on
 	} else {
 		// If it's explicitly set here, override anything that might be in the

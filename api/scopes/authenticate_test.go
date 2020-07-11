@@ -17,7 +17,7 @@ func TestAuthenticate(t *testing.T) {
 	defer tc.Shutdown()
 
 	client := tc.Client()
-	org := &scopes.Organization{
+	org := &scopes.Org{
 		Client: client,
 	}
 	ctx := context.Background()

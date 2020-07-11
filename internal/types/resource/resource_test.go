@@ -33,8 +33,8 @@ func Test_Resource(t *testing.T) {
 			want:       Role,
 		},
 		{
-			typeString: "organization",
-			want:       Organization,
+			typeString: "org",
+			want:       Org,
 		},
 		{
 			typeString: "static-group-member",

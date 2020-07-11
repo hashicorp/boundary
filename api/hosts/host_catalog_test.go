@@ -18,7 +18,7 @@ func TestCatalogs_Crud(t *testing.T) {
 	defer tc.Shutdown()
 
 	client := tc.Client()
-	org := &scopes.Organization{
+	org := &scopes.Org{
 		Client: client,
 	}
 	p, apiErr, err := org.CreateProject(tc.Context(), &scopes.Project{})
@@ -73,7 +73,7 @@ func TestCatalogs_Errors(t *testing.T) {
 	ctx := tc.Context()
 
 	client := tc.Client()
-	org := &scopes.Organization{
+	org := &scopes.Org{
 		Client: client,
 	}
 	p, apiErr, err := org.CreateProject(ctx, &scopes.Project{})
