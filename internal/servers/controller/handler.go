@@ -270,7 +270,7 @@ func decorateAuthParams(r *http.Request) (context.Context, error) {
 	scp := scope.Global
 
 	// Handle non-custom types. We'll deal with custom types, including list,
-	// after parsing the path
+	// after parsing the path.
 	switch r.Method {
 	case "GET":
 		act = action.Read
@@ -288,7 +288,8 @@ func decorateAuthParams(r *http.Request) (context.Context, error) {
 	splitPath := strings.Split(strings.Trim(r.URL.Path, "/"), "/")
 	splitLen := len(splitPath)
 	if splitLen == 0 {
-		// Return just the action and at global scope
+		// Return just the action and at global scope. IOW this is the literal
+		// empty string case; anything else will have a length of at least one.
 		out = context.WithValue(out, globals.ContextScopeValue, scp)
 		return out, nil
 	}
