@@ -438,7 +438,7 @@ BEGIN;
 drop table iam_group cascade;
 drop table iam_user cascade;
 drop table iam_scope_project cascade;
-drop table iam_scope.Org cascade;
+drop table iam_scope_org cascade;
 drop table iam_scope_global cascade;
 drop table iam_scope cascade;
 drop table iam_scope_type_enm cascade;
@@ -539,7 +539,7 @@ create table iam_scope_global (
     name text unique
 );
 
-create table iam_scope.Org (
+create table iam_scope_org (
   scope_id wt_scope_id primary key
     references iam_scope(public_id)
     on delete cascade
@@ -554,7 +554,7 @@ create table iam_scope.Org (
 
 create table iam_scope_project (
     scope_id wt_scope_id not null references iam_scope(public_id) on delete cascade on update cascade,
-    parent_id wt_public_id not null references iam_scope.Org(scope_id) on delete cascade on update cascade,
+    parent_id wt_public_id not null references iam_scope_org(scope_id) on delete cascade on update cascade,
     name text,
     unique(parent_id, name),
     primary key(scope_id, parent_id)
@@ -573,7 +573,7 @@ begin
     return new;
   end if;
   if new.type = 'org' then
-    insert into iam_scope.Org (scope_id, parent_id, name)
+    insert into iam_scope_org (scope_id, parent_id, name)
     values
       (new.public_id, new.parent_id, new.name);
     return new;
@@ -663,7 +663,7 @@ begin
       return new;
     end if;
     if new.type = 'org' then
-      update iam_scope.Org set name = new.name where scope_id = old.public_id;
+      update iam_scope_org set name = new.name where scope_id = old.public_id;
       return new;
     end if;
     if new.type = 'project' then
