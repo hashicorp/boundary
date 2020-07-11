@@ -18,7 +18,7 @@ func TestProjects_List(t *testing.T) {
 	defer tc.Shutdown()
 
 	client := tc.Client()
-	org := &scopes.Organization{
+	org := &scopes.Org{
 		Client: client,
 	}
 	ctx := context.Background()
@@ -72,7 +72,7 @@ func TestProjects_Crud(t *testing.T) {
 	defer tc.Shutdown()
 
 	client := tc.Client()
-	org := &scopes.Organization{
+	org := &scopes.Org{
 		Client: client,
 	}
 
@@ -121,7 +121,7 @@ func TestProject_Errors(t *testing.T) {
 	ctx := tc.Context()
 
 	client := tc.Client()
-	org := &scopes.Organization{
+	org := &scopes.Org{
 		Client: client,
 	}
 	createdProj, apiErr, err := org.CreateProject(ctx, &scopes.Project{})

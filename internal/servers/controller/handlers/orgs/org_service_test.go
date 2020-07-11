@@ -1,4 +1,4 @@
-package organizations_test
+package orgs_test
 
 import (
 	"context"
@@ -9,7 +9,7 @@ import (
 	pb "github.com/hashicorp/watchtower/internal/gen/controller/api/resources/scopes"
 	pbs "github.com/hashicorp/watchtower/internal/gen/controller/api/services"
 	"github.com/hashicorp/watchtower/internal/iam"
-	"github.com/hashicorp/watchtower/internal/servers/controller/handlers/organizations"
+	"github.com/hashicorp/watchtower/internal/servers/controller/handlers/orgs"
 	"github.com/hashicorp/watchtower/internal/types/scope"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -21,7 +21,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func createDefaultOrganizationAndRepo(t *testing.T) (*iam.Scope, func() (*iam.Repository, error)) {
+func createDefaultOrgAndRepo(t *testing.T) (*iam.Scope, func() (*iam.Repository, error)) {
 	t.Helper()
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
@@ -43,12 +43,12 @@ func createDefaultOrganizationAndRepo(t *testing.T) (*iam.Scope, func() (*iam.Re
 func TestGet(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
-	org, repo := createDefaultOrganizationAndRepo(t)
-	toMerge := &pbs.GetOrganizationRequest{
+	org, repo := createDefaultOrgAndRepo(t)
+	toMerge := &pbs.GetOrgRequest{
 		Id: org.GetPublicId(),
 	}
 
-	pOrganization := &pb.Organization{
+	pOrg := &pb.Org{
 		Id:          org.GetPublicId(),
 		Name:        &wrapperspb.StringValue{Value: org.GetName()},
 		Description: &wrapperspb.StringValue{Value: org.GetDescription()},
@@ -58,46 +58,46 @@ func TestGet(t *testing.T) {
 
 	cases := []struct {
 		name    string
-		req     *pbs.GetOrganizationRequest
-		res     *pbs.GetOrganizationResponse
+		req     *pbs.GetOrgRequest
+		res     *pbs.GetOrgResponse
 		errCode codes.Code
 	}{
 		{
-			name:    "Get an Existing organization",
-			req:     &pbs.GetOrganizationRequest{Id: org.GetPublicId()},
-			res:     &pbs.GetOrganizationResponse{Item: pOrganization},
+			name:    "Get an Existing org",
+			req:     &pbs.GetOrgRequest{Id: org.GetPublicId()},
+			res:     &pbs.GetOrgResponse{Item: pOrg},
 			errCode: codes.OK,
 		},
 		{
-			name:    "Get a non existing organization",
-			req:     &pbs.GetOrganizationRequest{Id: scope.Organization.Prefix() + "_DoesntExis"},
+			name:    "Get a non existing org",
+			req:     &pbs.GetOrgRequest{Id: scope.Org.Prefix() + "_DoesntExis"},
 			res:     nil,
 			errCode: codes.NotFound,
 		},
 		{
 			name:    "Wrong id prefix",
-			req:     &pbs.GetOrganizationRequest{Id: "j_1234567890"},
+			req:     &pbs.GetOrgRequest{Id: "j_1234567890"},
 			res:     nil,
 			errCode: codes.InvalidArgument,
 		},
 		{
 			name:    "space in id",
-			req:     &pbs.GetOrganizationRequest{Id: scope.Organization.Prefix() + "_1 23456789"},
+			req:     &pbs.GetOrgRequest{Id: scope.Org.Prefix() + "_1 23456789"},
 			res:     nil,
 			errCode: codes.InvalidArgument,
 		},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			req := proto.Clone(toMerge).(*pbs.GetOrganizationRequest)
+			req := proto.Clone(toMerge).(*pbs.GetOrgRequest)
 			proto.Merge(req, tc.req)
 
-			s, err := organizations.NewService(repo)
+			s, err := orgs.NewService(repo)
 			require.NoError(err, "Couldn't create new project service.")
 
-			got, gErr := s.GetOrganization(context.Background(), req)
-			assert.Equal(tc.errCode, status.Code(gErr), "GetOrganization(%+v) got error %v, wanted %v", req, gErr, tc.errCode)
-			assert.True(proto.Equal(got, tc.res), "GetOrganization(%q) got response %q, wanted %q", req, got, tc.res)
+			got, gErr := s.GetOrg(context.Background(), req)
+			assert.Equal(tc.errCode, status.Code(gErr), "GetOrg(%+v) got error %v, wanted %v", req, gErr, tc.errCode)
+			assert.True(proto.Equal(got, tc.res), "GetOrg(%q) got response %q, wanted %q", req, got, tc.res)
 		})
 	}
 }
@@ -111,19 +111,19 @@ func TestList(t *testing.T) {
 		return iam.NewRepository(rw, rw, wrap)
 	}
 
-	s, err := organizations.NewService(repoFn)
+	s, err := orgs.NewService(repoFn)
 	require.NoError(err)
 	ctx := context.Background()
-	resp, err := s.ListOrganizations(ctx, &pbs.ListOrganizationsRequest{})
+	resp, err := s.ListOrgs(ctx, &pbs.ListOrgsRequest{})
 	assert.NoError(err)
-	assert.Equal(&pbs.ListOrganizationsResponse{}, resp)
+	assert.Equal(&pbs.ListOrgsResponse{}, resp)
 
-	var orgs []*pb.Organization
+	var orgs []*pb.Org
 	for i := 0; i < 10; i++ {
 		o, _ := iam.TestScopes(t, conn)
-		orgs = append(orgs, &pb.Organization{Id: o.PublicId, CreatedTime: o.GetCreateTime().GetTimestamp(), UpdatedTime: o.GetUpdateTime().GetTimestamp()})
+		orgs = append(orgs, &pb.Org{Id: o.PublicId, CreatedTime: o.GetCreateTime().GetTimestamp(), UpdatedTime: o.GetUpdateTime().GetTimestamp()})
 	}
-	resp, err = s.ListOrganizations(ctx, &pbs.ListOrganizationsRequest{})
+	resp, err = s.ListOrgs(ctx, &pbs.ListOrgsRequest{})
 	assert.NoError(err)
-	assert.Empty(cmp.Diff(resp, &pbs.ListOrganizationsResponse{Items: orgs}, protocmp.Transform(), protocmp.SortRepeatedFields(&pbs.ListOrganizationsResponse{}, "items")))
+	assert.Empty(cmp.Diff(resp, &pbs.ListOrgsResponse{Items: orgs}, protocmp.Transform(), protocmp.SortRepeatedFields(&pbs.ListOrgsResponse{}, "items")))
 }

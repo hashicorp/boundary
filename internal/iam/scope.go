@@ -14,7 +14,7 @@ import (
 )
 
 // Scope is used to create a hierarchy of "containers" that encompass the scope of
-// an IAM resource.  Scopes are Global, Organizations and Projects.
+// an IAM resource.  Scopes are Global, Orgs and Projects.
 type Scope struct {
 	*store.Scope
 
@@ -28,16 +28,16 @@ var _ Resource = (*Scope)(nil)
 var _ db.VetForWriter = (*Scope)(nil)
 var _ Clonable = (*Scope)(nil)
 
-func NewOrganization(opt ...Option) (*Scope, error) {
+func NewOrg(opt ...Option) (*Scope, error) {
 	global := allocScope()
 	global.PublicId = "global"
 	opt = append(opt, withScope(&global))
-	return newScope(scope.Organization, opt...)
+	return newScope(scope.Org, opt...)
 }
 
-func NewProject(organizationPublicId string, opt ...Option) (*Scope, error) {
+func NewProject(orgPublicId string, opt ...Option) (*Scope, error) {
 	org := allocScope()
-	org.PublicId = organizationPublicId
+	org.PublicId = orgPublicId
 	opt = append(opt, withScope(&org))
 	p, err := newScope(scope.Project, opt...)
 	if err != nil {
@@ -119,23 +119,23 @@ func (s *Scope) VetForWrite(ctx context.Context, r db.Reader, opType db.OpType, 
 			return errors.New("global scope cannot be created")
 		case s.ParentId == "":
 			switch s.Type {
-			case scope.Organization.String():
-				return errors.New("organization must have global parent")
+			case scope.Org.String():
+				return errors.New("org must have global parent")
 			case scope.Project.String():
-				return errors.New("project has no organization")
+				return errors.New("project has no org")
 			}
-		case s.Type == scope.Organization.String():
+		case s.Type == scope.Org.String():
 			if s.ParentId != "global" {
-				return errors.New(`organization's parent must be "global"`)
+				return errors.New(`org's parent must be "global"`)
 			}
 		case s.Type == scope.Project.String():
 			parentScope := allocScope()
 			parentScope.PublicId = s.ParentId
 			if err := r.LookupByPublicId(ctx, &parentScope, opt...); err != nil {
-				return fmt.Errorf("unable to verify project's organization scope: %w", err)
+				return fmt.Errorf("unable to verify project's org scope: %w", err)
 			}
-			if parentScope.Type != scope.Organization.String() {
-				return errors.New("project parent scope is not an organization")
+			if parentScope.Type != scope.Org.String() {
+				return errors.New("project parent scope is not an org")
 			}
 		}
 	}
@@ -147,8 +147,8 @@ func (s *Scope) ResourceType() resource.Type {
 	switch s.Type {
 	case scope.Global.String():
 		return resource.Global
-	case scope.Organization.String():
-		return resource.Organization
+	case scope.Org.String():
+		return resource.Org
 	case scope.Project.String():
 		return resource.Project
 	default:

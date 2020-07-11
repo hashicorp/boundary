@@ -147,7 +147,7 @@ func Test_MarshallingAndCloning(t *testing.T) {
 			name: "empty",
 			input: Grant{
 				scope: Scope{
-					Type: scope.Organization,
+					Type: scope.Org,
 				},
 			},
 			jsonOutput:      `{}`,
@@ -364,7 +364,7 @@ func Test_Parse(t *testing.T) {
 			expected: Grant{
 				scope: Scope{
 					Id:   "o_scope",
-					Type: scope.Organization,
+					Type: scope.Org,
 				},
 				id:  "foobar",
 				typ: resource.HostCatalog,
@@ -380,7 +380,7 @@ func Test_Parse(t *testing.T) {
 			expected: Grant{
 				scope: Scope{
 					Id:   "o_scope",
-					Type: scope.Organization,
+					Type: scope.Org,
 				},
 				id:  "foobar",
 				typ: resource.HostCatalog,
@@ -414,7 +414,7 @@ func Test_Parse(t *testing.T) {
 			expected: Grant{
 				scope: Scope{
 					Id:   "o_1234",
-					Type: scope.Organization,
+					Type: scope.Org,
 				},
 				id:  "foobar",
 				typ: resource.HostCatalog,
@@ -454,7 +454,7 @@ func Test_Parse(t *testing.T) {
 			expected: Grant{
 				scope: Scope{
 					Id:   "o_scope",
-					Type: scope.Organization,
+					Type: scope.Org,
 				},
 				id: "u_abcd1234",
 				actions: map[action.Type]bool{

@@ -23,14 +23,14 @@ type CreateProjectCommand struct {
 }
 
 func (c *CreateProjectCommand) Synopsis() string {
-	return "Creates a project within an organization"
+	return "Creates a project within an org"
 }
 
 func (c *CreateProjectCommand) Help() string {
 	helpText := `
 Usage: watchtower projects create
 
-  Creates a project within the organization specified by the ID from the
+  Creates a project within the org specified by the ID from the
   "org-id" parameter or the associated environment variable.
 
   Example: 
@@ -86,7 +86,7 @@ func (c *CreateProjectCommand) Run(args []string) int {
 		return 2
 	}
 
-	org := &scopes.Organization{
+	org := &scopes.Org{
 		Client: client,
 	}
 

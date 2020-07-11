@@ -7,9 +7,9 @@ option go_package = "github.com/hashicorp/watchtower/internal/gen/controller/api
 import "google/protobuf/timestamp.proto";
 import "google/protobuf/wrappers.proto";
 
-// Organization contains all fields related to an Organization resource
-message Organization {
-	// The ID of the Organization
+// Org contains all fields related to an Org resource
+message Org {
+	// The ID of the Org
 	// Output only.
 	string id = 1;
 

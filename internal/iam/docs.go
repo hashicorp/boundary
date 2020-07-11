@@ -1,3 +1,3 @@
 // iam package is for identity access management of watchtower.  It includes typical
-// iam resources like Organizations, Projects, Users, Groups, etc.
+// iam resources like Orgs, Projects, Users, Groups, etc.
 package iam

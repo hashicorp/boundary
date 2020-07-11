@@ -430,7 +430,7 @@ func (b *Server) CreateDevDatabase(dialect string) error {
 		}
 	}
 
-	scope, err = iam.NewOrganization()
+	scope, err = iam.NewOrg()
 	if err != nil {
 		c()
 		return fmt.Errorf("error creating new org scope: %w", err)

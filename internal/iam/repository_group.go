@@ -78,7 +78,7 @@ func (r *Repository) UpdateGroup(ctx context.Context, group *Group, fieldMaskPat
 	resource, rowsUpdated, err := r.update(ctx, g, dbMask, nullFields)
 	if err != nil {
 		if db.IsUniqueError(err) {
-			return nil, db.NoRowsAffected, fmt.Errorf("update group: group %s already exists in organization %s: %w", group.Name, group.ScopeId, db.ErrNotUnique)
+			return nil, db.NoRowsAffected, fmt.Errorf("update group: group %s already exists in org %s: %w", group.Name, group.ScopeId, db.ErrNotUnique)
 		}
 		return nil, db.NoRowsAffected, fmt.Errorf("update group: %w for %s", err, group.PublicId)
 	}

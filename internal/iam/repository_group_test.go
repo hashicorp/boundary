@@ -377,7 +377,7 @@ func TestRepository_UpdateGroup(t *testing.T) {
 			newScopeId:  org.PublicId,
 			wantErr:     true,
 			wantDup:     true,
-			wantErrMsg:  " already exists in organization " + org.PublicId,
+			wantErrMsg:  " already exists in org " + org.PublicId,
 			wantIsError: db.ErrNotUnique,
 		},
 		{

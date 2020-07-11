@@ -12,7 +12,7 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-// User defines watchtower users which are scoped to an Organization
+// User defines watchtower users which are scoped to an Org
 type User struct {
 	*store.User
 	tableName string `gorm:"-"`
@@ -68,7 +68,7 @@ func (u *User) VetForWrite(ctx context.Context, r db.Reader, opType db.OpType, o
 }
 
 func (u *User) validScopeTypes() []scope.Type {
-	return []scope.Type{scope.Organization}
+	return []scope.Type{scope.Org}
 }
 
 // GetScope returns the scope for the User

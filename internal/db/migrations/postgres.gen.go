@@ -438,7 +438,7 @@ BEGIN;
 drop table iam_group cascade;
 drop table iam_user cascade;
 drop table iam_scope_project cascade;
-drop table iam_scope_organization cascade;
+drop table iam_scope.Org cascade;
 drop table iam_scope_global cascade;
 drop table iam_scope cascade;
 drop table iam_scope_type_enm cascade;
@@ -476,14 +476,14 @@ COMMIT;
 begin;
 
 create table iam_scope_type_enm (
-  string text not null primary key check(string in ('unknown', 'global', 'organization', 'project'))
+  string text not null primary key check(string in ('unknown', 'global', 'org', 'project'))
 );
 
 insert into iam_scope_type_enm (string)
 values
   ('unknown'),
   ('global'),
-  ('organization'),
+  ('org'),
   ('project');
 
 
@@ -515,7 +515,7 @@ create table iam_scope (
         and parent_id is null
       )
       or (
-        type = 'organization'
+        type = 'org'
         and parent_id = 'global'
       )
       or (
@@ -539,7 +539,7 @@ create table iam_scope_global (
     name text unique
 );
 
-create table iam_scope_organization (
+create table iam_scope.Org (
   scope_id wt_scope_id primary key
     references iam_scope(public_id)
     on delete cascade
@@ -554,7 +554,7 @@ create table iam_scope_organization (
 
 create table iam_scope_project (
     scope_id wt_scope_id not null references iam_scope(public_id) on delete cascade on update cascade,
-    parent_id wt_public_id not null references iam_scope_organization(scope_id) on delete cascade on update cascade,
+    parent_id wt_public_id not null references iam_scope.Org(scope_id) on delete cascade on update cascade,
     name text,
     unique(parent_id, name),
     primary key(scope_id, parent_id)
@@ -572,8 +572,8 @@ begin
       (new.public_id, new.name);
     return new;
   end if;
-  if new.type = 'organization' then
-    insert into iam_scope_organization (scope_id, parent_id, name)
+  if new.type = 'org' then
+    insert into iam_scope.Org (scope_id, parent_id, name)
     values
       (new.public_id, new.parent_id, new.name);
     return new;
@@ -650,7 +650,7 @@ insert on iam_scope
 
 
 -- iam_sub_names will allow us to enforce the different name constraints for
--- organizations and projects via a before update trigger on the iam_scope
+-- orgs and projects via a before update trigger on the iam_scope
 -- table. 
 create or replace function 
   iam_sub_names() 
@@ -662,8 +662,8 @@ begin
       update iam_scope_global set name = new.name where scope_id = old.public_id;
       return new;
     end if;
-    if new.type = 'organization' then
-      update iam_scope_organization set name = new.name where scope_id = old.public_id;
+    if new.type = 'org' then
+      update iam_scope.Org set name = new.name where scope_id = old.public_id;
       return new;
     end if;
     if new.type = 'project' then
@@ -707,7 +707,7 @@ create or replace function
   returns trigger
 as $$
 begin
-  perform from iam_scope where public_id = new.scope_id and type in ('global', 'organization');
+  perform from iam_scope where public_id = new.scope_id and type in ('global', 'org');
   if not found then
     raise exception 'invalid scope type for user creation';
   end if;
@@ -742,12 +742,12 @@ begin
   if role_scope_type = 'project' then
     raise exception 'invalid to set grant_scope_id to non-same scope_id when role scope type is project';
   end if;
-  if role_scope_type = 'organization' then
+  if role_scope_type = 'org' then
     -- Look up the parent scope ID for the scope ID given
     select isc.parent_id from iam_scope isc where isc.public_id = new.grant_scope_id into parent_scope_id;
     -- Allow iff the grant scope ID's parent matches the role's scope ID; that
     -- is, match if the role belongs to a direct child scope of this
-    -- organization
+    -- org
     if parent_scope_id = new.scope_id then
       return new;
     end if;
