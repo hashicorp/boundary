@@ -51,7 +51,10 @@ type Role struct {
 	Grants []string `json:"grants,omitempty"`
 	// The canonical version of the grants in the grants field with the same index.
 	// Output only.
-	CanonicalGrants []string `json:"canonical_grants,omitempty"`
+	GrantsCanonical []string `json:"grants_canonical,omitempty"`
+	// The JSON version of the grants in the grants field with the same index.
+	// Output only.
+	GrantsJson []string `json:"grants_json,omitempty"`
 }
 
 func (s *Role) SetDefault(key string) {
