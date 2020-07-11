@@ -327,6 +327,24 @@ func TestHandler_AuthDecoration(t *testing.T) {
 			scope:    scope.Project,
 			resource: resource.HostCatalog,
 		},
+		{
+			name:     "project scope, action on project",
+			path:     "/v1/orgs/o_abc123/projects/p_1234/:set-principals",
+			method:   "POST",
+			action:   action.SetPrincipals,
+			scope:    scope.Project,
+			resource: resource.Project,
+			id:       "p_1234",
+		},
+		{
+			name:     "org scope, action on project",
+			path:     "/v1/orgs/o_abc123/projects/p_1234:set-principals",
+			method:   "POST",
+			action:   action.SetPrincipals,
+			scope:    scope.Org,
+			resource: resource.Project,
+			id:       "p_1234",
+		},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {

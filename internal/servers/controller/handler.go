@@ -332,6 +332,13 @@ func decorateAuthParams(r *http.Request) (context.Context, error) {
 			}
 		}
 
+		if segment == "" {
+			// This could be the case if we have an action like
+			// /orgs/o_1234/projects/p_1234/:set-defaults to act on the project
+			// itself but within its own scope
+			continue
+		}
+
 		if typStr == "" {
 			// The resource check takes place inside the type check because if
 			// we've identified the type we have either already identified the
