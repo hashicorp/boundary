@@ -353,6 +353,14 @@ func TestHandler_AuthDecoration(t *testing.T) {
 			resource: resource.Project,
 		},
 		{
+			name:     "org scope, action on org",
+			path:     "/v1/orgs/o_abc123/:deauthenticate",
+			action:   action.Deauthenticate,
+			scope:    scope.Org,
+			resource: resource.Org,
+			id:       "o_abc123",
+		},
+		{
 			name:            "top level action, invalid",
 			path:            "/v1/:read",
 			wantErrContains: "id and type both not found",
