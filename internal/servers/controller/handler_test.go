@@ -352,6 +352,20 @@ func TestHandler_AuthDecoration(t *testing.T) {
 			scope:    scope.Project,
 			resource: resource.Project,
 		},
+		{
+			name:            "top level action, invalid",
+			path:            "/v1/:read",
+			wantErrContains: "id and type both not found",
+		},
+		{
+			name:            "top level, invalid",
+			path:            "/v1/",
+			wantErrContains: "id and type both not found",
+		},
+		{
+			name: "non-api path",
+			path: "/",
+		},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -370,11 +384,15 @@ func TestHandler_AuthDecoration(t *testing.T) {
 			ctx, err = decorateAuthParams(req)
 			if tc.wantErrContains != "" {
 				require.Error(err)
-				assert.Contains(err.Error(), tc.wantErrContains)
+				assert.Contains(err.Error(), tc.wantErrContains, err.Error())
 				return
 			}
 			require.NoError(err)
 			require.NotNil(ctx)
+
+			if tc.path == "/" {
+				return
+			}
 
 			scopeVal := ctx.Value(globals.ContextScopeValue)
 			require.NotNil(scopeVal)

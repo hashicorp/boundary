@@ -173,7 +173,6 @@ func wrapHandlerWithCommonFuncs(h http.Handler, c *Controller, props HandlerProp
 
 		h.ServeHTTP(w, r)
 		cancelFunc()
-		return
 	})
 }
 
@@ -253,13 +252,24 @@ func wrapHandlerWithCors(h http.Handler, props HandlerProperties) http.Handler {
 		}
 
 		h.ServeHTTP(w, req)
-		return
 	})
 }
 
 func decorateAuthParams(r *http.Request) (context.Context, error) {
 	if r == nil {
 		return nil, errors.New("decorate auth params: incoming request is nil")
+	}
+
+	// Remove trailing and leading slashes
+	trimmedPath := strings.Trim(r.URL.Path, "/")
+	if !strings.HasPrefix(trimmedPath, "v1") {
+		// Don't look for auth params for requests to fetch the UI
+		return r.Context(), nil
+	}
+	splitPath := strings.Split(strings.TrimPrefix(trimmedPath, "v1"), "/")
+	splitLen := len(splitPath)
+	if splitLen == 0 {
+		return nil, fmt.Errorf("decorate auth params: invalid path")
 	}
 
 	out := r.Context()
@@ -282,16 +292,6 @@ func decorateAuthParams(r *http.Request) (context.Context, error) {
 		act = action.Delete
 	default:
 		return nil, fmt.Errorf("decorate auth params: unknown method %q", r.Method)
-	}
-
-	// Remove trailing and leading slashes
-	splitPath := strings.Split(strings.Trim(r.URL.Path, "/"), "/")
-	splitLen := len(splitPath)
-	if splitLen == 0 {
-		// Return just the action and at global scope. IOW this is the literal
-		// empty string case; anything else will have a length of at least one.
-		out = context.WithValue(out, globals.ContextScopeValue, scp)
-		return out, nil
 	}
 
 	// Look for a custom action
