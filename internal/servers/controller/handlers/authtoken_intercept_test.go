@@ -39,7 +39,7 @@ func TestAuthTokenPublicIdTokenValue(t *testing.T) {
 		{
 			name: "no delimeter",
 			in: TokenMetadata{
-				recievedTokenType: authTokenTypeBearer,
+				receivedTokenType: authTokenTypeBearer,
 				bearerPayload:     "prefix_publicid_token",
 				jsCookiePayload:   "this_is_just_junk",
 				httpCookiePayload: "this_can_be_ignored",
@@ -50,7 +50,7 @@ func TestAuthTokenPublicIdTokenValue(t *testing.T) {
 		{
 			name: "no delimeter",
 			in: TokenMetadata{
-				recievedTokenType: authTokenTypeSplitCookie,
+				receivedTokenType: authTokenTypeSplitCookie,
 				bearerPayload:     "this_is_just_junk_that_should_be_ignored",
 				jsCookiePayload:   "prefix_publicid_token",
 				httpCookiePayload: "cookiepayload",
@@ -61,7 +61,7 @@ func TestAuthTokenPublicIdTokenValue(t *testing.T) {
 		{
 			name: "no delimeter",
 			in: TokenMetadata{
-				recievedTokenType: authTokenTypeBearer,
+				receivedTokenType: authTokenTypeBearer,
 				bearerPayload:     "this-doesnt-have-the-expected-delimiter",
 			},
 			wantId:    "",
@@ -70,7 +70,7 @@ func TestAuthTokenPublicIdTokenValue(t *testing.T) {
 		{
 			name: "to many delimeters",
 			in: TokenMetadata{
-				recievedTokenType: authTokenTypeBearer,
+				receivedTokenType: authTokenTypeBearer,
 				bearerPayload:     "this_has_to_many_delimiters",
 			},
 			wantId:    "",
@@ -110,13 +110,13 @@ func TestAuthTokenAuthenticator(t *testing.T) {
 		{
 			name:          "Empty headers",
 			headers:       map[string]string{},
-			wantAuthTokMd: TokenMetadata{recievedTokenType: authTokenTypeUnknown},
+			wantAuthTokMd: TokenMetadata{receivedTokenType: authTokenTypeUnknown},
 		},
 		{
 			name:    "Bear token",
 			headers: map[string]string{"Authorization": fmt.Sprintf("Bearer %s", tokValue)},
 			wantAuthTokMd: TokenMetadata{
-				recievedTokenType: authTokenTypeBearer,
+				receivedTokenType: authTokenTypeBearer,
 				bearerPayload:     tokValue,
 				UserId:            at.GetIamUserId(),
 			},
@@ -128,7 +128,7 @@ func TestAuthTokenAuthenticator(t *testing.T) {
 				{Name: jsVisibleCookieName, Value: jsCookieVal},
 			},
 			wantAuthTokMd: TokenMetadata{
-				recievedTokenType: authTokenTypeSplitCookie,
+				receivedTokenType: authTokenTypeSplitCookie,
 				httpCookiePayload: httpCookieVal,
 				jsCookiePayload:   jsCookieVal,
 				UserId:            at.GetIamUserId(),
@@ -140,7 +140,7 @@ func TestAuthTokenAuthenticator(t *testing.T) {
 				{Name: httpOnlyCookieName, Value: httpCookieVal},
 			},
 			wantAuthTokMd: TokenMetadata{
-				recievedTokenType: authTokenTypeUnknown,
+				receivedTokenType: authTokenTypeUnknown,
 				httpCookiePayload: httpCookieVal,
 			},
 		},
@@ -150,7 +150,7 @@ func TestAuthTokenAuthenticator(t *testing.T) {
 				{Name: jsVisibleCookieName, Value: jsCookieVal},
 			},
 			wantAuthTokMd: TokenMetadata{
-				recievedTokenType: authTokenTypeUnknown,
+				receivedTokenType: authTokenTypeUnknown,
 				jsCookiePayload:   jsCookieVal,
 			},
 		},
@@ -163,7 +163,7 @@ func TestAuthTokenAuthenticator(t *testing.T) {
 			},
 			// We prioritize the auth header over the cookie and if the header is set we ignore the cookies completely.
 			wantAuthTokMd: TokenMetadata{
-				recievedTokenType: authTokenTypeBearer,
+				receivedTokenType: authTokenTypeBearer,
 				bearerPayload:     tokValue,
 				UserId:            at.GetIamUserId(),
 			},
