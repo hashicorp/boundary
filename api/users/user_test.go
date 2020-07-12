@@ -12,6 +12,7 @@ import (
 	"github.com/hashicorp/watchtower/internal/iam"
 	"github.com/hashicorp/watchtower/internal/servers/controller"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestUsers_List(t *testing.T) {
@@ -50,6 +51,8 @@ func TestUsers_List(t *testing.T) {
 		assert.Nil(apiErr)
 	}
 	ul, apiErr, err = org.ListUsers(ctx)
+	require.NoError(t, err)
+	assert.Nil(apiErr)
 	assert.ElementsMatch(comparableSlice(expected), comparableSlice(ul))
 }
 
@@ -108,12 +111,14 @@ func TestUser_Crud(t *testing.T) {
 	u, apiErr, err = org.UpdateUser(tc.Context(), u)
 	checkUser("update", u, apiErr, err, "")
 
-	existed, apiErr, err := org.DeleteUser(tc.Context(), u)
-	assert.NoError(t, err)
+	existed, _, err := org.DeleteUser(tc.Context(), u)
+	require.NoError(t, err)
+	assert.Nil(t, apiErr)
 	assert.True(t, existed, "Expected existing user when deleted, but it wasn't.")
 
 	existed, apiErr, err = org.DeleteUser(tc.Context(), u)
-	assert.NoError(t, err)
+	require.NoError(t, err)
+	assert.Nil(t, apiErr)
 	assert.False(t, existed, "Expected user to not exist when deleted, but it did.")
 }
 
