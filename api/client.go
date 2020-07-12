@@ -450,12 +450,28 @@ func (c *Client) SetAddr(addr string) error {
 	return c.config.setAddr(addr)
 }
 
+// Org fetches the org the client will use by default
+func (c *Client) Org() string {
+	c.modifyLock.Lock()
+	defer c.modifyLock.Unlock()
+
+	return c.config.Org
+}
+
 // SetOrg sets the org the client will use by default
 func (c *Client) SetOrg(org string) {
 	c.modifyLock.Lock()
 	defer c.modifyLock.Unlock()
 
 	c.config.Org = org
+}
+
+// Project fetches the project the client will use by default
+func (c *Client) Project() string {
+	c.modifyLock.Lock()
+	defer c.modifyLock.Unlock()
+
+	return c.config.Project
 }
 
 // SetProject sets the project the client will use by default

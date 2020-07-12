@@ -1,9 +1,15 @@
 package roles
 
 import (
+	"context"
 	"fmt"
+	"time"
 
+	"github.com/hashicorp/watchtower/api"
+	"github.com/hashicorp/watchtower/api/roles"
+	"github.com/hashicorp/watchtower/api/scopes"
 	"github.com/hashicorp/watchtower/internal/cmd/base"
+	"github.com/kr/pretty"
 	"github.com/mitchellh/cli"
 	"github.com/posener/complete"
 )
@@ -79,49 +85,162 @@ func (c *CRUDLCommand) Run(args []string) int {
 		return 2
 	}
 
-	_ = client
-	return 0
-	/*
-		role := &roles.Role{
+	role := &roles.Role{
+		Client: client,
+		Id:     c.flagId,
+	}
+	switch c.flagName {
+	case "":
+	case "null":
+		role.SetDefault("name")
+	default:
+		role.Name = api.String(c.flagName)
+	}
+	switch c.flagDescription {
+	case "":
+	case "null":
+		role.SetDefault("description")
+	default:
+		role.Name = api.String(c.flagDescription)
+	}
+	switch c.flagName {
+	case "":
+	case "null":
+		role.SetDefault("grantscopeid")
+	default:
+		role.Name = api.String(c.flagGrantScopeId)
+	}
+
+	var apiErr *api.Error
+
+	type crudl interface {
+		CreateRole(context.Context, *roles.Role) (*roles.Role, *api.Error, error)
+		UpdateRole(context.Context, *roles.Role) (*roles.Role, *api.Error, error)
+		ReadRole(context.Context, *roles.Role) (*roles.Role, *api.Error, error)
+		DeleteRole(context.Context, *roles.Role) (bool, *api.Error, error)
+		ListRoles(context.Context) ([]*roles.Role, *api.Error, error)
+	}
+	var actor crudl
+	var existed bool
+	var listedRoles []*roles.Role
+
+	switch {
+	case client.Project() != "":
+		project := &scopes.Project{
 			Client: client,
 		}
-		ctx := context.Background()
+		actor = project
 
-		// note: Authenticate() calls SetToken() under the hood to set the
-		// auth bearer on the client so we do not need to do anything with the
-		// returned token after this call, so we ignore it
-		result, apiErr, err := org.Authenticate(ctx, c.flagMethodId, c.flagName, c.flagPassword)
-		if err != nil {
-			c.UI.Error(fmt.Sprintf("Error trying to perform authentication: %s", err.Error()))
-			return 2
+	case client.Org() != "":
+		org := &scopes.Org{
+			Client: client,
 		}
-		if apiErr != nil {
-			c.UI.Error(fmt.Sprintf("Error from server when performing authentication: %s", pretty.Sprint(apiErr)))
-			return 1
-		}
+		actor = org
 
-		switch base.Format(c.UI) {
-		case "table":
-			c.UI.Output(base.WrapForHelpText([]string{
-				"",
-				"Authentication information:",
-				fmt.Sprintf("  Token:           %s", result.Token),
-				fmt.Sprintf("  User ID:         %s", result.UserId),
-				fmt.Sprintf("  Expiration Time: %s", result.ExpirationTime.Local().Format(time.RFC3339)),
-			}))
-		}
+	default:
+		// TODO: Handle global case
+		c.UI.Error("TODO")
+	}
 
-		tokenName := "default"
-		if c.Command.FlagTokenName != "" {
-			tokenName = c.Command.FlagTokenName
+	switch c.Func {
+	case "create":
+		role, apiErr, err = actor.CreateRole(c.Context, role)
+	case "update":
+		role, apiErr, err = actor.UpdateRole(c.Context, role)
+	case "read":
+		role, apiErr, err = actor.ReadRole(c.Context, role)
+	case "delete":
+		existed, apiErr, err = actor.DeleteRole(c.Context, role)
+	case "list":
+		listedRoles, apiErr, err = actor.ListRoles(c.Context)
+	}
+
+	plural := "role"
+	if c.Func == "list" {
+		plural = "roles"
+	}
+	if err != nil {
+		c.UI.Error(fmt.Sprintf("Error trying to %s %s: %s", c.Func, plural, err.Error()))
+		return 2
+	}
+	if apiErr != nil {
+		c.UI.Error(fmt.Sprintf("Error from controller when performing %s on %s: %s", c.Func, plural, pretty.Sprint(apiErr)))
+		return 1
+	}
+
+	switch c.Func {
+	case "delete":
+		output := "The delete operation completed successfully"
+		switch existed {
+		case true:
+			output += "."
+		default:
+			output += ", however the resource did not exist at the time."
 		}
-		if tokenName != "none" {
-			if err := keyring.Set("HashiCorp Watchtower Auth Token", tokenName, result.Token); err != nil {
-				c.UI.Error(fmt.Sprintf("Error saving auth token to system credential store: %s", err))
-				return 1
+		c.UI.Output(output)
+		return 0
+
+	case "list":
+		if len(listedRoles) == 0 {
+			c.UI.Output("No roles found")
+			return 0
+		}
+		var output []string
+		output = []string{
+			"",
+			"Role information:",
+		}
+		for _, r := range listedRoles {
+			if true {
+				output = append(output,
+					fmt.Sprintf("  ID:             %s", r.Id),
+				)
+			}
+			if r.Name != nil {
+				output = append(output,
+					fmt.Sprintf("    Name:           %s", *r.Name),
+				)
+			}
+			if r.Description != nil {
+				output = append(output,
+					fmt.Sprintf("    Grant Scope ID: %s", *r.Description),
+				)
 			}
 		}
-
+		c.UI.Output(base.WrapForHelpText(output))
 		return 0
-	*/
+	}
+
+	switch base.Format(c.UI) {
+	case "table":
+		var output []string
+		if true {
+			output = []string{
+				"",
+				"Role information:",
+				fmt.Sprintf("  ID:             %s", role.Id),
+				fmt.Sprintf("  Created At:     %s", role.CreatedTime.Local().Format(time.RFC3339)),
+				fmt.Sprintf("  Updated At:     %s", role.UpdatedTime.Local().Format(time.RFC3339)),
+				fmt.Sprintf("  Version:        %d", role.Version),
+			}
+		}
+		if role.Name != nil {
+			output = append(output,
+				fmt.Sprintf("  Name:           %s", *role.Name),
+			)
+		}
+		if role.Description != nil {
+			output = append(output,
+				fmt.Sprintf("  Grant Scope ID: %s", *role.Description),
+			)
+		}
+		if role.GrantScopeId != nil {
+			output = append(output,
+				fmt.Sprintf("  Grant Scope ID: %s", *role.GrantScopeId),
+			)
+		}
+		c.UI.Output(base.WrapForHelpText(output))
+	}
+
+	return 0
 }
