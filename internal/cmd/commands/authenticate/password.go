@@ -44,19 +44,21 @@ func (c *PasswordCommand) Help() string {
 }
 
 func (c *PasswordCommand) Flags() *base.FlagSets {
-	set := c.FlagSet(0)
+	set := c.FlagSet(base.FlagSetHTTP | base.FlagSetOutputFormat)
 
 	f := set.NewFlagSet("Command Options")
 
 	f.StringVar(&base.StringVar{
 		Name:   "name",
 		Target: &c.flagName,
+		EnvVar: envName,
 		Usage:  "Login name",
 	})
 
 	f.StringVar(&base.StringVar{
 		Name:   "password",
 		Target: &c.flagPassword,
+		EnvVar: envPassword,
 		Usage:  "Password",
 	})
 
@@ -78,9 +80,21 @@ func (c *PasswordCommand) AutocompleteFlags() complete.Flags {
 	return c.Flags().Completions()
 }
 
-func (c *PasswordCommand) Run(args []string) (ret int) {
-	if c.flagPassword == "" {
-		c.flagPassword = os.Getenv(envPassword)
+func (c *PasswordCommand) Run(args []string) int {
+	f := c.Flags()
+
+	if err := f.Parse(args); err != nil {
+		c.UI.Error(err.Error())
+		return 1
+	}
+
+	switch {
+	case c.flagName == "":
+		c.UI.Error("Name must be provided via -name")
+		return 1
+	case c.flagMethodId == "":
+		c.UI.Error("Auth method ID must be provided via -method-id")
+		return 1
 	}
 
 	if c.flagPassword == "" {
@@ -89,15 +103,15 @@ func (c *PasswordCommand) Run(args []string) (ret int) {
 		fmt.Print("\n")
 		if err != nil {
 			c.UI.Error(base.WrapAtLength(fmt.Sprintf("An error occurred attempting to read the password. The raw error message is shown below but usually this is because you attempted to pipe a value into the command or you are executing outside of a terminal (TTY). The raw error was:\n\n%s", err.Error())))
-			return 1
+			return 2
 		}
 		c.flagPassword = strings.TrimSpace(value)
 	}
 
 	client, err := c.Client()
 	if err != nil {
-		fmt.Printf(err.Error())
-		return 1
+		c.UI.Error(base.WrapAtLength(fmt.Sprintf("Error creating API client: %s", err.Error())))
+		return 2
 	}
 
 	org := &scopes.Org{
@@ -109,14 +123,14 @@ func (c *PasswordCommand) Run(args []string) (ret int) {
 	// auth bearer on the client so we do not need to do anything with the
 	// returned token after this call, so we ignore it
 	_, apiErr, err := org.Authenticate(ctx, c.flagMethodId, c.flagName, c.flagPassword)
-	if apiErr != nil {
-		fmt.Printf(*apiErr.Message)
-		return 1
-	}
 	if err != nil {
-		fmt.Printf(err.Error())
+		c.UI.Error(base.WrapAtLength(fmt.Sprintf("Error trying to perform authentication: %s", err.Error())))
+		return 2
+	}
+	if apiErr != nil {
+		c.UI.Error(base.WrapAtLength(fmt.Sprintf("Error from server when performing authentication: %s", err.Error())))
 		return 1
 	}
 
-	return ret
+	return 0
 }

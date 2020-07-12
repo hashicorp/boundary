@@ -226,7 +226,6 @@ func (c *Config) ConfigureTLS() error {
 // This also removes any trailing "/v1"; we'll use that in our commands so we
 // don't require it from users.
 func (c *Config) setAddr(addr string) error {
-	panic(addr)
 	u, err := url.Parse(addr)
 	if err != nil {
 		return fmt.Errorf("error parsing address: %w", err)
@@ -643,7 +642,6 @@ func (c *Client) NewRequest(ctx context.Context, method, requestPath string, bod
 	httpClient := c.config.HttpClient
 	headers := copyHeaders(c.config.Headers)
 	c.modifyLock.RUnlock()
-	panic(addr)
 
 	var ok bool
 	if orgRaw := ctx.Value("org"); orgRaw != nil {
