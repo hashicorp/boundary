@@ -13,11 +13,11 @@ type Error struct {
 	defaultFields []string
 
 	// The HTTP Status code applicable to this error
-	Status *int32 `json:"status,omitempty"`
+	Status int32 `json:"status,omitempty"`
 	// An application-specific error string
-	Code *string `json:"code,omitempty"`
+	Code string `json:"code,omitempty"`
 	// A human readable explanation specific to this occurrence of the error
-	Message *string `json:"message,omitempty"`
+	Message string `json:"message,omitempty"`
 	// Additional metadata regarding the error. Depending on the error
 	// different fields will be populated.
 	Details *ErrorDetails `json:"details,omitempty"`

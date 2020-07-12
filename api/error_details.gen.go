@@ -12,8 +12,8 @@ import (
 type ErrorDetails struct {
 	defaultFields []string
 
-	TraceId       *string       `json:"TraceId,omitempty"`
-	RequestId     *string       `json:"request_id,omitempty"`
+	TraceId       string        `json:"TraceId,omitempty"`
+	RequestId     string        `json:"request_id,omitempty"`
 	RequestFields []*FieldError `json:"request_fields,omitempty"`
 }
 

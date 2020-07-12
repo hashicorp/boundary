@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"os"
 	"path"
 	"strings"
 	"time"
@@ -137,6 +138,9 @@ func wrapHandlerWithCommonFuncs(h http.Handler, c *Controller, props HandlerProp
 	if c != nil && c.conf != nil {
 		defaultOrgId = c.conf.DefaultOrgId
 	}
+
+	logUrls := os.Getenv("WATCHTOWER_LOG_URLS") != ""
+
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if defaultOrgId != "" {
 			splitPath := strings.Split(r.URL.Path, "/")
@@ -144,6 +148,10 @@ func wrapHandlerWithCommonFuncs(h http.Handler, c *Controller, props HandlerProp
 				http.Redirect(w, r, path.Join("/v1/orgs", defaultOrgId, strings.Join(splitPath[2:], "/")), 307)
 				return
 			}
+		}
+
+		if logUrls {
+			c.logger.Trace("request received", "url", r.URL.String())
 		}
 
 		// Set the Cache-Control header for all responses returned
@@ -224,8 +232,8 @@ func wrapHandlerWithCors(h http.Handler, props HandlerProperties) http.Handler {
 			w.WriteHeader(http.StatusForbidden)
 
 			err := &api.Error{
-				Status: api.Int(http.StatusForbidden),
-				Code:   api.String("origin forbidden"),
+				Status: http.StatusForbidden,
+				Code:   "origin forbidden",
 			}
 
 			enc := json.NewEncoder(w)

@@ -72,56 +72,49 @@ func TestCustom(t *testing.T) {
 
 			updatedRole, apiErr, err := r.AddPrincipals(ctx, []string{g.Id}, nil)
 			require.NoError(err)
-			require.Nil(apiErr, "Got error ", errorMessage(apiErr))
-			assert.Equal(t, *updatedRole.Version, (*r.Version)+1)
+			require.Nil(apiErr, "Got error ", apiErr)
+			assert.Equal(t, updatedRole.Version, r.Version+1)
 			assert.Contains(t, updatedRole.GroupIds, g.Id)
 			assert.Empty(t, updatedRole.UserIds)
 
 			r = updatedRole
 			updatedRole, apiErr, err = r.SetPrincipals(ctx, nil, []string{user.Id})
 			require.NoError(err)
-			require.Nil(apiErr, "Got error ", errorMessage(apiErr))
-			assert.Equal(t, *updatedRole.Version, (*r.Version)+1)
+			require.Nil(apiErr, "Got error ", apiErr)
+			assert.Equal(t, updatedRole.Version, r.Version+1)
 			assert.Empty(t, updatedRole.GroupIds)
 			assert.Contains(t, updatedRole.UserIds, user.Id)
 
 			r = updatedRole
 			updatedRole, apiErr, err = r.RemovePrincipals(ctx, nil, []string{user.Id})
 			require.NoError(err)
-			require.Nil(apiErr, "Got error ", errorMessage(apiErr))
-			assert.Equal(t, *updatedRole.Version, (*r.Version)+1)
+			require.Nil(apiErr, "Got error ", apiErr)
+			assert.Equal(t, updatedRole.Version, r.Version+1)
 			assert.Empty(t, updatedRole.GroupIds)
 			assert.Empty(t, updatedRole.UserIds)
 
 			r = updatedRole
 			updatedRole, apiErr, err = r.AddGrants(ctx, []string{"id=*;actions=read"})
 			require.NoError(err)
-			require.Nil(apiErr, "Got error ", errorMessage(apiErr))
-			assert.Equal(t, *updatedRole.Version, (*r.Version)+1)
+			require.Nil(apiErr, "Got error ", apiErr)
+			assert.Equal(t, updatedRole.Version, r.Version+1)
 			assert.Contains(t, updatedRole.Grants, "id=*;actions=read")
 
 			r = updatedRole
 			updatedRole, apiErr, err = r.SetGrants(ctx, []string{"id=*;actions=*"})
 			require.NoError(err)
-			require.Nil(apiErr, "Got error ", errorMessage(apiErr))
-			assert.Equal(t, *updatedRole.Version, (*r.Version)+1)
+			require.Nil(apiErr, "Got error ", apiErr)
+			assert.Equal(t, updatedRole.Version, r.Version+1)
 			assert.Contains(t, updatedRole.Grants, "id=*;actions=*")
 
 			r = updatedRole
 			updatedRole, apiErr, err = r.RemoveGrants(ctx, []string{"id=*;actions=*"})
 			require.NoError(err)
-			require.Nil(apiErr, "Got error ", errorMessage(apiErr))
-			assert.Equal(t, *updatedRole.Version, (*r.Version)+1)
+			require.Nil(apiErr, "Got error ", apiErr)
+			assert.Equal(t, updatedRole.Version, r.Version+1)
 			assert.Empty(t, updatedRole.Grants)
 		})
 	}
-}
-
-func errorMessage(in *api.Error) string {
-	if in == nil {
-		return ""
-	}
-	return *in.Message
 }
 
 func TestRole_List(t *testing.T) {
@@ -217,8 +210,8 @@ func TestRole_Crud(t *testing.T) {
 	checkRole := func(step string, g *roles.Role, apiErr *api.Error, err error, wantedName string) {
 		assert := assert.New(t)
 		assert.NoError(err, step)
-		if !assert.Nil(apiErr, step) && apiErr.Message != nil {
-			t.Errorf("ApiError message: %q", *apiErr.Message)
+		if !assert.Nil(apiErr, step) && apiErr.Message != "" {
+			t.Errorf("ApiError message: %q", apiErr.Message)
 		}
 		assert.NotNil(g, "returned no resource", step)
 		gotName := ""
@@ -315,17 +308,17 @@ func TestRole_Errors(t *testing.T) {
 			_, apiErr, err = tt.scope.ReadRole(ctx, &roles.Role{Id: iam.RolePrefix + "_doesntexis"})
 			assert.NoError(err)
 			assert.NotNil(apiErr)
-			assert.EqualValues(*apiErr.Status, http.StatusNotFound)
+			assert.EqualValues(apiErr.Status, http.StatusNotFound)
 
 			_, apiErr, err = tt.scope.ReadRole(ctx, &roles.Role{Id: "invalid id"})
 			assert.NoError(err)
 			assert.NotNil(apiErr)
-			assert.EqualValues(*apiErr.Status, http.StatusBadRequest)
+			assert.EqualValues(apiErr.Status, http.StatusBadRequest)
 
 			_, apiErr, err = tt.scope.UpdateRole(ctx, &roles.Role{Id: u.Id})
 			assert.NoError(err)
 			assert.NotNil(apiErr)
-			assert.EqualValues(*apiErr.Status, http.StatusBadRequest)
+			assert.EqualValues(apiErr.Status, http.StatusBadRequest)
 		})
 	}
 }

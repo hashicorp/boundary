@@ -60,7 +60,8 @@ type Server struct {
 
 	Listeners []*ServerListener
 
-	DefaultOrgId string
+	DefaultOrgId    string
+	DevAuthMethodId string
 
 	DefaultAuthAccountId string
 
@@ -421,33 +422,33 @@ func (b *Server) CreateDevDatabase(dialect string) error {
 		cancel()
 	}()
 
-	var scope *iam.Scope
+	var orgScope *iam.Scope
 	if b.DefaultOrgId != "" {
-		scope, err = repo.LookupScope(ctx, b.DefaultOrgId)
+		orgScope, err = repo.LookupScope(ctx, b.DefaultOrgId)
 		if err != nil {
 			c()
 			return fmt.Errorf("error looking up existing scope with org ID %q: %w", b.DefaultOrgId, err)
 		}
 	}
 
-	if scope == nil {
-		scope, err = iam.NewOrg()
+	if orgScope == nil {
+		orgScope, err = iam.NewOrg()
 		if err != nil {
 			c()
 			return fmt.Errorf("error creating new org scope: %w", err)
 		}
-		scope, err = repo.CreateScope(ctx, scope, iam.WithPublicId(b.DefaultOrgId))
+		orgScope, err = repo.CreateScope(ctx, orgScope, iam.WithPublicId(b.DefaultOrgId))
 		if err != nil {
 			c()
 			return fmt.Errorf("error persisting new org scope: %w", err)
 		}
 		if b.DefaultOrgId != "" {
-			if scope.GetPublicId() != b.DefaultOrgId {
+			if orgScope.GetPublicId() != b.DefaultOrgId {
 				c()
-				return fmt.Errorf("expected org ID %q, got %q after persisting", b.DefaultOrgId, scope.GetPublicId())
+				return fmt.Errorf("expected org ID %q, got %q after persisting", b.DefaultOrgId, orgScope.GetPublicId())
 			}
 		} else {
-			b.DefaultOrgId = scope.GetPublicId()
+			b.DefaultOrgId = orgScope.GetPublicId()
 		}
 	}
 
@@ -456,11 +457,14 @@ func (b *Server) CreateDevDatabase(dialect string) error {
 	(public_id, scope_id)
 	values
 	($1, $2);`
-	amId, err := db.NewPublicId("am")
-	if err != nil {
-		return err
+	amId := b.DevAuthMethodId
+	if amId == "" {
+		amId, err = db.NewPublicId("am")
+		if err != nil {
+			return err
+		}
 	}
-	_, err = b.Database.DB().Exec(insert, amId, scope.GetPublicId())
+	_, err = b.Database.DB().Exec(insert, amId, orgScope.GetPublicId())
 	if err != nil {
 		c()
 		return err
@@ -472,7 +476,7 @@ func (b *Server) CreateDevDatabase(dialect string) error {
 	}
 	aAcct := &iam.AuthAccount{AuthAccount: &iamStore.AuthAccount{
 		PublicId:     aAcctId,
-		ScopeId:      b.DefaultOrgId,
+		ScopeId:      orgScope.GetPublicId(),
 		AuthMethodId: amId,
 	}}
 	if err := rw.Create(ctx, aAcct); err != nil {

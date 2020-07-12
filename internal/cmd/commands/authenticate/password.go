@@ -5,10 +5,12 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/hashicorp/vault/sdk/helper/password"
 	"github.com/hashicorp/watchtower/api/scopes"
 	"github.com/hashicorp/watchtower/internal/cmd/base"
+	"github.com/kr/pretty"
 	"github.com/mitchellh/cli"
 	"github.com/mitchellh/go-wordwrap"
 	"github.com/posener/complete"
@@ -36,11 +38,15 @@ func (c *PasswordCommand) Synopsis() string {
 func (c *PasswordCommand) Help() string {
 	return base.WrapForHelpText([]string{
 		"Usage: watchtower authenticate password [options] [args]",
+		"",
 		"  Invoke the password auth method to authenticate the Watchtower CLI:",
+		"",
 		"    $ watchtower authenticate password -username=foo -password=bar",
+		"",
 		"  If more than one instance of the password auth method exists, use the -method-id flag:",
+		"",
 		"    $ watchtower authenticate password -method-id=am_12345 -username=foo -password=bar",
-	})
+	}) + c.Flags().Help()
 }
 
 func (c *PasswordCommand) Flags() *base.FlagSets {
@@ -102,7 +108,7 @@ func (c *PasswordCommand) Run(args []string) int {
 		value, err := password.Read(os.Stdin)
 		fmt.Print("\n")
 		if err != nil {
-			c.UI.Error(base.WrapAtLength(fmt.Sprintf("An error occurred attempting to read the password. The raw error message is shown below but usually this is because you attempted to pipe a value into the command or you are executing outside of a terminal (TTY). The raw error was:\n\n%s", err.Error())))
+			c.UI.Error(fmt.Sprintf("An error occurred attempting to read the password. The raw error message is shown below but usually this is because you attempted to pipe a value into the command or you are executing outside of a terminal (TTY). The raw error was:\n\n%s", err.Error()))
 			return 2
 		}
 		c.flagPassword = strings.TrimSpace(value)
@@ -110,7 +116,7 @@ func (c *PasswordCommand) Run(args []string) int {
 
 	client, err := c.Client()
 	if err != nil {
-		c.UI.Error(base.WrapAtLength(fmt.Sprintf("Error creating API client: %s", err.Error())))
+		c.UI.Error(fmt.Sprintf("Error creating API client: %s", err.Error()))
 		return 2
 	}
 
@@ -122,14 +128,25 @@ func (c *PasswordCommand) Run(args []string) int {
 	// note: Authenticate() calls SetToken() under the hood to set the
 	// auth bearer on the client so we do not need to do anything with the
 	// returned token after this call, so we ignore it
-	_, apiErr, err := org.Authenticate(ctx, c.flagMethodId, c.flagName, c.flagPassword)
+	result, apiErr, err := org.Authenticate(ctx, c.flagMethodId, c.flagName, c.flagPassword)
 	if err != nil {
-		c.UI.Error(base.WrapAtLength(fmt.Sprintf("Error trying to perform authentication: %s", err.Error())))
+		c.UI.Error(fmt.Sprintf("Error trying to perform authentication: %s", err.Error()))
 		return 2
 	}
 	if apiErr != nil {
-		c.UI.Error(base.WrapAtLength(fmt.Sprintf("Error from server when performing authentication: %s", err.Error())))
+		c.UI.Error(fmt.Sprintf("Error from server when performing authentication: %s", pretty.Sprint(apiErr)))
 		return 1
+	}
+
+	switch base.Format(c.UI) {
+	case "table":
+		c.UI.Output(base.WrapForHelpText([]string{
+			"",
+			"Authentication information:",
+			fmt.Sprintf("  Token: %s", result.Token),
+			fmt.Sprintf("  User ID: %s", result.UserId),
+			fmt.Sprintf("  Expiration Time: %s", result.ExpirationTime.Local().Format(time.RFC3339)),
+		}))
 	}
 
 	return 0

@@ -22,13 +22,13 @@ type AuthToken struct {
 	// The token.  This will only be populated after login and is only ever visible to the end user whose login
 	// request resulted in this auth token being created.
 	// Output only.
-	Token *string `json:"token,omitempty"`
+	Token string `json:"token,omitempty"`
 	// The id of the user of this AuthToken.
 	// Output only.
-	UserId *string `json:"user_id,omitempty"`
+	UserId string `json:"user_id,omitempty"`
 	// The id of the user of this AuthToken.
 	// Output only.
-	AuthMethodId *string `json:"auth_method_id,omitempty"`
+	AuthMethodId string `json:"auth_method_id,omitempty"`
 	// The time this resource was created
 	// Output only.
 	CreatedTime time.Time `json:"created_time,omitempty"`

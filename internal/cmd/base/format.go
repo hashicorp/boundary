@@ -3,6 +3,7 @@ package base
 import (
 	"encoding/json"
 	"fmt"
+	"os"
 	"sort"
 	"strings"
 
@@ -31,7 +32,7 @@ func WrapForHelpText(lines []string) string {
 		ret = append(ret, strings.Join(splitWrapped, "\n"))
 	}
 
-	return strings.Join(ret, "\n\n")
+	return strings.Join(ret, "\n")
 }
 
 type FormatOptions struct {
@@ -362,4 +363,30 @@ func looksLikeDuration(k string) bool {
 		k == "ttl" || strings.HasSuffix(k, "_ttl") ||
 		k == "duration" || strings.HasSuffix(k, "_duration") ||
 		k == "lease_max" || k == "ttl_max"
+}
+
+type Formatter interface {
+	//Output(ui cli.Ui, secret *api.Secret, data interface{}) error
+	Format(data interface{}) ([]byte, error)
+}
+
+var Formatters = map[string]Formatter{
+	"json":  JsonFormatter{},
+	"table": TableFormatter{},
+	"yaml":  YamlFormatter{},
+	"yml":   YamlFormatter{},
+}
+
+func Format(ui cli.Ui) string {
+	switch ui.(type) {
+	case *WatchtowerUI:
+		return ui.(*WatchtowerUI).Format
+	}
+
+	format := os.Getenv(EnvWatchtowerCLIFormat)
+	if format == "" {
+		format = "table"
+	}
+
+	return format
 }

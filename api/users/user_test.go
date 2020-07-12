@@ -81,8 +81,8 @@ func TestUser_Crud(t *testing.T) {
 	checkUser := func(step string, u *users.User, apiErr *api.Error, err error, wantedName string) {
 		assert := assert.New(t)
 		assert.NoError(err, step)
-		if !assert.Nil(apiErr, step) && apiErr.Message != nil {
-			t.Errorf("ApiError message: %q", *apiErr.Message)
+		if !assert.Nil(apiErr, step) && apiErr.Message != "" {
+			t.Errorf("ApiError message: %q", apiErr.Message)
 		}
 		assert.NotNil(u, "returned no resource", step)
 		gotName := ""
@@ -141,15 +141,15 @@ func TestUser_Errors(t *testing.T) {
 	_, apiErr, err = org.ReadUser(ctx, &users.User{Id: iam.UserPrefix + "_doesntexis"})
 	assert.NoError(err)
 	assert.NotNil(apiErr)
-	assert.EqualValues(*apiErr.Status, http.StatusNotFound)
+	assert.EqualValues(apiErr.Status, http.StatusNotFound)
 
 	_, apiErr, err = org.ReadUser(ctx, &users.User{Id: "invalid id"})
 	assert.NoError(err)
 	assert.NotNil(apiErr)
-	assert.EqualValues(*apiErr.Status, http.StatusBadRequest)
+	assert.EqualValues(apiErr.Status, http.StatusBadRequest)
 
 	_, apiErr, err = org.UpdateUser(ctx, &users.User{Id: u.Id})
 	assert.NoError(err)
 	assert.NotNil(apiErr)
-	assert.EqualValues(*apiErr.Status, http.StatusBadRequest)
+	assert.EqualValues(apiErr.Status, http.StatusBadRequest)
 }

@@ -114,11 +114,6 @@ func parsePBs() {
 				var selectorExpr *ast.SelectorExpr
 				switch typ := field.Type.(type) {
 				case *ast.Ident:
-					// Id values are immutable and should always exist, so
-					// don't make it a pointer
-					if field.Names[0].Name != "Id" {
-						typ.Name = "*" + typ.Name
-					}
 					goto TAGMODIFY
 				case *ast.ArrayType:
 					goto TAGMODIFY

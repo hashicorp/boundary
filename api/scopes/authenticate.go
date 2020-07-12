@@ -46,8 +46,8 @@ func (s Org) Authenticate(ctx context.Context, authMethodId, name, password stri
 		return nil, nil, fmt.Errorf("error decoding Authenticate response: %w", err)
 	}
 
-	if target.Token != nil {
-		s.Client.SetToken(*target.Token)
+	if target.Token != "" {
+		s.Client.SetToken(target.Token)
 	}
 
 	return target, apiErr, nil

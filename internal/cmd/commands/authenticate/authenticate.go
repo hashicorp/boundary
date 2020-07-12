@@ -19,9 +19,13 @@ func (c *Command) Synopsis() string {
 func (c *Command) Help() string {
 	return base.WrapForHelpText([]string{
 		"Usage: watchtower authenticate [sub command] [options] [args]",
+		"",
 		"  This command authenticates the Watchtower commandline client using a specified auth method. Examples:",
+		"",
 		"    Authenticate with password auth method:",
+		"",
 		"      $ watchtower authenticate password name=foo password=bar",
+		"",
 		"  Please see the auth method subcommand help for detailed usage information.",
 	})
 }

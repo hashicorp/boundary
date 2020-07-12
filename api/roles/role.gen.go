@@ -40,7 +40,7 @@ type Role struct {
 	// The version can be used in subsiquent write requests to ensure this resource
 	// has not changed and to fail the write if it has.
 	// Output only.
-	Version *uint32 `json:"version,omitempty"`
+	Version uint32 `json:"version,omitempty"`
 	// The principals that are assigned this role.
 	// Output only.
 	UserIds []string `json:"user_ids,omitempty"`

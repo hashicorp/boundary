@@ -12,8 +12,8 @@ import (
 type FieldError struct {
 	defaultFields []string
 
-	Name        *string `json:"name,omitempty"`
-	Description *string `json:"description,omitempty"`
+	Name        string `json:"name,omitempty"`
+	Description string `json:"description,omitempty"`
 }
 
 func (s *FieldError) SetDefault(key string) {
