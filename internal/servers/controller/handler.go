@@ -284,7 +284,7 @@ func decorateAuthParams(r *http.Request) (context.Context, error) {
 	var act action.Type
 	var typStr string
 	var typ resource.Type
-	var id string
+	var id, pin string
 	scp := scope.Global
 	scopeId := scope.Global.String()
 
@@ -391,6 +391,7 @@ func decorateAuthParams(r *http.Request) (context.Context, error) {
 	// TODO: Use grpc metadata? If it will preserve it all the way through to
 	// the interceptor maybe it's more efficient; not sure.
 	out = context.WithValue(out, globals.ContextResourceValue, id)
+	out = context.WithValue(out, globals.ContextPinValue, pin)
 	out = context.WithValue(out, globals.ContextTypeValue, typ)
 	out = context.WithValue(out, globals.ContextScopeValue, scopeId)
 	out = context.WithValue(out, globals.ContextActionValue, act)
