@@ -458,7 +458,7 @@ func (b *Server) CreateDevDatabase(dialect string) error {
 	($1, $2);`
 	amId := b.DevAuthMethodId
 	if amId == "" {
-		amId = "am_123456789"
+		amId = "am_1234567890"
 	}
 	authenticate.RWDb.Store(rw)
 	_, err = b.Database.DB().Exec(insert, amId, orgScope.GetPublicId())
