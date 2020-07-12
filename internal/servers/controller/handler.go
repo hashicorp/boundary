@@ -331,13 +331,13 @@ func decorateAuthParams(r *http.Request) (context.Context, error) {
 		// operating on a child scope).
 		switch segment {
 		case "projects":
-			if i != splitLen-2 {
+			if i < splitLen-2 {
 				scp = scope.Project
 				scopeId = splitPath[i+1]
 			}
 		case "orgs":
 			if scp == scope.Global {
-				if i != splitLen-2 {
+				if i < splitLen-2 {
 					scp = scope.Org
 					scopeId = splitPath[i+1]
 				}
