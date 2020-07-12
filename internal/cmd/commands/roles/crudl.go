@@ -3,7 +3,6 @@ package roles
 import (
 	"context"
 	"fmt"
-	"time"
 
 	"github.com/hashicorp/watchtower/api"
 	"github.com/hashicorp/watchtower/api/roles"
@@ -26,18 +25,29 @@ type CRUDLCommand struct {
 	flagName         string
 	flagDescription  string
 	flagGrantScopeId string
+	flagUsers        []string
+	flagGroups       []string
 }
 
 func (c *CRUDLCommand) Synopsis() string {
-	return synopsisFunc(c.Func)
+	switch c.Func {
+	case "create", "update", "read", "delete", "list":
+		return synopsisFunc(c.Func)
+	case "add-principals", "set-principals", "remove-principals":
+		return principalsSynopsisFunc(c.Func)
+	}
+	return ""
 }
 
 var helpMap = map[string]func(string) string{
-	"create": createHelp,
-	"update": updateHelp,
-	"read":   readHelp,
-	"delete": deleteHelp,
-	"list":   listHelp,
+	"create":            createHelp,
+	"update":            updateHelp,
+	"read":              readHelp,
+	"delete":            deleteHelp,
+	"list":              listHelp,
+	"add-principals":    addPrincipalsHelp,
+	"set-principals":    setPrincipalsHelp,
+	"remove-principals": removePrincipalsHelp,
 }
 
 func (c *CRUDLCommand) Help() string {
@@ -58,6 +68,12 @@ func (c *CRUDLCommand) Flags() *base.FlagSets {
 		populateFlags(c, f, []string{"id"})
 	case "delete":
 		populateFlags(c, f, []string{"id"})
+	case "add-principals":
+		populateFlags(c, f, []string{"id", "user", "group"})
+	case "set-principals":
+		populateFlags(c, f, []string{"id", "user", "group"})
+	case "remove-principals":
+		populateFlags(c, f, []string{"id", "user", "group"})
 	}
 
 	return set
@@ -111,6 +127,27 @@ func (c *CRUDLCommand) Run(args []string) int {
 		role.GrantScopeId = api.String(c.flagGrantScopeId)
 	}
 
+	users := c.flagUsers
+	switch len(c.flagUsers) {
+	case 0:
+		c.UI.Error("No users supplied via -user")
+		return 1
+	case 1:
+		if c.flagUsers[0] == "null" {
+			users = nil
+		}
+	}
+	groups := c.flagGroups
+	switch len(c.flagGroups) {
+	case 0:
+		c.UI.Error("No users supplied via -user")
+		return 1
+	case 1:
+		if c.flagGroups[0] == "null" {
+			groups = nil
+		}
+	}
+
 	var apiErr *api.Error
 
 	type crudl interface {
@@ -158,6 +195,12 @@ func (c *CRUDLCommand) Run(args []string) int {
 		existed, apiErr, err = actor.DeleteRole(c.Context, role)
 	case "list":
 		listedRoles, apiErr, err = actor.ListRoles(c.Context)
+	case "add-principals":
+		role, apiErr, err = role.AddPrincipals(c.Context, users, groups)
+	case "set-principals":
+		role, apiErr, err = role.SetPrincipals(c.Context, users, groups)
+	case "remove-principals":
+		role, apiErr, err = role.RemovePrincipals(c.Context, users, groups)
 	}
 
 	plural := "role"
@@ -222,33 +265,7 @@ func (c *CRUDLCommand) Run(args []string) int {
 
 	switch base.Format(c.UI) {
 	case "table":
-		var output []string
-		if true {
-			output = []string{
-				"",
-				"Role information:",
-				fmt.Sprintf("  ID:             %s", role.Id),
-				fmt.Sprintf("  Created At:     %s", role.CreatedTime.Local().Format(time.RFC3339)),
-				fmt.Sprintf("  Updated At:     %s", role.UpdatedTime.Local().Format(time.RFC3339)),
-				fmt.Sprintf("  Version:        %d", role.Version),
-			}
-		}
-		if role.Name != nil {
-			output = append(output,
-				fmt.Sprintf("  Name:           %s", *role.Name),
-			)
-		}
-		if role.Description != nil {
-			output = append(output,
-				fmt.Sprintf("  Description:    %s", *role.Description),
-			)
-		}
-		if role.GrantScopeId != nil {
-			output = append(output,
-				fmt.Sprintf("  Grant Scope ID: %s", *role.GrantScopeId),
-			)
-		}
-		c.UI.Output(base.WrapForHelpText(output))
+		c.UI.Output(generateRoleOutput(role))
 	}
 
 	return 0

@@ -3,7 +3,9 @@ package roles
 import (
 	"fmt"
 	"net/textproto"
+	"time"
 
+	"github.com/hashicorp/watchtower/api/roles"
 	"github.com/hashicorp/watchtower/internal/cmd/base"
 	"github.com/mitchellh/go-wordwrap"
 )
@@ -12,9 +14,22 @@ func synopsisFunc(inFunc string) string {
 	return wordwrap.WrapString(fmt.Sprintf("%s a role within Watchtower", textproto.CanonicalMIMEHeaderKey(inFunc)), 80)
 }
 
+func principalsSynopsisFunc(inPrinc string) string {
+	var in string
+	switch inPrinc {
+	case "add-principals":
+		in = "Add principals (users, groups) to"
+	case "set-principals":
+		in = "Set the full contents of the principals (users, groups) on"
+	case "remove-principals":
+		in = "Remove principals (users, groups) from"
+	}
+	return wordwrap.WrapString(fmt.Sprintf("%s a role within Watchtower", in), 80)
+}
+
 func createHelp(flagHelp string) string {
 	return base.WrapForHelpText([]string{
-		"Usage: watchtower role create [options] [args]",
+		"Usage: watchtower roles create [options] [args]",
 		"",
 		"  Create a role. Example:",
 		"",
@@ -24,7 +39,7 @@ func createHelp(flagHelp string) string {
 
 func updateHelp(flagHelp string) string {
 	return base.WrapForHelpText([]string{
-		"Usage: watchtower role update [options] [args]",
+		"Usage: watchtower roles update [options] [args]",
 		"",
 		"  Update a role given its ID. Example:",
 		"",
@@ -34,7 +49,7 @@ func updateHelp(flagHelp string) string {
 
 func readHelp(flagHelp string) string {
 	return base.WrapForHelpText([]string{
-		"Usage: watchtower role read [options] [args]",
+		"Usage: watchtower roles read [options] [args]",
 		"",
 		"  Read a role given its ID. Example:",
 		"",
@@ -44,7 +59,7 @@ func readHelp(flagHelp string) string {
 
 func deleteHelp(flagHelp string) string {
 	return base.WrapForHelpText([]string{
-		"Usage: watchtower role delete [options] [args]",
+		"Usage: watchtower roles delete [options] [args]",
 		"",
 		"  Delete a role given its ID. Example:",
 		"",
@@ -54,11 +69,41 @@ func deleteHelp(flagHelp string) string {
 
 func listHelp(flagHelp string) string {
 	return base.WrapForHelpText([]string{
-		"Usage: watchtower role list [options] [args]",
+		"Usage: watchtower roles list [options] [args]",
 		"",
 		"  List roles within a scope. Example:",
 		"",
 		`    $ watchtower roles list -org o_1234567890`,
+	}) + flagHelp
+}
+
+func addPrincipalsHelp(flagHelp string) string {
+	return base.WrapForHelpText([]string{
+		"Usage: watchtower roles add-principals [options] [args]",
+		"",
+		`  Adds principals (users, groups) to a role given its ID. The "user" and "group" flags can be specified multiple times. Example:`,
+		"",
+		`    $ watchtower roles add-principals -id r_1234567890 -user u_1234567890`,
+	}) + flagHelp
+}
+
+func setPrincipalsHelp(flagHelp string) string {
+	return base.WrapForHelpText([]string{
+		"Usage: watchtower roles set-principals [options] [args]",
+		"",
+		`  Sets the complete set of principals (users, groups) on a role given its ID. The "user" and "group" flags can be specified multiple times. Example:`,
+		"",
+		`    $ watchtower roles set-principals -id r_1234567890 -user u_anon -group sg_1234567890`,
+	}) + flagHelp
+}
+
+func removePrincipalsHelp(flagHelp string) string {
+	return base.WrapForHelpText([]string{
+		"Usage: watchtower roles remove-principals [options] [args]",
+		"",
+		`  Removes principals (users, groups) from a role given its ID. The "user" and "group" flags can be specified multiple times. Example:`,
+		"",
+		`    $ watchtower roles remove-principals -id r_1234567890 -group sg_1234567890`,
 	}) + flagHelp
 }
 
@@ -89,6 +134,48 @@ func populateFlags(c *CRUDLCommand, f *base.FlagSet, flagNames []string) {
 				Target: &c.flagGrantScopeId,
 				Usage:  "The scope ID for grants set on the role",
 			})
+		case "user":
+			f.StringSliceVar(&base.StringSliceVar{
+				Name:   "user",
+				Target: &c.flagUsers,
+				Usage:  "The users to add, remove, or set. May be specified multiple times",
+			})
+		case "group":
+			f.StringSliceVar(&base.StringSliceVar{
+				Name:   "group",
+				Target: &c.flagGroups,
+				Usage:  "The groups to add, remove, or set. May be specified multiple times",
+			})
 		}
 	}
+}
+
+func generateRoleOutput(role *roles.Role) string {
+	var output []string
+	if true {
+		output = []string{
+			"",
+			"Role information:",
+			fmt.Sprintf("  ID:             %s", role.Id),
+			fmt.Sprintf("  Created At:     %s", role.CreatedTime.Local().Format(time.RFC3339)),
+			fmt.Sprintf("  Updated At:     %s", role.UpdatedTime.Local().Format(time.RFC3339)),
+			fmt.Sprintf("  Version:        %d", role.Version),
+		}
+	}
+	if role.Name != nil {
+		output = append(output,
+			fmt.Sprintf("  Name:           %s", *role.Name),
+		)
+	}
+	if role.Description != nil {
+		output = append(output,
+			fmt.Sprintf("  Description:    %s", *role.Description),
+		)
+	}
+	if role.GrantScopeId != nil {
+		output = append(output,
+			fmt.Sprintf("  Grant Scope ID: %s", *role.GrantScopeId),
+		)
+	}
+	return base.WrapForHelpText(output)
 }

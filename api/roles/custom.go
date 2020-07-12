@@ -7,7 +7,7 @@ import (
 	"github.com/hashicorp/watchtower/api"
 )
 
-func (s Role) AddPrincipals(ctx context.Context, groups, users []string) (*Role, *api.Error, error) {
+func (s Role) AddPrincipals(ctx context.Context, users, groups []string) (*Role, *api.Error, error) {
 	if s.Client == nil {
 		return nil, nil, fmt.Errorf("nil client in AddPrincipals request")
 	}
@@ -40,7 +40,7 @@ func (s Role) AddPrincipals(ctx context.Context, groups, users []string) (*Role,
 	return target, apiErr, nil
 }
 
-func (s Role) SetPrincipals(ctx context.Context, groups, users []string) (*Role, *api.Error, error) {
+func (s Role) SetPrincipals(ctx context.Context, users, groups []string) (*Role, *api.Error, error) {
 	if s.Client == nil {
 		return nil, nil, fmt.Errorf("nil client in SetPrincipals request")
 	}
@@ -73,7 +73,7 @@ func (s Role) SetPrincipals(ctx context.Context, groups, users []string) (*Role,
 	return target, apiErr, nil
 }
 
-func (s Role) RemovePrincipals(ctx context.Context, groups, users []string) (*Role, *api.Error, error) {
+func (s Role) RemovePrincipals(ctx context.Context, users, groups []string) (*Role, *api.Error, error) {
 	if s.Client == nil {
 		return nil, nil, fmt.Errorf("nil client in RemovePrincipals request")
 	}
