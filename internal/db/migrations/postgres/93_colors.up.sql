@@ -1,4 +1,5 @@
 begin;
+
   insert into iam_scope
     (parent_id, type, public_id, name)
   values
@@ -42,7 +43,6 @@ begin;
     ('p____bcolors', 'g___cb-group', 'Blue Color Group'),
     ('p____rcolors', 'g___cr-group', 'Red Color Group');
 
-
   insert into iam_group_member_user
     (group_id, member_id)
   values
@@ -71,7 +71,6 @@ begin;
           ('global', 'p____bcolors', 'r_gp____spec', 'Blue Color Inspector'),
           ('global', 'global',       'r_gg_____buy', 'Purchaser'),
           ('global', 'global',       'r_gg____shop', 'Shopper');
-
 
   insert into iam_role_grant
     (role_id, canonical_grant, raw_grant)
