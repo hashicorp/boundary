@@ -142,6 +142,11 @@ func (c *CRUDLCommand) Run(args []string) int {
 		c.UI.Error("TODO")
 	}
 
+	if actor == nil {
+		c.UI.Error("Unable to determine the right scope for the command")
+		return 1
+	}
+
 	switch c.Func {
 	case "create":
 		role, apiErr, err = actor.CreateRole(c.Context, role)

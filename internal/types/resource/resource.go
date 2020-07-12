@@ -24,6 +24,9 @@ const (
 	Host                    Type = 17
 	Target                  Type = 18
 	Global                  Type = 19
+
+	// TODO: remove this after demo
+	Group Type = 20
 )
 
 func (r Type) String() string {
@@ -48,6 +51,7 @@ func (r Type) String() string {
 		"host",
 		"target",
 		"global",
+		"group",
 	}[r]
 }
 
@@ -71,4 +75,5 @@ var Map = map[string]Type{
 	"host":                       Host,
 	"target":                     Target,
 	"global":                     Global,
+	"group":                      Group,
 }

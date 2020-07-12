@@ -2,14 +2,14 @@ package roles
 
 import (
 	"fmt"
-	"strings"
+	"net/textproto"
 
 	"github.com/hashicorp/watchtower/internal/cmd/base"
 	"github.com/mitchellh/go-wordwrap"
 )
 
 func synopsisFunc(inFunc string) string {
-	return wordwrap.WrapString(fmt.Sprintf("%s a role within Watchtower", strings.ToTitle(inFunc)), 80)
+	return wordwrap.WrapString(fmt.Sprintf("%s a role within Watchtower", textproto.CanonicalMIMEHeaderKey(inFunc)), 80)
 }
 
 func createHelp(flagHelp string) string {

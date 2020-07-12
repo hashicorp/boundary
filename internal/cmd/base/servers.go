@@ -469,7 +469,7 @@ func (b *Server) CreateDevDatabase(dialect string) error {
 
 	b.InfoKeys = append(b.InfoKeys, "dev org id", "dev auth method id")
 	b.Info["dev org id"] = b.DefaultOrgId
-	b.Info["dev auth method id"] = b.DevAuthMethodId
+	b.Info["dev auth method id"] = amId
 
 	return nil
 }
