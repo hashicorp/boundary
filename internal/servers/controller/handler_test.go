@@ -374,6 +374,40 @@ func TestHandler_AuthDecoration(t *testing.T) {
 			name: "non-api path",
 			path: "/",
 		},
+		{
+			name:     "project scope, pinning collection",
+			path:     "/v1/orgs/o_abc123/projects/p_1234/host-catalogs/hc_1234/host-sets",
+			action:   action.List,
+			scope:    "p_1234",
+			pin:      "hc_1234",
+			resource: resource.HostSet,
+		},
+		{
+			name:     "project scope, pinning collection, custom action",
+			path:     "/v1/orgs/o_abc123/projects/p_1234/host-catalogs/hc_1234/host-sets:create",
+			action:   action.Create,
+			scope:    "p_1234",
+			pin:      "hc_1234",
+			resource: resource.HostSet,
+		},
+		{
+			name:     "project scope, pinning id",
+			path:     "/v1/orgs/o_abc123/projects/p_1234/host-catalogs/hc_1234/host-sets/hs_abc",
+			action:   action.Read,
+			id:       "hs_abc",
+			scope:    "p_1234",
+			pin:      "hc_1234",
+			resource: resource.HostSet,
+		},
+		{
+			name:     "project scope, pinning id, custom action",
+			path:     "/v1/orgs/o_abc123/projects/p_1234/host-catalogs/hc_1234/host-sets/hs_abc:update",
+			action:   action.Update,
+			id:       "hs_abc",
+			scope:    "p_1234",
+			pin:      "hc_1234",
+			resource: resource.HostSet,
+		},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -417,6 +451,10 @@ func TestHandler_AuthDecoration(t *testing.T) {
 			idVal := ctx.Value(globals.ContextResourceValue)
 			require.NotNil(idVal)
 			assert.Equal(tc.id, idVal.(string), "id")
+
+			pinVal := ctx.Value(globals.ContextPinValue)
+			require.NotNil(pinVal)
+			assert.Equal(tc.pin, pinVal.(string), "pin")
 		})
 	}
 }
