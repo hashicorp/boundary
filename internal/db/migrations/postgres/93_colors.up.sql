@@ -69,13 +69,15 @@ begin;
     ('o_____colors', 'o_____colors', 'r_oo_____art', 'Color Artist'),
           ('global', 'o_____colors', 'r_go____name', 'Color Namer'),
           ('global', 'p____bcolors', 'r_gp____spec', 'Blue Color Inspector'),
-          ('global', 'global',       'r_gg_____buy', 'Consumer');
+          ('global', 'global',       'r_gg_____buy', 'Purchaser'),
+          ('global', 'global',       'r_gg____shop', 'Shopper');
 
 
   insert into iam_role_grant
     (role_id, canonical_grant, raw_grant)
   values
     ('r_gg_____buy', 'type=*;action=purchase', 'purchase anything'),
+    ('r_gg____shop', 'type=*;action=view', 'view anything'),
     ('r_go____name', 'type=color;action=name', 'name colors'),
     ('r_gp____spec', 'type=color;action=inspect', 'inspect colors'),
     ('r_oo_____art', 'type=color;action=create', 'create color'),
@@ -92,7 +94,6 @@ begin;
   insert into iam_group_role
     (role_id, principal_id)
   values
-    ('r_gg_____buy', 'g___gg-group'),
     ('r_oo_____eng', 'g___ow-group'), -- widget
     ('r_pp_bw__bld', 'g___wb-group'), -- widget
     ('r_pp_sw__bld', 'g___ws-group'), -- widget
@@ -109,6 +110,7 @@ begin;
     ('r_oo_____art', 'u_____warren'),
     ('r_go____name', 'u_______gary'),
     ('r_gp____spec', 'u_______gina'),
-    ('r_gg_____buy', 'u_anon');
+    ('r_gg_____buy', 'u_auth'),
+    ('r_gg____shop', 'u_anon');
 
 commit;
