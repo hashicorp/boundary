@@ -43,7 +43,7 @@ Usage: watchtower projects read
 }
 
 func (c *ReadProjectCommand) Flags() *base.FlagSets {
-	set := c.FlagSet(base.FlagSetHTTP | base.FlagSetOutputFormat)
+	set := c.FlagSet(base.FlagSetHTTP | base.FlagSetClient | base.FlagSetOutputFormat)
 
 	f := set.NewFlagSet("Command Options")
 
