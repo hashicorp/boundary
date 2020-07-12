@@ -50,7 +50,7 @@ func TestAuthenticate(t *testing.T) {
 
 	authTokenRepoFn := func() (*authtoken.Repository, error) { return authtoken.NewRepository(rw, rw, wrapper) }
 	iamRepoFn := func() (*iam.Repository, error) { return iam.NewRepository(rw, rw, wrapper) }
-	amId, acctId := getAuthMethodAndAccountId(t, o, rw)
+	amId, _ := getAuthMethodAndAccountId(t, o, rw)
 
 	cases := []struct {
 		name    string
@@ -144,7 +144,7 @@ func TestAuthenticate(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			s, err := NewService(iamRepoFn, authTokenRepoFn, acctId)
+			s, err := NewService(iamRepoFn, authTokenRepoFn)
 			require.NoError(err)
 			resp, err := s.Authenticate(context.Background(), tc.request)
 			if tc.wantErr != nil {
@@ -181,7 +181,7 @@ func TestAuthenticate_AuthAccountConnectedToIamUser(t *testing.T) {
 	iamUser, err := iamRepo.LookupUserWithLogin(context.Background(), acctId, iam.WithAutoVivify(true))
 	require.NoError(err)
 
-	s, err := NewService(iamRepoFn, authTokenRepoFn, acctId)
+	s, err := NewService(iamRepoFn, authTokenRepoFn)
 	require.NoError(err)
 	resp, err := s.Authenticate(context.Background(), &pbs.AuthenticateRequest{
 		OrgId:        o.GetPublicId(),

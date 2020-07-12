@@ -2,14 +2,18 @@ package authenticate
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/base32"
 	"fmt"
 	"regexp"
 	"strings"
 
 	"github.com/hashicorp/watchtower/internal/authtoken"
+	"github.com/hashicorp/watchtower/internal/db"
 	pba "github.com/hashicorp/watchtower/internal/gen/controller/api/resources/authtokens"
 	pbs "github.com/hashicorp/watchtower/internal/gen/controller/api/services"
 	"github.com/hashicorp/watchtower/internal/iam"
+	iamStore "github.com/hashicorp/watchtower/internal/iam/store"
 	"github.com/hashicorp/watchtower/internal/servers/controller/common"
 	"github.com/hashicorp/watchtower/internal/servers/controller/handlers"
 	"github.com/hashicorp/watchtower/internal/types/scope"
@@ -21,24 +25,28 @@ const orgIdFieldName = "org_id"
 
 var (
 	reInvalidID = regexp.MustCompile("[^A-Za-z0-9]")
+
+	// TODO: Remove once auth methods are in
+	OrgScope string
+	RWDb     *db.Db
 )
 
 // Service handles request as described by the pbs.OrgServiceServer interface.
 type Service struct {
 	iamRepo       common.IamRepoFactory
 	authTokenRepo common.AuthTokenRepoFactory
-	authAcctId    string
 }
 
 // NewService returns an org service which handles org related requests to watchtower.
-func NewService(iamRepo common.IamRepoFactory, atRepo common.AuthTokenRepoFactory, authAccountId string) (Service, error) {
+func NewService(iamRepo common.IamRepoFactory, atRepo common.AuthTokenRepoFactory) (Service, error) {
 	if iamRepo == nil {
 		return Service{}, fmt.Errorf("nil iam repository provided")
 	}
 	if atRepo == nil {
 		return Service{}, fmt.Errorf("nil auth token repository provided")
 	}
-	return Service{iamRepo: iamRepo, authTokenRepo: atRepo, authAcctId: authAccountId}, nil
+
+	return Service{iamRepo: iamRepo, authTokenRepo: atRepo}, nil
 }
 
 var _ pbs.AuthenticationServiceServer = Service{}
@@ -72,15 +80,26 @@ func (s Service) authenticateWithRepo(ctx context.Context, req *pbs.Authenticate
 	// Place holder for making a request to authenticate
 	creds := req.GetCredentials().GetFields()
 	pwName, password := creds["name"], creds["password"]
-	if s.authAcctId == "" || (pwName.GetStringValue() == "wrong" && password.GetStringValue() == "wrong") {
+	if pwName.GetStringValue() == "wrong" && password.GetStringValue() == "wrong" {
 		return nil, status.Error(codes.Unauthenticated, "Unable to authenticate.")
 	}
 	// Get back a password.Account with a CredentialId string and a public Id
-	u, err := userRepo.LookupUserWithLogin(ctx, s.authAcctId, iam.WithAutoVivify(true))
+	// Create a fake auth account ID for the moment
+	acctIdBytes := sha256.Sum256([]byte(pwName.GetStringValue()))
+	acctId := fmt.Sprintf("aa_%s", base32.StdEncoding.EncodeToString(acctIdBytes[:])[0:10])
+
+	aAcct := &iam.AuthAccount{AuthAccount: &iamStore.AuthAccount{
+		PublicId:     acctId,
+		ScopeId:      OrgScope,
+		AuthMethodId: "am_1234567890",
+	}}
+	RWDb.Create(ctx, aAcct)
+
+	u, err := userRepo.LookupUserWithLogin(ctx, acctId, iam.WithAutoVivify(true))
 	if err != nil {
 		return nil, err
 	}
-	tok, err := atRepo.CreateAuthToken(ctx, u.GetPublicId(), s.authAcctId)
+	tok, err := atRepo.CreateAuthToken(ctx, u.GetPublicId(), acctId)
 	if err != nil {
 		return nil, err
 	}

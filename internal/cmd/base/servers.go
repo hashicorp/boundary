@@ -27,7 +27,7 @@ import (
 	"github.com/hashicorp/watchtower/globals"
 	"github.com/hashicorp/watchtower/internal/db"
 	"github.com/hashicorp/watchtower/internal/iam"
-	iamStore "github.com/hashicorp/watchtower/internal/iam/store"
+	"github.com/hashicorp/watchtower/internal/servers/controller/handlers/authenticate"
 	"github.com/hashicorp/watchtower/version"
 	"github.com/jinzhu/gorm"
 	"github.com/mitchellh/cli"
@@ -62,8 +62,6 @@ type Server struct {
 
 	DefaultOrgId    string
 	DevAuthMethodId string
-
-	DefaultAuthAccountId string
 
 	DevDatabaseUrl         string
 	DevDatabaseCleanupFunc func() error
@@ -453,40 +451,25 @@ func (b *Server) CreateDevDatabase(dialect string) error {
 	}
 
 	// TODO: Remove this when Auth Account repo is in place.
+	authenticate.OrgScope = orgScope.GetPublicId()
 	insert := `insert into auth_method
 	(public_id, scope_id)
 	values
 	($1, $2);`
 	amId := b.DevAuthMethodId
 	if amId == "" {
-		amId, err = db.NewPublicId("am")
-		if err != nil {
-			return err
-		}
+		amId = "am_123456789"
 	}
+	authenticate.RWDb = rw
 	_, err = b.Database.DB().Exec(insert, amId, orgScope.GetPublicId())
 	if err != nil {
 		c()
 		return err
 	}
 
-	aAcctId, err := db.NewPublicId("aact")
-	if err != nil {
-		return err
-	}
-	aAcct := &iam.AuthAccount{AuthAccount: &iamStore.AuthAccount{
-		PublicId:     aAcctId,
-		ScopeId:      orgScope.GetPublicId(),
-		AuthMethodId: amId,
-	}}
-	if err := rw.Create(ctx, aAcct); err != nil {
-		c()
-		return fmt.Errorf("error creating default auth account: %w", err)
-	}
-	b.DefaultAuthAccountId = aAcct.GetPublicId()
-
-	b.InfoKeys = append(b.InfoKeys, "dev org id")
+	b.InfoKeys = append(b.InfoKeys, "dev org id", "dev auth method id")
 	b.Info["dev org id"] = b.DefaultOrgId
+	b.Info["dev auth method id"] = b.DevAuthMethodId
 
 	return nil
 }

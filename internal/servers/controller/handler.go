@@ -75,7 +75,7 @@ func handleGrpcGateway(c *Controller) (http.Handler, error) {
 	if err := services.RegisterHostServiceHandlerServer(ctx, mux, &hosts.Service{}); err != nil {
 		return nil, fmt.Errorf("failed to register host service handler: %w", err)
 	}
-	auths, err := authenticate.NewService(c.IamRepoFn, c.AuthTokenRepoFn, c.conf.DefaultAuthAccountId)
+	auths, err := authenticate.NewService(c.IamRepoFn, c.AuthTokenRepoFn)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create authentication handler service: %w", err)
 	}
