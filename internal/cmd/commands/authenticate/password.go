@@ -14,6 +14,7 @@ import (
 	"github.com/mitchellh/cli"
 	"github.com/mitchellh/go-wordwrap"
 	"github.com/posener/complete"
+	"github.com/zalando/go-keyring"
 )
 
 var _ cli.Command = (*PasswordCommand)(nil)
@@ -143,10 +144,15 @@ func (c *PasswordCommand) Run(args []string) int {
 		c.UI.Output(base.WrapForHelpText([]string{
 			"",
 			"Authentication information:",
-			fmt.Sprintf("  Token: %s", result.Token),
-			fmt.Sprintf("  User ID: %s", result.UserId),
+			fmt.Sprintf("  Token:           %s", result.Token),
+			fmt.Sprintf("  User ID:         %s", result.UserId),
 			fmt.Sprintf("  Expiration Time: %s", result.ExpirationTime.Local().Format(time.RFC3339)),
 		}))
+	}
+
+	if err := keyring.Set("HashiCorp Watchtower", "Authentication Token", result.Token); err != nil {
+		c.UI.Error(fmt.Sprintf("Error saving auth token to system credential store: %s", err))
+		return 1
 	}
 
 	return 0

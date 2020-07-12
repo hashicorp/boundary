@@ -60,6 +60,7 @@ require (
 	github.com/ryanuber/go-glob v1.0.0
 	github.com/spf13/viper v1.6.3 // indirect
 	github.com/stretchr/testify v1.6.1
+	github.com/zalando/go-keyring v0.1.0
 	go.mongodb.org/mongo-driver v1.3.2 // indirect
 	golang.org/x/net v0.0.0-20200519113804-d87ec0cfa476 // indirect
 	golang.org/x/sys v0.0.0-20200509044756-6aff5f38e54f // indirect
