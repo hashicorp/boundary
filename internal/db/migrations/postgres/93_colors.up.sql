@@ -21,7 +21,8 @@ begin;
     (scope_id, public_id, name)
   values
     ('global', 'u_______gary', 'Gary'),
-    ('global', 'u_______gina', 'Gina');
+    ('global', 'u_______gina', 'Gina'),
+    ('global', 'u______nancy', 'Nancy');
 
   -- Add organization users
   insert into iam_user
@@ -65,7 +66,6 @@ begin;
     ('p____swidget', 'p____swidget', 'r_pp_sw__bld', 'Widget Builder'),
     ('p____bcolors', 'p____bcolors', 'r_pp_bc__mix', 'Color Mixer'),
     ('p____rcolors', 'p____rcolors', 'r_pp_rc__mix', 'Color Mixer'),
-    ('o_____widget', 'p____bwidget', 'r_pp_bw__eng', 'Big Widget Engineer'),
     ('o_____widget', 'p____swidget', 'r_op_sw__eng', 'Small Widget Engineer'),
     ('o_____colors', 'p____bcolors', 'r_op_bc__art', 'Blue Color Artist'),
     ('o_____colors', 'p____rcolors', 'r_op_rc__art', 'Red Color Artist'),
@@ -79,7 +79,6 @@ begin;
   insert into iam_role_grant
     (role_id, canonical_grant, raw_grant)
   values
-
     ('r_gg_____buy', 'type=*;action=purchase',    'purchase anything'),
     ('r_gg____shop', 'type=*;action=view',        'view anything'),
     ('r_go____name', 'type=color;action=name',    'name colors'),
@@ -91,7 +90,8 @@ begin;
     ('r_pp_rc__mix', 'type=color;action=mix',     'mix color'),
     ('r_oo_____eng', 'type=widget;action=design', 'design widget'),
     ('r_op_sw__eng', 'type=widget;action=design', 'design widget'),
-    ('r_pp_bw__eng', 'type=widget;action=design', 'design widget'),
+    ('r_op_sw__eng', 'type=widget;action=tune',   'tune widget'),
+    ('r_op_sw__eng', 'type=widget;action=clean',  'clean widget'),
     ('r_pp_bw__bld', 'type=widget;action=build',  'build widget'),
     ('r_pp_sw__bld', 'type=widget;action=build',  'build widget');
 
@@ -108,7 +108,7 @@ begin;
   insert into iam_user_role
     (role_id, principal_id)
   values
-    ('r_pp_bw__eng', 'u______carly'),
+    ('r_op_sw__eng', 'u______carly'),
     ('r_op_sw__eng', 'u______cindy'),
     ('r_op_bc__art', 'u_____waylon'),
     ('r_oo_____art', 'u_____warren'),
