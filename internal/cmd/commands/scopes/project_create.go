@@ -105,8 +105,11 @@ func (c *CreateProjectCommand) Run(args []string) int {
 	case apiErr != nil:
 		c.UI.Error(pretty.Sprint(apiErr))
 		return 2
-	default:
-		c.UI.Info(pretty.Sprint(project))
+	}
+
+	switch base.Format(c.UI) {
+	case "table":
+		c.UI.Output(printProject(project))
 	}
 
 	return 0
