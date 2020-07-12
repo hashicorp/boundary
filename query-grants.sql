@@ -20,13 +20,21 @@ with
 users (id) as (
   select public_id
     from iam_user
+   -- where clauses for testing
    -- where public_id in ('u_anon')
    -- where public_id in ('u_auth')
    -- where public_id in ('u_anon', 'u_auth')
+
+   -- run against sample database
    -- where public_id in ('u______nancy') -- Nancy has no direct or indirect grants
    -- where public_id in ('u______cindy') -- Cindy has some
    -- where public_id in ('u_anon', 'u_auth', 'u______nancy')
-   where public_id in ('u_anon', 'u_auth', 'u______cindy')
+   -- where public_id in ('u_anon', 'u_auth', 'u______cindy')
+
+   -- use this where clause in the code for an authenticated user
+   where public_id in ('u_anon', 'u_auth', ?)
+   -- use this where clause in the code for an unauthenticated
+   -- where public_id in ('u_anon')
 ),
 user_groups (id) as (
   select group_id
