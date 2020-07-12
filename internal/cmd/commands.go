@@ -11,6 +11,7 @@ import (
 	"github.com/hashicorp/watchtower/internal/cmd/commands/controller"
 	"github.com/hashicorp/watchtower/internal/cmd/commands/dev"
 	"github.com/hashicorp/watchtower/internal/cmd/commands/hosts"
+	"github.com/hashicorp/watchtower/internal/cmd/commands/roles"
 	"github.com/hashicorp/watchtower/internal/cmd/commands/scopes"
 	"github.com/hashicorp/watchtower/internal/cmd/commands/worker"
 
@@ -91,6 +92,41 @@ func initCommands(ui, serverCmdUi cli.Ui, runOpts *RunOptions) {
 		"authenticate password": func() (cli.Command, error) {
 			return &authenticate.PasswordCommand{
 				Command: base.NewCommand(ui),
+			}, nil
+		},
+		"roles": func() (cli.Command, error) {
+			return &roles.Command{
+				Command: base.NewCommand(ui),
+			}, nil
+		},
+		"roles create": func() (cli.Command, error) {
+			return &roles.CRUDLCommand{
+				Command: base.NewCommand(ui),
+				Func:    "create",
+			}, nil
+		},
+		"roles update": func() (cli.Command, error) {
+			return &roles.CRUDLCommand{
+				Command: base.NewCommand(ui),
+				Func:    "update",
+			}, nil
+		},
+		"roles read": func() (cli.Command, error) {
+			return &roles.CRUDLCommand{
+				Command: base.NewCommand(ui),
+				Func:    "read",
+			}, nil
+		},
+		"roles delete": func() (cli.Command, error) {
+			return &roles.CRUDLCommand{
+				Command: base.NewCommand(ui),
+				Func:    "delete",
+			}, nil
+		},
+		"roles list": func() (cli.Command, error) {
+			return &roles.CRUDLCommand{
+				Command: base.NewCommand(ui),
+				Func:    "list",
 			}, nil
 		},
 	}

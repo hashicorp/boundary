@@ -24,7 +24,7 @@ func (c *Command) Help() string {
 		"",
 		"    Authenticate with password auth method:",
 		"",
-		"      $ watchtower authenticate password name=foo password=bar",
+		"      $ watchtower authenticate password -name foo -password bar",
 		"",
 		"  Please see the auth method subcommand help for detailed usage information.",
 	})

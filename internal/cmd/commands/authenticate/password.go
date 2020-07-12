@@ -1,7 +1,6 @@
 package authenticate
 
 import (
-	"context"
 	"fmt"
 	"os"
 	"strings"
@@ -46,7 +45,7 @@ func (c *PasswordCommand) Help() string {
 		"",
 		"  If more than one instance of the password auth method exists, use the -method-id flag:",
 		"",
-		"    $ watchtower authenticate password -method-id=am_12345 -username=foo -password=bar",
+		`    $ watchtower authenticate password -method-id am_12345 -name foo -password "bar"`,
 	}) + c.Flags().Help()
 }
 
@@ -124,12 +123,11 @@ func (c *PasswordCommand) Run(args []string) int {
 	org := &scopes.Org{
 		Client: client,
 	}
-	ctx := context.Background()
 
 	// note: Authenticate() calls SetToken() under the hood to set the
 	// auth bearer on the client so we do not need to do anything with the
 	// returned token after this call, so we ignore it
-	result, apiErr, err := org.Authenticate(ctx, c.flagMethodId, c.flagName, c.flagPassword)
+	result, apiErr, err := org.Authenticate(c.Context, c.flagMethodId, c.flagName, c.flagPassword)
 	if err != nil {
 		c.UI.Error(fmt.Sprintf("Error trying to perform authentication: %s", err.Error()))
 		return 2
