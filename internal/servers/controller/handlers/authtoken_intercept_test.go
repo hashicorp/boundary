@@ -14,6 +14,7 @@ import (
 	"github.com/hashicorp/watchtower/internal/db"
 	"github.com/hashicorp/watchtower/internal/gen/controller/api/services"
 	pbs "github.com/hashicorp/watchtower/internal/gen/controller/api/services"
+	"github.com/hashicorp/watchtower/internal/iam"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -90,10 +91,15 @@ func TestAuthTokenAuthenticator(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
-	repo, err := authtoken.NewRepository(rw, rw, wrapper)
+	tokenRepo, err := authtoken.NewRepository(rw, rw, wrapper)
 	require.NoError(t, err)
-	repoFn := func() (*authtoken.Repository, error) {
-		return repo, nil
+	iamRepo, err := iam.NewRepository(rw, rw, wrapper)
+	require.NoError(t, err)
+	tokenRepoFn := func() (*authtoken.Repository, error) {
+		return tokenRepo, nil
+	}
+	iamRepoFn := func() (*iam.Repository, error) {
+		return iamRepo, nil
 	}
 
 	at := authtoken.TestAuthToken(t, conn, wrapper)
@@ -176,7 +182,7 @@ func TestAuthTokenAuthenticator(t *testing.T) {
 				tMD := ToTokenMetadata(ctx)
 				assert.Equal(t, tc.wantAuthTokMd, tMD)
 			}}
-			mux := runtime.NewServeMux(runtime.WithMetadata(TokenAuthenticator(hclog.L(), repoFn)))
+			mux := runtime.NewServeMux(runtime.WithMetadata(TokenAuthenticator(hclog.L(), tokenRepoFn, iamRepoFn)))
 			require.NoError(t, services.RegisterOrgServiceHandlerServer(context.Background(), mux, hook))
 
 			req := httptest.NewRequest("GET", "http://127.0.0.1/v1/orgs/1", nil)
