@@ -24,15 +24,13 @@ users (id) as (
    -- where public_id in ('u_anon')
    -- where public_id in ('u_auth')
    -- where public_id in ('u_anon', 'u_auth')
-
    -- run against sample database
    -- where public_id in ('u______nancy') -- Nancy has no direct or indirect grants
    -- where public_id in ('u______cindy') -- Cindy has some
    -- where public_id in ('u_anon', 'u_auth', 'u______nancy')
-   -- where public_id in ('u_anon', 'u_auth', 'u______cindy')
-
+   where public_id in ('u_anon', 'u_auth', 'u______cindy')
    -- use this where clause in the code for an authenticated user
-   where public_id in ('u_anon', 'u_auth', ?)
+   -- where public_id in ('u_anon', 'u_auth', ?)
    -- use this where clause in the code for an unauthenticated
    -- where public_id in ('u_anon')
 ),
@@ -76,4 +74,4 @@ final (role_scope, role_grant) as (
     join iam_role_grant
       on roles.role_id = iam_role_grant.role_id
 )
-select role_scope, role_grant from final;
+select role_scope as scope_id, role_grant as grant from final;
