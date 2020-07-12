@@ -2,8 +2,8 @@ begin;
   insert into iam_scope
     (parent_id, type, public_id, name)
   values
-    ('global', 'organization', 'o_____widget', 'Widget Inc'),
-    ('global', 'organization', 'o_____colors', 'Colors R Us');
+    ('global', 'org', 'o_____widget', 'Widget Inc'),
+    ('global', 'org', 'o_____colors', 'Colors R Us');
 
   insert into iam_user
     (scope_id, public_id, name)
