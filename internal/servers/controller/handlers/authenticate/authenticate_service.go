@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"regexp"
 	"strings"
+	"sync/atomic"
 
 	"github.com/hashicorp/watchtower/internal/authtoken"
 	"github.com/hashicorp/watchtower/internal/db"
@@ -28,8 +29,12 @@ var (
 
 	// TODO: Remove once auth methods are in
 	OrgScope string
-	RWDb     *db.Db
+	RWDb     = new(atomic.Value)
 )
+
+func init() {
+	RWDb.Store((*db.Db)(nil))
+}
 
 // Service handles request as described by the pbs.OrgServiceServer interface.
 type Service struct {
@@ -91,9 +96,9 @@ func (s Service) authenticateWithRepo(ctx context.Context, req *pbs.Authenticate
 	aAcct := &iam.AuthAccount{AuthAccount: &iamStore.AuthAccount{
 		PublicId:     acctId,
 		ScopeId:      OrgScope,
-		AuthMethodId: "am_1234567890",
+		AuthMethodId: req.AuthMethodId,
 	}}
-	RWDb.Create(ctx, aAcct)
+	RWDb.Load().(*db.Db).Create(ctx, aAcct)
 
 	u, err := userRepo.LookupUserWithLogin(ctx, acctId, iam.WithAutoVivify(true))
 	if err != nil {

@@ -2,6 +2,9 @@ package authenticate
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/base32"
+	"fmt"
 	"strings"
 	"testing"
 
@@ -30,7 +33,7 @@ func getAuthMethodAndAccountId(t *testing.T, org *iam.Scope, rw *db.Db) (string,
 	require.NoError(t, err)
 	_, err = innerDb.Exec(insert, amId, org.GetPublicId())
 	require.NoError(t, err)
-	aAcctId, err := db.NewPublicId("aact")
+	aAcctId, err := db.NewPublicId("aa")
 	require.NoError(t, err)
 
 	aAcct := &iam.AuthAccount{AuthAccount: &iamStore.AuthAccount{
@@ -45,6 +48,7 @@ func getAuthMethodAndAccountId(t *testing.T, org *iam.Scope, rw *db.Db) (string,
 func TestAuthenticate(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
+	RWDb.Store(rw)
 	wrapper := db.TestWrapper(t)
 	o, _ := iam.TestScopes(t, conn)
 
@@ -146,6 +150,19 @@ func TestAuthenticate(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 			s, err := NewService(iamRepoFn, authTokenRepoFn)
 			require.NoError(err)
+
+			// TODO: remove when we stop faking things
+			name := tc.request.Credentials.Fields["name"].GetStringValue()
+			acctIdBytes := sha256.Sum256([]byte(name))
+			acctId := fmt.Sprintf("aa_%s", base32.StdEncoding.EncodeToString(acctIdBytes[:])[0:10])
+
+			aAcct := &iam.AuthAccount{AuthAccount: &iamStore.AuthAccount{
+				PublicId:     acctId,
+				ScopeId:      o.PublicId,
+				AuthMethodId: amId,
+			}}
+			RWDb.Load().(*db.Db).Create(context.Background(), aAcct)
+
 			resp, err := s.Authenticate(context.Background(), tc.request)
 			if tc.wantErr != nil {
 				assert.Error(err)
@@ -168,6 +185,7 @@ func TestAuthenticate_AuthAccountConnectedToIamUser(t *testing.T) {
 	assert, require := assert.New(t), require.New(t)
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
+	RWDb.Store(rw)
 	wrapper := db.TestWrapper(t)
 	o, _ := iam.TestScopes(t, conn)
 
@@ -177,7 +195,19 @@ func TestAuthenticate_AuthAccountConnectedToIamUser(t *testing.T) {
 	require.NoError(err)
 
 	// connected to an account.
-	amId, acctId := getAuthMethodAndAccountId(t, o, rw)
+	amId, _ := getAuthMethodAndAccountId(t, o, rw)
+
+	name := "admin"
+	acctIdBytes := sha256.Sum256([]byte(name))
+	acctId := fmt.Sprintf("aa_%s", base32.StdEncoding.EncodeToString(acctIdBytes[:])[0:10])
+
+	aAcct := &iam.AuthAccount{AuthAccount: &iamStore.AuthAccount{
+		PublicId:     acctId,
+		ScopeId:      o.PublicId,
+		AuthMethodId: amId,
+	}}
+	RWDb.Load().(*db.Db).Create(context.Background(), aAcct)
+
 	iamUser, err := iamRepo.LookupUserWithLogin(context.Background(), acctId, iam.WithAutoVivify(true))
 	require.NoError(err)
 
@@ -188,7 +218,7 @@ func TestAuthenticate_AuthAccountConnectedToIamUser(t *testing.T) {
 		AuthMethodId: amId,
 		Credentials: func() *structpb.Struct {
 			creds := map[string]*structpb.Value{
-				"name":     {Kind: &structpb.Value_StringValue{StringValue: "admin"}},
+				"name":     {Kind: &structpb.Value_StringValue{StringValue: name}},
 				"password": {Kind: &structpb.Value_StringValue{StringValue: "hunter2"}},
 			}
 			return &structpb.Struct{Fields: creds}
