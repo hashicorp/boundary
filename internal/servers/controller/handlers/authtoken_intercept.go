@@ -27,11 +27,11 @@ func TokenAuthenticator(l hclog.Logger, tokenRepo common.AuthTokenRepoFactory) f
 		if authHeader := req.Header.Get(headerAuthMethod); authHeader != "" {
 			headerSplit := strings.SplitN(strings.TrimSpace(authHeader), " ", 2)
 			if len(headerSplit) == 2 && strings.EqualFold(strings.TrimSpace(headerSplit[0]), "bearer") {
-				tMD.recievedTokenType = authTokenTypeBearer
+				tMD.receivedTokenType = authTokenTypeBearer
 				tMD.bearerPayload = strings.TrimSpace(headerSplit[1])
 			}
 		}
-		if tMD.recievedTokenType != authTokenTypeBearer {
+		if tMD.receivedTokenType != authTokenTypeBearer {
 			if hc, err := req.Cookie(httpOnlyCookieName); err == nil {
 				tMD.httpCookiePayload = hc.Value
 			}
@@ -39,11 +39,11 @@ func TokenAuthenticator(l hclog.Logger, tokenRepo common.AuthTokenRepoFactory) f
 				tMD.jsCookiePayload = jc.Value
 			}
 			if tMD.httpCookiePayload != "" && tMD.jsCookiePayload != "" {
-				tMD.recievedTokenType = authTokenTypeSplitCookie
+				tMD.receivedTokenType = authTokenTypeSplitCookie
 			}
 		}
 
-		if tMD.recievedTokenType == authTokenTypeUnknown || tMD.token() == "" || tMD.publicId() == "" {
+		if tMD.receivedTokenType == authTokenTypeUnknown || tMD.token() == "" || tMD.publicId() == "" {
 			return tMD.toMetadata()
 		}
 
@@ -52,6 +52,7 @@ func TokenAuthenticator(l hclog.Logger, tokenRepo common.AuthTokenRepoFactory) f
 			l.Error("failed to get authtoken repo", "error", err)
 			return tMD.toMetadata()
 		}
+
 		at, err := repo.ValidateToken(ctx, tMD.publicId(), tMD.token())
 		if err != nil {
 			l.Error("failed to validate token", "error", err)
@@ -87,7 +88,7 @@ type TokenMetadata struct {
 	// Only set the UserId if the token was found and was not expired.
 	UserId string
 
-	recievedTokenType tokenFormat
+	receivedTokenType tokenFormat
 	bearerPayload     string
 
 	jsCookiePayload   string
@@ -124,7 +125,7 @@ func ToTokenMetadata(ctx context.Context) TokenMetadata {
 	}
 	if sType := md.Get(mdAuthTokenTypeKey); len(sType) > 0 {
 		if st, err := strconv.Atoi(sType[0]); err == nil {
-			tMD.recievedTokenType = tokenFormat(st)
+			tMD.receivedTokenType = tokenFormat(st)
 		}
 	}
 
@@ -145,8 +146,8 @@ func (s TokenMetadata) toMetadata() metadata.MD {
 	if s.jsCookiePayload != "" {
 		md.Set(mdAuthTokenJsTokenKey, s.jsCookiePayload)
 	}
-	if s.recievedTokenType != authTokenTypeUnknown {
-		md.Set(mdAuthTokenTypeKey, fmt.Sprint(s.recievedTokenType))
+	if s.receivedTokenType != authTokenTypeUnknown {
+		md.Set(mdAuthTokenTypeKey, fmt.Sprint(s.receivedTokenType))
 	}
 	return md
 }
@@ -155,7 +156,7 @@ func (s TokenMetadata) toMetadata() metadata.MD {
 // is malformed then this returns an empty string.
 func (s TokenMetadata) publicId() string {
 	tok := ""
-	switch s.recievedTokenType {
+	switch s.receivedTokenType {
 	case authTokenTypeBearer:
 		tok = s.bearerPayload
 	case authTokenTypeSplitCookie:
@@ -172,7 +173,7 @@ func (s TokenMetadata) publicId() string {
 // is malformed then this returns an empty string.
 func (s TokenMetadata) token() string {
 	var tok string
-	switch s.recievedTokenType {
+	switch s.receivedTokenType {
 	case authTokenTypeBearer:
 		tok = s.bearerPayload
 	case authTokenTypeSplitCookie:

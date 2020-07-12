@@ -51,7 +51,7 @@ func (c *PasswordCommand) Help() string {
 }
 
 func (c *PasswordCommand) Flags() *base.FlagSets {
-	set := c.FlagSet(base.FlagSetHTTP | base.FlagSetOutputFormat)
+	set := c.FlagSet(base.FlagSetHTTP | base.FlagSetClient | base.FlagSetOutputFormat)
 
 	f := set.NewFlagSet("Command Options")
 
@@ -150,9 +150,15 @@ func (c *PasswordCommand) Run(args []string) int {
 		}))
 	}
 
-	if err := keyring.Set("HashiCorp Watchtower", "Authentication Token", result.Token); err != nil {
-		c.UI.Error(fmt.Sprintf("Error saving auth token to system credential store: %s", err))
-		return 1
+	tokenName := "default"
+	if c.Command.FlagTokenName != "" {
+		tokenName = c.Command.FlagTokenName
+	}
+	if tokenName != "none" {
+		if err := keyring.Set("HashiCorp Watchtower Auth Token", tokenName, result.Token); err != nil {
+			c.UI.Error(fmt.Sprintf("Error saving auth token to system credential store: %s", err))
+			return 1
+		}
 	}
 
 	return 0

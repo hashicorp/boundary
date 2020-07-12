@@ -520,6 +520,14 @@ func (c *Client) SetOutputCurlString(curl bool) {
 	c.config.OutputCurlString = curl
 }
 
+// Token gets the configured token.
+func (c *Client) Token() string {
+	c.modifyLock.Lock()
+	defer c.modifyLock.Unlock()
+
+	return c.config.Token
+}
+
 // SetToken sets the token directly. This won't perform any auth
 // verification, it simply sets the token properly for future requests.
 func (c *Client) SetToken(token string) {
