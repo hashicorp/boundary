@@ -351,3 +351,7 @@ func (r *Repository) ListRoleGrants(ctx context.Context, roleId string, opt ...O
 	}
 	return roleGrants, nil
 }
+
+func (r *Repository) GrantsForUser(ctx context.Context, userId string, opt ...Option) ([]perms.GrantPair, error) {
+	return nil, nil
+}

@@ -60,7 +60,7 @@ func handleGrpcGateway(c *Controller) (http.Handler, error) {
 	// Register*ServiceHandlerServer methods ignore the passed in ctx.  Using the baseContext now just in case this changes
 	// in the future, at which point we'll want to be using the baseContext.
 	ctx := c.baseContext
-	mux := runtime.NewServeMux(runtime.WithMetadata(handlers.TokenAuthenticator(c.logger, c.AuthTokenRepoFn)),
+	mux := runtime.NewServeMux(runtime.WithMetadata(handlers.TokenAuthenticator(c.logger, c.AuthTokenRepoFn, c.IamRepoFn)),
 		runtime.WithProtoErrorHandler(handlers.ErrorHandler(c.logger)))
 	hcs, err := host_catalogs.NewService(c.StaticHostRepoFn)
 	if err != nil {
@@ -286,6 +286,7 @@ func decorateAuthParams(r *http.Request) (context.Context, error) {
 	var typ resource.Type
 	var id string
 	scp := scope.Global
+	scopeId := scope.Global.String()
 
 	// Handle non-custom types. We'll deal with custom types, including list,
 	// after parsing the path.
@@ -332,11 +333,13 @@ func decorateAuthParams(r *http.Request) (context.Context, error) {
 		case "projects":
 			if i != splitLen-2 {
 				scp = scope.Project
+				scopeId = splitPath[i+1]
 			}
 		case "orgs":
 			if scp == scope.Global {
 				if i != splitLen-2 {
 					scp = scope.Org
+					scopeId = splitPath[i+1]
 				}
 			}
 		}
@@ -389,7 +392,7 @@ func decorateAuthParams(r *http.Request) (context.Context, error) {
 	// the interceptor maybe it's more efficient; not sure.
 	out = context.WithValue(out, globals.ContextResourceValue, id)
 	out = context.WithValue(out, globals.ContextTypeValue, typ)
-	out = context.WithValue(out, globals.ContextScopeValue, scp)
+	out = context.WithValue(out, globals.ContextScopeValue, scopeId)
 	out = context.WithValue(out, globals.ContextActionValue, act)
 
 	return out, nil

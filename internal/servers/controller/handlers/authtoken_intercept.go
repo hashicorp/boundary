@@ -8,7 +8,11 @@ import (
 	"strings"
 
 	"github.com/hashicorp/go-hclog"
+	"github.com/hashicorp/watchtower/globals"
+	"github.com/hashicorp/watchtower/internal/perms"
 	"github.com/hashicorp/watchtower/internal/servers/controller/common"
+	"github.com/hashicorp/watchtower/internal/types/action"
+	"github.com/hashicorp/watchtower/internal/types/resource"
 	"google.golang.org/grpc/metadata"
 )
 
@@ -21,7 +25,7 @@ const (
 // TokenAuthenticator returns a function that can be used in grpc-gateway's runtime.WithMetadata ServerOption.
 // It looks at the cookies and headers of the incoming request and returns metadata that can later be
 // used by handlers to build a TokenMetadata using the ToTokenMetadata function.
-func TokenAuthenticator(l hclog.Logger, tokenRepo common.AuthTokenRepoFactory) func(context.Context, *http.Request) metadata.MD {
+func TokenAuthenticator(l hclog.Logger, tokenRepo common.AuthTokenRepoFactory, iamRepo common.IamRepoFactory) func(context.Context, *http.Request) metadata.MD {
 	return func(ctx context.Context, req *http.Request) metadata.MD {
 		tMD := TokenMetadata{}
 		if authHeader := req.Header.Get(headerAuthMethod); authHeader != "" {
@@ -47,18 +51,73 @@ func TokenAuthenticator(l hclog.Logger, tokenRepo common.AuthTokenRepoFactory) f
 			return tMD.toMetadata()
 		}
 
-		repo, err := tokenRepo()
+		tokenRepo, err := tokenRepo()
 		if err != nil {
 			l.Error("failed to get authtoken repo", "error", err)
 			return tMD.toMetadata()
 		}
 
-		at, err := repo.ValidateToken(ctx, tMD.publicId(), tMD.token())
+		at, err := tokenRepo.ValidateToken(ctx, tMD.publicId(), tMD.token())
 		if err != nil {
 			l.Error("failed to validate token", "error", err)
 		}
 		if at != nil {
 			tMD.UserId = at.GetIamUserId()
+		} else {
+			tMD.UserId = "u_anon"
+		}
+
+		iamRepo, err := iamRepo()
+		if err != nil {
+			l.Error("failed to get iam repo", "error", err)
+			return tMD.toMetadata()
+		}
+		grantPairs, err := iamRepo.GrantsForUser(ctx, tMD.UserId)
+		if err != nil {
+			l.Error("failed to query for user grants", "error", err)
+			return tMD.toMetadata()
+		}
+		parsedGrants := make([]perms.Grant, 0, len(grantPairs))
+		for _, pair := range grantPairs {
+			parsed, err := perms.Parse(pair.ScopeId, tMD.UserId, pair.Grant)
+			if err != nil {
+				l.Error("failed to parse grant", "grant", pair.Grant, "error", err)
+				return tMD.toMetadata()
+			}
+			parsedGrants = append(parsedGrants, parsed)
+		}
+
+		var typ resource.Type
+		var scopeId string
+		var act action.Type
+		var id string
+		typRaw := ctx.Value(globals.ContextTypeValue)
+		if typRaw != nil {
+			typ = typRaw.(resource.Type)
+		}
+		scopeIdRaw := ctx.Value(globals.ContextScopeValue)
+		if scopeIdRaw != nil {
+			scopeId = scopeIdRaw.(string)
+		}
+		actRaw := ctx.Value(globals.ContextActionValue)
+		if actRaw != nil {
+			act = actRaw.(action.Type)
+		}
+		idRaw := ctx.Value(globals.ContextResourceValue)
+		if idRaw != nil {
+			id = idRaw.(string)
+		}
+
+		acl := perms.NewACL(parsedGrants...)
+		allowed := acl.Allowed(perms.Resource{
+			ScopeId: scopeId,
+			Id:      id,
+			Type:    typ,
+			// TODO:
+			//Pin: <something>
+		}, act)
+		if !allowed.Allowed {
+			// TODO what's the right way to return a 403
 		}
 
 		return tMD.toMetadata()

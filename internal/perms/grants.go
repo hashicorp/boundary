@@ -12,6 +12,13 @@ import (
 	"github.com/hashicorp/watchtower/internal/types/scope"
 )
 
+// GrantPair is simply a struct that can be reference from other code to return
+// a set of scopes and grants to parse
+type GrantPair struct {
+	ScopeId string
+	Grant   string
+}
+
 // Scope provides an in-memory representation of iam.Scope without the
 // underlying storage references or capabilities.
 type Scope struct {
