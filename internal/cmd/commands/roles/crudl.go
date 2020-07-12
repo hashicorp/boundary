@@ -101,14 +101,14 @@ func (c *CRUDLCommand) Run(args []string) int {
 	case "null":
 		role.SetDefault("description")
 	default:
-		role.Name = api.String(c.flagDescription)
+		role.Description = api.String(c.flagDescription)
 	}
-	switch c.flagName {
+	switch c.flagGrantScopeId {
 	case "":
 	case "null":
 		role.SetDefault("grantscopeid")
 	default:
-		role.Name = api.String(c.flagGrantScopeId)
+		role.GrantScopeId = api.String(c.flagGrantScopeId)
 	}
 
 	var apiErr *api.Error
@@ -194,11 +194,15 @@ func (c *CRUDLCommand) Run(args []string) int {
 		output = []string{
 			"",
 			"Role information:",
+			"",
 		}
-		for _, r := range listedRoles {
+		for i, r := range listedRoles {
+			if i > 1 {
+				output = append(output, "")
+			}
 			if true {
 				output = append(output,
-					fmt.Sprintf("  ID:             %s", r.Id),
+					fmt.Sprintf("  ID:               %s", r.Id),
 				)
 			}
 			if r.Name != nil {
@@ -208,7 +212,7 @@ func (c *CRUDLCommand) Run(args []string) int {
 			}
 			if r.Description != nil {
 				output = append(output,
-					fmt.Sprintf("    Grant Scope ID: %s", *r.Description),
+					fmt.Sprintf("    Description:    %s", *r.Description),
 				)
 			}
 		}
@@ -236,7 +240,7 @@ func (c *CRUDLCommand) Run(args []string) int {
 		}
 		if role.Description != nil {
 			output = append(output,
-				fmt.Sprintf("  Grant Scope ID: %s", *role.Description),
+				fmt.Sprintf("  Description:    %s", *role.Description),
 			)
 		}
 		if role.GrantScopeId != nil {
