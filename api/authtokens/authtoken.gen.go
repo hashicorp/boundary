@@ -3,6 +3,7 @@ package authtokens
 
 import (
 	"encoding/json"
+	"strings"
 	"time"
 
 	"github.com/fatih/structs"
@@ -44,11 +45,25 @@ type AuthToken struct {
 }
 
 func (s *AuthToken) SetDefault(key string) {
-	s.defaultFields = strutil.AppendIfMissing(s.defaultFields, key)
+	lowerKey := strings.ToLower(key)
+	validMap := map[string]string{"approximatelastusedtime": "approximate_last_used_time", "authmethodid": "auth_method_id", "createdtime": "created_time", "expirationtime": "expiration_time", "id": "id", "token": "token", "updatedtime": "updated_time", "userid": "user_id"}
+	for k, v := range validMap {
+		if k == lowerKey || v == lowerKey {
+			s.defaultFields = strutil.AppendIfMissing(s.defaultFields, v)
+			return
+		}
+	}
 }
 
 func (s *AuthToken) UnsetDefault(key string) {
-	s.defaultFields = strutil.StrListDelete(s.defaultFields, key)
+	lowerKey := strings.ToLower(key)
+	validMap := map[string]string{"approximatelastusedtime": "approximate_last_used_time", "authmethodid": "auth_method_id", "createdtime": "created_time", "expirationtime": "expiration_time", "id": "id", "token": "token", "updatedtime": "updated_time", "userid": "user_id"}
+	for k, v := range validMap {
+		if k == lowerKey || v == lowerKey {
+			s.defaultFields = strutil.StrListDelete(s.defaultFields, v)
+			return
+		}
+	}
 }
 
 func (s AuthToken) MarshalJSON() ([]byte, error) {

@@ -3,6 +3,7 @@ package api
 
 import (
 	"encoding/json"
+	"strings"
 
 	"github.com/fatih/structs"
 
@@ -24,11 +25,25 @@ type Error struct {
 }
 
 func (s *Error) SetDefault(key string) {
-	s.defaultFields = strutil.AppendIfMissing(s.defaultFields, key)
+	lowerKey := strings.ToLower(key)
+	validMap := map[string]string{"code": "code", "details": "details", "message": "message", "status": "status"}
+	for k, v := range validMap {
+		if k == lowerKey || v == lowerKey {
+			s.defaultFields = strutil.AppendIfMissing(s.defaultFields, v)
+			return
+		}
+	}
 }
 
 func (s *Error) UnsetDefault(key string) {
-	s.defaultFields = strutil.StrListDelete(s.defaultFields, key)
+	lowerKey := strings.ToLower(key)
+	validMap := map[string]string{"code": "code", "details": "details", "message": "message", "status": "status"}
+	for k, v := range validMap {
+		if k == lowerKey || v == lowerKey {
+			s.defaultFields = strutil.StrListDelete(s.defaultFields, v)
+			return
+		}
+	}
 }
 
 func (s Error) MarshalJSON() ([]byte, error) {

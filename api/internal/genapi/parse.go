@@ -38,6 +38,7 @@ func parsePBs() {
 			os.Exit(1)
 		}
 
+		inputStruct.nameJsonMap = make(map[string]string)
 		ast.Walk(visitFn(func(n ast.Node) {
 			spec, ok := n.(*ast.TypeSpec)
 			if !ok {
@@ -217,7 +218,10 @@ func parsePBs() {
 				}
 
 			TAGMODIFY:
-				st.Fields.List[i].Tag.Value = "`" + regex.FindString(st.Fields.List[i].Tag.Value) + "`"
+				tagString := regex.FindString(st.Fields.List[i].Tag.Value)
+				st.Fields.List[i].Tag.Value = "`" + tagString + "`"
+				tagString = strings.TrimSuffix(strings.TrimPrefix(tagString, `json:"`), `,omitempty"`)
+				inputStruct.nameJsonMap[strings.ToLower(field.Names[0].Name)] = tagString
 			}
 		}), inAst)
 

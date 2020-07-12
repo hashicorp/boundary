@@ -3,6 +3,7 @@ package roles
 
 import (
 	"encoding/json"
+	"strings"
 	"time"
 
 	"github.com/fatih/structs"
@@ -58,11 +59,25 @@ type Role struct {
 }
 
 func (s *Role) SetDefault(key string) {
-	s.defaultFields = strutil.AppendIfMissing(s.defaultFields, key)
+	lowerKey := strings.ToLower(key)
+	validMap := map[string]string{"createdtime": "created_time", "description": "description", "disabled": "disabled", "grants": "grants", "grantscanonical": "grants_canonical", "grantscopeid": "grant_scope_id", "grantsjson": "grants_json", "groupids": "group_ids", "id": "id", "name": "name", "updatedtime": "updated_time", "userids": "user_ids", "version": "version"}
+	for k, v := range validMap {
+		if k == lowerKey || v == lowerKey {
+			s.defaultFields = strutil.AppendIfMissing(s.defaultFields, v)
+			return
+		}
+	}
 }
 
 func (s *Role) UnsetDefault(key string) {
-	s.defaultFields = strutil.StrListDelete(s.defaultFields, key)
+	lowerKey := strings.ToLower(key)
+	validMap := map[string]string{"createdtime": "created_time", "description": "description", "disabled": "disabled", "grants": "grants", "grantscanonical": "grants_canonical", "grantscopeid": "grant_scope_id", "grantsjson": "grants_json", "groupids": "group_ids", "id": "id", "name": "name", "updatedtime": "updated_time", "userids": "user_ids", "version": "version"}
+	for k, v := range validMap {
+		if k == lowerKey || v == lowerKey {
+			s.defaultFields = strutil.StrListDelete(s.defaultFields, v)
+			return
+		}
+	}
 }
 
 func (s Role) MarshalJSON() ([]byte, error) {
