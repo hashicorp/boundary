@@ -320,9 +320,27 @@ func decorateAuthParams(r *http.Request) (context.Context, error) {
 	}
 
 	// Walk backwards. As we walk backwards we look for scopes and figure out if
-	// we're operating on a resource or a collection.
+	// we're operating on a resource or a collection. We also populate the pin.
+	// The rules for the pin are as follows:
+	//
+	// * If the last segment is a collection, the pin is the immdiately
+	// preceding ID
+	//
+	// * If the last segment is an ID, the pin is the immediately preceeding ID
+	// not including the last segment
+	//
+	// * If at the end of the logic the pin is the id of a scope ("global",
+	// "o_...", "p_...") then there is no pin. The scopes are already enclosing
+	// so a pin is redundant.
+	nextIdIsPin := true
 	for i := splitLen - 1; i >= 0; i-- {
 		segment := splitPath[i]
+		segmentIsCollection := !strings.Contains(segment, "_")
+
+		if !segmentIsCollection && i != splitLen-1 && nextIdIsPin {
+			pin = segment
+			nextIdIsPin = false
+		}
 
 		// Update the scope. Set it to org only if it's at global (that way we
 		// don't override project with org). We have to check if it's one less
@@ -359,7 +377,7 @@ func decorateAuthParams(r *http.Request) (context.Context, error) {
 			//
 			// We continue on with the enclosing loop anyways though to ensure
 			// we find the right scope.
-			if id == "" && strings.Contains(segment, "_") {
+			if id == "" && !segmentIsCollection {
 				// Collections don't contain underscores; every resource ID does.
 				id = segment
 			} else {
@@ -386,6 +404,15 @@ func decorateAuthParams(r *http.Request) (context.Context, error) {
 	// GET, it's actually a list
 	if id == "" && act == action.Read {
 		act = action.List
+	}
+
+	// If the pin ended up being a scope, nil it out
+	if pin != "" {
+		if pin == "global" ||
+			strings.HasPrefix(pin, "o_") ||
+			strings.HasPrefix(pin, "p_") {
+			pin = ""
+		}
 	}
 
 	// TODO: Use grpc metadata? If it will preserve it all the way through to

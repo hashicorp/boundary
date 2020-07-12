@@ -238,6 +238,7 @@ func TestHandler_AuthDecoration(t *testing.T) {
 		scope           string
 		resource        resource.Type
 		id              string
+		pin             string
 		wantErrContains string
 	}{
 		{
