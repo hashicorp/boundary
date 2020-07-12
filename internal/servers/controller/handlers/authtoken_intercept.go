@@ -8,7 +8,12 @@ import (
 	"strings"
 
 	"github.com/hashicorp/go-hclog"
+	"github.com/hashicorp/watchtower/globals"
+	"github.com/hashicorp/watchtower/internal/perms"
 	"github.com/hashicorp/watchtower/internal/servers/controller/common"
+	"github.com/hashicorp/watchtower/internal/types/action"
+	"github.com/hashicorp/watchtower/internal/types/resource"
+	"github.com/kr/pretty"
 	"google.golang.org/grpc/metadata"
 )
 
@@ -21,7 +26,7 @@ const (
 // TokenAuthenticator returns a function that can be used in grpc-gateway's runtime.WithMetadata ServerOption.
 // It looks at the cookies and headers of the incoming request and returns metadata that can later be
 // used by handlers to build a TokenMetadata using the ToTokenMetadata function.
-func TokenAuthenticator(l hclog.Logger, tokenRepo common.AuthTokenRepoFactory) func(context.Context, *http.Request) metadata.MD {
+func TokenAuthenticator(l hclog.Logger, tokenRepo common.AuthTokenRepoFactory, iamRepo common.IamRepoFactory) func(context.Context, *http.Request) metadata.MD {
 	return func(ctx context.Context, req *http.Request) metadata.MD {
 		tMD := TokenMetadata{}
 		if authHeader := req.Header.Get(headerAuthMethod); authHeader != "" {
@@ -47,19 +52,79 @@ func TokenAuthenticator(l hclog.Logger, tokenRepo common.AuthTokenRepoFactory) f
 			return tMD.toMetadata()
 		}
 
-		repo, err := tokenRepo()
+		tokenRepo, err := tokenRepo()
 		if err != nil {
 			l.Error("failed to get authtoken repo", "error", err)
 			return tMD.toMetadata()
 		}
 
-		at, err := repo.ValidateToken(ctx, tMD.publicId(), tMD.token())
+		at, err := tokenRepo.ValidateToken(ctx, tMD.publicId(), tMD.token())
 		if err != nil {
 			l.Error("failed to validate token", "error", err)
 		}
 		if at != nil {
 			tMD.UserId = at.GetIamUserId()
+		} else {
+			tMD.UserId = "u_anon"
 		}
+
+		iamRepo, err := iamRepo()
+		if err != nil {
+			l.Error("failed to get iam repo", "error", err)
+			return tMD.toMetadata()
+		}
+		grantPairs, err := iamRepo.GrantsForUser(ctx, tMD.UserId)
+		if err != nil {
+			l.Error("failed to query for user grants", "error", err)
+			return tMD.toMetadata()
+		}
+		parsedGrants := make([]perms.Grant, 0, len(grantPairs))
+		for _, pair := range grantPairs {
+			parsed, err := perms.Parse(pair.ScopeId, tMD.UserId, pair.Grant)
+			if err != nil {
+				l.Error("failed to parse grant", "grant", pair.Grant, "error", err)
+				return tMD.toMetadata()
+			}
+			parsedGrants = append(parsedGrants, parsed)
+		}
+
+		var scopeId, id, pin string
+		var typ resource.Type
+		var act action.Type
+		typRaw := ctx.Value(globals.ContextTypeValue)
+		if typRaw != nil {
+			typ = typRaw.(resource.Type)
+		}
+		scopeIdRaw := ctx.Value(globals.ContextScopeValue)
+		if scopeIdRaw != nil {
+			scopeId = scopeIdRaw.(string)
+		}
+		actRaw := ctx.Value(globals.ContextActionValue)
+		if actRaw != nil {
+			act = actRaw.(action.Type)
+		}
+		idRaw := ctx.Value(globals.ContextResourceValue)
+		if idRaw != nil {
+			id = idRaw.(string)
+		}
+		pinRaw := ctx.Value(globals.ContextPinValue)
+		if pinRaw != nil {
+			pin = pinRaw.(string)
+		}
+
+		acl := perms.NewACL(parsedGrants...)
+		res := perms.Resource{
+			// These values were parsed from the request information
+			ScopeId: scopeId,
+			Type:    typ,
+			Id:      id,
+			Pin:     pin,
+		}
+		allowed := acl.Allowed(res, act)
+		if allowed.Allowed {
+			tMD.authorized = true
+		}
+		l.Info("grant checking", "user_id", tMD.UserId, "grants", pretty.Sprint(grantPairs), "resource", res, "authorized", allowed)
 
 		return tMD.toMetadata()
 	}
@@ -88,6 +153,8 @@ type TokenMetadata struct {
 	// Only set the UserId if the token was found and was not expired.
 	UserId string
 
+	authorized bool
+
 	receivedTokenType tokenFormat
 	bearerPayload     string
 
@@ -97,6 +164,7 @@ type TokenMetadata struct {
 
 const (
 	mdAuthTokenUserKey        = "wt-authtoken-user-key"
+	mdAuthAuthorizedKey       = "wt-authtoken-authorized"
 	mdAuthTokenBearerTokenKey = "wt-authtoken-bearer-token-key"
 	mdAuthTokenHttpTokenKey   = "wt-authtoken-http-token-key"
 	mdAuthTokenJsTokenKey     = "wt-authtoken-js-token-key"
@@ -113,6 +181,9 @@ func ToTokenMetadata(ctx context.Context) TokenMetadata {
 	tMD := TokenMetadata{}
 	if uid := md.Get(mdAuthTokenUserKey); len(uid) > 0 {
 		tMD.UserId = uid[0]
+	}
+	if authzd := md.Get(mdAuthAuthorizedKey); len(authzd) > 0 {
+		tMD.authorized = authzd[0] == "true"
 	}
 	if token := md.Get(mdAuthTokenBearerTokenKey); len(token) > 0 {
 		tMD.bearerPayload = token[0]
@@ -137,6 +208,11 @@ func (s TokenMetadata) toMetadata() metadata.MD {
 	if s.UserId != "" {
 		md.Set(mdAuthTokenUserKey, s.UserId)
 	}
+	if s.authorized {
+		md.Set(mdAuthAuthorizedKey, "true")
+	} else {
+		md.Set(mdAuthAuthorizedKey, "false")
+	}
 	if s.bearerPayload != "" {
 		md.Set(mdAuthTokenBearerTokenKey, s.bearerPayload)
 	}
@@ -149,6 +225,7 @@ func (s TokenMetadata) toMetadata() metadata.MD {
 	if s.receivedTokenType != authTokenTypeUnknown {
 		md.Set(mdAuthTokenTypeKey, fmt.Sprint(s.receivedTokenType))
 	}
+
 	return md
 }
 

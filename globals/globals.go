@@ -14,6 +14,7 @@ const (
 	ContextResourceValue = "wt_resource"
 	ContextActionValue   = "wt_action"
 	ContextTypeValue     = "wt_type"
+	ContextPinValue      = "wt_pin"
 )
 
 var (

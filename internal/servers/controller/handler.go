@@ -60,7 +60,7 @@ func handleGrpcGateway(c *Controller) (http.Handler, error) {
 	// Register*ServiceHandlerServer methods ignore the passed in ctx.  Using the baseContext now just in case this changes
 	// in the future, at which point we'll want to be using the baseContext.
 	ctx := c.baseContext
-	mux := runtime.NewServeMux(runtime.WithMetadata(handlers.TokenAuthenticator(c.logger, c.AuthTokenRepoFn)),
+	mux := runtime.NewServeMux(runtime.WithMetadata(handlers.TokenAuthenticator(c.logger, c.AuthTokenRepoFn, c.IamRepoFn)),
 		runtime.WithProtoErrorHandler(handlers.ErrorHandler(c.logger)))
 	hcs, err := host_catalogs.NewService(c.StaticHostRepoFn)
 	if err != nil {
@@ -284,8 +284,9 @@ func decorateAuthParams(r *http.Request) (context.Context, error) {
 	var act action.Type
 	var typStr string
 	var typ resource.Type
-	var id string
+	var id, pin string
 	scp := scope.Global
+	scopeId := scope.Global.String()
 
 	// Handle non-custom types. We'll deal with custom types, including list,
 	// after parsing the path.
@@ -319,9 +320,27 @@ func decorateAuthParams(r *http.Request) (context.Context, error) {
 	}
 
 	// Walk backwards. As we walk backwards we look for scopes and figure out if
-	// we're operating on a resource or a collection.
+	// we're operating on a resource or a collection. We also populate the pin.
+	// The rules for the pin are as follows:
+	//
+	// * If the last segment is a collection, the pin is the immdiately
+	// preceding ID
+	//
+	// * If the last segment is an ID, the pin is the immediately preceeding ID
+	// not including the last segment
+	//
+	// * If at the end of the logic the pin is the id of a scope ("global",
+	// "o_...", "p_...") then there is no pin. The scopes are already enclosing
+	// so a pin is redundant.
+	nextIdIsPin := true
 	for i := splitLen - 1; i >= 0; i-- {
 		segment := splitPath[i]
+		segmentIsCollection := !strings.Contains(segment, "_")
+
+		if !segmentIsCollection && i != splitLen-1 && nextIdIsPin {
+			pin = segment
+			nextIdIsPin = false
+		}
 
 		// Update the scope. Set it to org only if it's at global (that way we
 		// don't override project with org). We have to check if it's one less
@@ -330,13 +349,15 @@ func decorateAuthParams(r *http.Request) (context.Context, error) {
 		// operating on a child scope).
 		switch segment {
 		case "projects":
-			if i != splitLen-2 {
+			if i < splitLen-2 {
 				scp = scope.Project
+				scopeId = splitPath[i+1]
 			}
 		case "orgs":
 			if scp == scope.Global {
-				if i != splitLen-2 {
+				if i < splitLen-2 {
 					scp = scope.Org
+					scopeId = splitPath[i+1]
 				}
 			}
 		}
@@ -356,7 +377,7 @@ func decorateAuthParams(r *http.Request) (context.Context, error) {
 			//
 			// We continue on with the enclosing loop anyways though to ensure
 			// we find the right scope.
-			if id == "" && strings.Contains(segment, "_") {
+			if id == "" && !segmentIsCollection {
 				// Collections don't contain underscores; every resource ID does.
 				id = segment
 			} else {
@@ -385,11 +406,21 @@ func decorateAuthParams(r *http.Request) (context.Context, error) {
 		act = action.List
 	}
 
+	// If the pin ended up being a scope, nil it out
+	if pin != "" {
+		if pin == "global" ||
+			strings.HasPrefix(pin, "o_") ||
+			strings.HasPrefix(pin, "p_") {
+			pin = ""
+		}
+	}
+
 	// TODO: Use grpc metadata? If it will preserve it all the way through to
 	// the interceptor maybe it's more efficient; not sure.
 	out = context.WithValue(out, globals.ContextResourceValue, id)
+	out = context.WithValue(out, globals.ContextPinValue, pin)
 	out = context.WithValue(out, globals.ContextTypeValue, typ)
-	out = context.WithValue(out, globals.ContextScopeValue, scp)
+	out = context.WithValue(out, globals.ContextScopeValue, scopeId)
 	out = context.WithValue(out, globals.ContextActionValue, act)
 
 	return out, nil
