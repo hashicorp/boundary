@@ -20,7 +20,7 @@ func TestUsers_List(t *testing.T) {
 	defer tc.Shutdown()
 
 	client := tc.Client()
-	org := &scopes.Organization{
+	org := &scopes.Org{
 		Client: client,
 	}
 	ctx := context.Background()
@@ -74,7 +74,7 @@ func TestUser_Crud(t *testing.T) {
 	defer tc.Shutdown()
 
 	client := tc.Client()
-	org := &scopes.Organization{
+	org := &scopes.Org{
 		Client: client,
 	}
 
@@ -124,7 +124,7 @@ func TestUser_Errors(t *testing.T) {
 	ctx := tc.Context()
 
 	client := tc.Client()
-	org := &scopes.Organization{
+	org := &scopes.Org{
 		Client: client,
 	}
 

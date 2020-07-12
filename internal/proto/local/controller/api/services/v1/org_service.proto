@@ -6,31 +6,31 @@ option go_package = "github.com/hashicorp/watchtower/internal/gen/controller/api
 
 import "protoc-gen-swagger/options/annotations.proto";
 import "google/api/annotations.proto";
-import "controller/api/resources/scopes/v1/organization.proto";
+import "controller/api/resources/scopes/v1/org.proto";
 import "controller/api/resources/authtokens/v1/authtoken.proto";
 
-service OrganizationService {
+service OrgService {
 
-  // GetOrganization returns a stored Organization if present.  The provided request
-  // must include the org id for the organization being retrieved. If
+  // GetOrg returns a stored Org if present.  The provided request
+  // must include the org id for the org being retrieved. If
   // that id is missing, malformed or reference a non existing resource an error is returned.
-  rpc GetOrganization(GetOrganizationRequest) returns (GetOrganizationResponse) {
+  rpc GetOrg(GetOrgRequest) returns (GetOrgResponse) {
     option (google.api.http) = {
       get: "/v1/orgs/{id}"
       response_body: "item"
     };
     option (grpc.gateway.protoc_gen_swagger.options.openapiv2_operation) = {
-      summary: "Gets a single Organization"
+      summary: "Gets a single Org"
     };
   }
 
-  // ListOrganizations returns a list of stored organizations which exist in watchtower.
-  rpc ListOrganizations(ListOrganizationsRequest) returns (ListOrganizationsResponse) {
+  // ListOrgs returns a list of stored orgs which exist in watchtower.
+  rpc ListOrgs(ListOrgsRequest) returns (ListOrgsResponse) {
     option (google.api.http) = {
       get: "/v1/orgs"
     };
     option (grpc.gateway.protoc_gen_swagger.options.openapiv2_operation) = {
-      summary: "Lists all Organizations"
+      summary: "Lists all Orgs"
     };
   }
 
@@ -42,7 +42,7 @@ service OrganizationService {
       response_body: "item"
     };
     option (grpc.gateway.protoc_gen_swagger.options.openapiv2_operation) = {
-      summary: "Authenticate a user to an Organization and retrieve an authentication token."
+      summary: "Authenticate a user to an Org and retrieve an authentication token."
     };
   }
 
@@ -52,26 +52,26 @@ service OrganizationService {
       post: "/v1/orgs/{org_id}:deauthenticate"
     };
     option (grpc.gateway.protoc_gen_swagger.options.openapiv2_operation) = {
-      summary: "Deauthenticate an authentication token from an Organization."
+      summary: "Deauthenticate an authentication token from an Org."
     };
   }
 }
 
-message GetOrganizationRequest {
+message GetOrgRequest {
   string id = 1;
   string view = 2;
 }
 
-message GetOrganizationResponse {
-  resources.scopes.v1.Organization item = 1;
+message GetOrgResponse {
+  resources.scopes.v1.Org item = 1;
 }
 
-message ListOrganizationsRequest {
+message ListOrgsRequest {
   string view = 1;
 }
 
-message ListOrganizationsResponse {
-  repeated resources.scopes.v1.Organization items = 1;
+message ListOrgsResponse {
+  repeated resources.scopes.v1.Org items = 1;
 }
 
 message PasswordCredential {

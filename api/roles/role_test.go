@@ -31,7 +31,7 @@ func TestCustom(t *testing.T) {
 	defer tc.Shutdown()
 
 	client := tc.Client()
-	org := &scopes.Organization{
+	org := &scopes.Org{
 		Client: client,
 	}
 	proj, apiErr, err := org.CreateProject(context.Background(), &scopes.Project{})
@@ -92,6 +92,27 @@ func TestCustom(t *testing.T) {
 			assert.Equal(t, *updatedRole.Version, (*r.Version)+1)
 			assert.Empty(t, updatedRole.GroupIds)
 			assert.Empty(t, updatedRole.UserIds)
+
+			r = updatedRole
+			updatedRole, apiErr, err = r.AddGrants(ctx, []string{"id=*;actions=read"})
+			require.NoError(err)
+			require.Nil(apiErr, "Got error ", errorMessage(apiErr))
+			assert.Equal(t, *updatedRole.Version, (*r.Version)+1)
+			assert.Contains(t, updatedRole.Grants, "id=*;actions=read")
+
+			r = updatedRole
+			updatedRole, apiErr, err = r.SetGrants(ctx, []string{"id=*;actions=*"})
+			require.NoError(err)
+			require.Nil(apiErr, "Got error ", errorMessage(apiErr))
+			assert.Equal(t, *updatedRole.Version, (*r.Version)+1)
+			assert.Contains(t, updatedRole.Grants, "id=*;actions=*")
+
+			r = updatedRole
+			updatedRole, apiErr, err = r.RemoveGrants(ctx, []string{"id=*;actions=*"})
+			require.NoError(err)
+			require.Nil(apiErr, "Got error ", errorMessage(apiErr))
+			assert.Equal(t, *updatedRole.Version, (*r.Version)+1)
+			assert.Empty(t, updatedRole.Grants)
 		})
 	}
 }
@@ -109,7 +130,7 @@ func TestRole_List(t *testing.T) {
 	defer tc.Shutdown()
 
 	client := tc.Client()
-	org := &scopes.Organization{
+	org := &scopes.Org{
 		Client: client,
 	}
 	proj, apiErr, err := org.CreateProject(context.Background(), &scopes.Project{})
@@ -185,7 +206,7 @@ func TestRole_Crud(t *testing.T) {
 	defer tc.Shutdown()
 
 	client := tc.Client()
-	org := &scopes.Organization{
+	org := &scopes.Org{
 		Client: client,
 	}
 
@@ -257,7 +278,7 @@ func TestRole_Errors(t *testing.T) {
 	ctx := tc.Context()
 
 	client := tc.Client()
-	org := &scopes.Organization{
+	org := &scopes.Org{
 		Client: client,
 	}
 

@@ -202,7 +202,7 @@ func (c *Command) FlagSet(bit FlagSetBit) *FlagSets {
 				Default:    NotSetValue,
 				EnvVar:     api.EnvWatchtowerOrg,
 				Completion: complete.PredictAnything,
-				Usage:      "Organization in which to make the request; overrides any set in the address.",
+				Usage:      "Org in which to make the request; overrides any set in the address.",
 			})
 
 			f.StringVar(&StringVar{

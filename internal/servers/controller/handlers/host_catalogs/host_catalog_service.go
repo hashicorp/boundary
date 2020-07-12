@@ -399,7 +399,7 @@ func validateAncestors(r ancestorProvider) map[string]string {
 		return badFields
 	}
 
-	if !validId(r.GetOrgId(), scope.Organization.Prefix()+"_") {
+	if !validId(r.GetOrgId(), scope.Org.Prefix()+"_") {
 		badFields[orgIdFieldName] = "The field is incorrectly formatted."
 	}
 	if !validId(r.GetProjectId(), scope.Project.Prefix()+"_") {

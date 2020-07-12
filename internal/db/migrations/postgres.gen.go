@@ -266,7 +266,7 @@ values
   ('iam_scope', 1),
   ('iam_user', 1),
   ('iam_group', 1),
-  ('iam_group_member_user', 1),
+  ('iam_group_member', 1),
   ('iam_role', 1),
   ('iam_role_grant', 1),
   ('iam_group_role', 1),
@@ -438,7 +438,7 @@ BEGIN;
 drop table iam_group cascade;
 drop table iam_user cascade;
 drop table iam_scope_project cascade;
-drop table iam_scope_organization cascade;
+drop table iam_scope_org cascade;
 drop table iam_scope_global cascade;
 drop table iam_scope cascade;
 drop table iam_scope_type_enm cascade;
@@ -446,6 +446,8 @@ drop table iam_role cascade;
 drop view iam_principal_role cascade;
 drop table iam_group_role cascade;
 drop table iam_user_role cascade;
+drop table iam_group_member_user cascade;
+drop view iam_group_member cascade;
 drop table iam_role_grant cascade;
 
 drop function iam_sub_names cascade;
@@ -453,6 +455,10 @@ drop function iam_immutable_scope_type_func cascade;
 drop function iam_sub_scopes_func cascade;
 drop function iam_immutable_role cascade;
 drop function iam_user_role_scope_check cascade;
+drop function iam_group_role_scope_check cascade;
+drop function iam_group_member_scope_check cascade;
+drop function iam_immutable_group_member cascade;
+drop function get_scoped_member_id cascade;
 drop function grant_scope_id_valid cascade;
 drop function immutable_scope_id_func cascade;
 drop function disallow_global_scope_deletion cascade;
@@ -470,14 +476,14 @@ COMMIT;
 begin;
 
 create table iam_scope_type_enm (
-  string text not null primary key check(string in ('unknown', 'global', 'organization', 'project'))
+  string text not null primary key check(string in ('unknown', 'global', 'org', 'project'))
 );
 
 insert into iam_scope_type_enm (string)
 values
   ('unknown'),
   ('global'),
-  ('organization'),
+  ('org'),
   ('project');
 
 
@@ -509,7 +515,7 @@ create table iam_scope (
         and parent_id is null
       )
       or (
-        type = 'organization'
+        type = 'org'
         and parent_id = 'global'
       )
       or (
@@ -533,7 +539,7 @@ create table iam_scope_global (
     name text unique
 );
 
-create table iam_scope_organization (
+create table iam_scope_org (
   scope_id wt_scope_id primary key
     references iam_scope(public_id)
     on delete cascade
@@ -548,7 +554,7 @@ create table iam_scope_organization (
 
 create table iam_scope_project (
     scope_id wt_scope_id not null references iam_scope(public_id) on delete cascade on update cascade,
-    parent_id wt_public_id not null references iam_scope_organization(scope_id) on delete cascade on update cascade,
+    parent_id wt_public_id not null references iam_scope_org(scope_id) on delete cascade on update cascade,
     name text,
     unique(parent_id, name),
     primary key(scope_id, parent_id)
@@ -566,8 +572,8 @@ begin
       (new.public_id, new.name);
     return new;
   end if;
-  if new.type = 'organization' then
-    insert into iam_scope_organization (scope_id, parent_id, name)
+  if new.type = 'org' then
+    insert into iam_scope_org (scope_id, parent_id, name)
     values
       (new.public_id, new.parent_id, new.name);
     return new;
@@ -644,7 +650,7 @@ insert on iam_scope
 
 
 -- iam_sub_names will allow us to enforce the different name constraints for
--- organizations and projects via a before update trigger on the iam_scope
+-- orgs and projects via a before update trigger on the iam_scope
 -- table. 
 create or replace function 
   iam_sub_names() 
@@ -656,8 +662,8 @@ begin
       update iam_scope_global set name = new.name where scope_id = old.public_id;
       return new;
     end if;
-    if new.type = 'organization' then
-      update iam_scope_organization set name = new.name where scope_id = old.public_id;
+    if new.type = 'org' then
+      update iam_scope_org set name = new.name where scope_id = old.public_id;
       return new;
     end if;
     if new.type = 'project' then
@@ -701,7 +707,7 @@ create or replace function
   returns trigger
 as $$
 begin
-  perform from iam_scope where public_id = new.scope_id and type in ('global', 'organization');
+  perform from iam_scope where public_id = new.scope_id and type in ('global', 'org');
   if not found then
     raise exception 'invalid scope type for user creation';
   end if;
@@ -736,12 +742,12 @@ begin
   if role_scope_type = 'project' then
     raise exception 'invalid to set grant_scope_id to non-same scope_id when role scope type is project';
   end if;
-  if role_scope_type = 'organization' then
+  if role_scope_type = 'org' then
     -- Look up the parent scope ID for the scope ID given
     select isc.parent_id from iam_scope isc where isc.public_id = new.grant_scope_id into parent_scope_id;
     -- Allow iff the grant scope ID's parent matches the role's scope ID; that
     -- is, match if the role belongs to a direct child scope of this
-    -- organization
+    -- org
     if parent_scope_id = new.scope_id then
       return new;
     end if;
@@ -867,7 +873,8 @@ before
 insert on iam_role_grant
   for each row execute procedure default_create_time();
 
-create trigger immutable_scope_id
+-- prefix a_ to make this trigger run before ensure_grant_scope_id_valid
+create trigger a_immutable_scope_id
 before
 update on iam_role
   for each row execute procedure iam_immutable_scope_id_func();
@@ -909,10 +916,19 @@ create table iam_group (
     scope_id wt_scope_id not null references iam_scope(public_id) on delete cascade on update cascade,
     unique(name, scope_id),
     disabled boolean not null default false,
+    -- version allows optimistic locking of the group when modifying the group
+    -- itself and when modifying dependent items like group members. 
+    version bigint not null default 1,
+
     -- add unique index so a composite fk can be declared.
     unique(scope_id, public_id)
   );
   
+create trigger 
+  update_version_column
+after update on iam_group
+  for each row execute procedure update_version_column();
+
 create trigger 
   update_time_column 
 before update on iam_group
@@ -1059,6 +1075,74 @@ create trigger
 before
 insert on iam_group_role
   for each row execute procedure default_create_time();
+
+-- iam_group_member_user is an association table that represents groups with
+-- associated users.
+create table iam_group_member_user (
+  create_time wt_timestamp,
+  group_id wt_public_id references iam_group(public_id) on delete cascade on update cascade,
+  member_id wt_public_id references iam_user(public_id) on delete cascade on update cascade,
+  primary key (group_id, member_id)
+);
+
+-- iam_immutable_group_member() ensures that group members are immutable. 
+create or replace function
+  iam_immutable_group_member()
+  returns trigger
+as $$
+begin
+    raise exception 'group members are immutable';
+end;
+$$ language plpgsql;
+
+create trigger 
+  default_create_time_column
+before
+insert on iam_group_member_user
+  for each row execute procedure default_create_time();
+
+create trigger 
+  immutable_create_time
+before
+update on iam_group_member_user
+  for each row execute procedure immutable_create_time_func();
+
+create trigger iam_immutable_group_member
+before
+update on iam_group_member_user
+  for each row execute procedure iam_immutable_group_member();
+
+-- get_scoped_principal_id is used by the iam_group_member view as a convient
+-- way to create <scope_id>:<member_id> to reference members from
+-- other scopes than the group's scope. 
+create or replace function get_scoped_member_id(group_scope text, member_scope text, member_id text) returns text 
+as $$
+begin
+	if group_scope = member_scope then
+		return member_id;
+	end if;
+	return member_scope || ':' || member_id;
+end;
+$$ language plpgsql;
+
+-- iam_group_member provides a consolidated view of group members.
+create view iam_group_member as
+select
+  gm.create_time,
+  gm.group_id,
+  gm.member_id,
+  u.scope_id as member_scope_id,
+  g.scope_id as group_scope_id,
+  get_scoped_member_id(g.scope_id, u.scope_id, gm.member_id) as scoped_member_id,
+  'user' as type
+from
+  iam_group_member_user gm,
+  iam_user u,
+  iam_group g
+where
+  gm.member_id = u.public_id and
+  gm.group_id = g.public_id;
+  
 
 commit;
 

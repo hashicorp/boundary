@@ -13,7 +13,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// TestScopes creates an organization and project suitable for testing.
+// TestScopes creates an org and project suitable for testing.
 func TestScopes(t *testing.T, conn *gorm.DB) (org *Scope, prj *Scope) {
 	t.Helper()
 	require := require.New(t)
@@ -22,7 +22,7 @@ func TestScopes(t *testing.T, conn *gorm.DB) (org *Scope, prj *Scope) {
 	repo, err := NewRepository(rw, rw, wrapper)
 	require.NoError(err)
 
-	org, err = NewOrganization()
+	org, err = NewOrg()
 	require.NoError(err)
 	org, err = repo.CreateScope(context.Background(), org)
 	require.NoError(err)
@@ -47,7 +47,7 @@ func testOrg(t *testing.T, conn *gorm.DB, name, description string) (org *Scope)
 	repo, err := NewRepository(rw, rw, wrapper)
 	require.NoError(err)
 
-	o, err := NewOrganization(WithDescription(description), WithName(name))
+	o, err := NewOrg(WithDescription(description), WithName(name))
 	require.NoError(err)
 	o, err = repo.CreateScope(context.Background(), o)
 	require.NoError(err)
@@ -152,6 +152,19 @@ func TestGroup(t *testing.T, conn *gorm.DB, scopeId string, opt ...Option) *Grou
 	require.NoError(err)
 	require.NotEmpty(grp.PublicId)
 	return grp
+}
+
+func TestGroupMember(t *testing.T, conn *gorm.DB, groupId, userId string, opt ...Option) *GroupMemberUser {
+	t.Helper()
+	require := require.New(t)
+	rw := db.New(conn)
+	gm, err := NewGroupMemberUser(groupId, userId)
+	require.NoError(err)
+	require.NotNil(gm)
+	err = rw.Create(context.Background(), gm)
+	require.NoError(err)
+	require.NotEmpty(gm.CreateTime)
+	return gm
 }
 
 func TestUserRole(t *testing.T, conn *gorm.DB, roleId, userId string, opt ...Option) *UserRole {

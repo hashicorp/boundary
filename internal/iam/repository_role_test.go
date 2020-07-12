@@ -160,7 +160,7 @@ func TestRepository_CreateRole(t *testing.T) {
 			assert.NotNil(grp.CreateTime)
 			assert.NotNil(grp.UpdateTime)
 
-			foundGrp, _, err := repo.LookupRole(context.Background(), grp.PublicId)
+			foundGrp, _, _, err := repo.LookupRole(context.Background(), grp.PublicId)
 			assert.NoError(err)
 			assert.True(proto.Equal(foundGrp, grp))
 
@@ -374,7 +374,7 @@ func TestRepository_UpdateRole(t *testing.T) {
 			newScopeId:  org.PublicId,
 			wantErr:     true,
 			wantDup:     true,
-			wantErrMsg:  " already exists in organization " + org.PublicId,
+			wantErrMsg:  " already exists in org " + org.PublicId,
 			wantIsError: db.ErrNotUnique,
 		},
 	}
@@ -422,7 +422,7 @@ func TestRepository_UpdateRole(t *testing.T) {
 			default:
 				assert.NotEqual(r.UpdateTime, roleAfterUpdate.UpdateTime)
 			}
-			foundRole, _, err := repo.LookupRole(context.Background(), r.PublicId)
+			foundRole, _, _, err := repo.LookupRole(context.Background(), r.PublicId)
 			assert.NoError(err)
 			assert.True(proto.Equal(roleAfterUpdate, foundRole))
 			dbassert := dbassert.New(t, rw)
@@ -512,7 +512,7 @@ func TestRepository_DeleteRole(t *testing.T) {
 			}
 			assert.NoError(err)
 			assert.Equal(tt.wantRowsDeleted, deletedRows)
-			foundRole, _, err := repo.LookupRole(context.Background(), tt.args.role.PublicId)
+			foundRole, _, _, err := repo.LookupRole(context.Background(), tt.args.role.PublicId)
 			assert.Error(err)
 			assert.Nil(foundRole)
 			assert.True(errors.Is(err, db.ErrRecordNotFound))

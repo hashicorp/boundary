@@ -1025,6 +1025,390 @@ func (x *RemoveRolePrincipalsResponse) GetItem() *roles.Role {
 	return nil
 }
 
+type AddRoleGrantsRequest struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	OrgId     string `protobuf:"bytes,1,opt,name=org_id,json=orgId,proto3" json:"org_id,omitempty"`
+	ProjectId string `protobuf:"bytes,2,opt,name=project_id,json=projectId,proto3" json:"project_id,omitempty"`
+	RoleId    string `protobuf:"bytes,3,opt,name=role_id,json=roleId,proto3" json:"role_id,omitempty"`
+	// The version ensures the role hasn't changed since it was last retrieved and if
+	// it has the request will fail.
+	Version *wrappers.UInt32Value `protobuf:"bytes,4,opt,name=version,proto3" json:"version,omitempty"`
+	Grants  []string              `protobuf:"bytes,5,rep,name=grants,proto3" json:"grants,omitempty"`
+}
+
+func (x *AddRoleGrantsRequest) Reset() {
+	*x = AddRoleGrantsRequest{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_controller_api_services_v1_role_service_proto_msgTypes[16]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *AddRoleGrantsRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AddRoleGrantsRequest) ProtoMessage() {}
+
+func (x *AddRoleGrantsRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_controller_api_services_v1_role_service_proto_msgTypes[16]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AddRoleGrantsRequest.ProtoReflect.Descriptor instead.
+func (*AddRoleGrantsRequest) Descriptor() ([]byte, []int) {
+	return file_controller_api_services_v1_role_service_proto_rawDescGZIP(), []int{16}
+}
+
+func (x *AddRoleGrantsRequest) GetOrgId() string {
+	if x != nil {
+		return x.OrgId
+	}
+	return ""
+}
+
+func (x *AddRoleGrantsRequest) GetProjectId() string {
+	if x != nil {
+		return x.ProjectId
+	}
+	return ""
+}
+
+func (x *AddRoleGrantsRequest) GetRoleId() string {
+	if x != nil {
+		return x.RoleId
+	}
+	return ""
+}
+
+func (x *AddRoleGrantsRequest) GetVersion() *wrappers.UInt32Value {
+	if x != nil {
+		return x.Version
+	}
+	return nil
+}
+
+func (x *AddRoleGrantsRequest) GetGrants() []string {
+	if x != nil {
+		return x.Grants
+	}
+	return nil
+}
+
+type AddRoleGrantsResponse struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	Item *roles.Role `protobuf:"bytes,1,opt,name=item,proto3" json:"item,omitempty"`
+}
+
+func (x *AddRoleGrantsResponse) Reset() {
+	*x = AddRoleGrantsResponse{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_controller_api_services_v1_role_service_proto_msgTypes[17]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *AddRoleGrantsResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AddRoleGrantsResponse) ProtoMessage() {}
+
+func (x *AddRoleGrantsResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_controller_api_services_v1_role_service_proto_msgTypes[17]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AddRoleGrantsResponse.ProtoReflect.Descriptor instead.
+func (*AddRoleGrantsResponse) Descriptor() ([]byte, []int) {
+	return file_controller_api_services_v1_role_service_proto_rawDescGZIP(), []int{17}
+}
+
+func (x *AddRoleGrantsResponse) GetItem() *roles.Role {
+	if x != nil {
+		return x.Item
+	}
+	return nil
+}
+
+type SetRoleGrantsRequest struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	OrgId     string `protobuf:"bytes,1,opt,name=org_id,json=orgId,proto3" json:"org_id,omitempty"`
+	ProjectId string `protobuf:"bytes,2,opt,name=project_id,json=projectId,proto3" json:"project_id,omitempty"`
+	RoleId    string `protobuf:"bytes,3,opt,name=role_id,json=roleId,proto3" json:"role_id,omitempty"`
+	// The version ensures the role hasn't changed since it was last retrieved and if
+	// it has the request will fail.
+	Version *wrappers.UInt32Value `protobuf:"bytes,4,opt,name=version,proto3" json:"version,omitempty"`
+	Grants  []string              `protobuf:"bytes,5,rep,name=grants,proto3" json:"grants,omitempty"`
+}
+
+func (x *SetRoleGrantsRequest) Reset() {
+	*x = SetRoleGrantsRequest{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_controller_api_services_v1_role_service_proto_msgTypes[18]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *SetRoleGrantsRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SetRoleGrantsRequest) ProtoMessage() {}
+
+func (x *SetRoleGrantsRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_controller_api_services_v1_role_service_proto_msgTypes[18]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SetRoleGrantsRequest.ProtoReflect.Descriptor instead.
+func (*SetRoleGrantsRequest) Descriptor() ([]byte, []int) {
+	return file_controller_api_services_v1_role_service_proto_rawDescGZIP(), []int{18}
+}
+
+func (x *SetRoleGrantsRequest) GetOrgId() string {
+	if x != nil {
+		return x.OrgId
+	}
+	return ""
+}
+
+func (x *SetRoleGrantsRequest) GetProjectId() string {
+	if x != nil {
+		return x.ProjectId
+	}
+	return ""
+}
+
+func (x *SetRoleGrantsRequest) GetRoleId() string {
+	if x != nil {
+		return x.RoleId
+	}
+	return ""
+}
+
+func (x *SetRoleGrantsRequest) GetVersion() *wrappers.UInt32Value {
+	if x != nil {
+		return x.Version
+	}
+	return nil
+}
+
+func (x *SetRoleGrantsRequest) GetGrants() []string {
+	if x != nil {
+		return x.Grants
+	}
+	return nil
+}
+
+type SetRoleGrantsResponse struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	Item *roles.Role `protobuf:"bytes,1,opt,name=item,proto3" json:"item,omitempty"`
+}
+
+func (x *SetRoleGrantsResponse) Reset() {
+	*x = SetRoleGrantsResponse{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_controller_api_services_v1_role_service_proto_msgTypes[19]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *SetRoleGrantsResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SetRoleGrantsResponse) ProtoMessage() {}
+
+func (x *SetRoleGrantsResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_controller_api_services_v1_role_service_proto_msgTypes[19]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SetRoleGrantsResponse.ProtoReflect.Descriptor instead.
+func (*SetRoleGrantsResponse) Descriptor() ([]byte, []int) {
+	return file_controller_api_services_v1_role_service_proto_rawDescGZIP(), []int{19}
+}
+
+func (x *SetRoleGrantsResponse) GetItem() *roles.Role {
+	if x != nil {
+		return x.Item
+	}
+	return nil
+}
+
+type RemoveRoleGrantsRequest struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	OrgId     string `protobuf:"bytes,1,opt,name=org_id,json=orgId,proto3" json:"org_id,omitempty"`
+	ProjectId string `protobuf:"bytes,2,opt,name=project_id,json=projectId,proto3" json:"project_id,omitempty"`
+	RoleId    string `protobuf:"bytes,3,opt,name=role_id,json=roleId,proto3" json:"role_id,omitempty"`
+	// The version ensures the role hasn't changed since it was last retrieved and if
+	// it has the request will fail.
+	Version *wrappers.UInt32Value `protobuf:"bytes,4,opt,name=version,proto3" json:"version,omitempty"`
+	Grants  []string              `protobuf:"bytes,5,rep,name=grants,proto3" json:"grants,omitempty"`
+}
+
+func (x *RemoveRoleGrantsRequest) Reset() {
+	*x = RemoveRoleGrantsRequest{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_controller_api_services_v1_role_service_proto_msgTypes[20]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *RemoveRoleGrantsRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RemoveRoleGrantsRequest) ProtoMessage() {}
+
+func (x *RemoveRoleGrantsRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_controller_api_services_v1_role_service_proto_msgTypes[20]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use RemoveRoleGrantsRequest.ProtoReflect.Descriptor instead.
+func (*RemoveRoleGrantsRequest) Descriptor() ([]byte, []int) {
+	return file_controller_api_services_v1_role_service_proto_rawDescGZIP(), []int{20}
+}
+
+func (x *RemoveRoleGrantsRequest) GetOrgId() string {
+	if x != nil {
+		return x.OrgId
+	}
+	return ""
+}
+
+func (x *RemoveRoleGrantsRequest) GetProjectId() string {
+	if x != nil {
+		return x.ProjectId
+	}
+	return ""
+}
+
+func (x *RemoveRoleGrantsRequest) GetRoleId() string {
+	if x != nil {
+		return x.RoleId
+	}
+	return ""
+}
+
+func (x *RemoveRoleGrantsRequest) GetVersion() *wrappers.UInt32Value {
+	if x != nil {
+		return x.Version
+	}
+	return nil
+}
+
+func (x *RemoveRoleGrantsRequest) GetGrants() []string {
+	if x != nil {
+		return x.Grants
+	}
+	return nil
+}
+
+type RemoveRoleGrantsResponse struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	Item *roles.Role `protobuf:"bytes,1,opt,name=item,proto3" json:"item,omitempty"`
+}
+
+func (x *RemoveRoleGrantsResponse) Reset() {
+	*x = RemoveRoleGrantsResponse{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_controller_api_services_v1_role_service_proto_msgTypes[21]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *RemoveRoleGrantsResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RemoveRoleGrantsResponse) ProtoMessage() {}
+
+func (x *RemoveRoleGrantsResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_controller_api_services_v1_role_service_proto_msgTypes[21]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use RemoveRoleGrantsResponse.ProtoReflect.Descriptor instead.
+func (*RemoveRoleGrantsResponse) Descriptor() ([]byte, []int) {
+	return file_controller_api_services_v1_role_service_proto_rawDescGZIP(), []int{21}
+}
+
+func (x *RemoveRoleGrantsResponse) GetItem() *roles.Role {
+	if x != nil {
+		return x.Item
+	}
+	return nil
+}
+
 var File_controller_api_services_v1_role_service_proto protoreflect.FileDescriptor
 
 var file_controller_api_services_v1_role_service_proto_rawDesc = []byte{
@@ -1168,7 +1552,58 @@ var file_controller_api_services_v1_role_service_proto_rawDesc = []byte{
 	0x18, 0x01, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x27, 0x2e, 0x63, 0x6f, 0x6e, 0x74, 0x72, 0x6f, 0x6c,
 	0x6c, 0x65, 0x72, 0x2e, 0x61, 0x70, 0x69, 0x2e, 0x72, 0x65, 0x73, 0x6f, 0x75, 0x72, 0x63, 0x65,
 	0x73, 0x2e, 0x72, 0x6f, 0x6c, 0x65, 0x73, 0x2e, 0x76, 0x31, 0x2e, 0x52, 0x6f, 0x6c, 0x65, 0x52,
-	0x04, 0x69, 0x74, 0x65, 0x6d, 0x32, 0xb0, 0x11, 0x0a, 0x0b, 0x52, 0x6f, 0x6c, 0x65, 0x53, 0x65,
+	0x04, 0x69, 0x74, 0x65, 0x6d, 0x22, 0xb5, 0x01, 0x0a, 0x14, 0x41, 0x64, 0x64, 0x52, 0x6f, 0x6c,
+	0x65, 0x47, 0x72, 0x61, 0x6e, 0x74, 0x73, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x12, 0x15,
+	0x0a, 0x06, 0x6f, 0x72, 0x67, 0x5f, 0x69, 0x64, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x05,
+	0x6f, 0x72, 0x67, 0x49, 0x64, 0x12, 0x1d, 0x0a, 0x0a, 0x70, 0x72, 0x6f, 0x6a, 0x65, 0x63, 0x74,
+	0x5f, 0x69, 0x64, 0x18, 0x02, 0x20, 0x01, 0x28, 0x09, 0x52, 0x09, 0x70, 0x72, 0x6f, 0x6a, 0x65,
+	0x63, 0x74, 0x49, 0x64, 0x12, 0x17, 0x0a, 0x07, 0x72, 0x6f, 0x6c, 0x65, 0x5f, 0x69, 0x64, 0x18,
+	0x03, 0x20, 0x01, 0x28, 0x09, 0x52, 0x06, 0x72, 0x6f, 0x6c, 0x65, 0x49, 0x64, 0x12, 0x36, 0x0a,
+	0x07, 0x76, 0x65, 0x72, 0x73, 0x69, 0x6f, 0x6e, 0x18, 0x04, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x1c,
+	0x2e, 0x67, 0x6f, 0x6f, 0x67, 0x6c, 0x65, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x62, 0x75, 0x66,
+	0x2e, 0x55, 0x49, 0x6e, 0x74, 0x33, 0x32, 0x56, 0x61, 0x6c, 0x75, 0x65, 0x52, 0x07, 0x76, 0x65,
+	0x72, 0x73, 0x69, 0x6f, 0x6e, 0x12, 0x16, 0x0a, 0x06, 0x67, 0x72, 0x61, 0x6e, 0x74, 0x73, 0x18,
+	0x05, 0x20, 0x03, 0x28, 0x09, 0x52, 0x06, 0x67, 0x72, 0x61, 0x6e, 0x74, 0x73, 0x22, 0x54, 0x0a,
+	0x15, 0x41, 0x64, 0x64, 0x52, 0x6f, 0x6c, 0x65, 0x47, 0x72, 0x61, 0x6e, 0x74, 0x73, 0x52, 0x65,
+	0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x12, 0x3b, 0x0a, 0x04, 0x69, 0x74, 0x65, 0x6d, 0x18, 0x01,
+	0x20, 0x01, 0x28, 0x0b, 0x32, 0x27, 0x2e, 0x63, 0x6f, 0x6e, 0x74, 0x72, 0x6f, 0x6c, 0x6c, 0x65,
+	0x72, 0x2e, 0x61, 0x70, 0x69, 0x2e, 0x72, 0x65, 0x73, 0x6f, 0x75, 0x72, 0x63, 0x65, 0x73, 0x2e,
+	0x72, 0x6f, 0x6c, 0x65, 0x73, 0x2e, 0x76, 0x31, 0x2e, 0x52, 0x6f, 0x6c, 0x65, 0x52, 0x04, 0x69,
+	0x74, 0x65, 0x6d, 0x22, 0xb5, 0x01, 0x0a, 0x14, 0x53, 0x65, 0x74, 0x52, 0x6f, 0x6c, 0x65, 0x47,
+	0x72, 0x61, 0x6e, 0x74, 0x73, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x12, 0x15, 0x0a, 0x06,
+	0x6f, 0x72, 0x67, 0x5f, 0x69, 0x64, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x05, 0x6f, 0x72,
+	0x67, 0x49, 0x64, 0x12, 0x1d, 0x0a, 0x0a, 0x70, 0x72, 0x6f, 0x6a, 0x65, 0x63, 0x74, 0x5f, 0x69,
+	0x64, 0x18, 0x02, 0x20, 0x01, 0x28, 0x09, 0x52, 0x09, 0x70, 0x72, 0x6f, 0x6a, 0x65, 0x63, 0x74,
+	0x49, 0x64, 0x12, 0x17, 0x0a, 0x07, 0x72, 0x6f, 0x6c, 0x65, 0x5f, 0x69, 0x64, 0x18, 0x03, 0x20,
+	0x01, 0x28, 0x09, 0x52, 0x06, 0x72, 0x6f, 0x6c, 0x65, 0x49, 0x64, 0x12, 0x36, 0x0a, 0x07, 0x76,
+	0x65, 0x72, 0x73, 0x69, 0x6f, 0x6e, 0x18, 0x04, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x1c, 0x2e, 0x67,
+	0x6f, 0x6f, 0x67, 0x6c, 0x65, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x62, 0x75, 0x66, 0x2e, 0x55,
+	0x49, 0x6e, 0x74, 0x33, 0x32, 0x56, 0x61, 0x6c, 0x75, 0x65, 0x52, 0x07, 0x76, 0x65, 0x72, 0x73,
+	0x69, 0x6f, 0x6e, 0x12, 0x16, 0x0a, 0x06, 0x67, 0x72, 0x61, 0x6e, 0x74, 0x73, 0x18, 0x05, 0x20,
+	0x03, 0x28, 0x09, 0x52, 0x06, 0x67, 0x72, 0x61, 0x6e, 0x74, 0x73, 0x22, 0x54, 0x0a, 0x15, 0x53,
+	0x65, 0x74, 0x52, 0x6f, 0x6c, 0x65, 0x47, 0x72, 0x61, 0x6e, 0x74, 0x73, 0x52, 0x65, 0x73, 0x70,
+	0x6f, 0x6e, 0x73, 0x65, 0x12, 0x3b, 0x0a, 0x04, 0x69, 0x74, 0x65, 0x6d, 0x18, 0x01, 0x20, 0x01,
+	0x28, 0x0b, 0x32, 0x27, 0x2e, 0x63, 0x6f, 0x6e, 0x74, 0x72, 0x6f, 0x6c, 0x6c, 0x65, 0x72, 0x2e,
+	0x61, 0x70, 0x69, 0x2e, 0x72, 0x65, 0x73, 0x6f, 0x75, 0x72, 0x63, 0x65, 0x73, 0x2e, 0x72, 0x6f,
+	0x6c, 0x65, 0x73, 0x2e, 0x76, 0x31, 0x2e, 0x52, 0x6f, 0x6c, 0x65, 0x52, 0x04, 0x69, 0x74, 0x65,
+	0x6d, 0x22, 0xb8, 0x01, 0x0a, 0x17, 0x52, 0x65, 0x6d, 0x6f, 0x76, 0x65, 0x52, 0x6f, 0x6c, 0x65,
+	0x47, 0x72, 0x61, 0x6e, 0x74, 0x73, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x12, 0x15, 0x0a,
+	0x06, 0x6f, 0x72, 0x67, 0x5f, 0x69, 0x64, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x05, 0x6f,
+	0x72, 0x67, 0x49, 0x64, 0x12, 0x1d, 0x0a, 0x0a, 0x70, 0x72, 0x6f, 0x6a, 0x65, 0x63, 0x74, 0x5f,
+	0x69, 0x64, 0x18, 0x02, 0x20, 0x01, 0x28, 0x09, 0x52, 0x09, 0x70, 0x72, 0x6f, 0x6a, 0x65, 0x63,
+	0x74, 0x49, 0x64, 0x12, 0x17, 0x0a, 0x07, 0x72, 0x6f, 0x6c, 0x65, 0x5f, 0x69, 0x64, 0x18, 0x03,
+	0x20, 0x01, 0x28, 0x09, 0x52, 0x06, 0x72, 0x6f, 0x6c, 0x65, 0x49, 0x64, 0x12, 0x36, 0x0a, 0x07,
+	0x76, 0x65, 0x72, 0x73, 0x69, 0x6f, 0x6e, 0x18, 0x04, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x1c, 0x2e,
+	0x67, 0x6f, 0x6f, 0x67, 0x6c, 0x65, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x62, 0x75, 0x66, 0x2e,
+	0x55, 0x49, 0x6e, 0x74, 0x33, 0x32, 0x56, 0x61, 0x6c, 0x75, 0x65, 0x52, 0x07, 0x76, 0x65, 0x72,
+	0x73, 0x69, 0x6f, 0x6e, 0x12, 0x16, 0x0a, 0x06, 0x67, 0x72, 0x61, 0x6e, 0x74, 0x73, 0x18, 0x05,
+	0x20, 0x03, 0x28, 0x09, 0x52, 0x06, 0x67, 0x72, 0x61, 0x6e, 0x74, 0x73, 0x22, 0x57, 0x0a, 0x18,
+	0x52, 0x65, 0x6d, 0x6f, 0x76, 0x65, 0x52, 0x6f, 0x6c, 0x65, 0x47, 0x72, 0x61, 0x6e, 0x74, 0x73,
+	0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x12, 0x3b, 0x0a, 0x04, 0x69, 0x74, 0x65, 0x6d,
+	0x18, 0x01, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x27, 0x2e, 0x63, 0x6f, 0x6e, 0x74, 0x72, 0x6f, 0x6c,
+	0x6c, 0x65, 0x72, 0x2e, 0x61, 0x70, 0x69, 0x2e, 0x72, 0x65, 0x73, 0x6f, 0x75, 0x72, 0x63, 0x65,
+	0x73, 0x2e, 0x72, 0x6f, 0x6c, 0x65, 0x73, 0x2e, 0x76, 0x31, 0x2e, 0x52, 0x6f, 0x6c, 0x65, 0x52,
+	0x04, 0x69, 0x74, 0x65, 0x6d, 0x32, 0xe4, 0x18, 0x0a, 0x0b, 0x52, 0x6f, 0x6c, 0x65, 0x53, 0x65,
 	0x72, 0x76, 0x69, 0x63, 0x65, 0x12, 0xe1, 0x01, 0x0a, 0x07, 0x47, 0x65, 0x74, 0x52, 0x6f, 0x6c,
 	0x65, 0x12, 0x2a, 0x2e, 0x63, 0x6f, 0x6e, 0x74, 0x72, 0x6f, 0x6c, 0x6c, 0x65, 0x72, 0x2e, 0x61,
 	0x70, 0x69, 0x2e, 0x73, 0x65, 0x72, 0x76, 0x69, 0x63, 0x65, 0x73, 0x2e, 0x76, 0x31, 0x2e, 0x47,
@@ -1307,13 +1742,72 @@ var file_controller_api_services_v1_role_service_proto_rawDesc = []byte{
 	0x12, 0x36, 0x52, 0x65, 0x6d, 0x6f, 0x76, 0x65, 0x73, 0x20, 0x74, 0x68, 0x65, 0x20, 0x73, 0x70,
 	0x65, 0x63, 0x69, 0x66, 0x69, 0x65, 0x64, 0x20, 0x55, 0x73, 0x65, 0x72, 0x73, 0x20, 0x61, 0x6e,
 	0x64, 0x2f, 0x6f, 0x72, 0x20, 0x47, 0x72, 0x6f, 0x75, 0x70, 0x73, 0x20, 0x66, 0x72, 0x6f, 0x6d,
-	0x20, 0x61, 0x20, 0x52, 0x6f, 0x6c, 0x65, 0x2e, 0x42, 0x4f, 0x5a, 0x4d, 0x67, 0x69, 0x74, 0x68,
-	0x75, 0x62, 0x2e, 0x63, 0x6f, 0x6d, 0x2f, 0x68, 0x61, 0x73, 0x68, 0x69, 0x63, 0x6f, 0x72, 0x70,
-	0x2f, 0x77, 0x61, 0x74, 0x63, 0x68, 0x74, 0x6f, 0x77, 0x65, 0x72, 0x2f, 0x69, 0x6e, 0x74, 0x65,
-	0x72, 0x6e, 0x61, 0x6c, 0x2f, 0x67, 0x65, 0x6e, 0x2f, 0x63, 0x6f, 0x6e, 0x74, 0x72, 0x6f, 0x6c,
-	0x6c, 0x65, 0x72, 0x2f, 0x61, 0x70, 0x69, 0x2f, 0x73, 0x65, 0x72, 0x76, 0x69, 0x63, 0x65, 0x73,
-	0x3b, 0x73, 0x65, 0x72, 0x76, 0x69, 0x63, 0x65, 0x73, 0x62, 0x06, 0x70, 0x72, 0x6f, 0x74, 0x6f,
-	0x33,
+	0x20, 0x61, 0x20, 0x52, 0x6f, 0x6c, 0x65, 0x2e, 0x12, 0x9e, 0x02, 0x0a, 0x0d, 0x41, 0x64, 0x64,
+	0x52, 0x6f, 0x6c, 0x65, 0x47, 0x72, 0x61, 0x6e, 0x74, 0x73, 0x12, 0x30, 0x2e, 0x63, 0x6f, 0x6e,
+	0x74, 0x72, 0x6f, 0x6c, 0x6c, 0x65, 0x72, 0x2e, 0x61, 0x70, 0x69, 0x2e, 0x73, 0x65, 0x72, 0x76,
+	0x69, 0x63, 0x65, 0x73, 0x2e, 0x76, 0x31, 0x2e, 0x41, 0x64, 0x64, 0x52, 0x6f, 0x6c, 0x65, 0x47,
+	0x72, 0x61, 0x6e, 0x74, 0x73, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x1a, 0x31, 0x2e, 0x63,
+	0x6f, 0x6e, 0x74, 0x72, 0x6f, 0x6c, 0x6c, 0x65, 0x72, 0x2e, 0x61, 0x70, 0x69, 0x2e, 0x73, 0x65,
+	0x72, 0x76, 0x69, 0x63, 0x65, 0x73, 0x2e, 0x76, 0x31, 0x2e, 0x41, 0x64, 0x64, 0x52, 0x6f, 0x6c,
+	0x65, 0x47, 0x72, 0x61, 0x6e, 0x74, 0x73, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x22,
+	0xa7, 0x01, 0x82, 0xd3, 0xe4, 0x93, 0x02, 0x86, 0x01, 0x22, 0x2c, 0x2f, 0x76, 0x31, 0x2f, 0x6f,
+	0x72, 0x67, 0x73, 0x2f, 0x7b, 0x6f, 0x72, 0x67, 0x5f, 0x69, 0x64, 0x7d, 0x2f, 0x72, 0x6f, 0x6c,
+	0x65, 0x73, 0x2f, 0x7b, 0x72, 0x6f, 0x6c, 0x65, 0x5f, 0x69, 0x64, 0x7d, 0x3a, 0x61, 0x64, 0x64,
+	0x2d, 0x67, 0x72, 0x61, 0x6e, 0x74, 0x73, 0x3a, 0x01, 0x2a, 0x5a, 0x4d, 0x22, 0x42, 0x2f, 0x76,
+	0x31, 0x2f, 0x6f, 0x72, 0x67, 0x73, 0x2f, 0x7b, 0x6f, 0x72, 0x67, 0x5f, 0x69, 0x64, 0x7d, 0x2f,
+	0x70, 0x72, 0x6f, 0x6a, 0x65, 0x63, 0x74, 0x73, 0x2f, 0x7b, 0x70, 0x72, 0x6f, 0x6a, 0x65, 0x63,
+	0x74, 0x5f, 0x69, 0x64, 0x7d, 0x2f, 0x72, 0x6f, 0x6c, 0x65, 0x73, 0x2f, 0x7b, 0x72, 0x6f, 0x6c,
+	0x65, 0x5f, 0x69, 0x64, 0x7d, 0x3a, 0x61, 0x64, 0x64, 0x2d, 0x67, 0x72, 0x61, 0x6e, 0x74, 0x73,
+	0x3a, 0x01, 0x2a, 0x62, 0x04, 0x69, 0x74, 0x65, 0x6d, 0x62, 0x04, 0x69, 0x74, 0x65, 0x6d, 0x92,
+	0x41, 0x17, 0x12, 0x15, 0x41, 0x64, 0x64, 0x73, 0x20, 0x67, 0x72, 0x61, 0x6e, 0x74, 0x73, 0x20,
+	0x74, 0x6f, 0x20, 0x61, 0x20, 0x72, 0x6f, 0x6c, 0x65, 0x12, 0xda, 0x02, 0x0a, 0x0d, 0x53, 0x65,
+	0x74, 0x52, 0x6f, 0x6c, 0x65, 0x47, 0x72, 0x61, 0x6e, 0x74, 0x73, 0x12, 0x30, 0x2e, 0x63, 0x6f,
+	0x6e, 0x74, 0x72, 0x6f, 0x6c, 0x6c, 0x65, 0x72, 0x2e, 0x61, 0x70, 0x69, 0x2e, 0x73, 0x65, 0x72,
+	0x76, 0x69, 0x63, 0x65, 0x73, 0x2e, 0x76, 0x31, 0x2e, 0x53, 0x65, 0x74, 0x52, 0x6f, 0x6c, 0x65,
+	0x47, 0x72, 0x61, 0x6e, 0x74, 0x73, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x1a, 0x31, 0x2e,
+	0x63, 0x6f, 0x6e, 0x74, 0x72, 0x6f, 0x6c, 0x6c, 0x65, 0x72, 0x2e, 0x61, 0x70, 0x69, 0x2e, 0x73,
+	0x65, 0x72, 0x76, 0x69, 0x63, 0x65, 0x73, 0x2e, 0x76, 0x31, 0x2e, 0x53, 0x65, 0x74, 0x52, 0x6f,
+	0x6c, 0x65, 0x47, 0x72, 0x61, 0x6e, 0x74, 0x73, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65,
+	0x22, 0xe3, 0x01, 0x82, 0xd3, 0xe4, 0x93, 0x02, 0x86, 0x01, 0x22, 0x2c, 0x2f, 0x76, 0x31, 0x2f,
+	0x6f, 0x72, 0x67, 0x73, 0x2f, 0x7b, 0x6f, 0x72, 0x67, 0x5f, 0x69, 0x64, 0x7d, 0x2f, 0x72, 0x6f,
+	0x6c, 0x65, 0x73, 0x2f, 0x7b, 0x72, 0x6f, 0x6c, 0x65, 0x5f, 0x69, 0x64, 0x7d, 0x3a, 0x73, 0x65,
+	0x74, 0x2d, 0x67, 0x72, 0x61, 0x6e, 0x74, 0x73, 0x3a, 0x01, 0x2a, 0x5a, 0x4d, 0x22, 0x42, 0x2f,
+	0x76, 0x31, 0x2f, 0x6f, 0x72, 0x67, 0x73, 0x2f, 0x7b, 0x6f, 0x72, 0x67, 0x5f, 0x69, 0x64, 0x7d,
+	0x2f, 0x70, 0x72, 0x6f, 0x6a, 0x65, 0x63, 0x74, 0x73, 0x2f, 0x7b, 0x70, 0x72, 0x6f, 0x6a, 0x65,
+	0x63, 0x74, 0x5f, 0x69, 0x64, 0x7d, 0x2f, 0x72, 0x6f, 0x6c, 0x65, 0x73, 0x2f, 0x7b, 0x72, 0x6f,
+	0x6c, 0x65, 0x5f, 0x69, 0x64, 0x7d, 0x3a, 0x73, 0x65, 0x74, 0x2d, 0x67, 0x72, 0x61, 0x6e, 0x74,
+	0x73, 0x3a, 0x01, 0x2a, 0x62, 0x04, 0x69, 0x74, 0x65, 0x6d, 0x62, 0x04, 0x69, 0x74, 0x65, 0x6d,
+	0x92, 0x41, 0x53, 0x12, 0x51, 0x53, 0x65, 0x74, 0x20, 0x67, 0x72, 0x61, 0x6e, 0x74, 0x73, 0x20,
+	0x66, 0x6f, 0x72, 0x20, 0x61, 0x20, 0x72, 0x6f, 0x6c, 0x65, 0x2c, 0x20, 0x72, 0x65, 0x6d, 0x6f,
+	0x76, 0x69, 0x6e, 0x67, 0x20, 0x61, 0x6e, 0x79, 0x20, 0x67, 0x72, 0x61, 0x6e, 0x74, 0x73, 0x20,
+	0x74, 0x68, 0x61, 0x74, 0x20, 0x61, 0x72, 0x65, 0x20, 0x6e, 0x6f, 0x74, 0x20, 0x73, 0x70, 0x65,
+	0x63, 0x69, 0x66, 0x69, 0x65, 0x64, 0x20, 0x69, 0x6e, 0x20, 0x74, 0x68, 0x65, 0x20, 0x72, 0x65,
+	0x71, 0x75, 0x65, 0x73, 0x74, 0x2e, 0x12, 0xb3, 0x02, 0x0a, 0x10, 0x52, 0x65, 0x6d, 0x6f, 0x76,
+	0x65, 0x52, 0x6f, 0x6c, 0x65, 0x47, 0x72, 0x61, 0x6e, 0x74, 0x73, 0x12, 0x33, 0x2e, 0x63, 0x6f,
+	0x6e, 0x74, 0x72, 0x6f, 0x6c, 0x6c, 0x65, 0x72, 0x2e, 0x61, 0x70, 0x69, 0x2e, 0x73, 0x65, 0x72,
+	0x76, 0x69, 0x63, 0x65, 0x73, 0x2e, 0x76, 0x31, 0x2e, 0x52, 0x65, 0x6d, 0x6f, 0x76, 0x65, 0x52,
+	0x6f, 0x6c, 0x65, 0x47, 0x72, 0x61, 0x6e, 0x74, 0x73, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74,
+	0x1a, 0x34, 0x2e, 0x63, 0x6f, 0x6e, 0x74, 0x72, 0x6f, 0x6c, 0x6c, 0x65, 0x72, 0x2e, 0x61, 0x70,
+	0x69, 0x2e, 0x73, 0x65, 0x72, 0x76, 0x69, 0x63, 0x65, 0x73, 0x2e, 0x76, 0x31, 0x2e, 0x52, 0x65,
+	0x6d, 0x6f, 0x76, 0x65, 0x52, 0x6f, 0x6c, 0x65, 0x47, 0x72, 0x61, 0x6e, 0x74, 0x73, 0x52, 0x65,
+	0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x22, 0xb3, 0x01, 0x82, 0xd3, 0xe4, 0x93, 0x02, 0x8c, 0x01,
+	0x22, 0x2f, 0x2f, 0x76, 0x31, 0x2f, 0x6f, 0x72, 0x67, 0x73, 0x2f, 0x7b, 0x6f, 0x72, 0x67, 0x5f,
+	0x69, 0x64, 0x7d, 0x2f, 0x72, 0x6f, 0x6c, 0x65, 0x73, 0x2f, 0x7b, 0x72, 0x6f, 0x6c, 0x65, 0x5f,
+	0x69, 0x64, 0x7d, 0x3a, 0x72, 0x65, 0x6d, 0x6f, 0x76, 0x65, 0x2d, 0x67, 0x72, 0x61, 0x6e, 0x74,
+	0x73, 0x3a, 0x01, 0x2a, 0x5a, 0x50, 0x22, 0x45, 0x2f, 0x76, 0x31, 0x2f, 0x6f, 0x72, 0x67, 0x73,
+	0x2f, 0x7b, 0x6f, 0x72, 0x67, 0x5f, 0x69, 0x64, 0x7d, 0x2f, 0x70, 0x72, 0x6f, 0x6a, 0x65, 0x63,
+	0x74, 0x73, 0x2f, 0x7b, 0x70, 0x72, 0x6f, 0x6a, 0x65, 0x63, 0x74, 0x5f, 0x69, 0x64, 0x7d, 0x2f,
+	0x72, 0x6f, 0x6c, 0x65, 0x73, 0x2f, 0x7b, 0x72, 0x6f, 0x6c, 0x65, 0x5f, 0x69, 0x64, 0x7d, 0x3a,
+	0x72, 0x65, 0x6d, 0x6f, 0x76, 0x65, 0x2d, 0x67, 0x72, 0x61, 0x6e, 0x74, 0x73, 0x3a, 0x01, 0x2a,
+	0x62, 0x04, 0x69, 0x74, 0x65, 0x6d, 0x62, 0x04, 0x69, 0x74, 0x65, 0x6d, 0x92, 0x41, 0x1d, 0x12,
+	0x1b, 0x52, 0x65, 0x6d, 0x6f, 0x76, 0x65, 0x73, 0x20, 0x67, 0x72, 0x61, 0x6e, 0x74, 0x73, 0x20,
+	0x66, 0x72, 0x6f, 0x6d, 0x20, 0x61, 0x20, 0x72, 0x6f, 0x6c, 0x65, 0x2e, 0x42, 0x4f, 0x5a, 0x4d,
+	0x67, 0x69, 0x74, 0x68, 0x75, 0x62, 0x2e, 0x63, 0x6f, 0x6d, 0x2f, 0x68, 0x61, 0x73, 0x68, 0x69,
+	0x63, 0x6f, 0x72, 0x70, 0x2f, 0x77, 0x61, 0x74, 0x63, 0x68, 0x74, 0x6f, 0x77, 0x65, 0x72, 0x2f,
+	0x69, 0x6e, 0x74, 0x65, 0x72, 0x6e, 0x61, 0x6c, 0x2f, 0x67, 0x65, 0x6e, 0x2f, 0x63, 0x6f, 0x6e,
+	0x74, 0x72, 0x6f, 0x6c, 0x6c, 0x65, 0x72, 0x2f, 0x61, 0x70, 0x69, 0x2f, 0x73, 0x65, 0x72, 0x76,
+	0x69, 0x63, 0x65, 0x73, 0x3b, 0x73, 0x65, 0x72, 0x76, 0x69, 0x63, 0x65, 0x73, 0x62, 0x06, 0x70,
+	0x72, 0x6f, 0x74, 0x6f, 0x33,
 }
 
 var (
@@ -1328,7 +1822,7 @@ func file_controller_api_services_v1_role_service_proto_rawDescGZIP() []byte {
 	return file_controller_api_services_v1_role_service_proto_rawDescData
 }
 
-var file_controller_api_services_v1_role_service_proto_msgTypes = make([]protoimpl.MessageInfo, 16)
+var file_controller_api_services_v1_role_service_proto_msgTypes = make([]protoimpl.MessageInfo, 22)
 var file_controller_api_services_v1_role_service_proto_goTypes = []interface{}{
 	(*GetRoleRequest)(nil),               // 0: controller.api.services.v1.GetRoleRequest
 	(*GetRoleResponse)(nil),              // 1: controller.api.services.v1.GetRoleResponse
@@ -1346,45 +1840,63 @@ var file_controller_api_services_v1_role_service_proto_goTypes = []interface{}{
 	(*SetRolePrincipalsResponse)(nil),    // 13: controller.api.services.v1.SetRolePrincipalsResponse
 	(*RemoveRolePrincipalsRequest)(nil),  // 14: controller.api.services.v1.RemoveRolePrincipalsRequest
 	(*RemoveRolePrincipalsResponse)(nil), // 15: controller.api.services.v1.RemoveRolePrincipalsResponse
-	(*roles.Role)(nil),                   // 16: controller.api.resources.roles.v1.Role
-	(*field_mask.FieldMask)(nil),         // 17: google.protobuf.FieldMask
-	(*wrappers.UInt32Value)(nil),         // 18: google.protobuf.UInt32Value
+	(*AddRoleGrantsRequest)(nil),         // 16: controller.api.services.v1.AddRoleGrantsRequest
+	(*AddRoleGrantsResponse)(nil),        // 17: controller.api.services.v1.AddRoleGrantsResponse
+	(*SetRoleGrantsRequest)(nil),         // 18: controller.api.services.v1.SetRoleGrantsRequest
+	(*SetRoleGrantsResponse)(nil),        // 19: controller.api.services.v1.SetRoleGrantsResponse
+	(*RemoveRoleGrantsRequest)(nil),      // 20: controller.api.services.v1.RemoveRoleGrantsRequest
+	(*RemoveRoleGrantsResponse)(nil),     // 21: controller.api.services.v1.RemoveRoleGrantsResponse
+	(*roles.Role)(nil),                   // 22: controller.api.resources.roles.v1.Role
+	(*field_mask.FieldMask)(nil),         // 23: google.protobuf.FieldMask
+	(*wrappers.UInt32Value)(nil),         // 24: google.protobuf.UInt32Value
 }
 var file_controller_api_services_v1_role_service_proto_depIdxs = []int32{
-	16, // 0: controller.api.services.v1.GetRoleResponse.item:type_name -> controller.api.resources.roles.v1.Role
-	16, // 1: controller.api.services.v1.ListRolesResponse.items:type_name -> controller.api.resources.roles.v1.Role
-	16, // 2: controller.api.services.v1.CreateRoleRequest.item:type_name -> controller.api.resources.roles.v1.Role
-	16, // 3: controller.api.services.v1.CreateRoleResponse.item:type_name -> controller.api.resources.roles.v1.Role
-	16, // 4: controller.api.services.v1.UpdateRoleRequest.item:type_name -> controller.api.resources.roles.v1.Role
-	17, // 5: controller.api.services.v1.UpdateRoleRequest.update_mask:type_name -> google.protobuf.FieldMask
-	16, // 6: controller.api.services.v1.UpdateRoleResponse.item:type_name -> controller.api.resources.roles.v1.Role
-	18, // 7: controller.api.services.v1.AddRolePrincipalsRequest.version:type_name -> google.protobuf.UInt32Value
-	16, // 8: controller.api.services.v1.AddRolePrincipalsResponse.item:type_name -> controller.api.resources.roles.v1.Role
-	18, // 9: controller.api.services.v1.SetRolePrincipalsRequest.version:type_name -> google.protobuf.UInt32Value
-	16, // 10: controller.api.services.v1.SetRolePrincipalsResponse.item:type_name -> controller.api.resources.roles.v1.Role
-	18, // 11: controller.api.services.v1.RemoveRolePrincipalsRequest.version:type_name -> google.protobuf.UInt32Value
-	16, // 12: controller.api.services.v1.RemoveRolePrincipalsResponse.item:type_name -> controller.api.resources.roles.v1.Role
-	0,  // 13: controller.api.services.v1.RoleService.GetRole:input_type -> controller.api.services.v1.GetRoleRequest
-	2,  // 14: controller.api.services.v1.RoleService.ListRoles:input_type -> controller.api.services.v1.ListRolesRequest
-	4,  // 15: controller.api.services.v1.RoleService.CreateRole:input_type -> controller.api.services.v1.CreateRoleRequest
-	6,  // 16: controller.api.services.v1.RoleService.UpdateRole:input_type -> controller.api.services.v1.UpdateRoleRequest
-	8,  // 17: controller.api.services.v1.RoleService.DeleteRole:input_type -> controller.api.services.v1.DeleteRoleRequest
-	10, // 18: controller.api.services.v1.RoleService.AddRolePrincipals:input_type -> controller.api.services.v1.AddRolePrincipalsRequest
-	12, // 19: controller.api.services.v1.RoleService.SetRolePrincipals:input_type -> controller.api.services.v1.SetRolePrincipalsRequest
-	14, // 20: controller.api.services.v1.RoleService.RemoveRolePrincipals:input_type -> controller.api.services.v1.RemoveRolePrincipalsRequest
-	1,  // 21: controller.api.services.v1.RoleService.GetRole:output_type -> controller.api.services.v1.GetRoleResponse
-	3,  // 22: controller.api.services.v1.RoleService.ListRoles:output_type -> controller.api.services.v1.ListRolesResponse
-	5,  // 23: controller.api.services.v1.RoleService.CreateRole:output_type -> controller.api.services.v1.CreateRoleResponse
-	7,  // 24: controller.api.services.v1.RoleService.UpdateRole:output_type -> controller.api.services.v1.UpdateRoleResponse
-	9,  // 25: controller.api.services.v1.RoleService.DeleteRole:output_type -> controller.api.services.v1.DeleteRoleResponse
-	11, // 26: controller.api.services.v1.RoleService.AddRolePrincipals:output_type -> controller.api.services.v1.AddRolePrincipalsResponse
-	13, // 27: controller.api.services.v1.RoleService.SetRolePrincipals:output_type -> controller.api.services.v1.SetRolePrincipalsResponse
-	15, // 28: controller.api.services.v1.RoleService.RemoveRolePrincipals:output_type -> controller.api.services.v1.RemoveRolePrincipalsResponse
-	21, // [21:29] is the sub-list for method output_type
-	13, // [13:21] is the sub-list for method input_type
-	13, // [13:13] is the sub-list for extension type_name
-	13, // [13:13] is the sub-list for extension extendee
-	0,  // [0:13] is the sub-list for field type_name
+	22, // 0: controller.api.services.v1.GetRoleResponse.item:type_name -> controller.api.resources.roles.v1.Role
+	22, // 1: controller.api.services.v1.ListRolesResponse.items:type_name -> controller.api.resources.roles.v1.Role
+	22, // 2: controller.api.services.v1.CreateRoleRequest.item:type_name -> controller.api.resources.roles.v1.Role
+	22, // 3: controller.api.services.v1.CreateRoleResponse.item:type_name -> controller.api.resources.roles.v1.Role
+	22, // 4: controller.api.services.v1.UpdateRoleRequest.item:type_name -> controller.api.resources.roles.v1.Role
+	23, // 5: controller.api.services.v1.UpdateRoleRequest.update_mask:type_name -> google.protobuf.FieldMask
+	22, // 6: controller.api.services.v1.UpdateRoleResponse.item:type_name -> controller.api.resources.roles.v1.Role
+	24, // 7: controller.api.services.v1.AddRolePrincipalsRequest.version:type_name -> google.protobuf.UInt32Value
+	22, // 8: controller.api.services.v1.AddRolePrincipalsResponse.item:type_name -> controller.api.resources.roles.v1.Role
+	24, // 9: controller.api.services.v1.SetRolePrincipalsRequest.version:type_name -> google.protobuf.UInt32Value
+	22, // 10: controller.api.services.v1.SetRolePrincipalsResponse.item:type_name -> controller.api.resources.roles.v1.Role
+	24, // 11: controller.api.services.v1.RemoveRolePrincipalsRequest.version:type_name -> google.protobuf.UInt32Value
+	22, // 12: controller.api.services.v1.RemoveRolePrincipalsResponse.item:type_name -> controller.api.resources.roles.v1.Role
+	24, // 13: controller.api.services.v1.AddRoleGrantsRequest.version:type_name -> google.protobuf.UInt32Value
+	22, // 14: controller.api.services.v1.AddRoleGrantsResponse.item:type_name -> controller.api.resources.roles.v1.Role
+	24, // 15: controller.api.services.v1.SetRoleGrantsRequest.version:type_name -> google.protobuf.UInt32Value
+	22, // 16: controller.api.services.v1.SetRoleGrantsResponse.item:type_name -> controller.api.resources.roles.v1.Role
+	24, // 17: controller.api.services.v1.RemoveRoleGrantsRequest.version:type_name -> google.protobuf.UInt32Value
+	22, // 18: controller.api.services.v1.RemoveRoleGrantsResponse.item:type_name -> controller.api.resources.roles.v1.Role
+	0,  // 19: controller.api.services.v1.RoleService.GetRole:input_type -> controller.api.services.v1.GetRoleRequest
+	2,  // 20: controller.api.services.v1.RoleService.ListRoles:input_type -> controller.api.services.v1.ListRolesRequest
+	4,  // 21: controller.api.services.v1.RoleService.CreateRole:input_type -> controller.api.services.v1.CreateRoleRequest
+	6,  // 22: controller.api.services.v1.RoleService.UpdateRole:input_type -> controller.api.services.v1.UpdateRoleRequest
+	8,  // 23: controller.api.services.v1.RoleService.DeleteRole:input_type -> controller.api.services.v1.DeleteRoleRequest
+	10, // 24: controller.api.services.v1.RoleService.AddRolePrincipals:input_type -> controller.api.services.v1.AddRolePrincipalsRequest
+	12, // 25: controller.api.services.v1.RoleService.SetRolePrincipals:input_type -> controller.api.services.v1.SetRolePrincipalsRequest
+	14, // 26: controller.api.services.v1.RoleService.RemoveRolePrincipals:input_type -> controller.api.services.v1.RemoveRolePrincipalsRequest
+	16, // 27: controller.api.services.v1.RoleService.AddRoleGrants:input_type -> controller.api.services.v1.AddRoleGrantsRequest
+	18, // 28: controller.api.services.v1.RoleService.SetRoleGrants:input_type -> controller.api.services.v1.SetRoleGrantsRequest
+	20, // 29: controller.api.services.v1.RoleService.RemoveRoleGrants:input_type -> controller.api.services.v1.RemoveRoleGrantsRequest
+	1,  // 30: controller.api.services.v1.RoleService.GetRole:output_type -> controller.api.services.v1.GetRoleResponse
+	3,  // 31: controller.api.services.v1.RoleService.ListRoles:output_type -> controller.api.services.v1.ListRolesResponse
+	5,  // 32: controller.api.services.v1.RoleService.CreateRole:output_type -> controller.api.services.v1.CreateRoleResponse
+	7,  // 33: controller.api.services.v1.RoleService.UpdateRole:output_type -> controller.api.services.v1.UpdateRoleResponse
+	9,  // 34: controller.api.services.v1.RoleService.DeleteRole:output_type -> controller.api.services.v1.DeleteRoleResponse
+	11, // 35: controller.api.services.v1.RoleService.AddRolePrincipals:output_type -> controller.api.services.v1.AddRolePrincipalsResponse
+	13, // 36: controller.api.services.v1.RoleService.SetRolePrincipals:output_type -> controller.api.services.v1.SetRolePrincipalsResponse
+	15, // 37: controller.api.services.v1.RoleService.RemoveRolePrincipals:output_type -> controller.api.services.v1.RemoveRolePrincipalsResponse
+	17, // 38: controller.api.services.v1.RoleService.AddRoleGrants:output_type -> controller.api.services.v1.AddRoleGrantsResponse
+	19, // 39: controller.api.services.v1.RoleService.SetRoleGrants:output_type -> controller.api.services.v1.SetRoleGrantsResponse
+	21, // 40: controller.api.services.v1.RoleService.RemoveRoleGrants:output_type -> controller.api.services.v1.RemoveRoleGrantsResponse
+	30, // [30:41] is the sub-list for method output_type
+	19, // [19:30] is the sub-list for method input_type
+	19, // [19:19] is the sub-list for extension type_name
+	19, // [19:19] is the sub-list for extension extendee
+	0,  // [0:19] is the sub-list for field type_name
 }
 
 func init() { file_controller_api_services_v1_role_service_proto_init() }
@@ -1585,6 +2097,78 @@ func file_controller_api_services_v1_role_service_proto_init() {
 				return nil
 			}
 		}
+		file_controller_api_services_v1_role_service_proto_msgTypes[16].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*AddRoleGrantsRequest); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_controller_api_services_v1_role_service_proto_msgTypes[17].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*AddRoleGrantsResponse); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_controller_api_services_v1_role_service_proto_msgTypes[18].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*SetRoleGrantsRequest); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_controller_api_services_v1_role_service_proto_msgTypes[19].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*SetRoleGrantsResponse); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_controller_api_services_v1_role_service_proto_msgTypes[20].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*RemoveRoleGrantsRequest); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_controller_api_services_v1_role_service_proto_msgTypes[21].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*RemoveRoleGrantsResponse); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
 	}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
@@ -1592,7 +2176,7 @@ func file_controller_api_services_v1_role_service_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: file_controller_api_services_v1_role_service_proto_rawDesc,
 			NumEnums:      0,
-			NumMessages:   16,
+			NumMessages:   22,
 			NumExtensions: 0,
 			NumServices:   1,
 		},
@@ -1626,22 +2210,22 @@ type RoleServiceClient interface {
 	// ListRoles returns a list of stored roles which exist inside the org
 	// referenced inside the request.  The request must include the org id for
 	// the roles being retrieved.  If the org id is missing, malformed, or
-	// reference a non existing organization, an error is returned.
+	// reference a non existing org, an error is returned.
 	ListRoles(ctx context.Context, in *ListRolesRequest, opts ...grpc.CallOption) (*ListRolesResponse, error)
 	// CreateRole creates and stores a role in watchtower.  The provided
 	// request must include the org id in which the role will be created.
 	// If the org id is missing, malformed or references a non existing
-	// organization, an error is returned.  If a name is provided that is in
-	// use in another role in the same organization, an error is returned.
+	// org, an error is returned.  If a name is provided that is in
+	// use in another role in the same org, an error is returned.
 	CreateRole(ctx context.Context, in *CreateRoleRequest, opts ...grpc.CallOption) (*CreateRoleResponse, error)
 	// UpdateRole updates an existing role in watchtower.  The provided
 	// role must not have any read only fields set.  The update mask must be
 	// included in the request and contain at least 1 mutable field.  To unset
 	// a field's value, include the field in the update mask and don't set it
-	// in the provided role. An error is returned if either the organization
+	// in the provided role. An error is returned if either the org
 	// or role ids are missing or reference a non existing resource.  An error
 	// is also returned if the request attempts to update the name to one that is
-	// already in use in this organization.
+	// already in use in this org.
 	UpdateRole(ctx context.Context, in *UpdateRoleRequest, opts ...grpc.CallOption) (*UpdateRoleResponse, error)
 	// DeleteRole removes a role from Watchtower. If the provided org or role ids
 	// are malformed or not provided an error is returned.  No error is returned
@@ -1651,21 +2235,38 @@ type RoleServiceClient interface {
 	DeleteRole(ctx context.Context, in *DeleteRoleRequest, opts ...grpc.CallOption) (*DeleteRoleResponse, error)
 	// AddRolePrincipals adds users and/or groups to a role.  The provided request must include
 	// the org id and the role id which the users and/or groups will be added to. If the
-	// org id is missing, malformed or references a non existing organization,
+	// org id is missing, malformed or references a non existing org,
 	// an error is returned.
 	AddRolePrincipals(ctx context.Context, in *AddRolePrincipalsRequest, opts ...grpc.CallOption) (*AddRolePrincipalsResponse, error)
 	// SetRolePrincipals sets the role's users and/or groups.  Any existing principals on
 	// the role are deleted if they are not included in this request.  The provided
 	// request must include the org id and the role id which the users and/or groups
 	// will be set to. If the org id is missing, malformed or references a non
-	// existing organization, an error is returned.
+	// existing org, an error is returned.
 	SetRolePrincipals(ctx context.Context, in *SetRolePrincipalsRequest, opts ...grpc.CallOption) (*SetRolePrincipalsResponse, error)
 	// RemoveRolePrincipals removes the users and/or groups from the specified role.
 	// The provided request must include the org id and the role id which the users
 	// and/or groups will be removed from. If the org id is missing, malformed or references a non
-	// existing organization, an error is returned.  It is not an error to have duplicate
+	// existing org, an error is returned.  It is not an error to have duplicate
 	// user/group ids.
 	RemoveRolePrincipals(ctx context.Context, in *RemoveRolePrincipalsRequest, opts ...grpc.CallOption) (*RemoveRolePrincipalsResponse, error)
+	// AddRoleGrants adds grants to a role.  The provided request must include
+	// the org id and the role id which the grants will be added to. If the
+	// org id is missing, malformed or references a non existing org,
+	// an error is returned.  It is not an error to have duplicate grants.
+	AddRoleGrants(ctx context.Context, in *AddRoleGrantsRequest, opts ...grpc.CallOption) (*AddRoleGrantsResponse, error)
+	// SetRoleGrants sets the role's grants.  Any existing grants on the role are
+	// deleted if they are not included in this request.  The provided request must
+	// include the org id and the role id which the grants will be set to. If the
+	// org id is missing, malformed or references a non existing org, an
+	// error is returned.  It is not an error to have duplicate grants.
+	SetRoleGrants(ctx context.Context, in *SetRoleGrantsRequest, opts ...grpc.CallOption) (*SetRoleGrantsResponse, error)
+	// RemoveRoleGrants removes the users and/or groups from the specified role.
+	// The provided request must include the org id and the role id which the users
+	// and/or groups will be removed from. If the org id is missing, malformed or references a non
+	// existing org, an error is returned.  It is not an error to have duplicate
+	// user/group ids.
+	RemoveRoleGrants(ctx context.Context, in *RemoveRoleGrantsRequest, opts ...grpc.CallOption) (*RemoveRoleGrantsResponse, error)
 }
 
 type roleServiceClient struct {
@@ -1748,6 +2349,33 @@ func (c *roleServiceClient) RemoveRolePrincipals(ctx context.Context, in *Remove
 	return out, nil
 }
 
+func (c *roleServiceClient) AddRoleGrants(ctx context.Context, in *AddRoleGrantsRequest, opts ...grpc.CallOption) (*AddRoleGrantsResponse, error) {
+	out := new(AddRoleGrantsResponse)
+	err := c.cc.Invoke(ctx, "/controller.api.services.v1.RoleService/AddRoleGrants", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *roleServiceClient) SetRoleGrants(ctx context.Context, in *SetRoleGrantsRequest, opts ...grpc.CallOption) (*SetRoleGrantsResponse, error) {
+	out := new(SetRoleGrantsResponse)
+	err := c.cc.Invoke(ctx, "/controller.api.services.v1.RoleService/SetRoleGrants", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *roleServiceClient) RemoveRoleGrants(ctx context.Context, in *RemoveRoleGrantsRequest, opts ...grpc.CallOption) (*RemoveRoleGrantsResponse, error) {
+	out := new(RemoveRoleGrantsResponse)
+	err := c.cc.Invoke(ctx, "/controller.api.services.v1.RoleService/RemoveRoleGrants", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // RoleServiceServer is the server API for RoleService service.
 type RoleServiceServer interface {
 	// GetRole returns a stored Role if present.  The provided request
@@ -1758,22 +2386,22 @@ type RoleServiceServer interface {
 	// ListRoles returns a list of stored roles which exist inside the org
 	// referenced inside the request.  The request must include the org id for
 	// the roles being retrieved.  If the org id is missing, malformed, or
-	// reference a non existing organization, an error is returned.
+	// reference a non existing org, an error is returned.
 	ListRoles(context.Context, *ListRolesRequest) (*ListRolesResponse, error)
 	// CreateRole creates and stores a role in watchtower.  The provided
 	// request must include the org id in which the role will be created.
 	// If the org id is missing, malformed or references a non existing
-	// organization, an error is returned.  If a name is provided that is in
-	// use in another role in the same organization, an error is returned.
+	// org, an error is returned.  If a name is provided that is in
+	// use in another role in the same org, an error is returned.
 	CreateRole(context.Context, *CreateRoleRequest) (*CreateRoleResponse, error)
 	// UpdateRole updates an existing role in watchtower.  The provided
 	// role must not have any read only fields set.  The update mask must be
 	// included in the request and contain at least 1 mutable field.  To unset
 	// a field's value, include the field in the update mask and don't set it
-	// in the provided role. An error is returned if either the organization
+	// in the provided role. An error is returned if either the org
 	// or role ids are missing or reference a non existing resource.  An error
 	// is also returned if the request attempts to update the name to one that is
-	// already in use in this organization.
+	// already in use in this org.
 	UpdateRole(context.Context, *UpdateRoleRequest) (*UpdateRoleResponse, error)
 	// DeleteRole removes a role from Watchtower. If the provided org or role ids
 	// are malformed or not provided an error is returned.  No error is returned
@@ -1783,21 +2411,38 @@ type RoleServiceServer interface {
 	DeleteRole(context.Context, *DeleteRoleRequest) (*DeleteRoleResponse, error)
 	// AddRolePrincipals adds users and/or groups to a role.  The provided request must include
 	// the org id and the role id which the users and/or groups will be added to. If the
-	// org id is missing, malformed or references a non existing organization,
+	// org id is missing, malformed or references a non existing org,
 	// an error is returned.
 	AddRolePrincipals(context.Context, *AddRolePrincipalsRequest) (*AddRolePrincipalsResponse, error)
 	// SetRolePrincipals sets the role's users and/or groups.  Any existing principals on
 	// the role are deleted if they are not included in this request.  The provided
 	// request must include the org id and the role id which the users and/or groups
 	// will be set to. If the org id is missing, malformed or references a non
-	// existing organization, an error is returned.
+	// existing org, an error is returned.
 	SetRolePrincipals(context.Context, *SetRolePrincipalsRequest) (*SetRolePrincipalsResponse, error)
 	// RemoveRolePrincipals removes the users and/or groups from the specified role.
 	// The provided request must include the org id and the role id which the users
 	// and/or groups will be removed from. If the org id is missing, malformed or references a non
-	// existing organization, an error is returned.  It is not an error to have duplicate
+	// existing org, an error is returned.  It is not an error to have duplicate
 	// user/group ids.
 	RemoveRolePrincipals(context.Context, *RemoveRolePrincipalsRequest) (*RemoveRolePrincipalsResponse, error)
+	// AddRoleGrants adds grants to a role.  The provided request must include
+	// the org id and the role id which the grants will be added to. If the
+	// org id is missing, malformed or references a non existing org,
+	// an error is returned.  It is not an error to have duplicate grants.
+	AddRoleGrants(context.Context, *AddRoleGrantsRequest) (*AddRoleGrantsResponse, error)
+	// SetRoleGrants sets the role's grants.  Any existing grants on the role are
+	// deleted if they are not included in this request.  The provided request must
+	// include the org id and the role id which the grants will be set to. If the
+	// org id is missing, malformed or references a non existing org, an
+	// error is returned.  It is not an error to have duplicate grants.
+	SetRoleGrants(context.Context, *SetRoleGrantsRequest) (*SetRoleGrantsResponse, error)
+	// RemoveRoleGrants removes the users and/or groups from the specified role.
+	// The provided request must include the org id and the role id which the users
+	// and/or groups will be removed from. If the org id is missing, malformed or references a non
+	// existing org, an error is returned.  It is not an error to have duplicate
+	// user/group ids.
+	RemoveRoleGrants(context.Context, *RemoveRoleGrantsRequest) (*RemoveRoleGrantsResponse, error)
 }
 
 // UnimplementedRoleServiceServer can be embedded to have forward compatible implementations.
@@ -1827,6 +2472,15 @@ func (*UnimplementedRoleServiceServer) SetRolePrincipals(context.Context, *SetRo
 }
 func (*UnimplementedRoleServiceServer) RemoveRolePrincipals(context.Context, *RemoveRolePrincipalsRequest) (*RemoveRolePrincipalsResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method RemoveRolePrincipals not implemented")
+}
+func (*UnimplementedRoleServiceServer) AddRoleGrants(context.Context, *AddRoleGrantsRequest) (*AddRoleGrantsResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method AddRoleGrants not implemented")
+}
+func (*UnimplementedRoleServiceServer) SetRoleGrants(context.Context, *SetRoleGrantsRequest) (*SetRoleGrantsResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method SetRoleGrants not implemented")
+}
+func (*UnimplementedRoleServiceServer) RemoveRoleGrants(context.Context, *RemoveRoleGrantsRequest) (*RemoveRoleGrantsResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method RemoveRoleGrants not implemented")
 }
 
 func RegisterRoleServiceServer(s *grpc.Server, srv RoleServiceServer) {
@@ -1977,6 +2631,60 @@ func _RoleService_RemoveRolePrincipals_Handler(srv interface{}, ctx context.Cont
 	return interceptor(ctx, in, info, handler)
 }
 
+func _RoleService_AddRoleGrants_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(AddRoleGrantsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(RoleServiceServer).AddRoleGrants(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/controller.api.services.v1.RoleService/AddRoleGrants",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(RoleServiceServer).AddRoleGrants(ctx, req.(*AddRoleGrantsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _RoleService_SetRoleGrants_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(SetRoleGrantsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(RoleServiceServer).SetRoleGrants(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/controller.api.services.v1.RoleService/SetRoleGrants",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(RoleServiceServer).SetRoleGrants(ctx, req.(*SetRoleGrantsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _RoleService_RemoveRoleGrants_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(RemoveRoleGrantsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(RoleServiceServer).RemoveRoleGrants(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/controller.api.services.v1.RoleService/RemoveRoleGrants",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(RoleServiceServer).RemoveRoleGrants(ctx, req.(*RemoveRoleGrantsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 var _RoleService_serviceDesc = grpc.ServiceDesc{
 	ServiceName: "controller.api.services.v1.RoleService",
 	HandlerType: (*RoleServiceServer)(nil),
@@ -2012,6 +2720,18 @@ var _RoleService_serviceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "RemoveRolePrincipals",
 			Handler:    _RoleService_RemoveRolePrincipals_Handler,
+		},
+		{
+			MethodName: "AddRoleGrants",
+			Handler:    _RoleService_AddRoleGrants_Handler,
+		},
+		{
+			MethodName: "SetRoleGrants",
+			Handler:    _RoleService_SetRoleGrants_Handler,
+		},
+		{
+			MethodName: "RemoveRoleGrants",
+			Handler:    _RoleService_RemoveRoleGrants_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

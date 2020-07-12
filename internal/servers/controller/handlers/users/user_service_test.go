@@ -154,7 +154,7 @@ func TestList(t *testing.T) {
 		// TODO: When an org doesn't exist, we should return a 404 instead of an empty list.
 		{
 			name:    "Unfound Org",
-			req:     &pbs.ListUsersRequest{OrgId: scope.Organization.Prefix() + "_DoesntExis"},
+			req:     &pbs.ListUsersRequest{OrgId: scope.Org.Prefix() + "_DoesntExis"},
 			res:     &pbs.ListUsersResponse{},
 			errCode: codes.OK,
 		},

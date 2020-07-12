@@ -69,7 +69,7 @@ func (r *Repository) UpdateRole(ctx context.Context, role *Role, fieldMaskPaths 
 		map[string]interface{}{
 			"name":         role.Name,
 			"description":  role.Description,
-			"grantscopeid": role.GrantScopeId,
+			"GrantScopeId": role.GrantScopeId,
 		},
 		fieldMaskPaths,
 	)
@@ -80,7 +80,7 @@ func (r *Repository) UpdateRole(ctx context.Context, role *Role, fieldMaskPaths 
 	resource, rowsUpdated, err := r.update(ctx, c, dbMask, nullFields)
 	if err != nil {
 		if db.IsUniqueError(err) {
-			return nil, db.NoRowsAffected, fmt.Errorf("update role: role %s already exists in organization %s: %w", role.Name, role.ScopeId, db.ErrNotUnique)
+			return nil, db.NoRowsAffected, fmt.Errorf("update role: role %s already exists in org %s: %w", role.Name, role.ScopeId, db.ErrNotUnique)
 		}
 		return nil, db.NoRowsAffected, fmt.Errorf("update role: %w for %s", err, c.PublicId)
 	}
@@ -89,13 +89,14 @@ func (r *Repository) UpdateRole(ctx context.Context, role *Role, fieldMaskPaths 
 
 // LookupRole will look up a role in the repository.  If the role is not
 // found, it will return nil, nil.
-func (r *Repository) LookupRole(ctx context.Context, withPublicId string, opt ...Option) (*Role, []PrincipalRole, error) {
+func (r *Repository) LookupRole(ctx context.Context, withPublicId string, opt ...Option) (*Role, []PrincipalRole, []*RoleGrant, error) {
 	if withPublicId == "" {
-		return nil, nil, fmt.Errorf("lookup role: missing public id %w", db.ErrNilParameter)
+		return nil, nil, nil, fmt.Errorf("lookup role: missing public id %w", db.ErrNilParameter)
 	}
 	role := allocRole()
 	role.PublicId = withPublicId
 	var pr []PrincipalRole
+	var rg []*RoleGrant
 	_, err := r.writer.DoTx(
 		ctx,
 		db.StdRetryCnt,
@@ -112,13 +113,17 @@ func (r *Repository) LookupRole(ctx context.Context, withPublicId string, opt ..
 			if err != nil {
 				return fmt.Errorf("lookup role: listing principal roles: %w for %s", err, withPublicId)
 			}
+			rg, err = repo.ListRoleGrants(ctx, withPublicId)
+			if err != nil {
+				return fmt.Errorf("lookup role: listing principal roles: %w for %s", err, withPublicId)
+			}
 			return nil
 		},
 	)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
-	return &role, pr, nil
+	return &role, pr, rg, nil
 }
 
 // DeleteRole will delete a role from the repository.

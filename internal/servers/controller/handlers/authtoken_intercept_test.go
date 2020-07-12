@@ -18,13 +18,13 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// Any generated service would do, but using organization since the path is the shortest for testing.
+// Any generated service would do, but using orgs since the path is the shortest for testing.
 type fakeHandler struct {
-	pbs.UnimplementedOrganizationServiceServer
+	pbs.UnimplementedOrgServiceServer
 	validateFn func(context.Context)
 }
 
-func (s *fakeHandler) GetOrganization(ctx context.Context, _ *pbs.GetOrganizationRequest) (*pbs.GetOrganizationResponse, error) {
+func (s *fakeHandler) GetOrg(ctx context.Context, _ *pbs.GetOrgRequest) (*pbs.GetOrgResponse, error) {
 	s.validateFn(ctx)
 	return nil, errors.New("Doesn't matter this is just for testing input.")
 }
@@ -177,7 +177,7 @@ func TestAuthTokenAuthenticator(t *testing.T) {
 				assert.Equal(t, tc.wantAuthTokMd, tMD)
 			}}
 			mux := runtime.NewServeMux(runtime.WithMetadata(TokenAuthenticator(hclog.L(), repoFn)))
-			require.NoError(t, services.RegisterOrganizationServiceHandlerServer(context.Background(), mux, hook))
+			require.NoError(t, services.RegisterOrgServiceHandlerServer(context.Background(), mux, hook))
 
 			req := httptest.NewRequest("GET", "http://127.0.0.1/v1/orgs/1", nil)
 			for k, v := range tc.headers {

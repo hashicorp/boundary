@@ -88,7 +88,7 @@ func (c *Command) Flags() *base.FlagSets {
 		Name:   "dev-org-id",
 		Target: &c.flagDevOrgId,
 		EnvVar: "WATCHTWER_DEV_ORG_ID",
-		Usage: "Auto-created organization ID. This only applies when running in \"dev\" " +
+		Usage: "Auto-created org ID. This only applies when running in \"dev\" " +
 			"mode.",
 	})
 

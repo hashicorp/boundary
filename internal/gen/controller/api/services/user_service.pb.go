@@ -929,22 +929,22 @@ type UserServiceClient interface {
 	// ListUsers returns a list of stored users which exist inside the org
 	// referenced inside the request.  The request must include the org id for
 	// the users being retrieved.  If the org id is missing, malformed, or
-	// reference a non existing organization, an error is returned.
+	// reference a non existing org, an error is returned.
 	ListUsers(ctx context.Context, in *ListUsersRequest, opts ...grpc.CallOption) (*ListUsersResponse, error)
 	// CreateUser creates and stores a user in watchtower.  The provided
 	// request must include the org id in which the user will be created.
 	// If the org id is missing, malformed or references a non existing
-	// organization, an error is returned.  If a name is provided that is in
-	// use in another user in the same organization, an error is returned.
+	// org, an error is returned.  If a name is provided that is in
+	// use in another user in the same org, an error is returned.
 	CreateUser(ctx context.Context, in *CreateUserRequest, opts ...grpc.CallOption) (*CreateUserResponse, error)
 	// UpdateUser updates an existing user in watchtower.  The provided
 	// user must not have any read only fields set.  The update mask must be
 	// included in the request and contain at least 1 mutable field.  To unset
 	// a field's value, include the field in the update mask and don't set it
-	// in the provided user. An error is returned if either the organization
+	// in the provided user. An error is returned if either the org
 	// or user ids are missing or reference a non existing resource.  An error
 	// is also returned if the request attempts to update the name to one that is
-	// already in use in this organization.
+	// already in use in this org.
 	UpdateUser(ctx context.Context, in *UpdateUserRequest, opts ...grpc.CallOption) (*UpdateUserResponse, error)
 	// DeleteUser removes a user from Watchtower. If the provided org or user ids
 	// are malformed or not provided an error is returned.  No error is returned
@@ -1017,22 +1017,22 @@ type UserServiceServer interface {
 	// ListUsers returns a list of stored users which exist inside the org
 	// referenced inside the request.  The request must include the org id for
 	// the users being retrieved.  If the org id is missing, malformed, or
-	// reference a non existing organization, an error is returned.
+	// reference a non existing org, an error is returned.
 	ListUsers(context.Context, *ListUsersRequest) (*ListUsersResponse, error)
 	// CreateUser creates and stores a user in watchtower.  The provided
 	// request must include the org id in which the user will be created.
 	// If the org id is missing, malformed or references a non existing
-	// organization, an error is returned.  If a name is provided that is in
-	// use in another user in the same organization, an error is returned.
+	// org, an error is returned.  If a name is provided that is in
+	// use in another user in the same org, an error is returned.
 	CreateUser(context.Context, *CreateUserRequest) (*CreateUserResponse, error)
 	// UpdateUser updates an existing user in watchtower.  The provided
 	// user must not have any read only fields set.  The update mask must be
 	// included in the request and contain at least 1 mutable field.  To unset
 	// a field's value, include the field in the update mask and don't set it
-	// in the provided user. An error is returned if either the organization
+	// in the provided user. An error is returned if either the org
 	// or user ids are missing or reference a non existing resource.  An error
 	// is also returned if the request attempts to update the name to one that is
-	// already in use in this organization.
+	// already in use in this org.
 	UpdateUser(context.Context, *UpdateUserRequest) (*UpdateUserResponse, error)
 	// DeleteUser removes a user from Watchtower. If the provided org or user ids
 	// are malformed or not provided an error is returned.  No error is returned

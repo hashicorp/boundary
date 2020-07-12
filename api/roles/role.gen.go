@@ -32,8 +32,8 @@ type Role struct {
 	// Whether the resource is disabled
 	Disabled *bool `json:"disabled,omitempty"`
 	// The scope the grants will apply to. If the role is at the global scope,
-	// this can be an organization or project. If the role is at an organization
-	// scope, this can be a project within the organization. It is invalid for
+	// this can be an org or project. If the role is at an org
+	// scope, this can be a project within the org. It is invalid for
 	// this to be anything other than the role's scope when the role's scope is
 	// a project.
 	GrantScopeId *string `json:"grant_scope_id,omitempty"`
@@ -49,6 +49,12 @@ type Role struct {
 	// The grants that this role provides for it's principals.
 	// Output only.
 	Grants []string `json:"grants,omitempty"`
+	// The canonical version of the grants in the grants field with the same index.
+	// Output only.
+	GrantsCanonical []string `json:"grants_canonical,omitempty"`
+	// The JSON version of the grants in the grants field with the same index.
+	// Output only.
+	GrantsJson []string `json:"grants_json,omitempty"`
 }
 
 func (s *Role) SetDefault(key string) {
