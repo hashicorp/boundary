@@ -219,18 +219,7 @@ func (r *Repository) getUserWithAuthAccount(ctx context.Context, withAuthAccount
 	if err != nil {
 		return nil, fmt.Errorf("unable to get underlying db for auth account search: %w", err)
 	}
-	userTable := func() *User { u := allocUser(); return &u }().TableName()
-	acctTable := func() *AuthAccount { a := allocAuthAccount(); return &a }().TableName()
-
-	where := fmt.Sprintf(`	
-	select %[1]s.*
-		from %[1]s 
-	inner join %[2]s 
-		on %[1]s.public_id = %[2]s.iam_user_id
-	where 
-		%[1]s.scope_id = %[2]s.scope_id and
-		%[2]s.public_id = $1`, userTable, acctTable)
-	rows, err := underlying.Query(where, withAuthAccountId)
+	rows, err := underlying.Query(whereUserAuthAccount, withAuthAccountId)
 	if err != nil {
 		return nil, fmt.Errorf("unable to query auth account %s", withAuthAccountId)
 	}
@@ -291,13 +280,12 @@ func (r *Repository) validateAuthMethodId(ctx context.Context, scopeId, authMeth
 	if authMethodId == "" {
 		return false, fmt.Errorf("auth method id is unset: %w", db.ErrInvalidParameter)
 	}
-	const where = `select count(*) from auth_method where public_id = $1 and scope_id = $2`
 	db, err := r.reader.DB()
 	if err != nil {
 		return false, err
 	}
 	var cnt int
-	if err := db.QueryRow(where, authMethodId, scopeId).Scan(&cnt); err != nil {
+	if err := db.QueryRow(whereValidAuthMethod, authMethodId, scopeId).Scan(&cnt); err != nil {
 		return false, err
 	}
 	if cnt == 0 {
