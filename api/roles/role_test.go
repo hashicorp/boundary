@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"testing"
 
+	"github.com/hashicorp/vault/sdk/helper/strutil"
 	"github.com/hashicorp/watchtower/api"
 	"github.com/hashicorp/watchtower/api/groups"
 	"github.com/hashicorp/watchtower/api/roles"
@@ -57,12 +58,19 @@ func TestCustom(t *testing.T) {
 	}
 
 	hasPrincipal := func(role *roles.Role, principalId string) bool {
+		var foundInPrincipals bool
+		var foundInPrincipalIds bool
 		for _, v := range role.Principals {
 			if v.Id == principalId {
-				return true
+				foundInPrincipals = true
 			}
 		}
-		return false
+		for _, v := range role.PrincipalIds {
+			if v == principalId {
+				foundInPrincipalIds = true
+			}
+		}
+		return foundInPrincipals && foundInPrincipalIds
 	}
 
 	for _, tc := range cases {
@@ -124,7 +132,7 @@ func TestCustom(t *testing.T) {
 }
 
 func TestRole_List(t *testing.T) {
-	tc := controller.NewTestController(t, nil)
+	tc := controller.NewTestController(t, &controller.TestControllerOpts{DisableAuthorizationFailures: true})
 	defer tc.Shutdown()
 
 	client := tc.Client()
@@ -154,10 +162,16 @@ func TestRole_List(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 			ctx := context.Background()
 
-			pl, apiErr, err := tc.scope.ListRoles(ctx)
+			p1, apiErr, err := tc.scope.ListRoles(ctx)
 			require.NoError(err)
 			assert.Nil(apiErr)
-			assert.Empty(pl)
+			var defaultRoleIds []string
+			if tc.name == "org" {
+				require.True(2 == len(p1))
+				defaultRoleIds = []string{p1[0].Id, p1[1].Id}
+			} else {
+				require.Empty(p1)
+			}
 
 			var expected []*roles.Role
 			for i := 0; i < 10; i++ {
@@ -168,20 +182,32 @@ func TestRole_List(t *testing.T) {
 			require.NoError(err)
 			assert.Nil(apiErr)
 
-			pl, apiErr, err = tc.scope.ListRoles(ctx)
+			p2, apiErr, err := tc.scope.ListRoles(ctx)
 			assert.NoError(err)
 			assert.Nil(apiErr)
-			assert.ElementsMatch(comparableSlice(expected[:1]), comparableSlice(pl))
+			var p2ForComparison []*roles.Role
+			for _, v := range p2 {
+				if !strutil.StrListContains(defaultRoleIds, v.Id) {
+					p2ForComparison = append(p2ForComparison, v)
+				}
+			}
+			assert.ElementsMatch(comparableSlice(expected[:1]), comparableSlice(p2ForComparison))
 
 			for i := 1; i < 10; i++ {
 				expected[i], apiErr, err = tc.scope.CreateRole(ctx, expected[i])
 				assert.NoError(err)
 				assert.Nil(apiErr)
 			}
-			pl, apiErr, err = tc.scope.ListRoles(ctx)
+			p3, apiErr, err := tc.scope.ListRoles(ctx)
 			require.NoError(err)
 			assert.Nil(apiErr)
-			assert.ElementsMatch(comparableSlice(expected), comparableSlice(pl))
+			var p3ForComparison []*roles.Role
+			for _, v := range p3 {
+				if !strutil.StrListContains(defaultRoleIds, v.Id) {
+					p3ForComparison = append(p3ForComparison, v)
+				}
+			}
+			assert.ElementsMatch(comparableSlice(expected), comparableSlice(p3ForComparison))
 		})
 	}
 }

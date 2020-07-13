@@ -21,6 +21,12 @@ message Principal {
 	string scope_id = 3 [json_name="scope_id"];
 }
 
+message Grant {
+	// The user-supplied string.
+	// Output only.
+
+}
+
 // Role contains all fields related to a Role resource
 message Role {
 	// The ID of the Role
@@ -56,9 +62,13 @@ message Role {
 	// Output only.
 	uint32 version = 8;
 
+	// The IDs (only) of principals that are assigned to this role.
+	// Output only.
+	repeated string principal_ids = 9 [json_name="principal_ids"];
+
 	// The principals that are assigned to this role.
 	// Output only.
-	repeated Principal principals = 9;
+	repeated Principal principals = 10;
 
 	// The grants that this role provides for its principals.
 	// Output only.

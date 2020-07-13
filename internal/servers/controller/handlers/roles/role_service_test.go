@@ -43,13 +43,19 @@ func equalPrincipals(role *pb.Role, principals []string) bool {
 		return false
 	}
 	for _, principal := range principals {
-		var found bool
+		var foundInPrincipals bool
+		var foundInPrincipalIds bool
 		for _, v := range role.Principals {
 			if v.Id == principal {
-				found = true
+				foundInPrincipals = true
 			}
 		}
-		if !found {
+		for _, v := range role.PrincipalIds {
+			if v == principal {
+				foundInPrincipalIds = true
+			}
+		}
+		if !foundInPrincipals || !foundInPrincipalIds {
 			return false
 		}
 	}

@@ -3409,6 +3409,14 @@
           "description": "The version can be used in subsiquent write requests to ensure this resource\nhas not changed and to fail the write if it has.\nOutput only.",
           "readOnly": true
         },
+        "principal_ids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "The IDs (only) of principals that are assigned to this role.\nOutput only.",
+          "readOnly": true
+        },
         "principals": {
           "type": "array",
           "items": {
