@@ -450,6 +450,36 @@ func (b *Server) CreateDevDatabase(dialect string) error {
 		}
 	}
 
+	ar, err := iam.NewRole(orgScope.PublicId)
+	if err != nil {
+		return fmt.Errorf("error creating in memory role for anon authen: %w", err)
+	}
+	authenRole, err := repo.CreateRole(ctx, ar, iam.WithDescription("role for anon authen"))
+	if err != nil {
+		return fmt.Errorf("error creating role for anon authen: %w", err)
+	}
+	if _, err := repo.AddRoleGrants(ctx, authenRole.PublicId, authenRole.Version, []string{"type=auth-method;action=authenticate"}); err != nil {
+		return fmt.Errorf("error creating grant for anon authen: %w", err)
+	}
+	if _, err := repo.AddPrincipalRoles(ctx, authenRole.PublicId, authenRole.Version+1, []string{"u_anon"}, nil); err != nil {
+		return fmt.Errorf("error adding principal to role for anon authen: %w", err)
+	}
+
+	pr, err := iam.NewRole(orgScope.PublicId)
+	if err != nil {
+		return fmt.Errorf("error creating in memory role for default dev grants: %w", err)
+	}
+	defPermsRole, err := repo.CreateRole(ctx, pr, iam.WithDescription("role for def grants"))
+	if err != nil {
+		return fmt.Errorf("error creating role for default dev grants: %w", err)
+	}
+	if _, err := repo.AddRoleGrants(ctx, defPermsRole.PublicId, defPermsRole.Version, []string{"id=*;actions=*"}); err != nil {
+		return fmt.Errorf("error creating grant for default dev grants: %w", err)
+	}
+	if _, err := repo.AddPrincipalRoles(ctx, defPermsRole.PublicId, defPermsRole.Version+1, []string{"u_auth"}, nil); err != nil {
+		return fmt.Errorf("error adding principal to role for default dev grants: %w", err)
+	}
+
 	// TODO: Remove this when Auth Account repo is in place.
 	authenticate.OrgScope = orgScope.GetPublicId()
 	insert := `insert into auth_method
