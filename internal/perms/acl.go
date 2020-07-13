@@ -35,10 +35,6 @@ type ACL struct {
 type ACLResults struct {
 	Allowed bool
 
-	// This is decorated by the handler, but lives here so we can use the same
-	// struct
-	UserId string
-
 	// This is included but unexported for testing/debugging
 	scopeMap map[string][]Grant
 }

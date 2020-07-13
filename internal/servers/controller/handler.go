@@ -168,6 +168,7 @@ func wrapHandlerWithCommonFuncs(h http.Handler, c *Controller, props HandlerProp
 		var res *perms.Resource
 		var act action.Type
 		var err error
+		var authzResults *perms.ACLResults
 
 		if r.Method == http.MethodOptions {
 			// Don't perform authorization checking for preflight requests, at
@@ -193,7 +194,7 @@ func wrapHandlerWithCommonFuncs(h http.Handler, c *Controller, props HandlerProp
 		// unauthenticated, e.g. the UI serving path.
 
 		if res != nil {
-			authzResults, err := c.performAuthzCheck(ctx, r, res, act)
+			authzResults, userId, err = c.performAuthzCheck(ctx, r, res, act)
 			if err != nil {
 				c.logger.Error("error during authz check", "error", err)
 				w.WriteHeader(http.StatusForbidden)
@@ -203,14 +204,13 @@ func wrapHandlerWithCommonFuncs(h http.Handler, c *Controller, props HandlerProp
 			if !authzResults.Allowed {
 				// TODO: Decide whether to remove this
 				if disableAuthzFailures {
-					c.logger.Info("failed authz info for request", "resource", pretty.Sprint(res), "action", pretty.Sprint(act))
+					c.logger.Info("failed authz info for request", "resource", pretty.Sprint(res), "user_id", userId, "action", act.String())
 				} else {
 					w.WriteHeader(http.StatusForbidden)
 					cancelFunc()
 					return
 				}
 			}
-			userId = authzResults.UserId
 		}
 
 	AUTHZ_FINISHED:
@@ -478,13 +478,14 @@ const (
 	jsVisibleCookieName = "wt-js-token-cookie"
 )
 
-func (c *Controller) performAuthzCheck(ctx context.Context, req *http.Request, res *perms.Resource, act action.Type) (*perms.ACLResults, error) {
+func (c *Controller) performAuthzCheck(ctx context.Context, req *http.Request, res *perms.Resource, act action.Type) (*perms.ACLResults, string, error) {
+	userId := "u_anon"
+
 	if res == nil {
-		return nil, errors.New("perform authz check: res is nil")
+		return nil, userId, errors.New("perform authz check: res is nil")
 	}
 	var receivedTokenType tokenFormat
 	var fullToken, token, publicId string
-	userId := "u_anon"
 
 	// First, get the token, either from the authorization header or from split
 	// cookies
@@ -520,14 +521,14 @@ func (c *Controller) performAuthzCheck(ctx context.Context, req *http.Request, r
 
 		splitFullToken := strings.Split(fullToken, "_")
 		if len(splitFullToken) != 3 {
-			return nil, fmt.Errorf("perform authz check: unexpected number of segments in token, expected %d, found %d", 3, len(splitFullToken))
+			return nil, userId, fmt.Errorf("perform authz check: unexpected number of segments in token, expected %d, found %d", 3, len(splitFullToken))
 		}
 
 		token = splitFullToken[2]
 		publicId = strings.Join(splitFullToken[0:2], "_")
 
 		if receivedTokenType == authTokenTypeUnknown || token == "" || publicId == "" {
-			return nil, fmt.Errorf("perform authz check: after parsing, could not find valid token")
+			return nil, userId, fmt.Errorf("perform authz check: after parsing, could not find valid token")
 		}
 	}
 
@@ -535,12 +536,12 @@ func (c *Controller) performAuthzCheck(ctx context.Context, req *http.Request, r
 	{
 		tokenRepo, err := c.AuthTokenRepoFn()
 		if err != nil {
-			return nil, fmt.Errorf("perform authz check: failed to get authtoken repo: %w", err)
+			return nil, userId, fmt.Errorf("perform authz check: failed to get authtoken repo: %w", err)
 		}
 
 		at, err := tokenRepo.ValidateToken(ctx, publicId, token)
 		if err != nil {
-			return nil, fmt.Errorf("perform authz check: failed to validate token: %w", err)
+			return nil, userId, fmt.Errorf("perform authz check: failed to validate token: %w", err)
 		}
 		if at != nil {
 			userId = at.GetIamUserId()
@@ -554,17 +555,17 @@ GRANTSLOOKUP:
 	{
 		iamRepo, err := c.IamRepoFn()
 		if err != nil {
-			return nil, fmt.Errorf("perform authz check: failed to get iam repo: %w", err)
+			return nil, userId, fmt.Errorf("perform authz check: failed to get iam repo: %w", err)
 		}
 		grantPairs, err = iamRepo.GrantsForUser(ctx, userId)
 		if err != nil {
-			return nil, fmt.Errorf("perform authz check: failed to query for user grants: %w", err)
+			return nil, userId, fmt.Errorf("perform authz check: failed to query for user grants: %w", err)
 		}
 		parsedGrants = make([]perms.Grant, 0, len(grantPairs))
 		for _, pair := range grantPairs {
 			parsed, err := perms.Parse(pair.ScopeId, userId, pair.Grant)
 			if err != nil {
-				return nil, fmt.Errorf("perform authz check: failed to parse grant %#v: %w", pair.Grant, err)
+				return nil, userId, fmt.Errorf("perform authz check: failed to parse grant %#v: %w", pair.Grant, err)
 			}
 			parsedGrants = append(parsedGrants, parsed)
 		}
@@ -572,8 +573,7 @@ GRANTSLOOKUP:
 
 	acl := perms.NewACL(parsedGrants...)
 	allowed := acl.Allowed(*res, act)
-	allowed.UserId = userId
-	return &allowed, nil
+	return &allowed, userId, nil
 }
 
 /*
