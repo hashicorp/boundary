@@ -458,7 +458,7 @@ func (b *Server) CreateDevDatabase(dialect string) error {
 	if err != nil {
 		return fmt.Errorf("error creating role for anon authen: %w", err)
 	}
-	if _, err := repo.AddRoleGrants(ctx, authenRole.PublicId, authenRole.Version, []string{"type=auth-method;actions=authenticate"}); err != nil {
+	if _, err := repo.AddRoleGrants(ctx, authenRole.PublicId, authenRole.Version, []string{"type=auth-method;actions=list,authenticate"}); err != nil {
 		return fmt.Errorf("error creating grant for anon authen: %w", err)
 	}
 	if _, err := repo.AddPrincipalRoles(ctx, authenRole.PublicId, authenRole.Version+1, []string{"u_anon"}, nil); err != nil {
