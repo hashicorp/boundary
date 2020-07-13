@@ -280,6 +280,7 @@ func (g Grant) validateType() error {
 		resource.HostCatalog,
 		resource.HostSet,
 		resource.Host,
+		resource.Org,
 		resource.Target:
 		return nil
 	}
