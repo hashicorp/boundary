@@ -42,12 +42,9 @@ type Role struct {
 	// has not changed and to fail the write if it has.
 	// Output only.
 	Version uint32 `json:"version,omitempty"`
-	// The principals that are assigned this role.
+	// The principals that are assigned to this role.
 	// Output only.
-	PrincipalIds []string `json:"principal_ids,omitempty"`
-	// The scoped version of the principals with the same index.
-	// Output only.
-	PrincipalIdsScoped []string `json:"principal_ids_scoped,omitempty"`
+	Principals []*Principal `json:"principals,omitempty"`
 	// The grants that this role provides for its principals.
 	// Output only.
 	Grants []string `json:"grants,omitempty"`
@@ -61,7 +58,7 @@ type Role struct {
 
 func (s *Role) SetDefault(key string) {
 	lowerKey := strings.ToLower(key)
-	validMap := map[string]string{"createdtime": "created_time", "description": "description", "disabled": "disabled", "grants": "grants", "grantscanonical": "grants_canonical", "grantscopeid": "grant_scope_id", "grantsjson": "grants_json", "id": "id", "name": "name", "principalids": "principal_ids", "principalidsscoped": "principal_ids_scoped", "updatedtime": "updated_time", "version": "version"}
+	validMap := map[string]string{"createdtime": "created_time", "description": "description", "disabled": "disabled", "grants": "grants", "grantscanonical": "grants_canonical", "grantscopeid": "grant_scope_id", "grantsjson": "grants_json", "id": "id", "name": "name", "principals": "principals", "updatedtime": "updated_time", "version": "version"}
 	for k, v := range validMap {
 		if k == lowerKey || v == lowerKey {
 			s.defaultFields = strutil.AppendIfMissing(s.defaultFields, v)
@@ -72,7 +69,7 @@ func (s *Role) SetDefault(key string) {
 
 func (s *Role) UnsetDefault(key string) {
 	lowerKey := strings.ToLower(key)
-	validMap := map[string]string{"createdtime": "created_time", "description": "description", "disabled": "disabled", "grants": "grants", "grantscanonical": "grants_canonical", "grantscopeid": "grant_scope_id", "grantsjson": "grants_json", "id": "id", "name": "name", "principalids": "principal_ids", "principalidsscoped": "principal_ids_scoped", "updatedtime": "updated_time", "version": "version"}
+	validMap := map[string]string{"createdtime": "created_time", "description": "description", "disabled": "disabled", "grants": "grants", "grantscanonical": "grants_canonical", "grantscopeid": "grant_scope_id", "grantsjson": "grants_json", "id": "id", "name": "name", "principals": "principals", "updatedtime": "updated_time", "version": "version"}
 	for k, v := range validMap {
 		if k == lowerKey || v == lowerKey {
 			s.defaultFields = strutil.StrListDelete(s.defaultFields, v)

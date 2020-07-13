@@ -184,36 +184,49 @@ func generateRoleTableOutput(role *roles.Role) string {
 		output = []string{
 			"",
 			"Role information:",
-			fmt.Sprintf("  ID:                   %s", role.Id),
-			fmt.Sprintf("  Created At:           %s", role.CreatedTime.Local().Format(time.RFC3339)),
-			fmt.Sprintf("  Updated At:           %s", role.UpdatedTime.Local().Format(time.RFC3339)),
-			fmt.Sprintf("  Version:              %d", role.Version),
+			fmt.Sprintf("  ID:               %s", role.Id),
+			fmt.Sprintf("  Created At:       %s", role.CreatedTime.Local().Format(time.RFC3339)),
+			fmt.Sprintf("  Updated At:       %s", role.UpdatedTime.Local().Format(time.RFC3339)),
+			fmt.Sprintf("  Version:          %d", role.Version),
 		}
 	}
 	if role.Name != nil {
 		output = append(output,
-			fmt.Sprintf("  Name:                 %s", *role.Name),
+			fmt.Sprintf("  Name:             %s", *role.Name),
 		)
 	}
 	if role.Description != nil {
 		output = append(output,
-			fmt.Sprintf("  Description:          %s", *role.Description),
+			fmt.Sprintf("  Description:      %s", *role.Description),
 		)
 	}
 	if role.GrantScopeId != nil {
 		output = append(output,
-			fmt.Sprintf("  Grant Scope ID:       %s", *role.GrantScopeId),
+			fmt.Sprintf("  Grant Scope ID:   %s", *role.GrantScopeId),
 		)
 	}
-	if len(role.PrincipalIdsScoped) > 0 {
+	if len(role.Principals) > 0 {
 		output = append(output,
-			fmt.Sprintf("  Scoped Principal IDs: %s", strings.Join(role.PrincipalIdsScoped, ", ")),
+			fmt.Sprintf("  Principals:       %s", ""),
+		)
+	}
+	for _, principal := range role.Principals {
+		output = append(output,
+			fmt.Sprintf("    ID:             %s", principal.Id),
+			fmt.Sprintf("      Type:         %s", principal.Type),
+			fmt.Sprintf("      Scope ID:     %s", principal.ScopeId),
 		)
 	}
 	if len(role.GrantsCanonical) > 0 {
 		output = append(output,
-			fmt.Sprintf("  Canonical Grants:     %s", strings.Join(role.GrantsCanonical, " | ")),
+			fmt.Sprintf("  Canonical Grants: %s", ""),
 		)
+	}
+	for _, grant := range role.GrantsCanonical {
+		output = append(output,
+			fmt.Sprintf("    %s", grant),
+		)
+
 	}
 	return base.WrapForHelpText(output)
 }

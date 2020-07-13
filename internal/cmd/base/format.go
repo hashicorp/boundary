@@ -6,6 +6,8 @@ import (
 	"os"
 	"sort"
 	"strings"
+	"unicode"
+	"unicode/utf8"
 
 	"github.com/ghodss/yaml"
 	"github.com/mitchellh/cli"
@@ -19,15 +21,32 @@ const (
 	hopeDelim = "♨"
 )
 
+// This is adapted from the code in the strings package for TrimSpace
+var asciiSpace = [256]uint8{'\t': 1, '\n': 1, '\v': 1, '\f': 1, '\r': 1, ' ': 1}
+
+func trimSpaceRight(in string) string {
+	for stop := len(in); stop > 0; stop-- {
+		c := in[stop-1]
+		if c >= utf8.RuneSelf {
+			return strings.TrimFunc(in[:stop], unicode.IsSpace)
+		}
+		if asciiSpace[c] == 0 {
+			return in[0:stop]
+		}
+	}
+	return ""
+}
+
 func WrapForHelpText(lines []string) string {
 	var ret []string
 	for _, line := range lines {
+		line = trimSpaceRight(line)
 		trimmed := strings.TrimSpace(line)
 		diff := uint(len(line) - len(trimmed))
 		wrapped := wordwrap.WrapString(trimmed, TermWidth-diff)
 		splitWrapped := strings.Split(wrapped, "\n")
 		for i := range splitWrapped {
-			splitWrapped[i] = fmt.Sprintf("%s%s", strings.Repeat(" ", int(diff)), splitWrapped[i])
+			splitWrapped[i] = fmt.Sprintf("%s%s", strings.Repeat(" ", int(diff)), strings.TrimSpace(splitWrapped[i]))
 		}
 		ret = append(ret, strings.Join(splitWrapped, "\n"))
 	}

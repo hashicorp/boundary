@@ -135,10 +135,6 @@ func wrapHandlerWithCommonFuncs(h http.Handler, c *Controller, props HandlerProp
 	if maxRequestSize == 0 {
 		maxRequestSize = globals.DefaultMaxRequestSize
 	}
-	var defaultOrgId string
-	if c != nil && c.conf != nil {
-		defaultOrgId = c.conf.DefaultOrgId
-	}
 
 	logUrls := os.Getenv("WATCHTOWER_LOG_URLS") != ""
 

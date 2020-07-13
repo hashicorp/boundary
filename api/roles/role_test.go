@@ -27,7 +27,7 @@ type roleCrud interface {
 }
 
 func TestCustom(t *testing.T) {
-	tc := controller.NewTestController(t, nil)
+	tc := controller.NewTestController(t, &controller.TestControllerOpts{DisableAuthorizationFailures: true})
 	defer tc.Shutdown()
 
 	client := tc.Client()
@@ -56,6 +56,15 @@ func TestCustom(t *testing.T) {
 		},
 	}
 
+	hasPrincipal := func(role *roles.Role, principalId string) bool {
+		for _, v := range role.Principals {
+			if v.Id == principalId {
+				return true
+			}
+		}
+		return false
+	}
+
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			require := require.New(t)
@@ -74,21 +83,21 @@ func TestCustom(t *testing.T) {
 			require.NoError(err)
 			require.Nil(apiErr, "Got error ", apiErr)
 			assert.Equal(t, updatedRole.Version, r.Version+1)
-			assert.Contains(t, updatedRole.PrincipalIds, g.Id)
+			assert.True(t, hasPrincipal(updatedRole, g.Id))
 
 			r = updatedRole
 			updatedRole, apiErr, err = r.SetPrincipals(ctx, []string{user.Id})
 			require.NoError(err)
 			require.Nil(apiErr, "Got error ", apiErr)
 			assert.Equal(t, updatedRole.Version, r.Version+1)
-			assert.Contains(t, updatedRole.PrincipalIds, user.Id)
+			assert.True(t, hasPrincipal(updatedRole, user.Id))
 
 			r = updatedRole
 			updatedRole, apiErr, err = r.RemovePrincipals(ctx, []string{user.Id})
 			require.NoError(err)
 			require.Nil(apiErr, "Got error ", apiErr)
 			assert.Equal(t, updatedRole.Version, r.Version+1)
-			assert.Empty(t, updatedRole.PrincipalIds)
+			assert.Empty(t, updatedRole.Principals)
 
 			r = updatedRole
 			updatedRole, apiErr, err = r.AddGrants(ctx, []string{"id=*;actions=read"})
@@ -115,7 +124,6 @@ func TestCustom(t *testing.T) {
 }
 
 func TestRole_List(t *testing.T) {
-	assert := assert.New(t)
 	tc := controller.NewTestController(t, nil)
 	defer tc.Shutdown()
 
@@ -143,10 +151,11 @@ func TestRole_List(t *testing.T) {
 
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
 			ctx := context.Background()
 
 			pl, apiErr, err := tc.scope.ListRoles(ctx)
-			assert.NoError(err)
+			require.NoError(err)
 			assert.Nil(apiErr)
 			assert.Empty(pl)
 
@@ -156,7 +165,7 @@ func TestRole_List(t *testing.T) {
 			}
 
 			expected[0], apiErr, err = tc.scope.CreateRole(ctx, expected[0])
-			assert.NoError(err)
+			require.NoError(err)
 			assert.Nil(apiErr)
 
 			pl, apiErr, err = tc.scope.ListRoles(ctx)
@@ -170,6 +179,8 @@ func TestRole_List(t *testing.T) {
 				assert.Nil(apiErr)
 			}
 			pl, apiErr, err = tc.scope.ListRoles(ctx)
+			require.NoError(err)
+			assert.Nil(apiErr)
 			assert.ElementsMatch(comparableSlice(expected), comparableSlice(pl))
 		})
 	}
@@ -234,6 +245,7 @@ func TestRole_Crud(t *testing.T) {
 
 	for _, tt := range cases {
 		t.Run(tt.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
 			g, apiErr, err := tt.scope.CreateRole(tc.Context(), &roles.Role{Name: api.String("foo")})
 			checkRole("create", g, apiErr, err, "foo")
 
@@ -251,12 +263,14 @@ func TestRole_Crud(t *testing.T) {
 			checkRole("update", g, apiErr, err, "")
 
 			existed, apiErr, err := tt.scope.DeleteRole(tc.Context(), g)
-			assert.NoError(t, err)
-			assert.True(t, existed, "Expected existing user when deleted, but it wasn't.")
+			require.NoError(err)
+			assert.Nil(apiErr)
+			assert.True(existed, "Expected existing user when deleted, but it wasn't.")
 
 			existed, apiErr, err = tt.scope.DeleteRole(tc.Context(), g)
-			assert.NoError(t, err)
-			assert.False(t, existed, "Expected user to not exist when deleted, but it did.")
+			require.NoError(err)
+			assert.Nil(apiErr)
+			assert.False(existed, "Expected user to not exist when deleted, but it did.")
 		})
 	}
 }

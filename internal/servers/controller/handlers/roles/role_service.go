@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/hashicorp/watchtower/internal/db"
+	"github.com/hashicorp/watchtower/internal/gen/controller/api/resources/roles"
 	pb "github.com/hashicorp/watchtower/internal/gen/controller/api/resources/roles"
 	pbs "github.com/hashicorp/watchtower/internal/gen/controller/api/services"
 	"github.com/hashicorp/watchtower/internal/iam"
@@ -476,8 +477,12 @@ func toProto(in *iam.Role, principals []iam.PrincipalRole, grants []*iam.RoleGra
 		out.Name = &wrapperspb.StringValue{Value: in.GetName()}
 	}
 	for _, p := range principals {
-		out.PrincipalIds = append(out.PrincipalIds, p.GetPrincipalId())
-		out.PrincipalIdsScoped = append(out.PrincipalIdsScoped, p.GetScopedPrincipalId())
+		principal := &roles.Principal{
+			Id:      p.GetPrincipalId(),
+			Type:    p.GetType(),
+			ScopeId: p.GetPrincipalScopeId(),
+		}
+		out.Principals = append(out.Principals, principal)
 	}
 	for _, g := range grants {
 		out.Grants = append(out.Grants, g.GetRawGrant())

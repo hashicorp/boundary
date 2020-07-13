@@ -101,6 +101,13 @@ var inputStructs = []*structInfo{
 		outPkg:  "roles",
 	},
 	{
+		inFile:  os.Getenv("GEN_BASEPATH") + "/internal/gen/controller/api/resources/roles/role.pb.go",
+		inName:  "Principal",
+		outFile: os.Getenv("GEN_BASEPATH") + "/api/roles/principal.gen.go",
+		outName: "Principal",
+		outPkg:  "roles",
+	},
+	{
 		inFile:       os.Getenv("GEN_BASEPATH") + "/internal/gen/controller/api/resources/hosts/host_catalog.pb.go",
 		inName:       "StaticHostCatalogDetails",
 		outFile:      os.Getenv("GEN_BASEPATH") + "/api/hosts/static_host_catalog.gen.go",
