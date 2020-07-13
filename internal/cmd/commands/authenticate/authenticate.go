@@ -13,7 +13,7 @@ type Command struct {
 }
 
 func (c *Command) Synopsis() string {
-	return wordwrap.WrapString("Authenticate the Watchtower commandline client", 80)
+	return wordwrap.WrapString("Authenticate the Watchtower commandline client", base.TermWidth)
 }
 
 func (c *Command) Help() string {

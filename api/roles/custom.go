@@ -130,8 +130,10 @@ func (s Role) AddGrants(ctx context.Context, grants []string) (*Role, *api.Error
 	// We assume that the client provided has the org and optionally the project id of the request.
 
 	body := map[string]interface{}{
-		"grants":  grants,
 		"version": s.Version,
+	}
+	if len(grants) > 0 {
+		body["grants"] = grants
 	}
 
 	req, err := s.Client.NewRequest(ctx, "POST", fmt.Sprintf("roles/%s:add-grants", s.Id), body)
@@ -162,8 +164,12 @@ func (s Role) SetGrants(ctx context.Context, grants []string) (*Role, *api.Error
 	// We assume that the client provided has the org and optionally the project id of the request.
 
 	body := map[string]interface{}{
-		"grants":  grants,
 		"version": s.Version,
+	}
+	if len(grants) > 0 {
+		body["grants"] = grants
+	} else if grants != nil {
+		body["grants"] = nil
 	}
 
 	req, err := s.Client.NewRequest(ctx, "POST", fmt.Sprintf("roles/%s:set-grants", s.Id), body)
@@ -194,8 +200,10 @@ func (s Role) RemoveGrants(ctx context.Context, grants []string) (*Role, *api.Er
 	// We assume that the client provided has the org and optionally the project id of the request.
 
 	body := map[string]interface{}{
-		"grants":  grants,
 		"version": s.Version,
+	}
+	if len(grants) > 0 {
+		body["grants"] = grants
 	}
 
 	req, err := s.Client.NewRequest(ctx, "POST", fmt.Sprintf("roles/%s:remove-grants", s.Id), body)

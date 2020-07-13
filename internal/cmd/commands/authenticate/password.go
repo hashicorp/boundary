@@ -32,7 +32,7 @@ type PasswordCommand struct {
 }
 
 func (c *PasswordCommand) Synopsis() string {
-	return wordwrap.WrapString("Invoke the password auth method to authenticate with Watchtower", 80)
+	return wordwrap.WrapString("Invoke the password auth method to authenticate with Watchtower", base.TermWidth)
 }
 
 func (c *PasswordCommand) Help() string {

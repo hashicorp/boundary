@@ -1,8 +1,23 @@
 package base
 
-import "github.com/mitchellh/cli"
+import (
+	"os"
+
+	"github.com/mitchellh/cli"
+	"golang.org/x/crypto/ssh/terminal"
+)
 
 type WatchtowerUI struct {
 	cli.Ui
 	Format string
+}
+
+var TermWidth uint = 80
+
+func init() {
+	width, _, err := terminal.GetSize(int(os.Stdin.Fd()))
+	if err != nil {
+		// Do nothing, default to 80
+	}
+	TermWidth = uint(width)
 }

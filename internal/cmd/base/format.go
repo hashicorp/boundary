@@ -23,11 +23,11 @@ func WrapForHelpText(lines []string) string {
 	var ret []string
 	for _, line := range lines {
 		trimmed := strings.TrimSpace(line)
-		diff := len(line) - len(trimmed)
-		wrapped := wordwrap.WrapString(trimmed, uint(80-diff))
+		diff := uint(len(line) - len(trimmed))
+		wrapped := wordwrap.WrapString(trimmed, TermWidth-diff)
 		splitWrapped := strings.Split(wrapped, "\n")
 		for i := range splitWrapped {
-			splitWrapped[i] = fmt.Sprintf("%s%s", strings.Repeat(" ", diff), splitWrapped[i])
+			splitWrapped[i] = fmt.Sprintf("%s%s", strings.Repeat(" ", int(diff)), splitWrapped[i])
 		}
 		ret = append(ret, strings.Join(splitWrapped, "\n"))
 	}

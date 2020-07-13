@@ -8,6 +8,7 @@ import (
 	"github.com/hashicorp/watchtower/api/roles"
 	"github.com/hashicorp/watchtower/api/scopes"
 	"github.com/hashicorp/watchtower/internal/cmd/base"
+	"github.com/hashicorp/watchtower/internal/perms"
 	"github.com/kr/pretty"
 	"github.com/mitchellh/cli"
 	"github.com/posener/complete"
@@ -27,6 +28,7 @@ type Command struct {
 	flagGrantScopeId string
 	flagUsers        []string
 	flagGroups       []string
+	flagGrants       []string
 }
 
 func (c *Command) Synopsis() string {
@@ -34,12 +36,14 @@ func (c *Command) Synopsis() string {
 	case "create", "update", "read", "delete", "list":
 		return synopsisFunc(c.Func)
 	case "add-principals", "set-principals", "remove-principals":
-		return principalsSynopsisFunc(c.Func)
+		return principalsGrantsSynopsisFunc(c.Func, true)
+	case "add-grants", "set-grants", "remove-grants":
+		return principalsGrantsSynopsisFunc(c.Func, false)
 	}
 	return ""
 }
 
-var helpMap = map[string]func(string) string{
+var helpMap = map[string]func() string{
 	"create":            createHelp,
 	"update":            updateHelp,
 	"read":              readHelp,
@@ -48,13 +52,16 @@ var helpMap = map[string]func(string) string{
 	"add-principals":    addPrincipalsHelp,
 	"set-principals":    setPrincipalsHelp,
 	"remove-principals": removePrincipalsHelp,
+	"add-grants":        addPrincipalsHelp,
+	"set-grants":        setPrincipalsHelp,
+	"remove-grants":     removePrincipalsHelp,
 }
 
 func (c *Command) Help() string {
 	if c.Func == "" {
 		return baseHelp()
 	}
-	return helpMap[c.Func](c.Flags().Help())
+	return helpMap[c.Func]() + "\n\n" + c.Flags().Help()
 }
 
 func (c *Command) Flags() *base.FlagSets {
@@ -77,6 +84,12 @@ func (c *Command) Flags() *base.FlagSets {
 		populateFlags(c, f, []string{"id", "user", "group"})
 	case "remove-principals":
 		populateFlags(c, f, []string{"id", "user", "group"})
+	case "add-grants":
+		populateFlags(c, f, []string{"id", "grant"})
+	case "set-grants":
+		populateFlags(c, f, []string{"id", "grant"})
+	case "remove-grants":
+		populateFlags(c, f, []string{"id", "grant"})
 	}
 
 	return set
@@ -136,10 +149,17 @@ func (c *Command) Run(args []string) int {
 
 	users := c.flagUsers
 	groups := c.flagGroups
+	grants := c.flagGrants
 	switch c.Func {
 	case "add-principals", "remove-principals":
 		if len(c.flagUsers) == 0 && len(c.flagGroups) == 0 {
 			c.UI.Error("No users supplied via -user and no groups supplied via -group")
+			return 1
+		}
+
+	case "add-grants", "remove-grants":
+		if len(c.flagGrants) == 0 {
+			c.UI.Error("No grants supplied via -grant")
 			return 1
 		}
 
@@ -161,6 +181,29 @@ func (c *Command) Run(args []string) int {
 		if users == nil && groups == nil {
 			c.UI.Error("No users supplied via -user and no groups supplied via -group")
 			return 1
+		}
+
+	case "set-grants":
+		switch len(c.flagGrants) {
+		case 0:
+		case 1:
+			if c.flagGrants[0] == "null" {
+				grants = []string{}
+			}
+		}
+		if grants == nil {
+			c.UI.Error("No grants supplied via -grant")
+			return 1
+		}
+	}
+
+	if len(grants) > 0 {
+		for _, grant := range grants {
+			_, err := perms.Parse("global", "", grant)
+			if err != nil {
+				c.UI.Error(fmt.Errorf("Grant %q could not be parsed successfully: %w", grant, err).Error())
+				return 1
+			}
 		}
 	}
 
@@ -217,6 +260,12 @@ func (c *Command) Run(args []string) int {
 		role, apiErr, err = role.SetPrincipals(c.Context, users, groups)
 	case "remove-principals":
 		role, apiErr, err = role.RemovePrincipals(c.Context, users, groups)
+	case "add-grants":
+		role, apiErr, err = role.AddGrants(c.Context, grants)
+	case "set-grants":
+		role, apiErr, err = role.SetGrants(c.Context, grants)
+	case "remove-grants":
+		role, apiErr, err = role.RemoveGrants(c.Context, grants)
 	}
 
 	plural := "role"

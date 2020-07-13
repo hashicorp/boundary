@@ -147,6 +147,24 @@ func initCommands(ui, serverCmdUi cli.Ui, runOpts *RunOptions) {
 				Func:    "remove-principals",
 			}, nil
 		},
+		"roles add-grants": func() (cli.Command, error) {
+			return &roles.Command{
+				Command: base.NewCommand(ui),
+				Func:    "add-grants",
+			}, nil
+		},
+		"roles set-grants": func() (cli.Command, error) {
+			return &roles.Command{
+				Command: base.NewCommand(ui),
+				Func:    "set-grants",
+			}, nil
+		},
+		"roles remove-grants": func() (cli.Command, error) {
+			return &roles.Command{
+				Command: base.NewCommand(ui),
+				Func:    "remove-grants",
+			}, nil
+		},
 	}
 }
 
