@@ -10,11 +10,7 @@ import "time"
 // available to reference from anywhere.
 
 const (
-	ContextScopeValue    = "wt_scope"
-	ContextResourceValue = "wt_resource"
-	ContextActionValue   = "wt_action"
-	ContextTypeValue     = "wt_type"
-	ContextPinValue      = "wt_pin"
+	ContextUserIdValue = "wt_user_id"
 )
 
 var (

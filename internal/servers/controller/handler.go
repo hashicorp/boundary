@@ -12,11 +12,13 @@ import (
 	"time"
 
 	"github.com/grpc-ecosystem/grpc-gateway/runtime"
+	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/vault/internalshared/configutil"
 	"github.com/hashicorp/vault/sdk/helper/strutil"
 	"github.com/hashicorp/watchtower/api"
 	"github.com/hashicorp/watchtower/globals"
 	"github.com/hashicorp/watchtower/internal/gen/controller/api/services"
+	"github.com/hashicorp/watchtower/internal/perms"
 	"github.com/hashicorp/watchtower/internal/servers/controller/handlers"
 	"github.com/hashicorp/watchtower/internal/servers/controller/handlers/authenticate"
 	"github.com/hashicorp/watchtower/internal/servers/controller/handlers/groups"
@@ -30,6 +32,7 @@ import (
 	"github.com/hashicorp/watchtower/internal/types/action"
 	"github.com/hashicorp/watchtower/internal/types/resource"
 	"github.com/hashicorp/watchtower/internal/types/scope"
+	"github.com/kr/pretty"
 )
 
 type HandlerProperties struct {
@@ -60,8 +63,8 @@ func handleGrpcGateway(c *Controller) (http.Handler, error) {
 	// Register*ServiceHandlerServer methods ignore the passed in ctx.  Using the baseContext now just in case this changes
 	// in the future, at which point we'll want to be using the baseContext.
 	ctx := c.baseContext
-	mux := runtime.NewServeMux(runtime.WithMetadata(handlers.TokenAuthenticator(c.logger, c.AuthTokenRepoFn, c.IamRepoFn)),
-		runtime.WithProtoErrorHandler(handlers.ErrorHandler(c.logger)))
+	//mux := runtime.NewServeMux(runtime.WithMetadata(handlers.TokenAuthenticator(c.logger, c.AuthTokenRepoFn, c.IamRepoFn)),runtime.WithProtoErrorHandler(handlers.ErrorHandler(c.logger)))
+	mux := runtime.NewServeMux(runtime.WithProtoErrorHandler(handlers.ErrorHandler(c.logger)))
 	hcs, err := host_catalogs.NewService(c.StaticHostRepoFn)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create host catalog handler service: %w", err)
@@ -157,8 +160,8 @@ func wrapHandlerWithCommonFuncs(h http.Handler, c *Controller, props HandlerProp
 		// Set the Cache-Control header for all responses returned
 		w.Header().Set("Cache-Control", "no-store")
 
-		// Get auth params into the context
-		ctx, err := decorateAuthParams(r)
+		// Perform authz checking
+		res, act, err := decorateAuthParams(r)
 		if err != nil {
 			c.logger.Trace("error reading auth parameters from URL", "error", err)
 			// Maybe this isn't the best option, but a URL we can't parse from
@@ -168,10 +171,26 @@ func wrapHandlerWithCommonFuncs(h http.Handler, c *Controller, props HandlerProp
 			return
 		}
 
-		// Start with the request context
-		var cancelFunc context.CancelFunc
-		// Add our timeout
-		ctx, cancelFunc = context.WithTimeout(ctx, maxRequestDuration)
+		// Start with the request context and our timeout
+		ctx, cancelFunc := context.WithTimeout(r.Context(), maxRequestDuration)
+		// The resource is only nil with no error if the path is something
+		// unauthenticated, e.g. the UI serving path.
+		var userId string
+		if res != nil {
+			authzResults, err := c.performAuthzCheck(ctx, c.logger, r, res, act)
+			if err != nil {
+				c.logger.Error("error during authz check", "error", err)
+				w.WriteHeader(http.StatusForbidden)
+				return
+			}
+			userId = authzResults.UserId
+		}
+
+		// Add the user ID to the context
+		if userId == "" {
+			userId = "u_anon"
+		}
+		ctx = context.WithValue(ctx, globals.ContextUserIdValue, userId)
 		// Add a size limiter if desired
 		if maxRequestSize > 0 {
 			ctx = context.WithValue(ctx, "max_request_size", maxRequestSize)
@@ -263,30 +282,29 @@ func wrapHandlerWithCors(h http.Handler, props HandlerProperties) http.Handler {
 	})
 }
 
-func decorateAuthParams(r *http.Request) (context.Context, error) {
+func decorateAuthParams(r *http.Request) (*perms.Resource, action.Type, error) {
 	if r == nil {
-		return nil, errors.New("decorate auth params: incoming request is nil")
+		return nil, action.Unknown, errors.New("decorate auth params: incoming request is nil")
 	}
 
 	// Remove trailing and leading slashes
 	trimmedPath := strings.Trim(r.URL.Path, "/")
 	if !strings.HasPrefix(trimmedPath, "v1") {
 		// Don't look for auth params for requests to fetch the UI
-		return r.Context(), nil
+		return nil, action.Unknown, nil
 	}
 	splitPath := strings.Split(strings.TrimPrefix(trimmedPath, "v1"), "/")
 	splitLen := len(splitPath)
 	if splitLen == 0 {
-		return nil, fmt.Errorf("decorate auth params: invalid path")
+		return nil, action.Unknown, fmt.Errorf("decorate auth params: invalid path")
 	}
 
-	out := r.Context()
 	var act action.Type
 	var typStr string
-	var typ resource.Type
-	var id, pin string
 	scp := scope.Global
-	scopeId := scope.Global.String()
+	res := &perms.Resource{
+		ScopeId: scope.Global.String(),
+	}
 
 	// Handle non-custom types. We'll deal with custom types, including list,
 	// after parsing the path.
@@ -300,7 +318,7 @@ func decorateAuthParams(r *http.Request) (context.Context, error) {
 	case "DELETE":
 		act = action.Delete
 	default:
-		return nil, fmt.Errorf("decorate auth params: unknown method %q", r.Method)
+		return nil, action.Unknown, fmt.Errorf("decorate auth params: unknown method %q", r.Method)
 	}
 
 	// Look for a custom action
@@ -311,12 +329,12 @@ func decorateAuthParams(r *http.Request) (context.Context, error) {
 		actStr := colonSplit[len(colonSplit)-1]
 		act = action.Map[actStr]
 		if act == action.Unknown || act == action.All {
-			return nil, fmt.Errorf("decorate auth params: unknown action %q", actStr)
+			return nil, action.Unknown, fmt.Errorf("decorate auth params: unknown action %q", actStr)
 		}
 		// Keep going with the logic without the custom action
 		splitPath[splitLen-1] = colonSplit[0]
 	default:
-		return nil, fmt.Errorf("decorate auth params: unexpected number of colons in last segment %q", colonSplit[len(colonSplit)-1])
+		return nil, action.Unknown, fmt.Errorf("decorate auth params: unexpected number of colons in last segment %q", colonSplit[len(colonSplit)-1])
 	}
 
 	// Walk backwards. As we walk backwards we look for scopes and figure out if
@@ -338,7 +356,7 @@ func decorateAuthParams(r *http.Request) (context.Context, error) {
 		segmentIsCollection := !strings.Contains(segment, "_")
 
 		if !segmentIsCollection && i != splitLen-1 && nextIdIsPin {
-			pin = segment
+			res.Pin = segment
 			nextIdIsPin = false
 		}
 
@@ -351,13 +369,13 @@ func decorateAuthParams(r *http.Request) (context.Context, error) {
 		case "projects":
 			if i < splitLen-2 {
 				scp = scope.Project
-				scopeId = splitPath[i+1]
+				res.ScopeId = splitPath[i+1]
 			}
 		case "orgs":
 			if scp == scope.Global {
 				if i < splitLen-2 {
 					scp = scope.Org
-					scopeId = splitPath[i+1]
+					res.ScopeId = splitPath[i+1]
 				}
 			}
 		}
@@ -377,14 +395,14 @@ func decorateAuthParams(r *http.Request) (context.Context, error) {
 			//
 			// We continue on with the enclosing loop anyways though to ensure
 			// we find the right scope.
-			if id == "" && !segmentIsCollection {
+			if res.Id == "" && !segmentIsCollection {
 				// Collections don't contain underscores; every resource ID does.
-				id = segment
+				res.Id = segment
 			} else {
 				// Every collection is the plural of the resource type so drop
 				// the last 's'
 				if !strings.HasSuffix(segment, "s") {
-					return nil, fmt.Errorf("decorate auth params: invalid collection syntax for %q", segment)
+					return nil, action.Unknown, fmt.Errorf("decorate auth params: invalid collection syntax for %q", segment)
 				}
 				typStr = strings.TrimSuffix(segment, "s")
 			}
@@ -392,38 +410,140 @@ func decorateAuthParams(r *http.Request) (context.Context, error) {
 	}
 
 	if typStr != "" {
-		typ = resource.Map[typStr]
-		if typ == resource.Unknown {
-			return nil, fmt.Errorf("decorate auth params: unknown resource type %q", typStr)
+		res.Type = resource.Map[typStr]
+		if res.Type == resource.Unknown {
+			return nil, action.Unknown, fmt.Errorf("decorate auth params: unknown resource type %q", typStr)
 		}
-	} else if id == "" {
-		return nil, errors.New("decorate auth params: id and type both not found")
+	} else if res.Id == "" {
+		return nil, action.Unknown, errors.New("decorate auth params: id and type both not found")
 	}
 
 	// If we're operating on a collection (that is, the ID is blank) and it's a
 	// GET, it's actually a list
-	if id == "" && act == action.Read {
+	if res.Id == "" && act == action.Read {
 		act = action.List
 	}
 
 	// If the pin ended up being a scope, nil it out
-	if pin != "" {
-		if pin == "global" ||
-			strings.HasPrefix(pin, "o_") ||
-			strings.HasPrefix(pin, "p_") {
-			pin = ""
+	if res.Pin != "" {
+		if res.Pin == "global" ||
+			strings.HasPrefix(res.Pin, "o_") ||
+			strings.HasPrefix(res.Pin, "p_") {
+			res.Pin = ""
 		}
 	}
 
-	// TODO: Use grpc metadata? If it will preserve it all the way through to
-	// the interceptor maybe it's more efficient; not sure.
-	out = context.WithValue(out, globals.ContextResourceValue, id)
-	out = context.WithValue(out, globals.ContextPinValue, pin)
-	out = context.WithValue(out, globals.ContextTypeValue, typ)
-	out = context.WithValue(out, globals.ContextScopeValue, scopeId)
-	out = context.WithValue(out, globals.ContextActionValue, act)
+	return res, act, nil
+}
 
-	return out, nil
+type tokenFormat int
+
+const (
+	authTokenTypeUnknown tokenFormat = iota
+	authTokenTypeBearer
+	authTokenTypeSplitCookie
+)
+
+const (
+	headerAuthMethod    = "Authorization"
+	httpOnlyCookieName  = "wt-http-token-cookie"
+	jsVisibleCookieName = "wt-js-token-cookie"
+)
+
+func (c *Controller) performAuthzCheck(ctx context.Context, logger hclog.Logger, req *http.Request, res *perms.Resource, act action.Type) (*perms.ACLResults, error) {
+	if res == nil {
+		return nil, errors.New("perform authz check: res is nil")
+	}
+	var receivedTokenType tokenFormat
+	var fullToken, token, publicId, userId string
+
+	// First, get the token, either from the authorization header or from split
+	// cookies
+	{
+		if authHeader := req.Header.Get("Authorization"); authHeader != "" {
+			headerSplit := strings.SplitN(strings.TrimSpace(authHeader), " ", 2)
+			if len(headerSplit) == 2 && strings.EqualFold(strings.TrimSpace(headerSplit[0]), "bearer") {
+				receivedTokenType = authTokenTypeBearer
+				fullToken = strings.TrimSpace(headerSplit[1])
+			}
+		}
+		if receivedTokenType != authTokenTypeBearer {
+			var httpCookiePayload string
+			var jsCookiePayload string
+			if hc, err := req.Cookie(httpOnlyCookieName); err == nil {
+				httpCookiePayload = hc.Value
+			}
+			if jc, err := req.Cookie(jsVisibleCookieName); err == nil {
+				jsCookiePayload = jc.Value
+			}
+			if httpCookiePayload != "" && jsCookiePayload != "" {
+				receivedTokenType = authTokenTypeSplitCookie
+				fullToken = jsCookiePayload + httpCookiePayload
+			}
+		}
+
+		splitFullToken := strings.Split(fullToken, "_")
+		if len(splitFullToken) != 3 {
+			return nil, fmt.Errorf("perform authz check: unexpected number of segments in token, expected %d, found %d", 3, len(splitFullToken))
+		}
+
+		token = splitFullToken[2]
+		publicId = strings.Join(splitFullToken[0:2], "_")
+
+		if receivedTokenType == authTokenTypeUnknown || token == "" || publicId == "" {
+			return nil, fmt.Errorf("perform authz check: after parsing, could not find valid token")
+		}
+	}
+
+	// Validate the token and fetch the corresponding user ID
+	{
+		tokenRepo, err := c.AuthTokenRepoFn()
+		if err != nil {
+			return nil, fmt.Errorf("perform authz check: failed to get authtoken repo: %w", err)
+		}
+
+		at, err := tokenRepo.ValidateToken(ctx, publicId, token)
+		if err != nil {
+			return nil, fmt.Errorf("perform authz check: failed to validate token: %w", err)
+		}
+		if at != nil {
+			userId = at.GetIamUserId()
+		} else {
+			userId = "u_anon"
+		}
+	}
+
+	var parsedGrants []perms.Grant
+	var grantPairs []*perms.GrantPair
+	// Fetch and parse grants for this user ID
+	{
+		iamRepo, err := c.IamRepoFn()
+		if err != nil {
+			return nil, fmt.Errorf("perform authz check: failed to get iam repo: %w", err)
+		}
+		grantPairs, err = iamRepo.GrantsForUser(ctx, userId)
+		if err != nil {
+			return nil, fmt.Errorf("perform authz check: failed to query for user grants: %w", err)
+		}
+		parsedGrants = make([]perms.Grant, 0, len(grantPairs))
+		for _, pair := range grantPairs {
+			parsed, err := perms.Parse(pair.ScopeId, userId, pair.Grant)
+			if err != nil {
+				return nil, fmt.Errorf("perform authz check: failed to parse grant %#v: %w", pair.Grant, err)
+			}
+			parsedGrants = append(parsedGrants, parsed)
+		}
+	}
+
+	acl := perms.NewACL(parsedGrants...)
+	allowed := acl.Allowed(*res, act)
+	allowed.UserId = userId
+	logger.Info("grant checking", "user_id", userId,
+		"grants", pretty.Sprint(grantPairs),
+		"resource", pretty.Sprint(res),
+		"action", pretty.Sprint(act),
+		"authorized", pretty.Sprint(allowed))
+	return &allowed, nil
 }
 
 /*

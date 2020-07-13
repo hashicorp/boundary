@@ -8,12 +8,7 @@ import (
 	"strings"
 
 	"github.com/hashicorp/go-hclog"
-	"github.com/hashicorp/watchtower/globals"
-	"github.com/hashicorp/watchtower/internal/perms"
 	"github.com/hashicorp/watchtower/internal/servers/controller/common"
-	"github.com/hashicorp/watchtower/internal/types/action"
-	"github.com/hashicorp/watchtower/internal/types/resource"
-	"github.com/kr/pretty"
 	"google.golang.org/grpc/metadata"
 )
 
@@ -28,105 +23,108 @@ const (
 // used by handlers to build a TokenMetadata using the ToTokenMetadata function.
 func TokenAuthenticator(l hclog.Logger, tokenRepo common.AuthTokenRepoFactory, iamRepo common.IamRepoFactory) func(context.Context, *http.Request) metadata.MD {
 	return func(ctx context.Context, req *http.Request) metadata.MD {
-		tMD := TokenMetadata{}
-		if authHeader := req.Header.Get(headerAuthMethod); authHeader != "" {
-			headerSplit := strings.SplitN(strings.TrimSpace(authHeader), " ", 2)
-			if len(headerSplit) == 2 && strings.EqualFold(strings.TrimSpace(headerSplit[0]), "bearer") {
-				tMD.receivedTokenType = authTokenTypeBearer
-				tMD.bearerPayload = strings.TrimSpace(headerSplit[1])
+		return TokenMetadata{}.toMetadata()
+		/*
+			tMD := TokenMetadata{}
+			if authHeader := req.Header.Get(headerAuthMethod); authHeader != "" {
+				headerSplit := strings.SplitN(strings.TrimSpace(authHeader), " ", 2)
+				if len(headerSplit) == 2 && strings.EqualFold(strings.TrimSpace(headerSplit[0]), "bearer") {
+					tMD.receivedTokenType = authTokenTypeBearer
+					tMD.bearerPayload = strings.TrimSpace(headerSplit[1])
+				}
 			}
-		}
-		if tMD.receivedTokenType != authTokenTypeBearer {
-			if hc, err := req.Cookie(httpOnlyCookieName); err == nil {
-				tMD.httpCookiePayload = hc.Value
+			if tMD.receivedTokenType != authTokenTypeBearer {
+				if hc, err := req.Cookie(httpOnlyCookieName); err == nil {
+					tMD.httpCookiePayload = hc.Value
+				}
+				if jc, err := req.Cookie(jsVisibleCookieName); err == nil {
+					tMD.jsCookiePayload = jc.Value
+				}
+				if tMD.httpCookiePayload != "" && tMD.jsCookiePayload != "" {
+					tMD.receivedTokenType = authTokenTypeSplitCookie
+				}
 			}
-			if jc, err := req.Cookie(jsVisibleCookieName); err == nil {
-				tMD.jsCookiePayload = jc.Value
-			}
-			if tMD.httpCookiePayload != "" && tMD.jsCookiePayload != "" {
-				tMD.receivedTokenType = authTokenTypeSplitCookie
-			}
-		}
 
-		if tMD.receivedTokenType == authTokenTypeUnknown || tMD.token() == "" || tMD.publicId() == "" {
-			return tMD.toMetadata()
-		}
-
-		tokenRepo, err := tokenRepo()
-		if err != nil {
-			l.Error("failed to get authtoken repo", "error", err)
-			return tMD.toMetadata()
-		}
-
-		at, err := tokenRepo.ValidateToken(ctx, tMD.publicId(), tMD.token())
-		if err != nil {
-			l.Error("failed to validate token", "error", err)
-		}
-		if at != nil {
-			tMD.UserId = at.GetIamUserId()
-		} else {
-			tMD.UserId = "u_anon"
-		}
-
-		iamRepo, err := iamRepo()
-		if err != nil {
-			l.Error("failed to get iam repo", "error", err)
-			return tMD.toMetadata()
-		}
-		grantPairs, err := iamRepo.GrantsForUser(ctx, tMD.UserId)
-		if err != nil {
-			l.Error("failed to query for user grants", "error", err)
-			return tMD.toMetadata()
-		}
-		parsedGrants := make([]perms.Grant, 0, len(grantPairs))
-		for _, pair := range grantPairs {
-			parsed, err := perms.Parse(pair.ScopeId, tMD.UserId, pair.Grant)
-			if err != nil {
-				l.Error("failed to parse grant", "grant", pair.Grant, "error", err)
+			if tMD.receivedTokenType == authTokenTypeUnknown || tMD.token() == "" || tMD.publicId() == "" {
 				return tMD.toMetadata()
 			}
-			parsedGrants = append(parsedGrants, parsed)
-		}
 
-		var scopeId, id, pin string
-		var typ resource.Type
-		var act action.Type
-		typRaw := ctx.Value(globals.ContextTypeValue)
-		if typRaw != nil {
-			typ = typRaw.(resource.Type)
-		}
-		scopeIdRaw := ctx.Value(globals.ContextScopeValue)
-		if scopeIdRaw != nil {
-			scopeId = scopeIdRaw.(string)
-		}
-		actRaw := ctx.Value(globals.ContextActionValue)
-		if actRaw != nil {
-			act = actRaw.(action.Type)
-		}
-		idRaw := ctx.Value(globals.ContextResourceValue)
-		if idRaw != nil {
-			id = idRaw.(string)
-		}
-		pinRaw := ctx.Value(globals.ContextPinValue)
-		if pinRaw != nil {
-			pin = pinRaw.(string)
-		}
+			tokenRepo, err := tokenRepo()
+			if err != nil {
+				l.Error("failed to get authtoken repo", "error", err)
+				return tMD.toMetadata()
+			}
 
-		acl := perms.NewACL(parsedGrants...)
-		res := perms.Resource{
-			// These values were parsed from the request information
-			ScopeId: scopeId,
-			Type:    typ,
-			Id:      id,
-			Pin:     pin,
-		}
-		allowed := acl.Allowed(res, act)
-		if allowed.Allowed {
-			tMD.authorized = true
-		}
-		l.Info("grant checking", "user_id", tMD.UserId, "grants", pretty.Sprint(grantPairs), "resource", res, "authorized", allowed)
+			at, err := tokenRepo.ValidateToken(ctx, tMD.publicId(), tMD.token())
+			if err != nil {
+				l.Error("failed to validate token", "error", err)
+			}
+			if at != nil {
+				tMD.UserId = at.GetIamUserId()
+			} else {
+				tMD.UserId = "u_anon"
+			}
 
-		return tMD.toMetadata()
+			iamRepo, err := iamRepo()
+			if err != nil {
+				l.Error("failed to get iam repo", "error", err)
+				return tMD.toMetadata()
+			}
+			grantPairs, err := iamRepo.GrantsForUser(ctx, tMD.UserId)
+			if err != nil {
+				l.Error("failed to query for user grants", "error", err)
+				return tMD.toMetadata()
+			}
+			parsedGrants := make([]perms.Grant, 0, len(grantPairs))
+			for _, pair := range grantPairs {
+				parsed, err := perms.Parse(pair.ScopeId, tMD.UserId, pair.Grant)
+				if err != nil {
+					l.Error("failed to parse grant", "grant", pair.Grant, "error", err)
+					return tMD.toMetadata()
+				}
+				parsedGrants = append(parsedGrants, parsed)
+			}
+
+			var scopeId, id, pin string
+			var typ resource.Type
+			var act action.Type
+			typRaw := ctx.Value(globals.ContextTypeValue)
+			if typRaw != nil {
+				typ = typRaw.(resource.Type)
+			}
+			scopeIdRaw := ctx.Value(globals.ContextScopeValue)
+			if scopeIdRaw != nil {
+				scopeId = scopeIdRaw.(string)
+			}
+			actRaw := ctx.Value(globals.ContextActionValue)
+			if actRaw != nil {
+				act = actRaw.(action.Type)
+			}
+			idRaw := ctx.Value(globals.ContextResourceValue)
+			if idRaw != nil {
+				id = idRaw.(string)
+			}
+			pinRaw := ctx.Value(globals.ContextPinValue)
+			if pinRaw != nil {
+				pin = pinRaw.(string)
+			}
+
+			acl := perms.NewACL(parsedGrants...)
+			res := perms.Resource{
+				// These values were parsed from the request information
+				ScopeId: scopeId,
+				Type:    typ,
+				Id:      id,
+				Pin:     pin,
+			}
+			allowed := acl.Allowed(res, act)
+			if allowed.Allowed {
+				tMD.authorized = true
+			}
+			l.Info("grant checking", "user_id", tMD.UserId, "grants", pretty.Sprint(grantPairs), "resource", res, "authorized", allowed)
+
+			return tMD.toMetadata()
+		*/
 	}
 }
 
