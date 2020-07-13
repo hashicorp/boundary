@@ -229,7 +229,7 @@ func comparableSlice(in []*roles.Role) []roles.Role {
 }
 
 func TestRole_Crud(t *testing.T) {
-	tc := controller.NewTestController(t, nil)
+	tc := controller.NewTestController(t, &controller.TestControllerOpts{DisableAuthorizationFailures: true})
 	defer tc.Shutdown()
 
 	client := tc.Client()
@@ -302,8 +302,7 @@ func TestRole_Crud(t *testing.T) {
 }
 
 func TestRole_Errors(t *testing.T) {
-	assert := assert.New(t)
-	tc := controller.NewTestController(t, nil)
+	tc := controller.NewTestController(t, &controller.TestControllerOpts{DisableAuthorizationFailures: true})
 	defer tc.Shutdown()
 	ctx := tc.Context()
 
@@ -332,30 +331,31 @@ func TestRole_Errors(t *testing.T) {
 
 	for _, tt := range cases {
 		t.Run(tt.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
 			u, apiErr, err := tt.scope.CreateRole(ctx, &roles.Role{Name: api.String("first")})
-			assert.NoError(err)
+			require.NoError(err)
 			assert.Nil(apiErr)
 			assert.NotNil(u)
 
 			// Create another resource with the same name.
 			_, apiErr, err = tt.scope.CreateRole(ctx, &roles.Role{Name: api.String("first")})
-			assert.NoError(err)
+			require.NoError(err)
 			assert.NotNil(apiErr)
 
 			_, apiErr, err = tt.scope.ReadRole(ctx, &roles.Role{Id: iam.RolePrefix + "_doesntexis"})
-			assert.NoError(err)
+			require.NoError(err)
 			assert.NotNil(apiErr)
-			assert.EqualValues(apiErr.Status, http.StatusNotFound)
+			assert.EqualValues(http.StatusNotFound, apiErr.Status)
 
 			_, apiErr, err = tt.scope.ReadRole(ctx, &roles.Role{Id: "invalid id"})
-			assert.NoError(err)
+			require.NoError(err)
 			assert.NotNil(apiErr)
-			assert.EqualValues(apiErr.Status, http.StatusBadRequest)
+			assert.EqualValues(http.StatusBadRequest, apiErr.Status)
 
 			_, apiErr, err = tt.scope.UpdateRole(ctx, &roles.Role{Id: u.Id})
-			assert.NoError(err)
+			require.NoError(err)
 			assert.NotNil(apiErr)
-			assert.EqualValues(apiErr.Status, http.StatusBadRequest)
+			assert.EqualValues(http.StatusBadRequest, apiErr.Status)
 		})
 	}
 }

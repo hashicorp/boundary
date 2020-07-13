@@ -44,21 +44,27 @@ func (r *Response) Decode(inStruct interface{}) (*Error, error) {
 		return nil, fmt.Errorf("nil value given to decode into and not a 204 response")
 	}
 
-	r.Body = new(bytes.Buffer)
-	if _, err := r.Body.ReadFrom(r.resp.Body); err != nil {
-		return nil, fmt.Errorf("error reading response body: %w", err)
+	apiErr := &Error{
+		Status: int32(r.resp.StatusCode),
 	}
+	if r.resp.Body != nil {
+		r.Body = new(bytes.Buffer)
+		if _, err := r.Body.ReadFrom(r.resp.Body); err != nil {
+			return nil, fmt.Errorf("error reading response body: %w", err)
+		}
 
-	dec := json.NewDecoder(bytes.NewReader(r.Body.Bytes()))
-	var apiErr Error
-	if r.resp.StatusCode >= 400 {
-		inStruct = &apiErr
+		if r.Body.Len() != 0 {
+			dec := json.NewDecoder(bytes.NewReader(r.Body.Bytes()))
+			if r.resp.StatusCode >= 400 {
+				inStruct = apiErr
+			}
+			if err := dec.Decode(inStruct); err != nil {
+				return nil, fmt.Errorf("error decoding response: %w; response was %s", err, r.Body.String())
+			}
+		}
 	}
-	if err := dec.Decode(inStruct); err != nil {
-		return nil, fmt.Errorf("error decoding response: %w; response was %s", err, r.Body.String())
-	}
 	if r.resp.StatusCode >= 400 {
-		return &apiErr, nil
+		return apiErr, nil
 	}
 
 	return nil, nil
