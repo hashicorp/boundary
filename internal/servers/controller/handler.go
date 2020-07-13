@@ -12,7 +12,6 @@ import (
 	"time"
 
 	"github.com/grpc-ecosystem/grpc-gateway/runtime"
-	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/vault/internalshared/configutil"
 	"github.com/hashicorp/vault/sdk/helper/strutil"
 	"github.com/hashicorp/watchtower/api"
@@ -144,6 +143,8 @@ func wrapHandlerWithCommonFuncs(h http.Handler, c *Controller, props HandlerProp
 
 	logUrls := os.Getenv("WATCHTOWER_LOG_URLS") != ""
 
+	disableAuthzFailures := c.conf.DisableAuthorizationFailures || (c.conf.RawConfig.DevController && os.Getenv("WATCHTOWER_DEV_SKIP_AUTHZ") != "")
+
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if defaultOrgId != "" {
 			splitPath := strings.Split(r.URL.Path, "/")
@@ -160,24 +161,39 @@ func wrapHandlerWithCommonFuncs(h http.Handler, c *Controller, props HandlerProp
 		// Set the Cache-Control header for all responses returned
 		w.Header().Set("Cache-Control", "no-store")
 
+		// Start with the request context and our timeout
+		ctx, cancelFunc := context.WithTimeout(r.Context(), maxRequestDuration)
+
+		var userId string
+		var res *perms.Resource
+		var act action.Type
+		var err error
+
+		if r.Method == http.MethodOptions {
+			// Don't perform authorization checking for preflight requests, at
+			// least for now. We could add it later if we wanted as an action on
+			// global or something but likely it would just be enabled/disabled
+			// per listener instead.
+			goto AUTHZ_FINISHED
+		}
+
 		// Perform authz checking
-		res, act, err := decorateAuthParams(r)
+		res, act, err = decorateAuthParams(r)
 		if err != nil {
 			c.logger.Trace("error reading auth parameters from URL", "error", err)
 			// Maybe this isn't the best option, but a URL we can't parse from
 			// an auth perspective is probably just an invalid URL altogether.
 			// The trace logs would help the admin figure out the problem.
 			w.WriteHeader(http.StatusNotFound)
+			cancelFunc()
 			return
 		}
 
-		// Start with the request context and our timeout
-		ctx, cancelFunc := context.WithTimeout(r.Context(), maxRequestDuration)
 		// The resource is only nil with no error if the path is something
 		// unauthenticated, e.g. the UI serving path.
-		var userId string
+
 		if res != nil {
-			authzResults, err := c.performAuthzCheck(ctx, c.logger, r, res, act)
+			authzResults, err := c.performAuthzCheck(ctx, r, res, act)
 			if err != nil {
 				c.logger.Error("error during authz check", "error", err)
 				w.WriteHeader(http.StatusForbidden)
@@ -186,7 +202,7 @@ func wrapHandlerWithCommonFuncs(h http.Handler, c *Controller, props HandlerProp
 			}
 			if !authzResults.Allowed {
 				// TODO: Decide whether to remove this
-				if c.conf.RawConfig.DevController && os.Getenv("WATCHTOWER_DEV_SKIP_AUTHZ") != "" {
+				if disableAuthzFailures {
 					c.logger.Info("failed authz info for request", "resource", pretty.Sprint(res), "action", pretty.Sprint(act))
 				} else {
 					w.WriteHeader(http.StatusForbidden)
@@ -197,6 +213,7 @@ func wrapHandlerWithCommonFuncs(h http.Handler, c *Controller, props HandlerProp
 			userId = authzResults.UserId
 		}
 
+	AUTHZ_FINISHED:
 		// Add the user ID to the context
 		if userId == "" {
 			userId = "u_anon"
@@ -461,7 +478,7 @@ const (
 	jsVisibleCookieName = "wt-js-token-cookie"
 )
 
-func (c *Controller) performAuthzCheck(ctx context.Context, logger hclog.Logger, req *http.Request, res *perms.Resource, act action.Type) (*perms.ACLResults, error) {
+func (c *Controller) performAuthzCheck(ctx context.Context, req *http.Request, res *perms.Resource, act action.Type) (*perms.ACLResults, error) {
 	if res == nil {
 		return nil, errors.New("perform authz check: res is nil")
 	}
@@ -556,13 +573,6 @@ GRANTSLOOKUP:
 	acl := perms.NewACL(parsedGrants...)
 	allowed := acl.Allowed(*res, act)
 	allowed.UserId = userId
-	/*
-		logger.Info("grant checking", "user_id", userId,
-			"grants", pretty.Sprint(grantPairs),
-			"resource", pretty.Sprint(res),
-			"action", pretty.Sprint(act),
-			"authorized", pretty.Sprint(allowed))
-	*/
 	return &allowed, nil
 }
 

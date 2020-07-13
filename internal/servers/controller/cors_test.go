@@ -66,8 +66,9 @@ func TestHandler_CORS(t *testing.T) {
 		t.Fatal(err)
 	}
 	tc := NewTestController(t, &TestControllerOpts{
-		Config:       cfg,
-		DefaultOrgId: "o_1234567890",
+		Config:                       cfg,
+		DefaultOrgId:                 "o_1234567890",
+		DisableAuthorizationFailures: true,
 	})
 	defer tc.Shutdown()
 
@@ -168,7 +169,7 @@ func TestHandler_CORS(t *testing.T) {
 
 			// Create the request
 			req, err := client.NewRequest(tc.Context(), c.method, "projects", nil)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 
 			// Append headers
 			if c.origin != "" {
@@ -180,7 +181,7 @@ func TestHandler_CORS(t *testing.T) {
 
 			// Run the request, do basic checks
 			resp, err := client.Do(req)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			assert.Equal(t, c.code, resp.HttpResponse().StatusCode)
 
 			// If options and we expect it to be successful, run some checks

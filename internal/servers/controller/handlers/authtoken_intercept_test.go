@@ -31,6 +31,7 @@ func (s *fakeHandler) GetOrg(ctx context.Context, _ *pbs.GetOrgRequest) (*pbs.Ge
 }
 
 func TestAuthTokenPublicIdTokenValue(t *testing.T) {
+	t.Skip("functionality has moved for now")
 	cases := []struct {
 		name      string
 		in        TokenMetadata
@@ -88,6 +89,7 @@ func TestAuthTokenPublicIdTokenValue(t *testing.T) {
 }
 
 func TestAuthTokenAuthenticator(t *testing.T) {
+	t.Skip("functionality has moved for now")
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)

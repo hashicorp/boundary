@@ -128,7 +128,7 @@ func TestAuthenticationHandler(t *testing.T) {
 	c := NewTestController(t, &TestControllerOpts{DefaultOrgId: "o_1234567890"})
 	defer c.Shutdown()
 
-	resp, err := http.Post(fmt.Sprintf("%s/v1/orgs/o_1234567890/auth-methods/am_whatever:authenticate", c.ApiAddrs()[0]), "application/json",
+	resp, err := http.Post(fmt.Sprintf("%s/v1/orgs/o_1234567890/auth-methods/am_1234567890:authenticate", c.ApiAddrs()[0]), "application/json",
 		strings.NewReader(`{"token_type": null, "credentials": {"name":"test", "password": "test"}}`))
 	require.NoError(t, err)
 	assert.Equal(t, http.StatusOK, resp.StatusCode, "Got response: %v", resp)
@@ -194,7 +194,9 @@ func TestGrpcGatewayRouting_CustomActions(t *testing.T) {
 }
 
 func TestHandleGrpcGateway(t *testing.T) {
-	c := NewTestController(t, nil)
+	c := NewTestController(t, &TestControllerOpts{
+		DisableAuthorizationFailures: true,
+	})
 	defer c.Shutdown()
 
 	cases := []struct {
@@ -430,13 +432,13 @@ func TestHandler_AuthDecoration(t *testing.T) {
 				return
 			}
 			require.NoError(err)
-			require.NotNil(res)
-			require.NotEqual(action.Unknown, act)
 
 			if tc.path == "/" {
 				return
 			}
 
+			require.NotNil(res)
+			require.NotEqual(action.Unknown, act)
 			assert.Equal(tc.scope, res.ScopeId, "scope")
 			assert.Equal(tc.action, act, "action")
 			assert.Equal(tc.resource, res.Type, "type")
