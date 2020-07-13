@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"net/http"
 	"os"
-	"path"
 	"strings"
 	"time"
 
@@ -146,14 +145,6 @@ func wrapHandlerWithCommonFuncs(h http.Handler, c *Controller, props HandlerProp
 	disableAuthzFailures := c.conf.DisableAuthorizationFailures || (c.conf.RawConfig.DevController && os.Getenv("WATCHTOWER_DEV_SKIP_AUTHZ") != "")
 
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if defaultOrgId != "" {
-			splitPath := strings.Split(r.URL.Path, "/")
-			if len(splitPath) >= 3 && splitPath[2] == "projects" {
-				http.Redirect(w, r, path.Join("/v1/orgs", defaultOrgId, strings.Join(splitPath[2:], "/")), 307)
-				return
-			}
-		}
-
 		if logUrls {
 			c.logger.Trace("request received", "url", r.URL.String())
 		}
