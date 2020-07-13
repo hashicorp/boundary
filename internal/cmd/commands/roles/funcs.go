@@ -178,7 +178,7 @@ func populateFlags(c *Command, f *base.FlagSet, flagNames []string) {
 	}
 }
 
-func generateRoleOutput(role *roles.Role) string {
+func generateRoleTableOutput(role *roles.Role) string {
 	var output []string
 	if true {
 		output = []string{

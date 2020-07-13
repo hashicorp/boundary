@@ -274,14 +274,19 @@ func (c *Command) Run(args []string) int {
 
 	switch c.Func {
 	case "delete":
-		output := "The delete operation completed successfully"
-		switch existed {
-		case true:
-			output += "."
-		default:
-			output += ", however the resource did not exist at the time."
+		switch base.Format(c.UI) {
+		case "json":
+			c.UI.Output("null")
+		case "table":
+			output := "The delete operation completed successfully"
+			switch existed {
+			case true:
+				output += "."
+			default:
+				output += ", however the resource did not exist at the time."
+			}
+			c.UI.Output(output)
 		}
-		c.UI.Output(output)
 		return 0
 
 	case "list":
@@ -289,38 +294,55 @@ func (c *Command) Run(args []string) int {
 			c.UI.Output("No roles found")
 			return 0
 		}
-		var output []string
-		output = []string{
-			"",
-			"Role information:",
+		switch base.Format(c.UI) {
+		case "json":
+			b, err := base.JsonFormatter{}.Format(listedRoles)
+			if err != nil {
+				c.UI.Error(fmt.Errorf("Error formatting to JSON: %w", err).Error())
+				return 1
+			}
+			c.UI.Output(string(b))
+		case "table":
+			var output []string
+			output = []string{
+				"",
+				"Role information:",
+			}
+			for i, r := range listedRoles {
+				if i > 1 {
+					output = append(output, "")
+				}
+				if true {
+					output = append(output,
+						fmt.Sprintf("  ID:               %s", r.Id),
+					)
+				}
+				if r.Name != nil {
+					output = append(output,
+						fmt.Sprintf("    Name:           %s", *r.Name),
+					)
+				}
+				if r.Description != nil {
+					output = append(output,
+						fmt.Sprintf("    Description:    %s", *r.Description),
+					)
+				}
+			}
+			c.UI.Output(base.WrapForHelpText(output))
 		}
-		for i, r := range listedRoles {
-			if i > 1 {
-				output = append(output, "")
-			}
-			if true {
-				output = append(output,
-					fmt.Sprintf("  ID:               %s", r.Id),
-				)
-			}
-			if r.Name != nil {
-				output = append(output,
-					fmt.Sprintf("    Name:           %s", *r.Name),
-				)
-			}
-			if r.Description != nil {
-				output = append(output,
-					fmt.Sprintf("    Description:    %s", *r.Description),
-				)
-			}
-		}
-		c.UI.Output(base.WrapForHelpText(output))
 		return 0
 	}
 
 	switch base.Format(c.UI) {
 	case "table":
-		c.UI.Output(generateRoleOutput(role))
+		c.UI.Output(generateRoleTableOutput(role))
+	case "json":
+		b, err := base.JsonFormatter{}.Format(role)
+		if err != nil {
+			c.UI.Error(fmt.Errorf("Error formatting to JSON: %w", err).Error())
+			return 1
+		}
+		c.UI.Output(string(b))
 	}
 
 	return 0

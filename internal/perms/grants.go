@@ -131,6 +131,9 @@ func (g *Grant) unmarshalJSON(data []byte) error {
 			return fmt.Errorf("unable to interpret %q as string", "type")
 		}
 		g.typ = resource.Map[typ]
+		if g.typ == resource.Unknown {
+			return fmt.Errorf("unknown type specifier %q", typ)
+		}
 	}
 	if rawActions, ok := raw["actions"]; ok {
 		interfaceActions, ok := rawActions.([]interface{})

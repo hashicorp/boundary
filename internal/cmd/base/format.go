@@ -43,7 +43,7 @@ type FormatOptions struct {
 type JsonFormatter struct{}
 
 func (j JsonFormatter) Format(data interface{}) ([]byte, error) {
-	return json.MarshalIndent(data, "", "  ")
+	return json.Marshal(data)
 }
 
 /*
