@@ -174,7 +174,7 @@ func (c *Command) Client() (*api.Client, error) {
 			token, err := keyring.Get("HashiCorp Watchtower Auth Token", tokenName)
 			if err != nil {
 				if err == keyring.ErrNotFound {
-					c.UI.Info("Unable to access system credential store, continuing without")
+					c.UI.Info("No saved credential found, continuing without")
 				} else {
 					c.UI.Error(fmt.Sprintf("Error reading auth token from system credential store: %s", err))
 				}
