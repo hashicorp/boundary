@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/hashicorp/vault/sdk/helper/strutil"
 	"github.com/hashicorp/watchtower/api"
 	"github.com/hashicorp/watchtower/api/roles"
 	"github.com/hashicorp/watchtower/api/scopes"
@@ -105,7 +106,7 @@ func (c *Command) Run(args []string) int {
 		return 1
 	}
 
-	if flagsMap[c.Func][0] == "id" && c.flagId == "" {
+	if strutil.StrListContains(flagsMap[c.Func], "id") && c.flagId == "" {
 		c.UI.Error("ID is required but not passed in via -id")
 		return 1
 	}
