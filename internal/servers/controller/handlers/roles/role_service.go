@@ -130,7 +130,7 @@ func (s Service) AddRolePrincipals(ctx context.Context, req *pbs.AddRolePrincipa
 	if err := validateAddRolePrincipalsRequest(req); err != nil {
 		return nil, err
 	}
-	r, err := s.addPrinciplesInRepo(ctx, req.GetRoleId(), req.GetUserIds(), req.GetGroupIds(), req.GetVersion().GetValue())
+	r, err := s.addPrinciplesInRepo(ctx, req.GetRoleId(), req.GetPrincipalIds(), req.GetVersion().GetValue())
 	if err != nil {
 		return nil, err
 	}
@@ -144,7 +144,7 @@ func (s Service) SetRolePrincipals(ctx context.Context, req *pbs.SetRolePrincipa
 	if err := validateSetRolePrincipalsRequest(req); err != nil {
 		return nil, err
 	}
-	r, err := s.setPrinciplesInRepo(ctx, req.GetRoleId(), req.GetUserIds(), req.GetGroupIds(), req.GetVersion().GetValue())
+	r, err := s.setPrinciplesInRepo(ctx, req.GetRoleId(), req.GetPrincipalIds(), req.GetVersion().GetValue())
 	if err != nil {
 		return nil, err
 	}
@@ -158,7 +158,7 @@ func (s Service) RemoveRolePrincipals(ctx context.Context, req *pbs.RemoveRolePr
 	if err := validateRemoveRolePrincipalsRequest(req); err != nil {
 		return nil, err
 	}
-	r, err := s.removePrinciplesInRepo(ctx, req.GetRoleId(), req.GetUserIds(), req.GetGroupIds(), req.GetVersion().GetValue())
+	r, err := s.removePrinciplesInRepo(ctx, req.GetRoleId(), req.GetPrincipalIds(), req.GetVersion().GetValue())
 	if err != nil {
 		return nil, err
 	}
@@ -325,12 +325,12 @@ func (s Service) listFromRepo(ctx context.Context, scopeId string) ([]*pb.Role, 
 	return outRl, nil
 }
 
-func (s Service) addPrinciplesInRepo(ctx context.Context, roleId string, userIds []string, groupIds []string, version uint32) (*pb.Role, error) {
+func (s Service) addPrinciplesInRepo(ctx context.Context, roleId string, principalIds []string, version uint32) (*pb.Role, error) {
 	repo, err := s.repoFn()
 	if err != nil {
 		return nil, err
 	}
-	_, err = repo.AddPrincipalRoles(ctx, roleId, version, userIds, groupIds)
+	_, err = repo.AddPrincipalRoles(ctx, roleId, version, principalIds)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "Unable to add principles to role: %v.", err)
 	}
@@ -344,12 +344,12 @@ func (s Service) addPrinciplesInRepo(ctx context.Context, roleId string, userIds
 	return toProto(out, pr, roleGrants), nil
 }
 
-func (s Service) setPrinciplesInRepo(ctx context.Context, roleId string, userIds []string, groupIds []string, version uint32) (*pb.Role, error) {
+func (s Service) setPrinciplesInRepo(ctx context.Context, roleId string, principalIds []string, version uint32) (*pb.Role, error) {
 	repo, err := s.repoFn()
 	if err != nil {
 		return nil, err
 	}
-	_, _, err = repo.SetPrincipalRoles(ctx, roleId, version, userIds, groupIds)
+	_, _, err = repo.SetPrincipalRoles(ctx, roleId, version, principalIds)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "Unable to set principles on role: %v.", err)
 	}
@@ -363,12 +363,12 @@ func (s Service) setPrinciplesInRepo(ctx context.Context, roleId string, userIds
 	return toProto(out, pr, roleGrants), nil
 }
 
-func (s Service) removePrinciplesInRepo(ctx context.Context, roleId string, userIds []string, groupIds []string, version uint32) (*pb.Role, error) {
+func (s Service) removePrinciplesInRepo(ctx context.Context, roleId string, principalIds []string, version uint32) (*pb.Role, error) {
 	repo, err := s.repoFn()
 	if err != nil {
 		return nil, err
 	}
-	_, err = repo.DeletePrincipalRoles(ctx, roleId, version, userIds, groupIds)
+	_, err = repo.DeletePrincipalRoles(ctx, roleId, version, principalIds)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "Unable to remove principles from role: %v.", err)
 	}
@@ -476,12 +476,8 @@ func toProto(in *iam.Role, principals []iam.PrincipalRole, grants []*iam.RoleGra
 		out.Name = &wrapperspb.StringValue{Value: in.GetName()}
 	}
 	for _, p := range principals {
-		switch p.GetType() {
-		case iam.UserRoleType.String():
-			out.UserIds = append(out.UserIds, p.GetPrincipalId())
-		case iam.GroupRoleType.String():
-			out.GroupIds = append(out.GroupIds, p.GetPrincipalId())
-		}
+		out.PrincipalIds = append(out.PrincipalIds, p.GetPrincipalId())
+		out.PrincipalIdsScoped = append(out.PrincipalIdsScoped, p.GetPrincipalScopeId())
 	}
 	for _, g := range grants {
 		out.Grants = append(out.Grants, g.GetRawGrant())
@@ -611,9 +607,8 @@ func validateAddRolePrincipalsRequest(req *pbs.AddRolePrincipalsRequest) error {
 	if req.GetVersion() == nil {
 		badFields["version"] = "Required field."
 	}
-	if len(req.GetGroupIds()) == 0 && len(req.GetUserIds()) == 0 {
-		badFields["user_ids"] = "Either user_ids or group_ids must be non empty."
-		badFields["group_ids"] = "Either user_ids or group_ids must be non empty."
+	if len(req.GetPrincipalIds()) == 0 {
+		badFields["principal_ids"] = "Must be non-empty."
 	}
 	if len(badFields) > 0 {
 		return handlers.InvalidArgumentErrorf("Errors in provided fields.", badFields)
@@ -643,9 +638,8 @@ func validateRemoveRolePrincipalsRequest(req *pbs.RemoveRolePrincipalsRequest) e
 	if req.GetVersion() == nil {
 		badFields["version"] = "Required field."
 	}
-	if len(req.GetGroupIds()) == 0 && len(req.GetUserIds()) == 0 {
-		badFields["user_ids"] = "Either user_ids or group_ids must be non empty."
-		badFields["group_ids"] = "Either user_ids or group_ids must be non empty."
+	if len(req.GetPrincipalIds()) == 0 {
+		badFields["principal_ids"] = "Must be non-empty."
 	}
 	if len(badFields) > 0 {
 		return handlers.InvalidArgumentErrorf("Errors in provided fields.", badFields)
@@ -662,7 +656,7 @@ func validateAddRoleGrantsRequest(req *pbs.AddRoleGrantsRequest) error {
 		badFields["version"] = "Required field."
 	}
 	if len(req.GetGrants()) == 0 {
-		badFields["grants"] = "This must be non empty."
+		badFields["grants"] = "Must be non-empty."
 	}
 	if len(badFields) > 0 {
 		return handlers.InvalidArgumentErrorf("Errors in provided fields.", badFields)
@@ -693,7 +687,7 @@ func validateRemoveRoleGrantsRequest(req *pbs.RemoveRoleGrantsRequest) error {
 		badFields["version"] = "Required field."
 	}
 	if len(req.GetGrants()) == 0 {
-		badFields["grants"] = "This must be non empty."
+		badFields["grants"] = "Must be non-empty."
 	}
 	if len(badFields) > 0 {
 		return handlers.InvalidArgumentErrorf("Errors in provided fields.", badFields)

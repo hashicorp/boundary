@@ -70,28 +70,25 @@ func TestCustom(t *testing.T) {
 			require.Nil(apiErr)
 			require.NotNil(r)
 
-			updatedRole, apiErr, err := r.AddPrincipals(ctx, []string{g.Id}, nil)
+			updatedRole, apiErr, err := r.AddPrincipals(ctx, []string{g.Id})
 			require.NoError(err)
 			require.Nil(apiErr, "Got error ", apiErr)
 			assert.Equal(t, updatedRole.Version, r.Version+1)
-			assert.Contains(t, updatedRole.GroupIds, g.Id)
-			assert.Empty(t, updatedRole.UserIds)
+			assert.Contains(t, updatedRole.PrincipalIds, g.Id)
 
 			r = updatedRole
-			updatedRole, apiErr, err = r.SetPrincipals(ctx, nil, []string{user.Id})
+			updatedRole, apiErr, err = r.SetPrincipals(ctx, []string{user.Id})
 			require.NoError(err)
 			require.Nil(apiErr, "Got error ", apiErr)
 			assert.Equal(t, updatedRole.Version, r.Version+1)
-			assert.Empty(t, updatedRole.GroupIds)
-			assert.Contains(t, updatedRole.UserIds, user.Id)
+			assert.Contains(t, updatedRole.PrincipalIds, user.Id)
 
 			r = updatedRole
-			updatedRole, apiErr, err = r.RemovePrincipals(ctx, nil, []string{user.Id})
+			updatedRole, apiErr, err = r.RemovePrincipals(ctx, []string{user.Id})
 			require.NoError(err)
 			require.Nil(apiErr, "Got error ", apiErr)
 			assert.Equal(t, updatedRole.Version, r.Version+1)
-			assert.Empty(t, updatedRole.GroupIds)
-			assert.Empty(t, updatedRole.UserIds)
+			assert.Empty(t, updatedRole.PrincipalIds)
 
 			r = updatedRole
 			updatedRole, apiErr, err = r.AddGrants(ctx, []string{"id=*;actions=read"})

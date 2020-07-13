@@ -132,7 +132,8 @@ func TestRepository_AddPrincipalRoles(t *testing.T) {
 						groupIds = append(groupIds, g.PublicId)
 					}
 				}
-				got, err := repo.AddPrincipalRoles(context.Background(), roleId, tt.args.roleVersion, userIds, groupIds, tt.args.opt...)
+				principalIds := append(userIds, groupIds...)
+				got, err := repo.AddPrincipalRoles(context.Background(), roleId, tt.args.roleVersion, principalIds, tt.args.opt...)
 				if tt.wantErr {
 					require.Error(err)
 					if tt.wantErrIs != nil {
@@ -246,7 +247,8 @@ func TestRepository_ListPrincipalRoles(t *testing.T) {
 				g := TestGroup(t, conn, tt.createScopeId)
 				groupRoles = append(groupRoles, g.PublicId)
 			}
-			testRoles, err := repo.AddPrincipalRoles(context.Background(), role.PublicId, role.Version, userRoles, groupRoles, tt.args.opt...)
+			principalIds := append(userRoles, groupRoles...)
+			testRoles, err := repo.AddPrincipalRoles(context.Background(), role.PublicId, role.Version, principalIds, tt.args.opt...)
 			require.NoError(err)
 			assert.Equal(tt.createCnt, len(testRoles))
 
@@ -406,7 +408,8 @@ func TestRepository_DeletePrincipalRoles(t *testing.T) {
 					groupIds = append(groupIds, g.PublicId)
 				}
 			}
-			principalRoles, err := repo.AddPrincipalRoles(context.Background(), tt.args.role.PublicId, 1, userIds, groupIds, tt.args.opt...)
+			principalIds := append(userIds, groupIds...)
+			principalRoles, err := repo.AddPrincipalRoles(context.Background(), tt.args.role.PublicId, 1, principalIds, tt.args.opt...)
 			require.NoError(err)
 			assert.Equal(tt.args.createUserCnt+tt.args.createGroupCnt, len(principalRoles))
 
@@ -425,7 +428,8 @@ func TestRepository_DeletePrincipalRoles(t *testing.T) {
 			default:
 				roleId = tt.args.role.PublicId
 			}
-			deletedRows, err := repo.DeletePrincipalRoles(context.Background(), roleId, 2, deleteUserIds, deleteGroupIds, tt.args.opt...)
+			principalIds = append(deleteUserIds, deleteGroupIds...)
+			deletedRows, err := repo.DeletePrincipalRoles(context.Background(), roleId, 2, principalIds, tt.args.opt...)
 			if tt.wantErr {
 				assert.Error(err)
 				assert.Equal(0, deletedRows)
@@ -480,7 +484,7 @@ func TestRepository_SetPrincipalRoles(t *testing.T) {
 		users := createUsersFn()
 		grps := createGrpsFn()
 		var err error
-		_, err = repo.AddPrincipalRoles(context.Background(), role.PublicId, 1, users, grps)
+		_, err = repo.AddPrincipalRoles(context.Background(), role.PublicId, 1, append(users, grps...))
 		require.NoError(t, err)
 		return users, grps
 	}
@@ -568,8 +572,8 @@ func TestRepository_SetPrincipalRoles(t *testing.T) {
 			if tt.args.addToOrigGrps {
 				tt.args.groupIds = append(tt.args.groupIds, origGrps...)
 			}
-
-			got, affectedRows, err := repo.SetPrincipalRoles(context.Background(), tt.args.role.PublicId, tt.args.roleVersion, tt.args.userIds, tt.args.groupIds, tt.args.opt...)
+			principalIds := append(tt.args.userIds, tt.args.groupIds...)
+			got, affectedRows, err := repo.SetPrincipalRoles(context.Background(), tt.args.role.PublicId, tt.args.roleVersion, principalIds, tt.args.opt...)
 			if tt.wantErr {
 				require.Error(err)
 				return
@@ -619,7 +623,7 @@ func TestRepository_principalsToSet(t *testing.T) {
 		users := createUsersFn()
 		grps := createGrpsFn()
 		role := TestRole(t, conn, proj.PublicId)
-		_, err := repo.AddPrincipalRoles(context.Background(), role.PublicId, 1, users, grps)
+		_, err := repo.AddPrincipalRoles(context.Background(), role.PublicId, 1, append(users, grps...))
 		require.NoError(t, err)
 		return role, users, grps
 	}

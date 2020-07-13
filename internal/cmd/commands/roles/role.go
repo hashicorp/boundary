@@ -26,8 +26,7 @@ type Command struct {
 	flagName         string
 	flagDescription  string
 	flagGrantScopeId string
-	flagUsers        []string
-	flagGroups       []string
+	flagPrincipals   []string
 	flagGrants       []string
 }
 
@@ -79,11 +78,11 @@ func (c *Command) Flags() *base.FlagSets {
 	case "delete":
 		populateFlags(c, f, []string{"id"})
 	case "add-principals":
-		populateFlags(c, f, []string{"id", "user", "group"})
+		populateFlags(c, f, []string{"id", "principal"})
 	case "set-principals":
-		populateFlags(c, f, []string{"id", "user", "group"})
+		populateFlags(c, f, []string{"id", "principal"})
 	case "remove-principals":
-		populateFlags(c, f, []string{"id", "user", "group"})
+		populateFlags(c, f, []string{"id", "principal"})
 	case "add-grants":
 		populateFlags(c, f, []string{"id", "grant"})
 	case "set-grants":
@@ -147,13 +146,12 @@ func (c *Command) Run(args []string) int {
 		role.GrantScopeId = api.String(c.flagGrantScopeId)
 	}
 
-	users := c.flagUsers
-	groups := c.flagGroups
+	principals := c.flagPrincipals
 	grants := c.flagGrants
 	switch c.Func {
 	case "add-principals", "remove-principals":
-		if len(c.flagUsers) == 0 && len(c.flagGroups) == 0 {
-			c.UI.Error("No users supplied via -user and no groups supplied via -group")
+		if len(c.flagPrincipals) == 0 {
+			c.UI.Error("No principals supplied via -principal")
 			return 1
 		}
 
@@ -164,22 +162,15 @@ func (c *Command) Run(args []string) int {
 		}
 
 	case "set-principals":
-		switch len(c.flagUsers) {
+		switch len(c.flagPrincipals) {
 		case 0:
 		case 1:
-			if c.flagUsers[0] == "null" {
-				users = []string{}
+			if c.flagPrincipals[0] == "null" {
+				principals = []string{}
 			}
 		}
-		switch len(c.flagGroups) {
-		case 0:
-		case 1:
-			if c.flagGroups[0] == "null" {
-				groups = []string{}
-			}
-		}
-		if users == nil && groups == nil {
-			c.UI.Error("No users supplied via -user and no groups supplied via -group")
+		if principals == nil {
+			c.UI.Error("No principals supplied via -principals")
 			return 1
 		}
 
@@ -255,11 +246,11 @@ func (c *Command) Run(args []string) int {
 	case "list":
 		listedRoles, apiErr, err = actor.ListRoles(c.Context)
 	case "add-principals":
-		role, apiErr, err = role.AddPrincipals(c.Context, users, groups)
+		role, apiErr, err = role.AddPrincipals(c.Context, principals)
 	case "set-principals":
-		role, apiErr, err = role.SetPrincipals(c.Context, users, groups)
+		role, apiErr, err = role.SetPrincipals(c.Context, principals)
 	case "remove-principals":
-		role, apiErr, err = role.RemovePrincipals(c.Context, users, groups)
+		role, apiErr, err = role.RemovePrincipals(c.Context, principals)
 	case "add-grants":
 		role, apiErr, err = role.AddGrants(c.Context, grants)
 	case "set-grants":

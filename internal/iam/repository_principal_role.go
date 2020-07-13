@@ -3,6 +3,7 @@ package iam
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/hashicorp/watchtower/internal/db"
 	"github.com/hashicorp/watchtower/internal/oplog"
@@ -12,10 +13,11 @@ import (
 // groupIds) to a role (roleId).  The role's current db version must match the
 // roleVersion or an error will be returned.  The list of current PrincipalRoles
 // after the adds will be returned on success.
-func (r *Repository) AddPrincipalRoles(ctx context.Context, roleId string, roleVersion uint32, userIds, groupIds []string, opt ...Option) ([]PrincipalRole, error) {
+func (r *Repository) AddPrincipalRoles(ctx context.Context, roleId string, roleVersion uint32, principalIds []string, opt ...Option) ([]PrincipalRole, error) {
 	if roleId == "" {
 		return nil, fmt.Errorf("add principal roles: missing role id: %w", db.ErrInvalidParameter)
 	}
+	userIds, groupIds := splitPrincipals(principalIds)
 	if len(userIds) == 0 && len(groupIds) == 0 {
 		return nil, fmt.Errorf("add principal roles: missing either user or groups to add: %w", db.ErrInvalidParameter)
 	}
@@ -114,7 +116,7 @@ func (r *Repository) AddPrincipalRoles(ctx context.Context, roleId string, roleV
 // principals as need to reconcile the existing principals with the principals
 // requested. If both userIds and groupIds are empty, the principal roles will
 // be cleared.
-func (r *Repository) SetPrincipalRoles(ctx context.Context, roleId string, roleVersion uint32, userIds, groupIds []string, opt ...Option) ([]PrincipalRole, int, error) {
+func (r *Repository) SetPrincipalRoles(ctx context.Context, roleId string, roleVersion uint32, principalIds []string, opt ...Option) ([]PrincipalRole, int, error) {
 	if roleId == "" {
 		return nil, db.NoRowsAffected, fmt.Errorf("set principal roles: missing role id: %w", db.ErrInvalidParameter)
 	}
@@ -127,6 +129,7 @@ func (r *Repository) SetPrincipalRoles(ctx context.Context, roleId string, roleV
 	// it's "safe" to do this lookup outside the DoTx transaction because we
 	// have a roleVersion so the principals can’t change without the version
 	// changing.
+	userIds, groupIds := splitPrincipals(principalIds)
 	toSet, err := r.principalsToSet(ctx, &role, userIds, groupIds)
 	if err != nil {
 		return nil, db.NoRowsAffected, fmt.Errorf("set principal roles: unable to determine set: %w", err)
@@ -243,10 +246,11 @@ func (r *Repository) SetPrincipalRoles(ctx context.Context, roleId string, roleV
 // DeletePrincipalRoles principals (userIds and/or groupIds) from a role
 // (roleId). The role's current db version must match the roleVersion or an
 // error will be returned.
-func (r *Repository) DeletePrincipalRoles(ctx context.Context, roleId string, roleVersion uint32, userIds, groupIds []string, opt ...Option) (int, error) {
+func (r *Repository) DeletePrincipalRoles(ctx context.Context, roleId string, roleVersion uint32, principalIds []string, opt ...Option) (int, error) {
 	if roleId == "" {
 		return db.NoRowsAffected, fmt.Errorf("delete principal roles: missing role id: %w", db.ErrInvalidParameter)
 	}
+	userIds, groupIds := splitPrincipals(principalIds)
 	if len(userIds) == 0 && len(groupIds) == 0 {
 		return db.NoRowsAffected, fmt.Errorf("delete principal roles: missing either user or groups to delete: %w", db.ErrInvalidParameter)
 	}
@@ -440,4 +444,18 @@ func (r *Repository) principalsToSet(ctx context.Context, role *Role, userIds, g
 	}
 
 	return toSet, nil
+}
+
+func splitPrincipals(principals []string) ([]string, []string) {
+	var users, groups []string
+	for _, principal := range principals {
+		switch {
+		case strings.HasPrefix(principal, UserPrefix):
+			users = append(users, principal)
+		case strings.HasPrefix(principal, GroupPrefix):
+			groups = append(groups, principal)
+		}
+	}
+
+	return users, groups
 }

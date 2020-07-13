@@ -44,11 +44,13 @@ message Role {
 
 	// The principals that are assigned this role.
 	// Output only.
-	repeated string user_ids = 9;
-	// Output only.
-	repeated string group_ids = 10;
+	repeated string principal_ids = 9;
 
-	// The grants that this role provides for it's principals.
+	// The scoped version of the principals with the same index.
+	// Output only.
+	repeated string principal_ids_scoped = 10;
+
+	// The grants that this role provides for its principals.
 	// Output only.
 	repeated string grants = 11;
 

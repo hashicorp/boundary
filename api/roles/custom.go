@@ -7,7 +7,7 @@ import (
 	"github.com/hashicorp/watchtower/api"
 )
 
-func (s Role) AddPrincipals(ctx context.Context, users, groups []string) (*Role, *api.Error, error) {
+func (s Role) AddPrincipals(ctx context.Context, principalIds []string) (*Role, *api.Error, error) {
 	if s.Client == nil {
 		return nil, nil, fmt.Errorf("nil client in AddPrincipals request")
 	}
@@ -16,11 +16,8 @@ func (s Role) AddPrincipals(ctx context.Context, users, groups []string) (*Role,
 	body := map[string]interface{}{
 		"version": s.Version,
 	}
-	if len(users) > 0 {
-		body["user_ids"] = users
-	}
-	if len(groups) > 0 {
-		body["group_ids"] = groups
+	if len(principalIds) > 0 {
+		body["principal_ids"] = principalIds
 	}
 
 	req, err := s.Client.NewRequest(ctx, "POST", fmt.Sprintf("roles/%s:add-principals", s.Id), body)
@@ -44,7 +41,7 @@ func (s Role) AddPrincipals(ctx context.Context, users, groups []string) (*Role,
 	return target, apiErr, nil
 }
 
-func (s Role) SetPrincipals(ctx context.Context, users, groups []string) (*Role, *api.Error, error) {
+func (s Role) SetPrincipals(ctx context.Context, principalIds []string) (*Role, *api.Error, error) {
 	if s.Client == nil {
 		return nil, nil, fmt.Errorf("nil client in SetPrincipals request")
 	}
@@ -53,16 +50,11 @@ func (s Role) SetPrincipals(ctx context.Context, users, groups []string) (*Role,
 	body := map[string]interface{}{
 		"version": s.Version,
 	}
-	if len(users) > 0 {
-		body["user_ids"] = users
-	} else if users != nil {
+	if len(principalIds) > 0 {
+		body["principal_ids"] = principalIds
+	} else if principalIds != nil {
 		// In this function, a non-nil but empty list means clear out
-		body["user_ids"] = nil
-	}
-	if len(groups) > 0 {
-		body["group_ids"] = groups
-	} else if groups != nil {
-		body["group_ids"] = nil
+		body["principal_ids"] = nil
 	}
 
 	req, err := s.Client.NewRequest(ctx, "POST", fmt.Sprintf("roles/%s:set-principals", s.Id), body)
@@ -86,7 +78,7 @@ func (s Role) SetPrincipals(ctx context.Context, users, groups []string) (*Role,
 	return target, apiErr, nil
 }
 
-func (s Role) RemovePrincipals(ctx context.Context, users, groups []string) (*Role, *api.Error, error) {
+func (s Role) RemovePrincipals(ctx context.Context, principalIds []string) (*Role, *api.Error, error) {
 	if s.Client == nil {
 		return nil, nil, fmt.Errorf("nil client in RemovePrincipals request")
 	}
@@ -95,11 +87,8 @@ func (s Role) RemovePrincipals(ctx context.Context, users, groups []string) (*Ro
 	body := map[string]interface{}{
 		"version": s.Version,
 	}
-	if len(users) > 0 {
-		body["user_ids"] = users
-	}
-	if len(groups) > 0 {
-		body["group_ids"] = groups
+	if len(principalIds) > 0 {
+		body["principal_ids"] = principalIds
 	}
 
 	req, err := s.Client.NewRequest(ctx, "POST", fmt.Sprintf("roles/%s:remove-principals", s.Id), body)

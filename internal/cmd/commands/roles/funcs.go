@@ -162,17 +162,11 @@ func populateFlags(c *Command, f *base.FlagSet, flagNames []string) {
 				Target: &c.flagGrantScopeId,
 				Usage:  "The scope ID for grants set on the role",
 			})
-		case "user":
+		case "principal":
 			f.StringSliceVar(&base.StringSliceVar{
-				Name:   "user",
-				Target: &c.flagUsers,
-				Usage:  "The users to add, remove, or set. May be specified multiple times.",
-			})
-		case "group":
-			f.StringSliceVar(&base.StringSliceVar{
-				Name:   "group",
-				Target: &c.flagGroups,
-				Usage:  "The groups to add, remove, or set. May be specified multiple times.",
+				Name:   "principal",
+				Target: &c.flagPrincipals,
+				Usage:  "The principals (users or groups) to add, remove, or set. May be specified multiple times.",
 			})
 		case "grant":
 			f.StringSliceVar(&base.StringSliceVar{
@@ -190,40 +184,35 @@ func generateRoleOutput(role *roles.Role) string {
 		output = []string{
 			"",
 			"Role information:",
-			fmt.Sprintf("  ID:               %s", role.Id),
-			fmt.Sprintf("  Created At:       %s", role.CreatedTime.Local().Format(time.RFC3339)),
-			fmt.Sprintf("  Updated At:       %s", role.UpdatedTime.Local().Format(time.RFC3339)),
-			fmt.Sprintf("  Version:          %d", role.Version),
+			fmt.Sprintf("  ID:                   %s", role.Id),
+			fmt.Sprintf("  Created At:           %s", role.CreatedTime.Local().Format(time.RFC3339)),
+			fmt.Sprintf("  Updated At:           %s", role.UpdatedTime.Local().Format(time.RFC3339)),
+			fmt.Sprintf("  Version:              %d", role.Version),
 		}
 	}
 	if role.Name != nil {
 		output = append(output,
-			fmt.Sprintf("  Name:             %s", *role.Name),
+			fmt.Sprintf("  Name:                 %s", *role.Name),
 		)
 	}
 	if role.Description != nil {
 		output = append(output,
-			fmt.Sprintf("  Description:      %s", *role.Description),
+			fmt.Sprintf("  Description:          %s", *role.Description),
 		)
 	}
 	if role.GrantScopeId != nil {
 		output = append(output,
-			fmt.Sprintf("  Grant Scope ID:   %s", *role.GrantScopeId),
+			fmt.Sprintf("  Grant Scope ID:       %s", *role.GrantScopeId),
 		)
 	}
-	if len(role.UserIds) > 0 {
+	if len(role.PrincipalIdsScoped) > 0 {
 		output = append(output,
-			fmt.Sprintf("  Users:            %s", strings.Join(role.UserIds, ", ")),
-		)
-	}
-	if len(role.GroupIds) > 0 {
-		output = append(output,
-			fmt.Sprintf("  Groups:           %s", strings.Join(role.GroupIds, ", ")),
+			fmt.Sprintf("  Scoped Principal IDs: %s", strings.Join(role.PrincipalIds, ", ")),
 		)
 	}
 	if len(role.GrantsCanonical) > 0 {
 		output = append(output,
-			fmt.Sprintf("  Canonical Grants: %s", strings.Join(role.GrantsCanonical, " | ")),
+			fmt.Sprintf("  Canonical Grants:     %s", strings.Join(role.GrantsCanonical, " | ")),
 		)
 	}
 	return base.WrapForHelpText(output)

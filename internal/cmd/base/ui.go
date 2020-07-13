@@ -16,8 +16,7 @@ var TermWidth uint = 80
 
 func init() {
 	width, _, err := terminal.GetSize(int(os.Stdin.Fd()))
-	if err != nil {
-		// Do nothing, default to 80
+	if err == nil {
+		TermWidth = uint(width)
 	}
-	TermWidth = uint(width)
 }

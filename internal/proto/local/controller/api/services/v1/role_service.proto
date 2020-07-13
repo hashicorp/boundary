@@ -296,8 +296,7 @@ message AddRolePrincipalsRequest {
   // The version ensures the role hasn't changed since it was last retrieved and if
   // it has the request will fail.
   google.protobuf.UInt32Value version = 4;
-  repeated string user_ids = 5 [json_name="user_ids"];
-  repeated string group_ids = 6 [json_name="group_ids"];
+  repeated string principal_ids = 5 [json_name="principal_ids"];
 }
 
 message AddRolePrincipalsResponse {
@@ -311,8 +310,7 @@ message SetRolePrincipalsRequest {
   // The version ensures the role hasn't changed since it was last retrieved and if
   // it has the request will fail.
   google.protobuf.UInt32Value version = 4;
-  repeated string user_ids = 5 [json_name="user_ids"];
-  repeated string group_ids = 6 [json_name="group_ids"];
+  repeated string principal_ids = 5 [json_name="principal_ids"];
 }
 
 message SetRolePrincipalsResponse {
@@ -326,8 +324,7 @@ message RemoveRolePrincipalsRequest {
   // The version ensures the role hasn't changed since it was last retrieved and if
   // it has the request will fail.
   google.protobuf.UInt32Value version = 4;
-  repeated string user_ids = 5 [json_name="user_ids"];
-  repeated string group_ids = 6 [json_name="group_ids"];
+  repeated string principal_ids = 5 [json_name="principal_ids"];
 }
 
 message RemoveRolePrincipalsResponse {
