@@ -352,7 +352,7 @@ func (r *Repository) ListRoleGrants(ctx context.Context, roleId string, opt ...O
 	return roleGrants, nil
 }
 
-func (r *Repository) GrantsForUser(ctx context.Context, userId string, opt ...Option) ([]*perms.GrantPair, error) {
+func (r *Repository) GrantsForUser(ctx context.Context, userId string, opt ...Option) ([]perms.GrantPair, error) {
 	if userId == "" {
 		return nil, fmt.Errorf("get grants for user: missing user id %w", db.ErrInvalidParameter)
 	}
@@ -419,7 +419,7 @@ select role_scope as scope_id, role_grant as grant from final;
 		query = fmt.Sprintf(grantsQuery, authUser)
 	}
 
-	var grants []*perms.GrantPair
+	var grants []perms.GrantPair
 	tx, err := r.reader.DB()
 	if err != nil {
 		return nil, err
@@ -430,7 +430,7 @@ select role_scope as scope_id, role_grant as grant from final;
 	}
 	defer rows.Close()
 	for rows.Next() {
-		var g *perms.GrantPair
+		var g perms.GrantPair
 		if err := r.reader.ScanRows(rows, &g); err != nil {
 			return nil, err
 		}

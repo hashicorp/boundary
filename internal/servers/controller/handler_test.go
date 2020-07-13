@@ -11,7 +11,6 @@ import (
 	"testing"
 
 	"github.com/grpc-ecosystem/grpc-gateway/runtime"
-	"github.com/hashicorp/watchtower/globals"
 	"github.com/hashicorp/watchtower/internal/gen/controller/api/services"
 	"github.com/hashicorp/watchtower/internal/types/action"
 	"github.com/hashicorp/watchtower/internal/types/resource"
@@ -418,43 +417,31 @@ func TestHandler_AuthDecoration(t *testing.T) {
 			req, err := http.NewRequest(tc.method, fmt.Sprintf("http://127.0.0.1:9200:%s", tc.path), nil)
 			require.NoError(err)
 
-			ctx, err := decorateAuthParams(nil)
-			assert.Nil(ctx)
+			res, act, err := decorateAuthParams(nil)
+			assert.Nil(res)
 			require.Error(err)
+			assert.Equal(action.Unknown, act)
 			assert.Contains(err.Error(), "incoming request is nil")
 
-			ctx, err = decorateAuthParams(req)
+			res, act, err = decorateAuthParams(req)
 			if tc.wantErrContains != "" {
 				require.Error(err)
 				assert.Contains(err.Error(), tc.wantErrContains, err.Error())
 				return
 			}
 			require.NoError(err)
-			require.NotNil(ctx)
+			require.NotNil(res)
+			require.NotEqual(action.Unknown, act)
 
 			if tc.path == "/" {
 				return
 			}
 
-			scopeVal := ctx.Value(globals.ContextScopeValue)
-			require.NotNil(scopeVal)
-			assert.Equal(tc.scope, scopeVal.(string), "scope")
-
-			actionVal := ctx.Value(globals.ContextActionValue)
-			require.NotNil(actionVal)
-			assert.Equal(tc.action, actionVal.(action.Type), "action")
-
-			typVal := ctx.Value(globals.ContextTypeValue)
-			require.NotNil(typVal)
-			assert.Equal(tc.resource, typVal.(resource.Type), "type")
-
-			idVal := ctx.Value(globals.ContextResourceValue)
-			require.NotNil(idVal)
-			assert.Equal(tc.id, idVal.(string), "id")
-
-			pinVal := ctx.Value(globals.ContextPinValue)
-			require.NotNil(pinVal)
-			assert.Equal(tc.pin, pinVal.(string), "pin")
+			assert.Equal(tc.scope, res.ScopeId, "scope")
+			assert.Equal(tc.action, act, "action")
+			assert.Equal(tc.resource, res.Type, "type")
+			assert.Equal(tc.id, res.Id, "id")
+			assert.Equal(tc.pin, res.Pin, "pin")
 		})
 	}
 }

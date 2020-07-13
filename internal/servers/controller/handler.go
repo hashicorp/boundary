@@ -525,7 +525,7 @@ func (c *Controller) performAuthzCheck(ctx context.Context, logger hclog.Logger,
 	}
 
 	var parsedGrants []perms.Grant
-	var grantPairs []*perms.GrantPair
+	var grantPairs []perms.GrantPair
 	// Fetch and parse grants for this user ID
 	{
 		iamRepo, err := c.IamRepoFn()

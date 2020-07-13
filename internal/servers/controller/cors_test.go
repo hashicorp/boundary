@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/hashicorp/watchtower/internal/cmd/config"
 )
@@ -161,7 +162,8 @@ func TestHandler_CORS(t *testing.T) {
 		t.Run(c.name, func(t *testing.T) {
 			// Create a client with the right address
 			client := tc.Client()
-			client.SetAddr(tc.ApiAddrs()[c.listenerNum-1])
+			err := client.SetAddr(tc.ApiAddrs()[c.listenerNum-1])
+			require.NoError(t, err)
 			client.SetOrg("o_1234567890")
 
 			// Create the request
