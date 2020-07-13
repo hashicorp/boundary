@@ -56,6 +56,19 @@ var helpMap = map[string]func() string{
 	"remove-grants":     removePrincipalsHelp,
 }
 
+var flagsMap = map[string][]string{
+	"create":            {"name", "description", "grantscopeid"},
+	"update":            {"id", "name", "description", "grantscopeid"},
+	"read":              {"id"},
+	"delete":            {"id"},
+	"add-principals":    {"id", "principal"},
+	"set-principals":    {"id", "principal"},
+	"remove-principals": {"id", "principal"},
+	"add-grants":        {"id", "grant"},
+	"set-grants":        {"id", "grant"},
+	"remove-grants":     {"id", "grant"},
+}
+
 func (c *Command) Help() string {
 	if c.Func == "" {
 		return baseHelp()
@@ -68,29 +81,7 @@ func (c *Command) Flags() *base.FlagSets {
 
 	f := set.NewFlagSet("Command Options")
 
-	switch c.Func {
-	case "create":
-		populateFlags(c, f, []string{"name", "description", "grantscopeid"})
-	case "update":
-		populateFlags(c, f, []string{"id", "name", "description", "grantscopeid"})
-	case "read":
-		populateFlags(c, f, []string{"id"})
-	case "delete":
-		populateFlags(c, f, []string{"id"})
-	case "add-principals":
-		populateFlags(c, f, []string{"id", "principal"})
-	case "set-principals":
-		populateFlags(c, f, []string{"id", "principal"})
-	case "remove-principals":
-		populateFlags(c, f, []string{"id", "principal"})
-	case "add-grants":
-		populateFlags(c, f, []string{"id", "grant"})
-	case "set-grants":
-		populateFlags(c, f, []string{"id", "grant"})
-	case "remove-grants":
-		populateFlags(c, f, []string{"id", "grant"})
-	}
-
+	populateFlags(c, f, flagsMap[c.Func])
 	return set
 }
 
@@ -111,6 +102,11 @@ func (c *Command) Run(args []string) int {
 
 	if err := f.Parse(args); err != nil {
 		c.UI.Error(err.Error())
+		return 1
+	}
+
+	if flagsMap[c.Func][0] == "id" && c.flagId == "" {
+		c.UI.Error("ID is required but not passed in via -id")
 		return 1
 	}
 
