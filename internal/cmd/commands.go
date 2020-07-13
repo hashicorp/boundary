@@ -100,33 +100,51 @@ func initCommands(ui, serverCmdUi cli.Ui, runOpts *RunOptions) {
 			}, nil
 		},
 		"roles create": func() (cli.Command, error) {
-			return &roles.CRUDLCommand{
+			return &roles.Command{
 				Command: base.NewCommand(ui),
 				Func:    "create",
 			}, nil
 		},
 		"roles update": func() (cli.Command, error) {
-			return &roles.CRUDLCommand{
+			return &roles.Command{
 				Command: base.NewCommand(ui),
 				Func:    "update",
 			}, nil
 		},
 		"roles read": func() (cli.Command, error) {
-			return &roles.CRUDLCommand{
+			return &roles.Command{
 				Command: base.NewCommand(ui),
 				Func:    "read",
 			}, nil
 		},
 		"roles delete": func() (cli.Command, error) {
-			return &roles.CRUDLCommand{
+			return &roles.Command{
 				Command: base.NewCommand(ui),
 				Func:    "delete",
 			}, nil
 		},
 		"roles list": func() (cli.Command, error) {
-			return &roles.CRUDLCommand{
+			return &roles.Command{
 				Command: base.NewCommand(ui),
 				Func:    "list",
+			}, nil
+		},
+		"roles add-principals": func() (cli.Command, error) {
+			return &roles.Command{
+				Command: base.NewCommand(ui),
+				Func:    "add-principals",
+			}, nil
+		},
+		"roles set-principals": func() (cli.Command, error) {
+			return &roles.Command{
+				Command: base.NewCommand(ui),
+				Func:    "set-principals",
+			}, nil
+		},
+		"roles remove-principals": func() (cli.Command, error) {
+			return &roles.Command{
+				Command: base.NewCommand(ui),
+				Func:    "remove-principals",
 			}, nil
 		},
 	}

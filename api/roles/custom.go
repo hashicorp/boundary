@@ -14,9 +14,13 @@ func (s Role) AddPrincipals(ctx context.Context, users, groups []string) (*Role,
 	// We assume that the client provided has the org and optionally the project id of the request.
 
 	body := map[string]interface{}{
-		"group_ids": groups,
-		"user_ids":  users,
-		"version":   s.Version,
+		"version": s.Version,
+	}
+	if len(users) > 0 {
+		body["user_ids"] = users
+	}
+	if len(groups) > 0 {
+		body["group_ids"] = groups
 	}
 
 	req, err := s.Client.NewRequest(ctx, "POST", fmt.Sprintf("roles/%s:add-principals", s.Id), body)
@@ -47,9 +51,18 @@ func (s Role) SetPrincipals(ctx context.Context, users, groups []string) (*Role,
 	// We assume that the client provided has the org and optionally the project id of the request.
 
 	body := map[string]interface{}{
-		"group_ids": groups,
-		"user_ids":  users,
-		"version":   s.Version,
+		"version": s.Version,
+	}
+	if len(users) > 0 {
+		body["user_ids"] = users
+	} else if users != nil {
+		// In this function, a non-nil but empty list means clear out
+		body["user_ids"] = nil
+	}
+	if len(groups) > 0 {
+		body["group_ids"] = groups
+	} else if groups != nil {
+		body["group_ids"] = nil
 	}
 
 	req, err := s.Client.NewRequest(ctx, "POST", fmt.Sprintf("roles/%s:set-principals", s.Id), body)
@@ -80,9 +93,13 @@ func (s Role) RemovePrincipals(ctx context.Context, users, groups []string) (*Ro
 	// We assume that the client provided has the org and optionally the project id of the request.
 
 	body := map[string]interface{}{
-		"group_ids": groups,
-		"user_ids":  users,
-		"version":   s.Version,
+		"version": s.Version,
+	}
+	if len(users) > 0 {
+		body["user_ids"] = users
+	}
+	if len(groups) > 0 {
+		body["group_ids"] = groups
 	}
 
 	req, err := s.Client.NewRequest(ctx, "POST", fmt.Sprintf("roles/%s:remove-principals", s.Id), body)

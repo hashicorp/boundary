@@ -3,6 +3,7 @@ package roles
 import (
 	"fmt"
 	"net/textproto"
+	"strings"
 	"time"
 
 	"github.com/hashicorp/watchtower/api/roles"
@@ -11,6 +12,9 @@ import (
 )
 
 func synopsisFunc(inFunc string) string {
+	if inFunc == "" {
+		return wordwrap.WrapString("Manage Watchtower roles", 80)
+	}
 	return wordwrap.WrapString(fmt.Sprintf("%s a role within Watchtower", textproto.CanonicalMIMEHeaderKey(inFunc)), 80)
 }
 
@@ -25,6 +29,24 @@ func principalsSynopsisFunc(inPrinc string) string {
 		in = "Remove principals (users, groups) from"
 	}
 	return wordwrap.WrapString(fmt.Sprintf("%s a role within Watchtower", in), 80)
+}
+
+func baseHelp() string {
+	return base.WrapForHelpText([]string{
+		"Usage: watchtower role [sub command] [options] [args]",
+		"",
+		"  This command allows operations on Watchtower roles. Examples:",
+		"",
+		"    Create a role:",
+		"",
+		`      $ watchtower role create -name foo -description "For ProdOps usage"`,
+		"",
+		"    Add a grant to a role:",
+		"",
+		`      $ watchtower role add-grants -id r_1234567890 -grant "type=host-catalog;actions=create,delete"`,
+		"",
+		"  Please see the role subcommand help for detailed usage information.",
+	})
 }
 
 func createHelp(flagHelp string) string {
@@ -107,7 +129,7 @@ func removePrincipalsHelp(flagHelp string) string {
 	}) + flagHelp
 }
 
-func populateFlags(c *CRUDLCommand, f *base.FlagSet, flagNames []string) {
+func populateFlags(c *Command, f *base.FlagSet, flagNames []string) {
 	for _, name := range flagNames {
 		switch name {
 		case "id":
@@ -175,6 +197,16 @@ func generateRoleOutput(role *roles.Role) string {
 	if role.GrantScopeId != nil {
 		output = append(output,
 			fmt.Sprintf("  Grant Scope ID: %s", *role.GrantScopeId),
+		)
+	}
+	if len(role.UserIds) > 0 {
+		output = append(output,
+			fmt.Sprintf("  Users:          %s", strings.Join(role.UserIds, ", ")),
+		)
+	}
+	if len(role.GroupIds) > 0 {
+		output = append(output,
+			fmt.Sprintf("  Groups:         %s", strings.Join(role.GroupIds, ", ")),
 		)
 	}
 	return base.WrapForHelpText(output)
