@@ -207,7 +207,7 @@ func generateRoleOutput(role *roles.Role) string {
 	}
 	if len(role.PrincipalIdsScoped) > 0 {
 		output = append(output,
-			fmt.Sprintf("  Scoped Principal IDs: %s", strings.Join(role.PrincipalIds, ", ")),
+			fmt.Sprintf("  Scoped Principal IDs: %s", strings.Join(role.PrincipalIdsScoped, ", ")),
 		)
 	}
 	if len(role.GrantsCanonical) > 0 {

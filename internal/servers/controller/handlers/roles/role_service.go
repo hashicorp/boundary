@@ -477,7 +477,7 @@ func toProto(in *iam.Role, principals []iam.PrincipalRole, grants []*iam.RoleGra
 	}
 	for _, p := range principals {
 		out.PrincipalIds = append(out.PrincipalIds, p.GetPrincipalId())
-		out.PrincipalIdsScoped = append(out.PrincipalIdsScoped, p.GetPrincipalScopeId())
+		out.PrincipalIdsScoped = append(out.PrincipalIdsScoped, p.GetScopedPrincipalId())
 	}
 	for _, g := range grants {
 		out.Grants = append(out.Grants, g.GetRawGrant())
