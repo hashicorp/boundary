@@ -37,17 +37,17 @@ func principalsGrantsSynopsisFunc(inFunc string, principals bool) string {
 
 func baseHelp() string {
 	return base.WrapForHelpText([]string{
-		"Usage: watchtower role [sub command] [options] [args]",
+		"Usage: watchtower roles [sub command] [options] [args]",
 		"",
 		"  This command allows operations on Watchtower roles. Examples:",
 		"",
 		"    Create a role:",
 		"",
-		`      $ watchtower role create -name foo -description "For ProdOps usage"`,
+		`      $ watchtower roles create -name foo -description "For ProdOps usage"`,
 		"",
 		"    Add a grant to a role:",
 		"",
-		`      $ watchtower role add-grants -id r_1234567890 -grant "type=host-catalog;actions=create,delete"`,
+		`      $ watchtower roles add-grants -id r_1234567890 -grant "type=host-catalog;actions=create,delete"`,
 		"",
 		"  Please see the role subcommand help for detailed usage information.",
 	})
