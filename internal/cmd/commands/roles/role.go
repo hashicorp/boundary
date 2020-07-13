@@ -309,7 +309,7 @@ func (c *Command) Run(args []string) int {
 				"Role information:",
 			}
 			for i, r := range listedRoles {
-				if i > 1 {
+				if i > 0 {
 					output = append(output, "")
 				}
 				if true {
