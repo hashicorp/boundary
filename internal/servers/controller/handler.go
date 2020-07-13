@@ -181,7 +181,18 @@ func wrapHandlerWithCommonFuncs(h http.Handler, c *Controller, props HandlerProp
 			if err != nil {
 				c.logger.Error("error during authz check", "error", err)
 				w.WriteHeader(http.StatusForbidden)
+				cancelFunc()
 				return
+			}
+			if !authzResults.Allowed {
+				// TODO: Decide whether to remove this
+				if c.conf.RawConfig.DevController && os.Getenv("WATCHTOWER_DEV_SKIP_AUTHZ") != "" {
+					c.logger.Info("failed authz info for request", "resource", pretty.Sprint(res), "action", pretty.Sprint(act))
+				} else {
+					w.WriteHeader(http.StatusForbidden)
+					cancelFunc()
+					return
+				}
 			}
 			userId = authzResults.UserId
 		}

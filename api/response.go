@@ -32,6 +32,14 @@ func (r *Response) Decode(inStruct interface{}) (*Error, error) {
 		return nil, nil
 	}
 
+	if r.resp.StatusCode == 403 {
+		// Nothing to be done
+		return &Error{
+			Status:  http.StatusForbidden,
+			Message: "Forbidden",
+		}, nil
+	}
+
 	if inStruct == nil {
 		return nil, fmt.Errorf("nil value given to decode into and not a 204 response")
 	}
