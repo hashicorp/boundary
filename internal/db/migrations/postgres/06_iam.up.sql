@@ -529,7 +529,7 @@ update on iam_group
 -- will be ensured with a before update trigger using iam_immutable_role(). 
 create table iam_user_role (
   create_time wt_timestamp,
-  role_id wt_public_id
+  role_id wt_role_id
     references iam_role(public_id)
     on delete cascade
     on update cascade,
@@ -569,6 +569,12 @@ begin
 	return principal_scope || ':' || principal_id;
 end;
 $$ language plpgsql;
+
+insert into iam_user_role (role_id, principal_id)
+  values 
+    ('r_default', 'u_anon'),
+    ('r_default', 'u_auth');
+
 
 -- iam_principle_role provides a consolidated view all principal roles assigned
 -- (user and group roles).
