@@ -39,7 +39,7 @@ func (c *Command) Synopsis() string {
 	case "add-grants", "set-grants", "remove-grants":
 		return principalsGrantsSynopsisFunc(c.Func, false)
 	}
-	return ""
+	return "Manage Watchtower roles"
 }
 
 var helpMap = map[string]func() string{
@@ -293,7 +293,6 @@ func (c *Command) Run(args []string) int {
 		output = []string{
 			"",
 			"Role information:",
-			"",
 		}
 		for i, r := range listedRoles {
 			if i > 1 {

@@ -354,7 +354,7 @@ func (r *Repository) ListRoleGrants(ctx context.Context, roleId string, opt ...O
 
 func (r *Repository) GrantsForUser(ctx context.Context, userId string, opt ...Option) ([]perms.GrantPair, error) {
 	if userId == "" {
-		return nil, fmt.Errorf("get grants for user: missing user id %w", db.ErrInvalidParameter)
+		return nil, fmt.Errorf("get grants for user: missing user id: %w", db.ErrInvalidParameter)
 	}
 
 	const (

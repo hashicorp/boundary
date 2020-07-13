@@ -466,7 +466,8 @@ func (c *Controller) performAuthzCheck(ctx context.Context, logger hclog.Logger,
 		return nil, errors.New("perform authz check: res is nil")
 	}
 	var receivedTokenType tokenFormat
-	var fullToken, token, publicId, userId string
+	var fullToken, token, publicId string
+	userId := "u_anon"
 
 	// First, get the token, either from the authorization header or from split
 	// cookies
@@ -491,6 +492,13 @@ func (c *Controller) performAuthzCheck(ctx context.Context, logger hclog.Logger,
 				receivedTokenType = authTokenTypeSplitCookie
 				fullToken = jsCookiePayload + httpCookiePayload
 			}
+		}
+
+		if receivedTokenType == authTokenTypeUnknown || fullToken == "" {
+			// We didn't find auth info or a client screwed up and put in a
+			// blank header instead of nothing at all, so carry on as the
+			// anonymous user
+			goto GRANTSLOOKUP
 		}
 
 		splitFullToken := strings.Split(fullToken, "_")
@@ -519,11 +527,10 @@ func (c *Controller) performAuthzCheck(ctx context.Context, logger hclog.Logger,
 		}
 		if at != nil {
 			userId = at.GetIamUserId()
-		} else {
-			userId = "u_anon"
 		}
 	}
 
+GRANTSLOOKUP:
 	var parsedGrants []perms.Grant
 	var grantPairs []perms.GrantPair
 	// Fetch and parse grants for this user ID
@@ -549,11 +556,13 @@ func (c *Controller) performAuthzCheck(ctx context.Context, logger hclog.Logger,
 	acl := perms.NewACL(parsedGrants...)
 	allowed := acl.Allowed(*res, act)
 	allowed.UserId = userId
-	logger.Info("grant checking", "user_id", userId,
-		"grants", pretty.Sprint(grantPairs),
-		"resource", pretty.Sprint(res),
-		"action", pretty.Sprint(act),
-		"authorized", pretty.Sprint(allowed))
+	/*
+		logger.Info("grant checking", "user_id", userId,
+			"grants", pretty.Sprint(grantPairs),
+			"resource", pretty.Sprint(res),
+			"action", pretty.Sprint(act),
+			"authorized", pretty.Sprint(allowed))
+	*/
 	return &allowed, nil
 }
 
