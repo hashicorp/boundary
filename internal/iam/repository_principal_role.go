@@ -452,6 +452,7 @@ func splitPrincipals(principals []string) ([]string, []string) {
 		switch {
 		case strings.HasPrefix(principal, UserPrefix):
 			users = append(users, principal)
+		// TODO: This needs to handle all of the kinds of group prefixes (sg_, dg_, etc.)
 		case strings.HasPrefix(principal, GroupPrefix):
 			groups = append(groups, principal)
 		}
