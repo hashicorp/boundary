@@ -7,12 +7,32 @@ check(
 comment on domain wt_public_id is
 'Random ID generated with github.com/hashicorp/vault/sdk/helper/base62';
 
+create domain wt_private_id as text
+check(
+  length(trim(value)) > 10
+);
+comment on domain wt_private_id is
+'Random ID generated with github.com/hashicorp/vault/sdk/helper/base62';
+
+create domain wt_scope_id as text
+check(
+  length(trim(value)) > 10 or value = 'global'
+);
+comment on domain wt_scope_id is
+'"global" or random ID generated with github.com/hashicorp/vault/sdk/helper/base62';
+
+create domain wt_user_id as text
+check(
+  length(trim(value)) > 10 or value = 'u_anon' or value = 'u_auth'
+);
+comment on domain wt_scope_id is
+'"u_anon", "u_auth", or random ID generated with github.com/hashicorp/vault/sdk/helper/base62';
+
 create domain wt_timestamp as
   timestamp with time zone
   default current_timestamp;
 comment on domain wt_timestamp is
 'Standard timestamp for all create_time and update_time columns';
-
 
 create or replace function
   update_time_column()
@@ -68,5 +88,38 @@ comment on function
   default_create_time()
 is
   'function used in before insert triggers to set create_time column to now';
+
+
+create domain wt_version as bigint
+default 1 
+check(
+  value > 0
+);
+comment on domain wt_version is
+'standard column for row version';
+
+-- update_version_column() will increment the version column whenever row data
+-- is updated and should only be used in an update after trigger.  This function
+-- will overwrite any explicit updates to the version column. 
+create or replace function
+  update_version_column()
+  returns trigger
+as $$
+begin
+  if pg_trigger_depth() = 1 then
+    if row(new.*) is distinct from row(old.*) then
+      execute format('update %I set version = $1 where public_id = $2', tg_relid::regclass) using old.version+1, new.public_id;
+      new.version = old.version + 1;
+      return new;
+    end if;
+  end if;
+  return new;
+end;
+$$ language plpgsql;
+
+comment on function
+  update_version_column()
+is
+  'function used in after update triggers to properly set version columns';
 
 commit;

@@ -7,20 +7,9 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/hashicorp/watchtower/internal/iam"
-)
-
-const (
-	TypeNone        = ""
-	TypeAll         = "*"
-	TypeRole        = "role"
-	TypeGroup       = "group"
-	TypeUser        = "user"
-	TypeAuthMethod  = "auth-method"
-	TypeHostCatalog = "host-catalog"
-	TypeHostSet     = "host-set"
-	TypeHost        = "host"
-	TypeTarget      = "target"
+	"github.com/hashicorp/watchtower/internal/types/action"
+	"github.com/hashicorp/watchtower/internal/types/resource"
+	"github.com/hashicorp/watchtower/internal/types/scope"
 )
 
 // Scope provides an in-memory representation of iam.Scope without the
@@ -30,7 +19,7 @@ type Scope struct {
 	Id string
 
 	// Type is the scope's type (org or project)
-	Type iam.ScopeType
+	Type scope.Type
 }
 
 // Grant is a Go representation of a parsed grant
@@ -38,17 +27,14 @@ type Grant struct {
 	// The scope ID, which will be a project ID or an org ID
 	scope Scope
 
-	// Project, if defined
-	project string
-
 	// The ID in the grant, if provided.
 	id string
 
 	// The type, if provided
-	typ string
+	typ resource.Type
 
 	// The set of actions being granted
-	actions map[iam.Action]bool
+	actions map[action.Type]bool
 
 	// This is used as a temporary staging area before validating permissions to
 	// allow the same validation code across grant string formats
@@ -57,16 +43,15 @@ type Grant struct {
 
 func (g Grant) clone() *Grant {
 	ret := &Grant{
-		scope:   g.scope,
-		project: g.project,
-		id:      g.id,
-		typ:     g.typ,
+		scope: g.scope,
+		id:    g.id,
+		typ:   g.typ,
 	}
 	if g.actionsBeingParsed != nil {
 		ret.actionsBeingParsed = append(ret.actionsBeingParsed, g.actionsBeingParsed...)
 	}
 	if g.actions != nil {
-		ret.actions = make(map[iam.Action]bool, len(g.actions))
+		ret.actions = make(map[action.Type]bool, len(g.actions))
 		for action := range g.actions {
 			ret.actions[action] = true
 		}
@@ -77,16 +62,13 @@ func (g Grant) clone() *Grant {
 // CanonicalString returns the canonical representation of the grant
 func (g Grant) CanonicalString() string {
 	var builder []string
-	if g.project != "" {
-		builder = append(builder, fmt.Sprintf("project=%s", g.project))
-	}
 
 	if g.id != "" {
 		builder = append(builder, fmt.Sprintf("id=%s", g.id))
 	}
 
-	if g.typ != TypeNone {
-		builder = append(builder, fmt.Sprintf("type=%s", g.typ))
+	if g.typ != resource.Unknown {
+		builder = append(builder, fmt.Sprintf("type=%s", g.typ.String()))
 	}
 
 	if len(g.actions) > 0 {
@@ -104,14 +86,11 @@ func (g Grant) CanonicalString() string {
 // MarshalJSON provides a custom marshaller for grants
 func (g Grant) MarshalJSON() ([]byte, error) {
 	res := make(map[string]interface{}, 4)
-	if g.project != "" {
-		res["project"] = g.project
-	}
 	if g.id != "" {
 		res["id"] = g.id
 	}
-	if g.typ != "" {
-		res["type"] = g.typ
+	if g.typ != resource.Unknown {
+		res["type"] = g.typ.String()
 	}
 	if len(g.actions) > 0 {
 		actions := make([]string, 0, len(g.actions))
@@ -132,13 +111,6 @@ func (g *Grant) unmarshalJSON(data []byte) error {
 	if err := json.Unmarshal(data, &raw); err != nil {
 		return err
 	}
-	if rawProj, ok := raw["project"]; ok {
-		project, ok := rawProj.(string)
-		if !ok {
-			return fmt.Errorf("unable to interpret %q as string", "project")
-		}
-		g.project = strings.ToLower(project)
-	}
 	if rawId, ok := raw["id"]; ok {
 		id, ok := rawId.(string)
 		if !ok {
@@ -151,7 +123,7 @@ func (g *Grant) unmarshalJSON(data []byte) error {
 		if !ok {
 			return fmt.Errorf("unable to interpret %q as string", "type")
 		}
-		g.typ = strings.ToLower(typ)
+		g.typ = resource.StringToResourceType(typ)
 	}
 	if rawActions, ok := raw["actions"]; ok {
 		interfaceActions, ok := rawActions.([]interface{})
@@ -192,14 +164,15 @@ func (g *Grant) unmarshalText(grantString string) error {
 		}
 
 		switch kv[0] {
-		case "project":
-			g.project = strings.ToLower(kv[1])
-
 		case "id":
 			g.id = strings.ToLower(kv[1])
 
 		case "type":
-			g.typ = strings.ToLower(kv[1])
+			typeString := strings.ToLower(kv[1])
+			g.typ = resource.StringToResourceType(typeString)
+			if g.typ == resource.Unknown {
+				return fmt.Errorf("unknown type specifier %q", typeString)
+			}
 
 		case "actions":
 			actions := strings.Split(kv[1], ",")
@@ -225,32 +198,28 @@ func (g *Grant) unmarshalText(grantString string) error {
 //
 // The scope must be the org and project where this grant originated, not the
 // request.
-//
-// WARNING: It is the responsibility of the caller to validate that a returned
-// Grant matches the incoming scope and if not that the relationship is valid.
-// Specifically, if a project is specified as part of a grant, the grant's
-// returned scope will be a project scope with the associated project ID. The
-// caller must validate that the project ID is valid and that its enclosing
-// organization is the original organization scope. Likely this can be done in a
-// centralized helper context; however it's not done here to avoid reaching into
-// the database from within this package.
-func Parse(scope Scope, userId, grantString string) (Grant, error) {
+func Parse(scopeId, userId, grantString string) (Grant, error) {
 	if len(grantString) == 0 {
 		return Grant{}, errors.New("grant string is empty")
 	}
 
-	switch scope.Type {
-	case iam.ProjectScope, iam.OrganizationScope:
-	default:
-		return Grant{}, errors.New("invalid scope type")
-	}
-
-	if scope.Id == "" {
+	if scopeId == "" {
 		return Grant{}, errors.New("no scope ID provided")
 	}
 
 	grant := Grant{
-		scope: scope,
+		scope: Scope{Id: scopeId},
+	}
+
+	switch {
+	case scopeId == "global":
+		grant.scope.Type = scope.Global
+	case strings.HasPrefix(scopeId, scope.Org.Prefix()):
+		grant.scope.Type = scope.Org
+	case strings.HasPrefix(scopeId, scope.Project.Prefix()):
+		grant.scope.Type = scope.Project
+	default:
+		return Grant{}, errors.New("invalid scope type")
 	}
 
 	switch {
@@ -278,8 +247,8 @@ func Parse(scope Scope, userId, grantString string) (Grant, error) {
 		}
 	}
 
-	if err := grant.validateAndModifyProject(); err != nil {
-		return Grant{}, err
+	if grant.id == "" && grant.typ == resource.Unknown {
+		return Grant{}, errors.New(`"id" and "type" cannot both be empty`)
 	}
 
 	if err := grant.validateType(); err != nil {
@@ -293,30 +262,18 @@ func Parse(scope Scope, userId, grantString string) (Grant, error) {
 	return grant, nil
 }
 
-func (g *Grant) validateAndModifyProject() error {
-	if g.project == "" {
-		return nil
-	}
-	if g.scope.Type != iam.OrganizationScope {
-		return errors.New("cannot specify a project in the grant when the scope is not an organization")
-	}
-	g.scope.Type = iam.ProjectScope
-	g.scope.Id = g.project
-	return nil
-}
-
 func (g Grant) validateType() error {
 	switch g.typ {
-	case TypeNone,
-		TypeAll,
-		TypeRole,
-		TypeGroup,
-		TypeUser,
-		TypeAuthMethod,
-		TypeHostCatalog,
-		TypeHostSet,
-		TypeHost,
-		TypeTarget:
+	case resource.Unknown,
+		resource.All,
+		resource.Role,
+		resource.StaticGroup,
+		resource.User,
+		resource.AuthMethod,
+		resource.HostCatalog,
+		resource.HostSet,
+		resource.Host,
+		resource.Target:
 		return nil
 	}
 	return fmt.Errorf("unknown type specifier %q", g.typ)
@@ -327,22 +284,22 @@ func (g *Grant) parseAndValidateActions() error {
 		return errors.New("no actions specified")
 	}
 
-	for _, action := range g.actionsBeingParsed {
-		if action == "" {
+	for _, a := range g.actionsBeingParsed {
+		if a == "" {
 			return errors.New("empty action found")
 		}
 		if g.actions == nil {
-			g.actions = make(map[iam.Action]bool, len(g.actionsBeingParsed))
+			g.actions = make(map[action.Type]bool, len(g.actionsBeingParsed))
 		}
-		if a := iam.ActionMap[action]; a == iam.ActionUnknown {
-			return fmt.Errorf("unknown action %q", action)
+		if am := action.Map[a]; am == action.Unknown {
+			return fmt.Errorf("unknown action %q", a)
 		} else {
-			g.actions[a] = true
+			g.actions[am] = true
 		}
 	}
 
-	if len(g.actions) > 1 && g.actions[iam.ActionAll] {
-		return fmt.Errorf("%q cannot be specified with other actions", iam.ActionAll.String())
+	if len(g.actions) > 1 && g.actions[action.All] {
+		return fmt.Errorf("%q cannot be specified with other actions", action.All.String())
 	}
 
 	g.actionsBeingParsed = nil

@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"net/http"
 	"path"
-	"path/filepath"
 	"strings"
 	"time"
 
@@ -17,10 +16,13 @@ import (
 	"github.com/hashicorp/watchtower/globals"
 	"github.com/hashicorp/watchtower/internal/gen/controller/api/services"
 	"github.com/hashicorp/watchtower/internal/servers/controller/handlers"
+	"github.com/hashicorp/watchtower/internal/servers/controller/handlers/groups"
 	"github.com/hashicorp/watchtower/internal/servers/controller/handlers/host_catalogs"
 	"github.com/hashicorp/watchtower/internal/servers/controller/handlers/host_sets"
 	"github.com/hashicorp/watchtower/internal/servers/controller/handlers/hosts"
+	"github.com/hashicorp/watchtower/internal/servers/controller/handlers/orgs"
 	"github.com/hashicorp/watchtower/internal/servers/controller/handlers/projects"
+	"github.com/hashicorp/watchtower/internal/servers/controller/handlers/roles"
 	"github.com/hashicorp/watchtower/internal/servers/controller/handlers/users"
 )
 
@@ -34,25 +36,13 @@ func (c *Controller) handler(props HandlerProperties) (http.Handler, error) {
 	// Create the muxer to handle the actual endpoints
 	mux := http.NewServeMux()
 
-	if c.conf.RawConfig.PassthroughDirectory != "" {
-		// Panic may not be ideal but this is never a production call and it'll
-		// panic on startup. We could also just change the function to return
-		// an error.
-		abs, err := filepath.Abs(c.conf.RawConfig.PassthroughDirectory)
-		if err != nil {
-			panic(err)
-		}
-		c.logger.Warn("serving passthrough files at /passthrough", "path", abs)
-		fs := http.FileServer(http.Dir(abs))
-		prefixHandler := http.StripPrefix("/passthrough/", fs)
-		mux.Handle("/passthrough/", prefixHandler)
-	}
-
 	h, err := handleGrpcGateway(c)
 	if err != nil {
 		return nil, err
 	}
 	mux.Handle("/v1/", h)
+
+	mux.Handle("/", handleUi(c))
 
 	corsWrappedHandler := wrapHandlerWithCors(mux, props)
 	commonWrappedHandler := wrapHandlerWithCommonFuncs(corsWrappedHandler, c, props)
@@ -64,7 +54,8 @@ func handleGrpcGateway(c *Controller) (http.Handler, error) {
 	// Register*ServiceHandlerServer methods ignore the passed in ctx.  Using the baseContext now just in case this changes
 	// in the future, at which point we'll want to be using the baseContext.
 	ctx := c.baseContext
-	mux := runtime.NewServeMux(runtime.WithProtoErrorHandler(handlers.ErrorHandler(c.logger)))
+	mux := runtime.NewServeMux(runtime.WithMetadata(handlers.TokenAuthenticator(c.logger, c.AuthTokenRepoFn)),
+		runtime.WithProtoErrorHandler(handlers.ErrorHandler(c.logger)))
 	hcs, err := host_catalogs.NewService(c.StaticHostRepoFn)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create host catalog handler service: %w", err)
@@ -77,6 +68,13 @@ func handleGrpcGateway(c *Controller) (http.Handler, error) {
 	}
 	if err := services.RegisterHostServiceHandlerServer(ctx, mux, &hosts.Service{}); err != nil {
 		return nil, fmt.Errorf("failed to register host service handler: %w", err)
+	}
+	os, err := orgs.NewService(c.IamRepoFn)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create org handler service: %w", err)
+	}
+	if err := services.RegisterOrgServiceHandlerServer(ctx, mux, os); err != nil {
+		return nil, fmt.Errorf("failed to register org service handler: %w", err)
 	}
 	ps, err := projects.NewService(c.IamRepoFn)
 	if err != nil {
@@ -91,6 +89,20 @@ func handleGrpcGateway(c *Controller) (http.Handler, error) {
 	}
 	if err := services.RegisterUserServiceHandlerServer(ctx, mux, us); err != nil {
 		return nil, fmt.Errorf("failed to register user service handler: %w", err)
+	}
+	gs, err := groups.NewService(c.IamRepoFn)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create group handler service: %w", err)
+	}
+	if err := services.RegisterGroupServiceHandlerServer(ctx, mux, gs); err != nil {
+		return nil, fmt.Errorf("failed to register group service handler: %w", err)
+	}
+	rs, err := roles.NewService(c.IamRepoFn)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create role handler service: %w", err)
+	}
+	if err := services.RegisterRoleServiceHandlerServer(ctx, mux, rs); err != nil {
+		return nil, fmt.Errorf("failed to register role service handler: %w", err)
 	}
 
 	return mux, nil

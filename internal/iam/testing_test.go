@@ -11,14 +11,7 @@ import (
 
 func Test_testOrg(t *testing.T) {
 	assert := assert.New(t)
-
-	cleanup, conn, _ := db.TestSetup(t, "postgres")
-	defer func() {
-		err := cleanup()
-		assert.NoError(err)
-		err = conn.Close()
-		assert.NoError(err)
-	}()
+	conn, _ := db.TestSetup(t, "postgres")
 	id := testId(t)
 
 	org := testOrg(t, conn, id, id)
@@ -27,6 +20,18 @@ func Test_testOrg(t *testing.T) {
 	assert.NotEmpty(org.PublicId)
 }
 
+func Test_testProj(t *testing.T) {
+	assert := assert.New(t)
+
+	conn, _ := db.TestSetup(t, "postgres")
+	id := testId(t)
+
+	org := testOrg(t, conn, id, id)
+	proj := testProject(t, conn, org.PublicId, WithName(id), WithDescription(id))
+	assert.Equal(id, proj.Name)
+	assert.Equal(id, proj.Description)
+	assert.NotEmpty(proj.PublicId)
+}
 func Test_testId(t *testing.T) {
 	assert := assert.New(t)
 	id := testId(t)
@@ -41,14 +46,7 @@ func Test_testPublicId(t *testing.T) {
 }
 func Test_TestScopes(t *testing.T) {
 	assert, require := assert.New(t), require.New(t)
-	cleanup, conn, _ := db.TestSetup(t, "postgres")
-	defer func() {
-		err := cleanup()
-		assert.NoError(err)
-		err = conn.Close()
-		assert.NoError(err)
-	}()
-
+	conn, _ := db.TestSetup(t, "postgres")
 	org, prj := TestScopes(t, conn)
 
 	require.NotNil(org)
@@ -60,14 +58,7 @@ func Test_TestScopes(t *testing.T) {
 func Test_TestUser(t *testing.T) {
 	t.Helper()
 	assert, require := assert.New(t), require.New(t)
-	cleanup, conn, _ := db.TestSetup(t, "postgres")
-	defer func() {
-		err := cleanup()
-		assert.NoError(err)
-		err = conn.Close()
-		assert.NoError(err)
-	}()
-
+	conn, _ := db.TestSetup(t, "postgres")
 	org, _ := TestScopes(t, conn)
 
 	require.NotNil(org)
@@ -76,4 +67,126 @@ func Test_TestUser(t *testing.T) {
 	user := TestUser(t, conn, org.PublicId)
 	require.NotNil(user)
 	assert.NotEmpty(user.PublicId)
+}
+
+func Test_TestRole(t *testing.T) {
+	t.Helper()
+	assert, require := assert.New(t), require.New(t)
+	conn, _ := db.TestSetup(t, "postgres")
+	id := testId(t)
+	org, proj := TestScopes(t, conn)
+	role := TestRole(t, conn, org.PublicId, WithDescription(id), WithName(id))
+	require.NotNil(role)
+	assert.Equal(id, role.Description)
+	assert.Equal(id, role.Name)
+	assert.NotEmpty(role.PublicId)
+
+	projRole := TestRole(t, conn, proj.PublicId)
+	require.NotNil(projRole)
+	assert.NotEmpty(projRole.PublicId)
+}
+
+func Test_TestRoleGrant(t *testing.T) {
+	t.Helper()
+	require := require.New(t)
+	conn, _ := db.TestSetup(t, "postgres")
+	_, proj := TestScopes(t, conn)
+	projRole := TestRole(t, conn, proj.PublicId)
+
+	grant := TestRoleGrant(t, conn, projRole.PublicId, "actions=*;id=*")
+	require.NotNil(grant)
+	require.Equal(projRole.PublicId, grant.RoleId)
+	require.Equal("actions=*;id=*", grant.RawGrant)
+	require.Equal("id=*;actions=*", grant.CanonicalGrant)
+}
+
+func Test_TestUserRole(t *testing.T) {
+	t.Helper()
+	require := require.New(t)
+	conn, _ := db.TestSetup(t, "postgres")
+	org, proj := TestScopes(t, conn)
+	org2, proj2 := TestScopes(t, conn)
+
+	orgRole := TestRole(t, conn, org.PublicId)
+	projRole := TestRole(t, conn, proj.PublicId)
+	org2Role := TestRole(t, conn, org2.PublicId)
+	proj2Role := TestRole(t, conn, proj2.PublicId)
+	user := TestUser(t, conn, org.PublicId)
+
+	userRole := TestUserRole(t, conn, orgRole.PublicId, user.PublicId)
+	require.NotNil(userRole)
+	require.Equal(orgRole.PublicId, userRole.RoleId)
+	require.Equal(user.PublicId, userRole.PrincipalId)
+
+	userRole = TestUserRole(t, conn, projRole.PublicId, user.PublicId)
+	require.NotNil(userRole)
+	require.Equal(projRole.PublicId, userRole.RoleId)
+	require.Equal(user.PublicId, userRole.PrincipalId)
+
+	userRole = TestUserRole(t, conn, org2Role.PublicId, user.PublicId)
+	require.NotNil(userRole)
+	require.Equal(org2Role.PublicId, userRole.RoleId)
+	require.Equal(user.PublicId, userRole.PrincipalId)
+
+	userRole = TestUserRole(t, conn, proj2Role.PublicId, user.PublicId)
+	require.NotNil(userRole)
+	require.Equal(proj2Role.PublicId, userRole.RoleId)
+	require.Equal(user.PublicId, userRole.PrincipalId)
+}
+
+func Test_TestGroupRole(t *testing.T) {
+	t.Helper()
+	require := require.New(t)
+	conn, _ := db.TestSetup(t, "postgres")
+	org, proj := TestScopes(t, conn)
+	org2, proj2 := TestScopes(t, conn)
+
+	orgRole := TestRole(t, conn, org.PublicId)
+	orgGroup := TestGroup(t, conn, org.PublicId)
+	org2Group := TestGroup(t, conn, org2.PublicId)
+
+	projRole := TestRole(t, conn, proj.PublicId)
+	projGroup := TestGroup(t, conn, proj.PublicId)
+	proj2Group := TestGroup(t, conn, proj2.PublicId)
+
+	groupRole := TestGroupRole(t, conn, orgRole.PublicId, orgGroup.PublicId)
+	require.NotNil(groupRole)
+	require.Equal(orgRole.PublicId, groupRole.RoleId)
+	require.Equal(orgGroup.PublicId, groupRole.PrincipalId)
+
+	groupRole = TestGroupRole(t, conn, projRole.PublicId, projGroup.PublicId)
+	require.NotNil(groupRole)
+	require.Equal(projRole.PublicId, groupRole.RoleId)
+	require.Equal(projGroup.PublicId, groupRole.PrincipalId)
+
+	groupRole = TestGroupRole(t, conn, orgRole.PublicId, org2Group.PublicId)
+	require.NotNil(groupRole)
+	require.Equal(orgRole.PublicId, groupRole.RoleId)
+	require.Equal(org2Group.PublicId, groupRole.PrincipalId)
+
+	groupRole = TestGroupRole(t, conn, projRole.PublicId, proj2Group.PublicId)
+	require.NotNil(groupRole)
+	require.Equal(projRole.PublicId, groupRole.RoleId)
+	require.Equal(proj2Group.PublicId, groupRole.PrincipalId)
+}
+
+func Test_TestGroupMember(t *testing.T) {
+	t.Helper()
+	require := require.New(t)
+	conn, _ := db.TestSetup(t, "postgres")
+	org, proj := TestScopes(t, conn)
+	og := TestGroup(t, conn, org.PublicId)
+	pg := TestGroup(t, conn, proj.PublicId)
+	u := TestUser(t, conn, org.PublicId)
+
+	gm := TestGroupMember(t, conn, og.PublicId, u.PublicId)
+	require.NotNil(gm)
+	require.Equal(og.PublicId, gm.GroupId)
+	require.Equal(u.PublicId, gm.MemberId)
+
+	gm = TestGroupMember(t, conn, pg.PublicId, u.PublicId)
+	require.NotNil(gm)
+	require.Equal(pg.PublicId, gm.GroupId)
+	require.Equal(u.PublicId, gm.MemberId)
+
 }

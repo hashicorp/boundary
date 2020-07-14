@@ -9,6 +9,8 @@ import (
 	"github.com/hashicorp/watchtower/internal/db"
 	dbassert "github.com/hashicorp/watchtower/internal/db/assert"
 	"github.com/hashicorp/watchtower/internal/oplog"
+	"github.com/hashicorp/watchtower/internal/types/action"
+	"github.com/hashicorp/watchtower/internal/types/resource"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/proto"
@@ -16,13 +18,7 @@ import (
 
 func TestNewGroup(t *testing.T) {
 	t.Parallel()
-	cleanup, conn, _ := db.TestSetup(t, "postgres")
-	defer func() {
-		err := cleanup()
-		assert.NoError(t, err)
-		err = conn.Close()
-		assert.NoError(t, err)
-	}()
+	conn, _ := db.TestSetup(t, "postgres")
 	org, proj := TestScopes(t, conn)
 	id := testId(t)
 
@@ -98,13 +94,7 @@ func TestNewGroup(t *testing.T) {
 
 func Test_GroupCreate(t *testing.T) {
 	t.Parallel()
-	cleanup, conn, _ := db.TestSetup(t, "postgres")
-	defer func() {
-		err := cleanup()
-		assert.NoError(t, err)
-		err = conn.Close()
-		assert.NoError(t, err)
-	}()
+	conn, _ := db.TestSetup(t, "postgres")
 	org, proj := TestScopes(t, conn)
 	type args struct {
 		group *Group
@@ -176,7 +166,7 @@ func Test_GroupCreate(t *testing.T) {
 				}(),
 			},
 			wantErr:    true,
-			wantErrMsg: "create: vet for write failed scope is not found",
+			wantErrMsg: "create: vet for write failed: scope is not found",
 		},
 	}
 
@@ -213,13 +203,7 @@ func Test_GroupCreate(t *testing.T) {
 
 func Test_GroupUpdate(t *testing.T) {
 	t.Parallel()
-	cleanup, conn, _ := db.TestSetup(t, "postgres")
-	defer func() {
-		err := cleanup()
-		assert.NoError(t, err)
-		err = conn.Close()
-		assert.NoError(t, err)
-	}()
+	conn, _ := db.TestSetup(t, "postgres")
 	id := testId(t)
 	org, proj := TestScopes(t, conn)
 	rw := db.New(conn)
@@ -256,7 +240,7 @@ func Test_GroupUpdate(t *testing.T) {
 				ScopeId:        proj.PublicId,
 			},
 			wantErr:    true,
-			wantErrMsg: "update: vet for write failed not allowed to change a resource's scope",
+			wantErrMsg: "update: vet for write failed: not allowed to change a resource's scope",
 		},
 		{
 			name: "proj-scope-id-not-in-mask",
@@ -287,7 +271,7 @@ func Test_GroupUpdate(t *testing.T) {
 			},
 			wantErr:    true,
 			wantDup:    true,
-			wantErrMsg: `update: failed pq: duplicate key value violates unique constraint "iam_group_name_scope_id_key"`,
+			wantErrMsg: `update: failed: pq: duplicate key value violates unique constraint "iam_group_name_scope_id_key"`,
 		},
 		{
 			name: "set description null",
@@ -389,14 +373,7 @@ func Test_GroupUpdate(t *testing.T) {
 
 func Test_GroupDelete(t *testing.T) {
 	t.Parallel()
-	cleanup, conn, _ := db.TestSetup(t, "postgres")
-	defer func() {
-		err := cleanup()
-		assert.NoError(t, err)
-		err = conn.Close()
-		assert.NoError(t, err)
-	}()
-
+	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	id := testId(t)
 	org, _ := TestScopes(t, conn)
@@ -450,28 +427,22 @@ func TestGroup_Actions(t *testing.T) {
 	assert := assert.New(t)
 	r := &Group{}
 	a := r.Actions()
-	assert.Equal(a[ActionCreate.String()], ActionCreate)
-	assert.Equal(a[ActionUpdate.String()], ActionUpdate)
-	assert.Equal(a[ActionRead.String()], ActionRead)
-	assert.Equal(a[ActionDelete.String()], ActionDelete)
+	assert.Equal(a[action.Create.String()], action.Create)
+	assert.Equal(a[action.Update.String()], action.Update)
+	assert.Equal(a[action.Read.String()], action.Read)
+	assert.Equal(a[action.Delete.String()], action.Delete)
 }
 
 func TestGroup_ResourceType(t *testing.T) {
 	assert := assert.New(t)
 	r := &Group{}
 	ty := r.ResourceType()
-	assert.Equal(ty, ResourceTypeGroup)
+	assert.Equal(ty, resource.StaticGroup)
 }
 
 func TestGroup_GetScope(t *testing.T) {
 	t.Parallel()
-	cleanup, conn, _ := db.TestSetup(t, "postgres")
-	defer func() {
-		err := cleanup()
-		assert.NoError(t, err)
-		err = conn.Close()
-		assert.NoError(t, err)
-	}()
+	conn, _ := db.TestSetup(t, "postgres")
 	org, proj := TestScopes(t, conn)
 
 	t.Run("valid-org", func(t *testing.T) {
@@ -494,13 +465,7 @@ func TestGroup_GetScope(t *testing.T) {
 
 func TestGroup_Clone(t *testing.T) {
 	t.Parallel()
-	cleanup, conn, _ := db.TestSetup(t, "postgres")
-	defer func() {
-		err := cleanup()
-		assert.NoError(t, err)
-		err = conn.Close()
-		assert.NoError(t, err)
-	}()
+	conn, _ := db.TestSetup(t, "postgres")
 	org, _ := TestScopes(t, conn)
 
 	t.Run("valid", func(t *testing.T) {

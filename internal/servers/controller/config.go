@@ -9,6 +9,6 @@ import (
 
 type Config struct {
 	*base.Server
-	RawConfig            *config.Config
-	BaseContext          context.Context
+	RawConfig   *config.Config
+	BaseContext context.Context
 }

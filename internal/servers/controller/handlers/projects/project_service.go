@@ -12,6 +12,7 @@ import (
 	"github.com/hashicorp/watchtower/internal/iam/store"
 	"github.com/hashicorp/watchtower/internal/servers/controller/common"
 	"github.com/hashicorp/watchtower/internal/servers/controller/handlers"
+	"github.com/hashicorp/watchtower/internal/types/scope"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/wrapperspb"
@@ -46,13 +47,24 @@ func NewService(repo common.IamRepoFactory) (Service, error) {
 
 var _ pbs.ProjectServiceServer = Service{}
 
-// ListProjects is not yet implemented but will implement the interface pbs.ProjectServiceServer.
+// ListProjects implements the interface pbs.ProjectServiceServer.
 func (s Service) ListProjects(ctx context.Context, req *pbs.ListProjectsRequest) (*pbs.ListProjectsResponse, error) {
-	return nil, status.Error(codes.Unimplemented, "List not enabled for this resource.")
+	auth := handlers.ToTokenMetadata(ctx)
+	_ = auth
+	if err := validateListRequest(req); err != nil {
+		return nil, err
+	}
+	pl, err := s.listFromRepo(ctx, req.GetOrgId())
+	if err != nil {
+		return nil, err
+	}
+	return &pbs.ListProjectsResponse{Items: pl}, nil
 }
 
 // GetProjects implements the interface pbs.ProjectServiceServer.
 func (s Service) GetProject(ctx context.Context, req *pbs.GetProjectRequest) (*pbs.GetProjectResponse, error) {
+	auth := handlers.ToTokenMetadata(ctx)
+	_ = auth
 	if err := validateGetRequest(req); err != nil {
 		return nil, err
 	}
@@ -65,6 +77,8 @@ func (s Service) GetProject(ctx context.Context, req *pbs.GetProjectRequest) (*p
 
 // CreateProject implements the interface pbs.ProjectServiceServer.
 func (s Service) CreateProject(ctx context.Context, req *pbs.CreateProjectRequest) (*pbs.CreateProjectResponse, error) {
+	auth := handlers.ToTokenMetadata(ctx)
+	_ = auth
 	if err := validateCreateRequest(req); err != nil {
 		return nil, err
 	}
@@ -77,6 +91,8 @@ func (s Service) CreateProject(ctx context.Context, req *pbs.CreateProjectReques
 
 // UpdateProject implements the interface pbs.ProjectServiceServer.
 func (s Service) UpdateProject(ctx context.Context, req *pbs.UpdateProjectRequest) (*pbs.UpdateProjectResponse, error) {
+	auth := handlers.ToTokenMetadata(ctx)
+	_ = auth
 	if err := validateUpdateRequest(req); err != nil {
 		return nil, err
 	}
@@ -89,6 +105,8 @@ func (s Service) UpdateProject(ctx context.Context, req *pbs.UpdateProjectReques
 
 // DeleteProject implements the interface pbs.ProjectServiceServer.
 func (s Service) DeleteProject(ctx context.Context, req *pbs.DeleteProjectRequest) (*pbs.DeleteProjectResponse, error) {
+	auth := handlers.ToTokenMetadata(ctx)
+	_ = auth
 	if err := validateDeleteRequest(req); err != nil {
 		return nil, err
 	}
@@ -183,6 +201,22 @@ func (s Service) deleteFromRepo(ctx context.Context, projId string) (bool, error
 	return rows > 0, nil
 }
 
+func (s Service) listFromRepo(ctx context.Context, orgId string) ([]*pb.Project, error) {
+	repo, err := s.repo()
+	if err != nil {
+		return nil, err
+	}
+	pl, err := repo.ListProjects(ctx, orgId)
+	if err != nil {
+		return nil, err
+	}
+	var outPl []*pb.Project
+	for _, p := range pl {
+		outPl = append(outPl, toProto(p))
+	}
+	return outPl, nil
+}
+
 func toProto(in *iam.Scope) *pb.Project {
 	out := pb.Project{
 		Id:          in.GetPublicId(),
@@ -205,7 +239,7 @@ func toProto(in *iam.Scope) *pb.Project {
 //  * There are no conflicting parameters provided
 func validateGetRequest(req *pbs.GetProjectRequest) error {
 	badFields := validateAncestors(req)
-	if !validId(req.GetId(), iam.ProjectScope.Prefix()+"_") {
+	if !validId(req.GetId(), scope.Project.Prefix()+"_") {
 		badFields["id"] = "Invalid formatted project id."
 	}
 	if len(badFields) > 0 {
@@ -234,7 +268,7 @@ func validateCreateRequest(req *pbs.CreateProjectRequest) error {
 
 func validateUpdateRequest(req *pbs.UpdateProjectRequest) error {
 	badFields := validateAncestors(req)
-	if !validId(req.GetId(), iam.ProjectScope.Prefix()+"_") {
+	if !validId(req.GetId(), scope.Project.Prefix()+"_") {
 		badFields["project_id"] = "Improperly formatted path identifier."
 	}
 	if req.GetUpdateMask() == nil {
@@ -268,11 +302,19 @@ func validateUpdateRequest(req *pbs.UpdateProjectRequest) error {
 
 func validateDeleteRequest(req *pbs.DeleteProjectRequest) error {
 	badFields := validateAncestors(req)
-	if !validId(req.GetId(), iam.ProjectScope.Prefix()+"_") {
+	if !validId(req.GetId(), scope.Project.Prefix()+"_") {
 		badFields["id"] = "Incorrectly formatted project."
 	}
 	if len(badFields) > 0 {
 		return handlers.InvalidArgumentErrorf("Errors in provided fields.", badFields)
+	}
+	return nil
+}
+
+func validateListRequest(req *pbs.ListProjectsRequest) error {
+	badFields := validateAncestors(req)
+	if len(badFields) > 0 {
+		return handlers.InvalidArgumentErrorf("Improperly formatted identifier.", badFields)
 	}
 	return nil
 }
@@ -292,9 +334,9 @@ type ancestorProvider interface {
 // validateAncestors verifies that the ancestors of this call are properly set and provided.
 func validateAncestors(r ancestorProvider) map[string]string {
 	if r.GetOrgId() == "" {
-		return map[string]string{orgIdFieldName: "Missing organization id."}
+		return map[string]string{orgIdFieldName: "Missing org id."}
 	}
-	if !validId(r.GetOrgId(), iam.OrganizationScope.Prefix()+"_") {
+	if !validId(r.GetOrgId(), scope.Org.Prefix()+"_") {
 		return map[string]string{orgIdFieldName: "Improperly formatted identifier."}
 	}
 	return map[string]string{}

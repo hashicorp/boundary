@@ -12,13 +12,7 @@ import (
 
 func Test_LookupScope(t *testing.T) {
 	t.Parallel()
-	cleanup, conn, _ := db.TestSetup(t, "postgres")
-	defer func() {
-		err := cleanup()
-		assert.NoError(t, err)
-		err = conn.Close()
-		assert.NoError(t, err)
-	}()
+	conn, _ := db.TestSetup(t, "postgres")
 	t.Run("valid-scope", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
 		w := db.New(conn)
@@ -53,6 +47,6 @@ func Test_LookupScope(t *testing.T) {
 		user2 := allocUser()
 		s, err = LookupScope(context.Background(), w, &user2)
 		assert.Nil(s)
-		assert.Equal("error resource has an unset public id", err.Error())
+		assert.Equal("LookupScope: scope id is unset invalid parameter", err.Error())
 	})
 }

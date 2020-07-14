@@ -6,10 +6,13 @@ import (
 
 	"github.com/hashicorp/watchtower/internal/db"
 	"github.com/hashicorp/watchtower/internal/iam/store"
+	"github.com/hashicorp/watchtower/internal/types/action"
+	"github.com/hashicorp/watchtower/internal/types/resource"
+	"github.com/hashicorp/watchtower/internal/types/scope"
 	"google.golang.org/protobuf/proto"
 )
 
-// User defines watchtower users which are scoped to an Organization
+// User defines watchtower users which are scoped to an Org
 type User struct {
 	*store.User
 	tableName string `gorm:"-"`
@@ -23,16 +26,16 @@ var _ db.VetForWriter = (*User)(nil)
 // NewUser creates a new in memory user and allows options:
 // WithName - to specify the user's friendly name and WithDescription - to
 // specify a user description
-func NewUser(organizationPublicId string, opt ...Option) (*User, error) {
+func NewUser(scopeId string, opt ...Option) (*User, error) {
 	opts := getOpts(opt...)
-	if organizationPublicId == "" {
-		return nil, fmt.Errorf("new user: missing organization id %w", db.ErrInvalidParameter)
+	if scopeId == "" {
+		return nil, fmt.Errorf("new user: missing scope id %w", db.ErrInvalidParameter)
 	}
 	u := &User{
 		User: &store.User{
 			Name:        opts.withName,
 			Description: opts.withDescription,
-			ScopeId:     organizationPublicId,
+			ScopeId:     scopeId,
 		},
 	}
 	return u, nil
@@ -64,8 +67,8 @@ func (u *User) VetForWrite(ctx context.Context, r db.Reader, opType db.OpType, o
 	return nil
 }
 
-func (u *User) validScopeTypes() []ScopeType {
-	return []ScopeType{OrganizationScope}
+func (u *User) validScopeTypes() []scope.Type {
+	return []scope.Type{scope.Org}
 }
 
 // GetScope returns the scope for the User
@@ -74,10 +77,10 @@ func (u *User) GetScope(ctx context.Context, r db.Reader) (*Scope, error) {
 }
 
 // ResourceType returns the type of the User
-func (*User) ResourceType() ResourceType { return ResourceTypeUser }
+func (*User) ResourceType() resource.Type { return resource.User }
 
 // Actions returns the  available actions for Users
-func (*User) Actions() map[string]Action {
+func (*User) Actions() map[string]action.Type {
 	return CrudActions()
 }
 

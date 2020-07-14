@@ -30,12 +30,22 @@ var createFuncs = map[string][]*createInfo{
 	},
 	"scopes": {
 		{
-			baseType:   "Organization",
+			baseType:   "Org",
 			targetType: "Project",
 			path:       `"projects"`,
 		},
 		{
-			baseType:   "Organization",
+			baseType:   "Org",
+			targetType: "groups.Group",
+			path:       `"groups"`,
+		},
+		{
+			baseType:   "Org",
+			targetType: "roles.Role",
+			path:       `"roles"`,
+		},
+		{
+			baseType:   "Org",
 			targetType: "users.User",
 			path:       `"users"`,
 		},
@@ -43,6 +53,16 @@ var createFuncs = map[string][]*createInfo{
 			baseType:   "Project",
 			targetType: "hosts.HostCatalog",
 			path:       `"host-catalogs"`,
+		},
+		{
+			baseType:   "Project",
+			targetType: "groups.Group",
+			path:       `"groups"`,
+		},
+		{
+			baseType:   "Project",
+			targetType: "roles.Role",
+			path:       `"roles"`,
 		},
 	},
 }
@@ -81,8 +101,8 @@ func (s {{ .BaseType }}) Create{{ .TargetName }}(ctx context.Context, r *{{ .Tar
 		return nil, nil, fmt.Errorf("nil client in Create{{ .TargetType }} request")
 	}
 	if s.Id == "" {
-		{{ if (eq .BaseType "Organization") }}
-		// Assume the client has been configured with organization already and
+		{{ if (eq .BaseType "Org") }}
+		// Assume the client has been configured with org already and
 		// move on
 		{{ else if (eq .BaseType "Project") }}
 		// Assume the client has been configured with project already and move
@@ -93,7 +113,7 @@ func (s {{ .BaseType }}) Create{{ .TargetName }}(ctx context.Context, r *{{ .Tar
 	} else {
 		// If it's explicitly set here, override anything that might be in the
 		// client
-		{{ if (eq .BaseType "Organization") }}
+		{{ if (eq .BaseType "Org") }}
 		ctx = context.WithValue(ctx, "org", s.Id)
 		{{ else if (eq .BaseType "Project") }}
 		ctx = context.WithValue(ctx, "project", s.Id)
@@ -116,7 +136,7 @@ func (s {{ .BaseType }}) Create{{ .TargetName }}(ctx context.Context, r *{{ .Tar
 		return nil, nil, fmt.Errorf("error decoding Create{{ .TargetType }} repsonse: %w", err)
 	}
 
-	{{ if (eq .TargetType "Organization") }}
+	{{ if (eq .TargetType "Org") }}
 	target.Client = s.Client.Clone()
 	target.Client.SetOrgnization(target.Id)
 	{{ else if (eq .TargetType "Project") }}

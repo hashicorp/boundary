@@ -4,7 +4,9 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/hashicorp/watchtower/internal/iam"
+	"github.com/hashicorp/watchtower/internal/types/action"
+	"github.com/hashicorp/watchtower/internal/types/resource"
+	"github.com/hashicorp/watchtower/internal/types/scope"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -44,32 +46,32 @@ func Test_ActionParsingValidation(t *testing.T) {
 				actionsBeingParsed: []string{"*"},
 			},
 			result: Grant{
-				actions: map[iam.Action]bool{
-					iam.ActionAll: true,
+				actions: map[action.Type]bool{
+					action.All: true,
 				},
 			},
 		},
 		{
 			name: "all valid plus all",
 			input: Grant{
-				actionsBeingParsed: []string{"list", "create", "update", "*", "read", "delete", "authen", "connect"},
+				actionsBeingParsed: []string{"list", "create", "update", "*", "read", "delete", "authenticate", "connect"},
 			},
 			errResult: `"*" cannot be specified with other actions`,
 		},
 		{
 			name: "all valid",
 			input: Grant{
-				actionsBeingParsed: []string{"list", "create", "update", "read", "delete", "authen", "connect"},
+				actionsBeingParsed: []string{"list", "create", "update", "read", "delete", "authenticate", "connect"},
 			},
 			result: Grant{
-				actions: map[iam.Action]bool{
-					iam.ActionList:    true,
-					iam.ActionCreate:  true,
-					iam.ActionUpdate:  true,
-					iam.ActionRead:    true,
-					iam.ActionDelete:  true,
-					iam.ActionAuthen:  true,
-					iam.ActionConnect: true,
+				actions: map[action.Type]bool{
+					action.List:         true,
+					action.Create:       true,
+					action.Update:       true,
+					action.Read:         true,
+					action.Delete:       true,
+					action.Authenticate: true,
+					action.Connect:      true,
 				},
 			},
 		},
@@ -105,14 +107,14 @@ func Test_ValidateType(t *testing.T) {
 		{
 			name: "unknown specifier",
 			input: Grant{
-				typ: "foobar",
+				typ: resource.RoleGrant,
 			},
-			errResult: `unknown type specifier "foobar"`,
+			errResult: `unknown type specifier "role-grant"`,
 		},
 		{
 			name: "valid specifier",
 			input: Grant{
-				typ: TypeHostCatalog,
+				typ: resource.HostCatalog,
 			},
 		},
 	}
@@ -122,72 +124,6 @@ func Test_ValidateType(t *testing.T) {
 			err := test.input.validateType()
 			if test.errResult == "" {
 				require.NoError(t, err)
-			} else {
-				require.Error(t, err)
-				assert.Equal(t, test.errResult, err.Error())
-			}
-		})
-	}
-}
-
-func Test_ValidateProject(t *testing.T) {
-	t.Parallel()
-
-	type input struct {
-		name      string
-		input     Grant
-		output    Grant
-		errResult string
-	}
-
-	tests := []input{
-		{
-			name: "no project",
-			input: Grant{
-				scope: Scope{
-					Type: iam.OrganizationScope,
-				},
-			},
-			output: Grant{
-				scope: Scope{
-					Type: iam.OrganizationScope,
-				},
-			},
-		},
-		{
-			name: "project, organization scope",
-			input: Grant{
-				project: "foobar",
-				scope: Scope{
-					Type: iam.OrganizationScope,
-				},
-			},
-			output: Grant{
-				project: "foobar",
-				scope: Scope{
-					Type: iam.ProjectScope,
-					Id:   "foobar",
-				},
-			},
-		},
-		{
-			name: "project, non-organization scope",
-			input: Grant{
-				project: "foobar",
-				scope: Scope{
-					Type: iam.ProjectScope,
-				},
-			},
-			errResult: "cannot specify a project in the grant when the scope is not an organization",
-		},
-	}
-
-	for _, test := range tests {
-		t.Run(test.name, func(t *testing.T) {
-			err := test.input.validateAndModifyProject()
-			if test.errResult == "" {
-				require.NoError(t, err)
-				assert.Equal(t, test.output, test.input)
 			} else {
 				require.Error(t, err)
 				assert.Equal(t, test.errResult, err.Error())
@@ -211,65 +147,40 @@ func Test_MarshallingAndCloning(t *testing.T) {
 			name: "empty",
 			input: Grant{
 				scope: Scope{
-					Type: iam.OrganizationScope,
+					Type: scope.Org,
 				},
 			},
 			jsonOutput:      `{}`,
 			canonicalString: ``,
 		},
 		{
-			name: "project",
+			name: "type and id",
 			input: Grant{
-				project: "foobar",
+				id: "baz",
 				scope: Scope{
-					Type: iam.OrganizationScope,
+					Type: scope.Project,
 				},
+				typ: resource.StaticGroup,
 			},
-			jsonOutput:      `{"project":"foobar"}`,
-			canonicalString: `project=foobar`,
-		},
-		{
-			name: "project and type",
-			input: Grant{
-				project: "foobar",
-				scope: Scope{
-					Type: iam.ProjectScope,
-				},
-				typ: TypeGroup,
-			},
-			jsonOutput:      `{"project":"foobar","type":"group"}`,
-			canonicalString: `project=foobar;type=group`,
-		},
-		{
-			name: "project, type, and id",
-			input: Grant{
-				id:      "baz",
-				project: "foobar",
-				scope: Scope{
-					Type: iam.ProjectScope,
-				},
-				typ: TypeGroup,
-			},
-			jsonOutput:      `{"id":"baz","project":"foobar","type":"group"}`,
-			canonicalString: `project=foobar;id=baz;type=group`,
+			jsonOutput:      `{"id":"baz","type":"static-group"}`,
+			canonicalString: `id=baz;type=static-group`,
 		},
 		{
 			name: "everything",
 			input: Grant{
-				id:      "baz",
-				project: "foobar",
+				id: "baz",
 				scope: Scope{
-					Type: iam.ProjectScope,
+					Type: scope.Project,
 				},
-				typ: TypeGroup,
-				actions: map[iam.Action]bool{
-					iam.ActionCreate: true,
-					iam.ActionRead:   true,
+				typ: resource.StaticGroup,
+				actions: map[action.Type]bool{
+					action.Create: true,
+					action.Read:   true,
 				},
 				actionsBeingParsed: []string{"create", "read"},
 			},
-			jsonOutput:      `{"actions":["create","read"],"id":"baz","project":"foobar","type":"group"}`,
-			canonicalString: `project=foobar;id=baz;type=group;actions=create,read`,
+			jsonOutput:      `{"actions":["create","read"],"id":"baz","type":"static-group"}`,
+			canonicalString: `id=baz;type=static-group;actions=create,read`,
 		},
 	}
 
@@ -310,19 +221,11 @@ func Test_Unmarshaling(t *testing.T) {
 			jsonErr:   "invalid character 'w' looking for beginning of value",
 		},
 		{
-			name: "good project",
-			expected: Grant{
-				project: "foobar",
-			},
-			jsonInput: `{"project":"foobar"}`,
-			textInput: `project=foobar`,
-		},
-		{
-			name:      "bad project",
-			jsonInput: `{"project":true}`,
-			jsonErr:   `unable to interpret "project" as string`,
-			textInput: `project=`,
-			textErr:   `segment "project=" not formatted correctly, missing value`,
+			name:      "bad segment",
+			jsonInput: `{"id":true}`,
+			jsonErr:   `unable to interpret "id" as string`,
+			textInput: `id=`,
+			textErr:   `segment "id=" not formatted correctly, missing value`,
 		},
 		{
 			name: "good id",
@@ -342,7 +245,7 @@ func Test_Unmarshaling(t *testing.T) {
 		{
 			name: "good type",
 			expected: Grant{
-				typ: "host-catalog",
+				typ: resource.HostCatalog,
 			},
 			jsonInput: `{"type":"host-catalog"}`,
 			textInput: `type=host-catalog`,
@@ -383,11 +286,10 @@ func Test_Unmarshaling(t *testing.T) {
 		},
 	}
 
-	assert := assert.New(t)
-	require := require.New(t)
-
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
+			assert := assert.New(t)
+			require := require.New(t)
 			var g Grant
 			if test.jsonInput != "" {
 				err := g.unmarshalJSON([]byte(test.jsonInput))
@@ -418,11 +320,12 @@ func Test_Parse(t *testing.T) {
 	t.Parallel()
 
 	type input struct {
-		name     string
-		input    string
-		userId   string
-		err      string
-		expected Grant
+		name          string
+		input         string
+		userId        string
+		err           string
+		scopeOverride string
+		expected      Grant
 	}
 
 	tests := []input{
@@ -451,36 +354,90 @@ func Test_Parse(t *testing.T) {
 			err:   `unknown action "createread"`,
 		},
 		{
+			name:  "empty id and type",
+			input: "actions=create",
+			err:   `"id" and "type" cannot both be empty`,
+		},
+		{
 			name:  "good json",
-			input: `{"project":"proj","id":"foobar","type":"host-catalog","actions":["create","read"]}`,
+			input: `{"id":"foobar","type":"host-catalog","actions":["create","read"]}`,
 			expected: Grant{
 				scope: Scope{
-					Id:   "proj",
-					Type: iam.ProjectScope,
+					Id:   "o_scope",
+					Type: scope.Org,
 				},
-				project: "proj",
-				id:      "foobar",
-				typ:     "host-catalog",
-				actions: map[iam.Action]bool{
-					iam.ActionCreate: true,
-					iam.ActionRead:   true,
+				id:  "foobar",
+				typ: resource.HostCatalog,
+				actions: map[action.Type]bool{
+					action.Create: true,
+					action.Read:   true,
 				},
 			},
 		},
 		{
 			name:  "good text",
-			input: `project=proj;id=foobar;type=host-catalog;actions=create,read`,
+			input: `id=foobar;type=host-catalog;actions=create,read`,
 			expected: Grant{
 				scope: Scope{
-					Id:   "proj",
-					Type: iam.ProjectScope,
+					Id:   "o_scope",
+					Type: scope.Org,
 				},
-				project: "proj",
-				id:      "foobar",
-				typ:     "host-catalog",
-				actions: map[iam.Action]bool{
-					iam.ActionCreate: true,
-					iam.ActionRead:   true,
+				id:  "foobar",
+				typ: resource.HostCatalog,
+				actions: map[action.Type]bool{
+					action.Create: true,
+					action.Read:   true,
+				},
+			},
+		},
+		{
+			name:          "default project scope",
+			input:         `id=foobar;type=host-catalog;actions=create,read`,
+			scopeOverride: "p_1234",
+			expected: Grant{
+				scope: Scope{
+					Id:   "p_1234",
+					Type: scope.Project,
+				},
+				id:  "foobar",
+				typ: resource.HostCatalog,
+				actions: map[action.Type]bool{
+					action.Create: true,
+					action.Read:   true,
+				},
+			},
+		},
+		{
+			name:          "default org scope",
+			input:         `id=foobar;type=host-catalog;actions=create,read`,
+			scopeOverride: "o_1234",
+			expected: Grant{
+				scope: Scope{
+					Id:   "o_1234",
+					Type: scope.Org,
+				},
+				id:  "foobar",
+				typ: resource.HostCatalog,
+				actions: map[action.Type]bool{
+					action.Create: true,
+					action.Read:   true,
+				},
+			},
+		},
+		{
+			name:          "default global scope",
+			input:         `id=foobar;type=host-catalog;actions=create,read`,
+			scopeOverride: "global",
+			expected: Grant{
+				scope: Scope{
+					Id:   "global",
+					Type: scope.Global,
+				},
+				id:  "foobar",
+				typ: resource.HostCatalog,
+				actions: map[action.Type]bool{
+					action.Create: true,
+					action.Read:   true,
 				},
 			},
 		},
@@ -496,43 +453,38 @@ func Test_Parse(t *testing.T) {
 			userId: "u_abcd1234",
 			expected: Grant{
 				scope: Scope{
-					Id:   "scope",
-					Type: iam.OrganizationScope,
+					Id:   "o_scope",
+					Type: scope.Org,
 				},
 				id: "u_abcd1234",
-				actions: map[iam.Action]bool{
-					iam.ActionCreate: true,
-					iam.ActionRead:   true,
+				actions: map[action.Type]bool{
+					action.Create: true,
+					action.Read:   true,
 				},
 			},
 		},
 	}
 
-	assert := assert.New(t)
-	require := require.New(t)
+	_, err := Parse("", "", "")
+	require.Error(t, err)
+	assert.Equal(t, "grant string is empty", err.Error())
 
-	_, err := Parse(Scope{}, "", "")
-	require.Error(err)
-	assert.Equal("grant string is empty", err.Error())
-
-	_, err = Parse(Scope{}, "", "{}")
-	require.Error(err)
-	assert.Equal("invalid scope type", err.Error())
-
-	_, err = Parse(Scope{Type: iam.OrganizationScope}, "", "{}")
-	require.Error(err)
-	assert.Equal("no scope ID provided", err.Error())
-
-	_, err = Parse(Scope{Id: "foobar", Type: iam.ProjectScope}, "", `project=foobar`)
-	require.Error(err)
-	assert.Equal("cannot specify a project in the grant when the scope is not an organization", err.Error())
+	_, err = Parse("", "", "{}")
+	require.Error(t, err)
+	assert.Equal(t, "no scope ID provided", err.Error())
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			grant, err := Parse(Scope{Id: "scope", Type: iam.OrganizationScope}, test.userId, test.input)
+			assert := assert.New(t)
+			require := require.New(t)
+			scope := "o_scope"
+			if test.scopeOverride != "" {
+				scope = test.scopeOverride
+			}
+			grant, err := Parse(scope, test.userId, test.input)
 			if test.err != "" {
 				require.Error(err)
-				assert.True(strings.HasPrefix(err.Error(), test.err))
+				assert.True(strings.Contains(err.Error(), test.err))
 			} else {
 				require.NoError(err)
 				assert.Equal(test.expected, grant)

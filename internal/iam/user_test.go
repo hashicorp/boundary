@@ -6,6 +6,8 @@ import (
 	"testing"
 
 	"github.com/hashicorp/watchtower/internal/db"
+	"github.com/hashicorp/watchtower/internal/types/action"
+	"github.com/hashicorp/watchtower/internal/types/resource"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/proto"
@@ -13,19 +15,13 @@ import (
 
 func TestNewUser(t *testing.T) {
 	t.Parallel()
-	cleanup, conn, _ := db.TestSetup(t, "postgres")
-	defer func() {
-		err := cleanup()
-		assert.NoError(t, err)
-		err = conn.Close()
-		assert.NoError(t, err)
-	}()
+	conn, _ := db.TestSetup(t, "postgres")
 	org, _ := TestScopes(t, conn)
 	id := testId(t)
 
 	type args struct {
-		organizationPublicId string
-		opt                  []Option
+		orgPublicId string
+		opt         []Option
 	}
 	tests := []struct {
 		name            string
@@ -38,8 +34,8 @@ func TestNewUser(t *testing.T) {
 		{
 			name: "valid",
 			args: args{
-				organizationPublicId: org.PublicId,
-				opt:                  []Option{WithName(id), WithDescription(id)},
+				orgPublicId: org.PublicId,
+				opt:         []Option{WithName(id), WithDescription(id)},
 			},
 			wantErr:         false,
 			wantName:        id,
@@ -48,7 +44,7 @@ func TestNewUser(t *testing.T) {
 		{
 			name: "valid-with-no-name",
 			args: args{
-				organizationPublicId: org.PublicId,
+				orgPublicId: org.PublicId,
 			},
 			wantErr: false,
 		},
@@ -58,15 +54,15 @@ func TestNewUser(t *testing.T) {
 				opt: []Option{WithName(id)},
 			},
 			wantErr:    true,
-			wantErrMsg: "new user: missing organization id invalid parameter",
+			wantErrMsg: "new user: missing scope id invalid parameter",
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			got, err := NewUser(tt.args.organizationPublicId, tt.args.opt...)
+			got, err := NewUser(tt.args.orgPublicId, tt.args.opt...)
 			if tt.wantErr {
-				assert.Error(err)
+				require.Error(err)
 				assert.Equal(tt.wantErrMsg, err.Error())
 				return
 			}
@@ -77,15 +73,24 @@ func TestNewUser(t *testing.T) {
 	}
 }
 
+func Test_UserHardcoded(t *testing.T) {
+	t.Parallel()
+	conn, _ := db.TestSetup(t, "postgres")
+	assert, require := assert.New(t), require.New(t)
+	w := db.New(conn)
+	for _, v := range []string{"u_anon", "u_auth"} {
+		foundUser := allocUser()
+		foundUser.PublicId = v
+		err := w.LookupByPublicId(context.Background(), &foundUser)
+		require.NoError(err)
+		assert.Equal("global", foundUser.ScopeId)
+		assert.Equal(v, foundUser.PublicId)
+	}
+}
+
 func Test_UserCreate(t *testing.T) {
 	t.Parallel()
-	cleanup, conn, _ := db.TestSetup(t, "postgres")
-	defer func() {
-		err := cleanup()
-		assert.NoError(t, err)
-		err = conn.Close()
-		assert.NoError(t, err)
-	}()
+	conn, _ := db.TestSetup(t, "postgres")
 	org, _ := TestScopes(t, conn)
 	id := testId(t)
 	t.Run("valid-user", func(t *testing.T) {
@@ -116,20 +121,25 @@ func Test_UserCreate(t *testing.T) {
 		user.PublicId = id
 		err = w.Create(context.Background(), user)
 		require.Error(err)
-		assert.Equal("create: vet for write failed scope is not found", err.Error())
+		assert.Equal("create: vet for write failed: scope is not found", err.Error())
+	})
+	t.Run("bad-scope", func(t *testing.T) {
+		assert, require := assert.New(t), require.New(t)
+		w := db.New(conn)
+		user, err := NewUser("global")
+		require.NoError(err)
+		id, err := newUserId()
+		require.NoError(err)
+		user.PublicId = id
+		err = w.Create(context.Background(), user)
+		require.Error(err)
+		assert.Equal("create: vet for write failed: global not a valid scope type for this resource", err.Error())
 	})
 }
 
 func Test_UserUpdate(t *testing.T) {
 	t.Parallel()
-	cleanup, conn, _ := db.TestSetup(t, "postgres")
-	defer func() {
-		err := cleanup()
-		assert.NoError(t, err)
-		err = conn.Close()
-		assert.NoError(t, err)
-	}()
-
+	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
 	repo, err := NewRepository(rw, rw, wrapper)
@@ -169,7 +179,7 @@ func Test_UserUpdate(t *testing.T) {
 				ScopeId:        proj.PublicId,
 			},
 			wantErr:    true,
-			wantErrMsg: "update: vet for write failed not allowed to change a resource's scope",
+			wantErrMsg: "update: vet for write failed: not allowed to change a resource's scope",
 		},
 		{
 			name: "proj-scope-id-not-in-mask",
@@ -200,7 +210,7 @@ func Test_UserUpdate(t *testing.T) {
 			},
 			wantErr:    true,
 			wantDup:    true,
-			wantErrMsg: `update: failed pq: duplicate key value violates unique constraint "iam_user_name_scope_id_key"`,
+			wantErrMsg: `update: failed: pq: duplicate key value violates unique constraint "iam_user_name_scope_id_key"`,
 		},
 	}
 	for _, tt := range tests {
@@ -240,13 +250,7 @@ func Test_UserUpdate(t *testing.T) {
 
 func Test_UserDelete(t *testing.T) {
 	t.Parallel()
-	cleanup, conn, _ := db.TestSetup(t, "postgres")
-	defer func() {
-		err := cleanup()
-		assert.NoError(t, err)
-		err = conn.Close()
-		assert.NoError(t, err)
-	}()
+	conn, _ := db.TestSetup(t, "postgres")
 
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
@@ -274,6 +278,18 @@ func Test_UserDelete(t *testing.T) {
 			wantErr:         false,
 			wantRowsDeleted: 0,
 		},
+		{
+			name:            "anon-user",
+			user:            func() *User { u := allocUser(); u.PublicId = "u_anon"; return &u }(),
+			wantErr:         true,
+			wantRowsDeleted: 0,
+		},
+		{
+			name:            "auth-user",
+			user:            func() *User { u := allocUser(); u.PublicId = "u_auth"; return &u }(),
+			wantErr:         true,
+			wantRowsDeleted: 0,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -296,14 +312,7 @@ func Test_UserDelete(t *testing.T) {
 
 func Test_UserGetScope(t *testing.T) {
 	t.Parallel()
-	cleanup, conn, _ := db.TestSetup(t, "postgres")
-	defer func() {
-		err := cleanup()
-		assert.NoError(t, err)
-		err = conn.Close()
-		assert.NoError(t, err)
-	}()
-
+	conn, _ := db.TestSetup(t, "postgres")
 	org, _ := TestScopes(t, conn)
 	t.Run("valid-scope", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
@@ -318,13 +327,7 @@ func Test_UserGetScope(t *testing.T) {
 
 func TestUser_Clone(t *testing.T) {
 	t.Parallel()
-	cleanup, conn, _ := db.TestSetup(t, "postgres")
-	defer func() {
-		err := cleanup()
-		assert.NoError(t, err)
-		err = conn.Close()
-		assert.NoError(t, err)
-	}()
+	conn, _ := db.TestSetup(t, "postgres")
 	org, _ := TestScopes(t, conn)
 
 	t.Run("valid", func(t *testing.T) {
@@ -362,18 +365,18 @@ func TestUser_Actions(t *testing.T) {
 	assert := assert.New(t)
 	u := &User{}
 	a := u.Actions()
-	assert.Equal(a[ActionCreate.String()], ActionCreate)
-	assert.Equal(a[ActionUpdate.String()], ActionUpdate)
-	assert.Equal(a[ActionRead.String()], ActionRead)
-	assert.Equal(a[ActionDelete.String()], ActionDelete)
+	assert.Equal(a[action.Create.String()], action.Create)
+	assert.Equal(a[action.Update.String()], action.Update)
+	assert.Equal(a[action.Read.String()], action.Read)
+	assert.Equal(a[action.Delete.String()], action.Delete)
 
-	if _, ok := a[ActionList.String()]; ok {
-		t.Errorf("users should not include %s as an action", ActionList.String())
+	if _, ok := a[action.List.String()]; ok {
+		t.Errorf("users should not include %s as an action", action.List.String())
 	}
 }
 
 func TestUser_ResourceType(t *testing.T) {
 	t.Parallel()
 	u := allocUser()
-	assert.Equal(t, ResourceTypeUser, u.ResourceType())
+	assert.Equal(t, resource.User, u.ResourceType())
 }

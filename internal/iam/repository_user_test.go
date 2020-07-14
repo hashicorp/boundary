@@ -18,14 +18,7 @@ import (
 
 func TestRepository_CreateUser(t *testing.T) {
 	t.Parallel()
-	cleanup, conn, _ := db.TestSetup(t, "postgres")
-	defer func() {
-		err := cleanup()
-		assert.NoError(t, err)
-		err = conn.Close()
-		assert.NoError(t, err)
-	}()
-
+	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
 	repo, err := NewRepository(rw, rw, wrapper)
@@ -78,7 +71,7 @@ func TestRepository_CreateUser(t *testing.T) {
 			},
 			wantDup:    true,
 			wantErr:    true,
-			wantErrMsg: "create user: user %s already exists in organization %s",
+			wantErrMsg: "create user: user %s already exists in org %s",
 		},
 	}
 	for _, tt := range tests {
@@ -117,14 +110,7 @@ func TestRepository_CreateUser(t *testing.T) {
 
 func TestRepository_UpdateUser(t *testing.T) {
 	t.Parallel()
-	cleanup, conn, _ := db.TestSetup(t, "postgres")
-	defer func() {
-		err := cleanup()
-		assert.NoError(t, err)
-		err = conn.Close()
-		assert.NoError(t, err)
-	}()
-
+	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
 	repo, err := NewRepository(rw, rw, wrapper)
@@ -150,6 +136,7 @@ func TestRepository_UpdateUser(t *testing.T) {
 		wantErrMsg     string
 		wantIsErr      error
 		wantDup        bool
+		directUpdate   bool
 	}{
 		{
 			name: "valid",
@@ -292,7 +279,19 @@ func TestRepository_UpdateUser(t *testing.T) {
 			},
 			wantErr:    true,
 			wantDup:    true,
-			wantErrMsg: `update user: user %s already exists in organization %s`,
+			wantErrMsg: `update user: user %s already exists in org %s`,
+		},
+		{
+			name: "modified-scope",
+			args: args{
+				name:           "modified-scope" + id,
+				fieldMaskPaths: []string{"ScopeId"},
+				ScopeId:        "global",
+				opt:            []Option{WithSkipVetForWrite(true)},
+			},
+			wantErr:      true,
+			wantErrMsg:   `update: failed: pq: scope_id cannot be set`,
+			directUpdate: true,
 		},
 	}
 	for _, tt := range tests {
@@ -316,7 +315,19 @@ func TestRepository_UpdateUser(t *testing.T) {
 			updateUser.Name = tt.args.name
 			updateUser.Description = tt.args.description
 
-			userAfterUpdate, updatedRows, err := repo.UpdateUser(context.Background(), &updateUser, tt.args.fieldMaskPaths, tt.args.opt...)
+			var userAfterUpdate *User
+			var updatedRows int
+			var err error
+			if tt.directUpdate {
+				u := updateUser.Clone()
+				var resource interface{}
+				resource, updatedRows, err = repo.update(context.Background(), u.(*User), tt.args.fieldMaskPaths, nil, tt.args.opt...)
+				if err == nil {
+					userAfterUpdate = resource.(*User)
+				}
+			} else {
+				userAfterUpdate, updatedRows, err = repo.UpdateUser(context.Background(), &updateUser, tt.args.fieldMaskPaths, tt.args.opt...)
+			}
 			if tt.wantErr {
 				require.Error(err)
 				if tt.wantIsErr != nil {
@@ -328,7 +339,7 @@ func TestRepository_UpdateUser(t *testing.T) {
 				case "dup-name":
 					assert.Equal(fmt.Sprintf(tt.wantErrMsg, "dup-name"+id, org.PublicId), err.Error())
 				default:
-					assert.Equal(tt.wantErrMsg, err.Error())
+					assert.Containsf(err.Error(), tt.wantErrMsg, "unexpected error: %s", err.Error())
 				}
 				err = db.TestVerifyOplog(t, rw, u.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_UPDATE), db.WithCreateNotBefore(10*time.Second))
 				require.Error(err)
@@ -358,14 +369,7 @@ func TestRepository_UpdateUser(t *testing.T) {
 
 func TestRepository_DeleteUser(t *testing.T) {
 	t.Parallel()
-	cleanup, conn, _ := db.TestSetup(t, "postgres")
-	defer func() {
-		err := cleanup()
-		assert.NoError(t, err)
-		err = conn.Close()
-		assert.NoError(t, err)
-	}()
-
+	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
 	repo, err := NewRepository(rw, rw, wrapper)
@@ -442,6 +446,228 @@ func TestRepository_DeleteUser(t *testing.T) {
 
 			err = db.TestVerifyOplog(t, rw, tt.args.user.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_DELETE), db.WithCreateNotBefore(10*time.Second))
 			require.NoError(err)
+		})
+	}
+}
+
+func TestRepository_ListUsers(t *testing.T) {
+	t.Parallel()
+	conn, _ := db.TestSetup(t, "postgres")
+	const testLimit = 10
+	rw := db.New(conn)
+	wrapper := db.TestWrapper(t)
+	repo, err := NewRepository(rw, rw, wrapper, WithLimit(testLimit))
+	require.NoError(t, err)
+	org, _ := TestScopes(t, conn)
+
+	type args struct {
+		withOrgId string
+		opt       []Option
+	}
+	tests := []struct {
+		name      string
+		createCnt int
+		args      args
+		wantCnt   int
+		wantErr   bool
+	}{
+		{
+			name:      "no-limit",
+			createCnt: repo.defaultLimit + 1,
+			args: args{
+				withOrgId: org.PublicId,
+				opt:       []Option{WithLimit(-1)},
+			},
+			wantCnt: repo.defaultLimit + 1,
+			wantErr: false,
+		},
+		{
+			name:      "default-limit",
+			createCnt: repo.defaultLimit + 1,
+			args: args{
+				withOrgId: org.PublicId,
+			},
+			wantCnt: repo.defaultLimit,
+			wantErr: false,
+		},
+		{
+			name:      "custom-limit",
+			createCnt: repo.defaultLimit + 1,
+			args: args{
+				withOrgId: org.PublicId,
+				opt:       []Option{WithLimit(3)},
+			},
+			wantCnt: 3,
+			wantErr: false,
+		},
+		{
+			name:      "bad-org",
+			createCnt: 1,
+			args: args{
+				withOrgId: "bad-id",
+			},
+			wantCnt: 0,
+			wantErr: false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+			require.NoError(conn.Where("public_id != 'u_anon' and public_id != 'u_auth'").Delete(allocUser()).Error)
+			testUsers := []*User{}
+			for i := 0; i < tt.createCnt; i++ {
+				testUsers = append(testUsers, TestUser(t, conn, org.PublicId))
+			}
+			assert.Equal(tt.createCnt, len(testUsers))
+			got, err := repo.ListUsers(context.Background(), tt.args.withOrgId, tt.args.opt...)
+			if tt.wantErr {
+				require.Error(err)
+				return
+			}
+			require.NoError(err)
+			assert.Equal(tt.wantCnt, len(got))
+		})
+	}
+}
+
+func TestRepository_LookupUserWithLogin(t *testing.T) {
+	t.Parallel()
+	conn, _ := db.TestSetup(t, "postgres")
+	rw := db.New(conn)
+	wrapper := db.TestWrapper(t)
+	repo, err := NewRepository(rw, rw, wrapper)
+	require.NoError(t, err)
+
+	id := testId(t)
+	org, _ := TestScopes(t, conn)
+	authMethodId := testAuthMethod(t, conn, org.PublicId)
+	newAuthAcct := testAuthAccount(t, conn, org.PublicId, authMethodId, "")
+	newAuthAcctWithoutVivify := testAuthAccount(t, conn, org.PublicId, authMethodId, "")
+	// negativeTestAuthAcct := testAuthAccount(t, conn, org.PublicId, authMethodId, "")
+
+	user := TestUser(t, conn, org.PublicId, WithName("existing-"+id))
+	existingAuthAcct := testAuthAccount(t, conn, org.PublicId, authMethodId, user.PublicId)
+	require.Equal(t, user.PublicId, existingAuthAcct.IamUserId)
+
+	type args struct {
+		withAuthAccountId string
+		opt               []Option
+	}
+	tests := []struct {
+		name            string
+		args            args
+		wantName        string
+		wantDescription string
+		wantErr         bool
+		wantErrIs       error
+		wantUser        *User
+	}{
+		{
+			name: "valid",
+			args: args{
+				withAuthAccountId: newAuthAcct.PublicId,
+				opt: []Option{
+					WithAutoVivify(true),
+					WithName("valid-" + id),
+					WithDescription("valid-" + id),
+				},
+			},
+			wantName:        "valid-" + id,
+			wantDescription: "valid-" + id,
+			wantErr:         false,
+		},
+		{
+			name: "new-acct-without-vivify",
+			args: args{
+				withAuthAccountId: newAuthAcctWithoutVivify.PublicId,
+			},
+			wantErr:   true,
+			wantErrIs: db.ErrRecordNotFound,
+		},
+		{
+			name: "missing auth acct id",
+			args: args{
+				withAuthAccountId: "",
+			},
+			wantErr:   true,
+			wantErrIs: db.ErrInvalidParameter,
+		},
+		{
+			name: "existing-auth-account",
+			args: args{
+				withAuthAccountId: existingAuthAcct.PublicId,
+			},
+			wantErr:  false,
+			wantName: "existing-" + id,
+			wantUser: user,
+		},
+		{
+			name: "existing-auth-account-with-vivify",
+			args: args{
+				withAuthAccountId: existingAuthAcct.PublicId,
+				opt: []Option{
+					WithAutoVivify(true),
+				},
+			},
+			wantErr:  false,
+			wantName: "existing-" + id,
+			wantUser: user,
+		},
+		{
+			name: "bad-auth-account-id",
+			args: args{
+				withAuthAccountId: id,
+			},
+			wantErr:   true,
+			wantErrIs: db.ErrRecordNotFound,
+		},
+		{
+			name: "bad-auth-account-id-with-vivify",
+			args: args{
+				withAuthAccountId: id,
+				opt: []Option{
+					WithAutoVivify(true),
+				},
+			},
+			wantErr:   true,
+			wantErrIs: db.ErrRecordNotFound,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+			dbassert := dbassert.New(t, rw)
+			got, err := repo.LookupUserWithLogin(context.Background(), tt.args.withAuthAccountId, tt.args.opt...)
+			if tt.wantErr {
+				require.Error(err)
+				assert.Nil(got)
+				if tt.wantErrIs != nil {
+					assert.Truef(errors.Is(err, tt.wantErrIs), "unexpected error %s", err.Error())
+				}
+				if tt.args.withAuthAccountId != "" && tt.args.withAuthAccountId != id {
+					// need to assert that userid in auth_account is still null
+					acct := allocAuthAccount()
+					acct.PublicId = tt.args.withAuthAccountId
+					dbassert.IsNull(&acct, "IamUserId")
+				}
+				return
+			}
+			require.NoError(err)
+			if tt.wantName != "" {
+				assert.Equal(tt.wantName, got.Name)
+			}
+			if tt.wantDescription != "" {
+				assert.Equal(tt.wantDescription, got.Description)
+			}
+			require.NotEmpty(got.PublicId)
+			if tt.wantUser != nil {
+				assert.True(proto.Equal(tt.wantUser.User, got.User))
+			}
+			acct := allocAuthAccount()
+			acct.PublicId = tt.args.withAuthAccountId
+			err = rw.LookupByPublicId(context.Background(), &acct)
+			require.NoError(err)
+			assert.Equal(got.PublicId, acct.IamUserId)
 		})
 	}
 }

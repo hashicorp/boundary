@@ -1,6 +1,8 @@
 package scopes_test
 
 import (
+	"context"
+	"fmt"
 	"net/http"
 	"testing"
 
@@ -10,12 +12,67 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+func TestProjects_List(t *testing.T) {
+	assert := assert.New(t)
+	tc := controller.NewTestController(t, nil)
+	defer tc.Shutdown()
+
+	client := tc.Client()
+	org := &scopes.Org{
+		Client: client,
+	}
+	ctx := context.Background()
+
+	pl, apiErr, err := org.ListProjects(ctx)
+	assert.NoError(err)
+	assert.Nil(apiErr)
+	assert.Empty(pl)
+
+	var expected []*scopes.Project
+	for i := 0; i < 10; i++ {
+		expected = append(expected, &scopes.Project{Name: api.String(fmt.Sprint(i))})
+	}
+
+	expected[0], apiErr, err = org.CreateProject(ctx, expected[0])
+	assert.NoError(err)
+	assert.Nil(apiErr)
+
+	pl, apiErr, err = org.ListProjects(ctx)
+	assert.NoError(err)
+	assert.Nil(apiErr)
+	assert.ElementsMatch(comparableSlice(expected[:1]), comparableSlice(pl))
+
+	for i := 1; i < 10; i++ {
+		expected[i], apiErr, err = org.CreateProject(ctx, expected[i])
+		assert.NoError(err)
+		assert.Nil(apiErr)
+	}
+	pl, apiErr, err = org.ListProjects(ctx)
+	assert.ElementsMatch(comparableSlice(expected), comparableSlice(pl))
+}
+
+func comparableSlice(in []*scopes.Project) []scopes.Project {
+	var filtered []scopes.Project
+	for _, i := range in {
+		p := scopes.Project{
+			Id:          i.Id,
+			Name:        i.Name,
+			Description: i.Description,
+			CreatedTime: i.CreatedTime,
+			UpdatedTime: i.UpdatedTime,
+			Disabled:    i.Disabled,
+		}
+		filtered = append(filtered, p)
+	}
+	return filtered
+}
+
 func TestProjects_Crud(t *testing.T) {
 	tc := controller.NewTestController(t, nil)
 	defer tc.Shutdown()
 
 	client := tc.Client()
-	org := &scopes.Organization{
+	org := &scopes.Org{
 		Client: client,
 	}
 
@@ -64,7 +121,7 @@ func TestProject_Errors(t *testing.T) {
 	ctx := tc.Context()
 
 	client := tc.Client()
-	org := &scopes.Organization{
+	org := &scopes.Org{
 		Client: client,
 	}
 	createdProj, apiErr, err := org.CreateProject(ctx, &scopes.Project{})

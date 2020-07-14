@@ -13,6 +13,7 @@ import (
 	pbs "github.com/hashicorp/watchtower/internal/gen/controller/api/services"
 	"github.com/hashicorp/watchtower/internal/iam"
 	"github.com/hashicorp/watchtower/internal/servers/controller/handlers/projects"
+	"github.com/hashicorp/watchtower/internal/types/scope"
 	"google.golang.org/genproto/protobuf/field_mask"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -25,15 +26,7 @@ import (
 
 func createDefaultProjectAndRepo(t *testing.T) (*iam.Scope, func() (*iam.Repository, error)) {
 	t.Helper()
-	cleanup, conn, _ := db.TestSetup(t, "postgres")
-	t.Cleanup(func() {
-		if err := conn.Close(); err != nil {
-			t.Errorf("Error when closing gorm DB: %v", err)
-		}
-		if err := cleanup(); err != nil {
-			t.Errorf("Error when cleaning up TestSetup: %v", err)
-		}
-	})
+	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrap := db.TestWrapper(t)
 	repoFn := func() (*iam.Repository, error) {
@@ -109,6 +102,81 @@ func TestGet(t *testing.T) {
 			got, gErr := s.GetProject(context.Background(), req)
 			assert.Equal(tc.errCode, status.Code(gErr), "GetProject(%+v) got error %v, wanted %v", req, gErr, tc.errCode)
 			assert.True(proto.Equal(got, tc.res), "GetProject(%q) got response %q, wanted %q", req, got, tc.res)
+		})
+	}
+}
+
+func TestList(t *testing.T) {
+	assert, require := assert.New(t), require.New(t)
+	conn, _ := db.TestSetup(t, "postgres")
+	rw := db.New(conn)
+	wrap := db.TestWrapper(t)
+	repoFn := func() (*iam.Repository, error) {
+		return iam.NewRepository(rw, rw, wrap)
+	}
+	repo, err := repoFn()
+	require.NoError(err)
+
+	oNoProjects, p1 := iam.TestScopes(t, conn)
+	_, err = repo.DeleteScope(context.Background(), p1.GetPublicId())
+	require.NoError(err)
+	oWithProjects, p2 := iam.TestScopes(t, conn)
+	_, err = repo.DeleteScope(context.Background(), p2.GetPublicId())
+	require.NoError(err)
+
+	var wantProjects []*pb.Project
+	for i := 0; i < 10; i++ {
+		newP, err := iam.NewProject(oWithProjects.GetPublicId())
+		require.NoError(err)
+		p, err := repo.CreateScope(context.Background(), newP)
+		require.NoError(err)
+		wantProjects = append(wantProjects, &pb.Project{
+			Id:          p.GetPublicId(),
+			CreatedTime: p.GetCreateTime().GetTimestamp(),
+			UpdatedTime: p.GetUpdateTime().GetTimestamp(),
+		})
+	}
+
+	cases := []struct {
+		name    string
+		req     *pbs.ListProjectsRequest
+		res     *pbs.ListProjectsResponse
+		errCode codes.Code
+	}{
+		{
+			name:    "List Many Projects",
+			req:     &pbs.ListProjectsRequest{OrgId: oWithProjects.GetPublicId()},
+			res:     &pbs.ListProjectsResponse{Items: wantProjects},
+			errCode: codes.OK,
+		},
+		{
+			name:    "List No Projects",
+			req:     &pbs.ListProjectsRequest{OrgId: oNoProjects.GetPublicId()},
+			res:     &pbs.ListProjectsResponse{},
+			errCode: codes.OK,
+		},
+		{
+			name:    "Invalid Org Id",
+			req:     &pbs.ListProjectsRequest{OrgId: scope.Org.Prefix() + "_this is invalid"},
+			res:     nil,
+			errCode: codes.InvalidArgument,
+		},
+		// TODO: When an org doesn't exist, we should return a 404 instead of an empty list.
+		{
+			name:    "Unfound Org",
+			req:     &pbs.ListProjectsRequest{OrgId: scope.Org.Prefix() + "_DoesntExis"},
+			res:     &pbs.ListProjectsResponse{},
+			errCode: codes.OK,
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			s, err := projects.NewService(repoFn)
+			require.NoError(err, "Couldn't create new role service.")
+
+			got, gErr := s.ListProjects(context.Background(), tc.req)
+			assert.Equal(tc.errCode, status.Code(gErr), "ListProjects(%+v) got error %v, wanted %v", tc.req, gErr, tc.errCode)
+			assert.True(proto.Equal(got, tc.res), "ListProjects(%q) got response %q, wanted %q", tc.req, got, tc.res)
 		})
 	}
 }

@@ -9,27 +9,42 @@ import (
 	"strings"
 	"time"
 
+	wrapping "github.com/hashicorp/go-kms-wrapping"
 	"github.com/hashicorp/watchtower/internal/db/common"
 	"github.com/hashicorp/watchtower/internal/oplog"
+	"github.com/hashicorp/watchtower/internal/oplog/store"
 	"github.com/jinzhu/gorm"
 	"google.golang.org/protobuf/proto"
 )
 
-const NoRowsAffected = 0
+const (
+	NoRowsAffected = 0
+
+	// DefaultLimit is the default for results for watchtower
+	DefaultLimit = 10000
+)
 
 // Reader interface defines lookups/searching for resources
 type Reader interface {
 	// LookupByName will lookup resource by its friendly name which must be unique
 	LookupByName(ctx context.Context, resource ResourceNamer, opt ...Option) error
 
-	// LookupByPublicId will lookup resource by its public_id which must be unique
+	// LookupById will lookup a resource by its primary key id, which must be
+	// unique. The resourceWithIder must implement either ResourcePublicIder or
+	// ResourcePrivateIder interface.
+	LookupById(ctx context.Context, resourceWithIder interface{}, opt ...Option) error
+
+	// LookupByPublicId will lookup resource by its public_id which must be unique.
 	LookupByPublicId(ctx context.Context, resource ResourcePublicIder, opt ...Option) error
 
 	// LookupWhere will lookup and return the first resource using a where clause with parameters
 	LookupWhere(ctx context.Context, resource interface{}, where string, args ...interface{}) error
 
-	// SearchWhere will search for all the resources it can find using a where clause with parameters
-	SearchWhere(ctx context.Context, resources interface{}, where string, args ...interface{}) error
+	// SearchWhere will search for all the resources it can find using a where
+	// clause with parameters. Supports the WithLimit option.  If
+	// WithLimit < 0, then unlimited results are returned.  If WithLimit == 0, then
+	// default limits are used for results.
+	SearchWhere(ctx context.Context, resources interface{}, where string, args []interface{}, opt ...Option) error
 
 	// ScanRows will scan sql rows into the interface provided
 	ScanRows(rows *sql.Rows, result interface{}) error
@@ -61,6 +76,15 @@ type Writer interface {
 	// the transaction, which almost always should be to rollback.
 	Create(ctx context.Context, i interface{}, opt ...Option) error
 
+	// CreateItems will create multiple items of the same type.
+	// Supported options: WithOplog and WithOplogMsgs.  WithOplog and
+	// WithOplogMsgs may not be used together. WithLookup is not a
+	// supported option. The caller is responsible for the transaction life
+	// cycle of the writer and if an error is returned the caller must decide
+	// what to do with the transaction, which almost always should be to
+	// rollback.
+	CreateItems(ctx context.Context, createItems []interface{}, opt ...Option) error
+
 	// Delete an object in the db with options: WithOplog
 	// the caller is responsible for the transaction life cycle of the writer
 	// and if an error is returned the caller must decide what to do with
@@ -68,8 +92,31 @@ type Writer interface {
 	// returns the number of rows deleted or an error.
 	Delete(ctx context.Context, i interface{}, opt ...Option) (int, error)
 
+	// DeleteItems will delete multiple items of the same type.
+	// Supported options: WithOplog and WithOplogMsgs.  WithOplog and
+	// WithOplogMsgs may not be used together. The caller is responsible for the
+	// transaction life cycle of the writer and if an error is returned the
+	// caller must decide what to do with the transaction, which almost always
+	// should be to rollback. Delete returns the number of rows deleted or an error.
+	DeleteItems(ctx context.Context, deleteItems []interface{}, opt ...Option) (int, error)
+
 	// DB returns the sql.DB
 	DB() (*sql.DB, error)
+
+	// GetTicket returns an oplog ticket for the aggregate root of "i" which can
+	// be used to WriteOplogEntryWith for that aggregate root.
+	GetTicket(i interface{}) (*store.Ticket, error)
+
+	// WriteOplogEntryWith will write an oplog entry with the msgs provided for
+	// the ticket's aggregateName. No options are currently supported.
+	WriteOplogEntryWith(
+		ctx context.Context,
+		wrapper wrapping.Wrapper,
+		ticket *store.Ticket,
+		metadata oplog.Metadata,
+		msgs []*oplog.Message,
+		opt ...Option,
+	) error
 }
 
 const (
@@ -83,11 +130,18 @@ type RetryInfo struct {
 }
 
 // TxHandler defines a handler for a func that writes a transaction for use with DoTx
-type TxHandler func(Writer) error
+type TxHandler func(Reader, Writer) error
 
-// ResourcePublicIder defines an interface that LookupByPublicId() can use to get the resource's public id
+// ResourcePublicIder defines an interface that LookupByPublicId() can use to
+// get the resource's public id.
 type ResourcePublicIder interface {
 	GetPublicId() string
+}
+
+// ResourcePrivateIder defines an interface that LookupById() can use to get the
+// resource's private id.
+type ResourcePrivateIder interface {
+	GetPrivateId() string
 }
 
 // ResourceNamer defines an interface that LookupByName() can use to get the resource's friendly name
@@ -160,48 +214,128 @@ func (rw *Db) lookupAfterWrite(ctx context.Context, i interface{}, opt ...Option
 	return errors.New("not a resource with an id")
 }
 
-// Create an object in the db with options: WithOplog and WithLookup (to force a
-// lookup after create).
+// Create an object in the db with options: WithOplog, NewOplogMsg and
+// WithLookup.  WithOplog will write an oplog entry for the create.
+// NewOplogMsg will return in-memory oplog message.  WithOplog and NewOplogMsg
+// cannot be used together.  WithLookup with to force a lookup after create.
 func (rw *Db) Create(ctx context.Context, i interface{}, opt ...Option) error {
 	if rw.underlying == nil {
-		return fmt.Errorf("create: missing underlying db %w", ErrNilParameter)
+		return fmt.Errorf("create: missing underlying db: %w", ErrNilParameter)
 	}
 	if isNil(i) {
-		return fmt.Errorf("create: interface is missing %w", ErrNilParameter)
+		return fmt.Errorf("create: interface is missing: %w", ErrNilParameter)
 	}
 	opts := GetOpts(opt...)
 	withOplog := opts.withOplog
-	withDebug := opts.withDebug
+	if withOplog && opts.newOplogMsg != nil {
+		return fmt.Errorf("create: both WithOplog and NewOplogMsg options have been specified: %w", ErrInvalidParameter)
+	}
 	if withOplog {
 		// let's validate oplog options before we start writing to the database
 		_, err := validateOplogArgs(i, opts)
 		if err != nil {
-			return fmt.Errorf("create: oplog validation failed %w", err)
+			return fmt.Errorf("create: oplog validation failed: %w", err)
 		}
-	}
-	if withDebug {
-		rw.underlying.LogMode(true)
-		defer rw.underlying.LogMode(false)
 	}
 	// these fields should be nil, since they are not writeable and we want the
 	// db to manage them
 	setFieldsToNil(i, []string{"CreateTime", "UpdateTime"})
 
-	if vetter, ok := i.(VetForWriter); ok {
-		if err := vetter.VetForWrite(ctx, rw, CreateOp); err != nil {
-			return fmt.Errorf("create: vet for write failed %w", err)
+	if !opts.withSkipVetForWrite {
+		if vetter, ok := i.(VetForWriter); ok {
+			if err := vetter.VetForWrite(ctx, rw, CreateOp); err != nil {
+				return fmt.Errorf("create: vet for write failed: %w", err)
+			}
+		}
+	}
+	var ticket *store.Ticket
+	if withOplog {
+		var err error
+		ticket, err = rw.GetTicket(i)
+		if err != nil {
+			return fmt.Errorf("create: unable to get ticket: %w", err)
 		}
 	}
 	if err := rw.underlying.Create(i).Error; err != nil {
-		return fmt.Errorf("create: failed %w", err)
+		return fmt.Errorf("create: failed: %w", err)
 	}
 	if withOplog {
-		if err := rw.addOplog(ctx, CreateOp, opts, i); err != nil {
+		if err := rw.addOplog(ctx, CreateOp, opts, ticket, i); err != nil {
 			return err
 		}
 	}
+	if opts.newOplogMsg != nil {
+		msg, err := rw.newOplogMessage(ctx, CreateOp, i)
+		if err != nil {
+			return fmt.Errorf("create: returning oplog failed: %w", err)
+		}
+		*opts.newOplogMsg = *msg
+	}
 	if err := rw.lookupAfterWrite(ctx, i, opt...); err != nil {
-		return fmt.Errorf("create: lookup error %w", err)
+		return fmt.Errorf("create: lookup error: %w", err)
+	}
+	return nil
+}
+
+// CreateItems will create multiple items of the same type. Supported options:
+// WithOplog and WithOplogMsgs.  WithOplog and WithOplogMsgs may not be used
+// together.  WithLookup is not a supported option.
+func (rw *Db) CreateItems(ctx context.Context, createItems []interface{}, opt ...Option) error {
+	if rw.underlying == nil {
+		return fmt.Errorf("create items: missing underlying db: %w", ErrNilParameter)
+	}
+	if len(createItems) == 0 {
+		return fmt.Errorf("create items: no interfaces to create: %w", ErrInvalidParameter)
+	}
+	opts := GetOpts(opt...)
+	if opts.withLookup {
+		return fmt.Errorf("create items: with lookup not a supported option: %w", ErrInvalidParameter)
+	}
+	if opts.newOplogMsg != nil {
+		return fmt.Errorf("create items: new oplog msg (singular) is not a supported option: %w", ErrInvalidParameter)
+	}
+	if opts.withOplog && opts.newOplogMsgs != nil {
+		return fmt.Errorf("create items: both WithOplog and NewOplogMsgs options have been specified: %w", ErrInvalidParameter)
+	}
+	// verify that createItems are all the same type.
+	var foundType reflect.Type
+	for i, v := range createItems {
+		if i == 0 {
+			foundType = reflect.TypeOf(v)
+		}
+		currentType := reflect.TypeOf(v)
+		if foundType != currentType {
+			return fmt.Errorf("create items: create items contains disparate types. item %d is not a %s: %w", i, foundType.Name(), ErrInvalidParameter)
+		}
+	}
+	var ticket *store.Ticket
+	if opts.withOplog {
+		_, err := validateOplogArgs(createItems[0], opts)
+		if err != nil {
+			return fmt.Errorf("create items: oplog validation failed: %w", err)
+		}
+		ticket, err = rw.GetTicket(createItems[0])
+		if err != nil {
+			return fmt.Errorf("create items: unable to get ticket: %w", err)
+		}
+	}
+	for _, item := range createItems {
+		if err := rw.Create(ctx, item); err != nil {
+			return fmt.Errorf("create items: %w", err)
+		}
+
+	}
+	if opts.withOplog {
+		if err := rw.addOplogForItems(ctx, CreateOp, opts, ticket, createItems); err != nil {
+			return fmt.Errorf("create items: unable to add oplog: %w", err)
+		}
+	}
+	if opts.newOplogMsgs != nil {
+		msgs, err := rw.oplogMsgsForItems(ctx, CreateOp, opts, createItems)
+		if err != nil {
+			return fmt.Errorf("create items: returning oplog msgs failed %w", err)
+		}
+		*opts.newOplogMsgs = append(*opts.newOplogMsgs, msgs...)
 	}
 	return nil
 }
@@ -215,7 +349,15 @@ func (rw *Db) Create(ctx context.Context, i interface{}, opt ...Option) error {
 // is responsible for the transaction life cycle of the writer and if an
 // error is returned the caller must decide what to do with the transaction,
 // which almost always should be to rollback.  Update returns the number of
-// rows updated. Supported options: WithOplog.
+// rows updated.
+//
+// Supported options: WithOplog, NewOplogMsg and WithVersion.
+// WithOplog will write an oplog entry for the update. NewOplogMsg
+// will return in-memory oplog message.  WithOplog and NewOplogMsg cannot be
+// used together.   If WithVersion is used, then the update will include the
+// version number in the update where clause, which basically makes the update
+// use optimistic locking and the update will only succeed if the existing rows
+// version matches the WithVersion option.
 func (rw *Db) Update(ctx context.Context, i interface{}, fieldMaskPaths []string, setToNullPaths []string, opt ...Option) (int, error) {
 	if rw.underlying == nil {
 		return NoRowsAffected, fmt.Errorf("update: missing underlying db %w", ErrNilParameter)
@@ -225,6 +367,11 @@ func (rw *Db) Update(ctx context.Context, i interface{}, fieldMaskPaths []string
 	}
 	if len(fieldMaskPaths) == 0 && len(setToNullPaths) == 0 {
 		return NoRowsAffected, errors.New("update: both fieldMaskPaths and setToNullPaths are missing")
+	}
+	opts := GetOpts(opt...)
+	withOplog := opts.withOplog
+	if withOplog && opts.newOplogMsg != nil {
+		return NoRowsAffected, fmt.Errorf("update: both WithOplog and NewOplogMsg options have been specified: %w", ErrInvalidParameter)
 	}
 
 	// we need to filter out some non-updatable fields (like: CreateTime, etc)
@@ -255,35 +402,46 @@ func (rw *Db) Update(ctx context.Context, i interface{}, fieldMaskPaths []string
 		}
 	}
 
-	opts := GetOpts(opt...)
-	withDebug := opts.withDebug
-	withOplog := opts.withOplog
 	if withOplog {
 		// let's validate oplog options before we start writing to the database
 		_, err := validateOplogArgs(i, opts)
 		if err != nil {
-			return NoRowsAffected, fmt.Errorf("update: oplog validation failed %w", err)
+			return NoRowsAffected, fmt.Errorf("update: oplog validation failed: %w", err)
 		}
 	}
-	if withDebug {
-		rw.underlying.LogMode(true)
-		defer rw.underlying.LogMode(false)
-	}
-	if vetter, ok := i.(VetForWriter); ok {
-		if err := vetter.VetForWrite(ctx, rw, UpdateOp, WithFieldMaskPaths(fieldMaskPaths), WithNullPaths(setToNullPaths)); err != nil {
-			return NoRowsAffected, fmt.Errorf("update: vet for write failed %w", err)
+	if !opts.withSkipVetForWrite {
+		if vetter, ok := i.(VetForWriter); ok {
+			if err := vetter.VetForWrite(ctx, rw, UpdateOp, WithFieldMaskPaths(fieldMaskPaths), WithNullPaths(setToNullPaths)); err != nil {
+				return NoRowsAffected, fmt.Errorf("update: vet for write failed: %w", err)
+			}
 		}
 	}
-
-	underlying := rw.underlying.Model(i).Updates(updateFields)
+	var ticket *store.Ticket
+	if withOplog {
+		var err error
+		ticket, err = rw.GetTicket(i)
+		if err != nil {
+			return NoRowsAffected, fmt.Errorf("update: unable to get ticket: %w", err)
+		}
+	}
+	var underlying *gorm.DB
+	switch {
+	case opts.WithVersion > 0:
+		if _, ok := scope.FieldByName("version"); !ok {
+			return NoRowsAffected, fmt.Errorf("update: %s does not have a version field", scope.TableName())
+		}
+		underlying = rw.underlying.Model(i).Where("version = ?", opts.WithVersion).Updates(updateFields)
+	default:
+		underlying = rw.underlying.Model(i).Updates(updateFields)
+	}
 	if underlying.Error != nil {
 		if err == gorm.ErrRecordNotFound {
-			return NoRowsAffected, fmt.Errorf("update: failed %w", ErrRecordNotFound)
+			return NoRowsAffected, fmt.Errorf("update: failed: %w", ErrRecordNotFound)
 		}
-		return NoRowsAffected, fmt.Errorf("update: failed %w", underlying.Error)
+		return NoRowsAffected, fmt.Errorf("update: failed: %w", underlying.Error)
 	}
 	rowsUpdated := int(underlying.RowsAffected)
-	if withOplog && rowsUpdated > 0 {
+	if rowsUpdated > 0 && (withOplog || opts.newOplogMsg != nil) {
 		// we don't want to change the inbound slices in opts, so we'll make our
 		// own copy to pass to addOplog()
 		oplogFieldMasks := make([]string, len(fieldMaskPaths))
@@ -293,12 +451,20 @@ func (rw *Db) Update(ctx context.Context, i interface{}, fieldMaskPaths []string
 		oplogOpts := Options{
 			oplogOpts:          opts.oplogOpts,
 			withOplog:          opts.withOplog,
-			withDebug:          opts.withDebug,
 			WithFieldMaskPaths: oplogFieldMasks,
 			WithNullPaths:      oplogNullPaths,
 		}
-		if err := rw.addOplog(ctx, UpdateOp, oplogOpts, i); err != nil {
-			return rowsUpdated, fmt.Errorf("update: add oplog failed %w", err)
+		if withOplog {
+			if err := rw.addOplog(ctx, UpdateOp, oplogOpts, ticket, i); err != nil {
+				return rowsUpdated, fmt.Errorf("update: add oplog failed %w", err)
+			}
+		}
+		if opts.newOplogMsg != nil {
+			msg, err := rw.newOplogMessage(ctx, UpdateOp, i, WithFieldMaskPaths(oplogFieldMasks), WithNullPaths(oplogNullPaths))
+			if err != nil {
+				return rowsUpdated, fmt.Errorf("update: returning oplog failed %w", err)
+			}
+			*opts.newOplogMsg = *msg
 		}
 	}
 	// we need to force a lookupAfterWrite so the resource returned is correctly initialized
@@ -310,9 +476,10 @@ func (rw *Db) Update(ctx context.Context, i interface{}, fieldMaskPaths []string
 	return rowsUpdated, nil
 }
 
-// Delete an object in the db with options: WithOplog (which requires
-// WithMetadata, WithWrapper). Delete returns the number of rows deleted and
-// any errors.
+// Delete an object in the db with options: WithOplog and NewOplogMsg. WithOplog
+// will write an oplog entry for the delete. NewOplogMsg will return in-memory
+// oplog message.  WithOplog and NewOplogMsg cannot be used together. Delete
+// returns the number of rows deleted and any errors.
 func (rw *Db) Delete(ctx context.Context, i interface{}, opt ...Option) (int, error) {
 	if rw.underlying == nil {
 		return NoRowsAffected, fmt.Errorf("delete: missing underlying db %w", ErrNilParameter)
@@ -320,33 +487,116 @@ func (rw *Db) Delete(ctx context.Context, i interface{}, opt ...Option) (int, er
 	if isNil(i) {
 		return NoRowsAffected, fmt.Errorf("delete: interface is missing %w", ErrNilParameter)
 	}
+	opts := GetOpts(opt...)
+	withOplog := opts.withOplog
+	if withOplog && opts.newOplogMsg != nil {
+		return NoRowsAffected, fmt.Errorf("delete: both WithOplog and NewOplogMsg options have been specified: %w", ErrInvalidParameter)
+	}
 	// This is not a watchtower scope, but rather a gorm Scope:
 	// https://godoc.org/github.com/jinzhu/gorm#DB.NewScope
 	scope := rw.underlying.NewScope(i)
 	if scope.PrimaryKeyZero() {
 		return NoRowsAffected, fmt.Errorf("delete: primary key is not set")
 	}
-	opts := GetOpts(opt...)
-	withDebug := opts.withDebug
-	withOplog := opts.withOplog
 	if withOplog {
 		_, err := validateOplogArgs(i, opts)
 		if err != nil {
 			return NoRowsAffected, fmt.Errorf("delete: oplog validation failed %w", err)
 		}
 	}
-	if withDebug {
-		rw.underlying.LogMode(true)
-		defer rw.underlying.LogMode(false)
+	var ticket *store.Ticket
+	if withOplog {
+		var err error
+		ticket, err = rw.GetTicket(i)
+		if err != nil {
+			return NoRowsAffected, fmt.Errorf("delete: unable to get ticket: %w", err)
+		}
 	}
 	underlying := rw.underlying.Delete(i)
 	if underlying.Error != nil {
 		return NoRowsAffected, fmt.Errorf("delete: failed %w", underlying.Error)
 	}
 	rowsDeleted := int(underlying.RowsAffected)
-	if withOplog && rowsDeleted > 0 {
-		if err := rw.addOplog(ctx, DeleteOp, opts, i); err != nil {
-			return rowsDeleted, fmt.Errorf("delete: add oplog failed %w", err)
+	if rowsDeleted > 0 && (withOplog || opts.newOplogMsg != nil) {
+		if withOplog {
+			if err := rw.addOplog(ctx, DeleteOp, opts, ticket, i); err != nil {
+				return rowsDeleted, fmt.Errorf("delete: add oplog failed %w", err)
+			}
+		}
+		if opts.newOplogMsg != nil {
+			msg, err := rw.newOplogMessage(ctx, DeleteOp, i)
+			if err != nil {
+				return rowsDeleted, fmt.Errorf("delete: returning oplog failed %w", err)
+			}
+			*opts.newOplogMsg = *msg
+		}
+	}
+	return rowsDeleted, nil
+}
+
+// DeleteItems will delete multiple items of the same type. Supported options:
+// WithOplog and WithOplogMsgs.  WithOplog and WithOplogMsgs may not be used
+// together.
+func (rw *Db) DeleteItems(ctx context.Context, deleteItems []interface{}, opt ...Option) (int, error) {
+	if rw.underlying == nil {
+		return NoRowsAffected, fmt.Errorf("delete items: missing underlying db: %w", ErrNilParameter)
+	}
+	if len(deleteItems) == 0 {
+		return NoRowsAffected, fmt.Errorf("delete items: no interfaces to delete: %w", ErrInvalidParameter)
+	}
+	opts := GetOpts(opt...)
+	if opts.newOplogMsg != nil {
+		return NoRowsAffected, fmt.Errorf("delete items: new oplog msg (singular) is not a supported option: %w", ErrInvalidParameter)
+	}
+	if opts.withOplog && opts.newOplogMsgs != nil {
+		return NoRowsAffected, fmt.Errorf("delete items: both WithOplog and NewOplogMsgs options have been specified: %w", ErrInvalidParameter)
+	}
+	// verify that createItems are all the same type.
+	var foundType reflect.Type
+	for i, v := range deleteItems {
+		if i == 0 {
+			foundType = reflect.TypeOf(v)
+		}
+		currentType := reflect.TypeOf(v)
+		if foundType != currentType {
+			return NoRowsAffected, fmt.Errorf("delete items: items contain disparate types.  item %d is not a %s: %w", i, foundType.Name(), ErrInvalidParameter)
+		}
+	}
+
+	var ticket *store.Ticket
+	if opts.withOplog {
+		_, err := validateOplogArgs(deleteItems[0], opts)
+		if err != nil {
+			return NoRowsAffected, fmt.Errorf("delete items: oplog validation failed: %w", err)
+		}
+		ticket, err = rw.GetTicket(deleteItems[0])
+		if err != nil {
+			return NoRowsAffected, fmt.Errorf("delete items: unable to get ticket: %w", err)
+		}
+	}
+	rowsDeleted := 0
+	for _, item := range deleteItems {
+		// calling delete directly on the underlying db, since the writer.Delete
+		// doesn't provide capabilities needed here (which is different from the
+		// relationship between Create and CreateItems).
+		underlying := rw.underlying.Delete(item)
+		if underlying.Error != nil {
+			return rowsDeleted, fmt.Errorf("delete: failed: %w", underlying.Error)
+		}
+		rowsDeleted += int(underlying.RowsAffected)
+	}
+	if rowsDeleted > 0 && (opts.withOplog || opts.newOplogMsgs != nil) {
+		if opts.withOplog {
+			if err := rw.addOplogForItems(ctx, DeleteOp, opts, ticket, deleteItems); err != nil {
+				return rowsDeleted, fmt.Errorf("delete items: unable to add oplog: %w", err)
+			}
+		}
+		if opts.newOplogMsgs != nil {
+			msgs, err := rw.oplogMsgsForItems(ctx, DeleteOp, opts, deleteItems)
+			if err != nil {
+				return rowsDeleted, fmt.Errorf("delete items: returning oplog msgs failed %w", err)
+			}
+			*opts.newOplogMsgs = append(*opts.newOplogMsgs, msgs...)
 		}
 	}
 	return rowsDeleted, nil
@@ -367,27 +617,127 @@ func validateOplogArgs(i interface{}, opts Options) (oplog.ReplayableMessage, er
 	return replayable, nil
 }
 
-func (rw *Db) addOplog(ctx context.Context, opType OpType, opts Options, i interface{}) error {
+func (rw *Db) getTicketFor(aggregateName string) (*store.Ticket, error) {
+	if rw.underlying == nil {
+		return nil, fmt.Errorf("get ticket for %s: underlying db missing: %w", aggregateName, ErrNilParameter)
+	}
+	ticketer, err := oplog.NewGormTicketer(rw.underlying, oplog.WithAggregateNames(true))
+	if err != nil {
+		return nil, fmt.Errorf("get ticket for %s: unable to get Ticketer %w", aggregateName, err)
+	}
+	ticket, err := ticketer.GetTicket(aggregateName)
+	if err != nil {
+		return nil, fmt.Errorf("get ticket for %s: unable to get ticket %w", aggregateName, err)
+	}
+	return ticket, nil
+}
+
+// GetTicket returns an oplog ticket for the aggregate root of "i" which can
+// be used to WriteOplogEntryWith for that aggregate root.
+func (rw *Db) GetTicket(i interface{}) (*store.Ticket, error) {
+	if rw.underlying == nil {
+		return nil, fmt.Errorf("get ticket: underlying db missing: %w", ErrNilParameter)
+	}
+	if isNil(i) {
+		return nil, fmt.Errorf("get ticket: interface is missing %w", ErrNilParameter)
+	}
+	replayable, ok := i.(oplog.ReplayableMessage)
+	if !ok {
+		return nil, fmt.Errorf("get ticket: not a replayable message %w", ErrInvalidParameter)
+	}
+	return rw.getTicketFor(replayable.TableName())
+}
+
+func (rw *Db) oplogMsgsForItems(ctx context.Context, opType OpType, opts Options, items []interface{}) ([]*oplog.Message, error) {
+	if len(items) == 0 {
+		return nil, fmt.Errorf("oplog msgs for items: items is empty: %w", ErrInvalidParameter)
+	}
+	oplogMsgs := []*oplog.Message{}
+	var foundType reflect.Type
+	for i, item := range items {
+		if i == 0 {
+			foundType = reflect.TypeOf(item)
+		}
+		currentType := reflect.TypeOf(item)
+		if foundType != currentType {
+			return nil, fmt.Errorf("oplog msgs for items: items contains disparate types.  item (%d) %s is not a %s: %w", i, currentType, foundType, ErrInvalidParameter)
+		}
+		msg, err := rw.newOplogMessage(ctx, opType, item, WithFieldMaskPaths(opts.WithFieldMaskPaths), WithNullPaths(opts.WithNullPaths))
+		if err != nil {
+			return nil, fmt.Errorf("oplog msgs for items: %w", err)
+		}
+		oplogMsgs = append(oplogMsgs, msg)
+	}
+	return oplogMsgs, nil
+}
+
+// addOplogForItems will add a multi-message oplog entry with one msg for each
+// item. Items must all be of the same type.  Only CreateOp and DeleteOp are
+// currently supported operations.
+func (rw *Db) addOplogForItems(ctx context.Context, opType OpType, opts Options, ticket *store.Ticket, items []interface{}) error {
+	oplogArgs := opts.oplogOpts
+	if ticket == nil {
+		return fmt.Errorf("oplog for items: ticket is missing: %w", ErrNilParameter)
+	}
+	if items == nil {
+		return fmt.Errorf("oplog for items: items are missing: %w", ErrNilParameter)
+	}
+	if len(items) == 0 {
+		return fmt.Errorf("oplog for items: items is empty: %w", ErrInvalidParameter)
+	}
+	if oplogArgs.metadata == nil {
+		return fmt.Errorf("oplog for items: metadata is missing: %w", ErrNilParameter)
+	}
+	if oplogArgs.wrapper == nil {
+		return fmt.Errorf("oplog for items: wrapper is missing: %w", ErrNilParameter)
+	}
+
+	oplogMsgs, err := rw.oplogMsgsForItems(ctx, opType, opts, items)
+	if err != nil {
+		return fmt.Errorf("oplog for items: %w", err)
+	}
+
+	replayable, err := validateOplogArgs(items[0], opts)
+	if err != nil {
+		return fmt.Errorf("oplog for items: oplog validation failed %w", err)
+	}
+	ticketer, err := oplog.NewGormTicketer(rw.underlying, oplog.WithAggregateNames(true))
+	if err != nil {
+		return fmt.Errorf("oplog for items: unable to get Ticketer %w", err)
+	}
+	entry, err := oplog.NewEntry(
+		replayable.TableName(),
+		oplogArgs.metadata,
+		oplogArgs.wrapper,
+		ticketer,
+	)
+	if err != nil {
+		return fmt.Errorf("oplog for items: unable to create oplog entry %w", err)
+	}
+	if err := entry.WriteEntryWith(
+		ctx,
+		&oplog.GormWriter{Tx: rw.underlying},
+		ticket,
+		oplogMsgs...,
+	); err != nil {
+		return fmt.Errorf("oplog for items: unable to write oplog entry %w", err)
+	}
+	return nil
+}
+
+func (rw *Db) addOplog(ctx context.Context, opType OpType, opts Options, ticket *store.Ticket, i interface{}) error {
 	oplogArgs := opts.oplogOpts
 	replayable, err := validateOplogArgs(i, opts)
 	if err != nil {
 		return err
 	}
-	gdb := rw.underlying
-	withDebug := opts.withDebug
-	if withDebug {
-		gdb.LogMode(true)
-		defer gdb.LogMode(false)
+	if ticket == nil {
+		return fmt.Errorf("add oplog: missing ticket %w", ErrNilParameter)
 	}
-	ticketer, err := oplog.NewGormTicketer(gdb, oplog.WithAggregateNames(true))
+	ticketer, err := oplog.NewGormTicketer(rw.underlying, oplog.WithAggregateNames(true))
 	if err != nil {
-		return fmt.Errorf("error getting Ticketer %w for WithOplog", err)
+		return fmt.Errorf("add oplog: unable to get Ticketer %w", err)
 	}
-	ticket, err := ticketer.GetTicket(replayable.TableName())
-	if err != nil {
-		return fmt.Errorf("error getting ticket %w for WithOplog", err)
-	}
-
 	entry, err := oplog.NewEntry(
 		replayable.TableName(),
 		oplogArgs.metadata,
@@ -396,6 +746,76 @@ func (rw *Db) addOplog(ctx context.Context, opType OpType, opts Options, i inter
 	)
 	if err != nil {
 		return err
+	}
+	msg, err := rw.newOplogMessage(ctx, opType, i, WithFieldMaskPaths(opts.WithFieldMaskPaths), WithNullPaths(opts.WithNullPaths))
+	if err != nil {
+		return fmt.Errorf("add oplog: %w", err)
+	}
+	err = entry.WriteEntryWith(
+		ctx,
+		&oplog.GormWriter{Tx: rw.underlying},
+		ticket,
+		msg,
+	)
+	if err != nil {
+		return fmt.Errorf("add oplog: unable to write oplog entry: %w", err)
+	}
+	return nil
+}
+
+// WriteOplogEntryWith will write an oplog entry with the msgs provided for
+// the ticket's aggregateName. No options are currently supported.
+func (rw *Db) WriteOplogEntryWith(ctx context.Context, wrapper wrapping.Wrapper, ticket *store.Ticket, metadata oplog.Metadata, msgs []*oplog.Message, opt ...Option) error {
+	if wrapper == nil {
+		return fmt.Errorf("write oplog: wrapper is unset %w", ErrNilParameter)
+	}
+	if ticket == nil {
+		return fmt.Errorf("write oplog: ticket is unset %w", ErrNilParameter)
+	}
+	if len(msgs) == 0 {
+		return fmt.Errorf("write oplog: msgs are empty %w", ErrInvalidParameter)
+	}
+	if rw.underlying == nil {
+		return fmt.Errorf("write oplog: underlying is unset %w", ErrNilParameter)
+	}
+	if metadata == nil {
+		return fmt.Errorf("write oplog: metadata is unset %w", ErrNilParameter)
+	}
+	if len(metadata) == 0 {
+		return fmt.Errorf("write oplog: metadata is empty %w", ErrInvalidParameter)
+	}
+
+	ticketer, err := oplog.NewGormTicketer(rw.underlying, oplog.WithAggregateNames(true))
+	if err != nil {
+		return fmt.Errorf("write oplog: unable to get Ticketer %w", err)
+	}
+
+	entry, err := oplog.NewEntry(
+		ticket.Name,
+		metadata,
+		wrapper,
+		ticketer,
+	)
+	if err != nil {
+		return fmt.Errorf("write oplog: unable to create oplog entry: %w", err)
+	}
+	err = entry.WriteEntryWith(
+		ctx,
+		&oplog.GormWriter{Tx: rw.underlying},
+		ticket,
+		msgs...,
+	)
+	if err != nil {
+		return fmt.Errorf("write oplog: unable to write oplog entry: %w", err)
+	}
+	return nil
+}
+
+func (rw *Db) newOplogMessage(ctx context.Context, opType OpType, i interface{}, opt ...Option) (*oplog.Message, error) {
+	opts := GetOpts(opt...)
+	replayable, ok := i.(oplog.ReplayableMessage)
+	if !ok {
+		return nil, errors.New("error not a replayable interface")
 	}
 	msg := oplog.Message{
 		Message:  i.(proto.Message),
@@ -411,18 +831,9 @@ func (rw *Db) addOplog(ctx context.Context, opType OpType, opts Options, i inter
 	case DeleteOp:
 		msg.OpType = oplog.OpType_OP_TYPE_DELETE
 	default:
-		return fmt.Errorf("error operation type %v is not supported", opType)
+		return nil, fmt.Errorf("operation type %v is not supported", opType)
 	}
-	err = entry.WriteEntryWith(
-		ctx,
-		&oplog.GormWriter{Tx: gdb},
-		ticket,
-		&msg,
-	)
-	if err != nil {
-		return fmt.Errorf("error creating oplog entry %w for WithOplog", err)
-	}
-	return nil
+	return &msg, nil
 }
 
 // DoTx will wrap the Handler func passed within a transaction with retries
@@ -442,7 +853,8 @@ func (w *Db) DoTx(ctx context.Context, retries uint, backOff Backoff, Handler Tx
 		// step one of this, start a transaction...
 		newTx := w.underlying.BeginTx(ctx, nil)
 
-		if err := Handler(&Db{newTx}); err != nil {
+		rw := &Db{newTx}
+		if err := Handler(rw, rw); err != nil {
 			if err := newTx.Rollback().Error; err != nil {
 				return info, err
 			}
@@ -471,12 +883,6 @@ func (rw *Db) LookupByName(ctx context.Context, resource ResourceNamer, opt ...O
 	if rw.underlying == nil {
 		return errors.New("error underlying db nil for lookup by name")
 	}
-	opts := GetOpts(opt...)
-	withDebug := opts.withDebug
-	if withDebug {
-		rw.underlying.LogMode(true)
-		defer rw.underlying.LogMode(false)
-	}
 	if reflect.ValueOf(resource).Kind() != reflect.Ptr {
 		return errors.New("error interface parameter must to be a pointer for lookup by name")
 	}
@@ -492,30 +898,50 @@ func (rw *Db) LookupByName(ctx context.Context, resource ResourceNamer, opt ...O
 	return nil
 }
 
-// LookupByPublicId will lookup resource my its public_id which must be unique
-func (rw *Db) LookupByPublicId(ctx context.Context, resource ResourcePublicIder, opt ...Option) error {
+// LookupByPublicId will lookup resource by its public_id or private_id, which
+// must be unique. Options are ignored.
+func (rw *Db) LookupById(ctx context.Context, resourceWithIder interface{}, opt ...Option) error {
 	if rw.underlying == nil {
-		return errors.New("error underlying db nil for lookup by public id")
+		return fmt.Errorf("lookup by id: underlying db nil %w", ErrNilParameter)
 	}
-	opts := GetOpts(opt...)
-	withDebug := opts.withDebug
-	if withDebug {
-		rw.underlying.LogMode(true)
-		defer rw.underlying.LogMode(false)
+	if reflect.ValueOf(resourceWithIder).Kind() != reflect.Ptr {
+		return fmt.Errorf("lookup by id: interface parameter must to be a pointer %w", ErrInvalidParameter)
 	}
-	if reflect.ValueOf(resource).Kind() != reflect.Ptr {
-		return errors.New("error interface parameter must to be a pointer for lookup by public id")
+	primaryKey, where, err := primaryKeyWhere(resourceWithIder)
+	if err != nil {
+		return fmt.Errorf("lookup by id: %w", err)
 	}
-	if resource.GetPublicId() == "" {
-		return errors.New("error public id empty string for lookup by public id")
-	}
-	if err := rw.underlying.Where("public_id = ?", resource.GetPublicId()).First(resource).Error; err != nil {
+	if err := rw.underlying.Where(where, primaryKey).First(resourceWithIder).Error; err != nil {
 		if err == gorm.ErrRecordNotFound {
 			return ErrRecordNotFound
 		}
 		return err
 	}
 	return nil
+}
+
+func primaryKeyWhere(resourceWithIder interface{}) (pkey string, w string, e error) {
+	var primaryKey, where string
+	switch resourceType := resourceWithIder.(type) {
+	case ResourcePublicIder:
+		primaryKey = resourceType.GetPublicId()
+		where = "public_id = ?"
+	case ResourcePrivateIder:
+		primaryKey = resourceType.GetPrivateId()
+		where = "private_id = ?"
+	default:
+		return "", "", fmt.Errorf("unsupported interface type %w", ErrInvalidParameter)
+	}
+	if primaryKey == "" {
+		return "", "", fmt.Errorf("primary key unset %w", ErrInvalidParameter)
+	}
+	return primaryKey, where, nil
+}
+
+// LookupByPublicId will lookup resource by its public_id, which must be unique.
+// Options are ignored.
+func (rw *Db) LookupByPublicId(ctx context.Context, resource ResourcePublicIder, opt ...Option) error {
+	return rw.LookupById(ctx, resource, opt...)
 }
 
 // LookupWhere will lookup the first resource using a where clause with parameters (it only returns the first one)
@@ -535,15 +961,28 @@ func (rw *Db) LookupWhere(ctx context.Context, resource interface{}, where strin
 	return nil
 }
 
-// SearchWhere will search for all the resources it can find using a where clause with parameters
-func (rw *Db) SearchWhere(ctx context.Context, resources interface{}, where string, args ...interface{}) error {
+// SearchWhere will search for all the resources it can find using a where
+// clause with parameters.  Supports the WithLimit option.  If
+// WithLimit < 0, then unlimited results are returned.  If WithLimit == 0, then
+// default limits are used for results.
+func (rw *Db) SearchWhere(ctx context.Context, resources interface{}, where string, args []interface{}, opt ...Option) error {
+	opts := GetOpts(opt...)
 	if rw.underlying == nil {
 		return errors.New("error underlying db nil for search by")
 	}
 	if reflect.ValueOf(resources).Kind() != reflect.Ptr {
 		return errors.New("error interface parameter must to be a pointer for search by")
 	}
-	if err := rw.underlying.Where(where, args...).Find(resources).Error; err != nil {
+	var err error
+	switch {
+	case opts.WithLimit < 0: // any negative number signals unlimited results
+		err = rw.underlying.Where(where, args...).Find(resources).Error
+	case opts.WithLimit == 0: // zero signals the default value and default limits
+		err = rw.underlying.Limit(DefaultLimit).Where(where, args...).Find(resources).Error
+	default:
+		err = rw.underlying.Limit(opts.WithLimit).Where(where, args...).Find(resources).Error
+	}
+	if err != nil {
 		// searching with a slice parameter does not return a gorm.ErrRecordNotFound
 		return err
 	}
@@ -571,43 +1010,9 @@ func filterPaths(paths []string) []string {
 	return filtered
 }
 
-// setFieldsToNil will set the fieldNames to nil. It supports embedding a struct
-// (or structPtr) one level deep.
 func setFieldsToNil(i interface{}, fieldNames []string) {
-	val := reflect.Indirect(reflect.ValueOf(i))
-	structTyp := val.Type()
-	for _, field := range fieldNames {
-		for i := 0; i < structTyp.NumField(); i++ {
-			kind := structTyp.Field(i).Type.Kind()
-			if kind == reflect.Struct || kind == reflect.Ptr {
-				// check if the embedded field is exported via CanInterface()
-				if val.Field(i).CanInterface() {
-					embVal := reflect.Indirect(reflect.ValueOf(val.Field(i).Interface()))
-					// if it's a ptr to a struct, then we need a few more bits before proceeding.
-					if kind == reflect.Ptr {
-						embVal = val.Field(i).Elem()
-						embType := embVal.Type()
-						if embType.Kind() != reflect.Struct {
-							continue
-						}
-					}
-					f := embVal.FieldByName(field)
-					if f.IsValid() {
-						if f.CanSet() {
-							f.Set(reflect.Zero(f.Type()))
-						}
-					}
-					continue
-				}
-			}
-			// it's not an embedded type, so check if the field name matches
-			f := val.FieldByName(field)
-			if f.IsValid() {
-				if f.CanSet() {
-					f.Set(reflect.Zero(f.Type()))
-				}
-			}
-		}
+	if err := Clear(i, fieldNames, 2); err != nil {
+		// do nothing
 	}
 }
 
@@ -629,4 +1034,57 @@ func contains(ss []string, t string) bool {
 		}
 	}
 	return false
+}
+
+// Clear sets fields in the value pointed to by i to their zero value.
+// Clear descends i to depth clearing fields at each level. i must be a
+// pointer to a struct. Cycles in i are not detected.
+//
+// A depth of 2 will change i and i's children. A depth of 1 will change i
+// but no children of i. A depth of 0 will return with no changes to i.
+func Clear(i interface{}, fields []string, depth int) error {
+	if len(fields) == 0 || depth == 0 {
+		return nil
+	}
+	fm := make(map[string]bool)
+	for _, f := range fields {
+		fm[f] = true
+	}
+
+	v := reflect.ValueOf(i)
+
+	switch v.Kind() {
+	default:
+		return ErrInvalidParameter
+	case reflect.Ptr:
+		if v.IsNil() || v.Elem().Kind() != reflect.Struct {
+			return ErrInvalidParameter
+		}
+		clear(v, fm, depth)
+	}
+	return nil
+}
+
+func clear(v reflect.Value, fields map[string]bool, depth int) {
+	if depth == 0 {
+		return
+	}
+	depth--
+
+	switch v.Kind() {
+	case reflect.Ptr:
+		clear(v.Elem(), fields, depth+1)
+	case reflect.Struct:
+		typeOfT := v.Type()
+		for i := 0; i < v.NumField(); i++ {
+			f := v.Field(i)
+			if ok := fields[typeOfT.Field(i).Name]; ok {
+				if f.IsValid() && f.CanSet() {
+					f.Set(reflect.Zero(f.Type()))
+				}
+				continue
+			}
+			clear(f, fields, depth)
+		}
+	}
 }

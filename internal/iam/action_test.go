@@ -3,6 +3,7 @@ package iam
 import (
 	"testing"
 
+	"github.com/hashicorp/watchtower/internal/types/action"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -12,17 +13,17 @@ func Test_CrudActions(t *testing.T) {
 	t.Run("valid", func(t *testing.T) {
 		assert := assert.New(t)
 		a := CrudlActions()
-		assert.Equal(a[ActionCreate.String()], ActionCreate)
-		assert.Equal(a[ActionUpdate.String()], ActionUpdate)
-		assert.Equal(a[ActionRead.String()], ActionRead)
-		assert.Equal(a[ActionDelete.String()], ActionDelete)
+		assert.Equal(a[action.Create.String()], action.Create)
+		assert.Equal(a[action.Update.String()], action.Update)
+		assert.Equal(a[action.Read.String()], action.Read)
+		assert.Equal(a[action.Delete.String()], action.Delete)
 	})
 	t.Run("invalid", func(t *testing.T) {
 		assert := assert.New(t)
 		a := CrudlActions()
-		action, ok := a["invalid"]
+		aType, ok := a["invalid"]
 		assert.Equal(ok, false)
-		assert.Equal(action, ActionUnknown)
+		assert.Equal(aType, action.Unknown)
 	})
 }
 
@@ -32,17 +33,17 @@ func Test_CrudlActions(t *testing.T) {
 	t.Run("valid", func(t *testing.T) {
 		assert := assert.New(t)
 		a := CrudlActions()
-		assert.Equal(a[ActionList.String()], ActionList)
-		assert.Equal(a[ActionCreate.String()], ActionCreate)
-		assert.Equal(a[ActionUpdate.String()], ActionUpdate)
-		assert.Equal(a[ActionRead.String()], ActionRead)
-		assert.Equal(a[ActionDelete.String()], ActionDelete)
+		assert.Equal(a[action.List.String()], action.List)
+		assert.Equal(a[action.Create.String()], action.Create)
+		assert.Equal(a[action.Update.String()], action.Update)
+		assert.Equal(a[action.Read.String()], action.Read)
+		assert.Equal(a[action.Delete.String()], action.Delete)
 	})
 	t.Run("invalid", func(t *testing.T) {
 		assert := assert.New(t)
 		a := CrudlActions()
-		action, ok := a["invalid"]
+		aType, ok := a["invalid"]
 		assert.Equal(ok, false)
-		assert.Equal(action, ActionUnknown)
+		assert.Equal(aType, action.Unknown)
 	})
 }

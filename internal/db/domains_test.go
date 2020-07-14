@@ -1,76 +1,74 @@
 package db
 
 import (
+	"strings"
 	"testing"
 	"time"
 
 	"github.com/golang-sql/civil"
 	_ "github.com/jackc/pgx/v4"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
-func TestDomain_PublicId(t *testing.T) {
+func TestDomain_PublicPrivateId(t *testing.T) {
 	const (
-		createTable = `
-create table if not exists test_table_public_id (
+		createTableBase = `
+create table if not exists test_table_{{rep}}_id (
   id bigint generated always as identity primary key,
-  public_id wt_public_id
+  {{rep}}_id wt_{{rep}}_id
 );
 `
-		insert = `
-insert into test_table_public_id (public_id)
+		insertBase = `
+insert into test_table_{{rep}}_id ({{rep}}_id)
 values ($1)
 returning id;
 `
 	)
 
-	cleanup, conn, _ := TestSetup(t, "postgres")
-	defer func() {
-		if err := cleanup(); err != nil {
-			t.Error(err)
-		}
-	}()
-	defer func() {
-		if err := conn.Close(); err != nil {
-			t.Error(err)
-		}
-	}()
+	conn, _ := TestSetup(t, "postgres")
 	db := conn.DB()
-	if _, err := db.Exec(createTable); err != nil {
-		t.Fatalf("query: \n%s\n error: %s", createTable, err)
-	}
 
-	failTests := []string{
-		" ",
-		"bar",
-		"00000009",
-	}
-	for _, tt := range failTests {
-		value := tt
-		t.Run(tt, func(t *testing.T) {
-			t.Logf("insert value: %q", value)
-			if _, err := db.Query(insert, value); err == nil {
-				t.Errorf("want error, got no error for inserting public_id: %s", value)
-			}
-		})
-	}
+	for _, typ := range []string{"public", "private"} {
+		createTable := strings.Replace(createTableBase, "{{rep}}", typ, -1)
+		insert := strings.Replace(insertBase, "{{rep}}", typ, -1)
 
-	okTests := []string{
-		"l1Ocw0TpHn800CekIxIXlmQqRDgFDfYl",
-		"00000000010000000002000000000312",
-		"00000000010000000002000000000032",
-		"12345678901234567890123456789012",
-		"ec2_12345678901234567890123456789012",
-		"prj_12345678901234567890123456789012",
-	}
-	for _, tt := range okTests {
-		value := tt
-		t.Run(tt, func(t *testing.T) {
-			t.Logf("insert value: %q", value)
-			if _, err := db.Query(insert, value); err != nil {
-				t.Errorf("%s: want no error, got error %v", value, err)
-			}
-		})
+		if _, err := db.Exec(createTable); err != nil {
+			t.Fatalf("query: \n%s\n error: %s", createTable, err)
+		}
+
+		failTests := []string{
+			" ",
+			"bar",
+			"00000009",
+		}
+		for _, tt := range failTests {
+			value := tt
+			t.Run(tt, func(t *testing.T) {
+				t.Logf("insert value: %q", value)
+				if _, err := db.Query(insert, value); err == nil {
+					t.Errorf("want error, got no error for inserting public_id: %s", value)
+				}
+			})
+		}
+
+		okTests := []string{
+			"l1Ocw0TpHn800CekIxIXlmQqRDgFDfYl",
+			"00000000010000000002000000000312",
+			"00000000010000000002000000000032",
+			"12345678901234567890123456789012",
+			"ec2_12345678901234567890123456789012",
+			"prj_12345678901234567890123456789012",
+		}
+		for _, tt := range okTests {
+			value := tt
+			t.Run(tt, func(t *testing.T) {
+				t.Logf("insert value: %q", value)
+				if _, err := db.Query(insert, value); err != nil {
+					t.Errorf("%s: want no error, got error %v", value, err)
+				}
+			})
+		}
 	}
 }
 
@@ -91,17 +89,7 @@ returning id;
 `
 	)
 
-	cleanup, conn, _ := TestSetup(t, "postgres")
-	defer func() {
-		if err := cleanup(); err != nil {
-			t.Error(err)
-		}
-	}()
-	defer func() {
-		if err := conn.Close(); err != nil {
-			t.Error(err)
-		}
-	}()
+	conn, _ := TestSetup(t, "postgres")
 	db := conn.DB()
 	if _, err := db.Exec(createTable); err != nil {
 		t.Fatalf("query: \n%s\n error: %s", createTable, err)
@@ -167,16 +155,7 @@ set create_time = null;
 `
 	)
 
-	cleanup, conn, _ := TestSetup(t, "postgres")
-	defer func() {
-		if err := conn.Close(); err != nil {
-			t.Error(err)
-		}
-		if err := cleanup(); err != nil {
-			t.Error(err)
-		}
-	}()
-
+	conn, _ := TestSetup(t, "postgres")
 	db := conn.DB()
 	_, err := db.Exec(createTable)
 	assert.NoError(err)
@@ -264,16 +243,7 @@ set update_time = null;
 `
 	)
 
-	cleanup, conn, _ := TestSetup(t, "postgres")
-	defer func() {
-		if err := conn.Close(); err != nil {
-			t.Error(err)
-		}
-		if err := cleanup(); err != nil {
-			t.Error(err)
-		}
-	}()
-
+	conn, _ := TestSetup(t, "postgres")
 	db := conn.DB()
 	_, err := db.Exec(createTable)
 	assert.NoError(err)
@@ -315,4 +285,63 @@ set update_time = null;
 	assert.NoError(err)
 	nextUpdated := civil.DateTimeOf(nextUpdateTime)
 	assert.True(nextUpdated.After(updated))
+}
+
+func TestDomain_wt_version(t *testing.T) {
+	const (
+		createTable = `
+create table if not exists test_table_wt_version(
+	public_id bigint generated always as identity primary key,
+	name text,
+	version wt_version
+);
+`
+		addTrigger = `
+create trigger 
+  update_version_column
+after update on test_table_wt_version
+  for each row execute procedure update_version_column();
+`
+		insert = `
+insert into test_table_wt_version (name)
+values ($1)
+returning public_id;
+`
+		update = `update test_table_wt_version set name = $1 where public_id = $2;`
+
+		updateVersion = `update test_table_wt_version set version = $1 where public_id = $2;`
+
+		search = `select version from test_table_wt_version where public_id = $1`
+	)
+	conn, _ := TestSetup(t, "postgres")
+	assert, require := assert.New(t), require.New(t)
+
+	db := conn.DB()
+	_, err := db.Exec(createTable)
+	require.NoError(err)
+
+	_, err = db.Exec(addTrigger)
+	require.NoError(err)
+
+	var id int
+	err = db.QueryRow(insert, "alice").Scan(&id)
+	require.NoError(err)
+	require.NotEmpty(id)
+
+	var v int
+	err = db.QueryRow(search, id).Scan(&v)
+	require.NoError(err)
+	assert.Equal(1, v)
+
+	_, err = db.Exec(update, "bob", id)
+	require.NoError(err)
+	err = db.QueryRow(search, id).Scan(&v)
+	require.NoError(err)
+	assert.Equal(2, v)
+
+	_, err = db.Exec(updateVersion, 22, id)
+	require.NoError(err)
+	err = db.QueryRow(search, id).Scan(&v)
+	require.NoError(err)
+	assert.Equal(3, v)
 }

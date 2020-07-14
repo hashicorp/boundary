@@ -89,6 +89,15 @@ This will build Watchtower. Once complete, run Watchtower in `dev` mode:
 
   ```./$GOPATH/bin/watchtower dev```
 
+#### Specify a UI Commitish at Build Time
+
+The default UI build branch is `develop` from [the UI
+repo](https://github.com/hashicorp/watchtower-ui). A different commitish from
+which to build UI assets may be specified via the UI_COMMITISH environment
+variable. For example:
+
+  ```UI_COMMITISH=feature-branch make dev```
+
 ### Download and Run from Release Page
 
 Download the latest release of the server binary and appropriate desktop
@@ -96,17 +105,17 @@ client(s) from our [releases page]
 
 ### Start Watchtower
 
-Start the server binary with: 
+Start the server binary with:
 
   ```watchtower dev```
 
-This will start a Controller service listening on `http://127.0.0.1:9200` for 
-incoming API requests and a Worker service listening on the same address/port for 
-incoming session requests. It will also create various default Catalogs and Sets, 
-and display various bits of information, such as a username and password that can 
+This will start a Controller service listening on `http://127.0.0.1:9200` for
+incoming API requests and a Worker service listening on the same address/port for
+incoming session requests. It will also create various default Catalogs and Sets,
+and display various bits of information, such as a username and password that can
 be used to log in.
 
-### Configuring Resources 
+### Configuring Resources
 
 For a simple test of Watchtower in `dev` mode you don't generally need to
 configure any resources at all! But it's useful to understand what `dev` mode

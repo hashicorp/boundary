@@ -9,9 +9,9 @@ import (
 	pb "github.com/hashicorp/watchtower/internal/gen/controller/api/resources/hosts"
 	pbs "github.com/hashicorp/watchtower/internal/gen/controller/api/services"
 	"github.com/hashicorp/watchtower/internal/host/static"
-	"github.com/hashicorp/watchtower/internal/iam"
 	"github.com/hashicorp/watchtower/internal/servers/controller/common"
 	"github.com/hashicorp/watchtower/internal/servers/controller/handlers"
+	"github.com/hashicorp/watchtower/internal/types/scope"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/wrapperspb"
@@ -91,6 +91,8 @@ func (s Service) ListHostCatalogs(ctx context.Context, req *pbs.ListHostCatalogs
 
 // GetHostCatalog implements the interface pbs.HostCatalogServiceServer.
 func (s Service) GetHostCatalog(ctx context.Context, req *pbs.GetHostCatalogRequest) (*pbs.GetHostCatalogResponse, error) {
+	auth := handlers.ToTokenMetadata(ctx)
+	_ = auth
 	ct := typeFromId(req.GetId())
 	if ct == unknownType {
 		return nil, handlers.InvalidArgumentErrorf("Invalid argument provided.", map[string]string{"id": "Improperly formatted identifier used."})
@@ -107,6 +109,8 @@ func (s Service) GetHostCatalog(ctx context.Context, req *pbs.GetHostCatalogRequ
 
 // CreateHostCatalog implements the interface pbs.HostCatalogServiceServer.
 func (s Service) CreateHostCatalog(ctx context.Context, req *pbs.CreateHostCatalogRequest) (*pbs.CreateHostCatalogResponse, error) {
+	auth := handlers.ToTokenMetadata(ctx)
+	_ = auth
 	if err := validateCreateRequest(req); err != nil {
 		return nil, err
 	}
@@ -122,6 +126,8 @@ func (s Service) CreateHostCatalog(ctx context.Context, req *pbs.CreateHostCatal
 
 // UpdateHostCatalog implements the interface pbs.HostCatalogServiceServer.
 func (s Service) UpdateHostCatalog(ctx context.Context, req *pbs.UpdateHostCatalogRequest) (*pbs.UpdateHostCatalogResponse, error) {
+	auth := handlers.ToTokenMetadata(ctx)
+	_ = auth
 	ct := typeFromId(req.GetId())
 	if ct == unknownType {
 		return nil, handlers.InvalidArgumentErrorf("Invalid argument provided.", map[string]string{"id": "Improperly formatted identifier used."})
@@ -138,6 +144,8 @@ func (s Service) UpdateHostCatalog(ctx context.Context, req *pbs.UpdateHostCatal
 
 // DeleteHostCatalog implements the interface pbs.HostCatalogServiceServer.
 func (s Service) DeleteHostCatalog(ctx context.Context, req *pbs.DeleteHostCatalogRequest) (*pbs.DeleteHostCatalogResponse, error) {
+	auth := handlers.ToTokenMetadata(ctx)
+	_ = auth
 	ct := typeFromId(req.GetId())
 	if ct == unknownType {
 		return nil, handlers.InvalidArgumentErrorf("Invalid argument provided.", map[string]string{"id": "Improperly formatted identifier used."})
@@ -391,10 +399,10 @@ func validateAncestors(r ancestorProvider) map[string]string {
 		return badFields
 	}
 
-	if !validId(r.GetOrgId(), iam.OrganizationScope.Prefix()+"_") {
+	if !validId(r.GetOrgId(), scope.Org.Prefix()+"_") {
 		badFields[orgIdFieldName] = "The field is incorrectly formatted."
 	}
-	if !validId(r.GetProjectId(), iam.ProjectScope.Prefix()+"_") {
+	if !validId(r.GetProjectId(), scope.Project.Prefix()+"_") {
 		badFields[projectIdFieldName] = "The field is incorrectly formatted."
 	}
 	return badFields

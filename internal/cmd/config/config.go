@@ -2,6 +2,7 @@ package config
 
 import (
 	"bytes"
+	"context"
 	"crypto/rand"
 	"encoding/base64"
 	"fmt"
@@ -113,19 +114,22 @@ func New() *Config {
 }
 
 // LoadFile loads the configuration from the given file.
-func LoadFile(path string) (*Config, error) {
-	// Read the file
+func LoadFile(path string, kms *configutil.KMS) (*Config, error) {
 	d, err := ioutil.ReadFile(path)
 	if err != nil {
 		return nil, err
 	}
 
-	conf, err := Parse(string(d))
-	if err != nil {
-		return nil, err
+	raw := string(d)
+
+	if kms != nil {
+		raw, err = configDecrypt(raw, kms)
+		if err != nil {
+			return nil, err
+		}
 	}
 
-	return conf, nil
+	return Parse(raw)
 }
 
 func Parse(d string) (*Config, error) {
@@ -169,4 +173,16 @@ func (c *Config) Sanitized() map[string]interface{} {
 	}
 
 	return result
+}
+
+func configDecrypt(raw string, kms *configutil.KMS) (string, error) {
+	wrapper, err := configutil.ConfigureWrapper(kms, nil, nil, nil)
+	if err != nil {
+		return raw, err
+	}
+
+	wrapper.Init(context.Background())
+	defer wrapper.Finalize(context.Background())
+
+	return configutil.EncryptDecrypt(raw, true, true, wrapper)
 }

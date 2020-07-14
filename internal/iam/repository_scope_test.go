@@ -11,21 +11,15 @@ import (
 	"github.com/hashicorp/watchtower/internal/db/timestamp"
 	iam_store "github.com/hashicorp/watchtower/internal/iam/store"
 	"github.com/hashicorp/watchtower/internal/oplog"
+	"github.com/hashicorp/watchtower/internal/types/scope"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/proto"
 )
 
-func Test_Repository_CreateScope(t *testing.T) {
+func Test_Repository_Scope_Create(t *testing.T) {
 	t.Parallel()
-	cleanup, conn, _ := db.TestSetup(t, "postgres")
-	defer func() {
-		err := cleanup()
-		assert.NoError(t, err)
-		err = conn.Close()
-		assert.NoError(t, err)
-	}()
-
+	conn, _ := db.TestSetup(t, "postgres")
 	t.Run("valid-scope", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
 		rw := db.New(conn)
@@ -34,7 +28,7 @@ func Test_Repository_CreateScope(t *testing.T) {
 		require.NoError(err)
 		id := testId(t)
 
-		s, err := NewOrganization(WithName(id))
+		s, err := NewOrg(WithName(id))
 		require.NoError(err)
 		s, err = repo.CreateScope(context.Background(), s)
 		require.NoError(err)
@@ -55,9 +49,9 @@ func Test_Repository_CreateScope(t *testing.T) {
 		wrapper := db.TestWrapper(t)
 		repo, err := NewRepository(rw, rw, wrapper)
 		require.NoError(err)
-		publicId, err := newScopeId(OrganizationScope)
+		publicId, err := newScopeId(scope.Org)
 		require.NoError(err)
-		s, err := NewOrganization()
+		s, err := NewOrg()
 		require.NoError(err)
 		s, err = repo.CreateScope(context.Background(), s, WithPublicId(publicId))
 		require.NoError(err)
@@ -78,7 +72,7 @@ func Test_Repository_CreateScope(t *testing.T) {
 		require.NoError(err)
 		id := testId(t)
 
-		s, err := NewOrganization(WithName(id))
+		s, err := NewOrg(WithName(id))
 		require.NoError(err)
 		s, err = repo.CreateScope(context.Background(), s)
 		require.NoError(err)
@@ -86,7 +80,7 @@ func Test_Repository_CreateScope(t *testing.T) {
 		assert.NotEmpty(s.GetPublicId())
 		assert.Equal(s.GetName(), id)
 
-		s2, err := NewOrganization(WithName(id))
+		s2, err := NewOrg(WithName(id))
 		require.NoError(err)
 		s2, err = repo.CreateScope(context.Background(), s2)
 		require.Error(err)
@@ -100,7 +94,7 @@ func Test_Repository_CreateScope(t *testing.T) {
 		require.NoError(err)
 		id := testId(t)
 
-		s, err := NewOrganization(WithName(id))
+		s, err := NewOrg(WithName(id))
 		require.NoError(err)
 		s, err = repo.CreateScope(context.Background(), s)
 		require.NoError(err)
@@ -122,16 +116,9 @@ func Test_Repository_CreateScope(t *testing.T) {
 	})
 }
 
-func Test_Repository_UpdateScope(t *testing.T) {
+func Test_Repository_Scope_Update(t *testing.T) {
 	t.Parallel()
-	cleanup, conn, _ := db.TestSetup(t, "postgres")
-	defer func() {
-		err := cleanup()
-		assert.NoError(t, err)
-		err = conn.Close()
-		assert.NoError(t, err)
-	}()
-
+	conn, _ := db.TestSetup(t, "postgres")
 	t.Run("valid-scope", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
 		rw := db.New(conn)
@@ -193,16 +180,9 @@ func Test_Repository_UpdateScope(t *testing.T) {
 	})
 }
 
-func Test_Repository_LookupScope(t *testing.T) {
+func Test_Repository_Scope_Lookup(t *testing.T) {
 	t.Parallel()
-	cleanup, conn, _ := db.TestSetup(t, "postgres")
-	defer func() {
-		err := cleanup()
-		assert.NoError(t, err)
-		err = conn.Close()
-		assert.NoError(t, err)
-	}()
-
+	conn, _ := db.TestSetup(t, "postgres")
 	t.Run("found-and-not-found", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
 		rw := db.New(conn)
@@ -226,15 +206,9 @@ func Test_Repository_LookupScope(t *testing.T) {
 	})
 }
 
-func Test_Repository_DeleteScope(t *testing.T) {
+func Test_Repository_Scope_Delete(t *testing.T) {
 	t.Parallel()
-	cleanup, conn, _ := db.TestSetup(t, "postgres")
-	defer func() {
-		err := cleanup()
-		assert.NoError(t, err)
-		err = conn.Close()
-		assert.NoError(t, err)
-	}()
+	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
 	repo, err := NewRepository(rw, rw, wrapper)
@@ -271,15 +245,9 @@ func Test_Repository_DeleteScope(t *testing.T) {
 }
 
 func TestRepository_UpdateScope(t *testing.T) {
-	cleanup, conn, _ := db.TestSetup(t, "postgres")
+	conn, _ := db.TestSetup(t, "postgres")
 	now := &timestamp.Timestamp{Timestamp: ptypes.TimestampNow()}
 	id := testId(t)
-	defer func() {
-		err := cleanup()
-		assert.NoError(t, err)
-		err = conn.Close()
-		assert.NoError(t, err)
-	}()
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
 	publicId := testPublicId(t, "o")
@@ -421,7 +389,7 @@ func TestRepository_UpdateScope(t *testing.T) {
 					Scope: &iam_store.Scope{
 						Name:        "type" + id,
 						Description: "",
-						Type:        ProjectScope.String(),
+						Type:        scope.Project.String(),
 						CreateTime:  now,
 						UpdateTime:  now,
 						PublicId:    publicId,
@@ -492,4 +460,148 @@ func TestRepository_UpdateScope(t *testing.T) {
 		assert.Equal(0, rowsUpdated, "updated rows should be 0")
 		assert.Nil(updatedScope, "scope should be nil")
 	})
+}
+
+func Test_Repository_ListProjects(t *testing.T) {
+	t.Parallel()
+	conn, _ := db.TestSetup(t, "postgres")
+	const testLimit = 10
+	rw := db.New(conn)
+	wrapper := db.TestWrapper(t)
+	repo, err := NewRepository(rw, rw, wrapper, WithLimit(testLimit))
+	require.NoError(t, err)
+	org := testOrg(t, conn, "", "")
+
+	type args struct {
+		withOrgId string
+		opt       []Option
+	}
+	tests := []struct {
+		name      string
+		createCnt int
+		args      args
+		wantCnt   int
+		wantErr   bool
+	}{
+		{
+			name:      "no-limit",
+			createCnt: repo.defaultLimit + 1,
+			args: args{
+				withOrgId: org.PublicId,
+				opt:       []Option{WithLimit(-1)},
+			},
+			wantCnt: repo.defaultLimit + 1,
+			wantErr: false,
+		},
+		{
+			name:      "default-limit",
+			createCnt: repo.defaultLimit + 1,
+			args: args{
+				withOrgId: org.PublicId,
+			},
+			wantCnt: repo.defaultLimit,
+			wantErr: false,
+		},
+		{
+			name:      "custom-limit",
+			createCnt: repo.defaultLimit + 1,
+			args: args{
+				withOrgId: org.PublicId,
+				opt:       []Option{WithLimit(3)},
+			},
+			wantCnt: 3,
+			wantErr: false,
+		},
+		{
+			name:      "bad-org",
+			createCnt: 1,
+			args: args{
+				withOrgId: "bad-id",
+			},
+			wantCnt: 0,
+			wantErr: false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+			require.NoError(conn.Where("public_id != ? and public_id != 'global'", org.PublicId).Delete(allocScope()).Error)
+			testProjects := []*Scope{}
+			for i := 0; i < tt.createCnt; i++ {
+				testProjects = append(testProjects, testProject(t, conn, org.PublicId))
+			}
+			assert.Equal(tt.createCnt, len(testProjects))
+			got, err := repo.ListProjects(context.Background(), tt.args.withOrgId, tt.args.opt...)
+			if tt.wantErr {
+				require.Error(err)
+				return
+			}
+			require.NoError(err)
+			assert.Equal(tt.wantCnt, len(got))
+		})
+	}
+}
+
+func Test_Repository_ListOrgs(t *testing.T) {
+	t.Parallel()
+	conn, _ := db.TestSetup(t, "postgres")
+	const testLimit = 10
+	rw := db.New(conn)
+	wrapper := db.TestWrapper(t)
+	repo, err := NewRepository(rw, rw, wrapper, WithLimit(testLimit))
+	require.NoError(t, err)
+	type args struct {
+		opt []Option
+	}
+	tests := []struct {
+		name      string
+		createCnt int
+		args      args
+		wantCnt   int
+		wantErr   bool
+	}{
+		{
+			name:      "no-limit",
+			createCnt: repo.defaultLimit + 1,
+			args: args{
+				opt: []Option{WithLimit(-1)},
+			},
+			wantCnt: repo.defaultLimit + 1,
+			wantErr: false,
+		},
+		{
+			name:      "default-limit",
+			createCnt: repo.defaultLimit + 1,
+			args:      args{},
+			wantCnt:   repo.defaultLimit,
+			wantErr:   false,
+		},
+		{
+			name:      "custom-limit",
+			createCnt: repo.defaultLimit + 1,
+			args: args{
+				opt: []Option{WithLimit(3)},
+			},
+			wantCnt: 3,
+			wantErr: false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+			require.NoError(conn.Where("type = 'org'").Delete(allocScope()).Error)
+			testOrgs := []*Scope{}
+			for i := 0; i < tt.createCnt; i++ {
+				testOrgs = append(testOrgs, testOrg(t, conn, "", ""))
+			}
+			assert.Equal(tt.createCnt, len(testOrgs))
+			got, err := repo.ListOrgs(context.Background(), tt.args.opt...)
+			if tt.wantErr {
+				require.Error(err)
+				return
+			}
+			require.NoError(err)
+			assert.Equal(tt.wantCnt, len(got))
+		})
+	}
 }

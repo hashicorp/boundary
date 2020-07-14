@@ -7,47 +7,14 @@ import (
 
 	"github.com/hashicorp/watchtower/internal/db"
 	"github.com/hashicorp/watchtower/internal/iam/store"
+	"github.com/hashicorp/watchtower/internal/types/action"
+	"github.com/hashicorp/watchtower/internal/types/resource"
+	"github.com/hashicorp/watchtower/internal/types/scope"
 	"google.golang.org/protobuf/proto"
 )
 
-// ScopeType defines the possible types for Scopes
-type ScopeType uint32
-
-const (
-	UnknownScope      ScopeType = 0
-	OrganizationScope ScopeType = 1
-	ProjectScope      ScopeType = 2
-)
-
-func (s ScopeType) String() string {
-	return [...]string{
-		"unknown",
-		"organization",
-		"project",
-	}[s]
-}
-
-func (s ScopeType) Prefix() string {
-	return [...]string{
-		"unknown",
-		"o",
-		"p",
-	}[s]
-}
-
-func stringToScopeType(s string) ScopeType {
-	switch s {
-	case OrganizationScope.String():
-		return OrganizationScope
-	case ProjectScope.String():
-		return ProjectScope
-	default:
-		return UnknownScope
-	}
-}
-
 // Scope is used to create a hierarchy of "containers" that encompass the scope of
-// an IAM resource.  Scopes are Organizations and Projects.
+// an IAM resource.  Scopes are Global, Orgs and Projects.
 type Scope struct {
 	*store.Scope
 
@@ -61,15 +28,18 @@ var _ Resource = (*Scope)(nil)
 var _ db.VetForWriter = (*Scope)(nil)
 var _ Clonable = (*Scope)(nil)
 
-func NewOrganization(opt ...Option) (*Scope, error) {
-	return newScope(OrganizationScope, opt...)
+func NewOrg(opt ...Option) (*Scope, error) {
+	global := allocScope()
+	global.PublicId = "global"
+	opt = append(opt, withScope(&global))
+	return newScope(scope.Org, opt...)
 }
 
-func NewProject(organizationPublicId string, opt ...Option) (*Scope, error) {
+func NewProject(orgPublicId string, opt ...Option) (*Scope, error) {
 	org := allocScope()
-	org.PublicId = organizationPublicId
+	org.PublicId = orgPublicId
 	opt = append(opt, withScope(&org))
-	p, err := newScope(ProjectScope, opt...)
+	p, err := newScope(scope.Project, opt...)
 	if err != nil {
 		return nil, fmt.Errorf("error creating new project: %w", err)
 	}
@@ -79,17 +49,22 @@ func NewProject(organizationPublicId string, opt ...Option) (*Scope, error) {
 // newScope creates a new Scope of the specified ScopeType with options:
 // WithName specifies the Scope's friendly name. WithDescription specifies the
 // scope's description. WithScope specifies the Scope's parent
-func newScope(scopeType ScopeType, opt ...Option) (*Scope, error) {
+func newScope(scopeType scope.Type, opt ...Option) (*Scope, error) {
 	opts := getOpts(opt...)
-	if scopeType == UnknownScope {
-		return nil, fmt.Errorf("new scope: unknown scope type %w", db.ErrInvalidParameter)
+	switch scopeType {
+	case scope.Unknown:
+		return nil, fmt.Errorf("new scope: unknown scope type: %w", db.ErrInvalidParameter)
+	case scope.Global:
+		return nil, fmt.Errorf("new scope: invalid scope type: %w", db.ErrInvalidParameter)
+	default:
+		if opts.withScope == nil {
+			return nil, fmt.Errorf("new scope: child scope is missing its parent: %w", db.ErrInvalidParameter)
+		}
+		if opts.withScope.PublicId == "" {
+			return nil, fmt.Errorf("new scope: with scope's parent id is missing: %w", db.ErrInvalidParameter)
+		}
 	}
-	if opts.withScope != nil && opts.withScope.PublicId == "" {
-		return nil, fmt.Errorf("new scope: with scope's parent id is missing %w", db.ErrInvalidParameter)
-	}
-	if scopeType == ProjectScope && opts.withScope == nil {
-		return nil, fmt.Errorf("new scope: project scope is missing its parent %w", db.ErrInvalidParameter)
-	}
+
 	s := &Scope{
 		Scope: &store.Scope{
 			Type:        scopeType.String(),
@@ -121,7 +96,7 @@ func (s *Scope) Clone() interface{} {
 // this function is intended to be callled by a db.Writer (Create and Update) to validate
 // the scope before writing it to the db.
 func (s *Scope) VetForWrite(ctx context.Context, r db.Reader, opType db.OpType, opt ...db.Option) error {
-	if s.Type == UnknownScope.String() {
+	if s.Type == scope.Unknown.String() {
 		return errors.New("unknown scope type for scope write")
 	}
 	if s.PublicId == "" {
@@ -139,17 +114,28 @@ func (s *Scope) VetForWrite(ctx context.Context, r db.Reader, opType db.OpType, 
 		}
 	}
 	if opType == db.CreateOp {
-		if s.ParentId == "" && s.Type == ProjectScope.String() {
-			return errors.New("project has no organization")
-		}
-		if s.Type == ProjectScope.String() {
+		switch {
+		case s.Type == scope.Global.String():
+			return errors.New("global scope cannot be created")
+		case s.ParentId == "":
+			switch s.Type {
+			case scope.Org.String():
+				return errors.New("org must have global parent")
+			case scope.Project.String():
+				return errors.New("project has no org")
+			}
+		case s.Type == scope.Org.String():
+			if s.ParentId != "global" {
+				return errors.New(`org's parent must be "global"`)
+			}
+		case s.Type == scope.Project.String():
 			parentScope := allocScope()
 			parentScope.PublicId = s.ParentId
 			if err := r.LookupByPublicId(ctx, &parentScope, opt...); err != nil {
-				return fmt.Errorf("unable to verify project's organization scope: %w", err)
+				return fmt.Errorf("unable to verify project's org scope: %w", err)
 			}
-			if parentScope.Type != OrganizationScope.String() {
-				return errors.New("project parent scope is not an organization")
+			if parentScope.Type != scope.Org.String() {
+				return errors.New("project parent scope is not an org")
 			}
 		}
 	}
@@ -157,19 +143,21 @@ func (s *Scope) VetForWrite(ctx context.Context, r db.Reader, opType db.OpType, 
 }
 
 // ResourceType returns the type of scope
-func (s *Scope) ResourceType() ResourceType {
+func (s *Scope) ResourceType() resource.Type {
 	switch s.Type {
-	case OrganizationScope.String():
-		return ResourceTypeOrganization
-	case ProjectScope.String():
-		return ResourceTypeProject
+	case scope.Global.String():
+		return resource.Global
+	case scope.Org.String():
+		return resource.Org
+	case scope.Project.String():
+		return resource.Project
 	default:
-		return ResourceTypeScope
+		return resource.Scope
 	}
 }
 
 // Actions returns the  available actions for Scopes
-func (*Scope) Actions() map[string]Action {
+func (*Scope) Actions() map[string]action.Type {
 	return CrudActions()
 }
 
@@ -186,19 +174,19 @@ func (s *Scope) GetScope(ctx context.Context, r db.Reader) (*Scope, error) {
 			return nil, fmt.Errorf("unable to get scope by public id: %w", err)
 		}
 	}
-	// HANDLE_ORG
+	// HANDLE_GLOBAL
 	switch s.Type {
-	case OrganizationScope.String():
+	case scope.Global.String():
 		return nil, nil
-	case ProjectScope.String():
+	default:
 		var p Scope
 		switch s.ParentId {
 		case "":
 			// no parent id, so use the public_id to find the parent scope. This
 			// won't work for if the scope hasn't been written to the db yet,
 			// like during create but in that case the parent id should be set
-			// for all scopes which are not organizations, and the organization
-			// case was handled at HANDLE_ORG
+			// for all scopes which are not global, and the global case was
+			// handled at HANDLE_GLOBAL
 			where := "public_id in (select parent_id from iam_scope where public_id = ?)"
 			if err := r.LookupWhere(ctx, &p, where, s.PublicId); err != nil {
 				return nil, fmt.Errorf("unable to lookup parent public id from public id: %w", err)
@@ -210,7 +198,6 @@ func (s *Scope) GetScope(ctx context.Context, r db.Reader) (*Scope, error) {
 		}
 		return &p, nil
 	}
-	return nil, fmt.Errorf("unable to get scope with type %s", s.Type)
 }
 
 // TableName returns the tablename to override the default gorm table name

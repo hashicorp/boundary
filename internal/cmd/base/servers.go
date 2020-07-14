@@ -314,7 +314,7 @@ func (b *Server) SetupKMSes(ui cli.Ui, config *configutil.SharedConfig, purposes
 			switch purpose {
 			case "":
 				return errors.New("KMS block missing 'purpose'")
-			case "controller", "worker-auth":
+			case "controller", "worker-auth", "config":
 			default:
 				return fmt.Errorf("Unknown KMS purpose %q", kms.Purpose)
 			}
@@ -430,7 +430,7 @@ func (b *Server) CreateDevDatabase(dialect string) error {
 		}
 	}
 
-	scope, err = iam.NewOrganization()
+	scope, err = iam.NewOrg()
 	if err != nil {
 		c()
 		return fmt.Errorf("error creating new org scope: %w", err)

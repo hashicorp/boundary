@@ -10,6 +10,7 @@ import (
 	wrapping "github.com/hashicorp/go-kms-wrapping"
 	"github.com/hashicorp/watchtower/internal/db"
 	"github.com/hashicorp/watchtower/internal/oplog"
+	"github.com/hashicorp/watchtower/internal/types/scope"
 )
 
 var (
@@ -21,10 +22,14 @@ type Repository struct {
 	reader  db.Reader
 	writer  db.Writer
 	wrapper wrapping.Wrapper
+
+	// defaultLimit provides a default for limiting the number of results returned from the repo
+	defaultLimit int
 }
 
-// NewRepository creates a new iam Repository
-func NewRepository(r db.Reader, w db.Writer, wrapper wrapping.Wrapper) (*Repository, error) {
+// NewRepository creates a new iam Repository. Supports the options: WithLimit
+// which sets a default limit on results returned by repo operations.
+func NewRepository(r db.Reader, w db.Writer, wrapper wrapping.Wrapper, opt ...Option) (*Repository, error) {
 	if r == nil {
 		return nil, errors.New("error creating db repository with nil reader")
 	}
@@ -34,11 +39,29 @@ func NewRepository(r db.Reader, w db.Writer, wrapper wrapping.Wrapper) (*Reposit
 	if wrapper == nil {
 		return nil, errors.New("error creating db repository with nil wrapper")
 	}
+	opts := getOpts(opt...)
+	if opts.withLimit == 0 {
+		// zero signals the watchtower defaults should be used.
+		opts.withLimit = db.DefaultLimit
+	}
 	return &Repository{
-		reader:  r,
-		writer:  w,
-		wrapper: wrapper,
+		reader:       r,
+		writer:       w,
+		wrapper:      wrapper,
+		defaultLimit: opts.withLimit,
 	}, nil
+}
+
+// list will return a listing of resources and honor the WithLimit option or the
+// repo defaultLimit
+func (r *Repository) list(ctx context.Context, resources interface{}, where string, args []interface{}, opt ...Option) error {
+	opts := getOpts(opt...)
+	limit := r.defaultLimit
+	if opts.withLimit != 0 {
+		// non-zero signals an override of the default limit for the repo.
+		limit = opts.withLimit
+	}
+	return r.reader.SearchWhere(ctx, resources, where, args, db.WithLimit(limit))
 }
 
 // create will create a new iam resource in the db repository with an oplog entry
@@ -61,7 +84,7 @@ func (r *Repository) create(ctx context.Context, resource Resource, opt ...Optio
 		ctx,
 		db.StdRetryCnt,
 		db.ExpBackoff{},
-		func(w db.Writer) error {
+		func(_ db.Reader, w db.Writer) error {
 			returnedResource = resourceCloner.Clone()
 			return w.Create(
 				ctx,
@@ -88,13 +111,19 @@ func (r *Repository) update(ctx context.Context, resource Resource, fieldMaskPat
 	}
 	metadata["op-type"] = []string{oplog.OpType_OP_TYPE_UPDATE.String()}
 
+	dbOpts := []db.Option{db.WithOplog(r.wrapper, metadata)}
+	opts := getOpts(opt...)
+	if opts.withSkipVetForWrite {
+		dbOpts = append(dbOpts, db.WithSkipVetForWrite(true))
+	}
+
 	var rowsUpdated int
 	var returnedResource interface{}
 	_, err = r.writer.DoTx(
 		ctx,
 		db.StdRetryCnt,
 		db.ExpBackoff{},
-		func(w db.Writer) error {
+		func(_ db.Reader, w db.Writer) error {
 			returnedResource = resourceCloner.Clone()
 			var err error
 			rowsUpdated, err = w.Update(
@@ -102,7 +131,7 @@ func (r *Repository) update(ctx context.Context, resource Resource, fieldMaskPat
 				returnedResource,
 				fieldMaskPaths,
 				setToNullPaths,
-				db.WithOplog(r.wrapper, metadata),
+				dbOpts...,
 			)
 			if err == nil && rowsUpdated > 1 {
 				// return err, which will result in a rollback of the update
@@ -135,7 +164,7 @@ func (r *Repository) delete(ctx context.Context, resource Resource, opt ...Optio
 		ctx,
 		db.StdRetryCnt,
 		db.ExpBackoff{},
-		func(w db.Writer) error {
+		func(_ db.Reader, w db.Writer) error {
 			deleteResource = resourceCloner.Clone()
 			var err error
 			rowsDeleted, err = w.Delete(
@@ -155,27 +184,27 @@ func (r *Repository) delete(ctx context.Context, resource Resource, opt ...Optio
 
 func (r *Repository) stdMetadata(ctx context.Context, resource Resource) (oplog.Metadata, error) {
 	if s, ok := resource.(*Scope); ok {
-		scope := allocScope()
-		scope.PublicId = s.PublicId
-		scope.Type = s.Type
-		if scope.Type == "" {
-			if err := r.reader.LookupByPublicId(ctx, &scope); err != nil {
+		newScope := allocScope()
+		newScope.PublicId = s.PublicId
+		newScope.Type = s.Type
+		if newScope.Type == "" {
+			if err := r.reader.LookupByPublicId(ctx, &newScope); err != nil {
 				return nil, ErrMetadataScopeNotFound
 			}
 		}
-		switch scope.Type {
-		case OrganizationScope.String():
+		switch newScope.Type {
+		case scope.Org.String():
 			return oplog.Metadata{
 				"resource-public-id": []string{resource.GetPublicId()},
-				"scope-id":           []string{scope.PublicId},
-				"scope-type":         []string{scope.Type},
+				"scope-id":           []string{newScope.PublicId},
+				"scope-type":         []string{newScope.Type},
 				"resource-type":      []string{resource.ResourceType().String()},
 			}, nil
-		case ProjectScope.String():
+		case scope.Project.String():
 			return oplog.Metadata{
 				"resource-public-id": []string{resource.GetPublicId()},
-				"scope-id":           []string{scope.ParentId},
-				"scope-type":         []string{scope.Type},
+				"scope-id":           []string{newScope.ParentId},
+				"scope-type":         []string{newScope.Type},
 				"resource-type":      []string{resource.ResourceType().String()},
 			}, nil
 		default:

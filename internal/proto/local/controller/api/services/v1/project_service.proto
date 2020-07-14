@@ -7,7 +7,6 @@ option go_package = "github.com/hashicorp/watchtower/internal/gen/controller/api
 import "protoc-gen-swagger/options/annotations.proto";
 import "google/api/annotations.proto";
 import "google/protobuf/field_mask.proto";
-import "google/protobuf/wrappers.proto";
 import "controller/api/resources/scopes/v1/project.proto";
 
 service ProjectService {
@@ -29,7 +28,7 @@ service ProjectService {
   // ListProjects returns a list of stored projects which exist inside the org
   // referenced inside the request.  The request must include the org id for
   // the projects being retrieved.  If the org id is missing, malformed, or
-  // reference a non existing organization, an error is returned.
+  // reference a non existing org, an error is returned.
   rpc ListProjects(ListProjectsRequest) returns (ListProjectsResponse) {
     option (google.api.http) = {
       get: "/v1/orgs/{org_id}/projects"
@@ -42,8 +41,8 @@ service ProjectService {
   // CreateProject creates and stores a project in watchtower.  The provided
   // request must include the org id in which the project will be created.
   // If the org id is missing, malformed or references a non existing
-  // organization, an error is returned.  If a name is provided that is in
-  // use in another project in the same organization, an error is returned.
+  // org, an error is returned.  If a name is provided that is in
+  // use in another project in the same org, an error is returned.
   rpc CreateProject(CreateProjectRequest) returns (CreateProjectResponse) {
     option (google.api.http) = {
       post: "/v1/orgs/{org_id}/projects"
@@ -59,10 +58,10 @@ service ProjectService {
   // project must not have any read only fields set.  The update mask must be
   // included in the request and contain at least 1 mutable field.  To unset
   // a field's value, include the field in the update mask and don't set it
-  // in the provided project. An error is returned if either the organization
+  // in the provided project. An error is returned if either the org
   // or project ids are missing or reference a non existing resource.  An error
   // is also returned if the request attempts to update the name to one that is
-  // already in use in this organization.
+  // already in use in this org.
   rpc UpdateProject(UpdateProjectRequest) returns (UpdateProjectResponse) {
     option (google.api.http) = {
       patch: "/v1/orgs/{org_id}/projects/{id}"

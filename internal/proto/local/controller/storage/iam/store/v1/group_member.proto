@@ -1,0 +1,50 @@
+syntax = "proto3";
+
+package controller.storage.iam.store.v1;
+option go_package = "github.com/hashicorp/watchtower/internal/iam/store;store";
+
+import "controller/storage/timestamp/v1/timestamp.proto";
+import "controller/storage/iam/store/v1/scope.proto";
+
+message GroupMemberUser {
+  // create_time from the RDBMS
+  // @inject_tag: `gorm:"default:current_timestamp"`
+  timestamp.v1.Timestamp create_time = 1;
+
+  // group_id is the group of this member.
+  // @inject_tag: gorm:"primary_key"
+  string group_id = 2;
+
+  // member_id is the public_id of the user (which is the member)
+  // @inject_tag: gorm:"primary_key"
+  string member_id = 3;
+}
+
+message GroupMemberView {
+  // create_time from the RDBMS
+  // @inject_tag: `gorm:"default:current_timestamp"`
+  timestamp.v1.Timestamp create_time = 1;
+
+  // group_id is the group of this member.
+  // @inject_tag: gorm:"primary_key"
+  string group_id = 2;
+
+  // member_id is the public_id of member
+  // @inject_tag: gorm:"primary_key"
+  string member_id = 3;
+
+  // Principal type (User or Group)
+  string type = 4;
+
+  // member_scope_id of the member
+  // @inject_tag: `gorm:"default:null"`
+  string member_scope_id = 5;
+
+  // group_scope_id of the role
+  // @inject_tag: `gorm:"default:null"`
+  string group_scope_id = 6;
+
+  // scoped_member_id of the member
+  // @inject_tag: `gorm:"default:null"`
+  string scoped_member_id = 7;
+}

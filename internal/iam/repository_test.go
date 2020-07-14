@@ -13,6 +13,7 @@ import (
 	iam_store "github.com/hashicorp/watchtower/internal/iam/store"
 	"github.com/hashicorp/watchtower/internal/oplog"
 	"github.com/hashicorp/watchtower/internal/oplog/store"
+	"github.com/hashicorp/watchtower/internal/types/scope"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/proto"
@@ -20,13 +21,7 @@ import (
 
 func TestNewRepository(t *testing.T) {
 	t.Parallel()
-	cleanup, conn, _ := db.TestSetup(t, "postgres")
-	defer func() {
-		err := cleanup()
-		assert.NoError(t, err)
-		err = conn.Close()
-		assert.NoError(t, err)
-	}()
+	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
 	type args struct {
@@ -49,9 +44,10 @@ func TestNewRepository(t *testing.T) {
 				wrapper: wrapper,
 			},
 			want: &Repository{
-				reader:  rw,
-				writer:  rw,
-				wrapper: wrapper,
+				reader:       rw,
+				writer:       rw,
+				wrapper:      wrapper,
+				defaultLimit: db.DefaultLimit,
 			},
 			wantErr: false,
 		},
@@ -105,13 +101,7 @@ func TestNewRepository(t *testing.T) {
 }
 func Test_Repository_create(t *testing.T) {
 	t.Parallel()
-	cleanup, conn, _ := db.TestSetup(t, "postgres")
-	defer func() {
-		err := cleanup()
-		assert.NoError(t, err)
-		err = conn.Close()
-		assert.NoError(t, err)
-	}()
+	conn, _ := db.TestSetup(t, "postgres")
 	t.Run("valid-scope", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
 		rw := db.New(conn)
@@ -120,9 +110,9 @@ func Test_Repository_create(t *testing.T) {
 		require.NoError(err)
 		id := testId(t)
 
-		s, err := NewOrganization(WithName("fname-" + id))
+		s, err := NewOrg(WithName("fname-" + id))
 		assert.NoError(err)
-		s.PublicId, err = newScopeId(OrganizationScope)
+		s.PublicId, err = newScopeId(scope.Org)
 		require.NoError(err)
 		retScope, err := repo.create(context.Background(), s)
 		require.NoError(err)
@@ -157,13 +147,7 @@ func Test_Repository_create(t *testing.T) {
 
 func Test_Repository_delete(t *testing.T) {
 	t.Parallel()
-	cleanup, conn, _ := db.TestSetup(t, "postgres")
-	defer func() {
-		err := cleanup()
-		assert.NoError(t, err)
-		err = conn.Close()
-		assert.NoError(t, err)
-	}()
+	conn, _ := db.TestSetup(t, "postgres")
 	t.Run("valid-org", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
 		rw := db.New(conn)
@@ -194,15 +178,9 @@ func Test_Repository_delete(t *testing.T) {
 }
 
 func TestRepository_update(t *testing.T) {
-	cleanup, conn, _ := db.TestSetup(t, "postgres")
+	conn, _ := db.TestSetup(t, "postgres")
 	now := &timestamp.Timestamp{Timestamp: ptypes.TimestampNow()}
 	id := testId(t)
-	defer func() {
-		err := cleanup()
-		assert.NoError(t, err)
-		err = conn.Close()
-		assert.NoError(t, err)
-	}()
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
 	publicId := testPublicId(t, "o")
