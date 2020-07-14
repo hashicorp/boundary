@@ -3733,6 +3733,17 @@
         }
       }
     },
+    "controller.api.services.v1.CreateAuthMethodResponse": {
+      "type": "object",
+      "properties": {
+        "uri": {
+          "type": "string"
+        },
+        "item": {
+          "$ref": "#/definitions/controller.api.resources.auth.v1.AuthMethod"
+        }
+      }
+    },
     "controller.api.services.v1.CreateGroupResponse": {
       "type": "object",
       "properties": {
@@ -3812,6 +3823,15 @@
     },
     "controller.api.services.v1.DeauthenticateResponse": {
       "type": "object"
+    },
+    "controller.api.services.v1.DeleteAuthMethodResponse": {
+      "type": "object",
+      "properties": {
+        "existed": {
+          "type": "boolean",
+          "format": "boolean"
+        }
+      }
     },
     "controller.api.services.v1.DeleteGroupResponse": {
       "type": "object",
@@ -4202,6 +4222,14 @@
       "properties": {
         "item": {
           "$ref": "#/definitions/controller.api.resources.roles.v1.Role"
+        }
+      }
+    },
+    "controller.api.services.v1.UpdateAuthMethodResponse": {
+      "type": "object",
+      "properties": {
+        "item": {
+          "$ref": "#/definitions/controller.api.resources.auth.v1.AuthMethod"
         }
       }
     },

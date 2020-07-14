@@ -6,6 +6,7 @@ option go_package = "github.com/hashicorp/watchtower/internal/gen/controller/api
 
 import "protoc-gen-swagger/options/annotations.proto";
 import "google/api/annotations.proto";
+import "google/protobuf/field_mask.proto";
 import "controller/api/resources/auth/v1/auth_method.proto";
 
 service AuthMethodService {
@@ -35,6 +36,55 @@ service AuthMethodService {
       summary: "Lists all AuthMethods"
     };
   }
+
+  // CreateAuthMethod creates and stores a user in watchtower.  The provided
+  // request must include the org id in which the user will be created.
+  // If the org id is missing, malformed or references a non existing
+  // org, an error is returned.  If a name is provided that is in
+  // use in another user in the same org, an error is returned.
+  rpc CreateAuthMethod(CreateAuthMethodRequest) returns (CreateAuthMethodResponse) {
+    option (google.api.http) = {
+      post: "/v1/orgs/{org_id}/users"
+      body: "item"
+      response_body: "item"
+    };
+    option (grpc.gateway.protoc_gen_swagger.options.openapiv2_operation) = {
+      summary: "Creates a single AuthMethod"
+    };
+  }
+
+  // UpdateAuthMethod updates an existing user in watchtower.  The provided
+  // user must not have any read only fields set.  The update mask must be
+  // included in the request and contain at least 1 mutable field.  To unset
+  // a field's value, include the field in the update mask and don't set it
+  // in the provided user. An error is returned if either the org
+  // or user ids are missing or reference a non existing resource.  An error
+  // is also returned if the request attempts to update the name to one that is
+  // already in use in this org.
+  rpc UpdateAuthMethod(UpdateAuthMethodRequest) returns (UpdateAuthMethodResponse) {
+    option (google.api.http) = {
+      patch: "/v1/orgs/{org_id}/users/{id}"
+      body: "item"
+      response_body: "item"
+    };
+    option (grpc.gateway.protoc_gen_swagger.options.openapiv2_operation) = {
+      summary: "Updates a AuthMethod"
+    };
+  }
+
+  // DeleteAuthMethod removes a user from Watchtower. If the provided org or user ids
+  // are malformed or not provided an error is returned.  No error is returned
+  // if either ids reference resources that do not exist as the response itself
+  // specifies if the resource existed before the DeleteAuthMethod request was
+  // received.
+  rpc DeleteAuthMethod(DeleteAuthMethodRequest) returns (DeleteAuthMethodResponse) {
+    option (google.api.http) = {
+      delete: "/v1/orgs/{org_id}/users/{id}"
+    };
+    option (grpc.gateway.protoc_gen_swagger.options.openapiv2_operation) = {
+      summary: "Deletes a AuthMethod"
+    };
+  }
 }
 
 message GetAuthMethodRequest {
@@ -54,4 +104,34 @@ message ListAuthMethodsRequest {
 
 message ListAuthMethodsResponse {
   repeated resources.auth.v1.AuthMethod items = 1;
+}
+
+message CreateAuthMethodRequest {
+  string org_id = 1;
+  resources.auth.v1.AuthMethod item = 2;
+}
+
+message CreateAuthMethodResponse {
+  string uri = 1;
+  resources.auth.v1.AuthMethod item = 2;
+}
+
+message UpdateAuthMethodRequest {
+  string org_id = 1;
+  string id = 2;
+  resources.auth.v1.AuthMethod item = 3;
+  google.protobuf.FieldMask update_mask = 4;
+}
+
+message UpdateAuthMethodResponse {
+  resources.auth.v1.AuthMethod item = 1;
+}
+
+message DeleteAuthMethodRequest {
+  string org_id = 1;
+  string id = 2;
+}
+
+message DeleteAuthMethodResponse {
+  bool existed = 1;
 }

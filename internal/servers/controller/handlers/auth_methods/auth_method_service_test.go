@@ -1,4 +1,4 @@
-package users_test
+package auth_methods_test
 
 import (
 	"context"
@@ -8,10 +8,10 @@ import (
 
 	"github.com/golang/protobuf/ptypes"
 	"github.com/hashicorp/watchtower/internal/db"
-	pb "github.com/hashicorp/watchtower/internal/gen/controller/api/resources/users"
+	pb "github.com/hashicorp/watchtower/internal/gen/controller/api/resources/auth"
 	pbs "github.com/hashicorp/watchtower/internal/gen/controller/api/services"
 	"github.com/hashicorp/watchtower/internal/iam"
-	"github.com/hashicorp/watchtower/internal/servers/controller/handlers/users"
+	"github.com/hashicorp/watchtower/internal/servers/controller/handlers/auth_methods"
 	"github.com/hashicorp/watchtower/internal/types/scope"
 	"google.golang.org/genproto/protobuf/field_mask"
 	"google.golang.org/grpc/codes"
@@ -23,7 +23,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func createDefaultUserAndRepo(t *testing.T) (*iam.User, func() (*iam.Repository, error)) {
+func createDefaultAuthMethodAndRepo(t *testing.T) (*iam.AuthMethod, func() (*iam.Repository, error)) {
 	t.Helper()
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
@@ -33,69 +33,69 @@ func createDefaultUserAndRepo(t *testing.T) (*iam.User, func() (*iam.Repository,
 	}
 
 	o, _ := iam.TestScopes(t, conn)
-	u := iam.TestUser(t, conn, o.GetPublicId(), iam.WithDescription("default"), iam.WithName("default"))
-	return u, repoFn
+	am := iam.TestAuthMethod(t, conn, o.GetPublicId(), iam.WithDescription("default"), iam.WithName("default"))
+	return am, repoFn
 }
 
 func TestGet(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
-	u, repo := createDefaultUserAndRepo(t)
-	toMerge := &pbs.GetUserRequest{
-		OrgId: u.GetScopeId(),
-		Id:    u.GetPublicId(),
+	am, repo := createDefaultAuthMethodAndRepo(t)
+	toMerge := &pbs.GetAuthMethodRequest{
+		OrgId: am.GetScopeId(),
+		Id:    am.GetPublicId(),
 	}
 
-	wantU := &pb.User{
-		Id:          u.GetPublicId(),
-		Name:        &wrapperspb.StringValue{Value: u.GetName()},
-		Description: &wrapperspb.StringValue{Value: u.GetDescription()},
-		CreatedTime: u.CreateTime.GetTimestamp(),
-		UpdatedTime: u.UpdateTime.GetTimestamp(),
+	wantU := &pb.AuthMethod{
+		Id:          am.GetPublicId(),
+		Name:        &wrapperspb.StringValue{Value: am.GetName()},
+		Description: &wrapperspb.StringValue{Value: am.GetDescription()},
+		CreatedTime: am.CreateTime.GetTimestamp(),
+		UpdatedTime: am.UpdateTime.GetTimestamp(),
 	}
 
 	cases := []struct {
 		name    string
-		req     *pbs.GetUserRequest
-		res     *pbs.GetUserResponse
+		req     *pbs.GetAuthMethodRequest
+		res     *pbs.GetAuthMethodResponse
 		errCode codes.Code
 	}{
 		{
-			name:    "Get an Existing User",
-			req:     &pbs.GetUserRequest{Id: u.GetPublicId()},
-			res:     &pbs.GetUserResponse{Item: wantU},
+			name:    "Get an Existing AuthMethod",
+			req:     &pbs.GetAuthMethodRequest{Id: am.GetPublicId()},
+			res:     &pbs.GetAuthMethodResponse{Item: wantU},
 			errCode: codes.OK,
 		},
 		{
-			name:    "Get a non existant User",
-			req:     &pbs.GetUserRequest{Id: iam.UserPrefix + "_DoesntExis"},
+			name:    "Get a non existant AuthMethod",
+			req:     &pbs.GetAuthMethodRequest{Id: iam.AuthMethodPrefix + "_DoesntExis"},
 			res:     nil,
 			errCode: codes.NotFound,
 		},
 		{
 			name:    "Wrong id prefix",
-			req:     &pbs.GetUserRequest{Id: "j_1234567890"},
+			req:     &pbs.GetAuthMethodRequest{Id: "j_1234567890"},
 			res:     nil,
 			errCode: codes.InvalidArgument,
 		},
 		{
 			name:    "space in id",
-			req:     &pbs.GetUserRequest{Id: iam.UserPrefix + "_1 23456789"},
+			req:     &pbs.GetAuthMethodRequest{Id: iam.AuthMethodPrefix + "_1 23456789"},
 			res:     nil,
 			errCode: codes.InvalidArgument,
 		},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			req := proto.Clone(toMerge).(*pbs.GetUserRequest)
+			req := proto.Clone(toMerge).(*pbs.GetAuthMethodRequest)
 			proto.Merge(req, tc.req)
 
-			s, err := users.NewService(repo)
-			require.NoError(err, "Couldn't create new user service.")
+			s, err := auth_methods.NewService(repo)
+			require.NoError(err, "Couldn't create new auth_method service.")
 
-			got, gErr := s.GetUser(context.Background(), req)
-			assert.Equal(tc.errCode, status.Code(gErr), "GetUser(%+v) got error %v, wanted %v", req, gErr, tc.errCode)
-			assert.True(proto.Equal(got, tc.res), "GetUser(%q) got response %q, wanted %q", req, got, tc.res)
+			got, gErr := s.GetAuthMethod(context.Background(), req)
+			assert.Equal(tc.errCode, status.Code(gErr), "GetAuthMethod(%+v) got error %v, wanted %v", req, gErr, tc.errCode)
+			assert.True(proto.Equal(got, tc.res), "GetAuthMethod(%q) got response %q, wanted %q", req, got, tc.res)
 		})
 	}
 }
@@ -111,125 +111,125 @@ func TestList(t *testing.T) {
 	repo, err := repoFn()
 	require.NoError(err)
 
-	oNoUsers, _ := iam.TestScopes(t, conn)
-	oWithUsers, _ := iam.TestScopes(t, conn)
+	oNoAuthMethods, _ := iam.TestScopes(t, conn)
+	oWithAuthMethods, _ := iam.TestScopes(t, conn)
 
-	var wantUsers []*pb.User
+	var wantAuthMethods []*pb.AuthMethod
 	for i := 0; i < 10; i++ {
-		newU, err := iam.NewUser(oWithUsers.GetPublicId())
+		newU, err := iam.NewAuthMethod(oWithAuthMethods.GetPublicId())
 		require.NoError(err)
-		u, err := repo.CreateUser(context.Background(), newU)
+		am, err := repo.CreateAuthMethod(context.Background(), newU)
 		require.NoError(err)
-		wantUsers = append(wantUsers, &pb.User{
-			Id:          u.GetPublicId(),
-			CreatedTime: u.GetCreateTime().GetTimestamp(),
-			UpdatedTime: u.GetUpdateTime().GetTimestamp(),
+		wantAuthMethods = append(wantAuthMethods, &pb.AuthMethod{
+			Id:          am.GetPublicId(),
+			CreatedTime: am.GetCreateTime().GetTimestamp(),
+			UpdatedTime: am.GetUpdateTime().GetTimestamp(),
 		})
 	}
 
 	cases := []struct {
 		name    string
-		req     *pbs.ListUsersRequest
-		res     *pbs.ListUsersResponse
+		req     *pbs.ListAuthMethodsRequest
+		res     *pbs.ListAuthMethodsResponse
 		errCode codes.Code
 	}{
 		{
-			name:    "List Many Users",
-			req:     &pbs.ListUsersRequest{OrgId: oWithUsers.GetPublicId()},
-			res:     &pbs.ListUsersResponse{Items: wantUsers},
+			name:    "List Many AuthMethods",
+			req:     &pbs.ListAuthMethodsRequest{OrgId: oWithAuthMethods.GetPublicId()},
+			res:     &pbs.ListAuthMethodsResponse{Items: wantAuthMethods},
 			errCode: codes.OK,
 		},
 		{
-			name:    "List No Users",
-			req:     &pbs.ListUsersRequest{OrgId: oNoUsers.GetPublicId()},
-			res:     &pbs.ListUsersResponse{},
+			name:    "List No AuthMethods",
+			req:     &pbs.ListAuthMethodsRequest{OrgId: oNoAuthMethods.GetPublicId()},
+			res:     &pbs.ListAuthMethodsResponse{},
 			errCode: codes.OK,
 		},
 		{
 			name:    "Invalid Org Id",
-			req:     &pbs.ListUsersRequest{OrgId: iam.UserPrefix + "_this is invalid"},
+			req:     &pbs.ListAuthMethodsRequest{OrgId: iam.AuthMethodPrefix + "_this is invalid"},
 			res:     nil,
 			errCode: codes.InvalidArgument,
 		},
 		// TODO: When an org doesn't exist, we should return a 404 instead of an empty list.
 		{
 			name:    "Unfound Org",
-			req:     &pbs.ListUsersRequest{OrgId: scope.Organization.Prefix() + "_DoesntExis"},
-			res:     &pbs.ListUsersResponse{},
+			req:     &pbs.ListAuthMethodsRequest{OrgId: scope.Organization.Prefix() + "_DoesntExis"},
+			res:     &pbs.ListAuthMethodsResponse{},
 			errCode: codes.OK,
 		},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			s, err := users.NewService(repoFn)
-			require.NoError(err, "Couldn't create new user service.")
+			s, err := auth_methods.NewService(repoFn)
+			require.NoError(err, "Couldn't create new auth_method service.")
 
-			got, gErr := s.ListUsers(context.Background(), tc.req)
-			assert.Equal(tc.errCode, status.Code(gErr), "ListUsers(%+v) got error %v, wanted %v", tc.req, gErr, tc.errCode)
-			assert.True(proto.Equal(got, tc.res), "ListUsers(%q) got response %q, wanted %q", tc.req, got, tc.res)
+			got, gErr := s.ListAuthMethods(context.Background(), tc.req)
+			assert.Equal(tc.errCode, status.Code(gErr), "ListAuthMethods(%+v) got error %v, wanted %v", tc.req, gErr, tc.errCode)
+			assert.True(proto.Equal(got, tc.res), "ListAuthMethods(%q) got response %q, wanted %q", tc.req, got, tc.res)
 		})
 	}
 }
 
 func TestDelete(t *testing.T) {
 	require := require.New(t)
-	u, repo := createDefaultUserAndRepo(t)
+	am, repo := createDefaultAuthMethodAndRepo(t)
 
-	s, err := users.NewService(repo)
-	require.NoError(err, "Error when getting new user service.")
+	s, err := auth_methods.NewService(repo)
+	require.NoError(err, "Error when getting new auth_method service.")
 
 	cases := []struct {
 		name    string
-		req     *pbs.DeleteUserRequest
-		res     *pbs.DeleteUserResponse
+		req     *pbs.DeleteAuthMethodRequest
+		res     *pbs.DeleteAuthMethodResponse
 		errCode codes.Code
 	}{
 		{
-			name: "Delete an Existing User",
-			req: &pbs.DeleteUserRequest{
-				OrgId: u.GetScopeId(),
-				Id:    u.GetPublicId(),
+			name: "Delete an Existing AuthMethod",
+			req: &pbs.DeleteAuthMethodRequest{
+				OrgId: am.GetScopeId(),
+				Id:    am.GetPublicId(),
 			},
-			res: &pbs.DeleteUserResponse{
+			res: &pbs.DeleteAuthMethodResponse{
 				Existed: true,
 			},
 			errCode: codes.OK,
 		},
 		{
-			name: "Delete bad user id",
-			req: &pbs.DeleteUserRequest{
-				OrgId: u.GetScopeId(),
-				Id:    iam.UserPrefix + "_doesntexis",
+			name: "Delete bad auth_method id",
+			req: &pbs.DeleteAuthMethodRequest{
+				OrgId: am.GetScopeId(),
+				Id:    iam.AuthMethodPrefix + "_doesntexis",
 			},
-			res: &pbs.DeleteUserResponse{
+			res: &pbs.DeleteAuthMethodResponse{
 				Existed: false,
 			},
 			errCode: codes.OK,
 		},
 		{
 			name: "Delete bad org id",
-			req: &pbs.DeleteUserRequest{
+			req: &pbs.DeleteAuthMethodRequest{
 				OrgId: "o_doesntexis",
-				Id:    u.GetPublicId(),
+				Id:    am.GetPublicId(),
 			},
-			res: &pbs.DeleteUserResponse{
+			res: &pbs.DeleteAuthMethodResponse{
 				Existed: false,
 			},
 			errCode: codes.OK,
 		},
 		{
 			name: "Bad org formatting",
-			req: &pbs.DeleteUserRequest{
+			req: &pbs.DeleteAuthMethodRequest{
 				OrgId: "bad_format",
-				Id:    u.GetPublicId(),
+				Id:    am.GetPublicId(),
 			},
 			res:     nil,
 			errCode: codes.InvalidArgument,
 		},
 		{
-			name: "Bad User Id formatting",
-			req: &pbs.DeleteUserRequest{
-				OrgId: u.GetScopeId(),
+			name: "Bad AuthMethod Id formatting",
+			req: &pbs.DeleteAuthMethodRequest{
+				OrgId: am.GetScopeId(),
 				Id:    "bad_format",
 			},
 			res:     nil,
@@ -239,9 +239,9 @@ func TestDelete(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			assert := assert.New(t)
-			got, gErr := s.DeleteUser(context.Background(), tc.req)
-			assert.Equal(tc.errCode, status.Code(gErr), "DeleteUser(%+v) got error %v, wanted %v", tc.req, gErr, tc.errCode)
-			assert.EqualValuesf(tc.res, got, "DeleteUser(%q) got response %q, wanted %q", tc.req, got, tc.res)
+			got, gErr := s.DeleteAuthMethod(context.Background(), tc.req)
+			assert.Equal(tc.errCode, status.Code(gErr), "DeleteAuthMethod(%+v) got error %v, wanted %v", tc.req, gErr, tc.errCode)
+			assert.EqualValuesf(tc.res, got, "DeleteAuthMethod(%q) got response %q, wanted %q", tc.req, got, tc.res)
 		})
 	}
 }
@@ -249,46 +249,46 @@ func TestDelete(t *testing.T) {
 func TestDelete_twice(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
-	u, repo := createDefaultUserAndRepo(t)
+	am, repo := createDefaultAuthMethodAndRepo(t)
 
-	s, err := users.NewService(repo)
-	require.NoError(err, "Error when getting new user service")
-	req := &pbs.DeleteUserRequest{
-		OrgId: u.GetScopeId(),
-		Id:    u.GetPublicId(),
+	s, err := auth_methods.NewService(repo)
+	require.NoError(err, "Error when getting new auth_method service")
+	req := &pbs.DeleteAuthMethodRequest{
+		OrgId: am.GetScopeId(),
+		Id:    am.GetPublicId(),
 	}
-	got, gErr := s.DeleteUser(context.Background(), req)
+	got, gErr := s.DeleteAuthMethod(context.Background(), req)
 	assert.NoError(gErr, "First attempt")
 	assert.True(got.GetExisted(), "Expected existed to be true for the first delete.")
-	got, gErr = s.DeleteUser(context.Background(), req)
+	got, gErr = s.DeleteAuthMethod(context.Background(), req)
 	assert.NoError(gErr, "Second attempt")
 	assert.False(got.GetExisted(), "Expected existed to be false for the second delete.")
 }
 
 func TestCreate(t *testing.T) {
 	require := require.New(t)
-	defaultUser, repo := createDefaultUserAndRepo(t)
-	defaultCreated, err := ptypes.Timestamp(defaultUser.GetCreateTime().GetTimestamp())
+	defaultAuthMethod, repo := createDefaultAuthMethodAndRepo(t)
+	defaultCreated, err := ptypes.Timestamp(defaultAuthMethod.GetCreateTime().GetTimestamp())
 	require.NoError(err, "Error converting proto to timestamp.")
-	toMerge := &pbs.CreateUserRequest{
-		OrgId: defaultUser.GetScopeId(),
+	toMerge := &pbs.CreateAuthMethodRequest{
+		OrgId: defaultAuthMethod.GetScopeId(),
 	}
 
 	cases := []struct {
 		name    string
-		req     *pbs.CreateUserRequest
-		res     *pbs.CreateUserResponse
+		req     *pbs.CreateAuthMethodRequest
+		res     *pbs.CreateAuthMethodResponse
 		errCode codes.Code
 	}{
 		{
-			name: "Create a valid User",
-			req: &pbs.CreateUserRequest{Item: &pb.User{
+			name: "Create a valid AuthMethod",
+			req: &pbs.CreateAuthMethodRequest{Item: &pb.AuthMethod{
 				Name:        &wrapperspb.StringValue{Value: "name"},
 				Description: &wrapperspb.StringValue{Value: "desc"},
 			}},
-			res: &pbs.CreateUserResponse{
-				Uri: fmt.Sprintf("orgs/%s/users/u_", defaultUser.GetScopeId()),
-				Item: &pb.User{
+			res: &pbs.CreateAuthMethodResponse{
+				Uri: fmt.Sprintf("orgs/%s/auth_methods/u_", defaultAuthMethod.GetScopeId()),
+				Item: &pb.AuthMethod{
 					Name:        &wrapperspb.StringValue{Value: "name"},
 					Description: &wrapperspb.StringValue{Value: "desc"},
 				},
@@ -297,15 +297,15 @@ func TestCreate(t *testing.T) {
 		},
 		{
 			name: "Can't specify Id",
-			req: &pbs.CreateUserRequest{Item: &pb.User{
-				Id: iam.UserPrefix + "_notallowed",
+			req: &pbs.CreateAuthMethodRequest{Item: &pb.AuthMethod{
+				Id: iam.AuthMethodPrefix + "_notallowed",
 			}},
 			res:     nil,
 			errCode: codes.InvalidArgument,
 		},
 		{
 			name: "Can't specify Created Time",
-			req: &pbs.CreateUserRequest{Item: &pb.User{
+			req: &pbs.CreateAuthMethodRequest{Item: &pb.AuthMethod{
 				CreatedTime: ptypes.TimestampNow(),
 			}},
 			res:     nil,
@@ -313,7 +313,7 @@ func TestCreate(t *testing.T) {
 		},
 		{
 			name: "Can't specify Update Time",
-			req: &pbs.CreateUserRequest{Item: &pb.User{
+			req: &pbs.CreateAuthMethodRequest{Item: &pb.AuthMethod{
 				UpdatedTime: ptypes.TimestampNow(),
 			}},
 			res:     nil,
@@ -323,107 +323,107 @@ func TestCreate(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			assert := assert.New(t)
-			req := proto.Clone(toMerge).(*pbs.CreateUserRequest)
+			req := proto.Clone(toMerge).(*pbs.CreateAuthMethodRequest)
 			proto.Merge(req, tc.req)
 
-			s, err := users.NewService(repo)
-			require.NoError(err, "Error when getting new user service.")
+			s, err := auth_methods.NewService(repo)
+			require.NoError(err, "Error when getting new auth_method service.")
 
-			got, gErr := s.CreateUser(context.Background(), req)
-			assert.Equal(tc.errCode, status.Code(gErr), "CreateUser(%+v) got error %v, wanted %v", req, gErr, tc.errCode)
+			got, gErr := s.CreateAuthMethod(context.Background(), req)
+			assert.Equal(tc.errCode, status.Code(gErr), "CreateAuthMethod(%+v) got error %v, wanted %v", req, gErr, tc.errCode)
 			if got != nil {
 				assert.True(strings.HasPrefix(got.GetUri(), tc.res.Uri))
-				assert.True(strings.HasPrefix(got.GetItem().GetId(), iam.UserPrefix+"_"))
+				assert.True(strings.HasPrefix(got.GetItem().GetId(), iam.AuthMethodPrefix+"_"))
 				gotCreateTime, err := ptypes.Timestamp(got.GetItem().GetCreatedTime())
 				require.NoError(err, "Error converting proto to timestamp.")
 				gotUpdateTime, err := ptypes.Timestamp(got.GetItem().GetUpdatedTime())
 				require.NoError(err, "Error converting proto to timestamp.")
-				// Verify it is a user created after the test setup's default user
-				assert.True(gotCreateTime.After(defaultCreated), "New user should have been created after default user. Was created %v, which is after %v", gotCreateTime, defaultCreated)
-				assert.True(gotUpdateTime.After(defaultCreated), "New user should have been updated after default user. Was updated %v, which is after %v", gotUpdateTime, defaultCreated)
+				// Verify it is a auth_method created after the test setup's default auth_method
+				assert.True(gotCreateTime.After(defaultCreated), "New auth_method should have been created after default auth_method. Was created %v, which is after %v", gotCreateTime, defaultCreated)
+				assert.True(gotUpdateTime.After(defaultCreated), "New auth_method should have been updated after default auth_method. Was updated %v, which is after %v", gotUpdateTime, defaultCreated)
 
 				// Clear all values which are hard to compare against.
 				got.Uri, tc.res.Uri = "", ""
 				got.Item.Id, tc.res.Item.Id = "", ""
 				got.Item.CreatedTime, got.Item.UpdatedTime, tc.res.Item.CreatedTime, tc.res.Item.UpdatedTime = nil, nil, nil, nil
 			}
-			assert.True(proto.Equal(got, tc.res), "CreateUser(%q) got response %q, wanted %q", req, got, tc.res)
+			assert.True(proto.Equal(got, tc.res), "CreateAuthMethod(%q) got response %q, wanted %q", req, got, tc.res)
 		})
 	}
 }
 
 func TestUpdate(t *testing.T) {
 	require := require.New(t)
-	u, repoFn := createDefaultUserAndRepo(t)
-	tested, err := users.NewService(repoFn)
-	require.NoError(err, "Error when getting new user service.")
+	am, repoFn := createDefaultAuthMethodAndRepo(t)
+	tested, err := auth_methods.NewService(repoFn)
+	require.NoError(err, "Error when getting new auth_method service.")
 
-	resetUser := func() {
+	resetAuthMethod := func() {
 		repo, err := repoFn()
 		require.NoError(err, "Couldn't get a new repo")
-		u, _, err = repo.UpdateUser(context.Background(), u, []string{"Name", "Description"})
-		require.NoError(err, "Failed to reset the user")
+		am, _, err = repo.UpdateAuthMethod(context.Background(), am, []string{"Name", "Description"})
+		require.NoError(err, "Failed to reset the auth_method")
 	}
 
-	created, err := ptypes.Timestamp(u.GetCreateTime().GetTimestamp())
+	created, err := ptypes.Timestamp(am.GetCreateTime().GetTimestamp())
 	require.NoError(err, "Error converting proto to timestamp")
-	toMerge := &pbs.UpdateUserRequest{
-		OrgId: u.GetScopeId(),
-		Id:    u.GetPublicId(),
+	toMerge := &pbs.UpdateAuthMethodRequest{
+		OrgId: am.GetScopeId(),
+		Id:    am.GetPublicId(),
 	}
 
 	cases := []struct {
 		name    string
-		req     *pbs.UpdateUserRequest
-		res     *pbs.UpdateUserResponse
+		req     *pbs.UpdateAuthMethodRequest
+		res     *pbs.UpdateAuthMethodResponse
 		errCode codes.Code
 	}{
 		{
-			name: "Update an Existing User",
-			req: &pbs.UpdateUserRequest{
+			name: "Update an Existing AuthMethod",
+			req: &pbs.UpdateAuthMethodRequest{
 				UpdateMask: &field_mask.FieldMask{
 					Paths: []string{"name", "description"},
 				},
-				Item: &pb.User{
+				Item: &pb.AuthMethod{
 					Name:        &wrapperspb.StringValue{Value: "new"},
 					Description: &wrapperspb.StringValue{Value: "desc"},
 				},
 			},
-			res: &pbs.UpdateUserResponse{
-				Item: &pb.User{
-					Id:          u.GetPublicId(),
+			res: &pbs.UpdateAuthMethodResponse{
+				Item: &pb.AuthMethod{
+					Id:          am.GetPublicId(),
 					Name:        &wrapperspb.StringValue{Value: "new"},
 					Description: &wrapperspb.StringValue{Value: "desc"},
-					CreatedTime: u.GetCreateTime().GetTimestamp(),
+					CreatedTime: am.GetCreateTime().GetTimestamp(),
 				},
 			},
 			errCode: codes.OK,
 		},
 		{
 			name: "Multiple Paths in single string",
-			req: &pbs.UpdateUserRequest{
+			req: &pbs.UpdateAuthMethodRequest{
 				UpdateMask: &field_mask.FieldMask{
 					Paths: []string{"name,description"},
 				},
-				Item: &pb.User{
+				Item: &pb.AuthMethod{
 					Name:        &wrapperspb.StringValue{Value: "new"},
 					Description: &wrapperspb.StringValue{Value: "desc"},
 				},
 			},
-			res: &pbs.UpdateUserResponse{
-				Item: &pb.User{
-					Id:          u.GetPublicId(),
+			res: &pbs.UpdateAuthMethodResponse{
+				Item: &pb.AuthMethod{
+					Id:          am.GetPublicId(),
 					Name:        &wrapperspb.StringValue{Value: "new"},
 					Description: &wrapperspb.StringValue{Value: "desc"},
-					CreatedTime: u.GetCreateTime().GetTimestamp(),
+					CreatedTime: am.GetCreateTime().GetTimestamp(),
 				},
 			},
 			errCode: codes.OK,
 		},
 		{
 			name: "No Update Mask",
-			req: &pbs.UpdateUserRequest{
-				Item: &pb.User{
+			req: &pbs.UpdateAuthMethodRequest{
+				Item: &pb.AuthMethod{
 					Name:        &wrapperspb.StringValue{Value: "updated name"},
 					Description: &wrapperspb.StringValue{Value: "updated desc"},
 				},
@@ -432,9 +432,9 @@ func TestUpdate(t *testing.T) {
 		},
 		{
 			name: "No Paths in Mask",
-			req: &pbs.UpdateUserRequest{
+			req: &pbs.UpdateAuthMethodRequest{
 				UpdateMask: &field_mask.FieldMask{Paths: []string{}},
-				Item: &pb.User{
+				Item: &pb.AuthMethod{
 					Name:        &wrapperspb.StringValue{Value: "updated name"},
 					Description: &wrapperspb.StringValue{Value: "updated desc"},
 				},
@@ -443,9 +443,9 @@ func TestUpdate(t *testing.T) {
 		},
 		{
 			name: "Only non-existant paths in Mask",
-			req: &pbs.UpdateUserRequest{
+			req: &pbs.UpdateAuthMethodRequest{
 				UpdateMask: &field_mask.FieldMask{Paths: []string{"nonexistant_field"}},
-				Item: &pb.User{
+				Item: &pb.AuthMethod{
 					Name:        &wrapperspb.StringValue{Value: "updated name"},
 					Description: &wrapperspb.StringValue{Value: "updated desc"},
 				},
@@ -454,75 +454,75 @@ func TestUpdate(t *testing.T) {
 		},
 		{
 			name: "Unset Name",
-			req: &pbs.UpdateUserRequest{
+			req: &pbs.UpdateAuthMethodRequest{
 				UpdateMask: &field_mask.FieldMask{
 					Paths: []string{"name"},
 				},
-				Item: &pb.User{
+				Item: &pb.AuthMethod{
 					Description: &wrapperspb.StringValue{Value: "ignored"},
 				},
 			},
-			res: &pbs.UpdateUserResponse{
-				Item: &pb.User{
-					Id:          u.GetPublicId(),
+			res: &pbs.UpdateAuthMethodResponse{
+				Item: &pb.AuthMethod{
+					Id:          am.GetPublicId(),
 					Description: &wrapperspb.StringValue{Value: "default"},
-					CreatedTime: u.GetCreateTime().GetTimestamp(),
+					CreatedTime: am.GetCreateTime().GetTimestamp(),
 				},
 			},
 			errCode: codes.OK,
 		},
 		{
 			name: "Update Only Name",
-			req: &pbs.UpdateUserRequest{
+			req: &pbs.UpdateAuthMethodRequest{
 				UpdateMask: &field_mask.FieldMask{
 					Paths: []string{"name"},
 				},
-				Item: &pb.User{
+				Item: &pb.AuthMethod{
 					Name:        &wrapperspb.StringValue{Value: "updated"},
 					Description: &wrapperspb.StringValue{Value: "ignored"},
 				},
 			},
-			res: &pbs.UpdateUserResponse{
-				Item: &pb.User{
-					Id:          u.GetPublicId(),
+			res: &pbs.UpdateAuthMethodResponse{
+				Item: &pb.AuthMethod{
+					Id:          am.GetPublicId(),
 					Name:        &wrapperspb.StringValue{Value: "updated"},
 					Description: &wrapperspb.StringValue{Value: "default"},
-					CreatedTime: u.GetCreateTime().GetTimestamp(),
+					CreatedTime: am.GetCreateTime().GetTimestamp(),
 				},
 			},
 			errCode: codes.OK,
 		},
 		{
 			name: "Update Only Description",
-			req: &pbs.UpdateUserRequest{
+			req: &pbs.UpdateAuthMethodRequest{
 				UpdateMask: &field_mask.FieldMask{
 					Paths: []string{"description"},
 				},
-				Item: &pb.User{
+				Item: &pb.AuthMethod{
 					Name:        &wrapperspb.StringValue{Value: "ignored"},
 					Description: &wrapperspb.StringValue{Value: "notignored"},
 				},
 			},
-			res: &pbs.UpdateUserResponse{
-				Item: &pb.User{
-					Id:          u.GetPublicId(),
+			res: &pbs.UpdateAuthMethodResponse{
+				Item: &pb.AuthMethod{
+					Id:          am.GetPublicId(),
 					Name:        &wrapperspb.StringValue{Value: "default"},
 					Description: &wrapperspb.StringValue{Value: "notignored"},
-					CreatedTime: u.GetCreateTime().GetTimestamp(),
+					CreatedTime: am.GetCreateTime().GetTimestamp(),
 				},
 			},
 			errCode: codes.OK,
 		},
-		// TODO: Updating a non existant user should result in a NotFound exception but currently results in
+		// TODO: Updating a non existant auth_method should result in a NotFound exception but currently results in
 		// the repoFn returning an internal error.
 		{
-			name: "Update a Non Existing User",
-			req: &pbs.UpdateUserRequest{
-				Id: iam.UserPrefix + "_DoesntExis",
+			name: "Update a Non Existing AuthMethod",
+			req: &pbs.UpdateAuthMethodRequest{
+				Id: iam.AuthMethodPrefix + "_DoesntExis",
 				UpdateMask: &field_mask.FieldMask{
 					Paths: []string{"description"},
 				},
-				Item: &pb.User{
+				Item: &pb.AuthMethod{
 					Name:        &wrapperspb.StringValue{Value: "new"},
 					Description: &wrapperspb.StringValue{Value: "desc"},
 				},
@@ -531,13 +531,13 @@ func TestUpdate(t *testing.T) {
 		},
 		{
 			name: "Cant change Id",
-			req: &pbs.UpdateUserRequest{
-				Id: u.GetPublicId(),
+			req: &pbs.UpdateAuthMethodRequest{
+				Id: am.GetPublicId(),
 				UpdateMask: &field_mask.FieldMask{
 					Paths: []string{"id"},
 				},
-				Item: &pb.User{
-					Id:          iam.UserPrefix + "_somethinge",
+				Item: &pb.AuthMethod{
+					Id:          iam.AuthMethodPrefix + "_somethinge",
 					Name:        &wrapperspb.StringValue{Value: "new"},
 					Description: &wrapperspb.StringValue{Value: "new desc"},
 				}},
@@ -546,11 +546,11 @@ func TestUpdate(t *testing.T) {
 		},
 		{
 			name: "Cant specify Created Time",
-			req: &pbs.UpdateUserRequest{
+			req: &pbs.UpdateAuthMethodRequest{
 				UpdateMask: &field_mask.FieldMask{
 					Paths: []string{"created_time"},
 				},
-				Item: &pb.User{
+				Item: &pb.AuthMethod{
 					CreatedTime: ptypes.TimestampNow(),
 				},
 			},
@@ -559,11 +559,11 @@ func TestUpdate(t *testing.T) {
 		},
 		{
 			name: "Cant specify Updated Time",
-			req: &pbs.UpdateUserRequest{
+			req: &pbs.UpdateAuthMethodRequest{
 				UpdateMask: &field_mask.FieldMask{
 					Paths: []string{"updated_time"},
 				},
-				Item: &pb.User{
+				Item: &pb.AuthMethod{
 					UpdatedTime: ptypes.TimestampNow(),
 				},
 			},
@@ -573,25 +573,25 @@ func TestUpdate(t *testing.T) {
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			defer resetUser()
+			defer resetAuthMethod()
 			assert := assert.New(t)
-			req := proto.Clone(toMerge).(*pbs.UpdateUserRequest)
+			req := proto.Clone(toMerge).(*pbs.UpdateAuthMethodRequest)
 			proto.Merge(req, tc.req)
 
-			got, gErr := tested.UpdateUser(context.Background(), req)
-			assert.Equal(tc.errCode, status.Code(gErr), "UpdateUser(%+v) got error %v, wanted %v", req, gErr, tc.errCode)
+			got, gErr := tested.UpdateAuthMethod(context.Background(), req)
+			assert.Equal(tc.errCode, status.Code(gErr), "UpdateAuthMethod(%+v) got error %v, wanted %v", req, gErr, tc.errCode)
 
 			if got != nil {
-				assert.NotNilf(tc.res, "Expected UpdateUser response to be nil, but was %v", got)
+				assert.NotNilf(tc.res, "Expected UpdateAuthMethod response to be nil, but was %v", got)
 				gotUpdateTime, err := ptypes.Timestamp(got.GetItem().GetUpdatedTime())
 				require.NoError(err, "Error converting proto to timestamp")
-				// Verify it is a user updated after it was created
-				assert.True(gotUpdateTime.After(created), "Updated user should have been updated after it's creation. Was updated %v, which is after %v", gotUpdateTime, created)
+				// Verify it is a auth_method updated after it was created
+				assert.True(gotUpdateTime.After(created), "Updated auth_method should have been updated after it's creation. Was updated %v, which is after %v", gotUpdateTime, created)
 
 				// Clear all values which are hard to compare against.
 				got.Item.UpdatedTime, tc.res.Item.UpdatedTime = nil, nil
 			}
-			assert.True(proto.Equal(got, tc.res), "UpdateUser(%q) got response %q, wanted %q", req, got, tc.res)
+			assert.True(proto.Equal(got, tc.res), "UpdateAuthMethod(%q) got response %q, wanted %q", req, got, tc.res)
 		})
 	}
 }
