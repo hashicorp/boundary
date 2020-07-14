@@ -231,6 +231,23 @@ func (c *Command) Run(args []string) int {
 		return 1
 	}
 
+	// Perform check-and-set when needed
+	switch c.Func {
+	case "create", "read", "delete", "list":
+		// These don't udpate so don't need the existing version
+	default:
+		existingRole, existingApiErr, existingErr := actor.ReadRole(c.Context, role)
+		if existingErr != nil {
+			c.UI.Error(fmt.Sprintf("Error performing initial check-and-set read: %s", err.Error()))
+			return 2
+		}
+		if existingApiErr != nil {
+			c.UI.Error(fmt.Sprintf("Error from controller when performing initial check-and-set read: %s", pretty.Sprint(apiErr)))
+			return 1
+		}
+		role.Version = existingRole.Version
+	}
+
 	switch c.Func {
 	case "create":
 		role, apiErr, err = actor.CreateRole(c.Context, role)

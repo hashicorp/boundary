@@ -207,7 +207,7 @@ func TestHandleGrpcGateway(t *testing.T) {
 		{
 			"Non existent path",
 			"v1/this-is-made-ups",
-			http.StatusNotFound,
+			http.StatusBadRequest,
 		},
 		{
 			"Unimplemented path",

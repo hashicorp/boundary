@@ -3346,6 +3346,26 @@
       },
       "title": "HostSet is a collection of Hosts created and managed by a HostCatalog"
     },
+    "controller.api.resources.roles.v1.Principal": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "The ID of the principal.\nOutput only.",
+          "readOnly": true
+        },
+        "type": {
+          "type": "string",
+          "description": "The type of the principal.\nOutput only.",
+          "readOnly": true
+        },
+        "scope_id": {
+          "type": "string",
+          "description": "The scope ID of the principal.\nOutput only.",
+          "readOnly": true
+        }
+      }
+    },
     "controller.api.resources.roles.v1.Role": {
       "type": "object",
       "properties": {
@@ -3394,15 +3414,15 @@
           "items": {
             "type": "string"
           },
-          "description": "The principals that are assigned this role.\nOutput only.",
+          "description": "The IDs (only) of principals that are assigned to this role.\nOutput only.",
           "readOnly": true
         },
-        "principal_ids_scoped": {
+        "principals": {
           "type": "array",
           "items": {
-            "type": "string"
+            "$ref": "#/definitions/controller.api.resources.roles.v1.Principal"
           },
-          "description": "The scoped version of the principals with the same index.\nOutput only.",
+          "description": "The principals that are assigned to this role.\nOutput only.",
           "readOnly": true
         },
         "grants": {

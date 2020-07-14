@@ -38,6 +38,30 @@ func createDefaultRolesAndRepo(t *testing.T) (*iam.Role, *iam.Role, func() (*iam
 	return or, pr, repoFn
 }
 
+func equalPrincipals(role *pb.Role, principals []string) bool {
+	if len(role.Principals) != len(principals) {
+		return false
+	}
+	for _, principal := range principals {
+		var foundInPrincipals bool
+		var foundInPrincipalIds bool
+		for _, v := range role.Principals {
+			if v.Id == principal {
+				foundInPrincipals = true
+			}
+		}
+		for _, v := range role.PrincipalIds {
+			if v == principal {
+				foundInPrincipalIds = true
+			}
+		}
+		if !foundInPrincipals || !foundInPrincipalIds {
+			return false
+		}
+	}
+	return true
+}
+
 func TestGet(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
@@ -906,7 +930,7 @@ func TestAddPrincipal(t *testing.T) {
 				require.True(t, ok)
 				require.NoError(t, err, "Got error: %v", s)
 
-				assert.ElementsMatch(t, got.GetItem().GetPrincipalIds(), append(tc.resultUsers, tc.resultGroups...))
+				assert.True(t, equalPrincipals(got.GetItem(), append(tc.resultUsers, tc.resultGroups...)))
 			})
 		}
 	}
@@ -1049,7 +1073,7 @@ func TestSetPrincipal(t *testing.T) {
 				require.True(t, ok)
 				require.NoError(t, err, "Got error: %v", s)
 
-				assert.Equal(t, got.GetItem().GetPrincipalIds(), append(tc.resultUsers, tc.resultGroups...))
+				assert.True(t, equalPrincipals(got.GetItem(), append(tc.resultUsers, tc.resultGroups...)))
 			})
 		}
 	}
@@ -1210,7 +1234,7 @@ func TestRemovePrincipal(t *testing.T) {
 				require.True(t, ok)
 				require.NoError(t, err, "Got error: %v", s)
 
-				assert.ElementsMatch(t, got.GetItem().GetPrincipalIds(), append(tc.resultUsers, tc.resultGroups...))
+				assert.True(t, equalPrincipals(got.GetItem(), append(tc.resultUsers, tc.resultGroups...)))
 			})
 		}
 	}

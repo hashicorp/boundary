@@ -175,8 +175,9 @@ func wrapHandlerWithCommonFuncs(h http.Handler, c *Controller, props HandlerProp
 			c.logger.Trace("error reading auth parameters from URL", "url", r.URL.Path, "error", err)
 			// Maybe this isn't the best option, but a URL we can't parse from
 			// an auth perspective is probably just an invalid URL altogether.
-			// The trace logs would help the admin figure out the problem.
-			w.WriteHeader(http.StatusNotFound)
+			// Treating it as a bad request can be perceived to be less leaky
+			// than a 404.
+			w.WriteHeader(http.StatusBadRequest)
 			return
 		}
 

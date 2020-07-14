@@ -476,8 +476,13 @@ func toProto(in *iam.Role, principals []iam.PrincipalRole, grants []*iam.RoleGra
 		out.Name = &wrapperspb.StringValue{Value: in.GetName()}
 	}
 	for _, p := range principals {
+		principal := &pb.Principal{
+			Id:      p.GetPrincipalId(),
+			Type:    p.GetType(),
+			ScopeId: p.GetPrincipalScopeId(),
+		}
+		out.Principals = append(out.Principals, principal)
 		out.PrincipalIds = append(out.PrincipalIds, p.GetPrincipalId())
-		out.PrincipalIdsScoped = append(out.PrincipalIdsScoped, p.GetScopedPrincipalId())
 	}
 	for _, g := range grants {
 		out.Grants = append(out.Grants, g.GetRawGrant())
@@ -538,6 +543,9 @@ func validateCreateRequest(req *pbs.CreateRoleRequest) error {
 			badFields["grant_scope_id"] = "Must be empty or set to the project_id when the scope type is project."
 		}
 	}
+	if item.GetPrincipals() != nil {
+		badFields["principals"] = "This is a read only field."
+	}
 	if len(badFields) > 0 {
 		return handlers.InvalidArgumentErrorf("Argument errors found in the request.", badFields)
 	}
@@ -567,6 +575,9 @@ func validateUpdateRequest(req *pbs.UpdateRoleRequest) error {
 	}
 	if item.GetUpdatedTime() != nil {
 		badFields["updated_time"] = "This is a read only field and cannot be specified in an update request."
+	}
+	if item.GetPrincipals() != nil {
+		badFields["principals"] = "This is a read only field and cannot be specified in an update request."
 	}
 	if item.GetGrantScopeId() != nil && req.ProjectId != "" {
 		if item.GetGrantScopeId().Value != req.ProjectId {
