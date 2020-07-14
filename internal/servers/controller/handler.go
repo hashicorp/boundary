@@ -365,6 +365,8 @@ func decorateAuthParams(r *http.Request) (*perms.Resource, action.Type, error) {
 	nextIdIsPin := true
 	for i := splitLen - 1; i >= 0; i-- {
 		segment := splitPath[i]
+
+		// Collections don't contain underscores; every resource ID does.
 		segmentIsCollection := !strings.Contains(segment, "_")
 
 		if !segmentIsCollection && i != splitLen-1 && nextIdIsPin {
@@ -408,7 +410,6 @@ func decorateAuthParams(r *http.Request) (*perms.Resource, action.Type, error) {
 			// We continue on with the enclosing loop anyways though to ensure
 			// we find the right scope.
 			if res.Id == "" && !segmentIsCollection {
-				// Collections don't contain underscores; every resource ID does.
 				res.Id = segment
 			} else {
 				// Every collection is the plural of the resource type so drop
