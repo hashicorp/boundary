@@ -29,7 +29,7 @@ func (s Type) Prefix() string {
 }
 
 var Map = map[string]Type{
-	"global":  Global,
-	"org":     Org,
-	"project": Project,
+	Global.String():  Global,
+	Org.String():     Org,
+	Project.String(): Project,
 }

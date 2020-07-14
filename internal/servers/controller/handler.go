@@ -61,7 +61,6 @@ func handleGrpcGateway(c *Controller) (http.Handler, error) {
 	// Register*ServiceHandlerServer methods ignore the passed in ctx.  Using the baseContext now just in case this changes
 	// in the future, at which point we'll want to be using the baseContext.
 	ctx := c.baseContext
-	//mux := runtime.NewServeMux(runtime.WithMetadata(handlers.TokenAuthenticator(c.logger, c.AuthTokenRepoFn, c.IamRepoFn)),runtime.WithProtoErrorHandler(handlers.ErrorHandler(c.logger)))
 	mux := runtime.NewServeMux(runtime.WithProtoErrorHandler(handlers.ErrorHandler(c.logger)))
 	hcs, err := host_catalogs.NewService(c.StaticHostRepoFn)
 	if err != nil {
@@ -138,7 +137,11 @@ func wrapHandlerWithCommonFuncs(h http.Handler, c *Controller, props HandlerProp
 
 	logUrls := os.Getenv("WATCHTOWER_LOG_URLS") != ""
 
-	disableAuthzFailures := c.conf.DisableAuthorizationFailures || (c.conf.RawConfig.DevController && os.Getenv("WATCHTOWER_DEV_SKIP_AUTHZ") != "")
+	disableAuthzFailures := c.conf.DisableAuthorizationFailures ||
+		(c.conf.RawConfig.DevController && os.Getenv("WATCHTOWER_DEV_SKIP_AUTHZ") != "")
+	if disableAuthzFailures {
+		c.logger.Warn("AUTHORIZATION CHECKING DISABLED")
+	}
 
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if logUrls {
@@ -150,8 +153,9 @@ func wrapHandlerWithCommonFuncs(h http.Handler, c *Controller, props HandlerProp
 
 		// Start with the request context and our timeout
 		ctx, cancelFunc := context.WithTimeout(r.Context(), maxRequestDuration)
+		defer cancelFunc()
 
-		var userId string
+		userId := "u_anon"
 		var res *perms.Resource
 		var act action.Type
 		var err error
@@ -168,34 +172,30 @@ func wrapHandlerWithCommonFuncs(h http.Handler, c *Controller, props HandlerProp
 		// Perform authz checking
 		res, act, err = decorateAuthParams(r)
 		if err != nil {
-			c.logger.Trace("error reading auth parameters from URL", "error", err)
+			c.logger.Trace("error reading auth parameters from URL", "url", r.URL.Path, "error", err)
 			// Maybe this isn't the best option, but a URL we can't parse from
 			// an auth perspective is probably just an invalid URL altogether.
 			// Treating it as a bad request can be perceived to be less leaky
 			// than a 404.
 			w.WriteHeader(http.StatusBadRequest)
-			cancelFunc()
 			return
 		}
 
 		// The resource is only nil with no error if the path is something
 		// unauthenticated, e.g. the UI serving path.
-
 		if res != nil {
 			authzResults, userId, err = c.performAuthzCheck(ctx, r, res, act)
 			if err != nil {
 				c.logger.Error("error during authz check", "error", err)
 				w.WriteHeader(http.StatusForbidden)
-				cancelFunc()
 				return
 			}
-			if !authzResults.Allowed {
+			if userId == "" || !authzResults.Allowed {
 				// TODO: Decide whether to remove this
 				if disableAuthzFailures {
 					c.logger.Info("failed authz info for request", "resource", pretty.Sprint(res), "user_id", userId, "action", act.String())
 				} else {
 					w.WriteHeader(http.StatusForbidden)
-					cancelFunc()
 					return
 				}
 			}
@@ -203,9 +203,6 @@ func wrapHandlerWithCommonFuncs(h http.Handler, c *Controller, props HandlerProp
 
 	AUTHZ_FINISHED:
 		// Add the user ID to the context
-		if userId == "" {
-			userId = "u_anon"
-		}
 		ctx = context.WithValue(ctx, globals.ContextUserIdValue, userId)
 		// Add a size limiter if desired
 		if maxRequestSize > 0 {
@@ -215,7 +212,6 @@ func wrapHandlerWithCommonFuncs(h http.Handler, c *Controller, props HandlerProp
 		r = r.WithContext(ctx)
 
 		h.ServeHTTP(w, r)
-		cancelFunc()
 	})
 }
 
@@ -341,6 +337,7 @@ func decorateAuthParams(r *http.Request) (*perms.Resource, action.Type, error) {
 	colonSplit := strings.Split(splitPath[splitLen-1], ":")
 	switch len(colonSplit) {
 	case 1:
+		// No custom action specified
 	case 2:
 		actStr := colonSplit[len(colonSplit)-1]
 		act = action.Map[actStr]
@@ -357,10 +354,10 @@ func decorateAuthParams(r *http.Request) (*perms.Resource, action.Type, error) {
 	// we're operating on a resource or a collection. We also populate the pin.
 	// The rules for the pin are as follows:
 	//
-	// * If the last segment is a collection, the pin is the immdiately
+	// * If the last segment is a collection, the pin is the immediately
 	// preceding ID
 	//
-	// * If the last segment is an ID, the pin is the immediately preceeding ID
+	// * If the last segment is an ID, the pin is the immediately preceding ID
 	// not including the last segment
 	//
 	// * If at the end of the logic the pin is the id of a scope ("global",
@@ -369,6 +366,8 @@ func decorateAuthParams(r *http.Request) (*perms.Resource, action.Type, error) {
 	nextIdIsPin := true
 	for i := splitLen - 1; i >= 0; i-- {
 		segment := splitPath[i]
+
+		// Collections don't contain underscores; every resource ID does.
 		segmentIsCollection := !strings.Contains(segment, "_")
 
 		if !segmentIsCollection && i != splitLen-1 && nextIdIsPin {
@@ -412,7 +411,6 @@ func decorateAuthParams(r *http.Request) (*perms.Resource, action.Type, error) {
 			// We continue on with the enclosing loop anyways though to ensure
 			// we find the right scope.
 			if res.Id == "" && !segmentIsCollection {
-				// Collections don't contain underscores; every resource ID does.
 				res.Id = segment
 			} else {
 				// Every collection is the plural of the resource type so drop

@@ -452,27 +452,24 @@ before
 delete on iam_role
   for each row execute procedure disallow_default_role_deletion();
 
--- immutable_default_role_id prevents the default role's id (r_default) from
--- being updated.
+-- immutable_default_role_id prevents the a role's id from being updated.
 create or replace function
-  immutable_default_role_id()
+  immutable_role_id()
   returns trigger
 as $$
 begin
-  if old.public_id = 'r_default' then
-    if new.public_id is distinct from old.public_id then
-      raise exception 'update of default role primary key not allowed';
-    end if;
+  if new.public_id is distinct from old.public_id then
+    raise exception 'update of role primary key not allowed';
   end if;
   return new;
 end;
 $$ language plpgsql;
 
 create trigger 
-  immutable_default_role_id
+  immutable_role_id
 before
 update on iam_role
-  for each row execute procedure immutable_default_role_id();
+  for each row execute procedure immutable_role_id();
 
 insert into iam_role (public_id, name, description, scope_id)
   values('r_default', 'default', 'default role', 'global');
@@ -526,7 +523,8 @@ update on iam_group
 
 -- iam_user_role contains roles that have been assigned to users. Users can be
 -- from any scope. The rows in this table must be immutable after insert, which
--- will be ensured with a before update trigger using iam_immutable_role(). 
+-- will be ensured with a before update trigger using
+-- iam_immutable_role_principal(). 
 create table iam_user_role (
   create_time wt_timestamp,
   role_id wt_role_id
@@ -543,7 +541,7 @@ create table iam_user_role (
 -- iam_group_role contains roles that have been assigned to groups. 
 -- Groups can be from any scope. The rows in this table must be immutable after
 -- insert, which will be ensured with a before update trigger using
--- iam_immutable_role(). 
+-- iam_immutable_role_principal(). 
 create table iam_group_role (
   create_time wt_timestamp,
   role_id wt_role_id
@@ -611,9 +609,9 @@ where
 	gr.role_id = r.public_id and 
 	g.public_id = gr.principal_id;
 
--- iam_immutable_role() ensures that roles assigned to principals are immutable. 
+-- iam_immutable_role_principal() ensures that roles assigned to principals are immutable. 
 create or replace function
-  iam_immutable_role()
+  iam_immutable_role_principal()
   returns trigger
 as $$
 begin
@@ -621,10 +619,10 @@ begin
 end;
 $$ language plpgsql;
 
-create trigger immutable_role
+create trigger immutable_role_principal
 before
 update on iam_user_role
-  for each row execute procedure iam_immutable_role();
+  for each row execute procedure iam_immutable_role_principal();
 
 create trigger 
   immutable_create_time
@@ -638,10 +636,10 @@ before
 insert on iam_user_role
   for each row execute procedure default_create_time();
 
-create trigger immutable_role
+create trigger immutable_role_principal
 before
 update on iam_group_role
-  for each row execute procedure iam_immutable_role();
+  for each row execute procedure iam_immutable_role_principal();
 
 create trigger 
   immutable_create_time

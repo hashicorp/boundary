@@ -56,7 +56,7 @@ func NewService(iamRepo common.IamRepoFactory, atRepo common.AuthTokenRepoFactor
 
 var _ pbs.AuthenticationServiceServer = Service{}
 
-// Authenticate implements the interface pbs.OrgServiceServer.
+// Authenticate implements the interface pbs.AuthenticationServiceServer.
 func (s Service) Authenticate(ctx context.Context, req *pbs.AuthenticateRequest) (*pbs.AuthenticateResponse, error) {
 	if err := validateAuthenticateRequest(req); err != nil {
 		return nil, err
@@ -68,7 +68,7 @@ func (s Service) Authenticate(ctx context.Context, req *pbs.AuthenticateRequest)
 	return &pbs.AuthenticateResponse{Item: tok}, nil
 }
 
-// Deauthenticate implements the interface pbs.OrgServiceServer.
+// Deauthenticate implements the interface pbs.AuthenticationServiceServer.
 func (s Service) Deauthenticate(ctx context.Context, req *pbs.DeauthenticateRequest) (*pbs.DeauthenticateResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "Requested method is unimplemented for Org.")
 }

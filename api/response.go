@@ -32,6 +32,7 @@ func (r *Response) Decode(inStruct interface{}) (*Error, error) {
 		return nil, nil
 	}
 
+	// TODO Remove as we'll use the common err format for this
 	if r.resp.StatusCode == 403 {
 		// Nothing to be done
 		return &Error{
