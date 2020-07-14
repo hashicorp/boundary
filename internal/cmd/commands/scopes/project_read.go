@@ -30,7 +30,7 @@ func (c *ReadProjectCommand) Help() string {
 Usage: watchtower projects read 
 
   Returns information about a project specified by the ID. It is an error if
-  the project is not within the organization specified via the "org-id"
+  the project is not within the org specified via the "org-id"
   parameter or the associated environment variable.
 
   Example: 
@@ -43,7 +43,7 @@ Usage: watchtower projects read
 }
 
 func (c *ReadProjectCommand) Flags() *base.FlagSets {
-	set := c.FlagSet(base.FlagSetHTTP | base.FlagSetOutputFormat)
+	set := c.FlagSet(base.FlagSetHTTP | base.FlagSetClient | base.FlagSetOutputFormat)
 
 	f := set.NewFlagSet("Command Options")
 
@@ -79,7 +79,7 @@ func (c *ReadProjectCommand) Run(args []string) int {
 		return 2
 	}
 
-	org := &scopes.Organization{
+	org := &scopes.Org{
 		Client: client,
 	}
 
@@ -97,8 +97,11 @@ func (c *ReadProjectCommand) Run(args []string) int {
 	case apiErr != nil:
 		c.UI.Error(pretty.Sprint(apiErr))
 		return 2
-	default:
-		c.UI.Info(pretty.Sprint(project))
+	}
+
+	switch base.Format(c.UI) {
+	case "table":
+		c.UI.Output(printProject(project))
 	}
 
 	return 0

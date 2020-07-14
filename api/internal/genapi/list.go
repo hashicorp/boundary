@@ -18,22 +18,22 @@ type listInfo struct {
 var listFuncs = map[string][]*listInfo{
 	"scopes": {
 		{
-			baseType:   "Organization",
+			baseType:   "Org",
 			targetType: "Project",
 			path:       "projects",
 		},
 		{
-			baseType:   "Organization",
+			baseType:   "Org",
 			targetType: "groups.Group",
 			path:       "groups",
 		},
 		{
-			baseType:   "Organization",
+			baseType:   "Org",
 			targetType: "roles.Role",
 			path:       "roles",
 		},
 		{
-			baseType:   "Organization",
+			baseType:   "Org",
 			targetType: "users.User",
 			path:       "users",
 		},
@@ -84,8 +84,8 @@ func (s {{ .BaseType }}) List{{ .TargetName }}s(ctx context.Context) ([]*{{ .Tar
 		return nil, nil, fmt.Errorf("nil client in List{{ .TargetName }} request")
 	}
 	if s.Id == "" {
-		{{ if (eq .BaseType "Organization") }}
-		// Assume the client has been configured with organization already and
+		{{ if (eq .BaseType "Org") }}
+		// Assume the client has been configured with org already and
 		// move on
 		{{ else if (eq .BaseType "Project") }}
 		// Assume the client has been configured with project already and move
@@ -96,7 +96,7 @@ func (s {{ .BaseType }}) List{{ .TargetName }}s(ctx context.Context) ([]*{{ .Tar
 	} else {
 		// If it's explicitly set here, override anything that might be in the
 		// client
-		{{ if (eq .BaseType "Organization") }}
+		{{ if (eq .BaseType "Org") }}
 		ctx = context.WithValue(ctx, "org", s.Id)
 		{{ else if (eq .BaseType "Project") }}
 		ctx = context.WithValue(ctx, "project", s.Id)
@@ -124,7 +124,7 @@ func (s {{ .BaseType }}) List{{ .TargetName }}s(ctx context.Context) ([]*{{ .Tar
 	}
 
 	for _, t := range target.Items {
-	{{ if (eq .TargetType "Organization") }}
+	{{ if (eq .TargetType "Org") }}
 	t.Client = s.Client.Clone()
 	t.Client.SetOrgnization(t.Id)
 	{{ else if (eq .TargetType "Project") }}

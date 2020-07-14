@@ -1,4 +1,4 @@
-package organizations
+package orgs
 
 import (
 	"context"
@@ -12,8 +12,6 @@ import (
 	"github.com/hashicorp/watchtower/internal/servers/controller/common"
 	"github.com/hashicorp/watchtower/internal/servers/controller/handlers"
 	"github.com/hashicorp/watchtower/internal/types/scope"
-	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 )
 
@@ -23,12 +21,12 @@ var (
 	reInvalidID = regexp.MustCompile("[^A-Za-z0-9]")
 )
 
-// Service handles request as described by the pbs.OrganizationServiceServer interface.
+// Service handles request as described by the pbs.OrgServiceServer interface.
 type Service struct {
 	repo common.IamRepoFactory
 }
 
-// NewService returns an organization service which handles organization related requests to watchtower.
+// NewService returns an org service which handles org related requests to watchtower.
 func NewService(repo common.IamRepoFactory) (Service, error) {
 	if repo == nil {
 		return Service{}, fmt.Errorf("nil iam repository provided")
@@ -36,21 +34,21 @@ func NewService(repo common.IamRepoFactory) (Service, error) {
 	return Service{repo: repo}, nil
 }
 
-var _ pbs.OrganizationServiceServer = Service{}
+var _ pbs.OrgServiceServer = Service{}
 
-// ListOrganizations is not yet implemented but will implement the interface pbs.OrganizationServiceServer.
-func (s Service) ListOrganizations(ctx context.Context, req *pbs.ListOrganizationsRequest) (*pbs.ListOrganizationsResponse, error) {
+// ListOrgs is not yet implemented but will implement the interface pbs.OrgServiceServer.
+func (s Service) ListOrgs(ctx context.Context, req *pbs.ListOrgsRequest) (*pbs.ListOrgsResponse, error) {
 	auth := handlers.ToTokenMetadata(ctx)
 	_ = auth
 	ol, err := s.listFromRepo(ctx)
 	if err != nil {
 		return nil, err
 	}
-	return &pbs.ListOrganizationsResponse{Items: ol}, nil
+	return &pbs.ListOrgsResponse{Items: ol}, nil
 }
 
-// GetOrganizations implements the interface pbs.OrganizationServiceServer.
-func (s Service) GetOrganization(ctx context.Context, req *pbs.GetOrganizationRequest) (*pbs.GetOrganizationResponse, error) {
+// GetOrgs implements the interface pbs.OrgServiceServer.
+func (s Service) GetOrg(ctx context.Context, req *pbs.GetOrgRequest) (*pbs.GetOrgResponse, error) {
 	auth := handlers.ToTokenMetadata(ctx)
 	_ = auth
 	if err := validateGetRequest(req); err != nil {
@@ -60,20 +58,10 @@ func (s Service) GetOrganization(ctx context.Context, req *pbs.GetOrganizationRe
 	if err != nil {
 		return nil, err
 	}
-	return &pbs.GetOrganizationResponse{Item: o}, nil
+	return &pbs.GetOrgResponse{Item: o}, nil
 }
 
-// Authenticate implements the interface pbs.OrganizationServiceServer.
-func (s Service) Authenticate(ctx context.Context, req *pbs.AuthenticateRequest) (*pbs.AuthenticateResponse, error) {
-	return nil, status.Error(codes.Unimplemented, "Requested method is unimplemented for Organization.")
-}
-
-// Deauthenticate implements the interface pbs.OrganizationServiceServer.
-func (s Service) Deauthenticate(ctx context.Context, req *pbs.DeauthenticateRequest) (*pbs.DeauthenticateResponse, error) {
-	return nil, status.Error(codes.Unimplemented, "Requested method is unimplemented for Organization.")
-}
-
-func (s Service) getFromRepo(ctx context.Context, id string) (*pb.Organization, error) {
+func (s Service) getFromRepo(ctx context.Context, id string) (*pb.Org, error) {
 	repo, err := s.repo()
 	if err != nil {
 		return nil, err
@@ -83,29 +71,29 @@ func (s Service) getFromRepo(ctx context.Context, id string) (*pb.Organization, 
 		return nil, err
 	}
 	if p == nil {
-		return nil, handlers.NotFoundErrorf("Organization %q doesn't exist.", id)
+		return nil, handlers.NotFoundErrorf("Org %q doesn't exist.", id)
 	}
 	return toProto(p), nil
 }
 
-func (s Service) listFromRepo(ctx context.Context) ([]*pb.Organization, error) {
+func (s Service) listFromRepo(ctx context.Context) ([]*pb.Org, error) {
 	repo, err := s.repo()
 	if err != nil {
 		return nil, err
 	}
-	ol, err := repo.ListOrganizations(ctx)
+	ol, err := repo.ListOrgs(ctx)
 	if err != nil {
 		return nil, err
 	}
-	var outOl []*pb.Organization
+	var outOl []*pb.Org
 	for _, o := range ol {
 		outOl = append(outOl, toProto(o))
 	}
 	return outOl, nil
 }
 
-func toProto(in *iam.Scope) *pb.Organization {
-	out := pb.Organization{
+func toProto(in *iam.Scope) *pb.Org {
+	out := pb.Org{
 		Id:          in.GetPublicId(),
 		CreatedTime: in.GetCreateTime().GetTimestamp(),
 		UpdatedTime: in.GetUpdateTime().GetTimestamp(),
@@ -124,10 +112,10 @@ func toProto(in *iam.Scope) *pb.Organization {
 //  * The path passed in is correctly formatted
 //  * All required parameters are set
 //  * There are no conflicting parameters provided
-func validateGetRequest(req *pbs.GetOrganizationRequest) error {
+func validateGetRequest(req *pbs.GetOrgRequest) error {
 	badFields := make(map[string]string)
-	if !validId(req.GetId(), scope.Organization.Prefix()+"_") {
-		badFields["id"] = "Invalid formatted organization id."
+	if !validId(req.GetId(), scope.Org.Prefix()+"_") {
+		badFields["id"] = "Invalid formatted org id."
 	}
 	if len(badFields) > 0 {
 		return handlers.InvalidArgumentErrorf("Improperly formatted identifier.", badFields)

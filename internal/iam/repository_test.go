@@ -110,9 +110,9 @@ func Test_Repository_create(t *testing.T) {
 		require.NoError(err)
 		id := testId(t)
 
-		s, err := NewOrganization(WithName("fname-" + id))
+		s, err := NewOrg(WithName("fname-" + id))
 		assert.NoError(err)
-		s.PublicId, err = newScopeId(scope.Organization)
+		s.PublicId, err = newScopeId(scope.Org)
 		require.NoError(err)
 		retScope, err := repo.create(context.Background(), s)
 		require.NoError(err)

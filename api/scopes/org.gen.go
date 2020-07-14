@@ -3,6 +3,7 @@ package scopes
 
 import (
 	"encoding/json"
+	"strings"
 	"time"
 
 	"github.com/fatih/structs"
@@ -11,12 +12,12 @@ import (
 	"github.com/hashicorp/watchtower/api/internal/strutil"
 )
 
-type Organization struct {
+type Org struct {
 	Client *api.Client `json:"-"`
 
 	defaultFields []string
 
-	// The ID of the Organization
+	// The ID of the Org
 	// Output only.
 	Id string `json:"id,omitempty"`
 	// Optional name for identification purposes
@@ -31,15 +32,29 @@ type Organization struct {
 	UpdatedTime time.Time `json:"updated_time,omitempty"`
 }
 
-func (s *Organization) SetDefault(key string) {
-	s.defaultFields = strutil.AppendIfMissing(s.defaultFields, key)
+func (s *Org) SetDefault(key string) {
+	lowerKey := strings.ToLower(key)
+	validMap := map[string]string{"createdtime": "created_time", "description": "description", "id": "id", "name": "name", "updatedtime": "updated_time"}
+	for k, v := range validMap {
+		if k == lowerKey || v == lowerKey {
+			s.defaultFields = strutil.AppendIfMissing(s.defaultFields, v)
+			return
+		}
+	}
 }
 
-func (s *Organization) UnsetDefault(key string) {
-	s.defaultFields = strutil.StrListDelete(s.defaultFields, key)
+func (s *Org) UnsetDefault(key string) {
+	lowerKey := strings.ToLower(key)
+	validMap := map[string]string{"createdtime": "created_time", "description": "description", "id": "id", "name": "name", "updatedtime": "updated_time"}
+	for k, v := range validMap {
+		if k == lowerKey || v == lowerKey {
+			s.defaultFields = strutil.StrListDelete(s.defaultFields, v)
+			return
+		}
+	}
 }
 
-func (s Organization) MarshalJSON() ([]byte, error) {
+func (s Org) MarshalJSON() ([]byte, error) {
 	m := structs.Map(s)
 	if m == nil {
 		m = make(map[string]interface{})

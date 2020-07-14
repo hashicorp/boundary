@@ -33,8 +33,8 @@ func Test_Resource(t *testing.T) {
 			want:       Role,
 		},
 		{
-			typeString: "organization",
-			want:       Organization,
+			typeString: "org",
+			want:       Org,
 		},
 		{
 			typeString: "static-group-member",
@@ -88,10 +88,14 @@ func Test_Resource(t *testing.T) {
 			typeString: "target",
 			want:       Target,
 		},
+		{
+			typeString: "global",
+			want:       Global,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.typeString, func(t *testing.T) {
-			assert.Equalf(t, tt.want, StringToResourceType(tt.typeString), "unexpected type for %s", tt.typeString)
+			assert.Equalf(t, tt.want, Map[tt.typeString], "unexpected type for %s", tt.typeString)
 			assert.Equalf(t, tt.typeString, tt.want.String(), "unexpected string for %s", tt.typeString)
 		})
 	}

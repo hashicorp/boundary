@@ -48,6 +48,7 @@ type Command struct {
 	flagDevControllerAPIListenAddr     string
 	flagDevControllerClusterListenAddr string
 	flagDevOrgId                       string
+	flagDevAuthMethodId                string
 	flagDevPassthroughDirectory        string
 }
 
@@ -115,7 +116,15 @@ func (c *Command) Flags() *base.FlagSets {
 		Name:   "dev-org-id",
 		Target: &c.flagDevOrgId,
 		EnvVar: "WATCHTWER_DEV_ORG_ID",
-		Usage: "Auto-created organization ID. This only applies when running in \"dev\" " +
+		Usage: "Auto-created org ID. This only applies when running in \"dev\" " +
+			"mode.",
+	})
+
+	f.StringVar(&base.StringVar{
+		Name:   "dev-auth-method-id",
+		Target: &c.flagDevAuthMethodId,
+		EnvVar: "WATCHTWER_DEV_AUTH_METHOD_ID",
+		Usage: "Auto-created auth method ID. This only applies when running in \"dev\" " +
 			"mode.",
 	})
 
@@ -336,6 +345,18 @@ func (c *Command) ParseFlagsAndConfig(args []string) int {
 		if c.flagDevOrgId != "" {
 			c.Config.DefaultOrgId = c.flagDevOrgId
 		}
+		if c.flagDevAuthMethodId != "" {
+			if !strings.HasPrefix(c.flagDevAuthMethodId, "am_") {
+				c.UI.Error(fmt.Sprintf("Invalid dev auth method ID, must start with %q", "am_"))
+				return 1
+			}
+			if len(c.flagDevAuthMethodId) != 13 {
+				c.UI.Error(fmt.Sprintf("Invalid dev auth method ID, must be 10 base62 characters after %q", "am_"))
+				return 1
+			}
+			c.DevAuthMethodId = c.flagDevAuthMethodId
+		}
+
 		c.Config.PassthroughDirectory = c.flagDevPassthroughDirectory
 
 		for _, l := range c.Config.Listeners {

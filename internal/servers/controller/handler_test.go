@@ -1,18 +1,19 @@
 package controller
 
 import (
-	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
-	"os"
-	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/grpc-ecosystem/grpc-gateway/runtime"
 	"github.com/hashicorp/watchtower/internal/gen/controller/api/services"
+	"github.com/hashicorp/watchtower/internal/types/action"
+	"github.com/hashicorp/watchtower/internal/types/resource"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -123,8 +124,79 @@ func TestGrpcGatewayRouting(t *testing.T) {
 	}
 }
 
+func TestAuthenticationHandler(t *testing.T) {
+	c := NewTestController(t, &TestControllerOpts{DefaultOrgId: "o_1234567890"})
+	defer c.Shutdown()
+
+	resp, err := http.Post(fmt.Sprintf("%s/v1/orgs/o_1234567890/auth-methods/am_1234567890:authenticate", c.ApiAddrs()[0]), "application/json",
+		strings.NewReader(`{"token_type": null, "credentials": {"name":"test", "password": "test"}}`))
+	require.NoError(t, err)
+	assert.Equal(t, http.StatusOK, resp.StatusCode, "Got response: %v", resp)
+
+	b, err := ioutil.ReadAll(resp.Body)
+	require.NoError(t, err)
+	body := make(map[string]interface{})
+	require.NoError(t, json.Unmarshal(b, &body))
+
+	require.Contains(t, body, "id")
+	require.Contains(t, body, "token")
+	pubId, tok := body["id"].(string), body["token"].(string)
+	assert.NotEmpty(t, pubId)
+	assert.NotEmpty(t, tok)
+	assert.Truef(t, strings.HasPrefix(tok, pubId), "Token: %q, Id: %q", tok, pubId)
+}
+
+func TestGrpcGatewayRouting_CustomActions(t *testing.T) {
+	ctx := context.Background()
+	// The unimplemented result indicates the grpc routing is happening successfully otherwise it would return NotFound.
+	routed := http.StatusNotImplemented
+
+	cases := []struct {
+		name      string
+		setup     func(mux *runtime.ServeMux)
+		post_urls []string
+	}{
+		{
+			name: "roles",
+			setup: func(mux *runtime.ServeMux) {
+				require.NoError(t, services.RegisterRoleServiceHandlerServer(ctx, mux, &services.UnimplementedRoleServiceServer{}))
+			},
+			post_urls: []string{
+				"v1/orgs/someid/roles/r_anotherid:add-principals",
+				"v1/orgs/someid/roles/r_anotherid:set-principals",
+				"v1/orgs/someid/roles/r_anotherid:remove-principals",
+				"v1/orgs/someid/projects/p_something/roles/r_anotherid:add-principals",
+				"v1/orgs/someid/projects/p_something/roles/r_anotherid:set-principals",
+				"v1/orgs/someid/projects/p_something/roles/r_anotherid:remove-principals",
+				"v1/orgs/someid/roles/r_anotherid:add-grants",
+				"v1/orgs/someid/roles/r_anotherid:set-grants",
+				"v1/orgs/someid/roles/r_anotherid:remove-grants",
+				"v1/orgs/someid/projects/p_something/roles/r_anotherid:add-grants",
+				"v1/orgs/someid/projects/p_something/roles/r_anotherid:set-grants",
+				"v1/orgs/someid/projects/p_something/roles/r_anotherid:remove-grants",
+			},
+		},
+	}
+
+	for _, tc := range cases {
+		for _, url := range tc.post_urls {
+			t.Run(tc.name+"_"+url, func(t *testing.T) {
+				mux := runtime.NewServeMux()
+				tc.setup(mux)
+
+				req := httptest.NewRequest("POST", fmt.Sprintf("http://localhost/%s", url), nil)
+				resp := httptest.NewRecorder()
+				mux.ServeHTTP(resp, req)
+				assert.Equal(t, routed, resp.Result().StatusCode, "Got response %v", resp)
+			})
+		}
+	}
+}
+
 func TestHandleGrpcGateway(t *testing.T) {
-	c := NewTestController(t, nil)
+	c := NewTestController(t, &TestControllerOpts{
+		DisableAuthorizationFailures: true,
+	})
 	defer c.Shutdown()
 
 	cases := []struct {
@@ -134,12 +206,12 @@ func TestHandleGrpcGateway(t *testing.T) {
 	}{
 		{
 			"Non existent path",
-			"v1/this-is-made-up",
-			http.StatusNotFound,
+			"v1/this-is-made-ups",
+			http.StatusBadRequest,
 		},
 		{
 			"Unimplemented path",
-			"v1/orgs/1/projects/2/host-catalogs/3/host-sets/4",
+			"v1/orgs/1/projects/2/host-catalogs/3/host-sets/hs_4",
 			http.StatusMethodNotAllowed,
 		},
 	}
@@ -158,120 +230,220 @@ func TestHandleGrpcGateway(t *testing.T) {
 	}
 }
 
-func TestHandleDevPassthrough(t *testing.T) {
-	// Create a temporary directory
-	tempDir, err := ioutil.TempDir("", "watchtower-test-")
-	require.NoError(t, err)
-	defer func() {
-		assert.NoError(t, os.RemoveAll(tempDir))
-	}()
-
-	nameContentsMap := map[string]string{
-		"index.html":         `index`,
-		"favicon.png":        `favicon`,
-		"/assets/styles.css": `css`,
-		"index.htm":          `badindex`,
-	}
-
-	for k, v := range nameContentsMap {
-		dir := filepath.Dir(k)
-		if dir != "/" {
-			require.NoError(t, os.MkdirAll(filepath.Join(tempDir, dir), 0755))
-		}
-		require.NoError(t, ioutil.WriteFile(filepath.Join(tempDir, k), []byte(v), 0644))
-	}
-
-	c := NewTestController(t, &TestControllerOpts{DisableAutoStart: true})
-
-	c.c.conf.RawConfig.PassthroughDirectory = tempDir
-	require.NoError(t, c.c.Start())
-	defer c.Shutdown()
-
+func TestHandler_AuthDecoration(t *testing.T) {
 	cases := []struct {
-		name        string
-		path        string
-		contentsKey string
-		code        int
-		mimeType    string
+		name            string
+		path            string
+		method          string
+		action          action.Type
+		scope           string
+		resource        resource.Type
+		id              string
+		pin             string
+		wantErrContains string
 	}{
 		{
-			"direct index",
-			"index.html",
-			"index.html",
-			http.StatusOK,
-			"text/html; charset=utf-8",
+			name:     "global scope, read, with id",
+			path:     "/v1/users/u_anon",
+			method:   "GET",
+			action:   action.Read,
+			scope:    "global",
+			resource: resource.User,
+			id:       "u_anon",
 		},
 		{
-			"base slash",
-			"",
-			"index.html",
-			http.StatusOK,
-			"text/html; charset=utf-8",
+			name:     "global scope, update, with id",
+			path:     "/v1/auth-methods/am_1234",
+			method:   "PATCH",
+			action:   action.Update,
+			scope:    "global",
+			resource: resource.AuthMethod,
+			id:       "am_1234",
 		},
 		{
-			"no extension",
-			"orgs",
-			"index.html",
-			http.StatusOK,
-			"text/html; charset=utf-8",
+			name:     "global scope, delete",
+			path:     "/v1/orgs/o_1234",
+			method:   "DELETE",
+			action:   action.Delete,
+			scope:    "global",
+			resource: resource.Org,
+			id:       "o_1234",
 		},
 		{
-			"favicon",
-			"favicon.png",
-			"favicon.png",
-			http.StatusOK,
-			"image/png",
+			name:     "global scope, create",
+			path:     "/v1/roles",
+			method:   "POST",
+			action:   action.Create,
+			scope:    "global",
+			resource: resource.Role,
 		},
 		{
-			"bad index",
-			"index.htm",
-			"index.htm",
-			http.StatusOK,
-			"text/html; charset=utf-8",
+			name:            "global, invalid collection syntax",
+			path:            "/v1/org",
+			wantErrContains: "invalid collection syntax",
 		},
 		{
-			"bad path",
-			"index.ht",
-			"index.ht",
-			http.StatusNotFound,
-			"text/plain; charset=utf-8",
+			name:     "global, custom action",
+			path:     "/v1/orgs/o_123/auth-methods/am_1234:authenticate",
+			method:   "POST",
+			action:   action.Authenticate,
+			scope:    "o_123",
+			resource: resource.AuthMethod,
+			id:       "am_1234",
 		},
 		{
-			"css",
-			"assets/styles.css",
-			"assets/styles.css",
-			http.StatusOK,
-			"text/css; charset=utf-8",
+			name:            "root, unknown action",
+			path:            "/v1/:authentifake",
+			wantErrContains: "unknown action",
 		},
 		{
-			"invalid extension",
-			"foo.bāb",
-			"index.html",
-			http.StatusOK,
-			"text/html; charset=utf-8",
+			name:            "root, unknown empty action",
+			path:            "/v1/:",
+			wantErrContains: "unknown action",
+		},
+		{
+			name:            "root, invalid method",
+			path:            "/v1/:authenticate",
+			method:          "FOOBAR",
+			wantErrContains: "unknown method",
+		},
+		{
+			name:            "root, wrong number of colons",
+			path:            "/v1/:auth:enticate",
+			wantErrContains: "unexpected number of colons",
+		},
+		{
+			name:     "org scope, valid",
+			path:     "/v1/orgs/o_abc123/auth-methods",
+			method:   "POST",
+			action:   action.Create,
+			scope:    "o_abc123",
+			resource: resource.AuthMethod,
+		},
+		{
+			name:     "project scope, valid",
+			path:     "/v1/orgs/o_abc123/projects/p_1234/host-catalogs",
+			method:   "POST",
+			action:   action.Create,
+			scope:    "p_1234",
+			resource: resource.HostCatalog,
+		},
+		{
+			name:     "project scope, action on project",
+			path:     "/v1/orgs/o_abc123/projects/p_1234/:set-principals",
+			method:   "POST",
+			action:   action.SetPrincipals,
+			scope:    "p_1234",
+			resource: resource.Project,
+			id:       "p_1234",
+		},
+		{
+			name:     "org scope, action on project",
+			path:     "/v1/orgs/o_abc123/projects/p_1234:set-principals",
+			method:   "POST",
+			action:   action.SetPrincipals,
+			scope:    "o_abc123",
+			resource: resource.Project,
+			id:       "p_1234",
+		},
+		{
+			name:     "org scope, get on collection is list",
+			path:     "/v1/orgs/o_abc123/projects",
+			action:   action.List,
+			scope:    "o_abc123",
+			resource: resource.Project,
+		},
+		{
+			name:     "org scope, action on org",
+			path:     "/v1/orgs/o_abc123/:deauthenticate",
+			action:   action.Deauthenticate,
+			scope:    "o_abc123",
+			resource: resource.Org,
+			id:       "o_abc123",
+		},
+		{
+			name:            "top level action, invalid",
+			path:            "/v1/:read",
+			wantErrContains: "id and type both not found",
+		},
+		{
+			name:            "top level, invalid",
+			path:            "/v1/",
+			wantErrContains: "id and type both not found",
+		},
+		{
+			name: "non-api path",
+			path: "/",
+		},
+		{
+			name:     "project scope, pinning collection",
+			path:     "/v1/orgs/o_abc123/projects/p_1234/host-catalogs/hc_1234/host-sets",
+			action:   action.List,
+			scope:    "p_1234",
+			pin:      "hc_1234",
+			resource: resource.HostSet,
+		},
+		{
+			name:     "project scope, pinning collection, custom action",
+			path:     "/v1/orgs/o_abc123/projects/p_1234/host-catalogs/hc_1234/host-sets:create",
+			action:   action.Create,
+			scope:    "p_1234",
+			pin:      "hc_1234",
+			resource: resource.HostSet,
+		},
+		{
+			name:     "project scope, pinning id",
+			path:     "/v1/orgs/o_abc123/projects/p_1234/host-catalogs/hc_1234/host-sets/hs_abc",
+			action:   action.Read,
+			id:       "hs_abc",
+			scope:    "p_1234",
+			pin:      "hc_1234",
+			resource: resource.HostSet,
+		},
+		{
+			name:     "project scope, pinning id, custom action",
+			path:     "/v1/orgs/o_abc123/projects/p_1234/host-catalogs/hc_1234/host-sets/hs_abc:update",
+			action:   action.Update,
+			id:       "hs_abc",
+			scope:    "p_1234",
+			pin:      "hc_1234",
+			resource: resource.HostSet,
 		},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			assert := assert.New(t)
-
-			url := fmt.Sprintf("%s/%s", c.ApiAddrs()[0], tc.path)
-			resp, err := http.Post(url, "", nil)
-			assert.NoError(err)
-			assert.Equal(http.StatusMethodNotAllowed, resp.StatusCode)
-
-			resp, err = http.Get(url)
-			assert.NoError(err)
-			assert.Equal(tc.code, resp.StatusCode)
-			assert.Equal(tc.mimeType, resp.Header.Get("content-type"))
-
-			contents, ok := nameContentsMap[tc.contentsKey]
-			if ok {
-				reader := new(bytes.Buffer)
-				_, err = reader.ReadFrom(resp.Body)
-				assert.NoError(err)
-				assert.Equal(contents, reader.String())
+			require, assert := require.New(t), assert.New(t)
+			if tc.method == "" {
+				tc.method = "GET"
 			}
+			req, err := http.NewRequest(tc.method, fmt.Sprintf("http://127.0.0.1:9200:%s", tc.path), nil)
+			require.NoError(err)
+
+			res, act, err := decorateAuthParams(nil)
+			assert.Nil(res)
+			require.Error(err)
+			assert.Equal(action.Unknown, act)
+			assert.Contains(err.Error(), "incoming request is nil")
+
+			res, act, err = decorateAuthParams(req)
+			if tc.wantErrContains != "" {
+				require.Error(err)
+				assert.Contains(err.Error(), tc.wantErrContains, err.Error())
+				return
+			}
+			require.NoError(err)
+
+			if tc.path == "/" {
+				return
+			}
+
+			require.NotNil(res)
+			require.NotEqual(action.Unknown, act)
+			assert.Equal(tc.scope, res.ScopeId, "scope")
+			assert.Equal(tc.action, act, "action")
+			assert.Equal(tc.resource, res.Type, "type")
+			assert.Equal(tc.id, res.Id, "id")
+			assert.Equal(tc.pin, res.Pin, "pin")
 		})
 	}
 }

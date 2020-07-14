@@ -33,7 +33,9 @@ type Options struct {
 	newOplogMsgs *[]*oplog.Message
 
 	// WithVersion must be accessible from other packages
-	WithVersion int
+	WithVersion uint32
+
+	withSkipVetForWrite bool
 }
 
 type oplogOpts struct {
@@ -119,8 +121,16 @@ func WithLimit(limit int) Option {
 }
 
 // WithVersion provides an option version number for update operations.
-func WithVersion(version int) Option {
+func WithVersion(version uint32) Option {
 	return func(o *Options) {
 		o.WithVersion = version
+	}
+}
+
+// WithSkipVetForWrite provides an option to allow skipping vet checks to allow
+// testing lower-level SQL triggers and constraints
+func WithSkipVetForWrite(enable bool) Option {
+	return func(o *Options) {
+		o.withSkipVetForWrite = enable
 	}
 }

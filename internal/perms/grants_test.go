@@ -54,24 +54,24 @@ func Test_ActionParsingValidation(t *testing.T) {
 		{
 			name: "all valid plus all",
 			input: Grant{
-				actionsBeingParsed: []string{"list", "create", "update", "*", "read", "delete", "authen", "connect"},
+				actionsBeingParsed: []string{"list", "create", "update", "*", "read", "delete", "authenticate", "connect"},
 			},
 			errResult: `"*" cannot be specified with other actions`,
 		},
 		{
 			name: "all valid",
 			input: Grant{
-				actionsBeingParsed: []string{"list", "create", "update", "read", "delete", "authen", "connect"},
+				actionsBeingParsed: []string{"list", "create", "update", "read", "delete", "authenticate", "connect"},
 			},
 			result: Grant{
 				actions: map[action.Type]bool{
-					action.List:    true,
-					action.Create:  true,
-					action.Update:  true,
-					action.Read:    true,
-					action.Delete:  true,
-					action.Authen:  true,
-					action.Connect: true,
+					action.List:         true,
+					action.Create:       true,
+					action.Update:       true,
+					action.Read:         true,
+					action.Delete:       true,
+					action.Authenticate: true,
+					action.Connect:      true,
 				},
 			},
 		},
@@ -147,7 +147,7 @@ func Test_MarshallingAndCloning(t *testing.T) {
 			name: "empty",
 			input: Grant{
 				scope: Scope{
-					Type: scope.Organization,
+					Type: scope.Org,
 				},
 			},
 			jsonOutput:      `{}`,
@@ -320,11 +320,12 @@ func Test_Parse(t *testing.T) {
 	t.Parallel()
 
 	type input struct {
-		name     string
-		input    string
-		userId   string
-		err      string
-		expected Grant
+		name          string
+		input         string
+		userId        string
+		err           string
+		scopeOverride string
+		expected      Grant
 	}
 
 	tests := []input{
@@ -362,8 +363,8 @@ func Test_Parse(t *testing.T) {
 			input: `{"id":"foobar","type":"host-catalog","actions":["create","read"]}`,
 			expected: Grant{
 				scope: Scope{
-					Id:   "scope",
-					Type: scope.Organization,
+					Id:   "o_scope",
+					Type: scope.Org,
 				},
 				id:  "foobar",
 				typ: resource.HostCatalog,
@@ -378,8 +379,59 @@ func Test_Parse(t *testing.T) {
 			input: `id=foobar;type=host-catalog;actions=create,read`,
 			expected: Grant{
 				scope: Scope{
-					Id:   "scope",
-					Type: scope.Organization,
+					Id:   "o_scope",
+					Type: scope.Org,
+				},
+				id:  "foobar",
+				typ: resource.HostCatalog,
+				actions: map[action.Type]bool{
+					action.Create: true,
+					action.Read:   true,
+				},
+			},
+		},
+		{
+			name:          "default project scope",
+			input:         `id=foobar;type=host-catalog;actions=create,read`,
+			scopeOverride: "p_1234",
+			expected: Grant{
+				scope: Scope{
+					Id:   "p_1234",
+					Type: scope.Project,
+				},
+				id:  "foobar",
+				typ: resource.HostCatalog,
+				actions: map[action.Type]bool{
+					action.Create: true,
+					action.Read:   true,
+				},
+			},
+		},
+		{
+			name:          "default org scope",
+			input:         `id=foobar;type=host-catalog;actions=create,read`,
+			scopeOverride: "o_1234",
+			expected: Grant{
+				scope: Scope{
+					Id:   "o_1234",
+					Type: scope.Org,
+				},
+				id:  "foobar",
+				typ: resource.HostCatalog,
+				actions: map[action.Type]bool{
+					action.Create: true,
+					action.Read:   true,
+				},
+			},
+		},
+		{
+			name:          "default global scope",
+			input:         `id=foobar;type=host-catalog;actions=create,read`,
+			scopeOverride: "global",
+			expected: Grant{
+				scope: Scope{
+					Id:   "global",
+					Type: scope.Global,
 				},
 				id:  "foobar",
 				typ: resource.HostCatalog,
@@ -401,8 +453,8 @@ func Test_Parse(t *testing.T) {
 			userId: "u_abcd1234",
 			expected: Grant{
 				scope: Scope{
-					Id:   "scope",
-					Type: scope.Organization,
+					Id:   "o_scope",
+					Type: scope.Org,
 				},
 				id: "u_abcd1234",
 				actions: map[action.Type]bool{
@@ -413,15 +465,11 @@ func Test_Parse(t *testing.T) {
 		},
 	}
 
-	_, err := Parse(Scope{}, "", "")
+	_, err := Parse("", "", "")
 	require.Error(t, err)
 	assert.Equal(t, "grant string is empty", err.Error())
 
-	_, err = Parse(Scope{}, "", "{}")
-	require.Error(t, err)
-	assert.Equal(t, "invalid scope type", err.Error())
-
-	_, err = Parse(Scope{Type: scope.Organization}, "", "{}")
+	_, err = Parse("", "", "{}")
 	require.Error(t, err)
 	assert.Equal(t, "no scope ID provided", err.Error())
 
@@ -429,7 +477,11 @@ func Test_Parse(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			assert := assert.New(t)
 			require := require.New(t)
-			grant, err := Parse(Scope{Id: "scope", Type: scope.Organization}, test.userId, test.input)
+			scope := "o_scope"
+			if test.scopeOverride != "" {
+				scope = test.scopeOverride
+			}
+			grant, err := Parse(scope, test.userId, test.input)
 			if test.err != "" {
 				require.Error(err)
 				assert.True(strings.Contains(err.Error(), test.err))

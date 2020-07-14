@@ -29,7 +29,7 @@ func TestGroup_List(t *testing.T) {
 	defer tc.Shutdown()
 
 	client := tc.Client()
-	org := &scopes.Organization{
+	org := &scopes.Org{
 		Client: client,
 	}
 	proj, apiErr, err := org.CreateProject(context.Background(), &scopes.Project{})
@@ -105,7 +105,7 @@ func TestGroup_Crud(t *testing.T) {
 	defer tc.Shutdown()
 
 	client := tc.Client()
-	org := &scopes.Organization{
+	org := &scopes.Org{
 		Client: client,
 	}
 
@@ -116,8 +116,8 @@ func TestGroup_Crud(t *testing.T) {
 	checkGroup := func(step string, g *groups.Group, apiErr *api.Error, err error, wantedName string) {
 		assert := assert.New(t)
 		assert.NoError(err, step)
-		if !assert.Nil(apiErr, step) && apiErr.Message != nil {
-			t.Errorf("ApiError message: %q", *apiErr.Message)
+		if !assert.Nil(apiErr, step) && apiErr.Message != "" {
+			t.Errorf("ApiError message: %q", apiErr.Message)
 		}
 		assert.NotNil(g, "returned no resource", step)
 		gotName := ""
@@ -179,7 +179,7 @@ func TestGroup_Errors(t *testing.T) {
 	ctx := tc.Context()
 
 	client := tc.Client()
-	org := &scopes.Organization{
+	org := &scopes.Org{
 		Client: client,
 	}
 
@@ -216,17 +216,17 @@ func TestGroup_Errors(t *testing.T) {
 			_, apiErr, err = tt.scope.ReadGroup(ctx, &groups.Group{Id: iam.GroupPrefix + "_doesntexis"})
 			assert.NoError(err)
 			assert.NotNil(apiErr)
-			assert.EqualValues(*apiErr.Status, http.StatusNotFound)
+			assert.EqualValues(apiErr.Status, http.StatusNotFound)
 
 			_, apiErr, err = tt.scope.ReadGroup(ctx, &groups.Group{Id: "invalid id"})
 			assert.NoError(err)
 			assert.NotNil(apiErr)
-			assert.EqualValues(*apiErr.Status, http.StatusBadRequest)
+			assert.EqualValues(apiErr.Status, http.StatusBadRequest)
 
 			_, apiErr, err = tt.scope.UpdateGroup(ctx, &groups.Group{Id: u.Id})
 			assert.NoError(err)
 			assert.NotNil(apiErr)
-			assert.EqualValues(*apiErr.Status, http.StatusBadRequest)
+			assert.EqualValues(apiErr.Status, http.StatusBadRequest)
 		})
 	}
 }

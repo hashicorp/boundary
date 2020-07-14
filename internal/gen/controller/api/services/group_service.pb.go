@@ -1001,22 +1001,22 @@ type GroupServiceClient interface {
 	// ListGroups returns a list of stored groups which exist inside the org
 	// referenced inside the request.  The request must include the org id for
 	// the groups being retrieved.  If the org id is missing, malformed, or
-	// reference a non existing organization, an error is returned.
+	// reference a non existing org, an error is returned.
 	ListGroups(ctx context.Context, in *ListGroupsRequest, opts ...grpc.CallOption) (*ListGroupsResponse, error)
 	// CreateGroup creates and stores a group in watchtower.  The provided
 	// request must include the org id in which the group will be created.
 	// If the org id is missing, malformed or references a non existing
-	// organization, an error is returned.  If a name is provided that is in
-	// use in another group in the same organization, an error is returned.
+	// org, an error is returned.  If a name is provided that is in
+	// use in another group in the same org, an error is returned.
 	CreateGroup(ctx context.Context, in *CreateGroupRequest, opts ...grpc.CallOption) (*CreateGroupResponse, error)
 	// UpdateGroup updates an existing group in watchtower.  The provided
 	// group must not have any read only fields set.  The update mask must be
 	// included in the request and contain at least 1 mutable field.  To unset
 	// a field's value, include the field in the update mask and don't set it
-	// in the provided group. An error is returned if either the organization
+	// in the provided group. An error is returned if either the org
 	// or group ids are missing or reference a non existing resource.  An error
 	// is also returned if the request attempts to update the name to one that is
-	// already in use in this organization.
+	// already in use in this org.
 	UpdateGroup(ctx context.Context, in *UpdateGroupRequest, opts ...grpc.CallOption) (*UpdateGroupResponse, error)
 	// DeleteGroup removes a group from Watchtower. If the provided org or group ids
 	// are malformed or not provided an error is returned.  No error is returned
@@ -1089,22 +1089,22 @@ type GroupServiceServer interface {
 	// ListGroups returns a list of stored groups which exist inside the org
 	// referenced inside the request.  The request must include the org id for
 	// the groups being retrieved.  If the org id is missing, malformed, or
-	// reference a non existing organization, an error is returned.
+	// reference a non existing org, an error is returned.
 	ListGroups(context.Context, *ListGroupsRequest) (*ListGroupsResponse, error)
 	// CreateGroup creates and stores a group in watchtower.  The provided
 	// request must include the org id in which the group will be created.
 	// If the org id is missing, malformed or references a non existing
-	// organization, an error is returned.  If a name is provided that is in
-	// use in another group in the same organization, an error is returned.
+	// org, an error is returned.  If a name is provided that is in
+	// use in another group in the same org, an error is returned.
 	CreateGroup(context.Context, *CreateGroupRequest) (*CreateGroupResponse, error)
 	// UpdateGroup updates an existing group in watchtower.  The provided
 	// group must not have any read only fields set.  The update mask must be
 	// included in the request and contain at least 1 mutable field.  To unset
 	// a field's value, include the field in the update mask and don't set it
-	// in the provided group. An error is returned if either the organization
+	// in the provided group. An error is returned if either the org
 	// or group ids are missing or reference a non existing resource.  An error
 	// is also returned if the request attempts to update the name to one that is
-	// already in use in this organization.
+	// already in use in this org.
 	UpdateGroup(context.Context, *UpdateGroupRequest) (*UpdateGroupResponse, error)
 	// DeleteGroup removes a group from Watchtower. If the provided org or group ids
 	// are malformed or not provided an error is returned.  No error is returned

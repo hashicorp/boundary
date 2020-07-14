@@ -32,7 +32,7 @@ service GroupService {
   // ListGroups returns a list of stored groups which exist inside the org
   // referenced inside the request.  The request must include the org id for
   // the groups being retrieved.  If the org id is missing, malformed, or
-  // reference a non existing organization, an error is returned.
+  // reference a non existing org, an error is returned.
   rpc ListGroups(ListGroupsRequest) returns (ListGroupsResponse) {
     option (google.api.http) = {
       get: "/v1/orgs/{org_id}/groups"
@@ -48,8 +48,8 @@ service GroupService {
   // CreateGroup creates and stores a group in watchtower.  The provided
   // request must include the org id in which the group will be created.
   // If the org id is missing, malformed or references a non existing
-  // organization, an error is returned.  If a name is provided that is in
-  // use in another group in the same organization, an error is returned.
+  // org, an error is returned.  If a name is provided that is in
+  // use in another group in the same org, an error is returned.
   rpc CreateGroup(CreateGroupRequest) returns (CreateGroupResponse) {
     option (google.api.http) = {
       post: "/v1/orgs/{org_id}/groups"
@@ -70,10 +70,10 @@ service GroupService {
   // group must not have any read only fields set.  The update mask must be
   // included in the request and contain at least 1 mutable field.  To unset
   // a field's value, include the field in the update mask and don't set it
-  // in the provided group. An error is returned if either the organization
+  // in the provided group. An error is returned if either the org
   // or group ids are missing or reference a non existing resource.  An error
   // is also returned if the request attempts to update the name to one that is
-  // already in use in this organization.
+  // already in use in this org.
   rpc UpdateGroup(UpdateGroupRequest) returns (UpdateGroupResponse) {
     option (google.api.http) = {
       patch: "/v1/orgs/{org_id}/groups/{id}"

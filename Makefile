@@ -22,8 +22,9 @@ cleangen:
 	@rm -f ${GENERATED_CODE}
 
 dev: BUILD_TAGS+=dev
+dev: BUILD_TAGS+=ui
 dev: build-ui-ifne
-	@echo "==> Building Watchtower with dev features enabled"
+	@echo "==> Building Watchtower with dev and UI features enabled"
 	@CGO_ENABLED=$(CGO_ENABLED) BUILD_TAGS='$(BUILD_TAGS)' WATCHTOWER_DEV_BUILD=1 sh -c "'$(CURDIR)/scripts/build.sh'"
 
 build-ui:
@@ -66,6 +67,11 @@ protobuild:
 	@protoc --proto_path=internal/proto/local --proto_path=internal/proto/third_party --swagger_out=logtostderr=true,disable_default_errors=true,include_package_in_tags=true,fqn_for_swagger_name=true,allow_merge,merge_file_name=controller:internal/gen/. internal/proto/local/controller/api/services/v1/*.proto
 	@protoc-go-inject-tag -input=./internal/oplog/store/oplog.pb.go
 	@protoc-go-inject-tag -input=./internal/oplog/oplog_test/oplog_test.pb.go
+	@protoc-go-inject-tag -input=./internal/iam/store/group_member.pb.go
+	@protoc-go-inject-tag -input=./internal/iam/store/group.pb.go
+	@protoc-go-inject-tag -input=./internal/iam/store/role.pb.go
+	@protoc-go-inject-tag -input=./internal/iam/store/principal_role.pb.go
+	@protoc-go-inject-tag -input=./internal/iam/store/role_grant.pb.go
 	@protoc-go-inject-tag -input=./internal/iam/store/role.pb.go
 	@protoc-go-inject-tag -input=./internal/iam/store/user.pb.go
 	@protoc-go-inject-tag -input=./internal/iam/store/scope.pb.go

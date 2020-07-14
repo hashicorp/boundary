@@ -3,9 +3,10 @@ package controller
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
-	"path"
+	"os"
 	"strings"
 	"time"
 
@@ -15,16 +16,21 @@ import (
 	"github.com/hashicorp/watchtower/api"
 	"github.com/hashicorp/watchtower/globals"
 	"github.com/hashicorp/watchtower/internal/gen/controller/api/services"
+	"github.com/hashicorp/watchtower/internal/perms"
 	"github.com/hashicorp/watchtower/internal/servers/controller/handlers"
+	"github.com/hashicorp/watchtower/internal/servers/controller/handlers/authenticate"
 	"github.com/hashicorp/watchtower/internal/servers/controller/handlers/groups"
 	"github.com/hashicorp/watchtower/internal/servers/controller/handlers/host_catalogs"
 	"github.com/hashicorp/watchtower/internal/servers/controller/handlers/host_sets"
 	"github.com/hashicorp/watchtower/internal/servers/controller/handlers/hosts"
-	"github.com/hashicorp/watchtower/internal/servers/controller/handlers/organizations"
+	"github.com/hashicorp/watchtower/internal/servers/controller/handlers/orgs"
 	"github.com/hashicorp/watchtower/internal/servers/controller/handlers/projects"
 	"github.com/hashicorp/watchtower/internal/servers/controller/handlers/roles"
 	"github.com/hashicorp/watchtower/internal/servers/controller/handlers/users"
-	"github.com/hashicorp/watchtower/internal/ui"
+	"github.com/hashicorp/watchtower/internal/types/action"
+	"github.com/hashicorp/watchtower/internal/types/resource"
+	"github.com/hashicorp/watchtower/internal/types/scope"
+	"github.com/kr/pretty"
 )
 
 type HandlerProperties struct {
@@ -51,69 +57,11 @@ func (c *Controller) handler(props HandlerProperties) (http.Handler, error) {
 	return commonWrappedHandler, nil
 }
 
-func handleUi(c *Controller) http.Handler {
-	var nextHandler http.Handler
-	if c.conf.RawConfig.PassthroughDirectory != "" {
-		nextHandler = ui.DevPassthroughHandler(c.logger, c.conf.RawConfig.PassthroughDirectory)
-	} else {
-		nextHandler = http.FileServer(ui.AssetFile())
-	}
-
-	rootHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		switch r.URL.Path {
-		case "/":
-			irw := newIndexResponseWriter(c.conf.DefaultOrgId)
-			nextHandler.ServeHTTP(irw, r)
-			irw.writeToWriter(w)
-
-		default:
-			nextHandler.ServeHTTP(w, r)
-		}
-	})
-
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != http.MethodGet {
-			w.WriteHeader(http.StatusMethodNotAllowed)
-			return
-		}
-
-		dotIndex := strings.LastIndex(r.URL.Path, ".")
-		switch dotIndex {
-		case -1:
-			// For all paths without an extension serve /index.html
-			r.URL.Path = "/"
-
-		default:
-			switch r.URL.Path {
-			case "/", "/favicon.png", "/assets/styles.css":
-
-			default:
-				for i := dotIndex + 1; i < len(r.URL.Path); i++ {
-					intVal := r.URL.Path[i]
-					// Current guidance from FE is if it's only alphanum after
-					// the last dot, treat it as an extension
-					if intVal < '0' ||
-						(intVal > '9' && intVal < 'A') ||
-						(intVal > 'Z' && intVal < 'a') ||
-						intVal > 'z' {
-						// Not an extension. Serve the contents of index.html
-						r.URL.Path = "/"
-					}
-				}
-			}
-		}
-
-		// Fall through to the next handler
-		rootHandler.ServeHTTP(w, r)
-	})
-}
-
 func handleGrpcGateway(c *Controller) (http.Handler, error) {
 	// Register*ServiceHandlerServer methods ignore the passed in ctx.  Using the baseContext now just in case this changes
 	// in the future, at which point we'll want to be using the baseContext.
 	ctx := c.baseContext
-	mux := runtime.NewServeMux(runtime.WithMetadata(handlers.TokenAuthenticator(c.logger, c.AuthTokenRepoFn)),
-		runtime.WithProtoErrorHandler(handlers.ErrorHandler(c.logger)))
+	mux := runtime.NewServeMux(runtime.WithProtoErrorHandler(handlers.ErrorHandler(c.logger)))
 	hcs, err := host_catalogs.NewService(c.StaticHostRepoFn)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create host catalog handler service: %w", err)
@@ -127,12 +75,19 @@ func handleGrpcGateway(c *Controller) (http.Handler, error) {
 	if err := services.RegisterHostServiceHandlerServer(ctx, mux, &hosts.Service{}); err != nil {
 		return nil, fmt.Errorf("failed to register host service handler: %w", err)
 	}
-	os, err := organizations.NewService(c.IamRepoFn)
+	auths, err := authenticate.NewService(c.IamRepoFn, c.AuthTokenRepoFn)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create organization handler service: %w", err)
+		return nil, fmt.Errorf("failed to create authentication handler service: %w", err)
 	}
-	if err := services.RegisterOrganizationServiceHandlerServer(ctx, mux, os); err != nil {
-		return nil, fmt.Errorf("failed to register organization service handler: %w", err)
+	if err := services.RegisterAuthenticationServiceHandlerServer(ctx, mux, auths); err != nil {
+		return nil, fmt.Errorf("failed to register authenticate service handler: %w", err)
+	}
+	os, err := orgs.NewService(c.IamRepoFn)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create org handler service: %w", err)
+	}
+	if err := services.RegisterOrgServiceHandlerServer(ctx, mux, os); err != nil {
+		return nil, fmt.Errorf("failed to register org service handler: %w", err)
 	}
 	ps, err := projects.NewService(c.IamRepoFn)
 	if err != nil {
@@ -179,27 +134,76 @@ func wrapHandlerWithCommonFuncs(h http.Handler, c *Controller, props HandlerProp
 	if maxRequestSize == 0 {
 		maxRequestSize = globals.DefaultMaxRequestSize
 	}
-	var defaultOrgId string
-	if c != nil && c.conf != nil {
-		defaultOrgId = c.conf.DefaultOrgId
+
+	logUrls := os.Getenv("WATCHTOWER_LOG_URLS") != ""
+
+	disableAuthzFailures := c.conf.DisableAuthorizationFailures ||
+		(c.conf.RawConfig.DevController && os.Getenv("WATCHTOWER_DEV_SKIP_AUTHZ") != "")
+	if disableAuthzFailures {
+		c.logger.Warn("AUTHORIZATION CHECKING DISABLED")
 	}
+
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if defaultOrgId != "" {
-			splitPath := strings.Split(r.URL.Path, "/")
-			if len(splitPath) >= 3 && splitPath[2] == "projects" {
-				http.Redirect(w, r, path.Join("/v1/orgs", defaultOrgId, strings.Join(splitPath[2:], "/")), 307)
-				return
-			}
+		if logUrls {
+			c.logger.Trace("request received", "url", r.URL.String())
 		}
 
 		// Set the Cache-Control header for all responses returned
 		w.Header().Set("Cache-Control", "no-store")
 
-		// Start with the request context
-		ctx := r.Context()
-		var cancelFunc context.CancelFunc
-		// Add our timeout
-		ctx, cancelFunc = context.WithTimeout(ctx, maxRequestDuration)
+		// Start with the request context and our timeout
+		ctx, cancelFunc := context.WithTimeout(r.Context(), maxRequestDuration)
+		defer cancelFunc()
+
+		userId := "u_anon"
+		var res *perms.Resource
+		var act action.Type
+		var err error
+		var authzResults *perms.ACLResults
+
+		if r.Method == http.MethodOptions {
+			// Don't perform authorization checking for preflight requests, at
+			// least for now. We could add it later if we wanted as an action on
+			// global or something but likely it would just be enabled/disabled
+			// per listener instead.
+			goto AUTHZ_FINISHED
+		}
+
+		// Perform authz checking
+		res, act, err = decorateAuthParams(r)
+		if err != nil {
+			c.logger.Trace("error reading auth parameters from URL", "url", r.URL.Path, "error", err)
+			// Maybe this isn't the best option, but a URL we can't parse from
+			// an auth perspective is probably just an invalid URL altogether.
+			// Treating it as a bad request can be perceived to be less leaky
+			// than a 404.
+			w.WriteHeader(http.StatusBadRequest)
+			return
+		}
+
+		// The resource is only nil with no error if the path is something
+		// unauthenticated, e.g. the UI serving path.
+		if res != nil {
+			authzResults, userId, err = c.performAuthzCheck(ctx, r, res, act)
+			if err != nil {
+				c.logger.Error("error during authz check", "error", err)
+				w.WriteHeader(http.StatusForbidden)
+				return
+			}
+			if userId == "" || !authzResults.Allowed {
+				// TODO: Decide whether to remove this
+				if disableAuthzFailures {
+					c.logger.Info("failed authz info for request", "resource", pretty.Sprint(res), "user_id", userId, "action", act.String())
+				} else {
+					w.WriteHeader(http.StatusForbidden)
+					return
+				}
+			}
+		}
+
+	AUTHZ_FINISHED:
+		// Add the user ID to the context
+		ctx = context.WithValue(ctx, globals.ContextUserIdValue, userId)
 		// Add a size limiter if desired
 		if maxRequestSize > 0 {
 			ctx = context.WithValue(ctx, "max_request_size", maxRequestSize)
@@ -208,8 +212,6 @@ func wrapHandlerWithCommonFuncs(h http.Handler, c *Controller, props HandlerProp
 		r = r.WithContext(ctx)
 
 		h.ServeHTTP(w, r)
-		cancelFunc()
-		return
 	})
 }
 
@@ -261,8 +263,8 @@ func wrapHandlerWithCors(h http.Handler, props HandlerProperties) http.Handler {
 			w.WriteHeader(http.StatusForbidden)
 
 			err := &api.Error{
-				Status: api.Int(http.StatusForbidden),
-				Code:   api.String("origin forbidden"),
+				Status: http.StatusForbidden,
+				Code:   "origin forbidden",
 			}
 
 			enc := json.NewEncoder(w)
@@ -289,8 +291,275 @@ func wrapHandlerWithCors(h http.Handler, props HandlerProperties) http.Handler {
 		}
 
 		h.ServeHTTP(w, req)
-		return
 	})
+}
+
+func decorateAuthParams(r *http.Request) (*perms.Resource, action.Type, error) {
+	if r == nil {
+		return nil, action.Unknown, errors.New("decorate auth params: incoming request is nil")
+	}
+
+	// Remove trailing and leading slashes
+	trimmedPath := strings.Trim(r.URL.Path, "/")
+	if !strings.HasPrefix(trimmedPath, "v1") {
+		// Don't look for auth params for requests to fetch the UI
+		return nil, action.Unknown, nil
+	}
+	splitPath := strings.Split(strings.TrimPrefix(trimmedPath, "v1"), "/")
+	splitLen := len(splitPath)
+	if splitLen == 0 {
+		return nil, action.Unknown, fmt.Errorf("decorate auth params: invalid path")
+	}
+
+	var act action.Type
+	var typStr string
+	scp := scope.Global
+	res := &perms.Resource{
+		ScopeId: scope.Global.String(),
+	}
+
+	// Handle non-custom types. We'll deal with custom types, including list,
+	// after parsing the path.
+	switch r.Method {
+	case "GET":
+		act = action.Read
+	case "POST":
+		act = action.Create
+	case "PATCH":
+		act = action.Update
+	case "DELETE":
+		act = action.Delete
+	default:
+		return nil, action.Unknown, fmt.Errorf("decorate auth params: unknown method %q", r.Method)
+	}
+
+	// Look for a custom action
+	colonSplit := strings.Split(splitPath[splitLen-1], ":")
+	switch len(colonSplit) {
+	case 1:
+		// No custom action specified
+	case 2:
+		actStr := colonSplit[len(colonSplit)-1]
+		act = action.Map[actStr]
+		if act == action.Unknown || act == action.All {
+			return nil, action.Unknown, fmt.Errorf("decorate auth params: unknown action %q", actStr)
+		}
+		// Keep going with the logic without the custom action
+		splitPath[splitLen-1] = colonSplit[0]
+	default:
+		return nil, action.Unknown, fmt.Errorf("decorate auth params: unexpected number of colons in last segment %q", colonSplit[len(colonSplit)-1])
+	}
+
+	// Walk backwards. As we walk backwards we look for scopes and figure out if
+	// we're operating on a resource or a collection. We also populate the pin.
+	// The rules for the pin are as follows:
+	//
+	// * If the last segment is a collection, the pin is the immediately
+	// preceding ID
+	//
+	// * If the last segment is an ID, the pin is the immediately preceding ID
+	// not including the last segment
+	//
+	// * If at the end of the logic the pin is the id of a scope ("global",
+	// "o_...", "p_...") then there is no pin. The scopes are already enclosing
+	// so a pin is redundant.
+	nextIdIsPin := true
+	for i := splitLen - 1; i >= 0; i-- {
+		segment := splitPath[i]
+
+		// Collections don't contain underscores; every resource ID does.
+		segmentIsCollection := !strings.Contains(segment, "_")
+
+		if !segmentIsCollection && i != splitLen-1 && nextIdIsPin {
+			res.Pin = segment
+			nextIdIsPin = false
+		}
+
+		// Update the scope. Set it to org only if it's at global (that way we
+		// don't override project with org). We have to check if it's one less
+		// than the length of the split because operating on the id of a scope
+		// is actually in the enclosing scope (since you're in the parent scope
+		// operating on a child scope).
+		switch segment {
+		case "projects":
+			if i < splitLen-2 {
+				scp = scope.Project
+				res.ScopeId = splitPath[i+1]
+			}
+		case "orgs":
+			if scp == scope.Global {
+				if i < splitLen-2 {
+					scp = scope.Org
+					res.ScopeId = splitPath[i+1]
+				}
+			}
+		}
+
+		if segment == "" {
+			// This could be the case if we have an action like
+			// /orgs/o_1234/projects/p_1234/:set-defaults to act on the project
+			// itself but within its own scope
+			continue
+		}
+
+		if typStr == "" {
+			// The resource check takes place inside the type check because if
+			// we've identified the type we have either already identified the
+			// right-most resource ID or we're operating on a collection, so
+			// this prevents us from finding a different ID earlier in the path.
+			//
+			// We continue on with the enclosing loop anyways though to ensure
+			// we find the right scope.
+			if res.Id == "" && !segmentIsCollection {
+				res.Id = segment
+			} else {
+				// Every collection is the plural of the resource type so drop
+				// the last 's'
+				if !strings.HasSuffix(segment, "s") {
+					return nil, action.Unknown, fmt.Errorf("decorate auth params: invalid collection syntax for %q", segment)
+				}
+				typStr = strings.TrimSuffix(segment, "s")
+			}
+		}
+	}
+
+	if typStr != "" {
+		res.Type = resource.Map[typStr]
+		if res.Type == resource.Unknown {
+			return nil, action.Unknown, fmt.Errorf("decorate auth params: unknown resource type %q", typStr)
+		}
+	} else if res.Id == "" {
+		return nil, action.Unknown, errors.New("decorate auth params: id and type both not found")
+	}
+
+	// If we're operating on a collection (that is, the ID is blank) and it's a
+	// GET, it's actually a list
+	if res.Id == "" && act == action.Read {
+		act = action.List
+	}
+
+	// If the pin ended up being a scope, nil it out
+	if res.Pin != "" {
+		if res.Pin == "global" ||
+			strings.HasPrefix(res.Pin, "o_") ||
+			strings.HasPrefix(res.Pin, "p_") {
+			res.Pin = ""
+		}
+	}
+
+	return res, act, nil
+}
+
+type tokenFormat int
+
+const (
+	authTokenTypeUnknown tokenFormat = iota
+	authTokenTypeBearer
+	authTokenTypeSplitCookie
+)
+
+const (
+	headerAuthMethod    = "Authorization"
+	httpOnlyCookieName  = "wt-http-token-cookie"
+	jsVisibleCookieName = "wt-js-token-cookie"
+)
+
+func (c *Controller) performAuthzCheck(ctx context.Context, req *http.Request, res *perms.Resource, act action.Type) (*perms.ACLResults, string, error) {
+	userId := "u_anon"
+
+	if res == nil {
+		return nil, userId, errors.New("perform authz check: res is nil")
+	}
+	var receivedTokenType tokenFormat
+	var fullToken, token, publicId string
+
+	// First, get the token, either from the authorization header or from split
+	// cookies
+	{
+		if authHeader := req.Header.Get("Authorization"); authHeader != "" {
+			headerSplit := strings.SplitN(strings.TrimSpace(authHeader), " ", 2)
+			if len(headerSplit) == 2 && strings.EqualFold(strings.TrimSpace(headerSplit[0]), "bearer") {
+				receivedTokenType = authTokenTypeBearer
+				fullToken = strings.TrimSpace(headerSplit[1])
+			}
+		}
+		if receivedTokenType != authTokenTypeBearer {
+			var httpCookiePayload string
+			var jsCookiePayload string
+			if hc, err := req.Cookie(httpOnlyCookieName); err == nil {
+				httpCookiePayload = hc.Value
+			}
+			if jc, err := req.Cookie(jsVisibleCookieName); err == nil {
+				jsCookiePayload = jc.Value
+			}
+			if httpCookiePayload != "" && jsCookiePayload != "" {
+				receivedTokenType = authTokenTypeSplitCookie
+				fullToken = jsCookiePayload + httpCookiePayload
+			}
+		}
+
+		if receivedTokenType == authTokenTypeUnknown || fullToken == "" {
+			// We didn't find auth info or a client screwed up and put in a
+			// blank header instead of nothing at all, so carry on as the
+			// anonymous user
+			goto GRANTSLOOKUP
+		}
+
+		splitFullToken := strings.Split(fullToken, "_")
+		if len(splitFullToken) != 3 {
+			return nil, userId, fmt.Errorf("perform authz check: unexpected number of segments in token, expected %d, found %d", 3, len(splitFullToken))
+		}
+
+		token = splitFullToken[2]
+		publicId = strings.Join(splitFullToken[0:2], "_")
+
+		if receivedTokenType == authTokenTypeUnknown || token == "" || publicId == "" {
+			return nil, userId, fmt.Errorf("perform authz check: after parsing, could not find valid token")
+		}
+	}
+
+	// Validate the token and fetch the corresponding user ID
+	{
+		tokenRepo, err := c.AuthTokenRepoFn()
+		if err != nil {
+			return nil, userId, fmt.Errorf("perform authz check: failed to get authtoken repo: %w", err)
+		}
+
+		at, err := tokenRepo.ValidateToken(ctx, publicId, token)
+		if err != nil {
+			return nil, userId, fmt.Errorf("perform authz check: failed to validate token: %w", err)
+		}
+		if at != nil {
+			userId = at.GetIamUserId()
+		}
+	}
+
+GRANTSLOOKUP:
+	var parsedGrants []perms.Grant
+	var grantPairs []perms.GrantPair
+	// Fetch and parse grants for this user ID
+	{
+		iamRepo, err := c.IamRepoFn()
+		if err != nil {
+			return nil, userId, fmt.Errorf("perform authz check: failed to get iam repo: %w", err)
+		}
+		grantPairs, err = iamRepo.GrantsForUser(ctx, userId)
+		if err != nil {
+			return nil, userId, fmt.Errorf("perform authz check: failed to query for user grants: %w", err)
+		}
+		parsedGrants = make([]perms.Grant, 0, len(grantPairs))
+		for _, pair := range grantPairs {
+			parsed, err := perms.Parse(pair.ScopeId, userId, pair.Grant)
+			if err != nil {
+				return nil, userId, fmt.Errorf("perform authz check: failed to parse grant %#v: %w", pair.Grant, err)
+			}
+			parsedGrants = append(parsedGrants, parsed)
+		}
+	}
+
+	acl := perms.NewACL(parsedGrants...)
+	allowed := acl.Allowed(*res, act)
+	return &allowed, userId, nil
 }
 
 /*

@@ -157,14 +157,14 @@ func TestList(t *testing.T) {
 		},
 		{
 			name:    "Invalid Org Id",
-			req:     &pbs.ListProjectsRequest{OrgId: scope.Organization.Prefix() + "_this is invalid"},
+			req:     &pbs.ListProjectsRequest{OrgId: scope.Org.Prefix() + "_this is invalid"},
 			res:     nil,
 			errCode: codes.InvalidArgument,
 		},
 		// TODO: When an org doesn't exist, we should return a 404 instead of an empty list.
 		{
 			name:    "Unfound Org",
-			req:     &pbs.ListProjectsRequest{OrgId: scope.Organization.Prefix() + "_DoesntExis"},
+			req:     &pbs.ListProjectsRequest{OrgId: scope.Org.Prefix() + "_DoesntExis"},
 			res:     &pbs.ListProjectsResponse{},
 			errCode: codes.OK,
 		},

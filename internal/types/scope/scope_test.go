@@ -6,7 +6,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func Test_StringToScopeType(t *testing.T) {
+func Test_Map(t *testing.T) {
 	tests := []struct {
 		name       string
 		s          string
@@ -14,9 +14,15 @@ func Test_StringToScopeType(t *testing.T) {
 		wantPrefix string
 	}{
 		{
+			name:       "global",
+			s:          "global",
+			want:       Global,
+			wantPrefix: "global",
+		},
+		{
 			name:       "org",
-			s:          "organization",
-			want:       Organization,
+			s:          "org",
+			want:       Org,
 			wantPrefix: "o",
 		},
 		{
@@ -27,7 +33,7 @@ func Test_StringToScopeType(t *testing.T) {
 		},
 		{
 			name:       "unknown",
-			s:          "org",
+			s:          "blahblah",
 			want:       Unknown,
 			wantPrefix: "unknown",
 		},
@@ -35,7 +41,7 @@ func Test_StringToScopeType(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			assert := assert.New(t)
-			got := StringToScopeType(tt.s)
+			got := Map[tt.s]
 			assert.Equal(tt.want, got)
 			assert.Equalf(tt.wantPrefix, got.Prefix(), "unexpected prefix for %s", tt.s)
 		})

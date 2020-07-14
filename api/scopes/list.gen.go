@@ -11,13 +11,13 @@ import (
 	"github.com/hashicorp/watchtower/api/users"
 )
 
-func (s Organization) ListProjects(ctx context.Context) ([]*Project, *api.Error, error) {
+func (s Org) ListProjects(ctx context.Context) ([]*Project, *api.Error, error) {
 	if s.Client == nil {
 		return nil, nil, fmt.Errorf("nil client in ListProject request")
 	}
 	if s.Id == "" {
 
-		// Assume the client has been configured with organization already and
+		// Assume the client has been configured with org already and
 		// move on
 
 	} else {
@@ -58,13 +58,13 @@ func (s Organization) ListProjects(ctx context.Context) ([]*Project, *api.Error,
 	return target.Items, apiErr, nil
 }
 
-func (s Organization) ListGroups(ctx context.Context) ([]*groups.Group, *api.Error, error) {
+func (s Org) ListGroups(ctx context.Context) ([]*groups.Group, *api.Error, error) {
 	if s.Client == nil {
 		return nil, nil, fmt.Errorf("nil client in ListGroup request")
 	}
 	if s.Id == "" {
 
-		// Assume the client has been configured with organization already and
+		// Assume the client has been configured with org already and
 		// move on
 
 	} else {
@@ -104,13 +104,13 @@ func (s Organization) ListGroups(ctx context.Context) ([]*groups.Group, *api.Err
 	return target.Items, apiErr, nil
 }
 
-func (s Organization) ListRoles(ctx context.Context) ([]*roles.Role, *api.Error, error) {
+func (s Org) ListRoles(ctx context.Context) ([]*roles.Role, *api.Error, error) {
 	if s.Client == nil {
 		return nil, nil, fmt.Errorf("nil client in ListRole request")
 	}
 	if s.Id == "" {
 
-		// Assume the client has been configured with organization already and
+		// Assume the client has been configured with org already and
 		// move on
 
 	} else {
@@ -150,13 +150,13 @@ func (s Organization) ListRoles(ctx context.Context) ([]*roles.Role, *api.Error,
 	return target.Items, apiErr, nil
 }
 
-func (s Organization) ListUsers(ctx context.Context) ([]*users.User, *api.Error, error) {
+func (s Org) ListUsers(ctx context.Context) ([]*users.User, *api.Error, error) {
 	if s.Client == nil {
 		return nil, nil, fmt.Errorf("nil client in ListUser request")
 	}
 	if s.Id == "" {
 
-		// Assume the client has been configured with organization already and
+		// Assume the client has been configured with org already and
 		// move on
 
 	} else {
