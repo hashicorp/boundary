@@ -7,7 +7,6 @@ option go_package = "github.com/hashicorp/watchtower/internal/gen/controller/api
 import "protoc-gen-swagger/options/annotations.proto";
 import "google/api/annotations.proto";
 import "controller/api/resources/scopes/v1/org.proto";
-import "controller/api/resources/authtokens/v1/authtoken.proto";
 
 service OrgService {
 
@@ -33,28 +32,6 @@ service OrgService {
       summary: "Lists all Orgs"
     };
   }
-
-  // Authenticate validates credentials provided and returns an auth token.
-  rpc Authenticate(AuthenticateRequest) returns (AuthenticateResponse) {
-    option (google.api.http) = {
-      post: "/v1/orgs/{org_id}:authenticate"
-      body: "*"
-      response_body: "item"
-    };
-    option (grpc.gateway.protoc_gen_swagger.options.openapiv2_operation) = {
-      summary: "Authenticate a user to an Org and retrieve an authentication token."
-    };
-  }
-
-  // Logout terminates a user's current session.
-  rpc Deauthenticate(DeauthenticateRequest) returns (DeauthenticateResponse) {
-    option (google.api.http) = {
-      post: "/v1/orgs/{org_id}:deauthenticate"
-    };
-    option (grpc.gateway.protoc_gen_swagger.options.openapiv2_operation) = {
-      summary: "Deauthenticate an authentication token from an Org."
-    };
-  }
 }
 
 message GetOrgRequest {
@@ -73,28 +50,3 @@ message ListOrgsRequest {
 message ListOrgsResponse {
   repeated resources.scopes.v1.Org items = 1;
 }
-
-message PasswordCredential {
-  string login_name = 1;
-  string password = 2;
-}
-
-message AuthenticateRequest {
-  string org_id = 1;
-  // The id to the authmethod in the system being used for authentication.  The auth method must be in the org
-  // being logged in to.
-  string auth_method_id = 2;
-  // This can be "cookie" or "token".  If not provided, "token" will be used.  For now only type "token" is returned.
-  string token_type = 3;
-
-  PasswordCredential password_credential = 4;
-}
-
-message AuthenticateResponse {
-  resources.authtokens.v1.AuthToken item = 1;
-}
-
-message DeauthenticateRequest {
-  string org_id = 1;
-}
-message DeauthenticateResponse {}

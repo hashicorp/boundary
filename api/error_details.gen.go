@@ -3,6 +3,7 @@ package api
 
 import (
 	"encoding/json"
+	"strings"
 
 	"github.com/fatih/structs"
 
@@ -12,17 +13,31 @@ import (
 type ErrorDetails struct {
 	defaultFields []string
 
-	TraceId       *string       `json:"TraceId,omitempty"`
-	RequestId     *string       `json:"request_id,omitempty"`
+	TraceId       string        `json:"TraceId,omitempty"`
+	RequestId     string        `json:"request_id,omitempty"`
 	RequestFields []*FieldError `json:"request_fields,omitempty"`
 }
 
 func (s *ErrorDetails) SetDefault(key string) {
-	s.defaultFields = strutil.AppendIfMissing(s.defaultFields, key)
+	lowerKey := strings.ToLower(key)
+	validMap := map[string]string{"requestfields": "request_fields", "requestid": "request_id", "traceid": "TraceId"}
+	for k, v := range validMap {
+		if k == lowerKey || v == lowerKey {
+			s.defaultFields = strutil.AppendIfMissing(s.defaultFields, v)
+			return
+		}
+	}
 }
 
 func (s *ErrorDetails) UnsetDefault(key string) {
-	s.defaultFields = strutil.StrListDelete(s.defaultFields, key)
+	lowerKey := strings.ToLower(key)
+	validMap := map[string]string{"requestfields": "request_fields", "requestid": "request_id", "traceid": "TraceId"}
+	for k, v := range validMap {
+		if k == lowerKey || v == lowerKey {
+			s.defaultFields = strutil.StrListDelete(s.defaultFields, v)
+			return
+		}
+	}
 }
 
 func (s ErrorDetails) MarshalJSON() ([]byte, error) {

@@ -27,6 +27,7 @@ import (
 	"github.com/hashicorp/watchtower/globals"
 	"github.com/hashicorp/watchtower/internal/db"
 	"github.com/hashicorp/watchtower/internal/iam"
+	"github.com/hashicorp/watchtower/internal/servers/controller/handlers/authenticate"
 	"github.com/hashicorp/watchtower/version"
 	"github.com/jinzhu/gorm"
 	"github.com/mitchellh/cli"
@@ -59,7 +60,8 @@ type Server struct {
 
 	Listeners []*ServerListener
 
-	DefaultOrgId string
+	DefaultOrgId    string
+	DevAuthMethodId string
 
 	DevDatabaseUrl         string
 	DevDatabaseCleanupFunc func() error
@@ -418,40 +420,86 @@ func (b *Server) CreateDevDatabase(dialect string) error {
 		cancel()
 	}()
 
-	var scope *iam.Scope
+	var orgScope *iam.Scope
 	if b.DefaultOrgId != "" {
-		scope, err = repo.LookupScope(ctx, b.DefaultOrgId)
+		orgScope, err = repo.LookupScope(ctx, b.DefaultOrgId)
 		if err != nil {
 			c()
 			return fmt.Errorf("error looking up existing scope with org ID %q: %w", b.DefaultOrgId, err)
 		}
-		if scope != nil {
-			goto INFO
-		}
 	}
 
-	scope, err = iam.NewOrg()
-	if err != nil {
-		c()
-		return fmt.Errorf("error creating new org scope: %w", err)
-	}
-	scope, err = repo.CreateScope(ctx, scope, iam.WithPublicId(b.DefaultOrgId))
-	if err != nil {
-		c()
-		return fmt.Errorf("error persisting new org scope: %w", err)
-	}
-	if b.DefaultOrgId != "" {
-		if scope.GetPublicId() != b.DefaultOrgId {
+	if orgScope == nil {
+		orgScope, err = iam.NewOrg()
+		if err != nil {
 			c()
-			return fmt.Errorf("expected org ID %q, got %q after persisting", b.DefaultOrgId, scope.GetPublicId())
+			return fmt.Errorf("error creating new org scope: %w", err)
 		}
-	} else {
-		b.DefaultOrgId = scope.GetPublicId()
+		orgScope, err = repo.CreateScope(ctx, orgScope, iam.WithPublicId(b.DefaultOrgId))
+		if err != nil {
+			c()
+			return fmt.Errorf("error persisting new org scope: %w", err)
+		}
+		if b.DefaultOrgId != "" {
+			if orgScope.GetPublicId() != b.DefaultOrgId {
+				c()
+				return fmt.Errorf("expected org ID %q, got %q after persisting", b.DefaultOrgId, orgScope.GetPublicId())
+			}
+		} else {
+			b.DefaultOrgId = orgScope.GetPublicId()
+		}
 	}
 
-INFO:
-	b.InfoKeys = append(b.InfoKeys, "dev org id")
+	ar, err := iam.NewRole(orgScope.PublicId)
+	if err != nil {
+		return fmt.Errorf("error creating in memory role for anon authen: %w", err)
+	}
+	authenRole, err := repo.CreateRole(ctx, ar, iam.WithDescription("role for anon authen"))
+	if err != nil {
+		return fmt.Errorf("error creating role for anon authen: %w", err)
+	}
+	if _, err := repo.AddRoleGrants(ctx, authenRole.PublicId, authenRole.Version, []string{"type=auth-method;actions=list,authenticate"}); err != nil {
+		return fmt.Errorf("error creating grant for anon authen: %w", err)
+	}
+	if _, err := repo.AddPrincipalRoles(ctx, authenRole.PublicId, authenRole.Version+1, []string{"u_anon"}, nil); err != nil {
+		return fmt.Errorf("error adding principal to role for anon authen: %w", err)
+	}
+
+	pr, err := iam.NewRole(orgScope.PublicId)
+	if err != nil {
+		return fmt.Errorf("error creating in memory role for default dev grants: %w", err)
+	}
+	defPermsRole, err := repo.CreateRole(ctx, pr, iam.WithDescription("role for def grants"))
+	if err != nil {
+		return fmt.Errorf("error creating role for default dev grants: %w", err)
+	}
+	if _, err := repo.AddRoleGrants(ctx, defPermsRole.PublicId, defPermsRole.Version, []string{"id=*;actions=*"}); err != nil {
+		return fmt.Errorf("error creating grant for default dev grants: %w", err)
+	}
+	if _, err := repo.AddPrincipalRoles(ctx, defPermsRole.PublicId, defPermsRole.Version+1, []string{"u_auth"}, nil); err != nil {
+		return fmt.Errorf("error adding principal to role for default dev grants: %w", err)
+	}
+
+	// TODO: Remove this when Auth Account repo is in place.
+	authenticate.OrgScope = orgScope.GetPublicId()
+	insert := `insert into auth_method
+	(public_id, scope_id)
+	values
+	($1, $2);`
+	amId := b.DevAuthMethodId
+	if amId == "" {
+		amId = "am_1234567890"
+	}
+	authenticate.RWDb.Store(rw)
+	_, err = b.Database.DB().Exec(insert, amId, orgScope.GetPublicId())
+	if err != nil {
+		c()
+		return err
+	}
+
+	b.InfoKeys = append(b.InfoKeys, "dev org id", "dev auth method id")
 	b.Info["dev org id"] = b.DefaultOrgId
+	b.Info["dev auth method id"] = amId
 
 	return nil
 }

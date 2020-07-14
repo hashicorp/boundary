@@ -12,6 +12,13 @@ import (
 	"github.com/hashicorp/watchtower/internal/types/scope"
 )
 
+// GrantPair is simply a struct that can be reference from other code to return
+// a set of scopes and grants to parse
+type GrantPair struct {
+	ScopeId string
+	Grant   string
+}
+
 // Scope provides an in-memory representation of iam.Scope without the
 // underlying storage references or capabilities.
 type Scope struct {
@@ -123,7 +130,10 @@ func (g *Grant) unmarshalJSON(data []byte) error {
 		if !ok {
 			return fmt.Errorf("unable to interpret %q as string", "type")
 		}
-		g.typ = resource.StringToResourceType(typ)
+		g.typ = resource.Map[typ]
+		if g.typ == resource.Unknown {
+			return fmt.Errorf("unknown type specifier %q", typ)
+		}
 	}
 	if rawActions, ok := raw["actions"]; ok {
 		interfaceActions, ok := rawActions.([]interface{})
@@ -169,7 +179,7 @@ func (g *Grant) unmarshalText(grantString string) error {
 
 		case "type":
 			typeString := strings.ToLower(kv[1])
-			g.typ = resource.StringToResourceType(typeString)
+			g.typ = resource.Map[typeString]
 			if g.typ == resource.Unknown {
 				return fmt.Errorf("unknown type specifier %q", typeString)
 			}
@@ -273,6 +283,7 @@ func (g Grant) validateType() error {
 		resource.HostCatalog,
 		resource.HostSet,
 		resource.Host,
+		resource.Org,
 		resource.Target:
 		return nil
 	}

@@ -72,6 +72,46 @@
         ]
       }
     },
+    "/v1/orgs/{org_id}/auth-methods/{auth_method_id}:authenticate": {
+      "post": {
+        "summary": "Authenticate a user to an Org and retrieve an authentication token.",
+        "operationId": "AuthenticationService_Authenticate",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/controller.api.resources.authtokens.v1.AuthToken"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "org_id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "auth_method_id",
+            "description": "The id to the authmethod in the system being used for authentication.  The auth method must be in the org\nbeing logged in to.",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/controller.api.services.v1.AuthenticateRequest"
+            }
+          }
+        ],
+        "tags": [
+          "controller.api.services.v1.AuthenticationService"
+        ]
+      }
+    },
     "/v1/orgs/{org_id}/groups": {
       "get": {
         "summary": "Lists all Groups",
@@ -3051,43 +3091,10 @@
         ]
       }
     },
-    "/v1/orgs/{org_id}:authenticate": {
-      "post": {
-        "summary": "Authenticate a user to an Org and retrieve an authentication token.",
-        "operationId": "OrgService_Authenticate",
-        "responses": {
-          "200": {
-            "description": "",
-            "schema": {
-              "$ref": "#/definitions/controller.api.resources.authtokens.v1.AuthToken"
-            }
-          }
-        },
-        "parameters": [
-          {
-            "name": "org_id",
-            "in": "path",
-            "required": true,
-            "type": "string"
-          },
-          {
-            "name": "body",
-            "in": "body",
-            "required": true,
-            "schema": {
-              "$ref": "#/definitions/controller.api.services.v1.AuthenticateRequest"
-            }
-          }
-        ],
-        "tags": [
-          "controller.api.services.v1.OrgService"
-        ]
-      }
-    },
     "/v1/orgs/{org_id}:deauthenticate": {
       "post": {
         "summary": "Deauthenticate an authentication token from an Org.",
-        "operationId": "OrgService_Deauthenticate",
+        "operationId": "AuthenticationService_Deauthenticate",
         "responses": {
           "200": {
             "description": "A successful response.",
@@ -3105,7 +3112,7 @@
           }
         ],
         "tags": [
-          "controller.api.services.v1.OrgService"
+          "controller.api.services.v1.AuthenticationService"
         ]
       }
     }
@@ -3339,6 +3346,26 @@
       },
       "title": "HostSet is a collection of Hosts created and managed by a HostCatalog"
     },
+    "controller.api.resources.roles.v1.Principal": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "The ID of the principal.\nOutput only.",
+          "readOnly": true
+        },
+        "type": {
+          "type": "string",
+          "description": "The type of the principal.\nOutput only.",
+          "readOnly": true
+        },
+        "scope_id": {
+          "type": "string",
+          "description": "The scope ID of the principal.\nOutput only.",
+          "readOnly": true
+        }
+      }
+    },
     "controller.api.resources.roles.v1.Role": {
       "type": "object",
       "properties": {
@@ -3382,20 +3409,20 @@
           "description": "The version can be used in subsiquent write requests to ensure this resource\nhas not changed and to fail the write if it has.\nOutput only.",
           "readOnly": true
         },
-        "user_ids": {
+        "principal_ids": {
           "type": "array",
           "items": {
             "type": "string"
           },
-          "description": "The principals that are assigned this role.\nOutput only.",
+          "description": "The IDs (only) of principals that are assigned to this role.\nOutput only.",
           "readOnly": true
         },
-        "group_ids": {
+        "principals": {
           "type": "array",
           "items": {
-            "type": "string"
+            "$ref": "#/definitions/controller.api.resources.roles.v1.Principal"
           },
-          "description": "Output only.",
+          "description": "The principals that are assigned to this role.\nOutput only.",
           "readOnly": true
         },
         "grants": {
@@ -3403,7 +3430,7 @@
           "items": {
             "type": "string"
           },
-          "description": "The grants that this role provides for it's principals.\nOutput only.",
+          "description": "The grants that this role provides for its principals.\nOutput only.",
           "readOnly": true
         },
         "grants_canonical": {
@@ -3578,13 +3605,7 @@
           "format": "int64",
           "description": "The version ensures the role hasn't changed since it was last retrieved and if\nit has the request will fail."
         },
-        "user_ids": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          }
-        },
-        "group_ids": {
+        "principal_ids": {
           "type": "array",
           "items": {
             "type": "string"
@@ -3617,8 +3638,9 @@
           "type": "string",
           "description": "This can be \"cookie\" or \"token\".  If not provided, \"token\" will be used.  For now only type \"token\" is returned."
         },
-        "password_credential": {
-          "$ref": "#/definitions/controller.api.services.v1.PasswordCredential"
+        "credentials": {
+          "type": "object",
+          "description": "credentials are the different possible credential names depending on what type of auth method is used.\nFor password auth method: should include only \"name\" and \"password\"."
         }
       }
     },
@@ -3925,17 +3947,6 @@
         }
       }
     },
-    "controller.api.services.v1.PasswordCredential": {
-      "type": "object",
-      "properties": {
-        "login_name": {
-          "type": "string"
-        },
-        "password": {
-          "type": "string"
-        }
-      }
-    },
     "controller.api.services.v1.RemoveFromHostSetResponse": {
       "type": "object"
     },
@@ -3989,13 +4000,7 @@
           "format": "int64",
           "description": "The version ensures the role hasn't changed since it was last retrieved and if\nit has the request will fail."
         },
-        "user_ids": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          }
-        },
-        "group_ids": {
+        "principal_ids": {
           "type": "array",
           "items": {
             "type": "string"
@@ -4061,13 +4066,7 @@
           "format": "int64",
           "description": "The version ensures the role hasn't changed since it was last retrieved and if\nit has the request will fail."
         },
-        "user_ids": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          }
-        },
-        "group_ids": {
+        "principal_ids": {
           "type": "array",
           "items": {
             "type": "string"
