@@ -18,11 +18,6 @@ import (
 	"github.com/mitchellh/cli"
 )
 
-type WatchtowerUI struct {
-	cli.Ui
-	format string
-}
-
 // setupEnv parses args and may replace them and sets some env vars to known
 // values based on format options
 func setupEnv(args []string) (retArgs []string, format string, outputCurlString bool) {
@@ -128,7 +123,7 @@ func RunCustom(args []string, runOpts *RunOptions) int {
 		uiErrWriter = ioutil.Discard
 	}
 
-	ui := &WatchtowerUI{
+	ui := &base.WatchtowerUI{
 		Ui: &cli.ColoredUi{
 			ErrorColor: cli.UiColorRed,
 			WarnColor:  cli.UiColorYellow,
@@ -138,10 +133,10 @@ func RunCustom(args []string, runOpts *RunOptions) int {
 				ErrorWriter: uiErrWriter,
 			},
 		},
-		format: format,
+		Format: format,
 	}
 
-	serverCmdUi := &WatchtowerUI{
+	serverCmdUi := &base.WatchtowerUI{
 		Ui: &cli.ColoredUi{
 			ErrorColor: cli.UiColorRed,
 			WarnColor:  cli.UiColorYellow,
@@ -150,10 +145,10 @@ func RunCustom(args []string, runOpts *RunOptions) int {
 				Writer: runOpts.Stdout,
 			},
 		},
-		format: format,
+		Format: format,
 	}
 
-	if _, ok := Formatters[format]; !ok {
+	if _, ok := base.Formatters[format]; !ok {
 		ui.Error(fmt.Sprintf("Invalid output format: %s", format))
 		return 1
 	}

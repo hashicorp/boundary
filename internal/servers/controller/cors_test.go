@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/hashicorp/watchtower/internal/cmd/config"
 )
@@ -65,8 +66,9 @@ func TestHandler_CORS(t *testing.T) {
 		t.Fatal(err)
 	}
 	tc := NewTestController(t, &TestControllerOpts{
-		Config:       cfg,
-		DefaultOrgId: "o_1234567890",
+		Config:                       cfg,
+		DefaultOrgId:                 "o_1234567890",
+		DisableAuthorizationFailures: true,
 	})
 	defer tc.Shutdown()
 
@@ -161,12 +163,13 @@ func TestHandler_CORS(t *testing.T) {
 		t.Run(c.name, func(t *testing.T) {
 			// Create a client with the right address
 			client := tc.Client()
-			client.SetAddr(tc.ApiAddrs()[c.listenerNum-1])
+			err := client.SetAddr(tc.ApiAddrs()[c.listenerNum-1])
+			require.NoError(t, err)
 			client.SetOrg("o_1234567890")
 
 			// Create the request
 			req, err := client.NewRequest(tc.Context(), c.method, "projects", nil)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 
 			// Append headers
 			if c.origin != "" {
@@ -178,7 +181,7 @@ func TestHandler_CORS(t *testing.T) {
 
 			// Run the request, do basic checks
 			resp, err := client.Do(req)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			assert.Equal(t, c.code, resp.HttpResponse().StatusCode)
 
 			// If options and we expect it to be successful, run some checks

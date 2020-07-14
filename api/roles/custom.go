@@ -7,16 +7,17 @@ import (
 	"github.com/hashicorp/watchtower/api"
 )
 
-func (s Role) AddPrincipals(ctx context.Context, groups, users []string) (*Role, *api.Error, error) {
+func (s Role) AddPrincipals(ctx context.Context, principalIds []string) (*Role, *api.Error, error) {
 	if s.Client == nil {
 		return nil, nil, fmt.Errorf("nil client in AddPrincipals request")
 	}
 	// We assume that the client provided has the org and optionally the project id of the request.
 
 	body := map[string]interface{}{
-		"group_ids": groups,
-		"user_ids":  users,
-		"version":   s.Version,
+		"version": s.Version,
+	}
+	if len(principalIds) > 0 {
+		body["principal_ids"] = principalIds
 	}
 
 	req, err := s.Client.NewRequest(ctx, "POST", fmt.Sprintf("roles/%s:add-principals", s.Id), body)
@@ -40,16 +41,20 @@ func (s Role) AddPrincipals(ctx context.Context, groups, users []string) (*Role,
 	return target, apiErr, nil
 }
 
-func (s Role) SetPrincipals(ctx context.Context, groups, users []string) (*Role, *api.Error, error) {
+func (s Role) SetPrincipals(ctx context.Context, principalIds []string) (*Role, *api.Error, error) {
 	if s.Client == nil {
 		return nil, nil, fmt.Errorf("nil client in SetPrincipals request")
 	}
 	// We assume that the client provided has the org and optionally the project id of the request.
 
 	body := map[string]interface{}{
-		"group_ids": groups,
-		"user_ids":  users,
-		"version":   s.Version,
+		"version": s.Version,
+	}
+	if len(principalIds) > 0 {
+		body["principal_ids"] = principalIds
+	} else if principalIds != nil {
+		// In this function, a non-nil but empty list means clear out
+		body["principal_ids"] = nil
 	}
 
 	req, err := s.Client.NewRequest(ctx, "POST", fmt.Sprintf("roles/%s:set-principals", s.Id), body)
@@ -73,16 +78,17 @@ func (s Role) SetPrincipals(ctx context.Context, groups, users []string) (*Role,
 	return target, apiErr, nil
 }
 
-func (s Role) RemovePrincipals(ctx context.Context, groups, users []string) (*Role, *api.Error, error) {
+func (s Role) RemovePrincipals(ctx context.Context, principalIds []string) (*Role, *api.Error, error) {
 	if s.Client == nil {
 		return nil, nil, fmt.Errorf("nil client in RemovePrincipals request")
 	}
 	// We assume that the client provided has the org and optionally the project id of the request.
 
 	body := map[string]interface{}{
-		"group_ids": groups,
-		"user_ids":  users,
-		"version":   s.Version,
+		"version": s.Version,
+	}
+	if len(principalIds) > 0 {
+		body["principal_ids"] = principalIds
 	}
 
 	req, err := s.Client.NewRequest(ctx, "POST", fmt.Sprintf("roles/%s:remove-principals", s.Id), body)
@@ -113,8 +119,10 @@ func (s Role) AddGrants(ctx context.Context, grants []string) (*Role, *api.Error
 	// We assume that the client provided has the org and optionally the project id of the request.
 
 	body := map[string]interface{}{
-		"grants":  grants,
 		"version": s.Version,
+	}
+	if len(grants) > 0 {
+		body["grants"] = grants
 	}
 
 	req, err := s.Client.NewRequest(ctx, "POST", fmt.Sprintf("roles/%s:add-grants", s.Id), body)
@@ -145,8 +153,12 @@ func (s Role) SetGrants(ctx context.Context, grants []string) (*Role, *api.Error
 	// We assume that the client provided has the org and optionally the project id of the request.
 
 	body := map[string]interface{}{
-		"grants":  grants,
 		"version": s.Version,
+	}
+	if len(grants) > 0 {
+		body["grants"] = grants
+	} else if grants != nil {
+		body["grants"] = nil
 	}
 
 	req, err := s.Client.NewRequest(ctx, "POST", fmt.Sprintf("roles/%s:set-grants", s.Id), body)
@@ -177,8 +189,10 @@ func (s Role) RemoveGrants(ctx context.Context, grants []string) (*Role, *api.Er
 	// We assume that the client provided has the org and optionally the project id of the request.
 
 	body := map[string]interface{}{
-		"grants":  grants,
 		"version": s.Version,
+	}
+	if len(grants) > 0 {
+		body["grants"] = grants
 	}
 
 	req, err := s.Client.NewRequest(ctx, "POST", fmt.Sprintf("roles/%s:remove-grants", s.Id), body)

@@ -3,6 +3,7 @@ package scopes
 
 import (
 	"encoding/json"
+	"strings"
 	"time"
 
 	"github.com/fatih/structs"
@@ -32,11 +33,25 @@ type Org struct {
 }
 
 func (s *Org) SetDefault(key string) {
-	s.defaultFields = strutil.AppendIfMissing(s.defaultFields, key)
+	lowerKey := strings.ToLower(key)
+	validMap := map[string]string{"createdtime": "created_time", "description": "description", "id": "id", "name": "name", "updatedtime": "updated_time"}
+	for k, v := range validMap {
+		if k == lowerKey || v == lowerKey {
+			s.defaultFields = strutil.AppendIfMissing(s.defaultFields, v)
+			return
+		}
+	}
 }
 
 func (s *Org) UnsetDefault(key string) {
-	s.defaultFields = strutil.StrListDelete(s.defaultFields, key)
+	lowerKey := strings.ToLower(key)
+	validMap := map[string]string{"createdtime": "created_time", "description": "description", "id": "id", "name": "name", "updatedtime": "updated_time"}
+	for k, v := range validMap {
+		if k == lowerKey || v == lowerKey {
+			s.defaultFields = strutil.StrListDelete(s.defaultFields, v)
+			return
+		}
+	}
 }
 
 func (s Org) MarshalJSON() ([]byte, error) {

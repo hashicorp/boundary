@@ -12,8 +12,6 @@ import (
 	"github.com/hashicorp/watchtower/internal/servers/controller/common"
 	"github.com/hashicorp/watchtower/internal/servers/controller/handlers"
 	"github.com/hashicorp/watchtower/internal/types/scope"
-	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 )
 
@@ -61,16 +59,6 @@ func (s Service) GetOrg(ctx context.Context, req *pbs.GetOrgRequest) (*pbs.GetOr
 		return nil, err
 	}
 	return &pbs.GetOrgResponse{Item: o}, nil
-}
-
-// Authenticate implements the interface pbs.OrgServiceServer.
-func (s Service) Authenticate(ctx context.Context, req *pbs.AuthenticateRequest) (*pbs.AuthenticateResponse, error) {
-	return nil, status.Error(codes.Unimplemented, "Requested method is unimplemented for Orgs.")
-}
-
-// Deauthenticate implements the interface pbs.OrgServiceServer.
-func (s Service) Deauthenticate(ctx context.Context, req *pbs.DeauthenticateRequest) (*pbs.DeauthenticateResponse, error) {
-	return nil, status.Error(codes.Unimplemented, "Requested method is unimplemented for Orgs.")
 }
 
 func (s Service) getFromRepo(ctx context.Context, id string) (*pb.Org, error) {

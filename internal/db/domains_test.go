@@ -11,7 +11,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestDomain_PublicPrivateId(t *testing.T) {
+func TestDomain_Ids(t *testing.T) {
 	const (
 		createTableBase = `
 create table if not exists test_table_{{rep}}_id (
@@ -29,7 +29,7 @@ returning id;
 	conn, _ := TestSetup(t, "postgres")
 	db := conn.DB()
 
-	for _, typ := range []string{"public", "private"} {
+	for _, typ := range []string{"public", "private", "role", "scope"} {
 		createTable := strings.Replace(createTableBase, "{{rep}}", typ, -1)
 		insert := strings.Replace(insertBase, "{{rep}}", typ, -1)
 
@@ -37,17 +37,44 @@ returning id;
 			t.Fatalf("query: \n%s\n error: %s", createTable, err)
 		}
 
-		failTests := []string{
-			" ",
-			"bar",
-			"00000009",
+		failTests := []struct {
+			value     string
+			exception string
+		}{
+			{
+				" ",
+				"",
+			},
+			{
+				"bar",
+				"",
+			},
+			{
+				"00000009",
+				"",
+			},
+			{
+				"r_default",
+				"role",
+			},
+			{
+				"global",
+				"scope",
+			},
 		}
 		for _, tt := range failTests {
-			value := tt
-			t.Run(tt, func(t *testing.T) {
-				t.Logf("insert value: %q", value)
-				if _, err := db.Query(insert, value); err == nil {
-					t.Errorf("want error, got no error for inserting public_id: %s", value)
+			t.Run(tt.value, func(t *testing.T) {
+				t.Logf("insert value: %q", tt.value)
+				_, err := db.Query(insert, tt.value)
+				switch {
+				case err == nil && tt.exception != typ:
+					t.Errorf("want error, got no error for inserting public_id: %s", tt.value)
+				case err == nil && tt.exception == typ:
+					// All good
+				case err != nil && tt.exception != typ:
+					// All good
+				default:
+					t.Fatal("unhandled")
 				}
 			})
 		}
@@ -344,4 +371,33 @@ returning public_id;
 	err = db.QueryRow(search, id).Scan(&v)
 	require.NoError(err)
 	assert.Equal(3, v)
+}
+
+func TestDomain_DisallowDefaultRoleModification(t *testing.T) {
+	conn, _ := TestSetup(t, "postgres")
+	db := conn.DB()
+
+	_, err := db.Exec(`delete from iam_role where public_id = $1`, "r_default")
+	require.Error(t, err)
+	assert.Equal(t, `pq: deletion of default role not allowed`, err.Error())
+
+	// This actually tests not just default, but all roles
+	_, err = db.Exec(`update iam_role set public_id = $1 where public_id = $2`, "r_something", "r_default")
+	require.Error(t, err)
+	assert.Equal(t, `pq: update of role primary key not allowed`, err.Error())
+}
+
+func TestDomain_DefaultUsersExist(t *testing.T) {
+	conn, _ := TestSetup(t, "postgres")
+	db := conn.DB()
+
+	for _, val := range []string{"u_anon", "u_auth"} {
+		rows, err := db.Query(`select from iam_user where public_id = $1`, val)
+		require.NoError(t, err)
+		var count int
+		for rows.Next() {
+			count++
+		}
+		assert.Equal(t, 1, count)
+	}
 }

@@ -43,7 +43,7 @@ Usage: watchtower projects create
 }
 
 func (c *CreateProjectCommand) Flags() *base.FlagSets {
-	set := c.FlagSet(base.FlagSetHTTP | base.FlagSetOutputFormat)
+	set := c.FlagSet(base.FlagSetHTTP | base.FlagSetClient | base.FlagSetOutputFormat)
 
 	f := set.NewFlagSet("Command Options")
 
@@ -105,8 +105,11 @@ func (c *CreateProjectCommand) Run(args []string) int {
 	case apiErr != nil:
 		c.UI.Error(pretty.Sprint(apiErr))
 		return 2
-	default:
-		c.UI.Info(pretty.Sprint(project))
+	}
+
+	switch base.Format(c.UI) {
+	case "table":
+		c.UI.Output(printProject(project))
 	}
 
 	return 0
