@@ -5,16 +5,16 @@ import (
 	"github.com/hashicorp/watchtower/api"
 )
 
-type Principal struct {
+type GrantJson struct {
 	Client *api.Client `json:"-"`
 
-	// The ID of the principal.
+	// The ID, if set.
 	// Output only.
 	Id string `json:"id,omitempty"`
-	// The type of the principal.
+	// The type, if set.
 	// Output only.
 	Type string `json:"type,omitempty"`
-	// The scope ID of the principal.
+	// The actions.
 	// Output only.
-	ScopeId string `json:"scope_id,omitempty"`
+	Actions []string `json:"actions,omitempty"`
 }
