@@ -17,7 +17,10 @@ func (r *Repository) AddPrincipalRoles(ctx context.Context, roleId string, roleV
 	if roleId == "" {
 		return nil, fmt.Errorf("add principal roles: missing role id: %w", db.ErrInvalidParameter)
 	}
-	userIds, groupIds := splitPrincipals(principalIds)
+	userIds, groupIds, err := splitPrincipals(principalIds)
+	if err != nil {
+		return nil, fmt.Errorf("add principal roles: error parsing principals: %w", err)
+	}
 	if len(userIds) == 0 && len(groupIds) == 0 {
 		return nil, fmt.Errorf("add principal roles: missing either user or groups to add: %w", db.ErrInvalidParameter)
 	}
@@ -129,7 +132,10 @@ func (r *Repository) SetPrincipalRoles(ctx context.Context, roleId string, roleV
 	// it's "safe" to do this lookup outside the DoTx transaction because we
 	// have a roleVersion so the principals can’t change without the version
 	// changing.
-	userIds, groupIds := splitPrincipals(principalIds)
+	userIds, groupIds, err := splitPrincipals(principalIds)
+	if err != nil {
+		return nil, db.NoRowsAffected, fmt.Errorf("set principal roles: error parsing principals: %w", err)
+	}
 	toSet, err := r.principalsToSet(ctx, &role, userIds, groupIds)
 	if err != nil {
 		return nil, db.NoRowsAffected, fmt.Errorf("set principal roles: unable to determine set: %w", err)
@@ -250,7 +256,10 @@ func (r *Repository) DeletePrincipalRoles(ctx context.Context, roleId string, ro
 	if roleId == "" {
 		return db.NoRowsAffected, fmt.Errorf("delete principal roles: missing role id: %w", db.ErrInvalidParameter)
 	}
-	userIds, groupIds := splitPrincipals(principalIds)
+	userIds, groupIds, err := splitPrincipals(principalIds)
+	if err != nil {
+		return db.NoRowsAffected, fmt.Errorf("remove principal roles: error parsing principals: %w", err)
+	}
 	if len(userIds) == 0 && len(groupIds) == 0 {
 		return db.NoRowsAffected, fmt.Errorf("delete principal roles: missing either user or groups to delete: %w", db.ErrInvalidParameter)
 	}
@@ -446,7 +455,7 @@ func (r *Repository) principalsToSet(ctx context.Context, role *Role, userIds, g
 	return toSet, nil
 }
 
-func splitPrincipals(principals []string) ([]string, []string) {
+func splitPrincipals(principals []string) ([]string, []string, error) {
 	var users, groups []string
 	for _, principal := range principals {
 		switch {
@@ -455,8 +464,10 @@ func splitPrincipals(principals []string) ([]string, []string) {
 		// TODO: This needs to handle all of the kinds of group prefixes (sg_, dg_, etc.)
 		case strings.HasPrefix(principal, GroupPrefix):
 			groups = append(groups, principal)
+		default:
+			return nil, nil, fmt.Errorf("invalid principal ID %q: %w", principal, db.ErrInvalidParameter)
 		}
 	}
 
-	return users, groups
+	return users, groups, nil
 }
