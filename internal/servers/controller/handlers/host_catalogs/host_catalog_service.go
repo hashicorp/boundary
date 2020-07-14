@@ -219,6 +219,9 @@ func (s Service) updateInRepo(ctx context.Context, projId, id string, mask []str
 	}
 	h.PublicId = id
 	dbMask := maskManager.Translate(mask)
+	if len(dbMask) == 0 {
+		return nil, handlers.InvalidArgumentErrorf("No valid fields included in the update mask.", map[string]string{"update_mask": "No valid paths provided in the update mask."})
+	}
 	repo, err := s.staticRepoFn()
 	if err != nil {
 		return nil, err

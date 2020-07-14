@@ -14,7 +14,7 @@ import (
 )
 
 func TestCatalogs_Crud(t *testing.T) {
-	tc := controller.NewTestController(t, nil)
+	tc := controller.NewTestController(t, &controller.TestControllerOpts{DisableAuthorizationFailures: true})
 	defer tc.Shutdown()
 
 	client := tc.Client()
@@ -68,7 +68,7 @@ func TestCatalogs_Crud(t *testing.T) {
 // TODO: Get better coverage for expected errors and error formats.
 func TestCatalogs_Errors(t *testing.T) {
 	assert := assert.New(t)
-	tc := controller.NewTestController(t, nil)
+	tc := controller.NewTestController(t, &controller.TestControllerOpts{DisableAuthorizationFailures: true})
 	defer tc.Shutdown()
 	ctx := tc.Context()
 
