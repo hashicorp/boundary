@@ -345,3 +345,17 @@ returning public_id;
 	require.NoError(err)
 	assert.Equal(3, v)
 }
+
+func TestDomain_DisallowDefaultRoleModification(t *testing.T) {
+	conn, _ := TestSetup(t, "postgres")
+	db := conn.DB()
+
+	_, err := db.Exec(`delete from iam_role where public_id = $1`, `r_default`)
+	require.Error(t, err)
+	assert.Equal(t, `pq: deletion of default role not allowed`, err.Error())
+
+	// This actually tests not just default, but all roles
+	_, err = db.Exec(`update iam_role set public_id = $1 where public_id = $2`, "r_something", "r_default")
+	require.Error(t, err)
+	assert.Equal(t, `pq: update of role primary key not allowed`, err.Error())
+}
