@@ -25,21 +25,21 @@ const (
 )
 
 var Map = map[string]Type{
-	"list":              List,
-	"create":            Create,
-	"update":            Update,
-	"read":              Read,
-	"delete":            Delete,
-	"authenticate":      Authenticate,
-	"*":                 All,
-	"connect":           Connect,
-	"add-grants":        AddGrants,
-	"remove-grants":     RemoveGrants,
-	"set-grants":        SetGrants,
-	"add-principals":    AddPrincipals,
-	"set-principals":    SetPrincipals,
-	"remove-principals": RemovePrincipals,
-	"deauthenticate":    Deauthenticate,
+	Create.String():           Create,
+	List.String():             List,
+	Update.String():           Update,
+	Read.String():             Read,
+	Delete.String():           Delete,
+	Authenticate.String():     Authenticate,
+	All.String():              All,
+	Connect.String():          Connect,
+	AddGrants.String():        AddGrants,
+	RemoveGrants.String():     RemoveGrants,
+	SetGrants.String():        SetGrants,
+	AddPrincipals.String():    AddPrincipals,
+	SetPrincipals.String():    SetPrincipals,
+	RemovePrincipals.String(): RemovePrincipals,
+	Deauthenticate.String():   Deauthenticate,
 }
 
 func (a Type) String() string {

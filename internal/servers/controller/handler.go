@@ -336,6 +336,7 @@ func decorateAuthParams(r *http.Request) (*perms.Resource, action.Type, error) {
 	colonSplit := strings.Split(splitPath[splitLen-1], ":")
 	switch len(colonSplit) {
 	case 1:
+		// No custom action specified
 	case 2:
 		actStr := colonSplit[len(colonSplit)-1]
 		act = action.Map[actStr]
