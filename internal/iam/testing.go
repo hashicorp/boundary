@@ -13,7 +13,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// TestScopes creates an organization and project suitable for testing.
+// TestScopes creates an org and project suitable for testing.
 func TestScopes(t *testing.T, conn *gorm.DB) (org *Scope, prj *Scope) {
 	t.Helper()
 	require := require.New(t)
@@ -22,7 +22,7 @@ func TestScopes(t *testing.T, conn *gorm.DB) (org *Scope, prj *Scope) {
 	repo, err := NewRepository(rw, rw, wrapper)
 	require.NoError(err)
 
-	org, err = NewOrganization()
+	org, err = NewOrg()
 	require.NoError(err)
 	org, err = repo.CreateScope(context.Background(), org)
 	require.NoError(err)
@@ -47,7 +47,7 @@ func testOrg(t *testing.T, conn *gorm.DB, name, description string) (org *Scope)
 	repo, err := NewRepository(rw, rw, wrapper)
 	require.NoError(err)
 
-	o, err := NewOrganization(WithDescription(description), WithName(name))
+	o, err := NewOrg(WithDescription(description), WithName(name))
 	require.NoError(err)
 	o, err = repo.CreateScope(context.Background(), o)
 	require.NoError(err)
@@ -88,7 +88,7 @@ func testPublicId(t *testing.T, prefix string) string {
 }
 
 // TestUser creates a user suitable for testing.
-func TestUser(t *testing.T, conn *gorm.DB, orgId string, opt ...Option) *User {
+func TestUser(t *testing.T, conn *gorm.DB, scopeId string, opt ...Option) *User {
 	t.Helper()
 	require := assert.New(t)
 	rw := db.New(conn)
@@ -96,7 +96,7 @@ func TestUser(t *testing.T, conn *gorm.DB, orgId string, opt ...Option) *User {
 	repo, err := NewRepository(rw, rw, wrapper)
 	require.NoError(err)
 
-	user, err := NewUser(orgId, opt...)
+	user, err := NewUser(scopeId, opt...)
 	require.NoError(err)
 	user, err = repo.CreateUser(context.Background(), user)
 	require.NoError(err)
@@ -125,6 +125,18 @@ func TestRole(t *testing.T, conn *gorm.DB, scopeId string, opt ...Option) *Role 
 	return role
 }
 
+func TestRoleGrant(t *testing.T, conn *gorm.DB, roleId, grant string, opt ...Option) *RoleGrant {
+	t.Helper()
+	require := require.New(t)
+	rw := db.New(conn)
+
+	g, err := NewRoleGrant(roleId, grant, opt...)
+	require.NoError(err)
+	err = rw.Create(context.Background(), g)
+	require.NoError(err)
+	return g
+}
+
 // TestGroup creates a group suitable for testing.
 func TestGroup(t *testing.T, conn *gorm.DB, scopeId string, opt ...Option) *Group {
 	t.Helper()
@@ -140,6 +152,43 @@ func TestGroup(t *testing.T, conn *gorm.DB, scopeId string, opt ...Option) *Grou
 	require.NoError(err)
 	require.NotEmpty(grp.PublicId)
 	return grp
+}
+
+func TestGroupMember(t *testing.T, conn *gorm.DB, groupId, userId string, opt ...Option) *GroupMemberUser {
+	t.Helper()
+	require := require.New(t)
+	rw := db.New(conn)
+	gm, err := NewGroupMemberUser(groupId, userId)
+	require.NoError(err)
+	require.NotNil(gm)
+	err = rw.Create(context.Background(), gm)
+	require.NoError(err)
+	require.NotEmpty(gm.CreateTime)
+	return gm
+}
+
+func TestUserRole(t *testing.T, conn *gorm.DB, roleId, userId string, opt ...Option) *UserRole {
+	t.Helper()
+	require := require.New(t)
+	rw := db.New(conn)
+	r, err := NewUserRole(roleId, userId, opt...)
+	require.NoError(err)
+
+	err = rw.Create(context.Background(), r)
+	require.NoError(err)
+	return r
+}
+
+func TestGroupRole(t *testing.T, conn *gorm.DB, roleId, grpId string, opt ...Option) *GroupRole {
+	t.Helper()
+	require := require.New(t)
+	rw := db.New(conn)
+	r, err := NewGroupRole(roleId, grpId, opt...)
+	require.NoError(err)
+
+	err = rw.Create(context.Background(), r)
+	require.NoError(err)
+	return r
 }
 
 // testAuthAccount is a temporary test function.  TODO - replace with an auth

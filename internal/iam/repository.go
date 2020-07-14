@@ -111,6 +111,12 @@ func (r *Repository) update(ctx context.Context, resource Resource, fieldMaskPat
 	}
 	metadata["op-type"] = []string{oplog.OpType_OP_TYPE_UPDATE.String()}
 
+	dbOpts := []db.Option{db.WithOplog(r.wrapper, metadata)}
+	opts := getOpts(opt...)
+	if opts.withSkipVetForWrite {
+		dbOpts = append(dbOpts, db.WithSkipVetForWrite(true))
+	}
+
 	var rowsUpdated int
 	var returnedResource interface{}
 	_, err = r.writer.DoTx(
@@ -125,7 +131,7 @@ func (r *Repository) update(ctx context.Context, resource Resource, fieldMaskPat
 				returnedResource,
 				fieldMaskPaths,
 				setToNullPaths,
-				db.WithOplog(r.wrapper, metadata),
+				dbOpts...,
 			)
 			if err == nil && rowsUpdated > 1 {
 				// return err, which will result in a rollback of the update
@@ -187,7 +193,7 @@ func (r *Repository) stdMetadata(ctx context.Context, resource Resource) (oplog.
 			}
 		}
 		switch newScope.Type {
-		case scope.Organization.String():
+		case scope.Org.String():
 			return oplog.Metadata{
 				"resource-public-id": []string{resource.GetPublicId()},
 				"scope-id":           []string{newScope.PublicId},

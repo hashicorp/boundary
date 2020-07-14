@@ -7,6 +7,7 @@ option go_package = "github.com/hashicorp/watchtower/internal/gen/controller/api
 import "protoc-gen-swagger/options/annotations.proto";
 import "google/api/annotations.proto";
 import "google/protobuf/field_mask.proto";
+import "google/protobuf/wrappers.proto";
 import "controller/api/resources/roles/v1/role.proto";
 
 service RoleService {
@@ -32,7 +33,7 @@ service RoleService {
   // ListRoles returns a list of stored roles which exist inside the org
   // referenced inside the request.  The request must include the org id for
   // the roles being retrieved.  If the org id is missing, malformed, or
-  // reference a non existing organization, an error is returned.
+  // reference a non existing org, an error is returned.
   rpc ListRoles(ListRolesRequest) returns (ListRolesResponse) {
     option (google.api.http) = {
       get: "/v1/orgs/{org_id}/roles"
@@ -48,8 +49,8 @@ service RoleService {
   // CreateRole creates and stores a role in watchtower.  The provided
   // request must include the org id in which the role will be created.
   // If the org id is missing, malformed or references a non existing
-  // organization, an error is returned.  If a name is provided that is in
-  // use in another role in the same organization, an error is returned.
+  // org, an error is returned.  If a name is provided that is in
+  // use in another role in the same org, an error is returned.
   rpc CreateRole(CreateRoleRequest) returns (CreateRoleResponse) {
     option (google.api.http) = {
       post: "/v1/orgs/{org_id}/roles"
@@ -70,10 +71,10 @@ service RoleService {
   // role must not have any read only fields set.  The update mask must be
   // included in the request and contain at least 1 mutable field.  To unset
   // a field's value, include the field in the update mask and don't set it
-  // in the provided role. An error is returned if either the organization
+  // in the provided role. An error is returned if either the org
   // or role ids are missing or reference a non existing resource.  An error
   // is also returned if the request attempts to update the name to one that is
-  // already in use in this organization.
+  // already in use in this org.
   rpc UpdateRole(UpdateRoleRequest) returns (UpdateRoleResponse) {
     option (google.api.http) = {
       patch: "/v1/orgs/{org_id}/roles/{id}"
@@ -106,6 +107,131 @@ service RoleService {
       summary: "Deletes a Role"
     };
   }
+
+  // AddRolePrincipals adds users and/or groups to a role.  The provided request must include
+  // the org id and the role id which the users and/or groups will be added to. If the
+  // org id is missing, malformed or references a non existing org,
+  // an error is returned.
+  rpc AddRolePrincipals(AddRolePrincipalsRequest) returns (AddRolePrincipalsResponse) {
+    option (google.api.http) = {
+      post: "/v1/orgs/{org_id}/roles/{role_id}:add-principals"
+      body: "*"
+      response_body: "item"
+      additional_bindings {
+        post: "/v1/orgs/{org_id}/projects/{project_id}/roles/{role_id}:add-principals"
+        body: "*"
+        response_body: "item"
+      }
+    };
+    option (grpc.gateway.protoc_gen_swagger.options.openapiv2_operation) = {
+      summary: "Adds Users and/or Groups to a Role"
+    };
+  }
+
+  // SetRolePrincipals sets the role's users and/or groups.  Any existing principals on
+  // the role are deleted if they are not included in this request.  The provided
+  // request must include the org id and the role id which the users and/or groups
+  // will be set to. If the org id is missing, malformed or references a non
+  // existing org, an error is returned.
+  rpc SetRolePrincipals(SetRolePrincipalsRequest) returns (SetRolePrincipalsResponse) {
+    option (google.api.http) = {
+      post: "/v1/orgs/{org_id}/roles/{role_id}:set-principals"
+      body: "*"
+      response_body: "item"
+      additional_bindings {
+        post: "/v1/orgs/{org_id}/projects/{project_id}/roles/{role_id}:set-principals"
+        body: "*"
+        response_body: "item"
+      }
+    };
+    option (grpc.gateway.protoc_gen_swagger.options.openapiv2_operation) = {
+      summary: "Set Users and/or Groups to a Role, removing any principals that are not specified in the request."
+    };
+  }
+
+  // RemoveRolePrincipals removes the users and/or groups from the specified role.
+  // The provided request must include the org id and the role id which the users
+  // and/or groups will be removed from. If the org id is missing, malformed or references a non
+  // existing org, an error is returned.  It is not an error to have duplicate
+  // user/group ids.
+  rpc RemoveRolePrincipals(RemoveRolePrincipalsRequest) returns (RemoveRolePrincipalsResponse) {
+    option (google.api.http) = {
+      post: "/v1/orgs/{org_id}/roles/{role_id}:remove-principals"
+      body: "*"
+      response_body: "item"
+      additional_bindings {
+        post: "/v1/orgs/{org_id}/projects/{project_id}/roles/{role_id}:remove-principals"
+        body: "*"
+        response_body: "item"
+      }
+    };
+    option (grpc.gateway.protoc_gen_swagger.options.openapiv2_operation) = {
+      summary: "Removes the specified Users and/or Groups from a Role."
+    };
+  }
+
+  // AddRoleGrants adds grants to a role.  The provided request must include
+  // the org id and the role id which the grants will be added to. If the
+  // org id is missing, malformed or references a non existing org,
+  // an error is returned.  It is not an error to have duplicate grants.
+  rpc AddRoleGrants(AddRoleGrantsRequest) returns (AddRoleGrantsResponse) {
+    option (google.api.http) = {
+      post: "/v1/orgs/{org_id}/roles/{role_id}:add-grants"
+      body: "*"
+      response_body: "item"
+      additional_bindings {
+        post: "/v1/orgs/{org_id}/projects/{project_id}/roles/{role_id}:add-grants"
+        body: "*"
+        response_body: "item"
+      }
+    };
+    option (grpc.gateway.protoc_gen_swagger.options.openapiv2_operation) = {
+      summary: "Adds grants to a role"
+    };
+  }
+
+  // SetRoleGrants sets the role's grants.  Any existing grants on the role are
+  // deleted if they are not included in this request.  The provided request must
+  // include the org id and the role id which the grants will be set to. If the
+  // org id is missing, malformed or references a non existing org, an
+  // error is returned.  It is not an error to have duplicate grants.
+  rpc SetRoleGrants(SetRoleGrantsRequest) returns (SetRoleGrantsResponse) {
+    option (google.api.http) = {
+      post: "/v1/orgs/{org_id}/roles/{role_id}:set-grants"
+      body: "*"
+      response_body: "item"
+      additional_bindings {
+        post: "/v1/orgs/{org_id}/projects/{project_id}/roles/{role_id}:set-grants"
+        body: "*"
+        response_body: "item"
+      }
+    };
+    option (grpc.gateway.protoc_gen_swagger.options.openapiv2_operation) = {
+      summary: "Set grants for a role, removing any grants that are not specified in the request."
+    };
+  }
+
+  // RemoveRoleGrants removes the users and/or groups from the specified role.
+  // The provided request must include the org id and the role id which the users
+  // and/or groups will be removed from. If the org id is missing, malformed or references a non
+  // existing org, an error is returned.  It is not an error to have duplicate
+  // user/group ids.
+  rpc RemoveRoleGrants(RemoveRoleGrantsRequest) returns (RemoveRoleGrantsResponse) {
+    option (google.api.http) = {
+      post: "/v1/orgs/{org_id}/roles/{role_id}:remove-grants"
+      body: "*"
+      response_body: "item"
+      additional_bindings {
+        post: "/v1/orgs/{org_id}/projects/{project_id}/roles/{role_id}:remove-grants"
+        body: "*"
+        response_body: "item"
+      }
+    };
+    option (grpc.gateway.protoc_gen_swagger.options.openapiv2_operation) = {
+      summary: "Removes grants from a role."
+    };
+  }
+
 }
 
 message GetRoleRequest {
@@ -140,6 +266,7 @@ message CreateRoleResponse {
   resources.roles.v1.Role item = 2;
 }
 
+// TODO: Add versions to Update and Delete role requests.
 message UpdateRoleRequest {
   string org_id = 1;
   string project_id = 2;
@@ -160,4 +287,91 @@ message DeleteRoleRequest {
 
 message DeleteRoleResponse {
   bool existed = 1;
+}
+
+message AddRolePrincipalsRequest {
+  string org_id = 1;
+  string project_id = 2;
+  string role_id = 3;
+  // The version ensures the role hasn't changed since it was last retrieved and if
+  // it has the request will fail.
+  google.protobuf.UInt32Value version = 4;
+  repeated string user_ids = 5 [json_name="user_ids"];
+  repeated string group_ids = 6 [json_name="group_ids"];
+}
+
+message AddRolePrincipalsResponse {
+  resources.roles.v1.Role item = 1;
+}
+
+message SetRolePrincipalsRequest {
+  string org_id = 1;
+  string project_id = 2;
+  string role_id = 3;
+  // The version ensures the role hasn't changed since it was last retrieved and if
+  // it has the request will fail.
+  google.protobuf.UInt32Value version = 4;
+  repeated string user_ids = 5 [json_name="user_ids"];
+  repeated string group_ids = 6 [json_name="group_ids"];
+}
+
+message SetRolePrincipalsResponse {
+  resources.roles.v1.Role item = 1;
+}
+
+message RemoveRolePrincipalsRequest {
+  string org_id = 1;
+  string project_id = 2;
+  string role_id = 3;
+  // The version ensures the role hasn't changed since it was last retrieved and if
+  // it has the request will fail.
+  google.protobuf.UInt32Value version = 4;
+  repeated string user_ids = 5 [json_name="user_ids"];
+  repeated string group_ids = 6 [json_name="group_ids"];
+}
+
+message RemoveRolePrincipalsResponse {
+  resources.roles.v1.Role item = 1;
+}
+
+message AddRoleGrantsRequest {
+  string org_id = 1;
+  string project_id = 2;
+  string role_id = 3;
+  // The version ensures the role hasn't changed since it was last retrieved and if
+  // it has the request will fail.
+  google.protobuf.UInt32Value version = 4;
+  repeated string grants = 5 [json_name="grants"];
+}
+
+message AddRoleGrantsResponse {
+  resources.roles.v1.Role item = 1;
+}
+
+message SetRoleGrantsRequest {
+  string org_id = 1;
+  string project_id = 2;
+  string role_id = 3;
+  // The version ensures the role hasn't changed since it was last retrieved and if
+  // it has the request will fail.
+  google.protobuf.UInt32Value version = 4;
+  repeated string grants = 5 [json_name="grants"];
+}
+
+message SetRoleGrantsResponse {
+  resources.roles.v1.Role item = 1;
+}
+
+message RemoveRoleGrantsRequest {
+  string org_id = 1;
+  string project_id = 2;
+  string role_id = 3;
+  // The version ensures the role hasn't changed since it was last retrieved and if
+  // it has the request will fail.
+  google.protobuf.UInt32Value version = 4;
+  repeated string grants = 5 [json_name="grants"];
+}
+
+message RemoveRoleGrantsResponse {
+  resources.roles.v1.Role item = 1;
 }

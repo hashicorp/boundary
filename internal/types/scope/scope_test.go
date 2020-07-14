@@ -14,9 +14,15 @@ func Test_StringToScopeType(t *testing.T) {
 		wantPrefix string
 	}{
 		{
+			name:       "global",
+			s:          "global",
+			want:       Global,
+			wantPrefix: "global",
+		},
+		{
 			name:       "org",
-			s:          "organization",
-			want:       Organization,
+			s:          "org",
+			want:       Org,
 			wantPrefix: "o",
 		},
 		{
@@ -27,7 +33,7 @@ func Test_StringToScopeType(t *testing.T) {
 		},
 		{
 			name:       "unknown",
-			s:          "org",
+			s:          "blahblah",
 			want:       Unknown,
 			wantPrefix: "unknown",
 		},

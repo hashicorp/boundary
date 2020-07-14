@@ -8,9 +8,10 @@ import (
 )
 
 const (
-	UserPrefix  = "u"
-	GroupPrefix = "g"
-	RolePrefix  = "r"
+	UserPrefix      = "u"
+	GroupPrefix     = "g"
+	RolePrefix      = "r"
+	RoleGrantPrefix = "rg"
 )
 
 func newRoleId() (string, error) {

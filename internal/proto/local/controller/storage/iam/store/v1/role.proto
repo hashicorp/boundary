@@ -34,5 +34,15 @@ message Role {
 
   // disabled is by default false and allows a Role to be marked disabled.
   // @inject_tag: `gorm:"default:null"`
-  bool disabled = 9;
+  bool disabled = 8;
+
+  // version allows optimistic locking of the role when modifying the role
+  // itself and when modifying dependent items like principal roles.
+  // @inject_tag: `gorm:"default:null"`
+  uint32 version = 9;
+
+  // grant_scope_id is used for delegating access; it defines a scope other than
+  // the role's scope that is used when compiling these grants into an ACL
+  // @inject_tag: `gorm:"default:null"`
+  string grant_scope_id = 10;
 }

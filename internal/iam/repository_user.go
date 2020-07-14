@@ -28,7 +28,7 @@ func (r *Repository) CreateUser(ctx context.Context, user *User, opt ...Option) 
 	resource, err := r.create(ctx, u.(*User))
 	if err != nil {
 		if db.IsUniqueError(err) {
-			return nil, fmt.Errorf("create user: user %s already exists in organization %s", user.Name, user.ScopeId)
+			return nil, fmt.Errorf("create user: user %s already exists in org %s", user.Name, user.ScopeId)
 		}
 		return nil, fmt.Errorf("create user: %w for %s", err, u.(*User).PublicId)
 	}
@@ -66,11 +66,12 @@ func (r *Repository) UpdateUser(ctx context.Context, user *User, fieldMaskPaths 
 	if len(dbMask) == 0 && len(nullFields) == 0 {
 		return nil, db.NoRowsAffected, fmt.Errorf("update user: %w", db.ErrEmptyFieldMask)
 	}
+
 	u := user.Clone()
-	resource, rowsUpdated, err := r.update(ctx, u.(*User), dbMask, nullFields)
+	resource, rowsUpdated, err := r.update(ctx, u.(*User), dbMask, nullFields, opt...)
 	if err != nil {
 		if db.IsUniqueError(err) {
-			return nil, db.NoRowsAffected, fmt.Errorf("update user: user %s already exists in organization %s", user.Name, user.ScopeId)
+			return nil, db.NoRowsAffected, fmt.Errorf("update user: user %s already exists in org %s", user.Name, user.ScopeId)
 		}
 		return nil, db.NoRowsAffected, fmt.Errorf("update user: %w for %s", err, user.PublicId)
 	}
@@ -109,13 +110,13 @@ func (r *Repository) DeleteUser(ctx context.Context, withPublicId string, opt ..
 	return rowsDeleted, nil
 }
 
-// ListUsers in an organization and supports the WithLimit option.
-func (r *Repository) ListUsers(ctx context.Context, withOrganizationId string, opt ...Option) ([]*User, error) {
-	if withOrganizationId == "" {
-		return nil, fmt.Errorf("list users: missing organization id %w", db.ErrInvalidParameter)
+// ListUsers in an org and supports the WithLimit option.
+func (r *Repository) ListUsers(ctx context.Context, withOrgId string, opt ...Option) ([]*User, error) {
+	if withOrgId == "" {
+		return nil, fmt.Errorf("list users: missing org id %w", db.ErrInvalidParameter)
 	}
 	var users []*User
-	err := r.list(ctx, &users, "scope_id = ?", []interface{}{withOrganizationId}, opt...)
+	err := r.list(ctx, &users, "scope_id = ?", []interface{}{withOrgId}, opt...)
 	if err != nil {
 		return nil, fmt.Errorf("list users: %w", err)
 	}
@@ -154,7 +155,7 @@ func (r *Repository) LookupUserWithLogin(ctx context.Context, withAuthAccountId 
 	metadata := oplog.Metadata{
 		"resource-public-id": []string{withAuthAccountId},
 		"scope-id":           []string{acct.ScopeId},
-		"scope-type":         []string{scope.Organization.String()},
+		"scope-type":         []string{scope.Org.String()},
 		"resource-type":      []string{"auth-account"},
 	}
 

@@ -43,6 +43,10 @@ func TokenAuthenticator(l hclog.Logger, tokenRepo common.AuthTokenRepoFactory) f
 			}
 		}
 
+		if tMD.recievedTokenType == authTokenTypeUnknown || tMD.token() == "" || tMD.publicId() == "" {
+			return tMD.toMetadata()
+		}
+
 		repo, err := tokenRepo()
 		if err != nil {
 			l.Error("failed to get authtoken repo", "error", err)
@@ -75,7 +79,7 @@ const (
 //      if !authorizer.isAuthorized(amd.UserId, "ReadResource", req.GetId()) { return nil, UnauthorizedError }
 //      ...
 //
-// A new token will be created by the Authenticate method on an Organization.  The token value will be returned
+// A new token will be created by the Authenticate method on an Org.  The token value will be returned
 // through json and not be intercepted by these tools.
 // TODO: Intercept the outgoing Authenticate/Deauthenticate response and manipulate
 //  the response if the token type was cookie.

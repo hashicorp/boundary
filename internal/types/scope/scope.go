@@ -4,15 +4,17 @@ package scope
 type Type uint32
 
 const (
-	Unknown      Type = 0
-	Organization Type = 1
-	Project      Type = 2
+	Unknown Type = 0
+	Global  Type = 1
+	Org     Type = 2
+	Project Type = 3
 )
 
 func (s Type) String() string {
 	return [...]string{
 		"unknown",
-		"organization",
+		"global",
+		"org",
 		"project",
 	}[s]
 }
@@ -20,6 +22,7 @@ func (s Type) String() string {
 func (s Type) Prefix() string {
 	return [...]string{
 		"unknown",
+		"global",
 		"o",
 		"p",
 	}[s]
@@ -27,8 +30,10 @@ func (s Type) Prefix() string {
 
 func StringToScopeType(s string) Type {
 	switch s {
-	case Organization.String():
-		return Organization
+	case Global.String():
+		return Global
+	case Org.String():
+		return Org
 	case Project.String():
 		return Project
 	default:

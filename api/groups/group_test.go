@@ -29,7 +29,7 @@ func TestGroup_List(t *testing.T) {
 	defer tc.Shutdown()
 
 	client := tc.Client()
-	org := &scopes.Organization{
+	org := &scopes.Org{
 		Client: client,
 	}
 	proj, apiErr, err := org.CreateProject(context.Background(), &scopes.Project{})
@@ -105,7 +105,7 @@ func TestGroup_Crud(t *testing.T) {
 	defer tc.Shutdown()
 
 	client := tc.Client()
-	org := &scopes.Organization{
+	org := &scopes.Org{
 		Client: client,
 	}
 
@@ -179,7 +179,7 @@ func TestGroup_Errors(t *testing.T) {
 	ctx := tc.Context()
 
 	client := tc.Client()
-	org := &scopes.Organization{
+	org := &scopes.Org{
 		Client: client,
 	}
 

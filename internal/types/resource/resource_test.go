@@ -33,8 +33,8 @@ func Test_Resource(t *testing.T) {
 			want:       Role,
 		},
 		{
-			typeString: "organization",
-			want:       Organization,
+			typeString: "org",
+			want:       Org,
 		},
 		{
 			typeString: "static-group-member",
@@ -87,6 +87,10 @@ func Test_Resource(t *testing.T) {
 		{
 			typeString: "target",
 			want:       Target,
+		},
+		{
+			typeString: "global",
+			want:       Global,
 		},
 	}
 	for _, tt := range tests {

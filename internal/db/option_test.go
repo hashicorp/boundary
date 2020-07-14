@@ -132,4 +132,18 @@ func Test_getOpts(t *testing.T) {
 		testOpts.WithVersion = 2
 		assert.Equal(opts, testOpts)
 	})
+	t.Run("WithSkipVetForWrite", func(t *testing.T) {
+		assert := assert.New(t)
+		// test default of false
+		opts := GetOpts()
+		testOpts := getDefaultOptions()
+		testOpts.withSkipVetForWrite = false
+		assert.Equal(opts, testOpts)
+
+		// try setting to false
+		opts = GetOpts(WithSkipVetForWrite(true))
+		testOpts = getDefaultOptions()
+		testOpts.withSkipVetForWrite = true
+		assert.Equal(opts, testOpts)
+	})
 }

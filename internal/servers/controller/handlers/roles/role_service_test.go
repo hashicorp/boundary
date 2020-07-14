@@ -33,7 +33,7 @@ func createDefaultRolesAndRepo(t *testing.T) (*iam.Role, *iam.Role, func() (*iam
 	}
 
 	o, p := iam.TestScopes(t, conn)
-	or := iam.TestRole(t, conn, o.GetPublicId(), iam.WithDescription("default"), iam.WithName("default"))
+	or := iam.TestRole(t, conn, o.GetPublicId(), iam.WithDescription("default"), iam.WithName("default"), iam.WithGrantScopeId(p.GetPublicId()))
 	pr := iam.TestRole(t, conn, p.GetPublicId(), iam.WithDescription("default"), iam.WithName("default"))
 	return or, pr, repoFn
 }
@@ -48,19 +48,23 @@ func TestGet(t *testing.T) {
 	}
 
 	wantOrgRole := &pb.Role{
-		Id:          or.GetPublicId(),
-		Name:        &wrapperspb.StringValue{Value: or.GetName()},
-		Description: &wrapperspb.StringValue{Value: or.GetDescription()},
-		CreatedTime: or.CreateTime.GetTimestamp(),
-		UpdatedTime: or.UpdateTime.GetTimestamp(),
+		Id:           or.GetPublicId(),
+		Name:         &wrapperspb.StringValue{Value: or.GetName()},
+		Description:  &wrapperspb.StringValue{Value: or.GetDescription()},
+		GrantScopeId: &wrapperspb.StringValue{Value: pr.GetGrantScopeId()},
+		CreatedTime:  or.CreateTime.GetTimestamp(),
+		UpdatedTime:  or.UpdateTime.GetTimestamp(),
+		Version:      or.GetVersion(),
 	}
 
 	wantProjRole := &pb.Role{
-		Id:          pr.GetPublicId(),
-		Name:        &wrapperspb.StringValue{Value: pr.GetName()},
-		Description: &wrapperspb.StringValue{Value: pr.GetDescription()},
-		CreatedTime: pr.CreateTime.GetTimestamp(),
-		UpdatedTime: pr.UpdateTime.GetTimestamp(),
+		Id:           pr.GetPublicId(),
+		Name:         &wrapperspb.StringValue{Value: pr.GetName()},
+		Description:  &wrapperspb.StringValue{Value: pr.GetDescription()},
+		GrantScopeId: &wrapperspb.StringValue{Value: pr.GetGrantScopeId()},
+		CreatedTime:  pr.CreateTime.GetTimestamp(),
+		UpdatedTime:  pr.UpdateTime.GetTimestamp(),
+		Version:      pr.GetVersion(),
 	}
 
 	cases := []struct {
@@ -148,15 +152,19 @@ func TestList(t *testing.T) {
 	for i := 0; i < 10; i++ {
 		or := iam.TestRole(t, conn, oWithRoles.GetPublicId())
 		wantOrgRoles = append(wantOrgRoles, &pb.Role{
-			Id:          or.GetPublicId(),
-			CreatedTime: or.GetCreateTime().GetTimestamp(),
-			UpdatedTime: or.GetUpdateTime().GetTimestamp(),
+			Id:           or.GetPublicId(),
+			CreatedTime:  or.GetCreateTime().GetTimestamp(),
+			UpdatedTime:  or.GetUpdateTime().GetTimestamp(),
+			GrantScopeId: &wrapperspb.StringValue{Value: or.GetGrantScopeId()},
+			Version:      or.GetVersion(),
 		})
 		pr := iam.TestRole(t, conn, pWithRoles.GetPublicId())
 		wantProjRoles = append(wantProjRoles, &pb.Role{
-			Id:          pr.GetPublicId(),
-			CreatedTime: pr.GetCreateTime().GetTimestamp(),
-			UpdatedTime: pr.GetUpdateTime().GetTimestamp(),
+			Id:           pr.GetPublicId(),
+			CreatedTime:  pr.GetCreateTime().GetTimestamp(),
+			UpdatedTime:  pr.GetUpdateTime().GetTimestamp(),
+			GrantScopeId: &wrapperspb.StringValue{Value: pr.GetGrantScopeId()},
+			Version:      pr.GetVersion(),
 		})
 	}
 
@@ -180,14 +188,14 @@ func TestList(t *testing.T) {
 		},
 		{
 			name:    "Invalid Org Id",
-			req:     &pbs.ListRolesRequest{OrgId: scope.Organization.Prefix() + "_this is invalid"},
+			req:     &pbs.ListRolesRequest{OrgId: scope.Org.Prefix() + "_this is invalid"},
 			res:     nil,
 			errCode: codes.InvalidArgument,
 		},
 		// TODO: When an org doesn't exist, we should return a 404 instead of an empty list.
 		{
 			name:    "Unfound Org",
-			req:     &pbs.ListRolesRequest{OrgId: scope.Organization.Prefix() + "_DoesntExis"},
+			req:     &pbs.ListRolesRequest{OrgId: scope.Org.Prefix() + "_DoesntExis"},
 			res:     &pbs.ListRolesResponse{},
 			errCode: codes.OK,
 		},
@@ -400,14 +408,17 @@ func TestCreate(t *testing.T) {
 		{
 			name: "Create a valid Role",
 			req: &pbs.CreateRoleRequest{Item: &pb.Role{
-				Name:        &wrapperspb.StringValue{Value: "name"},
-				Description: &wrapperspb.StringValue{Value: "desc"},
+				Name:         &wrapperspb.StringValue{Value: "name"},
+				Description:  &wrapperspb.StringValue{Value: "desc"},
+				GrantScopeId: &wrapperspb.StringValue{Value: defaultProjRole.ScopeId},
 			}},
 			res: &pbs.CreateRoleResponse{
 				Uri: fmt.Sprintf("orgs/%s/roles/%s_", defaultOrgRole.GetScopeId(), iam.RolePrefix),
 				Item: &pb.Role{
-					Name:        &wrapperspb.StringValue{Value: "name"},
-					Description: &wrapperspb.StringValue{Value: "desc"},
+					Name:         &wrapperspb.StringValue{Value: "name"},
+					Description:  &wrapperspb.StringValue{Value: "desc"},
+					GrantScopeId: &wrapperspb.StringValue{Value: defaultProjRole.ScopeId},
+					Version:      1,
 				},
 			},
 			errCode: codes.OK,
@@ -424,11 +435,26 @@ func TestCreate(t *testing.T) {
 			res: &pbs.CreateRoleResponse{
 				Uri: fmt.Sprintf("orgs/%s/projects/%s/roles/%s_", defaultOrgRole.GetScopeId(), defaultProjRole.GetScopeId(), iam.RolePrefix),
 				Item: &pb.Role{
-					Name:        &wrapperspb.StringValue{Value: "name"},
-					Description: &wrapperspb.StringValue{Value: "desc"},
+					Name:         &wrapperspb.StringValue{Value: "name"},
+					Description:  &wrapperspb.StringValue{Value: "desc"},
+					GrantScopeId: &wrapperspb.StringValue{Value: defaultProjRole.ScopeId},
+					Version:      1,
 				},
 			},
 			errCode: codes.OK,
+		},
+		{
+			name: "Invalid grant scope ID",
+			req: &pbs.CreateRoleRequest{
+				ProjectId: defaultProjRole.GetScopeId(),
+				Item: &pb.Role{
+					Name:         &wrapperspb.StringValue{Value: "name"},
+					Description:  &wrapperspb.StringValue{Value: "desc"},
+					GrantScopeId: &wrapperspb.StringValue{Value: defaultOrgRole.GetScopeId()},
+				},
+			},
+			res:     nil,
+			errCode: codes.InvalidArgument,
 		},
 		{
 			name: "Can't specify Id",
@@ -519,19 +545,21 @@ func TestUpdate(t *testing.T) {
 			name: "Update an Existing Role",
 			req: &pbs.UpdateRoleRequest{
 				UpdateMask: &field_mask.FieldMask{
-					Paths: []string{"name", "description"},
+					Paths: []string{"name", "description", "grant_scope_id"},
 				},
 				Item: &pb.Role{
-					Name:        &wrapperspb.StringValue{Value: "new"},
-					Description: &wrapperspb.StringValue{Value: "desc"},
+					Name:         &wrapperspb.StringValue{Value: "new"},
+					Description:  &wrapperspb.StringValue{Value: "desc"},
+					GrantScopeId: &wrapperspb.StringValue{Value: or.GetScopeId()},
 				},
 			},
 			res: &pbs.UpdateRoleResponse{
 				Item: &pb.Role{
-					Id:          or.GetPublicId(),
-					Name:        &wrapperspb.StringValue{Value: "new"},
-					Description: &wrapperspb.StringValue{Value: "desc"},
-					CreatedTime: or.GetCreateTime().GetTimestamp(),
+					Id:           or.GetPublicId(),
+					Name:         &wrapperspb.StringValue{Value: "new"},
+					Description:  &wrapperspb.StringValue{Value: "desc"},
+					CreatedTime:  or.GetCreateTime().GetTimestamp(),
+					GrantScopeId: &wrapperspb.StringValue{Value: or.GetScopeId()},
 				},
 			},
 			errCode: codes.OK,
@@ -549,10 +577,11 @@ func TestUpdate(t *testing.T) {
 			},
 			res: &pbs.UpdateRoleResponse{
 				Item: &pb.Role{
-					Id:          or.GetPublicId(),
-					Name:        &wrapperspb.StringValue{Value: "new"},
-					Description: &wrapperspb.StringValue{Value: "desc"},
-					CreatedTime: or.GetCreateTime().GetTimestamp(),
+					Id:           or.GetPublicId(),
+					Name:         &wrapperspb.StringValue{Value: "new"},
+					Description:  &wrapperspb.StringValue{Value: "desc"},
+					CreatedTime:  or.GetCreateTime().GetTimestamp(),
+					GrantScopeId: &wrapperspb.StringValue{Value: or.GetScopeId()},
 				},
 			},
 			errCode: codes.OK,
@@ -572,10 +601,11 @@ func TestUpdate(t *testing.T) {
 			},
 			res: &pbs.UpdateRoleResponse{
 				Item: &pb.Role{
-					Id:          pr.GetPublicId(),
-					Name:        &wrapperspb.StringValue{Value: "new"},
-					Description: &wrapperspb.StringValue{Value: "desc"},
-					CreatedTime: pr.GetCreateTime().GetTimestamp(),
+					Id:           pr.GetPublicId(),
+					Name:         &wrapperspb.StringValue{Value: "new"},
+					Description:  &wrapperspb.StringValue{Value: "desc"},
+					CreatedTime:  pr.GetCreateTime().GetTimestamp(),
+					GrantScopeId: &wrapperspb.StringValue{Value: pr.GetScopeId()},
 				},
 			},
 			errCode: codes.OK,
@@ -595,10 +625,11 @@ func TestUpdate(t *testing.T) {
 			},
 			res: &pbs.UpdateRoleResponse{
 				Item: &pb.Role{
-					Id:          pr.GetPublicId(),
-					Name:        &wrapperspb.StringValue{Value: "new"},
-					Description: &wrapperspb.StringValue{Value: "desc"},
-					CreatedTime: pr.GetCreateTime().GetTimestamp(),
+					Id:           pr.GetPublicId(),
+					Name:         &wrapperspb.StringValue{Value: "new"},
+					Description:  &wrapperspb.StringValue{Value: "desc"},
+					CreatedTime:  pr.GetCreateTime().GetTimestamp(),
+					GrantScopeId: &wrapperspb.StringValue{Value: pr.GetScopeId()},
 				},
 			},
 			errCode: codes.OK,
@@ -647,9 +678,10 @@ func TestUpdate(t *testing.T) {
 			},
 			res: &pbs.UpdateRoleResponse{
 				Item: &pb.Role{
-					Id:          or.GetPublicId(),
-					Description: &wrapperspb.StringValue{Value: "default"},
-					CreatedTime: or.GetCreateTime().GetTimestamp(),
+					Id:           or.GetPublicId(),
+					Description:  &wrapperspb.StringValue{Value: "default"},
+					CreatedTime:  or.GetCreateTime().GetTimestamp(),
+					GrantScopeId: &wrapperspb.StringValue{Value: or.GetScopeId()},
 				},
 			},
 			errCode: codes.OK,
@@ -667,10 +699,11 @@ func TestUpdate(t *testing.T) {
 			},
 			res: &pbs.UpdateRoleResponse{
 				Item: &pb.Role{
-					Id:          or.GetPublicId(),
-					Name:        &wrapperspb.StringValue{Value: "updated"},
-					Description: &wrapperspb.StringValue{Value: "default"},
-					CreatedTime: or.GetCreateTime().GetTimestamp(),
+					Id:           or.GetPublicId(),
+					Name:         &wrapperspb.StringValue{Value: "updated"},
+					Description:  &wrapperspb.StringValue{Value: "default"},
+					CreatedTime:  or.GetCreateTime().GetTimestamp(),
+					GrantScopeId: &wrapperspb.StringValue{Value: or.GetScopeId()},
 				},
 			},
 			errCode: codes.OK,
@@ -688,10 +721,11 @@ func TestUpdate(t *testing.T) {
 			},
 			res: &pbs.UpdateRoleResponse{
 				Item: &pb.Role{
-					Id:          or.GetPublicId(),
-					Name:        &wrapperspb.StringValue{Value: "default"},
-					Description: &wrapperspb.StringValue{Value: "notignored"},
-					CreatedTime: or.GetCreateTime().GetTimestamp(),
+					Id:           or.GetPublicId(),
+					Name:         &wrapperspb.StringValue{Value: "default"},
+					Description:  &wrapperspb.StringValue{Value: "notignored"},
+					CreatedTime:  or.GetCreateTime().GetTimestamp(),
+					GrantScopeId: &wrapperspb.StringValue{Value: or.GetScopeId()},
 				},
 			},
 			errCode: codes.OK,
@@ -773,8 +807,836 @@ func TestUpdate(t *testing.T) {
 
 				// Clear all values which are hard to compare against.
 				got.Item.UpdatedTime, tc.res.Item.UpdatedTime = nil, nil
+
+				// TODO: Figure out the best way to test versions when updating roles
+				got.GetItem().Version = 0
 			}
-			assert.True(proto.Equal(got, tc.res), "UpdateRole(%q) got response %q, wanted %q", req, got, tc.res)
+			assert.True(proto.Equal(got, tc.res), "UpdateRole(%q) got response\n%q,\nwanted\n%q", req, got, tc.res)
+		})
+	}
+}
+
+func TestAddPrincipal(t *testing.T) {
+	conn, _ := db.TestSetup(t, "postgres")
+	rw := db.New(conn)
+	wrap := db.TestWrapper(t)
+	repoFn := func() (*iam.Repository, error) {
+		return iam.NewRepository(rw, rw, wrap)
+	}
+	s, err := roles.NewService(repoFn)
+	require.NoError(t, err, "Error when getting new role service.")
+
+	o, p := iam.TestScopes(t, conn)
+	users := []*iam.User{
+		iam.TestUser(t, conn, o.GetPublicId()),
+		iam.TestUser(t, conn, o.GetPublicId()),
+		iam.TestUser(t, conn, o.GetPublicId()),
+	}
+	groups := []*iam.Group{
+		iam.TestGroup(t, conn, o.GetPublicId()),
+		iam.TestGroup(t, conn, o.GetPublicId()),
+		iam.TestGroup(t, conn, o.GetPublicId()),
+	}
+
+	addCases := []struct {
+		name         string
+		setup        func(*iam.Role)
+		addUsers     []string
+		addGroups    []string
+		resultUsers  []string
+		resultGroups []string
+		wantErr      bool
+	}{
+		{
+			name:        "Add user on empty role",
+			setup:       func(r *iam.Role) {},
+			addUsers:    []string{users[1].GetPublicId()},
+			resultUsers: []string{users[1].GetPublicId()},
+		},
+		{
+			name: "Add user on populated role",
+			setup: func(r *iam.Role) {
+				iam.TestUserRole(t, conn, r.GetPublicId(), users[0].GetPublicId())
+			},
+			addUsers:    []string{users[1].GetPublicId()},
+			resultUsers: []string{users[0].GetPublicId(), users[1].GetPublicId()},
+		},
+		{
+			name: "Add empty on populated role",
+			setup: func(r *iam.Role) {
+				iam.TestUserRole(t, conn, r.GetPublicId(), users[0].GetPublicId())
+				iam.TestUserRole(t, conn, r.GetPublicId(), users[1].GetPublicId())
+			},
+			wantErr: true,
+		},
+		{
+			name:         "Add group on empty role",
+			setup:        func(r *iam.Role) {},
+			addGroups:    []string{groups[1].GetPublicId()},
+			resultGroups: []string{groups[1].GetPublicId()},
+		},
+		{
+			name: "Add group on populated role",
+			setup: func(r *iam.Role) {
+				iam.TestGroupRole(t, conn, r.GetPublicId(), groups[0].GetPublicId())
+			},
+			addGroups:    []string{groups[1].GetPublicId()},
+			resultGroups: []string{groups[0].GetPublicId(), groups[1].GetPublicId()},
+		},
+	}
+
+	for _, tc := range addCases {
+		for _, scope := range []*iam.Scope{o, p} {
+			t.Run(tc.name+"_"+scope.GetType(), func(t *testing.T) {
+				role := iam.TestRole(t, conn, scope.GetPublicId())
+				tc.setup(role)
+				req := &pbs.AddRolePrincipalsRequest{
+					OrgId:    o.GetPublicId(),
+					RoleId:   role.GetPublicId(),
+					Version:  &wrapperspb.UInt32Value{Value: role.GetVersion()},
+					UserIds:  tc.addUsers,
+					GroupIds: tc.addGroups,
+				}
+
+				got, err := s.AddRolePrincipals(context.Background(), req)
+				if tc.wantErr {
+					assert.Error(t, err)
+					return
+				}
+				s, ok := status.FromError(err)
+				require.True(t, ok)
+				require.NoError(t, err, "Got error: %v", s)
+
+				assert.ElementsMatch(t, got.GetItem().GetUserIds(), tc.resultUsers)
+				assert.ElementsMatch(t, got.GetItem().GetGroupIds(), tc.resultGroups)
+			})
+		}
+	}
+
+	role := iam.TestRole(t, conn, p.GetPublicId())
+
+	failCases := []struct {
+		name    string
+		req     *pbs.AddRolePrincipalsRequest
+		errCode codes.Code
+	}{
+		{
+			name: "Bad Org Id",
+			req: &pbs.AddRolePrincipalsRequest{
+				OrgId:     "",
+				ProjectId: role.GetScopeId(),
+				RoleId:    role.GetPublicId(),
+				GroupIds:  []string{},
+				Version:   &wrapperspb.UInt32Value{Value: role.GetVersion()},
+			},
+			errCode: codes.InvalidArgument,
+		},
+		{
+			name: "Bad Project Id",
+			req: &pbs.AddRolePrincipalsRequest{
+				OrgId:     o.GetPublicId(),
+				ProjectId: "bad id",
+				RoleId:    role.GetPublicId(),
+				GroupIds:  []string{},
+				Version:   &wrapperspb.UInt32Value{Value: role.GetVersion()},
+			},
+			errCode: codes.InvalidArgument,
+		},
+		{
+			name: "Bad Role Id",
+			req: &pbs.AddRolePrincipalsRequest{
+				OrgId:     o.GetPublicId(),
+				ProjectId: role.GetScopeId(),
+				RoleId:    "bad id",
+				GroupIds:  []string{},
+				Version:   &wrapperspb.UInt32Value{Value: role.GetVersion()},
+			},
+			errCode: codes.InvalidArgument,
+		},
+	}
+	for _, tc := range failCases {
+		t.Run(tc.name, func(t *testing.T) {
+			assert := assert.New(t)
+			_, gErr := s.AddRolePrincipals(context.Background(), tc.req)
+			assert.Equal(tc.errCode, status.Code(gErr), "AddRolePrincipals(%+v) got error %v, wanted %v", tc.req, gErr, tc.errCode)
+		})
+	}
+}
+
+func TestSetPrincipal(t *testing.T) {
+	conn, _ := db.TestSetup(t, "postgres")
+	rw := db.New(conn)
+	wrap := db.TestWrapper(t)
+	repoFn := func() (*iam.Repository, error) {
+		return iam.NewRepository(rw, rw, wrap)
+	}
+	s, err := roles.NewService(repoFn)
+	require.NoError(t, err, "Error when getting new role service.")
+
+	o, p := iam.TestScopes(t, conn)
+	users := []*iam.User{
+		iam.TestUser(t, conn, o.GetPublicId()),
+		iam.TestUser(t, conn, o.GetPublicId()),
+		iam.TestUser(t, conn, o.GetPublicId()),
+	}
+	groups := []*iam.Group{
+		iam.TestGroup(t, conn, o.GetPublicId()),
+		iam.TestGroup(t, conn, o.GetPublicId()),
+		iam.TestGroup(t, conn, o.GetPublicId()),
+	}
+
+	setCases := []struct {
+		name         string
+		setup        func(*iam.Role)
+		setUsers     []string
+		setGroups    []string
+		resultUsers  []string
+		resultGroups []string
+		wantErr      bool
+	}{
+		{
+			name:        "Set user on empty role",
+			setup:       func(r *iam.Role) {},
+			setUsers:    []string{users[1].GetPublicId()},
+			resultUsers: []string{users[1].GetPublicId()},
+		},
+		{
+			name: "Set user on populated role",
+			setup: func(r *iam.Role) {
+				iam.TestUserRole(t, conn, r.GetPublicId(), users[0].GetPublicId())
+			},
+			setUsers:    []string{users[1].GetPublicId()},
+			resultUsers: []string{users[1].GetPublicId()},
+		},
+		{
+			name: "Set empty on populated role",
+			setup: func(r *iam.Role) {
+				iam.TestUserRole(t, conn, r.GetPublicId(), users[0].GetPublicId())
+				iam.TestUserRole(t, conn, r.GetPublicId(), users[1].GetPublicId())
+			},
+			setUsers:    []string{},
+			resultUsers: nil,
+		},
+		{
+			name:         "Set group on empty role",
+			setup:        func(r *iam.Role) {},
+			setGroups:    []string{groups[1].GetPublicId()},
+			resultGroups: []string{groups[1].GetPublicId()},
+		},
+		{
+			name: "Set group on populated role",
+			setup: func(r *iam.Role) {
+				iam.TestGroupRole(t, conn, r.GetPublicId(), groups[0].GetPublicId())
+			},
+			setGroups:    []string{groups[1].GetPublicId()},
+			resultGroups: []string{groups[1].GetPublicId()},
+		},
+	}
+
+	for _, tc := range setCases {
+		for _, scope := range []*iam.Scope{o, p} {
+			t.Run(tc.name+"_"+scope.GetType(), func(t *testing.T) {
+				role := iam.TestRole(t, conn, scope.GetPublicId())
+				tc.setup(role)
+				req := &pbs.SetRolePrincipalsRequest{
+					OrgId:    o.GetPublicId(),
+					RoleId:   role.GetPublicId(),
+					Version:  &wrapperspb.UInt32Value{Value: role.GetVersion()},
+					UserIds:  tc.setUsers,
+					GroupIds: tc.setGroups,
+				}
+
+				got, err := s.SetRolePrincipals(context.Background(), req)
+				if tc.wantErr {
+					assert.Error(t, err)
+					return
+				}
+				s, ok := status.FromError(err)
+				require.True(t, ok)
+				require.NoError(t, err, "Got error: %v", s)
+
+				assert.Equal(t, got.GetItem().GetUserIds(), tc.resultUsers)
+				assert.Equal(t, got.GetItem().GetGroupIds(), tc.resultGroups)
+			})
+		}
+	}
+
+	role := iam.TestRole(t, conn, p.GetPublicId())
+
+	failCases := []struct {
+		name    string
+		req     *pbs.SetRolePrincipalsRequest
+		errCode codes.Code
+	}{
+		{
+			name: "Bad Org Id",
+			req: &pbs.SetRolePrincipalsRequest{
+				OrgId:     "",
+				ProjectId: role.GetScopeId(),
+				RoleId:    role.GetPublicId(),
+				GroupIds:  []string{},
+				Version:   &wrapperspb.UInt32Value{Value: role.GetVersion()},
+			},
+			errCode: codes.InvalidArgument,
+		},
+		{
+			name: "Bad Project Id",
+			req: &pbs.SetRolePrincipalsRequest{
+				OrgId:     o.GetPublicId(),
+				ProjectId: "bad id",
+				RoleId:    role.GetPublicId(),
+				GroupIds:  []string{},
+				Version:   &wrapperspb.UInt32Value{Value: role.GetVersion()},
+			},
+			errCode: codes.InvalidArgument,
+		},
+		{
+			name: "Bad Role Id",
+			req: &pbs.SetRolePrincipalsRequest{
+				OrgId:     o.GetPublicId(),
+				ProjectId: role.GetScopeId(),
+				RoleId:    "bad id",
+				GroupIds:  []string{},
+				Version:   &wrapperspb.UInt32Value{Value: role.GetVersion()},
+			},
+			errCode: codes.InvalidArgument,
+		},
+	}
+	for _, tc := range failCases {
+		t.Run(tc.name, func(t *testing.T) {
+			assert := assert.New(t)
+			_, gErr := s.SetRolePrincipals(context.Background(), tc.req)
+			assert.Equal(tc.errCode, status.Code(gErr), "SetRolePrincipals(%+v) got error %v, wanted %v", tc.req, gErr, tc.errCode)
+		})
+	}
+}
+
+func TestRemovePrincipal(t *testing.T) {
+	conn, _ := db.TestSetup(t, "postgres")
+	rw := db.New(conn)
+	wrap := db.TestWrapper(t)
+	repoFn := func() (*iam.Repository, error) {
+		return iam.NewRepository(rw, rw, wrap)
+	}
+	s, err := roles.NewService(repoFn)
+	require.NoError(t, err, "Error when getting new role service.")
+
+	o, p := iam.TestScopes(t, conn)
+	users := []*iam.User{
+		iam.TestUser(t, conn, o.GetPublicId()),
+		iam.TestUser(t, conn, o.GetPublicId()),
+		iam.TestUser(t, conn, o.GetPublicId()),
+	}
+	groups := []*iam.Group{
+		iam.TestGroup(t, conn, o.GetPublicId()),
+		iam.TestGroup(t, conn, o.GetPublicId()),
+		iam.TestGroup(t, conn, o.GetPublicId()),
+	}
+
+	addCases := []struct {
+		name         string
+		setup        func(*iam.Role)
+		removeUsers  []string
+		removeGroups []string
+		resultUsers  []string
+		resultGroups []string
+		wantErr      bool
+	}{
+		{
+			name:        "Remove user on empty role",
+			setup:       func(r *iam.Role) {},
+			removeUsers: []string{users[1].GetPublicId()},
+			wantErr:     true,
+		},
+		{
+			name: "Remove 1 of 2 users from role",
+			setup: func(r *iam.Role) {
+				iam.TestUserRole(t, conn, r.GetPublicId(), users[0].GetPublicId())
+				iam.TestUserRole(t, conn, r.GetPublicId(), users[1].GetPublicId())
+			},
+			removeUsers: []string{users[1].GetPublicId()},
+			resultUsers: []string{users[0].GetPublicId()},
+		},
+		{
+			name: "Remove all users from role",
+			setup: func(r *iam.Role) {
+				iam.TestUserRole(t, conn, r.GetPublicId(), users[0].GetPublicId())
+				iam.TestUserRole(t, conn, r.GetPublicId(), users[1].GetPublicId())
+			},
+			removeUsers: []string{users[0].GetPublicId(), users[1].GetPublicId()},
+			resultUsers: []string{},
+		},
+		{
+			name: "Remove empty on populated role",
+			setup: func(r *iam.Role) {
+				iam.TestUserRole(t, conn, r.GetPublicId(), users[0].GetPublicId())
+			},
+			wantErr: true,
+		},
+		{
+			name:         "Remove group on empty role",
+			setup:        func(r *iam.Role) {},
+			removeGroups: []string{groups[1].GetPublicId()},
+			wantErr:      true,
+		},
+		{
+			name: "Remove 1 of 2 groups from role",
+			setup: func(r *iam.Role) {
+				iam.TestGroupRole(t, conn, r.GetPublicId(), groups[0].GetPublicId())
+				iam.TestGroupRole(t, conn, r.GetPublicId(), groups[1].GetPublicId())
+			},
+			removeGroups: []string{groups[1].GetPublicId()},
+			resultGroups: []string{groups[0].GetPublicId()},
+		},
+		{
+			name: "Remove all groups from role",
+			setup: func(r *iam.Role) {
+				iam.TestGroupRole(t, conn, r.GetPublicId(), groups[0].GetPublicId())
+				iam.TestGroupRole(t, conn, r.GetPublicId(), groups[1].GetPublicId())
+			},
+			removeGroups: []string{groups[0].GetPublicId(), groups[1].GetPublicId()},
+			resultGroups: []string{},
+		},
+	}
+
+	for _, tc := range addCases {
+		for _, scope := range []*iam.Scope{o, p} {
+			t.Run(tc.name+"_"+scope.GetType(), func(t *testing.T) {
+				role := iam.TestRole(t, conn, scope.GetPublicId())
+				tc.setup(role)
+				req := &pbs.RemoveRolePrincipalsRequest{
+					OrgId:    o.GetPublicId(),
+					RoleId:   role.GetPublicId(),
+					Version:  &wrapperspb.UInt32Value{Value: role.GetVersion()},
+					UserIds:  tc.removeUsers,
+					GroupIds: tc.removeGroups,
+				}
+
+				got, err := s.RemoveRolePrincipals(context.Background(), req)
+				if tc.wantErr {
+					assert.Error(t, err)
+					return
+				}
+				s, ok := status.FromError(err)
+				require.True(t, ok)
+				require.NoError(t, err, "Got error: %v", s)
+
+				assert.ElementsMatch(t, got.GetItem().GetUserIds(), tc.resultUsers)
+				assert.ElementsMatch(t, got.GetItem().GetGroupIds(), tc.resultGroups)
+			})
+		}
+	}
+
+	role := iam.TestRole(t, conn, p.GetPublicId())
+
+	failCases := []struct {
+		name    string
+		req     *pbs.AddRolePrincipalsRequest
+		errCode codes.Code
+	}{
+		{
+			name: "Bad Org Id",
+			req: &pbs.AddRolePrincipalsRequest{
+				OrgId:     "",
+				ProjectId: role.GetScopeId(),
+				RoleId:    role.GetPublicId(),
+				GroupIds:  []string{},
+				Version:   &wrapperspb.UInt32Value{Value: role.GetVersion()},
+			},
+			errCode: codes.InvalidArgument,
+		},
+		{
+			name: "Bad Project Id",
+			req: &pbs.AddRolePrincipalsRequest{
+				OrgId:     o.GetPublicId(),
+				ProjectId: "bad id",
+				RoleId:    role.GetPublicId(),
+				GroupIds:  []string{},
+				Version:   &wrapperspb.UInt32Value{Value: role.GetVersion()},
+			},
+			errCode: codes.InvalidArgument,
+		},
+		{
+			name: "Bad Role Id",
+			req: &pbs.AddRolePrincipalsRequest{
+				OrgId:     o.GetPublicId(),
+				ProjectId: role.GetScopeId(),
+				RoleId:    "bad id",
+				GroupIds:  []string{},
+				Version:   &wrapperspb.UInt32Value{Value: role.GetVersion()},
+			},
+			errCode: codes.InvalidArgument,
+		},
+	}
+	for _, tc := range failCases {
+		t.Run(tc.name, func(t *testing.T) {
+			assert := assert.New(t)
+			_, gErr := s.AddRolePrincipals(context.Background(), tc.req)
+			assert.Equal(tc.errCode, status.Code(gErr), "AddRolePrincipals(%+v) got error %v, wanted %v", tc.req, gErr, tc.errCode)
+		})
+	}
+}
+
+func TestAddGrants(t *testing.T) {
+	conn, _ := db.TestSetup(t, "postgres")
+	rw := db.New(conn)
+	wrap := db.TestWrapper(t)
+	repoFn := func() (*iam.Repository, error) {
+		return iam.NewRepository(rw, rw, wrap)
+	}
+	s, err := roles.NewService(repoFn)
+	require.NoError(t, err, "Error when getting new role service.")
+
+	addCases := []struct {
+		name     string
+		existing []string
+		add      []string
+		result   []string
+		wantErr  bool
+	}{
+		{
+			name:   "Add grant on empty role",
+			add:    []string{"id=*;actions=delete"},
+			result: []string{"id=*;actions=delete"},
+		},
+		{
+			name:     "Add grant on role with grant",
+			existing: []string{"id=1;actions=read"},
+			add:      []string{"id=*;actions=delete"},
+			result:   []string{"id=1;actions=read", "id=*;actions=delete"},
+		},
+		{
+			name:     "Add grant matching existing grant",
+			existing: []string{"id=1;actions=read", "id=*;actions=delete"},
+			add:      []string{"id=*;actions=delete"},
+			wantErr:  true,
+		},
+	}
+
+	for _, tc := range addCases {
+		o, p := iam.TestScopes(t, conn)
+		for _, scope := range []*iam.Scope{o, p} {
+			t.Run(tc.name+"_"+scope.Type, func(t *testing.T) {
+				assert := assert.New(t)
+				role := iam.TestRole(t, conn, scope.GetPublicId())
+				for _, e := range tc.existing {
+					_ = iam.TestRoleGrant(t, conn, role.GetPublicId(), e)
+				}
+				req := &pbs.AddRoleGrantsRequest{
+					OrgId:   o.GetPublicId(),
+					RoleId:  role.GetPublicId(),
+					Version: &wrapperspb.UInt32Value{Value: role.GetVersion()},
+				}
+				if o != scope {
+					req.ProjectId = scope.GetPublicId()
+				}
+				req.Grants = append(req.Grants, tc.add...)
+				got, err := s.AddRoleGrants(context.Background(), req)
+				if tc.wantErr {
+					assert.Error(err)
+					return
+				}
+				s, _ := status.FromError(err)
+				require.NoError(t, err, "Got error %v", s)
+				assert.Equal(tc.result, got.GetItem().GetGrants())
+			})
+		}
+	}
+
+	o, p := iam.TestScopes(t, conn)
+	role := iam.TestRole(t, conn, p.GetPublicId())
+	failCases := []struct {
+		name    string
+		req     *pbs.AddRoleGrantsRequest
+		errCode codes.Code
+	}{
+		{
+			name: "Bad Org Id",
+			req: &pbs.AddRoleGrantsRequest{
+				OrgId:     "",
+				ProjectId: role.GetScopeId(),
+				RoleId:    role.GetPublicId(),
+				Grants:    []string{"id=*;actions=create"},
+				Version:   &wrapperspb.UInt32Value{Value: role.GetVersion()},
+			},
+			errCode: codes.InvalidArgument,
+		},
+		{
+			name: "Bad Project Id",
+			req: &pbs.AddRoleGrantsRequest{
+				OrgId:     o.GetPublicId(),
+				ProjectId: "bad id",
+				RoleId:    role.GetPublicId(),
+				Grants:    []string{"id=*;actions=create"},
+				Version:   &wrapperspb.UInt32Value{Value: role.GetVersion()},
+			},
+			errCode: codes.InvalidArgument,
+		},
+		{
+			name: "Bad Role Id",
+			req: &pbs.AddRoleGrantsRequest{
+				OrgId:     o.GetPublicId(),
+				ProjectId: role.GetScopeId(),
+				RoleId:    "bad id",
+				Grants:    []string{"id=*;actions=create"},
+				Version:   &wrapperspb.UInt32Value{Value: role.GetVersion()},
+			},
+			errCode: codes.InvalidArgument,
+		},
+	}
+	for _, tc := range failCases {
+		t.Run(tc.name, func(t *testing.T) {
+			assert := assert.New(t)
+			_, gErr := s.AddRoleGrants(context.Background(), tc.req)
+			assert.Equal(tc.errCode, status.Code(gErr), "AddRoleGrants(%+v) got error %v, wanted %v", tc.req, gErr, tc.errCode)
+		})
+	}
+}
+
+func TestSetGrants(t *testing.T) {
+	conn, _ := db.TestSetup(t, "postgres")
+	rw := db.New(conn)
+	wrap := db.TestWrapper(t)
+	repoFn := func() (*iam.Repository, error) {
+		return iam.NewRepository(rw, rw, wrap)
+	}
+
+	s, err := roles.NewService(repoFn)
+	require.NoError(t, err, "Error when getting new role service.")
+
+	setCases := []struct {
+		name     string
+		existing []string
+		set      []string
+		result   []string
+		wantErr  bool
+	}{
+		{
+			name:   "Set grant on empty role",
+			set:    []string{"id=*;actions=delete"},
+			result: []string{"id=*;actions=delete"},
+		},
+		{
+			name:     "Set grant on role with grant",
+			existing: []string{"id=1;actions=read"},
+			set:      []string{"id=*;actions=delete"},
+			result:   []string{"id=*;actions=delete"},
+		},
+		{
+			name:     "Set grant matching existing grant",
+			existing: []string{"id=1;actions=read", "id=*;actions=delete"},
+			set:      []string{"id=*;actions=delete"},
+			result:   []string{"id=*;actions=delete"},
+		},
+		{
+			name:     "Set empty on role",
+			existing: []string{"id=1;actions=read", "id=*;actions=delete"},
+			set:      nil,
+			result:   nil,
+		},
+	}
+
+	for _, tc := range setCases {
+		o, p := iam.TestScopes(t, conn)
+		for _, scope := range []*iam.Scope{o, p} {
+			t.Run(tc.name+"_"+scope.Type, func(t *testing.T) {
+				assert := assert.New(t)
+				role := iam.TestRole(t, conn, scope.GetPublicId())
+				for _, e := range tc.existing {
+					_ = iam.TestRoleGrant(t, conn, role.GetPublicId(), e)
+				}
+				req := &pbs.SetRoleGrantsRequest{
+					OrgId:   o.GetPublicId(),
+					RoleId:  role.GetPublicId(),
+					Version: &wrapperspb.UInt32Value{Value: role.GetVersion()},
+				}
+				if o != scope {
+					req.ProjectId = scope.GetPublicId()
+				}
+				req.Grants = append(req.Grants, tc.set...)
+				got, err := s.SetRoleGrants(context.Background(), req)
+				if tc.wantErr {
+					assert.Error(err)
+					return
+				}
+				s, _ := status.FromError(err)
+				require.NoError(t, err, "Got error %v", s)
+				assert.Equal(tc.result, got.GetItem().GetGrants())
+			})
+		}
+	}
+
+	o, p := iam.TestScopes(t, conn)
+	role := iam.TestRole(t, conn, p.GetPublicId())
+
+	failCases := []struct {
+		name    string
+		req     *pbs.SetRoleGrantsRequest
+		errCode codes.Code
+	}{
+		{
+			name: "Bad Org Id",
+			req: &pbs.SetRoleGrantsRequest{
+				OrgId:     "",
+				ProjectId: role.GetScopeId(),
+				RoleId:    role.GetPublicId(),
+				Grants:    []string{"id=*;actions=create"},
+				Version:   &wrapperspb.UInt32Value{Value: role.GetVersion()},
+			},
+			errCode: codes.InvalidArgument,
+		},
+		{
+			name: "Bad Project Id",
+			req: &pbs.SetRoleGrantsRequest{
+				OrgId:     o.GetPublicId(),
+				ProjectId: "bad id",
+				RoleId:    role.GetPublicId(),
+				Grants:    []string{"id=*;actions=create"},
+				Version:   &wrapperspb.UInt32Value{Value: role.GetVersion()},
+			},
+			errCode: codes.InvalidArgument,
+		},
+		{
+			name: "Bad Role Id",
+			req: &pbs.SetRoleGrantsRequest{
+				OrgId:     o.GetPublicId(),
+				ProjectId: role.GetScopeId(),
+				RoleId:    "bad id",
+				Grants:    []string{"id=*;actions=create"},
+				Version:   &wrapperspb.UInt32Value{Value: role.GetVersion()},
+			},
+			errCode: codes.InvalidArgument,
+		},
+	}
+	for _, tc := range failCases {
+		t.Run(tc.name, func(t *testing.T) {
+			assert := assert.New(t)
+			_, gErr := s.SetRoleGrants(context.Background(), tc.req)
+			assert.Equal(tc.errCode, status.Code(gErr), "SetRoleGrants(%+v) got error %v, wanted %v", tc.req, gErr, tc.errCode)
+		})
+	}
+}
+
+func TestRemoveGrants(t *testing.T) {
+	conn, _ := db.TestSetup(t, "postgres")
+	rw := db.New(conn)
+	wrap := db.TestWrapper(t)
+	repoFn := func() (*iam.Repository, error) {
+		return iam.NewRepository(rw, rw, wrap)
+	}
+	s, err := roles.NewService(repoFn)
+	require.NoError(t, err, "Error when getting new role service.")
+
+	removeCases := []struct {
+		name     string
+		existing []string
+		remove   []string
+		result   []string
+		wantErr  bool
+	}{
+		{
+			name:     "Remove all",
+			existing: []string{"id=1;actions=read"},
+			remove:   []string{"id=1;actions=read"},
+		},
+		{
+			name:     "Remove partial",
+			existing: []string{"id=1;actions=read", "id=2;actions=delete"},
+			remove:   []string{"id=1;actions=read"},
+			result:   []string{"id=2;actions=delete"},
+		},
+		{
+			name:     "Remove non existant",
+			existing: []string{"id=2;actions=delete"},
+			remove:   []string{"id=1;actions=read"},
+			result:   []string{"id=2;actions=delete"},
+		},
+		{
+			name:     "Remove from empty role",
+			existing: []string{},
+			remove:   []string{"id=1;actions=read"},
+			result:   nil,
+		},
+	}
+
+	for _, tc := range removeCases {
+		o, p := iam.TestScopes(t, conn)
+		for _, scope := range []*iam.Scope{o, p} {
+			t.Run(tc.name+"_"+scope.Type, func(t *testing.T) {
+				assert := assert.New(t)
+				role := iam.TestRole(t, conn, scope.GetPublicId())
+				for _, e := range tc.existing {
+					_ = iam.TestRoleGrant(t, conn, role.GetPublicId(), e)
+				}
+				req := &pbs.RemoveRoleGrantsRequest{
+					OrgId:   o.GetPublicId(),
+					RoleId:  role.GetPublicId(),
+					Version: &wrapperspb.UInt32Value{Value: role.GetVersion()},
+				}
+				if o != scope {
+					req.ProjectId = scope.GetPublicId()
+				}
+				req.Grants = append(req.Grants, tc.remove...)
+				got, err := s.RemoveRoleGrants(context.Background(), req)
+				if tc.wantErr {
+					assert.Error(err)
+					return
+				}
+				s, ok := status.FromError(err)
+				assert.True(ok)
+				require.NoError(t, err, "Got error %v", s)
+				assert.Equal(tc.result, got.GetItem().GetGrants())
+			})
+		}
+	}
+
+	o, p := iam.TestScopes(t, conn)
+	role := iam.TestRole(t, conn, p.GetPublicId())
+	failCases := []struct {
+		name string
+		req  *pbs.RemoveRoleGrantsRequest
+
+		errCode codes.Code
+	}{
+		{
+			name: "Bad Org Id",
+			req: &pbs.RemoveRoleGrantsRequest{
+				OrgId:     "",
+				ProjectId: role.GetScopeId(),
+				RoleId:    role.GetPublicId(),
+				Grants:    []string{"id=*;actions=create"},
+				Version:   &wrapperspb.UInt32Value{Value: role.GetVersion()},
+			},
+			errCode: codes.InvalidArgument,
+		},
+		{
+			name: "Bad Project Id",
+			req: &pbs.RemoveRoleGrantsRequest{
+				OrgId:     o.GetPublicId(),
+				ProjectId: "bad id",
+				RoleId:    role.GetPublicId(),
+				Grants:    []string{"id=*;actions=create"},
+				Version:   &wrapperspb.UInt32Value{Value: role.GetVersion()},
+			},
+			errCode: codes.InvalidArgument,
+		},
+		{
+			name: "Bad Role Id",
+			req: &pbs.RemoveRoleGrantsRequest{
+				OrgId:     o.GetPublicId(),
+				ProjectId: role.GetScopeId(),
+				RoleId:    "bad id",
+				Grants:    []string{"id=*;actions=create"},
+				Version:   &wrapperspb.UInt32Value{Value: role.GetVersion()},
+			},
+			errCode: codes.InvalidArgument,
+		},
+	}
+	for _, tc := range failCases {
+		t.Run(tc.name, func(t *testing.T) {
+			assert := assert.New(t)
+			_, gErr := s.RemoveRoleGrants(context.Background(), tc.req)
+			assert.Equal(tc.errCode, status.Code(gErr), "RemoveRoleGrants(%+v) got error %v, wanted %v", tc.req, gErr, tc.errCode)
 		})
 	}
 }
