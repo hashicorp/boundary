@@ -15,10 +15,10 @@ message Project {
 	string id = 1;
 
 	// Optional name for identification purposes
-	google.protobuf.StringValue name = 2 [(custom_options.v1.mask_mapping) = "name"];
+	google.protobuf.StringValue name = 2 [(custom_options.v1.mask_mapping) = {this: "name" that: "name"}];
 
 	// Optional user-set descripton for identification purposes
-	google.protobuf.StringValue description = 3 [(custom_options.v1.mask_mapping) = "description"];
+	google.protobuf.StringValue description = 3 [(custom_options.v1.mask_mapping) = {this: "description" that: "description"}];
 
 	// The time this resource was created
 	// Output only.

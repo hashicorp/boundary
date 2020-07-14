@@ -50,10 +50,9 @@ func mapFromProto(p protoreflect.ProtoMessage) map[string]string {
 	fields := m.Descriptor().Fields()
 	for i := 0; i < fields.Len(); i++ {
 		f := fields.Get(i)
-		name := string(f.Name())
 		opts := f.Options().(*descriptorpb.FieldOptions)
-		if otherName := proto.GetExtension(opts, pb.E_MaskMapping).(string); otherName != "" {
-			mapping[strings.ToLower(name)] = strings.ToLower(otherName)
+		if nameMap := proto.GetExtension(opts, pb.E_MaskMapping).(*pb.MaskMapping); !proto.Equal(nameMap, &pb.MaskMapping{}) {
+			mapping[nameMap.GetThis()] = nameMap.GetThat()
 		}
 	}
 	return mapping
@@ -66,7 +65,7 @@ func (m MaskManager) Translate(paths []string) []string {
 	for _, v := range paths {
 		vSplit := strings.Split(v, ",")
 		for _, v := range vSplit {
-			if ov, ok := m[strings.TrimSpace(strings.ToLower(v))]; ok {
+			if ov, ok := m[strings.TrimSpace(v)]; ok {
 				result = append(result, ov)
 			}
 		}

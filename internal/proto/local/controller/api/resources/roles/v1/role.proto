@@ -6,6 +6,7 @@ option go_package = "github.com/hashicorp/watchtower/internal/gen/controller/api
 
 import "google/protobuf/timestamp.proto";
 import "google/protobuf/wrappers.proto";
+import "controller/custom_options/v1/masks.proto";
 
 message Principal {
 	// The ID of the principal.
@@ -34,10 +35,10 @@ message Role {
 	string id = 1;
 
 	// Optional name for identification purposes
-	google.protobuf.StringValue name = 2;
+	google.protobuf.StringValue name = 2 [(custom_options.v1.mask_mapping) = {this:"name" that: "name"}];
 
 	// Optional user-set description for identification purposes
-	google.protobuf.StringValue description = 3;
+	google.protobuf.StringValue description = 3 [(custom_options.v1.mask_mapping) = {this:"description" that: "description"}];
 
 	// The time this resource was created
 	// Output only.
@@ -55,7 +56,7 @@ message Role {
 	// scope, this can be a project within the org. It is invalid for
 	// this to be anything other than the role's scope when the role's scope is
 	// a project.
-	google.protobuf.StringValue grant_scope_id = 7 [json_name="grant_scope_id"];
+	google.protobuf.StringValue grant_scope_id = 7 [json_name="grant_scope_id", (custom_options.v1.mask_mapping) = {this:"grant_scope_id" that: "GrantScopeId"}];
 	
 	// The version can be used in subsiquent write requests to ensure this resource
 	// has not changed and to fail the write if it has.
