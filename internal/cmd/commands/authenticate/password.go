@@ -41,7 +41,7 @@ func (c *PasswordCommand) Help() string {
 		"",
 		"  Invoke the password auth method to authenticate the Watchtower CLI:",
 		"",
-		"    $ watchtower authenticate password -username=foo -password=bar",
+		"    $ watchtower authenticate password -name=foo -password=bar",
 		"",
 		"  If more than one instance of the password auth method exists, use the -method-id flag:",
 		"",
