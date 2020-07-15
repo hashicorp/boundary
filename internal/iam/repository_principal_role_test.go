@@ -482,7 +482,7 @@ func TestRepository_DeletePrincipalRoles(t *testing.T) {
 				roleVersion = 2
 			}
 			principalIds = append(deleteUserIds, deleteGroupIds...)
-			deletedRows, err := repo.DeletePrincipalRoles(context.Background(), roleId, 2, principalIds, tt.args.opt...)
+			deletedRows, err := repo.DeletePrincipalRoles(context.Background(), roleId, roleVersion, principalIds, tt.args.opt...)
 			if tt.wantErr {
 				assert.Error(err)
 				assert.Equal(0, deletedRows)
