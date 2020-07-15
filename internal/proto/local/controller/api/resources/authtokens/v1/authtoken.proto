@@ -6,6 +6,7 @@ option go_package = "github.com/hashicorp/watchtower/internal/gen/controller/api
 
 import "google/protobuf/timestamp.proto";
 import "google/protobuf/wrappers.proto";
+import "controller/api/resources/scopes/v1/scope.proto";
 
 // AuthToken contains all fields related to an AuthToken resource
 message AuthToken {
@@ -13,10 +14,15 @@ message AuthToken {
 	// Output only.
 	string id = 1;
 
-	// The token.  This will only be populated after login and is only ever visible to the end user whose login
-	// request resulted in this auth token being created.
+	// Scope information for this resource
 	// Output only.
-	string token = 2;
+	resources.scopes.v1.ScopeInfo scope = 2;
+
+	// The token. This will only be populated after login and is only ever
+	// visible to the end user whose login request resulted in this auth token
+	// being created.
+	// Output only.
+	string token = 3;
 
 	// The id of the user of this AuthToken.
 	// Output only.

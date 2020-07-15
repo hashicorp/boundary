@@ -7,26 +7,44 @@ option go_package = "github.com/hashicorp/watchtower/internal/gen/controller/api
 import "google/protobuf/timestamp.proto";
 import "google/protobuf/wrappers.proto";
 
+message ScopeInfo {
+	// The ID of the Scope
+	// Output only.
+	string id = 1;
+
+	// The type of the Scope
+	// Output only.
+	string type = 2;
+
+	// The ID of the parent scope, if any
+	// Output only.
+	string parent_scope_id = 3 [json_name="parent_scope_id"];
+}
+
 // Scope contains all fields related to a Scope resource
 message Scope {
 	// The ID of the Scope
 	// Output only.
 	string id = 1;
 
+	// Scope information for this resource
+	// Output only.
+	ScopeInfo scope = 2;
+
 	// Optional name for identification purposes
-	google.protobuf.StringValue name = 2;
+	google.protobuf.StringValue name = 3;
 
 	// Optional user-set descripton for identification purposes
-	google.protobuf.StringValue description = 3;
+	google.protobuf.StringValue description = 4;
 
 	// The time this resource was created
 	// Output only.
-	google.protobuf.Timestamp created_time = 4 [json_name="created_time"];
+	google.protobuf.Timestamp created_time = 5 [json_name="created_time"];
 
 	// The time this resource was last updated.
 	// Output only.
-	google.protobuf.Timestamp updated_time = 5 [json_name="updated_time"];
+	google.protobuf.Timestamp updated_time = 6 [json_name="updated_time"];
 
 	// Whether the resource is disabled
-	google.protobuf.BoolValue disabled = 6;
+	google.protobuf.BoolValue disabled = 7;
 }

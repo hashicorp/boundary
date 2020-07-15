@@ -1563,9 +1563,14 @@
           "description": "The ID of the AuthToken\nOutput only.",
           "readOnly": true
         },
+        "scope": {
+          "$ref": "#/definitions/controller.api.resources.scopes.v1.ScopeInfo",
+          "description": "Scope information for this resource\nOutput only.",
+          "readOnly": true
+        },
         "token": {
           "type": "string",
-          "description": "The token.  This will only be populated after login and is only ever visible to the end user whose login\nrequest resulted in this auth token being created.\nOutput only.",
+          "description": "The token. This will only be populated after login and is only ever\nvisible to the end user whose login request resulted in this auth token\nbeing created.\nOutput only.",
           "readOnly": true
         },
         "user_id": {
@@ -1613,6 +1618,11 @@
           "description": "The ID of the Project\nOutput only.",
           "readOnly": true
         },
+        "scope": {
+          "$ref": "#/definitions/controller.api.resources.scopes.v1.ScopeInfo",
+          "description": "Scope information for this resource\nOutput only.",
+          "readOnly": true
+        },
         "name": {
           "type": "string",
           "title": "Optional name for identification purposes"
@@ -1647,6 +1657,11 @@
         "id": {
           "type": "string",
           "description": "The ID of the host\nOutput only.",
+          "readOnly": true
+        },
+        "scope": {
+          "$ref": "#/definitions/controller.api.resources.scopes.v1.ScopeInfo",
+          "description": "Scope information for this resource\nOutput only.",
           "readOnly": true
         },
         "type": {
@@ -1693,6 +1708,11 @@
           "description": "The ID of the host\nOutput only.",
           "readOnly": true
         },
+        "scope": {
+          "$ref": "#/definitions/controller.api.resources.scopes.v1.ScopeInfo",
+          "description": "Scope information for this resource\nOutput only.",
+          "readOnly": true
+        },
         "type": {
           "type": "string",
           "title": "The type of the resource, to help differentiate schemas"
@@ -1735,6 +1755,11 @@
         "id": {
           "type": "string",
           "description": "The ID of the host\nOutput only.",
+          "readOnly": true
+        },
+        "scope": {
+          "$ref": "#/definitions/controller.api.resources.scopes.v1.ScopeInfo",
+          "description": "Scope information for this resource\nOutput only.",
           "readOnly": true
         },
         "type": {
@@ -1809,6 +1834,11 @@
         "id": {
           "type": "string",
           "description": "The ID of the Role\nOutput only.",
+          "readOnly": true
+        },
+        "scope": {
+          "$ref": "#/definitions/controller.api.resources.scopes.v1.ScopeInfo",
+          "description": "Scope information for this resource\nOutput only.",
           "readOnly": true
         },
         "name": {
@@ -1897,6 +1927,11 @@
           "description": "The ID of the Scope\nOutput only.",
           "readOnly": true
         },
+        "scope": {
+          "$ref": "#/definitions/controller.api.resources.scopes.v1.ScopeInfo",
+          "description": "Scope information for this resource\nOutput only.",
+          "readOnly": true
+        },
         "name": {
           "type": "string",
           "title": "Optional name for identification purposes"
@@ -1925,12 +1960,37 @@
       },
       "title": "Scope contains all fields related to a Scope resource"
     },
+    "controller.api.resources.scopes.v1.ScopeInfo": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "The ID of the Scope\nOutput only.",
+          "readOnly": true
+        },
+        "type": {
+          "type": "string",
+          "description": "The type of the Scope\nOutput only.",
+          "readOnly": true
+        },
+        "parent_scope_id": {
+          "type": "string",
+          "description": "The ID of the parent scope, if any\nOutput only.",
+          "readOnly": true
+        }
+      }
+    },
     "controller.api.resources.users.v1.User": {
       "type": "object",
       "properties": {
         "id": {
           "type": "string",
           "description": "The ID of the Project\nOutput only.",
+          "readOnly": true
+        },
+        "scope": {
+          "$ref": "#/definitions/controller.api.resources.scopes.v1.ScopeInfo",
+          "description": "Scope information for this resource\nOutput only.",
           "readOnly": true
         },
         "name": {
