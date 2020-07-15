@@ -24,6 +24,11 @@ var readFuncs = map[string][]*readInfo{
 		},
 		{
 			baseType:   "Org",
+			targetType: "authtokens.AuthToken",
+			path:       "auth-tokens",
+		},
+		{
+			baseType:   "Org",
 			targetType: "groups.Group",
 			path:       "groups",
 		},

@@ -6,6 +6,7 @@ import (
 	"fmt"
 
 	"github.com/hashicorp/watchtower/api"
+	"github.com/hashicorp/watchtower/api/authtokens"
 	"github.com/hashicorp/watchtower/api/groups"
 	"github.com/hashicorp/watchtower/api/hosts"
 	"github.com/hashicorp/watchtower/api/roles"
@@ -50,6 +51,47 @@ func (s Org) ReadProject(ctx context.Context, r *Project) (*Project, *api.Error,
 
 	target.Client = s.Client.Clone()
 	target.Client.SetProject(target.Id)
+
+	return target, apiErr, nil
+}
+
+func (s Org) ReadAuthToken(ctx context.Context, r *authtokens.AuthToken) (*authtokens.AuthToken, *api.Error, error) {
+	if s.Client == nil {
+		return nil, nil, fmt.Errorf("nil client in ReadAuthToken request")
+	}
+	if s.Id == "" {
+
+		// Assume the client has been configured with org already and
+		// move on
+
+	} else {
+		// If it's explicitly set here, override anything that might be in the
+		// client
+
+		ctx = context.WithValue(ctx, "org", s.Id)
+
+	}
+	if r.Id == "" {
+		return nil, nil, fmt.Errorf("empty authtokens.AuthToken ID field in ReadAuthToken request")
+	}
+
+	req, err := s.Client.NewRequest(ctx, "GET", fmt.Sprintf("%s/%s", "auth-tokens", r.Id), r)
+	if err != nil {
+		return nil, nil, fmt.Errorf("error creating ReadAuthToken request: %w", err)
+	}
+
+	resp, err := s.Client.Do(req)
+	if err != nil {
+		return nil, nil, fmt.Errorf("error performing client request during ReadAuthToken call: %w", err)
+	}
+
+	target := new(authtokens.AuthToken)
+	apiErr, err := resp.Decode(target)
+	if err != nil {
+		return nil, nil, fmt.Errorf("error decoding ReadAuthToken repsonse: %w", err)
+	}
+
+	target.Client = s.Client
 
 	return target, apiErr, nil
 }

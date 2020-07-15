@@ -24,6 +24,11 @@ var listFuncs = map[string][]*listInfo{
 		},
 		{
 			baseType:   "Org",
+			targetType: "authtokens.AuthToken",
+			path:       "auth-tokens",
+		},
+		{
+			baseType:   "Org",
 			targetType: "groups.Group",
 			path:       "groups",
 		},

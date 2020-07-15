@@ -6,6 +6,7 @@ import (
 	"fmt"
 
 	"github.com/hashicorp/watchtower/api"
+	"github.com/hashicorp/watchtower/api/authtokens"
 	"github.com/hashicorp/watchtower/api/groups"
 	"github.com/hashicorp/watchtower/api/hosts"
 	"github.com/hashicorp/watchtower/api/roles"
@@ -51,6 +52,50 @@ func (s Org) DeleteProject(ctx context.Context, r *Project) (bool, *api.Error, e
 	apiErr, err := resp.Decode(target)
 	if err != nil {
 		return false, nil, fmt.Errorf("error decoding DeleteProject repsonse: %w", err)
+	}
+
+	return target.Existed, apiErr, nil
+}
+
+// DeleteAuthToken returns true iff the authtokens.AuthToken existed when the delete attempt was made.
+func (s Org) DeleteAuthToken(ctx context.Context, r *authtokens.AuthToken) (bool, *api.Error, error) {
+	if s.Client == nil {
+		return false, nil, fmt.Errorf("nil client in DeleteAuthToken request")
+	}
+	if s.Id == "" {
+
+		// Assume the client has been configured with org already and
+		// move on
+
+	} else {
+		// If it's explicitly set here, override anything that might be in the
+		// client
+
+		ctx = context.WithValue(ctx, "org", s.Id)
+
+	}
+	if r.Id == "" {
+		return false, nil, fmt.Errorf("empty authtokens.AuthToken ID field in DeleteAuthToken request")
+	}
+
+	req, err := s.Client.NewRequest(ctx, "DELETE", fmt.Sprintf("%s/%s", "auth-tokens", r.Id), nil)
+	if err != nil {
+		return false, nil, fmt.Errorf("error creating DeleteAuthToken request: %w", err)
+	}
+
+	resp, err := s.Client.Do(req)
+	if err != nil {
+		return false, nil, fmt.Errorf("error performing client request during DeleteAuthToken call: %w", err)
+	}
+
+	type deleteResponse struct {
+		Existed bool
+	}
+	target := &deleteResponse{}
+
+	apiErr, err := resp.Decode(target)
+	if err != nil {
+		return false, nil, fmt.Errorf("error decoding DeleteAuthToken repsonse: %w", err)
 	}
 
 	return target.Existed, apiErr, nil

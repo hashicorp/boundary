@@ -6,6 +6,7 @@ import (
 	"fmt"
 
 	"github.com/hashicorp/watchtower/api"
+	"github.com/hashicorp/watchtower/api/authtokens"
 	"github.com/hashicorp/watchtower/api/groups"
 	"github.com/hashicorp/watchtower/api/roles"
 	"github.com/hashicorp/watchtower/api/users"
@@ -52,6 +53,52 @@ func (s Org) ListProjects(ctx context.Context) ([]*Project, *api.Error, error) {
 
 		t.Client = s.Client.Clone()
 		t.Client.SetProject(t.Id)
+
+	}
+
+	return target.Items, apiErr, nil
+}
+
+func (s Org) ListAuthTokens(ctx context.Context) ([]*authtokens.AuthToken, *api.Error, error) {
+	if s.Client == nil {
+		return nil, nil, fmt.Errorf("nil client in ListAuthToken request")
+	}
+	if s.Id == "" {
+
+		// Assume the client has been configured with org already and
+		// move on
+
+	} else {
+		// If it's explicitly set here, override anything that might be in the
+		// client
+
+		ctx = context.WithValue(ctx, "org", s.Id)
+
+	}
+
+	req, err := s.Client.NewRequest(ctx, "GET", "auth-tokens", nil)
+	if err != nil {
+		return nil, nil, fmt.Errorf("error creating ListAuthTokens request: %w", err)
+	}
+
+	resp, err := s.Client.Do(req)
+	if err != nil {
+		return nil, nil, fmt.Errorf("error performing client request during ListAuthTokens call: %w", err)
+	}
+
+	type listResponse struct {
+		Items []*authtokens.AuthToken
+	}
+	target := &listResponse{}
+
+	apiErr, err := resp.Decode(target)
+	if err != nil {
+		return nil, nil, fmt.Errorf("error decoding ListAuthTokens response: %w", err)
+	}
+
+	for _, t := range target.Items {
+
+		t.Client = s.Client
 
 	}
 

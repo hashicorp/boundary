@@ -24,6 +24,11 @@ var deleteFuncs = map[string][]*deleteInfo{
 		},
 		{
 			"Org",
+			"authtokens.AuthToken",
+			"auth-tokens",
+		},
+		{
+			"Org",
 			"groups.Group",
 			"groups",
 		},
