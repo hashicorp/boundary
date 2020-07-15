@@ -29,6 +29,11 @@ func TestDb_Update(t *testing.T) {
 	publicId, err := NewPublicId("testuser")
 	require.NoError(t, err)
 	id := testId(t)
+
+	badVersion := uint32(22)
+	versionOne := uint32(1)
+	versionZero := uint32(0)
+
 	type args struct {
 		i              *db_test.TestUser
 		fieldMaskPaths []string
@@ -78,11 +83,29 @@ func TestDb_Update(t *testing.T) {
 				},
 				fieldMaskPaths: []string{"Name", "PhoneNumber"},
 				setToNullPaths: []string{"Email"},
-				opt:            []Option{WithVersion(22)},
+				opt:            []Option{WithVersion(&badVersion)},
 			},
 			want:       0,
 			wantErr:    false,
 			wantErrMsg: "",
+		},
+		{
+			name: "simple-with-zero-version",
+			args: args{
+				i: &db_test.TestUser{
+					StoreTestUser: &db_test.StoreTestUser{
+						Name:        "simple-with-bad-version" + id,
+						Email:       "updated" + id,
+						PhoneNumber: "updated" + id,
+					},
+				},
+				fieldMaskPaths: []string{"Name", "PhoneNumber"},
+				setToNullPaths: []string{"Email"},
+				opt:            []Option{WithVersion(&versionZero)},
+			},
+			want:       0,
+			wantErr:    true,
+			wantErrMsg: "update: with version option is zero: invalid parameter",
 		},
 		{
 			name: "simple-with-version",
@@ -96,7 +119,7 @@ func TestDb_Update(t *testing.T) {
 				},
 				fieldMaskPaths: []string{"Name", "PhoneNumber"},
 				setToNullPaths: []string{"Email"},
-				opt:            []Option{WithVersion(1)},
+				opt:            []Option{WithVersion(&versionOne)},
 			},
 			want:            1,
 			wantErr:         false,
@@ -270,7 +293,8 @@ func TestDb_Update(t *testing.T) {
 		car := testCar(t, db, "foo-"+id, id, int32(100))
 
 		car.Name = "friendly-" + id
-		rowsUpdated, err := w.Update(context.Background(), car, []string{"Name"}, nil, WithVersion(1))
+		versionOne := uint32(1)
+		rowsUpdated, err := w.Update(context.Background(), car, []string{"Name"}, nil, WithVersion(&versionOne))
 		assert.Error(err)
 		assert.Equal(0, rowsUpdated)
 	})

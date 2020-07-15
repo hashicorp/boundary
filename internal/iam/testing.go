@@ -197,7 +197,6 @@ func TestGroupRole(t *testing.T, conn *gorm.DB, roleId, grpId string, opt ...Opt
 func testAuthAccount(t *testing.T, conn *gorm.DB, scopeId, authMethodId, userId string) *AuthAccount {
 	const (
 		authAccountPrefix = "aa_"
-		where             = `select count(*) from auth_method where public_id = $1 and scope_id = $2`
 	)
 	t.Helper()
 	rw := db.New(conn)
@@ -215,7 +214,7 @@ func testAuthAccount(t *testing.T, conn *gorm.DB, scopeId, authMethodId, userId 
 	}
 
 	var count int
-	err := conn.DB().QueryRow(where, authMethodId, scopeId).Scan(&count)
+	err := conn.DB().QueryRow(whereValidAuthMethod, authMethodId, scopeId).Scan(&count)
 	require.NoError(err)
 	require.Equal(1, count)
 
@@ -246,7 +245,6 @@ func testAuthAccount(t *testing.T, conn *gorm.DB, scopeId, authMethodId, userId 
 func testAuthMethod(t *testing.T, conn *gorm.DB, scopeId string) string {
 	const (
 		authMethodPrefix = "am_"
-		insert           = `insert into auth_method (public_id, scope_id) values ($1, $2)`
 	)
 	t.Helper()
 	require := require.New(t)
@@ -255,7 +253,7 @@ func testAuthMethod(t *testing.T, conn *gorm.DB, scopeId string) string {
 	id, err := db.NewPublicId(authMethodPrefix)
 	require.NoError(err)
 
-	_, err = conn.DB().Exec(insert, id, scopeId)
+	_, err = conn.DB().Exec(insertAuthMethod, id, scopeId)
 	require.NoError(err)
 	return id
 }

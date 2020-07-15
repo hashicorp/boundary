@@ -125,11 +125,12 @@ func Test_getOpts(t *testing.T) {
 		// test default of 0
 		opts := GetOpts()
 		testOpts := getDefaultOptions()
-		testOpts.WithVersion = 0
+		testOpts.WithVersion = nil
 		assert.Equal(opts, testOpts)
-		opts = GetOpts(WithVersion(2))
+		versionTwo := uint32(2)
+		opts = GetOpts(WithVersion(&versionTwo))
 		testOpts = getDefaultOptions()
-		testOpts.WithVersion = 2
+		testOpts.WithVersion = &versionTwo
 		assert.Equal(opts, testOpts)
 	})
 	t.Run("WithSkipVetForWrite", func(t *testing.T) {
