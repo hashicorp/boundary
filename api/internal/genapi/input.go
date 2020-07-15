@@ -11,31 +11,35 @@ type structInfo struct {
 	structFields string
 	parentName   string
 	detailName   string
+	outputOnly   bool
 	templateType templateType
 	nameJsonMap  map[string]string
 }
 
 var inputStructs = []*structInfo{
 	{
-		inFile:  os.Getenv("GEN_BASEPATH") + "/internal/gen/controller/api/error.pb.go",
-		inName:  "Error",
-		outFile: os.Getenv("GEN_BASEPATH") + "/api/error.gen.go",
-		outName: "Error",
-		outPkg:  "api",
+		inFile:     os.Getenv("GEN_BASEPATH") + "/internal/gen/controller/api/error.pb.go",
+		inName:     "Error",
+		outFile:    os.Getenv("GEN_BASEPATH") + "/api/error.gen.go",
+		outName:    "Error",
+		outPkg:     "api",
+		outputOnly: true,
 	},
 	{
-		inFile:  os.Getenv("GEN_BASEPATH") + "/internal/gen/controller/api/error.pb.go",
-		inName:  "ErrorDetails",
-		outFile: os.Getenv("GEN_BASEPATH") + "/api/error_details.gen.go",
-		outName: "ErrorDetails",
-		outPkg:  "api",
+		inFile:     os.Getenv("GEN_BASEPATH") + "/internal/gen/controller/api/error.pb.go",
+		inName:     "ErrorDetails",
+		outFile:    os.Getenv("GEN_BASEPATH") + "/api/error_details.gen.go",
+		outName:    "ErrorDetails",
+		outPkg:     "api",
+		outputOnly: true,
 	},
 	{
-		inFile:  os.Getenv("GEN_BASEPATH") + "/internal/gen/controller/api/error.pb.go",
-		inName:  "FieldError",
-		outFile: os.Getenv("GEN_BASEPATH") + "/api/field_error.gen.go",
-		outName: "FieldError",
-		outPkg:  "api",
+		inFile:     os.Getenv("GEN_BASEPATH") + "/internal/gen/controller/api/error.pb.go",
+		inName:     "FieldError",
+		outFile:    os.Getenv("GEN_BASEPATH") + "/api/field_error.gen.go",
+		outName:    "FieldError",
+		outPkg:     "api",
+		outputOnly: true,
 	},
 	{
 		inFile:  os.Getenv("GEN_BASEPATH") + "/internal/gen/controller/api/resources/hosts/host.pb.go",
@@ -101,11 +105,28 @@ var inputStructs = []*structInfo{
 		outPkg:  "roles",
 	},
 	{
-		inFile:  os.Getenv("GEN_BASEPATH") + "/internal/gen/controller/api/resources/roles/role.pb.go",
-		inName:  "Principal",
-		outFile: os.Getenv("GEN_BASEPATH") + "/api/roles/principal.gen.go",
-		outName: "Principal",
-		outPkg:  "roles",
+		inFile:     os.Getenv("GEN_BASEPATH") + "/internal/gen/controller/api/resources/roles/role.pb.go",
+		inName:     "Principal",
+		outFile:    os.Getenv("GEN_BASEPATH") + "/api/roles/principal.gen.go",
+		outName:    "Principal",
+		outPkg:     "roles",
+		outputOnly: true,
+	},
+	{
+		inFile:     os.Getenv("GEN_BASEPATH") + "/internal/gen/controller/api/resources/roles/role.pb.go",
+		inName:     "Grant",
+		outFile:    os.Getenv("GEN_BASEPATH") + "/api/roles/grant.gen.go",
+		outName:    "Grant",
+		outPkg:     "roles",
+		outputOnly: true,
+	},
+	{
+		inFile:     os.Getenv("GEN_BASEPATH") + "/internal/gen/controller/api/resources/roles/role.pb.go",
+		inName:     "GrantJson",
+		outFile:    os.Getenv("GEN_BASEPATH") + "/api/roles/grant_json.gen.go",
+		outName:    "GrantJson",
+		outPkg:     "roles",
+		outputOnly: true,
 	},
 	{
 		inFile:       os.Getenv("GEN_BASEPATH") + "/internal/gen/controller/api/resources/hosts/host_catalog.pb.go",

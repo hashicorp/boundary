@@ -22,10 +22,32 @@ message Principal {
 	string scope_id = 3 [json_name="scope_id"];
 }
 
-message Grant {
-	// The user-supplied string.
+message GrantJson {
+	// The ID, if set.
 	// Output only.
+	string id = 1;
 
+	// The type, if set.
+	// Output only.
+	string type = 2;
+
+	// The actions.
+	// Output only.
+	repeated string actions = 3;
+}
+
+message Grant {
+	// The original user-supplied string.
+	// Output only.
+	string raw = 1;
+
+	// The canonically formatted string.
+	// Output only.
+	string canonical = 2;
+
+	// The JSON representation of the grant.
+	// Output only.
+	GrantJson json = 3;
 }
 
 // Role contains all fields related to a Role resource
@@ -77,13 +99,9 @@ message Role {
 
 	// The grants that this role provides for its principals.
 	// Output only.
-	repeated string grants = 12;
+	repeated string grant_strings = 12 [json_name="grant_strings"];
 
-	// The canonical version of the grants in the grants field with the same index.
+	// The parsed grant information.
 	// Output only.
-	repeated string grants_canonical = 13;
-
-	// The JSON version of the grants in the grants field with the same index.
-	// Output only.
-	repeated string grants_json = 14;
+	repeated Grant grants = 13;
 }
