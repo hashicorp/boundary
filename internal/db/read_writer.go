@@ -357,7 +357,8 @@ func (rw *Db) CreateItems(ctx context.Context, createItems []interface{}, opt ..
 // used together.   If WithVersion is used, then the update will include the
 // version number in the update where clause, which basically makes the update
 // use optimistic locking and the update will only succeed if the existing rows
-// version matches the WithVersion option.
+// version matches the WithVersion option.  Zero is not a valid value for the
+// WithVersion option and will return an error.
 func (rw *Db) Update(ctx context.Context, i interface{}, fieldMaskPaths []string, setToNullPaths []string, opt ...Option) (int, error) {
 	if rw.underlying == nil {
 		return NoRowsAffected, fmt.Errorf("update: missing underlying db %w", ErrNilParameter)
@@ -426,7 +427,10 @@ func (rw *Db) Update(ctx context.Context, i interface{}, fieldMaskPaths []string
 	}
 	var underlying *gorm.DB
 	switch {
-	case opts.WithVersion > 0:
+	case opts.WithVersion != nil:
+		if *opts.WithVersion == 0 {
+			return NoRowsAffected, fmt.Errorf("update: with version option is zero: %w", ErrInvalidParameter)
+		}
 		if _, ok := scope.FieldByName("version"); !ok {
 			return NoRowsAffected, fmt.Errorf("update: %s does not have a version field", scope.TableName())
 		}

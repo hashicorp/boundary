@@ -98,6 +98,15 @@ func TestRepository_AddPrincipalRoles(t *testing.T) {
 			wantErr: true,
 		},
 		{
+			name: "zero-version",
+			args: args{
+				roleVersion:  0,
+				wantUserIds:  true,
+				wantGroupIds: true,
+			},
+			wantErr: true,
+		},
+		{
 			name: "no-principals",
 			args: args{
 				roleVersion: 1,
@@ -114,6 +123,9 @@ func TestRepository_AddPrincipalRoles(t *testing.T) {
 			var userIds, groupIds []string
 
 			for _, roleId := range []string{orgRole.PublicId, projRole.PublicId} {
+				origRole, _, _, err := repo.LookupRole(context.Background(), roleId)
+				require.NoError(err)
+
 				if tt.args.wantUserIds {
 					userIds = createUsersFn(orgs)
 					u := TestUser(t, conn, staticOrg.PublicId)
@@ -159,6 +171,12 @@ func TestRepository_AddPrincipalRoles(t *testing.T) {
 					assert.Equal(gotPrincipal[principalId].GetPrincipalScopeId(), r.GetPrincipalScopeId())
 					assert.Equal(gotPrincipal[principalId].GetType(), r.GetType())
 				}
+
+				r, _, _, err := repo.LookupRole(context.Background(), roleId)
+				require.NoError(err)
+				assert.Equal(tt.args.roleVersion+1, r.Version)
+				assert.Equal(origRole.Version, r.Version-1)
+				t.Logf("roleScope: %v and origVersion/newVersion: %d/%d", r.ScopeId, origRole.Version, r.Version)
 			}
 		})
 	}
@@ -280,13 +298,14 @@ func TestRepository_DeletePrincipalRoles(t *testing.T) {
 	org, _ := TestScopes(t, conn)
 
 	type args struct {
-		role           *Role
-		roleIdOverride *string
-		createUserCnt  int
-		createGroupCnt int
-		deleteUserCnt  int
-		deleteGroupCnt int
-		opt            []Option
+		role                *Role
+		roleIdOverride      *string
+		roleVersionOverride *uint32
+		createUserCnt       int
+		createGroupCnt      int
+		deleteUserCnt       int
+		deleteGroupCnt      int
+		opt                 []Option
 	}
 	tests := []struct {
 		name            string
@@ -377,6 +396,33 @@ func TestRepository_DeletePrincipalRoles(t *testing.T) {
 			wantErr:         true,
 			wantIsErr:       db.ErrInvalidParameter,
 		},
+		{
+			name: "zero-version",
+			args: args{
+				role:                TestRole(t, conn, org.PublicId),
+				roleVersionOverride: func() *uint32 { v := uint32(0); return &v }(),
+				createUserCnt:       5,
+				createGroupCnt:      5,
+				deleteUserCnt:       5,
+				deleteGroupCnt:      5,
+			},
+			wantRowsDeleted: 0,
+			wantErr:         true,
+			wantIsErr:       db.ErrInvalidParameter,
+		},
+		{
+			name: "bad-version",
+			args: args{
+				role:                TestRole(t, conn, org.PublicId),
+				roleVersionOverride: func() *uint32 { v := uint32(1000); return &v }(),
+				createUserCnt:       5,
+				createGroupCnt:      5,
+				deleteUserCnt:       5,
+				deleteGroupCnt:      5,
+			},
+			wantRowsDeleted: 0,
+			wantErr:         true,
+		},
 	}
 	createScopesFn := func() (orgs []string, projects []string) {
 		for i := 0; i < 5; i++ {
@@ -428,8 +474,15 @@ func TestRepository_DeletePrincipalRoles(t *testing.T) {
 			default:
 				roleId = tt.args.role.PublicId
 			}
+			var roleVersion uint32
+			switch {
+			case tt.args.roleVersionOverride != nil:
+				roleVersion = *tt.args.roleVersionOverride
+			default:
+				roleVersion = 2
+			}
 			principalIds = append(deleteUserIds, deleteGroupIds...)
-			deletedRows, err := repo.DeletePrincipalRoles(context.Background(), roleId, 2, principalIds, tt.args.opt...)
+			deletedRows, err := repo.DeletePrincipalRoles(context.Background(), roleId, roleVersion, principalIds, tt.args.opt...)
 			if tt.wantErr {
 				assert.Error(err)
 				assert.Equal(0, deletedRows)
@@ -504,18 +557,18 @@ func TestRepository_SetPrincipalRoles(t *testing.T) {
 		wantAffectedRows int
 		wantErr          bool
 	}{
-		// {
-		// 	name:  "clear",
-		// 	setup: setupFn,
-		// 	args: args{
-		// 		role:        TestRole(t, conn, proj.PublicId),
-		// 		roleVersion: 2, // yep, since setupFn will increment it to 2
-		// 		userIds:     []string{},
-		// 		groupIds:    []string{},
-		// 	},
-		// 	wantErr:          false,
-		// 	wantAffectedRows: 12,
-		// },
+		{
+			name:  "clear",
+			setup: setupFn,
+			args: args{
+				role:        TestRole(t, conn, proj.PublicId),
+				roleVersion: 2, // yep, since setupFn will increment it to 2
+				userIds:     []string{},
+				groupIds:    []string{},
+			},
+			wantErr:          false,
+			wantAffectedRows: 12,
+		},
 		{
 			name:  "no change",
 			setup: setupFn,
@@ -545,6 +598,19 @@ func TestRepository_SetPrincipalRoles(t *testing.T) {
 			wantAffectedRows: 2,
 		},
 		{
+			name:  "add users and grps with zero version",
+			setup: setupFn,
+			args: args{
+				role:           TestRole(t, conn, proj.PublicId),
+				roleVersion:    0, // yep, since setupFn will increment it to 2
+				userIds:        []string{testUser.PublicId},
+				groupIds:       []string{testGrp.PublicId},
+				addToOrigUsers: true,
+				addToOrigGrps:  true,
+			},
+			wantErr: true,
+		},
+		{
 			name:  "remove existing and add users and grps",
 			setup: setupFn,
 			args: args{
@@ -572,12 +638,17 @@ func TestRepository_SetPrincipalRoles(t *testing.T) {
 			if tt.args.addToOrigGrps {
 				tt.args.groupIds = append(tt.args.groupIds, origGrps...)
 			}
+			origRole, _, _, err := repo.LookupRole(context.Background(), tt.args.role.PublicId)
+			require.NoError(err)
+
 			principalIds := append(tt.args.userIds, tt.args.groupIds...)
 			got, affectedRows, err := repo.SetPrincipalRoles(context.Background(), tt.args.role.PublicId, tt.args.roleVersion, principalIds, tt.args.opt...)
 			if tt.wantErr {
 				require.Error(err)
+				t.Log(err)
 				return
 			}
+			t.Log(err)
 			require.NoError(err)
 			assert.Equal(tt.wantAffectedRows, affectedRows)
 			assert.Equal(len(tt.args.userIds)+len(tt.args.groupIds), len(got))
@@ -591,6 +662,14 @@ func TestRepository_SetPrincipalRoles(t *testing.T) {
 			sort.Strings(wantIds)
 			sort.Strings(gotIds)
 			assert.Equal(wantIds, gotIds)
+
+			r, _, _, err := repo.LookupRole(context.Background(), tt.args.role.PublicId)
+			require.NoError(err)
+			if tt.name != "no change" {
+				assert.Equalf(tt.args.roleVersion+1, r.Version, "%s unexpected version: %d/%d", tt.name, tt.args.roleVersion+1, r.Version)
+				assert.Equalf(origRole.Version, r.Version-1, "%s unexpected version: %d/%d", tt.name, origRole.Version, r.Version-1)
+			}
+			t.Logf("roleScope: %v and origVersion/newVersion: %d/%d", r.ScopeId, origRole.Version, r.Version)
 		})
 	}
 }

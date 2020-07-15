@@ -10,13 +10,17 @@ import (
 )
 
 // AddRoleGrant will add role grants associated with the role ID in the
-// repository. No options are currently supported.
+// repository. No options are currently supported. Zero is not a valid value for
+// the WithVersion option and will return an error.
 func (r *Repository) AddRoleGrants(ctx context.Context, roleId string, roleVersion uint32, grants []string, opt ...Option) ([]*RoleGrant, error) {
 	if roleId == "" {
 		return nil, fmt.Errorf("add role grants: missing role id %w", db.ErrInvalidParameter)
 	}
 	if len(grants) == 0 {
 		return nil, fmt.Errorf("add role grants: missing grants: %w", db.ErrInvalidParameter)
+	}
+	if roleVersion == 0 {
+		return nil, fmt.Errorf("add role grants: version cannot be zero: %w", db.ErrInvalidParameter)
 	}
 	role := allocRole()
 	role.PublicId = roleId
@@ -46,7 +50,7 @@ func (r *Repository) AddRoleGrants(ctx context.Context, roleId string, roleVersi
 			updatedRole.PublicId = roleId
 			updatedRole.Version = uint32(roleVersion) + 1
 			var roleOplogMsg oplog.Message
-			rowsUpdated, err := w.Update(ctx, &updatedRole, []string{"Version"}, nil, db.NewOplogMsg(&roleOplogMsg), db.WithVersion(roleVersion))
+			rowsUpdated, err := w.Update(ctx, &updatedRole, []string{"Version"}, nil, db.NewOplogMsg(&roleOplogMsg), db.WithVersion(&roleVersion))
 			if err != nil {
 				return fmt.Errorf("unable to update role version: %w", err)
 			}
@@ -90,12 +94,17 @@ func (r *Repository) AddRoleGrants(ctx context.Context, roleId string, roleVersi
 
 // DeleteRoleGrants deletes grants (as strings) from a role (roleId). The role's
 // current db version must match the roleVersion or an error will be returned.
+// Zero is not a valid value for the WithVersion option and will return an
+// error.
 func (r *Repository) DeleteRoleGrants(ctx context.Context, roleId string, roleVersion uint32, grants []string, opt ...Option) (int, error) {
 	if roleId == "" {
 		return 0, fmt.Errorf("delete role grants: missing role id %w", db.ErrInvalidParameter)
 	}
 	if len(grants) == 0 {
 		return 0, fmt.Errorf("delete role grants: missing grants: %w", db.ErrInvalidParameter)
+	}
+	if roleVersion == 0 {
+		return 0, fmt.Errorf("delete role grants: version cannot be zero: %w", db.ErrInvalidParameter)
 	}
 	role := allocRole()
 	role.PublicId = roleId
@@ -115,7 +124,7 @@ func (r *Repository) DeleteRoleGrants(ctx context.Context, roleId string, roleVe
 			updatedRole.PublicId = roleId
 			updatedRole.Version = uint32(roleVersion) + 1
 			var roleOplogMsg oplog.Message
-			rowsUpdated, err := w.Update(ctx, &updatedRole, []string{"Version"}, nil, db.NewOplogMsg(&roleOplogMsg), db.WithVersion(roleVersion))
+			rowsUpdated, err := w.Update(ctx, &updatedRole, []string{"Version"}, nil, db.NewOplogMsg(&roleOplogMsg), db.WithVersion(&roleVersion))
 			if err != nil {
 				return fmt.Errorf("delete role grants: unable to update role version: %w", err)
 			}
@@ -195,10 +204,14 @@ func (r *Repository) DeleteRoleGrants(ctx context.Context, roleId string, roleVe
 }
 
 // SetRoleGrants sets grants on a role (roleId). The role's current db version
-// must match the roleVersion or an error will be returned.
+// must match the roleVersion or an error will be returned. Zero is not a valid
+// value for the WithVersion option and will return an error.
 func (r *Repository) SetRoleGrants(ctx context.Context, roleId string, roleVersion uint32, grants []string, opt ...Option) ([]*RoleGrant, int, error) {
 	if roleId == "" {
 		return nil, 0, fmt.Errorf("set role grants: missing role id %w", db.ErrInvalidParameter)
+	}
+	if roleVersion == 0 {
+		return nil, 0, fmt.Errorf("set role grants: version cannot be zero: %w", db.ErrInvalidParameter)
 	}
 
 	// Explicitly set to zero clears, but treat nil as a mistake
@@ -278,7 +291,7 @@ func (r *Repository) SetRoleGrants(ctx context.Context, roleId string, roleVersi
 			updatedRole.PublicId = roleId
 			updatedRole.Version = roleVersion + 1
 			var roleOplogMsg oplog.Message
-			rowsUpdated, err := w.Update(ctx, &updatedRole, []string{"Version"}, nil, db.NewOplogMsg(&roleOplogMsg), db.WithVersion(roleVersion))
+			rowsUpdated, err := w.Update(ctx, &updatedRole, []string{"Version"}, nil, db.NewOplogMsg(&roleOplogMsg), db.WithVersion(&roleVersion))
 			if err != nil {
 				return fmt.Errorf("set role grants: unable to update role version: %w", err)
 			}
