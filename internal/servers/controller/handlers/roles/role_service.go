@@ -550,7 +550,7 @@ func validateCreateRequest(req *pbs.CreateRoleRequest) error {
 	if item.GetPrincipals() != nil {
 		badFields["principals"] = "This is a read only field."
 	}
-	if item.GetPrincipals() != nil {
+	if item.GetGrants() != nil {
 		badFields["grants"] = "This is a read only field."
 	}
 	if len(badFields) > 0 {
