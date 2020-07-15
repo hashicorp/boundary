@@ -1,10 +1,17 @@
 package auth
 
 import (
+	"context"
+	"errors"
 	"fmt"
 	"net/http"
+	"net/http/httptest"
 	"testing"
 
+	"github.com/hashicorp/watchtower/internal/authtoken"
+	"github.com/hashicorp/watchtower/internal/db"
+	pbs "github.com/hashicorp/watchtower/internal/gen/controller/api/services"
+	"github.com/hashicorp/watchtower/internal/iam"
 	"github.com/hashicorp/watchtower/internal/types/action"
 	"github.com/hashicorp/watchtower/internal/types/resource"
 	"github.com/kr/pretty"
@@ -238,6 +245,124 @@ func TestHandler_AuthDecoration(t *testing.T) {
 			assert.Equal(tc.resource, v.res.Type, "type "+pretty.Sprint(v))
 			assert.Equal(tc.id, v.res.Id, "id "+pretty.Sprint(v))
 			assert.Equal(tc.pin, v.res.Pin, "pin "+pretty.Sprint(v))
+		})
+	}
+}
+
+// Any generated service would do, but using orgs since the path is the shortest for testing.
+type fakeHandler struct {
+	pbs.UnimplementedScopeServiceServer
+	validateFn func(context.Context)
+}
+
+func (s *fakeHandler) GetOrg(ctx context.Context, _ *pbs.GetScopeRequest) (*pbs.GetScopeResponse, error) {
+	s.validateFn(ctx)
+	return nil, errors.New("Doesn't matter this is just for testing input.")
+}
+
+func TestAuthTokenAuthenticator(t *testing.T) {
+	conn, _ := db.TestSetup(t, "postgres")
+	rw := db.New(conn)
+	wrapper := db.TestWrapper(t)
+	tokenRepo, err := authtoken.NewRepository(rw, rw, wrapper)
+	require.NoError(t, err)
+	iamRepo, err := iam.NewRepository(rw, rw, wrapper)
+	require.NoError(t, err)
+	tokenRepoFn := func() (*authtoken.Repository, error) {
+		return tokenRepo, nil
+	}
+	iamRepoFn := func() (*iam.Repository, error) {
+		return iamRepo, nil
+	}
+
+	at := authtoken.TestAuthToken(t, conn, wrapper)
+
+	tokValue := at.GetPublicId() + "_" + at.GetToken()
+	jsCookieVal, httpCookieVal := tokValue[:len(tokValue)/2], tokValue[len(tokValue)/2:]
+
+	cases := []struct {
+		name        string
+		headers     map[string]string
+		cookies     []http.Cookie
+		userId      string
+		tokenFormat TokenFormat
+	}{
+		{
+			name:        "Empty headers",
+			headers:     map[string]string{},
+			tokenFormat: AuthTokenTypeUnknown,
+		},
+		{
+			name:        "Bearer token",
+			headers:     map[string]string{"Authorization": fmt.Sprintf("Bearer %s", tokValue)},
+			userId:      at.GetIamUserId(),
+			tokenFormat: AuthTokenTypeBearer,
+		},
+		{
+			name: "Split cookie token",
+			cookies: []http.Cookie{
+				{Name: HttpOnlyCookieName, Value: httpCookieVal},
+				{Name: JsVisibleCookieName, Value: jsCookieVal},
+			},
+			userId:      at.GetIamUserId(),
+			tokenFormat: AuthTokenTypeSplitCookie,
+		},
+		{
+			name: "Split cookie token only http cookie",
+			cookies: []http.Cookie{
+				{Name: HttpOnlyCookieName, Value: httpCookieVal},
+			},
+			tokenFormat: AuthTokenTypeUnknown,
+		},
+		{
+			name: "Split cookie token only js cookie",
+			cookies: []http.Cookie{
+				{Name: JsVisibleCookieName, Value: jsCookieVal},
+			},
+			tokenFormat: AuthTokenTypeUnknown,
+		},
+		{
+			name:    "Cookie and auth header",
+			headers: map[string]string{"Authorization": fmt.Sprintf("Bearer %s", tokValue)},
+			cookies: []http.Cookie{
+				{Name: HttpOnlyCookieName, Value: httpCookieVal},
+				{Name: JsVisibleCookieName, Value: jsCookieVal},
+			},
+			userId:      at.GetIamUserId(),
+			tokenFormat: AuthTokenTypeBearer,
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			req := httptest.NewRequest("GET", "http://127.0.0.1/v1/scopes/o_1", nil)
+			for k, v := range tc.headers {
+				req.Header.Set(k, v)
+			}
+			for _, c := range tc.cookies {
+				req.AddCookie(&c)
+			}
+
+			// Add values for authn/authz checking
+			requestInfo := RequestInfo{
+				Path:   req.URL.Path,
+				Method: req.Method,
+			}
+			requestInfo.PublicId, requestInfo.Token, requestInfo.TokenFormat = GetTokenFromRequest(nil, req)
+			assert.Equal(t, tc.tokenFormat, requestInfo.TokenFormat)
+
+			if tc.userId == "" {
+				return
+			}
+			ctx := NewVerifierContext(context.Background(), nil, iamRepoFn, tokenRepoFn, requestInfo)
+
+			v, ok := ctx.Value(verifierKey).(*verifier)
+			require.True(t, ok)
+			require.NotNil(t, v)
+
+			at, err := tokenRepo.ValidateToken(ctx, v.requestInfo.PublicId, v.requestInfo.Token)
+			require.NoError(t, err)
+			assert.Equal(t, tc.userId, at.GetIamUserId())
 		})
 	}
 }

@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"net/http"
 	"strings"
 
 	"github.com/hashicorp/go-hclog"
@@ -13,6 +14,20 @@ import (
 	"github.com/hashicorp/watchtower/internal/types/action"
 	"github.com/hashicorp/watchtower/internal/types/resource"
 	"github.com/kr/pretty"
+)
+
+const (
+	HeaderAuthMethod    = "Authorization"
+	HttpOnlyCookieName  = "wt-http-token-cookie"
+	JsVisibleCookieName = "wt-js-token-cookie"
+)
+
+type TokenFormat int
+
+const (
+	AuthTokenTypeUnknown TokenFormat = iota
+	AuthTokenTypeBearer
+	AuthTokenTypeSplitCookie
 )
 
 type key int
@@ -26,6 +41,7 @@ type RequestInfo struct {
 	PublicId             string
 	Token                string
 	DisableAuthzFailures bool
+	TokenFormat          TokenFormat
 }
 
 type verifier struct {
@@ -365,4 +381,59 @@ func (v verifier) performAuthCheck() (aclResults *perms.ACLResults, userId strin
 	aclResults = &allowed
 	retErr = nil
 	return
+}
+
+// getTokenFromRequest pulls the token from either the Authorization header or
+// split cookies and parses it. If it cannot be parsed successfully, the issue
+// is logged and we return blank, so logic will continue as the anonymous user.
+// The public ID and token are returned along with the token format.
+func GetTokenFromRequest(logger hclog.Logger, req *http.Request) (string, string, TokenFormat) {
+	// First, get the token, either from the authorization header or from split
+	// cookies
+	var receivedTokenType TokenFormat
+	var fullToken string
+	if authHeader := req.Header.Get("Authorization"); authHeader != "" {
+		headerSplit := strings.SplitN(strings.TrimSpace(authHeader), " ", 2)
+		if len(headerSplit) == 2 && strings.EqualFold(strings.TrimSpace(headerSplit[0]), "bearer") {
+			receivedTokenType = AuthTokenTypeBearer
+			fullToken = strings.TrimSpace(headerSplit[1])
+		}
+	}
+	if receivedTokenType != AuthTokenTypeBearer {
+		var httpCookiePayload string
+		var jsCookiePayload string
+		if hc, err := req.Cookie(HttpOnlyCookieName); err == nil {
+			httpCookiePayload = hc.Value
+		}
+		if jc, err := req.Cookie(JsVisibleCookieName); err == nil {
+			jsCookiePayload = jc.Value
+		}
+		if httpCookiePayload != "" && jsCookiePayload != "" {
+			receivedTokenType = AuthTokenTypeSplitCookie
+			fullToken = jsCookiePayload + httpCookiePayload
+		}
+	}
+
+	if receivedTokenType == AuthTokenTypeUnknown || fullToken == "" {
+		// We didn't find auth info or a client screwed up and put in a blank
+		// header instead of nothing at all, so return blank which will indicate
+		// the anonymouse user
+		return "", "", AuthTokenTypeUnknown
+	}
+
+	splitFullToken := strings.Split(fullToken, "_")
+	if len(splitFullToken) != 3 {
+		logger.Trace("get token from request: unexpected number of segments in token", "expected", 3, "found", len(splitFullToken))
+		return "", "", AuthTokenTypeUnknown
+	}
+
+	token := splitFullToken[2]
+	publicId := strings.Join(splitFullToken[0:2], "_")
+
+	if receivedTokenType == AuthTokenTypeUnknown || token == "" || publicId == "" {
+		logger.Trace("get token from request: after parsing, could not find valid token")
+		return "", "", AuthTokenTypeUnknown
+	}
+
+	return publicId, token, receivedTokenType
 }
