@@ -28,8 +28,8 @@ var (
 	reInvalidID = regexp.MustCompile("[^A-Za-z0-9]")
 
 	// TODO: Remove once auth methods are in
-	OrgScope string
-	RWDb     = new(atomic.Value)
+	Scope string
+	RWDb  = new(atomic.Value)
 )
 
 func init() {
@@ -70,7 +70,7 @@ func (s Service) Authenticate(ctx context.Context, req *pbs.AuthenticateRequest)
 
 // Deauthenticate implements the interface pbs.AuthenticationServiceServer.
 func (s Service) Deauthenticate(ctx context.Context, req *pbs.DeauthenticateRequest) (*pbs.DeauthenticateResponse, error) {
-	return nil, status.Error(codes.Unimplemented, "Requested method is unimplemented for Org.")
+	return nil, status.Error(codes.Unimplemented, "Requested method is unimplemented.")
 }
 
 func (s Service) authenticateWithRepo(ctx context.Context, req *pbs.AuthenticateRequest) (*pba.AuthToken, error) {
@@ -95,7 +95,7 @@ func (s Service) authenticateWithRepo(ctx context.Context, req *pbs.Authenticate
 
 	aAcct := &iam.AuthAccount{AuthAccount: &iamStore.AuthAccount{
 		PublicId:     acctId,
-		ScopeId:      OrgScope,
+		ScopeId:      Scope,
 		AuthMethodId: req.AuthMethodId,
 	}}
 	RWDb.Load().(*db.Db).Create(ctx, aAcct)
