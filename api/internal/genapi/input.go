@@ -66,7 +66,7 @@ var inputStructs = []*structInfo{
 		outPkg:  "scopes",
 	},
 	{
-		inFile:  os.Getenv("GEN_BASEPATH") + "/internal/gen/controller/api/resources/authtokens/authtoken.pb.go",
+		inFile:  os.Getenv("GEN_BASEPATH") + "/internal/gen/controller/api/resources/authtokens/auth_token.pb.go",
 		inName:  "AuthToken",
 		outFile: os.Getenv("GEN_BASEPATH") + "/api/authtokens/authtoken.gen.go",
 		outName: "AuthToken",

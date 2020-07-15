@@ -6,7 +6,6 @@ option go_package = "github.com/hashicorp/watchtower/internal/gen/controller/api
 
 import "protoc-gen-swagger/options/annotations.proto";
 import "google/api/annotations.proto";
-import "controller/api/resources/scopes/v1/organization.proto";
 import "controller/api/resources/authtokens/v1/auth_token.proto";
 
 service AuthTokenService {

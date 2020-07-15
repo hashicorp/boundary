@@ -193,7 +193,7 @@ func validateAncestors(r ancestorProvider) map[string]string {
 	if r.GetOrgId() == "" {
 		return map[string]string{orgIdFieldName: "Missing organization id."}
 	}
-	if !validId(r.GetOrgId(), scope.Organization.Prefix()+"_") {
+	if !validId(r.GetOrgId(), scope.Org.Prefix()+"_") {
 		return map[string]string{orgIdFieldName: "Improperly formatted identifier."}
 	}
 	return map[string]string{}
