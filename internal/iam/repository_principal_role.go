@@ -11,10 +11,14 @@ import (
 // AddPrincipalRoles provides the ability to add principals (userIds and
 // groupIds) to a role (roleId).  The role's current db version must match the
 // roleVersion or an error will be returned.  The list of current PrincipalRoles
-// after the adds will be returned on success.
+// after the adds will be returned on success. Zero is not a valid value for
+// the WithVersion option and will return an error.
 func (r *Repository) AddPrincipalRoles(ctx context.Context, roleId string, roleVersion uint32, userIds, groupIds []string, opt ...Option) ([]PrincipalRole, error) {
 	if roleId == "" {
 		return nil, fmt.Errorf("add principal roles: missing role id: %w", db.ErrInvalidParameter)
+	}
+	if roleVersion == 0 {
+		return nil, fmt.Errorf("add principal roles: version cannot be zero: %w", db.ErrInvalidParameter)
 	}
 	if len(userIds) == 0 && len(groupIds) == 0 {
 		return nil, fmt.Errorf("add principal roles: missing either user or groups to add: %w", db.ErrInvalidParameter)
@@ -58,7 +62,7 @@ func (r *Repository) AddPrincipalRoles(ctx context.Context, roleId string, roleV
 			updatedRole.PublicId = roleId
 			updatedRole.Version = roleVersion + 1
 			var roleOplogMsg oplog.Message
-			rowsUpdated, err := w.Update(ctx, &updatedRole, []string{"Version"}, nil, db.NewOplogMsg(&roleOplogMsg), db.WithVersion(roleVersion))
+			rowsUpdated, err := w.Update(ctx, &updatedRole, []string{"Version"}, nil, db.NewOplogMsg(&roleOplogMsg), db.WithVersion(&roleVersion))
 			if err != nil {
 				return fmt.Errorf("add principal roles: unable to update role version: %w", err)
 			}
@@ -113,10 +117,14 @@ func (r *Repository) AddPrincipalRoles(ctx context.Context, roleId string, roleV
 // SetPrincipalRoles will set the role's principals. Set add and/or delete
 // principals as need to reconcile the existing principals with the principals
 // requested. If both userIds and groupIds are empty, the principal roles will
-// be cleared.
+// be cleared. Zero is not a valid value for the WithVersion option and will
+// return an error.
 func (r *Repository) SetPrincipalRoles(ctx context.Context, roleId string, roleVersion uint32, userIds, groupIds []string, opt ...Option) ([]PrincipalRole, int, error) {
 	if roleId == "" {
 		return nil, db.NoRowsAffected, fmt.Errorf("set principal roles: missing role id: %w", db.ErrInvalidParameter)
+	}
+	if roleVersion == 0 {
+		return nil, db.NoRowsAffected, fmt.Errorf("set principal roles: version cannot be zero: %w", db.ErrInvalidParameter)
 	}
 	role := allocRole()
 	role.PublicId = roleId
@@ -155,7 +163,7 @@ func (r *Repository) SetPrincipalRoles(ctx context.Context, roleId string, roleV
 			updatedRole.PublicId = roleId
 			updatedRole.Version = roleVersion + 1
 			var roleOplogMsg oplog.Message
-			rowsUpdated, err := w.Update(ctx, &updatedRole, []string{"Version"}, nil, db.NewOplogMsg(&roleOplogMsg), db.WithVersion(roleVersion))
+			rowsUpdated, err := w.Update(ctx, &updatedRole, []string{"Version"}, nil, db.NewOplogMsg(&roleOplogMsg), db.WithVersion(&roleVersion))
 			if err != nil {
 				return fmt.Errorf("set principal roles: unable to update role version: %w", err)
 			}
@@ -242,13 +250,17 @@ func (r *Repository) SetPrincipalRoles(ctx context.Context, roleId string, roleV
 
 // DeletePrincipalRoles principals (userIds and/or groupIds) from a role
 // (roleId). The role's current db version must match the roleVersion or an
-// error will be returned.
+// error will be returned. Zero is not a valid value for the WithVersion option
+// and will return an error.
 func (r *Repository) DeletePrincipalRoles(ctx context.Context, roleId string, roleVersion uint32, userIds, groupIds []string, opt ...Option) (int, error) {
 	if roleId == "" {
 		return db.NoRowsAffected, fmt.Errorf("delete principal roles: missing role id: %w", db.ErrInvalidParameter)
 	}
 	if len(userIds) == 0 && len(groupIds) == 0 {
 		return db.NoRowsAffected, fmt.Errorf("delete principal roles: missing either user or groups to delete: %w", db.ErrInvalidParameter)
+	}
+	if roleVersion == 0 {
+		return db.NoRowsAffected, fmt.Errorf("delete principal roles: version cannot be zero: %w", db.ErrInvalidParameter)
 	}
 	role := allocRole()
 	role.PublicId = roleId
@@ -288,7 +300,7 @@ func (r *Repository) DeletePrincipalRoles(ctx context.Context, roleId string, ro
 			updatedRole.PublicId = roleId
 			updatedRole.Version = roleVersion + 1
 			var roleOplogMsg oplog.Message
-			rowsUpdated, err := w.Update(ctx, &updatedRole, []string{"Version"}, nil, db.NewOplogMsg(&roleOplogMsg), db.WithVersion(roleVersion))
+			rowsUpdated, err := w.Update(ctx, &updatedRole, []string{"Version"}, nil, db.NewOplogMsg(&roleOplogMsg), db.WithVersion(&roleVersion))
 			if err != nil {
 				return fmt.Errorf("delete principal roles: unable to update role version: %w", err)
 			}
