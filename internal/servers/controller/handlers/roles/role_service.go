@@ -172,7 +172,7 @@ func (s Service) AddRoleGrants(ctx context.Context, req *pbs.AddRoleGrantsReques
 	if err := validateAddRoleGrantsRequest(req); err != nil {
 		return nil, err
 	}
-	r, err := s.addGrantsInRepo(ctx, req.GetRoleId(), req.GetGrants(), req.GetVersion().GetValue())
+	r, err := s.addGrantsInRepo(ctx, req.GetRoleId(), req.GetGrantStrings(), req.GetVersion().GetValue())
 	if err != nil {
 		return nil, err
 	}
@@ -186,7 +186,7 @@ func (s Service) SetRoleGrants(ctx context.Context, req *pbs.SetRoleGrantsReques
 	if err := validateSetRoleGrantsRequest(req); err != nil {
 		return nil, err
 	}
-	r, err := s.setGrantsInRepo(ctx, req.GetRoleId(), req.GetGrants(), req.GetVersion().GetValue())
+	r, err := s.setGrantsInRepo(ctx, req.GetRoleId(), req.GetGrantStrings(), req.GetVersion().GetValue())
 	if err != nil {
 		return nil, err
 	}
@@ -200,7 +200,7 @@ func (s Service) RemoveRoleGrants(ctx context.Context, req *pbs.RemoveRoleGrants
 	if err := validateRemoveRoleGrantsRequest(req); err != nil {
 		return nil, err
 	}
-	r, err := s.removeGrantsInRepo(ctx, req.GetRoleId(), req.GetGrants(), req.GetVersion().GetValue())
+	r, err := s.removeGrantsInRepo(ctx, req.GetRoleId(), req.GetGrantStrings(), req.GetVersion().GetValue())
 	if err != nil {
 		return nil, err
 	}
@@ -676,7 +676,7 @@ func validateAddRoleGrantsRequest(req *pbs.AddRoleGrantsRequest) error {
 	if req.GetVersion() == nil {
 		badFields["version"] = "Required field."
 	}
-	if len(req.GetGrants()) == 0 {
+	if len(req.GetGrantStrings()) == 0 {
 		badFields["grants"] = "Must be non-empty."
 	}
 	if len(badFields) > 0 {
@@ -707,7 +707,7 @@ func validateRemoveRoleGrantsRequest(req *pbs.RemoveRoleGrantsRequest) error {
 	if req.GetVersion() == nil {
 		badFields["version"] = "Required field."
 	}
-	if len(req.GetGrants()) == 0 {
+	if len(req.GetGrantStrings()) == 0 {
 		badFields["grants"] = "Must be non-empty."
 	}
 	if len(badFields) > 0 {

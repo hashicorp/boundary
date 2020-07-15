@@ -3607,7 +3607,7 @@
           "format": "int64",
           "description": "The version ensures the role hasn't changed since it was last retrieved and if\nit has the request will fail."
         },
-        "grants": {
+        "grant_strings": {
           "type": "array",
           "items": {
             "type": "string"
@@ -4002,7 +4002,7 @@
           "format": "int64",
           "description": "The version ensures the role hasn't changed since it was last retrieved and if\nit has the request will fail."
         },
-        "grants": {
+        "grant_strings": {
           "type": "array",
           "items": {
             "type": "string"
@@ -4068,7 +4068,7 @@
           "format": "int64",
           "description": "The version ensures the role hasn't changed since it was last retrieved and if\nit has the request will fail."
         },
-        "grants": {
+        "grant_strings": {
           "type": "array",
           "items": {
             "type": "string"
