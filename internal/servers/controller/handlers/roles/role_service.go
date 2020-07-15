@@ -586,7 +586,7 @@ func validateUpdateRequest(req *pbs.UpdateRoleRequest) error {
 	if item.GetPrincipals() != nil {
 		badFields["principals"] = "This is a read only field and cannot be specified in an update request."
 	}
-	if item.GetPrincipals() != nil {
+	if item.GetGrants() != nil {
 		badFields["grants"] = "This is a read only field and cannot be specified in an update request."
 	}
 	if item.GetGrantScopeId() != nil && req.ProjectId != "" {
