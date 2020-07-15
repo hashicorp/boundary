@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/hashicorp/go-hclog"
+	"github.com/hashicorp/watchtower/internal/gen/controller/api/resources/scopes"
 	"github.com/hashicorp/watchtower/internal/perms"
 	"github.com/hashicorp/watchtower/internal/servers/controller/common"
 	"github.com/hashicorp/watchtower/internal/types/action"
@@ -59,7 +60,7 @@ func NewVerifierContext(ctx context.Context,
 // may come from the URL and may come from the token) and whether or not to
 // proceed, e.g. whether the authn/authz check resulted in failure. If an error
 // occurs it's logged to the system log.
-func Verify(ctx context.Context) (userId string, scopeId string, valid bool) {
+func Verify(ctx context.Context) (userId string, scopeInfo scopes.ScopeInfo, valid bool) {
 	v, ok := ctx.Value(verifierKey).(*verifier)
 	if !ok {
 		// We don't have a logger yet and this should never happen in any
@@ -76,7 +77,7 @@ func Verify(ctx context.Context) (userId string, scopeId string, valid bool) {
 		return
 	}
 
-	authResults, userId, scopeId, err := v.performAuthCheck()
+	authResults, userId, scopeInfo, err := v.performAuthCheck()
 	if err != nil {
 		v.logger.Error("error performing authn/authz check", "error", err)
 		return
@@ -107,6 +108,12 @@ func (v *verifier) parseAuthParams() error {
 		return fmt.Errorf("parse auth params: invalid path")
 	case splitPath[0] != "scopes":
 		return fmt.Errorf("parse auth params: invalid first segment %q", splitPath[0])
+	}
+
+	for i := 1; i < splitLen; i++ {
+		if splitPath[i] == "" {
+			return fmt.Errorf("parse auth params: empty segment found")
+		}
 	}
 
 	v.act = action.Unknown
@@ -160,14 +167,14 @@ func (v *verifier) parseAuthParams() error {
 			v.act = action.List
 		}
 		// We're operating on the scopes collection. Set the scope ID to
-		// "scopes", which will be a signal to read it from the token.
-		v.res.ScopeId = "scopes"
+		// "token", which will be a signal to read it from the token.
+		v.res.ScopeId = "token"
 		return nil
 
 	case 2:
 		// The next segment should be the scope ID, and we still need to look up
 		// the actual request scopefrom the token like in the case above.
-		v.res.ScopeId = "scopes"
+		v.res.ScopeId = "token"
 		v.res.Id = splitPath[1]
 		return nil
 
@@ -277,13 +284,12 @@ func (v *verifier) parseAuthParams() error {
 	return nil
 }
 
-func (v verifier) performAuthCheck() (aclResults *perms.ACLResults, userId, scopeId string, retErr error) {
+func (v verifier) performAuthCheck() (aclResults *perms.ACLResults, userId string, scopeInfo scopes.ScopeInfo, retErr error) {
 	// Ensure we return an error by default if we forget to set this somewhere
 	retErr = errors.New("unknown")
 	// Make the linter happy
 	_ = retErr
 	userId = "u_anon"
-	scopeId = v.res.ScopeId
 
 	// Validate the token and fetch the corresponding user ID
 	tokenRepo, err := v.authTokenRepoFn()
@@ -299,10 +305,17 @@ func (v verifier) performAuthCheck() (aclResults *perms.ACLResults, userId, scop
 	}
 	if at != nil {
 		userId = at.GetIamUserId()
+		if v.res.ScopeId == "token" {
+			v.res.ScopeId = at.ScopeId
+		}
 	}
 
-	var parsedGrants []perms.Grant
-	var grantPairs []perms.GrantPair
+	// If no token was found, put at global scope. In the future we can allow an
+	// override as part of the request parameter. Then check that we actually
+	// have a valid scope.
+	if v.res.ScopeId == "token" {
+		v.res.ScopeId = "global"
+	}
 
 	// Fetch and parse grants for this user ID (which may include grants for
 	// u_anon and u_auth)
@@ -311,6 +324,23 @@ func (v verifier) performAuthCheck() (aclResults *perms.ACLResults, userId, scop
 		retErr = fmt.Errorf("perform auth check: failed to get iam repo: %w", err)
 		return
 	}
+
+	// Look up scope details to return
+	// TODO: maybe we can combine this info into the view used in GrantsForUser below
+	scp, err := iamRepo.LookupScope(v.ctx, v.res.ScopeId)
+	if err != nil {
+		retErr = fmt.Errorf("perform auth check: failed to lookup scope: %w", err)
+		return
+	}
+	scopeInfo = scopes.ScopeInfo{
+		Id:            scp.GetPublicId(),
+		Type:          scp.GetType(),
+		ParentScopeId: scp.GetParentId(),
+	}
+
+	var parsedGrants []perms.Grant
+	var grantPairs []perms.GrantPair
+
 	grantPairs, err = iamRepo.GrantsForUser(v.ctx, userId)
 	if err != nil {
 		retErr = fmt.Errorf("perform auth check: failed to query for user grants: %w", err)
