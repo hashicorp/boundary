@@ -117,7 +117,7 @@ func (s Service) listFromRepo(ctx context.Context, orgId string) ([]*pb.AuthToke
 	if err != nil {
 		return nil, err
 	}
-	ul, err := []*authtoken.AuthToken{}, nil //repo.ListAuthTokens(ctx, orgId)
+	ul, err := repo.ListAuthTokens(ctx, orgId)
 	if err != nil {
 		return nil, err
 	}

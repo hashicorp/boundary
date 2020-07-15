@@ -12,6 +12,27 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
+// writableAuthToken is used for auth token writes.  Since gorm relies on the TableName interface this allows
+// us to use a base table for writes and a view for reads.
+type writableAuthToken struct {
+	*store.AuthToken
+	tableName string `gorm:"-"`
+}
+
+func (s *writableAuthToken) clone() *writableAuthToken {
+	cp := proto.Clone(s.AuthToken)
+	return &writableAuthToken{
+		AuthToken: cp.(*store.AuthToken),
+	}
+}
+
+func (s *writableAuthToken) toAuthToken() *AuthToken {
+	cp := proto.Clone(s.AuthToken)
+	return &AuthToken{
+		AuthToken: cp.(*store.AuthToken),
+	}
+}
+
 // A AuthToken contains auth tokens. It is owned by a scope.
 type AuthToken struct {
 	*store.AuthToken
@@ -25,8 +46,15 @@ func (s *AuthToken) clone() *AuthToken {
 	}
 }
 
+func (s *AuthToken) toWritableAuthToken() *writableAuthToken {
+	cp := proto.Clone(s.AuthToken)
+	return &writableAuthToken{
+		AuthToken: cp.(*store.AuthToken),
+	}
+}
+
 // encrypt the entry's data using the provided cipher (wrapping.Wrapper)
-func (s *AuthToken) encrypt(ctx context.Context, cipher wrapping.Wrapper) error {
+func (s *writableAuthToken) encrypt(ctx context.Context, cipher wrapping.Wrapper) error {
 	// structwrapping doesn't support embedding, so we'll pass in the store.Entry directly
 	if err := structwrapping.WrapStruct(ctx, cipher, s.AuthToken, nil); err != nil {
 		return fmt.Errorf("error encrypting auth token: %w", err)
