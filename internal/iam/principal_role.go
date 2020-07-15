@@ -51,6 +51,7 @@ func (v *PrincipalRole) TableName() string {
 // SetTableName sets the table name for the resource.  If the caller attempts to
 // set the name to "" the name will be reset to the default name.
 func (v *PrincipalRole) SetTableName(n string) {
+	v.tableName = n
 	switch n {
 	case "":
 		v.tableName = principalRoleViewDefaultTable
