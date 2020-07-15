@@ -7,6 +7,7 @@ import (
 
 	"github.com/hashicorp/watchtower/internal/types/action"
 	"github.com/hashicorp/watchtower/internal/types/resource"
+	"github.com/kr/pretty"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -25,7 +26,7 @@ func TestHandler_AuthDecoration(t *testing.T) {
 	}{
 		{
 			name:     "global scope, read, with id",
-			path:     "/v1/users/u_anon",
+			path:     "/v1/scopes/global/users/u_anon",
 			method:   "GET",
 			action:   action.Read,
 			scope:    "global",
@@ -34,7 +35,7 @@ func TestHandler_AuthDecoration(t *testing.T) {
 		},
 		{
 			name:     "global scope, update, with id",
-			path:     "/v1/auth-methods/am_1234",
+			path:     "/v1/scopes/global/auth-methods/am_1234",
 			method:   "PATCH",
 			action:   action.Update,
 			scope:    "global",
@@ -42,17 +43,17 @@ func TestHandler_AuthDecoration(t *testing.T) {
 			id:       "am_1234",
 		},
 		{
-			name:     "global scope, delete",
-			path:     "/v1/orgs/o_1234",
+			name:     "global scope, delete, token scope",
+			path:     "/v1/scopes/o_1234",
 			method:   "DELETE",
 			action:   action.Delete,
-			scope:    "global",
-			resource: resource.Org,
+			scope:    "scopes",
+			resource: resource.Scope,
 			id:       "o_1234",
 		},
 		{
 			name:     "global scope, create",
-			path:     "/v1/roles",
+			path:     "/v1/scopes/global/roles",
 			method:   "POST",
 			action:   action.Create,
 			scope:    "global",
@@ -60,12 +61,17 @@ func TestHandler_AuthDecoration(t *testing.T) {
 		},
 		{
 			name:            "global, invalid collection syntax",
-			path:            "/v1/org",
-			wantErrContains: "invalid collection syntax",
+			path:            "/v1/scope",
+			wantErrContains: `parse auth params: invalid first segment "scope"`,
 		},
 		{
-			name:     "global, custom action",
-			path:     "/v1/orgs/o_123/auth-methods/am_1234:authenticate",
+			name:            "invalid scopes segment with id",
+			path:            "/v1/scope/o_abc",
+			wantErrContains: `parse auth params: invalid first segment "scope"`,
+		},
+		{
+			name:     "org, custom action",
+			path:     "/v1/scopes/o_123/auth-methods/am_1234:authenticate",
 			method:   "POST",
 			action:   action.Authenticate,
 			scope:    "o_123",
@@ -73,29 +79,34 @@ func TestHandler_AuthDecoration(t *testing.T) {
 			id:       "am_1234",
 		},
 		{
-			name:            "root, unknown action",
+			name:            "unknown action in first segment",
 			path:            "/v1/:authentifake",
-			wantErrContains: "unknown action",
+			wantErrContains: `parse auth params: invalid first segment ":authentifake"`,
+		},
+		{
+			name:            "root, unknown action",
+			path:            "/v1/scopes/o_abc/:authentifake",
+			wantErrContains: `parse auth params: unknown action "authentifake"`,
 		},
 		{
 			name:            "root, unknown empty action",
 			path:            "/v1/:",
-			wantErrContains: "unknown action",
+			wantErrContains: `parse auth params: invalid first segment ":"`,
 		},
 		{
 			name:            "root, invalid method",
-			path:            "/v1/:authenticate",
+			path:            "/v1/scopes/o_abc/:authenticate",
 			method:          "FOOBAR",
-			wantErrContains: "unknown method",
+			wantErrContains: `unknown method "FOOBAR"`,
 		},
 		{
 			name:            "root, wrong number of colons",
-			path:            "/v1/:auth:enticate",
+			path:            "/v1/scopes/o_abc/:auth:enticate",
 			wantErrContains: "unexpected number of colons",
 		},
 		{
 			name:     "org scope, valid",
-			path:     "/v1/orgs/o_abc123/auth-methods",
+			path:     "/v1/scopes/o_abc123/auth-methods",
 			method:   "POST",
 			action:   action.Create,
 			scope:    "o_abc123",
@@ -103,7 +114,7 @@ func TestHandler_AuthDecoration(t *testing.T) {
 		},
 		{
 			name:     "project scope, valid",
-			path:     "/v1/orgs/o_abc123/projects/p_1234/host-catalogs",
+			path:     "/v1/scopes/p_1234/host-catalogs",
 			method:   "POST",
 			action:   action.Create,
 			scope:    "p_1234",
@@ -111,55 +122,50 @@ func TestHandler_AuthDecoration(t *testing.T) {
 		},
 		{
 			name:     "project scope, action on project",
-			path:     "/v1/orgs/o_abc123/projects/p_1234/:set-principals",
+			path:     "/v1/scopes/p_1234/:deauthenticate",
 			method:   "POST",
-			action:   action.SetPrincipals,
+			action:   action.Deauthenticate,
 			scope:    "p_1234",
-			resource: resource.Project,
+			resource: resource.Scope,
 			id:       "p_1234",
 		},
 		{
-			name:     "org scope, action on project",
-			path:     "/v1/orgs/o_abc123/projects/p_1234:set-principals",
+			name:     "global scope, action on org, token scope",
+			path:     "/v1/scopes/o_1234:set-principals",
 			method:   "POST",
 			action:   action.SetPrincipals,
-			scope:    "o_abc123",
-			resource: resource.Project,
-			id:       "p_1234",
+			scope:    "scopes",
+			resource: resource.Scope,
+			id:       "o_1234",
 		},
 		{
 			name:     "org scope, get on collection is list",
-			path:     "/v1/orgs/o_abc123/projects",
+			path:     "/v1/scopes/o_abc123/projects",
 			action:   action.List,
 			scope:    "o_abc123",
 			resource: resource.Project,
 		},
 		{
-			name:     "org scope, action on org",
-			path:     "/v1/orgs/o_abc123/:deauthenticate",
-			action:   action.Deauthenticate,
-			scope:    "o_abc123",
-			resource: resource.Org,
-			id:       "o_abc123",
-		},
-		{
-			name:            "top level action, invalid",
-			path:            "/v1/:read",
-			wantErrContains: "id and type both not found",
+			name:     "global action, valid",
+			path:     "/v1/scopes/global/:read",
+			action:   action.Read,
+			scope:    "global",
+			resource: resource.Scope,
+			id:       "global",
 		},
 		{
 			name:            "top level, invalid",
 			path:            "/v1/",
-			wantErrContains: "id and type both not found",
+			wantErrContains: `invalid first segment "v1"`,
 		},
 		{
 			name:            "non-api path",
 			path:            "/",
-			wantErrContains: "id and type both not found",
+			wantErrContains: `parse auth params: invalid first segment ""`,
 		},
 		{
 			name:     "project scope, pinning collection",
-			path:     "/v1/orgs/o_abc123/projects/p_1234/host-catalogs/hc_1234/host-sets",
+			path:     "/v1/scopes/p_1234/host-catalogs/hc_1234/host-sets",
 			action:   action.List,
 			scope:    "p_1234",
 			pin:      "hc_1234",
@@ -167,7 +173,7 @@ func TestHandler_AuthDecoration(t *testing.T) {
 		},
 		{
 			name:     "project scope, pinning collection, custom action",
-			path:     "/v1/orgs/o_abc123/projects/p_1234/host-catalogs/hc_1234/host-sets:create",
+			path:     "/v1/scopes/p_1234/host-catalogs/hc_1234/host-sets:create",
 			action:   action.Create,
 			scope:    "p_1234",
 			pin:      "hc_1234",
@@ -175,7 +181,7 @@ func TestHandler_AuthDecoration(t *testing.T) {
 		},
 		{
 			name:     "project scope, pinning id",
-			path:     "/v1/orgs/o_abc123/projects/p_1234/host-catalogs/hc_1234/host-sets/hs_abc",
+			path:     "/v1/scopes/p_1234/host-catalogs/hc_1234/host-sets/hs_abc",
 			action:   action.Read,
 			id:       "hs_abc",
 			scope:    "p_1234",
@@ -184,7 +190,7 @@ func TestHandler_AuthDecoration(t *testing.T) {
 		},
 		{
 			name:     "project scope, pinning id, custom action",
-			path:     "/v1/orgs/o_abc123/projects/p_1234/host-catalogs/hc_1234/host-sets/hs_abc:update",
+			path:     "/v1/scopes/p_1234/host-catalogs/hc_1234/host-sets/hs_abc:update",
 			action:   action.Update,
 			id:       "hs_abc",
 			scope:    "p_1234",
@@ -214,7 +220,7 @@ func TestHandler_AuthDecoration(t *testing.T) {
 				assert.Contains(err.Error(), tc.wantErrContains, err.Error())
 				return
 			}
-			require.NoError(err)
+			require.NoError(err, pretty.Sprint(v))
 
 			if tc.path == "/" {
 				return
@@ -222,11 +228,11 @@ func TestHandler_AuthDecoration(t *testing.T) {
 
 			require.NotNil(v.res)
 			require.NotEqual(action.Unknown, v.act)
-			assert.Equal(tc.scope, v.res.ScopeId, "scope")
-			assert.Equal(tc.action, v.act, "action")
-			assert.Equal(tc.resource, v.res.Type, "type")
-			assert.Equal(tc.id, v.res.Id, "id")
-			assert.Equal(tc.pin, v.res.Pin, "pin")
+			assert.Equal(tc.scope, v.res.ScopeId, "scope "+pretty.Sprint(v))
+			assert.Equal(tc.action, v.act, "action "+pretty.Sprint(v))
+			assert.Equal(tc.resource, v.res.Type, "type "+pretty.Sprint(v))
+			assert.Equal(tc.id, v.res.Id, "id "+pretty.Sprint(v))
+			assert.Equal(tc.pin, v.res.Pin, "pin "+pretty.Sprint(v))
 		})
 	}
 }

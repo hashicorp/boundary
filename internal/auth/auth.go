@@ -11,7 +11,6 @@ import (
 	"github.com/hashicorp/watchtower/internal/servers/controller/common"
 	"github.com/hashicorp/watchtower/internal/types/action"
 	"github.com/hashicorp/watchtower/internal/types/resource"
-	"github.com/hashicorp/watchtower/internal/types/scope"
 	"github.com/kr/pretty"
 )
 
@@ -98,30 +97,36 @@ func Verify(ctx context.Context) (userId string, scopeId string, valid bool) {
 func (v *verifier) parseAuthParams() error {
 	// Remove trailing and leading slashes
 	trimmedPath := strings.Trim(v.requestInfo.Path, "/")
-	splitPath := strings.Split(strings.TrimPrefix(trimmedPath, "v1"), "/")
+	// Remove `v1/`
+	splitPath := strings.Split(strings.TrimPrefix(trimmedPath, "v1/"), "/")
 	splitLen := len(splitPath)
-	if splitLen == 0 {
+
+	// It must be at least length 1 and the first segment must be "scopes"
+	switch {
+	case splitLen == 0:
 		return fmt.Errorf("parse auth params: invalid path")
+	case splitPath[0] != "scopes":
+		return fmt.Errorf("parse auth params: invalid first segment %q", splitPath[0])
 	}
 
-	var act action.Type
-	var typStr string
-	scp := scope.Global
-	res := &perms.Resource{
-		ScopeId: scope.Global.String(),
+	v.act = action.Unknown
+	v.res = &perms.Resource{
+		// Start out with scope, and replace when we walk backwards if it's
+		// actually something else
+		Type: resource.Scope,
 	}
 
 	// Handle non-custom types. We'll deal with custom types, including list,
 	// after parsing the path.
 	switch v.requestInfo.Method {
 	case "GET":
-		act = action.Read
+		v.act = action.Read
 	case "POST":
-		act = action.Create
+		v.act = action.Create
 	case "PATCH":
-		act = action.Update
+		v.act = action.Update
 	case "DELETE":
-		act = action.Delete
+		v.act = action.Delete
 	default:
 		return fmt.Errorf("parse auth params: unknown method %q", v.requestInfo.Method)
 	}
@@ -131,68 +136,97 @@ func (v *verifier) parseAuthParams() error {
 	switch len(colonSplit) {
 	case 1:
 		// No custom action specified
+
 	case 2:
+		// Parse and validate the action, then elide it
 		actStr := colonSplit[len(colonSplit)-1]
-		act = action.Map[actStr]
-		if act == action.Unknown || act == action.All {
+		v.act = action.Map[actStr]
+		if v.act == action.Unknown || v.act == action.All {
 			return fmt.Errorf("parse auth params: unknown action %q", actStr)
 		}
 		// Keep going with the logic without the custom action
 		splitPath[splitLen-1] = colonSplit[0]
+
 	default:
 		return fmt.Errorf("parse auth params: unexpected number of colons in last segment %q", colonSplit[len(colonSplit)-1])
 	}
 
-	// Walk backwards. As we walk backwards we look for scopes and figure out if
-	// we're operating on a resource or a collection. We also populate the pin.
-	// The rules for the pin are as follows:
+	// Get scope information and handle it in a special case; that is, for
+	// operating on scopes, we use the token scope, not the path scope
+	switch splitLen {
+	case 1:
+		// We've already validated that this is "scopes"
+		if v.act == action.Read {
+			v.act = action.List
+		}
+		// We're operating on the scopes collection. Set the scope ID to
+		// "scopes", which will be a signal to read it from the token.
+		v.res.ScopeId = "scopes"
+		return nil
+
+	case 2:
+		// The next segment should be the scope ID, and we still need to look up
+		// the actual request scopefrom the token like in the case above.
+		v.res.ScopeId = "scopes"
+		v.res.Id = splitPath[1]
+		return nil
+
+	case 3:
+		// If a custom action was being performed within a scope, it will have
+		// been elided above. If the last path segment is now empty, address
+		// this scenario. In this case the action took place _in_ the scope so
+		// it should be bound accordingly. (This is for actions like
+		// /scopes/o_abc/:deauthenticate where the action is _in_ the scope, not
+		// on the scope.)
+		if splitPath[2] == "" {
+			v.res.ScopeId = splitPath[1]
+			v.res.Id = splitPath[1]
+			return nil
+		}
+
+		fallthrough
+
+	default:
+		// In all other cases the scope ID is the next segment
+		v.res.ScopeId = splitPath[1]
+	}
+
+	// Walk backwards. As we walk backwards we look for a pin and figure out if
+	// we're operating on a resource or a collection. The rules for the pin are
+	// as follows:
 	//
 	// * If the last segment is a collection, the pin is the immediately
-	// preceding ID
+	// preceding ID. This does not include scopes since those are permission
+	// boundaries.
 	//
 	// * If the last segment is an ID, the pin is the immediately preceding ID
 	// not including the last segment
 	//
-	// * If at the end of the logic the pin is the id of a scope ("global",
-	// "o_...", "p_...") then there is no pin. The scopes are already enclosing
-	// so a pin is redundant.
+	// * If at the end of the logic the pin is the id of a scope then there is
+	// no pin. The scopes are already enclosing so a pin is redundant.
 	nextIdIsPin := true
-	for i := splitLen - 1; i >= 0; i-- {
+	// Use an empty string so we can detect if we found anything in this loop.
+	var foundId string
+	var typStr string
+	// We stop at [2] because we've already dealt with the first two segments
+	// (scopes/<scope_id> above.
+	for i := splitLen - 1; i >= 2; i-- {
 		segment := splitPath[i]
+
+		if segment == "" {
+			return fmt.Errorf("parse auth parameters: unexpected empty segment")
+		}
 
 		// Collections don't contain underscores; every resource ID does.
 		segmentIsCollection := !strings.Contains(segment, "_")
 
+		// If we see an ID, ensure that it's not the right-most ID; if not, it's
+		// the pin
 		if !segmentIsCollection && i != splitLen-1 && nextIdIsPin {
-			res.Pin = segment
-			nextIdIsPin = false
-		}
-
-		// Update the scope. Set it to org only if it's at global (that way we
-		// don't override project with org). We have to check if it's one less
-		// than the length of the split because operating on the id of a scope
-		// is actually in the enclosing scope (since you're in the parent scope
-		// operating on a child scope).
-		switch segment {
-		case "projects":
-			if i < splitLen-2 {
-				scp = scope.Project
-				res.ScopeId = splitPath[i+1]
-			}
-		case "orgs":
-			if scp == scope.Global {
-				if i < splitLen-2 {
-					scp = scope.Org
-					res.ScopeId = splitPath[i+1]
-				}
-			}
-		}
-
-		if segment == "" {
-			// This could be the case if we have an action like
-			// /orgs/o_1234/projects/p_1234/:set-defaults to act on the project
-			// itself but within its own scope
-			continue
+			v.res.Pin = segment
+			// By definition this is the last thing we'd be looking for as
+			// scopes were found above, so we can now break out
+			break
 		}
 
 		if typStr == "" {
@@ -200,11 +234,9 @@ func (v *verifier) parseAuthParams() error {
 			// we've identified the type we have either already identified the
 			// right-most resource ID or we're operating on a collection, so
 			// this prevents us from finding a different ID earlier in the path.
-			//
-			// We continue on with the enclosing loop anyways though to ensure
-			// we find the right scope.
-			if res.Id == "" && !segmentIsCollection {
-				res.Id = segment
+			// We still work backwards to identify a pin.
+			if foundId == "" && !segmentIsCollection {
+				foundId = segment
 			} else {
 				// Every collection is the plural of the resource type so drop
 				// the last 's'
@@ -216,38 +248,40 @@ func (v *verifier) parseAuthParams() error {
 		}
 	}
 
+	if foundId != "" {
+		v.res.Id = foundId
+	}
+
 	if typStr != "" {
-		res.Type = resource.Map[typStr]
-		if res.Type == resource.Unknown {
+		v.res.Type = resource.Map[typStr]
+		if v.res.Type == resource.Unknown {
 			return fmt.Errorf("parse auth params: unknown resource type %q", typStr)
 		}
-	} else if res.Id == "" {
-		return errors.New("parse auth params: id and type both not found")
+	} else {
+		// If we found no other type information, we walked backwards all the
+		// way to the scope boundary, so the type is scope
+		v.res.Type = resource.Scope
 	}
 
 	// If we're operating on a collection (that is, the ID is blank) and it's a
 	// GET, it's actually a list
-	if res.Id == "" && act == action.Read {
-		act = action.List
+	if v.res.Id == "" && v.act == action.Read {
+		v.act = action.List
 	}
 
 	// If the pin ended up being a scope, nil it out
-	if res.Pin != "" {
-		if res.Pin == "global" ||
-			strings.HasPrefix(res.Pin, "o_") ||
-			strings.HasPrefix(res.Pin, "p_") {
-			res.Pin = ""
-		}
+	if v.res.Pin != "" && v.res.Pin == v.res.ScopeId {
+		v.res.Pin = ""
 	}
 
-	v.res = res
-	v.act = act
 	return nil
 }
 
 func (v verifier) performAuthCheck() (aclResults *perms.ACLResults, userId, scopeId string, retErr error) {
 	// Ensure we return an error by default if we forget to set this somewhere
 	retErr = errors.New("unknown")
+	// Make the linter happy
+	_ = retErr
 	userId = "u_anon"
 	scopeId = v.res.ScopeId
 
