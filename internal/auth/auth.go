@@ -19,6 +19,7 @@ type key int
 
 var verifierKey key
 
+// RequestInfo contains request parameters necessary for checking authn/authz
 type RequestInfo struct {
 	Path                 string
 	Method               string
