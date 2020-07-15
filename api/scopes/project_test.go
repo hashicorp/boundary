@@ -133,10 +133,10 @@ func TestProject_Errors(t *testing.T) {
 	assert.NoError(err)
 	// TODO: Should this be nil instead of just a Project that has no values set
 	assert.NotNil(apiErr)
-	assert.EqualValues(*apiErr.Status, http.StatusNotFound)
+	assert.EqualValues(apiErr.Status, http.StatusNotFound)
 
 	_, apiErr, err = org.ReadProject(ctx, &scopes.Project{Id: "invalid id"})
 	assert.NoError(err)
 	assert.NotNil(apiErr)
-	assert.EqualValues(*apiErr.Status, http.StatusBadRequest)
+	assert.EqualValues(apiErr.Status, http.StatusBadRequest)
 }

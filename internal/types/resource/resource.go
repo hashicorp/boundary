@@ -24,6 +24,9 @@ const (
 	Host                    Type = 17
 	Target                  Type = 18
 	Global                  Type = 19
+
+	// TODO: remove this after demo
+	Group Type = 20
 )
 
 func (r Type) String() string {
@@ -48,50 +51,29 @@ func (r Type) String() string {
 		"host",
 		"target",
 		"global",
+		"group",
 	}[r]
 }
 
-func StringToResourceType(s string) Type {
-	switch s {
-	case Scope.String():
-		return Scope
-	case User.String():
-		return User
-	case StaticGroup.String():
-		return StaticGroup
-	case Role.String():
-		return Role
-	case Org.String():
-		return Org
-	case StaticGroupMember.String():
-		return StaticGroupMember
-	case StaticGroupUserMember.String():
-		return StaticGroupUserMember
-	case AssignedRole.String():
-		return AssignedRole
-	case AssignedUserRole.String():
-		return AssignedUserRole
-	case AssignedStaticGroupRole.String():
-		return AssignedStaticGroupRole
-	case RoleGrant.String():
-		return RoleGrant
-	case AuthMethod.String():
-		return AuthMethod
-	case Project.String():
-		return Project
-	case All.String():
-		return All
-	case HostCatalog.String():
-		return HostCatalog
-	case HostSet.String():
-		return HostSet
-	case Host.String():
-		return Host
-	case Target.String():
-		return Target
-	case Global.String():
-		return Global
-	default:
-		return Unknown
-	}
+var Map = map[string]Type{
+	Scope.String():                   Scope,
+	User.String():                    User,
+	StaticGroup.String():             StaticGroup,
+	Role.String():                    Role,
+	Org.String():                     Org,
+	StaticGroupMember.String():       StaticGroupMember,
+	StaticGroupUserMember.String():   StaticGroupUserMember,
+	AssignedRole.String():            AssignedRole,
+	AssignedUserRole.String():        AssignedUserRole,
+	AssignedStaticGroupRole.String(): AssignedStaticGroupRole,
+	RoleGrant.String():               RoleGrant,
+	AuthMethod.String():              AuthMethod,
+	Project.String():                 Project,
+	All.String():                     All,
+	HostCatalog.String():             HostCatalog,
+	HostSet.String():                 HostSet,
+	Host.String():                    Host,
+	Target.String():                  Target,
+	Global.String():                  Global,
+	Group.String():                   Group,
 }

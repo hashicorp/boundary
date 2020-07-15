@@ -12,6 +12,7 @@ import (
 	"github.com/hashicorp/watchtower/internal/iam"
 	"github.com/hashicorp/watchtower/internal/servers/controller"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestUsers_List(t *testing.T) {
@@ -50,6 +51,8 @@ func TestUsers_List(t *testing.T) {
 		assert.Nil(apiErr)
 	}
 	ul, apiErr, err = org.ListUsers(ctx)
+	require.NoError(t, err)
+	assert.Nil(apiErr)
 	assert.ElementsMatch(comparableSlice(expected), comparableSlice(ul))
 }
 
@@ -81,8 +84,8 @@ func TestUser_Crud(t *testing.T) {
 	checkUser := func(step string, u *users.User, apiErr *api.Error, err error, wantedName string) {
 		assert := assert.New(t)
 		assert.NoError(err, step)
-		if !assert.Nil(apiErr, step) && apiErr.Message != nil {
-			t.Errorf("ApiError message: %q", *apiErr.Message)
+		if !assert.Nil(apiErr, step) && apiErr.Message != "" {
+			t.Errorf("ApiError message: %q", apiErr.Message)
 		}
 		assert.NotNil(u, "returned no resource", step)
 		gotName := ""
@@ -108,12 +111,14 @@ func TestUser_Crud(t *testing.T) {
 	u, apiErr, err = org.UpdateUser(tc.Context(), u)
 	checkUser("update", u, apiErr, err, "")
 
-	existed, apiErr, err := org.DeleteUser(tc.Context(), u)
-	assert.NoError(t, err)
+	existed, _, err := org.DeleteUser(tc.Context(), u)
+	require.NoError(t, err)
+	assert.Nil(t, apiErr)
 	assert.True(t, existed, "Expected existing user when deleted, but it wasn't.")
 
 	existed, apiErr, err = org.DeleteUser(tc.Context(), u)
-	assert.NoError(t, err)
+	require.NoError(t, err)
+	assert.Nil(t, apiErr)
 	assert.False(t, existed, "Expected user to not exist when deleted, but it did.")
 }
 
@@ -141,15 +146,15 @@ func TestUser_Errors(t *testing.T) {
 	_, apiErr, err = org.ReadUser(ctx, &users.User{Id: iam.UserPrefix + "_doesntexis"})
 	assert.NoError(err)
 	assert.NotNil(apiErr)
-	assert.EqualValues(*apiErr.Status, http.StatusNotFound)
+	assert.EqualValues(apiErr.Status, http.StatusNotFound)
 
 	_, apiErr, err = org.ReadUser(ctx, &users.User{Id: "invalid id"})
 	assert.NoError(err)
 	assert.NotNil(apiErr)
-	assert.EqualValues(*apiErr.Status, http.StatusBadRequest)
+	assert.EqualValues(apiErr.Status, http.StatusBadRequest)
 
 	_, apiErr, err = org.UpdateUser(ctx, &users.User{Id: u.Id})
 	assert.NoError(err)
 	assert.NotNil(apiErr)
-	assert.EqualValues(*apiErr.Status, http.StatusBadRequest)
+	assert.EqualValues(apiErr.Status, http.StatusBadRequest)
 }

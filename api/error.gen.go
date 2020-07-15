@@ -3,6 +3,7 @@ package api
 
 import (
 	"encoding/json"
+	"strings"
 
 	"github.com/fatih/structs"
 
@@ -13,22 +14,36 @@ type Error struct {
 	defaultFields []string
 
 	// The HTTP Status code applicable to this error
-	Status *int32 `json:"status,omitempty"`
+	Status int32 `json:"status,omitempty"`
 	// An application-specific error string
-	Code *string `json:"code,omitempty"`
+	Code string `json:"code,omitempty"`
 	// A human readable explanation specific to this occurrence of the error
-	Message *string `json:"message,omitempty"`
+	Message string `json:"message,omitempty"`
 	// Additional metadata regarding the error. Depending on the error
 	// different fields will be populated.
 	Details *ErrorDetails `json:"details,omitempty"`
 }
 
 func (s *Error) SetDefault(key string) {
-	s.defaultFields = strutil.AppendIfMissing(s.defaultFields, key)
+	lowerKey := strings.ToLower(key)
+	validMap := map[string]string{"code": "code", "details": "details", "message": "message", "status": "status"}
+	for k, v := range validMap {
+		if k == lowerKey || v == lowerKey {
+			s.defaultFields = strutil.AppendIfMissing(s.defaultFields, v)
+			return
+		}
+	}
 }
 
 func (s *Error) UnsetDefault(key string) {
-	s.defaultFields = strutil.StrListDelete(s.defaultFields, key)
+	lowerKey := strings.ToLower(key)
+	validMap := map[string]string{"code": "code", "details": "details", "message": "message", "status": "status"}
+	for k, v := range validMap {
+		if k == lowerKey || v == lowerKey {
+			s.defaultFields = strutil.StrListDelete(s.defaultFields, v)
+			return
+		}
+	}
 }
 
 func (s Error) MarshalJSON() ([]byte, error) {
