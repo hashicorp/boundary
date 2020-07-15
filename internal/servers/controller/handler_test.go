@@ -152,43 +152,62 @@ func TestGrpcGatewayRouting_CustomActions(t *testing.T) {
 	routed := http.StatusNotImplemented
 
 	cases := []struct {
-		name      string
-		setup     func(mux *runtime.ServeMux)
-		post_urls []string
+		name     string
+		setup    func(mux *runtime.ServeMux)
+		verbUrls map[string][]string
 	}{
 		{
 			name: "roles",
 			setup: func(mux *runtime.ServeMux) {
 				require.NoError(t, services.RegisterRoleServiceHandlerServer(ctx, mux, &services.UnimplementedRoleServiceServer{}))
 			},
-			post_urls: []string{
-				"v1/orgs/someid/roles/r_anotherid:add-principals",
-				"v1/orgs/someid/roles/r_anotherid:set-principals",
-				"v1/orgs/someid/roles/r_anotherid:remove-principals",
-				"v1/orgs/someid/projects/p_something/roles/r_anotherid:add-principals",
-				"v1/orgs/someid/projects/p_something/roles/r_anotherid:set-principals",
-				"v1/orgs/someid/projects/p_something/roles/r_anotherid:remove-principals",
-				"v1/orgs/someid/roles/r_anotherid:add-grants",
-				"v1/orgs/someid/roles/r_anotherid:set-grants",
-				"v1/orgs/someid/roles/r_anotherid:remove-grants",
-				"v1/orgs/someid/projects/p_something/roles/r_anotherid:add-grants",
-				"v1/orgs/someid/projects/p_something/roles/r_anotherid:set-grants",
-				"v1/orgs/someid/projects/p_something/roles/r_anotherid:remove-grants",
+			verbUrls: map[string][]string{
+				"POST": {
+					"v1/orgs/someid/roles/r_anotherid:add-principals",
+					"v1/orgs/someid/roles/r_anotherid:set-principals",
+					"v1/orgs/someid/roles/r_anotherid:remove-principals",
+					"v1/orgs/someid/projects/p_something/roles/r_anotherid:add-principals",
+					"v1/orgs/someid/projects/p_something/roles/r_anotherid:set-principals",
+					"v1/orgs/someid/projects/p_something/roles/r_anotherid:remove-principals",
+					"v1/orgs/someid/roles/r_anotherid:add-grants",
+					"v1/orgs/someid/roles/r_anotherid:set-grants",
+					"v1/orgs/someid/roles/r_anotherid:remove-grants",
+					"v1/orgs/someid/projects/p_something/roles/r_anotherid:add-grants",
+					"v1/orgs/someid/projects/p_something/roles/r_anotherid:set-grants",
+					"v1/orgs/someid/projects/p_something/roles/r_anotherid:remove-grants",
+				},
+			},
+		},
+		{
+			name: "auth-tokens",
+			setup: func(mux *runtime.ServeMux) {
+				require.NoError(t, services.RegisterAuthTokenServiceHandlerServer(ctx, mux, &services.UnimplementedAuthTokenServiceServer{}))
+			},
+			verbUrls: map[string][]string{
+				"GET": {
+					"v1/orgs/someid/auth-tokens",
+					"v1/orgs/someid/auth-tokens/someid",
+				},
+				"DELETE": {
+					"v1/orgs/someid/auth-tokens/someid",
+				},
 			},
 		},
 	}
 
 	for _, tc := range cases {
-		for _, url := range tc.post_urls {
-			t.Run(tc.name+"_"+url, func(t *testing.T) {
-				mux := runtime.NewServeMux()
-				tc.setup(mux)
+		for verb, urls := range tc.verbUrls {
+			for _, url := range urls {
+				t.Run(fmt.Sprintf("%s_%s_%s", tc.name, verb, url), func(t *testing.T) {
+					mux := runtime.NewServeMux()
+					tc.setup(mux)
 
-				req := httptest.NewRequest("POST", fmt.Sprintf("http://localhost/%s", url), nil)
-				resp := httptest.NewRecorder()
-				mux.ServeHTTP(resp, req)
-				assert.Equal(t, routed, resp.Result().StatusCode, "Got response %v", resp)
-			})
+					req := httptest.NewRequest(verb, fmt.Sprintf("http://localhost/%s", url), nil)
+					resp := httptest.NewRecorder()
+					mux.ServeHTTP(resp, req)
+					assert.Equalf(t, routed, resp.Result().StatusCode, "Req: %s response %v", req.RequestURI, resp)
+				})
+			}
 		}
 	}
 }
