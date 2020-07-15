@@ -58,7 +58,7 @@ func NewVerifierContext(ctx context.Context,
 // Verify takes in a context that has expected parameters as values and runs an
 // authn/authz check. It returns a user ID, the scope ID for the request (which
 // may come from the URL and may come from the token) and whether or not to
-// proceed, e.g. whether the authn/authz check resulted in failure If an error
+// proceed, e.g. whether the authn/authz check resulted in failure. If an error
 // occurs it's logged to the system log.
 func Verify(ctx context.Context) (userId string, scopeId string, valid bool) {
 	v, ok := ctx.Value(verifierKey).(*verifier)
