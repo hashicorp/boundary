@@ -37,6 +37,10 @@ type verifier struct {
 	ctx             context.Context
 }
 
+// NewVerifierContext creates a context that carries a verifier object from the
+// HTTP handlers to the gRPC service handlers. It should only be created in the
+// HTTP handler and should exist for every request that reaches the service
+// handlers.
 func NewVerifierContext(ctx context.Context,
 	logger hclog.Logger,
 	iamRepoFn common.IamRepoFactory,
