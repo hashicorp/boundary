@@ -1359,7 +1359,7 @@ func TestAddGrants(t *testing.T) {
 				if o != scope {
 					req.ProjectId = scope.GetPublicId()
 				}
-				req.Grants = append(req.Grants, tc.add...)
+				req.GrantStrings = append(req.GrantStrings, tc.add...)
 				got, err := s.AddRoleGrants(context.Background(), req)
 				if tc.wantErr {
 					assert.Error(err)
@@ -1382,33 +1382,33 @@ func TestAddGrants(t *testing.T) {
 		{
 			name: "Bad Org Id",
 			req: &pbs.AddRoleGrantsRequest{
-				OrgId:     "",
-				ProjectId: role.GetScopeId(),
-				RoleId:    role.GetPublicId(),
-				Grants:    []string{"id=*;actions=create"},
-				Version:   &wrapperspb.UInt32Value{Value: role.GetVersion()},
+				OrgId:        "",
+				ProjectId:    role.GetScopeId(),
+				RoleId:       role.GetPublicId(),
+				GrantStrings: []string{"id=*;actions=create"},
+				Version:      &wrapperspb.UInt32Value{Value: role.GetVersion()},
 			},
 			errCode: codes.InvalidArgument,
 		},
 		{
 			name: "Bad Project Id",
 			req: &pbs.AddRoleGrantsRequest{
-				OrgId:     o.GetPublicId(),
-				ProjectId: "bad id",
-				RoleId:    role.GetPublicId(),
-				Grants:    []string{"id=*;actions=create"},
-				Version:   &wrapperspb.UInt32Value{Value: role.GetVersion()},
+				OrgId:        o.GetPublicId(),
+				ProjectId:    "bad id",
+				RoleId:       role.GetPublicId(),
+				GrantStrings: []string{"id=*;actions=create"},
+				Version:      &wrapperspb.UInt32Value{Value: role.GetVersion()},
 			},
 			errCode: codes.InvalidArgument,
 		},
 		{
 			name: "Bad Role Id",
 			req: &pbs.AddRoleGrantsRequest{
-				OrgId:     o.GetPublicId(),
-				ProjectId: role.GetScopeId(),
-				RoleId:    "bad id",
-				Grants:    []string{"id=*;actions=create"},
-				Version:   &wrapperspb.UInt32Value{Value: role.GetVersion()},
+				OrgId:        o.GetPublicId(),
+				ProjectId:    role.GetScopeId(),
+				RoleId:       "bad id",
+				GrantStrings: []string{"id=*;actions=create"},
+				Version:      &wrapperspb.UInt32Value{Value: role.GetVersion()},
 			},
 			errCode: codes.InvalidArgument,
 		},
@@ -1482,7 +1482,7 @@ func TestSetGrants(t *testing.T) {
 				if o != scope {
 					req.ProjectId = scope.GetPublicId()
 				}
-				req.Grants = append(req.Grants, tc.set...)
+				req.GrantStrings = append(req.GrantStrings, tc.set...)
 				got, err := s.SetRoleGrants(context.Background(), req)
 				if tc.wantErr {
 					assert.Error(err)
@@ -1506,33 +1506,33 @@ func TestSetGrants(t *testing.T) {
 		{
 			name: "Bad Org Id",
 			req: &pbs.SetRoleGrantsRequest{
-				OrgId:     "",
-				ProjectId: role.GetScopeId(),
-				RoleId:    role.GetPublicId(),
-				Grants:    []string{"id=*;actions=create"},
-				Version:   &wrapperspb.UInt32Value{Value: role.GetVersion()},
+				OrgId:        "",
+				ProjectId:    role.GetScopeId(),
+				RoleId:       role.GetPublicId(),
+				GrantStrings: []string{"id=*;actions=create"},
+				Version:      &wrapperspb.UInt32Value{Value: role.GetVersion()},
 			},
 			errCode: codes.InvalidArgument,
 		},
 		{
 			name: "Bad Project Id",
 			req: &pbs.SetRoleGrantsRequest{
-				OrgId:     o.GetPublicId(),
-				ProjectId: "bad id",
-				RoleId:    role.GetPublicId(),
-				Grants:    []string{"id=*;actions=create"},
-				Version:   &wrapperspb.UInt32Value{Value: role.GetVersion()},
+				OrgId:        o.GetPublicId(),
+				ProjectId:    "bad id",
+				RoleId:       role.GetPublicId(),
+				GrantStrings: []string{"id=*;actions=create"},
+				Version:      &wrapperspb.UInt32Value{Value: role.GetVersion()},
 			},
 			errCode: codes.InvalidArgument,
 		},
 		{
 			name: "Bad Role Id",
 			req: &pbs.SetRoleGrantsRequest{
-				OrgId:     o.GetPublicId(),
-				ProjectId: role.GetScopeId(),
-				RoleId:    "bad id",
-				Grants:    []string{"id=*;actions=create"},
-				Version:   &wrapperspb.UInt32Value{Value: role.GetVersion()},
+				OrgId:        o.GetPublicId(),
+				ProjectId:    role.GetScopeId(),
+				RoleId:       "bad id",
+				GrantStrings: []string{"id=*;actions=create"},
+				Version:      &wrapperspb.UInt32Value{Value: role.GetVersion()},
 			},
 			errCode: codes.InvalidArgument,
 		},
@@ -1605,7 +1605,7 @@ func TestRemoveGrants(t *testing.T) {
 				if o != scope {
 					req.ProjectId = scope.GetPublicId()
 				}
-				req.Grants = append(req.Grants, tc.remove...)
+				req.GrantStrings = append(req.GrantStrings, tc.remove...)
 				got, err := s.RemoveRoleGrants(context.Background(), req)
 				if tc.wantErr {
 					assert.Error(err)
@@ -1630,33 +1630,33 @@ func TestRemoveGrants(t *testing.T) {
 		{
 			name: "Bad Org Id",
 			req: &pbs.RemoveRoleGrantsRequest{
-				OrgId:     "",
-				ProjectId: role.GetScopeId(),
-				RoleId:    role.GetPublicId(),
-				Grants:    []string{"id=*;actions=create"},
-				Version:   &wrapperspb.UInt32Value{Value: role.GetVersion()},
+				OrgId:        "",
+				ProjectId:    role.GetScopeId(),
+				RoleId:       role.GetPublicId(),
+				GrantStrings: []string{"id=*;actions=create"},
+				Version:      &wrapperspb.UInt32Value{Value: role.GetVersion()},
 			},
 			errCode: codes.InvalidArgument,
 		},
 		{
 			name: "Bad Project Id",
 			req: &pbs.RemoveRoleGrantsRequest{
-				OrgId:     o.GetPublicId(),
-				ProjectId: "bad id",
-				RoleId:    role.GetPublicId(),
-				Grants:    []string{"id=*;actions=create"},
-				Version:   &wrapperspb.UInt32Value{Value: role.GetVersion()},
+				OrgId:        o.GetPublicId(),
+				ProjectId:    "bad id",
+				RoleId:       role.GetPublicId(),
+				GrantStrings: []string{"id=*;actions=create"},
+				Version:      &wrapperspb.UInt32Value{Value: role.GetVersion()},
 			},
 			errCode: codes.InvalidArgument,
 		},
 		{
 			name: "Bad Role Id",
 			req: &pbs.RemoveRoleGrantsRequest{
-				OrgId:     o.GetPublicId(),
-				ProjectId: role.GetScopeId(),
-				RoleId:    "bad id",
-				Grants:    []string{"id=*;actions=create"},
-				Version:   &wrapperspb.UInt32Value{Value: role.GetVersion()},
+				OrgId:        o.GetPublicId(),
+				ProjectId:    role.GetScopeId(),
+				RoleId:       "bad id",
+				GrantStrings: []string{"id=*;actions=create"},
+				Version:      &wrapperspb.UInt32Value{Value: role.GetVersion()},
 			},
 			errCode: codes.InvalidArgument,
 		},

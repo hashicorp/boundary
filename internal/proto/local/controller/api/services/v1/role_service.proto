@@ -279,7 +279,7 @@ message AddRoleGrantsRequest {
   // The version ensures the role hasn't changed since it was last retrieved and if
   // it has the request will fail.
   google.protobuf.UInt32Value version = 3;
-  repeated string grants = 4 [json_name="grants"];
+  repeated string grant_strings = 4 [json_name="grant_strings"];
 }
 
 message AddRoleGrantsResponse {
@@ -292,7 +292,7 @@ message SetRoleGrantsRequest {
   // The version ensures the role hasn't changed since it was last retrieved and if
   // it has the request will fail.
   google.protobuf.UInt32Value version = 3;
-  repeated string grants = 4 [json_name="grants"];
+  repeated string grant_strings = 4 [json_name="grant_strings"];
 }
 
 message SetRoleGrantsResponse {
@@ -305,7 +305,7 @@ message RemoveRoleGrantsRequest {
   // The version ensures the role hasn't changed since it was last retrieved and if
   // it has the request will fail.
   google.protobuf.UInt32Value version = 3;
-  repeated string grants = 4 [json_name="grants"];
+  repeated string grant_strings = 4 [json_name="grant_strings"];
 }
 
 message RemoveRoleGrantsResponse {
