@@ -49,7 +49,7 @@ func (s Service) ListUsers(ctx context.Context, req *pbs.ListUsersRequest) (*pbs
 	if err := validateListRequest(req); err != nil {
 		return nil, err
 	}
-	ul, err := s.listFromRepo(ctx, req.GetOrgId())
+	ul, err := s.listFromRepo(ctx, req.GetScopeId())
 	if err != nil {
 		return nil, err
 	}
@@ -77,11 +77,11 @@ func (s Service) CreateUser(ctx context.Context, req *pbs.CreateUserRequest) (*p
 	if err := validateCreateRequest(req); err != nil {
 		return nil, err
 	}
-	u, err := s.createInRepo(ctx, req.GetOrgId(), req.GetItem())
+	u, err := s.createInRepo(ctx, req.GetScopeId(), req.GetItem())
 	if err != nil {
 		return nil, err
 	}
-	return &pbs.CreateUserResponse{Item: u, Uri: fmt.Sprintf("orgs/%s/users/%s", req.GetOrgId(), u.GetId())}, nil
+	return &pbs.CreateUserResponse{Item: u, Uri: fmt.Sprintf("scopes/%s/users/%s", req.GetScopeId(), u.GetId())}, nil
 }
 
 // UpdateUser implements the interface pbs.UserServiceServer.
@@ -91,7 +91,7 @@ func (s Service) UpdateUser(ctx context.Context, req *pbs.UpdateUserRequest) (*p
 	if err := validateUpdateRequest(req); err != nil {
 		return nil, err
 	}
-	u, err := s.updateInRepo(ctx, req.GetOrgId(), req.GetId(), req.GetUpdateMask().GetPaths(), req.GetItem())
+	u, err := s.updateInRepo(ctx, req.GetScopeId(), req.GetId(), req.GetUpdateMask().GetPaths(), req.GetItem())
 	if err != nil {
 		return nil, err
 	}
@@ -348,15 +348,15 @@ func validId(id, prefix string) bool {
 }
 
 type ancestorProvider interface {
-	GetOrgId() string
+	GetScopeId() string
 }
 
 // validateAncestors verifies that the ancestors of this call are properly set and provided.
 func validateAncestors(r ancestorProvider) map[string]string {
-	if r.GetOrgId() == "" {
+	if r.GetScopeId() == "" {
 		return map[string]string{orgIdFieldName: "Missing org id."}
 	}
-	if !validId(r.GetOrgId(), scope.Org.Prefix()+"_") {
+	if !validId(r.GetScopeId(), scope.Org.Prefix()+"_") {
 		return map[string]string{orgIdFieldName: "Improperly formatted identifier."}
 	}
 	return map[string]string{}

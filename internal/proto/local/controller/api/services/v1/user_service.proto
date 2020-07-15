@@ -12,26 +12,23 @@ import "controller/api/resources/users/v1/user.proto";
 service UserService {
 
   // GetUser returns a stored User if present.  The provided request
-  // must include the org and user id for the user being retrieved. If
-  // any of those ids are missing, malformed or reference a non existing
+  // must include the scope and user ID for the user being retrieved. If
+  // any of those IDs are missing, malformed or reference a non existing
   // resource an error is returned.
   rpc GetUser(GetUserRequest) returns (GetUserResponse) {
     option (google.api.http) = {
-      get: "/v1/orgs/{org_id}/users/{id}"
+      get: "/v1/scopes/{scope_id}/users/{id}"
       response_body: "item"
-    };
-    option (grpc.gateway.protoc_gen_swagger.options.openapiv2_operation) = {
-      summary: "Gets a single User"
     };
   }
 
   // ListUsers returns a list of stored users which exist inside the org
-  // referenced inside the request.  The request must include the org id for
-  // the users being retrieved.  If the org id is missing, malformed, or
-  // reference a non existing org, an error is returned.
+  // referenced inside the request. The request must include the org ID for
+  // the users being retrieved. If the scope ID is missing, malformed, or
+  // reference a non existing scope, an error is returned.
   rpc ListUsers(ListUsersRequest) returns (ListUsersResponse) {
     option (google.api.http) = {
-      get: "/v1/orgs/{org_id}/users"
+      get: "/v1/scopes/{scope_id}/users"
     };
     option (grpc.gateway.protoc_gen_swagger.options.openapiv2_operation) = {
       summary: "Lists all Users"
@@ -45,7 +42,7 @@ service UserService {
   // use in another user in the same org, an error is returned.
   rpc CreateUser(CreateUserRequest) returns (CreateUserResponse) {
     option (google.api.http) = {
-      post: "/v1/orgs/{org_id}/users"
+      post: "/v1/scopes/{scope_id}/users"
       body: "item"
       response_body: "item"
     };
@@ -64,7 +61,7 @@ service UserService {
   // already in use in this org.
   rpc UpdateUser(UpdateUserRequest) returns (UpdateUserResponse) {
     option (google.api.http) = {
-      patch: "/v1/orgs/{org_id}/users/{id}"
+      patch: "/v1/scopes/{scope_id}/users/{id}"
       body: "item"
       response_body: "item"
     };
@@ -80,7 +77,7 @@ service UserService {
   // received.
   rpc DeleteUser(DeleteUserRequest) returns (DeleteUserResponse) {
     option (google.api.http) = {
-      delete: "/v1/orgs/{org_id}/users/{id}"
+      delete: "/v1/scopes/{scope_id}/users/{id}"
     };
     option (grpc.gateway.protoc_gen_swagger.options.openapiv2_operation) = {
       summary: "Deletes a User"
@@ -89,7 +86,7 @@ service UserService {
 }
 
 message GetUserRequest {
-  string org_id = 1;
+  string scope_id = 1;
   string id = 2;
   string view = 3;
 }
@@ -99,7 +96,7 @@ message GetUserResponse {
 }
 
 message ListUsersRequest {
-  string org_id = 1;
+  string scope_id = 1;
   string view = 2;
 }
 
@@ -108,7 +105,7 @@ message ListUsersResponse {
 }
 
 message CreateUserRequest {
-  string org_id = 1;
+  string scope_id = 1;
   resources.users.v1.User item = 2;
 }
 
@@ -118,7 +115,7 @@ message CreateUserResponse {
 }
 
 message UpdateUserRequest {
-  string org_id = 1;
+  string scope_id = 1;
   string id = 2;
   resources.users.v1.User item = 3;
   google.protobuf.FieldMask update_mask = 4;
@@ -129,7 +126,7 @@ message UpdateUserResponse {
 }
 
 message DeleteUserRequest {
-  string org_id = 1;
+  string scope_id = 1;
   string id = 2;
 }
 

@@ -88,11 +88,7 @@ func (s Service) CreateRole(ctx context.Context, req *pbs.CreateRoleRequest) (*p
 	if err != nil {
 		return nil, err
 	}
-	var projectPart string
-	if req.GetProjectId() != "" {
-		projectPart = fmt.Sprintf("projects/%s/", req.GetProjectId())
-	}
-	return &pbs.CreateRoleResponse{Item: r, Uri: fmt.Sprintf("orgs/%s/%sroles/%s", req.GetOrgId(), projectPart, r.GetId())}, nil
+	return &pbs.CreateRoleResponse{Item: r, Uri: fmt.Sprintf("scopes/%s/roles/%s", req.GetScopeId(), r.GetId())}, nil
 }
 
 // UpdateRole implements the interface pbs.RoleServiceServer.
@@ -715,28 +711,21 @@ func validId(id, prefix string) bool {
 }
 
 type ancestorProvider interface {
-	GetOrgId() string
-	GetProjectId() string
+	GetScopeId() string
 }
 
 // validateAncestors verifies that the ancestors of this call are properly set and provided.
 func validateAncestors(r ancestorProvider) map[string]string {
-	if r.GetOrgId() == "" {
+	if r.GetScopeId() == "" {
 		return map[string]string{orgIdFieldName: "Missing org id."}
 	}
-	if !validId(r.GetOrgId(), scope.Org.Prefix()+"_") {
+	if !validId(r.GetScopeId(), scope.Org.Prefix()+"_") {
 		return map[string]string{orgIdFieldName: "Improperly formatted identifier."}
-	}
-	if r.GetProjectId() != "" && !validId(r.GetProjectId(), scope.Project.Prefix()+"_") {
-		return map[string]string{projIdFieldName: "Improperly formatted identifier."}
 	}
 	return map[string]string{}
 }
 
 // Given an ancestorProvider, return the resource's immediate parent scope
 func parentScope(r ancestorProvider) string {
-	if r.GetProjectId() != "" {
-		return r.GetProjectId()
-	}
-	return r.GetOrgId()
+	return r.GetScopeId()
 }

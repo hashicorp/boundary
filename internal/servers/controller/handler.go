@@ -23,9 +23,8 @@ import (
 	"github.com/hashicorp/watchtower/internal/servers/controller/handlers/host_catalogs"
 	"github.com/hashicorp/watchtower/internal/servers/controller/handlers/host_sets"
 	"github.com/hashicorp/watchtower/internal/servers/controller/handlers/hosts"
-	"github.com/hashicorp/watchtower/internal/servers/controller/handlers/orgs"
-	"github.com/hashicorp/watchtower/internal/servers/controller/handlers/projects"
 	"github.com/hashicorp/watchtower/internal/servers/controller/handlers/roles"
+	"github.com/hashicorp/watchtower/internal/servers/controller/handlers/scopes"
 	"github.com/hashicorp/watchtower/internal/servers/controller/handlers/users"
 	"github.com/hashicorp/watchtower/internal/types/action"
 	"github.com/hashicorp/watchtower/internal/types/resource"
@@ -82,19 +81,12 @@ func handleGrpcGateway(c *Controller) (http.Handler, error) {
 	if err := services.RegisterAuthenticationServiceHandlerServer(ctx, mux, auths); err != nil {
 		return nil, fmt.Errorf("failed to register authenticate service handler: %w", err)
 	}
-	os, err := orgs.NewService(c.IamRepoFn)
+	os, err := scopes.NewService(c.IamRepoFn)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create org handler service: %w", err)
+		return nil, fmt.Errorf("failed to create scope handler service: %w", err)
 	}
-	if err := services.RegisterOrgServiceHandlerServer(ctx, mux, os); err != nil {
-		return nil, fmt.Errorf("failed to register org service handler: %w", err)
-	}
-	ps, err := projects.NewService(c.IamRepoFn)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create project handler service: %w", err)
-	}
-	if err := services.RegisterProjectServiceHandlerServer(ctx, mux, ps); err != nil {
-		return nil, fmt.Errorf("failed to register project service handler: %w", err)
+	if err := services.RegisterScopeServiceHandlerServer(ctx, mux, os); err != nil {
+		return nil, fmt.Errorf("failed to register scope service handler: %w", err)
 	}
 	us, err := users.NewService(c.IamRepoFn)
 	if err != nil {

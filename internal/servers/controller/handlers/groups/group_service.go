@@ -90,7 +90,7 @@ func (s Service) CreateGroup(ctx context.Context, req *pbs.CreateGroupRequest) (
 	if req.GetProjectId() != "" {
 		projectPart = fmt.Sprintf("projects/%s/", req.GetProjectId())
 	}
-	return &pbs.CreateGroupResponse{Item: u, Uri: fmt.Sprintf("orgs/%s/%sgroups/%s", req.GetOrgId(), projectPart, u.GetId())}, nil
+	return &pbs.CreateGroupResponse{Item: u, Uri: fmt.Sprintf("orgs/%s/%sgroups/%s", req.GetScopeId(), projectPart, u.GetId())}, nil
 }
 
 // UpdateGroup implements the interface pbs.GroupServiceServer.
@@ -357,20 +357,16 @@ func validId(id, prefix string) bool {
 }
 
 type ancestorProvider interface {
-	GetOrgId() string
-	GetProjectId() string
+	GetScopeId() string
 }
 
 // validateAncestors verifies that the ancestors of this call are properly set and provided.
 func validateAncestors(r ancestorProvider) map[string]string {
-	if r.GetOrgId() == "" {
+	if r.GetScopeId() == "" {
 		return map[string]string{orgIdFieldName: "Missing org id."}
 	}
-	if !validId(r.GetOrgId(), scope.Org.Prefix()+"_") {
+	if !validId(r.GetScopeId(), scope.Org.Prefix()+"_") {
 		return map[string]string{orgIdFieldName: "Improperly formatted identifier."}
-	}
-	if r.GetProjectId() != "" && !validId(r.GetProjectId(), scope.Project.Prefix()+"_") {
-		return map[string]string{projIdFieldName: "Improperly formatted identifier."}
 	}
 	return map[string]string{}
 }
@@ -380,5 +376,5 @@ func parentScope(r ancestorProvider) string {
 	if r.GetProjectId() != "" {
 		return r.GetProjectId()
 	}
-	return r.GetOrgId()
+	return r.GetScopeId()
 }

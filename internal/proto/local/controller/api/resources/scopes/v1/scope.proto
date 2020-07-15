@@ -7,9 +7,9 @@ option go_package = "github.com/hashicorp/watchtower/internal/gen/controller/api
 import "google/protobuf/timestamp.proto";
 import "google/protobuf/wrappers.proto";
 
-// Org contains all fields related to an Org resource
-message Org {
-	// The ID of the Org
+// Scope contains all fields related to a Scope resource
+message Scope {
+	// The ID of the Scope
 	// Output only.
 	string id = 1;
 
@@ -26,4 +26,7 @@ message Org {
 	// The time this resource was last updated.
 	// Output only.
 	google.protobuf.Timestamp updated_time = 5 [json_name="updated_time"];
+
+	// Whether the resource is disabled
+	google.protobuf.BoolValue disabled = 6;
 }

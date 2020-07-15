@@ -17,8 +17,6 @@ import (
 	"google.golang.org/protobuf/types/known/wrapperspb"
 )
 
-const orgIdFieldName = "org_id"
-
 var (
 	reInvalidID = regexp.MustCompile("[^A-Za-z0-9]")
 	// TODO(ICU-28): Find a way to auto update these names and enforce the mappings between wire and storage.
@@ -28,7 +26,7 @@ var (
 	}
 )
 
-// Service handles request as described by the pbs.ProjectServiceServer interface.
+// Service handles request as described by the pbs.ScopeServiceServer interface.
 type Service struct {
 	repo common.IamRepoFactory
 }
@@ -41,24 +39,24 @@ func NewService(repo common.IamRepoFactory) (Service, error) {
 	return Service{repo: repo}, nil
 }
 
-var _ pbs.ProjectServiceServer = Service{}
+var _ pbs.ScopeServiceServer = Service{}
 
-// ListProjects implements the interface pbs.ProjectServiceServer.
-func (s Service) ListProjects(ctx context.Context, req *pbs.ListProjectsRequest) (*pbs.ListProjectsResponse, error) {
+// ListScopes implements the interface pbs.ScopeServiceServer.
+func (s Service) ListScopes(ctx context.Context, req *pbs.ListScopesRequest) (*pbs.ListScopesResponse, error) {
 	auth := handlers.ToTokenMetadata(ctx)
 	_ = auth
 	if err := validateListRequest(req); err != nil {
 		return nil, err
 	}
-	pl, err := s.listFromRepo(ctx, req.GetOrgId())
+	pl, err := s.listFromRepo(ctx, "global")
 	if err != nil {
 		return nil, err
 	}
-	return &pbs.ListProjectsResponse{Items: pl}, nil
+	return &pbs.ListScopesResponse{Items: pl}, nil
 }
 
-// GetProjects implements the interface pbs.ProjectServiceServer.
-func (s Service) GetProject(ctx context.Context, req *pbs.GetProjectRequest) (*pbs.GetProjectResponse, error) {
+// GetScopes implements the interface pbs.ScopeServiceServer.
+func (s Service) GetScope(ctx context.Context, req *pbs.GetScopeRequest) (*pbs.GetScopeResponse, error) {
 	auth := handlers.ToTokenMetadata(ctx)
 	_ = auth
 	if err := validateGetRequest(req); err != nil {
@@ -68,39 +66,39 @@ func (s Service) GetProject(ctx context.Context, req *pbs.GetProjectRequest) (*p
 	if err != nil {
 		return nil, err
 	}
-	return &pbs.GetProjectResponse{Item: p}, nil
+	return &pbs.GetScopeResponse{Item: p}, nil
 }
 
-// CreateProject implements the interface pbs.ProjectServiceServer.
-func (s Service) CreateProject(ctx context.Context, req *pbs.CreateProjectRequest) (*pbs.CreateProjectResponse, error) {
+// CreateScope implements the interface pbs.ScopeServiceServer.
+func (s Service) CreateScope(ctx context.Context, req *pbs.CreateScopeRequest) (*pbs.CreateScopeResponse, error) {
 	auth := handlers.ToTokenMetadata(ctx)
 	_ = auth
 	if err := validateCreateRequest(req); err != nil {
 		return nil, err
 	}
-	p, err := s.createInRepo(ctx, req.GetOrgId(), req.GetItem())
+	p, err := s.createInRepo(ctx, "global", req.GetItem())
 	if err != nil {
 		return nil, err
 	}
-	return &pbs.CreateProjectResponse{Item: p, Uri: fmt.Sprintf("orgs/%s/projects/%s", req.GetOrgId(), p.GetId())}, nil
+	return &pbs.CreateScopeResponse{Item: p, Uri: fmt.Sprintf("scopes/%s", p.GetId())}, nil
 }
 
-// UpdateProject implements the interface pbs.ProjectServiceServer.
-func (s Service) UpdateProject(ctx context.Context, req *pbs.UpdateProjectRequest) (*pbs.UpdateProjectResponse, error) {
+// UpdateScope implements the interface pbs.ScopeServiceServer.
+func (s Service) UpdateScope(ctx context.Context, req *pbs.UpdateScopeRequest) (*pbs.UpdateScopeResponse, error) {
 	auth := handlers.ToTokenMetadata(ctx)
 	_ = auth
 	if err := validateUpdateRequest(req); err != nil {
 		return nil, err
 	}
-	p, err := s.updateInRepo(ctx, req.GetOrgId(), req.GetId(), req.GetUpdateMask().GetPaths(), req.GetItem())
+	p, err := s.updateInRepo(ctx, req.GetId(), req.GetUpdateMask().GetPaths(), req.GetItem())
 	if err != nil {
 		return nil, err
 	}
-	return &pbs.UpdateProjectResponse{Item: p}, nil
+	return &pbs.UpdateScopeResponse{Item: p}, nil
 }
 
-// DeleteProject implements the interface pbs.ProjectServiceServer.
-func (s Service) DeleteProject(ctx context.Context, req *pbs.DeleteProjectRequest) (*pbs.DeleteProjectResponse, error) {
+// DeleteScope implements the interface pbs.ScopeServiceServer.
+func (s Service) DeleteScope(ctx context.Context, req *pbs.DeleteScopeRequest) (*pbs.DeleteScopeResponse, error) {
 	auth := handlers.ToTokenMetadata(ctx)
 	_ = auth
 	if err := validateDeleteRequest(req); err != nil {
@@ -110,10 +108,10 @@ func (s Service) DeleteProject(ctx context.Context, req *pbs.DeleteProjectReques
 	if err != nil {
 		return nil, err
 	}
-	return &pbs.DeleteProjectResponse{Existed: existed}, nil
+	return &pbs.DeleteScopeResponse{Existed: existed}, nil
 }
 
-func (s Service) getFromRepo(ctx context.Context, id string) (*pb.Project, error) {
+func (s Service) getFromRepo(ctx context.Context, id string) (*pb.Scope, error) {
 	repo, err := s.repo()
 	if err != nil {
 		return nil, err
@@ -123,12 +121,12 @@ func (s Service) getFromRepo(ctx context.Context, id string) (*pb.Project, error
 		return nil, err
 	}
 	if p == nil {
-		return nil, handlers.NotFoundErrorf("Project %q doesn't exist.", id)
+		return nil, handlers.NotFoundErrorf("Scope %q doesn't exist.", id)
 	}
 	return toProto(p), nil
 }
 
-func (s Service) createInRepo(ctx context.Context, orgID string, item *pb.Project) (*pb.Project, error) {
+func (s Service) createInRepo(ctx context.Context, orgID string, item *pb.Scope) (*pb.Scope, error) {
 	var opts []iam.Option
 	if item.GetName() != nil {
 		opts = append(opts, iam.WithName(item.GetName().GetValue()))
@@ -136,7 +134,7 @@ func (s Service) createInRepo(ctx context.Context, orgID string, item *pb.Projec
 	if item.GetDescription() != nil {
 		opts = append(opts, iam.WithDescription(item.GetDescription().GetValue()))
 	}
-	p, err := iam.NewProject(orgID, opts...)
+	p, err := iam.NewScope(orgID, opts...)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "Unable to build project for creation: %v.", err)
 	}
@@ -154,7 +152,7 @@ func (s Service) createInRepo(ctx context.Context, orgID string, item *pb.Projec
 	return toProto(out), nil
 }
 
-func (s Service) updateInRepo(ctx context.Context, orgID, projId string, mask []string, item *pb.Project) (*pb.Project, error) {
+func (s Service) updateInRepo(ctx context.Context, scopeId string, mask []string, item *pb.Scope) (*pb.Scope, error) {
 	var opts []iam.Option
 	if desc := item.GetDescription(); desc != nil {
 		opts = append(opts, iam.WithDescription(desc.GetValue()))
@@ -162,11 +160,11 @@ func (s Service) updateInRepo(ctx context.Context, orgID, projId string, mask []
 	if name := item.GetName(); name != nil {
 		opts = append(opts, iam.WithName(name.GetValue()))
 	}
-	p, err := iam.NewProject(orgID, opts...)
+	p, err := iam.NewScope(scopeId, opts...)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "Unable to build project for update: %v.", err)
 	}
-	p.PublicId = projId
+	p.PublicId = scopeId
 	dbMask, err := toDbUpdateMask(mask)
 	if err != nil {
 		return nil, err
@@ -183,7 +181,7 @@ func (s Service) updateInRepo(ctx context.Context, orgID, projId string, mask []
 		return nil, status.Errorf(codes.Internal, "Unable to update project: %v.", err)
 	}
 	if rowsUpdated == 0 {
-		return nil, handlers.NotFoundErrorf("Project %q doesn't exist.", projId)
+		return nil, handlers.NotFoundErrorf("Scope %q doesn't exist.", scopeId)
 	}
 	return toProto(out), nil
 }
@@ -200,16 +198,16 @@ func (s Service) deleteFromRepo(ctx context.Context, projId string) (bool, error
 	return rows > 0, nil
 }
 
-func (s Service) listFromRepo(ctx context.Context, orgId string) ([]*pb.Project, error) {
+func (s Service) listFromRepo(ctx context.Context, orgId string) ([]*pb.Scope, error) {
 	repo, err := s.repo()
 	if err != nil {
 		return nil, err
 	}
-	pl, err := repo.ListProjects(ctx, orgId)
+	pl, err := repo.ListScopes(ctx, "global")
 	if err != nil {
 		return nil, err
 	}
-	var outPl []*pb.Project
+	var outPl []*pb.Scope
 	for _, p := range pl {
 		outPl = append(outPl, toProto(p))
 	}
@@ -235,8 +233,8 @@ func toDbUpdateMask(paths []string) ([]string, error) {
 	return dbPaths, nil
 }
 
-func toProto(in *iam.Scope) *pb.Project {
-	out := pb.Project{
+func toProto(in *iam.Scope) *pb.Scope {
+	out := pb.Scope{
 		Id:          in.GetPublicId(),
 		CreatedTime: in.GetCreateTime().GetTimestamp(),
 		UpdatedTime: in.GetUpdateTime().GetTimestamp(),
@@ -255,9 +253,9 @@ func toProto(in *iam.Scope) *pb.Project {
 //  * The path passed in is correctly formatted
 //  * All required parameters are set
 //  * There are no conflicting parameters provided
-func validateGetRequest(req *pbs.GetProjectRequest) error {
+func validateGetRequest(req *pbs.GetScopeRequest) error {
 	badFields := validateAncestors(req)
-	if !validId(req.GetId(), scope.Project.Prefix()+"_") {
+	if !validId(req.GetId(), scope.Scope.Prefix()+"_") {
 		badFields["id"] = "Invalid formatted project id."
 	}
 	if len(badFields) > 0 {
@@ -266,7 +264,7 @@ func validateGetRequest(req *pbs.GetProjectRequest) error {
 	return nil
 }
 
-func validateCreateRequest(req *pbs.CreateProjectRequest) error {
+func validateCreateRequest(req *pbs.CreateScopeRequest) error {
 	badFields := validateAncestors(req)
 	item := req.GetItem()
 	if item.GetId() != "" {
@@ -284,9 +282,9 @@ func validateCreateRequest(req *pbs.CreateProjectRequest) error {
 	return nil
 }
 
-func validateUpdateRequest(req *pbs.UpdateProjectRequest) error {
+func validateUpdateRequest(req *pbs.UpdateScopeRequest) error {
 	badFields := validateAncestors(req)
-	if !validId(req.GetId(), scope.Project.Prefix()+"_") {
+	if !validId(req.GetId(), scope.Scope.Prefix()+"_") {
 		badFields["project_id"] = "Improperly formatted path identifier."
 	}
 	if req.GetUpdateMask() == nil {
@@ -318,9 +316,9 @@ func validateUpdateRequest(req *pbs.UpdateProjectRequest) error {
 	return nil
 }
 
-func validateDeleteRequest(req *pbs.DeleteProjectRequest) error {
+func validateDeleteRequest(req *pbs.DeleteScopeRequest) error {
 	badFields := validateAncestors(req)
-	if !validId(req.GetId(), scope.Project.Prefix()+"_") {
+	if !validId(req.GetId(), scope.Scope.Prefix()+"_") {
 		badFields["id"] = "Incorrectly formatted project."
 	}
 	if len(badFields) > 0 {
@@ -329,7 +327,7 @@ func validateDeleteRequest(req *pbs.DeleteProjectRequest) error {
 	return nil
 }
 
-func validateListRequest(req *pbs.ListProjectsRequest) error {
+func validateListRequest(req *pbs.ListScopesRequest) error {
 	badFields := validateAncestors(req)
 	if len(badFields) > 0 {
 		return handlers.InvalidArgumentErrorf("Improperly formatted identifier.", badFields)

@@ -31,11 +31,11 @@ func TestGrpcGatewayRouting(t *testing.T) {
 		expectedResult int
 	}{
 		{
-			name: "project",
+			name: "projects",
 			setup: func(mux *runtime.ServeMux) {
-				require.NoError(t, services.RegisterProjectServiceHandlerServer(ctx, mux, &services.UnimplementedProjectServiceServer{}))
+				require.NoError(t, services.RegisterScopeServiceHandlerServer(ctx, mux, &services.UnimplementedScopeServiceServer{}))
 			},
-			url:            "v1/orgs/someid/projects",
+			url:            "v1/scopes/someid/projects",
 			expectedResult: routed,
 		},
 		{
@@ -43,7 +43,7 @@ func TestGrpcGatewayRouting(t *testing.T) {
 			setup: func(mux *runtime.ServeMux) {
 				require.NoError(t, services.RegisterUserServiceHandlerServer(ctx, mux, &services.UnimplementedUserServiceServer{}))
 			},
-			url:            "v1/orgs/someid/users",
+			url:            "v1/scopes/someid/users",
 			expectedResult: routed,
 		},
 		{
@@ -51,7 +51,7 @@ func TestGrpcGatewayRouting(t *testing.T) {
 			setup: func(mux *runtime.ServeMux) {
 				require.NoError(t, services.RegisterRoleServiceHandlerServer(ctx, mux, &services.UnimplementedRoleServiceServer{}))
 			},
-			url:            "v1/orgs/someid/roles",
+			url:            "v1/scopes/someid/roles",
 			expectedResult: routed,
 		},
 		{
@@ -59,7 +59,7 @@ func TestGrpcGatewayRouting(t *testing.T) {
 			setup: func(mux *runtime.ServeMux) {
 				require.NoError(t, services.RegisterRoleServiceHandlerServer(ctx, mux, &services.UnimplementedRoleServiceServer{}))
 			},
-			url:            "v1/orgs/someid/projects/_someprojectid/roles",
+			url:            "v1/scopes/someid/roles",
 			expectedResult: routed,
 		},
 		{
@@ -67,7 +67,7 @@ func TestGrpcGatewayRouting(t *testing.T) {
 			setup: func(mux *runtime.ServeMux) {
 				require.NoError(t, services.RegisterGroupServiceHandlerServer(ctx, mux, &services.UnimplementedGroupServiceServer{}))
 			},
-			url:            "v1/orgs/someid/groups",
+			url:            "v1/scopes/someid/groups",
 			expectedResult: routed,
 		},
 		{
@@ -75,7 +75,7 @@ func TestGrpcGatewayRouting(t *testing.T) {
 			setup: func(mux *runtime.ServeMux) {
 				require.NoError(t, services.RegisterGroupServiceHandlerServer(ctx, mux, &services.UnimplementedGroupServiceServer{}))
 			},
-			url:            "v1/orgs/someid/projects/_someprojectid/groups",
+			url:            "v1/scopes/someid/groups",
 			expectedResult: routed,
 		},
 		{

@@ -18,8 +18,7 @@ import (
 )
 
 const (
-	orgIdFieldName     = "org_id"
-	projectIdFieldName = "project_id"
+	scopeIdFieldName = "scope_id"
 )
 
 type catalogType int
@@ -114,13 +113,13 @@ func (s Service) CreateHostCatalog(ctx context.Context, req *pbs.CreateHostCatal
 	if err := validateCreateRequest(req); err != nil {
 		return nil, err
 	}
-	hc, err := s.createInRepo(ctx, req.GetProjectId(), req.GetItem())
+	hc, err := s.createInRepo(ctx, req.GetScopeId(), req.GetItem())
 	if err != nil {
 		return nil, err
 	}
 	return &pbs.CreateHostCatalogResponse{
 		Item: hc,
-		Uri:  fmt.Sprintf("orgs/%s/projects/%s/host-catalogs/%s", req.GetOrgId(), req.GetProjectId(), hc.GetId()),
+		Uri:  fmt.Sprintf("scopes/%s/host-catalogs/%s", req.GetScopeId(), hc.GetId()),
 	}, nil
 }
 
@@ -135,7 +134,7 @@ func (s Service) UpdateHostCatalog(ctx context.Context, req *pbs.UpdateHostCatal
 	if err := validateUpdateRequest(req, ct); err != nil {
 		return nil, err
 	}
-	hc, err := s.updateInRepo(ctx, req.GetProjectId(), req.GetId(), req.GetUpdateMask().GetPaths(), req.GetItem())
+	hc, err := s.updateInRepo(ctx, req.GetScopeId(), req.GetId(), req.GetUpdateMask().GetPaths(), req.GetItem())
 	if err != nil {
 		return nil, err
 	}
@@ -382,28 +381,21 @@ func validId(id, prefix string) bool {
 }
 
 type ancestorProvider interface {
-	GetOrgId() string
-	GetProjectId() string
+	GetScopeId() string
 }
 
 // validateAncestors verifies that the ancestors of this call are set and formatted correctly.
 func validateAncestors(r ancestorProvider) map[string]string {
 	badFields := make(map[string]string)
-	if r.GetOrgId() == "" {
-		badFields[orgIdFieldName] = "The field is missing but required."
-	}
-	if r.GetProjectId() == "" {
-		badFields[projectIdFieldName] = "The field is missing but required."
+	if r.GetScopeId() == "" {
+		badFields[scopeIdFieldName] = "The field is missing but required."
 	}
 	if len(badFields) > 0 {
 		return badFields
 	}
 
-	if !validId(r.GetOrgId(), scope.Org.Prefix()+"_") {
-		badFields[orgIdFieldName] = "The field is incorrectly formatted."
-	}
-	if !validId(r.GetProjectId(), scope.Project.Prefix()+"_") {
-		badFields[projectIdFieldName] = "The field is incorrectly formatted."
+	if !validId(r.GetScopeId(), scope.Org.Prefix()+"_") {
+		badFields[scopeIdFieldName] = "The field is incorrectly formatted."
 	}
 	return badFields
 }
