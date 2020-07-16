@@ -60,6 +60,8 @@ comment on function
 is
   'function used in before update triggers to properly set update_time columns';
 
+-- TODO (jimlambrt 7/2020) once all references are removed, then deprecate and
+-- delete immutable_create_time_func() 
 create or replace function
   immutable_create_time_func()
   returns trigger
