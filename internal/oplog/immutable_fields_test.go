@@ -120,9 +120,6 @@ func Test_ImmutableFields(t *testing.T) {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-
-			db.LogMode(true)
-
 			orig := testCloneEntry(newLogEntry)
 			err = db.First(orig).Error
 			require.NoError(err)
@@ -137,17 +134,6 @@ func Test_ImmutableFields(t *testing.T) {
 			assert.True(proto.Equal(orig, after))
 
 		})
-		// }
-		// t.Run("updatable", func(t *testing.T) {
-		// 	assert, require := assert.New(t), require.New(t)
-		// 	_, err = db.Exec(update_updatable)
-		// 	require.NoError(err)
-		// 	var found rowData
-		// 	err = db.QueryRow(query, id).Scan(&found.Id, &found.Name, &found.CreateTime, &found.Updatable)
-		// 	require.NoError(err)
-		// 	assert.NotEqual(orig.Updatable, found.Updatable)
-		// })
-
 	}
 }
 
