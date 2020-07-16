@@ -44,24 +44,24 @@ var _ pbs.GroupServiceServer = Service{}
 
 // ListGroups implements the interface pbs.GroupServiceServer.
 func (s Service) ListGroups(ctx context.Context, req *pbs.ListGroupsRequest) (*pbs.ListGroupsResponse, error) {
-	_, scopeInfo, valid := auth.Verify(ctx)
-	if !valid {
+	authResults := auth.Verify(ctx)
+	if !authResults.Valid {
 		return nil, handlers.ForbiddenError()
 	}
 	if err := validateListRequest(req); err != nil {
 		return nil, err
 	}
-	gl, err := s.listFromRepo(ctx, scopeInfo.GetId())
+	gl, err := s.listFromRepo(ctx, authResults.Scope.GetId())
 	if err != nil {
 		return nil, err
 	}
-	return &pbs.ListGroupsResponse{Items: gl}, nil
+	return &pbs.ListGroupsResponse{Scope: &authResults.Scope, Items: gl}, nil
 }
 
 // GetGroups implements the interface pbs.GroupServiceServer.
 func (s Service) GetGroup(ctx context.Context, req *pbs.GetGroupRequest) (*pbs.GetGroupResponse, error) {
-	_, _, valid := auth.Verify(ctx)
-	if !valid {
+	authResults := auth.Verify(ctx)
+	if !authResults.Valid {
 		return nil, handlers.ForbiddenError()
 	}
 	if err := validateGetRequest(req); err != nil {
@@ -71,45 +71,48 @@ func (s Service) GetGroup(ctx context.Context, req *pbs.GetGroupRequest) (*pbs.G
 	if err != nil {
 		return nil, err
 	}
+	u.Scope = &authResults.Scope
 	return &pbs.GetGroupResponse{Item: u}, nil
 }
 
 // CreateGroup implements the interface pbs.GroupServiceServer.
 func (s Service) CreateGroup(ctx context.Context, req *pbs.CreateGroupRequest) (*pbs.CreateGroupResponse, error) {
-	_, scopeInfo, valid := auth.Verify(ctx)
-	if !valid {
+	authResults := auth.Verify(ctx)
+	if !authResults.Valid {
 		return nil, handlers.ForbiddenError()
 	}
 	if err := validateCreateRequest(req); err != nil {
 		return nil, err
 	}
-	u, err := s.createInRepo(ctx, scopeInfo.GetId(), req.GetItem())
+	u, err := s.createInRepo(ctx, authResults.Scope.GetId(), req.GetItem())
 	if err != nil {
 		return nil, err
 	}
-	return &pbs.CreateGroupResponse{Item: u, Uri: fmt.Sprintf("scopes/%s/groups/%s", scopeInfo.GetId(), u.GetId())}, nil
+	u.Scope = &authResults.Scope
+	return &pbs.CreateGroupResponse{Item: u, Uri: fmt.Sprintf("scopes/%s/groups/%s", authResults.Scope.GetId(), u.GetId())}, nil
 }
 
 // UpdateGroup implements the interface pbs.GroupServiceServer.
 func (s Service) UpdateGroup(ctx context.Context, req *pbs.UpdateGroupRequest) (*pbs.UpdateGroupResponse, error) {
-	_, scopeInfo, valid := auth.Verify(ctx)
-	if !valid {
+	authResults := auth.Verify(ctx)
+	if !authResults.Valid {
 		return nil, handlers.ForbiddenError()
 	}
 	if err := validateUpdateRequest(req); err != nil {
 		return nil, err
 	}
-	u, err := s.updateInRepo(ctx, scopeInfo.GetId(), req.GetId(), req.GetUpdateMask().GetPaths(), req.GetItem())
+	u, err := s.updateInRepo(ctx, authResults.Scope.GetId(), req.GetId(), req.GetUpdateMask().GetPaths(), req.GetItem())
 	if err != nil {
 		return nil, err
 	}
+	u.Scope = &authResults.Scope
 	return &pbs.UpdateGroupResponse{Item: u}, nil
 }
 
 // DeleteGroup implements the interface pbs.GroupServiceServer.
 func (s Service) DeleteGroup(ctx context.Context, req *pbs.DeleteGroupRequest) (*pbs.DeleteGroupResponse, error) {
-	_, _, valid := auth.Verify(ctx)
-	if !valid {
+	authResults := auth.Verify(ctx)
+	if !authResults.Valid {
 		return nil, handlers.ForbiddenError()
 	}
 	if err := validateDeleteRequest(req); err != nil {

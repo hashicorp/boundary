@@ -6,19 +6,15 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/hashicorp/watchtower/internal/auth"
 	pb "github.com/hashicorp/watchtower/internal/gen/controller/api/resources/hosts"
 	pbs "github.com/hashicorp/watchtower/internal/gen/controller/api/services"
 	"github.com/hashicorp/watchtower/internal/host/static"
 	"github.com/hashicorp/watchtower/internal/servers/controller/common"
 	"github.com/hashicorp/watchtower/internal/servers/controller/handlers"
-	"github.com/hashicorp/watchtower/internal/types/scope"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/wrapperspb"
-)
-
-const (
-	scopeIdFieldName = "scope_id"
 )
 
 type catalogType int
@@ -90,8 +86,10 @@ func (s Service) ListHostCatalogs(ctx context.Context, req *pbs.ListHostCatalogs
 
 // GetHostCatalog implements the interface pbs.HostCatalogServiceServer.
 func (s Service) GetHostCatalog(ctx context.Context, req *pbs.GetHostCatalogRequest) (*pbs.GetHostCatalogResponse, error) {
-	auth := handlers.ToTokenMetadata(ctx)
-	_ = auth
+	authResults := auth.Verify(ctx)
+	if !authResults.Valid {
+		return nil, handlers.ForbiddenError()
+	}
 	ct := typeFromId(req.GetId())
 	if ct == unknownType {
 		return nil, handlers.InvalidArgumentErrorf("Invalid argument provided.", map[string]string{"id": "Improperly formatted identifier used."})
@@ -103,30 +101,36 @@ func (s Service) GetHostCatalog(ctx context.Context, req *pbs.GetHostCatalogRequ
 	if err != nil {
 		return nil, err
 	}
+	hc.Scope = &authResults.Scope
 	return &pbs.GetHostCatalogResponse{Item: hc}, nil
 }
 
 // CreateHostCatalog implements the interface pbs.HostCatalogServiceServer.
 func (s Service) CreateHostCatalog(ctx context.Context, req *pbs.CreateHostCatalogRequest) (*pbs.CreateHostCatalogResponse, error) {
-	auth := handlers.ToTokenMetadata(ctx)
-	_ = auth
+	authResults := auth.Verify(ctx)
+	if !authResults.Valid {
+		return nil, handlers.ForbiddenError()
+	}
 	if err := validateCreateRequest(req); err != nil {
 		return nil, err
 	}
-	hc, err := s.createInRepo(ctx, req.GetScopeId(), req.GetItem())
+	hc, err := s.createInRepo(ctx, authResults.Scope.GetId(), req.GetItem())
 	if err != nil {
 		return nil, err
 	}
+	hc.Scope = &authResults.Scope
 	return &pbs.CreateHostCatalogResponse{
 		Item: hc,
-		Uri:  fmt.Sprintf("scopes/%s/host-catalogs/%s", req.GetScopeId(), hc.GetId()),
+		Uri:  fmt.Sprintf("scopes/%s/host-catalogs/%s", authResults.Scope.GetId(), hc.GetId()),
 	}, nil
 }
 
 // UpdateHostCatalog implements the interface pbs.HostCatalogServiceServer.
 func (s Service) UpdateHostCatalog(ctx context.Context, req *pbs.UpdateHostCatalogRequest) (*pbs.UpdateHostCatalogResponse, error) {
-	auth := handlers.ToTokenMetadata(ctx)
-	_ = auth
+	authResults := auth.Verify(ctx)
+	if !authResults.Valid {
+		return nil, handlers.ForbiddenError()
+	}
 	ct := typeFromId(req.GetId())
 	if ct == unknownType {
 		return nil, handlers.InvalidArgumentErrorf("Invalid argument provided.", map[string]string{"id": "Improperly formatted identifier used."})
@@ -134,17 +138,20 @@ func (s Service) UpdateHostCatalog(ctx context.Context, req *pbs.UpdateHostCatal
 	if err := validateUpdateRequest(req, ct); err != nil {
 		return nil, err
 	}
-	hc, err := s.updateInRepo(ctx, req.GetScopeId(), req.GetId(), req.GetUpdateMask().GetPaths(), req.GetItem())
+	hc, err := s.updateInRepo(ctx, authResults.Scope.GetId(), req.GetId(), req.GetUpdateMask().GetPaths(), req.GetItem())
 	if err != nil {
 		return nil, err
 	}
+	hc.Scope = &authResults.Scope
 	return &pbs.UpdateHostCatalogResponse{Item: hc}, nil
 }
 
 // DeleteHostCatalog implements the interface pbs.HostCatalogServiceServer.
 func (s Service) DeleteHostCatalog(ctx context.Context, req *pbs.DeleteHostCatalogRequest) (*pbs.DeleteHostCatalogResponse, error) {
-	auth := handlers.ToTokenMetadata(ctx)
-	_ = auth
+	authResults := auth.Verify(ctx)
+	if !authResults.Valid {
+		return nil, handlers.ForbiddenError()
+	}
 	ct := typeFromId(req.GetId())
 	if ct == unknownType {
 		return nil, handlers.InvalidArgumentErrorf("Invalid argument provided.", map[string]string{"id": "Improperly formatted identifier used."})
@@ -289,7 +296,7 @@ func toProto(in *static.HostCatalog) *pb.HostCatalog {
 //  * The type asserted by the ID and/or field is known
 //  * If relevant, the type derived from the id prefix matches what is claimed by the type field
 func validateGetRequest(req *pbs.GetHostCatalogRequest, ct catalogType) error {
-	badFields := validateAncestors(req)
+	badFields := map[string]string{}
 	if !validId(req.GetId(), ct.idPrefix()) {
 		badFields["id"] = "Invalid formatted identifier."
 	}
@@ -300,7 +307,7 @@ func validateGetRequest(req *pbs.GetHostCatalogRequest, ct catalogType) error {
 }
 
 func validateCreateRequest(req *pbs.CreateHostCatalogRequest) error {
-	badFields := validateAncestors(req)
+	badFields := map[string]string{}
 	item := req.GetItem()
 	if item == nil {
 		badFields["item"] = "This field is required."
@@ -327,7 +334,7 @@ func validateCreateRequest(req *pbs.CreateHostCatalogRequest) error {
 }
 
 func validateUpdateRequest(req *pbs.UpdateHostCatalogRequest, ct catalogType) error {
-	badFields := validateAncestors(req)
+	badFields := map[string]string{}
 	if !validId(req.GetId(), ct.idPrefix()) {
 		badFields["id"] = "The field is incorrectly formatted."
 	}
@@ -362,7 +369,7 @@ func validateUpdateRequest(req *pbs.UpdateHostCatalogRequest, ct catalogType) er
 }
 
 func validateDeleteRequest(req *pbs.DeleteHostCatalogRequest, ct catalogType) error {
-	badFields := validateAncestors(req)
+	badFields := map[string]string{}
 	if !validId(req.GetId(), ct.idPrefix()) {
 		badFields["id"] = "The field is incorrectly formatted."
 	}
@@ -378,24 +385,4 @@ func validId(id, prefix string) bool {
 	}
 	id = strings.TrimPrefix(id, prefix)
 	return !reInvalidID.Match([]byte(id))
-}
-
-type ancestorProvider interface {
-	GetScopeId() string
-}
-
-// validateAncestors verifies that the ancestors of this call are set and formatted correctly.
-func validateAncestors(r ancestorProvider) map[string]string {
-	badFields := make(map[string]string)
-	if r.GetScopeId() == "" {
-		badFields[scopeIdFieldName] = "The field is missing but required."
-	}
-	if len(badFields) > 0 {
-		return badFields
-	}
-
-	if !validId(r.GetScopeId(), scope.Org.Prefix()+"_") {
-		badFields[scopeIdFieldName] = "The field is incorrectly formatted."
-	}
-	return badFields
 }

@@ -48,6 +48,12 @@ type RequestInfo struct {
 	scopeIdOverride      string
 }
 
+type VerifyResults struct {
+	Valid  bool
+	UserId string
+	Scope  scopes.ScopeInfo
+}
+
 type verifier struct {
 	logger          hclog.Logger
 	iamRepoFn       common.IamRepoFactory
@@ -80,7 +86,7 @@ func NewVerifierContext(ctx context.Context,
 // may come from the URL and may come from the token) and whether or not to
 // proceed, e.g. whether the authn/authz check resulted in failure. If an error
 // occurs it's logged to the system log.
-func Verify(ctx context.Context) (userId string, scopeInfo scopes.ScopeInfo, valid bool) {
+func Verify(ctx context.Context) (ret VerifyResults) {
 	v, ok := ctx.Value(verifierKey).(*verifier)
 	if !ok {
 		// We don't have a logger yet and this should never happen in any
@@ -88,7 +94,9 @@ func Verify(ctx context.Context) (userId string, scopeInfo scopes.ScopeInfo, val
 		panic("no verifier information found in context")
 	}
 	if v.requestInfo.DisableAuthEntirely {
-		return "", scopes.ScopeInfo{Id: v.requestInfo.scopeIdOverride}, true
+		ret.Scope.Id = v.requestInfo.scopeIdOverride
+		ret.Valid = true
+		return
 	}
 	v.ctx = ctx
 	if err := v.parseAuthParams(); err != nil {
@@ -100,7 +108,9 @@ func Verify(ctx context.Context) (userId string, scopeInfo scopes.ScopeInfo, val
 		return
 	}
 
-	authResults, userId, scopeInfo, err := v.performAuthCheck()
+	var authResults *perms.ACLResults
+	var err error
+	authResults, ret.UserId, ret.Scope, err = v.performAuthCheck()
 	if err != nil {
 		v.logger.Error("error performing authn/authz check", "error", err)
 		return
@@ -108,13 +118,13 @@ func Verify(ctx context.Context) (userId string, scopeInfo scopes.ScopeInfo, val
 	if !authResults.Allowed {
 		// TODO: Decide whether to remove this
 		if v.requestInfo.DisableAuthzFailures {
-			v.logger.Info("failed authz info for request", "resource", pretty.Sprint(v.res), "user_id", userId, "action", v.act.String())
+			v.logger.Info("failed authz info for request", "resource", pretty.Sprint(v.res), "user_id", ret.UserId, "action", v.act.String())
 		} else {
 			return
 		}
 	}
 
-	valid = true
+	ret.Valid = true
 	return
 }
 
