@@ -3,6 +3,7 @@ package roles
 
 import (
 	"encoding/json"
+	"strings"
 	"time"
 
 	"github.com/fatih/structs"
@@ -40,13 +41,14 @@ type Role struct {
 	// The version can be used in subsiquent write requests to ensure this resource
 	// has not changed and to fail the write if it has.
 	// Output only.
-	Version *uint32 `json:"version,omitempty"`
-	// The principals that are assigned this role.
+	Version uint32 `json:"version,omitempty"`
+	// The IDs (only) of principals that are assigned to this role.
 	// Output only.
-	UserIds []string `json:"user_ids,omitempty"`
+	PrincipalIds []string `json:"principal_ids,omitempty"`
+	// The principals that are assigned to this role.
 	// Output only.
-	GroupIds []string `json:"group_ids,omitempty"`
-	// The grants that this role provides for it's principals.
+	Principals []*Principal `json:"principals,omitempty"`
+	// The grants that this role provides for its principals.
 	// Output only.
 	Grants []string `json:"grants,omitempty"`
 	// The canonical version of the grants in the grants field with the same index.
@@ -58,11 +60,25 @@ type Role struct {
 }
 
 func (s *Role) SetDefault(key string) {
-	s.defaultFields = strutil.AppendIfMissing(s.defaultFields, key)
+	lowerKey := strings.ToLower(key)
+	validMap := map[string]string{"createdtime": "created_time", "description": "description", "disabled": "disabled", "grants": "grants", "grantscanonical": "grants_canonical", "grantscopeid": "grant_scope_id", "grantsjson": "grants_json", "id": "id", "name": "name", "principalids": "principal_ids", "principals": "principals", "updatedtime": "updated_time", "version": "version"}
+	for k, v := range validMap {
+		if k == lowerKey || v == lowerKey {
+			s.defaultFields = strutil.AppendIfMissing(s.defaultFields, v)
+			return
+		}
+	}
 }
 
 func (s *Role) UnsetDefault(key string) {
-	s.defaultFields = strutil.StrListDelete(s.defaultFields, key)
+	lowerKey := strings.ToLower(key)
+	validMap := map[string]string{"createdtime": "created_time", "description": "description", "disabled": "disabled", "grants": "grants", "grantscanonical": "grants_canonical", "grantscopeid": "grant_scope_id", "grantsjson": "grants_json", "id": "id", "name": "name", "principalids": "principal_ids", "principals": "principals", "updatedtime": "updated_time", "version": "version"}
+	for k, v := range validMap {
+		if k == lowerKey || v == lowerKey {
+			s.defaultFields = strutil.StrListDelete(s.defaultFields, v)
+			return
+		}
+	}
 }
 
 func (s Role) MarshalJSON() ([]byte, error) {

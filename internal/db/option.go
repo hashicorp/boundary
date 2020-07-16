@@ -32,8 +32,8 @@ type Options struct {
 	newOplogMsg  *oplog.Message
 	newOplogMsgs *[]*oplog.Message
 
-	// WithVersion must be accessible from other packages
-	WithVersion uint32
+	// WithVersion must be accessible from other packages.
+	WithVersion *uint32
 
 	withSkipVetForWrite bool
 }
@@ -54,7 +54,7 @@ func getDefaultOptions() Options {
 		WithFieldMaskPaths: []string{},
 		WithNullPaths:      []string{},
 		WithLimit:          0,
-		WithVersion:        0,
+		WithVersion:        nil,
 	}
 }
 
@@ -121,7 +121,7 @@ func WithLimit(limit int) Option {
 }
 
 // WithVersion provides an option version number for update operations.
-func WithVersion(version uint32) Option {
+func WithVersion(version *uint32) Option {
 	return func(o *Options) {
 		o.WithVersion = version
 	}

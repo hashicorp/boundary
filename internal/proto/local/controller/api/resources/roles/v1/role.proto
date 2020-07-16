@@ -7,6 +7,26 @@ option go_package = "github.com/hashicorp/watchtower/internal/gen/controller/api
 import "google/protobuf/timestamp.proto";
 import "google/protobuf/wrappers.proto";
 
+message Principal {
+	// The ID of the principal.
+	// Output only.
+	string id = 1;
+
+	// The type of the principal.
+	// Output only.
+	string type = 2;
+
+	// The scope ID of the principal.
+	// Output only.
+	string scope_id = 3 [json_name="scope_id"];
+}
+
+message Grant {
+	// The user-supplied string.
+	// Output only.
+
+}
+
 // Role contains all fields related to a Role resource
 message Role {
 	// The ID of the Role
@@ -42,13 +62,15 @@ message Role {
 	// Output only.
 	uint32 version = 8;
 
-	// The principals that are assigned this role.
+	// The IDs (only) of principals that are assigned to this role.
 	// Output only.
-	repeated string user_ids = 9;
-	// Output only.
-	repeated string group_ids = 10;
+	repeated string principal_ids = 9 [json_name="principal_ids"];
 
-	// The grants that this role provides for it's principals.
+	// The principals that are assigned to this role.
+	// Output only.
+	repeated Principal principals = 10;
+
+	// The grants that this role provides for its principals.
 	// Output only.
 	repeated string grants = 11;
 

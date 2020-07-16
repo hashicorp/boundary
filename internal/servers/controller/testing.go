@@ -120,6 +120,11 @@ type TestControllerOpts struct {
 
 	// If true, the controller will not be started
 	DisableAutoStart bool
+
+	// DisableAuthorizationFailures will still cause authz checks to be
+	// performed but they won't cause 403 Forbidden. Useful for API-level
+	// testing to avoid a lot of faff.
+	DisableAuthorizationFailures bool
 }
 
 func NewTestController(t *testing.T, opts *TestControllerOpts) *TestController {
@@ -183,8 +188,9 @@ func NewTestController(t *testing.T, opts *TestControllerOpts) *TestController {
 	}
 
 	conf := &Config{
-		RawConfig: opts.Config,
-		Server:    tc.b,
+		RawConfig:                    opts.Config,
+		Server:                       tc.b,
+		DisableAuthorizationFailures: opts.DisableAuthorizationFailures,
 	}
 
 	tc.c, err = New(conf)

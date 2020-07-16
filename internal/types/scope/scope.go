@@ -28,15 +28,8 @@ func (s Type) Prefix() string {
 	}[s]
 }
 
-func StringToScopeType(s string) Type {
-	switch s {
-	case Global.String():
-		return Global
-	case Org.String():
-		return Org
-	case Project.String():
-		return Project
-	default:
-		return Unknown
-	}
+var Map = map[string]Type{
+	Global.String():  Global,
+	Org.String():     Org,
+	Project.String(): Project,
 }

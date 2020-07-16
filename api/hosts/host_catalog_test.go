@@ -14,7 +14,7 @@ import (
 )
 
 func TestCatalogs_Crud(t *testing.T) {
-	tc := controller.NewTestController(t, nil)
+	tc := controller.NewTestController(t, &controller.TestControllerOpts{DisableAuthorizationFailures: true})
 	defer tc.Shutdown()
 
 	client := tc.Client()
@@ -29,8 +29,8 @@ func TestCatalogs_Crud(t *testing.T) {
 	checkCatalog := func(step string, hc *hosts.HostCatalog, apiErr *api.Error, err error, wantedName string) {
 		assert := assert.New(t)
 		assert.NoError(err, step)
-		if !assert.Nil(apiErr, step) && apiErr.Message != nil {
-			t.Errorf("ApiError message: %q", *apiErr.Message)
+		if !assert.Nil(apiErr, step) && apiErr.Message != "" {
+			t.Errorf("ApiError message: %q", apiErr.Message)
 		}
 		assert.NotNil(hc, "returned no resource", step)
 		gotName := ""
@@ -68,7 +68,7 @@ func TestCatalogs_Crud(t *testing.T) {
 // TODO: Get better coverage for expected errors and error formats.
 func TestCatalogs_Errors(t *testing.T) {
 	assert := assert.New(t)
-	tc := controller.NewTestController(t, nil)
+	tc := controller.NewTestController(t, &controller.TestControllerOpts{DisableAuthorizationFailures: true})
 	defer tc.Shutdown()
 	ctx := tc.Context()
 
@@ -94,15 +94,15 @@ func TestCatalogs_Errors(t *testing.T) {
 	assert.NoError(err)
 	// TODO: Should this be nil instead of just a catalog that has no values set
 	assert.NotNil(apiErr)
-	assert.EqualValues(*apiErr.Status, http.StatusNotFound)
+	assert.EqualValues(apiErr.Status, http.StatusNotFound)
 
 	_, apiErr, err = p.ReadHostCatalog(ctx, &hosts.HostCatalog{Id: "invalid id"})
 	assert.NoError(err)
 	assert.NotNil(apiErr)
-	assert.EqualValues(*apiErr.Status, http.StatusBadRequest)
+	assert.EqualValues(apiErr.Status, http.StatusBadRequest)
 
 	_, apiErr, err = p.UpdateHostCatalog(ctx, &hosts.HostCatalog{Id: hc.Id, Type: api.String("Cant Update")})
 	assert.NoError(err)
 	assert.NotNil(apiErr)
-	assert.EqualValues(*apiErr.Status, http.StatusBadRequest)
+	assert.EqualValues(apiErr.Status, http.StatusBadRequest)
 }

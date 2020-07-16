@@ -70,6 +70,15 @@ func TestRepository_AddRoleGrants(t *testing.T) {
 			},
 			wantErr: true,
 		},
+		{
+			name: "zero-version",
+			args: args{
+				roleId:      role.PublicId,
+				roleVersion: 0,
+				grants:      createGrantsFn(),
+			},
+			wantErr: true,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -184,7 +193,7 @@ func TestRepository_ListRoleGrants(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			require.NoError(conn.Where("1=1").Delete(allocRole()).Error)
+			require.NoError(conn.Where("public_id != ?", "r_default").Delete(allocRole()).Error)
 			role := TestRole(t, conn, tt.createScopeId)
 			roleGrants := make([]string, 0, tt.createCnt)
 			for i := 0; i < tt.createCnt; i++ {
@@ -224,6 +233,7 @@ func TestRepository_DeleteRoleGrants(t *testing.T) {
 	type args struct {
 		role                 *Role
 		roleIdOverride       *string
+		roleVersionOverride  *uint32
 		grantStringsOverride []string
 		createCnt            int
 		deleteCnt            int
@@ -301,6 +311,28 @@ func TestRepository_DeleteRoleGrants(t *testing.T) {
 			},
 			wantRowsDeleted: 2,
 		},
+		{
+			name: "zero-version",
+			args: args{
+				role:                TestRole(t, conn, org.PublicId),
+				createCnt:           5,
+				deleteCnt:           5,
+				roleVersionOverride: func() *uint32 { v := uint32(0); return &v }(),
+			},
+			wantRowsDeleted: 0,
+			wantErr:         true,
+		},
+		{
+			name: "bad-version",
+			args: args{
+				role:                TestRole(t, conn, org.PublicId),
+				createCnt:           5,
+				deleteCnt:           5,
+				roleVersionOverride: func() *uint32 { v := uint32(1000); return &v }(),
+			},
+			wantRowsDeleted: 0,
+			wantErr:         true,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -336,7 +368,14 @@ func TestRepository_DeleteRoleGrants(t *testing.T) {
 			default:
 				roleId = tt.args.role.PublicId
 			}
-			deletedRows, err := repo.DeleteRoleGrants(context.Background(), roleId, 2, deleteGrants, tt.args.opt...)
+			var roleVersion uint32
+			switch {
+			case tt.args.roleVersionOverride != nil:
+				roleVersion = *tt.args.roleVersionOverride
+			default:
+				roleVersion = 2
+			}
+			deletedRows, err := repo.DeleteRoleGrants(context.Background(), roleId, roleVersion, deleteGrants, tt.args.opt...)
 			if tt.wantErr {
 				assert.Error(err)
 				assert.Equal(0, deletedRows)
@@ -438,4 +477,98 @@ func TestRepository_SetRoleGrants_Randomize(t *testing.T) {
 	roleGrants, err := repo.ListRoleGrants(context.Background(), role.PublicId)
 	require.NoError(err)
 	require.Empty(roleGrants)
+}
+
+func TestRepository_SetRoleGrants_Parameters(t *testing.T) {
+	t.Parallel()
+	conn, _ := db.TestSetup(t, "postgres")
+	rw := db.New(conn)
+	wrapper := db.TestWrapper(t)
+	repo, err := NewRepository(rw, rw, wrapper)
+	require.NoError(t, err)
+	org, _ := TestScopes(t, conn)
+	role := TestRole(t, conn, org.PublicId)
+	type args struct {
+		roleId      string
+		roleVersion uint32
+		grants      []string
+		opt         []Option
+	}
+	tests := []struct {
+		name             string
+		args             args
+		want             []*RoleGrant
+		wantAffectedRows int
+		wantErr          bool
+	}{
+		{
+			name: "missing-roleid",
+			args: args{
+				roleId:      "",
+				roleVersion: 1,
+				grants:      []string{"id=s_1;actions=*"},
+			},
+			want:             nil,
+			wantAffectedRows: 0,
+			wantErr:          true,
+		},
+		{
+			name: "bad-roleid",
+			args: args{
+				roleId:      "bad-roleid",
+				roleVersion: 1,
+				grants:      []string{"id=s_1;actions=*"},
+			},
+			want:             nil,
+			wantAffectedRows: 0,
+			wantErr:          true,
+		},
+		{
+			name: "nil-grants",
+			args: args{
+				roleId:      role.PublicId,
+				roleVersion: 1,
+				grants:      nil,
+			},
+			want:             nil,
+			wantAffectedRows: 0,
+			wantErr:          true,
+		},
+		{
+			name: "zero-version",
+			args: args{
+				roleId:      role.PublicId,
+				roleVersion: 0,
+				grants:      []string{"id=s_1;actions=*"},
+			},
+			want:             nil,
+			wantAffectedRows: 0,
+			wantErr:          true,
+		},
+		{
+			name: "bad-version",
+			args: args{
+				roleId:      role.PublicId,
+				roleVersion: 1000,
+				grants:      []string{"id=s_1;actions=*"},
+			},
+			want:             nil,
+			wantAffectedRows: 0,
+			wantErr:          true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+			require.NoError(conn.Where("1=1").Delete(allocRoleGrant()).Error)
+			got, gotAffectedRows, err := repo.SetRoleGrants(context.Background(), tt.args.roleId, tt.args.roleVersion, tt.args.grants, tt.args.opt...)
+			if tt.wantErr {
+				require.Error(err)
+			} else {
+				require.NoError(err)
+			}
+			assert.Equal(tt.wantAffectedRows, gotAffectedRows)
+			assert.Equal(tt.want, got)
+		})
+	}
 }
