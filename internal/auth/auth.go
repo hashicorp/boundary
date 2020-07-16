@@ -36,12 +36,15 @@ var verifierKey key
 
 // RequestInfo contains request parameters necessary for checking authn/authz
 type RequestInfo struct {
-	Path                 string
-	Method               string
-	PublicId             string
-	Token                string
+	Path        string
+	Method      string
+	PublicId    string
+	Token       string
+	TokenFormat TokenFormat
+
+	// The following are useful for tests
 	DisableAuthzFailures bool
-	TokenFormat          TokenFormat
+	DisableAuthEntirely  bool
 }
 
 type verifier struct {
@@ -71,6 +74,11 @@ func NewVerifierContext(ctx context.Context,
 	})
 }
 
+// DisabledAuthContext is meant for testing, and uses a context that has auth checking entirely disabled
+func DisabledAuthContext() context.Context {
+	return NewVerifierContext(context.Background(), nil, nil, nil, RequestInfo{DisableAuthEntirely: true})
+}
+
 // Verify takes in a context that has expected parameters as values and runs an
 // authn/authz check. It returns a user ID, the scope ID for the request (which
 // may come from the URL and may come from the token) and whether or not to
@@ -82,6 +90,9 @@ func Verify(ctx context.Context) (userId string, scopeInfo scopes.ScopeInfo, val
 		// We don't have a logger yet and this should never happen in any
 		// context we won't catch in tests
 		panic("no verifier information found in context")
+	}
+	if v.requestInfo.DisableAuthEntirely {
+		return "", scopes.ScopeInfo{}, true
 	}
 	v.ctx = ctx
 	if err := v.parseAuthParams(); err != nil {
