@@ -21,7 +21,7 @@ service HostCatalogService {
   rpc GetHostCatalog(GetHostCatalogRequest) returns (GetHostCatalogResponse) {
     // Gets the host as specified in the url.
     option (google.api.http) = {
-      get: "/v1/scopes/{scope_id}/host-catalogs/{id}"
+      get: "/v1/scopes/*/host-catalogs/{id}"
       response_body: "item"
     };
     option (grpc.gateway.protoc_gen_swagger.options.openapiv2_operation) = {
@@ -37,7 +37,7 @@ service HostCatalogService {
   // returned.
   rpc ListHostCatalogs(ListHostCatalogsRequest) returns (ListHostCatalogsResponse) {
     option (google.api.http) = {
-      get: "/v1/scopes/{scope_id}/host-catalogs"
+      get: "/v1/scopes/*/host-catalogs"
     };
     option (grpc.gateway.protoc_gen_swagger.options.openapiv2_operation) = {
       summary: "Gets a list of HostCatalogs"
@@ -51,7 +51,7 @@ service HostCatalogService {
   // error is returned.
   rpc CreateHostCatalog(CreateHostCatalogRequest) returns (CreateHostCatalogResponse) {
     option (google.api.http) = {
-      post: "/v1/scopes/{scope_id}/host-catalogs"
+      post: "/v1/scopes/*/host-catalogs"
       body: "item"
       response_body: "item"
     };
@@ -68,7 +68,7 @@ service HostCatalogService {
   // field in the HostCatalog.
   rpc UpdateHostCatalog(UpdateHostCatalogRequest) returns (UpdateHostCatalogResponse) {
     option (google.api.http) = {
-      patch: "/v1/scopes/{scope_id}/host-catalogs/{id}"
+      patch: "/v1/scopes/*/host-catalogs/{id}"
       body: "item"
       response_body: "item"
     };
@@ -84,7 +84,7 @@ service HostCatalogService {
   // exist as the response indicates if it existed or not.
   rpc DeleteHostCatalog(DeleteHostCatalogRequest) returns (DeleteHostCatalogResponse) {
     option (google.api.http) = {
-      delete: "/v1/scopes/{scope_id}/host-catalogs/{id}"
+      delete: "/v1/scopes/*/host-catalogs/{id}"
     };
     option (grpc.gateway.protoc_gen_swagger.options.openapiv2_operation) = {
       summary: "Deletes a HostCatalog"
@@ -93,9 +93,8 @@ service HostCatalogService {
 }
 
 message GetHostCatalogRequest {
-  string scope_id = 1;
-  string id = 2;
-  string view = 3;
+  string id = 1;
+  string view = 2;
 }
 
 message GetHostCatalogResponse {
@@ -103,8 +102,7 @@ message GetHostCatalogResponse {
 }
 
 message ListHostCatalogsRequest {
-  string scope_id = 1;
-  string view = 2;
+  string view = 1;
 }
 
 message ListHostCatalogsResponse {
@@ -112,8 +110,7 @@ message ListHostCatalogsResponse {
 }
 
 message CreateHostCatalogRequest {
-  string scope_id = 1;
-  api.resources.hosts.v1.HostCatalog item = 2;
+  api.resources.hosts.v1.HostCatalog item = 1;
 }
 
 message CreateHostCatalogResponse {
@@ -122,10 +119,9 @@ message CreateHostCatalogResponse {
 }
 
 message UpdateHostCatalogRequest {
-  string scope_id = 1;
-  string id = 2;
-  api.resources.hosts.v1.HostCatalog item = 3;
-  google.protobuf.FieldMask update_mask = 4;
+  string id = 1;
+  api.resources.hosts.v1.HostCatalog item = 2;
+  google.protobuf.FieldMask update_mask = 3;
 }
 
 message UpdateHostCatalogResponse {
@@ -133,8 +129,7 @@ message UpdateHostCatalogResponse {
 }
 
 message DeleteHostCatalogRequest {
-  string scope_id = 1;
-  string id = 2;
+  string id = 1;
 }
 
 message DeleteHostCatalogResponse {
