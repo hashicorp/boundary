@@ -4,7 +4,7 @@ package controller.api.services.v1;
 
 option go_package = "github.com/hashicorp/watchtower/internal/gen/controller/api/services;services";
 
-import "protoc-gen-swagger/options/annotations.proto";
+import "protoc-gen-openapiv2/options/annotations.proto";
 import "google/api/annotations.proto";
 import "google/protobuf/field_mask.proto";
 import "controller/api/resources/hosts/v1/host.proto";
@@ -20,7 +20,7 @@ service HostService {
         response_body: "item"
       }
     };
-    option (grpc.gateway.protoc_gen_swagger.options.openapiv2_operation) = {
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
       summary: "Gets a single Host"
     };
   }
@@ -31,7 +31,7 @@ service HostService {
         get: "/v1/orgs/{org_id}/host-catalogs"
       }
     };
-    option (grpc.gateway.protoc_gen_swagger.options.openapiv2_operation) = {
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
       summary: "List all Hosts for the specified catalog"
     };
   }
@@ -46,7 +46,7 @@ service HostService {
         response_body: "item"
       }
     };
-    option (grpc.gateway.protoc_gen_swagger.options.openapiv2_operation) = {
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
       summary: "Create a single Host"
     };
   }
@@ -61,7 +61,7 @@ service HostService {
         response_body: "item"
       }
     };
-    option (grpc.gateway.protoc_gen_swagger.options.openapiv2_operation) = {
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
       summary: "Update a Host"
     };
   }
@@ -72,7 +72,7 @@ service HostService {
         delete: "/v1/orgs/{org_id}/host-catalogs/{host_catalog_id}/hosts/{id}"
       }
     };
-    option (grpc.gateway.protoc_gen_swagger.options.openapiv2_operation) = {
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
       summary: "Delete a Host"
     };
   }

@@ -4,7 +4,7 @@ package controller.api.services.v1;
 
 option go_package = "github.com/hashicorp/watchtower/internal/gen/controller/api/services;services";
 
-import "protoc-gen-swagger/options/annotations.proto";
+import "protoc-gen-openapiv2/options/annotations.proto";
 import "google/api/annotations.proto";
 import "google/protobuf/field_mask.proto";
 import "controller/api/resources/groups/v1/group.proto";
@@ -24,7 +24,7 @@ service GroupService {
         response_body: "item"
       }
     };
-    option (grpc.gateway.protoc_gen_swagger.options.openapiv2_operation) = {
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
       summary: "Gets a single Group"
     };
   }
@@ -40,7 +40,7 @@ service GroupService {
         get: "/v1/orgs/{org_id}/projects/{project_id}/groups"
       }
     };
-    option (grpc.gateway.protoc_gen_swagger.options.openapiv2_operation) = {
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
       summary: "Lists all Groups"
     };
   }
@@ -61,7 +61,7 @@ service GroupService {
         response_body: "item"
       }
     };
-    option (grpc.gateway.protoc_gen_swagger.options.openapiv2_operation) = {
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
       summary: "Creates a single Group"
     };
   }
@@ -85,7 +85,7 @@ service GroupService {
         response_body: "item"
       }
     };
-    option (grpc.gateway.protoc_gen_swagger.options.openapiv2_operation) = {
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
       summary: "Updates a Group"
     };
   }
@@ -102,7 +102,7 @@ service GroupService {
         delete: "/v1/orgs/{org_id}/projects/{project_id}/groups/{id}"
       }
     };
-    option (grpc.gateway.protoc_gen_swagger.options.openapiv2_operation) = {
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
       summary: "Deletes a Group"
     };
   }

@@ -4,7 +4,7 @@ package controller.api.services.v1;
 
 option go_package = "github.com/hashicorp/watchtower/internal/gen/controller/api/services;services";
 
-import "protoc-gen-swagger/options/annotations.proto";
+import "protoc-gen-openapiv2/options/annotations.proto";
 import "google/api/annotations.proto";
 import "google/protobuf/field_mask.proto";
 import "controller/api/resources/scopes/v1/project.proto";
@@ -20,7 +20,7 @@ service ProjectService {
       get: "/v1/orgs/{org_id}/projects/{id}"
       response_body: "item"
     };
-    option (grpc.gateway.protoc_gen_swagger.options.openapiv2_operation) = {
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
       summary: "Gets a single Project"
     };
   }
@@ -33,7 +33,7 @@ service ProjectService {
     option (google.api.http) = {
       get: "/v1/orgs/{org_id}/projects"
     };
-    option (grpc.gateway.protoc_gen_swagger.options.openapiv2_operation) = {
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
       summary: "Lists all Projects"
     };
   }
@@ -49,7 +49,7 @@ service ProjectService {
       body: "item"
       response_body: "item"
     };
-    option (grpc.gateway.protoc_gen_swagger.options.openapiv2_operation) = {
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
       summary: "Creates a single Project"
     };
   }
@@ -68,7 +68,7 @@ service ProjectService {
       body: "item"
       response_body: "item"
     };
-    option (grpc.gateway.protoc_gen_swagger.options.openapiv2_operation) = {
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
       summary: "Updates a Project"
     };
   }
@@ -82,7 +82,7 @@ service ProjectService {
     option (google.api.http) = {
       delete: "/v1/orgs/{org_id}/projects/{id}"
     };
-    option (grpc.gateway.protoc_gen_swagger.options.openapiv2_operation) = {
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
       summary: "Deletes a Project"
     };
   }

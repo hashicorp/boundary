@@ -4,7 +4,7 @@ package controller.api.services.v1;
 
 option go_package = "github.com/hashicorp/watchtower/internal/gen/controller/api/services;services";
 
-import "protoc-gen-swagger/options/annotations.proto";
+import "protoc-gen-openapiv2/options/annotations.proto";
 import "google/api/annotations.proto";
 import "controller/api/resources/scopes/v1/org.proto";
 
@@ -18,7 +18,7 @@ service OrgService {
       get: "/v1/orgs/{id}"
       response_body: "item"
     };
-    option (grpc.gateway.protoc_gen_swagger.options.openapiv2_operation) = {
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
       summary: "Gets a single Org"
     };
   }
@@ -28,7 +28,7 @@ service OrgService {
     option (google.api.http) = {
       get: "/v1/orgs"
     };
-    option (grpc.gateway.protoc_gen_swagger.options.openapiv2_operation) = {
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
       summary: "Lists all Orgs"
     };
   }
