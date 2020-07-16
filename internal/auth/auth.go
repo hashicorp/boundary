@@ -45,6 +45,7 @@ type RequestInfo struct {
 	// The following are useful for tests
 	DisableAuthzFailures bool
 	DisableAuthEntirely  bool
+	scopeIdOverride      string
 }
 
 type verifier struct {
@@ -74,11 +75,6 @@ func NewVerifierContext(ctx context.Context,
 	})
 }
 
-// DisabledAuthContext is meant for testing, and uses a context that has auth checking entirely disabled
-func DisabledAuthContext() context.Context {
-	return NewVerifierContext(context.Background(), nil, nil, nil, RequestInfo{DisableAuthEntirely: true})
-}
-
 // Verify takes in a context that has expected parameters as values and runs an
 // authn/authz check. It returns a user ID, the scope ID for the request (which
 // may come from the URL and may come from the token) and whether or not to
@@ -92,7 +88,7 @@ func Verify(ctx context.Context) (userId string, scopeInfo scopes.ScopeInfo, val
 		panic("no verifier information found in context")
 	}
 	if v.requestInfo.DisableAuthEntirely {
-		return "", scopes.ScopeInfo{}, true
+		return "", scopes.ScopeInfo{Id: v.requestInfo.scopeIdOverride}, true
 	}
 	v.ctx = ctx
 	if err := v.parseAuthParams(); err != nil {
@@ -196,12 +192,14 @@ func (v *verifier) parseAuthParams() error {
 		// We're operating on the scopes collection. Set the scope ID to
 		// "token", which will be a signal to read it from the token.
 		v.res.ScopeId = "token"
+		// TODO: check for an override
 		return nil
 
 	case 2:
 		// The next segment should be the scope ID, and we still need to look up
 		// the actual request scopefrom the token like in the case above.
 		v.res.ScopeId = "token"
+		// TODO: check for an override
 		v.res.Id = splitPath[1]
 		return nil
 

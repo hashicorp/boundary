@@ -18,10 +18,6 @@ import (
 	"google.golang.org/protobuf/types/known/wrapperspb"
 )
 
-const (
-	scopeIdFieldName = "scope_id"
-)
-
 var (
 	reInvalidID = regexp.MustCompile("[^A-Za-z0-9]")
 	// TODO(ICU-28): Find a way to auto update these names and enforce the mappings between wire and storage.
@@ -91,7 +87,7 @@ func (s Service) CreateGroup(ctx context.Context, req *pbs.CreateGroupRequest) (
 	if err != nil {
 		return nil, err
 	}
-	return &pbs.CreateGroupResponse{Item: u, Uri: fmt.Sprintf("scopes/%s/groups/%s", req.GetScopeId(), u.GetId())}, nil
+	return &pbs.CreateGroupResponse{Item: u, Uri: fmt.Sprintf("scopes/%s/groups/%s", scopeInfo.GetId(), u.GetId())}, nil
 }
 
 // UpdateGroup implements the interface pbs.GroupServiceServer.
@@ -275,7 +271,7 @@ func toProto(in *iam.Group) *pb.Group {
 //  * All required parameters are set
 //  * There are no conflicting parameters provided
 func validateGetRequest(req *pbs.GetGroupRequest) error {
-	badFields := validateAncestors(req)
+	badFields := map[string]string{}
 	if !validId(req.GetId(), iam.GroupPrefix+"_") {
 		badFields["id"] = "Invalid formatted group id."
 	}
@@ -286,7 +282,7 @@ func validateGetRequest(req *pbs.GetGroupRequest) error {
 }
 
 func validateCreateRequest(req *pbs.CreateGroupRequest) error {
-	badFields := validateAncestors(req)
+	badFields := map[string]string{}
 	item := req.GetItem()
 	if item.GetId() != "" {
 		badFields["id"] = "This is a read only field."
@@ -304,7 +300,7 @@ func validateCreateRequest(req *pbs.CreateGroupRequest) error {
 }
 
 func validateUpdateRequest(req *pbs.UpdateGroupRequest) error {
-	badFields := validateAncestors(req)
+	badFields := map[string]string{}
 	if !validId(req.GetId(), iam.GroupPrefix+"_") {
 		badFields["group_id"] = "Improperly formatted path identifier."
 	}
@@ -335,7 +331,7 @@ func validateUpdateRequest(req *pbs.UpdateGroupRequest) error {
 }
 
 func validateDeleteRequest(req *pbs.DeleteGroupRequest) error {
-	badFields := validateAncestors(req)
+	badFields := map[string]string{}
 	if !validId(req.GetId(), iam.GroupPrefix+"_") {
 		badFields["id"] = "Incorrectly formatted identifier."
 	}
@@ -346,7 +342,7 @@ func validateDeleteRequest(req *pbs.DeleteGroupRequest) error {
 }
 
 func validateListRequest(req *pbs.ListGroupsRequest) error {
-	badFields := validateAncestors(req)
+	badFields := map[string]string{}
 	if len(badFields) > 0 {
 		return handlers.InvalidArgumentErrorf("Improperly formatted identifier.", badFields)
 	}
@@ -359,16 +355,4 @@ func validId(id, prefix string) bool {
 	}
 	id = strings.TrimPrefix(id, prefix)
 	return !reInvalidID.Match([]byte(id))
-}
-
-type ancestorProvider interface {
-	GetScopeId() string
-}
-
-// validateAncestors verifies that the ancestors of this call are properly set and provided.
-func validateAncestors(r ancestorProvider) map[string]string {
-	if r.GetScopeId() == "" {
-		return map[string]string{scopeIdFieldName: "Missing scope id."}
-	}
-	return map[string]string{}
 }
