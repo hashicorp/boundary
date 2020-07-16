@@ -547,7 +547,7 @@ func validateCreateRequest(req *pbs.CreateRoleRequest) error {
 		badFields["principals"] = "This is a read only field."
 	}
 	if item.GetGrants() != nil {
-		badFields["grants"] = "This is a read only field."
+		badFields["grant_strings"] = "This is a read only field."
 	}
 	if len(badFields) > 0 {
 		return handlers.InvalidArgumentErrorf("Argument errors found in the request.", badFields)
@@ -583,7 +583,7 @@ func validateUpdateRequest(req *pbs.UpdateRoleRequest) error {
 		badFields["principals"] = "This is a read only field and cannot be specified in an update request."
 	}
 	if item.GetGrants() != nil {
-		badFields["grants"] = "This is a read only field and cannot be specified in an update request."
+		badFields["grant_strings"] = "This is a read only field and cannot be specified in an update request."
 	}
 	if item.GetGrantScopeId() != nil && req.ProjectId != "" {
 		if item.GetGrantScopeId().Value != req.ProjectId {
@@ -673,7 +673,7 @@ func validateAddRoleGrantsRequest(req *pbs.AddRoleGrantsRequest) error {
 		badFields["version"] = "Required field."
 	}
 	if len(req.GetGrantStrings()) == 0 {
-		badFields["grants"] = "Must be non-empty."
+		badFields["grant_strings"] = "Must be non-empty."
 	}
 	if len(badFields) > 0 {
 		return handlers.InvalidArgumentErrorf("Errors in provided fields.", badFields)
@@ -704,7 +704,7 @@ func validateRemoveRoleGrantsRequest(req *pbs.RemoveRoleGrantsRequest) error {
 		badFields["version"] = "Required field."
 	}
 	if len(req.GetGrantStrings()) == 0 {
-		badFields["grants"] = "Must be non-empty."
+		badFields["grant_strings"] = "Must be non-empty."
 	}
 	if len(badFields) > 0 {
 		return handlers.InvalidArgumentErrorf("Errors in provided fields.", badFields)
