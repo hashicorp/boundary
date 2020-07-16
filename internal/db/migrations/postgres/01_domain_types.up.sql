@@ -129,4 +129,31 @@ comment on function
 is
   'function used in after update triggers to properly set version columns';
 
+-- immutable_columns() will make the column names immutable which are passed as
+-- parameters when the trigger is created.
+create or replace function
+  immutable_columns()
+  returns trigger
+as $$
+declare 
+	col_name text; 
+	new_value text;
+	old_value text;
+begin
+  foreach col_name in array tg_argv loop
+    execute format('SELECT $1.%I', col_name) into new_value using new;
+    execute format('SELECT $1.%I', col_name) into old_value using old;
+  	if new_value is distinct from old_value then
+      raise exception 'immutable column: %.%', tg_table_name, col_name;
+  	end if;
+  end loop;
+  return new;
+end;
+$$ language plpgsql;
+
+comment on function
+  update_version_column()
+is
+  'function used in before update triggers to make columns immutable';
+
 commit;
