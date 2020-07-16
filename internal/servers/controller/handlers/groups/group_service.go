@@ -55,7 +55,10 @@ func (s Service) ListGroups(ctx context.Context, req *pbs.ListGroupsRequest) (*p
 	if err != nil {
 		return nil, err
 	}
-	return &pbs.ListGroupsResponse{Scope: &authResults.Scope, Items: gl}, nil
+	for _, item := range gl {
+		item.Scope = &authResults.Scope
+	}
+	return &pbs.ListGroupsResponse{Items: gl}, nil
 }
 
 // GetGroups implements the interface pbs.GroupServiceServer.

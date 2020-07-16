@@ -32,7 +32,7 @@ var _ = utilities.NewDoubleArray
 var _ = descriptor.ForMessage
 
 var (
-	filter_GroupService_GetGroup_0 = &utilities.DoubleArray{Encoding: map[string]int{"scope_id": 0, "id": 1}, Base: []int{1, 1, 2, 0, 0}, Check: []int{0, 1, 1, 2, 3}}
+	filter_GroupService_GetGroup_0 = &utilities.DoubleArray{Encoding: map[string]int{"id": 0}, Base: []int{1, 1, 0}, Check: []int{0, 1, 2}}
 )
 
 func request_GroupService_GetGroup_0(ctx context.Context, marshaler runtime.Marshaler, client GroupServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
@@ -45,17 +45,6 @@ func request_GroupService_GetGroup_0(ctx context.Context, marshaler runtime.Mars
 		err error
 		_   = err
 	)
-
-	val, ok = pathParams["scope_id"]
-	if !ok {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "scope_id")
-	}
-
-	protoReq.ScopeId, err = runtime.String(val)
-
-	if err != nil {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "scope_id", err)
-	}
 
 	val, ok = pathParams["id"]
 	if !ok {
@@ -91,17 +80,6 @@ func local_request_GroupService_GetGroup_0(ctx context.Context, marshaler runtim
 		_   = err
 	)
 
-	val, ok = pathParams["scope_id"]
-	if !ok {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "scope_id")
-	}
-
-	protoReq.ScopeId, err = runtime.String(val)
-
-	if err != nil {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "scope_id", err)
-	}
-
 	val, ok = pathParams["id"]
 	if !ok {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "id")
@@ -126,30 +104,12 @@ func local_request_GroupService_GetGroup_0(ctx context.Context, marshaler runtim
 }
 
 var (
-	filter_GroupService_ListGroups_0 = &utilities.DoubleArray{Encoding: map[string]int{"scope_id": 0}, Base: []int{1, 1, 0}, Check: []int{0, 1, 2}}
+	filter_GroupService_ListGroups_0 = &utilities.DoubleArray{Encoding: map[string]int{}, Base: []int(nil), Check: []int(nil)}
 )
 
 func request_GroupService_ListGroups_0(ctx context.Context, marshaler runtime.Marshaler, client GroupServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
 	var protoReq ListGroupsRequest
 	var metadata runtime.ServerMetadata
-
-	var (
-		val string
-		ok  bool
-		err error
-		_   = err
-	)
-
-	val, ok = pathParams["scope_id"]
-	if !ok {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "scope_id")
-	}
-
-	protoReq.ScopeId, err = runtime.String(val)
-
-	if err != nil {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "scope_id", err)
-	}
 
 	if err := req.ParseForm(); err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
@@ -166,24 +126,6 @@ func request_GroupService_ListGroups_0(ctx context.Context, marshaler runtime.Ma
 func local_request_GroupService_ListGroups_0(ctx context.Context, marshaler runtime.Marshaler, server GroupServiceServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
 	var protoReq ListGroupsRequest
 	var metadata runtime.ServerMetadata
-
-	var (
-		val string
-		ok  bool
-		err error
-		_   = err
-	)
-
-	val, ok = pathParams["scope_id"]
-	if !ok {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "scope_id")
-	}
-
-	protoReq.ScopeId, err = runtime.String(val)
-
-	if err != nil {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "scope_id", err)
-	}
 
 	if err := req.ParseForm(); err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
@@ -209,24 +151,6 @@ func request_GroupService_CreateGroup_0(ctx context.Context, marshaler runtime.M
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 
-	var (
-		val string
-		ok  bool
-		err error
-		_   = err
-	)
-
-	val, ok = pathParams["scope_id"]
-	if !ok {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "scope_id")
-	}
-
-	protoReq.ScopeId, err = runtime.String(val)
-
-	if err != nil {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "scope_id", err)
-	}
-
 	msg, err := client.CreateGroup(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
 	return msg, metadata, err
 
@@ -244,31 +168,13 @@ func local_request_GroupService_CreateGroup_0(ctx context.Context, marshaler run
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 
-	var (
-		val string
-		ok  bool
-		err error
-		_   = err
-	)
-
-	val, ok = pathParams["scope_id"]
-	if !ok {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "scope_id")
-	}
-
-	protoReq.ScopeId, err = runtime.String(val)
-
-	if err != nil {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "scope_id", err)
-	}
-
 	msg, err := server.CreateGroup(ctx, &protoReq)
 	return msg, metadata, err
 
 }
 
 var (
-	filter_GroupService_UpdateGroup_0 = &utilities.DoubleArray{Encoding: map[string]int{"item": 0, "scope_id": 1, "id": 2}, Base: []int{1, 1, 2, 3, 0, 0, 0}, Check: []int{0, 1, 1, 1, 2, 3, 4}}
+	filter_GroupService_UpdateGroup_0 = &utilities.DoubleArray{Encoding: map[string]int{"item": 0, "id": 1}, Base: []int{1, 1, 2, 0, 0}, Check: []int{0, 1, 1, 2, 3}}
 )
 
 func request_GroupService_UpdateGroup_0(ctx context.Context, marshaler runtime.Marshaler, client GroupServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
@@ -297,17 +203,6 @@ func request_GroupService_UpdateGroup_0(ctx context.Context, marshaler runtime.M
 		err error
 		_   = err
 	)
-
-	val, ok = pathParams["scope_id"]
-	if !ok {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "scope_id")
-	}
-
-	protoReq.ScopeId, err = runtime.String(val)
-
-	if err != nil {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "scope_id", err)
-	}
 
 	val, ok = pathParams["id"]
 	if !ok {
@@ -359,17 +254,6 @@ func local_request_GroupService_UpdateGroup_0(ctx context.Context, marshaler run
 		_   = err
 	)
 
-	val, ok = pathParams["scope_id"]
-	if !ok {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "scope_id")
-	}
-
-	protoReq.ScopeId, err = runtime.String(val)
-
-	if err != nil {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "scope_id", err)
-	}
-
 	val, ok = pathParams["id"]
 	if !ok {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "id")
@@ -404,17 +288,6 @@ func request_GroupService_DeleteGroup_0(ctx context.Context, marshaler runtime.M
 		_   = err
 	)
 
-	val, ok = pathParams["scope_id"]
-	if !ok {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "scope_id")
-	}
-
-	protoReq.ScopeId, err = runtime.String(val)
-
-	if err != nil {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "scope_id", err)
-	}
-
 	val, ok = pathParams["id"]
 	if !ok {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "id")
@@ -441,17 +314,6 @@ func local_request_GroupService_DeleteGroup_0(ctx context.Context, marshaler run
 		err error
 		_   = err
 	)
-
-	val, ok = pathParams["scope_id"]
-	if !ok {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "scope_id")
-	}
-
-	protoReq.ScopeId, err = runtime.String(val)
-
-	if err != nil {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "scope_id", err)
-	}
 
 	val, ok = pathParams["id"]
 	if !ok {
@@ -746,15 +608,15 @@ func (m response_GroupService_UpdateGroup_0) XXX_ResponseBody() interface{} {
 }
 
 var (
-	pattern_GroupService_GetGroup_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2, 2, 3, 1, 0, 4, 1, 5, 4}, []string{"v1", "scopes", "scope_id", "groups", "id"}, "", runtime.AssumeColonVerbOpt(true)))
+	pattern_GroupService_GetGroup_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 2, 2, 1, 0, 4, 1, 5, 3}, []string{"v1", "scopes", "groups", "id"}, "", runtime.AssumeColonVerbOpt(true)))
 
-	pattern_GroupService_ListGroups_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2, 2, 3}, []string{"v1", "scopes", "scope_id", "groups"}, "", runtime.AssumeColonVerbOpt(true)))
+	pattern_GroupService_ListGroups_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 2, 2}, []string{"v1", "scopes", "groups"}, "", runtime.AssumeColonVerbOpt(true)))
 
-	pattern_GroupService_CreateGroup_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2, 2, 3}, []string{"v1", "scopes", "scope_id", "groups"}, "", runtime.AssumeColonVerbOpt(true)))
+	pattern_GroupService_CreateGroup_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 2, 2}, []string{"v1", "scopes", "groups"}, "", runtime.AssumeColonVerbOpt(true)))
 
-	pattern_GroupService_UpdateGroup_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2, 2, 3, 1, 0, 4, 1, 5, 4}, []string{"v1", "scopes", "scope_id", "groups", "id"}, "", runtime.AssumeColonVerbOpt(true)))
+	pattern_GroupService_UpdateGroup_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 2, 2, 1, 0, 4, 1, 5, 3}, []string{"v1", "scopes", "groups", "id"}, "", runtime.AssumeColonVerbOpt(true)))
 
-	pattern_GroupService_DeleteGroup_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2, 2, 3, 1, 0, 4, 1, 5, 4}, []string{"v1", "scopes", "scope_id", "groups", "id"}, "", runtime.AssumeColonVerbOpt(true)))
+	pattern_GroupService_DeleteGroup_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 2, 2, 1, 0, 4, 1, 5, 3}, []string{"v1", "scopes", "groups", "id"}, "", runtime.AssumeColonVerbOpt(true)))
 )
 
 var (

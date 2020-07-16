@@ -367,6 +367,10 @@ func (v verifier) performAuthCheck() (aclResults *perms.ACLResults, userId strin
 		retErr = fmt.Errorf("perform auth check: failed to lookup scope: %w", err)
 		return
 	}
+	if scp == nil {
+		retErr = fmt.Errorf("perform auth check: non-existent scope %q", v.res.ScopeId)
+		return
+	}
 	scopeInfo = scopes.ScopeInfo{
 		Id:            scp.GetPublicId(),
 		Type:          scp.GetType(),

@@ -8,6 +8,7 @@ import "protoc-gen-swagger/options/annotations.proto";
 import "google/api/annotations.proto";
 import "google/protobuf/field_mask.proto";
 import "controller/api/resources/groups/v1/group.proto";
+import "controller/api/resources/scopes/v1/scope.proto";
 
 service GroupService {
 
@@ -17,7 +18,7 @@ service GroupService {
   // returned.
   rpc GetGroup(GetGroupRequest) returns (GetGroupResponse) {
     option (google.api.http) = {
-      get: "/v1/scopes/{scope_id}/groups/{id}"
+      get: "/v1/scopes/*/groups/{id}"
       response_body: "item"
     };
     option (grpc.gateway.protoc_gen_swagger.options.openapiv2_operation) = {
@@ -31,7 +32,7 @@ service GroupService {
   // references a non-existing scope, an error is returned.
   rpc ListGroups(ListGroupsRequest) returns (ListGroupsResponse) {
     option (google.api.http) = {
-      get: "/v1/scopes/{scope_id}/groups"
+      get: "/v1/scopes/*/groups"
     };
     option (grpc.gateway.protoc_gen_swagger.options.openapiv2_operation) = {
       summary: "Lists all Groups"
@@ -45,7 +46,7 @@ service GroupService {
   // use in another group in the same scope, an error is returned.
   rpc CreateGroup(CreateGroupRequest) returns (CreateGroupResponse) {
     option (google.api.http) = {
-      post: "/v1/scopes/{scope_id}/groups"
+      post: "/v1/scopes/*/groups"
       body: "item"
       response_body: "item"
     };
@@ -64,7 +65,7 @@ service GroupService {
   // scope.
   rpc UpdateGroup(UpdateGroupRequest) returns (UpdateGroupResponse) {
     option (google.api.http) = {
-      patch: "/v1/scopes/{scope_id}/groups/{id}"
+      patch: "/v1/scopes/*/groups/{id}"
       body: "item"
       response_body: "item"
     };
@@ -80,7 +81,7 @@ service GroupService {
   // request was received.
   rpc DeleteGroup(DeleteGroupRequest) returns (DeleteGroupResponse) {
     option (google.api.http) = {
-      delete: "/v1/scopes/{scope_id}/groups/{id}"
+      delete: "/v1/scopes/*/groups/{id}"
     };
     option (grpc.gateway.protoc_gen_swagger.options.openapiv2_operation) = {
       summary: "Deletes a Group"
@@ -89,9 +90,8 @@ service GroupService {
 }
 
 message GetGroupRequest {
-  string scope_id = 1;
-  string id = 2;
-  string view = 3;
+  string id = 1;
+  string view = 2;
 }
 
 message GetGroupResponse {
@@ -99,8 +99,7 @@ message GetGroupResponse {
 }
 
 message ListGroupsRequest {
-  string scope_id = 1;
-  string view = 2;
+  string view = 1;
 }
 
 message ListGroupsResponse {
@@ -108,8 +107,7 @@ message ListGroupsResponse {
 }
 
 message CreateGroupRequest {
-  string scope_id = 1;
-  resources.groups.v1.Group item = 3;
+  resources.groups.v1.Group item = 1;
 }
 
 message CreateGroupResponse {
@@ -118,10 +116,9 @@ message CreateGroupResponse {
 }
 
 message UpdateGroupRequest {
-  string scope_id = 1;
-  string id = 2;
-  resources.groups.v1.Group item = 3;
-  google.protobuf.FieldMask update_mask = 4;
+  string id = 1;
+  resources.groups.v1.Group item = 2;
+  google.protobuf.FieldMask update_mask = 3;
 }
 
 message UpdateGroupResponse {
@@ -129,8 +126,7 @@ message UpdateGroupResponse {
 }
 
 message DeleteGroupRequest {
-  string scope_id = 1;
-  string id = 2;
+  string id = 1;
 }
 
 message DeleteGroupResponse {

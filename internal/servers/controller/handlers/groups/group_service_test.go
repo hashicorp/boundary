@@ -10,6 +10,7 @@ import (
 	"github.com/hashicorp/watchtower/internal/auth"
 	"github.com/hashicorp/watchtower/internal/db"
 	pb "github.com/hashicorp/watchtower/internal/gen/controller/api/resources/groups"
+	"github.com/hashicorp/watchtower/internal/gen/controller/api/resources/scopes"
 	pbs "github.com/hashicorp/watchtower/internal/gen/controller/api/services"
 	"github.com/hashicorp/watchtower/internal/iam"
 	"github.com/hashicorp/watchtower/internal/servers/controller/handlers/groups"
@@ -44,12 +45,12 @@ func TestGet(t *testing.T) {
 	require := require.New(t)
 	og, pg, repo := createDefaultGroupsAndRepo(t)
 	toMerge := &pbs.GetGroupRequest{
-		ScopeId: og.GetScopeId(),
-		Id:      og.GetPublicId(),
+		Id: og.GetPublicId(),
 	}
 
 	wantOrgGroup := &pb.Group{
 		Id:          og.GetPublicId(),
+		Scope:       &scopes.ScopeInfo{Id: og.GetScopeId()},
 		Name:        &wrapperspb.StringValue{Value: og.GetName()},
 		Description: &wrapperspb.StringValue{Value: og.GetDescription()},
 		CreatedTime: og.CreateTime.GetTimestamp(),
@@ -58,6 +59,7 @@ func TestGet(t *testing.T) {
 
 	wantProjGroup := &pb.Group{
 		Id:          pg.GetPublicId(),
+		Scope:       &scopes.ScopeInfo{Id: pg.GetScopeId()},
 		Name:        &wrapperspb.StringValue{Value: pg.GetName()},
 		Description: &wrapperspb.StringValue{Value: pg.GetDescription()},
 		CreatedTime: pg.CreateTime.GetTimestamp(),
@@ -155,12 +157,14 @@ func TestList(t *testing.T) {
 		og := iam.TestGroup(t, conn, oWithGroups.GetPublicId())
 		wantOrgGroups = append(wantOrgGroups, &pb.Group{
 			Id:          og.GetPublicId(),
+			Scope:       &scopes.ScopeInfo{Id: oWithGroups.GetPublicId()},
 			CreatedTime: og.GetCreateTime().GetTimestamp(),
 			UpdatedTime: og.GetUpdateTime().GetTimestamp(),
 		})
 		pg := iam.TestGroup(t, conn, pWithGroups.GetPublicId())
 		wantProjGroups = append(wantProjGroups, &pb.Group{
 			Id:          pg.GetPublicId(),
+			Scope:       &scopes.ScopeInfo{Id: pWithGroups.GetPublicId()},
 			CreatedTime: pg.GetCreateTime().GetTimestamp(),
 			UpdatedTime: pg.GetUpdateTime().GetTimestamp(),
 		})
@@ -184,13 +188,6 @@ func TestList(t *testing.T) {
 			res:     &pbs.ListGroupsResponse{},
 			errCode: codes.OK,
 		},
-		// TODO: When an org doesn't exist, we should return a 404 instead of an empty list.
-		{
-			name:    "Unfound Org",
-			scopeId: "o_DoesntExis",
-			res:     &pbs.ListGroupsResponse{},
-			errCode: codes.OK,
-		},
 		{
 			name:    "List Many Project Group",
 			scopeId: pWithGroups.GetPublicId(),
@@ -200,13 +197,6 @@ func TestList(t *testing.T) {
 		{
 			name:    "List No Project Groups",
 			scopeId: pNoGroups.GetPublicId(),
-			res:     &pbs.ListGroupsResponse{},
-			errCode: codes.OK,
-		},
-		// TODO: When an org doesn't exist, we should return a 404 instead of an empty list.
-		{
-			name:    "Unfound Project",
-			scopeId: "p_DoesntExis",
 			res:     &pbs.ListGroupsResponse{},
 			errCode: codes.OK,
 		},
@@ -361,9 +351,7 @@ func TestCreate(t *testing.T) {
 	defaultOGroup, defaultPGroup, repo := createDefaultGroupsAndRepo(t)
 	defaultCreated, err := ptypes.Timestamp(defaultOGroup.GetCreateTime().GetTimestamp())
 	require.NoError(err, "Error converting proto to timestamp.")
-	toMerge := &pbs.CreateGroupRequest{
-		ScopeId: defaultOGroup.GetScopeId(),
-	}
+	toMerge := &pbs.CreateGroupRequest{}
 
 	cases := []struct {
 		name    string
@@ -481,8 +469,7 @@ func TestUpdate(t *testing.T) {
 	created, err := ptypes.Timestamp(og.GetCreateTime().GetTimestamp())
 	require.NoError(err, "Error converting proto to timestamp")
 	toMerge := &pbs.UpdateGroupRequest{
-		ScopeId: og.GetScopeId(),
-		Id:      og.GetPublicId(),
+		Id: og.GetPublicId(),
 	}
 
 	cases := []struct {

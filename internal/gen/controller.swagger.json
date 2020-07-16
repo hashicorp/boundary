@@ -66,6 +66,141 @@
         ]
       }
     },
+    "/v1/scopes/*/groups": {
+      "get": {
+        "summary": "Lists all Groups",
+        "operationId": "GroupService_ListGroups",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.services.v1.ListGroupsResponse"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "view",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "controller.api.services.v1.GroupService"
+        ]
+      },
+      "post": {
+        "summary": "Creates a single Group",
+        "operationId": "GroupService_CreateGroup",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/controller.api.resources.groups.v1.Group"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/controller.api.resources.groups.v1.Group"
+            }
+          }
+        ],
+        "tags": [
+          "controller.api.services.v1.GroupService"
+        ]
+      }
+    },
+    "/v1/scopes/*/groups/{id}": {
+      "get": {
+        "summary": "Gets a single Group",
+        "operationId": "GroupService_GetGroup",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/controller.api.resources.groups.v1.Group"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "view",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "controller.api.services.v1.GroupService"
+        ]
+      },
+      "delete": {
+        "summary": "Deletes a Group",
+        "operationId": "GroupService_DeleteGroup",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.services.v1.DeleteGroupResponse"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "controller.api.services.v1.GroupService"
+        ]
+      },
+      "patch": {
+        "summary": "Updates a Group",
+        "operationId": "GroupService_UpdateGroup",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/controller.api.resources.groups.v1.Group"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/controller.api.resources.groups.v1.Group"
+            }
+          }
+        ],
+        "tags": [
+          "controller.api.services.v1.GroupService"
+        ]
+      }
+    },
     "/v1/scopes/{id}": {
       "get": {
         "summary": "Gets a single Scope",
@@ -188,171 +323,6 @@
         ],
         "tags": [
           "controller.api.services.v1.AuthenticationService"
-        ]
-      }
-    },
-    "/v1/scopes/{scope_id}/groups": {
-      "get": {
-        "summary": "Lists all Groups",
-        "operationId": "GroupService_ListGroups",
-        "responses": {
-          "200": {
-            "description": "A successful response.",
-            "schema": {
-              "$ref": "#/definitions/controller.api.services.v1.ListGroupsResponse"
-            }
-          }
-        },
-        "parameters": [
-          {
-            "name": "scope_id",
-            "in": "path",
-            "required": true,
-            "type": "string"
-          },
-          {
-            "name": "view",
-            "in": "query",
-            "required": false,
-            "type": "string"
-          }
-        ],
-        "tags": [
-          "controller.api.services.v1.GroupService"
-        ]
-      },
-      "post": {
-        "summary": "Creates a single Group",
-        "operationId": "GroupService_CreateGroup",
-        "responses": {
-          "200": {
-            "description": "",
-            "schema": {
-              "$ref": "#/definitions/controller.api.resources.groups.v1.Group"
-            }
-          }
-        },
-        "parameters": [
-          {
-            "name": "scope_id",
-            "in": "path",
-            "required": true,
-            "type": "string"
-          },
-          {
-            "name": "body",
-            "in": "body",
-            "required": true,
-            "schema": {
-              "$ref": "#/definitions/controller.api.resources.groups.v1.Group"
-            }
-          }
-        ],
-        "tags": [
-          "controller.api.services.v1.GroupService"
-        ]
-      }
-    },
-    "/v1/scopes/{scope_id}/groups/{id}": {
-      "get": {
-        "summary": "Gets a single Group",
-        "operationId": "GroupService_GetGroup",
-        "responses": {
-          "200": {
-            "description": "",
-            "schema": {
-              "$ref": "#/definitions/controller.api.resources.groups.v1.Group"
-            }
-          }
-        },
-        "parameters": [
-          {
-            "name": "scope_id",
-            "in": "path",
-            "required": true,
-            "type": "string"
-          },
-          {
-            "name": "id",
-            "in": "path",
-            "required": true,
-            "type": "string"
-          },
-          {
-            "name": "view",
-            "in": "query",
-            "required": false,
-            "type": "string"
-          }
-        ],
-        "tags": [
-          "controller.api.services.v1.GroupService"
-        ]
-      },
-      "delete": {
-        "summary": "Deletes a Group",
-        "operationId": "GroupService_DeleteGroup",
-        "responses": {
-          "200": {
-            "description": "A successful response.",
-            "schema": {
-              "$ref": "#/definitions/controller.api.services.v1.DeleteGroupResponse"
-            }
-          }
-        },
-        "parameters": [
-          {
-            "name": "scope_id",
-            "in": "path",
-            "required": true,
-            "type": "string"
-          },
-          {
-            "name": "id",
-            "in": "path",
-            "required": true,
-            "type": "string"
-          }
-        ],
-        "tags": [
-          "controller.api.services.v1.GroupService"
-        ]
-      },
-      "patch": {
-        "summary": "Updates a Group",
-        "operationId": "GroupService_UpdateGroup",
-        "responses": {
-          "200": {
-            "description": "",
-            "schema": {
-              "$ref": "#/definitions/controller.api.resources.groups.v1.Group"
-            }
-          }
-        },
-        "parameters": [
-          {
-            "name": "scope_id",
-            "in": "path",
-            "required": true,
-            "type": "string"
-          },
-          {
-            "name": "id",
-            "in": "path",
-            "required": true,
-            "type": "string"
-          },
-          {
-            "name": "body",
-            "in": "body",
-            "required": true,
-            "schema": {
-              "$ref": "#/definitions/controller.api.resources.groups.v1.Group"
-            }
-          }
-        ],
-        "tags": [
-          "controller.api.services.v1.GroupService"
         ]
       }
     },
