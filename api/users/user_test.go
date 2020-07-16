@@ -17,7 +17,7 @@ import (
 
 func TestUsers_List(t *testing.T) {
 	assert := assert.New(t)
-	tc := controller.NewTestController(t, nil)
+	tc := controller.NewTestController(t, &controller.TestControllerOpts{DisableAuthorizationFailures: true})
 	defer tc.Shutdown()
 
 	client := tc.Client()
@@ -73,7 +73,7 @@ func comparableSlice(in []*users.User) []users.User {
 }
 
 func TestUser_Crud(t *testing.T) {
-	tc := controller.NewTestController(t, nil)
+	tc := controller.NewTestController(t, &controller.TestControllerOpts{DisableAuthorizationFailures: true})
 	defer tc.Shutdown()
 
 	client := tc.Client()
@@ -124,7 +124,7 @@ func TestUser_Crud(t *testing.T) {
 
 func TestUser_Errors(t *testing.T) {
 	assert := assert.New(t)
-	tc := controller.NewTestController(t, nil)
+	tc := controller.NewTestController(t, &controller.TestControllerOpts{DisableAuthorizationFailures: true})
 	defer tc.Shutdown()
 	ctx := tc.Context()
 
