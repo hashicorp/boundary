@@ -39,7 +39,7 @@ func Test_ImmutableFields(t *testing.T) {
 	ticket, err := ticketer.GetTicket("default")
 	require.NoError(t, err)
 
-	newLogEntry, err := NewEntry(
+	new, err := NewEntry(
 		"test-users",
 		Metadata{
 			"key-only":   nil,
@@ -50,7 +50,7 @@ func Test_ImmutableFields(t *testing.T) {
 		ticketer,
 	)
 	require.NoError(t, err)
-	err = newLogEntry.WriteEntryWith(context.Background(), writer, ticket,
+	err = new.WriteEntryWith(context.Background(), writer, ticket,
 		&Message{Message: &u, TypeName: "user", OpType: OpType_OP_TYPE_CREATE},
 		&Message{Message: &u2, TypeName: "user", OpType: OpType_OP_TYPE_CREATE})
 	require.NoError(t, err)
@@ -59,20 +59,20 @@ func Test_ImmutableFields(t *testing.T) {
 	require.NoError(t, err)
 
 	var tests = []struct {
-		name        string
-		updateEntry *Entry
-		fieldMask   []string
-		wantErr     bool
+		name      string
+		update    *Entry
+		fieldMask []string
+		wantErr   bool
 	}{
 		{
-			name:        "update id",
-			updateEntry: func() *Entry { e := testCloneEntry(newLogEntry); e.Id = 11111111; return e }(),
-			fieldMask:   []string{"Id"},
+			name:      "update id",
+			update:    func() *Entry { e := testCloneEntry(new); e.Id = 11111111; return e }(),
+			fieldMask: []string{"Id"},
 		},
 		{
 			name: "update update_time",
-			updateEntry: func() *Entry {
-				e := testCloneEntry(newLogEntry)
+			update: func() *Entry {
+				e := testCloneEntry(new)
 				e.UpdateTime = &timestamp.Timestamp{Timestamp: future}
 				return e
 			}(),
@@ -80,8 +80,8 @@ func Test_ImmutableFields(t *testing.T) {
 		},
 		{
 			name: "update create_time",
-			updateEntry: func() *Entry {
-				e := testCloneEntry(newLogEntry)
+			update: func() *Entry {
+				e := testCloneEntry(new)
 				e.CreateTime = &timestamp.Timestamp{Timestamp: future}
 				return e
 			}(),
@@ -89,8 +89,8 @@ func Test_ImmutableFields(t *testing.T) {
 		},
 		{
 			name: "update create_time",
-			updateEntry: func() *Entry {
-				e := testCloneEntry(newLogEntry)
+			update: func() *Entry {
+				e := testCloneEntry(new)
 				e.Version = "867-5309"
 				return e
 			}(),
@@ -98,8 +98,8 @@ func Test_ImmutableFields(t *testing.T) {
 		},
 		{
 			name: "update create_time",
-			updateEntry: func() *Entry {
-				e := testCloneEntry(newLogEntry)
+			update: func() *Entry {
+				e := testCloneEntry(new)
 				e.AggregateName = "Jenny"
 				return e
 			}(),
@@ -107,8 +107,8 @@ func Test_ImmutableFields(t *testing.T) {
 		},
 		{
 			name: "update data",
-			updateEntry: func() *Entry {
-				e := testCloneEntry(newLogEntry)
+			update: func() *Entry {
+				e := testCloneEntry(new)
 				// CtData is the field sent to the db.
 				e.CtData = []byte("Lorem Ipsum")
 				return e
@@ -120,14 +120,14 @@ func Test_ImmutableFields(t *testing.T) {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			orig := testCloneEntry(newLogEntry)
+			orig := testCloneEntry(new)
 			err = db.First(orig).Error
 			require.NoError(err)
 
-			err := writer.Update(tt.updateEntry, tt.fieldMask, nil)
+			err := writer.Update(tt.update, tt.fieldMask, nil)
 			require.Error(err)
 
-			after := testCloneEntry(newLogEntry)
+			after := testCloneEntry(new)
 			err = db.First(&after).Error
 			require.NoError(err)
 
