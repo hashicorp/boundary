@@ -22,7 +22,7 @@ import (
 	"google.golang.org/grpc/status"
 )
 
-const orgIdFieldName = "org_id"
+const scopeIdFieldName = "scope_id"
 
 var (
 	reInvalidID = regexp.MustCompile("[^A-Za-z0-9]")
@@ -132,8 +132,8 @@ func toProto(t *authtoken.AuthToken) *pba.AuthToken {
 //  * There are no conflicting parameters provided
 func validateAuthenticateRequest(req *pbs.AuthenticateRequest) error {
 	badFields := make(map[string]string)
-	if !validId(req.GetOrgId(), scope.Org.Prefix()+"_") {
-		badFields[orgIdFieldName] = "Invalid formatted identifier."
+	if !validId(req.GetScopeId(), scope.Org.Prefix()+"_") {
+		badFields[scopeIdFieldName] = "Invalid formatted identifier."
 	}
 	if strings.TrimSpace(req.GetAuthMethodId()) == "" {
 		badFields["auth_method_id"] = "This is a required field."

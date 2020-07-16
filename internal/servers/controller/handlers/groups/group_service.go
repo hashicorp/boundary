@@ -7,20 +7,19 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/hashicorp/watchtower/internal/auth"
 	"github.com/hashicorp/watchtower/internal/db"
 	pb "github.com/hashicorp/watchtower/internal/gen/controller/api/resources/groups"
 	pbs "github.com/hashicorp/watchtower/internal/gen/controller/api/services"
 	"github.com/hashicorp/watchtower/internal/iam"
 	"github.com/hashicorp/watchtower/internal/servers/controller/handlers"
-	"github.com/hashicorp/watchtower/internal/types/scope"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 )
 
 const (
-	orgIdFieldName  = "org_id"
-	projIdFieldName = "project_id"
+	scopeIdFieldName = "scope_id"
 )
 
 var (
@@ -49,12 +48,14 @@ var _ pbs.GroupServiceServer = Service{}
 
 // ListGroups implements the interface pbs.GroupServiceServer.
 func (s Service) ListGroups(ctx context.Context, req *pbs.ListGroupsRequest) (*pbs.ListGroupsResponse, error) {
-	auth := handlers.ToTokenMetadata(ctx)
-	_ = auth
+	_, scopeInfo, valid := auth.Verify(ctx)
+	if !valid {
+		return nil, handlers.ForbiddenError()
+	}
 	if err := validateListRequest(req); err != nil {
 		return nil, err
 	}
-	gl, err := s.listFromRepo(ctx, parentScope(req))
+	gl, err := s.listFromRepo(ctx, scopeInfo.GetId())
 	if err != nil {
 		return nil, err
 	}
@@ -63,8 +64,10 @@ func (s Service) ListGroups(ctx context.Context, req *pbs.ListGroupsRequest) (*p
 
 // GetGroups implements the interface pbs.GroupServiceServer.
 func (s Service) GetGroup(ctx context.Context, req *pbs.GetGroupRequest) (*pbs.GetGroupResponse, error) {
-	auth := handlers.ToTokenMetadata(ctx)
-	_ = auth
+	_, _, valid := auth.Verify(ctx)
+	if !valid {
+		return nil, handlers.ForbiddenError()
+	}
 	if err := validateGetRequest(req); err != nil {
 		return nil, err
 	}
@@ -77,30 +80,30 @@ func (s Service) GetGroup(ctx context.Context, req *pbs.GetGroupRequest) (*pbs.G
 
 // CreateGroup implements the interface pbs.GroupServiceServer.
 func (s Service) CreateGroup(ctx context.Context, req *pbs.CreateGroupRequest) (*pbs.CreateGroupResponse, error) {
-	auth := handlers.ToTokenMetadata(ctx)
-	_ = auth
+	_, scopeInfo, valid := auth.Verify(ctx)
+	if !valid {
+		return nil, handlers.ForbiddenError()
+	}
 	if err := validateCreateRequest(req); err != nil {
 		return nil, err
 	}
-	u, err := s.createInRepo(ctx, parentScope(req), req.GetItem())
+	u, err := s.createInRepo(ctx, scopeInfo.GetId(), req.GetItem())
 	if err != nil {
 		return nil, err
 	}
-	var projectPart string
-	if req.GetProjectId() != "" {
-		projectPart = fmt.Sprintf("projects/%s/", req.GetProjectId())
-	}
-	return &pbs.CreateGroupResponse{Item: u, Uri: fmt.Sprintf("orgs/%s/%sgroups/%s", req.GetScopeId(), projectPart, u.GetId())}, nil
+	return &pbs.CreateGroupResponse{Item: u, Uri: fmt.Sprintf("scopes/%s/groups/%s", req.GetScopeId(), u.GetId())}, nil
 }
 
 // UpdateGroup implements the interface pbs.GroupServiceServer.
 func (s Service) UpdateGroup(ctx context.Context, req *pbs.UpdateGroupRequest) (*pbs.UpdateGroupResponse, error) {
-	auth := handlers.ToTokenMetadata(ctx)
-	_ = auth
+	_, scopeInfo, valid := auth.Verify(ctx)
+	if !valid {
+		return nil, handlers.ForbiddenError()
+	}
 	if err := validateUpdateRequest(req); err != nil {
 		return nil, err
 	}
-	u, err := s.updateInRepo(ctx, parentScope(req), req.GetId(), req.GetUpdateMask().GetPaths(), req.GetItem())
+	u, err := s.updateInRepo(ctx, scopeInfo.GetId(), req.GetId(), req.GetUpdateMask().GetPaths(), req.GetItem())
 	if err != nil {
 		return nil, err
 	}
@@ -109,8 +112,10 @@ func (s Service) UpdateGroup(ctx context.Context, req *pbs.UpdateGroupRequest) (
 
 // DeleteGroup implements the interface pbs.GroupServiceServer.
 func (s Service) DeleteGroup(ctx context.Context, req *pbs.DeleteGroupRequest) (*pbs.DeleteGroupResponse, error) {
-	auth := handlers.ToTokenMetadata(ctx)
-	_ = auth
+	_, _, valid := auth.Verify(ctx)
+	if !valid {
+		return nil, handlers.ForbiddenError()
+	}
 	if err := validateDeleteRequest(req); err != nil {
 		return nil, err
 	}
@@ -214,12 +219,12 @@ func (s Service) deleteFromRepo(ctx context.Context, id string) (bool, error) {
 	return rows > 0, nil
 }
 
-func (s Service) listFromRepo(ctx context.Context, orgId string) ([]*pb.Group, error) {
+func (s Service) listFromRepo(ctx context.Context, scopeId string) ([]*pb.Group, error) {
 	repo, err := s.repoFn()
 	if err != nil {
 		return nil, err
 	}
-	gl, err := repo.ListGroups(ctx, orgId)
+	gl, err := repo.ListGroups(ctx, scopeId)
 	if err != nil {
 		return nil, err
 	}
@@ -363,18 +368,7 @@ type ancestorProvider interface {
 // validateAncestors verifies that the ancestors of this call are properly set and provided.
 func validateAncestors(r ancestorProvider) map[string]string {
 	if r.GetScopeId() == "" {
-		return map[string]string{orgIdFieldName: "Missing org id."}
-	}
-	if !validId(r.GetScopeId(), scope.Org.Prefix()+"_") {
-		return map[string]string{orgIdFieldName: "Improperly formatted identifier."}
+		return map[string]string{scopeIdFieldName: "Missing scope id."}
 	}
 	return map[string]string{}
-}
-
-// Given an ancestorProvider, return the resource's immediate parent scope
-func parentScope(r ancestorProvider) string {
-	if r.GetProjectId() != "" {
-		return r.GetProjectId()
-	}
-	return r.GetScopeId()
 }
