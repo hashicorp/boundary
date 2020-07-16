@@ -401,3 +401,136 @@ func TestDomain_DefaultUsersExist(t *testing.T) {
 		assert.Equal(t, 1, count)
 	}
 }
+
+func TestDomain_immutable_columns_func(t *testing.T) {
+	const (
+		createTable = `
+create table if not exists test_immutable_columns (
+  id bigint generated always as identity primary key,
+  name text not null,
+  create_time wt_timestamp not null,
+  updatable text not null
+);
+`
+		addTriggers = `
+create trigger
+  test_update_immutable_columns
+before
+update on test_immutable_columns
+  for each row execute procedure immutable_columns('id', 'name', 'create_time');
+`
+		query = `
+select id, name, create_time, updatable from test_immutable_columns where id = $1
+`
+		countQuery = `
+select count(*) from test_immutable_columns
+`
+		insert = `
+insert into test_immutable_columns (name, updatable)
+values ('alice', 'update alice')
+returning id;
+`
+		// no where clause intentionally, since it's not needed for the test
+		update_updatable = `
+update test_immutable_columns
+set updatable = 'updated bob';
+`
+
+		// no where clause intentionally, since it's not needed for the test
+		bad_update_create_time = `
+update test_immutable_columns
+set create_time = now();
+`
+		// no where clause intentionally, since it's not needed for the test
+		bad_update_null_create_time = `
+update test_immutable_columns
+set create_time = null;
+`
+
+		// no where clause intentionally, since it's not needed for the test
+		bad_update_id = `
+update test_immutable_columns
+set id = 22;
+`
+		// no where clause intentionally, since it's not needed for the test
+		bad_update_null_id = `
+update test_immutable_columns
+set id = null;
+`
+	)
+
+	type rowData struct {
+		Id         int
+		CreateTime time.Time
+		Name       string
+		Updatable  string
+	}
+
+	conn, _ := TestSetup(t, "postgres")
+	db := conn.DB()
+	_, err := db.Exec(createTable)
+	assert.NoError(t, err)
+
+	_, err = db.Exec(addTriggers)
+	assert.NoError(t, err)
+
+	var id int
+	err = db.QueryRow(insert).Scan(&id)
+	assert.NoError(t, err)
+
+	var orig rowData
+	err = db.QueryRow(query, id).Scan(&orig.Id, &orig.Name, &orig.CreateTime, &orig.Updatable)
+	assert.NoError(t, err)
+
+	var count int
+	err = db.QueryRow(countQuery).Scan(&count)
+	assert.NoError(t, err)
+	assert.Equal(t, 1, count)
+
+	var tests = []struct {
+		name string
+		stmt string
+	}{
+		{
+			name: "update create time",
+			stmt: bad_update_create_time,
+		},
+		{
+			name: "null create time",
+			stmt: bad_update_null_create_time,
+		},
+		{
+			name: "update id",
+			stmt: bad_update_id,
+		},
+		{
+			name: "null id",
+			stmt: bad_update_null_id,
+		},
+	}
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			assert := assert.New(t)
+			_, err = db.Exec(tt.stmt)
+			assert.Error(err)
+
+			var found rowData
+			err = db.QueryRow(query, id).Scan(&found.Id, &found.Name, &found.CreateTime, &found.Updatable)
+			assert.NoError(err)
+			assert.Equal(orig.Id, found.Id)
+			assert.Equal(orig.Name, found.Name)
+			assert.Equal(orig.CreateTime, found.CreateTime)
+		})
+	}
+	t.Run("updatable", func(t *testing.T) {
+		assert, require := assert.New(t), require.New(t)
+		_, err = db.Exec(update_updatable)
+		require.NoError(err)
+		var found rowData
+		err = db.QueryRow(query, id).Scan(&found.Id, &found.Name, &found.CreateTime, &found.Updatable)
+		require.NoError(err)
+		assert.NotEqual(orig.Updatable, found.Updatable)
+	})
+
+}
