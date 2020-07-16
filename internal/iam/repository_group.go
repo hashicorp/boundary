@@ -143,16 +143,18 @@ func (r *Repository) ListGroupMembers(ctx context.Context, withGroupId string, o
 
 // AddGroupMembers provides the ability to add members (userIds) to a group
 // (groupId).  The group's current db version must match the groupVersion or an
-// error will be returned.
+// error will be returned.  Zero is not a valid value for the WithVersion option
+// and will return an error.
 func (r *Repository) AddGroupMembers(ctx context.Context, groupId string, groupVersion uint32, userIds []string, opt ...Option) ([]*GroupMember, error) {
-
 	if groupId == "" {
 		return nil, fmt.Errorf("add group members: missing group id %w", db.ErrInvalidParameter)
 	}
 	if len(userIds) == 0 {
 		return nil, fmt.Errorf("add group members: missing user ids to add %w", db.ErrInvalidParameter)
 	}
-
+	if groupVersion == 0 {
+		return nil, fmt.Errorf("add group members: version cannot be zero: %w", db.ErrInvalidParameter)
+	}
 	group := allocGroup()
 	group.PublicId = groupId
 	scope, err := group.GetScope(ctx, r.reader)
@@ -184,7 +186,7 @@ func (r *Repository) AddGroupMembers(ctx context.Context, groupId string, groupV
 			updatedGroup.PublicId = groupId
 			updatedGroup.Version = uint32(groupVersion) + 1
 			var groupOplogMsg oplog.Message
-			rowsUpdated, err := w.Update(ctx, &updatedGroup, []string{"Version"}, nil, db.NewOplogMsg(&groupOplogMsg), db.WithVersion(groupVersion))
+			rowsUpdated, err := w.Update(ctx, &updatedGroup, []string{"Version"}, nil, db.NewOplogMsg(&groupOplogMsg), db.WithVersion(&groupVersion))
 			if err != nil {
 				return fmt.Errorf("add group members: unable to update group version: %w", err)
 			}
@@ -228,13 +230,17 @@ func (r *Repository) AddGroupMembers(ctx context.Context, groupId string, groupV
 }
 
 // DeleteGroupMembers (userIds) from a group (groupId). The group's current db version
-// must match the groupVersion or an error will be returned.
+// must match the groupVersion or an error will be returned. Zero is not a valid
+// value for the WithVersion option and will return an error.
 func (r *Repository) DeleteGroupMembers(ctx context.Context, groupId string, groupVersion uint32, userIds []string, opt ...Option) (int, error) {
 	if groupId == "" {
 		return db.NoRowsAffected, fmt.Errorf("delete group members: missing group id: %w", db.ErrInvalidParameter)
 	}
 	if len(userIds) == 0 {
 		return db.NoRowsAffected, fmt.Errorf("delete group members: missing either user or groups to delete %w", db.ErrInvalidParameter)
+	}
+	if groupVersion == 0 {
+		return db.NoRowsAffected, fmt.Errorf("delete group members: version cannot be zero: %w", db.ErrInvalidParameter)
 	}
 	group := allocGroup()
 	group.PublicId = groupId
@@ -267,7 +273,7 @@ func (r *Repository) DeleteGroupMembers(ctx context.Context, groupId string, gro
 			updatedGroup.PublicId = groupId
 			updatedGroup.Version = uint32(groupVersion) + 1
 			var groupOplogMsg oplog.Message
-			rowsUpdated, err := w.Update(ctx, &updatedGroup, []string{"Version"}, nil, db.NewOplogMsg(&groupOplogMsg), db.WithVersion(groupVersion))
+			rowsUpdated, err := w.Update(ctx, &updatedGroup, []string{"Version"}, nil, db.NewOplogMsg(&groupOplogMsg), db.WithVersion(&groupVersion))
 			if err != nil {
 				return fmt.Errorf("delete group members: unable to update group version: %w", err)
 			}
@@ -304,10 +310,14 @@ func (r *Repository) DeleteGroupMembers(ctx context.Context, groupId string, gro
 }
 
 // SetGroupMembers will set the group's members.  If userIds is empty, the
-// members will be cleared.
+// members will be cleared. Zero is not a valid value for the WithVersion option
+// and will return an error.
 func (r *Repository) SetGroupMembers(ctx context.Context, groupId string, groupVersion uint32, userIds []string, opt ...Option) ([]*GroupMember, int, error) {
 	if groupId == "" {
 		return nil, db.NoRowsAffected, fmt.Errorf("set group members: missing role id: %w", db.ErrInvalidParameter)
+	}
+	if groupVersion == 0 {
+		return nil, db.NoRowsAffected, fmt.Errorf("set group members: version cannot be zero: %w", db.ErrInvalidParameter)
 	}
 	group := allocGroup()
 	group.PublicId = groupId
@@ -384,7 +394,7 @@ func (r *Repository) SetGroupMembers(ctx context.Context, groupId string, groupV
 			updatedGroup.PublicId = groupId
 			updatedGroup.Version = uint32(groupVersion) + 1
 			var groupOplogMsg oplog.Message
-			rowsUpdated, err := w.Update(ctx, &updatedGroup, []string{"Version"}, nil, db.NewOplogMsg(&groupOplogMsg), db.WithVersion(groupVersion))
+			rowsUpdated, err := w.Update(ctx, &updatedGroup, []string{"Version"}, nil, db.NewOplogMsg(&groupOplogMsg), db.WithVersion(&groupVersion))
 			if err != nil {
 				return fmt.Errorf("set group members: unable to update group version: %w", err)
 			}
