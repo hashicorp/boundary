@@ -282,7 +282,7 @@ func (s Service) updateInRepo(ctx context.Context, scopeId, id string, mask []st
 	if err != nil {
 		return nil, err
 	}
-	out, rowsUpdated, err := repo.UpdateRole(ctx, u, dbMask)
+	out, pr, gr, rowsUpdated, err := repo.UpdateRole(ctx, u, dbMask)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "Unable to update role: %v.", err)
 	}
@@ -290,7 +290,7 @@ func (s Service) updateInRepo(ctx context.Context, scopeId, id string, mask []st
 		return nil, handlers.NotFoundErrorf("Role %q doesn't exist.", id)
 	}
 	// TODO: Attach principals and grants to UpdateRole response
-	return toProto(out, nil, nil), nil
+	return toProto(out, pr, gr), nil
 }
 
 func (s Service) deleteFromRepo(ctx context.Context, id string) (bool, error) {
