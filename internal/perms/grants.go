@@ -12,6 +12,13 @@ import (
 	"github.com/hashicorp/watchtower/internal/types/scope"
 )
 
+// GrantPair is simply a struct that can be reference from other code to return
+// a set of scopes and grants to parse
+type GrantPair struct {
+	ScopeId string
+	Grant   string
+}
+
 // Scope provides an in-memory representation of iam.Scope without the
 // underlying storage references or capabilities.
 type Scope struct {
@@ -39,6 +46,28 @@ type Grant struct {
 	// This is used as a temporary staging area before validating permissions to
 	// allow the same validation code across grant string formats
 	actionsBeingParsed []string
+}
+
+func (g Grant) Id() string {
+	return g.id
+}
+
+func (g Grant) Type() resource.Type {
+	return g.typ
+}
+
+func (g Grant) Actions() (typs []action.Type, strs []string) {
+	typs = make([]action.Type, 0, len(g.actions))
+	strs = make([]string, 0, len(g.actions))
+	for k, v := range g.actions {
+		// Nothing should be in there if not true, but doesn't hurt to validate
+		if !v {
+			continue
+		}
+		typs = append(typs, k)
+		strs = append(strs, k.String())
+	}
+	return
 }
 
 func (g Grant) clone() *Grant {
@@ -123,7 +152,10 @@ func (g *Grant) unmarshalJSON(data []byte) error {
 		if !ok {
 			return fmt.Errorf("unable to interpret %q as string", "type")
 		}
-		g.typ = resource.StringToResourceType(typ)
+		g.typ = resource.Map[typ]
+		if g.typ == resource.Unknown {
+			return fmt.Errorf("unknown type specifier %q", typ)
+		}
 	}
 	if rawActions, ok := raw["actions"]; ok {
 		interfaceActions, ok := rawActions.([]interface{})
@@ -169,7 +201,7 @@ func (g *Grant) unmarshalText(grantString string) error {
 
 		case "type":
 			typeString := strings.ToLower(kv[1])
-			g.typ = resource.StringToResourceType(typeString)
+			g.typ = resource.Map[typeString]
 			if g.typ == resource.Unknown {
 				return fmt.Errorf("unknown type specifier %q", typeString)
 			}
@@ -198,23 +230,28 @@ func (g *Grant) unmarshalText(grantString string) error {
 //
 // The scope must be the org and project where this grant originated, not the
 // request.
-func Parse(s Scope, userId, grantString string) (Grant, error) {
+func Parse(scopeId, userId, grantString string) (Grant, error) {
 	if len(grantString) == 0 {
 		return Grant{}, errors.New("grant string is empty")
 	}
 
-	switch s.Type {
-	case scope.Project, scope.Organization:
-	default:
-		return Grant{}, errors.New("invalid scope type")
-	}
-
-	if s.Id == "" {
+	if scopeId == "" {
 		return Grant{}, errors.New("no scope ID provided")
 	}
 
 	grant := Grant{
-		scope: s,
+		scope: Scope{Id: scopeId},
+	}
+
+	switch {
+	case scopeId == "global":
+		grant.scope.Type = scope.Global
+	case strings.HasPrefix(scopeId, scope.Org.Prefix()):
+		grant.scope.Type = scope.Org
+	case strings.HasPrefix(scopeId, scope.Project.Prefix()):
+		grant.scope.Type = scope.Project
+	default:
+		return Grant{}, errors.New("invalid scope type")
 	}
 
 	switch {
@@ -268,6 +305,7 @@ func (g Grant) validateType() error {
 		resource.HostCatalog,
 		resource.HostSet,
 		resource.Host,
+		resource.Org,
 		resource.Target:
 		return nil
 	}

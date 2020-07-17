@@ -5,23 +5,26 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"path"
-	"path/filepath"
+	"os"
 	"strings"
 	"time"
 
 	"github.com/grpc-ecosystem/grpc-gateway/runtime"
+	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/vault/internalshared/configutil"
 	"github.com/hashicorp/vault/sdk/helper/strutil"
 	"github.com/hashicorp/watchtower/api"
 	"github.com/hashicorp/watchtower/globals"
+	"github.com/hashicorp/watchtower/internal/auth"
 	"github.com/hashicorp/watchtower/internal/gen/controller/api/services"
+
 	"github.com/hashicorp/watchtower/internal/servers/controller/handlers"
+	"github.com/hashicorp/watchtower/internal/servers/controller/handlers/authenticate"
 	"github.com/hashicorp/watchtower/internal/servers/controller/handlers/groups"
 	"github.com/hashicorp/watchtower/internal/servers/controller/handlers/host_catalogs"
 	"github.com/hashicorp/watchtower/internal/servers/controller/handlers/host_sets"
 	"github.com/hashicorp/watchtower/internal/servers/controller/handlers/hosts"
-	"github.com/hashicorp/watchtower/internal/servers/controller/handlers/organizations"
+	"github.com/hashicorp/watchtower/internal/servers/controller/handlers/orgs"
 	"github.com/hashicorp/watchtower/internal/servers/controller/handlers/projects"
 	"github.com/hashicorp/watchtower/internal/servers/controller/handlers/roles"
 	"github.com/hashicorp/watchtower/internal/servers/controller/handlers/users"
@@ -43,75 +46,12 @@ func (c *Controller) handler(props HandlerProperties) (http.Handler, error) {
 	}
 	mux.Handle("/v1/", h)
 
-	// TODO: enable when not in this mode, when we bundle the assets
-	if c.conf.RawConfig.PassthroughDirectory != "" {
-		mux.Handle("/", handleUi(c))
-	}
+	mux.Handle("/", handleUi(c))
 
 	corsWrappedHandler := wrapHandlerWithCors(mux, props)
 	commonWrappedHandler := wrapHandlerWithCommonFuncs(corsWrappedHandler, c, props)
 
 	return commonWrappedHandler, nil
-}
-
-func handleUi(c *Controller) http.Handler {
-	// TODO: Do stuff with real UI data when it's bundled. We may also have to
-	// do a similar thing with fetching index.html in advance.
-	var nextHandler http.Handler
-	if c.conf.RawConfig.PassthroughDirectory != "" {
-		nextHandler = devPassthroughHandler(c)
-	}
-
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != http.MethodGet {
-			w.WriteHeader(http.StatusMethodNotAllowed)
-			return
-		}
-
-		dotIndex := strings.LastIndex(r.URL.Path, ".")
-		switch dotIndex {
-		case -1:
-			// For all paths without an extension serve /index.html
-			r.URL.Path = "/"
-
-		default:
-			switch r.URL.Path {
-			case "/", "/favicon.png", "/assets/styles.css":
-
-			default:
-				for i := dotIndex + 1; i < len(r.URL.Path); i++ {
-					intVal := r.URL.Path[i]
-					// Current guidance from FE is if it's only alphanum after
-					// the last dot, treat it as an extension
-					if intVal < '0' ||
-						(intVal > '9' && intVal < 'A') ||
-						(intVal > 'Z' && intVal < 'a') ||
-						intVal > 'z' {
-						// Not an extension. Serve the contents of index.html
-						r.URL.Path = "/"
-					}
-				}
-			}
-		}
-
-		// Fall through to the next handler
-		nextHandler.ServeHTTP(w, r)
-	})
-}
-
-func devPassthroughHandler(c *Controller) http.Handler {
-	// Panic may not be ideal but this is never a production call and it'll
-	// panic on startup. We could also just change the function to return
-	// an error.
-	abs, err := filepath.Abs(c.conf.RawConfig.PassthroughDirectory)
-	if err != nil {
-		panic(err)
-	}
-	c.logger.Warn("serving passthrough files at /", "path", abs)
-	fs := http.FileServer(http.Dir(abs))
-	prefixHandler := http.StripPrefix("/", fs)
-
-	return prefixHandler
 }
 
 func handleGrpcGateway(c *Controller) (http.Handler, error) {
@@ -132,12 +72,19 @@ func handleGrpcGateway(c *Controller) (http.Handler, error) {
 	if err := services.RegisterHostServiceHandlerServer(ctx, mux, &hosts.Service{}); err != nil {
 		return nil, fmt.Errorf("failed to register host service handler: %w", err)
 	}
-	os, err := organizations.NewService(c.IamRepoFn)
+	auths, err := authenticate.NewService(c.IamRepoFn, c.AuthTokenRepoFn)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create organization handler service: %w", err)
+		return nil, fmt.Errorf("failed to create authentication handler service: %w", err)
 	}
-	if err := services.RegisterOrganizationServiceHandlerServer(ctx, mux, os); err != nil {
-		return nil, fmt.Errorf("failed to register organization service handler: %w", err)
+	if err := services.RegisterAuthenticationServiceHandlerServer(ctx, mux, auths); err != nil {
+		return nil, fmt.Errorf("failed to register authenticate service handler: %w", err)
+	}
+	os, err := orgs.NewService(c.IamRepoFn)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create org handler service: %w", err)
+	}
+	if err := services.RegisterOrgServiceHandlerServer(ctx, mux, os); err != nil {
+		return nil, fmt.Errorf("failed to register org service handler: %w", err)
 	}
 	ps, err := projects.NewService(c.IamRepoFn)
 	if err != nil {
@@ -184,37 +131,45 @@ func wrapHandlerWithCommonFuncs(h http.Handler, c *Controller, props HandlerProp
 	if maxRequestSize == 0 {
 		maxRequestSize = globals.DefaultMaxRequestSize
 	}
-	var defaultOrgId string
-	if c != nil && c.conf != nil {
-		defaultOrgId = c.conf.DefaultOrgId
+
+	logUrls := os.Getenv("WATCHTOWER_LOG_URLS") != ""
+
+	disableAuthzFailures := c.conf.DisableAuthorizationFailures ||
+		(c.conf.RawConfig.DevController && os.Getenv("WATCHTOWER_DEV_SKIP_AUTHZ") != "")
+	if disableAuthzFailures {
+		c.logger.Warn("AUTHORIZATION CHECKING DISABLED")
 	}
+
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if defaultOrgId != "" {
-			splitPath := strings.Split(r.URL.Path, "/")
-			if len(splitPath) >= 3 && splitPath[2] == "projects" {
-				http.Redirect(w, r, path.Join("/v1/orgs", defaultOrgId, strings.Join(splitPath[2:], "/")), 307)
-				return
-			}
+		if logUrls {
+			c.logger.Trace("request received", "url", r.URL.String())
 		}
 
 		// Set the Cache-Control header for all responses returned
 		w.Header().Set("Cache-Control", "no-store")
 
-		// Start with the request context
-		ctx := r.Context()
-		var cancelFunc context.CancelFunc
-		// Add our timeout
-		ctx, cancelFunc = context.WithTimeout(ctx, maxRequestDuration)
+		// Start with the request context and our timeout
+		ctx, cancelFunc := context.WithTimeout(r.Context(), maxRequestDuration)
+		defer cancelFunc()
+
 		// Add a size limiter if desired
 		if maxRequestSize > 0 {
 			ctx = context.WithValue(ctx, "max_request_size", maxRequestSize)
 		}
-		ctx = context.WithValue(ctx, "original_request_path", r.URL.Path)
+
+		// Add values for authn/authz checking
+		requestInfo := auth.RequestInfo{
+			Path:                 r.URL.Path,
+			Method:               r.Method,
+			DisableAuthzFailures: disableAuthzFailures,
+		}
+		requestInfo.PublicId, requestInfo.Token = getTokenFromRequest(c.logger, r)
+		ctx = auth.NewVerifierContext(ctx, c.logger, c.IamRepoFn, c.AuthTokenRepoFn, requestInfo)
+
+		// Set the context back on the request
 		r = r.WithContext(ctx)
 
 		h.ServeHTTP(w, r)
-		cancelFunc()
-		return
 	})
 }
 
@@ -266,8 +221,8 @@ func wrapHandlerWithCors(h http.Handler, props HandlerProperties) http.Handler {
 			w.WriteHeader(http.StatusForbidden)
 
 			err := &api.Error{
-				Status: api.Int(http.StatusForbidden),
-				Code:   api.String("origin forbidden"),
+				Status: http.StatusForbidden,
+				Code:   "origin forbidden",
 			}
 
 			enc := json.NewEncoder(w)
@@ -294,8 +249,76 @@ func wrapHandlerWithCors(h http.Handler, props HandlerProperties) http.Handler {
 		}
 
 		h.ServeHTTP(w, req)
-		return
 	})
+}
+
+type tokenFormat int
+
+const (
+	authTokenTypeUnknown tokenFormat = iota
+	authTokenTypeBearer
+	authTokenTypeSplitCookie
+)
+
+const (
+	headerAuthMethod    = "Authorization"
+	httpOnlyCookieName  = "wt-http-token-cookie"
+	jsVisibleCookieName = "wt-js-token-cookie"
+)
+
+// getTokenFromRequest pulls the token from either the Authorization header or
+// split cookies and parses it. If it cannot be parsed successfully, the issue
+// is logged and we return blank, so logic will continue as the anonymous user.
+// The public ID and token are returned
+func getTokenFromRequest(logger hclog.Logger, req *http.Request) (string, string) {
+	// First, get the token, either from the authorization header or from split
+	// cookies
+	var receivedTokenType tokenFormat
+	var fullToken string
+	if authHeader := req.Header.Get("Authorization"); authHeader != "" {
+		headerSplit := strings.SplitN(strings.TrimSpace(authHeader), " ", 2)
+		if len(headerSplit) == 2 && strings.EqualFold(strings.TrimSpace(headerSplit[0]), "bearer") {
+			receivedTokenType = authTokenTypeBearer
+			fullToken = strings.TrimSpace(headerSplit[1])
+		}
+	}
+	if receivedTokenType != authTokenTypeBearer {
+		var httpCookiePayload string
+		var jsCookiePayload string
+		if hc, err := req.Cookie(httpOnlyCookieName); err == nil {
+			httpCookiePayload = hc.Value
+		}
+		if jc, err := req.Cookie(jsVisibleCookieName); err == nil {
+			jsCookiePayload = jc.Value
+		}
+		if httpCookiePayload != "" && jsCookiePayload != "" {
+			receivedTokenType = authTokenTypeSplitCookie
+			fullToken = jsCookiePayload + httpCookiePayload
+		}
+	}
+
+	if receivedTokenType == authTokenTypeUnknown || fullToken == "" {
+		// We didn't find auth info or a client screwed up and put in a blank
+		// header instead of nothing at all, so return blank which will indicate
+		// the anonymouse user
+		return "", ""
+	}
+
+	splitFullToken := strings.Split(fullToken, "_")
+	if len(splitFullToken) != 3 {
+		logger.Trace("get token from request: unexpected number of segments in token", "expected", 3, "found", len(splitFullToken))
+		return "", ""
+	}
+
+	token := splitFullToken[2]
+	publicId := strings.Join(splitFullToken[0:2], "_")
+
+	if receivedTokenType == authTokenTypeUnknown || token == "" || publicId == "" {
+		logger.Trace("get token from request: after parsing, could not find valid token")
+		return "", ""
+	}
+
+	return publicId, token
 }
 
 /*

@@ -29,9 +29,13 @@ type Options struct {
 	// WithNullPaths must be accessible from other packages.
 	WithNullPaths []string
 
-	newOplogMsg *oplog.Message
-	// WithVersion must be accessible from other packages
-	WithVersion int
+	newOplogMsg  *oplog.Message
+	newOplogMsgs *[]*oplog.Message
+
+	// WithVersion must be accessible from other packages.
+	WithVersion *uint32
+
+	withSkipVetForWrite bool
 }
 
 type oplogOpts struct {
@@ -50,7 +54,7 @@ func getDefaultOptions() Options {
 		WithFieldMaskPaths: []string{},
 		WithNullPaths:      []string{},
 		WithLimit:          0,
-		WithVersion:        0,
+		WithVersion:        nil,
 	}
 }
 
@@ -82,6 +86,17 @@ func NewOplogMsg(msg *oplog.Message) Option {
 	}
 }
 
+// NewOplogMsgs provides an option to ask for multiple new in-memory oplog
+// messages.  The new msgs will be returned in the provided *[]oplog.Message
+// parameter. NewOplogMsgs can only be used with write functions that operate on
+// multiple items(CreateItems, DeleteItems). WithOplog and NewOplogMsgs cannot
+// be used together.
+func NewOplogMsgs(msgs *[]*oplog.Message) Option {
+	return func(o *Options) {
+		o.newOplogMsgs = msgs
+	}
+}
+
 // WithFieldMaskPaths provides an option to provide field mask paths.
 func WithFieldMaskPaths(paths []string) Option {
 	return func(o *Options) {
@@ -106,8 +121,16 @@ func WithLimit(limit int) Option {
 }
 
 // WithVersion provides an option version number for update operations.
-func WithVersion(version int) Option {
+func WithVersion(version *uint32) Option {
 	return func(o *Options) {
 		o.WithVersion = version
+	}
+}
+
+// WithSkipVetForWrite provides an option to allow skipping vet checks to allow
+// testing lower-level SQL triggers and constraints
+func WithSkipVetForWrite(enable bool) Option {
+	return func(o *Options) {
+		o.withSkipVetForWrite = enable
 	}
 }

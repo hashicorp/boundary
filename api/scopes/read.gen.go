@@ -12,13 +12,13 @@ import (
 	"github.com/hashicorp/watchtower/api/users"
 )
 
-func (s Organization) ReadProject(ctx context.Context, r *Project) (*Project, *api.Error, error) {
+func (s Org) ReadProject(ctx context.Context, r *Project) (*Project, *api.Error, error) {
 	if s.Client == nil {
 		return nil, nil, fmt.Errorf("nil client in ReadProject request")
 	}
 	if s.Id == "" {
 
-		// Assume the client has been configured with organization already and
+		// Assume the client has been configured with org already and
 		// move on
 
 	} else {
@@ -54,13 +54,13 @@ func (s Organization) ReadProject(ctx context.Context, r *Project) (*Project, *a
 	return target, apiErr, nil
 }
 
-func (s Organization) ReadGroup(ctx context.Context, r *groups.Group) (*groups.Group, *api.Error, error) {
+func (s Org) ReadGroup(ctx context.Context, r *groups.Group) (*groups.Group, *api.Error, error) {
 	if s.Client == nil {
 		return nil, nil, fmt.Errorf("nil client in ReadGroup request")
 	}
 	if s.Id == "" {
 
-		// Assume the client has been configured with organization already and
+		// Assume the client has been configured with org already and
 		// move on
 
 	} else {
@@ -95,13 +95,13 @@ func (s Organization) ReadGroup(ctx context.Context, r *groups.Group) (*groups.G
 	return target, apiErr, nil
 }
 
-func (s Organization) ReadRole(ctx context.Context, r *roles.Role) (*roles.Role, *api.Error, error) {
+func (s Org) ReadRole(ctx context.Context, r *roles.Role) (*roles.Role, *api.Error, error) {
 	if s.Client == nil {
 		return nil, nil, fmt.Errorf("nil client in ReadRole request")
 	}
 	if s.Id == "" {
 
-		// Assume the client has been configured with organization already and
+		// Assume the client has been configured with org already and
 		// move on
 
 	} else {
@@ -136,13 +136,13 @@ func (s Organization) ReadRole(ctx context.Context, r *roles.Role) (*roles.Role,
 	return target, apiErr, nil
 }
 
-func (s Organization) ReadUser(ctx context.Context, r *users.User) (*users.User, *api.Error, error) {
+func (s Org) ReadUser(ctx context.Context, r *users.User) (*users.User, *api.Error, error) {
 	if s.Client == nil {
 		return nil, nil, fmt.Errorf("nil client in ReadUser request")
 	}
 	if s.Id == "" {
 
-		// Assume the client has been configured with organization already and
+		// Assume the client has been configured with org already and
 		// move on
 
 	} else {
@@ -170,6 +170,88 @@ func (s Organization) ReadUser(ctx context.Context, r *users.User) (*users.User,
 	apiErr, err := resp.Decode(target)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error decoding ReadUser repsonse: %w", err)
+	}
+
+	target.Client = s.Client
+
+	return target, apiErr, nil
+}
+
+func (s Project) ReadGroup(ctx context.Context, r *groups.Group) (*groups.Group, *api.Error, error) {
+	if s.Client == nil {
+		return nil, nil, fmt.Errorf("nil client in ReadGroup request")
+	}
+	if s.Id == "" {
+
+		// Assume the client has been configured with project already and move
+		// on
+
+	} else {
+		// If it's explicitly set here, override anything that might be in the
+		// client
+
+		ctx = context.WithValue(ctx, "project", s.Id)
+
+	}
+	if r.Id == "" {
+		return nil, nil, fmt.Errorf("empty groups.Group ID field in ReadGroup request")
+	}
+
+	req, err := s.Client.NewRequest(ctx, "GET", fmt.Sprintf("%s/%s", "groups", r.Id), r)
+	if err != nil {
+		return nil, nil, fmt.Errorf("error creating ReadGroup request: %w", err)
+	}
+
+	resp, err := s.Client.Do(req)
+	if err != nil {
+		return nil, nil, fmt.Errorf("error performing client request during ReadGroup call: %w", err)
+	}
+
+	target := new(groups.Group)
+	apiErr, err := resp.Decode(target)
+	if err != nil {
+		return nil, nil, fmt.Errorf("error decoding ReadGroup repsonse: %w", err)
+	}
+
+	target.Client = s.Client
+
+	return target, apiErr, nil
+}
+
+func (s Project) ReadRole(ctx context.Context, r *roles.Role) (*roles.Role, *api.Error, error) {
+	if s.Client == nil {
+		return nil, nil, fmt.Errorf("nil client in ReadRole request")
+	}
+	if s.Id == "" {
+
+		// Assume the client has been configured with project already and move
+		// on
+
+	} else {
+		// If it's explicitly set here, override anything that might be in the
+		// client
+
+		ctx = context.WithValue(ctx, "project", s.Id)
+
+	}
+	if r.Id == "" {
+		return nil, nil, fmt.Errorf("empty roles.Role ID field in ReadRole request")
+	}
+
+	req, err := s.Client.NewRequest(ctx, "GET", fmt.Sprintf("%s/%s", "roles", r.Id), r)
+	if err != nil {
+		return nil, nil, fmt.Errorf("error creating ReadRole request: %w", err)
+	}
+
+	resp, err := s.Client.Do(req)
+	if err != nil {
+		return nil, nil, fmt.Errorf("error performing client request during ReadRole call: %w", err)
+	}
+
+	target := new(roles.Role)
+	apiErr, err := resp.Decode(target)
+	if err != nil {
+		return nil, nil, fmt.Errorf("error decoding ReadRole repsonse: %w", err)
 	}
 
 	target.Client = s.Client

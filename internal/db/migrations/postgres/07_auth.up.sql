@@ -10,7 +10,7 @@ begin;
   -- base table for auth methods
   create table auth_method (
     public_id wt_public_id primary key,
-    scope_id wt_public_id not null
+    scope_id wt_scope_id not null
       references iam_scope(public_id)
       on delete cascade
       on update cascade,
@@ -26,7 +26,7 @@ begin;
   create table auth_account (
     public_id wt_public_id primary key,
     auth_method_id wt_public_id not null,
-    scope_id wt_public_id not null,
+    scope_id wt_scope_id not null,
     iam_user_id wt_public_id,
     foreign key (scope_id, auth_method_id)
       references auth_method (scope_id, public_id)

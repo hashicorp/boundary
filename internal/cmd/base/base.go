@@ -18,6 +18,7 @@ import (
 	"github.com/mitchellh/cli"
 	"github.com/pkg/errors"
 	"github.com/posener/complete"
+	"github.com/zalando/go-keyring"
 )
 
 const (
@@ -26,6 +27,8 @@ const (
 
 	// NotSetValue is a flag value for a not-set value
 	NotSetValue = "(not set)"
+
+	envTokenName = "WATCHTOWER_TOKEN_NAME"
 )
 
 // reRemoveWhitespace is a regular expression for stripping whitespace from
@@ -53,6 +56,7 @@ type Command struct {
 
 	flagFormat           string
 	flagField            string
+	FlagTokenName        string
 	flagOutputCurlString bool
 
 	client *api.Client
@@ -161,6 +165,26 @@ func (c *Command) Client() (*api.Client, error) {
 		c.client.SetMaxRetries(0)
 	}
 
+	if c.client.Token() == "" {
+		tokenName := "default"
+		if c.FlagTokenName != "" {
+			tokenName = c.FlagTokenName
+		}
+		if tokenName != "none" {
+			token, err := keyring.Get("HashiCorp Watchtower Auth Token", tokenName)
+			if err != nil {
+				if err == keyring.ErrNotFound {
+					c.UI.Info("No saved credential found, continuing without")
+				} else {
+					c.UI.Error(fmt.Sprintf("Error reading auth token from system credential store: %s", err))
+				}
+			}
+			if token != "" {
+				c.client.SetToken(token)
+			}
+		}
+	}
+
 	return c.client, nil
 }
 
@@ -169,6 +193,7 @@ type FlagSetBit uint
 const (
 	FlagSetNone FlagSetBit = 1 << iota
 	FlagSetHTTP
+	FlagSetClient
 	FlagSetOutputField
 	FlagSetOutputFormat
 )
@@ -202,7 +227,7 @@ func (c *Command) FlagSet(bit FlagSetBit) *FlagSets {
 				Default:    NotSetValue,
 				EnvVar:     api.EnvWatchtowerOrg,
 				Completion: complete.PredictAnything,
-				Usage:      "Organization in which to make the request; overrides any set in the address.",
+				Usage:      "Org in which to make the request; overrides any set in the address.",
 			})
 
 			f.StringVar(&StringVar{
@@ -273,6 +298,17 @@ func (c *Command) FlagSet(bit FlagSetBit) *FlagSets {
 				Usage: "Disable verification of TLS certificates. Using this option " +
 					"is highly discouraged as it decreases the security of data " +
 					"transmissions to and from the Watchtower server.",
+			})
+		}
+
+		if bit&FlagSetClient != 0 {
+			f := set.NewFlagSet("Client Options")
+
+			f.StringVar(&StringVar{
+				Name:   "token-name",
+				Target: &c.FlagTokenName,
+				EnvVar: envTokenName,
+				Usage:  "If specified, the given value will be used as the name when storing the token in the system credential store. This can allow switching user identities for different commands.",
 			})
 
 			f.BoolVar(&BoolVar{

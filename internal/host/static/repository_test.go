@@ -17,17 +17,7 @@ import (
 )
 
 func TestRepository_New(t *testing.T) {
-
-	cleanup, conn, _ := db.TestSetup(t, "postgres")
-	defer func() {
-		if err := conn.Close(); err != nil {
-			t.Error(err)
-		}
-		if err := cleanup(); err != nil {
-			t.Error(err)
-		}
-	}()
-
+	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
 
@@ -115,15 +105,7 @@ func TestRepository_New(t *testing.T) {
 }
 
 func TestRepository_CreateCatalog(t *testing.T) {
-	cleanup, conn, _ := db.TestSetup(t, "postgres")
-	defer func() {
-		if err := cleanup(); err != nil {
-			t.Error(err)
-		}
-		if err := conn.Close(); err != nil {
-			t.Error(err)
-		}
-	}()
+	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
 
@@ -282,16 +264,7 @@ func assertPublicId(t *testing.T, prefix, actual string) {
 }
 
 func TestRepository_UpdateCatalog(t *testing.T) {
-	cleanup, conn, _ := db.TestSetup(t, "postgres")
-	defer func() {
-		if err := cleanup(); err != nil {
-			t.Error(err)
-		}
-		if err := conn.Close(); err != nil {
-			t.Error(err)
-		}
-	}()
-
+	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
 
@@ -674,16 +647,7 @@ func TestRepository_UpdateCatalog(t *testing.T) {
 }
 
 func TestRepository_LookupCatalog(t *testing.T) {
-	cleanup, conn, _ := db.TestSetup(t, "postgres")
-	defer func() {
-		if err := cleanup(); err != nil {
-			t.Error(err)
-		}
-		if err := conn.Close(); err != nil {
-			t.Error(err)
-		}
-	}()
-
+	conn, _ := db.TestSetup(t, "postgres")
 	cat := testCatalog(t, conn)
 	badId, err := newHostCatalogId()
 	assert.NoError(t, err)
@@ -743,16 +707,7 @@ func TestRepository_LookupCatalog(t *testing.T) {
 }
 
 func TestRepository_DeleteCatalog(t *testing.T) {
-	cleanup, conn, _ := db.TestSetup(t, "postgres")
-	defer func() {
-		if err := cleanup(); err != nil {
-			t.Error(err)
-		}
-		if err := conn.Close(); err != nil {
-			t.Error(err)
-		}
-	}()
-
+	conn, _ := db.TestSetup(t, "postgres")
 	cat := testCatalog(t, conn)
 	badId, err := newHostCatalogId()
 	assert.NoError(t, err)

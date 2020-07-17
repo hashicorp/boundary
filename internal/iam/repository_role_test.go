@@ -17,13 +17,7 @@ import (
 
 func TestRepository_CreateRole(t *testing.T) {
 	t.Parallel()
-	cleanup, conn, _ := db.TestSetup(t, "postgres")
-	defer func() {
-		err := cleanup()
-		assert.NoError(t, err)
-		err = conn.Close()
-		assert.NoError(t, err)
-	}()
+	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
 	repo, err := NewRepository(rw, rw, wrapper)
@@ -166,7 +160,7 @@ func TestRepository_CreateRole(t *testing.T) {
 			assert.NotNil(grp.CreateTime)
 			assert.NotNil(grp.UpdateTime)
 
-			foundGrp, err := repo.LookupRole(context.Background(), grp.PublicId)
+			foundGrp, _, _, err := repo.LookupRole(context.Background(), grp.PublicId)
 			assert.NoError(err)
 			assert.True(proto.Equal(foundGrp, grp))
 
@@ -178,13 +172,7 @@ func TestRepository_CreateRole(t *testing.T) {
 
 func TestRepository_UpdateRole(t *testing.T) {
 	t.Parallel()
-	cleanup, conn, _ := db.TestSetup(t, "postgres")
-	defer func() {
-		err := cleanup()
-		assert.NoError(t, err)
-		err = conn.Close()
-		assert.NoError(t, err)
-	}()
+	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
 	repo, err := NewRepository(rw, rw, wrapper)
@@ -386,13 +374,13 @@ func TestRepository_UpdateRole(t *testing.T) {
 			newScopeId:  org.PublicId,
 			wantErr:     true,
 			wantDup:     true,
-			wantErrMsg:  " already exists in organization " + org.PublicId,
+			wantErrMsg:  " already exists in org " + org.PublicId,
 			wantIsError: db.ErrNotUnique,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			assert := assert.New(t)
+			require, assert := require.New(t), assert.New(t)
 			if tt.wantDup {
 				r := TestRole(t, conn, org.PublicId)
 				r.Name = tt.args.name
@@ -425,7 +413,8 @@ func TestRepository_UpdateRole(t *testing.T) {
 				assert.True(errors.Is(db.ErrRecordNotFound, err))
 				return
 			}
-			assert.NoError(err)
+			require.NoError(err)
+			require.NotNil(roleAfterUpdate)
 			assert.Equal(tt.wantRowsUpdate, updatedRows)
 			switch tt.name {
 			case "valid-no-op":
@@ -433,7 +422,7 @@ func TestRepository_UpdateRole(t *testing.T) {
 			default:
 				assert.NotEqual(r.UpdateTime, roleAfterUpdate.UpdateTime)
 			}
-			foundRole, err := repo.LookupRole(context.Background(), r.PublicId)
+			foundRole, _, _, err := repo.LookupRole(context.Background(), r.PublicId)
 			assert.NoError(err)
 			assert.True(proto.Equal(roleAfterUpdate, foundRole))
 			dbassert := dbassert.New(t, rw)
@@ -453,13 +442,7 @@ func TestRepository_UpdateRole(t *testing.T) {
 
 func TestRepository_DeleteRole(t *testing.T) {
 	t.Parallel()
-	cleanup, conn, _ := db.TestSetup(t, "postgres")
-	defer func() {
-		err := cleanup()
-		assert.NoError(t, err)
-		err = conn.Close()
-		assert.NoError(t, err)
-	}()
+	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
 	repo, err := NewRepository(rw, rw, wrapper)
@@ -529,7 +512,7 @@ func TestRepository_DeleteRole(t *testing.T) {
 			}
 			assert.NoError(err)
 			assert.Equal(tt.wantRowsDeleted, deletedRows)
-			foundRole, err := repo.LookupRole(context.Background(), tt.args.role.PublicId)
+			foundRole, _, _, err := repo.LookupRole(context.Background(), tt.args.role.PublicId)
 			assert.Error(err)
 			assert.Nil(foundRole)
 			assert.True(errors.Is(err, db.ErrRecordNotFound))
@@ -542,13 +525,7 @@ func TestRepository_DeleteRole(t *testing.T) {
 
 func TestRepository_ListRoles(t *testing.T) {
 	t.Parallel()
-	cleanup, conn, _ := db.TestSetup(t, "postgres")
-	defer func() {
-		err := cleanup()
-		assert.NoError(t, err)
-		err = conn.Close()
-		assert.NoError(t, err)
-	}()
+	conn, _ := db.TestSetup(t, "postgres")
 	const testLimit = 10
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)

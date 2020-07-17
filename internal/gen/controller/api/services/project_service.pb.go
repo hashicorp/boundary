@@ -938,22 +938,22 @@ type ProjectServiceClient interface {
 	// ListProjects returns a list of stored projects which exist inside the org
 	// referenced inside the request.  The request must include the org id for
 	// the projects being retrieved.  If the org id is missing, malformed, or
-	// reference a non existing organization, an error is returned.
+	// reference a non existing org, an error is returned.
 	ListProjects(ctx context.Context, in *ListProjectsRequest, opts ...grpc.CallOption) (*ListProjectsResponse, error)
 	// CreateProject creates and stores a project in watchtower.  The provided
 	// request must include the org id in which the project will be created.
 	// If the org id is missing, malformed or references a non existing
-	// organization, an error is returned.  If a name is provided that is in
-	// use in another project in the same organization, an error is returned.
+	// org, an error is returned.  If a name is provided that is in
+	// use in another project in the same org, an error is returned.
 	CreateProject(ctx context.Context, in *CreateProjectRequest, opts ...grpc.CallOption) (*CreateProjectResponse, error)
 	// UpdateProject updates an existing project in watchtower.  The provided
 	// project must not have any read only fields set.  The update mask must be
 	// included in the request and contain at least 1 mutable field.  To unset
 	// a field's value, include the field in the update mask and don't set it
-	// in the provided project. An error is returned if either the organization
+	// in the provided project. An error is returned if either the org
 	// or project ids are missing or reference a non existing resource.  An error
 	// is also returned if the request attempts to update the name to one that is
-	// already in use in this organization.
+	// already in use in this org.
 	UpdateProject(ctx context.Context, in *UpdateProjectRequest, opts ...grpc.CallOption) (*UpdateProjectResponse, error)
 	// DeleteProject remotes a project and all child resources from Watchtower.
 	// If the provided org or project ids are malformed or not provided an error
@@ -1026,22 +1026,22 @@ type ProjectServiceServer interface {
 	// ListProjects returns a list of stored projects which exist inside the org
 	// referenced inside the request.  The request must include the org id for
 	// the projects being retrieved.  If the org id is missing, malformed, or
-	// reference a non existing organization, an error is returned.
+	// reference a non existing org, an error is returned.
 	ListProjects(context.Context, *ListProjectsRequest) (*ListProjectsResponse, error)
 	// CreateProject creates and stores a project in watchtower.  The provided
 	// request must include the org id in which the project will be created.
 	// If the org id is missing, malformed or references a non existing
-	// organization, an error is returned.  If a name is provided that is in
-	// use in another project in the same organization, an error is returned.
+	// org, an error is returned.  If a name is provided that is in
+	// use in another project in the same org, an error is returned.
 	CreateProject(context.Context, *CreateProjectRequest) (*CreateProjectResponse, error)
 	// UpdateProject updates an existing project in watchtower.  The provided
 	// project must not have any read only fields set.  The update mask must be
 	// included in the request and contain at least 1 mutable field.  To unset
 	// a field's value, include the field in the update mask and don't set it
-	// in the provided project. An error is returned if either the organization
+	// in the provided project. An error is returned if either the org
 	// or project ids are missing or reference a non existing resource.  An error
 	// is also returned if the request attempts to update the name to one that is
-	// already in use in this organization.
+	// already in use in this org.
 	UpdateProject(context.Context, *UpdateProjectRequest) (*UpdateProjectResponse, error)
 	// DeleteProject remotes a project and all child resources from Watchtower.
 	// If the provided org or project ids are malformed or not provided an error

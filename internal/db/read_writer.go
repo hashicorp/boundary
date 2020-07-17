@@ -76,12 +76,29 @@ type Writer interface {
 	// the transaction, which almost always should be to rollback.
 	Create(ctx context.Context, i interface{}, opt ...Option) error
 
+	// CreateItems will create multiple items of the same type.
+	// Supported options: WithOplog and WithOplogMsgs.  WithOplog and
+	// WithOplogMsgs may not be used together. WithLookup is not a
+	// supported option. The caller is responsible for the transaction life
+	// cycle of the writer and if an error is returned the caller must decide
+	// what to do with the transaction, which almost always should be to
+	// rollback.
+	CreateItems(ctx context.Context, createItems []interface{}, opt ...Option) error
+
 	// Delete an object in the db with options: WithOplog
 	// the caller is responsible for the transaction life cycle of the writer
 	// and if an error is returned the caller must decide what to do with
 	// the transaction, which almost always should be to rollback. Delete
 	// returns the number of rows deleted or an error.
 	Delete(ctx context.Context, i interface{}, opt ...Option) (int, error)
+
+	// DeleteItems will delete multiple items of the same type.
+	// Supported options: WithOplog and WithOplogMsgs.  WithOplog and
+	// WithOplogMsgs may not be used together. The caller is responsible for the
+	// transaction life cycle of the writer and if an error is returned the
+	// caller must decide what to do with the transaction, which almost always
+	// should be to rollback. Delete returns the number of rows deleted or an error.
+	DeleteItems(ctx context.Context, deleteItems []interface{}, opt ...Option) (int, error)
 
 	// DB returns the sql.DB
 	DB() (*sql.DB, error)
@@ -203,10 +220,10 @@ func (rw *Db) lookupAfterWrite(ctx context.Context, i interface{}, opt ...Option
 // cannot be used together.  WithLookup with to force a lookup after create.
 func (rw *Db) Create(ctx context.Context, i interface{}, opt ...Option) error {
 	if rw.underlying == nil {
-		return fmt.Errorf("create: missing underlying db %w", ErrNilParameter)
+		return fmt.Errorf("create: missing underlying db: %w", ErrNilParameter)
 	}
 	if isNil(i) {
-		return fmt.Errorf("create: interface is missing %w", ErrNilParameter)
+		return fmt.Errorf("create: interface is missing: %w", ErrNilParameter)
 	}
 	opts := GetOpts(opt...)
 	withOplog := opts.withOplog
@@ -217,16 +234,18 @@ func (rw *Db) Create(ctx context.Context, i interface{}, opt ...Option) error {
 		// let's validate oplog options before we start writing to the database
 		_, err := validateOplogArgs(i, opts)
 		if err != nil {
-			return fmt.Errorf("create: oplog validation failed %w", err)
+			return fmt.Errorf("create: oplog validation failed: %w", err)
 		}
 	}
 	// these fields should be nil, since they are not writeable and we want the
 	// db to manage them
 	setFieldsToNil(i, []string{"CreateTime", "UpdateTime"})
 
-	if vetter, ok := i.(VetForWriter); ok {
-		if err := vetter.VetForWrite(ctx, rw, CreateOp); err != nil {
-			return fmt.Errorf("create: vet for write failed %w", err)
+	if !opts.withSkipVetForWrite {
+		if vetter, ok := i.(VetForWriter); ok {
+			if err := vetter.VetForWrite(ctx, rw, CreateOp); err != nil {
+				return fmt.Errorf("create: vet for write failed: %w", err)
+			}
 		}
 	}
 	var ticket *store.Ticket
@@ -238,7 +257,7 @@ func (rw *Db) Create(ctx context.Context, i interface{}, opt ...Option) error {
 		}
 	}
 	if err := rw.underlying.Create(i).Error; err != nil {
-		return fmt.Errorf("create: failed %w", err)
+		return fmt.Errorf("create: failed: %w", err)
 	}
 	if withOplog {
 		if err := rw.addOplog(ctx, CreateOp, opts, ticket, i); err != nil {
@@ -248,18 +267,19 @@ func (rw *Db) Create(ctx context.Context, i interface{}, opt ...Option) error {
 	if opts.newOplogMsg != nil {
 		msg, err := rw.newOplogMessage(ctx, CreateOp, i)
 		if err != nil {
-			return fmt.Errorf("create: returning oplog failed %w", err)
+			return fmt.Errorf("create: returning oplog failed: %w", err)
 		}
 		*opts.newOplogMsg = *msg
 	}
 	if err := rw.lookupAfterWrite(ctx, i, opt...); err != nil {
-		return fmt.Errorf("create: lookup error %w", err)
+		return fmt.Errorf("create: lookup error: %w", err)
 	}
 	return nil
 }
 
-// CreateItems will create multiple items of the same type.
-// Supported options: WithOplog.  WithLookup is not a supported option.
+// CreateItems will create multiple items of the same type. Supported options:
+// WithOplog and WithOplogMsgs.  WithOplog and WithOplogMsgs may not be used
+// together.  WithLookup is not a supported option.
 func (rw *Db) CreateItems(ctx context.Context, createItems []interface{}, opt ...Option) error {
 	if rw.underlying == nil {
 		return fmt.Errorf("create items: missing underlying db: %w", ErrNilParameter)
@@ -269,7 +289,13 @@ func (rw *Db) CreateItems(ctx context.Context, createItems []interface{}, opt ..
 	}
 	opts := GetOpts(opt...)
 	if opts.withLookup {
-		return fmt.Errorf("create items: withLookup not a supported option: %w", ErrInvalidParameter)
+		return fmt.Errorf("create items: with lookup not a supported option: %w", ErrInvalidParameter)
+	}
+	if opts.newOplogMsg != nil {
+		return fmt.Errorf("create items: new oplog msg (singular) is not a supported option: %w", ErrInvalidParameter)
+	}
+	if opts.withOplog && opts.newOplogMsgs != nil {
+		return fmt.Errorf("create items: both WithOplog and NewOplogMsgs options have been specified: %w", ErrInvalidParameter)
 	}
 	// verify that createItems are all the same type.
 	var foundType reflect.Type
@@ -294,12 +320,22 @@ func (rw *Db) CreateItems(ctx context.Context, createItems []interface{}, opt ..
 		}
 	}
 	for _, item := range createItems {
-		rw.Create(ctx, item)
+		if err := rw.Create(ctx, item); err != nil {
+			return fmt.Errorf("create items: %w", err)
+		}
+
 	}
 	if opts.withOplog {
 		if err := rw.addOplogForItems(ctx, CreateOp, opts, ticket, createItems); err != nil {
 			return fmt.Errorf("create items: unable to add oplog: %w", err)
 		}
+	}
+	if opts.newOplogMsgs != nil {
+		msgs, err := rw.oplogMsgsForItems(ctx, CreateOp, opts, createItems)
+		if err != nil {
+			return fmt.Errorf("create items: returning oplog msgs failed %w", err)
+		}
+		*opts.newOplogMsgs = append(*opts.newOplogMsgs, msgs...)
 	}
 	return nil
 }
@@ -321,7 +357,8 @@ func (rw *Db) CreateItems(ctx context.Context, createItems []interface{}, opt ..
 // used together.   If WithVersion is used, then the update will include the
 // version number in the update where clause, which basically makes the update
 // use optimistic locking and the update will only succeed if the existing rows
-// version matches the WithVersion option.
+// version matches the WithVersion option.  Zero is not a valid value for the
+// WithVersion option and will return an error.
 func (rw *Db) Update(ctx context.Context, i interface{}, fieldMaskPaths []string, setToNullPaths []string, opt ...Option) (int, error) {
 	if rw.underlying == nil {
 		return NoRowsAffected, fmt.Errorf("update: missing underlying db %w", ErrNilParameter)
@@ -370,12 +407,14 @@ func (rw *Db) Update(ctx context.Context, i interface{}, fieldMaskPaths []string
 		// let's validate oplog options before we start writing to the database
 		_, err := validateOplogArgs(i, opts)
 		if err != nil {
-			return NoRowsAffected, fmt.Errorf("update: oplog validation failed %w", err)
+			return NoRowsAffected, fmt.Errorf("update: oplog validation failed: %w", err)
 		}
 	}
-	if vetter, ok := i.(VetForWriter); ok {
-		if err := vetter.VetForWrite(ctx, rw, UpdateOp, WithFieldMaskPaths(fieldMaskPaths), WithNullPaths(setToNullPaths)); err != nil {
-			return NoRowsAffected, fmt.Errorf("update: vet for write failed %w", err)
+	if !opts.withSkipVetForWrite {
+		if vetter, ok := i.(VetForWriter); ok {
+			if err := vetter.VetForWrite(ctx, rw, UpdateOp, WithFieldMaskPaths(fieldMaskPaths), WithNullPaths(setToNullPaths)); err != nil {
+				return NoRowsAffected, fmt.Errorf("update: vet for write failed: %w", err)
+			}
 		}
 	}
 	var ticket *store.Ticket
@@ -388,7 +427,10 @@ func (rw *Db) Update(ctx context.Context, i interface{}, fieldMaskPaths []string
 	}
 	var underlying *gorm.DB
 	switch {
-	case opts.WithVersion > 0:
+	case opts.WithVersion != nil:
+		if *opts.WithVersion == 0 {
+			return NoRowsAffected, fmt.Errorf("update: with version option is zero: %w", ErrInvalidParameter)
+		}
 		if _, ok := scope.FieldByName("version"); !ok {
 			return NoRowsAffected, fmt.Errorf("update: %s does not have a version field", scope.TableName())
 		}
@@ -398,9 +440,9 @@ func (rw *Db) Update(ctx context.Context, i interface{}, fieldMaskPaths []string
 	}
 	if underlying.Error != nil {
 		if err == gorm.ErrRecordNotFound {
-			return NoRowsAffected, fmt.Errorf("update: failed %w", ErrRecordNotFound)
+			return NoRowsAffected, fmt.Errorf("update: failed: %w", ErrRecordNotFound)
 		}
-		return NoRowsAffected, fmt.Errorf("update: failed %w", underlying.Error)
+		return NoRowsAffected, fmt.Errorf("update: failed: %w", underlying.Error)
 	}
 	rowsUpdated := int(underlying.RowsAffected)
 	if rowsUpdated > 0 && (withOplog || opts.newOplogMsg != nil) {
@@ -496,14 +538,22 @@ func (rw *Db) Delete(ctx context.Context, i interface{}, opt ...Option) (int, er
 	return rowsDeleted, nil
 }
 
-// DeleteItems will delete multiple items of the same type.
-// Supported options: WithOplog.
+// DeleteItems will delete multiple items of the same type. Supported options:
+// WithOplog and WithOplogMsgs.  WithOplog and WithOplogMsgs may not be used
+// together.
 func (rw *Db) DeleteItems(ctx context.Context, deleteItems []interface{}, opt ...Option) (int, error) {
 	if rw.underlying == nil {
 		return NoRowsAffected, fmt.Errorf("delete items: missing underlying db: %w", ErrNilParameter)
 	}
 	if len(deleteItems) == 0 {
 		return NoRowsAffected, fmt.Errorf("delete items: no interfaces to delete: %w", ErrInvalidParameter)
+	}
+	opts := GetOpts(opt...)
+	if opts.newOplogMsg != nil {
+		return NoRowsAffected, fmt.Errorf("delete items: new oplog msg (singular) is not a supported option: %w", ErrInvalidParameter)
+	}
+	if opts.withOplog && opts.newOplogMsgs != nil {
+		return NoRowsAffected, fmt.Errorf("delete items: both WithOplog and NewOplogMsgs options have been specified: %w", ErrInvalidParameter)
 	}
 	// verify that createItems are all the same type.
 	var foundType reflect.Type
@@ -516,7 +566,7 @@ func (rw *Db) DeleteItems(ctx context.Context, deleteItems []interface{}, opt ..
 			return NoRowsAffected, fmt.Errorf("delete items: items contain disparate types.  item %d is not a %s: %w", i, foundType.Name(), ErrInvalidParameter)
 		}
 	}
-	opts := GetOpts(opt...)
+
 	var ticket *store.Ticket
 	if opts.withOplog {
 		_, err := validateOplogArgs(deleteItems[0], opts)
@@ -539,9 +589,18 @@ func (rw *Db) DeleteItems(ctx context.Context, deleteItems []interface{}, opt ..
 		}
 		rowsDeleted += int(underlying.RowsAffected)
 	}
-	if opts.withOplog && rowsDeleted > 0 {
-		if err := rw.addOplogForItems(ctx, DeleteOp, opts, ticket, deleteItems); err != nil {
-			return rowsDeleted, fmt.Errorf("delete items: unable to add oplog: %w", err)
+	if rowsDeleted > 0 && (opts.withOplog || opts.newOplogMsgs != nil) {
+		if opts.withOplog {
+			if err := rw.addOplogForItems(ctx, DeleteOp, opts, ticket, deleteItems); err != nil {
+				return rowsDeleted, fmt.Errorf("delete items: unable to add oplog: %w", err)
+			}
+		}
+		if opts.newOplogMsgs != nil {
+			msgs, err := rw.oplogMsgsForItems(ctx, DeleteOp, opts, deleteItems)
+			if err != nil {
+				return rowsDeleted, fmt.Errorf("delete items: returning oplog msgs failed %w", err)
+			}
+			*opts.newOplogMsgs = append(*opts.newOplogMsgs, msgs...)
 		}
 	}
 	return rowsDeleted, nil
@@ -593,42 +652,9 @@ func (rw *Db) GetTicket(i interface{}) (*store.Ticket, error) {
 	return rw.getTicketFor(replayable.TableName())
 }
 
-// addOplogForItems will add a multi-message oplog entry with one msg for each
-// item. Items must all be of the same type.  Only CreateOp and DeleteOp are
-// currently supported operations.
-func (rw *Db) addOplogForItems(ctx context.Context, opType OpType, opts Options, ticket *store.Ticket, items []interface{}) error {
-	oplogArgs := opts.oplogOpts
-	if ticket == nil {
-		return fmt.Errorf("oplog many: ticket is missing: %w", ErrNilParameter)
-	}
-	if items == nil {
-		return fmt.Errorf("oplog many: items are missing: %w", ErrNilParameter)
-	}
+func (rw *Db) oplogMsgsForItems(ctx context.Context, opType OpType, opts Options, items []interface{}) ([]*oplog.Message, error) {
 	if len(items) == 0 {
-		return fmt.Errorf("oplog many: items is empty: %w", ErrInvalidParameter)
-	}
-	if oplogArgs.metadata == nil {
-		return fmt.Errorf("oplog many: metadata is missing: %w", ErrNilParameter)
-	}
-	if oplogArgs.wrapper == nil {
-		return fmt.Errorf("oplog many: wrapper is missing: %w", ErrNilParameter)
-	}
-	replayable, err := validateOplogArgs(items[0], opts)
-	if err != nil {
-		return fmt.Errorf("oplog many: oplog validation failed %w", err)
-	}
-	ticketer, err := oplog.NewGormTicketer(rw.underlying, oplog.WithAggregateNames(true))
-	if err != nil {
-		return fmt.Errorf("oplog many: unable to get Ticketer %w", err)
-	}
-	entry, err := oplog.NewEntry(
-		replayable.TableName(),
-		oplogArgs.metadata,
-		oplogArgs.wrapper,
-		ticketer,
-	)
-	if err != nil {
-		return fmt.Errorf("oplog many: unable to create oplog entry %w", err)
+		return nil, fmt.Errorf("oplog msgs for items: items is empty: %w", ErrInvalidParameter)
 	}
 	oplogMsgs := []*oplog.Message{}
 	var foundType reflect.Type
@@ -638,25 +664,59 @@ func (rw *Db) addOplogForItems(ctx context.Context, opType OpType, opts Options,
 		}
 		currentType := reflect.TypeOf(item)
 		if foundType != currentType {
-			return fmt.Errorf("oplog many: items contains disparate types.  item %d is not a %s", i, foundType.Name())
+			return nil, fmt.Errorf("oplog msgs for items: items contains disparate types.  item (%d) %s is not a %s: %w", i, currentType, foundType, ErrInvalidParameter)
 		}
-		replayable, ok := item.(oplog.ReplayableMessage)
-		if !ok {
-			return fmt.Errorf("oplog many: item %d not a replayable oplog message %w", i, ErrInvalidParameter)
-		}
-		msg := &oplog.Message{
-			Message:  item.(proto.Message),
-			TypeName: replayable.TableName(),
-		}
-		switch opType {
-		case CreateOp:
-			msg.OpType = oplog.OpType_OP_TYPE_CREATE
-		case DeleteOp:
-			msg.OpType = oplog.OpType_OP_TYPE_DELETE
-		default:
-			return fmt.Errorf("oplog many: operation type %v is not supported", opType)
+		msg, err := rw.newOplogMessage(ctx, opType, item, WithFieldMaskPaths(opts.WithFieldMaskPaths), WithNullPaths(opts.WithNullPaths))
+		if err != nil {
+			return nil, fmt.Errorf("oplog msgs for items: %w", err)
 		}
 		oplogMsgs = append(oplogMsgs, msg)
+	}
+	return oplogMsgs, nil
+}
+
+// addOplogForItems will add a multi-message oplog entry with one msg for each
+// item. Items must all be of the same type.  Only CreateOp and DeleteOp are
+// currently supported operations.
+func (rw *Db) addOplogForItems(ctx context.Context, opType OpType, opts Options, ticket *store.Ticket, items []interface{}) error {
+	oplogArgs := opts.oplogOpts
+	if ticket == nil {
+		return fmt.Errorf("oplog for items: ticket is missing: %w", ErrNilParameter)
+	}
+	if items == nil {
+		return fmt.Errorf("oplog for items: items are missing: %w", ErrNilParameter)
+	}
+	if len(items) == 0 {
+		return fmt.Errorf("oplog for items: items is empty: %w", ErrInvalidParameter)
+	}
+	if oplogArgs.metadata == nil {
+		return fmt.Errorf("oplog for items: metadata is missing: %w", ErrNilParameter)
+	}
+	if oplogArgs.wrapper == nil {
+		return fmt.Errorf("oplog for items: wrapper is missing: %w", ErrNilParameter)
+	}
+
+	oplogMsgs, err := rw.oplogMsgsForItems(ctx, opType, opts, items)
+	if err != nil {
+		return fmt.Errorf("oplog for items: %w", err)
+	}
+
+	replayable, err := validateOplogArgs(items[0], opts)
+	if err != nil {
+		return fmt.Errorf("oplog for items: oplog validation failed %w", err)
+	}
+	ticketer, err := oplog.NewGormTicketer(rw.underlying, oplog.WithAggregateNames(true))
+	if err != nil {
+		return fmt.Errorf("oplog for items: unable to get Ticketer %w", err)
+	}
+	entry, err := oplog.NewEntry(
+		replayable.TableName(),
+		oplogArgs.metadata,
+		oplogArgs.wrapper,
+		ticketer,
+	)
+	if err != nil {
+		return fmt.Errorf("oplog for items: unable to create oplog entry %w", err)
 	}
 	if err := entry.WriteEntryWith(
 		ctx,
@@ -664,10 +724,11 @@ func (rw *Db) addOplogForItems(ctx context.Context, opType OpType, opts Options,
 		ticket,
 		oplogMsgs...,
 	); err != nil {
-		return fmt.Errorf("oplog many: unable to write oplog entry %w", err)
+		return fmt.Errorf("oplog for items: unable to write oplog entry %w", err)
 	}
 	return nil
 }
+
 func (rw *Db) addOplog(ctx context.Context, opType OpType, opts Options, ticket *store.Ticket, i interface{}) error {
 	oplogArgs := opts.oplogOpts
 	replayable, err := validateOplogArgs(i, opts)
@@ -690,27 +751,15 @@ func (rw *Db) addOplog(ctx context.Context, opType OpType, opts Options, ticket 
 	if err != nil {
 		return err
 	}
-	msg := oplog.Message{
-		Message:  i.(proto.Message),
-		TypeName: replayable.TableName(),
-	}
-	switch opType {
-	case CreateOp:
-		msg.OpType = oplog.OpType_OP_TYPE_CREATE
-	case UpdateOp:
-		msg.OpType = oplog.OpType_OP_TYPE_UPDATE
-		msg.FieldMaskPaths = opts.WithFieldMaskPaths
-		msg.SetToNullPaths = opts.WithNullPaths
-	case DeleteOp:
-		msg.OpType = oplog.OpType_OP_TYPE_DELETE
-	default:
-		return fmt.Errorf("add oplog: operation type %v is not supported", opType)
+	msg, err := rw.newOplogMessage(ctx, opType, i, WithFieldMaskPaths(opts.WithFieldMaskPaths), WithNullPaths(opts.WithNullPaths))
+	if err != nil {
+		return fmt.Errorf("add oplog: %w", err)
 	}
 	err = entry.WriteEntryWith(
 		ctx,
 		&oplog.GormWriter{Tx: rw.underlying},
 		ticket,
-		&msg,
+		msg,
 	)
 	if err != nil {
 		return fmt.Errorf("add oplog: unable to write oplog entry: %w", err)
@@ -786,7 +835,7 @@ func (rw *Db) newOplogMessage(ctx context.Context, opType OpType, i interface{},
 	case DeleteOp:
 		msg.OpType = oplog.OpType_OP_TYPE_DELETE
 	default:
-		return nil, fmt.Errorf("add oplog: operation type %v is not supported", opType)
+		return nil, fmt.Errorf("operation type %v is not supported", opType)
 	}
 	return &msg, nil
 }

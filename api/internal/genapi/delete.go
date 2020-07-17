@@ -18,22 +18,22 @@ type deleteInfo struct {
 var deleteFuncs = map[string][]*deleteInfo{
 	"scopes": {
 		{
-			"Organization",
+			"Org",
 			"Project",
 			"projects",
 		},
 		{
-			"Organization",
+			"Org",
 			"groups.Group",
 			"groups",
 		},
 		{
-			"Organization",
+			"Org",
 			"roles.Role",
 			"roles",
 		},
 		{
-			"Organization",
+			"Org",
 			"users.User",
 			"users",
 		},
@@ -41,6 +41,16 @@ var deleteFuncs = map[string][]*deleteInfo{
 			"Project",
 			"hosts.HostCatalog",
 			"host-catalogs",
+		},
+		{
+			"Project",
+			"groups.Group",
+			"groups",
+		},
+		{
+			"Project",
+			"roles.Role",
+			"roles",
 		},
 	},
 }
@@ -80,8 +90,8 @@ func (s {{ .BaseType }}) Delete{{ .TargetName }}(ctx context.Context, r *{{ .Tar
 		return false, nil, fmt.Errorf("nil client in Delete{{ .TargetName }} request")
 	}
 	if s.Id == "" {
-		{{ if (eq .BaseType "Organization") }}
-		// Assume the client has been configured with organization already and
+		{{ if (eq .BaseType "Org") }}
+		// Assume the client has been configured with org already and
 		// move on
 		{{ else if (eq .BaseType "Project") }}
 		// Assume the client has been configured with project already and move
@@ -92,7 +102,7 @@ func (s {{ .BaseType }}) Delete{{ .TargetName }}(ctx context.Context, r *{{ .Tar
 	} else {
 		// If it's explicitly set here, override anything that might be in the
 		// client
-		{{ if (eq .BaseType "Organization") }}
+		{{ if (eq .BaseType "Org") }}
 		ctx = context.WithValue(ctx, "org", s.Id)
 		{{ else if (eq .BaseType "Project") }}
 		ctx = context.WithValue(ctx, "project", s.Id)

@@ -3,6 +3,7 @@ package hosts
 
 import (
 	"encoding/json"
+	"strings"
 	"time"
 
 	"github.com/fatih/structs"
@@ -44,11 +45,25 @@ type HostSet struct {
 }
 
 func (s *HostSet) SetDefault(key string) {
-	s.defaultFields = strutil.AppendIfMissing(s.defaultFields, key)
+	lowerKey := strings.ToLower(key)
+	validMap := map[string]string{"createdtime": "created_time", "description": "description", "disabled": "disabled", "hosts": "hosts", "id": "id", "name": "name", "size": "size", "type": "type", "updatedtime": "updated_time"}
+	for k, v := range validMap {
+		if k == lowerKey || v == lowerKey {
+			s.defaultFields = strutil.AppendIfMissing(s.defaultFields, v)
+			return
+		}
+	}
 }
 
 func (s *HostSet) UnsetDefault(key string) {
-	s.defaultFields = strutil.StrListDelete(s.defaultFields, key)
+	lowerKey := strings.ToLower(key)
+	validMap := map[string]string{"createdtime": "created_time", "description": "description", "disabled": "disabled", "hosts": "hosts", "id": "id", "name": "name", "size": "size", "type": "type", "updatedtime": "updated_time"}
+	for k, v := range validMap {
+		if k == lowerKey || v == lowerKey {
+			s.defaultFields = strutil.StrListDelete(s.defaultFields, v)
+			return
+		}
+	}
 }
 
 func (s HostSet) MarshalJSON() ([]byte, error) {

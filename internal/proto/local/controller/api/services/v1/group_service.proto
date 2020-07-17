@@ -19,6 +19,10 @@ service GroupService {
     option (google.api.http) = {
       get: "/v1/orgs/{org_id}/groups/{id}"
       response_body: "item"
+      additional_bindings {
+        get: "/v1/orgs/{org_id}/projects/{project_id}/groups/{id}"
+        response_body: "item"
+      }
     };
     option (grpc.gateway.protoc_gen_swagger.options.openapiv2_operation) = {
       summary: "Gets a single Group"
@@ -28,10 +32,13 @@ service GroupService {
   // ListGroups returns a list of stored groups which exist inside the org
   // referenced inside the request.  The request must include the org id for
   // the groups being retrieved.  If the org id is missing, malformed, or
-  // reference a non existing organization, an error is returned.
+  // reference a non existing org, an error is returned.
   rpc ListGroups(ListGroupsRequest) returns (ListGroupsResponse) {
     option (google.api.http) = {
       get: "/v1/orgs/{org_id}/groups"
+      additional_bindings {
+        get: "/v1/orgs/{org_id}/projects/{project_id}/groups"
+      }
     };
     option (grpc.gateway.protoc_gen_swagger.options.openapiv2_operation) = {
       summary: "Lists all Groups"
@@ -41,13 +48,18 @@ service GroupService {
   // CreateGroup creates and stores a group in watchtower.  The provided
   // request must include the org id in which the group will be created.
   // If the org id is missing, malformed or references a non existing
-  // organization, an error is returned.  If a name is provided that is in
-  // use in another group in the same organization, an error is returned.
+  // org, an error is returned.  If a name is provided that is in
+  // use in another group in the same org, an error is returned.
   rpc CreateGroup(CreateGroupRequest) returns (CreateGroupResponse) {
     option (google.api.http) = {
       post: "/v1/orgs/{org_id}/groups"
       body: "item"
       response_body: "item"
+      additional_bindings {
+        post: "/v1/orgs/{org_id}/projects/{project_id}/groups"
+        body: "item"
+        response_body: "item"
+      }
     };
     option (grpc.gateway.protoc_gen_swagger.options.openapiv2_operation) = {
       summary: "Creates a single Group"
@@ -58,15 +70,20 @@ service GroupService {
   // group must not have any read only fields set.  The update mask must be
   // included in the request and contain at least 1 mutable field.  To unset
   // a field's value, include the field in the update mask and don't set it
-  // in the provided group. An error is returned if either the organization
+  // in the provided group. An error is returned if either the org
   // or group ids are missing or reference a non existing resource.  An error
   // is also returned if the request attempts to update the name to one that is
-  // already in use in this organization.
+  // already in use in this org.
   rpc UpdateGroup(UpdateGroupRequest) returns (UpdateGroupResponse) {
     option (google.api.http) = {
       patch: "/v1/orgs/{org_id}/groups/{id}"
       body: "item"
       response_body: "item"
+      additional_bindings {
+        patch: "/v1/orgs/{org_id}/projects/{project_id}/groups/{id}"
+        body: "item"
+        response_body: "item"
+      }
     };
     option (grpc.gateway.protoc_gen_swagger.options.openapiv2_operation) = {
       summary: "Updates a Group"
@@ -81,6 +98,9 @@ service GroupService {
   rpc DeleteGroup(DeleteGroupRequest) returns (DeleteGroupResponse) {
     option (google.api.http) = {
       delete: "/v1/orgs/{org_id}/groups/{id}"
+      additional_bindings {
+        delete: "/v1/orgs/{org_id}/projects/{project_id}/groups/{id}"
+      }
     };
     option (grpc.gateway.protoc_gen_swagger.options.openapiv2_operation) = {
       summary: "Deletes a Group"
@@ -90,8 +110,9 @@ service GroupService {
 
 message GetGroupRequest {
   string org_id = 1;
-  string id = 2;
-  string view = 3;
+  string project_id = 2;
+  string id = 3;
+  string view = 4;
 }
 
 message GetGroupResponse {
@@ -100,7 +121,8 @@ message GetGroupResponse {
 
 message ListGroupsRequest {
   string org_id = 1;
-  string view = 2;
+  string project_id = 2;
+  string view = 3;
 }
 
 message ListGroupsResponse {
@@ -109,7 +131,8 @@ message ListGroupsResponse {
 
 message CreateGroupRequest {
   string org_id = 1;
-  resources.groups.v1.Group item = 2;
+  string project_id = 2;
+  resources.groups.v1.Group item = 3;
 }
 
 message CreateGroupResponse {
@@ -119,9 +142,10 @@ message CreateGroupResponse {
 
 message UpdateGroupRequest {
   string org_id = 1;
-  string id = 2;
-  resources.groups.v1.Group item = 3;
-  google.protobuf.FieldMask update_mask = 4;
+  string project_id = 2;
+  string id = 3;
+  resources.groups.v1.Group item = 4;
+  google.protobuf.FieldMask update_mask = 5;
 }
 
 message UpdateGroupResponse {
@@ -130,7 +154,8 @@ message UpdateGroupResponse {
 
 message DeleteGroupRequest {
   string org_id = 1;
-  string id = 2;
+  string project_id = 2;
+  string id = 3;
 }
 
 message DeleteGroupResponse {

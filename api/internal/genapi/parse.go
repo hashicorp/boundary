@@ -38,6 +38,7 @@ func parsePBs() {
 			os.Exit(1)
 		}
 
+		inputStruct.nameJsonMap = make(map[string]string)
 		ast.Walk(visitFn(func(n ast.Node) {
 			spec, ok := n.(*ast.TypeSpec)
 			if !ok {
@@ -77,7 +78,7 @@ func parsePBs() {
 					}
 
 					// Add default fields if a base resource
-					if inputStruct.templateType == templateTypeResource {
+					if inputStruct.templateType == templateTypeResource && !inputStruct.outputOnly {
 						st.Fields.List = append([]*ast.Field{{
 							Names: []*ast.Ident{
 								{
@@ -114,11 +115,6 @@ func parsePBs() {
 				var selectorExpr *ast.SelectorExpr
 				switch typ := field.Type.(type) {
 				case *ast.Ident:
-					// Id values are immutable and should always exist, so
-					// don't make it a pointer
-					if field.Names[0].Name != "Id" {
-						typ.Name = "*" + typ.Name
-					}
 					goto TAGMODIFY
 				case *ast.ArrayType:
 					goto TAGMODIFY
@@ -222,7 +218,10 @@ func parsePBs() {
 				}
 
 			TAGMODIFY:
-				st.Fields.List[i].Tag.Value = "`" + regex.FindString(st.Fields.List[i].Tag.Value) + "`"
+				tagString := regex.FindString(st.Fields.List[i].Tag.Value)
+				st.Fields.List[i].Tag.Value = "`" + tagString + "`"
+				tagString = strings.TrimSuffix(strings.TrimPrefix(tagString, `json:"`), `,omitempty"`)
+				inputStruct.nameJsonMap[strings.ToLower(field.Names[0].Name)] = tagString
 			}
 		}), inAst)
 

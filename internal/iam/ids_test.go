@@ -29,9 +29,9 @@ func Test_PublicIds(t *testing.T) {
 		assert.True(t, strings.HasPrefix(id, GroupPrefix+"_"))
 	})
 	t.Run("scopes", func(t *testing.T) {
-		id, err := newScopeId(scope.Organization)
+		id, err := newScopeId(scope.Org)
 		require.NoError(t, err)
-		assert.True(t, strings.HasPrefix(id, scope.Organization.Prefix()))
+		assert.True(t, strings.HasPrefix(id, scope.Org.Prefix()))
 
 		id, err = newScopeId(scope.Project)
 		require.NoError(t, err)

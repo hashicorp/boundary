@@ -3,11 +3,15 @@ package base
 import (
 	"encoding/json"
 	"fmt"
+	"os"
 	"sort"
 	"strings"
+	"unicode"
+	"unicode/utf8"
 
 	"github.com/ghodss/yaml"
 	"github.com/mitchellh/cli"
+	"github.com/mitchellh/go-wordwrap"
 	"github.com/ryanuber/columnize"
 )
 
@@ -17,6 +21,39 @@ const (
 	hopeDelim = "♨"
 )
 
+// This is adapted from the code in the strings package for TrimSpace
+var asciiSpace = [256]uint8{'\t': 1, '\n': 1, '\v': 1, '\f': 1, '\r': 1, ' ': 1}
+
+func trimSpaceRight(in string) string {
+	for stop := len(in); stop > 0; stop-- {
+		c := in[stop-1]
+		if c >= utf8.RuneSelf {
+			return strings.TrimFunc(in[:stop], unicode.IsSpace)
+		}
+		if asciiSpace[c] == 0 {
+			return in[0:stop]
+		}
+	}
+	return ""
+}
+
+func WrapForHelpText(lines []string) string {
+	var ret []string
+	for _, line := range lines {
+		line = trimSpaceRight(line)
+		trimmed := strings.TrimSpace(line)
+		diff := uint(len(line) - len(trimmed))
+		wrapped := wordwrap.WrapString(trimmed, TermWidth-diff)
+		splitWrapped := strings.Split(wrapped, "\n")
+		for i := range splitWrapped {
+			splitWrapped[i] = fmt.Sprintf("%s%s", strings.Repeat(" ", int(diff)), strings.TrimSpace(splitWrapped[i]))
+		}
+		ret = append(ret, strings.Join(splitWrapped, "\n"))
+	}
+
+	return strings.Join(ret, "\n")
+}
+
 type FormatOptions struct {
 	Format string
 }
@@ -25,7 +62,7 @@ type FormatOptions struct {
 type JsonFormatter struct{}
 
 func (j JsonFormatter) Format(data interface{}) ([]byte, error) {
-	return json.MarshalIndent(data, "", "  ")
+	return json.Marshal(data)
 }
 
 /*
@@ -345,4 +382,30 @@ func looksLikeDuration(k string) bool {
 		k == "ttl" || strings.HasSuffix(k, "_ttl") ||
 		k == "duration" || strings.HasSuffix(k, "_duration") ||
 		k == "lease_max" || k == "ttl_max"
+}
+
+type Formatter interface {
+	//Output(ui cli.Ui, secret *api.Secret, data interface{}) error
+	Format(data interface{}) ([]byte, error)
+}
+
+var Formatters = map[string]Formatter{
+	"json":  JsonFormatter{},
+	"table": TableFormatter{},
+	"yaml":  YamlFormatter{},
+	"yml":   YamlFormatter{},
+}
+
+func Format(ui cli.Ui) string {
+	switch ui.(type) {
+	case *WatchtowerUI:
+		return ui.(*WatchtowerUI).Format
+	}
+
+	format := os.Getenv(EnvWatchtowerCLIFormat)
+	if format == "" {
+		format = "table"
+	}
+
+	return format
 }

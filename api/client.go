@@ -99,7 +99,7 @@ type Config struct {
 	// SRVLookup enables the client to lookup the host through DNS SRV lookup
 	SRVLookup bool
 
-	// Org is the organization to use if not overridden per-call
+	// Org is the org to use if not overridden per-call
 	Org string
 
 	// Project is the project to use if not overridden per-call
@@ -143,6 +143,7 @@ func DefaultConfig() (*Config, error) {
 		Addr:       "https://127.0.0.1:9200",
 		HttpClient: cleanhttp.DefaultPooledClient(),
 		Timeout:    time.Second * 60,
+		TLSConfig:  &TLSConfig{},
 	}
 
 	// We read the environment now; after DefaultClient returns we can override
@@ -217,10 +218,10 @@ func (c *Config) ConfigureTLS() error {
 	return nil
 }
 
-// setAddress parses a given string and looks for org and project info, setting
-// the actual address to the base. Note that if a very malformed URL is passed
-// in, this may not return what one expects. For now this is on purpose to
-// avoid requiring error handling.
+// setAddr parses a given string and looks for org and project info, setting the
+// actual address to the base. Note that if a very malformed URL is passed in,
+// this may not return what one expects. For now this is on purpose to avoid
+// requiring error handling.
 //
 // This also removes any trailing "/v1"; we'll use that in our commands so we
 // don't require it from users.
@@ -449,12 +450,28 @@ func (c *Client) SetAddr(addr string) error {
 	return c.config.setAddr(addr)
 }
 
-// SetOrg sets the organization the client will use by default
+// Org fetches the org the client will use by default
+func (c *Client) Org() string {
+	c.modifyLock.Lock()
+	defer c.modifyLock.Unlock()
+
+	return c.config.Org
+}
+
+// SetOrg sets the org the client will use by default
 func (c *Client) SetOrg(org string) {
 	c.modifyLock.Lock()
 	defer c.modifyLock.Unlock()
 
 	c.config.Org = org
+}
+
+// Project fetches the project the client will use by default
+func (c *Client) Project() string {
+	c.modifyLock.Lock()
+	defer c.modifyLock.Unlock()
+
+	return c.config.Project
 }
 
 // SetProject sets the project the client will use by default
@@ -517,6 +534,14 @@ func (c *Client) SetOutputCurlString(curl bool) {
 	defer c.modifyLock.Unlock()
 
 	c.config.OutputCurlString = curl
+}
+
+// Token gets the configured token.
+func (c *Client) Token() string {
+	c.modifyLock.Lock()
+	defer c.modifyLock.Unlock()
+
+	return c.config.Token
 }
 
 // SetToken sets the token directly. This won't perform any auth
@@ -700,18 +725,25 @@ func (c *Client) NewRequest(ctx context.Context, method, requestPath string, bod
 		orgProjPath = path.Join(orgProjPath, "projects", project)
 	}
 
+	p := path.Join(u.Path, "/v1", orgProjPath)
+	if strings.HasPrefix(requestPath, ":") {
+		p = p + requestPath
+	} else {
+		p = path.Join(p, requestPath)
+	}
+
 	req := &http.Request{
 		Method: method,
 		URL: &url.URL{
 			User:   u.User,
 			Scheme: u.Scheme,
 			Host:   host,
-			Path:   path.Join(u.Path, "/v1", orgProjPath, requestPath),
+			Path:   p,
 		},
 		Host: u.Host,
 	}
 	req.Header = headers
-	req.Header.Add("authorization", "bearer: "+token)
+	req.Header.Add("authorization", "Bearer "+token)
 	req.Header.Set("content-type", "application/json")
 	if ctx != nil {
 		req = req.WithContext(ctx)
@@ -786,7 +818,7 @@ func (c *Client) Do(r *retryablehttp.Request) (*Response, error) {
 	}
 
 	result, err := client.Do(r)
-	if result != nil && err == nil && result.StatusCode == 307 {
+	if result != nil && err == nil && result.StatusCode == http.StatusTemporaryRedirect {
 		loc, err := result.Location()
 		if err != nil {
 			return nil, fmt.Errorf("error getting new location during redirect: %w", err)

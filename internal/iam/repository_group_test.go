@@ -3,6 +3,7 @@ package iam
 import (
 	"context"
 	"errors"
+	"sort"
 	"testing"
 	"time"
 
@@ -17,13 +18,7 @@ import (
 
 func TestRepository_CreateGroup(t *testing.T) {
 	t.Parallel()
-	cleanup, conn, _ := db.TestSetup(t, "postgres")
-	defer func() {
-		err := cleanup()
-		assert.NoError(t, err)
-		err = conn.Close()
-		assert.NoError(t, err)
-	}()
+	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
 	repo, err := NewRepository(rw, rw, wrapper)
@@ -178,13 +173,7 @@ func TestRepository_CreateGroup(t *testing.T) {
 
 func TestRepository_UpdateGroup(t *testing.T) {
 	t.Parallel()
-	cleanup, conn, _ := db.TestSetup(t, "postgres")
-	defer func() {
-		err := cleanup()
-		assert.NoError(t, err)
-		err = conn.Close()
-		assert.NoError(t, err)
-	}()
+	conn, _ := db.TestSetup(t, "postgres")
 	a := assert.New(t)
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
@@ -214,6 +203,7 @@ func TestRepository_UpdateGroup(t *testing.T) {
 		wantErrMsg     string
 		wantIsError    error
 		wantDup        bool
+		directUpdate   bool
 	}{
 		{
 			name: "valid",
@@ -387,8 +377,21 @@ func TestRepository_UpdateGroup(t *testing.T) {
 			newScopeId:  org.PublicId,
 			wantErr:     true,
 			wantDup:     true,
-			wantErrMsg:  " already exists in organization " + org.PublicId,
+			wantErrMsg:  " already exists in org " + org.PublicId,
 			wantIsError: db.ErrNotUnique,
+		},
+		{
+			name: "modified-scope",
+			args: args{
+				name:           "modified-scope" + id,
+				fieldMaskPaths: []string{"ScopeId"},
+				ScopeId:        proj.PublicId,
+				opt:            []Option{WithSkipVetForWrite(true)},
+			},
+			newScopeId:   org.PublicId,
+			wantErr:      true,
+			wantErrMsg:   `update: failed: pq: scope_id cannot be set`,
+			directUpdate: true,
 		},
 	}
 	for _, tt := range tests {
@@ -412,13 +415,25 @@ func TestRepository_UpdateGroup(t *testing.T) {
 			updateGrp.Name = tt.args.name
 			updateGrp.Description = tt.args.description
 
-			userAfterUpdate, updatedRows, err := repo.UpdateGroup(context.Background(), &updateGrp, tt.args.fieldMaskPaths, tt.args.opt...)
+			var groupAfterUpdate *Group
+			var updatedRows int
+			var err error
+			if tt.directUpdate {
+				g := updateGrp.Clone()
+				var resource interface{}
+				resource, updatedRows, err = repo.update(context.Background(), g.(*Group), tt.args.fieldMaskPaths, nil, tt.args.opt...)
+				if err == nil {
+					groupAfterUpdate = resource.(*Group)
+				}
+			} else {
+				groupAfterUpdate, updatedRows, err = repo.UpdateGroup(context.Background(), &updateGrp, tt.args.fieldMaskPaths, tt.args.opt...)
+			}
 			if tt.wantErr {
 				assert.Error(err)
 				if tt.wantIsError != nil {
 					assert.True(errors.Is(err, tt.wantIsError))
 				}
-				assert.Nil(userAfterUpdate)
+				assert.Nil(groupAfterUpdate)
 				assert.Equal(0, updatedRows)
 				assert.Contains(err.Error(), tt.wantErrMsg)
 				err = db.TestVerifyOplog(t, rw, u.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_UPDATE), db.WithCreateNotBefore(10*time.Second))
@@ -430,13 +445,13 @@ func TestRepository_UpdateGroup(t *testing.T) {
 			assert.Equal(tt.wantRowsUpdate, updatedRows)
 			switch tt.name {
 			case "valid-no-op":
-				assert.Equal(u.UpdateTime, userAfterUpdate.UpdateTime)
+				assert.Equal(u.UpdateTime, groupAfterUpdate.UpdateTime)
 			default:
-				assert.NotEqual(u.UpdateTime, userAfterUpdate.UpdateTime)
+				assert.NotEqual(u.UpdateTime, groupAfterUpdate.UpdateTime)
 			}
 			foundGrp, err := repo.LookupGroup(context.Background(), u.PublicId)
 			assert.NoError(err)
-			assert.True(proto.Equal(userAfterUpdate, foundGrp))
+			assert.True(proto.Equal(groupAfterUpdate, foundGrp))
 			dbassert := dbassert.New(t, rw)
 			if tt.args.name == "" {
 				dbassert.IsNull(foundGrp, "name")
@@ -453,13 +468,7 @@ func TestRepository_UpdateGroup(t *testing.T) {
 
 func TestRepository_DeleteGroup(t *testing.T) {
 	t.Parallel()
-	cleanup, conn, _ := db.TestSetup(t, "postgres")
-	defer func() {
-		err := cleanup()
-		assert.NoError(t, err)
-		err = conn.Close()
-		assert.NoError(t, err)
-	}()
+	conn, _ := db.TestSetup(t, "postgres")
 	a := assert.New(t)
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
@@ -543,13 +552,7 @@ func TestRepository_DeleteGroup(t *testing.T) {
 
 func TestRepository_ListGroups(t *testing.T) {
 	t.Parallel()
-	cleanup, conn, _ := db.TestSetup(t, "postgres")
-	defer func() {
-		err := cleanup()
-		assert.NoError(t, err)
-		err = conn.Close()
-		assert.NoError(t, err)
-	}()
+	conn, _ := db.TestSetup(t, "postgres")
 	const testLimit = 10
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
@@ -639,6 +642,501 @@ func TestRepository_ListGroups(t *testing.T) {
 			}
 			require.NoError(err)
 			assert.Equal(tt.wantCnt, len(got))
+		})
+	}
+}
+
+func TestRepository_ListMembers(t *testing.T) {
+	t.Parallel()
+	conn, _ := db.TestSetup(t, "postgres")
+	const testLimit = 10
+	rw := db.New(conn)
+	wrapper := db.TestWrapper(t)
+	repo, err := NewRepository(rw, rw, wrapper, WithLimit(testLimit))
+	require.NoError(t, err)
+	org, proj := TestScopes(t, conn)
+	pg := TestGroup(t, conn, proj.PublicId)
+	og := TestGroup(t, conn, org.PublicId)
+
+	type args struct {
+		withGroupId string
+		opt         []Option
+	}
+	tests := []struct {
+		name      string
+		createCnt int
+		args      args
+		wantCnt   int
+		wantErr   bool
+	}{
+		{
+			name:      "no-limit-pg-group",
+			createCnt: repo.defaultLimit + 1,
+			args: args{
+				withGroupId: pg.PublicId,
+				opt:         []Option{WithLimit(-1)},
+			},
+			wantCnt: repo.defaultLimit + 1,
+			wantErr: false,
+		},
+		{
+			name:      "no-limit-org-group",
+			createCnt: repo.defaultLimit + 1,
+			args: args{
+				withGroupId: og.PublicId,
+				opt:         []Option{WithLimit(-1)},
+			},
+			wantCnt: repo.defaultLimit + 1,
+			wantErr: false,
+		},
+		{
+			name:      "default-limit",
+			createCnt: repo.defaultLimit + 1,
+			args: args{
+				withGroupId: pg.PublicId,
+			},
+			wantCnt: repo.defaultLimit,
+			wantErr: false,
+		},
+		{
+			name:      "custom-limit",
+			createCnt: repo.defaultLimit + 1,
+			args: args{
+				withGroupId: pg.PublicId,
+				opt:         []Option{WithLimit(3)},
+			},
+			wantCnt: 3,
+			wantErr: false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+			require.NoError(conn.Where("1=1").Delete(allocGroupMember()).Error)
+			gm := []*GroupMemberUser{}
+			for i := 0; i < tt.createCnt; i++ {
+				u := TestUser(t, conn, org.PublicId)
+				gm = append(gm, TestGroupMember(t, conn, tt.args.withGroupId, u.PublicId))
+			}
+			assert.Equal(tt.createCnt, len(gm))
+
+			got, err := repo.ListGroupMembers(context.Background(), tt.args.withGroupId, tt.args.opt...)
+			if tt.wantErr {
+				require.Error(err)
+				return
+			}
+			require.NoError(err)
+			assert.Equal(tt.wantCnt, len(got))
+		})
+	}
+	t.Run("missing-id", func(t *testing.T) {
+		require := require.New(t)
+		got, err := repo.ListGroupMembers(context.Background(), "")
+		require.Error(err)
+		require.Nil(got)
+		require.Truef(errors.Is(err, db.ErrInvalidParameter), "unexpected error %s", err.Error())
+
+	})
+}
+
+func TestRepository_AddGroupMembers(t *testing.T) {
+	t.Parallel()
+	conn, _ := db.TestSetup(t, "postgres")
+	rw := db.New(conn)
+	wrapper := db.TestWrapper(t)
+	repo, err := NewRepository(rw, rw, wrapper)
+	require.NoError(t, err)
+	org, proj := TestScopes(t, conn)
+	group := TestGroup(t, conn, proj.PublicId)
+	createUsersFn := func() []string {
+		results := []string{}
+		for i := 0; i < 5; i++ {
+			u := TestUser(t, conn, org.PublicId)
+			results = append(results, u.PublicId)
+		}
+		return results
+	}
+	groupVersion := uint32(0)
+	type args struct {
+		groupId      string
+		groupVersion *uint32
+		userIds      []string
+		opt          []Option
+	}
+	tests := []struct {
+		name      string
+		args      args
+		wantErr   bool
+		wantErrIs error
+	}{
+		{
+			name: "valid-members",
+			args: args{
+				groupId: group.PublicId,
+				userIds: createUsersFn(),
+			},
+			wantErr: false,
+		},
+		{
+			name: "valid-next-version",
+			args: args{
+				groupId: group.PublicId,
+				userIds: createUsersFn(),
+			},
+			wantErr: false,
+		},
+		{
+			name: "bad-version",
+			args: args{
+				groupId:      group.PublicId,
+				groupVersion: func() *uint32 { v := uint32(1000); return &v }(),
+				userIds:      createUsersFn(),
+			},
+			wantErr: true,
+		},
+		{
+			name: "zero-version",
+			args: args{
+				groupId:      group.PublicId,
+				groupVersion: func() *uint32 { v := uint32(0); return &v }(),
+				userIds:      createUsersFn(),
+			},
+			wantErr: true,
+		},
+		{
+			name: "no-members",
+			args: args{
+				groupId: group.PublicId,
+				userIds: nil,
+			},
+			wantErr: true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+
+			var version uint32
+			switch {
+			case tt.args.groupVersion != nil:
+				version = *tt.args.groupVersion
+			default:
+				groupVersion += 1
+				version = groupVersion
+			}
+			require.NoError(conn.Where("1=1").Delete(allocGroupMember()).Error)
+			got, err := repo.AddGroupMembers(context.Background(), tt.args.groupId, version, tt.args.userIds, tt.args.opt...)
+			if tt.wantErr {
+				require.Error(err)
+				if tt.wantErrIs != nil {
+					assert.Truef(errors.Is(err, tt.wantErrIs), "unexpected error %s", err.Error())
+				}
+				return
+			}
+			require.NoError(err)
+			gotMembers := map[string]*GroupMember{}
+			for _, m := range got {
+				gotMembers[m.MemberId] = m
+			}
+			for _, id := range tt.args.userIds {
+				assert.NotEmpty(gotMembers[id])
+				u, err := repo.LookupUser(context.Background(), id)
+				assert.NoError(err)
+				assert.Equal(id, u.PublicId)
+			}
+			err = db.TestVerifyOplog(t, rw, group.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_CREATE), db.WithCreateNotBefore(10*time.Second))
+			assert.NoError(err)
+
+			foundMembers, err := repo.ListGroupMembers(context.Background(), group.PublicId)
+			require.NoError(err)
+			for _, m := range foundMembers {
+				assert.NotEmpty(gotMembers[m.MemberId])
+				assert.Equal(gotMembers[m.MemberId].GetGroupId(), m.GroupId)
+			}
+
+		})
+	}
+}
+
+func TestRepository_DeleteGroupMembers(t *testing.T) {
+	t.Parallel()
+	conn, _ := db.TestSetup(t, "postgres")
+	rw := db.New(conn)
+	wrapper := db.TestWrapper(t)
+	repo, err := NewRepository(rw, rw, wrapper)
+	require.NoError(t, err)
+	org, _ := TestScopes(t, conn)
+
+	type args struct {
+		group           *Group
+		groupIdOverride *string
+		groupVersion    uint32
+		createUserCnt   int
+		deleteUserCnt   int
+		opt             []Option
+	}
+	tests := []struct {
+		name            string
+		args            args
+		wantRowsDeleted int
+		wantErr         bool
+		wantIsErr       error
+	}{
+		{
+			name: "valid",
+			args: args{
+				group:         TestGroup(t, conn, org.PublicId),
+				createUserCnt: 5,
+				deleteUserCnt: 5,
+				groupVersion:  2,
+			},
+			wantRowsDeleted: 5,
+			wantErr:         false,
+		},
+		{
+			name: "valid-keeping-some",
+			args: args{
+				group:         TestGroup(t, conn, org.PublicId),
+				createUserCnt: 5,
+				deleteUserCnt: 2,
+				groupVersion:  2,
+			},
+			wantRowsDeleted: 2,
+			wantErr:         false,
+		},
+		{
+			name: "not-found",
+			args: args{
+				group:           TestGroup(t, conn, org.PublicId),
+				groupVersion:    2,
+				groupIdOverride: func() *string { id := testId(t); return &id }(),
+				createUserCnt:   5,
+				deleteUserCnt:   5,
+			},
+			wantRowsDeleted: 0,
+			wantErr:         true,
+		},
+		{
+			name: "missing-group-id",
+			args: args{
+				group:           TestGroup(t, conn, org.PublicId),
+				groupVersion:    2,
+				groupIdOverride: func() *string { id := ""; return &id }(),
+				createUserCnt:   5,
+				deleteUserCnt:   5,
+			},
+			wantRowsDeleted: 0,
+			wantErr:         true,
+			wantIsErr:       db.ErrInvalidParameter,
+		},
+		{
+			name: "bad-version",
+			args: args{
+				group:         TestGroup(t, conn, org.PublicId),
+				createUserCnt: 5,
+				deleteUserCnt: 5,
+				groupVersion:  10000,
+			},
+			wantRowsDeleted: 0,
+			wantErr:         true,
+		},
+		{
+			name: "zero-version",
+			args: args{
+				group:         TestGroup(t, conn, org.PublicId),
+				createUserCnt: 5,
+				deleteUserCnt: 5,
+				groupVersion:  0,
+			},
+			wantRowsDeleted: 0,
+			wantErr:         true,
+			wantIsErr:       db.ErrInvalidParameter,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+			userIds := make([]string, 0, tt.args.createUserCnt)
+			for i := 0; i < tt.args.createUserCnt; i++ {
+				u := TestUser(t, conn, org.PublicId)
+				userIds = append(userIds, u.PublicId)
+			}
+			members, err := repo.AddGroupMembers(context.Background(), tt.args.group.PublicId, 1, userIds, tt.args.opt...)
+			require.NoError(err)
+			assert.Equal(tt.args.createUserCnt, len(members))
+
+			deleteUserIds := make([]string, 0, tt.args.deleteUserCnt)
+			for i := 0; i < tt.args.deleteUserCnt; i++ {
+				deleteUserIds = append(deleteUserIds, userIds[i])
+			}
+			var groupId string
+			switch {
+			case tt.args.groupIdOverride != nil:
+				groupId = *tt.args.groupIdOverride
+			default:
+				groupId = tt.args.group.PublicId
+			}
+			deletedRows, err := repo.DeleteGroupMembers(context.Background(), groupId, tt.args.groupVersion, deleteUserIds, tt.args.opt...)
+			if tt.wantErr {
+				assert.Error(err)
+				assert.Equal(0, deletedRows)
+				if tt.wantIsErr != nil {
+					assert.Truef(errors.Is(err, tt.wantIsErr), "unexpected error %s", err.Error())
+				}
+				err = db.TestVerifyOplog(t, rw, tt.args.group.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_DELETE), db.WithCreateNotBefore(10*time.Second))
+				assert.Error(err)
+				assert.True(errors.Is(db.ErrRecordNotFound, err))
+				return
+			}
+			require.NoError(err)
+			assert.Equal(tt.wantRowsDeleted, deletedRows)
+
+			err = db.TestVerifyOplog(t, rw, tt.args.group.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_DELETE), db.WithCreateNotBefore(10*time.Second))
+			assert.NoError(err)
+		})
+	}
+}
+
+func TestRepository_SetGroupMembers(t *testing.T) {
+	t.Parallel()
+	conn, _ := db.TestSetup(t, "postgres")
+	rw := db.New(conn)
+	wrapper := db.TestWrapper(t)
+
+	repo, err := NewRepository(rw, rw, wrapper)
+	require.NoError(t, err)
+
+	org, proj := TestScopes(t, conn)
+	testUser := TestUser(t, conn, org.PublicId)
+
+	createUsersFn := func() []string {
+		results := []string{}
+		for i := 0; i < 5; i++ {
+			u := TestUser(t, conn, org.PublicId)
+			results = append(results, u.PublicId)
+		}
+		return results
+	}
+	setupFn := func(groupId string) []string {
+		users := createUsersFn()
+		_, err := repo.AddGroupMembers(context.Background(), groupId, 1, users)
+		require.NoError(t, err)
+		return users
+	}
+	type args struct {
+		group          *Group
+		groupVersion   uint32
+		userIds        []string
+		addToOrigUsers bool
+		opt            []Option
+	}
+	tests := []struct {
+		name             string
+		setup            func(string) []string
+		args             args
+		wantAffectedRows int
+		wantErr          bool
+	}{
+		{
+			name:  "clear",
+			setup: setupFn,
+			args: args{
+				group:        TestGroup(t, conn, proj.PublicId),
+				groupVersion: 2, // yep, since setupFn will increment it to 2
+				userIds:      []string{},
+			},
+			wantErr:          false,
+			wantAffectedRows: 5,
+		},
+		{
+			name:  "no change",
+			setup: setupFn,
+			args: args{
+				group:          TestGroup(t, conn, proj.PublicId),
+				groupVersion:   2, // yep, since setupFn will increment it to 2
+				userIds:        []string{},
+				addToOrigUsers: true,
+			},
+			wantErr:          false,
+			wantAffectedRows: 0,
+		},
+		{
+			name:  "add users",
+			setup: setupFn,
+			args: args{
+				group:          TestGroup(t, conn, proj.PublicId),
+				groupVersion:   2, // yep, since setupFn will increment it to 2
+				userIds:        []string{testUser.PublicId},
+				addToOrigUsers: true,
+			},
+			wantErr:          false,
+			wantAffectedRows: 1,
+		},
+		{
+			name:  "remove existing and add users",
+			setup: setupFn,
+			args: args{
+				group:          TestGroup(t, conn, proj.PublicId),
+				groupVersion:   2, // yep, since setupFn will increment it to 2
+				userIds:        []string{testUser.PublicId},
+				addToOrigUsers: false,
+			},
+			wantErr:          false,
+			wantAffectedRows: 6,
+		},
+		{
+			name:  "bad version",
+			setup: setupFn,
+			args: args{
+				group:          TestGroup(t, conn, proj.PublicId),
+				groupVersion:   1000,
+				userIds:        []string{testUser.PublicId},
+				addToOrigUsers: true,
+			},
+			wantErr:          true,
+			wantAffectedRows: 0,
+		},
+		{
+			name:  "zero version",
+			setup: setupFn,
+			args: args{
+				group:          TestGroup(t, conn, proj.PublicId),
+				groupVersion:   0,
+				userIds:        []string{testUser.PublicId},
+				addToOrigUsers: true,
+			},
+			wantErr:          true,
+			wantAffectedRows: 0,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+			var origUsers []string
+			if tt.setup != nil {
+				origUsers = tt.setup(tt.args.group.PublicId)
+			}
+			setUsers := tt.args.userIds
+			if tt.args.addToOrigUsers {
+				setUsers = append(setUsers, origUsers...)
+			}
+
+			got, affectedRows, err := repo.SetGroupMembers(context.Background(), tt.args.group.PublicId, tt.args.groupVersion, setUsers, tt.args.opt...)
+			if tt.wantErr {
+				require.Error(err)
+				return
+			}
+			require.NoError(err)
+			assert.Equal(tt.wantAffectedRows, affectedRows)
+			var gotIds []string
+			for _, r := range got {
+				gotIds = append(gotIds, r.GetMemberId())
+			}
+			var wantIds []string
+			wantIds = append(wantIds, tt.args.userIds...)
+			sort.Strings(wantIds)
+			sort.Strings(gotIds)
+			assert.Equal(wantIds, wantIds)
 		})
 	}
 }

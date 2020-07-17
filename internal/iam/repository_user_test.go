@@ -18,14 +18,7 @@ import (
 
 func TestRepository_CreateUser(t *testing.T) {
 	t.Parallel()
-	cleanup, conn, _ := db.TestSetup(t, "postgres")
-	defer func() {
-		err := cleanup()
-		assert.NoError(t, err)
-		err = conn.Close()
-		assert.NoError(t, err)
-	}()
-
+	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
 	repo, err := NewRepository(rw, rw, wrapper)
@@ -78,7 +71,7 @@ func TestRepository_CreateUser(t *testing.T) {
 			},
 			wantDup:    true,
 			wantErr:    true,
-			wantErrMsg: "create user: user %s already exists in organization %s",
+			wantErrMsg: "create user: user %s already exists in org %s",
 		},
 	}
 	for _, tt := range tests {
@@ -117,14 +110,7 @@ func TestRepository_CreateUser(t *testing.T) {
 
 func TestRepository_UpdateUser(t *testing.T) {
 	t.Parallel()
-	cleanup, conn, _ := db.TestSetup(t, "postgres")
-	defer func() {
-		err := cleanup()
-		assert.NoError(t, err)
-		err = conn.Close()
-		assert.NoError(t, err)
-	}()
-
+	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
 	repo, err := NewRepository(rw, rw, wrapper)
@@ -150,6 +136,7 @@ func TestRepository_UpdateUser(t *testing.T) {
 		wantErrMsg     string
 		wantIsErr      error
 		wantDup        bool
+		directUpdate   bool
 	}{
 		{
 			name: "valid",
@@ -292,7 +279,19 @@ func TestRepository_UpdateUser(t *testing.T) {
 			},
 			wantErr:    true,
 			wantDup:    true,
-			wantErrMsg: `update user: user %s already exists in organization %s`,
+			wantErrMsg: `update user: user %s already exists in org %s`,
+		},
+		{
+			name: "modified-scope",
+			args: args{
+				name:           "modified-scope" + id,
+				fieldMaskPaths: []string{"ScopeId"},
+				ScopeId:        "global",
+				opt:            []Option{WithSkipVetForWrite(true)},
+			},
+			wantErr:      true,
+			wantErrMsg:   `update: failed: pq: scope_id cannot be set`,
+			directUpdate: true,
 		},
 	}
 	for _, tt := range tests {
@@ -316,7 +315,19 @@ func TestRepository_UpdateUser(t *testing.T) {
 			updateUser.Name = tt.args.name
 			updateUser.Description = tt.args.description
 
-			userAfterUpdate, updatedRows, err := repo.UpdateUser(context.Background(), &updateUser, tt.args.fieldMaskPaths, tt.args.opt...)
+			var userAfterUpdate *User
+			var updatedRows int
+			var err error
+			if tt.directUpdate {
+				u := updateUser.Clone()
+				var resource interface{}
+				resource, updatedRows, err = repo.update(context.Background(), u.(*User), tt.args.fieldMaskPaths, nil, tt.args.opt...)
+				if err == nil {
+					userAfterUpdate = resource.(*User)
+				}
+			} else {
+				userAfterUpdate, updatedRows, err = repo.UpdateUser(context.Background(), &updateUser, tt.args.fieldMaskPaths, tt.args.opt...)
+			}
 			if tt.wantErr {
 				require.Error(err)
 				if tt.wantIsErr != nil {
@@ -328,7 +339,7 @@ func TestRepository_UpdateUser(t *testing.T) {
 				case "dup-name":
 					assert.Equal(fmt.Sprintf(tt.wantErrMsg, "dup-name"+id, org.PublicId), err.Error())
 				default:
-					assert.Equal(tt.wantErrMsg, err.Error())
+					assert.Containsf(err.Error(), tt.wantErrMsg, "unexpected error: %s", err.Error())
 				}
 				err = db.TestVerifyOplog(t, rw, u.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_UPDATE), db.WithCreateNotBefore(10*time.Second))
 				require.Error(err)
@@ -358,14 +369,7 @@ func TestRepository_UpdateUser(t *testing.T) {
 
 func TestRepository_DeleteUser(t *testing.T) {
 	t.Parallel()
-	cleanup, conn, _ := db.TestSetup(t, "postgres")
-	defer func() {
-		err := cleanup()
-		assert.NoError(t, err)
-		err = conn.Close()
-		assert.NoError(t, err)
-	}()
-
+	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
 	repo, err := NewRepository(rw, rw, wrapper)
@@ -448,13 +452,7 @@ func TestRepository_DeleteUser(t *testing.T) {
 
 func TestRepository_ListUsers(t *testing.T) {
 	t.Parallel()
-	cleanup, conn, _ := db.TestSetup(t, "postgres")
-	defer func() {
-		err := cleanup()
-		assert.NoError(t, err)
-		err = conn.Close()
-		assert.NoError(t, err)
-	}()
+	conn, _ := db.TestSetup(t, "postgres")
 	const testLimit = 10
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
@@ -463,8 +461,8 @@ func TestRepository_ListUsers(t *testing.T) {
 	org, _ := TestScopes(t, conn)
 
 	type args struct {
-		withOrganizationId string
-		opt                []Option
+		withOrgId string
+		opt       []Option
 	}
 	tests := []struct {
 		name      string
@@ -477,8 +475,8 @@ func TestRepository_ListUsers(t *testing.T) {
 			name:      "no-limit",
 			createCnt: repo.defaultLimit + 1,
 			args: args{
-				withOrganizationId: org.PublicId,
-				opt:                []Option{WithLimit(-1)},
+				withOrgId: org.PublicId,
+				opt:       []Option{WithLimit(-1)},
 			},
 			wantCnt: repo.defaultLimit + 1,
 			wantErr: false,
@@ -487,7 +485,7 @@ func TestRepository_ListUsers(t *testing.T) {
 			name:      "default-limit",
 			createCnt: repo.defaultLimit + 1,
 			args: args{
-				withOrganizationId: org.PublicId,
+				withOrgId: org.PublicId,
 			},
 			wantCnt: repo.defaultLimit,
 			wantErr: false,
@@ -496,8 +494,8 @@ func TestRepository_ListUsers(t *testing.T) {
 			name:      "custom-limit",
 			createCnt: repo.defaultLimit + 1,
 			args: args{
-				withOrganizationId: org.PublicId,
-				opt:                []Option{WithLimit(3)},
+				withOrgId: org.PublicId,
+				opt:       []Option{WithLimit(3)},
 			},
 			wantCnt: 3,
 			wantErr: false,
@@ -506,7 +504,7 @@ func TestRepository_ListUsers(t *testing.T) {
 			name:      "bad-org",
 			createCnt: 1,
 			args: args{
-				withOrganizationId: "bad-id",
+				withOrgId: "bad-id",
 			},
 			wantCnt: 0,
 			wantErr: false,
@@ -515,13 +513,13 @@ func TestRepository_ListUsers(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			require.NoError(conn.Where("1=1").Delete(allocUser()).Error)
+			require.NoError(conn.Where("public_id != 'u_anon' and public_id != 'u_auth'").Delete(allocUser()).Error)
 			testUsers := []*User{}
 			for i := 0; i < tt.createCnt; i++ {
 				testUsers = append(testUsers, TestUser(t, conn, org.PublicId))
 			}
 			assert.Equal(tt.createCnt, len(testUsers))
-			got, err := repo.ListUsers(context.Background(), tt.args.withOrganizationId, tt.args.opt...)
+			got, err := repo.ListUsers(context.Background(), tt.args.withOrgId, tt.args.opt...)
 			if tt.wantErr {
 				require.Error(err)
 				return
@@ -534,13 +532,7 @@ func TestRepository_ListUsers(t *testing.T) {
 
 func TestRepository_LookupUserWithLogin(t *testing.T) {
 	t.Parallel()
-	cleanup, conn, _ := db.TestSetup(t, "postgres")
-	defer func() {
-		err := cleanup()
-		assert.NoError(t, err)
-		err = conn.Close()
-		assert.NoError(t, err)
-	}()
+	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
 	repo, err := NewRepository(rw, rw, wrapper)

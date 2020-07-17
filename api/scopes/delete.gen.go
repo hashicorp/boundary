@@ -13,13 +13,13 @@ import (
 )
 
 // DeleteProject returns true iff the Project existed when the delete attempt was made.
-func (s Organization) DeleteProject(ctx context.Context, r *Project) (bool, *api.Error, error) {
+func (s Org) DeleteProject(ctx context.Context, r *Project) (bool, *api.Error, error) {
 	if s.Client == nil {
 		return false, nil, fmt.Errorf("nil client in DeleteProject request")
 	}
 	if s.Id == "" {
 
-		// Assume the client has been configured with organization already and
+		// Assume the client has been configured with org already and
 		// move on
 
 	} else {
@@ -57,13 +57,13 @@ func (s Organization) DeleteProject(ctx context.Context, r *Project) (bool, *api
 }
 
 // DeleteGroup returns true iff the groups.Group existed when the delete attempt was made.
-func (s Organization) DeleteGroup(ctx context.Context, r *groups.Group) (bool, *api.Error, error) {
+func (s Org) DeleteGroup(ctx context.Context, r *groups.Group) (bool, *api.Error, error) {
 	if s.Client == nil {
 		return false, nil, fmt.Errorf("nil client in DeleteGroup request")
 	}
 	if s.Id == "" {
 
-		// Assume the client has been configured with organization already and
+		// Assume the client has been configured with org already and
 		// move on
 
 	} else {
@@ -101,13 +101,13 @@ func (s Organization) DeleteGroup(ctx context.Context, r *groups.Group) (bool, *
 }
 
 // DeleteRole returns true iff the roles.Role existed when the delete attempt was made.
-func (s Organization) DeleteRole(ctx context.Context, r *roles.Role) (bool, *api.Error, error) {
+func (s Org) DeleteRole(ctx context.Context, r *roles.Role) (bool, *api.Error, error) {
 	if s.Client == nil {
 		return false, nil, fmt.Errorf("nil client in DeleteRole request")
 	}
 	if s.Id == "" {
 
-		// Assume the client has been configured with organization already and
+		// Assume the client has been configured with org already and
 		// move on
 
 	} else {
@@ -145,13 +145,13 @@ func (s Organization) DeleteRole(ctx context.Context, r *roles.Role) (bool, *api
 }
 
 // DeleteUser returns true iff the users.User existed when the delete attempt was made.
-func (s Organization) DeleteUser(ctx context.Context, r *users.User) (bool, *api.Error, error) {
+func (s Org) DeleteUser(ctx context.Context, r *users.User) (bool, *api.Error, error) {
 	if s.Client == nil {
 		return false, nil, fmt.Errorf("nil client in DeleteUser request")
 	}
 	if s.Id == "" {
 
-		// Assume the client has been configured with organization already and
+		// Assume the client has been configured with org already and
 		// move on
 
 	} else {
@@ -227,6 +227,94 @@ func (s Project) DeleteHostCatalog(ctx context.Context, r *hosts.HostCatalog) (b
 	apiErr, err := resp.Decode(target)
 	if err != nil {
 		return false, nil, fmt.Errorf("error decoding DeleteHostCatalog repsonse: %w", err)
+	}
+
+	return target.Existed, apiErr, nil
+}
+
+// DeleteGroup returns true iff the groups.Group existed when the delete attempt was made.
+func (s Project) DeleteGroup(ctx context.Context, r *groups.Group) (bool, *api.Error, error) {
+	if s.Client == nil {
+		return false, nil, fmt.Errorf("nil client in DeleteGroup request")
+	}
+	if s.Id == "" {
+
+		// Assume the client has been configured with project already and move
+		// on
+
+	} else {
+		// If it's explicitly set here, override anything that might be in the
+		// client
+
+		ctx = context.WithValue(ctx, "project", s.Id)
+
+	}
+	if r.Id == "" {
+		return false, nil, fmt.Errorf("empty groups.Group ID field in DeleteGroup request")
+	}
+
+	req, err := s.Client.NewRequest(ctx, "DELETE", fmt.Sprintf("%s/%s", "groups", r.Id), nil)
+	if err != nil {
+		return false, nil, fmt.Errorf("error creating DeleteGroup request: %w", err)
+	}
+
+	resp, err := s.Client.Do(req)
+	if err != nil {
+		return false, nil, fmt.Errorf("error performing client request during DeleteGroup call: %w", err)
+	}
+
+	type deleteResponse struct {
+		Existed bool
+	}
+	target := &deleteResponse{}
+
+	apiErr, err := resp.Decode(target)
+	if err != nil {
+		return false, nil, fmt.Errorf("error decoding DeleteGroup repsonse: %w", err)
+	}
+
+	return target.Existed, apiErr, nil
+}
+
+// DeleteRole returns true iff the roles.Role existed when the delete attempt was made.
+func (s Project) DeleteRole(ctx context.Context, r *roles.Role) (bool, *api.Error, error) {
+	if s.Client == nil {
+		return false, nil, fmt.Errorf("nil client in DeleteRole request")
+	}
+	if s.Id == "" {
+
+		// Assume the client has been configured with project already and move
+		// on
+
+	} else {
+		// If it's explicitly set here, override anything that might be in the
+		// client
+
+		ctx = context.WithValue(ctx, "project", s.Id)
+
+	}
+	if r.Id == "" {
+		return false, nil, fmt.Errorf("empty roles.Role ID field in DeleteRole request")
+	}
+
+	req, err := s.Client.NewRequest(ctx, "DELETE", fmt.Sprintf("%s/%s", "roles", r.Id), nil)
+	if err != nil {
+		return false, nil, fmt.Errorf("error creating DeleteRole request: %w", err)
+	}
+
+	resp, err := s.Client.Do(req)
+	if err != nil {
+		return false, nil, fmt.Errorf("error performing client request during DeleteRole call: %w", err)
+	}
+
+	type deleteResponse struct {
+		Existed bool
+	}
+	target := &deleteResponse{}
+
+	apiErr, err := resp.Decode(target)
+	if err != nil {
+		return false, nil, fmt.Errorf("error decoding DeleteRole repsonse: %w", err)
 	}
 
 	return target.Existed, apiErr, nil

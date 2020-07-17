@@ -7,6 +7,48 @@ option go_package = "github.com/hashicorp/watchtower/internal/gen/controller/api
 import "google/protobuf/timestamp.proto";
 import "google/protobuf/wrappers.proto";
 
+message Principal {
+	// The ID of the principal.
+	// Output only.
+	string id = 1;
+
+	// The type of the principal.
+	// Output only.
+	string type = 2;
+
+	// The scope ID of the principal.
+	// Output only.
+	string scope_id = 3 [json_name="scope_id"];
+}
+
+message GrantJson {
+	// The ID, if set.
+	// Output only.
+	string id = 1;
+
+	// The type, if set.
+	// Output only.
+	string type = 2;
+
+	// The actions.
+	// Output only.
+	repeated string actions = 3;
+}
+
+message Grant {
+	// The original user-supplied string.
+	// Output only.
+	string raw = 1;
+
+	// The canonically formatted string.
+	// Output only.
+	string canonical = 2;
+
+	// The JSON representation of the grant.
+	// Output only.
+	GrantJson json = 3;
+}
+
 // Role contains all fields related to a Role resource
 message Role {
 	// The ID of the Role
@@ -29,4 +71,32 @@ message Role {
 
 	// Whether the resource is disabled
 	google.protobuf.BoolValue disabled = 6;
+
+	// The scope the grants will apply to. If the role is at the global scope,
+	// this can be an org or project. If the role is at an org
+	// scope, this can be a project within the org. It is invalid for
+	// this to be anything other than the role's scope when the role's scope is
+	// a project.
+	google.protobuf.StringValue grant_scope_id = 7 [json_name="grant_scope_id"];
+	
+	// The version can be used in subsiquent write requests to ensure this resource
+	// has not changed and to fail the write if it has.
+	// Output only.
+	uint32 version = 8;
+
+	// The IDs (only) of principals that are assigned to this role.
+	// Output only.
+	repeated string principal_ids = 9 [json_name="principal_ids"];
+
+	// The principals that are assigned to this role.
+	// Output only.
+	repeated Principal principals = 10;
+
+	// The grants that this role provides for its principals.
+	// Output only.
+	repeated string grant_strings = 11 [json_name="grant_strings"];
+
+	// The parsed grant information.
+	// Output only.
+	repeated Grant grants = 12;
 }

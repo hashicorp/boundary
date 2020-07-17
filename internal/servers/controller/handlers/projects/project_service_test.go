@@ -26,15 +26,7 @@ import (
 
 func createDefaultProjectAndRepo(t *testing.T) (*iam.Scope, func() (*iam.Repository, error)) {
 	t.Helper()
-	cleanup, conn, _ := db.TestSetup(t, "postgres")
-	t.Cleanup(func() {
-		if err := conn.Close(); err != nil {
-			t.Errorf("Error when closing gorm DB: %v", err)
-		}
-		if err := cleanup(); err != nil {
-			t.Errorf("Error when cleaning up TestSetup: %v", err)
-		}
-	})
+	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrap := db.TestWrapper(t)
 	repoFn := func() (*iam.Repository, error) {
@@ -116,15 +108,7 @@ func TestGet(t *testing.T) {
 
 func TestList(t *testing.T) {
 	assert, require := assert.New(t), require.New(t)
-	cleanup, conn, _ := db.TestSetup(t, "postgres")
-	t.Cleanup(func() {
-		if err := conn.Close(); err != nil {
-			t.Errorf("Error when closing gorm DB: %v", err)
-		}
-		if err := cleanup(); err != nil {
-			t.Errorf("Error when cleaning up TestSetup: %v", err)
-		}
-	})
+	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrap := db.TestWrapper(t)
 	repoFn := func() (*iam.Repository, error) {
@@ -173,14 +157,14 @@ func TestList(t *testing.T) {
 		},
 		{
 			name:    "Invalid Org Id",
-			req:     &pbs.ListProjectsRequest{OrgId: scope.Organization.Prefix() + "_this is invalid"},
+			req:     &pbs.ListProjectsRequest{OrgId: scope.Org.Prefix() + "_this is invalid"},
 			res:     nil,
 			errCode: codes.InvalidArgument,
 		},
 		// TODO: When an org doesn't exist, we should return a 404 instead of an empty list.
 		{
 			name:    "Unfound Org",
-			req:     &pbs.ListProjectsRequest{OrgId: scope.Organization.Prefix() + "_DoesntExis"},
+			req:     &pbs.ListProjectsRequest{OrgId: scope.Org.Prefix() + "_DoesntExis"},
 			res:     &pbs.ListProjectsResponse{},
 			errCode: codes.OK,
 		},
