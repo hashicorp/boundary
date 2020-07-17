@@ -1,4 +1,4 @@
-package projects
+package scopes
 
 import (
 	"context"
@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/hashicorp/watchtower/internal/auth"
+	"github.com/hashicorp/watchtower/internal/gen/controller/api/resources/scopes"
 	pb "github.com/hashicorp/watchtower/internal/gen/controller/api/resources/scopes"
 	pbs "github.com/hashicorp/watchtower/internal/gen/controller/api/services"
 	"github.com/hashicorp/watchtower/internal/iam"
@@ -51,10 +52,15 @@ func (s Service) ListScopes(ctx context.Context, req *pbs.ListScopesRequest) (*p
 	if err := validateListRequest(req); err != nil {
 		return nil, err
 	}
-	pl, err := s.listFromRepo(ctx, "global")
+	pl, err := s.listFromRepo(ctx, authResults.Scope.GetId())
 	if err != nil {
 		return nil, err
 	}
+
+	for _, item := range pl {
+		item.Scope = authResults.Scope
+	}
+
 	return &pbs.ListScopesResponse{Items: pl}, nil
 }
 
@@ -71,6 +77,7 @@ func (s Service) GetScope(ctx context.Context, req *pbs.GetScopeRequest) (*pbs.G
 	if err != nil {
 		return nil, err
 	}
+	p.Scope = authResults.Scope
 	return &pbs.GetScopeResponse{Item: p}, nil
 }
 
@@ -83,10 +90,11 @@ func (s Service) CreateScope(ctx context.Context, req *pbs.CreateScopeRequest) (
 	if err := validateCreateRequest(req); err != nil {
 		return nil, err
 	}
-	p, err := s.createInRepo(ctx, "global", req.GetItem())
+	p, err := s.createInRepo(ctx, authResults.Scope, req.GetItem())
 	if err != nil {
 		return nil, err
 	}
+	p.Scope = authResults.Scope
 	return &pbs.CreateScopeResponse{Item: p, Uri: fmt.Sprintf("scopes/%s", p.GetId())}, nil
 }
 
@@ -99,10 +107,11 @@ func (s Service) UpdateScope(ctx context.Context, req *pbs.UpdateScopeRequest) (
 	if err := validateUpdateRequest(req); err != nil {
 		return nil, err
 	}
-	p, err := s.updateInRepo(ctx, req.GetId(), req.GetUpdateMask().GetPaths(), req.GetItem())
+	p, err := s.updateInRepo(ctx, authResults.Scope, req.GetId(), req.GetUpdateMask().GetPaths(), req.GetItem())
 	if err != nil {
 		return nil, err
 	}
+	p.Scope = authResults.Scope
 	return &pbs.UpdateScopeResponse{Item: p}, nil
 }
 
@@ -137,7 +146,7 @@ func (s Service) getFromRepo(ctx context.Context, id string) (*pb.Scope, error) 
 	return toProto(p), nil
 }
 
-func (s Service) createInRepo(ctx context.Context, orgID string, item *pb.Scope) (*pb.Scope, error) {
+func (s Service) createInRepo(ctx context.Context, parentScope *scopes.ScopeInfo, item *pb.Scope) (*pb.Scope, error) {
 	var opts []iam.Option
 	if item.GetName() != nil {
 		opts = append(opts, iam.WithName(item.GetName().GetValue()))
@@ -145,25 +154,33 @@ func (s Service) createInRepo(ctx context.Context, orgID string, item *pb.Scope)
 	if item.GetDescription() != nil {
 		opts = append(opts, iam.WithDescription(item.GetDescription().GetValue()))
 	}
-	p, err := iam.NewScope(orgID, opts...)
+
+	var iamScope *iam.Scope
+	var err error
+	switch parentScope.GetType() {
+	case scope.Global.String():
+		iamScope, err = iam.NewOrg(opts...)
+	case scope.Org.String():
+		iamScope, err = iam.NewProject(parentScope.GetId(), opts...)
+	}
 	if err != nil {
-		return nil, status.Errorf(codes.Internal, "Unable to build project for creation: %v.", err)
+		return nil, status.Errorf(codes.Internal, "Unable to build new scope for creation: %v.", err)
 	}
 	repo, err := s.repo()
 	if err != nil {
 		return nil, err
 	}
-	out, err := repo.CreateScope(ctx, p)
+	out, err := repo.CreateScope(ctx, iamScope)
 	if err != nil {
-		return nil, status.Errorf(codes.Internal, "Unable to create project: %v.", err)
+		return nil, status.Errorf(codes.Internal, "Unable to create scope: %v.", err)
 	}
 	if out == nil {
-		return nil, status.Error(codes.Internal, "Unable to create project but no error returned from repository.")
+		return nil, status.Error(codes.Internal, "Unable to create scope but no error returned from repository.")
 	}
 	return toProto(out), nil
 }
 
-func (s Service) updateInRepo(ctx context.Context, scopeId string, mask []string, item *pb.Scope) (*pb.Scope, error) {
+func (s Service) updateInRepo(ctx context.Context, parentScope *scopes.ScopeInfo, scopeId string, mask []string, item *pb.Scope) (*pb.Scope, error) {
 	var opts []iam.Option
 	if desc := item.GetDescription(); desc != nil {
 		opts = append(opts, iam.WithDescription(desc.GetValue()))
@@ -171,11 +188,18 @@ func (s Service) updateInRepo(ctx context.Context, scopeId string, mask []string
 	if name := item.GetName(); name != nil {
 		opts = append(opts, iam.WithName(name.GetValue()))
 	}
-	p, err := iam.NewScope(scopeId, opts...)
-	if err != nil {
-		return nil, status.Errorf(codes.Internal, "Unable to build project for update: %v.", err)
+	var iamScope *iam.Scope
+	var err error
+	switch parentScope.GetType() {
+	case scope.Global.String():
+		iamScope, err = iam.NewOrg(opts...)
+	case scope.Org.String():
+		iamScope, err = iam.NewProject(parentScope.GetId(), opts...)
 	}
-	p.PublicId = scopeId
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "Unable to build scope for update: %v.", err)
+	}
+	iamScope.PublicId = scopeId
 	dbMask, err := toDbUpdateMask(mask)
 	if err != nil {
 		return nil, err
@@ -187,7 +211,7 @@ func (s Service) updateInRepo(ctx context.Context, scopeId string, mask []string
 	if err != nil {
 		return nil, err
 	}
-	out, rowsUpdated, err := repo.UpdateScope(ctx, p, dbMask)
+	out, rowsUpdated, err := repo.UpdateScope(ctx, iamScope, dbMask)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "Unable to update project: %v.", err)
 	}
@@ -197,29 +221,38 @@ func (s Service) updateInRepo(ctx context.Context, scopeId string, mask []string
 	return toProto(out), nil
 }
 
-func (s Service) deleteFromRepo(ctx context.Context, projId string) (bool, error) {
+func (s Service) deleteFromRepo(ctx context.Context, scopeId string) (bool, error) {
 	repo, err := s.repo()
 	if err != nil {
 		return false, err
 	}
-	rows, err := repo.DeleteScope(ctx, projId)
+	rows, err := repo.DeleteScope(ctx, scopeId)
 	if err != nil {
-		return false, status.Errorf(codes.Internal, "Unable to delete project: %v.", err)
+		return false, status.Errorf(codes.Internal, "Unable to delete scope: %v.", err)
 	}
 	return rows > 0, nil
 }
 
-func (s Service) listFromRepo(ctx context.Context, orgId string) ([]*pb.Scope, error) {
+func (s Service) listFromRepo(ctx context.Context, scopeId string) ([]*pb.Scope, error) {
 	repo, err := s.repo()
 	if err != nil {
 		return nil, err
 	}
-	pl, err := repo.ListScopes(ctx, "global")
+
+	var scps []*iam.Scope
+	switch {
+	case scopeId == "global":
+		scps, err = repo.ListOrgs(ctx)
+	case strings.HasPrefix(scopeId, scope.Org.Prefix()):
+		scps, err = repo.ListProjects(ctx, scopeId)
+	default:
+		return nil, status.Errorf(codes.InvalidArgument, "Invalid scope ID given for listing")
+	}
 	if err != nil {
-		return nil, err
+		return nil, status.Errorf(codes.Internal, "Unable to list scopes: %v", err)
 	}
 	var outPl []*pb.Scope
-	for _, p := range pl {
+	for _, p := range scps {
 		outPl = append(outPl, toProto(p))
 	}
 	return outPl, nil
@@ -265,9 +298,20 @@ func toProto(in *iam.Scope) *pb.Scope {
 //  * All required parameters are set
 //  * There are no conflicting parameters provided
 func validateGetRequest(req *pbs.GetScopeRequest) error {
-	badFields := validateAncestors(req)
-	if !validId(req.GetId(), scope.Scope.Prefix()+"_") {
-		badFields["id"] = "Invalid formatted project id."
+	badFields := map[string]string{}
+	id := req.GetId()
+	switch {
+	case id == "global":
+	case strings.HasPrefix(id, scope.Org.Prefix()):
+		if !validId(id, scope.Org.Prefix()+"_") {
+			badFields["id"] = "Invalidly formatted scope id."
+		}
+	case strings.HasPrefix(id, scope.Project.Prefix()):
+		if !validId(id, scope.Project.Prefix()+"_") {
+			badFields["id"] = "Invalidly formatted scope id."
+		}
+	default:
+		badFields["id"] = "Invalidly formatted scope id."
 	}
 	if len(badFields) > 0 {
 		return handlers.InvalidArgumentErrorf("Improperly formatted identifier.", badFields)
@@ -276,7 +320,7 @@ func validateGetRequest(req *pbs.GetScopeRequest) error {
 }
 
 func validateCreateRequest(req *pbs.CreateScopeRequest) error {
-	badFields := validateAncestors(req)
+	badFields := map[string]string{}
 	item := req.GetItem()
 	if item.GetId() != "" {
 		badFields["id"] = "This is a read only field."
@@ -294,9 +338,20 @@ func validateCreateRequest(req *pbs.CreateScopeRequest) error {
 }
 
 func validateUpdateRequest(req *pbs.UpdateScopeRequest) error {
-	badFields := validateAncestors(req)
-	if !validId(req.GetId(), scope.Scope.Prefix()+"_") {
-		badFields["project_id"] = "Improperly formatted path identifier."
+	badFields := map[string]string{}
+	id := req.GetId()
+	switch {
+	case id == "global":
+	case strings.HasPrefix(id, scope.Org.Prefix()):
+		if !validId(id, scope.Org.Prefix()+"_") {
+			badFields["id"] = "Invalidly formatted scope id."
+		}
+	case strings.HasPrefix(id, scope.Project.Prefix()):
+		if !validId(id, scope.Project.Prefix()+"_") {
+			badFields["id"] = "Invalidly formatted scope id."
+		}
+	default:
+		badFields["id"] = "Invalidly formatted scope id."
 	}
 	if req.GetUpdateMask() == nil {
 		badFields["update_mask"] = "UpdateMask not provided but is required to update a project."
@@ -328,9 +383,20 @@ func validateUpdateRequest(req *pbs.UpdateScopeRequest) error {
 }
 
 func validateDeleteRequest(req *pbs.DeleteScopeRequest) error {
-	badFields := validateAncestors(req)
-	if !validId(req.GetId(), scope.Scope.Prefix()+"_") {
-		badFields["id"] = "Incorrectly formatted project."
+	badFields := map[string]string{}
+	id := req.GetId()
+	switch {
+	case id == "global":
+	case strings.HasPrefix(id, scope.Org.Prefix()):
+		if !validId(id, scope.Org.Prefix()+"_") {
+			badFields["id"] = "Invalidly formatted scope id."
+		}
+	case strings.HasPrefix(id, scope.Project.Prefix()):
+		if !validId(id, scope.Project.Prefix()+"_") {
+			badFields["id"] = "Invalidly formatted scope id."
+		}
+	default:
+		badFields["id"] = "Invalidly formatted scope id."
 	}
 	if len(badFields) > 0 {
 		return handlers.InvalidArgumentErrorf("Errors in provided fields.", badFields)
@@ -339,7 +405,7 @@ func validateDeleteRequest(req *pbs.DeleteScopeRequest) error {
 }
 
 func validateListRequest(req *pbs.ListScopesRequest) error {
-	badFields := validateAncestors(req)
+	badFields := map[string]string{}
 	if len(badFields) > 0 {
 		return handlers.InvalidArgumentErrorf("Improperly formatted identifier.", badFields)
 	}
@@ -352,19 +418,4 @@ func validId(id, prefix string) bool {
 	}
 	id = strings.TrimPrefix(id, prefix)
 	return !reInvalidID.Match([]byte(id))
-}
-
-type ancestorProvider interface {
-	GetOrgId() string
-}
-
-// validateAncestors verifies that the ancestors of this call are properly set and provided.
-func validateAncestors(r ancestorProvider) map[string]string {
-	if r.GetOrgId() == "" {
-		return map[string]string{orgIdFieldName: "Missing org id."}
-	}
-	if !validId(r.GetOrgId(), scope.Org.Prefix()+"_") {
-		return map[string]string{orgIdFieldName: "Improperly formatted identifier."}
-	}
-	return map[string]string{}
 }
