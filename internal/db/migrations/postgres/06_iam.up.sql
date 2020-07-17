@@ -588,12 +588,6 @@ update on iam_user_role
   for each row execute procedure iam_immutable_role_principal();
 
 create trigger 
-  immutable_create_time
-before
-update on iam_user_role
-  for each row execute procedure immutable_create_time_func();
-  
-create trigger 
   default_create_time_column
 before
 insert on iam_user_role
@@ -603,12 +597,6 @@ create trigger immutable_role_principal
 before
 update on iam_group_role
   for each row execute procedure iam_immutable_role_principal();
-
-create trigger 
-  immutable_create_time
-before
-update on iam_group_role
-  for each row execute procedure immutable_create_time_func();
   
 create trigger 
   default_create_time_column
@@ -640,12 +628,6 @@ create trigger
 before
 insert on iam_group_member_user
   for each row execute procedure default_create_time();
-
-create trigger 
-  immutable_create_time
-before
-update on iam_group_member_user
-  for each row execute procedure immutable_create_time_func();
 
 create trigger iam_immutable_group_member
 before
