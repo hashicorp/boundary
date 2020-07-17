@@ -2,8 +2,11 @@ package scopes_test
 
 import (
 	"context"
+	"strings"
 	"testing"
 
+	"github.com/golang/protobuf/ptypes"
+	"github.com/golang/protobuf/ptypes/wrappers"
 	"github.com/hashicorp/watchtower/internal/auth"
 	"github.com/hashicorp/watchtower/internal/db"
 	pb "github.com/hashicorp/watchtower/internal/gen/controller/api/resources/scopes"
@@ -11,6 +14,7 @@ import (
 	"github.com/hashicorp/watchtower/internal/iam"
 	"github.com/hashicorp/watchtower/internal/servers/controller/handlers/scopes"
 	"github.com/hashicorp/watchtower/internal/types/scope"
+	"google.golang.org/genproto/protobuf/field_mask"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/proto"
@@ -139,9 +143,7 @@ func TestGet(t *testing.T) {
 	}
 }
 
-/*
 func TestList(t *testing.T) {
-	assert, require := assert.New(t), require.New(t)
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrap := db.TestWrapper(t)
@@ -149,132 +151,194 @@ func TestList(t *testing.T) {
 		return iam.NewRepository(rw, rw, wrap)
 	}
 	repo, err := repoFn()
-	require.NoError(err)
+	require.NoError(t, err)
 
 	oNoProjects, p1 := iam.TestScopes(t, conn)
 	_, err = repo.DeleteScope(context.Background(), p1.GetPublicId())
-	require.NoError(err)
+	require.NoError(t, err)
 	oWithProjects, p2 := iam.TestScopes(t, conn)
 	_, err = repo.DeleteScope(context.Background(), p2.GetPublicId())
-	require.NoError(err)
+	require.NoError(t, err)
 
-	var wantProjects []*pb.Project
-	for i := 0; i < 10; i++ {
-		newP, err := iam.NewProject(oWithProjects.GetPublicId())
-		require.NoError(err)
-		p, err := repo.CreateScope(context.Background(), newP)
-		require.NoError(err)
-		wantProjects = append(wantProjects, &pb.Project{
-			Id:          p.GetPublicId(),
-			CreatedTime: p.GetCreateTime().GetTimestamp(),
-			UpdatedTime: p.GetUpdateTime().GetTimestamp(),
-		})
-	}
+	var initialOrgs []*pb.Scope
+	globalScope := &pb.ScopeInfo{Id: "global", Type: scope.Global.String()}
+	oNoProjectsProto := scopes.ToProto(oNoProjects)
+	oNoProjectsProto.Scope = globalScope
+	oWithProjectsProto := scopes.ToProto(oWithProjects)
+	oWithProjectsProto.Scope = globalScope
+	initialOrgs = scopes.SortScopes(append(initialOrgs, oNoProjectsProto, oWithProjectsProto))
 
 	cases := []struct {
 		name    string
-		req     *pbs.ListProjectsRequest
-		res     *pbs.ListProjectsResponse
+		scopeId string
+		req     *pbs.ListScopesRequest
+		res     *pbs.ListScopesResponse
 		errCode codes.Code
 	}{
 		{
-			name:    "List Many Projects",
-			req:     &pbs.ListProjectsRequest{OrgId: oWithProjects.GetPublicId()},
-			res:     &pbs.ListProjectsResponse{Items: wantProjects},
+			name:    "List Only initial Orgs",
+			scopeId: scope.Global.String(),
+			req:     &pbs.ListScopesRequest{},
+			res:     &pbs.ListScopesResponse{Items: initialOrgs},
 			errCode: codes.OK,
 		},
 		{
 			name:    "List No Projects",
-			req:     &pbs.ListProjectsRequest{OrgId: oNoProjects.GetPublicId()},
-			res:     &pbs.ListProjectsResponse{},
-			errCode: codes.OK,
-		},
-		{
-			name:    "Invalid Org Id",
-			req:     &pbs.ListProjectsRequest{OrgId: scope.Org.Prefix() + "_this is invalid"},
-			res:     nil,
-			errCode: codes.InvalidArgument,
-		},
-		// TODO: When an org doesn't exist, we should return a 404 instead of an empty list.
-		{
-			name:    "Unfound Org",
-			req:     &pbs.ListProjectsRequest{OrgId: scope.Org.Prefix() + "_DoesntExis"},
-			res:     &pbs.ListProjectsResponse{},
+			scopeId: oNoProjects.GetPublicId(),
+			req:     &pbs.ListScopesRequest{},
+			res:     &pbs.ListScopesResponse{},
 			errCode: codes.OK,
 		},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			s, err := projects.NewService(repoFn)
+			assert, require := assert.New(t), require.New(t)
+			s, err := scopes.NewService(repoFn)
 			require.NoError(err, "Couldn't create new role service.")
 
-			got, gErr := s.ListProjects(context.Background(), tc.req)
-			assert.Equal(tc.errCode, status.Code(gErr), "ListProjects(%+v) got error %v, wanted %v", tc.req, gErr, tc.errCode)
-			assert.True(proto.Equal(got, tc.res), "ListProjects(%q) got response %q, wanted %q", tc.req, got, tc.res)
+			got, gErr := s.ListScopes(auth.DisabledAuthTestContext(auth.WithTestScopeId(tc.scopeId)), tc.req)
+			assert.Equal(tc.errCode, status.Code(gErr), "ListScopes(%+v) got error\n%v, wanted\n%v", tc.req, gErr, tc.errCode)
+			assert.True(proto.Equal(got, tc.res), "ListScopes(%q) got response\n%q, wanted\n%q", tc.req, got, tc.res)
+		})
+	}
+
+	var wantOrgs []*pb.Scope
+	for i := 0; i < 10; i++ {
+		newO, err := iam.NewOrg()
+		require.NoError(t, err)
+		o, err := repo.CreateScope(context.Background(), newO)
+		require.NoError(t, err)
+		wantOrgs = append(wantOrgs, &pb.Scope{
+			Id:          o.GetPublicId(),
+			Scope:       globalScope,
+			CreatedTime: o.GetCreateTime().GetTimestamp(),
+			UpdatedTime: o.GetUpdateTime().GetTimestamp(),
+		})
+	}
+	wantOrgs = scopes.SortScopes(append(wantOrgs, initialOrgs...))
+
+	var wantProjects []*pb.Scope
+	for i := 0; i < 10; i++ {
+		newP, err := iam.NewProject(oWithProjects.GetPublicId())
+		require.NoError(t, err)
+		p, err := repo.CreateScope(context.Background(), newP)
+		require.NoError(t, err)
+		wantProjects = append(wantProjects, &pb.Scope{
+			Id:          p.GetPublicId(),
+			Scope:       &pb.ScopeInfo{Id: oWithProjects.GetPublicId(), Type: scope.Org.String()},
+			CreatedTime: p.GetCreateTime().GetTimestamp(),
+			UpdatedTime: p.GetUpdateTime().GetTimestamp(),
+		})
+	}
+	wantProjects = scopes.SortScopes(wantProjects)
+
+	cases = []struct {
+		name    string
+		scopeId string
+		req     *pbs.ListScopesRequest
+		res     *pbs.ListScopesResponse
+		errCode codes.Code
+	}{
+		{
+			name:    "List Many Orgs",
+			scopeId: scope.Global.String(),
+			req:     &pbs.ListScopesRequest{},
+			res:     &pbs.ListScopesResponse{Items: wantOrgs},
+			errCode: codes.OK,
+		},
+		{
+			name:    "List Many Projects",
+			scopeId: oWithProjects.GetPublicId(),
+			req:     &pbs.ListScopesRequest{},
+			res:     &pbs.ListScopesResponse{Items: wantProjects},
+			errCode: codes.OK,
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+			s, err := scopes.NewService(repoFn)
+			require.NoError(err, "Couldn't create new role service.")
+
+			got, gErr := s.ListScopes(auth.DisabledAuthTestContext(auth.WithTestScopeId(tc.scopeId)), tc.req)
+			assert.Equal(tc.errCode, status.Code(gErr), "ListScopes(%+v) got error\n%v, wanted\n%v", tc.req, gErr, tc.errCode)
+			assert.True(proto.Equal(got, tc.res), "ListScopes(%q) got response\n%q, wanted\n%q", tc.req, got, tc.res)
 		})
 	}
 }
 
 func TestDelete(t *testing.T) {
 	require := require.New(t)
-	proj, repo := createDefaultProjectAndRepo(t)
+	org, proj, repo := createDefaultScopesAndRepo(t)
 
-	s, err := projects.NewService(repo)
+	s, err := scopes.NewService(repo)
 	require.NoError(err, "Error when getting new project service.")
 
 	cases := []struct {
 		name    string
-		req     *pbs.DeleteProjectRequest
-		res     *pbs.DeleteProjectResponse
+		scopeId string
+		req     *pbs.DeleteScopeRequest
+		res     *pbs.DeleteScopeResponse
 		errCode codes.Code
 	}{
 		{
-			name: "Delete an Existing Project",
-			req: &pbs.DeleteProjectRequest{
-				OrgId: proj.GetParentId(),
-				Id:    proj.GetPublicId(),
+			name:    "Delete an Existing Project",
+			scopeId: org.GetPublicId(),
+			req: &pbs.DeleteScopeRequest{
+				Id: proj.GetPublicId(),
 			},
-			res: &pbs.DeleteProjectResponse{
+			res: &pbs.DeleteScopeResponse{
 				Existed: true,
 			},
 			errCode: codes.OK,
 		},
 		{
-			name: "Delete bad project id Project",
-			req: &pbs.DeleteProjectRequest{
-				OrgId: proj.GetParentId(),
-				Id:    "p_doesntexis",
+			name:    "Delete bad project id Project",
+			scopeId: org.GetPublicId(),
+			req: &pbs.DeleteScopeRequest{
+				Id: "p_doesntexis",
 			},
-			res: &pbs.DeleteProjectResponse{
+			res: &pbs.DeleteScopeResponse{
 				Existed: false,
 			},
 			errCode: codes.OK,
 		},
 		{
-			name: "Delete bad org id Project",
-			req: &pbs.DeleteProjectRequest{
-				OrgId: "o_doesntexis",
-				Id:    proj.GetPublicId(),
-			},
-			res: &pbs.DeleteProjectResponse{
-				Existed: false,
-			},
-			errCode: codes.OK,
-		},
-		{
-			name: "Bad org formatting",
-			req: &pbs.DeleteProjectRequest{
-				OrgId: "bad_format",
-				Id:    proj.GetPublicId(),
+			name:    "Bad Project Id formatting",
+			scopeId: org.GetPublicId(),
+			req: &pbs.DeleteScopeRequest{
+				Id: "bad_format",
 			},
 			res:     nil,
 			errCode: codes.InvalidArgument,
 		},
 		{
-			name: "Bad Project Id formatting",
-			req: &pbs.DeleteProjectRequest{
-				OrgId: proj.GetParentId(),
-				Id:    "bad_format",
+			name:    "Delete an Existing Org",
+			scopeId: scope.Global.String(),
+			req: &pbs.DeleteScopeRequest{
+				Id: org.GetPublicId(),
+			},
+			res: &pbs.DeleteScopeResponse{
+				Existed: true,
+			},
+			errCode: codes.OK,
+		},
+		{
+			name:    "Delete bad org id Org",
+			scopeId: scope.Global.String(),
+			req: &pbs.DeleteScopeRequest{
+				Id: "p_doesntexis",
+			},
+			res: &pbs.DeleteScopeResponse{
+				Existed: false,
+			},
+			errCode: codes.OK,
+		},
+		{
+			name:    "Bad Org Id formatting",
+			scopeId: scope.Global.String(),
+			req: &pbs.DeleteScopeRequest{
+				Id: "bad_format",
 			},
 			res:     nil,
 			errCode: codes.InvalidArgument,
@@ -283,7 +347,7 @@ func TestDelete(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			assert := assert.New(t)
-			got, gErr := s.DeleteProject(context.Background(), tc.req)
+			got, gErr := s.DeleteScope(auth.DisabledAuthTestContext(auth.WithTestScopeId(tc.scopeId)), tc.req)
 			assert.Equal(tc.errCode, status.Code(gErr), "DeleteProject(%+v) got error %v, wanted %v", tc.req, gErr, tc.errCode)
 			assert.EqualValuesf(tc.res, got, "DeleteProject(%q) got response %q, wanted %q", tc.req, got, tc.res)
 		})
@@ -293,46 +357,58 @@ func TestDelete(t *testing.T) {
 func TestDelete_twice(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
-	proj, repo := createDefaultProjectAndRepo(t)
+	org, proj, repo := createDefaultScopesAndRepo(t)
 
-	s, err := projects.NewService(repo)
-	require.NoError(err, "Error when getting new project service")
-	req := &pbs.DeleteProjectRequest{
-		OrgId: proj.GetParentId(),
-		Id:    proj.GetPublicId(),
+	s, err := scopes.NewService(repo)
+	require.NoError(err, "Error when getting new scopes service")
+	ctx := auth.DisabledAuthTestContext(auth.WithTestScopeId(org.GetPublicId()))
+	req := &pbs.DeleteScopeRequest{
+		Id: proj.GetPublicId(),
 	}
-	got, gErr := s.DeleteProject(context.Background(), req)
+	got, gErr := s.DeleteScope(ctx, req)
 	assert.NoError(gErr, "First attempt")
 	assert.True(got.GetExisted(), "Expected existed to be true for the first delete.")
-	got, gErr = s.DeleteProject(context.Background(), req)
+	got, gErr = s.DeleteScope(ctx, req)
+	assert.NoError(gErr, "Second attempt")
+	assert.False(got.GetExisted(), "Expected existed to be false for the second delete.")
+
+	ctx = auth.DisabledAuthTestContext(auth.WithTestScopeId(scope.Global.String()))
+	req = &pbs.DeleteScopeRequest{
+		Id: org.GetPublicId(),
+	}
+	got, gErr = s.DeleteScope(ctx, req)
+	assert.NoError(gErr, "First attempt")
+	assert.True(got.GetExisted(), "Expected existed to be true for the first delete.")
+	got, gErr = s.DeleteScope(ctx, req)
 	assert.NoError(gErr, "Second attempt")
 	assert.False(got.GetExisted(), "Expected existed to be false for the second delete.")
 }
 
 func TestCreate(t *testing.T) {
 	require := require.New(t)
-	defaultProj, repo := createDefaultProjectAndRepo(t)
+	defaultOrg, defaultProj, repo := createDefaultScopesAndRepo(t)
 	defaultProjCreated, err := ptypes.Timestamp(defaultProj.GetCreateTime().GetTimestamp())
 	require.NoError(err, "Error converting proto to timestamp.")
-	toMerge := &pbs.CreateProjectRequest{
-		OrgId: defaultProj.GetParentId(),
-	}
+	toMerge := &pbs.CreateScopeRequest{}
 
 	cases := []struct {
 		name    string
-		req     *pbs.CreateProjectRequest
-		res     *pbs.CreateProjectResponse
+		scopeId string
+		req     *pbs.CreateScopeRequest
+		res     *pbs.CreateScopeResponse
 		errCode codes.Code
 	}{
 		{
-			name: "Create a valid Project",
-			req: &pbs.CreateProjectRequest{Item: &pb.Project{
+			name:    "Create a valid Project",
+			scopeId: defaultOrg.GetPublicId(),
+			req: &pbs.CreateScopeRequest{Item: &pb.Scope{
 				Name:        &wrapperspb.StringValue{Value: "name"},
 				Description: &wrapperspb.StringValue{Value: "desc"},
 			}},
-			res: &pbs.CreateProjectResponse{
-				Uri: fmt.Sprintf("orgs/%s/projects/p_", defaultProj.GetParentId()),
-				Item: &pb.Project{
+			res: &pbs.CreateScopeResponse{
+				Uri: "scopes/p_",
+				Item: &pb.Scope{
+					Scope:       &pb.ScopeInfo{Id: defaultOrg.GetPublicId(), Type: scope.Org.String()},
 					Name:        &wrapperspb.StringValue{Value: "name"},
 					Description: &wrapperspb.StringValue{Value: "desc"},
 				},
@@ -340,24 +416,44 @@ func TestCreate(t *testing.T) {
 			errCode: codes.OK,
 		},
 		{
-			name: "Can't specify Id",
-			req: &pbs.CreateProjectRequest{Item: &pb.Project{
+			name:    "Create a valid Org",
+			scopeId: scope.Global.String(),
+			req: &pbs.CreateScopeRequest{Item: &pb.Scope{
+				Name:        &wrapperspb.StringValue{Value: "name"},
+				Description: &wrapperspb.StringValue{Value: "desc"},
+			}},
+			res: &pbs.CreateScopeResponse{
+				Uri: "scopes/o_",
+				Item: &pb.Scope{
+					Scope:       &pb.ScopeInfo{Id: scope.Global.String(), Type: scope.Global.String()},
+					Name:        &wrapperspb.StringValue{Value: "name"},
+					Description: &wrapperspb.StringValue{Value: "desc"},
+				},
+			},
+			errCode: codes.OK,
+		},
+		{
+			name:    "Can't specify Id",
+			scopeId: defaultOrg.GetPublicId(),
+			req: &pbs.CreateScopeRequest{Item: &pb.Scope{
 				Id: "not allowed to be set",
 			}},
 			res:     nil,
 			errCode: codes.InvalidArgument,
 		},
 		{
-			name: "Can't specify Created Time",
-			req: &pbs.CreateProjectRequest{Item: &pb.Project{
+			name:    "Can't specify Created Time",
+			scopeId: defaultOrg.GetPublicId(),
+			req: &pbs.CreateScopeRequest{Item: &pb.Scope{
 				CreatedTime: ptypes.TimestampNow(),
 			}},
 			res:     nil,
 			errCode: codes.InvalidArgument,
 		},
 		{
-			name: "Can't specify Update Time",
-			req: &pbs.CreateProjectRequest{Item: &pb.Project{
+			name:    "Can't specify Update Time",
+			scopeId: defaultOrg.GetPublicId(),
+			req: &pbs.CreateScopeRequest{Item: &pb.Scope{
 				UpdatedTime: ptypes.TimestampNow(),
 			}},
 			res:     nil,
@@ -367,24 +463,29 @@ func TestCreate(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			assert := assert.New(t)
-			req := proto.Clone(toMerge).(*pbs.CreateProjectRequest)
+			req := proto.Clone(toMerge).(*pbs.CreateScopeRequest)
 			proto.Merge(req, tc.req)
 
-			s, err := projects.NewService(repo)
+			s, err := scopes.NewService(repo)
 			require.NoError(err, "Error when getting new project service.")
 
-			got, gErr := s.CreateProject(context.Background(), req)
+			got, gErr := s.CreateScope(auth.DisabledAuthTestContext(auth.WithTestScopeId(tc.scopeId)), req)
 			assert.Equal(tc.errCode, status.Code(gErr), "CreateProject(%+v) got error %v, wanted %v", req, gErr, tc.errCode)
 			if got != nil {
 				assert.True(strings.HasPrefix(got.GetUri(), tc.res.Uri))
-				assert.True(strings.HasPrefix(got.GetItem().GetId(), "p_"))
+				switch tc.scopeId {
+				case "global":
+					assert.True(strings.HasPrefix(got.GetItem().GetId(), "o_"))
+				default:
+					assert.True(strings.HasPrefix(got.GetItem().GetId(), "p_"))
+				}
 				gotCreateTime, err := ptypes.Timestamp(got.GetItem().GetCreatedTime())
 				require.NoError(err, "Error converting proto to timestamp.")
 				gotUpdateTime, err := ptypes.Timestamp(got.GetItem().GetUpdatedTime())
 				require.NoError(err, "Error converting proto to timestamp.")
 				// Verify it is a project created after the test setup's default project
-				assert.True(gotCreateTime.After(defaultProjCreated), "New project should have been created after default project. Was created %v, which is after %v", gotCreateTime, defaultProjCreated)
-				assert.True(gotUpdateTime.After(defaultProjCreated), "New project should have been updated after default project. Was updated %v, which is after %v", gotUpdateTime, defaultProjCreated)
+				assert.True(gotCreateTime.After(defaultProjCreated), "New scope should have been created after default project. Was created %v, which is after %v", gotCreateTime, defaultProjCreated)
+				assert.True(gotUpdateTime.After(defaultProjCreated), "New scope should have been updated after default project. Was updated %v, which is after %v", gotUpdateTime, defaultProjCreated)
 
 				// Clear all values which are hard to compare against.
 				got.Uri, tc.res.Uri = "", ""
@@ -398,9 +499,16 @@ func TestCreate(t *testing.T) {
 
 func TestUpdate(t *testing.T) {
 	require := require.New(t)
-	proj, repoFn := createDefaultProjectAndRepo(t)
-	tested, err := projects.NewService(repoFn)
+	org, proj, repoFn := createDefaultScopesAndRepo(t)
+	tested, err := scopes.NewService(repoFn)
 	require.NoError(err, "Error when getting new project service.")
+
+	resetOrg := func() {
+		repo, err := repoFn()
+		require.NoError(err, "Couldn't get a new repo")
+		org, _, err = repo.UpdateScope(context.Background(), org, []string{"Name", "Description"})
+		require.NoError(err, "Failed to reset the org")
+	}
 
 	resetProject := func() {
 		repo, err := repoFn()
@@ -411,31 +519,37 @@ func TestUpdate(t *testing.T) {
 
 	projCreated, err := ptypes.Timestamp(proj.GetCreateTime().GetTimestamp())
 	require.NoError(err, "Error converting proto to timestamp")
-	toMerge := &pbs.UpdateProjectRequest{
-		OrgId: proj.GetParentId(),
-		Id:    proj.GetPublicId(),
+	projToMerge := &pbs.UpdateScopeRequest{
+		Id: proj.GetPublicId(),
+	}
+
+	orgToMerge := &pbs.UpdateScopeRequest{
+		Id: org.GetPublicId(),
 	}
 
 	cases := []struct {
 		name    string
-		req     *pbs.UpdateProjectRequest
-		res     *pbs.UpdateProjectResponse
+		scopeId string
+		req     *pbs.UpdateScopeRequest
+		res     *pbs.UpdateScopeResponse
 		errCode codes.Code
 	}{
 		{
-			name: "Update an Existing Project",
-			req: &pbs.UpdateProjectRequest{
+			name:    "Update an Existing Project",
+			scopeId: org.GetPublicId(),
+			req: &pbs.UpdateScopeRequest{
 				UpdateMask: &field_mask.FieldMask{
 					Paths: []string{"name", "description"},
 				},
-				Item: &pb.Project{
+				Item: &pb.Scope{
 					Name:        &wrapperspb.StringValue{Value: "new"},
 					Description: &wrapperspb.StringValue{Value: "desc"},
 				},
 			},
-			res: &pbs.UpdateProjectResponse{
-				Item: &pb.Project{
+			res: &pbs.UpdateScopeResponse{
+				Item: &pb.Scope{
 					Id:          proj.GetPublicId(),
+					Scope:       &pb.ScopeInfo{Id: org.GetPublicId(), Type: scope.Org.String()},
 					Name:        &wrapperspb.StringValue{Value: "new"},
 					Description: &wrapperspb.StringValue{Value: "desc"},
 					CreatedTime: proj.GetCreateTime().GetTimestamp(),
@@ -444,19 +558,44 @@ func TestUpdate(t *testing.T) {
 			errCode: codes.OK,
 		},
 		{
-			name: "Multiple Paths in single string",
-			req: &pbs.UpdateProjectRequest{
+			name:    "Update an Existing Org",
+			scopeId: scope.Global.String(),
+			req: &pbs.UpdateScopeRequest{
+				UpdateMask: &field_mask.FieldMask{
+					Paths: []string{"name", "description"},
+				},
+				Item: &pb.Scope{
+					Name:        &wrapperspb.StringValue{Value: "new"},
+					Description: &wrapperspb.StringValue{Value: "desc"},
+				},
+			},
+			res: &pbs.UpdateScopeResponse{
+				Item: &pb.Scope{
+					Id:          org.GetPublicId(),
+					Scope:       &pb.ScopeInfo{Id: scope.Global.String(), Type: scope.Global.String()},
+					Name:        &wrapperspb.StringValue{Value: "new"},
+					Description: &wrapperspb.StringValue{Value: "desc"},
+					CreatedTime: org.GetCreateTime().GetTimestamp(),
+				},
+			},
+			errCode: codes.OK,
+		},
+		{
+			name:    "Multiple Paths in single string",
+			scopeId: org.GetPublicId(),
+			req: &pbs.UpdateScopeRequest{
 				UpdateMask: &field_mask.FieldMask{
 					Paths: []string{"name,description"},
 				},
-				Item: &pb.Project{
+				Item: &pb.Scope{
 					Name:        &wrapperspb.StringValue{Value: "new"},
 					Description: &wrapperspb.StringValue{Value: "desc"},
 				},
 			},
-			res: &pbs.UpdateProjectResponse{
-				Item: &pb.Project{
+			res: &pbs.UpdateScopeResponse{
+				Item: &pb.Scope{
 					Id:          proj.GetPublicId(),
+					Scope:       &pb.ScopeInfo{Id: org.GetPublicId(), Type: scope.Org.String()},
 					Name:        &wrapperspb.StringValue{Value: "new"},
 					Description: &wrapperspb.StringValue{Value: "desc"},
 					CreatedTime: proj.GetCreateTime().GetTimestamp(),
@@ -465,9 +604,10 @@ func TestUpdate(t *testing.T) {
 			errCode: codes.OK,
 		},
 		{
-			name: "No Update Mask",
-			req: &pbs.UpdateProjectRequest{
-				Item: &pb.Project{
+			name:    "No Update Mask",
+			scopeId: org.GetPublicId(),
+			req: &pbs.UpdateScopeRequest{
+				Item: &pb.Scope{
 					Name:        &wrapperspb.StringValue{Value: "updated name"},
 					Description: &wrapperspb.StringValue{Value: "updated desc"},
 				},
@@ -475,10 +615,11 @@ func TestUpdate(t *testing.T) {
 			errCode: codes.InvalidArgument,
 		},
 		{
-			name: "No Paths in Mask",
-			req: &pbs.UpdateProjectRequest{
+			name:    "No Paths in Mask",
+			scopeId: org.GetPublicId(),
+			req: &pbs.UpdateScopeRequest{
 				UpdateMask: &field_mask.FieldMask{Paths: []string{}},
-				Item: &pb.Project{
+				Item: &pb.Scope{
 					Name:        &wrapperspb.StringValue{Value: "updated name"},
 					Description: &wrapperspb.StringValue{Value: "updated desc"},
 				},
@@ -486,10 +627,11 @@ func TestUpdate(t *testing.T) {
 			errCode: codes.InvalidArgument,
 		},
 		{
-			name: "Only non-existant paths in Mask",
-			req: &pbs.UpdateProjectRequest{
+			name:    "Only non-existant paths in Mask",
+			scopeId: org.GetPublicId(),
+			req: &pbs.UpdateScopeRequest{
 				UpdateMask: &field_mask.FieldMask{Paths: []string{"nonexistant_field"}},
-				Item: &pb.Project{
+				Item: &pb.Scope{
 					Name:        &wrapperspb.StringValue{Value: "updated name"},
 					Description: &wrapperspb.StringValue{Value: "updated desc"},
 				},
@@ -497,79 +639,87 @@ func TestUpdate(t *testing.T) {
 			errCode: codes.InvalidArgument,
 		},
 		{
-			name: "Unset Name",
-			req: &pbs.UpdateProjectRequest{
+			name:    "Unset Name",
+			scopeId: org.GetPublicId(),
+			req: &pbs.UpdateScopeRequest{
 				UpdateMask: &field_mask.FieldMask{
 					Paths: []string{"name"},
 				},
-				Item: &pb.Project{
+				Item: &pb.Scope{
 					Description: &wrapperspb.StringValue{Value: "ignored"},
 				},
 			},
-			res: &pbs.UpdateProjectResponse{
-				Item: &pb.Project{
+			res: &pbs.UpdateScopeResponse{
+				Item: &pb.Scope{
 					Id:          proj.GetPublicId(),
-					Description: &wrapperspb.StringValue{Value: "default"},
+					Scope:       &pb.ScopeInfo{Id: org.GetPublicId(), Type: scope.Org.String()},
+					Description: &wrapperspb.StringValue{Value: "defaultProj"},
 					CreatedTime: proj.GetCreateTime().GetTimestamp(),
 				},
 			},
 			errCode: codes.OK,
 		},
 		{
-			name: "Unset Description",
-			req: &pbs.UpdateProjectRequest{
+			name:    "Unset Description",
+			scopeId: org.GetPublicId(),
+			req: &pbs.UpdateScopeRequest{
 				UpdateMask: &field_mask.FieldMask{
 					Paths: []string{"description"},
 				},
-				Item: &pb.Project{
+				Item: &pb.Scope{
 					Name: &wrappers.StringValue{Value: "ignored"},
 				},
 			},
-			res: &pbs.UpdateProjectResponse{
-				Item: &pb.Project{
+			res: &pbs.UpdateScopeResponse{
+				Item: &pb.Scope{
 					Id:          proj.GetPublicId(),
-					Name:        &wrappers.StringValue{Value: "default"},
+					Scope:       &pb.ScopeInfo{Id: org.GetPublicId(), Type: scope.Org.String()},
+					Name:        &wrappers.StringValue{Value: "defaultProj"},
 					CreatedTime: proj.GetCreateTime().GetTimestamp(),
 				},
 			},
 			errCode: codes.OK,
 		},
 		{
-			name: "Update Only Name",
-			req: &pbs.UpdateProjectRequest{
+			name:    "Update Only Name",
+			scopeId: org.GetPublicId(),
+			req: &pbs.UpdateScopeRequest{
 				UpdateMask: &field_mask.FieldMask{
 					Paths: []string{"name"},
 				},
-				Item: &pb.Project{
+				Item: &pb.Scope{
 					Name:        &wrapperspb.StringValue{Value: "updated"},
 					Description: &wrapperspb.StringValue{Value: "ignored"},
 				},
 			},
-			res: &pbs.UpdateProjectResponse{
-				Item: &pb.Project{
+			res: &pbs.UpdateScopeResponse{
+				Item: &pb.Scope{
 					Id:          proj.GetPublicId(),
+					Scope:       &pb.ScopeInfo{Id: org.GetPublicId(), Type: scope.Org.String()},
 					Name:        &wrapperspb.StringValue{Value: "updated"},
-					Description: &wrapperspb.StringValue{Value: "default"},
+					Description: &wrapperspb.StringValue{Value: "defaultProj"},
 					CreatedTime: proj.GetCreateTime().GetTimestamp(),
 				},
 			},
 			errCode: codes.OK,
 		},
 		{
-			name: "Update Only Description",
-			req: &pbs.UpdateProjectRequest{
+			name:    "Update Only Description",
+			scopeId: org.GetPublicId(),
+			req: &pbs.UpdateScopeRequest{
 				UpdateMask: &field_mask.FieldMask{
 					Paths: []string{"description"},
 				},
-				Item: &pb.Project{
+				Item: &pb.Scope{
 					Name:        &wrapperspb.StringValue{Value: "ignored"},
 					Description: &wrapperspb.StringValue{Value: "notignored"},
 				},
 			},
-			res: &pbs.UpdateProjectResponse{
-				Item: &pb.Project{
+			res: &pbs.UpdateScopeResponse{
+				Item: &pb.Scope{
 					Id:          proj.GetPublicId(),
-					Name:        &wrapperspb.StringValue{Value: "default"},
+					Scope:       &pb.ScopeInfo{Id: org.GetPublicId(), Type: scope.Org.String()},
+					Name:        &wrapperspb.StringValue{Value: "defaultProj"},
 					Description: &wrapperspb.StringValue{Value: "notignored"},
 					CreatedTime: proj.GetCreateTime().GetTimestamp(),
 				},
@@ -579,13 +729,14 @@ func TestUpdate(t *testing.T) {
 		// TODO: Updating a non existant project should result in a NotFound exception but currently results in
 		// the repoFn returning an internal error.
 		{
-			name: "Update a Non Existing Project",
-			req: &pbs.UpdateProjectRequest{
+			name:    "Update a Non Existing Project",
+			scopeId: org.GetPublicId(),
+			req: &pbs.UpdateScopeRequest{
 				Id: "p_DoesntExis",
 				UpdateMask: &field_mask.FieldMask{
 					Paths: []string{"description"},
 				},
-				Item: &pb.Project{
+				Item: &pb.Scope{
 					Name:        &wrapperspb.StringValue{Value: "new"},
 					Description: &wrapperspb.StringValue{Value: "desc"},
 				},
@@ -593,14 +744,16 @@ func TestUpdate(t *testing.T) {
 			errCode: codes.Internal,
 		},
 		{
-			name: "Cant change Id",
-			req: &pbs.UpdateProjectRequest{
+			name:    "Cant change Id",
+			scopeId: org.GetPublicId(),
+			req: &pbs.UpdateScopeRequest{
 				Id: proj.GetPublicId(),
 				UpdateMask: &field_mask.FieldMask{
 					Paths: []string{"id"},
 				},
-				Item: &pb.Project{
+				Item: &pb.Scope{
 					Id:          "p_somethinge",
+					Scope:       &pb.ScopeInfo{Id: org.GetPublicId(), Type: scope.Org.String()},
 					Name:        &wrapperspb.StringValue{Value: "new"},
 					Description: &wrapperspb.StringValue{Value: "new desc"},
 				}},
@@ -608,12 +761,13 @@ func TestUpdate(t *testing.T) {
 			errCode: codes.InvalidArgument,
 		},
 		{
-			name: "Cant specify Created Time",
-			req: &pbs.UpdateProjectRequest{
+			name:    "Cant specify Created Time",
+			scopeId: org.GetPublicId(),
+			req: &pbs.UpdateScopeRequest{
 				UpdateMask: &field_mask.FieldMask{
 					Paths: []string{"created_time"},
 				},
-				Item: &pb.Project{
+				Item: &pb.Scope{
 					CreatedTime: ptypes.TimestampNow(),
 				},
 			},
@@ -621,12 +775,13 @@ func TestUpdate(t *testing.T) {
 			errCode: codes.InvalidArgument,
 		},
 		{
-			name: "Cant specify Updated Time",
-			req: &pbs.UpdateProjectRequest{
+			name:    "Cant specify Updated Time",
+			scopeId: org.GetPublicId(),
+			req: &pbs.UpdateScopeRequest{
 				UpdateMask: &field_mask.FieldMask{
 					Paths: []string{"updated_time"},
 				},
-				Item: &pb.Project{
+				Item: &pb.Scope{
 					UpdatedTime: ptypes.TimestampNow(),
 				},
 			},
@@ -637,15 +792,22 @@ func TestUpdate(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			defer resetProject()
+			defer resetOrg()
 			assert := assert.New(t)
-			req := proto.Clone(toMerge).(*pbs.UpdateProjectRequest)
+			var req *pbs.UpdateScopeRequest
+			switch tc.scopeId {
+			case scope.Global.String():
+				req = proto.Clone(orgToMerge).(*pbs.UpdateScopeRequest)
+			default:
+				req = proto.Clone(projToMerge).(*pbs.UpdateScopeRequest)
+			}
 			proto.Merge(req, tc.req)
 
-			got, gErr := tested.UpdateProject(context.Background(), req)
-			assert.Equal(tc.errCode, status.Code(gErr), "UpdateProject(%+v) got error %v, wanted %v", req, gErr, tc.errCode)
+			got, gErr := tested.UpdateScope(auth.DisabledAuthTestContext(auth.WithTestScopeId(tc.scopeId)), req)
+			assert.Equal(tc.errCode, status.Code(gErr), "UpdateScope(%+v) got error\n%v, wanted\n%v", req, gErr, tc.errCode)
 
 			if got != nil {
-				assert.NotNilf(tc.res, "Expected UpdateProject response to be nil, but was %v", got)
+				assert.NotNilf(tc.res, "Expected UpdateScope response to be nil, but was %v", got)
 				gotUpdateTime, err := ptypes.Timestamp(got.GetItem().GetUpdatedTime())
 				require.NoError(err, "Error converting proto to timestamp")
 				// Verify it is a project updated after it was created
@@ -654,8 +816,7 @@ func TestUpdate(t *testing.T) {
 				// Clear all values which are hard to compare against.
 				got.Item.UpdatedTime, tc.res.Item.UpdatedTime = nil, nil
 			}
-			assert.True(proto.Equal(got, tc.res), "UpdateProject(%q) got response %q, wanted %q", req, got, tc.res)
+			assert.True(proto.Equal(got, tc.res), "UpdateScope(%q) got response\n%q, wanted\n%q", req, got, tc.res)
 		})
 	}
 }
-*/

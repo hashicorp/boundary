@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"regexp"
+	"sort"
 	"strings"
 
 	"github.com/hashicorp/watchtower/internal/auth"
@@ -143,7 +144,7 @@ func (s Service) getFromRepo(ctx context.Context, id string) (*pb.Scope, error) 
 	if p == nil {
 		return nil, handlers.NotFoundErrorf("Scope %q doesn't exist.", id)
 	}
-	return toProto(p), nil
+	return ToProto(p), nil
 }
 
 func (s Service) createInRepo(ctx context.Context, parentScope *scopes.ScopeInfo, item *pb.Scope) (*pb.Scope, error) {
@@ -177,7 +178,7 @@ func (s Service) createInRepo(ctx context.Context, parentScope *scopes.ScopeInfo
 	if out == nil {
 		return nil, status.Error(codes.Internal, "Unable to create scope but no error returned from repository.")
 	}
-	return toProto(out), nil
+	return ToProto(out), nil
 }
 
 func (s Service) updateInRepo(ctx context.Context, parentScope *scopes.ScopeInfo, scopeId string, mask []string, item *pb.Scope) (*pb.Scope, error) {
@@ -218,7 +219,7 @@ func (s Service) updateInRepo(ctx context.Context, parentScope *scopes.ScopeInfo
 	if rowsUpdated == 0 {
 		return nil, handlers.NotFoundErrorf("Scope %q doesn't exist.", scopeId)
 	}
-	return toProto(out), nil
+	return ToProto(out), nil
 }
 
 func (s Service) deleteFromRepo(ctx context.Context, scopeId string) (bool, error) {
@@ -231,6 +232,24 @@ func (s Service) deleteFromRepo(ctx context.Context, scopeId string) (bool, erro
 		return false, status.Errorf(codes.Internal, "Unable to delete scope: %v.", err)
 	}
 	return rows > 0, nil
+}
+
+func SortScopes(scps []*pb.Scope) []*pb.Scope {
+	if len(scps) < 2 {
+		return scps
+	}
+	scpKeys := make([]string, 0, len(scps))
+	scpKeyMap := make(map[string]*pb.Scope, len(scps))
+	for _, scp := range scps {
+		scpKeys = append(scpKeys, scp.GetId())
+		scpKeyMap[scp.GetId()] = scp
+	}
+	sort.Strings(scpKeys)
+	out := make([]*pb.Scope, 0, len(scps))
+	for _, scp := range scpKeys {
+		out = append(out, scpKeyMap[scp])
+	}
+	return out
 }
 
 func (s Service) listFromRepo(ctx context.Context, scopeId string) ([]*pb.Scope, error) {
@@ -251,11 +270,12 @@ func (s Service) listFromRepo(ctx context.Context, scopeId string) ([]*pb.Scope,
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "Unable to list scopes: %v", err)
 	}
+
 	var outPl []*pb.Scope
-	for _, p := range scps {
-		outPl = append(outPl, toProto(p))
+	for _, scp := range scps {
+		outPl = append(outPl, ToProto(scp))
 	}
-	return outPl, nil
+	return SortScopes(outPl), nil
 }
 
 // toDbUpdateMask converts the wire format's FieldMask into a list of strings containing FieldMask paths used
@@ -277,7 +297,7 @@ func toDbUpdateMask(paths []string) ([]string, error) {
 	return dbPaths, nil
 }
 
-func toProto(in *iam.Scope) *pb.Scope {
+func ToProto(in *iam.Scope) *pb.Scope {
 	out := pb.Scope{
 		Id:          in.GetPublicId(),
 		CreatedTime: in.GetCreateTime().GetTimestamp(),

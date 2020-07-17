@@ -7,6 +7,7 @@ func DisabledAuthTestContext(opt ...TestOption) context.Context {
 	reqInfo := RequestInfo{DisableAuthEntirely: true}
 	opts := getOpts(opt...)
 	reqInfo.scopeIdOverride = opts.withTestScopeId
+	reqInfo.parentScopeIdOverride = opts.withTestParentScopeId
 	return NewVerifierContext(context.Background(), nil, nil, nil, reqInfo)
 }
 
@@ -23,17 +24,25 @@ type TestOption func(*options)
 
 // options = how options are represented
 type options struct {
-	withTestScopeId string
+	withTestScopeId       string
+	withTestParentScopeId string
 }
 
 func getDefaultOptions() options {
 	return options{
-		withTestScopeId: "",
+		withTestScopeId:       "",
+		withTestParentScopeId: "",
 	}
 }
 
 func WithTestScopeId(id string) TestOption {
 	return func(o *options) {
 		o.withTestScopeId = id
+	}
+}
+
+func withTestParentScopeId(id string) TestOption {
+	return func(o *options) {
+		o.withTestParentScopeId = id
 	}
 }

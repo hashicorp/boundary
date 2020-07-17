@@ -44,9 +44,10 @@ type RequestInfo struct {
 	TokenFormat TokenFormat
 
 	// The following are useful for tests
-	DisableAuthzFailures bool
-	DisableAuthEntirely  bool
-	scopeIdOverride      string
+	DisableAuthzFailures  bool
+	DisableAuthEntirely   bool
+	scopeIdOverride       string
+	parentScopeIdOverride string
 }
 
 type VerifyResults struct {
@@ -105,6 +106,7 @@ func Verify(ctx context.Context) (ret VerifyResults) {
 		case strings.HasPrefix(ret.Scope.Id, scope.Project.Prefix()):
 			ret.Scope.Type = scope.Project.String()
 		}
+		ret.Scope.ParentScopeId = v.requestInfo.parentScopeIdOverride
 		ret.Valid = true
 		return
 	}
