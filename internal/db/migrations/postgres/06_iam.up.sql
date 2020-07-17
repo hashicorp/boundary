@@ -430,9 +430,10 @@ before
 delete on iam_role
   for each row execute procedure disallow_default_role_deletion();
 
--- define the immutable fields for iam_role
+-- define the immutable fields for iam_role (started trigger name with "a_" so
+-- it will run first)
 create trigger 
-  immutable_columns
+  a_immutable_columns
 before
 update on iam_role
   for each row execute procedure immutable_columns('public_id', 'create_time', 'scope_id');
