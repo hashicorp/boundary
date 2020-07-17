@@ -228,26 +228,17 @@ func (c *Config) setAddr(addr string) error {
 	}
 	c.Addr = fmt.Sprintf("%s://%s", u.Scheme, u.Host)
 
-	path := strings.TrimPrefix(u.Path, "/v1")
-	path = strings.Trim(path, "/")
-	if path == "" {
-		return nil
+	// If there is a scopes segment, elide everything after it
+	if strings.Count(u.Path, "scopes") == 1 {
+		u.Path = strings.Split(u.Path, "scopes")[0]
 	}
+	path := strings.Trim(u.Path, "/")
+	path = strings.TrimPrefix(u.Path, "v1")
+	path = strings.TrimSuffix(u.Path, "v1")
+	path = strings.Trim(u.Path, "/")
 
-	split := strings.Split(path, "/")
-	switch len(split) {
-	case 0:
-	case 1, 2:
-		switch split[0] {
-		case "scopes":
-			if len(split) == 2 {
-				c.ScopeId = split[1]
-			}
-		default:
-			return fmt.Errorf("expected scopes segment first in address, found %q", split[0])
-		}
-	default:
-		return fmt.Errorf("unexpected number of segments in address")
+	if path != "" {
+		c.Addr = fmt.Sprintf("%s/%s", c.Addr, path)
 	}
 
 	return nil
