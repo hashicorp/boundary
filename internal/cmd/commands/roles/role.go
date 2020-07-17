@@ -1,13 +1,11 @@
 package roles
 
 import (
-	"context"
 	"fmt"
 
 	"github.com/hashicorp/vault/sdk/helper/strutil"
 	"github.com/hashicorp/watchtower/api"
 	"github.com/hashicorp/watchtower/api/roles"
-	"github.com/hashicorp/watchtower/api/scopes"
 	"github.com/hashicorp/watchtower/internal/cmd/base"
 	"github.com/hashicorp/watchtower/internal/perms"
 	"github.com/kr/pretty"
@@ -119,8 +117,8 @@ func (c *Command) Run(args []string) int {
 
 	role := &roles.Role{
 		Client: client,
-		Id:     c.flagId,
 	}
+
 	switch c.flagName {
 	case "":
 	case "null":
@@ -197,46 +195,15 @@ func (c *Command) Run(args []string) int {
 
 	var apiErr *api.Error
 
-	type crudl interface {
-		CreateRole(context.Context, *roles.Role) (*roles.Role, *api.Error, error)
-		UpdateRole(context.Context, *roles.Role) (*roles.Role, *api.Error, error)
-		ReadRole(context.Context, *roles.Role) (*roles.Role, *api.Error, error)
-		DeleteRole(context.Context, *roles.Role) (bool, *api.Error, error)
-		ListRoles(context.Context) ([]*roles.Role, *api.Error, error)
-	}
-	var actor crudl
 	var existed bool
 	var listedRoles []*roles.Role
-
-	switch {
-	case client.Project() != "":
-		project := &scopes.Project{
-			Client: client,
-		}
-		actor = project
-
-	case client.Org() != "":
-		org := &scopes.Org{
-			Client: client,
-		}
-		actor = org
-
-	default:
-		// TODO: Handle global case
-		c.UI.Error("TODO")
-	}
-
-	if actor == nil {
-		c.UI.Error("Unable to determine the right scope for the command")
-		return 1
-	}
 
 	// Perform check-and-set when needed
 	switch c.Func {
 	case "create", "read", "delete", "list":
 		// These don't udpate so don't need the existing version
 	default:
-		existingRole, existingApiErr, existingErr := actor.ReadRole(c.Context, role)
+		existingRole, existingApiErr, existingErr := role.ReadRole(c.Context, c.flagId)
 		if existingErr != nil {
 			c.UI.Error(fmt.Sprintf("Error performing initial check-and-set read: %s", err.Error()))
 			return 2
@@ -250,15 +217,15 @@ func (c *Command) Run(args []string) int {
 
 	switch c.Func {
 	case "create":
-		role, apiErr, err = actor.CreateRole(c.Context, role)
+		role, apiErr, err = role.CreateRole(c.Context, role)
 	case "update":
-		role, apiErr, err = actor.UpdateRole(c.Context, role)
+		role, apiErr, err = role.UpdateRole(c.Context, role)
 	case "read":
-		role, apiErr, err = actor.ReadRole(c.Context, role)
+		role, apiErr, err = role.ReadRole(c.Context, c.flagId)
 	case "delete":
-		existed, apiErr, err = actor.DeleteRole(c.Context, role)
+		existed, apiErr, err = role.DeleteRole(c.Context, c.flagId)
 	case "list":
-		listedRoles, apiErr, err = actor.ListRoles(c.Context)
+		listedRoles, apiErr, err = role.ListRoles(c.Context)
 	case "add-principals":
 		role, apiErr, err = role.AddPrincipals(c.Context, principals)
 	case "set-principals":
