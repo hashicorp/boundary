@@ -507,7 +507,6 @@ drop function iam_group_member_scope_check cascade;
 drop function iam_immutable_group_member cascade;
 drop function get_scoped_member_id cascade;
 drop function grant_scope_id_valid cascade;
-drop function immutable_scope_id_func cascade;
 drop function disallow_global_scope_deletion cascade;
 drop function user_scope_id_valid cascade;
 drop function iam_immutable_role_grant cascade;
@@ -539,24 +538,6 @@ create trigger
 before
 update on iam_scope_type_enm
   for each row execute procedure immutable_columns('string');
-
--- TODO (jimlambrt 7/2020) - deprecate/delete in favor of immutable_columns_func
-create or replace function
-  iam_immutable_scope_id_func()
-  returns trigger
-as $$
-begin
-  if new.scope_id is distinct from old.scope_id then
-    raise exception 'scope_id cannot be set to %', new.scope_id;
-  end if;
-  return new;
-end;
-$$ language plpgsql;
-
-comment on function
-  iam_immutable_scope_id_func()
-is
-  'function used in before update triggers to make scope_id column is immutable';
 
 create table iam_scope (
     public_id wt_scope_id primary key,
@@ -970,9 +951,10 @@ before
 delete on iam_role
   for each row execute procedure disallow_default_role_deletion();
 
--- define the immutable fields for iam_role
+-- define the immutable fields for iam_role (started trigger name with "a_" so
+-- it will run first)
 create trigger 
-  immutable_columns
+  a_immutable_columns
 before
 update on iam_role
   for each row execute procedure immutable_columns('public_id', 'create_time', 'scope_id');
@@ -1009,12 +991,6 @@ create trigger
   update_time_column 
 before update on iam_group
   for each row execute procedure update_time_column();
-
-create trigger 
-  immutable_create_time
-before
-update on iam_group
-  for each row execute procedure immutable_create_time_func();
   
 create trigger 
   default_create_time_column
@@ -1022,10 +998,12 @@ before
 insert on iam_group
   for each row execute procedure default_create_time();
 
-create trigger immutable_scope_id_group
+-- define the immutable fields for iam_group
+create trigger 
+  immutable_columns
 before
 update on iam_group
-  for each row execute procedure iam_immutable_scope_id_func();
+  for each row execute procedure immutable_columns('public_id', 'create_time', 'scope_id');
 
 -- iam_user_role contains roles that have been assigned to users. Users can be
 -- from any scope. The rows in this table must be immutable after insert, which
