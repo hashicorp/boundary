@@ -7,18 +7,16 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/hashicorp/watchtower/internal/auth"
 	"github.com/hashicorp/watchtower/internal/db"
 	pb "github.com/hashicorp/watchtower/internal/gen/controller/api/resources/users"
 	pbs "github.com/hashicorp/watchtower/internal/gen/controller/api/services"
 	"github.com/hashicorp/watchtower/internal/iam"
 	"github.com/hashicorp/watchtower/internal/servers/controller/handlers"
-	"github.com/hashicorp/watchtower/internal/types/scope"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 )
-
-const orgIdFieldName = "org_id"
 
 var (
 	reInvalidID = regexp.MustCompile("[^A-Za-z0-9]")
@@ -46,20 +44,29 @@ var _ pbs.UserServiceServer = Service{}
 
 // ListUsers implements the interface pbs.UserServiceServer.
 func (s Service) ListUsers(ctx context.Context, req *pbs.ListUsersRequest) (*pbs.ListUsersResponse, error) {
+	authResults := auth.Verify(ctx)
+	if !authResults.Valid {
+		return nil, handlers.ForbiddenError()
+	}
 	if err := validateListRequest(req); err != nil {
 		return nil, err
 	}
-	ul, err := s.listFromRepo(ctx, req.GetScopeId())
+	ul, err := s.listFromRepo(ctx, authResults.Scope.GetId())
 	if err != nil {
 		return nil, err
+	}
+	for _, item := range ul {
+		item.Scope = &authResults.Scope
 	}
 	return &pbs.ListUsersResponse{Items: ul}, nil
 }
 
 // GetUsers implements the interface pbs.UserServiceServer.
 func (s Service) GetUser(ctx context.Context, req *pbs.GetUserRequest) (*pbs.GetUserResponse, error) {
-	auth := handlers.ToTokenMetadata(ctx)
-	_ = auth
+	authResults := auth.Verify(ctx)
+	if !authResults.Valid {
+		return nil, handlers.ForbiddenError()
+	}
 	if err := validateGetRequest(req); err != nil {
 		return nil, err
 	}
@@ -67,41 +74,50 @@ func (s Service) GetUser(ctx context.Context, req *pbs.GetUserRequest) (*pbs.Get
 	if err != nil {
 		return nil, err
 	}
+	u.Scope = &authResults.Scope
 	return &pbs.GetUserResponse{Item: u}, nil
 }
 
 // CreateUser implements the interface pbs.UserServiceServer.
 func (s Service) CreateUser(ctx context.Context, req *pbs.CreateUserRequest) (*pbs.CreateUserResponse, error) {
-	auth := handlers.ToTokenMetadata(ctx)
-	_ = auth
+	authResults := auth.Verify(ctx)
+	if !authResults.Valid {
+		return nil, handlers.ForbiddenError()
+	}
 	if err := validateCreateRequest(req); err != nil {
 		return nil, err
 	}
-	u, err := s.createInRepo(ctx, req.GetScopeId(), req.GetItem())
+	u, err := s.createInRepo(ctx, authResults.Scope.GetId(), req.GetItem())
 	if err != nil {
 		return nil, err
 	}
-	return &pbs.CreateUserResponse{Item: u, Uri: fmt.Sprintf("scopes/%s/users/%s", req.GetScopeId(), u.GetId())}, nil
+	u.Scope = &authResults.Scope
+	return &pbs.CreateUserResponse{Item: u, Uri: fmt.Sprintf("scopes/%s/users/%s", authResults.Scope.GetId(), u.GetId())}, nil
 }
 
 // UpdateUser implements the interface pbs.UserServiceServer.
 func (s Service) UpdateUser(ctx context.Context, req *pbs.UpdateUserRequest) (*pbs.UpdateUserResponse, error) {
-	auth := handlers.ToTokenMetadata(ctx)
-	_ = auth
+	authResults := auth.Verify(ctx)
+	if !authResults.Valid {
+		return nil, handlers.ForbiddenError()
+	}
 	if err := validateUpdateRequest(req); err != nil {
 		return nil, err
 	}
-	u, err := s.updateInRepo(ctx, req.GetScopeId(), req.GetId(), req.GetUpdateMask().GetPaths(), req.GetItem())
+	u, err := s.updateInRepo(ctx, authResults.Scope.GetId(), req.GetId(), req.GetUpdateMask().GetPaths(), req.GetItem())
 	if err != nil {
 		return nil, err
 	}
+	u.Scope = &authResults.Scope
 	return &pbs.UpdateUserResponse{Item: u}, nil
 }
 
 // DeleteUser implements the interface pbs.UserServiceServer.
 func (s Service) DeleteUser(ctx context.Context, req *pbs.DeleteUserRequest) (*pbs.DeleteUserResponse, error) {
-	auth := handlers.ToTokenMetadata(ctx)
-	_ = auth
+	authResults := auth.Verify(ctx)
+	if !authResults.Valid {
+		return nil, handlers.ForbiddenError()
+	}
 	if err := validateDeleteRequest(req); err != nil {
 		return nil, err
 	}
@@ -261,7 +277,7 @@ func toProto(in *iam.User) *pb.User {
 //  * All required parameters are set
 //  * There are no conflicting parameters provided
 func validateGetRequest(req *pbs.GetUserRequest) error {
-	badFields := validateAncestors(req)
+	badFields := map[string]string{}
 	if !validId(req.GetId(), iam.UserPrefix+"_") {
 		badFields["id"] = "Invalid formatted user id."
 	}
@@ -272,7 +288,7 @@ func validateGetRequest(req *pbs.GetUserRequest) error {
 }
 
 func validateCreateRequest(req *pbs.CreateUserRequest) error {
-	badFields := validateAncestors(req)
+	badFields := map[string]string{}
 	item := req.GetItem()
 	if item.GetId() != "" {
 		badFields["id"] = "This is a read only field."
@@ -290,7 +306,7 @@ func validateCreateRequest(req *pbs.CreateUserRequest) error {
 }
 
 func validateUpdateRequest(req *pbs.UpdateUserRequest) error {
-	badFields := validateAncestors(req)
+	badFields := map[string]string{}
 	if !validId(req.GetId(), iam.UserPrefix+"_") {
 		badFields["user_id"] = "Improperly formatted path identifier."
 	}
@@ -321,7 +337,7 @@ func validateUpdateRequest(req *pbs.UpdateUserRequest) error {
 }
 
 func validateDeleteRequest(req *pbs.DeleteUserRequest) error {
-	badFields := validateAncestors(req)
+	badFields := map[string]string{}
 	if !validId(req.GetId(), iam.UserPrefix+"_") {
 		badFields["id"] = "Incorrectly formatted identifier."
 	}
@@ -332,7 +348,7 @@ func validateDeleteRequest(req *pbs.DeleteUserRequest) error {
 }
 
 func validateListRequest(req *pbs.ListUsersRequest) error {
-	badFields := validateAncestors(req)
+	badFields := map[string]string{}
 	if len(badFields) > 0 {
 		return handlers.InvalidArgumentErrorf("Improperly formatted identifier.", badFields)
 	}
@@ -345,19 +361,4 @@ func validId(id, prefix string) bool {
 	}
 	id = strings.TrimPrefix(id, prefix)
 	return !reInvalidID.Match([]byte(id))
-}
-
-type ancestorProvider interface {
-	GetScopeId() string
-}
-
-// validateAncestors verifies that the ancestors of this call are properly set and provided.
-func validateAncestors(r ancestorProvider) map[string]string {
-	if r.GetScopeId() == "" {
-		return map[string]string{orgIdFieldName: "Missing org id."}
-	}
-	if !validId(r.GetScopeId(), scope.Org.Prefix()+"_") {
-		return map[string]string{orgIdFieldName: "Improperly formatted identifier."}
-	}
-	return map[string]string{}
 }

@@ -17,7 +17,7 @@ service UserService {
   // resource an error is returned.
   rpc GetUser(GetUserRequest) returns (GetUserResponse) {
     option (google.api.http) = {
-      get: "/v1/scopes/{scope_id}/users/{id}"
+      get: "/v1/scopes/*/users/{id}"
       response_body: "item"
     };
   }
@@ -28,7 +28,7 @@ service UserService {
   // reference a non existing scope, an error is returned.
   rpc ListUsers(ListUsersRequest) returns (ListUsersResponse) {
     option (google.api.http) = {
-      get: "/v1/scopes/{scope_id}/users"
+      get: "/v1/scopes/*/users"
     };
     option (grpc.gateway.protoc_gen_swagger.options.openapiv2_operation) = {
       summary: "Lists all Users"
@@ -42,7 +42,7 @@ service UserService {
   // use in another user in the same org, an error is returned.
   rpc CreateUser(CreateUserRequest) returns (CreateUserResponse) {
     option (google.api.http) = {
-      post: "/v1/scopes/{scope_id}/users"
+      post: "/v1/scopes/*/users"
       body: "item"
       response_body: "item"
     };
@@ -61,7 +61,7 @@ service UserService {
   // already in use in this org.
   rpc UpdateUser(UpdateUserRequest) returns (UpdateUserResponse) {
     option (google.api.http) = {
-      patch: "/v1/scopes/{scope_id}/users/{id}"
+      patch: "/v1/scopes/*/users/{id}"
       body: "item"
       response_body: "item"
     };
@@ -77,7 +77,7 @@ service UserService {
   // received.
   rpc DeleteUser(DeleteUserRequest) returns (DeleteUserResponse) {
     option (google.api.http) = {
-      delete: "/v1/scopes/{scope_id}/users/{id}"
+      delete: "/v1/scopes/*/users/{id}"
     };
     option (grpc.gateway.protoc_gen_swagger.options.openapiv2_operation) = {
       summary: "Deletes a User"
@@ -86,9 +86,8 @@ service UserService {
 }
 
 message GetUserRequest {
-  string scope_id = 1;
-  string id = 2;
-  string view = 3;
+  string id = 1;
+  string view = 2;
 }
 
 message GetUserResponse {
@@ -96,8 +95,7 @@ message GetUserResponse {
 }
 
 message ListUsersRequest {
-  string scope_id = 1;
-  string view = 2;
+  string view = 1;
 }
 
 message ListUsersResponse {
@@ -105,8 +103,7 @@ message ListUsersResponse {
 }
 
 message CreateUserRequest {
-  string scope_id = 1;
-  resources.users.v1.User item = 2;
+  resources.users.v1.User item = 1;
 }
 
 message CreateUserResponse {
@@ -115,10 +112,9 @@ message CreateUserResponse {
 }
 
 message UpdateUserRequest {
-  string scope_id = 1;
-  string id = 2;
-  resources.users.v1.User item = 3;
-  google.protobuf.FieldMask update_mask = 4;
+  string id = 1;
+  resources.users.v1.User item = 2;
+  google.protobuf.FieldMask update_mask = 3;
 }
 
 message UpdateUserResponse {
@@ -126,8 +122,7 @@ message UpdateUserResponse {
 }
 
 message DeleteUserRequest {
-  string scope_id = 1;
-  string id = 2;
+  string id = 1;
 }
 
 message DeleteUserResponse {

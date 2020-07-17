@@ -733,6 +733,140 @@
         ]
       }
     },
+    "/v1/scopes/*/users": {
+      "get": {
+        "summary": "Lists all Users",
+        "operationId": "UserService_ListUsers",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.services.v1.ListUsersResponse"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "view",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "controller.api.services.v1.UserService"
+        ]
+      },
+      "post": {
+        "summary": "Creates a single User",
+        "operationId": "UserService_CreateUser",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/controller.api.resources.users.v1.User"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/controller.api.resources.users.v1.User"
+            }
+          }
+        ],
+        "tags": [
+          "controller.api.services.v1.UserService"
+        ]
+      }
+    },
+    "/v1/scopes/*/users/{id}": {
+      "get": {
+        "operationId": "UserService_GetUser",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/controller.api.resources.users.v1.User"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "view",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "controller.api.services.v1.UserService"
+        ]
+      },
+      "delete": {
+        "summary": "Deletes a User",
+        "operationId": "UserService_DeleteUser",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.services.v1.DeleteUserResponse"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "controller.api.services.v1.UserService"
+        ]
+      },
+      "patch": {
+        "summary": "Updates a User",
+        "operationId": "UserService_UpdateUser",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/controller.api.resources.users.v1.User"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/controller.api.resources.users.v1.User"
+            }
+          }
+        ],
+        "tags": [
+          "controller.api.services.v1.UserService"
+        ]
+      }
+    },
     "/v1/scopes/{id}": {
       "get": {
         "summary": "Gets a single Scope",
@@ -1254,170 +1388,6 @@
         ],
         "tags": [
           "controller.api.services.v1.RoleService"
-        ]
-      }
-    },
-    "/v1/scopes/{scope_id}/users": {
-      "get": {
-        "summary": "Lists all Users",
-        "operationId": "UserService_ListUsers",
-        "responses": {
-          "200": {
-            "description": "A successful response.",
-            "schema": {
-              "$ref": "#/definitions/controller.api.services.v1.ListUsersResponse"
-            }
-          }
-        },
-        "parameters": [
-          {
-            "name": "scope_id",
-            "in": "path",
-            "required": true,
-            "type": "string"
-          },
-          {
-            "name": "view",
-            "in": "query",
-            "required": false,
-            "type": "string"
-          }
-        ],
-        "tags": [
-          "controller.api.services.v1.UserService"
-        ]
-      },
-      "post": {
-        "summary": "Creates a single User",
-        "operationId": "UserService_CreateUser",
-        "responses": {
-          "200": {
-            "description": "",
-            "schema": {
-              "$ref": "#/definitions/controller.api.resources.users.v1.User"
-            }
-          }
-        },
-        "parameters": [
-          {
-            "name": "scope_id",
-            "in": "path",
-            "required": true,
-            "type": "string"
-          },
-          {
-            "name": "body",
-            "in": "body",
-            "required": true,
-            "schema": {
-              "$ref": "#/definitions/controller.api.resources.users.v1.User"
-            }
-          }
-        ],
-        "tags": [
-          "controller.api.services.v1.UserService"
-        ]
-      }
-    },
-    "/v1/scopes/{scope_id}/users/{id}": {
-      "get": {
-        "operationId": "UserService_GetUser",
-        "responses": {
-          "200": {
-            "description": "",
-            "schema": {
-              "$ref": "#/definitions/controller.api.resources.users.v1.User"
-            }
-          }
-        },
-        "parameters": [
-          {
-            "name": "scope_id",
-            "in": "path",
-            "required": true,
-            "type": "string"
-          },
-          {
-            "name": "id",
-            "in": "path",
-            "required": true,
-            "type": "string"
-          },
-          {
-            "name": "view",
-            "in": "query",
-            "required": false,
-            "type": "string"
-          }
-        ],
-        "tags": [
-          "controller.api.services.v1.UserService"
-        ]
-      },
-      "delete": {
-        "summary": "Deletes a User",
-        "operationId": "UserService_DeleteUser",
-        "responses": {
-          "200": {
-            "description": "A successful response.",
-            "schema": {
-              "$ref": "#/definitions/controller.api.services.v1.DeleteUserResponse"
-            }
-          }
-        },
-        "parameters": [
-          {
-            "name": "scope_id",
-            "in": "path",
-            "required": true,
-            "type": "string"
-          },
-          {
-            "name": "id",
-            "in": "path",
-            "required": true,
-            "type": "string"
-          }
-        ],
-        "tags": [
-          "controller.api.services.v1.UserService"
-        ]
-      },
-      "patch": {
-        "summary": "Updates a User",
-        "operationId": "UserService_UpdateUser",
-        "responses": {
-          "200": {
-            "description": "",
-            "schema": {
-              "$ref": "#/definitions/controller.api.resources.users.v1.User"
-            }
-          }
-        },
-        "parameters": [
-          {
-            "name": "scope_id",
-            "in": "path",
-            "required": true,
-            "type": "string"
-          },
-          {
-            "name": "id",
-            "in": "path",
-            "required": true,
-            "type": "string"
-          },
-          {
-            "name": "body",
-            "in": "body",
-            "required": true,
-            "schema": {
-              "$ref": "#/definitions/controller.api.resources.users.v1.User"
-            }
-          }
-        ],
-        "tags": [
-          "controller.api.services.v1.UserService"
         ]
       }
     }
