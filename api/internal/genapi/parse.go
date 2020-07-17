@@ -78,7 +78,7 @@ func parsePBs() {
 					}
 
 					// Add default fields if a base resource
-					if inputStruct.templateType == templateTypeResource {
+					if inputStruct.templateType == templateTypeResource && !inputStruct.outputOnly {
 						st.Fields.List = append([]*ast.Field{{
 							Names: []*ast.Ident{
 								{

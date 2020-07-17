@@ -2,19 +2,11 @@
 package roles
 
 import (
-	"encoding/json"
-	"strings"
-
-	"github.com/fatih/structs"
-
 	"github.com/hashicorp/watchtower/api"
-	"github.com/hashicorp/watchtower/api/internal/strutil"
 )
 
 type Principal struct {
 	Client *api.Client `json:"-"`
-
-	defaultFields []string
 
 	// The ID of the principal.
 	// Output only.
@@ -25,37 +17,4 @@ type Principal struct {
 	// The scope ID of the principal.
 	// Output only.
 	ScopeId string `json:"scope_id,omitempty"`
-}
-
-func (s *Principal) SetDefault(key string) {
-	lowerKey := strings.ToLower(key)
-	validMap := map[string]string{"id": "id", "scopeid": "scope_id", "type": "type"}
-	for k, v := range validMap {
-		if k == lowerKey || v == lowerKey {
-			s.defaultFields = strutil.AppendIfMissing(s.defaultFields, v)
-			return
-		}
-	}
-}
-
-func (s *Principal) UnsetDefault(key string) {
-	lowerKey := strings.ToLower(key)
-	validMap := map[string]string{"id": "id", "scopeid": "scope_id", "type": "type"}
-	for k, v := range validMap {
-		if k == lowerKey || v == lowerKey {
-			s.defaultFields = strutil.StrListDelete(s.defaultFields, v)
-			return
-		}
-	}
-}
-
-func (s Principal) MarshalJSON() ([]byte, error) {
-	m := structs.Map(s)
-	if m == nil {
-		m = make(map[string]interface{})
-	}
-	for _, k := range s.defaultFields {
-		m[k] = nil
-	}
-	return json.Marshal(m)
 }
