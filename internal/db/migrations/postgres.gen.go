@@ -903,8 +903,8 @@ commit;
 
 `),
 	},
-	"migrations/11_auth_password.down.sql": {
-		name: "11_auth_password.down.sql",
+	"migrations/12_auth_password.down.sql": {
+		name: "12_auth_password.down.sql",
 		bytes: []byte(`
 begin;
 
@@ -920,8 +920,8 @@ commit;
 
 `),
 	},
-	"migrations/11_auth_password.up.sql": {
-		name: "11_auth_password.up.sql",
+	"migrations/12_auth_password.up.sql": {
+		name: "12_auth_password.up.sql",
 		bytes: []byte(`
 begin;
 
@@ -1108,8 +1108,8 @@ commit;
 
 `),
 	},
-	"migrations/12_auth_password_argon.down.sql": {
-		name: "12_auth_password_argon.down.sql",
+	"migrations/13_auth_password_argon.down.sql": {
+		name: "13_auth_password_argon.down.sql",
 		bytes: []byte(`
 begin;
 
@@ -1120,8 +1120,8 @@ commit;
 
 `),
 	},
-	"migrations/12_auth_password_argon.up.sql": {
-		name: "12_auth_password_argon.up.sql",
+	"migrations/13_auth_password_argon.up.sql": {
+		name: "13_auth_password_argon.up.sql",
 		bytes: []byte(`
 begin;
 
@@ -1250,8 +1250,8 @@ commit;
 
 `),
 	},
-	"migrations/13_auth_password_views.down.sql": {
-		name: "13_auth_password_views.down.sql",
+	"migrations/14_auth_password_views.down.sql": {
+		name: "14_auth_password_views.down.sql",
 		bytes: []byte(`
 begin;
 
@@ -1262,8 +1262,8 @@ commit;
 
 `),
 	},
-	"migrations/13_auth_password_views.up.sql": {
-		name: "13_auth_password_views.up.sql",
+	"migrations/14_auth_password_views.up.sql": {
+		name: "14_auth_password_views.up.sql",
 		bytes: []byte(`
 begin;
 
