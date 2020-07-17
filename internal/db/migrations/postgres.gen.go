@@ -1109,12 +1109,6 @@ update on iam_user_role
   for each row execute procedure iam_immutable_role_principal();
 
 create trigger 
-  immutable_create_time
-before
-update on iam_user_role
-  for each row execute procedure immutable_create_time_func();
-  
-create trigger 
   default_create_time_column
 before
 insert on iam_user_role
@@ -1124,12 +1118,6 @@ create trigger immutable_role_principal
 before
 update on iam_group_role
   for each row execute procedure iam_immutable_role_principal();
-
-create trigger 
-  immutable_create_time
-before
-update on iam_group_role
-  for each row execute procedure immutable_create_time_func();
   
 create trigger 
   default_create_time_column
@@ -1161,12 +1149,6 @@ create trigger
 before
 insert on iam_group_member_user
   for each row execute procedure default_create_time();
-
-create trigger 
-  immutable_create_time
-before
-update on iam_group_member_user
-  for each row execute procedure immutable_create_time_func();
 
 create trigger iam_immutable_group_member
 before
@@ -1338,16 +1320,16 @@ begin;
     for each row execute procedure update_time_column();
 
   create trigger
-    immutable_create_time
-  before
-  update on static_host_catalog
-    for each row execute procedure immutable_create_time_func();
-
-  create trigger
     default_create_time_column
   before
   insert on static_host_catalog
     for each row execute procedure default_create_time();
+
+  create trigger 
+    immutable_columns
+  before
+  update on static_host_catalog
+    for each row execute procedure immutable_columns('public_id', 'scope_id','create_time');
 
   create table static_host (
     public_id wt_public_id primary key,
@@ -1374,17 +1356,17 @@ begin;
     for each row execute procedure update_time_column();
 
   create trigger
-    immutable_create_time
-  before
-  update on static_host
-    for each row execute procedure immutable_create_time_func();
-
-  create trigger
     default_create_time_column
   before
   insert on static_host
     for each row execute procedure default_create_time();
 
+  create trigger 
+    immutable_columns
+  before
+  update on static_host
+    for each row execute procedure immutable_columns('public_id', 'static_host_catalog_id','create_time');
+  
   create table static_host_set (
     public_id wt_public_id primary key,
     static_host_catalog_id wt_public_id not null
@@ -1404,16 +1386,17 @@ begin;
     for each row execute procedure update_time_column();
 
   create trigger
-    immutable_create_time
-  before
-  update on static_host_set
-    for each row execute procedure immutable_create_time_func();
-
-  create trigger
     default_create_time_column
   before
   insert on static_host_set
     for each row execute procedure default_create_time();
+
+
+  create trigger 
+    immutable_columns
+  before
+  update on static_host_set
+    for each row execute procedure immutable_columns('public_id', 'static_host_catalog_id','create_time');
 
   create table static_host_set_member (
     static_host_set_id wt_public_id
@@ -1427,6 +1410,12 @@ begin;
     primary key(static_host_set_id, static_host_id)
   );
 
+  create trigger 
+    immutable_columns
+  before
+  update on static_host_set_member
+    for each row execute procedure immutable_columns('static_host_set_id', 'static_host_id');
+    
   insert into oplog_ticket (name, version)
   values
     ('static_host_catalog', 1),
