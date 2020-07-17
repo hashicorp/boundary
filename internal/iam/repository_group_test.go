@@ -759,7 +759,7 @@ func TestRepository_AddGroupMembers(t *testing.T) {
 	groupVersion := uint32(0)
 	type args struct {
 		groupId      string
-		groupVersion uint32
+		groupVersion *uint32
 		userIds      []string
 		opt          []Option
 	}
@@ -789,7 +789,16 @@ func TestRepository_AddGroupMembers(t *testing.T) {
 			name: "bad-version",
 			args: args{
 				groupId:      group.PublicId,
-				groupVersion: 1000,
+				groupVersion: func() *uint32 { v := uint32(1000); return &v }(),
+				userIds:      createUsersFn(),
+			},
+			wantErr: true,
+		},
+		{
+			name: "zero-version",
+			args: args{
+				groupId:      group.PublicId,
+				groupVersion: func() *uint32 { v := uint32(0); return &v }(),
 				userIds:      createUsersFn(),
 			},
 			wantErr: true,
@@ -808,11 +817,12 @@ func TestRepository_AddGroupMembers(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 
 			var version uint32
-			if tt.args.groupVersion == 0 {
+			switch {
+			case tt.args.groupVersion != nil:
+				version = *tt.args.groupVersion
+			default:
 				groupVersion += 1
 				version = groupVersion
-			} else {
-				version = tt.args.groupVersion
 			}
 			require.NoError(conn.Where("1=1").Delete(allocGroupMember()).Error)
 			got, err := repo.AddGroupMembers(context.Background(), tt.args.groupId, version, tt.args.userIds, tt.args.opt...)
@@ -914,6 +924,29 @@ func TestRepository_DeleteGroupMembers(t *testing.T) {
 				groupIdOverride: func() *string { id := ""; return &id }(),
 				createUserCnt:   5,
 				deleteUserCnt:   5,
+			},
+			wantRowsDeleted: 0,
+			wantErr:         true,
+			wantIsErr:       db.ErrInvalidParameter,
+		},
+		{
+			name: "bad-version",
+			args: args{
+				group:         TestGroup(t, conn, org.PublicId),
+				createUserCnt: 5,
+				deleteUserCnt: 5,
+				groupVersion:  10000,
+			},
+			wantRowsDeleted: 0,
+			wantErr:         true,
+		},
+		{
+			name: "zero-version",
+			args: args{
+				group:         TestGroup(t, conn, org.PublicId),
+				createUserCnt: 5,
+				deleteUserCnt: 5,
+				groupVersion:  0,
 			},
 			wantRowsDeleted: 0,
 			wantErr:         true,
@@ -1050,6 +1083,30 @@ func TestRepository_SetGroupMembers(t *testing.T) {
 			},
 			wantErr:          false,
 			wantAffectedRows: 6,
+		},
+		{
+			name:  "bad version",
+			setup: setupFn,
+			args: args{
+				group:          TestGroup(t, conn, proj.PublicId),
+				groupVersion:   1000,
+				userIds:        []string{testUser.PublicId},
+				addToOrigUsers: true,
+			},
+			wantErr:          true,
+			wantAffectedRows: 0,
+		},
+		{
+			name:  "zero version",
+			setup: setupFn,
+			args: args{
+				group:          TestGroup(t, conn, proj.PublicId),
+				groupVersion:   0,
+				userIds:        []string{testUser.PublicId},
+				addToOrigUsers: true,
+			},
+			wantErr:          true,
+			wantAffectedRows: 0,
 		},
 	}
 	for _, tt := range tests {
