@@ -1,16 +1,6 @@
 package hosts_test
 
-import (
-	"context"
-	"testing"
-
-	"github.com/golang/protobuf/proto"
-	pbs "github.com/hashicorp/watchtower/internal/gen/controller/api/services"
-	"github.com/hashicorp/watchtower/internal/servers/controller/handlers/hosts"
-	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
-)
-
+/*
 func TestDelete(t *testing.T) {
 	toMerge := &pbs.DeleteHostRequest{
 		OrgId:         "1",
@@ -180,3 +170,4 @@ func TestUpdate(t *testing.T) {
 		})
 	}
 }
+*/
