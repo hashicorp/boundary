@@ -1,6 +1,7 @@
 package roles_test
 
 import (
+	"context"
 	"fmt"
 	"strings"
 	"testing"
@@ -12,8 +13,10 @@ import (
 	"github.com/hashicorp/watchtower/internal/gen/controller/api/resources/scopes"
 	pbs "github.com/hashicorp/watchtower/internal/gen/controller/api/services"
 	"github.com/hashicorp/watchtower/internal/iam"
+	"github.com/hashicorp/watchtower/internal/perms"
 	"github.com/hashicorp/watchtower/internal/servers/controller/handlers/roles"
 	"github.com/hashicorp/watchtower/internal/types/scope"
+	"google.golang.org/genproto/protobuf/field_mask"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/proto"
@@ -487,7 +490,6 @@ func TestCreate(t *testing.T) {
 	}
 }
 
-/*
 func TestUpdate(t *testing.T) {
 	require := require.New(t)
 	or, pr, repoFn := createDefaultRolesAndRepo(t)
@@ -506,18 +508,19 @@ func TestUpdate(t *testing.T) {
 	created, err := ptypes.Timestamp(or.GetCreateTime().GetTimestamp())
 	require.NoError(err, "Error converting proto to timestamp")
 	toMerge := &pbs.UpdateRoleRequest{
-		OrgId: or.GetScopeId(),
-		Id:    or.GetPublicId(),
+		Id: or.GetPublicId(),
 	}
 
 	cases := []struct {
 		name    string
+		scopeId string
 		req     *pbs.UpdateRoleRequest
 		res     *pbs.UpdateRoleResponse
 		errCode codes.Code
 	}{
 		{
-			name: "Update an Existing Role",
+			name:    "Update an Existing Role",
+			scopeId: or.GetScopeId(),
 			req: &pbs.UpdateRoleRequest{
 				UpdateMask: &field_mask.FieldMask{
 					Paths: []string{"name", "description", "grant_scope_id"},
@@ -531,6 +534,7 @@ func TestUpdate(t *testing.T) {
 			res: &pbs.UpdateRoleResponse{
 				Item: &pb.Role{
 					Id:           or.GetPublicId(),
+					Scope:        &scopes.ScopeInfo{Id: or.GetScopeId(), Type: scope.Org.String()},
 					Name:         &wrapperspb.StringValue{Value: "new"},
 					Description:  &wrapperspb.StringValue{Value: "desc"},
 					CreatedTime:  or.GetCreateTime().GetTimestamp(),
@@ -540,7 +544,8 @@ func TestUpdate(t *testing.T) {
 			errCode: codes.OK,
 		},
 		{
-			name: "Multiple Paths in single string",
+			name:    "Multiple Paths in single string",
+			scopeId: or.GetScopeId(),
 			req: &pbs.UpdateRoleRequest{
 				UpdateMask: &field_mask.FieldMask{
 					Paths: []string{"name,description"},
@@ -553,6 +558,7 @@ func TestUpdate(t *testing.T) {
 			res: &pbs.UpdateRoleResponse{
 				Item: &pb.Role{
 					Id:           or.GetPublicId(),
+					Scope:        &scopes.ScopeInfo{Id: or.GetScopeId(), Type: scope.Org.String()},
 					Name:         &wrapperspb.StringValue{Value: "new"},
 					Description:  &wrapperspb.StringValue{Value: "desc"},
 					CreatedTime:  or.GetCreateTime().GetTimestamp(),
@@ -562,10 +568,10 @@ func TestUpdate(t *testing.T) {
 			errCode: codes.OK,
 		},
 		{
-			name: "Update an Existing Project Scoped Role",
+			name:    "Update an Existing Project Scoped Role",
+			scopeId: pr.GetScopeId(),
 			req: &pbs.UpdateRoleRequest{
-				ProjectId: pr.GetScopeId(),
-				Id:        pr.GetPublicId(),
+				Id: pr.GetPublicId(),
 				UpdateMask: &field_mask.FieldMask{
 					Paths: []string{"name", "description"},
 				},
@@ -577,6 +583,7 @@ func TestUpdate(t *testing.T) {
 			res: &pbs.UpdateRoleResponse{
 				Item: &pb.Role{
 					Id:           pr.GetPublicId(),
+					Scope:        &scopes.ScopeInfo{Id: pr.GetScopeId(), Type: scope.Project.String()},
 					Name:         &wrapperspb.StringValue{Value: "new"},
 					Description:  &wrapperspb.StringValue{Value: "desc"},
 					CreatedTime:  pr.GetCreateTime().GetTimestamp(),
@@ -586,10 +593,10 @@ func TestUpdate(t *testing.T) {
 			errCode: codes.OK,
 		},
 		{
-			name: "Multiple Paths in single string",
+			name:    "Multiple Paths in single string",
+			scopeId: pr.GetScopeId(),
 			req: &pbs.UpdateRoleRequest{
-				ProjectId: pr.GetScopeId(),
-				Id:        pr.GetPublicId(),
+				Id: pr.GetPublicId(),
 				UpdateMask: &field_mask.FieldMask{
 					Paths: []string{"name,description"},
 				},
@@ -601,6 +608,7 @@ func TestUpdate(t *testing.T) {
 			res: &pbs.UpdateRoleResponse{
 				Item: &pb.Role{
 					Id:           pr.GetPublicId(),
+					Scope:        &scopes.ScopeInfo{Id: pr.GetScopeId(), Type: scope.Project.String()},
 					Name:         &wrapperspb.StringValue{Value: "new"},
 					Description:  &wrapperspb.StringValue{Value: "desc"},
 					CreatedTime:  pr.GetCreateTime().GetTimestamp(),
@@ -620,7 +628,8 @@ func TestUpdate(t *testing.T) {
 			errCode: codes.InvalidArgument,
 		},
 		{
-			name: "No Paths in Mask",
+			name:    "No Paths in Mask",
+			scopeId: or.GetScopeId(),
 			req: &pbs.UpdateRoleRequest{
 				UpdateMask: &field_mask.FieldMask{Paths: []string{}},
 				Item: &pb.Role{
@@ -631,7 +640,8 @@ func TestUpdate(t *testing.T) {
 			errCode: codes.InvalidArgument,
 		},
 		{
-			name: "Only non-existant paths in Mask",
+			name:    "Only non-existant paths in Mask",
+			scopeId: or.GetScopeId(),
 			req: &pbs.UpdateRoleRequest{
 				UpdateMask: &field_mask.FieldMask{Paths: []string{"nonexistant_field"}},
 				Item: &pb.Role{
@@ -642,7 +652,8 @@ func TestUpdate(t *testing.T) {
 			errCode: codes.InvalidArgument,
 		},
 		{
-			name: "Unset Name",
+			name:    "Unset Name",
+			scopeId: or.GetScopeId(),
 			req: &pbs.UpdateRoleRequest{
 				UpdateMask: &field_mask.FieldMask{
 					Paths: []string{"name"},
@@ -654,6 +665,7 @@ func TestUpdate(t *testing.T) {
 			res: &pbs.UpdateRoleResponse{
 				Item: &pb.Role{
 					Id:           or.GetPublicId(),
+					Scope:        &scopes.ScopeInfo{Id: or.GetScopeId(), Type: scope.Org.String()},
 					Description:  &wrapperspb.StringValue{Value: "default"},
 					CreatedTime:  or.GetCreateTime().GetTimestamp(),
 					GrantScopeId: &wrapperspb.StringValue{Value: or.GetScopeId()},
@@ -662,7 +674,8 @@ func TestUpdate(t *testing.T) {
 			errCode: codes.OK,
 		},
 		{
-			name: "Update Only Name",
+			name:    "Update Only Name",
+			scopeId: or.GetScopeId(),
 			req: &pbs.UpdateRoleRequest{
 				UpdateMask: &field_mask.FieldMask{
 					Paths: []string{"name"},
@@ -675,6 +688,7 @@ func TestUpdate(t *testing.T) {
 			res: &pbs.UpdateRoleResponse{
 				Item: &pb.Role{
 					Id:           or.GetPublicId(),
+					Scope:        &scopes.ScopeInfo{Id: or.GetScopeId(), Type: scope.Org.String()},
 					Name:         &wrapperspb.StringValue{Value: "updated"},
 					Description:  &wrapperspb.StringValue{Value: "default"},
 					CreatedTime:  or.GetCreateTime().GetTimestamp(),
@@ -684,7 +698,8 @@ func TestUpdate(t *testing.T) {
 			errCode: codes.OK,
 		},
 		{
-			name: "Update Only Description",
+			name:    "Update Only Description",
+			scopeId: or.GetScopeId(),
 			req: &pbs.UpdateRoleRequest{
 				UpdateMask: &field_mask.FieldMask{
 					Paths: []string{"description"},
@@ -697,6 +712,7 @@ func TestUpdate(t *testing.T) {
 			res: &pbs.UpdateRoleResponse{
 				Item: &pb.Role{
 					Id:           or.GetPublicId(),
+					Scope:        &scopes.ScopeInfo{Id: or.GetScopeId(), Type: scope.Org.String()},
 					Name:         &wrapperspb.StringValue{Value: "default"},
 					Description:  &wrapperspb.StringValue{Value: "notignored"},
 					CreatedTime:  or.GetCreateTime().GetTimestamp(),
@@ -770,7 +786,7 @@ func TestUpdate(t *testing.T) {
 			req := proto.Clone(toMerge).(*pbs.UpdateRoleRequest)
 			proto.Merge(req, tc.req)
 
-			got, gErr := tested.UpdateRole(context.Background(), req)
+			got, gErr := tested.UpdateRole(auth.DisabledAuthTestContext(auth.WithTestScopeId(tc.scopeId)), req)
 			assert.Equal(tc.errCode, status.Code(gErr), "UpdateRole(%+v) got error %v, wanted %v", req, gErr, tc.errCode)
 
 			if got != nil {
@@ -866,13 +882,12 @@ func TestAddPrincipal(t *testing.T) {
 				role := iam.TestRole(t, conn, scope.GetPublicId())
 				tc.setup(role)
 				req := &pbs.AddRolePrincipalsRequest{
-					OrgId:        o.GetPublicId(),
 					RoleId:       role.GetPublicId(),
 					Version:      &wrapperspb.UInt32Value{Value: role.GetVersion()},
 					PrincipalIds: append(tc.addUsers, tc.addGroups...),
 				}
 
-				got, err := s.AddRolePrincipals(context.Background(), req)
+				got, err := s.AddRolePrincipals(auth.DisabledAuthTestContext(auth.WithTestScopeId(o.GetPublicId())), req)
 				if tc.wantErr {
 					assert.Error(t, err)
 					return
@@ -894,32 +909,10 @@ func TestAddPrincipal(t *testing.T) {
 		errCode codes.Code
 	}{
 		{
-			name: "Bad Org Id",
-			req: &pbs.AddRolePrincipalsRequest{
-				OrgId:     "",
-				ProjectId: role.GetScopeId(),
-				RoleId:    role.GetPublicId(),
-				Version:   &wrapperspb.UInt32Value{Value: role.GetVersion()},
-			},
-			errCode: codes.InvalidArgument,
-		},
-		{
-			name: "Bad Project Id",
-			req: &pbs.AddRolePrincipalsRequest{
-				OrgId:     o.GetPublicId(),
-				ProjectId: "bad id",
-				RoleId:    role.GetPublicId(),
-				Version:   &wrapperspb.UInt32Value{Value: role.GetVersion()},
-			},
-			errCode: codes.InvalidArgument,
-		},
-		{
 			name: "Bad Role Id",
 			req: &pbs.AddRolePrincipalsRequest{
-				OrgId:     o.GetPublicId(),
-				ProjectId: role.GetScopeId(),
-				RoleId:    "bad id",
-				Version:   &wrapperspb.UInt32Value{Value: role.GetVersion()},
+				RoleId:  "bad id",
+				Version: &wrapperspb.UInt32Value{Value: role.GetVersion()},
 			},
 			errCode: codes.InvalidArgument,
 		},
@@ -927,7 +920,7 @@ func TestAddPrincipal(t *testing.T) {
 	for _, tc := range failCases {
 		t.Run(tc.name, func(t *testing.T) {
 			assert := assert.New(t)
-			_, gErr := s.AddRolePrincipals(context.Background(), tc.req)
+			_, gErr := s.AddRolePrincipals(auth.DisabledAuthTestContext(auth.WithTestScopeId(p.GetPublicId())), tc.req)
 			assert.Equal(tc.errCode, status.Code(gErr), "AddRolePrincipals(%+v) got error %v, wanted %v", tc.req, gErr, tc.errCode)
 		})
 	}
@@ -1009,13 +1002,12 @@ func TestSetPrincipal(t *testing.T) {
 				role := iam.TestRole(t, conn, scope.GetPublicId())
 				tc.setup(role)
 				req := &pbs.SetRolePrincipalsRequest{
-					OrgId:        o.GetPublicId(),
 					RoleId:       role.GetPublicId(),
 					Version:      &wrapperspb.UInt32Value{Value: role.GetVersion()},
 					PrincipalIds: append(tc.setUsers, tc.setGroups...),
 				}
 
-				got, err := s.SetRolePrincipals(context.Background(), req)
+				got, err := s.SetRolePrincipals(auth.DisabledAuthTestContext(auth.WithTestScopeId(o.GetPublicId())), req)
 				if tc.wantErr {
 					assert.Error(t, err)
 					return
@@ -1037,32 +1029,10 @@ func TestSetPrincipal(t *testing.T) {
 		errCode codes.Code
 	}{
 		{
-			name: "Bad Org Id",
-			req: &pbs.SetRolePrincipalsRequest{
-				OrgId:     "",
-				ProjectId: role.GetScopeId(),
-				RoleId:    role.GetPublicId(),
-				Version:   &wrapperspb.UInt32Value{Value: role.GetVersion()},
-			},
-			errCode: codes.InvalidArgument,
-		},
-		{
-			name: "Bad Project Id",
-			req: &pbs.SetRolePrincipalsRequest{
-				OrgId:     o.GetPublicId(),
-				ProjectId: "bad id",
-				RoleId:    role.GetPublicId(),
-				Version:   &wrapperspb.UInt32Value{Value: role.GetVersion()},
-			},
-			errCode: codes.InvalidArgument,
-		},
-		{
 			name: "Bad Role Id",
 			req: &pbs.SetRolePrincipalsRequest{
-				OrgId:     o.GetPublicId(),
-				ProjectId: role.GetScopeId(),
-				RoleId:    "bad id",
-				Version:   &wrapperspb.UInt32Value{Value: role.GetVersion()},
+				RoleId:  "bad id",
+				Version: &wrapperspb.UInt32Value{Value: role.GetVersion()},
 			},
 			errCode: codes.InvalidArgument,
 		},
@@ -1070,7 +1040,7 @@ func TestSetPrincipal(t *testing.T) {
 	for _, tc := range failCases {
 		t.Run(tc.name, func(t *testing.T) {
 			assert := assert.New(t)
-			_, gErr := s.SetRolePrincipals(context.Background(), tc.req)
+			_, gErr := s.SetRolePrincipals(auth.DisabledAuthTestContext(auth.WithTestScopeId(p.GetPublicId())), tc.req)
 			assert.Equal(tc.errCode, status.Code(gErr), "SetRolePrincipals(%+v) got error %v, wanted %v", tc.req, gErr, tc.errCode)
 		})
 	}
@@ -1170,13 +1140,12 @@ func TestRemovePrincipal(t *testing.T) {
 				role := iam.TestRole(t, conn, scope.GetPublicId())
 				tc.setup(role)
 				req := &pbs.RemoveRolePrincipalsRequest{
-					OrgId:        o.GetPublicId(),
 					RoleId:       role.GetPublicId(),
 					Version:      &wrapperspb.UInt32Value{Value: role.GetVersion()},
 					PrincipalIds: append(tc.removeUsers, tc.removeGroups...),
 				}
 
-				got, err := s.RemoveRolePrincipals(context.Background(), req)
+				got, err := s.RemoveRolePrincipals(auth.DisabledAuthTestContext(auth.WithTestScopeId(o.GetPublicId())), req)
 				if tc.wantErr {
 					assert.Error(t, err)
 					return
@@ -1198,32 +1167,10 @@ func TestRemovePrincipal(t *testing.T) {
 		errCode codes.Code
 	}{
 		{
-			name: "Bad Org Id",
-			req: &pbs.AddRolePrincipalsRequest{
-				OrgId:     "",
-				ProjectId: role.GetScopeId(),
-				RoleId:    role.GetPublicId(),
-				Version:   &wrapperspb.UInt32Value{Value: role.GetVersion()},
-			},
-			errCode: codes.InvalidArgument,
-		},
-		{
-			name: "Bad Project Id",
-			req: &pbs.AddRolePrincipalsRequest{
-				OrgId:     o.GetPublicId(),
-				ProjectId: "bad id",
-				RoleId:    role.GetPublicId(),
-				Version:   &wrapperspb.UInt32Value{Value: role.GetVersion()},
-			},
-			errCode: codes.InvalidArgument,
-		},
-		{
 			name: "Bad Role Id",
 			req: &pbs.AddRolePrincipalsRequest{
-				OrgId:     o.GetPublicId(),
-				ProjectId: role.GetScopeId(),
-				RoleId:    "bad id",
-				Version:   &wrapperspb.UInt32Value{Value: role.GetVersion()},
+				RoleId:  "bad id",
+				Version: &wrapperspb.UInt32Value{Value: role.GetVersion()},
 			},
 			errCode: codes.InvalidArgument,
 		},
@@ -1231,7 +1178,7 @@ func TestRemovePrincipal(t *testing.T) {
 	for _, tc := range failCases {
 		t.Run(tc.name, func(t *testing.T) {
 			assert := assert.New(t)
-			_, gErr := s.AddRolePrincipals(context.Background(), tc.req)
+			_, gErr := s.AddRolePrincipals(auth.DisabledAuthTestContext(auth.WithTestScopeId(p.GetPublicId())), tc.req)
 			assert.Equal(tc.errCode, status.Code(gErr), "AddRolePrincipals(%+v) got error %v, wanted %v", tc.req, gErr, tc.errCode)
 		})
 	}
@@ -1302,27 +1249,26 @@ func TestAddGrants(t *testing.T) {
 					_ = iam.TestRoleGrant(t, conn, role.GetPublicId(), e)
 				}
 				req := &pbs.AddRoleGrantsRequest{
-					OrgId:   o.GetPublicId(),
 					RoleId:  role.GetPublicId(),
 					Version: &wrapperspb.UInt32Value{Value: role.GetVersion()},
 				}
+				scopeId := o.GetPublicId()
 				if o != scope {
-					req.ProjectId = scope.GetPublicId()
+					scopeId = p.GetPublicId()
 				}
 				req.GrantStrings = append(req.GrantStrings, tc.add...)
-				got, err := s.AddRoleGrants(context.Background(), req)
+				got, err := s.AddRoleGrants(auth.DisabledAuthTestContext(auth.WithTestScopeId(scopeId)), req)
 				if tc.wantErr {
 					assert.Error(err)
 					return
 				}
-				s, _ := status.FromError(err)
-				require.NoError(t, err, "Got error %v", s)
+				require.NoError(t, err)
 				checkEqualGrants(t, tc.result, got.GetItem())
 			})
 		}
 	}
 
-	o, p := iam.TestScopes(t, conn)
+	_, p := iam.TestScopes(t, conn)
 	role := iam.TestRole(t, conn, p.GetPublicId())
 	failCases := []struct {
 		name    string
@@ -1330,32 +1276,8 @@ func TestAddGrants(t *testing.T) {
 		errCode codes.Code
 	}{
 		{
-			name: "Bad Org Id",
-			req: &pbs.AddRoleGrantsRequest{
-				OrgId:        "",
-				ProjectId:    role.GetScopeId(),
-				RoleId:       role.GetPublicId(),
-				GrantStrings: []string{"id=*;actions=create"},
-				Version:      &wrapperspb.UInt32Value{Value: role.GetVersion()},
-			},
-			errCode: codes.InvalidArgument,
-		},
-		{
-			name: "Bad Project Id",
-			req: &pbs.AddRoleGrantsRequest{
-				OrgId:        o.GetPublicId(),
-				ProjectId:    "bad id",
-				RoleId:       role.GetPublicId(),
-				GrantStrings: []string{"id=*;actions=create"},
-				Version:      &wrapperspb.UInt32Value{Value: role.GetVersion()},
-			},
-			errCode: codes.InvalidArgument,
-		},
-		{
 			name: "Bad Role Id",
 			req: &pbs.AddRoleGrantsRequest{
-				OrgId:        o.GetPublicId(),
-				ProjectId:    role.GetScopeId(),
 				RoleId:       "bad id",
 				GrantStrings: []string{"id=*;actions=create"},
 				Version:      &wrapperspb.UInt32Value{Value: role.GetVersion()},
@@ -1366,8 +1288,8 @@ func TestAddGrants(t *testing.T) {
 	for _, tc := range failCases {
 		t.Run(tc.name, func(t *testing.T) {
 			assert := assert.New(t)
-			_, gErr := s.AddRoleGrants(context.Background(), tc.req)
-			assert.Equal(tc.errCode, status.Code(gErr), "AddRoleGrants(%+v) got error %v, wanted %v", tc.req, gErr, tc.errCode)
+			_, gErr := s.AddRoleGrants(auth.DisabledAuthTestContext(auth.WithTestScopeId(p.GetPublicId())), tc.req)
+			assert.Equal(tc.errCode, status.Code(gErr), "AddRoleGrants(%+v) got error %#v, wanted %#v", tc.req, gErr, tc.errCode)
 		})
 	}
 }
@@ -1425,15 +1347,15 @@ func TestSetGrants(t *testing.T) {
 					_ = iam.TestRoleGrant(t, conn, role.GetPublicId(), e)
 				}
 				req := &pbs.SetRoleGrantsRequest{
-					OrgId:   o.GetPublicId(),
 					RoleId:  role.GetPublicId(),
 					Version: &wrapperspb.UInt32Value{Value: role.GetVersion()},
 				}
+				scopeId := o.GetPublicId()
 				if o != scope {
-					req.ProjectId = scope.GetPublicId()
+					scopeId = p.GetPublicId()
 				}
 				req.GrantStrings = append(req.GrantStrings, tc.set...)
-				got, err := s.SetRoleGrants(context.Background(), req)
+				got, err := s.SetRoleGrants(auth.DisabledAuthTestContext(auth.WithTestScopeId(scopeId)), req)
 				if tc.wantErr {
 					assert.Error(err)
 					return
@@ -1445,7 +1367,7 @@ func TestSetGrants(t *testing.T) {
 		}
 	}
 
-	o, p := iam.TestScopes(t, conn)
+	_, p := iam.TestScopes(t, conn)
 	role := iam.TestRole(t, conn, p.GetPublicId())
 
 	failCases := []struct {
@@ -1454,32 +1376,8 @@ func TestSetGrants(t *testing.T) {
 		errCode codes.Code
 	}{
 		{
-			name: "Bad Org Id",
-			req: &pbs.SetRoleGrantsRequest{
-				OrgId:        "",
-				ProjectId:    role.GetScopeId(),
-				RoleId:       role.GetPublicId(),
-				GrantStrings: []string{"id=*;actions=create"},
-				Version:      &wrapperspb.UInt32Value{Value: role.GetVersion()},
-			},
-			errCode: codes.InvalidArgument,
-		},
-		{
-			name: "Bad Project Id",
-			req: &pbs.SetRoleGrantsRequest{
-				OrgId:        o.GetPublicId(),
-				ProjectId:    "bad id",
-				RoleId:       role.GetPublicId(),
-				GrantStrings: []string{"id=*;actions=create"},
-				Version:      &wrapperspb.UInt32Value{Value: role.GetVersion()},
-			},
-			errCode: codes.InvalidArgument,
-		},
-		{
 			name: "Bad Role Id",
 			req: &pbs.SetRoleGrantsRequest{
-				OrgId:        o.GetPublicId(),
-				ProjectId:    role.GetScopeId(),
 				RoleId:       "bad id",
 				GrantStrings: []string{"id=*;actions=create"},
 				Version:      &wrapperspb.UInt32Value{Value: role.GetVersion()},
@@ -1490,7 +1388,7 @@ func TestSetGrants(t *testing.T) {
 	for _, tc := range failCases {
 		t.Run(tc.name, func(t *testing.T) {
 			assert := assert.New(t)
-			_, gErr := s.SetRoleGrants(context.Background(), tc.req)
+			_, gErr := s.SetRoleGrants(auth.DisabledAuthTestContext(auth.WithTestScopeId(p.GetPublicId())), tc.req)
 			assert.Equal(tc.errCode, status.Code(gErr), "SetRoleGrants(%+v) got error %v, wanted %v", tc.req, gErr, tc.errCode)
 		})
 	}
@@ -1548,15 +1446,15 @@ func TestRemoveGrants(t *testing.T) {
 					_ = iam.TestRoleGrant(t, conn, role.GetPublicId(), e)
 				}
 				req := &pbs.RemoveRoleGrantsRequest{
-					OrgId:   o.GetPublicId(),
 					RoleId:  role.GetPublicId(),
 					Version: &wrapperspb.UInt32Value{Value: role.GetVersion()},
 				}
+				scopeId := o.GetPublicId()
 				if o != scope {
-					req.ProjectId = scope.GetPublicId()
+					scopeId = p.GetPublicId()
 				}
 				req.GrantStrings = append(req.GrantStrings, tc.remove...)
-				got, err := s.RemoveRoleGrants(context.Background(), req)
+				got, err := s.RemoveRoleGrants(auth.DisabledAuthTestContext(auth.WithTestScopeId(scopeId)), req)
 				if tc.wantErr {
 					assert.Error(err)
 					return
@@ -1569,7 +1467,7 @@ func TestRemoveGrants(t *testing.T) {
 		}
 	}
 
-	o, p := iam.TestScopes(t, conn)
+	_, p := iam.TestScopes(t, conn)
 	role := iam.TestRole(t, conn, p.GetPublicId())
 	failCases := []struct {
 		name string
@@ -1578,32 +1476,8 @@ func TestRemoveGrants(t *testing.T) {
 		errCode codes.Code
 	}{
 		{
-			name: "Bad Org Id",
-			req: &pbs.RemoveRoleGrantsRequest{
-				OrgId:        "",
-				ProjectId:    role.GetScopeId(),
-				RoleId:       role.GetPublicId(),
-				GrantStrings: []string{"id=*;actions=create"},
-				Version:      &wrapperspb.UInt32Value{Value: role.GetVersion()},
-			},
-			errCode: codes.InvalidArgument,
-		},
-		{
-			name: "Bad Project Id",
-			req: &pbs.RemoveRoleGrantsRequest{
-				OrgId:        o.GetPublicId(),
-				ProjectId:    "bad id",
-				RoleId:       role.GetPublicId(),
-				GrantStrings: []string{"id=*;actions=create"},
-				Version:      &wrapperspb.UInt32Value{Value: role.GetVersion()},
-			},
-			errCode: codes.InvalidArgument,
-		},
-		{
 			name: "Bad Role Id",
 			req: &pbs.RemoveRoleGrantsRequest{
-				OrgId:        o.GetPublicId(),
-				ProjectId:    role.GetScopeId(),
 				RoleId:       "bad id",
 				GrantStrings: []string{"id=*;actions=create"},
 				Version:      &wrapperspb.UInt32Value{Value: role.GetVersion()},
@@ -1614,9 +1488,8 @@ func TestRemoveGrants(t *testing.T) {
 	for _, tc := range failCases {
 		t.Run(tc.name, func(t *testing.T) {
 			assert := assert.New(t)
-			_, gErr := s.RemoveRoleGrants(context.Background(), tc.req)
+			_, gErr := s.RemoveRoleGrants(auth.DisabledAuthTestContext(auth.WithTestScopeId(p.GetPublicId())), tc.req)
 			assert.Equal(tc.errCode, status.Code(gErr), "RemoveRoleGrants(%+v) got error %v, wanted %v", tc.req, gErr, tc.errCode)
 		})
 	}
 }
-*/
