@@ -18,24 +18,6 @@ before
 update on iam_scope_type_enm
   for each row execute procedure immutable_columns('string');
 
--- TODO (jimlambrt 7/2020) - deprecate/delete in favor of immutable_columns_func
-create or replace function
-  iam_immutable_scope_id_func()
-  returns trigger
-as $$
-begin
-  if new.scope_id is distinct from old.scope_id then
-    raise exception 'scope_id cannot be set to %', new.scope_id;
-  end if;
-  return new;
-end;
-$$ language plpgsql;
-
-comment on function
-  iam_immutable_scope_id_func()
-is
-  'function used in before update triggers to make scope_id column is immutable';
-
 create table iam_scope (
     public_id wt_scope_id primary key,
     create_time wt_timestamp,
