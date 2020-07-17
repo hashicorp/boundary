@@ -13,6 +13,7 @@ import (
 	"github.com/hashicorp/watchtower/internal/servers/controller/common"
 	"github.com/hashicorp/watchtower/internal/types/action"
 	"github.com/hashicorp/watchtower/internal/types/resource"
+	"github.com/hashicorp/watchtower/internal/types/scope"
 	"github.com/kr/pretty"
 )
 
@@ -51,7 +52,7 @@ type RequestInfo struct {
 type VerifyResults struct {
 	Valid  bool
 	UserId string
-	Scope  scopes.ScopeInfo
+	Scope  *scopes.ScopeInfo
 }
 
 type verifier struct {
@@ -93,8 +94,17 @@ func Verify(ctx context.Context) (ret VerifyResults) {
 		// context we won't catch in tests
 		panic("no verifier information found in context")
 	}
+	ret.Scope = new(scopes.ScopeInfo)
 	if v.requestInfo.DisableAuthEntirely {
 		ret.Scope.Id = v.requestInfo.scopeIdOverride
+		switch {
+		case ret.Scope.Id == "global":
+			ret.Scope.Type = "global"
+		case strings.HasPrefix(ret.Scope.Id, scope.Org.Prefix()):
+			ret.Scope.Type = scope.Org.String()
+		case strings.HasPrefix(ret.Scope.Id, scope.Project.Prefix()):
+			ret.Scope.Type = scope.Project.String()
+		}
 		ret.Valid = true
 		return
 	}
@@ -319,11 +329,12 @@ func (v *verifier) parseAuthParams() error {
 	return nil
 }
 
-func (v verifier) performAuthCheck() (aclResults *perms.ACLResults, userId string, scopeInfo scopes.ScopeInfo, retErr error) {
+func (v verifier) performAuthCheck() (aclResults *perms.ACLResults, userId string, scopeInfo *scopes.ScopeInfo, retErr error) {
 	// Ensure we return an error by default if we forget to set this somewhere
 	retErr = errors.New("unknown")
 	// Make the linter happy
 	_ = retErr
+	scopeInfo = new(scopes.ScopeInfo)
 	userId = "u_anon"
 
 	// Validate the token and fetch the corresponding user ID
@@ -371,7 +382,7 @@ func (v verifier) performAuthCheck() (aclResults *perms.ACLResults, userId strin
 		retErr = fmt.Errorf("perform auth check: non-existent scope %q", v.res.ScopeId)
 		return
 	}
-	scopeInfo = scopes.ScopeInfo{
+	scopeInfo = &scopes.ScopeInfo{
 		Id:            scp.GetPublicId(),
 		Type:          scp.GetType(),
 		ParentScopeId: scp.GetParentId(),

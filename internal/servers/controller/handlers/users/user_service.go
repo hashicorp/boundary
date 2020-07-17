@@ -56,7 +56,7 @@ func (s Service) ListUsers(ctx context.Context, req *pbs.ListUsersRequest) (*pbs
 		return nil, err
 	}
 	for _, item := range ul {
-		item.Scope = &authResults.Scope
+		item.Scope = authResults.Scope
 	}
 	return &pbs.ListUsersResponse{Items: ul}, nil
 }
@@ -74,7 +74,7 @@ func (s Service) GetUser(ctx context.Context, req *pbs.GetUserRequest) (*pbs.Get
 	if err != nil {
 		return nil, err
 	}
-	u.Scope = &authResults.Scope
+	u.Scope = authResults.Scope
 	return &pbs.GetUserResponse{Item: u}, nil
 }
 
@@ -91,7 +91,7 @@ func (s Service) CreateUser(ctx context.Context, req *pbs.CreateUserRequest) (*p
 	if err != nil {
 		return nil, err
 	}
-	u.Scope = &authResults.Scope
+	u.Scope = authResults.Scope
 	return &pbs.CreateUserResponse{Item: u, Uri: fmt.Sprintf("scopes/%s/users/%s", authResults.Scope.GetId(), u.GetId())}, nil
 }
 
@@ -108,7 +108,7 @@ func (s Service) UpdateUser(ctx context.Context, req *pbs.UpdateUserRequest) (*p
 	if err != nil {
 		return nil, err
 	}
-	u.Scope = &authResults.Scope
+	u.Scope = authResults.Scope
 	return &pbs.UpdateUserResponse{Item: u}, nil
 }
 

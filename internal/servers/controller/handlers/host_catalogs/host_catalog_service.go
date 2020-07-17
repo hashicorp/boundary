@@ -101,7 +101,7 @@ func (s Service) GetHostCatalog(ctx context.Context, req *pbs.GetHostCatalogRequ
 	if err != nil {
 		return nil, err
 	}
-	hc.Scope = &authResults.Scope
+	hc.Scope = authResults.Scope
 	return &pbs.GetHostCatalogResponse{Item: hc}, nil
 }
 
@@ -118,7 +118,7 @@ func (s Service) CreateHostCatalog(ctx context.Context, req *pbs.CreateHostCatal
 	if err != nil {
 		return nil, err
 	}
-	hc.Scope = &authResults.Scope
+	hc.Scope = authResults.Scope
 	return &pbs.CreateHostCatalogResponse{
 		Item: hc,
 		Uri:  fmt.Sprintf("scopes/%s/host-catalogs/%s", authResults.Scope.GetId(), hc.GetId()),
@@ -142,7 +142,7 @@ func (s Service) UpdateHostCatalog(ctx context.Context, req *pbs.UpdateHostCatal
 	if err != nil {
 		return nil, err
 	}
-	hc.Scope = &authResults.Scope
+	hc.Scope = authResults.Scope
 	return &pbs.UpdateHostCatalogResponse{Item: hc}, nil
 }
 

@@ -14,6 +14,7 @@ import (
 	pbs "github.com/hashicorp/watchtower/internal/gen/controller/api/services"
 	"github.com/hashicorp/watchtower/internal/iam"
 	"github.com/hashicorp/watchtower/internal/servers/controller/handlers/groups"
+	"github.com/hashicorp/watchtower/internal/types/scope"
 	"google.golang.org/genproto/protobuf/field_mask"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -50,7 +51,7 @@ func TestGet(t *testing.T) {
 
 	wantOrgGroup := &pb.Group{
 		Id:          og.GetPublicId(),
-		Scope:       &scopes.ScopeInfo{Id: og.GetScopeId()},
+		Scope:       &scopes.ScopeInfo{Id: og.GetScopeId(), Type: scope.Org.String()},
 		Name:        &wrapperspb.StringValue{Value: og.GetName()},
 		Description: &wrapperspb.StringValue{Value: og.GetDescription()},
 		CreatedTime: og.CreateTime.GetTimestamp(),
@@ -59,7 +60,7 @@ func TestGet(t *testing.T) {
 
 	wantProjGroup := &pb.Group{
 		Id:          pg.GetPublicId(),
-		Scope:       &scopes.ScopeInfo{Id: pg.GetScopeId()},
+		Scope:       &scopes.ScopeInfo{Id: pg.GetScopeId(), Type: scope.Project.String()},
 		Name:        &wrapperspb.StringValue{Value: pg.GetName()},
 		Description: &wrapperspb.StringValue{Value: pg.GetDescription()},
 		CreatedTime: pg.CreateTime.GetTimestamp(),
@@ -137,7 +138,7 @@ func TestGet(t *testing.T) {
 
 			got, gErr := s.GetGroup(auth.DisabledAuthTestContext(auth.WithTestScopeId(tc.scopeId)), req)
 			assert.Equal(tc.errCode, status.Code(gErr), "GetGroup(%+v) got error %v, wanted %v", req, gErr, tc.errCode)
-			assert.True(proto.Equal(got, tc.res), "GetGroup(%q) got response %q, wanted %q", req, got, tc.res)
+			assert.True(proto.Equal(got, tc.res), "GetGroup(%q) got response\n%q, wanted\n%q", req, got, tc.res)
 		})
 	}
 }
@@ -157,14 +158,14 @@ func TestList(t *testing.T) {
 		og := iam.TestGroup(t, conn, oWithGroups.GetPublicId())
 		wantOrgGroups = append(wantOrgGroups, &pb.Group{
 			Id:          og.GetPublicId(),
-			Scope:       &scopes.ScopeInfo{Id: oWithGroups.GetPublicId()},
+			Scope:       &scopes.ScopeInfo{Id: oWithGroups.GetPublicId(), Type: scope.Org.String()},
 			CreatedTime: og.GetCreateTime().GetTimestamp(),
 			UpdatedTime: og.GetUpdateTime().GetTimestamp(),
 		})
 		pg := iam.TestGroup(t, conn, pWithGroups.GetPublicId())
 		wantProjGroups = append(wantProjGroups, &pb.Group{
 			Id:          pg.GetPublicId(),
-			Scope:       &scopes.ScopeInfo{Id: pWithGroups.GetPublicId()},
+			Scope:       &scopes.ScopeInfo{Id: pWithGroups.GetPublicId(), Type: scope.Project.String()},
 			CreatedTime: pg.GetCreateTime().GetTimestamp(),
 			UpdatedTime: pg.GetUpdateTime().GetTimestamp(),
 		})
@@ -370,7 +371,7 @@ func TestCreate(t *testing.T) {
 			res: &pbs.CreateGroupResponse{
 				Uri: fmt.Sprintf("scopes/%s/groups/%s_", defaultOGroup.GetScopeId(), iam.GroupPrefix),
 				Item: &pb.Group{
-					Scope:       &scopes.ScopeInfo{Id: defaultOGroup.GetScopeId()},
+					Scope:       &scopes.ScopeInfo{Id: defaultOGroup.GetScopeId(), Type: scope.Org.String()},
 					Name:        &wrapperspb.StringValue{Value: "name"},
 					Description: &wrapperspb.StringValue{Value: "desc"},
 				},
@@ -389,7 +390,7 @@ func TestCreate(t *testing.T) {
 			res: &pbs.CreateGroupResponse{
 				Uri: fmt.Sprintf("scopes/%s/groups/%s_", defaultPGroup.GetScopeId(), iam.GroupPrefix),
 				Item: &pb.Group{
-					Scope:       &scopes.ScopeInfo{Id: defaultPGroup.GetScopeId()},
+					Scope:       &scopes.ScopeInfo{Id: defaultPGroup.GetScopeId(), Type: scope.Project.String()},
 					Name:        &wrapperspb.StringValue{Value: "name"},
 					Description: &wrapperspb.StringValue{Value: "desc"},
 				},
@@ -496,7 +497,7 @@ func TestUpdate(t *testing.T) {
 			res: &pbs.UpdateGroupResponse{
 				Item: &pb.Group{
 					Id:          og.GetPublicId(),
-					Scope:       &scopes.ScopeInfo{Id: og.GetScopeId()},
+					Scope:       &scopes.ScopeInfo{Id: og.GetScopeId(), Type: scope.Org.String()},
 					Name:        &wrapperspb.StringValue{Value: "new"},
 					Description: &wrapperspb.StringValue{Value: "desc"},
 					CreatedTime: og.GetCreateTime().GetTimestamp(),
@@ -519,7 +520,7 @@ func TestUpdate(t *testing.T) {
 			res: &pbs.UpdateGroupResponse{
 				Item: &pb.Group{
 					Id:          og.GetPublicId(),
-					Scope:       &scopes.ScopeInfo{Id: og.GetScopeId()},
+					Scope:       &scopes.ScopeInfo{Id: og.GetScopeId(), Type: scope.Org.String()},
 					Name:        &wrapperspb.StringValue{Value: "new"},
 					Description: &wrapperspb.StringValue{Value: "desc"},
 					CreatedTime: og.GetCreateTime().GetTimestamp(),
@@ -543,7 +544,7 @@ func TestUpdate(t *testing.T) {
 			res: &pbs.UpdateGroupResponse{
 				Item: &pb.Group{
 					Id:          pg.GetPublicId(),
-					Scope:       &scopes.ScopeInfo{Id: pg.GetScopeId()},
+					Scope:       &scopes.ScopeInfo{Id: pg.GetScopeId(), Type: scope.Project.String()},
 					Name:        &wrapperspb.StringValue{Value: "new"},
 					Description: &wrapperspb.StringValue{Value: "desc"},
 					CreatedTime: pg.GetCreateTime().GetTimestamp(),
@@ -567,7 +568,7 @@ func TestUpdate(t *testing.T) {
 			res: &pbs.UpdateGroupResponse{
 				Item: &pb.Group{
 					Id:          pg.GetPublicId(),
-					Scope:       &scopes.ScopeInfo{Id: pg.GetScopeId()},
+					Scope:       &scopes.ScopeInfo{Id: pg.GetScopeId(), Type: scope.Project.String()},
 					Name:        &wrapperspb.StringValue{Value: "new"},
 					Description: &wrapperspb.StringValue{Value: "desc"},
 					CreatedTime: pg.GetCreateTime().GetTimestamp(),
@@ -623,7 +624,7 @@ func TestUpdate(t *testing.T) {
 			res: &pbs.UpdateGroupResponse{
 				Item: &pb.Group{
 					Id:          og.GetPublicId(),
-					Scope:       &scopes.ScopeInfo{Id: og.GetScopeId()},
+					Scope:       &scopes.ScopeInfo{Id: og.GetScopeId(), Type: scope.Org.String()},
 					Description: &wrapperspb.StringValue{Value: "default"},
 					CreatedTime: og.GetCreateTime().GetTimestamp(),
 				},
@@ -645,7 +646,7 @@ func TestUpdate(t *testing.T) {
 			res: &pbs.UpdateGroupResponse{
 				Item: &pb.Group{
 					Id:          og.GetPublicId(),
-					Scope:       &scopes.ScopeInfo{Id: og.GetScopeId()},
+					Scope:       &scopes.ScopeInfo{Id: og.GetScopeId(), Type: scope.Org.String()},
 					Name:        &wrapperspb.StringValue{Value: "updated"},
 					Description: &wrapperspb.StringValue{Value: "default"},
 					CreatedTime: og.GetCreateTime().GetTimestamp(),
@@ -668,7 +669,7 @@ func TestUpdate(t *testing.T) {
 			res: &pbs.UpdateGroupResponse{
 				Item: &pb.Group{
 					Id:          og.GetPublicId(),
-					Scope:       &scopes.ScopeInfo{Id: og.GetScopeId()},
+					Scope:       &scopes.ScopeInfo{Id: og.GetScopeId(), Type: scope.Org.String()},
 					Name:        &wrapperspb.StringValue{Value: "default"},
 					Description: &wrapperspb.StringValue{Value: "notignored"},
 					CreatedTime: og.GetCreateTime().GetTimestamp(),

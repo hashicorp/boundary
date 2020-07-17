@@ -16,6 +16,7 @@ import (
 	"github.com/hashicorp/watchtower/internal/host/static"
 	"github.com/hashicorp/watchtower/internal/iam"
 	"github.com/hashicorp/watchtower/internal/servers/controller/handlers/host_catalogs"
+	"github.com/hashicorp/watchtower/internal/types/scope"
 	"google.golang.org/genproto/protobuf/field_mask"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -56,7 +57,7 @@ func TestGet(t *testing.T) {
 
 	pHostCatalog := &pb.HostCatalog{
 		Id:          hc.GetPublicId(),
-		Scope:       &scopes.ScopeInfo{Id: proj.GetPublicId()},
+		Scope:       &scopes.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String()},
 		Name:        &wrappers.StringValue{Value: hc.GetName()},
 		Description: &wrappers.StringValue{Value: hc.GetDescription()},
 		CreatedTime: hc.CreateTime.GetTimestamp(),
@@ -234,7 +235,7 @@ func TestCreate(t *testing.T) {
 			res: &pbs.CreateHostCatalogResponse{
 				Uri: fmt.Sprintf("scopes/%s/host-catalogs/%s_", proj.GetPublicId(), static.HostCatalogPrefix),
 				Item: &pb.HostCatalog{
-					Scope:       &scopes.ScopeInfo{Id: proj.GetPublicId()},
+					Scope:       &scopes.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String()},
 					Name:        &wrappers.StringValue{Value: "name"},
 					Description: &wrappers.StringValue{Value: "desc"},
 					Type:        &wrappers.StringValue{Value: "Static"},
@@ -356,7 +357,7 @@ func TestUpdate(t *testing.T) {
 			res: &pbs.UpdateHostCatalogResponse{
 				Item: &pb.HostCatalog{
 					Id:          hc.GetPublicId(),
-					Scope:       &scopes.ScopeInfo{Id: proj.GetPublicId()},
+					Scope:       &scopes.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String()},
 					Name:        &wrappers.StringValue{Value: "new"},
 					Description: &wrappers.StringValue{Value: "desc"},
 					CreatedTime: hc.GetCreateTime().GetTimestamp(),
@@ -379,7 +380,7 @@ func TestUpdate(t *testing.T) {
 			res: &pbs.UpdateHostCatalogResponse{
 				Item: &pb.HostCatalog{
 					Id:          hc.GetPublicId(),
-					Scope:       &scopes.ScopeInfo{Id: proj.GetPublicId()},
+					Scope:       &scopes.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String()},
 					Name:        &wrappers.StringValue{Value: "new"},
 					Description: &wrappers.StringValue{Value: "desc"},
 					CreatedTime: hc.GetCreateTime().GetTimestamp(),
@@ -433,7 +434,7 @@ func TestUpdate(t *testing.T) {
 			res: &pbs.UpdateHostCatalogResponse{
 				Item: &pb.HostCatalog{
 					Id:          hc.GetPublicId(),
-					Scope:       &scopes.ScopeInfo{Id: proj.GetPublicId()},
+					Scope:       &scopes.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String()},
 					Description: &wrappers.StringValue{Value: "default"},
 					CreatedTime: hc.GetCreateTime().GetTimestamp(),
 					Type:        &wrappers.StringValue{Value: "Static"},
@@ -454,7 +455,7 @@ func TestUpdate(t *testing.T) {
 			res: &pbs.UpdateHostCatalogResponse{
 				Item: &pb.HostCatalog{
 					Id:          hc.GetPublicId(),
-					Scope:       &scopes.ScopeInfo{Id: proj.GetPublicId()},
+					Scope:       &scopes.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String()},
 					Name:        &wrappers.StringValue{Value: "default"},
 					CreatedTime: hc.GetCreateTime().GetTimestamp(),
 					Type:        &wrappers.StringValue{Value: "Static"},
@@ -476,7 +477,7 @@ func TestUpdate(t *testing.T) {
 			res: &pbs.UpdateHostCatalogResponse{
 				Item: &pb.HostCatalog{
 					Id:          hc.GetPublicId(),
-					Scope:       &scopes.ScopeInfo{Id: proj.GetPublicId()},
+					Scope:       &scopes.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String()},
 					Name:        &wrappers.StringValue{Value: "updated"},
 					Description: &wrappers.StringValue{Value: "default"},
 					CreatedTime: hc.GetCreateTime().GetTimestamp(),
@@ -499,7 +500,7 @@ func TestUpdate(t *testing.T) {
 			res: &pbs.UpdateHostCatalogResponse{
 				Item: &pb.HostCatalog{
 					Id:          hc.GetPublicId(),
-					Scope:       &scopes.ScopeInfo{Id: proj.GetPublicId()},
+					Scope:       &scopes.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String()},
 					Name:        &wrappers.StringValue{Value: "default"},
 					Description: &wrappers.StringValue{Value: "notignored"},
 					CreatedTime: hc.GetCreateTime().GetTimestamp(),
@@ -519,7 +520,7 @@ func TestUpdate(t *testing.T) {
 				},
 				Item: &pb.HostCatalog{
 					Name:        &wrappers.StringValue{Value: "new"},
-					Scope:       &scopes.ScopeInfo{Id: proj.GetPublicId()},
+					Scope:       &scopes.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String()},
 					Description: &wrappers.StringValue{Value: "desc"},
 				},
 			},
@@ -534,7 +535,7 @@ func TestUpdate(t *testing.T) {
 				},
 				Item: &pb.HostCatalog{
 					Id:          "p_somethinge",
-					Scope:       &scopes.ScopeInfo{Id: proj.GetPublicId()},
+					Scope:       &scopes.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String()},
 					Name:        &wrappers.StringValue{Value: "new"},
 					Description: &wrappers.StringValue{Value: "new desc"},
 				}},

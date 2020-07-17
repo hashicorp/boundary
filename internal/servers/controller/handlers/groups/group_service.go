@@ -56,7 +56,7 @@ func (s Service) ListGroups(ctx context.Context, req *pbs.ListGroupsRequest) (*p
 		return nil, err
 	}
 	for _, item := range gl {
-		item.Scope = &authResults.Scope
+		item.Scope = authResults.Scope
 	}
 	return &pbs.ListGroupsResponse{Items: gl}, nil
 }
@@ -74,7 +74,7 @@ func (s Service) GetGroup(ctx context.Context, req *pbs.GetGroupRequest) (*pbs.G
 	if err != nil {
 		return nil, err
 	}
-	u.Scope = &authResults.Scope
+	u.Scope = authResults.Scope
 	return &pbs.GetGroupResponse{Item: u}, nil
 }
 
@@ -91,7 +91,7 @@ func (s Service) CreateGroup(ctx context.Context, req *pbs.CreateGroupRequest) (
 	if err != nil {
 		return nil, err
 	}
-	u.Scope = &authResults.Scope
+	u.Scope = authResults.Scope
 	return &pbs.CreateGroupResponse{Item: u, Uri: fmt.Sprintf("scopes/%s/groups/%s", authResults.Scope.GetId(), u.GetId())}, nil
 }
 
@@ -108,7 +108,7 @@ func (s Service) UpdateGroup(ctx context.Context, req *pbs.UpdateGroupRequest) (
 	if err != nil {
 		return nil, err
 	}
-	u.Scope = &authResults.Scope
+	u.Scope = authResults.Scope
 	return &pbs.UpdateGroupResponse{Item: u}, nil
 }
 

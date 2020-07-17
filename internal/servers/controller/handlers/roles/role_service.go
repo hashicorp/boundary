@@ -7,21 +7,17 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/hashicorp/watchtower/internal/auth"
 	"github.com/hashicorp/watchtower/internal/db"
 	pb "github.com/hashicorp/watchtower/internal/gen/controller/api/resources/roles"
+	"github.com/hashicorp/watchtower/internal/gen/controller/api/resources/scopes"
 	pbs "github.com/hashicorp/watchtower/internal/gen/controller/api/services"
 	"github.com/hashicorp/watchtower/internal/iam"
 	"github.com/hashicorp/watchtower/internal/perms"
 	"github.com/hashicorp/watchtower/internal/servers/controller/handlers"
-	"github.com/hashicorp/watchtower/internal/types/scope"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/wrapperspb"
-)
-
-const (
-	orgIdFieldName  = "org_id"
-	projIdFieldName = "project_id"
 )
 
 var (
@@ -51,22 +47,29 @@ var _ pbs.RoleServiceServer = Service{}
 
 // ListRoles implements the interface pbs.RoleServiceServer.
 func (s Service) ListRoles(ctx context.Context, req *pbs.ListRolesRequest) (*pbs.ListRolesResponse, error) {
-	auth := handlers.ToTokenMetadata(ctx)
-	_ = auth
+	authResults := auth.Verify(ctx)
+	if !authResults.Valid {
+		return nil, handlers.ForbiddenError()
+	}
 	if err := validateListRequest(req); err != nil {
 		return nil, err
 	}
-	gl, err := s.listFromRepo(ctx, parentScope(req))
+	gl, err := s.listFromRepo(ctx, authResults.Scope.GetId())
 	if err != nil {
 		return nil, err
+	}
+	for _, item := range gl {
+		item.Scope = authResults.Scope
 	}
 	return &pbs.ListRolesResponse{Items: gl}, nil
 }
 
 // GetRoles implements the interface pbs.RoleServiceServer.
 func (s Service) GetRole(ctx context.Context, req *pbs.GetRoleRequest) (*pbs.GetRoleResponse, error) {
-	auth := handlers.ToTokenMetadata(ctx)
-	_ = auth
+	authResults := auth.Verify(ctx)
+	if !authResults.Valid {
+		return nil, handlers.ForbiddenError()
+	}
 	if err := validateGetRequest(req); err != nil {
 		return nil, err
 	}
@@ -74,41 +77,50 @@ func (s Service) GetRole(ctx context.Context, req *pbs.GetRoleRequest) (*pbs.Get
 	if err != nil {
 		return nil, err
 	}
+	u.Scope = authResults.Scope
 	return &pbs.GetRoleResponse{Item: u}, nil
 }
 
 // CreateRole implements the interface pbs.RoleServiceServer.
 func (s Service) CreateRole(ctx context.Context, req *pbs.CreateRoleRequest) (*pbs.CreateRoleResponse, error) {
-	auth := handlers.ToTokenMetadata(ctx)
-	_ = auth
-	if err := validateCreateRequest(req); err != nil {
+	authResults := auth.Verify(ctx)
+	if !authResults.Valid {
+		return nil, handlers.ForbiddenError()
+	}
+	if err := validateCreateRequest(req, authResults.Scope); err != nil {
 		return nil, err
 	}
-	r, err := s.createInRepo(ctx, parentScope(req), req.GetItem())
+	r, err := s.createInRepo(ctx, authResults.Scope.GetId(), req.GetItem())
 	if err != nil {
 		return nil, err
 	}
-	return &pbs.CreateRoleResponse{Item: r, Uri: fmt.Sprintf("scopes/%s/roles/%s", req.GetScopeId(), r.GetId())}, nil
+	r.Scope = authResults.Scope
+	return &pbs.CreateRoleResponse{Item: r, Uri: fmt.Sprintf("scopes/%s/roles/%s", authResults.Scope.GetId(), r.GetId())}, nil
 }
 
 // UpdateRole implements the interface pbs.RoleServiceServer.
 func (s Service) UpdateRole(ctx context.Context, req *pbs.UpdateRoleRequest) (*pbs.UpdateRoleResponse, error) {
-	auth := handlers.ToTokenMetadata(ctx)
-	_ = auth
-	if err := validateUpdateRequest(req); err != nil {
+	authResults := auth.Verify(ctx)
+	if !authResults.Valid {
+		return nil, handlers.ForbiddenError()
+	}
+	if err := validateUpdateRequest(req, authResults.Scope); err != nil {
 		return nil, err
 	}
-	u, err := s.updateInRepo(ctx, parentScope(req), req.GetId(), req.GetUpdateMask().GetPaths(), req.GetItem())
+	u, err := s.updateInRepo(ctx, authResults.Scope.GetId(), req.GetId(), req.GetUpdateMask().GetPaths(), req.GetItem())
 	if err != nil {
 		return nil, err
 	}
+	u.Scope = authResults.Scope
 	return &pbs.UpdateRoleResponse{Item: u}, nil
 }
 
 // DeleteRole implements the interface pbs.RoleServiceServer.
 func (s Service) DeleteRole(ctx context.Context, req *pbs.DeleteRoleRequest) (*pbs.DeleteRoleResponse, error) {
-	auth := handlers.ToTokenMetadata(ctx)
-	_ = auth
+	authResults := auth.Verify(ctx)
+	if !authResults.Valid {
+		return nil, handlers.ForbiddenError()
+	}
 	if err := validateDeleteRequest(req); err != nil {
 		return nil, err
 	}
@@ -121,8 +133,10 @@ func (s Service) DeleteRole(ctx context.Context, req *pbs.DeleteRoleRequest) (*p
 
 // AddRolePrincipals implements the interface pbs.RoleServiceServer.
 func (s Service) AddRolePrincipals(ctx context.Context, req *pbs.AddRolePrincipalsRequest) (*pbs.AddRolePrincipalsResponse, error) {
-	auth := handlers.ToTokenMetadata(ctx)
-	_ = auth
+	authResults := auth.Verify(ctx)
+	if !authResults.Valid {
+		return nil, handlers.ForbiddenError()
+	}
 	if err := validateAddRolePrincipalsRequest(req); err != nil {
 		return nil, err
 	}
@@ -130,13 +144,16 @@ func (s Service) AddRolePrincipals(ctx context.Context, req *pbs.AddRolePrincipa
 	if err != nil {
 		return nil, err
 	}
+	r.Scope = authResults.Scope
 	return &pbs.AddRolePrincipalsResponse{Item: r}, nil
 }
 
 // SetRolePrincipals implements the interface pbs.RoleServiceServer.
 func (s Service) SetRolePrincipals(ctx context.Context, req *pbs.SetRolePrincipalsRequest) (*pbs.SetRolePrincipalsResponse, error) {
-	auth := handlers.ToTokenMetadata(ctx)
-	_ = auth
+	authResults := auth.Verify(ctx)
+	if !authResults.Valid {
+		return nil, handlers.ForbiddenError()
+	}
 	if err := validateSetRolePrincipalsRequest(req); err != nil {
 		return nil, err
 	}
@@ -144,13 +161,16 @@ func (s Service) SetRolePrincipals(ctx context.Context, req *pbs.SetRolePrincipa
 	if err != nil {
 		return nil, err
 	}
+	r.Scope = authResults.Scope
 	return &pbs.SetRolePrincipalsResponse{Item: r}, nil
 }
 
 // RemoveRolePrincipals implements the interface pbs.RoleServiceServer.
 func (s Service) RemoveRolePrincipals(ctx context.Context, req *pbs.RemoveRolePrincipalsRequest) (*pbs.RemoveRolePrincipalsResponse, error) {
-	auth := handlers.ToTokenMetadata(ctx)
-	_ = auth
+	authResults := auth.Verify(ctx)
+	if !authResults.Valid {
+		return nil, handlers.ForbiddenError()
+	}
 	if err := validateRemoveRolePrincipalsRequest(req); err != nil {
 		return nil, err
 	}
@@ -158,13 +178,16 @@ func (s Service) RemoveRolePrincipals(ctx context.Context, req *pbs.RemoveRolePr
 	if err != nil {
 		return nil, err
 	}
+	r.Scope = authResults.Scope
 	return &pbs.RemoveRolePrincipalsResponse{Item: r}, nil
 }
 
 // AddRoleGrants implements the interface pbs.RoleServiceServer.
 func (s Service) AddRoleGrants(ctx context.Context, req *pbs.AddRoleGrantsRequest) (*pbs.AddRoleGrantsResponse, error) {
-	auth := handlers.ToTokenMetadata(ctx)
-	_ = auth
+	authResults := auth.Verify(ctx)
+	if !authResults.Valid {
+		return nil, handlers.ForbiddenError()
+	}
 	if err := validateAddRoleGrantsRequest(req); err != nil {
 		return nil, err
 	}
@@ -172,13 +195,16 @@ func (s Service) AddRoleGrants(ctx context.Context, req *pbs.AddRoleGrantsReques
 	if err != nil {
 		return nil, err
 	}
+	r.Scope = authResults.Scope
 	return &pbs.AddRoleGrantsResponse{Item: r}, nil
 }
 
 // SetRoleGrants implements the interface pbs.RoleServiceServer.
 func (s Service) SetRoleGrants(ctx context.Context, req *pbs.SetRoleGrantsRequest) (*pbs.SetRoleGrantsResponse, error) {
-	auth := handlers.ToTokenMetadata(ctx)
-	_ = auth
+	authResults := auth.Verify(ctx)
+	if !authResults.Valid {
+		return nil, handlers.ForbiddenError()
+	}
 	if err := validateSetRoleGrantsRequest(req); err != nil {
 		return nil, err
 	}
@@ -186,13 +212,16 @@ func (s Service) SetRoleGrants(ctx context.Context, req *pbs.SetRoleGrantsReques
 	if err != nil {
 		return nil, err
 	}
+	r.Scope = authResults.Scope
 	return &pbs.SetRoleGrantsResponse{Item: r}, nil
 }
 
 // RemoveRoleGrants implements the interface pbs.RoleServiceServer.
 func (s Service) RemoveRoleGrants(ctx context.Context, req *pbs.RemoveRoleGrantsRequest) (*pbs.RemoveRoleGrantsResponse, error) {
-	auth := handlers.ToTokenMetadata(ctx)
-	_ = auth
+	authResults := auth.Verify(ctx)
+	if !authResults.Valid {
+		return nil, handlers.ForbiddenError()
+	}
 	if err := validateRemoveRoleGrantsRequest(req); err != nil {
 		return nil, err
 	}
@@ -200,6 +229,7 @@ func (s Service) RemoveRoleGrants(ctx context.Context, req *pbs.RemoveRoleGrants
 	if err != nil {
 		return nil, err
 	}
+	r.Scope = authResults.Scope
 	return &pbs.RemoveRoleGrantsResponse{Item: r}, nil
 }
 
@@ -516,7 +546,7 @@ func toProto(in *iam.Role, principals []iam.PrincipalRole, grants []*iam.RoleGra
 //  * All required parameters are set
 //  * There are no conflicting parameters provided
 func validateGetRequest(req *pbs.GetRoleRequest) error {
-	badFields := validateAncestors(req)
+	badFields := map[string]string{}
 	if !validId(req.GetId(), iam.RolePrefix+"_") {
 		badFields["id"] = "Invalid formatted role id."
 	}
@@ -526,8 +556,8 @@ func validateGetRequest(req *pbs.GetRoleRequest) error {
 	return nil
 }
 
-func validateCreateRequest(req *pbs.CreateRoleRequest) error {
-	badFields := validateAncestors(req)
+func validateCreateRequest(req *pbs.CreateRoleRequest, scope *scopes.ScopeInfo) error {
+	badFields := map[string]string{}
 	item := req.GetItem()
 	if item.GetId() != "" {
 		badFields["id"] = "This is a read only field."
@@ -538,8 +568,8 @@ func validateCreateRequest(req *pbs.CreateRoleRequest) error {
 	if item.GetUpdatedTime() != nil {
 		badFields["updated_time"] = "This is a read only field."
 	}
-	if item.GetGrantScopeId() != nil && req.ProjectId != "" {
-		if item.GetGrantScopeId().Value != req.ProjectId {
+	if item.GetGrantScopeId() != nil && scope.GetType() == "project" {
+		if item.GetGrantScopeId().Value != scope.GetId() {
 			badFields["grant_scope_id"] = "Must be empty or set to the project_id when the scope type is project."
 		}
 	}
@@ -555,8 +585,8 @@ func validateCreateRequest(req *pbs.CreateRoleRequest) error {
 	return nil
 }
 
-func validateUpdateRequest(req *pbs.UpdateRoleRequest) error {
-	badFields := validateAncestors(req)
+func validateUpdateRequest(req *pbs.UpdateRoleRequest, scope *scopes.ScopeInfo) error {
+	badFields := map[string]string{}
 	if !validId(req.GetId(), iam.RolePrefix+"_") {
 		badFields["role_id"] = "Improperly formatted path identifier."
 	}
@@ -585,8 +615,8 @@ func validateUpdateRequest(req *pbs.UpdateRoleRequest) error {
 	if item.GetGrants() != nil {
 		badFields["grant_strings"] = "This is a read only field and cannot be specified in an update request."
 	}
-	if item.GetGrantScopeId() != nil && req.ProjectId != "" {
-		if item.GetGrantScopeId().Value != req.ProjectId {
+	if item.GetGrantScopeId() != nil && scope.GetType() == "project" {
+		if item.GetGrantScopeId().Value != scope.GetId() {
 			badFields["grant_scope_id"] = "Must be empty or set to the project_id when the scope type is project."
 		}
 	}
@@ -598,7 +628,7 @@ func validateUpdateRequest(req *pbs.UpdateRoleRequest) error {
 }
 
 func validateDeleteRequest(req *pbs.DeleteRoleRequest) error {
-	badFields := validateAncestors(req)
+	badFields := map[string]string{}
 	if !validId(req.GetId(), iam.RolePrefix+"_") {
 		badFields["id"] = "Incorrectly formatted identifier."
 	}
@@ -609,7 +639,7 @@ func validateDeleteRequest(req *pbs.DeleteRoleRequest) error {
 }
 
 func validateListRequest(req *pbs.ListRolesRequest) error {
-	badFields := validateAncestors(req)
+	badFields := map[string]string{}
 	if len(badFields) > 0 {
 		return handlers.InvalidArgumentErrorf("Improperly formatted identifier.", badFields)
 	}
@@ -617,7 +647,7 @@ func validateListRequest(req *pbs.ListRolesRequest) error {
 }
 
 func validateAddRolePrincipalsRequest(req *pbs.AddRolePrincipalsRequest) error {
-	badFields := validateAncestors(req)
+	badFields := map[string]string{}
 	if !validId(req.GetRoleId(), iam.RolePrefix+"_") {
 		badFields["id"] = "Incorrectly formatted identifier."
 	}
@@ -634,7 +664,7 @@ func validateAddRolePrincipalsRequest(req *pbs.AddRolePrincipalsRequest) error {
 }
 
 func validateSetRolePrincipalsRequest(req *pbs.SetRolePrincipalsRequest) error {
-	badFields := validateAncestors(req)
+	badFields := map[string]string{}
 	if !validId(req.GetRoleId(), iam.RolePrefix+"_") {
 		badFields["id"] = "Incorrectly formatted identifier."
 	}
@@ -648,7 +678,7 @@ func validateSetRolePrincipalsRequest(req *pbs.SetRolePrincipalsRequest) error {
 }
 
 func validateRemoveRolePrincipalsRequest(req *pbs.RemoveRolePrincipalsRequest) error {
-	badFields := validateAncestors(req)
+	badFields := map[string]string{}
 	if !validId(req.GetRoleId(), iam.RolePrefix+"_") {
 		badFields["id"] = "Incorrectly formatted identifier."
 	}
@@ -665,7 +695,7 @@ func validateRemoveRolePrincipalsRequest(req *pbs.RemoveRolePrincipalsRequest) e
 }
 
 func validateAddRoleGrantsRequest(req *pbs.AddRoleGrantsRequest) error {
-	badFields := validateAncestors(req)
+	badFields := map[string]string{}
 	if !validId(req.GetRoleId(), iam.RolePrefix+"_") {
 		badFields["id"] = "Incorrectly formatted identifier."
 	}
@@ -682,7 +712,7 @@ func validateAddRoleGrantsRequest(req *pbs.AddRoleGrantsRequest) error {
 }
 
 func validateSetRoleGrantsRequest(req *pbs.SetRoleGrantsRequest) error {
-	badFields := validateAncestors(req)
+	badFields := map[string]string{}
 	if !validId(req.GetRoleId(), iam.RolePrefix+"_") {
 		badFields["id"] = "Incorrectly formatted identifier."
 	}
@@ -696,7 +726,7 @@ func validateSetRoleGrantsRequest(req *pbs.SetRoleGrantsRequest) error {
 }
 
 func validateRemoveRoleGrantsRequest(req *pbs.RemoveRoleGrantsRequest) error {
-	badFields := validateAncestors(req)
+	badFields := map[string]string{}
 	if !validId(req.GetRoleId(), iam.RolePrefix+"_") {
 		badFields["id"] = "Incorrectly formatted identifier."
 	}
@@ -718,24 +748,4 @@ func validId(id, prefix string) bool {
 	}
 	id = strings.TrimPrefix(id, prefix)
 	return !reInvalidID.Match([]byte(id))
-}
-
-type ancestorProvider interface {
-	GetScopeId() string
-}
-
-// validateAncestors verifies that the ancestors of this call are properly set and provided.
-func validateAncestors(r ancestorProvider) map[string]string {
-	if r.GetScopeId() == "" {
-		return map[string]string{orgIdFieldName: "Missing org id."}
-	}
-	if !validId(r.GetScopeId(), scope.Org.Prefix()+"_") {
-		return map[string]string{orgIdFieldName: "Improperly formatted identifier."}
-	}
-	return map[string]string{}
-}
-
-// Given an ancestorProvider, return the resource's immediate parent scope
-func parentScope(r ancestorProvider) string {
-	return r.GetScopeId()
 }

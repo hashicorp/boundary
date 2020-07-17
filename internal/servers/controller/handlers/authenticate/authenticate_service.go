@@ -12,6 +12,7 @@ import (
 	"github.com/hashicorp/watchtower/internal/authtoken"
 	"github.com/hashicorp/watchtower/internal/db"
 	pba "github.com/hashicorp/watchtower/internal/gen/controller/api/resources/authtokens"
+	"github.com/hashicorp/watchtower/internal/gen/controller/api/resources/scopes"
 	pbs "github.com/hashicorp/watchtower/internal/gen/controller/api/services"
 	"github.com/hashicorp/watchtower/internal/iam"
 	iamStore "github.com/hashicorp/watchtower/internal/iam/store"
@@ -74,7 +75,7 @@ func (s Service) Deauthenticate(ctx context.Context, req *pbs.DeauthenticateRequ
 }
 
 func (s Service) authenticateWithRepo(ctx context.Context, req *pbs.AuthenticateRequest) (*pba.AuthToken, error) {
-	userRepo, err := s.iamRepo()
+	iamRepo, err := s.iamRepo()
 	if err != nil {
 		return nil, err
 	}
@@ -100,7 +101,7 @@ func (s Service) authenticateWithRepo(ctx context.Context, req *pbs.Authenticate
 	}}
 	RWDb.Load().(*db.Db).Create(ctx, aAcct)
 
-	u, err := userRepo.LookupUserWithLogin(ctx, acctId, iam.WithAutoVivify(true))
+	u, err := iamRepo.LookupUserWithLogin(ctx, acctId, iam.WithAutoVivify(true))
 	if err != nil {
 		return nil, err
 	}
@@ -109,7 +110,22 @@ func (s Service) authenticateWithRepo(ctx context.Context, req *pbs.Authenticate
 		return nil, err
 	}
 	tok.Token = tok.GetPublicId() + "_" + tok.GetToken()
-	return toProto(tok), nil
+	prot := toProto(tok)
+
+	scp, err := iamRepo.LookupScope(ctx, u.GetScopeId())
+	if err != nil {
+		return nil, err
+	}
+	if scp == nil {
+		return nil, err
+	}
+	prot.Scope = &scopes.ScopeInfo{
+		Id:            scp.GetPublicId(),
+		Type:          scp.GetType(),
+		ParentScopeId: scp.GetParentId(),
+	}
+
+	return prot, nil
 }
 
 func toProto(t *authtoken.AuthToken) *pba.AuthToken {

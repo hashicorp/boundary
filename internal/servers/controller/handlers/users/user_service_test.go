@@ -14,6 +14,7 @@ import (
 	pbs "github.com/hashicorp/watchtower/internal/gen/controller/api/services"
 	"github.com/hashicorp/watchtower/internal/iam"
 	"github.com/hashicorp/watchtower/internal/servers/controller/handlers/users"
+	"github.com/hashicorp/watchtower/internal/types/scope"
 	"google.golang.org/genproto/protobuf/field_mask"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -48,7 +49,7 @@ func TestGet(t *testing.T) {
 
 	wantU := &pb.User{
 		Id:          u.GetPublicId(),
-		Scope:       &scopes.ScopeInfo{Id: u.ScopeId},
+		Scope:       &scopes.ScopeInfo{Id: u.ScopeId, Type: scope.Org.String()},
 		Name:        &wrapperspb.StringValue{Value: u.GetName()},
 		Description: &wrapperspb.StringValue{Value: u.GetDescription()},
 		CreatedTime: u.CreateTime.GetTimestamp(),
@@ -123,7 +124,7 @@ func TestList(t *testing.T) {
 		require.NoError(err)
 		wantUsers = append(wantUsers, &pb.User{
 			Id:          u.GetPublicId(),
-			Scope:       &scopes.ScopeInfo{Id: u.GetScopeId()},
+			Scope:       &scopes.ScopeInfo{Id: u.GetScopeId(), Type: scope.Org.String()},
 			CreatedTime: u.GetCreateTime().GetTimestamp(),
 			UpdatedTime: u.GetUpdateTime().GetTimestamp(),
 		})
@@ -256,7 +257,7 @@ func TestCreate(t *testing.T) {
 			res: &pbs.CreateUserResponse{
 				Uri: fmt.Sprintf("scopes/%s/users/u_", defaultUser.GetScopeId()),
 				Item: &pb.User{
-					Scope:       &scopes.ScopeInfo{Id: defaultUser.GetScopeId()},
+					Scope:       &scopes.ScopeInfo{Id: defaultUser.GetScopeId(), Type: scope.Org.String()},
 					Name:        &wrapperspb.StringValue{Value: "name"},
 					Description: &wrapperspb.StringValue{Value: "desc"},
 				},
@@ -359,7 +360,7 @@ func TestUpdate(t *testing.T) {
 			res: &pbs.UpdateUserResponse{
 				Item: &pb.User{
 					Id:          u.GetPublicId(),
-					Scope:       &scopes.ScopeInfo{Id: u.GetScopeId()},
+					Scope:       &scopes.ScopeInfo{Id: u.GetScopeId(), Type: scope.Org.String()},
 					Name:        &wrapperspb.StringValue{Value: "new"},
 					Description: &wrapperspb.StringValue{Value: "desc"},
 					CreatedTime: u.GetCreateTime().GetTimestamp(),
@@ -381,7 +382,7 @@ func TestUpdate(t *testing.T) {
 			res: &pbs.UpdateUserResponse{
 				Item: &pb.User{
 					Id:          u.GetPublicId(),
-					Scope:       &scopes.ScopeInfo{Id: u.GetScopeId()},
+					Scope:       &scopes.ScopeInfo{Id: u.GetScopeId(), Type: scope.Org.String()},
 					Name:        &wrapperspb.StringValue{Value: "new"},
 					Description: &wrapperspb.StringValue{Value: "desc"},
 					CreatedTime: u.GetCreateTime().GetTimestamp(),
@@ -434,7 +435,7 @@ func TestUpdate(t *testing.T) {
 			res: &pbs.UpdateUserResponse{
 				Item: &pb.User{
 					Id:          u.GetPublicId(),
-					Scope:       &scopes.ScopeInfo{Id: u.GetScopeId()},
+					Scope:       &scopes.ScopeInfo{Id: u.GetScopeId(), Type: scope.Org.String()},
 					Description: &wrapperspb.StringValue{Value: "default"},
 					CreatedTime: u.GetCreateTime().GetTimestamp(),
 				},
@@ -455,7 +456,7 @@ func TestUpdate(t *testing.T) {
 			res: &pbs.UpdateUserResponse{
 				Item: &pb.User{
 					Id:          u.GetPublicId(),
-					Scope:       &scopes.ScopeInfo{Id: u.GetScopeId()},
+					Scope:       &scopes.ScopeInfo{Id: u.GetScopeId(), Type: scope.Org.String()},
 					Name:        &wrapperspb.StringValue{Value: "updated"},
 					Description: &wrapperspb.StringValue{Value: "default"},
 					CreatedTime: u.GetCreateTime().GetTimestamp(),
@@ -477,7 +478,7 @@ func TestUpdate(t *testing.T) {
 			res: &pbs.UpdateUserResponse{
 				Item: &pb.User{
 					Id:          u.GetPublicId(),
-					Scope:       &scopes.ScopeInfo{Id: u.GetScopeId()},
+					Scope:       &scopes.ScopeInfo{Id: u.GetScopeId(), Type: scope.Org.String()},
 					Name:        &wrapperspb.StringValue{Value: "default"},
 					Description: &wrapperspb.StringValue{Value: "notignored"},
 					CreatedTime: u.GetCreateTime().GetTimestamp(),
