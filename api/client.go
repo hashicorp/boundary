@@ -633,11 +633,6 @@ func (c *Client) NewRequest(ctx context.Context, method, requestPath string, bod
 	headers := copyHeaders(c.config.Headers)
 	c.modifyLock.RUnlock()
 
-	opts := getOpts(opt...)
-	if opts.withScopeId != "" {
-		scopeId = opts.withScopeId
-	}
-
 	u, err := url.Parse(addr)
 	if err != nil {
 		return nil, err
@@ -676,12 +671,24 @@ func (c *Client) NewRequest(ctx context.Context, method, requestPath string, bod
 		}
 	}
 
+	opts := getOpts(opt...)
+	if opts.withScopeId != "" {
+		scopeId = opts.withScopeId
+	}
+
 	scopedPath := strings.TrimPrefix(requestPath, "/")
-	// If their path already has 'scopes/' in it, use the given request path
-	// instead of building it from the client's scope information
-	if !strings.HasPrefix(scopedPath, "scopes/") {
-		if scopeId != "" {
-			scopedPath = path.Join("scopes", scopeId, scopedPath)
+	switch requestPath {
+	case "scopes":
+		// This is a special case for creating or listing scopes; don't do
+		// anything
+
+	default:
+		// If their path already has 'scopes/' in it, use the given request path
+		// instead of building it from the client's scope information
+		if !strings.HasPrefix(scopedPath, "scopes/") {
+			if scopeId != "" {
+				scopedPath = path.Join("scopes", scopeId, scopedPath)
+			}
 		}
 	}
 	scopedPath = path.Join(u.Path, "/v1", scopedPath)

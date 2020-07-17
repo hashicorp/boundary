@@ -120,7 +120,7 @@ func (c *PasswordCommand) Run(args []string) int {
 		return 2
 	}
 
-	org := &scopes.Org{
+	org := &scopes.Scope{
 		Client: client,
 	}
 
