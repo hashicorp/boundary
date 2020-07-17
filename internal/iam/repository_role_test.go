@@ -3,12 +3,14 @@ package iam
 import (
 	"context"
 	"errors"
+	"fmt"
 	"testing"
 	"time"
 
 	"github.com/hashicorp/go-uuid"
 	"github.com/hashicorp/watchtower/internal/db"
 	dbassert "github.com/hashicorp/watchtower/internal/db/assert"
+	"github.com/hashicorp/watchtower/internal/iam/store"
 	"github.com/hashicorp/watchtower/internal/oplog"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -181,6 +183,8 @@ func TestRepository_UpdateRole(t *testing.T) {
 	require.NoError(t, err)
 
 	org, proj := TestScopes(t, conn)
+	u := TestUser(t, conn, org.GetPublicId())
+
 	pubId := func(s string) *string { return &s }
 
 	type args struct {
@@ -194,7 +198,7 @@ func TestRepository_UpdateRole(t *testing.T) {
 	tests := []struct {
 		name           string
 		newScopeId     string
-		newGrpOpts     []Option
+		newRoleOpts    []Option
 		args           args
 		wantRowsUpdate int
 		wantErr        bool
@@ -221,7 +225,7 @@ func TestRepository_UpdateRole(t *testing.T) {
 				ScopeId:        org.PublicId,
 			},
 			newScopeId:     org.PublicId,
-			newGrpOpts:     []Option{WithName("valid-no-op" + id)},
+			newRoleOpts:    []Option{WithName("valid-no-op" + id)},
 			wantErr:        false,
 			wantRowsUpdate: 1,
 		},
@@ -247,7 +251,7 @@ func TestRepository_UpdateRole(t *testing.T) {
 				ScopeId:        org.PublicId,
 			},
 			newScopeId:     org.PublicId,
-			newGrpOpts:     []Option{WithName("null-name" + id)},
+			newRoleOpts:    []Option{WithName("null-name" + id)},
 			wantErr:        false,
 			wantRowsUpdate: 1,
 		},
@@ -259,7 +263,7 @@ func TestRepository_UpdateRole(t *testing.T) {
 				ScopeId:        org.PublicId,
 			},
 			newScopeId:     org.PublicId,
-			newGrpOpts:     []Option{WithDescription("null-description" + id)},
+			newRoleOpts:    []Option{WithDescription("null-description" + id)},
 			wantErr:        false,
 			wantRowsUpdate: 1,
 		},
@@ -359,7 +363,7 @@ func TestRepository_UpdateRole(t *testing.T) {
 				ScopeId:        proj.PublicId,
 			},
 			newScopeId:     proj.PublicId,
-			newGrpOpts:     []Option{WithName("dup-name-in-diff-scope-pre-update" + id)},
+			newRoleOpts:    []Option{WithName("dup-name-in-diff-scope-pre-update" + id)},
 			wantErr:        false,
 			wantRowsUpdate: 1,
 			wantDup:        true,
@@ -383,12 +387,31 @@ func TestRepository_UpdateRole(t *testing.T) {
 			require, assert := require.New(t), assert.New(t)
 			if tt.wantDup {
 				r := TestRole(t, conn, org.PublicId)
+				_ = TestUserRole(t, conn, r.GetPublicId(), u.GetPublicId())
+				_ = TestRoleGrant(t, conn, r.GetPublicId(), "id=*;actions=*")
 				r.Name = tt.args.name
-				_, _, err := repo.UpdateRole(context.Background(), r, tt.args.fieldMaskPaths, tt.args.opt...)
+				_, _, _, _, err := repo.UpdateRole(context.Background(), r, tt.args.fieldMaskPaths, tt.args.opt...)
 				assert.NoError(err)
 			}
 
-			r := TestRole(t, conn, tt.newScopeId, tt.newGrpOpts...)
+			r := TestRole(t, conn, tt.newScopeId, tt.newRoleOpts...)
+			ur := TestUserRole(t, conn, r.GetPublicId(), u.GetPublicId())
+			princRole := PrincipalRole{PrincipalRoleView: &store.PrincipalRoleView{
+				Type:              UserRoleType.String(),
+				CreateTime:        ur.CreateTime,
+				RoleId:            ur.RoleId,
+				PrincipalId:       ur.PrincipalId,
+				PrincipalScopeId:  org.GetPublicId(),
+				ScopedPrincipalId: ur.PrincipalId,
+				RoleScopeId:       org.GetPublicId(),
+			}}
+			if tt.newScopeId != org.GetPublicId() {
+				// If the project is in a different scope from the created user we need to update the
+				// scope specific fields.
+				princRole.RoleScopeId = tt.newScopeId
+				princRole.ScopedPrincipalId = fmt.Sprintf("%s:%s", org.PublicId, ur.PrincipalId)
+			}
+			rGrant := TestRoleGrant(t, conn, r.GetPublicId(), "id=*;actions=*")
 
 			updateRole := allocRole()
 			updateRole.PublicId = r.PublicId
@@ -399,7 +422,7 @@ func TestRepository_UpdateRole(t *testing.T) {
 			updateRole.Name = tt.args.name
 			updateRole.Description = tt.args.description
 
-			roleAfterUpdate, updatedRows, err := repo.UpdateRole(context.Background(), &updateRole, tt.args.fieldMaskPaths, tt.args.opt...)
+			roleAfterUpdate, principals, grants, updatedRows, err := repo.UpdateRole(context.Background(), &updateRole, tt.args.fieldMaskPaths, tt.args.opt...)
 			if tt.wantErr {
 				assert.Error(err)
 				if tt.wantIsError != nil {
@@ -416,6 +439,8 @@ func TestRepository_UpdateRole(t *testing.T) {
 			require.NoError(err)
 			require.NotNil(roleAfterUpdate)
 			assert.Equal(tt.wantRowsUpdate, updatedRows)
+			assert.Equal([]PrincipalRole{princRole}, principals)
+			assert.Equal([]*RoleGrant{rGrant}, grants)
 			switch tt.name {
 			case "valid-no-op":
 				assert.Equal(r.UpdateTime, roleAfterUpdate.UpdateTime)

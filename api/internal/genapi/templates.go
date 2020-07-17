@@ -26,11 +26,13 @@ func writeStructTemplates() {
 				Package      string
 				StructFields string
 				NameJsonMap  map[string]string
+				OutputOnly   bool
 			}{
 				Name:         inputStruct.outName,
 				Package:      inputStruct.outPkg,
 				StructFields: inputStruct.structFields,
 				NameJsonMap:  inputStruct.nameJsonMap,
+				OutputOnly:   inputStruct.outputOnly,
 			})
 
 		case templateTypeDetail:
@@ -45,7 +47,6 @@ func writeStructTemplates() {
 				ParentName:   inputStruct.parentName,
 				DetailName:   inputStruct.detailName,
 			})
-
 		}
 
 		outFile, err := filepath.Abs(inputStruct.outFile)
@@ -84,6 +85,7 @@ type {{ .Name }} struct {
 	{{ .StructFields }}
 }
 
+{{ if (not .OutputOnly) }}
 func (s *{{ .Name }}) SetDefault(key string) {
 	lowerKey := strings.ToLower(key)
 	validMap := {{ printf "%#v" .NameJsonMap }}
@@ -116,6 +118,7 @@ func (s {{ .Name }}) MarshalJSON() ([]byte, error) {
 	}
 	return json.Marshal(m)
 }
+{{ end }}
 `))
 
 var detailTemplate = template.Must(template.New("").Parse(
