@@ -12,13 +12,7 @@ import (
 )
 
 func TestAuthMethod_New(t *testing.T) {
-	cleanup, conn, _ := db.TestSetup(t, "postgres")
-	t.Cleanup(func() {
-		err := cleanup()
-		assert.NoError(t, err)
-		err = conn.Close()
-		assert.NoError(t, err)
-	})
+	conn, _ := db.TestSetup(t, "postgres")
 
 	// conn.LogMode(true)
 	w := db.New(conn)

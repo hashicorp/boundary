@@ -22,13 +22,7 @@ func TestArgon2Configuration_New(t *testing.T) {
 		try to insert duplicate
 		verify it was not saved
 	*/
-	cleanup, conn, _ := db.TestSetup(t, "postgres")
-	t.Cleanup(func() {
-		err := cleanup()
-		assert.NoError(t, err)
-		err = conn.Close()
-		assert.NoError(t, err)
-	})
+	conn, _ := db.TestSetup(t, "postgres")
 
 	// conn.LogMode(true)
 	rw := db.New(conn)
@@ -104,13 +98,7 @@ func TestArgon2Configuration_New(t *testing.T) {
 }
 
 func TestArgon2Configuration_Readonly(t *testing.T) {
-	cleanup, conn, _ := db.TestSetup(t, "postgres")
-	t.Cleanup(func() {
-		err := cleanup()
-		assert.NoError(t, err)
-		err = conn.Close()
-		assert.NoError(t, err)
-	})
+	conn, _ := db.TestSetup(t, "postgres")
 
 	rw := db.New(conn)
 
@@ -223,13 +211,7 @@ func testArgon2Confs(t *testing.T, conn *gorm.DB, authMethodId string, count int
 }
 
 func TestArgon2Credential_New(t *testing.T) {
-	cleanup, conn, _ := db.TestSetup(t, "postgres")
-	t.Cleanup(func() {
-		err := cleanup()
-		assert.NoError(t, err)
-		err = conn.Close()
-		assert.NoError(t, err)
-	})
+	conn, _ := db.TestSetup(t, "postgres")
 
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)

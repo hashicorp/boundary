@@ -50,13 +50,7 @@ func testAuthMethods(t *testing.T, conn *gorm.DB, count int) []*AuthMethod {
 }
 
 func TestAccount_New(t *testing.T) {
-	cleanup, conn, _ := db.TestSetup(t, "postgres")
-	t.Cleanup(func() {
-		err := cleanup()
-		assert.NoError(t, err)
-		err = conn.Close()
-		assert.NoError(t, err)
-	})
+	conn, _ := db.TestSetup(t, "postgres")
 
 	w := db.New(conn)
 	auts := testAuthMethods(t, conn, 1)
