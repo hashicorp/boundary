@@ -13,11 +13,11 @@ type Service struct {
 }
 
 func (s Service) ListHostSets(ctx context.Context, req *services.ListHostSetsRequest) (*services.ListHostSetsResponse, error) {
-	return nil, status.Errorf(codes.NotFound, "Org %q not found", req.OrgId)
+	return nil, status.Error(codes.Unimplemented, "Requested method is unimplemented for Host Sets.")
 }
 
 func (s Service) DeleteHostSet(context.Context, *services.DeleteHostSetRequest) (*services.DeleteHostSetResponse, error) {
-	return &services.DeleteHostSetResponse{Existed: false}, nil
+	return nil, status.Error(codes.Unimplemented, "Requested method is unimplemented for Host Sets.")
 }
 
 var _ services.HostSetServiceServer = &Service{}
