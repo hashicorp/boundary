@@ -406,12 +406,6 @@ before
 insert on iam_role_grant
   for each row execute procedure default_create_time();
 
--- prefix a_ to make this trigger run before ensure_grant_scope_id_valid
-create trigger a_immutable_scope_id
-before
-update on iam_role
-  for each row execute procedure iam_immutable_scope_id_func();
-
 create trigger 
   update_version_column
 after update on iam_role
@@ -421,12 +415,6 @@ create trigger
   update_time_column 
 before update on iam_role
   for each row execute procedure update_time_column();
-
-create trigger 
-  immutable_create_time
-before
-update on iam_role
-  for each row execute procedure immutable_create_time_func();
   
 create trigger 
   default_create_time_column
@@ -460,24 +448,12 @@ before
 delete on iam_role
   for each row execute procedure disallow_default_role_deletion();
 
--- immutable_default_role_id prevents the a role's id from being updated.
-create or replace function
-  immutable_role_id()
-  returns trigger
-as $$
-begin
-  if new.public_id is distinct from old.public_id then
-    raise exception 'update of role primary key not allowed';
-  end if;
-  return new;
-end;
-$$ language plpgsql;
-
+-- define the immutable fields for iam_role
 create trigger 
-  immutable_role_id
+  immutable_columns
 before
 update on iam_role
-  for each row execute procedure immutable_role_id();
+  for each row execute procedure immutable_columns('public_id', 'create_time', 'scope_id');
 
 insert into iam_role (public_id, name, description, scope_id)
   values('r_default', 'default', 'default role', 'global');
