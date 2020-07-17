@@ -48,6 +48,28 @@ type Grant struct {
 	actionsBeingParsed []string
 }
 
+func (g Grant) Id() string {
+	return g.id
+}
+
+func (g Grant) Type() resource.Type {
+	return g.typ
+}
+
+func (g Grant) Actions() (typs []action.Type, strs []string) {
+	typs = make([]action.Type, 0, len(g.actions))
+	strs = make([]string, 0, len(g.actions))
+	for k, v := range g.actions {
+		// Nothing should be in there if not true, but doesn't hurt to validate
+		if !v {
+			continue
+		}
+		typs = append(typs, k)
+		strs = append(strs, k.String())
+	}
+	return
+}
+
 func (g Grant) clone() *Grant {
 	ret := &Grant{
 		scope: g.scope,
