@@ -290,7 +290,7 @@ func TestRepository_UpdateUser(t *testing.T) {
 				opt:            []Option{WithSkipVetForWrite(true)},
 			},
 			wantErr:      true,
-			wantErrMsg:   `update: failed: pq: scope_id cannot be set`,
+			wantErrMsg:   `update: failed: pq: immutable column: iam_user.scope_id`,
 			directUpdate: true,
 		},
 	}

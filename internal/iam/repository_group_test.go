@@ -390,7 +390,7 @@ func TestRepository_UpdateGroup(t *testing.T) {
 			},
 			newScopeId:   org.PublicId,
 			wantErr:      true,
-			wantErrMsg:   `update: failed: pq: scope_id cannot be set`,
+			wantErrMsg:   `update: failed: pq: immutable column: iam_group.scope_id`,
 			directUpdate: true,
 		},
 	}
