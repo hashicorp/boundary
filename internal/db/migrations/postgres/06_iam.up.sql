@@ -487,12 +487,6 @@ create trigger
   update_time_column 
 before update on iam_group
   for each row execute procedure update_time_column();
-
-create trigger 
-  immutable_create_time
-before
-update on iam_group
-  for each row execute procedure immutable_create_time_func();
   
 create trigger 
   default_create_time_column
@@ -500,10 +494,12 @@ before
 insert on iam_group
   for each row execute procedure default_create_time();
 
-create trigger immutable_scope_id_group
+-- define the immutable fields for iam_group
+create trigger 
+  immutable_columns
 before
 update on iam_group
-  for each row execute procedure iam_immutable_scope_id_func();
+  for each row execute procedure immutable_columns('public_id', 'create_time', 'scope_id');
 
 -- iam_user_role contains roles that have been assigned to users. Users can be
 -- from any scope. The rows in this table must be immutable after insert, which

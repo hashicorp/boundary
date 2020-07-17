@@ -31,27 +31,27 @@ func TestScope_ImmutableFields(t *testing.T) {
 		{
 			name: "public_id",
 			update: func() *Scope {
-				u := new.Clone().(*Scope)
-				u.PublicId = "o_thisIsNotAValidId"
-				return u
+				c := new.Clone().(*Scope)
+				c.PublicId = "o_thisIsNotAValidId"
+				return c
 			}(),
 			fieldMask: []string{"PublicId"},
 		},
 		{
 			name: "create time",
 			update: func() *Scope {
-				u := new.Clone().(*Scope)
-				u.CreateTime = &ts
-				return u
+				c := new.Clone().(*Scope)
+				c.CreateTime = &ts
+				return c
 			}(),
 			fieldMask: []string{"CreateTime"},
 		},
 		{
 			name: "type",
 			update: func() *Scope {
-				u := new.Clone().(*Scope)
-				u.Type = "project"
-				return u
+				c := new.Clone().(*Scope)
+				c.Type = "project"
+				return c
 			}(),
 			fieldMask: []string{"Type"},
 		},
@@ -161,27 +161,27 @@ func TestUser_ImmutableFields(t *testing.T) {
 		{
 			name: "public_id",
 			update: func() *User {
-				u := new.Clone().(*User)
-				u.PublicId = "o_thisIsNotAValidId"
-				return u
+				c := new.Clone().(*User)
+				c.PublicId = "o_thisIsNotAValidId"
+				return c
 			}(),
 			fieldMask: []string{"PublicId"},
 		},
 		{
 			name: "create time",
 			update: func() *User {
-				u := new.Clone().(*User)
-				u.CreateTime = &ts
-				return u
+				c := new.Clone().(*User)
+				c.CreateTime = &ts
+				return c
 			}(),
 			fieldMask: []string{"CreateTime"},
 		},
 		{
 			name: "scope id",
 			update: func() *User {
-				u := new.Clone().(*User)
-				u.ScopeId = proj.PublicId
-				return u
+				c := new.Clone().(*User)
+				c.ScopeId = proj.PublicId
+				return c
 			}(),
 			fieldMask: []string{"ScopeId"},
 		},
@@ -228,27 +228,27 @@ func TestRole_ImmutableFields(t *testing.T) {
 		{
 			name: "public_id",
 			update: func() *Role {
-				u := new.Clone().(*Role)
-				u.PublicId = "r_thisIsNotAValidId"
-				return u
+				c := new.Clone().(*Role)
+				c.PublicId = "r_thisIsNotAValidId"
+				return c
 			}(),
 			fieldMask: []string{"PublicId"},
 		},
 		{
 			name: "create time",
 			update: func() *Role {
-				u := new.Clone().(*Role)
-				u.CreateTime = &ts
-				return u
+				c := new.Clone().(*Role)
+				c.CreateTime = &ts
+				return c
 			}(),
 			fieldMask: []string{"CreateTime"},
 		},
 		{
 			name: "scope id",
 			update: func() *Role {
-				u := new.Clone().(*Role)
-				u.ScopeId = proj.PublicId
-				return u
+				c := new.Clone().(*Role)
+				c.ScopeId = proj.PublicId
+				return c
 			}(),
 			fieldMask: []string{"ScopeId"},
 		},
@@ -270,6 +270,73 @@ func TestRole_ImmutableFields(t *testing.T) {
 			require.NoError(err)
 
 			assert.True(proto.Equal(orig.(*Role), after.(*Role)))
+
+		})
+	}
+}
+
+func TestGroup_ImmutableFields(t *testing.T) {
+	t.Parallel()
+	conn, _ := db.TestSetup(t, "postgres")
+	w := db.New(conn)
+
+	ts := timestamp.Timestamp{Timestamp: &timestamppb.Timestamp{Seconds: 0, Nanos: 0}}
+
+	org, proj := TestScopes(t, conn)
+	new := TestGroup(t, conn, org.PublicId)
+
+	var tests = []struct {
+		name           string
+		update         *Group
+		fieldMask      []string
+		wantErr        bool
+		wantRowUpdated int
+	}{
+		{
+			name: "public_id",
+			update: func() *Group {
+				c := new.Clone().(*Group)
+				c.PublicId = "g_thisIsNotAValidId"
+				return c
+			}(),
+			fieldMask: []string{"PublicId"},
+		},
+		{
+			name: "create time",
+			update: func() *Group {
+				c := new.Clone().(*Group)
+				c.CreateTime = &ts
+				return c
+			}(),
+			fieldMask: []string{"CreateTime"},
+		},
+		{
+			name: "scope id",
+			update: func() *Group {
+				c := new.Clone().(*Group)
+				c.ScopeId = proj.PublicId
+				return c
+			}(),
+			fieldMask: []string{"ScopeId"},
+		},
+	}
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+			orig := new.Clone()
+			err := w.LookupById(context.Background(), orig)
+			require.NoError(err)
+
+			rowsUpdated, err := w.Update(context.Background(), tt.update, tt.fieldMask, nil)
+			require.Error(err)
+			assert.Equal(tt.wantRowUpdated, rowsUpdated)
+
+			after := new.Clone()
+			err = w.LookupById(context.Background(), after)
+			require.NoError(err)
+
+			assert.True(proto.Equal(orig.(*Group), after.(*Group)))
 
 		})
 	}
