@@ -6,6 +6,7 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/hashicorp/watchtower/internal/auth"
 	pb "github.com/hashicorp/watchtower/internal/gen/controller/api/resources/scopes"
 	pbs "github.com/hashicorp/watchtower/internal/gen/controller/api/services"
 	"github.com/hashicorp/watchtower/internal/iam"
@@ -43,8 +44,10 @@ var _ pbs.ScopeServiceServer = Service{}
 
 // ListScopes implements the interface pbs.ScopeServiceServer.
 func (s Service) ListScopes(ctx context.Context, req *pbs.ListScopesRequest) (*pbs.ListScopesResponse, error) {
-	auth := handlers.ToTokenMetadata(ctx)
-	_ = auth
+	authResults := auth.Verify(ctx)
+	if !authResults.Valid {
+		return nil, handlers.ForbiddenError()
+	}
 	if err := validateListRequest(req); err != nil {
 		return nil, err
 	}
@@ -57,8 +60,10 @@ func (s Service) ListScopes(ctx context.Context, req *pbs.ListScopesRequest) (*p
 
 // GetScopes implements the interface pbs.ScopeServiceServer.
 func (s Service) GetScope(ctx context.Context, req *pbs.GetScopeRequest) (*pbs.GetScopeResponse, error) {
-	auth := handlers.ToTokenMetadata(ctx)
-	_ = auth
+	authResults := auth.Verify(ctx)
+	if !authResults.Valid {
+		return nil, handlers.ForbiddenError()
+	}
 	if err := validateGetRequest(req); err != nil {
 		return nil, err
 	}
@@ -71,8 +76,10 @@ func (s Service) GetScope(ctx context.Context, req *pbs.GetScopeRequest) (*pbs.G
 
 // CreateScope implements the interface pbs.ScopeServiceServer.
 func (s Service) CreateScope(ctx context.Context, req *pbs.CreateScopeRequest) (*pbs.CreateScopeResponse, error) {
-	auth := handlers.ToTokenMetadata(ctx)
-	_ = auth
+	authResults := auth.Verify(ctx)
+	if !authResults.Valid {
+		return nil, handlers.ForbiddenError()
+	}
 	if err := validateCreateRequest(req); err != nil {
 		return nil, err
 	}
@@ -85,8 +92,10 @@ func (s Service) CreateScope(ctx context.Context, req *pbs.CreateScopeRequest) (
 
 // UpdateScope implements the interface pbs.ScopeServiceServer.
 func (s Service) UpdateScope(ctx context.Context, req *pbs.UpdateScopeRequest) (*pbs.UpdateScopeResponse, error) {
-	auth := handlers.ToTokenMetadata(ctx)
-	_ = auth
+	authResults := auth.Verify(ctx)
+	if !authResults.Valid {
+		return nil, handlers.ForbiddenError()
+	}
 	if err := validateUpdateRequest(req); err != nil {
 		return nil, err
 	}
@@ -99,8 +108,10 @@ func (s Service) UpdateScope(ctx context.Context, req *pbs.UpdateScopeRequest) (
 
 // DeleteScope implements the interface pbs.ScopeServiceServer.
 func (s Service) DeleteScope(ctx context.Context, req *pbs.DeleteScopeRequest) (*pbs.DeleteScopeResponse, error) {
-	auth := handlers.ToTokenMetadata(ctx)
-	_ = auth
+	authResults := auth.Verify(ctx)
+	if !authResults.Valid {
+		return nil, handlers.ForbiddenError()
+	}
 	if err := validateDeleteRequest(req); err != nil {
 		return nil, err
 	}

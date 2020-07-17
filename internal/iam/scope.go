@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/hashicorp/watchtower/internal/db"
 	"github.com/hashicorp/watchtower/internal/iam/store"
@@ -32,49 +33,49 @@ func NewOrg(opt ...Option) (*Scope, error) {
 	global := allocScope()
 	global.PublicId = "global"
 	opt = append(opt, withScope(&global))
-	return newScope(scope.Org, opt...)
+	return newScope(opt...)
 }
 
 func NewProject(orgPublicId string, opt ...Option) (*Scope, error) {
 	org := allocScope()
 	org.PublicId = orgPublicId
 	opt = append(opt, withScope(&org))
-	p, err := newScope(scope.Project, opt...)
+	p, err := newScope(opt...)
 	if err != nil {
 		return nil, fmt.Errorf("error creating new project: %w", err)
 	}
 	return p, nil
 }
 
-// newScope creates a new Scope of the specified ScopeType with options:
-// WithName specifies the Scope's friendly name. WithDescription specifies the
-// scope's description. WithScope specifies the Scope's parent
-func newScope(scopeType scope.Type, opt ...Option) (*Scope, error) {
+// newScope creates a new Scope with options: WithName specifies the Scope's
+// friendly name. WithDescription specifies the scope's description. WithScope
+// specifies the Scope's parent and must be filled in. The type of the parent is
+// used to determine the type of the child.
+func newScope(opt ...Option) (*Scope, error) {
 	opts := getOpts(opt...)
-	switch scopeType {
-	case scope.Unknown:
-		return nil, fmt.Errorf("new scope: unknown scope type: %w", db.ErrInvalidParameter)
-	case scope.Global:
-		return nil, fmt.Errorf("new scope: invalid scope type: %w", db.ErrInvalidParameter)
-	default:
-		if opts.withScope == nil {
-			return nil, fmt.Errorf("new scope: child scope is missing its parent: %w", db.ErrInvalidParameter)
-		}
-		if opts.withScope.PublicId == "" {
-			return nil, fmt.Errorf("new scope: with scope's parent id is missing: %w", db.ErrInvalidParameter)
-		}
+	if opts.withScope == nil || opts.withScope.PublicId == "" {
+		return nil, fmt.Errorf("new scope: child scope is missing its parent: %w", db.ErrInvalidParameter)
+	}
+	var typ scope.Type
+	switch {
+	case opts.withScope.PublicId == "global":
+		typ = scope.Org
+	case strings.HasPrefix(opts.withScope.PublicId, scope.Org.Prefix()):
+		typ = scope.Project
+	}
+	if typ == scope.Unknown {
+		return nil, fmt.Errorf("new scope: unknown type of scope to create: %w", db.ErrInvalidParameter)
 	}
 
 	s := &Scope{
 		Scope: &store.Scope{
-			Type:        scopeType.String(),
+			Type:        typ.String(),
 			Name:        opts.withName,
 			Description: opts.withDescription,
+			ParentId:    opts.withScope.PublicId,
 		},
 	}
-	if opts.withScope != nil {
-		s.ParentId = opts.withScope.PublicId
-	}
+
 	return s, nil
 }
 
@@ -118,12 +119,7 @@ func (s *Scope) VetForWrite(ctx context.Context, r db.Reader, opType db.OpType, 
 		case s.Type == scope.Global.String():
 			return errors.New("global scope cannot be created")
 		case s.ParentId == "":
-			switch s.Type {
-			case scope.Org.String():
-				return errors.New("org must have global parent")
-			case scope.Project.String():
-				return errors.New("project has no org")
-			}
+			return errors.New("scope must have a parent")
 		case s.Type == scope.Org.String():
 			if s.ParentId != "global" {
 				return errors.New(`org's parent must be "global"`)
@@ -144,21 +140,12 @@ func (s *Scope) VetForWrite(ctx context.Context, r db.Reader, opType db.OpType, 
 
 // ResourceType returns the type of scope
 func (s *Scope) ResourceType() resource.Type {
-	switch s.Type {
-	case scope.Global.String():
-		return resource.Global
-	case scope.Org.String():
-		return resource.Org
-	case scope.Project.String():
-		return resource.Project
-	default:
-		return resource.Scope
-	}
+	return resource.Scope
 }
 
-// Actions returns the  available actions for Scopes
+// Actions returns the available actions for Scopes
 func (*Scope) Actions() map[string]action.Type {
-	return CrudActions()
+	return CrudlActions()
 }
 
 // GetScope returns the scope for the "scope" if there is one defined
