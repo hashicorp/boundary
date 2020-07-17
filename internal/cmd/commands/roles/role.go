@@ -227,17 +227,17 @@ func (c *Command) Run(args []string) int {
 	case "list":
 		listedRoles, apiErr, err = role.ListRoles(c.Context)
 	case "add-principals":
-		role, apiErr, err = role.AddPrincipals(c.Context, principals)
+		role, apiErr, err = role.AddPrincipals(c.Context, c.flagId, principals)
 	case "set-principals":
-		role, apiErr, err = role.SetPrincipals(c.Context, principals)
+		role, apiErr, err = role.SetPrincipals(c.Context, c.flagId, principals)
 	case "remove-principals":
-		role, apiErr, err = role.RemovePrincipals(c.Context, principals)
+		role, apiErr, err = role.RemovePrincipals(c.Context, c.flagId, principals)
 	case "add-grants":
-		role, apiErr, err = role.AddGrants(c.Context, grants)
+		role, apiErr, err = role.AddGrants(c.Context, c.flagId, grants)
 	case "set-grants":
-		role, apiErr, err = role.SetGrants(c.Context, grants)
+		role, apiErr, err = role.SetGrants(c.Context, c.flagId, grants)
 	case "remove-grants":
-		role, apiErr, err = role.RemoveGrants(c.Context, grants)
+		role, apiErr, err = role.RemoveGrants(c.Context, c.flagId, grants)
 	}
 
 	plural := "role"
@@ -271,19 +271,25 @@ func (c *Command) Run(args []string) int {
 		return 0
 
 	case "list":
-		if len(listedRoles) == 0 {
-			c.UI.Output("No roles found")
-			return 0
-		}
+
 		switch base.Format(c.UI) {
 		case "json":
+			if len(listedRoles) == 0 {
+				c.UI.Output("null")
+				return 0
+			}
 			b, err := base.JsonFormatter{}.Format(listedRoles)
 			if err != nil {
 				c.UI.Error(fmt.Errorf("Error formatting to JSON: %w", err).Error())
 				return 1
 			}
 			c.UI.Output(string(b))
+
 		case "table":
+			if len(listedRoles) == 0 {
+				c.UI.Output("No roles found")
+				return 0
+			}
 			var output []string
 			output = []string{
 				"",
