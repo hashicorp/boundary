@@ -8,11 +8,14 @@ import (
 
 	"github.com/fatih/structs"
 
+	"github.com/hashicorp/watchtower/api"
 	"github.com/hashicorp/watchtower/api/info"
 	"github.com/hashicorp/watchtower/api/internal/strutil"
 )
 
 type Group struct {
+	Client *api.Client `json:"-"`
+
 	defaultFields []string
 
 	// The ID of the Project

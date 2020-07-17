@@ -78,6 +78,9 @@ import (
 )
 
 type {{ .Name }} struct {
+	{{ if (not .OutputOnly) }}
+	Client *api.Client ` + "`json:\"-\"`" + `
+	{{ end }}
 	{{ .StructFields }}
 }
 

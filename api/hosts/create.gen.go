@@ -12,17 +12,15 @@ func (s HostCatalog) CreateHost(ctx context.Context, r *Host) (*Host, *api.Error
 	if s.Client == nil {
 		return nil, nil, fmt.Errorf("nil client in CreateHost request")
 	}
-	if s.Id == "" {
 
-		return nil, nil, fmt.Errorf("missing HostCatalog ID in CreateHost request")
-
-	} else {
+	var opts []api.Option
+	if s.Scope.Id != "" {
 		// If it's explicitly set here, override anything that might be in the
 		// client
-
+		opts = append(opts, api.WithScopeId(s.Scope.Id))
 	}
 
-	req, err := s.Client.NewRequest(ctx, "POST", fmt.Sprintf("host-catalogs/%s/hosts", s.Id), r)
+	req, err := s.Client.NewRequest(ctx, "POST", fmt.Sprintf("host-catalogs/%s/hosts", s.Id), r, opts...)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error creating CreateHost request: %w", err)
 	}
@@ -47,17 +45,15 @@ func (s HostCatalog) CreateHostSet(ctx context.Context, r *HostSet) (*HostSet, *
 	if s.Client == nil {
 		return nil, nil, fmt.Errorf("nil client in CreateHostSet request")
 	}
-	if s.Id == "" {
 
-		return nil, nil, fmt.Errorf("missing HostCatalog ID in CreateHostSet request")
-
-	} else {
+	var opts []api.Option
+	if s.Scope.Id != "" {
 		// If it's explicitly set here, override anything that might be in the
 		// client
-
+		opts = append(opts, api.WithScopeId(s.Scope.Id))
 	}
 
-	req, err := s.Client.NewRequest(ctx, "POST", fmt.Sprintf("host-catalogs/%s/host-sets", s.Id), r)
+	req, err := s.Client.NewRequest(ctx, "POST", fmt.Sprintf("host-catalogs/%s/host-sets", s.Id), r, opts...)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error creating CreateHostSet request: %w", err)
 	}

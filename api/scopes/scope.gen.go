@@ -8,10 +8,13 @@ import (
 
 	"github.com/fatih/structs"
 
+	"github.com/hashicorp/watchtower/api"
 	"github.com/hashicorp/watchtower/api/internal/strutil"
 )
 
 type Scope struct {
+	Client *api.Client `json:"-"`
+
 	defaultFields []string
 
 	// The ID of the Scope
