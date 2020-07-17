@@ -9,6 +9,7 @@ import (
 	"github.com/fatih/structs"
 
 	"github.com/hashicorp/watchtower/api"
+	"github.com/hashicorp/watchtower/api/info"
 	"github.com/hashicorp/watchtower/api/internal/strutil"
 )
 
@@ -22,7 +23,7 @@ type Scope struct {
 	Id string `json:"id,omitempty"`
 	// Scope information for this resource
 	// Output only.
-	Scope *ScopeInfo `json:"scope,omitempty"`
+	Scope info.Scope `json:"scope,omitempty"`
 	// Optional name for identification purposes
 	Name *string `json:"name,omitempty"`
 	// Optional user-set descripton for identification purposes
