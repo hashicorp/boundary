@@ -11,6 +11,7 @@ import (
 	pb "github.com/hashicorp/watchtower/internal/gen/controller/api/resources/roles"
 	pbs "github.com/hashicorp/watchtower/internal/gen/controller/api/services"
 	"github.com/hashicorp/watchtower/internal/iam"
+	"github.com/hashicorp/watchtower/internal/perms"
 	"github.com/hashicorp/watchtower/internal/servers/controller/handlers/roles"
 	"github.com/hashicorp/watchtower/internal/types/scope"
 	"google.golang.org/genproto/protobuf/field_mask"
@@ -1286,6 +1287,25 @@ func TestRemovePrincipal(t *testing.T) {
 	}
 }
 
+func checkEqualGrants(t *testing.T, expected []string, got *pb.Role) {
+	require, assert := require.New(t), assert.New(t)
+	require.Equal(len(expected), len(got.GrantStrings))
+	require.Equal(len(expected), len(got.Grants))
+	for i, v := range expected {
+		parsed, err := perms.Parse("o_abc123", "", v)
+		require.NoError(err)
+		assert.Equal(expected[i], got.GrantStrings[i])
+		assert.Equal(expected[i], got.Grants[i].GetRaw())
+		assert.Equal(parsed.CanonicalString(), got.Grants[i].GetCanonical())
+		j := got.Grants[i].GetJson()
+		require.NotNil(j)
+		assert.Equal(parsed.Id(), j.GetId())
+		assert.Equal(parsed.Type().String(), j.GetType())
+		_, acts := parsed.Actions()
+		assert.Equal(acts, j.GetActions())
+	}
+}
+
 func TestAddGrants(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
@@ -1339,7 +1359,7 @@ func TestAddGrants(t *testing.T) {
 				if o != scope {
 					req.ProjectId = scope.GetPublicId()
 				}
-				req.Grants = append(req.Grants, tc.add...)
+				req.GrantStrings = append(req.GrantStrings, tc.add...)
 				got, err := s.AddRoleGrants(context.Background(), req)
 				if tc.wantErr {
 					assert.Error(err)
@@ -1347,7 +1367,7 @@ func TestAddGrants(t *testing.T) {
 				}
 				s, _ := status.FromError(err)
 				require.NoError(t, err, "Got error %v", s)
-				assert.Equal(tc.result, got.GetItem().GetGrants())
+				checkEqualGrants(t, tc.result, got.GetItem())
 			})
 		}
 	}
@@ -1362,33 +1382,33 @@ func TestAddGrants(t *testing.T) {
 		{
 			name: "Bad Org Id",
 			req: &pbs.AddRoleGrantsRequest{
-				OrgId:     "",
-				ProjectId: role.GetScopeId(),
-				RoleId:    role.GetPublicId(),
-				Grants:    []string{"id=*;actions=create"},
-				Version:   &wrapperspb.UInt32Value{Value: role.GetVersion()},
+				OrgId:        "",
+				ProjectId:    role.GetScopeId(),
+				RoleId:       role.GetPublicId(),
+				GrantStrings: []string{"id=*;actions=create"},
+				Version:      &wrapperspb.UInt32Value{Value: role.GetVersion()},
 			},
 			errCode: codes.InvalidArgument,
 		},
 		{
 			name: "Bad Project Id",
 			req: &pbs.AddRoleGrantsRequest{
-				OrgId:     o.GetPublicId(),
-				ProjectId: "bad id",
-				RoleId:    role.GetPublicId(),
-				Grants:    []string{"id=*;actions=create"},
-				Version:   &wrapperspb.UInt32Value{Value: role.GetVersion()},
+				OrgId:        o.GetPublicId(),
+				ProjectId:    "bad id",
+				RoleId:       role.GetPublicId(),
+				GrantStrings: []string{"id=*;actions=create"},
+				Version:      &wrapperspb.UInt32Value{Value: role.GetVersion()},
 			},
 			errCode: codes.InvalidArgument,
 		},
 		{
 			name: "Bad Role Id",
 			req: &pbs.AddRoleGrantsRequest{
-				OrgId:     o.GetPublicId(),
-				ProjectId: role.GetScopeId(),
-				RoleId:    "bad id",
-				Grants:    []string{"id=*;actions=create"},
-				Version:   &wrapperspb.UInt32Value{Value: role.GetVersion()},
+				OrgId:        o.GetPublicId(),
+				ProjectId:    role.GetScopeId(),
+				RoleId:       "bad id",
+				GrantStrings: []string{"id=*;actions=create"},
+				Version:      &wrapperspb.UInt32Value{Value: role.GetVersion()},
 			},
 			errCode: codes.InvalidArgument,
 		},
@@ -1462,7 +1482,7 @@ func TestSetGrants(t *testing.T) {
 				if o != scope {
 					req.ProjectId = scope.GetPublicId()
 				}
-				req.Grants = append(req.Grants, tc.set...)
+				req.GrantStrings = append(req.GrantStrings, tc.set...)
 				got, err := s.SetRoleGrants(context.Background(), req)
 				if tc.wantErr {
 					assert.Error(err)
@@ -1470,7 +1490,7 @@ func TestSetGrants(t *testing.T) {
 				}
 				s, _ := status.FromError(err)
 				require.NoError(t, err, "Got error %v", s)
-				assert.Equal(tc.result, got.GetItem().GetGrants())
+				checkEqualGrants(t, tc.result, got.GetItem())
 			})
 		}
 	}
@@ -1486,33 +1506,33 @@ func TestSetGrants(t *testing.T) {
 		{
 			name: "Bad Org Id",
 			req: &pbs.SetRoleGrantsRequest{
-				OrgId:     "",
-				ProjectId: role.GetScopeId(),
-				RoleId:    role.GetPublicId(),
-				Grants:    []string{"id=*;actions=create"},
-				Version:   &wrapperspb.UInt32Value{Value: role.GetVersion()},
+				OrgId:        "",
+				ProjectId:    role.GetScopeId(),
+				RoleId:       role.GetPublicId(),
+				GrantStrings: []string{"id=*;actions=create"},
+				Version:      &wrapperspb.UInt32Value{Value: role.GetVersion()},
 			},
 			errCode: codes.InvalidArgument,
 		},
 		{
 			name: "Bad Project Id",
 			req: &pbs.SetRoleGrantsRequest{
-				OrgId:     o.GetPublicId(),
-				ProjectId: "bad id",
-				RoleId:    role.GetPublicId(),
-				Grants:    []string{"id=*;actions=create"},
-				Version:   &wrapperspb.UInt32Value{Value: role.GetVersion()},
+				OrgId:        o.GetPublicId(),
+				ProjectId:    "bad id",
+				RoleId:       role.GetPublicId(),
+				GrantStrings: []string{"id=*;actions=create"},
+				Version:      &wrapperspb.UInt32Value{Value: role.GetVersion()},
 			},
 			errCode: codes.InvalidArgument,
 		},
 		{
 			name: "Bad Role Id",
 			req: &pbs.SetRoleGrantsRequest{
-				OrgId:     o.GetPublicId(),
-				ProjectId: role.GetScopeId(),
-				RoleId:    "bad id",
-				Grants:    []string{"id=*;actions=create"},
-				Version:   &wrapperspb.UInt32Value{Value: role.GetVersion()},
+				OrgId:        o.GetPublicId(),
+				ProjectId:    role.GetScopeId(),
+				RoleId:       "bad id",
+				GrantStrings: []string{"id=*;actions=create"},
+				Version:      &wrapperspb.UInt32Value{Value: role.GetVersion()},
 			},
 			errCode: codes.InvalidArgument,
 		},
@@ -1585,7 +1605,7 @@ func TestRemoveGrants(t *testing.T) {
 				if o != scope {
 					req.ProjectId = scope.GetPublicId()
 				}
-				req.Grants = append(req.Grants, tc.remove...)
+				req.GrantStrings = append(req.GrantStrings, tc.remove...)
 				got, err := s.RemoveRoleGrants(context.Background(), req)
 				if tc.wantErr {
 					assert.Error(err)
@@ -1594,7 +1614,7 @@ func TestRemoveGrants(t *testing.T) {
 				s, ok := status.FromError(err)
 				assert.True(ok)
 				require.NoError(t, err, "Got error %v", s)
-				assert.Equal(tc.result, got.GetItem().GetGrants())
+				checkEqualGrants(t, tc.result, got.GetItem())
 			})
 		}
 	}
@@ -1610,33 +1630,33 @@ func TestRemoveGrants(t *testing.T) {
 		{
 			name: "Bad Org Id",
 			req: &pbs.RemoveRoleGrantsRequest{
-				OrgId:     "",
-				ProjectId: role.GetScopeId(),
-				RoleId:    role.GetPublicId(),
-				Grants:    []string{"id=*;actions=create"},
-				Version:   &wrapperspb.UInt32Value{Value: role.GetVersion()},
+				OrgId:        "",
+				ProjectId:    role.GetScopeId(),
+				RoleId:       role.GetPublicId(),
+				GrantStrings: []string{"id=*;actions=create"},
+				Version:      &wrapperspb.UInt32Value{Value: role.GetVersion()},
 			},
 			errCode: codes.InvalidArgument,
 		},
 		{
 			name: "Bad Project Id",
 			req: &pbs.RemoveRoleGrantsRequest{
-				OrgId:     o.GetPublicId(),
-				ProjectId: "bad id",
-				RoleId:    role.GetPublicId(),
-				Grants:    []string{"id=*;actions=create"},
-				Version:   &wrapperspb.UInt32Value{Value: role.GetVersion()},
+				OrgId:        o.GetPublicId(),
+				ProjectId:    "bad id",
+				RoleId:       role.GetPublicId(),
+				GrantStrings: []string{"id=*;actions=create"},
+				Version:      &wrapperspb.UInt32Value{Value: role.GetVersion()},
 			},
 			errCode: codes.InvalidArgument,
 		},
 		{
 			name: "Bad Role Id",
 			req: &pbs.RemoveRoleGrantsRequest{
-				OrgId:     o.GetPublicId(),
-				ProjectId: role.GetScopeId(),
-				RoleId:    "bad id",
-				Grants:    []string{"id=*;actions=create"},
-				Version:   &wrapperspb.UInt32Value{Value: role.GetVersion()},
+				OrgId:        o.GetPublicId(),
+				ProjectId:    role.GetScopeId(),
+				RoleId:       "bad id",
+				GrantStrings: []string{"id=*;actions=create"},
+				Version:      &wrapperspb.UInt32Value{Value: role.GetVersion()},
 			},
 			errCode: codes.InvalidArgument,
 		},
