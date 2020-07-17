@@ -12,7 +12,6 @@ func TestConfigSetAddress(t *testing.T) {
 		input   string
 		address string
 		err     string
-		scopeId string
 	}
 
 	tests := []test{
@@ -21,13 +20,11 @@ func TestConfigSetAddress(t *testing.T) {
 			"http://127.0.0.1:9200",
 			"http://127.0.0.1:9200",
 			"",
-			"",
 		},
 		{
 			"bare with version",
 			"http://127.0.0.1:9200/v1",
 			"http://127.0.0.1:9200",
-			"",
 			"",
 		},
 		{
@@ -35,35 +32,30 @@ func TestConfigSetAddress(t *testing.T) {
 			"http://127.0.0.1:9200/v1/",
 			"http://127.0.0.1:9200",
 			"",
-			"",
 		},
 		{
-			"invalid org",
+			"valid top level scope",
 			"http://127.0.0.1:9200/v1/scopes",
 			"http://127.0.0.1:9200",
-			"unexpected number of segments in address",
 			"",
 		},
 		{
-			"valid org",
-			"http://127.0.0.1:9200/v1/orgs/orgid",
+			"valid scope",
+			"http://127.0.0.1:9200/v1/scopes/scopeid",
 			"http://127.0.0.1:9200",
 			"",
-			"orgid",
 		},
 		{
-			"invalid project",
-			"http://127.0.0.1:9200/v1/orgs/orgid/projects",
+			"longer path project",
+			"http://127.0.0.1:9200/v1/scopes/orgid/auth-methods",
 			"http://127.0.0.1:9200",
-			"unexpected number of segments in address",
 			"",
 		},
 		{
 			"valid project",
-			"http://127.0.0.1:9200/v1/orgs/orgid/projects/projid",
-			"http://127.0.0.1:9200",
+			"http://127.0.0.1:9200/my-install",
+			"http://127.0.0.1:9200/my-install",
 			"",
-			"orgid",
 		},
 	}
 
@@ -75,7 +67,6 @@ func TestConfigSetAddress(t *testing.T) {
 				assert.Equal(t, v.err, err.Error())
 			}
 			assert.Equal(t, v.address, c.Addr)
-			assert.Equal(t, v.scopeId, c.ScopeId)
 		})
 	}
 }

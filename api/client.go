@@ -232,10 +232,14 @@ func (c *Config) setAddr(addr string) error {
 	if strings.Count(u.Path, "scopes") == 1 {
 		u.Path = strings.Split(u.Path, "scopes")[0]
 	}
+	// Remove trailing or leading slashes
 	path := strings.Trim(u.Path, "/")
-	path = strings.TrimPrefix(u.Path, "v1")
-	path = strings.TrimSuffix(u.Path, "v1")
-	path = strings.Trim(u.Path, "/")
+	// Remove v1 in front or back (e.g. they could have
+	// https://watchtower.example.com/myinstall/v1 which would put it at the
+	// back)
+	path = strings.Trim(path, "v1")
+	// Finally check again to make sure any slashes are removed before we join below
+	path = strings.Trim(path, "/")
 
 	if path != "" {
 		c.Addr = fmt.Sprintf("%s/%s", c.Addr, path)
