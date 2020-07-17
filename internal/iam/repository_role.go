@@ -45,15 +45,15 @@ func (r *Repository) CreateRole(ctx context.Context, role *Role, opt ...Option) 
 // included in fieldMask. Name, Description, and GrantScopeId are the only
 // updatable fields, If no updatable fields are included in the fieldMaskPaths,
 // then an error is returned.
-func (r *Repository) UpdateRole(ctx context.Context, role *Role, fieldMaskPaths []string, opt ...Option) (*Role, int, error) {
+func (r *Repository) UpdateRole(ctx context.Context, role *Role, fieldMaskPaths []string, opt ...Option) (*Role, []PrincipalRole, []*RoleGrant, int, error) {
 	if role == nil {
-		return nil, db.NoRowsAffected, fmt.Errorf("update role: missing role %w", db.ErrNilParameter)
+		return nil, nil, nil, db.NoRowsAffected, fmt.Errorf("update role: missing role %w", db.ErrNilParameter)
 	}
 	if role.Role == nil {
-		return nil, db.NoRowsAffected, fmt.Errorf("update role: missing role store %w", db.ErrNilParameter)
+		return nil, nil, nil, db.NoRowsAffected, fmt.Errorf("update role: missing role store %w", db.ErrNilParameter)
 	}
 	if role.PublicId == "" {
-		return nil, db.NoRowsAffected, fmt.Errorf("update role: missing role public id %w", db.ErrInvalidParameter)
+		return nil, nil, nil, db.NoRowsAffected, fmt.Errorf("update role: missing role public id %w", db.ErrInvalidParameter)
 	}
 	for _, f := range fieldMaskPaths {
 		switch {
@@ -61,7 +61,7 @@ func (r *Repository) UpdateRole(ctx context.Context, role *Role, fieldMaskPaths 
 		case strings.EqualFold("description", f):
 		case strings.EqualFold("grantscopeid", f):
 		default:
-			return nil, db.NoRowsAffected, fmt.Errorf("update role: field: %s: %w", f, db.ErrInvalidFieldMask)
+			return nil, nil, nil, db.NoRowsAffected, fmt.Errorf("update role: field: %s: %w", f, db.ErrInvalidFieldMask)
 		}
 	}
 	var dbMask, nullFields []string
@@ -74,17 +74,45 @@ func (r *Repository) UpdateRole(ctx context.Context, role *Role, fieldMaskPaths 
 		fieldMaskPaths,
 	)
 	if len(dbMask) == 0 && len(nullFields) == 0 {
-		return nil, db.NoRowsAffected, fmt.Errorf("update role: %w", db.ErrEmptyFieldMask)
+		return nil, nil, nil, db.NoRowsAffected, fmt.Errorf("update role: %w", db.ErrEmptyFieldMask)
 	}
-	c := role.Clone().(*Role)
-	resource, rowsUpdated, err := r.update(ctx, c, dbMask, nullFields)
+	var resource Resource
+	var rowsUpdated int
+	var pr []PrincipalRole
+	var rg []*RoleGrant
+	_, err := r.writer.DoTx(
+		ctx,
+		db.StdRetryCnt,
+		db.ExpBackoff{},
+		func(read db.Reader, w db.Writer) error {
+			var err error
+			c := role.Clone().(*Role)
+			resource, rowsUpdated, err = r.update(ctx, c, dbMask, nullFields)
+			if err != nil {
+				return err
+			}
+			repo, err := NewRepository(read, w, r.wrapper)
+			if err != nil {
+				return fmt.Errorf("update role: failed creating inner repo: %w for %s", err, role.PublicId)
+			}
+			pr, err = repo.ListPrincipalRoles(ctx, role.PublicId)
+			if err != nil {
+				return fmt.Errorf("update role: listing principal roles: %w for %s", err, role.PublicId)
+			}
+			rg, err = repo.ListRoleGrants(ctx, role.PublicId)
+			if err != nil {
+				return fmt.Errorf("update role: listing principal roles: %w for %s", err, role.PublicId)
+			}
+			return nil
+		},
+	)
 	if err != nil {
 		if db.IsUniqueError(err) {
-			return nil, db.NoRowsAffected, fmt.Errorf("update role: role %s already exists in org %s: %w", role.Name, role.ScopeId, db.ErrNotUnique)
+			return nil, nil, nil, db.NoRowsAffected, fmt.Errorf("update role: role %s already exists in org %s: %w", role.Name, role.ScopeId, db.ErrNotUnique)
 		}
-		return nil, db.NoRowsAffected, fmt.Errorf("update role: %w for %s", err, c.PublicId)
+		return nil, nil, nil, db.NoRowsAffected, fmt.Errorf("update role: %w for %s", err, role.PublicId)
 	}
-	return resource.(*Role), rowsUpdated, err
+	return resource.(*Role), pr, rg, rowsUpdated, err
 }
 
 // LookupRole will look up a role in the repository.  If the role is not

@@ -3346,6 +3346,49 @@
       },
       "title": "HostSet is a collection of Hosts created and managed by a HostCatalog"
     },
+    "controller.api.resources.roles.v1.Grant": {
+      "type": "object",
+      "properties": {
+        "raw": {
+          "type": "string",
+          "description": "The original user-supplied string.\nOutput only.",
+          "readOnly": true
+        },
+        "canonical": {
+          "type": "string",
+          "description": "The canonically formatted string.\nOutput only.",
+          "readOnly": true
+        },
+        "json": {
+          "$ref": "#/definitions/controller.api.resources.roles.v1.GrantJson",
+          "description": "The JSON representation of the grant.\nOutput only.",
+          "readOnly": true
+        }
+      }
+    },
+    "controller.api.resources.roles.v1.GrantJson": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "The ID, if set.\nOutput only.",
+          "readOnly": true
+        },
+        "type": {
+          "type": "string",
+          "description": "The type, if set.\nOutput only.",
+          "readOnly": true
+        },
+        "actions": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "The actions.\nOutput only.",
+          "readOnly": true
+        }
+      }
+    },
     "controller.api.resources.roles.v1.Principal": {
       "type": "object",
       "properties": {
@@ -3425,7 +3468,7 @@
           "description": "The principals that are assigned to this role.\nOutput only.",
           "readOnly": true
         },
-        "grants": {
+        "grant_strings": {
           "type": "array",
           "items": {
             "type": "string"
@@ -3433,20 +3476,12 @@
           "description": "The grants that this role provides for its principals.\nOutput only.",
           "readOnly": true
         },
-        "grants_canonical": {
+        "grants": {
           "type": "array",
           "items": {
-            "type": "string"
+            "$ref": "#/definitions/controller.api.resources.roles.v1.Grant"
           },
-          "description": "The canonical version of the grants in the grants field with the same index.\nOutput only.",
-          "readOnly": true
-        },
-        "grants_json": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          },
-          "description": "The JSON version of the grants in the grants field with the same index.\nOutput only.",
+          "description": "The parsed grant information.\nOutput only.",
           "readOnly": true
         }
       },
@@ -3572,7 +3607,7 @@
           "format": "int64",
           "description": "The version ensures the role hasn't changed since it was last retrieved and if\nit has the request will fail."
         },
-        "grants": {
+        "grant_strings": {
           "type": "array",
           "items": {
             "type": "string"
@@ -3967,7 +4002,7 @@
           "format": "int64",
           "description": "The version ensures the role hasn't changed since it was last retrieved and if\nit has the request will fail."
         },
-        "grants": {
+        "grant_strings": {
           "type": "array",
           "items": {
             "type": "string"
@@ -4033,7 +4068,7 @@
           "format": "int64",
           "description": "The version ensures the role hasn't changed since it was last retrieved and if\nit has the request will fail."
         },
-        "grants": {
+        "grant_strings": {
           "type": "array",
           "items": {
             "type": "string"

@@ -175,7 +175,7 @@ func (s Service) AddRoleGrants(ctx context.Context, req *pbs.AddRoleGrantsReques
 	if err := validateAddRoleGrantsRequest(req); err != nil {
 		return nil, err
 	}
-	r, err := s.addGrantsInRepo(ctx, req.GetRoleId(), req.GetGrants(), req.GetVersion().GetValue())
+	r, err := s.addGrantsInRepo(ctx, req.GetRoleId(), req.GetGrantStrings(), req.GetVersion().GetValue())
 	if err != nil {
 		return nil, err
 	}
@@ -189,7 +189,7 @@ func (s Service) SetRoleGrants(ctx context.Context, req *pbs.SetRoleGrantsReques
 	if err := validateSetRoleGrantsRequest(req); err != nil {
 		return nil, err
 	}
-	r, err := s.setGrantsInRepo(ctx, req.GetRoleId(), req.GetGrants(), req.GetVersion().GetValue())
+	r, err := s.setGrantsInRepo(ctx, req.GetRoleId(), req.GetGrantStrings(), req.GetVersion().GetValue())
 	if err != nil {
 		return nil, err
 	}
@@ -203,7 +203,7 @@ func (s Service) RemoveRoleGrants(ctx context.Context, req *pbs.RemoveRoleGrants
 	if err := validateRemoveRoleGrantsRequest(req); err != nil {
 		return nil, err
 	}
-	r, err := s.removeGrantsInRepo(ctx, req.GetRoleId(), req.GetGrants(), req.GetVersion().GetValue())
+	r, err := s.removeGrantsInRepo(ctx, req.GetRoleId(), req.GetGrantStrings(), req.GetVersion().GetValue())
 	if err != nil {
 		return nil, err
 	}
@@ -282,7 +282,7 @@ func (s Service) updateInRepo(ctx context.Context, scopeId, id string, mask []st
 	if err != nil {
 		return nil, err
 	}
-	out, rowsUpdated, err := repo.UpdateRole(ctx, u, dbMask)
+	out, pr, gr, rowsUpdated, err := repo.UpdateRole(ctx, u, dbMask)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "Unable to update role: %v.", err)
 	}
@@ -290,7 +290,7 @@ func (s Service) updateInRepo(ctx context.Context, scopeId, id string, mask []st
 		return nil, handlers.NotFoundErrorf("Role %q doesn't exist.", id)
 	}
 	// TODO: Attach principals and grants to UpdateRole response
-	return toProto(out, nil, nil), nil
+	return toProto(out, pr, gr), nil
 }
 
 func (s Service) deleteFromRepo(ctx context.Context, id string) (bool, error) {
@@ -466,23 +466,27 @@ func toProto(in *iam.Role, principals []iam.PrincipalRole, grants []*iam.RoleGra
 		out.PrincipalIds = append(out.PrincipalIds, p.GetPrincipalId())
 	}
 	for _, g := range grants {
-		out.Grants = append(out.Grants, g.GetRawGrant())
+		out.GrantStrings = append(out.GrantStrings, g.GetRawGrant())
 		parsed, err := perms.Parse(in.GetGrantScopeId(), "", g.GetRawGrant())
 		if err != nil {
 			// This should never happen as we validate on the way in, but let's
 			// return what we can since we are still returning the raw grant
-			out.GrantsCanonical = append(out.GrantsCanonical, "<parse_error>")
-			out.GrantsJson = append(out.GrantsJson, "<parse_error>")
+			out.Grants = append(out.Grants, &pb.Grant{
+				Raw:       g.GetRawGrant(),
+				Canonical: "<parse_error>",
+				Json:      nil,
+			})
 		} else {
-			out.GrantsCanonical = append(out.GrantsCanonical, parsed.CanonicalString())
-			jsonGrant, err := parsed.MarshalJSON()
-			if err != nil {
-				// Again, this should never happen, but let's return what we
-				// have anyways
-				out.GrantsJson = append(out.GrantsJson, "<parse_error>")
-			} else {
-				out.GrantsJson = append(out.GrantsJson, string(jsonGrant))
-			}
+			_, actions := parsed.Actions()
+			out.Grants = append(out.Grants, &pb.Grant{
+				Raw:       g.GetRawGrant(),
+				Canonical: g.GetCanonicalGrant(),
+				Json: &pb.GrantJson{
+					Id:      parsed.Id(),
+					Type:    parsed.Type().String(),
+					Actions: actions,
+				},
+			})
 		}
 	}
 	if in.GetGrantScopeId() != "" {
@@ -527,6 +531,9 @@ func validateCreateRequest(req *pbs.CreateRoleRequest) error {
 	if item.GetPrincipals() != nil {
 		badFields["principals"] = "This is a read only field."
 	}
+	if item.GetGrants() != nil {
+		badFields["grant_strings"] = "This is a read only field."
+	}
 	if len(badFields) > 0 {
 		return handlers.InvalidArgumentErrorf("Argument errors found in the request.", badFields)
 	}
@@ -559,6 +566,9 @@ func validateUpdateRequest(req *pbs.UpdateRoleRequest) error {
 	}
 	if item.GetPrincipals() != nil {
 		badFields["principals"] = "This is a read only field and cannot be specified in an update request."
+	}
+	if item.GetGrants() != nil {
+		badFields["grant_strings"] = "This is a read only field and cannot be specified in an update request."
 	}
 	if item.GetGrantScopeId() != nil && req.ProjectId != "" {
 		if item.GetGrantScopeId().Value != req.ProjectId {
@@ -647,8 +657,8 @@ func validateAddRoleGrantsRequest(req *pbs.AddRoleGrantsRequest) error {
 	if req.GetVersion() == nil {
 		badFields["version"] = "Required field."
 	}
-	if len(req.GetGrants()) == 0 {
-		badFields["grants"] = "Must be non-empty."
+	if len(req.GetGrantStrings()) == 0 {
+		badFields["grant_strings"] = "Must be non-empty."
 	}
 	if len(badFields) > 0 {
 		return handlers.InvalidArgumentErrorf("Errors in provided fields.", badFields)
@@ -678,8 +688,8 @@ func validateRemoveRoleGrantsRequest(req *pbs.RemoveRoleGrantsRequest) error {
 	if req.GetVersion() == nil {
 		badFields["version"] = "Required field."
 	}
-	if len(req.GetGrants()) == 0 {
-		badFields["grants"] = "Must be non-empty."
+	if len(req.GetGrantStrings()) == 0 {
+		badFields["grant_strings"] = "Must be non-empty."
 	}
 	if len(badFields) > 0 {
 		return handlers.InvalidArgumentErrorf("Errors in provided fields.", badFields)
