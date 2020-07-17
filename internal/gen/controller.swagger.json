@@ -733,6 +733,339 @@
         ]
       }
     },
+    "/v1/scopes/*/roles": {
+      "get": {
+        "summary": "Lists all Roles",
+        "operationId": "RoleService_ListRoles",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.services.v1.ListRolesResponse"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "view",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "controller.api.services.v1.RoleService"
+        ]
+      },
+      "post": {
+        "summary": "Creates a single Role",
+        "operationId": "RoleService_CreateRole",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/controller.api.resources.roles.v1.Role"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/controller.api.resources.roles.v1.Role"
+            }
+          }
+        ],
+        "tags": [
+          "controller.api.services.v1.RoleService"
+        ]
+      }
+    },
+    "/v1/scopes/*/roles/{id}": {
+      "get": {
+        "summary": "Gets a single Role",
+        "operationId": "RoleService_GetRole",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/controller.api.resources.roles.v1.Role"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "view",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "controller.api.services.v1.RoleService"
+        ]
+      },
+      "delete": {
+        "summary": "Deletes a Role",
+        "operationId": "RoleService_DeleteRole",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.services.v1.DeleteRoleResponse"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "controller.api.services.v1.RoleService"
+        ]
+      },
+      "patch": {
+        "summary": "Updates a Role",
+        "operationId": "RoleService_UpdateRole",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/controller.api.resources.roles.v1.Role"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/controller.api.resources.roles.v1.Role"
+            }
+          }
+        ],
+        "tags": [
+          "controller.api.services.v1.RoleService"
+        ]
+      }
+    },
+    "/v1/scopes/*/roles/{role_id}:add-grants": {
+      "post": {
+        "summary": "Adds grants to a role",
+        "operationId": "RoleService_AddRoleGrants",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/controller.api.resources.roles.v1.Role"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "role_id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/controller.api.services.v1.AddRoleGrantsRequest"
+            }
+          }
+        ],
+        "tags": [
+          "controller.api.services.v1.RoleService"
+        ]
+      }
+    },
+    "/v1/scopes/*/roles/{role_id}:add-principals": {
+      "post": {
+        "summary": "Adds Users and/or Groups to a Role",
+        "operationId": "RoleService_AddRolePrincipals",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/controller.api.resources.roles.v1.Role"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "role_id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/controller.api.services.v1.AddRolePrincipalsRequest"
+            }
+          }
+        ],
+        "tags": [
+          "controller.api.services.v1.RoleService"
+        ]
+      }
+    },
+    "/v1/scopes/*/roles/{role_id}:remove-grants": {
+      "post": {
+        "summary": "Removes grants from a role.",
+        "operationId": "RoleService_RemoveRoleGrants",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/controller.api.resources.roles.v1.Role"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "role_id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/controller.api.services.v1.RemoveRoleGrantsRequest"
+            }
+          }
+        ],
+        "tags": [
+          "controller.api.services.v1.RoleService"
+        ]
+      }
+    },
+    "/v1/scopes/*/roles/{role_id}:remove-principals": {
+      "post": {
+        "summary": "Removes the specified Users and/or Groups from a Role.",
+        "operationId": "RoleService_RemoveRolePrincipals",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/controller.api.resources.roles.v1.Role"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "role_id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/controller.api.services.v1.RemoveRolePrincipalsRequest"
+            }
+          }
+        ],
+        "tags": [
+          "controller.api.services.v1.RoleService"
+        ]
+      }
+    },
+    "/v1/scopes/*/roles/{role_id}:set-grants": {
+      "post": {
+        "summary": "Set grants for a role, removing any grants that are not specified in the request.",
+        "operationId": "RoleService_SetRoleGrants",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/controller.api.resources.roles.v1.Role"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "role_id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/controller.api.services.v1.SetRoleGrantsRequest"
+            }
+          }
+        ],
+        "tags": [
+          "controller.api.services.v1.RoleService"
+        ]
+      }
+    },
+    "/v1/scopes/*/roles/{role_id}:set-principals": {
+      "post": {
+        "summary": "Set Users and/or Groups to a Role, removing any principals that are not specified in the request.",
+        "operationId": "RoleService_SetRolePrincipals",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/controller.api.resources.roles.v1.Role"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "role_id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/controller.api.services.v1.SetRolePrincipalsRequest"
+            }
+          }
+        ],
+        "tags": [
+          "controller.api.services.v1.RoleService"
+        ]
+      }
+    },
     "/v1/scopes/*/users": {
       "get": {
         "summary": "Lists all Users",
@@ -989,405 +1322,6 @@
         ],
         "tags": [
           "controller.api.services.v1.AuthenticationService"
-        ]
-      }
-    },
-    "/v1/scopes/{scope_id}/roles": {
-      "get": {
-        "summary": "Lists all Roles",
-        "operationId": "RoleService_ListRoles",
-        "responses": {
-          "200": {
-            "description": "A successful response.",
-            "schema": {
-              "$ref": "#/definitions/controller.api.services.v1.ListRolesResponse"
-            }
-          }
-        },
-        "parameters": [
-          {
-            "name": "scope_id",
-            "in": "path",
-            "required": true,
-            "type": "string"
-          },
-          {
-            "name": "view",
-            "in": "query",
-            "required": false,
-            "type": "string"
-          }
-        ],
-        "tags": [
-          "controller.api.services.v1.RoleService"
-        ]
-      },
-      "post": {
-        "summary": "Creates a single Role",
-        "operationId": "RoleService_CreateRole",
-        "responses": {
-          "200": {
-            "description": "",
-            "schema": {
-              "$ref": "#/definitions/controller.api.resources.roles.v1.Role"
-            }
-          }
-        },
-        "parameters": [
-          {
-            "name": "scope_id",
-            "in": "path",
-            "required": true,
-            "type": "string"
-          },
-          {
-            "name": "body",
-            "in": "body",
-            "required": true,
-            "schema": {
-              "$ref": "#/definitions/controller.api.resources.roles.v1.Role"
-            }
-          }
-        ],
-        "tags": [
-          "controller.api.services.v1.RoleService"
-        ]
-      }
-    },
-    "/v1/scopes/{scope_id}/roles/{id}": {
-      "get": {
-        "summary": "Gets a single Role",
-        "operationId": "RoleService_GetRole",
-        "responses": {
-          "200": {
-            "description": "",
-            "schema": {
-              "$ref": "#/definitions/controller.api.resources.roles.v1.Role"
-            }
-          }
-        },
-        "parameters": [
-          {
-            "name": "scope_id",
-            "in": "path",
-            "required": true,
-            "type": "string"
-          },
-          {
-            "name": "id",
-            "in": "path",
-            "required": true,
-            "type": "string"
-          },
-          {
-            "name": "view",
-            "in": "query",
-            "required": false,
-            "type": "string"
-          }
-        ],
-        "tags": [
-          "controller.api.services.v1.RoleService"
-        ]
-      },
-      "delete": {
-        "summary": "Deletes a Role",
-        "operationId": "RoleService_DeleteRole",
-        "responses": {
-          "200": {
-            "description": "A successful response.",
-            "schema": {
-              "$ref": "#/definitions/controller.api.services.v1.DeleteRoleResponse"
-            }
-          }
-        },
-        "parameters": [
-          {
-            "name": "scope_id",
-            "in": "path",
-            "required": true,
-            "type": "string"
-          },
-          {
-            "name": "id",
-            "in": "path",
-            "required": true,
-            "type": "string"
-          }
-        ],
-        "tags": [
-          "controller.api.services.v1.RoleService"
-        ]
-      },
-      "patch": {
-        "summary": "Updates a Role",
-        "operationId": "RoleService_UpdateRole",
-        "responses": {
-          "200": {
-            "description": "",
-            "schema": {
-              "$ref": "#/definitions/controller.api.resources.roles.v1.Role"
-            }
-          }
-        },
-        "parameters": [
-          {
-            "name": "scope_id",
-            "in": "path",
-            "required": true,
-            "type": "string"
-          },
-          {
-            "name": "id",
-            "in": "path",
-            "required": true,
-            "type": "string"
-          },
-          {
-            "name": "body",
-            "in": "body",
-            "required": true,
-            "schema": {
-              "$ref": "#/definitions/controller.api.resources.roles.v1.Role"
-            }
-          }
-        ],
-        "tags": [
-          "controller.api.services.v1.RoleService"
-        ]
-      }
-    },
-    "/v1/scopes/{scope_id}/roles/{role_id}:add-grants": {
-      "post": {
-        "summary": "Adds grants to a role",
-        "operationId": "RoleService_AddRoleGrants",
-        "responses": {
-          "200": {
-            "description": "",
-            "schema": {
-              "$ref": "#/definitions/controller.api.resources.roles.v1.Role"
-            }
-          }
-        },
-        "parameters": [
-          {
-            "name": "scope_id",
-            "in": "path",
-            "required": true,
-            "type": "string"
-          },
-          {
-            "name": "role_id",
-            "in": "path",
-            "required": true,
-            "type": "string"
-          },
-          {
-            "name": "body",
-            "in": "body",
-            "required": true,
-            "schema": {
-              "$ref": "#/definitions/controller.api.services.v1.AddRoleGrantsRequest"
-            }
-          }
-        ],
-        "tags": [
-          "controller.api.services.v1.RoleService"
-        ]
-      }
-    },
-    "/v1/scopes/{scope_id}/roles/{role_id}:add-principals": {
-      "post": {
-        "summary": "Adds Users and/or Groups to a Role",
-        "operationId": "RoleService_AddRolePrincipals",
-        "responses": {
-          "200": {
-            "description": "",
-            "schema": {
-              "$ref": "#/definitions/controller.api.resources.roles.v1.Role"
-            }
-          }
-        },
-        "parameters": [
-          {
-            "name": "scope_id",
-            "in": "path",
-            "required": true,
-            "type": "string"
-          },
-          {
-            "name": "role_id",
-            "in": "path",
-            "required": true,
-            "type": "string"
-          },
-          {
-            "name": "body",
-            "in": "body",
-            "required": true,
-            "schema": {
-              "$ref": "#/definitions/controller.api.services.v1.AddRolePrincipalsRequest"
-            }
-          }
-        ],
-        "tags": [
-          "controller.api.services.v1.RoleService"
-        ]
-      }
-    },
-    "/v1/scopes/{scope_id}/roles/{role_id}:remove-grants": {
-      "post": {
-        "summary": "Removes grants from a role.",
-        "operationId": "RoleService_RemoveRoleGrants",
-        "responses": {
-          "200": {
-            "description": "",
-            "schema": {
-              "$ref": "#/definitions/controller.api.resources.roles.v1.Role"
-            }
-          }
-        },
-        "parameters": [
-          {
-            "name": "scope_id",
-            "in": "path",
-            "required": true,
-            "type": "string"
-          },
-          {
-            "name": "role_id",
-            "in": "path",
-            "required": true,
-            "type": "string"
-          },
-          {
-            "name": "body",
-            "in": "body",
-            "required": true,
-            "schema": {
-              "$ref": "#/definitions/controller.api.services.v1.RemoveRoleGrantsRequest"
-            }
-          }
-        ],
-        "tags": [
-          "controller.api.services.v1.RoleService"
-        ]
-      }
-    },
-    "/v1/scopes/{scope_id}/roles/{role_id}:remove-principals": {
-      "post": {
-        "summary": "Removes the specified Users and/or Groups from a Role.",
-        "operationId": "RoleService_RemoveRolePrincipals",
-        "responses": {
-          "200": {
-            "description": "",
-            "schema": {
-              "$ref": "#/definitions/controller.api.resources.roles.v1.Role"
-            }
-          }
-        },
-        "parameters": [
-          {
-            "name": "scope_id",
-            "in": "path",
-            "required": true,
-            "type": "string"
-          },
-          {
-            "name": "role_id",
-            "in": "path",
-            "required": true,
-            "type": "string"
-          },
-          {
-            "name": "body",
-            "in": "body",
-            "required": true,
-            "schema": {
-              "$ref": "#/definitions/controller.api.services.v1.RemoveRolePrincipalsRequest"
-            }
-          }
-        ],
-        "tags": [
-          "controller.api.services.v1.RoleService"
-        ]
-      }
-    },
-    "/v1/scopes/{scope_id}/roles/{role_id}:set-grants": {
-      "post": {
-        "summary": "Set grants for a role, removing any grants that are not specified in the request.",
-        "operationId": "RoleService_SetRoleGrants",
-        "responses": {
-          "200": {
-            "description": "",
-            "schema": {
-              "$ref": "#/definitions/controller.api.resources.roles.v1.Role"
-            }
-          }
-        },
-        "parameters": [
-          {
-            "name": "scope_id",
-            "in": "path",
-            "required": true,
-            "type": "string"
-          },
-          {
-            "name": "role_id",
-            "in": "path",
-            "required": true,
-            "type": "string"
-          },
-          {
-            "name": "body",
-            "in": "body",
-            "required": true,
-            "schema": {
-              "$ref": "#/definitions/controller.api.services.v1.SetRoleGrantsRequest"
-            }
-          }
-        ],
-        "tags": [
-          "controller.api.services.v1.RoleService"
-        ]
-      }
-    },
-    "/v1/scopes/{scope_id}/roles/{role_id}:set-principals": {
-      "post": {
-        "summary": "Set Users and/or Groups to a Role, removing any principals that are not specified in the request.",
-        "operationId": "RoleService_SetRolePrincipals",
-        "responses": {
-          "200": {
-            "description": "",
-            "schema": {
-              "$ref": "#/definitions/controller.api.resources.roles.v1.Role"
-            }
-          }
-        },
-        "parameters": [
-          {
-            "name": "scope_id",
-            "in": "path",
-            "required": true,
-            "type": "string"
-          },
-          {
-            "name": "role_id",
-            "in": "path",
-            "required": true,
-            "type": "string"
-          },
-          {
-            "name": "body",
-            "in": "body",
-            "required": true,
-            "schema": {
-              "$ref": "#/definitions/controller.api.services.v1.SetRolePrincipalsRequest"
-            }
-          }
-        ],
-        "tags": [
-          "controller.api.services.v1.RoleService"
         ]
       }
     }
@@ -1897,9 +1831,6 @@
     "controller.api.services.v1.AddRoleGrantsRequest": {
       "type": "object",
       "properties": {
-        "scope_id": {
-          "type": "string"
-        },
         "role_id": {
           "type": "string"
         },
@@ -1927,9 +1858,6 @@
     "controller.api.services.v1.AddRolePrincipalsRequest": {
       "type": "object",
       "properties": {
-        "scope_id": {
-          "type": "string"
-        },
         "role_id": {
           "type": "string"
         },
@@ -2264,9 +2192,6 @@
     "controller.api.services.v1.RemoveRoleGrantsRequest": {
       "type": "object",
       "properties": {
-        "scope_id": {
-          "type": "string"
-        },
         "role_id": {
           "type": "string"
         },
@@ -2294,9 +2219,6 @@
     "controller.api.services.v1.RemoveRolePrincipalsRequest": {
       "type": "object",
       "properties": {
-        "scope_id": {
-          "type": "string"
-        },
         "role_id": {
           "type": "string"
         },
@@ -2324,9 +2246,6 @@
     "controller.api.services.v1.SetRoleGrantsRequest": {
       "type": "object",
       "properties": {
-        "scope_id": {
-          "type": "string"
-        },
         "role_id": {
           "type": "string"
         },
@@ -2354,9 +2273,6 @@
     "controller.api.services.v1.SetRolePrincipalsRequest": {
       "type": "object",
       "properties": {
-        "scope_id": {
-          "type": "string"
-        },
         "role_id": {
           "type": "string"
         },
