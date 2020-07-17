@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/golang/protobuf/ptypes"
+	"github.com/google/go-cmp/cmp"
 	"github.com/hashicorp/watchtower/internal/db"
 	pb "github.com/hashicorp/watchtower/internal/gen/controller/api/resources/roles"
 	pbs "github.com/hashicorp/watchtower/internal/gen/controller/api/services"
@@ -18,6 +19,7 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/testing/protocmp"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 
 	"github.com/stretchr/testify/assert"
@@ -539,22 +541,57 @@ func TestCreate(t *testing.T) {
 }
 
 func TestUpdate(t *testing.T) {
-	require := require.New(t)
-	or, pr, repoFn := createDefaultRolesAndRepo(t)
+	grantString := "id=*;actions=*"
+	g, err := perms.Parse("global", "", grantString)
+	require.NoError(t, err)
+	_, actions := g.Actions()
+	grant := &pb.Grant{
+		Raw:       grantString,
+		Canonical: g.CanonicalString(),
+		Json: &pb.GrantJson{
+			Id:      g.Id(),
+			Type:    g.Type().String(),
+			Actions: actions,
+		},
+	}
+	conn, _ := db.TestSetup(t, "postgres")
+	rw := db.New(conn)
+	wrap := db.TestWrapper(t)
+	repoFn := func() (*iam.Repository, error) {
+		return iam.NewRepository(rw, rw, wrap)
+	}
+
+	o, p := iam.TestScopes(t, conn)
+	u := iam.TestUser(t, conn, o.GetPublicId())
+
+	or := iam.TestRole(t, conn, o.GetPublicId(), iam.WithDescription("default"), iam.WithName("default"), iam.WithGrantScopeId(p.GetPublicId()))
+	_ = iam.TestRoleGrant(t, conn, or.GetPublicId(), grantString)
+	_ = iam.TestUserRole(t, conn, or.GetPublicId(), u.GetPublicId())
+
+	pr := iam.TestRole(t, conn, p.GetPublicId(), iam.WithDescription("default"), iam.WithName("default"))
+	_ = iam.TestRoleGrant(t, conn, pr.GetPublicId(), grantString)
+	_ = iam.TestUserRole(t, conn, pr.GetPublicId(), u.GetPublicId())
+
+	principal := &pb.Principal{
+		Id:      u.GetPublicId(),
+		Type:    iam.UserRoleType.String(),
+		ScopeId: u.GetScopeId(),
+	}
+
 	tested, err := roles.NewService(repoFn)
-	require.NoError(err, "Error when getting new role service.")
+	require.NoError(t, err, "Error when getting new role service.")
 
 	resetRoles := func() {
 		repo, err := repoFn()
-		require.NoError(err, "Couldn't get a new repo")
-		or, _, err = repo.UpdateRole(context.Background(), or, []string{"Name", "Description"})
-		require.NoError(err, "Failed to reset the role")
-		pr, _, err = repo.UpdateRole(context.Background(), pr, []string{"Name", "Description"})
-		require.NoError(err, "Failed to reset the role")
+		require.NoError(t, err, "Couldn't get a new repo")
+		or, _, _, _, err = repo.UpdateRole(context.Background(), or, []string{"Name", "Description"})
+		require.NoError(t, err, "Failed to reset the role")
+		pr, _, _, _, err = repo.UpdateRole(context.Background(), pr, []string{"Name", "Description"})
+		require.NoError(t, err, "Failed to reset the role")
 	}
 
 	created, err := ptypes.Timestamp(or.GetCreateTime().GetTimestamp())
-	require.NoError(err, "Error converting proto to timestamp")
+	require.NoError(t, err, "Error converting proto to timestamp")
 	toMerge := &pbs.UpdateRoleRequest{
 		OrgId: or.GetScopeId(),
 		Id:    or.GetPublicId(),
@@ -585,6 +622,10 @@ func TestUpdate(t *testing.T) {
 					Description:  &wrapperspb.StringValue{Value: "desc"},
 					CreatedTime:  or.GetCreateTime().GetTimestamp(),
 					GrantScopeId: &wrapperspb.StringValue{Value: or.GetScopeId()},
+					GrantStrings: []string{grant.GetRaw()},
+					Grants:       []*pb.Grant{grant},
+					PrincipalIds: []string{u.GetPublicId()},
+					Principals:   []*pb.Principal{principal},
 				},
 			},
 			errCode: codes.OK,
@@ -607,6 +648,10 @@ func TestUpdate(t *testing.T) {
 					Description:  &wrapperspb.StringValue{Value: "desc"},
 					CreatedTime:  or.GetCreateTime().GetTimestamp(),
 					GrantScopeId: &wrapperspb.StringValue{Value: or.GetScopeId()},
+					GrantStrings: []string{grant.GetRaw()},
+					Grants:       []*pb.Grant{grant},
+					PrincipalIds: []string{u.GetPublicId()},
+					Principals:   []*pb.Principal{principal},
 				},
 			},
 			errCode: codes.OK,
@@ -631,6 +676,10 @@ func TestUpdate(t *testing.T) {
 					Description:  &wrapperspb.StringValue{Value: "desc"},
 					CreatedTime:  pr.GetCreateTime().GetTimestamp(),
 					GrantScopeId: &wrapperspb.StringValue{Value: pr.GetScopeId()},
+					GrantStrings: []string{grant.GetRaw()},
+					Grants:       []*pb.Grant{grant},
+					PrincipalIds: []string{u.GetPublicId()},
+					Principals:   []*pb.Principal{principal},
 				},
 			},
 			errCode: codes.OK,
@@ -655,6 +704,10 @@ func TestUpdate(t *testing.T) {
 					Description:  &wrapperspb.StringValue{Value: "desc"},
 					CreatedTime:  pr.GetCreateTime().GetTimestamp(),
 					GrantScopeId: &wrapperspb.StringValue{Value: pr.GetScopeId()},
+					GrantStrings: []string{grant.GetRaw()},
+					Grants:       []*pb.Grant{grant},
+					PrincipalIds: []string{u.GetPublicId()},
+					Principals:   []*pb.Principal{principal},
 				},
 			},
 			errCode: codes.OK,
@@ -707,6 +760,10 @@ func TestUpdate(t *testing.T) {
 					Description:  &wrapperspb.StringValue{Value: "default"},
 					CreatedTime:  or.GetCreateTime().GetTimestamp(),
 					GrantScopeId: &wrapperspb.StringValue{Value: or.GetScopeId()},
+					GrantStrings: []string{grant.GetRaw()},
+					Grants:       []*pb.Grant{grant},
+					PrincipalIds: []string{u.GetPublicId()},
+					Principals:   []*pb.Principal{principal},
 				},
 			},
 			errCode: codes.OK,
@@ -729,6 +786,10 @@ func TestUpdate(t *testing.T) {
 					Description:  &wrapperspb.StringValue{Value: "default"},
 					CreatedTime:  or.GetCreateTime().GetTimestamp(),
 					GrantScopeId: &wrapperspb.StringValue{Value: or.GetScopeId()},
+					GrantStrings: []string{grant.GetRaw()},
+					Grants:       []*pb.Grant{grant},
+					PrincipalIds: []string{u.GetPublicId()},
+					Principals:   []*pb.Principal{principal},
 				},
 			},
 			errCode: codes.OK,
@@ -751,6 +812,10 @@ func TestUpdate(t *testing.T) {
 					Description:  &wrapperspb.StringValue{Value: "notignored"},
 					CreatedTime:  or.GetCreateTime().GetTimestamp(),
 					GrantScopeId: &wrapperspb.StringValue{Value: or.GetScopeId()},
+					GrantStrings: []string{grant.GetRaw()},
+					Grants:       []*pb.Grant{grant},
+					PrincipalIds: []string{u.GetPublicId()},
+					Principals:   []*pb.Principal{principal},
 				},
 			},
 			errCode: codes.OK,
@@ -812,11 +877,37 @@ func TestUpdate(t *testing.T) {
 			res:     nil,
 			errCode: codes.InvalidArgument,
 		},
+		{
+			name: "Cant specify grants",
+			req: &pbs.UpdateRoleRequest{
+				UpdateMask: &field_mask.FieldMask{
+					Paths: []string{"grants"},
+				},
+				Item: &pb.Role{
+					GrantStrings: []string{"anything"},
+				},
+			},
+			res:     nil,
+			errCode: codes.InvalidArgument,
+		},
+		{
+			name: "Cant specify principals",
+			req: &pbs.UpdateRoleRequest{
+				UpdateMask: &field_mask.FieldMask{
+					Paths: []string{"principal_ids"},
+				},
+				Item: &pb.Role{
+					PrincipalIds: []string{"u_0987654321"},
+				},
+			},
+			res:     nil,
+			errCode: codes.InvalidArgument,
+		},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			defer resetRoles()
-			assert := assert.New(t)
+			assert, require := assert.New(t), require.New(t)
 			req := proto.Clone(toMerge).(*pbs.UpdateRoleRequest)
 			proto.Merge(req, tc.req)
 
@@ -836,7 +927,7 @@ func TestUpdate(t *testing.T) {
 				// TODO: Figure out the best way to test versions when updating roles
 				got.GetItem().Version = 0
 			}
-			assert.True(proto.Equal(got, tc.res), "UpdateRole(%q) got response\n%q,\nwanted\n%q", req, got, tc.res)
+			assert.Empty(cmp.Diff(got, tc.res, protocmp.Transform()), "UpdateRole(%q) got response\n%q,\nwanted\n%q", req, got, tc.res)
 		})
 	}
 }
