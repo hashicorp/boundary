@@ -25,7 +25,6 @@ func TestScope_ImmutableFields(t *testing.T) {
 		name           string
 		update         *Scope
 		fieldMask      []string
-		wantErr        bool
 		wantRowUpdated int
 	}{
 		{
@@ -155,7 +154,6 @@ func TestUser_ImmutableFields(t *testing.T) {
 		name           string
 		update         *User
 		fieldMask      []string
-		wantErr        bool
 		wantRowUpdated int
 	}{
 		{
@@ -222,7 +220,6 @@ func TestRole_ImmutableFields(t *testing.T) {
 		name           string
 		update         *Role
 		fieldMask      []string
-		wantErr        bool
 		wantRowUpdated int
 	}{
 		{
@@ -289,7 +286,6 @@ func TestGroup_ImmutableFields(t *testing.T) {
 		name           string
 		update         *Group
 		fieldMask      []string
-		wantErr        bool
 		wantRowUpdated int
 	}{
 		{

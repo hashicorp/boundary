@@ -62,7 +62,6 @@ func Test_ImmutableFields(t *testing.T) {
 		name      string
 		update    *Entry
 		fieldMask []string
-		wantErr   bool
 	}{
 		{
 			name:      "update id",
