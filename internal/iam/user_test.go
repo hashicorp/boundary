@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/hashicorp/watchtower/internal/db"
+	"github.com/hashicorp/watchtower/internal/iam/store"
 	"github.com/hashicorp/watchtower/internal/types/action"
 	"github.com/hashicorp/watchtower/internal/types/resource"
 	"github.com/stretchr/testify/assert"
@@ -379,4 +380,40 @@ func TestUser_ResourceType(t *testing.T) {
 	t.Parallel()
 	u := allocUser()
 	assert.Equal(t, resource.User, u.ResourceType())
+}
+
+func TestUser_SetTableName(t *testing.T) {
+	defaultTableName := defaultUserTableName
+	tests := []struct {
+		name        string
+		initialName string
+		setNameTo   string
+		want        string
+	}{
+		{
+			name:        "new-name",
+			initialName: "",
+			setNameTo:   "new-name",
+			want:        "new-name",
+		},
+		{
+			name:        "reset to default",
+			initialName: "initial",
+			setNameTo:   "",
+			want:        defaultTableName,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+			def := allocUser()
+			require.Equal(defaultTableName, def.TableName())
+			s := &User{
+				User:      &store.User{},
+				tableName: tt.initialName,
+			}
+			s.SetTableName(tt.setNameTo)
+			assert.Equal(tt.want, s.TableName())
+		})
+	}
 }

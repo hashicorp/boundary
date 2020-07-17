@@ -112,14 +112,14 @@ func TestCustom(t *testing.T) {
 			require.NoError(err)
 			require.Nil(apiErr, "Got error ", apiErr)
 			assert.Equal(t, updatedRole.Version, r.Version+1)
-			assert.Contains(t, updatedRole.Grants, "id=*;actions=read")
+			assert.Contains(t, updatedRole.GrantStrings, "id=*;actions=read")
 
 			r = updatedRole
 			updatedRole, apiErr, err = r.SetGrants(ctx, []string{"id=*;actions=*"})
 			require.NoError(err)
 			require.Nil(apiErr, "Got error ", apiErr)
 			assert.Equal(t, updatedRole.Version, r.Version+1)
-			assert.Contains(t, updatedRole.Grants, "id=*;actions=*")
+			assert.Contains(t, updatedRole.GrantStrings, "id=*;actions=*")
 
 			r = updatedRole
 			updatedRole, apiErr, err = r.RemoveGrants(ctx, []string{"id=*;actions=*"})
