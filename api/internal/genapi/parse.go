@@ -186,6 +186,22 @@ func parsePBs() {
 							os.Exit(1)
 						}
 
+					case "scopes":
+						switch selectorExpr.Sel.Name {
+						case "ScopeInfo":
+							st.Fields.List[i] = &ast.Field{
+								Names: field.Names,
+								Type: &ast.Ident{
+									Name: "info.Scope",
+								},
+								Tag: field.Tag,
+							}
+
+						default:
+							fmt.Printf("unhandled scopes selector sel name %q\n", selectorExpr.Sel.Name)
+							os.Exit(1)
+						}
+
 					case "_struct":
 						switch selectorExpr.Sel.Name {
 						case "Struct":

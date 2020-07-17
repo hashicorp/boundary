@@ -8,18 +8,18 @@ import (
 
 	"github.com/fatih/structs"
 
-	"github.com/hashicorp/watchtower/api"
 	"github.com/hashicorp/watchtower/api/internal/strutil"
 )
 
-type Project struct {
-	Client *api.Client `json:"-"`
-
+type Scope struct {
 	defaultFields []string
 
-	// The ID of the Project
+	// The ID of the Scope
 	// Output only.
 	Id string `json:"id,omitempty"`
+	// Scope information for this resource
+	// Output only.
+	Scope *ScopeInfo `json:"scope,omitempty"`
 	// Optional name for identification purposes
 	Name *string `json:"name,omitempty"`
 	// Optional user-set descripton for identification purposes
@@ -34,9 +34,9 @@ type Project struct {
 	Disabled *bool `json:"disabled,omitempty"`
 }
 
-func (s *Project) SetDefault(key string) {
+func (s *Scope) SetDefault(key string) {
 	lowerKey := strings.ToLower(key)
-	validMap := map[string]string{"createdtime": "created_time", "description": "description", "disabled": "disabled", "id": "id", "name": "name", "updatedtime": "updated_time"}
+	validMap := map[string]string{"createdtime": "created_time", "description": "description", "disabled": "disabled", "id": "id", "name": "name", "scope": "scope", "updatedtime": "updated_time"}
 	for k, v := range validMap {
 		if k == lowerKey || v == lowerKey {
 			s.defaultFields = strutil.AppendIfMissing(s.defaultFields, v)
@@ -45,9 +45,9 @@ func (s *Project) SetDefault(key string) {
 	}
 }
 
-func (s *Project) UnsetDefault(key string) {
+func (s *Scope) UnsetDefault(key string) {
 	lowerKey := strings.ToLower(key)
-	validMap := map[string]string{"createdtime": "created_time", "description": "description", "disabled": "disabled", "id": "id", "name": "name", "updatedtime": "updated_time"}
+	validMap := map[string]string{"createdtime": "created_time", "description": "description", "disabled": "disabled", "id": "id", "name": "name", "scope": "scope", "updatedtime": "updated_time"}
 	for k, v := range validMap {
 		if k == lowerKey || v == lowerKey {
 			s.defaultFields = strutil.StrListDelete(s.defaultFields, v)
@@ -56,7 +56,7 @@ func (s *Project) UnsetDefault(key string) {
 	}
 }
 
-func (s Project) MarshalJSON() ([]byte, error) {
+func (s Scope) MarshalJSON() ([]byte, error) {
 	m := structs.Map(s)
 	if m == nil {
 		m = make(map[string]interface{})

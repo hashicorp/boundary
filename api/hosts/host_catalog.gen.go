@@ -8,18 +8,19 @@ import (
 
 	"github.com/fatih/structs"
 
-	"github.com/hashicorp/watchtower/api"
+	"github.com/hashicorp/watchtower/api/info"
 	"github.com/hashicorp/watchtower/api/internal/strutil"
 )
 
 type HostCatalog struct {
-	Client *api.Client `json:"-"`
-
 	defaultFields []string
 
 	// The ID of the host
 	// Output only.
 	Id string `json:"id,omitempty"`
+	// Scope information for this resource
+	// Output only.
+	Scope info.Scope `json:"scope,omitempty"`
 	// The type of the resource, to help differentiate schemas
 	Type *string `json:"type,omitempty"`
 	// Optional name for identification purposes
@@ -41,7 +42,7 @@ type HostCatalog struct {
 
 func (s *HostCatalog) SetDefault(key string) {
 	lowerKey := strings.ToLower(key)
-	validMap := map[string]string{"attributes": "attributes", "createdtime": "created_time", "description": "description", "disabled": "disabled", "id": "id", "name": "name", "type": "type", "updatedtime": "updated_time"}
+	validMap := map[string]string{"attributes": "attributes", "createdtime": "created_time", "description": "description", "disabled": "disabled", "id": "id", "name": "name", "scope": "scope", "type": "type", "updatedtime": "updated_time"}
 	for k, v := range validMap {
 		if k == lowerKey || v == lowerKey {
 			s.defaultFields = strutil.AppendIfMissing(s.defaultFields, v)
@@ -52,7 +53,7 @@ func (s *HostCatalog) SetDefault(key string) {
 
 func (s *HostCatalog) UnsetDefault(key string) {
 	lowerKey := strings.ToLower(key)
-	validMap := map[string]string{"attributes": "attributes", "createdtime": "created_time", "description": "description", "disabled": "disabled", "id": "id", "name": "name", "type": "type", "updatedtime": "updated_time"}
+	validMap := map[string]string{"attributes": "attributes", "createdtime": "created_time", "description": "description", "disabled": "disabled", "id": "id", "name": "name", "scope": "scope", "type": "type", "updatedtime": "updated_time"}
 	for k, v := range validMap {
 		if k == lowerKey || v == lowerKey {
 			s.defaultFields = strutil.StrListDelete(s.defaultFields, v)

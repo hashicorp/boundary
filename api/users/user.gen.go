@@ -8,18 +8,19 @@ import (
 
 	"github.com/fatih/structs"
 
-	"github.com/hashicorp/watchtower/api"
+	"github.com/hashicorp/watchtower/api/info"
 	"github.com/hashicorp/watchtower/api/internal/strutil"
 )
 
 type User struct {
-	Client *api.Client `json:"-"`
-
 	defaultFields []string
 
 	// The ID of the Project
 	// Output only.
 	Id string `json:"id,omitempty"`
+	// Scope information for this resource
+	// Output only.
+	Scope info.Scope `json:"scope,omitempty"`
 	// Optional name for identification purposes
 	Name *string `json:"name,omitempty"`
 	// Optional user-set descripton for identification purposes
@@ -36,7 +37,7 @@ type User struct {
 
 func (s *User) SetDefault(key string) {
 	lowerKey := strings.ToLower(key)
-	validMap := map[string]string{"createdtime": "created_time", "description": "description", "disabled": "disabled", "id": "id", "name": "name", "updatedtime": "updated_time"}
+	validMap := map[string]string{"createdtime": "created_time", "description": "description", "disabled": "disabled", "id": "id", "name": "name", "scope": "scope", "updatedtime": "updated_time"}
 	for k, v := range validMap {
 		if k == lowerKey || v == lowerKey {
 			s.defaultFields = strutil.AppendIfMissing(s.defaultFields, v)
@@ -47,7 +48,7 @@ func (s *User) SetDefault(key string) {
 
 func (s *User) UnsetDefault(key string) {
 	lowerKey := strings.ToLower(key)
-	validMap := map[string]string{"createdtime": "created_time", "description": "description", "disabled": "disabled", "id": "id", "name": "name", "updatedtime": "updated_time"}
+	validMap := map[string]string{"createdtime": "created_time", "description": "description", "disabled": "disabled", "id": "id", "name": "name", "scope": "scope", "updatedtime": "updated_time"}
 	for k, v := range validMap {
 		if k == lowerKey || v == lowerKey {
 			s.defaultFields = strutil.StrListDelete(s.defaultFields, v)
