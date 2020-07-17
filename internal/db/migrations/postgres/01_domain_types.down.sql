@@ -8,7 +8,6 @@ drop domain wt_user_id;
 drop domain wt_version;
 
 drop function default_create_time;
-drop function immutable_create_time_func;
 drop function update_time_column;
 drop function update_version_column;
 drop function immutable_columns;

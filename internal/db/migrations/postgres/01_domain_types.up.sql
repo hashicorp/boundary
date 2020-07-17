@@ -59,26 +59,6 @@ comment on function
   update_time_column()
 is
   'function used in before update triggers to properly set update_time columns';
-
--- TODO (jimlambrt 7/2020) once all references are removed, then deprecate and
--- delete immutable_create_time_func() 
-create or replace function
-  immutable_create_time_func()
-  returns trigger
-as $$
-begin
-  if new.create_time is distinct from old.create_time then
-    raise warning 'create_time cannot be set to %', new.create_time;
-    new.create_time = old.create_time;
-  end if;
-  return new;
-end;
-$$ language plpgsql;
-
-comment on function
-  immutable_create_time_func()
-is
-  'function used in before update triggers to make create_time column immutable';
   
 create or replace function
   default_create_time()
