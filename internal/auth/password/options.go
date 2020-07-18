@@ -16,13 +16,12 @@ type Option func(*options)
 type options struct {
 	withName        string
 	withDescription string
+	password        string
+	withPassword    bool
 }
 
 func getDefaultOptions() options {
-	return options{
-		withDescription: "",
-		withName:        "",
-	}
+	return options{}
 }
 
 // WithDescription provides an optional description.
@@ -36,5 +35,13 @@ func WithDescription(desc string) Option {
 func WithName(name string) Option {
 	return func(o *options) {
 		o.withName = name
+	}
+}
+
+// WithPassword provides an optional password.
+func WithPassword(password string) Option {
+	return func(o *options) {
+		o.password = password
+		o.withPassword = true
 	}
 }
