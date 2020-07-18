@@ -12,7 +12,9 @@ import (
 // CreateAccount inserts a into the repository and returns a new
 // Account containing the account's PublicId. a is not changed. a must
 // contain a valid AuthMethodId. a must not contain a PublicId. The PublicId is
-// generated and assigned by this method. opt is ignored.
+// generated and assigned by this method.
+//
+// Password is the only valid option. All other options are ignored.
 //
 // Both a.Name and a.Description are optional. If a.Name is set, it must be
 // unique within a.AuthMethodId.
@@ -45,20 +47,43 @@ func (r *Repository) CreateAccount(ctx context.Context, a *Account, opt ...Optio
 	}
 
 	a = a.clone()
-
 	id, err := newAccountId()
 	if err != nil {
 		return nil, fmt.Errorf("create: password account: %w", err)
 	}
 	a.PublicId = id
 
-	metadata := newAccountMetadata(a, oplog.OpType_OP_TYPE_CREATE)
+	opts := getOpts(opt...)
 
+	var cred *Argon2Credential
+	if opts.withPassword {
+		if cc.MinPasswordLength > len(opts.password) {
+			return nil, fmt.Errorf("create: password account: password: %w", ErrTooShort)
+		}
+		if cred, err = newArgon2Credential(id, opts.password, cc.argon2()); err != nil {
+			return nil, fmt.Errorf("create: password account: %w", err)
+		}
+	}
+
+	var newCred *Argon2Credential
 	var newAccount *Account
 	_, err = r.writer.DoTx(ctx, db.StdRetryCnt, db.ExpBackoff{},
 		func(_ db.Reader, w db.Writer) error {
 			newAccount = a.clone()
-			return w.Create(ctx, newAccount, db.WithOplog(r.wrapper, metadata))
+			if err := w.Create(ctx, newAccount, db.WithOplog(r.wrapper, a.oplog(oplog.OpType_OP_TYPE_CREATE))); err != nil {
+				return err
+			}
+
+			if cred != nil {
+				newCred = cred.clone()
+				if err := newCred.encrypt(ctx, r.wrapper); err != nil {
+					return err
+				}
+				if err := w.Create(ctx, newCred, db.WithOplog(r.wrapper, cred.oplog(oplog.OpType_OP_TYPE_CREATE))); err != nil {
+					return err
+				}
+			}
+			return nil
 		},
 	)
 
@@ -70,18 +95,6 @@ func (r *Repository) CreateAccount(ctx context.Context, a *Account, opt ...Optio
 		return nil, fmt.Errorf("create: password account: in auth method: %s: %w", a.AuthMethodId, err)
 	}
 	return newAccount, nil
-}
-
-func newAccountMetadata(a *Account, op oplog.OpType) oplog.Metadata {
-	metadata := oplog.Metadata{
-		"resource-public-id": []string{a.GetPublicId()},
-		"resource-type":      []string{"password account"},
-		"op-type":            []string{op.String()},
-	}
-	if a.AuthMethodId != "" {
-		metadata["auth-method-id"] = []string{a.AuthMethodId}
-	}
-	return metadata
 }
 
 var reInvalidUserName = regexp.MustCompile("[^a-z0-9.]")

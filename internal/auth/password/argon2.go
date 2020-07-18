@@ -9,6 +9,7 @@ import (
 	"github.com/hashicorp/go-kms-wrapping/structwrapping"
 	"github.com/hashicorp/watchtower/internal/auth/password/store"
 	"github.com/hashicorp/watchtower/internal/db"
+	"github.com/hashicorp/watchtower/internal/oplog"
 	"golang.org/x/crypto/argon2"
 	"google.golang.org/protobuf/proto"
 )
@@ -144,4 +145,34 @@ func (c *Argon2Credential) decrypt(ctx context.Context, cipher wrapping.Wrapper)
 		return fmt.Errorf("error decrypting argon2 credential: %w", err)
 	}
 	return nil
+}
+
+func (c *Argon2Credential) oplog(op oplog.OpType) oplog.Metadata {
+	metadata := oplog.Metadata{
+		"resource-public-id":  []string{c.GetPublicId()},
+		"resource-type":       []string{"argon2 credential"},
+		"op-type":             []string{op.String()},
+		"password-account-id": []string{c.PasswordAccountId},
+	}
+	if c.PasswordMethodId != "" {
+		metadata["password-method-id"] = []string{c.PasswordMethodId}
+	}
+	return metadata
+}
+
+func (c *currentConfig) argon2() *Argon2Configuration {
+	if c.ConfType != "argon2" {
+		return nil
+	}
+	return &Argon2Configuration{
+		Argon2Configuration: &store.Argon2Configuration{
+			PublicId:         c.PasswordConfId,
+			PasswordMethodId: c.PasswordMethodId,
+			Iterations:       c.Iterations,
+			Memory:           c.Memory,
+			Threads:          c.Threads,
+			SaltLength:       c.SaltLength,
+			KeyLength:        c.KeyLength,
+		},
+	}
 }
