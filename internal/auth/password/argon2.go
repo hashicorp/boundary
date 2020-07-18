@@ -159,20 +159,3 @@ func (c *Argon2Credential) oplog(op oplog.OpType) oplog.Metadata {
 	}
 	return metadata
 }
-
-func (c *currentConfig) argon2() *Argon2Configuration {
-	if c.ConfType != "argon2" {
-		return nil
-	}
-	return &Argon2Configuration{
-		Argon2Configuration: &store.Argon2Configuration{
-			PublicId:         c.PasswordConfId,
-			PasswordMethodId: c.PasswordMethodId,
-			Iterations:       c.Iterations,
-			Memory:           c.Memory,
-			Threads:          c.Threads,
-			SaltLength:       c.SaltLength,
-			KeyLength:        c.KeyLength,
-		},
-	}
-}
