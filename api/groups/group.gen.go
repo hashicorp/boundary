@@ -32,11 +32,17 @@ type Group struct {
 	UpdatedTime time.Time `json:"updated_time,omitempty"`
 	// Whether the resource is disabled
 	Disabled *bool `json:"disabled,omitempty"`
+	// Contains the list of member ids in this group.
+	// Output only.
+	MemberIds []string `json:"member_ids,omitempty"`
+	// The members of this group.
+	// Output only.
+	Members []*Member `json:"members,omitempty"`
 }
 
 func (s *Group) SetDefault(key string) {
 	lowerKey := strings.ToLower(key)
-	validMap := map[string]string{"createdtime": "created_time", "description": "description", "disabled": "disabled", "id": "id", "name": "name", "updatedtime": "updated_time"}
+	validMap := map[string]string{"createdtime": "created_time", "description": "description", "disabled": "disabled", "id": "id", "memberids": "member_ids", "members": "members", "name": "name", "updatedtime": "updated_time"}
 	for k, v := range validMap {
 		if k == lowerKey || v == lowerKey {
 			s.defaultFields = strutil.AppendIfMissing(s.defaultFields, v)
@@ -47,7 +53,7 @@ func (s *Group) SetDefault(key string) {
 
 func (s *Group) UnsetDefault(key string) {
 	lowerKey := strings.ToLower(key)
-	validMap := map[string]string{"createdtime": "created_time", "description": "description", "disabled": "disabled", "id": "id", "name": "name", "updatedtime": "updated_time"}
+	validMap := map[string]string{"createdtime": "created_time", "description": "description", "disabled": "disabled", "id": "id", "memberids": "member_ids", "members": "members", "name": "name", "updatedtime": "updated_time"}
 	for k, v := range validMap {
 		if k == lowerKey || v == lowerKey {
 			s.defaultFields = strutil.StrListDelete(s.defaultFields, v)

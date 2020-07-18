@@ -180,6 +180,123 @@
         ]
       }
     },
+    "/v1/orgs/{org_id}/groups/{group_id}:add-member": {
+      "post": {
+        "summary": "Adds Users as members to a Group",
+        "operationId": "GroupService_AddGroupMembers",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/controller.api.resources.groups.v1.Group"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "org_id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "group_id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/controller.api.services.v1.AddGroupMembersRequest"
+            }
+          }
+        ],
+        "tags": [
+          "controller.api.services.v1.GroupService"
+        ]
+      }
+    },
+    "/v1/orgs/{org_id}/groups/{group_id}:remove-members": {
+      "post": {
+        "summary": "Removes the specified Users and/or Groups from a Group.",
+        "operationId": "GroupService_RemoveGroupMembers",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/controller.api.resources.groups.v1.Group"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "org_id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "group_id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/controller.api.services.v1.RemoveGroupMembersRequest"
+            }
+          }
+        ],
+        "tags": [
+          "controller.api.services.v1.GroupService"
+        ]
+      }
+    },
+    "/v1/orgs/{org_id}/groups/{group_id}:set-members": {
+      "post": {
+        "summary": "Set Users as a member to a Group, removing any members that are not specified in the request.",
+        "operationId": "GroupService_SetGroupMembers",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/controller.api.resources.groups.v1.Group"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "org_id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "group_id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/controller.api.services.v1.SetGroupMembersRequest"
+            }
+          }
+        ],
+        "tags": [
+          "controller.api.services.v1.GroupService"
+        ]
+      }
+    },
     "/v1/orgs/{org_id}/groups/{id}": {
       "get": {
         "summary": "Gets a single Group",
@@ -1179,6 +1296,141 @@
             "required": true,
             "schema": {
               "$ref": "#/definitions/controller.api.resources.groups.v1.Group"
+            }
+          }
+        ],
+        "tags": [
+          "controller.api.services.v1.GroupService"
+        ]
+      }
+    },
+    "/v1/orgs/{org_id}/projects/{project_id}/groups/{group_id}:add-member": {
+      "post": {
+        "summary": "Adds Users as members to a Group",
+        "operationId": "GroupService_AddGroupMembers2",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/controller.api.resources.groups.v1.Group"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "org_id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "project_id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "group_id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/controller.api.services.v1.AddGroupMembersRequest"
+            }
+          }
+        ],
+        "tags": [
+          "controller.api.services.v1.GroupService"
+        ]
+      }
+    },
+    "/v1/orgs/{org_id}/projects/{project_id}/groups/{group_id}:remove-members": {
+      "post": {
+        "summary": "Removes the specified Users and/or Groups from a Group.",
+        "operationId": "GroupService_RemoveGroupMembers2",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/controller.api.resources.groups.v1.Group"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "org_id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "project_id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "group_id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/controller.api.services.v1.RemoveGroupMembersRequest"
+            }
+          }
+        ],
+        "tags": [
+          "controller.api.services.v1.GroupService"
+        ]
+      }
+    },
+    "/v1/orgs/{org_id}/projects/{project_id}/groups/{group_id}:set-members": {
+      "post": {
+        "summary": "Set Users as a member to a Group, removing any members that are not specified in the request.",
+        "operationId": "GroupService_SetGroupMembers2",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/controller.api.resources.groups.v1.Group"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "org_id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "project_id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "group_id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/controller.api.services.v1.SetGroupMembersRequest"
             }
           }
         ],
@@ -3200,9 +3452,45 @@
           "type": "boolean",
           "format": "boolean",
           "title": "Whether the resource is disabled"
+        },
+        "member_ids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Contains the list of member ids in this group.\nOutput only.",
+          "readOnly": true
+        },
+        "members": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/controller.api.resources.groups.v1.Member"
+          },
+          "description": "The members of this group.\nOutput only.",
+          "readOnly": true
         }
       },
       "title": "Group contains all fields related to a Group resource"
+    },
+    "controller.api.resources.groups.v1.Member": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "The ID of the member.\nOutput only.",
+          "readOnly": true
+        },
+        "type": {
+          "type": "string",
+          "description": "The type of the member.\nOutput only.",
+          "readOnly": true
+        },
+        "scope_id": {
+          "type": "string",
+          "description": "The scope ID of the member.\nOutput only.",
+          "readOnly": true
+        }
+      }
     },
     "controller.api.resources.hosts.v1.Host": {
       "type": "object",
@@ -3589,6 +3877,40 @@
         }
       },
       "title": "User contains all fields related to a User resource"
+    },
+    "controller.api.services.v1.AddGroupMembersRequest": {
+      "type": "object",
+      "properties": {
+        "org_id": {
+          "type": "string"
+        },
+        "project_id": {
+          "type": "string"
+        },
+        "group_id": {
+          "type": "string"
+        },
+        "version": {
+          "type": "integer",
+          "format": "int64",
+          "description": "The version ensures the group hasn't changed since it was last retrieved and if\nit has the request will fail."
+        },
+        "member_ids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "The list of members to add to the group."
+        }
+      }
+    },
+    "controller.api.services.v1.AddGroupMembersResponse": {
+      "type": "object",
+      "properties": {
+        "item": {
+          "$ref": "#/definitions/controller.api.resources.groups.v1.Group"
+        }
+      }
     },
     "controller.api.services.v1.AddRoleGrantsRequest": {
       "type": "object",
@@ -3985,6 +4307,39 @@
     "controller.api.services.v1.RemoveFromHostSetResponse": {
       "type": "object"
     },
+    "controller.api.services.v1.RemoveGroupMembersRequest": {
+      "type": "object",
+      "properties": {
+        "org_id": {
+          "type": "string"
+        },
+        "project_id": {
+          "type": "string"
+        },
+        "group_id": {
+          "type": "string"
+        },
+        "version": {
+          "type": "integer",
+          "format": "int64",
+          "description": "The version ensures the group hasn't changed since it was last retrieved and if\nit has the request will fail."
+        },
+        "member_ids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "controller.api.services.v1.RemoveGroupMembersResponse": {
+      "type": "object",
+      "properties": {
+        "item": {
+          "$ref": "#/definitions/controller.api.resources.groups.v1.Group"
+        }
+      }
+    },
     "controller.api.services.v1.RemoveRoleGrantsRequest": {
       "type": "object",
       "properties": {
@@ -4048,6 +4403,39 @@
       "properties": {
         "item": {
           "$ref": "#/definitions/controller.api.resources.roles.v1.Role"
+        }
+      }
+    },
+    "controller.api.services.v1.SetGroupMembersRequest": {
+      "type": "object",
+      "properties": {
+        "org_id": {
+          "type": "string"
+        },
+        "project_id": {
+          "type": "string"
+        },
+        "group_id": {
+          "type": "string"
+        },
+        "version": {
+          "type": "integer",
+          "format": "int64",
+          "description": "The version ensures the group hasn't changed since it was last retrieved and if\nit has the request will fail."
+        },
+        "member_ids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "controller.api.services.v1.SetGroupMembersResponse": {
+      "type": "object",
+      "properties": {
+        "item": {
+          "$ref": "#/definitions/controller.api.resources.groups.v1.Group"
         }
       }
     },

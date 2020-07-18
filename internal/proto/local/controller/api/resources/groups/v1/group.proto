@@ -7,6 +7,20 @@ option go_package = "github.com/hashicorp/watchtower/internal/gen/controller/api
 import "google/protobuf/timestamp.proto";
 import "google/protobuf/wrappers.proto";
 
+message Member {
+	// The ID of the member.
+	// Output only.
+	string id = 1;
+
+	// The type of the member.
+	// Output only.
+	string type = 2;
+
+	// The scope ID of the member.
+	// Output only.
+	string scope_id = 3 [json_name="scope_id"];
+}
+
 // Group contains all fields related to a Group resource
 message Group {
 	// The ID of the Project
@@ -29,4 +43,12 @@ message Group {
 
 	// Whether the resource is disabled
 	google.protobuf.BoolValue disabled = 6;
+
+	// Contains the list of member ids in this group.
+	// Output only.
+	repeated string member_ids = 7;
+
+	// The members of this group.
+	// Output only.
+	repeated Member members = 10;
 }
