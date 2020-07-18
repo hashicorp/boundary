@@ -44,19 +44,16 @@ func (r *Repository) CreateAuthMethod(ctx context.Context, m *AuthMethod, opt ..
 	}
 	m.PasswordConfId = c.PublicId
 
-	mMetaData := newAuthMethodMetadata(m, oplog.OpType_OP_TYPE_CREATE)
-	cMetaData := newArgon2ConfMetadata(c, oplog.OpType_OP_TYPE_CREATE)
-
 	var newAuthMethod *AuthMethod
 	var newArgon2Conf *Argon2Configuration
 	_, err = r.writer.DoTx(ctx, db.StdRetryCnt, db.ExpBackoff{},
 		func(_ db.Reader, w db.Writer) error {
 			newArgon2Conf = c.clone()
-			if err := w.Create(ctx, newArgon2Conf, db.WithOplog(r.wrapper, cMetaData)); err != nil {
+			if err := w.Create(ctx, newArgon2Conf, db.WithOplog(r.wrapper, c.oplog(oplog.OpType_OP_TYPE_CREATE))); err != nil {
 				return err
 			}
 			newAuthMethod = m.clone()
-			return w.Create(ctx, newAuthMethod, db.WithOplog(r.wrapper, mMetaData))
+			return w.Create(ctx, newAuthMethod, db.WithOplog(r.wrapper, m.oplog(oplog.OpType_OP_TYPE_CREATE)))
 		},
 	)
 
@@ -68,28 +65,4 @@ func (r *Repository) CreateAuthMethod(ctx context.Context, m *AuthMethod, opt ..
 		return nil, fmt.Errorf("create: password auth method: in scope: %s: %w", m.ScopeId, err)
 	}
 	return newAuthMethod, nil
-}
-
-func newAuthMethodMetadata(m *AuthMethod, op oplog.OpType) oplog.Metadata {
-	metadata := oplog.Metadata{
-		"resource-public-id": []string{m.GetPublicId()},
-		"resource-type":      []string{"password auth method"},
-		"op-type":            []string{op.String()},
-	}
-	if m.ScopeId != "" {
-		metadata["scope-id"] = []string{m.ScopeId}
-	}
-	return metadata
-}
-
-func newArgon2ConfMetadata(c *Argon2Configuration, op oplog.OpType) oplog.Metadata {
-	metadata := oplog.Metadata{
-		"resource-public-id": []string{c.GetPublicId()},
-		"resource-type":      []string{"password argon2 conf"},
-		"op-type":            []string{op.String()},
-	}
-	if c.PasswordMethodId != "" {
-		metadata["password-method-id"] = []string{c.PasswordMethodId}
-	}
-	return metadata
 }

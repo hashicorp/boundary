@@ -5,6 +5,7 @@ import (
 
 	"github.com/hashicorp/watchtower/internal/auth/password/store"
 	"github.com/hashicorp/watchtower/internal/db"
+	"github.com/hashicorp/watchtower/internal/oplog"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -65,4 +66,16 @@ func (a *AuthMethod) SetTableName(n string) {
 	if n != "" {
 		a.tableName = n
 	}
+}
+
+func (a *AuthMethod) oplog(op oplog.OpType) oplog.Metadata {
+	metadata := oplog.Metadata{
+		"resource-public-id": []string{a.GetPublicId()},
+		"resource-type":      []string{"password auth method"},
+		"op-type":            []string{op.String()},
+	}
+	if a.ScopeId != "" {
+		metadata["scope-id"] = []string{a.ScopeId}
+	}
+	return metadata
 }
