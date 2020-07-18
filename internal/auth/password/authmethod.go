@@ -19,8 +19,6 @@ type Configuration interface{}
 type AuthMethod struct {
 	*store.AuthMethod
 	tableName string
-
-	Config Configuration `gorm:"-"`
 }
 
 // NewAuthMethod creates a new in memory AuthMethod assigned to scopeId.

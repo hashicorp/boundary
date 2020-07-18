@@ -27,9 +27,11 @@ func testAuthMethods(t *testing.T, conn *gorm.DB, count int) []*AuthMethod {
 		require.NotEmpty(id)
 		cat.PublicId = id
 
-		conf, err := NewArgon2Configuration(id)
-		require.NoError(err)
+		conf := NewArgon2Configuration()
 		require.NotNil(conf)
+		conf.PublicId, err = newArgon2ConfigurationId()
+		require.NoError(err)
+		conf.PasswordMethodId = cat.PublicId
 		cat.PasswordConfId = conf.PublicId
 
 		ctx := context.Background()

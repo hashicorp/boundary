@@ -23,8 +23,6 @@ func TestArgon2Configuration_New(t *testing.T) {
 		verify it was not saved
 	*/
 	conn, _ := db.TestSetup(t, "postgres")
-
-	// conn.LogMode(true)
 	rw := db.New(conn)
 
 	authMethods := testAuthMethods(t, conn, 1)
@@ -59,9 +57,12 @@ func TestArgon2Configuration_New(t *testing.T) {
 	})
 	t.Run("no-duplicate-configurations", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
-		got, err := NewArgon2Configuration(authMethodId)
-		require.NoError(err)
+		got := NewArgon2Configuration()
 		require.NotNil(got)
+		var err error
+		got.PublicId, err = newArgon2ConfigurationId()
+		require.NoError(err)
+		got.PasswordMethodId = authMethodId
 		err = rw.Create(ctx, got)
 		assert.Error(err)
 	})
@@ -73,17 +74,21 @@ func TestArgon2Configuration_New(t *testing.T) {
 		require.NoError(err)
 		assert.Equal(1, len(confs))
 
-		c1, err := NewArgon2Configuration(authMethodId)
-		require.NoError(err)
+		c1 := NewArgon2Configuration()
 		require.NotNil(c1)
+		c1.PublicId, err = newArgon2ConfigurationId()
+		require.NoError(err)
+		c1.PasswordMethodId = authMethodId
 		c1.Iterations = c1.Iterations + 1
 		c1.Threads = c1.Threads + 1
 		err = rw.Create(ctx, c1)
 		assert.NoError(err)
 
-		c2, err := NewArgon2Configuration(authMethodId)
+		c2 := NewArgon2Configuration()
+		require.NotNil(c2)
+		c2.PublicId, err = newArgon2ConfigurationId()
 		require.NoError(err)
-		require.NotNil(c1)
+		c2.PasswordMethodId = authMethodId
 		c2.Memory = 32 * 1024
 		c2.SaltLength = 16
 		c2.KeyLength = 16
@@ -198,9 +203,12 @@ func testArgon2Confs(t *testing.T, conn *gorm.DB, authMethodId string, count int
 	assert.Equal(1, len(confs))
 	base := confs[0]
 	for i := 0; i < count; i++ {
-		conf, err := NewArgon2Configuration(authMethodId)
-		require.NoError(err)
+		conf := NewArgon2Configuration()
 		require.NotNil(conf)
+		conf.PasswordMethodId = authMethodId
+		conf.PublicId, err = newArgon2ConfigurationId()
+		require.NoError(err)
+
 		conf.Iterations = base.Iterations + uint32(i+1)
 		conf.Threads = base.Threads + uint32(i+1)
 		err = rw.Create(context.Background(), conf)

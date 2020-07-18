@@ -107,10 +107,11 @@ func TestAuthMethod_New(t *testing.T) {
 			tt.want.PublicId = id
 			got.PublicId = id
 
-			conf, err := NewArgon2Configuration(id)
-			require.NoError(err)
+			conf := NewArgon2Configuration()
 			require.NotNil(conf)
-
+			conf.PublicId, err = newArgon2ConfigurationId()
+			require.NoError(err)
+			conf.PasswordMethodId = got.PublicId
 			got.PasswordConfId = conf.PublicId
 
 			ctx := context.Background()

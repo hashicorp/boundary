@@ -21,32 +21,18 @@ type Argon2Configuration struct {
 	tableName string
 }
 
-// NewArgon2Configuration creates a new in memory Argon2Configuration assigned to authMethodId.
-// Name and description are the only valid options. All other options are
-// ignored.
-func NewArgon2Configuration(authMethodId string) (*Argon2Configuration, error) {
-	if authMethodId == "" {
-		return nil, fmt.Errorf("new: password argon2 configuration: no authMethodId: %w", db.ErrInvalidParameter)
-	}
-
-	id, err := newArgon2ConfigurationId()
-	if err != nil {
-		return nil, fmt.Errorf("new: password argon2 configuration: %w", err)
-	}
-
-	c := &Argon2Configuration{
+// NewArgon2Configuration creates a new in memory Argon2Configuration with
+// reasonable default settings.
+func NewArgon2Configuration() *Argon2Configuration {
+	return &Argon2Configuration{
 		Argon2Configuration: &store.Argon2Configuration{
-			PasswordMethodId: authMethodId,
-			PublicId:         id,
-			Iterations:       3,
-			Memory:           64 * 1024,
-			Threads:          1,
-			SaltLength:       32,
-			KeyLength:        32,
+			Iterations: 3,
+			Memory:     64 * 1024,
+			Threads:    1,
+			SaltLength: 32,
+			KeyLength:  32,
 		},
 	}
-
-	return c, nil
 }
 
 func (c *Argon2Configuration) clone() *Argon2Configuration {
