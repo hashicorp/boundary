@@ -14,6 +14,8 @@ import (
 func TestAuthMethod_New(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 
+	// TODO(mgaffney) 07/2020: Cleanup
+
 	// conn.LogMode(true)
 	w := db.New(conn)
 

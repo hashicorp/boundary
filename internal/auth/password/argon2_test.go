@@ -14,6 +14,8 @@ import (
 )
 
 func TestArgon2Configuration_New(t *testing.T) {
+	// TODO(mgaffney) 07/2020: Cleanup
+
 	/*
 		insert new configs
 		lookup to make sure they are saved
