@@ -105,32 +105,3 @@ func validUserName(u string) bool {
 	}
 	return !reInvalidUserName.Match([]byte(u))
 }
-
-type currentConfig struct {
-	PasswordConfId    string `gorm:"primary_key"`
-	PasswordMethodId  string
-	ConfType          string
-	MinUserNameLength int
-	MinPasswordLength int
-
-	*Argon2Configuration
-}
-
-func (c *currentConfig) TableName() string {
-	return "auth_password_current_conf"
-}
-
-func (r *Repository) currentConfig(ctx context.Context, authMethodId string) (*currentConfig, error) {
-	var cc currentConfig
-	if err := r.reader.LookupWhere(ctx, &cc, "password_method_id = ?", authMethodId); err != nil {
-		return nil, err
-	}
-	return &cc, nil
-}
-
-func (c *currentConfig) argon2() *Argon2Configuration {
-	if c.ConfType != "argon2" {
-		return nil
-	}
-	return c.Argon2Configuration
-}
