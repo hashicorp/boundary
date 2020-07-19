@@ -28,6 +28,15 @@ const (
 // of the legacy proto package is being used.
 const _ = proto.ProtoPackageIsVersion4
 
+// Argon2Configuration is a configuration for using the argon2id key
+// derivation function. It is owned by an AuthMethod.
+//
+// Iterations, Memory, and Threads are the cost parameters. The cost
+// parameters should be increased as memory latency and CPU parallelism
+// increases.
+//
+// For a detailed specification of Argon2 see:
+// https://github.com/P-H-C/phc-winner-argon2/blob/master/argon2-specs.pdf
 type Argon2Configuration struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
@@ -40,14 +49,23 @@ type Argon2Configuration struct {
 	CreateTime *timestamp.Timestamp `protobuf:"bytes,2,opt,name=create_time,json=createTime,proto3" json:"create_time,omitempty" gorm:"default:current_timestamp"`
 	// @inject_tag: `gorm:"not_null"`
 	PasswordMethodId string `protobuf:"bytes,3,opt,name=password_method_id,json=passwordMethodId,proto3" json:"password_method_id,omitempty" gorm:"not_null"`
+	// Iterations is the time parameter in the Argon2 specification. It
+	// specifies the number of passes over the memory. Must be > 0.
 	// @inject_tag: `gorm:"default:null"`
 	Iterations uint32 `protobuf:"varint,4,opt,name=iterations,proto3" json:"iterations,omitempty" gorm:"default:null"`
+	// Memory is the memory parameter in the Argon2 specification. It
+	// specifies the size of the memory in KiB. For example Memory=32*1024
+	// sets the memory cost to ~32 MB. Must be > 0.
 	// @inject_tag: `gorm:"default:null"`
 	Memory uint32 `protobuf:"varint,5,opt,name=memory,proto3" json:"memory,omitempty" gorm:"default:null"`
+	// Threads is the threads parameter in the Argon2 specification. It can
+	// be adjusted to the number of available CPUs. Must be > 0.
 	// @inject_tag: `gorm:"default:null"`
 	Threads uint32 `protobuf:"varint,6,opt,name=threads,proto3" json:"threads,omitempty" gorm:"default:null"`
+	// SaltLength is in bytes. Must be >= 16.
 	// @inject_tag: `gorm:"default:null"`
 	SaltLength uint32 `protobuf:"varint,7,opt,name=salt_length,json=saltLength,proto3" json:"salt_length,omitempty" gorm:"default:null"`
+	// KeyLength is in bytes. Must be >= 16.
 	// @inject_tag: `gorm:"default:null"`
 	KeyLength uint32 `protobuf:"varint,8,opt,name=key_length,json=keyLength,proto3" json:"key_length,omitempty" gorm:"default:null"`
 }

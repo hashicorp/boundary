@@ -6,6 +6,15 @@ option go_package = "github.com/hashicorp/watchtower/internal/auth/password/stor
 
 import "controller/storage/timestamp/v1/timestamp.proto";
 
+// Argon2Configuration is a configuration for using the argon2id key
+// derivation function. It is owned by an AuthMethod.
+//
+// Iterations, Memory, and Threads are the cost parameters. The cost
+// parameters should be increased as memory latency and CPU parallelism
+// increases.
+//
+// For a detailed specification of Argon2 see:
+// https://github.com/P-H-C/phc-winner-argon2/blob/master/argon2-specs.pdf
 message Argon2Configuration {
   // @inject_tag: `gorm:"primary_key"`
   string public_id = 1;
@@ -17,18 +26,27 @@ message Argon2Configuration {
   // @inject_tag: `gorm:"not_null"`
   string password_method_id = 3;
 
+  // Iterations is the time parameter in the Argon2 specification. It
+  // specifies the number of passes over the memory. Must be > 0.
   // @inject_tag: `gorm:"default:null"`
   uint32 iterations = 4;
 
+  // Memory is the memory parameter in the Argon2 specification. It
+  // specifies the size of the memory in KiB. For example Memory=32*1024
+	// sets the memory cost to ~32 MB. Must be > 0.
   // @inject_tag: `gorm:"default:null"`
   uint32 memory = 5;
 
+  // Threads is the threads parameter in the Argon2 specification. It can
+  // be adjusted to the number of available CPUs. Must be > 0.
   // @inject_tag: `gorm:"default:null"`
   uint32 threads = 6;
 
+	// SaltLength is in bytes. Must be >= 16.
   // @inject_tag: `gorm:"default:null"`
   uint32 salt_length = 7;
 
+	// KeyLength is in bytes. Must be >= 16.
   // @inject_tag: `gorm:"default:null"`
   uint32 key_length = 8;
 }

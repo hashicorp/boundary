@@ -14,8 +14,15 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-// A Argon2Configuration contains configuration parameters for the argon2
-// key derivation function. It is owned by an AuthMethod.
+// Argon2Configuration is a configuration for using the argon2id key
+// derivation function. It is owned by an AuthMethod.
+//
+// Iterations, Memory, and Threads are the cost parameters. The cost
+// parameters should be increased as memory latency and CPU parallelism
+// increases.
+//
+// For a detailed specification of Argon2 see:
+// https://github.com/P-H-C/phc-winner-argon2/blob/master/argon2-specs.pdf
 type Argon2Configuration struct {
 	*store.Argon2Configuration
 	tableName string

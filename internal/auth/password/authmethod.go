@@ -10,8 +10,8 @@ import (
 )
 
 // A Configuration is an interface holding one of the configuration types
-// for a specific key derivation function. Argon2 is currently the only
-// configuration type.
+// for a specific key derivation function. Argon2Configuration is currently
+// the only configuration type.
 type Configuration interface{}
 
 // A AuthMethod contains accounts and password configurations. It is owned
