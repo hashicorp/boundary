@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"regexp"
 
-	"github.com/hashicorp/watchtower/internal/auth/password/store"
 	"github.com/hashicorp/watchtower/internal/db"
 	"github.com/hashicorp/watchtower/internal/oplog"
 )
@@ -114,11 +113,7 @@ type currentConfig struct {
 	MinUserNameLength int
 	MinPasswordLength int
 
-	Iterations uint32
-	Memory     uint32
-	Threads    uint32
-	SaltLength uint32
-	KeyLength  uint32
+	*Argon2Configuration
 }
 
 func (c *currentConfig) TableName() string {
@@ -137,15 +132,5 @@ func (c *currentConfig) argon2() *Argon2Configuration {
 	if c.ConfType != "argon2" {
 		return nil
 	}
-	return &Argon2Configuration{
-		Argon2Configuration: &store.Argon2Configuration{
-			PublicId:         c.PasswordConfId,
-			PasswordMethodId: c.PasswordMethodId,
-			Iterations:       c.Iterations,
-			Memory:           c.Memory,
-			Threads:          c.Threads,
-			SaltLength:       c.SaltLength,
-			KeyLength:        c.KeyLength,
-		},
-	}
+	return c.Argon2Configuration
 }

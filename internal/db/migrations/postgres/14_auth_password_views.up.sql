@@ -6,7 +6,7 @@ begin;
   create or replace view auth_password_conf_union as
       -- Do not change the order of the columns when adding new configurations.
       -- Union with new tables appending new columns as needed.
-      select c.password_method_id, c.public_id as password_conf_id,
+      select c.password_method_id, c.public_id as password_conf_id, c.public_id,
              'argon2' as conf_type,
              c.iterations, c.memory, c.threads, c.salt_length, c.key_length
         from auth_password_argon2_conf c;
