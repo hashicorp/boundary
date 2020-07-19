@@ -42,6 +42,11 @@ func NewArgon2Configuration() *Argon2Configuration {
 	}
 }
 
+// AuthMethodId returns the Id of the AuthMethod which owns c.
+func (c *Argon2Configuration) AuthMethodId() string {
+	return c.PasswordMethodId
+}
+
 func (c *Argon2Configuration) clone() *Argon2Configuration {
 	cp := proto.Clone(c.Argon2Configuration)
 	return &Argon2Configuration{
