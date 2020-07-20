@@ -1,6 +1,8 @@
 package worker
 
 import (
+	"context"
+	"crypto/tls"
 	"errors"
 	"fmt"
 	"math"
@@ -8,10 +10,35 @@ import (
 	"strings"
 
 	"github.com/hashicorp/go-multierror"
+	"github.com/hashicorp/watchtower/internal/cmd/base"
 	"github.com/hashicorp/watchtower/internal/gen/controller/api/services"
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials"
 )
+
+var dialerFunc = func(logger hclog.Logger, tlsConf *tls.Config, authInfo *base.WorkerAuthInfo) func(context.Context, string) (net.Conn, error) {
+	return func(ctx context.Context, addr string) (net.Conn, error) {
+		dialer := &net.Dialer{}
+		nonTlsConn, err := dialer.DialContext(ctx, "tcp", addr)
+		if err != nil {
+			return nil, fmt.Errorf("unable to dial to controller: %w", err)
+		}
+		tlsConn := tls.Client(nonTlsConn, tlsConf)
+		written, err := tlsConn.Write([]byte(authInfo.ConnectionNonce))
+		if err != nil {
+			if err := nonTlsConn.Close(); err != nil {
+				logger.Error("error closing connection after writing failure", "error", err)
+			}
+			return nil, fmt.Errorf("unable to write connection nonce: %w", err)
+		}
+		if written != len(authInfo.ConnectionNonce) {
+			if err := nonTlsConn.Close(); err != nil {
+				logger.Error("error closing connection after writing failure", "error", err)
+			}
+			return nil, fmt.Errorf("expected to write %d bytes of connection nonce, wrote %d", len(authInfo.ConnectionNonce, written)
+		}
+		return tlsConn, nil
+	}
+}
 
 func (c *Worker) startListeners() error {
 	var retErr *multierror.Error
@@ -26,7 +53,7 @@ func (c *Worker) startListeners() error {
 		cc, err := grpc.DialContext(c.baseContext, addr,
 			grpc.WithDefaultCallOptions(grpc.MaxCallRecvMsgSize(math.MaxInt32)),
 			grpc.WithDefaultCallOptions(grpc.MaxCallSendMsgSize(math.MaxInt32)),
-			grpc.WithTransportCredentials(credentials.NewTLS(tlsConf)),
+			grpc.WithContextDialer(dialerFunc(c.logger, tlsConf, authInfo)),
 		)
 		if err != nil {
 			return fmt.Errorf("error dialing controller for worker auth: %w", err)

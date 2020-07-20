@@ -106,7 +106,6 @@ func (c *Controller) startListeners() error {
 		if err != nil {
 			return fmt.Errorf("error getting sub-listener for worker proto: %w", err)
 		}
-		ln.ALPNListener = l
 
 		workerServer := grpc.NewServer(
 			grpc.MaxRecvMsgSize(math.MaxInt32),
@@ -114,10 +113,12 @@ func (c *Controller) startListeners() error {
 		)
 		services.RegisterWorkerServiceServer(workerServer, workers.NewWorkerServiceServer(c.logger.Named("worker-handler"), c.workerAuthCache))
 
+		interceptor := newInterceptingListener(c, l)
+		ln.ALPNListener = interceptor
 		ln.GrpcServer = workerServer
 
 		servers = append(servers, func() {
-			go workerServer.Serve(l)
+			go workerServer.Serve(interceptor)
 		})
 		return nil
 	}

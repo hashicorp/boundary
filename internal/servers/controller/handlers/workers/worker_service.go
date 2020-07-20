@@ -8,7 +8,6 @@ import (
 	"github.com/coocood/freecache"
 	"github.com/hashicorp/go-hclog"
 	pbs "github.com/hashicorp/watchtower/internal/gen/controller/api/services"
-	"github.com/kr/pretty"
 )
 
 type workerServiceServer struct {
@@ -35,8 +34,6 @@ func (ws *workerServiceServer) Authenticate(ctx context.Context, req *pbs.Worker
 		ws.logger.Error("nonce mismatch for incoming worker", "name", req.Name)
 		return nil, errors.New("forbidden")
 	}
-
-	ws.logger.Info("worker successfully authed", "name", req.Name, "peer info", pretty.Sprint(ctx))
 
 	return &pbs.WorkerServiceAuthenticateResponse{
 		Success: true,
