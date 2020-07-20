@@ -1,20 +1,6 @@
 package users_test
 
-import (
-	"context"
-	"fmt"
-	"net/http"
-	"testing"
-
-	"github.com/hashicorp/watchtower/api"
-	"github.com/hashicorp/watchtower/api/scopes"
-	"github.com/hashicorp/watchtower/api/users"
-	"github.com/hashicorp/watchtower/internal/iam"
-	"github.com/hashicorp/watchtower/internal/servers/controller"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
-)
-
+/*
 func TestUsers_List(t *testing.T) {
 	assert := assert.New(t)
 	tc := controller.NewTestController(t, &controller.TestControllerOpts{DisableAuthorizationFailures: true})
@@ -158,3 +144,4 @@ func TestUser_Errors(t *testing.T) {
 	assert.NotNil(apiErr)
 	assert.EqualValues(apiErr.Status, http.StatusBadRequest)
 }
+*/

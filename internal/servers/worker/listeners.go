@@ -9,6 +9,7 @@ import (
 	"net"
 	"strings"
 
+	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/watchtower/internal/cmd/base"
 	"github.com/hashicorp/watchtower/internal/gen/controller/api/services"
@@ -34,7 +35,7 @@ var dialerFunc = func(logger hclog.Logger, tlsConf *tls.Config, authInfo *base.W
 			if err := nonTlsConn.Close(); err != nil {
 				logger.Error("error closing connection after writing failure", "error", err)
 			}
-			return nil, fmt.Errorf("expected to write %d bytes of connection nonce, wrote %d", len(authInfo.ConnectionNonce, written)
+			return nil, fmt.Errorf("expected to write %d bytes of connection nonce, wrote %d", len(authInfo.ConnectionNonce), written)
 		}
 		return tlsConn, nil
 	}
