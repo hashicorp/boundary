@@ -2,22 +2,42 @@ package workers
 
 import (
 	"context"
+	"crypto/subtle"
+	"errors"
 
+	"github.com/coocood/freecache"
 	"github.com/hashicorp/go-hclog"
 	pbs "github.com/hashicorp/watchtower/internal/gen/controller/api/services"
+	"github.com/kr/pretty"
 )
 
 type workerServiceServer struct {
-	logger hclog.Logger
+	logger    hclog.Logger
+	authCache *freecache.Cache
 }
 
-func NewWorkerServiceServer(logger hclog.Logger) *workerServiceServer {
+func NewWorkerServiceServer(logger hclog.Logger, authCache *freecache.Cache) *workerServiceServer {
 	return &workerServiceServer{
-		logger: logger,
+		logger:    logger,
+		authCache: authCache,
 	}
 }
 
 func (ws *workerServiceServer) Authenticate(ctx context.Context, req *pbs.WorkerServiceAuthenticateRequest) (*pbs.WorkerServiceAuthenticateResponse, error) {
+	nonce, err := ws.authCache.Get([]byte(req.GetName()))
+	if err != nil {
+		ws.logger.Error("unable to look up nonce for incoming worker", "error", err)
+		return nil, errors.New("forbidden")
+	}
+	incomingNonce := []byte(req.ConnectionNonce)
+
+	if subtle.ConstantTimeCompare(nonce, incomingNonce) != 1 {
+		ws.logger.Error("nonce mismatch for incoming worker", "name", req.Name)
+		return nil, errors.New("forbidden")
+	}
+
+	ws.logger.Info("worker successfully authed", "name", req.Name, "peer info", pretty.Sprint(ctx))
+
 	return &pbs.WorkerServiceAuthenticateResponse{
 		Success: true,
 	}, nil

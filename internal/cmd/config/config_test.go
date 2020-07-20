@@ -97,7 +97,8 @@ func TestDevWorker(t *testing.T) {
 			Listeners: []*configutil.Listener{
 				{
 					Type:                  "tcp",
-					Purpose:               []string{"internal-tls"},
+					TLSDisable:            true,
+					Purpose:               []string{"worker-alpn-tls"},
 					ProxyProtocolBehavior: "allow_authorized",
 					ProxyProtocolAuthorizedAddrs: []*sockaddr.SockAddrMarshaler{
 						{SockAddr: addr},

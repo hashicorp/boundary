@@ -112,7 +112,7 @@ func (c *Controller) startListeners() error {
 			grpc.MaxRecvMsgSize(math.MaxInt32),
 			grpc.MaxSendMsgSize(math.MaxInt32),
 		)
-		services.RegisterWorkerServiceServer(workerServer, workers.NewWorkerServiceServer(c.logger.Named("worker-handler")))
+		services.RegisterWorkerServiceServer(workerServer, workers.NewWorkerServiceServer(c.logger.Named("worker-handler"), c.workerAuthCache))
 
 		ln.GrpcServer = workerServer
 
@@ -145,8 +145,7 @@ func (c *Controller) startListeners() error {
 		}
 	}
 
-	err := retErr.ErrorOrNil()
-	if err != nil {
+	if err := retErr.ErrorOrNil(); err != nil {
 		return err
 	}
 
