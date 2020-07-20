@@ -11,6 +11,7 @@ import (
 	pb "github.com/hashicorp/watchtower/internal/gen/controller/api/resources/roles"
 	pbs "github.com/hashicorp/watchtower/internal/gen/controller/api/services"
 	"github.com/hashicorp/watchtower/internal/iam"
+	"github.com/hashicorp/watchtower/internal/iam/store"
 	"github.com/hashicorp/watchtower/internal/perms"
 	"github.com/hashicorp/watchtower/internal/servers/controller/handlers"
 	"github.com/hashicorp/watchtower/internal/types/scope"
@@ -25,14 +26,16 @@ const (
 )
 
 var (
+	maskManager handlers.MaskManager
 	reInvalidID = regexp.MustCompile("[^A-Za-z0-9]")
-	// TODO(ICU-28): Find a way to auto update these names and enforce the mappings between wire and storage.
-	wireToStorageMask = map[string]string{
-		"name":           "Name",
-		"description":    "Description",
-		"grant_scope_id": "GrantScopeId",
-	}
 )
+
+func init() {
+	var err error
+	if maskManager, err = handlers.NewMaskManager(&pb.Role{}, &store.Role{}); err != nil {
+		panic(err)
+	}
+}
 
 // Service handles request as described by the pbs.RoleServiceServer interface.
 type Service struct {
@@ -271,10 +274,7 @@ func (s Service) updateInRepo(ctx context.Context, scopeId, id string, mask []st
 		return nil, status.Errorf(codes.Internal, "Unable to build role for update: %v.", err)
 	}
 	u.PublicId = id
-	dbMask, err := toDbUpdateMask(mask)
-	if err != nil {
-		return nil, err
-	}
+	dbMask := maskManager.Translate(mask)
 	if len(dbMask) == 0 {
 		return nil, handlers.InvalidArgumentErrorf("No valid fields included in the update mask.", map[string]string{"update_mask": "No valid paths provided in the update mask."})
 	}
@@ -282,7 +282,7 @@ func (s Service) updateInRepo(ctx context.Context, scopeId, id string, mask []st
 	if err != nil {
 		return nil, err
 	}
-	out, rowsUpdated, err := repo.UpdateRole(ctx, u, dbMask)
+	out, pr, gr, rowsUpdated, err := repo.UpdateRole(ctx, u, dbMask)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "Unable to update role: %v.", err)
 	}
@@ -290,7 +290,7 @@ func (s Service) updateInRepo(ctx context.Context, scopeId, id string, mask []st
 		return nil, handlers.NotFoundErrorf("Role %q doesn't exist.", id)
 	}
 	// TODO: Attach principals and grants to UpdateRole response
-	return toProto(out, nil, nil), nil
+	return toProto(out, pr, gr), nil
 }
 
 func (s Service) deleteFromRepo(ctx context.Context, id string) (bool, error) {
@@ -441,25 +441,6 @@ func (s Service) removeGrantsInRepo(ctx context.Context, roleId string, grants [
 		return nil, status.Error(codes.Internal, "Unable to lookup role after removing grants from it.")
 	}
 	return toProto(out, pr, roleGrants), nil
-}
-
-// toDbUpdateMask converts the wire format's FieldMask into a list of strings containing FieldMask paths used
-func toDbUpdateMask(paths []string) ([]string, error) {
-	var dbPaths []string
-	var invalid []string
-	for _, p := range paths {
-		for _, f := range strings.Split(p, ",") {
-			if dbField, ok := wireToStorageMask[strings.TrimSpace(f)]; ok {
-				dbPaths = append(dbPaths, dbField)
-			} else {
-				invalid = append(invalid, f)
-			}
-		}
-	}
-	if len(invalid) > 0 {
-		return nil, handlers.InvalidArgumentErrorf(fmt.Sprintf("Invalid fields passed in update_update mask: %v.", invalid), map[string]string{"update_mask": fmt.Sprintf("Unknown paths provided in update mask: %q", strings.Join(invalid, ","))})
-	}
-	return dbPaths, nil
 }
 
 func toProto(in *iam.Role, principals []iam.PrincipalRole, grants []*iam.RoleGrant) *pb.Role {

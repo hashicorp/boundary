@@ -13,6 +13,10 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
+const (
+	defaultRoleTableName = "iam_role"
+)
+
 // Roles are granted permissions and assignable to Users and Groups.
 type Role struct {
 	*store.Role
@@ -96,12 +100,17 @@ func (r *Role) TableName() string {
 	if r.tableName != "" {
 		return r.tableName
 	}
-	return "iam_role"
+	return defaultRoleTableName
 }
 
-// SetTableName sets the tablename and satisfies the ReplayableMessage interface.
+// SetTableName sets the tablename and satisfies the ReplayableMessage
+// interface. If the caller attempts to set the name to "" the name will be
+// reset to the default name.
 func (r *Role) SetTableName(n string) {
-	if n != "" {
+	switch n {
+	case "":
+		r.tableName = defaultRoleTableName
+	default:
 		r.tableName = n
 	}
 }

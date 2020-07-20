@@ -122,7 +122,7 @@ func (s Role) AddGrants(ctx context.Context, grants []string) (*Role, *api.Error
 		"version": s.Version,
 	}
 	if len(grants) > 0 {
-		body["grants"] = grants
+		body["grant_strings"] = grants
 	}
 
 	req, err := s.Client.NewRequest(ctx, "POST", fmt.Sprintf("roles/%s:add-grants", s.Id), body)
@@ -156,9 +156,9 @@ func (s Role) SetGrants(ctx context.Context, grants []string) (*Role, *api.Error
 		"version": s.Version,
 	}
 	if len(grants) > 0 {
-		body["grants"] = grants
+		body["grant_strings"] = grants
 	} else if grants != nil {
-		body["grants"] = nil
+		body["grant_strings"] = nil
 	}
 
 	req, err := s.Client.NewRequest(ctx, "POST", fmt.Sprintf("roles/%s:set-grants", s.Id), body)
@@ -192,7 +192,7 @@ func (s Role) RemoveGrants(ctx context.Context, grants []string) (*Role, *api.Er
 		"version": s.Version,
 	}
 	if len(grants) > 0 {
-		body["grants"] = grants
+		body["grant_strings"] = grants
 	}
 
 	req, err := s.Client.NewRequest(ctx, "POST", fmt.Sprintf("roles/%s:remove-grants", s.Id), body)

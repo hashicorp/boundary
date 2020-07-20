@@ -64,7 +64,9 @@ func TestDevController(t *testing.T) {
 			},
 			Telemetry: &configutil.Telemetry{
 				DisableHostname:         true,
-				PrometheusRetentionTime: time.Hour * 24,
+				PrometheusRetentionTime: 24 * time.Hour,
+				UsageGaugePeriod:        10 * time.Minute,
+				MaximumGaugeCardinality: 500,
 			},
 		},
 		DevController: true,
@@ -74,6 +76,50 @@ func TestDevController(t *testing.T) {
 	exp.Listeners[1].RawConfig = actual.Listeners[1].RawConfig
 	exp.Seals[0].Config["key"] = actual.Seals[0].Config["key"]
 	exp.Seals[1].Config["key"] = actual.Seals[1].Config["key"]
+
+	assert.Equal(t, exp, actual)
+}
+
+func TestDevWorker(t *testing.T) {
+	actual, err := DevWorker()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	addr, err := sockaddr.NewIPAddr("127.0.0.1")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	exp := &Config{
+		SharedConfig: &configutil.SharedConfig{
+			DisableMlock: true,
+			Listeners: []*configutil.Listener{
+				{
+					Type:                  "tcp",
+					TLSDisable:            true,
+					Purpose:               []string{"worker-alpn-tls"},
+					ProxyProtocolBehavior: "allow_authorized",
+					ProxyProtocolAuthorizedAddrs: []*sockaddr.SockAddrMarshaler{
+						{SockAddr: addr},
+					},
+				},
+			},
+			Telemetry: &configutil.Telemetry{
+				DisableHostname:         true,
+				PrometheusRetentionTime: 24 * time.Hour,
+				UsageGaugePeriod:        10 * time.Minute,
+				MaximumGaugeCardinality: 500,
+			},
+		},
+		Worker: &Worker{
+			Name:        "dev-worker",
+			Description: "A default worker created in dev mode",
+			Controllers: []string{"127.0.0.1"},
+		},
+	}
+
+	exp.Listeners[0].RawConfig = actual.Listeners[0].RawConfig
 
 	assert.Equal(t, exp, actual)
 }
