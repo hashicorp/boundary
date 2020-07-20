@@ -3,6 +3,7 @@ syntax = "proto3";
 package controller.storage.iam.store.v1;
 option go_package = "github.com/hashicorp/watchtower/internal/iam/store;store";
 
+import "controller/custom_options/v1/masks.proto";
 import "controller/storage/timestamp/v1/timestamp.proto";
 
 message Scope {
@@ -21,7 +22,7 @@ message Scope {
   // name is the optional friendly name used to
   // access the Scope via an API
   // @inject_tag: `gorm:"default:null"`
-  string name = 4;
+  string name = 4 [(custom_options.v1.mask_mapping) = {this: "name" that: "name"}];
 
   // Type of scope
   string type = 5;
@@ -32,5 +33,5 @@ message Scope {
 
   // description of scope
   // @inject_tag: `gorm:"default:null"`
-  string description = 7;
+  string description = 7 [(custom_options.v1.mask_mapping) = {this: "description" that: "description"}];
 }
