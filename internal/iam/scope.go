@@ -13,6 +13,10 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
+const (
+	defaultScopeTableName = "iam_scope"
+)
+
 // Scope is used to create a hierarchy of "containers" that encompass the scope of
 // an IAM resource.  Scopes are Global, Orgs and Projects.
 type Scope struct {
@@ -205,12 +209,17 @@ func (s *Scope) TableName() string {
 	if s.tableName != "" {
 		return s.tableName
 	}
-	return "iam_scope"
+	return defaultScopeTableName
 }
 
-// SetTableName sets the tablename and satisfies the ReplayableMessage interface
+// SetTableName sets the tablename and satisfies the ReplayableMessage
+// interface. If the caller attempts to set the name to "" the name will be
+// reset to the default name.
 func (s *Scope) SetTableName(n string) {
-	if n != "" {
+	switch n {
+	case "":
+		s.tableName = defaultScopeTableName
+	default:
 		s.tableName = n
 	}
 }

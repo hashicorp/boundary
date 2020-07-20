@@ -12,6 +12,10 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
+const (
+	defaultGroupTableName = "iam_group"
+)
+
 // Group is made up of principals which are scoped to an org.
 type Group struct {
 	*store.Group
@@ -88,12 +92,17 @@ func (g *Group) TableName() string {
 	if g.tableName != "" {
 		return g.tableName
 	}
-	return "iam_group"
+	return defaultGroupTableName
 }
 
-// SetTableName sets the tablename and satisfies the ReplayableMessage interface.
+// SetTableName sets the tablename and satisfies the ReplayableMessage
+// interface. If the caller attempts to set the name to "" the name will be
+// reset to the default name.
 func (g *Group) SetTableName(n string) {
-	if n != "" {
+	switch n {
+	case "":
+		g.tableName = defaultGroupTableName
+	default:
 		g.tableName = n
 	}
 }
