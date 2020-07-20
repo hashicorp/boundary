@@ -58,8 +58,7 @@ func mapFromProto(p protoreflect.ProtoMessage) map[string]string {
 	return mapping
 }
 
-// Translate takes a field mask's paths and returns paths translated for the destination's protobuf.  The destination
-// paths will always be in lowercase.
+// Translate takes a field mask's paths and returns paths translated for the destination's protobuf.
 func (m MaskManager) Translate(paths []string) []string {
 	var result []string
 	for _, v := range paths {
