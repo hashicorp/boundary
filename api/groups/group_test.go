@@ -9,6 +9,7 @@ import (
 	"github.com/hashicorp/watchtower/api"
 	"github.com/hashicorp/watchtower/api/groups"
 	"github.com/hashicorp/watchtower/api/scopes"
+	"github.com/hashicorp/watchtower/api/users"
 	"github.com/hashicorp/watchtower/internal/iam"
 	"github.com/hashicorp/watchtower/internal/servers/controller"
 	"github.com/stretchr/testify/assert"
@@ -21,6 +22,88 @@ type groupCrud interface {
 	UpdateGroup(context.Context, *groups.Group) (*groups.Group, *api.Error, error)
 	DeleteGroup(context.Context, *groups.Group) (bool, *api.Error, error)
 	ListGroups(ctx context.Context) ([]*groups.Group, *api.Error, error)
+}
+
+func TestCustom(t *testing.T) {
+	tc := controller.NewTestController(t, &controller.TestControllerOpts{DisableAuthorizationFailures: true})
+	defer tc.Shutdown()
+
+	client := tc.Client()
+	org := &scopes.Org{
+		Client: client,
+	}
+	proj, apiErr, err := org.CreateProject(context.Background(), &scopes.Project{})
+	require.NoError(t, err)
+	require.Nil(t, apiErr)
+
+	u1, apiErr, err := org.CreateUser(context.Background(), &users.User{})
+	require.NoError(t, err)
+	require.Nil(t, apiErr)
+
+	u2, apiErr, err := org.CreateUser(context.Background(), &users.User{})
+	require.NoError(t, err)
+	require.Nil(t, apiErr)
+
+	cases := []struct {
+		name  string
+		scope groupCrud
+	}{
+		{
+			name:  "org",
+			scope: org,
+		},
+		{
+			name:  "proj",
+			scope: proj,
+		},
+	}
+
+	hasMember := func(g *groups.Group, memberId string) bool {
+		var foundInMembers bool
+		var foundInMemberIds bool
+		for _, v := range g.Members {
+			if v.Id == memberId {
+				foundInMembers = true
+			}
+		}
+		for _, v := range g.MemberIds {
+			if v == memberId {
+				foundInMemberIds = true
+			}
+		}
+		return foundInMembers && foundInMemberIds
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			require := require.New(t)
+			ctx := context.Background()
+			g, apiErr, err := tc.scope.CreateGroup(ctx, &groups.Group{Name: api.String("foo")})
+			require.NoError(err)
+			require.Nil(apiErr)
+			require.NotNil(g)
+
+			updatedGroup, apiErr, err := g.AddMembers(ctx, []string{u1.Id})
+			require.NoError(err)
+			require.Nil(apiErr, "Got error ", apiErr)
+			assert.Equal(t, g.Version+1, updatedGroup.Version)
+			assert.True(t, hasMember(updatedGroup, u1.Id))
+
+			g = updatedGroup
+			updatedGroup, apiErr, err = g.SetMembers(ctx, []string{u2.Id})
+			require.NoError(err)
+			require.Nil(apiErr, "Got error ", apiErr)
+			assert.Equal(t, g.Version+1, updatedGroup.Version)
+			assert.True(t, hasMember(updatedGroup, u2.Id))
+
+			g = updatedGroup
+			updatedGroup, apiErr, err = g.RemoveMembers(ctx, []string{u2.Id})
+			require.NoError(err)
+			require.Nil(apiErr, "Got error ", apiErr)
+			assert.Equal(t, g.Version+1, updatedGroup.Version)
+			assert.Empty(t, updatedGroup.Members)
+		})
+	}
 }
 
 func TestGroup_List(t *testing.T) {

@@ -114,11 +114,11 @@ service GroupService {
   // an error is returned.
   rpc AddGroupMembers(AddGroupMembersRequest) returns (AddGroupMembersResponse) {
     option (google.api.http) = {
-      post: "/v1/orgs/{org_id}/groups/{group_id}:add-member"
+      post: "/v1/orgs/{org_id}/groups/{group_id}:add-members"
       body: "*"
       response_body: "item"
       additional_bindings {
-        post: "/v1/orgs/{org_id}/projects/{project_id}/groups/{group_id}:add-member"
+        post: "/v1/orgs/{org_id}/projects/{project_id}/groups/{group_id}:add-members"
         body: "*"
         response_body: "item"
       }

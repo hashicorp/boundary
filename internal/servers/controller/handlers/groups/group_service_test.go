@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/golang/protobuf/ptypes"
+	"github.com/google/go-cmp/cmp"
 	"github.com/hashicorp/watchtower/internal/db"
 	pb "github.com/hashicorp/watchtower/internal/gen/controller/api/resources/groups"
 	pbs "github.com/hashicorp/watchtower/internal/gen/controller/api/services"
@@ -17,6 +18,7 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/testing/protocmp"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 
 	"github.com/stretchr/testify/assert"
@@ -39,10 +41,47 @@ func createDefaultGroupsAndRepo(t *testing.T) (*iam.Group, *iam.Group, func() (*
 	return og, pg, repoFn
 }
 
+func equalMembers(g *pb.Group, members []string) bool {
+	if len(g.Members) != len(members) {
+		return false
+	}
+	for _, m := range members {
+		var foundInMembers bool
+		var foundInPrincipalIds bool
+		for _, v := range g.Members {
+			if v.Id == m {
+				foundInMembers = true
+			}
+		}
+		for _, v := range g.MemberIds {
+			if v == m {
+				foundInPrincipalIds = true
+			}
+		}
+		if !foundInMembers || !foundInPrincipalIds {
+			return false
+		}
+	}
+	return true
+}
+
 func TestGet(t *testing.T) {
-	assert := assert.New(t)
-	require := require.New(t)
-	og, pg, repo := createDefaultGroupsAndRepo(t)
+	conn, _ := db.TestSetup(t, "postgres")
+	rw := db.New(conn)
+	wrap := db.TestWrapper(t)
+	repoFn := func() (*iam.Repository, error) {
+		return iam.NewRepository(rw, rw, wrap)
+	}
+
+	o, p := iam.TestScopes(t, conn)
+	u := iam.TestUser(t, conn, o.GetPublicId())
+
+	og := iam.TestGroup(t, conn, o.GetPublicId(), iam.WithDescription("default"), iam.WithName("default"))
+	_ = iam.TestGroupMember(t, conn, og.GetPublicId(), u.GetPublicId())
+
+	pg := iam.TestGroup(t, conn, p.GetPublicId(), iam.WithDescription("default"), iam.WithName("default"))
+	_ = iam.TestGroupMember(t, conn, pg.GetPublicId(), u.GetPublicId())
+
 	toMerge := &pbs.GetGroupRequest{
 		OrgId: og.GetScopeId(),
 		Id:    og.GetPublicId(),
@@ -54,6 +93,15 @@ func TestGet(t *testing.T) {
 		Description: &wrapperspb.StringValue{Value: og.GetDescription()},
 		CreatedTime: og.CreateTime.GetTimestamp(),
 		UpdatedTime: og.UpdateTime.GetTimestamp(),
+		Version:     1,
+		MemberIds:   []string{u.GetPublicId()},
+		Members: []*pb.Member{
+			{
+				Id:      u.GetPublicId(),
+				Type:    iam.UserMemberType.String(),
+				ScopeId: u.GetScopeId(),
+			},
+		},
 	}
 
 	wantProjGroup := &pb.Group{
@@ -62,6 +110,15 @@ func TestGet(t *testing.T) {
 		Description: &wrapperspb.StringValue{Value: pg.GetDescription()},
 		CreatedTime: pg.CreateTime.GetTimestamp(),
 		UpdatedTime: pg.UpdateTime.GetTimestamp(),
+		Version:     1,
+		MemberIds:   []string{u.GetPublicId()},
+		Members: []*pb.Member{
+			{
+				Id:      u.GetPublicId(),
+				Type:    iam.UserMemberType.String(),
+				ScopeId: u.GetScopeId(),
+			},
+		},
 	}
 
 	cases := []struct {
@@ -121,15 +178,16 @@ func TestGet(t *testing.T) {
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
 			req := proto.Clone(toMerge).(*pbs.GetGroupRequest)
 			proto.Merge(req, tc.req)
 
-			s, err := groups.NewService(repo)
+			s, err := groups.NewService(repoFn)
 			require.NoError(err, "Couldn't create new group service.")
 
 			got, gErr := s.GetGroup(context.Background(), req)
 			assert.Equal(tc.errCode, status.Code(gErr), "GetGroup(%+v) got error %v, wanted %v", req, gErr, tc.errCode)
-			assert.True(proto.Equal(got, tc.res), "GetGroup(%q) got response %q, wanted %q", req, got, tc.res)
+			assert.Empty(cmp.Diff(got, tc.res, protocmp.Transform()), "GetGroup(%q) got response %q, wanted %q", req, got, tc.res)
 		})
 	}
 }
@@ -152,12 +210,14 @@ func TestList(t *testing.T) {
 			Id:          og.GetPublicId(),
 			CreatedTime: og.GetCreateTime().GetTimestamp(),
 			UpdatedTime: og.GetUpdateTime().GetTimestamp(),
+			Version:     1,
 		})
 		pg := iam.TestGroup(t, conn, pWithGroups.GetPublicId())
 		wantProjGroups = append(wantProjGroups, &pb.Group{
 			Id:          pg.GetPublicId(),
 			CreatedTime: pg.GetCreateTime().GetTimestamp(),
 			UpdatedTime: pg.GetUpdateTime().GetTimestamp(),
+			Version:     1,
 		})
 	}
 
@@ -408,6 +468,7 @@ func TestCreate(t *testing.T) {
 				Item: &pb.Group{
 					Name:        &wrapperspb.StringValue{Value: "name"},
 					Description: &wrapperspb.StringValue{Value: "desc"},
+					Version:     1,
 				},
 			},
 			errCode: codes.OK,
@@ -426,6 +487,7 @@ func TestCreate(t *testing.T) {
 				Item: &pb.Group{
 					Name:        &wrapperspb.StringValue{Value: "name"},
 					Description: &wrapperspb.StringValue{Value: "desc"},
+					Version:     1,
 				},
 			},
 			errCode: codes.OK,
@@ -482,23 +544,35 @@ func TestCreate(t *testing.T) {
 				got.Item.Id, tc.res.Item.Id = "", ""
 				got.Item.CreatedTime, got.Item.UpdatedTime, tc.res.Item.CreatedTime, tc.res.Item.UpdatedTime = nil, nil, nil, nil
 			}
-			assert.True(proto.Equal(got, tc.res), "CreateGroup(%q) got response %q, wanted %q", req, got, tc.res)
+			assert.Empty(cmp.Diff(got, tc.res, protocmp.Transform()), "CreateGroup(%q) got response %q, wanted %q", req, got, tc.res)
 		})
 	}
 }
 
 func TestUpdate(t *testing.T) {
 	require := require.New(t)
-	og, pg, repoFn := createDefaultGroupsAndRepo(t)
-	tested, err := groups.NewService(repoFn)
-	require.NoError(err, "Error when getting new group service.")
+	conn, _ := db.TestSetup(t, "postgres")
+	rw := db.New(conn)
+	wrap := db.TestWrapper(t)
+	repoFn := func() (*iam.Repository, error) {
+		return iam.NewRepository(rw, rw, wrap)
+	}
+
+	o, p := iam.TestScopes(t, conn)
+	u := iam.TestUser(t, conn, o.GetPublicId())
+
+	og := iam.TestGroup(t, conn, o.GetPublicId(), iam.WithDescription("default"), iam.WithName("default"))
+	_ = iam.TestGroupMember(t, conn, og.GetPublicId(), u.GetPublicId())
+
+	pg := iam.TestGroup(t, conn, p.GetPublicId(), iam.WithDescription("default"), iam.WithName("default"))
+	_ = iam.TestGroupMember(t, conn, pg.GetPublicId(), u.GetPublicId())
 
 	resetGroups := func() {
 		repo, err := repoFn()
 		require.NoError(err, "Couldn't get a new repo")
-		og, _, err = repo.UpdateGroup(context.Background(), og, []string{"Name", "Description"})
+		og, _, _, err = repo.UpdateGroup(context.Background(), og, []string{"Name", "Description"})
 		require.NoError(err, "Failed to reset the group")
-		pg, _, err = repo.UpdateGroup(context.Background(), pg, []string{"Name", "Description"})
+		pg, _, _, err = repo.UpdateGroup(context.Background(), pg, []string{"Name", "Description"})
 		require.NoError(err, "Failed to reset the group")
 	}
 
@@ -509,6 +583,7 @@ func TestUpdate(t *testing.T) {
 		Id:    og.GetPublicId(),
 	}
 
+	tested, err := groups.NewService(repoFn)
 	cases := []struct {
 		name    string
 		req     *pbs.UpdateGroupRequest
@@ -532,6 +607,14 @@ func TestUpdate(t *testing.T) {
 					Name:        &wrapperspb.StringValue{Value: "new"},
 					Description: &wrapperspb.StringValue{Value: "desc"},
 					CreatedTime: og.GetCreateTime().GetTimestamp(),
+					MemberIds:   []string{u.GetPublicId()},
+					Members: []*pb.Member{
+						{
+							Id:      u.GetPublicId(),
+							Type:    iam.UserMemberType.String(),
+							ScopeId: u.GetScopeId(),
+						},
+					},
 				},
 			},
 			errCode: codes.OK,
@@ -553,6 +636,14 @@ func TestUpdate(t *testing.T) {
 					Name:        &wrapperspb.StringValue{Value: "new"},
 					Description: &wrapperspb.StringValue{Value: "desc"},
 					CreatedTime: og.GetCreateTime().GetTimestamp(),
+					MemberIds:   []string{u.GetPublicId()},
+					Members: []*pb.Member{
+						{
+							Id:      u.GetPublicId(),
+							Type:    iam.UserMemberType.String(),
+							ScopeId: u.GetScopeId(),
+						},
+					},
 				},
 			},
 			errCode: codes.OK,
@@ -576,6 +667,14 @@ func TestUpdate(t *testing.T) {
 					Name:        &wrapperspb.StringValue{Value: "new"},
 					Description: &wrapperspb.StringValue{Value: "desc"},
 					CreatedTime: pg.GetCreateTime().GetTimestamp(),
+					MemberIds:   []string{u.GetPublicId()},
+					Members: []*pb.Member{
+						{
+							Id:      u.GetPublicId(),
+							Type:    iam.UserMemberType.String(),
+							ScopeId: u.GetScopeId(),
+						},
+					},
 				},
 			},
 			errCode: codes.OK,
@@ -599,6 +698,14 @@ func TestUpdate(t *testing.T) {
 					Name:        &wrapperspb.StringValue{Value: "new"},
 					Description: &wrapperspb.StringValue{Value: "desc"},
 					CreatedTime: pg.GetCreateTime().GetTimestamp(),
+					MemberIds:   []string{u.GetPublicId()},
+					Members: []*pb.Member{
+						{
+							Id:      u.GetPublicId(),
+							Type:    iam.UserMemberType.String(),
+							ScopeId: u.GetScopeId(),
+						},
+					},
 				},
 			},
 			errCode: codes.OK,
@@ -650,6 +757,14 @@ func TestUpdate(t *testing.T) {
 					Id:          og.GetPublicId(),
 					Description: &wrapperspb.StringValue{Value: "default"},
 					CreatedTime: og.GetCreateTime().GetTimestamp(),
+					MemberIds:   []string{u.GetPublicId()},
+					Members: []*pb.Member{
+						{
+							Id:      u.GetPublicId(),
+							Type:    iam.UserMemberType.String(),
+							ScopeId: u.GetScopeId(),
+						},
+					},
 				},
 			},
 			errCode: codes.OK,
@@ -671,6 +786,14 @@ func TestUpdate(t *testing.T) {
 					Name:        &wrapperspb.StringValue{Value: "updated"},
 					Description: &wrapperspb.StringValue{Value: "default"},
 					CreatedTime: og.GetCreateTime().GetTimestamp(),
+					MemberIds:   []string{u.GetPublicId()},
+					Members: []*pb.Member{
+						{
+							Id:      u.GetPublicId(),
+							Type:    iam.UserMemberType.String(),
+							ScopeId: u.GetScopeId(),
+						},
+					},
 				},
 			},
 			errCode: codes.OK,
@@ -692,6 +815,14 @@ func TestUpdate(t *testing.T) {
 					Name:        &wrapperspb.StringValue{Value: "default"},
 					Description: &wrapperspb.StringValue{Value: "notignored"},
 					CreatedTime: og.GetCreateTime().GetTimestamp(),
+					MemberIds:   []string{u.GetPublicId()},
+					Members: []*pb.Member{
+						{
+							Id:      u.GetPublicId(),
+							Type:    iam.UserMemberType.String(),
+							ScopeId: u.GetScopeId(),
+						},
+					},
 				},
 			},
 			errCode: codes.OK,
@@ -773,8 +904,389 @@ func TestUpdate(t *testing.T) {
 
 				// Clear all values which are hard to compare against.
 				got.Item.UpdatedTime, tc.res.Item.UpdatedTime = nil, nil
+				// TODO: Figure out the best way to test version updates.
+				got.Item.Version = 0
 			}
-			assert.True(proto.Equal(got, tc.res), "UpdateGroup(%q) got response %q, wanted %q", req, got, tc.res)
+			assert.Empty(cmp.Diff(got, tc.res, protocmp.Transform()), "UpdateGroup(%q) got response %q, wanted %q", req, got, tc.res)
+		})
+	}
+}
+
+func TestAddMember(t *testing.T) {
+	conn, _ := db.TestSetup(t, "postgres")
+	rw := db.New(conn)
+	wrap := db.TestWrapper(t)
+	repoFn := func() (*iam.Repository, error) {
+		return iam.NewRepository(rw, rw, wrap)
+	}
+	s, err := groups.NewService(repoFn)
+	require.NoError(t, err, "Error when getting new group service.")
+
+	o, p := iam.TestScopes(t, conn)
+	users := []*iam.User{
+		iam.TestUser(t, conn, o.GetPublicId()),
+		iam.TestUser(t, conn, o.GetPublicId()),
+		iam.TestUser(t, conn, o.GetPublicId()),
+	}
+
+	addCases := []struct {
+		name         string
+		setup        func(*iam.Group)
+		addUsers     []string
+		addGroups    []string
+		resultUsers  []string
+		resultGroups []string
+		wantErr      bool
+	}{
+		{
+			name:        "Add user on empty group",
+			setup:       func(g *iam.Group) {},
+			addUsers:    []string{users[1].GetPublicId()},
+			resultUsers: []string{users[1].GetPublicId()},
+		},
+		{
+			name: "Add user on populated group",
+			setup: func(g *iam.Group) {
+				iam.TestGroupMember(t, conn, g.GetPublicId(), users[0].GetPublicId())
+			},
+			addUsers:    []string{users[1].GetPublicId()},
+			resultUsers: []string{users[0].GetPublicId(), users[1].GetPublicId()},
+		},
+		{
+			name: "Add empty on populated group",
+			setup: func(g *iam.Group) {
+				iam.TestGroupMember(t, conn, g.GetPublicId(), users[0].GetPublicId())
+				iam.TestGroupMember(t, conn, g.GetPublicId(), users[1].GetPublicId())
+			},
+			wantErr: true,
+		},
+	}
+
+	for _, tc := range addCases {
+		for _, scp := range []*iam.Scope{o, p} {
+			t.Run(tc.name+"_"+scp.GetType(), func(t *testing.T) {
+				grp := iam.TestGroup(t, conn, scp.GetPublicId())
+				tc.setup(grp)
+				req := &pbs.AddGroupMembersRequest{
+					OrgId:     o.GetPublicId(),
+					GroupId:   grp.GetPublicId(),
+					Version:   &wrapperspb.UInt32Value{Value: grp.GetVersion()},
+					MemberIds: tc.addUsers,
+				}
+
+				got, err := s.AddGroupMembers(context.Background(), req)
+				if tc.wantErr {
+					assert.Error(t, err)
+					return
+				}
+				s, ok := status.FromError(err)
+				require.True(t, ok)
+				require.NoError(t, err, "Got error: %v", s)
+
+				assert.True(t, equalMembers(got.GetItem(), tc.resultUsers))
+			})
+		}
+	}
+
+	grp := iam.TestGroup(t, conn, p.GetPublicId())
+
+	failCases := []struct {
+		name    string
+		req     *pbs.AddGroupMembersRequest
+		errCode codes.Code
+	}{
+		{
+			name: "Bad Org Id",
+			req: &pbs.AddGroupMembersRequest{
+				OrgId:     "",
+				ProjectId: grp.GetScopeId(),
+				GroupId:   grp.GetPublicId(),
+				Version:   &wrapperspb.UInt32Value{Value: grp.GetVersion()},
+			},
+			errCode: codes.InvalidArgument,
+		},
+		{
+			name: "Bad Project Id",
+			req: &pbs.AddGroupMembersRequest{
+				OrgId:     o.GetPublicId(),
+				ProjectId: "bad id",
+				GroupId:   grp.GetPublicId(),
+				Version:   &wrapperspb.UInt32Value{Value: grp.GetVersion()},
+			},
+			errCode: codes.InvalidArgument,
+		},
+		{
+			name: "Bad Group Id",
+			req: &pbs.AddGroupMembersRequest{
+				OrgId:     o.GetPublicId(),
+				ProjectId: grp.GetScopeId(),
+				GroupId:   "bad id",
+				Version:   &wrapperspb.UInt32Value{Value: grp.GetVersion()},
+			},
+			errCode: codes.InvalidArgument,
+		},
+	}
+	for _, tc := range failCases {
+		t.Run(tc.name, func(t *testing.T) {
+			assert := assert.New(t)
+			_, gErr := s.AddGroupMembers(context.Background(), tc.req)
+			assert.Equal(tc.errCode, status.Code(gErr), "AddGroupMembers(%+v) got error %v, wanted %v", tc.req, gErr, tc.errCode)
+		})
+	}
+}
+
+func TestSetMember(t *testing.T) {
+	conn, _ := db.TestSetup(t, "postgres")
+	rw := db.New(conn)
+	wrap := db.TestWrapper(t)
+	repoFn := func() (*iam.Repository, error) {
+		return iam.NewRepository(rw, rw, wrap)
+	}
+	s, err := groups.NewService(repoFn)
+	require.NoError(t, err, "Error when getting new group service.")
+
+	o, p := iam.TestScopes(t, conn)
+	users := []*iam.User{
+		iam.TestUser(t, conn, o.GetPublicId()),
+		iam.TestUser(t, conn, o.GetPublicId()),
+		iam.TestUser(t, conn, o.GetPublicId()),
+	}
+
+	setCases := []struct {
+		name         string
+		setup        func(*iam.Group)
+		setUsers     []string
+		setGroups    []string
+		resultUsers  []string
+		resultGroups []string
+		wantErr      bool
+	}{
+		{
+			name:        "Set user on empty group",
+			setup:       func(r *iam.Group) {},
+			setUsers:    []string{users[1].GetPublicId()},
+			resultUsers: []string{users[1].GetPublicId()},
+		},
+		{
+			name: "Set user on populated group",
+			setup: func(r *iam.Group) {
+				iam.TestGroupMember(t, conn, r.GetPublicId(), users[0].GetPublicId())
+			},
+			setUsers:    []string{users[1].GetPublicId()},
+			resultUsers: []string{users[1].GetPublicId()},
+		},
+		{
+			name: "Set empty on populated group",
+			setup: func(r *iam.Group) {
+				iam.TestGroupMember(t, conn, r.GetPublicId(), users[0].GetPublicId())
+				iam.TestGroupMember(t, conn, r.GetPublicId(), users[1].GetPublicId())
+			},
+			setUsers:    []string{},
+			resultUsers: nil,
+		},
+	}
+
+	for _, tc := range setCases {
+		for _, scp := range []*iam.Scope{o, p} {
+			t.Run(tc.name+"_"+scp.GetType(), func(t *testing.T) {
+				grp := iam.TestGroup(t, conn, scp.GetPublicId())
+				tc.setup(grp)
+				req := &pbs.SetGroupMembersRequest{
+					OrgId:     o.GetPublicId(),
+					GroupId:   grp.GetPublicId(),
+					Version:   &wrapperspb.UInt32Value{Value: grp.GetVersion()},
+					MemberIds: tc.setUsers,
+				}
+
+				got, err := s.SetGroupMembers(context.Background(), req)
+				if tc.wantErr {
+					assert.Error(t, err)
+					return
+				}
+				s, ok := status.FromError(err)
+				require.True(t, ok)
+				require.NoError(t, err, "Got error: %v", s)
+
+				assert.True(t, equalMembers(got.GetItem(), append(tc.resultUsers, tc.resultGroups...)))
+			})
+		}
+	}
+
+	grp := iam.TestGroup(t, conn, p.GetPublicId())
+
+	failCases := []struct {
+		name    string
+		req     *pbs.SetGroupMembersRequest
+		errCode codes.Code
+	}{
+		{
+			name: "Bad Org Id",
+			req: &pbs.SetGroupMembersRequest{
+				OrgId:     "",
+				ProjectId: grp.GetScopeId(),
+				GroupId:   grp.GetPublicId(),
+				Version:   &wrapperspb.UInt32Value{Value: grp.GetVersion()},
+			},
+			errCode: codes.InvalidArgument,
+		},
+		{
+			name: "Bad Project Id",
+			req: &pbs.SetGroupMembersRequest{
+				OrgId:     o.GetPublicId(),
+				ProjectId: "bad id",
+				GroupId:   grp.GetPublicId(),
+				Version:   &wrapperspb.UInt32Value{Value: grp.GetVersion()},
+			},
+			errCode: codes.InvalidArgument,
+		},
+		{
+			name: "Bad Group Id",
+			req: &pbs.SetGroupMembersRequest{
+				OrgId:     o.GetPublicId(),
+				ProjectId: grp.GetScopeId(),
+				GroupId:   "bad id",
+				Version:   &wrapperspb.UInt32Value{Value: grp.GetVersion()},
+			},
+			errCode: codes.InvalidArgument,
+		},
+	}
+	for _, tc := range failCases {
+		t.Run(tc.name, func(t *testing.T) {
+			assert := assert.New(t)
+			_, gErr := s.SetGroupMembers(context.Background(), tc.req)
+			assert.Equal(tc.errCode, status.Code(gErr), "SetGroupMembers(%+v) got error %v, wanted %v", tc.req, gErr, tc.errCode)
+		})
+	}
+}
+
+func TestRemoveMember(t *testing.T) {
+	conn, _ := db.TestSetup(t, "postgres")
+	rw := db.New(conn)
+	wrap := db.TestWrapper(t)
+	repoFn := func() (*iam.Repository, error) {
+		return iam.NewRepository(rw, rw, wrap)
+	}
+	s, err := groups.NewService(repoFn)
+	require.NoError(t, err, "Error when getting new grp service.")
+
+	o, p := iam.TestScopes(t, conn)
+	users := []*iam.User{
+		iam.TestUser(t, conn, o.GetPublicId()),
+		iam.TestUser(t, conn, o.GetPublicId()),
+		iam.TestUser(t, conn, o.GetPublicId()),
+	}
+
+	addCases := []struct {
+		name         string
+		setup        func(*iam.Group)
+		removeUsers  []string
+		removeGroups []string
+		resultUsers  []string
+		resultGroups []string
+		wantErr      bool
+	}{
+		{
+			name:        "Remove user on empty group",
+			setup:       func(r *iam.Group) {},
+			removeUsers: []string{users[1].GetPublicId()},
+			wantErr:     true,
+		},
+		{
+			name: "Remove 1 of 2 users from group",
+			setup: func(r *iam.Group) {
+				iam.TestGroupMember(t, conn, r.GetPublicId(), users[0].GetPublicId())
+				iam.TestGroupMember(t, conn, r.GetPublicId(), users[1].GetPublicId())
+			},
+			removeUsers: []string{users[1].GetPublicId()},
+			resultUsers: []string{users[0].GetPublicId()},
+		},
+		{
+			name: "Remove all users from group",
+			setup: func(r *iam.Group) {
+				iam.TestGroupMember(t, conn, r.GetPublicId(), users[0].GetPublicId())
+				iam.TestGroupMember(t, conn, r.GetPublicId(), users[1].GetPublicId())
+			},
+			removeUsers: []string{users[0].GetPublicId(), users[1].GetPublicId()},
+			resultUsers: []string{},
+		},
+		{
+			name: "Remove empty on populated group",
+			setup: func(r *iam.Group) {
+				iam.TestGroupMember(t, conn, r.GetPublicId(), users[0].GetPublicId())
+			},
+			wantErr: true,
+		},
+	}
+
+	for _, tc := range addCases {
+		for _, scope := range []*iam.Scope{o, p} {
+			t.Run(tc.name+"_"+scope.GetType(), func(t *testing.T) {
+				grp := iam.TestGroup(t, conn, scope.GetPublicId())
+				tc.setup(grp)
+				req := &pbs.RemoveGroupMembersRequest{
+					OrgId:     o.GetPublicId(),
+					GroupId:   grp.GetPublicId(),
+					Version:   &wrapperspb.UInt32Value{Value: grp.GetVersion()},
+					MemberIds: tc.removeUsers,
+				}
+
+				got, err := s.RemoveGroupMembers(context.Background(), req)
+				if tc.wantErr {
+					assert.Error(t, err)
+					return
+				}
+				s, ok := status.FromError(err)
+				require.True(t, ok)
+				require.NoError(t, err, "Got error: %v", s)
+
+				assert.True(t, equalMembers(got.GetItem(), tc.resultUsers))
+			})
+		}
+	}
+
+	grp := iam.TestGroup(t, conn, p.GetPublicId())
+
+	failCases := []struct {
+		name    string
+		req     *pbs.AddGroupMembersRequest
+		errCode codes.Code
+	}{
+		{
+			name: "Bad Org Id",
+			req: &pbs.AddGroupMembersRequest{
+				OrgId:     "",
+				ProjectId: grp.GetScopeId(),
+				GroupId:   grp.GetPublicId(),
+				Version:   &wrapperspb.UInt32Value{Value: grp.GetVersion()},
+			},
+			errCode: codes.InvalidArgument,
+		},
+		{
+			name: "Bad Project Id",
+			req: &pbs.AddGroupMembersRequest{
+				OrgId:     o.GetPublicId(),
+				ProjectId: "bad id",
+				GroupId:   grp.GetPublicId(),
+				Version:   &wrapperspb.UInt32Value{Value: grp.GetVersion()},
+			},
+			errCode: codes.InvalidArgument,
+		},
+		{
+			name: "Bad Group Id",
+			req: &pbs.AddGroupMembersRequest{
+				OrgId:     o.GetPublicId(),
+				ProjectId: grp.GetScopeId(),
+				GroupId:   "bad id",
+				Version:   &wrapperspb.UInt32Value{Value: grp.GetVersion()},
+			},
+			errCode: codes.InvalidArgument,
+		},
+	}
+	for _, tc := range failCases {
+		t.Run(tc.name, func(t *testing.T) {
+			assert := assert.New(t)
+			_, gErr := s.AddGroupMembers(context.Background(), tc.req)
+			assert.Equal(tc.errCode, status.Code(gErr), "AddGroupMembers(%+v) got error %v, wanted %v", tc.req, gErr, tc.errCode)
 		})
 	}
 }

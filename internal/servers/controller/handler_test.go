@@ -80,6 +80,12 @@ func TestHandleImplementedPaths(t *testing.T) {
 			"v1/orgs/someid/projects/someid/roles/someid:add-grants",
 			"v1/orgs/someid/projects/someid/roles/someid:set-grants",
 			"v1/orgs/someid/projects/someid/roles/someid:remove-grants",
+			"v1/orgs/someid/groups/someid:add-members",
+			"v1/orgs/someid/groups/someid:set-members",
+			"v1/orgs/someid/groups/someid:remove-members",
+			"v1/orgs/someid/projects/someid/groups/someid:add-members",
+			"v1/orgs/someid/projects/someid/groups/someid:set-members",
+			"v1/orgs/someid/projects/someid/groups/someid:remove-members",
 		},
 		"DELETE": {
 			"v1/orgs/someid/projects/someid",

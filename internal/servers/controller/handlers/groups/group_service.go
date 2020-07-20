@@ -279,14 +279,14 @@ func (s Service) addMembersInRepo(ctx context.Context, groupId string, userIds [
 	}
 	_, err = repo.AddGroupMembers(ctx, groupId, version, userIds)
 	if err != nil {
-		return nil, status.Errorf(codes.Internal, "Unable to add principles to role: %v.", err)
+		return nil, status.Errorf(codes.Internal, "Unable to add members to group: %v.", err)
 	}
 	out, m, err := repo.LookupGroup(ctx, groupId)
 	if err != nil {
-		return nil, status.Errorf(codes.Internal, "Unable to look up role: %v.", err)
+		return nil, status.Errorf(codes.Internal, "Unable to look up group: %v.", err)
 	}
 	if out == nil {
-		return nil, status.Error(codes.Internal, "Unable to lookup role after adding principles to it.")
+		return nil, status.Error(codes.Internal, "Unable to lookup group after adding member to it.")
 	}
 	return toProto(out, m), nil
 }
@@ -298,14 +298,14 @@ func (s Service) setMembersInRepo(ctx context.Context, groupId string, userIds [
 	}
 	_, _, err = repo.SetGroupMembers(ctx, groupId, version, userIds)
 	if err != nil {
-		return nil, status.Errorf(codes.Internal, "Unable to set principles on role: %v.", err)
+		return nil, status.Errorf(codes.Internal, "Unable to set members on group: %v.", err)
 	}
 	out, m, err := repo.LookupGroup(ctx, groupId)
 	if err != nil {
-		return nil, status.Errorf(codes.Internal, "Unable to look up role: %v.", err)
+		return nil, status.Errorf(codes.Internal, "Unable to look up group: %v.", err)
 	}
 	if out == nil {
-		return nil, status.Error(codes.Internal, "Unable to lookup role after setting principles for it.")
+		return nil, status.Error(codes.Internal, "Unable to lookup group after setting members for it.")
 	}
 	return toProto(out, m), nil
 }
@@ -317,14 +317,14 @@ func (s Service) removeMembersInRepo(ctx context.Context, groupId string, userId
 	}
 	_, err = repo.DeleteGroupMembers(ctx, groupId, version, userIds)
 	if err != nil {
-		return nil, status.Errorf(codes.Internal, "Unable to remove principles from role: %v.", err)
+		return nil, status.Errorf(codes.Internal, "Unable to remove members from group: %v.", err)
 	}
 	out, m, err := repo.LookupGroup(ctx, groupId)
 	if err != nil {
-		return nil, status.Errorf(codes.Internal, "Unable to look up role: %v.", err)
+		return nil, status.Errorf(codes.Internal, "Unable to look up group: %v.", err)
 	}
 	if out == nil {
-		return nil, status.Error(codes.Internal, "Unable to lookup role after removing principles from it.")
+		return nil, status.Error(codes.Internal, "Unable to lookup group after removing members from it.")
 	}
 	return toProto(out, m), nil
 }
@@ -353,6 +353,7 @@ func toProto(in *iam.Group, members []*iam.GroupMember) *pb.Group {
 		Id:          in.GetPublicId(),
 		CreatedTime: in.GetCreateTime().GetTimestamp(),
 		UpdatedTime: in.GetUpdateTime().GetTimestamp(),
+		Version:     in.Version,
 	}
 	if in.GetDescription() != "" {
 		out.Description = &wrapperspb.StringValue{Value: in.GetDescription()}
