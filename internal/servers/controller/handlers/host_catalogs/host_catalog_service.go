@@ -10,6 +10,7 @@ import (
 	pb "github.com/hashicorp/watchtower/internal/gen/controller/api/resources/hosts"
 	pbs "github.com/hashicorp/watchtower/internal/gen/controller/api/services"
 	"github.com/hashicorp/watchtower/internal/host/static"
+	"github.com/hashicorp/watchtower/internal/host/static/store"
 	"github.com/hashicorp/watchtower/internal/servers/controller/common"
 	"github.com/hashicorp/watchtower/internal/servers/controller/handlers"
 	"google.golang.org/grpc/codes"
@@ -57,13 +58,16 @@ func typeFromId(id string) catalogType {
 }
 
 var (
+	maskManager handlers.MaskManager
 	reInvalidID = regexp.MustCompile("[^A-Za-z0-9]")
-	// TODO(ICU-28): Find a way to auto update these names and enforce the mappings between wire and storage.
-	wireToStorageMask = map[string]string{
-		"name":        "Name",
-		"description": "Description",
-	}
 )
+
+func init() {
+	var err error
+	if maskManager, err = handlers.NewMaskManager(&pb.HostCatalog{}, &store.HostCatalog{}); err != nil {
+		panic(err)
+	}
+}
 
 type Service struct {
 	staticRepoFn common.StaticRepoFactory
@@ -220,9 +224,9 @@ func (s Service) updateInRepo(ctx context.Context, projId, id string, mask []str
 		return nil, status.Errorf(codes.Internal, "Unable to build host catalog for update: %v.", err)
 	}
 	h.PublicId = id
-	dbMask, err := toDbUpdateMask(mask)
-	if err != nil {
-		return nil, err
+	dbMask := maskManager.Translate(mask)
+	if len(dbMask) == 0 {
+		return nil, handlers.InvalidArgumentErrorf("No valid fields included in the update mask.", map[string]string{"update_mask": "No valid paths provided in the update mask."})
 	}
 	repo, err := s.staticRepoFn()
 	if err != nil {
@@ -248,28 +252,6 @@ func (s Service) deleteFromRepo(ctx context.Context, id string) (bool, error) {
 		return false, status.Errorf(codes.Internal, "Unable to delete host: %v.", err)
 	}
 	return rows > 0, nil
-}
-
-// toDbUpdateMask converts the wire format's FieldMask into a list of strings containing FieldMask paths used
-func toDbUpdateMask(paths []string) ([]string, error) {
-	var dbPaths []string
-	var invalid []string
-	for _, p := range paths {
-		for _, f := range strings.Split(p, ",") {
-			if dbField, ok := wireToStorageMask[strings.TrimSpace(f)]; ok {
-				dbPaths = append(dbPaths, dbField)
-			} else {
-				invalid = append(invalid, f)
-			}
-		}
-	}
-	if len(invalid) > 0 {
-		return nil, handlers.InvalidArgumentErrorf("Invalid argument provided.", map[string]string{"update_mask": fmt.Sprintf("Invalid paths provided: %q", invalid)})
-	}
-	if len(dbPaths) == 0 {
-		return nil, handlers.InvalidArgumentErrorf("Invalid argument provided.", map[string]string{"update_mask": "No valid paths provided."})
-	}
-	return dbPaths, nil
 }
 
 func toProto(in *static.HostCatalog) *pb.HostCatalog {

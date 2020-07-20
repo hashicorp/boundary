@@ -7,6 +7,7 @@ option go_package = "github.com/hashicorp/watchtower/internal/gen/controller/api
 import "google/protobuf/timestamp.proto";
 import "google/protobuf/wrappers.proto";
 import "controller/api/resources/scopes/v1/scope.proto";
+import "controller/custom_options/v1/masks.proto";
 
 // Group contains all fields related to a Group resource
 message Group {
@@ -19,10 +20,10 @@ message Group {
 	resources.scopes.v1.ScopeInfo scope = 2;
 	
 	// Optional name for identification purposes
-	google.protobuf.StringValue name = 3;
+	google.protobuf.StringValue name = 3 [(custom_options.v1.mask_mapping) = {this:"name" that: "name"}];
 
 	// Optional user-set descripton for identification purposes
-	google.protobuf.StringValue description = 4;
+	google.protobuf.StringValue description = 4 [(custom_options.v1.mask_mapping) = {this:"description" that: "description"}];
 
 	// The time this resource was created
 	// Output only.

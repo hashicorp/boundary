@@ -12,6 +12,7 @@ import (
 	pb "github.com/hashicorp/watchtower/internal/gen/controller/api/resources/users"
 	pbs "github.com/hashicorp/watchtower/internal/gen/controller/api/services"
 	"github.com/hashicorp/watchtower/internal/iam"
+	"github.com/hashicorp/watchtower/internal/iam/store"
 	"github.com/hashicorp/watchtower/internal/servers/controller/handlers"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -19,13 +20,16 @@ import (
 )
 
 var (
+	maskManager handlers.MaskManager
 	reInvalidID = regexp.MustCompile("[^A-Za-z0-9]")
-	// TODO(ICU-28): Find a way to auto update these names and enforce the mappings between wire and storage.
-	wireToStorageMask = map[string]string{
-		"name":        "Name",
-		"description": "Description",
-	}
 )
+
+func init() {
+	var err error
+	if maskManager, err = handlers.NewMaskManager(&pb.User{}, &store.User{}); err != nil {
+		panic(err)
+	}
+}
 
 // Service handles request as described by the pbs.UserServiceServer interface.
 type Service struct {
@@ -185,10 +189,7 @@ func (s Service) updateInRepo(ctx context.Context, orgId, id string, mask []stri
 		return nil, status.Errorf(codes.Internal, "Unable to build user for update: %v.", err)
 	}
 	u.PublicId = id
-	dbMask, err := toDbUpdateMask(mask)
-	if err != nil {
-		return nil, err
-	}
+	dbMask := maskManager.Translate(mask)
 	if len(dbMask) == 0 {
 		return nil, handlers.InvalidArgumentErrorf("No valid fields included in the update mask.", map[string]string{"update_mask": "No valid paths provided in the update mask."})
 	}
@@ -235,25 +236,6 @@ func (s Service) listFromRepo(ctx context.Context, orgId string) ([]*pb.User, er
 		outUl = append(outUl, toProto(u))
 	}
 	return outUl, nil
-}
-
-// toDbUpdateMask converts the wire format's FieldMask into a list of strings containing FieldMask paths used
-func toDbUpdateMask(paths []string) ([]string, error) {
-	var dbPaths []string
-	var invalid []string
-	for _, p := range paths {
-		for _, f := range strings.Split(p, ",") {
-			if dbField, ok := wireToStorageMask[strings.TrimSpace(f)]; ok {
-				dbPaths = append(dbPaths, dbField)
-			} else {
-				invalid = append(invalid, f)
-			}
-		}
-	}
-	if len(invalid) > 0 {
-		return nil, handlers.InvalidArgumentErrorf(fmt.Sprintf("Invalid fields passed in update_update mask: %v.", invalid), map[string]string{"update_mask": fmt.Sprintf("Unknown paths provided in update mask: %q", strings.Join(invalid, ","))})
-	}
-	return dbPaths, nil
 }
 
 func toProto(in *iam.User) *pb.User {
