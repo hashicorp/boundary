@@ -228,6 +228,8 @@ func (c *Command) Run(args []string) int {
 				foundCluster = true
 			case "api":
 				foundAPI = true
+			case "worker-alpn-tls":
+				// Do nothing, in a dev mode we might see it here
 			default:
 				c.UI.Error(fmt.Sprintf("Unknown listener purpose %q", lnConfig.Purpose[0]))
 				return 1

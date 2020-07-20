@@ -20,19 +20,24 @@ import (
 	"github.com/hashicorp/vault/internalshared/reloadutil"
 	"github.com/mitchellh/cli"
 	"github.com/pires/go-proxyproto"
+	"google.golang.org/grpc"
 )
 
 type ServerListener struct {
 	Mux          *alpnmux.ALPNMux
 	Config       *configutil.Listener
 	HTTPServer   *http.Server
+	GrpcServer   *grpc.Server
 	ALPNListener net.Listener
 }
 
-type WorkerAuthCertInfo struct {
-	CACertPEM []byte `json:"ca_cert"`
-	CertPEM   []byte `json:"cert"`
-	KeyPEM    []byte `json:"key"`
+type WorkerAuthInfo struct {
+	CACertPEM       []byte `json:"ca_cert"`
+	CertPEM         []byte `json:"cert"`
+	KeyPEM          []byte `json:"key"`
+	Name            string `json:"name"`
+	Description     string `json:"description"`
+	ConnectionNonce string `json:"connection_nonce"`
 }
 
 // Factory is the factory function to create a listener.
@@ -56,10 +61,15 @@ func NewListener(l *configutil.Listener, logger hclog.Logger, ui cli.Ui) (*alpnm
 
 func tcpListenerFactory(l *configutil.Listener, logger hclog.Logger, ui cli.Ui) (*alpnmux.ALPNMux, map[string]string, reloadutil.ReloadFunc, error) {
 	if l.Address == "" {
-		if len(l.Purpose) == 1 && l.Purpose[0] == "cluster" {
-			l.Address = "127.0.0.1:9201"
-		} else {
-			l.Address = "127.0.0.1:9200"
+		if len(l.Purpose) == 1 {
+			switch l.Purpose[0] {
+			case "cluster":
+				l.Address = "127.0.0.1:9201"
+			case "worker-alpn-tls":
+				l.Address = "127.0.0.1:9202"
+			default:
+				l.Address = "127.0.0.1:9200"
+			}
 		}
 	}
 

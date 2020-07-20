@@ -19,16 +19,23 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-func (c Worker) workerAuthTLSConfig() (*tls.Config, error) {
-	info := new(base.WorkerAuthCertInfo)
+func (c Worker) workerAuthTLSConfig() (*tls.Config, *base.WorkerAuthInfo, error) {
+	var err error
+	info := &base.WorkerAuthInfo{
+		Name:        c.conf.RawConfig.Worker.Name,
+		Description: c.conf.RawConfig.Worker.Description,
+	}
+	if info.ConnectionNonce, err = base62.Random(20); err != nil {
+		return nil, nil, err
+	}
 
 	_, caKey, err := ed25519.GenerateKey(c.conf.SecureRandomReader)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	caHost, err := base62.Random(20)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	caCertTemplate := &x509.Certificate{
@@ -45,7 +52,7 @@ func (c Worker) workerAuthTLSConfig() (*tls.Config, error) {
 	}
 	caBytes, err := x509.CreateCertificate(c.conf.SecureRandomReader, caCertTemplate, caCertTemplate, caKey.Public(), caKey)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	caCertPEMBlock := &pem.Block{
 		Type:  "CERTIFICATE",
@@ -54,7 +61,7 @@ func (c Worker) workerAuthTLSConfig() (*tls.Config, error) {
 	info.CACertPEM = pem.EncodeToMemory(caCertPEMBlock)
 	caCert, err := x509.ParseCertificate(caBytes)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	//
@@ -62,11 +69,11 @@ func (c Worker) workerAuthTLSConfig() (*tls.Config, error) {
 	//
 	_, key, err := ed25519.GenerateKey(c.conf.SecureRandomReader)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	host, err := base62.Random(20)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	certTemplate := &x509.Certificate{
 		Subject: pkix.Name{
@@ -84,7 +91,7 @@ func (c Worker) workerAuthTLSConfig() (*tls.Config, error) {
 	}
 	certBytes, err := x509.CreateCertificate(c.conf.SecureRandomReader, certTemplate, caCert, key.Public(), caKey)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	certPEMBlock := &pem.Block{
 		Type:  "CERTIFICATE",
@@ -93,7 +100,7 @@ func (c Worker) workerAuthTLSConfig() (*tls.Config, error) {
 	info.CertPEM = pem.EncodeToMemory(certPEMBlock)
 	marshaledKey, err := x509.MarshalPKCS8PrivateKey(key)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	keyPEMBlock := &pem.Block{
 		Type:  "PRIVATE KEY",
@@ -104,15 +111,15 @@ func (c Worker) workerAuthTLSConfig() (*tls.Config, error) {
 	// Marshal and encrypt
 	marshaledInfo, err := json.Marshal(info)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	encInfo, err := c.conf.WorkerAuthKMS.Encrypt(context.Background(), marshaledInfo, nil)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	marshaledEncInfo, err := proto.Marshal(encInfo)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	b64alpn := base64.RawStdEncoding.EncodeToString(marshaledEncInfo)
 	var nextProtos []string
@@ -131,7 +138,7 @@ func (c Worker) workerAuthTLSConfig() (*tls.Config, error) {
 	rootCAs.AddCert(caCert)
 	tlsCert, err := tls.X509KeyPair(info.CertPEM, info.KeyPEM)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	tlsConfig := &tls.Config{
 		ServerName:   host,
@@ -142,5 +149,5 @@ func (c Worker) workerAuthTLSConfig() (*tls.Config, error) {
 	}
 	tlsConfig.BuildNameToCertificate()
 
-	return tlsConfig, nil
+	return tlsConfig, info, nil
 }

@@ -5,6 +5,7 @@ import (
 	"crypto/rand"
 	"fmt"
 
+	"github.com/coocood/freecache"
 	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/vault/sdk/helper/mlock"
 	"github.com/hashicorp/watchtower/internal/authtoken"
@@ -20,6 +21,8 @@ type Controller struct {
 
 	baseContext context.Context
 	baseCancel  context.CancelFunc
+
+	workerAuthCache *freecache.Cache
 
 	// Repo factory methods
 	IamRepoFn        common.IamRepoFactory
@@ -67,6 +70,8 @@ func New(conf *Config) (*Controller, error) {
 		return authtoken.NewRepository(dbase, dbase, c.conf.ControllerKMS)
 	}
 
+	c.workerAuthCache = freecache.NewCache(0)
+
 	return c, nil
 }
 
@@ -78,6 +83,7 @@ func (c *Controller) Start() error {
 }
 
 func (c *Controller) Shutdown() error {
+	c.baseCancel()
 	if err := c.stopListeners(); err != nil {
 		return fmt.Errorf("error stopping controller listeners: %w", err)
 	}

@@ -1,14 +1,15 @@
 package worker
 
 import (
-	"context"
-	"crypto/tls"
 	"errors"
 	"fmt"
-	"sync"
+	"math"
 
 	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/vault/sdk/helper/strutil"
+	"github.com/hashicorp/watchtower/internal/gen/controller/api/services"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials"
 )
 
 func (c *Worker) startListeners() error {
@@ -32,48 +33,43 @@ func (c *Worker) startListeners() error {
 			// about it :-)
 			// For now just testing out the ability to authorize via the ALPN handler
 			if strutil.StrListContains(ln.Config.Purpose, "cluster") {
-				tlsConf, err := c.workerAuthTLSConfig()
+				tlsConf, authInfo, err := c.workerAuthTLSConfig()
 				if err != nil {
 					retErr = multierror.Append(retErr, fmt.Errorf("error creating tls config for worker auth: %w", err))
 					continue
 				}
-				if ln.ALPNListener != nil {
-					conn, err := tls.Dial(ln.ALPNListener.Addr().Network(), ln.ALPNListener.Addr().String(), tlsConf)
+
+				switch {
+				case ln.ALPNListener != nil:
+					cc, err := grpc.DialContext(c.baseContext, ln.ALPNListener.Addr().String(),
+						grpc.WithDefaultCallOptions(grpc.MaxCallRecvMsgSize(math.MaxInt32)),
+						grpc.WithDefaultCallOptions(grpc.MaxCallSendMsgSize(math.MaxInt32)),
+						grpc.WithTransportCredentials(credentials.NewTLS(tlsConf)),
+					)
 					if err != nil {
 						retErr = multierror.Append(retErr, fmt.Errorf("error dialing controller for worker auth: %w", err))
 						continue
 					}
-					_, err = conn.Write([]byte("foo"))
+
+					client := services.NewWorkerServiceClient(cc)
+					c.controllerConns = append(c.controllerConns, client)
+
+					authResponse, err := client.Authenticate(c.baseContext, &services.WorkerServiceAuthenticateRequest{
+						Name:            c.conf.RawConfig.Worker.Name,
+						ConnectionNonce: authInfo.ConnectionNonce,
+					})
 					if err != nil {
-						retErr = multierror.Append(retErr, fmt.Errorf("error writing test string to controller for worker auth: %w", err))
+						retErr = multierror.Append(retErr, fmt.Errorf("error authenticating to controller for worker auth: %w", err))
 						continue
 					}
-					_, err = conn.Read(make([]byte, 3))
-					if err != nil {
-						retErr = multierror.Append(retErr, fmt.Errorf("error reading test string from controller for worker auth: %w", err))
+					if authResponse == nil || !authResponse.Success {
+						retErr = multierror.Append(retErr, errors.New("error authenticating to controller for worker auth: unexpected response"))
 						continue
 					}
-					c.logger.Info("done good writing/reading")
-					conn.Close()
-					newTLSConf, _ := c.workerAuthTLSConfig()
-					tlsConf.Certificates = newTLSConf.Certificates
-					conn, err = tls.Dial(ln.ALPNListener.Addr().Network(), ln.ALPNListener.Addr().String(), tlsConf)
-					if err != nil {
-						retErr = multierror.Append(retErr, fmt.Errorf("error dialing controller for worker auth: %w", err))
-						continue
-					}
-					_, err = conn.Write([]byte("foo"))
-					if err != nil {
-						retErr = multierror.Append(retErr, fmt.Errorf("error writing test string to controller for worker auth: %w", err))
-						continue
-					}
-					_, err = conn.Read(make([]byte, 3))
-					if err == nil {
-						retErr = multierror.Append(retErr, errors.New("expected error reading test string from controller for worker auth"))
-						continue
-					}
-					c.logger.Info("done bad writing/reading")
-					conn.Close()
+					c.logger.Info("connected to controller")
+
+				default:
+					return errors.New("no alpnmuxer found")
 				}
 			}
 		}
@@ -92,27 +88,6 @@ func (c *Worker) startListeners() error {
 }
 
 func (c *Worker) stopListeners() error {
-	serverWg := new(sync.WaitGroup)
-	for _, ln := range c.conf.Listeners {
-		if c.conf.RawConfig.DevController {
-			// These will get closed by the controller's dev instance
-			continue
-		}
-
-		if ln.HTTPServer == nil {
-			continue
-		}
-		localLn := ln
-		serverWg.Add(1)
-		go func() {
-			shutdownKill, shutdownKillCancel := context.WithTimeout(c.baseContext, localLn.Config.MaxRequestDuration)
-			defer shutdownKillCancel()
-			defer serverWg.Done()
-			localLn.HTTPServer.Shutdown(shutdownKill)
-		}()
-	}
-	serverWg.Wait()
-
 	var retErr *multierror.Error
 	for _, ln := range c.conf.Listeners {
 		if ln.ALPNListener != nil {

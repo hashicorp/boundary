@@ -7,6 +7,8 @@ import (
 
 	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/vault/sdk/helper/mlock"
+	"github.com/hashicorp/watchtower/internal/gen/controller/api/services"
+	"github.com/kr/pretty"
 )
 
 type Worker struct {
@@ -15,12 +17,18 @@ type Worker struct {
 
 	baseContext context.Context
 	baseCancel  context.CancelFunc
+
+	controllerConns []services.WorkerServiceClient
 }
 
 func New(conf *Config) (*Worker, error) {
 	c := &Worker{
-		conf:   conf,
-		logger: conf.Logger.Named("worker"),
+		conf:            conf,
+		logger:          conf.Logger.Named("worker"),
+		controllerConns: make([]services.WorkerServiceClient, 0, 3),
+	}
+	if conf.RawConfig.Worker == nil {
+		panic(pretty.Sprint(conf.RawConfig))
 	}
 
 	if conf.SecureRandomReader == nil {
@@ -56,6 +64,7 @@ func (c *Worker) Start() error {
 }
 
 func (c *Worker) Shutdown() error {
+	c.baseCancel()
 	if err := c.stopListeners(); err != nil {
 		return fmt.Errorf("error stopping worker listeners: %w", err)
 	}

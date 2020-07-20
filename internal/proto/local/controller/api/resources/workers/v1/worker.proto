@@ -1,0 +1,26 @@
+syntax = "proto3";
+
+package controller.api.resources.workers.v1;
+
+option go_package = "github.com/hashicorp/watchtower/internal/gen/controller/api/resources/workers;workers";
+
+import "google/protobuf/timestamp.proto";
+
+// Worker contains all fields related to a Worker resource
+message Worker {
+	// The ID of the worker
+	// Output only.
+	string name = 10;
+
+    // The description provided for the worker
+    // Output only.
+    string description = 20;
+
+	// The time we first saw this worker
+	// Output only.
+	google.protobuf.Timestamp first_seen_time = 30 [json_name="first_seen_time"];
+
+	// The time the worker was last seen (heartbeat)
+	// Output only.
+	google.protobuf.Timestamp last_seen_time = 40 [json_name="last_seen_time"];
+}

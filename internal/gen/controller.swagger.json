@@ -2297,6 +2297,18 @@
         }
       }
     },
+    "controller.api.services.v1.StatusResponse": {
+      "type": "object",
+      "properties": {
+        "cancel_job_ids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Jobs that should be canceled: ones assigned to this worker that have been\nreported as active but are in canceling state in the database. Once the\nworker cancels the job, it will no longer show up in active_jobs in the\nnext heartbeat, and we can move the job to canceled state."
+        }
+      }
+    },
     "controller.api.services.v1.UpdateGroupResponse": {
       "type": "object",
       "properties": {
@@ -2350,6 +2362,15 @@
       "properties": {
         "item": {
           "$ref": "#/definitions/controller.api.resources.users.v1.User"
+        }
+      }
+    },
+    "controller.api.services.v1.WorkerServiceAuthenticateResponse": {
+      "type": "object",
+      "properties": {
+        "success": {
+          "type": "boolean",
+          "format": "boolean"
         }
       }
     },

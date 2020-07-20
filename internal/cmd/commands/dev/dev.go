@@ -156,7 +156,7 @@ func (c *Command) Run(args []string) int {
 
 	childShutdownCh := make(chan struct{})
 
-	devConfig, err := config.DevController()
+	devConfig, err := config.DevCombined()
 	if err != nil {
 		c.UI.Error(fmt.Errorf("Error creating controller dev config: %w", err).Error())
 		return 1
