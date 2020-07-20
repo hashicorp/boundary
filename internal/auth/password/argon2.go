@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/rand"
 	"fmt"
+	"strings"
 
 	wrapping "github.com/hashicorp/go-kms-wrapping"
 	"github.com/hashicorp/go-kms-wrapping/structwrapping"
@@ -56,7 +57,7 @@ func (c *Argon2Configuration) clone() *Argon2Configuration {
 
 // TableName returns the table name.
 func (c *Argon2Configuration) TableName() string {
-	if c.tableName != "" {
+	if c != nil && c.tableName != "" {
 		return c.tableName
 	}
 	return "auth_password_argon2_conf"
@@ -79,6 +80,20 @@ func (c *Argon2Configuration) oplog(op oplog.OpType) oplog.Metadata {
 		metadata["password-method-id"] = []string{c.PasswordMethodId}
 	}
 	return metadata
+}
+
+func (c *Argon2Configuration) whereDup() (string, []interface{}) {
+	var where []string
+	var args []interface{}
+
+	where, args = append(where, "password_method_id = ?"), append(args, c.PasswordMethodId)
+	where, args = append(where, "iterations = ?"), append(args, c.Iterations)
+	where, args = append(where, "memory = ?"), append(args, c.Memory)
+	where, args = append(where, "threads = ?"), append(args, c.Threads)
+	where, args = append(where, "key_length = ?"), append(args, c.KeyLength)
+	where, args = append(where, "salt_length = ?"), append(args, c.SaltLength)
+
+	return strings.Join(where, " and "), args
 }
 
 // A Argon2Credential contains a key derived from a password and the salt
