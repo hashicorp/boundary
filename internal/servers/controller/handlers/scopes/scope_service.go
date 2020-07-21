@@ -28,7 +28,7 @@ var (
 
 func init() {
 	var err error
-	if maskManager, err = handlers.NewMaskManager(&pb.Project{}, &store.Scope{}); err != nil {
+	if maskManager, err = handlers.NewMaskManager(&pb.Scope{}, &store.Scope{}); err != nil {
 		panic(err)
 	}
 }
