@@ -1316,7 +1316,7 @@ values
 
 create table job_status_enm (
   string text not null primary key check (
-    string in ('unknown', 'pending', 'active', 'canceling', 'canceled', 'success')
+    string in ('unknown', 'pending', 'active', 'canceling', 'canceled', 'complete')
   )
 );
 
@@ -1330,7 +1330,7 @@ values
   ('active'),
   ('canceling'),
   ('canceled'),
-  ('success');
+  ('complete');
 
 create table jobs_worker (
     -- The name is user-chosen, but we need some consistent way of identifying
@@ -1348,9 +1348,11 @@ create table jobs_job (
     public_id wt_public_id primary key,
     pending_time wt_timestamp,
     active_time wt_timestamp,
+    worker_name text not null,
+    worker_description text,
     canceling_time wt_timestamp,
     canceled_time wt_timestamp,
-    finished_time wt_timestamp,
+    complete_time wt_timestamp,
     type job_type_enm not null,
     status job_status_enm not null,
     worker_name text not null,
@@ -1369,12 +1371,6 @@ create table jobs_job (
 -- TODO: Create a trigger that enforces forward progress during updates to
 -- status and updates timestamps based on how the status changes
 
-create table jobs_worker_job (
-    worker_name text references jobs_worker(name),
-    job_id wt_public_id references jobs_job(public_id)
-  );
-
-commit;
 `),
 	},
 	"migrations/10_static_host.down.sql": {

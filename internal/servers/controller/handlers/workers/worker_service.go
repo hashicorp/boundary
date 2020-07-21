@@ -21,6 +21,6 @@ func NewWorkerServiceServer(logger hclog.Logger, authCache *cache.Cache) *worker
 }
 
 func (ws *workerServiceServer) Status(ctx context.Context, req *pbs.StatusRequest) (*pbs.StatusResponse, error) {
-	ws.logger.Info("got status request", "name", req.Name)
+	ws.logger.Trace("got status request", "name", req.Name)
 	return &pbs.StatusResponse{}, nil
 }

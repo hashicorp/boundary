@@ -42,7 +42,7 @@ func (w *Worker) startStatusTicking() {
 					if err != nil {
 						w.logger.Error("error making status request to controller", "controller_addr_", c.controllerAddr, "error", err)
 					} else {
-						w.logger.Info("successfully sent status to controller", "controller_addr", c.controllerAddr)
+						w.logger.Trace("successfully sent status to controller", "controller_addr", c.controllerAddr)
 					}
 				}
 				timer.Reset(getRandomInterval())
