@@ -26,9 +26,7 @@ service ScopeService {
   }
 
   // ListScopes returns a list of stored scopes which exist inside the scope of
-  // the token making the request. The request must include the org id for the
-  // scopes being retrieved. If the org id is missing, malformed, or reference
-  // a non existing org, an error is returned.
+  // the token making the request.
   rpc ListScopes(ListScopesRequest) returns (ListScopesResponse) {
     option (google.api.http) = {
       get: "/v1/scopes"
