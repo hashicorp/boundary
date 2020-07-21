@@ -42,7 +42,7 @@ service ScopeService {
   // must include the scope ID in which the scope will be created. If the scope
   // ID is missing, malformed or references a non existing scope, an error is
   // returned. If a name is provided that is in use in another scope in the same
-  // org, an error is returned.
+  // parent scope, an error is returned.
   rpc CreateScope(CreateScopeRequest) returns (CreateScopeResponse) {
     option (google.api.http) = {
       post: "/v1/scopes"
