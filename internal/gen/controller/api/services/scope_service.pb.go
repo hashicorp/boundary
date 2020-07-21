@@ -882,15 +882,13 @@ type ScopeServiceClient interface {
 	// resource an error is returned.
 	GetScope(ctx context.Context, in *GetScopeRequest, opts ...grpc.CallOption) (*GetScopeResponse, error)
 	// ListScopes returns a list of stored scopes which exist inside the scope of
-	// the token making the request. The request must include the org id for the
-	// scopes being retrieved. If the org id is missing, malformed, or reference
-	// a non existing org, an error is returned.
+	// the token making the request.
 	ListScopes(ctx context.Context, in *ListScopesRequest, opts ...grpc.CallOption) (*ListScopesResponse, error)
 	// CreateScope creates and stores a scope in watchtower.  The provided request
 	// must include the scope ID in which the scope will be created. If the scope
 	// ID is missing, malformed or references a non existing scope, an error is
 	// returned. If a name is provided that is in use in another scope in the same
-	// org, an error is returned.
+	// parent scope, an error is returned.
 	CreateScope(ctx context.Context, in *CreateScopeRequest, opts ...grpc.CallOption) (*CreateScopeResponse, error)
 	// UpdateScope updates an existing scope in watchtower.  The provided
 	// scope must not have any read only fields set.  The update mask must be
@@ -970,15 +968,13 @@ type ScopeServiceServer interface {
 	// resource an error is returned.
 	GetScope(context.Context, *GetScopeRequest) (*GetScopeResponse, error)
 	// ListScopes returns a list of stored scopes which exist inside the scope of
-	// the token making the request. The request must include the org id for the
-	// scopes being retrieved. If the org id is missing, malformed, or reference
-	// a non existing org, an error is returned.
+	// the token making the request.
 	ListScopes(context.Context, *ListScopesRequest) (*ListScopesResponse, error)
 	// CreateScope creates and stores a scope in watchtower.  The provided request
 	// must include the scope ID in which the scope will be created. If the scope
 	// ID is missing, malformed or references a non existing scope, an error is
 	// returned. If a name is provided that is in use in another scope in the same
-	// org, an error is returned.
+	// parent scope, an error is returned.
 	CreateScope(context.Context, *CreateScopeRequest) (*CreateScopeResponse, error)
 	// UpdateScope updates an existing scope in watchtower.  The provided
 	// scope must not have any read only fields set.  The update mask must be
