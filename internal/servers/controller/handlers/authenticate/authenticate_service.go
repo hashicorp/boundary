@@ -18,7 +18,6 @@ import (
 	iamStore "github.com/hashicorp/watchtower/internal/iam/store"
 	"github.com/hashicorp/watchtower/internal/servers/controller/common"
 	"github.com/hashicorp/watchtower/internal/servers/controller/handlers"
-	"github.com/hashicorp/watchtower/internal/types/scope"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
@@ -148,9 +147,6 @@ func toProto(t *authtoken.AuthToken) *pba.AuthToken {
 //  * There are no conflicting parameters provided
 func validateAuthenticateRequest(req *pbs.AuthenticateRequest) error {
 	badFields := make(map[string]string)
-	if !validId(req.GetScopeId(), scope.Org.Prefix()+"_") {
-		badFields[scopeIdFieldName] = "Invalid formatted identifier."
-	}
 	if strings.TrimSpace(req.GetAuthMethodId()) == "" {
 		badFields["auth_method_id"] = "This is a required field."
 	} else if validId(req.GetAuthMethodId(), "am") {
