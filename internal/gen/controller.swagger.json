@@ -2365,15 +2365,6 @@
         }
       }
     },
-    "controller.api.services.v1.WorkerServiceAuthenticateResponse": {
-      "type": "object",
-      "properties": {
-        "success": {
-          "type": "boolean",
-          "format": "boolean"
-        }
-      }
-    },
     "google.protobuf.FieldMask": {
       "type": "object",
       "properties": {

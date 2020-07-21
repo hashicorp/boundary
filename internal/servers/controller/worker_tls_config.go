@@ -7,12 +7,19 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"errors"
+	"net"
 	"strings"
 
 	wrapping "github.com/hashicorp/go-kms-wrapping"
 	"github.com/hashicorp/watchtower/internal/cmd/base"
 	"google.golang.org/protobuf/proto"
 )
+
+type workerAuthEntry struct {
+	name  string
+	nonce string
+	conn  net.Conn
+}
 
 func (c Controller) validateWorkerTLS(hello *tls.ClientHelloInfo) (*tls.Config, error) {
 	for _, p := range hello.SupportedProtos {
@@ -21,7 +28,10 @@ func (c Controller) validateWorkerTLS(hello *tls.ClientHelloInfo) (*tls.Config, 
 			tlsConf, workerInfo, err := c.v1WorkerAuthConfig(hello.SupportedProtos)
 			if err == nil {
 				// Set the info we need to prevent replays
-				c.workerAuthCache.Set([]byte(workerInfo.Name), []byte(workerInfo.ConnectionNonce), 15)
+				c.workerAuthCache.Set(workerInfo.ConnectionNonce, &workerAuthEntry{
+					name:  workerInfo.Name,
+					nonce: workerInfo.ConnectionNonce,
+				}, 0)
 			}
 			return tlsConf, err
 		}

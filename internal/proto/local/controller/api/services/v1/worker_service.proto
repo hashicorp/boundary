@@ -5,23 +5,7 @@ package controller.api.services.v1;
 option go_package = "github.com/hashicorp/watchtower/internal/gen/controller/api/services;services";
 
 service WorkerService {
-  rpc Authenticate(WorkerServiceAuthenticateRequest) returns (WorkerServiceAuthenticateResponse) {}
   rpc Status(StatusRequest) returns (StatusResponse) {}
-}
-
-message WorkerServiceAuthenticateRequest {
-  string name = 10;
-  
-  // This corresponds to the nonce delivered as part of the encrypted payload.
-  // After the session has been established, the first thing that the controller
-  // expects is a message that contains that nonce. This requires the submitter
-  // of the encrypted connection information to also know a randomly generated
-  // value that is inside of it, preventing replay attacks.
-  string connection_nonce = 20;
-}
-
-message WorkerServiceAuthenticateResponse{
-  bool success = 10;
 }
 
 message StatusRequest {

@@ -3,21 +3,22 @@ package worker
 import (
 	"context"
 	"crypto/tls"
-	"errors"
 	"fmt"
 	"math"
 	"net"
 	"strings"
 
-	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/go-multierror"
-	"github.com/hashicorp/watchtower/internal/cmd/base"
 	"github.com/hashicorp/watchtower/internal/gen/controller/api/services"
 	"google.golang.org/grpc"
 )
 
-var dialerFunc = func(logger hclog.Logger, tlsConf *tls.Config, authInfo *base.WorkerAuthInfo) func(context.Context, string) (net.Conn, error) {
+func (c *Worker) controllerDialerFunc() func(context.Context, string) (net.Conn, error) {
 	return func(ctx context.Context, addr string) (net.Conn, error) {
+		tlsConf, authInfo, err := c.workerAuthTLSConfig()
+		if err != nil {
+			return nil, fmt.Errorf("error creating tls config for worker auth: %w", err)
+		}
 		dialer := &net.Dialer{}
 		nonTlsConn, err := dialer.DialContext(ctx, "tcp", addr)
 		if err != nil {
@@ -27,13 +28,13 @@ var dialerFunc = func(logger hclog.Logger, tlsConf *tls.Config, authInfo *base.W
 		written, err := tlsConn.Write([]byte(authInfo.ConnectionNonce))
 		if err != nil {
 			if err := nonTlsConn.Close(); err != nil {
-				logger.Error("error closing connection after writing failure", "error", err)
+				c.logger.Error("error closing connection after writing failure", "error", err)
 			}
 			return nil, fmt.Errorf("unable to write connection nonce: %w", err)
 		}
 		if written != len(authInfo.ConnectionNonce) {
 			if err := nonTlsConn.Close(); err != nil {
-				logger.Error("error closing connection after writing failure", "error", err)
+				c.logger.Error("error closing connection after writing failure", "error", err)
 			}
 			return nil, fmt.Errorf("expected to write %d bytes of connection nonce, wrote %d", len(authInfo.ConnectionNonce), written)
 		}
@@ -46,15 +47,11 @@ func (c *Worker) startListeners() error {
 	servers := make([]func(), 0, len(c.conf.Listeners))
 
 	configureClientConn := func(addr string) error {
-		tlsConf, authInfo, err := c.workerAuthTLSConfig()
-		if err != nil {
-			return fmt.Errorf("error creating tls config for worker auth: %w", err)
-		}
-
 		cc, err := grpc.DialContext(c.baseContext, addr,
 			grpc.WithDefaultCallOptions(grpc.MaxCallRecvMsgSize(math.MaxInt32)),
 			grpc.WithDefaultCallOptions(grpc.MaxCallSendMsgSize(math.MaxInt32)),
-			grpc.WithContextDialer(dialerFunc(c.logger, tlsConf, authInfo)),
+			grpc.WithContextDialer(c.controllerDialerFunc()),
+			grpc.WithInsecure(),
 		)
 		if err != nil {
 			return fmt.Errorf("error dialing controller for worker auth: %w", err)
@@ -62,17 +59,6 @@ func (c *Worker) startListeners() error {
 
 		client := services.NewWorkerServiceClient(cc)
 		c.controllerConns = append(c.controllerConns, client)
-
-		authResponse, err := client.Authenticate(c.baseContext, &services.WorkerServiceAuthenticateRequest{
-			Name:            c.conf.RawConfig.Worker.Name,
-			ConnectionNonce: authInfo.ConnectionNonce,
-		})
-		if err != nil {
-			return fmt.Errorf("error authenticating to controller for worker auth: %w", err)
-		}
-		if authResponse == nil || !authResponse.Success {
-			return errors.New("error authenticating to controller for worker auth: unexpected response")
-		}
 
 		c.logger.Info("connected to controller", "address", addr)
 		return nil

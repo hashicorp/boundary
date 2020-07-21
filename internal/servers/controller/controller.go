@@ -5,7 +5,6 @@ import (
 	"crypto/rand"
 	"fmt"
 
-	"github.com/coocood/freecache"
 	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/vault/sdk/helper/mlock"
 	"github.com/hashicorp/watchtower/internal/authtoken"
@@ -13,6 +12,7 @@ import (
 	"github.com/hashicorp/watchtower/internal/host/static"
 	"github.com/hashicorp/watchtower/internal/iam"
 	"github.com/hashicorp/watchtower/internal/servers/controller/common"
+	"github.com/patrickmn/go-cache"
 )
 
 type Controller struct {
@@ -22,7 +22,7 @@ type Controller struct {
 	baseContext context.Context
 	baseCancel  context.CancelFunc
 
-	workerAuthCache *freecache.Cache
+	workerAuthCache *cache.Cache
 
 	// Repo factory methods
 	IamRepoFn        common.IamRepoFactory
@@ -70,7 +70,7 @@ func New(conf *Config) (*Controller, error) {
 		return authtoken.NewRepository(dbase, dbase, c.conf.ControllerKMS)
 	}
 
-	c.workerAuthCache = freecache.NewCache(0)
+	c.workerAuthCache = cache.New(0, 0)
 
 	return c, nil
 }

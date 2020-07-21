@@ -8,7 +8,6 @@ require (
 	github.com/alecthomas/repr v0.0.0-20200325044227-4184120f674c // indirect
 	github.com/armon/go-metrics v0.3.3
 	github.com/bufbuild/buf v0.20.3
-	github.com/coocood/freecache v1.1.1
 	github.com/fatih/color v1.9.0
 	github.com/fatih/structs v1.1.0
 	github.com/favadi/protoc-go-inject-tag v1.1.0
@@ -48,6 +47,7 @@ require (
 	github.com/mitchellh/mapstructure v1.3.2
 	github.com/oligot/go-mod-upgrade v0.2.0
 	github.com/ory/dockertest/v3 v3.6.0
+	github.com/patrickmn/go-cache v2.1.0+incompatible
 	github.com/pires/go-proxyproto v0.1.3
 	github.com/pkg/errors v0.9.1
 	github.com/posener/complete v1.2.3
