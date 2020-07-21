@@ -235,22 +235,12 @@ func (s Service) deleteFromRepo(ctx context.Context, scopeId string) (bool, erro
 	return rows > 0, nil
 }
 
-func SortScopes(scps []*pb.Scope) []*pb.Scope {
-	if len(scps) < 2 {
-		return scps
-	}
-	scpKeys := make([]string, 0, len(scps))
-	scpKeyMap := make(map[string]*pb.Scope, len(scps))
-	for _, scp := range scps {
-		scpKeys = append(scpKeys, scp.GetId())
-		scpKeyMap[scp.GetId()] = scp
-	}
-	sort.Strings(scpKeys)
-	out := make([]*pb.Scope, 0, len(scps))
-	for _, scp := range scpKeys {
-		out = append(out, scpKeyMap[scp])
-	}
-	return out
+func SortScopes(scps []*pb.Scope) {
+	// We stable sort here even though the database may not return things in
+	// sorted order, still nice to have them as consistent as possible.
+	sort.SliceStable(scps, func(i, j int) bool {
+		return scps[i].GetId() < scps[j].GetId()
+	})
 }
 
 func (s Service) listFromRepo(ctx context.Context, scopeId string) ([]*pb.Scope, error) {
@@ -276,7 +266,8 @@ func (s Service) listFromRepo(ctx context.Context, scopeId string) ([]*pb.Scope,
 	for _, scp := range scps {
 		outPl = append(outPl, ToProto(scp))
 	}
-	return SortScopes(outPl), nil
+	SortScopes(outPl)
+	return outPl, nil
 }
 
 func ToProto(in *iam.Scope) *pb.Scope {

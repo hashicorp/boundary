@@ -166,7 +166,8 @@ func TestList(t *testing.T) {
 	oNoProjectsProto.Scope = globalScope
 	oWithProjectsProto := scopes.ToProto(oWithProjects)
 	oWithProjectsProto.Scope = globalScope
-	initialOrgs = scopes.SortScopes(append(initialOrgs, oNoProjectsProto, oWithProjectsProto))
+	initialOrgs = append(initialOrgs, oNoProjectsProto, oWithProjectsProto)
+	scopes.SortScopes(initialOrgs)
 
 	cases := []struct {
 		name    string
@@ -215,7 +216,8 @@ func TestList(t *testing.T) {
 			UpdatedTime: o.GetUpdateTime().GetTimestamp(),
 		})
 	}
-	wantOrgs = scopes.SortScopes(append(wantOrgs, initialOrgs...))
+	wantOrgs = append(wantOrgs, initialOrgs...)
+	scopes.SortScopes(wantOrgs)
 
 	var wantProjects []*pb.Scope
 	for i := 0; i < 10; i++ {
@@ -230,7 +232,7 @@ func TestList(t *testing.T) {
 			UpdatedTime: p.GetUpdateTime().GetTimestamp(),
 		})
 	}
-	wantProjects = scopes.SortScopes(wantProjects)
+	scopes.SortScopes(wantProjects)
 
 	cases = []struct {
 		name    string
