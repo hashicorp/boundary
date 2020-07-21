@@ -60,6 +60,9 @@ func (c *Worker) Start() error {
 	if err := c.startListeners(); err != nil {
 		return fmt.Errorf("error starting worker listeners: %w", err)
 	}
+	if err := c.startControllerConnections(); err != nil {
+		return fmt.Errorf("error making controller connections: %w", err)
+	}
 	return nil
 }
 

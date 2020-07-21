@@ -20,7 +20,6 @@ import (
 )
 
 func (c *Controller) startListeners() error {
-	var retErr *multierror.Error
 	servers := make([]func(), 0, len(c.conf.Listeners))
 
 	configureForAPI := func(ln *base.ServerListener) error {
@@ -87,8 +86,7 @@ func (c *Controller) startListeners() error {
 			for _, v := range protos {
 				l := ln.Mux.GetListener(v)
 				if l == nil {
-					retErr = multierror.Append(retErr, fmt.Errorf("could not get tls proto %q listener", v))
-					continue
+					return fmt.Errorf("could not get tls proto %q listener", v)
 				}
 				servers = append(servers, func() {
 					go server.Serve(l)
@@ -137,17 +135,9 @@ func (c *Controller) startListeners() error {
 				err = fmt.Errorf("unknown listener purpose %q", purpose)
 			}
 			if err != nil {
-				break
+				return err
 			}
 		}
-		if err != nil {
-			retErr = multierror.Append(retErr, err)
-			continue
-		}
-	}
-
-	if err := retErr.ErrorOrNil(); err != nil {
-		return err
 	}
 
 	for _, s := range servers {
