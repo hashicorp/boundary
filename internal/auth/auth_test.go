@@ -60,7 +60,7 @@ func TestHandler_AuthDecoration(t *testing.T) {
 		},
 		{
 			name:            "empty segments",
-			path:            "/v1/scopes/auth-methods//am_1234",
+			path:            "/v1/scopes/o_abc1234/auth-methods//am_1234",
 			wantErrContains: "empty segment found",
 		},
 		{

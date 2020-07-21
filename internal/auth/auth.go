@@ -408,9 +408,6 @@ func (v verifier) performAuthCheck() (aclResults *perms.ACLResults, userId strin
 		parsedGrants = append(parsedGrants, parsed)
 	}
 
-	// TODO: When we migrate to scopes, the resource scope ID for this check and
-	// in the return value needs to be adjusted to the token scope ID for
-	// actions within the scopes collection
 	acl := perms.NewACL(parsedGrants...)
 	allowed := acl.Allowed(*v.res, v.act)
 
