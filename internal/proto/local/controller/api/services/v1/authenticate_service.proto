@@ -13,7 +13,7 @@ service AuthenticationService {
   // Authenticate validates credentials provided and returns an auth token.
   rpc Authenticate(AuthenticateRequest) returns (AuthenticateResponse) {
     option (google.api.http) = {
-      post: "/v1/scopes/{scope_id}/auth-methods/{auth_method_id}:authenticate"
+      post: "/v1/scopes/*/auth-methods/{auth_method_id}:authenticate"
       body: "*"
       response_body: "item"
     };
@@ -45,16 +45,15 @@ message PasswordCredentials {
 }
 
 message AuthenticateRequest {
-  string scope_id = 1;
   // The id to the authmethod in the system being used for authentication.  The auth method must be in the scope
   // being logged in to.
-  string auth_method_id = 2;
+  string auth_method_id = 1;
   // This can be "cookie" or "token".  If not provided, "token" will be used.  For now only type "token" is returned.
-  string token_type = 3;
+  string token_type = 2;
 
   // credentials are the different possible credential names depending on what type of auth method is used.
   // For password auth method: should include only "name" and "password".
-  google.protobuf.Struct credentials = 8;
+  google.protobuf.Struct credentials = 3;
 }
 
 message AuthenticateResponse {

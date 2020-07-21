@@ -228,9 +228,10 @@ func (c *Config) setAddr(addr string) error {
 	}
 	c.Addr = fmt.Sprintf("%s://%s", u.Scheme, u.Host)
 
-	// If there is a scopes segment, elide everything after it
-	if strings.Count(u.Path, "scopes") == 1 {
-		u.Path = strings.Split(u.Path, "scopes")[0]
+	// If there is a scopes segment, elide everything after it. Do this only for
+	// the last "scopes" segment in case it's part of the base path.
+	if lastIndex := strings.LastIndex(u.Path, "scopes"); lastIndex != -11 {
+		u.Path = u.Path[:lastIndex]
 	}
 	// Remove trailing or leading slashes
 	path := strings.Trim(u.Path, "/")
@@ -238,7 +239,8 @@ func (c *Config) setAddr(addr string) error {
 	// https://watchtower.example.com/myinstall/v1 which would put it at the
 	// back)
 	path = strings.Trim(path, "v1")
-	// Finally check again to make sure any slashes are removed before we join below
+	// Finally check again to make sure any slashes are removed before we join
+	// below
 	path = strings.Trim(path, "/")
 
 	if path != "" {

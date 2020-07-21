@@ -50,17 +50,6 @@ func request_AuthenticationService_Authenticate_0(ctx context.Context, marshaler
 		_   = err
 	)
 
-	val, ok = pathParams["scope_id"]
-	if !ok {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "scope_id")
-	}
-
-	protoReq.ScopeId, err = runtime.String(val)
-
-	if err != nil {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "scope_id", err)
-	}
-
 	val, ok = pathParams["auth_method_id"]
 	if !ok {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "auth_method_id")
@@ -95,17 +84,6 @@ func local_request_AuthenticationService_Authenticate_0(ctx context.Context, mar
 		err error
 		_   = err
 	)
-
-	val, ok = pathParams["scope_id"]
-	if !ok {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "scope_id")
-	}
-
-	protoReq.ScopeId, err = runtime.String(val)
-
-	if err != nil {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "scope_id", err)
-	}
 
 	val, ok = pathParams["auth_method_id"]
 	if !ok {
@@ -222,7 +200,7 @@ func (m response_AuthenticationService_Authenticate_0) XXX_ResponseBody() interf
 }
 
 var (
-	pattern_AuthenticationService_Authenticate_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2, 2, 3, 1, 0, 4, 1, 5, 4}, []string{"v1", "scopes", "scope_id", "auth-methods", "auth_method_id"}, "authenticate", runtime.AssumeColonVerbOpt(true)))
+	pattern_AuthenticationService_Authenticate_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 2, 2, 1, 0, 4, 1, 5, 3}, []string{"v1", "scopes", "auth-methods", "auth_method_id"}, "authenticate", runtime.AssumeColonVerbOpt(true)))
 )
 
 var (

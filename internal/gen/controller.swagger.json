@@ -66,6 +66,40 @@
         ]
       }
     },
+    "/v1/scopes/*/auth-methods/{auth_method_id}:authenticate": {
+      "post": {
+        "summary": "Authenticate a user to an scope and retrieve an authentication token.",
+        "operationId": "AuthenticationService_Authenticate",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/controller.api.resources.authtokens.v1.AuthToken"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "auth_method_id",
+            "description": "The id to the authmethod in the system being used for authentication.  The auth method must be in the scope\nbeing logged in to.",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/controller.api.services.v1.AuthenticateRequest"
+            }
+          }
+        ],
+        "tags": [
+          "controller.api.services.v1.AuthenticationService"
+        ]
+      }
+    },
     "/v1/scopes/*/groups": {
       "get": {
         "summary": "Lists all Groups",
@@ -1284,46 +1318,6 @@
           "controller.api.services.v1.ScopeService"
         ]
       }
-    },
-    "/v1/scopes/{scope_id}/auth-methods/{auth_method_id}:authenticate": {
-      "post": {
-        "summary": "Authenticate a user to an scope and retrieve an authentication token.",
-        "operationId": "AuthenticationService_Authenticate",
-        "responses": {
-          "200": {
-            "description": "",
-            "schema": {
-              "$ref": "#/definitions/controller.api.resources.authtokens.v1.AuthToken"
-            }
-          }
-        },
-        "parameters": [
-          {
-            "name": "scope_id",
-            "in": "path",
-            "required": true,
-            "type": "string"
-          },
-          {
-            "name": "auth_method_id",
-            "description": "The id to the authmethod in the system being used for authentication.  The auth method must be in the scope\nbeing logged in to.",
-            "in": "path",
-            "required": true,
-            "type": "string"
-          },
-          {
-            "name": "body",
-            "in": "body",
-            "required": true,
-            "schema": {
-              "$ref": "#/definitions/controller.api.services.v1.AuthenticateRequest"
-            }
-          }
-        ],
-        "tags": [
-          "controller.api.services.v1.AuthenticationService"
-        ]
-      }
     }
   },
   "definitions": {
@@ -1342,7 +1336,7 @@
         },
         "token": {
           "type": "string",
-          "description": "The token. This will only be populated after login and is only ever\nvisible to the end user whose login request resulted in this auth token\nbeing created.\nOutput only.",
+          "description": "The token value, which will only be populated after authentication and is\nonly ever visible to the end user whose login request resulted in this\nauth token being created.\nOutput only.",
           "readOnly": true
         },
         "user_id": {
@@ -1888,9 +1882,6 @@
     "controller.api.services.v1.AuthenticateRequest": {
       "type": "object",
       "properties": {
-        "scope_id": {
-          "type": "string"
-        },
         "auth_method_id": {
           "type": "string",
           "description": "The id to the authmethod in the system being used for authentication.  The auth method must be in the scope\nbeing logged in to."

@@ -39,7 +39,7 @@ func TestScope_New(t *testing.T) {
 	})
 	t.Run("unknown-scope", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
-		s, err := newScope()
+		s, err := newScope(nil)
 		require.Error(err)
 		require.Nil(s)
 		assert.Equal("new scope: child scope is missing its parent: invalid parameter", err.Error())
@@ -195,11 +195,11 @@ func TestScope_GlobalErrors(t *testing.T) {
 	w := db.New(conn)
 	t.Run("newScope errors", func(t *testing.T) {
 		// Not allowed
-		_, err := newScope(withScope(&Scope{Scope: &store.Scope{PublicId: "blahblah"}}))
+		_, err := newScope(&Scope{Scope: &store.Scope{PublicId: "blahblah"}})
 		require.Error(t, err)
 
 		// Should fail as there's no scope
-		_, err = newScope()
+		_, err = newScope(nil)
 		require.Error(t, err)
 		assert.True(t, strings.Contains(err.Error(), "missing its parent"))
 	})

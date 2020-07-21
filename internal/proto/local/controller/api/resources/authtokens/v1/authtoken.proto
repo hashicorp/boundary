@@ -18,9 +18,9 @@ message AuthToken {
 	// Output only.
 	resources.scopes.v1.ScopeInfo scope = 2;
 
-	// The token. This will only be populated after login and is only ever
-	// visible to the end user whose login request resulted in this auth token
-	// being created.
+	// The token value, which will only be populated after authentication and is
+	// only ever visible to the end user whose login request resulted in this
+	// auth token being created.
 	// Output only.
 	string token = 3;
 

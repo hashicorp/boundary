@@ -2,7 +2,6 @@ package auth
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -10,7 +9,6 @@ import (
 
 	"github.com/hashicorp/watchtower/internal/authtoken"
 	"github.com/hashicorp/watchtower/internal/db"
-	pbs "github.com/hashicorp/watchtower/internal/gen/controller/api/services"
 	"github.com/hashicorp/watchtower/internal/iam"
 	"github.com/hashicorp/watchtower/internal/types/action"
 	"github.com/hashicorp/watchtower/internal/types/resource"
@@ -60,7 +58,7 @@ func TestHandler_AuthDecoration(t *testing.T) {
 		},
 		{
 			name:            "empty segments",
-			path:            "/v1/scopes/auth-methods//am_1234",
+			path:            "/v1/scopes/o_abc1234/auth-methods//am_1234",
 			wantErrContains: "empty segment found",
 		},
 		{
@@ -247,17 +245,6 @@ func TestHandler_AuthDecoration(t *testing.T) {
 			assert.Equal(tc.pin, v.res.Pin, "pin "+pretty.Sprint(v))
 		})
 	}
-}
-
-// Any generated service would do, but using orgs since the path is the shortest for testing.
-type fakeHandler struct {
-	pbs.UnimplementedScopeServiceServer
-	validateFn func(context.Context)
-}
-
-func (s *fakeHandler) GetOrg(ctx context.Context, _ *pbs.GetScopeRequest) (*pbs.GetScopeResponse, error) {
-	s.validateFn(ctx)
-	return nil, errors.New("Doesn't matter this is just for testing input.")
 }
 
 func TestAuthTokenAuthenticator(t *testing.T) {

@@ -36,15 +36,13 @@ var _ Clonable = (*Scope)(nil)
 func NewOrg(opt ...Option) (*Scope, error) {
 	global := allocScope()
 	global.PublicId = "global"
-	opt = append(opt, withScope(&global))
-	return newScope(opt...)
+	return newScope(&global, opt...)
 }
 
 func NewProject(orgPublicId string, opt ...Option) (*Scope, error) {
 	org := allocScope()
 	org.PublicId = orgPublicId
-	opt = append(opt, withScope(&org))
-	p, err := newScope(opt...)
+	p, err := newScope(&org, opt...)
 	if err != nil {
 		return nil, fmt.Errorf("error creating new project: %w", err)
 	}
@@ -55,28 +53,28 @@ func NewProject(orgPublicId string, opt ...Option) (*Scope, error) {
 // friendly name. WithDescription specifies the scope's description. WithScope
 // specifies the Scope's parent and must be filled in. The type of the parent is
 // used to determine the type of the child.
-func newScope(opt ...Option) (*Scope, error) {
-	opts := getOpts(opt...)
-	if opts.withScope == nil || opts.withScope.PublicId == "" {
+func newScope(parent *Scope, opt ...Option) (*Scope, error) {
+	if parent == nil || parent.PublicId == "" {
 		return nil, fmt.Errorf("new scope: child scope is missing its parent: %w", db.ErrInvalidParameter)
 	}
 	var typ scope.Type
 	switch {
-	case opts.withScope.PublicId == "global":
+	case parent.PublicId == "global":
 		typ = scope.Org
-	case strings.HasPrefix(opts.withScope.PublicId, scope.Org.Prefix()):
+	case strings.HasPrefix(parent.PublicId, scope.Org.Prefix()):
 		typ = scope.Project
 	}
 	if typ == scope.Unknown {
 		return nil, fmt.Errorf("new scope: unknown type of scope to create: %w", db.ErrInvalidParameter)
 	}
 
+	opts := getOpts(opt...)
 	s := &Scope{
 		Scope: &store.Scope{
 			Type:        typ.String(),
 			Name:        opts.withName,
 			Description: opts.withDescription,
-			ParentId:    opts.withScope.PublicId,
+			ParentId:    parent.PublicId,
 		},
 	}
 
