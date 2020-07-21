@@ -387,6 +387,8 @@ func (v verifier) performAuthCheck() (aclResults *perms.ACLResults, userId strin
 	scopeInfo = &scopes.ScopeInfo{
 		Id:            scp.GetPublicId(),
 		Type:          scp.GetType(),
+		Name:          scp.GetName(),
+		Description:   scp.GetDescription(),
 		ParentScopeId: scp.GetParentId(),
 	}
 

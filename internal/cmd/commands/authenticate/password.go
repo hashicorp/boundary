@@ -120,14 +120,14 @@ func (c *PasswordCommand) Run(args []string) int {
 		return 2
 	}
 
-	org := &scopes.Scope{
+	scp := &scopes.Scope{
 		Client: client,
 	}
 
 	// note: Authenticate() calls SetToken() under the hood to set the
 	// auth bearer on the client so we do not need to do anything with the
 	// returned token after this call, so we ignore it
-	result, apiErr, err := org.Authenticate(c.Context, c.flagMethodId, c.flagName, c.flagPassword)
+	result, apiErr, err := scp.Authenticate(c.Context, c.flagMethodId, c.flagName, c.flagPassword)
 	if err != nil {
 		c.UI.Error(fmt.Sprintf("Error trying to perform authentication: %s", err.Error()))
 		return 2
