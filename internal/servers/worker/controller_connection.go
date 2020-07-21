@@ -24,8 +24,22 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-func (c *Worker) startControllerConnections() error {
-	for _, addr := range c.conf.RawConfig.Worker.Controllers {
+type controllerConnection struct {
+	controllerAddr string
+	client         services.WorkerServiceClient
+}
+
+func newControllerConnection(controllerAddr string, client services.WorkerServiceClient) *controllerConnection {
+	ret := &controllerConnection{
+		controllerAddr: controllerAddr,
+		client:         client,
+	}
+
+	return ret
+}
+
+func (w *Worker) startControllerConnections() error {
+	for _, addr := range w.conf.RawConfig.Worker.Controllers {
 		host, port, err := net.SplitHostPort(addr)
 		if err != nil && strings.Contains(err.Error(), "missing port in address") {
 			host, port, err = net.SplitHostPort(fmt.Sprintf("%s:%s", addr, "9201"))
@@ -34,15 +48,17 @@ func (c *Worker) startControllerConnections() error {
 			return fmt.Errorf("error parsing controller address: %w", err)
 		}
 
-		if err := c.createClientConn(fmt.Sprintf("%s:%s", host, port)); err != nil {
+		if err := w.createClientConn(fmt.Sprintf("%s:%s", host, port)); err != nil {
 			return fmt.Errorf("error making client connection to controller: %w", err)
 		}
 	}
+
+	return nil
 }
 
-func (c Worker) controllerDialerFunc() func(context.Context, string) (net.Conn, error) {
+func (w Worker) controllerDialerFunc() func(context.Context, string) (net.Conn, error) {
 	return func(ctx context.Context, addr string) (net.Conn, error) {
-		tlsConf, authInfo, err := c.workerAuthTLSConfig()
+		tlsConf, authInfo, err := w.workerAuthTLSConfig()
 		if err != nil {
 			return nil, fmt.Errorf("error creating tls config for worker auth: %w", err)
 		}
@@ -55,13 +71,13 @@ func (c Worker) controllerDialerFunc() func(context.Context, string) (net.Conn, 
 		written, err := tlsConn.Write([]byte(authInfo.ConnectionNonce))
 		if err != nil {
 			if err := nonTlsConn.Close(); err != nil {
-				c.logger.Error("error closing connection after writing failure", "error", err)
+				w.logger.Error("error closing connection after writing failure", "error", err)
 			}
 			return nil, fmt.Errorf("unable to write connection nonce: %w", err)
 		}
 		if written != len(authInfo.ConnectionNonce) {
 			if err := nonTlsConn.Close(); err != nil {
-				c.logger.Error("error closing connection after writing failure", "error", err)
+				w.logger.Error("error closing connection after writing failure", "error", err)
 			}
 			return nil, fmt.Errorf("expected to write %d bytes of connection nonce, wrote %d", len(authInfo.ConnectionNonce), written)
 		}
@@ -69,11 +85,11 @@ func (c Worker) controllerDialerFunc() func(context.Context, string) (net.Conn, 
 	}
 }
 
-func (c *Worker) createClientConn(addr string) error {
-	cc, err := grpc.DialContext(c.baseContext, addr,
+func (w *Worker) createClientConn(addr string) error {
+	cc, err := grpc.DialContext(w.baseContext, addr,
 		grpc.WithDefaultCallOptions(grpc.MaxCallRecvMsgSize(math.MaxInt32)),
 		grpc.WithDefaultCallOptions(grpc.MaxCallSendMsgSize(math.MaxInt32)),
-		grpc.WithContextDialer(c.controllerDialerFunc()),
+		grpc.WithContextDialer(w.controllerDialerFunc()),
 		grpc.WithInsecure(),
 	)
 	if err != nil {
@@ -81,23 +97,23 @@ func (c *Worker) createClientConn(addr string) error {
 	}
 
 	client := services.NewWorkerServiceClient(cc)
-	c.controllerConns = append(c.controllerConns, client)
+	w.controllerConns = append(w.controllerConns, newControllerConnection(addr, client))
 
-	c.logger.Info("connected to controller", "address", addr)
+	w.logger.Info("connected to controller", "address", addr)
 	return nil
 }
 
-func (c Worker) workerAuthTLSConfig() (*tls.Config, *base.WorkerAuthInfo, error) {
+func (w Worker) workerAuthTLSConfig() (*tls.Config, *base.WorkerAuthInfo, error) {
 	var err error
 	info := &base.WorkerAuthInfo{
-		Name:        c.conf.RawConfig.Worker.Name,
-		Description: c.conf.RawConfig.Worker.Description,
+		Name:        w.conf.RawConfig.Worker.Name,
+		Description: w.conf.RawConfig.Worker.Description,
 	}
 	if info.ConnectionNonce, err = base62.Random(20); err != nil {
 		return nil, nil, err
 	}
 
-	_, caKey, err := ed25519.GenerateKey(c.conf.SecureRandomReader)
+	_, caKey, err := ed25519.GenerateKey(w.conf.SecureRandomReader)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -118,7 +134,7 @@ func (c Worker) workerAuthTLSConfig() (*tls.Config, *base.WorkerAuthInfo, error)
 		BasicConstraintsValid: true,
 		IsCA:                  true,
 	}
-	caBytes, err := x509.CreateCertificate(c.conf.SecureRandomReader, caCertTemplate, caCertTemplate, caKey.Public(), caKey)
+	caBytes, err := x509.CreateCertificate(w.conf.SecureRandomReader, caCertTemplate, caCertTemplate, caKey.Public(), caKey)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -135,7 +151,7 @@ func (c Worker) workerAuthTLSConfig() (*tls.Config, *base.WorkerAuthInfo, error)
 	//
 	// Certs generation
 	//
-	_, key, err := ed25519.GenerateKey(c.conf.SecureRandomReader)
+	_, key, err := ed25519.GenerateKey(w.conf.SecureRandomReader)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -157,7 +173,7 @@ func (c Worker) workerAuthTLSConfig() (*tls.Config, *base.WorkerAuthInfo, error)
 		NotBefore:    time.Now().Add(-30 * time.Second),
 		NotAfter:     time.Now().Add(2 * time.Minute),
 	}
-	certBytes, err := x509.CreateCertificate(c.conf.SecureRandomReader, certTemplate, caCert, key.Public(), caKey)
+	certBytes, err := x509.CreateCertificate(w.conf.SecureRandomReader, certTemplate, caCert, key.Public(), caKey)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -181,7 +197,7 @@ func (c Worker) workerAuthTLSConfig() (*tls.Config, *base.WorkerAuthInfo, error)
 	if err != nil {
 		return nil, nil, err
 	}
-	encInfo, err := c.conf.WorkerAuthKMS.Encrypt(context.Background(), marshaledInfo, nil)
+	encInfo, err := w.conf.WorkerAuthKMS.Encrypt(context.Background(), marshaledInfo, nil)
 	if err != nil {
 		return nil, nil, err
 	}

@@ -6,10 +6,10 @@ import (
 	"github.com/hashicorp/go-multierror"
 )
 
-func (c *Worker) startListeners() error {
-	servers := make([]func(), 0, len(c.conf.Listeners))
+func (w *Worker) startListeners() error {
+	servers := make([]func(), 0, len(w.conf.Listeners))
 
-	for _, ln := range c.conf.Listeners {
+	for _, ln := range w.conf.Listeners {
 		var err error
 		for _, purpose := range ln.Config.Purpose {
 			switch purpose {
@@ -33,16 +33,16 @@ func (c *Worker) startListeners() error {
 	return nil
 }
 
-func (c *Worker) stopListeners() error {
+func (w *Worker) stopListeners() error {
 	var retErr *multierror.Error
-	for _, ln := range c.conf.Listeners {
+	for _, ln := range w.conf.Listeners {
 		if ln.ALPNListener != nil {
 			if err := ln.ALPNListener.Close(); err != nil {
 				retErr = multierror.Append(retErr, err)
 			}
 		}
 
-		if !c.conf.RawConfig.DevController {
+		if !w.conf.RawConfig.DevController {
 			if err := ln.Mux.Close(); err != nil {
 				retErr = multierror.Append(retErr, err)
 			}

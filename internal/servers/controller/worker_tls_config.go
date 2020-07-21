@@ -16,9 +16,8 @@ import (
 )
 
 type workerAuthEntry struct {
-	name  string
-	nonce string
-	conn  net.Conn
+	*base.WorkerAuthInfo
+	conn net.Conn
 }
 
 func (c Controller) validateWorkerTLS(hello *tls.ClientHelloInfo) (*tls.Config, error) {
@@ -29,8 +28,7 @@ func (c Controller) validateWorkerTLS(hello *tls.ClientHelloInfo) (*tls.Config, 
 			if err == nil {
 				// Set the info we need to prevent replays
 				c.workerAuthCache.Set(workerInfo.ConnectionNonce, &workerAuthEntry{
-					name:  workerInfo.Name,
-					nonce: workerInfo.ConnectionNonce,
+					WorkerAuthInfo: workerInfo,
 				}, 0)
 			}
 			return tlsConf, err

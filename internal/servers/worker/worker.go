@@ -4,10 +4,10 @@ import (
 	"context"
 	"crypto/rand"
 	"fmt"
+	"time"
 
 	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/vault/sdk/helper/mlock"
-	"github.com/hashicorp/watchtower/internal/gen/controller/api/services"
 	"github.com/kr/pretty"
 )
 
@@ -18,14 +18,15 @@ type Worker struct {
 	baseContext context.Context
 	baseCancel  context.CancelFunc
 
-	controllerConns []services.WorkerServiceClient
+	controllerConns        []*controllerConnection
+	controllerStatusTicker *time.Timer
 }
 
 func New(conf *Config) (*Worker, error) {
 	c := &Worker{
 		conf:            conf,
 		logger:          conf.Logger.Named("worker"),
-		controllerConns: make([]services.WorkerServiceClient, 0, 3),
+		controllerConns: make([]*controllerConnection, 0, 3),
 	}
 	if conf.RawConfig.Worker == nil {
 		panic(pretty.Sprint(conf.RawConfig))
@@ -56,19 +57,20 @@ func New(conf *Config) (*Worker, error) {
 	return c, nil
 }
 
-func (c *Worker) Start() error {
-	if err := c.startListeners(); err != nil {
+func (w *Worker) Start() error {
+	if err := w.startListeners(); err != nil {
 		return fmt.Errorf("error starting worker listeners: %w", err)
 	}
-	if err := c.startControllerConnections(); err != nil {
+	if err := w.startControllerConnections(); err != nil {
 		return fmt.Errorf("error making controller connections: %w", err)
 	}
+	w.startStatusTicking()
 	return nil
 }
 
-func (c *Worker) Shutdown() error {
-	c.baseCancel()
-	if err := c.stopListeners(); err != nil {
+func (w *Worker) Shutdown() error {
+	w.baseCancel()
+	if err := w.stopListeners(); err != nil {
 		return fmt.Errorf("error stopping worker listeners: %w", err)
 	}
 	return nil

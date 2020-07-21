@@ -56,7 +56,7 @@ func (m *interceptingListener) Accept() (net.Conn, error) {
 	}
 	workerInfo := workerInfoRaw.(*workerAuthEntry)
 	workerInfo.conn = conn
-	m.c.logger.Info("worker successfully authed", "name", workerInfo.name)
+	m.c.logger.Info("worker successfully authed", "name", workerInfo.Name)
 	return conn, nil
 }
 
