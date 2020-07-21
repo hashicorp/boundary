@@ -9,6 +9,12 @@ type Scope struct {
 	// The type of the Scope
 	// Output only.
 	Type string `json:"type,omitempty"`
+	// The name of the scope, if any
+	// Output only.
+	Name string `json:"name,omitempty"`
+	// The description of the scope, if any
+	// Output only.
+	Description string `json:"description,omitempty"`
 	// The ID of the parent scope, if any
 	// Output only.
 	ParentScopeId string `json:"parent_scope_id,omitempty"`
