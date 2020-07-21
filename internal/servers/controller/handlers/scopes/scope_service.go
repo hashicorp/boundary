@@ -380,6 +380,7 @@ func validateDeleteRequest(req *pbs.DeleteScopeRequest) error {
 	id := req.GetId()
 	switch {
 	case id == "global":
+		badFields["id"] = "Invalid to delete the global scope."
 	case strings.HasPrefix(id, scope.Org.Prefix()):
 		if !validId(id, scope.Org.Prefix()+"_") {
 			badFields["id"] = "Invalidly formatted scope id."
