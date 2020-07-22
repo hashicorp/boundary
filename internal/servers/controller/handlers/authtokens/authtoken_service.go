@@ -7,12 +7,12 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/hashicorp/watchtower/internal/auth"
 	"github.com/hashicorp/watchtower/internal/authtoken"
 	"github.com/hashicorp/watchtower/internal/db"
 	pb "github.com/hashicorp/watchtower/internal/gen/controller/api/resources/authtokens"
 	pbs "github.com/hashicorp/watchtower/internal/gen/controller/api/services"
 	"github.com/hashicorp/watchtower/internal/servers/controller/handlers"
-	"github.com/hashicorp/watchtower/internal/types/scope"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
@@ -40,10 +40,14 @@ var _ pbs.AuthTokenServiceServer = Service{}
 
 // ListAuthTokens implements the interface pbs.AuthTokenServiceServer.
 func (s Service) ListAuthTokens(ctx context.Context, req *pbs.ListAuthTokensRequest) (*pbs.ListAuthTokensResponse, error) {
+	authResults := auth.Verify(ctx)
+	if !authResults.Valid {
+		return nil, handlers.ForbiddenError()
+	}
 	if err := validateListRequest(req); err != nil {
 		return nil, err
 	}
-	ul, err := s.listFromRepo(ctx, req.GetOrgId())
+	ul, err := s.listFromRepo(ctx, authResults.Scope.GetId())
 	if err != nil {
 		return nil, err
 	}
@@ -52,8 +56,10 @@ func (s Service) ListAuthTokens(ctx context.Context, req *pbs.ListAuthTokensRequ
 
 // GetAuthTokens implements the interface pbs.AuthTokenServiceServer.
 func (s Service) GetAuthToken(ctx context.Context, req *pbs.GetAuthTokenRequest) (*pbs.GetAuthTokenResponse, error) {
-	auth := handlers.ToTokenMetadata(ctx)
-	_ = auth
+	authResults := auth.Verify(ctx)
+	if !authResults.Valid {
+		return nil, handlers.ForbiddenError()
+	}
 	if err := validateGetRequest(req); err != nil {
 		return nil, err
 	}
@@ -66,8 +72,10 @@ func (s Service) GetAuthToken(ctx context.Context, req *pbs.GetAuthTokenRequest)
 
 // DeleteAuthToken implements the interface pbs.AuthTokenServiceServer.
 func (s Service) DeleteAuthToken(ctx context.Context, req *pbs.DeleteAuthTokenRequest) (*pbs.DeleteAuthTokenResponse, error) {
-	auth := handlers.ToTokenMetadata(ctx)
-	_ = auth
+	authResults := auth.Verify(ctx)
+	if !authResults.Valid {
+		return nil, handlers.ForbiddenError()
+	}
 	if err := validateDeleteRequest(req); err != nil {
 		return nil, err
 	}
@@ -147,7 +155,7 @@ func toProto(in *authtoken.AuthToken) *pb.AuthToken {
 //  * All required parameters are set
 //  * There are no conflicting parameters provided
 func validateGetRequest(req *pbs.GetAuthTokenRequest) error {
-	badFields := validateAncestors(req)
+	badFields := map[string]string{}
 	if !validId(req.GetId(), authtoken.AuthTokenPrefix+"_") {
 		badFields["id"] = "Invalid formatted user id."
 	}
@@ -158,7 +166,7 @@ func validateGetRequest(req *pbs.GetAuthTokenRequest) error {
 }
 
 func validateDeleteRequest(req *pbs.DeleteAuthTokenRequest) error {
-	badFields := validateAncestors(req)
+	badFields := map[string]string{}
 	if !validId(req.GetId(), authtoken.AuthTokenPrefix+"_") {
 		badFields["id"] = "Incorrectly formatted identifier."
 	}
@@ -169,7 +177,7 @@ func validateDeleteRequest(req *pbs.DeleteAuthTokenRequest) error {
 }
 
 func validateListRequest(req *pbs.ListAuthTokensRequest) error {
-	badFields := validateAncestors(req)
+	badFields := map[string]string{}
 	if len(badFields) > 0 {
 		return handlers.InvalidArgumentErrorf("Improperly formatted identifier.", badFields)
 	}
@@ -182,19 +190,4 @@ func validId(id, prefix string) bool {
 	}
 	id = strings.TrimPrefix(id, prefix)
 	return !reInvalidID.Match([]byte(id))
-}
-
-type ancestorProvider interface {
-	GetOrgId() string
-}
-
-// validateAncestors verifies that the ancestors of this call are properly set and provided.
-func validateAncestors(r ancestorProvider) map[string]string {
-	if r.GetOrgId() == "" {
-		return map[string]string{orgIdFieldName: "Missing organization id."}
-	}
-	if !validId(r.GetOrgId(), scope.Org.Prefix()+"_") {
-		return map[string]string{orgIdFieldName: "Improperly formatted identifier."}
-	}
-	return map[string]string{}
 }

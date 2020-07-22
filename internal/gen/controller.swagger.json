@@ -16,103 +16,6 @@
     "application/json"
   ],
   "paths": {
-    "/v1/orgs/{org_id}/auth-tokens": {
-      "get": {
-        "summary": "Lists all AuthTokens",
-        "operationId": "AuthTokenService_ListAuthTokens",
-        "responses": {
-          "200": {
-            "description": "A successful response.",
-            "schema": {
-              "$ref": "#/definitions/controller.api.services.v1.ListAuthTokensResponse"
-            }
-          }
-        },
-        "parameters": [
-          {
-            "name": "org_id",
-            "in": "path",
-            "required": true,
-            "type": "string"
-          },
-          {
-            "name": "view",
-            "in": "query",
-            "required": false,
-            "type": "string"
-          }
-        ],
-        "tags": [
-          "controller.api.services.v1.AuthTokenService"
-        ]
-      }
-    },
-    "/v1/orgs/{org_id}/auth-tokens/{id}": {
-      "get": {
-        "summary": "Gets a single AuthToken",
-        "operationId": "AuthTokenService_GetAuthToken",
-        "responses": {
-          "200": {
-            "description": "",
-            "schema": {
-              "$ref": "#/definitions/controller.api.resources.authtokens.v1.AuthToken"
-            }
-          }
-        },
-        "parameters": [
-          {
-            "name": "org_id",
-            "in": "path",
-            "required": true,
-            "type": "string"
-          },
-          {
-            "name": "id",
-            "in": "path",
-            "required": true,
-            "type": "string"
-          },
-          {
-            "name": "view",
-            "in": "query",
-            "required": false,
-            "type": "string"
-          }
-        ],
-        "tags": [
-          "controller.api.services.v1.AuthTokenService"
-        ]
-      },
-      "delete": {
-        "summary": "Deletes an AuthTokens",
-        "operationId": "AuthTokenService_DeleteAuthToken",
-        "responses": {
-          "200": {
-            "description": "A successful response.",
-            "schema": {
-              "$ref": "#/definitions/controller.api.services.v1.DeleteAuthTokenResponse"
-            }
-          }
-        },
-        "parameters": [
-          {
-            "name": "org_id",
-            "in": "path",
-            "required": true,
-            "type": "string"
-          },
-          {
-            "name": "id",
-            "in": "path",
-            "required": true,
-            "type": "string"
-          }
-        ],
-        "tags": [
-          "controller.api.services.v1.AuthTokenService"
-        ]
-      }
-    },
     "/v1/scopes": {
       "get": {
         "summary": "Lists all Scopes within the scope of the token making the request",
@@ -200,6 +103,85 @@
         ],
         "tags": [
           "controller.api.services.v1.AuthenticationService"
+        ]
+      }
+    },
+    "/v1/scopes/*/auth-tokens": {
+      "get": {
+        "summary": "Lists all AuthTokens",
+        "operationId": "AuthTokenService_ListAuthTokens",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.services.v1.ListAuthTokensResponse"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "view",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "controller.api.services.v1.AuthTokenService"
+        ]
+      }
+    },
+    "/v1/scopes/*/auth-tokens/{id}": {
+      "get": {
+        "summary": "Gets a single AuthToken",
+        "operationId": "AuthTokenService_GetAuthToken",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/controller.api.resources.authtokens.v1.AuthToken"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "view",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "controller.api.services.v1.AuthTokenService"
+        ]
+      },
+      "delete": {
+        "summary": "Deletes an AuthTokens",
+        "operationId": "AuthTokenService_DeleteAuthToken",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.services.v1.DeleteAuthTokenResponse"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "controller.api.services.v1.AuthTokenService"
         ]
       }
     },

@@ -32,7 +32,7 @@ var _ = utilities.NewDoubleArray
 var _ = descriptor.ForMessage
 
 var (
-	filter_AuthTokenService_GetAuthToken_0 = &utilities.DoubleArray{Encoding: map[string]int{"org_id": 0, "id": 1}, Base: []int{1, 1, 2, 0, 0}, Check: []int{0, 1, 1, 2, 3}}
+	filter_AuthTokenService_GetAuthToken_0 = &utilities.DoubleArray{Encoding: map[string]int{"id": 0}, Base: []int{1, 1, 0}, Check: []int{0, 1, 2}}
 )
 
 func request_AuthTokenService_GetAuthToken_0(ctx context.Context, marshaler runtime.Marshaler, client AuthTokenServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
@@ -45,17 +45,6 @@ func request_AuthTokenService_GetAuthToken_0(ctx context.Context, marshaler runt
 		err error
 		_   = err
 	)
-
-	val, ok = pathParams["org_id"]
-	if !ok {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "org_id")
-	}
-
-	protoReq.OrgId, err = runtime.String(val)
-
-	if err != nil {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "org_id", err)
-	}
 
 	val, ok = pathParams["id"]
 	if !ok {
@@ -91,17 +80,6 @@ func local_request_AuthTokenService_GetAuthToken_0(ctx context.Context, marshale
 		_   = err
 	)
 
-	val, ok = pathParams["org_id"]
-	if !ok {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "org_id")
-	}
-
-	protoReq.OrgId, err = runtime.String(val)
-
-	if err != nil {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "org_id", err)
-	}
-
 	val, ok = pathParams["id"]
 	if !ok {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "id")
@@ -126,30 +104,12 @@ func local_request_AuthTokenService_GetAuthToken_0(ctx context.Context, marshale
 }
 
 var (
-	filter_AuthTokenService_ListAuthTokens_0 = &utilities.DoubleArray{Encoding: map[string]int{"org_id": 0}, Base: []int{1, 1, 0}, Check: []int{0, 1, 2}}
+	filter_AuthTokenService_ListAuthTokens_0 = &utilities.DoubleArray{Encoding: map[string]int{}, Base: []int(nil), Check: []int(nil)}
 )
 
 func request_AuthTokenService_ListAuthTokens_0(ctx context.Context, marshaler runtime.Marshaler, client AuthTokenServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
 	var protoReq ListAuthTokensRequest
 	var metadata runtime.ServerMetadata
-
-	var (
-		val string
-		ok  bool
-		err error
-		_   = err
-	)
-
-	val, ok = pathParams["org_id"]
-	if !ok {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "org_id")
-	}
-
-	protoReq.OrgId, err = runtime.String(val)
-
-	if err != nil {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "org_id", err)
-	}
 
 	if err := req.ParseForm(); err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
@@ -166,24 +126,6 @@ func request_AuthTokenService_ListAuthTokens_0(ctx context.Context, marshaler ru
 func local_request_AuthTokenService_ListAuthTokens_0(ctx context.Context, marshaler runtime.Marshaler, server AuthTokenServiceServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
 	var protoReq ListAuthTokensRequest
 	var metadata runtime.ServerMetadata
-
-	var (
-		val string
-		ok  bool
-		err error
-		_   = err
-	)
-
-	val, ok = pathParams["org_id"]
-	if !ok {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "org_id")
-	}
-
-	protoReq.OrgId, err = runtime.String(val)
-
-	if err != nil {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "org_id", err)
-	}
 
 	if err := req.ParseForm(); err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
@@ -207,17 +149,6 @@ func request_AuthTokenService_DeleteAuthToken_0(ctx context.Context, marshaler r
 		err error
 		_   = err
 	)
-
-	val, ok = pathParams["org_id"]
-	if !ok {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "org_id")
-	}
-
-	protoReq.OrgId, err = runtime.String(val)
-
-	if err != nil {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "org_id", err)
-	}
 
 	val, ok = pathParams["id"]
 	if !ok {
@@ -245,17 +176,6 @@ func local_request_AuthTokenService_DeleteAuthToken_0(ctx context.Context, marsh
 		err error
 		_   = err
 	)
-
-	val, ok = pathParams["org_id"]
-	if !ok {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "org_id")
-	}
-
-	protoReq.OrgId, err = runtime.String(val)
-
-	if err != nil {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "org_id", err)
-	}
 
 	val, ok = pathParams["id"]
 	if !ok {
@@ -452,11 +372,11 @@ func (m response_AuthTokenService_GetAuthToken_0) XXX_ResponseBody() interface{}
 }
 
 var (
-	pattern_AuthTokenService_GetAuthToken_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2, 2, 3, 1, 0, 4, 1, 5, 4}, []string{"v1", "orgs", "org_id", "auth-tokens", "id"}, "", runtime.AssumeColonVerbOpt(true)))
+	pattern_AuthTokenService_GetAuthToken_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 2, 2, 1, 0, 4, 1, 5, 3}, []string{"v1", "scopes", "auth-tokens", "id"}, "", runtime.AssumeColonVerbOpt(true)))
 
-	pattern_AuthTokenService_ListAuthTokens_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2, 2, 3}, []string{"v1", "orgs", "org_id", "auth-tokens"}, "", runtime.AssumeColonVerbOpt(true)))
+	pattern_AuthTokenService_ListAuthTokens_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 2, 2}, []string{"v1", "scopes", "auth-tokens"}, "", runtime.AssumeColonVerbOpt(true)))
 
-	pattern_AuthTokenService_DeleteAuthToken_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2, 2, 3, 1, 0, 4, 1, 5, 4}, []string{"v1", "orgs", "org_id", "auth-tokens", "id"}, "", runtime.AssumeColonVerbOpt(true)))
+	pattern_AuthTokenService_DeleteAuthToken_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 2, 2, 1, 0, 4, 1, 5, 3}, []string{"v1", "scopes", "auth-tokens", "id"}, "", runtime.AssumeColonVerbOpt(true)))
 )
 
 var (
