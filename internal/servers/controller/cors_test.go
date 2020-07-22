@@ -3,11 +3,14 @@ package controller
 import (
 	"fmt"
 	"net/http"
+	"net/url"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/hashicorp/go-retryablehttp"
+	"github.com/hashicorp/watchtower/api/scopes"
 	"github.com/hashicorp/watchtower/internal/cmd/config"
 )
 
@@ -73,13 +76,14 @@ func TestHandler_CORS(t *testing.T) {
 	defer tc.Shutdown()
 
 	cases := []struct {
-		name          string
-		method        string
-		origin        string
-		code          int
-		acrmHeader    string
-		allowedHeader string
-		listenerNum   int
+		name           string
+		method         string
+		origin         string
+		code           int
+		acrmHeader     string
+		allowedHeader  string
+		listenerNum    int
+		provideScopeId bool
 	}{
 		{
 			name:        "disabled no origin",
@@ -141,6 +145,21 @@ func TestHandler_CORS(t *testing.T) {
 			listenerNum: 4,
 		},
 		{
+			name:           "enabled with wildcard origins and no origin defined, scope id checking",
+			method:         http.MethodGet,
+			code:           http.StatusOK,
+			listenerNum:    4,
+			provideScopeId: true,
+		},
+		{
+			name:           "enabled with wildcard origins and origin defined, scope id checking",
+			method:         http.MethodPost,
+			origin:         "flubber.com",
+			code:           http.StatusOK,
+			listenerNum:    4,
+			provideScopeId: true,
+		},
+		{
 			name:        "wildcard origins with method list and good method",
 			method:      http.MethodOptions,
 			origin:      "flubber.com",
@@ -169,8 +188,22 @@ func TestHandler_CORS(t *testing.T) {
 			client.SetToken("fo_o_bar")
 
 			// Create the request
-			req, err := client.NewRequest(tc.Context(), c.method, "scopes", nil)
+			var req *retryablehttp.Request
+
+			// This tests out scope_id handling from body or query
+			var body interface{}
+			scopeId := "global"
+			if c.provideScopeId {
+				scopeId = "o_1234567890"
+				if c.method == http.MethodPost {
+					body = &scopes.Scope{}
+				}
+			}
+			req, err = client.NewRequest(tc.Context(), c.method, "scopes", body)
 			require.NoError(t, err)
+			q := url.Values{}
+			q.Add("scope_id", scopeId)
+			req.URL.RawQuery = q.Encode()
 
 			// Append headers
 			if c.origin != "" {

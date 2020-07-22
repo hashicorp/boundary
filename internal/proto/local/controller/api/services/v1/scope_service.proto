@@ -96,7 +96,8 @@ message GetScopeResponse {
 }
 
 message ListScopesRequest {
-  string view = 1;
+  string scope_id = 1;
+  string view = 2;
 }
 
 message ListScopesResponse {
@@ -104,7 +105,8 @@ message ListScopesResponse {
 }
 
 message CreateScopeRequest {
-  resources.scopes.v1.Scope item = 1;
+  string scope_id = 1;
+  resources.scopes.v1.Scope item = 2;
 }
 
 message CreateScopeResponse {
