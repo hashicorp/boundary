@@ -954,7 +954,7 @@ func TestAddMember(t *testing.T) {
 					MemberIds: tc.addUsers,
 				}
 
-				got, err := s.AddGroupMembers(auth.DisabledAuthTestContext(auth.WithTestScopeId(scp.GetPublicId())), req)
+				got, err := s.AddGroupMembers(auth.DisabledAuthTestContext(auth.WithScopeId(scp.GetPublicId())), req)
 				if tc.wantErr {
 					assert.Error(t, err)
 					return
@@ -987,7 +987,7 @@ func TestAddMember(t *testing.T) {
 	for _, tc := range failCases {
 		t.Run(tc.name, func(t *testing.T) {
 			assert := assert.New(t)
-			_, gErr := s.AddGroupMembers(auth.DisabledAuthTestContext(auth.WithTestScopeId(grp.GetScopeId())), tc.req)
+			_, gErr := s.AddGroupMembers(auth.DisabledAuthTestContext(auth.WithScopeId(grp.GetScopeId())), tc.req)
 			assert.Equal(tc.errCode, status.Code(gErr), "AddGroupMembers(%+v) got error %v, wanted %v", tc.req, gErr, tc.errCode)
 		})
 	}
@@ -1055,7 +1055,7 @@ func TestSetMember(t *testing.T) {
 					MemberIds: tc.setUsers,
 				}
 
-				got, err := s.SetGroupMembers(auth.DisabledAuthTestContext(auth.WithTestScopeId(scp.GetPublicId())), req)
+				got, err := s.SetGroupMembers(auth.DisabledAuthTestContext(auth.WithScopeId(scp.GetPublicId())), req)
 				if tc.wantErr {
 					assert.Error(t, err)
 					return
@@ -1088,7 +1088,7 @@ func TestSetMember(t *testing.T) {
 	for _, tc := range failCases {
 		t.Run(tc.name, func(t *testing.T) {
 			assert := assert.New(t)
-			_, gErr := s.SetGroupMembers(auth.DisabledAuthTestContext(auth.WithTestScopeId(grp.GetScopeId())), tc.req)
+			_, gErr := s.SetGroupMembers(auth.DisabledAuthTestContext(auth.WithScopeId(grp.GetScopeId())), tc.req)
 			assert.Equal(tc.errCode, status.Code(gErr), "SetGroupMembers(%+v) got error %v, wanted %v", tc.req, gErr, tc.errCode)
 		})
 	}
@@ -1164,7 +1164,7 @@ func TestRemoveMember(t *testing.T) {
 					MemberIds: tc.removeUsers,
 				}
 
-				got, err := s.RemoveGroupMembers(auth.DisabledAuthTestContext(auth.WithTestScopeId(scp.GetPublicId())), req)
+				got, err := s.RemoveGroupMembers(auth.DisabledAuthTestContext(auth.WithScopeId(scp.GetPublicId())), req)
 				if tc.wantErr {
 					assert.Error(t, err)
 					return
@@ -1197,7 +1197,7 @@ func TestRemoveMember(t *testing.T) {
 	for _, tc := range failCases {
 		t.Run(tc.name, func(t *testing.T) {
 			assert := assert.New(t)
-			_, gErr := s.AddGroupMembers(auth.DisabledAuthTestContext(auth.WithTestScopeId(grp.GetScopeId())), tc.req)
+			_, gErr := s.AddGroupMembers(auth.DisabledAuthTestContext(auth.WithScopeId(grp.GetScopeId())), tc.req)
 			assert.Equal(tc.errCode, status.Code(gErr), "AddGroupMembers(%+v) got error %v, wanted %v", tc.req, gErr, tc.errCode)
 		})
 	}

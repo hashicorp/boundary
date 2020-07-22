@@ -13,11 +13,13 @@ func (s Group) AddMembers(ctx context.Context, memberIds []string) (*Group, *api
 	}
 	// We assume that the client provided has the org and optionally the project id of the request.
 
-	body := map[string]interface{}{
-		"version": s.Version,
+	if len(memberIds) == 0 {
+		return nil, nil, fmt.Errorf("empty memberIds slice")
 	}
-	if len(memberIds) > 0 {
-		body["member_ids"] = memberIds
+
+	body := map[string]interface{}{
+		"version":    s.Version,
+		"member_ids": memberIds,
 	}
 
 	req, err := s.Client.NewRequest(ctx, "POST", fmt.Sprintf("groups/%s:add-members", s.Id), body)
@@ -84,11 +86,13 @@ func (s Group) RemoveMembers(ctx context.Context, memberIds []string) (*Group, *
 	}
 	// We assume that the client provided has the org and optionally the project id of the request.
 
-	body := map[string]interface{}{
-		"version": s.Version,
+	if len(memberIds) == 0 {
+		return nil, nil, fmt.Errorf("empty memberIds slice")
 	}
-	if len(memberIds) > 0 {
-		body["member_ids"] = memberIds
+
+	body := map[string]interface{}{
+		"version":    s.Version,
+		"member_ids": memberIds,
 	}
 
 	req, err := s.Client.NewRequest(ctx, "POST", fmt.Sprintf("groups/%s:remove-members", s.Id), body)
