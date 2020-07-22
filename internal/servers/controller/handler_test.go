@@ -159,11 +159,11 @@ func TestGrpcGatewayRouting_CustomActions(t *testing.T) {
 			},
 			verbUrls: map[string][]string{
 				"GET": {
-					"v1/orgs/someid/auth-tokens",
-					"v1/orgs/someid/auth-tokens/someid",
+					"v1/scopes/someid/auth-tokens",
+					"v1/scopes/someid/auth-tokens/someid",
 				},
 				"DELETE": {
-					"v1/orgs/someid/auth-tokens/someid",
+					"v1/scopes/someid/auth-tokens/someid",
 				},
 			},
 		},
