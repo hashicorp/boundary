@@ -3,6 +3,12 @@ package oplog_test
 
 import "github.com/jinzhu/gorm"
 
+const (
+	defaultTestUserTableName   = "oplog_test_user"
+	defaultTestCarTableName    = "oplog_test_car"
+	defaultTestRentalTableName = "oplog_test_rental"
+)
+
 // Init will use gorm migrations to init tables for test models
 func Init(db *gorm.DB) {
 	db.AutoMigrate(&TestUser{})
@@ -23,12 +29,17 @@ func (u *TestUser) TableName() string {
 	if u.Table != "" {
 		return u.Table
 	}
-	return "oplog_test_user"
+	return defaultTestUserTableName
 }
 
-// SetTableName allows the table name to be overridden and makes a TestUser a ReplayableMessage
+// SetTableName allows the table name to be overridden and makes a TestUser a
+// ReplayableMessage.  If the caller attempts to set the name to "" the name will be
+// reset to the default name.
 func (u *TestUser) SetTableName(n string) {
-	if n != "" {
+	switch n {
+	case "":
+		u.Table = defaultTestUserTableName
+	default:
 		u.Table = n
 	}
 }
@@ -38,12 +49,15 @@ func (c *TestCar) TableName() string {
 	if c.Table != "" {
 		return c.Table
 	}
-	return "oplog_test_car"
+	return defaultTestCarTableName
 }
 
 // SetTableName allows the table name to be overridden and makes a TestCar a ReplayableMessage
 func (c *TestCar) SetTableName(n string) {
-	if n != "" {
+	switch n {
+	case "":
+		c.Table = defaultTestCarTableName
+	default:
 		c.Table = n
 	}
 }
@@ -53,12 +67,15 @@ func (r *TestRental) TableName() string {
 	if r.Table != "" {
 		return r.Table
 	}
-	return "oplog_test_rental"
+	return defaultTestRentalTableName
 }
 
 // SetTableName allows the table name to be overridden and makes a TestRental a ReplayableMessage
 func (r *TestRental) SetTableName(n string) {
-	if n != "" {
+	switch n {
+	case "":
+		r.Table = defaultTestRentalTableName
+	default:
 		r.Table = n
 	}
 }

@@ -352,3 +352,77 @@ func TestGroupMember_Clone(t *testing.T) {
 		assert.True(!proto.Equal(cp.(*GroupMemberUser).GroupMemberUser, gm2.GroupMemberUser))
 	})
 }
+
+func TestGroupMember_SetTableName(t *testing.T) {
+	defaultTableName := groupMemberViewDefaultTableName
+	tests := []struct {
+		name        string
+		initialName string
+		setNameTo   string
+		want        string
+	}{
+		{
+			name:        "new-name",
+			initialName: "",
+			setNameTo:   "new-name",
+			want:        "new-name",
+		},
+		{
+			name:        "reset to default",
+			initialName: "initial",
+			setNameTo:   "",
+			want:        defaultTableName,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+			def := &GroupMember{
+				GroupMemberView: &store.GroupMemberView{},
+			}
+			require.Equal(defaultTableName, def.TableName())
+			s := &GroupMember{
+				GroupMemberView: &store.GroupMemberView{},
+				tableName:       tt.initialName,
+			}
+			s.SetTableName(tt.setNameTo)
+			assert.Equal(tt.want, s.TableName())
+		})
+	}
+}
+
+func TestGroupMemberUser_SetTableName(t *testing.T) {
+	defaultTableName := groupMemberUserDefaultTable
+	tests := []struct {
+		name        string
+		initialName string
+		setNameTo   string
+		want        string
+	}{
+		{
+			name:        "new-name",
+			initialName: "",
+			setNameTo:   "new-name",
+			want:        "new-name",
+		},
+		{
+			name:        "reset to default",
+			initialName: "initial",
+			setNameTo:   "",
+			want:        defaultTableName,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+			def := allocGroupMember()
+			require.Equal(defaultTableName, def.TableName())
+			s := &GroupMemberUser{
+				GroupMemberUser: &store.GroupMemberUser{},
+				tableName:       tt.initialName,
+			}
+			s.SetTableName(tt.setNameTo)
+			assert.Equal(tt.want, s.TableName())
+		})
+	}
+}

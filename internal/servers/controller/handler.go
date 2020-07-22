@@ -10,7 +10,6 @@ import (
 	"time"
 
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
-	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/vault/internalshared/configutil"
 	"github.com/hashicorp/vault/sdk/helper/strutil"
 	"github.com/hashicorp/watchtower/api"
@@ -22,11 +21,8 @@ import (
 	"github.com/hashicorp/watchtower/internal/servers/controller/handlers/authenticate"
 	"github.com/hashicorp/watchtower/internal/servers/controller/handlers/groups"
 	"github.com/hashicorp/watchtower/internal/servers/controller/handlers/host_catalogs"
-	"github.com/hashicorp/watchtower/internal/servers/controller/handlers/host_sets"
-	"github.com/hashicorp/watchtower/internal/servers/controller/handlers/hosts"
-	"github.com/hashicorp/watchtower/internal/servers/controller/handlers/orgs"
-	"github.com/hashicorp/watchtower/internal/servers/controller/handlers/projects"
 	"github.com/hashicorp/watchtower/internal/servers/controller/handlers/roles"
+	"github.com/hashicorp/watchtower/internal/servers/controller/handlers/scopes"
 	"github.com/hashicorp/watchtower/internal/servers/controller/handlers/users"
 	"google.golang.org/protobuf/encoding/protojson"
 )
@@ -83,12 +79,6 @@ func handleGrpcGateway(c *Controller) (http.Handler, error) {
 	if err := services.RegisterHostCatalogServiceHandlerServer(ctx, mux, hcs); err != nil {
 		return nil, fmt.Errorf("failed to register host catalog service handler: %w", err)
 	}
-	if err := services.RegisterHostSetServiceHandlerServer(ctx, mux, &host_sets.Service{}); err != nil {
-		return nil, fmt.Errorf("failed to register host set service handler: %w", err)
-	}
-	if err := services.RegisterHostServiceHandlerServer(ctx, mux, &hosts.Service{}); err != nil {
-		return nil, fmt.Errorf("failed to register host service handler: %w", err)
-	}
 	auths, err := authenticate.NewService(c.IamRepoFn, c.AuthTokenRepoFn)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create authentication handler service: %w", err)
@@ -96,19 +86,12 @@ func handleGrpcGateway(c *Controller) (http.Handler, error) {
 	if err := services.RegisterAuthenticationServiceHandlerServer(ctx, mux, auths); err != nil {
 		return nil, fmt.Errorf("failed to register authenticate service handler: %w", err)
 	}
-	os, err := orgs.NewService(c.IamRepoFn)
+	os, err := scopes.NewService(c.IamRepoFn)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create org handler service: %w", err)
+		return nil, fmt.Errorf("failed to create scope handler service: %w", err)
 	}
-	if err := services.RegisterOrgServiceHandlerServer(ctx, mux, os); err != nil {
-		return nil, fmt.Errorf("failed to register org service handler: %w", err)
-	}
-	ps, err := projects.NewService(c.IamRepoFn)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create project handler service: %w", err)
-	}
-	if err := services.RegisterProjectServiceHandlerServer(ctx, mux, ps); err != nil {
-		return nil, fmt.Errorf("failed to register project service handler: %w", err)
+	if err := services.RegisterScopeServiceHandlerServer(ctx, mux, os); err != nil {
+		return nil, fmt.Errorf("failed to register scope service handler: %w", err)
 	}
 	us, err := users.NewService(c.IamRepoFn)
 	if err != nil {
@@ -159,7 +142,7 @@ func wrapHandlerWithCommonFuncs(h http.Handler, c *Controller, props HandlerProp
 
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if logUrls {
-			c.logger.Trace("request received", "url", r.URL.String())
+			c.logger.Trace("request received", "url", r.URL.RequestURI())
 		}
 
 		// Set the Cache-Control header for all responses returned
@@ -180,7 +163,7 @@ func wrapHandlerWithCommonFuncs(h http.Handler, c *Controller, props HandlerProp
 			Method:               r.Method,
 			DisableAuthzFailures: disableAuthzFailures,
 		}
-		requestInfo.PublicId, requestInfo.Token = getTokenFromRequest(c.logger, r)
+		requestInfo.PublicId, requestInfo.Token, requestInfo.TokenFormat = auth.GetTokenFromRequest(c.logger, r)
 		ctx = auth.NewVerifierContext(ctx, c.logger, c.IamRepoFn, c.AuthTokenRepoFn, requestInfo)
 
 		// Set the context back on the request
@@ -267,75 +250,6 @@ func wrapHandlerWithCors(h http.Handler, props HandlerProperties) http.Handler {
 
 		h.ServeHTTP(w, req)
 	})
-}
-
-type tokenFormat int
-
-const (
-	authTokenTypeUnknown tokenFormat = iota
-	authTokenTypeBearer
-	authTokenTypeSplitCookie
-)
-
-const (
-	headerAuthMethod    = "Authorization"
-	httpOnlyCookieName  = "wt-http-token-cookie"
-	jsVisibleCookieName = "wt-js-token-cookie"
-)
-
-// getTokenFromRequest pulls the token from either the Authorization header or
-// split cookies and parses it. If it cannot be parsed successfully, the issue
-// is logged and we return blank, so logic will continue as the anonymous user.
-// The public ID and token are returned
-func getTokenFromRequest(logger hclog.Logger, req *http.Request) (string, string) {
-	// First, get the token, either from the authorization header or from split
-	// cookies
-	var receivedTokenType tokenFormat
-	var fullToken string
-	if authHeader := req.Header.Get("Authorization"); authHeader != "" {
-		headerSplit := strings.SplitN(strings.TrimSpace(authHeader), " ", 2)
-		if len(headerSplit) == 2 && strings.EqualFold(strings.TrimSpace(headerSplit[0]), "bearer") {
-			receivedTokenType = authTokenTypeBearer
-			fullToken = strings.TrimSpace(headerSplit[1])
-		}
-	}
-	if receivedTokenType != authTokenTypeBearer {
-		var httpCookiePayload string
-		var jsCookiePayload string
-		if hc, err := req.Cookie(httpOnlyCookieName); err == nil {
-			httpCookiePayload = hc.Value
-		}
-		if jc, err := req.Cookie(jsVisibleCookieName); err == nil {
-			jsCookiePayload = jc.Value
-		}
-		if httpCookiePayload != "" && jsCookiePayload != "" {
-			receivedTokenType = authTokenTypeSplitCookie
-			fullToken = jsCookiePayload + httpCookiePayload
-		}
-	}
-
-	if receivedTokenType == authTokenTypeUnknown || fullToken == "" {
-		// We didn't find auth info or a client screwed up and put in a blank
-		// header instead of nothing at all, so return blank which will indicate
-		// the anonymouse user
-		return "", ""
-	}
-
-	splitFullToken := strings.Split(fullToken, "_")
-	if len(splitFullToken) != 3 {
-		logger.Trace("get token from request: unexpected number of segments in token", "expected", 3, "found", len(splitFullToken))
-		return "", ""
-	}
-
-	token := splitFullToken[2]
-	publicId := strings.Join(splitFullToken[0:2], "_")
-
-	if receivedTokenType == authTokenTypeUnknown || token == "" || publicId == "" {
-		logger.Trace("get token from request: after parsing, could not find valid token")
-		return "", ""
-	}
-
-	return publicId, token
 }
 
 /*

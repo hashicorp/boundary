@@ -122,6 +122,15 @@ func parsePBs() {
 					switch nextTyp := typ.X.(type) {
 					case *ast.Ident:
 						// Already a pointer, don't do anything
+						if nextTyp.Name == "ScopeInfo" {
+							st.Fields.List[i] = &ast.Field{
+								Names: field.Names,
+								Type: &ast.Ident{
+									Name: "info.Scope",
+								},
+								Tag: field.Tag,
+							}
+						}
 						goto TAGMODIFY
 					case *ast.SelectorExpr:
 						selectorExpr = nextTyp
@@ -183,6 +192,22 @@ func parsePBs() {
 
 						default:
 							fmt.Printf("unhandled timestamp selector sel name %q\n", selectorExpr.Sel.Name)
+							os.Exit(1)
+						}
+
+					case "scopes":
+						switch selectorExpr.Sel.Name {
+						case "ScopeInfo":
+							st.Fields.List[i] = &ast.Field{
+								Names: field.Names,
+								Type: &ast.Ident{
+									Name: "info.Scope",
+								},
+								Tag: field.Tag,
+							}
+
+						default:
+							fmt.Printf("unhandled scopes selector sel name %q\n", selectorExpr.Sel.Name)
 							os.Exit(1)
 						}
 

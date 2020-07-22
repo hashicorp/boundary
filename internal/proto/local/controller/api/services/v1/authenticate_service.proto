@@ -13,25 +13,29 @@ service AuthenticationService {
   // Authenticate validates credentials provided and returns an auth token.
   rpc Authenticate(AuthenticateRequest) returns (AuthenticateResponse) {
     option (google.api.http) = {
-      post: "/v1/orgs/{org_id}/auth-methods/{auth_method_id}:authenticate"
+      post: "/v1/scopes/*/auth-methods/{auth_method_id}:authenticate"
       body: "*"
       response_body: "item"
     };
     option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
-      summary: "Authenticate a user to an Org and retrieve an authentication token."
+      summary: "Authenticate a user to an scope and retrieve an authentication token."
     };
   }
 
+}
   // Logout terminates a user's current session.
+  // TODO: Ideally it'd live here but grpc-gateway chokes on it. But deauth should really be scopeless.
+/*
   rpc Deauthenticate(DeauthenticateRequest) returns (DeauthenticateResponse) {
     option (google.api.http) = {
-      post: "/v1/orgs/{org_id}:deauthenticate"
+      post: "/v1/:deauthenticate"
     };
     option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
-      summary: "Deauthenticate an authentication token from an Org."
+      summary: "Deauthenticate an authentication token."
     };
   }
 }
+*/
 
 // The layout of the struct for "credentials" field in AuthenticateRequest.  This message isn't
 // directly referenced anywhere but is used here to define the expected field names and types.
@@ -41,23 +45,20 @@ message PasswordCredentials {
 }
 
 message AuthenticateRequest {
-  string org_id = 1;
-  // The id to the authmethod in the system being used for authentication.  The auth method must be in the org
+  // The id to the authmethod in the system being used for authentication.  The auth method must be in the scope
   // being logged in to.
-  string auth_method_id = 2;
+  string auth_method_id = 1;
   // This can be "cookie" or "token".  If not provided, "token" will be used.  For now only type "token" is returned.
-  string token_type = 3;
+  string token_type = 2;
 
   // credentials are the different possible credential names depending on what type of auth method is used.
   // For password auth method: should include only "name" and "password".
-  google.protobuf.Struct credentials = 8;
+  google.protobuf.Struct credentials = 3;
 }
 
 message AuthenticateResponse {
   resources.authtokens.v1.AuthToken item = 1;
 }
 
-message DeauthenticateRequest {
-  string org_id = 1;
-}
+message DeauthenticateRequest {}
 message DeauthenticateResponse {}

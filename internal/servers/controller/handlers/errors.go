@@ -20,6 +20,10 @@ func NotFoundErrorf(msg string, a ...interface{}) error {
 	return status.Errorf(codes.NotFound, msg, a...)
 }
 
+func ForbiddenError() error {
+	return status.Error(codes.PermissionDenied, "Forbidden.")
+}
+
 func InvalidArgumentErrorf(msg string, fields map[string]string) error {
 	st := status.New(codes.InvalidArgument, msg)
 	br := &errdetails.BadRequest{}
