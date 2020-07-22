@@ -241,6 +241,105 @@
         ]
       }
     },
+    "/v1/scopes/*/groups/{id}:add-members": {
+      "post": {
+        "summary": "Adds Users as members to a Group",
+        "operationId": "GroupService_AddGroupMembers",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/controller.api.resources.groups.v1.Group"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/controller.api.services.v1.AddGroupMembersRequest"
+            }
+          }
+        ],
+        "tags": [
+          "controller.api.services.v1.GroupService"
+        ]
+      }
+    },
+    "/v1/scopes/*/groups/{id}:remove-members": {
+      "post": {
+        "summary": "Removes the specified members from a Group.",
+        "operationId": "GroupService_RemoveGroupMembers",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/controller.api.resources.groups.v1.Group"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/controller.api.services.v1.RemoveGroupMembersRequest"
+            }
+          }
+        ],
+        "tags": [
+          "controller.api.services.v1.GroupService"
+        ]
+      }
+    },
+    "/v1/scopes/*/groups/{id}:set-members": {
+      "post": {
+        "summary": "Set a Group's members to exactly the list of provided in the request, removing any members that are not specified.",
+        "operationId": "GroupService_SetGroupMembers",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/controller.api.resources.groups.v1.Group"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/controller.api.services.v1.SetGroupMembersRequest"
+            }
+          }
+        ],
+        "tags": [
+          "controller.api.services.v1.GroupService"
+        ]
+      }
+    },
     "/v1/scopes/*/host-catalogs": {
       "get": {
         "summary": "Gets a list of HostCatalogs",
@@ -1420,9 +1519,51 @@
           "type": "boolean",
           "format": "boolean",
           "title": "Whether the resource is disabled"
+        },
+        "version": {
+          "type": "integer",
+          "format": "int64",
+          "description": "The version can be used in subsiquent write requests to ensure this resource\nhas not changed and to fail the write if it has.\nOutput only.",
+          "readOnly": true
+        },
+        "member_ids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Contains the list of member ids in this group.\nOutput only.",
+          "readOnly": true
+        },
+        "members": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/controller.api.resources.groups.v1.Member"
+          },
+          "description": "The members of this group.\nOutput only.",
+          "readOnly": true
         }
       },
       "title": "Group contains all fields related to a Group resource"
+    },
+    "controller.api.resources.groups.v1.Member": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "The ID of the member.\nOutput only.",
+          "readOnly": true
+        },
+        "type": {
+          "type": "string",
+          "description": "The type of the member.\nOutput only.",
+          "readOnly": true
+        },
+        "scope_id": {
+          "type": "string",
+          "description": "The scope ID of the member.\nOutput only.",
+          "readOnly": true
+        }
+      }
     },
     "controller.api.resources.hosts.v1.Host": {
       "type": "object",
@@ -1839,6 +1980,33 @@
       },
       "title": "User contains all fields related to a User resource"
     },
+    "controller.api.services.v1.AddGroupMembersRequest": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "version": {
+          "type": "integer",
+          "format": "int64",
+          "description": "The version ensures the group hasn't changed since it was last retrieved and if\nit has the request will fail."
+        },
+        "member_ids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "controller.api.services.v1.AddGroupMembersResponse": {
+      "type": "object",
+      "properties": {
+        "item": {
+          "$ref": "#/definitions/controller.api.resources.groups.v1.Group"
+        }
+      }
+    },
     "controller.api.services.v1.AddRoleGrantsRequest": {
       "type": "object",
       "properties": {
@@ -2197,6 +2365,33 @@
     "controller.api.services.v1.RemoveFromHostSetResponse": {
       "type": "object"
     },
+    "controller.api.services.v1.RemoveGroupMembersRequest": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "version": {
+          "type": "integer",
+          "format": "int64",
+          "description": "The version ensures the group hasn't changed since it was last retrieved and if\nit has the request will fail."
+        },
+        "member_ids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "controller.api.services.v1.RemoveGroupMembersResponse": {
+      "type": "object",
+      "properties": {
+        "item": {
+          "$ref": "#/definitions/controller.api.resources.groups.v1.Group"
+        }
+      }
+    },
     "controller.api.services.v1.RemoveRoleGrantsRequest": {
       "type": "object",
       "properties": {
@@ -2248,6 +2443,33 @@
       "properties": {
         "item": {
           "$ref": "#/definitions/controller.api.resources.roles.v1.Role"
+        }
+      }
+    },
+    "controller.api.services.v1.SetGroupMembersRequest": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "version": {
+          "type": "integer",
+          "format": "int64",
+          "description": "The version ensures the group hasn't changed since it was last retrieved and if\nit has the request will fail."
+        },
+        "member_ids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "controller.api.services.v1.SetGroupMembersResponse": {
+      "type": "object",
+      "properties": {
+        "item": {
+          "$ref": "#/definitions/controller.api.resources.groups.v1.Group"
         }
       }
     },

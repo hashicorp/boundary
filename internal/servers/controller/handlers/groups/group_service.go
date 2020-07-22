@@ -132,22 +132,70 @@ func (s Service) DeleteGroup(ctx context.Context, req *pbs.DeleteGroupRequest) (
 	return &pbs.DeleteGroupResponse{Existed: existed}, nil
 }
 
+// AddGroupMembers implements the interface pbs.GroupServiceServer.
+func (s Service) AddGroupMembers(ctx context.Context, req *pbs.AddGroupMembersRequest) (*pbs.AddGroupMembersResponse, error) {
+	authResults := auth.Verify(ctx)
+	if !authResults.Valid {
+		return nil, handlers.ForbiddenError()
+	}
+	if err := validateAddGroupMembersRequest(req); err != nil {
+		return nil, err
+	}
+	g, err := s.addMembersInRepo(ctx, req.GetId(), req.GetMemberIds(), req.GetVersion().GetValue())
+	if err != nil {
+		return nil, err
+	}
+	return &pbs.AddGroupMembersResponse{Item: g}, nil
+}
+
+// SetGroupMembers implements the interface pbs.GroupServiceServer.
+func (s Service) SetGroupMembers(ctx context.Context, req *pbs.SetGroupMembersRequest) (*pbs.SetGroupMembersResponse, error) {
+	authResults := auth.Verify(ctx)
+	if !authResults.Valid {
+		return nil, handlers.ForbiddenError()
+	}
+	if err := validateSetGroupMembersRequest(req); err != nil {
+		return nil, err
+	}
+	g, err := s.setMembersInRepo(ctx, req.GetId(), req.GetMemberIds(), req.GetVersion().GetValue())
+	if err != nil {
+		return nil, err
+	}
+	return &pbs.SetGroupMembersResponse{Item: g}, nil
+}
+
+// RemoveGroupMembers implements the interface pbs.GroupServiceServer.
+func (s Service) RemoveGroupMembers(ctx context.Context, req *pbs.RemoveGroupMembersRequest) (*pbs.RemoveGroupMembersResponse, error) {
+	authResults := auth.Verify(ctx)
+	if !authResults.Valid {
+		return nil, handlers.ForbiddenError()
+	}
+	if err := validateRemoveGroupMembersRequest(req); err != nil {
+		return nil, err
+	}
+	g, err := s.removeMembersInRepo(ctx, req.GetId(), req.GetMemberIds(), req.GetVersion().GetValue())
+	if err != nil {
+		return nil, err
+	}
+	return &pbs.RemoveGroupMembersResponse{Item: g}, nil
+}
+
 func (s Service) getFromRepo(ctx context.Context, id string) (*pb.Group, error) {
 	repo, err := s.repoFn()
 	if err != nil {
 		return nil, err
 	}
-	u, err := repo.LookupGroup(ctx, id)
+	g, m, err := repo.LookupGroup(ctx, id)
 	if err != nil {
 		if errors.Is(err, db.ErrRecordNotFound) {
 			return nil, handlers.NotFoundErrorf("Group %q doesn't exist.", id)
 		}
 		return nil, err
 	}
-	if u == nil {
+	if g == nil {
 		return nil, handlers.NotFoundErrorf("Group %q doesn't exist.", id)
 	}
-	return toProto(u), nil
+	return toProto(g, m), nil
 }
 
 func (s Service) createInRepo(ctx context.Context, scopeId string, item *pb.Group) (*pb.Group, error) {
@@ -173,7 +221,7 @@ func (s Service) createInRepo(ctx context.Context, scopeId string, item *pb.Grou
 	if out == nil {
 		return nil, status.Error(codes.Internal, "Unable to create group but no error returned from repository.")
 	}
-	return toProto(out), nil
+	return toProto(out, nil), nil
 }
 
 func (s Service) updateInRepo(ctx context.Context, scopeId, id string, mask []string, item *pb.Group) (*pb.Group, error) {
@@ -197,14 +245,14 @@ func (s Service) updateInRepo(ctx context.Context, scopeId, id string, mask []st
 	if err != nil {
 		return nil, err
 	}
-	out, rowsUpdated, err := repo.UpdateGroup(ctx, u, dbMask)
+	out, m, rowsUpdated, err := repo.UpdateGroup(ctx, u, dbMask)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "Unable to update group: %v.", err)
 	}
 	if rowsUpdated == 0 {
 		return nil, handlers.NotFoundErrorf("Group %q doesn't exist.", id)
 	}
-	return toProto(out), nil
+	return toProto(out, m), nil
 }
 
 func (s Service) deleteFromRepo(ctx context.Context, id string) (bool, error) {
@@ -233,22 +281,88 @@ func (s Service) listFromRepo(ctx context.Context, scopeId string) ([]*pb.Group,
 	}
 	var outGl []*pb.Group
 	for _, g := range gl {
-		outGl = append(outGl, toProto(g))
+		outGl = append(outGl, toProto(g, nil))
 	}
 	return outGl, nil
 }
 
-func toProto(in *iam.Group) *pb.Group {
+func (s Service) addMembersInRepo(ctx context.Context, groupId string, userIds []string, version uint32) (*pb.Group, error) {
+	repo, err := s.repoFn()
+	if err != nil {
+		return nil, err
+	}
+	_, err = repo.AddGroupMembers(ctx, groupId, version, userIds)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "Unable to add members to group: %v.", err)
+	}
+	out, m, err := repo.LookupGroup(ctx, groupId)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "Unable to look up group: %v.", err)
+	}
+	if out == nil {
+		return nil, status.Error(codes.Internal, "Unable to lookup group after adding member to it.")
+	}
+	return toProto(out, m), nil
+}
+
+func (s Service) setMembersInRepo(ctx context.Context, groupId string, userIds []string, version uint32) (*pb.Group, error) {
+	repo, err := s.repoFn()
+	if err != nil {
+		return nil, err
+	}
+	_, _, err = repo.SetGroupMembers(ctx, groupId, version, userIds)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "Unable to set members on group: %v.", err)
+	}
+	out, m, err := repo.LookupGroup(ctx, groupId)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "Unable to look up group: %v.", err)
+	}
+	if out == nil {
+		return nil, status.Error(codes.Internal, "Unable to lookup group after setting members for it.")
+	}
+	return toProto(out, m), nil
+}
+
+func (s Service) removeMembersInRepo(ctx context.Context, groupId string, userIds []string, version uint32) (*pb.Group, error) {
+	repo, err := s.repoFn()
+	if err != nil {
+		return nil, err
+	}
+	_, err = repo.DeleteGroupMembers(ctx, groupId, version, userIds)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "Unable to remove members from group: %v.", err)
+	}
+	out, m, err := repo.LookupGroup(ctx, groupId)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "Unable to look up group: %v.", err)
+	}
+	if out == nil {
+		return nil, status.Error(codes.Internal, "Unable to lookup group after removing members from it.")
+	}
+	return toProto(out, m), nil
+}
+
+func toProto(in *iam.Group, members []*iam.GroupMember) *pb.Group {
 	out := pb.Group{
 		Id:          in.GetPublicId(),
 		CreatedTime: in.GetCreateTime().GetTimestamp(),
 		UpdatedTime: in.GetUpdateTime().GetTimestamp(),
+		Version:     in.Version,
 	}
 	if in.GetDescription() != "" {
 		out.Description = &wrapperspb.StringValue{Value: in.GetDescription()}
 	}
 	if in.GetName() != "" {
 		out.Name = &wrapperspb.StringValue{Value: in.GetName()}
+	}
+	for _, m := range members {
+		out.MemberIds = append(out.MemberIds, m.GetMemberId())
+		out.Members = append(out.Members, &pb.Member{
+			Id:      m.GetMemberId(),
+			Type:    m.GetType(),
+			ScopeId: m.GetMemberScopeId(),
+		})
 	}
 	return &out
 }
@@ -333,6 +447,54 @@ func validateListRequest(req *pbs.ListGroupsRequest) error {
 	badFields := map[string]string{}
 	if len(badFields) > 0 {
 		return handlers.InvalidArgumentErrorf("Improperly formatted identifier.", badFields)
+	}
+	return nil
+}
+
+func validateAddGroupMembersRequest(req *pbs.AddGroupMembersRequest) error {
+	badFields := map[string]string{}
+	if !validId(req.GetId(), iam.GroupPrefix+"_") {
+		badFields["id"] = "Incorrectly formatted identifier."
+	}
+	if req.GetVersion() == nil {
+		badFields["version"] = "Required field."
+	}
+	if len(req.GetMemberIds()) == 0 {
+		badFields["member_ids"] = "Must be non-empty."
+	}
+	if len(badFields) > 0 {
+		return handlers.InvalidArgumentErrorf("Errors in provided fields.", badFields)
+	}
+	return nil
+}
+
+func validateSetGroupMembersRequest(req *pbs.SetGroupMembersRequest) error {
+	badFields := map[string]string{}
+	if !validId(req.GetId(), iam.GroupPrefix+"_") {
+		badFields["id"] = "Incorrectly formatted identifier."
+	}
+	if req.GetVersion() == nil {
+		badFields["version"] = "Required field."
+	}
+	if len(badFields) > 0 {
+		return handlers.InvalidArgumentErrorf("Errors in provided fields.", badFields)
+	}
+	return nil
+}
+
+func validateRemoveGroupMembersRequest(req *pbs.RemoveGroupMembersRequest) error {
+	badFields := map[string]string{}
+	if !validId(req.GetId(), iam.GroupPrefix+"_") {
+		badFields["id"] = "Incorrectly formatted identifier."
+	}
+	if req.GetVersion() == nil {
+		badFields["version"] = "Required field."
+	}
+	if len(req.GetMemberIds()) == 0 {
+		badFields["member_ids"] = "Must be non-empty."
+	}
+	if len(badFields) > 0 {
+		return handlers.InvalidArgumentErrorf("Errors in provided fields.", badFields)
 	}
 	return nil
 }

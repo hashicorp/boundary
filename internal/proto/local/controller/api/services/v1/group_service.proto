@@ -7,6 +7,7 @@ option go_package = "github.com/hashicorp/watchtower/internal/gen/controller/api
 import "protoc-gen-openapiv2/options/annotations.proto";
 import "google/api/annotations.proto";
 import "google/protobuf/field_mask.proto";
+import "google/protobuf/wrappers.proto";
 import "controller/api/resources/groups/v1/group.proto";
 import "controller/api/resources/scopes/v1/scope.proto";
 
@@ -87,6 +88,52 @@ service GroupService {
       summary: "Deletes a Group"
     };
   }
+
+  // AddGroupMembers adds users as members to a group.  The provided
+  // request must include the scope id and the group id which the users
+  // will be set to. If the any of the ids are missing, malformed or references a non
+  // existing resource, an error is returned.
+  rpc AddGroupMembers(AddGroupMembersRequest) returns (AddGroupMembersResponse) {
+    option (google.api.http) = {
+      post: "/v1/scopes/*/groups/{id}:add-members"
+      body: "*"
+      response_body: "item"
+    };
+    option (grpc.gateway.protoc_gen_swagger.options.openapiv2_operation) = {
+      summary: "Adds Users as members to a Group"
+    };
+  }
+
+  // SetGroupMembers sets the group's members.  Any existing members on
+  // the group are deleted if they are not included in this request.  The provided
+  // request must include the scope id and the group id which the users
+  // will be set to. If the any of the ids are missing, malformed or references a non
+  // existing resource, an error is returned.
+  rpc SetGroupMembers(SetGroupMembersRequest) returns (SetGroupMembersResponse) {
+    option (google.api.http) = {
+      post: "/v1/scopes/*/groups/{id}:set-members"
+      body: "*"
+      response_body: "item"
+    };
+    option (grpc.gateway.protoc_gen_swagger.options.openapiv2_operation) = {
+      summary: "Set a Group's members to exactly the list of provided in the request, removing any members that are not specified."
+    };
+  }
+
+  // RemoveGroupMembers removes members from the specified group.
+  // The provided request must include the scope id and the group id which the users
+  // will be set to. If the any of the ids are missing, malformed or references a non
+  // existing resource, an error is returned.
+  rpc RemoveGroupMembers(RemoveGroupMembersRequest) returns (RemoveGroupMembersResponse) {
+    option (google.api.http) = {
+      post: "/v1/scopes/*/groups/{id}:remove-members"
+      body: "*"
+      response_body: "item"
+    };
+    option (grpc.gateway.protoc_gen_swagger.options.openapiv2_operation) = {
+      summary: "Removes the specified members from a Group."
+    };
+  }
 }
 
 message GetGroupRequest {
@@ -131,4 +178,40 @@ message DeleteGroupRequest {
 
 message DeleteGroupResponse {
   bool existed = 1;
+}
+
+message AddGroupMembersRequest {
+  string id = 1;
+  // The version ensures the group hasn't changed since it was last retrieved and if
+  // it has the request will fail.
+  google.protobuf.UInt32Value version = 2;
+  repeated string member_ids = 3 [json_name="member_ids"];
+}
+
+message AddGroupMembersResponse {
+  resources.groups.v1.Group item = 1;
+}
+
+message SetGroupMembersRequest {
+  string id = 1;
+  // The version ensures the group hasn't changed since it was last retrieved and if
+  // it has the request will fail.
+  google.protobuf.UInt32Value version = 2;
+  repeated string member_ids = 3 [json_name="member_ids"];
+}
+
+message SetGroupMembersResponse {
+  resources.groups.v1.Group item = 1;
+}
+
+message RemoveGroupMembersRequest {
+  string id = 1;
+  // The version ensures the group hasn't changed since it was last retrieved and if
+  // it has the request will fail.
+  google.protobuf.UInt32Value version = 2;
+  repeated string member_ids = 3 [json_name="member_ids"];
+}
+
+message RemoveGroupMembersResponse {
+  resources.groups.v1.Group item = 1;
 }
