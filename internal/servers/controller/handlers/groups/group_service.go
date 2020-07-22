@@ -134,12 +134,14 @@ func (s Service) DeleteGroup(ctx context.Context, req *pbs.DeleteGroupRequest) (
 
 // AddGroupMembers implements the interface pbs.GroupServiceServer.
 func (s Service) AddGroupMembers(ctx context.Context, req *pbs.AddGroupMembersRequest) (*pbs.AddGroupMembersResponse, error) {
-	auth := handlers.ToTokenMetadata(ctx)
-	_ = auth
+	authResults := auth.Verify(ctx)
+	if !authResults.Valid {
+		return nil, handlers.ForbiddenError()
+	}
 	if err := validateAddGroupMembersRequest(req); err != nil {
 		return nil, err
 	}
-	g, err := s.addMembersInRepo(ctx, req.GetGroupId(), req.GetMemberIds(), req.GetVersion().GetValue())
+	g, err := s.addMembersInRepo(ctx, req.GetId(), req.GetMemberIds(), req.GetVersion().GetValue())
 	if err != nil {
 		return nil, err
 	}
@@ -148,12 +150,14 @@ func (s Service) AddGroupMembers(ctx context.Context, req *pbs.AddGroupMembersRe
 
 // SetGroupMembers implements the interface pbs.GroupServiceServer.
 func (s Service) SetGroupMembers(ctx context.Context, req *pbs.SetGroupMembersRequest) (*pbs.SetGroupMembersResponse, error) {
-	auth := handlers.ToTokenMetadata(ctx)
-	_ = auth
+	authResults := auth.Verify(ctx)
+	if !authResults.Valid {
+		return nil, handlers.ForbiddenError()
+	}
 	if err := validateSetGroupMembersRequest(req); err != nil {
 		return nil, err
 	}
-	g, err := s.setMembersInRepo(ctx, req.GetGroupId(), req.GetMemberIds(), req.GetVersion().GetValue())
+	g, err := s.setMembersInRepo(ctx, req.GetId(), req.GetMemberIds(), req.GetVersion().GetValue())
 	if err != nil {
 		return nil, err
 	}
@@ -162,12 +166,14 @@ func (s Service) SetGroupMembers(ctx context.Context, req *pbs.SetGroupMembersRe
 
 // RemoveGroupMembers implements the interface pbs.GroupServiceServer.
 func (s Service) RemoveGroupMembers(ctx context.Context, req *pbs.RemoveGroupMembersRequest) (*pbs.RemoveGroupMembersResponse, error) {
-	auth := handlers.ToTokenMetadata(ctx)
-	_ = auth
+	authResults := auth.Verify(ctx)
+	if !authResults.Valid {
+		return nil, handlers.ForbiddenError()
+	}
 	if err := validateRemoveGroupMembersRequest(req); err != nil {
 		return nil, err
 	}
-	g, err := s.removeMembersInRepo(ctx, req.GetGroupId(), req.GetMemberIds(), req.GetVersion().GetValue())
+	g, err := s.removeMembersInRepo(ctx, req.GetId(), req.GetMemberIds(), req.GetVersion().GetValue())
 	if err != nil {
 		return nil, err
 	}
@@ -446,8 +452,8 @@ func validateListRequest(req *pbs.ListGroupsRequest) error {
 }
 
 func validateAddGroupMembersRequest(req *pbs.AddGroupMembersRequest) error {
-	badFields := validateAncestors(req)
-	if !validId(req.GetGroupId(), iam.GroupPrefix+"_") {
+	badFields := map[string]string{}
+	if !validId(req.GetId(), iam.GroupPrefix+"_") {
 		badFields["id"] = "Incorrectly formatted identifier."
 	}
 	if req.GetVersion() == nil {
@@ -463,8 +469,8 @@ func validateAddGroupMembersRequest(req *pbs.AddGroupMembersRequest) error {
 }
 
 func validateSetGroupMembersRequest(req *pbs.SetGroupMembersRequest) error {
-	badFields := validateAncestors(req)
-	if !validId(req.GetGroupId(), iam.GroupPrefix+"_") {
+	badFields := map[string]string{}
+	if !validId(req.GetId(), iam.GroupPrefix+"_") {
 		badFields["id"] = "Incorrectly formatted identifier."
 	}
 	if req.GetVersion() == nil {
@@ -477,8 +483,8 @@ func validateSetGroupMembersRequest(req *pbs.SetGroupMembersRequest) error {
 }
 
 func validateRemoveGroupMembersRequest(req *pbs.RemoveGroupMembersRequest) error {
-	badFields := validateAncestors(req)
-	if !validId(req.GetGroupId(), iam.GroupPrefix+"_") {
+	badFields := map[string]string{}
+	if !validId(req.GetId(), iam.GroupPrefix+"_") {
 		badFields["id"] = "Incorrectly formatted identifier."
 	}
 	if req.GetVersion() == nil {

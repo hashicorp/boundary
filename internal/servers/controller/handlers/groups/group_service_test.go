@@ -7,8 +7,8 @@ import (
 	"testing"
 
 	"github.com/golang/protobuf/ptypes"
-	"github.com/hashicorp/watchtower/internal/auth"
 	"github.com/google/go-cmp/cmp"
+	"github.com/hashicorp/watchtower/internal/auth"
 	"github.com/hashicorp/watchtower/internal/db"
 	pb "github.com/hashicorp/watchtower/internal/gen/controller/api/resources/groups"
 	"github.com/hashicorp/watchtower/internal/gen/controller/api/resources/scopes"
@@ -949,13 +949,12 @@ func TestAddMember(t *testing.T) {
 				grp := iam.TestGroup(t, conn, scp.GetPublicId())
 				tc.setup(grp)
 				req := &pbs.AddGroupMembersRequest{
-					OrgId:     o.GetPublicId(),
-					GroupId:   grp.GetPublicId(),
+					Id:        grp.GetPublicId(),
 					Version:   &wrapperspb.UInt32Value{Value: grp.GetVersion()},
 					MemberIds: tc.addUsers,
 				}
 
-				got, err := s.AddGroupMembers(context.Background(), req)
+				got, err := s.AddGroupMembers(auth.DisabledAuthTestContext(auth.WithTestScopeId(scp.GetPublicId())), req)
 				if tc.wantErr {
 					assert.Error(t, err)
 					return
@@ -977,32 +976,10 @@ func TestAddMember(t *testing.T) {
 		errCode codes.Code
 	}{
 		{
-			name: "Bad Org Id",
-			req: &pbs.AddGroupMembersRequest{
-				OrgId:     "",
-				ProjectId: grp.GetScopeId(),
-				GroupId:   grp.GetPublicId(),
-				Version:   &wrapperspb.UInt32Value{Value: grp.GetVersion()},
-			},
-			errCode: codes.InvalidArgument,
-		},
-		{
-			name: "Bad Project Id",
-			req: &pbs.AddGroupMembersRequest{
-				OrgId:     o.GetPublicId(),
-				ProjectId: "bad id",
-				GroupId:   grp.GetPublicId(),
-				Version:   &wrapperspb.UInt32Value{Value: grp.GetVersion()},
-			},
-			errCode: codes.InvalidArgument,
-		},
-		{
 			name: "Bad Group Id",
 			req: &pbs.AddGroupMembersRequest{
-				OrgId:     o.GetPublicId(),
-				ProjectId: grp.GetScopeId(),
-				GroupId:   "bad id",
-				Version:   &wrapperspb.UInt32Value{Value: grp.GetVersion()},
+				Id:      "bad id",
+				Version: &wrapperspb.UInt32Value{Value: grp.GetVersion()},
 			},
 			errCode: codes.InvalidArgument,
 		},
@@ -1010,7 +987,7 @@ func TestAddMember(t *testing.T) {
 	for _, tc := range failCases {
 		t.Run(tc.name, func(t *testing.T) {
 			assert := assert.New(t)
-			_, gErr := s.AddGroupMembers(context.Background(), tc.req)
+			_, gErr := s.AddGroupMembers(auth.DisabledAuthTestContext(auth.WithTestScopeId(grp.GetScopeId())), tc.req)
 			assert.Equal(tc.errCode, status.Code(gErr), "AddGroupMembers(%+v) got error %v, wanted %v", tc.req, gErr, tc.errCode)
 		})
 	}
@@ -1073,13 +1050,12 @@ func TestSetMember(t *testing.T) {
 				grp := iam.TestGroup(t, conn, scp.GetPublicId())
 				tc.setup(grp)
 				req := &pbs.SetGroupMembersRequest{
-					OrgId:     o.GetPublicId(),
-					GroupId:   grp.GetPublicId(),
+					Id:        grp.GetPublicId(),
 					Version:   &wrapperspb.UInt32Value{Value: grp.GetVersion()},
 					MemberIds: tc.setUsers,
 				}
 
-				got, err := s.SetGroupMembers(context.Background(), req)
+				got, err := s.SetGroupMembers(auth.DisabledAuthTestContext(auth.WithTestScopeId(scp.GetPublicId())), req)
 				if tc.wantErr {
 					assert.Error(t, err)
 					return
@@ -1101,32 +1077,10 @@ func TestSetMember(t *testing.T) {
 		errCode codes.Code
 	}{
 		{
-			name: "Bad Org Id",
-			req: &pbs.SetGroupMembersRequest{
-				OrgId:     "",
-				ProjectId: grp.GetScopeId(),
-				GroupId:   grp.GetPublicId(),
-				Version:   &wrapperspb.UInt32Value{Value: grp.GetVersion()},
-			},
-			errCode: codes.InvalidArgument,
-		},
-		{
-			name: "Bad Project Id",
-			req: &pbs.SetGroupMembersRequest{
-				OrgId:     o.GetPublicId(),
-				ProjectId: "bad id",
-				GroupId:   grp.GetPublicId(),
-				Version:   &wrapperspb.UInt32Value{Value: grp.GetVersion()},
-			},
-			errCode: codes.InvalidArgument,
-		},
-		{
 			name: "Bad Group Id",
 			req: &pbs.SetGroupMembersRequest{
-				OrgId:     o.GetPublicId(),
-				ProjectId: grp.GetScopeId(),
-				GroupId:   "bad id",
-				Version:   &wrapperspb.UInt32Value{Value: grp.GetVersion()},
+				Id:      "bad id",
+				Version: &wrapperspb.UInt32Value{Value: grp.GetVersion()},
 			},
 			errCode: codes.InvalidArgument,
 		},
@@ -1134,7 +1088,7 @@ func TestSetMember(t *testing.T) {
 	for _, tc := range failCases {
 		t.Run(tc.name, func(t *testing.T) {
 			assert := assert.New(t)
-			_, gErr := s.SetGroupMembers(context.Background(), tc.req)
+			_, gErr := s.SetGroupMembers(auth.DisabledAuthTestContext(auth.WithTestScopeId(grp.GetScopeId())), tc.req)
 			assert.Equal(tc.errCode, status.Code(gErr), "SetGroupMembers(%+v) got error %v, wanted %v", tc.req, gErr, tc.errCode)
 		})
 	}
@@ -1200,18 +1154,17 @@ func TestRemoveMember(t *testing.T) {
 	}
 
 	for _, tc := range addCases {
-		for _, scope := range []*iam.Scope{o, p} {
-			t.Run(tc.name+"_"+scope.GetType(), func(t *testing.T) {
-				grp := iam.TestGroup(t, conn, scope.GetPublicId())
+		for _, scp := range []*iam.Scope{o, p} {
+			t.Run(tc.name+"_"+scp.GetType(), func(t *testing.T) {
+				grp := iam.TestGroup(t, conn, scp.GetPublicId())
 				tc.setup(grp)
 				req := &pbs.RemoveGroupMembersRequest{
-					OrgId:     o.GetPublicId(),
-					GroupId:   grp.GetPublicId(),
+					Id:        grp.GetPublicId(),
 					Version:   &wrapperspb.UInt32Value{Value: grp.GetVersion()},
 					MemberIds: tc.removeUsers,
 				}
 
-				got, err := s.RemoveGroupMembers(context.Background(), req)
+				got, err := s.RemoveGroupMembers(auth.DisabledAuthTestContext(auth.WithTestScopeId(scp.GetPublicId())), req)
 				if tc.wantErr {
 					assert.Error(t, err)
 					return
@@ -1233,32 +1186,10 @@ func TestRemoveMember(t *testing.T) {
 		errCode codes.Code
 	}{
 		{
-			name: "Bad Org Id",
-			req: &pbs.AddGroupMembersRequest{
-				OrgId:     "",
-				ProjectId: grp.GetScopeId(),
-				GroupId:   grp.GetPublicId(),
-				Version:   &wrapperspb.UInt32Value{Value: grp.GetVersion()},
-			},
-			errCode: codes.InvalidArgument,
-		},
-		{
-			name: "Bad Project Id",
-			req: &pbs.AddGroupMembersRequest{
-				OrgId:     o.GetPublicId(),
-				ProjectId: "bad id",
-				GroupId:   grp.GetPublicId(),
-				Version:   &wrapperspb.UInt32Value{Value: grp.GetVersion()},
-			},
-			errCode: codes.InvalidArgument,
-		},
-		{
 			name: "Bad Group Id",
 			req: &pbs.AddGroupMembersRequest{
-				OrgId:     o.GetPublicId(),
-				ProjectId: grp.GetScopeId(),
-				GroupId:   "bad id",
-				Version:   &wrapperspb.UInt32Value{Value: grp.GetVersion()},
+				Id:      "bad id",
+				Version: &wrapperspb.UInt32Value{Value: grp.GetVersion()},
 			},
 			errCode: codes.InvalidArgument,
 		},
@@ -1266,7 +1197,7 @@ func TestRemoveMember(t *testing.T) {
 	for _, tc := range failCases {
 		t.Run(tc.name, func(t *testing.T) {
 			assert := assert.New(t)
-			_, gErr := s.AddGroupMembers(context.Background(), tc.req)
+			_, gErr := s.AddGroupMembers(auth.DisabledAuthTestContext(auth.WithTestScopeId(grp.GetScopeId())), tc.req)
 			assert.Equal(tc.errCode, status.Code(gErr), "AddGroupMembers(%+v) got error %v, wanted %v", tc.req, gErr, tc.errCode)
 		})
 	}
