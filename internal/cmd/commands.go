@@ -58,13 +58,13 @@ func initCommands(ui, serverCmdUi cli.Ui, runOpts *RunOptions) {
 				Command: base.NewCommand(ui),
 			}, nil
 		},
-		"projects create": func() (cli.Command, error) {
-			return &scopes.CreateProjectCommand{
+		"scopes create": func() (cli.Command, error) {
+			return &scopes.CreateScopeCommand{
 				Command: base.NewCommand(ui),
 			}, nil
 		},
-		"projects read": func() (cli.Command, error) {
-			return &scopes.ReadProjectCommand{
+		"scopes read": func() (cli.Command, error) {
+			return &scopes.ReadScopeCommand{
 				Command: base.NewCommand(ui),
 			}, nil
 		},

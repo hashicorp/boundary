@@ -1,0 +1,133 @@
+syntax = "proto3";
+
+package controller.api.services.v1;
+
+option go_package = "github.com/hashicorp/watchtower/internal/gen/controller/api/services;services";
+
+import "protoc-gen-swagger/options/annotations.proto";
+import "google/api/annotations.proto";
+import "google/protobuf/field_mask.proto";
+import "controller/api/resources/scopes/v1/scope.proto";
+
+service ScopeService {
+
+  // GetScope returns a stored Scope if present.  The provided request
+  // must include the scope ID for the scope being retrieved. If
+  // any of those IDs are missing, malformed or reference a non existing
+  // resource an error is returned.
+  rpc GetScope(GetScopeRequest) returns (GetScopeResponse) {
+    option (google.api.http) = {
+      get: "/v1/scopes/{id}"
+      response_body: "item"
+    };
+    option (grpc.gateway.protoc_gen_swagger.options.openapiv2_operation) = {
+      summary: "Gets a single Scope"
+    };
+  }
+
+  // ListScopes returns a list of stored scopes which exist inside the scope of
+  // the token making the request.
+  rpc ListScopes(ListScopesRequest) returns (ListScopesResponse) {
+    option (google.api.http) = {
+      get: "/v1/scopes"
+    };
+    option (grpc.gateway.protoc_gen_swagger.options.openapiv2_operation) = {
+      summary: "Lists all Scopes within the scope of the token making the request"
+    };
+  }
+
+  // CreateScope creates and stores a scope in watchtower.  The provided request
+  // must include the scope ID in which the scope will be created. If the scope
+  // ID is missing, malformed or references a non existing scope, an error is
+  // returned. If a name is provided that is in use in another scope in the same
+  // parent scope, an error is returned.
+  rpc CreateScope(CreateScopeRequest) returns (CreateScopeResponse) {
+    option (google.api.http) = {
+      post: "/v1/scopes"
+      body: "item"
+      response_body: "item"
+    };
+    option (grpc.gateway.protoc_gen_swagger.options.openapiv2_operation) = {
+      summary: "Creates a single Scope"
+    };
+  }
+
+  // UpdateScope updates an existing scope in watchtower.  The provided
+  // scope must not have any read only fields set.  The update mask must be
+  // included in the request and contain at least 1 mutable field.  To unset
+  // a field's value, include the field in the update mask and don't set it
+  // in the provided scope. An error is returned if either the org
+  // or scope ids are missing or reference a non existing resource.  An error
+  // is also returned if the request attempts to update the name to one that is
+  // already in use in this org.
+  rpc UpdateScope(UpdateScopeRequest) returns (UpdateScopeResponse) {
+    option (google.api.http) = {
+      patch: "/v1/scopes/{id}"
+      body: "item"
+      response_body: "item"
+    };
+    option (grpc.gateway.protoc_gen_swagger.options.openapiv2_operation) = {
+      summary: "Updates a Scope"
+    };
+  }
+
+  // DeleteScope remotes a scope and all child resources from Watchtower. If the
+  // provided scope IDs are malformed or not provided an error is returned. No
+  // error is returned if the ID references a resource that does not exist as
+  // the response itself specifies if the resource existed before the
+  // DeleteScope request was received.
+  rpc DeleteScope(DeleteScopeRequest) returns (DeleteScopeResponse) {
+    option (google.api.http) = {
+      delete: "/v1/scopes/{id}"
+    };
+    option (grpc.gateway.protoc_gen_swagger.options.openapiv2_operation) = {
+      summary: "Deletes a Scope"
+    };
+  }
+}
+
+message GetScopeRequest {
+  string id = 1;
+  string view = 2;
+}
+
+message GetScopeResponse {
+  resources.scopes.v1.Scope item = 1;
+}
+
+message ListScopesRequest {
+  string scope_id = 1;
+  string view = 2;
+}
+
+message ListScopesResponse {
+  repeated resources.scopes.v1.Scope items = 1;
+}
+
+message CreateScopeRequest {
+  string scope_id = 1;
+  resources.scopes.v1.Scope item = 2;
+}
+
+message CreateScopeResponse {
+  string uri = 1;
+  resources.scopes.v1.Scope item = 2;
+}
+
+message UpdateScopeRequest {
+  string id = 1;
+  resources.scopes.v1.Scope item = 2;
+  google.protobuf.FieldMask update_mask = 3;
+}
+
+message UpdateScopeResponse {
+  resources.scopes.v1.Scope item = 1;
+}
+
+message DeleteScopeRequest {
+  string id = 1;
+}
+
+message DeleteScopeResponse {
+  bool existed = 1;
+}

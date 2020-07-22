@@ -12,24 +12,24 @@ import (
 	"github.com/hashicorp/watchtower/internal/authtoken"
 	"github.com/hashicorp/watchtower/internal/db"
 	pba "github.com/hashicorp/watchtower/internal/gen/controller/api/resources/authtokens"
+	"github.com/hashicorp/watchtower/internal/gen/controller/api/resources/scopes"
 	pbs "github.com/hashicorp/watchtower/internal/gen/controller/api/services"
 	"github.com/hashicorp/watchtower/internal/iam"
 	iamStore "github.com/hashicorp/watchtower/internal/iam/store"
 	"github.com/hashicorp/watchtower/internal/servers/controller/common"
 	"github.com/hashicorp/watchtower/internal/servers/controller/handlers"
-	"github.com/hashicorp/watchtower/internal/types/scope"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
 
-const orgIdFieldName = "org_id"
+const scopeIdFieldName = "scope_id"
 
 var (
 	reInvalidID = regexp.MustCompile("[^A-Za-z0-9]")
 
 	// TODO: Remove once auth methods are in
-	OrgScope string
-	RWDb     = new(atomic.Value)
+	Scope string
+	RWDb  = new(atomic.Value)
 )
 
 func init() {
@@ -70,11 +70,11 @@ func (s Service) Authenticate(ctx context.Context, req *pbs.AuthenticateRequest)
 
 // Deauthenticate implements the interface pbs.AuthenticationServiceServer.
 func (s Service) Deauthenticate(ctx context.Context, req *pbs.DeauthenticateRequest) (*pbs.DeauthenticateResponse, error) {
-	return nil, status.Error(codes.Unimplemented, "Requested method is unimplemented for Org.")
+	return nil, status.Error(codes.Unimplemented, "Requested method is unimplemented.")
 }
 
 func (s Service) authenticateWithRepo(ctx context.Context, req *pbs.AuthenticateRequest) (*pba.AuthToken, error) {
-	userRepo, err := s.iamRepo()
+	iamRepo, err := s.iamRepo()
 	if err != nil {
 		return nil, err
 	}
@@ -95,12 +95,12 @@ func (s Service) authenticateWithRepo(ctx context.Context, req *pbs.Authenticate
 
 	aAcct := &iam.AuthAccount{AuthAccount: &iamStore.AuthAccount{
 		PublicId:     acctId,
-		ScopeId:      OrgScope,
+		ScopeId:      Scope,
 		AuthMethodId: req.AuthMethodId,
 	}}
 	RWDb.Load().(*db.Db).Create(ctx, aAcct)
 
-	u, err := userRepo.LookupUserWithLogin(ctx, acctId, iam.WithAutoVivify(true))
+	u, err := iamRepo.LookupUserWithLogin(ctx, acctId, iam.WithAutoVivify(true))
 	if err != nil {
 		return nil, err
 	}
@@ -109,7 +109,22 @@ func (s Service) authenticateWithRepo(ctx context.Context, req *pbs.Authenticate
 		return nil, err
 	}
 	tok.Token = tok.GetPublicId() + "_" + tok.GetToken()
-	return toProto(tok), nil
+	prot := toProto(tok)
+
+	scp, err := iamRepo.LookupScope(ctx, u.GetScopeId())
+	if err != nil {
+		return nil, err
+	}
+	if scp == nil {
+		return nil, err
+	}
+	prot.Scope = &scopes.ScopeInfo{
+		Id:            scp.GetPublicId(),
+		Type:          scp.GetType(),
+		ParentScopeId: scp.GetParentId(),
+	}
+
+	return prot, nil
 }
 
 func toProto(t *authtoken.AuthToken) *pba.AuthToken {
@@ -132,9 +147,6 @@ func toProto(t *authtoken.AuthToken) *pba.AuthToken {
 //  * There are no conflicting parameters provided
 func validateAuthenticateRequest(req *pbs.AuthenticateRequest) error {
 	badFields := make(map[string]string)
-	if !validId(req.GetOrgId(), scope.Org.Prefix()+"_") {
-		badFields[orgIdFieldName] = "Invalid formatted identifier."
-	}
 	if strings.TrimSpace(req.GetAuthMethodId()) == "" {
 		badFields["auth_method_id"] = "This is a required field."
 	} else if validId(req.GetAuthMethodId(), "am") {

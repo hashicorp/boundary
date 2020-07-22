@@ -8,13 +8,13 @@ import (
 	"github.com/hashicorp/watchtower/internal/cmd/base"
 )
 
-func printProject(in *scopes.Project) string {
+func printScope(in *scopes.Scope) string {
 	var ret []string
 	// This if true is here to line up columns for easy editing
 	if true {
 		ret = append(ret, []string{
 			"",
-			"Project information:",
+			"Scope information:",
 			fmt.Sprintf("  ID:           %s", in.Id),
 			fmt.Sprintf("  Created Time: %s", in.CreatedTime.Local().Format(time.RFC3339)),
 			fmt.Sprintf("  Updated Time: %s", in.UpdatedTime.Local().Format(time.RFC3339)),

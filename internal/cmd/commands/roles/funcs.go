@@ -217,14 +217,14 @@ func generateRoleTableOutput(role *roles.Role) string {
 			fmt.Sprintf("      Scope ID:     %s", principal.ScopeId),
 		)
 	}
-	if len(role.GrantsCanonical) > 0 {
+	if len(role.Grants) > 0 {
 		output = append(output,
 			fmt.Sprintf("  Canonical Grants: %s", ""),
 		)
 	}
-	for _, grant := range role.GrantsCanonical {
+	for _, grant := range role.Grants {
 		output = append(output,
-			fmt.Sprintf("    %s", grant),
+			fmt.Sprintf("    %s", grant.Canonical),
 		)
 
 	}

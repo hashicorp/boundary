@@ -11,6 +11,10 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
+const (
+	defaultAuthAccountTableName = "auth_account"
+)
+
 // AuthAccount is from the auth subsystem and iam is only allowed to: lookup and
 // update auth accounts.  That's why there is no "new" factory for AuthAccounts.
 type AuthAccount struct {
@@ -61,12 +65,17 @@ func (a *AuthAccount) TableName() string {
 	if a.tableName != "" {
 		return a.tableName
 	}
-	return "auth_account"
+	return defaultAuthAccountTableName
 }
 
-// SetTableName sets the tablename and satisfies the ReplayableMessage interface.
+// SetTableName sets the tablename and satisfies the ReplayableMessage
+// interface. If the caller attempts to set the name to "" the name will be
+// reset to the default name.
 func (a *AuthAccount) SetTableName(n string) {
-	if n != "" {
+	switch n {
+	case "":
+		a.tableName = defaultAuthAccountTableName
+	default:
 		a.tableName = n
 	}
 }

@@ -18,43 +18,41 @@ type readInfo struct {
 var readFuncs = map[string][]*readInfo{
 	"scopes": {
 		{
-			baseType:   "Org",
-			targetType: "Project",
-			path:       "projects",
+			baseType:   "Scope",
+			targetType: "Scope",
+			path:       "scopes",
 		},
+	},
+	"authtokens": {
+		baseType:   "AuthToken",
+		targetType: "AuthToken",
+		path:       "auth-tokens",
+	},
+	"groups": {
 		{
-			baseType:   "Org",
-			targetType: "authtokens.AuthToken",
-			path:       "auth-tokens",
-		},
-		{
-			baseType:   "Org",
-			targetType: "groups.Group",
+			baseType:   "Group",
+			targetType: "Group",
 			path:       "groups",
 		},
+	},
+	"users": {
 		{
-			baseType:   "Org",
-			targetType: "roles.Role",
-			path:       "roles",
-		},
-		{
-			baseType:   "Org",
-			targetType: "users.User",
+			baseType:   "User",
+			targetType: "User",
 			path:       "users",
 		},
+	},
+	"roles": {
 		{
-			baseType:   "Project",
-			targetType: "groups.Group",
-			path:       "groups",
-		},
-		{
-			baseType:   "Project",
-			targetType: "roles.Role",
+			baseType:   "Role",
+			targetType: "Role",
 			path:       "roles",
 		},
+	},
+	"hosts": {
 		{
-			baseType:   "Project",
-			targetType: "hosts.HostCatalog",
+			baseType:   "HostCatalog",
+			targetType: "HostCatalog",
 			path:       "host-catalogs",
 		},
 	},
@@ -89,34 +87,23 @@ package %s
 
 var readFuncTemplate = template.Must(template.New("").Parse(
 	`
-func (s {{ .BaseType }}) Read{{ .TargetName }}(ctx context.Context, r *{{ .TargetType }}) (*{{ .TargetType }}, *api.Error, error) {
+func (s {{ .BaseType }}) Read{{ .TargetName }}(ctx context.Context, id string) (*{{ .TargetType }}, *api.Error, error) {
+	if id == "" {
+		return nil, nil, fmt.Errorf("empty ID value passed into Read{{ .TargetName }} request")
+	}
+	
 	if s.Client == nil {
 		return nil, nil, fmt.Errorf("nil client in Read{{ .TargetName }} request")
 	}
-	if s.Id == "" {
-		{{ if (eq .BaseType "Org") }}
-		// Assume the client has been configured with org already and
-		// move on
-		{{ else if (eq .BaseType "Project") }}
-		// Assume the client has been configured with project already and move
-		// on
-		{{ else }}
-		return nil, nil, fmt.Errorf("missing {{ .BaseType }} ID in Read{{ .TargetType }} request")
-		{{ end }}
-	} else {
+	
+	var opts []api.Option
+	if s.Scope.Id != "" {
 		// If it's explicitly set here, override anything that might be in the
 		// client
-		{{ if (eq .BaseType "Org") }}
-		ctx = context.WithValue(ctx, "org", s.Id)
-		{{ else if (eq .BaseType "Project") }}
-		ctx = context.WithValue(ctx, "project", s.Id)
-		{{ end }}
-	}
-	if r.Id == "" {
-		return nil, nil, fmt.Errorf("empty {{ .TargetType }} ID field in Read{{ .TargetName }} request")
+		opts = append(opts, api.WithScopeId(s.Scope.Id))
 	}
 
-	req, err := s.Client.NewRequest(ctx, "GET", fmt.Sprintf("%s/%s", "{{ .Path }}", r.Id), r)
+	req, err := s.Client.NewRequest(ctx, "GET", fmt.Sprintf("%s/%s", "{{ .Path }}", id), nil, opts...)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error creating Read{{ .TargetName }} request: %w", err)
 	}
@@ -132,12 +119,9 @@ func (s {{ .BaseType }}) Read{{ .TargetName }}(ctx context.Context, r *{{ .Targe
 		return nil, nil, fmt.Errorf("error decoding Read{{ .TargetName }} repsonse: %w", err)
 	}
 
-	{{ if (eq .TargetType "Org") }}
+	{{ if (eq .TargetType "Scope") }}
 	target.Client = s.Client.Clone()
-	target.Client.SetOrgnization(target.Id)
-	{{ else if (eq .TargetType "Project") }}
-	target.Client = s.Client.Clone()
-	target.Client.SetProject(target.Id)
+	target.Client.SetScopeId(target.Id)
 	{{ else }}
 	target.Client = s.Client
 	{{ end }}

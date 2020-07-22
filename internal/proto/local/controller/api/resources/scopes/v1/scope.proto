@@ -1,0 +1,59 @@
+syntax = "proto3";
+
+package controller.api.resources.scopes.v1;
+
+option go_package = "github.com/hashicorp/watchtower/internal/gen/controller/api/resources/scopes;scopes";
+
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/wrappers.proto";
+import "controller/custom_options/v1/masks.proto";
+
+message ScopeInfo {
+	// The ID of the Scope
+	// Output only.
+	string id = 1;
+
+	// The type of the Scope
+	// Output only.
+	string type = 2;
+
+	// The name of the scope, if any
+	// Output only.
+	string name = 3;
+
+	// The description of the scope, if any
+	// Output only.
+	string description = 4;
+
+	// The ID of the parent scope, if any
+	// Output only.
+	string parent_scope_id = 5 [json_name="parent_scope_id"];
+}
+
+// Scope contains all fields related to a Scope resource
+message Scope {
+	// The ID of the Scope
+	// Output only.
+	string id = 1;
+
+	// Scope information for this resource
+	// Output only.
+	ScopeInfo scope = 2;
+
+	// Optional name for identification purposes
+	google.protobuf.StringValue name = 3 [(custom_options.v1.mask_mapping) = {this: "name" that: "name"}];
+
+	// Optional user-set descripton for identification purposes
+	google.protobuf.StringValue description = 4 [(custom_options.v1.mask_mapping) = {this: "description" that: "description"}];
+
+	// The time this resource was created
+	// Output only.
+	google.protobuf.Timestamp created_time = 5 [json_name="created_time"];
+
+	// The time this resource was last updated.
+	// Output only.
+	google.protobuf.Timestamp updated_time = 6 [json_name="updated_time"];
+
+	// Whether the resource is disabled
+	google.protobuf.BoolValue disabled = 7;
+}

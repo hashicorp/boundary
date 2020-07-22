@@ -6,6 +6,8 @@ option go_package = "github.com/hashicorp/watchtower/internal/gen/controller/api
 
 import "google/protobuf/timestamp.proto";
 import "google/protobuf/wrappers.proto";
+import "controller/api/resources/scopes/v1/scope.proto";
+import "controller/custom_options/v1/masks.proto";
 
 message Principal {
 	// The ID of the principal.
@@ -21,10 +23,32 @@ message Principal {
 	string scope_id = 3 [json_name="scope_id"];
 }
 
-message Grant {
-	// The user-supplied string.
+message GrantJson {
+	// The ID, if set.
 	// Output only.
+	string id = 1;
 
+	// The type, if set.
+	// Output only.
+	string type = 2;
+
+	// The actions.
+	// Output only.
+	repeated string actions = 3;
+}
+
+message Grant {
+	// The original user-supplied string.
+	// Output only.
+	string raw = 1;
+
+	// The canonically formatted string.
+	// Output only.
+	string canonical = 2;
+
+	// The JSON representation of the grant.
+	// Output only.
+	GrantJson json = 3;
 }
 
 // Role contains all fields related to a Role resource
@@ -33,52 +57,52 @@ message Role {
 	// Output only.
 	string id = 1;
 
+	// Scope information for this resource
+	// Output only.
+	resources.scopes.v1.ScopeInfo scope = 2;
+	
 	// Optional name for identification purposes
-	google.protobuf.StringValue name = 2;
+	google.protobuf.StringValue name = 3 [(custom_options.v1.mask_mapping) = {this:"name" that: "name"}];
 
 	// Optional user-set description for identification purposes
-	google.protobuf.StringValue description = 3;
+	google.protobuf.StringValue description = 4 [(custom_options.v1.mask_mapping) = {this:"description" that: "description"}];
 
 	// The time this resource was created
 	// Output only.
-	google.protobuf.Timestamp created_time = 4 [json_name="created_time"];
+	google.protobuf.Timestamp created_time = 5 [json_name="created_time"];
 
 	// The time this resource was last updated.
 	// Output only.
-	google.protobuf.Timestamp updated_time = 5 [json_name="updated_time"];
+	google.protobuf.Timestamp updated_time = 6 [json_name="updated_time"];
 
 	// Whether the resource is disabled
-	google.protobuf.BoolValue disabled = 6;
+	google.protobuf.BoolValue disabled = 7;
 
 	// The scope the grants will apply to. If the role is at the global scope,
 	// this can be an org or project. If the role is at an org
 	// scope, this can be a project within the org. It is invalid for
 	// this to be anything other than the role's scope when the role's scope is
 	// a project.
-	google.protobuf.StringValue grant_scope_id = 7 [json_name="grant_scope_id"];
+	google.protobuf.StringValue grant_scope_id = 8 [json_name="grant_scope_id", (custom_options.v1.mask_mapping) = {this:"grant_scope_id" that: "GrantScopeId"}];
 	
 	// The version can be used in subsiquent write requests to ensure this resource
 	// has not changed and to fail the write if it has.
 	// Output only.
-	uint32 version = 8;
+	uint32 version = 9;
 
 	// The IDs (only) of principals that are assigned to this role.
 	// Output only.
-	repeated string principal_ids = 9 [json_name="principal_ids"];
+	repeated string principal_ids = 10 [json_name="principal_ids"];
 
 	// The principals that are assigned to this role.
 	// Output only.
-	repeated Principal principals = 10;
+	repeated Principal principals = 11;
 
 	// The grants that this role provides for its principals.
 	// Output only.
-	repeated string grants = 11;
+	repeated string grant_strings = 12 [json_name="grant_strings"];
 
-	// The canonical version of the grants in the grants field with the same index.
+	// The parsed grant information.
 	// Output only.
-	repeated string grants_canonical = 12;
-
-	// The JSON version of the grants in the grants field with the same index.
-	// Output only.
-	repeated string grants_json = 13;
+	repeated Grant grants = 13;
 }

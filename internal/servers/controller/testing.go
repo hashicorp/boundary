@@ -74,7 +74,7 @@ func (tc *TestController) buildClient() {
 		tc.t.Fatal(fmt.Errorf("error setting client address: %w", err))
 	}
 	if tc.b.DefaultOrgId != "" {
-		client.SetOrg(tc.b.DefaultOrgId)
+		client.SetScopeId(tc.b.DefaultOrgId)
 	}
 
 	tc.client = client

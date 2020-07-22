@@ -18,43 +18,36 @@ type deleteInfo struct {
 var deleteFuncs = map[string][]*deleteInfo{
 	"scopes": {
 		{
-			"Org",
-			"Project",
-			"projects",
+			"Scope",
+			"Scope",
+			"scopes",
 		},
+	},
+	"authtokens": {
 		{
-			"Org",
-			"authtokens.AuthToken",
+			"AuthToken",
+			"AuthToken",
 			"auth-tokens",
 		},
+	},
+	"groups": {
 		{
-			"Org",
-			"groups.Group",
+			"Group",
+			"Group",
 			"groups",
 		},
+	},
+	"users": {
 		{
-			"Org",
-			"roles.Role",
-			"roles",
-		},
-		{
-			"Org",
-			"users.User",
+			"User",
+			"User",
 			"users",
 		},
+	},
+	"roles": {
 		{
-			"Project",
-			"hosts.HostCatalog",
-			"host-catalogs",
-		},
-		{
-			"Project",
-			"groups.Group",
-			"groups",
-		},
-		{
-			"Project",
-			"roles.Role",
+			"Role",
+			"Role",
 			"roles",
 		},
 	},
@@ -90,34 +83,23 @@ package %s
 var deleteFuncTemplate = template.Must(template.New("").Parse(
 	`
 // Delete{{ .TargetName }} returns true iff the {{ .TargetType }} existed when the delete attempt was made. 
-func (s {{ .BaseType }}) Delete{{ .TargetName }}(ctx context.Context, r *{{ .TargetType }}) (bool, *api.Error, error) {
+func (s {{ .BaseType }}) Delete{{ .TargetName }}(ctx context.Context, id string) (bool, *api.Error, error) {
+	if id == "" {
+		return false, nil, fmt.Errorf("empty id provided to Delete{{ .TargetName }} request")
+	}
+
 	if s.Client == nil {
 		return false, nil, fmt.Errorf("nil client in Delete{{ .TargetName }} request")
 	}
-	if s.Id == "" {
-		{{ if (eq .BaseType "Org") }}
-		// Assume the client has been configured with org already and
-		// move on
-		{{ else if (eq .BaseType "Project") }}
-		// Assume the client has been configured with project already and move
-		// on
-		{{ else }}
-		return nil, nil, fmt.Errorf("missing {{ .BaseType }} ID in Delete{{ .TargetName }} request")
-		{{ end }}
-	} else {
+	
+	var opts []api.Option
+	if s.Scope.Id != "" {
 		// If it's explicitly set here, override anything that might be in the
 		// client
-		{{ if (eq .BaseType "Org") }}
-		ctx = context.WithValue(ctx, "org", s.Id)
-		{{ else if (eq .BaseType "Project") }}
-		ctx = context.WithValue(ctx, "project", s.Id)
-		{{ end }}
+		opts = append(opts, api.WithScopeId(s.Scope.Id))
 	}
-	if r.Id == "" {
-		return false, nil, fmt.Errorf("empty {{ .TargetType }} ID field in Delete{{ .TargetName }} request")
-	}
-
-	req, err := s.Client.NewRequest(ctx, "DELETE", fmt.Sprintf("%s/%s", "{{ .Path }}", r.Id), nil)
+	
+	req, err := s.Client.NewRequest(ctx, "DELETE", fmt.Sprintf("%s/%s", "{{ .Path }}", id), nil, opts...)
 	if err != nil {
 		return false, nil, fmt.Errorf("error creating Delete{{ .TargetName }} request: %w", err)
 	}
