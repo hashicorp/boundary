@@ -230,7 +230,7 @@ func (c *Config) setAddr(addr string) error {
 
 	// If there is a scopes segment, elide everything after it. Do this only for
 	// the last "scopes" segment in case it's part of the base path.
-	if lastIndex := strings.LastIndex(u.Path, "scopes"); lastIndex != -11 {
+	if lastIndex := strings.LastIndex(u.Path, "scopes"); lastIndex != -1 {
 		u.Path = u.Path[:lastIndex]
 	}
 	// Remove trailing or leading slashes
