@@ -4,9 +4,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"net/http"
 	"strings"
 
 	"github.com/hashicorp/go-hclog"
+	"github.com/hashicorp/watchtower/internal/gen/controller/api/resources/scopes"
 	"github.com/hashicorp/watchtower/internal/perms"
 	"github.com/hashicorp/watchtower/internal/servers/controller/common"
 	"github.com/hashicorp/watchtower/internal/types/action"
@@ -15,17 +17,43 @@ import (
 	"github.com/kr/pretty"
 )
 
+const (
+	HeaderAuthMethod    = "Authorization"
+	HttpOnlyCookieName  = "wt-http-token-cookie"
+	JsVisibleCookieName = "wt-js-token-cookie"
+)
+
+type TokenFormat int
+
+const (
+	AuthTokenTypeUnknown TokenFormat = iota
+	AuthTokenTypeBearer
+	AuthTokenTypeSplitCookie
+)
+
 type key int
 
 var verifierKey key
 
 // RequestInfo contains request parameters necessary for checking authn/authz
 type RequestInfo struct {
-	Path                 string
-	Method               string
-	PublicId             string
-	Token                string
-	DisableAuthzFailures bool
+	Path        string
+	Method      string
+	PublicId    string
+	Token       string
+	TokenFormat TokenFormat
+
+	// The following are useful for tests
+	DisableAuthzFailures  bool
+	DisableAuthEntirely   bool
+	scopeIdOverride       string
+	parentScopeIdOverride string
+}
+
+type VerifyResults struct {
+	Valid  bool
+	UserId string
+	Scope  *scopes.ScopeInfo
 }
 
 type verifier struct {
@@ -60,12 +88,27 @@ func NewVerifierContext(ctx context.Context,
 // may come from the URL and may come from the token) and whether or not to
 // proceed, e.g. whether the authn/authz check resulted in failure. If an error
 // occurs it's logged to the system log.
-func Verify(ctx context.Context) (userId string, scopeId string, valid bool) {
+func Verify(ctx context.Context) (ret VerifyResults) {
 	v, ok := ctx.Value(verifierKey).(*verifier)
 	if !ok {
 		// We don't have a logger yet and this should never happen in any
 		// context we won't catch in tests
 		panic("no verifier information found in context")
+	}
+	ret.Scope = new(scopes.ScopeInfo)
+	if v.requestInfo.DisableAuthEntirely {
+		ret.Scope.Id = v.requestInfo.scopeIdOverride
+		switch {
+		case ret.Scope.Id == "global":
+			ret.Scope.Type = "global"
+		case strings.HasPrefix(ret.Scope.Id, scope.Org.Prefix()):
+			ret.Scope.Type = scope.Org.String()
+		case strings.HasPrefix(ret.Scope.Id, scope.Project.Prefix()):
+			ret.Scope.Type = scope.Project.String()
+		}
+		ret.Scope.ParentScopeId = v.requestInfo.parentScopeIdOverride
+		ret.Valid = true
+		return
 	}
 	v.ctx = ctx
 	if err := v.parseAuthParams(); err != nil {
@@ -77,7 +120,9 @@ func Verify(ctx context.Context) (userId string, scopeId string, valid bool) {
 		return
 	}
 
-	authResults, userId, scopeId, err := v.performAuthCheck()
+	var authResults *perms.ACLResults
+	var err error
+	authResults, ret.UserId, ret.Scope, err = v.performAuthCheck()
 	if err != nil {
 		v.logger.Error("error performing authn/authz check", "error", err)
 		return
@@ -85,43 +130,55 @@ func Verify(ctx context.Context) (userId string, scopeId string, valid bool) {
 	if !authResults.Allowed {
 		// TODO: Decide whether to remove this
 		if v.requestInfo.DisableAuthzFailures {
-			v.logger.Info("failed authz info for request", "resource", pretty.Sprint(v.res), "user_id", userId, "action", v.act.String())
+			v.logger.Info("failed authz info for request", "resource", pretty.Sprint(v.res), "user_id", ret.UserId, "action", v.act.String())
 		} else {
 			return
 		}
 	}
 
-	valid = true
+	ret.Valid = true
 	return
 }
 
 func (v *verifier) parseAuthParams() error {
 	// Remove trailing and leading slashes
 	trimmedPath := strings.Trim(v.requestInfo.Path, "/")
-	splitPath := strings.Split(strings.TrimPrefix(trimmedPath, "v1"), "/")
+	// Remove `v1/`
+	splitPath := strings.Split(strings.TrimPrefix(trimmedPath, "v1/"), "/")
 	splitLen := len(splitPath)
-	if splitLen == 0 {
+
+	// It must be at least length 1 and the first segment must be "scopes"
+	switch {
+	case splitLen == 0:
 		return fmt.Errorf("parse auth params: invalid path")
+	case splitPath[0] != "scopes":
+		return fmt.Errorf("parse auth params: invalid first segment %q", splitPath[0])
 	}
 
-	var act action.Type
-	var typStr string
-	scp := scope.Global
-	res := &perms.Resource{
-		ScopeId: scope.Global.String(),
+	for i := 1; i < splitLen; i++ {
+		if splitPath[i] == "" {
+			return fmt.Errorf("parse auth params: empty segment found")
+		}
+	}
+
+	v.act = action.Unknown
+	v.res = &perms.Resource{
+		// Start out with scope, and replace when we walk backwards if it's
+		// actually something else
+		Type: resource.Scope,
 	}
 
 	// Handle non-custom types. We'll deal with custom types, including list,
 	// after parsing the path.
 	switch v.requestInfo.Method {
 	case "GET":
-		act = action.Read
+		v.act = action.Read
 	case "POST":
-		act = action.Create
+		v.act = action.Create
 	case "PATCH":
-		act = action.Update
+		v.act = action.Update
 	case "DELETE":
-		act = action.Delete
+		v.act = action.Delete
 	default:
 		return fmt.Errorf("parse auth params: unknown method %q", v.requestInfo.Method)
 	}
@@ -131,68 +188,99 @@ func (v *verifier) parseAuthParams() error {
 	switch len(colonSplit) {
 	case 1:
 		// No custom action specified
+
 	case 2:
+		// Parse and validate the action, then elide it
 		actStr := colonSplit[len(colonSplit)-1]
-		act = action.Map[actStr]
-		if act == action.Unknown || act == action.All {
+		v.act = action.Map[actStr]
+		if v.act == action.Unknown || v.act == action.All {
 			return fmt.Errorf("parse auth params: unknown action %q", actStr)
 		}
 		// Keep going with the logic without the custom action
 		splitPath[splitLen-1] = colonSplit[0]
+
 	default:
 		return fmt.Errorf("parse auth params: unexpected number of colons in last segment %q", colonSplit[len(colonSplit)-1])
 	}
 
-	// Walk backwards. As we walk backwards we look for scopes and figure out if
-	// we're operating on a resource or a collection. We also populate the pin.
-	// The rules for the pin are as follows:
+	// Get scope information and handle it in a special case; that is, for
+	// operating on scopes, we use the token scope, not the path scope
+	switch splitLen {
+	case 1:
+		// We've already validated that this is "scopes"
+		if v.act == action.Read {
+			v.act = action.List
+		}
+		// We're operating on the scopes collection. Set the scope ID to
+		// "token", which will be a signal to read it from the token.
+		v.res.ScopeId = "token"
+		// TODO: check for an override
+		return nil
+
+	case 2:
+		// The next segment should be the scope ID, and we still need to look up
+		// the actual request scopefrom the token like in the case above.
+		v.res.ScopeId = "token"
+		// TODO: check for an override
+		v.res.Id = splitPath[1]
+		return nil
+
+	case 3:
+		// If a custom action was being performed within a scope, it will have
+		// been elided above. If the last path segment is now empty, address
+		// this scenario. In this case the action took place _in_ the scope so
+		// it should be bound accordingly. (This is for actions like
+		// /scopes/o_abc/:deauthenticate where the action is _in_ the scope, not
+		// on the scope.)
+		if splitPath[2] == "" {
+			v.res.ScopeId = splitPath[1]
+			v.res.Id = splitPath[1]
+			return nil
+		}
+
+		fallthrough
+
+	default:
+		// In all other cases the scope ID is the next segment
+		v.res.ScopeId = splitPath[1]
+	}
+
+	// Walk backwards. As we walk backwards we look for a pin and figure out if
+	// we're operating on a resource or a collection. The rules for the pin are
+	// as follows:
 	//
 	// * If the last segment is a collection, the pin is the immediately
-	// preceding ID
+	// preceding ID. This does not include scopes since those are permission
+	// boundaries.
 	//
 	// * If the last segment is an ID, the pin is the immediately preceding ID
 	// not including the last segment
 	//
-	// * If at the end of the logic the pin is the id of a scope ("global",
-	// "o_...", "p_...") then there is no pin. The scopes are already enclosing
-	// so a pin is redundant.
+	// * If at the end of the logic the pin is the id of a scope then there is
+	// no pin. The scopes are already enclosing so a pin is redundant.
 	nextIdIsPin := true
-	for i := splitLen - 1; i >= 0; i-- {
+	// Use an empty string so we can detect if we found anything in this loop.
+	var foundId string
+	var typStr string
+	// We stop at [2] because we've already dealt with the first two segments
+	// (scopes/<scope_id> above.
+	for i := splitLen - 1; i >= 2; i-- {
 		segment := splitPath[i]
+
+		if segment == "" {
+			return fmt.Errorf("parse auth parameters: unexpected empty segment")
+		}
 
 		// Collections don't contain underscores; every resource ID does.
 		segmentIsCollection := !strings.Contains(segment, "_")
 
+		// If we see an ID, ensure that it's not the right-most ID; if not, it's
+		// the pin
 		if !segmentIsCollection && i != splitLen-1 && nextIdIsPin {
-			res.Pin = segment
-			nextIdIsPin = false
-		}
-
-		// Update the scope. Set it to org only if it's at global (that way we
-		// don't override project with org). We have to check if it's one less
-		// than the length of the split because operating on the id of a scope
-		// is actually in the enclosing scope (since you're in the parent scope
-		// operating on a child scope).
-		switch segment {
-		case "projects":
-			if i < splitLen-2 {
-				scp = scope.Project
-				res.ScopeId = splitPath[i+1]
-			}
-		case "orgs":
-			if scp == scope.Global {
-				if i < splitLen-2 {
-					scp = scope.Org
-					res.ScopeId = splitPath[i+1]
-				}
-			}
-		}
-
-		if segment == "" {
-			// This could be the case if we have an action like
-			// /orgs/o_1234/projects/p_1234/:set-defaults to act on the project
-			// itself but within its own scope
-			continue
+			v.res.Pin = segment
+			// By definition this is the last thing we'd be looking for as
+			// scopes were found above, so we can now break out
+			break
 		}
 
 		if typStr == "" {
@@ -200,11 +288,9 @@ func (v *verifier) parseAuthParams() error {
 			// we've identified the type we have either already identified the
 			// right-most resource ID or we're operating on a collection, so
 			// this prevents us from finding a different ID earlier in the path.
-			//
-			// We continue on with the enclosing loop anyways though to ensure
-			// we find the right scope.
-			if res.Id == "" && !segmentIsCollection {
-				res.Id = segment
+			// We still work backwards to identify a pin.
+			if foundId == "" && !segmentIsCollection {
+				foundId = segment
 			} else {
 				// Every collection is the plural of the resource type so drop
 				// the last 's'
@@ -216,40 +302,42 @@ func (v *verifier) parseAuthParams() error {
 		}
 	}
 
+	if foundId != "" {
+		v.res.Id = foundId
+	}
+
 	if typStr != "" {
-		res.Type = resource.Map[typStr]
-		if res.Type == resource.Unknown {
+		v.res.Type = resource.Map[typStr]
+		if v.res.Type == resource.Unknown {
 			return fmt.Errorf("parse auth params: unknown resource type %q", typStr)
 		}
-	} else if res.Id == "" {
-		return errors.New("parse auth params: id and type both not found")
+	} else {
+		// If we found no other type information, we walked backwards all the
+		// way to the scope boundary, so the type is scope
+		v.res.Type = resource.Scope
 	}
 
 	// If we're operating on a collection (that is, the ID is blank) and it's a
 	// GET, it's actually a list
-	if res.Id == "" && act == action.Read {
-		act = action.List
+	if v.res.Id == "" && v.act == action.Read {
+		v.act = action.List
 	}
 
 	// If the pin ended up being a scope, nil it out
-	if res.Pin != "" {
-		if res.Pin == "global" ||
-			strings.HasPrefix(res.Pin, "o_") ||
-			strings.HasPrefix(res.Pin, "p_") {
-			res.Pin = ""
-		}
+	if v.res.Pin != "" && v.res.Pin == v.res.ScopeId {
+		v.res.Pin = ""
 	}
 
-	v.res = res
-	v.act = act
 	return nil
 }
 
-func (v verifier) performAuthCheck() (aclResults *perms.ACLResults, userId, scopeId string, retErr error) {
+func (v verifier) performAuthCheck() (aclResults *perms.ACLResults, userId string, scopeInfo *scopes.ScopeInfo, retErr error) {
 	// Ensure we return an error by default if we forget to set this somewhere
 	retErr = errors.New("unknown")
+	// Make the linter happy
+	_ = retErr
+	scopeInfo = new(scopes.ScopeInfo)
 	userId = "u_anon"
-	scopeId = v.res.ScopeId
 
 	// Validate the token and fetch the corresponding user ID
 	tokenRepo, err := v.authTokenRepoFn()
@@ -265,10 +353,17 @@ func (v verifier) performAuthCheck() (aclResults *perms.ACLResults, userId, scop
 	}
 	if at != nil {
 		userId = at.GetIamUserId()
+		if v.res.ScopeId == "token" {
+			v.res.ScopeId = at.ScopeId
+		}
 	}
 
-	var parsedGrants []perms.Grant
-	var grantPairs []perms.GrantPair
+	// If no token was found, put at global scope. In the future we can allow an
+	// override as part of the request parameter. Then check that we actually
+	// have a valid scope.
+	if v.res.ScopeId == "token" {
+		v.res.ScopeId = "global"
+	}
 
 	// Fetch and parse grants for this user ID (which may include grants for
 	// u_anon and u_auth)
@@ -277,6 +372,29 @@ func (v verifier) performAuthCheck() (aclResults *perms.ACLResults, userId, scop
 		retErr = fmt.Errorf("perform auth check: failed to get iam repo: %w", err)
 		return
 	}
+
+	// Look up scope details to return
+	// TODO: maybe we can combine this info into the view used in GrantsForUser below
+	scp, err := iamRepo.LookupScope(v.ctx, v.res.ScopeId)
+	if err != nil {
+		retErr = fmt.Errorf("perform auth check: failed to lookup scope: %w", err)
+		return
+	}
+	if scp == nil {
+		retErr = fmt.Errorf("perform auth check: non-existent scope %q", v.res.ScopeId)
+		return
+	}
+	scopeInfo = &scopes.ScopeInfo{
+		Id:            scp.GetPublicId(),
+		Type:          scp.GetType(),
+		Name:          scp.GetName(),
+		Description:   scp.GetDescription(),
+		ParentScopeId: scp.GetParentId(),
+	}
+
+	var parsedGrants []perms.Grant
+	var grantPairs []perms.GrantPair
+
 	grantPairs, err = iamRepo.GrantsForUser(v.ctx, userId)
 	if err != nil {
 		retErr = fmt.Errorf("perform auth check: failed to query for user grants: %w", err)
@@ -292,13 +410,65 @@ func (v verifier) performAuthCheck() (aclResults *perms.ACLResults, userId, scop
 		parsedGrants = append(parsedGrants, parsed)
 	}
 
-	// TODO: When we migrate to scopes, the resource scope ID for this check and
-	// in the return value needs to be adjusted to the token scope ID for
-	// actions within the scopes collection
 	acl := perms.NewACL(parsedGrants...)
 	allowed := acl.Allowed(*v.res, v.act)
 
 	aclResults = &allowed
 	retErr = nil
 	return
+}
+
+// getTokenFromRequest pulls the token from either the Authorization header or
+// split cookies and parses it. If it cannot be parsed successfully, the issue
+// is logged and we return blank, so logic will continue as the anonymous user.
+// The public ID and token are returned along with the token format.
+func GetTokenFromRequest(logger hclog.Logger, req *http.Request) (string, string, TokenFormat) {
+	// First, get the token, either from the authorization header or from split
+	// cookies
+	var receivedTokenType TokenFormat
+	var fullToken string
+	if authHeader := req.Header.Get("Authorization"); authHeader != "" {
+		headerSplit := strings.SplitN(strings.TrimSpace(authHeader), " ", 2)
+		if len(headerSplit) == 2 && strings.EqualFold(strings.TrimSpace(headerSplit[0]), "bearer") {
+			receivedTokenType = AuthTokenTypeBearer
+			fullToken = strings.TrimSpace(headerSplit[1])
+		}
+	}
+	if receivedTokenType != AuthTokenTypeBearer {
+		var httpCookiePayload string
+		var jsCookiePayload string
+		if hc, err := req.Cookie(HttpOnlyCookieName); err == nil {
+			httpCookiePayload = hc.Value
+		}
+		if jc, err := req.Cookie(JsVisibleCookieName); err == nil {
+			jsCookiePayload = jc.Value
+		}
+		if httpCookiePayload != "" && jsCookiePayload != "" {
+			receivedTokenType = AuthTokenTypeSplitCookie
+			fullToken = jsCookiePayload + httpCookiePayload
+		}
+	}
+
+	if receivedTokenType == AuthTokenTypeUnknown || fullToken == "" {
+		// We didn't find auth info or a client screwed up and put in a blank
+		// header instead of nothing at all, so return blank which will indicate
+		// the anonymouse user
+		return "", "", AuthTokenTypeUnknown
+	}
+
+	splitFullToken := strings.Split(fullToken, "_")
+	if len(splitFullToken) != 3 {
+		logger.Trace("get token from request: unexpected number of segments in token", "expected", 3, "found", len(splitFullToken))
+		return "", "", AuthTokenTypeUnknown
+	}
+
+	token := splitFullToken[2]
+	publicId := strings.Join(splitFullToken[0:2], "_")
+
+	if receivedTokenType == AuthTokenTypeUnknown || token == "" || publicId == "" {
+		logger.Trace("get token from request: after parsing, could not find valid token")
+		return "", "", AuthTokenTypeUnknown
+	}
+
+	return publicId, token, receivedTokenType
 }

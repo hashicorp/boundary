@@ -7,7 +7,9 @@ import (
 	"testing"
 
 	"github.com/golang/protobuf/ptypes"
+	"github.com/hashicorp/watchtower/internal/auth"
 	"github.com/hashicorp/watchtower/internal/db"
+	"github.com/hashicorp/watchtower/internal/gen/controller/api/resources/scopes"
 	pb "github.com/hashicorp/watchtower/internal/gen/controller/api/resources/users"
 	pbs "github.com/hashicorp/watchtower/internal/gen/controller/api/services"
 	"github.com/hashicorp/watchtower/internal/iam"
@@ -42,12 +44,12 @@ func TestGet(t *testing.T) {
 	require := require.New(t)
 	u, repo := createDefaultUserAndRepo(t)
 	toMerge := &pbs.GetUserRequest{
-		OrgId: u.GetScopeId(),
-		Id:    u.GetPublicId(),
+		Id: u.GetPublicId(),
 	}
 
 	wantU := &pb.User{
 		Id:          u.GetPublicId(),
+		Scope:       &scopes.ScopeInfo{Id: u.ScopeId, Type: scope.Org.String()},
 		Name:        &wrapperspb.StringValue{Value: u.GetName()},
 		Description: &wrapperspb.StringValue{Value: u.GetDescription()},
 		CreatedTime: u.CreateTime.GetTimestamp(),
@@ -93,7 +95,7 @@ func TestGet(t *testing.T) {
 			s, err := users.NewService(repo)
 			require.NoError(err, "Couldn't create new user service.")
 
-			got, gErr := s.GetUser(context.Background(), req)
+			got, gErr := s.GetUser(auth.DisabledAuthTestContext(auth.WithTestScopeId(u.GetScopeId())), req)
 			assert.Equal(tc.errCode, status.Code(gErr), "GetUser(%+v) got error %v, wanted %v", req, gErr, tc.errCode)
 			assert.True(proto.Equal(got, tc.res), "GetUser(%q) got response %q, wanted %q", req, got, tc.res)
 		})
@@ -122,6 +124,7 @@ func TestList(t *testing.T) {
 		require.NoError(err)
 		wantUsers = append(wantUsers, &pb.User{
 			Id:          u.GetPublicId(),
+			Scope:       &scopes.ScopeInfo{Id: u.GetScopeId(), Type: scope.Org.String()},
 			CreatedTime: u.GetCreateTime().GetTimestamp(),
 			UpdatedTime: u.GetUpdateTime().GetTimestamp(),
 		})
@@ -129,32 +132,22 @@ func TestList(t *testing.T) {
 
 	cases := []struct {
 		name    string
+		scopeId string
 		req     *pbs.ListUsersRequest
 		res     *pbs.ListUsersResponse
 		errCode codes.Code
 	}{
 		{
 			name:    "List Many Users",
-			req:     &pbs.ListUsersRequest{OrgId: oWithUsers.GetPublicId()},
+			scopeId: oWithUsers.GetPublicId(),
+			req:     &pbs.ListUsersRequest{},
 			res:     &pbs.ListUsersResponse{Items: wantUsers},
 			errCode: codes.OK,
 		},
 		{
 			name:    "List No Users",
-			req:     &pbs.ListUsersRequest{OrgId: oNoUsers.GetPublicId()},
-			res:     &pbs.ListUsersResponse{},
-			errCode: codes.OK,
-		},
-		{
-			name:    "Invalid Org Id",
-			req:     &pbs.ListUsersRequest{OrgId: iam.UserPrefix + "_this is invalid"},
-			res:     nil,
-			errCode: codes.InvalidArgument,
-		},
-		// TODO: When an org doesn't exist, we should return a 404 instead of an empty list.
-		{
-			name:    "Unfound Org",
-			req:     &pbs.ListUsersRequest{OrgId: scope.Org.Prefix() + "_DoesntExis"},
+			scopeId: oNoUsers.GetPublicId(),
+			req:     &pbs.ListUsersRequest{},
 			res:     &pbs.ListUsersResponse{},
 			errCode: codes.OK,
 		},
@@ -164,7 +157,7 @@ func TestList(t *testing.T) {
 			s, err := users.NewService(repoFn)
 			require.NoError(err, "Couldn't create new user service.")
 
-			got, gErr := s.ListUsers(context.Background(), tc.req)
+			got, gErr := s.ListUsers(auth.DisabledAuthTestContext(auth.WithTestScopeId(tc.scopeId)), tc.req)
 			assert.Equal(tc.errCode, status.Code(gErr), "ListUsers(%+v) got error %v, wanted %v", tc.req, gErr, tc.errCode)
 			assert.True(proto.Equal(got, tc.res), "ListUsers(%q) got response %q, wanted %q", tc.req, got, tc.res)
 		})
@@ -187,8 +180,7 @@ func TestDelete(t *testing.T) {
 		{
 			name: "Delete an Existing User",
 			req: &pbs.DeleteUserRequest{
-				OrgId: u.GetScopeId(),
-				Id:    u.GetPublicId(),
+				Id: u.GetPublicId(),
 			},
 			res: &pbs.DeleteUserResponse{
 				Existed: true,
@@ -198,39 +190,17 @@ func TestDelete(t *testing.T) {
 		{
 			name: "Delete bad user id",
 			req: &pbs.DeleteUserRequest{
-				OrgId: u.GetScopeId(),
-				Id:    iam.UserPrefix + "_doesntexis",
+				Id: iam.UserPrefix + "_doesntexis",
 			},
 			res: &pbs.DeleteUserResponse{
 				Existed: false,
 			},
 			errCode: codes.OK,
-		},
-		{
-			name: "Delete bad org id",
-			req: &pbs.DeleteUserRequest{
-				OrgId: "o_doesntexis",
-				Id:    u.GetPublicId(),
-			},
-			res: &pbs.DeleteUserResponse{
-				Existed: false,
-			},
-			errCode: codes.OK,
-		},
-		{
-			name: "Bad org formatting",
-			req: &pbs.DeleteUserRequest{
-				OrgId: "bad_format",
-				Id:    u.GetPublicId(),
-			},
-			res:     nil,
-			errCode: codes.InvalidArgument,
 		},
 		{
 			name: "Bad User Id formatting",
 			req: &pbs.DeleteUserRequest{
-				OrgId: u.GetScopeId(),
-				Id:    "bad_format",
+				Id: "bad_format",
 			},
 			res:     nil,
 			errCode: codes.InvalidArgument,
@@ -239,7 +209,7 @@ func TestDelete(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			assert := assert.New(t)
-			got, gErr := s.DeleteUser(context.Background(), tc.req)
+			got, gErr := s.DeleteUser(auth.DisabledAuthTestContext(auth.WithTestScopeId(u.GetScopeId())), tc.req)
 			assert.Equal(tc.errCode, status.Code(gErr), "DeleteUser(%+v) got error %v, wanted %v", tc.req, gErr, tc.errCode)
 			assert.EqualValuesf(tc.res, got, "DeleteUser(%q) got response %q, wanted %q", tc.req, got, tc.res)
 		})
@@ -254,13 +224,13 @@ func TestDelete_twice(t *testing.T) {
 	s, err := users.NewService(repo)
 	require.NoError(err, "Error when getting new user service")
 	req := &pbs.DeleteUserRequest{
-		OrgId: u.GetScopeId(),
-		Id:    u.GetPublicId(),
+		Id: u.GetPublicId(),
 	}
-	got, gErr := s.DeleteUser(context.Background(), req)
+	ctx := auth.DisabledAuthTestContext(auth.WithTestScopeId(u.GetScopeId()))
+	got, gErr := s.DeleteUser(ctx, req)
 	assert.NoError(gErr, "First attempt")
 	assert.True(got.GetExisted(), "Expected existed to be true for the first delete.")
-	got, gErr = s.DeleteUser(context.Background(), req)
+	got, gErr = s.DeleteUser(ctx, req)
 	assert.NoError(gErr, "Second attempt")
 	assert.False(got.GetExisted(), "Expected existed to be false for the second delete.")
 }
@@ -270,9 +240,7 @@ func TestCreate(t *testing.T) {
 	defaultUser, repo := createDefaultUserAndRepo(t)
 	defaultCreated, err := ptypes.Timestamp(defaultUser.GetCreateTime().GetTimestamp())
 	require.NoError(err, "Error converting proto to timestamp.")
-	toMerge := &pbs.CreateUserRequest{
-		OrgId: defaultUser.GetScopeId(),
-	}
+	toMerge := &pbs.CreateUserRequest{}
 
 	cases := []struct {
 		name    string
@@ -287,8 +255,9 @@ func TestCreate(t *testing.T) {
 				Description: &wrapperspb.StringValue{Value: "desc"},
 			}},
 			res: &pbs.CreateUserResponse{
-				Uri: fmt.Sprintf("orgs/%s/users/u_", defaultUser.GetScopeId()),
+				Uri: fmt.Sprintf("scopes/%s/users/u_", defaultUser.GetScopeId()),
 				Item: &pb.User{
+					Scope:       &scopes.ScopeInfo{Id: defaultUser.GetScopeId(), Type: scope.Org.String()},
 					Name:        &wrapperspb.StringValue{Value: "name"},
 					Description: &wrapperspb.StringValue{Value: "desc"},
 				},
@@ -329,7 +298,7 @@ func TestCreate(t *testing.T) {
 			s, err := users.NewService(repo)
 			require.NoError(err, "Error when getting new user service.")
 
-			got, gErr := s.CreateUser(context.Background(), req)
+			got, gErr := s.CreateUser(auth.DisabledAuthTestContext(auth.WithTestScopeId(defaultUser.GetScopeId())), req)
 			assert.Equal(tc.errCode, status.Code(gErr), "CreateUser(%+v) got error %v, wanted %v", req, gErr, tc.errCode)
 			if got != nil {
 				assert.True(strings.HasPrefix(got.GetUri(), tc.res.Uri))
@@ -368,8 +337,7 @@ func TestUpdate(t *testing.T) {
 	created, err := ptypes.Timestamp(u.GetCreateTime().GetTimestamp())
 	require.NoError(err, "Error converting proto to timestamp")
 	toMerge := &pbs.UpdateUserRequest{
-		OrgId: u.GetScopeId(),
-		Id:    u.GetPublicId(),
+		Id: u.GetPublicId(),
 	}
 
 	cases := []struct {
@@ -392,6 +360,7 @@ func TestUpdate(t *testing.T) {
 			res: &pbs.UpdateUserResponse{
 				Item: &pb.User{
 					Id:          u.GetPublicId(),
+					Scope:       &scopes.ScopeInfo{Id: u.GetScopeId(), Type: scope.Org.String()},
 					Name:        &wrapperspb.StringValue{Value: "new"},
 					Description: &wrapperspb.StringValue{Value: "desc"},
 					CreatedTime: u.GetCreateTime().GetTimestamp(),
@@ -413,6 +382,7 @@ func TestUpdate(t *testing.T) {
 			res: &pbs.UpdateUserResponse{
 				Item: &pb.User{
 					Id:          u.GetPublicId(),
+					Scope:       &scopes.ScopeInfo{Id: u.GetScopeId(), Type: scope.Org.String()},
 					Name:        &wrapperspb.StringValue{Value: "new"},
 					Description: &wrapperspb.StringValue{Value: "desc"},
 					CreatedTime: u.GetCreateTime().GetTimestamp(),
@@ -465,6 +435,7 @@ func TestUpdate(t *testing.T) {
 			res: &pbs.UpdateUserResponse{
 				Item: &pb.User{
 					Id:          u.GetPublicId(),
+					Scope:       &scopes.ScopeInfo{Id: u.GetScopeId(), Type: scope.Org.String()},
 					Description: &wrapperspb.StringValue{Value: "default"},
 					CreatedTime: u.GetCreateTime().GetTimestamp(),
 				},
@@ -485,6 +456,7 @@ func TestUpdate(t *testing.T) {
 			res: &pbs.UpdateUserResponse{
 				Item: &pb.User{
 					Id:          u.GetPublicId(),
+					Scope:       &scopes.ScopeInfo{Id: u.GetScopeId(), Type: scope.Org.String()},
 					Name:        &wrapperspb.StringValue{Value: "updated"},
 					Description: &wrapperspb.StringValue{Value: "default"},
 					CreatedTime: u.GetCreateTime().GetTimestamp(),
@@ -506,6 +478,7 @@ func TestUpdate(t *testing.T) {
 			res: &pbs.UpdateUserResponse{
 				Item: &pb.User{
 					Id:          u.GetPublicId(),
+					Scope:       &scopes.ScopeInfo{Id: u.GetScopeId(), Type: scope.Org.String()},
 					Name:        &wrapperspb.StringValue{Value: "default"},
 					Description: &wrapperspb.StringValue{Value: "notignored"},
 					CreatedTime: u.GetCreateTime().GetTimestamp(),
@@ -578,7 +551,7 @@ func TestUpdate(t *testing.T) {
 			req := proto.Clone(toMerge).(*pbs.UpdateUserRequest)
 			proto.Merge(req, tc.req)
 
-			got, gErr := tested.UpdateUser(context.Background(), req)
+			got, gErr := tested.UpdateUser(auth.DisabledAuthTestContext(auth.WithTestScopeId(u.GetScopeId())), req)
 			assert.Equal(tc.errCode, status.Code(gErr), "UpdateUser(%+v) got error %v, wanted %v", req, gErr, tc.errCode)
 
 			if got != nil {

@@ -38,8 +38,7 @@ const EnvWatchtowerMaxRetries = "WATCHTOWER_MAX_RETRIES"
 const EnvWatchtowerToken = "WATCHTOWER_TOKEN"
 const EnvWatchtowerRateLimit = "WATCHTOWER_RATE_LIMIT"
 const EnvWatchtowerSRVLookup = "WATCHTOWER_SRV_LOOKUP"
-const EnvWatchtowerOrg = "WATCHTOWER_ORG"
-const EnvWatchtowerProject = "WATCHTOWER_PROJECT"
+const EnvWatchtowerScopeId = "WATCHTOWER_SCOPE_ID"
 
 // Config is used to configure the creation of the client
 type Config struct {
@@ -99,11 +98,8 @@ type Config struct {
 	// SRVLookup enables the client to lookup the host through DNS SRV lookup
 	SRVLookup bool
 
-	// Org is the org to use if not overridden per-call
-	Org string
-
-	// Project is the project to use if not overridden per-call
-	Project string
+	// ScopeId is the ID of the scope to use if not overridden per-call
+	ScopeId string
 }
 
 // TLSConfig contains the parameters needed to configure TLS on the HTTP client
@@ -218,7 +214,7 @@ func (c *Config) ConfigureTLS() error {
 	return nil
 }
 
-// setAddr parses a given string and looks for org and project info, setting the
+// setAddr parses a given string and looks for scope info, setting the
 // actual address to the base. Note that if a very malformed URL is passed in,
 // this may not return what one expects. For now this is on purpose to avoid
 // requiring error handling.
@@ -232,35 +228,23 @@ func (c *Config) setAddr(addr string) error {
 	}
 	c.Addr = fmt.Sprintf("%s://%s", u.Scheme, u.Host)
 
-	path := strings.TrimPrefix(u.Path, "/v1")
-	path = strings.TrimPrefix(path, "/")
-	if path == "" {
-		return nil
+	// If there is a scopes segment, elide everything after it. Do this only for
+	// the last "scopes" segment in case it's part of the base path.
+	if lastIndex := strings.LastIndex(u.Path, "scopes"); lastIndex != -11 {
+		u.Path = u.Path[:lastIndex]
 	}
+	// Remove trailing or leading slashes
+	path := strings.Trim(u.Path, "/")
+	// Remove v1 in front or back (e.g. they could have
+	// https://watchtower.example.com/myinstall/v1 which would put it at the
+	// back)
+	path = strings.Trim(path, "v1")
+	// Finally check again to make sure any slashes are removed before we join
+	// below
+	path = strings.Trim(path, "/")
 
-	split := strings.Split(path, "/")
-	switch len(split) {
-	case 0:
-	case 2:
-		switch split[0] {
-		case "orgs":
-			c.Org = split[1]
-		case "projects":
-			c.Project = split[1]
-		default:
-			return fmt.Errorf("expected orgs or projects segment first in address, found %q", split[0])
-		}
-	case 4:
-		if split[0] != "orgs" {
-			return fmt.Errorf("expected orgs segment in address, found %q", split[0])
-		}
-		c.Org = split[1]
-		if split[2] != "projects" {
-			return fmt.Errorf("expected projects segment in address, found %q", split[2])
-		}
-		c.Project = split[3]
-	default:
-		return fmt.Errorf("unexpected number of segments in address")
+	if path != "" {
+		c.Addr = fmt.Sprintf("%s/%s", c.Addr, path)
 	}
 
 	return nil
@@ -285,12 +269,8 @@ func (c *Config) ReadEnvironment() error {
 		c.Token = v
 	}
 
-	if v := os.Getenv(EnvWatchtowerOrg); v != "" {
-		c.Org = v
-	}
-
-	if v := os.Getenv(EnvWatchtowerProject); v != "" {
-		c.Project = v
+	if v := os.Getenv(EnvWatchtowerScopeId); v != "" {
+		c.ScopeId = v
 	}
 
 	if v := os.Getenv(EnvWatchtowerMaxRetries); v != "" {
@@ -450,36 +430,21 @@ func (c *Client) SetAddr(addr string) error {
 	return c.config.setAddr(addr)
 }
 
-// Org fetches the org the client will use by default
-func (c *Client) Org() string {
+// ScopeId fetches the scope ID the client will use by default
+func (c *Client) ScopeId() string {
 	c.modifyLock.Lock()
 	defer c.modifyLock.Unlock()
 
-	return c.config.Org
+	return c.config.ScopeId
 }
 
-// SetOrg sets the org the client will use by default
-func (c *Client) SetOrg(org string) {
+// Sets the scope ID to use when making calls. This will apply to all calls with
+// this client unless overridden per request via WithScopeId.
+func (c *Client) SetScopeId(scopeId string) {
 	c.modifyLock.Lock()
 	defer c.modifyLock.Unlock()
 
-	c.config.Org = org
-}
-
-// Project fetches the project the client will use by default
-func (c *Client) Project() string {
-	c.modifyLock.Lock()
-	defer c.modifyLock.Unlock()
-
-	return c.config.Project
-}
-
-// SetProject sets the project the client will use by default
-func (c *Client) SetProject(project string) {
-	c.modifyLock.Lock()
-	defer c.modifyLock.Unlock()
-
-	c.config.Project = project
+	c.config.ScopeId = scopeId
 }
 
 // SetTLSConfig sets the TLS parameters to use and calls ConfigureTLS
@@ -590,8 +555,7 @@ func (c *Client) Clone() *Client {
 		CheckRetry: config.CheckRetry,
 		Limiter:    config.Limiter,
 		SRVLookup:  config.SRVLookup,
-		Org:        config.Org,
-		Project:    config.Project,
+		ScopeId:    config.ScopeId,
 	}
 	if config.TLSConfig != nil {
 		newConfig.TLSConfig = new(TLSConfig)
@@ -633,7 +597,7 @@ func getBufferForJSON(val interface{}) (*bytes.Buffer, error) {
 // NewRequest creates a new raw request object to query the Watchtower controller
 // configured for this client. This is an advanced method and generally
 // doesn't need to be called externally.
-func (c *Client) NewRequest(ctx context.Context, method, requestPath string, body interface{}) (*retryablehttp.Request, error) {
+func (c *Client) NewRequest(ctx context.Context, method, requestPath string, body interface{}, opt ...Option) (*retryablehttp.Request, error) {
 	if c == nil {
 		return nil, fmt.Errorf("client is nil")
 	}
@@ -659,25 +623,12 @@ func (c *Client) NewRequest(ctx context.Context, method, requestPath string, bod
 
 	c.modifyLock.RLock()
 	addr := c.config.Addr
-	org := c.config.Org
-	project := c.config.Project
+	scopeId := c.config.ScopeId
 	srvLookup := c.config.SRVLookup
 	token := c.config.Token
 	httpClient := c.config.HttpClient
 	headers := copyHeaders(c.config.Headers)
 	c.modifyLock.RUnlock()
-
-	var ok bool
-	if orgRaw := ctx.Value("org"); orgRaw != nil {
-		if org, ok = orgRaw.(string); !ok {
-			return nil, fmt.Errorf("could not convert %v into string org value", orgRaw)
-		}
-	}
-	if projectRaw := ctx.Value("project"); projectRaw != nil {
-		if project, ok = projectRaw.(string); !ok {
-			return nil, fmt.Errorf("could not convert %v into string project value", projectRaw)
-		}
-	}
 
 	u, err := url.Parse(addr)
 	if err != nil {
@@ -717,20 +668,27 @@ func (c *Client) NewRequest(ctx context.Context, method, requestPath string, bod
 		}
 	}
 
-	var orgProjPath string
-	if org != "" {
-		orgProjPath = path.Join(orgProjPath, "orgs", org)
-	}
-	if project != "" {
-		orgProjPath = path.Join(orgProjPath, "projects", project)
+	opts := getOpts(opt...)
+	if opts.withScopeId != "" {
+		scopeId = opts.withScopeId
 	}
 
-	p := path.Join(u.Path, "/v1", orgProjPath)
-	if strings.HasPrefix(requestPath, ":") {
-		p = p + requestPath
-	} else {
-		p = path.Join(p, requestPath)
+	scopedPath := strings.TrimPrefix(requestPath, "/")
+	switch requestPath {
+	case "scopes":
+		// This is a special case for creating or listing scopes; don't do
+		// anything
+
+	default:
+		// If their path already has 'scopes/' in it, use the given request path
+		// instead of building it from the client's scope information
+		if !strings.HasPrefix(scopedPath, "scopes/") {
+			if scopeId != "" {
+				scopedPath = path.Join("scopes", scopeId, scopedPath)
+			}
+		}
 	}
+	scopedPath = path.Join(u.Path, "/v1", scopedPath)
 
 	req := &http.Request{
 		Method: method,
@@ -738,7 +696,7 @@ func (c *Client) NewRequest(ctx context.Context, method, requestPath string, bod
 			User:   u.User,
 			Scheme: u.Scheme,
 			Host:   host,
-			Path:   p,
+			Path:   scopedPath,
 		},
 		Host: u.Host,
 	}

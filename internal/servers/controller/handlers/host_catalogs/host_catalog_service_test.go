@@ -8,12 +8,15 @@ import (
 
 	"github.com/golang/protobuf/ptypes"
 	"github.com/golang/protobuf/ptypes/wrappers"
+	"github.com/hashicorp/watchtower/internal/auth"
 	"github.com/hashicorp/watchtower/internal/db"
 	pb "github.com/hashicorp/watchtower/internal/gen/controller/api/resources/hosts"
+	"github.com/hashicorp/watchtower/internal/gen/controller/api/resources/scopes"
 	pbs "github.com/hashicorp/watchtower/internal/gen/controller/api/services"
 	"github.com/hashicorp/watchtower/internal/host/static"
 	"github.com/hashicorp/watchtower/internal/iam"
 	"github.com/hashicorp/watchtower/internal/servers/controller/handlers/host_catalogs"
+	"github.com/hashicorp/watchtower/internal/types/scope"
 	"google.golang.org/genproto/protobuf/field_mask"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -49,13 +52,12 @@ func TestGet(t *testing.T) {
 	t.Parallel()
 	hc, proj, repo := createDefaultHostCatalogAndRepo(t)
 	toMerge := &pbs.GetHostCatalogRequest{
-		OrgId:     proj.GetParentId(),
-		ProjectId: proj.GetPublicId(),
-		Id:        hc.GetPublicId(),
+		Id: hc.GetPublicId(),
 	}
 
 	pHostCatalog := &pb.HostCatalog{
 		Id:          hc.GetPublicId(),
+		Scope:       &scopes.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String()},
 		Name:        &wrappers.StringValue{Value: hc.GetName()},
 		Description: &wrappers.StringValue{Value: hc.GetDescription()},
 		CreatedTime: hc.CreateTime.GetTimestamp(),
@@ -103,7 +105,7 @@ func TestGet(t *testing.T) {
 			s, err := host_catalogs.NewService(repo)
 			require.NoError(t, err, "Couldn't create a new host catalog service.")
 
-			got, gErr := s.GetHostCatalog(context.Background(), req)
+			got, gErr := s.GetHostCatalog(auth.DisabledAuthTestContext(auth.WithTestScopeId(proj.GetPublicId())), req)
 			assert.Equal(tc.errCode, status.Code(gErr), "GetHostCatalog(%+v) got error %v, wanted %v", req, gErr, tc.errCode)
 			assert.True(proto.Equal(got, tc.res), "GetHostCatalog(%q) got response %q, wanted %q", req, got, tc.res)
 		})
@@ -120,16 +122,16 @@ func TestDelete(t *testing.T) {
 
 	cases := []struct {
 		name    string
+		scopeId string
 		req     *pbs.DeleteHostCatalogRequest
 		res     *pbs.DeleteHostCatalogResponse
 		errCode codes.Code
 	}{
 		{
-			name: "Delete an Existing HostCatalog",
+			name:    "Delete an Existing HostCatalog",
+			scopeId: proj.GetPublicId(),
 			req: &pbs.DeleteHostCatalogRequest{
-				OrgId:     proj.GetParentId(),
-				ProjectId: proj.GetPublicId(),
-				Id:        hc.GetPublicId(),
+				Id: hc.GetPublicId(),
 			},
 			res: &pbs.DeleteHostCatalogResponse{
 				Existed: true,
@@ -137,11 +139,10 @@ func TestDelete(t *testing.T) {
 			errCode: codes.OK,
 		},
 		{
-			name: "Delete bad id HostCatalog",
+			name:    "Delete bad id HostCatalog",
+			scopeId: proj.GetPublicId(),
 			req: &pbs.DeleteHostCatalogRequest{
-				OrgId:     proj.GetParentId(),
-				ProjectId: proj.GetPublicId(),
-				Id:        static.HostCatalogPrefix + "_doesntexis",
+				Id: static.HostCatalogPrefix + "_doesntexis",
 			},
 			res: &pbs.DeleteHostCatalogResponse{
 				Existed: false,
@@ -149,11 +150,10 @@ func TestDelete(t *testing.T) {
 			errCode: codes.OK,
 		},
 		{
-			name: "Delete bad org id in HostCatalog",
+			name:    "Delete bad org id in HostCatalog",
+			scopeId: "o_doesntexis",
 			req: &pbs.DeleteHostCatalogRequest{
-				OrgId:     "o_doesntexis",
-				ProjectId: proj.GetPublicId(),
-				Id:        hc.GetPublicId(),
+				Id: hc.GetPublicId(),
 			},
 			res: &pbs.DeleteHostCatalogResponse{
 				Existed: false,
@@ -161,11 +161,10 @@ func TestDelete(t *testing.T) {
 			errCode: codes.OK,
 		},
 		{
-			name: "Delete bad project id in HostCatalog",
+			name:    "Delete bad project id in HostCatalog",
+			scopeId: "p_doesntexis",
 			req: &pbs.DeleteHostCatalogRequest{
-				OrgId:     proj.GetParentId(),
-				ProjectId: "p_doesntexis",
-				Id:        hc.GetPublicId(),
+				Id: hc.GetPublicId(),
 			},
 			res: &pbs.DeleteHostCatalogResponse{
 				Existed: false,
@@ -173,21 +172,10 @@ func TestDelete(t *testing.T) {
 			errCode: codes.OK,
 		},
 		{
-			name: "Bad org formatting",
+			name:    "Bad HostCatalog Id formatting",
+			scopeId: proj.GetPublicId(),
 			req: &pbs.DeleteHostCatalogRequest{
-				OrgId:     "bad_format",
-				ProjectId: proj.GetPublicId(),
-				Id:        hc.GetPublicId(),
-			},
-			res:     nil,
-			errCode: codes.InvalidArgument,
-		},
-		{
-			name: "Bad HostCatalog Id formatting",
-			req: &pbs.DeleteHostCatalogRequest{
-				OrgId:     proj.GetParentId(),
-				ProjectId: proj.GetPublicId(),
-				Id:        static.HostCatalogPrefix + "_bad_format",
+				Id: static.HostCatalogPrefix + "_bad_format",
 			},
 			res:     nil,
 			errCode: codes.InvalidArgument,
@@ -196,7 +184,7 @@ func TestDelete(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			assert := assert.New(t)
-			got, gErr := s.DeleteHostCatalog(context.Background(), tc.req)
+			got, gErr := s.DeleteHostCatalog(auth.DisabledAuthTestContext(auth.WithTestScopeId(tc.scopeId)), tc.req)
 			assert.Equal(tc.errCode, status.Code(gErr), "DeleteHostCatalog(%+v) got error %v, wanted %v", tc.req, gErr, tc.errCode)
 			assert.EqualValuesf(tc.res, got, "DeleteHostCatalog(%q) got response %q, wanted %q", tc.req, got, tc.res)
 		})
@@ -211,14 +199,13 @@ func TestDelete_twice(t *testing.T) {
 	s, err := host_catalogs.NewService(repo)
 	require.NoError(t, err, "Couldn't create a new host catalog service.")
 	req := &pbs.DeleteHostCatalogRequest{
-		OrgId:     proj.GetParentId(),
-		ProjectId: proj.GetPublicId(),
-		Id:        hc.GetPublicId(),
+		Id: hc.GetPublicId(),
 	}
-	got, gErr := s.DeleteHostCatalog(context.Background(), req)
+	ctx := auth.DisabledAuthTestContext(auth.WithTestScopeId(proj.GetPublicId()))
+	got, gErr := s.DeleteHostCatalog(ctx, req)
 	assert.NoError(gErr, "First attempt")
 	assert.True(got.GetExisted(), "Expected existed to be true for the first delete.")
-	got, gErr = s.DeleteHostCatalog(context.Background(), req)
+	got, gErr = s.DeleteHostCatalog(ctx, req)
 	assert.NoError(gErr, "Second attempt")
 	assert.False(got.GetExisted(), "Expected existed to be false for the second delete.")
 }
@@ -230,10 +217,7 @@ func TestCreate(t *testing.T) {
 	defaultHc, proj, repo := createDefaultHostCatalogAndRepo(t)
 	defaultHcCreated, err := ptypes.Timestamp(defaultHc.GetCreateTime().GetTimestamp())
 	require.NoError(err, "Error converting proto to timestamp.")
-	toMerge := &pbs.CreateHostCatalogRequest{
-		OrgId:     proj.GetParentId(),
-		ProjectId: proj.GetPublicId(),
-	}
+	toMerge := &pbs.CreateHostCatalogRequest{}
 
 	cases := []struct {
 		name    string
@@ -249,8 +233,9 @@ func TestCreate(t *testing.T) {
 				Type:        &wrappers.StringValue{Value: "Static"},
 			}},
 			res: &pbs.CreateHostCatalogResponse{
-				Uri: fmt.Sprintf("orgs/%s/projects/%s/host-catalogs/%s_", proj.GetParentId(), proj.GetPublicId(), static.HostCatalogPrefix),
+				Uri: fmt.Sprintf("scopes/%s/host-catalogs/%s_", proj.GetPublicId(), static.HostCatalogPrefix),
 				Item: &pb.HostCatalog{
+					Scope:       &scopes.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String()},
 					Name:        &wrappers.StringValue{Value: "name"},
 					Description: &wrappers.StringValue{Value: "desc"},
 					Type:        &wrappers.StringValue{Value: "Static"},
@@ -308,7 +293,7 @@ func TestCreate(t *testing.T) {
 			s, err := host_catalogs.NewService(repo)
 			require.NoError(err, "Failed to create a new host catalog service.")
 
-			got, gErr := s.CreateHostCatalog(context.Background(), req)
+			got, gErr := s.CreateHostCatalog(auth.DisabledAuthTestContext(auth.WithTestScopeId(proj.GetPublicId())), req)
 			assert.Equal(tc.errCode, status.Code(gErr), "CreateHostCatalog(%+v) got error %v, wanted %v", req, gErr, tc.errCode)
 			if got != nil {
 				assert.True(strings.HasPrefix(got.GetUri(), tc.res.GetUri()))
@@ -349,9 +334,7 @@ func TestUpdate(t *testing.T) {
 	hcCreated, err := ptypes.Timestamp(hc.GetCreateTime().GetTimestamp())
 	require.NoError(err, "Failed to convert proto to timestamp")
 	toMerge := &pbs.UpdateHostCatalogRequest{
-		OrgId:     proj.GetParentId(),
-		ProjectId: proj.GetPublicId(),
-		Id:        hc.GetPublicId(),
+		Id: hc.GetPublicId(),
 	}
 
 	cases := []struct {
@@ -374,6 +357,7 @@ func TestUpdate(t *testing.T) {
 			res: &pbs.UpdateHostCatalogResponse{
 				Item: &pb.HostCatalog{
 					Id:          hc.GetPublicId(),
+					Scope:       &scopes.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String()},
 					Name:        &wrappers.StringValue{Value: "new"},
 					Description: &wrappers.StringValue{Value: "desc"},
 					CreatedTime: hc.GetCreateTime().GetTimestamp(),
@@ -396,6 +380,7 @@ func TestUpdate(t *testing.T) {
 			res: &pbs.UpdateHostCatalogResponse{
 				Item: &pb.HostCatalog{
 					Id:          hc.GetPublicId(),
+					Scope:       &scopes.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String()},
 					Name:        &wrappers.StringValue{Value: "new"},
 					Description: &wrappers.StringValue{Value: "desc"},
 					CreatedTime: hc.GetCreateTime().GetTimestamp(),
@@ -449,6 +434,7 @@ func TestUpdate(t *testing.T) {
 			res: &pbs.UpdateHostCatalogResponse{
 				Item: &pb.HostCatalog{
 					Id:          hc.GetPublicId(),
+					Scope:       &scopes.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String()},
 					Description: &wrappers.StringValue{Value: "default"},
 					CreatedTime: hc.GetCreateTime().GetTimestamp(),
 					Type:        &wrappers.StringValue{Value: "Static"},
@@ -469,6 +455,7 @@ func TestUpdate(t *testing.T) {
 			res: &pbs.UpdateHostCatalogResponse{
 				Item: &pb.HostCatalog{
 					Id:          hc.GetPublicId(),
+					Scope:       &scopes.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String()},
 					Name:        &wrappers.StringValue{Value: "default"},
 					CreatedTime: hc.GetCreateTime().GetTimestamp(),
 					Type:        &wrappers.StringValue{Value: "Static"},
@@ -490,6 +477,7 @@ func TestUpdate(t *testing.T) {
 			res: &pbs.UpdateHostCatalogResponse{
 				Item: &pb.HostCatalog{
 					Id:          hc.GetPublicId(),
+					Scope:       &scopes.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String()},
 					Name:        &wrappers.StringValue{Value: "updated"},
 					Description: &wrappers.StringValue{Value: "default"},
 					CreatedTime: hc.GetCreateTime().GetTimestamp(),
@@ -512,6 +500,7 @@ func TestUpdate(t *testing.T) {
 			res: &pbs.UpdateHostCatalogResponse{
 				Item: &pb.HostCatalog{
 					Id:          hc.GetPublicId(),
+					Scope:       &scopes.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String()},
 					Name:        &wrappers.StringValue{Value: "default"},
 					Description: &wrappers.StringValue{Value: "notignored"},
 					CreatedTime: hc.GetCreateTime().GetTimestamp(),
@@ -531,6 +520,7 @@ func TestUpdate(t *testing.T) {
 				},
 				Item: &pb.HostCatalog{
 					Name:        &wrappers.StringValue{Value: "new"},
+					Scope:       &scopes.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String()},
 					Description: &wrappers.StringValue{Value: "desc"},
 				},
 			},
@@ -545,6 +535,7 @@ func TestUpdate(t *testing.T) {
 				},
 				Item: &pb.HostCatalog{
 					Id:          "p_somethinge",
+					Scope:       &scopes.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String()},
 					Name:        &wrappers.StringValue{Value: "new"},
 					Description: &wrappers.StringValue{Value: "new desc"},
 				}},
@@ -597,7 +588,7 @@ func TestUpdate(t *testing.T) {
 			req := proto.Clone(toMerge).(*pbs.UpdateHostCatalogRequest)
 			proto.Merge(req, tc.req)
 
-			got, gErr := tested.UpdateHostCatalog(context.Background(), req)
+			got, gErr := tested.UpdateHostCatalog(auth.DisabledAuthTestContext(auth.WithTestScopeId(proj.GetPublicId())), req)
 			assert.Equal(tc.errCode, status.Code(gErr), "UpdateHostCatalog(%+v) got error %v, wanted %v", req, gErr, tc.errCode)
 
 			if got != nil {

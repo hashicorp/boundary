@@ -6,296 +6,48 @@ import (
 	"fmt"
 
 	"github.com/hashicorp/watchtower/api"
-	"github.com/hashicorp/watchtower/api/groups"
-	"github.com/hashicorp/watchtower/api/hosts"
-	"github.com/hashicorp/watchtower/api/roles"
-	"github.com/hashicorp/watchtower/api/users"
 )
 
-func (s Org) UpdateProject(ctx context.Context, r *Project) (*Project, *api.Error, error) {
-	if s.Client == nil {
-		return nil, nil, fmt.Errorf("nil client in CreateProject request")
+func (s Scope) UpdateScope(ctx context.Context, r *Scope) (*Scope, *api.Error, error) {
+	if r == nil {
+
 	}
-	if s.Id == "" {
+	if r.Id == "" {
+		return nil, nil, fmt.Errorf("empty Scope ID field in CreateScope request")
+	}
 
-		// Assume the client has been configured with org already and
-		// move on
+	if s.Client == nil {
+		return nil, nil, fmt.Errorf("nil client in CreateScope request")
+	}
 
-	} else {
+	var opts []api.Option
+	if s.Scope.Id != "" {
 		// If it's explicitly set here, override anything that might be in the
 		// client
-
-		ctx = context.WithValue(ctx, "org", s.Id)
-
+		opts = append(opts, api.WithScopeId(s.Scope.Id))
 	}
 
 	id := r.Id
 	r.Id = ""
 
-	req, err := s.Client.NewRequest(ctx, "PATCH", fmt.Sprintf("%s/%s", "projects", id), r)
+	req, err := s.Client.NewRequest(ctx, "PATCH", fmt.Sprintf("%s/%s", "scopes", id), r, opts...)
 	if err != nil {
-		return nil, nil, fmt.Errorf("error creating CreateProject request: %w", err)
+		return nil, nil, fmt.Errorf("error creating CreateScope request: %w", err)
 	}
 
 	resp, err := s.Client.Do(req)
 	if err != nil {
-		return nil, nil, fmt.Errorf("error performing client request during UpdateProject call: %w", err)
+		return nil, nil, fmt.Errorf("error performing client request during UpdateScope call: %w", err)
 	}
 
-	target := new(Project)
+	target := new(Scope)
 	apiErr, err := resp.Decode(target)
 	if err != nil {
-		return nil, nil, fmt.Errorf("error decoding UpdateProject repsonse: %w", err)
+		return nil, nil, fmt.Errorf("error decoding UpdateScope repsonse: %w", err)
 	}
 
 	target.Client = s.Client.Clone()
-	target.Client.SetProject(target.Id)
-
-	return target, apiErr, nil
-}
-
-func (s Org) UpdateGroup(ctx context.Context, r *groups.Group) (*groups.Group, *api.Error, error) {
-	if s.Client == nil {
-		return nil, nil, fmt.Errorf("nil client in CreateGroup request")
-	}
-	if s.Id == "" {
-
-		// Assume the client has been configured with org already and
-		// move on
-
-	} else {
-		// If it's explicitly set here, override anything that might be in the
-		// client
-
-		ctx = context.WithValue(ctx, "org", s.Id)
-
-	}
-
-	id := r.Id
-	r.Id = ""
-
-	req, err := s.Client.NewRequest(ctx, "PATCH", fmt.Sprintf("%s/%s", "groups", id), r)
-	if err != nil {
-		return nil, nil, fmt.Errorf("error creating CreateGroup request: %w", err)
-	}
-
-	resp, err := s.Client.Do(req)
-	if err != nil {
-		return nil, nil, fmt.Errorf("error performing client request during UpdateGroup call: %w", err)
-	}
-
-	target := new(groups.Group)
-	apiErr, err := resp.Decode(target)
-	if err != nil {
-		return nil, nil, fmt.Errorf("error decoding UpdateGroup repsonse: %w", err)
-	}
-
-	target.Client = s.Client
-
-	return target, apiErr, nil
-}
-
-func (s Org) UpdateRole(ctx context.Context, r *roles.Role) (*roles.Role, *api.Error, error) {
-	if s.Client == nil {
-		return nil, nil, fmt.Errorf("nil client in CreateRole request")
-	}
-	if s.Id == "" {
-
-		// Assume the client has been configured with org already and
-		// move on
-
-	} else {
-		// If it's explicitly set here, override anything that might be in the
-		// client
-
-		ctx = context.WithValue(ctx, "org", s.Id)
-
-	}
-
-	id := r.Id
-	r.Id = ""
-
-	req, err := s.Client.NewRequest(ctx, "PATCH", fmt.Sprintf("%s/%s", "roles", id), r)
-	if err != nil {
-		return nil, nil, fmt.Errorf("error creating CreateRole request: %w", err)
-	}
-
-	resp, err := s.Client.Do(req)
-	if err != nil {
-		return nil, nil, fmt.Errorf("error performing client request during UpdateRole call: %w", err)
-	}
-
-	target := new(roles.Role)
-	apiErr, err := resp.Decode(target)
-	if err != nil {
-		return nil, nil, fmt.Errorf("error decoding UpdateRole repsonse: %w", err)
-	}
-
-	target.Client = s.Client
-
-	return target, apiErr, nil
-}
-
-func (s Org) UpdateUser(ctx context.Context, r *users.User) (*users.User, *api.Error, error) {
-	if s.Client == nil {
-		return nil, nil, fmt.Errorf("nil client in CreateUser request")
-	}
-	if s.Id == "" {
-
-		// Assume the client has been configured with org already and
-		// move on
-
-	} else {
-		// If it's explicitly set here, override anything that might be in the
-		// client
-
-		ctx = context.WithValue(ctx, "org", s.Id)
-
-	}
-
-	id := r.Id
-	r.Id = ""
-
-	req, err := s.Client.NewRequest(ctx, "PATCH", fmt.Sprintf("%s/%s", "users", id), r)
-	if err != nil {
-		return nil, nil, fmt.Errorf("error creating CreateUser request: %w", err)
-	}
-
-	resp, err := s.Client.Do(req)
-	if err != nil {
-		return nil, nil, fmt.Errorf("error performing client request during UpdateUser call: %w", err)
-	}
-
-	target := new(users.User)
-	apiErr, err := resp.Decode(target)
-	if err != nil {
-		return nil, nil, fmt.Errorf("error decoding UpdateUser repsonse: %w", err)
-	}
-
-	target.Client = s.Client
-
-	return target, apiErr, nil
-}
-
-func (s Project) UpdateHostCatalog(ctx context.Context, r *hosts.HostCatalog) (*hosts.HostCatalog, *api.Error, error) {
-	if s.Client == nil {
-		return nil, nil, fmt.Errorf("nil client in CreateHostCatalog request")
-	}
-	if s.Id == "" {
-
-		// Assume the client has been configured with project already and move
-		// on
-
-	} else {
-		// If it's explicitly set here, override anything that might be in the
-		// client
-
-		ctx = context.WithValue(ctx, "project", s.Id)
-
-	}
-
-	id := r.Id
-	r.Id = ""
-
-	req, err := s.Client.NewRequest(ctx, "PATCH", fmt.Sprintf("%s/%s", "host-catalogs", id), r)
-	if err != nil {
-		return nil, nil, fmt.Errorf("error creating CreateHostCatalog request: %w", err)
-	}
-
-	resp, err := s.Client.Do(req)
-	if err != nil {
-		return nil, nil, fmt.Errorf("error performing client request during UpdateHostCatalog call: %w", err)
-	}
-
-	target := new(hosts.HostCatalog)
-	apiErr, err := resp.Decode(target)
-	if err != nil {
-		return nil, nil, fmt.Errorf("error decoding UpdateHostCatalog repsonse: %w", err)
-	}
-
-	target.Client = s.Client
-
-	return target, apiErr, nil
-}
-
-func (s Project) UpdateGroup(ctx context.Context, r *groups.Group) (*groups.Group, *api.Error, error) {
-	if s.Client == nil {
-		return nil, nil, fmt.Errorf("nil client in CreateGroup request")
-	}
-	if s.Id == "" {
-
-		// Assume the client has been configured with project already and move
-		// on
-
-	} else {
-		// If it's explicitly set here, override anything that might be in the
-		// client
-
-		ctx = context.WithValue(ctx, "project", s.Id)
-
-	}
-
-	id := r.Id
-	r.Id = ""
-
-	req, err := s.Client.NewRequest(ctx, "PATCH", fmt.Sprintf("%s/%s", "groups", id), r)
-	if err != nil {
-		return nil, nil, fmt.Errorf("error creating CreateGroup request: %w", err)
-	}
-
-	resp, err := s.Client.Do(req)
-	if err != nil {
-		return nil, nil, fmt.Errorf("error performing client request during UpdateGroup call: %w", err)
-	}
-
-	target := new(groups.Group)
-	apiErr, err := resp.Decode(target)
-	if err != nil {
-		return nil, nil, fmt.Errorf("error decoding UpdateGroup repsonse: %w", err)
-	}
-
-	target.Client = s.Client
-
-	return target, apiErr, nil
-}
-
-func (s Project) UpdateRole(ctx context.Context, r *roles.Role) (*roles.Role, *api.Error, error) {
-	if s.Client == nil {
-		return nil, nil, fmt.Errorf("nil client in CreateRole request")
-	}
-	if s.Id == "" {
-
-		// Assume the client has been configured with project already and move
-		// on
-
-	} else {
-		// If it's explicitly set here, override anything that might be in the
-		// client
-
-		ctx = context.WithValue(ctx, "project", s.Id)
-
-	}
-
-	id := r.Id
-	r.Id = ""
-
-	req, err := s.Client.NewRequest(ctx, "PATCH", fmt.Sprintf("%s/%s", "roles", id), r)
-	if err != nil {
-		return nil, nil, fmt.Errorf("error creating CreateRole request: %w", err)
-	}
-
-	resp, err := s.Client.Do(req)
-	if err != nil {
-		return nil, nil, fmt.Errorf("error performing client request during UpdateRole call: %w", err)
-	}
-
-	target := new(roles.Role)
-	apiErr, err := resp.Decode(target)
-	if err != nil {
-		return nil, nil, fmt.Errorf("error decoding UpdateRole repsonse: %w", err)
-	}
-
-	target.Client = s.Client
+	target.Client.SetScopeId(target.Id)
 
 	return target, apiErr, nil
 }

@@ -12,37 +12,37 @@ import (
 	"github.com/posener/complete"
 )
 
-var _ cli.Command = (*CreateProjectCommand)(nil)
-var _ cli.CommandAutocomplete = (*CreateProjectCommand)(nil)
+var _ cli.Command = (*CreateScopeCommand)(nil)
+var _ cli.CommandAutocomplete = (*CreateScopeCommand)(nil)
 
-type CreateProjectCommand struct {
+type CreateScopeCommand struct {
 	*base.Command
 
 	flagName        string
 	flagDescription string
 }
 
-func (c *CreateProjectCommand) Synopsis() string {
-	return "Creates a project within an org"
+func (c *CreateScopeCommand) Synopsis() string {
+	return "Creates a scope within a parent scope"
 }
 
-func (c *CreateProjectCommand) Help() string {
+func (c *CreateScopeCommand) Help() string {
 	helpText := `
-Usage: watchtower projects create
+Usage: watchtower scopes create
 
-  Creates a project within the org specified by the ID from the
-  "org-id" parameter or the associated environment variable.
+  Creates a new scope within the scope specified by the ID from the
+  "scope" parameter or the associated environment variable.
 
   Example: 
 
-      $ watchtower projects create -org=<org_id> -name=<name>
+      $ watchtower scopes create -scope=<scope_id> -name=<name>
 
 ` + c.Flags().Help()
 
 	return strings.TrimSpace(helpText)
 }
 
-func (c *CreateProjectCommand) Flags() *base.FlagSets {
+func (c *CreateScopeCommand) Flags() *base.FlagSets {
 	set := c.FlagSet(base.FlagSetHTTP | base.FlagSetClient | base.FlagSetOutputFormat)
 
 	f := set.NewFlagSet("Command Options")
@@ -64,15 +64,15 @@ func (c *CreateProjectCommand) Flags() *base.FlagSets {
 	return set
 }
 
-func (c *CreateProjectCommand) AutocompleteArgs() complete.Predictor {
+func (c *CreateScopeCommand) AutocompleteArgs() complete.Predictor {
 	return complete.PredictAnything
 }
 
-func (c *CreateProjectCommand) AutocompleteFlags() complete.Flags {
+func (c *CreateScopeCommand) AutocompleteFlags() complete.Flags {
 	return c.Flags().Completions()
 }
 
-func (c *CreateProjectCommand) Run(args []string) int {
+func (c *CreateScopeCommand) Run(args []string) int {
 	f := c.Flags()
 
 	if err := f.Parse(args); err != nil {
@@ -86,17 +86,14 @@ func (c *CreateProjectCommand) Run(args []string) int {
 		return 2
 	}
 
-	org := &scopes.Org{
-		Client: client,
-	}
-
-	project := &scopes.Project{
+	scp := &scopes.Scope{
+		Client:      client,
 		Name:        api.StringOrNil(c.flagName),
 		Description: api.StringOrNil(c.flagDescription),
 	}
 
 	var apiErr *api.Error
-	project, apiErr, err = org.CreateProject(c.Context, project)
+	scp, apiErr, err = scp.CreateScope(c.Context, scp)
 
 	switch {
 	case err != nil:
@@ -109,7 +106,7 @@ func (c *CreateProjectCommand) Run(args []string) int {
 
 	switch base.Format(c.UI) {
 	case "table":
-		c.UI.Output(printProject(project))
+		c.UI.Output(printScope(scp))
 	}
 
 	return 0

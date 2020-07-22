@@ -15,36 +15,29 @@ service HostCatalogService {
 	};
 
   // GetHostCatalog returns a stored Host Catalog if present.  The provided
-  // request must include the org, project, and catalog id for the host catalog
-  //being retrieved. If any of those ids are missing, malformed, or reference a
-  // non existing resource an error is returned.
+  // request must include the scope and catalog IDs for the host catalog being
+  // retrieved. If any of those IDs are missing, malformed, or reference a
+  // non-existing resource an error is returned.
   rpc GetHostCatalog(GetHostCatalogRequest) returns (GetHostCatalogResponse) {
-    // Gets the host as specified int he url.
+    // Gets the host as specified in the url.
     option (google.api.http) = {
-      get: "/v1/orgs/{org_id}/projects/{project_id}/host-catalogs/{id}"
+      get: "/v1/scopes/*/host-catalogs/{id}"
       response_body: "item"
-      additional_bindings {
-        get: "/v1/orgs/{org_id}/host-catalogs/{id}"
-        response_body: "item"
-      }
     };
     option (grpc.gateway.protoc_gen_swagger.options.openapiv2_operation) = {
       summary: "Gets a single HostCatalog"
-      description: "Get's a single Host Catalog with the provided identifier."
+      description: "Gets a single Host Catalog with the provided identifier."
     };
   }
 
   // ListHostCatalogs returns a list of stored HostCatalogs which exist inside
-  // the project referenced in the request. The request must include the org
-  // and project ids for the HostCatalogs being retrieved. If any of those ids
-  // are missing, malformed, or reference a non existing parent resource an
-  // error is returned.
+  // the project referenced in the request. The request must include the scope
+  // ID for the HostCatalogs being retrieved. If any of those ids are missing,
+  // malformed, or reference a non-existing parent resource an error is
+  // returned.
   rpc ListHostCatalogs(ListHostCatalogsRequest) returns (ListHostCatalogsResponse) {
     option (google.api.http) = {
-      get: "/v1/orgs/{org_id}/projects/{project_id}/host-catalogs"
-      additional_bindings {
-        get: "/v1/orgs/{org_id}/host-catalogs"
-      }
+      get: "/v1/scopes/*/host-catalogs"
     };
     option (grpc.gateway.protoc_gen_swagger.options.openapiv2_operation) = {
       summary: "Gets a list of HostCatalogs"
@@ -52,42 +45,32 @@ service HostCatalogService {
   }
 
   // CreateHostCatalog creates and stores a HostCatalog in watchtower.  The
-  // provided request must include the org, and project id in which the catalog
-  // will be created and the catalog type to be created. If any of these
-  // required fields are missing, malformed, or reference a non existing parent
-  // resource an error is returned.
+  // provided request must include the scope ID in which the catalog will be
+  // created and the catalog type to be created. If any of these required fields
+  // are missing, malformed, or reference a non-existing parent resource an
+  // error is returned.
   rpc CreateHostCatalog(CreateHostCatalogRequest) returns (CreateHostCatalogResponse) {
     option (google.api.http) = {
-      post: "/v1/orgs/{org_id}/projects/{project_id}/host-catalogs"
+      post: "/v1/scopes/*/host-catalogs"
       body: "item"
       response_body: "item"
-      additional_bindings {
-        post: "/v1/orgs/{org_id}/host-catalogs"
-        body: "item"
-        response_body: "item"
-      }
     };
     option (grpc.gateway.protoc_gen_swagger.options.openapiv2_operation) = {
       summary: "Creates a HostCatalog"
-      description: "Creates a single host catalog under the specified org and project"
+      description: "Creates a single host catalog under the specified scope"
     };
   }
 
-  // UpdateHostCatalog updates an exist HostCatalog in Watchtower.  The
-  // provided HostCatalog must not have any read only fields set.
-  // The update mask must be provided and include at least 1 mutable field.
-  // To unset a field's value include that field name in the update mask
-  // and don't set the field in the HostCatalog.
+  // UpdateHostCatalog updates an existing HostCatalog in Watchtower. The
+  // provided HostCatalog must not have any read only fields set. The update
+  // mask must be provided and include at least 1 mutable field. To unset a
+  // field's value include that field name in the update mask and don't set the
+  // field in the HostCatalog.
   rpc UpdateHostCatalog(UpdateHostCatalogRequest) returns (UpdateHostCatalogResponse) {
     option (google.api.http) = {
-      patch: "/v1/orgs/{org_id}/projects/{project_id}/host-catalogs/{id}"
+      patch: "/v1/scopes/*/host-catalogs/{id}"
       body: "item"
       response_body: "item"
-      additional_bindings {
-        patch: "/v1/orgs/{org_id}/host-catalogs/{id}"
-        body: "item"
-        response_body: "item"
-      }
     };
     option (grpc.gateway.protoc_gen_swagger.options.openapiv2_operation) = {
       summary: "Updates a HostCatalog"
@@ -95,16 +78,13 @@ service HostCatalogService {
   }
 
   // DeleteHostCatalog removes a HostCatalog and all associated hosts and host
-  // sets from Watchtower.  If the provided Org, Project, or HostCatalog ids
-  // are malformed or not provided DeleteHostCatalog returns an error.  It is
-  // not an error to call DeleteHostCatalog for an Org, Project, or HostCatalog
-  // that does not exist as the response indicates if it existed or not.
+  // sets from Watchtower. If the provided scope or HostCatalog IDs are
+  // malformed or not provided DeleteHostCatalog returns an error. It is not an
+  // error to call DeleteHostCatalog for an scope or HostCatalog that does not
+  // exist as the response indicates if it existed or not.
   rpc DeleteHostCatalog(DeleteHostCatalogRequest) returns (DeleteHostCatalogResponse) {
     option (google.api.http) = {
-      delete: "/v1/orgs/{org_id}/projects/{project_id}/host-catalogs/{id}"
-      additional_bindings {
-        delete: "/v1/orgs/{org_id}/host-catalogs/{id}"
-      }
+      delete: "/v1/scopes/*/host-catalogs/{id}"
     };
     option (grpc.gateway.protoc_gen_swagger.options.openapiv2_operation) = {
       summary: "Deletes a HostCatalog"
@@ -113,10 +93,8 @@ service HostCatalogService {
 }
 
 message GetHostCatalogRequest {
-  string org_id = 1 [json_name="org_id"];
-  string project_id = 2 [json_name="project_id"];
-  string id = 3;
-  string view = 4;
+  string id = 1;
+  string view = 2;
 }
 
 message GetHostCatalogResponse {
@@ -124,9 +102,7 @@ message GetHostCatalogResponse {
 }
 
 message ListHostCatalogsRequest {
-  string org_id = 1 [json_name="org_id"];
-  string project_id = 2 [json_name="project_id"];
-  string view = 3;
+  string view = 1;
 }
 
 message ListHostCatalogsResponse {
@@ -134,9 +110,7 @@ message ListHostCatalogsResponse {
 }
 
 message CreateHostCatalogRequest {
-  string org_id = 1 [json_name="org_id"];
-  string project_id = 2 [json_name="project_id"];
-  api.resources.hosts.v1.HostCatalog item = 3;
+  api.resources.hosts.v1.HostCatalog item = 1;
 }
 
 message CreateHostCatalogResponse {
@@ -145,11 +119,9 @@ message CreateHostCatalogResponse {
 }
 
 message UpdateHostCatalogRequest {
-  string org_id = 1 [json_name="org_id"];
-  string project_id = 2 [json_name="project_id"];
-  string id = 3;
-  api.resources.hosts.v1.HostCatalog item = 4;
-  google.protobuf.FieldMask update_mask = 5;
+  string id = 1;
+  api.resources.hosts.v1.HostCatalog item = 2;
+  google.protobuf.FieldMask update_mask = 3;
 }
 
 message UpdateHostCatalogResponse {
@@ -157,9 +129,7 @@ message UpdateHostCatalogResponse {
 }
 
 message DeleteHostCatalogRequest {
-  string org_id = 1 [json_name="org_id"];
-  string project_id = 2 [json_name="project_id"];
-  string id = 3;
+  string id = 1;
 }
 
 message DeleteHostCatalogResponse {

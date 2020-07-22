@@ -9,6 +9,7 @@ import (
 	"github.com/fatih/structs"
 
 	"github.com/hashicorp/watchtower/api"
+	"github.com/hashicorp/watchtower/api/info"
 	"github.com/hashicorp/watchtower/api/internal/strutil"
 )
 
@@ -20,6 +21,9 @@ type Group struct {
 	// The ID of the Project
 	// Output only.
 	Id string `json:"id,omitempty"`
+	// Scope information for this resource
+	// Output only.
+	Scope info.Scope `json:"scope,omitempty"`
 	// Optional name for identification purposes
 	Name *string `json:"name,omitempty"`
 	// Optional user-set descripton for identification purposes
@@ -32,21 +36,11 @@ type Group struct {
 	UpdatedTime time.Time `json:"updated_time,omitempty"`
 	// Whether the resource is disabled
 	Disabled *bool `json:"disabled,omitempty"`
-	// The version can be used in subsiquent write requests to ensure this resource
-	// has not changed and to fail the write if it has.
-	// Output only.
-	Version uint32 `json:"version,omitempty"`
-	// Contains the list of member ids in this group.
-	// Output only.
-	MemberIds []string `json:"member_ids,omitempty"`
-	// The members of this group.
-	// Output only.
-	Members []*Member `json:"members,omitempty"`
 }
 
 func (s *Group) SetDefault(key string) {
 	lowerKey := strings.ToLower(key)
-	validMap := map[string]string{"createdtime": "created_time", "description": "description", "disabled": "disabled", "id": "id", "memberids": "member_ids", "members": "members", "name": "name", "updatedtime": "updated_time", "version": "version"}
+	validMap := map[string]string{"createdtime": "created_time", "description": "description", "disabled": "disabled", "id": "id", "name": "name", "scope": "scope", "updatedtime": "updated_time"}
 	for k, v := range validMap {
 		if k == lowerKey || v == lowerKey {
 			s.defaultFields = strutil.AppendIfMissing(s.defaultFields, v)
@@ -57,7 +51,7 @@ func (s *Group) SetDefault(key string) {
 
 func (s *Group) UnsetDefault(key string) {
 	lowerKey := strings.ToLower(key)
-	validMap := map[string]string{"createdtime": "created_time", "description": "description", "disabled": "disabled", "id": "id", "memberids": "member_ids", "members": "members", "name": "name", "updatedtime": "updated_time", "version": "version"}
+	validMap := map[string]string{"createdtime": "created_time", "description": "description", "disabled": "disabled", "id": "id", "name": "name", "scope": "scope", "updatedtime": "updated_time"}
 	for k, v := range validMap {
 		if k == lowerKey || v == lowerKey {
 			s.defaultFields = strutil.StrListDelete(s.defaultFields, v)

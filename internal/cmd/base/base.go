@@ -43,9 +43,8 @@ type Command struct {
 	flags     *FlagSets
 	flagsOnce sync.Once
 
-	flagAddr    string
-	flagOrg     string
-	flagProject string
+	flagAddr  string
+	flagScope string
 
 	flagTLSCACert     string
 	flagTLSCAPath     string
@@ -119,11 +118,8 @@ func (c *Command) Client() (*api.Client, error) {
 	if c.flagAddr != NotSetValue {
 		c.client.SetAddr(c.flagAddr)
 	}
-	if c.flagOrg != NotSetValue {
-		c.client.SetOrg(c.flagOrg)
-	}
-	if c.flagProject != NotSetValue {
-		c.client.SetProject(c.flagProject)
+	if c.flagScope != NotSetValue {
+		c.client.SetScopeId(c.flagScope)
 	}
 
 	// If we need custom TLS configuration, then set it
@@ -222,21 +218,12 @@ func (c *Command) FlagSet(bit FlagSetBit) *FlagSets {
 			})
 
 			f.StringVar(&StringVar{
-				Name:       FlagNameOrg,
-				Target:     &c.flagOrg,
+				Name:       FlagNameScope,
+				Target:     &c.flagScope,
 				Default:    NotSetValue,
-				EnvVar:     api.EnvWatchtowerOrg,
+				EnvVar:     api.EnvWatchtowerScopeId,
 				Completion: complete.PredictAnything,
-				Usage:      "Org in which to make the request; overrides any set in the address.",
-			})
-
-			f.StringVar(&StringVar{
-				Name:       FlagNameProject,
-				Target:     &c.flagProject,
-				Default:    NotSetValue,
-				EnvVar:     api.EnvWatchtowerProject,
-				Completion: complete.PredictAnything,
-				Usage:      "Project in which to make the request; overrides any set in the address.",
+				Usage:      "Scope in which to make the request.",
 			})
 
 			f.StringVar(&StringVar{

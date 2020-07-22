@@ -165,10 +165,11 @@ func TestHandler_CORS(t *testing.T) {
 			client := tc.Client()
 			err := client.SetAddr(tc.ApiAddrs()[c.listenerNum-1])
 			require.NoError(t, err)
-			client.SetOrg("o_1234567890")
+			client.SetScopeId("o_1234567890")
+			client.SetToken("fo_o_bar")
 
 			// Create the request
-			req, err := client.NewRequest(tc.Context(), c.method, "projects", nil)
+			req, err := client.NewRequest(tc.Context(), c.method, "scopes", nil)
 			require.NoError(t, err)
 
 			// Append headers

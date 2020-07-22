@@ -12,37 +12,35 @@ import (
 	"github.com/posener/complete"
 )
 
-var _ cli.Command = (*ReadProjectCommand)(nil)
-var _ cli.CommandAutocomplete = (*ReadProjectCommand)(nil)
+var _ cli.Command = (*ReadScopeCommand)(nil)
+var _ cli.CommandAutocomplete = (*ReadScopeCommand)(nil)
 
-type ReadProjectCommand struct {
+type ReadScopeCommand struct {
 	*base.Command
 
 	flagId string
 }
 
-func (c *ReadProjectCommand) Synopsis() string {
-	return "Reads a project's data"
+func (c *ReadScopeCommand) Synopsis() string {
+	return "Reads a scope's data"
 }
 
-func (c *ReadProjectCommand) Help() string {
+func (c *ReadScopeCommand) Help() string {
 	helpText := `
-Usage: watchtower projects read 
+Usage: watchtower scopes read 
 
-  Returns information about a project specified by the ID. It is an error if
-  the project is not within the org specified via the "org-id"
-  parameter or the associated environment variable.
+  Returns information about a scope specified by the ID. The request will take place within the scope of the caller's authentication token.
 
   Example: 
 
-      $ watchtower projects read -org=<org_id> -id=<project_id>
+      $ watchtower scopes read -id=<scope_id>
 
 ` + c.Flags().Help()
 
 	return strings.TrimSpace(helpText)
 }
 
-func (c *ReadProjectCommand) Flags() *base.FlagSets {
+func (c *ReadScopeCommand) Flags() *base.FlagSets {
 	set := c.FlagSet(base.FlagSetHTTP | base.FlagSetClient | base.FlagSetOutputFormat)
 
 	f := set.NewFlagSet("Command Options")
@@ -51,21 +49,21 @@ func (c *ReadProjectCommand) Flags() *base.FlagSets {
 		Name:       "id",
 		Target:     &c.flagId,
 		Completion: complete.PredictNothing,
-		Usage:      "The ID of the project to read",
+		Usage:      "The ID of the scope to read",
 	})
 
 	return set
 }
 
-func (c *ReadProjectCommand) AutocompleteArgs() complete.Predictor {
+func (c *ReadScopeCommand) AutocompleteArgs() complete.Predictor {
 	return complete.PredictAnything
 }
 
-func (c *ReadProjectCommand) AutocompleteFlags() complete.Flags {
+func (c *ReadScopeCommand) AutocompleteFlags() complete.Flags {
 	return c.Flags().Completions()
 }
 
-func (c *ReadProjectCommand) Run(args []string) int {
+func (c *ReadScopeCommand) Run(args []string) int {
 	f := c.Flags()
 
 	if err := f.Parse(args); err != nil {
@@ -79,16 +77,16 @@ func (c *ReadProjectCommand) Run(args []string) int {
 		return 2
 	}
 
-	org := &scopes.Org{
+	id := c.flagId
+	if id == "" {
+		id = client.ScopeId()
+	}
+	scp := &scopes.Scope{
 		Client: client,
 	}
 
-	project := &scopes.Project{
-		Id: c.flagId,
-	}
-
 	var apiErr *api.Error
-	project, apiErr, err = org.ReadProject(c.Context, project)
+	scp, apiErr, err = scp.ReadScope(c.Context, id)
 
 	switch {
 	case err != nil:
@@ -101,7 +99,7 @@ func (c *ReadProjectCommand) Run(args []string) int {
 
 	switch base.Format(c.UI) {
 	case "table":
-		c.UI.Output(printProject(project))
+		c.UI.Output(printScope(scp))
 	}
 
 	return 0
