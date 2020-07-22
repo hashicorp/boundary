@@ -240,7 +240,7 @@ func TestRepository_UpdateRole(t *testing.T) {
 			newScopeId:     org.PublicId,
 			wantErr:        true,
 			wantRowsUpdate: 0,
-			wantErrMsg:     "update role: update: lookup error lookup after write: failed record not found for 1",
+			wantErrMsg:     "update role: update: lookup after write: record not found for 1",
 			wantIsError:    db.ErrRecordNotFound,
 		},
 		{
