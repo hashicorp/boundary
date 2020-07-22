@@ -206,7 +206,7 @@ func (v *verifier) parseAuthParams() error {
 	}
 
 	// Get scope information and handle it in a special case; that is, for
-	// operating on scopes, we use the token scope, not the path scope
+	// operating on scopes, scope from the request ID, not the path scope
 	switch splitLen {
 	case 1:
 		// We've already validated that this is "scopes"
@@ -435,7 +435,7 @@ func (v verifier) performAuthCheck() (aclResults *perms.ACLResults, userId strin
 	return
 }
 
-// getTokenFromRequest pulls the token from either the Authorization header or
+// GetTokenFromRequest pulls the token from either the Authorization header or
 // split cookies and parses it. If it cannot be parsed successfully, the issue
 // is logged and we return blank, so logic will continue as the anonymous user.
 // The public ID and token are returned along with the token format.
