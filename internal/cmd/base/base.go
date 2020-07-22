@@ -3,6 +3,8 @@ package base
 import (
 	"bytes"
 	"context"
+	"encoding/base64"
+	"encoding/json"
 	"flag"
 	"fmt"
 	"io"
@@ -15,6 +17,7 @@ import (
 	"syscall"
 
 	"github.com/hashicorp/watchtower/api"
+	"github.com/hashicorp/watchtower/api/authtokens"
 	"github.com/mitchellh/cli"
 	"github.com/pkg/errors"
 	"github.com/posener/complete"
@@ -118,9 +121,6 @@ func (c *Command) Client() (*api.Client, error) {
 	if c.flagAddr != NotSetValue {
 		c.client.SetAddr(c.flagAddr)
 	}
-	if c.flagScope != NotSetValue {
-		c.client.SetScopeId(c.flagScope)
-	}
 
 	// If we need custom TLS configuration, then set it
 	var modifiedTLS bool
@@ -174,11 +174,28 @@ func (c *Command) Client() (*api.Client, error) {
 				} else {
 					c.UI.Error(fmt.Sprintf("Error reading auth token from system credential store: %s", err))
 				}
+				token = ""
 			}
 			if token != "" {
-				c.client.SetToken(token)
+				tokenBytes, err := base64.RawStdEncoding.DecodeString(token)
+				if err != nil {
+					c.UI.Error(fmt.Sprintf("Error unmarshaling stored token from system credential store: %s", err))
+				} else {
+					var authToken authtokens.AuthToken
+					if err := json.Unmarshal(tokenBytes, &authToken); err != nil {
+						c.UI.Error(fmt.Sprintf("Error unmarshaling stored token information after reading from system credential store: %s", err))
+					} else {
+						c.client.SetToken(authToken.Token)
+						c.client.SetScopeId(authToken.Scope.Id)
+					}
+				}
 			}
 		}
+	}
+
+	// We do this here so we override the stored token info if it's set above
+	if c.flagScope != NotSetValue {
+		c.client.SetScopeId(c.flagScope)
 	}
 
 	return c.client, nil
@@ -295,7 +312,7 @@ func (c *Command) FlagSet(bit FlagSetBit) *FlagSets {
 				Name:   "token-name",
 				Target: &c.FlagTokenName,
 				EnvVar: envTokenName,
-				Usage:  "If specified, the given value will be used as the name when storing the token in the system credential store. This can allow switching user identities for different commands.",
+				Usage:  `If specified, the given value will be used as the name when storing the token in the system credential store. This can allow switching user identities for different commands. Set to "none" to disable storing the token.`,
 			})
 
 			f.BoolVar(&BoolVar{
