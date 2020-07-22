@@ -12,14 +12,14 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestAuthToken(t *testing.T, conn *gorm.DB, wrapper wrapping.Wrapper, orgId string) *AuthToken {
+func TestAuthToken(t *testing.T, conn *gorm.DB, wrapper wrapping.Wrapper, scopeId string) *AuthToken {
 	t.Helper()
-	u := iam.TestUser(t, conn, orgId)
-	amId := setupAuthMethod(t, conn, orgId)
+	u := iam.TestUser(t, conn, scopeId)
+	amId := setupAuthMethod(t, conn, scopeId)
 
 	// auth account is only used to join auth method to user.
 	// We don't do anything else with the auth account in the test setup.
-	acct := setupAuthAccount(t, conn, orgId, amId, u.GetPublicId())
+	acct := setupAuthAccount(t, conn, scopeId, amId, u.GetPublicId())
 
 	rw := db.New(conn)
 	repo, err := NewRepository(rw, rw, wrapper)
