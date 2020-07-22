@@ -7,7 +7,7 @@ import (
 	"github.com/hashicorp/watchtower/api"
 )
 
-func (s Role) AddPrincipals(ctx context.Context, principalIds []string) (*Role, *api.Error, error) {
+func (s Role) AddPrincipals(ctx context.Context, roleId string, principalIds []string) (*Role, *api.Error, error) {
 	if s.Client == nil {
 		return nil, nil, fmt.Errorf("nil client in AddPrincipals request")
 	}
@@ -20,7 +20,7 @@ func (s Role) AddPrincipals(ctx context.Context, principalIds []string) (*Role, 
 		body["principal_ids"] = principalIds
 	}
 
-	req, err := s.Client.NewRequest(ctx, "POST", fmt.Sprintf("roles/%s:add-principals", s.Id), body)
+	req, err := s.Client.NewRequest(ctx, "POST", fmt.Sprintf("roles/%s:add-principals", roleId), body)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error creating AddPrincipals request: %w", err)
 	}
@@ -41,7 +41,7 @@ func (s Role) AddPrincipals(ctx context.Context, principalIds []string) (*Role, 
 	return target, apiErr, nil
 }
 
-func (s Role) SetPrincipals(ctx context.Context, principalIds []string) (*Role, *api.Error, error) {
+func (s Role) SetPrincipals(ctx context.Context, roleId string, principalIds []string) (*Role, *api.Error, error) {
 	if s.Client == nil {
 		return nil, nil, fmt.Errorf("nil client in SetPrincipals request")
 	}
@@ -57,7 +57,7 @@ func (s Role) SetPrincipals(ctx context.Context, principalIds []string) (*Role, 
 		body["principal_ids"] = nil
 	}
 
-	req, err := s.Client.NewRequest(ctx, "POST", fmt.Sprintf("roles/%s:set-principals", s.Id), body)
+	req, err := s.Client.NewRequest(ctx, "POST", fmt.Sprintf("roles/%s:set-principals", roleId), body)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error creating SetPrincipals request: %w", err)
 	}
@@ -78,7 +78,7 @@ func (s Role) SetPrincipals(ctx context.Context, principalIds []string) (*Role, 
 	return target, apiErr, nil
 }
 
-func (s Role) RemovePrincipals(ctx context.Context, principalIds []string) (*Role, *api.Error, error) {
+func (s Role) RemovePrincipals(ctx context.Context, roleId string, principalIds []string) (*Role, *api.Error, error) {
 	if s.Client == nil {
 		return nil, nil, fmt.Errorf("nil client in RemovePrincipals request")
 	}
@@ -91,7 +91,7 @@ func (s Role) RemovePrincipals(ctx context.Context, principalIds []string) (*Rol
 		body["principal_ids"] = principalIds
 	}
 
-	req, err := s.Client.NewRequest(ctx, "POST", fmt.Sprintf("roles/%s:remove-principals", s.Id), body)
+	req, err := s.Client.NewRequest(ctx, "POST", fmt.Sprintf("roles/%s:remove-principals", roleId), body)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error creating RemovePrincipals request: %w", err)
 	}
@@ -112,7 +112,7 @@ func (s Role) RemovePrincipals(ctx context.Context, principalIds []string) (*Rol
 	return target, apiErr, nil
 }
 
-func (s Role) AddGrants(ctx context.Context, grants []string) (*Role, *api.Error, error) {
+func (s Role) AddGrants(ctx context.Context, roleId string, grants []string) (*Role, *api.Error, error) {
 	if s.Client == nil {
 		return nil, nil, fmt.Errorf("nil client in AddGrants request")
 	}
@@ -125,7 +125,7 @@ func (s Role) AddGrants(ctx context.Context, grants []string) (*Role, *api.Error
 		body["grant_strings"] = grants
 	}
 
-	req, err := s.Client.NewRequest(ctx, "POST", fmt.Sprintf("roles/%s:add-grants", s.Id), body)
+	req, err := s.Client.NewRequest(ctx, "POST", fmt.Sprintf("roles/%s:add-grants", roleId), body)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error creating AddGrants request: %w", err)
 	}
@@ -146,7 +146,7 @@ func (s Role) AddGrants(ctx context.Context, grants []string) (*Role, *api.Error
 	return target, apiErr, nil
 }
 
-func (s Role) SetGrants(ctx context.Context, grants []string) (*Role, *api.Error, error) {
+func (s Role) SetGrants(ctx context.Context, roleId string, grants []string) (*Role, *api.Error, error) {
 	if s.Client == nil {
 		return nil, nil, fmt.Errorf("nil client in SetGrants request")
 	}
@@ -161,7 +161,7 @@ func (s Role) SetGrants(ctx context.Context, grants []string) (*Role, *api.Error
 		body["grant_strings"] = nil
 	}
 
-	req, err := s.Client.NewRequest(ctx, "POST", fmt.Sprintf("roles/%s:set-grants", s.Id), body)
+	req, err := s.Client.NewRequest(ctx, "POST", fmt.Sprintf("roles/%s:set-grants", roleId), body)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error creating SetGrants request: %w", err)
 	}
@@ -182,7 +182,7 @@ func (s Role) SetGrants(ctx context.Context, grants []string) (*Role, *api.Error
 	return target, apiErr, nil
 }
 
-func (s Role) RemoveGrants(ctx context.Context, grants []string) (*Role, *api.Error, error) {
+func (s Role) RemoveGrants(ctx context.Context, roleId string, grants []string) (*Role, *api.Error, error) {
 	if s.Client == nil {
 		return nil, nil, fmt.Errorf("nil client in RemoveGrants request")
 	}
@@ -195,7 +195,7 @@ func (s Role) RemoveGrants(ctx context.Context, grants []string) (*Role, *api.Er
 		body["grant_strings"] = grants
 	}
 
-	req, err := s.Client.NewRequest(ctx, "POST", fmt.Sprintf("roles/%s:remove-grants", s.Id), body)
+	req, err := s.Client.NewRequest(ctx, "POST", fmt.Sprintf("roles/%s:remove-grants", roleId), body)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error creating RemoveGrants request: %w", err)
 	}

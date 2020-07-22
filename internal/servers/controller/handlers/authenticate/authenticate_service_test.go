@@ -65,7 +65,7 @@ func TestAuthenticate(t *testing.T) {
 		{
 			name: "basic",
 			request: &pbs.AuthenticateRequest{
-				OrgId:        o.GetPublicId(),
+				ScopeId:      o.GetPublicId(),
 				AuthMethodId: amId,
 				TokenType:    "token",
 				Credentials: func() *structpb.Struct {
@@ -83,7 +83,7 @@ func TestAuthenticate(t *testing.T) {
 		{
 			name: "no-token-type",
 			request: &pbs.AuthenticateRequest{
-				OrgId:        o.GetPublicId(),
+				ScopeId:      o.GetPublicId(),
 				AuthMethodId: amId,
 				Credentials: func() *structpb.Struct {
 					creds := map[string]*structpb.Value{
@@ -100,7 +100,7 @@ func TestAuthenticate(t *testing.T) {
 		{
 			name: "bad-token-type",
 			request: &pbs.AuthenticateRequest{
-				OrgId:        o.GetPublicId(),
+				ScopeId:      o.GetPublicId(),
 				AuthMethodId: amId,
 				TokenType:    "email",
 				Credentials: func() *structpb.Struct {
@@ -116,7 +116,7 @@ func TestAuthenticate(t *testing.T) {
 		{
 			name: "no-authmethod",
 			request: &pbs.AuthenticateRequest{
-				OrgId: o.GetPublicId(),
+				ScopeId: o.GetPublicId(),
 				Credentials: func() *structpb.Struct {
 					creds := map[string]*structpb.Value{
 						"name":     {Kind: &structpb.Value_StringValue{StringValue: "admin"}},
@@ -130,7 +130,7 @@ func TestAuthenticate(t *testing.T) {
 		{
 			name: "wrong-username-password",
 			request: &pbs.AuthenticateRequest{
-				OrgId:        o.GetPublicId(),
+				ScopeId:      o.GetPublicId(),
 				AuthMethodId: amId,
 				TokenType:    "token",
 				Credentials: func() *structpb.Struct {
@@ -214,7 +214,7 @@ func TestAuthenticate_AuthAccountConnectedToIamUser(t *testing.T) {
 	s, err := NewService(iamRepoFn, authTokenRepoFn)
 	require.NoError(err)
 	resp, err := s.Authenticate(context.Background(), &pbs.AuthenticateRequest{
-		OrgId:        o.GetPublicId(),
+		ScopeId:      o.GetPublicId(),
 		AuthMethodId: amId,
 		Credentials: func() *structpb.Struct {
 			creds := map[string]*structpb.Value{

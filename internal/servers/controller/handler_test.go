@@ -29,19 +29,11 @@ func TestGrpcGatewayRouting(t *testing.T) {
 		expectedResult int
 	}{
 		{
-			name: "project",
-			setup: func(mux *runtime.ServeMux) {
-				require.NoError(t, services.RegisterProjectServiceHandlerServer(ctx, mux, &services.UnimplementedProjectServiceServer{}))
-			},
-			url:            "v1/orgs/someid/projects",
-			expectedResult: routed,
-		},
-		{
 			name: "users",
 			setup: func(mux *runtime.ServeMux) {
 				require.NoError(t, services.RegisterUserServiceHandlerServer(ctx, mux, &services.UnimplementedUserServiceServer{}))
 			},
-			url:            "v1/orgs/someid/users",
+			url:            "v1/scopes/someid/users",
 			expectedResult: routed,
 		},
 		{
@@ -49,15 +41,7 @@ func TestGrpcGatewayRouting(t *testing.T) {
 			setup: func(mux *runtime.ServeMux) {
 				require.NoError(t, services.RegisterRoleServiceHandlerServer(ctx, mux, &services.UnimplementedRoleServiceServer{}))
 			},
-			url:            "v1/orgs/someid/roles",
-			expectedResult: routed,
-		},
-		{
-			name: "project_scoped_roles",
-			setup: func(mux *runtime.ServeMux) {
-				require.NoError(t, services.RegisterRoleServiceHandlerServer(ctx, mux, &services.UnimplementedRoleServiceServer{}))
-			},
-			url:            "v1/orgs/someid/projects/_someprojectid/roles",
+			url:            "v1/scopes/someid/roles",
 			expectedResult: routed,
 		},
 		{
@@ -65,15 +49,7 @@ func TestGrpcGatewayRouting(t *testing.T) {
 			setup: func(mux *runtime.ServeMux) {
 				require.NoError(t, services.RegisterGroupServiceHandlerServer(ctx, mux, &services.UnimplementedGroupServiceServer{}))
 			},
-			url:            "v1/orgs/someid/groups",
-			expectedResult: routed,
-		},
-		{
-			name: "project_scoped_groups",
-			setup: func(mux *runtime.ServeMux) {
-				require.NoError(t, services.RegisterGroupServiceHandlerServer(ctx, mux, &services.UnimplementedGroupServiceServer{}))
-			},
-			url:            "v1/orgs/someid/projects/_someprojectid/groups",
+			url:            "v1/scopes/someid/groups",
 			expectedResult: routed,
 		},
 		{
@@ -126,7 +102,7 @@ func TestAuthenticationHandler(t *testing.T) {
 	c := NewTestController(t, &TestControllerOpts{DefaultOrgId: "o_1234567890"})
 	defer c.Shutdown()
 
-	resp, err := http.Post(fmt.Sprintf("%s/v1/orgs/o_1234567890/auth-methods/am_1234567890:authenticate", c.ApiAddrs()[0]), "application/json",
+	resp, err := http.Post(fmt.Sprintf("%s/v1/scopes/o_1234567890/auth-methods/am_1234567890:authenticate", c.ApiAddrs()[0]), "application/json",
 		strings.NewReader(`{"token_type": null, "credentials": {"name":"test", "password": "test"}}`))
 	require.NoError(t, err)
 	assert.Equal(t, http.StatusOK, resp.StatusCode, "Got response: %v", resp)
@@ -160,18 +136,18 @@ func TestGrpcGatewayRouting_CustomActions(t *testing.T) {
 				require.NoError(t, services.RegisterRoleServiceHandlerServer(ctx, mux, &services.UnimplementedRoleServiceServer{}))
 			},
 			post_urls: []string{
-				"v1/orgs/someid/roles/r_anotherid:add-principals",
-				"v1/orgs/someid/roles/r_anotherid:set-principals",
-				"v1/orgs/someid/roles/r_anotherid:remove-principals",
-				"v1/orgs/someid/projects/p_something/roles/r_anotherid:add-principals",
-				"v1/orgs/someid/projects/p_something/roles/r_anotherid:set-principals",
-				"v1/orgs/someid/projects/p_something/roles/r_anotherid:remove-principals",
-				"v1/orgs/someid/roles/r_anotherid:add-grants",
-				"v1/orgs/someid/roles/r_anotherid:set-grants",
-				"v1/orgs/someid/roles/r_anotherid:remove-grants",
-				"v1/orgs/someid/projects/p_something/roles/r_anotherid:add-grants",
-				"v1/orgs/someid/projects/p_something/roles/r_anotherid:set-grants",
-				"v1/orgs/someid/projects/p_something/roles/r_anotherid:remove-grants",
+				"v1/scopes/someid/roles/r_anotherid:add-principals",
+				"v1/scopes/someid/roles/r_anotherid:set-principals",
+				"v1/scopes/someid/roles/r_anotherid:remove-principals",
+				"v1/scopes/someid/roles/r_anotherid:add-principals",
+				"v1/scopes/someid/roles/r_anotherid:set-principals",
+				"v1/scopes/someid/roles/r_anotherid:remove-principals",
+				"v1/scopes/someid/roles/r_anotherid:add-grants",
+				"v1/scopes/someid/roles/r_anotherid:set-grants",
+				"v1/scopes/someid/roles/r_anotherid:remove-grants",
+				"v1/scopes/someid/roles/r_anotherid:add-grants",
+				"v1/scopes/someid/roles/r_anotherid:set-grants",
+				"v1/scopes/someid/roles/r_anotherid:remove-grants",
 			},
 		},
 	}
@@ -209,7 +185,7 @@ func TestHandleGrpcGateway(t *testing.T) {
 		},
 		{
 			"Unimplemented path",
-			"v1/orgs/1/projects/2/host-catalogs/3/host-sets/hs_4",
+			"v1/scopes/1/host-catalogs/3/host-sets/hs_4",
 			http.StatusMethodNotAllowed,
 		},
 	}

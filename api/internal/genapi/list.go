@@ -18,33 +18,29 @@ type listInfo struct {
 var listFuncs = map[string][]*listInfo{
 	"scopes": {
 		{
-			baseType:   "Org",
-			targetType: "Project",
-			path:       "projects",
+			baseType:   "Scope",
+			targetType: "Scope",
+			path:       "scopes",
 		},
+	},
+	"groups": {
 		{
-			baseType:   "Org",
-			targetType: "groups.Group",
+			baseType:   "Group",
+			targetType: "Group",
 			path:       "groups",
 		},
+	},
+	"users": {
 		{
-			baseType:   "Org",
-			targetType: "roles.Role",
-			path:       "roles",
-		},
-		{
-			baseType:   "Org",
-			targetType: "users.User",
+			baseType:   "User",
+			targetType: "User",
 			path:       "users",
 		},
+	},
+	"roles": {
 		{
-			baseType:   "Project",
-			targetType: "groups.Group",
-			path:       "groups",
-		},
-		{
-			baseType:   "Project",
-			targetType: "roles.Role",
+			baseType:   "Role",
+			targetType: "Role",
 			path:       "roles",
 		},
 	},
@@ -83,27 +79,15 @@ func (s {{ .BaseType }}) List{{ .TargetName }}s(ctx context.Context) ([]*{{ .Tar
 	if s.Client == nil {
 		return nil, nil, fmt.Errorf("nil client in List{{ .TargetName }} request")
 	}
-	if s.Id == "" {
-		{{ if (eq .BaseType "Org") }}
-		// Assume the client has been configured with org already and
-		// move on
-		{{ else if (eq .BaseType "Project") }}
-		// Assume the client has been configured with project already and move
-		// on
-		{{ else }}
-		return nil, nil, fmt.Errorf("missing {{ .BaseType }} ID in List{{ .TargetType }}s request")
-		{{ end }}
-	} else {
+
+	var opts []api.Option
+	if s.Scope.Id != "" {
 		// If it's explicitly set here, override anything that might be in the
 		// client
-		{{ if (eq .BaseType "Org") }}
-		ctx = context.WithValue(ctx, "org", s.Id)
-		{{ else if (eq .BaseType "Project") }}
-		ctx = context.WithValue(ctx, "project", s.Id)
-		{{ end }}
+		opts = append(opts, api.WithScopeId(s.Scope.Id))
 	}
 
-	req, err := s.Client.NewRequest(ctx, "GET", "{{ .Path }}", nil)
+	req, err := s.Client.NewRequest(ctx, "GET", "{{ .Path }}", nil, opts...)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error creating List{{ .TargetName }}s request: %w", err)
 	}
@@ -124,12 +108,9 @@ func (s {{ .BaseType }}) List{{ .TargetName }}s(ctx context.Context) ([]*{{ .Tar
 	}
 
 	for _, t := range target.Items {
-	{{ if (eq .TargetType "Org") }}
+	{{ if (eq .TargetType "Scope") }}
 	t.Client = s.Client.Clone()
-	t.Client.SetOrgnization(t.Id)
-	{{ else if (eq .TargetType "Project") }}
-	t.Client = s.Client.Clone()
-	t.Client.SetProject(t.Id)
+	t.Client.SetScopeId(t.Id)
 	{{ else }}
 	t.Client = s.Client
 	{{ end }}

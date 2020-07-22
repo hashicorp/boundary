@@ -481,7 +481,7 @@ func (b *Server) CreateDevDatabase(dialect string) error {
 	}
 
 	// TODO: Remove this when Auth Account repo is in place.
-	authenticate.OrgScope = orgScope.GetPublicId()
+	authenticate.Scope = orgScope.GetPublicId()
 	insert := `insert into auth_method
 	(public_id, scope_id)
 	values

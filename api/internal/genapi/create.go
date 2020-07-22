@@ -16,6 +16,34 @@ type createInfo struct {
 }
 
 var createFuncs = map[string][]*createInfo{
+	"scopes": {
+		{
+			baseType:   "Scope",
+			targetType: "Scope",
+			path:       `"scopes"`,
+		},
+	},
+	"groups": {
+		{
+			baseType:   "Group",
+			targetType: "Group",
+			path:       `"groups"`,
+		},
+	},
+	"users": {
+		{
+			baseType:   "User",
+			targetType: "User",
+			path:       `"users"`,
+		},
+	},
+	"roles": {
+		{
+			baseType:   "Role",
+			targetType: "Role",
+			path:       `"roles"`,
+		},
+	},
 	"hosts": {
 		{
 			baseType:   "HostCatalog",
@@ -26,43 +54,6 @@ var createFuncs = map[string][]*createInfo{
 			baseType:   "HostCatalog",
 			targetType: "HostSet",
 			path:       `fmt.Sprintf("host-catalogs/%s/host-sets", s.Id)`,
-		},
-	},
-	"scopes": {
-		{
-			baseType:   "Org",
-			targetType: "Project",
-			path:       `"projects"`,
-		},
-		{
-			baseType:   "Org",
-			targetType: "groups.Group",
-			path:       `"groups"`,
-		},
-		{
-			baseType:   "Org",
-			targetType: "roles.Role",
-			path:       `"roles"`,
-		},
-		{
-			baseType:   "Org",
-			targetType: "users.User",
-			path:       `"users"`,
-		},
-		{
-			baseType:   "Project",
-			targetType: "hosts.HostCatalog",
-			path:       `"host-catalogs"`,
-		},
-		{
-			baseType:   "Project",
-			targetType: "groups.Group",
-			path:       `"groups"`,
-		},
-		{
-			baseType:   "Project",
-			targetType: "roles.Role",
-			path:       `"roles"`,
 		},
 	},
 }
@@ -98,50 +89,35 @@ var createFuncTemplate = template.Must(template.New("").Parse(
 	`
 func (s {{ .BaseType }}) Create{{ .TargetName }}(ctx context.Context, r *{{ .TargetType }}) (*{{ .TargetType }}, *api.Error, error) {
 	if s.Client == nil {
-		return nil, nil, fmt.Errorf("nil client in Create{{ .TargetType }} request")
+		return nil, nil, fmt.Errorf("nil client in Create{{ .TargetName }} request")
 	}
-	if s.Id == "" {
-		{{ if (eq .BaseType "Org") }}
-		// Assume the client has been configured with org already and
-		// move on
-		{{ else if (eq .BaseType "Project") }}
-		// Assume the client has been configured with project already and move
-		// on
-		{{ else }}
-		return nil, nil, fmt.Errorf("missing {{ .BaseType}} ID in Create{{ .TargetType }} request")
-		{{ end }}
-	} else {
+	
+	var opts []api.Option
+	if s.Scope.Id != "" {
 		// If it's explicitly set here, override anything that might be in the
 		// client
-		{{ if (eq .BaseType "Org") }}
-		ctx = context.WithValue(ctx, "org", s.Id)
-		{{ else if (eq .BaseType "Project") }}
-		ctx = context.WithValue(ctx, "project", s.Id)
-		{{ end }}
+		opts = append(opts, api.WithScopeId(s.Scope.Id))
 	}
 
-	req, err := s.Client.NewRequest(ctx, "POST", {{ .Path }}, r)
+	req, err := s.Client.NewRequest(ctx, "POST", {{ .Path }}, r, opts...)
 	if err != nil {
-		return nil, nil, fmt.Errorf("error creating Create{{ .TargetType }} request: %w", err)
+		return nil, nil, fmt.Errorf("error creating Create{{ .TargetName }} request: %w", err)
 	}
 
 	resp, err := s.Client.Do(req)
 	if err != nil {
-		return nil, nil, fmt.Errorf("error performing client request during Create{{ .TargetType }} call: %w", err)
+		return nil, nil, fmt.Errorf("error performing client request during Create{{ .TargetName }} call: %w", err)
 	}
 
 	target := new({{ .TargetType }})
 	apiErr, err := resp.Decode(target)
 	if err != nil {
-		return nil, nil, fmt.Errorf("error decoding Create{{ .TargetType }} repsonse: %w", err)
+		return nil, nil, fmt.Errorf("error decoding Create{{ .TargetName }} repsonse: %w", err)
 	}
 
-	{{ if (eq .TargetType "Org") }}
+	{{ if (eq .TargetType "Scope") }}
 	target.Client = s.Client.Clone()
-	target.Client.SetOrgnization(target.Id)
-	{{ else if (eq .TargetType "Project") }}
-	target.Client = s.Client.Clone()
-	target.Client.SetProject(target.Id)
+	target.Client.SetScopeId(target.Id)
 	{{ else }}
 	target.Client = s.Client
 	{{ end }}

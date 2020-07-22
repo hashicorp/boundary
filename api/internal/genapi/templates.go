@@ -78,10 +78,9 @@ import (
 )
 
 type {{ .Name }} struct {
-	{{ if (not (eq .Package "api")) }}
+	{{ if (not .OutputOnly) }}
 	Client *api.Client ` + "`json:\"-\"`" + `
 	{{ end }}
-
 	{{ .StructFields }}
 }
 

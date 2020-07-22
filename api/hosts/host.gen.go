@@ -9,6 +9,7 @@ import (
 	"github.com/fatih/structs"
 
 	"github.com/hashicorp/watchtower/api"
+	"github.com/hashicorp/watchtower/api/info"
 	"github.com/hashicorp/watchtower/api/internal/strutil"
 )
 
@@ -20,6 +21,9 @@ type Host struct {
 	// The ID of the host
 	// Output only.
 	Id string `json:"id,omitempty"`
+	// Scope information for this resource
+	// Output only.
+	Scope info.Scope `json:"scope,omitempty"`
 	// The type of the resource, to help differentiate schemas
 	Type *string `json:"type,omitempty"`
 	// Optional name for identification purposes
@@ -40,7 +44,7 @@ type Host struct {
 
 func (s *Host) SetDefault(key string) {
 	lowerKey := strings.ToLower(key)
-	validMap := map[string]string{"address": "address", "createdtime": "created_time", "description": "description", "disabled": "disabled", "id": "id", "name": "name", "type": "type", "updatedtime": "updated_time"}
+	validMap := map[string]string{"address": "address", "createdtime": "created_time", "description": "description", "disabled": "disabled", "id": "id", "name": "name", "scope": "scope", "type": "type", "updatedtime": "updated_time"}
 	for k, v := range validMap {
 		if k == lowerKey || v == lowerKey {
 			s.defaultFields = strutil.AppendIfMissing(s.defaultFields, v)
@@ -51,7 +55,7 @@ func (s *Host) SetDefault(key string) {
 
 func (s *Host) UnsetDefault(key string) {
 	lowerKey := strings.ToLower(key)
-	validMap := map[string]string{"address": "address", "createdtime": "created_time", "description": "description", "disabled": "disabled", "id": "id", "name": "name", "type": "type", "updatedtime": "updated_time"}
+	validMap := map[string]string{"address": "address", "createdtime": "created_time", "description": "description", "disabled": "disabled", "id": "id", "name": "name", "scope": "scope", "type": "type", "updatedtime": "updated_time"}
 	for k, v := range validMap {
 		if k == lowerKey || v == lowerKey {
 			s.defaultFields = strutil.StrListDelete(s.defaultFields, v)
