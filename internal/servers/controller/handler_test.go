@@ -54,7 +54,7 @@ func TestHandleImplementedPaths(t *testing.T) {
 		},
 		"POST": {
 			// Creation end points
-			"v1/scopes/someid/projects",
+			"v1/scopes",
 			"v1/scopes/someid/users",
 			"v1/scopes/someid/roles",
 			"v1/scopes/someid/groups",
@@ -77,7 +77,7 @@ func TestHandleImplementedPaths(t *testing.T) {
 			"v1/scopes/someid/groups/someid",
 		},
 		"PATCH": {
-			"v1/scopes/someid/projects/someid",
+			"v1/scopes/someid",
 			"v1/scopes/someid/users/someid",
 			"v1/scopes/someid/roles/someid",
 			"v1/scopes/someid/groups/someid",
