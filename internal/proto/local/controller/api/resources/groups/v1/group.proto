@@ -9,6 +9,20 @@ import "google/protobuf/wrappers.proto";
 import "controller/api/resources/scopes/v1/scope.proto";
 import "controller/custom_options/v1/masks.proto";
 
+message Member {
+	// The ID of the member.
+	// Output only.
+	string id = 1;
+
+	// The type of the member.
+	// Output only.
+	string type = 2;
+
+	// The scope ID of the member.
+	// Output only.
+	string scope_id = 3 [json_name="scope_id"];
+}
+
 // Group contains all fields related to a Group resource
 message Group {
 	// The ID of the Project
@@ -18,7 +32,7 @@ message Group {
 	// Scope information for this resource
 	// Output only.
 	resources.scopes.v1.ScopeInfo scope = 2;
-	
+
 	// Optional name for identification purposes
 	google.protobuf.StringValue name = 3 [(custom_options.v1.mask_mapping) = {this:"name" that: "name"}];
 
@@ -35,4 +49,17 @@ message Group {
 
 	// Whether the resource is disabled
 	google.protobuf.BoolValue disabled = 7;
+
+	// The version can be used in subsiquent write requests to ensure this resource
+	// has not changed and to fail the write if it has.
+	// Output only.
+	uint32 version = 8;
+
+	// Contains the list of member ids in this group.
+	// Output only.
+	repeated string member_ids = 9;
+
+	// The members of this group.
+	// Output only.
+	repeated Member members = 10;
 }
