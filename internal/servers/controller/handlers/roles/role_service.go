@@ -590,10 +590,16 @@ func validateUpdateRequest(req *pbs.UpdateRoleRequest, scope *scopes.ScopeInfo) 
 	if item.GetUpdatedTime() != nil {
 		badFields["updated_time"] = "This is a read only field and cannot be specified in an update request."
 	}
+	if item.GetPrincipalIds() != nil {
+		badFields["principal_ids"] = "This is a read only field and cannot be specified in an update request."
+	}
 	if item.GetPrincipals() != nil {
 		badFields["principals"] = "This is a read only field and cannot be specified in an update request."
 	}
 	if item.GetGrants() != nil {
+		badFields["grants"] = "This is a read only field and cannot be specified in an update request."
+	}
+	if item.GetGrantStrings() != nil {
 		badFields["grant_strings"] = "This is a read only field and cannot be specified in an update request."
 	}
 	if item.GetGrantScopeId() != nil && scope.GetType() == "project" {

@@ -17,9 +17,17 @@ message ScopeInfo {
 	// Output only.
 	string type = 2;
 
+	// The name of the scope, if any
+	// Output only.
+	string name = 3;
+
+	// The description of the scope, if any
+	// Output only.
+	string description = 4;
+
 	// The ID of the parent scope, if any
 	// Output only.
-	string parent_scope_id = 3 [json_name="parent_scope_id"];
+	string parent_scope_id = 5 [json_name="parent_scope_id"];
 }
 
 // Scope contains all fields related to a Scope resource

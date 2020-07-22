@@ -1774,6 +1774,16 @@
           "description": "The type of the Scope\nOutput only.",
           "readOnly": true
         },
+        "name": {
+          "type": "string",
+          "description": "The name of the scope, if any\nOutput only.",
+          "readOnly": true
+        },
+        "description": {
+          "type": "string",
+          "description": "The description of the scope, if any\nOutput only.",
+          "readOnly": true
+        },
         "parent_scope_id": {
           "type": "string",
           "description": "The ID of the parent scope, if any\nOutput only.",

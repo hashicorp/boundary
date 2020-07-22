@@ -15,9 +15,9 @@ type AuthToken struct {
 	// Scope information for this resource
 	// Output only.
 	Scope info.Scope `json:"scope,omitempty"`
-	// The token. This will only be populated after login and is only ever
-	// visible to the end user whose login request resulted in this auth token
-	// being created.
+	// The token value, which will only be populated after authentication and is
+	// only ever visible to the end user whose login request resulted in this
+	// auth token being created.
 	// Output only.
 	Token string `json:"token,omitempty"`
 	// The id of the user of this AuthToken.
