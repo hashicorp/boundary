@@ -240,16 +240,16 @@ func (v *verifier) parseAuthParams() error {
 				return fmt.Errorf("perform auth check: failed to get iam repo: %w", err)
 			}
 
-			scp, err := iamRepo.LookupScope(v.ctx, splitPath[1])
+			scp, err := iamRepo.LookupScope(v.ctx, id)
 			if err != nil {
 				return fmt.Errorf("perform auth check: failed to lookup scope: %w", err)
 			}
 			if scp == nil {
-				return fmt.Errorf("perform auth check: non-existent scope %q", splitPath[1])
+				return fmt.Errorf("perform auth check: non-existent scope %q", id)
 			}
 			v.res.ScopeId = scp.GetParentId()
 		}
-		v.res.Id = splitPath[1]
+		v.res.Id = id
 		return nil
 
 	case 3:

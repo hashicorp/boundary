@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
-	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -77,13 +76,14 @@ func TestHandler_CORS(t *testing.T) {
 	defer tc.Shutdown()
 
 	cases := []struct {
-		name          string
-		method        string
-		origin        string
-		code          int
-		acrmHeader    string
-		allowedHeader string
-		listenerNum   int
+		name           string
+		method         string
+		origin         string
+		code           int
+		acrmHeader     string
+		allowedHeader  string
+		listenerNum    int
+		provideScopeId bool
 	}{
 		{
 			name:        "disabled no origin",
@@ -145,17 +145,19 @@ func TestHandler_CORS(t *testing.T) {
 			listenerNum: 4,
 		},
 		{
-			name:        "enabled with wildcard origins and no origin defined, scope-id-checking",
-			method:      http.MethodGet,
-			code:        http.StatusOK,
-			listenerNum: 4,
+			name:           "enabled with wildcard origins and no origin defined, scope id checking",
+			method:         http.MethodGet,
+			code:           http.StatusOK,
+			listenerNum:    4,
+			provideScopeId: true,
 		},
 		{
-			name:        "enabled with wildcard origins and origin defined, scope-id-checking",
-			method:      http.MethodPost,
-			origin:      "flubber.com",
-			code:        http.StatusOK,
-			listenerNum: 4,
+			name:           "enabled with wildcard origins and origin defined, scope id checking",
+			method:         http.MethodPost,
+			origin:         "flubber.com",
+			code:           http.StatusOK,
+			listenerNum:    4,
+			provideScopeId: true,
 		},
 		{
 			name:        "wildcard origins with method list and good method",
@@ -191,7 +193,7 @@ func TestHandler_CORS(t *testing.T) {
 			// This tests out scope_id handling from body or query
 			var body interface{}
 			scopeId := "global"
-			if strings.HasSuffix(c.name, "scope-id-checking") {
+			if c.provideScopeId {
 				scopeId = "o_1234567890"
 				if c.method == http.MethodPost {
 					body = &scopes.Scope{}
