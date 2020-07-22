@@ -239,7 +239,7 @@ func TestRepository_UpdateGroup(t *testing.T) {
 			newScopeId:     org.PublicId,
 			wantErr:        true,
 			wantRowsUpdate: 0,
-			wantErrMsg:     "update group: update: lookup error lookup after write: failed record not found for 1",
+			wantErrMsg:     "update group: update: lookup after write: record not found for 1",
 			wantIsError:    db.ErrRecordNotFound,
 		},
 		{
