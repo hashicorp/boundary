@@ -95,7 +95,7 @@ func TestGet(t *testing.T) {
 			s, err := users.NewService(repo)
 			require.NoError(err, "Couldn't create new user service.")
 
-			got, gErr := s.GetUser(auth.DisabledAuthTestContext(auth.WithTestScopeId(u.GetScopeId())), req)
+			got, gErr := s.GetUser(auth.DisabledAuthTestContext(auth.WithScopeId(u.GetScopeId())), req)
 			assert.Equal(tc.errCode, status.Code(gErr), "GetUser(%+v) got error %v, wanted %v", req, gErr, tc.errCode)
 			assert.True(proto.Equal(got, tc.res), "GetUser(%q) got response %q, wanted %q", req, got, tc.res)
 		})
@@ -157,7 +157,7 @@ func TestList(t *testing.T) {
 			s, err := users.NewService(repoFn)
 			require.NoError(err, "Couldn't create new user service.")
 
-			got, gErr := s.ListUsers(auth.DisabledAuthTestContext(auth.WithTestScopeId(tc.scopeId)), tc.req)
+			got, gErr := s.ListUsers(auth.DisabledAuthTestContext(auth.WithScopeId(tc.scopeId)), tc.req)
 			assert.Equal(tc.errCode, status.Code(gErr), "ListUsers(%+v) got error %v, wanted %v", tc.req, gErr, tc.errCode)
 			assert.True(proto.Equal(got, tc.res), "ListUsers(%q) got response %q, wanted %q", tc.req, got, tc.res)
 		})
@@ -209,7 +209,7 @@ func TestDelete(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			assert := assert.New(t)
-			got, gErr := s.DeleteUser(auth.DisabledAuthTestContext(auth.WithTestScopeId(u.GetScopeId())), tc.req)
+			got, gErr := s.DeleteUser(auth.DisabledAuthTestContext(auth.WithScopeId(u.GetScopeId())), tc.req)
 			assert.Equal(tc.errCode, status.Code(gErr), "DeleteUser(%+v) got error %v, wanted %v", tc.req, gErr, tc.errCode)
 			assert.EqualValuesf(tc.res, got, "DeleteUser(%q) got response %q, wanted %q", tc.req, got, tc.res)
 		})
@@ -226,7 +226,7 @@ func TestDelete_twice(t *testing.T) {
 	req := &pbs.DeleteUserRequest{
 		Id: u.GetPublicId(),
 	}
-	ctx := auth.DisabledAuthTestContext(auth.WithTestScopeId(u.GetScopeId()))
+	ctx := auth.DisabledAuthTestContext(auth.WithScopeId(u.GetScopeId()))
 	got, gErr := s.DeleteUser(ctx, req)
 	assert.NoError(gErr, "First attempt")
 	assert.True(got.GetExisted(), "Expected existed to be true for the first delete.")
@@ -298,7 +298,7 @@ func TestCreate(t *testing.T) {
 			s, err := users.NewService(repo)
 			require.NoError(err, "Error when getting new user service.")
 
-			got, gErr := s.CreateUser(auth.DisabledAuthTestContext(auth.WithTestScopeId(defaultUser.GetScopeId())), req)
+			got, gErr := s.CreateUser(auth.DisabledAuthTestContext(auth.WithScopeId(defaultUser.GetScopeId())), req)
 			assert.Equal(tc.errCode, status.Code(gErr), "CreateUser(%+v) got error %v, wanted %v", req, gErr, tc.errCode)
 			if got != nil {
 				assert.True(strings.HasPrefix(got.GetUri(), tc.res.Uri))
@@ -551,7 +551,7 @@ func TestUpdate(t *testing.T) {
 			req := proto.Clone(toMerge).(*pbs.UpdateUserRequest)
 			proto.Merge(req, tc.req)
 
-			got, gErr := tested.UpdateUser(auth.DisabledAuthTestContext(auth.WithTestScopeId(u.GetScopeId())), req)
+			got, gErr := tested.UpdateUser(auth.DisabledAuthTestContext(auth.WithScopeId(u.GetScopeId())), req)
 			assert.Equal(tc.errCode, status.Code(gErr), "UpdateUser(%+v) got error %v, wanted %v", req, gErr, tc.errCode)
 
 			if got != nil {

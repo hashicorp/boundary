@@ -50,10 +50,17 @@ var _ pbs.ScopeServiceServer = Service{}
 
 // ListScopes implements the interface pbs.ScopeServiceServer.
 func (s Service) ListScopes(ctx context.Context, req *pbs.ListScopesRequest) (*pbs.ListScopesResponse, error) {
-	authResults := auth.Verify(ctx)
+	if req.GetScopeId() == "" {
+		return nil, handlers.InvalidArgumentErrorf(
+			"Argument errors found in the request.",
+			map[string]string{"scope_id": "Missing value for scope_id"},
+		)
+	}
+	authResults := auth.Verify(ctx, auth.WithScopeId(req.GetScopeId()))
 	if !authResults.Valid {
 		return nil, handlers.ForbiddenError()
 	}
+
 	if err := validateListRequest(req); err != nil {
 		return nil, err
 	}
@@ -88,10 +95,17 @@ func (s Service) GetScope(ctx context.Context, req *pbs.GetScopeRequest) (*pbs.G
 
 // CreateScope implements the interface pbs.ScopeServiceServer.
 func (s Service) CreateScope(ctx context.Context, req *pbs.CreateScopeRequest) (*pbs.CreateScopeResponse, error) {
-	authResults := auth.Verify(ctx)
+	if req.GetScopeId() == "" {
+		return nil, handlers.InvalidArgumentErrorf(
+			"Argument errors found in the request.",
+			map[string]string{"scope_id": "Missing value for scope_id"},
+		)
+	}
+	authResults := auth.Verify(ctx, auth.WithScopeId(req.GetScopeId()))
 	if !authResults.Valid {
 		return nil, handlers.ForbiddenError()
 	}
+
 	if err := validateCreateRequest(req); err != nil {
 		return nil, err
 	}

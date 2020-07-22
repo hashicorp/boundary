@@ -43,11 +43,12 @@ type RequestInfo struct {
 	Token       string
 	TokenFormat TokenFormat
 
+	// This is used for operations on the scopes collection
+	scopeIdOverride string
+
 	// The following are useful for tests
-	DisableAuthzFailures  bool
-	DisableAuthEntirely   bool
-	scopeIdOverride       string
-	parentScopeIdOverride string
+	DisableAuthzFailures bool
+	DisableAuthEntirely  bool
 }
 
 type VerifyResults struct {
@@ -88,7 +89,7 @@ func NewVerifierContext(ctx context.Context,
 // may come from the URL and may come from the token) and whether or not to
 // proceed, e.g. whether the authn/authz check resulted in failure. If an error
 // occurs it's logged to the system log.
-func Verify(ctx context.Context) (ret VerifyResults) {
+func Verify(ctx context.Context, opt ...Option) (ret VerifyResults) {
 	v, ok := ctx.Value(verifierKey).(*verifier)
 	if !ok {
 		// We don't have a logger yet and this should never happen in any
@@ -106,11 +107,12 @@ func Verify(ctx context.Context) (ret VerifyResults) {
 		case strings.HasPrefix(ret.Scope.Id, scope.Project.Prefix()):
 			ret.Scope.Type = scope.Project.String()
 		}
-		ret.Scope.ParentScopeId = v.requestInfo.parentScopeIdOverride
 		ret.Valid = true
 		return
 	}
 	v.ctx = ctx
+	opts := getOpts(opt...)
+	v.requestInfo.scopeIdOverride = opts.withScopeId
 	if err := v.parseAuthParams(); err != nil {
 		v.logger.Trace("error reading auth parameters from URL", "url", v.requestInfo.Path, "method", v.requestInfo.Method, "error", err)
 		return
@@ -211,17 +213,42 @@ func (v *verifier) parseAuthParams() error {
 		if v.act == action.Read {
 			v.act = action.List
 		}
-		// We're operating on the scopes collection. Set the scope ID to
-		// "token", which will be a signal to read it from the token.
-		v.res.ScopeId = "token"
-		// TODO: check for an override
+		if v.requestInfo.scopeIdOverride == "" {
+			return errors.New("parse auth params: missing scope ID information for scopes collection operation")
+		}
+		v.res.ScopeId = v.requestInfo.scopeIdOverride
 		return nil
 
 	case 2:
-		// The next segment should be the scope ID, and we still need to look up
-		// the actual request scopefrom the token like in the case above.
-		v.res.ScopeId = "token"
-		// TODO: check for an override
+		id := splitPath[1]
+		// The next segment should be the scope ID, but it takes place not in
+		// its own scope but in the parent scope. Rather than require the user
+		// to provide it, look up the parent.
+		switch {
+		case id == "global", strings.HasPrefix(id, scope.Org.Prefix()):
+			// Org scope parent is always global. Set scope for global
+			// operations to global as well (it's basically acting as its own
+			// parent scope). We want this so that users can e.g. modify the
+			// name or description of the global scope if they have permissions
+			// in the scope.
+			v.res.ScopeId = "global"
+
+		default:
+			// Project case
+			iamRepo, err := v.iamRepoFn()
+			if err != nil {
+				return fmt.Errorf("perform auth check: failed to get iam repo: %w", err)
+			}
+
+			scp, err := iamRepo.LookupScope(v.ctx, splitPath[1])
+			if err != nil {
+				return fmt.Errorf("perform auth check: failed to lookup scope: %w", err)
+			}
+			if scp == nil {
+				return fmt.Errorf("perform auth check: non-existent scope %q", splitPath[1])
+			}
+			v.res.ScopeId = scp.GetParentId()
+		}
 		v.res.Id = splitPath[1]
 		return nil
 
@@ -353,16 +380,6 @@ func (v verifier) performAuthCheck() (aclResults *perms.ACLResults, userId strin
 	}
 	if at != nil {
 		userId = at.GetIamUserId()
-		if v.res.ScopeId == "token" {
-			v.res.ScopeId = at.ScopeId
-		}
-	}
-
-	// If no token was found, put at global scope. In the future we can allow an
-	// override as part of the request parameter. Then check that we actually
-	// have a valid scope.
-	if v.res.ScopeId == "token" {
-		v.res.ScopeId = "global"
 	}
 
 	// Fetch and parse grants for this user ID (which may include grants for

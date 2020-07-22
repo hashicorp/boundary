@@ -166,7 +166,7 @@ func TestGet(t *testing.T) {
 			s, err := roles.NewService(repo)
 			require.NoError(err, "Couldn't create new role service.")
 
-			got, gErr := s.GetRole(auth.DisabledAuthTestContext(auth.WithTestScopeId(tc.scopeId)), req)
+			got, gErr := s.GetRole(auth.DisabledAuthTestContext(auth.WithScopeId(tc.scopeId)), req)
 			assert.Equal(tc.errCode, status.Code(gErr), "GetRole(%+v) got error %v, wanted %v", req, gErr, tc.errCode)
 			assert.True(proto.Equal(got, tc.res), "GetRole(%q) got response\n%q, wanted\n%q", req, got, tc.res)
 		})
@@ -247,7 +247,7 @@ func TestList(t *testing.T) {
 			s, err := roles.NewService(repoFn)
 			require.NoError(err, "Couldn't create new role service.")
 
-			got, gErr := s.ListRoles(auth.DisabledAuthTestContext(auth.WithTestScopeId(tc.scopeId)), tc.req)
+			got, gErr := s.ListRoles(auth.DisabledAuthTestContext(auth.WithScopeId(tc.scopeId)), tc.req)
 			assert.Equal(tc.errCode, status.Code(gErr), "ListRoles(%+v) got error %v, wanted %v", tc.req, gErr, tc.errCode)
 			assert.True(proto.Equal(got, tc.res), "ListRoles(%q) got response %q, wanted %q", tc.req, got, tc.res)
 		})
@@ -326,7 +326,7 @@ func TestDelete(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			assert := assert.New(t)
-			got, gErr := s.DeleteRole(auth.DisabledAuthTestContext(auth.WithTestScopeId(tc.scopeId)), tc.req)
+			got, gErr := s.DeleteRole(auth.DisabledAuthTestContext(auth.WithScopeId(tc.scopeId)), tc.req)
 			assert.Equal(tc.errCode, status.Code(gErr), "DeleteRole(%+v) got error %v, wanted %v", tc.req, gErr, tc.errCode)
 			assert.EqualValuesf(tc.res, got, "DeleteRole(%q) got response %q, wanted %q", tc.req, got, tc.res)
 		})
@@ -343,7 +343,7 @@ func TestDelete_twice(t *testing.T) {
 	req := &pbs.DeleteRoleRequest{
 		Id: or.GetPublicId(),
 	}
-	ctx := auth.DisabledAuthTestContext(auth.WithTestScopeId(or.GetPublicId()))
+	ctx := auth.DisabledAuthTestContext(auth.WithScopeId(or.GetPublicId()))
 	got, gErr := s.DeleteRole(ctx, req)
 	assert.NoError(gErr, "First attempt")
 	assert.True(got.GetExisted(), "Expected existed to be true for the first delete.")
@@ -354,7 +354,7 @@ func TestDelete_twice(t *testing.T) {
 	projReq := &pbs.DeleteRoleRequest{
 		Id: pr.GetPublicId(),
 	}
-	ctx = auth.DisabledAuthTestContext(auth.WithTestScopeId(pr.GetPublicId()))
+	ctx = auth.DisabledAuthTestContext(auth.WithScopeId(pr.GetPublicId()))
 	got, gErr = s.DeleteRole(ctx, projReq)
 	assert.NoError(gErr, "First attempt")
 	assert.True(got.GetExisted(), "Expected existed to be true for the first delete.")
@@ -469,7 +469,7 @@ func TestCreate(t *testing.T) {
 			s, err := roles.NewService(repo)
 			require.NoError(err, "Error when getting new role service.")
 
-			got, gErr := s.CreateRole(auth.DisabledAuthTestContext(auth.WithTestScopeId(tc.scopeId)), req)
+			got, gErr := s.CreateRole(auth.DisabledAuthTestContext(auth.WithScopeId(tc.scopeId)), req)
 			assert.Equal(tc.errCode, status.Code(gErr), "CreateRole(%+v) got error %v, wanted %v", req, gErr, tc.errCode)
 			if got != nil {
 				assert.True(strings.HasPrefix(got.GetUri(), tc.res.Uri), "Expected %q to have the prefix %q", got.GetUri(), tc.res.GetUri())
@@ -877,7 +877,7 @@ func TestUpdate(t *testing.T) {
 			req := proto.Clone(toMerge).(*pbs.UpdateRoleRequest)
 			proto.Merge(req, tc.req)
 
-			got, gErr := tested.UpdateRole(auth.DisabledAuthTestContext(auth.WithTestScopeId(tc.scopeId)), req)
+			got, gErr := tested.UpdateRole(auth.DisabledAuthTestContext(auth.WithScopeId(tc.scopeId)), req)
 			assert.Equal(tc.errCode, status.Code(gErr), "UpdateRole(%+v) got error %v, wanted %v", req, gErr, tc.errCode)
 
 			if got != nil {
@@ -978,7 +978,7 @@ func TestAddPrincipal(t *testing.T) {
 					PrincipalIds: append(tc.addUsers, tc.addGroups...),
 				}
 
-				got, err := s.AddRolePrincipals(auth.DisabledAuthTestContext(auth.WithTestScopeId(o.GetPublicId())), req)
+				got, err := s.AddRolePrincipals(auth.DisabledAuthTestContext(auth.WithScopeId(o.GetPublicId())), req)
 				if tc.wantErr {
 					assert.Error(t, err)
 					return
@@ -1011,7 +1011,7 @@ func TestAddPrincipal(t *testing.T) {
 	for _, tc := range failCases {
 		t.Run(tc.name, func(t *testing.T) {
 			assert := assert.New(t)
-			_, gErr := s.AddRolePrincipals(auth.DisabledAuthTestContext(auth.WithTestScopeId(p.GetPublicId())), tc.req)
+			_, gErr := s.AddRolePrincipals(auth.DisabledAuthTestContext(auth.WithScopeId(p.GetPublicId())), tc.req)
 			assert.Equal(tc.errCode, status.Code(gErr), "AddRolePrincipals(%+v) got error %v, wanted %v", tc.req, gErr, tc.errCode)
 		})
 	}
@@ -1098,7 +1098,7 @@ func TestSetPrincipal(t *testing.T) {
 					PrincipalIds: append(tc.setUsers, tc.setGroups...),
 				}
 
-				got, err := s.SetRolePrincipals(auth.DisabledAuthTestContext(auth.WithTestScopeId(o.GetPublicId())), req)
+				got, err := s.SetRolePrincipals(auth.DisabledAuthTestContext(auth.WithScopeId(o.GetPublicId())), req)
 				if tc.wantErr {
 					assert.Error(t, err)
 					return
@@ -1131,7 +1131,7 @@ func TestSetPrincipal(t *testing.T) {
 	for _, tc := range failCases {
 		t.Run(tc.name, func(t *testing.T) {
 			assert := assert.New(t)
-			_, gErr := s.SetRolePrincipals(auth.DisabledAuthTestContext(auth.WithTestScopeId(p.GetPublicId())), tc.req)
+			_, gErr := s.SetRolePrincipals(auth.DisabledAuthTestContext(auth.WithScopeId(p.GetPublicId())), tc.req)
 			assert.Equal(tc.errCode, status.Code(gErr), "SetRolePrincipals(%+v) got error %v, wanted %v", tc.req, gErr, tc.errCode)
 		})
 	}
@@ -1236,7 +1236,7 @@ func TestRemovePrincipal(t *testing.T) {
 					PrincipalIds: append(tc.removeUsers, tc.removeGroups...),
 				}
 
-				got, err := s.RemoveRolePrincipals(auth.DisabledAuthTestContext(auth.WithTestScopeId(o.GetPublicId())), req)
+				got, err := s.RemoveRolePrincipals(auth.DisabledAuthTestContext(auth.WithScopeId(o.GetPublicId())), req)
 				if tc.wantErr {
 					assert.Error(t, err)
 					return
@@ -1269,7 +1269,7 @@ func TestRemovePrincipal(t *testing.T) {
 	for _, tc := range failCases {
 		t.Run(tc.name, func(t *testing.T) {
 			assert := assert.New(t)
-			_, gErr := s.AddRolePrincipals(auth.DisabledAuthTestContext(auth.WithTestScopeId(p.GetPublicId())), tc.req)
+			_, gErr := s.AddRolePrincipals(auth.DisabledAuthTestContext(auth.WithScopeId(p.GetPublicId())), tc.req)
 			assert.Equal(tc.errCode, status.Code(gErr), "AddRolePrincipals(%+v) got error %v, wanted %v", tc.req, gErr, tc.errCode)
 		})
 	}
@@ -1348,7 +1348,7 @@ func TestAddGrants(t *testing.T) {
 					scopeId = p.GetPublicId()
 				}
 				req.GrantStrings = append(req.GrantStrings, tc.add...)
-				got, err := s.AddRoleGrants(auth.DisabledAuthTestContext(auth.WithTestScopeId(scopeId)), req)
+				got, err := s.AddRoleGrants(auth.DisabledAuthTestContext(auth.WithScopeId(scopeId)), req)
 				if tc.wantErr {
 					assert.Error(err)
 					return
@@ -1379,7 +1379,7 @@ func TestAddGrants(t *testing.T) {
 	for _, tc := range failCases {
 		t.Run(tc.name, func(t *testing.T) {
 			assert := assert.New(t)
-			_, gErr := s.AddRoleGrants(auth.DisabledAuthTestContext(auth.WithTestScopeId(p.GetPublicId())), tc.req)
+			_, gErr := s.AddRoleGrants(auth.DisabledAuthTestContext(auth.WithScopeId(p.GetPublicId())), tc.req)
 			assert.Equal(tc.errCode, status.Code(gErr), "AddRoleGrants(%+v) got error %#v, wanted %#v", tc.req, gErr, tc.errCode)
 		})
 	}
@@ -1446,7 +1446,7 @@ func TestSetGrants(t *testing.T) {
 					scopeId = p.GetPublicId()
 				}
 				req.GrantStrings = append(req.GrantStrings, tc.set...)
-				got, err := s.SetRoleGrants(auth.DisabledAuthTestContext(auth.WithTestScopeId(scopeId)), req)
+				got, err := s.SetRoleGrants(auth.DisabledAuthTestContext(auth.WithScopeId(scopeId)), req)
 				if tc.wantErr {
 					assert.Error(err)
 					return
@@ -1479,7 +1479,7 @@ func TestSetGrants(t *testing.T) {
 	for _, tc := range failCases {
 		t.Run(tc.name, func(t *testing.T) {
 			assert := assert.New(t)
-			_, gErr := s.SetRoleGrants(auth.DisabledAuthTestContext(auth.WithTestScopeId(p.GetPublicId())), tc.req)
+			_, gErr := s.SetRoleGrants(auth.DisabledAuthTestContext(auth.WithScopeId(p.GetPublicId())), tc.req)
 			assert.Equal(tc.errCode, status.Code(gErr), "SetRoleGrants(%+v) got error %v, wanted %v", tc.req, gErr, tc.errCode)
 		})
 	}
@@ -1545,7 +1545,7 @@ func TestRemoveGrants(t *testing.T) {
 					scopeId = p.GetPublicId()
 				}
 				req.GrantStrings = append(req.GrantStrings, tc.remove...)
-				got, err := s.RemoveRoleGrants(auth.DisabledAuthTestContext(auth.WithTestScopeId(scopeId)), req)
+				got, err := s.RemoveRoleGrants(auth.DisabledAuthTestContext(auth.WithScopeId(scopeId)), req)
 				if tc.wantErr {
 					assert.Error(err)
 					return
@@ -1579,7 +1579,7 @@ func TestRemoveGrants(t *testing.T) {
 	for _, tc := range failCases {
 		t.Run(tc.name, func(t *testing.T) {
 			assert := assert.New(t)
-			_, gErr := s.RemoveRoleGrants(auth.DisabledAuthTestContext(auth.WithTestScopeId(p.GetPublicId())), tc.req)
+			_, gErr := s.RemoveRoleGrants(auth.DisabledAuthTestContext(auth.WithScopeId(p.GetPublicId())), tc.req)
 			assert.Equal(tc.errCode, status.Code(gErr), "RemoveRoleGrants(%+v) got error %v, wanted %v", tc.req, gErr, tc.errCode)
 		})
 	}

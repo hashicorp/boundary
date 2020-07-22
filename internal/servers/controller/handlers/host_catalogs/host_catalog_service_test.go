@@ -105,7 +105,7 @@ func TestGet(t *testing.T) {
 			s, err := host_catalogs.NewService(repo)
 			require.NoError(t, err, "Couldn't create a new host catalog service.")
 
-			got, gErr := s.GetHostCatalog(auth.DisabledAuthTestContext(auth.WithTestScopeId(proj.GetPublicId())), req)
+			got, gErr := s.GetHostCatalog(auth.DisabledAuthTestContext(auth.WithScopeId(proj.GetPublicId())), req)
 			assert.Equal(tc.errCode, status.Code(gErr), "GetHostCatalog(%+v) got error %v, wanted %v", req, gErr, tc.errCode)
 			assert.True(proto.Equal(got, tc.res), "GetHostCatalog(%q) got response %q, wanted %q", req, got, tc.res)
 		})
@@ -184,7 +184,7 @@ func TestDelete(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			assert := assert.New(t)
-			got, gErr := s.DeleteHostCatalog(auth.DisabledAuthTestContext(auth.WithTestScopeId(tc.scopeId)), tc.req)
+			got, gErr := s.DeleteHostCatalog(auth.DisabledAuthTestContext(auth.WithScopeId(tc.scopeId)), tc.req)
 			assert.Equal(tc.errCode, status.Code(gErr), "DeleteHostCatalog(%+v) got error %v, wanted %v", tc.req, gErr, tc.errCode)
 			assert.EqualValuesf(tc.res, got, "DeleteHostCatalog(%q) got response %q, wanted %q", tc.req, got, tc.res)
 		})
@@ -201,7 +201,7 @@ func TestDelete_twice(t *testing.T) {
 	req := &pbs.DeleteHostCatalogRequest{
 		Id: hc.GetPublicId(),
 	}
-	ctx := auth.DisabledAuthTestContext(auth.WithTestScopeId(proj.GetPublicId()))
+	ctx := auth.DisabledAuthTestContext(auth.WithScopeId(proj.GetPublicId()))
 	got, gErr := s.DeleteHostCatalog(ctx, req)
 	assert.NoError(gErr, "First attempt")
 	assert.True(got.GetExisted(), "Expected existed to be true for the first delete.")
@@ -293,7 +293,7 @@ func TestCreate(t *testing.T) {
 			s, err := host_catalogs.NewService(repo)
 			require.NoError(err, "Failed to create a new host catalog service.")
 
-			got, gErr := s.CreateHostCatalog(auth.DisabledAuthTestContext(auth.WithTestScopeId(proj.GetPublicId())), req)
+			got, gErr := s.CreateHostCatalog(auth.DisabledAuthTestContext(auth.WithScopeId(proj.GetPublicId())), req)
 			assert.Equal(tc.errCode, status.Code(gErr), "CreateHostCatalog(%+v) got error %v, wanted %v", req, gErr, tc.errCode)
 			if got != nil {
 				assert.True(strings.HasPrefix(got.GetUri(), tc.res.GetUri()))
@@ -588,7 +588,7 @@ func TestUpdate(t *testing.T) {
 			req := proto.Clone(toMerge).(*pbs.UpdateHostCatalogRequest)
 			proto.Merge(req, tc.req)
 
-			got, gErr := tested.UpdateHostCatalog(auth.DisabledAuthTestContext(auth.WithTestScopeId(proj.GetPublicId())), req)
+			got, gErr := tested.UpdateHostCatalog(auth.DisabledAuthTestContext(auth.WithScopeId(proj.GetPublicId())), req)
 			assert.Equal(tc.errCode, status.Code(gErr), "UpdateHostCatalog(%+v) got error %v, wanted %v", req, gErr, tc.errCode)
 
 			if got != nil {
