@@ -136,7 +136,7 @@ func TestGet(t *testing.T) {
 			s, err := groups.NewService(repo)
 			require.NoError(err, "Couldn't create new group service.")
 
-			got, gErr := s.GetGroup(auth.DisabledAuthTestContext(auth.WithTestScopeId(tc.scopeId)), req)
+			got, gErr := s.GetGroup(auth.DisabledAuthTestContext(auth.WithScopeId(tc.scopeId)), req)
 			assert.Equal(tc.errCode, status.Code(gErr), "GetGroup(%+v) got error %v, wanted %v", req, gErr, tc.errCode)
 			assert.True(proto.Equal(got, tc.res), "GetGroup(%q) got response\n%q, wanted\n%q", req, got, tc.res)
 		})
@@ -208,7 +208,7 @@ func TestList(t *testing.T) {
 			s, err := groups.NewService(repoFn)
 			require.NoError(err, "Couldn't create new group service.")
 
-			got, gErr := s.ListGroups(auth.DisabledAuthTestContext(auth.WithTestScopeId(tc.scopeId)), &pbs.ListGroupsRequest{})
+			got, gErr := s.ListGroups(auth.DisabledAuthTestContext(auth.WithScopeId(tc.scopeId)), &pbs.ListGroupsRequest{})
 			assert.Equal(tc.errCode, status.Code(gErr), "ListGroups(%q) got error %v, wanted %v", tc.scopeId, gErr, tc.errCode)
 			assert.True(proto.Equal(got, tc.res), "ListGroups(%q) got response %q, wanted %q", tc.scopeId, got, tc.res)
 		})
@@ -308,7 +308,7 @@ func TestDelete(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			assert := assert.New(t)
-			got, gErr := s.DeleteGroup(auth.DisabledAuthTestContext(auth.WithTestScopeId(tc.scopeId)), tc.req)
+			got, gErr := s.DeleteGroup(auth.DisabledAuthTestContext(auth.WithScopeId(tc.scopeId)), tc.req)
 			assert.Equal(tc.errCode, status.Code(gErr), "DeleteGroup(%+v) got error %v, wanted %v", tc.req, gErr, tc.errCode)
 			assert.EqualValuesf(tc.res, got, "DeleteGroup(%+v) got response %q, wanted %q", tc.req, got, tc.res)
 		})
@@ -326,7 +326,7 @@ func TestDelete_twice(t *testing.T) {
 	req := &pbs.DeleteGroupRequest{
 		Id: og.GetPublicId(),
 	}
-	ctx := auth.DisabledAuthTestContext(auth.WithTestScopeId(scopeId))
+	ctx := auth.DisabledAuthTestContext(auth.WithScopeId(scopeId))
 	got, gErr := s.DeleteGroup(ctx, req)
 	assert.NoError(gErr, "First attempt")
 	assert.True(got.GetExisted(), "Expected existed to be true for the first delete.")
@@ -338,7 +338,7 @@ func TestDelete_twice(t *testing.T) {
 	projReq := &pbs.DeleteGroupRequest{
 		Id: pg.GetPublicId(),
 	}
-	ctx = auth.DisabledAuthTestContext(auth.WithTestScopeId(scopeId))
+	ctx = auth.DisabledAuthTestContext(auth.WithScopeId(scopeId))
 	got, gErr = s.DeleteGroup(ctx, projReq)
 	assert.NoError(gErr, "First attempt")
 	assert.True(got.GetExisted(), "Expected existed to be true for the first delete.")
@@ -431,7 +431,7 @@ func TestCreate(t *testing.T) {
 			s, err := groups.NewService(repo)
 			require.NoError(err, "Error when getting new group service.")
 
-			got, gErr := s.CreateGroup(auth.DisabledAuthTestContext(auth.WithTestScopeId(tc.scopeId)), req)
+			got, gErr := s.CreateGroup(auth.DisabledAuthTestContext(auth.WithScopeId(tc.scopeId)), req)
 			assert.Equal(tc.errCode, status.Code(gErr), "CreateGroup(%+v) got error %v, wanted %v", req, gErr, tc.errCode)
 			if got != nil {
 				assert.True(strings.HasPrefix(got.GetUri(), tc.res.Uri), got.GetUri())
@@ -742,7 +742,7 @@ func TestUpdate(t *testing.T) {
 			req := proto.Clone(toMerge).(*pbs.UpdateGroupRequest)
 			proto.Merge(req, tc.req)
 
-			got, gErr := tested.UpdateGroup(auth.DisabledAuthTestContext(auth.WithTestScopeId(tc.scopeId)), req)
+			got, gErr := tested.UpdateGroup(auth.DisabledAuthTestContext(auth.WithScopeId(tc.scopeId)), req)
 			assert.Equal(tc.errCode, status.Code(gErr), "UpdateGroup(%+v) got error %v, wanted %v", req, gErr, tc.errCode)
 
 			if got != nil {

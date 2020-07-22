@@ -136,7 +136,7 @@ func TestGet(t *testing.T) {
 			s, err := scopes.NewService(repo)
 			require.NoError(err, "Couldn't create new project service.")
 
-			got, gErr := s.GetScope(auth.DisabledAuthTestContext(auth.WithTestScopeId(tc.scopeId)), req)
+			got, gErr := s.GetScope(auth.DisabledAuthTestContext(auth.WithScopeId(tc.scopeId)), req)
 			assert.Equal(tc.errCode, status.Code(gErr), "GetProject(%+v) got error\n%v, wanted\n%v", req, gErr, tc.errCode)
 			assert.True(proto.Equal(got, tc.res), "GetProject(%q) got response\n%q, wanted\n%q", req, got, tc.res)
 		})
@@ -177,16 +177,16 @@ func TestList(t *testing.T) {
 		errCode codes.Code
 	}{
 		{
-			name:    "List Only initial Orgs",
+			name:    "List initial orgs",
 			scopeId: scope.Global.String(),
-			req:     &pbs.ListScopesRequest{},
+			req:     &pbs.ListScopesRequest{ScopeId: "global"},
 			res:     &pbs.ListScopesResponse{Items: initialOrgs},
 			errCode: codes.OK,
 		},
 		{
 			name:    "List No Projects",
 			scopeId: oNoProjects.GetPublicId(),
-			req:     &pbs.ListScopesRequest{},
+			req:     &pbs.ListScopesRequest{ScopeId: oNoProjects.GetPublicId()},
 			res:     &pbs.ListScopesResponse{},
 			errCode: codes.OK,
 		},
@@ -197,9 +197,9 @@ func TestList(t *testing.T) {
 			s, err := scopes.NewService(repoFn)
 			require.NoError(err, "Couldn't create new role service.")
 
-			got, gErr := s.ListScopes(auth.DisabledAuthTestContext(auth.WithTestScopeId(tc.scopeId)), tc.req)
+			got, gErr := s.ListScopes(auth.DisabledAuthTestContext(auth.WithScopeId(tc.scopeId)), tc.req)
 			assert.Equal(tc.errCode, status.Code(gErr), "ListScopes(%+v) got error\n%v, wanted\n%v", tc.req, gErr, tc.errCode)
-			assert.True(proto.Equal(got, tc.res), "ListScopes(%q) got response\n%q, wanted\n%q", tc.req, got, tc.res)
+			assert.True(proto.Equal(got, tc.res), "ListScopes(%q) got response\n%q\nwanted\n%q", tc.req, got, tc.res)
 		})
 	}
 
@@ -244,14 +244,14 @@ func TestList(t *testing.T) {
 		{
 			name:    "List Many Orgs",
 			scopeId: scope.Global.String(),
-			req:     &pbs.ListScopesRequest{},
+			req:     &pbs.ListScopesRequest{ScopeId: "global"},
 			res:     &pbs.ListScopesResponse{Items: wantOrgs},
 			errCode: codes.OK,
 		},
 		{
 			name:    "List Many Projects",
 			scopeId: oWithProjects.GetPublicId(),
-			req:     &pbs.ListScopesRequest{},
+			req:     &pbs.ListScopesRequest{ScopeId: oWithProjects.GetPublicId()},
 			res:     &pbs.ListScopesResponse{Items: wantProjects},
 			errCode: codes.OK,
 		},
@@ -262,7 +262,7 @@ func TestList(t *testing.T) {
 			s, err := scopes.NewService(repoFn)
 			require.NoError(err, "Couldn't create new role service.")
 
-			got, gErr := s.ListScopes(auth.DisabledAuthTestContext(auth.WithTestScopeId(tc.scopeId)), tc.req)
+			got, gErr := s.ListScopes(auth.DisabledAuthTestContext(auth.WithScopeId(tc.scopeId)), tc.req)
 			assert.Equal(tc.errCode, status.Code(gErr), "ListScopes(%+v) got error\n%v, wanted\n%v", tc.req, gErr, tc.errCode)
 			assert.True(proto.Equal(got, tc.res), "ListScopes(%q) got response\n%q, wanted\n%q", tc.req, got, tc.res)
 		})
@@ -349,7 +349,7 @@ func TestDelete(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			assert := assert.New(t)
-			got, gErr := s.DeleteScope(auth.DisabledAuthTestContext(auth.WithTestScopeId(tc.scopeId)), tc.req)
+			got, gErr := s.DeleteScope(auth.DisabledAuthTestContext(auth.WithScopeId(tc.scopeId)), tc.req)
 			assert.Equal(tc.errCode, status.Code(gErr), "DeleteProject(%+v) got error %v, wanted %v", tc.req, gErr, tc.errCode)
 			assert.EqualValuesf(tc.res, got, "DeleteProject(%q) got response %q, wanted %q", tc.req, got, tc.res)
 		})
@@ -363,7 +363,7 @@ func TestDelete_twice(t *testing.T) {
 
 	s, err := scopes.NewService(repo)
 	require.NoError(err, "Error when getting new scopes service")
-	ctx := auth.DisabledAuthTestContext(auth.WithTestScopeId(org.GetPublicId()))
+	ctx := auth.DisabledAuthTestContext(auth.WithScopeId(org.GetPublicId()))
 	req := &pbs.DeleteScopeRequest{
 		Id: proj.GetPublicId(),
 	}
@@ -374,7 +374,7 @@ func TestDelete_twice(t *testing.T) {
 	assert.NoError(gErr, "Second attempt")
 	assert.False(got.GetExisted(), "Expected existed to be false for the second delete.")
 
-	ctx = auth.DisabledAuthTestContext(auth.WithTestScopeId(scope.Global.String()))
+	ctx = auth.DisabledAuthTestContext(auth.WithScopeId(scope.Global.String()))
 	req = &pbs.DeleteScopeRequest{
 		Id: org.GetPublicId(),
 	}
@@ -403,10 +403,13 @@ func TestCreate(t *testing.T) {
 		{
 			name:    "Create a valid Project",
 			scopeId: defaultOrg.GetPublicId(),
-			req: &pbs.CreateScopeRequest{Item: &pb.Scope{
-				Name:        &wrapperspb.StringValue{Value: "name"},
-				Description: &wrapperspb.StringValue{Value: "desc"},
-			}},
+			req: &pbs.CreateScopeRequest{
+				ScopeId: defaultOrg.GetPublicId(),
+				Item: &pb.Scope{
+					Name:        &wrapperspb.StringValue{Value: "name"},
+					Description: &wrapperspb.StringValue{Value: "desc"},
+				},
+			},
 			res: &pbs.CreateScopeResponse{
 				Uri: "scopes/p_",
 				Item: &pb.Scope{
@@ -420,10 +423,13 @@ func TestCreate(t *testing.T) {
 		{
 			name:    "Create a valid Org",
 			scopeId: scope.Global.String(),
-			req: &pbs.CreateScopeRequest{Item: &pb.Scope{
-				Name:        &wrapperspb.StringValue{Value: "name"},
-				Description: &wrapperspb.StringValue{Value: "desc"},
-			}},
+			req: &pbs.CreateScopeRequest{
+				ScopeId: scope.Global.String(),
+				Item: &pb.Scope{
+					Name:        &wrapperspb.StringValue{Value: "name"},
+					Description: &wrapperspb.StringValue{Value: "desc"},
+				},
+			},
 			res: &pbs.CreateScopeResponse{
 				Uri: "scopes/o_",
 				Item: &pb.Scope{
@@ -471,7 +477,7 @@ func TestCreate(t *testing.T) {
 			s, err := scopes.NewService(repo)
 			require.NoError(err, "Error when getting new project service.")
 
-			got, gErr := s.CreateScope(auth.DisabledAuthTestContext(auth.WithTestScopeId(tc.scopeId)), req)
+			got, gErr := s.CreateScope(auth.DisabledAuthTestContext(auth.WithScopeId(tc.scopeId)), req)
 			assert.Equal(tc.errCode, status.Code(gErr), "CreateProject(%+v) got error %v, wanted %v", req, gErr, tc.errCode)
 			if got != nil {
 				assert.True(strings.HasPrefix(got.GetUri(), tc.res.Uri))
@@ -805,7 +811,7 @@ func TestUpdate(t *testing.T) {
 			}
 			proto.Merge(req, tc.req)
 
-			got, gErr := tested.UpdateScope(auth.DisabledAuthTestContext(auth.WithTestScopeId(tc.scopeId)), req)
+			got, gErr := tested.UpdateScope(auth.DisabledAuthTestContext(auth.WithScopeId(tc.scopeId)), req)
 			assert.Equal(tc.errCode, status.Code(gErr), "UpdateScope(%+v) got error\n%v, wanted\n%v", req, gErr, tc.errCode)
 
 			if got != nil {

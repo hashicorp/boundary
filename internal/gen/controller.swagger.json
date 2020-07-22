@@ -30,6 +30,12 @@
         },
         "parameters": [
           {
+            "name": "scope_id",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
             "name": "view",
             "in": "query",
             "required": false,

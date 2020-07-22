@@ -18,6 +18,15 @@ import (
 )
 
 func TestHandler_AuthDecoration(t *testing.T) {
+	conn, _ := db.TestSetup(t, "postgres")
+	rw := db.New(conn)
+	wrapper := db.TestWrapper(t)
+	iamRepo, err := iam.NewRepository(rw, rw, wrapper)
+	require.NoError(t, err)
+	iamRepoFn := func() (*iam.Repository, error) {
+		return iamRepo, nil
+	}
+	org, proj := iam.TestScopes(t, conn)
 	cases := []struct {
 		name            string
 		path            string
@@ -48,13 +57,22 @@ func TestHandler_AuthDecoration(t *testing.T) {
 			id:       "am_1234",
 		},
 		{
-			name:     "global scope, delete, token scope",
+			name:     "global scope, delete org",
 			path:     "/v1/scopes/o_1234",
 			method:   "DELETE",
 			action:   action.Delete,
-			scope:    "token",
+			scope:    "global",
 			resource: resource.Scope,
 			id:       "o_1234",
+		},
+		{
+			name:     "org scope, delete project",
+			path:     fmt.Sprintf("/v1/scopes/%s", proj.GetPublicId()),
+			method:   "DELETE",
+			action:   action.Delete,
+			scope:    org.GetPublicId(),
+			resource: resource.Scope,
+			id:       proj.GetPublicId(),
 		},
 		{
 			name:            "empty segments",
@@ -115,6 +133,15 @@ func TestHandler_AuthDecoration(t *testing.T) {
 			wantErrContains: "unexpected number of colons",
 		},
 		{
+			name:     "root, action on global",
+			path:     "/v1/scopes/global",
+			method:   "GET",
+			action:   action.Read,
+			scope:    "global",
+			resource: resource.Scope,
+			id:       "global",
+		},
+		{
 			name:     "org scope, valid",
 			path:     "/v1/scopes/o_abc123/auth-methods",
 			method:   "POST",
@@ -144,7 +171,7 @@ func TestHandler_AuthDecoration(t *testing.T) {
 			path:     "/v1/scopes/o_1234:set-principals",
 			method:   "POST",
 			action:   action.SetPrincipals,
-			scope:    "token",
+			scope:    "global",
 			resource: resource.Scope,
 			id:       "o_1234",
 		},
@@ -222,6 +249,7 @@ func TestHandler_AuthDecoration(t *testing.T) {
 					Path:   req.URL.Path,
 					Method: tc.method,
 				},
+				iamRepoFn: iamRepoFn,
 			}
 
 			err = v.parseAuthParams()
