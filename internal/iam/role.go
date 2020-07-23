@@ -107,10 +107,5 @@ func (r *Role) TableName() string {
 // interface. If the caller attempts to set the name to "" the name will be
 // reset to the default name.
 func (r *Role) SetTableName(n string) {
-	switch n {
-	case "":
-		r.tableName = defaultRoleTableName
-	default:
-		r.tableName = n
-	}
+	r.tableName = n
 }

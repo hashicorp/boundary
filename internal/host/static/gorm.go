@@ -18,12 +18,7 @@ func (c *HostCatalog) TableName() string {
 // SetTableName sets the table name. If the caller attempts to
 // set the name to "" the name will be reset to the default name.
 func (c *HostCatalog) SetTableName(n string) {
-	switch n {
-	case "":
-		c.tableName = defaultHostCatalogTableName
-	default:
-		c.tableName = n
-	}
+	c.tableName = n
 }
 
 // TableName returns the table name for the host.
@@ -37,12 +32,7 @@ func (h *Host) TableName() string {
 // SetTableName sets the table name. If the caller attempts to
 // set the name to "" the name will be reset to the default name.
 func (h *Host) SetTableName(n string) {
-	switch n {
-	case "":
-		h.tableName = defaultHostTableName
-	default:
-		h.tableName = n
-	}
+	h.tableName = n
 }
 
 // TableName returns the table name for the host set.
@@ -56,12 +46,7 @@ func (s *HostSet) TableName() string {
 // SetTableName sets the table name. If the caller attempts to
 // set the name to "" the name will be reset to the default name.
 func (s *HostSet) SetTableName(n string) {
-	switch n {
-	case "":
-		s.tableName = defaultHostSetTableName
-	default:
-		s.tableName = n
-	}
+	s.tableName = n
 }
 
 // TableName returns the table name for the host set.
@@ -75,10 +60,5 @@ func (m *HostSetMember) TableName() string {
 // SetTableName sets the table name. If the caller attempts to
 // set the name to "" the name will be reset to the default name.
 func (m *HostSetMember) SetTableName(n string) {
-	switch n {
-	case "":
-		m.tableName = defaultHostSetMemberTableName
-	default:
-		m.tableName = n
-	}
+	m.tableName = n
 }
