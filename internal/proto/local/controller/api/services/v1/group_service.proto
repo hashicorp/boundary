@@ -99,7 +99,7 @@ service GroupService {
       body: "*"
       response_body: "item"
     };
-    option (grpc.gateway.protoc_gen_swagger.options.openapiv2_operation) = {
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
       summary: "Adds Users as members to a Group"
     };
   }
@@ -115,7 +115,7 @@ service GroupService {
       body: "*"
       response_body: "item"
     };
-    option (grpc.gateway.protoc_gen_swagger.options.openapiv2_operation) = {
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
       summary: "Set a Group's members to exactly the list of provided in the request, removing any members that are not specified."
     };
   }
@@ -130,7 +130,7 @@ service GroupService {
       body: "*"
       response_body: "item"
     };
-    option (grpc.gateway.protoc_gen_swagger.options.openapiv2_operation) = {
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
       summary: "Removes the specified members from a Group."
     };
   }
