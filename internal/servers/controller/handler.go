@@ -19,6 +19,7 @@ import (
 
 	"github.com/hashicorp/watchtower/internal/servers/controller/handlers"
 	"github.com/hashicorp/watchtower/internal/servers/controller/handlers/authenticate"
+	"github.com/hashicorp/watchtower/internal/servers/controller/handlers/authtokens"
 	"github.com/hashicorp/watchtower/internal/servers/controller/handlers/groups"
 	"github.com/hashicorp/watchtower/internal/servers/controller/handlers/host_catalogs"
 	"github.com/hashicorp/watchtower/internal/servers/controller/handlers/roles"
@@ -85,6 +86,13 @@ func handleGrpcGateway(c *Controller) (http.Handler, error) {
 	}
 	if err := services.RegisterAuthenticationServiceHandlerServer(ctx, mux, auths); err != nil {
 		return nil, fmt.Errorf("failed to register authenticate service handler: %w", err)
+	}
+	authtoks, err := authtokens.NewService(c.AuthTokenRepoFn)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create auth token handler service: %w", err)
+	}
+	if err := services.RegisterAuthTokenServiceHandlerServer(ctx, mux, authtoks); err != nil {
+		return nil, fmt.Errorf("failed to register auth token service handler: %w", err)
 	}
 	os, err := scopes.NewService(c.IamRepoFn)
 	if err != nil {

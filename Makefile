@@ -68,11 +68,9 @@ protobuild:
 	@protoc-go-inject-tag -input=./internal/oplog/store/oplog.pb.go
 	@protoc-go-inject-tag -input=./internal/oplog/oplog_test/oplog_test.pb.go
 	@protoc-go-inject-tag -input=./internal/iam/store/group_member.pb.go
-	@protoc-go-inject-tag -input=./internal/iam/store/group.pb.go
 	@protoc-go-inject-tag -input=./internal/iam/store/role.pb.go
 	@protoc-go-inject-tag -input=./internal/iam/store/principal_role.pb.go
 	@protoc-go-inject-tag -input=./internal/iam/store/role_grant.pb.go
-	@protoc-go-inject-tag -input=./internal/iam/store/role.pb.go
 	@protoc-go-inject-tag -input=./internal/iam/store/user.pb.go
 	@protoc-go-inject-tag -input=./internal/iam/store/scope.pb.go
 	@protoc-go-inject-tag -input=./internal/iam/store/group.pb.go
