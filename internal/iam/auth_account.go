@@ -72,10 +72,5 @@ func (a *AuthAccount) TableName() string {
 // interface. If the caller attempts to set the name to "" the name will be
 // reset to the default name.
 func (a *AuthAccount) SetTableName(n string) {
-	switch n {
-	case "":
-		a.tableName = defaultAuthAccountTableName
-	default:
-		a.tableName = n
-	}
+	a.tableName = n
 }

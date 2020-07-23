@@ -100,10 +100,5 @@ func (u *User) TableName() string {
 // interface. If the caller attempts to set the name to "" the name will be
 // reset to the default name.
 func (u *User) SetTableName(n string) {
-	switch n {
-	case "":
-		u.tableName = defaultUserTableName
-	default:
-		u.tableName = n
-	}
+	u.tableName = n
 }
