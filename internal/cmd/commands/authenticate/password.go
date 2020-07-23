@@ -1,6 +1,8 @@
 package authenticate
 
 import (
+	"encoding/base64"
+	"encoding/json"
 	"fmt"
 	"os"
 	"strings"
@@ -153,7 +155,12 @@ func (c *PasswordCommand) Run(args []string) int {
 		tokenName = c.Command.FlagTokenName
 	}
 	if tokenName != "none" {
-		if err := keyring.Set("HashiCorp Watchtower Auth Token", tokenName, result.Token); err != nil {
+		marshaled, err := json.Marshal(result)
+		if err != nil {
+			c.UI.Error(fmt.Sprintf("Error marshaling auth token to save to system credential store: %s", err))
+			return 1
+		}
+		if err := keyring.Set("HashiCorp Watchtower Auth Token", tokenName, base64.RawStdEncoding.EncodeToString(marshaled)); err != nil {
 			c.UI.Error(fmt.Sprintf("Error saving auth token to system credential store: %s", err))
 			return 1
 		}

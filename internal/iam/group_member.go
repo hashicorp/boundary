@@ -9,6 +9,21 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
+// MemberType defines the possible membership types for groups.
+type MemberType uint32
+
+const (
+	UnknownMemberType MemberType = 0
+	UserMemberType    MemberType = 1
+)
+
+func (m MemberType) String() string {
+	return [...]string{
+		"unknown",
+		"user",
+	}[m]
+}
+
 const (
 	groupMemberViewDefaultTableName = "iam_group_member"
 	groupMemberUserDefaultTable     = "iam_group_member_user"
