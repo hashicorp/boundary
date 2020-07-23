@@ -54,9 +54,7 @@ func (a *AuthMethod) TableName() string {
 
 // SetTableName sets the table name.
 func (a *AuthMethod) SetTableName(n string) {
-	if n != "" {
-		a.tableName = n
-	}
+	a.tableName = n
 }
 
 func (a *AuthMethod) oplog(op oplog.OpType) oplog.Metadata {
