@@ -36,16 +36,16 @@ type AuthAccount struct {
 
 	// auth_account_id is primary key for the user account
 	// @inject_tag: gorm:"primary_key"
-	PublicId string `protobuf:"bytes,1,opt,name=public_id,json=publicId,proto3" json:"public_id,omitempty"`
+	PublicId string `protobuf:"bytes,1,opt,name=public_id,json=publicId,proto3" json:"public_id,omitempty" gorm:"primary_key"`
 	// auth_method_id is the auth method associated with this user account.
 	// @inject_tag: `gorm:"default:null"`
-	AuthMethodId string `protobuf:"bytes,2,opt,name=auth_method_id,json=authMethodId,proto3" json:"auth_method_id,omitempty"`
+	AuthMethodId string `protobuf:"bytes,2,opt,name=auth_method_id,json=authMethodId,proto3" json:"auth_method_id,omitempty" gorm:"default:null"`
 	// scope_id for the user account
 	// @inject_tag: `gorm:"default:null"`
-	ScopeId string `protobuf:"bytes,4,opt,name=scope_id,json=scopeId,proto3" json:"scope_id,omitempty"`
+	ScopeId string `protobuf:"bytes,4,opt,name=scope_id,json=scopeId,proto3" json:"scope_id,omitempty" gorm:"default:null"`
 	// user_id is the iam.user associated with this account
 	// @inject_tag: `gorm:"default:null"`
-	IamUserId string `protobuf:"bytes,5,opt,name=iam_user_id,json=iamUserId,proto3" json:"iam_user_id,omitempty"`
+	IamUserId string `protobuf:"bytes,5,opt,name=iam_user_id,json=iamUserId,proto3" json:"iam_user_id,omitempty" gorm:"default:null"`
 }
 
 func (x *AuthAccount) Reset() {

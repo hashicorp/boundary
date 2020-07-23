@@ -37,25 +37,25 @@ type StoreTestUser struct {
 	unknownFields protoimpl.UnknownFields
 
 	// @inject_tag: gorm:"primary_key"
-	Id uint32 `protobuf:"varint,1,opt,name=id,proto3" json:"id,omitempty"`
+	Id uint32 `protobuf:"varint,1,opt,name=id,proto3" json:"id,omitempty" gorm:"primary_key"`
 	// create_time from the RDBMS
 	// @inject_tag: `gorm:"default:CURRENT_TIMESTAMP"`
-	CreateTime *timestamp.Timestamp `protobuf:"bytes,2,opt,name=create_time,json=createTime,proto3" json:"create_time,omitempty"`
+	CreateTime *timestamp.Timestamp `protobuf:"bytes,2,opt,name=create_time,json=createTime,proto3" json:"create_time,omitempty" gorm:"default:CURRENT_TIMESTAMP"`
 	// update_time from the RDBMS
 	// @inject_tag: `gorm:"default:CURRENT_TIMESTAMP"`
-	UpdateTime *timestamp.Timestamp `protobuf:"bytes,3,opt,name=update_time,json=updateTime,proto3" json:"update_time,omitempty"`
+	UpdateTime *timestamp.Timestamp `protobuf:"bytes,3,opt,name=update_time,json=updateTime,proto3" json:"update_time,omitempty" gorm:"default:CURRENT_TIMESTAMP"`
 	// public_id is the used to access the user via an API
 	PublicId string `protobuf:"bytes,4,opt,name=public_id,json=publicId,proto3" json:"public_id,omitempty"`
 	// name is the optional friendly name used to
 	// access the user via an API
 	// @inject_tag: `gorm:"default:null"`
-	Name string `protobuf:"bytes,5,opt,name=name,proto3" json:"name,omitempty"`
+	Name string `protobuf:"bytes,5,opt,name=name,proto3" json:"name,omitempty" gorm:"default:null"`
 	// @inject_tag: `gorm:"default:null"`
-	PhoneNumber string `protobuf:"bytes,6,opt,name=phone_number,json=phoneNumber,proto3" json:"phone_number,omitempty"`
+	PhoneNumber string `protobuf:"bytes,6,opt,name=phone_number,json=phoneNumber,proto3" json:"phone_number,omitempty" gorm:"default:null"`
 	// @inject_tag: `gorm:"default:null"`
-	Email string `protobuf:"bytes,7,opt,name=email,proto3" json:"email,omitempty"`
+	Email string `protobuf:"bytes,7,opt,name=email,proto3" json:"email,omitempty" gorm:"default:null"`
 	// @inject_tag: `gorm:"default:null"`
-	Version uint32 `protobuf:"varint,8,opt,name=version,proto3" json:"version,omitempty"`
+	Version uint32 `protobuf:"varint,8,opt,name=version,proto3" json:"version,omitempty" gorm:"default:null"`
 }
 
 func (x *StoreTestUser) Reset() {
@@ -153,23 +153,23 @@ type StoreTestCar struct {
 	unknownFields protoimpl.UnknownFields
 
 	// @inject_tag: gorm:"primary_key"
-	Id uint32 `protobuf:"varint,1,opt,name=id,proto3" json:"id,omitempty"`
+	Id uint32 `protobuf:"varint,1,opt,name=id,proto3" json:"id,omitempty" gorm:"primary_key"`
 	// create_time from the RDBMS
 	// @inject_tag: `gorm:"default:CURRENT_TIMESTAMP"`
-	CreateTime *timestamp.Timestamp `protobuf:"bytes,2,opt,name=create_time,json=createTime,proto3" json:"create_time,omitempty"`
+	CreateTime *timestamp.Timestamp `protobuf:"bytes,2,opt,name=create_time,json=createTime,proto3" json:"create_time,omitempty" gorm:"default:CURRENT_TIMESTAMP"`
 	// update_time from the RDBMS
 	// @inject_tag: `gorm:"default:CURRENT_TIMESTAMP"`
-	UpdateTime *timestamp.Timestamp `protobuf:"bytes,3,opt,name=update_time,json=updateTime,proto3" json:"update_time,omitempty"`
+	UpdateTime *timestamp.Timestamp `protobuf:"bytes,3,opt,name=update_time,json=updateTime,proto3" json:"update_time,omitempty" gorm:"default:CURRENT_TIMESTAMP"`
 	// public_id is the used to access the car via an API
 	PublicId string `protobuf:"bytes,4,opt,name=public_id,json=publicId,proto3" json:"public_id,omitempty"`
 	// name is the optional friendly name used to
 	// access the Scope via an API
 	// @inject_tag: `gorm:"default:null"`
-	Name string `protobuf:"bytes,5,opt,name=name,proto3" json:"name,omitempty"`
+	Name string `protobuf:"bytes,5,opt,name=name,proto3" json:"name,omitempty" gorm:"default:null"`
 	// @inject_tag: `gorm:"default:null"`
-	Model string `protobuf:"bytes,6,opt,name=model,proto3" json:"model,omitempty"`
+	Model string `protobuf:"bytes,6,opt,name=model,proto3" json:"model,omitempty" gorm:"default:null"`
 	// @inject_tag: `gorm:"default:null"`
-	Mpg int32 `protobuf:"varint,7,opt,name=mpg,proto3" json:"mpg,omitempty"`
+	Mpg int32 `protobuf:"varint,7,opt,name=mpg,proto3" json:"mpg,omitempty" gorm:"default:null"`
 }
 
 func (x *StoreTestCar) Reset() {
@@ -260,23 +260,23 @@ type StoreTestRental struct {
 	unknownFields protoimpl.UnknownFields
 
 	// @inject_tag: gorm:"primary_key"
-	Id uint32 `protobuf:"varint,1,opt,name=id,proto3" json:"id,omitempty"`
+	Id uint32 `protobuf:"varint,1,opt,name=id,proto3" json:"id,omitempty" gorm:"primary_key"`
 	// create_time from the RDBMS
 	// @inject_tag: `gorm:"default:CURRENT_TIMESTAMP"`
-	CreateTime *timestamp.Timestamp `protobuf:"bytes,2,opt,name=create_time,json=createTime,proto3" json:"create_time,omitempty"`
+	CreateTime *timestamp.Timestamp `protobuf:"bytes,2,opt,name=create_time,json=createTime,proto3" json:"create_time,omitempty" gorm:"default:CURRENT_TIMESTAMP"`
 	// update_time from the RDBMS
 	// @inject_tag: `gorm:"default:CURRENT_TIMESTAMP"`
-	UpdateTime *timestamp.Timestamp `protobuf:"bytes,3,opt,name=update_time,json=updateTime,proto3" json:"update_time,omitempty"`
+	UpdateTime *timestamp.Timestamp `protobuf:"bytes,3,opt,name=update_time,json=updateTime,proto3" json:"update_time,omitempty" gorm:"default:CURRENT_TIMESTAMP"`
 	// public_id is the used to access the rental via an API
 	PublicId string `protobuf:"bytes,4,opt,name=public_id,json=publicId,proto3" json:"public_id,omitempty"`
 	// name is the optional friendly name used to
 	// access the rental via an API
 	// @inject_tag: `gorm:"default:null"`
-	Name string `protobuf:"bytes,5,opt,name=name,proto3" json:"name,omitempty"`
+	Name string `protobuf:"bytes,5,opt,name=name,proto3" json:"name,omitempty" gorm:"default:null"`
 	// @inject_tag: `gorm:"default:null"`
-	UserId uint32 `protobuf:"varint,6,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
+	UserId uint32 `protobuf:"varint,6,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty" gorm:"default:null"`
 	// @inject_tag: `gorm:"default:null"`
-	CarId uint32 `protobuf:"varint,7,opt,name=car_id,json=carId,proto3" json:"car_id,omitempty"`
+	CarId uint32 `protobuf:"varint,7,opt,name=car_id,json=carId,proto3" json:"car_id,omitempty" gorm:"default:null"`
 }
 
 func (x *StoreTestRental) Reset() {
@@ -368,20 +368,20 @@ type StoreTestScooter struct {
 	unknownFields protoimpl.UnknownFields
 
 	// @inject_tag: gorm:"primary_key"
-	Id uint32 `protobuf:"varint,1,opt,name=id,proto3" json:"id,omitempty"`
+	Id uint32 `protobuf:"varint,1,opt,name=id,proto3" json:"id,omitempty" gorm:"primary_key"`
 	// create_time from the RDBMS
 	// @inject_tag: `gorm:"default:CURRENT_TIMESTAMP"`
-	CreateTime *timestamp.Timestamp `protobuf:"bytes,2,opt,name=create_time,json=createTime,proto3" json:"create_time,omitempty"`
+	CreateTime *timestamp.Timestamp `protobuf:"bytes,2,opt,name=create_time,json=createTime,proto3" json:"create_time,omitempty" gorm:"default:CURRENT_TIMESTAMP"`
 	// update_time from the RDBMS
 	// @inject_tag: `gorm:"default:CURRENT_TIMESTAMP"`
-	UpdateTime *timestamp.Timestamp `protobuf:"bytes,3,opt,name=update_time,json=updateTime,proto3" json:"update_time,omitempty"`
+	UpdateTime *timestamp.Timestamp `protobuf:"bytes,3,opt,name=update_time,json=updateTime,proto3" json:"update_time,omitempty" gorm:"default:CURRENT_TIMESTAMP"`
 	// private_id is the used to access scooter, but not intended to be available
 	// via the API
 	PrivateId string `protobuf:"bytes,4,opt,name=private_id,json=privateId,proto3" json:"private_id,omitempty"`
 	// @inject_tag: `gorm:"default:null"`
-	Model string `protobuf:"bytes,6,opt,name=model,proto3" json:"model,omitempty"`
+	Model string `protobuf:"bytes,6,opt,name=model,proto3" json:"model,omitempty" gorm:"default:null"`
 	// @inject_tag: `gorm:"default:null"`
-	Mpg int32 `protobuf:"varint,7,opt,name=mpg,proto3" json:"mpg,omitempty"`
+	Mpg int32 `protobuf:"varint,7,opt,name=mpg,proto3" json:"mpg,omitempty" gorm:"default:null"`
 }
 
 func (x *StoreTestScooter) Reset() {

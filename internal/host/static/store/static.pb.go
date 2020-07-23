@@ -37,22 +37,22 @@ type HostCatalog struct {
 
 	// public_is is a surrogate key suitable for use in a public API.
 	// @inject_tag: gorm:"primary_key"
-	PublicId string `protobuf:"bytes,1,opt,name=public_id,json=publicId,proto3" json:"public_id,omitempty"`
+	PublicId string `protobuf:"bytes,1,opt,name=public_id,json=publicId,proto3" json:"public_id,omitempty" gorm:"primary_key"`
 	// The create_time is set by the database.
 	// @inject_tag: `gorm:"default:current_timestamp"`
-	CreateTime *timestamp.Timestamp `protobuf:"bytes,2,opt,name=create_time,json=createTime,proto3" json:"create_time,omitempty"`
+	CreateTime *timestamp.Timestamp `protobuf:"bytes,2,opt,name=create_time,json=createTime,proto3" json:"create_time,omitempty" gorm:"default:current_timestamp"`
 	// The update_time is set by the database.
 	// @inject_tag: `gorm:"default:current_timestamp"`
-	UpdateTime *timestamp.Timestamp `protobuf:"bytes,3,opt,name=update_time,json=updateTime,proto3" json:"update_time,omitempty"`
+	UpdateTime *timestamp.Timestamp `protobuf:"bytes,3,opt,name=update_time,json=updateTime,proto3" json:"update_time,omitempty" gorm:"default:current_timestamp"`
 	// name is optional. If set, it must be unique within scope_id.
 	// @inject_tag: `gorm:"default:null"`
-	Name string `protobuf:"bytes,4,opt,name=name,proto3" json:"name,omitempty"`
+	Name string `protobuf:"bytes,4,opt,name=name,proto3" json:"name,omitempty" gorm:"default:null"`
 	// description is optional.
 	// @inject_tag: `gorm:"default:null"`
-	Description string `protobuf:"bytes,5,opt,name=description,proto3" json:"description,omitempty"`
+	Description string `protobuf:"bytes,5,opt,name=description,proto3" json:"description,omitempty" gorm:"default:null"`
 	// The scope_id of the owning scope and must be set.
 	// @inject_tag: gorm:"not_null"
-	ScopeId string `protobuf:"bytes,6,opt,name=scope_id,json=scopeId,proto3" json:"scope_id,omitempty"`
+	ScopeId string `protobuf:"bytes,6,opt,name=scope_id,json=scopeId,proto3" json:"scope_id,omitempty" gorm:"not_null"`
 }
 
 func (x *HostCatalog) Reset() {
@@ -136,28 +136,28 @@ type Host struct {
 
 	// public_is is a surrogate key suitable for use in a public API.
 	// @inject_tag: gorm:"primary_key"
-	PublicId string `protobuf:"bytes,1,opt,name=public_id,json=publicId,proto3" json:"public_id,omitempty"`
+	PublicId string `protobuf:"bytes,1,opt,name=public_id,json=publicId,proto3" json:"public_id,omitempty" gorm:"primary_key"`
 	// The create_time is set by the database.
 	// @inject_tag: `gorm:"default:current_timestamp"`
-	CreateTime *timestamp.Timestamp `protobuf:"bytes,2,opt,name=create_time,json=createTime,proto3" json:"create_time,omitempty"`
+	CreateTime *timestamp.Timestamp `protobuf:"bytes,2,opt,name=create_time,json=createTime,proto3" json:"create_time,omitempty" gorm:"default:current_timestamp"`
 	// The update_time is set by the database.
 	// @inject_tag: `gorm:"default:current_timestamp"`
-	UpdateTime *timestamp.Timestamp `protobuf:"bytes,3,opt,name=update_time,json=updateTime,proto3" json:"update_time,omitempty"`
+	UpdateTime *timestamp.Timestamp `protobuf:"bytes,3,opt,name=update_time,json=updateTime,proto3" json:"update_time,omitempty" gorm:"default:current_timestamp"`
 	// name is optional. If set, it must be unique within
 	// static_host_catalog_id.
 	// @inject_tag: `gorm:"default:null"`
-	Name string `protobuf:"bytes,4,opt,name=name,proto3" json:"name,omitempty"`
+	Name string `protobuf:"bytes,4,opt,name=name,proto3" json:"name,omitempty" gorm:"default:null"`
 	// description is optional.
 	// @inject_tag: `gorm:"default:null"`
-	Description string `protobuf:"bytes,5,opt,name=description,proto3" json:"description,omitempty"`
+	Description string `protobuf:"bytes,5,opt,name=description,proto3" json:"description,omitempty" gorm:"default:null"`
 	// static_host_catalog_id is the public_id of the owning
 	// static_host_catalog and must be set.
 	// @inject_tag: gorm:"not_null"
-	StaticHostCatalogId string `protobuf:"bytes,6,opt,name=static_host_catalog_id,json=staticHostCatalogId,proto3" json:"static_host_catalog_id,omitempty"`
+	StaticHostCatalogId string `protobuf:"bytes,6,opt,name=static_host_catalog_id,json=staticHostCatalogId,proto3" json:"static_host_catalog_id,omitempty" gorm:"not_null"`
 	// address is the IP Address or DNS name of the host. It must be set and
 	// it must be unique within static_host_catalog_id.
 	// @inject_tag: gorm:"not_null"
-	Address string `protobuf:"bytes,7,opt,name=address,proto3" json:"address,omitempty"`
+	Address string `protobuf:"bytes,7,opt,name=address,proto3" json:"address,omitempty" gorm:"not_null"`
 }
 
 func (x *Host) Reset() {
@@ -248,24 +248,24 @@ type HostSet struct {
 
 	// public_is is a surrogate key suitable for use in a public API.
 	// @inject_tag: gorm:"primary_key"
-	PublicId string `protobuf:"bytes,1,opt,name=public_id,json=publicId,proto3" json:"public_id,omitempty"`
+	PublicId string `protobuf:"bytes,1,opt,name=public_id,json=publicId,proto3" json:"public_id,omitempty" gorm:"primary_key"`
 	// The create_time is set by the database.
 	// @inject_tag: `gorm:"default:current_timestamp"`
-	CreateTime *timestamp.Timestamp `protobuf:"bytes,2,opt,name=create_time,json=createTime,proto3" json:"create_time,omitempty"`
+	CreateTime *timestamp.Timestamp `protobuf:"bytes,2,opt,name=create_time,json=createTime,proto3" json:"create_time,omitempty" gorm:"default:current_timestamp"`
 	// The update_time is set by the database.
 	// @inject_tag: `gorm:"default:current_timestamp"`
-	UpdateTime *timestamp.Timestamp `protobuf:"bytes,3,opt,name=update_time,json=updateTime,proto3" json:"update_time,omitempty"`
+	UpdateTime *timestamp.Timestamp `protobuf:"bytes,3,opt,name=update_time,json=updateTime,proto3" json:"update_time,omitempty" gorm:"default:current_timestamp"`
 	// name is optional. If set, it must be unique within
 	// static_host_catalog_id.
 	// @inject_tag: `gorm:"default:null"`
-	Name string `protobuf:"bytes,4,opt,name=name,proto3" json:"name,omitempty"`
+	Name string `protobuf:"bytes,4,opt,name=name,proto3" json:"name,omitempty" gorm:"default:null"`
 	// description is optional.
 	// @inject_tag: `gorm:"default:null"`
-	Description string `protobuf:"bytes,5,opt,name=description,proto3" json:"description,omitempty"`
+	Description string `protobuf:"bytes,5,opt,name=description,proto3" json:"description,omitempty" gorm:"default:null"`
 	// static_host_catalog_id is the public_id of the owning
 	// static_host_catalog and must be set.
 	// @inject_tag: gorm:"not_null"
-	StaticHostCatalogId string `protobuf:"bytes,6,opt,name=static_host_catalog_id,json=staticHostCatalogId,proto3" json:"static_host_catalog_id,omitempty"`
+	StaticHostCatalogId string `protobuf:"bytes,6,opt,name=static_host_catalog_id,json=staticHostCatalogId,proto3" json:"static_host_catalog_id,omitempty" gorm:"not_null"`
 }
 
 func (x *HostSet) Reset() {
@@ -348,9 +348,9 @@ type HostSetMember struct {
 	unknownFields protoimpl.UnknownFields
 
 	// @inject_tag: gorm:"primary_key"
-	StaticHostSetId string `protobuf:"bytes,1,opt,name=static_host_set_id,json=staticHostSetId,proto3" json:"static_host_set_id,omitempty"`
+	StaticHostSetId string `protobuf:"bytes,1,opt,name=static_host_set_id,json=staticHostSetId,proto3" json:"static_host_set_id,omitempty" gorm:"primary_key"`
 	// @inject_tag: gorm:"primary_key"
-	StaticHostId string `protobuf:"bytes,2,opt,name=static_host_id,json=staticHostId,proto3" json:"static_host_id,omitempty"`
+	StaticHostId string `protobuf:"bytes,2,opt,name=static_host_id,json=staticHostId,proto3" json:"static_host_id,omitempty" gorm:"primary_key"`
 }
 
 func (x *HostSetMember) Reset() {

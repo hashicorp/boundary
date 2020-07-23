@@ -3,7 +3,7 @@ syntax = "proto3";
 package controller.storage.jobs.store.v1;
 option go_package = "github.com/hashicorp/watchtower/internal/jobs/store;store";
 
-import "google/protobuf/timestamp.proto";
+import "controller/storage/timestamp/v1/timestamp.proto";
 
 // Job contains all fields related to a Job resource
 message Job {

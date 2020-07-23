@@ -33,41 +33,41 @@ type AuthToken struct {
 
 	// public_id is used to access the auth token via an API
 	// @inject_tag: gorm:"primary_key"
-	PublicId string `protobuf:"bytes,1,opt,name=public_id,json=publicId,proto3" json:"public_id,omitempty"`
+	PublicId string `protobuf:"bytes,1,opt,name=public_id,json=publicId,proto3" json:"public_id,omitempty" gorm:"primary_key"`
 	// create_time from the RDBMS
 	// @inject_tag: `gorm:"default:current_timestamp"`
-	CreateTime *timestamp.Timestamp `protobuf:"bytes,2,opt,name=create_time,json=createTime,proto3" json:"create_time,omitempty"`
+	CreateTime *timestamp.Timestamp `protobuf:"bytes,2,opt,name=create_time,json=createTime,proto3" json:"create_time,omitempty" gorm:"default:current_timestamp"`
 	// update_time from the RDBMS
 	// @inject_tag: `gorm:"default:current_timestamp"`
-	UpdateTime *timestamp.Timestamp `protobuf:"bytes,3,opt,name=update_time,json=updateTime,proto3" json:"update_time,omitempty"`
+	UpdateTime *timestamp.Timestamp `protobuf:"bytes,3,opt,name=update_time,json=updateTime,proto3" json:"update_time,omitempty" gorm:"default:current_timestamp"`
 	// last_access_time indicates the last time the auth token was used on the watchtower API.
 	// @inject_tag: `gorm:"default:current_timestamp"`
-	ApproximateLastAccessTime *timestamp.Timestamp `protobuf:"bytes,4,opt,name=approximate_last_access_time,json=approximateLastAccessTime,proto3" json:"approximate_last_access_time,omitempty"`
+	ApproximateLastAccessTime *timestamp.Timestamp `protobuf:"bytes,4,opt,name=approximate_last_access_time,json=approximateLastAccessTime,proto3" json:"approximate_last_access_time,omitempty" gorm:"default:current_timestamp"`
 	// expiration_time indicates when this session will expire.
 	// If null a default duration and create_time is used to calculate expiration.
 	// @inject_tag: `gorm:"default:null"`
-	ExpirationTime *timestamp.Timestamp `protobuf:"bytes,5,opt,name=expiration_time,json=expirationTime,proto3" json:"expiration_time,omitempty"`
+	ExpirationTime *timestamp.Timestamp `protobuf:"bytes,5,opt,name=expiration_time,json=expirationTime,proto3" json:"expiration_time,omitempty" gorm:"default:null"`
 	// ciphertext token value stored in the database
 	// @inject_tag: gorm:"column:token;not_null" wrapping:"ct,authtoken_token"
-	CtToken []byte `protobuf:"bytes,6,opt,name=ct_token,json=ctToken,proto3" json:"ct_token,omitempty"`
+	CtToken []byte `protobuf:"bytes,6,opt,name=ct_token,json=ctToken,proto3" json:"ct_token,omitempty" gorm:"column:token;not_null" wrapping:"ct,authtoken_token"`
 	// plain text version of the decrypted authtoken value
 	// we are NOT storing this plain-text entry data in the db
 	// token is the field stored and used by the client
 	// @inject_tag: gorm:"-" wrapping:"pt,authtoken_token"
-	Token string `protobuf:"bytes,7,opt,name=token,proto3" json:"token,omitempty"`
+	Token string `protobuf:"bytes,7,opt,name=token,proto3" json:"token,omitempty" gorm:"-" wrapping:"pt,authtoken_token"`
 	// auth_account_id is the public id for the auth account this auth token
 	// was generated for.
 	// @inject_tag: `gorm:"default:not_null"`
-	AuthAccountId string `protobuf:"bytes,10,opt,name=auth_account_id,json=authAccountId,proto3" json:"auth_account_id,omitempty"`
+	AuthAccountId string `protobuf:"bytes,10,opt,name=auth_account_id,json=authAccountId,proto3" json:"auth_account_id,omitempty" gorm:"default:not_null"`
 	// scope_id is not stored in the backing DB but it derived from the linked to auth account.
 	// @inject_tag: gorm:"-"
-	ScopeId string `protobuf:"bytes,11,opt,name=scope_id,json=scopeId,proto3" json:"scope_id,omitempty"`
+	ScopeId string `protobuf:"bytes,11,opt,name=scope_id,json=scopeId,proto3" json:"scope_id,omitempty" gorm:"-"`
 	// auth_method_id is not stored in the backing DB but it derived from the linked to auth account.
 	// @inject_tag: gorm:"-"
-	AuthMethodId string `protobuf:"bytes,12,opt,name=auth_method_id,json=authMethodId,proto3" json:"auth_method_id,omitempty"`
+	AuthMethodId string `protobuf:"bytes,12,opt,name=auth_method_id,json=authMethodId,proto3" json:"auth_method_id,omitempty" gorm:"-"`
 	// iam_user_id is not stored in the backing DB but it derived from the linked to auth account.
 	// @inject_tag: gorm:"-"
-	IamUserId string `protobuf:"bytes,13,opt,name=iam_user_id,json=iamUserId,proto3" json:"iam_user_id,omitempty"`
+	IamUserId string `protobuf:"bytes,13,opt,name=iam_user_id,json=iamUserId,proto3" json:"iam_user_id,omitempty" gorm:"-"`
 }
 
 func (x *AuthToken) Reset() {
