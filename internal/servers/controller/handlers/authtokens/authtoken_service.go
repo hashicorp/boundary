@@ -51,6 +51,9 @@ func (s Service) ListAuthTokens(ctx context.Context, req *pbs.ListAuthTokensRequ
 	if err != nil {
 		return nil, err
 	}
+	for _, item := range ul {
+		item.Scope = authResults.Scope
+	}
 	return &pbs.ListAuthTokensResponse{Items: ul}, nil
 }
 
@@ -67,6 +70,7 @@ func (s Service) GetAuthToken(ctx context.Context, req *pbs.GetAuthTokenRequest)
 	if err != nil {
 		return nil, err
 	}
+	u.Scope = authResults.Scope
 	return &pbs.GetAuthTokenResponse{Item: u}, nil
 }
 

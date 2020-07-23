@@ -8,6 +8,7 @@ import (
 	"github.com/hashicorp/watchtower/internal/authtoken"
 	"github.com/hashicorp/watchtower/internal/db"
 	pb "github.com/hashicorp/watchtower/internal/gen/controller/api/resources/authtokens"
+	"github.com/hashicorp/watchtower/internal/gen/controller/api/resources/scopes"
 	pbs "github.com/hashicorp/watchtower/internal/gen/controller/api/services"
 	"github.com/hashicorp/watchtower/internal/iam"
 	"github.com/hashicorp/watchtower/internal/servers/controller/handlers/authtokens"
@@ -43,6 +44,7 @@ func TestGet(t *testing.T) {
 		UpdatedTime:             at.GetUpdateTime().GetTimestamp(),
 		ApproximateLastUsedTime: at.GetApproximateLastAccessTime().GetTimestamp(),
 		ExpirationTime:          at.GetExpirationTime().GetTimestamp(),
+		Scope:                   &scopes.ScopeInfo{Id: org.GetPublicId(), Type: scope.Org.String()},
 	}
 
 	cases := []struct {
@@ -108,6 +110,7 @@ func TestList(t *testing.T) {
 			UpdatedTime:             at.GetUpdateTime().GetTimestamp(),
 			ApproximateLastUsedTime: at.GetApproximateLastAccessTime().GetTimestamp(),
 			ExpirationTime:          at.GetExpirationTime().GetTimestamp(),
+			Scope:                   &scopes.ScopeInfo{Id: orgWithSomeTokens.GetPublicId(), Type: scope.Org.String()},
 		})
 	}
 
@@ -123,6 +126,7 @@ func TestList(t *testing.T) {
 			UpdatedTime:             at.GetUpdateTime().GetTimestamp(),
 			ApproximateLastUsedTime: at.GetApproximateLastAccessTime().GetTimestamp(),
 			ExpirationTime:          at.GetExpirationTime().GetTimestamp(),
+			Scope:                   &scopes.ScopeInfo{Id: orgWithOtherTokens.GetPublicId(), Type: scope.Org.String()},
 		})
 	}
 
