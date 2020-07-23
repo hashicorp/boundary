@@ -23,6 +23,13 @@ var deleteFuncs = map[string][]*deleteInfo{
 			"scopes",
 		},
 	},
+	"authtokens": {
+		{
+			"AuthToken",
+			"AuthToken",
+			"auth-tokens",
+		},
+	},
 	"groups": {
 		{
 			"Group",

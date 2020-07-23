@@ -30,11 +30,13 @@ type Repository struct {
 	reader  db.Reader
 	writer  db.Writer
 	wrapper wrapping.Wrapper
+	// defaultLimit provides a default for limiting the number of results returned from the repo
+	defaultLimit int
 }
 
 // NewRepository creates a new Repository. The returned repository is not safe for concurrent go
 // routines to access it.
-func NewRepository(r db.Reader, w db.Writer, wrapper wrapping.Wrapper) (*Repository, error) {
+func NewRepository(r db.Reader, w db.Writer, wrapper wrapping.Wrapper, opt ...Option) (*Repository, error) {
 	switch {
 	case r == nil:
 		return nil, fmt.Errorf("db.Reader: auth token: %w", db.ErrNilParameter)
@@ -44,10 +46,16 @@ func NewRepository(r db.Reader, w db.Writer, wrapper wrapping.Wrapper) (*Reposit
 		return nil, fmt.Errorf("wrapping.Wrapper: auth token: %w", db.ErrNilParameter)
 	}
 
+	opts := getOpts(opt...)
+	if opts.withLimit == 0 {
+		// zero signals the watchtower defaults should be used.
+		opts.withLimit = db.DefaultLimit
+	}
 	return &Repository{
-		reader:  r,
-		writer:  w,
-		wrapper: wrapper,
+		reader:       r,
+		writer:       w,
+		wrapper:      wrapper,
+		defaultLimit: opts.withLimit,
 	}, nil
 }
 
@@ -84,7 +92,7 @@ func (r *Repository) CreateAuthToken(ctx context.Context, withIamUserId, withAut
 	}
 	at.ExpirationTime = &timestamp.Timestamp{Timestamp: expiration}
 
-	var newAuthToken *AuthToken
+	var newAuthToken *writableAuthToken
 	_, err = r.writer.DoTx(
 		ctx,
 		db.StdRetryCnt,
@@ -103,8 +111,7 @@ func (r *Repository) CreateAuthToken(ctx context.Context, withIamUserId, withAut
 			at.IamUserId = acct.GetIamUserId()
 
 			metadata := newAuthTokenMetadata(at, oplog.OpType_OP_TYPE_CREATE)
-
-			newAuthToken = at.clone()
+			newAuthToken = at.toWritableAuthToken()
 			if err := newAuthToken.encrypt(ctx, r.wrapper); err != nil {
 				return err
 			}
@@ -120,7 +127,7 @@ func (r *Repository) CreateAuthToken(ctx context.Context, withIamUserId, withAut
 	if err != nil {
 		return nil, fmt.Errorf("create: auth token: %v: %w", at, err)
 	}
-	return newAuthToken, nil
+	return newAuthToken.toAuthToken(), nil
 }
 
 // LookupAuthToken returns the AuthToken for the provided id. Returns nil, nil if no AuthToken is found for id.
@@ -134,8 +141,6 @@ func (r *Repository) LookupAuthToken(ctx context.Context, id string, opt ...Opti
 
 	at := allocAuthToken()
 	at.PublicId = id
-	// Aggregate the fields across auth token and auth accounts by using this view instead of issuing 2 db lookups.
-	at.SetTableName("auth_token_account")
 	if err := r.reader.LookupByPublicId(ctx, at); err != nil {
 		if errors.Is(err, db.ErrRecordNotFound) {
 			return nil, nil
@@ -199,7 +204,7 @@ func (r *Repository) ValidateToken(ctx context.Context, id, token string, opt ..
 			db.ExpBackoff{},
 			func(_ db.Reader, w db.Writer) error {
 				metadata := newAuthTokenMetadata(retAT, oplog.OpType_OP_TYPE_DELETE)
-				delAt := retAT.clone()
+				delAt := retAT.toWritableAuthToken()
 				if _, err := w.Delete(ctx, delAt, db.WithOplog(r.wrapper, metadata)); err != nil {
 					return fmt.Errorf("validate token: delete auth token: %w", err)
 				}
@@ -224,10 +229,10 @@ func (r *Repository) ValidateToken(ctx context.Context, id, token string, opt ..
 			db.StdRetryCnt,
 			db.ExpBackoff{},
 			func(_ db.Reader, w db.Writer) error {
+				metadata := newAuthTokenMetadata(retAT, oplog.OpType_OP_TYPE_UPDATE)
+				at := retAT.toWritableAuthToken()
 				// Setting the ApproximateLastAccessTime to null through using the null mask allows a defined db's
 				// trigger to set ApproximateLastAccessTime to the commit timestamp.
-				at := retAT.clone()
-				metadata := newAuthTokenMetadata(retAT, oplog.OpType_OP_TYPE_UPDATE)
 				rowsUpdated, err := w.Update(
 					ctx,
 					at,
@@ -249,7 +254,27 @@ func (r *Repository) ValidateToken(ctx context.Context, id, token string, opt ..
 	return retAT, nil
 }
 
-// TODO(ICU-344): Add ListAuthTokens
+// ListAuthTokens in an org and supports the WithLimit option.
+func (r *Repository) ListAuthTokens(ctx context.Context, withOrgId string, opt ...Option) ([]*AuthToken, error) {
+	if withOrgId == "" {
+		return nil, fmt.Errorf("list users: missing org id %w", db.ErrInvalidParameter)
+	}
+	opts := getOpts(opt...)
+	limit := r.defaultLimit
+	if opts.withLimit != 0 {
+		// non-zero signals an override of the default limit for the repo.
+		limit = opts.withLimit
+	}
+	var authTokens []*AuthToken
+	if err := r.reader.SearchWhere(ctx, &authTokens, "auth_account_id in (select public_id from auth_account where scope_id = ?)", []interface{}{withOrgId}, db.WithLimit(limit)); err != nil {
+		return nil, fmt.Errorf("list users: %w", err)
+	}
+	for _, at := range authTokens {
+		at.Token = ""
+		at.CtToken = nil
+	}
+	return authTokens, nil
+}
 
 // DeleteAuthToken deletes the token with the provided id from the repository returning a count of the
 // number of records deleted.  All options are ignored.
@@ -276,8 +301,7 @@ func (r *Repository) DeleteAuthToken(ctx context.Context, id string, opt ...Opti
 		db.ExpBackoff{},
 		func(_ db.Reader, w db.Writer) error {
 			metadata := newAuthTokenMetadata(at, oplog.OpType_OP_TYPE_DELETE)
-
-			deleteAT := at.clone()
+			deleteAT := at.toWritableAuthToken()
 			rowsDeleted, err = w.Delete(ctx, deleteAT, db.WithOplog(r.wrapper, metadata))
 			if err == nil && rowsDeleted > 1 {
 				return db.ErrMultipleRecords
