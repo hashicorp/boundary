@@ -6,39 +6,9 @@ import (
 
 	"github.com/hashicorp/watchtower/internal/auth/password/store"
 	"github.com/hashicorp/watchtower/internal/db"
-	"github.com/hashicorp/watchtower/internal/iam"
-	"github.com/jinzhu/gorm"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
-
-func testAuthMethods(t *testing.T, conn *gorm.DB, count int) []*AuthMethod {
-	t.Helper()
-	assert, require := assert.New(t), require.New(t)
-	w := db.New(conn)
-	_, prj := iam.TestScopes(t, conn)
-	var auts []*AuthMethod
-	for i := 0; i < count; i++ {
-		cat, err := NewAuthMethod(prj.GetPublicId())
-		assert.NoError(err)
-		require.NotNil(cat)
-		id, err := newAuthMethodId()
-		assert.NoError(err)
-		require.NotEmpty(id)
-		cat.PublicId = id
-
-		ctx := context.Background()
-		_, err2 := w.DoTx(ctx, db.StdRetryCnt, db.ExpBackoff{},
-			func(_ db.Reader, iw db.Writer) error {
-				return iw.Create(ctx, cat)
-			},
-		)
-
-		require.NoError(err2)
-		auts = append(auts, cat)
-	}
-	return auts
-}
 
 func TestAccount_New(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
