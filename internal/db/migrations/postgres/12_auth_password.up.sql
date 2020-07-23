@@ -123,6 +123,8 @@ begin;
     unique(password_method_id, public_id)
   );
 
+  -- insert_auth_password_conf_subtype() is a trigger function for concrete
+  -- implementations of auth_password_conf
   create or replace function
     insert_auth_password_conf_subtype()
     returns trigger
@@ -152,6 +154,8 @@ begin;
     unique(password_method_id, password_conf_id, password_account_id)
   );
 
+  -- insert_auth_password_credential_subtype() is a trigger function for concrete
+  -- implementations of auth_password_credential
   create or replace function
     insert_auth_password_credential_subtype()
     returns trigger
