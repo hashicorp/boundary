@@ -1655,9 +1655,61 @@ commit;
 		bytes: []byte(`
 begin;
 
-  -- iam_scope ←─────  auth_method  ←─────  auth_password_method
-  --    ↑                  ↑                        ↑
-  -- iam_user  ←─────  auth_account ←─────  auth_password_account
+/*
+
+       ┌────────────────┐                 ┌──────────────────────┐             ┌────────────────────────────┐
+       │  auth_method   │                 │ auth_password_method │             │     auth_password_conf     │
+       ├────────────────┤                 ├──────────────────────┤             ├────────────────────────────┤
+       │ public_id (pk) │                 │ public_id (pk,fk)    │            ╱│ public_id          (pk,fk) │
+       │ scope_id  (fk) │┼┼─────────────○┼│ scope_id  (fk)       │┼┼─────────○─│ password_method_id (fk)    │
+       │                │                 │ ...                  │            ╲│                            │
+       └────────────────┘                 └──────────────────────┘             └────────────────────────────┘
+                ┼                                     ┼                                       ┼
+                ┼                                     ┼                                       ┼
+                │                                     │                                       │
+                │ ▲fk1                                │ ▲fk1                                  │ ▲fk1
+                │                                     │                                       │
+                ○                                     ○                                       ○
+               ╱│╲                                   ╱│╲                                     ╱│╲
+  ┌──────────────────────────┐          ┌──────────────────────────┐          ┌───────────────────────────────┐
+  │       auth_account       │          │  auth_password_account   │          │   auth_password_credential    │
+  ├──────────────────────────┤          ├──────────────────────────┤          ├───────────────────────────────┤
+  │ public_id      (pk)      │          │ public_id      (pk,fk2)  │          │ public_id           (pk)      │
+  │ scope_id       (fk1,fk2) │   ◀fk2   │ scope_id       (fk1,fk2) │   ◀fk2   │ password_method_id  (fk1,fk2) │
+  │ auth_method_id (fk1)     │┼┼──────○┼│ auth_method_id (fk1,fk2) │┼┼──────○┼│ password_conf_id    (fk1)     │
+  │ iam_user_id    (fk2)     │          │ ...                      │          │ password_account_id (fk2)     │
+  └──────────────────────────┘          └──────────────────────────┘          └───────────────────────────────┘
+
+  An auth_method is "abstract". An auth_password_method is a concrete
+  auth_method. For every row in auth_password_method there is one row in
+  auth_method with the same public_id and scope_id.
+
+  Similarly, an auth_account is "abstract". An auth_password_account is a concrete
+  auth_account. For every row in auth_password_account there is one row in
+  auth_account with the same public_id, scope_id, and auth_method_id.
+
+  Both auth_password_conf and auth_password_credential are abstract. Each
+  password key derivation function will require a concrete auth_password_conf
+  and auth_password_credential table.
+
+  An auth_method can have 0 or 1 auth_password_method.
+  An auth_account can have 0 or 1 auth_password_account.
+
+  An auth_password_method belongs to 1 auth_method.
+  An auth_password_method can have 0 to many auth_password_accounts.
+  An auth_password_method can have 0 to many auth_password_confs.
+
+  An auth_password_account belongs to 1 auth_account.
+  An auth_password_account belongs to 1 auth_password_method.
+  An auth_password_account can have 0 or 1 auth_password_credential.
+
+  An auth_password_conf belongs to 1 auth_password_method.
+  An auth_password_conf can have 0 to many auth_password_credentials.
+
+  An auth_password_credential belongs to 1 auth_password_account.
+  An auth_password_credential belongs to 1 auth_password_conf.
+
+*/
 
   create table auth_password_method (
     public_id wt_public_id primary key,
