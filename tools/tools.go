@@ -17,8 +17,8 @@ package tools
 //go:generate go install github.com/favadi/protoc-go-inject-tag
 //go:generate go install github.com/go-swagger/go-swagger/cmd/swagger
 //go:generate go install github.com/golang/protobuf/protoc-gen-go
-//go:generate go install github.com/grpc-ecosystem/grpc-gateway/protoc-gen-grpc-gateway
-//go:generate go install github.com/grpc-ecosystem/grpc-gateway/protoc-gen-swagger
+//go:generate go install github.com/grpc-ecosystem/grpc-gateway/v2/protoc-gen-grpc-gateway
+//go:generate go install github.com/grpc-ecosystem/grpc-gateway/v2/protoc-gen-openapiv2
 //go:generate go install golang.org/x/tools/cmd/goimports
 //go:generate go install github.com/oligot/go-mod-upgrade
 //go:generate go install github.com/mitchellh/gox
@@ -36,9 +36,9 @@ import (
 	// https://github.com/protocolbuffers/protobuf-go/releases/tag/v1.20.0#v1.20-grpc-support
 	_ "github.com/golang/protobuf/protoc-gen-go"
 
-	_ "github.com/grpc-ecosystem/grpc-gateway/protoc-gen-grpc-gateway"
+	_ "github.com/grpc-ecosystem/grpc-gateway/v2/protoc-gen-grpc-gateway"
 
-	_ "github.com/grpc-ecosystem/grpc-gateway/protoc-gen-swagger"
+	_ "github.com/grpc-ecosystem/grpc-gateway/v2/protoc-gen-openapiv2"
 
 	_ "golang.org/x/tools/cmd/goimports"
 

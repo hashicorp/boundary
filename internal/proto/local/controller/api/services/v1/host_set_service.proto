@@ -4,12 +4,12 @@ package controller.api.services.v1;
 
 option go_package = "github.com/hashicorp/watchtower/internal/gen/controller/api/services;services";
 
-import "protoc-gen-swagger/options/annotations.proto";
+import "protoc-gen-openapiv2/options/annotations.proto";
 import "google/api/annotations.proto";
 import "google/protobuf/field_mask.proto";
 import "controller/api/resources/hosts/v1/host_set.proto";
 
-option (grpc.gateway.protoc_gen_swagger.options.openapiv2_swagger) = {
+option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_swagger) = {
   info: {
     title: "Controller API"
     version: "0.0.1"
@@ -26,7 +26,7 @@ service HostSetService {
       get: "/v1/scopes/*/host-catalogs/{host_catalog_id}/host-sets/{id}"
       response_body: "item"
     };
-    option (grpc.gateway.protoc_gen_swagger.options.openapiv2_operation) = {
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
       summary: "Get a single HostSet"
     };
   }
@@ -34,7 +34,7 @@ service HostSetService {
     option (google.api.http) = {
       get: "/v1/scopes/*/host-catalogs/{host_catalog_id}/host-sets"
     };
-    option (grpc.gateway.protoc_gen_swagger.options.openapiv2_operation) = {
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
       summary: "List all HostSets under the specific catalog"
     };
   }
@@ -44,7 +44,7 @@ service HostSetService {
       body: "item"
       response_body: "item"
     };
-    option (grpc.gateway.protoc_gen_swagger.options.openapiv2_operation) = {
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
       summary: "Create a HostSet"
     };
   }
@@ -54,7 +54,7 @@ service HostSetService {
       body: "item"
       response_body: "item"
     };
-    option (grpc.gateway.protoc_gen_swagger.options.openapiv2_operation) = {
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
       summary: "Update a HostSet"
     };
   }
@@ -62,7 +62,7 @@ service HostSetService {
     option (google.api.http) = {
       delete: "/v1/scopes/*/host-catalogs/{host_catalog_id}/host-sets/{id}"
     };
-    option (grpc.gateway.protoc_gen_swagger.options.openapiv2_operation) = {
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
       summary: "Delete a HostSet"
     };
   }
@@ -71,7 +71,7 @@ service HostSetService {
     option (google.api.http) = {
       post: "/v1/scopes/*/host-catalogs/{host_catalog_id}/host-sets/{id}:add-hosts"
     };
-    option (grpc.gateway.protoc_gen_swagger.options.openapiv2_operation) = {
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
       summary: "Adds existing Hosts to the Host Set"
       description: "Adds the hosts to this Host Set if possible.  All hosts added must be a child of the same host catalog this host set is a child of."
     };
@@ -81,7 +81,7 @@ service HostSetService {
     option (google.api.http) = {
       post: "/v1/scopes/*/host-catalogs/{host_catalog_id}/host-sets/{id}:remove-hosts"
     };
-    option (grpc.gateway.protoc_gen_swagger.options.openapiv2_operation) = {
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
       summary: "Removes Hosts to the Host Set"
       description: "Removes the hosts from this Host Set if present.  If it is not present then no action is taken and no error is returned."
     };

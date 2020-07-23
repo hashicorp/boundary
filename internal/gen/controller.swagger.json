@@ -1336,6 +1336,7 @@
     },
     "/v1/scopes/*/users/{id}": {
       "get": {
+        "summary": "Gets a single User",
         "operationId": "UserService_GetUser",
         "responses": {
           "200": {
