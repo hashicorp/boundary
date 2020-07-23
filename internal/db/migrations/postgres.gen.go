@@ -1713,7 +1713,7 @@ begin;
 
   create table auth_password_method (
     public_id wt_public_id primary key,
-    scope_id wt_public_id not null,
+    scope_id wt_scope_id not null,
     name text,
     description text,
     create_time wt_timestamp,
@@ -1736,7 +1736,7 @@ begin;
   create table auth_password_account (
     public_id wt_public_id primary key,
     auth_method_id wt_public_id not null,
-    -- NOTE(mgaffney): The scope_id type is not wt_public_id because the domain
+    -- NOTE(mgaffney): The scope_id type is not wt_scope_id because the domain
     -- check is executed before the insert trigger which retrieves the scope_id
     -- causing an insert to fail.
     scope_id text not null,
