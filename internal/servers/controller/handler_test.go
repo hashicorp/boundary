@@ -1,102 +1,16 @@
 package controller
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"net/http"
-	"net/http/httptest"
 	"strings"
 	"testing"
 
-	"github.com/grpc-ecosystem/grpc-gateway/runtime"
-	"github.com/hashicorp/watchtower/internal/gen/controller/api/services"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
-
-func TestGrpcGatewayRouting(t *testing.T) {
-	ctx := context.Background()
-	// The unimplemented result indicates the grpc routing is happening successfully otherwise it would return NotFound.
-	routed := http.StatusNotImplemented
-	unrouted := http.StatusNotFound
-
-	cases := []struct {
-		name           string
-		setup          func(mux *runtime.ServeMux)
-		url            string
-		expectedResult int
-	}{
-		{
-			name: "users",
-			setup: func(mux *runtime.ServeMux) {
-				require.NoError(t, services.RegisterUserServiceHandlerServer(ctx, mux, &services.UnimplementedUserServiceServer{}))
-			},
-			url:            "v1/scopes/someid/users",
-			expectedResult: routed,
-		},
-		{
-			name: "roles",
-			setup: func(mux *runtime.ServeMux) {
-				require.NoError(t, services.RegisterRoleServiceHandlerServer(ctx, mux, &services.UnimplementedRoleServiceServer{}))
-			},
-			url:            "v1/scopes/someid/roles",
-			expectedResult: routed,
-		},
-		{
-			name: "groups",
-			setup: func(mux *runtime.ServeMux) {
-				require.NoError(t, services.RegisterGroupServiceHandlerServer(ctx, mux, &services.UnimplementedGroupServiceServer{}))
-			},
-			url:            "v1/scopes/someid/groups",
-			expectedResult: routed,
-		},
-		{
-			name:           "not routed",
-			setup:          func(mux *runtime.ServeMux) {},
-			url:            "v1/nothing",
-			expectedResult: unrouted,
-		},
-	}
-
-	for _, tc := range cases {
-		t.Run(tc.name, func(t *testing.T) {
-			mux := runtime.NewServeMux()
-			tc.setup(mux)
-
-			// List request
-			req := httptest.NewRequest("GET", fmt.Sprintf("http://localhost/%s", tc.url), nil)
-			resp := httptest.NewRecorder()
-			mux.ServeHTTP(resp, req)
-			assert.Equal(t, tc.expectedResult, resp.Result().StatusCode, "Got response %v", resp)
-
-			// Create request
-			req = httptest.NewRequest("POST", fmt.Sprintf("http://localhost/%s", tc.url), nil)
-			resp = httptest.NewRecorder()
-			mux.ServeHTTP(resp, req)
-			assert.Equal(t, tc.expectedResult, resp.Result().StatusCode, "Got response %v", resp)
-
-			// Get request
-			req = httptest.NewRequest("GET", fmt.Sprintf("http://localhost/%s/somemadeupid", tc.url), nil)
-			resp = httptest.NewRecorder()
-			mux.ServeHTTP(resp, req)
-			assert.Equal(t, tc.expectedResult, resp.Result().StatusCode, "Got response %v", resp)
-
-			// Update request
-			req = httptest.NewRequest("PATCH", fmt.Sprintf("http://localhost/%s/somemadeupid", tc.url), nil)
-			resp = httptest.NewRecorder()
-			mux.ServeHTTP(resp, req)
-			assert.Equal(t, tc.expectedResult, resp.Result().StatusCode, "Got response %v", resp)
-
-			// Delete request
-			req = httptest.NewRequest("DELETE", fmt.Sprintf("http://localhost/%s/somemadeupid", tc.url), nil)
-			resp = httptest.NewRecorder()
-			mux.ServeHTTP(resp, req)
-			assert.Equal(t, tc.expectedResult, resp.Result().StatusCode, "Got response %v", resp)
-		})
-	}
-}
 
 func TestAuthenticationHandler(t *testing.T) {
 	c := NewTestController(t, &TestControllerOpts{DefaultOrgId: "o_1234567890"})
@@ -120,68 +34,64 @@ func TestAuthenticationHandler(t *testing.T) {
 	assert.Truef(t, strings.HasPrefix(tok, pubId), "Token: %q, Id: %q", tok, pubId)
 }
 
-func TestGrpcGatewayRouting_CustomActions(t *testing.T) {
-	ctx := context.Background()
-	// The unimplemented result indicates the grpc routing is happening successfully otherwise it would return NotFound.
-	routed := http.StatusNotImplemented
+func TestHandleImplementedPaths(t *testing.T) {
+	c := NewTestController(t, &TestControllerOpts{
+		DisableAuthorizationFailures: true,
+	})
+	defer c.Shutdown()
 
-	cases := []struct {
-		name     string
-		setup    func(mux *runtime.ServeMux)
-		verbUrls map[string][]string
-	}{
-		{
-			name: "roles",
-			setup: func(mux *runtime.ServeMux) {
-				require.NoError(t, services.RegisterRoleServiceHandlerServer(ctx, mux, &services.UnimplementedRoleServiceServer{}))
-			},
-			verbUrls: map[string][]string{
-				"POST": {
-					"v1/scopes/someid/roles/r_anotherid:add-principals",
-					"v1/scopes/someid/roles/r_anotherid:set-principals",
-					"v1/scopes/someid/roles/r_anotherid:remove-principals",
-					"v1/scopes/someid/roles/r_anotherid:add-principals",
-					"v1/scopes/someid/roles/r_anotherid:set-principals",
-					"v1/scopes/someid/roles/r_anotherid:remove-principals",
-					"v1/scopes/someid/roles/r_anotherid:add-grants",
-					"v1/scopes/someid/roles/r_anotherid:set-grants",
-					"v1/scopes/someid/roles/r_anotherid:remove-grants",
-					"v1/scopes/someid/roles/r_anotherid:add-grants",
-					"v1/scopes/someid/roles/r_anotherid:set-grants",
-					"v1/scopes/someid/roles/r_anotherid:remove-grants",
-				},
-			},
+	for verb, paths := range map[string][]string{
+		"GET": {
+			"v1/scopes/someid",
+			"v1/scopes/someid/users",
+			"v1/scopes/someid/users/someid",
+			"v1/scopes/someid/roles",
+			"v1/scopes/someid/roles/someid",
+			"v1/scopes/someid/groups",
+			"v1/scopes/someid/groups/someid",
+			"v1/scopes/someid/host-catalogs",
+			"v1/scopes/someid/host-catalogs/someid",
 		},
-		{
-			name: "auth-tokens",
-			setup: func(mux *runtime.ServeMux) {
-				require.NoError(t, services.RegisterAuthTokenServiceHandlerServer(ctx, mux, &services.UnimplementedAuthTokenServiceServer{}))
-			},
-			verbUrls: map[string][]string{
-				"GET": {
-					"v1/scopes/someid/auth-tokens",
-					"v1/scopes/someid/auth-tokens/someid",
-				},
-				"DELETE": {
-					"v1/scopes/someid/auth-tokens/someid",
-				},
-			},
+		"POST": {
+			// Creation end points
+			"v1/scopes",
+			"v1/scopes/someid/users",
+			"v1/scopes/someid/roles",
+			"v1/scopes/someid/groups",
+
+			// custom methods
+			"v1/scopes/someid/roles/someid:add-principals",
+			"v1/scopes/someid/roles/someid:set-principals",
+			"v1/scopes/someid/roles/someid:remove-principals",
+			"v1/scopes/someid/roles/someid:add-grants",
+			"v1/scopes/someid/roles/someid:set-grants",
+			"v1/scopes/someid/roles/someid:remove-grants",
+			"v1/scopes/someid/groups/someid:add-members",
+			"v1/scopes/someid/groups/someid:set-members",
+			"v1/scopes/someid/groups/someid:remove-members",
 		},
-	}
-
-	for _, tc := range cases {
-		for verb, urls := range tc.verbUrls {
-			for _, url := range urls {
-				t.Run(fmt.Sprintf("%s_%s_%s", tc.name, verb, url), func(t *testing.T) {
-					mux := runtime.NewServeMux()
-					tc.setup(mux)
-
-					req := httptest.NewRequest(verb, fmt.Sprintf("http://localhost/%s", url), nil)
-					resp := httptest.NewRecorder()
-					mux.ServeHTTP(resp, req)
-					assert.Equalf(t, routed, resp.Result().StatusCode, "Req: %s response %v", req.RequestURI, resp)
-				})
-			}
+		"DELETE": {
+			"v1/scopes/someid",
+			"v1/scopes/someid/users/someid",
+			"v1/scopes/someid/roles/someid",
+			"v1/scopes/someid/groups/someid",
+		},
+		"PATCH": {
+			"v1/scopes/someid",
+			"v1/scopes/someid/users/someid",
+			"v1/scopes/someid/roles/someid",
+			"v1/scopes/someid/groups/someid",
+		},
+	} {
+		for _, p := range paths {
+			t.Run(fmt.Sprintf("%s/%s", verb, p), func(t *testing.T) {
+				url := fmt.Sprintf("%s/%s", c.ApiAddrs()[0], p)
+				req, err := http.NewRequest(verb, url, nil)
+				require.NoError(t, err)
+				resp, err := http.DefaultClient.Do(req)
+				require.NoError(t, err)
+				assert.NotEqualf(t, resp.StatusCode, http.StatusNotFound, "Got response %v, wanted not 404", resp.StatusCode)
+			})
 		}
 	}
 }
