@@ -1621,10 +1621,7 @@ begin;
   -- iam_user  ←─────  auth_account ←─────  auth_password_account
 
   create table auth_password_method (
-    public_id wt_public_id primary key
-      references auth_method (public_id)
-      on delete cascade
-      on update cascade,
+    public_id wt_public_id primary key,
     scope_id wt_public_id not null,
     name text,
     description text,
@@ -1646,10 +1643,7 @@ begin;
     for each row execute procedure insert_auth_method_subtype();
 
   create table auth_password_account (
-    public_id wt_public_id primary key
-      references auth_account (public_id)
-      on delete cascade
-      on update cascade,
+    public_id wt_public_id primary key,
     auth_method_id wt_public_id not null,
     -- NOTE(mgaffney): The scope_id type is not wt_public_id because the domain
     -- check is executed before the insert trigger which retrieves the scope_id
