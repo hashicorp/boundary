@@ -61,9 +61,7 @@ func (a *Account) TableName() string {
 
 // SetTableName sets the table name.
 func (a *Account) SetTableName(n string) {
-	if n != "" {
-		a.tableName = n
-	}
+	a.tableName = n
 }
 
 func (a *Account) oplog(op oplog.OpType) oplog.Metadata {
