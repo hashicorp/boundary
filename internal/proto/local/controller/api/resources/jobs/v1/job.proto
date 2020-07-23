@@ -30,7 +30,7 @@ message Job {
 
     // The time the job entered success state
 	// Output only.
-    google.protobuf.Timestamp success_time = 60 [json_name="success_time"];
+    google.protobuf.Timestamp complete_time = 60 [json_name="complete_time"];
 
     // The type of job
     // Output only.

@@ -76,6 +76,7 @@ protobuild:
 	@protoc-go-inject-tag -input=./internal/iam/store/user.pb.go
 	@protoc-go-inject-tag -input=./internal/iam/store/scope.pb.go
 	@protoc-go-inject-tag -input=./internal/iam/store/group.pb.go
+	@protoc-go-inject-tag -input=./internal/jobs/store/jobs.pb.go
 	@protoc-go-inject-tag -input=./internal/db/db_test/db_test.pb.go
 	@protoc-go-inject-tag -input=./internal/host/static/store/static.pb.go
 	@protoc-go-inject-tag -input=./internal/authtoken/store/authtoken.pb.go
