@@ -58,9 +58,7 @@ func (c *Argon2Configuration) TableName() string {
 
 // SetTableName sets the table name.
 func (c *Argon2Configuration) SetTableName(n string) {
-	if n != "" {
-		c.tableName = n
-	}
+	c.tableName = n
 }
 
 func (c *Argon2Configuration) oplog(op oplog.OpType) oplog.Metadata {
