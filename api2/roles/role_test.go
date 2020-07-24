@@ -33,7 +33,7 @@ func TestRole_Crud(t *testing.T) {
 	listedResources, apiErr, err := rClient.List(ctx)
 	require.NoError(t, err)
 	require.Nil(t, apiErr)
-	assert.Equal(t, []roles.Role{*readResource}, listedResources)
+	assert.Contains(t, listedResources, *readResource)
 
 	existed, apiErr, err := rClient.Delete(ctx, role.Id)
 	require.NoError(t, err)

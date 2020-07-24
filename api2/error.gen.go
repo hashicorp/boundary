@@ -2,8 +2,8 @@
 package api
 
 type Error struct {
-	Status  int32        `json:"status,omitempty"`
-	Code    string       `json:"code,omitempty"`
-	Message string       `json:"message,omitempty"`
-	Details ErrorDetails `json:"details,omitempty"`
+	Status  int32         `json:"status,omitempty"`
+	Code    string        `json:"code,omitempty"`
+	Message string        `json:"message,omitempty"`
+	Details *ErrorDetails `json:"details,omitempty"`
 }

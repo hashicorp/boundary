@@ -2,7 +2,7 @@
 package roles
 
 type Grant struct {
-	Raw       string    `json:"raw,omitempty"`
-	Canonical string    `json:"canonical,omitempty"`
-	Json      GrantJson `json:"json,omitempty"`
+	Raw       string     `json:"raw,omitempty"`
+	Canonical string     `json:"canonical,omitempty"`
+	Json      *GrantJson `json:"json,omitempty"`
 }

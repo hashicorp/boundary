@@ -42,11 +42,11 @@ func parsePBs() {
 			}
 			switch k := fd.Kind(); k {
 			case protoreflect.MessageKind:
-				pkg, name := messageKind(fd)
+				ptr, pkg, name := messageKind(fd)
 				if pkg != "" && pkg != in.generatedStructure.pkg {
 					name = fmt.Sprintf("%s.%s", pkg, name)
 				}
-				fi.FieldType = name
+				fi.FieldType = ptr + name
 			default:
 				fi.FieldType = k.String()
 			}
@@ -57,6 +57,8 @@ func parsePBs() {
 }
 
 func packageFromFullName(fullName protoreflect.FullName) string {
+	// Example full name: controller.api.resources.groups.v1.Group
+	// Crawling up the parent twice jumps back past v1.Group placing us at "groups".
 	pkgName := fullName.Parent().Parent().Name()
 	if pkgName.IsValid() {
 		return string(pkgName)
@@ -70,15 +72,15 @@ var (
 	timestampName   = (&timestamppb.Timestamp{}).ProtoReflect().Descriptor().FullName()
 )
 
-func messageKind(fd protoreflect.FieldDescriptor) (pkg, name string) {
+func messageKind(fd protoreflect.FieldDescriptor) (ptr, pkg, name string) {
 	switch fd.Message().FullName() {
 	case stringValueName:
-		return "", "string"
+		return "", "", "string"
 	case boolValueName:
-		return "", "bool"
+		return "", "", "bool"
 	case timestampName:
-		return "", "*time.Time"
+		return "*", "time", "Time"
 	default:
-		return packageFromFullName(fd.Message().FullName()), string(fd.Message().Name())
+		return "*", packageFromFullName(fd.Message().FullName()), string(fd.Message().Name())
 	}
 }
