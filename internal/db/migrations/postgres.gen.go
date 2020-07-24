@@ -1714,6 +1714,7 @@ begin;
   create table auth_password_method (
     public_id wt_public_id primary key,
     scope_id wt_scope_id not null,
+    password_conf_id wt_public_id not null, -- FK to auth_password_conf added below
     name text,
     description text,
     create_time wt_timestamp,
@@ -1777,6 +1778,14 @@ begin;
       deferrable initially deferred,
     unique(password_method_id, public_id)
   );
+
+  alter table auth_password_method
+    add constraint current_conf_fkey
+    foreign key (public_id, password_conf_id)
+    references auth_password_conf (password_method_id, public_id)
+    on delete cascade
+    on update cascade
+    deferrable initially deferred;
 
   -- insert_auth_password_conf_subtype() is a trigger function for concrete
   -- implementations of auth_password_conf
