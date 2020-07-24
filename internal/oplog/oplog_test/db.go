@@ -36,12 +36,7 @@ func (u *TestUser) TableName() string {
 // ReplayableMessage.  If the caller attempts to set the name to "" the name will be
 // reset to the default name.
 func (u *TestUser) SetTableName(n string) {
-	switch n {
-	case "":
-		u.Table = defaultTestUserTableName
-	default:
-		u.Table = n
-	}
+	u.Table = n
 }
 
 // TableName overrides the table name for TestCar
@@ -54,12 +49,7 @@ func (c *TestCar) TableName() string {
 
 // SetTableName allows the table name to be overridden and makes a TestCar a ReplayableMessage
 func (c *TestCar) SetTableName(n string) {
-	switch n {
-	case "":
-		c.Table = defaultTestCarTableName
-	default:
-		c.Table = n
-	}
+	c.Table = n
 }
 
 // TableName overrids the table name for TestRental
@@ -72,10 +62,5 @@ func (r *TestRental) TableName() string {
 
 // SetTableName allows the table name to be overridden and makes a TestRental a ReplayableMessage
 func (r *TestRental) SetTableName(n string) {
-	switch n {
-	case "":
-		r.Table = defaultTestRentalTableName
-	default:
-		r.Table = n
-	}
+	r.Table = n
 }

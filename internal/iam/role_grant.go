@@ -102,10 +102,5 @@ func (g *RoleGrant) TableName() string {
 // interface. If the caller attempts to set the name to "" the name will be
 // reset to the default name.
 func (g *RoleGrant) SetTableName(n string) {
-	switch n {
-	case "":
-		g.tableName = defaultRoleGrantTable
-	default:
-		g.tableName = n
-	}
+	g.tableName = n
 }

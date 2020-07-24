@@ -84,12 +84,7 @@ func (c *TestCar) TableName() string {
 	return defaultCarTableName
 }
 func (c *TestCar) SetTableName(name string) {
-	switch name {
-	case "":
-		c.table = defaultCarTableName
-	default:
-		c.table = name
-	}
+	c.table = name
 }
 
 type TestRental struct {
@@ -116,12 +111,7 @@ func (r *TestRental) TableName() string {
 	return defaultRentalTableName
 }
 func (r *TestRental) SetTableName(name string) {
-	switch name {
-	case "":
-		r.table = defaultRentalTableName
-	default:
-		r.table = name
-	}
+	r.table = name
 }
 
 type TestScooter struct {
@@ -155,12 +145,7 @@ func (t *TestScooter) TableName() string {
 }
 
 func (t *TestScooter) SetTableName(name string) {
-	switch name {
-	case "":
-		t.table = defaultScooterTableName
-	default:
-		t.table = name
-	}
+	t.table = name
 }
 
 type Cloner interface {

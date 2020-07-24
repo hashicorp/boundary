@@ -201,10 +201,5 @@ func (s *Scope) TableName() string {
 // interface. If the caller attempts to set the name to "" the name will be
 // reset to the default name.
 func (s *Scope) SetTableName(n string) {
-	switch n {
-	case "":
-		s.tableName = defaultScopeTableName
-	default:
-		s.tableName = n
-	}
+	s.tableName = n
 }

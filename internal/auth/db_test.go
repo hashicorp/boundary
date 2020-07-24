@@ -77,9 +77,9 @@ create table if not exists test_auth_account (
 `
 		insert = `
 insert into test_auth_account
-  (public_id, auth_method_id, scope_id)
+  (public_id, auth_method_id)
 values
-  ($1, $2, $3);
+  ($1, $2);
 `
 		addTriggers = `
 create trigger
@@ -118,7 +118,7 @@ values
 	require.NoError(err)
 
 	id := "l1Ocw0TpHn800CekIxIXlmQqRDgFDfYl"
-	_, err = db.Query(insert, id, meth_id, org.GetPublicId())
+	_, err = db.Query(insert, id, meth_id)
 	require.NoError(err)
 
 	var count int

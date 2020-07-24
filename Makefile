@@ -79,6 +79,7 @@ protobuild:
 	@protoc-go-inject-tag -input=./internal/host/static/store/static.pb.go
 	@protoc-go-inject-tag -input=./internal/authtoken/store/authtoken.pb.go
 	@protoc-go-inject-tag -input=./internal/iam/store/auth_account.pb.go
+	@protoc-go-inject-tag -input=./internal/auth/password/store/password.pb.go
 	@rm -R ${TMP_DIR}
 
 protolint:
