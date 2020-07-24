@@ -2,6 +2,7 @@ package password
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"regexp"
 
@@ -60,6 +61,42 @@ func (r *Repository) CreateAccount(ctx context.Context, a *Account, opt ...Optio
 		return nil, fmt.Errorf("create: password account: in auth method: %s: %w", a.AuthMethodId, err)
 	}
 	return newAccount, nil
+}
+
+// LookupAccount will look up an account in the repository.  If the account is not
+// found, it will return nil, nil.  All options are ignored.
+func (r *Repository) LookupAccount(ctx context.Context, withPublicId string, opt ...Option) (*Account, error) {
+	if withPublicId == "" {
+		return nil, fmt.Errorf("lookup: password account: missing public id %w", db.ErrInvalidParameter)
+	}
+	a := allocAccount()
+	a.PublicId = withPublicId
+	if err := r.reader.LookupByPublicId(ctx, &a); err != nil {
+		if errors.Is(err, db.ErrRecordNotFound) {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("lookup: password account: failed %w for %s", err, withPublicId)
+	}
+	return &a, nil
+}
+
+// ListAccounts in an auth method and supports WithLimit option.
+func (r *Repository) ListAccounts(ctx context.Context, withAuthMethodId string, opt ...Option) ([]*Account, error) {
+	if withAuthMethodId == "" {
+		return nil, fmt.Errorf("list: password account: missing auth method id %w", db.ErrInvalidParameter)
+	}
+	opts := getOpts(opt...)
+	limit := r.defaultLimit
+	if opts.withLimit != 0 {
+		// non-zero signals an override of the default limit for the repo.
+		limit = opts.withLimit
+	}
+	var accts []*Account
+	err := r.reader.SearchWhere(ctx, &accts, "auth_method_id = ?", []interface{}{withAuthMethodId}, db.WithLimit(limit))
+	if err != nil {
+		return nil, fmt.Errorf("list: password account: %w", err)
+	}
+	return accts, nil
 }
 
 var reInvalidUserName = regexp.MustCompile("[^a-z0-9.]")
