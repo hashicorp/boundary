@@ -19,6 +19,12 @@ type Account struct {
 	CredentialID string `gorm:"-"`
 }
 
+func allocAccount() Account {
+	return Account{
+		Account: &store.Account{},
+	}
+}
+
 // NewAccount creates a new in memory Account with userName assigned to
 // authMethodId. Name and description are the only valid options. All other
 // options are ignored.
