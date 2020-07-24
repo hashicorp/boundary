@@ -15,8 +15,6 @@ import (
 //
 // Both m.Name and m.Description are optional. If m.Name is set, it must be
 // unique within m.ScopeId.
-//
-// Both m.CreateTime and m.UpdateTime are ignored.
 func (r *Repository) CreateAuthMethod(ctx context.Context, m *AuthMethod, opt ...Option) (*AuthMethod, error) {
 	if m == nil {
 		return nil, fmt.Errorf("create: password auth method: %w", db.ErrNilParameter)

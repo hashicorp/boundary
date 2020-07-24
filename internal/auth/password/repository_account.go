@@ -16,8 +16,6 @@ import (
 //
 // Both a.Name and a.Description are optional. If a.Name is set, it must be
 // unique within a.AuthMethodId.
-//
-// Both a.CreateTime and a.UpdateTime are ignored.
 func (r *Repository) CreateAccount(ctx context.Context, a *Account, opt ...Option) (*Account, error) {
 	if a == nil {
 		return nil, fmt.Errorf("create: password account: %w", db.ErrNilParameter)
