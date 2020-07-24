@@ -55,6 +55,7 @@ func testAccounts(t *testing.T, conn *gorm.DB, scopeId, authMethodId string, cou
 		)
 
 		require.NoError(err2)
+		// TODO(toddknight): Figure out why the iw.Create call doesn't populate the scope id from the DB.
 		cat.ScopeId = scopeId
 		auts = append(auts, cat)
 	}
