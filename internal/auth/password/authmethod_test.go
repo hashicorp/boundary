@@ -16,10 +16,10 @@ func testAuthMethods(t *testing.T, conn *gorm.DB, count int) []*AuthMethod {
 	t.Helper()
 	assert, require := assert.New(t), require.New(t)
 	w := db.New(conn)
-	_, prj := iam.TestScopes(t, conn)
+	org, _ := iam.TestScopes(t, conn)
 	var auts []*AuthMethod
 	for i := 0; i < count; i++ {
-		cat, err := NewAuthMethod(prj.GetPublicId())
+		cat, err := NewAuthMethod(org.GetPublicId())
 		assert.NoError(err)
 		require.NotNil(cat)
 		id, err := newAuthMethodId()
@@ -102,8 +102,8 @@ func TestAuthMethod_New(t *testing.T) {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			_, prj := iam.TestScopes(t, conn)
-			got, err := NewAuthMethod(prj.GetPublicId(), tt.args.opts...)
+			org, _ := iam.TestScopes(t, conn)
+			got, err := NewAuthMethod(org.GetPublicId(), tt.args.opts...)
 			if tt.wantErr {
 				assert.Error(err)
 				require.Nil(got)
@@ -112,7 +112,7 @@ func TestAuthMethod_New(t *testing.T) {
 			require.NoError(err)
 			require.NotNil(got)
 
-			tt.want.ScopeId = prj.GetPublicId()
+			tt.want.ScopeId = org.GetPublicId()
 
 			assert.Emptyf(got.PublicId, "PublicId set")
 			assert.Equal(tt.want, got)

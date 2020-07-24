@@ -18,7 +18,7 @@ func TestRepository_CreateAuthMethod(t *testing.T) {
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
 
-	_, prj := iam.TestScopes(t, conn)
+	org, _ := iam.TestScopes(t, conn)
 
 	var tests = []struct {
 		name      string
@@ -47,7 +47,7 @@ func TestRepository_CreateAuthMethod(t *testing.T) {
 			name: "invalid-public-id-set",
 			in: &AuthMethod{
 				AuthMethod: &store.AuthMethod{
-					ScopeId:  prj.PublicId,
+					ScopeId:  org.PublicId,
 					PublicId: "sthc_OOOOOOOOOO",
 				},
 			},
@@ -57,12 +57,12 @@ func TestRepository_CreateAuthMethod(t *testing.T) {
 			name: "valid-no-options",
 			in: &AuthMethod{
 				AuthMethod: &store.AuthMethod{
-					ScopeId: prj.PublicId,
+					ScopeId: org.PublicId,
 				},
 			},
 			want: &AuthMethod{
 				AuthMethod: &store.AuthMethod{
-					ScopeId: prj.PublicId,
+					ScopeId: org.PublicId,
 				},
 			},
 		},
@@ -70,13 +70,13 @@ func TestRepository_CreateAuthMethod(t *testing.T) {
 			name: "valid-with-name",
 			in: &AuthMethod{
 				AuthMethod: &store.AuthMethod{
-					ScopeId: prj.PublicId,
+					ScopeId: org.PublicId,
 					Name:    "test-name-repo",
 				},
 			},
 			want: &AuthMethod{
 				AuthMethod: &store.AuthMethod{
-					ScopeId: prj.PublicId,
+					ScopeId: org.PublicId,
 					Name:    "test-name-repo",
 				},
 			},
@@ -85,13 +85,13 @@ func TestRepository_CreateAuthMethod(t *testing.T) {
 			name: "valid-with-description",
 			in: &AuthMethod{
 				AuthMethod: &store.AuthMethod{
-					ScopeId:     prj.PublicId,
+					ScopeId:     org.PublicId,
 					Description: ("test-description-repo"),
 				},
 			},
 			want: &AuthMethod{
 				AuthMethod: &store.AuthMethod{
-					ScopeId:     prj.PublicId,
+					ScopeId:     org.PublicId,
 					Description: ("test-description-repo"),
 				},
 			},
@@ -128,10 +128,10 @@ func TestRepository_CreateAuthMethod(t *testing.T) {
 		require.NoError(err)
 		require.NotNil(repo)
 
-		_, prj := iam.TestScopes(t, conn)
+		org, _ := iam.TestScopes(t, conn)
 		in := &AuthMethod{
 			AuthMethod: &store.AuthMethod{
-				ScopeId: prj.GetPublicId(),
+				ScopeId: org.GetPublicId(),
 				Name:    "test-name-repo",
 			},
 		}
@@ -156,7 +156,7 @@ func TestRepository_CreateAuthMethod(t *testing.T) {
 		require.NoError(err)
 		require.NotNil(repo)
 
-		org, prj := iam.TestScopes(t, conn)
+		org1, _ := iam.TestScopes(t, conn)
 		in := &AuthMethod{
 			AuthMethod: &store.AuthMethod{
 				Name: "test-name-repo",
@@ -164,7 +164,7 @@ func TestRepository_CreateAuthMethod(t *testing.T) {
 		}
 		in2 := in.clone()
 
-		in.ScopeId = prj.GetPublicId()
+		in.ScopeId = org1.GetPublicId()
 		got, err := repo.CreateAuthMethod(context.Background(), in)
 		require.NoError(err)
 		require.NotNil(got)
@@ -174,7 +174,8 @@ func TestRepository_CreateAuthMethod(t *testing.T) {
 		assert.Equal(in.Description, got.Description)
 		assert.Equal(got.CreateTime, got.UpdateTime)
 
-		in2.ScopeId = org.GetPublicId()
+		org2, _ := iam.TestScopes(t, conn)
+		in2.ScopeId = org2.GetPublicId()
 		got2, err := repo.CreateAuthMethod(context.Background(), in2)
 		require.NoError(err)
 		require.NotNil(got2)
