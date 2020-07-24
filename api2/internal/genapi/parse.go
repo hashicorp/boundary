@@ -10,21 +10,26 @@ import (
 	"github.com/iancoleman/strcase"
 )
 
+func printDebug(desc protoreflect.MessageDescriptor) {
+	fmt.Printf("Evaluating: %q\n", desc.FullName())
+	fmt.Printf("Name: %q\n", strcase.ToCamel(string(desc.Name())))
+	fmt.Printf("ProtoName: %q\n", desc.Name())
+	fmt.Printf("Double Parent: %q\n", desc.FullName().Parent().Parent().Name())
+	fmt.Printf("Field Descriptors:\n")
+	for i := 0; i < desc.Fields().Len(); i++ {
+		fieldDesc := desc.Fields().Get(i)
+		fmt.Printf("  field %d: %#v\n", i, fieldDesc)
+		fieldDesc.Options()
+	}
+	fmt.Println()
+}
+
 func parsePBs() {
 	for _, in := range inputStructs {
 		msg := in.inProto.ProtoReflect()
 		desc := msg.Descriptor()
-		fmt.Printf("Evaluating: %q\n", desc.FullName())
-		fmt.Printf("Name: %q\n", strcase.ToCamel(string(desc.Name())))
-		fmt.Printf("ProtoName: %q\n", desc.Name())
-		fmt.Printf("Double Parent: %q\n", desc.FullName().Parent().Parent().Name())
-		fmt.Printf("Field Descriptors:\n")
-		for i := 0; i < desc.Fields().Len(); i++ {
-			fieldDesc := desc.Fields().Get(i)
-			fmt.Printf("  field %d: %#v\n", i, fieldDesc)
-			fieldDesc.Options()
-		}
-		fmt.Println()
+
+		//printDebug(desc)
 
 		// Evaluate above, populate below.
 		in.generatedStructure.pkg = packageFromFullName(desc.FullName())
@@ -47,7 +52,7 @@ func parsePBs() {
 			}
 			in.generatedStructure.fields = append(in.generatedStructure.fields, fi)
 		}
-		fmt.Printf("Parsed: %#v\n", in.generatedStructure)
+		//fmt.Printf("Parsed: %#v\n", in.generatedStructure)
 	}
 }
 
@@ -72,7 +77,7 @@ func messageKind(fd protoreflect.FieldDescriptor) (pkg, name string) {
 	case boolValueName:
 		return "", "bool"
 	case timestampName:
-		return "time", "Time"
+		return "", "*time.Time"
 	default:
 		return packageFromFullName(fd.Message().FullName()), string(fd.Message().Name())
 	}

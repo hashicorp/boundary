@@ -33,6 +33,10 @@ func fillTemplates() {
 			fmt.Printf("error opening file %q: %v\n", in.outFile, err)
 			os.Exit(1)
 		}
+		outDir := filepath.Dir(outFile)
+		if _, err := os.Stat(outDir); os.IsNotExist(err) {
+			_ = os.Mkdir(outDir, os.ModePerm)
+		}
 		if err := ioutil.WriteFile(outFile, outBuf.Bytes(), 0644); err != nil {
 			fmt.Printf("error writing file %q: %v\n", outFile, err)
 			os.Exit(1)
@@ -40,10 +44,42 @@ func fillTemplates() {
 	}
 }
 
+func listTemplate(path string) *template.Template {
+	return template.Must(template.New("").Parse(
+		fmt.Sprint(`
+func (s *{{ .Name }}Client) List(ctx context.Context, opts... api.Option) ([]{{ .Name }}, *api.Error, error) {
+	if s.client == nil {
+		return nil, nil, fmt.Errorf("nil client")
+	}
+
+	req, err := s.client.NewRequest(ctx, "GET", "`, path, `", nil, opts...)
+	if err != nil {
+		return nil, nil, fmt.Errorf("error creating List request: %w", err)
+	}
+
+	resp, err := s.client.Do(req)
+	if err != nil {
+		return nil, nil, fmt.Errorf("error performing client request during List call: %w", err)
+	}
+
+	type listResponse struct {
+		Items []{{ .Name }}
+	}
+	target := &listResponse{}
+	apiErr, err := resp.Decode(target)
+	if err != nil {
+		return nil, nil, fmt.Errorf("error decoding List response: %w", err)
+	}
+
+	return target.Items, apiErr, nil
+}
+`)))
+}
+
 func readTemplate(path string) *template.Template {
 	return template.Must(template.New("").Parse(
 		fmt.Sprint(`
-func (s *{{ .Name }}Client) Read(ctx context.Context, id string, opts... api2.Option) (*{{ .Name }}, *api.Error, error) {
+func (s *{{ .Name }}Client) Read(ctx context.Context, id string, opts... api.Option) (*{{ .Name }}, *api.Error, error) {
 	if id == "" {
 		return nil, nil, fmt.Errorf("empty ID value passed into Read request")
 	}
@@ -65,7 +101,7 @@ func (s *{{ .Name }}Client) Read(ctx context.Context, id string, opts... api2.Op
 	target := new({{ .Name }})
 	apiErr, err := resp.Decode(target)
 	if err != nil {
-		return nil, nil, fmt.Errorf("error decoding Read repsonse: %w", err)
+		return nil, nil, fmt.Errorf("error decoding Read response: %w", err)
 	}
 
 	return target, apiErr, nil
@@ -73,14 +109,50 @@ func (s *{{ .Name }}Client) Read(ctx context.Context, id string, opts... api2.Op
 `)))
 }
 
+func deleteTemplate(path string) *template.Template {
+	return template.Must(template.New("").Parse(
+		fmt.Sprint(`
+func (s *{{ .Name }}Client) Delete(ctx context.Context, id string, opts... api.Option) (bool, *api.Error, error) {
+	if id == "" {
+		return false, nil, fmt.Errorf("empty ID value passed into Delete request")
+	}
+
+	if s.client == nil {
+		return false, nil, fmt.Errorf("nil client")
+	}
+
+	req, err := s.client.NewRequest(ctx, "DELETE", fmt.Sprintf("%s/%s", "`, path, `", id), nil, opts...)
+	if err != nil {
+		return false, nil, fmt.Errorf("error creating Delete request: %w", err)
+	}
+
+	resp, err := s.client.Do(req)
+	if err != nil {
+		return false, nil, fmt.Errorf("error performing client request during Delete call: %w", err)
+	}
+
+	type deleteResponse struct {
+		Existed bool
+	}
+	target := &deleteResponse{}
+	apiErr, err := resp.Decode(target)
+	if err != nil {
+		return false, nil, fmt.Errorf("error decoding Delete response: %w", err)
+	}
+
+	return target.Existed, apiErr, nil
+}
+`)))
+}
+
 func createTemplate(path string) *template.Template {
 	return template.Must(template.New("").Parse(
 		fmt.Sprint(`
-func (s *{{ .Name }}Client) Create(ctx context.Context, opts... api2.Option) (*{{ .Name }}, *api.Error, error) {
+func (s *{{ .Name }}Client) Create(ctx context.Context, opts... api.Option) (*{{ .Name }}, *api.Error, error) {
 	if s.client == nil {
 		return nil, nil, fmt.Errorf("nil client")
 	}
-	r := User{}
+	r := {{ .Name }}{}
 	req, err := s.client.NewRequest(ctx, "POST", "`, path, `", r, opts...)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error creating Create request: %w", err)
@@ -94,7 +166,7 @@ func (s *{{ .Name }}Client) Create(ctx context.Context, opts... api2.Option) (*{
 	target := new({{ .Name }})
 	apiErr, err := resp.Decode(target)
 	if err != nil {
-		return nil, nil, fmt.Errorf("error decoding Create repsonse: %w", err)
+		return nil, nil, fmt.Errorf("error decoding Create response: %w", err)
 	}
 
 	return target, apiErr, nil
