@@ -42,24 +42,28 @@ func TestHandleImplementedPaths(t *testing.T) {
 
 	for verb, paths := range map[string][]string{
 		"GET": {
+			"v1/scopes",
 			"v1/scopes/someid",
-			"v1/scopes/someid/users",
-			"v1/scopes/someid/users/someid",
-			"v1/scopes/someid/roles",
-			"v1/scopes/someid/roles/someid",
+			"v1/scopes/someid/auth-tokens",
+			"v1/scopes/someid/auth-tokens/someid",
 			"v1/scopes/someid/groups",
 			"v1/scopes/someid/groups/someid",
 			"v1/scopes/someid/host-catalogs",
 			"v1/scopes/someid/host-catalogs/someid",
+			"v1/scopes/someid/roles",
+			"v1/scopes/someid/roles/someid",
+			"v1/scopes/someid/users",
+			"v1/scopes/someid/users/someid",
 		},
 		"POST": {
 			// Creation end points
 			"v1/scopes",
-			"v1/scopes/someid/users",
-			"v1/scopes/someid/roles",
 			"v1/scopes/someid/groups",
+			"v1/scopes/someid/roles",
+			"v1/scopes/someid/users",
 
 			// custom methods
+			"v1/scopes/someid/auth-methods/someid:authenticate",
 			"v1/scopes/someid/roles/someid:add-principals",
 			"v1/scopes/someid/roles/someid:set-principals",
 			"v1/scopes/someid/roles/someid:remove-principals",
@@ -75,6 +79,7 @@ func TestHandleImplementedPaths(t *testing.T) {
 			"v1/scopes/someid/users/someid",
 			"v1/scopes/someid/roles/someid",
 			"v1/scopes/someid/groups/someid",
+			"v1/scopes/someid/auth-tokens/someid",
 		},
 		"PATCH": {
 			"v1/scopes/someid",

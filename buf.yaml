@@ -7,7 +7,7 @@ lint:
   use:
     - DEFAULT
   ignore:
-    - protoc-gen-swagger
+    - protoc-gen-openapiv2
     - google
   ignore_only:
     # These api enums break these lint checks in order to appear nice in swagger.

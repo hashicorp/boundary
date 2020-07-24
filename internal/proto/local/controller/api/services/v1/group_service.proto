@@ -4,7 +4,7 @@ package controller.api.services.v1;
 
 option go_package = "github.com/hashicorp/watchtower/internal/gen/controller/api/services;services";
 
-import "protoc-gen-swagger/options/annotations.proto";
+import "protoc-gen-openapiv2/options/annotations.proto";
 import "google/api/annotations.proto";
 import "google/protobuf/field_mask.proto";
 import "google/protobuf/wrappers.proto";
@@ -22,7 +22,7 @@ service GroupService {
       get: "/v1/scopes/*/groups/{id}"
       response_body: "item"
     };
-    option (grpc.gateway.protoc_gen_swagger.options.openapiv2_operation) = {
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
       summary: "Gets a single Group"
     };
   }
@@ -35,7 +35,7 @@ service GroupService {
     option (google.api.http) = {
       get: "/v1/scopes/*/groups"
     };
-    option (grpc.gateway.protoc_gen_swagger.options.openapiv2_operation) = {
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
       summary: "Lists all Groups"
     };
   }
@@ -51,7 +51,7 @@ service GroupService {
       body: "item"
       response_body: "item"
     };
-    option (grpc.gateway.protoc_gen_swagger.options.openapiv2_operation) = {
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
       summary: "Creates a single Group"
     };
   }
@@ -70,7 +70,7 @@ service GroupService {
       body: "item"
       response_body: "item"
     };
-    option (grpc.gateway.protoc_gen_swagger.options.openapiv2_operation) = {
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
       summary: "Updates a Group"
     };
   }
@@ -84,7 +84,7 @@ service GroupService {
     option (google.api.http) = {
       delete: "/v1/scopes/*/groups/{id}"
     };
-    option (grpc.gateway.protoc_gen_swagger.options.openapiv2_operation) = {
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
       summary: "Deletes a Group"
     };
   }
@@ -99,7 +99,7 @@ service GroupService {
       body: "*"
       response_body: "item"
     };
-    option (grpc.gateway.protoc_gen_swagger.options.openapiv2_operation) = {
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
       summary: "Adds Users as members to a Group"
     };
   }
@@ -115,7 +115,7 @@ service GroupService {
       body: "*"
       response_body: "item"
     };
-    option (grpc.gateway.protoc_gen_swagger.options.openapiv2_operation) = {
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
       summary: "Set a Group's members to exactly the list of provided in the request, removing any members that are not specified."
     };
   }
@@ -130,7 +130,7 @@ service GroupService {
       body: "*"
       response_body: "item"
     };
-    option (grpc.gateway.protoc_gen_swagger.options.openapiv2_operation) = {
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
       summary: "Removes the specified members from a Group."
     };
   }

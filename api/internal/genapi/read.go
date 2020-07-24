@@ -23,6 +23,13 @@ var readFuncs = map[string][]*readInfo{
 			path:       "scopes",
 		},
 	},
+	"authtokens": {
+		{
+			baseType:   "AuthToken",
+			targetType: "AuthToken",
+			path:       "auth-tokens",
+		},
+	},
 	"groups": {
 		{
 			baseType:   "Group",

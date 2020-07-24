@@ -23,6 +23,13 @@ var listFuncs = map[string][]*listInfo{
 			path:       "scopes",
 		},
 	},
+	"authtokens": {
+		{
+			baseType:   "AuthToken",
+			targetType: "AuthToken",
+			path:       "auth-tokens",
+		},
+	},
 	"groups": {
 		{
 			baseType:   "Group",
