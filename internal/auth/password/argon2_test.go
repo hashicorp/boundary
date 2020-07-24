@@ -2,12 +2,10 @@ package password
 
 import (
 	"context"
-	"fmt"
 	"testing"
 
 	"github.com/hashicorp/watchtower/internal/auth/password/store"
 	"github.com/hashicorp/watchtower/internal/db"
-	"github.com/jinzhu/gorm"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -158,28 +156,4 @@ func TestArgon2Configuration_Readonly(t *testing.T) {
 		})
 	}
 
-}
-
-func testAccounts(t *testing.T, conn *gorm.DB, count int) []*Account {
-	t.Helper()
-	assert, require := assert.New(t), require.New(t)
-	w := db.New(conn)
-	auts := testAuthMethods(t, conn, 1)
-	aut := auts[0]
-	var accs []*Account
-	for i := 0; i < count; i++ {
-		acc, err := NewAccount(aut.PublicId, fmt.Sprintf("kazmierczak%d", i))
-		assert.NoError(err)
-		require.NotNil(acc)
-
-		id, err := newAccountId()
-		assert.NoError(err)
-
-		acc.PublicId = id
-
-		err2 := w.Create(context.Background(), acc)
-		require.NoError(err2)
-		accs = append(accs, acc)
-	}
-	return accs
 }
