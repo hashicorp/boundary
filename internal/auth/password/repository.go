@@ -19,7 +19,8 @@ type Repository struct {
 
 // NewRepository creates a new Repository. The returned repository should
 // only be used for one transaction and it is not safe for concurrent go
-// routines to access it.
+// routines to access it.  WithLimit option is used as a repo wide default
+// limit applied to all ListX methods.
 func NewRepository(r db.Reader, w db.Writer, wrapper wrapping.Wrapper, opt ...Option) (*Repository, error) {
 	switch {
 	case r == nil:

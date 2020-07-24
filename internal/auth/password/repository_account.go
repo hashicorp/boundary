@@ -64,7 +64,7 @@ func (r *Repository) CreateAccount(ctx context.Context, a *Account, opt ...Optio
 }
 
 // LookupAccount will look up an account in the repository.  If the account is not
-// found, it will return nil, nil.
+// found, it will return nil, nil.  All options are ignored.
 func (r *Repository) LookupAccount(ctx context.Context, withPublicId string, opt ...Option) (*Account, error) {
 	if withPublicId == "" {
 		return nil, fmt.Errorf("lookup: password account: missing public id %w", db.ErrInvalidParameter)
@@ -80,7 +80,7 @@ func (r *Repository) LookupAccount(ctx context.Context, withPublicId string, opt
 	return &a, nil
 }
 
-// ListAccounts in a scope and supports WithLimit option.
+// ListAccounts in an auth method and supports WithLimit option.
 func (r *Repository) ListAccounts(ctx context.Context, withAuthMethodId string, opt ...Option) ([]*Account, error) {
 	if withAuthMethodId == "" {
 		return nil, fmt.Errorf("list: password account: missing auth method id %w", db.ErrInvalidParameter)
