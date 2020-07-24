@@ -415,9 +415,19 @@ func TestRepository_ListAccounts_Limits(t *testing.T) {
 			wantLen:  3,
 		},
 		{
+			name:     "With negative repo limit",
+			repoOpts: []Option{WithLimit(-1)},
+			wantLen:  accountCount,
+		},
+		{
 			name:     "With List limit",
 			listOpts: []Option{WithLimit(3)},
 			wantLen:  3,
+		},
+		{
+			name:     "With negative List limit",
+			listOpts: []Option{WithLimit(-1)},
+			wantLen:  accountCount,
 		},
 		{
 			name:     "With repo smaller than list limit",
