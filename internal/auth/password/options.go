@@ -16,10 +16,13 @@ type Option func(*options)
 type options struct {
 	withName        string
 	withDescription string
+	withConfig      Configuration
 }
 
 func getDefaultOptions() options {
-	return options{}
+	return options{
+		withConfig: NewArgon2Configuration(),
+	}
 }
 
 // WithDescription provides an optional description.
@@ -33,5 +36,12 @@ func WithDescription(desc string) Option {
 func WithName(name string) Option {
 	return func(o *options) {
 		o.withName = name
+	}
+}
+
+// WithConfiguration provides an optional configuration.
+func WithConfiguration(config Configuration) Option {
+	return func(o *options) {
+		o.withConfig = config
 	}
 }
