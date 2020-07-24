@@ -33,7 +33,7 @@ func TestCheckUserName(t *testing.T) {
 	}
 }
 
-func testAccounts(t *testing.T, conn *gorm.DB, authMethodId string, count int) []*Account {
+func testAccounts(t *testing.T, conn *gorm.DB, scopeId, authMethodId string, count int) []*Account {
 	t.Helper()
 	assert, require := assert.New(t), require.New(t)
 	w := db.New(conn)
@@ -55,6 +55,7 @@ func testAccounts(t *testing.T, conn *gorm.DB, authMethodId string, count int) [
 		)
 
 		require.NoError(err2)
+		cat.ScopeId = scopeId
 		auts = append(auts, cat)
 	}
 	return auts
@@ -291,8 +292,7 @@ func TestRepository_LookupAccount(t *testing.T) {
 	wrapper := db.TestWrapper(t)
 
 	authMethod := testAuthMethods(t, conn, 1)[0]
-	account := testAccounts(t, conn, authMethod.GetPublicId(), 1)[0]
-	account.ScopeId = authMethod.GetScopeId()
+	account := testAccounts(t, conn, authMethod.GetScopeId(), authMethod.GetPublicId(), 1)[0]
 
 	newAcctId, err := newAccountId()
 	require.NoError(t, err)
@@ -304,7 +304,7 @@ func TestRepository_LookupAccount(t *testing.T) {
 	}{
 		{
 			name:      "With no public id",
-			wantIsErr: db.ErrNilParameter,
+			wantIsErr: db.ErrInvalidParameter,
 		},
 		{
 			name: "With non existing account id",
@@ -332,6 +332,116 @@ func TestRepository_LookupAccount(t *testing.T) {
 			}
 			require.NoError(err)
 			assert.EqualValues(tt.want, got)
+		})
+	}
+}
+
+func TestRepository_ListAccounts(t *testing.T) {
+	conn, _ := db.TestSetup(t, "postgres")
+	rw := db.New(conn)
+	wrapper := db.TestWrapper(t)
+
+	authMethods := testAuthMethods(t, conn, 3)
+	accounts1 := testAccounts(t, conn, authMethods[0].GetScopeId(), authMethods[0].GetPublicId(), 3)
+	accounts2 := testAccounts(t, conn, authMethods[1].GetScopeId(), authMethods[1].GetPublicId(), 4)
+	_ = accounts2
+
+	var tests = []struct {
+		name      string
+		in        string
+		opts      []Option
+		want      []*Account
+		wantIsErr error
+	}{
+		{
+			name:      "With no auth method id",
+			wantIsErr: db.ErrInvalidParameter,
+		},
+		{
+			name: "With no accounts id",
+			in:   authMethods[2].GetPublicId(),
+			want: []*Account{},
+		},
+		{
+			name: "With first auth method id",
+			in:   authMethods[0].GetPublicId(),
+			want: accounts1,
+		},
+	}
+
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+			repo, err := NewRepository(rw, rw, wrapper)
+			assert.NoError(err)
+			require.NotNil(repo)
+			got, err := repo.ListAccounts(context.Background(), tt.in, tt.opts...)
+			if tt.wantIsErr != nil {
+				assert.Truef(errors.Is(err, tt.wantIsErr), "want err: %q got: %q", tt.wantIsErr, err)
+				assert.Nil(got)
+				return
+			}
+			require.NoError(err)
+			assert.EqualValues(tt.want, got)
+		})
+	}
+}
+
+func TestRepository_ListAccounts_Limits(t *testing.T) {
+	conn, _ := db.TestSetup(t, "postgres")
+	rw := db.New(conn)
+	wrapper := db.TestWrapper(t)
+
+	am := testAuthMethods(t, conn, 1)[0]
+
+	accountCount := 10
+	_ = testAccounts(t, conn, am.GetScopeId(), am.GetPublicId(), accountCount)
+
+	var tests = []struct {
+		name     string
+		repoOpts []Option
+		listOpts []Option
+		wantLen  int
+	}{
+		{
+			name:    "With no limits",
+			wantLen: accountCount,
+		},
+		{
+			name:     "With repo limit",
+			repoOpts: []Option{WithLimit(3)},
+			wantLen:  3,
+		},
+		{
+			name:     "With List limit",
+			listOpts: []Option{WithLimit(3)},
+			wantLen:  3,
+		},
+		{
+			name:     "With repo smaller than list limit",
+			repoOpts: []Option{WithLimit(2)},
+			listOpts: []Option{WithLimit(6)},
+			wantLen:  6,
+		},
+		{
+			name:     "With repo larger than list limit",
+			repoOpts: []Option{WithLimit(6)},
+			listOpts: []Option{WithLimit(2)},
+			wantLen:  2,
+		},
+	}
+
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+			repo, err := NewRepository(rw, rw, wrapper, tt.repoOpts...)
+			assert.NoError(err)
+			require.NotNil(repo)
+			got, err := repo.ListAccounts(context.Background(), am.GetPublicId(), tt.listOpts...)
+			require.NoError(err)
+			assert.Len(got, tt.wantLen)
 		})
 	}
 }

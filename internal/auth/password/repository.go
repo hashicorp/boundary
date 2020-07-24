@@ -13,12 +13,14 @@ type Repository struct {
 	reader  db.Reader
 	writer  db.Writer
 	wrapper wrapping.Wrapper
+	// defaultLimit provides a default for limiting the number of results returned from the repo
+	defaultLimit int
 }
 
 // NewRepository creates a new Repository. The returned repository should
 // only be used for one transaction and it is not safe for concurrent go
 // routines to access it.
-func NewRepository(r db.Reader, w db.Writer, wrapper wrapping.Wrapper) (*Repository, error) {
+func NewRepository(r db.Reader, w db.Writer, wrapper wrapping.Wrapper, opt ...Option) (*Repository, error) {
 	switch {
 	case r == nil:
 		return nil, fmt.Errorf("db.Reader: %w", db.ErrNilParameter)
@@ -28,9 +30,16 @@ func NewRepository(r db.Reader, w db.Writer, wrapper wrapping.Wrapper) (*Reposit
 		return nil, fmt.Errorf("wrapping.Wrapper: %w", db.ErrNilParameter)
 	}
 
+	opts := getOpts(opt...)
+	if opts.withLimit == 0 {
+		// zero signals the watchtower defaults should be used.
+		opts.withLimit = db.DefaultLimit
+	}
+
 	return &Repository{
-		reader:  r,
-		writer:  w,
-		wrapper: wrapper,
+		reader:       r,
+		writer:       w,
+		wrapper:      wrapper,
+		defaultLimit: opts.withLimit,
 	}, nil
 }
