@@ -1,0 +1,41 @@
+---
+layout: docs
+page_title: Configuration
+sidebar_title: User
+description: |-
+  How to configure a Watchtower user
+---
+
+# User
+
+A user is any entity authorized to access Watchtower using authentication credentials specific to one of the configured Authentication Methods. A User is owned by one and only one Organization. A User is associated with zero or one Authentication Methods. A User not associated with an Authentication Method can not log in to the system. A User can belong to zero or more Groups. A User inherits from Principal ("is-a" Principal) allowing it to be associated with zero or more Roles. A User is deleted when the Organization it belongs to is deleted. The lifecycle of a User is not tied to the lifecycle of any Authentication Method, Group or Role, but rather to its Organization only
+
+```shell-session
++-------------------------------------+
+|           Organization              |
++-------------------------------------+
+|  User 1    |  User 2    |  User 3   |
++-------------------------------------+
+```
+
+# Attributes
+
+### ID
+
+A user ID has a `u_` prefix followed by ten digits.
+
+Example: `u_0123456789`
+
+### Name
+
+A user name is the friendly name of a user resource.
+
+### Description
+
+A user description is the friendly description of the user resource.
+
+# Referenced By
+
+- [Groups]()
+- [Roles]()
+- [Organization]()
