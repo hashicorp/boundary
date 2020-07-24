@@ -3,10 +3,12 @@ package password
 import (
 	"context"
 	"errors"
+	"fmt"
 	"testing"
 
 	"github.com/hashicorp/watchtower/internal/auth/password/store"
 	"github.com/hashicorp/watchtower/internal/db"
+	"github.com/jinzhu/gorm"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -29,6 +31,33 @@ func TestCheckUserName(t *testing.T) {
 			assert.Equal(t, tt.want, validUserName(tt.in))
 		})
 	}
+}
+
+func testAccounts(t *testing.T, conn *gorm.DB, authMethodId string, count int) []*Account {
+	t.Helper()
+	assert, require := assert.New(t), require.New(t)
+	w := db.New(conn)
+	var auts []*Account
+	for i := 0; i < count; i++ {
+		cat, err := NewAccount(authMethodId, fmt.Sprintf("name%d", i))
+		assert.NoError(err)
+		require.NotNil(cat)
+		id, err := newAuthMethodId()
+		assert.NoError(err)
+		require.NotEmpty(id)
+		cat.PublicId = id
+
+		ctx := context.Background()
+		_, err2 := w.DoTx(ctx, db.StdRetryCnt, db.ExpBackoff{},
+			func(_ db.Reader, iw db.Writer) error {
+				return iw.Create(ctx, cat)
+			},
+		)
+
+		require.NoError(err2)
+		auts = append(auts, cat)
+	}
+	return auts
 }
 
 func TestRepository_CreateAccount(t *testing.T) {
@@ -254,4 +283,55 @@ func TestRepository_CreateAccount(t *testing.T) {
 		assert.Equal(in2.Description, got2.Description)
 		assert.Equal(got2.CreateTime, got2.UpdateTime)
 	})
+}
+
+func TestRepository_LookupAccount(t *testing.T) {
+	conn, _ := db.TestSetup(t, "postgres")
+	rw := db.New(conn)
+	wrapper := db.TestWrapper(t)
+
+	authMethod := testAuthMethods(t, conn, 1)[0]
+	account := testAccounts(t, conn, authMethod.GetPublicId(), 1)[0]
+	account.ScopeId = authMethod.GetScopeId()
+
+	newAcctId, err := newAccountId()
+	require.NoError(t, err)
+	var tests = []struct {
+		name      string
+		in        string
+		want      *Account
+		wantIsErr error
+	}{
+		{
+			name:      "With no public id",
+			wantIsErr: db.ErrNilParameter,
+		},
+		{
+			name: "With non existing account id",
+			in:   newAcctId,
+		},
+		{
+			name: "With existing account id",
+			in:   account.GetPublicId(),
+			want: account,
+		},
+	}
+
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+			repo, err := NewRepository(rw, rw, wrapper)
+			assert.NoError(err)
+			require.NotNil(repo)
+			got, err := repo.LookupAccount(context.Background(), tt.in)
+			if tt.wantIsErr != nil {
+				assert.Truef(errors.Is(err, tt.wantIsErr), "want err: %q got: %q", tt.wantIsErr, err)
+				assert.Nil(got)
+				return
+			}
+			require.NoError(err)
+			assert.EqualValues(tt.want, got)
+		})
+	}
 }

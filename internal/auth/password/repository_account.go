@@ -2,6 +2,7 @@ package password
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"regexp"
 
@@ -60,6 +61,74 @@ func (r *Repository) CreateAccount(ctx context.Context, a *Account, opt ...Optio
 		return nil, fmt.Errorf("create: password account: in auth method: %s: %w", a.AuthMethodId, err)
 	}
 	return newAccount, nil
+}
+
+// LookupAccount will look up an account in the repository.  If the account is not
+// found, it will return nil, nil.
+func (r *Repository) LookupAccount(ctx context.Context, withPublicId string, opt ...Option) (*Account, error) {
+	if withPublicId == "" {
+		return nil, fmt.Errorf("lookup: password account: missing public id %w", db.ErrNilParameter)
+	}
+	a := allocAccount()
+	a.PublicId = withPublicId
+	if err := r.reader.LookupByPublicId(ctx, &a); err != nil {
+		if errors.Is(err, db.ErrRecordNotFound) {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("lookup: password account: failed %w for %s", err, withPublicId)
+	}
+	return &a, nil
+}
+
+// DeleteAccount will delete an account from the repository.
+func (r *Repository) DeleteAccount(ctx context.Context, withPublicId string, opt ...Option) (int, error) {
+	if withPublicId == "" {
+		return db.NoRowsAffected, fmt.Errorf("delete: password account: missing public id %w", db.ErrNilParameter)
+	}
+	a := allocAccount()
+	a.PublicId = withPublicId
+	if err := r.reader.LookupByPublicId(ctx, &a); err != nil {
+		return db.NoRowsAffected, fmt.Errorf("delete: password account: failed %w for %s", err, withPublicId)
+	}
+
+	var rowsDeleted int
+	var deleteResource interface{}
+	_, err := r.writer.DoTx(
+		ctx,
+		db.StdRetryCnt,
+		db.ExpBackoff{},
+		func(_ db.Reader, w db.Writer) error {
+			deleteResource = a.clone()
+			var err error
+			rowsDeleted, err = w.Delete(
+				ctx,
+				deleteResource,
+				db.WithOplog(r.wrapper, a.oplog(oplog.OpType_OP_TYPE_DELETE)),
+			)
+			if err == nil && rowsDeleted > 1 {
+				// return err, which will result in a rollback of the delete
+				return errors.New("more than 1 resource would have been deleted")
+			}
+			return err
+		},
+	)
+	if err != nil {
+		return db.NoRowsAffected, fmt.Errorf("delete: password account: failed %w for %s", err, withPublicId)
+	}
+	return rowsDeleted, nil
+}
+
+// ListAccounts in a scope and supports WithLimit option.
+func (r *Repository) ListAccounts(ctx context.Context, withAuthMethodId string, opt ...Option) ([]*Account, error) {
+	if withAuthMethodId == "" {
+		return nil, fmt.Errorf("list: password account: missing scope id %w", db.ErrInvalidParameter)
+	}
+	var accts []*Account
+	err := r.reader.SearchWhere(ctx, &accts, "auth_method_id = ?", []interface{}{withAuthMethodId})
+	if err != nil {
+		return nil, fmt.Errorf("list: password account: %w", err)
+	}
+	return accts, nil
 }
 
 var reInvalidUserName = regexp.MustCompile("[^a-z0-9.]")
