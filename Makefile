@@ -93,6 +93,11 @@ website-install:
 website-start:
 	@npm start --prefix website/
 
+test-ci: install-go
+	~/.go/bin/go test ./... -v $(TESTARGS) -timeout 120m
+
+install-go:
+	./ci/goinstall.sh
 
 .PHONY: api tools gen migrations proto website
 
