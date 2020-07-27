@@ -28,7 +28,7 @@ func TestArgon2Configuration_New(t *testing.T) {
 		var confs []*Argon2Configuration
 		err := rw.SearchWhere(ctx, &confs, "password_method_id = ?", []interface{}{authMethodId})
 		require.NoError(err)
-		assert.Equal(1, len(confs))
+		require.Equal(1, len(confs))
 		got := confs[0]
 		want := &Argon2Configuration{
 			Argon2Configuration: &store.Argon2Configuration{
@@ -42,7 +42,7 @@ func TestArgon2Configuration_New(t *testing.T) {
 				KeyLength:        32,
 			},
 		}
-		require.Equal(want, got)
+		assert.Equal(want, got)
 	})
 	t.Run("no-duplicate-configurations", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)

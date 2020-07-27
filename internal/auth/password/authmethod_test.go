@@ -37,10 +37,7 @@ func testAuthMethods(t *testing.T, conn *gorm.DB, count int) []*AuthMethod {
 		ctx := context.Background()
 		_, err2 := w.DoTx(ctx, db.StdRetryCnt, db.ExpBackoff{},
 			func(_ db.Reader, iw db.Writer) error {
-				if err := iw.Create(ctx, conf); err != nil {
-					t.Log(err)
-					return err
-				}
+				require.NoError(iw.Create(ctx, conf))
 				return iw.Create(ctx, cat)
 			},
 		)
@@ -144,10 +141,7 @@ func TestAuthMethod_New(t *testing.T) {
 			ctx := context.Background()
 			_, err2 := w.DoTx(ctx, db.StdRetryCnt, db.ExpBackoff{},
 				func(_ db.Reader, iw db.Writer) error {
-					if err := iw.Create(ctx, conf); err != nil {
-						t.Log(err)
-						return err
-					}
+					require.NoError(iw.Create(ctx, conf))
 					return iw.Create(ctx, got)
 				},
 			)
