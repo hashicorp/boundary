@@ -94,12 +94,14 @@ func TestAuthToken_DbUpdate(t *testing.T) {
 			assert := assert.New(t)
 			w := db.New(conn)
 
-			authTok := TestAuthToken(t, conn, wrapper)
+			org, _ := iam.TestScopes(t, conn)
+			authTok := TestAuthToken(t, conn, wrapper, org.GetPublicId())
 			proto.Merge(authTok.AuthToken, tt.args.authTok)
 
-			err := authTok.encrypt(context.Background(), wrapper)
+			wAuthToken := authTok.toWritableAuthToken()
+			err := wAuthToken.encrypt(context.Background(), wrapper)
 			require.NoError(t, err)
-			cnt, err := w.Update(context.Background(), authTok, tt.args.fieldMask, tt.args.nullMask)
+			cnt, err := w.Update(context.Background(), wAuthToken, tt.args.fieldMask, tt.args.nullMask)
 			if tt.wantErr {
 				t.Logf("Got error :%v", err)
 				assert.Error(err)
@@ -119,7 +121,7 @@ func TestAuthToken_DbCreate(t *testing.T) {
 	u := iam.TestUser(t, conn, org.GetPublicId())
 	amId := setupAuthMethod(t, conn, org.GetPublicId())
 	acct := setupAuthAccount(t, conn, org.GetPublicId(), amId, u.GetPublicId())
-	createdAuthToken := TestAuthToken(t, conn, wrapper)
+	createdAuthToken := TestAuthToken(t, conn, wrapper, org.GetPublicId())
 
 	testAuthTokenId := func() string {
 		id, err := newAuthTokenId()
@@ -155,7 +157,7 @@ func TestAuthToken_DbCreate(t *testing.T) {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			assert := assert.New(t)
-			at := &AuthToken{AuthToken: tt.in}
+			at := &writableAuthToken{AuthToken: tt.in}
 			err := at.encrypt(context.Background(), wrapper)
 			require.NoError(t, err)
 			err = db.New(conn).Create(context.Background(), at)
@@ -177,22 +179,23 @@ func TestAuthToken_DbDelete(t *testing.T) {
 	}
 
 	wrapper := db.TestWrapper(t)
-	existingAuthTok := TestAuthToken(t, conn, wrapper)
+	org, _ := iam.TestScopes(t, conn)
+	existingAuthTok := TestAuthToken(t, conn, wrapper, org.GetPublicId())
 
 	var tests = []struct {
 		name      string
-		at        *AuthToken
+		at        *writableAuthToken
 		wantError bool
 		wantCnt   int
 	}{
 		{
 			name:    "basic",
-			at:      &AuthToken{AuthToken: &store.AuthToken{PublicId: existingAuthTok.GetPublicId()}},
+			at:      &writableAuthToken{AuthToken: &store.AuthToken{PublicId: existingAuthTok.GetPublicId()}},
 			wantCnt: 1,
 		},
 		{
 			name:    "delete-nothing",
-			at:      &AuthToken{AuthToken: &store.AuthToken{PublicId: testAuthTokenId()}},
+			at:      &writableAuthToken{AuthToken: &store.AuthToken{PublicId: testAuthTokenId()}},
 			wantCnt: 0,
 		},
 		{
@@ -203,7 +206,7 @@ func TestAuthToken_DbDelete(t *testing.T) {
 		},
 		{
 			name:      "delete-no-public-id",
-			at:        &AuthToken{AuthToken: &store.AuthToken{}},
+			at:        &writableAuthToken{AuthToken: &store.AuthToken{}},
 			wantCnt:   0,
 			wantError: true,
 		},

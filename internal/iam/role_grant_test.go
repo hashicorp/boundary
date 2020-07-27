@@ -261,3 +261,39 @@ func TestRoleGrant_Clone(t *testing.T) {
 		assert.True(!proto.Equal(cp.(*RoleGrant).RoleGrant, g2.RoleGrant))
 	})
 }
+
+func TestRoleGrant_SetTableName(t *testing.T) {
+	defaultTableName := defaultRoleGrantTable
+	tests := []struct {
+		name        string
+		initialName string
+		setNameTo   string
+		want        string
+	}{
+		{
+			name:        "new-name",
+			initialName: "",
+			setNameTo:   "new-name",
+			want:        "new-name",
+		},
+		{
+			name:        "reset to default",
+			initialName: "initial",
+			setNameTo:   "",
+			want:        defaultTableName,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+			def := allocRoleGrant()
+			require.Equal(defaultTableName, def.TableName())
+			s := &RoleGrant{
+				RoleGrant: &store.RoleGrant{},
+				tableName: tt.initialName,
+			}
+			s.SetTableName(tt.setNameTo)
+			assert.Equal(tt.want, s.TableName())
+		})
+	}
+}

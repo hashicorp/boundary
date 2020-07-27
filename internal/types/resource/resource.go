@@ -26,7 +26,8 @@ const (
 	Global                  Type = 19
 
 	// TODO: remove this after demo
-	Group Type = 20
+	Group     Type = 20
+	AuthToken Type = 21
 )
 
 func (r Type) String() string {
@@ -52,6 +53,7 @@ func (r Type) String() string {
 		"target",
 		"global",
 		"group",
+		"auth-token",
 	}[r]
 }
 
@@ -76,4 +78,5 @@ var Map = map[string]Type{
 	Target.String():                  Target,
 	Global.String():                  Global,
 	Group.String():                   Group,
+	AuthToken.String():               AuthToken,
 }

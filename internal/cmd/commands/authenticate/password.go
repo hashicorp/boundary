@@ -1,6 +1,8 @@
 package authenticate
 
 import (
+	"encoding/base64"
+	"encoding/json"
 	"fmt"
 	"os"
 	"strings"
@@ -120,14 +122,14 @@ func (c *PasswordCommand) Run(args []string) int {
 		return 2
 	}
 
-	org := &scopes.Org{
+	scp := &scopes.Scope{
 		Client: client,
 	}
 
 	// note: Authenticate() calls SetToken() under the hood to set the
 	// auth bearer on the client so we do not need to do anything with the
 	// returned token after this call, so we ignore it
-	result, apiErr, err := org.Authenticate(c.Context, c.flagMethodId, c.flagName, c.flagPassword)
+	result, apiErr, err := scp.Authenticate(c.Context, c.flagMethodId, c.flagName, c.flagPassword)
 	if err != nil {
 		c.UI.Error(fmt.Sprintf("Error trying to perform authentication: %s", err.Error()))
 		return 2
@@ -153,7 +155,12 @@ func (c *PasswordCommand) Run(args []string) int {
 		tokenName = c.Command.FlagTokenName
 	}
 	if tokenName != "none" {
-		if err := keyring.Set("HashiCorp Watchtower Auth Token", tokenName, result.Token); err != nil {
+		marshaled, err := json.Marshal(result)
+		if err != nil {
+			c.UI.Error(fmt.Sprintf("Error marshaling auth token to save to system credential store: %s", err))
+			return 1
+		}
+		if err := keyring.Set("HashiCorp Watchtower Auth Token", tokenName, base64.RawStdEncoding.EncodeToString(marshaled)); err != nil {
 			c.UI.Error(fmt.Sprintf("Error saving auth token to system credential store: %s", err))
 			return 1
 		}

@@ -6,282 +6,44 @@ import (
 	"fmt"
 
 	"github.com/hashicorp/watchtower/api"
-	"github.com/hashicorp/watchtower/api/groups"
-	"github.com/hashicorp/watchtower/api/roles"
-	"github.com/hashicorp/watchtower/api/users"
 )
 
-func (s Org) ListProjects(ctx context.Context) ([]*Project, *api.Error, error) {
+func (s Scope) ListScopes(ctx context.Context) ([]*Scope, *api.Error, error) {
 	if s.Client == nil {
-		return nil, nil, fmt.Errorf("nil client in ListProject request")
+		return nil, nil, fmt.Errorf("nil client in ListScope request")
 	}
-	if s.Id == "" {
 
-		// Assume the client has been configured with org already and
-		// move on
-
-	} else {
+	var opts []api.Option
+	if s.Scope.Id != "" {
 		// If it's explicitly set here, override anything that might be in the
 		// client
-
-		ctx = context.WithValue(ctx, "org", s.Id)
-
+		opts = append(opts, api.WithScopeId(s.Scope.Id))
 	}
 
-	req, err := s.Client.NewRequest(ctx, "GET", "projects", nil)
+	req, err := s.Client.NewRequest(ctx, "GET", "scopes", nil, opts...)
 	if err != nil {
-		return nil, nil, fmt.Errorf("error creating ListProjects request: %w", err)
+		return nil, nil, fmt.Errorf("error creating ListScopes request: %w", err)
 	}
 
 	resp, err := s.Client.Do(req)
 	if err != nil {
-		return nil, nil, fmt.Errorf("error performing client request during ListProjects call: %w", err)
+		return nil, nil, fmt.Errorf("error performing client request during ListScopes call: %w", err)
 	}
 
 	type listResponse struct {
-		Items []*Project
+		Items []*Scope
 	}
 	target := &listResponse{}
 
 	apiErr, err := resp.Decode(target)
 	if err != nil {
-		return nil, nil, fmt.Errorf("error decoding ListProjects response: %w", err)
+		return nil, nil, fmt.Errorf("error decoding ListScopes response: %w", err)
 	}
 
 	for _, t := range target.Items {
 
 		t.Client = s.Client.Clone()
-		t.Client.SetProject(t.Id)
-
-	}
-
-	return target.Items, apiErr, nil
-}
-
-func (s Org) ListGroups(ctx context.Context) ([]*groups.Group, *api.Error, error) {
-	if s.Client == nil {
-		return nil, nil, fmt.Errorf("nil client in ListGroup request")
-	}
-	if s.Id == "" {
-
-		// Assume the client has been configured with org already and
-		// move on
-
-	} else {
-		// If it's explicitly set here, override anything that might be in the
-		// client
-
-		ctx = context.WithValue(ctx, "org", s.Id)
-
-	}
-
-	req, err := s.Client.NewRequest(ctx, "GET", "groups", nil)
-	if err != nil {
-		return nil, nil, fmt.Errorf("error creating ListGroups request: %w", err)
-	}
-
-	resp, err := s.Client.Do(req)
-	if err != nil {
-		return nil, nil, fmt.Errorf("error performing client request during ListGroups call: %w", err)
-	}
-
-	type listResponse struct {
-		Items []*groups.Group
-	}
-	target := &listResponse{}
-
-	apiErr, err := resp.Decode(target)
-	if err != nil {
-		return nil, nil, fmt.Errorf("error decoding ListGroups response: %w", err)
-	}
-
-	for _, t := range target.Items {
-
-		t.Client = s.Client
-
-	}
-
-	return target.Items, apiErr, nil
-}
-
-func (s Org) ListRoles(ctx context.Context) ([]*roles.Role, *api.Error, error) {
-	if s.Client == nil {
-		return nil, nil, fmt.Errorf("nil client in ListRole request")
-	}
-	if s.Id == "" {
-
-		// Assume the client has been configured with org already and
-		// move on
-
-	} else {
-		// If it's explicitly set here, override anything that might be in the
-		// client
-
-		ctx = context.WithValue(ctx, "org", s.Id)
-
-	}
-
-	req, err := s.Client.NewRequest(ctx, "GET", "roles", nil)
-	if err != nil {
-		return nil, nil, fmt.Errorf("error creating ListRoles request: %w", err)
-	}
-
-	resp, err := s.Client.Do(req)
-	if err != nil {
-		return nil, nil, fmt.Errorf("error performing client request during ListRoles call: %w", err)
-	}
-
-	type listResponse struct {
-		Items []*roles.Role
-	}
-	target := &listResponse{}
-
-	apiErr, err := resp.Decode(target)
-	if err != nil {
-		return nil, nil, fmt.Errorf("error decoding ListRoles response: %w", err)
-	}
-
-	for _, t := range target.Items {
-
-		t.Client = s.Client
-
-	}
-
-	return target.Items, apiErr, nil
-}
-
-func (s Org) ListUsers(ctx context.Context) ([]*users.User, *api.Error, error) {
-	if s.Client == nil {
-		return nil, nil, fmt.Errorf("nil client in ListUser request")
-	}
-	if s.Id == "" {
-
-		// Assume the client has been configured with org already and
-		// move on
-
-	} else {
-		// If it's explicitly set here, override anything that might be in the
-		// client
-
-		ctx = context.WithValue(ctx, "org", s.Id)
-
-	}
-
-	req, err := s.Client.NewRequest(ctx, "GET", "users", nil)
-	if err != nil {
-		return nil, nil, fmt.Errorf("error creating ListUsers request: %w", err)
-	}
-
-	resp, err := s.Client.Do(req)
-	if err != nil {
-		return nil, nil, fmt.Errorf("error performing client request during ListUsers call: %w", err)
-	}
-
-	type listResponse struct {
-		Items []*users.User
-	}
-	target := &listResponse{}
-
-	apiErr, err := resp.Decode(target)
-	if err != nil {
-		return nil, nil, fmt.Errorf("error decoding ListUsers response: %w", err)
-	}
-
-	for _, t := range target.Items {
-
-		t.Client = s.Client
-
-	}
-
-	return target.Items, apiErr, nil
-}
-
-func (s Project) ListGroups(ctx context.Context) ([]*groups.Group, *api.Error, error) {
-	if s.Client == nil {
-		return nil, nil, fmt.Errorf("nil client in ListGroup request")
-	}
-	if s.Id == "" {
-
-		// Assume the client has been configured with project already and move
-		// on
-
-	} else {
-		// If it's explicitly set here, override anything that might be in the
-		// client
-
-		ctx = context.WithValue(ctx, "project", s.Id)
-
-	}
-
-	req, err := s.Client.NewRequest(ctx, "GET", "groups", nil)
-	if err != nil {
-		return nil, nil, fmt.Errorf("error creating ListGroups request: %w", err)
-	}
-
-	resp, err := s.Client.Do(req)
-	if err != nil {
-		return nil, nil, fmt.Errorf("error performing client request during ListGroups call: %w", err)
-	}
-
-	type listResponse struct {
-		Items []*groups.Group
-	}
-	target := &listResponse{}
-
-	apiErr, err := resp.Decode(target)
-	if err != nil {
-		return nil, nil, fmt.Errorf("error decoding ListGroups response: %w", err)
-	}
-
-	for _, t := range target.Items {
-
-		t.Client = s.Client
-
-	}
-
-	return target.Items, apiErr, nil
-}
-
-func (s Project) ListRoles(ctx context.Context) ([]*roles.Role, *api.Error, error) {
-	if s.Client == nil {
-		return nil, nil, fmt.Errorf("nil client in ListRole request")
-	}
-	if s.Id == "" {
-
-		// Assume the client has been configured with project already and move
-		// on
-
-	} else {
-		// If it's explicitly set here, override anything that might be in the
-		// client
-
-		ctx = context.WithValue(ctx, "project", s.Id)
-
-	}
-
-	req, err := s.Client.NewRequest(ctx, "GET", "roles", nil)
-	if err != nil {
-		return nil, nil, fmt.Errorf("error creating ListRoles request: %w", err)
-	}
-
-	resp, err := s.Client.Do(req)
-	if err != nil {
-		return nil, nil, fmt.Errorf("error performing client request during ListRoles call: %w", err)
-	}
-
-	type listResponse struct {
-		Items []*roles.Role
-	}
-	target := &listResponse{}
-
-	apiErr, err := resp.Decode(target)
-	if err != nil {
-		return nil, nil, fmt.Errorf("error decoding ListRoles response: %w", err)
-	}
-
-	for _, t := range target.Items {
-
-		t.Client = s.Client
+		t.Client.SetScopeId(t.Id)
 
 	}
 

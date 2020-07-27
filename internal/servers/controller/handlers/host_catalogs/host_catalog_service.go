@@ -6,20 +6,16 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/hashicorp/watchtower/internal/auth"
 	pb "github.com/hashicorp/watchtower/internal/gen/controller/api/resources/hosts"
 	pbs "github.com/hashicorp/watchtower/internal/gen/controller/api/services"
 	"github.com/hashicorp/watchtower/internal/host/static"
+	"github.com/hashicorp/watchtower/internal/host/static/store"
 	"github.com/hashicorp/watchtower/internal/servers/controller/common"
 	"github.com/hashicorp/watchtower/internal/servers/controller/handlers"
-	"github.com/hashicorp/watchtower/internal/types/scope"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/wrapperspb"
-)
-
-const (
-	orgIdFieldName     = "org_id"
-	projectIdFieldName = "project_id"
 )
 
 type catalogType int
@@ -62,13 +58,16 @@ func typeFromId(id string) catalogType {
 }
 
 var (
+	maskManager handlers.MaskManager
 	reInvalidID = regexp.MustCompile("[^A-Za-z0-9]")
-	// TODO(ICU-28): Find a way to auto update these names and enforce the mappings between wire and storage.
-	wireToStorageMask = map[string]string{
-		"name":        "Name",
-		"description": "Description",
-	}
 )
+
+func init() {
+	var err error
+	if maskManager, err = handlers.NewMaskManager(&pb.HostCatalog{}, &store.HostCatalog{}); err != nil {
+		panic(err)
+	}
+}
 
 type Service struct {
 	staticRepoFn common.StaticRepoFactory
@@ -91,8 +90,10 @@ func (s Service) ListHostCatalogs(ctx context.Context, req *pbs.ListHostCatalogs
 
 // GetHostCatalog implements the interface pbs.HostCatalogServiceServer.
 func (s Service) GetHostCatalog(ctx context.Context, req *pbs.GetHostCatalogRequest) (*pbs.GetHostCatalogResponse, error) {
-	auth := handlers.ToTokenMetadata(ctx)
-	_ = auth
+	authResults := auth.Verify(ctx)
+	if !authResults.Valid {
+		return nil, handlers.ForbiddenError()
+	}
 	ct := typeFromId(req.GetId())
 	if ct == unknownType {
 		return nil, handlers.InvalidArgumentErrorf("Invalid argument provided.", map[string]string{"id": "Improperly formatted identifier used."})
@@ -104,30 +105,36 @@ func (s Service) GetHostCatalog(ctx context.Context, req *pbs.GetHostCatalogRequ
 	if err != nil {
 		return nil, err
 	}
+	hc.Scope = authResults.Scope
 	return &pbs.GetHostCatalogResponse{Item: hc}, nil
 }
 
 // CreateHostCatalog implements the interface pbs.HostCatalogServiceServer.
 func (s Service) CreateHostCatalog(ctx context.Context, req *pbs.CreateHostCatalogRequest) (*pbs.CreateHostCatalogResponse, error) {
-	auth := handlers.ToTokenMetadata(ctx)
-	_ = auth
+	authResults := auth.Verify(ctx)
+	if !authResults.Valid {
+		return nil, handlers.ForbiddenError()
+	}
 	if err := validateCreateRequest(req); err != nil {
 		return nil, err
 	}
-	hc, err := s.createInRepo(ctx, req.GetProjectId(), req.GetItem())
+	hc, err := s.createInRepo(ctx, authResults.Scope.GetId(), req.GetItem())
 	if err != nil {
 		return nil, err
 	}
+	hc.Scope = authResults.Scope
 	return &pbs.CreateHostCatalogResponse{
 		Item: hc,
-		Uri:  fmt.Sprintf("orgs/%s/projects/%s/host-catalogs/%s", req.GetOrgId(), req.GetProjectId(), hc.GetId()),
+		Uri:  fmt.Sprintf("scopes/%s/host-catalogs/%s", authResults.Scope.GetId(), hc.GetId()),
 	}, nil
 }
 
 // UpdateHostCatalog implements the interface pbs.HostCatalogServiceServer.
 func (s Service) UpdateHostCatalog(ctx context.Context, req *pbs.UpdateHostCatalogRequest) (*pbs.UpdateHostCatalogResponse, error) {
-	auth := handlers.ToTokenMetadata(ctx)
-	_ = auth
+	authResults := auth.Verify(ctx)
+	if !authResults.Valid {
+		return nil, handlers.ForbiddenError()
+	}
 	ct := typeFromId(req.GetId())
 	if ct == unknownType {
 		return nil, handlers.InvalidArgumentErrorf("Invalid argument provided.", map[string]string{"id": "Improperly formatted identifier used."})
@@ -135,17 +142,20 @@ func (s Service) UpdateHostCatalog(ctx context.Context, req *pbs.UpdateHostCatal
 	if err := validateUpdateRequest(req, ct); err != nil {
 		return nil, err
 	}
-	hc, err := s.updateInRepo(ctx, req.GetProjectId(), req.GetId(), req.GetUpdateMask().GetPaths(), req.GetItem())
+	hc, err := s.updateInRepo(ctx, authResults.Scope.GetId(), req.GetId(), req.GetUpdateMask().GetPaths(), req.GetItem())
 	if err != nil {
 		return nil, err
 	}
+	hc.Scope = authResults.Scope
 	return &pbs.UpdateHostCatalogResponse{Item: hc}, nil
 }
 
 // DeleteHostCatalog implements the interface pbs.HostCatalogServiceServer.
 func (s Service) DeleteHostCatalog(ctx context.Context, req *pbs.DeleteHostCatalogRequest) (*pbs.DeleteHostCatalogResponse, error) {
-	auth := handlers.ToTokenMetadata(ctx)
-	_ = auth
+	authResults := auth.Verify(ctx)
+	if !authResults.Valid {
+		return nil, handlers.ForbiddenError()
+	}
 	ct := typeFromId(req.GetId())
 	if ct == unknownType {
 		return nil, handlers.InvalidArgumentErrorf("Invalid argument provided.", map[string]string{"id": "Improperly formatted identifier used."})
@@ -214,9 +224,9 @@ func (s Service) updateInRepo(ctx context.Context, projId, id string, mask []str
 		return nil, status.Errorf(codes.Internal, "Unable to build host catalog for update: %v.", err)
 	}
 	h.PublicId = id
-	dbMask, err := toDbUpdateMask(mask)
-	if err != nil {
-		return nil, err
+	dbMask := maskManager.Translate(mask)
+	if len(dbMask) == 0 {
+		return nil, handlers.InvalidArgumentErrorf("No valid fields included in the update mask.", map[string]string{"update_mask": "No valid paths provided in the update mask."})
 	}
 	repo, err := s.staticRepoFn()
 	if err != nil {
@@ -244,28 +254,6 @@ func (s Service) deleteFromRepo(ctx context.Context, id string) (bool, error) {
 	return rows > 0, nil
 }
 
-// toDbUpdateMask converts the wire format's FieldMask into a list of strings containing FieldMask paths used
-func toDbUpdateMask(paths []string) ([]string, error) {
-	var dbPaths []string
-	var invalid []string
-	for _, p := range paths {
-		for _, f := range strings.Split(p, ",") {
-			if dbField, ok := wireToStorageMask[strings.TrimSpace(f)]; ok {
-				dbPaths = append(dbPaths, dbField)
-			} else {
-				invalid = append(invalid, f)
-			}
-		}
-	}
-	if len(invalid) > 0 {
-		return nil, handlers.InvalidArgumentErrorf("Invalid argument provided.", map[string]string{"update_mask": fmt.Sprintf("Invalid paths provided: %q", invalid)})
-	}
-	if len(dbPaths) == 0 {
-		return nil, handlers.InvalidArgumentErrorf("Invalid argument provided.", map[string]string{"update_mask": "No valid paths provided."})
-	}
-	return dbPaths, nil
-}
-
 func toProto(in *static.HostCatalog) *pb.HostCatalog {
 	out := pb.HostCatalog{
 		Id:          in.GetPublicId(),
@@ -290,7 +278,7 @@ func toProto(in *static.HostCatalog) *pb.HostCatalog {
 //  * The type asserted by the ID and/or field is known
 //  * If relevant, the type derived from the id prefix matches what is claimed by the type field
 func validateGetRequest(req *pbs.GetHostCatalogRequest, ct catalogType) error {
-	badFields := validateAncestors(req)
+	badFields := map[string]string{}
 	if !validId(req.GetId(), ct.idPrefix()) {
 		badFields["id"] = "Invalid formatted identifier."
 	}
@@ -301,7 +289,7 @@ func validateGetRequest(req *pbs.GetHostCatalogRequest, ct catalogType) error {
 }
 
 func validateCreateRequest(req *pbs.CreateHostCatalogRequest) error {
-	badFields := validateAncestors(req)
+	badFields := map[string]string{}
 	item := req.GetItem()
 	if item == nil {
 		badFields["item"] = "This field is required."
@@ -328,7 +316,7 @@ func validateCreateRequest(req *pbs.CreateHostCatalogRequest) error {
 }
 
 func validateUpdateRequest(req *pbs.UpdateHostCatalogRequest, ct catalogType) error {
-	badFields := validateAncestors(req)
+	badFields := map[string]string{}
 	if !validId(req.GetId(), ct.idPrefix()) {
 		badFields["id"] = "The field is incorrectly formatted."
 	}
@@ -363,7 +351,7 @@ func validateUpdateRequest(req *pbs.UpdateHostCatalogRequest, ct catalogType) er
 }
 
 func validateDeleteRequest(req *pbs.DeleteHostCatalogRequest, ct catalogType) error {
-	badFields := validateAncestors(req)
+	badFields := map[string]string{}
 	if !validId(req.GetId(), ct.idPrefix()) {
 		badFields["id"] = "The field is incorrectly formatted."
 	}
@@ -379,31 +367,4 @@ func validId(id, prefix string) bool {
 	}
 	id = strings.TrimPrefix(id, prefix)
 	return !reInvalidID.Match([]byte(id))
-}
-
-type ancestorProvider interface {
-	GetOrgId() string
-	GetProjectId() string
-}
-
-// validateAncestors verifies that the ancestors of this call are set and formatted correctly.
-func validateAncestors(r ancestorProvider) map[string]string {
-	badFields := make(map[string]string)
-	if r.GetOrgId() == "" {
-		badFields[orgIdFieldName] = "The field is missing but required."
-	}
-	if r.GetProjectId() == "" {
-		badFields[projectIdFieldName] = "The field is missing but required."
-	}
-	if len(badFields) > 0 {
-		return badFields
-	}
-
-	if !validId(r.GetOrgId(), scope.Org.Prefix()+"_") {
-		badFields[orgIdFieldName] = "The field is incorrectly formatted."
-	}
-	if !validId(r.GetProjectId(), scope.Project.Prefix()+"_") {
-		badFields[projectIdFieldName] = "The field is incorrectly formatted."
-	}
-	return badFields
 }

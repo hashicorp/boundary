@@ -16,17 +16,6 @@ func Test_GetOpts(t *testing.T) {
 		testOpts.withName = "test"
 		assert.Equal(opts, testOpts)
 	})
-	t.Run("withScope", func(t *testing.T) {
-		assert := assert.New(t)
-		s, err := NewOrg()
-		assert.NoError(err)
-		assert.NotNil(s.Scope)
-
-		opts := getOpts(withScope(s))
-		testOpts := getDefaultOptions()
-		testOpts.withScope = s
-		assert.Equal(opts, testOpts)
-	})
 	t.Run("WithDescription", func(t *testing.T) {
 		assert := assert.New(t)
 		opts := getOpts(WithDescription("test desc"))

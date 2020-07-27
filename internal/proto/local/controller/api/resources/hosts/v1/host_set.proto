@@ -7,6 +7,7 @@ option go_package = "github.com/hashicorp/watchtower/internal/gen/controller/api
 import "google/protobuf/timestamp.proto";
 import "google/protobuf/wrappers.proto";
 import "controller/api/resources/hosts/v1/host.proto";
+import "controller/api/resources/scopes/v1/scope.proto";
 
 // HostSet is a collection of Hosts created and managed by a HostCatalog
 message HostSet {
@@ -14,33 +15,37 @@ message HostSet {
 	// Output only.
 	string id = 1;
 
+	// Scope information for this resource
+	// Output only.
+	resources.scopes.v1.ScopeInfo scope = 2;
+	
 	// The type of the resource, to help differentiate schemas
-	google.protobuf.StringValue type = 2;
+	google.protobuf.StringValue type = 3;
 
 	// Optional name for identification purposes
-	google.protobuf.StringValue name = 3;
+	google.protobuf.StringValue name = 4;
 
 	// Optional user-set description for identification purposes
-	google.protobuf.StringValue description = 4;
+	google.protobuf.StringValue description = 5;
 
 	// The time this resource was created
 	// Output only.
-	google.protobuf.Timestamp created_time = 5 [json_name="created_time"];
+	google.protobuf.Timestamp created_time = 6 [json_name="created_time"];
 
 	// The time this resource was last updated
 	// Output only.
-	google.protobuf.Timestamp updated_time = 6 [json_name="updated_time"];
+	google.protobuf.Timestamp updated_time = 7 [json_name="updated_time"];
 
 	// Whether the host set is disabled
-	google.protobuf.BoolValue disabled = 7;
+	google.protobuf.BoolValue disabled = 8;
 
 	// The total count of hosts in this host set
 	// Output only.
-	google.protobuf.Int64Value size = 8;
+	google.protobuf.Int64Value size = 9;
 
 	// A list of hosts in this host set
 	// TODO: Figure out if this should be in the basic HostSet view and what
 	// view to use on the Hosts.
 	// Output only.
-	repeated Host hosts = 9;
+	repeated Host hosts = 10;
 }

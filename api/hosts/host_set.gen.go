@@ -9,6 +9,7 @@ import (
 	"github.com/fatih/structs"
 
 	"github.com/hashicorp/watchtower/api"
+	"github.com/hashicorp/watchtower/api/info"
 	"github.com/hashicorp/watchtower/api/internal/strutil"
 )
 
@@ -20,6 +21,9 @@ type HostSet struct {
 	// The ID of the host
 	// Output only.
 	Id string `json:"id,omitempty"`
+	// Scope information for this resource
+	// Output only.
+	Scope info.Scope `json:"scope,omitempty"`
 	// The type of the resource, to help differentiate schemas
 	Type *string `json:"type,omitempty"`
 	// Optional name for identification purposes
@@ -46,7 +50,7 @@ type HostSet struct {
 
 func (s *HostSet) SetDefault(key string) {
 	lowerKey := strings.ToLower(key)
-	validMap := map[string]string{"createdtime": "created_time", "description": "description", "disabled": "disabled", "hosts": "hosts", "id": "id", "name": "name", "size": "size", "type": "type", "updatedtime": "updated_time"}
+	validMap := map[string]string{"createdtime": "created_time", "description": "description", "disabled": "disabled", "hosts": "hosts", "id": "id", "name": "name", "scope": "scope", "size": "size", "type": "type", "updatedtime": "updated_time"}
 	for k, v := range validMap {
 		if k == lowerKey || v == lowerKey {
 			s.defaultFields = strutil.AppendIfMissing(s.defaultFields, v)
@@ -57,7 +61,7 @@ func (s *HostSet) SetDefault(key string) {
 
 func (s *HostSet) UnsetDefault(key string) {
 	lowerKey := strings.ToLower(key)
-	validMap := map[string]string{"createdtime": "created_time", "description": "description", "disabled": "disabled", "hosts": "hosts", "id": "id", "name": "name", "size": "size", "type": "type", "updatedtime": "updated_time"}
+	validMap := map[string]string{"createdtime": "created_time", "description": "description", "disabled": "disabled", "hosts": "hosts", "id": "id", "name": "name", "scope": "scope", "size": "size", "type": "type", "updatedtime": "updated_time"}
 	for k, v := range validMap {
 		if k == lowerKey || v == lowerKey {
 			s.defaultFields = strutil.StrListDelete(s.defaultFields, v)

@@ -1,20 +1,6 @@
 package groups_test
 
-import (
-	"context"
-	"fmt"
-	"net/http"
-	"testing"
-
-	"github.com/hashicorp/watchtower/api"
-	"github.com/hashicorp/watchtower/api/groups"
-	"github.com/hashicorp/watchtower/api/scopes"
-	"github.com/hashicorp/watchtower/internal/iam"
-	"github.com/hashicorp/watchtower/internal/servers/controller"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
-)
-
+/*
 type groupCrud interface {
 	CreateGroup(context.Context, *groups.Group) (*groups.Group, *api.Error, error)
 	ReadGroup(context.Context, *groups.Group) (*groups.Group, *api.Error, error)
@@ -230,3 +216,4 @@ func TestGroup_Errors(t *testing.T) {
 		})
 	}
 }
+*/

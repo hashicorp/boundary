@@ -4,115 +4,141 @@ package controller.api.services.v1;
 
 option go_package = "github.com/hashicorp/watchtower/internal/gen/controller/api/services;services";
 
-import "protoc-gen-swagger/options/annotations.proto";
+import "protoc-gen-openapiv2/options/annotations.proto";
 import "google/api/annotations.proto";
 import "google/protobuf/field_mask.proto";
+import "google/protobuf/wrappers.proto";
 import "controller/api/resources/groups/v1/group.proto";
+import "controller/api/resources/scopes/v1/scope.proto";
 
 service GroupService {
 
-  // GetGroup returns a stored Group if present.  The provided request
-  // must include the org and group id for the group being retrieved. If
-  // any of those ids are missing, malformed or reference a non existing
-  // resource an error is returned.
+  // GetGroup returns a stored Group if present. The provided request must
+  // include the scope for the group being retrieved. If any of those ids are
+  // missing, malformed or reference a non existing resource an error is
+  // returned.
   rpc GetGroup(GetGroupRequest) returns (GetGroupResponse) {
     option (google.api.http) = {
-      get: "/v1/orgs/{org_id}/groups/{id}"
+      get: "/v1/scopes/*/groups/{id}"
       response_body: "item"
-      additional_bindings {
-        get: "/v1/orgs/{org_id}/projects/{project_id}/groups/{id}"
-        response_body: "item"
-      }
     };
-    option (grpc.gateway.protoc_gen_swagger.options.openapiv2_operation) = {
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
       summary: "Gets a single Group"
     };
   }
 
   // ListGroups returns a list of stored groups which exist inside the org
-  // referenced inside the request.  The request must include the org id for
-  // the groups being retrieved.  If the org id is missing, malformed, or
-  // reference a non existing org, an error is returned.
+  // referenced inside the request. The request must include the scope for
+  // the groups being retrieved. If the scope is missing, malformed, or
+  // references a non-existing scope, an error is returned.
   rpc ListGroups(ListGroupsRequest) returns (ListGroupsResponse) {
     option (google.api.http) = {
-      get: "/v1/orgs/{org_id}/groups"
-      additional_bindings {
-        get: "/v1/orgs/{org_id}/projects/{project_id}/groups"
-      }
+      get: "/v1/scopes/*/groups"
     };
-    option (grpc.gateway.protoc_gen_swagger.options.openapiv2_operation) = {
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
       summary: "Lists all Groups"
     };
   }
 
-  // CreateGroup creates and stores a group in watchtower.  The provided
-  // request must include the org id in which the group will be created.
-  // If the org id is missing, malformed or references a non existing
-  // org, an error is returned.  If a name is provided that is in
-  // use in another group in the same org, an error is returned.
+  // CreateGroup creates and stores a group in watchtower. The provided
+  // request must include the scope ID in which the group will be created.
+  // If the scope ID is missing, malformed or references a non existing
+  // org, an error is returned. If a name is provided that is in
+  // use in another group in the same scope, an error is returned.
   rpc CreateGroup(CreateGroupRequest) returns (CreateGroupResponse) {
     option (google.api.http) = {
-      post: "/v1/orgs/{org_id}/groups"
+      post: "/v1/scopes/*/groups"
       body: "item"
       response_body: "item"
-      additional_bindings {
-        post: "/v1/orgs/{org_id}/projects/{project_id}/groups"
-        body: "item"
-        response_body: "item"
-      }
     };
-    option (grpc.gateway.protoc_gen_swagger.options.openapiv2_operation) = {
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
       summary: "Creates a single Group"
     };
   }
 
-  // UpdateGroup updates an existing group in watchtower.  The provided
-  // group must not have any read only fields set.  The update mask must be
-  // included in the request and contain at least 1 mutable field.  To unset
-  // a field's value, include the field in the update mask and don't set it
-  // in the provided group. An error is returned if either the org
-  // or group ids are missing or reference a non existing resource.  An error
-  // is also returned if the request attempts to update the name to one that is
-  // already in use in this org.
+  // UpdateGroup updates an existing group in watchtower. The provided group
+  // must not have any read only fields set. The update mask must be included in
+  // the request and contain at least 1 mutable field. To unset a field's value,
+  // include the field in the update mask and don't set it in the provided
+  // group. An error is returned if either the scope or group ids are missing or
+  // reference a non-existing resource. An error is also returned if the
+  // request attempts to update the name to one that is already in use in this
+  // scope.
   rpc UpdateGroup(UpdateGroupRequest) returns (UpdateGroupResponse) {
     option (google.api.http) = {
-      patch: "/v1/orgs/{org_id}/groups/{id}"
+      patch: "/v1/scopes/*/groups/{id}"
       body: "item"
       response_body: "item"
-      additional_bindings {
-        patch: "/v1/orgs/{org_id}/projects/{project_id}/groups/{id}"
-        body: "item"
-        response_body: "item"
-      }
     };
-    option (grpc.gateway.protoc_gen_swagger.options.openapiv2_operation) = {
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
       summary: "Updates a Group"
     };
   }
 
-  // DeleteGroup removes a group from Watchtower. If the provided org or group ids
-  // are malformed or not provided an error is returned.  No error is returned
-  // if either ids reference resources that do not exist as the response itself
-  // specifies if the resource existed before the DeleteGroup request was
-  // received.
+  // DeleteGroup removes a group from Watchtower. If the provided scope or group
+  // IDs are malformed or not provided an error is returned. No error is
+  // returned if either IDs reference resources that do not exist as the
+  // response itself specifies if the resource existed before the DeleteGroup
+  // request was received.
   rpc DeleteGroup(DeleteGroupRequest) returns (DeleteGroupResponse) {
     option (google.api.http) = {
-      delete: "/v1/orgs/{org_id}/groups/{id}"
-      additional_bindings {
-        delete: "/v1/orgs/{org_id}/projects/{project_id}/groups/{id}"
-      }
+      delete: "/v1/scopes/*/groups/{id}"
     };
-    option (grpc.gateway.protoc_gen_swagger.options.openapiv2_operation) = {
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
       summary: "Deletes a Group"
+    };
+  }
+
+  // AddGroupMembers adds users as members to a group.  The provided
+  // request must include the scope id and the group id which the users
+  // will be set to. If the any of the ids are missing, malformed or references a non
+  // existing resource, an error is returned.
+  rpc AddGroupMembers(AddGroupMembersRequest) returns (AddGroupMembersResponse) {
+    option (google.api.http) = {
+      post: "/v1/scopes/*/groups/{id}:add-members"
+      body: "*"
+      response_body: "item"
+    };
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
+      summary: "Adds Users as members to a Group"
+    };
+  }
+
+  // SetGroupMembers sets the group's members.  Any existing members on
+  // the group are deleted if they are not included in this request.  The provided
+  // request must include the scope id and the group id which the users
+  // will be set to. If the any of the ids are missing, malformed or references a non
+  // existing resource, an error is returned.
+  rpc SetGroupMembers(SetGroupMembersRequest) returns (SetGroupMembersResponse) {
+    option (google.api.http) = {
+      post: "/v1/scopes/*/groups/{id}:set-members"
+      body: "*"
+      response_body: "item"
+    };
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
+      summary: "Set a Group's members to exactly the list of provided in the request, removing any members that are not specified."
+    };
+  }
+
+  // RemoveGroupMembers removes members from the specified group.
+  // The provided request must include the scope id and the group id which the users
+  // will be set to. If the any of the ids are missing, malformed or references a non
+  // existing resource, an error is returned.
+  rpc RemoveGroupMembers(RemoveGroupMembersRequest) returns (RemoveGroupMembersResponse) {
+    option (google.api.http) = {
+      post: "/v1/scopes/*/groups/{id}:remove-members"
+      body: "*"
+      response_body: "item"
+    };
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
+      summary: "Removes the specified members from a Group."
     };
   }
 }
 
 message GetGroupRequest {
-  string org_id = 1;
-  string project_id = 2;
-  string id = 3;
-  string view = 4;
+  string id = 1;
+  string view = 2;
 }
 
 message GetGroupResponse {
@@ -120,9 +146,7 @@ message GetGroupResponse {
 }
 
 message ListGroupsRequest {
-  string org_id = 1;
-  string project_id = 2;
-  string view = 3;
+  string view = 1;
 }
 
 message ListGroupsResponse {
@@ -130,9 +154,7 @@ message ListGroupsResponse {
 }
 
 message CreateGroupRequest {
-  string org_id = 1;
-  string project_id = 2;
-  resources.groups.v1.Group item = 3;
+  resources.groups.v1.Group item = 1;
 }
 
 message CreateGroupResponse {
@@ -141,11 +163,9 @@ message CreateGroupResponse {
 }
 
 message UpdateGroupRequest {
-  string org_id = 1;
-  string project_id = 2;
-  string id = 3;
-  resources.groups.v1.Group item = 4;
-  google.protobuf.FieldMask update_mask = 5;
+  string id = 1;
+  resources.groups.v1.Group item = 2;
+  google.protobuf.FieldMask update_mask = 3;
 }
 
 message UpdateGroupResponse {
@@ -153,11 +173,45 @@ message UpdateGroupResponse {
 }
 
 message DeleteGroupRequest {
-  string org_id = 1;
-  string project_id = 2;
-  string id = 3;
+  string id = 1;
 }
 
 message DeleteGroupResponse {
   bool existed = 1;
+}
+
+message AddGroupMembersRequest {
+  string id = 1;
+  // The version ensures the group hasn't changed since it was last retrieved and if
+  // it has the request will fail.
+  google.protobuf.UInt32Value version = 2;
+  repeated string member_ids = 3 [json_name="member_ids"];
+}
+
+message AddGroupMembersResponse {
+  resources.groups.v1.Group item = 1;
+}
+
+message SetGroupMembersRequest {
+  string id = 1;
+  // The version ensures the group hasn't changed since it was last retrieved and if
+  // it has the request will fail.
+  google.protobuf.UInt32Value version = 2;
+  repeated string member_ids = 3 [json_name="member_ids"];
+}
+
+message SetGroupMembersResponse {
+  resources.groups.v1.Group item = 1;
+}
+
+message RemoveGroupMembersRequest {
+  string id = 1;
+  // The version ensures the group hasn't changed since it was last retrieved and if
+  // it has the request will fail.
+  google.protobuf.UInt32Value version = 2;
+  repeated string member_ids = 3 [json_name="member_ids"];
+}
+
+message RemoveGroupMembersResponse {
+  resources.groups.v1.Group item = 1;
 }

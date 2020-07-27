@@ -98,12 +98,9 @@ func (g *RoleGrant) TableName() string {
 	return defaultRoleGrantTable
 }
 
-// SetTableName sets the tablename and satisfies the ReplayableMessage interface
+// SetTableName sets the tablename and satisfies the ReplayableMessage
+// interface. If the caller attempts to set the name to "" the name will be
+// reset to the default name.
 func (g *RoleGrant) SetTableName(n string) {
-	switch n {
-	case "":
-		g.tableName = defaultRoleGrantTable
-	default:
-		g.tableName = n
-	}
+	g.tableName = n
 }
