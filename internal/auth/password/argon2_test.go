@@ -19,9 +19,6 @@ func TestArgon2Configuration_New(t *testing.T) {
 	authMethodId := authMethod.GetPublicId()
 	ctx := context.Background()
 
-	// The order of these tests are important. Some tests have a dependency
-	// on prior tests.
-
 	// There should already be a configuration when an authMethod is created.
 	t.Run("default-configuration", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
