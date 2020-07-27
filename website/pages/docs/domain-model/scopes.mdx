@@ -1,0 +1,11 @@
+---
+layout: docs
+page_title: Configuration
+sidebar_title: Scope
+description: |-
+  The annatomy of a Watchtower scope
+---
+
+# Scope
+
+A scope is a permission boundary modeled as a container. A Scope can contain Scopes forming a tree. A Scope can own zero to many Groups, Roles, Policies, Targets, Host Catalogs and Credential Stores. Scope is abstract. Organization and Project are concrete Scopes. All resources owned by a Scope are deleted when the Scope is deleted.

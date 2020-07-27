@@ -1,0 +1,19 @@
+---
+layout: docs
+page_title: Configuration
+sidebar_title: Organization
+description: |-
+  The annatomy of a Watchtower organization
+---
+
+# Organization
+
+An Organization is a top-level container, and owns zero to many Projects and zero to many Authentication Methods. An Organization inherits from Scope ("is-a" Scope) allowing it to own zero to many Groups, Roles, Policies, Targets, Host Catalogs or Credential Stores. When an Organization is deleted, all resources owned by it are also deleted. The lifecycle of an Organization is not tied to anything else. A Role at the Organization level can grant permissions at the Project level.
+
+# Attributes
+
+### ID
+
+An organization ID is the character `o_` followed by ten digits.
+
+Example: `o_0123456789`
