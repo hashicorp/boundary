@@ -120,6 +120,10 @@ func (r *Repository) CreateAuthToken(ctx context.Context, withIamUserId, withAut
 			}
 			newAuthToken.CtToken = nil
 
+			// The db may not keep the same resolution of timestamp as this machine does so
+			// use the timestamp as saved and returned from the DB.
+			at.ExpirationTime = newAuthToken.ExpirationTime
+
 			return nil
 		},
 	)
