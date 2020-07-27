@@ -64,7 +64,7 @@ protobuild:
 	# Move the generated files from the tmp file subdirectories into the current repo.
 	cp -R ${TMP_DIR}/${REPO_PATH}/* ${THIS_DIR}
 
-	@protoc --proto_path=internal/proto/local --proto_path=internal/proto/third_party --swagger_out=logtostderr=true,disable_default_errors=true,include_package_in_tags=true,fqn_for_swagger_name=true,allow_merge,merge_file_name=controller:internal/gen/. internal/proto/local/controller/api/services/v1/*.proto
+	@protoc --proto_path=internal/proto/local --proto_path=internal/proto/third_party --openapiv2_out=json_names_for_fields=false,logtostderr=true,disable_default_errors=true,include_package_in_tags=true,fqn_for_openapi_name=true,allow_merge,merge_file_name=controller:internal/gen/. internal/proto/local/controller/api/services/v1/*.proto
 	@protoc-go-inject-tag -input=./internal/oplog/store/oplog.pb.go
 	@protoc-go-inject-tag -input=./internal/oplog/oplog_test/oplog_test.pb.go
 	@protoc-go-inject-tag -input=./internal/iam/store/group_member.pb.go
@@ -79,11 +79,27 @@ protobuild:
 	@protoc-go-inject-tag -input=./internal/host/static/store/static.pb.go
 	@protoc-go-inject-tag -input=./internal/authtoken/store/authtoken.pb.go
 	@protoc-go-inject-tag -input=./internal/iam/store/auth_account.pb.go
+	@protoc-go-inject-tag -input=./internal/auth/password/store/password.pb.go
 	@rm -R ${TMP_DIR}
 
 protolint:
 	@buf check lint
 
-.PHONY: api tools gen migrations proto
+# must have nodejs and npm installed
+website: website-install website-start
+
+website-install:
+	@npm install --prefix website/
+
+website-start:
+	@npm start --prefix website/
+
+test-ci: install-go
+	~/.go/bin/go test ./... -v $(TESTARGS) -timeout 120m
+
+install-go:
+	./ci/goinstall.sh
+
+.PHONY: api tools gen migrations proto website
 
 .NOTPARALLEL:

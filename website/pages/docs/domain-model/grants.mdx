@@ -1,0 +1,36 @@
+---
+layout: docs
+page_title: Configuration
+sidebar_title: Grants
+description: |-
+  How to configure Watchtower grants
+---
+
+# Grants
+
+A grant represents a set of capabilities granted to a roley. It couples a set of Actions to either a set of Resource Types or an individual Resource. A Direct Grant belongs exclusively to one and only one Role. However, equivalent Direct Grants may exist across different Roles. A Direct Grant references one or more Actions and either one or more Resource types or one specific Resource. A Direct Grant is deleted when the Role it belongs to is deleted. A Direct Grant is also deleted if it is associated with a specific Resource and that Resource itself is deleted. The lifecycle of a Direct Grant is not tied to the lifecycle of any Action or Resource Type.
+
+```shell-session
++----------------------------------------+
+|           Organization                 |
++--------------------+-------------------+
+|       Role 1       |     Role 2        |
++----------+-----------------------------+
+| Grant 1  | Grant 2 |     Grant 1       |
++----------+---------+-------------------+
+```
+
+## Attributes
+
+Direct grants are represented by strings of actions on resources.
+
+Example: `id=p_0123456789; action=read`
+
+The above example grants `read` action on the `p_0123456789` project resource.
+
+The glob `*` pattern can be used on IDs and actions as well: `id=*;action=*`, will allow all actions on all resources.
+
+## Referenced By
+
+- [Action]()
+- [Role]()

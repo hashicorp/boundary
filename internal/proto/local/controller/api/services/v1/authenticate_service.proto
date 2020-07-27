@@ -4,7 +4,7 @@ package controller.api.services.v1;
 
 option go_package = "github.com/hashicorp/watchtower/internal/gen/controller/api/services;services";
 
-import "protoc-gen-swagger/options/annotations.proto";
+import "protoc-gen-openapiv2/options/annotations.proto";
 import "google/api/annotations.proto";
 import "google/protobuf/struct.proto";
 import "controller/api/resources/authtokens/v1/authtoken.proto";
@@ -17,7 +17,7 @@ service AuthenticationService {
       body: "*"
       response_body: "item"
     };
-    option (grpc.gateway.protoc_gen_swagger.options.openapiv2_operation) = {
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
       summary: "Authenticate a user to an scope and retrieve an authentication token."
     };
   }
@@ -30,7 +30,7 @@ service AuthenticationService {
     option (google.api.http) = {
       post: "/v1/:deauthenticate"
     };
-    option (grpc.gateway.protoc_gen_swagger.options.openapiv2_operation) = {
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
       summary: "Deauthenticate an authentication token."
     };
   }

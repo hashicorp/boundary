@@ -2,12 +2,21 @@
 package authtokens
 
 import (
+	"encoding/json"
+	"strings"
 	"time"
 
+	"github.com/fatih/structs"
+
+	"github.com/hashicorp/watchtower/api"
 	"github.com/hashicorp/watchtower/api/info"
+	"github.com/hashicorp/watchtower/api/internal/strutil"
 )
 
 type AuthToken struct {
+	Client *api.Client `json:"-"`
+
+	defaultFields []string
 
 	// The ID of the AuthToken
 	// Output only.
@@ -38,4 +47,37 @@ type AuthToken struct {
 	// The time this AuthToken expires.
 	// Output only.
 	ExpirationTime time.Time `json:"expiration_time,omitempty"`
+}
+
+func (s *AuthToken) SetDefault(key string) {
+	lowerKey := strings.ToLower(key)
+	validMap := map[string]string{"approximatelastusedtime": "approximate_last_used_time", "authmethodid": "auth_method_id", "createdtime": "created_time", "expirationtime": "expiration_time", "id": "id", "scope": "scope", "token": "token", "updatedtime": "updated_time", "userid": "user_id"}
+	for k, v := range validMap {
+		if k == lowerKey || v == lowerKey {
+			s.defaultFields = strutil.AppendIfMissing(s.defaultFields, v)
+			return
+		}
+	}
+}
+
+func (s *AuthToken) UnsetDefault(key string) {
+	lowerKey := strings.ToLower(key)
+	validMap := map[string]string{"approximatelastusedtime": "approximate_last_used_time", "authmethodid": "auth_method_id", "createdtime": "created_time", "expirationtime": "expiration_time", "id": "id", "scope": "scope", "token": "token", "updatedtime": "updated_time", "userid": "user_id"}
+	for k, v := range validMap {
+		if k == lowerKey || v == lowerKey {
+			s.defaultFields = strutil.StrListDelete(s.defaultFields, v)
+			return
+		}
+	}
+}
+
+func (s AuthToken) MarshalJSON() ([]byte, error) {
+	m := structs.Map(s)
+	if m == nil {
+		m = make(map[string]interface{})
+	}
+	for _, k := range s.defaultFields {
+		m[k] = nil
+	}
+	return json.Marshal(m)
 }

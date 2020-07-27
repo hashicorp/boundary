@@ -9,7 +9,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/grpc-ecosystem/grpc-gateway/runtime"
+	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	"github.com/hashicorp/vault/internalshared/configutil"
 	"github.com/hashicorp/vault/sdk/helper/strutil"
 	"github.com/hashicorp/watchtower/api"
@@ -19,11 +19,13 @@ import (
 
 	"github.com/hashicorp/watchtower/internal/servers/controller/handlers"
 	"github.com/hashicorp/watchtower/internal/servers/controller/handlers/authenticate"
+	"github.com/hashicorp/watchtower/internal/servers/controller/handlers/authtokens"
 	"github.com/hashicorp/watchtower/internal/servers/controller/handlers/groups"
 	"github.com/hashicorp/watchtower/internal/servers/controller/handlers/host_catalogs"
 	"github.com/hashicorp/watchtower/internal/servers/controller/handlers/roles"
 	"github.com/hashicorp/watchtower/internal/servers/controller/handlers/scopes"
 	"github.com/hashicorp/watchtower/internal/servers/controller/handlers/users"
+	"google.golang.org/protobuf/encoding/protojson"
 )
 
 type HandlerProperties struct {
@@ -54,7 +56,23 @@ func handleGrpcGateway(c *Controller) (http.Handler, error) {
 	// Register*ServiceHandlerServer methods ignore the passed in ctx.  Using the baseContext now just in case this changes
 	// in the future, at which point we'll want to be using the baseContext.
 	ctx := c.baseContext
-	mux := runtime.NewServeMux(runtime.WithProtoErrorHandler(handlers.ErrorHandler(c.logger)))
+	mux := runtime.NewServeMux(
+		runtime.WithMarshalerOption(runtime.MIMEWildcard, &runtime.HTTPBodyMarshaler{
+			Marshaler: &runtime.JSONPb{
+				MarshalOptions: protojson.MarshalOptions{
+					// Ensures the json marshaler uses the snake casing as defined in the proto field names.
+					UseProtoNames: true,
+					// Do not add fields set to zero value to json.
+					EmitUnpopulated: false,
+				},
+				UnmarshalOptions: protojson.UnmarshalOptions{
+					// Allows requests to contain unknown fields.
+					DiscardUnknown: true,
+				},
+			},
+		}),
+		runtime.WithErrorHandler(handlers.ErrorHandler(c.logger)),
+	)
 	hcs, err := host_catalogs.NewService(c.StaticHostRepoFn)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create host catalog handler service: %w", err)
@@ -68,6 +86,13 @@ func handleGrpcGateway(c *Controller) (http.Handler, error) {
 	}
 	if err := services.RegisterAuthenticationServiceHandlerServer(ctx, mux, auths); err != nil {
 		return nil, fmt.Errorf("failed to register authenticate service handler: %w", err)
+	}
+	authtoks, err := authtokens.NewService(c.AuthTokenRepoFn)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create auth token handler service: %w", err)
+	}
+	if err := services.RegisterAuthTokenServiceHandlerServer(ctx, mux, authtoks); err != nil {
+		return nil, fmt.Errorf("failed to register auth token service handler: %w", err)
 	}
 	os, err := scopes.NewService(c.IamRepoFn)
 	if err != nil {

@@ -290,7 +290,8 @@ func TestAuthTokenAuthenticator(t *testing.T) {
 		return iamRepo, nil
 	}
 
-	at := authtoken.TestAuthToken(t, conn, wrapper)
+	o, _ := iam.TestScopes(t, conn)
+	at := authtoken.TestAuthToken(t, conn, wrapper, o.GetPublicId())
 
 	tokValue := at.GetPublicId() + "_" + at.GetToken()
 	jsCookieVal, httpCookieVal := tokValue[:len(tokValue)/2], tokValue[len(tokValue)/2:]

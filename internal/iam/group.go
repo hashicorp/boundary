@@ -99,10 +99,5 @@ func (g *Group) TableName() string {
 // interface. If the caller attempts to set the name to "" the name will be
 // reset to the default name.
 func (g *Group) SetTableName(n string) {
-	switch n {
-	case "":
-		g.tableName = defaultGroupTableName
-	default:
-		g.tableName = n
-	}
+	g.tableName = n
 }

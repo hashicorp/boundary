@@ -1,0 +1,39 @@
+---
+layout: docs
+page_title: Configuration
+sidebar_title: Project
+description: |-
+  How to configure Watchtower projects
+---
+
+# Project
+
+A project is a child scope of an organization and is owned by an Organization. A Project inherits from Scope ("is-a" Scope) allowing it to own zero to many Groups, Roles, Policies, Targets, Host Catalogs or Credential Stores. A Project also inherits from Principal ("is-a" Principal) allowing it to be associated with zero or more Roles. A Project has no additional relationships beyond those defined in Scope and Principal. A Project is deleted when the Organization it belongs to is deleted. When a Project is deleted, all resources owned by it are also deleted. The lifecycle of a Project is not tied to any resource it contains.
+
+```shell-session
++-----------------------------------+
+|           Organization            |
++-----------------------------------+
+| Project 1 | Project 2 | Project 3 |
++-----------------------------------+
+```
+
+# Attributes
+
+### ID
+
+A project ID is the character `p_` followed by ten digits.
+
+Example: `p_0123456789`
+
+### Name
+
+A project name is the friendly name set by the user of a project.
+
+### Description
+
+A project description is the friendly description set by the user.
+
+# Referenced By
+
+- [Organization]()
