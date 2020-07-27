@@ -13,7 +13,8 @@ import (
 // contain a valid ScopeId. m must not contain a PublicId. The PublicId is
 // generated and assigned by this method.
 //
-// Configuration is the only valid option. All other options are ignored.
+// WithConfiguration is the only valid option. All other options are
+// ignored.
 //
 // Both m.Name and m.Description are optional. If m.Name is set, it must be
 // unique within m.ScopeId.
