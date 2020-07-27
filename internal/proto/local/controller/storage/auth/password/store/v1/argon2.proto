@@ -17,7 +17,7 @@ import "controller/storage/timestamp/v1/timestamp.proto";
 // https://github.com/P-H-C/phc-winner-argon2/blob/master/argon2-specs.pdf
 message Argon2Configuration {
   // @inject_tag: `gorm:"primary_key"`
-  string public_id = 1;
+  string private_id = 1;
 
   // The create_time is set by the database.
   // @inject_tag: `gorm:"default:current_timestamp"`

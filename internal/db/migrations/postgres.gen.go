@@ -1660,7 +1660,7 @@ begin;
        ┌────────────────┐                 ┌──────────────────────┐             ┌────────────────────────────┐
        │  auth_method   │                 │ auth_password_method │             │     auth_password_conf     │
        ├────────────────┤                 ├──────────────────────┤             ├────────────────────────────┤
-       │ public_id (pk) │                 │ public_id (pk,fk)    │            ╱│ public_id          (pk,fk) │
+       │ public_id (pk) │                 │ public_id (pk,fk)    │            ╱│ private_id         (pk,fk) │
        │ scope_id  (fk) │┼┼─────────────○┼│ scope_id  (fk)       │┼┼─────────○─│ password_method_id (fk)    │
        │                │                 │ ...                  │            ╲│                            │
        └────────────────┘                 └──────────────────────┘             └────────────────────────────┘
@@ -1674,7 +1674,7 @@ begin;
   ┌──────────────────────────┐          ┌──────────────────────────┐          ┌───────────────────────────────┐
   │       auth_account       │          │  auth_password_account   │          │   auth_password_credential    │
   ├──────────────────────────┤          ├──────────────────────────┤          ├───────────────────────────────┤
-  │ public_id      (pk)      │          │ public_id      (pk,fk2)  │          │ public_id           (pk)      │
+  │ public_id      (pk)      │          │ public_id      (pk,fk2)  │          │ private_id          (pk)      │
   │ scope_id       (fk1,fk2) │   ◀fk2   │ scope_id       (fk1,fk2) │   ◀fk2   │ password_method_id  (fk1,fk2) │
   │ auth_method_id (fk1)     │┼┼──────○┼│ auth_method_id (fk1,fk2) │┼┼──────○┼│ password_conf_id    (fk1)     │
   │ iam_user_id    (fk2)     │          │ ...                      │          │ password_account_id (fk2)     │
@@ -1714,7 +1714,7 @@ begin;
   create table auth_password_method (
     public_id wt_public_id primary key,
     scope_id wt_scope_id not null,
-    password_conf_id wt_public_id not null, -- FK to auth_password_conf added below
+    password_conf_id wt_private_id not null, -- FK to auth_password_conf added below
     name text,
     description text,
     create_time wt_timestamp,
@@ -1770,19 +1770,19 @@ begin;
     for each row execute procedure insert_auth_account_subtype();
 
   create table auth_password_conf (
-    public_id wt_public_id primary key,
+    private_id wt_private_id primary key,
     password_method_id wt_public_id not null
       references auth_password_method (public_id)
       on delete cascade
       on update cascade
       deferrable initially deferred,
-    unique(password_method_id, public_id)
+    unique(password_method_id, private_id)
   );
 
   alter table auth_password_method
     add constraint current_conf_fkey
     foreign key (public_id, password_conf_id)
-    references auth_password_conf (password_method_id, public_id)
+    references auth_password_conf (password_method_id, private_id)
     on delete cascade
     on update cascade
     deferrable initially deferred;
@@ -1795,20 +1795,20 @@ begin;
   as $$
   begin
     insert into auth_password_conf
-      (public_id, password_method_id)
+      (private_id, password_method_id)
     values
-      (new.public_id, new.password_method_id);
+      (new.private_id, new.password_method_id);
     return new;
   end;
   $$ language plpgsql;
 
   create table auth_password_credential (
-    public_id wt_public_id primary key,
+    private_id wt_private_id primary key,
     password_account_id wt_public_id not null unique,
-    password_conf_id wt_public_id not null,
+    password_conf_id wt_private_id not null,
     password_method_id wt_public_id not null,
     foreign key (password_method_id, password_conf_id)
-      references auth_password_conf (password_method_id, public_id)
+      references auth_password_conf (password_method_id, private_id)
       on delete cascade
       on update cascade,
     foreign key (password_method_id, password_account_id)
@@ -1832,9 +1832,9 @@ begin;
     where auth_password_account.public_id = new.password_account_id;
 
     insert into auth_password_credential
-      (public_id, password_account_id, password_conf_id, password_method_id)
+      (private_id, password_account_id, password_conf_id, password_method_id)
     values
-      (new.public_id, new.password_account_id, new.password_conf_id, new.password_method_id);
+      (new.private_id, new.password_account_id, new.password_conf_id, new.password_method_id);
     return new;
   end;
   $$ language plpgsql;
@@ -1905,8 +1905,8 @@ commit;
 begin;
 
   create table auth_password_argon2_conf (
-    public_id wt_public_id primary key
-      references auth_password_conf (public_id)
+    private_id wt_private_id primary key
+      references auth_password_conf (private_id)
       on delete cascade
       on update cascade,
     password_method_id wt_public_id not null,
@@ -1926,9 +1926,9 @@ begin;
     -- minimum of 16 bytes (128 bits)
       check(key_length >= 16),
     unique(password_method_id, iterations, memory, threads, salt_length, key_length),
-    unique (password_method_id, public_id),
-    foreign key (password_method_id, public_id)
-      references auth_password_conf (password_method_id, public_id)
+    unique (password_method_id, private_id),
+    foreign key (password_method_id, private_id)
+      references auth_password_conf (password_method_id, private_id)
       on delete cascade
       on update cascade
       deferrable initially deferred
@@ -2000,7 +2000,7 @@ begin;
   create or replace view auth_password_conf_union as
       -- Do not change the order of the columns when adding new configurations.
       -- Union with new tables appending new columns as needed.
-      select c.password_method_id, c.public_id as password_conf_id, c.public_id,
+      select c.password_method_id, c.private_id as password_conf_id, c.private_id,
              'argon2' as conf_type,
              c.iterations, c.memory, c.threads, c.salt_length, c.key_length
         from auth_password_argon2_conf c;

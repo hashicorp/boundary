@@ -32,7 +32,7 @@ func TestArgon2Configuration_New(t *testing.T) {
 		got := confs[0]
 		want := &Argon2Configuration{
 			Argon2Configuration: &store.Argon2Configuration{
-				PublicId:         got.GetPublicId(),
+				PrivateId:        got.GetPrivateId(),
 				CreateTime:       got.GetCreateTime(),
 				PasswordMethodId: authMethodId,
 				Iterations:       3,
@@ -49,7 +49,7 @@ func TestArgon2Configuration_New(t *testing.T) {
 		got := NewArgon2Configuration()
 		require.NotNil(got)
 		var err error
-		got.PublicId, err = newArgon2ConfigurationId()
+		got.PrivateId, err = newArgon2ConfigurationId()
 		require.NoError(err)
 		got.PasswordMethodId = authMethodId
 		err = rw.Create(ctx, got)
@@ -65,7 +65,7 @@ func TestArgon2Configuration_New(t *testing.T) {
 
 		c1 := NewArgon2Configuration()
 		require.NotNil(c1)
-		c1.PublicId, err = newArgon2ConfigurationId()
+		c1.PrivateId, err = newArgon2ConfigurationId()
 		require.NoError(err)
 		c1.PasswordMethodId = authMethodId
 		c1.Iterations = c1.Iterations + 1
@@ -75,7 +75,7 @@ func TestArgon2Configuration_New(t *testing.T) {
 
 		c2 := NewArgon2Configuration()
 		require.NotNil(c2)
-		c2.PublicId, err = newArgon2ConfigurationId()
+		c2.PrivateId, err = newArgon2ConfigurationId()
 		require.NoError(err)
 		c2.PasswordMethodId = authMethodId
 		c2.Memory = 32 * 1024
@@ -148,7 +148,7 @@ func TestArgon2Configuration_Readonly(t *testing.T) {
 			orig := confs[0]
 			changed, masks := tt.chgFn(orig)
 
-			require.NotEmpty(changed.GetPublicId())
+			require.NotEmpty(changed.GetPrivateId())
 
 			count, err := rw.Update(context.Background(), changed, masks, nil)
 			assert.Error(err)

@@ -1,8 +1,8 @@
 begin;
 
   create table auth_password_argon2_conf (
-    public_id wt_public_id primary key
-      references auth_password_conf (public_id)
+    private_id wt_private_id primary key
+      references auth_password_conf (private_id)
       on delete cascade
       on update cascade,
     password_method_id wt_public_id not null,
@@ -22,9 +22,9 @@ begin;
     -- minimum of 16 bytes (128 bits)
       check(key_length >= 16),
     unique(password_method_id, iterations, memory, threads, salt_length, key_length),
-    unique (password_method_id, public_id),
-    foreign key (password_method_id, public_id)
-      references auth_password_conf (password_method_id, public_id)
+    unique (password_method_id, private_id),
+    foreign key (password_method_id, private_id)
+      references auth_password_conf (password_method_id, private_id)
       on delete cascade
       on update cascade
       deferrable initially deferred

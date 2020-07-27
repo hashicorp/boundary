@@ -45,11 +45,11 @@ func (r *Repository) CreateAuthMethod(ctx context.Context, m *AuthMethod, opt ..
 		return nil, fmt.Errorf("create: password auth method: unknown configuration: %w", db.ErrInvalidParameter)
 	}
 
-	c.PublicId, err = newArgon2ConfigurationId()
+	c.PrivateId, err = newArgon2ConfigurationId()
 	if err != nil {
 		return nil, fmt.Errorf("create: password auth method: %w", err)
 	}
-	m.PasswordConfId, c.PasswordMethodId = c.PublicId, m.PublicId
+	m.PasswordConfId, c.PasswordMethodId = c.PrivateId, m.PublicId
 
 	var newAuthMethod *AuthMethod
 	var newArgon2Conf *Argon2Configuration

@@ -30,7 +30,7 @@ func (r *Repository) GetConfiguration(ctx context.Context, authMethodId string) 
 
 // SetConfiguration sets the configuration for c.AuthMethodId to c and
 // returns a new Configuration. c is not changed. c must contain a valid
-// AuthMethodId. c.PublicId is ignored.
+// AuthMethodId. c.PrivateId is ignored.
 //
 // If c contains new settings for c.AuthMethodId, SetConfiguration inserts
 // c into the repository and updates AuthMethod to use the new
@@ -65,7 +65,7 @@ func (r *Repository) setArgon2Conf(ctx context.Context, c *Argon2Configuration) 
 	if err != nil {
 		return nil, err
 	}
-	c.PublicId = id
+	c.PrivateId = id
 
 	a := &AuthMethod{
 		AuthMethod: &store.AuthMethod{
@@ -88,7 +88,7 @@ func (r *Repository) setArgon2Conf(ctx context.Context, c *Argon2Configuration) 
 				}
 			}
 
-			a.PasswordConfId = newArgon2Conf.PublicId
+			a.PasswordConfId = newArgon2Conf.PrivateId
 			rowsUpdated, err := w.Update(ctx, a, []string{"PasswordConfId"}, nil, db.WithOplog(r.wrapper, a.oplog(oplog.OpType_OP_TYPE_UPDATE)))
 			if err == nil && rowsUpdated > 1 {
 				return db.ErrMultipleRecords

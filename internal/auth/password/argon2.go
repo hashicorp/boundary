@@ -63,9 +63,9 @@ func (c *Argon2Configuration) SetTableName(n string) {
 
 func (c *Argon2Configuration) oplog(op oplog.OpType) oplog.Metadata {
 	metadata := oplog.Metadata{
-		"resource-public-id": []string{c.GetPublicId()},
-		"resource-type":      []string{"password argon2 conf"},
-		"op-type":            []string{op.String()},
+		"resource-private-id": []string{c.PrivateId},
+		"resource-type":       []string{"password argon2 conf"},
+		"op-type":             []string{op.String()},
 	}
 	if c.PasswordMethodId != "" {
 		metadata["password-method-id"] = []string{c.PasswordMethodId}
