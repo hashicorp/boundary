@@ -72,6 +72,171 @@
         ]
       }
     },
+    "/v1/scopes/*/auth-methods/{auth_method_id}/accounts": {
+      "get": {
+        "summary": "Lists all AuthAccounts",
+        "operationId": "AuthAccountService_ListAuthAccounts",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.services.v1.ListAuthAccountsResponse"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "auth_method_id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "view",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "controller.api.services.v1.AuthAccountService"
+        ]
+      },
+      "post": {
+        "summary": "Creates a single AuthAccount",
+        "operationId": "AuthAccountService_CreateAuthAccount",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/controller.api.resources.auth.v1.Account"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "auth_method_id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/controller.api.resources.auth.v1.Account"
+            }
+          }
+        ],
+        "tags": [
+          "controller.api.services.v1.AuthAccountService"
+        ]
+      }
+    },
+    "/v1/scopes/*/auth-methods/{auth_method_id}/accounts/{id}": {
+      "get": {
+        "summary": "Gets a single AuthAccount",
+        "operationId": "AuthAccountService_GetAuthAccount",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/controller.api.resources.auth.v1.Account"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "auth_method_id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "view",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "controller.api.services.v1.AuthAccountService"
+        ]
+      },
+      "delete": {
+        "summary": "Deletes a AuthAccount",
+        "operationId": "AuthAccountService_DeleteAuthAccount",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.services.v1.DeleteAuthAccountResponse"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "auth_method_id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "controller.api.services.v1.AuthAccountService"
+        ]
+      },
+      "patch": {
+        "summary": "Updates a AuthAccount",
+        "operationId": "AuthAccountService_UpdateAuthAccount",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/controller.api.resources.auth.v1.Account"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "auth_method_id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/controller.api.resources.auth.v1.Account"
+            }
+          }
+        ],
+        "tags": [
+          "controller.api.services.v1.AuthAccountService"
+        ]
+      }
+    },
     "/v1/scopes/*/auth-methods/{auth_method_id}:authenticate": {
       "post": {
         "summary": "Authenticate a user to an scope and retrieve an authentication token.",
@@ -1506,6 +1671,55 @@
     }
   },
   "definitions": {
+    "controller.api.resources.auth.v1.Account": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "The ID of the Project\nOutput only.",
+          "readOnly": true
+        },
+        "scope": {
+          "$ref": "#/definitions/controller.api.resources.scopes.v1.ScopeInfo",
+          "description": "Scope information for this resource\nOutput only.",
+          "readOnly": true
+        },
+        "name": {
+          "type": "string",
+          "title": "Optional name for identification purposes"
+        },
+        "description": {
+          "type": "string",
+          "title": "Optional user-set descripton for identification purposes"
+        },
+        "created_time": {
+          "type": "string",
+          "format": "date-time",
+          "description": "The time this resource was created\nOutput only.",
+          "readOnly": true
+        },
+        "updated_time": {
+          "type": "string",
+          "format": "date-time",
+          "description": "The time this resource was last updated.\nOutput only.",
+          "readOnly": true
+        },
+        "disabled": {
+          "type": "boolean",
+          "format": "boolean",
+          "title": "Whether the resource is disabled"
+        },
+        "type": {
+          "type": "string",
+          "description": "The type of this account.  Possible values are: \"password\", \"oidc\"."
+        },
+        "attributes": {
+          "type": "object",
+          "description": "The attributes that are applicable for the specific Account type."
+        }
+      },
+      "title": "Account contains all fields related to an auth Account resource"
+    },
     "controller.api.resources.authtokens.v1.AuthToken": {
       "type": "object",
       "properties": {
@@ -2168,6 +2382,17 @@
         }
       }
     },
+    "controller.api.services.v1.CreateAuthAccountResponse": {
+      "type": "object",
+      "properties": {
+        "uri": {
+          "type": "string"
+        },
+        "item": {
+          "$ref": "#/definitions/controller.api.resources.auth.v1.Account"
+        }
+      }
+    },
     "controller.api.services.v1.CreateGroupResponse": {
       "type": "object",
       "properties": {
@@ -2245,6 +2470,15 @@
         }
       }
     },
+    "controller.api.services.v1.DeleteAuthAccountResponse": {
+      "type": "object",
+      "properties": {
+        "existed": {
+          "type": "boolean",
+          "format": "boolean"
+        }
+      }
+    },
     "controller.api.services.v1.DeleteAuthTokenResponse": {
       "type": "object",
       "properties": {
@@ -2317,6 +2551,14 @@
         }
       }
     },
+    "controller.api.services.v1.GetAuthAccountResponse": {
+      "type": "object",
+      "properties": {
+        "item": {
+          "$ref": "#/definitions/controller.api.resources.auth.v1.Account"
+        }
+      }
+    },
     "controller.api.services.v1.GetAuthTokenResponse": {
       "type": "object",
       "properties": {
@@ -2378,6 +2620,17 @@
       "properties": {
         "item": {
           "$ref": "#/definitions/controller.api.resources.users.v1.User"
+        }
+      }
+    },
+    "controller.api.services.v1.ListAuthAccountsResponse": {
+      "type": "object",
+      "properties": {
+        "items": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/controller.api.resources.auth.v1.Account"
+          }
         }
       }
     },
@@ -2631,6 +2884,14 @@
       "properties": {
         "item": {
           "$ref": "#/definitions/controller.api.resources.roles.v1.Role"
+        }
+      }
+    },
+    "controller.api.services.v1.UpdateAuthAccountResponse": {
+      "type": "object",
+      "properties": {
+        "item": {
+          "$ref": "#/definitions/controller.api.resources.auth.v1.Account"
         }
       }
     },
