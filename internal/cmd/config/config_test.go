@@ -69,6 +69,10 @@ func TestDevController(t *testing.T) {
 				MaximumGaugeCardinality: 500,
 			},
 		},
+		Controller: &Controller{
+			Name:        "dev-controller",
+			Description: "A default controller created in dev mode",
+		},
 		DevController: true,
 	}
 
@@ -125,7 +129,6 @@ func TestDevWorker(t *testing.T) {
 }
 
 func TestConfigDecrypt(t *testing.T) {
-
 	const (
 		clr = `
 kms "aead" {

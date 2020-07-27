@@ -24,4 +24,16 @@ message StatusResponse {
   // worker cancels the job, it will no longer show up in active_jobs in the
   // next heartbeat, and we can move the job to canceled state.
   repeated string cancel_job_ids = 10;
+
+  // Active controllers. This can be used (eventually) for conneciton
+  // management.
+  repeated ControllerInfo controllers = 20;
+}
+
+message ControllerInfo {
+  // The name of the controller. 
+  string name = 10;
+
+  // The address of the controller.
+  string address = 20;
 }

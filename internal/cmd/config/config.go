@@ -24,6 +24,11 @@ telemetry {
 `
 
 	devControllerExtraConfig = `
+controller {
+	name = "dev-controller"
+	description = "A default controller created in dev mode"
+}
+
 kms "aead" {
 	purpose = "controller"
 	aead_type = "aes-gcm"
@@ -73,10 +78,16 @@ worker {
 type Config struct {
 	*configutil.SharedConfig `hcl:"-"`
 
-	DevController        bool    `hcl:"-"`
-	DefaultOrgId         string  `hcl:"default_org_id"`
-	PassthroughDirectory string  `hcl:"-"`
-	Worker               *Worker `hcl:"worker"`
+	DevController        bool        `hcl:"-"`
+	DefaultOrgId         string      `hcl:"default_org_id"`
+	PassthroughDirectory string      `hcl:"-"`
+	Worker               *Worker     `hcl:"worker"`
+	Controller           *Controller `hcl:"controller"`
+}
+
+type Controller struct {
+	Name        string `hcl:"name"`
+	Description string `hcl:"description"`
 }
 
 type Worker struct {
