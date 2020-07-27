@@ -10,13 +10,6 @@ import "google/protobuf/struct.proto";
 import "controller/api/resources/scopes/v1/scope.proto";
 import "controller/custom_options/v1/masks.proto";
 
-message PasswordAccountAttributes {
-	// The username of this account.  This is unique per auth method.
-	string username = 1;
-	// The password for this account.
-	google.protobuf.StringValue password = 2;
-}
-
 // Account contains all fields related to an auth Account resource
 message Account {
 	// The ID of the Project
@@ -49,4 +42,11 @@ message Account {
 
 	// The attributes that are applicable for the specific Account type.
 	google.protobuf.Struct attributes = 9;
+}
+
+message PasswordAccountAttributes {
+	// The username of this account.  This is unique per auth method.
+	string username = 1;
+	// The password for this account.
+	google.protobuf.StringValue password = 2;
 }

@@ -184,8 +184,8 @@ func (s Service) updateInRepo(ctx context.Context, authMethodId, id string, mask
 	if name := item.GetName(); name != nil {
 		opts = append(opts, password.WithName(name.GetValue()))
 	}
-	attributes := item.GetAttributes().GetFields()
-	u, err := password.NewAccount(authMethodId, item.GetAttributes().Fields["username"].GetStringValue(), opts...)
+	attrs := item.GetAttributes().GetFields()
+	u, err := password.NewAccount(authMethodId, attrs["username"].GetStringValue(), opts...)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "Unable to build user for update: %v.", err)
 	}
@@ -282,6 +282,14 @@ func validateCreateRequest(req *pbs.CreateAuthAccountRequest) error {
 	if item.GetUpdatedTime() != nil {
 		badFields["updated_time"] = "This is a read only field."
 	}
+	switch item.GetType() {
+	case "password":
+		if err := handlers.StructToProto(item.GetAttributes(), &pb.PasswordAccountAttributes{}); err != nil {
+			badFields["attributes"] = "Attribute fields do not match the expected format."
+		}
+	default:
+		badFields["type"] = "This is a required field."
+	}
 	if len(badFields) > 0 {
 		return handlers.InvalidArgumentErrorf("Argument errors found in the request.", badFields)
 	}
@@ -312,6 +320,17 @@ func validateUpdateRequest(req *pbs.UpdateAuthAccountRequest) error {
 	if item.GetUpdatedTime() != nil {
 		badFields["updated_time"] = "This is a read only field and cannot be specified in an update request."
 	}
+	if item.GetType() != "" {
+		badFields["type"] = "This is field cannot be modified."
+	}
+
+	switch {
+	case item.GetAttributes() == nil:
+	case nil == handlers.StructToProto(item.GetAttributes(), &pb.PasswordAccountAttributes{}):
+	default:
+		badFields["attributes"] = "Attribute fields do not match the expected format."
+	}
+
 	if len(badFields) > 0 {
 		return handlers.InvalidArgumentErrorf("Errors in provided fields.", badFields)
 	}
