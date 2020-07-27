@@ -27,7 +27,7 @@ func TestRepository_GetSetConfiguration(t *testing.T) {
 	// The order of these tests are important. Some tests have a dependency
 	// on prior tests.
 
-	var Original string // original configuration ID
+	var original string // original configuration ID
 
 	t.Run("has-default-configuration", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
@@ -39,17 +39,17 @@ func TestRepository_GetSetConfiguration(t *testing.T) {
 		require.True(ok, "want *Argon2Configuration")
 
 		require.NotEmpty(conf.PublicId, "default configuration PublicId")
-		Original = conf.PublicId
+		original = conf.PublicId
 
 		want := NewArgon2Configuration()
-		want.PublicId = Original
+		want.PublicId = original
 		want.CreateTime = conf.CreateTime
 		want.PasswordMethodId = authMethodId
 		require.Equal(want, got)
 	})
 	t.Run("change-configuration", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
-		require.NotEmpty(Original, "Original ID")
+		require.NotEmpty(original, "Original ID")
 
 		current, err := repo.GetConfiguration(ctx, authMethodId)
 		assert.NoError(err)
@@ -57,7 +57,7 @@ func TestRepository_GetSetConfiguration(t *testing.T) {
 
 		currentConf, ok := current.(*Argon2Configuration)
 		require.True(ok, "want *Argon2Configuration")
-		assert.Equal(Original, currentConf.PublicId)
+		assert.Equal(original, currentConf.PublicId)
 
 		newConf := NewArgon2Configuration()
 		assert.Empty(newConf.PublicId)
@@ -74,7 +74,7 @@ func TestRepository_GetSetConfiguration(t *testing.T) {
 
 		assert.NotSame(newConf, updatedConf)
 		assert.NotEmpty(updatedConf.PublicId, "updatedConf.PublicId")
-		assert.NotEqual(Original, updatedConf.PublicId)
+		assert.NotEqual(original, updatedConf.PublicId)
 
 		current2, err := repo.GetConfiguration(ctx, authMethodId)
 		assert.NoError(err)
@@ -87,7 +87,7 @@ func TestRepository_GetSetConfiguration(t *testing.T) {
 	})
 	t.Run("change-to-old-configuration", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
-		require.NotEmpty(Original, "Original ID")
+		require.NotEmpty(original, "Original ID")
 
 		newConf := NewArgon2Configuration()
 		newConf.PasswordMethodId = authMethodId
@@ -103,7 +103,7 @@ func TestRepository_GetSetConfiguration(t *testing.T) {
 
 		assert.NotSame(newConf, updatedConf)
 		assert.NotEmpty(updatedConf.PublicId, "updatedConf.PublicId")
-		assert.Equal(Original, updatedConf.PublicId)
+		assert.Equal(original, updatedConf.PublicId)
 
 		current, err := repo.GetConfiguration(ctx, authMethodId)
 		assert.NoError(err)
