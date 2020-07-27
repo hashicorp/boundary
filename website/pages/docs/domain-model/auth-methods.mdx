@@ -1,0 +1,27 @@
+---
+layout: docs
+page_title: Configuration
+sidebar_title: Authentication Methods
+description: |-
+  How to configure Watchtower authentication methods
+---
+
+# Authentication Methods
+
+An authentication method is a method configured for an Organization to authenticate Users. The configuration of an Authentication Method may contain secrets. Zero or one Authentication Method can be configured to create Users. Creation of Groups may be added later. An Authentication Method is owned by one and only one Organization. An Authentication Method creates and references zero or more Users. An Authentication Method is deleted when the Organization it belongs to is deleted. The lifecycle of an Authentication Method is not tied to the lifecycle of any User.
+
+```shell-session
++---------------------------------------------+
+|                Organization                 |
++---------------------------------------------+
+| Auth OIDC 1 | Auth OIDC 2 | Auth Userpass 1 |
++---------------------------------------------+
+```
+
+# Attributes
+
+### ID
+
+An authentication method ID has a `am_` prefix followed by ten digits.
+
+Example: `am_0123456789`

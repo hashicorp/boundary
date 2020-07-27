@@ -1,0 +1,13 @@
+---
+layout: docs
+page_title: Configuration
+sidebar_title: Target
+description: |-
+  The annatomy of a Watchtower target
+---
+
+# Target
+
+A target is a networked service a User can connect to and interact with through Watchtower. A Target does not directly contain any secrets. A Target contains a collection of Hosts. A Target belongs to one and only one Scope. A Target can contain zero or more Host Sets. Target is abstract. A Target is deleted when the Scope it belongs to is deleted. The lifecycle of a Target is not tied to the lifecycle of any Host Set.
+
+## Attributes
