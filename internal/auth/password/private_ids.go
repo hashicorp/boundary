@@ -12,7 +12,7 @@ const (
 )
 
 func newArgon2ConfigurationId() (string, error) {
-	id, err := db.NewPublicId(argon2ConfigurationPrefix)
+	id, err := db.NewPrivateId(argon2ConfigurationPrefix)
 	if err != nil {
 		return "", fmt.Errorf("new password argon2 configuration id: %w", err)
 	}
