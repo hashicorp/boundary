@@ -1,0 +1,13 @@
+---
+layout: docs
+page_title: Configuration
+sidebar_title: Host Set
+description: |-
+  The annatomy of a Watchtower host set
+---
+
+# Host Set
+
+A host set is a resource which provides a subset of Hosts from the set of Hosts of the Host Catalog it belongs to. A Host Set belongs to one and only one Host Catalog. A Host Set can contain zero or more Hosts. A Host Set can be contained by zero or more Targets. Host Set is abstract. A Host Set is deleted when the Host Catalog it belongs to is deleted. The lifecycle of a Host Set is not tied to the lifecycle of any Targets or Hosts.
+
+## Attributes
