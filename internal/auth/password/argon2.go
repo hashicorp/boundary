@@ -38,7 +38,10 @@ func NewArgon2Configuration() *Argon2Configuration {
 
 // AuthMethodId returns the Id of the AuthMethod which owns c.
 func (c *Argon2Configuration) AuthMethodId() string {
-	return c.PasswordMethodId
+	if c != nil && c.Argon2Configuration != nil {
+		return c.PasswordMethodId
+	}
+	return ""
 }
 
 func (c *Argon2Configuration) clone() *Argon2Configuration {

@@ -206,6 +206,11 @@ func TestRepository_SetConfiguration(t *testing.T) {
 			wantIsErr: db.ErrNilParameter,
 		},
 		{
+			name:      "nil-embedded-config",
+			in:        &Argon2Configuration{},
+			wantIsErr: db.ErrInvalidParameter,
+		},
+		{
 			name:      "invalid-no-authMethodId",
 			in:        NewArgon2Configuration(),
 			wantIsErr: db.ErrInvalidParameter,

@@ -48,6 +48,9 @@ func (r *Repository) SetConfiguration(ctx context.Context, c Configuration) (Con
 
 	switch v := c.(type) {
 	case *Argon2Configuration:
+		if v.Argon2Configuration == nil {
+			return nil, fmt.Errorf("set password configuration: missing embedded Argon2Configuration: %w", db.ErrInvalidParameter)
+		}
 		out, err := r.setArgon2Conf(ctx, v)
 		if err != nil {
 			return nil, fmt.Errorf("set password configuration: %w", err)
