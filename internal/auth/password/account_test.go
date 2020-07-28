@@ -14,7 +14,7 @@ func TestAccount_New(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 
 	w := db.New(conn)
-	auts := testAuthMethods(t, conn, 1)
+	auts := TestAuthMethods(t, conn, 1)
 	aut := auts[0]
 
 	type args struct {
