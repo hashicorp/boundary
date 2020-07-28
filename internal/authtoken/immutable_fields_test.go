@@ -6,6 +6,7 @@ import (
 
 	"github.com/hashicorp/watchtower/internal/db"
 	"github.com/hashicorp/watchtower/internal/db/timestamp"
+	"github.com/hashicorp/watchtower/internal/iam"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/proto"
@@ -20,7 +21,8 @@ func TestAuthToken_ImmutableFields(t *testing.T) {
 
 	ts := timestamp.Timestamp{Timestamp: &timestamppb.Timestamp{Seconds: 0, Nanos: 0}}
 
-	new := TestAuthToken(t, conn, wrapper)
+	org, _ := iam.TestScopes(t, conn)
+	new := TestAuthToken(t, conn, wrapper, org.PublicId)
 
 	var tests = []struct {
 		name      string
