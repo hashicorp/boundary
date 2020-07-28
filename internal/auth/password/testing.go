@@ -6,20 +6,18 @@ import (
 	"testing"
 
 	"github.com/hashicorp/watchtower/internal/db"
-	"github.com/hashicorp/watchtower/internal/iam"
 	"github.com/jinzhu/gorm"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
-func TestAuthMethods(t *testing.T, conn *gorm.DB, count int) []*AuthMethod {
+func TestAuthMethods(t *testing.T, conn *gorm.DB, scopeId string, count int) []*AuthMethod {
 	t.Helper()
 	assert, require := assert.New(t), require.New(t)
 	w := db.New(conn)
-	org, _ := iam.TestScopes(t, conn)
 	var auts []*AuthMethod
 	for i := 0; i < count; i++ {
-		cat, err := NewAuthMethod(org.GetPublicId())
+		cat, err := NewAuthMethod(scopeId)
 		assert.NoError(err)
 		require.NotNil(cat)
 		id, err := newAuthMethodId()

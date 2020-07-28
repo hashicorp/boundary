@@ -10,6 +10,7 @@ import (
 	"github.com/golang/protobuf/ptypes"
 	"github.com/google/go-cmp/cmp"
 	wrapping "github.com/hashicorp/go-kms-wrapping"
+	"github.com/hashicorp/watchtower/internal/auth/password"
 	iamStore "github.com/hashicorp/watchtower/internal/iam/store"
 	"github.com/hashicorp/watchtower/internal/oplog"
 	"github.com/stretchr/testify/assert"
@@ -132,9 +133,13 @@ func TestRepository_CreateAuthToken(t *testing.T) {
 	wrapper := db.TestWrapper(t)
 
 	org1, _ := iam.TestScopes(t, conn)
-	u1 := iam.TestUser(t, conn, org1.GetPublicId())
-	amId1 := setupAuthMethod(t, conn, org1.GetPublicId())
-	aAcct := setupAuthAccount(t, conn, org1.GetPublicId(), amId1, u1.GetPublicId())
+	am := password.TestAuthMethods(t, conn, org1.GetPublicId(), 1)[0]
+	aAcct := password.TestAccounts(t, conn, org1.GetPublicId(), am.GetPublicId(), 1)[0]
+
+	iamRepo, err := iam.NewRepository(rw, rw, wrapper)
+	require.NoError(t, err)
+	u1, err := iamRepo.LookupUserWithLogin(context.Background(), aAcct.GetPublicId(), iam.WithAutoVivify(true))
+	require.NoError(t, err)
 
 	org2, _ := iam.TestScopes(t, conn)
 	u2 := iam.TestUser(t, conn, org2.GetPublicId())
