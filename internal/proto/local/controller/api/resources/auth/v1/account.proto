@@ -20,28 +20,32 @@ message Account {
 	// Output only.
 	resources.scopes.v1.ScopeInfo scope = 2;
 
+	// The auth method this account is created for.
+	// Output only.
+	string parent_id = 3 [json_name="parent_id"];
+
 	// Optional name for identification purposes
-	google.protobuf.StringValue name = 3 [(custom_options.v1.mask_mapping) = {this:"name" that: "name"}];
+	google.protobuf.StringValue name = 4 [(custom_options.v1.mask_mapping) = {this:"name" that: "name"}];
 
 	// Optional user-set descripton for identification purposes
-	google.protobuf.StringValue description = 4 [(custom_options.v1.mask_mapping) = {this:"description" that: "description"}];
+	google.protobuf.StringValue description = 5 [(custom_options.v1.mask_mapping) = {this:"description" that: "description"}];
 
 	// The time this resource was created
 	// Output only.
-	google.protobuf.Timestamp created_time = 5 [json_name="created_time"];
+	google.protobuf.Timestamp created_time = 6 [json_name="created_time"];
 
 	// The time this resource was last updated.
 	// Output only.
-	google.protobuf.Timestamp updated_time = 6 [json_name="updated_time"];
+	google.protobuf.Timestamp updated_time = 7 [json_name="updated_time"];
 
 	// Whether the resource is disabled
-	google.protobuf.BoolValue disabled = 7;
+	google.protobuf.BoolValue disabled = 8;
 
 	// The type of this account.  Possible values are: "password", "oidc".
-	string type = 8;
+	string type = 9;
 
 	// The attributes that are applicable for the specific Account type.
-	google.protobuf.Struct attributes = 9;
+	google.protobuf.Struct attributes = 10;
 }
 
 message PasswordAccountAttributes {
