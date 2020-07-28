@@ -186,7 +186,7 @@ begin;
 
   --
   -- triggers for time columns
-  ---
+  --
 
   create trigger
     update_time_column
@@ -224,7 +224,10 @@ begin;
   insert on auth_password_account
     for each row execute procedure default_create_time();
 
-  insert into oplog_ticket (name, version)
+  -- The tickets for oplog are the subtypes not the base types because no updates
+  -- are done to any values in the base types.
+  insert into oplog_ticket
+    (name, version)
   values
     ('auth_password_method', 1),
     ('auth_password_account', 1);

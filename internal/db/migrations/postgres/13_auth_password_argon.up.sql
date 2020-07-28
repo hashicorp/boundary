@@ -51,7 +51,7 @@ begin;
 
   --
   -- triggers for time columns
-  ---
+  --
   create trigger
     immutable_create_time
   before
@@ -64,7 +64,10 @@ begin;
   insert on auth_password_argon2_conf
     for each row execute procedure default_create_time();
 
-  insert into oplog_ticket (name, version)
+  -- The tickets for oplog are the subtypes not the base types because no updates
+  -- are done to any values in the base types.
+  insert into oplog_ticket
+    (name, version)
   values
     ('auth_password_argon2_conf', 1),
     ('auth_password_argon2_cred', 1);
