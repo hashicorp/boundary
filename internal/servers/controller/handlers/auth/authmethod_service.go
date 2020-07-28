@@ -1,4 +1,4 @@
-package auth_methods
+package auth
 
 import (
 	"context"
@@ -7,36 +7,37 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/hashicorp/vault/command/agent/auth"
+	"github.com/hashicorp/watchtower/internal/auth"
+	"github.com/hashicorp/watchtower/internal/auth/password"
+	"github.com/hashicorp/watchtower/internal/auth/password/store"
 	"github.com/hashicorp/watchtower/internal/db"
 	pb "github.com/hashicorp/watchtower/internal/gen/controller/api/resources/auth"
 	pbs "github.com/hashicorp/watchtower/internal/gen/controller/api/services"
-	"github.com/hashicorp/watchtower/internal/iam"
 	"github.com/hashicorp/watchtower/internal/servers/controller/handlers"
-	"github.com/hashicorp/watchtower/internal/types/scope"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 )
 
-const orgIdFieldName = "org_id"
-
 var (
+	maskManager handlers.MaskManager
 	reInvalidID = regexp.MustCompile("[^A-Za-z0-9]")
-	// TODO(ICU-28): Find a way to auto update these names and enforce the mappings between wire and storage.
-	wireToStorageMask = map[string]string{
-		"name":        "Name",
-		"description": "Description",
-	}
 )
+
+func init() {
+	var err error
+	if maskManager, err = handlers.NewMaskManager(&pb.AuthMethod{}, &store.AuthMethod{}); err != nil {
+		panic(err)
+	}
+}
 
 // Service handles request as described by the pbs.AuthMethodServiceServer interface.
 type Service struct {
-	repoFn func() (*iam.Repository, error)
+	repoFn func() (*password.Repository, error)
 }
 
 // NewService returns a auth method service which handles auth method related requests to watchtower.
-func NewService(repo func() (*iam.Repository, error)) (Service, error) {
+func NewService(repo func() (*password.Repository, error)) (Service, error) {
 	if repo == nil {
 		return Service{}, fmt.Errorf("nil iam repository provided")
 	}
@@ -47,10 +48,14 @@ var _ pbs.AuthMethodServiceServer = Service{}
 
 // ListAuthMethods implements the interface pbs.AuthMethodServiceServer.
 func (s Service) ListAuthMethods(ctx context.Context, req *pbs.ListAuthMethodsRequest) (*pbs.ListAuthMethodsResponse, error) {
+	authResults := auth.Verify(ctx)
+	if !authResults.Valid {
+		return nil, handlers.ForbiddenError()
+	}
 	if err := validateListRequest(req); err != nil {
 		return nil, err
 	}
-	ul, err := s.listFromRepo(ctx, req.GetOrgId())
+	ul, err := s.listFromRepo(ctx, authResults.Scope.GetId())
 	if err != nil {
 		return nil, err
 	}
@@ -59,8 +64,10 @@ func (s Service) ListAuthMethods(ctx context.Context, req *pbs.ListAuthMethodsRe
 
 // GetAuthMethods implements the interface pbs.AuthMethodServiceServer.
 func (s Service) GetAuthMethod(ctx context.Context, req *pbs.GetAuthMethodRequest) (*pbs.GetAuthMethodResponse, error) {
-	auth := handlers.ToTokenMetadata(ctx)
-	_ = auth
+	authResults := auth.Verify(ctx)
+	if !authResults.Valid {
+		return nil, handlers.ForbiddenError()
+	}
 	if err := validateGetRequest(req); err != nil {
 		return nil, err
 	}
@@ -73,12 +80,14 @@ func (s Service) GetAuthMethod(ctx context.Context, req *pbs.GetAuthMethodReques
 
 // CreateAuthMethod implements the interface pbs.AuthMethodServiceServer.
 func (s Service) CreateAuthMethod(ctx context.Context, req *pbs.CreateAuthMethodRequest) (*pbs.CreateAuthMethodResponse, error) {
-	auth := handlers.ToTokenMetadata(ctx)
-	_ = auth
+	authResults := auth.Verify(ctx)
+	if !authResults.Valid {
+		return nil, handlers.ForbiddenError()
+	}
 	if err := validateCreateRequest(req); err != nil {
 		return nil, err
 	}
-	u, err := s.createInRepo(ctx, req.GetOrgId(), req.GetItem())
+	u, err := s.createInRepo(ctx, authResults.Scope.GetId(), req.GetItem())
 	if err != nil {
 		return nil, err
 	}
@@ -87,12 +96,14 @@ func (s Service) CreateAuthMethod(ctx context.Context, req *pbs.CreateAuthMethod
 
 // UpdateAuthMethod implements the interface pbs.AuthMethodServiceServer.
 func (s Service) UpdateAuthMethod(ctx context.Context, req *pbs.UpdateAuthMethodRequest) (*pbs.UpdateAuthMethodResponse, error) {
-	auth := handlers.ToTokenMetadata(ctx)
-	_ = auth
+	authResults := auth.Verify(ctx)
+	if !authResults.Valid {
+		return nil, handlers.ForbiddenError()
+	}
 	if err := validateUpdateRequest(req); err != nil {
 		return nil, err
 	}
-	u, err := s.updateInRepo(ctx, req.GetOrgId(), req.GetId(), req.GetUpdateMask().GetPaths(), req.GetItem())
+	u, err := s.updateInRepo(ctx, authResults.Scope.GetId(), req.GetId(), req.GetUpdateMask().GetPaths(), req.GetItem())
 	if err != nil {
 		return nil, err
 	}
@@ -101,8 +112,10 @@ func (s Service) UpdateAuthMethod(ctx context.Context, req *pbs.UpdateAuthMethod
 
 // DeleteAuthMethod implements the interface pbs.AuthMethodServiceServer.
 func (s Service) DeleteAuthMethod(ctx context.Context, req *pbs.DeleteAuthMethodRequest) (*pbs.DeleteAuthMethodResponse, error) {
-	auth := handlers.ToTokenMetadata(ctx)
-	_ = auth
+	authResults := auth.Verify(ctx)
+	if !authResults.Valid {
+		return nil, handlers.ForbiddenError()
+	}
 	if err := validateDeleteRequest(req); err != nil {
 		return nil, err
 	}
@@ -131,12 +144,12 @@ func (s Service) getFromRepo(ctx context.Context, id string) (*pb.AuthMethod, er
 	return toProto(u), nil
 }
 
-func (s Service) listFromRepo(ctx context.Context, orgId string) ([]*pb.AuthMethod, error) {
+func (s Service) listFromRepo(ctx context.Context, scopeId string) ([]*pb.AuthMethod, error) {
 	repo, err := s.repoFn()
 	if err != nil {
 		return nil, err
 	}
-	ul, err := repo.ListAuthMethods(ctx, orgId)
+	ul, err := repo.ListAuthMethods(ctx, scopeId)
 	if err != nil {
 		return nil, err
 	}
@@ -147,15 +160,15 @@ func (s Service) listFromRepo(ctx context.Context, orgId string) ([]*pb.AuthMeth
 	return outUl, nil
 }
 
-func (s Service) createInRepo(ctx context.Context, orgId string, item *pb.AuthMethod) (*pb.AuthMethod, error) {
-	var opts []iam.Option
+func (s Service) createInRepo(ctx context.Context, scopeId string, item *pb.AuthMethod) (*pb.AuthMethod, error) {
+	var opts []password.Option
 	if item.GetName() != nil {
-		opts = append(opts, iam.WithName(item.GetName().GetValue()))
+		opts = append(opts, password.WithName(item.GetName().GetValue()))
 	}
 	if item.GetDescription() != nil {
-		opts = append(opts, iam.WithDescription(item.GetDescription().GetValue()))
+		opts = append(opts, password.WithDescription(item.GetDescription().GetValue()))
 	}
-	u, err := iam.NewAuthMethod(orgId, opts...)
+	u, err := password.NewAuthMethod(scopeId, opts...)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "Unable to build auth method for creation: %v.", err)
 	}
@@ -173,23 +186,20 @@ func (s Service) createInRepo(ctx context.Context, orgId string, item *pb.AuthMe
 	return toProto(out), nil
 }
 
-func (s Service) updateInRepo(ctx context.Context, orgId, id string, mask []string, item *pb.AuthMethod) (*pb.AuthMethod, error) {
-	var opts []iam.Option
+func (s Service) updateInRepo(ctx context.Context, scopeId, id string, mask []string, item *pb.AuthMethod) (*pb.AuthMethod, error) {
+	var opts []password.Option
 	if desc := item.GetDescription(); desc != nil {
-		opts = append(opts, iam.WithDescription(desc.GetValue()))
+		opts = append(opts, password.WithDescription(desc.GetValue()))
 	}
 	if name := item.GetName(); name != nil {
-		opts = append(opts, iam.WithName(name.GetValue()))
+		opts = append(opts, password.WithName(name.GetValue()))
 	}
-	u, err := iam.NewAuthMethod(orgId, opts...)
+	u, err := password.NewAuthMethod(scopeId, opts...)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "Unable to build auth method for update: %v.", err)
 	}
 	u.PublicId = id
-	dbMask, err := toDbUpdateMask(mask)
-	if err != nil {
-		return nil, err
-	}
+	dbMask := maskManager.Translate(mask)
 	if len(dbMask) == 0 {
 		return nil, handlers.InvalidArgumentErrorf("No valid fields included in the update mask.", map[string]string{"update_mask": "No valid paths provided in the update mask."})
 	}
@@ -222,26 +232,7 @@ func (s Service) deleteFromRepo(ctx context.Context, id string) (bool, error) {
 	return rows > 0, nil
 }
 
-// toDbUpdateMask converts the wire format's FieldMask into a list of strings containing FieldMask paths used
-func toDbUpdateMask(paths []string) ([]string, error) {
-	var dbPaths []string
-	var invalid []string
-	for _, p := range paths {
-		for _, f := range strings.Split(p, ",") {
-			if dbField, ok := wireToStorageMask[strings.TrimSpace(f)]; ok {
-				dbPaths = append(dbPaths, dbField)
-			} else {
-				invalid = append(invalid, f)
-			}
-		}
-	}
-	if len(invalid) > 0 {
-		return nil, handlers.InvalidArgumentErrorf(fmt.Sprintf("Invalid fields passed in update_update mask: %v.", invalid), map[string]string{"update_mask": fmt.Sprintf("Unknown paths provided in update mask: %q", strings.Join(invalid, ","))})
-	}
-	return dbPaths, nil
-}
-
-func toProto(in *auth.AuthMethod) *pb.AuthMethod {
+func toProto(in *password.AuthMethod) *pb.AuthMethod {
 	out := pb.AuthMethod{
 		Id:          in.GetPublicId(),
 		CreatedTime: in.GetCreateTime().GetTimestamp(),
@@ -262,8 +253,8 @@ func toProto(in *auth.AuthMethod) *pb.AuthMethod {
 //  * All required parameters are set
 //  * There are no conflicting parameters provided
 func validateGetRequest(req *pbs.GetAuthMethodRequest) error {
-	badFields := validateAncestors(req)
-	if !validId(req.GetId(), iam.AuthMethodPrefix+"_") {
+	badFields := map[string]string{}
+	if !validId(req.GetId(), password.AuthMethodPrefix+"_") {
 		badFields["id"] = "Invalid formatted id."
 	}
 	if len(badFields) > 0 {
@@ -273,7 +264,7 @@ func validateGetRequest(req *pbs.GetAuthMethodRequest) error {
 }
 
 func validateListRequest(req *pbs.ListAuthMethodsRequest) error {
-	badFields := validateAncestors(req)
+	badFields := map[string]string{}
 	if len(badFields) > 0 {
 		return handlers.InvalidArgumentErrorf("Improperly formatted identifier.", badFields)
 	}
@@ -281,7 +272,7 @@ func validateListRequest(req *pbs.ListAuthMethodsRequest) error {
 }
 
 func validateCreateRequest(req *pbs.CreateAuthMethodRequest) error {
-	badFields := validateAncestors(req)
+	badFields := map[string]string{}
 	item := req.GetItem()
 	if item.GetId() != "" {
 		badFields["id"] = "This is a read only field."
@@ -299,9 +290,9 @@ func validateCreateRequest(req *pbs.CreateAuthMethodRequest) error {
 }
 
 func validateUpdateRequest(req *pbs.UpdateAuthMethodRequest) error {
-	badFields := validateAncestors(req)
-	if !validId(req.GetId(), iam.AuthMethodPrefix+"_") {
-		badFields["auth_method_id"] = "Improperly formatted path identifier."
+	badFields := map[string]string{}
+	if !validId(req.GetId(), password.AuthMethodPrefix+"_") {
+		badFields["id"] = "Improperly formatted identifier."
 	}
 	if req.GetUpdateMask() == nil {
 		badFields["update_mask"] = "UpdateMask not provided but is required to update this resource."
@@ -330,8 +321,8 @@ func validateUpdateRequest(req *pbs.UpdateAuthMethodRequest) error {
 }
 
 func validateDeleteRequest(req *pbs.DeleteAuthMethodRequest) error {
-	badFields := validateAncestors(req)
-	if !validId(req.GetId(), iam.AuthMethodPrefix+"_") {
+	badFields := map[string]string{}
+	if !validId(req.GetId(), password.AuthMethodPrefix+"_") {
 		badFields["id"] = "Incorrectly formatted identifier."
 	}
 	if len(badFields) > 0 {
@@ -346,19 +337,4 @@ func validId(id, prefix string) bool {
 	}
 	id = strings.TrimPrefix(id, prefix)
 	return !reInvalidID.Match([]byte(id))
-}
-
-type ancestorProvider interface {
-	GetOrgId() string
-}
-
-// validateAncestors verifies that the ancestors of this call are properly set and provided.
-func validateAncestors(r ancestorProvider) map[string]string {
-	if r.GetOrgId() == "" {
-		return map[string]string{orgIdFieldName: "Missing organization id."}
-	}
-	if !validId(r.GetOrgId(), scope.Org.Prefix()+"_") {
-		return map[string]string{orgIdFieldName: "Improperly formatted identifier."}
-	}
-	return map[string]string{}
 }

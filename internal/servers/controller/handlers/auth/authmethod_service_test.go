@@ -1,4 +1,4 @@
-package auth_methods_test
+package auth_test
 
 import (
 	"context"
@@ -7,11 +7,12 @@ import (
 	"testing"
 
 	"github.com/golang/protobuf/ptypes"
+	"github.com/hashicorp/watchtower/internal/auth/password"
 	"github.com/hashicorp/watchtower/internal/db"
 	pb "github.com/hashicorp/watchtower/internal/gen/controller/api/resources/auth"
 	pbs "github.com/hashicorp/watchtower/internal/gen/controller/api/services"
 	"github.com/hashicorp/watchtower/internal/iam"
-	"github.com/hashicorp/watchtower/internal/servers/controller/handlers/auth_methods"
+	"github.com/hashicorp/watchtower/internal/servers/controller/handlers/auth"
 	"github.com/hashicorp/watchtower/internal/types/scope"
 	"google.golang.org/genproto/protobuf/field_mask"
 	"google.golang.org/grpc/codes"
@@ -23,17 +24,17 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func createDefaultAuthMethodAndRepo(t *testing.T) (*iam.AuthMethod, func() (*iam.Repository, error)) {
+func createDefaultAuthMethodAndRepo(t *testing.T) (*password.AuthMethod, func() (*password.Repository, error)) {
 	t.Helper()
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrap := db.TestWrapper(t)
-	repoFn := func() (*iam.Repository, error) {
-		return iam.NewRepository(rw, rw, wrap)
+	repoFn := func() (*password.Repository, error) {
+		return password.NewRepository(rw, rw, wrap)
 	}
 
 	o, _ := iam.TestScopes(t, conn)
-	am := iam.TestAuthMethod(t, conn, o.GetPublicId(), iam.WithDescription("default"), iam.WithName("default"))
+	am := password.testAuthMethod(t, conn, o.GetPublicId(), iam.WithDescription("default"), iam.WithName("default"))
 	return am, repoFn
 }
 
@@ -90,7 +91,7 @@ func TestGet(t *testing.T) {
 			req := proto.Clone(toMerge).(*pbs.GetAuthMethodRequest)
 			proto.Merge(req, tc.req)
 
-			s, err := auth_methods.NewService(repo)
+			s, err := auth.NewService(repo)
 			require.NoError(err, "Couldn't create new auth_method service.")
 
 			got, gErr := s.GetAuthMethod(context.Background(), req)
@@ -116,7 +117,7 @@ func TestList(t *testing.T) {
 
 	var wantAuthMethods []*pb.AuthMethod
 	for i := 0; i < 10; i++ {
-		newU, err := iam.NewAuthMethod(oWithAuthMethods.GetPublicId())
+		newU, err := password.NewAuthMethod(oWithAuthMethods.GetPublicId())
 		require.NoError(err)
 		am, err := repo.CreateAuthMethod(context.Background(), newU)
 		require.NoError(err)
@@ -161,7 +162,7 @@ func TestList(t *testing.T) {
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			s, err := auth_methods.NewService(repoFn)
+			s, err := auth.NewService(repoFn)
 			require.NoError(err, "Couldn't create new auth_method service.")
 
 			got, gErr := s.ListAuthMethods(context.Background(), tc.req)
@@ -175,7 +176,7 @@ func TestDelete(t *testing.T) {
 	require := require.New(t)
 	am, repo := createDefaultAuthMethodAndRepo(t)
 
-	s, err := auth_methods.NewService(repo)
+	s, err := auth.NewService(repo)
 	require.NoError(err, "Error when getting new auth_method service.")
 
 	cases := []struct {
@@ -251,7 +252,7 @@ func TestDelete_twice(t *testing.T) {
 	require := require.New(t)
 	am, repo := createDefaultAuthMethodAndRepo(t)
 
-	s, err := auth_methods.NewService(repo)
+	s, err := auth.NewService(repo)
 	require.NoError(err, "Error when getting new auth_method service")
 	req := &pbs.DeleteAuthMethodRequest{
 		OrgId: am.GetScopeId(),
@@ -326,7 +327,7 @@ func TestCreate(t *testing.T) {
 			req := proto.Clone(toMerge).(*pbs.CreateAuthMethodRequest)
 			proto.Merge(req, tc.req)
 
-			s, err := auth_methods.NewService(repo)
+			s, err := auth.NewService(repo)
 			require.NoError(err, "Error when getting new auth_method service.")
 
 			got, gErr := s.CreateAuthMethod(context.Background(), req)
@@ -355,7 +356,7 @@ func TestCreate(t *testing.T) {
 func TestUpdate(t *testing.T) {
 	require := require.New(t)
 	am, repoFn := createDefaultAuthMethodAndRepo(t)
-	tested, err := auth_methods.NewService(repoFn)
+	tested, err := auth.NewService(repoFn)
 	require.NoError(err, "Error when getting new auth_method service.")
 
 	resetAuthMethod := func() {
