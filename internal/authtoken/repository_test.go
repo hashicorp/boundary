@@ -3,6 +3,7 @@ package authtoken
 import (
 	"context"
 	"errors"
+	"sort"
 	"testing"
 	"time"
 
@@ -575,7 +576,9 @@ func TestRepository_ListAuthTokens(t *testing.T) {
 				return
 			}
 			assert.NoError(err)
-			assert.ElementsMatchf(tt.want, got, "row count")
+			sort.Slice(tt.want, func(i, j int) bool { return tt.want[i].PublicId < tt.want[j].PublicId })
+			sort.Slice(got, func(i, j int) bool { return got[i].PublicId < got[j].PublicId })
+			assert.Empty(cmp.Diff(tt.want, got, protocmp.Transform()), "row count")
 		})
 	}
 }

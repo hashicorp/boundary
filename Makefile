@@ -85,6 +85,21 @@ protobuild:
 protolint:
 	@buf check lint
 
-.PHONY: api tools gen migrations proto
+# must have nodejs and npm installed
+website: website-install website-start
+
+website-install:
+	@npm install --prefix website/
+
+website-start:
+	@npm start --prefix website/
+
+test-ci: install-go
+	~/.go/bin/go test ./... -v $(TESTARGS) -timeout 120m
+
+install-go:
+	./ci/goinstall.sh
+
+.PHONY: api tools gen migrations proto website
 
 .NOTPARALLEL:
