@@ -33,7 +33,7 @@ message Argon2Configuration {
 
   // Memory is the memory parameter in the Argon2 specification. It
   // specifies the size of the memory in KiB. For example Memory=32*1024
-	// sets the memory cost to ~32 MB. Must be > 0.
+  // sets the memory cost to ~32 MB. Must be > 0.
   // @inject_tag: `gorm:"default:null"`
   uint32 memory = 5;
 
@@ -42,11 +42,11 @@ message Argon2Configuration {
   // @inject_tag: `gorm:"default:null"`
   uint32 threads = 6;
 
-	// SaltLength is in bytes. Must be >= 16.
+  // SaltLength is in bytes. Must be >= 16.
   // @inject_tag: `gorm:"default:null"`
   uint32 salt_length = 7;
 
-	// KeyLength is in bytes. Must be >= 16.
+  // KeyLength is in bytes. Must be >= 16.
   // @inject_tag: `gorm:"default:null"`
   uint32 key_length = 8;
 }
