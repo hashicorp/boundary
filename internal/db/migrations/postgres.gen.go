@@ -1680,17 +1680,17 @@ begin;
   │ iam_user_id    (fk2)     │          │ ...                      │          │ password_account_id (fk2)     │
   └──────────────────────────┘          └──────────────────────────┘          └───────────────────────────────┘
 
-  An auth_method is "abstract". An auth_password_method is a concrete
-  auth_method. For every row in auth_password_method there is one row in
-  auth_method with the same public_id and scope_id.
+  An auth_method is a base type. An auth_password_method is an auth_method
+  subtype. For every row in auth_password_method there is one row in auth_method
+  with the same public_id and scope_id.
 
-  Similarly, an auth_account is "abstract". An auth_password_account is a concrete
-  auth_account. For every row in auth_password_account there is one row in
-  auth_account with the same public_id, scope_id, and auth_method_id.
+  Similarly, an auth_account is a base type. An auth_password_account is an
+  auth_account subtype. For every row in auth_password_account there is one row
+  in auth_account with the same public_id, scope_id, and auth_method_id.
 
-  Both auth_password_conf and auth_password_credential are abstract. Each
-  password key derivation function will require a concrete auth_password_conf
-  and auth_password_credential table.
+  Both auth_password_conf and auth_password_credential are base types. Each
+  password key derivation function will require a auth_password_conf and
+  auth_password_credential table.
 
   An auth_method can have 0 or 1 auth_password_method.
   An auth_account can have 0 or 1 auth_password_account.
@@ -1778,8 +1778,8 @@ begin;
     unique(password_method_id, public_id)
   );
 
-  -- insert_auth_password_conf_subtype() is a trigger function for concrete
-  -- implementations of auth_password_conf
+  -- insert_auth_password_conf_subtype() is a trigger function for subtypes of
+  -- auth_password_conf
   create or replace function
     insert_auth_password_conf_subtype()
     returns trigger
@@ -1809,8 +1809,8 @@ begin;
     unique(password_method_id, password_conf_id, password_account_id)
   );
 
-  -- insert_auth_password_credential_subtype() is a trigger function for concrete
-  -- implementations of auth_password_credential
+  -- insert_auth_password_credential_subtype() is a trigger function for
+  -- subtypes of auth_password_credential
   create or replace function
     insert_auth_password_credential_subtype()
     returns trigger

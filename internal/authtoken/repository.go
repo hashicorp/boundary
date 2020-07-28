@@ -86,9 +86,9 @@ func (r *Repository) CreateAuthToken(ctx context.Context, withIamUserId, withAut
 	at.Token = token
 
 	// TODO: Allow the caller to specify something different than the default duration.
-	// We round the expiration time to the nearest second to make testing in different platforms with
+	// We truncate the expiration time to the nearest second to make testing in different platforms with
 	// different time resolutions easier.
-	expiration, err := ptypes.TimestampProto(time.Now().Round(time.Second).Add(maxTokenDuration))
+	expiration, err := ptypes.TimestampProto(time.Now().Add(maxTokenDuration).Truncate(time.Second))
 	if err != nil {
 		return nil, err
 	}
