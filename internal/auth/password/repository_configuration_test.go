@@ -4,9 +4,11 @@ import (
 	"context"
 	"errors"
 	"testing"
+	"time"
 
 	"github.com/hashicorp/watchtower/internal/auth/password/store"
 	"github.com/hashicorp/watchtower/internal/db"
+	"github.com/hashicorp/watchtower/internal/oplog"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -300,6 +302,8 @@ func TestRepository_SetConfiguration(t *testing.T) {
 			assert.Equal(tt.want.Threads, gotConf.Threads)
 			assert.Equal(tt.want.SaltLength, gotConf.SaltLength)
 			assert.Equal(tt.want.KeyLength, gotConf.KeyLength)
+
+			assert.NoError(db.TestVerifyOplog(t, rw, gotConf.PrivateId, db.WithOperation(oplog.OpType_OP_TYPE_CREATE), db.WithCreateNotBefore(10*time.Second)))
 		})
 	}
 }
