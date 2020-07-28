@@ -24,10 +24,9 @@ func TestHostCatalog_ImmutableFields(t *testing.T) {
 	new := testCatalog(t, conn)
 
 	var tests = []struct {
-		name           string
-		update         *HostCatalog
-		fieldMask      []string
-		wantRowUpdated int
+		name      string
+		update    *HostCatalog
+		fieldMask []string
 	}{
 		{
 			name: "public_id",
@@ -67,7 +66,7 @@ func TestHostCatalog_ImmutableFields(t *testing.T) {
 
 			rowsUpdated, err := w.Update(context.Background(), tt.update, tt.fieldMask, nil)
 			require.Error(err)
-			assert.Equal(tt.wantRowUpdated, rowsUpdated)
+			assert.Equal(0, rowsUpdated)
 
 			after := new.clone()
 			err = w.LookupById(context.Background(), after)
@@ -91,10 +90,9 @@ func TestStaticHost_ImmutableFields(t *testing.T) {
 	new := hosts[0]
 
 	var tests = []struct {
-		name           string
-		update         *Host
-		fieldMask      []string
-		wantRowUpdated int
+		name      string
+		update    *Host
+		fieldMask []string
 	}{
 		{
 			name: "public_id",
@@ -134,7 +132,7 @@ func TestStaticHost_ImmutableFields(t *testing.T) {
 
 			rowsUpdated, err := w.Update(context.Background(), tt.update, tt.fieldMask, nil)
 			require.Error(err)
-			assert.Equal(tt.wantRowUpdated, rowsUpdated)
+			assert.Equal(0, rowsUpdated)
 
 			after := new.testCloneHost()
 			err = w.LookupById(context.Background(), after)
@@ -165,10 +163,9 @@ func TestStaticHostSet_ImmutableFields(t *testing.T) {
 	new := sets[0]
 
 	var tests = []struct {
-		name           string
-		update         *HostSet
-		fieldMask      []string
-		wantRowUpdated int
+		name      string
+		update    *HostSet
+		fieldMask []string
 	}{
 		{
 			name: "public_id",
@@ -208,7 +205,7 @@ func TestStaticHostSet_ImmutableFields(t *testing.T) {
 
 			rowsUpdated, err := w.Update(context.Background(), tt.update, tt.fieldMask, nil)
 			require.Error(err)
-			assert.Equal(tt.wantRowUpdated, rowsUpdated)
+			assert.Equal(0, rowsUpdated)
 
 			after := new.testCloneHostSet()
 			err = w.LookupById(context.Background(), after)
@@ -242,10 +239,9 @@ func TestStaticHostSetMember_ImmutableFields(t *testing.T) {
 	assert.NoError(t, err)
 
 	var tests = []struct {
-		name           string
-		update         *HostSetMember
-		fieldMask      []string
-		wantRowUpdated int
+		name      string
+		update    *HostSetMember
+		fieldMask []string
 	}{
 		{
 			name: "static_host_set_id",
@@ -276,7 +272,7 @@ func TestStaticHostSetMember_ImmutableFields(t *testing.T) {
 
 			rowsUpdated, err := w.Update(context.Background(), tt.update, tt.fieldMask, nil)
 			require.Error(err)
-			assert.Equal(tt.wantRowUpdated, rowsUpdated)
+			assert.Equal(0, rowsUpdated)
 
 			after := new.testCloneHostSetMember()
 			err = w.LookupWhere(context.Background(), after, "static_host_id = ? and static_host_set_id = ?", after.StaticHostId, after.StaticHostSetId)

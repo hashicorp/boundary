@@ -23,10 +23,9 @@ func TestAuthToken_ImmutableFields(t *testing.T) {
 	new := TestAuthToken(t, conn, wrapper)
 
 	var tests = []struct {
-		name           string
-		update         *AuthToken
-		fieldMask      []string
-		wantRowUpdated int
+		name      string
+		update    *AuthToken
+		fieldMask []string
 	}{
 		{
 			name: "public_id",
@@ -66,7 +65,7 @@ func TestAuthToken_ImmutableFields(t *testing.T) {
 
 			rowsUpdated, err := w.Update(context.Background(), tt.update, tt.fieldMask, nil)
 			require.Error(err)
-			assert.Equal(tt.wantRowUpdated, rowsUpdated)
+			assert.Equal(0, rowsUpdated)
 
 			after := new.clone()
 			err = w.LookupById(context.Background(), after)

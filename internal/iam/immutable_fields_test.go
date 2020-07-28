@@ -22,10 +22,9 @@ func TestScope_ImmutableFields(t *testing.T) {
 
 	new, _ := TestScopes(t, conn)
 	var tests = []struct {
-		name           string
-		update         *Scope
-		fieldMask      []string
-		wantRowUpdated int
+		name      string
+		update    *Scope
+		fieldMask []string
 	}{
 		{
 			name: "public_id",
@@ -74,7 +73,7 @@ func TestScope_ImmutableFields(t *testing.T) {
 
 			rowsUpdated, err := w.Update(context.Background(), tt.update, tt.fieldMask, nil)
 			require.Error(err)
-			assert.Equal(tt.wantRowUpdated, rowsUpdated)
+			assert.Equal(0, rowsUpdated)
 
 			after := new.Clone()
 			err = w.LookupById(context.Background(), after)
@@ -151,10 +150,9 @@ func TestUser_ImmutableFields(t *testing.T) {
 	new := TestUser(t, conn, org.PublicId)
 
 	var tests = []struct {
-		name           string
-		update         *User
-		fieldMask      []string
-		wantRowUpdated int
+		name      string
+		update    *User
+		fieldMask []string
 	}{
 		{
 			name: "public_id",
@@ -194,7 +192,7 @@ func TestUser_ImmutableFields(t *testing.T) {
 
 			rowsUpdated, err := w.Update(context.Background(), tt.update, tt.fieldMask, nil)
 			require.Error(err)
-			assert.Equal(tt.wantRowUpdated, rowsUpdated)
+			assert.Equal(0, rowsUpdated)
 
 			after := new.Clone()
 			err = w.LookupById(context.Background(), after)
@@ -217,10 +215,9 @@ func TestRole_ImmutableFields(t *testing.T) {
 	new := TestRole(t, conn, org.PublicId)
 
 	var tests = []struct {
-		name           string
-		update         *Role
-		fieldMask      []string
-		wantRowUpdated int
+		name      string
+		update    *Role
+		fieldMask []string
 	}{
 		{
 			name: "public_id",
@@ -260,7 +257,7 @@ func TestRole_ImmutableFields(t *testing.T) {
 
 			rowsUpdated, err := w.Update(context.Background(), tt.update, tt.fieldMask, nil)
 			require.Error(err)
-			assert.Equal(tt.wantRowUpdated, rowsUpdated)
+			assert.Equal(0, rowsUpdated)
 
 			after := new.Clone()
 			err = w.LookupById(context.Background(), after)
@@ -283,10 +280,9 @@ func TestGroup_ImmutableFields(t *testing.T) {
 	new := TestGroup(t, conn, org.PublicId)
 
 	var tests = []struct {
-		name           string
-		update         *Group
-		fieldMask      []string
-		wantRowUpdated int
+		name      string
+		update    *Group
+		fieldMask []string
 	}{
 		{
 			name: "public_id",
@@ -326,7 +322,7 @@ func TestGroup_ImmutableFields(t *testing.T) {
 
 			rowsUpdated, err := w.Update(context.Background(), tt.update, tt.fieldMask, nil)
 			require.Error(err)
-			assert.Equal(tt.wantRowUpdated, rowsUpdated)
+			assert.Equal(0, rowsUpdated)
 
 			after := new.Clone()
 			err = w.LookupById(context.Background(), after)
