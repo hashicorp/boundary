@@ -30,12 +30,16 @@ values
   ('complete');
 
 create table jobs_worker (
-    -- The name is user-chosen, but we need some consistent way of identifying
-    -- the same worker, and we rely on the administrator giving each worker some
-    -- value via config or env (which may be e.g. the host name). Given we're
-    -- relying on the admin already, there's no real reason not to make this the
-    -- "official" ID of the resource.
-    name text primary key,
+    id text primary key,
+    name text unique,
+    description text,
+    first_seen_time wt_timestamp,
+    last_seen_time wt_timestamp
+  );
+
+create table jobs_controller (
+    id text primary key,
+    name text unique,
     description text,
     first_seen_time wt_timestamp,
     last_seen_time wt_timestamp
