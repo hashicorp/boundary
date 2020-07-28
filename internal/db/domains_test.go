@@ -331,6 +331,17 @@ before
 update on test_immutable_columns
   for each row execute procedure immutable_columns('id', 'name', 'create_time');
 `
+		dropTriggers = `drop trigger test_update_immutable_columns on test_immutable_columns`
+
+		addBadTriggers = `
+create trigger
+  test_update_bad_immutable_columns
+before
+update on test_immutable_columns
+  for each row execute procedure immutable_columns('id', 'bad_column_name', 'create_time');
+`
+		dropBadTriggers = `drop trigger test_update_bad_immutable_columns on test_immutable_columns`
+
 		query = `
 select id, name, create_time, updatable from test_immutable_columns where id = $1
 `
@@ -443,6 +454,37 @@ set id = null;
 		err = db.QueryRow(query, id).Scan(&found.Id, &found.Name, &found.CreateTime, &found.Updatable)
 		require.NoError(err)
 		assert.NotEqual(orig.Updatable, found.Updatable)
+	})
+
+	t.Run("bad column", func(t *testing.T) {
+		assert, require := assert.New(t), require.New(t)
+
+		t.Cleanup(func() {
+			// reset the update trigger to what they were before this test
+			// started.
+			_, err = db.Exec(dropBadTriggers)
+			require.NoError(err)
+
+			_, err = db.Exec(addTriggers)
+			assert.NoError(err)
+		})
+		_, err = db.Exec(dropTriggers)
+		require.NoError(err)
+
+		_, err = db.Exec(addBadTriggers)
+		require.NoError(err)
+
+		_, err = db.Exec(update_updatable)
+		require.Error(err)
+		assert.Containsf(err.Error(), `pq: column "bad_column_name" not found`, "unexpected error msg: %s", err.Error())
+
+		var found rowData
+		err = db.QueryRow(query, id).Scan(&found.Id, &found.Name, &found.CreateTime, &found.Updatable)
+		assert.NoError(err)
+		assert.Equal(orig.Id, found.Id)
+		assert.Equal(orig.Name, found.Name)
+		assert.Equal(orig.CreateTime, found.CreateTime)
+
 	})
 
 }
