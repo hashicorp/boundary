@@ -169,7 +169,7 @@ func TestRepository_UpdateUser(t *testing.T) {
 			},
 			wantErr:        true,
 			wantRowsUpdate: 0,
-			wantErrMsg:     "update user: update: lookup error lookup after write: failed record not found for 1",
+			wantErrMsg:     "update user: update: lookup after write: record not found for 1",
 			wantIsErr:      db.ErrRecordNotFound,
 		},
 		{

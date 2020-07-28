@@ -9,7 +9,7 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
-	"github.com/grpc-ecosystem/grpc-gateway/runtime"
+	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	"github.com/hashicorp/go-hclog"
 	pb "github.com/hashicorp/watchtower/internal/gen/controller/api"
 	"github.com/stretchr/testify/assert"
@@ -69,7 +69,7 @@ func TestApiErrorHandler(t *testing.T) {
 		},
 		{
 			name: "GrpcGateway Routing Error",
-			err:  runtime.ErrUnknownURI,
+			err:  runtime.ErrNotMatch,
 			expected: &pb.Error{
 				Status:  http.StatusNotFound,
 				Code:    "NotFound",

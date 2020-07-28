@@ -9,6 +9,7 @@ import (
 	"github.com/fatih/structs"
 
 	"github.com/hashicorp/watchtower/api"
+	"github.com/hashicorp/watchtower/api/info"
 	"github.com/hashicorp/watchtower/api/internal/strutil"
 )
 
@@ -20,8 +21,12 @@ type AuthToken struct {
 	// The ID of the AuthToken
 	// Output only.
 	Id string `json:"id,omitempty"`
-	// The token.  This will only be populated after login and is only ever visible to the end user whose login
-	// request resulted in this auth token being created.
+	// Scope information for this resource
+	// Output only.
+	Scope info.Scope `json:"scope,omitempty"`
+	// The token value, which will only be populated after authentication and is
+	// only ever visible to the end user whose login request resulted in this
+	// auth token being created.
 	// Output only.
 	Token string `json:"token,omitempty"`
 	// The id of the user of this AuthToken.
@@ -46,7 +51,7 @@ type AuthToken struct {
 
 func (s *AuthToken) SetDefault(key string) {
 	lowerKey := strings.ToLower(key)
-	validMap := map[string]string{"approximatelastusedtime": "approximate_last_used_time", "authmethodid": "auth_method_id", "createdtime": "created_time", "expirationtime": "expiration_time", "id": "id", "token": "token", "updatedtime": "updated_time", "userid": "user_id"}
+	validMap := map[string]string{"approximatelastusedtime": "approximate_last_used_time", "authmethodid": "auth_method_id", "createdtime": "created_time", "expirationtime": "expiration_time", "id": "id", "scope": "scope", "token": "token", "updatedtime": "updated_time", "userid": "user_id"}
 	for k, v := range validMap {
 		if k == lowerKey || v == lowerKey {
 			s.defaultFields = strutil.AppendIfMissing(s.defaultFields, v)
@@ -57,7 +62,7 @@ func (s *AuthToken) SetDefault(key string) {
 
 func (s *AuthToken) UnsetDefault(key string) {
 	lowerKey := strings.ToLower(key)
-	validMap := map[string]string{"approximatelastusedtime": "approximate_last_used_time", "authmethodid": "auth_method_id", "createdtime": "created_time", "expirationtime": "expiration_time", "id": "id", "token": "token", "updatedtime": "updated_time", "userid": "user_id"}
+	validMap := map[string]string{"approximatelastusedtime": "approximate_last_used_time", "authmethodid": "auth_method_id", "createdtime": "created_time", "expirationtime": "expiration_time", "id": "id", "scope": "scope", "token": "token", "updatedtime": "updated_time", "userid": "user_id"}
 	for k, v := range validMap {
 		if k == lowerKey || v == lowerKey {
 			s.defaultFields = strutil.StrListDelete(s.defaultFields, v)

@@ -39,17 +39,17 @@ func TestScope_New(t *testing.T) {
 	})
 	t.Run("unknown-scope", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
-		s, err := newScope(scope.Unknown)
+		s, err := newScope(nil)
 		require.Error(err)
 		require.Nil(s)
-		assert.Equal(err.Error(), "new scope: unknown scope type: invalid parameter")
+		assert.Equal("new scope: child scope is missing its parent: invalid parameter", err.Error())
 	})
 	t.Run("proj-scope-with-no-org", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
 		s, err := NewProject("")
 		require.Error(err)
 		require.Nil(s)
-		assert.Equal(err.Error(), "error creating new project: new scope: with scope's parent id is missing: invalid parameter")
+		assert.Equal("error creating new project: new scope: child scope is missing its parent: invalid parameter", err.Error())
 	})
 }
 func TestScope_Create(t *testing.T) {
@@ -158,16 +158,13 @@ func TestScope_Actions(t *testing.T) {
 	assert.Equal(a[action.Update.String()], action.Update)
 	assert.Equal(a[action.Read.String()], action.Read)
 	assert.Equal(a[action.Delete.String()], action.Delete)
-
-	if _, ok := a[action.List.String()]; ok {
-		t.Errorf("scopes should not include %s as an action", action.List.String())
-	}
+	assert.Equal(a[action.List.String()], action.List)
 }
 
 func TestScope_ResourceType(t *testing.T) {
 	o, err := NewOrg()
 	require.NoError(t, err)
-	assert.Equal(t, o.ResourceType(), resource.Org)
+	assert.Equal(t, o.ResourceType(), resource.Scope)
 	assert.Equal(t, o.GetParentId(), resource.Global.String())
 }
 
@@ -198,11 +195,11 @@ func TestScope_GlobalErrors(t *testing.T) {
 	w := db.New(conn)
 	t.Run("newScope errors", func(t *testing.T) {
 		// Not allowed
-		_, err := newScope(scope.Global)
+		_, err := newScope(&Scope{Scope: &store.Scope{PublicId: "blahblah"}})
 		require.Error(t, err)
 
 		// Should fail as there's no scope
-		_, err = newScope(scope.Org)
+		_, err = newScope(nil)
 		require.Error(t, err)
 		assert.True(t, strings.Contains(err.Error(), "missing its parent"))
 	})
@@ -239,4 +236,40 @@ func TestScope_GlobalErrors(t *testing.T) {
 		require.Error(t, err)
 		assert.Equal(t, 0, rows)
 	})
+}
+
+func TestScope_SetTableName(t *testing.T) {
+	defaultTableName := defaultScopeTableName
+	tests := []struct {
+		name        string
+		initialName string
+		setNameTo   string
+		want        string
+	}{
+		{
+			name:        "new-name",
+			initialName: "",
+			setNameTo:   "new-name",
+			want:        "new-name",
+		},
+		{
+			name:        "reset to default",
+			initialName: "initial",
+			setNameTo:   "",
+			want:        defaultTableName,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+			def := allocScope()
+			require.Equal(defaultTableName, def.TableName())
+			s := &Scope{
+				Scope:     &store.Scope{},
+				tableName: tt.initialName,
+			}
+			s.SetTableName(tt.setNameTo)
+			assert.Equal(tt.want, s.TableName())
+		})
+	}
 }

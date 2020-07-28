@@ -161,7 +161,7 @@ func TestRepository_CreateGroup(t *testing.T) {
 			assert.NotNil(grp.CreateTime)
 			assert.NotNil(grp.UpdateTime)
 
-			foundGrp, err := repo.LookupGroup(context.Background(), grp.PublicId)
+			foundGrp, _, err := repo.LookupGroup(context.Background(), grp.PublicId)
 			assert.NoError(err)
 			assert.True(proto.Equal(foundGrp, grp))
 
@@ -239,7 +239,7 @@ func TestRepository_UpdateGroup(t *testing.T) {
 			newScopeId:     org.PublicId,
 			wantErr:        true,
 			wantRowsUpdate: 0,
-			wantErrMsg:     "update group: update: lookup error lookup after write: failed record not found for 1",
+			wantErrMsg:     "update group: update: lookup after write: record not found for 1",
 			wantIsError:    db.ErrRecordNotFound,
 		},
 		{
@@ -400,7 +400,7 @@ func TestRepository_UpdateGroup(t *testing.T) {
 			if tt.wantDup {
 				g := TestGroup(t, conn, org.PublicId)
 				g.Name = tt.args.name
-				_, _, err := repo.UpdateGroup(context.Background(), g, tt.args.fieldMaskPaths, tt.args.opt...)
+				_, _, _, err := repo.UpdateGroup(context.Background(), g, tt.args.fieldMaskPaths, tt.args.opt...)
 				assert.NoError(err)
 			}
 
@@ -426,7 +426,7 @@ func TestRepository_UpdateGroup(t *testing.T) {
 					groupAfterUpdate = resource.(*Group)
 				}
 			} else {
-				groupAfterUpdate, updatedRows, err = repo.UpdateGroup(context.Background(), &updateGrp, tt.args.fieldMaskPaths, tt.args.opt...)
+				groupAfterUpdate, _, updatedRows, err = repo.UpdateGroup(context.Background(), &updateGrp, tt.args.fieldMaskPaths, tt.args.opt...)
 			}
 			if tt.wantErr {
 				assert.Error(err)
@@ -449,7 +449,7 @@ func TestRepository_UpdateGroup(t *testing.T) {
 			default:
 				assert.NotEqual(u.UpdateTime, groupAfterUpdate.UpdateTime)
 			}
-			foundGrp, err := repo.LookupGroup(context.Background(), u.PublicId)
+			foundGrp, _, err := repo.LookupGroup(context.Background(), u.PublicId)
 			assert.NoError(err)
 			assert.True(proto.Equal(groupAfterUpdate, foundGrp))
 			dbassert := dbassert.New(t, rw)
@@ -539,7 +539,7 @@ func TestRepository_DeleteGroup(t *testing.T) {
 			}
 			assert.NoError(err)
 			assert.Equal(tt.wantRowsDeleted, deletedRows)
-			foundGroup, err := repo.LookupGroup(context.Background(), tt.args.group.PublicId)
+			foundGroup, _, err := repo.LookupGroup(context.Background(), tt.args.group.PublicId)
 			assert.Error(err)
 			assert.Nil(foundGroup)
 			assert.True(errors.Is(err, db.ErrRecordNotFound))

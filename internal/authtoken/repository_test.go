@@ -3,6 +3,7 @@ package authtoken
 import (
 	"context"
 	"errors"
+	"sort"
 	"testing"
 	"time"
 
@@ -29,6 +30,7 @@ func TestRepository_New(t *testing.T) {
 		r       db.Reader
 		w       db.Writer
 		wrapper wrapping.Wrapper
+		opts    []Option
 	}
 
 	var tests = []struct {
@@ -38,16 +40,32 @@ func TestRepository_New(t *testing.T) {
 		wantIsErr error
 	}{
 		{
-			name: "valid",
+			name: "valid default limit",
 			args: args{
 				r:       rw,
 				w:       rw,
 				wrapper: wrapper,
 			},
 			want: &Repository{
-				reader:  rw,
-				writer:  rw,
+				reader:       rw,
+				writer:       rw,
+				wrapper:      wrapper,
+				defaultLimit: db.DefaultLimit,
+			},
+		},
+		{
+			name: "valid new limit",
+			args: args{
+				r:       rw,
+				w:       rw,
 				wrapper: wrapper,
+				opts:    []Option{WithLimit(5)},
+			},
+			want: &Repository{
+				reader:       rw,
+				writer:       rw,
+				wrapper:      wrapper,
+				defaultLimit: 5,
 			},
 		},
 		{
@@ -95,7 +113,7 @@ func TestRepository_New(t *testing.T) {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			assert := assert.New(t)
-			got, err := NewRepository(tt.args.r, tt.args.w, tt.args.wrapper)
+			got, err := NewRepository(tt.args.r, tt.args.w, tt.args.wrapper, tt.args.opts...)
 			if tt.wantIsErr != nil {
 				assert.Truef(errors.Is(err, tt.wantIsErr), "want err: %q got: %q", tt.wantIsErr, err)
 				assert.Nil(got)
@@ -196,7 +214,8 @@ func TestRepository_LookupAuthToken(t *testing.T) {
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
 
-	at := TestAuthToken(t, conn, wrapper)
+	org, _ := iam.TestScopes(t, conn)
+	at := TestAuthToken(t, conn, wrapper, org.GetPublicId())
 	at.Token = ""
 	at.CtToken = nil
 
@@ -273,7 +292,8 @@ func TestRepository_ValidateToken(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, repo)
 
-	at := TestAuthToken(t, conn, wrapper)
+	org, _ := iam.TestScopes(t, conn)
+	at := TestAuthToken(t, conn, wrapper, org.GetPublicId())
 	atToken := at.GetToken()
 	at.Token = ""
 	at.CtToken = nil
@@ -382,7 +402,8 @@ func TestRepository_ValidateToken_expired(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, repo)
 
-	baseAT := TestAuthToken(t, conn, wrapper)
+	org, _ := iam.TestScopes(t, conn)
+	baseAT := TestAuthToken(t, conn, wrapper, org.GetPublicId())
 	baseAT.GetAuthAccountId()
 	aAcct := &iam.AuthAccount{AuthAccount: &iamStore.AuthAccount{PublicId: baseAT.GetAuthAccountId()}}
 	require.NoError(t, rw.LookupByPublicId(context.Background(), aAcct))
@@ -450,7 +471,8 @@ func TestRepository_DeleteAuthToken(t *testing.T) {
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
 
-	at := TestAuthToken(t, conn, wrapper)
+	org, _ := iam.TestScopes(t, conn)
+	at := TestAuthToken(t, conn, wrapper, org.GetPublicId())
 	badId, err := newAuthTokenId()
 	require.NoError(t, err)
 	require.NotNil(t, badId)
@@ -497,6 +519,66 @@ func TestRepository_DeleteAuthToken(t *testing.T) {
 			if tt.want != 0 {
 				assert.NoError(db.TestVerifyOplog(t, rw, tt.id, db.WithOperation(oplog.OpType_OP_TYPE_DELETE)))
 			}
+		})
+	}
+}
+
+func TestRepository_ListAuthTokens(t *testing.T) {
+	conn, _ := db.TestSetup(t, "postgres")
+	rw := db.New(conn)
+	wrapper := db.TestWrapper(t)
+
+	org, _ := iam.TestScopes(t, conn)
+	at1 := TestAuthToken(t, conn, wrapper, org.GetPublicId())
+	at1.Token = ""
+	at2 := TestAuthToken(t, conn, wrapper, org.GetPublicId())
+	at2.Token = ""
+	at3 := TestAuthToken(t, conn, wrapper, org.GetPublicId())
+	at3.Token = ""
+
+	emptyOrg, _ := iam.TestScopes(t, conn)
+
+	var tests = []struct {
+		name    string
+		orgId   string
+		want    []*AuthToken
+		wantErr error
+	}{
+		{
+			name:  "populated",
+			orgId: org.GetPublicId(),
+			want:  []*AuthToken{at1, at2, at3},
+		},
+		{
+			name:  "empty",
+			orgId: emptyOrg.GetPublicId(),
+			want:  []*AuthToken{},
+		},
+		{
+			name:    "empty-org-id",
+			orgId:   "",
+			want:    nil,
+			wantErr: db.ErrInvalidParameter,
+		},
+	}
+
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+			repo, err := NewRepository(rw, rw, wrapper)
+			require.NoError(err)
+			require.NotNil(repo)
+
+			got, err := repo.ListAuthTokens(context.Background(), tt.orgId)
+			if tt.wantErr != nil {
+				assert.Truef(errors.Is(err, tt.wantErr), "want err: %q got: %q", tt.wantErr, err)
+				return
+			}
+			assert.NoError(err)
+			sort.Slice(tt.want, func(i, j int) bool { return tt.want[i].PublicId < tt.want[j].PublicId })
+			sort.Slice(got, func(i, j int) bool { return got[i].PublicId < got[j].PublicId })
+			assert.Empty(cmp.Diff(tt.want, got, protocmp.Transform()), "row count")
 		})
 	}
 }

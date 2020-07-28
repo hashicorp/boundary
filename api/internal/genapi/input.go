@@ -63,13 +63,6 @@ var inputStructs = []*structInfo{
 		outPkg:  "hosts",
 	},
 	{
-		inFile:  os.Getenv("GEN_BASEPATH") + "/internal/gen/controller/api/resources/scopes/org.pb.go",
-		inName:  "Org",
-		outFile: os.Getenv("GEN_BASEPATH") + "/api/scopes/org.gen.go",
-		outName: "Org",
-		outPkg:  "scopes",
-	},
-	{
 		inFile:  os.Getenv("GEN_BASEPATH") + "/internal/gen/controller/api/resources/authtokens/authtoken.pb.go",
 		inName:  "AuthToken",
 		outFile: os.Getenv("GEN_BASEPATH") + "/api/authtokens/authtoken.gen.go",
@@ -77,11 +70,20 @@ var inputStructs = []*structInfo{
 		outPkg:  "authtokens",
 	},
 	{
-		inFile:  os.Getenv("GEN_BASEPATH") + "/internal/gen/controller/api/resources/scopes/project.pb.go",
-		inName:  "Project",
-		outFile: os.Getenv("GEN_BASEPATH") + "/api/scopes/project.gen.go",
-		outName: "Project",
+		inFile:  os.Getenv("GEN_BASEPATH") + "/internal/gen/controller/api/resources/scopes/scope.pb.go",
+		inName:  "Scope",
+		outFile: os.Getenv("GEN_BASEPATH") + "/api/scopes/scope.gen.go",
+		outName: "Scope",
 		outPkg:  "scopes",
+	},
+
+	{
+		inFile:     os.Getenv("GEN_BASEPATH") + "/internal/gen/controller/api/resources/scopes/scope.pb.go",
+		inName:     "ScopeInfo",
+		outFile:    os.Getenv("GEN_BASEPATH") + "/api/info/scope.gen.go",
+		outName:    "Scope",
+		outPkg:     "info",
+		outputOnly: true,
 	},
 	{
 		inFile:  os.Getenv("GEN_BASEPATH") + "/internal/gen/controller/api/resources/users/user.pb.go",
@@ -96,6 +98,14 @@ var inputStructs = []*structInfo{
 		outFile: os.Getenv("GEN_BASEPATH") + "/api/groups/group.gen.go",
 		outName: "Group",
 		outPkg:  "groups",
+	},
+	{
+		inFile:     os.Getenv("GEN_BASEPATH") + "/internal/gen/controller/api/resources/groups/group.pb.go",
+		inName:     "Member",
+		outFile:    os.Getenv("GEN_BASEPATH") + "/api/groups/member.gen.go",
+		outName:    "Member",
+		outPkg:     "groups",
+		outputOnly: true,
 	},
 	{
 		inFile:  os.Getenv("GEN_BASEPATH") + "/internal/gen/controller/api/resources/roles/role.pb.go",

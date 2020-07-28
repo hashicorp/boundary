@@ -12,6 +12,10 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
+const (
+	defaultUserTableName = "iam_user"
+)
+
 // User defines watchtower users which are scoped to an Org
 type User struct {
 	*store.User
@@ -89,12 +93,12 @@ func (u *User) TableName() string {
 	if u.tableName != "" {
 		return u.tableName
 	}
-	return "iam_user"
+	return defaultUserTableName
 }
 
-// SetTableName sets the tablename and satisfies the ReplayableMessage interface
+// SetTableName sets the tablename and satisfies the ReplayableMessage
+// interface. If the caller attempts to set the name to "" the name will be
+// reset to the default name.
 func (u *User) SetTableName(n string) {
-	if n != "" {
-		u.tableName = n
-	}
+	u.tableName = n
 }

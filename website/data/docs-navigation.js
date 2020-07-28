@@ -7,11 +7,44 @@
 //   serve as the category title in the sidebar
 
 export default [
-  'example',
+  'security-model',
   {
-    category: 'nested',
-    content: ['nested-example'],
+    category: 'architecture',
+    content: ['terminology', 'domain-model', 'reference-deployment'],
   },
+  {
+    category: 'domain-model',
+    content: [
+      'actions',
+      'auth-methods',
+      'grants',
+      'groups',
+      'hosts',
+      'host-catalogs',
+      'host-sets',
+      'organization',
+      'principals',
+      'projects',
+      'resources',
+      'scopes',
+      'targets',
+      'roles',
+      'users',
+    ],
+  },
+  {
+    category: 'command-line',
+    content: ['login'],
+  },
+  {
+    category: 'admin-console',
+    content: ['login'],
+  },
+  {
+    category: 'sdk',
+    content: ['login'],
+  },
+
   '---',
   { title: 'External Link', href: 'https://www.hashicorp.com' },
 ]

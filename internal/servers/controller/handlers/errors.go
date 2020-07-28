@@ -7,7 +7,7 @@ import (
 	"net/http"
 	"sort"
 
-	"github.com/grpc-ecosystem/grpc-gateway/runtime"
+	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	"github.com/hashicorp/go-hclog"
 	pb "github.com/hashicorp/watchtower/internal/gen/controller/api"
 	"google.golang.org/genproto/googleapis/rpc/errdetails"
@@ -18,6 +18,10 @@ import (
 // NotFoundError returns an ApiError indicating a resource couldn't be found.
 func NotFoundErrorf(msg string, a ...interface{}) error {
 	return status.Errorf(codes.NotFound, msg, a...)
+}
+
+func ForbiddenError() error {
+	return status.Error(codes.PermissionDenied, "Forbidden.")
 }
 
 func InvalidArgumentErrorf(msg string, fields map[string]string) error {
@@ -64,10 +68,10 @@ func statusErrorToApiError(s *status.Status) *pb.Error {
 }
 
 // TODO(ICU-194): Remove all information from internal errors.
-func ErrorHandler(logger hclog.Logger) runtime.ProtoErrorHandlerFunc {
+func ErrorHandler(logger hclog.Logger) runtime.ErrorHandlerFunc {
 	const errorFallback = `{"error": "failed to marshal error message"}`
 	return func(ctx context.Context, _ *runtime.ServeMux, marshaler runtime.Marshaler, w http.ResponseWriter, r *http.Request, inErr error) {
-		if inErr == runtime.ErrUnknownURI {
+		if inErr == runtime.ErrNotMatch {
 			// grpc gateway uses this error when the path was not matched, but the error uses codes.Unimplemented which doesn't match the intention.
 			// Overwrite the error to match our expected behavior.
 			inErr = status.Error(codes.NotFound, http.StatusText(http.StatusNotFound))
@@ -87,7 +91,7 @@ func ErrorHandler(logger hclog.Logger) runtime.ProtoErrorHandlerFunc {
 			return
 		}
 
-		w.Header().Set("Content-Type", marshaler.ContentType())
+		w.Header().Set("Content-Type", marshaler.ContentType(apiErr))
 		w.WriteHeader(int(apiErr.GetStatus()))
 		if _, err := w.Write(buf); err != nil {
 			logger.Error("failed to send response chunk", "error", err)

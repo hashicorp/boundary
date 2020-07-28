@@ -10,17 +10,16 @@ import (
 
 // TODO: This will need to be changed when we add Auth Method API to watchtower.  We'll also need a better
 // way to handle different auth method types.
-func (s Org) Authenticate(ctx context.Context, authMethodId, name, password string) (*authtokens.AuthToken, *api.Error, error) {
+func (s Scope) Authenticate(ctx context.Context, authMethodId, name, password string) (*authtokens.AuthToken, *api.Error, error) {
 	if s.Client == nil {
 		return nil, nil, fmt.Errorf("nil client in Authenticate request")
 	}
-	if s.Id == "" {
-		// Assume the client has been configured with org already and
-		// move on
-	} else {
+
+	var opts []api.Option
+	if s.Scope.Id != "" {
 		// If it's explicitly set here, override anything that might be in the
 		// client
-		ctx = context.WithValue(ctx, "org", s.Id)
+		opts = append(opts, api.WithScopeId(s.Scope.Id))
 	}
 
 	reqBody := map[string]interface{}{
@@ -30,7 +29,7 @@ func (s Org) Authenticate(ctx context.Context, authMethodId, name, password stri
 		},
 	}
 
-	req, err := s.Client.NewRequest(ctx, "POST", fmt.Sprintf("auth-methods/%s:authenticate", authMethodId), reqBody)
+	req, err := s.Client.NewRequest(ctx, "POST", fmt.Sprintf("auth-methods/%s:authenticate", authMethodId), reqBody, opts...)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error creating Authenticate request: %w", err)
 	}

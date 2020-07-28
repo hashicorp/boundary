@@ -207,11 +207,11 @@ func (rw *Db) lookupAfterWrite(ctx context.Context, i interface{}, opt ...Option
 	}
 	if _, ok := i.(ResourcePublicIder); ok {
 		if err := rw.LookupByPublicId(ctx, i.(ResourcePublicIder), opt...); err != nil {
-			return fmt.Errorf("lookup after write: failed %w", err)
+			return fmt.Errorf("lookup after write: %w", err)
 		}
 		return nil
 	}
-	return errors.New("not a resource with an id")
+	return errors.New("lookup after write: not a resource with an id")
 }
 
 // Create an object in the db with options: WithOplog, NewOplogMsg and
@@ -272,7 +272,7 @@ func (rw *Db) Create(ctx context.Context, i interface{}, opt ...Option) error {
 		*opts.newOplogMsg = *msg
 	}
 	if err := rw.lookupAfterWrite(ctx, i, opt...); err != nil {
-		return fmt.Errorf("create: lookup error: %w", err)
+		return fmt.Errorf("create: %w", err)
 	}
 	return nil
 }
@@ -475,7 +475,7 @@ func (rw *Db) Update(ctx context.Context, i interface{}, fieldMaskPaths []string
 	// from the db
 	opt = append(opt, WithLookup(true))
 	if err := rw.lookupAfterWrite(ctx, i, opt...); err != nil {
-		return NoRowsAffected, fmt.Errorf("update: lookup error %w", err)
+		return NoRowsAffected, fmt.Errorf("update: %w", err)
 	}
 	return rowsUpdated, nil
 }

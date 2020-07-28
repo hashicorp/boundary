@@ -9,6 +9,7 @@ import (
 	"github.com/fatih/structs"
 
 	"github.com/hashicorp/watchtower/api"
+	"github.com/hashicorp/watchtower/api/info"
 	"github.com/hashicorp/watchtower/api/internal/strutil"
 )
 
@@ -20,6 +21,9 @@ type Role struct {
 	// The ID of the Role
 	// Output only.
 	Id string `json:"id,omitempty"`
+	// Scope information for this resource
+	// Output only.
+	Scope info.Scope `json:"scope,omitempty"`
 	// Optional name for identification purposes
 	Name *string `json:"name,omitempty"`
 	// Optional user-set description for identification purposes
@@ -58,7 +62,7 @@ type Role struct {
 
 func (s *Role) SetDefault(key string) {
 	lowerKey := strings.ToLower(key)
-	validMap := map[string]string{"createdtime": "created_time", "description": "description", "disabled": "disabled", "grants": "grants", "grantscopeid": "grant_scope_id", "grantstrings": "grant_strings", "id": "id", "name": "name", "principalids": "principal_ids", "principals": "principals", "updatedtime": "updated_time", "version": "version"}
+	validMap := map[string]string{"createdtime": "created_time", "description": "description", "disabled": "disabled", "grants": "grants", "grantscopeid": "grant_scope_id", "grantstrings": "grant_strings", "id": "id", "name": "name", "principalids": "principal_ids", "principals": "principals", "scope": "scope", "updatedtime": "updated_time", "version": "version"}
 	for k, v := range validMap {
 		if k == lowerKey || v == lowerKey {
 			s.defaultFields = strutil.AppendIfMissing(s.defaultFields, v)
@@ -69,7 +73,7 @@ func (s *Role) SetDefault(key string) {
 
 func (s *Role) UnsetDefault(key string) {
 	lowerKey := strings.ToLower(key)
-	validMap := map[string]string{"createdtime": "created_time", "description": "description", "disabled": "disabled", "grants": "grants", "grantscopeid": "grant_scope_id", "grantstrings": "grant_strings", "id": "id", "name": "name", "principalids": "principal_ids", "principals": "principals", "updatedtime": "updated_time", "version": "version"}
+	validMap := map[string]string{"createdtime": "created_time", "description": "description", "disabled": "disabled", "grants": "grants", "grantscopeid": "grant_scope_id", "grantstrings": "grant_strings", "id": "id", "name": "name", "principalids": "principal_ids", "principals": "principals", "scope": "scope", "updatedtime": "updated_time", "version": "version"}
 	for k, v := range validMap {
 		if k == lowerKey || v == lowerKey {
 			s.defaultFields = strutil.StrListDelete(s.defaultFields, v)

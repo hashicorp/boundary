@@ -1,23 +1,6 @@
 package roles_test
 
-import (
-	"context"
-	"fmt"
-	"net/http"
-	"testing"
-
-	"github.com/hashicorp/vault/sdk/helper/strutil"
-	"github.com/hashicorp/watchtower/api"
-	"github.com/hashicorp/watchtower/api/groups"
-	"github.com/hashicorp/watchtower/api/roles"
-	"github.com/hashicorp/watchtower/api/scopes"
-	"github.com/hashicorp/watchtower/api/users"
-	"github.com/hashicorp/watchtower/internal/iam"
-	"github.com/hashicorp/watchtower/internal/servers/controller"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
-)
-
+/*
 type roleCrud interface {
 	CreateGroup(context.Context, *groups.Group) (*groups.Group, *api.Error, error)
 	CreateRole(context.Context, *roles.Role) (*roles.Role, *api.Error, error)
@@ -359,3 +342,4 @@ func TestRole_Errors(t *testing.T) {
 		})
 	}
 }
+*/

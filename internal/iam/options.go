@@ -16,7 +16,6 @@ type Option func(*options)
 type options struct {
 	withPublicId        string
 	withName            string
-	withScope           *Scope
 	withDescription     string
 	withGroupGrants     bool
 	withLimit           int
@@ -29,7 +28,6 @@ func getDefaultOptions() options {
 	return options{
 		withPublicId:        "",
 		withName:            "",
-		withScope:           nil,
 		withDescription:     "",
 		withGroupGrants:     false,
 		withLimit:           0,
@@ -57,13 +55,6 @@ func WithPublicId(id string) Option {
 func WithDescription(desc string) Option {
 	return func(o *options) {
 		o.withDescription = desc
-	}
-}
-
-// withScope provides an optional scope and used within the package
-func withScope(s *Scope) Option {
-	return func(o *options) {
-		o.withScope = s
 	}
 }
 

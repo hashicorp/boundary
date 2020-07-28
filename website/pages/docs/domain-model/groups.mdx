@@ -1,0 +1,43 @@
+---
+layout: docs
+page_title: Configuration
+sidebar_title: Group
+description: |-
+  How to configure a Watchtower group
+---
+
+# Group
+
+Groups are collections of Users used only for access control purposes. A Group is owned by one and only one Scope. A Group can contain zero or more Users. A Group inherits from Principal ("is-a" Principal) allowing it to be associated with zero or more Roles. All Users in a Group are granted the capabilities of all Roles the Group is associated with. A Group is deleted when the Scope it belongs to is deleted. The lifecycle of a Group is not tied to the lifecycle of any User or Role.
+
+```shell-session
++-------------------------------------+
+|           Organization              |
++--------------------------+----------+
+| Group 1                  | Group 2  |
++--------+--------+-------------------+
+| User 1 | User 2 | User 3 | User 4   |
++--------+--------+--------+----------+
+```
+
+# Attributes
+
+### ID
+
+A group ID has a `g_` prefix followed by ten digits.
+
+Example: `g_0123456789`
+
+### Name
+
+A group name is the friendly name of a group resource.
+
+### Description
+
+A group description is the friendly description of the group resource.
+
+# Referenced By
+
+- [User]()
+- [Role]()
+- [Organization]()

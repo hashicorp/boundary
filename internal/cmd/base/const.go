@@ -4,12 +4,9 @@ const (
 	// FlagNameAddr is the flag used in the base command to read in the
 	// address of the Watchtower server.
 	FlagNameAddr = "addr"
-	// FlagNameOrg is the flag used in the base command to read in the org in
-	// which to make a request.
-	FlagNameOrg = "org"
-	// FlagNameProject is the flag used in the base command to read in the
-	// project in which to make a request.
-	FlagNameProject = "project"
+	// FlagNameScope is the flag used in the base command to read in the scope
+	// in which to make a request.
+	FlagNameScope = "scope"
 	// FlagnameCACert is the flag used in the base command to read in the CA
 	// cert.
 	FlagNameCACert = "ca-cert"
