@@ -1,4 +1,4 @@
-package jobs
+package servers
 
 import "github.com/hashicorp/watchtower/internal/types/resource"
 

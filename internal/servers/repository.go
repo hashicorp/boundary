@@ -1,16 +1,11 @@
-package jobs
+package servers
 
 import (
 	"context"
 	"errors"
-	"fmt"
-	"reflect"
-	"strings"
 
 	wrapping "github.com/hashicorp/go-kms-wrapping"
 	"github.com/hashicorp/watchtower/internal/db"
-	"github.com/hashicorp/watchtower/internal/oplog"
-	"github.com/hashicorp/watchtower/internal/types/scope"
 )
 
 // Repository is the jobs database repository
@@ -69,14 +64,9 @@ func (r *Repository) create(ctx context.Context, resource Resource, opt ...Optio
 	if !ok {
 		return nil, errors.New("error resource is not clonable for create")
 	}
-	metadata, err := r.stdMetadata(ctx, resource)
-	if err != nil {
-		return nil, fmt.Errorf("error getting metadata for create: %w", err)
-	}
-	metadata["op-type"] = []string{oplog.OpType_OP_TYPE_CREATE.String()}
 
 	var returnedResource interface{}
-	_, err = r.writer.DoTx(
+	_, err := r.writer.DoTx(
 		ctx,
 		db.StdRetryCnt,
 		db.ExpBackoff{},
@@ -85,7 +75,6 @@ func (r *Repository) create(ctx context.Context, resource Resource, opt ...Optio
 			return w.Create(
 				ctx,
 				returnedResource,
-				db.WithOplog(r.wrapper, metadata),
 			)
 		},
 	)
@@ -101,13 +90,8 @@ func (r *Repository) update(ctx context.Context, resource Resource, fieldMaskPat
 	if !ok {
 		return nil, db.NoRowsAffected, errors.New("error resource is not clonable for update")
 	}
-	metadata, err := r.stdMetadata(ctx, resource)
-	if err != nil {
-		return nil, db.NoRowsAffected, fmt.Errorf("error getting metadata for update: %w", err)
-	}
-	metadata["op-type"] = []string{oplog.OpType_OP_TYPE_UPDATE.String()}
 
-	dbOpts := []db.Option{db.WithOplog(r.wrapper, metadata)}
+	var dbOpts []db.Option
 	opts := getOpts(opt...)
 	if opts.withSkipVetForWrite {
 		dbOpts = append(dbOpts, db.WithSkipVetForWrite(true))
@@ -115,7 +99,7 @@ func (r *Repository) update(ctx context.Context, resource Resource, fieldMaskPat
 
 	var rowsUpdated int
 	var returnedResource interface{}
-	_, err = r.writer.DoTx(
+	_, err := r.writer.DoTx(
 		ctx,
 		db.StdRetryCnt,
 		db.ExpBackoff{},
@@ -148,15 +132,10 @@ func (r *Repository) delete(ctx context.Context, resource Resource, opt ...Optio
 	if !ok {
 		return db.NoRowsAffected, errors.New("error resource is not clonable for delete")
 	}
-	metadata, err := r.stdMetadata(ctx, resource)
-	if err != nil {
-		return db.NoRowsAffected, fmt.Errorf("error getting metadata for delete: %w", err)
-	}
-	metadata["op-type"] = []string{oplog.OpType_OP_TYPE_DELETE.String()}
 
 	var rowsDeleted int
 	var deleteResource interface{}
-	_, err = r.writer.DoTx(
+	_, err := r.writer.DoTx(
 		ctx,
 		db.StdRetryCnt,
 		db.ExpBackoff{},
@@ -166,7 +145,6 @@ func (r *Repository) delete(ctx context.Context, resource Resource, opt ...Optio
 			rowsDeleted, err = w.Delete(
 				ctx,
 				deleteResource,
-				db.WithOplog(r.wrapper, metadata),
 			)
 			if err == nil && rowsDeleted > 1 {
 				// return err, which will result in a rollback of the delete
@@ -176,77 +154,4 @@ func (r *Repository) delete(ctx context.Context, resource Resource, opt ...Optio
 		},
 	)
 	return rowsDeleted, err
-}
-
-func (r *Repository) stdMetadata(ctx context.Context, resource Resource) (oplog.Metadata, error) {
-	if s, ok := resource.(*Scope); ok {
-		newScope := allocScope()
-		newScope.PublicId = s.PublicId
-		newScope.Type = s.Type
-		if newScope.Type == "" {
-			if err := r.reader.LookupByPublicId(ctx, &newScope); err != nil {
-				return nil, ErrMetadataScopeNotFound
-			}
-		}
-		switch newScope.Type {
-		case scope.Org.String():
-			return oplog.Metadata{
-				"resource-public-id": []string{resource.GetPublicId()},
-				"scope-id":           []string{newScope.PublicId},
-				"scope-type":         []string{newScope.Type},
-				"resource-type":      []string{resource.ResourceType().String()},
-			}, nil
-		case scope.Project.String():
-			return oplog.Metadata{
-				"resource-public-id": []string{resource.GetPublicId()},
-				"scope-id":           []string{newScope.ParentId},
-				"scope-type":         []string{newScope.Type},
-				"resource-type":      []string{resource.ResourceType().String()},
-			}, nil
-		default:
-			return nil, fmt.Errorf("not a supported scope for metadata: %s", s.Type)
-		}
-	}
-
-	scope, err := resource.GetScope(ctx, r.reader)
-	if err != nil {
-		return nil, fmt.Errorf("unable to get scope for standard metadata: %w", err)
-	}
-	if scope == nil {
-		return nil, errors.New("scope was nil for standard metadata")
-	}
-	return oplog.Metadata{
-		"resource-public-id": []string{resource.GetPublicId()},
-		"scope-id":           []string{scope.PublicId},
-		"scope-type":         []string{scope.Type},
-		"resource-type":      []string{resource.ResourceType().String()},
-	}, nil
-}
-
-func contains(ss []string, t string) bool {
-	for _, s := range ss {
-		if strings.EqualFold(s, t) {
-			return true
-		}
-	}
-	return false
-}
-
-func buildUpdatePaths(fieldValues map[string]interface{}, fieldMask []string) (masks []string, nulls []string) {
-	for f, v := range fieldValues {
-		if !contains(fieldMask, f) {
-			continue
-		}
-		switch {
-		case isZero(v):
-			nulls = append(nulls, f)
-		default:
-			masks = append(masks, f)
-		}
-	}
-	return masks, nulls
-}
-
-func isZero(i interface{}) bool {
-	return i == nil || reflect.DeepEqual(i, reflect.Zero(reflect.TypeOf(i)).Interface())
 }
