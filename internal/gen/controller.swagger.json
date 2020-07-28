@@ -2168,6 +2168,19 @@
         }
       }
     },
+    "controller.api.services.v1.ControllerInfo": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "The name of the controller."
+        },
+        "address": {
+          "type": "string",
+          "description": "The address of the controller."
+        }
+      }
+    },
     "controller.api.services.v1.CreateGroupResponse": {
       "type": "object",
       "properties": {
@@ -2643,6 +2656,13 @@
             "type": "string"
           },
           "description": "Jobs that should be canceled: ones assigned to this worker that have been\nreported as active but are in canceling state in the database. Once the\nworker cancels the job, it will no longer show up in active_jobs in the\nnext heartbeat, and we can move the job to canceled state."
+        },
+        "controllers": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/controller.api.services.v1.ControllerInfo"
+          },
+          "description": "Active controllers. This can be used (eventually) for conneciton\nmanagement."
         }
       }
     },
