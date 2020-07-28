@@ -2,7 +2,7 @@ version: 2.1
 orbs:
   slack: circleci/slack@3.4.2
 jobs:
-  build:
+  test:
     machine:
       image: 'ubuntu-1604:201903-01'
     working_directory: ~/watchtower
