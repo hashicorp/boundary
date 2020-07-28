@@ -42,7 +42,10 @@ func (r *Repository) CreateAuthMethod(ctx context.Context, m *AuthMethod, opt ..
 	opts := getOpts(opt...)
 	c, ok := opts.withConfig.(*Argon2Configuration)
 	if !ok {
-		return nil, fmt.Errorf("create: password auth method: unknown configuration: %w", db.ErrInvalidParameter)
+		return nil, fmt.Errorf("create: password auth method: unknown configuration: %w", ErrUnsupportedConfiguration)
+	}
+	if err := c.validate(); err != nil {
+		return nil, fmt.Errorf("create: password auth method: %w", err)
 	}
 
 	c.PrivateId, err = newArgon2ConfigurationId()

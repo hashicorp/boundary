@@ -14,6 +14,7 @@ import (
 // the only configuration type.
 type Configuration interface {
 	AuthMethodId() string
+	validate() error
 }
 
 // GetConfiguration returns the current configuration for authMethodId.
@@ -45,12 +46,12 @@ func (r *Repository) SetConfiguration(ctx context.Context, c Configuration) (Con
 	if c.AuthMethodId() == "" {
 		return nil, fmt.Errorf("set password configuration: no auth method id: %w", db.ErrInvalidParameter)
 	}
+	if err := c.validate(); err != nil {
+		return nil, fmt.Errorf("set password configuration: %w", err)
+	}
 
 	switch v := c.(type) {
 	case *Argon2Configuration:
-		if v.Argon2Configuration == nil {
-			return nil, fmt.Errorf("set password configuration: missing embedded Argon2Configuration: %w", db.ErrInvalidParameter)
-		}
 		out, err := r.setArgon2Conf(ctx, v)
 		if err != nil {
 			return nil, fmt.Errorf("set password configuration: %w", err)

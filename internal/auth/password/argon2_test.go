@@ -2,6 +2,7 @@ package password
 
 import (
 	"context"
+	"errors"
 	"testing"
 
 	"github.com/hashicorp/watchtower/internal/auth/password/store"
@@ -153,4 +154,117 @@ func TestArgon2Configuration_Readonly(t *testing.T) {
 		})
 	}
 
+}
+
+func TestArgon2Configuration_Validate(t *testing.T) {
+	var tests = []struct {
+		name string
+		in   *Argon2Configuration
+		want error
+	}{
+		{
+			name: "nil-configuration",
+			in:   nil,
+			want: ErrInvalidConfiguration,
+		},
+		{
+			name: "nil-embedded-config",
+			in:   &Argon2Configuration{},
+			want: ErrInvalidConfiguration,
+		},
+		{
+			name: "valid-default",
+			in:   NewArgon2Configuration(),
+		},
+		{
+			name: "valid-changes",
+			in: &Argon2Configuration{
+				Argon2Configuration: &store.Argon2Configuration{
+					Iterations: 3 * 2,
+					Memory:     32 * 1024,
+					Threads:    10,
+					SaltLength: 16,
+					KeyLength:  16,
+				},
+			},
+		},
+		{
+			name: "invalid-iterations",
+			in: &Argon2Configuration{
+				Argon2Configuration: &store.Argon2Configuration{
+					Iterations: 0,
+					Memory:     1,
+					Threads:    1,
+					SaltLength: 1,
+					KeyLength:  1,
+				},
+			},
+			want: ErrInvalidConfiguration,
+		},
+		{
+			name: "invalid-memory",
+			in: &Argon2Configuration{
+				Argon2Configuration: &store.Argon2Configuration{
+					Iterations: 1,
+					Memory:     0,
+					Threads:    1,
+					SaltLength: 1,
+					KeyLength:  1,
+				},
+			},
+			want: ErrInvalidConfiguration,
+		},
+		{
+			name: "invalid-threads",
+			in: &Argon2Configuration{
+				Argon2Configuration: &store.Argon2Configuration{
+					Iterations: 1,
+					Memory:     1,
+					Threads:    0,
+					SaltLength: 1,
+					KeyLength:  1,
+				},
+			},
+			want: ErrInvalidConfiguration,
+		},
+		{
+			name: "invalid-salt-length",
+			in: &Argon2Configuration{
+				Argon2Configuration: &store.Argon2Configuration{
+					Iterations: 1,
+					Memory:     1,
+					Threads:    1,
+					SaltLength: 0,
+					KeyLength:  1,
+				},
+			},
+			want: ErrInvalidConfiguration,
+		},
+		{
+			name: "invalid-key-length",
+			in: &Argon2Configuration{
+				Argon2Configuration: &store.Argon2Configuration{
+					Iterations: 1,
+					Memory:     1,
+					Threads:    1,
+					SaltLength: 1,
+					KeyLength:  0,
+				},
+			},
+			want: ErrInvalidConfiguration,
+		},
+	}
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+			got := tt.in.validate()
+			if tt.want == nil {
+				assert.NoErrorf(got, "valid argon2 configuration: %+v", tt.in)
+				return
+			}
+			require.Error(got)
+			assert.Truef(errors.Is(got, tt.want), "want err: %q got: %q", tt.want, got)
+		})
+	}
 }

@@ -180,6 +180,7 @@ func TestRepository_GetConfiguration(t *testing.T) {
 
 type tconf int
 func (t tconf) AuthMethodId() string { return "abcdefghijk" }
+func (t tconf) validate() error      { return nil }
 var _ Configuration = tconf(0)
 
 func TestRepository_SetConfiguration(t *testing.T) {
@@ -233,6 +234,20 @@ func TestRepository_SetConfiguration(t *testing.T) {
 				},
 			},
 			wantUnknownErr: true,
+		},
+		{
+			name: "invalid-config-setting",
+			in: &Argon2Configuration{
+				Argon2Configuration: &store.Argon2Configuration{
+					PasswordMethodId: authMethodId,
+					Iterations:       0,
+					Memory:           64 * 1024,
+					Threads:          1,
+					SaltLength:       32,
+					KeyLength:        32,
+				},
+			},
+			wantIsErr: ErrInvalidConfiguration,
 		},
 		{
 			name: "valid",

@@ -36,6 +36,17 @@ func NewArgon2Configuration() *Argon2Configuration {
 	}
 }
 
+func (c *Argon2Configuration) validate() error {
+	switch {
+	case c == nil, c.Argon2Configuration == nil:
+		return ErrInvalidConfiguration
+	case c.Iterations == 0, c.Memory == 0, c.Threads == 0, c.SaltLength == 0, c.KeyLength == 0:
+		return ErrInvalidConfiguration
+	default:
+		return nil
+	}
+}
+
 // AuthMethodId returns the Id of the AuthMethod which owns c.
 func (c *Argon2Configuration) AuthMethodId() string {
 	if c != nil && c.Argon2Configuration != nil {
