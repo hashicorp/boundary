@@ -51,10 +51,19 @@ var inputStructs = []*structInfo{
 		inProto: &api.FieldError{},
 		outFile: os.Getenv("GEN_BASEPATH") + "/api2/field_error.gen.go",
 	},
+	// Scope related resources
 	{
 		inProto: &scopes.ScopeInfo{},
-		outFile: os.Getenv("GEN_BASEPATH") + "/api2/scopes/scopes.gen.go",
+		outFile: os.Getenv("GEN_BASEPATH") + "/api2/scopes/scope_info.gen.go",
 	},
+	{
+		inProto: &scopes.Scope{},
+		outFile: os.Getenv("GEN_BASEPATH") + "/api2/scopes/scope.gen.go",
+		templates: []*template.Template{
+			clientTemplate, readTemplate, listTemplate, createTemplate, deleteTemplate},
+		pathArgs: []string{"scope"},
+	},
+	// User related resources
 	{
 		inProto: &users.User{},
 		outFile: os.Getenv("GEN_BASEPATH") + "/api2/users/user.gen.go",
@@ -103,5 +112,13 @@ var inputStructs = []*structInfo{
 			deleteTemplate,
 		},
 		pathArgs: []string{"role"},
+	},
+	// Account related resources
+	{
+		inProto: &users.User{},
+		outFile: os.Getenv("GEN_BASEPATH") + "/api2/users/user.gen.go",
+		templates: []*template.Template{
+			clientTemplate, readTemplate, listTemplate, createTemplate, deleteTemplate},
+		pathArgs: []string{"user"},
 	},
 }
