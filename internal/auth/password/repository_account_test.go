@@ -144,6 +144,29 @@ func TestRepository_CreateAccount(t *testing.T) {
 			wantIsErr: db.ErrInvalidParameter,
 		},
 		{
+			name: "invalid-username-to-short",
+			in: &Account{
+				Account: &store.Account{
+					AuthMethodId: authMethod.PublicId,
+					UserName:     "kaz",
+				},
+			},
+			wantIsErr: ErrTooShort,
+		},
+		{
+			name: "invalid-password-to-short",
+			in: &Account{
+				Account: &store.Account{
+					AuthMethodId: authMethod.PublicId,
+					UserName:     "kazmierczak123",
+				},
+			},
+			opts: []Option{
+				WithPassword("a"),
+			},
+			wantIsErr: ErrTooShort,
+		},
+		{
 			name: "valid-no-options",
 			in: &Account{
 				Account: &store.Account{
@@ -189,6 +212,24 @@ func TestRepository_CreateAccount(t *testing.T) {
 					AuthMethodId: authMethod.PublicId,
 					Description:  ("test-description-repo"),
 					UserName:     "kazmierczak2",
+				},
+			},
+		},
+		{
+			name: "valid-with-password",
+			in: &Account{
+				Account: &store.Account{
+					AuthMethodId: authMethod.PublicId,
+					UserName:     "kazmierczak3",
+				},
+			},
+			opts: []Option{
+				WithPassword("1234567890"),
+			},
+			want: &Account{
+				Account: &store.Account{
+					AuthMethodId: authMethod.PublicId,
+					UserName:     "kazmierczak3",
 				},
 			},
 		},
