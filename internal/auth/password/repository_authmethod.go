@@ -13,6 +13,9 @@ import (
 // contain a valid ScopeId. m must not contain a PublicId. The PublicId is
 // generated and assigned by this method.
 //
+// WithConfiguration is the only valid option. All other options are
+// ignored.
+//
 // Both m.Name and m.Description are optional. If m.Name is set, it must be
 // unique within m.ScopeId.
 func (r *Repository) CreateAuthMethod(ctx context.Context, m *AuthMethod, opt ...Option) (*AuthMethod, error) {
@@ -36,9 +39,29 @@ func (r *Repository) CreateAuthMethod(ctx context.Context, m *AuthMethod, opt ..
 	}
 	m.PublicId = id
 
+	opts := getOpts(opt...)
+	c, ok := opts.withConfig.(*Argon2Configuration)
+	if !ok {
+		return nil, fmt.Errorf("create: password auth method: unknown configuration: %w", ErrUnsupportedConfiguration)
+	}
+	if err := c.validate(); err != nil {
+		return nil, fmt.Errorf("create: password auth method: %w", err)
+	}
+
+	c.PrivateId, err = newArgon2ConfigurationId()
+	if err != nil {
+		return nil, fmt.Errorf("create: password auth method: %w", err)
+	}
+	m.PasswordConfId, c.PasswordMethodId = c.PrivateId, m.PublicId
+
 	var newAuthMethod *AuthMethod
+	var newArgon2Conf *Argon2Configuration
 	_, err = r.writer.DoTx(ctx, db.StdRetryCnt, db.ExpBackoff{},
 		func(_ db.Reader, w db.Writer) error {
+			newArgon2Conf = c.clone()
+			if err := w.Create(ctx, newArgon2Conf, db.WithOplog(r.wrapper, c.oplog(oplog.OpType_OP_TYPE_CREATE))); err != nil {
+				return err
+			}
 			newAuthMethod = m.clone()
 			return w.Create(ctx, newAuthMethod, db.WithOplog(r.wrapper, m.oplog(oplog.OpType_OP_TYPE_CREATE)))
 		},
