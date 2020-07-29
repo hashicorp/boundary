@@ -1,8 +1,11 @@
 package accounts_test
 
 import (
+	"fmt"
+	"strings"
 	"testing"
 
+	"github.com/golang/protobuf/ptypes"
 	"github.com/google/go-cmp/cmp"
 	"github.com/hashicorp/watchtower/internal/auth"
 	"github.com/hashicorp/watchtower/internal/auth/password"
@@ -12,16 +15,16 @@ import (
 	"github.com/hashicorp/watchtower/internal/gen/controller/api/resources/scopes"
 	pbs "github.com/hashicorp/watchtower/internal/gen/controller/api/services"
 	"github.com/hashicorp/watchtower/internal/iam"
+	"github.com/hashicorp/watchtower/internal/servers/controller/handlers"
 	"github.com/hashicorp/watchtower/internal/servers/controller/handlers/accounts"
-	"github.com/hashicorp/watchtower/internal/servers/controller/handlers/authtokens"
 	"github.com/hashicorp/watchtower/internal/types/scope"
-	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
-	"google.golang.org/protobuf/proto"
-	"google.golang.org/protobuf/testing/protocmp"
-
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/testing/protocmp"
+	"google.golang.org/protobuf/types/known/structpb"
+	"google.golang.org/protobuf/types/known/wrapperspb"
 )
 
 func TestGet(t *testing.T) {
@@ -36,45 +39,46 @@ func TestGet(t *testing.T) {
 	require.NoError(t, err, "Couldn't create new auth token service.")
 
 	org, _ := iam.TestScopes(t, conn)
-	at := password.TestAuthToken(t, conn, wrap, org.GetPublicId())
+	am := password.TestAuthMethods(t, conn, org.GetPublicId(), 1)[0]
+	aa := password.TestAccounts(t, conn, org.GetPublicId(), am.GetPublicId(), 1)[0]
 
-	wireAuthToken := pb.Account{
-		Id:                      at.GetPublicId(),
-		ParentId:                at.GetAuthMethodId(),
-		CreatedTime:             at.GetCreateTime().GetTimestamp(),
-		UpdatedTime:             at.GetUpdateTime().GetTimestamp(),
-		ApproximateLastUsedTime: at.GetApproximateLastAccessTime().GetTimestamp(),
-		ExpirationTime:          at.GetExpirationTime().GetTimestamp(),
-		Scope:                   &scopes.ScopeInfo{Id: org.GetPublicId(), Type: scope.Org.String()},
+	wireAuthAccount := pb.Account{
+		Id:           aa.GetPublicId(),
+		AuthMethodId: aa.GetAuthMethodId(),
+		CreatedTime:  aa.GetCreateTime().GetTimestamp(),
+		UpdatedTime:  aa.GetUpdateTime().GetTimestamp(),
+		Scope:        &scopes.ScopeInfo{Id: org.GetPublicId(), Type: scope.Org.String()},
+		Type:         "password",
+		Attributes:   &structpb.Struct{Fields: map[string]*structpb.Value{"username": structpb.NewStringValue(aa.GetUserName())}},
 	}
 
 	cases := []struct {
 		name    string
-		req     *pbs.GetAuthTokenRequest
-		res     *pbs.GetAuthTokenResponse
+		req     *pbs.GetAuthAccountRequest
+		res     *pbs.GetAuthAccountResponse
 		errCode codes.Code
 	}{
 		{
-			name:    "Get an existing auth token",
-			req:     &pbs.GetAuthTokenRequest{Id: wireAuthToken.GetId()},
-			res:     &pbs.GetAuthTokenResponse{Item: &wireAuthToken},
+			name:    "Get an existing account",
+			req:     &pbs.GetAuthAccountRequest{AuthMethodId: wireAuthAccount.GetAuthMethodId(), Id: wireAuthAccount.GetId()},
+			res:     &pbs.GetAuthAccountResponse{Item: &wireAuthAccount},
 			errCode: codes.OK,
 		},
 		{
-			name:    "Get a non existing auth token",
-			req:     &pbs.GetAuthTokenRequest{Id: authtoken.AuthTokenPrefix + "_DoesntExis"},
+			name:    "Get a non existing account",
+			req:     &pbs.GetAuthAccountRequest{AuthMethodId: wireAuthAccount.GetAuthMethodId(), Id: password.AccountPrefix + "_DoesntExis"},
 			res:     nil,
 			errCode: codes.NotFound,
 		},
 		{
 			name:    "Wrong id prefix",
-			req:     &pbs.GetAuthTokenRequest{Id: "j_1234567890"},
+			req:     &pbs.GetAuthAccountRequest{AuthMethodId: wireAuthAccount.GetAuthMethodId(), Id: "j_1234567890"},
 			res:     nil,
 			errCode: codes.InvalidArgument,
 		},
 		{
 			name:    "space in id",
-			req:     &pbs.GetAuthTokenRequest{Id: authtoken.AuthTokenPrefix + "_1 23456789"},
+			req:     &pbs.GetAuthAccountRequest{AuthMethodId: wireAuthAccount.GetAuthMethodId(), Id: authtoken.AuthTokenPrefix + "_1 23456789"},
 			res:     nil,
 			errCode: codes.InvalidArgument,
 		},
@@ -82,9 +86,9 @@ func TestGet(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			assert := assert.New(t)
-			got, gErr := s.GetAuthToken(auth.DisabledAuthTestContext(auth.WithScopeId(org.GetPublicId())), tc.req)
-			assert.Equal(tc.errCode, status.Code(gErr), "GetOrg(%+v) got error %v, wanted %v", tc.req, gErr, tc.errCode)
-			assert.True(proto.Equal(got, tc.res), "GetOrg(%q) got response %q, wanted %q", tc.req, got, tc.res)
+			got, gErr := s.GetAuthAccount(auth.DisabledAuthTestContext(auth.WithScopeId(org.GetPublicId())), tc.req)
+			assert.Equal(tc.errCode, status.Code(gErr), "GetAuthAccount(%+v) got error %v, wanted %v", tc.req, gErr, tc.errCode)
+			assert.Empty(cmp.Diff(got, tc.res, protocmp.Transform()), "GetAuthAccount(%q) got response %q, wanted %q", tc.req, got, tc.res)
 		})
 	}
 }
@@ -93,84 +97,80 @@ func TestList(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrap := db.TestWrapper(t)
-	repoFn := func() (*authtoken.Repository, error) {
-		return authtoken.NewRepository(rw, rw, wrap)
+	repoFn := func() (*password.Repository, error) {
+		return password.NewRepository(rw, rw, wrap)
 	}
 
-	orgNoTokens, _ := iam.TestScopes(t, conn)
+	o, _ := iam.TestScopes(t, conn)
+	ams := password.TestAuthMethods(t, conn, o.GetPublicId(), 3)
+	amNoAccounts, amSomeAccounts, amOtherAccounts := ams[0], ams[1], ams[2]
 
-	orgWithSomeTokens, _ := iam.TestScopes(t, conn)
-	var wantSomeTokens []*pb.AuthToken
-	for i := 0; i < 3; i++ {
-		at := authtoken.TestAuthToken(t, conn, wrap, orgWithSomeTokens.GetPublicId())
-		wantSomeTokens = append(wantSomeTokens, &pb.AuthToken{
-			Id:                      at.GetPublicId(),
-			UserId:                  at.GetIamUserId(),
-			AuthMethodId:            at.GetAuthMethodId(),
-			CreatedTime:             at.GetCreateTime().GetTimestamp(),
-			UpdatedTime:             at.GetUpdateTime().GetTimestamp(),
-			ApproximateLastUsedTime: at.GetApproximateLastAccessTime().GetTimestamp(),
-			ExpirationTime:          at.GetExpirationTime().GetTimestamp(),
-			Scope:                   &scopes.ScopeInfo{Id: orgWithSomeTokens.GetPublicId(), Type: scope.Org.String()},
+	var wantSomeAccounts []*pb.Account
+	for _, aa := range password.TestAccounts(t, conn, o.GetPublicId(), amSomeAccounts.GetPublicId(), 3) {
+		wantSomeAccounts = append(wantSomeAccounts, &pb.Account{
+			Id:           aa.GetPublicId(),
+			AuthMethodId: aa.GetAuthMethodId(),
+			CreatedTime:  aa.GetCreateTime().GetTimestamp(),
+			UpdatedTime:  aa.GetUpdateTime().GetTimestamp(),
+			Scope:        &scopes.ScopeInfo{Id: o.GetPublicId(), Type: scope.Org.String()},
+			Type:         "password",
+			Attributes:   &structpb.Struct{Fields: map[string]*structpb.Value{"username": structpb.NewStringValue(aa.GetUserName())}},
 		})
 	}
 
-	orgWithOtherTokens, _ := iam.TestScopes(t, conn)
-	var wantOtherTokens []*pb.AuthToken
-	for i := 0; i < 3; i++ {
-		at := authtoken.TestAuthToken(t, conn, wrap, orgWithOtherTokens.GetPublicId())
-		wantOtherTokens = append(wantOtherTokens, &pb.AuthToken{
-			Id:                      at.GetPublicId(),
-			UserId:                  at.GetIamUserId(),
-			AuthMethodId:            at.GetAuthMethodId(),
-			CreatedTime:             at.GetCreateTime().GetTimestamp(),
-			UpdatedTime:             at.GetUpdateTime().GetTimestamp(),
-			ApproximateLastUsedTime: at.GetApproximateLastAccessTime().GetTimestamp(),
-			ExpirationTime:          at.GetExpirationTime().GetTimestamp(),
-			Scope:                   &scopes.ScopeInfo{Id: orgWithOtherTokens.GetPublicId(), Type: scope.Org.String()},
+	var wantOtherAccounts []*pb.Account
+	for _, aa := range password.TestAccounts(t, conn, o.GetPublicId(), amOtherAccounts.GetPublicId(), 3) {
+		wantOtherAccounts = append(wantOtherAccounts, &pb.Account{
+			Id:           aa.GetPublicId(),
+			AuthMethodId: aa.GetAuthMethodId(),
+			CreatedTime:  aa.GetCreateTime().GetTimestamp(),
+			UpdatedTime:  aa.GetUpdateTime().GetTimestamp(),
+			Scope:        &scopes.ScopeInfo{Id: o.GetPublicId(), Type: scope.Org.String()},
+			Type:         "password",
+			Attributes:   &structpb.Struct{Fields: map[string]*structpb.Value{"username": structpb.NewStringValue(aa.GetUserName())}},
 		})
 	}
 
 	cases := []struct {
-		name    string
-		scope   string
-		res     *pbs.ListAuthTokensResponse
-		errCode codes.Code
+		name       string
+		authMethod string
+		res        *pbs.ListAuthAccountsResponse
+		errCode    codes.Code
 	}{
 		{
-			name:    "List Some Tokens",
-			scope:   orgWithSomeTokens.GetPublicId(),
-			res:     &pbs.ListAuthTokensResponse{Items: wantSomeTokens},
-			errCode: codes.OK,
+			name:       "List Some Accounts",
+			authMethod: amSomeAccounts.GetPublicId(),
+			res:        &pbs.ListAuthAccountsResponse{Items: wantSomeAccounts},
+			errCode:    codes.OK,
 		},
 		{
-			name:    "List Other Tokens",
-			scope:   orgWithOtherTokens.GetPublicId(),
-			res:     &pbs.ListAuthTokensResponse{Items: wantOtherTokens},
-			errCode: codes.OK,
+			name:       "List Other Accounts",
+			authMethod: amOtherAccounts.GetPublicId(),
+			res:        &pbs.ListAuthAccountsResponse{Items: wantOtherAccounts},
+			errCode:    codes.OK,
 		},
 		{
-			name:    "List No Token",
-			scope:   orgNoTokens.GetPublicId(),
-			res:     &pbs.ListAuthTokensResponse{},
-			errCode: codes.OK,
+			name:       "List No Accounts",
+			authMethod: amNoAccounts.GetPublicId(),
+			res:        &pbs.ListAuthAccountsResponse{},
+			errCode:    codes.OK,
 		},
-		// TODO: When an org doesn't exist, we should return a 404 instead of an empty list.
+		// TODO: When an auth method doesn't exist, we should return a 404 instead of an empty list.
 		{
-			name:    "Unfound Org",
-			scope:   scope.Org.Prefix() + "_DoesntExis",
-			res:     &pbs.ListAuthTokensResponse{},
-			errCode: codes.OK,
+			name:       "Unfound Auth Method",
+			authMethod: password.AuthMethodPrefix + "_DoesntExis",
+			res:        &pbs.ListAuthAccountsResponse{},
+			errCode:    codes.OK,
 		},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			s, err := authtokens.NewService(repoFn)
+			s, err := accounts.NewService(repoFn)
 			require.NoError(t, err, "Couldn't create new user service.")
 
-			got, gErr := s.ListAuthTokens(auth.DisabledAuthTestContext(auth.WithScopeId(tc.scope)), &pbs.ListAuthTokensRequest{})
-			assert.Equal(t, tc.errCode, status.Code(gErr), "ListUsers() with scope %q got error %v, wanted %v", tc.scope, gErr, tc.errCode)
-			assert.Empty(t, cmp.Diff(got, tc.res, protocmp.Transform(), protocmp.SortRepeatedFields(got)), "ListUsers() with scope %q got response %q, wanted %q", tc.scope, got, tc.res)
+			got, gErr := s.ListAuthAccounts(auth.DisabledAuthTestContext(auth.WithScopeId(o.GetPublicId())), &pbs.ListAuthAccountsRequest{AuthMethodId: tc.authMethod})
+			assert.Equal(t, tc.errCode, status.Code(gErr), "ListAuthAccounts() with auth method %q got error %v, wanted %v", tc.authMethod, gErr, tc.errCode)
+			assert.Empty(t, cmp.Diff(got, tc.res, protocmp.Transform(), protocmp.SortRepeatedFields(got)), "ListUsers() with scope %q got response %q, wanted %q", tc.authMethod, got, tc.res)
 		})
 	}
 }
@@ -179,65 +179,67 @@ func TestDelete(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrap := db.TestWrapper(t)
-	repoFn := func() (*authtoken.Repository, error) {
-		return authtoken.NewRepository(rw, rw, wrap)
+	repoFn := func() (*password.Repository, error) {
+		return password.NewRepository(rw, rw, wrap)
 	}
 
-	wrongOrg, _ := iam.TestScopes(t, conn)
-	org, _ := iam.TestScopes(t, conn)
-	at := authtoken.TestAuthToken(t, conn, wrap, org.GetPublicId())
-	atForWrongOrg := authtoken.TestAuthToken(t, conn, wrap, org.GetPublicId())
+	o, _ := iam.TestScopes(t, conn)
+	ams := password.TestAuthMethods(t, conn, o.GetPublicId(), 2)
+	am1, wrongAm := ams[0], ams[1]
 
-	s, err := authtokens.NewService(repoFn)
+	ac := password.TestAccounts(t, conn, o.GetPublicId(), am1.GetPublicId(), 1)[0]
+	wrongAc := password.TestAccounts(t, conn, o.GetPublicId(), wrongAm.GetPublicId(), 1)[0]
+
+	s, err := accounts.NewService(repoFn)
 	require.NoError(t, err, "Error when getting new user service.")
 
 	cases := []struct {
 		name    string
 		scope   string
-		req     *pbs.DeleteAuthTokenRequest
-		res     *pbs.DeleteAuthTokenResponse
+		req     *pbs.DeleteAuthAccountRequest
+		res     *pbs.DeleteAuthAccountResponse
 		errCode codes.Code
 	}{
 		{
-			name:  "Delete an existing token",
-			scope: org.GetPublicId(),
-			req: &pbs.DeleteAuthTokenRequest{
-				Id: at.GetPublicId(),
+			name: "Delete an existing token",
+			req: &pbs.DeleteAuthAccountRequest{
+				AuthMethodId: am1.GetPublicId(),
+				Id:           ac.GetPublicId(),
 			},
-			res: &pbs.DeleteAuthTokenResponse{
+			res: &pbs.DeleteAuthAccountResponse{
 				Existed: true,
 			},
 			errCode: codes.OK,
 		},
 		{
-			name:  "Delete token from wrong scope",
-			scope: wrongOrg.GetPublicId(),
-			req: &pbs.DeleteAuthTokenRequest{
-				Id: atForWrongOrg.GetPublicId(),
+			name: "Delete account from wrong auth method",
+			req: &pbs.DeleteAuthAccountRequest{
+				AuthMethodId: am1.GetPublicId(),
+				Id:           wrongAc.GetPublicId(),
 			},
 			// TODO(toddknight): This should return Existed:false. Figure out if this test is testing something valid
 			// and if so make it pass.
-			res: &pbs.DeleteAuthTokenResponse{
+			res: &pbs.DeleteAuthAccountResponse{
 				Existed: true,
 			},
 			errCode: codes.OK,
 		},
 		{
-			name:  "Delete bad token id",
-			scope: org.GetPublicId(),
-			req: &pbs.DeleteAuthTokenRequest{
-				Id: authtoken.AuthTokenPrefix + "_doesntexis",
+			name: "Delete bad account id",
+			req: &pbs.DeleteAuthAccountRequest{
+				AuthMethodId: am1.GetPublicId(),
+				Id:           password.AccountPrefix + "_doesntexis",
 			},
-			res: &pbs.DeleteAuthTokenResponse{
+			res: &pbs.DeleteAuthAccountResponse{
 				Existed: false,
 			},
 			errCode: codes.OK,
 		},
 		{
-			name:  "Bad token id formatting",
-			scope: org.GetPublicId(),
-			req: &pbs.DeleteAuthTokenRequest{
-				Id: "bad_format",
+			name: "Bad account id formatting",
+			req: &pbs.DeleteAuthAccountRequest{
+				AuthMethodId: am1.GetPublicId(),
+				Id:           "bad_format",
 			},
 			res:     nil,
 			errCode: codes.InvalidArgument,
@@ -246,9 +248,9 @@ func TestDelete(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			assert := assert.New(t)
-			got, gErr := s.DeleteAuthToken(auth.DisabledAuthTestContext(auth.WithScopeId(tc.scope)), tc.req)
-			assert.Equal(tc.errCode, status.Code(gErr), "DeleteUser(%+v) got error %v, wanted %v", tc.req, gErr, tc.errCode)
-			assert.EqualValuesf(tc.res, got, "DeleteUser(%q) got response %q, wanted %q", tc.req, got, tc.res)
+			got, gErr := s.DeleteAuthAccount(auth.DisabledAuthTestContext(auth.WithScopeId(o.GetPublicId())), tc.req)
+			assert.Equal(tc.errCode, status.Code(gErr), "DeleteAuthAccount(%+v) got error %v, wanted %v", tc.req, gErr, tc.errCode)
+			assert.EqualValuesf(tc.res, got, "DeleteAuthAccount(%q) got response %q, wanted %q", tc.req, got, tc.res)
 		})
 	}
 }
@@ -258,22 +260,175 @@ func TestDelete_twice(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrap := db.TestWrapper(t)
-	repoFn := func() (*authtoken.Repository, error) {
-		return authtoken.NewRepository(rw, rw, wrap)
+	repoFn := func() (*password.Repository, error) {
+		return password.NewRepository(rw, rw, wrap)
 	}
 
 	org, _ := iam.TestScopes(t, conn)
-	at := authtoken.TestAuthToken(t, conn, wrap, org.GetPublicId())
+	am := password.TestAuthMethods(t, conn, org.GetPublicId(), 1)[0]
+	ac := password.TestAccounts(t, conn, org.GetPublicId(), am.GetPublicId(), 1)[0]
 
-	s, err := authtokens.NewService(repoFn)
+	s, err := accounts.NewService(repoFn)
 	require.NoError(t, err, "Error when getting new user service")
-	req := &pbs.DeleteAuthTokenRequest{
-		Id: at.GetPublicId(),
+	req := &pbs.DeleteAuthAccountRequest{
+		AuthMethodId: am.GetPublicId(),
+		Id:           ac.GetPublicId(),
 	}
-	got, gErr := s.DeleteAuthToken(auth.DisabledAuthTestContext(auth.WithScopeId(at.GetScopeId())), req)
+	got, gErr := s.DeleteAuthAccount(auth.DisabledAuthTestContext(auth.WithScopeId(ac.GetScopeId())), req)
 	assert.NoError(gErr, "First attempt")
 	assert.True(got.GetExisted(), "Expected existed to be true for the first delete.")
-	got, gErr = s.DeleteAuthToken(auth.DisabledAuthTestContext(auth.WithScopeId(at.GetScopeId())), req)
+	got, gErr = s.DeleteAuthAccount(auth.DisabledAuthTestContext(auth.WithScopeId(ac.GetScopeId())), req)
 	assert.NoError(gErr, "Second attempt")
 	assert.False(got.GetExisted(), "Expected existed to be false for the second delete.")
+}
+
+func TestCreate(t *testing.T) {
+	conn, _ := db.TestSetup(t, "postgres")
+	rw := db.New(conn)
+	wrap := db.TestWrapper(t)
+	repoFn := func() (*password.Repository, error) {
+		return password.NewRepository(rw, rw, wrap)
+	}
+
+	s, err := accounts.NewService(repoFn)
+	require.NoError(t, err, "Error when getting new account service.")
+
+	org, _ := iam.TestScopes(t, conn)
+	am := password.TestAuthMethods(t, conn, org.GetPublicId(), 1)[0]
+	defaultAccount := password.TestAccounts(t, conn, org.GetPublicId(), am.GetPublicId(), 1)[0]
+	defaultCreated, err := ptypes.Timestamp(defaultAccount.GetCreateTime().GetTimestamp())
+	require.NoError(t, err, "Error converting proto to timestamp.")
+
+	defaultSt, err := handlers.ProtoToStruct(&pb.PasswordAccountAttributes{Username: "test"})
+	require.NoError(t, err, "Error converting proto to struct.")
+
+	cases := []struct {
+		name    string
+		req     *pbs.CreateAuthAccountRequest
+		res     *pbs.CreateAuthAccountResponse
+		errCode codes.Code
+	}{
+		{
+			name: "Create a valid Account",
+			req: &pbs.CreateAuthAccountRequest{
+				AuthMethodId: defaultAccount.GetAuthMethodId(),
+				Item: &pb.Account{
+					Name:        &wrapperspb.StringValue{Value: "name"},
+					Description: &wrapperspb.StringValue{Value: "desc"},
+					Type:        "password",
+					Attributes:  defaultSt,
+				},
+			},
+			res: &pbs.CreateAuthAccountResponse{
+				Uri: fmt.Sprintf("scopes/%s/auth-methods/%s/accounts/%s_", defaultAccount.GetScopeId(), defaultAccount.GetAuthMethodId(), password.AccountPrefix),
+				Item: &pb.Account{
+					AuthMethodId: defaultAccount.GetAuthMethodId(),
+					Name:         &wrapperspb.StringValue{Value: "name"},
+					Description:  &wrapperspb.StringValue{Value: "desc"},
+					Scope:        &scopes.ScopeInfo{Id: defaultAccount.GetScopeId(), Type: scope.Org.String()},
+					Type:         "password",
+					Attributes:   defaultSt,
+				},
+			},
+			errCode: codes.OK,
+		},
+		{
+			name: "Can't specify Id",
+			req: &pbs.CreateAuthAccountRequest{
+				AuthMethodId: defaultAccount.GetAuthMethodId(),
+				Item: &pb.Account{
+					Id:         password.AccountPrefix + "_notallowed",
+					Type:       "password",
+					Attributes: defaultSt,
+				},
+			},
+			res:     nil,
+			errCode: codes.InvalidArgument,
+		},
+		{
+			name: "Can't specify AuthMethodId",
+			req: &pbs.CreateAuthAccountRequest{
+				AuthMethodId: defaultAccount.GetAuthMethodId(),
+				Item: &pb.Account{
+					AuthMethodId: defaultAccount.GetAuthMethodId(),
+					Type:         "password",
+					Attributes:   defaultSt,
+				},
+			},
+			res:     nil,
+			errCode: codes.InvalidArgument,
+		},
+		{
+			name: "Can't specify Created Time",
+			req: &pbs.CreateAuthAccountRequest{
+				AuthMethodId: defaultAccount.GetAuthMethodId(),
+				Item: &pb.Account{
+					CreatedTime: ptypes.TimestampNow(),
+					Type:        "password",
+					Attributes:  defaultSt,
+				},
+			},
+			res:     nil,
+			errCode: codes.InvalidArgument,
+		},
+		{
+			name: "Can't specify Update Time",
+			req: &pbs.CreateAuthAccountRequest{
+				AuthMethodId: defaultAccount.GetAuthMethodId(),
+				Item: &pb.Account{
+					UpdatedTime: ptypes.TimestampNow(),
+					Type:        "password",
+					Attributes:  defaultSt,
+				},
+			},
+			res:     nil,
+			errCode: codes.InvalidArgument,
+		},
+		{
+			name: "Must specify type",
+			req: &pbs.CreateAuthAccountRequest{
+				AuthMethodId: defaultAccount.GetAuthMethodId(),
+				Item: &pb.Account{
+					Attributes: defaultSt,
+				},
+			},
+			res:     nil,
+			errCode: codes.InvalidArgument,
+		},
+		{
+			name: "Must specify username for password type",
+			req: &pbs.CreateAuthAccountRequest{
+				AuthMethodId: defaultAccount.GetAuthMethodId(),
+				Item: &pb.Account{
+					Type: "password",
+				},
+			},
+			res:     nil,
+			errCode: codes.InvalidArgument,
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+			got, gErr := s.CreateAuthAccount(auth.DisabledAuthTestContext(auth.WithScopeId(defaultAccount.GetScopeId())), tc.req)
+			assert.Equal(tc.errCode, status.Code(gErr), "CreateAuthAccount(%+v) got error %v, wanted %v", tc.req, gErr, tc.errCode)
+			if got != nil {
+				assert.Contains(got.GetUri(), tc.res.Uri)
+				assert.True(strings.HasPrefix(got.GetItem().GetId(), password.AccountPrefix+"_"))
+				gotCreateTime, err := ptypes.Timestamp(got.GetItem().GetCreatedTime())
+				require.NoError(err, "Error converting proto to timestamp.")
+				gotUpdateTime, err := ptypes.Timestamp(got.GetItem().GetUpdatedTime())
+				require.NoError(err, "Error converting proto to timestamp.")
+				// Verify it is a user created after the test setup's default user
+				assert.True(gotCreateTime.After(defaultCreated), "New account should have been created after default user. Was created %v, which is after %v", gotCreateTime, defaultCreated)
+				assert.True(gotUpdateTime.After(defaultCreated), "New account should have been updated after default user. Was updated %v, which is after %v", gotUpdateTime, defaultCreated)
+
+				// Clear all values which are hard to compare against.
+				got.Uri, tc.res.Uri = "", ""
+				got.Item.Id, tc.res.Item.Id = "", ""
+				got.Item.CreatedTime, got.Item.UpdatedTime, tc.res.Item.CreatedTime, tc.res.Item.UpdatedTime = nil, nil, nil, nil
+			}
+			assert.Empty(cmp.Diff(got, tc.res, protocmp.Transform()), "CreateAuthAccount(%q) got response %q, wanted %q", tc.req, got, tc.res)
+		})
+	}
 }

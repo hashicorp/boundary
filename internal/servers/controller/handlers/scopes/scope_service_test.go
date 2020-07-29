@@ -7,6 +7,7 @@ import (
 
 	"github.com/golang/protobuf/ptypes"
 	"github.com/golang/protobuf/ptypes/wrappers"
+	"github.com/google/go-cmp/cmp"
 	"github.com/hashicorp/watchtower/internal/auth"
 	"github.com/hashicorp/watchtower/internal/db"
 	pb "github.com/hashicorp/watchtower/internal/gen/controller/api/resources/scopes"
@@ -18,6 +19,7 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/testing/protocmp"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 
 	"github.com/stretchr/testify/assert"
@@ -137,8 +139,8 @@ func TestGet(t *testing.T) {
 			require.NoError(err, "Couldn't create new project service.")
 
 			got, gErr := s.GetScope(auth.DisabledAuthTestContext(auth.WithScopeId(tc.scopeId)), req)
-			assert.Equal(tc.errCode, status.Code(gErr), "GetProject(%+v) got error\n%v, wanted\n%v", req, gErr, tc.errCode)
-			assert.True(proto.Equal(got, tc.res), "GetProject(%q) got response\n%q, wanted\n%q", req, got, tc.res)
+			assert.Equal(tc.errCode, status.Code(gErr), "GetScope(%+v) got error\n%v, wanted\n%v", req, gErr, tc.errCode)
+			assert.Empty(cmp.Diff(got, tc.res, protocmp.Transform()), "GetScope(%q) got response\n%q, wanted\n%q", req, got, tc.res)
 		})
 	}
 }
@@ -199,7 +201,7 @@ func TestList(t *testing.T) {
 
 			got, gErr := s.ListScopes(auth.DisabledAuthTestContext(auth.WithScopeId(tc.scopeId)), tc.req)
 			assert.Equal(tc.errCode, status.Code(gErr), "ListScopes(%+v) got error\n%v, wanted\n%v", tc.req, gErr, tc.errCode)
-			assert.True(proto.Equal(got, tc.res), "ListScopes(%q) got response\n%q\nwanted\n%q", tc.req, got, tc.res)
+			assert.Empty(cmp.Diff(got, tc.res, protocmp.Transform()), "ListScopes(%q) got response\n%q\nwanted\n%q", tc.req, got, tc.res)
 		})
 	}
 
@@ -264,7 +266,7 @@ func TestList(t *testing.T) {
 
 			got, gErr := s.ListScopes(auth.DisabledAuthTestContext(auth.WithScopeId(tc.scopeId)), tc.req)
 			assert.Equal(tc.errCode, status.Code(gErr), "ListScopes(%+v) got error\n%v, wanted\n%v", tc.req, gErr, tc.errCode)
-			assert.True(proto.Equal(got, tc.res), "ListScopes(%q) got response\n%q, wanted\n%q", tc.req, got, tc.res)
+			assert.Empty(cmp.Diff(got, tc.res, protocmp.Transform()), "ListScopes(%q) got response\n%q, wanted\n%q", tc.req, got, tc.res)
 		})
 	}
 }
@@ -350,8 +352,8 @@ func TestDelete(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			assert := assert.New(t)
 			got, gErr := s.DeleteScope(auth.DisabledAuthTestContext(auth.WithScopeId(tc.scopeId)), tc.req)
-			assert.Equal(tc.errCode, status.Code(gErr), "DeleteProject(%+v) got error %v, wanted %v", tc.req, gErr, tc.errCode)
-			assert.EqualValuesf(tc.res, got, "DeleteProject(%q) got response %q, wanted %q", tc.req, got, tc.res)
+			assert.Equal(tc.errCode, status.Code(gErr), "DeleteScope(%+v) got error %v, wanted %v", tc.req, gErr, tc.errCode)
+			assert.EqualValuesf(tc.res, got, "DeleteScope(%q) got response %q, wanted %q", tc.req, got, tc.res)
 		})
 	}
 }
@@ -478,9 +480,9 @@ func TestCreate(t *testing.T) {
 			require.NoError(err, "Error when getting new project service.")
 
 			got, gErr := s.CreateScope(auth.DisabledAuthTestContext(auth.WithScopeId(tc.scopeId)), req)
-			assert.Equal(tc.errCode, status.Code(gErr), "CreateProject(%+v) got error %v, wanted %v", req, gErr, tc.errCode)
+			assert.Equal(tc.errCode, status.Code(gErr), "CreateScope(%+v) got error %v, wanted %v", req, gErr, tc.errCode)
 			if got != nil {
-				assert.True(strings.HasPrefix(got.GetUri(), tc.res.Uri))
+				assert.Contains(got.GetUri(), tc.res.Uri)
 				switch tc.scopeId {
 				case "global":
 					assert.True(strings.HasPrefix(got.GetItem().GetId(), "o_"))
@@ -500,7 +502,7 @@ func TestCreate(t *testing.T) {
 				got.Item.Id, tc.res.Item.Id = "", ""
 				got.Item.CreatedTime, got.Item.UpdatedTime, tc.res.Item.CreatedTime, tc.res.Item.UpdatedTime = nil, nil, nil, nil
 			}
-			assert.True(proto.Equal(got, tc.res), "CreateProject(%q) got response %q, wanted %q", req, got, tc.res)
+			assert.Empty(cmp.Diff(got, tc.res, protocmp.Transform()), "CreateScope(%q) got response %q, wanted %q", req, got, tc.res)
 		})
 	}
 }
@@ -824,7 +826,7 @@ func TestUpdate(t *testing.T) {
 				// Clear all values which are hard to compare against.
 				got.Item.UpdatedTime, tc.res.Item.UpdatedTime = nil, nil
 			}
-			assert.True(proto.Equal(got, tc.res), "UpdateScope(%q) got response\n%q, wanted\n%q", req, got, tc.res)
+			assert.Empty(cmp.Diff(got, tc.res, protocmp.Transform()), "UpdateScope(%q) got response\n%q, wanted\n%q", req, got, tc.res)
 		})
 	}
 }

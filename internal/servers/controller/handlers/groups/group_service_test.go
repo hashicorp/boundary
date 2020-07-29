@@ -270,7 +270,7 @@ func TestList(t *testing.T) {
 
 			got, gErr := s.ListGroups(auth.DisabledAuthTestContext(auth.WithScopeId(tc.scopeId)), &pbs.ListGroupsRequest{})
 			assert.Equal(tc.errCode, status.Code(gErr), "ListGroups(%q) got error %v, wanted %v", tc.scopeId, gErr, tc.errCode)
-			assert.True(proto.Equal(got, tc.res), "ListGroups(%q) got response %q, wanted %q", tc.scopeId, got, tc.res)
+			assert.Empty(cmp.Diff(got, tc.res, protocmp.Transform()), "ListGroups(%q) got response %q, wanted %q", tc.scopeId, got, tc.res)
 		})
 	}
 }
@@ -496,7 +496,7 @@ func TestCreate(t *testing.T) {
 			got, gErr := s.CreateGroup(auth.DisabledAuthTestContext(auth.WithScopeId(tc.scopeId)), req)
 			assert.Equal(tc.errCode, status.Code(gErr), "CreateGroup(%+v) got error %v, wanted %v", req, gErr, tc.errCode)
 			if got != nil {
-				assert.True(strings.HasPrefix(got.GetUri(), tc.res.Uri), got.GetUri())
+				assert.Contains(got.GetUri(), tc.res.Uri)
 				assert.True(strings.HasPrefix(got.GetItem().GetId(), iam.GroupPrefix+"_"))
 				gotCreateTime, err := ptypes.Timestamp(got.GetItem().GetCreatedTime())
 				require.NoError(err, "Error converting proto to timestamp.")

@@ -46,6 +46,8 @@ func NewService(repo func() (*password.Repository, error)) (Service, error) {
 
 var _ pbs.AuthAccountServiceServer = Service{}
 
+// TODO(ICU-407): Validate that the provided auth method and account are in the provided scope.
+
 // ListAuthAccounts implements the interface pbs.AuthAccountServiceServer.
 func (s Service) ListAuthAccounts(ctx context.Context, req *pbs.ListAuthAccountsRequest) (*pbs.ListAuthAccountsResponse, error) {
 	authResults := auth.Verify(ctx)
@@ -55,7 +57,7 @@ func (s Service) ListAuthAccounts(ctx context.Context, req *pbs.ListAuthAccounts
 	if err := validateListRequest(req); err != nil {
 		return nil, err
 	}
-	ul, err := s.listFromRepo(ctx, authResults.Scope.GetId())
+	ul, err := s.listFromRepo(ctx, req.GetAuthMethodId())
 	if err != nil {
 		return nil, err
 	}
@@ -91,12 +93,12 @@ func (s Service) CreateAuthAccount(ctx context.Context, req *pbs.CreateAuthAccou
 	if err := validateCreateRequest(req); err != nil {
 		return nil, err
 	}
-	u, err := s.createInRepo(ctx, authResults.Scope.GetId(), req.GetItem())
+	u, err := s.createInRepo(ctx, req.GetAuthMethodId(), req.GetItem())
 	if err != nil {
 		return nil, err
 	}
 	u.Scope = authResults.Scope
-	return &pbs.CreateAuthAccountResponse{Item: u, Uri: fmt.Sprintf("scopes/%s/users/%s", authResults.Scope.GetId(), u.GetId())}, nil
+	return &pbs.CreateAuthAccountResponse{Item: u, Uri: fmt.Sprintf("scopes/%s/auth-methods/%s/accounts/%s", authResults.Scope.GetId(), u.GetAuthMethodId(), u.GetId())}, nil
 }
 
 // UpdateAuthAccount implements the interface pbs.AuthAccountServiceServer.
@@ -183,12 +185,12 @@ func (s Service) deleteFromRepo(ctx context.Context, id string) (bool, error) {
 	return rows > 0, nil
 }
 
-func (s Service) listFromRepo(ctx context.Context, orgId string) ([]*pb.Account, error) {
+func (s Service) listFromRepo(ctx context.Context, authMethodId string) ([]*pb.Account, error) {
 	repo, err := s.repoFn()
 	if err != nil {
 		return nil, err
 	}
-	ul, err := repo.ListAccounts(ctx, orgId)
+	ul, err := repo.ListAccounts(ctx, authMethodId)
 	if err != nil {
 		return nil, err
 	}
@@ -201,15 +203,21 @@ func (s Service) listFromRepo(ctx context.Context, orgId string) ([]*pb.Account,
 
 func toProto(in *password.Account) *pb.Account {
 	out := pb.Account{
-		Id:          in.GetPublicId(),
-		CreatedTime: in.GetCreateTime().GetTimestamp(),
-		UpdatedTime: in.GetUpdateTime().GetTimestamp(),
+		Id:           in.GetPublicId(),
+		CreatedTime:  in.GetCreateTime().GetTimestamp(),
+		UpdatedTime:  in.GetUpdateTime().GetTimestamp(),
+		AuthMethodId: in.GetAuthMethodId(),
+		Type:         "password",
 	}
 	if in.GetDescription() != "" {
 		out.Description = &wrapperspb.StringValue{Value: in.GetDescription()}
 	}
 	if in.GetName() != "" {
 		out.Name = &wrapperspb.StringValue{Value: in.GetName()}
+	}
+	if st, err := handlers.ProtoToStruct(&pb.PasswordAccountAttributes{Username: in.GetUserName()}); err == nil {
+		// TODO: otherwise log the error.
+		out.Attributes = st
 	}
 	return &out
 }
@@ -222,7 +230,10 @@ func toProto(in *password.Account) *pb.Account {
 func validateGetRequest(req *pbs.GetAuthAccountRequest) error {
 	badFields := map[string]string{}
 	if !validId(req.GetId(), password.AccountPrefix+"_") {
-		badFields["id"] = "Invalid formatted user id."
+		badFields["id"] = "Invalid formatted identifier."
+	}
+	if !validId(req.GetAuthMethodId(), password.AuthMethodPrefix+"_") {
+		badFields["auth_method_id"] = "Invalid formatted identifier."
 	}
 	if len(badFields) > 0 {
 		return handlers.InvalidArgumentErrorf("Improperly formatted identifier.", badFields)
@@ -232,9 +243,15 @@ func validateGetRequest(req *pbs.GetAuthAccountRequest) error {
 
 func validateCreateRequest(req *pbs.CreateAuthAccountRequest) error {
 	badFields := map[string]string{}
+	if !validId(req.GetAuthMethodId(), password.AuthMethodPrefix+"_") {
+		badFields["auth_method_id"] = "Invalid formatted identifier."
+	}
 	item := req.GetItem()
 	if item.GetId() != "" {
 		badFields["id"] = "This is a read only field."
+	}
+	if item.GetAuthMethodId() != "" {
+		badFields["auth_method_id"] = "This is a read only field."
 	}
 	if item.GetCreatedTime() != nil {
 		badFields["created_time"] = "This is a read only field."
@@ -244,8 +261,12 @@ func validateCreateRequest(req *pbs.CreateAuthAccountRequest) error {
 	}
 	switch item.GetType() {
 	case "password":
-		if err := handlers.StructToProto(item.GetAttributes(), &pb.PasswordAccountAttributes{}); err != nil {
+		pwAttrs := &pb.PasswordAccountAttributes{}
+		if err := handlers.StructToProto(item.GetAttributes(), pwAttrs); err != nil {
 			badFields["attributes"] = "Attribute fields do not match the expected format."
+		}
+		if pwAttrs.GetUsername() == "" {
+			badFields["username"] = "This is a required field for this type."
 		}
 	default:
 		badFields["type"] = "This is a required field."
@@ -258,6 +279,9 @@ func validateCreateRequest(req *pbs.CreateAuthAccountRequest) error {
 
 func validateDeleteRequest(req *pbs.DeleteAuthAccountRequest) error {
 	badFields := map[string]string{}
+	if !validId(req.GetAuthMethodId(), password.AuthMethodPrefix+"_") {
+		badFields["auth_method_id"] = "Invalid formatted identifier."
+	}
 	if !validId(req.GetId(), password.AccountPrefix+"_") {
 		badFields["id"] = "Incorrectly formatted identifier."
 	}
@@ -269,6 +293,9 @@ func validateDeleteRequest(req *pbs.DeleteAuthAccountRequest) error {
 
 func validateListRequest(req *pbs.ListAuthAccountsRequest) error {
 	badFields := map[string]string{}
+	if !validId(req.GetAuthMethodId(), password.AuthMethodPrefix+"_") {
+		badFields["auth_method_id"] = "Invalid formatted identifier."
+	}
 	if len(badFields) > 0 {
 		return handlers.InvalidArgumentErrorf("Improperly formatted identifier.", badFields)
 	}

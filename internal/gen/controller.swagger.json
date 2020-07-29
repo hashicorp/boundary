@@ -1684,7 +1684,7 @@
           "description": "Scope information for this resource\nOutput only.",
           "readOnly": true
         },
-        "parent_id": {
+        "auth_method_id": {
           "type": "string",
           "description": "The auth method this account is created for.\nOutput only.",
           "readOnly": true

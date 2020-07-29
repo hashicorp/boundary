@@ -22,7 +22,7 @@ message Account {
 
 	// The auth method this account is created for.
 	// Output only.
-	string parent_id = 3 [json_name="parent_id"];
+	string auth_method_id = 3 [json_name="auth_method_id"];
 
 	// Optional name for identification purposes
 	google.protobuf.StringValue name = 4 [(custom_options.v1.mask_mapping) = {this:"name" that: "name"}];
