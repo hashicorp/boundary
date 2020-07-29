@@ -1660,7 +1660,7 @@ begin;
        ┌────────────────┐                 ┌──────────────────────┐             ┌────────────────────────────┐
        │  auth_method   │                 │ auth_password_method │             │     auth_password_conf     │
        ├────────────────┤                 ├──────────────────────┤             ├────────────────────────────┤
-       │ public_id (pk) │                 │ public_id (pk,fk)    │            ╱│ public_id          (pk,fk) │
+       │ public_id (pk) │                 │ public_id (pk,fk)    │            ╱│ private_id         (pk,fk) │
        │ scope_id  (fk) │┼┼─────────────○┼│ scope_id  (fk)       │┼┼─────────○─│ password_method_id (fk)    │
        │                │                 │ ...                  │            ╲│                            │
        └────────────────┘                 └──────────────────────┘             └────────────────────────────┘
@@ -1674,7 +1674,7 @@ begin;
   ┌──────────────────────────┐          ┌──────────────────────────┐          ┌───────────────────────────────┐
   │       auth_account       │          │  auth_password_account   │          │   auth_password_credential    │
   ├──────────────────────────┤          ├──────────────────────────┤          ├───────────────────────────────┤
-  │ public_id      (pk)      │          │ public_id      (pk,fk2)  │          │ public_id           (pk)      │
+  │ public_id      (pk)      │          │ public_id      (pk,fk2)  │          │ private_id          (pk)      │
   │ scope_id       (fk1,fk2) │   ◀fk2   │ scope_id       (fk1,fk2) │   ◀fk2   │ password_method_id  (fk1,fk2) │
   │ auth_method_id (fk1)     │┼┼──────○┼│ auth_method_id (fk1,fk2) │┼┼──────○┼│ password_conf_id    (fk1)     │
   │ iam_user_id    (fk2)     │          │ ...                      │          │ password_account_id (fk2)     │
@@ -1714,6 +1714,7 @@ begin;
   create table auth_password_method (
     public_id wt_public_id primary key,
     scope_id wt_scope_id not null,
+    password_conf_id wt_private_id not null, -- FK to auth_password_conf added below
     name text,
     description text,
     create_time wt_timestamp,
@@ -1769,14 +1770,22 @@ begin;
     for each row execute procedure insert_auth_account_subtype();
 
   create table auth_password_conf (
-    public_id wt_public_id primary key,
+    private_id wt_private_id primary key,
     password_method_id wt_public_id not null
       references auth_password_method (public_id)
       on delete cascade
       on update cascade
       deferrable initially deferred,
-    unique(password_method_id, public_id)
+    unique(password_method_id, private_id)
   );
+
+  alter table auth_password_method
+    add constraint current_conf_fkey
+    foreign key (public_id, password_conf_id)
+    references auth_password_conf (password_method_id, private_id)
+    on delete cascade
+    on update cascade
+    deferrable initially deferred;
 
   -- insert_auth_password_conf_subtype() is a trigger function for subtypes of
   -- auth_password_conf
@@ -1786,20 +1795,20 @@ begin;
   as $$
   begin
     insert into auth_password_conf
-      (public_id, password_method_id)
+      (private_id, password_method_id)
     values
-      (new.public_id, new.password_method_id);
+      (new.private_id, new.password_method_id);
     return new;
   end;
   $$ language plpgsql;
 
   create table auth_password_credential (
-    public_id wt_public_id primary key,
+    private_id wt_private_id primary key,
     password_account_id wt_public_id not null unique,
-    password_conf_id wt_public_id not null,
+    password_conf_id wt_private_id not null,
     password_method_id wt_public_id not null,
     foreign key (password_method_id, password_conf_id)
-      references auth_password_conf (password_method_id, public_id)
+      references auth_password_conf (password_method_id, private_id)
       on delete cascade
       on update cascade,
     foreign key (password_method_id, password_account_id)
@@ -1823,16 +1832,16 @@ begin;
     where auth_password_account.public_id = new.password_account_id;
 
     insert into auth_password_credential
-      (public_id, password_account_id, password_conf_id, password_method_id)
+      (private_id, password_account_id, password_conf_id, password_method_id)
     values
-      (new.public_id, new.password_account_id, new.password_conf_id, new.password_method_id);
+      (new.private_id, new.password_account_id, new.password_conf_id, new.password_method_id);
     return new;
   end;
   $$ language plpgsql;
 
   --
   -- triggers for time columns
-  ---
+  --
 
   create trigger
     update_time_column
@@ -1870,10 +1879,148 @@ begin;
   insert on auth_password_account
     for each row execute procedure default_create_time();
 
-  insert into oplog_ticket (name, version)
+  -- The tickets for oplog are the subtypes not the base types because no updates
+  -- are done to any values in the base types.
+  insert into oplog_ticket
+    (name, version)
   values
     ('auth_password_method', 1),
     ('auth_password_account', 1);
+
+commit;
+
+`),
+	},
+	"migrations/13_auth_password_argon.down.sql": {
+		name: "13_auth_password_argon.down.sql",
+		bytes: []byte(`
+begin;
+
+  drop table auth_password_argon2_conf;
+
+commit;
+
+`),
+	},
+	"migrations/13_auth_password_argon.up.sql": {
+		name: "13_auth_password_argon.up.sql",
+		bytes: []byte(`
+begin;
+
+  create table auth_password_argon2_conf (
+    private_id wt_private_id primary key
+      references auth_password_conf (private_id)
+      on delete cascade
+      on update cascade,
+    password_method_id wt_public_id not null,
+    create_time wt_timestamp,
+    iterations int not null default 3
+      check(iterations > 0),
+    memory int not null default 65536
+      check(memory > 0),
+    threads int not null default 1
+      check(threads > 0),
+    -- salt_length unit is bytes
+    salt_length int not null default 32
+    -- minimum of 16 bytes (128 bits)
+      check(salt_length >= 16),
+    -- key_length unit is bytes
+    key_length int not null default 32
+    -- minimum of 16 bytes (128 bits)
+      check(key_length >= 16),
+    unique(password_method_id, iterations, memory, threads, salt_length, key_length),
+    unique (password_method_id, private_id),
+    foreign key (password_method_id, private_id)
+      references auth_password_conf (password_method_id, private_id)
+      on delete cascade
+      on update cascade
+      deferrable initially deferred
+  );
+  create or replace function
+    read_only_auth_password_argon2_conf()
+    returns trigger
+  as $$
+  begin
+    raise exception 'auth_password_argon2_conf is read-only';
+  end;
+  $$ language plpgsql;
+
+  create trigger
+    read_only_auth_password_argon2_conf
+  before
+  update on auth_password_argon2_conf
+    for each row execute procedure read_only_auth_password_argon2_conf();
+
+  create trigger
+    insert_auth_password_conf_subtype
+  before insert on auth_password_argon2_conf
+    for each row execute procedure insert_auth_password_conf_subtype();
+
+  --
+  -- triggers for time columns
+  --
+  create trigger
+    immutable_create_time
+  before
+  update on auth_password_argon2_conf
+    for each row execute procedure immutable_create_time_func();
+
+  create trigger
+    default_create_time_column
+  before
+  insert on auth_password_argon2_conf
+    for each row execute procedure default_create_time();
+
+  -- The tickets for oplog are the subtypes not the base types because no updates
+  -- are done to any values in the base types.
+  insert into oplog_ticket
+    (name, version)
+  values
+    ('auth_password_argon2_conf', 1),
+    ('auth_password_argon2_cred', 1);
+
+commit;
+
+`),
+	},
+	"migrations/14_auth_password_views.down.sql": {
+		name: "14_auth_password_views.down.sql",
+		bytes: []byte(`
+begin;
+
+  drop view auth_password_current_conf;
+  drop view auth_password_conf_union;
+
+commit;
+
+`),
+	},
+	"migrations/14_auth_password_views.up.sql": {
+		name: "14_auth_password_views.up.sql",
+		bytes: []byte(`
+begin;
+
+  -- auth_password_conf_union is a union of the configuration settings
+  -- of all supported key derivation functions.
+  -- It will be updated as new key derivation functions are supported.
+  create or replace view auth_password_conf_union as
+      -- Do not change the order of the columns when adding new configurations.
+      -- Union with new tables appending new columns as needed.
+      select c.password_method_id, c.private_id as password_conf_id, c.private_id,
+             'argon2' as conf_type,
+             c.iterations, c.memory, c.threads, c.salt_length, c.key_length
+        from auth_password_argon2_conf c;
+
+  -- auth_password_current_conf provides a view of the current password
+  -- configuration for each password auth method.
+  -- The view will be updated as new key derivation functions are supported
+  -- but the query to create the view should not need to be updated.
+  create or replace view auth_password_current_conf as
+      -- Rerun this query whenever auth_password_conf_union is updated.
+      select pm.min_user_name_length, pm.min_password_length, c.*
+        from auth_password_method pm
+  inner join auth_password_conf_union c
+          on pm.password_conf_id = c.password_conf_id;
 
 commit;
 
