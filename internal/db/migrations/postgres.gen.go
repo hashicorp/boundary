@@ -143,7 +143,8 @@ is
   'function used in after update triggers to properly set version columns';
 
 -- immutable_columns() will make the column names immutable which are passed as
--- parameters when the trigger is created.
+-- parameters when the trigger is created. It raises errcode 23601 which is a
+-- class 23 integrity constraint violation: immutable column  
 create or replace function
   immutable_columns()
   returns trigger
@@ -157,7 +158,11 @@ begin
     execute format('SELECT $1.%I', col_name) into new_value using new;
     execute format('SELECT $1.%I', col_name) into old_value using old;
   	if new_value is distinct from old_value then
-      raise exception 'immutable column: %.%', tg_table_name, col_name;
+      raise exception 'immutable column: %.%', tg_table_name, col_name using
+        errcode = '23601', 
+        schema = tg_table_schema,
+        table = tg_table_name,
+        column = col_name;
   	end if;
   end loop;
   return new;
