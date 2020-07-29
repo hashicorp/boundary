@@ -16,6 +16,7 @@ import (
 	"github.com/hashicorp/watchtower/globals"
 	"github.com/hashicorp/watchtower/internal/auth"
 	"github.com/hashicorp/watchtower/internal/gen/controller/api/services"
+	"github.com/hashicorp/watchtower/internal/servers/controller/handlers/accounts"
 
 	"github.com/hashicorp/watchtower/internal/servers/controller/handlers"
 	"github.com/hashicorp/watchtower/internal/servers/controller/handlers/authenticate"
@@ -79,6 +80,13 @@ func handleGrpcGateway(c *Controller) (http.Handler, error) {
 	}
 	if err := services.RegisterHostCatalogServiceHandlerServer(ctx, mux, hcs); err != nil {
 		return nil, fmt.Errorf("failed to register host catalog service handler: %w", err)
+	}
+	accts, err := accounts.NewService(c.PasswordAuthRepoFn)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create account handler service: %w", err)
+	}
+	if err := services.RegisterAccountServiceHandlerServer(ctx, mux, accts); err != nil {
+		return nil, fmt.Errorf("failed to register account service handler: %w", err)
 	}
 	auths, err := authenticate.NewService(c.IamRepoFn, c.AuthTokenRepoFn)
 	if err != nil {
