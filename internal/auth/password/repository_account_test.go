@@ -5,9 +5,11 @@ import (
 	"errors"
 	"fmt"
 	"testing"
+	"time"
 
 	"github.com/hashicorp/watchtower/internal/auth/password/store"
 	"github.com/hashicorp/watchtower/internal/db"
+	"github.com/hashicorp/watchtower/internal/oplog"
 	"github.com/jinzhu/gorm"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -256,6 +258,15 @@ func TestRepository_CreateAccount(t *testing.T) {
 			assert.Equal(tt.want.Name, got.Name)
 			assert.Equal(tt.want.Description, got.Description)
 			assert.Equal(got.CreateTime, got.UpdateTime)
+
+			assert.NoError(db.TestVerifyOplog(t, rw, got.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_CREATE), db.WithCreateNotBefore(10*time.Second)))
+
+			opts := getOpts(tt.opts...)
+			if opts.withPassword {
+				authAcct, err := repo.Authenticate(context.Background(), tt.in.AuthMethodId, tt.in.UserName, opts.password)
+				require.NoError(err)
+				assert.NoError(db.TestVerifyOplog(t, rw, authAcct.CredentialID, db.WithOperation(oplog.OpType_OP_TYPE_CREATE), db.WithCreateNotBefore(10*time.Second)))
+			}
 		})
 	}
 

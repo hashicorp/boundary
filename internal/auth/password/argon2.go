@@ -184,7 +184,7 @@ func (c *Argon2Credential) decrypt(ctx context.Context, cipher wrapping.Wrapper)
 
 func (c *Argon2Credential) oplog(op oplog.OpType) oplog.Metadata {
 	metadata := oplog.Metadata{
-		"resource-private-id": []string{c.PrivateId},
+		"resource-public-id":  []string{c.PrivateId},
 		"resource-type":       []string{"argon2 credential"},
 		"op-type":             []string{op.String()},
 		"password-account-id": []string{c.PasswordAccountId},
