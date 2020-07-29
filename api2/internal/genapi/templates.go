@@ -6,20 +6,60 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"strings"
 	"text/template"
+
+	"github.com/iancoleman/strcase"
 )
+
+func toPath(segments []string) string {
+	var printfString, printfArg []string
+	for i, s := range segments {
+		if i%2 == 0 {
+			// The first (zero index) is always the resource name, the next will be the id.
+			printfString = append(printfString, s)
+		} else {
+			printfString = append(printfString, "%s")
+			printfArg = append(printfArg, s)
+		}
+	}
+	return fmt.Sprintf("fmt.Sprintf(\"%s\", %s)", strings.Join(printfString, "/"), strings.Join(printfArg, ", "))
+}
+
+func getArgsAndPaths(in []string) (colArgs, resArgs []string, colPath, resPath string) {
+	var argNames, pathSegment []string
+	for _, s := range in {
+		varName := fmt.Sprintf("%sId", strcase.ToLowerCamel(strings.ReplaceAll(s, "-", "_")))
+		collectionName := fmt.Sprintf("%ss", s)
+
+		argNames = append(argNames, varName)
+		pathSegment = append(pathSegment, collectionName, varName)
+	}
+
+	return argNames[:len(argNames)-1], argNames, toPath(pathSegment[:len(pathSegment)-1]), toPath(pathSegment)
+}
+
+type templateInput struct {
+	Name                   string
+	Package                string
+	Fields                 []fieldInfo
+	CollectionFunctionArgs []string
+	ResourceFunctionArgs   []string
+	CollectionPath         string
+	ResourcePath           string
+}
 
 func fillTemplates() {
 	for _, in := range inputStructs {
 		outBuf := new(bytes.Buffer)
-		input := struct {
-			Name    string
-			Package string
-			Fields  []fieldInfo
-		}{
+		input := templateInput{
 			Name:    in.generatedStructure.name,
 			Package: in.generatedStructure.pkg,
 			Fields:  in.generatedStructure.fields,
+		}
+
+		if len(in.pathArgs) > 0 {
+			input.CollectionFunctionArgs, input.ResourceFunctionArgs, input.CollectionPath, input.ResourcePath = getArgsAndPaths(in.pathArgs)
 		}
 
 		structTemplate.Execute(outBuf, input)
@@ -44,15 +84,18 @@ func fillTemplates() {
 	}
 }
 
-func listTemplate(path string) *template.Template {
-	return template.Must(template.New("").Parse(
-		fmt.Sprint(`
-func (s *{{ .Name }}Client) List(ctx context.Context, opts... api.Option) ([]{{ .Name }}, *api.Error, error) {
+var listTemplate = template.Must(template.New("").Parse(`
+func (s *{{ .Name }}Client) List(ctx context.Context, {{ range .CollectionFunctionArgs }} {{ . }} string, {{ end }}opts... api.Option) ([]{{ .Name }}, *api.Error, error) {
+	{{ range .CollectionFunctionArgs }}
+		if {{ . }} == "" {
+			return nil, nil, fmt.Errorf("empty {{ . }} value passed into List request")
+		}
+	{{ end }}
 	if s.client == nil {
 		return nil, nil, fmt.Errorf("nil client")
 	}
 
-	req, err := s.client.NewRequest(ctx, "GET", "`, path, `", nil, opts...)
+	req, err := s.client.NewRequest(ctx, "GET", {{ .CollectionPath }}, nil, opts...)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error creating List request: %w", err)
 	}
@@ -73,22 +116,20 @@ func (s *{{ .Name }}Client) List(ctx context.Context, opts... api.Option) ([]{{ 
 
 	return target.Items, apiErr, nil
 }
-`)))
-}
+`))
 
-func readTemplate(path string) *template.Template {
-	return template.Must(template.New("").Parse(
-		fmt.Sprint(`
-func (s *{{ .Name }}Client) Read(ctx context.Context, id string, opts... api.Option) (*{{ .Name }}, *api.Error, error) {
-	if id == "" {
-		return nil, nil, fmt.Errorf("empty ID value passed into Read request")
+var readTemplate = template.Must(template.New("").Parse(`
+func (s *{{ .Name }}Client) Read(ctx context.Context, {{ range .ResourceFunctionArgs }} {{ . }} string, {{ end }} opts... api.Option) (*{{ .Name }}, *api.Error, error) {
+	{{ range .ResourceFunctionArgs }}
+	if {{ . }} == "" {
+		return nil, nil, fmt.Errorf("empty {{ . }} value passed into List request")
 	}
-
+	{{ end }}
 	if s.client == nil {
 		return nil, nil, fmt.Errorf("nil client")
 	}
 
-	req, err := s.client.NewRequest(ctx, "GET", fmt.Sprintf("%s/%s", "`, path, `", id), nil, opts...)
+	req, err := s.client.NewRequest(ctx, "GET", {{ .ResourcePath }}, nil, opts...)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error creating Read request: %w", err)
 	}
@@ -106,22 +147,20 @@ func (s *{{ .Name }}Client) Read(ctx context.Context, id string, opts... api.Opt
 
 	return target, apiErr, nil
 }
-`)))
-}
+`))
 
-func deleteTemplate(path string) *template.Template {
-	return template.Must(template.New("").Parse(
-		fmt.Sprint(`
-func (s *{{ .Name }}Client) Delete(ctx context.Context, id string, opts... api.Option) (bool, *api.Error, error) {
-	if id == "" {
-		return false, nil, fmt.Errorf("empty ID value passed into Delete request")
+var deleteTemplate = template.Must(template.New("").Parse(`
+func (s *{{ .Name }}Client) Delete(ctx context.Context, {{ range .ResourceFunctionArgs }} {{ . }} string, {{ end }} opts... api.Option) (bool, *api.Error, error) {
+	{{ range .ResourceFunctionArgs }}
+	if {{ . }} == "" {
+		return false, nil, fmt.Errorf("empty {{ . }} value passed into List request")
 	}
-
+	{{ end }}
 	if s.client == nil {
 		return false, nil, fmt.Errorf("nil client")
 	}
 
-	req, err := s.client.NewRequest(ctx, "DELETE", fmt.Sprintf("%s/%s", "`, path, `", id), nil, opts...)
+	req, err := s.client.NewRequest(ctx, "DELETE", {{ .ResourcePath }}, nil, opts...)
 	if err != nil {
 		return false, nil, fmt.Errorf("error creating Delete request: %w", err)
 	}
@@ -142,18 +181,20 @@ func (s *{{ .Name }}Client) Delete(ctx context.Context, id string, opts... api.O
 
 	return target.Existed, apiErr, nil
 }
-`)))
-}
+`))
 
-func createTemplate(path string) *template.Template {
-	return template.Must(template.New("").Parse(
-		fmt.Sprint(`
-func (s *{{ .Name }}Client) Create(ctx context.Context, opts... api.Option) (*{{ .Name }}, *api.Error, error) {
+var createTemplate = template.Must(template.New("").Parse(`
+func (s *{{ .Name }}Client) Create(ctx context.Context, {{ range .CollectionFunctionArgs }} . string, {{ end }} opts... api.Option) (*{{ .Name }}, *api.Error, error) {
+	{{ range .CollectionFunctionArgs }}
+	if . == "" {
+		return nil, nil, fmt.Errorf("empty {{ . }} value passed into List request")
+	}
+	{{ end }}
 	if s.client == nil {
 		return nil, nil, fmt.Errorf("nil client")
 	}
 	r := {{ .Name }}{}
-	req, err := s.client.NewRequest(ctx, "POST", "`, path, `", r, opts...)
+	req, err := s.client.NewRequest(ctx, "POST", {{ .CollectionPath }}, r, opts...)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error creating Create request: %w", err)
 	}
@@ -171,8 +212,7 @@ func (s *{{ .Name }}Client) Create(ctx context.Context, opts... api.Option) (*{{
 
 	return target, apiErr, nil
 }
-`)))
-}
+`))
 
 var structTemplate = template.Must(template.New("").Parse(
 	fmt.Sprint(`// Code generated by "make api"; DO NOT EDIT.
@@ -194,8 +234,7 @@ type {{ .Name }} struct {
 }
 `)))
 
-var clientTemplate = template.Must(template.New("").Parse(
-	fmt.Sprint(`
+var clientTemplate = template.Must(template.New("").Parse(`
 type {{ .Name }}Client struct {
 	client *api.Client
 }
@@ -203,4 +242,4 @@ type {{ .Name }}Client struct {
 func New(c *api.Client) *{{ .Name }}Client {
 	return &{{ .Name }}Client{ client: c }
 }
-`)))
+`))

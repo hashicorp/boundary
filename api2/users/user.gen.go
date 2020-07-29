@@ -28,16 +28,17 @@ func New(c *api.Client) *UserClient {
 	return &UserClient{client: c}
 }
 
-func (s *UserClient) Read(ctx context.Context, id string, opts ...api.Option) (*User, *api.Error, error) {
-	if id == "" {
-		return nil, nil, fmt.Errorf("empty ID value passed into Read request")
+func (s *UserClient) Read(ctx context.Context, userId string, opts ...api.Option) (*User, *api.Error, error) {
+
+	if userId == "" {
+		return nil, nil, fmt.Errorf("empty userId value passed into List request")
 	}
 
 	if s.client == nil {
 		return nil, nil, fmt.Errorf("nil client")
 	}
 
-	req, err := s.client.NewRequest(ctx, "GET", fmt.Sprintf("%s/%s", "users", id), nil, opts...)
+	req, err := s.client.NewRequest(ctx, "GET", fmt.Sprintf("users/%s", userId), nil, opts...)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error creating Read request: %w", err)
 	}
@@ -57,11 +58,12 @@ func (s *UserClient) Read(ctx context.Context, id string, opts ...api.Option) (*
 }
 
 func (s *UserClient) List(ctx context.Context, opts ...api.Option) ([]User, *api.Error, error) {
+
 	if s.client == nil {
 		return nil, nil, fmt.Errorf("nil client")
 	}
 
-	req, err := s.client.NewRequest(ctx, "GET", "users", nil, opts...)
+	req, err := s.client.NewRequest(ctx, "GET", fmt.Sprintf("users"), nil, opts...)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error creating List request: %w", err)
 	}
@@ -84,11 +86,12 @@ func (s *UserClient) List(ctx context.Context, opts ...api.Option) ([]User, *api
 }
 
 func (s *UserClient) Create(ctx context.Context, opts ...api.Option) (*User, *api.Error, error) {
+
 	if s.client == nil {
 		return nil, nil, fmt.Errorf("nil client")
 	}
 	r := User{}
-	req, err := s.client.NewRequest(ctx, "POST", "users", r, opts...)
+	req, err := s.client.NewRequest(ctx, "POST", fmt.Sprintf("users"), r, opts...)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error creating Create request: %w", err)
 	}
@@ -107,16 +110,17 @@ func (s *UserClient) Create(ctx context.Context, opts ...api.Option) (*User, *ap
 	return target, apiErr, nil
 }
 
-func (s *UserClient) Delete(ctx context.Context, id string, opts ...api.Option) (bool, *api.Error, error) {
-	if id == "" {
-		return false, nil, fmt.Errorf("empty ID value passed into Delete request")
+func (s *UserClient) Delete(ctx context.Context, userId string, opts ...api.Option) (bool, *api.Error, error) {
+
+	if userId == "" {
+		return false, nil, fmt.Errorf("empty userId value passed into List request")
 	}
 
 	if s.client == nil {
 		return false, nil, fmt.Errorf("nil client")
 	}
 
-	req, err := s.client.NewRequest(ctx, "DELETE", fmt.Sprintf("%s/%s", "users", id), nil, opts...)
+	req, err := s.client.NewRequest(ctx, "DELETE", fmt.Sprintf("users/%s", userId), nil, opts...)
 	if err != nil {
 		return false, nil, fmt.Errorf("error creating Delete request: %w", err)
 	}
