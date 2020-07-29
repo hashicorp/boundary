@@ -80,6 +80,7 @@ protobuild:
 	@protoc-go-inject-tag -input=./internal/authtoken/store/authtoken.pb.go
 	@protoc-go-inject-tag -input=./internal/iam/store/auth_account.pb.go
 	@protoc-go-inject-tag -input=./internal/auth/password/store/password.pb.go
+	@protoc-go-inject-tag -input=./internal/auth/password/store/argon2.pb.go
 	@rm -R ${TMP_DIR}
 
 protolint:
@@ -94,6 +95,11 @@ website-install:
 website-start:
 	@npm start --prefix website/
 
+test-ci: install-go
+	~/.go/bin/go test ./... -v $(TESTARGS) -timeout 120m
+
+install-go:
+	./ci/goinstall.sh
 
 .PHONY: api tools gen migrations proto website
 
