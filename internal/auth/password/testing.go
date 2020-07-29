@@ -25,9 +25,17 @@ func TestAuthMethods(t *testing.T, conn *gorm.DB, scopeId string, count int) []*
 		require.NotEmpty(id)
 		cat.PublicId = id
 
+		conf := NewArgon2Configuration()
+		require.NotNil(conf)
+		conf.PrivateId, err = newArgon2ConfigurationId()
+		require.NoError(err)
+		conf.PasswordMethodId = cat.PublicId
+		cat.PasswordConfId = conf.PrivateId
+
 		ctx := context.Background()
 		_, err2 := w.DoTx(ctx, db.StdRetryCnt, db.ExpBackoff{},
 			func(_ db.Reader, iw db.Writer) error {
+				require.NoError(iw.Create(ctx, conf))
 				return iw.Create(ctx, cat)
 			},
 		)
@@ -51,15 +59,7 @@ func TestAccounts(t *testing.T, conn *gorm.DB, scopeId, authMethodId string, cou
 		assert.NoError(err)
 		require.NotEmpty(id)
 		cat.PublicId = id
-
-		ctx := context.Background()
-		_, err2 := w.DoTx(ctx, db.StdRetryCnt, db.ExpBackoff{},
-			func(_ db.Reader, iw db.Writer) error {
-				return iw.Create(ctx, cat)
-			},
-		)
-
-		require.NoError(err2)
+		require.NoError(w.Create(context.Background(), cat))
 		// TODO(toddknight): Figure out why the iw.Create call doesn't populate the scope id from the DB.
 		cat.ScopeId = scopeId
 		auts = append(auts, cat)
