@@ -7,6 +7,7 @@ import (
 
 	"github.com/hashicorp/watchtower/internal/auth/password/store"
 	"github.com/hashicorp/watchtower/internal/db"
+	"github.com/hashicorp/watchtower/internal/iam"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -14,8 +15,8 @@ import (
 func TestArgon2Configuration_New(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
-
-	authMethods := testAuthMethods(t, conn, 1)
+	o, _ := iam.TestScopes(t, conn)
+	authMethods := TestAuthMethods(t, conn, o.GetPublicId(), 1)
 	authMethod := authMethods[0]
 	authMethodId := authMethod.GetPublicId()
 	ctx := context.Background()
@@ -113,7 +114,8 @@ func TestArgon2Configuration_Readonly(t *testing.T) {
 		}
 	}
 
-	authMethods := testAuthMethods(t, conn, 1)
+	o, _ := iam.TestScopes(t, conn)
+	authMethods := TestAuthMethods(t, conn, o.GetPublicId(), 1)
 	authMethod := authMethods[0]
 	authMethodId := authMethod.GetPublicId()
 
