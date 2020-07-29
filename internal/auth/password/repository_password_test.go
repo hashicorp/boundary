@@ -109,7 +109,7 @@ func TestRepository_Authenticate(t *testing.T) {
 				return
 			}
 			require.NotNil(authAcct, "returned account")
-			assert.NotEmpty(authAcct.CredentialID, "CredentialID")
+			assert.NotEmpty(authAcct.CredentialId, "CredentialId")
 			assert.Equal(tt.args.authMethodId, authAcct.AuthMethodId, "authMethodId")
 			assert.Equal(tt.args.userName, authAcct.UserName, "UserName")
 		})
