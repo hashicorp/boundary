@@ -30,11 +30,11 @@ var _ = runtime.String
 var _ = utilities.NewDoubleArray
 
 var (
-	filter_AuthAccountService_GetAuthAccount_0 = &utilities.DoubleArray{Encoding: map[string]int{"auth_method_id": 0, "id": 1}, Base: []int{1, 1, 2, 0, 0}, Check: []int{0, 1, 1, 2, 3}}
+	filter_AccountService_GetAccount_0 = &utilities.DoubleArray{Encoding: map[string]int{"auth_method_id": 0, "id": 1}, Base: []int{1, 1, 2, 0, 0}, Check: []int{0, 1, 1, 2, 3}}
 )
 
-func request_AuthAccountService_GetAuthAccount_0(ctx context.Context, marshaler runtime.Marshaler, client AuthAccountServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq GetAuthAccountRequest
+func request_AccountService_GetAccount_0(ctx context.Context, marshaler runtime.Marshaler, client AccountServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+	var protoReq GetAccountRequest
 	var metadata runtime.ServerMetadata
 
 	var (
@@ -69,17 +69,17 @@ func request_AuthAccountService_GetAuthAccount_0(ctx context.Context, marshaler 
 	if err := req.ParseForm(); err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
-	if err := runtime.PopulateQueryParameters(&protoReq, req.Form, filter_AuthAccountService_GetAuthAccount_0); err != nil {
+	if err := runtime.PopulateQueryParameters(&protoReq, req.Form, filter_AccountService_GetAccount_0); err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 
-	msg, err := client.GetAuthAccount(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
+	msg, err := client.GetAccount(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
 	return msg, metadata, err
 
 }
 
-func local_request_AuthAccountService_GetAuthAccount_0(ctx context.Context, marshaler runtime.Marshaler, server AuthAccountServiceServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq GetAuthAccountRequest
+func local_request_AccountService_GetAccount_0(ctx context.Context, marshaler runtime.Marshaler, server AccountServiceServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+	var protoReq GetAccountRequest
 	var metadata runtime.ServerMetadata
 
 	var (
@@ -114,21 +114,21 @@ func local_request_AuthAccountService_GetAuthAccount_0(ctx context.Context, mars
 	if err := req.ParseForm(); err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
-	if err := runtime.PopulateQueryParameters(&protoReq, req.Form, filter_AuthAccountService_GetAuthAccount_0); err != nil {
+	if err := runtime.PopulateQueryParameters(&protoReq, req.Form, filter_AccountService_GetAccount_0); err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 
-	msg, err := server.GetAuthAccount(ctx, &protoReq)
+	msg, err := server.GetAccount(ctx, &protoReq)
 	return msg, metadata, err
 
 }
 
 var (
-	filter_AuthAccountService_ListAuthAccounts_0 = &utilities.DoubleArray{Encoding: map[string]int{"auth_method_id": 0}, Base: []int{1, 1, 0}, Check: []int{0, 1, 2}}
+	filter_AccountService_ListAccounts_0 = &utilities.DoubleArray{Encoding: map[string]int{"auth_method_id": 0}, Base: []int{1, 1, 0}, Check: []int{0, 1, 2}}
 )
 
-func request_AuthAccountService_ListAuthAccounts_0(ctx context.Context, marshaler runtime.Marshaler, client AuthAccountServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq ListAuthAccountsRequest
+func request_AccountService_ListAccounts_0(ctx context.Context, marshaler runtime.Marshaler, client AccountServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+	var protoReq ListAccountsRequest
 	var metadata runtime.ServerMetadata
 
 	var (
@@ -152,17 +152,17 @@ func request_AuthAccountService_ListAuthAccounts_0(ctx context.Context, marshale
 	if err := req.ParseForm(); err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
-	if err := runtime.PopulateQueryParameters(&protoReq, req.Form, filter_AuthAccountService_ListAuthAccounts_0); err != nil {
+	if err := runtime.PopulateQueryParameters(&protoReq, req.Form, filter_AccountService_ListAccounts_0); err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 
-	msg, err := client.ListAuthAccounts(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
+	msg, err := client.ListAccounts(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
 	return msg, metadata, err
 
 }
 
-func local_request_AuthAccountService_ListAuthAccounts_0(ctx context.Context, marshaler runtime.Marshaler, server AuthAccountServiceServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq ListAuthAccountsRequest
+func local_request_AccountService_ListAccounts_0(ctx context.Context, marshaler runtime.Marshaler, server AccountServiceServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+	var protoReq ListAccountsRequest
 	var metadata runtime.ServerMetadata
 
 	var (
@@ -186,17 +186,17 @@ func local_request_AuthAccountService_ListAuthAccounts_0(ctx context.Context, ma
 	if err := req.ParseForm(); err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
-	if err := runtime.PopulateQueryParameters(&protoReq, req.Form, filter_AuthAccountService_ListAuthAccounts_0); err != nil {
+	if err := runtime.PopulateQueryParameters(&protoReq, req.Form, filter_AccountService_ListAccounts_0); err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 
-	msg, err := server.ListAuthAccounts(ctx, &protoReq)
+	msg, err := server.ListAccounts(ctx, &protoReq)
 	return msg, metadata, err
 
 }
 
-func request_AuthAccountService_CreateAuthAccount_0(ctx context.Context, marshaler runtime.Marshaler, client AuthAccountServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq CreateAuthAccountRequest
+func request_AccountService_CreateAccount_0(ctx context.Context, marshaler runtime.Marshaler, client AccountServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+	var protoReq CreateAccountRequest
 	var metadata runtime.ServerMetadata
 
 	newReader, berr := utilities.IOReaderFactory(req.Body)
@@ -225,13 +225,13 @@ func request_AuthAccountService_CreateAuthAccount_0(ctx context.Context, marshal
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "auth_method_id", err)
 	}
 
-	msg, err := client.CreateAuthAccount(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
+	msg, err := client.CreateAccount(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
 	return msg, metadata, err
 
 }
 
-func local_request_AuthAccountService_CreateAuthAccount_0(ctx context.Context, marshaler runtime.Marshaler, server AuthAccountServiceServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq CreateAuthAccountRequest
+func local_request_AccountService_CreateAccount_0(ctx context.Context, marshaler runtime.Marshaler, server AccountServiceServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+	var protoReq CreateAccountRequest
 	var metadata runtime.ServerMetadata
 
 	newReader, berr := utilities.IOReaderFactory(req.Body)
@@ -260,17 +260,17 @@ func local_request_AuthAccountService_CreateAuthAccount_0(ctx context.Context, m
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "auth_method_id", err)
 	}
 
-	msg, err := server.CreateAuthAccount(ctx, &protoReq)
+	msg, err := server.CreateAccount(ctx, &protoReq)
 	return msg, metadata, err
 
 }
 
 var (
-	filter_AuthAccountService_UpdateAuthAccount_0 = &utilities.DoubleArray{Encoding: map[string]int{"item": 0, "auth_method_id": 1, "id": 2}, Base: []int{1, 1, 2, 3, 0, 0, 0}, Check: []int{0, 1, 1, 1, 2, 3, 4}}
+	filter_AccountService_UpdateAccount_0 = &utilities.DoubleArray{Encoding: map[string]int{"item": 0, "auth_method_id": 1, "id": 2}, Base: []int{1, 1, 2, 3, 0, 0, 0}, Check: []int{0, 1, 1, 1, 2, 3, 4}}
 )
 
-func request_AuthAccountService_UpdateAuthAccount_0(ctx context.Context, marshaler runtime.Marshaler, client AuthAccountServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq UpdateAuthAccountRequest
+func request_AccountService_UpdateAccount_0(ctx context.Context, marshaler runtime.Marshaler, client AccountServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+	var protoReq UpdateAccountRequest
 	var metadata runtime.ServerMetadata
 
 	newReader, berr := utilities.IOReaderFactory(req.Body)
@@ -320,17 +320,17 @@ func request_AuthAccountService_UpdateAuthAccount_0(ctx context.Context, marshal
 	if err := req.ParseForm(); err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
-	if err := runtime.PopulateQueryParameters(&protoReq, req.Form, filter_AuthAccountService_UpdateAuthAccount_0); err != nil {
+	if err := runtime.PopulateQueryParameters(&protoReq, req.Form, filter_AccountService_UpdateAccount_0); err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 
-	msg, err := client.UpdateAuthAccount(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
+	msg, err := client.UpdateAccount(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
 	return msg, metadata, err
 
 }
 
-func local_request_AuthAccountService_UpdateAuthAccount_0(ctx context.Context, marshaler runtime.Marshaler, server AuthAccountServiceServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq UpdateAuthAccountRequest
+func local_request_AccountService_UpdateAccount_0(ctx context.Context, marshaler runtime.Marshaler, server AccountServiceServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+	var protoReq UpdateAccountRequest
 	var metadata runtime.ServerMetadata
 
 	newReader, berr := utilities.IOReaderFactory(req.Body)
@@ -380,17 +380,17 @@ func local_request_AuthAccountService_UpdateAuthAccount_0(ctx context.Context, m
 	if err := req.ParseForm(); err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
-	if err := runtime.PopulateQueryParameters(&protoReq, req.Form, filter_AuthAccountService_UpdateAuthAccount_0); err != nil {
+	if err := runtime.PopulateQueryParameters(&protoReq, req.Form, filter_AccountService_UpdateAccount_0); err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 
-	msg, err := server.UpdateAuthAccount(ctx, &protoReq)
+	msg, err := server.UpdateAccount(ctx, &protoReq)
 	return msg, metadata, err
 
 }
 
-func request_AuthAccountService_DeleteAuthAccount_0(ctx context.Context, marshaler runtime.Marshaler, client AuthAccountServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq DeleteAuthAccountRequest
+func request_AccountService_DeleteAccount_0(ctx context.Context, marshaler runtime.Marshaler, client AccountServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+	var protoReq DeleteAccountRequest
 	var metadata runtime.ServerMetadata
 
 	var (
@@ -422,13 +422,13 @@ func request_AuthAccountService_DeleteAuthAccount_0(ctx context.Context, marshal
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "id", err)
 	}
 
-	msg, err := client.DeleteAuthAccount(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
+	msg, err := client.DeleteAccount(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
 	return msg, metadata, err
 
 }
 
-func local_request_AuthAccountService_DeleteAuthAccount_0(ctx context.Context, marshaler runtime.Marshaler, server AuthAccountServiceServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq DeleteAuthAccountRequest
+func local_request_AccountService_DeleteAccount_0(ctx context.Context, marshaler runtime.Marshaler, server AccountServiceServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+	var protoReq DeleteAccountRequest
 	var metadata runtime.ServerMetadata
 
 	var (
@@ -460,122 +460,122 @@ func local_request_AuthAccountService_DeleteAuthAccount_0(ctx context.Context, m
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "id", err)
 	}
 
-	msg, err := server.DeleteAuthAccount(ctx, &protoReq)
+	msg, err := server.DeleteAccount(ctx, &protoReq)
 	return msg, metadata, err
 
 }
 
-// RegisterAuthAccountServiceHandlerServer registers the http handlers for service AuthAccountService to "mux".
-// UnaryRPC     :call AuthAccountServiceServer directly.
+// RegisterAccountServiceHandlerServer registers the http handlers for service AccountService to "mux".
+// UnaryRPC     :call AccountServiceServer directly.
 // StreamingRPC :currently unsupported pending https://github.com/grpc/grpc-go/issues/906.
-func RegisterAuthAccountServiceHandlerServer(ctx context.Context, mux *runtime.ServeMux, server AuthAccountServiceServer) error {
+func RegisterAccountServiceHandlerServer(ctx context.Context, mux *runtime.ServeMux, server AccountServiceServer) error {
 
-	mux.Handle("GET", pattern_AuthAccountService_GetAuthAccount_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+	mux.Handle("GET", pattern_AccountService_GetAccount_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/controller.api.services.v1.AuthAccountService/GetAuthAccount")
+		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/controller.api.services.v1.AccountService/GetAccount")
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
 		}
-		resp, md, err := local_request_AuthAccountService_GetAuthAccount_0(rctx, inboundMarshaler, server, req, pathParams)
+		resp, md, err := local_request_AccountService_GetAccount_0(rctx, inboundMarshaler, server, req, pathParams)
 		ctx = runtime.NewServerMetadataContext(ctx, md)
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
 		}
 
-		forward_AuthAccountService_GetAuthAccount_0(ctx, mux, outboundMarshaler, w, req, response_AuthAccountService_GetAuthAccount_0{resp}, mux.GetForwardResponseOptions()...)
+		forward_AccountService_GetAccount_0(ctx, mux, outboundMarshaler, w, req, response_AccountService_GetAccount_0{resp}, mux.GetForwardResponseOptions()...)
 
 	})
 
-	mux.Handle("GET", pattern_AuthAccountService_ListAuthAccounts_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+	mux.Handle("GET", pattern_AccountService_ListAccounts_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/controller.api.services.v1.AuthAccountService/ListAuthAccounts")
+		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/controller.api.services.v1.AccountService/ListAccounts")
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
 		}
-		resp, md, err := local_request_AuthAccountService_ListAuthAccounts_0(rctx, inboundMarshaler, server, req, pathParams)
+		resp, md, err := local_request_AccountService_ListAccounts_0(rctx, inboundMarshaler, server, req, pathParams)
 		ctx = runtime.NewServerMetadataContext(ctx, md)
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
 		}
 
-		forward_AuthAccountService_ListAuthAccounts_0(ctx, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+		forward_AccountService_ListAccounts_0(ctx, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
 
 	})
 
-	mux.Handle("POST", pattern_AuthAccountService_CreateAuthAccount_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+	mux.Handle("POST", pattern_AccountService_CreateAccount_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/controller.api.services.v1.AuthAccountService/CreateAuthAccount")
+		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/controller.api.services.v1.AccountService/CreateAccount")
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
 		}
-		resp, md, err := local_request_AuthAccountService_CreateAuthAccount_0(rctx, inboundMarshaler, server, req, pathParams)
+		resp, md, err := local_request_AccountService_CreateAccount_0(rctx, inboundMarshaler, server, req, pathParams)
 		ctx = runtime.NewServerMetadataContext(ctx, md)
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
 		}
 
-		forward_AuthAccountService_CreateAuthAccount_0(ctx, mux, outboundMarshaler, w, req, response_AuthAccountService_CreateAuthAccount_0{resp}, mux.GetForwardResponseOptions()...)
+		forward_AccountService_CreateAccount_0(ctx, mux, outboundMarshaler, w, req, response_AccountService_CreateAccount_0{resp}, mux.GetForwardResponseOptions()...)
 
 	})
 
-	mux.Handle("PATCH", pattern_AuthAccountService_UpdateAuthAccount_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+	mux.Handle("PATCH", pattern_AccountService_UpdateAccount_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/controller.api.services.v1.AuthAccountService/UpdateAuthAccount")
+		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/controller.api.services.v1.AccountService/UpdateAccount")
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
 		}
-		resp, md, err := local_request_AuthAccountService_UpdateAuthAccount_0(rctx, inboundMarshaler, server, req, pathParams)
+		resp, md, err := local_request_AccountService_UpdateAccount_0(rctx, inboundMarshaler, server, req, pathParams)
 		ctx = runtime.NewServerMetadataContext(ctx, md)
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
 		}
 
-		forward_AuthAccountService_UpdateAuthAccount_0(ctx, mux, outboundMarshaler, w, req, response_AuthAccountService_UpdateAuthAccount_0{resp}, mux.GetForwardResponseOptions()...)
+		forward_AccountService_UpdateAccount_0(ctx, mux, outboundMarshaler, w, req, response_AccountService_UpdateAccount_0{resp}, mux.GetForwardResponseOptions()...)
 
 	})
 
-	mux.Handle("DELETE", pattern_AuthAccountService_DeleteAuthAccount_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+	mux.Handle("DELETE", pattern_AccountService_DeleteAccount_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/controller.api.services.v1.AuthAccountService/DeleteAuthAccount")
+		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/controller.api.services.v1.AccountService/DeleteAccount")
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
 		}
-		resp, md, err := local_request_AuthAccountService_DeleteAuthAccount_0(rctx, inboundMarshaler, server, req, pathParams)
+		resp, md, err := local_request_AccountService_DeleteAccount_0(rctx, inboundMarshaler, server, req, pathParams)
 		ctx = runtime.NewServerMetadataContext(ctx, md)
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
 		}
 
-		forward_AuthAccountService_DeleteAuthAccount_0(ctx, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+		forward_AccountService_DeleteAccount_0(ctx, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
 
 	})
 
 	return nil
 }
 
-// RegisterAuthAccountServiceHandlerFromEndpoint is same as RegisterAuthAccountServiceHandler but
+// RegisterAccountServiceHandlerFromEndpoint is same as RegisterAccountServiceHandler but
 // automatically dials to "endpoint" and closes the connection when "ctx" gets done.
-func RegisterAuthAccountServiceHandlerFromEndpoint(ctx context.Context, mux *runtime.ServeMux, endpoint string, opts []grpc.DialOption) (err error) {
+func RegisterAccountServiceHandlerFromEndpoint(ctx context.Context, mux *runtime.ServeMux, endpoint string, opts []grpc.DialOption) (err error) {
 	conn, err := grpc.Dial(endpoint, opts...)
 	if err != nil {
 		return err
@@ -595,172 +595,172 @@ func RegisterAuthAccountServiceHandlerFromEndpoint(ctx context.Context, mux *run
 		}()
 	}()
 
-	return RegisterAuthAccountServiceHandler(ctx, mux, conn)
+	return RegisterAccountServiceHandler(ctx, mux, conn)
 }
 
-// RegisterAuthAccountServiceHandler registers the http handlers for service AuthAccountService to "mux".
+// RegisterAccountServiceHandler registers the http handlers for service AccountService to "mux".
 // The handlers forward requests to the grpc endpoint over "conn".
-func RegisterAuthAccountServiceHandler(ctx context.Context, mux *runtime.ServeMux, conn *grpc.ClientConn) error {
-	return RegisterAuthAccountServiceHandlerClient(ctx, mux, NewAuthAccountServiceClient(conn))
+func RegisterAccountServiceHandler(ctx context.Context, mux *runtime.ServeMux, conn *grpc.ClientConn) error {
+	return RegisterAccountServiceHandlerClient(ctx, mux, NewAccountServiceClient(conn))
 }
 
-// RegisterAuthAccountServiceHandlerClient registers the http handlers for service AuthAccountService
-// to "mux". The handlers forward requests to the grpc endpoint over the given implementation of "AuthAccountServiceClient".
-// Note: the gRPC framework executes interceptors within the gRPC handler. If the passed in "AuthAccountServiceClient"
+// RegisterAccountServiceHandlerClient registers the http handlers for service AccountService
+// to "mux". The handlers forward requests to the grpc endpoint over the given implementation of "AccountServiceClient".
+// Note: the gRPC framework executes interceptors within the gRPC handler. If the passed in "AccountServiceClient"
 // doesn't go through the normal gRPC flow (creating a gRPC client etc.) then it will be up to the passed in
-// "AuthAccountServiceClient" to call the correct interceptors.
-func RegisterAuthAccountServiceHandlerClient(ctx context.Context, mux *runtime.ServeMux, client AuthAccountServiceClient) error {
+// "AccountServiceClient" to call the correct interceptors.
+func RegisterAccountServiceHandlerClient(ctx context.Context, mux *runtime.ServeMux, client AccountServiceClient) error {
 
-	mux.Handle("GET", pattern_AuthAccountService_GetAuthAccount_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+	mux.Handle("GET", pattern_AccountService_GetAccount_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/controller.api.services.v1.AuthAccountService/GetAuthAccount")
+		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/controller.api.services.v1.AccountService/GetAccount")
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
 		}
-		resp, md, err := request_AuthAccountService_GetAuthAccount_0(rctx, inboundMarshaler, client, req, pathParams)
+		resp, md, err := request_AccountService_GetAccount_0(rctx, inboundMarshaler, client, req, pathParams)
 		ctx = runtime.NewServerMetadataContext(ctx, md)
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
 		}
 
-		forward_AuthAccountService_GetAuthAccount_0(ctx, mux, outboundMarshaler, w, req, response_AuthAccountService_GetAuthAccount_0{resp}, mux.GetForwardResponseOptions()...)
+		forward_AccountService_GetAccount_0(ctx, mux, outboundMarshaler, w, req, response_AccountService_GetAccount_0{resp}, mux.GetForwardResponseOptions()...)
 
 	})
 
-	mux.Handle("GET", pattern_AuthAccountService_ListAuthAccounts_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+	mux.Handle("GET", pattern_AccountService_ListAccounts_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/controller.api.services.v1.AuthAccountService/ListAuthAccounts")
+		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/controller.api.services.v1.AccountService/ListAccounts")
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
 		}
-		resp, md, err := request_AuthAccountService_ListAuthAccounts_0(rctx, inboundMarshaler, client, req, pathParams)
+		resp, md, err := request_AccountService_ListAccounts_0(rctx, inboundMarshaler, client, req, pathParams)
 		ctx = runtime.NewServerMetadataContext(ctx, md)
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
 		}
 
-		forward_AuthAccountService_ListAuthAccounts_0(ctx, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+		forward_AccountService_ListAccounts_0(ctx, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
 
 	})
 
-	mux.Handle("POST", pattern_AuthAccountService_CreateAuthAccount_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+	mux.Handle("POST", pattern_AccountService_CreateAccount_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/controller.api.services.v1.AuthAccountService/CreateAuthAccount")
+		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/controller.api.services.v1.AccountService/CreateAccount")
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
 		}
-		resp, md, err := request_AuthAccountService_CreateAuthAccount_0(rctx, inboundMarshaler, client, req, pathParams)
+		resp, md, err := request_AccountService_CreateAccount_0(rctx, inboundMarshaler, client, req, pathParams)
 		ctx = runtime.NewServerMetadataContext(ctx, md)
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
 		}
 
-		forward_AuthAccountService_CreateAuthAccount_0(ctx, mux, outboundMarshaler, w, req, response_AuthAccountService_CreateAuthAccount_0{resp}, mux.GetForwardResponseOptions()...)
+		forward_AccountService_CreateAccount_0(ctx, mux, outboundMarshaler, w, req, response_AccountService_CreateAccount_0{resp}, mux.GetForwardResponseOptions()...)
 
 	})
 
-	mux.Handle("PATCH", pattern_AuthAccountService_UpdateAuthAccount_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+	mux.Handle("PATCH", pattern_AccountService_UpdateAccount_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/controller.api.services.v1.AuthAccountService/UpdateAuthAccount")
+		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/controller.api.services.v1.AccountService/UpdateAccount")
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
 		}
-		resp, md, err := request_AuthAccountService_UpdateAuthAccount_0(rctx, inboundMarshaler, client, req, pathParams)
+		resp, md, err := request_AccountService_UpdateAccount_0(rctx, inboundMarshaler, client, req, pathParams)
 		ctx = runtime.NewServerMetadataContext(ctx, md)
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
 		}
 
-		forward_AuthAccountService_UpdateAuthAccount_0(ctx, mux, outboundMarshaler, w, req, response_AuthAccountService_UpdateAuthAccount_0{resp}, mux.GetForwardResponseOptions()...)
+		forward_AccountService_UpdateAccount_0(ctx, mux, outboundMarshaler, w, req, response_AccountService_UpdateAccount_0{resp}, mux.GetForwardResponseOptions()...)
 
 	})
 
-	mux.Handle("DELETE", pattern_AuthAccountService_DeleteAuthAccount_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+	mux.Handle("DELETE", pattern_AccountService_DeleteAccount_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/controller.api.services.v1.AuthAccountService/DeleteAuthAccount")
+		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/controller.api.services.v1.AccountService/DeleteAccount")
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
 		}
-		resp, md, err := request_AuthAccountService_DeleteAuthAccount_0(rctx, inboundMarshaler, client, req, pathParams)
+		resp, md, err := request_AccountService_DeleteAccount_0(rctx, inboundMarshaler, client, req, pathParams)
 		ctx = runtime.NewServerMetadataContext(ctx, md)
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
 		}
 
-		forward_AuthAccountService_DeleteAuthAccount_0(ctx, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+		forward_AccountService_DeleteAccount_0(ctx, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
 
 	})
 
 	return nil
 }
 
-type response_AuthAccountService_GetAuthAccount_0 struct {
+type response_AccountService_GetAccount_0 struct {
 	proto.Message
 }
 
-func (m response_AuthAccountService_GetAuthAccount_0) XXX_ResponseBody() interface{} {
-	response := m.Message.(*GetAuthAccountResponse)
+func (m response_AccountService_GetAccount_0) XXX_ResponseBody() interface{} {
+	response := m.Message.(*GetAccountResponse)
 	return response.Item
 }
 
-type response_AuthAccountService_CreateAuthAccount_0 struct {
+type response_AccountService_CreateAccount_0 struct {
 	proto.Message
 }
 
-func (m response_AuthAccountService_CreateAuthAccount_0) XXX_ResponseBody() interface{} {
-	response := m.Message.(*CreateAuthAccountResponse)
+func (m response_AccountService_CreateAccount_0) XXX_ResponseBody() interface{} {
+	response := m.Message.(*CreateAccountResponse)
 	return response.Item
 }
 
-type response_AuthAccountService_UpdateAuthAccount_0 struct {
+type response_AccountService_UpdateAccount_0 struct {
 	proto.Message
 }
 
-func (m response_AuthAccountService_UpdateAuthAccount_0) XXX_ResponseBody() interface{} {
-	response := m.Message.(*UpdateAuthAccountResponse)
+func (m response_AccountService_UpdateAccount_0) XXX_ResponseBody() interface{} {
+	response := m.Message.(*UpdateAccountResponse)
 	return response.Item
 }
 
 var (
-	pattern_AuthAccountService_GetAuthAccount_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 2, 2, 1, 0, 4, 1, 5, 3, 2, 4, 1, 0, 4, 1, 5, 5}, []string{"v1", "scopes", "auth-methods", "auth_method_id", "accounts", "id"}, ""))
+	pattern_AccountService_GetAccount_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 2, 2, 1, 0, 4, 1, 5, 3, 2, 4, 1, 0, 4, 1, 5, 5}, []string{"v1", "scopes", "auth-methods", "auth_method_id", "accounts", "id"}, ""))
 
-	pattern_AuthAccountService_ListAuthAccounts_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 2, 2, 1, 0, 4, 1, 5, 3, 2, 4}, []string{"v1", "scopes", "auth-methods", "auth_method_id", "accounts"}, ""))
+	pattern_AccountService_ListAccounts_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 2, 2, 1, 0, 4, 1, 5, 3, 2, 4}, []string{"v1", "scopes", "auth-methods", "auth_method_id", "accounts"}, ""))
 
-	pattern_AuthAccountService_CreateAuthAccount_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 2, 2, 1, 0, 4, 1, 5, 3, 2, 4}, []string{"v1", "scopes", "auth-methods", "auth_method_id", "accounts"}, ""))
+	pattern_AccountService_CreateAccount_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 2, 2, 1, 0, 4, 1, 5, 3, 2, 4}, []string{"v1", "scopes", "auth-methods", "auth_method_id", "accounts"}, ""))
 
-	pattern_AuthAccountService_UpdateAuthAccount_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 2, 2, 1, 0, 4, 1, 5, 3, 2, 4, 1, 0, 4, 1, 5, 5}, []string{"v1", "scopes", "auth-methods", "auth_method_id", "accounts", "id"}, ""))
+	pattern_AccountService_UpdateAccount_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 2, 2, 1, 0, 4, 1, 5, 3, 2, 4, 1, 0, 4, 1, 5, 5}, []string{"v1", "scopes", "auth-methods", "auth_method_id", "accounts", "id"}, ""))
 
-	pattern_AuthAccountService_DeleteAuthAccount_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 2, 2, 1, 0, 4, 1, 5, 3, 2, 4, 1, 0, 4, 1, 5, 5}, []string{"v1", "scopes", "auth-methods", "auth_method_id", "accounts", "id"}, ""))
+	pattern_AccountService_DeleteAccount_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 2, 2, 1, 0, 4, 1, 5, 3, 2, 4, 1, 0, 4, 1, 5, 5}, []string{"v1", "scopes", "auth-methods", "auth_method_id", "accounts", "id"}, ""))
 )
 
 var (
-	forward_AuthAccountService_GetAuthAccount_0 = runtime.ForwardResponseMessage
+	forward_AccountService_GetAccount_0 = runtime.ForwardResponseMessage
 
-	forward_AuthAccountService_ListAuthAccounts_0 = runtime.ForwardResponseMessage
+	forward_AccountService_ListAccounts_0 = runtime.ForwardResponseMessage
 
-	forward_AuthAccountService_CreateAuthAccount_0 = runtime.ForwardResponseMessage
+	forward_AccountService_CreateAccount_0 = runtime.ForwardResponseMessage
 
-	forward_AuthAccountService_UpdateAuthAccount_0 = runtime.ForwardResponseMessage
+	forward_AccountService_UpdateAccount_0 = runtime.ForwardResponseMessage
 
-	forward_AuthAccountService_DeleteAuthAccount_0 = runtime.ForwardResponseMessage
+	forward_AccountService_DeleteAccount_0 = runtime.ForwardResponseMessage
 )

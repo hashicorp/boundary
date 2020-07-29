@@ -10,130 +10,130 @@ import "google/protobuf/field_mask.proto";
 import "google/protobuf/wrappers.proto";
 import "controller/api/resources/auth/v1/account.proto";
 
-service AuthAccountService {
+service AccountService {
 
-  // GetAuthAccount returns a stored AuthAccount if present. The provided request must
+  // GetAccount returns a stored Account if present. The provided request must
   // include the scope for the group being retrieved. If any of those ids are
   // missing, malformed or reference a non existing resource an error is
   // returned.
-  rpc GetAuthAccount(GetAuthAccountRequest) returns (GetAuthAccountResponse) {
+  rpc GetAccount(GetAccountRequest) returns (GetAccountResponse) {
     option (google.api.http) = {
       get: "/v1/scopes/*/auth-methods/{auth_method_id}/accounts/{id}"
       response_body: "item"
     };
     option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
-      summary: "Gets a single AuthAccount"
+      summary: "Gets a single Account"
     };
   }
 
-  // ListAuthAccounts returns a list of stored groups which exist inside the org
-  // referenced inside the request. The request must include the scope for
-  // the groups being retrieved. If the scope is missing, malformed, or
-  // references a non-existing scope, an error is returned.
-  rpc ListAuthAccounts(ListAuthAccountsRequest) returns (ListAuthAccountsResponse) {
+  // ListAccounts returns a list of stored accounts which exist inside the
+  // auth method referenced inside the request. The request must include the
+  // auth method for the account being retrieved. If the auth method is missing,
+  // malformed, or references a non-existing auth method, an error is returned.
+  rpc ListAccounts(ListAccountsRequest) returns (ListAccountsResponse) {
     option (google.api.http) = {
       get: "/v1/scopes/*/auth-methods/{auth_method_id}/accounts"
     };
     option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
-      summary: "Lists all AuthAccounts"
+      summary: "Lists all accounts in a specific auth method."
     };
   }
 
-  // CreateAuthAccount creates and stores a group in watchtower. The provided
-  // request must include the scope ID in which the group will be created.
-  // If the scope ID is missing, malformed or references a non existing
-  // org, an error is returned. If a name is provided that is in
-  // use in another group in the same scope, an error is returned.
-  rpc CreateAuthAccount(CreateAuthAccountRequest) returns (CreateAuthAccountResponse) {
+  // CreateAccount creates and stores an account in watchtower. The provided
+  // request must include the auth method id in which the account will be created.
+  // If the auth method id is missing, malformed or references a non existing
+  // auth method, an error is returned. If a name is provided that is in
+  // use in another account in the same auth method, an error is returned.
+  rpc CreateAccount(CreateAccountRequest) returns (CreateAccountResponse) {
     option (google.api.http) = {
       post: "/v1/scopes/*/auth-methods/{auth_method_id}/accounts"
       body: "item"
       response_body: "item"
     };
     option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
-      summary: "Creates a single AuthAccount"
+      summary: "Creates a single account in the provided auth method."
     };
   }
 
-  // UpdateAuthAccount updates an existing group in watchtower. The provided group
+  // UpdateAccount updates an existing account in watchtower. The provided account
   // must not have any read only fields set. The update mask must be included in
   // the request and contain at least 1 mutable field. To unset a field's value,
   // include the field in the update mask and don't set it in the provided
-  // group. An error is returned if either the scope or group ids are missing or
-  // reference a non-existing resource. An error is also returned if the
+  // account. An error is returned if either the auth method or account ids are
+  // missing or reference a non-existing resource. An error is also returned if the
   // request attempts to update the name to one that is already in use in this
-  // scope.
-  rpc UpdateAuthAccount(UpdateAuthAccountRequest) returns (UpdateAuthAccountResponse) {
+  // auth method.
+  rpc UpdateAccount(UpdateAccountRequest) returns (UpdateAccountResponse) {
     option (google.api.http) = {
       patch: "/v1/scopes/*/auth-methods/{auth_method_id}/accounts/{id}"
       body: "item"
       response_body: "item"
     };
     option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
-      summary: "Updates a AuthAccount"
+      summary: "Updates an account."
     };
   }
 
-  // DeleteAuthAccount removes a group from Watchtower. If the provided scope or group
-  // IDs are malformed or not provided an error is returned. No error is
-  // returned if either IDs reference resources that do not exist as the
-  // response itself specifies if the resource existed before the DeleteAuthAccount
+  // DeleteAccount removes an account from Watchtower. If the provided auth mehtod
+  // or account ids are malformed or not provided an error is returned. No error is
+  // returned if either ids reference resources that do not exist as the
+  // response itself specifies if the resource existed before the DeleteAccount
   // request was received.
-  rpc DeleteAuthAccount(DeleteAuthAccountRequest) returns (DeleteAuthAccountResponse) {
+  rpc DeleteAccount(DeleteAccountRequest) returns (DeleteAccountResponse) {
     option (google.api.http) = {
       delete: "/v1/scopes/*/auth-methods/{auth_method_id}/accounts/{id}"
     };
     option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
-      summary: "Deletes a AuthAccount"
+      summary: "Deletes an account."
     };
   }
 }
 
-message GetAuthAccountRequest {
+message GetAccountRequest {
   string auth_method_id = 1;
   string id = 2;
   string view = 3;
 }
 
-message GetAuthAccountResponse {
+message GetAccountResponse {
   resources.auth.v1.Account item = 1;
 }
 
-message ListAuthAccountsRequest {
+message ListAccountsRequest {
   string auth_method_id = 1;
   string view = 2;
 }
 
-message ListAuthAccountsResponse {
+message ListAccountsResponse {
   repeated resources.auth.v1.Account items = 1;
 }
 
-message CreateAuthAccountRequest {
+message CreateAccountRequest {
   string auth_method_id = 1;
   resources.auth.v1.Account item = 2;
 }
 
-message CreateAuthAccountResponse {
+message CreateAccountResponse {
   string uri = 1;
   resources.auth.v1.Account item = 2;
 }
 
-message UpdateAuthAccountRequest {
+message UpdateAccountRequest {
   string auth_method_id = 1;
   string id = 2;
   resources.auth.v1.Account item = 3;
   google.protobuf.FieldMask update_mask = 4;
 }
 
-message UpdateAuthAccountResponse {
+message UpdateAccountResponse {
   resources.auth.v1.Account item = 1;
 }
 
-message DeleteAuthAccountRequest {
+message DeleteAccountRequest {
   string auth_method_id = 1;
   string id = 2;
 }
 
-message DeleteAuthAccountResponse {
+message DeleteAccountResponse {
   bool existed = 1;
 }

@@ -44,12 +44,12 @@ func NewService(repo func() (*password.Repository, error)) (Service, error) {
 	return Service{repoFn: repo}, nil
 }
 
-var _ pbs.AuthAccountServiceServer = Service{}
+var _ pbs.AccountServiceServer = Service{}
 
 // TODO(ICU-407): Validate that the provided auth method and account are in the provided scope.
 
-// ListAuthAccounts implements the interface pbs.AuthAccountServiceServer.
-func (s Service) ListAuthAccounts(ctx context.Context, req *pbs.ListAuthAccountsRequest) (*pbs.ListAuthAccountsResponse, error) {
+// ListAccounts implements the interface pbs.AccountServiceServer.
+func (s Service) ListAccounts(ctx context.Context, req *pbs.ListAccountsRequest) (*pbs.ListAccountsResponse, error) {
 	authResults := auth.Verify(ctx)
 	if !authResults.Valid {
 		return nil, handlers.ForbiddenError()
@@ -64,11 +64,11 @@ func (s Service) ListAuthAccounts(ctx context.Context, req *pbs.ListAuthAccounts
 	for _, item := range ul {
 		item.Scope = authResults.Scope
 	}
-	return &pbs.ListAuthAccountsResponse{Items: ul}, nil
+	return &pbs.ListAccountsResponse{Items: ul}, nil
 }
 
-// GetAuthAccounts implements the interface pbs.AuthAccountServiceServer.
-func (s Service) GetAuthAccount(ctx context.Context, req *pbs.GetAuthAccountRequest) (*pbs.GetAuthAccountResponse, error) {
+// GetAccounts implements the interface pbs.AccountServiceServer.
+func (s Service) GetAccount(ctx context.Context, req *pbs.GetAccountRequest) (*pbs.GetAccountResponse, error) {
 	authResults := auth.Verify(ctx)
 	if !authResults.Valid {
 		return nil, handlers.ForbiddenError()
@@ -81,11 +81,11 @@ func (s Service) GetAuthAccount(ctx context.Context, req *pbs.GetAuthAccountRequ
 		return nil, err
 	}
 	u.Scope = authResults.Scope
-	return &pbs.GetAuthAccountResponse{Item: u}, nil
+	return &pbs.GetAccountResponse{Item: u}, nil
 }
 
-// CreateAuthAccount implements the interface pbs.AuthAccountServiceServer.
-func (s Service) CreateAuthAccount(ctx context.Context, req *pbs.CreateAuthAccountRequest) (*pbs.CreateAuthAccountResponse, error) {
+// CreateAccount implements the interface pbs.AccountServiceServer.
+func (s Service) CreateAccount(ctx context.Context, req *pbs.CreateAccountRequest) (*pbs.CreateAccountResponse, error) {
 	authResults := auth.Verify(ctx)
 	if !authResults.Valid {
 		return nil, handlers.ForbiddenError()
@@ -98,16 +98,16 @@ func (s Service) CreateAuthAccount(ctx context.Context, req *pbs.CreateAuthAccou
 		return nil, err
 	}
 	u.Scope = authResults.Scope
-	return &pbs.CreateAuthAccountResponse{Item: u, Uri: fmt.Sprintf("scopes/%s/auth-methods/%s/accounts/%s", authResults.Scope.GetId(), u.GetAuthMethodId(), u.GetId())}, nil
+	return &pbs.CreateAccountResponse{Item: u, Uri: fmt.Sprintf("scopes/%s/auth-methods/%s/accounts/%s", authResults.Scope.GetId(), u.GetAuthMethodId(), u.GetId())}, nil
 }
 
-// UpdateAuthAccount implements the interface pbs.AuthAccountServiceServer.
-func (s Service) UpdateAuthAccount(ctx context.Context, req *pbs.UpdateAuthAccountRequest) (*pbs.UpdateAuthAccountResponse, error) {
-	panic("UpdateAuthAccount is not implemented.")
+// UpdateAccount implements the interface pbs.AccountServiceServer.
+func (s Service) UpdateAccount(ctx context.Context, req *pbs.UpdateAccountRequest) (*pbs.UpdateAccountResponse, error) {
+	panic("UpdateAccount is not implemented.")
 }
 
-// DeleteAuthAccount implements the interface pbs.AuthAccountServiceServer.
-func (s Service) DeleteAuthAccount(ctx context.Context, req *pbs.DeleteAuthAccountRequest) (*pbs.DeleteAuthAccountResponse, error) {
+// DeleteAccount implements the interface pbs.AccountServiceServer.
+func (s Service) DeleteAccount(ctx context.Context, req *pbs.DeleteAccountRequest) (*pbs.DeleteAccountResponse, error) {
 	authResults := auth.Verify(ctx)
 	if !authResults.Valid {
 		return nil, handlers.ForbiddenError()
@@ -119,7 +119,7 @@ func (s Service) DeleteAuthAccount(ctx context.Context, req *pbs.DeleteAuthAccou
 	if err != nil {
 		return nil, err
 	}
-	return &pbs.DeleteAuthAccountResponse{Existed: existed}, nil
+	return &pbs.DeleteAccountResponse{Existed: existed}, nil
 }
 
 func (s Service) getFromRepo(ctx context.Context, id string) (*pb.Account, error) {
@@ -130,12 +130,12 @@ func (s Service) getFromRepo(ctx context.Context, id string) (*pb.Account, error
 	u, err := repo.LookupAccount(ctx, id)
 	if err != nil {
 		if errors.Is(err, db.ErrRecordNotFound) {
-			return nil, handlers.NotFoundErrorf("AuthAccount %q doesn't exist.", id)
+			return nil, handlers.NotFoundErrorf("Account %q doesn't exist.", id)
 		}
 		return nil, err
 	}
 	if u == nil {
-		return nil, handlers.NotFoundErrorf("AuthAccount %q doesn't exist.", id)
+		return nil, handlers.NotFoundErrorf("Account %q doesn't exist.", id)
 	}
 	return toProto(u), nil
 }
@@ -227,7 +227,7 @@ func toProto(in *password.Account) *pb.Account {
 //  * The path passed in is correctly formatted
 //  * All required parameters are set
 //  * There are no conflicting parameters provided
-func validateGetRequest(req *pbs.GetAuthAccountRequest) error {
+func validateGetRequest(req *pbs.GetAccountRequest) error {
 	badFields := map[string]string{}
 	if !validId(req.GetId(), password.AccountPrefix+"_") {
 		badFields["id"] = "Invalid formatted identifier."
@@ -241,7 +241,7 @@ func validateGetRequest(req *pbs.GetAuthAccountRequest) error {
 	return nil
 }
 
-func validateCreateRequest(req *pbs.CreateAuthAccountRequest) error {
+func validateCreateRequest(req *pbs.CreateAccountRequest) error {
 	badFields := map[string]string{}
 	if !validId(req.GetAuthMethodId(), password.AuthMethodPrefix+"_") {
 		badFields["auth_method_id"] = "Invalid formatted identifier."
@@ -277,7 +277,7 @@ func validateCreateRequest(req *pbs.CreateAuthAccountRequest) error {
 	return nil
 }
 
-func validateDeleteRequest(req *pbs.DeleteAuthAccountRequest) error {
+func validateDeleteRequest(req *pbs.DeleteAccountRequest) error {
 	badFields := map[string]string{}
 	if !validId(req.GetAuthMethodId(), password.AuthMethodPrefix+"_") {
 		badFields["auth_method_id"] = "Invalid formatted identifier."
@@ -291,7 +291,7 @@ func validateDeleteRequest(req *pbs.DeleteAuthAccountRequest) error {
 	return nil
 }
 
-func validateListRequest(req *pbs.ListAuthAccountsRequest) error {
+func validateListRequest(req *pbs.ListAccountsRequest) error {
 	badFields := map[string]string{}
 	if !validId(req.GetAuthMethodId(), password.AuthMethodPrefix+"_") {
 		badFields["auth_method_id"] = "Invalid formatted identifier."

@@ -74,13 +74,13 @@
     },
     "/v1/scopes/*/auth-methods/{auth_method_id}/accounts": {
       "get": {
-        "summary": "Lists all AuthAccounts",
-        "operationId": "AuthAccountService_ListAuthAccounts",
+        "summary": "Lists all accounts in a specific auth method.",
+        "operationId": "AccountService_ListAccounts",
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
-              "$ref": "#/definitions/controller.api.services.v1.ListAuthAccountsResponse"
+              "$ref": "#/definitions/controller.api.services.v1.ListAccountsResponse"
             }
           }
         },
@@ -99,12 +99,12 @@
           }
         ],
         "tags": [
-          "controller.api.services.v1.AuthAccountService"
+          "controller.api.services.v1.AccountService"
         ]
       },
       "post": {
-        "summary": "Creates a single AuthAccount",
-        "operationId": "AuthAccountService_CreateAuthAccount",
+        "summary": "Creates a single account in the provided auth method.",
+        "operationId": "AccountService_CreateAccount",
         "responses": {
           "200": {
             "description": "",
@@ -130,14 +130,14 @@
           }
         ],
         "tags": [
-          "controller.api.services.v1.AuthAccountService"
+          "controller.api.services.v1.AccountService"
         ]
       }
     },
     "/v1/scopes/*/auth-methods/{auth_method_id}/accounts/{id}": {
       "get": {
-        "summary": "Gets a single AuthAccount",
-        "operationId": "AuthAccountService_GetAuthAccount",
+        "summary": "Gets a single Account",
+        "operationId": "AccountService_GetAccount",
         "responses": {
           "200": {
             "description": "",
@@ -167,17 +167,17 @@
           }
         ],
         "tags": [
-          "controller.api.services.v1.AuthAccountService"
+          "controller.api.services.v1.AccountService"
         ]
       },
       "delete": {
-        "summary": "Deletes a AuthAccount",
-        "operationId": "AuthAccountService_DeleteAuthAccount",
+        "summary": "Deletes an account.",
+        "operationId": "AccountService_DeleteAccount",
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
-              "$ref": "#/definitions/controller.api.services.v1.DeleteAuthAccountResponse"
+              "$ref": "#/definitions/controller.api.services.v1.DeleteAccountResponse"
             }
           }
         },
@@ -196,12 +196,12 @@
           }
         ],
         "tags": [
-          "controller.api.services.v1.AuthAccountService"
+          "controller.api.services.v1.AccountService"
         ]
       },
       "patch": {
-        "summary": "Updates a AuthAccount",
-        "operationId": "AuthAccountService_UpdateAuthAccount",
+        "summary": "Updates an account.",
+        "operationId": "AccountService_UpdateAccount",
         "responses": {
           "200": {
             "description": "",
@@ -233,7 +233,7 @@
           }
         ],
         "tags": [
-          "controller.api.services.v1.AuthAccountService"
+          "controller.api.services.v1.AccountService"
         ]
       }
     },
@@ -2387,7 +2387,7 @@
         }
       }
     },
-    "controller.api.services.v1.CreateAuthAccountResponse": {
+    "controller.api.services.v1.CreateAccountResponse": {
       "type": "object",
       "properties": {
         "uri": {
@@ -2475,7 +2475,7 @@
         }
       }
     },
-    "controller.api.services.v1.DeleteAuthAccountResponse": {
+    "controller.api.services.v1.DeleteAccountResponse": {
       "type": "object",
       "properties": {
         "existed": {
@@ -2556,7 +2556,7 @@
         }
       }
     },
-    "controller.api.services.v1.GetAuthAccountResponse": {
+    "controller.api.services.v1.GetAccountResponse": {
       "type": "object",
       "properties": {
         "item": {
@@ -2628,7 +2628,7 @@
         }
       }
     },
-    "controller.api.services.v1.ListAuthAccountsResponse": {
+    "controller.api.services.v1.ListAccountsResponse": {
       "type": "object",
       "properties": {
         "items": {
@@ -2892,7 +2892,7 @@
         }
       }
     },
-    "controller.api.services.v1.UpdateAuthAccountResponse": {
+    "controller.api.services.v1.UpdateAccountResponse": {
       "type": "object",
       "properties": {
         "item": {

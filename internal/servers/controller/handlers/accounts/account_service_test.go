@@ -42,7 +42,7 @@ func TestGet(t *testing.T) {
 	am := password.TestAuthMethods(t, conn, org.GetPublicId(), 1)[0]
 	aa := password.TestAccounts(t, conn, org.GetPublicId(), am.GetPublicId(), 1)[0]
 
-	wireAuthAccount := pb.Account{
+	wireAccount := pb.Account{
 		Id:           aa.GetPublicId(),
 		AuthMethodId: aa.GetAuthMethodId(),
 		CreatedTime:  aa.GetCreateTime().GetTimestamp(),
@@ -54,31 +54,31 @@ func TestGet(t *testing.T) {
 
 	cases := []struct {
 		name    string
-		req     *pbs.GetAuthAccountRequest
-		res     *pbs.GetAuthAccountResponse
+		req     *pbs.GetAccountRequest
+		res     *pbs.GetAccountResponse
 		errCode codes.Code
 	}{
 		{
 			name:    "Get an existing account",
-			req:     &pbs.GetAuthAccountRequest{AuthMethodId: wireAuthAccount.GetAuthMethodId(), Id: wireAuthAccount.GetId()},
-			res:     &pbs.GetAuthAccountResponse{Item: &wireAuthAccount},
+			req:     &pbs.GetAccountRequest{AuthMethodId: wireAccount.GetAuthMethodId(), Id: wireAccount.GetId()},
+			res:     &pbs.GetAccountResponse{Item: &wireAccount},
 			errCode: codes.OK,
 		},
 		{
 			name:    "Get a non existing account",
-			req:     &pbs.GetAuthAccountRequest{AuthMethodId: wireAuthAccount.GetAuthMethodId(), Id: password.AccountPrefix + "_DoesntExis"},
+			req:     &pbs.GetAccountRequest{AuthMethodId: wireAccount.GetAuthMethodId(), Id: password.AccountPrefix + "_DoesntExis"},
 			res:     nil,
 			errCode: codes.NotFound,
 		},
 		{
 			name:    "Wrong id prefix",
-			req:     &pbs.GetAuthAccountRequest{AuthMethodId: wireAuthAccount.GetAuthMethodId(), Id: "j_1234567890"},
+			req:     &pbs.GetAccountRequest{AuthMethodId: wireAccount.GetAuthMethodId(), Id: "j_1234567890"},
 			res:     nil,
 			errCode: codes.InvalidArgument,
 		},
 		{
 			name:    "space in id",
-			req:     &pbs.GetAuthAccountRequest{AuthMethodId: wireAuthAccount.GetAuthMethodId(), Id: authtoken.AuthTokenPrefix + "_1 23456789"},
+			req:     &pbs.GetAccountRequest{AuthMethodId: wireAccount.GetAuthMethodId(), Id: authtoken.AuthTokenPrefix + "_1 23456789"},
 			res:     nil,
 			errCode: codes.InvalidArgument,
 		},
@@ -86,9 +86,9 @@ func TestGet(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			assert := assert.New(t)
-			got, gErr := s.GetAuthAccount(auth.DisabledAuthTestContext(auth.WithScopeId(org.GetPublicId())), tc.req)
-			assert.Equal(tc.errCode, status.Code(gErr), "GetAuthAccount(%+v) got error %v, wanted %v", tc.req, gErr, tc.errCode)
-			assert.Empty(cmp.Diff(got, tc.res, protocmp.Transform()), "GetAuthAccount(%q) got response %q, wanted %q", tc.req, got, tc.res)
+			got, gErr := s.GetAccount(auth.DisabledAuthTestContext(auth.WithScopeId(org.GetPublicId())), tc.req)
+			assert.Equal(tc.errCode, status.Code(gErr), "GetAccount(%+v) got error %v, wanted %v", tc.req, gErr, tc.errCode)
+			assert.Empty(cmp.Diff(got, tc.res, protocmp.Transform()), "GetAccount(%q) got response %q, wanted %q", tc.req, got, tc.res)
 		})
 	}
 }
@@ -134,32 +134,32 @@ func TestList(t *testing.T) {
 	cases := []struct {
 		name       string
 		authMethod string
-		res        *pbs.ListAuthAccountsResponse
+		res        *pbs.ListAccountsResponse
 		errCode    codes.Code
 	}{
 		{
 			name:       "List Some Accounts",
 			authMethod: amSomeAccounts.GetPublicId(),
-			res:        &pbs.ListAuthAccountsResponse{Items: wantSomeAccounts},
+			res:        &pbs.ListAccountsResponse{Items: wantSomeAccounts},
 			errCode:    codes.OK,
 		},
 		{
 			name:       "List Other Accounts",
 			authMethod: amOtherAccounts.GetPublicId(),
-			res:        &pbs.ListAuthAccountsResponse{Items: wantOtherAccounts},
+			res:        &pbs.ListAccountsResponse{Items: wantOtherAccounts},
 			errCode:    codes.OK,
 		},
 		{
 			name:       "List No Accounts",
 			authMethod: amNoAccounts.GetPublicId(),
-			res:        &pbs.ListAuthAccountsResponse{},
+			res:        &pbs.ListAccountsResponse{},
 			errCode:    codes.OK,
 		},
 		// TODO: When an auth method doesn't exist, we should return a 404 instead of an empty list.
 		{
 			name:       "Unfound Auth Method",
 			authMethod: password.AuthMethodPrefix + "_DoesntExis",
-			res:        &pbs.ListAuthAccountsResponse{},
+			res:        &pbs.ListAccountsResponse{},
 			errCode:    codes.OK,
 		},
 	}
@@ -168,8 +168,8 @@ func TestList(t *testing.T) {
 			s, err := accounts.NewService(repoFn)
 			require.NoError(t, err, "Couldn't create new user service.")
 
-			got, gErr := s.ListAuthAccounts(auth.DisabledAuthTestContext(auth.WithScopeId(o.GetPublicId())), &pbs.ListAuthAccountsRequest{AuthMethodId: tc.authMethod})
-			assert.Equal(t, tc.errCode, status.Code(gErr), "ListAuthAccounts() with auth method %q got error %v, wanted %v", tc.authMethod, gErr, tc.errCode)
+			got, gErr := s.ListAccounts(auth.DisabledAuthTestContext(auth.WithScopeId(o.GetPublicId())), &pbs.ListAccountsRequest{AuthMethodId: tc.authMethod})
+			assert.Equal(t, tc.errCode, status.Code(gErr), "ListAccounts() with auth method %q got error %v, wanted %v", tc.authMethod, gErr, tc.errCode)
 			assert.Empty(t, cmp.Diff(got, tc.res, protocmp.Transform(), protocmp.SortRepeatedFields(got)), "ListUsers() with scope %q got response %q, wanted %q", tc.authMethod, got, tc.res)
 		})
 	}
@@ -196,48 +196,48 @@ func TestDelete(t *testing.T) {
 	cases := []struct {
 		name    string
 		scope   string
-		req     *pbs.DeleteAuthAccountRequest
-		res     *pbs.DeleteAuthAccountResponse
+		req     *pbs.DeleteAccountRequest
+		res     *pbs.DeleteAccountResponse
 		errCode codes.Code
 	}{
 		{
 			name: "Delete an existing token",
-			req: &pbs.DeleteAuthAccountRequest{
+			req: &pbs.DeleteAccountRequest{
 				AuthMethodId: am1.GetPublicId(),
 				Id:           ac.GetPublicId(),
 			},
-			res: &pbs.DeleteAuthAccountResponse{
+			res: &pbs.DeleteAccountResponse{
 				Existed: true,
 			},
 			errCode: codes.OK,
 		},
 		{
 			name: "Delete account from wrong auth method",
-			req: &pbs.DeleteAuthAccountRequest{
+			req: &pbs.DeleteAccountRequest{
 				AuthMethodId: am1.GetPublicId(),
 				Id:           wrongAc.GetPublicId(),
 			},
 			// TODO(toddknight): This should return Existed:false. Figure out if this test is testing something valid
 			// and if so make it pass.
-			res: &pbs.DeleteAuthAccountResponse{
+			res: &pbs.DeleteAccountResponse{
 				Existed: true,
 			},
 			errCode: codes.OK,
 		},
 		{
 			name: "Delete bad account id",
-			req: &pbs.DeleteAuthAccountRequest{
+			req: &pbs.DeleteAccountRequest{
 				AuthMethodId: am1.GetPublicId(),
 				Id:           password.AccountPrefix + "_doesntexis",
 			},
-			res: &pbs.DeleteAuthAccountResponse{
+			res: &pbs.DeleteAccountResponse{
 				Existed: false,
 			},
 			errCode: codes.OK,
 		},
 		{
 			name: "Bad account id formatting",
-			req: &pbs.DeleteAuthAccountRequest{
+			req: &pbs.DeleteAccountRequest{
 				AuthMethodId: am1.GetPublicId(),
 				Id:           "bad_format",
 			},
@@ -248,9 +248,9 @@ func TestDelete(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			assert := assert.New(t)
-			got, gErr := s.DeleteAuthAccount(auth.DisabledAuthTestContext(auth.WithScopeId(o.GetPublicId())), tc.req)
-			assert.Equal(tc.errCode, status.Code(gErr), "DeleteAuthAccount(%+v) got error %v, wanted %v", tc.req, gErr, tc.errCode)
-			assert.EqualValuesf(tc.res, got, "DeleteAuthAccount(%q) got response %q, wanted %q", tc.req, got, tc.res)
+			got, gErr := s.DeleteAccount(auth.DisabledAuthTestContext(auth.WithScopeId(o.GetPublicId())), tc.req)
+			assert.Equal(tc.errCode, status.Code(gErr), "DeleteAccount(%+v) got error %v, wanted %v", tc.req, gErr, tc.errCode)
+			assert.EqualValuesf(tc.res, got, "DeleteAccount(%q) got response %q, wanted %q", tc.req, got, tc.res)
 		})
 	}
 }
@@ -270,14 +270,14 @@ func TestDelete_twice(t *testing.T) {
 
 	s, err := accounts.NewService(repoFn)
 	require.NoError(t, err, "Error when getting new user service")
-	req := &pbs.DeleteAuthAccountRequest{
+	req := &pbs.DeleteAccountRequest{
 		AuthMethodId: am.GetPublicId(),
 		Id:           ac.GetPublicId(),
 	}
-	got, gErr := s.DeleteAuthAccount(auth.DisabledAuthTestContext(auth.WithScopeId(ac.GetScopeId())), req)
+	got, gErr := s.DeleteAccount(auth.DisabledAuthTestContext(auth.WithScopeId(ac.GetScopeId())), req)
 	assert.NoError(gErr, "First attempt")
 	assert.True(got.GetExisted(), "Expected existed to be true for the first delete.")
-	got, gErr = s.DeleteAuthAccount(auth.DisabledAuthTestContext(auth.WithScopeId(ac.GetScopeId())), req)
+	got, gErr = s.DeleteAccount(auth.DisabledAuthTestContext(auth.WithScopeId(ac.GetScopeId())), req)
 	assert.NoError(gErr, "Second attempt")
 	assert.False(got.GetExisted(), "Expected existed to be false for the second delete.")
 }
@@ -304,13 +304,13 @@ func TestCreate(t *testing.T) {
 
 	cases := []struct {
 		name    string
-		req     *pbs.CreateAuthAccountRequest
-		res     *pbs.CreateAuthAccountResponse
+		req     *pbs.CreateAccountRequest
+		res     *pbs.CreateAccountResponse
 		errCode codes.Code
 	}{
 		{
 			name: "Create a valid Account",
-			req: &pbs.CreateAuthAccountRequest{
+			req: &pbs.CreateAccountRequest{
 				AuthMethodId: defaultAccount.GetAuthMethodId(),
 				Item: &pb.Account{
 					Name:        &wrapperspb.StringValue{Value: "name"},
@@ -319,7 +319,7 @@ func TestCreate(t *testing.T) {
 					Attributes:  defaultSt,
 				},
 			},
-			res: &pbs.CreateAuthAccountResponse{
+			res: &pbs.CreateAccountResponse{
 				Uri: fmt.Sprintf("scopes/%s/auth-methods/%s/accounts/%s_", defaultAccount.GetScopeId(), defaultAccount.GetAuthMethodId(), password.AccountPrefix),
 				Item: &pb.Account{
 					AuthMethodId: defaultAccount.GetAuthMethodId(),
@@ -334,7 +334,7 @@ func TestCreate(t *testing.T) {
 		},
 		{
 			name: "Can't specify Id",
-			req: &pbs.CreateAuthAccountRequest{
+			req: &pbs.CreateAccountRequest{
 				AuthMethodId: defaultAccount.GetAuthMethodId(),
 				Item: &pb.Account{
 					Id:         password.AccountPrefix + "_notallowed",
@@ -347,7 +347,7 @@ func TestCreate(t *testing.T) {
 		},
 		{
 			name: "Can't specify AuthMethodId",
-			req: &pbs.CreateAuthAccountRequest{
+			req: &pbs.CreateAccountRequest{
 				AuthMethodId: defaultAccount.GetAuthMethodId(),
 				Item: &pb.Account{
 					AuthMethodId: defaultAccount.GetAuthMethodId(),
@@ -360,7 +360,7 @@ func TestCreate(t *testing.T) {
 		},
 		{
 			name: "Can't specify Created Time",
-			req: &pbs.CreateAuthAccountRequest{
+			req: &pbs.CreateAccountRequest{
 				AuthMethodId: defaultAccount.GetAuthMethodId(),
 				Item: &pb.Account{
 					CreatedTime: ptypes.TimestampNow(),
@@ -373,7 +373,7 @@ func TestCreate(t *testing.T) {
 		},
 		{
 			name: "Can't specify Update Time",
-			req: &pbs.CreateAuthAccountRequest{
+			req: &pbs.CreateAccountRequest{
 				AuthMethodId: defaultAccount.GetAuthMethodId(),
 				Item: &pb.Account{
 					UpdatedTime: ptypes.TimestampNow(),
@@ -386,7 +386,7 @@ func TestCreate(t *testing.T) {
 		},
 		{
 			name: "Must specify type",
-			req: &pbs.CreateAuthAccountRequest{
+			req: &pbs.CreateAccountRequest{
 				AuthMethodId: defaultAccount.GetAuthMethodId(),
 				Item: &pb.Account{
 					Attributes: defaultSt,
@@ -397,7 +397,7 @@ func TestCreate(t *testing.T) {
 		},
 		{
 			name: "Must specify username for password type",
-			req: &pbs.CreateAuthAccountRequest{
+			req: &pbs.CreateAccountRequest{
 				AuthMethodId: defaultAccount.GetAuthMethodId(),
 				Item: &pb.Account{
 					Type: "password",
@@ -410,8 +410,8 @@ func TestCreate(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			got, gErr := s.CreateAuthAccount(auth.DisabledAuthTestContext(auth.WithScopeId(defaultAccount.GetScopeId())), tc.req)
-			assert.Equal(tc.errCode, status.Code(gErr), "CreateAuthAccount(%+v) got error %v, wanted %v", tc.req, gErr, tc.errCode)
+			got, gErr := s.CreateAccount(auth.DisabledAuthTestContext(auth.WithScopeId(defaultAccount.GetScopeId())), tc.req)
+			assert.Equal(tc.errCode, status.Code(gErr), "CreateAccount(%+v) got error %v, wanted %v", tc.req, gErr, tc.errCode)
 			if got != nil {
 				assert.Contains(got.GetUri(), tc.res.Uri)
 				assert.True(strings.HasPrefix(got.GetItem().GetId(), password.AccountPrefix+"_"))
@@ -428,7 +428,7 @@ func TestCreate(t *testing.T) {
 				got.Item.Id, tc.res.Item.Id = "", ""
 				got.Item.CreatedTime, got.Item.UpdatedTime, tc.res.Item.CreatedTime, tc.res.Item.UpdatedTime = nil, nil, nil, nil
 			}
-			assert.Empty(cmp.Diff(got, tc.res, protocmp.Transform()), "CreateAuthAccount(%q) got response %q, wanted %q", tc.req, got, tc.res)
+			assert.Empty(cmp.Diff(got, tc.res, protocmp.Transform()), "CreateAccount(%q) got response %q, wanted %q", tc.req, got, tc.res)
 		})
 	}
 }
