@@ -9,7 +9,7 @@ package services
 import (
 	context "context"
 	proto "github.com/golang/protobuf/proto"
-	store "github.com/hashicorp/watchtower/internal/servers/store"
+	servers "github.com/hashicorp/watchtower/internal/servers"
 	grpc "google.golang.org/grpc"
 	codes "google.golang.org/grpc/codes"
 	status "google.golang.org/grpc/status"
@@ -38,7 +38,7 @@ type StatusRequest struct {
 	// The worker info. We could use information from the TLS connection but this
 	// is easier and going the other route doesn't provide much benefit -- if you
 	// get access to the key and spoof the connection, you're already compromised.
-	Server *store.Server `protobuf:"bytes,10,opt,name=server,proto3" json:"server,omitempty"`
+	Server *servers.Server `protobuf:"bytes,10,opt,name=server,proto3" json:"server,omitempty"`
 	// Jobs currently active on this worker.
 	ActiveJobIds []string `protobuf:"bytes,20,rep,name=active_job_ids,json=activeJobIds,proto3" json:"active_job_ids,omitempty"`
 }
@@ -75,7 +75,7 @@ func (*StatusRequest) Descriptor() ([]byte, []int) {
 	return file_controller_api_services_v1_worker_service_proto_rawDescGZIP(), []int{0}
 }
 
-func (x *StatusRequest) GetServer() *store.Server {
+func (x *StatusRequest) GetServer() *servers.Server {
 	if x != nil {
 		return x.Server
 	}
@@ -269,7 +269,7 @@ var file_controller_api_services_v1_worker_service_proto_goTypes = []interface{}
 	(*StatusRequest)(nil),  // 0: controller.api.services.v1.StatusRequest
 	(*StatusResponse)(nil), // 1: controller.api.services.v1.StatusResponse
 	(*ControllerInfo)(nil), // 2: controller.api.services.v1.ControllerInfo
-	(*store.Server)(nil),   // 3: controller.servers.v1.Server
+	(*servers.Server)(nil), // 3: controller.servers.v1.Server
 }
 var file_controller_api_services_v1_worker_service_proto_depIdxs = []int32{
 	3, // 0: controller.api.services.v1.StatusRequest.server:type_name -> controller.servers.v1.Server

@@ -1359,9 +1359,27 @@ create table servers (
     name text unique,
     type text,
     description text,
-    first_seen_time wt_timestamp,
-    last_seen_time wt_timestamp
+    create_time wt_timestamp,
+    update_time wt_timestamp
   );
+
+create trigger 
+  update_time_column 
+before update on servers
+  for each row execute procedure update_time_column();
+
+create trigger 
+  immutable_create_time
+before
+update on servers
+  for each row execute procedure immutable_create_time_func();
+  
+create trigger 
+  default_create_time_column
+before
+insert on servers
+  for each row execute procedure default_create_time();
+
 `),
 	},
 	"migrations/08_servers_down.sql": {

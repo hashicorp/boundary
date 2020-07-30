@@ -5,6 +5,8 @@ import (
 	"time"
 
 	pbs "github.com/hashicorp/watchtower/internal/gen/controller/api/services"
+	"github.com/hashicorp/watchtower/internal/servers"
+	"github.com/hashicorp/watchtower/internal/types/resource"
 )
 
 // In the future we could make this configurable
@@ -37,7 +39,12 @@ func (w *Worker) startStatusTicking() {
 			case <-timer.C:
 				for _, c := range w.controllerConns {
 					_, err := c.client.Status(w.baseContext, &pbs.StatusRequest{
-						Name: w.conf.RawConfig.Worker.Name,
+						Server: &servers.Server{
+							PrivateId:   w.conf.RawConfig.Worker.Name,
+							Name:        w.conf.RawConfig.Worker.Name,
+							Type:        resource.Worker.String(),
+							Description: w.conf.RawConfig.Worker.Description,
+						},
 					})
 					if err != nil {
 						w.logger.Error("error making status request to controller", "controller_addr_", c.controllerAddr, "error", err)

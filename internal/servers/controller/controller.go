@@ -11,6 +11,7 @@ import (
 	"github.com/hashicorp/watchtower/internal/db"
 	"github.com/hashicorp/watchtower/internal/host/static"
 	"github.com/hashicorp/watchtower/internal/iam"
+	"github.com/hashicorp/watchtower/internal/servers"
 	"github.com/hashicorp/watchtower/internal/servers/controller/common"
 	"github.com/patrickmn/go-cache"
 )
@@ -28,6 +29,7 @@ type Controller struct {
 	IamRepoFn        common.IamRepoFactory
 	StaticHostRepoFn common.StaticRepoFactory
 	AuthTokenRepoFn  common.AuthTokenRepoFactory
+	ServersRepoFn    common.ServersRepoFactory
 }
 
 func New(conf *Config) (*Controller, error) {
@@ -69,6 +71,9 @@ func New(conf *Config) (*Controller, error) {
 	c.AuthTokenRepoFn = func() (*authtoken.Repository, error) {
 		return authtoken.NewRepository(dbase, dbase, c.conf.ControllerKMS)
 	}
+	c.ServersRepoFn = func() (*servers.Repository, error) {
+		return servers.NewRepository(dbase, dbase, c.conf.ControllerKMS)
+	}
 
 	c.workerAuthCache = cache.New(0, 0)
 
@@ -79,6 +84,7 @@ func (c *Controller) Start() error {
 	if err := c.startListeners(); err != nil {
 		return fmt.Errorf("error starting controller listeners: %w", err)
 	}
+	c.startStatusTicking()
 	return nil
 }
 

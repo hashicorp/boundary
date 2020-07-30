@@ -1,5 +1,7 @@
 package servers
 
+import "time"
+
 // getOpts - iterate the inbound Options and return a struct
 func getOpts(opt ...Option) options {
 	opts := getDefaultOptions()
@@ -14,41 +16,14 @@ type Option func(*options)
 
 // options = how options are represented
 type options struct {
-	withPublicId        string
-	withName            string
-	withDescription     string
-	withLimit           int
-	withSkipVetForWrite bool
+	withLimit    int
+	withLiveness time.Duration
 }
 
 func getDefaultOptions() options {
 	return options{
-		withPublicId:        "",
-		withName:            "",
-		withDescription:     "",
-		withLimit:           0,
-		withSkipVetForWrite: false,
-	}
-}
-
-// WithPublicId provides an optional public id
-func WithPublicId(id string) Option {
-	return func(o *options) {
-		o.withPublicId = id
-	}
-}
-
-// WithDescription provides an optional description
-func WithDescription(desc string) Option {
-	return func(o *options) {
-		o.withDescription = desc
-	}
-}
-
-// WithName provides an option to search by a friendly name
-func WithName(name string) Option {
-	return func(o *options) {
-		o.withName = name
+		withLimit:    0,
+		withLiveness: 0,
 	}
 }
 
@@ -63,8 +38,8 @@ func WithLimit(limit int) Option {
 
 // WithSkipVetForWrite provides an option to allow skipping vet checks to allow
 // testing lower-level SQL triggers and constraints
-func WithSkipVetForWrite(enable bool) Option {
+func WithLiveness(liveness time.Duration) Option {
 	return func(o *options) {
-		o.withSkipVetForWrite = enable
+		o.withLiveness = liveness
 	}
 }

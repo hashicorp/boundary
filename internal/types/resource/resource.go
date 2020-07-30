@@ -28,6 +28,9 @@ const (
 	// TODO: remove this after demo
 	Group     Type = 20
 	AuthToken Type = 21
+
+	Controller Type = 22
+	Worker     Type = 23
 )
 
 func (r Type) String() string {
@@ -54,6 +57,8 @@ func (r Type) String() string {
 		"global",
 		"group",
 		"auth-token",
+		"controller",
+		"worker",
 	}[r]
 }
 
@@ -79,4 +84,6 @@ var Map = map[string]Type{
 	Global.String():                  Global,
 	Group.String():                   Group,
 	AuthToken.String():               AuthToken,
+	Controller.String():              Controller,
+	Worker.String():                  Worker,
 }

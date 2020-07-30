@@ -5,22 +5,41 @@ import (
 
 	"github.com/hashicorp/go-hclog"
 	pbs "github.com/hashicorp/watchtower/internal/gen/controller/api/services"
+	"github.com/hashicorp/watchtower/internal/servers/controller/common"
+	"github.com/hashicorp/watchtower/internal/types/resource"
 	"github.com/patrickmn/go-cache"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 )
 
 type workerServiceServer struct {
 	logger    hclog.Logger
 	authCache *cache.Cache
+	repoFn    common.ServersRepoFactory
 }
 
-func NewWorkerServiceServer(logger hclog.Logger, authCache *cache.Cache) *workerServiceServer {
+func NewWorkerServiceServer(logger hclog.Logger, authCache *cache.Cache, repoFn common.ServersRepoFactory) *workerServiceServer {
 	return &workerServiceServer{
 		logger:    logger,
 		authCache: authCache,
+		repoFn:    repoFn,
 	}
 }
 
 func (ws *workerServiceServer) Status(ctx context.Context, req *pbs.StatusRequest) (*pbs.StatusResponse, error) {
-	ws.logger.Trace("got status request", "name", req.Name)
+	ws.logger.Trace("got status request", "name", req.Server.Name, "type", req.Server.Type)
+	repo, err := ws.repoFn()
+	if err != nil {
+		ws.logger.Error("error getting servers repo", "error", err)
+		return &pbs.StatusResponse{}, status.Errorf(codes.Internal, "Error aqcuiring repo to store worker status: %v", err)
+	}
+	if req.Server.Type != resource.Worker.String() {
+		return &pbs.StatusResponse{}, status.Errorf(codes.InvalidArgument, "Invalid server type %q sent to worker status endpoint", req.Server.Type)
+	}
+	_, _, err = repo.Upsert(ctx, req.Server)
+	if err != nil {
+		ws.logger.Error("error storing worker status", "error", err)
+		return &pbs.StatusResponse{}, status.Errorf(codes.Internal, "Error storing worker status: %v", err)
+	}
 	return &pbs.StatusResponse{}, nil
 }
