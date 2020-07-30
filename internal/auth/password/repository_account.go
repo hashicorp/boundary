@@ -15,7 +15,7 @@ import (
 // contain a valid AuthMethodId. a must not contain a PublicId. The PublicId is
 // generated and assigned by this method.
 //
-// Password is the only valid option. All other options are ignored.
+// WithPassword is the only valid option. All other options are ignored.
 //
 // Both a.Name and a.Description are optional. If a.Name is set, it must be
 // unique within a.AuthMethodId.
