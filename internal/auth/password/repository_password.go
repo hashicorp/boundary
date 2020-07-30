@@ -33,22 +33,22 @@ func (r *Repository) Authenticate(ctx context.Context, authMethodId string, user
 
 	const (
 		query = `
-select acct.name,
-       acct.description,
-       acct.user_name,
-       acct.public_id,
-       acct.auth_method_id,
-       acct.scope_id,
-       acct.create_time,
-       acct.update_time,
-       cred.private_id as credential_id,
-       cred.password_conf_id,
-       cred.salt,
-       cred.derived_key,
-       conf.key_length,
-       conf.iterations,
-       conf.memory,
-       conf.threads
+select acct.name,                        -- Account.Name
+       acct.description,                 -- Account.Description
+       acct.user_name,                   -- Account.UserName
+       acct.public_id,                   -- Account.PublicId
+       acct.auth_method_id,              -- Account.AuthMethodId
+       acct.scope_id,                    -- Account.ScopeId
+       acct.create_time,                 -- Account.CreateTime
+       acct.update_time,                 -- Account.UpdateTime
+       cred.private_id as credential_id, -- Account.CredentialId
+       cred.password_conf_id,            -- Argon2Credential.PasswordConfId
+       cred.salt,                        -- Argon2Credential.CtSalt/Salt
+       cred.derived_key,                 -- Argon2Credential.DerivedKey
+       conf.key_length,                  -- Argon2Configuration.KeyLength
+       conf.iterations,                  -- Argon2Configuration.Iterations
+       conf.memory,                      -- Argon2Configuration.Memory
+       conf.threads                      -- Argon2Configuration.Threads
   from auth_password_argon2_cred cred,
        auth_password_argon2_conf conf,
        auth_password_account acct
