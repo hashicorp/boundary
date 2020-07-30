@@ -105,10 +105,10 @@ begin;
     for each row execute procedure update_time_column();
 
   create trigger
-    immutable_create_time
+    immutable_columns
   before
   update on auth_password_argon2_cred
-    for each row execute procedure immutable_create_time_func();
+    for each row execute procedure immutable_columns('create_time');
 
   create trigger
     default_create_time_column
