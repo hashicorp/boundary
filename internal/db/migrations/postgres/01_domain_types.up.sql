@@ -59,24 +59,6 @@ comment on function
   update_time_column()
 is
   'function used in before update triggers to properly set update_time columns';
-
-create or replace function
-  immutable_create_time_func()
-  returns trigger
-as $$
-begin
-  if new.create_time is distinct from old.create_time then
-    raise warning 'create_time cannot be set to %', new.create_time;
-    new.create_time = old.create_time;
-  end if;
-  return new;
-end;
-$$ language plpgsql;
-
-comment on function
-  immutable_create_time_func()
-is
-  'function used in before update triggers to make create_time column immutable';
   
 create or replace function
   default_create_time()
@@ -128,5 +110,37 @@ comment on function
   update_version_column()
 is
   'function used in after update triggers to properly set version columns';
+
+-- immutable_columns() will make the column names immutable which are passed as
+-- parameters when the trigger is created. It raises error code 23601 which is a
+-- class 23 integrity constraint violation: immutable column  
+create or replace function
+  immutable_columns()
+  returns trigger
+as $$
+declare 
+	col_name text; 
+	new_value text;
+	old_value text;
+begin
+  foreach col_name in array tg_argv loop
+    execute format('SELECT $1.%I', col_name) into new_value using new;
+    execute format('SELECT $1.%I', col_name) into old_value using old;
+  	if new_value is distinct from old_value then
+      raise exception 'immutable column: %.%', tg_table_name, col_name using
+        errcode = '23601', 
+        schema = tg_table_schema,
+        table = tg_table_name,
+        column = col_name;
+  	end if;
+  end loop;
+  return new;
+end;
+$$ language plpgsql;
+
+comment on function
+  immutable_columns()
+is
+  'function used in before update triggers to make columns immutable';
 
 commit;
