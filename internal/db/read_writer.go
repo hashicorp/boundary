@@ -205,13 +205,10 @@ func (rw *Db) lookupAfterWrite(ctx context.Context, i interface{}, opt ...Option
 	if !withLookup {
 		return nil
 	}
-	if _, ok := i.(ResourcePublicIder); ok {
-		if err := rw.LookupByPublicId(ctx, i.(ResourcePublicIder), opt...); err != nil {
-			return fmt.Errorf("lookup after write: %w", err)
-		}
-		return nil
+	if err := rw.LookupById(ctx, i, opt...); err != nil {
+		return fmt.Errorf("lookup after write: %w", err)
 	}
-	return errors.New("lookup after write: not a resource with an id")
+	return nil
 }
 
 // Create an object in the db with options: WithOplog, NewOplogMsg and
