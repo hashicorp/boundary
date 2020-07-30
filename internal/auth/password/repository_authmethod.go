@@ -78,7 +78,7 @@ func (r *Repository) CreateAuthMethod(ctx context.Context, m *AuthMethod, opt ..
 	return newAuthMethod, nil
 }
 
-// LookupAuthMethod will look up an auth method in the repository.  If the account is not
+// LookupAuthMethod will look up an auth method in the repository.  If the auth method is not
 // found, it will return nil, nil.  All options are ignored.
 func (r *Repository) LookupAuthMethod(ctx context.Context, withPublicId string, opt ...Option) (*AuthMethod, error) {
 	if withPublicId == "" {

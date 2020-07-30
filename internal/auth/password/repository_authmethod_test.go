@@ -218,7 +218,7 @@ func TestRepository_LookupAuthMethod(t *testing.T) {
 
 	authMethod := testAuthMethods(t, conn, 1)[0]
 
-	newAcctId, err := newAccountId()
+	amId, err := newAuthMethodId()
 	require.NoError(t, err)
 	var tests = []struct {
 		name      string
@@ -232,7 +232,7 @@ func TestRepository_LookupAuthMethod(t *testing.T) {
 		},
 		{
 			name: "With non existing auth method id",
-			in:   newAcctId,
+			in:   amId,
 		},
 		{
 			name: "With existing auth method id",
