@@ -109,7 +109,7 @@ func (c *Controller) startListeners() error {
 			grpc.MaxRecvMsgSize(math.MaxInt32),
 			grpc.MaxSendMsgSize(math.MaxInt32),
 		)
-		services.RegisterWorkerServiceServer(workerServer, workers.NewWorkerServiceServer(c.logger.Named("worker-handler"), c.workerAuthCache, c.ServersRepoFn))
+		services.RegisterWorkerServiceServer(workerServer, workers.NewWorkerServiceServer(c.logger.Named("worker-handler"), c.ServersRepoFn))
 
 		interceptor := newInterceptingListener(c, l)
 		ln.ALPNListener = interceptor

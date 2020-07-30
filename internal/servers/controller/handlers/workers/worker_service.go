@@ -7,22 +7,19 @@ import (
 	pbs "github.com/hashicorp/watchtower/internal/gen/controller/api/services"
 	"github.com/hashicorp/watchtower/internal/servers/controller/common"
 	"github.com/hashicorp/watchtower/internal/types/resource"
-	"github.com/patrickmn/go-cache"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
 
 type workerServiceServer struct {
-	logger    hclog.Logger
-	authCache *cache.Cache
-	repoFn    common.ServersRepoFactory
+	logger hclog.Logger
+	repoFn common.ServersRepoFactory
 }
 
-func NewWorkerServiceServer(logger hclog.Logger, authCache *cache.Cache, repoFn common.ServersRepoFactory) *workerServiceServer {
+func NewWorkerServiceServer(logger hclog.Logger, repoFn common.ServersRepoFactory) *workerServiceServer {
 	return &workerServiceServer{
-		logger:    logger,
-		authCache: authCache,
-		repoFn:    repoFn,
+		logger: logger,
+		repoFn: repoFn,
 	}
 }
 
