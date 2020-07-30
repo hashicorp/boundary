@@ -1322,6 +1322,7 @@ begin;
   drop table controllers;
 
 commit;
+
 `),
 	},
 	"migrations/08_servers.up.sql": {
@@ -1357,6 +1358,7 @@ insert on servers
   for each row execute procedure default_create_time();
 
 commit;
+
 `),
 	},
 	"migrations/10_static_host.down.sql": {

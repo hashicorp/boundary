@@ -2637,19 +2637,19 @@
     "controller.api.services.v1.StatusResponse": {
       "type": "object",
       "properties": {
-        "cancel_job_ids": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          },
-          "description": "Jobs that should be canceled: ones assigned to this worker that have been\nreported as active but are in canceling state in the database. Once the\nworker cancels the job, it will no longer show up in active_jobs in the\nnext heartbeat, and we can move the job to canceled state."
-        },
         "controllers": {
           "type": "array",
           "items": {
             "$ref": "#/definitions/controller.servers.v1.Server"
           },
           "description": "Active controllers. This can be used (eventually) for conneciton\nmanagement."
+        },
+        "cancel_job_ids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Jobs that should be canceled: ones assigned to this worker that have been\nreported as active but are in canceling state in the database. Once the\nworker cancels the job, it will no longer show up in active_jobs in the\nnext heartbeat, and we can move the job to canceled state."
         }
       }
     },
@@ -2738,7 +2738,7 @@
         },
         "update_time": {
           "$ref": "#/definitions/controller.storage.timestamp.v1.Timestamp",
-          "title": "Last seen time from the RDBMS"
+          "title": "Last time there was an update"
         }
       },
       "title": "Server contains all fields related to a Controller or Worker resource"

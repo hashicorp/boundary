@@ -44,7 +44,7 @@ type Server struct {
 	Address string `protobuf:"bytes,50,opt,name=address,proto3" json:"address,omitempty"`
 	// First seen time from the RDBMS
 	CreateTime *timestamp.Timestamp `protobuf:"bytes,60,opt,name=create_time,json=createTime,proto3" json:"create_time,omitempty"`
-	// Last seen time from the RDBMS
+	// Last time there was an update
 	UpdateTime *timestamp.Timestamp `protobuf:"bytes,70,opt,name=update_time,json=updateTime,proto3" json:"update_time,omitempty"`
 }
 

@@ -25,6 +25,6 @@ message Server {
   // First seen time from the RDBMS
   storage.timestamp.v1.Timestamp create_time = 60;
 
-  // Last seen time from the RDBMS
+  // Last time there was an update
   storage.timestamp.v1.Timestamp update_time = 70;
 }
