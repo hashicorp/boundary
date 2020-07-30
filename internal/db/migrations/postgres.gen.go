@@ -143,7 +143,7 @@ is
   'function used in after update triggers to properly set version columns';
 
 -- immutable_columns() will make the column names immutable which are passed as
--- parameters when the trigger is created. It raises errcode 23601 which is a
+-- parameters when the trigger is created. It raises error code 23601 which is a
 -- class 23 integrity constraint violation: immutable column  
 create or replace function
   immutable_columns()
