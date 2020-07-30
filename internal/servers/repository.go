@@ -55,34 +55,8 @@ func (r *Repository) list(ctx context.Context, resources interface{}, where stri
 	return r.reader.SearchWhere(ctx, resources, where, args, db.WithLimit(limit))
 }
 
-// create will create a new iam resource in the db repository with an oplog entry
-func (r *Repository) create(ctx context.Context, resource Resource, opt ...Option) (Resource, error) {
-	if resource == nil {
-		return nil, errors.New("error creating resource that is nil")
-	}
-	resourceCloner, ok := resource.(Clonable)
-	if !ok {
-		return nil, errors.New("error resource is not clonable for create")
-	}
-
-	var returnedResource interface{}
-	_, err := r.writer.DoTx(
-		ctx,
-		db.StdRetryCnt,
-		db.ExpBackoff{},
-		func(_ db.Reader, w db.Writer) error {
-			returnedResource = resourceCloner.Clone()
-			return w.Create(
-				ctx,
-				returnedResource,
-			)
-		},
-	)
-	return returnedResource.(Resource), err
-}
-
-// update will update an iam resource in the db repository with an oplog entry
-func (r *Repository) update(ctx context.Context, resource Resource, fieldMaskPaths []string, setToNullPaths []string, opt ...Option) (Resource, int, error) {
+// upsert will upsert
+func (r *Repository) upsert(ctx context.Context, server *Server, opt ...Option) (*Server, int, error) {
 	if resource == nil {
 		return nil, db.NoRowsAffected, errors.New("error updating resource that is nil")
 	}
@@ -121,37 +95,4 @@ func (r *Repository) update(ctx context.Context, resource Resource, fieldMaskPat
 		},
 	)
 	return returnedResource.(Resource), rowsUpdated, err
-}
-
-// delete will delete an iam resource in the db repository with an oplog entry
-func (r *Repository) delete(ctx context.Context, resource Resource, opt ...Option) (int, error) {
-	if resource == nil {
-		return db.NoRowsAffected, errors.New("error deleting resource that is nil")
-	}
-	resourceCloner, ok := resource.(Clonable)
-	if !ok {
-		return db.NoRowsAffected, errors.New("error resource is not clonable for delete")
-	}
-
-	var rowsDeleted int
-	var deleteResource interface{}
-	_, err := r.writer.DoTx(
-		ctx,
-		db.StdRetryCnt,
-		db.ExpBackoff{},
-		func(_ db.Reader, w db.Writer) error {
-			deleteResource = resourceCloner.Clone()
-			var err error
-			rowsDeleted, err = w.Delete(
-				ctx,
-				deleteResource,
-			)
-			if err == nil && rowsDeleted > 1 {
-				// return err, which will result in a rollback of the delete
-				return errors.New("error more than 1 resource would have been deleted ")
-			}
-			return err
-		},
-	)
-	return rowsDeleted, err
 }

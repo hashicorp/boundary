@@ -1,6 +1,6 @@
 syntax = "proto3";
 
-package controller.storage.servers.store.v1;
+package controller.servers.v1;
 option go_package = "github.com/hashicorp/watchtower/internal/servers/store;store";
 
 import "controller/storage/timestamp/v1/timestamp.proto";
@@ -8,22 +8,20 @@ import "controller/storage/timestamp/v1/timestamp.proto";
 // Server contains all fields related to a Controller or Worker resource
 message Server {
   // Private ID of the resource
-  // @inject_tag: gorm:"primary_key"
   string private_id = 10;
 
   // Name of the resource
-  // @inject_tag: `gorm:"default:null"`
   string name = 20;
 
+  // Type of the resource (controller, worker)
+  string type = 30;
+
   // Description of the resource
-  // @inject_tag: `gorm:"default:null"`
-  string description = 30;
+  string description = 40;
 
   // First seen time from the RDBMS
-  // @inject_tag: `gorm:"default:current_timestamp"`
-  timestamp.v1.Timestamp first_seen_time = 40;
+  storage.timestamp.v1.Timestamp first_seen_time = 50;
 
   // Last seen time from the RDBMS
-  // @inject_tag: `gorm:"default:current_timestamp"`
-  timestamp.v1.Timestamp last_seen_time = 50;
+  storage.timestamp.v1.Timestamp last_seen_time = 60;
 }

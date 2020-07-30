@@ -2722,6 +2722,46 @@
         }
       }
     },
+    "controller.servers.v1.Server": {
+      "type": "object",
+      "properties": {
+        "private_id": {
+          "type": "string",
+          "title": "Private ID of the resource"
+        },
+        "name": {
+          "type": "string",
+          "title": "Name of the resource"
+        },
+        "type": {
+          "type": "string",
+          "title": "Type of the resource (controller, worker)"
+        },
+        "description": {
+          "type": "string",
+          "title": "Description of the resource"
+        },
+        "first_seen_time": {
+          "$ref": "#/definitions/controller.storage.timestamp.v1.Timestamp",
+          "title": "First seen time from the RDBMS"
+        },
+        "last_seen_time": {
+          "$ref": "#/definitions/controller.storage.timestamp.v1.Timestamp",
+          "title": "Last seen time from the RDBMS"
+        }
+      },
+      "title": "Server contains all fields related to a Controller or Worker resource"
+    },
+    "controller.storage.timestamp.v1.Timestamp": {
+      "type": "object",
+      "properties": {
+        "timestamp": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "title": "Timestamp for storage messages.  We've defined a new local type wrapper\nof google.protobuf.Timestamp so we can implement sql.Scanner and sql.Valuer\ninterfaces.  See:\nhttps://golang.org/pkg/database/sql/#Scanner\nhttps://golang.org/pkg/database/sql/driver/#Valuer"
+    },
     "google.protobuf.FieldMask": {
       "type": "object",
       "properties": {

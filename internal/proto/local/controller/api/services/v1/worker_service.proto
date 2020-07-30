@@ -4,15 +4,17 @@ package controller.api.services.v1;
 
 option go_package = "github.com/hashicorp/watchtower/internal/gen/controller/api/services;services";
 
+import "controller/servers/v1/servers.proto";
+
 service WorkerService {
   rpc Status(StatusRequest) returns (StatusResponse) {}
 }
 
 message StatusRequest {
-  // The name. We could use information from the TLS connection but this is
-  // easier and going the other route doesn't provide much benefit -- if you get
-  // access to the key and spoof the connection, you're already compromised.
-  string name = 10;
+  // The worker info. We could use information from the TLS connection but this
+  // is easier and going the other route doesn't provide much benefit -- if you
+  // get access to the key and spoof the connection, you're already compromised.
+  servers.v1.Server server = 10;
 
   // Jobs currently active on this worker.
   repeated string active_job_ids = 20;
