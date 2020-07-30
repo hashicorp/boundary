@@ -87,10 +87,10 @@ begin;
   --
 
   create trigger
-    immutable_create_time
+    immutable_columns
   before
   update on auth_password_argon2_conf
-    for each row execute procedure immutable_create_time_func();
+    for each row execute procedure immutable_columns('create_time');
 
   create trigger
     default_create_time_column
