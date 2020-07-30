@@ -20,6 +20,8 @@ type Worker struct {
 
 	controllerConns        []*controllerConnection
 	controllerStatusTicker *time.Timer
+
+	listeningAddress string
 }
 
 func New(conf *Config) (*Worker, error) {

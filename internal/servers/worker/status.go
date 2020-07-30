@@ -30,26 +30,31 @@ func (w *Worker) startStatusTicking() {
 			return statusInterval + time.Duration(f*float64(time.Second))
 		}
 
-		timer := time.NewTimer(getRandomInterval())
+		timer := time.NewTimer(0)
 		for {
 			select {
 			case <-w.baseContext.Done():
 				w.logger.Info("status ticking shutting down")
 				return
+
 			case <-timer.C:
 				for _, c := range w.controllerConns {
-					_, err := c.client.Status(w.baseContext, &pbs.StatusRequest{
-						Server: &servers.Server{
+					result, err := c.client.Status(w.baseContext, &pbs.StatusRequest{
+						Worker: &servers.Server{
 							PrivateId:   w.conf.RawConfig.Worker.Name,
 							Name:        w.conf.RawConfig.Worker.Name,
 							Type:        resource.Worker.String(),
 							Description: w.conf.RawConfig.Worker.Description,
+							Address:     w.listeningAddress,
 						},
 					})
 					if err != nil {
 						w.logger.Error("error making status request to controller", "controller_addr_", c.controllerAddr, "error", err)
 					} else {
 						w.logger.Trace("successfully sent status to controller", "controller_addr", c.controllerAddr)
+						for _, v := range result.Controllers {
+							w.logger.Trace("found controller", "name", v.Name, "address", v.Address, "last_update", v.UpdateTime)
+						}
 					}
 				}
 				timer.Reset(getRandomInterval())

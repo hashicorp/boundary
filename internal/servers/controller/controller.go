@@ -30,6 +30,8 @@ type Controller struct {
 	StaticHostRepoFn common.StaticRepoFactory
 	AuthTokenRepoFn  common.AuthTokenRepoFactory
 	ServersRepoFn    common.ServersRepoFactory
+
+	clusterAddress string
 }
 
 func New(conf *Config) (*Controller, error) {
@@ -72,7 +74,7 @@ func New(conf *Config) (*Controller, error) {
 		return authtoken.NewRepository(dbase, dbase, c.conf.ControllerKMS)
 	}
 	c.ServersRepoFn = func() (*servers.Repository, error) {
-		return servers.NewRepository(dbase, dbase, c.conf.ControllerKMS)
+		return servers.NewRepository(c.logger.Named("servers.repository"), dbase, dbase, c.conf.ControllerKMS)
 	}
 
 	c.workerAuthCache = cache.New(0, 0)

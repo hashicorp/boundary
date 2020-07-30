@@ -10,18 +10,21 @@ message Server {
   // Private ID of the resource
   string private_id = 10;
 
-  // Name of the resource
-  string name = 20;
-
   // Type of the resource (controller, worker)
-  string type = 30;
+  string type = 20;
+
+  // Name of the resource
+  string name = 30;
 
   // Description of the resource
   string description = 40;
 
+  // Address for the server
+  string address = 50;
+
   // First seen time from the RDBMS
-  storage.timestamp.v1.Timestamp first_seen_time = 50;
+  storage.timestamp.v1.Timestamp create_time = 60;
 
   // Last seen time from the RDBMS
-  storage.timestamp.v1.Timestamp last_seen_time = 60;
+  storage.timestamp.v1.Timestamp update_time = 70;
 }

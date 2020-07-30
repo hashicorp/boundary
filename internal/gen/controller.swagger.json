@@ -2168,19 +2168,6 @@
         }
       }
     },
-    "controller.api.services.v1.ControllerInfo": {
-      "type": "object",
-      "properties": {
-        "name": {
-          "type": "string",
-          "description": "The name of the controller."
-        },
-        "address": {
-          "type": "string",
-          "description": "The address of the controller."
-        }
-      }
-    },
     "controller.api.services.v1.CreateGroupResponse": {
       "type": "object",
       "properties": {
@@ -2660,7 +2647,7 @@
         "controllers": {
           "type": "array",
           "items": {
-            "$ref": "#/definitions/controller.api.services.v1.ControllerInfo"
+            "$ref": "#/definitions/controller.servers.v1.Server"
           },
           "description": "Active controllers. This can be used (eventually) for conneciton\nmanagement."
         }
@@ -2729,23 +2716,27 @@
           "type": "string",
           "title": "Private ID of the resource"
         },
-        "name": {
-          "type": "string",
-          "title": "Name of the resource"
-        },
         "type": {
           "type": "string",
           "title": "Type of the resource (controller, worker)"
+        },
+        "name": {
+          "type": "string",
+          "title": "Name of the resource"
         },
         "description": {
           "type": "string",
           "title": "Description of the resource"
         },
-        "first_seen_time": {
+        "address": {
+          "type": "string",
+          "title": "Address for the server"
+        },
+        "create_time": {
           "$ref": "#/definitions/controller.storage.timestamp.v1.Timestamp",
           "title": "First seen time from the RDBMS"
         },
-        "last_seen_time": {
+        "update_time": {
           "$ref": "#/definitions/controller.storage.timestamp.v1.Timestamp",
           "title": "Last seen time from the RDBMS"
         }

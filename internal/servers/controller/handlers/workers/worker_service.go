@@ -27,19 +27,19 @@ func NewWorkerServiceServer(logger hclog.Logger, authCache *cache.Cache, repoFn 
 }
 
 func (ws *workerServiceServer) Status(ctx context.Context, req *pbs.StatusRequest) (*pbs.StatusResponse, error) {
-	ws.logger.Trace("got status request", "name", req.Server.Name, "type", req.Server.Type)
+	ws.logger.Trace("got status request from worker", "name", req.Worker.Name)
 	repo, err := ws.repoFn()
 	if err != nil {
 		ws.logger.Error("error getting servers repo", "error", err)
 		return &pbs.StatusResponse{}, status.Errorf(codes.Internal, "Error aqcuiring repo to store worker status: %v", err)
 	}
-	if req.Server.Type != resource.Worker.String() {
-		return &pbs.StatusResponse{}, status.Errorf(codes.InvalidArgument, "Invalid server type %q sent to worker status endpoint", req.Server.Type)
-	}
-	_, _, err = repo.Upsert(ctx, req.Server)
+	req.Worker.Type = resource.Worker.String()
+	controllers, _, err := repo.Upsert(ctx, req.Worker)
 	if err != nil {
 		ws.logger.Error("error storing worker status", "error", err)
 		return &pbs.StatusResponse{}, status.Errorf(codes.Internal, "Error storing worker status: %v", err)
 	}
-	return &pbs.StatusResponse{}, nil
+	return &pbs.StatusResponse{
+		Controllers: controllers,
+	}, nil
 }

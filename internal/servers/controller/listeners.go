@@ -128,7 +128,12 @@ func (c *Controller) startListeners() error {
 			case "api":
 				err = configureForAPI(ln)
 			case "cluster":
-				err = configureForCluster(ln)
+				if c.clusterAddress != "" {
+					err = errors.New("more than one cluster listener found")
+				} else {
+					c.clusterAddress = ln.Config.Address
+					err = configureForCluster(ln)
+				}
 			case "worker-alpn-tls":
 				// Do nothing, in a dev mode we might see it here
 			default:

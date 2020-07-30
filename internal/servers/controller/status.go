@@ -14,18 +14,20 @@ const (
 
 func (c *Controller) startStatusTicking() {
 	go func() {
-		timer := time.NewTimer(statusInterval)
+		timer := time.NewTimer(0)
 		for {
 			select {
 			case <-c.baseContext.Done():
 				c.logger.Info("status ticking shutting down")
 				return
+
 			case <-timer.C:
 				server := &servers.Server{
 					PrivateId:   c.conf.RawConfig.Controller.Name,
 					Name:        c.conf.RawConfig.Controller.Name,
 					Type:        resource.Controller.String(),
 					Description: c.conf.RawConfig.Controller.Description,
+					Address:     c.clusterAddress,
 				}
 				repo, err := c.ServersRepoFn()
 				if err != nil {

@@ -14,7 +14,7 @@ message StatusRequest {
   // The worker info. We could use information from the TLS connection but this
   // is easier and going the other route doesn't provide much benefit -- if you
   // get access to the key and spoof the connection, you're already compromised.
-  servers.v1.Server server = 10;
+  servers.v1.Server worker = 10;
 
   // Jobs currently active on this worker.
   repeated string active_job_ids = 20;
@@ -29,13 +29,5 @@ message StatusResponse {
 
   // Active controllers. This can be used (eventually) for conneciton
   // management.
-  repeated ControllerInfo controllers = 20;
-}
-
-message ControllerInfo {
-  // The name of the controller. 
-  string name = 10;
-
-  // The address of the controller.
-  string address = 20;
+  repeated servers.v1.Server controllers = 20;
 }
