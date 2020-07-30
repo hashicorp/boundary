@@ -21,11 +21,12 @@ before
 update on db_test_user 
   for each row execute procedure update_time_column();
 
+-- define the immutable fields for db_test_user
 create trigger 
-  create_time_column
+  immutable_columns
 before
-update on db_test_user 
-  for each row execute procedure immutable_create_time_func();
+update on db_test_user
+  for each row execute procedure immutable_columns('create_time');
 
 create trigger 
   default_create_time_column
@@ -54,11 +55,12 @@ before
 update on db_test_car 
   for each row execute procedure update_time_column();
 
+-- define the immutable fields for db_test_car
 create trigger 
-  create_time_column
+  immutable_columns
 before
-update on db_test_car 
-  for each row execute procedure immutable_create_time_func();
+update on db_test_car
+  for each row execute procedure immutable_columns('create_time');
 
 create trigger 
   default_create_time_column
@@ -82,11 +84,12 @@ before
 update on db_test_rental 
   for each row execute procedure update_time_column();
 
+-- define the immutable fields for db_test_rental
 create trigger 
-  create_time_column
+  immutable_columns
 before
-update on db_test_rental 
-  for each row execute procedure immutable_create_time_func();
+update on db_test_rental
+  for each row execute procedure immutable_columns('create_time');
 
 create trigger 
   default_create_time_column
@@ -111,11 +114,13 @@ before
 update on db_test_scooter 
   for each row execute procedure update_time_column();
 
+
+-- define the immutable fields for db_test_scooter
 create trigger 
-  create_time_column
+  immutable_columns
 before
-update on db_test_scooter 
-  for each row execute procedure immutable_create_time_func();
+update on db_test_scooter
+  for each row execute procedure immutable_columns('create_time');
 
 create trigger 
   default_create_time_column
