@@ -96,6 +96,30 @@ func TestRepository_CreateAuthMethod(t *testing.T) {
 				},
 			},
 		},
+		{
+			name: "invalid-with-config-nil-embedded-config",
+			in: &AuthMethod{
+				AuthMethod: &store.AuthMethod{
+					ScopeId: org.PublicId,
+				},
+			},
+			opts: []Option{
+				WithConfiguration(&Argon2Configuration{}),
+			},
+			wantIsErr: ErrInvalidConfiguration,
+		},
+		{
+			name: "invalid-with-config-unknown-config-type",
+			in: &AuthMethod{
+				AuthMethod: &store.AuthMethod{
+					ScopeId: org.PublicId,
+				},
+			},
+			opts: []Option{
+				WithConfiguration(tconf(0)),
+			},
+			wantIsErr: ErrUnsupportedConfiguration,
+		},
 	}
 
 	for _, tt := range tests {

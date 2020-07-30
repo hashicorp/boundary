@@ -99,6 +99,38 @@ func (r *Repository) ListAccounts(ctx context.Context, withAuthMethodId string, 
 	return accts, nil
 }
 
+// DeleteAccount deletes the account for the provided id from the repository returning a count of the
+// number of records deleted.  All options are ignored.
+func (r *Repository) DeleteAccount(ctx context.Context, withPublicId string, opt ...Option) (int, error) {
+	if withPublicId == "" {
+		return db.NoRowsAffected, fmt.Errorf("delete: password account: missing public id: %w", db.ErrInvalidParameter)
+	}
+	ac := allocAccount()
+	ac.PublicId = withPublicId
+
+	var rowsDeleted int
+	_, err := r.writer.DoTx(
+		ctx,
+		db.StdRetryCnt,
+		db.ExpBackoff{},
+		func(_ db.Reader, w db.Writer) (err error) {
+			metadata := ac.oplog(oplog.OpType_OP_TYPE_DELETE)
+			dAc := ac.clone()
+			rowsDeleted, err = w.Delete(ctx, dAc, db.WithOplog(r.wrapper, metadata))
+			if err == nil && rowsDeleted > 1 {
+				return db.ErrMultipleRecords
+			}
+			return err
+		},
+	)
+
+	if err != nil {
+		return db.NoRowsAffected, fmt.Errorf("delete: password account: %s: %w", withPublicId, err)
+	}
+
+	return rowsDeleted, nil
+}
+
 var reInvalidUserName = regexp.MustCompile("[^a-z0-9.]")
 
 func validUserName(u string) bool {

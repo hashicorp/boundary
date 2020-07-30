@@ -467,7 +467,7 @@ func Test_RoleUpdate(t *testing.T) {
 		updatedRows, err := rw.Update(context.Background(), &updateRole, []string{"ScopeId"}, nil, db.WithSkipVetForWrite(true))
 		require.Error(err)
 		assert.Equal(0, updatedRows)
-		assert.Equal("update: failed: pq: scope_id cannot be set to "+proj.PublicId, err.Error())
+		assert.Equal("update: failed: pq: immutable column: iam_role.scope_id", err.Error())
 	})
 }
 
