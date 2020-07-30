@@ -170,7 +170,7 @@ end;
 $$ language plpgsql;
 
 comment on function
-  update_version_column()
+  immutable_columns()
 is
   'function used in before update triggers to make columns immutable';
 
