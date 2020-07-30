@@ -11,6 +11,9 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// TestAuthMethods creates count number of password auth methods to the provided DB
+// with the provided scope id.  If any errors are encountered during the creation of
+// the auth methods, the test will fail.
 func TestAuthMethods(t *testing.T, conn *gorm.DB, scopeId string, count int) []*AuthMethod {
 	t.Helper()
 	assert, require := assert.New(t), require.New(t)
@@ -46,6 +49,9 @@ func TestAuthMethods(t *testing.T, conn *gorm.DB, scopeId string, count int) []*
 	return auts
 }
 
+// TestAccounts creates count number of password auth methods to the provided DB
+// with the provided scope and auth method id.  The auth method must have been created previously.
+// If any errors are encountered during the creation of the auth methods, the test will fail.
 func TestAccounts(t *testing.T, conn *gorm.DB, scopeId, authMethodId string, count int) []*Account {
 	t.Helper()
 	assert, require := assert.New(t), require.New(t)
