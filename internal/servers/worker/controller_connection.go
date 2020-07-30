@@ -21,6 +21,7 @@ import (
 	"github.com/hashicorp/watchtower/internal/cmd/base"
 	"github.com/hashicorp/watchtower/internal/gen/controller/api/services"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/resolver"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -39,6 +40,7 @@ func newControllerConnection(controllerAddr string, client services.WorkerServic
 }
 
 func (w *Worker) startControllerConnections() error {
+	initialAddrs := make([]resolver.Address, 0, len(w.conf.RawConfig.Worker.Controllers))
 	for _, addr := range w.conf.RawConfig.Worker.Controllers {
 		host, port, err := net.SplitHostPort(addr)
 		if err != nil && strings.Contains(err.Error(), "missing port in address") {
@@ -47,8 +49,14 @@ func (w *Worker) startControllerConnections() error {
 		if err != nil {
 			return fmt.Errorf("error parsing controller address: %w", err)
 		}
+		initialAddrs = append(initialAddrs, resolver.Address{Addr: fmt.Sprintf("%s:%s", host, port)})
+	}
 
-		if err := w.createClientConn(fmt.Sprintf("%s:%s", host, port)); err != nil {
+	w.controllerResolver.InitialState(resolver.State{
+		Addresses: initialAddrs,
+	})
+	for _, addr := range initialAddrs {
+		if err := w.createClientConn(addr.Addr); err != nil {
 			return fmt.Errorf("error making client connection to controller: %w", err)
 		}
 	}
@@ -86,11 +94,29 @@ func (w Worker) controllerDialerFunc() func(context.Context, string) (net.Conn, 
 }
 
 func (w *Worker) createClientConn(addr string) error {
-	cc, err := grpc.DialContext(w.baseContext, addr,
+	defaultTimeout := (time.Second + time.Nanosecond).String()
+	defServiceConfig := fmt.Sprintf(`
+	  {
+		"loadBalancingConfig": [ { "round_robin": {} } ],
+		"methodConfig": [
+		  {
+			"name": [],
+			"timeout": %q,
+			"waitForReady": true
+		  }
+		]
+	  }
+	  `, defaultTimeout)
+	cc, err := grpc.DialContext(w.baseContext,
+		fmt.Sprintf("%s:///%s", w.controllerResolver.Scheme(), addr),
 		grpc.WithDefaultCallOptions(grpc.MaxCallRecvMsgSize(math.MaxInt32)),
 		grpc.WithDefaultCallOptions(grpc.MaxCallSendMsgSize(math.MaxInt32)),
 		grpc.WithContextDialer(w.controllerDialerFunc()),
 		grpc.WithInsecure(),
+		grpc.WithDefaultServiceConfig(defServiceConfig),
+		// Don't have the resolver reach out for a service config from the
+		// resolver, use the one specified as default
+		grpc.WithDisableServiceConfig(),
 	)
 	if err != nil {
 		return fmt.Errorf("error dialing controller for worker auth: %w", err)

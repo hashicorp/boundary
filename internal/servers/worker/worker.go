@@ -9,6 +9,7 @@ import (
 	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/vault/sdk/helper/mlock"
 	"github.com/kr/pretty"
+	"google.golang.org/grpc/resolver/manual"
 )
 
 type Worker struct {
@@ -22,10 +23,13 @@ type Worker struct {
 	controllerStatusTicker *time.Timer
 
 	listeningAddress string
+
+	controllerResolver        *manual.Resolver
+	controllerResolverCleanup func()
 }
 
 func New(conf *Config) (*Worker, error) {
-	c := &Worker{
+	w := &Worker{
 		conf:            conf,
 		logger:          conf.Logger.Named("worker"),
 		controllerConns: make([]*controllerConnection, 0, 3),
@@ -37,6 +41,7 @@ func New(conf *Config) (*Worker, error) {
 	if conf.SecureRandomReader == nil {
 		conf.SecureRandomReader = rand.Reader
 	}
+	w.controllerResolver, w.controllerResolverCleanup = manual.GenerateAndRegisterManualResolver()
 
 	if !conf.RawConfig.DisableMlock {
 		// Ensure our memory usage is locked into physical RAM
@@ -54,9 +59,9 @@ func New(conf *Config) (*Worker, error) {
 		}
 	}
 
-	c.baseContext, c.baseCancel = context.WithCancel(context.Background())
+	w.baseContext, w.baseCancel = context.WithCancel(context.Background())
 
-	return c, nil
+	return w, nil
 }
 
 func (w *Worker) Start() error {
@@ -71,6 +76,7 @@ func (w *Worker) Start() error {
 }
 
 func (w *Worker) Shutdown() error {
+	w.controllerResolverCleanup()
 	w.baseCancel()
 	if err := w.stopListeners(); err != nil {
 		return fmt.Errorf("error stopping worker listeners: %w", err)

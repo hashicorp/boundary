@@ -86,8 +86,10 @@ type Config struct {
 }
 
 type Controller struct {
-	Name        string `hcl:"name"`
-	Description string `hcl:"description"`
+	Name             string `hcl:"name"`
+	Description      string `hcl:"description"`
+	DevControllerKey string `hcl:"-"`
+	DevWorkerAuthKey string `hcl:"-"`
 }
 
 type Worker struct {
@@ -134,6 +136,8 @@ func DevController() (*Config, error) {
 		return nil, fmt.Errorf("error parsing dev config: %w", err)
 	}
 	parsed.DevController = true
+	parsed.Controller.DevControllerKey = controllerKey
+	parsed.Controller.DevWorkerAuthKey = workerAuthKey
 	return parsed, nil
 }
 
@@ -145,6 +149,8 @@ func DevCombined() (*Config, error) {
 		return nil, fmt.Errorf("error parsing dev config: %w", err)
 	}
 	parsed.DevController = true
+	parsed.Controller.DevControllerKey = controllerKey
+	parsed.Controller.DevWorkerAuthKey = workerAuthKey
 	return parsed, nil
 }
 

@@ -204,7 +204,7 @@ func (b *Server) PrintInfo(ui cli.Ui, mode string) {
 	}
 
 	// Server configuration output
-	padding := 24
+	padding := 36
 	sort.Strings(b.InfoKeys)
 	ui.Output(fmt.Sprintf("==> Watchtower %s configuration:\n", mode))
 	for _, k := range b.InfoKeys {
@@ -493,8 +493,8 @@ func (b *Server) CreateDevDatabase(dialect string) error {
 	authenticate.RWDb.Store(rw)
 	_, err = b.Database.DB().Exec(insert, amId, orgScope.GetPublicId())
 	if err != nil {
-		c()
-		return err
+		// Log and ignore in case we're going against the same dev database
+		b.Logger.Error("error creating dev auth method", "error", err)
 	}
 
 	b.InfoKeys = append(b.InfoKeys, "dev org id", "dev auth method id")

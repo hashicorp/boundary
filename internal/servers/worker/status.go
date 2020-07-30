@@ -7,6 +7,7 @@ import (
 	pbs "github.com/hashicorp/watchtower/internal/gen/controller/api/services"
 	"github.com/hashicorp/watchtower/internal/servers"
 	"github.com/hashicorp/watchtower/internal/types/resource"
+	"google.golang.org/grpc/resolver"
 )
 
 // In the future we could make this configurable
@@ -52,9 +53,14 @@ func (w *Worker) startStatusTicking() {
 						w.logger.Error("error making status request to controller", "controller_addr_", c.controllerAddr, "error", err)
 					} else {
 						w.logger.Trace("successfully sent status to controller", "controller_addr", c.controllerAddr)
+						addrs := make([]resolver.Address, 0, len(result.Controllers))
+						strAddrs := make([]string, 0, len(result.Controllers))
 						for _, v := range result.Controllers {
-							w.logger.Trace("found controller", "name", v.Name, "address", v.Address, "last_update", v.UpdateTime)
+							addrs = append(addrs, resolver.Address{Addr: v.Address})
+							strAddrs = append(strAddrs, v.Address)
 						}
+						w.controllerResolver.UpdateState(resolver.State{Addresses: addrs})
+						w.logger.Trace("found controllers", "addresses", strAddrs)
 					}
 				}
 				timer.Reset(getRandomInterval())

@@ -338,7 +338,11 @@ func (c *Command) ParseFlagsAndConfig(args []string) int {
 		}
 
 	} else {
-		c.Config, err = config.DevController()
+		if len(c.flagConfig) == 0 {
+			c.Config, err = config.DevController()
+		} else {
+			c.Config, err = config.LoadFile(c.flagConfig, c.configKMS)
+		}
 		if err != nil {
 			c.UI.Error(fmt.Errorf("Error creating dev config: %w", err).Error())
 			return 1
