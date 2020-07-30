@@ -211,6 +211,221 @@ func TestRepository_CreateAuthMethod(t *testing.T) {
 	})
 }
 
+func TestRepository_LookupAuthMethod(t *testing.T) {
+	conn, _ := db.TestSetup(t, "postgres")
+	rw := db.New(conn)
+	wrapper := db.TestWrapper(t)
+
+	authMethod := testAuthMethods(t, conn, 1)[0]
+
+	newAcctId, err := newAccountId()
+	require.NoError(t, err)
+	var tests = []struct {
+		name      string
+		in        string
+		want      *AuthMethod
+		wantIsErr error
+	}{
+		{
+			name:      "With no public id",
+			wantIsErr: db.ErrInvalidParameter,
+		},
+		{
+			name: "With non existing auth method id",
+			in:   newAcctId,
+		},
+		{
+			name: "With existing auth method id",
+			in:   authMethod.GetPublicId(),
+			want: authMethod,
+		},
+	}
+
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+			repo, err := NewRepository(rw, rw, wrapper)
+			assert.NoError(err)
+			require.NotNil(repo)
+			got, err := repo.LookupAuthMethod(context.Background(), tt.in)
+			if tt.wantIsErr != nil {
+				assert.Truef(errors.Is(err, tt.wantIsErr), "want err: %q got: %q", tt.wantIsErr, err)
+				assert.Nil(got)
+				return
+			}
+			require.NoError(err)
+			assert.EqualValues(tt.want, got)
+		})
+	}
+}
+
+func TestRepository_DeleteAuthMethod(t *testing.T) {
+	conn, _ := db.TestSetup(t, "postgres")
+	rw := db.New(conn)
+	wrapper := db.TestWrapper(t)
+
+	authMethod := testAuthMethods(t, conn, 1)[0]
+
+	newAuthMethodId, err := newAuthMethodId()
+	require.NoError(t, err)
+	var tests = []struct {
+		name      string
+		in        string
+		want      int
+		wantIsErr error
+	}{
+		{
+			name:      "With no public id",
+			wantIsErr: db.ErrInvalidParameter,
+		},
+		{
+			name: "With non existing auth method id",
+			in:   newAuthMethodId,
+			want: 0,
+		},
+		{
+			name: "With existing auth method id",
+			in:   authMethod.GetPublicId(),
+			want: 1,
+		},
+	}
+
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+			repo, err := NewRepository(rw, rw, wrapper)
+			assert.NoError(err)
+			require.NotNil(repo)
+			got, err := repo.DeleteAuthMethods(context.Background(), tt.in)
+			if tt.wantIsErr != nil {
+				assert.Truef(errors.Is(err, tt.wantIsErr), "want err: %q got: %q", tt.wantIsErr, err)
+				assert.Zero(got)
+				return
+			}
+			require.NoError(err)
+			assert.EqualValues(tt.want, got)
+		})
+	}
+}
+
+func TestRepository_ListAuthMethods(t *testing.T) {
+	conn, _ := db.TestSetup(t, "postgres")
+	rw := db.New(conn)
+	wrapper := db.TestWrapper(t)
+
+	o, _ := iam.TestScopes(t, conn)
+	authMethods := testAuthMethods(t, conn, 3)
+
+	var tests = []struct {
+		name      string
+		in        string
+		opts      []Option
+		want      []*AuthMethod
+		wantIsErr error
+	}{
+		{
+			name:      "With no auth method id",
+			wantIsErr: db.ErrInvalidParameter,
+		},
+		{
+			name: "With no auth method id",
+			in:   o.GetPublicId(),
+			want: []*AuthMethod{},
+		},
+		{
+			name: "With populated scope id",
+			in:   authMethods[0].GetScopeId(),
+			want: authMethods,
+		},
+	}
+
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+			repo, err := NewRepository(rw, rw, wrapper)
+			assert.NoError(err)
+			require.NotNil(repo)
+			got, err := repo.ListAuthMethods(context.Background(), tt.in, tt.opts...)
+			if tt.wantIsErr != nil {
+				assert.Truef(errors.Is(err, tt.wantIsErr), "want err: %q got: %q", tt.wantIsErr, err)
+				assert.Nil(got)
+				return
+			}
+			require.NoError(err)
+			assert.EqualValues(tt.want, got)
+		})
+	}
+}
+
+func TestRepository_ListAuthMethods_Limits(t *testing.T) {
+	conn, _ := db.TestSetup(t, "postgres")
+	rw := db.New(conn)
+	wrapper := db.TestWrapper(t)
+
+	authMethodCount := 10
+	ams := testAuthMethods(t, conn, authMethodCount)
+
+	var tests = []struct {
+		name     string
+		repoOpts []Option
+		listOpts []Option
+		wantLen  int
+	}{
+		{
+			name:    "With no limits",
+			wantLen: authMethodCount,
+		},
+		{
+			name:     "With repo limit",
+			repoOpts: []Option{WithLimit(3)},
+			wantLen:  3,
+		},
+		{
+			name:     "With negative repo limit",
+			repoOpts: []Option{WithLimit(-1)},
+			wantLen:  authMethodCount,
+		},
+		{
+			name:     "With List limit",
+			listOpts: []Option{WithLimit(3)},
+			wantLen:  3,
+		},
+		{
+			name:     "With negative List limit",
+			listOpts: []Option{WithLimit(-1)},
+			wantLen:  authMethodCount,
+		},
+		{
+			name:     "With repo smaller than list limit",
+			repoOpts: []Option{WithLimit(2)},
+			listOpts: []Option{WithLimit(6)},
+			wantLen:  6,
+		},
+		{
+			name:     "With repo larger than list limit",
+			repoOpts: []Option{WithLimit(6)},
+			listOpts: []Option{WithLimit(2)},
+			wantLen:  2,
+		},
+	}
+
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+			repo, err := NewRepository(rw, rw, wrapper, tt.repoOpts...)
+			assert.NoError(err)
+			require.NotNil(repo)
+			got, err := repo.ListAuthMethods(context.Background(), ams[0].GetScopeId(), tt.listOpts...)
+			require.NoError(err)
+			assert.Len(got, tt.wantLen)
+		})
+	}
+}
+
 func assertPublicId(t *testing.T, prefix, actual string) {
 	t.Helper()
 	assert.NotEmpty(t, actual)

@@ -16,6 +16,12 @@ type AuthMethod struct {
 	tableName string
 }
 
+func allocAuthMethod() AuthMethod {
+	return AuthMethod{
+		AuthMethod: &store.AuthMethod{},
+	}
+}
+
 // NewAuthMethod creates a new in memory AuthMethod assigned to scopeId.
 // Name and description are the only valid options. All other options are
 // ignored.

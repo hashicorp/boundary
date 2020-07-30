@@ -2,6 +2,7 @@ package password
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/hashicorp/watchtower/internal/db"
@@ -75,4 +76,72 @@ func (r *Repository) CreateAuthMethod(ctx context.Context, m *AuthMethod, opt ..
 		return nil, fmt.Errorf("create: password auth method: in scope: %s: %w", m.ScopeId, err)
 	}
 	return newAuthMethod, nil
+}
+
+// LookupAuthMethod will look up an auth method in the repository.  If the account is not
+// found, it will return nil, nil.  All options are ignored.
+func (r *Repository) LookupAuthMethod(ctx context.Context, withPublicId string, opt ...Option) (*AuthMethod, error) {
+	if withPublicId == "" {
+		return nil, fmt.Errorf("lookup: password auth method: missing public id %w", db.ErrInvalidParameter)
+	}
+	a := allocAuthMethod()
+	a.PublicId = withPublicId
+	if err := r.reader.LookupByPublicId(ctx, &a); err != nil {
+		if errors.Is(err, db.ErrRecordNotFound) {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("lookup: password auth method: failed %w for %s", err, withPublicId)
+	}
+	return &a, nil
+}
+
+// ListAuthMethods in an auth method and supports WithLimit option.
+func (r *Repository) ListAuthMethods(ctx context.Context, withScopeId string, opt ...Option) ([]*AuthMethod, error) {
+	if withScopeId == "" {
+		return nil, fmt.Errorf("list: password auth method: missing scope id %w", db.ErrInvalidParameter)
+	}
+	opts := getOpts(opt...)
+	limit := r.defaultLimit
+	if opts.withLimit != 0 {
+		// non-zero signals an override of the default limit for the repo.
+		limit = opts.withLimit
+	}
+	var authMethods []*AuthMethod
+	err := r.reader.SearchWhere(ctx, &authMethods, "scope_id = ?", []interface{}{withScopeId}, db.WithLimit(limit))
+	if err != nil {
+		return nil, fmt.Errorf("list: password auth method: %w", err)
+	}
+	return authMethods, nil
+}
+
+// DeleteAuthMethods deletes the auth method for the provided id from the repository returning a count of the
+// number of records deleted.  All options are ignored.
+func (r *Repository) DeleteAuthMethods(ctx context.Context, withPublicId string, opt ...Option) (int, error) {
+	if withPublicId == "" {
+		return db.NoRowsAffected, fmt.Errorf("delete: password auth method: missing public id: %w", db.ErrInvalidParameter)
+	}
+	am := allocAuthMethod()
+	am.PublicId = withPublicId
+
+	var rowsDeleted int
+	_, err := r.writer.DoTx(
+		ctx,
+		db.StdRetryCnt,
+		db.ExpBackoff{},
+		func(_ db.Reader, w db.Writer) (err error) {
+			metadata := am.oplog(oplog.OpType_OP_TYPE_DELETE)
+			dAc := am.clone()
+			rowsDeleted, err = w.Delete(ctx, dAc, db.WithOplog(r.wrapper, metadata))
+			if err == nil && rowsDeleted > 1 {
+				return db.ErrMultipleRecords
+			}
+			return err
+		},
+	)
+
+	if err != nil {
+		return db.NoRowsAffected, fmt.Errorf("delete: password auth method: %s: %w", withPublicId, err)
+	}
+
+	return rowsDeleted, nil
 }
