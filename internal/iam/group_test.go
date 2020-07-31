@@ -438,7 +438,7 @@ func TestGroup_ResourceType(t *testing.T) {
 	assert := assert.New(t)
 	r := &Group{}
 	ty := r.ResourceType()
-	assert.Equal(ty, resource.StaticGroup)
+	assert.Equal(ty, resource.Group)
 }
 
 func TestGroup_GetScope(t *testing.T) {

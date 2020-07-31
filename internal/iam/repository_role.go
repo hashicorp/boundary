@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/hashicorp/watchtower/internal/db"
+	dbcommon "github.com/hashicorp/watchtower/internal/db/common"
 )
 
 // CreateRole will create a role in the repository and return the written
@@ -65,7 +66,7 @@ func (r *Repository) UpdateRole(ctx context.Context, role *Role, fieldMaskPaths 
 		}
 	}
 	var dbMask, nullFields []string
-	dbMask, nullFields = buildUpdatePaths(
+	dbMask, nullFields = dbcommon.BuildUpdatePaths(
 		map[string]interface{}{
 			"name":         role.Name,
 			"description":  role.Description,
