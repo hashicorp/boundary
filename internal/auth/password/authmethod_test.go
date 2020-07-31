@@ -27,9 +27,17 @@ func testAuthMethods(t *testing.T, conn *gorm.DB, count int) []*AuthMethod {
 		require.NotEmpty(id)
 		cat.PublicId = id
 
+		conf := NewArgon2Configuration()
+		require.NotNil(conf)
+		conf.PrivateId, err = newArgon2ConfigurationId()
+		require.NoError(err)
+		conf.PasswordMethodId = cat.PublicId
+		cat.PasswordConfId = conf.PrivateId
+
 		ctx := context.Background()
 		_, err2 := w.DoTx(ctx, db.StdRetryCnt, db.ExpBackoff{},
 			func(_ db.Reader, iw db.Writer) error {
+				require.NoError(iw.Create(ctx, conf))
 				return iw.Create(ctx, cat)
 			},
 		)
@@ -123,14 +131,20 @@ func TestAuthMethod_New(t *testing.T) {
 			tt.want.PublicId = id
 			got.PublicId = id
 
-			conn.LogMode(true)
+			conf := NewArgon2Configuration()
+			require.NotNil(conf)
+			conf.PrivateId, err = newArgon2ConfigurationId()
+			require.NoError(err)
+			conf.PasswordMethodId = got.PublicId
+			got.PasswordConfId = conf.PrivateId
+
 			ctx := context.Background()
 			_, err2 := w.DoTx(ctx, db.StdRetryCnt, db.ExpBackoff{},
 				func(_ db.Reader, iw db.Writer) error {
+					require.NoError(iw.Create(ctx, conf))
 					return iw.Create(ctx, got)
 				},
 			)
-			conn.LogMode(false)
 			assert.NoError(err2)
 		})
 	}
