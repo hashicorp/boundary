@@ -40,7 +40,7 @@ func TestGet(t *testing.T) {
 
 	org, _ := iam.TestScopes(t, conn)
 	am := password.TestAuthMethods(t, conn, org.GetPublicId(), 1)[0]
-	aa := password.TestAccounts(t, conn, org.GetPublicId(), am.GetPublicId(), 1)[0]
+	aa := password.TestAccounts(t, conn, am.GetPublicId(), 1)[0]
 
 	wireAccount := pb.Account{
 		Id:           aa.GetPublicId(),
@@ -106,7 +106,7 @@ func TestList(t *testing.T) {
 	amNoAccounts, amSomeAccounts, amOtherAccounts := ams[0], ams[1], ams[2]
 
 	var wantSomeAccounts []*pb.Account
-	for _, aa := range password.TestAccounts(t, conn, o.GetPublicId(), amSomeAccounts.GetPublicId(), 3) {
+	for _, aa := range password.TestAccounts(t, conn, amSomeAccounts.GetPublicId(), 3) {
 		wantSomeAccounts = append(wantSomeAccounts, &pb.Account{
 			Id:           aa.GetPublicId(),
 			AuthMethodId: aa.GetAuthMethodId(),
@@ -119,7 +119,7 @@ func TestList(t *testing.T) {
 	}
 
 	var wantOtherAccounts []*pb.Account
-	for _, aa := range password.TestAccounts(t, conn, o.GetPublicId(), amOtherAccounts.GetPublicId(), 3) {
+	for _, aa := range password.TestAccounts(t, conn, amOtherAccounts.GetPublicId(), 3) {
 		wantOtherAccounts = append(wantOtherAccounts, &pb.Account{
 			Id:           aa.GetPublicId(),
 			AuthMethodId: aa.GetAuthMethodId(),
@@ -187,8 +187,8 @@ func TestDelete(t *testing.T) {
 	ams := password.TestAuthMethods(t, conn, o.GetPublicId(), 2)
 	am1, wrongAm := ams[0], ams[1]
 
-	ac := password.TestAccounts(t, conn, o.GetPublicId(), am1.GetPublicId(), 1)[0]
-	wrongAc := password.TestAccounts(t, conn, o.GetPublicId(), wrongAm.GetPublicId(), 1)[0]
+	ac := password.TestAccounts(t, conn, am1.GetPublicId(), 1)[0]
+	wrongAc := password.TestAccounts(t, conn, wrongAm.GetPublicId(), 1)[0]
 
 	s, err := accounts.NewService(repoFn)
 	require.NoError(t, err, "Error when getting new user service.")
@@ -264,9 +264,9 @@ func TestDelete_twice(t *testing.T) {
 		return password.NewRepository(rw, rw, wrap)
 	}
 
-	org, _ := iam.TestScopes(t, conn)
-	am := password.TestAuthMethods(t, conn, org.GetPublicId(), 1)[0]
-	ac := password.TestAccounts(t, conn, org.GetPublicId(), am.GetPublicId(), 1)[0]
+	o, _ := iam.TestScopes(t, conn)
+	am := password.TestAuthMethods(t, conn, o.GetPublicId(), 1)[0]
+	ac := password.TestAccounts(t, conn, am.GetPublicId(), 1)[0]
 
 	s, err := accounts.NewService(repoFn)
 	require.NoError(t, err, "Error when getting new user service")
@@ -274,10 +274,10 @@ func TestDelete_twice(t *testing.T) {
 		AuthMethodId: am.GetPublicId(),
 		Id:           ac.GetPublicId(),
 	}
-	got, gErr := s.DeleteAccount(auth.DisabledAuthTestContext(auth.WithScopeId(ac.GetScopeId())), req)
+	got, gErr := s.DeleteAccount(auth.DisabledAuthTestContext(auth.WithScopeId(o.GetPublicId())), req)
 	assert.NoError(gErr, "First attempt")
 	assert.True(got.GetExisted(), "Expected existed to be true for the first delete.")
-	got, gErr = s.DeleteAccount(auth.DisabledAuthTestContext(auth.WithScopeId(ac.GetScopeId())), req)
+	got, gErr = s.DeleteAccount(auth.DisabledAuthTestContext(auth.WithScopeId(o.GetPublicId())), req)
 	assert.NoError(gErr, "Second attempt")
 	assert.False(got.GetExisted(), "Expected existed to be false for the second delete.")
 }
@@ -293,13 +293,13 @@ func TestCreate(t *testing.T) {
 	s, err := accounts.NewService(repoFn)
 	require.NoError(t, err, "Error when getting new account service.")
 
-	org, _ := iam.TestScopes(t, conn)
-	am := password.TestAuthMethods(t, conn, org.GetPublicId(), 1)[0]
-	defaultAccount := password.TestAccounts(t, conn, org.GetPublicId(), am.GetPublicId(), 1)[0]
+	o, _ := iam.TestScopes(t, conn)
+	am := password.TestAuthMethods(t, conn, o.GetPublicId(), 1)[0]
+	defaultAccount := password.TestAccounts(t, conn, am.GetPublicId(), 1)[0]
 	defaultCreated, err := ptypes.Timestamp(defaultAccount.GetCreateTime().GetTimestamp())
 	require.NoError(t, err, "Error converting proto to timestamp.")
 
-	defaultSt, err := handlers.ProtoToStruct(&pb.PasswordAccountAttributes{Username: "test"})
+	defaultSt, err := handlers.ProtoToStruct(&pb.PasswordAccountAttributes{Username: "thetestusername"})
 	require.NoError(t, err, "Error converting proto to struct.")
 
 	cases := []struct {
@@ -320,12 +320,12 @@ func TestCreate(t *testing.T) {
 				},
 			},
 			res: &pbs.CreateAccountResponse{
-				Uri: fmt.Sprintf("scopes/%s/auth-methods/%s/accounts/%s_", defaultAccount.GetScopeId(), defaultAccount.GetAuthMethodId(), password.AccountPrefix),
+				Uri: fmt.Sprintf("scopes/%s/auth-methods/%s/accounts/%s_", o.GetPublicId(), defaultAccount.GetAuthMethodId(), password.AccountPrefix),
 				Item: &pb.Account{
 					AuthMethodId: defaultAccount.GetAuthMethodId(),
 					Name:         &wrapperspb.StringValue{Value: "name"},
 					Description:  &wrapperspb.StringValue{Value: "desc"},
-					Scope:        &scopes.ScopeInfo{Id: defaultAccount.GetScopeId(), Type: scope.Org.String()},
+					Scope:        &scopes.ScopeInfo{Id: o.GetPublicId(), Type: scope.Org.String()},
 					Type:         "password",
 					Attributes:   defaultSt,
 				},
@@ -410,7 +410,7 @@ func TestCreate(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			got, gErr := s.CreateAccount(auth.DisabledAuthTestContext(auth.WithScopeId(defaultAccount.GetScopeId())), tc.req)
+			got, gErr := s.CreateAccount(auth.DisabledAuthTestContext(auth.WithScopeId(o.GetPublicId())), tc.req)
 			assert.Equal(tc.errCode, status.Code(gErr), "CreateAccount(%+v) got error %v, wanted %v", tc.req, gErr, tc.errCode)
 			if got != nil {
 				assert.Contains(got.GetUri(), tc.res.Uri)
