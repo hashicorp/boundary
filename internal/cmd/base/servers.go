@@ -23,6 +23,7 @@ import (
 	"github.com/hashicorp/vault/internalshared/reloadutil"
 	"github.com/hashicorp/vault/sdk/helper/logging"
 	"github.com/hashicorp/vault/sdk/helper/mlock"
+	"github.com/hashicorp/vault/sdk/helper/strutil"
 	"github.com/hashicorp/vault/sdk/logical"
 	"github.com/hashicorp/watchtower/globals"
 	"github.com/hashicorp/watchtower/internal/db"
@@ -222,7 +223,7 @@ func (b *Server) PrintInfo(ui cli.Ui, mode string) {
 	}
 }
 
-func (b *Server) SetupListeners(ui cli.Ui, config *configutil.SharedConfig) error {
+func (b *Server) SetupListeners(ui cli.Ui, config *configutil.SharedConfig, allowedPurposes []string) error {
 	// Initialize the listeners
 	b.Listeners = make([]*ServerListener, 0, len(config.Listeners))
 	// Make sure we close everything before we exit
@@ -239,6 +240,13 @@ func (b *Server) SetupListeners(ui cli.Ui, config *configutil.SharedConfig) erro
 	defer b.ReloadFuncsLock.Unlock()
 
 	for i, lnConfig := range config.Listeners {
+		for _, purpose := range lnConfig.Purpose {
+			purpose = strings.ToLower(purpose)
+			if !strutil.StrListContains(allowedPurposes, purpose) {
+				return fmt.Errorf("Unknown listner purpose %q", purpose)
+			}
+		}
+
 		// Override for now
 		// TODO: Way to configure
 		lnConfig.TLSCipherSuites = []uint16{

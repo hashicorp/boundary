@@ -177,7 +177,7 @@ func NewTestController(t *testing.T, opts *TestControllerOpts) *TestController {
 	for _, listener := range opts.Config.Listeners {
 		listener.RandomPort = true
 	}
-	if err := tc.b.SetupListeners(nil, opts.Config.SharedConfig); err != nil {
+	if err := tc.b.SetupListeners(nil, opts.Config.SharedConfig, []string{"api", "cluster", "worker-tls-alpn"}); err != nil {
 		t.Fatal(err)
 	}
 

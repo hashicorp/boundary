@@ -256,7 +256,7 @@ func (c *Command) Run(args []string) int {
 		c.UI.Error("No listener marked for cluster purpose found, but listener explicitly marked for api was found")
 		return 1
 	}
-	if err := c.SetupListeners(c.UI, c.Config.SharedConfig); err != nil {
+	if err := c.SetupListeners(c.UI, c.Config.SharedConfig, []string{"api", "cluster"}); err != nil {
 		c.UI.Error(err.Error())
 		return 1
 	}

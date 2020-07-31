@@ -237,7 +237,7 @@ func (c *Command) Run(args []string) int {
 	}
 
 	// Initialize the listeners
-	if err := c.SetupListeners(c.UI, devConfig.SharedConfig); err != nil {
+	if err := c.SetupListeners(c.UI, devConfig.SharedConfig, []string{"api", "cluster", "worker-alpn-tls"}); err != nil {
 		c.UI.Error(err.Error())
 		return 1
 	}

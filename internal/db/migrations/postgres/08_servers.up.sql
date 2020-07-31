@@ -16,10 +16,10 @@ create table servers (
   );
   
 create trigger 
-  immutable_create_time
+  immutable_columns
 before
 update on servers
-  for each row execute procedure immutable_create_time_func();
+  for each row execute procedure immutable_columns('create_time');
   
 create trigger 
   default_create_time_column
