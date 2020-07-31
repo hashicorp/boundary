@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/golang/protobuf/ptypes"
+	"github.com/hashicorp/watchtower/internal/auth/password"
 	"github.com/hashicorp/watchtower/internal/authtoken/store"
 	"github.com/hashicorp/watchtower/internal/db"
 	"github.com/hashicorp/watchtower/internal/db/timestamp"
@@ -24,9 +25,8 @@ func TestAuthToken_DbUpdate(t *testing.T) {
 	wrapper := db.TestWrapper(t)
 
 	org, _ := iam.TestScopes(t, conn)
-	u := iam.TestUser(t, conn, org.GetPublicId())
-	amId := setupAuthMethod(t, conn, org.GetPublicId())
-	acct := setupAuthAccount(t, conn, org.GetPublicId(), amId, u.GetPublicId())
+	am := password.TestAuthMethods(t, conn, org.GetPublicId(), 1)[0]
+	acct := password.TestAccounts(t, conn, am.GetPublicId(), 1)[0]
 
 	newAuthTokId, err := newAuthTokenId()
 	require.NoError(t, err)
@@ -118,9 +118,8 @@ func TestAuthToken_DbCreate(t *testing.T) {
 	wrapper := db.TestWrapper(t)
 
 	org, _ := iam.TestScopes(t, conn)
-	u := iam.TestUser(t, conn, org.GetPublicId())
-	amId := setupAuthMethod(t, conn, org.GetPublicId())
-	acct := setupAuthAccount(t, conn, org.GetPublicId(), amId, u.GetPublicId())
+	am := password.TestAuthMethods(t, conn, org.GetPublicId(), 1)[0]
+	acct := password.TestAccounts(t, conn, am.GetPublicId(), 1)[0]
 	createdAuthToken := TestAuthToken(t, conn, wrapper, org.GetPublicId())
 
 	testAuthTokenId := func() string {
