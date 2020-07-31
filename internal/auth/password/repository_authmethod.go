@@ -96,10 +96,10 @@ func (r *Repository) LookupAuthMethod(ctx context.Context, publicId string, opt 
 	return &a, nil
 }
 
-// ListAuthMethods in an auth method and supports WithLimit option.
+// ListAuthMethods returns a slice of AuthMethods for the scopeId. WithLimit is the only option supported.
 func (r *Repository) ListAuthMethods(ctx context.Context, scopeId string, opt ...Option) ([]*AuthMethod, error) {
 	if scopeId == "" {
-		return nil, fmt.Errorf("list: password auth method: missing scope id %w", db.ErrInvalidParameter)
+		return nil, fmt.Errorf("list: password auth method: missing scope id: %w", db.ErrInvalidParameter)
 	}
 	opts := getOpts(opt...)
 	limit := r.defaultLimit
@@ -161,10 +161,10 @@ func (r *Repository) DeleteAuthMethod(ctx context.Context, publicId string, opt 
 // are included in the fieldMaskPaths, then an error is returned.
 func (r *Repository) UpdateAuthMethod(ctx context.Context, authMethod *AuthMethod, fieldMaskPaths []string, opt ...Option) (*AuthMethod, int, error) {
 	if authMethod == nil {
-		return nil, db.NoRowsAffected, fmt.Errorf("update: password auth method: missing authMethod %w", db.ErrNilParameter)
+		return nil, db.NoRowsAffected, fmt.Errorf("update: password auth method: missing authMethod: %w", db.ErrNilParameter)
 	}
 	if authMethod.PublicId == "" {
-		return nil, db.NoRowsAffected, fmt.Errorf("update: password auth method: missing authMethod public id %w", db.ErrInvalidParameter)
+		return nil, db.NoRowsAffected, fmt.Errorf("update: password auth method: missing authMethod public id: %w", db.ErrInvalidParameter)
 	}
 	for _, f := range fieldMaskPaths {
 		switch {
