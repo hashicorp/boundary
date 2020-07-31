@@ -147,14 +147,18 @@ func (r *Repository) DeleteAuthMethod(ctx context.Context, publicId string, opt 
 	return rowsDeleted, nil
 }
 
+// TODO: Fix the MinPasswordLength and MinUserNameLength update path so they dont have
+//  to rely on the response of NewAuthMethod but instead can be unset in order to be
+//  set to the default values.
+
 // UpdateAuthMethod will update an auth method in the repository and return
 // the written auth method.  MinPasswordLength and MinUserNameLength should
 // not be set to null, but instead use the default values returned by
 // NewAuthMethod.  fieldMaskPaths provides field_mask.proto paths for fields
 // that should be updated.  Fields will be set to NULL if the field is a zero
-// value and included in fieldMask. Name and Description are the only updatable
-// fields, If no updatable fields are included in the fieldMaskPaths, then an
-// error is returned.
+// value and included in fieldMask. Name, Description, MinPasswordLength,
+// and MinUserNameLength are the only updatable fields, If no updatable fields
+// are included in the fieldMaskPaths, then an error is returned.
 func (r *Repository) UpdateAuthMethod(ctx context.Context, authMethod *AuthMethod, fieldMaskPaths []string, opt ...Option) (*AuthMethod, int, error) {
 	if authMethod == nil {
 		return nil, db.NoRowsAffected, fmt.Errorf("update: password auth method: missing authMethod %w", db.ErrNilParameter)
