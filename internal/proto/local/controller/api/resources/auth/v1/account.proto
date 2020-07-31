@@ -12,7 +12,7 @@ import "controller/custom_options/v1/masks.proto";
 
 // Account contains all fields related to an auth Account resource
 message Account {
-	// The ID of the Project
+	// The ID of the Account
 	// Output only.
 	string id = 1;
 
