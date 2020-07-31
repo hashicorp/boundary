@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/hashicorp/watchtower/internal/db"
 	"github.com/hashicorp/watchtower/internal/oplog"
@@ -144,4 +145,72 @@ func (r *Repository) DeleteAuthMethods(ctx context.Context, withPublicId string,
 	}
 
 	return rowsDeleted, nil
+}
+
+// UpdateAuthMethod will update an auth method in the repository and return
+// the written auth method. fieldMaskPaths provides field_mask.proto paths for fields
+// that should be updated.  Fields will be set to NULL if the field is a zero value and
+// included in fieldMask. Name and Description are the only updatable fields,
+// If no updatable fields are included in the fieldMaskPaths, then an error is returned.
+func (r *Repository) UpdateAuthMethod(ctx context.Context, authMethod *AuthMethod, fieldMaskPaths []string, opt ...Option) (*AuthMethod, int, error) {
+	if authMethod == nil {
+		return nil, db.NoRowsAffected, fmt.Errorf("update: password auth method: missing authMethod %w", db.ErrNilParameter)
+	}
+	if authMethod.PublicId == "" {
+		return nil, db.NoRowsAffected, fmt.Errorf("update: password auth method: missing authMethod public id %w", db.ErrInvalidParameter)
+	}
+	for _, f := range fieldMaskPaths {
+		switch {
+		case strings.EqualFold("name", f):
+		case strings.EqualFold("description", f):
+		case strings.EqualFold("MinUserNameLength", f):
+		case strings.EqualFold("MinPasswordLength", f):
+		default:
+			return nil, db.NoRowsAffected, fmt.Errorf("update: password auth method: field: %s: %w", f, db.ErrInvalidFieldMask)
+		}
+	}
+	var dbMask, nullFields []string
+	dbMask, nullFields = buildUpdatePaths(
+		map[string]interface{}{
+			"Name":              authMethod.Name,
+			"Description":       authMethod.Description,
+			"MinPasswordLength": authMethod.MinPasswordLength,
+			"MinUserNameLength": authMethod.MinUserNameLength,
+		},
+		fieldMaskPaths,
+	)
+	if len(dbMask) == 0 && len(nullFields) == 0 {
+		return nil, db.NoRowsAffected, fmt.Errorf("update: password auth method: %w", db.ErrEmptyFieldMask)
+	}
+
+	upAuthMethod := authMethod.clone()
+	var rowsUpdated int
+	_, err := r.writer.DoTx(
+		ctx,
+		db.StdRetryCnt,
+		db.ExpBackoff{},
+		func(_ db.Reader, w db.Writer) error {
+			dbOpts := []db.Option{db.WithOplog(r.wrapper, upAuthMethod.oplog(oplog.OpType_OP_TYPE_UPDATE))}
+			var err error
+			rowsUpdated, err = w.Update(
+				ctx,
+				upAuthMethod,
+				dbMask,
+				nullFields,
+				dbOpts...,
+			)
+			if err == nil && rowsUpdated > 1 {
+				// return err, which will result in a rollback of the update
+				return errors.New("error more than 1 resource would have been updated ")
+			}
+			return err
+		},
+	)
+	if err != nil {
+		if db.IsUniqueError(err) {
+			return nil, db.NoRowsAffected, fmt.Errorf("update: password auth method: authMethod %s already exists in scope %s", authMethod.Name, authMethod.ScopeId)
+		}
+		return nil, db.NoRowsAffected, fmt.Errorf("update: password auth method: %w for %s", err, authMethod.PublicId)
+	}
+	return upAuthMethod, rowsUpdated, err
 }

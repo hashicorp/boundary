@@ -2,6 +2,7 @@ package password
 
 import (
 	"context"
+	"fmt"
 	"testing"
 
 	"github.com/hashicorp/watchtower/internal/auth/password/store"
@@ -26,6 +27,10 @@ func testAuthMethods(t *testing.T, conn *gorm.DB, count int) []*AuthMethod {
 		assert.NoError(err)
 		require.NotEmpty(id)
 		cat.PublicId = id
+		cat.MinPasswordLength = 4
+		cat.MinUserNameLength = 4
+		cat.Name = fmt.Sprintf("default-%d", i)
+		cat.Description = "default"
 
 		conf := NewArgon2Configuration()
 		require.NotNil(conf)

@@ -5,12 +5,18 @@ import (
 	"errors"
 	"strings"
 	"testing"
+	"time"
 
+	"github.com/google/go-cmp/cmp"
 	"github.com/hashicorp/watchtower/internal/auth/password/store"
 	"github.com/hashicorp/watchtower/internal/db"
+	dbassert "github.com/hashicorp/watchtower/internal/db/assert"
 	"github.com/hashicorp/watchtower/internal/iam"
+	"github.com/hashicorp/watchtower/internal/oplog"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/testing/protocmp"
 )
 
 func TestRepository_CreateAuthMethod(t *testing.T) {
@@ -422,6 +428,161 @@ func TestRepository_ListAuthMethods_Limits(t *testing.T) {
 			got, err := repo.ListAuthMethods(context.Background(), ams[0].GetScopeId(), tt.listOpts...)
 			require.NoError(err)
 			assert.Len(got, tt.wantLen)
+		})
+	}
+}
+
+func TestRepository_UpdateAuthMethod(t *testing.T) {
+	t.Parallel()
+	conn, _ := db.TestSetup(t, "postgres")
+	rw := db.New(conn)
+	wrapper := db.TestWrapper(t)
+	repo, err := NewRepository(rw, rw, wrapper)
+	require.NoError(t, err)
+
+	ctx := context.Background()
+
+	type args struct {
+		updates        *store.AuthMethod
+		fieldMaskPaths []string
+	}
+	tests := []struct {
+		name           string
+		args           args
+		wantRowsUpdate int
+		wantErr        bool
+	}{
+		{
+			name: "change name",
+			args: args{
+				updates: &store.AuthMethod{
+					Name: "updated",
+				},
+				fieldMaskPaths: []string{"Name"},
+			},
+			wantErr:        false,
+			wantRowsUpdate: 1,
+		},
+		{
+			name: "null name",
+			args: args{
+				updates:        &store.AuthMethod{},
+				fieldMaskPaths: []string{"Name"},
+			},
+			wantErr:        false,
+			wantRowsUpdate: 1,
+		},
+		{
+			name: "change description",
+			args: args{
+				updates: &store.AuthMethod{
+					Description: "updated",
+				},
+				fieldMaskPaths: []string{"Description"},
+			},
+			wantErr:        false,
+			wantRowsUpdate: 1,
+		},
+		{
+			name: "null description",
+			args: args{
+				updates:        &store.AuthMethod{},
+				fieldMaskPaths: []string{"Description"},
+			},
+			wantErr:        false,
+			wantRowsUpdate: 1,
+		},
+		{
+			name: "change min pw",
+			args: args{
+				updates: &store.AuthMethod{
+					MinPasswordLength: 13,
+				},
+				fieldMaskPaths: []string{"MinPasswordLength"},
+			},
+			wantErr:        false,
+			wantRowsUpdate: 1,
+		},
+		{
+			name: "null min pw",
+			args: args{
+				updates:        &store.AuthMethod{},
+				fieldMaskPaths: []string{"MinPasswordLength"},
+			},
+			wantErr:        false,
+			wantRowsUpdate: 1,
+		},
+		{
+			name: "change min username",
+			args: args{
+				updates: &store.AuthMethod{
+					MinUserNameLength: 13,
+				},
+				fieldMaskPaths: []string{"MinUserNameLength"},
+			},
+			wantErr:        false,
+			wantRowsUpdate: 1,
+		},
+		{
+			name: "null min username",
+			args: args{
+				updates:        &store.AuthMethod{},
+				fieldMaskPaths: []string{"MinUserNameLength"},
+			},
+			wantErr:        false,
+			wantRowsUpdate: 1,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+
+			// create the initial auth method
+			o, _ := iam.TestScopes(t, conn)
+			am, err := NewAuthMethod(o.GetPublicId(), WithName("default"), WithDescription("default"))
+			require.NoError(err)
+			origAM, err := repo.CreateAuthMethod(ctx, am)
+			require.NoError(err)
+
+			amToUpdate := allocAuthMethod()
+			amToUpdate.ScopeId = o.GetPublicId()
+			amToUpdate.PublicId = origAM.GetPublicId()
+			proto.Merge(amToUpdate.AuthMethod, tt.args.updates)
+
+			updatedAM, updatedRows, err := repo.UpdateAuthMethod(ctx, &amToUpdate, tt.args.fieldMaskPaths)
+			assert.Equal(tt.wantRowsUpdate, updatedRows)
+			if tt.wantErr {
+				require.Error(err)
+				assert.Nil(updatedAM)
+				err = db.TestVerifyOplog(t, rw, updatedAM.GetPublicId(), db.WithOperation(oplog.OpType_OP_TYPE_UPDATE), db.WithCreateNotBefore(10*time.Second))
+				require.Error(err)
+				assert.Equal("record not found", err.Error())
+				return
+			}
+			require.NoError(err)
+			assert.NotEqual(origAM.UpdateTime, updatedAM.UpdateTime)
+			foundAuthMethod, err := repo.LookupAuthMethod(ctx, origAM.PublicId)
+			require.NoError(err)
+			assert.Empty(cmp.Diff(updatedAM, foundAuthMethod, protocmp.Transform()))
+
+			dbassert := dbassert.New(t, rw)
+			if amToUpdate.Name == "" && contains(tt.args.fieldMaskPaths, "name") {
+				dbassert.IsNull(foundAuthMethod, "name")
+			}
+			if amToUpdate.Description == "" && contains(tt.args.fieldMaskPaths, "description") {
+				dbassert.IsNull(foundAuthMethod, "description")
+			}
+			if amToUpdate.MinPasswordLength == 0 && contains(tt.args.fieldMaskPaths, "MinPasswordLength") {
+				assert.Equal(7, updatedAM.MinPasswordLength)
+				dbassert.IsNull(foundAuthMethod, "MinPasswordLength")
+			}
+			if amToUpdate.MinUserNameLength == 0 && contains(tt.args.fieldMaskPaths, "MinUserNameLength") {
+				assert.Equal(7, updatedAM.MinUserNameLength)
+				dbassert.IsNull(foundAuthMethod, "MinUserNameLength")
+			}
+
+			err = db.TestVerifyOplog(t, rw, updatedAM.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_UPDATE), db.WithCreateNotBefore(10*time.Second))
+			assert.NoError(err)
 		})
 	}
 }
