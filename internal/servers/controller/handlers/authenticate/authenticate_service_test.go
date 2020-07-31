@@ -36,7 +36,7 @@ func getAuthMethodAndAccountId(t *testing.T, org *iam.Scope, rw *db.Db) (string,
 	aAcctId, err := db.NewPublicId("aa")
 	require.NoError(t, err)
 
-	aAcct := &iam.AuthAccount{AuthAccount: &iamStore.AuthAccount{
+	aAcct := &iam.Account{Account: &iamStore.AuthAccount{
 		PublicId:     aAcctId,
 		ScopeId:      org.GetPublicId(),
 		AuthMethodId: amId,
@@ -151,7 +151,7 @@ func TestAuthenticate(t *testing.T) {
 			acctIdBytes := sha256.Sum256([]byte(name))
 			acctId := fmt.Sprintf("aa_%s", base32.StdEncoding.EncodeToString(acctIdBytes[:])[0:10])
 
-			aAcct := &iam.AuthAccount{AuthAccount: &iamStore.AuthAccount{
+			aAcct := &iam.Account{Account: &iamStore.AuthAccount{
 				PublicId:     acctId,
 				ScopeId:      o.PublicId,
 				AuthMethodId: amId,
@@ -196,7 +196,7 @@ func TestAuthenticate_AuthAccountConnectedToIamUser(t *testing.T) {
 	acctIdBytes := sha256.Sum256([]byte(name))
 	acctId := fmt.Sprintf("aa_%s", base32.StdEncoding.EncodeToString(acctIdBytes[:])[0:10])
 
-	aAcct := &iam.AuthAccount{AuthAccount: &iamStore.AuthAccount{
+	aAcct := &iam.Account{Account: &iamStore.AuthAccount{
 		PublicId:     acctId,
 		ScopeId:      o.PublicId,
 		AuthMethodId: amId,

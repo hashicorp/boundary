@@ -101,7 +101,7 @@ func (r *Repository) CreateAuthToken(ctx context.Context, withIamUserId, withAut
 		db.ExpBackoff{},
 		func(read db.Reader, w db.Writer) error {
 			// TODO: Remove this and either rely on either Alloc or a method exposed by the auth repo.
-			acct := &iam.AuthAccount{AuthAccount: &iamStore.AuthAccount{PublicId: withAuthAccountId}}
+			acct := &iam.Account{Account: &iamStore.Account{PublicId: withAuthAccountId}}
 			if err := read.LookupByPublicId(ctx, acct); err != nil {
 				return fmt.Errorf("create: auth token: auth account lookup: %w", err)
 			}

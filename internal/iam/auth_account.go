@@ -12,36 +12,36 @@ import (
 )
 
 const (
-	defaultAuthAccountTableName = "auth_account"
+	defaultAccountTableName = "auth_account"
 )
 
-// AuthAccount is from the auth subsystem and iam is only allowed to: lookup and
-// update auth accounts.  That's why there is no "new" factory for AuthAccounts.
-type AuthAccount struct {
-	*store.AuthAccount
+// Account is from the auth subsystem and iam is only allowed to: lookup and
+// update auth accounts.  That's why there is no "new" factory for Accounts.
+type Account struct {
+	*store.Account
 	tableName string `gorm:"-"`
 }
 
-var _ Clonable = (*AuthAccount)(nil)
-var _ db.VetForWriter = (*AuthAccount)(nil)
-var _ oplog.ReplayableMessage = (*AuthAccount)(nil)
+var _ Clonable = (*Account)(nil)
+var _ db.VetForWriter = (*Account)(nil)
+var _ oplog.ReplayableMessage = (*Account)(nil)
 
-func allocAuthAccount() AuthAccount {
-	return AuthAccount{
-		AuthAccount: &store.AuthAccount{},
+func allocAccount() Account {
+	return Account{
+		Account: &store.Account{},
 	}
 }
 
 // Clone creates a clone of the auth account.
-func (a *AuthAccount) Clone() interface{} {
-	cp := proto.Clone(a.AuthAccount)
-	return &AuthAccount{
-		AuthAccount: cp.(*store.AuthAccount),
+func (a *Account) Clone() interface{} {
+	cp := proto.Clone(a.Account)
+	return &Account{
+		Account: cp.(*store.Account),
 	}
 }
 
 // VetForWrite implements db.VetForWrite() interface.
-func (a *AuthAccount) VetForWrite(ctx context.Context, r db.Reader, opType db.OpType, opt ...db.Option) error {
+func (a *Account) VetForWrite(ctx context.Context, r db.Reader, opType db.OpType, opt ...db.Option) error {
 	if a.PublicId == "" {
 		return fmt.Errorf("error public id is empty string for auth account write: %w", db.ErrInvalidParameter)
 	}
@@ -51,26 +51,26 @@ func (a *AuthAccount) VetForWrite(ctx context.Context, r db.Reader, opType db.Op
 	return nil
 }
 
-func (a *AuthAccount) validScopeTypes() []scope.Type {
+func (a *Account) validScopeTypes() []scope.Type {
 	return []scope.Type{scope.Org}
 }
 
 // GetScope returns the scope for the auth account.
-func (a *AuthAccount) GetScope(ctx context.Context, r db.Reader) (*Scope, error) {
+func (a *Account) GetScope(ctx context.Context, r db.Reader) (*Scope, error) {
 	return LookupScope(ctx, r, a)
 }
 
 // TableName returns the tablename to override the default gorm table name.
-func (a *AuthAccount) TableName() string {
+func (a *Account) TableName() string {
 	if a.tableName != "" {
 		return a.tableName
 	}
-	return defaultAuthAccountTableName
+	return defaultAccountTableName
 }
 
 // SetTableName sets the tablename and satisfies the ReplayableMessage
 // interface. If the caller attempts to set the name to "" the name will be
 // reset to the default name.
-func (a *AuthAccount) SetTableName(n string) {
+func (a *Account) SetTableName(n string) {
 	a.tableName = n
 }

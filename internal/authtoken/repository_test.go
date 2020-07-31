@@ -405,7 +405,7 @@ func TestRepository_ValidateToken_expired(t *testing.T) {
 	org, _ := iam.TestScopes(t, conn)
 	baseAT := TestAuthToken(t, conn, wrapper, org.GetPublicId())
 	baseAT.GetAuthAccountId()
-	aAcct := &iam.AuthAccount{AuthAccount: &iamStore.AuthAccount{PublicId: baseAT.GetAuthAccountId()}}
+	aAcct := &iam.Account{Account: &iamStore.Account{PublicId: baseAT.GetAuthAccountId()}}
 	require.NoError(t, rw.LookupByPublicId(context.Background(), aAcct))
 	iamUserId := aAcct.GetIamUserId()
 

@@ -93,7 +93,7 @@ func (s Service) authenticateWithRepo(ctx context.Context, req *pbs.Authenticate
 	acctIdBytes := sha256.Sum256([]byte(pwName.GetStringValue()))
 	acctId := fmt.Sprintf("aa_%s", base32.StdEncoding.EncodeToString(acctIdBytes[:])[0:10])
 
-	aAcct := &iam.AuthAccount{AuthAccount: &iamStore.AuthAccount{
+	aAcct := &iam.Account{Account: &iamStore.AuthAccount{
 		PublicId:     acctId,
 		ScopeId:      Scope,
 		AuthMethodId: req.AuthMethodId,

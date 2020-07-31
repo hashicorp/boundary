@@ -48,7 +48,7 @@ func setupAuthMethod(t *testing.T, conn *gorm.DB, scope string) string {
 }
 
 // TODO: Remove this when the auth method repos are created with the relevant test methods.
-func setupAuthAccount(t *testing.T, conn *gorm.DB, scopeId, authMethodId, userId string) *iam.AuthAccount {
+func setupAuthAccount(t *testing.T, conn *gorm.DB, scopeId, authMethodId, userId string) *iam.Account {
 	t.Helper()
 	require := require.New(t)
 	require.NotEmpty(scopeId)
@@ -58,8 +58,8 @@ func setupAuthAccount(t *testing.T, conn *gorm.DB, scopeId, authMethodId, userId
 	authAcctId, err := db.NewPublicId("aa")
 	require.NoError(err)
 
-	acct := &iam.AuthAccount{
-		AuthAccount: &iamStore.AuthAccount{
+	acct := &iam.Account{
+		Account: &iamStore.Account{
 			PublicId:     authAcctId,
 			ScopeId:      scopeId,
 			AuthMethodId: authMethodId,
