@@ -7,6 +7,7 @@ import (
 
 	"github.com/hashicorp/watchtower/internal/auth/password/store"
 	"github.com/hashicorp/watchtower/internal/db"
+	"github.com/hashicorp/watchtower/internal/iam"
 	"github.com/jinzhu/gorm"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -15,8 +16,8 @@ import (
 func TestArgon2Configuration_New(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
-
-	authMethods := testAuthMethods(t, conn, 1)
+	o, _ := iam.TestScopes(t, conn)
+	authMethods := TestAuthMethods(t, conn, o.GetPublicId(), 1)
 	authMethod := authMethods[0]
 	authMethodId := authMethod.GetPublicId()
 	ctx := context.Background()
@@ -114,7 +115,8 @@ func TestArgon2Configuration_Readonly(t *testing.T) {
 		}
 	}
 
-	authMethods := testAuthMethods(t, conn, 1)
+	o, _ := iam.TestScopes(t, conn)
+	authMethods := TestAuthMethods(t, conn, o.GetPublicId(), 1)
 	authMethod := authMethods[0]
 	authMethodId := authMethod.GetPublicId()
 
@@ -301,9 +303,10 @@ func TestArgon2Credential_New(t *testing.T) {
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
 
-	auts := testAuthMethods(t, conn, 1)
+	o, _ := iam.TestScopes(t, conn)
+	auts := TestAuthMethods(t, conn, o.GetPublicId(), 1)
 	aut := auts[0]
-	accts := testAccounts(t, conn, aut.ScopeId, aut.PublicId, 5)
+	accts := TestAccounts(t, conn, aut.PublicId, 5)
 	confs := testArgon2Confs(t, conn, accts[0].AuthMethodId, 1)
 
 	type args struct {

@@ -75,12 +75,18 @@ begin;
       references auth_password_credential (password_method_id, password_conf_id, password_account_id)
       on delete cascade
       on update cascade
+      deferrable initially deferred
   );
 
   create trigger
     insert_auth_password_credential_subtype
   before insert on auth_password_argon2_cred
     for each row execute procedure insert_auth_password_credential_subtype();
+
+  create trigger
+    update_auth_password_credential_subtype
+  after update on auth_password_argon2_cred
+    for each row execute procedure update_auth_password_credential_subtype();
 
   --
   -- triggers for time columns

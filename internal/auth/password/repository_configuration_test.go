@@ -8,6 +8,7 @@ import (
 
 	"github.com/hashicorp/watchtower/internal/auth/password/store"
 	"github.com/hashicorp/watchtower/internal/db"
+	"github.com/hashicorp/watchtower/internal/iam"
 	"github.com/hashicorp/watchtower/internal/oplog"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -21,7 +22,8 @@ func TestRepository_GetSetConfiguration(t *testing.T) {
 	assert.NoError(t, err)
 	require.NotNil(t, repo)
 
-	authMethods := testAuthMethods(t, conn, 1)
+	o, _ := iam.TestScopes(t, conn)
+	authMethods := TestAuthMethods(t, conn, o.GetPublicId(), 1)
 	authMethod := authMethods[0]
 	authMethodId := authMethod.GetPublicId()
 	ctx := context.Background()
@@ -125,7 +127,8 @@ func TestRepository_GetConfiguration(t *testing.T) {
 	assert.NoError(t, err)
 	require.NotNil(t, repo)
 
-	authMethods := testAuthMethods(t, conn, 1)
+	o, _ := iam.TestScopes(t, conn)
+	authMethods := TestAuthMethods(t, conn, o.GetPublicId(), 1)
 	authMethod := authMethods[0]
 	authMethodId := authMethod.GetPublicId()
 	ctx := context.Background()
@@ -181,8 +184,10 @@ func TestRepository_GetConfiguration(t *testing.T) {
 }
 
 type tconf int
+
 func (t tconf) AuthMethodId() string { return "abcdefghijk" }
 func (t tconf) validate() error      { return nil }
+
 var _ Configuration = tconf(0)
 
 func TestRepository_SetConfiguration(t *testing.T) {
@@ -193,7 +198,8 @@ func TestRepository_SetConfiguration(t *testing.T) {
 	assert.NoError(t, err)
 	require.NotNil(t, repo)
 
-	authMethods := testAuthMethods(t, conn, 1)
+	o, _ := iam.TestScopes(t, conn)
+	authMethods := TestAuthMethods(t, conn, o.GetPublicId(), 1)
 	authMethod := authMethods[0]
 	authMethodId := authMethod.GetPublicId()
 

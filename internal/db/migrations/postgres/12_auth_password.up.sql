@@ -184,6 +184,26 @@ begin;
   end;
   $$ language plpgsql;
 
+  -- update_auth_password_credential_subtype() is an after update trigger
+  -- function for subtypes of auth_password_credential
+  create or replace function
+    update_auth_password_credential_subtype()
+    returns trigger
+  as $$
+  begin
+    /*
+      The configuration id of a credential is updated when a credential is
+      rehashed during authentication.
+    */
+    if new.password_conf_id is distinct from old.password_conf_id then
+      update auth_password_credential
+         set password_conf_id = new.password_conf_id
+       where private_id = new.private_id;
+    end if;
+    return null; -- result is ignored since this is an after trigger
+  end;
+  $$ language plpgsql;
+
   --
   -- triggers for time columns
   --
