@@ -11,6 +11,9 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// TestAuthMethods creates count number of password auth methods to the provided DB
+// with the provided scope id.  If any errors are encountered during the creation of
+// the auth methods, the test will fail.
 func TestAuthMethods(t *testing.T, conn *gorm.DB, scopeId string, count int) []*AuthMethod {
 	t.Helper()
 	assert, require := assert.New(t), require.New(t)
@@ -46,7 +49,10 @@ func TestAuthMethods(t *testing.T, conn *gorm.DB, scopeId string, count int) []*
 	return auts
 }
 
-func TestAccounts(t *testing.T, conn *gorm.DB, scopeId, authMethodId string, count int) []*Account {
+// TestAccounts creates count number of password account to the provided DB
+// with the provided auth method id.  The auth method must have been created previously.
+// If any errors are encountered during the creation of the account, the test will fail.
+func TestAccounts(t *testing.T, conn *gorm.DB, authMethodId string, count int) []*Account {
 	t.Helper()
 	assert, require := assert.New(t), require.New(t)
 	w := db.New(conn)
@@ -59,9 +65,15 @@ func TestAccounts(t *testing.T, conn *gorm.DB, scopeId, authMethodId string, cou
 		assert.NoError(err)
 		require.NotEmpty(id)
 		cat.PublicId = id
-		require.NoError(w.Create(context.Background(), cat))
-		// TODO(toddknight): Figure out why the iw.Create call doesn't populate the scope id from the DB.
-		cat.ScopeId = scopeId
+
+		ctx := context.Background()
+		_, err2 := w.DoTx(ctx, db.StdRetryCnt, db.ExpBackoff{},
+			func(_ db.Reader, iw db.Writer) error {
+				return iw.Create(ctx, cat)
+			},
+		)
+
+		require.NoError(err2)
 		auts = append(auts, cat)
 	}
 	return auts
