@@ -157,7 +157,7 @@ func (r *Repository) DeleteAuthMethods(ctx context.Context, withPublicId string,
 // error is returned.
 func (r *Repository) UpdateAuthMethod(ctx context.Context, authMethod *AuthMethod, fieldMaskPaths []string, opt ...Option) (*AuthMethod, int, error) {
 	if authMethod == nil {
-		return nil, db.NoRowsAffected, fmt.Errorf("update: password auth method: missing authMethod %w", db.ErrNilParameter)
+		return nil, db.NoRowsAffected, fmt.Errorf("update: password auth method: missing authMethod: %w", db.ErrNilParameter)
 	}
 	if authMethod.PublicId == "" {
 		return nil, db.NoRowsAffected, fmt.Errorf("update: password auth method: missing authMethod public id %w", db.ErrInvalidParameter)
