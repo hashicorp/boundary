@@ -2,7 +2,6 @@ package password
 
 import (
 	"context"
-	"fmt"
 	"testing"
 
 	"github.com/hashicorp/watchtower/internal/auth/password/store"

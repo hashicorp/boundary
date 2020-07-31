@@ -222,7 +222,8 @@ func TestRepository_LookupAuthMethod(t *testing.T) {
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
 
-	authMethod := testAuthMethods(t, conn, 1)[0]
+	o, _ := iam.TestScopes(t, conn)
+	authMethod := TestAuthMethods(t, conn, o.GetPublicId(), 1)[0]
 
 	amId, err := newAuthMethodId()
 	require.NoError(t, err)
@@ -271,7 +272,8 @@ func TestRepository_DeleteAuthMethod(t *testing.T) {
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
 
-	authMethod := testAuthMethods(t, conn, 1)[0]
+	o, _ := iam.TestScopes(t, conn)
+	authMethod := TestAuthMethods(t, conn, o.GetPublicId(), 1)[0]
 
 	newAuthMethodId, err := newAuthMethodId()
 	require.NoError(t, err)
@@ -321,8 +323,9 @@ func TestRepository_ListAuthMethods(t *testing.T) {
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
 
+	noAuthMethodOrg, _ := iam.TestScopes(t, conn)
 	o, _ := iam.TestScopes(t, conn)
-	authMethods := testAuthMethods(t, conn, 3)
+	authMethods := TestAuthMethods(t, conn, o.GetPublicId(), 3)
 
 	var tests = []struct {
 		name      string
@@ -332,17 +335,17 @@ func TestRepository_ListAuthMethods(t *testing.T) {
 		wantIsErr error
 	}{
 		{
-			name:      "With no auth method id",
+			name:      "With no scope id",
 			wantIsErr: db.ErrInvalidParameter,
 		},
 		{
-			name: "With no auth method id",
-			in:   o.GetPublicId(),
+			name: "Scope with no auth methods",
+			in:   noAuthMethodOrg.GetPublicId(),
 			want: []*AuthMethod{},
 		},
 		{
 			name: "With populated scope id",
-			in:   authMethods[0].GetScopeId(),
+			in:   o.GetPublicId(),
 			want: authMethods,
 		},
 	}
@@ -361,7 +364,7 @@ func TestRepository_ListAuthMethods(t *testing.T) {
 				return
 			}
 			require.NoError(err)
-			assert.EqualValues(tt.want, got)
+			assert.Empty(cmp.Diff(tt.want, got, protocmp.Transform()))
 		})
 	}
 }
@@ -371,8 +374,9 @@ func TestRepository_ListAuthMethods_Limits(t *testing.T) {
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
 
+	o, _ := iam.TestScopes(t, conn)
 	authMethodCount := 10
-	ams := testAuthMethods(t, conn, authMethodCount)
+	ams := TestAuthMethods(t, conn, o.GetPublicId(), authMethodCount)
 
 	var tests = []struct {
 		name     string
