@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/hashicorp/watchtower/internal/db"
+	dbcommon "github.com/hashicorp/watchtower/internal/db/common"
 	"github.com/hashicorp/watchtower/internal/oplog"
 )
 
@@ -177,7 +178,7 @@ func (r *Repository) UpdateAuthMethod(ctx context.Context, authMethod *AuthMetho
 		}
 	}
 	var dbMask, nullFields []string
-	dbMask, nullFields = buildUpdatePaths(
+	dbMask, nullFields = dbcommon.BuildUpdatePaths(
 		map[string]interface{}{
 			"Name":              authMethod.Name,
 			"Description":       authMethod.Description,

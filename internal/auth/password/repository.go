@@ -2,7 +2,6 @@ package password
 
 import (
 	"fmt"
-	"reflect"
 	"strings"
 
 	wrapping "github.com/hashicorp/go-kms-wrapping"
@@ -54,23 +53,4 @@ func contains(ss []string, t string) bool {
 		}
 	}
 	return false
-}
-
-func buildUpdatePaths(fieldValues map[string]interface{}, fieldMask []string) (masks []string, nulls []string) {
-	for f, v := range fieldValues {
-		if !contains(fieldMask, f) {
-			continue
-		}
-		switch {
-		case isZero(v):
-			nulls = append(nulls, f)
-		default:
-			masks = append(masks, f)
-		}
-	}
-	return masks, nulls
-}
-
-func isZero(i interface{}) bool {
-	return i == nil || reflect.DeepEqual(i, reflect.Zero(reflect.TypeOf(i)).Interface())
 }
