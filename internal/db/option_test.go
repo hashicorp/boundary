@@ -147,4 +147,19 @@ func Test_getOpts(t *testing.T) {
 		testOpts.withSkipVetForWrite = true
 		assert.Equal(opts, testOpts)
 	})
+	t.Run("WithWhere", func(t *testing.T) {
+		assert := assert.New(t)
+		// test default of false
+		opts := GetOpts()
+		testOpts := getDefaultOptions()
+		testOpts.withWhereClause = ""
+		testOpts.withWhereClauseArgs = nil
+		assert.Equal(opts, testOpts)
+
+		// try setting to false
+		opts = GetOpts(WithWhere("id = ? and foo = ?", 1234, "bar"))
+		testOpts.withWhereClause = "id = ? and foo = ?"
+		testOpts.withWhereClauseArgs = []interface{}{1234, "bar"}
+		assert.Equal(opts, testOpts)
+	})
 }
