@@ -27,6 +27,13 @@ func Test_GetOpts(t *testing.T) {
 		testOpts.withLimit = 5
 		assert.Equal(t, opts, testOpts)
 	})
+	t.Run("WithPassword", func(t *testing.T) {
+		opts := getOpts(WithPassword("test password"))
+		testOpts := getDefaultOptions()
+		testOpts.password = "test password"
+		testOpts.withPassword = true
+		assert.Equal(t, opts, testOpts)
+	})
 	t.Run("WithConfiguration", func(t *testing.T) {
 		conf := NewArgon2Configuration()
 		conf.KeyLength = conf.KeyLength * 2

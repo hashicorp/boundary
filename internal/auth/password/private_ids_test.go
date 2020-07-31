@@ -14,4 +14,9 @@ func Test_PrivateIds(t *testing.T) {
 		require.NoError(t, err)
 		assert.True(t, strings.HasPrefix(id, argon2ConfigurationPrefix+"_"))
 	})
+	t.Run("argon2Cred", func(t *testing.T) {
+		id, err := newArgon2CredentialId()
+		require.NoError(t, err)
+		assert.True(t, strings.HasPrefix(id, argon2CredentialPrefix+"_"))
+	})
 }

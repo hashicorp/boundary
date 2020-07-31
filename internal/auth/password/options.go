@@ -18,6 +18,8 @@ type options struct {
 	withDescription string
 	withLimit       int
 	withConfig      Configuration
+	password        string
+	withPassword    bool
 }
 
 func getDefaultOptions() options {
@@ -46,6 +48,14 @@ func WithName(name string) Option {
 func WithLimit(l int) Option {
 	return func(o *options) {
 		o.withLimit = l
+	}
+}
+
+// WithPassword provides an optional password.
+func WithPassword(password string) Option {
+	return func(o *options) {
+		o.password = password
+		o.withPassword = true
 	}
 }
 
