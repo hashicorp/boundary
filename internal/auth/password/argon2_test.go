@@ -8,6 +8,7 @@ import (
 	"github.com/hashicorp/watchtower/internal/auth/password/store"
 	"github.com/hashicorp/watchtower/internal/db"
 	"github.com/hashicorp/watchtower/internal/iam"
+	"github.com/jinzhu/gorm"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -267,6 +268,160 @@ func TestArgon2Configuration_Validate(t *testing.T) {
 			}
 			require.Error(got)
 			assert.Truef(errors.Is(got, tt.want), "want err: %q got: %q", tt.want, got)
+		})
+	}
+}
+
+func testArgon2Confs(t *testing.T, conn *gorm.DB, authMethodId string, count int) []*Argon2Configuration {
+	t.Helper()
+	assert, require := assert.New(t), require.New(t)
+	rw := db.New(conn)
+	var confs []*Argon2Configuration
+	err := rw.SearchWhere(context.Background(), &confs, "password_method_id = ?", []interface{}{authMethodId})
+	require.NoError(err)
+	assert.Equal(1, len(confs))
+	base := confs[0]
+	for i := 0; i < count; i++ {
+		conf := NewArgon2Configuration()
+		require.NotNil(conf)
+		conf.PasswordMethodId = authMethodId
+		conf.PrivateId, err = newArgon2ConfigurationId()
+		require.NoError(err)
+
+		conf.Iterations = base.Iterations + uint32(i+1)
+		conf.Threads = base.Threads + uint32(i+1)
+		err = rw.Create(context.Background(), conf)
+		require.NoError(err)
+		confs = append(confs, conf)
+	}
+	return confs
+}
+
+func TestArgon2Credential_New(t *testing.T) {
+	conn, _ := db.TestSetup(t, "postgres")
+
+	rw := db.New(conn)
+	wrapper := db.TestWrapper(t)
+
+	auts := testAuthMethods(t, conn, 1)
+	aut := auts[0]
+	accts := testAccounts(t, conn, aut.ScopeId, aut.PublicId, 5)
+	confs := testArgon2Confs(t, conn, accts[0].AuthMethodId, 1)
+
+	type args struct {
+		accountId string
+		password  string
+		conf      *Argon2Configuration
+	}
+	var tests = []struct {
+		name      string
+		args      args
+		want      *Argon2Credential
+		wantIsErr error
+	}{
+		{
+			name: "blank-accountId",
+			args: args{
+				accountId: "",
+				password:  "foobarcity",
+				conf:      confs[0],
+			},
+			want:      nil,
+			wantIsErr: db.ErrInvalidParameter,
+		},
+		{
+			name: "blank-password",
+			args: args{
+				accountId: accts[0].PublicId,
+				password:  "",
+				conf:      confs[0],
+			},
+			want:      nil,
+			wantIsErr: db.ErrInvalidParameter,
+		},
+		{
+			name: "nil-configuration",
+			args: args{
+				accountId: accts[0].PublicId,
+				password:  "foobarcity",
+				conf:      nil,
+			},
+			want:      nil,
+			wantIsErr: db.ErrNilParameter,
+		},
+		{
+			name: "valid-password",
+			args: args{
+				accountId: accts[0].PublicId,
+				password:  "foobarcity",
+				conf:      confs[0],
+			},
+			want: &Argon2Credential{
+				Argon2Credential: &store.Argon2Credential{
+					PasswordAccountId: accts[0].PublicId,
+					PasswordConfId:    confs[0].PrivateId,
+				},
+			},
+		},
+		{
+			name: "traditional-chinese-characters-password",
+			args: args{
+				accountId: accts[1].PublicId,
+				password:  "漢字𫝆𫝑𫝜𫝓𫝶𫝼𫞉𫞔𫞩𫞬",
+				conf:      confs[0],
+			},
+			want: &Argon2Credential{
+				Argon2Credential: &store.Argon2Credential{
+					PasswordAccountId: accts[1].PublicId,
+					PasswordConfId:    confs[0].PrivateId,
+				},
+			},
+		},
+		{
+			name: "emoji-password",
+			args: args{
+				accountId: accts[2].PublicId,
+				password:  "😃  😀 😅 😘🤔 😑🤢🤠😰",
+				conf:      confs[0],
+			},
+			want: &Argon2Credential{
+				Argon2Credential: &store.Argon2Credential{
+					PasswordAccountId: accts[2].PublicId,
+					PasswordConfId:    confs[0].PrivateId,
+				},
+			},
+		},
+	}
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+			got, err := newArgon2Credential(tt.args.accountId, tt.args.password, tt.args.conf)
+			if tt.wantIsErr != nil {
+				assert.Truef(errors.Is(err, tt.wantIsErr), "want err: %q got: %q", tt.wantIsErr, err)
+				assert.Nil(got)
+				return
+			}
+			require.NoError(err)
+			require.NotNil(got)
+
+			got.encrypt(context.Background(), wrapper)
+			err = rw.Create(context.Background(), got)
+			assert.NoError(err)
+
+			if tt.want == nil {
+				return
+			}
+
+			gotCred := &Argon2Credential{
+				Argon2Credential: &store.Argon2Credential{
+					PrivateId: got.PrivateId,
+				},
+			}
+			err = rw.LookupById(context.Background(), gotCred)
+			require.NoError(err)
+			assert.Equal(tt.want.PasswordAccountId, gotCred.PasswordAccountId)
+			assert.Equal(tt.want.PasswordConfId, gotCred.PasswordConfId)
 		})
 	}
 }

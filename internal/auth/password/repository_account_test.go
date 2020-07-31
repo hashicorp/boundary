@@ -4,10 +4,13 @@ import (
 	"context"
 	"errors"
 	"testing"
+	"time"
 
 	"github.com/hashicorp/watchtower/internal/auth/password/store"
 	"github.com/hashicorp/watchtower/internal/db"
 	"github.com/hashicorp/watchtower/internal/iam"
+	"github.com/hashicorp/watchtower/internal/oplog"
+	"github.com/jinzhu/gorm"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -115,6 +118,29 @@ func TestRepository_CreateAccount(t *testing.T) {
 			wantIsErr: db.ErrInvalidParameter,
 		},
 		{
+			name: "invalid-username-to-short",
+			in: &Account{
+				Account: &store.Account{
+					AuthMethodId: authMethod.PublicId,
+					UserName:     "kaz",
+				},
+			},
+			wantIsErr: ErrTooShort,
+		},
+		{
+			name: "invalid-password-to-short",
+			in: &Account{
+				Account: &store.Account{
+					AuthMethodId: authMethod.PublicId,
+					UserName:     "kazmierczak123",
+				},
+			},
+			opts: []Option{
+				WithPassword("a"),
+			},
+			wantIsErr: ErrTooShort,
+		},
+		{
 			name: "valid-no-options",
 			in: &Account{
 				Account: &store.Account{
@@ -163,6 +189,24 @@ func TestRepository_CreateAccount(t *testing.T) {
 				},
 			},
 		},
+		{
+			name: "valid-with-password",
+			in: &Account{
+				Account: &store.Account{
+					AuthMethodId: authMethod.PublicId,
+					UserName:     "kazmierczak3",
+				},
+			},
+			opts: []Option{
+				WithPassword("1234567890"),
+			},
+			want: &Account{
+				Account: &store.Account{
+					AuthMethodId: authMethod.PublicId,
+					UserName:     "kazmierczak3",
+				},
+			},
+		},
 	}
 
 	for _, tt := range tests {
@@ -186,6 +230,15 @@ func TestRepository_CreateAccount(t *testing.T) {
 			assert.Equal(tt.want.Name, got.Name)
 			assert.Equal(tt.want.Description, got.Description)
 			assert.Equal(got.CreateTime, got.UpdateTime)
+
+			assert.NoError(db.TestVerifyOplog(t, rw, got.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_CREATE), db.WithCreateNotBefore(10*time.Second)))
+
+			opts := getOpts(tt.opts...)
+			if opts.withPassword {
+				authAcct, err := repo.Authenticate(context.Background(), tt.in.AuthMethodId, tt.in.UserName, opts.password)
+				require.NoError(err)
+				assert.NoError(db.TestVerifyOplog(t, rw, authAcct.CredentialId, db.WithOperation(oplog.OpType_OP_TYPE_CREATE), db.WithCreateNotBefore(10*time.Second)))
+			}
 		})
 	}
 
