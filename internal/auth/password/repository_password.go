@@ -6,6 +6,7 @@ import (
 	"fmt"
 
 	"github.com/hashicorp/watchtower/internal/db"
+	"github.com/hashicorp/watchtower/internal/oplog"
 	"golang.org/x/crypto/argon2"
 )
 
@@ -35,6 +36,7 @@ func (r *Repository) Authenticate(ctx context.Context, authMethodId string, user
 		*Account
 		*Argon2Credential
 		*Argon2Configuration
+		IsCurrentConf bool
 	}
 
 	var accts []AuthAccount
@@ -76,8 +78,42 @@ func (r *Repository) Authenticate(ctx context.Context, authMethodId string, user
 		return nil, nil
 	}
 
-	// TODO(mgaffney) 07/2020: update stored credential if acct config is
-	// not the current config for authMethodId
+	if !acct.IsCurrentConf {
+		cc, err := r.currentConfig(ctx, authMethodId)
+		if err != nil {
+			return acct.Account, fmt.Errorf("authenticate: retrieve current password configuration: %w", err)
+		}
+		cred, err := newArgon2Credential(acct.PublicId, password, cc.argon2())
+		if err != nil {
+			return acct.Account, fmt.Errorf("authenticate: rehash current password: %w", err)
+		}
+		cred.PrivateId = acct.CredentialId
+		cred.PasswordMethodId = cc.PasswordMethodId
+
+		var newCred *Argon2Credential
+		_, err = r.writer.DoTx(ctx, db.StdRetryCnt, db.ExpBackoff{},
+			func(_ db.Reader, w db.Writer) error {
+				newCred = cred.clone()
+				if err := newCred.encrypt(ctx, r.wrapper); err != nil {
+					return err
+				}
+				rowsUpdated, err := w.Update(
+					ctx,
+					newCred,
+					[]string{"CtSalt", "DerivedKey", "PasswordConfId"},
+					nil,
+					db.WithOplog(r.wrapper, cred.oplog(oplog.OpType_OP_TYPE_UPDATE)),
+				)
+				if err == nil && rowsUpdated > 1 {
+					return db.ErrMultipleRecords
+				}
+				return err
+			},
+		)
+		if err != nil {
+			return acct.Account, fmt.Errorf("authenticate: update rehashed password: %w", err)
+		}
+	}
 	return acct.Account, nil
 }
 

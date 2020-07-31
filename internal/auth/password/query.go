@@ -17,13 +17,16 @@ select acct.name,                        -- Account.Name
        conf.key_length,                  -- Argon2Configuration.KeyLength
        conf.iterations,                  -- Argon2Configuration.Iterations
        conf.memory,                      -- Argon2Configuration.Memory
-       conf.threads                      -- Argon2Configuration.Threads
+       conf.threads,                     -- Argon2Configuration.Threads
+       meth.password_conf_id = cred.password_conf_id as is_current_conf
   from auth_password_argon2_cred cred,
        auth_password_argon2_conf conf,
-       auth_password_account acct
+       auth_password_account acct,
+       auth_password_method meth
  where acct.auth_method_id = $1
    and acct.user_name = $2
    and cred.password_conf_id = conf.private_id
-   and cred.password_account_id = acct.public_id;
+   and cred.password_account_id = acct.public_id
+   and acct.auth_method_id = meth.public_id ;
 `
 )
