@@ -303,9 +303,10 @@ func TestArgon2Credential_New(t *testing.T) {
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
 
-	auts := testAuthMethods(t, conn, 1)
+	o, _ := iam.TestScopes(t, conn)
+	auts := TestAuthMethods(t, conn, o.GetPublicId(), 1)
 	aut := auts[0]
-	accts := testAccounts(t, conn, aut.ScopeId, aut.PublicId, 5)
+	accts := TestAccounts(t, conn, aut.PublicId, 5)
 	confs := testArgon2Confs(t, conn, accts[0].AuthMethodId, 1)
 
 	type args struct {

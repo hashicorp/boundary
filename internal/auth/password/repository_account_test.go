@@ -10,7 +10,6 @@ import (
 	"github.com/hashicorp/watchtower/internal/db"
 	"github.com/hashicorp/watchtower/internal/iam"
 	"github.com/hashicorp/watchtower/internal/oplog"
-	"github.com/jinzhu/gorm"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -320,7 +319,7 @@ func TestRepository_LookupAccount(t *testing.T) {
 
 	org, _ := iam.TestScopes(t, conn)
 	authMethod := TestAuthMethods(t, conn, org.GetPublicId(), 1)[0]
-	account := TestAccounts(t, conn, authMethod.GetScopeId(), authMethod.GetPublicId(), 1)[0]
+	account := TestAccounts(t, conn, authMethod.GetPublicId(), 1)[0]
 
 	newAcctId, err := newAccountId()
 	require.NoError(t, err)
@@ -371,7 +370,7 @@ func TestRepository_DeleteAccount(t *testing.T) {
 
 	org, _ := iam.TestScopes(t, conn)
 	authMethod := TestAuthMethods(t, conn, org.GetPublicId(), 1)[0]
-	account := TestAccounts(t, conn, authMethod.GetScopeId(), authMethod.GetPublicId(), 1)[0]
+	account := TestAccounts(t, conn, authMethod.GetPublicId(), 1)[0]
 
 	newAcctId, err := newAccountId()
 	require.NoError(t, err)
@@ -423,8 +422,8 @@ func TestRepository_ListAccounts(t *testing.T) {
 
 	org, _ := iam.TestScopes(t, conn)
 	authMethods := TestAuthMethods(t, conn, org.GetPublicId(), 3)
-	accounts1 := TestAccounts(t, conn, authMethods[0].GetScopeId(), authMethods[0].GetPublicId(), 3)
-	accounts2 := TestAccounts(t, conn, authMethods[1].GetScopeId(), authMethods[1].GetPublicId(), 4)
+	accounts1 := TestAccounts(t, conn, authMethods[0].GetPublicId(), 3)
+	accounts2 := TestAccounts(t, conn, authMethods[1].GetPublicId(), 4)
 	_ = accounts2
 
 	var tests = []struct {
@@ -478,7 +477,7 @@ func TestRepository_ListAccounts_Limits(t *testing.T) {
 	am := TestAuthMethods(t, conn, org.GetPublicId(), 1)[0]
 
 	accountCount := 10
-	_ = TestAccounts(t, conn, am.GetScopeId(), am.GetPublicId(), accountCount)
+	_ = TestAccounts(t, conn, am.GetPublicId(), accountCount)
 
 	var tests = []struct {
 		name     string

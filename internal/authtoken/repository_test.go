@@ -134,7 +134,7 @@ func TestRepository_CreateAuthToken(t *testing.T) {
 
 	org1, _ := iam.TestScopes(t, conn)
 	am := password.TestAuthMethods(t, conn, org1.GetPublicId(), 1)[0]
-	aAcct := password.TestAccounts(t, conn, org1.GetPublicId(), am.GetPublicId(), 1)[0]
+	aAcct := password.TestAccounts(t, conn, am.GetPublicId(), 1)[0]
 
 	iamRepo, err := iam.NewRepository(rw, rw, wrapper)
 	require.NoError(t, err)

@@ -36,7 +36,7 @@ func Test_TestAccounts(t *testing.T) {
 	am := TestAuthMethods(t, conn, org.GetPublicId(), 1)[0]
 
 	count := 4
-	accounts := TestAccounts(t, conn, org.PublicId, am.GetPublicId(), count)
+	accounts := TestAccounts(t, conn, am.GetPublicId(), count)
 	assert.Len(accounts, count)
 	for _, a := range accounts {
 		assert.NotEmpty(a.GetPublicId())
