@@ -81,7 +81,7 @@ func handleGrpcGateway(c *Controller) (http.Handler, error) {
 	if err := services.RegisterHostCatalogServiceHandlerServer(ctx, mux, hcs); err != nil {
 		return nil, fmt.Errorf("failed to register host catalog service handler: %w", err)
 	}
-	accts, err := accounts.NewService(c.PasswordAuthRepoFn)
+	accts, err := accounts.NewService(c.logger, c.PasswordAuthRepoFn)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create account handler service: %w", err)
 	}

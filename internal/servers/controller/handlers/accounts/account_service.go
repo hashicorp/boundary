@@ -7,6 +7,7 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/watchtower/internal/auth"
 	"github.com/hashicorp/watchtower/internal/auth/password"
 	"github.com/hashicorp/watchtower/internal/auth/password/store"
@@ -34,14 +35,15 @@ func init() {
 // Service handles request as described by the pbs.AccountServiceServer interface.
 type Service struct {
 	repoFn func() (*password.Repository, error)
+	log    hclog.Logger
 }
 
 // NewService returns a user service which handles user related requests to watchtower.
-func NewService(repo func() (*password.Repository, error)) (Service, error) {
+func NewService(log hclog.Logger, repo func() (*password.Repository, error)) (Service, error) {
 	if repo == nil {
 		return Service{}, fmt.Errorf("nil password repository provided")
 	}
-	return Service{repoFn: repo}, nil
+	return Service{log: log, repoFn: repo}, nil
 }
 
 var _ pbs.AccountServiceServer = Service{}
@@ -137,7 +139,7 @@ func (s Service) getFromRepo(ctx context.Context, id string) (*pb.Account, error
 	if u == nil {
 		return nil, handlers.NotFoundErrorf("Account %q doesn't exist.", id)
 	}
-	return toProto(u), nil
+	return s.toProto(u), nil
 }
 
 func (s Service) createInRepo(ctx context.Context, authMethodId string, item *pb.Account) (*pb.Account, error) {
@@ -167,7 +169,7 @@ func (s Service) createInRepo(ctx context.Context, authMethodId string, item *pb
 	if out == nil {
 		return nil, status.Error(codes.Internal, "Unable to create user but no error returned from repository.")
 	}
-	return toProto(out), nil
+	return s.toProto(out), nil
 }
 
 func (s Service) deleteFromRepo(ctx context.Context, id string) (bool, error) {
@@ -196,12 +198,12 @@ func (s Service) listFromRepo(ctx context.Context, authMethodId string) ([]*pb.A
 	}
 	var outUl []*pb.Account
 	for _, u := range ul {
-		outUl = append(outUl, toProto(u))
+		outUl = append(outUl, s.toProto(u))
 	}
 	return outUl, nil
 }
 
-func toProto(in *password.Account) *pb.Account {
+func (s Service) toProto(in *password.Account) *pb.Account {
 	out := pb.Account{
 		Id:           in.GetPublicId(),
 		CreatedTime:  in.GetCreateTime().GetTimestamp(),
@@ -216,8 +218,9 @@ func toProto(in *password.Account) *pb.Account {
 		out.Name = &wrapperspb.StringValue{Value: in.GetName()}
 	}
 	if st, err := handlers.ProtoToStruct(&pb.PasswordAccountAttributes{Username: in.GetUserName()}); err == nil {
-		// TODO: otherwise log the error.
 		out.Attributes = st
+	} else {
+		s.log.Error("failed converting account attribute to struct", "error", err)
 	}
 	return &out
 }

@@ -7,7 +7,6 @@ require (
 	github.com/alecthomas/colour v0.1.0 // indirect
 	github.com/alecthomas/repr v0.0.0-20200325044227-4184120f674c // indirect
 	github.com/armon/go-metrics v0.3.3
-	github.com/bmizerany/assert v0.0.0-20160611221934-b7ed37b82869
 	github.com/bufbuild/buf v0.20.4
 	github.com/fatih/color v1.9.0
 	github.com/fatih/structs v1.1.0
