@@ -124,7 +124,8 @@ func TestRepository_AuthenticateRehash(t *testing.T) {
 	wrapper := db.TestWrapper(t)
 	assert, require := assert.New(t), require.New(t)
 
-	authMethods := testAuthMethods(t, conn, 1)
+	o, _ := iam.TestScopes(t, conn)
+	authMethods := TestAuthMethods(t, conn, o.GetPublicId(), 1)
 	authMethod := authMethods[0]
 	authMethodId := authMethod.GetPublicId()
 	userName := "kazmierczak"

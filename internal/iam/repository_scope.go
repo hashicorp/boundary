@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/hashicorp/watchtower/internal/db"
+	dbcommon "github.com/hashicorp/watchtower/internal/db/common"
 	"github.com/hashicorp/watchtower/internal/types/scope"
 )
 
@@ -72,7 +73,7 @@ func (r *Repository) UpdateScope(ctx context.Context, scope *Scope, fieldMaskPat
 		return nil, db.NoRowsAffected, fmt.Errorf("update scope: you cannot change a scope's parent: %w", db.ErrInvalidFieldMask)
 	}
 	var dbMask, nullFields []string
-	dbMask, nullFields = buildUpdatePaths(
+	dbMask, nullFields = dbcommon.BuildUpdatePaths(
 		map[string]interface{}{
 			"name":        scope.Name,
 			"description": scope.Description,
