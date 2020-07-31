@@ -306,7 +306,7 @@ func TestRepository_DeleteAuthMethod(t *testing.T) {
 			repo, err := NewRepository(rw, rw, wrapper)
 			assert.NoError(err)
 			require.NotNil(repo)
-			got, err := repo.DeleteAuthMethods(context.Background(), tt.in)
+			got, err := repo.DeleteAuthMethod(context.Background(), tt.in)
 			if tt.wantIsErr != nil {
 				assert.Truef(errors.Is(err, tt.wantIsErr), "want err: %q got: %q", tt.wantIsErr, err)
 				assert.Zero(got)
