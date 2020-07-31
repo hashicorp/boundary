@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/golang/protobuf/ptypes"
+	"github.com/google/go-cmp/cmp"
 	"github.com/hashicorp/watchtower/internal/auth/password"
 	"github.com/hashicorp/watchtower/internal/db"
 	pb "github.com/hashicorp/watchtower/internal/gen/controller/api/resources/auth"
@@ -18,6 +19,7 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/testing/protocmp"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 
 	"github.com/stretchr/testify/assert"
@@ -34,7 +36,7 @@ func createDefaultAuthMethodAndRepo(t *testing.T) (*password.AuthMethod, func() 
 	}
 
 	o, _ := iam.TestScopes(t, conn)
-	am := password.testAuthMethod(t, conn, o.GetPublicId(), iam.WithDescription("default"), iam.WithName("default"))
+	am := password.TestAuthMethod(t, conn, o.GetPublicId(), iam.WithDescription("default"), iam.WithName("default"))
 	return am, repoFn
 }
 
@@ -43,8 +45,7 @@ func TestGet(t *testing.T) {
 	require := require.New(t)
 	am, repo := createDefaultAuthMethodAndRepo(t)
 	toMerge := &pbs.GetAuthMethodRequest{
-		OrgId: am.GetScopeId(),
-		Id:    am.GetPublicId(),
+		Id: am.GetPublicId(),
 	}
 
 	wantU := &pb.AuthMethod{
@@ -69,7 +70,7 @@ func TestGet(t *testing.T) {
 		},
 		{
 			name:    "Get a non existant AuthMethod",
-			req:     &pbs.GetAuthMethodRequest{Id: iam.AuthMethodPrefix + "_DoesntExis"},
+			req:     &pbs.GetAuthMethodRequest{Id: password.AuthMethodPrefix + "_DoesntExis"},
 			res:     nil,
 			errCode: codes.NotFound,
 		},
@@ -81,7 +82,7 @@ func TestGet(t *testing.T) {
 		},
 		{
 			name:    "space in id",
-			req:     &pbs.GetAuthMethodRequest{Id: iam.AuthMethodPrefix + "_1 23456789"},
+			req:     &pbs.GetAuthMethodRequest{Id: password.AuthMethodPrefix + "_1 23456789"},
 			res:     nil,
 			errCode: codes.InvalidArgument,
 		},
@@ -106,8 +107,8 @@ func TestList(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrap := db.TestWrapper(t)
-	repoFn := func() (*iam.Repository, error) {
-		return iam.NewRepository(rw, rw, wrap)
+	repoFn := func() (*password.Repository, error) {
+		return password.NewRepository(rw, rw, wrap)
 	}
 	repo, err := repoFn()
 	require.NoError(err)
@@ -130,32 +131,32 @@ func TestList(t *testing.T) {
 
 	cases := []struct {
 		name    string
-		req     *pbs.ListAuthMethodsRequest
+		scopeId string
 		res     *pbs.ListAuthMethodsResponse
 		errCode codes.Code
 	}{
 		{
 			name:    "List Many AuthMethods",
-			req:     &pbs.ListAuthMethodsRequest{OrgId: oWithAuthMethods.GetPublicId()},
+			scopeId: oWithAuthMethods.GetPublicId(),
 			res:     &pbs.ListAuthMethodsResponse{Items: wantAuthMethods},
 			errCode: codes.OK,
 		},
 		{
 			name:    "List No AuthMethods",
-			req:     &pbs.ListAuthMethodsRequest{OrgId: oNoAuthMethods.GetPublicId()},
+			scopeId: oNoAuthMethods.GetPublicId(),
 			res:     &pbs.ListAuthMethodsResponse{},
 			errCode: codes.OK,
 		},
 		{
 			name:    "Invalid Org Id",
-			req:     &pbs.ListAuthMethodsRequest{OrgId: iam.AuthMethodPrefix + "_this is invalid"},
+			scopeId: password.AuthMethodPrefix + "_this is invalid",
 			res:     nil,
 			errCode: codes.InvalidArgument,
 		},
 		// TODO: When an org doesn't exist, we should return a 404 instead of an empty list.
 		{
 			name:    "Unfound Org",
-			req:     &pbs.ListAuthMethodsRequest{OrgId: scope.Organization.Prefix() + "_DoesntExis"},
+			scopeId: scope.Org.Prefix() + "_DoesntExis",
 			res:     &pbs.ListAuthMethodsResponse{},
 			errCode: codes.OK,
 		},
@@ -165,9 +166,9 @@ func TestList(t *testing.T) {
 			s, err := auth.NewService(repoFn)
 			require.NoError(err, "Couldn't create new auth_method service.")
 
-			got, gErr := s.ListAuthMethods(context.Background(), tc.req)
-			assert.Equal(tc.errCode, status.Code(gErr), "ListAuthMethods(%+v) got error %v, wanted %v", tc.req, gErr, tc.errCode)
-			assert.True(proto.Equal(got, tc.res), "ListAuthMethods(%q) got response %q, wanted %q", tc.req, got, tc.res)
+			got, gErr := s.ListAuthMethods(context.Background(), &pbs.ListAuthMethodsRequest{})
+			assert.Equal(tc.errCode, status.Code(gErr), "ListAuthMethods() for scope %q got error %v, wanted %v", tc.scopeId, gErr, tc.errCode)
+			assert.Empty(cmp.Diff(got, tc.res, protocmp.Transform()), "ListAuthMethods() for scope %q got response %q, wanted %q", tc.scopeId, got, tc.res)
 		})
 	}
 }
@@ -188,8 +189,7 @@ func TestDelete(t *testing.T) {
 		{
 			name: "Delete an Existing AuthMethod",
 			req: &pbs.DeleteAuthMethodRequest{
-				OrgId: am.GetScopeId(),
-				Id:    am.GetPublicId(),
+				Id: am.GetPublicId(),
 			},
 			res: &pbs.DeleteAuthMethodResponse{
 				Existed: true,
@@ -199,33 +199,12 @@ func TestDelete(t *testing.T) {
 		{
 			name: "Delete bad auth_method id",
 			req: &pbs.DeleteAuthMethodRequest{
-				OrgId: am.GetScopeId(),
-				Id:    iam.AuthMethodPrefix + "_doesntexis",
+				Id: password.AuthMethodPrefix + "_doesntexis",
 			},
 			res: &pbs.DeleteAuthMethodResponse{
 				Existed: false,
 			},
 			errCode: codes.OK,
-		},
-		{
-			name: "Delete bad org id",
-			req: &pbs.DeleteAuthMethodRequest{
-				OrgId: "o_doesntexis",
-				Id:    am.GetPublicId(),
-			},
-			res: &pbs.DeleteAuthMethodResponse{
-				Existed: false,
-			},
-			errCode: codes.OK,
-		},
-		{
-			name: "Bad org formatting",
-			req: &pbs.DeleteAuthMethodRequest{
-				OrgId: "bad_format",
-				Id:    am.GetPublicId(),
-			},
-			res:     nil,
-			errCode: codes.InvalidArgument,
 		},
 		{
 			name: "Bad AuthMethod Id formatting",
