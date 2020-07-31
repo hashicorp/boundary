@@ -49,7 +49,7 @@ func TestAuthMethods(t *testing.T, conn *gorm.DB, scopeId string, count int) []*
 	return auts
 }
 
-// TestAccounts creates count number of password auth methods to the provided DB
+// TestAccounts creates count number of password account to the provided DB
 // with the provided scope and auth method id.  The auth method must have been created previously.
 // If any errors are encountered during the creation of the auth methods, the test will fail.
 func TestAccounts(t *testing.T, conn *gorm.DB, authMethodId string, count int) []*Account {
