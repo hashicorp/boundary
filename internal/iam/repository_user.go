@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/hashicorp/watchtower/internal/db"
+	dbcommon "github.com/hashicorp/watchtower/internal/db/common"
 	"github.com/hashicorp/watchtower/internal/oplog"
 	"github.com/hashicorp/watchtower/internal/types/scope"
 )
@@ -56,7 +57,7 @@ func (r *Repository) UpdateUser(ctx context.Context, user *User, fieldMaskPaths 
 		}
 	}
 	var dbMask, nullFields []string
-	dbMask, nullFields = buildUpdatePaths(
+	dbMask, nullFields = dbcommon.BuildUpdatePaths(
 		map[string]interface{}{
 			"name":        user.Name,
 			"description": user.Description,

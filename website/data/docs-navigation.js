@@ -7,29 +7,31 @@
 //   serve as the category title in the sidebar
 
 export default [
-  'security-model',
   {
     category: 'architecture',
-    content: ['terminology', 'domain-model', 'reference-deployment'],
-  },
-  {
-    category: 'domain-model',
     content: [
-      'actions',
-      'auth-methods',
-      'grants',
-      'groups',
-      'hosts',
-      'host-catalogs',
-      'host-sets',
-      'organization',
-      'principals',
-      'projects',
-      'resources',
-      'scopes',
-      'targets',
-      'roles',
-      'users',
+      'security-model',
+      'reference-architecture',
+      {
+        category: 'concepts',
+        content: [
+          'actions',
+          'auth-methods',
+          'grants',
+          'groups',
+          'hosts',
+          'host-catalogs',
+          'host-sets',
+          'organization',
+          'principals',
+          'projects',
+          'resources',
+          'scopes',
+          'targets',
+          'roles',
+          'users',
+        ],
+      },
     ],
   },
   {
