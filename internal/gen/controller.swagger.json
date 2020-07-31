@@ -1676,7 +1676,7 @@
       "properties": {
         "id": {
           "type": "string",
-          "description": "The ID of the Project\nOutput only.",
+          "description": "The ID of the Account\nOutput only.",
           "readOnly": true
         },
         "scope": {
