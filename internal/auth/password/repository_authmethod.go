@@ -96,7 +96,7 @@ func (r *Repository) LookupAuthMethod(ctx context.Context, withPublicId string, 
 	return &a, nil
 }
 
-// ListAuthMethods in an auth method and supports WithLimit option.
+// ListAuthMethods returns a slice of AuthMethods for the scopeId. WithLimit is the only option supported.
 func (r *Repository) ListAuthMethods(ctx context.Context, withScopeId string, opt ...Option) ([]*AuthMethod, error) {
 	if withScopeId == "" {
 		return nil, fmt.Errorf("list: password auth method: missing scope id %w", db.ErrInvalidParameter)
