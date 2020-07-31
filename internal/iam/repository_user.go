@@ -253,37 +253,39 @@ func (r *Repository) AssociateUserWithAccount(ctx context.Context, userPublicId,
 		return nil, nil, fmt.Errorf("associate user with account: missing auth account id %w", db.ErrInvalidParameter)
 	}
 
-	var updatedAcct *AuthAccount
 	user := allocUser()
 	user.PublicId = userPublicId
 
+	err := r.reader.LookupById(ctx, &user)
+	if err != nil {
+		return nil, nil, fmt.Errorf("associate user with account: unable to lookup user %s: %w", userPublicId, err)
+	}
+
+	acct := allocAuthAccount()
+	acct.PublicId = withAuthAccountId
+	err = r.reader.LookupByPublicId(context.Background(), &acct)
+	if err != nil {
+		return nil, nil, fmt.Errorf("associate user with account: unable to lookup auth account %s: %w", withAuthAccountId, err)
+	}
+	// first, let's handle the case where the account is already
+	// associated with the user, so we're done!
+	if acct.IamUserId == userPublicId {
+		return &user, &acct, nil
+	}
+
+	if acct.IamUserId != "" && acct.IamUserId != userPublicId {
+		return nil, nil, fmt.Errorf("associate user with account: %s account is already associated with a user: %w", withAuthAccountId, db.ErrInvalidParameter)
+	}
+
+	var updatedAcct *AuthAccount
+
 	// validate, associated the user with the auth account, and then read the
 	// user back in the same tx for consistency.
-	_, err := r.writer.DoTx(
+	_, err = r.writer.DoTx(
 		ctx,
 		db.StdRetryCnt,
 		db.ExpBackoff{},
 		func(txReader db.Reader, w db.Writer) error {
-			err := r.reader.LookupById(ctx, &user)
-			if err != nil {
-				return fmt.Errorf("unable to lookup user %s: %w", userPublicId, err)
-			}
-
-			acct := allocAuthAccount()
-			acct.PublicId = withAuthAccountId
-			err = r.reader.LookupByPublicId(context.Background(), &acct)
-			if err != nil {
-				return fmt.Errorf("unable to lookup auth account %s: %w", withAuthAccountId, err)
-			}
-			// first, let's handle the case where the account is already
-			// associated with the user, so we're done!
-			if acct.IamUserId == userPublicId {
-				updatedAcct = acct.Clone().(*AuthAccount)
-				return nil
-			}
-			if acct.IamUserId != "" && acct.IamUserId != userPublicId {
-				return fmt.Errorf("%s account is already associated with a user: %w", withAuthAccountId, db.ErrInvalidParameter)
-			}
 
 			metadata := oplog.Metadata{
 				"resource-public-id": []string{withAuthAccountId},
@@ -322,38 +324,38 @@ func (r *Repository) DissociateUserWithAccount(ctx context.Context, userPublicId
 		return nil, nil, fmt.Errorf("dissociate user with account: missing auth account id %w", db.ErrInvalidParameter)
 	}
 
-	var updatedAcct *AuthAccount
 	user := allocUser()
 	user.PublicId = userPublicId
+	err := r.reader.LookupById(ctx, &user)
+	if err != nil {
+		return nil, nil, fmt.Errorf("dissociate user with account: unable to lookup user %s: %w", userPublicId, err)
+	}
+
+	acct := allocAuthAccount()
+	acct.PublicId = withAuthAccountId
+	err = r.reader.LookupByPublicId(context.Background(), &acct)
+	if err != nil {
+		return nil, nil, fmt.Errorf("dissociate user with account: unable to lookup auth account %s: %w", withAuthAccountId, err)
+	}
+	// first, let's handle the case where the account is not associated
+	// with any user, so we're done!
+	if acct.IamUserId == "" {
+		return &user, &acct, nil
+	}
+	// before proceeding with an update, is the account associated with the different user?
+	if acct.IamUserId != userPublicId {
+		return nil, nil, fmt.Errorf("dissociate user with account: %s account is not associated with a user: %w", withAuthAccountId, db.ErrInvalidParameter)
+	}
+
+	var updatedAcct *AuthAccount
 
 	// validate, dissociate the user with the auth account and then read the user back in
 	// the same tx for consistency.
-	_, err := r.writer.DoTx(
+	_, err = r.writer.DoTx(
 		ctx,
 		db.StdRetryCnt,
 		db.ExpBackoff{},
 		func(txReader db.Reader, w db.Writer) error {
-			err := r.reader.LookupById(ctx, &user)
-			if err != nil {
-				return fmt.Errorf("dissociate user with account: unable to lookup user %s: %w", userPublicId, err)
-			}
-
-			acct := allocAuthAccount()
-			acct.PublicId = withAuthAccountId
-			err = r.reader.LookupByPublicId(context.Background(), &acct)
-			if err != nil {
-				return fmt.Errorf("dissociate user with account: unable to lookup auth account %s: %w", withAuthAccountId, err)
-			}
-			// first, let's handle the case where the account is not associated
-			// with any user, so we're done!
-			if acct.IamUserId == "" {
-				return nil
-			}
-			// before proceeding with an update, is the account associated with the different user?
-			if acct.IamUserId != userPublicId {
-				return fmt.Errorf("dissociate user with account: %s account is not associated with a user: %w", withAuthAccountId, db.ErrInvalidParameter)
-			}
-
 			metadata := oplog.Metadata{
 				"resource-public-id": []string{withAuthAccountId},
 				"scope-id":           []string{acct.ScopeId},
@@ -365,18 +367,18 @@ func (r *Repository) DissociateUserWithAccount(ctx context.Context, userPublicId
 			// set the user id to null and use WithWhere to ensure that the auth
 			// account is associated with the user (handling race conditions
 			// with other concurrent transactions)
-			updatedRows, err := w.Update(ctx, updatedAcct, nil, []string{"IamUserId"}, db.WithOplog(r.wrapper, metadata), db.WithWhere("iam_user_id", userPublicId))
+			updatedRows, err := w.Update(ctx, updatedAcct, nil, []string{"IamUserId"}, db.WithOplog(r.wrapper, metadata), db.WithWhere("iam_user_id = ?", userPublicId))
 			if err != nil {
 				return err
 			}
 			if updatedRows != 1 {
-				return fmt.Errorf("dissociate user with account: auth account update affected %d rows", updatedRows)
+				return fmt.Errorf("auth account update affected %d rows", updatedRows)
 			}
 			return nil
 		},
 	)
 	if err != nil {
-		return nil, nil, fmt.Errorf("dissociate user with account: unable to associate user and account: %w", err)
+		return nil, nil, fmt.Errorf("dissociate user with account: %w", err)
 	}
 	return &user, updatedAcct, nil
 }
