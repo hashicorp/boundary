@@ -160,7 +160,7 @@ func (r *Repository) UpdateAuthMethod(ctx context.Context, authMethod *AuthMetho
 		return nil, db.NoRowsAffected, fmt.Errorf("update: password auth method: missing authMethod: %w", db.ErrNilParameter)
 	}
 	if authMethod.PublicId == "" {
-		return nil, db.NoRowsAffected, fmt.Errorf("update: password auth method: missing authMethod public id %w", db.ErrInvalidParameter)
+		return nil, db.NoRowsAffected, fmt.Errorf("update: password auth method: missing authMethod public id: %w", db.ErrInvalidParameter)
 	}
 	for _, f := range fieldMaskPaths {
 		switch {
