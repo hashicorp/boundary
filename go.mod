@@ -8,6 +8,7 @@ require (
 	github.com/alecthomas/repr v0.0.0-20200325044227-4184120f674c // indirect
 	github.com/armon/go-metrics v0.3.3
 	github.com/bufbuild/buf v0.20.4
+	github.com/docker/docker v1.4.2-0.20200319182547-c7ad2b866182
 	github.com/fatih/color v1.9.0
 	github.com/fatih/structs v1.1.0
 	github.com/favadi/protoc-go-inject-tag v1.1.0
