@@ -1,4 +1,4 @@
-package auth_test
+package authmethods_test
 
 import (
 	"context"
@@ -8,26 +8,28 @@ import (
 
 	"github.com/golang/protobuf/ptypes"
 	"github.com/google/go-cmp/cmp"
+	"github.com/hashicorp/watchtower/internal/auth"
 	"github.com/hashicorp/watchtower/internal/auth/password"
 	"github.com/hashicorp/watchtower/internal/db"
 	pb "github.com/hashicorp/watchtower/internal/gen/controller/api/resources/auth"
+	"github.com/hashicorp/watchtower/internal/gen/controller/api/resources/scopes"
 	pbs "github.com/hashicorp/watchtower/internal/gen/controller/api/services"
 	"github.com/hashicorp/watchtower/internal/iam"
-	"github.com/hashicorp/watchtower/internal/servers/controller/handlers/auth"
+	"github.com/hashicorp/watchtower/internal/servers/controller/handlers/authmethods"
 	"github.com/hashicorp/watchtower/internal/types/scope"
 	"google.golang.org/genproto/protobuf/field_mask"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/testing/protocmp"
+	"google.golang.org/protobuf/types/known/structpb"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
-func createDefaultAuthMethodAndRepo(t *testing.T) (*password.AuthMethod, func() (*password.Repository, error)) {
-	t.Helper()
+func TestGet(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrap := db.TestWrapper(t)
@@ -36,17 +38,7 @@ func createDefaultAuthMethodAndRepo(t *testing.T) (*password.AuthMethod, func() 
 	}
 
 	o, _ := iam.TestScopes(t, conn)
-	am := password.TestAuthMethod(t, conn, o.GetPublicId(), iam.WithDescription("default"), iam.WithName("default"))
-	return am, repoFn
-}
-
-func TestGet(t *testing.T) {
-	assert := assert.New(t)
-	require := require.New(t)
-	am, repo := createDefaultAuthMethodAndRepo(t)
-	toMerge := &pbs.GetAuthMethodRequest{
-		Id: am.GetPublicId(),
-	}
+	am := password.TestAuthMethods(t, conn, o.GetPublicId(), 1)[0]
 
 	wantU := &pb.AuthMethod{
 		Id:          am.GetPublicId(),
@@ -58,30 +50,35 @@ func TestGet(t *testing.T) {
 
 	cases := []struct {
 		name    string
+		scopeId string
 		req     *pbs.GetAuthMethodRequest
 		res     *pbs.GetAuthMethodResponse
 		errCode codes.Code
 	}{
 		{
 			name:    "Get an Existing AuthMethod",
+			scopeId: o.GetPublicId(),
 			req:     &pbs.GetAuthMethodRequest{Id: am.GetPublicId()},
 			res:     &pbs.GetAuthMethodResponse{Item: wantU},
 			errCode: codes.OK,
 		},
 		{
 			name:    "Get a non existant AuthMethod",
+			scopeId: o.GetPublicId(),
 			req:     &pbs.GetAuthMethodRequest{Id: password.AuthMethodPrefix + "_DoesntExis"},
 			res:     nil,
 			errCode: codes.NotFound,
 		},
 		{
 			name:    "Wrong id prefix",
+			scopeId: o.GetPublicId(),
 			req:     &pbs.GetAuthMethodRequest{Id: "j_1234567890"},
 			res:     nil,
 			errCode: codes.InvalidArgument,
 		},
 		{
 			name:    "space in id",
+			scopeId: o.GetPublicId(),
 			req:     &pbs.GetAuthMethodRequest{Id: password.AuthMethodPrefix + "_1 23456789"},
 			res:     nil,
 			errCode: codes.InvalidArgument,
@@ -89,43 +86,51 @@ func TestGet(t *testing.T) {
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			req := proto.Clone(toMerge).(*pbs.GetAuthMethodRequest)
-			proto.Merge(req, tc.req)
+			assert, require := assert.New(t), require.New(t)
 
-			s, err := auth.NewService(repo)
+			s, err := authmethods.NewService(repoFn)
 			require.NoError(err, "Couldn't create new auth_method service.")
 
-			got, gErr := s.GetAuthMethod(context.Background(), req)
-			assert.Equal(tc.errCode, status.Code(gErr), "GetAuthMethod(%+v) got error %v, wanted %v", req, gErr, tc.errCode)
-			assert.True(proto.Equal(got, tc.res), "GetAuthMethod(%q) got response %q, wanted %q", req, got, tc.res)
+			got, gErr := s.GetAuthMethod(auth.DisabledAuthTestContext(auth.WithScopeId(tc.scopeId)), tc.req)
+			assert.Equal(tc.errCode, status.Code(gErr), "GetAuthMethod(%+v) got error %v, wanted %v", tc.req, gErr, tc.errCode)
+			assert.True(proto.Equal(got, tc.res), "GetAuthMethod(%q) got response %q, wanted %q", tc.req, got, tc.res)
 		})
 	}
 }
 
 func TestList(t *testing.T) {
-	assert, require := assert.New(t), require.New(t)
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrap := db.TestWrapper(t)
 	repoFn := func() (*password.Repository, error) {
 		return password.NewRepository(rw, rw, wrap)
 	}
-	repo, err := repoFn()
-	require.NoError(err)
 
 	oNoAuthMethods, _ := iam.TestScopes(t, conn)
 	oWithAuthMethods, _ := iam.TestScopes(t, conn)
+	oWithOtherAuthMethods, _ := iam.TestScopes(t, conn)
 
-	var wantAuthMethods []*pb.AuthMethod
-	for i := 0; i < 10; i++ {
-		newU, err := password.NewAuthMethod(oWithAuthMethods.GetPublicId())
-		require.NoError(err)
-		am, err := repo.CreateAuthMethod(context.Background(), newU)
-		require.NoError(err)
-		wantAuthMethods = append(wantAuthMethods, &pb.AuthMethod{
+	var wantSomeAuthMethods []*pb.AuthMethod
+	for _, am := range password.TestAuthMethods(t, conn, oWithAuthMethods.GetPublicId(), 3) {
+		wantSomeAuthMethods = append(wantSomeAuthMethods, &pb.AuthMethod{
 			Id:          am.GetPublicId(),
 			CreatedTime: am.GetCreateTime().GetTimestamp(),
 			UpdatedTime: am.GetUpdateTime().GetTimestamp(),
+			Scope:       &scopes.ScopeInfo{Id: oWithAuthMethods.GetPublicId(), Type: scope.Org.String()},
+			Type:        "password",
+			Attributes:  &structpb.Struct{Fields: map[string]*structpb.Value{"MinUserNameLength": structpb.NewNumberValue(8)}},
+		})
+	}
+
+	var wantOtherAuthMethods []*pb.AuthMethod
+	for _, aa := range password.TestAccounts(t, conn, oWithOtherAuthMethods.GetPublicId(), 3) {
+		wantOtherAuthMethods = append(wantOtherAuthMethods, &pb.AuthMethod{
+			Id:          aa.GetPublicId(),
+			CreatedTime: aa.GetCreateTime().GetTimestamp(),
+			UpdatedTime: aa.GetUpdateTime().GetTimestamp(),
+			Scope:       &scopes.ScopeInfo{Id: oWithOtherAuthMethods.GetPublicId(), Type: scope.Org.String()},
+			Type:        "password",
+			Attributes:  &structpb.Struct{Fields: map[string]*structpb.Value{"MinUserNameLength": structpb.NewNumberValue(8)}},
 		})
 	}
 
@@ -136,37 +141,38 @@ func TestList(t *testing.T) {
 		errCode codes.Code
 	}{
 		{
-			name:    "List Many AuthMethods",
+			name:    "List Some Accounts",
 			scopeId: oWithAuthMethods.GetPublicId(),
-			res:     &pbs.ListAuthMethodsResponse{Items: wantAuthMethods},
+			res:     &pbs.ListAuthMethodsResponse{Items: wantSomeAuthMethods},
 			errCode: codes.OK,
 		},
 		{
-			name:    "List No AuthMethods",
+			name:    "List Other Accounts",
+			scopeId: oWithOtherAuthMethods.GetPublicId(),
+			res:     &pbs.ListAuthMethodsResponse{Items: wantOtherAuthMethods},
+			errCode: codes.OK,
+		},
+		{
+			name:    "List No Accounts",
 			scopeId: oNoAuthMethods.GetPublicId(),
 			res:     &pbs.ListAuthMethodsResponse{},
 			errCode: codes.OK,
 		},
+		// TODO: When an auth method doesn't exist, we should return a 404 instead of an empty list.
 		{
-			name:    "Invalid Org Id",
-			scopeId: password.AuthMethodPrefix + "_this is invalid",
-			res:     nil,
-			errCode: codes.InvalidArgument,
-		},
-		// TODO: When an org doesn't exist, we should return a 404 instead of an empty list.
-		{
-			name:    "Unfound Org",
-			scopeId: scope.Org.Prefix() + "_DoesntExis",
+			name:    "Unfound Auth Method",
+			scopeId: password.AuthMethodPrefix + "_DoesntExis",
 			res:     &pbs.ListAuthMethodsResponse{},
 			errCode: codes.OK,
 		},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			s, err := auth.NewService(repoFn)
+			assert, require := assert.New(t), require.New(t)
+			s, err := authmethods.NewService(repoFn)
 			require.NoError(err, "Couldn't create new auth_method service.")
 
-			got, gErr := s.ListAuthMethods(context.Background(), &pbs.ListAuthMethodsRequest{})
+			got, gErr := s.ListAuthMethods(auth.DisabledAuthTestContext(auth.WithScopeId(tc.scopeId)), &pbs.ListAuthMethodsRequest{})
 			assert.Equal(tc.errCode, status.Code(gErr), "ListAuthMethods() for scope %q got error %v, wanted %v", tc.scopeId, gErr, tc.errCode)
 			assert.Empty(cmp.Diff(got, tc.res, protocmp.Transform()), "ListAuthMethods() for scope %q got response %q, wanted %q", tc.scopeId, got, tc.res)
 		})
@@ -174,11 +180,18 @@ func TestList(t *testing.T) {
 }
 
 func TestDelete(t *testing.T) {
-	require := require.New(t)
-	am, repo := createDefaultAuthMethodAndRepo(t)
+	conn, _ := db.TestSetup(t, "postgres")
+	rw := db.New(conn)
+	wrap := db.TestWrapper(t)
+	repoFn := func() (*password.Repository, error) {
+		return password.NewRepository(rw, rw, wrap)
+	}
 
-	s, err := auth.NewService(repo)
-	require.NoError(err, "Error when getting new auth_method service.")
+	o, _ := iam.TestScopes(t, conn)
+	am := password.TestAuthMethods(t, conn, o.GetPublicId(), 1)[0]
+
+	s, err := authmethods.NewService(repoFn)
+	require.NoError(t, err, "Error when getting new auth_method service.")
 
 	cases := []struct {
 		name    string
@@ -209,8 +222,7 @@ func TestDelete(t *testing.T) {
 		{
 			name: "Bad AuthMethod Id formatting",
 			req: &pbs.DeleteAuthMethodRequest{
-				OrgId: am.GetScopeId(),
-				Id:    "bad_format",
+				Id: "bad_format",
 			},
 			res:     nil,
 			errCode: codes.InvalidArgument,
@@ -219,7 +231,7 @@ func TestDelete(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			assert := assert.New(t)
-			got, gErr := s.DeleteAuthMethod(context.Background(), tc.req)
+			got, gErr := s.DeleteAuthMethod(auth.DisabledAuthTestContext(auth.WithScopeId(o.GetPublicId())), tc.req)
 			assert.Equal(tc.errCode, status.Code(gErr), "DeleteAuthMethod(%+v) got error %v, wanted %v", tc.req, gErr, tc.errCode)
 			assert.EqualValuesf(tc.res, got, "DeleteAuthMethod(%q) got response %q, wanted %q", tc.req, got, tc.res)
 		})
@@ -227,32 +239,47 @@ func TestDelete(t *testing.T) {
 }
 
 func TestDelete_twice(t *testing.T) {
-	assert := assert.New(t)
-	require := require.New(t)
-	am, repo := createDefaultAuthMethodAndRepo(t)
-
-	s, err := auth.NewService(repo)
-	require.NoError(err, "Error when getting new auth_method service")
-	req := &pbs.DeleteAuthMethodRequest{
-		OrgId: am.GetScopeId(),
-		Id:    am.GetPublicId(),
+	assert, require := assert.New(t), require.New(t)
+	conn, _ := db.TestSetup(t, "postgres")
+	rw := db.New(conn)
+	wrap := db.TestWrapper(t)
+	repoFn := func() (*password.Repository, error) {
+		return password.NewRepository(rw, rw, wrap)
 	}
-	got, gErr := s.DeleteAuthMethod(context.Background(), req)
+
+	o, _ := iam.TestScopes(t, conn)
+	am := password.TestAuthMethods(t, conn, o.GetPublicId(), 1)[0]
+
+	s, err := authmethods.NewService(repoFn)
+	require.NoError(err, "Error when getting new auth_method service.")
+
+	req := &pbs.DeleteAuthMethodRequest{
+		Id: am.GetPublicId(),
+	}
+	got, gErr := s.DeleteAuthMethod(auth.DisabledAuthTestContext(auth.WithScopeId(o.GetPublicId())), req)
 	assert.NoError(gErr, "First attempt")
 	assert.True(got.GetExisted(), "Expected existed to be true for the first delete.")
-	got, gErr = s.DeleteAuthMethod(context.Background(), req)
+	got, gErr = s.DeleteAuthMethod(auth.DisabledAuthTestContext(auth.WithScopeId(o.GetPublicId())), req)
 	assert.NoError(gErr, "Second attempt")
 	assert.False(got.GetExisted(), "Expected existed to be false for the second delete.")
 }
 
 func TestCreate(t *testing.T) {
-	require := require.New(t)
-	defaultAuthMethod, repo := createDefaultAuthMethodAndRepo(t)
-	defaultCreated, err := ptypes.Timestamp(defaultAuthMethod.GetCreateTime().GetTimestamp())
-	require.NoError(err, "Error converting proto to timestamp.")
-	toMerge := &pbs.CreateAuthMethodRequest{
-		OrgId: defaultAuthMethod.GetScopeId(),
+	conn, _ := db.TestSetup(t, "postgres")
+	rw := db.New(conn)
+	wrap := db.TestWrapper(t)
+	repoFn := func() (*password.Repository, error) {
+		return password.NewRepository(rw, rw, wrap)
 	}
+
+	o, _ := iam.TestScopes(t, conn)
+	defaultAm := password.TestAuthMethods(t, conn, o.GetPublicId(), 1)[0]
+	defaultCreated, err := ptypes.Timestamp(defaultAm.GetCreateTime().GetTimestamp())
+	require.NoError(t, err, "Error converting proto to timestamp.")
+
+	// TODO: Add protos to struct checking for the created auth method.
+	//defaultSt, err := handlers.ProtoToStruct(&pb.PasswordAuthMethodAttributes{MinUserNameLength: 8})
+	//require.NoError(t, err, "Error converting proto to struct.")
 
 	cases := []struct {
 		name    string
@@ -267,7 +294,7 @@ func TestCreate(t *testing.T) {
 				Description: &wrapperspb.StringValue{Value: "desc"},
 			}},
 			res: &pbs.CreateAuthMethodResponse{
-				Uri: fmt.Sprintf("orgs/%s/auth_methods/u_", defaultAuthMethod.GetScopeId()),
+				Uri: fmt.Sprintf("scopes/%s/auth_methods/%s_", o.GetPublicId(), password.AuthMethodPrefix),
 				Item: &pb.AuthMethod{
 					Name:        &wrapperspb.StringValue{Value: "name"},
 					Description: &wrapperspb.StringValue{Value: "desc"},
@@ -278,7 +305,7 @@ func TestCreate(t *testing.T) {
 		{
 			name: "Can't specify Id",
 			req: &pbs.CreateAuthMethodRequest{Item: &pb.AuthMethod{
-				Id: iam.AuthMethodPrefix + "_notallowed",
+				Id: password.AuthMethodPrefix + "_notallowed",
 			}},
 			res:     nil,
 			errCode: codes.InvalidArgument,
@@ -302,18 +329,16 @@ func TestCreate(t *testing.T) {
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			assert := assert.New(t)
-			req := proto.Clone(toMerge).(*pbs.CreateAuthMethodRequest)
-			proto.Merge(req, tc.req)
+			assert, require := assert.New(t), require.New(t)
 
-			s, err := auth.NewService(repo)
+			s, err := authmethods.NewService(repoFn)
 			require.NoError(err, "Error when getting new auth_method service.")
 
-			got, gErr := s.CreateAuthMethod(context.Background(), req)
-			assert.Equal(tc.errCode, status.Code(gErr), "CreateAuthMethod(%+v) got error %v, wanted %v", req, gErr, tc.errCode)
+			got, gErr := s.CreateAuthMethod(auth.DisabledAuthTestContext(auth.WithScopeId(o.GetPublicId())), tc.req)
+			assert.Equal(tc.errCode, status.Code(gErr), "CreateAuthMethod(%+v) got error %v, wanted %v", tc.req, gErr, tc.errCode)
 			if got != nil {
-				assert.True(strings.HasPrefix(got.GetUri(), tc.res.Uri))
-				assert.True(strings.HasPrefix(got.GetItem().GetId(), iam.AuthMethodPrefix+"_"))
+				assert.Contains(got.GetUri(), tc.res.Uri)
+				assert.True(strings.HasPrefix(got.GetItem().GetId(), password.AuthMethodPrefix+"_"))
 				gotCreateTime, err := ptypes.Timestamp(got.GetItem().GetCreatedTime())
 				require.NoError(err, "Error converting proto to timestamp.")
 				gotUpdateTime, err := ptypes.Timestamp(got.GetItem().GetUpdatedTime())
@@ -327,29 +352,36 @@ func TestCreate(t *testing.T) {
 				got.Item.Id, tc.res.Item.Id = "", ""
 				got.Item.CreatedTime, got.Item.UpdatedTime, tc.res.Item.CreatedTime, tc.res.Item.UpdatedTime = nil, nil, nil, nil
 			}
-			assert.True(proto.Equal(got, tc.res), "CreateAuthMethod(%q) got response %q, wanted %q", req, got, tc.res)
+			assert.Empty(cmp.Diff(got, tc.res, protocmp.Transform()), "CreateAuthMethod(%q) got response %q, wanted %q", tc.req, got, tc.res)
 		})
 	}
 }
 
 func TestUpdate(t *testing.T) {
-	require := require.New(t)
-	am, repoFn := createDefaultAuthMethodAndRepo(t)
-	tested, err := auth.NewService(repoFn)
-	require.NoError(err, "Error when getting new auth_method service.")
+	conn, _ := db.TestSetup(t, "postgres")
+	rw := db.New(conn)
+	wrap := db.TestWrapper(t)
+	repoFn := func() (*password.Repository, error) {
+		return password.NewRepository(rw, rw, wrap)
+	}
+
+	o, _ := iam.TestScopes(t, conn)
+	am := password.TestAuthMethods(t, conn, o.GetPublicId(), 1)[0]
+
+	tested, err := authmethods.NewService(repoFn)
+	require.NoError(t, err, "Error when getting new auth_method service.")
 
 	resetAuthMethod := func() {
 		repo, err := repoFn()
-		require.NoError(err, "Couldn't get a new repo")
+		require.NoError(t, err, "Couldn't get a new repo")
 		am, _, err = repo.UpdateAuthMethod(context.Background(), am, []string{"Name", "Description"})
-		require.NoError(err, "Failed to reset the auth_method")
+		require.NoError(t, err, "Failed to reset the auth_method")
 	}
 
 	created, err := ptypes.Timestamp(am.GetCreateTime().GetTimestamp())
-	require.NoError(err, "Error converting proto to timestamp")
+	require.NoError(t, err, "Error converting proto to timestamp")
 	toMerge := &pbs.UpdateAuthMethodRequest{
-		OrgId: am.GetScopeId(),
-		Id:    am.GetPublicId(),
+		Id: am.GetPublicId(),
 	}
 
 	cases := []struct {
@@ -498,7 +530,7 @@ func TestUpdate(t *testing.T) {
 		{
 			name: "Update a Non Existing AuthMethod",
 			req: &pbs.UpdateAuthMethodRequest{
-				Id: iam.AuthMethodPrefix + "_DoesntExis",
+				Id: password.AuthMethodPrefix + "_DoesntExis",
 				UpdateMask: &field_mask.FieldMask{
 					Paths: []string{"description"},
 				},
@@ -517,7 +549,7 @@ func TestUpdate(t *testing.T) {
 					Paths: []string{"id"},
 				},
 				Item: &pb.AuthMethod{
-					Id:          iam.AuthMethodPrefix + "_somethinge",
+					Id:          password.AuthMethodPrefix + "_somethinge",
 					Name:        &wrapperspb.StringValue{Value: "new"},
 					Description: &wrapperspb.StringValue{Value: "new desc"},
 				}},
@@ -554,11 +586,11 @@ func TestUpdate(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			defer resetAuthMethod()
-			assert := assert.New(t)
+			assert, require := assert.New(t), require.New(t)
 			req := proto.Clone(toMerge).(*pbs.UpdateAuthMethodRequest)
 			proto.Merge(req, tc.req)
 
-			got, gErr := tested.UpdateAuthMethod(context.Background(), req)
+			got, gErr := tested.UpdateAuthMethod(auth.DisabledAuthTestContext(auth.WithScopeId(o.GetPublicId())), req)
 			assert.Equal(tc.errCode, status.Code(gErr), "UpdateAuthMethod(%+v) got error %v, wanted %v", req, gErr, tc.errCode)
 
 			if got != nil {

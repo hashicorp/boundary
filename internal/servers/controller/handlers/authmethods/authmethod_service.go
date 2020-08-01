@@ -1,4 +1,4 @@
-package auth
+package authmethods
 
 import (
 	"context"

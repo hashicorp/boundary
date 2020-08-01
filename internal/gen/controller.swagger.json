@@ -1649,6 +1649,11 @@
           "description": "The ID of the AuthMethod\nOutput only.",
           "readOnly": true
         },
+        "scope": {
+          "$ref": "#/definitions/controller.api.resources.scopes.v1.ScopeInfo",
+          "description": "Scope information for this resource\nOutput only.",
+          "readOnly": true
+        },
         "name": {
           "type": "string",
           "title": "Optional name for identification purposes"
@@ -1672,6 +1677,10 @@
         "type": {
           "type": "string",
           "description": "The auth method type.  This can be \"password\" or \"oidc\"."
+        },
+        "attributes": {
+          "type": "object",
+          "description": "The attributes that are applied for the specific Auth Method type."
         }
       },
       "title": "AuthMethod contains all fields related to a AuthMethod resource"
