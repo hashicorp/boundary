@@ -14,7 +14,6 @@ export GEN_BASEPATH := $(shell pwd)
 
 api:
 	$(MAKE) --environment-overrides -C api/internal/genapi api
-	$(MAKE) --environment-overrides -C api2/internal/genapi api
 
 tools:
 	go generate -tags tools tools/tools.go
