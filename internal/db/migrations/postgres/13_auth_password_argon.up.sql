@@ -29,6 +29,7 @@ begin;
       on update cascade
       deferrable initially deferred
   );
+
   create or replace function
     read_only_auth_password_argon2_conf()
     returns trigger
@@ -49,19 +50,76 @@ begin;
   before insert on auth_password_argon2_conf
     for each row execute procedure insert_auth_password_conf_subtype();
 
+  create table auth_password_argon2_cred (
+    private_id wt_private_id primary key
+      references auth_password_credential (private_id)
+      on delete cascade
+      on update cascade,
+    password_account_id wt_public_id not null,
+    password_conf_id wt_private_id not null,
+    -- NOTE(mgaffney): The password_method_id type is not wt_public_id because
+    -- the domain check is executed before the insert trigger which retrieves
+    -- the password_method_id causing an insert to fail.
+    password_method_id text not null,
+    create_time wt_timestamp,
+    update_time wt_timestamp,
+    salt bytea not null -- cannot be changed unless derived_key is changed too
+      check(length(salt) > 0),
+    derived_key bytea not null
+      check(length(derived_key) > 0),
+    foreign key (password_method_id, password_conf_id)
+      references auth_password_argon2_conf (password_method_id, private_id)
+      on delete cascade
+      on update cascade,
+    foreign key (password_method_id, password_conf_id, password_account_id)
+      references auth_password_credential (password_method_id, password_conf_id, password_account_id)
+      on delete cascade
+      on update cascade
+      deferrable initially deferred
+  );
+
+  create trigger
+    insert_auth_password_credential_subtype
+  before insert on auth_password_argon2_cred
+    for each row execute procedure insert_auth_password_credential_subtype();
+
+  create trigger
+    update_auth_password_credential_subtype
+  after update on auth_password_argon2_cred
+    for each row execute procedure update_auth_password_credential_subtype();
+
   --
   -- triggers for time columns
   --
+
   create trigger
-    immutable_create_time
+    immutable_columns
   before
   update on auth_password_argon2_conf
-    for each row execute procedure immutable_create_time_func();
+    for each row execute procedure immutable_columns('create_time');
 
   create trigger
     default_create_time_column
   before
   insert on auth_password_argon2_conf
+    for each row execute procedure default_create_time();
+
+  create trigger
+    update_time_column
+  before
+  update on auth_password_argon2_cred
+    for each row execute procedure update_time_column();
+
+  create trigger
+    immutable_columns
+  before
+  update on auth_password_argon2_cred
+    for each row execute procedure immutable_columns('create_time');
+
+  create trigger
+    default_create_time_column
+  before
+  insert on auth_password_argon2_cred
     for each row execute procedure default_create_time();
 
   -- The tickets for oplog are the subtypes not the base types because no updates

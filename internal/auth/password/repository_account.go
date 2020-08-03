@@ -15,6 +15,8 @@ import (
 // contain a valid AuthMethodId. a must not contain a PublicId. The PublicId is
 // generated and assigned by this method.
 //
+// WithPassword is the only valid option. All other options are ignored.
+//
 // Both a.Name and a.Description are optional. If a.Name is set, it must be
 // unique within a.AuthMethodId.
 func (r *Repository) CreateAccount(ctx context.Context, a *Account, opt ...Option) (*Account, error) {
@@ -34,6 +36,15 @@ func (r *Repository) CreateAccount(ctx context.Context, a *Account, opt ...Optio
 		return nil, fmt.Errorf("create: password account: invalid user name: %w", db.ErrInvalidParameter)
 	}
 
+	cc, err := r.currentConfig(ctx, a.AuthMethodId)
+	if err != nil {
+		return nil, fmt.Errorf("create: password account: retrieve current configuration: %w", err)
+	}
+
+	if cc.MinUserNameLength > len(a.UserName) {
+		return nil, fmt.Errorf("create: password account: user name %q: %w", a.UserName, ErrTooShort)
+	}
+
 	a = a.clone()
 	id, err := newAccountId()
 	if err != nil {
@@ -41,6 +52,19 @@ func (r *Repository) CreateAccount(ctx context.Context, a *Account, opt ...Optio
 	}
 	a.PublicId = id
 
+	opts := getOpts(opt...)
+
+	var cred *Argon2Credential
+	if opts.withPassword {
+		if cc.MinPasswordLength > len(opts.password) {
+			return nil, fmt.Errorf("create: password account: password: %w", ErrTooShort)
+		}
+		if cred, err = newArgon2Credential(id, opts.password, cc.argon2()); err != nil {
+			return nil, fmt.Errorf("create: password account: %w", err)
+		}
+	}
+
+	var newCred *Argon2Credential
 	var newAccount *Account
 	_, err = r.writer.DoTx(ctx, db.StdRetryCnt, db.ExpBackoff{},
 		func(_ db.Reader, w db.Writer) error {
@@ -49,6 +73,15 @@ func (r *Repository) CreateAccount(ctx context.Context, a *Account, opt ...Optio
 				return err
 			}
 
+			if cred != nil {
+				newCred = cred.clone()
+				if err := newCred.encrypt(ctx, r.wrapper); err != nil {
+					return err
+				}
+				if err := w.Create(ctx, newCred, db.WithOplog(r.wrapper, cred.oplog(oplog.OpType_OP_TYPE_CREATE))); err != nil {
+					return err
+				}
+			}
 			return nil
 		},
 	)

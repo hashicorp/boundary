@@ -14,7 +14,7 @@ import (
 // applies the templates below to the contents of the files, building up a
 // migrations map for the dialect
 func generate(dialect string) {
-	baseDir := os.Getenv("GEN_BASEPATH") + fmt.Sprint("/internal/db/migrations")
+	baseDir := os.Getenv("GEN_BASEPATH") + "/internal/db/migrations"
 	dir, err := os.Open(fmt.Sprintf("%s/%s", baseDir, dialect))
 	if err != nil {
 		fmt.Printf("error opening dir with dialect %s: %v\n", dialect, err)
@@ -39,21 +39,27 @@ func generate(dialect string) {
 			fmt.Printf("error opening file %s with dialect %s: %v", name, dialect, err)
 			os.Exit(1)
 		}
-		migrationsValueTemplate.Execute(valuesBuf, struct {
+		if err := migrationsValueTemplate.Execute(valuesBuf, struct {
 			Name     string
 			Contents string
 		}{
 			Name:     name,
 			Contents: string(contents),
-		})
+		}); err != nil {
+			fmt.Printf("error executing migrations value template for file %s: %s", name, err)
+			os.Exit(1)
+		}
 	}
-	migrationsTemplate.Execute(outBuf, struct {
+	if err := migrationsTemplate.Execute(outBuf, struct {
 		Type   string
 		Values string
 	}{
 		Type:   dialect,
 		Values: valuesBuf.String(),
-	})
+	}); err != nil {
+		fmt.Printf("error executing migrations value template for dialect %s: %s", dialect, err)
+		os.Exit(1)
+	}
 
 	outFile := fmt.Sprintf("%s/%s.gen.go", baseDir, dialect)
 	if err := ioutil.WriteFile(outFile, outBuf.Bytes(), 0644); err != nil {

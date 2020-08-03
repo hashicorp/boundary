@@ -6,6 +6,7 @@ import (
 
 	"github.com/hashicorp/watchtower/internal/auth/password/store"
 	"github.com/hashicorp/watchtower/internal/db"
+	"github.com/hashicorp/watchtower/internal/iam"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -14,7 +15,8 @@ func TestAccount_New(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 
 	w := db.New(conn)
-	auts := testAuthMethods(t, conn, 1)
+	o, _ := iam.TestScopes(t, conn)
+	auts := TestAuthMethods(t, conn, o.GetPublicId(), 1)
 	aut := auts[0]
 
 	type args struct {

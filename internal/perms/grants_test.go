@@ -160,10 +160,10 @@ func Test_MarshallingAndCloning(t *testing.T) {
 				scope: Scope{
 					Type: scope.Project,
 				},
-				typ: resource.StaticGroup,
+				typ: resource.Group,
 			},
-			jsonOutput:      `{"id":"baz","type":"static-group"}`,
-			canonicalString: `id=baz;type=static-group`,
+			jsonOutput:      `{"id":"baz","type":"group"}`,
+			canonicalString: `id=baz;type=group`,
 		},
 		{
 			name: "everything",
@@ -172,15 +172,15 @@ func Test_MarshallingAndCloning(t *testing.T) {
 				scope: Scope{
 					Type: scope.Project,
 				},
-				typ: resource.StaticGroup,
+				typ: resource.Group,
 				actions: map[action.Type]bool{
 					action.Create: true,
 					action.Read:   true,
 				},
 				actionsBeingParsed: []string{"create", "read"},
 			},
-			jsonOutput:      `{"actions":["create","read"],"id":"baz","type":"static-group"}`,
-			canonicalString: `id=baz;type=static-group;actions=create,read`,
+			jsonOutput:      `{"actions":["create","read"],"id":"baz","type":"group"}`,
+			canonicalString: `id=baz;type=group;actions=create,read`,
 		},
 	}
 
