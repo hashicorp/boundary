@@ -68,7 +68,7 @@ func fillTemplates() {
 			t.Execute(outBuf, input)
 		}
 
-		outFile, err := filepath.Abs(in.outFile)
+		outFile, err := filepath.Abs(fmt.Sprintf("%s/%s", os.Getenv("GEN_BASEPATH"), in.outFile))
 		if err != nil {
 			fmt.Printf("error opening file %q: %v\n", in.outFile, err)
 			os.Exit(1)

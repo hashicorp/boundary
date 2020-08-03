@@ -2,81 +2,145 @@
 package groups
 
 import (
-	"encoding/json"
-	"strings"
+	"context"
+	"fmt"
 	"time"
 
-	"github.com/fatih/structs"
-
 	"github.com/hashicorp/watchtower/api"
-	"github.com/hashicorp/watchtower/api/info"
-	"github.com/hashicorp/watchtower/api/internal/strutil"
+	"github.com/hashicorp/watchtower/api/scopes"
 )
 
 type Group struct {
-	Client *api.Client `json:"-"`
-
-	defaultFields []string
-
-	// The ID of the Project
-	// Output only.
-	Id string `json:"id,omitempty"`
-	// Scope information for this resource
-	// Output only.
-	Scope info.Scope `json:"scope,omitempty"`
-	// Optional name for identification purposes
-	Name *string `json:"name,omitempty"`
-	// Optional user-set descripton for identification purposes
-	Description *string `json:"description,omitempty"`
-	// The time this resource was created
-	// Output only.
-	CreatedTime time.Time `json:"created_time,omitempty"`
-	// The time this resource was last updated.
-	// Output only.
-	UpdatedTime time.Time `json:"updated_time,omitempty"`
-	// Whether the resource is disabled
-	Disabled *bool `json:"disabled,omitempty"`
-	// The version can be used in subsiquent write requests to ensure this resource
-	// has not changed and to fail the write if it has.
-	// Output only.
-	Version uint32 `json:"version,omitempty"`
-	// Contains the list of member ids in this group.
-	// Output only.
-	MemberIds []string `json:"member_ids,omitempty"`
-	// The members of this group.
-	// Output only.
-	Members []*Member `json:"members,omitempty"`
+	Id          string            `json:"id,omitempty"`
+	Scope       *scopes.ScopeInfo `json:"scope,omitempty"`
+	Name        string            `json:"name,omitempty"`
+	Description string            `json:"description,omitempty"`
+	CreatedTime *time.Time        `json:"created_time,omitempty"`
+	UpdatedTime *time.Time        `json:"updated_time,omitempty"`
+	Disabled    bool              `json:"disabled,omitempty"`
+	Version     uint32            `json:"version,omitempty"`
+	MemberIds   string            `json:"member_ids,omitempty"`
+	Members     *Member           `json:"members,omitempty"`
 }
 
-func (s *Group) SetDefault(key string) {
-	lowerKey := strings.ToLower(key)
-	validMap := map[string]string{"createdtime": "created_time", "description": "description", "disabled": "disabled", "id": "id", "memberids": "member_ids", "members": "members", "name": "name", "scope": "scope", "updatedtime": "updated_time", "version": "version"}
-	for k, v := range validMap {
-		if k == lowerKey || v == lowerKey {
-			s.defaultFields = strutil.AppendIfMissing(s.defaultFields, v)
-			return
-		}
-	}
+type GroupClient struct {
+	client *api.Client
 }
 
-func (s *Group) UnsetDefault(key string) {
-	lowerKey := strings.ToLower(key)
-	validMap := map[string]string{"createdtime": "created_time", "description": "description", "disabled": "disabled", "id": "id", "memberids": "member_ids", "members": "members", "name": "name", "scope": "scope", "updatedtime": "updated_time", "version": "version"}
-	for k, v := range validMap {
-		if k == lowerKey || v == lowerKey {
-			s.defaultFields = strutil.StrListDelete(s.defaultFields, v)
-			return
-		}
-	}
+func New(c *api.Client) *GroupClient {
+	return &GroupClient{client: c}
 }
 
-func (s Group) MarshalJSON() ([]byte, error) {
-	m := structs.Map(s)
-	if m == nil {
-		m = make(map[string]interface{})
+func (s *GroupClient) Read(ctx context.Context, groupId string, opts ...api.Option) (*Group, *api.Error, error) {
+
+	if groupId == "" {
+		return nil, nil, fmt.Errorf("empty groupId value passed into List request")
 	}
-	for _, k := range s.defaultFields {
-		m[k] = nil
+
+	if s.client == nil {
+		return nil, nil, fmt.Errorf("nil client")
 	}
-	return json.Marshal(m)
+
+	req, err := s.client.NewRequest(ctx, "GET", fmt.Sprintf("groups/%s", groupId), nil, opts...)
+	if err != nil {
+		return nil, nil, fmt.Errorf("error creating Read request: %w", err)
+	}
+
+	resp, err := s.client.Do(req)
+	if err != nil {
+		return nil, nil, fmt.Errorf("error performing client request during Read call: %w", err)
+	}
+
+	target := new(Group)
+	apiErr, err := resp.Decode(target)
+	if err != nil {
+		return nil, nil, fmt.Errorf("error decoding Read response: %w", err)
+	}
+
+	return target, apiErr, nil
+}
+
+func (s *GroupClient) List(ctx context.Context, opts ...api.Option) ([]Group, *api.Error, error) {
+
+	if s.client == nil {
+		return nil, nil, fmt.Errorf("nil client")
+	}
+
+	req, err := s.client.NewRequest(ctx, "GET", fmt.Sprintf("groups"), nil, opts...)
+	if err != nil {
+		return nil, nil, fmt.Errorf("error creating List request: %w", err)
+	}
+
+	resp, err := s.client.Do(req)
+	if err != nil {
+		return nil, nil, fmt.Errorf("error performing client request during List call: %w", err)
+	}
+
+	type listResponse struct {
+		Items []Group
+	}
+	target := &listResponse{}
+	apiErr, err := resp.Decode(target)
+	if err != nil {
+		return nil, nil, fmt.Errorf("error decoding List response: %w", err)
+	}
+
+	return target.Items, apiErr, nil
+}
+
+func (s *GroupClient) Create(ctx context.Context, opts ...api.Option) (*Group, *api.Error, error) {
+
+	if s.client == nil {
+		return nil, nil, fmt.Errorf("nil client")
+	}
+	r := Group{}
+	req, err := s.client.NewRequest(ctx, "POST", fmt.Sprintf("groups"), r, opts...)
+	if err != nil {
+		return nil, nil, fmt.Errorf("error creating Create request: %w", err)
+	}
+
+	resp, err := s.client.Do(req)
+	if err != nil {
+		return nil, nil, fmt.Errorf("error performing client request during Read call: %w", err)
+	}
+
+	target := new(Group)
+	apiErr, err := resp.Decode(target)
+	if err != nil {
+		return nil, nil, fmt.Errorf("error decoding Create response: %w", err)
+	}
+
+	return target, apiErr, nil
+}
+
+func (s *GroupClient) Delete(ctx context.Context, groupId string, opts ...api.Option) (bool, *api.Error, error) {
+
+	if groupId == "" {
+		return false, nil, fmt.Errorf("empty groupId value passed into List request")
+	}
+
+	if s.client == nil {
+		return false, nil, fmt.Errorf("nil client")
+	}
+
+	req, err := s.client.NewRequest(ctx, "DELETE", fmt.Sprintf("groups/%s", groupId), nil, opts...)
+	if err != nil {
+		return false, nil, fmt.Errorf("error creating Delete request: %w", err)
+	}
+
+	resp, err := s.client.Do(req)
+	if err != nil {
+		return false, nil, fmt.Errorf("error performing client request during Delete call: %w", err)
+	}
+
+	type deleteResponse struct {
+		Existed bool
+	}
+	target := &deleteResponse{}
+	apiErr, err := resp.Decode(target)
+	if err != nil {
+		return false, nil, fmt.Errorf("error decoding Delete response: %w", err)
+	}
+
+	return target.Existed, apiErr, nil
 }

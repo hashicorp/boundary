@@ -2,71 +2,141 @@
 package scopes
 
 import (
-	"encoding/json"
-	"strings"
+	"context"
+	"fmt"
 	"time"
 
-	"github.com/fatih/structs"
-
 	"github.com/hashicorp/watchtower/api"
-	"github.com/hashicorp/watchtower/api/info"
-	"github.com/hashicorp/watchtower/api/internal/strutil"
 )
 
 type Scope struct {
-	Client *api.Client `json:"-"`
-
-	defaultFields []string
-
-	// The ID of the Scope
-	// Output only.
-	Id string `json:"id,omitempty"`
-	// Scope information for this resource
-	// Output only.
-	Scope info.Scope `json:"scope,omitempty"`
-	// Optional name for identification purposes
-	Name *string `json:"name,omitempty"`
-	// Optional user-set descripton for identification purposes
-	Description *string `json:"description,omitempty"`
-	// The time this resource was created
-	// Output only.
-	CreatedTime time.Time `json:"created_time,omitempty"`
-	// The time this resource was last updated.
-	// Output only.
-	UpdatedTime time.Time `json:"updated_time,omitempty"`
-	// Whether the resource is disabled
-	Disabled *bool `json:"disabled,omitempty"`
+	Id          string     `json:"id,omitempty"`
+	Scope       *ScopeInfo `json:"scope,omitempty"`
+	Name        string     `json:"name,omitempty"`
+	Description string     `json:"description,omitempty"`
+	CreatedTime *time.Time `json:"created_time,omitempty"`
+	UpdatedTime *time.Time `json:"updated_time,omitempty"`
+	Disabled    bool       `json:"disabled,omitempty"`
 }
 
-func (s *Scope) SetDefault(key string) {
-	lowerKey := strings.ToLower(key)
-	validMap := map[string]string{"createdtime": "created_time", "description": "description", "disabled": "disabled", "id": "id", "name": "name", "scope": "scope", "updatedtime": "updated_time"}
-	for k, v := range validMap {
-		if k == lowerKey || v == lowerKey {
-			s.defaultFields = strutil.AppendIfMissing(s.defaultFields, v)
-			return
-		}
-	}
+type ScopeClient struct {
+	client *api.Client
 }
 
-func (s *Scope) UnsetDefault(key string) {
-	lowerKey := strings.ToLower(key)
-	validMap := map[string]string{"createdtime": "created_time", "description": "description", "disabled": "disabled", "id": "id", "name": "name", "scope": "scope", "updatedtime": "updated_time"}
-	for k, v := range validMap {
-		if k == lowerKey || v == lowerKey {
-			s.defaultFields = strutil.StrListDelete(s.defaultFields, v)
-			return
-		}
-	}
+func New(c *api.Client) *ScopeClient {
+	return &ScopeClient{client: c}
 }
 
-func (s Scope) MarshalJSON() ([]byte, error) {
-	m := structs.Map(s)
-	if m == nil {
-		m = make(map[string]interface{})
+func (s *ScopeClient) Read(ctx context.Context, scopeId string, opts ...api.Option) (*Scope, *api.Error, error) {
+
+	if scopeId == "" {
+		return nil, nil, fmt.Errorf("empty scopeId value passed into List request")
 	}
-	for _, k := range s.defaultFields {
-		m[k] = nil
+
+	if s.client == nil {
+		return nil, nil, fmt.Errorf("nil client")
 	}
-	return json.Marshal(m)
+
+	req, err := s.client.NewRequest(ctx, "GET", fmt.Sprintf("scopes/%s", scopeId), nil, opts...)
+	if err != nil {
+		return nil, nil, fmt.Errorf("error creating Read request: %w", err)
+	}
+
+	resp, err := s.client.Do(req)
+	if err != nil {
+		return nil, nil, fmt.Errorf("error performing client request during Read call: %w", err)
+	}
+
+	target := new(Scope)
+	apiErr, err := resp.Decode(target)
+	if err != nil {
+		return nil, nil, fmt.Errorf("error decoding Read response: %w", err)
+	}
+
+	return target, apiErr, nil
+}
+
+func (s *ScopeClient) List(ctx context.Context, opts ...api.Option) ([]Scope, *api.Error, error) {
+
+	if s.client == nil {
+		return nil, nil, fmt.Errorf("nil client")
+	}
+
+	req, err := s.client.NewRequest(ctx, "GET", fmt.Sprintf("scopes"), nil, opts...)
+	if err != nil {
+		return nil, nil, fmt.Errorf("error creating List request: %w", err)
+	}
+
+	resp, err := s.client.Do(req)
+	if err != nil {
+		return nil, nil, fmt.Errorf("error performing client request during List call: %w", err)
+	}
+
+	type listResponse struct {
+		Items []Scope
+	}
+	target := &listResponse{}
+	apiErr, err := resp.Decode(target)
+	if err != nil {
+		return nil, nil, fmt.Errorf("error decoding List response: %w", err)
+	}
+
+	return target.Items, apiErr, nil
+}
+
+func (s *ScopeClient) Create(ctx context.Context, opts ...api.Option) (*Scope, *api.Error, error) {
+
+	if s.client == nil {
+		return nil, nil, fmt.Errorf("nil client")
+	}
+	r := Scope{}
+	req, err := s.client.NewRequest(ctx, "POST", fmt.Sprintf("scopes"), r, opts...)
+	if err != nil {
+		return nil, nil, fmt.Errorf("error creating Create request: %w", err)
+	}
+
+	resp, err := s.client.Do(req)
+	if err != nil {
+		return nil, nil, fmt.Errorf("error performing client request during Read call: %w", err)
+	}
+
+	target := new(Scope)
+	apiErr, err := resp.Decode(target)
+	if err != nil {
+		return nil, nil, fmt.Errorf("error decoding Create response: %w", err)
+	}
+
+	return target, apiErr, nil
+}
+
+func (s *ScopeClient) Delete(ctx context.Context, scopeId string, opts ...api.Option) (bool, *api.Error, error) {
+
+	if scopeId == "" {
+		return false, nil, fmt.Errorf("empty scopeId value passed into List request")
+	}
+
+	if s.client == nil {
+		return false, nil, fmt.Errorf("nil client")
+	}
+
+	req, err := s.client.NewRequest(ctx, "DELETE", fmt.Sprintf("scopes/%s", scopeId), nil, opts...)
+	if err != nil {
+		return false, nil, fmt.Errorf("error creating Delete request: %w", err)
+	}
+
+	resp, err := s.client.Do(req)
+	if err != nil {
+		return false, nil, fmt.Errorf("error performing client request during Delete call: %w", err)
+	}
+
+	type deleteResponse struct {
+		Existed bool
+	}
+	target := &deleteResponse{}
+	apiErr, err := resp.Decode(target)
+	if err != nil {
+		return false, nil, fmt.Errorf("error decoding Delete response: %w", err)
+	}
+
+	return target.Existed, apiErr, nil
 }

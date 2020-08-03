@@ -1,7 +1,6 @@
 package main
 
 import (
-	"os"
 	"text/template"
 
 	"github.com/hashicorp/watchtower/internal/gen/controller/api"
@@ -41,24 +40,24 @@ type structInfo struct {
 var inputStructs = []*structInfo{
 	{
 		inProto: &api.Error{},
-		outFile: os.Getenv("GEN_BASEPATH") + "/api2/error.gen.go",
+		outFile: "error.gen.go",
 	},
 	{
 		inProto: &api.ErrorDetails{},
-		outFile: os.Getenv("GEN_BASEPATH") + "/api2/error_details.gen.go",
+		outFile: "error_details.gen.go",
 	},
 	{
 		inProto: &api.FieldError{},
-		outFile: os.Getenv("GEN_BASEPATH") + "/api2/field_error.gen.go",
+		outFile: "field_error.gen.go",
 	},
 	// Scope related resources
 	{
 		inProto: &scopes.ScopeInfo{},
-		outFile: os.Getenv("GEN_BASEPATH") + "/api2/scopes/scope_info.gen.go",
+		outFile: "scopes/scope_info.gen.go",
 	},
 	{
 		inProto: &scopes.Scope{},
-		outFile: os.Getenv("GEN_BASEPATH") + "/api2/scopes/scope.gen.go",
+		outFile: "scopes/scope.gen.go",
 		templates: []*template.Template{
 			clientTemplate, readTemplate, listTemplate, createTemplate, deleteTemplate},
 		pathArgs: []string{"scope"},
@@ -66,7 +65,7 @@ var inputStructs = []*structInfo{
 	// User related resources
 	{
 		inProto: &users.User{},
-		outFile: os.Getenv("GEN_BASEPATH") + "/api2/users/user.gen.go",
+		outFile: "users/user.gen.go",
 		templates: []*template.Template{
 			clientTemplate, readTemplate, listTemplate, createTemplate, deleteTemplate},
 		pathArgs: []string{"user"},
@@ -74,11 +73,11 @@ var inputStructs = []*structInfo{
 	// Group related resources
 	{
 		inProto: &groups.Member{},
-		outFile: os.Getenv("GEN_BASEPATH") + "/api2/groups/member.gen.go",
+		outFile: "groups/member.gen.go",
 	},
 	{
 		inProto: &groups.Group{},
-		outFile: os.Getenv("GEN_BASEPATH") + "/api2/groups/group.gen.go",
+		outFile: "groups/group.gen.go",
 		templates: []*template.Template{
 			clientTemplate,
 			readTemplate,
@@ -91,19 +90,19 @@ var inputStructs = []*structInfo{
 	// Role related resources
 	{
 		inProto: &roles.Grant{},
-		outFile: os.Getenv("GEN_BASEPATH") + "/api2/roles/grant.gen.go",
+		outFile: "roles/grant.gen.go",
 	},
 	{
 		inProto: &roles.Principal{},
-		outFile: os.Getenv("GEN_BASEPATH") + "/api2/roles/principal.gen.go",
+		outFile: "roles/principal.gen.go",
 	},
 	{
 		inProto: &roles.GrantJson{},
-		outFile: os.Getenv("GEN_BASEPATH") + "/api2/roles/grant_json.gen.go",
+		outFile: "roles/grant_json.gen.go",
 	},
 	{
 		inProto: &roles.Role{},
-		outFile: os.Getenv("GEN_BASEPATH") + "/api2/roles/role.gen.go",
+		outFile: "roles/role.gen.go",
 		templates: []*template.Template{
 			clientTemplate,
 			readTemplate,
@@ -116,7 +115,7 @@ var inputStructs = []*structInfo{
 	// Account related resources
 	{
 		inProto: &users.User{},
-		outFile: os.Getenv("GEN_BASEPATH") + "/api2/users/user.gen.go",
+		outFile: "users/user.gen.go",
 		templates: []*template.Template{
 			clientTemplate, readTemplate, listTemplate, createTemplate, deleteTemplate},
 		pathArgs: []string{"user"},
