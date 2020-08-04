@@ -40,15 +40,20 @@ func parsePBs() {
 				Name:      strcase.ToCamel(string(fd.Name())),
 				ProtoName: string(fd.Name()),
 			}
+			// Adjust for slices
+			sliceText := ""
+			if fd.Cardinality() == protoreflect.Repeated {
+				sliceText = "[]"
+			}
 			switch k := fd.Kind(); k {
 			case protoreflect.MessageKind:
 				ptr, pkg, name := messageKind(fd)
 				if pkg != "" && pkg != in.generatedStructure.pkg {
 					name = fmt.Sprintf("%s.%s", pkg, name)
 				}
-				fi.FieldType = ptr + name
+				fi.FieldType = sliceText + ptr + name
 			default:
-				fi.FieldType = k.String()
+				fi.FieldType = sliceText + k.String()
 			}
 			in.generatedStructure.fields = append(in.generatedStructure.fields, fi)
 		}
@@ -79,7 +84,7 @@ func messageKind(fd protoreflect.FieldDescriptor) (ptr, pkg, name string) {
 	case boolValueName:
 		return "", "", "bool"
 	case timestampName:
-		return "*", "time", "Time"
+		return "", "time", "Time"
 	default:
 		return "*", packageFromFullName(fd.Message().FullName()), string(fd.Message().Name())
 	}

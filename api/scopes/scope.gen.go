@@ -14,8 +14,8 @@ type Scope struct {
 	Scope       *ScopeInfo `json:"scope,omitempty"`
 	Name        string     `json:"name,omitempty"`
 	Description string     `json:"description,omitempty"`
-	CreatedTime *time.Time `json:"created_time,omitempty"`
-	UpdatedTime *time.Time `json:"updated_time,omitempty"`
+	CreatedTime time.Time  `json:"created_time,omitempty"`
+	UpdatedTime time.Time  `json:"updated_time,omitempty"`
 	Disabled    bool       `json:"disabled,omitempty"`
 }
 
