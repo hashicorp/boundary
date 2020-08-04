@@ -231,3 +231,173 @@ func TestRepository_AuthenticateRehash(t *testing.T) {
 	assert.NotEqual(origCred.Salt, auth2Cred.Salt, "a new salt value should be generated")
 	assert.NotEqual(origCred.DerivedKey, auth2Cred.DerivedKey, "the derived key should be different")
 }
+
+func TestRepository_ChangePassword(t *testing.T) {
+	conn, _ := db.TestSetup(t, "postgres")
+	rw := db.New(conn)
+	wrapper := db.TestWrapper(t)
+
+	repo, err := NewRepository(rw, rw, wrapper)
+	require.NoError(t, err)
+	require.NotNil(t, repo)
+
+	inAcct := &Account{
+		Account: &store.Account{
+			UserName: "kazmierczak",
+		},
+	}
+	passwd := "12345678"
+
+	type args struct {
+		authMethodId string
+		userName     string
+		old, new     string
+	}
+
+	var tests = []struct {
+		name            string
+		args            args
+		useAuthMethodId bool
+		wantAccount     bool
+		wantIsErr       error
+	}{
+		{
+			name: "invalid-no-authMethodId",
+			args: args{
+				authMethodId: "",
+				userName:     inAcct.UserName,
+				old:          passwd,
+				new:          "12345678-changed",
+			},
+			useAuthMethodId: true,
+			wantIsErr:       db.ErrInvalidParameter,
+		},
+		{
+			name: "invalid-no-userName",
+			args: args{
+				userName: "",
+				old:      passwd,
+				new:      "12345678-changed",
+			},
+			wantIsErr: db.ErrInvalidParameter,
+		},
+		{
+			name: "invalid-no-old-password",
+			args: args{
+				userName: inAcct.UserName,
+				old:      "",
+				new:      "12345678-changed",
+			},
+			wantIsErr: db.ErrInvalidParameter,
+		},
+		{
+			name: "invalid-no-new-password",
+			args: args{
+				userName: inAcct.UserName,
+				old:      passwd,
+				new:      "",
+			},
+			wantIsErr: db.ErrInvalidParameter,
+		},
+		{
+			name: "invalid-same-passwords",
+			args: args{
+				userName: inAcct.UserName,
+				old:      passwd,
+				new:      passwd,
+			},
+			wantIsErr: ErrPasswordsEqual,
+		},
+		{
+			name: "auth-failure-unknown-authMethodId",
+			args: args{
+				authMethodId: "not-an-authMethod-Id",
+				userName:     inAcct.UserName,
+				old:          passwd,
+				new:          "12345678-changed",
+			},
+			useAuthMethodId: true,
+			wantAccount:     false,
+			wantIsErr:       nil,
+		},
+		{
+			name: "auth-failure-wrong-old-password",
+			args: args{
+				userName: inAcct.UserName,
+				old:      "wrong-password",
+				new:      "12345678-changed",
+			},
+			wantAccount: false,
+			wantIsErr:   nil,
+		},
+		{
+			name: "password-to-short",
+			args: args{
+				userName: inAcct.UserName,
+				old:      passwd,
+				new:      "1",
+			},
+			wantIsErr: ErrTooShort,
+		},
+		{
+			name: "valid",
+			args: args{
+				userName: inAcct.UserName,
+				old:      passwd,
+				new:      "12345678-changed",
+			},
+			wantAccount: true,
+		},
+	}
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+
+			o, _ := iam.TestScopes(t, conn)
+			authMethod := TestAuthMethods(t, conn, o.GetPublicId(), 1)[0]
+			inAcct.AuthMethodId = authMethod.PublicId
+			outAcct, err := repo.CreateAccount(context.Background(), inAcct, WithPassword(passwd))
+			require.NoError(err)
+			require.NotNil(outAcct)
+
+			if !tt.useAuthMethodId {
+				tt.args.authMethodId = authMethod.PublicId
+			}
+			// Calls to Authenticate should always succeed in these tests
+			authFn := func(pwd string, name string) *Account {
+				acct, err := repo.Authenticate(context.Background(), inAcct.AuthMethodId, inAcct.UserName, pwd)
+				require.NotNilf(acct, "%s: Authenticate should return an account", name)
+				require.NoErrorf(err, "%s: Authenticate should succeed", name)
+				return acct
+			}
+			// authenticate with original password
+			authAcct1 := authFn(passwd, "original account")
+
+			chgAuthAcct, err := repo.ChangePassword(context.Background(), tt.args.authMethodId, tt.args.userName, tt.args.old, tt.args.new)
+			if tt.wantIsErr != nil {
+				assert.Error(err)
+				assert.Truef(errors.Is(err, tt.wantIsErr), "want err: %q got: %q", tt.wantIsErr, err)
+				assert.Nil(chgAuthAcct, "returned account")
+				authAcct2 := authFn(passwd, "error changing password: using old password")
+				assert.Equal(authAcct1.CredentialId, authAcct2.CredentialId, "CredentialId should not change")
+				return
+			}
+			assert.NoError(err)
+			if !tt.wantAccount {
+				assert.Nil(chgAuthAcct)
+				authAcct2 := authFn(passwd, "no account from changing password: using old password")
+				assert.Equal(authAcct1.CredentialId, authAcct2.CredentialId, "CredentialId should not change")
+				return
+			}
+			require.NotNil(chgAuthAcct, "returned account")
+			assert.NotEmpty(chgAuthAcct.CredentialId, "CredentialId")
+			assert.NotEqual(authAcct1.CredentialId, chgAuthAcct.CredentialId, "CredentialId should change")
+			assert.Equal(authAcct1.AuthMethodId, chgAuthAcct.AuthMethodId, "authMethodId")
+			assert.Equal(authAcct1.UserName, chgAuthAcct.UserName, "UserName")
+
+			authAcct2 := authFn(tt.args.new, "successful change password: using new password")
+			assert.Equal(chgAuthAcct.CredentialId, authAcct2.CredentialId, "CredentialId should not change")
+		})
+	}
+}
