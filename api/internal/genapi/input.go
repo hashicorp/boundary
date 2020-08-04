@@ -193,6 +193,6 @@ var inputStructs = []*structInfo{
 			deleteTemplate,
 			listTemplate,
 		},
-		pathArgs: []string{"host"},
+		pathArgs: []string{"host-catalog", "host"},
 	},
 }

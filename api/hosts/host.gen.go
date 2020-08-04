@@ -31,14 +31,18 @@ func NewHostClient(c *api.Client) *hostClient {
 	return &hostClient{client: c}
 }
 
-func (c *hostClient) Create(ctx context.Context, opt ...Option) (*Host, *api.Error, error) {
+func (c *hostClient) Create(ctx context.Context, hostCatalogId string, opt ...Option) (*Host, *api.Error, error) {
+	if hostCatalogId == "" {
+		return nil, nil, fmt.Errorf("empty hostCatalogId value passed into Create request")
+	}
+
 	if c.client == nil {
 		return nil, nil, fmt.Errorf("nil client")
 	}
 
 	opts, apiOpts := getOpts(opt...)
 
-	req, err := c.client.NewRequest(ctx, "POST", fmt.Sprintf("hosts"), opts.valueMap, apiOpts...)
+	req, err := c.client.NewRequest(ctx, "POST", fmt.Sprintf("host-catalogs/%s/hosts", hostCatalogId), opts.valueMap, apiOpts...)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error creating Create request: %w", err)
 	}
@@ -57,7 +61,11 @@ func (c *hostClient) Create(ctx context.Context, opt ...Option) (*Host, *api.Err
 	return target, apiErr, nil
 }
 
-func (c *hostClient) Read(ctx context.Context, hostId string, opt ...Option) (*Host, *api.Error, error) {
+func (c *hostClient) Read(ctx context.Context, hostCatalogId string, hostId string, opt ...Option) (*Host, *api.Error, error) {
+	if hostCatalogId == "" {
+		return nil, nil, fmt.Errorf("empty hostCatalogId value passed into Read request")
+	}
+
 	if hostId == "" {
 		return nil, nil, fmt.Errorf("empty hostId value passed into Read request")
 	}
@@ -68,7 +76,7 @@ func (c *hostClient) Read(ctx context.Context, hostId string, opt ...Option) (*H
 
 	_, apiOpts := getOpts(opt...)
 
-	req, err := c.client.NewRequest(ctx, "GET", fmt.Sprintf("hosts/%s", hostId), nil, apiOpts...)
+	req, err := c.client.NewRequest(ctx, "GET", fmt.Sprintf("host-catalogs/%s/hosts/%s", hostCatalogId, hostId), nil, apiOpts...)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error creating Read request: %w", err)
 	}
@@ -87,7 +95,10 @@ func (c *hostClient) Read(ctx context.Context, hostId string, opt ...Option) (*H
 	return target, apiErr, nil
 }
 
-func (c *hostClient) Update(ctx context.Context, hostId string, version uint32, opt ...Option) (*Host, *api.Error, error) {
+func (c *hostClient) Update(ctx context.Context, hostCatalogId string, hostId string, version uint32, opt ...Option) (*Host, *api.Error, error) {
+	if hostCatalogId == "" {
+		return nil, nil, fmt.Errorf("empty hostCatalogId value passed into Update request")
+	}
 	if hostId == "" {
 		return nil, nil, fmt.Errorf("empty hostId value passed into Update request")
 	}
@@ -100,7 +111,7 @@ func (c *hostClient) Update(ctx context.Context, hostId string, version uint32, 
 
 	opts, apiOpts := getOpts(opt...)
 
-	req, err := c.client.NewRequest(ctx, "PATCH", fmt.Sprintf("hosts"), opts.valueMap, apiOpts...)
+	req, err := c.client.NewRequest(ctx, "PATCH", fmt.Sprintf("host-catalogs/%s/hosts", hostCatalogId), opts.valueMap, apiOpts...)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error creating Update request: %w", err)
 	}
@@ -119,7 +130,11 @@ func (c *hostClient) Update(ctx context.Context, hostId string, version uint32, 
 	return target, apiErr, nil
 }
 
-func (c *hostClient) Delete(ctx context.Context, hostId string, opt ...Option) (bool, *api.Error, error) {
+func (c *hostClient) Delete(ctx context.Context, hostCatalogId string, hostId string, opt ...Option) (bool, *api.Error, error) {
+	if hostCatalogId == "" {
+		return false, nil, fmt.Errorf("empty hostCatalogId value passed into Delete request")
+	}
+
 	if hostId == "" {
 		return false, nil, fmt.Errorf("empty hostId value passed into Delete request")
 	}
@@ -130,7 +145,7 @@ func (c *hostClient) Delete(ctx context.Context, hostId string, opt ...Option) (
 
 	_, apiOpts := getOpts(opt...)
 
-	req, err := c.client.NewRequest(ctx, "DELETE", fmt.Sprintf("hosts/%s", hostId), nil, apiOpts...)
+	req, err := c.client.NewRequest(ctx, "DELETE", fmt.Sprintf("host-catalogs/%s/hosts/%s", hostCatalogId, hostId), nil, apiOpts...)
 	if err != nil {
 		return false, nil, fmt.Errorf("error creating Delete request: %w", err)
 	}
@@ -152,14 +167,18 @@ func (c *hostClient) Delete(ctx context.Context, hostId string, opt ...Option) (
 	return target.Existed, apiErr, nil
 }
 
-func (c *hostClient) List(ctx context.Context, opt ...Option) ([]Host, *api.Error, error) {
+func (c *hostClient) List(ctx context.Context, hostCatalogId string, opt ...Option) ([]Host, *api.Error, error) {
+	if hostCatalogId == "" {
+		return nil, nil, fmt.Errorf("empty hostCatalogId value passed into List request")
+	}
+
 	if c.client == nil {
 		return nil, nil, fmt.Errorf("nil client")
 	}
 
 	_, apiOpts := getOpts(opt...)
 
-	req, err := c.client.NewRequest(ctx, "GET", fmt.Sprintf("hosts"), nil, apiOpts...)
+	req, err := c.client.NewRequest(ctx, "GET", fmt.Sprintf("host-catalogs/%s/hosts", hostCatalogId), nil, apiOpts...)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error creating List request: %w", err)
 	}
@@ -179,89 +198,4 @@ func (c *hostClient) List(ctx context.Context, opt ...Option) ([]Host, *api.Erro
 	}
 
 	return target.Items, apiErr, nil
-}
-
-type Option func(*options)
-
-type options struct {
-	valueMap    map[string]interface{}
-	withScopeId string
-}
-
-func getDefaultOptions() options {
-	return options{
-		valueMap: make(map[string]interface{}),
-	}
-}
-
-func getOpts(opt ...Option) (options, []api.Option) {
-	opts := getDefaultOptions()
-	for _, o := range opt {
-		o(&opts)
-	}
-	var apiOpts []api.Option
-	if opts.withScopeId != "" {
-		apiOpts = append(apiOpts, api.WithScopeId(opts.withScopeId))
-	}
-	return opts, apiOpts
-}
-
-func DefaultScopeId() Option {
-	return func(o *options) {
-		o.withScopeId = ""
-	}
-}
-
-func WithScopeId(id string) Option {
-	return func(o *options) {
-		o.withScopeId = id
-	}
-}
-
-func WithName(inName string) Option {
-	return func(o *options) {
-		o.valueMap["name"] = inName
-	}
-}
-
-func DefaultName() Option {
-	return func(o *options) {
-		o.valueMap["name"] = nil
-	}
-}
-
-func WithDescription(inDescription string) Option {
-	return func(o *options) {
-		o.valueMap["description"] = inDescription
-	}
-}
-
-func DefaultDescription() Option {
-	return func(o *options) {
-		o.valueMap["description"] = nil
-	}
-}
-
-func WithDisabled(inDisabled bool) Option {
-	return func(o *options) {
-		o.valueMap["disabled"] = inDisabled
-	}
-}
-
-func DefaultDisabled() Option {
-	return func(o *options) {
-		o.valueMap["disabled"] = nil
-	}
-}
-
-func WithAddress(inAddress string) Option {
-	return func(o *options) {
-		o.valueMap["address"] = inAddress
-	}
-}
-
-func DefaultAddress() Option {
-	return func(o *options) {
-		o.valueMap["address"] = nil
-	}
 }

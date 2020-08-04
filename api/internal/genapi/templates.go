@@ -51,6 +51,7 @@ type templateInput struct {
 }
 
 func fillTemplates() {
+	optionsMap := map[string]map[string]fieldInfo{}
 	for _, in := range inputStructs {
 		outBuf := new(bytes.Buffer)
 		input := templateInput{
@@ -70,13 +71,60 @@ func fillTemplates() {
 			t.Execute(outBuf, input)
 		}
 
+		// We want to generate options per-package, not per-struct, so we
+		// collate them all here for writing later. The map argument of the
+		// package map is to prevent duplicates since we may have multiple e.g.
+		// Name or Description fields.
 		if !in.outputOnly {
-			optionTemplate.Execute(outBuf, input)
+			pkgOptionMap := map[string]fieldInfo{}
+			for _, val := range input.Fields {
+				if val.Writable {
+					pkgOptionMap[val.Name] = val
+				}
+			}
+			optionMap := optionsMap[input.Package]
+			if optionMap == nil {
+				optionMap = map[string]fieldInfo{}
+			}
+			for name, val := range pkgOptionMap {
+				optionMap[name] = val
+			}
+			optionsMap[input.Package] = optionMap
 		}
 
 		outFile, err := filepath.Abs(fmt.Sprintf("%s/%s", os.Getenv("API_GEN_BASEPATH"), in.outFile))
 		if err != nil {
 			fmt.Printf("error opening file %q: %v\n", in.outFile, err)
+			os.Exit(1)
+		}
+		outDir := filepath.Dir(outFile)
+		if _, err := os.Stat(outDir); os.IsNotExist(err) {
+			_ = os.Mkdir(outDir, os.ModePerm)
+		}
+		if err := ioutil.WriteFile(outFile, outBuf.Bytes(), 0644); err != nil {
+			fmt.Printf("error writing file %q: %v\n", outFile, err)
+			os.Exit(1)
+		}
+	}
+
+	// Now reconstruct options per package and write them out
+	for pkg, options := range optionsMap {
+		outBuf := new(bytes.Buffer)
+		var fields []fieldInfo
+		for _, v := range options {
+			fields = append(fields, v)
+		}
+
+		input := templateInput{
+			Package: pkg,
+			Fields:  fields,
+		}
+
+		optionTemplate.Execute(outBuf, input)
+
+		outFile, err := filepath.Abs(fmt.Sprintf("%s/%s/%s", os.Getenv("API_GEN_BASEPATH"), pkg, "option.gen.go"))
+		if err != nil {
+			fmt.Printf("error opening file %q: %v\n", "option.gen.go", err)
 			os.Exit(1)
 		}
 		outDir := filepath.Dir(outFile)
@@ -193,8 +241,8 @@ func (c *{{ .ClientName }}Client) Delete(ctx context.Context, {{ range .Resource
 `))
 
 var createTemplate = template.Must(template.New("").Parse(`
-func (c *{{ .ClientName }}Client) Create(ctx context.Context, {{ range .CollectionFunctionArgs }} . string, {{ end }} opt... Option) (*{{ .Name }}, *api.Error, error) { {{ range .CollectionFunctionArgs }}
-	if . == "" {
+func (c *{{ .ClientName }}Client) Create(ctx context.Context, {{ range .CollectionFunctionArgs }} {{ . }} string, {{ end }} opt... Option) (*{{ .Name }}, *api.Error, error) { {{ range .CollectionFunctionArgs }}
+	if {{ . }} == "" {
 		return nil, nil, fmt.Errorf("empty {{ . }} value passed into Create request")
 	}
 	{{ end }}
@@ -287,6 +335,16 @@ func New{{ .Name }}Client(c *api.Client) *{{ .ClientName }}Client {
 `))
 
 var optionTemplate = template.Must(template.New("").Parse(`
+package {{ .Package }}
+
+import (
+	"context"
+	"fmt"
+	"time"
+
+	"github.com/hashicorp/watchtower/api"
+)
+
 type Option func(*options)
 
 type options struct {
@@ -323,7 +381,7 @@ func WithScopeId(id string) Option {
 		o.withScopeId = id
 	}
 }
-{{ range .Fields }} {{ if .Writable }}
+{{ range .Fields }}
 func With{{ .Name }}(in{{ .Name }} {{ .FieldType }}) Option {
 	return func(o *options) {
 		o.valueMap["{{ .ProtoName }}"] = in{{ .Name }}
@@ -334,6 +392,6 @@ func Default{{ .Name }}() Option {
 	return func(o *options) {
 		o.valueMap["{{ .ProtoName }}"] = nil
 	}
-} {{ end }}
+}
 {{ end }}
 `))

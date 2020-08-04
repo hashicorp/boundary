@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/hashicorp/watchtower/api"
 	"github.com/hashicorp/watchtower/api/scopes"
 	"github.com/hashicorp/watchtower/internal/cmd/base"
 	"github.com/kr/pretty"
@@ -86,14 +85,10 @@ func (c *CreateScopeCommand) Run(args []string) int {
 		return 2
 	}
 
-	scp := &scopes.Scope{
-		Client:      client,
-		Name:        api.StringOrNil(c.flagName),
-		Description: api.StringOrNil(c.flagDescription),
-	}
-
-	var apiErr *api.Error
-	scp, apiErr, err = scp.CreateScope(c.Context, scp)
+	scopeClient := scopes.NewScopeClient(client)
+	scp, apiErr, err := scopes.NewScopeClient(client).Create(c.Context,
+		scopes.WithName(c.flagName),
+		scopes.WithDescription(c.flagDescription))
 
 	switch {
 	case err != nil:
