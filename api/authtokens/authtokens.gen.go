@@ -93,7 +93,7 @@ func (c *authtokenClient) Delete(ctx context.Context, authTokenId string, opt ..
 	return target.Existed, apiErr, nil
 }
 
-func (c *authtokenClient) List(ctx context.Context, opt ...Option) ([]AuthToken, *api.Error, error) {
+func (c *authtokenClient) List(ctx context.Context, opt ...Option) ([]*AuthToken, *api.Error, error) {
 	if c.client == nil {
 		return nil, nil, fmt.Errorf("nil client")
 	}
@@ -111,7 +111,7 @@ func (c *authtokenClient) List(ctx context.Context, opt ...Option) ([]AuthToken,
 	}
 
 	type listResponse struct {
-		Items []AuthToken
+		Items []*AuthToken
 	}
 	target := &listResponse{}
 	apiErr, err := resp.Decode(target)

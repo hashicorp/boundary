@@ -115,30 +115,28 @@ func (c *Command) Run(args []string) int {
 		return 2
 	}
 
-	role := &roles.Role{
-		Client: client,
-	}
+	var opts []roles.Option
 
 	switch c.flagName {
 	case "":
 	case "null":
-		role.SetDefault("name")
+		opts = append(opts, roles.DefaultName())
 	default:
-		role.Name = api.String(c.flagName)
+		opts = append(opts, roles.WithName(c.flagName))
 	}
 	switch c.flagDescription {
 	case "":
 	case "null":
-		role.SetDefault("description")
+		opts = append(opts, roles.DefaultDescription())
 	default:
-		role.Description = api.String(c.flagDescription)
+		opts = append(opts, roles.WithDescription(c.flagDescription))
 	}
 	switch c.flagGrantScopeId {
 	case "":
 	case "null":
-		role.SetDefault("grantscopeid")
+		opts = append(opts, roles.DefaultGrantScopeId())
 	default:
-		role.GrantScopeId = api.String(c.flagGrantScopeId)
+		opts = append(opts, roles.WithGrantScopeId(c.flagGrantScopeId))
 	}
 
 	principals := c.flagPrincipals
@@ -193,51 +191,56 @@ func (c *Command) Run(args []string) int {
 		}
 	}
 
-	var apiErr *api.Error
-
-	var existed bool
-	var listedRoles []*roles.Role
+	roleClient := roles.NewRoleClient(client)
 
 	// Perform check-and-set when needed
+	var version uint32
 	switch c.Func {
 	case "create", "read", "delete", "list":
 		// These don't udpate so don't need the existing version
 	default:
-		existingRole, existingApiErr, existingErr := role.ReadRole(c.Context, c.flagId)
+		existingRole, existingApiErr, existingErr := roleClient.Read(c.Context, c.flagId, opts...)
 		if existingErr != nil {
 			c.UI.Error(fmt.Sprintf("Error performing initial check-and-set read: %s", err.Error()))
 			return 2
 		}
 		if existingApiErr != nil {
-			c.UI.Error(fmt.Sprintf("Error from controller when performing initial check-and-set read: %s", pretty.Sprint(apiErr)))
+			c.UI.Error(fmt.Sprintf("Error from controller when performing initial check-and-set read: %s", pretty.Sprint(existingApiErr)))
 			return 1
 		}
-		role.Version = existingRole.Version
+		version = existingRole.Version
 	}
+
+	var existed bool
+	var role *roles.Role
+	var listedRoles []*roles.Role
+	var apiErr *api.Error
 
 	switch c.Func {
 	case "create":
-		role, apiErr, err = role.CreateRole(c.Context, role)
+		role, apiErr, err = roleClient.Create(c.Context, opts...)
 	case "update":
-		role, apiErr, err = role.UpdateRole(c.Context, role)
+		role, apiErr, err = roleClient.Update(c.Context, c.flagId, version, opts...)
 	case "read":
-		role, apiErr, err = role.ReadRole(c.Context, c.flagId)
+		role, apiErr, err = roleClient.Read(c.Context, c.flagId, opts...)
 	case "delete":
-		existed, apiErr, err = role.DeleteRole(c.Context, c.flagId)
+		existed, apiErr, err = roleClient.Delete(c.Context, c.flagId, opts...)
 	case "list":
-		listedRoles, apiErr, err = role.ListRoles(c.Context)
-	case "add-principals":
-		role, apiErr, err = role.AddPrincipals(c.Context, c.flagId, principals)
-	case "set-principals":
-		role, apiErr, err = role.SetPrincipals(c.Context, c.flagId, principals)
-	case "remove-principals":
-		role, apiErr, err = role.RemovePrincipals(c.Context, c.flagId, principals)
-	case "add-grants":
-		role, apiErr, err = role.AddGrants(c.Context, c.flagId, grants)
-	case "set-grants":
-		role, apiErr, err = role.SetGrants(c.Context, c.flagId, grants)
-	case "remove-grants":
-		role, apiErr, err = role.RemoveGrants(c.Context, c.flagId, grants)
+		listedRoles, apiErr, err = roleClient.List(c.Context, opts...)
+		/*
+			case "add-principals":
+				role, apiErr, err = roleClient.AddPrincipals(c.Context, c.flagId, principals)
+			case "set-principals":
+				role, apiErr, err = roleClient.SetPrincipals(c.Context, c.flagId, principals)
+			case "remove-principals":
+				role, apiErr, err = roleClient.RemovePrincipals(c.Context, c.flagId, principals)
+			case "add-grants":
+				role, apiErr, err = roleClient.AddGrants(c.Context, c.flagId, grants)
+			case "set-grants":
+				role, apiErr, err = roleClient.SetGrants(c.Context, c.flagId, grants)
+			case "remove-grants":
+				role, apiErr, err = roleClient.RemoveGrants(c.Context, c.flagId, grants)
+		*/
 	}
 
 	plural := "role"
@@ -304,14 +307,14 @@ func (c *Command) Run(args []string) int {
 						fmt.Sprintf("  ID:               %s", r.Id),
 					)
 				}
-				if r.Name != nil {
+				if r.Name != "" {
 					output = append(output,
-						fmt.Sprintf("    Name:           %s", *r.Name),
+						fmt.Sprintf("    Name:           %s", r.Name),
 					)
 				}
-				if r.Description != nil {
+				if r.Description != "" {
 					output = append(output,
-						fmt.Sprintf("    Description:    %s", *r.Description),
+						fmt.Sprintf("    Description:    %s", r.Description),
 					)
 				}
 			}

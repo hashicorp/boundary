@@ -41,6 +41,18 @@ func WithScopeId(id string) Option {
 	}
 }
 
+func WithAttributes(inAttributes map[string]interface{}) Option {
+	return func(o *options) {
+		o.valueMap["attributes"] = inAttributes
+	}
+}
+
+func DefaultAttributes() Option {
+	return func(o *options) {
+		o.valueMap["attributes"] = nil
+	}
+}
+
 func WithType(inType string) Option {
 	return func(o *options) {
 		o.valueMap["type"] = inType
@@ -50,6 +62,18 @@ func WithType(inType string) Option {
 func DefaultType() Option {
 	return func(o *options) {
 		o.valueMap["type"] = nil
+	}
+}
+
+func WithAddress(inAddress string) Option {
+	return func(o *options) {
+		o.valueMap["address"] = inAddress
+	}
+}
+
+func DefaultAddress() Option {
+	return func(o *options) {
+		o.valueMap["address"] = nil
 	}
 }
 
@@ -86,29 +110,5 @@ func WithDisabled(inDisabled bool) Option {
 func DefaultDisabled() Option {
 	return func(o *options) {
 		o.valueMap["disabled"] = nil
-	}
-}
-
-func WithAttributes(inAttributes map[string]interface{}) Option {
-	return func(o *options) {
-		o.valueMap["attributes"] = inAttributes
-	}
-}
-
-func DefaultAttributes() Option {
-	return func(o *options) {
-		o.valueMap["attributes"] = nil
-	}
-}
-
-func WithAddress(inAddress string) Option {
-	return func(o *options) {
-		o.valueMap["address"] = inAddress
-	}
-}
-
-func DefaultAddress() Option {
-	return func(o *options) {
-		o.valueMap["address"] = nil
 	}
 }

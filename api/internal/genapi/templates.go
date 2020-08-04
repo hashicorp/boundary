@@ -139,7 +139,7 @@ func fillTemplates() {
 }
 
 var listTemplate = template.Must(template.New("").Parse(`
-func (c *{{ .ClientName }}Client) List(ctx context.Context, {{ range .CollectionFunctionArgs }} {{ . }} string, {{ end }}opt... Option) ([]{{ .Name }}, *api.Error, error) { {{ range .CollectionFunctionArgs }}
+func (c *{{ .ClientName }}Client) List(ctx context.Context, {{ range .CollectionFunctionArgs }} {{ . }} string, {{ end }}opt... Option) ([]*{{ .Name }}, *api.Error, error) { {{ range .CollectionFunctionArgs }}
 	if {{ . }} == "" {
 		return nil, nil, fmt.Errorf("empty {{ . }} value passed into List request")
 	}
@@ -161,7 +161,7 @@ func (c *{{ .ClientName }}Client) List(ctx context.Context, {{ range .Collection
 	}
 
 	type listResponse struct {
-		Items []{{ .Name }}
+		Items []*{{ .Name }}
 	}
 	target := &listResponse{}
 	apiErr, err := resp.Decode(target)

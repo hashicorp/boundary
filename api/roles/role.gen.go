@@ -156,7 +156,7 @@ func (c *roleClient) Delete(ctx context.Context, roleId string, opt ...Option) (
 	return target.Existed, apiErr, nil
 }
 
-func (c *roleClient) List(ctx context.Context, opt ...Option) ([]Role, *api.Error, error) {
+func (c *roleClient) List(ctx context.Context, opt ...Option) ([]*Role, *api.Error, error) {
 	if c.client == nil {
 		return nil, nil, fmt.Errorf("nil client")
 	}
@@ -174,7 +174,7 @@ func (c *roleClient) List(ctx context.Context, opt ...Option) ([]Role, *api.Erro
 	}
 
 	type listResponse struct {
-		Items []Role
+		Items []*Role
 	}
 	target := &listResponse{}
 	apiErr, err := resp.Decode(target)

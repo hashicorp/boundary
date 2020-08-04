@@ -149,7 +149,7 @@ func (c *scopeClient) Delete(ctx context.Context, scopeId string, opt ...Option)
 	return target.Existed, apiErr, nil
 }
 
-func (c *scopeClient) List(ctx context.Context, opt ...Option) ([]Scope, *api.Error, error) {
+func (c *scopeClient) List(ctx context.Context, opt ...Option) ([]*Scope, *api.Error, error) {
 	if c.client == nil {
 		return nil, nil, fmt.Errorf("nil client")
 	}
@@ -167,7 +167,7 @@ func (c *scopeClient) List(ctx context.Context, opt ...Option) ([]Scope, *api.Er
 	}
 
 	type listResponse struct {
-		Items []Scope
+		Items []*Scope
 	}
 	target := &listResponse{}
 	apiErr, err := resp.Decode(target)

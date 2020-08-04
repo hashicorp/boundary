@@ -167,7 +167,7 @@ func (c *hostClient) Delete(ctx context.Context, hostCatalogId string, hostId st
 	return target.Existed, apiErr, nil
 }
 
-func (c *hostClient) List(ctx context.Context, hostCatalogId string, opt ...Option) ([]Host, *api.Error, error) {
+func (c *hostClient) List(ctx context.Context, hostCatalogId string, opt ...Option) ([]*Host, *api.Error, error) {
 	if hostCatalogId == "" {
 		return nil, nil, fmt.Errorf("empty hostCatalogId value passed into List request")
 	}
@@ -189,7 +189,7 @@ func (c *hostClient) List(ctx context.Context, hostCatalogId string, opt ...Opti
 	}
 
 	type listResponse struct {
-		Items []Host
+		Items []*Host
 	}
 	target := &listResponse{}
 	apiErr, err := resp.Decode(target)

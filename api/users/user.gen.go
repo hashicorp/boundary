@@ -150,7 +150,7 @@ func (c *userClient) Delete(ctx context.Context, userId string, opt ...Option) (
 	return target.Existed, apiErr, nil
 }
 
-func (c *userClient) List(ctx context.Context, opt ...Option) ([]User, *api.Error, error) {
+func (c *userClient) List(ctx context.Context, opt ...Option) ([]*User, *api.Error, error) {
 	if c.client == nil {
 		return nil, nil, fmt.Errorf("nil client")
 	}
@@ -168,7 +168,7 @@ func (c *userClient) List(ctx context.Context, opt ...Option) ([]User, *api.Erro
 	}
 
 	type listResponse struct {
-		Items []User
+		Items []*User
 	}
 	target := &listResponse{}
 	apiErr, err := resp.Decode(target)

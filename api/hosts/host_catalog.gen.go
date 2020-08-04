@@ -152,7 +152,7 @@ func (c *hostcatalogClient) Delete(ctx context.Context, hostCatalogId string, op
 	return target.Existed, apiErr, nil
 }
 
-func (c *hostcatalogClient) List(ctx context.Context, opt ...Option) ([]HostCatalog, *api.Error, error) {
+func (c *hostcatalogClient) List(ctx context.Context, opt ...Option) ([]*HostCatalog, *api.Error, error) {
 	if c.client == nil {
 		return nil, nil, fmt.Errorf("nil client")
 	}
@@ -170,7 +170,7 @@ func (c *hostcatalogClient) List(ctx context.Context, opt ...Option) ([]HostCata
 	}
 
 	type listResponse struct {
-		Items []HostCatalog
+		Items []*HostCatalog
 	}
 	target := &listResponse{}
 	apiErr, err := resp.Decode(target)

@@ -153,7 +153,7 @@ func (c *groupClient) Delete(ctx context.Context, groupId string, opt ...Option)
 	return target.Existed, apiErr, nil
 }
 
-func (c *groupClient) List(ctx context.Context, opt ...Option) ([]Group, *api.Error, error) {
+func (c *groupClient) List(ctx context.Context, opt ...Option) ([]*Group, *api.Error, error) {
 	if c.client == nil {
 		return nil, nil, fmt.Errorf("nil client")
 	}
@@ -171,7 +171,7 @@ func (c *groupClient) List(ctx context.Context, opt ...Option) ([]Group, *api.Er
 	}
 
 	type listResponse struct {
-		Items []Group
+		Items []*Group
 	}
 	target := &listResponse{}
 	apiErr, err := resp.Decode(target)
