@@ -44,16 +44,19 @@ type structInfo struct {
 
 var inputStructs = []*structInfo{
 	{
-		inProto: &api.Error{},
-		outFile: "error.gen.go",
+		inProto:    &api.Error{},
+		outFile:    "error.gen.go",
+		outputOnly: true,
 	},
 	{
-		inProto: &api.ErrorDetails{},
-		outFile: "error_details.gen.go",
+		inProto:    &api.ErrorDetails{},
+		outFile:    "error_details.gen.go",
+		outputOnly: true,
 	},
 	{
-		inProto: &api.FieldError{},
-		outFile: "field_error.gen.go",
+		inProto:    &api.FieldError{},
+		outFile:    "field_error.gen.go",
+		outputOnly: true,
 	},
 	// Scope related resources
 	{

@@ -50,6 +50,7 @@ func getOptionFields(fields []fieldInfo) (ret []fieldInfo) {
 			"Scope",
 			"Members",
 			"Grants":
+
 		default:
 			ret = append(ret, field)
 		}
@@ -110,21 +111,23 @@ func fillTemplates() {
 }
 
 var listTemplate = template.Must(template.New("").Parse(`
-func (s *{{ .Name }}Client) List(ctx context.Context, {{ range .CollectionFunctionArgs }} {{ . }} string, {{ end }}opts... api.Option) ([]{{ .Name }}, *api.Error, error) { {{ range .CollectionFunctionArgs }}
-		if {{ . }} == "" {
-			return nil, nil, fmt.Errorf("empty {{ . }} value passed into List request")
-		}
+func (c *{{ .Name }}Client) List(ctx context.Context, {{ range .CollectionFunctionArgs }} {{ . }} string, {{ end }}opt... Option) ([]{{ .Name }}, *api.Error, error) { {{ range .CollectionFunctionArgs }}
+	if {{ . }} == "" {
+		return nil, nil, fmt.Errorf("empty {{ . }} value passed into List request")
+	}
 	{{ end }}
-	if s.client == nil {
+	if c.client == nil {
 		return nil, nil, fmt.Errorf("nil client")
 	}
 
-	req, err := s.client.NewRequest(ctx, "GET", {{ .CollectionPath }}, nil, opts...)
+	_, apiOpts := getOpts(opt...)
+
+	req, err := c.client.NewRequest(ctx, "GET", {{ .CollectionPath }}, nil, apiOpts...)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error creating List request: %w", err)
 	}
 
-	resp, err := s.client.Do(req)
+	resp, err := c.client.Do(req)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error performing client request during List call: %w", err)
 	}
@@ -143,21 +146,23 @@ func (s *{{ .Name }}Client) List(ctx context.Context, {{ range .CollectionFuncti
 `))
 
 var readTemplate = template.Must(template.New("").Parse(`
-func (s *{{ .Name }}Client) Read(ctx context.Context, {{ range .ResourceFunctionArgs }} {{ . }} string, {{ end }} opts... api.Option) (*{{ .Name }}, *api.Error, error) { {{ range .ResourceFunctionArgs }}
+func (c *{{ .Name }}Client) Read(ctx context.Context, {{ range .ResourceFunctionArgs }} {{ . }} string, {{ end }} opt... Option) (*{{ .Name }}, *api.Error, error) { {{ range .ResourceFunctionArgs }}
 	if {{ . }} == "" {
 		return nil, nil, fmt.Errorf("empty {{ . }} value passed into List request")
 	}
 	{{ end }}
-	if s.client == nil {
+	if c.client == nil {
 		return nil, nil, fmt.Errorf("nil client")
 	}
 
-	req, err := s.client.NewRequest(ctx, "GET", {{ .ResourcePath }}, nil, opts...)
+	_, apiOpts := getOpts(opt...)
+
+	req, err := c.client.NewRequest(ctx, "GET", {{ .ResourcePath }}, nil, apiOpts...)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error creating Read request: %w", err)
 	}
 
-	resp, err := s.client.Do(req)
+	resp, err := c.client.Do(req)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error performing client request during Read call: %w", err)
 	}
@@ -173,21 +178,23 @@ func (s *{{ .Name }}Client) Read(ctx context.Context, {{ range .ResourceFunction
 `))
 
 var deleteTemplate = template.Must(template.New("").Parse(`
-func (s *{{ .Name }}Client) Delete(ctx context.Context, {{ range .ResourceFunctionArgs }} {{ . }} string, {{ end }} opts... api.Option) (bool, *api.Error, error) { {{ range .ResourceFunctionArgs }}
+func (c *{{ .Name }}Client) Delete(ctx context.Context, {{ range .ResourceFunctionArgs }} {{ . }} string, {{ end }} opt... Option) (bool, *api.Error, error) { {{ range .ResourceFunctionArgs }}
 	if {{ . }} == "" {
 		return false, nil, fmt.Errorf("empty {{ . }} value passed into List request")
 	}
 	{{ end }}
-	if s.client == nil {
+	if c.client == nil {
 		return false, nil, fmt.Errorf("nil client")
 	}
+	
+	_, apiOpts := getOpts(opt...)
 
-	req, err := s.client.NewRequest(ctx, "DELETE", {{ .ResourcePath }}, nil, opts...)
+	req, err := c.client.NewRequest(ctx, "DELETE", {{ .ResourcePath }}, nil, apiOpts...)
 	if err != nil {
 		return false, nil, fmt.Errorf("error creating Delete request: %w", err)
 	}
 
-	resp, err := s.client.Do(req)
+	resp, err := c.client.Do(req)
 	if err != nil {
 		return false, nil, fmt.Errorf("error performing client request during Delete call: %w", err)
 	}
@@ -206,21 +213,23 @@ func (s *{{ .Name }}Client) Delete(ctx context.Context, {{ range .ResourceFuncti
 `))
 
 var createTemplate = template.Must(template.New("").Parse(`
-func (s *{{ .Name }}Client) Create(ctx context.Context, {{ range .CollectionFunctionArgs }} . string, {{ end }} opts... api.Option) (*{{ .Name }}, *api.Error, error) { {{ range .CollectionFunctionArgs }}
+func (c *{{ .Name }}Client) Create(ctx context.Context, {{ range .CollectionFunctionArgs }} . string, {{ end }} opt... Option) (*{{ .Name }}, *api.Error, error) { {{ range .CollectionFunctionArgs }}
 	if . == "" {
 		return nil, nil, fmt.Errorf("empty {{ . }} value passed into List request")
 	}
 	{{ end }}
-	if s.client == nil {
+	if c.client == nil {
 		return nil, nil, fmt.Errorf("nil client")
 	}
-	r := {{ .Name }}{}
-	req, err := s.client.NewRequest(ctx, "POST", {{ .CollectionPath }}, r, opts...)
+
+	opts, apiOpts := getOpts(opt...)
+
+	req, err := c.client.NewRequest(ctx, "POST", {{ .CollectionPath }}, opts.valueMap, apiOpts...)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error creating Create request: %w", err)
 	}
 
-	resp, err := s.client.Do(req)
+	resp, err := c.client.Do(req)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error performing client request during Read call: %w", err)
 	}
@@ -241,12 +250,11 @@ package {{ .Package }}
 
 import (
 	"context"
-	"encoding/json"
-	"strings"
-
-	"github.com/fatih/structs"
+	"fmt"
+	"time"
 
 	"github.com/hashicorp/watchtower/api"
+	"github.com/hashicorp/watchtower/api/scopes"
 )
 
 type {{ .Name }} struct { {{ range .Fields }}
@@ -268,43 +276,49 @@ var optionTemplate = template.Must(template.New("").Parse(`
 type Option func(*options)
 
 type options struct {
-	defaultMap map[string]bool
+	valueMap map[string]interface{}
 	withScopeId string
-	{{ range .Fields }}with{{ .Name }} {{ .FieldType }}
-	{{ end }}
 }
 
 func getDefaultOptions() options {
 	return options{
-		defaultMap: make(map[string]bool),
+		valueMap: make(map[string]interface{}),
 	}
 }
 
-func getOpts(opt ...Option) options {
+func getOpts(opt ...Option) (options, []api.Option) {
 	opts := getDefaultOptions()
 	for _, o := range opt {
 		o(&opts)
 	}
-	return opts
+	var apiOpts []api.Option
+	if opts.withScopeId != "" {
+		apiOpts = append(apiOpts, api.WithScopeId(opts.withScopeId))
+	}
+	return opts, apiOpts
+}
+
+func DefaultScopeId() Option {
+	return func(o *options) {
+		o.withScopeId = ""
+	}
 }
 
 func WithScopeId(id string) Option {
 	return func(o *options) {
-		delete(o.defaultMap, "scope_id")
 		o.withScopeId = id
 	}
 }
 {{ range .Fields }}
 func With{{ .Name }}(in{{ .Name }} {{ .FieldType }}) Option {
 	return func(o *options) {
-		delete(o.defaultMap, "{{ .ProtoName }}")
-		o.with{{ .Name }} = in{{ .Name }}
+		o.valueMap["{{ .ProtoName }}"] = in{{ .Name }}
 	}
 }
 
 func Default{{ .Name }}() Option {
 	return func(o *options) {
-		o.defaultMap["{{ .ProtoName }}"] = true
+		o.valueMap["{{ .ProtoName }}"] = nil
 	}
 }
 {{ end }}

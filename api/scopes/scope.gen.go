@@ -27,21 +27,23 @@ func New(c *api.Client) *ScopeClient {
 	return &ScopeClient{client: c}
 }
 
-func (s *ScopeClient) Read(ctx context.Context, scopeId string, opts ...api.Option) (*Scope, *api.Error, error) {
+func (c *ScopeClient) Read(ctx context.Context, scopeId string, opt ...Option) (*Scope, *api.Error, error) {
 	if scopeId == "" {
 		return nil, nil, fmt.Errorf("empty scopeId value passed into List request")
 	}
 
-	if s.client == nil {
+	if c.client == nil {
 		return nil, nil, fmt.Errorf("nil client")
 	}
 
-	req, err := s.client.NewRequest(ctx, "GET", fmt.Sprintf("scopes/%s", scopeId), nil, opts...)
+	_, apiOpts := getOpts(opt...)
+
+	req, err := c.client.NewRequest(ctx, "GET", fmt.Sprintf("scopes/%s", scopeId), nil, apiOpts...)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error creating Read request: %w", err)
 	}
 
-	resp, err := s.client.Do(req)
+	resp, err := c.client.Do(req)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error performing client request during Read call: %w", err)
 	}
@@ -55,17 +57,19 @@ func (s *ScopeClient) Read(ctx context.Context, scopeId string, opts ...api.Opti
 	return target, apiErr, nil
 }
 
-func (s *ScopeClient) List(ctx context.Context, opts ...api.Option) ([]Scope, *api.Error, error) {
-	if s.client == nil {
+func (c *ScopeClient) List(ctx context.Context, opt ...Option) ([]Scope, *api.Error, error) {
+	if c.client == nil {
 		return nil, nil, fmt.Errorf("nil client")
 	}
 
-	req, err := s.client.NewRequest(ctx, "GET", fmt.Sprintf("scopes"), nil, opts...)
+	_, apiOpts := getOpts(opt...)
+
+	req, err := c.client.NewRequest(ctx, "GET", fmt.Sprintf("scopes"), nil, apiOpts...)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error creating List request: %w", err)
 	}
 
-	resp, err := s.client.Do(req)
+	resp, err := c.client.Do(req)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error performing client request during List call: %w", err)
 	}
@@ -82,17 +86,19 @@ func (s *ScopeClient) List(ctx context.Context, opts ...api.Option) ([]Scope, *a
 	return target.Items, apiErr, nil
 }
 
-func (s *ScopeClient) Create(ctx context.Context, opts ...api.Option) (*Scope, *api.Error, error) {
-	if s.client == nil {
+func (c *ScopeClient) Create(ctx context.Context, opt ...Option) (*Scope, *api.Error, error) {
+	if c.client == nil {
 		return nil, nil, fmt.Errorf("nil client")
 	}
-	r := Scope{}
-	req, err := s.client.NewRequest(ctx, "POST", fmt.Sprintf("scopes"), r, opts...)
+
+	opts, apiOpts := getOpts(opt...)
+
+	req, err := c.client.NewRequest(ctx, "POST", fmt.Sprintf("scopes"), opts.valueMap, apiOpts...)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error creating Create request: %w", err)
 	}
 
-	resp, err := s.client.Do(req)
+	resp, err := c.client.Do(req)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error performing client request during Read call: %w", err)
 	}
@@ -106,21 +112,23 @@ func (s *ScopeClient) Create(ctx context.Context, opts ...api.Option) (*Scope, *
 	return target, apiErr, nil
 }
 
-func (s *ScopeClient) Delete(ctx context.Context, scopeId string, opts ...api.Option) (bool, *api.Error, error) {
+func (c *ScopeClient) Delete(ctx context.Context, scopeId string, opt ...Option) (bool, *api.Error, error) {
 	if scopeId == "" {
 		return false, nil, fmt.Errorf("empty scopeId value passed into List request")
 	}
 
-	if s.client == nil {
+	if c.client == nil {
 		return false, nil, fmt.Errorf("nil client")
 	}
 
-	req, err := s.client.NewRequest(ctx, "DELETE", fmt.Sprintf("scopes/%s", scopeId), nil, opts...)
+	_, apiOpts := getOpts(opt...)
+
+	req, err := c.client.NewRequest(ctx, "DELETE", fmt.Sprintf("scopes/%s", scopeId), nil, apiOpts...)
 	if err != nil {
 		return false, nil, fmt.Errorf("error creating Delete request: %w", err)
 	}
 
-	resp, err := s.client.Do(req)
+	resp, err := c.client.Do(req)
 	if err != nil {
 		return false, nil, fmt.Errorf("error performing client request during Delete call: %w", err)
 	}
@@ -140,49 +148,72 @@ func (s *ScopeClient) Delete(ctx context.Context, scopeId string, opts ...api.Op
 type Option func(*options)
 
 type options struct {
-	defaultMap      map[string]bool
-	withScopeId     string
-	withName        string
-	withDescription string
-	withDisabled    bool
+	valueMap    map[string]interface{}
+	withScopeId string
 }
 
 func getDefaultOptions() options {
-	return options{}
+	return options{
+		valueMap: make(map[string]interface{}),
+	}
 }
 
-func getOpts(opt ...Option) options {
+func getOpts(opt ...Option) (options, []api.Option) {
 	opts := getDefaultOptions()
 	for _, o := range opt {
 		o(&opts)
 	}
-	return opts
+	var apiOpts []api.Option
+	if opts.withScopeId != "" {
+		apiOpts = append(apiOpts, api.WithScopeId(opts.withScopeId))
+	}
+	return opts, apiOpts
+}
+
+func DefaultScopeId() Option {
+	return func(o *options) {
+		o.withScopeId = ""
+	}
 }
 
 func WithScopeId(id string) Option {
 	return func(o *options) {
-		delete(o.defaultMap, "scope_id")
 		o.withScopeId = id
 	}
 }
 
 func WithName(inName string) Option {
 	return func(o *options) {
-		delete(o.defaultMap, "name")
-		o.withName = inName
+		o.valueMap["name"] = inName
+	}
+}
+
+func DefaultName() Option {
+	return func(o *options) {
+		o.valueMap["name"] = nil
 	}
 }
 
 func WithDescription(inDescription string) Option {
 	return func(o *options) {
-		delete(o.defaultMap, "description")
-		o.withDescription = inDescription
+		o.valueMap["description"] = inDescription
+	}
+}
+
+func DefaultDescription() Option {
+	return func(o *options) {
+		o.valueMap["description"] = nil
 	}
 }
 
 func WithDisabled(inDisabled bool) Option {
 	return func(o *options) {
-		delete(o.defaultMap, "disabled")
-		o.withDisabled = inDisabled
+		o.valueMap["disabled"] = inDisabled
+	}
+}
+
+func DefaultDisabled() Option {
+	return func(o *options) {
+		o.valueMap["disabled"] = nil
 	}
 }
