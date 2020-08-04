@@ -41,18 +41,6 @@ func WithScopeId(id string) Option {
 	}
 }
 
-func WithDisabled(inDisabled bool) Option {
-	return func(o *options) {
-		o.valueMap["disabled"] = inDisabled
-	}
-}
-
-func DefaultDisabled() Option {
-	return func(o *options) {
-		o.valueMap["disabled"] = nil
-	}
-}
-
 func WithName(inName string) Option {
 	return func(o *options) {
 		o.valueMap["name"] = inName
@@ -74,5 +62,17 @@ func WithDescription(inDescription string) Option {
 func DefaultDescription() Option {
 	return func(o *options) {
 		o.valueMap["description"] = nil
+	}
+}
+
+func WithDisabled(inDisabled bool) Option {
+	return func(o *options) {
+		o.valueMap["disabled"] = inDisabled
+	}
+}
+
+func DefaultDisabled() Option {
+	return func(o *options) {
+		o.valueMap["disabled"] = nil
 	}
 }

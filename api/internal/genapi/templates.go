@@ -286,7 +286,7 @@ func (c *{{ .ClientName }}Client) Update(ctx context.Context, {{ range .Resource
 
 	opts, apiOpts := getOpts(opt...)
 
-	req, err := c.client.NewRequest(ctx, "PATCH", {{ .CollectionPath }}, opts.valueMap, apiOpts...)
+	req, err := c.client.NewRequest(ctx, "PATCH", {{ .ResourcePath }}, opts.valueMap, apiOpts...)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error creating Update request: %w", err)
 	}

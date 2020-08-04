@@ -41,6 +41,42 @@ func WithScopeId(id string) Option {
 	}
 }
 
+func WithDescription(inDescription string) Option {
+	return func(o *options) {
+		o.valueMap["description"] = inDescription
+	}
+}
+
+func DefaultDescription() Option {
+	return func(o *options) {
+		o.valueMap["description"] = nil
+	}
+}
+
+func WithDisabled(inDisabled bool) Option {
+	return func(o *options) {
+		o.valueMap["disabled"] = inDisabled
+	}
+}
+
+func DefaultDisabled() Option {
+	return func(o *options) {
+		o.valueMap["disabled"] = nil
+	}
+}
+
+func WithAddress(inAddress string) Option {
+	return func(o *options) {
+		o.valueMap["address"] = inAddress
+	}
+}
+
+func DefaultAddress() Option {
+	return func(o *options) {
+		o.valueMap["address"] = nil
+	}
+}
+
 func WithAttributes(inAttributes map[string]interface{}) Option {
 	return func(o *options) {
 		o.valueMap["attributes"] = inAttributes
@@ -65,18 +101,6 @@ func DefaultType() Option {
 	}
 }
 
-func WithAddress(inAddress string) Option {
-	return func(o *options) {
-		o.valueMap["address"] = inAddress
-	}
-}
-
-func DefaultAddress() Option {
-	return func(o *options) {
-		o.valueMap["address"] = nil
-	}
-}
-
 func WithName(inName string) Option {
 	return func(o *options) {
 		o.valueMap["name"] = inName
@@ -86,29 +110,5 @@ func WithName(inName string) Option {
 func DefaultName() Option {
 	return func(o *options) {
 		o.valueMap["name"] = nil
-	}
-}
-
-func WithDescription(inDescription string) Option {
-	return func(o *options) {
-		o.valueMap["description"] = inDescription
-	}
-}
-
-func DefaultDescription() Option {
-	return func(o *options) {
-		o.valueMap["description"] = nil
-	}
-}
-
-func WithDisabled(inDisabled bool) Option {
-	return func(o *options) {
-		o.valueMap["disabled"] = inDisabled
-	}
-}
-
-func DefaultDisabled() Option {
-	return func(o *options) {
-		o.valueMap["disabled"] = nil
 	}
 }

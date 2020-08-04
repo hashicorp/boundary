@@ -101,7 +101,7 @@ func (c *groupClient) Update(ctx context.Context, groupId string, version uint32
 
 	opts, apiOpts := getOpts(opt...)
 
-	req, err := c.client.NewRequest(ctx, "PATCH", fmt.Sprintf("groups"), opts.valueMap, apiOpts...)
+	req, err := c.client.NewRequest(ctx, "PATCH", fmt.Sprintf("groups/%s", groupId), opts.valueMap, apiOpts...)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error creating Update request: %w", err)
 	}
