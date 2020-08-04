@@ -218,18 +218,6 @@ func WithScopeId(id string) Option {
 	}
 }
 
-func WithType(inType string) Option {
-	return func(o *options) {
-		o.valueMap["type"] = inType
-	}
-}
-
-func DefaultType() Option {
-	return func(o *options) {
-		o.valueMap["type"] = nil
-	}
-}
-
 func WithName(inName string) Option {
 	return func(o *options) {
 		o.valueMap["name"] = inName

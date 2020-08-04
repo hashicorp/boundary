@@ -8,7 +8,7 @@ import "google/protobuf/timestamp.proto";
 import "google/protobuf/wrappers.proto";
 import "google/protobuf/struct.proto";
 import "controller/api/resources/scopes/v1/scope.proto";
-import "controller/custom_options/v1/masks.proto";
+import "controller/custom_options/v1/options.proto";
 
 // HostCatalog manages Hosts and HostSets
 message HostCatalog {
@@ -21,13 +21,13 @@ message HostCatalog {
 	resources.scopes.v1.ScopeInfo scope = 2;
 	
 	// The type of the resource, to help differentiate schemas
-	google.protobuf.StringValue type = 3;
+	google.protobuf.StringValue type = 3 [(custom_options.v1.writable) = true];
 
 	// Optional name for identification purposes
-	google.protobuf.StringValue name = 4 [(custom_options.v1.mask_mapping) = {this:"name" that: "name"}];
+	google.protobuf.StringValue name = 4 [(custom_options.v1.writable) = true, (custom_options.v1.mask_mapping) = {this:"name" that: "name"}];
 
 	// Optional user-set description for identification purposes
-	google.protobuf.StringValue description = 5 [(custom_options.v1.mask_mapping) = {this:"description" that: "description"}];
+	google.protobuf.StringValue description = 5 [(custom_options.v1.writable) = true, (custom_options.v1.mask_mapping) = {this:"description" that: "description"}];
 
 	// The time this resource was created
 	// Output only.
@@ -38,10 +38,10 @@ message HostCatalog {
 	google.protobuf.Timestamp updated_time = 7 [json_name="updated_time"];
 
 	// Whether the catalog is disabled
-	google.protobuf.BoolValue disabled = 8;
+	google.protobuf.BoolValue disabled = 8 [(custom_options.v1.writable) = true];
 
 	// Attributes specific to the catalog type
-	google.protobuf.Struct attributes = 9;
+	google.protobuf.Struct attributes = 9 [(custom_options.v1.writable) = true];
 }
 
 message StaticHostCatalogDetails {

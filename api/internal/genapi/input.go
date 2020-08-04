@@ -23,6 +23,7 @@ type fieldInfo struct {
 	Name      string
 	ProtoName string
 	FieldType string
+	Writable  bool
 }
 
 type structInfo struct {

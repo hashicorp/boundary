@@ -7,7 +7,7 @@ option go_package = "github.com/hashicorp/watchtower/internal/gen/controller/api
 import "google/protobuf/timestamp.proto";
 import "google/protobuf/wrappers.proto";
 import "controller/api/resources/scopes/v1/scope.proto";
-import "controller/custom_options/v1/masks.proto";
+import "controller/custom_options/v1/options.proto";
 
 message Member {
 	// The ID of the member.
@@ -34,10 +34,10 @@ message Group {
 	resources.scopes.v1.ScopeInfo scope = 2;
 
 	// Optional name for identification purposes
-	google.protobuf.StringValue name = 3 [(custom_options.v1.mask_mapping) = {this:"name" that: "name"}];
+	google.protobuf.StringValue name = 3 [(custom_options.v1.writable) = true, (custom_options.v1.mask_mapping) = {this:"name" that: "name"}];
 
 	// Optional user-set descripton for identification purposes
-	google.protobuf.StringValue description = 4 [(custom_options.v1.mask_mapping) = {this:"description" that: "description"}];
+	google.protobuf.StringValue description = 4 [(custom_options.v1.writable) = true, (custom_options.v1.mask_mapping) = {this:"description" that: "description"}];
 
 	// The time this resource was created
 	// Output only.
@@ -48,7 +48,7 @@ message Group {
 	google.protobuf.Timestamp updated_time = 6 [json_name="updated_time"];
 
 	// Whether the resource is disabled
-	google.protobuf.BoolValue disabled = 7;
+	google.protobuf.BoolValue disabled = 7 [(custom_options.v1.writable) = true];
 
 	// The version can be used in subsiquent write requests to ensure this resource
 	// has not changed and to fail the write if it has.

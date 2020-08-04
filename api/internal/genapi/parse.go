@@ -4,9 +4,13 @@ import (
 	"fmt"
 
 	_struct "github.com/golang/protobuf/ptypes/struct"
+	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/reflect/protoreflect"
+	"google.golang.org/protobuf/types/descriptorpb"
 	"google.golang.org/protobuf/types/known/timestamppb"
 	"google.golang.org/protobuf/types/known/wrapperspb"
+
+	"github.com/hashicorp/watchtower/internal/gen/controller/protooptions"
 
 	"github.com/iancoleman/strcase"
 )
@@ -45,6 +49,11 @@ func parsePBs() {
 			sliceText := ""
 			if fd.Cardinality() == protoreflect.Repeated {
 				sliceText = "[]"
+			}
+			// Add writable info
+			opts := fd.Options().(*descriptorpb.FieldOptions)
+			if proto.GetExtension(opts, protooptions.E_Writable).(bool) {
+				fi.Writable = true
 			}
 			switch k := fd.Kind(); k {
 			case protoreflect.MessageKind:

@@ -254,27 +254,3 @@ func DefaultDisabled() Option {
 		o.valueMap["disabled"] = nil
 	}
 }
-
-func WithVersion(inVersion uint32) Option {
-	return func(o *options) {
-		o.valueMap["version"] = inVersion
-	}
-}
-
-func DefaultVersion() Option {
-	return func(o *options) {
-		o.valueMap["version"] = nil
-	}
-}
-
-func WithMemberIds(inMemberIds []string) Option {
-	return func(o *options) {
-		o.valueMap["member_ids"] = inMemberIds
-	}
-}
-
-func DefaultMemberIds() Option {
-	return func(o *options) {
-		o.valueMap["member_ids"] = nil
-	}
-}

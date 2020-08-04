@@ -10,7 +10,7 @@ GENERATED_CODE := $(shell  find ${THIS_DIR} -name '*.gen.go' && find ${THIS_DIR}
 
 CGO_ENABLED?=0
 
-export GEN_BASEPATH := $(shell pwd)/api
+export GEN_BASEPATH := $(shell pwd)
 
 api:
 	$(MAKE) --environment-overrides -C api/internal/genapi api

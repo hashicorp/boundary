@@ -3,7 +3,7 @@ package controller.custom_options.v1;
 
 option go_package = "github.com/hashicorp/watchtower/internal/gen/controller/protooptions;protooptions";
 
-import "controller/custom_options/v1/masks.proto";
+import "controller/custom_options/v1/options.proto";
 
 message TestBase {
 	string first_field = 1 [(mask_mapping) = {this: "first_field" that: "OtherFirstField"}];

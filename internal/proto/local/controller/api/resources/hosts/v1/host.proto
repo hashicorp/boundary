@@ -7,6 +7,7 @@ option go_package = "github.com/hashicorp/watchtower/internal/gen/controller/api
 import "google/protobuf/timestamp.proto";
 import "google/protobuf/wrappers.proto";
 import "controller/api/resources/scopes/v1/scope.proto";
+import "controller/custom_options/v1/options.proto";
 
 // Host contains all fields related to a Host resource
 message Host {
@@ -22,10 +23,10 @@ message Host {
 	google.protobuf.StringValue type = 3;
 
 	// Optional name for identification purposes
-	google.protobuf.StringValue name = 4;
+	google.protobuf.StringValue name = 4 [(custom_options.v1.writable) = true];
 
 	// Optional user-set description for identification purposes
-	google.protobuf.StringValue description = 5;
+	google.protobuf.StringValue description = 5 [(custom_options.v1.writable) = true];
 
 	// The time this resource was created
 	// Output only.
@@ -36,8 +37,8 @@ message Host {
 	google.protobuf.Timestamp updated_time = 7 [json_name="updated_time"];
 
 	// Whether the host is disabled
-	google.protobuf.BoolValue disabled = 8;
+	google.protobuf.BoolValue disabled = 8 [(custom_options.v1.writable) = true];
 
 	// The address (DNS or IP name) used to reach the host
-	google.protobuf.StringValue address = 9;
+	google.protobuf.StringValue address = 9 [(custom_options.v1.writable) = true];
 }

@@ -39,28 +39,6 @@ func getArgsAndPaths(in []string) (colArgs, resArgs []string, colPath, resPath s
 	return argNames[:len(argNames)-1], argNames, toPath(pathSegment[:len(pathSegment)-1]), toPath(pathSegment)
 }
 
-func getOptionFields(fields []fieldInfo) (ret []fieldInfo) {
-	// For now a slightly naive algorithm -- if it's not one of the known output
-	// only values, assume it can be modified
-
-	// TODO: Figure out something better. Likely this means using a custom proto
-	// tag or so (like we do with mappings) to indicate that this is read only.
-	for _, field := range fields {
-		switch field.Name {
-		case "Id",
-			"CreatedTime",
-			"UpdatedTime",
-			"Scope",
-			"Members",
-			"Grants":
-
-		default:
-			ret = append(ret, field)
-		}
-	}
-	return
-}
-
 type templateInput struct {
 	ClientName             string
 	Name                   string
@@ -93,13 +71,10 @@ func fillTemplates() {
 		}
 
 		if !in.outputOnly {
-			input.Fields = getOptionFields(in.generatedStructure.fields)
-			if len(input.Fields) > 0 {
-				optionTemplate.Execute(outBuf, input)
-			}
+			optionTemplate.Execute(outBuf, input)
 		}
 
-		outFile, err := filepath.Abs(fmt.Sprintf("%s/%s", os.Getenv("GEN_BASEPATH"), in.outFile))
+		outFile, err := filepath.Abs(fmt.Sprintf("%s/%s", os.Getenv("API_GEN_BASEPATH"), in.outFile))
 		if err != nil {
 			fmt.Printf("error opening file %q: %v\n", in.outFile, err)
 			os.Exit(1)
@@ -348,7 +323,7 @@ func WithScopeId(id string) Option {
 		o.withScopeId = id
 	}
 }
-{{ range .Fields }}
+{{ range .Fields }} {{ if .Writable }}
 func With{{ .Name }}(in{{ .Name }} {{ .FieldType }}) Option {
 	return func(o *options) {
 		o.valueMap["{{ .ProtoName }}"] = in{{ .Name }}
@@ -359,6 +334,6 @@ func Default{{ .Name }}() Option {
 	return func(o *options) {
 		o.valueMap["{{ .ProtoName }}"] = nil
 	}
-}
+} {{ end }}
 {{ end }}
 `))
