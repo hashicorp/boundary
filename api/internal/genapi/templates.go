@@ -39,6 +39,12 @@ func getArgsAndPaths(in []string) (colArgs, resArgs []string, colPath, resPath s
 	return argNames[:len(argNames)-1], argNames, toPath(pathSegment[:len(pathSegment)-1]), toPath(pathSegment)
 }
 
+func getOptionFields(fields []fieldInfo) (ret []fieldInfo) {
+	// For now a slightly naive algorithm -- if it's not one of the known output
+	// only values, assume it can be modified
+
+}
+
 type templateInput struct {
 	Name                   string
 	Package                string
@@ -67,6 +73,8 @@ func fillTemplates() {
 		for _, t := range in.templates {
 			t.Execute(outBuf, input)
 		}
+
+		optionFields := getOptionFields(in.generatedStructure.fields)
 
 		outFile, err := filepath.Abs(fmt.Sprintf("%s/%s", os.Getenv("GEN_BASEPATH"), in.outFile))
 		if err != nil {
