@@ -4,7 +4,9 @@ import (
 	"text/template"
 
 	"github.com/hashicorp/watchtower/internal/gen/controller/api"
+	"github.com/hashicorp/watchtower/internal/gen/controller/api/resources/authtokens"
 	"github.com/hashicorp/watchtower/internal/gen/controller/api/resources/groups"
+	"github.com/hashicorp/watchtower/internal/gen/controller/api/resources/hosts"
 	"github.com/hashicorp/watchtower/internal/gen/controller/api/resources/roles"
 	"github.com/hashicorp/watchtower/internal/gen/controller/api/resources/scopes"
 	"github.com/hashicorp/watchtower/internal/gen/controller/api/resources/users"
@@ -152,5 +154,44 @@ var inputStructs = []*structInfo{
 			listTemplate,
 		},
 		pathArgs: []string{"user"},
+	},
+	// Auth Tokens
+	{
+		inProto: &authtokens.AuthToken{},
+		outFile: "authtokens/authtokens.gen.go",
+		templates: []*template.Template{
+			clientTemplate,
+			readTemplate,
+			deleteTemplate,
+			listTemplate,
+		},
+		pathArgs: []string{"auth-token"},
+	},
+	// Host related resources
+	{
+		inProto: &hosts.HostCatalog{},
+		outFile: "hosts/host_catalog.gen.go",
+		templates: []*template.Template{
+			clientTemplate,
+			createTemplate,
+			readTemplate,
+			updateTemplate,
+			deleteTemplate,
+			listTemplate,
+		},
+		pathArgs: []string{"host-catalog"},
+	},
+	{
+		inProto: &hosts.Host{},
+		outFile: "hosts/host.gen.go",
+		templates: []*template.Template{
+			clientTemplate,
+			createTemplate,
+			readTemplate,
+			updateTemplate,
+			deleteTemplate,
+			listTemplate,
+		},
+		pathArgs: []string{"host"},
 	},
 }

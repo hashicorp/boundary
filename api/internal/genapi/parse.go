@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 
+	_struct "github.com/golang/protobuf/ptypes/struct"
 	"google.golang.org/protobuf/reflect/protoreflect"
 	"google.golang.org/protobuf/types/known/timestamppb"
 	"google.golang.org/protobuf/types/known/wrapperspb"
@@ -74,6 +75,7 @@ func packageFromFullName(fullName protoreflect.FullName) string {
 var (
 	stringValueName = (&wrapperspb.StringValue{}).ProtoReflect().Descriptor().FullName()
 	boolValueName   = (&wrapperspb.BoolValue{}).ProtoReflect().Descriptor().FullName()
+	structValueName = (&_struct.Struct{}).ProtoReflect().Descriptor().FullName()
 	timestampName   = (&timestamppb.Timestamp{}).ProtoReflect().Descriptor().FullName()
 )
 
@@ -83,6 +85,8 @@ func messageKind(fd protoreflect.FieldDescriptor) (ptr, pkg, name string) {
 		return "", "", "string"
 	case boolValueName:
 		return "", "", "bool"
+	case structValueName:
+		return "", "", "map[string]interface{}"
 	case timestampName:
 		return "", "time", "Time"
 	default:

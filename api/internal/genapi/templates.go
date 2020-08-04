@@ -42,6 +42,9 @@ func getArgsAndPaths(in []string) (colArgs, resArgs []string, colPath, resPath s
 func getOptionFields(fields []fieldInfo) (ret []fieldInfo) {
 	// For now a slightly naive algorithm -- if it's not one of the known output
 	// only values, assume it can be modified
+
+	// TODO: Figure out something better. Likely this means using a custom proto
+	// tag or so (like we do with mappings) to indicate that this is read only.
 	for _, field := range fields {
 		switch field.Name {
 		case "Id",
