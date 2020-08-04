@@ -3,7 +3,6 @@ package roles
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"time"
 
@@ -11,20 +10,20 @@ import (
 	"github.com/hashicorp/watchtower/api/scopes"
 )
 
-type Role struct {
-	Id           string            `json:"id,omitempty"`
-	Scope        *scopes.ScopeInfo `json:"scope,omitempty"`
-	Name         string            `json:"name,omitempty"`
-	Description  string            `json:"description,omitempty"`
-	CreatedTime  time.Time         `json:"created_time,omitempty"`
-	UpdatedTime  time.Time         `json:"updated_time,omitempty"`
-	Disabled     bool              `json:"disabled,omitempty"`
-	GrantScopeId string            `json:"grant_scope_id,omitempty"`
-	Version      uint32            `json:"version,omitempty"`
-	PrincipalIds []string          `json:"principal_ids,omitempty"`
-	Principals   []*Principal      `json:"principals,omitempty"`
-	GrantStrings []string          `json:"grant_strings,omitempty"`
-	Grants       []*Grant          `json:"grants,omitempty"`
+type Role struct { 
+Id  string `json:"id,omitempty"`
+Scope  *scopes.ScopeInfo `json:"scope,omitempty"`
+Name  string `json:"name,omitempty"`
+Description  string `json:"description,omitempty"`
+CreatedTime  time.Time `json:"created_time,omitempty"`
+UpdatedTime  time.Time `json:"updated_time,omitempty"`
+Disabled  bool `json:"disabled,omitempty"`
+GrantScopeId  string `json:"grant_scope_id,omitempty"`
+Version  uint32 `json:"version,omitempty"`
+PrincipalIds  []string `json:"principal_ids,omitempty"`
+Principals  []*Principal `json:"principals,omitempty"`
+GrantStrings  []string `json:"grant_strings,omitempty"`
+Grants  []*Grant `json:"grants,omitempty"`
 }
 
 type roleClient struct {
@@ -32,17 +31,17 @@ type roleClient struct {
 }
 
 func NewRoleClient(c *api.Client) *roleClient {
-	return &roleClient{client: c}
+	return &roleClient{ client: c }
 }
 
-func (c *roleClient) Create(ctx context.Context, opt ...Option) (*Role, *api.Error, error) {
+func (c *roleClient) Create(ctx context.Context,  opt... Option) (*Role, *api.Error, error) { 
 	if c.client == nil {
 		return nil, nil, fmt.Errorf("nil client")
 	}
 
 	opts, apiOpts := getOpts(opt...)
 
-	req, err := c.client.NewRequest(ctx, "POST", fmt.Sprintf("roles"), opts.valueMap, apiOpts...)
+	req, err := c.client.NewRequest(ctx, "POST", fmt.Sprintf("roles", ), opts.valueMap, apiOpts...)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error creating Create request: %w", err)
 	}
@@ -61,11 +60,11 @@ func (c *roleClient) Create(ctx context.Context, opt ...Option) (*Role, *api.Err
 	return target, apiErr, nil
 }
 
-func (c *roleClient) Read(ctx context.Context, roleId string, opt ...Option) (*Role, *api.Error, error) {
+func (c *roleClient) Read(ctx context.Context,  roleId string,  opt... Option) (*Role, *api.Error, error) { 
 	if roleId == "" {
 		return nil, nil, fmt.Errorf("empty roleId value passed into Read request")
 	}
-
+	
 	if c.client == nil {
 		return nil, nil, fmt.Errorf("nil client")
 	}
@@ -91,7 +90,7 @@ func (c *roleClient) Read(ctx context.Context, roleId string, opt ...Option) (*R
 	return target, apiErr, nil
 }
 
-func (c *roleClient) Update(ctx context.Context, roleId string, version uint32, opt ...Option) (*Role, *api.Error, error) {
+func (c *roleClient) Update(ctx context.Context,  roleId string, version uint32, opt... Option) (*Role, *api.Error, error) { 
 	if roleId == "" {
 		return nil, nil, fmt.Errorf("empty roleId value passed into Update request")
 	}
@@ -123,15 +122,15 @@ func (c *roleClient) Update(ctx context.Context, roleId string, version uint32, 
 	return target, apiErr, nil
 }
 
-func (c *roleClient) Delete(ctx context.Context, roleId string, opt ...Option) (bool, *api.Error, error) {
+func (c *roleClient) Delete(ctx context.Context,  roleId string,  opt... Option) (bool, *api.Error, error) { 
 	if roleId == "" {
 		return false, nil, fmt.Errorf("empty roleId value passed into Delete request")
 	}
-
+	
 	if c.client == nil {
 		return false, nil, fmt.Errorf("nil client")
 	}
-
+	
 	_, apiOpts := getOpts(opt...)
 
 	req, err := c.client.NewRequest(ctx, "DELETE", fmt.Sprintf("roles/%s", roleId), nil, apiOpts...)
@@ -156,14 +155,14 @@ func (c *roleClient) Delete(ctx context.Context, roleId string, opt ...Option) (
 	return target.Existed, apiErr, nil
 }
 
-func (c *roleClient) List(ctx context.Context, opt ...Option) ([]*Role, *api.Error, error) {
+func (c *roleClient) List(ctx context.Context, opt... Option) ([]*Role, *api.Error, error) { 
 	if c.client == nil {
 		return nil, nil, fmt.Errorf("nil client")
 	}
 
 	_, apiOpts := getOpts(opt...)
 
-	req, err := c.client.NewRequest(ctx, "GET", fmt.Sprintf("roles"), nil, apiOpts...)
+	req, err := c.client.NewRequest(ctx, "GET", fmt.Sprintf("roles", ), nil, apiOpts...)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error creating List request: %w", err)
 	}
@@ -184,3 +183,5 @@ func (c *roleClient) List(ctx context.Context, opt ...Option) ([]*Role, *api.Err
 
 	return target.Items, apiErr, nil
 }
+
+func (c *roleClient) Add(ctx context.Context, 

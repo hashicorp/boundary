@@ -48,6 +48,7 @@ type templateInput struct {
 	ResourceFunctionArgs   []string
 	CollectionPath         string
 	ResourcePath           string
+	SliceSubTypes          map[string]string
 }
 
 func fillTemplates() {
@@ -66,6 +67,11 @@ func fillTemplates() {
 		}
 
 		structTemplate.Execute(outBuf, input)
+
+		if len(in.sliceSubTypes) > 0 {
+			input.SliceSubTypes = in.sliceSubTypes
+			in.templates = append(in.templates, sliceSubTypeTemplate)
+		}
 
 		for _, t := range in.templates {
 			t.Execute(outBuf, input)
@@ -304,6 +310,41 @@ func (c *{{ .ClientName }}Client) Update(ctx context.Context, {{ range .Resource
 
 	return target, apiErr, nil
 }
+`))
+
+var sliceSubTypeTemplate = template.Must(template.New("").Parse(`{{ $input := . }}{{ range $key, $value := .SliceSubTypes }}
+func (c *{{ $input.ClientName }}Client) Add(ctx context.Context, {{ range .ResourceFunctionArgs }} {{ . }} string, {{ end }}version uint32, opt... Option) (*{{ .Name }}, *api.Error, error) { {{ range .ResourceFunctionArgs }}
+	if {{ . }} == "" {
+		return nil, nil, fmt.Errorf("empty {{ . }} value passed into Update request")
+	}{{ end }}
+	if version == 0 {
+		return nil, nil, errors.New("zero version number passed into Update request")
+	}
+	if c.client == nil {
+		return nil, nil, fmt.Errorf("nil client")
+	}
+
+	opts, apiOpts := getOpts(opt...)
+
+	req, err := c.client.NewRequest(ctx, "PATCH", {{ .ResourcePath }}, opts.valueMap, apiOpts...)
+	if err != nil {
+		return nil, nil, fmt.Errorf("error creating Update request: %w", err)
+	}
+
+	resp, err := c.client.Do(req)
+	if err != nil {
+		return nil, nil, fmt.Errorf("error performing client request during Update call: %w", err)
+	}
+
+	target := new({{ .Name }})
+	apiErr, err := resp.Decode(target)
+	if err != nil {
+		return nil, nil, fmt.Errorf("error decoding Update response: %w", err)
+	}
+
+	return target, apiErr, nil
+}
+{{ end }}
 `))
 
 var structTemplate = template.Must(template.New("").Parse(

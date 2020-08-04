@@ -32,6 +32,10 @@ type structInfo struct {
 	generatedStructure structureInfo
 	templates          []*template.Template
 
+	// mappings of names of resources and param names for sub slice types, e.g.
+	// role principals and group members
+	sliceSubTypes map[string]string
+
 	// outputOnly indicates that we shouldn't create options for setting members
 	// for this struct
 	outputOnly bool
@@ -111,6 +115,9 @@ var inputStructs = []*structInfo{
 			deleteTemplate,
 			listTemplate,
 		},
+		sliceSubTypes: map[string]string{
+			"members": "memberIds",
+		},
 		pathArgs: []string{"group"},
 	},
 	// Role related resources
@@ -139,6 +146,10 @@ var inputStructs = []*structInfo{
 			updateTemplate,
 			deleteTemplate,
 			listTemplate,
+		},
+		sliceSubTypes: map[string]string{
+			"principals": "principalIds",
+			"grants":     "grantStrings",
 		},
 		pathArgs: []string{"role"},
 	},
