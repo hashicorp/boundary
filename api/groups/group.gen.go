@@ -3,6 +3,7 @@ package groups
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
@@ -23,17 +24,43 @@ type Group struct {
 	Members     []*Member         `json:"members,omitempty"`
 }
 
-type GroupClient struct {
+type groupClient struct {
 	client *api.Client
 }
 
-func New(c *api.Client) *GroupClient {
-	return &GroupClient{client: c}
+func NewGroupClient(c *api.Client) *groupClient {
+	return &groupClient{client: c}
 }
 
-func (c *GroupClient) Read(ctx context.Context, groupId string, opt ...Option) (*Group, *api.Error, error) {
+func (c *groupClient) Create(ctx context.Context, opt ...Option) (*Group, *api.Error, error) {
+	if c.client == nil {
+		return nil, nil, fmt.Errorf("nil client")
+	}
+
+	opts, apiOpts := getOpts(opt...)
+
+	req, err := c.client.NewRequest(ctx, "POST", fmt.Sprintf("groups"), opts.valueMap, apiOpts...)
+	if err != nil {
+		return nil, nil, fmt.Errorf("error creating Create request: %w", err)
+	}
+
+	resp, err := c.client.Do(req)
+	if err != nil {
+		return nil, nil, fmt.Errorf("error performing client request during Create call: %w", err)
+	}
+
+	target := new(Group)
+	apiErr, err := resp.Decode(target)
+	if err != nil {
+		return nil, nil, fmt.Errorf("error decoding Create response: %w", err)
+	}
+
+	return target, apiErr, nil
+}
+
+func (c *groupClient) Read(ctx context.Context, groupId string, opt ...Option) (*Group, *api.Error, error) {
 	if groupId == "" {
-		return nil, nil, fmt.Errorf("empty groupId value passed into List request")
+		return nil, nil, fmt.Errorf("empty groupId value passed into Read request")
 	}
 
 	if c.client == nil {
@@ -61,64 +88,41 @@ func (c *GroupClient) Read(ctx context.Context, groupId string, opt ...Option) (
 	return target, apiErr, nil
 }
 
-func (c *GroupClient) List(ctx context.Context, opt ...Option) ([]Group, *api.Error, error) {
-	if c.client == nil {
-		return nil, nil, fmt.Errorf("nil client")
+func (c *groupClient) Update(ctx context.Context, groupId string, version uint32, opt ...Option) (*Group, *api.Error, error) {
+	if groupId == "" {
+		return nil, nil, fmt.Errorf("empty groupId value passed into Update request")
 	}
-
-	_, apiOpts := getOpts(opt...)
-
-	req, err := c.client.NewRequest(ctx, "GET", fmt.Sprintf("groups"), nil, apiOpts...)
-	if err != nil {
-		return nil, nil, fmt.Errorf("error creating List request: %w", err)
+	if version == 0 {
+		return nil, nil, errors.New("zero version number passed into Update request")
 	}
-
-	resp, err := c.client.Do(req)
-	if err != nil {
-		return nil, nil, fmt.Errorf("error performing client request during List call: %w", err)
-	}
-
-	type listResponse struct {
-		Items []Group
-	}
-	target := &listResponse{}
-	apiErr, err := resp.Decode(target)
-	if err != nil {
-		return nil, nil, fmt.Errorf("error decoding List response: %w", err)
-	}
-
-	return target.Items, apiErr, nil
-}
-
-func (c *GroupClient) Create(ctx context.Context, opt ...Option) (*Group, *api.Error, error) {
 	if c.client == nil {
 		return nil, nil, fmt.Errorf("nil client")
 	}
 
 	opts, apiOpts := getOpts(opt...)
 
-	req, err := c.client.NewRequest(ctx, "POST", fmt.Sprintf("groups"), opts.valueMap, apiOpts...)
+	req, err := c.client.NewRequest(ctx, "PATCH", fmt.Sprintf("groups"), opts.valueMap, apiOpts...)
 	if err != nil {
-		return nil, nil, fmt.Errorf("error creating Create request: %w", err)
+		return nil, nil, fmt.Errorf("error creating Update request: %w", err)
 	}
 
 	resp, err := c.client.Do(req)
 	if err != nil {
-		return nil, nil, fmt.Errorf("error performing client request during Read call: %w", err)
+		return nil, nil, fmt.Errorf("error performing client request during Update call: %w", err)
 	}
 
 	target := new(Group)
 	apiErr, err := resp.Decode(target)
 	if err != nil {
-		return nil, nil, fmt.Errorf("error decoding Create response: %w", err)
+		return nil, nil, fmt.Errorf("error decoding Update response: %w", err)
 	}
 
 	return target, apiErr, nil
 }
 
-func (c *GroupClient) Delete(ctx context.Context, groupId string, opt ...Option) (bool, *api.Error, error) {
+func (c *groupClient) Delete(ctx context.Context, groupId string, opt ...Option) (bool, *api.Error, error) {
 	if groupId == "" {
-		return false, nil, fmt.Errorf("empty groupId value passed into List request")
+		return false, nil, fmt.Errorf("empty groupId value passed into Delete request")
 	}
 
 	if c.client == nil {
@@ -147,6 +151,35 @@ func (c *GroupClient) Delete(ctx context.Context, groupId string, opt ...Option)
 	}
 
 	return target.Existed, apiErr, nil
+}
+
+func (c *groupClient) List(ctx context.Context, opt ...Option) ([]Group, *api.Error, error) {
+	if c.client == nil {
+		return nil, nil, fmt.Errorf("nil client")
+	}
+
+	_, apiOpts := getOpts(opt...)
+
+	req, err := c.client.NewRequest(ctx, "GET", fmt.Sprintf("groups"), nil, apiOpts...)
+	if err != nil {
+		return nil, nil, fmt.Errorf("error creating List request: %w", err)
+	}
+
+	resp, err := c.client.Do(req)
+	if err != nil {
+		return nil, nil, fmt.Errorf("error performing client request during List call: %w", err)
+	}
+
+	type listResponse struct {
+		Items []Group
+	}
+	target := &listResponse{}
+	apiErr, err := resp.Decode(target)
+	if err != nil {
+		return nil, nil, fmt.Errorf("error decoding List response: %w", err)
+	}
+
+	return target.Items, apiErr, nil
 }
 
 type Option func(*options)

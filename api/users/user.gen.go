@@ -3,6 +3,7 @@ package users
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
@@ -20,17 +21,43 @@ type User struct {
 	Disabled    bool              `json:"disabled,omitempty"`
 }
 
-type UserClient struct {
+type userClient struct {
 	client *api.Client
 }
 
-func New(c *api.Client) *UserClient {
-	return &UserClient{client: c}
+func NewUserClient(c *api.Client) *userClient {
+	return &userClient{client: c}
 }
 
-func (c *UserClient) Read(ctx context.Context, userId string, opt ...Option) (*User, *api.Error, error) {
+func (c *userClient) Create(ctx context.Context, opt ...Option) (*User, *api.Error, error) {
+	if c.client == nil {
+		return nil, nil, fmt.Errorf("nil client")
+	}
+
+	opts, apiOpts := getOpts(opt...)
+
+	req, err := c.client.NewRequest(ctx, "POST", fmt.Sprintf("users"), opts.valueMap, apiOpts...)
+	if err != nil {
+		return nil, nil, fmt.Errorf("error creating Create request: %w", err)
+	}
+
+	resp, err := c.client.Do(req)
+	if err != nil {
+		return nil, nil, fmt.Errorf("error performing client request during Create call: %w", err)
+	}
+
+	target := new(User)
+	apiErr, err := resp.Decode(target)
+	if err != nil {
+		return nil, nil, fmt.Errorf("error decoding Create response: %w", err)
+	}
+
+	return target, apiErr, nil
+}
+
+func (c *userClient) Read(ctx context.Context, userId string, opt ...Option) (*User, *api.Error, error) {
 	if userId == "" {
-		return nil, nil, fmt.Errorf("empty userId value passed into List request")
+		return nil, nil, fmt.Errorf("empty userId value passed into Read request")
 	}
 
 	if c.client == nil {
@@ -58,64 +85,41 @@ func (c *UserClient) Read(ctx context.Context, userId string, opt ...Option) (*U
 	return target, apiErr, nil
 }
 
-func (c *UserClient) List(ctx context.Context, opt ...Option) ([]User, *api.Error, error) {
-	if c.client == nil {
-		return nil, nil, fmt.Errorf("nil client")
+func (c *userClient) Update(ctx context.Context, userId string, version uint32, opt ...Option) (*User, *api.Error, error) {
+	if userId == "" {
+		return nil, nil, fmt.Errorf("empty userId value passed into Update request")
 	}
-
-	_, apiOpts := getOpts(opt...)
-
-	req, err := c.client.NewRequest(ctx, "GET", fmt.Sprintf("users"), nil, apiOpts...)
-	if err != nil {
-		return nil, nil, fmt.Errorf("error creating List request: %w", err)
+	if version == 0 {
+		return nil, nil, errors.New("zero version number passed into Update request")
 	}
-
-	resp, err := c.client.Do(req)
-	if err != nil {
-		return nil, nil, fmt.Errorf("error performing client request during List call: %w", err)
-	}
-
-	type listResponse struct {
-		Items []User
-	}
-	target := &listResponse{}
-	apiErr, err := resp.Decode(target)
-	if err != nil {
-		return nil, nil, fmt.Errorf("error decoding List response: %w", err)
-	}
-
-	return target.Items, apiErr, nil
-}
-
-func (c *UserClient) Create(ctx context.Context, opt ...Option) (*User, *api.Error, error) {
 	if c.client == nil {
 		return nil, nil, fmt.Errorf("nil client")
 	}
 
 	opts, apiOpts := getOpts(opt...)
 
-	req, err := c.client.NewRequest(ctx, "POST", fmt.Sprintf("users"), opts.valueMap, apiOpts...)
+	req, err := c.client.NewRequest(ctx, "PATCH", fmt.Sprintf("users"), opts.valueMap, apiOpts...)
 	if err != nil {
-		return nil, nil, fmt.Errorf("error creating Create request: %w", err)
+		return nil, nil, fmt.Errorf("error creating Update request: %w", err)
 	}
 
 	resp, err := c.client.Do(req)
 	if err != nil {
-		return nil, nil, fmt.Errorf("error performing client request during Read call: %w", err)
+		return nil, nil, fmt.Errorf("error performing client request during Update call: %w", err)
 	}
 
 	target := new(User)
 	apiErr, err := resp.Decode(target)
 	if err != nil {
-		return nil, nil, fmt.Errorf("error decoding Create response: %w", err)
+		return nil, nil, fmt.Errorf("error decoding Update response: %w", err)
 	}
 
 	return target, apiErr, nil
 }
 
-func (c *UserClient) Delete(ctx context.Context, userId string, opt ...Option) (bool, *api.Error, error) {
+func (c *userClient) Delete(ctx context.Context, userId string, opt ...Option) (bool, *api.Error, error) {
 	if userId == "" {
-		return false, nil, fmt.Errorf("empty userId value passed into List request")
+		return false, nil, fmt.Errorf("empty userId value passed into Delete request")
 	}
 
 	if c.client == nil {
@@ -144,6 +148,35 @@ func (c *UserClient) Delete(ctx context.Context, userId string, opt ...Option) (
 	}
 
 	return target.Existed, apiErr, nil
+}
+
+func (c *userClient) List(ctx context.Context, opt ...Option) ([]User, *api.Error, error) {
+	if c.client == nil {
+		return nil, nil, fmt.Errorf("nil client")
+	}
+
+	_, apiOpts := getOpts(opt...)
+
+	req, err := c.client.NewRequest(ctx, "GET", fmt.Sprintf("users"), nil, apiOpts...)
+	if err != nil {
+		return nil, nil, fmt.Errorf("error creating List request: %w", err)
+	}
+
+	resp, err := c.client.Do(req)
+	if err != nil {
+		return nil, nil, fmt.Errorf("error performing client request during List call: %w", err)
+	}
+
+	type listResponse struct {
+		Items []User
+	}
+	target := &listResponse{}
+	apiErr, err := resp.Decode(target)
+	if err != nil {
+		return nil, nil, fmt.Errorf("error decoding List response: %w", err)
+	}
+
+	return target.Items, apiErr, nil
 }
 
 type Option func(*options)

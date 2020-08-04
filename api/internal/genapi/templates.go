@@ -59,6 +59,7 @@ func getOptionFields(fields []fieldInfo) (ret []fieldInfo) {
 }
 
 type templateInput struct {
+	ClientName             string
 	Name                   string
 	Package                string
 	Fields                 []fieldInfo
@@ -72,9 +73,10 @@ func fillTemplates() {
 	for _, in := range inputStructs {
 		outBuf := new(bytes.Buffer)
 		input := templateInput{
-			Name:    in.generatedStructure.name,
-			Package: in.generatedStructure.pkg,
-			Fields:  in.generatedStructure.fields,
+			ClientName: strings.ToLower(in.generatedStructure.name),
+			Name:       in.generatedStructure.name,
+			Package:    in.generatedStructure.pkg,
+			Fields:     in.generatedStructure.fields,
 		}
 
 		if len(in.pathArgs) > 0 {
@@ -111,7 +113,7 @@ func fillTemplates() {
 }
 
 var listTemplate = template.Must(template.New("").Parse(`
-func (c *{{ .Name }}Client) List(ctx context.Context, {{ range .CollectionFunctionArgs }} {{ . }} string, {{ end }}opt... Option) ([]{{ .Name }}, *api.Error, error) { {{ range .CollectionFunctionArgs }}
+func (c *{{ .ClientName }}Client) List(ctx context.Context, {{ range .CollectionFunctionArgs }} {{ . }} string, {{ end }}opt... Option) ([]{{ .Name }}, *api.Error, error) { {{ range .CollectionFunctionArgs }}
 	if {{ . }} == "" {
 		return nil, nil, fmt.Errorf("empty {{ . }} value passed into List request")
 	}
@@ -146,9 +148,9 @@ func (c *{{ .Name }}Client) List(ctx context.Context, {{ range .CollectionFuncti
 `))
 
 var readTemplate = template.Must(template.New("").Parse(`
-func (c *{{ .Name }}Client) Read(ctx context.Context, {{ range .ResourceFunctionArgs }} {{ . }} string, {{ end }} opt... Option) (*{{ .Name }}, *api.Error, error) { {{ range .ResourceFunctionArgs }}
+func (c *{{ .ClientName }}Client) Read(ctx context.Context, {{ range .ResourceFunctionArgs }} {{ . }} string, {{ end }} opt... Option) (*{{ .Name }}, *api.Error, error) { {{ range .ResourceFunctionArgs }}
 	if {{ . }} == "" {
-		return nil, nil, fmt.Errorf("empty {{ . }} value passed into List request")
+		return nil, nil, fmt.Errorf("empty {{ . }} value passed into Read request")
 	}
 	{{ end }}
 	if c.client == nil {
@@ -178,9 +180,9 @@ func (c *{{ .Name }}Client) Read(ctx context.Context, {{ range .ResourceFunction
 `))
 
 var deleteTemplate = template.Must(template.New("").Parse(`
-func (c *{{ .Name }}Client) Delete(ctx context.Context, {{ range .ResourceFunctionArgs }} {{ . }} string, {{ end }} opt... Option) (bool, *api.Error, error) { {{ range .ResourceFunctionArgs }}
+func (c *{{ .ClientName }}Client) Delete(ctx context.Context, {{ range .ResourceFunctionArgs }} {{ . }} string, {{ end }} opt... Option) (bool, *api.Error, error) { {{ range .ResourceFunctionArgs }}
 	if {{ . }} == "" {
-		return false, nil, fmt.Errorf("empty {{ . }} value passed into List request")
+		return false, nil, fmt.Errorf("empty {{ . }} value passed into Delete request")
 	}
 	{{ end }}
 	if c.client == nil {
@@ -213,9 +215,9 @@ func (c *{{ .Name }}Client) Delete(ctx context.Context, {{ range .ResourceFuncti
 `))
 
 var createTemplate = template.Must(template.New("").Parse(`
-func (c *{{ .Name }}Client) Create(ctx context.Context, {{ range .CollectionFunctionArgs }} . string, {{ end }} opt... Option) (*{{ .Name }}, *api.Error, error) { {{ range .CollectionFunctionArgs }}
+func (c *{{ .ClientName }}Client) Create(ctx context.Context, {{ range .CollectionFunctionArgs }} . string, {{ end }} opt... Option) (*{{ .Name }}, *api.Error, error) { {{ range .CollectionFunctionArgs }}
 	if . == "" {
-		return nil, nil, fmt.Errorf("empty {{ . }} value passed into List request")
+		return nil, nil, fmt.Errorf("empty {{ . }} value passed into Create request")
 	}
 	{{ end }}
 	if c.client == nil {
@@ -231,13 +233,47 @@ func (c *{{ .Name }}Client) Create(ctx context.Context, {{ range .CollectionFunc
 
 	resp, err := c.client.Do(req)
 	if err != nil {
-		return nil, nil, fmt.Errorf("error performing client request during Read call: %w", err)
+		return nil, nil, fmt.Errorf("error performing client request during Create call: %w", err)
 	}
 
 	target := new({{ .Name }})
 	apiErr, err := resp.Decode(target)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error decoding Create response: %w", err)
+	}
+
+	return target, apiErr, nil
+}
+`))
+
+var updateTemplate = template.Must(template.New("").Parse(`
+func (c *{{ .ClientName }}Client) Update(ctx context.Context, {{ range .ResourceFunctionArgs }} {{ . }} string, {{ end }}version uint32, opt... Option) (*{{ .Name }}, *api.Error, error) { {{ range .ResourceFunctionArgs }}
+	if {{ . }} == "" {
+		return nil, nil, fmt.Errorf("empty {{ . }} value passed into Update request")
+	}{{ end }}
+	if version == 0 {
+		return nil, nil, errors.New("zero version number passed into Update request")
+	}
+	if c.client == nil {
+		return nil, nil, fmt.Errorf("nil client")
+	}
+
+	opts, apiOpts := getOpts(opt...)
+
+	req, err := c.client.NewRequest(ctx, "PATCH", {{ .CollectionPath }}, opts.valueMap, apiOpts...)
+	if err != nil {
+		return nil, nil, fmt.Errorf("error creating Update request: %w", err)
+	}
+
+	resp, err := c.client.Do(req)
+	if err != nil {
+		return nil, nil, fmt.Errorf("error performing client request during Update call: %w", err)
+	}
+
+	target := new({{ .Name }})
+	apiErr, err := resp.Decode(target)
+	if err != nil {
+		return nil, nil, fmt.Errorf("error decoding Update response: %w", err)
 	}
 
 	return target, apiErr, nil
@@ -263,12 +299,12 @@ type {{ .Name }} struct { {{ range .Fields }}
 `)))
 
 var clientTemplate = template.Must(template.New("").Parse(`
-type {{ .Name }}Client struct {
+type {{ .ClientName }}Client struct {
 	client *api.Client
 }
 
-func New(c *api.Client) *{{ .Name }}Client {
-	return &{{ .Name }}Client{ client: c }
+func New{{ .Name }}Client(c *api.Client) *{{ .ClientName }}Client {
+	return &{{ .ClientName }}Client{ client: c }
 }
 `))
 
