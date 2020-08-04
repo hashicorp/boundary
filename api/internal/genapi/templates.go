@@ -42,7 +42,19 @@ func getArgsAndPaths(in []string) (colArgs, resArgs []string, colPath, resPath s
 func getOptionFields(fields []fieldInfo) (ret []fieldInfo) {
 	// For now a slightly naive algorithm -- if it's not one of the known output
 	// only values, assume it can be modified
-
+	for _, field := range fields {
+		switch field.Name {
+		case "Id",
+			"CreatedTime",
+			"UpdatedTime",
+			"Scope",
+			"Members",
+			"Grants":
+		default:
+			ret = append(ret, field)
+		}
+	}
+	return
 }
 
 type templateInput struct {
@@ -74,7 +86,12 @@ func fillTemplates() {
 			t.Execute(outBuf, input)
 		}
 
-		optionFields := getOptionFields(in.generatedStructure.fields)
+		if !in.outputOnly {
+			input.Fields = getOptionFields(in.generatedStructure.fields)
+			if len(input.Fields) > 0 {
+				optionTemplate.Execute(outBuf, input)
+			}
+		}
 
 		outFile, err := filepath.Abs(fmt.Sprintf("%s/%s", os.Getenv("GEN_BASEPATH"), in.outFile))
 		if err != nil {
@@ -93,8 +110,7 @@ func fillTemplates() {
 }
 
 var listTemplate = template.Must(template.New("").Parse(`
-func (s *{{ .Name }}Client) List(ctx context.Context, {{ range .CollectionFunctionArgs }} {{ . }} string, {{ end }}opts... api.Option) ([]{{ .Name }}, *api.Error, error) {
-	{{ range .CollectionFunctionArgs }}
+func (s *{{ .Name }}Client) List(ctx context.Context, {{ range .CollectionFunctionArgs }} {{ . }} string, {{ end }}opts... api.Option) ([]{{ .Name }}, *api.Error, error) { {{ range .CollectionFunctionArgs }}
 		if {{ . }} == "" {
 			return nil, nil, fmt.Errorf("empty {{ . }} value passed into List request")
 		}
@@ -127,8 +143,7 @@ func (s *{{ .Name }}Client) List(ctx context.Context, {{ range .CollectionFuncti
 `))
 
 var readTemplate = template.Must(template.New("").Parse(`
-func (s *{{ .Name }}Client) Read(ctx context.Context, {{ range .ResourceFunctionArgs }} {{ . }} string, {{ end }} opts... api.Option) (*{{ .Name }}, *api.Error, error) {
-	{{ range .ResourceFunctionArgs }}
+func (s *{{ .Name }}Client) Read(ctx context.Context, {{ range .ResourceFunctionArgs }} {{ . }} string, {{ end }} opts... api.Option) (*{{ .Name }}, *api.Error, error) { {{ range .ResourceFunctionArgs }}
 	if {{ . }} == "" {
 		return nil, nil, fmt.Errorf("empty {{ . }} value passed into List request")
 	}
@@ -158,8 +173,7 @@ func (s *{{ .Name }}Client) Read(ctx context.Context, {{ range .ResourceFunction
 `))
 
 var deleteTemplate = template.Must(template.New("").Parse(`
-func (s *{{ .Name }}Client) Delete(ctx context.Context, {{ range .ResourceFunctionArgs }} {{ . }} string, {{ end }} opts... api.Option) (bool, *api.Error, error) {
-	{{ range .ResourceFunctionArgs }}
+func (s *{{ .Name }}Client) Delete(ctx context.Context, {{ range .ResourceFunctionArgs }} {{ . }} string, {{ end }} opts... api.Option) (bool, *api.Error, error) { {{ range .ResourceFunctionArgs }}
 	if {{ . }} == "" {
 		return false, nil, fmt.Errorf("empty {{ . }} value passed into List request")
 	}
@@ -192,8 +206,7 @@ func (s *{{ .Name }}Client) Delete(ctx context.Context, {{ range .ResourceFuncti
 `))
 
 var createTemplate = template.Must(template.New("").Parse(`
-func (s *{{ .Name }}Client) Create(ctx context.Context, {{ range .CollectionFunctionArgs }} . string, {{ end }} opts... api.Option) (*{{ .Name }}, *api.Error, error) {
-	{{ range .CollectionFunctionArgs }}
+func (s *{{ .Name }}Client) Create(ctx context.Context, {{ range .CollectionFunctionArgs }} . string, {{ end }} opts... api.Option) (*{{ .Name }}, *api.Error, error) { {{ range .CollectionFunctionArgs }}
 	if . == "" {
 		return nil, nil, fmt.Errorf("empty {{ . }} value passed into List request")
 	}
@@ -236,9 +249,8 @@ import (
 	"github.com/hashicorp/watchtower/api"
 )
 
-type {{ .Name }} struct {
-{{ range .Fields }} {{ .Name }}  {{ .FieldType }} `, "`json:\"{{ .ProtoName }},omitempty\"`", `
-{{ end }}
+type {{ .Name }} struct { {{ range .Fields }}
+{{ .Name }}  {{ .FieldType }} `, "`json:\"{{ .ProtoName }},omitempty\"`", `{{ end }}
 }
 `)))
 
@@ -250,4 +262,50 @@ type {{ .Name }}Client struct {
 func New(c *api.Client) *{{ .Name }}Client {
 	return &{{ .Name }}Client{ client: c }
 }
+`))
+
+var optionTemplate = template.Must(template.New("").Parse(`
+type Option func(*options)
+
+type options struct {
+	defaultMap map[string]bool
+	withScopeId string
+	{{ range .Fields }}with{{ .Name }} {{ .FieldType }}
+	{{ end }}
+}
+
+func getDefaultOptions() options {
+	return options{
+		defaultMap: make(map[string]bool),
+	}
+}
+
+func getOpts(opt ...Option) options {
+	opts := getDefaultOptions()
+	for _, o := range opt {
+		o(&opts)
+	}
+	return opts
+}
+
+func WithScopeId(id string) Option {
+	return func(o *options) {
+		delete(o.defaultMap, "scope_id")
+		o.withScopeId = id
+	}
+}
+{{ range .Fields }}
+func With{{ .Name }}(in{{ .Name }} {{ .FieldType }}) Option {
+	return func(o *options) {
+		delete(o.defaultMap, "{{ .ProtoName }}")
+		o.with{{ .Name }} = in{{ .Name }}
+	}
+}
+
+func Default{{ .Name }}() Option {
+	return func(o *options) {
+		o.defaultMap["{{ .ProtoName }}"] = true
+	}
+}
+{{ end }}
 `))

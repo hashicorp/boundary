@@ -5,3 +5,45 @@ type FieldError struct {
 	Name        string `json:"name,omitempty"`
 	Description string `json:"description,omitempty"`
 }
+
+type Option func(*options)
+
+type options struct {
+	defaultMap      map[string]bool
+	withScopeId     string
+	withName        string
+	withDescription string
+}
+
+func getDefaultOptions() options {
+	return options{}
+}
+
+func getOpts(opt ...Option) options {
+	opts := getDefaultOptions()
+	for _, o := range opt {
+		o(&opts)
+	}
+	return opts
+}
+
+func WithScopeId(id string) Option {
+	return func(o *options) {
+		delete(o.defaultMap, "scope_id")
+		o.withScopeId = id
+	}
+}
+
+func WithName(inName string) Option {
+	return func(o *options) {
+		delete(o.defaultMap, "name")
+		o.withName = inName
+	}
+}
+
+func WithDescription(inDescription string) Option {
+	return func(o *options) {
+		delete(o.defaultMap, "description")
+		o.withDescription = inDescription
+	}
+}

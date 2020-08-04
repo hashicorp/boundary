@@ -6,3 +6,53 @@ type ErrorDetails struct {
 	RequestId     string        `json:"request_id,omitempty"`
 	RequestFields []*FieldError `json:"request_fields,omitempty"`
 }
+
+type Option func(*options)
+
+type options struct {
+	defaultMap        map[string]bool
+	withScopeId       string
+	withTraceId       string
+	withRequestId     string
+	withRequestFields []*FieldError
+}
+
+func getDefaultOptions() options {
+	return options{}
+}
+
+func getOpts(opt ...Option) options {
+	opts := getDefaultOptions()
+	for _, o := range opt {
+		o(&opts)
+	}
+	return opts
+}
+
+func WithScopeId(id string) Option {
+	return func(o *options) {
+		delete(o.defaultMap, "scope_id")
+		o.withScopeId = id
+	}
+}
+
+func WithTraceId(inTraceId string) Option {
+	return func(o *options) {
+		delete(o.defaultMap, "TraceId")
+		o.withTraceId = inTraceId
+	}
+}
+
+func WithRequestId(inRequestId string) Option {
+	return func(o *options) {
+		delete(o.defaultMap, "request_id")
+		o.withRequestId = inRequestId
+	}
+}
+
+func WithRequestFields(inRequestFields []*FieldError) Option {
+	return func(o *options) {
+		delete(o.defaultMap, "request_fields")
+		o.withRequestFields = inRequestFields
+	}
+}

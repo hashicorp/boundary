@@ -29,7 +29,6 @@ func New(c *api.Client) *UserClient {
 }
 
 func (s *UserClient) Read(ctx context.Context, userId string, opts ...api.Option) (*User, *api.Error, error) {
-
 	if userId == "" {
 		return nil, nil, fmt.Errorf("empty userId value passed into List request")
 	}
@@ -58,7 +57,6 @@ func (s *UserClient) Read(ctx context.Context, userId string, opts ...api.Option
 }
 
 func (s *UserClient) List(ctx context.Context, opts ...api.Option) ([]User, *api.Error, error) {
-
 	if s.client == nil {
 		return nil, nil, fmt.Errorf("nil client")
 	}
@@ -86,7 +84,6 @@ func (s *UserClient) List(ctx context.Context, opts ...api.Option) ([]User, *api
 }
 
 func (s *UserClient) Create(ctx context.Context, opts ...api.Option) (*User, *api.Error, error) {
-
 	if s.client == nil {
 		return nil, nil, fmt.Errorf("nil client")
 	}
@@ -111,7 +108,6 @@ func (s *UserClient) Create(ctx context.Context, opts ...api.Option) (*User, *ap
 }
 
 func (s *UserClient) Delete(ctx context.Context, userId string, opts ...api.Option) (bool, *api.Error, error) {
-
 	if userId == "" {
 		return false, nil, fmt.Errorf("empty userId value passed into List request")
 	}
@@ -140,4 +136,54 @@ func (s *UserClient) Delete(ctx context.Context, userId string, opts ...api.Opti
 	}
 
 	return target.Existed, apiErr, nil
+}
+
+type Option func(*options)
+
+type options struct {
+	defaultMap      map[string]bool
+	withScopeId     string
+	withName        string
+	withDescription string
+	withDisabled    bool
+}
+
+func getDefaultOptions() options {
+	return options{}
+}
+
+func getOpts(opt ...Option) options {
+	opts := getDefaultOptions()
+	for _, o := range opt {
+		o(&opts)
+	}
+	return opts
+}
+
+func WithScopeId(id string) Option {
+	return func(o *options) {
+		delete(o.defaultMap, "scope_id")
+		o.withScopeId = id
+	}
+}
+
+func WithName(inName string) Option {
+	return func(o *options) {
+		delete(o.defaultMap, "name")
+		o.withName = inName
+	}
+}
+
+func WithDescription(inDescription string) Option {
+	return func(o *options) {
+		delete(o.defaultMap, "description")
+		o.withDescription = inDescription
+	}
+}
+
+func WithDisabled(inDisabled bool) Option {
+	return func(o *options) {
+		delete(o.defaultMap, "disabled")
+		o.withDisabled = inDisabled
+	}
 }

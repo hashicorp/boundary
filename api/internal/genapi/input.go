@@ -28,6 +28,11 @@ type structInfo struct {
 	outFile            string
 	generatedStructure structureInfo
 	templates          []*template.Template
+
+	// outputOnly indicates that we shouldn't create options for setting members
+	// for this struct
+	outputOnly bool
+
 	// The parameters passed into the path.  These should be non-pluralized resource names.
 	// The templates will convert '-' to '_' and append an _id to them in the SDK param
 	// and append an 's' to it when building the path.
@@ -52,8 +57,9 @@ var inputStructs = []*structInfo{
 	},
 	// Scope related resources
 	{
-		inProto: &scopes.ScopeInfo{},
-		outFile: "scopes/scope_info.gen.go",
+		inProto:    &scopes.ScopeInfo{},
+		outFile:    "scopes/scope_info.gen.go",
+		outputOnly: true,
 	},
 	{
 		inProto: &scopes.Scope{},
@@ -82,8 +88,9 @@ var inputStructs = []*structInfo{
 	},
 	// Group related resources
 	{
-		inProto: &groups.Member{},
-		outFile: "groups/member.gen.go",
+		inProto:    &groups.Member{},
+		outFile:    "groups/member.gen.go",
+		outputOnly: true,
 	},
 	{
 		inProto: &groups.Group{},
@@ -99,16 +106,19 @@ var inputStructs = []*structInfo{
 	},
 	// Role related resources
 	{
-		inProto: &roles.Grant{},
-		outFile: "roles/grant.gen.go",
+		inProto:    &roles.Grant{},
+		outFile:    "roles/grant.gen.go",
+		outputOnly: true,
 	},
 	{
-		inProto: &roles.Principal{},
-		outFile: "roles/principal.gen.go",
+		inProto:    &roles.Principal{},
+		outFile:    "roles/principal.gen.go",
+		outputOnly: true,
 	},
 	{
-		inProto: &roles.GrantJson{},
-		outFile: "roles/grant_json.gen.go",
+		inProto:    &roles.GrantJson{},
+		outFile:    "roles/grant_json.gen.go",
+		outputOnly: true,
 	},
 	{
 		inProto: &roles.Role{},

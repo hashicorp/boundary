@@ -35,7 +35,6 @@ func New(c *api.Client) *RoleClient {
 }
 
 func (s *RoleClient) Read(ctx context.Context, roleId string, opts ...api.Option) (*Role, *api.Error, error) {
-
 	if roleId == "" {
 		return nil, nil, fmt.Errorf("empty roleId value passed into List request")
 	}
@@ -64,7 +63,6 @@ func (s *RoleClient) Read(ctx context.Context, roleId string, opts ...api.Option
 }
 
 func (s *RoleClient) List(ctx context.Context, opts ...api.Option) ([]Role, *api.Error, error) {
-
 	if s.client == nil {
 		return nil, nil, fmt.Errorf("nil client")
 	}
@@ -92,7 +90,6 @@ func (s *RoleClient) List(ctx context.Context, opts ...api.Option) ([]Role, *api
 }
 
 func (s *RoleClient) Create(ctx context.Context, opts ...api.Option) (*Role, *api.Error, error) {
-
 	if s.client == nil {
 		return nil, nil, fmt.Errorf("nil client")
 	}
@@ -117,7 +114,6 @@ func (s *RoleClient) Create(ctx context.Context, opts ...api.Option) (*Role, *ap
 }
 
 func (s *RoleClient) Delete(ctx context.Context, roleId string, opts ...api.Option) (bool, *api.Error, error) {
-
 	if roleId == "" {
 		return false, nil, fmt.Errorf("empty roleId value passed into List request")
 	}
@@ -146,4 +142,94 @@ func (s *RoleClient) Delete(ctx context.Context, roleId string, opts ...api.Opti
 	}
 
 	return target.Existed, apiErr, nil
+}
+
+type Option func(*options)
+
+type options struct {
+	defaultMap       map[string]bool
+	withScopeId      string
+	withName         string
+	withDescription  string
+	withDisabled     bool
+	withGrantScopeId string
+	withVersion      uint32
+	withPrincipalIds []string
+	withPrincipals   []*Principal
+	withGrantStrings []string
+}
+
+func getDefaultOptions() options {
+	return options{}
+}
+
+func getOpts(opt ...Option) options {
+	opts := getDefaultOptions()
+	for _, o := range opt {
+		o(&opts)
+	}
+	return opts
+}
+
+func WithScopeId(id string) Option {
+	return func(o *options) {
+		delete(o.defaultMap, "scope_id")
+		o.withScopeId = id
+	}
+}
+
+func WithName(inName string) Option {
+	return func(o *options) {
+		delete(o.defaultMap, "name")
+		o.withName = inName
+	}
+}
+
+func WithDescription(inDescription string) Option {
+	return func(o *options) {
+		delete(o.defaultMap, "description")
+		o.withDescription = inDescription
+	}
+}
+
+func WithDisabled(inDisabled bool) Option {
+	return func(o *options) {
+		delete(o.defaultMap, "disabled")
+		o.withDisabled = inDisabled
+	}
+}
+
+func WithGrantScopeId(inGrantScopeId string) Option {
+	return func(o *options) {
+		delete(o.defaultMap, "grant_scope_id")
+		o.withGrantScopeId = inGrantScopeId
+	}
+}
+
+func WithVersion(inVersion uint32) Option {
+	return func(o *options) {
+		delete(o.defaultMap, "version")
+		o.withVersion = inVersion
+	}
+}
+
+func WithPrincipalIds(inPrincipalIds []string) Option {
+	return func(o *options) {
+		delete(o.defaultMap, "principal_ids")
+		o.withPrincipalIds = inPrincipalIds
+	}
+}
+
+func WithPrincipals(inPrincipals []*Principal) Option {
+	return func(o *options) {
+		delete(o.defaultMap, "principals")
+		o.withPrincipals = inPrincipals
+	}
+}
+
+func WithGrantStrings(inGrantStrings []string) Option {
+	return func(o *options) {
+		delete(o.defaultMap, "grant_strings")
+		o.withGrantStrings = inGrantStrings
+	}
 }

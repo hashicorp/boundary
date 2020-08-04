@@ -32,7 +32,6 @@ func New(c *api.Client) *GroupClient {
 }
 
 func (s *GroupClient) Read(ctx context.Context, groupId string, opts ...api.Option) (*Group, *api.Error, error) {
-
 	if groupId == "" {
 		return nil, nil, fmt.Errorf("empty groupId value passed into List request")
 	}
@@ -61,7 +60,6 @@ func (s *GroupClient) Read(ctx context.Context, groupId string, opts ...api.Opti
 }
 
 func (s *GroupClient) List(ctx context.Context, opts ...api.Option) ([]Group, *api.Error, error) {
-
 	if s.client == nil {
 		return nil, nil, fmt.Errorf("nil client")
 	}
@@ -89,7 +87,6 @@ func (s *GroupClient) List(ctx context.Context, opts ...api.Option) ([]Group, *a
 }
 
 func (s *GroupClient) Create(ctx context.Context, opts ...api.Option) (*Group, *api.Error, error) {
-
 	if s.client == nil {
 		return nil, nil, fmt.Errorf("nil client")
 	}
@@ -114,7 +111,6 @@ func (s *GroupClient) Create(ctx context.Context, opts ...api.Option) (*Group, *
 }
 
 func (s *GroupClient) Delete(ctx context.Context, groupId string, opts ...api.Option) (bool, *api.Error, error) {
-
 	if groupId == "" {
 		return false, nil, fmt.Errorf("empty groupId value passed into List request")
 	}
@@ -143,4 +139,70 @@ func (s *GroupClient) Delete(ctx context.Context, groupId string, opts ...api.Op
 	}
 
 	return target.Existed, apiErr, nil
+}
+
+type Option func(*options)
+
+type options struct {
+	defaultMap      map[string]bool
+	withScopeId     string
+	withName        string
+	withDescription string
+	withDisabled    bool
+	withVersion     uint32
+	withMemberIds   []string
+}
+
+func getDefaultOptions() options {
+	return options{}
+}
+
+func getOpts(opt ...Option) options {
+	opts := getDefaultOptions()
+	for _, o := range opt {
+		o(&opts)
+	}
+	return opts
+}
+
+func WithScopeId(id string) Option {
+	return func(o *options) {
+		delete(o.defaultMap, "scope_id")
+		o.withScopeId = id
+	}
+}
+
+func WithName(inName string) Option {
+	return func(o *options) {
+		delete(o.defaultMap, "name")
+		o.withName = inName
+	}
+}
+
+func WithDescription(inDescription string) Option {
+	return func(o *options) {
+		delete(o.defaultMap, "description")
+		o.withDescription = inDescription
+	}
+}
+
+func WithDisabled(inDisabled bool) Option {
+	return func(o *options) {
+		delete(o.defaultMap, "disabled")
+		o.withDisabled = inDisabled
+	}
+}
+
+func WithVersion(inVersion uint32) Option {
+	return func(o *options) {
+		delete(o.defaultMap, "version")
+		o.withVersion = inVersion
+	}
+}
+
+func WithMemberIds(inMemberIds []string) Option {
+	return func(o *options) {
+		delete(o.defaultMap, "member_ids")
+		o.withMemberIds = inMemberIds
+	}
 }
