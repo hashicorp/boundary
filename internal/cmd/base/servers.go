@@ -380,7 +380,7 @@ func (b *Server) RunShutdownFuncs() error {
 }
 
 func (b *Server) CreateDevDatabase(dialect string) error {
-	c, url, container, err := db.InitDbInDocker(dialect)
+	c, url, container, err := db.InitDbInDocker(nil, dialect)
 	if err != nil {
 		c()
 		return fmt.Errorf("unable to start dev database with dialect %s: %w", dialect, err)

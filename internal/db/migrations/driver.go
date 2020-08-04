@@ -7,31 +7,33 @@ import (
 	"os"
 	"sort"
 	"strings"
+	"testing"
 	"time"
 
-	"github.com/golang-migrate/migrate/v4/source"
-	"github.com/golang-migrate/migrate/v4/source/httpfs"
+	"github.com/jefferai/migrate/source"
+	"github.com/jefferai/migrate/source/httpfs"
 )
 
 // migrationDriver satisfies the remaining need of the Driver interface, since
 // the package uses PartialDriver under the hood
 type migrationDriver struct {
 	dialect string
+	t       *testing.T
 }
 
 // Open returns the given "file"
 func (m *migrationDriver) Open(name string) (http.File, error) {
-	return newFakeFile(m.dialect, name)
+	return newFakeFile(m.t, m.dialect, name)
 }
 
 // NewMigrationSource creates a source.Driver using httpfs with the given dialect
-func NewMigrationSource(dialect string) (source.Driver, error) {
+func NewMigrationSource(t *testing.T, dialect string) (source.Driver, error) {
 	switch dialect {
 	case "postgres":
 	default:
 		return nil, fmt.Errorf("unknown migrations dialect %s", dialect)
 	}
-	return httpfs.New(&migrationDriver{dialect}, "migrations")
+	return httpfs.New(&migrationDriver{dialect: dialect, t: t}, "migrations")
 }
 
 // fakeFile is used to satisfy the http.File interface
@@ -40,9 +42,10 @@ type fakeFile struct {
 	bytes   []byte
 	reader  *bytes.Reader
 	dialect string
+	t       *testing.T
 }
 
-func newFakeFile(dialect string, name string) (*fakeFile, error) {
+func newFakeFile(t *testing.T, dialect string, name string) (*fakeFile, error) {
 	var ff *fakeFile
 	switch dialect {
 	case "postgres":
@@ -54,9 +57,13 @@ func newFakeFile(dialect string, name string) (*fakeFile, error) {
 	ff.name = strings.TrimPrefix(name, "migrations/")
 	ff.reader = bytes.NewReader(ff.bytes)
 	ff.dialect = dialect
+	ff.t = t
 	return ff, nil
 }
 func (f *fakeFile) Read(p []byte) (n int, err error) {
+	if f.t != nil {
+		f.t.Logf("%s reading %s", f.t.Name(), f.name)
+	}
 	return f.reader.Read(p)
 }
 

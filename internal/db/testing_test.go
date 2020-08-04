@@ -5,11 +5,11 @@ import (
 	"testing"
 	"time"
 
-	_ "github.com/golang-migrate/migrate/v4/database/postgres"
-	_ "github.com/golang-migrate/migrate/v4/source/file"
 	"github.com/hashicorp/go-uuid"
 	"github.com/hashicorp/watchtower/internal/db/db_test"
 	"github.com/hashicorp/watchtower/internal/oplog"
+	_ "github.com/jefferai/migrate/database/postgres"
+	_ "github.com/jefferai/migrate/source/file"
 	"github.com/stretchr/testify/assert"
 )
 

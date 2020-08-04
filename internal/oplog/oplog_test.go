@@ -12,8 +12,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	_ "github.com/golang-migrate/migrate/v4/database/postgres"
-	_ "github.com/golang-migrate/migrate/v4/source/file"
+	_ "github.com/jefferai/migrate/database/postgres"
+	_ "github.com/jefferai/migrate/source/file"
 )
 
 // setup the tests (initialize the database one-time and intialized testDatabaseURL)

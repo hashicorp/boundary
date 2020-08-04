@@ -2,19 +2,20 @@ module github.com/hashicorp/watchtower
 
 go 1.13
 
+replace github.com/jefferai/migrate => ../migrate
+
 require (
 	github.com/alecthomas/assert v0.0.0-20170929043011-405dbfeb8e38
 	github.com/alecthomas/colour v0.1.0 // indirect
 	github.com/alecthomas/repr v0.0.0-20200325044227-4184120f674c // indirect
 	github.com/armon/go-metrics v0.3.3
-	github.com/bufbuild/buf v0.20.4
+	github.com/bufbuild/buf v0.20.5
 	github.com/fatih/color v1.9.0
 	github.com/fatih/structs v1.1.0
 	github.com/favadi/protoc-go-inject-tag v1.1.0
 	github.com/ghodss/yaml v1.0.1-0.20190212211648-25d852aebe32
 	github.com/go-bindata/go-bindata/v3 v3.1.3
 	github.com/go-swagger/go-swagger v0.25.0
-	github.com/golang-migrate/migrate/v4 v4.11.0
 	github.com/golang-sql/civil v0.0.0-20190719163853-cb61b32ac6fe
 	github.com/golang/protobuf v1.4.2
 	github.com/google/go-cmp v0.5.1
@@ -34,18 +35,19 @@ require (
 	github.com/hashicorp/hcl v1.0.0
 	github.com/hashicorp/vault v1.2.1-0.20200717203022-646babcf458c
 	github.com/hashicorp/vault/sdk v0.1.14-0.20200717191844-f687267c8086
-	github.com/jackc/pgx/v4 v4.8.0
+	github.com/jackc/pgx/v4 v4.8.1
+	github.com/jefferai/migrate v0.0.0-00010101000000-000000000000
 	github.com/jinzhu/gorm v1.9.15
-	github.com/kr/pretty v0.2.0
+	github.com/kr/pretty v0.2.1
 	github.com/kr/text v0.2.0
-	github.com/lib/pq v1.7.1
+	github.com/lib/pq v1.8.0
 	github.com/mattn/go-colorable v0.1.7
 	github.com/mitchellh/cli v1.1.1
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/mitchellh/go-wordwrap v1.0.0
 	github.com/mitchellh/gox v1.0.1
 	github.com/mitchellh/mapstructure v1.3.3
-	github.com/oligot/go-mod-upgrade v0.2.0
+	github.com/oligot/go-mod-upgrade v0.2.1
 	github.com/ory/dockertest/v3 v3.6.0
 	github.com/pires/go-proxyproto v0.1.3
 	github.com/pkg/errors v0.9.1
@@ -57,8 +59,8 @@ require (
 	github.com/zalando/go-keyring v0.1.0
 	golang.org/x/crypto v0.0.0-20200709230013-948cd5f35899
 	golang.org/x/time v0.0.0-20200630173020-3af7569d3a1e
-	golang.org/x/tools v0.0.0-20200722181740-bd1e9de8d890
-	google.golang.org/genproto v0.0.0-20200722002428-88e341933a54
-	google.golang.org/grpc v1.30.0
+	golang.org/x/tools v0.0.0-20200725200936-102e7d357031
+	google.golang.org/genproto v0.0.0-20200726014623-da3ae01ef02d
+	google.golang.org/grpc v1.31.0
 	google.golang.org/protobuf v1.25.0
 )

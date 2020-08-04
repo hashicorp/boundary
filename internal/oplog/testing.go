@@ -8,11 +8,11 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/golang-migrate/migrate/v4"
 	wrapping "github.com/hashicorp/go-kms-wrapping"
 	"github.com/hashicorp/go-kms-wrapping/wrappers/aead"
 	"github.com/hashicorp/go-uuid"
 	"github.com/hashicorp/watchtower/internal/oplog/oplog_test"
+	"github.com/jefferai/migrate"
 	"github.com/jinzhu/gorm"
 	"github.com/ory/dockertest/v3"
 	"github.com/stretchr/testify/assert"

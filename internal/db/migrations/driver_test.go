@@ -5,8 +5,8 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/golang-migrate/migrate/v4/source"
-	"github.com/golang-migrate/migrate/v4/source/httpfs"
+	"github.com/jefferai/migrate/source"
+	"github.com/jefferai/migrate/source/httpfs"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -24,7 +24,7 @@ func TestNewMigrationSource(t *testing.T) {
 			name: "postgres",
 			args: args{dialect: "postgres"},
 			want: func() source.Driver {
-				d, err := httpfs.New(&migrationDriver{"postgres"}, "migrations")
+				d, err := httpfs.New(&migrationDriver{dialect: "postgres", t: t}, "migrations")
 				if err != nil {
 					t.Errorf("NewMigrationSource() error creating httpfs = %w", err)
 				}
@@ -47,7 +47,7 @@ func TestNewMigrationSource(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := NewMigrationSource(tt.args.dialect)
+			got, err := NewMigrationSource(t, tt.args.dialect)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("NewMigrationSource() error = %v, wantErr %v", err, tt.wantErr)
 				return
@@ -99,7 +99,7 @@ func Test_migrationDriver_Open(t *testing.T) {
 func Test_fakeFile_Read(t *testing.T) {
 	assert := assert.New(t)
 	t.Run("valid", func(t *testing.T) {
-		ff, err := newFakeFile("postgres", "migrations/01_domain_types.up.sql")
+		ff, err := newFakeFile(t, "postgres", "migrations/01_domain_types.up.sql")
 		assert.NoError(err)
 		buf := make([]byte, len(ff.bytes))
 		n, err := ff.Read(buf)
@@ -111,7 +111,7 @@ func Test_fakeFile_Read(t *testing.T) {
 func Test_fakeFile_Seek(t *testing.T) {
 	assert := assert.New(t)
 	t.Run("valid", func(t *testing.T) {
-		ff, err := newFakeFile("postgres", "migrations/01_domain_types.up.sql")
+		ff, err := newFakeFile(t, "postgres", "migrations/01_domain_types.up.sql")
 		assert.NoError(err)
 		buf := make([]byte, len(ff.bytes))
 		n, err := ff.Seek(10, 0)
@@ -141,7 +141,7 @@ func Test_fakeFile_Stat(t *testing.T) {
 	assert := assert.New(t)
 	t.Run("valid", func(t *testing.T) {
 		name := "migrations/01_domain_types.up.sql"
-		ff, err := newFakeFile("postgres", name)
+		ff, err := newFakeFile(t, "postgres", name)
 		assert.NoError(err)
 		info, err := ff.Stat()
 		assert.NoError(err)
@@ -157,7 +157,7 @@ func Test_fakeFile_Readdir(t *testing.T) {
 	assert := assert.New(t)
 	t.Run("valid", func(t *testing.T) {
 		name := "migrations/01_domain_types.up.sql"
-		ff, err := newFakeFile("postgres", name)
+		ff, err := newFakeFile(t, "postgres", name)
 		assert.NoError(err)
 		info, err := ff.Readdir(0)
 		assert.NoError(err)

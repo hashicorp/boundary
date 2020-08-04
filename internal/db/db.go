@@ -6,11 +6,12 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"testing"
 
-	"github.com/golang-migrate/migrate/v4"
 	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/watchtower/internal/db/migrations"
+	"github.com/jefferai/migrate"
 	"github.com/jinzhu/gorm"
 	"github.com/lib/pq"
 	"github.com/ory/dockertest/v3"
@@ -60,11 +61,11 @@ func Migrate(connectionUrl string, migrationsDirectory string) error {
 }
 
 // InitDbInDocker initializes the data store within docker or an existing PG_URL
-func InitDbInDocker(dialect string) (cleanup func() error, retURL, container string, err error) {
+func InitDbInDocker(t *testing.T, dialect string) (cleanup func() error, retURL, container string, err error) {
 	switch dialect {
 	case "postgres":
 		if os.Getenv("PG_URL") != "" {
-			if err := InitStore(dialect, func() error { return nil }, os.Getenv("PG_URL")); err != nil {
+			if err := InitStore(t, dialect, func() error { return nil }, os.Getenv("PG_URL")); err != nil {
 				return func() error { return nil }, os.Getenv("PG_URL"), "", fmt.Errorf("error initializing store: %w", err)
 			}
 			return func() error { return nil }, os.Getenv("PG_URL"), "", nil
@@ -74,7 +75,10 @@ func InitDbInDocker(dialect string) (cleanup func() error, retURL, container str
 	if err != nil {
 		return func() error { return nil }, "", "", fmt.Errorf("could not start docker: %w", err)
 	}
-	if err := InitStore(dialect, c, url); err != nil {
+	if t != nil {
+		t.Logf("container set up for testing: %s", container)
+	}
+	if err := InitStore(t, dialect, c, url); err != nil {
 		return func() error { return nil }, "", "", fmt.Errorf("error initializing store: %w", err)
 	}
 	return c, url, container, nil
@@ -125,10 +129,10 @@ func StartDbInDocker(dialect string) (cleanup func() error, retURL, container st
 }
 
 // InitStore will execute the migrations needed to initialize the store for tests
-func InitStore(dialect string, cleanup func() error, url string) error {
+func InitStore(t *testing.T, dialect string, cleanup func() error, url string) error {
 	var mErr *multierror.Error
 	// run migrations
-	source, err := migrations.NewMigrationSource(dialect)
+	source, err := migrations.NewMigrationSource(t, dialect)
 	if err != nil {
 		mErr = multierror.Append(mErr, fmt.Errorf("error creating migration driver: %w", err))
 		if err := cleanup(); err != nil {
@@ -145,7 +149,8 @@ func InitStore(dialect string, cleanup func() error, url string) error {
 		return mErr.ErrorOrNil()
 
 	}
-	if err := m.Up(); err != nil && err != migrate.ErrNoChange {
+	if err := m.Up(t); err != nil && err != migrate.ErrNoChange {
+		panic("error running migrations")
 		mErr = multierror.Append(mErr, fmt.Errorf("error running migrations: %w", err))
 		if err := cleanup(); err != nil {
 			mErr = multierror.Append(mErr, fmt.Errorf("error cleaning up from running migrations: %w", err))

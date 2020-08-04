@@ -7,19 +7,19 @@ import (
 	"testing"
 	"time"
 
-	_ "github.com/golang-migrate/migrate/v4/database/postgres"
-	_ "github.com/golang-migrate/migrate/v4/source/file"
 	wrapping "github.com/hashicorp/go-kms-wrapping"
 	"github.com/hashicorp/go-kms-wrapping/wrappers/aead"
 	"github.com/hashicorp/watchtower/internal/oplog"
 	"github.com/hashicorp/watchtower/internal/oplog/store"
+	_ "github.com/jefferai/migrate/database/postgres"
+	_ "github.com/jefferai/migrate/source/file"
 	"github.com/jinzhu/gorm"
 	"github.com/stretchr/testify/assert"
 )
 
 // setup the tests (initialize the database one-time and intialized testDatabaseURL). Do not close the returned db.
 func TestSetup(t *testing.T, dialect string) (*gorm.DB, string) {
-	cleanup, url, _, err := InitDbInDocker(dialect)
+	cleanup, url, _, err := InitDbInDocker(t, dialect)
 	if err != nil {
 		t.Fatal(err)
 	}
