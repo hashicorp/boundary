@@ -59,7 +59,12 @@ var inputStructs = []*structInfo{
 		inProto: &scopes.Scope{},
 		outFile: "scopes/scope.gen.go",
 		templates: []*template.Template{
-			clientTemplate, readTemplate, listTemplate, createTemplate, deleteTemplate},
+			clientTemplate,
+			readTemplate,
+			listTemplate,
+			createTemplate,
+			deleteTemplate,
+		},
 		pathArgs: []string{"scope"},
 	},
 	// User related resources
@@ -67,7 +72,12 @@ var inputStructs = []*structInfo{
 		inProto: &users.User{},
 		outFile: "users/user.gen.go",
 		templates: []*template.Template{
-			clientTemplate, readTemplate, listTemplate, createTemplate, deleteTemplate},
+			clientTemplate,
+			readTemplate,
+			listTemplate,
+			createTemplate,
+			deleteTemplate,
+		},
 		pathArgs: []string{"user"},
 	},
 	// Group related resources
@@ -117,7 +127,12 @@ var inputStructs = []*structInfo{
 		inProto: &users.User{},
 		outFile: "users/user.gen.go",
 		templates: []*template.Template{
-			clientTemplate, readTemplate, listTemplate, createTemplate, deleteTemplate},
+			clientTemplate,
+			readTemplate,
+			listTemplate,
+			createTemplate,
+			deleteTemplate,
+		},
 		pathArgs: []string{"user"},
 	},
 }
