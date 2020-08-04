@@ -190,19 +190,19 @@ func generateRoleTableOutput(role *roles.Role) string {
 			fmt.Sprintf("  Version:          %d", role.Version),
 		}
 	}
-	if role.Name != nil {
+	if role.Name != "" {
 		output = append(output,
-			fmt.Sprintf("  Name:             %s", *role.Name),
+			fmt.Sprintf("  Name:             %s", role.Name),
 		)
 	}
-	if role.Description != nil {
+	if role.Description != "" {
 		output = append(output,
-			fmt.Sprintf("  Description:      %s", *role.Description),
+			fmt.Sprintf("  Description:      %s", role.Description),
 		)
 	}
-	if role.GrantScopeId != nil {
+	if role.GrantScopeId != "" {
 		output = append(output,
-			fmt.Sprintf("  Grant Scope ID:   %s", *role.GrantScopeId),
+			fmt.Sprintf("  Grant Scope ID:   %s", role.GrantScopeId),
 		)
 	}
 	if len(role.Principals) > 0 {
