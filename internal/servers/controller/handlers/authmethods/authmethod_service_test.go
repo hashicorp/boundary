@@ -653,6 +653,19 @@ func TestUpdate(t *testing.T) {
 			res:     nil,
 			errCode: codes.InvalidArgument,
 		},
+		{
+			name: "Cant specify Type",
+			req: &pbs.UpdateAuthMethodRequest{
+				UpdateMask: &field_mask.FieldMask{
+					Paths: []string{"type"},
+				},
+				Item: &pb.AuthMethod{
+					Type: "oidc",
+				},
+			},
+			res:     nil,
+			errCode: codes.InvalidArgument,
+		},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {

@@ -68,7 +68,7 @@ service AuthMethodService {
       response_body: "item"
     };
     option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
-      summary: "Updates a AuthMethod"
+      summary: "Updates an AuthMethod"
     };
   }
 
@@ -82,7 +82,7 @@ service AuthMethodService {
       delete: "/v1/scopes/*/auth-methods/{id}"
     };
     option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
-      summary: "Deletes a AuthMethod"
+      summary: "Deletes an AuthMethod"
     };
   }
 }

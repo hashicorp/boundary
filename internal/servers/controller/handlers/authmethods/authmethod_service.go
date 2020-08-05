@@ -308,7 +308,7 @@ func validateCreateRequest(req *pbs.CreateAuthMethodRequest) error {
 			badFields["attributes"] = "Attribute fields do not match the expected format."
 		}
 	default:
-		badFields["type"] = "This is a required field."
+		badFields["type"] = "This is a required field and must be \"password\"."
 	}
 	if len(badFields) > 0 {
 		return handlers.InvalidArgumentErrorf("Argument errors found in the request.", badFields)
@@ -339,6 +339,9 @@ func validateUpdateRequest(req *pbs.UpdateAuthMethodRequest) error {
 	}
 	if item.GetUpdatedTime() != nil {
 		badFields["updated_time"] = "This is a read only field and cannot be specified in an update request."
+	}
+	if item.GetType() != "" {
+		badFields["type"] = "This is a read only field and cannot be specified in an update request."
 	}
 	if len(badFields) > 0 {
 		return handlers.InvalidArgumentErrorf("Errors in provided fields.", badFields)

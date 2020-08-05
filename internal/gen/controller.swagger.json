@@ -352,7 +352,7 @@
         ]
       },
       "delete": {
-        "summary": "Deletes a AuthMethod",
+        "summary": "Deletes an AuthMethod",
         "operationId": "AuthMethodService_DeleteAuthMethod",
         "responses": {
           "200": {
@@ -375,7 +375,7 @@
         ]
       },
       "patch": {
-        "summary": "Updates a AuthMethod",
+        "summary": "Updates an AuthMethod",
         "operationId": "AuthMethodService_UpdateAuthMethod",
         "responses": {
           "200": {
