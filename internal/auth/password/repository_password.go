@@ -56,22 +56,19 @@ func (r *Repository) Authenticate(ctx context.Context, authMethodId string, user
 		if err != nil {
 			return acct.Account, fmt.Errorf("password authenticate: update credential: %w", err)
 		}
-		cred.PrivateId = acct.CredentialId
 
-		var newCred *Argon2Credential
+		// do not change the Credential Id
+		cred.PrivateId = acct.CredentialId
+		if err := cred.encrypt(ctx, r.wrapper); err != nil {
+			return acct.Account, fmt.Errorf("password authenticate: update credential: encrypt: %w", err)
+		}
+
+		fields := []string{"CtSalt", "DerivedKey", "PasswordConfId"}
+		metadata := cred.oplog(oplog.OpType_OP_TYPE_UPDATE)
+
 		_, err = r.writer.DoTx(ctx, db.StdRetryCnt, db.ExpBackoff{},
 			func(_ db.Reader, w db.Writer) error {
-				newCred = cred.clone()
-				if err := newCred.encrypt(ctx, r.wrapper); err != nil {
-					return err
-				}
-				rowsUpdated, err := w.Update(
-					ctx,
-					newCred,
-					[]string{"CtSalt", "DerivedKey", "PasswordConfId"},
-					nil,
-					db.WithOplog(r.wrapper, cred.oplog(oplog.OpType_OP_TYPE_UPDATE)),
-				)
+				rowsUpdated, err := w.Update(ctx, cred, fields, nil, db.WithOplog(r.wrapper, metadata))
 				if err == nil && rowsUpdated > 1 {
 					return db.ErrMultipleRecords
 				}
@@ -116,9 +113,6 @@ func (r *Repository) ChangePassword(ctx context.Context, authMethodId string, us
 		return nil, nil
 	}
 
-	currentCred := acct.Argon2Credential
-	currentCred.PrivateId = acct.CredentialId
-
 	cc, err := r.currentConfig(ctx, authMethodId)
 	if err != nil {
 		return nil, fmt.Errorf("change password: retrieve current password configuration: %w", err)
@@ -131,7 +125,9 @@ func (r *Repository) ChangePassword(ctx context.Context, authMethodId string, us
 		return nil, fmt.Errorf("change password: %w", err)
 	}
 
+	currentCred := acct.Argon2Credential
 	var oldCred, newCred *Argon2Credential
+
 	_, err = r.writer.DoTx(ctx, db.StdRetryCnt, db.ExpBackoff{},
 		func(_ db.Reader, w db.Writer) error {
 			oldCred = currentCred.clone()
