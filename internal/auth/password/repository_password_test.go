@@ -4,10 +4,12 @@ import (
 	"context"
 	"errors"
 	"testing"
+	"time"
 
 	"github.com/hashicorp/watchtower/internal/auth/password/store"
 	"github.com/hashicorp/watchtower/internal/db"
 	"github.com/hashicorp/watchtower/internal/iam"
+	"github.com/hashicorp/watchtower/internal/oplog"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -114,6 +116,9 @@ func TestRepository_Authenticate(t *testing.T) {
 			assert.NotEmpty(authAcct.CredentialId, "CredentialId")
 			assert.Equal(tt.args.authMethodId, authAcct.AuthMethodId, "authMethodId")
 			assert.Equal(tt.args.userName, authAcct.UserName, "UserName")
+			err = db.TestVerifyOplog(t, rw, authAcct.CredentialId, db.WithOperation(oplog.OpType_OP_TYPE_UPDATE), db.WithCreateNotBefore(10*time.Second))
+			assert.Error(err)
+			assert.True(errors.Is(db.ErrRecordNotFound, err))
 		})
 	}
 }
@@ -230,6 +235,8 @@ func TestRepository_AuthenticateRehash(t *testing.T) {
 	assert.NotEqual(origCred.PasswordConfId, auth2Cred.PasswordConfId, "the configuration Id should be different")
 	assert.NotEqual(origCred.Salt, auth2Cred.Salt, "a new salt value should be generated")
 	assert.NotEqual(origCred.DerivedKey, auth2Cred.DerivedKey, "the derived key should be different")
+
+	assert.NoError(db.TestVerifyOplog(t, rw, auth2Cred.PrivateId, db.WithOperation(oplog.OpType_OP_TYPE_UPDATE), db.WithCreateNotBefore(10*time.Second)))
 }
 
 func TestRepository_ChangePassword(t *testing.T) {
@@ -398,6 +405,9 @@ func TestRepository_ChangePassword(t *testing.T) {
 
 			authAcct2 := authFn(tt.args.new, "successful change password: using new password")
 			assert.Equal(chgAuthAcct.CredentialId, authAcct2.CredentialId, "CredentialId should not change")
+
+			assert.NoError(db.TestVerifyOplog(t, rw, authAcct1.CredentialId, db.WithOperation(oplog.OpType_OP_TYPE_DELETE), db.WithCreateNotBefore(10*time.Second)))
+			assert.NoError(db.TestVerifyOplog(t, rw, authAcct2.CredentialId, db.WithOperation(oplog.OpType_OP_TYPE_CREATE), db.WithCreateNotBefore(10*time.Second)))
 		})
 	}
 }
