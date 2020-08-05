@@ -1,7 +1,6 @@
 package authmethods_test
 
 import (
-	"context"
 	"fmt"
 	"strings"
 	"testing"
@@ -20,7 +19,6 @@ import (
 	"google.golang.org/genproto/protobuf/field_mask"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
-	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/testing/protocmp"
 	"google.golang.org/protobuf/types/known/structpb"
 	"google.golang.org/protobuf/types/known/wrapperspb"
@@ -44,6 +42,15 @@ func TestGet(t *testing.T) {
 		Id:          am.GetPublicId(),
 		CreatedTime: am.CreateTime.GetTimestamp(),
 		UpdatedTime: am.UpdateTime.GetTimestamp(),
+		Type:        "password",
+		Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
+			"min_password_length":  structpb.NewNumberValue(8),
+			"min_user_name_length": structpb.NewNumberValue(5),
+		}},
+		Scope: &scopes.ScopeInfo{
+			Id:   o.GetPublicId(),
+			Type: o.GetType(),
+		},
 	}
 
 	cases := []struct {
@@ -116,7 +123,10 @@ func TestList(t *testing.T) {
 			UpdatedTime: am.GetUpdateTime().GetTimestamp(),
 			Scope:       &scopes.ScopeInfo{Id: oWithAuthMethods.GetPublicId(), Type: scope.Org.String()},
 			Type:        "password",
-			Attributes:  &structpb.Struct{Fields: map[string]*structpb.Value{"MinUserNameLength": structpb.NewNumberValue(8)}},
+			Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
+				"min_password_length":  structpb.NewNumberValue(8),
+				"min_user_name_length": structpb.NewNumberValue(5),
+			}},
 		})
 	}
 
@@ -128,7 +138,10 @@ func TestList(t *testing.T) {
 			UpdatedTime: aa.GetUpdateTime().GetTimestamp(),
 			Scope:       &scopes.ScopeInfo{Id: oWithOtherAuthMethods.GetPublicId(), Type: scope.Org.String()},
 			Type:        "password",
-			Attributes:  &structpb.Struct{Fields: map[string]*structpb.Value{"MinUserNameLength": structpb.NewNumberValue(8)}},
+			Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
+				"min_password_length":  structpb.NewNumberValue(8),
+				"min_user_name_length": structpb.NewNumberValue(5),
+			}},
 		})
 	}
 
@@ -275,10 +288,6 @@ func TestCreate(t *testing.T) {
 	defaultCreated, err := ptypes.Timestamp(defaultAm.GetCreateTime().GetTimestamp())
 	require.NoError(t, err, "Error converting proto to timestamp.")
 
-	// TODO: Add protos to struct checking for the created auth method.
-	//defaultSt, err := handlers.ProtoToStruct(&pb.PasswordAuthMethodAttributes{MinUserNameLength: 8})
-	//require.NoError(t, err, "Error converting proto to struct.")
-
 	cases := []struct {
 		name    string
 		req     *pbs.CreateAuthMethodRequest
@@ -290,12 +299,22 @@ func TestCreate(t *testing.T) {
 			req: &pbs.CreateAuthMethodRequest{Item: &pb.AuthMethod{
 				Name:        &wrapperspb.StringValue{Value: "name"},
 				Description: &wrapperspb.StringValue{Value: "desc"},
+				Type:        "password",
 			}},
 			res: &pbs.CreateAuthMethodResponse{
 				Uri: fmt.Sprintf("scopes/%s/auth-methods/%s_", o.GetPublicId(), password.AuthMethodPrefix),
 				Item: &pb.AuthMethod{
+					Id:          defaultAm.GetPublicId(),
+					CreatedTime: defaultAm.GetCreateTime().GetTimestamp(),
+					UpdatedTime: defaultAm.GetUpdateTime().GetTimestamp(),
 					Name:        &wrapperspb.StringValue{Value: "name"},
 					Description: &wrapperspb.StringValue{Value: "desc"},
+					Scope:       &scopes.ScopeInfo{Id: o.GetPublicId(), Type: scope.Org.String()},
+					Type:        "password",
+					Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
+						"min_password_length":  structpb.NewNumberValue(8),
+						"min_user_name_length": structpb.NewNumberValue(5),
+					}},
 				},
 			},
 			errCode: codes.OK,
@@ -303,7 +322,8 @@ func TestCreate(t *testing.T) {
 		{
 			name: "Can't specify Id",
 			req: &pbs.CreateAuthMethodRequest{Item: &pb.AuthMethod{
-				Id: password.AuthMethodPrefix + "_notallowed",
+				Id:   password.AuthMethodPrefix + "_notallowed",
+				Type: "password",
 			}},
 			res:     nil,
 			errCode: codes.InvalidArgument,
@@ -320,6 +340,39 @@ func TestCreate(t *testing.T) {
 			name: "Can't specify Update Time",
 			req: &pbs.CreateAuthMethodRequest{Item: &pb.AuthMethod{
 				UpdatedTime: ptypes.TimestampNow(),
+				Type:        "password",
+			}},
+			res:     nil,
+			errCode: codes.InvalidArgument,
+		},
+		{
+			name: "Can't specify Update Time",
+			req: &pbs.CreateAuthMethodRequest{Item: &pb.AuthMethod{
+				UpdatedTime: ptypes.TimestampNow(),
+				Type:        "password",
+			}},
+			res:     nil,
+			errCode: codes.InvalidArgument,
+		},
+		{
+			name: "Must specify type",
+			req: &pbs.CreateAuthMethodRequest{Item: &pb.AuthMethod{
+				Name:        &wrapperspb.StringValue{Value: "must specify type"},
+				Description: &wrapperspb.StringValue{Value: "must specify type"},
+			}},
+			res:     nil,
+			errCode: codes.InvalidArgument,
+		},
+		{
+			name: "Attributes must be valid for type",
+			req: &pbs.CreateAuthMethodRequest{Item: &pb.AuthMethod{
+				Name:        &wrapperspb.StringValue{Value: "Attributes must be valid for type"},
+				Description: &wrapperspb.StringValue{Value: "Attributes must be valid for type"},
+				Type:        "password",
+				Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
+					"invalid_field":        structpb.NewStringValue("invalid_value"),
+					"min_user_name_length": structpb.NewNumberValue(5),
+				}},
 			}},
 			res:     nil,
 			errCode: codes.InvalidArgument,
@@ -334,6 +387,9 @@ func TestCreate(t *testing.T) {
 
 			got, gErr := s.CreateAuthMethod(auth.DisabledAuthTestContext(auth.WithScopeId(o.GetPublicId())), tc.req)
 			assert.Equal(tc.errCode, status.Code(gErr), "CreateAuthMethod(%+v) got error %v, wanted %v", tc.req, gErr, tc.errCode)
+			if tc.res == nil {
+				require.Nil(got)
+			}
 			if got != nil {
 				assert.Contains(got.GetUri(), tc.res.Uri)
 				assert.True(strings.HasPrefix(got.GetItem().GetId(), password.AuthMethodPrefix+"_"))
@@ -364,22 +420,18 @@ func TestUpdate(t *testing.T) {
 	}
 
 	o, _ := iam.TestScopes(t, conn)
-	am := password.TestAuthMethods(t, conn, o.GetPublicId(), 1)[0]
-
 	tested, err := authmethods.NewService(repoFn)
 	require.NoError(t, err, "Error when getting new auth_method service.")
 
-	resetAuthMethod := func() {
-		repo, err := repoFn()
-		require.NoError(t, err, "Couldn't get a new repo")
-		am, _, err = repo.UpdateAuthMethod(context.Background(), am, []string{"Name", "Description"})
-		require.NoError(t, err, "Failed to reset the auth_method")
-	}
-
-	created, err := ptypes.Timestamp(am.GetCreateTime().GetTimestamp())
-	require.NoError(t, err, "Error converting proto to timestamp")
-	toMerge := &pbs.UpdateAuthMethodRequest{
-		Id: am.GetPublicId(),
+	freshAuthMethod := func() *pb.AuthMethod {
+		am, err := tested.CreateAuthMethod(auth.DisabledAuthTestContext(auth.WithScopeId(o.GetPublicId())),
+			&pbs.CreateAuthMethodRequest{Item: &pb.AuthMethod{
+				Name:        wrapperspb.String("default"),
+				Description: wrapperspb.String("default"),
+				Type:        "password",
+			}})
+		require.NoError(t, err)
+		return am.GetItem()
 	}
 
 	cases := []struct {
@@ -401,10 +453,13 @@ func TestUpdate(t *testing.T) {
 			},
 			res: &pbs.UpdateAuthMethodResponse{
 				Item: &pb.AuthMethod{
-					Id:          am.GetPublicId(),
 					Name:        &wrapperspb.StringValue{Value: "new"},
 					Description: &wrapperspb.StringValue{Value: "desc"},
-					CreatedTime: am.GetCreateTime().GetTimestamp(),
+					Type:        "password",
+					Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
+						"min_password_length":  structpb.NewNumberValue(8),
+						"min_user_name_length": structpb.NewNumberValue(5),
+					}},
 				},
 			},
 			errCode: codes.OK,
@@ -422,10 +477,13 @@ func TestUpdate(t *testing.T) {
 			},
 			res: &pbs.UpdateAuthMethodResponse{
 				Item: &pb.AuthMethod{
-					Id:          am.GetPublicId(),
 					Name:        &wrapperspb.StringValue{Value: "new"},
 					Description: &wrapperspb.StringValue{Value: "desc"},
-					CreatedTime: am.GetCreateTime().GetTimestamp(),
+					Type:        "password",
+					Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
+						"min_password_length":  structpb.NewNumberValue(8),
+						"min_user_name_length": structpb.NewNumberValue(5),
+					}},
 				},
 			},
 			errCode: codes.OK,
@@ -474,9 +532,12 @@ func TestUpdate(t *testing.T) {
 			},
 			res: &pbs.UpdateAuthMethodResponse{
 				Item: &pb.AuthMethod{
-					Id:          am.GetPublicId(),
 					Description: &wrapperspb.StringValue{Value: "default"},
-					CreatedTime: am.GetCreateTime().GetTimestamp(),
+					Type:        "password",
+					Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
+						"min_password_length":  structpb.NewNumberValue(8),
+						"min_user_name_length": structpb.NewNumberValue(5),
+					}},
 				},
 			},
 			errCode: codes.OK,
@@ -494,10 +555,13 @@ func TestUpdate(t *testing.T) {
 			},
 			res: &pbs.UpdateAuthMethodResponse{
 				Item: &pb.AuthMethod{
-					Id:          am.GetPublicId(),
 					Name:        &wrapperspb.StringValue{Value: "updated"},
 					Description: &wrapperspb.StringValue{Value: "default"},
-					CreatedTime: am.GetCreateTime().GetTimestamp(),
+					Type:        "password",
+					Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
+						"min_password_length":  structpb.NewNumberValue(8),
+						"min_user_name_length": structpb.NewNumberValue(5),
+					}},
 				},
 			},
 			errCode: codes.OK,
@@ -515,10 +579,13 @@ func TestUpdate(t *testing.T) {
 			},
 			res: &pbs.UpdateAuthMethodResponse{
 				Item: &pb.AuthMethod{
-					Id:          am.GetPublicId(),
 					Name:        &wrapperspb.StringValue{Value: "default"},
 					Description: &wrapperspb.StringValue{Value: "notignored"},
-					CreatedTime: am.GetCreateTime().GetTimestamp(),
+					Type:        "password",
+					Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
+						"min_password_length":  structpb.NewNumberValue(8),
+						"min_user_name_length": structpb.NewNumberValue(5),
+					}},
 				},
 			},
 			errCode: codes.OK,
@@ -542,7 +609,6 @@ func TestUpdate(t *testing.T) {
 		{
 			name: "Cant change Id",
 			req: &pbs.UpdateAuthMethodRequest{
-				Id: am.GetPublicId(),
 				UpdateMask: &field_mask.FieldMask{
 					Paths: []string{"id"},
 				},
@@ -583,25 +649,33 @@ func TestUpdate(t *testing.T) {
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			defer resetAuthMethod()
 			assert, require := assert.New(t), require.New(t)
-			req := proto.Clone(toMerge).(*pbs.UpdateAuthMethodRequest)
-			proto.Merge(req, tc.req)
 
-			got, gErr := tested.UpdateAuthMethod(auth.DisabledAuthTestContext(auth.WithScopeId(o.GetPublicId())), req)
-			assert.Equal(tc.errCode, status.Code(gErr), "UpdateAuthMethod(%+v) got error %v, wanted %v", req, gErr, tc.errCode)
+			am := freshAuthMethod()
+			tc.req.Id = am.GetId()
+			if tc.res != nil && tc.res.Item != nil {
+				tc.res.Item.Id = am.GetId()
+				tc.res.Item.CreatedTime = am.GetCreatedTime()
+			}
+
+			got, gErr := tested.UpdateAuthMethod(auth.DisabledAuthTestContext(auth.WithScopeId(o.GetPublicId())), tc.req)
+			assert.Equal(tc.errCode, status.Code(gErr), "UpdateAuthMethod(%+v) got error %v, wanted %v", tc.req, gErr, tc.errCode)
 
 			if got != nil {
 				assert.NotNilf(tc.res, "Expected UpdateAuthMethod response to be nil, but was %v", got)
 				gotUpdateTime, err := ptypes.Timestamp(got.GetItem().GetUpdatedTime())
 				require.NoError(err, "Error converting proto to timestamp")
+
+				created, err := ptypes.Timestamp(am.GetCreatedTime())
+				require.NoError(err, "Error converting proto to timestamp")
+
 				// Verify it is a auth_method updated after it was created
 				assert.True(gotUpdateTime.After(created), "Updated auth_method should have been updated after it's creation. Was updated %v, which is after %v", gotUpdateTime, created)
 
 				// Clear all values which are hard to compare against.
 				got.Item.UpdatedTime, tc.res.Item.UpdatedTime = nil, nil
 			}
-			assert.Empty(cmp.Diff(got, tc.res, protocmp.Transform()), "UpdateAuthMethod(%q) got response %q, wanted %q", req, got, tc.res)
+			assert.Empty(cmp.Diff(got, tc.res, protocmp.Transform()), "UpdateAuthMethod(%q) got response %q, wanted %q", tc.req, got, tc.res)
 		})
 	}
 }

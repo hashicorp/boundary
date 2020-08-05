@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	wrapping "github.com/hashicorp/go-kms-wrapping"
+	dbcommon "github.com/hashicorp/watchtower/internal/db/common"
 
 	"github.com/hashicorp/watchtower/internal/db"
 	"github.com/hashicorp/watchtower/internal/host/static/store"
@@ -122,22 +123,22 @@ func (r *Repository) UpdateCatalog(ctx context.Context, c *HostCatalog, fieldMas
 		return nil, db.NoRowsAffected, fmt.Errorf("update: static host catalog: %w", db.ErrEmptyFieldMask)
 	}
 
-	var dbMask, nullFields []string
 	for _, f := range fieldMask {
 		switch {
-		case strings.EqualFold("name", f) && c.Name == "":
-			nullFields = append(nullFields, "name")
-		case strings.EqualFold("name", f) && c.Name != "":
-			dbMask = append(dbMask, "name")
-		case strings.EqualFold("description", f) && c.Description == "":
-			nullFields = append(nullFields, "description")
-		case strings.EqualFold("description", f) && c.Description != "":
-			dbMask = append(dbMask, "description")
-
+		case strings.EqualFold("name", f):
+		case strings.EqualFold("description", f):
 		default:
-			return nil, db.NoRowsAffected, fmt.Errorf("update: static host catalog: field: %s: %w", f, db.ErrInvalidFieldMask)
+			return nil, db.NoRowsAffected, fmt.Errorf("update: password auth method: field: %s: %w", f, db.ErrInvalidFieldMask)
 		}
 	}
+	var dbMask, nullFields []string
+	dbMask, nullFields = dbcommon.BuildUpdatePaths(
+		map[string]interface{}{
+			"Name":        c.Name,
+			"Description": c.Description,
+		},
+		fieldMask,
+	)
 	c = c.clone()
 
 	metadata := newCatalogMetadata(c, oplog.OpType_OP_TYPE_UPDATE)

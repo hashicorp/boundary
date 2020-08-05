@@ -59,6 +59,9 @@ func (s Service) ListAuthMethods(ctx context.Context, req *pbs.ListAuthMethodsRe
 	if err != nil {
 		return nil, err
 	}
+	for _, item := range ul {
+		item.Scope = authResults.Scope
+	}
 	return &pbs.ListAuthMethodsResponse{Items: ul}, nil
 }
 
@@ -75,6 +78,7 @@ func (s Service) GetAuthMethod(ctx context.Context, req *pbs.GetAuthMethodReques
 	if err != nil {
 		return nil, err
 	}
+	u.Scope = authResults.Scope
 	return &pbs.GetAuthMethodResponse{Item: u}, nil
 }
 
@@ -91,6 +95,7 @@ func (s Service) CreateAuthMethod(ctx context.Context, req *pbs.CreateAuthMethod
 	if err != nil {
 		return nil, err
 	}
+	u.Scope = authResults.Scope
 	return &pbs.CreateAuthMethodResponse{Item: u, Uri: fmt.Sprintf("scopes/%s/auth-methods/%s", authResults.Scope.GetId(), u.GetId())}, nil
 }
 
@@ -141,7 +146,7 @@ func (s Service) getFromRepo(ctx context.Context, id string) (*pb.AuthMethod, er
 	if u == nil {
 		return nil, handlers.NotFoundErrorf("AuthMethod %q doesn't exist.", id)
 	}
-	return toProto(u), nil
+	return toProto(u)
 }
 
 func (s Service) listFromRepo(ctx context.Context, scopeId string) ([]*pb.AuthMethod, error) {
@@ -155,7 +160,11 @@ func (s Service) listFromRepo(ctx context.Context, scopeId string) ([]*pb.AuthMe
 	}
 	var outUl []*pb.AuthMethod
 	for _, u := range ul {
-		outUl = append(outUl, toProto(u))
+		ou, err := toProto(u)
+		if err != nil {
+			return nil, err
+		}
+		outUl = append(outUl, ou)
 	}
 	return outUl, nil
 }
@@ -183,7 +192,7 @@ func (s Service) createInRepo(ctx context.Context, scopeId string, item *pb.Auth
 	if out == nil {
 		return nil, status.Error(codes.Internal, "Unable to create auth method but no error returned from repository.")
 	}
-	return toProto(out), nil
+	return toProto(out)
 }
 
 func (s Service) updateInRepo(ctx context.Context, scopeId, id string, mask []string, item *pb.AuthMethod) (*pb.AuthMethod, error) {
@@ -214,7 +223,7 @@ func (s Service) updateInRepo(ctx context.Context, scopeId, id string, mask []st
 	if rowsUpdated == 0 {
 		return nil, handlers.NotFoundErrorf("AuthMethod %q doesn't exist.", id)
 	}
-	return toProto(out), nil
+	return toProto(out)
 }
 
 func (s Service) deleteFromRepo(ctx context.Context, id string) (bool, error) {
@@ -232,11 +241,12 @@ func (s Service) deleteFromRepo(ctx context.Context, id string) (bool, error) {
 	return rows > 0, nil
 }
 
-func toProto(in *password.AuthMethod) *pb.AuthMethod {
+func toProto(in *password.AuthMethod) (*pb.AuthMethod, error) {
 	out := pb.AuthMethod{
 		Id:          in.GetPublicId(),
 		CreatedTime: in.GetCreateTime().GetTimestamp(),
 		UpdatedTime: in.GetUpdateTime().GetTimestamp(),
+		Type:        "password",
 	}
 	if in.GetDescription() != "" {
 		out.Description = &wrapperspb.StringValue{Value: in.GetDescription()}
@@ -244,7 +254,15 @@ func toProto(in *password.AuthMethod) *pb.AuthMethod {
 	if in.GetName() != "" {
 		out.Name = &wrapperspb.StringValue{Value: in.GetName()}
 	}
-	return &out
+	st, err := handlers.ProtoToStruct(&pb.PasswordAuthMethodAttributes{
+		MinUserNameLength: in.GetMinUserNameLength(),
+		MinPasswordLength: in.GetMinPasswordLength(),
+	})
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "failed building password attribute struct: %v", err)
+	}
+	out.Attributes = st
+	return &out, nil
 }
 
 // A validateX method should exist for each method above.  These methods do not make calls to any backing service but enforce
@@ -282,6 +300,15 @@ func validateCreateRequest(req *pbs.CreateAuthMethodRequest) error {
 	}
 	if item.GetUpdatedTime() != nil {
 		badFields["updated_time"] = "This is a read only field."
+	}
+	switch item.GetType() {
+	case "password":
+		pwAttrs := &pb.PasswordAuthMethodAttributes{}
+		if err := handlers.StructToProto(item.GetAttributes(), pwAttrs); err != nil {
+			badFields["attributes"] = "Attribute fields do not match the expected format."
+		}
+	default:
+		badFields["type"] = "This is a required field."
 	}
 	if len(badFields) > 0 {
 		return handlers.InvalidArgumentErrorf("Argument errors found in the request.", badFields)

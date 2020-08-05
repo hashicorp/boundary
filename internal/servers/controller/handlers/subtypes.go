@@ -18,7 +18,7 @@ func StructToProto(fields *structpb.Struct, p proto.Message) error {
 }
 
 func ProtoToStruct(p proto.Message) (*structpb.Struct, error) {
-	js, err := protojson.Marshal(p)
+	js, err := protojson.MarshalOptions{UseProtoNames: true}.Marshal(p)
 	if err != nil {
 		return nil, err
 	}

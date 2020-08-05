@@ -23,6 +23,29 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
+func TestDb_UpdateUnsetField(t *testing.T) {
+	db, _ := TestSetup(t, "postgres")
+	id := testId(t)
+	tu := &db_test.TestUser{
+		StoreTestUser: &db_test.StoreTestUser{
+			PublicId:    id,
+			Name:        "simple-updated" + id,
+			PhoneNumber: "updated" + id,
+		}}
+	rw := &Db{
+		underlying: db,
+	}
+	require.NoError(t, rw.Create(context.Background(), tu))
+
+	updatedTu := tu.Clone().(*db_test.TestUser)
+	updatedTu.Name = "updated"
+	updatedTu.Email = "ignore"
+	cnt, err := rw.Update(context.Background(), updatedTu, []string{"Name"}, nil)
+	require.NoError(t, err)
+	assert.Equal(t, 1, cnt)
+	assert.Equal(t, "ignore", updatedTu.Email)
+}
+
 func TestDb_Update(t *testing.T) {
 	db, _ := TestSetup(t, "postgres")
 	now := &timestamp.Timestamp{Timestamp: ptypes.TimestampNow()}
