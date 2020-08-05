@@ -10,6 +10,13 @@ import (
 	"golang.org/x/crypto/argon2"
 )
 
+type authAccount struct {
+	*Account
+	*Argon2Credential
+	*Argon2Configuration
+	IsCurrentConf bool
+}
+
 // Authenticate authenticates userName and password match for userName in
 // authMethodId. The account for the userName is returned if authentication
 // is successful. Returns nil if authentication fails.
@@ -32,63 +39,24 @@ func (r *Repository) Authenticate(ctx context.Context, authMethodId string, user
 		return nil, fmt.Errorf("password authenticate: no password: %w", db.ErrInvalidParameter)
 	}
 
-	type AuthAccount struct {
-		*Account
-		*Argon2Credential
-		*Argon2Configuration
-		IsCurrentConf bool
-	}
-
-	var accts []AuthAccount
-
-	tx, err := r.reader.DB()
+	acct, err := r.authenticate(ctx, authMethodId, userName, password)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("password authenticate: %w", err)
 	}
-	rows, err := tx.Query(authenticateQuery, authMethodId, userName)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	for rows.Next() {
-		var aa AuthAccount
-		if err := r.reader.ScanRows(rows, &aa); err != nil {
-			return nil, err
-		}
-		accts = append(accts, aa)
-	}
-
-	var acct AuthAccount
-	switch {
-	case len(accts) == 0:
-		return nil, nil
-	case len(accts) > 1:
-		// this should never happen
-		return nil, fmt.Errorf("authenticate: multiple accounts returned for user name")
-	default:
-		acct = accts[0]
-	}
-
-	if err := acct.decrypt(ctx, r.wrapper); err != nil {
-		return nil, fmt.Errorf("authenticate: credential: cannot decrypt value: %w", err)
-	}
-
-	inputKey := argon2.IDKey([]byte(password), acct.Salt, acct.Iterations, acct.Memory, uint8(acct.Threads), acct.KeyLength)
-	if subtle.ConstantTimeCompare(inputKey, acct.DerivedKey) == 0 {
+	if acct == nil {
 		return nil, nil
 	}
 
 	if !acct.IsCurrentConf {
 		cc, err := r.currentConfig(ctx, authMethodId)
 		if err != nil {
-			return acct.Account, fmt.Errorf("authenticate: retrieve current password configuration: %w", err)
+			return acct.Account, fmt.Errorf("password authenticate: retrieve current password configuration: %w", err)
 		}
 		cred, err := newArgon2Credential(acct.PublicId, password, cc.argon2())
 		if err != nil {
-			return acct.Account, fmt.Errorf("authenticate: rehash current password: %w", err)
+			return acct.Account, fmt.Errorf("password authenticate: update credential: %w", err)
 		}
 		cred.PrivateId = acct.CredentialId
-		cred.PasswordMethodId = cc.PasswordMethodId
 
 		var newCred *Argon2Credential
 		_, err = r.writer.DoTx(ctx, db.StdRetryCnt, db.ExpBackoff{},
@@ -111,7 +79,7 @@ func (r *Repository) Authenticate(ctx context.Context, authMethodId string, user
 			},
 		)
 		if err != nil {
-			return acct.Account, fmt.Errorf("authenticate: update rehashed password: %w", err)
+			return acct.Account, fmt.Errorf("password authenticate: update credential: %w", err)
 		}
 	}
 	return acct.Account, nil
@@ -140,50 +108,11 @@ func (r *Repository) ChangePassword(ctx context.Context, authMethodId string, us
 		return nil, fmt.Errorf("change password: %w", ErrPasswordsEqual)
 	}
 
-	// authenticate
-	type AuthAccount struct {
-		*Account
-		*Argon2Credential
-		*Argon2Configuration
-		IsCurrentConf bool
-	}
-
-	var accts []AuthAccount
-
-	tx, err := r.reader.DB()
+	acct, err := r.authenticate(ctx, authMethodId, userName, old)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("change password: %w", err)
 	}
-	rows, err := tx.Query(authenticateQuery, authMethodId, userName)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	for rows.Next() {
-		var aa AuthAccount
-		if err := r.reader.ScanRows(rows, &aa); err != nil {
-			return nil, err
-		}
-		accts = append(accts, aa)
-	}
-
-	var acct AuthAccount
-	switch {
-	case len(accts) == 0:
-		return nil, nil
-	case len(accts) > 1:
-		// this should never happen
-		return nil, fmt.Errorf("change password: multiple accounts returned for user name")
-	default:
-		acct = accts[0]
-	}
-
-	if err := acct.decrypt(ctx, r.wrapper); err != nil {
-		return nil, fmt.Errorf("change password: credential: cannot decrypt value: %w", err)
-	}
-
-	inputKey := argon2.IDKey([]byte(old), acct.Salt, acct.Iterations, acct.Memory, uint8(acct.Threads), acct.KeyLength)
-	if subtle.ConstantTimeCompare(inputKey, acct.DerivedKey) == 0 {
+	if acct == nil {
 		return nil, nil
 	}
 
@@ -201,7 +130,6 @@ func (r *Repository) ChangePassword(ctx context.Context, authMethodId string, us
 	if err != nil {
 		return nil, fmt.Errorf("change password: %w", err)
 	}
-	cred.PasswordMethodId = cc.PasswordMethodId
 
 	var oldCred, newCred *Argon2Credential
 	_, err = r.writer.DoTx(ctx, db.StdRetryCnt, db.ExpBackoff{},
@@ -228,4 +156,47 @@ func (r *Repository) ChangePassword(ctx context.Context, authMethodId string, us
 	act := acct.Account
 	act.CredentialId = newCred.PrivateId
 	return act, nil
+}
+
+func (r *Repository) authenticate(ctx context.Context, authMethodId string, userName string, password string) (*authAccount, error) {
+	var accts []authAccount
+
+	tx, err := r.reader.DB()
+	if err != nil {
+		return nil, err
+	}
+	rows, err := tx.Query(authenticateQuery, authMethodId, userName)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var aa authAccount
+		if err := r.reader.ScanRows(rows, &aa); err != nil {
+			return nil, err
+		}
+		accts = append(accts, aa)
+	}
+
+	var acct authAccount
+	switch {
+	case len(accts) == 0:
+		return nil, nil
+	case len(accts) > 1:
+		// this should never happen
+		return nil, fmt.Errorf("multiple accounts returned for user name")
+	default:
+		acct = accts[0]
+	}
+
+	if err := acct.decrypt(ctx, r.wrapper); err != nil {
+		return nil, fmt.Errorf("cannot decrypt credential: %w", err)
+	}
+
+	inputKey := argon2.IDKey([]byte(password), acct.Salt, acct.Iterations, acct.Memory, uint8(acct.Threads), acct.KeyLength)
+	if subtle.ConstantTimeCompare(inputKey, acct.DerivedKey) == 0 {
+		// authentication failed, password does not match
+		return nil, nil
+	}
+	return &acct, nil
 }
