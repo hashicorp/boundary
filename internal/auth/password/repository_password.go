@@ -120,36 +120,36 @@ func (r *Repository) ChangePassword(ctx context.Context, authMethodId string, us
 	if cc.MinPasswordLength > len(new) {
 		return nil, fmt.Errorf("change password: %w", ErrTooShort)
 	}
-	cred, err := newArgon2Credential(acct.PublicId, new, cc.argon2())
+	newCred, err := newArgon2Credential(acct.PublicId, new, cc.argon2())
 	if err != nil {
 		return nil, fmt.Errorf("change password: %w", err)
 	}
 
-	if err := cred.encrypt(ctx, r.wrapper); err != nil {
+	if err := newCred.encrypt(ctx, r.wrapper); err != nil {
 		return nil, fmt.Errorf("change password: encrypt: %w", err)
 	}
 
-	currentCred := acct.Argon2Credential
+	oldCred := acct.Argon2Credential
 
 	_, err = r.writer.DoTx(ctx, db.StdRetryCnt, db.ExpBackoff{},
 		func(_ db.Reader, w db.Writer) error {
-			rowsDeleted, err := w.Delete(ctx, currentCred, db.WithOplog(r.wrapper, currentCred.oplog(oplog.OpType_OP_TYPE_DELETE)))
+			rowsDeleted, err := w.Delete(ctx, oldCred, db.WithOplog(r.wrapper, oldCred.oplog(oplog.OpType_OP_TYPE_DELETE)))
 			if err == nil && rowsDeleted > 1 {
 				return db.ErrMultipleRecords
 			}
 			if err != nil {
 				return err
 			}
-			return w.Create(ctx, cred, db.WithOplog(r.wrapper, cred.oplog(oplog.OpType_OP_TYPE_CREATE)))
+			return w.Create(ctx, newCred, db.WithOplog(r.wrapper, newCred.oplog(oplog.OpType_OP_TYPE_CREATE)))
 		},
 	)
 	if err != nil {
 		return nil, fmt.Errorf("change password: %w", err)
 	}
 
-	act := acct.Account
-	act.CredentialId = cred.PrivateId
-	return act, nil
+	// change the Credential Id
+	acct.Account.CredentialId = newCred.PrivateId
+	return acct.Account, nil
 }
 
 func (r *Repository) authenticate(ctx context.Context, authMethodId string, userName string, password string) (*authAccount, error) {
