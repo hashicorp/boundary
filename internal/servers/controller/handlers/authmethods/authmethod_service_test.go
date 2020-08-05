@@ -42,8 +42,6 @@ func TestGet(t *testing.T) {
 
 	wantU := &pb.AuthMethod{
 		Id:          am.GetPublicId(),
-		Name:        &wrapperspb.StringValue{Value: am.GetName()},
-		Description: &wrapperspb.StringValue{Value: am.GetDescription()},
 		CreatedTime: am.CreateTime.GetTimestamp(),
 		UpdatedTime: am.UpdateTime.GetTimestamp(),
 	}
@@ -93,7 +91,7 @@ func TestGet(t *testing.T) {
 
 			got, gErr := s.GetAuthMethod(auth.DisabledAuthTestContext(auth.WithScopeId(tc.scopeId)), tc.req)
 			assert.Equal(tc.errCode, status.Code(gErr), "GetAuthMethod(%+v) got error %v, wanted %v", tc.req, gErr, tc.errCode)
-			assert.True(proto.Equal(got, tc.res), "GetAuthMethod(%q) got response %q, wanted %q", tc.req, got, tc.res)
+			assert.Empty(cmp.Diff(got, tc.res, protocmp.Transform()), "GetAuthMethod(%q) got response %q, wanted %q", tc.req, got, tc.res)
 		})
 	}
 }
@@ -123,7 +121,7 @@ func TestList(t *testing.T) {
 	}
 
 	var wantOtherAuthMethods []*pb.AuthMethod
-	for _, aa := range password.TestAccounts(t, conn, oWithOtherAuthMethods.GetPublicId(), 3) {
+	for _, aa := range password.TestAuthMethods(t, conn, oWithOtherAuthMethods.GetPublicId(), 3) {
 		wantOtherAuthMethods = append(wantOtherAuthMethods, &pb.AuthMethod{
 			Id:          aa.GetPublicId(),
 			CreatedTime: aa.GetCreateTime().GetTimestamp(),
@@ -141,19 +139,19 @@ func TestList(t *testing.T) {
 		errCode codes.Code
 	}{
 		{
-			name:    "List Some Accounts",
+			name:    "List Some Auth Methods",
 			scopeId: oWithAuthMethods.GetPublicId(),
 			res:     &pbs.ListAuthMethodsResponse{Items: wantSomeAuthMethods},
 			errCode: codes.OK,
 		},
 		{
-			name:    "List Other Accounts",
+			name:    "List Other Auth Methods",
 			scopeId: oWithOtherAuthMethods.GetPublicId(),
 			res:     &pbs.ListAuthMethodsResponse{Items: wantOtherAuthMethods},
 			errCode: codes.OK,
 		},
 		{
-			name:    "List No Accounts",
+			name:    "List No Auth Methods",
 			scopeId: oNoAuthMethods.GetPublicId(),
 			res:     &pbs.ListAuthMethodsResponse{},
 			errCode: codes.OK,
@@ -294,7 +292,7 @@ func TestCreate(t *testing.T) {
 				Description: &wrapperspb.StringValue{Value: "desc"},
 			}},
 			res: &pbs.CreateAuthMethodResponse{
-				Uri: fmt.Sprintf("scopes/%s/auth_methods/%s_", o.GetPublicId(), password.AuthMethodPrefix),
+				Uri: fmt.Sprintf("scopes/%s/auth-methods/%s_", o.GetPublicId(), password.AuthMethodPrefix),
 				Item: &pb.AuthMethod{
 					Name:        &wrapperspb.StringValue{Value: "name"},
 					Description: &wrapperspb.StringValue{Value: "desc"},
@@ -603,7 +601,7 @@ func TestUpdate(t *testing.T) {
 				// Clear all values which are hard to compare against.
 				got.Item.UpdatedTime, tc.res.Item.UpdatedTime = nil, nil
 			}
-			assert.True(proto.Equal(got, tc.res), "UpdateAuthMethod(%q) got response %q, wanted %q", req, got, tc.res)
+			assert.Empty(cmp.Diff(got, tc.res, protocmp.Transform()), "UpdateAuthMethod(%q) got response %q, wanted %q", req, got, tc.res)
 		})
 	}
 }
