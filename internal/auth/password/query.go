@@ -30,4 +30,14 @@ select acct.name,                        -- Account.Name
    and cred.password_account_id = acct.public_id
    and acct.auth_method_id = meth.public_id ;
 `
+	currentConfigForAccountQuery = `
+select *
+  from auth_password_current_conf
+ where password_method_id
+    in (
+       select auth_method_id
+         from auth_password_account
+        where public_id = $1
+    );
+`
 )
