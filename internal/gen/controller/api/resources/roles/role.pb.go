@@ -266,7 +266,7 @@ type Role struct {
 	// this to be anything other than the role's scope when the role's scope is
 	// a project.
 	GrantScopeId *wrappers.StringValue `protobuf:"bytes,8,opt,name=grant_scope_id,proto3" json:"grant_scope_id,omitempty"`
-	// The version can be used in subsiquent write requests to ensure this resource
+	// The version can be used in subsequent write requests to ensure this resource
 	// has not changed and to fail the write if it has.
 	// Output only.
 	Version uint32 `protobuf:"varint,9,opt,name=version,proto3" json:"version,omitempty"`

@@ -27,6 +27,7 @@ type Command struct {
 	flagGrantScopeId string
 	flagPrincipals   []string
 	flagGrants       []string
+	flagVersion      int
 }
 
 func (c *Command) Synopsis() string {
@@ -57,15 +58,15 @@ var helpMap = map[string]func() string{
 
 var flagsMap = map[string][]string{
 	"create":            {"name", "description", "grantscopeid"},
-	"update":            {"id", "name", "description", "grantscopeid"},
+	"update":            {"id", "name", "description", "grantscopeid", "version"},
 	"read":              {"id"},
 	"delete":            {"id"},
-	"add-principals":    {"id", "principal"},
-	"set-principals":    {"id", "principal"},
-	"remove-principals": {"id", "principal"},
-	"add-grants":        {"id", "grant"},
-	"set-grants":        {"id", "grant"},
-	"remove-grants":     {"id", "grant"},
+	"add-principals":    {"id", "principal", "version"},
+	"set-principals":    {"id", "principal", "version"},
+	"remove-principals": {"id", "principal", "version"},
+	"add-grants":        {"id", "grant", "version"},
+	"set-grants":        {"id", "grant", "version"},
+	"remove-grants":     {"id", "grant", "version"},
 }
 
 func (c *Command) Help() string {
@@ -199,16 +200,12 @@ func (c *Command) Run(args []string) int {
 	case "create", "read", "delete", "list":
 		// These don't udpate so don't need the existing version
 	default:
-		existingRole, existingApiErr, existingErr := roleClient.Read(c.Context, c.flagId, opts...)
-		if existingErr != nil {
-			c.UI.Error(fmt.Sprintf("Error performing initial check-and-set read: %s", existingErr.Error()))
-			return 2
+		switch c.flagVersion {
+		case 0:
+			opts = append(opts, roles.WithAutomaticVersioning())
+		default:
+			version = uint32(c.flagVersion)
 		}
-		if existingApiErr != nil {
-			c.UI.Error(fmt.Sprintf("Error from controller when performing initial check-and-set read: %s", pretty.Sprint(existingApiErr)))
-			return 1
-		}
-		version = existingRole.Version
 	}
 
 	var existed bool
@@ -272,7 +269,6 @@ func (c *Command) Run(args []string) int {
 		return 0
 
 	case "list":
-
 		switch base.Format(c.UI) {
 		case "json":
 			if len(listedRoles) == 0 {

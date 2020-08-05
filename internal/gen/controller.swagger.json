@@ -1602,7 +1602,7 @@
         "version": {
           "type": "integer",
           "format": "int64",
-          "description": "The version can be used in subsiquent write requests to ensure this resource\nhas not changed and to fail the write if it has.\nOutput only.",
+          "description": "The version can be used in subsequent write requests to ensure this resource\nhas not changed and to fail the write if it has.\nOutput only.",
           "readOnly": true
         },
         "member_ids": {
@@ -1909,7 +1909,7 @@
         "version": {
           "type": "integer",
           "format": "int64",
-          "description": "The version can be used in subsiquent write requests to ensure this resource\nhas not changed and to fail the write if it has.\nOutput only.",
+          "description": "The version can be used in subsequent write requests to ensure this resource\nhas not changed and to fail the write if it has.\nOutput only.",
           "readOnly": true
         },
         "principal_ids": {

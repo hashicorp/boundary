@@ -174,6 +174,12 @@ func populateFlags(c *Command, f *base.FlagSet, flagNames []string) {
 				Target: &c.flagGrants,
 				Usage:  "The grants to add, remove, or set. May be specified multiple times. Can be in compact string format or JSON (be sure to escape JSON properly).",
 			})
+		case "version":
+			f.IntVar(&base.IntVar{
+				Name:   "version",
+				Target: &c.flagVersion,
+				Usage:  "The version of the resource against which to perform an update operation. If not specified, the command will perform a check-and-set automatically.",
+			})
 		}
 	}
 }

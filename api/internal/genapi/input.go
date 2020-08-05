@@ -40,6 +40,11 @@ type structInfo struct {
 	// for this struct
 	outputOnly bool
 
+	// versionEnabled indicates that we should build a Version handler in
+	// update. Eventually everything should support this and this param can go
+	// away.
+	versionEnabled bool
+
 	// The parameters passed into the path.  These should be non-pluralized resource names.
 	// The templates will convert '-' to '_' and append an _id to them in the SDK param
 	// and append an 's' to it when building the path.
@@ -151,7 +156,8 @@ var inputStructs = []*structInfo{
 			"Principals": "principalIds",
 			"Grants":     "grantStrings",
 		},
-		pathArgs: []string{"role"},
+		pathArgs:       []string{"role"},
+		versionEnabled: true,
 	},
 	// Account related resources
 	{

@@ -53,6 +53,7 @@ type templateInput struct {
 	CollectionPath         string
 	ResourcePath           string
 	SliceSubTypes          map[string]string
+	VersionEnabled         bool
 }
 
 func fillTemplates() {
@@ -60,11 +61,12 @@ func fillTemplates() {
 	for _, in := range inputStructs {
 		outBuf := new(bytes.Buffer)
 		input := templateInput{
-			ClientName: strings.ToLower(in.generatedStructure.name),
-			Name:       in.generatedStructure.name,
-			Package:    in.generatedStructure.pkg,
-			Fields:     in.generatedStructure.fields,
-			PathArgs:   in.pathArgs,
+			ClientName:     strings.ToLower(in.generatedStructure.name),
+			Name:           in.generatedStructure.name,
+			Package:        in.generatedStructure.pkg,
+			Fields:         in.generatedStructure.fields,
+			PathArgs:       in.pathArgs,
+			VersionEnabled: in.versionEnabled,
 		}
 
 		if len(in.pathArgs) > 0 {
@@ -294,6 +296,7 @@ func (c *{{ .ClientName }}Client) Update(ctx context.Context, {{ range .Resource
 
 	opts, apiOpts := getOpts(opt...)
 
+	{{ if .VersionEnabled }}
 	if version == 0 {
 		if !opts.withAutomaticVersioning {
 			return nil, nil, errors.New("zero version number passed into Update request and automatic versioning not specified")
@@ -303,7 +306,7 @@ func (c *{{ .ClientName }}Client) Update(ctx context.Context, {{ range .Resource
 			return nil, nil, fmt.Errorf("error performing initial check-and-set read: %w", existingErr)
 		}
 		if existingApiErr != nil {
-			return nil, nil, fmt.Errorf("error from controller when performing initial check-and-set read: %w", existingApiError)
+			return nil, nil, fmt.Errorf("error from controller when performing initial check-and-set read: %s", pretty.Sprint(existingApiErr))
 		}
 		if existingTarget == nil {
 			return nil, nil, errors.New("nil resource found when performing initial check-and-set read")
@@ -311,6 +314,7 @@ func (c *{{ .ClientName }}Client) Update(ctx context.Context, {{ range .Resource
 		version = existingTarget.Version
 	}
 	opts.valueMap["version"] = version
+	{{ end }}
 
 	req, err := c.client.NewRequest(ctx, "PATCH", {{ .ResourcePath }}, opts.valueMap, apiOpts...)
 	if err != nil {
@@ -356,6 +360,7 @@ func (c *{{ $input.ClientName }}Client) {{ $fullName }}(ctx context.Context, {{ 
 
 	opts, apiOpts := getOpts(opt...)
 
+	{{ if $input.VersionEnabled }}
 	if version == 0 {
 		if !opts.withAutomaticVersioning {
 			return nil, nil, errors.New("zero version number passed into {{ $fullName }} request")
@@ -365,7 +370,7 @@ func (c *{{ $input.ClientName }}Client) {{ $fullName }}(ctx context.Context, {{ 
 			return nil, nil, fmt.Errorf("error performing initial check-and-set read: %w", existingErr)
 		}
 		if existingApiErr != nil {
-			return nil, nil, fmt.Errorf("error from controller when performing initial check-and-set read: %w", existingApiError)
+			return nil, nil, fmt.Errorf("error from controller when performing initial check-and-set read: %s", pretty.Sprint(existingApiErr))
 		}
 		if existingTarget == nil {
 			return nil, nil, errors.New("nil resource found when performing initial check-and-set read")
@@ -373,6 +378,7 @@ func (c *{{ $input.ClientName }}Client) {{ $fullName }}(ctx context.Context, {{ 
 		version = existingTarget.Version
 	}
 	opts.valueMap["version"] = version
+	{{ end }}
 
 	if len({{ $value }}) > 0 {
 		opts.valueMap["{{ snakeCase $value }}"] = {{ $value }}
@@ -412,6 +418,8 @@ import (
 	"context"
 	"fmt"
 	"time"
+
+	"github.com/kr/pretty"
 
 	"github.com/hashicorp/watchtower/api"
 	"github.com/hashicorp/watchtower/api/scopes"

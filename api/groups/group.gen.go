@@ -3,7 +3,6 @@ package groups
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"time"
 
@@ -98,24 +97,6 @@ func (c *groupClient) Update(ctx context.Context, groupId string, version uint32
 
 	opts, apiOpts := getOpts(opt...)
 
-	if version == 0 {
-		if !opts.withAutomaticVersioning {
-			return nil, nil, errors.New("zero version number passed into Update request and automatic versioning not specified")
-		}
-		existingTarget, existingApiErr, existingErr := c.Read(ctx, groupId, opt...)
-		if existingErr != nil {
-			return nil, nil, fmt.Errorf("error performing initial check-and-set read: %w", existingErr)
-		}
-		if existingApiErr != nil {
-			return nil, nil, fmt.Errorf("error from controller when performing initial check-and-set read: %w", existingApiError)
-		}
-		if existingTarget == nil {
-			return nil, nil, errors.New("nil resource found when performing initial check-and-set read")
-		}
-		version = existingTarget.Version
-	}
-	opts.valueMap["version"] = version
-
 	req, err := c.client.NewRequest(ctx, "PATCH", fmt.Sprintf("groups/%s", groupId), opts.valueMap, apiOpts...)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error creating Update request: %w", err)
@@ -207,24 +188,6 @@ func (c *groupClient) AddMembers(ctx context.Context, groupId string, version ui
 
 	opts, apiOpts := getOpts(opt...)
 
-	if version == 0 {
-		if !opts.withAutomaticVersioning {
-			return nil, nil, errors.New("zero version number passed into AddMembers request")
-		}
-		existingTarget, existingApiErr, existingErr := c.Read(ctx, groupId, opt...)
-		if existingErr != nil {
-			return nil, nil, fmt.Errorf("error performing initial check-and-set read: %w", existingErr)
-		}
-		if existingApiErr != nil {
-			return nil, nil, fmt.Errorf("error from controller when performing initial check-and-set read: %w", existingApiError)
-		}
-		if existingTarget == nil {
-			return nil, nil, errors.New("nil resource found when performing initial check-and-set read")
-		}
-		version = existingTarget.Version
-	}
-	opts.valueMap["version"] = version
-
 	if len(memberIds) > 0 {
 		opts.valueMap["member_ids"] = memberIds
 	}
@@ -257,24 +220,6 @@ func (c *groupClient) SetMembers(ctx context.Context, groupId string, version ui
 	}
 
 	opts, apiOpts := getOpts(opt...)
-
-	if version == 0 {
-		if !opts.withAutomaticVersioning {
-			return nil, nil, errors.New("zero version number passed into SetMembers request")
-		}
-		existingTarget, existingApiErr, existingErr := c.Read(ctx, groupId, opt...)
-		if existingErr != nil {
-			return nil, nil, fmt.Errorf("error performing initial check-and-set read: %w", existingErr)
-		}
-		if existingApiErr != nil {
-			return nil, nil, fmt.Errorf("error from controller when performing initial check-and-set read: %w", existingApiError)
-		}
-		if existingTarget == nil {
-			return nil, nil, errors.New("nil resource found when performing initial check-and-set read")
-		}
-		version = existingTarget.Version
-	}
-	opts.valueMap["version"] = version
 
 	if len(memberIds) > 0 {
 		opts.valueMap["member_ids"] = memberIds
@@ -311,24 +256,6 @@ func (c *groupClient) RemoveMembers(ctx context.Context, groupId string, version
 	}
 
 	opts, apiOpts := getOpts(opt...)
-
-	if version == 0 {
-		if !opts.withAutomaticVersioning {
-			return nil, nil, errors.New("zero version number passed into RemoveMembers request")
-		}
-		existingTarget, existingApiErr, existingErr := c.Read(ctx, groupId, opt...)
-		if existingErr != nil {
-			return nil, nil, fmt.Errorf("error performing initial check-and-set read: %w", existingErr)
-		}
-		if existingApiErr != nil {
-			return nil, nil, fmt.Errorf("error from controller when performing initial check-and-set read: %w", existingApiError)
-		}
-		if existingTarget == nil {
-			return nil, nil, errors.New("nil resource found when performing initial check-and-set read")
-		}
-		version = existingTarget.Version
-	}
-	opts.valueMap["version"] = version
 
 	if len(memberIds) > 0 {
 		opts.valueMap["member_ids"] = memberIds

@@ -42,6 +42,18 @@ func WithAutomaticVersioning() Option {
 	}
 }
 
+func WithDescription(inDescription string) Option {
+	return func(o *options) {
+		o.valueMap["description"] = inDescription
+	}
+}
+
+func DefaultDescription() Option {
+	return func(o *options) {
+		o.valueMap["description"] = nil
+	}
+}
+
 func WithDisabled(inDisabled bool) Option {
 	return func(o *options) {
 		o.valueMap["disabled"] = inDisabled
@@ -63,17 +75,5 @@ func WithName(inName string) Option {
 func DefaultName() Option {
 	return func(o *options) {
 		o.valueMap["name"] = nil
-	}
-}
-
-func WithDescription(inDescription string) Option {
-	return func(o *options) {
-		o.valueMap["description"] = inDescription
-	}
-}
-
-func DefaultDescription() Option {
-	return func(o *options) {
-		o.valueMap["description"] = nil
 	}
 }

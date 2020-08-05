@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/kr/pretty"
+
 	"github.com/hashicorp/watchtower/api"
 	"github.com/hashicorp/watchtower/api/scopes"
 )
@@ -110,7 +112,7 @@ func (c *roleClient) Update(ctx context.Context, roleId string, version uint32, 
 			return nil, nil, fmt.Errorf("error performing initial check-and-set read: %w", existingErr)
 		}
 		if existingApiErr != nil {
-			return nil, nil, fmt.Errorf("error from controller when performing initial check-and-set read: %w", existingApiError)
+			return nil, nil, fmt.Errorf("error from controller when performing initial check-and-set read: %s", pretty.Sprint(existingApiErr))
 		}
 		if existingTarget == nil {
 			return nil, nil, errors.New("nil resource found when performing initial check-and-set read")
@@ -219,7 +221,7 @@ func (c *roleClient) AddGrants(ctx context.Context, roleId string, version uint3
 			return nil, nil, fmt.Errorf("error performing initial check-and-set read: %w", existingErr)
 		}
 		if existingApiErr != nil {
-			return nil, nil, fmt.Errorf("error from controller when performing initial check-and-set read: %w", existingApiError)
+			return nil, nil, fmt.Errorf("error from controller when performing initial check-and-set read: %s", pretty.Sprint(existingApiErr))
 		}
 		if existingTarget == nil {
 			return nil, nil, errors.New("nil resource found when performing initial check-and-set read")
@@ -270,7 +272,7 @@ func (c *roleClient) AddPrincipals(ctx context.Context, roleId string, version u
 			return nil, nil, fmt.Errorf("error performing initial check-and-set read: %w", existingErr)
 		}
 		if existingApiErr != nil {
-			return nil, nil, fmt.Errorf("error from controller when performing initial check-and-set read: %w", existingApiError)
+			return nil, nil, fmt.Errorf("error from controller when performing initial check-and-set read: %s", pretty.Sprint(existingApiErr))
 		}
 		if existingTarget == nil {
 			return nil, nil, errors.New("nil resource found when performing initial check-and-set read")
@@ -321,7 +323,7 @@ func (c *roleClient) SetGrants(ctx context.Context, roleId string, version uint3
 			return nil, nil, fmt.Errorf("error performing initial check-and-set read: %w", existingErr)
 		}
 		if existingApiErr != nil {
-			return nil, nil, fmt.Errorf("error from controller when performing initial check-and-set read: %w", existingApiError)
+			return nil, nil, fmt.Errorf("error from controller when performing initial check-and-set read: %s", pretty.Sprint(existingApiErr))
 		}
 		if existingTarget == nil {
 			return nil, nil, errors.New("nil resource found when performing initial check-and-set read")
@@ -375,7 +377,7 @@ func (c *roleClient) SetPrincipals(ctx context.Context, roleId string, version u
 			return nil, nil, fmt.Errorf("error performing initial check-and-set read: %w", existingErr)
 		}
 		if existingApiErr != nil {
-			return nil, nil, fmt.Errorf("error from controller when performing initial check-and-set read: %w", existingApiError)
+			return nil, nil, fmt.Errorf("error from controller when performing initial check-and-set read: %s", pretty.Sprint(existingApiErr))
 		}
 		if existingTarget == nil {
 			return nil, nil, errors.New("nil resource found when performing initial check-and-set read")
@@ -429,7 +431,7 @@ func (c *roleClient) RemoveGrants(ctx context.Context, roleId string, version ui
 			return nil, nil, fmt.Errorf("error performing initial check-and-set read: %w", existingErr)
 		}
 		if existingApiErr != nil {
-			return nil, nil, fmt.Errorf("error from controller when performing initial check-and-set read: %w", existingApiError)
+			return nil, nil, fmt.Errorf("error from controller when performing initial check-and-set read: %s", pretty.Sprint(existingApiErr))
 		}
 		if existingTarget == nil {
 			return nil, nil, errors.New("nil resource found when performing initial check-and-set read")
@@ -480,7 +482,7 @@ func (c *roleClient) RemovePrincipals(ctx context.Context, roleId string, versio
 			return nil, nil, fmt.Errorf("error performing initial check-and-set read: %w", existingErr)
 		}
 		if existingApiErr != nil {
-			return nil, nil, fmt.Errorf("error from controller when performing initial check-and-set read: %w", existingApiError)
+			return nil, nil, fmt.Errorf("error from controller when performing initial check-and-set read: %s", pretty.Sprint(existingApiErr))
 		}
 		if existingTarget == nil {
 			return nil, nil, errors.New("nil resource found when performing initial check-and-set read")

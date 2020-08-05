@@ -122,7 +122,7 @@ type Group struct {
 	UpdatedTime *timestamp.Timestamp `protobuf:"bytes,6,opt,name=updated_time,proto3" json:"updated_time,omitempty"`
 	// Whether the resource is disabled
 	Disabled *wrappers.BoolValue `protobuf:"bytes,7,opt,name=disabled,proto3" json:"disabled,omitempty"`
-	// The version can be used in subsiquent write requests to ensure this resource
+	// The version can be used in subsequent write requests to ensure this resource
 	// has not changed and to fail the write if it has.
 	// Output only.
 	Version uint32 `protobuf:"varint,8,opt,name=version,proto3" json:"version,omitempty"`
