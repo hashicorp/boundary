@@ -160,11 +160,11 @@ func (r *Repository) DeleteAuthMethod(ctx context.Context, publicId string, opt 
 // value and included in fieldMask. Name, Description, MinPasswordLength,
 // and MinUserNameLength are the only updatable fields, If no updatable fields
 // are included in the fieldMaskPaths, then an error is returned.
-func (r *Repository) UpdateAuthMethod(ctx context.Context, c *AuthMethod, fieldMaskPaths []string, opt ...Option) (*AuthMethod, int, error) {
-	if c == nil {
+func (r *Repository) UpdateAuthMethod(ctx context.Context, authMethod *AuthMethod, fieldMaskPaths []string, opt ...Option) (*AuthMethod, int, error) {
+	if authMethod == nil {
 		return nil, db.NoRowsAffected, fmt.Errorf("update: password auth method: missing authMethod: %w", db.ErrNilParameter)
 	}
-	if c.PublicId == "" {
+	if authMethod.PublicId == "" {
 		return nil, db.NoRowsAffected, fmt.Errorf("update: password auth method: missing authMethod public id: %w", db.ErrInvalidParameter)
 	}
 	for _, f := range fieldMaskPaths {
@@ -180,35 +180,32 @@ func (r *Repository) UpdateAuthMethod(ctx context.Context, c *AuthMethod, fieldM
 	var dbMask, nullFields []string
 	dbMask, nullFields = dbcommon.BuildUpdatePaths(
 		map[string]interface{}{
-			"name":              c.Name,
-			"description":       c.Description,
-			"MinPasswordLength": c.MinPasswordLength,
-			"MinUserNameLength": c.MinUserNameLength,
+			"Name":              authMethod.Name,
+			"Description":       authMethod.Description,
+			"MinPasswordLength": authMethod.MinPasswordLength,
+			"MinUserNameLength": authMethod.MinUserNameLength,
 		},
 		fieldMaskPaths,
 	)
 	if len(dbMask) == 0 && len(nullFields) == 0 {
 		return nil, db.NoRowsAffected, fmt.Errorf("update: password auth method: %w", db.ErrEmptyFieldMask)
 	}
-	c = c.clone()
 
-	metadata := c.oplog(oplog.OpType_OP_TYPE_UPDATE)
-
+	upAuthMethod := authMethod.clone()
 	var rowsUpdated int
-	var returnedAuthMethod *AuthMethod
 	_, err := r.writer.DoTx(
 		ctx,
 		db.StdRetryCnt,
 		db.ExpBackoff{},
 		func(_ db.Reader, w db.Writer) error {
-			returnedAuthMethod = c.clone()
+			dbOpts := []db.Option{db.WithOplog(r.wrapper, upAuthMethod.oplog(oplog.OpType_OP_TYPE_UPDATE))}
 			var err error
 			rowsUpdated, err = w.Update(
 				ctx,
-				returnedAuthMethod,
+				upAuthMethod,
 				dbMask,
 				nullFields,
-				db.WithOplog(r.wrapper, metadata),
+				dbOpts...,
 			)
 			if err == nil && rowsUpdated > 1 {
 				return db.ErrMultipleRecords
@@ -216,13 +213,11 @@ func (r *Repository) UpdateAuthMethod(ctx context.Context, c *AuthMethod, fieldM
 			return err
 		},
 	)
-
 	if err != nil {
 		if db.IsUniqueError(err) {
-			return nil, db.NoRowsAffected, fmt.Errorf("update: password auth method: authMethod %s already exists in scope %s: %w", c.Name, c.ScopeId, db.ErrNotUnique)
+			return nil, db.NoRowsAffected, fmt.Errorf("update: password auth method: authMethod %s already exists in scope %s: %w", authMethod.Name, authMethod.ScopeId, db.ErrNotUnique)
 		}
-		return nil, db.NoRowsAffected, fmt.Errorf("update: password auth method: %w for %s", err, c.PublicId)
+		return nil, db.NoRowsAffected, fmt.Errorf("update: password auth method: %w for %s", err, authMethod.PublicId)
 	}
-
-	return returnedAuthMethod, rowsUpdated, err
+	return upAuthMethod, rowsUpdated, err
 }
