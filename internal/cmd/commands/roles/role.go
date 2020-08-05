@@ -227,20 +227,18 @@ func (c *Command) Run(args []string) int {
 		existed, apiErr, err = roleClient.Delete(c.Context, c.flagId, opts...)
 	case "list":
 		listedRoles, apiErr, err = roleClient.List(c.Context, opts...)
-		/*
-			case "add-principals":
-				role, apiErr, err = roleClient.AddPrincipals(c.Context, c.flagId, principals)
-			case "set-principals":
-				role, apiErr, err = roleClient.SetPrincipals(c.Context, c.flagId, principals)
-			case "remove-principals":
-				role, apiErr, err = roleClient.RemovePrincipals(c.Context, c.flagId, principals)
-			case "add-grants":
-				role, apiErr, err = roleClient.AddGrants(c.Context, c.flagId, grants)
-			case "set-grants":
-				role, apiErr, err = roleClient.SetGrants(c.Context, c.flagId, grants)
-			case "remove-grants":
-				role, apiErr, err = roleClient.RemoveGrants(c.Context, c.flagId, grants)
-		*/
+	case "add-principals":
+		role, apiErr, err = roleClient.AddPrincipals(c.Context, c.flagId, version, principals, opts...)
+	case "set-principals":
+		role, apiErr, err = roleClient.SetPrincipals(c.Context, c.flagId, version, principals, opts...)
+	case "remove-principals":
+		role, apiErr, err = roleClient.RemovePrincipals(c.Context, c.flagId, version, principals, opts...)
+	case "add-grants":
+		role, apiErr, err = roleClient.AddGrants(c.Context, c.flagId, version, principals, opts...)
+	case "set-grants":
+		role, apiErr, err = roleClient.SetGrants(c.Context, c.flagId, version, principals, opts...)
+	case "remove-grants":
+		role, apiErr, err = roleClient.RemoveGrants(c.Context, c.flagId, version, principals, opts...)
 	}
 
 	plural := "role"
