@@ -660,7 +660,10 @@ func TestUpdate(t *testing.T) {
 			am, cleanup := freshAuthMethod()
 			defer cleanup()
 
-			tc.req.Id = am.GetId()
+			if tc.req.GetId() == "" {
+				tc.req.Id = am.GetId()
+			}
+
 			if tc.res != nil && tc.res.Item != nil {
 				tc.res.Item.Id = am.GetId()
 				tc.res.Item.CreatedTime = am.GetCreatedTime()

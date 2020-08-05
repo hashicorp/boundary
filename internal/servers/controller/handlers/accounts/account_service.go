@@ -222,7 +222,7 @@ func toProto(in *password.Account) (*pb.Account, error) {
 	if st, err := handlers.ProtoToStruct(&pb.PasswordAccountAttributes{Username: in.GetUserName()}); err == nil {
 		out.Attributes = st
 	} else {
-		return nil, status.Errorf(codes.Internal, "failed building password attribute struct: %w", err)
+		return nil, status.Errorf(codes.Internal, "failed building password attribute struct: %v", err)
 	}
 	return &out, nil
 }
