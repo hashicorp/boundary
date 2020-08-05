@@ -25,16 +25,14 @@ import (
 
 func TestDb_UpdateUnsetField(t *testing.T) {
 	db, _ := TestSetup(t, "postgres")
-	id := testId(t)
-	tu := &db_test.TestUser{
-		StoreTestUser: &db_test.StoreTestUser{
-			PublicId:    id,
-			Name:        "simple-updated" + id,
-			PhoneNumber: "updated" + id,
-		}}
 	rw := &Db{
 		underlying: db,
 	}
+	tu := &db_test.TestUser{
+		StoreTestUser: &db_test.StoreTestUser{
+			PublicId: testId(t),
+			Name:     "default",
+		}}
 	require.NoError(t, rw.Create(context.Background(), tu))
 
 	updatedTu := tu.Clone().(*db_test.TestUser)
@@ -44,6 +42,7 @@ func TestDb_UpdateUnsetField(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, 1, cnt)
 	assert.Equal(t, "ignore", updatedTu.Email)
+	assert.Equal(t, "updated", updatedTu.Name)
 }
 
 func TestDb_Update(t *testing.T) {

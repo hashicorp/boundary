@@ -219,7 +219,7 @@ func (r *Repository) UpdateAuthMethod(ctx context.Context, c *AuthMethod, fieldM
 
 	if err != nil {
 		if db.IsUniqueError(err) {
-			return nil, db.NoRowsAffected, fmt.Errorf("update: password auth method: authMethod %s already exists in scope %s", c.Name, c.ScopeId)
+			return nil, db.NoRowsAffected, fmt.Errorf("update: password auth method: authMethod %s already exists in scope %s: %w", c.Name, c.ScopeId, db.ErrNotUnique)
 		}
 		return nil, db.NoRowsAffected, fmt.Errorf("update: password auth method: %w for %s", err, c.PublicId)
 	}

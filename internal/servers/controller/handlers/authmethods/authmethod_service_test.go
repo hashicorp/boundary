@@ -423,7 +423,7 @@ func TestUpdate(t *testing.T) {
 	tested, err := authmethods.NewService(repoFn)
 	require.NoError(t, err, "Error when getting new auth_method service.")
 
-	freshAuthMethod := func() *pb.AuthMethod {
+	freshAuthMethod := func() (*pb.AuthMethod, func()) {
 		am, err := tested.CreateAuthMethod(auth.DisabledAuthTestContext(auth.WithScopeId(o.GetPublicId())),
 			&pbs.CreateAuthMethodRequest{Item: &pb.AuthMethod{
 				Name:        wrapperspb.String("default"),
@@ -431,7 +431,14 @@ func TestUpdate(t *testing.T) {
 				Type:        "password",
 			}})
 		require.NoError(t, err)
-		return am.GetItem()
+
+		clean := func() {
+			_, err := tested.DeleteAuthMethod(auth.DisabledAuthTestContext(auth.WithScopeId(o.GetPublicId())),
+				&pbs.DeleteAuthMethodRequest{Id: am.GetItem().GetId()})
+			require.NoError(t, err)
+		}
+
+		return am.GetItem(), clean
 	}
 
 	cases := []struct {
@@ -650,8 +657,9 @@ func TestUpdate(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
+			am, cleanup := freshAuthMethod()
+			defer cleanup()
 
-			am := freshAuthMethod()
 			tc.req.Id = am.GetId()
 			if tc.res != nil && tc.res.Item != nil {
 				tc.res.Item.Id = am.GetId()
@@ -660,6 +668,10 @@ func TestUpdate(t *testing.T) {
 
 			got, gErr := tested.UpdateAuthMethod(auth.DisabledAuthTestContext(auth.WithScopeId(o.GetPublicId())), tc.req)
 			assert.Equal(tc.errCode, status.Code(gErr), "UpdateAuthMethod(%+v) got error %v, wanted %v", tc.req, gErr, tc.errCode)
+
+			if tc.res == nil {
+				require.Nil(got)
+			}
 
 			if got != nil {
 				assert.NotNilf(tc.res, "Expected UpdateAuthMethod response to be nil, but was %v", got)
