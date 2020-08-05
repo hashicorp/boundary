@@ -74,7 +74,10 @@ func fillTemplates() {
 			input.CollectionFunctionArgs, input.ResourceFunctionArgs, input.CollectionPath, input.ResourcePath = getArgsAndPaths(in.pathArgs, "")
 		}
 
-		structTemplate.Execute(outBuf, input)
+		if err := structTemplate.Execute(outBuf, input); err != nil {
+			fmt.Printf("error executing struct template for resource %s: %v\n", in.generatedStructure.name, err)
+			os.Exit(1)
+		}
 
 		if len(in.sliceSubTypes) > 0 {
 			input.SliceSubTypes = in.sliceSubTypes
@@ -82,7 +85,10 @@ func fillTemplates() {
 		}
 
 		for _, t := range in.templates {
-			t.Execute(outBuf, input)
+			if err := t.Execute(outBuf, input); err != nil {
+				fmt.Printf("error executing function template for resource %s: %v\n", in.generatedStructure.name, err)
+				os.Exit(1)
+			}
 		}
 
 		// We want to generate options per-package, not per-struct, so we
@@ -141,7 +147,10 @@ func fillTemplates() {
 			Fields:  fields,
 		}
 
-		optionTemplate.Execute(outBuf, input)
+		if err := optionTemplate.Execute(outBuf, input); err != nil {
+			fmt.Printf("error executing option template for package %s: %v\n", pkg, err)
+			os.Exit(1)
+		}
 
 		outFile, err := filepath.Abs(fmt.Sprintf("%s/%s/%s", os.Getenv("API_GEN_BASEPATH"), pkg, "option.gen.go"))
 		if err != nil {
