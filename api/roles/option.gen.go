@@ -42,18 +42,6 @@ func WithAutomaticVersioning() Option {
 	}
 }
 
-func WithName(inName string) Option {
-	return func(o *options) {
-		o.valueMap["name"] = inName
-	}
-}
-
-func DefaultName() Option {
-	return func(o *options) {
-		o.valueMap["name"] = nil
-	}
-}
-
 func WithDescription(inDescription string) Option {
 	return func(o *options) {
 		o.valueMap["description"] = inDescription
@@ -87,5 +75,17 @@ func WithGrantScopeId(inGrantScopeId string) Option {
 func DefaultGrantScopeId() Option {
 	return func(o *options) {
 		o.valueMap["grant_scope_id"] = nil
+	}
+}
+
+func WithName(inName string) Option {
+	return func(o *options) {
+		o.valueMap["name"] = inName
+	}
+}
+
+func DefaultName() Option {
+	return func(o *options) {
+		o.valueMap["name"] = nil
 	}
 }

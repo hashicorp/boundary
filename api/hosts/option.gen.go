@@ -42,18 +42,6 @@ func WithAutomaticVersioning() Option {
 	}
 }
 
-func WithAttributes(inAttributes map[string]interface{}) Option {
-	return func(o *options) {
-		o.valueMap["attributes"] = inAttributes
-	}
-}
-
-func DefaultAttributes() Option {
-	return func(o *options) {
-		o.valueMap["attributes"] = nil
-	}
-}
-
 func WithAddress(inAddress string) Option {
 	return func(o *options) {
 		o.valueMap["address"] = inAddress
@@ -66,27 +54,15 @@ func DefaultAddress() Option {
 	}
 }
 
-func WithType(inType string) Option {
+func WithAttributes(inAttributes map[string]interface{}) Option {
 	return func(o *options) {
-		o.valueMap["type"] = inType
+		o.valueMap["attributes"] = inAttributes
 	}
 }
 
-func DefaultType() Option {
+func DefaultAttributes() Option {
 	return func(o *options) {
-		o.valueMap["type"] = nil
-	}
-}
-
-func WithName(inName string) Option {
-	return func(o *options) {
-		o.valueMap["name"] = inName
-	}
-}
-
-func DefaultName() Option {
-	return func(o *options) {
-		o.valueMap["name"] = nil
+		o.valueMap["attributes"] = nil
 	}
 }
 
@@ -111,5 +87,29 @@ func WithDisabled(inDisabled bool) Option {
 func DefaultDisabled() Option {
 	return func(o *options) {
 		o.valueMap["disabled"] = nil
+	}
+}
+
+func WithName(inName string) Option {
+	return func(o *options) {
+		o.valueMap["name"] = inName
+	}
+}
+
+func DefaultName() Option {
+	return func(o *options) {
+		o.valueMap["name"] = nil
+	}
+}
+
+func WithType(inType string) Option {
+	return func(o *options) {
+		o.valueMap["type"] = inType
+	}
+}
+
+func DefaultType() Option {
+	return func(o *options) {
+		o.valueMap["type"] = nil
 	}
 }

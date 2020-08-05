@@ -6,6 +6,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 	"text/template"
 
@@ -123,9 +124,16 @@ func fillTemplates() {
 	// Now reconstruct options per package and write them out
 	for pkg, options := range optionsMap {
 		outBuf := new(bytes.Buffer)
-		var fields []fieldInfo
+
+		var fieldNames []string
 		for _, v := range options {
-			fields = append(fields, v)
+			fieldNames = append(fieldNames, v.Name)
+		}
+		sort.Strings(fieldNames)
+
+		var fields []fieldInfo
+		for _, v := range fieldNames {
+			fields = append(fields, options[v])
 		}
 
 		input := templateInput{
