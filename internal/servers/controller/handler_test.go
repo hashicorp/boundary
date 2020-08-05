@@ -46,6 +46,8 @@ func TestHandleImplementedPaths(t *testing.T) {
 			"v1/scopes/someid",
 			"v1/scopes/someid/auth-tokens",
 			"v1/scopes/someid/auth-tokens/someid",
+			"v1/scopes/someid/auth-methods/someid/accounts",
+			"v1/scopes/someid/auth-methods/someid/accounts/someid",
 			"v1/scopes/someid/groups",
 			"v1/scopes/someid/groups/someid",
 			"v1/scopes/someid/host-catalogs",
@@ -61,6 +63,7 @@ func TestHandleImplementedPaths(t *testing.T) {
 			"v1/scopes/someid/groups",
 			"v1/scopes/someid/roles",
 			"v1/scopes/someid/users",
+			"v1/scopes/someid/auth-methods/someid/accounts",
 
 			// custom methods
 			"v1/scopes/someid/auth-methods/someid:authenticate",
@@ -80,6 +83,7 @@ func TestHandleImplementedPaths(t *testing.T) {
 			"v1/scopes/someid/roles/someid",
 			"v1/scopes/someid/groups/someid",
 			"v1/scopes/someid/auth-tokens/someid",
+			"v1/scopes/someid/auth-methods/someid/accounts/someid",
 		},
 		"PATCH": {
 			"v1/scopes/someid",

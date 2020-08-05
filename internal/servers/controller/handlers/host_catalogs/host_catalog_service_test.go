@@ -8,6 +8,7 @@ import (
 
 	"github.com/golang/protobuf/ptypes"
 	"github.com/golang/protobuf/ptypes/wrappers"
+	"github.com/google/go-cmp/cmp"
 	"github.com/hashicorp/watchtower/internal/auth"
 	"github.com/hashicorp/watchtower/internal/db"
 	pb "github.com/hashicorp/watchtower/internal/gen/controller/api/resources/hosts"
@@ -21,6 +22,7 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/testing/protocmp"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -107,7 +109,7 @@ func TestGet(t *testing.T) {
 
 			got, gErr := s.GetHostCatalog(auth.DisabledAuthTestContext(auth.WithScopeId(proj.GetPublicId())), req)
 			assert.Equal(tc.errCode, status.Code(gErr), "GetHostCatalog(%+v) got error %v, wanted %v", req, gErr, tc.errCode)
-			assert.True(proto.Equal(got, tc.res), "GetHostCatalog(%q) got response %q, wanted %q", req, got, tc.res)
+			assert.Empty(cmp.Diff(got, tc.res, protocmp.Transform()), "GetHostCatalog(%q) got response %q, wanted %q", req, got, tc.res)
 		})
 	}
 }
@@ -296,7 +298,7 @@ func TestCreate(t *testing.T) {
 			got, gErr := s.CreateHostCatalog(auth.DisabledAuthTestContext(auth.WithScopeId(proj.GetPublicId())), req)
 			assert.Equal(tc.errCode, status.Code(gErr), "CreateHostCatalog(%+v) got error %v, wanted %v", req, gErr, tc.errCode)
 			if got != nil {
-				assert.True(strings.HasPrefix(got.GetUri(), tc.res.GetUri()))
+				assert.Contains(got.GetUri(), tc.res.GetUri())
 				assert.True(strings.HasPrefix(got.GetItem().GetId(), static.HostCatalogPrefix))
 				gotCreateTime, err := ptypes.Timestamp(got.GetItem().GetCreatedTime())
 				require.NoError(err, "Error converting proto to timestamp.")
@@ -311,7 +313,7 @@ func TestCreate(t *testing.T) {
 				got.Item.Id, tc.res.Item.Id = "", ""
 				got.Item.CreatedTime, got.Item.UpdatedTime, tc.res.Item.CreatedTime, tc.res.Item.UpdatedTime = nil, nil, nil, nil
 			}
-			assert.True(proto.Equal(got, tc.res), "CreateHostCatalog(%q) got response %q, wanted %q", req, got, tc.res)
+			assert.Empty(cmp.Diff(got, tc.res, protocmp.Transform()), "CreateHostCatalog(%q) got response %q, wanted %q", req, got, tc.res)
 		})
 	}
 }
@@ -604,7 +606,7 @@ func TestUpdate(t *testing.T) {
 				// Clear all values which are hard to compare against.
 				got.Item.UpdatedTime, tc.res.Item.UpdatedTime = nil, nil
 			}
-			assert.True(proto.Equal(got, tc.res), "UpdateHostCatalog(%q) got response %q, wanted %q", req, got, tc.res)
+			assert.Empty(cmp.Diff(got, tc.res, protocmp.Transform()), "UpdateHostCatalog(%q) got response %q, wanted %q", req, got, tc.res)
 		})
 	}
 }

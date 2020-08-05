@@ -15,7 +15,6 @@ import (
 	"github.com/hashicorp/watchtower/internal/types/scope"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
-	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/testing/protocmp"
 
 	"github.com/stretchr/testify/assert"
@@ -82,8 +81,8 @@ func TestGet(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			assert := assert.New(t)
 			got, gErr := s.GetAuthToken(auth.DisabledAuthTestContext(auth.WithScopeId(org.GetPublicId())), tc.req)
-			assert.Equal(tc.errCode, status.Code(gErr), "GetOrg(%+v) got error %v, wanted %v", tc.req, gErr, tc.errCode)
-			assert.True(proto.Equal(got, tc.res), "GetOrg(%q) got response %q, wanted %q", tc.req, got, tc.res)
+			assert.Equal(tc.errCode, status.Code(gErr), "GetAuthToken(%+v) got error %v, wanted %v", tc.req, gErr, tc.errCode)
+			assert.Empty(cmp.Diff(got, tc.res, protocmp.Transform()), "GetAuthToken(%q) got response %q, wanted %q", tc.req, got, tc.res)
 		})
 	}
 }
@@ -168,8 +167,8 @@ func TestList(t *testing.T) {
 			require.NoError(t, err, "Couldn't create new user service.")
 
 			got, gErr := s.ListAuthTokens(auth.DisabledAuthTestContext(auth.WithScopeId(tc.scope)), &pbs.ListAuthTokensRequest{})
-			assert.Equal(t, tc.errCode, status.Code(gErr), "ListUsers() with scope %q got error %v, wanted %v", tc.scope, gErr, tc.errCode)
-			assert.Empty(t, cmp.Diff(got, tc.res, protocmp.Transform(), protocmp.SortRepeatedFields(got)), "ListUsers() with scope %q got response %q, wanted %q", tc.scope, got, tc.res)
+			assert.Equal(t, tc.errCode, status.Code(gErr), "ListAuthTokens() with scope %q got error %v, wanted %v", tc.scope, gErr, tc.errCode)
+			assert.Empty(t, cmp.Diff(got, tc.res, protocmp.Transform(), protocmp.SortRepeatedFields(got)), "ListAuthTokens() with scope %q got response %q, wanted %q", tc.scope, got, tc.res)
 		})
 	}
 }
@@ -246,8 +245,8 @@ func TestDelete(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			assert := assert.New(t)
 			got, gErr := s.DeleteAuthToken(auth.DisabledAuthTestContext(auth.WithScopeId(tc.scope)), tc.req)
-			assert.Equal(tc.errCode, status.Code(gErr), "DeleteUser(%+v) got error %v, wanted %v", tc.req, gErr, tc.errCode)
-			assert.EqualValuesf(tc.res, got, "DeleteUser(%q) got response %q, wanted %q", tc.req, got, tc.res)
+			assert.Equal(tc.errCode, status.Code(gErr), "DeleteAuthToken(%+v) got error %v, wanted %v", tc.req, gErr, tc.errCode)
+			assert.EqualValuesf(tc.res, got, "DeleteAuthToken(%q) got response %q, wanted %q", tc.req, got, tc.res)
 		})
 	}
 }

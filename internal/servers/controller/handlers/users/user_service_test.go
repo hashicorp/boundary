@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/golang/protobuf/ptypes"
+	"github.com/google/go-cmp/cmp"
 	"github.com/hashicorp/watchtower/internal/auth"
 	"github.com/hashicorp/watchtower/internal/db"
 	"github.com/hashicorp/watchtower/internal/gen/controller/api/resources/scopes"
@@ -19,6 +20,7 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/testing/protocmp"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 
 	"github.com/stretchr/testify/assert"
@@ -97,7 +99,7 @@ func TestGet(t *testing.T) {
 
 			got, gErr := s.GetUser(auth.DisabledAuthTestContext(auth.WithScopeId(u.GetScopeId())), req)
 			assert.Equal(tc.errCode, status.Code(gErr), "GetUser(%+v) got error %v, wanted %v", req, gErr, tc.errCode)
-			assert.True(proto.Equal(got, tc.res), "GetUser(%q) got response %q, wanted %q", req, got, tc.res)
+			assert.Empty(cmp.Diff(got, tc.res, protocmp.Transform()), "GetUser(%q) got response %q, wanted %q", req, got, tc.res)
 		})
 	}
 }
@@ -159,7 +161,7 @@ func TestList(t *testing.T) {
 
 			got, gErr := s.ListUsers(auth.DisabledAuthTestContext(auth.WithScopeId(tc.scopeId)), tc.req)
 			assert.Equal(tc.errCode, status.Code(gErr), "ListUsers(%+v) got error %v, wanted %v", tc.req, gErr, tc.errCode)
-			assert.True(proto.Equal(got, tc.res), "ListUsers(%q) got response %q, wanted %q", tc.req, got, tc.res)
+			assert.Empty(cmp.Diff(got, tc.res, protocmp.Transform()), "ListUsers(%q) got response %q, wanted %q", tc.req, got, tc.res)
 		})
 	}
 }
@@ -301,7 +303,7 @@ func TestCreate(t *testing.T) {
 			got, gErr := s.CreateUser(auth.DisabledAuthTestContext(auth.WithScopeId(defaultUser.GetScopeId())), req)
 			assert.Equal(tc.errCode, status.Code(gErr), "CreateUser(%+v) got error %v, wanted %v", req, gErr, tc.errCode)
 			if got != nil {
-				assert.True(strings.HasPrefix(got.GetUri(), tc.res.Uri))
+				assert.Contains(got.GetUri(), tc.res.Uri)
 				assert.True(strings.HasPrefix(got.GetItem().GetId(), iam.UserPrefix+"_"))
 				gotCreateTime, err := ptypes.Timestamp(got.GetItem().GetCreatedTime())
 				require.NoError(err, "Error converting proto to timestamp.")
@@ -316,7 +318,7 @@ func TestCreate(t *testing.T) {
 				got.Item.Id, tc.res.Item.Id = "", ""
 				got.Item.CreatedTime, got.Item.UpdatedTime, tc.res.Item.CreatedTime, tc.res.Item.UpdatedTime = nil, nil, nil, nil
 			}
-			assert.True(proto.Equal(got, tc.res), "CreateUser(%q) got response %q, wanted %q", req, got, tc.res)
+			assert.Empty(cmp.Diff(got, tc.res, protocmp.Transform()), "CreateUser(%q) got response %q, wanted %q", req, got, tc.res)
 		})
 	}
 }
@@ -564,7 +566,7 @@ func TestUpdate(t *testing.T) {
 				// Clear all values which are hard to compare against.
 				got.Item.UpdatedTime, tc.res.Item.UpdatedTime = nil, nil
 			}
-			assert.True(proto.Equal(got, tc.res), "UpdateUser(%q) got response %q, wanted %q", req, got, tc.res)
+			assert.Empty(cmp.Diff(got, tc.res, protocmp.Transform()), "UpdateUser(%q) got response %q, wanted %q", req, got, tc.res)
 		})
 	}
 }
