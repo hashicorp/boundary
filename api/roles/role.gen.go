@@ -95,15 +95,28 @@ func (c *roleClient) Update(ctx context.Context, roleId string, version uint32, 
 	if roleId == "" {
 		return nil, nil, fmt.Errorf("empty roleId value passed into Update request")
 	}
-	if version == 0 {
-		return nil, nil, errors.New("zero version number passed into Update request")
-	}
 	if c.client == nil {
 		return nil, nil, fmt.Errorf("nil client")
 	}
 
 	opts, apiOpts := getOpts(opt...)
 
+	if version == 0 {
+		if !opts.withAutomaticVersioning {
+			return nil, nil, errors.New("zero version number passed into Update request and automatic versioning not specified")
+		}
+		existingTarget, existingApiErr, existingErr := c.Read(ctx, roleId, opt...)
+		if existingErr != nil {
+			return nil, nil, fmt.Errorf("error performing initial check-and-set read: %w", existingErr)
+		}
+		if existingApiErr != nil {
+			return nil, nil, fmt.Errorf("error from controller when performing initial check-and-set read: %w", existingApiError)
+		}
+		if existingTarget == nil {
+			return nil, nil, errors.New("nil resource found when performing initial check-and-set read")
+		}
+		version = existingTarget.Version
+	}
 	opts.valueMap["version"] = version
 
 	req, err := c.client.NewRequest(ctx, "PATCH", fmt.Sprintf("roles/%s", roleId), opts.valueMap, apiOpts...)
@@ -191,15 +204,30 @@ func (c *roleClient) AddGrants(ctx context.Context, roleId string, version uint3
 	if roleId == "" {
 		return nil, nil, fmt.Errorf("empty roleId value passed into AddGrants request")
 	}
-	if version == 0 {
-		return nil, nil, errors.New("zero version number passed into AddGrants request")
-	}
 	if c.client == nil {
 		return nil, nil, fmt.Errorf("nil client")
 	}
 
 	opts, apiOpts := getOpts(opt...)
+
+	if version == 0 {
+		if !opts.withAutomaticVersioning {
+			return nil, nil, errors.New("zero version number passed into AddGrants request")
+		}
+		existingTarget, existingApiErr, existingErr := c.Read(ctx, roleId, opt...)
+		if existingErr != nil {
+			return nil, nil, fmt.Errorf("error performing initial check-and-set read: %w", existingErr)
+		}
+		if existingApiErr != nil {
+			return nil, nil, fmt.Errorf("error from controller when performing initial check-and-set read: %w", existingApiError)
+		}
+		if existingTarget == nil {
+			return nil, nil, errors.New("nil resource found when performing initial check-and-set read")
+		}
+		version = existingTarget.Version
+	}
 	opts.valueMap["version"] = version
+
 	if len(grantStrings) > 0 {
 		opts.valueMap["grant_strings"] = grantStrings
 	}
@@ -227,15 +255,30 @@ func (c *roleClient) AddPrincipals(ctx context.Context, roleId string, version u
 	if roleId == "" {
 		return nil, nil, fmt.Errorf("empty roleId value passed into AddPrincipals request")
 	}
-	if version == 0 {
-		return nil, nil, errors.New("zero version number passed into AddPrincipals request")
-	}
 	if c.client == nil {
 		return nil, nil, fmt.Errorf("nil client")
 	}
 
 	opts, apiOpts := getOpts(opt...)
+
+	if version == 0 {
+		if !opts.withAutomaticVersioning {
+			return nil, nil, errors.New("zero version number passed into AddPrincipals request")
+		}
+		existingTarget, existingApiErr, existingErr := c.Read(ctx, roleId, opt...)
+		if existingErr != nil {
+			return nil, nil, fmt.Errorf("error performing initial check-and-set read: %w", existingErr)
+		}
+		if existingApiErr != nil {
+			return nil, nil, fmt.Errorf("error from controller when performing initial check-and-set read: %w", existingApiError)
+		}
+		if existingTarget == nil {
+			return nil, nil, errors.New("nil resource found when performing initial check-and-set read")
+		}
+		version = existingTarget.Version
+	}
 	opts.valueMap["version"] = version
+
 	if len(principalIds) > 0 {
 		opts.valueMap["principal_ids"] = principalIds
 	}
@@ -263,15 +306,30 @@ func (c *roleClient) SetGrants(ctx context.Context, roleId string, version uint3
 	if roleId == "" {
 		return nil, nil, fmt.Errorf("empty roleId value passed into SetGrants request")
 	}
-	if version == 0 {
-		return nil, nil, errors.New("zero version number passed into SetGrants request")
-	}
 	if c.client == nil {
 		return nil, nil, fmt.Errorf("nil client")
 	}
 
 	opts, apiOpts := getOpts(opt...)
+
+	if version == 0 {
+		if !opts.withAutomaticVersioning {
+			return nil, nil, errors.New("zero version number passed into SetGrants request")
+		}
+		existingTarget, existingApiErr, existingErr := c.Read(ctx, roleId, opt...)
+		if existingErr != nil {
+			return nil, nil, fmt.Errorf("error performing initial check-and-set read: %w", existingErr)
+		}
+		if existingApiErr != nil {
+			return nil, nil, fmt.Errorf("error from controller when performing initial check-and-set read: %w", existingApiError)
+		}
+		if existingTarget == nil {
+			return nil, nil, errors.New("nil resource found when performing initial check-and-set read")
+		}
+		version = existingTarget.Version
+	}
 	opts.valueMap["version"] = version
+
 	if len(grantStrings) > 0 {
 		opts.valueMap["grant_strings"] = grantStrings
 	} else if grantStrings != nil {
@@ -302,15 +360,30 @@ func (c *roleClient) SetPrincipals(ctx context.Context, roleId string, version u
 	if roleId == "" {
 		return nil, nil, fmt.Errorf("empty roleId value passed into SetPrincipals request")
 	}
-	if version == 0 {
-		return nil, nil, errors.New("zero version number passed into SetPrincipals request")
-	}
 	if c.client == nil {
 		return nil, nil, fmt.Errorf("nil client")
 	}
 
 	opts, apiOpts := getOpts(opt...)
+
+	if version == 0 {
+		if !opts.withAutomaticVersioning {
+			return nil, nil, errors.New("zero version number passed into SetPrincipals request")
+		}
+		existingTarget, existingApiErr, existingErr := c.Read(ctx, roleId, opt...)
+		if existingErr != nil {
+			return nil, nil, fmt.Errorf("error performing initial check-and-set read: %w", existingErr)
+		}
+		if existingApiErr != nil {
+			return nil, nil, fmt.Errorf("error from controller when performing initial check-and-set read: %w", existingApiError)
+		}
+		if existingTarget == nil {
+			return nil, nil, errors.New("nil resource found when performing initial check-and-set read")
+		}
+		version = existingTarget.Version
+	}
 	opts.valueMap["version"] = version
+
 	if len(principalIds) > 0 {
 		opts.valueMap["principal_ids"] = principalIds
 	} else if principalIds != nil {
@@ -341,15 +414,30 @@ func (c *roleClient) RemoveGrants(ctx context.Context, roleId string, version ui
 	if roleId == "" {
 		return nil, nil, fmt.Errorf("empty roleId value passed into RemoveGrants request")
 	}
-	if version == 0 {
-		return nil, nil, errors.New("zero version number passed into RemoveGrants request")
-	}
 	if c.client == nil {
 		return nil, nil, fmt.Errorf("nil client")
 	}
 
 	opts, apiOpts := getOpts(opt...)
+
+	if version == 0 {
+		if !opts.withAutomaticVersioning {
+			return nil, nil, errors.New("zero version number passed into RemoveGrants request")
+		}
+		existingTarget, existingApiErr, existingErr := c.Read(ctx, roleId, opt...)
+		if existingErr != nil {
+			return nil, nil, fmt.Errorf("error performing initial check-and-set read: %w", existingErr)
+		}
+		if existingApiErr != nil {
+			return nil, nil, fmt.Errorf("error from controller when performing initial check-and-set read: %w", existingApiError)
+		}
+		if existingTarget == nil {
+			return nil, nil, errors.New("nil resource found when performing initial check-and-set read")
+		}
+		version = existingTarget.Version
+	}
 	opts.valueMap["version"] = version
+
 	if len(grantStrings) > 0 {
 		opts.valueMap["grant_strings"] = grantStrings
 	}
@@ -377,15 +465,30 @@ func (c *roleClient) RemovePrincipals(ctx context.Context, roleId string, versio
 	if roleId == "" {
 		return nil, nil, fmt.Errorf("empty roleId value passed into RemovePrincipals request")
 	}
-	if version == 0 {
-		return nil, nil, errors.New("zero version number passed into RemovePrincipals request")
-	}
 	if c.client == nil {
 		return nil, nil, fmt.Errorf("nil client")
 	}
 
 	opts, apiOpts := getOpts(opt...)
+
+	if version == 0 {
+		if !opts.withAutomaticVersioning {
+			return nil, nil, errors.New("zero version number passed into RemovePrincipals request")
+		}
+		existingTarget, existingApiErr, existingErr := c.Read(ctx, roleId, opt...)
+		if existingErr != nil {
+			return nil, nil, fmt.Errorf("error performing initial check-and-set read: %w", existingErr)
+		}
+		if existingApiErr != nil {
+			return nil, nil, fmt.Errorf("error from controller when performing initial check-and-set read: %w", existingApiError)
+		}
+		if existingTarget == nil {
+			return nil, nil, errors.New("nil resource found when performing initial check-and-set read")
+		}
+		version = existingTarget.Version
+	}
 	opts.valueMap["version"] = version
+
 	if len(principalIds) > 0 {
 		opts.valueMap["principal_ids"] = principalIds
 	}

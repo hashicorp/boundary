@@ -201,7 +201,7 @@ func (c *Command) Run(args []string) int {
 	default:
 		existingRole, existingApiErr, existingErr := roleClient.Read(c.Context, c.flagId, opts...)
 		if existingErr != nil {
-			c.UI.Error(fmt.Sprintf("Error performing initial check-and-set read: %s", err.Error()))
+			c.UI.Error(fmt.Sprintf("Error performing initial check-and-set read: %s", existingErr.Error()))
 			return 2
 		}
 		if existingApiErr != nil {

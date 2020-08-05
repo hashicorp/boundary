@@ -88,15 +88,28 @@ func (c *scopeClient) Update(ctx context.Context, scopeId string, version uint32
 	if scopeId == "" {
 		return nil, nil, fmt.Errorf("empty scopeId value passed into Update request")
 	}
-	if version == 0 {
-		return nil, nil, errors.New("zero version number passed into Update request")
-	}
 	if c.client == nil {
 		return nil, nil, fmt.Errorf("nil client")
 	}
 
 	opts, apiOpts := getOpts(opt...)
 
+	if version == 0 {
+		if !opts.withAutomaticVersioning {
+			return nil, nil, errors.New("zero version number passed into Update request and automatic versioning not specified")
+		}
+		existingTarget, existingApiErr, existingErr := c.Read(ctx, scopeId, opt...)
+		if existingErr != nil {
+			return nil, nil, fmt.Errorf("error performing initial check-and-set read: %w", existingErr)
+		}
+		if existingApiErr != nil {
+			return nil, nil, fmt.Errorf("error from controller when performing initial check-and-set read: %w", existingApiError)
+		}
+		if existingTarget == nil {
+			return nil, nil, errors.New("nil resource found when performing initial check-and-set read")
+		}
+		version = existingTarget.Version
+	}
 	opts.valueMap["version"] = version
 
 	req, err := c.client.NewRequest(ctx, "PATCH", fmt.Sprintf("scopes/%s", scopeId), opts.valueMap, apiOpts...)

@@ -288,15 +288,28 @@ func (c *{{ .ClientName }}Client) Update(ctx context.Context, {{ range .Resource
 	if {{ . }} == "" {
 		return nil, nil, fmt.Errorf("empty {{ . }} value passed into Update request")
 	}{{ end }}
-	if version == 0 {
-		return nil, nil, errors.New("zero version number passed into Update request")
-	}
 	if c.client == nil {
 		return nil, nil, fmt.Errorf("nil client")
 	}
 
 	opts, apiOpts := getOpts(opt...)
 
+	if version == 0 {
+		if !opts.withAutomaticVersioning {
+			return nil, nil, errors.New("zero version number passed into Update request and automatic versioning not specified")
+		}
+		existingTarget, existingApiErr, existingErr := c.Read(ctx, {{ range .ResourceFunctionArgs }} {{ . }}, {{ end }} opt...)
+		if existingErr != nil {
+			return nil, nil, fmt.Errorf("error performing initial check-and-set read: %w", existingErr)
+		}
+		if existingApiErr != nil {
+			return nil, nil, fmt.Errorf("error from controller when performing initial check-and-set read: %w", existingApiError)
+		}
+		if existingTarget == nil {
+			return nil, nil, errors.New("nil resource found when performing initial check-and-set read")
+		}
+		version = existingTarget.Version
+	}
 	opts.valueMap["version"] = version
 
 	req, err := c.client.NewRequest(ctx, "PATCH", {{ .ResourcePath }}, opts.valueMap, apiOpts...)
@@ -337,16 +350,30 @@ func (c *{{ $input.ClientName }}Client) {{ $fullName }}(ctx context.Context, {{ 
 	if {{ . }} == "" {
 		return nil, nil, fmt.Errorf("empty {{ . }} value passed into {{ $fullName }} request")
 	}{{ end }}
-	if version == 0 {
-		return nil, nil, errors.New("zero version number passed into {{ $fullName }} request")
-	}
 	if c.client == nil {
 		return nil, nil, fmt.Errorf("nil client")
 	}
 
-	
 	opts, apiOpts := getOpts(opt...)
+
+	if version == 0 {
+		if !opts.withAutomaticVersioning {
+			return nil, nil, errors.New("zero version number passed into {{ $fullName }} request")
+		}
+		existingTarget, existingApiErr, existingErr := c.Read(ctx, {{ range $input.ResourceFunctionArgs }} {{ . }}, {{ end }} opt...)
+		if existingErr != nil {
+			return nil, nil, fmt.Errorf("error performing initial check-and-set read: %w", existingErr)
+		}
+		if existingApiErr != nil {
+			return nil, nil, fmt.Errorf("error from controller when performing initial check-and-set read: %w", existingApiError)
+		}
+		if existingTarget == nil {
+			return nil, nil, errors.New("nil resource found when performing initial check-and-set read")
+		}
+		version = existingTarget.Version
+	}
 	opts.valueMap["version"] = version
+
 	if len({{ $value }}) > 0 {
 		opts.valueMap["{{ snakeCase $value }}"] = {{ $value }}
 	}{{ if ( eq $op "Set" ) }} else if {{ $value }} != nil {
@@ -421,6 +448,7 @@ type Option func(*options)
 type options struct {
 	valueMap map[string]interface{}
 	withScopeId string
+	withAutomaticVersioning bool
 }
 
 func getDefaultOptions() options {
@@ -441,15 +469,15 @@ func getOpts(opt ...Option) (options, []api.Option) {
 	return opts, apiOpts
 }
 
-func DefaultScopeId() Option {
-	return func(o *options) {
-		o.withScopeId = ""
-	}
-}
-
 func WithScopeId(id string) Option {
 	return func(o *options) {
 		o.withScopeId = id
+	}
+}
+
+func WithAutomaticVersioning() Option {
+	return func(o *options) {
+		o.withAutomaticVersioning = true
 	}
 }
 {{ range .Fields }}

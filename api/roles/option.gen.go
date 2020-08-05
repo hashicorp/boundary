@@ -7,8 +7,9 @@ import (
 type Option func(*options)
 
 type options struct {
-	valueMap    map[string]interface{}
-	withScopeId string
+	valueMap                map[string]interface{}
+	withScopeId             string
+	withAutomaticVersioning bool
 }
 
 func getDefaultOptions() options {
@@ -29,15 +30,27 @@ func getOpts(opt ...Option) (options, []api.Option) {
 	return opts, apiOpts
 }
 
-func DefaultScopeId() Option {
-	return func(o *options) {
-		o.withScopeId = ""
-	}
-}
-
 func WithScopeId(id string) Option {
 	return func(o *options) {
 		o.withScopeId = id
+	}
+}
+
+func WithAutomaticVersioning() Option {
+	return func(o *options) {
+		o.withAutomaticVersioning = true
+	}
+}
+
+func WithGrantScopeId(inGrantScopeId string) Option {
+	return func(o *options) {
+		o.valueMap["grant_scope_id"] = inGrantScopeId
+	}
+}
+
+func DefaultGrantScopeId() Option {
+	return func(o *options) {
+		o.valueMap["grant_scope_id"] = nil
 	}
 }
 
@@ -74,17 +87,5 @@ func WithDisabled(inDisabled bool) Option {
 func DefaultDisabled() Option {
 	return func(o *options) {
 		o.valueMap["disabled"] = nil
-	}
-}
-
-func WithGrantScopeId(inGrantScopeId string) Option {
-	return func(o *options) {
-		o.valueMap["grant_scope_id"] = inGrantScopeId
-	}
-}
-
-func DefaultGrantScopeId() Option {
-	return func(o *options) {
-		o.valueMap["grant_scope_id"] = nil
 	}
 }

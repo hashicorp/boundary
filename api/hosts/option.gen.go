@@ -7,8 +7,9 @@ import (
 type Option func(*options)
 
 type options struct {
-	valueMap    map[string]interface{}
-	withScopeId string
+	valueMap                map[string]interface{}
+	withScopeId             string
+	withAutomaticVersioning bool
 }
 
 func getDefaultOptions() options {
@@ -29,51 +30,15 @@ func getOpts(opt ...Option) (options, []api.Option) {
 	return opts, apiOpts
 }
 
-func DefaultScopeId() Option {
-	return func(o *options) {
-		o.withScopeId = ""
-	}
-}
-
 func WithScopeId(id string) Option {
 	return func(o *options) {
 		o.withScopeId = id
 	}
 }
 
-func WithAddress(inAddress string) Option {
+func WithAutomaticVersioning() Option {
 	return func(o *options) {
-		o.valueMap["address"] = inAddress
-	}
-}
-
-func DefaultAddress() Option {
-	return func(o *options) {
-		o.valueMap["address"] = nil
-	}
-}
-
-func WithType(inType string) Option {
-	return func(o *options) {
-		o.valueMap["type"] = inType
-	}
-}
-
-func DefaultType() Option {
-	return func(o *options) {
-		o.valueMap["type"] = nil
-	}
-}
-
-func WithName(inName string) Option {
-	return func(o *options) {
-		o.valueMap["name"] = inName
-	}
-}
-
-func DefaultName() Option {
-	return func(o *options) {
-		o.valueMap["name"] = nil
+		o.withAutomaticVersioning = true
 	}
 }
 
@@ -110,5 +75,41 @@ func WithAttributes(inAttributes map[string]interface{}) Option {
 func DefaultAttributes() Option {
 	return func(o *options) {
 		o.valueMap["attributes"] = nil
+	}
+}
+
+func WithAddress(inAddress string) Option {
+	return func(o *options) {
+		o.valueMap["address"] = inAddress
+	}
+}
+
+func DefaultAddress() Option {
+	return func(o *options) {
+		o.valueMap["address"] = nil
+	}
+}
+
+func WithType(inType string) Option {
+	return func(o *options) {
+		o.valueMap["type"] = inType
+	}
+}
+
+func DefaultType() Option {
+	return func(o *options) {
+		o.valueMap["type"] = nil
+	}
+}
+
+func WithName(inName string) Option {
+	return func(o *options) {
+		o.valueMap["name"] = inName
+	}
+}
+
+func DefaultName() Option {
+	return func(o *options) {
+		o.valueMap["name"] = nil
 	}
 }
