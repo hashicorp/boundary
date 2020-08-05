@@ -98,6 +98,8 @@ func (c *userClient) Update(ctx context.Context, userId string, version uint32, 
 
 	opts, apiOpts := getOpts(opt...)
 
+	opts.valueMap["version"] = version
+
 	req, err := c.client.NewRequest(ctx, "PATCH", fmt.Sprintf("users/%s", userId), opts.valueMap, apiOpts...)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error creating Update request: %w", err)

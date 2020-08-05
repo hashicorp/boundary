@@ -12,7 +12,7 @@ import (
 	"github.com/iancoleman/strcase"
 )
 
-func toPath(segments []string) string {
+func toPath(segments []string, action string) string {
 	var printfString, printfArg []string
 	for i, s := range segments {
 		if i%2 == 0 {
@@ -23,10 +23,13 @@ func toPath(segments []string) string {
 			printfArg = append(printfArg, s)
 		}
 	}
-	return fmt.Sprintf("fmt.Sprintf(\"%s\", %s)", strings.Join(printfString, "/"), strings.Join(printfArg, ", "))
+	if action != "" {
+		action = fmt.Sprintf(":%s", action)
+	}
+	return fmt.Sprintf("fmt.Sprintf(\"%s%s\", %s)", strings.Join(printfString, "/"), action, strings.Join(printfArg, ", "))
 }
 
-func getArgsAndPaths(in []string) (colArgs, resArgs []string, colPath, resPath string) {
+func getArgsAndPaths(in []string, action string) (colArgs, resArgs []string, colPath, resPath string) {
 	var argNames, pathSegment []string
 	for _, s := range in {
 		varName := fmt.Sprintf("%sId", strcase.ToLowerCamel(strings.ReplaceAll(s, "-", "_")))
@@ -36,7 +39,7 @@ func getArgsAndPaths(in []string) (colArgs, resArgs []string, colPath, resPath s
 		pathSegment = append(pathSegment, collectionName, varName)
 	}
 
-	return argNames[:len(argNames)-1], argNames, toPath(pathSegment[:len(pathSegment)-1]), toPath(pathSegment)
+	return argNames[:len(argNames)-1], argNames, toPath(pathSegment[:len(pathSegment)-1], action), toPath(pathSegment, action)
 }
 
 type templateInput struct {
@@ -44,6 +47,7 @@ type templateInput struct {
 	Name                   string
 	Package                string
 	Fields                 []fieldInfo
+	PathArgs               []string
 	CollectionFunctionArgs []string
 	ResourceFunctionArgs   []string
 	CollectionPath         string
@@ -60,10 +64,11 @@ func fillTemplates() {
 			Name:       in.generatedStructure.name,
 			Package:    in.generatedStructure.pkg,
 			Fields:     in.generatedStructure.fields,
+			PathArgs:   in.pathArgs,
 		}
 
 		if len(in.pathArgs) > 0 {
-			input.CollectionFunctionArgs, input.ResourceFunctionArgs, input.CollectionPath, input.ResourcePath = getArgsAndPaths(in.pathArgs)
+			input.CollectionFunctionArgs, input.ResourceFunctionArgs, input.CollectionPath, input.ResourcePath = getArgsAndPaths(in.pathArgs, "")
 		}
 
 		structTemplate.Execute(outBuf, input)
@@ -292,6 +297,8 @@ func (c *{{ .ClientName }}Client) Update(ctx context.Context, {{ range .Resource
 
 	opts, apiOpts := getOpts(opt...)
 
+	opts.valueMap["version"] = version
+
 	req, err := c.client.NewRequest(ctx, "PATCH", {{ .ResourcePath }}, opts.valueMap, apiOpts...)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error creating Update request: %w", err)
@@ -312,38 +319,61 @@ func (c *{{ .ClientName }}Client) Update(ctx context.Context, {{ range .Resource
 }
 `))
 
-var sliceSubTypeTemplate = template.Must(template.New("").Parse(`{{ $input := . }}{{ range $key, $value := .SliceSubTypes }}
-func (c *{{ $input.ClientName }}Client) Add(ctx context.Context, {{ range .ResourceFunctionArgs }} {{ . }} string, {{ end }}version uint32, opt... Option) (*{{ .Name }}, *api.Error, error) { {{ range .ResourceFunctionArgs }}
+var sliceSubTypeTemplate = template.Must(template.New("").Funcs(
+	template.FuncMap{
+		"makeSlice":         makeSlice,
+		"snakeCase":         snakeCase,
+		"kebabCase":         kebabCase,
+		"getPathWithAction": getPathWithAction,
+	},
+).Parse(`
+{{ $input := . }}
+{{ range $index, $op := makeSlice "Add" "Set" "Remove" }}
+{{ range $key, $value := $input.SliceSubTypes }}
+{{ $fullName := print $op $key }}
+{{ $actionName := kebabCase $fullName }}
+{{ $resPath := getPathWithAction $input.PathArgs $actionName }}
+func (c *{{ $input.ClientName }}Client) {{ $fullName }}(ctx context.Context, {{ range $input.ResourceFunctionArgs }} {{ . }} string, {{ end }}version uint32, {{ $value }} []string, opt... Option) (*{{ $input.Name }}, *api.Error, error) { {{ range $input.ResourceFunctionArgs }}
 	if {{ . }} == "" {
-		return nil, nil, fmt.Errorf("empty {{ . }} value passed into Update request")
+		return nil, nil, fmt.Errorf("empty {{ . }} value passed into {{ $fullName }} request")
 	}{{ end }}
 	if version == 0 {
-		return nil, nil, errors.New("zero version number passed into Update request")
+		return nil, nil, errors.New("zero version number passed into {{ $fullName }} request")
 	}
 	if c.client == nil {
 		return nil, nil, fmt.Errorf("nil client")
 	}
 
+	
 	opts, apiOpts := getOpts(opt...)
+	opts.valueMap["version"] = version
+	if len({{ $value }}) > 0 {
+		opts.valueMap["{{ snakeCase $value }}"] = {{ $value }}
+	}{{ if ( eq $op "Set" ) }} else if {{ $value }} != nil {
+			// In this function, a non-nil but empty list means clear out
+			opts.valueMap["{{ snakeCase $value }}"] = nil
+		}
+	{{ end }}
 
-	req, err := c.client.NewRequest(ctx, "PATCH", {{ .ResourcePath }}, opts.valueMap, apiOpts...)
+	req, err := c.client.NewRequest(ctx, "POST", {{ $resPath }}, opts.valueMap, apiOpts...)
 	if err != nil {
-		return nil, nil, fmt.Errorf("error creating Update request: %w", err)
+		return nil, nil, fmt.Errorf("error creating {{ $fullName }} request: %w", err)
 	}
 
 	resp, err := c.client.Do(req)
 	if err != nil {
-		return nil, nil, fmt.Errorf("error performing client request during Update call: %w", err)
+		return nil, nil, fmt.Errorf("error performing client request during {{ $fullName }} call: %w", err)
 	}
 
-	target := new({{ .Name }})
+	target := new({{ $input.Name }})
 	apiErr, err := resp.Decode(target)
 	if err != nil {
-		return nil, nil, fmt.Errorf("error decoding Update response: %w", err)
+		return nil, nil, fmt.Errorf("error decoding {{ $fullName }} response: %w", err)
 	}
 
 	return target, apiErr, nil
 }
+{{ end }}
 {{ end }}
 `))
 
@@ -436,3 +466,20 @@ func Default{{ .Name }}() Option {
 }
 {{ end }}
 `))
+
+func makeSlice(strs ...string) []string {
+	return strs
+}
+
+func snakeCase(in string) string {
+	return strcase.ToSnake(in)
+}
+
+func kebabCase(in string) string {
+	return strcase.ToKebab(in)
+}
+
+func getPathWithAction(resArgs []string, action string) string {
+	_, _, _, resPath := getArgsAndPaths(resArgs, action)
+	return resPath
+}

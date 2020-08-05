@@ -97,6 +97,8 @@ func (c *scopeClient) Update(ctx context.Context, scopeId string, version uint32
 
 	opts, apiOpts := getOpts(opt...)
 
+	opts.valueMap["version"] = version
+
 	req, err := c.client.NewRequest(ctx, "PATCH", fmt.Sprintf("scopes/%s", scopeId), opts.valueMap, apiOpts...)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error creating Update request: %w", err)

@@ -100,6 +100,8 @@ func (c *hostcatalogClient) Update(ctx context.Context, hostCatalogId string, ve
 
 	opts, apiOpts := getOpts(opt...)
 
+	opts.valueMap["version"] = version
+
 	req, err := c.client.NewRequest(ctx, "PATCH", fmt.Sprintf("host-catalogs/%s", hostCatalogId), opts.valueMap, apiOpts...)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error creating Update request: %w", err)

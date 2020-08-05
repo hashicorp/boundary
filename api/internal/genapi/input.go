@@ -116,7 +116,7 @@ var inputStructs = []*structInfo{
 			listTemplate,
 		},
 		sliceSubTypes: map[string]string{
-			"members": "memberIds",
+			"Members": "memberIds",
 		},
 		pathArgs: []string{"group"},
 	},
@@ -148,8 +148,8 @@ var inputStructs = []*structInfo{
 			listTemplate,
 		},
 		sliceSubTypes: map[string]string{
-			"principals": "principalIds",
-			"grants":     "grantStrings",
+			"Principals": "principalIds",
+			"Grants":     "grantStrings",
 		},
 		pathArgs: []string{"role"},
 	},

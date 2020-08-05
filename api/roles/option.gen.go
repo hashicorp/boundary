@@ -41,18 +41,6 @@ func WithScopeId(id string) Option {
 	}
 }
 
-func WithGrantScopeId(inGrantScopeId string) Option {
-	return func(o *options) {
-		o.valueMap["grant_scope_id"] = inGrantScopeId
-	}
-}
-
-func DefaultGrantScopeId() Option {
-	return func(o *options) {
-		o.valueMap["grant_scope_id"] = nil
-	}
-}
-
 func WithName(inName string) Option {
 	return func(o *options) {
 		o.valueMap["name"] = inName
@@ -86,5 +74,17 @@ func WithDisabled(inDisabled bool) Option {
 func DefaultDisabled() Option {
 	return func(o *options) {
 		o.valueMap["disabled"] = nil
+	}
+}
+
+func WithGrantScopeId(inGrantScopeId string) Option {
+	return func(o *options) {
+		o.valueMap["grant_scope_id"] = inGrantScopeId
+	}
+}
+
+func DefaultGrantScopeId() Option {
+	return func(o *options) {
+		o.valueMap["grant_scope_id"] = nil
 	}
 }
