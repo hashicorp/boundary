@@ -234,11 +234,11 @@ func (c *Command) Run(args []string) int {
 	case "remove-principals":
 		role, apiErr, err = roleClient.RemovePrincipals(c.Context, c.flagId, version, principals, opts...)
 	case "add-grants":
-		role, apiErr, err = roleClient.AddGrants(c.Context, c.flagId, version, principals, opts...)
+		role, apiErr, err = roleClient.AddGrants(c.Context, c.flagId, version, grants, opts...)
 	case "set-grants":
-		role, apiErr, err = roleClient.SetGrants(c.Context, c.flagId, version, principals, opts...)
+		role, apiErr, err = roleClient.SetGrants(c.Context, c.flagId, version, grants, opts...)
 	case "remove-grants":
-		role, apiErr, err = roleClient.RemoveGrants(c.Context, c.flagId, version, principals, opts...)
+		role, apiErr, err = roleClient.RemoveGrants(c.Context, c.flagId, version, grants, opts...)
 	}
 
 	plural := "role"
