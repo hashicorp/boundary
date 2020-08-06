@@ -915,7 +915,6 @@ func TestUpdate(t *testing.T) {
 				got.Item.UpdatedTime, tc.res.Item.UpdatedTime = nil, nil
 
 				assert.Equal(ver+1, got.GetItem().GetVersion())
-				got.Item.Version = ver + 1
 				tc.res.Item.Version = ver + 1
 			}
 			assert.Empty(cmp.Diff(got, tc.res, protocmp.Transform()), "UpdateGroup(%q) got response %q, wanted %q", req, got, tc.res)

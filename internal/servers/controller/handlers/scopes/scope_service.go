@@ -289,6 +289,7 @@ func ToProto(in *iam.Scope) *pb.Scope {
 		Id:          in.GetPublicId(),
 		CreatedTime: in.GetCreateTime().GetTimestamp(),
 		UpdatedTime: in.GetUpdateTime().GetTimestamp(),
+		Version:     in.GetVersion(),
 	}
 	if in.GetDescription() != "" {
 		out.Description = &wrapperspb.StringValue{Value: in.GetDescription()}

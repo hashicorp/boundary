@@ -583,7 +583,6 @@ func TestUpdate(t *testing.T) {
 				// Clear all values which are hard to compare against.
 				got.Item.UpdatedTime, tc.res.Item.UpdatedTime = nil, nil
 				assert.Equal(version+1, got.GetItem().GetVersion())
-				got.Item.Version = version + 1
 				tc.res.Item.Version = version + 1
 			}
 			assert.Empty(cmp.Diff(tc.res, got, protocmp.Transform()), "UpdateUser(%q) got response %q, wanted %q", req, got, tc.res)
