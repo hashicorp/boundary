@@ -1836,6 +1836,20 @@ begin;
   end;
   $$ language plpgsql;
 
+  -- delete_auth_password_credential_subtype() is an after delete trigger
+  -- function for subtypes of auth_password_credential
+  create or replace function
+    delete_auth_password_credential_subtype()
+    returns trigger
+  as $$
+  begin
+    delete
+      from auth_password_credential
+     where private_id = old.private_id;
+    return null; -- result is ignored since this is an after trigger
+  end;
+  $$ language plpgsql;
+
   --
   -- triggers for time columns
   --
@@ -1992,6 +2006,11 @@ begin;
     update_auth_password_credential_subtype
   after update on auth_password_argon2_cred
     for each row execute procedure update_auth_password_credential_subtype();
+
+  create trigger
+    delete_auth_password_credential_subtype
+  after delete on auth_password_argon2_cred
+    for each row execute procedure delete_auth_password_credential_subtype();
 
   --
   -- triggers for time columns
