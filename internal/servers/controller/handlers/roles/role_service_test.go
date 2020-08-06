@@ -536,13 +536,20 @@ func TestUpdate(t *testing.T) {
 	tested, err := roles.NewService(repoFn)
 	require.NoError(t, err, "Error when getting new role service.")
 
-	resetRoles := func() {
+	resetRoles := func(proj bool) {
 		repo, err := repoFn()
 		require.NoError(t, err, "Couldn't get a new repo")
-		or, _, _, _, err = repo.UpdateRole(context.Background(), or, orVersion, []string{"Name", "Description"})
-		require.NoError(t, err, "Failed to reset the role")
-		pr, _, _, _, err = repo.UpdateRole(context.Background(), pr, prVersion, []string{"Name", "Description"})
-		require.NoError(t, err, "Failed to reset the role")
+		if proj {
+			prVersion++
+			pr, _, _, _, err = repo.UpdateRole(context.Background(), pr, prVersion, []string{"Name", "Description"})
+			require.NoError(t, err, "Failed to reset the role")
+			prVersion++
+		} else {
+			orVersion++
+			or, _, _, _, err = repo.UpdateRole(context.Background(), or, orVersion, []string{"Name", "Description"})
+			require.NoError(t, err, "Failed to reset the role")
+			orVersion++
+		}
 	}
 
 	created, err := ptypes.Timestamp(or.GetCreateTime().GetTimestamp())
@@ -808,7 +815,6 @@ func TestUpdate(t *testing.T) {
 		{
 			name: "Cant change Id",
 			req: &pbs.UpdateRoleRequest{
-				Id: or.GetPublicId(),
 				UpdateMask: &field_mask.FieldMask{
 					Paths: []string{"id"},
 				},
@@ -875,13 +881,31 @@ func TestUpdate(t *testing.T) {
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			defer resetRoles()
+			ver := orVersion
+			if tc.req.Id == pr.PublicId {
+				ver = prVersion
+			}
+			tc.req.Version = ver
+
 			assert, require := assert.New(t), require.New(t)
 			req := proto.Clone(toMerge).(*pbs.UpdateRoleRequest)
 			proto.Merge(req, tc.req)
 
+			// Test with bad version (too high, too low)
+			req.Version = ver + 2
+			_, gErr := tested.UpdateRole(auth.DisabledAuthTestContext(auth.WithScopeId(tc.scopeId)), req)
+			require.Error(gErr)
+			req.Version = ver - 1
+			_, gErr = tested.UpdateRole(auth.DisabledAuthTestContext(auth.WithScopeId(tc.scopeId)), req)
+			require.Error(gErr)
+			req.Version = ver
+
 			got, gErr := tested.UpdateRole(auth.DisabledAuthTestContext(auth.WithScopeId(tc.scopeId)), req)
 			assert.Equal(tc.errCode, status.Code(gErr), "UpdateRole(%+v) got error %v, wanted %v", req, gErr, tc.errCode)
+
+			if tc.errCode == codes.OK {
+				defer resetRoles(req.Id == pr.PublicId)
+			}
 
 			if got != nil {
 				assert.NotNilf(tc.res, "Expected UpdateRole response to be nil, but was %v", got)
@@ -893,8 +917,8 @@ func TestUpdate(t *testing.T) {
 				// Clear all values which are hard to compare against.
 				got.Item.UpdatedTime, tc.res.Item.UpdatedTime = nil, nil
 
-				// TODO: Figure out the best way to test versions when updating roles
-				got.GetItem().Version = 0
+				assert.Equal(ver+1, got.GetItem().GetVersion())
+				tc.res.Item.Version = ver + 1
 			}
 			assert.Empty(cmp.Diff(got, tc.res, protocmp.Transform()), "UpdateRole(%q) got response\n%q,\nwanted\n%q", req, got, tc.res)
 		})
