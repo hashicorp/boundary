@@ -9,7 +9,7 @@ import (
 	"time"
 
 	"github.com/hashicorp/vault/sdk/helper/password"
-	"github.com/hashicorp/watchtower/api/authtokens"
+	"github.com/hashicorp/watchtower/api/authmethods"
 	"github.com/hashicorp/watchtower/internal/cmd/base"
 	"github.com/kr/pretty"
 	"github.com/mitchellh/cli"
@@ -125,7 +125,7 @@ func (c *PasswordCommand) Run(args []string) int {
 	// note: Authenticate() calls SetToken() under the hood to set the
 	// auth bearer on the client so we do not need to do anything with the
 	// returned token after this call, so we ignore it
-	result, apiErr, err := authtokens.NewAuthTokenClient(client).Authenticate(c.Context, c.flagMethodId, c.flagName, c.flagPassword)
+	result, apiErr, err := authmethods.NewAuthMethodClient(client).Authenticate(c.Context, c.flagMethodId, c.flagName, c.flagPassword)
 	if err != nil {
 		c.UI.Error(fmt.Sprintf("Error trying to perform authentication: %s", err.Error()))
 		return 2

@@ -4,6 +4,7 @@ import (
 	"text/template"
 
 	"github.com/hashicorp/watchtower/internal/gen/controller/api"
+	"github.com/hashicorp/watchtower/internal/gen/controller/api/resources/authmethods"
 	"github.com/hashicorp/watchtower/internal/gen/controller/api/resources/authtokens"
 	"github.com/hashicorp/watchtower/internal/gen/controller/api/resources/groups"
 	"github.com/hashicorp/watchtower/internal/gen/controller/api/resources/hosts"
@@ -172,6 +173,41 @@ var inputStructs = []*structInfo{
 			listTemplate,
 		},
 		pathArgs: []string{"user"},
+	},
+	// Auth Methods related resources
+	{
+		inProto: &authmethods.AuthMethod{},
+		outFile: "authmethods/authmethods.gen.go",
+		templates: []*template.Template{
+			clientTemplate,
+			createTemplate,
+			readTemplate,
+			updateTemplate,
+			deleteTemplate,
+			listTemplate,
+		},
+		pathArgs: []string{"auth-method"},
+	},
+	{
+		inProto: &authmethods.PasswordAuthMethodAttributes{},
+		outFile: "authmethods/password_auth_method_attributes.gen.go",
+	},
+	{
+		inProto: &authmethods.Account{},
+		outFile: "authmethods/account.gen.go",
+		templates: []*template.Template{
+			clientTemplate,
+			createTemplate,
+			readTemplate,
+			updateTemplate,
+			deleteTemplate,
+			listTemplate,
+		},
+		pathArgs: []string{"auth-method", "account"},
+	},
+	{
+		inProto: &authmethods.PasswordAccountAttributes{},
+		outFile: "authmethods/password_account_attributes.gen.go",
 	},
 	// Auth Tokens
 	{

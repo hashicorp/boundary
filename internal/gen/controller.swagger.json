@@ -103,7 +103,7 @@
           "200": {
             "description": "",
             "schema": {
-              "$ref": "#/definitions/controller.api.resources.auth.v1.AuthMethod"
+              "$ref": "#/definitions/controller.api.resources.authmethods.v1.AuthMethod"
             }
           }
         },
@@ -113,7 +113,7 @@
             "in": "body",
             "required": true,
             "schema": {
-              "$ref": "#/definitions/controller.api.resources.auth.v1.AuthMethod"
+              "$ref": "#/definitions/controller.api.resources.authmethods.v1.AuthMethod"
             }
           }
         ],
@@ -159,7 +159,7 @@
           "200": {
             "description": "",
             "schema": {
-              "$ref": "#/definitions/controller.api.resources.auth.v1.Account"
+              "$ref": "#/definitions/controller.api.resources.authmethods.v1.Account"
             }
           }
         },
@@ -175,7 +175,7 @@
             "in": "body",
             "required": true,
             "schema": {
-              "$ref": "#/definitions/controller.api.resources.auth.v1.Account"
+              "$ref": "#/definitions/controller.api.resources.authmethods.v1.Account"
             }
           }
         ],
@@ -192,7 +192,7 @@
           "200": {
             "description": "",
             "schema": {
-              "$ref": "#/definitions/controller.api.resources.auth.v1.Account"
+              "$ref": "#/definitions/controller.api.resources.authmethods.v1.Account"
             }
           }
         },
@@ -256,7 +256,7 @@
           "200": {
             "description": "",
             "schema": {
-              "$ref": "#/definitions/controller.api.resources.auth.v1.Account"
+              "$ref": "#/definitions/controller.api.resources.authmethods.v1.Account"
             }
           }
         },
@@ -278,7 +278,7 @@
             "in": "body",
             "required": true,
             "schema": {
-              "$ref": "#/definitions/controller.api.resources.auth.v1.Account"
+              "$ref": "#/definitions/controller.api.resources.authmethods.v1.Account"
             }
           }
         ],
@@ -329,7 +329,7 @@
           "200": {
             "description": "",
             "schema": {
-              "$ref": "#/definitions/controller.api.resources.auth.v1.AuthMethod"
+              "$ref": "#/definitions/controller.api.resources.authmethods.v1.AuthMethod"
             }
           }
         },
@@ -381,7 +381,7 @@
           "200": {
             "description": "",
             "schema": {
-              "$ref": "#/definitions/controller.api.resources.auth.v1.AuthMethod"
+              "$ref": "#/definitions/controller.api.resources.authmethods.v1.AuthMethod"
             }
           }
         },
@@ -397,7 +397,7 @@
             "in": "body",
             "required": true,
             "schema": {
-              "$ref": "#/definitions/controller.api.resources.auth.v1.AuthMethod"
+              "$ref": "#/definitions/controller.api.resources.authmethods.v1.AuthMethod"
             }
           }
         ],
@@ -1806,7 +1806,7 @@
     }
   },
   "definitions": {
-    "controller.api.resources.auth.v1.Account": {
+    "controller.api.resources.authmethods.v1.Account": {
       "type": "object",
       "properties": {
         "id": {
@@ -1860,7 +1860,7 @@
       },
       "title": "Account contains all fields related to an auth Account resource"
     },
-    "controller.api.resources.auth.v1.AuthMethod": {
+    "controller.api.resources.authmethods.v1.AuthMethod": {
       "type": "object",
       "properties": {
         "id": {
@@ -2573,7 +2573,7 @@
           "type": "string"
         },
         "item": {
-          "$ref": "#/definitions/controller.api.resources.auth.v1.Account"
+          "$ref": "#/definitions/controller.api.resources.authmethods.v1.Account"
         }
       }
     },
@@ -2584,7 +2584,7 @@
           "type": "string"
         },
         "item": {
-          "$ref": "#/definitions/controller.api.resources.auth.v1.AuthMethod"
+          "$ref": "#/definitions/controller.api.resources.authmethods.v1.AuthMethod"
         }
       }
     },
@@ -2759,7 +2759,7 @@
       "type": "object",
       "properties": {
         "item": {
-          "$ref": "#/definitions/controller.api.resources.auth.v1.Account"
+          "$ref": "#/definitions/controller.api.resources.authmethods.v1.Account"
         }
       }
     },
@@ -2767,7 +2767,7 @@
       "type": "object",
       "properties": {
         "item": {
-          "$ref": "#/definitions/controller.api.resources.auth.v1.AuthMethod"
+          "$ref": "#/definitions/controller.api.resources.authmethods.v1.AuthMethod"
         }
       }
     },
@@ -2841,7 +2841,7 @@
         "items": {
           "type": "array",
           "items": {
-            "$ref": "#/definitions/controller.api.resources.auth.v1.Account"
+            "$ref": "#/definitions/controller.api.resources.authmethods.v1.Account"
           }
         }
       }
@@ -2852,7 +2852,7 @@
         "items": {
           "type": "array",
           "items": {
-            "$ref": "#/definitions/controller.api.resources.auth.v1.AuthMethod"
+            "$ref": "#/definitions/controller.api.resources.authmethods.v1.AuthMethod"
           }
         }
       }
@@ -3114,7 +3114,7 @@
       "type": "object",
       "properties": {
         "item": {
-          "$ref": "#/definitions/controller.api.resources.auth.v1.Account"
+          "$ref": "#/definitions/controller.api.resources.authmethods.v1.Account"
         }
       }
     },
@@ -3122,7 +3122,7 @@
       "type": "object",
       "properties": {
         "item": {
-          "$ref": "#/definitions/controller.api.resources.auth.v1.AuthMethod"
+          "$ref": "#/definitions/controller.api.resources.authmethods.v1.AuthMethod"
         }
       }
     },
