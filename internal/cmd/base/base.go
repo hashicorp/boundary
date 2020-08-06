@@ -197,6 +197,10 @@ func (c *Command) Client() (*api.Client, error) {
 	if c.flagScope != NotSetValue {
 		c.client.SetScopeId(c.flagScope)
 	}
+	// At this point if we haven't figured out the scope, default to "global"
+	if c.client.ScopeId() == "" {
+		c.client.SetScopeId("global")
+	}
 
 	return c.client, nil
 }
@@ -240,7 +244,7 @@ func (c *Command) FlagSet(bit FlagSetBit) *FlagSets {
 				Default:    NotSetValue,
 				EnvVar:     api.EnvWatchtowerScopeId,
 				Completion: complete.PredictAnything,
-				Usage:      "Scope in which to make the request.",
+				Usage:      `Scope in which to make the request. If not specified, will default to the scope of a saved token (if found), otherwise will default to "global".`,
 			})
 
 			f.StringVar(&StringVar{
