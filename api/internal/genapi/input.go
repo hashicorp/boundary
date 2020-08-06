@@ -25,7 +25,7 @@ type fieldInfo struct {
 	ProtoName         string
 	FieldType         string
 	GenerateSdkOption bool
-	FunctionPrefix    string
+	SubtypeName       string
 }
 
 type structInfo struct {
@@ -34,11 +34,13 @@ type structInfo struct {
 	generatedStructure structureInfo
 	templates          []*template.Template
 
-	// specific text to insert into With/Default function calls to separate out
+	// Subtype name for types implementing an abstract resource type. This is
+	// used as text to insert into With/Default function calls to separate out
 	// implementations of the same abstract type. This way e.g. a WithUsername
 	// option turns into WithPasswordAccountUsername which is wordy but
-	// unambiguous.
-	functionPrefix string
+	// unambiguous. It also switches the behavior of the functions to work on
+	// the attributes map.
+	subtypeName string
 
 	// mappings of names of resources and param names for sub slice types, e.g.
 	// role principals and group members
@@ -196,9 +198,9 @@ var inputStructs = []*structInfo{
 		pathArgs: []string{"auth-method"},
 	},
 	{
-		inProto:        &authmethods.PasswordAuthMethodAttributes{},
-		outFile:        "authmethods/password_auth_method_attributes.gen.go",
-		functionPrefix: "PasswordAuthMethod",
+		inProto:     &authmethods.PasswordAuthMethodAttributes{},
+		outFile:     "authmethods/password_auth_method_attributes.gen.go",
+		subtypeName: "PasswordAuthMethod",
 	},
 	{
 		inProto: &authmethods.Account{},
@@ -214,9 +216,9 @@ var inputStructs = []*structInfo{
 		pathArgs: []string{"auth-method", "account"},
 	},
 	{
-		inProto:        &authmethods.PasswordAccountAttributes{},
-		outFile:        "authmethods/password_account_attributes.gen.go",
-		functionPrefix: "PasswordAccount",
+		inProto:     &authmethods.PasswordAccountAttributes{},
+		outFile:     "authmethods/password_account_attributes.gen.go",
+		subtypeName: "PasswordAccount",
 	},
 	// Auth Tokens
 	{

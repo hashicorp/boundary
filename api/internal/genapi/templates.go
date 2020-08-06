@@ -99,7 +99,7 @@ func fillTemplates() {
 			pkgOptionMap := map[string]fieldInfo{}
 			for _, val := range input.Fields {
 				if val.GenerateSdkOption {
-					val.FunctionPrefix = in.functionPrefix
+					val.SubtypeName = in.subtypeName
 					pkgOptionMap[val.Name] = val
 				}
 			}
@@ -511,8 +511,8 @@ func WithAutomaticVersioning() Option {
 	}
 }
 {{ range .Fields }}
-func With{{ .FunctionPrefix }}{{ .Name }}(in{{ .Name }} {{ .FieldType }}) Option {
-	return func(o *options) {		{{ if ( not ( eq .FunctionPrefix "" ) ) }}
+func With{{ .SubtypeName }}{{ .Name }}(in{{ .Name }} {{ .FieldType }}) Option {
+	return func(o *options) {		{{ if ( not ( eq .SubtypeName "" ) ) }}
 		raw, ok := o.valueMap["attributes"]
 		if !ok {
 			raw = interface{}(map[string]interface{}{})
@@ -525,8 +525,8 @@ func With{{ .FunctionPrefix }}{{ .Name }}(in{{ .Name }} {{ .FieldType }}) Option
 		{{ end }}	}
 }
 
-func Default{{ .FunctionPrefix }}{{ .Name }}() Option {
-	return func(o *options) {		{{ if ( not ( eq .FunctionPrefix "" ) ) }}
+func Default{{ .SubtypeName }}{{ .Name }}() Option {
+	return func(o *options) {		{{ if ( not ( eq .SubtypeName "" ) ) }}
 		raw, ok := o.valueMap["attributes"]
 		if !ok {
 			raw = interface{}(map[string]interface{}{})
