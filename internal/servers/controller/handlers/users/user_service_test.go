@@ -558,14 +558,13 @@ func TestUpdate(t *testing.T) {
 			proto.Merge(req, tc.req)
 
 			// Test with bad version (too high, too low)
-			req.Version = req.Version + 2
+			req.Version = version + 2
 			_, gErr := tested.UpdateUser(auth.DisabledAuthTestContext(auth.WithScopeId(u.GetScopeId())), req)
 			require.Error(gErr)
-			req.Version = req.Version - 3
+			req.Version = version - 1
 			_, gErr = tested.UpdateUser(auth.DisabledAuthTestContext(auth.WithScopeId(u.GetScopeId())), req)
 			require.Error(gErr)
-
-			req.Version = req.Version + 1
+			req.Version = version
 
 			got, gErr := tested.UpdateUser(auth.DisabledAuthTestContext(auth.WithScopeId(u.GetScopeId())), req)
 			require.Equal(tc.errCode, status.Code(gErr), "UpdateUser(%+v) got error %v, wanted %v", req, gErr, tc.errCode)
