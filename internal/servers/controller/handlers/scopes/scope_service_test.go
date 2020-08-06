@@ -66,6 +66,7 @@ func TestGet(t *testing.T) {
 		Description: &wrapperspb.StringValue{Value: org.GetDescription()},
 		CreatedTime: org.CreateTime.GetTimestamp(),
 		UpdatedTime: org.UpdateTime.GetTimestamp(),
+		Version:     2,
 	}
 
 	pScope := &pb.Scope{
@@ -75,6 +76,7 @@ func TestGet(t *testing.T) {
 		Description: &wrapperspb.StringValue{Value: proj.GetDescription()},
 		CreatedTime: proj.CreateTime.GetTimestamp(),
 		UpdatedTime: proj.UpdateTime.GetTimestamp(),
+		Version:     2,
 	}
 
 	cases := []struct {
@@ -140,7 +142,7 @@ func TestGet(t *testing.T) {
 
 			got, gErr := s.GetScope(auth.DisabledAuthTestContext(auth.WithScopeId(tc.scopeId)), req)
 			assert.Equal(tc.errCode, status.Code(gErr), "GetScope(%+v) got error\n%v, wanted\n%v", req, gErr, tc.errCode)
-			assert.Empty(cmp.Diff(got, tc.res, protocmp.Transform()), "GetScope(%q) got response\n%q, wanted\n%q", req, got, tc.res)
+			assert.Empty(cmp.Diff(tc.res, got, protocmp.Transform()), "GetScope(%q) got response\n%q, wanted\n%q", req, got, tc.res)
 		})
 	}
 }
@@ -216,6 +218,7 @@ func TestList(t *testing.T) {
 			Scope:       globalScope,
 			CreatedTime: o.GetCreateTime().GetTimestamp(),
 			UpdatedTime: o.GetUpdateTime().GetTimestamp(),
+			Version:     1,
 		})
 	}
 	wantOrgs = append(wantOrgs, initialOrgs...)
@@ -232,6 +235,7 @@ func TestList(t *testing.T) {
 			Scope:       &pb.ScopeInfo{Id: oWithProjects.GetPublicId(), Type: scope.Org.String()},
 			CreatedTime: p.GetCreateTime().GetTimestamp(),
 			UpdatedTime: p.GetUpdateTime().GetTimestamp(),
+			Version:     1,
 		})
 	}
 	scopes.SortScopes(wantProjects)
@@ -418,6 +422,7 @@ func TestCreate(t *testing.T) {
 					Scope:       &pb.ScopeInfo{Id: defaultOrg.GetPublicId(), Type: scope.Org.String()},
 					Name:        &wrapperspb.StringValue{Value: "name"},
 					Description: &wrapperspb.StringValue{Value: "desc"},
+					Version:     1,
 				},
 			},
 			errCode: codes.OK,
@@ -438,6 +443,7 @@ func TestCreate(t *testing.T) {
 					Scope:       &pb.ScopeInfo{Id: scope.Global.String(), Type: scope.Global.String()},
 					Name:        &wrapperspb.StringValue{Value: "name"},
 					Description: &wrapperspb.StringValue{Value: "desc"},
+					Version:     1,
 				},
 			},
 			errCode: codes.OK,

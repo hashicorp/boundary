@@ -530,15 +530,18 @@ func TestUpdate(t *testing.T) {
 		ScopeId: u.GetScopeId(),
 	}
 
+	var orVersion uint32 = 1
+	var prVersion uint32 = 1
+
 	tested, err := roles.NewService(repoFn)
 	require.NoError(t, err, "Error when getting new role service.")
 
 	resetRoles := func() {
 		repo, err := repoFn()
 		require.NoError(t, err, "Couldn't get a new repo")
-		or, _, _, _, err = repo.UpdateRole(context.Background(), or, []string{"Name", "Description"})
+		or, _, _, _, err = repo.UpdateRole(context.Background(), or, orVersion, []string{"Name", "Description"})
 		require.NoError(t, err, "Failed to reset the role")
-		pr, _, _, _, err = repo.UpdateRole(context.Background(), pr, []string{"Name", "Description"})
+		pr, _, _, _, err = repo.UpdateRole(context.Background(), pr, prVersion, []string{"Name", "Description"})
 		require.NoError(t, err, "Failed to reset the role")
 	}
 

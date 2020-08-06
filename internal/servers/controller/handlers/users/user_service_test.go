@@ -262,6 +262,7 @@ func TestCreate(t *testing.T) {
 					Scope:       &scopes.ScopeInfo{Id: defaultUser.GetScopeId(), Type: scope.Org.String()},
 					Name:        &wrapperspb.StringValue{Value: "name"},
 					Description: &wrapperspb.StringValue{Value: "desc"},
+					Version:     1,
 				},
 			},
 			errCode: codes.OK,
