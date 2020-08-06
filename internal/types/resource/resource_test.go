@@ -25,8 +25,8 @@ func Test_Resource(t *testing.T) {
 			want:       User,
 		},
 		{
-			typeString: "static-group",
-			want:       StaticGroup,
+			typeString: "group",
+			want:       Group,
 		},
 		{
 			typeString: "role",
@@ -37,12 +37,12 @@ func Test_Resource(t *testing.T) {
 			want:       Org,
 		},
 		{
-			typeString: "static-group-member",
-			want:       StaticGroupMember,
+			typeString: "group-member",
+			want:       GroupMember,
 		},
 		{
-			typeString: "static-group-user-member",
-			want:       StaticGroupUserMember,
+			typeString: "group-user-member",
+			want:       GroupUserMember,
 		},
 		{
 			typeString: "assigned-role",
@@ -53,8 +53,8 @@ func Test_Resource(t *testing.T) {
 			want:       AssignedUserRole,
 		},
 		{
-			typeString: "assigned-static-group-role",
-			want:       AssignedStaticGroupRole,
+			typeString: "assigned-group-role",
+			want:       AssignedGroupRole,
 		},
 		{
 			typeString: "role-grant",

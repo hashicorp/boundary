@@ -2,6 +2,7 @@ package password
 
 import (
 	"fmt"
+	"strings"
 
 	wrapping "github.com/hashicorp/go-kms-wrapping"
 	"github.com/hashicorp/watchtower/internal/db"
@@ -43,4 +44,13 @@ func NewRepository(r db.Reader, w db.Writer, wrapper wrapping.Wrapper, opt ...Op
 		wrapper:      wrapper,
 		defaultLimit: opts.withLimit,
 	}, nil
+}
+
+func contains(ss []string, t string) bool {
+	for _, s := range ss {
+		if strings.EqualFold(s, t) {
+			return true
+		}
+	}
+	return false
 }

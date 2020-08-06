@@ -136,6 +136,7 @@ func newArgon2Credential(accountId string, password string, conf *Argon2Configur
 			PrivateId:         id,
 			PasswordAccountId: accountId,
 			PasswordConfId:    conf.PrivateId,
+			PasswordMethodId:  conf.PasswordMethodId,
 		},
 	}
 

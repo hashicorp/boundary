@@ -1864,6 +1864,40 @@ begin;
   end;
   $$ language plpgsql;
 
+  -- update_auth_password_credential_subtype() is an after update trigger
+  -- function for subtypes of auth_password_credential
+  create or replace function
+    update_auth_password_credential_subtype()
+    returns trigger
+  as $$
+  begin
+    /*
+      The configuration id of a credential is updated when a credential is
+      rehashed during authentication.
+    */
+    if new.password_conf_id is distinct from old.password_conf_id then
+      update auth_password_credential
+         set password_conf_id = new.password_conf_id
+       where private_id = new.private_id;
+    end if;
+    return null; -- result is ignored since this is an after trigger
+  end;
+  $$ language plpgsql;
+
+  -- delete_auth_password_credential_subtype() is an after delete trigger
+  -- function for subtypes of auth_password_credential
+  create or replace function
+    delete_auth_password_credential_subtype()
+    returns trigger
+  as $$
+  begin
+    delete
+      from auth_password_credential
+     where private_id = old.private_id;
+    return null; -- result is ignored since this is an after trigger
+  end;
+  $$ language plpgsql;
+
   --
   -- triggers for time columns
   --
@@ -2008,12 +2042,23 @@ begin;
       references auth_password_credential (password_method_id, password_conf_id, password_account_id)
       on delete cascade
       on update cascade
+      deferrable initially deferred
   );
 
   create trigger
     insert_auth_password_credential_subtype
   before insert on auth_password_argon2_cred
     for each row execute procedure insert_auth_password_credential_subtype();
+
+  create trigger
+    update_auth_password_credential_subtype
+  after update on auth_password_argon2_cred
+    for each row execute procedure update_auth_password_credential_subtype();
+
+  create trigger
+    delete_auth_password_credential_subtype
+  after delete on auth_password_argon2_cred
+    for each row execute procedure delete_auth_password_credential_subtype();
 
   --
   -- triggers for time columns

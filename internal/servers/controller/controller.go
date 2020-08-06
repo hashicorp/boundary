@@ -7,6 +7,7 @@ import (
 
 	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/vault/sdk/helper/mlock"
+	"github.com/hashicorp/watchtower/internal/auth/password"
 	"github.com/hashicorp/watchtower/internal/authtoken"
 	"github.com/hashicorp/watchtower/internal/db"
 	"github.com/hashicorp/watchtower/internal/host/static"
@@ -26,10 +27,11 @@ type Controller struct {
 	workerAuthCache *cache.Cache
 
 	// Repo factory methods
-	IamRepoFn        common.IamRepoFactory
-	StaticHostRepoFn common.StaticRepoFactory
-	AuthTokenRepoFn  common.AuthTokenRepoFactory
-	ServersRepoFn    common.ServersRepoFactory
+	IamRepoFn          common.IamRepoFactory
+	StaticHostRepoFn   common.StaticRepoFactory
+	AuthTokenRepoFn    common.AuthTokenRepoFactory
+	ServersRepoFn      common.ServersRepoFactory
+	PasswordAuthRepoFn common.PasswordAuthRepoFactory
 
 	clusterAddress string
 }
@@ -75,6 +77,9 @@ func New(conf *Config) (*Controller, error) {
 	}
 	c.ServersRepoFn = func() (*servers.Repository, error) {
 		return servers.NewRepository(c.logger.Named("servers.repository"), dbase, dbase, c.conf.ControllerKMS)
+	}
+	c.PasswordAuthRepoFn = func() (*password.Repository, error) {
+		return password.NewRepository(dbase, dbase, c.conf.ControllerKMS)
 	}
 
 	c.workerAuthCache = cache.New(0, 0)
