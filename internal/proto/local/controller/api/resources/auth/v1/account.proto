@@ -8,7 +8,7 @@ import "google/protobuf/timestamp.proto";
 import "google/protobuf/wrappers.proto";
 import "google/protobuf/struct.proto";
 import "controller/api/resources/scopes/v1/scope.proto";
-import "controller/custom_options/v1/masks.proto";
+import "controller/custom_options/v1/options.proto";
 
 // Account contains all fields related to an auth Account resource
 message Account {
