@@ -7,7 +7,6 @@ import (
 
 	"github.com/golang/protobuf/ptypes"
 	"github.com/google/go-cmp/cmp"
-	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/watchtower/internal/auth"
 	"github.com/hashicorp/watchtower/internal/auth/password"
 	"github.com/hashicorp/watchtower/internal/authtoken"
@@ -36,7 +35,7 @@ func TestGet(t *testing.T) {
 		return password.NewRepository(rw, rw, wrap)
 	}
 
-	s, err := accounts.NewService(hclog.L(), repoFn)
+	s, err := accounts.NewService(repoFn)
 	require.NoError(t, err, "Couldn't create new auth token service.")
 
 	org, _ := iam.TestScopes(t, conn)
@@ -166,7 +165,7 @@ func TestList(t *testing.T) {
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			s, err := accounts.NewService(hclog.L(), repoFn)
+			s, err := accounts.NewService(repoFn)
 			require.NoError(t, err, "Couldn't create new user service.")
 
 			got, gErr := s.ListAccounts(auth.DisabledAuthTestContext(auth.WithScopeId(o.GetPublicId())), &pbs.ListAccountsRequest{AuthMethodId: tc.authMethod})
@@ -191,7 +190,7 @@ func TestDelete(t *testing.T) {
 	ac := password.TestAccounts(t, conn, am1.GetPublicId(), 1)[0]
 	wrongAc := password.TestAccounts(t, conn, wrongAm.GetPublicId(), 1)[0]
 
-	s, err := accounts.NewService(hclog.L(), repoFn)
+	s, err := accounts.NewService(repoFn)
 	require.NoError(t, err, "Error when getting new user service.")
 
 	cases := []struct {
@@ -269,7 +268,7 @@ func TestDelete_twice(t *testing.T) {
 	am := password.TestAuthMethods(t, conn, o.GetPublicId(), 1)[0]
 	ac := password.TestAccounts(t, conn, am.GetPublicId(), 1)[0]
 
-	s, err := accounts.NewService(hclog.L(), repoFn)
+	s, err := accounts.NewService(repoFn)
 	require.NoError(t, err, "Error when getting new user service")
 	req := &pbs.DeleteAccountRequest{
 		AuthMethodId: am.GetPublicId(),
@@ -291,7 +290,7 @@ func TestCreate(t *testing.T) {
 		return password.NewRepository(rw, rw, wrap)
 	}
 
-	s, err := accounts.NewService(hclog.L(), repoFn)
+	s, err := accounts.NewService(repoFn)
 	require.NoError(t, err, "Error when getting new account service.")
 
 	o, _ := iam.TestScopes(t, conn)
