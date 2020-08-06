@@ -14,9 +14,9 @@ type Account struct {
 	*store.Account
 	tableName string
 
-	// CredentialID is included when Authenticate or ChangePassword is
-	// called. A new CredentialID is generated when a password is changed.
-	CredentialID string `gorm:"-"`
+	// CredentialId is included when Authenticate or ChangePassword is
+	// called. A new CredentialId is generated when a password is changed.
+	CredentialId string `gorm:"-"`
 }
 
 func allocAccount() Account {

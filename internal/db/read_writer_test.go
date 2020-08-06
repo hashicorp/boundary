@@ -2850,3 +2850,92 @@ func TestDb_oplogMsgsForItems(t *testing.T) {
 		})
 	}
 }
+
+func TestDb_lookupAfterWrite(t *testing.T) {
+	t.Parallel()
+	db, _ := TestSetup(t, "postgres")
+	scooter := testScooter(t, db, "", 0)
+	user := testUser(t, db, "", "", "")
+	type args struct {
+		resourceWithIder interface{}
+		opt              []Option
+	}
+	tests := []struct {
+		name       string
+		underlying *gorm.DB
+		args       args
+		wantErr    bool
+		want       proto.Message
+		wantIsErr  error
+	}{
+		{
+			name:       "simple-private-id",
+			underlying: db,
+			args: args{
+				resourceWithIder: scooter,
+				opt:              []Option{WithLookup(true)},
+			},
+			wantErr: false,
+			want:    scooter,
+		},
+		{
+			name:       "simple-public-id",
+			underlying: db,
+			args: args{
+				resourceWithIder: user,
+				opt:              []Option{WithLookup(true)},
+			},
+			wantErr: false,
+			want:    user,
+		},
+		{
+			name:       "no-lookup-private-id",
+			underlying: db,
+			args: args{
+				resourceWithIder: scooter,
+				opt:              []Option{WithLookup(false)},
+			},
+			wantErr: false,
+			want:    nil,
+		},
+		{
+			name:       "no-lookup-public-id",
+			underlying: db,
+			args: args{
+				resourceWithIder: user,
+				opt:              []Option{WithLookup(false)},
+			},
+			wantErr: false,
+			want:    nil,
+		},
+		{
+			name:       "not-an-ider",
+			underlying: db,
+			args: args{
+				resourceWithIder: &db_test.NotIder{},
+				opt:              []Option{WithLookup(true)},
+			},
+			wantErr: true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+			rw := &Db{
+				underlying: tt.underlying,
+			}
+			cloner, ok := tt.args.resourceWithIder.(db_test.Cloner)
+			require.True(ok)
+			cp := cloner.Clone()
+			err := rw.lookupAfterWrite(context.Background(), cp, tt.args.opt...)
+			if tt.wantErr {
+				require.Error(err)
+				return
+			}
+			require.NoError(err)
+			if tt.want != nil {
+				assert.True(proto.Equal(tt.want, cp.(proto.Message)))
+			}
+		})
+	}
+}

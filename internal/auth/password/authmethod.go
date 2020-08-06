@@ -16,9 +16,16 @@ type AuthMethod struct {
 	tableName string
 }
 
+func allocAuthMethod() AuthMethod {
+	return AuthMethod{
+		AuthMethod: &store.AuthMethod{},
+	}
+}
+
 // NewAuthMethod creates a new in memory AuthMethod assigned to scopeId.
 // Name and description are the only valid options. All other options are
-// ignored.
+// ignored.  MinUserNameLength and MinPasswordLength are pre-set to the
+// default values of 5 and 8 respectively.
 func NewAuthMethod(scopeId string, opt ...Option) (*AuthMethod, error) {
 	if scopeId == "" {
 		return nil, fmt.Errorf("new: password auth method: no scope id: %w", db.ErrInvalidParameter)

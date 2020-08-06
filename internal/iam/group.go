@@ -80,7 +80,7 @@ func (g *Group) GetScope(ctx context.Context, r db.Reader) (*Scope, error) {
 }
 
 // ResourceType returns the type of the Group.
-func (*Group) ResourceType() resource.Type { return resource.StaticGroup }
+func (*Group) ResourceType() resource.Type { return resource.Group }
 
 // Actions returns the  available actions for Group
 func (*Group) Actions() map[string]action.Type {

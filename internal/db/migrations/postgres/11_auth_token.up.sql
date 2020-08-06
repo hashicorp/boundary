@@ -115,14 +115,16 @@ begin;
   before update on auth_token
     for each row execute procedure update_last_access_time();
 
-  create trigger
-    immutable_create_time
-  before update on auth_token
-    for each row execute procedure immutable_create_time_func();
 
   create trigger
     immutable_auth_token_columns
   before update on auth_token
     for each row execute procedure immutable_auth_token_columns();
+
+  create trigger 
+    immutable_columns
+  before
+  update on auth_token
+    for each row execute procedure immutable_columns('public_id', 'auth_account_id', 'create_time');
 
 commit;

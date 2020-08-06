@@ -299,7 +299,7 @@ func (g Grant) validateType() error {
 	case resource.Unknown,
 		resource.All,
 		resource.Role,
-		resource.StaticGroup,
+		resource.Group,
 		resource.User,
 		resource.AuthMethod,
 		resource.HostCatalog,
