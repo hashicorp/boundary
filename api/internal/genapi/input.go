@@ -20,10 +20,10 @@ type structureInfo struct {
 }
 
 type fieldInfo struct {
-	Name      string
-	ProtoName string
-	FieldType string
-	Writable  bool
+	Name              string
+	ProtoName         string
+	FieldType         string
+	GenerateSdkOption bool
 }
 
 type structInfo struct {
