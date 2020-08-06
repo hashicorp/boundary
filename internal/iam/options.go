@@ -99,6 +99,8 @@ func WithSkipVetForWrite(enable bool) Option {
 	}
 }
 
+// WithDisassociate provides an option to allow the combining of disassociating
+// and associating a user in one operation.
 func WithDisassociate(enable bool) Option {
 	return func(o *options) {
 		o.withDisassociate = enable
