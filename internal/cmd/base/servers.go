@@ -497,9 +497,21 @@ func (b *Server) CreateDevDatabase(dialect string) error {
 		return fmt.Errorf("error saving auth method to the db: %w", err)
 	}
 
+	acctUserName := "admin"
+
+	acct, err := password.NewAccount(amId, acctUserName)
+	if err != nil {
+		return fmt.Errorf("error creating new in memory auth account: %w", err)
+	}
+	acct, err = pwRepo.CreateAccount(ctx, acct, password.WithPassword("password1234567890"))
+	if err != nil {
+		return fmt.Errorf("error saving auth account to the db: %w", err)
+	}
+
 	b.InfoKeys = append(b.InfoKeys, "dev org id", "dev auth method id")
 	b.Info["dev org id"] = b.DefaultOrgId
 	b.Info["dev auth method id"] = amId
+	b.Info["dev auth account username"] = acct.GetUserName()
 
 	// now that we have passed all the error cases, reset c to be a noop so the
 	// defer doesn't do anything.

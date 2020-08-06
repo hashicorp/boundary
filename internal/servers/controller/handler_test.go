@@ -17,7 +17,7 @@ func TestAuthenticationHandler(t *testing.T) {
 	defer c.Shutdown()
 
 	resp, err := http.Post(fmt.Sprintf("%s/v1/scopes/o_1234567890/auth-methods/paum_1234567890:authenticate", c.ApiAddrs()[0]), "application/json",
-		strings.NewReader(`{"token_type": null, "credentials": {"name":"test", "password": "test"}}`))
+		strings.NewReader(`{"token_type": null, "credentials": {"name":"admin", "password": "password1234567890"}}`))
 	require.NoError(t, err)
 	assert.Equal(t, http.StatusOK, resp.StatusCode, "Got response: %v", resp)
 

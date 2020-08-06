@@ -12,6 +12,7 @@ import (
 	"github.com/hashicorp/vault/sdk/helper/mlock"
 	"github.com/hashicorp/vault/sdk/helper/strutil"
 	"github.com/hashicorp/watchtower/globals"
+	"github.com/hashicorp/watchtower/internal/auth/password"
 	"github.com/hashicorp/watchtower/internal/cmd/base"
 	"github.com/hashicorp/watchtower/internal/cmd/config"
 	"github.com/hashicorp/watchtower/internal/servers/controller"
@@ -346,12 +347,13 @@ func (c *Command) ParseFlagsAndConfig(args []string) int {
 			c.Config.DefaultOrgId = c.flagDevOrgId
 		}
 		if c.flagDevAuthMethodId != "" {
-			if !strings.HasPrefix(c.flagDevAuthMethodId, "am_") {
-				c.UI.Error(fmt.Sprintf("Invalid dev auth method ID, must start with %q", "am_"))
+			prefix := password.AuthMethodPrefix + "_"
+			if !strings.HasPrefix(c.flagDevAuthMethodId, prefix) {
+				c.UI.Error(fmt.Sprintf("Invalid dev auth method ID, must start with %q", prefix))
 				return 1
 			}
 			if len(c.flagDevAuthMethodId) != 13 {
-				c.UI.Error(fmt.Sprintf("Invalid dev auth method ID, must be 10 base62 characters after %q", "am_"))
+				c.UI.Error(fmt.Sprintf("Invalid dev auth method ID, must be 10 base62 characters after %q", prefix))
 				return 1
 			}
 			c.DevAuthMethodId = c.flagDevAuthMethodId
