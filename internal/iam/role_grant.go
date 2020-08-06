@@ -19,8 +19,8 @@ type RoleGrant struct {
 	tableName string `gorm:"-"`
 }
 
-// ensure that RoleGrant implements the interfaces of: Clonable and db.VetForWriter
-var _ Clonable = (*RoleGrant)(nil)
+// ensure that RoleGrant implements the interfaces of: Cloneable and db.VetForWriter
+var _ Cloneable = (*RoleGrant)(nil)
 var _ db.VetForWriter = (*RoleGrant)(nil)
 
 // NewRoleGrant creates a new in memory role grant

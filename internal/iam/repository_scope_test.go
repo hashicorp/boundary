@@ -138,14 +138,14 @@ func Test_Repository_Scope_Update(t *testing.T) {
 		err = db.TestVerifyOplog(t, rw, s.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_CREATE), db.WithCreateNotBefore(10*time.Second))
 		require.NoError(err)
 
-		s.Name = id
+		s.Name = "foo" + id
 		s.Description = "desc-id" // not in the field mask paths
 		s, updatedRows, err := repo.UpdateScope(context.Background(), s, 1, []string{"Name"})
 		require.NoError(err)
 		assert.Equal(1, updatedRows)
 		require.NotNil(s)
-		assert.Equal(id, s.GetName())
-		// TODO: why isn't this empty? Shouldn't it be returning what's in the DB _now_?
+		assert.Equal("foo"+id, s.GetName())
+		// TODO: This isn't empty because of ICU-490 -- when that is resolved, fix this
 		//assert.Empty(s.GetDescription())
 
 		foundScope, err = repo.LookupScope(context.Background(), s.PublicId)
