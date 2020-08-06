@@ -35,4 +35,9 @@ message User {
 
 	// Whether the resource is disabled
 	google.protobuf.BoolValue disabled = 7 [(custom_options.v1.writable) = true];
+
+	// The version can be used in subsequent write requests to ensure this
+	// resource has not changed and to fail the write if it has.
+	// Output only.
+	uint32 version = 8;
 }

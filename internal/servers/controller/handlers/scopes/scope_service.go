@@ -126,7 +126,7 @@ func (s Service) UpdateScope(ctx context.Context, req *pbs.UpdateScopeRequest) (
 	if err := validateUpdateRequest(req); err != nil {
 		return nil, err
 	}
-	p, err := s.updateInRepo(ctx, authResults.Scope, req.GetId(), req.GetUpdateMask().GetPaths(), req.GetItem())
+	p, err := s.updateInRepo(ctx, authResults.Scope, req.GetId(), req.GetVersion(), req.GetUpdateMask().GetPaths(), req.GetItem())
 	if err != nil {
 		return nil, err
 	}
@@ -199,7 +199,7 @@ func (s Service) createInRepo(ctx context.Context, parentScope *scopes.ScopeInfo
 	return ToProto(out), nil
 }
 
-func (s Service) updateInRepo(ctx context.Context, parentScope *scopes.ScopeInfo, scopeId string, mask []string, item *pb.Scope) (*pb.Scope, error) {
+func (s Service) updateInRepo(ctx context.Context, parentScope *scopes.ScopeInfo, scopeId string, version uint32, mask []string, item *pb.Scope) (*pb.Scope, error) {
 	var opts []iam.Option
 	if desc := item.GetDescription(); desc != nil {
 		opts = append(opts, iam.WithDescription(desc.GetValue()))
@@ -227,7 +227,7 @@ func (s Service) updateInRepo(ctx context.Context, parentScope *scopes.ScopeInfo
 	if err != nil {
 		return nil, err
 	}
-	out, rowsUpdated, err := repo.UpdateScope(ctx, iamScope, dbMask)
+	out, rowsUpdated, err := repo.UpdateScope(ctx, iamScope, version, dbMask)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "Unable to update project: %v.", err)
 	}

@@ -35,4 +35,8 @@ message User {
   // disabled is by default false and allows a User to be marked disabled.
   // @inject_tag: `gorm:"default:null"`
   bool disabled = 7;
+
+  // version allows optimistic locking of the user
+  // @inject_tag: `gorm:"default:null"`
+  uint32 version = 8;
 }

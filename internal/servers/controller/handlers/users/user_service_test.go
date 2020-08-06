@@ -324,22 +324,25 @@ func TestCreate(t *testing.T) {
 }
 
 func TestUpdate(t *testing.T) {
-	require := require.New(t)
 	u, repoFn := createDefaultUserAndRepo(t)
 	tested, err := users.NewService(repoFn)
-	require.NoError(err, "Error when getting new user service.")
+	require.NoError(t, err, "Error when getting new user service.")
+
+	created, err := ptypes.Timestamp(u.GetCreateTime().GetTimestamp())
+	require.NoError(t, err, "Error converting proto to timestamp")
+	toMerge := &pbs.UpdateUserRequest{
+		Id: u.GetPublicId(),
+	}
+
+	var version uint32 = 1
 
 	resetUser := func() {
 		repo, err := repoFn()
-		require.NoError(err, "Couldn't get a new repo")
-		u, _, err = repo.UpdateUser(context.Background(), u, []string{"Name", "Description"})
-		require.NoError(err, "Failed to reset the user")
-	}
-
-	created, err := ptypes.Timestamp(u.GetCreateTime().GetTimestamp())
-	require.NoError(err, "Error converting proto to timestamp")
-	toMerge := &pbs.UpdateUserRequest{
-		Id: u.GetPublicId(),
+		require.NoError(t, err, "Couldn't get a new repo")
+		version++ // From the test case that resulted in calling this
+		u, _, err = repo.UpdateUser(context.Background(), u, version, []string{"Name", "Description"})
+		require.NoError(t, err, "Failed to reset the user")
+		version++
 	}
 
 	cases := []struct {
@@ -548,13 +551,28 @@ func TestUpdate(t *testing.T) {
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			defer resetUser()
-			assert := assert.New(t)
+			tc.req.Version = version
+
+			assert, require := assert.New(t), require.New(t)
 			req := proto.Clone(toMerge).(*pbs.UpdateUserRequest)
 			proto.Merge(req, tc.req)
 
+			// Test with bad version (too high, too low)
+			req.Version = req.Version + 2
+			_, gErr := tested.UpdateUser(auth.DisabledAuthTestContext(auth.WithScopeId(u.GetScopeId())), req)
+			require.Error(gErr)
+			req.Version = req.Version - 3
+			_, gErr = tested.UpdateUser(auth.DisabledAuthTestContext(auth.WithScopeId(u.GetScopeId())), req)
+			require.Error(gErr)
+
+			req.Version = req.Version + 1
+
 			got, gErr := tested.UpdateUser(auth.DisabledAuthTestContext(auth.WithScopeId(u.GetScopeId())), req)
-			assert.Equal(tc.errCode, status.Code(gErr), "UpdateUser(%+v) got error %v, wanted %v", req, gErr, tc.errCode)
+			require.Equal(tc.errCode, status.Code(gErr), "UpdateUser(%+v) got error %v, wanted %v", req, gErr, tc.errCode)
+
+			if tc.errCode == codes.OK {
+				defer resetUser()
+			}
 
 			if got != nil {
 				assert.NotNilf(tc.res, "Expected UpdateUser response to be nil, but was %v", got)
@@ -565,8 +583,11 @@ func TestUpdate(t *testing.T) {
 
 				// Clear all values which are hard to compare against.
 				got.Item.UpdatedTime, tc.res.Item.UpdatedTime = nil, nil
+				assert.Equal(version+1, got.GetItem().GetVersion())
+				got.Item.Version = version + 1
+				tc.res.Item.Version = version + 1
 			}
-			assert.Empty(cmp.Diff(got, tc.res, protocmp.Transform()), "UpdateUser(%q) got response %q, wanted %q", req, got, tc.res)
+			assert.Empty(cmp.Diff(tc.res, got, protocmp.Transform()), "UpdateUser(%q) got response %q, wanted %q", req, got, tc.res)
 		})
 	}
 }

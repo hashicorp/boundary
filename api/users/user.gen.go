@@ -18,6 +18,7 @@ type User struct {
 	CreatedTime time.Time         `json:"created_time,omitempty"`
 	UpdatedTime time.Time         `json:"updated_time,omitempty"`
 	Disabled    bool              `json:"disabled,omitempty"`
+	Version     uint32            `json:"version,omitempty"`
 }
 
 type userClient struct {

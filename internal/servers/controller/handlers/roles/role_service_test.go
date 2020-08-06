@@ -974,7 +974,7 @@ func TestAddPrincipal(t *testing.T) {
 				tc.setup(role)
 				req := &pbs.AddRolePrincipalsRequest{
 					RoleId:       role.GetPublicId(),
-					Version:      &wrapperspb.UInt32Value{Value: role.GetVersion()},
+					Version:      role.GetVersion(),
 					PrincipalIds: append(tc.addUsers, tc.addGroups...),
 				}
 
@@ -1003,7 +1003,7 @@ func TestAddPrincipal(t *testing.T) {
 			name: "Bad Role Id",
 			req: &pbs.AddRolePrincipalsRequest{
 				RoleId:  "bad id",
-				Version: &wrapperspb.UInt32Value{Value: role.GetVersion()},
+				Version: role.GetVersion(),
 			},
 			errCode: codes.InvalidArgument,
 		},
@@ -1094,7 +1094,7 @@ func TestSetPrincipal(t *testing.T) {
 				tc.setup(role)
 				req := &pbs.SetRolePrincipalsRequest{
 					RoleId:       role.GetPublicId(),
-					Version:      &wrapperspb.UInt32Value{Value: role.GetVersion()},
+					Version:      role.GetVersion(),
 					PrincipalIds: append(tc.setUsers, tc.setGroups...),
 				}
 
@@ -1123,7 +1123,7 @@ func TestSetPrincipal(t *testing.T) {
 			name: "Bad Role Id",
 			req: &pbs.SetRolePrincipalsRequest{
 				RoleId:  "bad id",
-				Version: &wrapperspb.UInt32Value{Value: role.GetVersion()},
+				Version: role.GetVersion(),
 			},
 			errCode: codes.InvalidArgument,
 		},
@@ -1232,7 +1232,7 @@ func TestRemovePrincipal(t *testing.T) {
 				tc.setup(role)
 				req := &pbs.RemoveRolePrincipalsRequest{
 					RoleId:       role.GetPublicId(),
-					Version:      &wrapperspb.UInt32Value{Value: role.GetVersion()},
+					Version:      role.GetVersion(),
 					PrincipalIds: append(tc.removeUsers, tc.removeGroups...),
 				}
 
@@ -1261,7 +1261,7 @@ func TestRemovePrincipal(t *testing.T) {
 			name: "Bad Role Id",
 			req: &pbs.AddRolePrincipalsRequest{
 				RoleId:  "bad id",
-				Version: &wrapperspb.UInt32Value{Value: role.GetVersion()},
+				Version: role.GetVersion(),
 			},
 			errCode: codes.InvalidArgument,
 		},
@@ -1341,7 +1341,7 @@ func TestAddGrants(t *testing.T) {
 				}
 				req := &pbs.AddRoleGrantsRequest{
 					RoleId:  role.GetPublicId(),
-					Version: &wrapperspb.UInt32Value{Value: role.GetVersion()},
+					Version: role.GetVersion(),
 				}
 				scopeId := o.GetPublicId()
 				if o != scope {
@@ -1371,7 +1371,7 @@ func TestAddGrants(t *testing.T) {
 			req: &pbs.AddRoleGrantsRequest{
 				RoleId:       "bad id",
 				GrantStrings: []string{"id=*;actions=create"},
-				Version:      &wrapperspb.UInt32Value{Value: role.GetVersion()},
+				Version:      role.GetVersion(),
 			},
 			errCode: codes.InvalidArgument,
 		},
@@ -1439,7 +1439,7 @@ func TestSetGrants(t *testing.T) {
 				}
 				req := &pbs.SetRoleGrantsRequest{
 					RoleId:  role.GetPublicId(),
-					Version: &wrapperspb.UInt32Value{Value: role.GetVersion()},
+					Version: role.GetVersion(),
 				}
 				scopeId := o.GetPublicId()
 				if o != scope {
@@ -1471,7 +1471,7 @@ func TestSetGrants(t *testing.T) {
 			req: &pbs.SetRoleGrantsRequest{
 				RoleId:       "bad id",
 				GrantStrings: []string{"id=*;actions=create"},
-				Version:      &wrapperspb.UInt32Value{Value: role.GetVersion()},
+				Version:      role.GetVersion(),
 			},
 			errCode: codes.InvalidArgument,
 		},
@@ -1538,7 +1538,7 @@ func TestRemoveGrants(t *testing.T) {
 				}
 				req := &pbs.RemoveRoleGrantsRequest{
 					RoleId:  role.GetPublicId(),
-					Version: &wrapperspb.UInt32Value{Value: role.GetVersion()},
+					Version: role.GetVersion(),
 				}
 				scopeId := o.GetPublicId()
 				if o != scope {
@@ -1571,7 +1571,7 @@ func TestRemoveGrants(t *testing.T) {
 			req: &pbs.RemoveRoleGrantsRequest{
 				RoleId:       "bad id",
 				GrantStrings: []string{"id=*;actions=create"},
-				Version:      &wrapperspb.UInt32Value{Value: role.GetVersion()},
+				Version:      role.GetVersion(),
 			},
 			errCode: codes.InvalidArgument,
 		},

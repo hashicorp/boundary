@@ -96,7 +96,10 @@ func (r *Repository) create(ctx context.Context, resource Resource, opt ...Optio
 }
 
 // update will update an iam resource in the db repository with an oplog entry
-func (r *Repository) update(ctx context.Context, resource Resource, fieldMaskPaths []string, setToNullPaths []string, opt ...Option) (Resource, int, error) {
+func (r *Repository) update(ctx context.Context, resource Resource, version uint32, fieldMaskPaths []string, setToNullPaths []string, opt ...Option) (Resource, int, error) {
+	if version == 0 {
+		return nil, db.NoRowsAffected, errors.New("resource version cannot be zero during update")
+	}
 	if resource == nil {
 		return nil, db.NoRowsAffected, errors.New("error updating resource that is nil")
 	}
@@ -110,7 +113,10 @@ func (r *Repository) update(ctx context.Context, resource Resource, fieldMaskPat
 	}
 	metadata["op-type"] = []string{oplog.OpType_OP_TYPE_UPDATE.String()}
 
-	dbOpts := []db.Option{db.WithOplog(r.wrapper, metadata)}
+	dbOpts := []db.Option{
+		db.WithOplog(r.wrapper, metadata),
+		db.WithVersion(&version),
+	}
 	opts := getOpts(opt...)
 	if opts.withSkipVetForWrite {
 		dbOpts = append(dbOpts, db.WithSkipVetForWrite(true))

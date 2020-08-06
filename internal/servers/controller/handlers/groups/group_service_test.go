@@ -950,7 +950,7 @@ func TestAddMember(t *testing.T) {
 				tc.setup(grp)
 				req := &pbs.AddGroupMembersRequest{
 					Id:        grp.GetPublicId(),
-					Version:   &wrapperspb.UInt32Value{Value: grp.GetVersion()},
+					Version:   grp.GetVersion(),
 					MemberIds: tc.addUsers,
 				}
 
@@ -979,7 +979,7 @@ func TestAddMember(t *testing.T) {
 			name: "Bad Group Id",
 			req: &pbs.AddGroupMembersRequest{
 				Id:      "bad id",
-				Version: &wrapperspb.UInt32Value{Value: grp.GetVersion()},
+				Version: grp.GetVersion(),
 			},
 			errCode: codes.InvalidArgument,
 		},
@@ -1051,7 +1051,7 @@ func TestSetMember(t *testing.T) {
 				tc.setup(grp)
 				req := &pbs.SetGroupMembersRequest{
 					Id:        grp.GetPublicId(),
-					Version:   &wrapperspb.UInt32Value{Value: grp.GetVersion()},
+					Version:   grp.GetVersion(),
 					MemberIds: tc.setUsers,
 				}
 
@@ -1080,7 +1080,7 @@ func TestSetMember(t *testing.T) {
 			name: "Bad Group Id",
 			req: &pbs.SetGroupMembersRequest{
 				Id:      "bad id",
-				Version: &wrapperspb.UInt32Value{Value: grp.GetVersion()},
+				Version: grp.GetVersion(),
 			},
 			errCode: codes.InvalidArgument,
 		},
@@ -1160,7 +1160,7 @@ func TestRemoveMember(t *testing.T) {
 				tc.setup(grp)
 				req := &pbs.RemoveGroupMembersRequest{
 					Id:        grp.GetPublicId(),
-					Version:   &wrapperspb.UInt32Value{Value: grp.GetVersion()},
+					Version:   grp.GetVersion(),
 					MemberIds: tc.removeUsers,
 				}
 
@@ -1189,7 +1189,7 @@ func TestRemoveMember(t *testing.T) {
 			name: "Bad Group Id",
 			req: &pbs.AddGroupMembersRequest{
 				Id:      "bad id",
-				Version: &wrapperspb.UInt32Value{Value: grp.GetVersion()},
+				Version: grp.GetVersion(),
 			},
 			errCode: codes.InvalidArgument,
 		},
