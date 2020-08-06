@@ -16,8 +16,8 @@ import (
 // contain a valid ScopeId. m must not contain a PublicId. The PublicId is
 // generated and assigned by this method.
 //
-// WithConfiguration is the only valid option. All other options are
-// ignored.
+// WithConfiguration and WithPublicId are the only valid options. All other
+// options are ignored.
 //
 // Both m.Name and m.Description are optional. If m.Name is set, it must be
 // unique within m.ScopeId.
@@ -36,13 +36,21 @@ func (r *Repository) CreateAuthMethod(ctx context.Context, m *AuthMethod, opt ..
 	}
 	m = m.clone()
 
+	opts := getOpts(opt...)
+
 	id, err := newAuthMethodId()
 	if err != nil {
 		return nil, fmt.Errorf("create: password auth method: %w", err)
 	}
 	m.PublicId = id
 
-	opts := getOpts(opt...)
+	if opts.withPublicId != "" {
+		if !strings.HasPrefix(opts.withPublicId, AuthMethodPrefix+"_") {
+			return nil, fmt.Errorf("create: password auth method: passed-in public ID %q has wrong prefix, should be %q", opts.withPublicId, AuthMethodPrefix)
+		}
+		m.PublicId = opts.withPublicId
+	}
+
 	c, ok := opts.withConfig.(*Argon2Configuration)
 	if !ok {
 		return nil, fmt.Errorf("create: password auth method: unknown configuration: %w", ErrUnsupportedConfiguration)

@@ -89,7 +89,7 @@ func handleGrpcGateway(c *Controller) (http.Handler, error) {
 	if err := services.RegisterAccountServiceHandlerServer(ctx, mux, accts); err != nil {
 		return nil, fmt.Errorf("failed to register account service handler: %w", err)
 	}
-	auths, err := authenticate.NewService(c.IamRepoFn, c.AuthTokenRepoFn)
+	auths, err := authenticate.NewService(c.PasswordAuthRepoFn, c.IamRepoFn, c.AuthTokenRepoFn)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create authentication handler service: %w", err)
 	}
