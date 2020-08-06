@@ -1,6 +1,7 @@
 package controller
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -32,6 +33,31 @@ func TestAuthenticationHandler(t *testing.T) {
 	assert.NotEmpty(t, pubId)
 	assert.NotEmpty(t, tok)
 	assert.Truef(t, strings.HasPrefix(tok, pubId), "Token: %q, Id: %q", tok, pubId)
+}
+
+func TestUpdatingAttributeValues(t *testing.T) {
+	c := NewTestController(t, &TestControllerOpts{
+		DisableAuthorizationFailures: true,
+		DefaultOrgId:                 "o_1234567890",
+	})
+	defer c.Shutdown()
+
+	b, err := json.Marshal(map[string]interface{}{
+		"name": "bob",
+		"attributes": map[string]interface{}{
+			"something": "foo",
+		},
+	})
+	require.NoError(t, err)
+	url := fmt.Sprintf("%s/v1/scopes/o_1234567890/host-catalogs/hc_321", c.ApiAddrs()[0])
+	req, err := http.NewRequest("PATCH", url, bytes.NewReader(b))
+
+	require.NoError(t, err)
+	resp, err := http.DefaultClient.Do(req)
+	require.NoError(t, err)
+	body, err := ioutil.ReadAll(resp.Body)
+	require.NoError(t, err)
+	t.Log(string(body))
 }
 
 func TestHandleImplementedPaths(t *testing.T) {

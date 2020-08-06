@@ -373,13 +373,15 @@ func (v verifier) performAuthCheck() (aclResults *perms.ACLResults, userId strin
 		return
 	}
 
-	at, err := tokenRepo.ValidateToken(v.ctx, v.requestInfo.PublicId, v.requestInfo.Token)
-	if err != nil {
-		retErr = fmt.Errorf("perform auth check: failed to validate token: %w", err)
-		return
-	}
-	if at != nil {
-		userId = at.GetIamUserId()
+	if v.requestInfo.PublicId != "" && v.requestInfo.Token != "" {
+		at, err := tokenRepo.ValidateToken(v.ctx, v.requestInfo.PublicId, v.requestInfo.Token)
+		if err != nil {
+			retErr = fmt.Errorf("perform auth check: failed to validate token: %w", err)
+			return
+		}
+		if at != nil {
+			userId = at.GetIamUserId()
+		}
 	}
 
 	// Fetch and parse grants for this user ID (which may include grants for

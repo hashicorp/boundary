@@ -26,7 +26,7 @@ var (
 
 func init() {
 	var err error
-	if maskManager, err = handlers.NewMaskManager(&pb.Account{}, &store.Account{}); err != nil {
+	if maskManager, err = handlers.NewMaskManager(&store.Account{}, &pb.Account{}); err != nil {
 		panic(err)
 	}
 }

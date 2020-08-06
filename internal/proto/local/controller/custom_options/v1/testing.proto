@@ -12,6 +12,17 @@ message TestBase {
 	string extra_field = 4;
 }
 
+message TestBaseSplit1 {
+	string first_field = 1 [(mask_mapping) = {this: "first_field" that: "OtherFirstField"}];
+	string field_with_different_json_name = 2 [json_name="json_name", (mask_mapping) = {this: "field3" that:"other_field_3"}];
+	string extra_field = 3;
+
+}
+
+message TestBaseSplit2 {
+	string split_field1 = 1 [(mask_mapping) = {this: "strangly_formatted_field" that: "other_second_field"}];
+}
+
 message TestProperlyNamedFields {
 	string other_first_field = 1 [(mask_mapping) = {this: "OtherFirstField" that:"first_field"}];
 	string other_second_field = 2 [(mask_mapping) = {this: "other_second_field" that:"strangly_formatted_field"}];

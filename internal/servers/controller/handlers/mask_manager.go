@@ -13,13 +13,18 @@ import (
 
 type MaskManager map[string]string
 
-// NewMaskManager returns a mask manager that can translate field masks from the first proto to the second assuming
-// they are both using the mask_mapping custom option.  Error is returned if no mappings are found or if one of the
-// passed protos has a mapping that doesn't reciprocate.
-// TODO: Handle masks for nested messages.
-func NewMaskManager(src, dest protoreflect.ProtoMessage) (MaskManager, error) {
-	srcToDest := mapFromProto(src)
-	destToSrc := mapFromProto(dest)
+// NewMaskManager returns a mask manager that can translate field masks into the first proto from all subsequent
+// protos assuming they are both using the mask_mapping custom option.  Error is returned if no mappings are
+// found or if one of the passed protos has a mapping that doesn't reciprocate.
+func NewMaskManager(dest protoreflect.ProtoMessage, src ...protoreflect.ProtoMessage) (MaskManager, error) {
+	srcToDest, err := mapFromProto(src...)
+	if err != nil {
+		return nil, err
+	}
+	destToSrc, err := mapFromProto(dest)
+	if err != nil {
+		return nil, err
+	}
 
 	result := make(map[string]string)
 	for k, v := range srcToDest {
@@ -44,18 +49,23 @@ func NewMaskManager(src, dest protoreflect.ProtoMessage) (MaskManager, error) {
 	return result, nil
 }
 
-func mapFromProto(p protoreflect.ProtoMessage) map[string]string {
+func mapFromProto(ps ...protoreflect.ProtoMessage) (map[string]string, error) {
 	mapping := make(map[string]string)
-	m := p.ProtoReflect()
-	fields := m.Descriptor().Fields()
-	for i := 0; i < fields.Len(); i++ {
-		f := fields.Get(i)
-		opts := f.Options().(*descriptorpb.FieldOptions)
-		if nameMap := proto.GetExtension(opts, pb.E_MaskMapping).(*pb.MaskMapping); !proto.Equal(nameMap, &pb.MaskMapping{}) {
-			mapping[nameMap.GetThis()] = nameMap.GetThat()
+	for _, p := range ps {
+		m := p.ProtoReflect()
+		fields := m.Descriptor().Fields()
+		for i := 0; i < fields.Len(); i++ {
+			f := fields.Get(i)
+			opts := f.Options().(*descriptorpb.FieldOptions)
+			if nameMap := proto.GetExtension(opts, pb.E_MaskMapping).(*pb.MaskMapping); !proto.Equal(nameMap, &pb.MaskMapping{}) && nameMap != nil {
+				if _, ok := mapping[nameMap.GetThis()]; ok {
+					return nil, fmt.Errorf("duplicate mapping from field %q with the mapping key %q", f.Name(), nameMap.GetThis())
+				}
+				mapping[nameMap.GetThis()] = nameMap.GetThat()
+			}
 		}
 	}
-	return mapping
+	return mapping, nil
 }
 
 // Translate takes a field mask's paths and returns paths translated for the destination's protobuf.
