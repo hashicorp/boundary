@@ -80,6 +80,8 @@ func TestDevController(t *testing.T) {
 	exp.Listeners[1].RawConfig = actual.Listeners[1].RawConfig
 	exp.Seals[0].Config["key"] = actual.Seals[0].Config["key"]
 	exp.Seals[1].Config["key"] = actual.Seals[1].Config["key"]
+	exp.Controller.DevControllerKey = actual.Seals[0].Config["key"]
+	exp.Controller.DevWorkerAuthKey = actual.Seals[1].Config["key"]
 
 	assert.Equal(t, exp, actual)
 }
