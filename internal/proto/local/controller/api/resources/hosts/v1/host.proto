@@ -23,10 +23,10 @@ message Host {
 	google.protobuf.StringValue type = 3;
 
 	// Optional name for identification purposes
-	google.protobuf.StringValue name = 4 [(custom_options.v1.writable) = true];
+	google.protobuf.StringValue name = 4 [(custom_options.v1.generate_sdk_option) = true];
 
 	// Optional user-set description for identification purposes
-	google.protobuf.StringValue description = 5 [(custom_options.v1.writable) = true];
+	google.protobuf.StringValue description = 5 [(custom_options.v1.generate_sdk_option) = true];
 
 	// The time this resource was created
 	// Output only.
@@ -37,8 +37,8 @@ message Host {
 	google.protobuf.Timestamp updated_time = 7 [json_name="updated_time"];
 
 	// Whether the host is disabled
-	google.protobuf.BoolValue disabled = 8 [(custom_options.v1.writable) = true];
+	google.protobuf.BoolValue disabled = 8 [(custom_options.v1.generate_sdk_option) = true];
 
 	// The address (DNS or IP name) used to reach the host
-	google.protobuf.StringValue address = 9 [(custom_options.v1.writable) = true];
+	google.protobuf.StringValue address = 9 [(custom_options.v1.generate_sdk_option) = true];
 }

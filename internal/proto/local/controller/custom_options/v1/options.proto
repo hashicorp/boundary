@@ -12,9 +12,9 @@ extend google.protobuf.FieldOptions {
 	// the json name.
 	MaskMapping mask_mapping = 85464;
 
-	// writable allows us, when generating the API, to avoid generating
-	// options for fields that are only for output
-	bool writable = 85412;
+	// generate_sdk_option is a directive used when generating the SDK to
+	// indicate that an option should be created for the field
+	bool generate_sdk_option = 85412;
 }
 
 message MaskMapping {

@@ -98,7 +98,7 @@ func fillTemplates() {
 		if !in.outputOnly {
 			pkgOptionMap := map[string]fieldInfo{}
 			for _, val := range input.Fields {
-				if val.Writable {
+				if val.GenerateSdkOption {
 					pkgOptionMap[val.Name] = val
 				}
 			}

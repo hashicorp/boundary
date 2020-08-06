@@ -50,10 +50,10 @@ func parsePBs() {
 			if fd.Cardinality() == protoreflect.Repeated {
 				sliceText = "[]"
 			}
-			// Add writable info
+			// Add generate option info
 			opts := fd.Options().(*descriptorpb.FieldOptions)
-			if proto.GetExtension(opts, protooptions.E_Writable).(bool) {
-				fi.Writable = true
+			if proto.GetExtension(opts, protooptions.E_GenerateSdkOption).(bool) {
+				fi.GenerateSdkOption = true
 			}
 			switch k := fd.Kind(); k {
 			case protoreflect.MessageKind:

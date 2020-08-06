@@ -41,10 +41,10 @@ message Scope {
 	ScopeInfo scope = 2;
 
 	// Optional name for identification purposes
-	google.protobuf.StringValue name = 3 [(custom_options.v1.writable) = true, (custom_options.v1.mask_mapping) = {this: "name" that: "name"}];
+	google.protobuf.StringValue name = 3 [(custom_options.v1.generate_sdk_option) = true, (custom_options.v1.mask_mapping) = {this: "name" that: "name"}];
 
 	// Optional user-set descripton for identification purposes
-	google.protobuf.StringValue description = 4 [(custom_options.v1.writable) = true, (custom_options.v1.mask_mapping) = {this: "description" that: "description"}];
+	google.protobuf.StringValue description = 4 [(custom_options.v1.generate_sdk_option) = true, (custom_options.v1.mask_mapping) = {this: "description" that: "description"}];
 
 	// The time this resource was created
 	// Output only.
@@ -55,7 +55,7 @@ message Scope {
 	google.protobuf.Timestamp updated_time = 6 [json_name="updated_time"];
 
 	// Whether the resource is disabled
-	google.protobuf.BoolValue disabled = 7 [(custom_options.v1.writable) = true];
+	google.protobuf.BoolValue disabled = 7 [(custom_options.v1.generate_sdk_option) = true];
 
 	// The version can be used in subsequent write requests to ensure this
 	// resource has not changed and to fail the write if it has.
