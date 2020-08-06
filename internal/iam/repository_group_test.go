@@ -396,11 +396,11 @@ func TestRepository_UpdateGroup(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			assert := assert.New(t)
+			assert, require := assert.New(t), require.New(t)
 			if tt.wantDup {
 				g := TestGroup(t, conn, org.PublicId)
 				g.Name = tt.args.name
-				_, _, _, err := repo.UpdateGroup(context.Background(), g, tt.args.fieldMaskPaths, tt.args.opt...)
+				_, _, _, err := repo.UpdateGroup(context.Background(), g, g.Version, tt.args.fieldMaskPaths, tt.args.opt...)
 				assert.NoError(err)
 			}
 
@@ -414,6 +414,7 @@ func TestRepository_UpdateGroup(t *testing.T) {
 			updateGrp.ScopeId = tt.args.ScopeId
 			updateGrp.Name = tt.args.name
 			updateGrp.Description = tt.args.description
+			updateGrp.Version = u.Version
 
 			var groupAfterUpdate *Group
 			var updatedRows int
@@ -421,12 +422,12 @@ func TestRepository_UpdateGroup(t *testing.T) {
 			if tt.directUpdate {
 				g := updateGrp.Clone()
 				var resource interface{}
-				resource, updatedRows, err = repo.update(context.Background(), g.(*Group), tt.args.fieldMaskPaths, nil, tt.args.opt...)
+				resource, updatedRows, err = repo.update(context.Background(), g.(*Group), updateGrp.Version, tt.args.fieldMaskPaths, nil, tt.args.opt...)
 				if err == nil {
 					groupAfterUpdate = resource.(*Group)
 				}
 			} else {
-				groupAfterUpdate, _, updatedRows, err = repo.UpdateGroup(context.Background(), &updateGrp, tt.args.fieldMaskPaths, tt.args.opt...)
+				groupAfterUpdate, _, updatedRows, err = repo.UpdateGroup(context.Background(), &updateGrp, updateGrp.Version, tt.args.fieldMaskPaths, tt.args.opt...)
 			}
 			if tt.wantErr {
 				assert.Error(err)
@@ -450,7 +451,7 @@ func TestRepository_UpdateGroup(t *testing.T) {
 				assert.NotEqual(u.UpdateTime, groupAfterUpdate.UpdateTime)
 			}
 			foundGrp, _, err := repo.LookupGroup(context.Background(), u.PublicId)
-			assert.NoError(err)
+			require.NoError(err)
 			assert.True(proto.Equal(groupAfterUpdate, foundGrp))
 			dbassert := dbassert.New(t, rw)
 			if tt.args.name == "" {
