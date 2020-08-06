@@ -25,6 +25,7 @@ type fieldInfo struct {
 	ProtoName         string
 	FieldType         string
 	GenerateSdkOption bool
+	FunctionPrefix    string
 }
 
 type structInfo struct {
@@ -32,6 +33,12 @@ type structInfo struct {
 	outFile            string
 	generatedStructure structureInfo
 	templates          []*template.Template
+
+	// specific text to insert into With/Default function calls to separate out
+	// implementations of the same abstract type. This way e.g. a WithUsername
+	// option turns into WithPasswordAccountUsername which is wordy but
+	// unambiguous.
+	functionPrefix string
 
 	// mappings of names of resources and param names for sub slice types, e.g.
 	// role principals and group members
@@ -189,8 +196,9 @@ var inputStructs = []*structInfo{
 		pathArgs: []string{"auth-method"},
 	},
 	{
-		inProto: &authmethods.PasswordAuthMethodAttributes{},
-		outFile: "authmethods/password_auth_method_attributes.gen.go",
+		inProto:        &authmethods.PasswordAuthMethodAttributes{},
+		outFile:        "authmethods/password_auth_method_attributes.gen.go",
+		functionPrefix: "PasswordAuthMethod",
 	},
 	{
 		inProto: &authmethods.Account{},
@@ -206,8 +214,9 @@ var inputStructs = []*structInfo{
 		pathArgs: []string{"auth-method", "account"},
 	},
 	{
-		inProto: &authmethods.PasswordAccountAttributes{},
-		outFile: "authmethods/password_account_attributes.gen.go",
+		inProto:        &authmethods.PasswordAccountAttributes{},
+		outFile:        "authmethods/password_account_attributes.gen.go",
+		functionPrefix: "PasswordAccount",
 	},
 	// Auth Tokens
 	{

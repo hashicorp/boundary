@@ -82,27 +82,51 @@ func DefaultDisabled() Option {
 	}
 }
 
-func WithMinPasswordLength(inMinPasswordLength uint32) Option {
+func WithPasswordAuthMethodMinPasswordLength(inMinPasswordLength uint32) Option {
 	return func(o *options) {
-		o.valueMap["min_password_length"] = inMinPasswordLength
+		raw, ok := o.valueMap["attributes"]
+		if !ok {
+			raw = interface{}(map[string]interface{}{})
+		}
+		val := raw.(map[string]interface{})
+		val["min_password_length"] = inMinPasswordLength
+		o.valueMap["attributes"] = val
 	}
 }
 
-func DefaultMinPasswordLength() Option {
+func DefaultPasswordAuthMethodMinPasswordLength() Option {
 	return func(o *options) {
-		o.valueMap["min_password_length"] = nil
+		raw, ok := o.valueMap["attributes"]
+		if !ok {
+			raw = interface{}(map[string]interface{}{})
+		}
+		val := raw.(map[string]interface{})
+		val["min_password_length"] = nil
+		o.valueMap["attributes"] = val
 	}
 }
 
-func WithMinUserNameLength(inMinUserNameLength uint32) Option {
+func WithPasswordAuthMethodMinUserNameLength(inMinUserNameLength uint32) Option {
 	return func(o *options) {
-		o.valueMap["min_user_name_length"] = inMinUserNameLength
+		raw, ok := o.valueMap["attributes"]
+		if !ok {
+			raw = interface{}(map[string]interface{}{})
+		}
+		val := raw.(map[string]interface{})
+		val["min_user_name_length"] = inMinUserNameLength
+		o.valueMap["attributes"] = val
 	}
 }
 
-func DefaultMinUserNameLength() Option {
+func DefaultPasswordAuthMethodMinUserNameLength() Option {
 	return func(o *options) {
-		o.valueMap["min_user_name_length"] = nil
+		raw, ok := o.valueMap["attributes"]
+		if !ok {
+			raw = interface{}(map[string]interface{}{})
+		}
+		val := raw.(map[string]interface{})
+		val["min_user_name_length"] = nil
+		o.valueMap["attributes"] = val
 	}
 }
 
@@ -118,15 +142,27 @@ func DefaultName() Option {
 	}
 }
 
-func WithPassword(inPassword string) Option {
+func WithPasswordAccountPassword(inPassword string) Option {
 	return func(o *options) {
-		o.valueMap["password"] = inPassword
+		raw, ok := o.valueMap["attributes"]
+		if !ok {
+			raw = interface{}(map[string]interface{}{})
+		}
+		val := raw.(map[string]interface{})
+		val["password"] = inPassword
+		o.valueMap["attributes"] = val
 	}
 }
 
-func DefaultPassword() Option {
+func DefaultPasswordAccountPassword() Option {
 	return func(o *options) {
-		o.valueMap["password"] = nil
+		raw, ok := o.valueMap["attributes"]
+		if !ok {
+			raw = interface{}(map[string]interface{}{})
+		}
+		val := raw.(map[string]interface{})
+		val["password"] = nil
+		o.valueMap["attributes"] = val
 	}
 }
 
@@ -142,14 +178,26 @@ func DefaultType() Option {
 	}
 }
 
-func WithUsername(inUsername string) Option {
+func WithPasswordAccountUsername(inUsername string) Option {
 	return func(o *options) {
-		o.valueMap["username"] = inUsername
+		raw, ok := o.valueMap["attributes"]
+		if !ok {
+			raw = interface{}(map[string]interface{}{})
+		}
+		val := raw.(map[string]interface{})
+		val["username"] = inUsername
+		o.valueMap["attributes"] = val
 	}
 }
 
-func DefaultUsername() Option {
+func DefaultPasswordAccountUsername() Option {
 	return func(o *options) {
-		o.valueMap["username"] = nil
+		raw, ok := o.valueMap["attributes"]
+		if !ok {
+			raw = interface{}(map[string]interface{}{})
+		}
+		val := raw.(map[string]interface{})
+		val["username"] = nil
+		o.valueMap["attributes"] = val
 	}
 }
