@@ -56,6 +56,7 @@ func TestGet(t *testing.T) {
 		Description: &wrapperspb.StringValue{Value: u.GetDescription()},
 		CreatedTime: u.CreateTime.GetTimestamp(),
 		UpdatedTime: u.UpdateTime.GetTimestamp(),
+		Version:     1,
 	}
 
 	cases := []struct {
@@ -129,6 +130,7 @@ func TestList(t *testing.T) {
 			Scope:       &scopes.ScopeInfo{Id: u.GetScopeId(), Type: scope.Org.String()},
 			CreatedTime: u.GetCreateTime().GetTimestamp(),
 			UpdatedTime: u.GetUpdateTime().GetTimestamp(),
+			Version:     1,
 		})
 	}
 
