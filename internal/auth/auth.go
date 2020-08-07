@@ -367,7 +367,7 @@ func (v verifier) performAuthCheck() (aclResults *perms.ACLResults, userId strin
 	userId = "u_anon"
 
 	// Validate the token and fetch the corresponding user ID
-	if v.requestInfo.PublicId != "" && v.requestInfo.Token != "" {
+	if v.requestInfo.TokenFormat != AuthTokenTypeUnknown {
 		tokenRepo, err := v.authTokenRepoFn()
 		if err != nil {
 			retErr = fmt.Errorf("perform auth check: failed to get authtoken repo: %w", err)
