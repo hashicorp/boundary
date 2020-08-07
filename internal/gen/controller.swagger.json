@@ -2382,6 +2382,12 @@
           "type": "boolean",
           "format": "boolean",
           "title": "Whether the resource is disabled"
+        },
+        "version": {
+          "type": "integer",
+          "format": "int64",
+          "description": "The version can be used in subsequent write requests to ensure this\nresource has not changed and to fail the write if it has.\nOutput only.",
+          "readOnly": true
         }
       },
       "title": "Scope contains all fields related to a Scope resource"
@@ -2453,6 +2459,12 @@
           "type": "boolean",
           "format": "boolean",
           "title": "Whether the resource is disabled"
+        },
+        "version": {
+          "type": "integer",
+          "format": "int64",
+          "description": "The version can be used in subsequent write requests to ensure this\nresource has not changed and to fail the write if it has.\nOutput only.",
+          "readOnly": true
         }
       },
       "title": "User contains all fields related to a User resource"

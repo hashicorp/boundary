@@ -22,9 +22,9 @@ type Group struct {
 	tableName string `gorm:"-"`
 }
 
-// ensure that Group implements the interfaces of: Resource, Clonable, and db.VetForWriter.
+// ensure that Group implements the interfaces of: Resource, Cloneable, and db.VetForWriter.
 var _ Resource = (*Group)(nil)
-var _ Clonable = (*Group)(nil)
+var _ Cloneable = (*Group)(nil)
 var _ db.VetForWriter = (*Group)(nil)
 
 // NewGroup creates a new in memory group with a scope (project/org)

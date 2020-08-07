@@ -35,7 +35,7 @@ type Resource interface {
 	Actions() map[string]action.Type
 }
 
-type Clonable interface {
+type Cloneable interface {
 	Clone() interface{}
 }
 

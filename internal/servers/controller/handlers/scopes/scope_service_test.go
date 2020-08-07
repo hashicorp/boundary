@@ -41,14 +41,14 @@ func createDefaultScopesAndRepo(t *testing.T) (*iam.Scope, *iam.Scope, func() (*
 	oRes.Description = "defaultProj"
 	repo, err := repoFn()
 	require.NoError(t, err)
-	oRes, _, err = repo.UpdateScope(context.Background(), oRes, []string{"Name", "Description"})
+	oRes, _, err = repo.UpdateScope(context.Background(), oRes, 1, []string{"Name", "Description"})
 	require.NoError(t, err)
 
 	pRes.Name = "defaultProj"
 	pRes.Description = "defaultProj"
 	repo, err = repoFn()
 	require.NoError(t, err)
-	pRes, _, err = repo.UpdateScope(context.Background(), pRes, []string{"Name", "Description"})
+	pRes, _, err = repo.UpdateScope(context.Background(), pRes, 1, []string{"Name", "Description"})
 	require.NoError(t, err)
 	return oRes, pRes, repoFn
 }
@@ -66,6 +66,7 @@ func TestGet(t *testing.T) {
 		Description: &wrapperspb.StringValue{Value: org.GetDescription()},
 		CreatedTime: org.CreateTime.GetTimestamp(),
 		UpdatedTime: org.UpdateTime.GetTimestamp(),
+		Version:     2,
 	}
 
 	pScope := &pb.Scope{
@@ -75,6 +76,7 @@ func TestGet(t *testing.T) {
 		Description: &wrapperspb.StringValue{Value: proj.GetDescription()},
 		CreatedTime: proj.CreateTime.GetTimestamp(),
 		UpdatedTime: proj.UpdateTime.GetTimestamp(),
+		Version:     2,
 	}
 
 	cases := []struct {
@@ -140,7 +142,7 @@ func TestGet(t *testing.T) {
 
 			got, gErr := s.GetScope(auth.DisabledAuthTestContext(auth.WithScopeId(tc.scopeId)), req)
 			assert.Equal(tc.errCode, status.Code(gErr), "GetScope(%+v) got error\n%v, wanted\n%v", req, gErr, tc.errCode)
-			assert.Empty(cmp.Diff(got, tc.res, protocmp.Transform()), "GetScope(%q) got response\n%q, wanted\n%q", req, got, tc.res)
+			assert.Empty(cmp.Diff(tc.res, got, protocmp.Transform()), "GetScope(%q) got response\n%q, wanted\n%q", req, got, tc.res)
 		})
 	}
 }
@@ -216,6 +218,7 @@ func TestList(t *testing.T) {
 			Scope:       globalScope,
 			CreatedTime: o.GetCreateTime().GetTimestamp(),
 			UpdatedTime: o.GetUpdateTime().GetTimestamp(),
+			Version:     1,
 		})
 	}
 	wantOrgs = append(wantOrgs, initialOrgs...)
@@ -232,6 +235,7 @@ func TestList(t *testing.T) {
 			Scope:       &pb.ScopeInfo{Id: oWithProjects.GetPublicId(), Type: scope.Org.String()},
 			CreatedTime: p.GetCreateTime().GetTimestamp(),
 			UpdatedTime: p.GetUpdateTime().GetTimestamp(),
+			Version:     1,
 		})
 	}
 	scopes.SortScopes(wantProjects)
@@ -418,6 +422,7 @@ func TestCreate(t *testing.T) {
 					Scope:       &pb.ScopeInfo{Id: defaultOrg.GetPublicId(), Type: scope.Org.String()},
 					Name:        &wrapperspb.StringValue{Value: "name"},
 					Description: &wrapperspb.StringValue{Value: "desc"},
+					Version:     1,
 				},
 			},
 			errCode: codes.OK,
@@ -438,6 +443,7 @@ func TestCreate(t *testing.T) {
 					Scope:       &pb.ScopeInfo{Id: scope.Global.String(), Type: scope.Global.String()},
 					Name:        &wrapperspb.StringValue{Value: "name"},
 					Description: &wrapperspb.StringValue{Value: "desc"},
+					Version:     1,
 				},
 			},
 			errCode: codes.OK,
@@ -513,18 +519,25 @@ func TestUpdate(t *testing.T) {
 	tested, err := scopes.NewService(repoFn)
 	require.NoError(err, "Error when getting new project service.")
 
+	var orgVersion uint32 = 2
+	var projVersion uint32 = 2
+
 	resetOrg := func() {
+		orgVersion++
 		repo, err := repoFn()
 		require.NoError(err, "Couldn't get a new repo")
-		org, _, err = repo.UpdateScope(context.Background(), org, []string{"Name", "Description"})
+		org, _, err = repo.UpdateScope(context.Background(), org, orgVersion, []string{"Name", "Description"})
 		require.NoError(err, "Failed to reset the org")
+		orgVersion++
 	}
 
 	resetProject := func() {
+		projVersion++
 		repo, err := repoFn()
 		require.NoError(err, "Couldn't get a new repo")
-		proj, _, err = repo.UpdateScope(context.Background(), proj, []string{"Name", "Description"})
+		proj, _, err = repo.UpdateScope(context.Background(), proj, projVersion, []string{"Name", "Description"})
 		require.NoError(err, "Failed to reset the project")
+		projVersion++
 	}
 
 	projCreated, err := ptypes.Timestamp(proj.GetCreateTime().GetTimestamp())
@@ -801,15 +814,27 @@ func TestUpdate(t *testing.T) {
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			defer resetProject()
-			defer resetOrg()
+			ver := orgVersion
+			if tc.req.Id == proj.PublicId {
+				ver = projVersion
+			}
+			tc.req.Version = ver
+
 			assert := assert.New(t)
 			var req *pbs.UpdateScopeRequest
 			switch tc.scopeId {
 			case scope.Global.String():
 				req = proto.Clone(orgToMerge).(*pbs.UpdateScopeRequest)
+				if tc.errCode == codes.OK {
+					defer resetOrg()
+				}
 			default:
+				ver = projVersion
+				tc.req.Version = ver
 				req = proto.Clone(projToMerge).(*pbs.UpdateScopeRequest)
+				if tc.errCode == codes.OK {
+					defer resetProject()
+				}
 			}
 			proto.Merge(req, tc.req)
 
@@ -825,6 +850,9 @@ func TestUpdate(t *testing.T) {
 
 				// Clear all values which are hard to compare against.
 				got.Item.UpdatedTime, tc.res.Item.UpdatedTime = nil, nil
+
+				assert.Equal(ver+1, got.GetItem().GetVersion())
+				tc.res.Item.Version = ver + 1
 			}
 			assert.Empty(cmp.Diff(got, tc.res, protocmp.Transform()), "UpdateScope(%q) got response\n%q, wanted\n%q", req, got, tc.res)
 		})

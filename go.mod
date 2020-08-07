@@ -56,6 +56,7 @@ require (
 	github.com/sergi/go-diff v1.0.0 // indirect
 	github.com/stretchr/testify v1.6.1
 	github.com/zalando/go-keyring v0.1.0
+	go.uber.org/atomic v1.6.0
 	golang.org/x/crypto v0.0.0-20200709230013-948cd5f35899
 	golang.org/x/time v0.0.0-20200630173020-3af7569d3a1e
 	golang.org/x/tools v0.0.0-20200722181740-bd1e9de8d890

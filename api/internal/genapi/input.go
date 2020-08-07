@@ -97,7 +97,8 @@ var inputStructs = []*structInfo{
 			deleteTemplate,
 			listTemplate,
 		},
-		pathArgs: []string{"scope"},
+		pathArgs:       []string{"scope"},
+		versionEnabled: true,
 	},
 	// User related resources
 	{
@@ -111,7 +112,8 @@ var inputStructs = []*structInfo{
 			deleteTemplate,
 			listTemplate,
 		},
-		pathArgs: []string{"user"},
+		pathArgs:       []string{"user"},
+		versionEnabled: true,
 	},
 	// Group related resources
 	{
@@ -133,7 +135,8 @@ var inputStructs = []*structInfo{
 		sliceSubTypes: map[string]string{
 			"Members": "memberIds",
 		},
-		pathArgs: []string{"group"},
+		pathArgs:       []string{"group"},
+		versionEnabled: true,
 	},
 	// Role related resources
 	{
@@ -168,20 +171,6 @@ var inputStructs = []*structInfo{
 		},
 		pathArgs:       []string{"role"},
 		versionEnabled: true,
-	},
-	// Account related resources
-	{
-		inProto: &users.User{},
-		outFile: "users/user.gen.go",
-		templates: []*template.Template{
-			clientTemplate,
-			createTemplate,
-			readTemplate,
-			updateTemplate,
-			deleteTemplate,
-			listTemplate,
-		},
-		pathArgs: []string{"user"},
 	},
 	// Auth Methods related resources
 	{
