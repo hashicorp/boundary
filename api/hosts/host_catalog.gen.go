@@ -2,76 +2,177 @@
 package hosts
 
 import (
-	"encoding/json"
-	"strings"
+	"context"
+	"fmt"
 	"time"
 
-	"github.com/fatih/structs"
-
 	"github.com/hashicorp/watchtower/api"
-	"github.com/hashicorp/watchtower/api/info"
-	"github.com/hashicorp/watchtower/api/internal/strutil"
+	"github.com/hashicorp/watchtower/api/scopes"
 )
 
 type HostCatalog struct {
-	Client *api.Client `json:"-"`
-
-	defaultFields []string
-
-	// The ID of the host
-	// Output only.
-	Id string `json:"id,omitempty"`
-	// Scope information for this resource
-	// Output only.
-	Scope info.Scope `json:"scope,omitempty"`
-	// The type of the resource, to help differentiate schemas
-	Type *string `json:"type,omitempty"`
-	// Optional name for identification purposes
-	Name *string `json:"name,omitempty"`
-	// Optional user-set description for identification purposes
-	Description *string `json:"description,omitempty"`
-	// The time this resource was created
-	// Output only.
-	CreatedTime time.Time `json:"created_time,omitempty"`
-	// The time this resource was last updated
-	// Output only.
-	UpdatedTime time.Time `json:"updated_time,omitempty"`
-	// Whether the catalog is disabled
-	Disabled *bool `json:"disabled,omitempty"`
-	// Attributes specific to the catalog type
-	Attributes map[string]interface {
-	} `json:"attributes,omitempty"`
+	Id          string                 `json:"id,omitempty"`
+	Scope       *scopes.ScopeInfo      `json:"scope,omitempty"`
+	Type        string                 `json:"type,omitempty"`
+	Name        string                 `json:"name,omitempty"`
+	Description string                 `json:"description,omitempty"`
+	CreatedTime time.Time              `json:"created_time,omitempty"`
+	UpdatedTime time.Time              `json:"updated_time,omitempty"`
+	Disabled    bool                   `json:"disabled,omitempty"`
+	Attributes  map[string]interface{} `json:"attributes,omitempty"`
 }
 
-func (s *HostCatalog) SetDefault(key string) {
-	lowerKey := strings.ToLower(key)
-	validMap := map[string]string{"attributes": "attributes", "createdtime": "created_time", "description": "description", "disabled": "disabled", "id": "id", "name": "name", "scope": "scope", "type": "type", "updatedtime": "updated_time"}
-	for k, v := range validMap {
-		if k == lowerKey || v == lowerKey {
-			s.defaultFields = strutil.AppendIfMissing(s.defaultFields, v)
-			return
-		}
-	}
+type hostcatalogClient struct {
+	client *api.Client
 }
 
-func (s *HostCatalog) UnsetDefault(key string) {
-	lowerKey := strings.ToLower(key)
-	validMap := map[string]string{"attributes": "attributes", "createdtime": "created_time", "description": "description", "disabled": "disabled", "id": "id", "name": "name", "scope": "scope", "type": "type", "updatedtime": "updated_time"}
-	for k, v := range validMap {
-		if k == lowerKey || v == lowerKey {
-			s.defaultFields = strutil.StrListDelete(s.defaultFields, v)
-			return
-		}
-	}
+func NewHostCatalogClient(c *api.Client) *hostcatalogClient {
+	return &hostcatalogClient{client: c}
 }
 
-func (s HostCatalog) MarshalJSON() ([]byte, error) {
-	m := structs.Map(s)
-	if m == nil {
-		m = make(map[string]interface{})
+func (c *hostcatalogClient) Create(ctx context.Context, opt ...Option) (*HostCatalog, *api.Error, error) {
+	if c.client == nil {
+		return nil, nil, fmt.Errorf("nil client")
 	}
-	for _, k := range s.defaultFields {
-		m[k] = nil
+
+	opts, apiOpts := getOpts(opt...)
+
+	req, err := c.client.NewRequest(ctx, "POST", fmt.Sprintf("host-catalogs"), opts.valueMap, apiOpts...)
+	if err != nil {
+		return nil, nil, fmt.Errorf("error creating Create request: %w", err)
 	}
-	return json.Marshal(m)
+
+	resp, err := c.client.Do(req)
+	if err != nil {
+		return nil, nil, fmt.Errorf("error performing client request during Create call: %w", err)
+	}
+
+	target := new(HostCatalog)
+	apiErr, err := resp.Decode(target)
+	if err != nil {
+		return nil, nil, fmt.Errorf("error decoding Create response: %w", err)
+	}
+
+	return target, apiErr, nil
+}
+
+func (c *hostcatalogClient) Read(ctx context.Context, hostCatalogId string, opt ...Option) (*HostCatalog, *api.Error, error) {
+	if hostCatalogId == "" {
+		return nil, nil, fmt.Errorf("empty hostCatalogId value passed into Read request")
+	}
+
+	if c.client == nil {
+		return nil, nil, fmt.Errorf("nil client")
+	}
+
+	_, apiOpts := getOpts(opt...)
+
+	req, err := c.client.NewRequest(ctx, "GET", fmt.Sprintf("host-catalogs/%s", hostCatalogId), nil, apiOpts...)
+	if err != nil {
+		return nil, nil, fmt.Errorf("error creating Read request: %w", err)
+	}
+
+	resp, err := c.client.Do(req)
+	if err != nil {
+		return nil, nil, fmt.Errorf("error performing client request during Read call: %w", err)
+	}
+
+	target := new(HostCatalog)
+	apiErr, err := resp.Decode(target)
+	if err != nil {
+		return nil, nil, fmt.Errorf("error decoding Read response: %w", err)
+	}
+
+	return target, apiErr, nil
+}
+
+func (c *hostcatalogClient) Update(ctx context.Context, hostCatalogId string, version uint32, opt ...Option) (*HostCatalog, *api.Error, error) {
+	if hostCatalogId == "" {
+		return nil, nil, fmt.Errorf("empty hostCatalogId value passed into Update request")
+	}
+	if c.client == nil {
+		return nil, nil, fmt.Errorf("nil client")
+	}
+
+	opts, apiOpts := getOpts(opt...)
+
+	req, err := c.client.NewRequest(ctx, "PATCH", fmt.Sprintf("host-catalogs/%s", hostCatalogId), opts.valueMap, apiOpts...)
+	if err != nil {
+		return nil, nil, fmt.Errorf("error creating Update request: %w", err)
+	}
+
+	resp, err := c.client.Do(req)
+	if err != nil {
+		return nil, nil, fmt.Errorf("error performing client request during Update call: %w", err)
+	}
+
+	target := new(HostCatalog)
+	apiErr, err := resp.Decode(target)
+	if err != nil {
+		return nil, nil, fmt.Errorf("error decoding Update response: %w", err)
+	}
+
+	return target, apiErr, nil
+}
+
+func (c *hostcatalogClient) Delete(ctx context.Context, hostCatalogId string, opt ...Option) (bool, *api.Error, error) {
+	if hostCatalogId == "" {
+		return false, nil, fmt.Errorf("empty hostCatalogId value passed into Delete request")
+	}
+
+	if c.client == nil {
+		return false, nil, fmt.Errorf("nil client")
+	}
+
+	_, apiOpts := getOpts(opt...)
+
+	req, err := c.client.NewRequest(ctx, "DELETE", fmt.Sprintf("host-catalogs/%s", hostCatalogId), nil, apiOpts...)
+	if err != nil {
+		return false, nil, fmt.Errorf("error creating Delete request: %w", err)
+	}
+
+	resp, err := c.client.Do(req)
+	if err != nil {
+		return false, nil, fmt.Errorf("error performing client request during Delete call: %w", err)
+	}
+
+	type deleteResponse struct {
+		Existed bool
+	}
+	target := &deleteResponse{}
+	apiErr, err := resp.Decode(target)
+	if err != nil {
+		return false, nil, fmt.Errorf("error decoding Delete response: %w", err)
+	}
+
+	return target.Existed, apiErr, nil
+}
+
+func (c *hostcatalogClient) List(ctx context.Context, opt ...Option) ([]*HostCatalog, *api.Error, error) {
+	if c.client == nil {
+		return nil, nil, fmt.Errorf("nil client")
+	}
+
+	_, apiOpts := getOpts(opt...)
+
+	req, err := c.client.NewRequest(ctx, "GET", fmt.Sprintf("host-catalogs"), nil, apiOpts...)
+	if err != nil {
+		return nil, nil, fmt.Errorf("error creating List request: %w", err)
+	}
+
+	resp, err := c.client.Do(req)
+	if err != nil {
+		return nil, nil, fmt.Errorf("error performing client request during List call: %w", err)
+	}
+
+	type listResponse struct {
+		Items []*HostCatalog
+	}
+	target := &listResponse{}
+	apiErr, err := resp.Decode(target)
+	if err != nil {
+		return nil, nil, fmt.Errorf("error decoding List response: %w", err)
+	}
+
+	return target.Items, apiErr, nil
 }

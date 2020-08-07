@@ -2,14 +2,7 @@
 package groups
 
 type Member struct {
-
-	// The ID of the member.
-	// Output only.
-	Id string `json:"id,omitempty"`
-	// The type of the member.
-	// Output only.
-	Type string `json:"type,omitempty"`
-	// The scope ID of the member.
-	// Output only.
+	Id      string `json:"id,omitempty"`
+	Type    string `json:"type,omitempty"`
 	ScopeId string `json:"scope_id,omitempty"`
 }

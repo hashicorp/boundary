@@ -2,14 +2,7 @@
 package roles
 
 type Principal struct {
-
-	// The ID of the principal.
-	// Output only.
-	Id string `json:"id,omitempty"`
-	// The type of the principal.
-	// Output only.
-	Type string `json:"type,omitempty"`
-	// The scope ID of the principal.
-	// Output only.
+	Id      string `json:"id,omitempty"`
+	Type    string `json:"type,omitempty"`
 	ScopeId string `json:"scope_id,omitempty"`
 }

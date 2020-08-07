@@ -21,14 +21,14 @@ func printScope(in *scopes.Scope) string {
 		}...,
 		)
 	}
-	if in.Name != nil {
+	if in.Name != "" {
 		ret = append(ret,
-			fmt.Sprintf("  Name:         %s", *in.Name),
+			fmt.Sprintf("  Name:         %s", in.Name),
 		)
 	}
-	if in.Description != nil {
+	if in.Description != "" {
 		ret = append(ret,
-			fmt.Sprintf("  Description:  %s", *in.Description),
+			fmt.Sprintf("  Description:  %s", in.Description),
 		)
 	}
 

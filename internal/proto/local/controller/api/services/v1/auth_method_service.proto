@@ -7,7 +7,7 @@ option go_package = "github.com/hashicorp/watchtower/internal/gen/controller/api
 import "protoc-gen-openapiv2/options/annotations.proto";
 import "google/api/annotations.proto";
 import "google/protobuf/field_mask.proto";
-import "controller/api/resources/auth/v1/auth_method.proto";
+import "controller/api/resources/authmethods/v1/auth_method.proto";
 
 service AuthMethodService {
   // GetAuthMethod returns a stored AuthMethod if present.  The provided request
@@ -93,7 +93,7 @@ message GetAuthMethodRequest {
 }
 
 message GetAuthMethodResponse {
-  resources.auth.v1.AuthMethod item = 1;
+  resources.authmethods.v1.AuthMethod item = 1;
 }
 
 message ListAuthMethodsRequest {
@@ -101,26 +101,26 @@ message ListAuthMethodsRequest {
 }
 
 message ListAuthMethodsResponse {
-  repeated resources.auth.v1.AuthMethod items = 1;
+  repeated resources.authmethods.v1.AuthMethod items = 1;
 }
 
 message CreateAuthMethodRequest {
-  resources.auth.v1.AuthMethod item = 1;
+  resources.authmethods.v1.AuthMethod item = 1;
 }
 
 message CreateAuthMethodResponse {
   string uri = 1;
-  resources.auth.v1.AuthMethod item = 2;
+  resources.authmethods.v1.AuthMethod item = 2;
 }
 
 message UpdateAuthMethodRequest {
   string id = 1;
-  resources.auth.v1.AuthMethod item = 2;
+  resources.authmethods.v1.AuthMethod item = 2;
   google.protobuf.FieldMask update_mask = 3;
 }
 
 message UpdateAuthMethodResponse {
-  resources.auth.v1.AuthMethod item = 1;
+  resources.authmethods.v1.AuthMethod item = 1;
 }
 
 message DeleteAuthMethodRequest {

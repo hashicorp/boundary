@@ -2,14 +2,7 @@
 package roles
 
 type GrantJson struct {
-
-	// The ID, if set.
-	// Output only.
-	Id string `json:"id,omitempty"`
-	// The type, if set.
-	// Output only.
-	Type string `json:"type,omitempty"`
-	// The actions.
-	// Output only.
+	Id      string   `json:"id,omitempty"`
+	Type    string   `json:"type,omitempty"`
 	Actions []string `json:"actions,omitempty"`
 }
