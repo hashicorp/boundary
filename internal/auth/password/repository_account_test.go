@@ -121,7 +121,7 @@ func TestRepository_CreateAccount(t *testing.T) {
 			in: &Account{
 				Account: &store.Account{
 					AuthMethodId: authMethod.PublicId,
-					UserName:     "kaz",
+					UserName:     "ka",
 				},
 			},
 			wantIsErr: ErrTooShort,
