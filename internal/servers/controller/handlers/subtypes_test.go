@@ -5,7 +5,7 @@ import (
 
 	structpb "github.com/golang/protobuf/ptypes/struct"
 	"github.com/google/go-cmp/cmp"
-	authpb "github.com/hashicorp/watchtower/internal/gen/controller/api/resources/auth"
+	authpb "github.com/hashicorp/watchtower/internal/gen/controller/api/resources/authmethods"
 	hostpb "github.com/hashicorp/watchtower/internal/gen/controller/api/resources/hosts"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"

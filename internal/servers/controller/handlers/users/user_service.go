@@ -108,7 +108,7 @@ func (s Service) UpdateUser(ctx context.Context, req *pbs.UpdateUserRequest) (*p
 	if err := validateUpdateRequest(req); err != nil {
 		return nil, err
 	}
-	u, err := s.updateInRepo(ctx, authResults.Scope.GetId(), req.GetId(), req.GetUpdateMask().GetPaths(), req.GetItem())
+	u, err := s.updateInRepo(ctx, authResults.Scope.GetId(), req.GetId(), req.GetVersion(), req.GetUpdateMask().GetPaths(), req.GetItem())
 	if err != nil {
 		return nil, err
 	}
@@ -176,7 +176,7 @@ func (s Service) createInRepo(ctx context.Context, orgId string, item *pb.User) 
 	return toProto(out), nil
 }
 
-func (s Service) updateInRepo(ctx context.Context, orgId, id string, mask []string, item *pb.User) (*pb.User, error) {
+func (s Service) updateInRepo(ctx context.Context, orgId, id string, version uint32, mask []string, item *pb.User) (*pb.User, error) {
 	var opts []iam.Option
 	if desc := item.GetDescription(); desc != nil {
 		opts = append(opts, iam.WithDescription(desc.GetValue()))
@@ -197,7 +197,7 @@ func (s Service) updateInRepo(ctx context.Context, orgId, id string, mask []stri
 	if err != nil {
 		return nil, err
 	}
-	out, rowsUpdated, err := repo.UpdateUser(ctx, u, dbMask)
+	out, rowsUpdated, err := repo.UpdateUser(ctx, u, version, dbMask)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "Unable to update user: %v.", err)
 	}
@@ -243,6 +243,7 @@ func toProto(in *iam.User) *pb.User {
 		Id:          in.GetPublicId(),
 		CreatedTime: in.GetCreateTime().GetTimestamp(),
 		UpdatedTime: in.GetUpdateTime().GetTimestamp(),
+		Version:     in.GetVersion(),
 	}
 	if in.GetDescription() != "" {
 		out.Description = &wrapperspb.StringValue{Value: in.GetDescription()}

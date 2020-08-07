@@ -116,8 +116,9 @@ message CreateUserResponse {
 
 message UpdateUserRequest {
   string id = 1;
-  resources.users.v1.User item = 2;
-  google.protobuf.FieldMask update_mask = 3;
+  uint32 version = 2;
+  resources.users.v1.User item = 3;
+  google.protobuf.FieldMask update_mask = 4;
 }
 
 message UpdateUserResponse {

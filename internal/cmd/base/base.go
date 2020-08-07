@@ -119,7 +119,9 @@ func (c *Command) Client() (*api.Client, error) {
 	}
 
 	if c.flagAddr != NotSetValue {
-		c.client.SetAddr(c.flagAddr)
+		if err := c.client.SetAddr(c.flagAddr); err != nil {
+			return nil, fmt.Errorf("error setting address on client: %w", err)
+		}
 	}
 
 	// If we need custom TLS configuration, then set it
@@ -197,6 +199,10 @@ func (c *Command) Client() (*api.Client, error) {
 	if c.flagScope != NotSetValue {
 		c.client.SetScopeId(c.flagScope)
 	}
+	// At this point if we haven't figured out the scope, default to "global"
+	if c.client.ScopeId() == "" {
+		c.client.SetScopeId("global")
+	}
 
 	return c.client, nil
 }
@@ -240,7 +246,7 @@ func (c *Command) FlagSet(bit FlagSetBit) *FlagSets {
 				Default:    NotSetValue,
 				EnvVar:     api.EnvWatchtowerScopeId,
 				Completion: complete.PredictAnything,
-				Usage:      "Scope in which to make the request.",
+				Usage:      `Scope in which to make the request. If not specified, will default to the scope of a saved token (if found), otherwise will default to "global".`,
 			})
 
 			f.StringVar(&StringVar{

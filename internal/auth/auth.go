@@ -367,19 +367,21 @@ func (v verifier) performAuthCheck() (aclResults *perms.ACLResults, userId strin
 	userId = "u_anon"
 
 	// Validate the token and fetch the corresponding user ID
-	tokenRepo, err := v.authTokenRepoFn()
-	if err != nil {
-		retErr = fmt.Errorf("perform auth check: failed to get authtoken repo: %w", err)
-		return
-	}
+	if v.requestInfo.TokenFormat != AuthTokenTypeUnknown {
+		tokenRepo, err := v.authTokenRepoFn()
+		if err != nil {
+			retErr = fmt.Errorf("perform auth check: failed to get authtoken repo: %w", err)
+			return
+		}
 
-	at, err := tokenRepo.ValidateToken(v.ctx, v.requestInfo.PublicId, v.requestInfo.Token)
-	if err != nil {
-		retErr = fmt.Errorf("perform auth check: failed to validate token: %w", err)
-		return
-	}
-	if at != nil {
-		userId = at.GetIamUserId()
+		at, err := tokenRepo.ValidateToken(v.ctx, v.requestInfo.PublicId, v.requestInfo.Token)
+		if err != nil {
+			retErr = fmt.Errorf("perform auth check: failed to validate token: %w", err)
+			return
+		}
+		if at != nil {
+			userId = at.GetIamUserId()
+		}
 	}
 
 	// Fetch and parse grants for this user ID (which may include grants for

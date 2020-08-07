@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/hashicorp/watchtower/api"
 	"github.com/hashicorp/watchtower/api/scopes"
 	"github.com/hashicorp/watchtower/internal/cmd/base"
 	"github.com/kr/pretty"
@@ -77,16 +76,12 @@ func (c *ReadScopeCommand) Run(args []string) int {
 		return 2
 	}
 
-	id := c.flagId
-	if id == "" {
-		id = client.ScopeId()
-	}
-	scp := &scopes.Scope{
-		Client: client,
+	if len(c.flagId) == 0 {
+		c.UI.Error("No scope ID supplied via -id")
+		return 1
 	}
 
-	var apiErr *api.Error
-	scp, apiErr, err = scp.ReadScope(c.Context, id)
+	scp, apiErr, err := scopes.NewScopeClient(client).Read(c.Context, c.flagId)
 
 	switch {
 	case err != nil:

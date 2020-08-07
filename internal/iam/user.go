@@ -22,9 +22,9 @@ type User struct {
 	tableName string `gorm:"-"`
 }
 
-// ensure that User implements the interfaces of: Resource, Clonable and db.VetForWriter
+// ensure that User implements the interfaces of: Resource, Cloneable and db.VetForWriter
 var _ Resource = (*User)(nil)
-var _ Clonable = (*User)(nil)
+var _ Cloneable = (*User)(nil)
 var _ db.VetForWriter = (*User)(nil)
 
 // NewUser creates a new in memory user and allows options:

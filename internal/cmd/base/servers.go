@@ -21,14 +21,15 @@ import (
 	"github.com/hashicorp/vault/internalshared/configutil"
 	"github.com/hashicorp/vault/internalshared/gatedwriter"
 	"github.com/hashicorp/vault/internalshared/reloadutil"
+	"github.com/hashicorp/vault/sdk/helper/base62"
 	"github.com/hashicorp/vault/sdk/helper/logging"
 	"github.com/hashicorp/vault/sdk/helper/mlock"
 	"github.com/hashicorp/vault/sdk/helper/strutil"
 	"github.com/hashicorp/vault/sdk/logical"
 	"github.com/hashicorp/watchtower/globals"
+	"github.com/hashicorp/watchtower/internal/auth/password"
 	"github.com/hashicorp/watchtower/internal/db"
 	"github.com/hashicorp/watchtower/internal/iam"
-	"github.com/hashicorp/watchtower/internal/servers/controller/handlers/authenticate"
 	"github.com/hashicorp/watchtower/version"
 	"github.com/jinzhu/gorm"
 	"github.com/mitchellh/cli"
@@ -63,6 +64,8 @@ type Server struct {
 
 	DefaultOrgId    string
 	DevAuthMethodId string
+	DevUsername     string
+	DevPassword     string
 
 	DevDatabaseUrl         string
 	DevDatabaseCleanupFunc func() error
@@ -292,7 +295,7 @@ func (b *Server) SetupListeners(ui cli.Ui, config *configutil.SharedConfig, allo
 		if lnConfig.MaxRequestDuration == 0 {
 			lnConfig.MaxRequestDuration = globals.DefaultMaxRequestDuration
 		}
-		props["max_request_duration"] = fmt.Sprintf("%s", lnConfig.MaxRequestDuration.String())
+		props["max_request_duration"] = lnConfig.MaxRequestDuration.String()
 
 		b.Listeners = append(b.Listeners, &ServerListener{
 			Mux:    lnMux,
@@ -398,8 +401,15 @@ func (b *Server) ConnectToDatabase(dialect string, url string) error {
 
 func (b *Server) CreateDevDatabase(dialect string) error {
 	c, url, container, err := db.InitDbInDocker(dialect)
+	// In case of an error, run the cleanup function.  If we pass all errors, c should be set to a noop
+	// function before returning from this method
+	defer func() {
+		if err := c(); err != nil {
+			b.Logger.Error("error cleaning up docker container", "error", err)
+		}
+	}()
+
 	if err != nil {
-		c()
 		return fmt.Errorf("unable to start dev database with dialect %s: %w", dialect, err)
 	}
 
@@ -414,7 +424,6 @@ func (b *Server) CreateDevDatabase(dialect string) error {
 	}
 
 	if err := b.ConnectToDatabase(dialect, url); err != nil {
-		c()
 		return err
 	}
 
@@ -425,7 +434,6 @@ func (b *Server) CreateDevDatabase(dialect string) error {
 	rw := db.New(b.Database)
 	repo, err := iam.NewRepository(rw, rw, b.ControllerKMS)
 	if err != nil {
-		c()
 		return fmt.Errorf("unable to create repo for org id: %w", err)
 	}
 
@@ -439,7 +447,6 @@ func (b *Server) CreateDevDatabase(dialect string) error {
 	if b.DefaultOrgId != "" {
 		orgScope, err = repo.LookupScope(ctx, b.DefaultOrgId)
 		if err != nil {
-			c()
 			return fmt.Errorf("error looking up existing scope with org ID %q: %w", b.DefaultOrgId, err)
 		}
 	}
@@ -447,17 +454,14 @@ func (b *Server) CreateDevDatabase(dialect string) error {
 	if orgScope == nil {
 		orgScope, err = iam.NewOrg()
 		if err != nil {
-			c()
 			return fmt.Errorf("error creating new org scope: %w", err)
 		}
 		orgScope, err = repo.CreateScope(ctx, orgScope, iam.WithPublicId(b.DefaultOrgId))
 		if err != nil {
-			c()
 			return fmt.Errorf("error persisting new org scope: %w", err)
 		}
 		if b.DefaultOrgId != "" {
 			if orgScope.GetPublicId() != b.DefaultOrgId {
-				c()
 				return fmt.Errorf("expected org ID %q, got %q after persisting", b.DefaultOrgId, orgScope.GetPublicId())
 			}
 		} else {
@@ -469,7 +473,7 @@ func (b *Server) CreateDevDatabase(dialect string) error {
 	if err != nil {
 		return fmt.Errorf("error creating in memory role for anon authen: %w", err)
 	}
-	authenRole, err := repo.CreateRole(ctx, ar, iam.WithDescription("role for anon authen"))
+	authenRole, err := repo.CreateRole(ctx, ar, iam.WithDescription("role for authentication by the anonymous user"))
 	if err != nil {
 		return fmt.Errorf("error creating role for anon authen: %w", err)
 	}
@@ -484,7 +488,7 @@ func (b *Server) CreateDevDatabase(dialect string) error {
 	if err != nil {
 		return fmt.Errorf("error creating in memory role for default dev grants: %w", err)
 	}
-	defPermsRole, err := repo.CreateRole(ctx, pr, iam.WithDescription("role for def grants"))
+	defPermsRole, err := repo.CreateRole(ctx, pr, iam.WithDescription("role for admin grants to authenticated users"))
 	if err != nil {
 		return fmt.Errorf("error creating role for default dev grants: %w", err)
 	}
@@ -495,27 +499,59 @@ func (b *Server) CreateDevDatabase(dialect string) error {
 		return fmt.Errorf("error adding principal to role for default dev grants: %w", err)
 	}
 
-	// TODO: Remove this when Auth Account repo is in place.
-	authenticate.Scope = orgScope.GetPublicId()
-	insert := `insert into auth_method
-	(public_id, scope_id)
-	values
-	($1, $2);`
+	pwRepo, err := password.NewRepository(rw, rw, b.ControllerKMS)
+	if err != nil {
+		return fmt.Errorf("error creating password repo: %w", err)
+	}
+	authMethod, err := password.NewAuthMethod(orgScope.GetPublicId())
+	if err != nil {
+		return fmt.Errorf("error creating new in memory auth method: %w", err)
+	}
+
 	amId := b.DevAuthMethodId
 	if amId == "" {
-		amId = "am_1234567890"
+		amId = "paum_1234567890"
 	}
-	authenticate.RWDb.Store(rw)
-	_, err = b.Database.DB().Exec(insert, amId, orgScope.GetPublicId())
+	_, err = pwRepo.CreateAuthMethod(ctx, authMethod, password.WithPublicId(amId))
 	if err != nil {
-		// Log and ignore in case we're going against the same dev database
-		b.Logger.Error("error creating dev auth method", "error", err)
+		return fmt.Errorf("error saving auth method to the db: %w", err)
 	}
 
-	b.InfoKeys = append(b.InfoKeys, "dev org id", "dev auth method id")
+	acctUserName := b.DevUsername
+	if acctUserName == "" {
+		acctUserName, err = base62.Random(10)
+		if err != nil {
+			return fmt.Errorf("unable to generate dev username: %w", err)
+		}
+		acctUserName = strings.ToLower(acctUserName)
+	}
+
+	pw := b.DevPassword
+	if pw == "" {
+		pw, err = base62.Random(20)
+		if err != nil {
+			return fmt.Errorf("unable to generate dev password: %w", err)
+		}
+	}
+
+	acct, err := password.NewAccount(amId, acctUserName)
+	if err != nil {
+		return fmt.Errorf("error creating new in memory auth account: %w", err)
+	}
+	acct, err = pwRepo.CreateAccount(ctx, acct, password.WithPassword(pw))
+	if err != nil {
+		return fmt.Errorf("error saving auth account to the db: %w", err)
+	}
+
+	b.InfoKeys = append(b.InfoKeys, "dev org id", "dev auth method id", "dev username", "dev password")
 	b.Info["dev org id"] = b.DefaultOrgId
 	b.Info["dev auth method id"] = amId
+	b.Info["dev username"] = acct.GetUserName()
+	b.Info["dev password"] = pw
 
+	// now that we have passed all the error cases, reset c to be a noop so the
+	// defer doesn't do anything.
+	c = func() error { return nil }
 	return nil
 }
 

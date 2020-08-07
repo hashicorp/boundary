@@ -22,7 +22,7 @@ type AuthAccount struct {
 	tableName string `gorm:"-"`
 }
 
-var _ Clonable = (*AuthAccount)(nil)
+var _ Cloneable = (*AuthAccount)(nil)
 var _ db.VetForWriter = (*AuthAccount)(nil)
 var _ oplog.ReplayableMessage = (*AuthAccount)(nil)
 

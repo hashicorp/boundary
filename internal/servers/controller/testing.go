@@ -118,6 +118,12 @@ type TestControllerOpts struct {
 	// in the normal config.
 	DefaultOrgId string
 
+	// DefaultUsername is the username used when creating the default account.
+	DefaultUsername string
+
+	// DefaultPassword is the password used when creating the default account.
+	DefaultPassword string
+
 	// DisableDatabaseCreation can be set true to disable creating a dev
 	// database
 	DisableDatabaseCreation bool
@@ -169,6 +175,13 @@ func NewTestController(t *testing.T, opts *TestControllerOpts) *TestController {
 	}
 	if opts.DefaultOrgId != "" {
 		tc.b.DefaultOrgId = opts.DefaultOrgId
+	}
+
+	if opts.DefaultUsername != "" {
+		tc.b.DevUsername = opts.DefaultUsername
+	}
+	if opts.DefaultPassword != "" {
+		tc.b.DevPassword = opts.DefaultPassword
 	}
 
 	// Start a logger

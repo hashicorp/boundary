@@ -1,14 +1,7 @@
 package tests
 
-import (
-	"testing"
-	"time"
-
-	"github.com/hashicorp/watchtower/api"
-	"github.com/hashicorp/watchtower/api/hosts"
-	"github.com/stretchr/testify/assert"
-)
-
+// TODO: Reenable once we reimplement generation of As functions once static hosts lands
+/*
 func TestDetailTemplating(t *testing.T) {
 	lt := time.Now()
 	c := hosts.HostCatalog{
@@ -32,3 +25,4 @@ func TestDetailTemplating(t *testing.T) {
 		Rotate:      api.Bool(true),
 	}, ac)
 }
+*/

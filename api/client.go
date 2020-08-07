@@ -140,6 +140,7 @@ func DefaultConfig() (*Config, error) {
 		HttpClient: cleanhttp.DefaultPooledClient(),
 		Timeout:    time.Second * 60,
 		TLSConfig:  &TLSConfig{},
+		ScopeId:    "global",
 	}
 
 	// We read the environment now; after DefaultClient returns we can override
@@ -672,6 +673,9 @@ func (c *Client) NewRequest(ctx context.Context, method, requestPath string, bod
 	if opts.withScopeId != "" {
 		scopeId = opts.withScopeId
 	}
+	if scopeId == "" {
+		scopeId = "global"
+	}
 
 	scopedPath := strings.TrimPrefix(requestPath, "/")
 	switch requestPath {
@@ -683,9 +687,7 @@ func (c *Client) NewRequest(ctx context.Context, method, requestPath string, bod
 		// If their path already has 'scopes/' in it, use the given request path
 		// instead of building it from the client's scope information
 		if !strings.HasPrefix(scopedPath, "scopes/") {
-			if scopeId != "" {
-				scopedPath = path.Join("scopes", scopeId, scopedPath)
-			}
+			scopedPath = path.Join("scopes", scopeId, scopedPath)
 		}
 	}
 	scopedPath = path.Join(u.Path, "/v1", scopedPath)
