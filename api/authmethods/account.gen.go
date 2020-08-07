@@ -4,6 +4,7 @@ package authmethods
 import (
 	"context"
 	"fmt"
+	"net/url"
 	"time"
 
 	"github.com/hashicorp/watchtower/api"
@@ -112,6 +113,10 @@ func (c *accountsClient) Update(ctx context.Context, authMethodId string, accoun
 	if err != nil {
 		return nil, nil, fmt.Errorf("error creating Update request: %w", err)
 	}
+
+	q := url.Values{}
+	q.Add("version", fmt.Sprintf("%d", version))
+	req.URL.RawQuery = q.Encode()
 
 	resp, err := c.client.Do(req)
 	if err != nil {

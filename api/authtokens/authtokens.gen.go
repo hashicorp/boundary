@@ -100,7 +100,7 @@ func (c *authtokensClient) List(ctx context.Context, opt ...Option) ([]*AuthToke
 
 	_, apiOpts := getOpts(opt...)
 
-	req, err := c.client.NewRequest(ctx, "GET", fmt.Sprintf("auth-tokens"), nil, apiOpts...)
+	req, err := c.client.NewRequest(ctx, "GET", "auth-tokens", nil, apiOpts...)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error creating List request: %w", err)
 	}

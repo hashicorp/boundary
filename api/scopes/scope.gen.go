@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"net/url"
 	"time"
 
 	"github.com/kr/pretty"
@@ -31,17 +32,25 @@ func NewScopesClient(c *api.Client) *scopesClient {
 	return &scopesClient{client: c}
 }
 
-func (c *scopesClient) Create(ctx context.Context, opt ...Option) (*Scope, *api.Error, error) {
+func (c *scopesClient) Create(ctx context.Context, scopeId string, opt ...Option) (*Scope, *api.Error, error) {
+	if scopeId == "" {
+		return nil, nil, fmt.Errorf("empty scopeId value passed into Create request")
+	}
+
 	if c.client == nil {
 		return nil, nil, fmt.Errorf("nil client")
 	}
 
 	opts, apiOpts := getOpts(opt...)
 
-	req, err := c.client.NewRequest(ctx, "POST", fmt.Sprintf("scopes"), opts.valueMap, apiOpts...)
+	req, err := c.client.NewRequest(ctx, "POST", "scopes", opts.valueMap, apiOpts...)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error creating Create request: %w", err)
 	}
+
+	q := url.Values{}
+	q.Add("scope_id", scopeId)
+	req.URL.RawQuery = q.Encode()
 
 	resp, err := c.client.Do(req)
 	if err != nil {
@@ -113,12 +122,15 @@ func (c *scopesClient) Update(ctx context.Context, scopeId string, version uint3
 		}
 		version = existingTarget.Version
 	}
-	opts.valueMap["version"] = version
 
 	req, err := c.client.NewRequest(ctx, "PATCH", fmt.Sprintf("scopes/%s", scopeId), opts.valueMap, apiOpts...)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error creating Update request: %w", err)
 	}
+
+	q := url.Values{}
+	q.Add("version", fmt.Sprintf("%d", version))
+	req.URL.RawQuery = q.Encode()
 
 	resp, err := c.client.Do(req)
 	if err != nil {
@@ -167,17 +179,25 @@ func (c *scopesClient) Delete(ctx context.Context, scopeId string, opt ...Option
 	return target.Existed, apiErr, nil
 }
 
-func (c *scopesClient) List(ctx context.Context, opt ...Option) ([]*Scope, *api.Error, error) {
+func (c *scopesClient) List(ctx context.Context, scopeId string, opt ...Option) ([]*Scope, *api.Error, error) {
+	if scopeId == "" {
+		return nil, nil, fmt.Errorf("empty scopeId value passed into List request")
+	}
+
 	if c.client == nil {
 		return nil, nil, fmt.Errorf("nil client")
 	}
 
 	_, apiOpts := getOpts(opt...)
 
-	req, err := c.client.NewRequest(ctx, "GET", fmt.Sprintf("scopes"), nil, apiOpts...)
+	req, err := c.client.NewRequest(ctx, "GET", "scopes", nil, apiOpts...)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error creating List request: %w", err)
 	}
+
+	q := url.Values{}
+	q.Add("scope_id", scopeId)
+	req.URL.RawQuery = q.Encode()
 
 	resp, err := c.client.Do(req)
 	if err != nil {
