@@ -40,7 +40,7 @@ func (r *Repository) CreateAuthMethod(ctx context.Context, m *AuthMethod, opt ..
 
 	if opts.withPublicId != "" {
 		if !strings.HasPrefix(opts.withPublicId, AuthMethodPrefix+"_") {
-			return nil, fmt.Errorf("create: password auth method: passed-in public ID %q has wrong prefix, should be %q", opts.withPublicId, AuthMethodPrefix)
+			return nil, fmt.Errorf("create: password auth method: passed-in public ID %q has wrong prefix, should be %q: %w", opts.withPublicId, AuthMethodPrefix, db.ErrInvalidPublicId)
 		}
 		m.PublicId = opts.withPublicId
 	} else {

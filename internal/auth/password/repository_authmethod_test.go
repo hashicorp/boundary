@@ -235,6 +235,22 @@ func TestRepository_CreateAuthMethod(t *testing.T) {
 		assert.Equal(amId, got.GetPublicId())
 		assert.Equal(got.CreateTime, got.UpdateTime)
 	})
+
+	t.Run("invalid-with-badpublicid", func(t *testing.T) {
+		assert, require := assert.New(t), require.New(t)
+		repo, err := NewRepository(rw, rw, wrapper)
+		require.NoError(err)
+		require.NotNil(repo)
+
+		org1, _ := iam.TestScopes(t, conn)
+		in := allocAuthMethod()
+
+		in.ScopeId = org1.GetPublicId()
+		got, err := repo.CreateAuthMethod(context.Background(), &in, WithPublicId("invalid_idwithabadprefix"))
+		assert.Error(err)
+		assert.Nil(got)
+		assert.True(errors.Is(err, db.ErrInvalidPublicId))
+	})
 }
 
 func TestRepository_LookupAuthMethod(t *testing.T) {
