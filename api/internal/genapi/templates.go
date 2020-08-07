@@ -469,6 +469,13 @@ import (
 	"github.com/hashicorp/watchtower/api"
 )
 
+// Option is a func that sets optional attributes for a call. This does not need
+// to be used directly, but instead option arguments are built from the
+// functions in this package. WithX options set a value to that given in the
+// argument; DefaultX options indicate that the value should be set to its
+// default. When an API call is made, options are processed in-order, so for a
+// given argument X, a succession of WithX or DefaultX calls will result in the
+// last call taking effect.
 type Option func(*options)
 
 type options struct {
