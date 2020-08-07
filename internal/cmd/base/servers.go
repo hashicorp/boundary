@@ -456,7 +456,7 @@ func (b *Server) CreateDevDatabase(dialect string) error {
 	if err != nil {
 		return fmt.Errorf("error creating in memory role for anon authen: %w", err)
 	}
-	authenRole, err := repo.CreateRole(ctx, ar, iam.WithDescription("role for anon authen"))
+	authenRole, err := repo.CreateRole(ctx, ar, iam.WithDescription("role for authentication by the anonymous user"))
 	if err != nil {
 		return fmt.Errorf("error creating role for anon authen: %w", err)
 	}
@@ -471,7 +471,7 @@ func (b *Server) CreateDevDatabase(dialect string) error {
 	if err != nil {
 		return fmt.Errorf("error creating in memory role for default dev grants: %w", err)
 	}
-	defPermsRole, err := repo.CreateRole(ctx, pr, iam.WithDescription("role for def grants"))
+	defPermsRole, err := repo.CreateRole(ctx, pr, iam.WithDescription("role for admin grants to authenticated users"))
 	if err != nil {
 		return fmt.Errorf("error creating role for default dev grants: %w", err)
 	}
