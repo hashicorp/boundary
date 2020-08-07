@@ -26,15 +26,15 @@ type Group struct {
 	Members     []*Member         `json:"members,omitempty"`
 }
 
-type groupClient struct {
+type groupsClient struct {
 	client *api.Client
 }
 
-func NewGroupClient(c *api.Client) *groupClient {
-	return &groupClient{client: c}
+func NewGroupsClient(c *api.Client) *groupsClient {
+	return &groupsClient{client: c}
 }
 
-func (c *groupClient) Create(ctx context.Context, opt ...Option) (*Group, *api.Error, error) {
+func (c *groupsClient) Create(ctx context.Context, opt ...Option) (*Group, *api.Error, error) {
 	if c.client == nil {
 		return nil, nil, fmt.Errorf("nil client")
 	}
@@ -60,7 +60,7 @@ func (c *groupClient) Create(ctx context.Context, opt ...Option) (*Group, *api.E
 	return target, apiErr, nil
 }
 
-func (c *groupClient) Read(ctx context.Context, groupId string, opt ...Option) (*Group, *api.Error, error) {
+func (c *groupsClient) Read(ctx context.Context, groupId string, opt ...Option) (*Group, *api.Error, error) {
 	if groupId == "" {
 		return nil, nil, fmt.Errorf("empty groupId value passed into Read request")
 	}
@@ -90,7 +90,7 @@ func (c *groupClient) Read(ctx context.Context, groupId string, opt ...Option) (
 	return target, apiErr, nil
 }
 
-func (c *groupClient) Update(ctx context.Context, groupId string, version uint32, opt ...Option) (*Group, *api.Error, error) {
+func (c *groupsClient) Update(ctx context.Context, groupId string, version uint32, opt ...Option) (*Group, *api.Error, error) {
 	if groupId == "" {
 		return nil, nil, fmt.Errorf("empty groupId value passed into Update request")
 	}
@@ -137,7 +137,7 @@ func (c *groupClient) Update(ctx context.Context, groupId string, version uint32
 	return target, apiErr, nil
 }
 
-func (c *groupClient) Delete(ctx context.Context, groupId string, opt ...Option) (bool, *api.Error, error) {
+func (c *groupsClient) Delete(ctx context.Context, groupId string, opt ...Option) (bool, *api.Error, error) {
 	if groupId == "" {
 		return false, nil, fmt.Errorf("empty groupId value passed into Delete request")
 	}
@@ -170,7 +170,7 @@ func (c *groupClient) Delete(ctx context.Context, groupId string, opt ...Option)
 	return target.Existed, apiErr, nil
 }
 
-func (c *groupClient) List(ctx context.Context, opt ...Option) ([]*Group, *api.Error, error) {
+func (c *groupsClient) List(ctx context.Context, opt ...Option) ([]*Group, *api.Error, error) {
 	if c.client == nil {
 		return nil, nil, fmt.Errorf("nil client")
 	}
@@ -199,7 +199,7 @@ func (c *groupClient) List(ctx context.Context, opt ...Option) ([]*Group, *api.E
 	return target.Items, apiErr, nil
 }
 
-func (c *groupClient) AddMembers(ctx context.Context, groupId string, version uint32, memberIds []string, opt ...Option) (*Group, *api.Error, error) {
+func (c *groupsClient) AddMembers(ctx context.Context, groupId string, version uint32, memberIds []string, opt ...Option) (*Group, *api.Error, error) {
 	if groupId == "" {
 		return nil, nil, fmt.Errorf("empty groupId value passed into AddMembers request")
 	}
@@ -250,7 +250,7 @@ func (c *groupClient) AddMembers(ctx context.Context, groupId string, version ui
 	return target, apiErr, nil
 }
 
-func (c *groupClient) SetMembers(ctx context.Context, groupId string, version uint32, memberIds []string, opt ...Option) (*Group, *api.Error, error) {
+func (c *groupsClient) SetMembers(ctx context.Context, groupId string, version uint32, memberIds []string, opt ...Option) (*Group, *api.Error, error) {
 	if groupId == "" {
 		return nil, nil, fmt.Errorf("empty groupId value passed into SetMembers request")
 	}
@@ -304,7 +304,7 @@ func (c *groupClient) SetMembers(ctx context.Context, groupId string, version ui
 	return target, apiErr, nil
 }
 
-func (c *groupClient) RemoveMembers(ctx context.Context, groupId string, version uint32, memberIds []string, opt ...Option) (*Group, *api.Error, error) {
+func (c *groupsClient) RemoveMembers(ctx context.Context, groupId string, version uint32, memberIds []string, opt ...Option) (*Group, *api.Error, error) {
 	if groupId == "" {
 		return nil, nil, fmt.Errorf("empty groupId value passed into RemoveMembers request")
 	}

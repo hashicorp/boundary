@@ -298,6 +298,11 @@ func (v *verifier) parseAuthParams() error {
 			return fmt.Errorf("parse auth parameters: unexpected empty segment")
 		}
 
+		// If the segment contains whitespace, it's not valid
+		if fields := strings.Fields(segment); len(fields) != 1 || fields[0] != segment {
+			return fmt.Errorf("parse auth params: segment %q contains whitespace", segment)
+		}
+
 		// Collections don't contain underscores; every resource ID does.
 		segmentIsCollection := !strings.Contains(segment, "_")
 

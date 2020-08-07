@@ -62,7 +62,7 @@ func fillTemplates() {
 	for _, in := range inputStructs {
 		outBuf := new(bytes.Buffer)
 		input := templateInput{
-			ClientName:     strings.ToLower(in.generatedStructure.name),
+			ClientName:     strings.ToLower(in.generatedStructure.name) + "s",
 			Name:           in.generatedStructure.name,
 			Package:        in.generatedStructure.pkg,
 			Fields:         in.generatedStructure.fields,
@@ -453,7 +453,7 @@ type {{ .ClientName }}Client struct {
 	client *api.Client
 }
 
-func New{{ .Name }}Client(c *api.Client) *{{ .ClientName }}Client {
+func New{{ .Name }}sClient(c *api.Client) *{{ .ClientName }}Client {
 	return &{{ .ClientName }}Client{ client: c }
 }
 `))

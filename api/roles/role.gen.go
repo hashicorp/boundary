@@ -29,15 +29,15 @@ type Role struct {
 	Grants       []*Grant          `json:"grants,omitempty"`
 }
 
-type roleClient struct {
+type rolesClient struct {
 	client *api.Client
 }
 
-func NewRoleClient(c *api.Client) *roleClient {
-	return &roleClient{client: c}
+func NewRolesClient(c *api.Client) *rolesClient {
+	return &rolesClient{client: c}
 }
 
-func (c *roleClient) Create(ctx context.Context, opt ...Option) (*Role, *api.Error, error) {
+func (c *rolesClient) Create(ctx context.Context, opt ...Option) (*Role, *api.Error, error) {
 	if c.client == nil {
 		return nil, nil, fmt.Errorf("nil client")
 	}
@@ -63,7 +63,7 @@ func (c *roleClient) Create(ctx context.Context, opt ...Option) (*Role, *api.Err
 	return target, apiErr, nil
 }
 
-func (c *roleClient) Read(ctx context.Context, roleId string, opt ...Option) (*Role, *api.Error, error) {
+func (c *rolesClient) Read(ctx context.Context, roleId string, opt ...Option) (*Role, *api.Error, error) {
 	if roleId == "" {
 		return nil, nil, fmt.Errorf("empty roleId value passed into Read request")
 	}
@@ -93,7 +93,7 @@ func (c *roleClient) Read(ctx context.Context, roleId string, opt ...Option) (*R
 	return target, apiErr, nil
 }
 
-func (c *roleClient) Update(ctx context.Context, roleId string, version uint32, opt ...Option) (*Role, *api.Error, error) {
+func (c *rolesClient) Update(ctx context.Context, roleId string, version uint32, opt ...Option) (*Role, *api.Error, error) {
 	if roleId == "" {
 		return nil, nil, fmt.Errorf("empty roleId value passed into Update request")
 	}
@@ -140,7 +140,7 @@ func (c *roleClient) Update(ctx context.Context, roleId string, version uint32, 
 	return target, apiErr, nil
 }
 
-func (c *roleClient) Delete(ctx context.Context, roleId string, opt ...Option) (bool, *api.Error, error) {
+func (c *rolesClient) Delete(ctx context.Context, roleId string, opt ...Option) (bool, *api.Error, error) {
 	if roleId == "" {
 		return false, nil, fmt.Errorf("empty roleId value passed into Delete request")
 	}
@@ -173,7 +173,7 @@ func (c *roleClient) Delete(ctx context.Context, roleId string, opt ...Option) (
 	return target.Existed, apiErr, nil
 }
 
-func (c *roleClient) List(ctx context.Context, opt ...Option) ([]*Role, *api.Error, error) {
+func (c *rolesClient) List(ctx context.Context, opt ...Option) ([]*Role, *api.Error, error) {
 	if c.client == nil {
 		return nil, nil, fmt.Errorf("nil client")
 	}
@@ -202,7 +202,7 @@ func (c *roleClient) List(ctx context.Context, opt ...Option) ([]*Role, *api.Err
 	return target.Items, apiErr, nil
 }
 
-func (c *roleClient) AddGrants(ctx context.Context, roleId string, version uint32, grantStrings []string, opt ...Option) (*Role, *api.Error, error) {
+func (c *rolesClient) AddGrants(ctx context.Context, roleId string, version uint32, grantStrings []string, opt ...Option) (*Role, *api.Error, error) {
 	if roleId == "" {
 		return nil, nil, fmt.Errorf("empty roleId value passed into AddGrants request")
 	}
@@ -253,7 +253,7 @@ func (c *roleClient) AddGrants(ctx context.Context, roleId string, version uint3
 	return target, apiErr, nil
 }
 
-func (c *roleClient) AddPrincipals(ctx context.Context, roleId string, version uint32, principalIds []string, opt ...Option) (*Role, *api.Error, error) {
+func (c *rolesClient) AddPrincipals(ctx context.Context, roleId string, version uint32, principalIds []string, opt ...Option) (*Role, *api.Error, error) {
 	if roleId == "" {
 		return nil, nil, fmt.Errorf("empty roleId value passed into AddPrincipals request")
 	}
@@ -304,7 +304,7 @@ func (c *roleClient) AddPrincipals(ctx context.Context, roleId string, version u
 	return target, apiErr, nil
 }
 
-func (c *roleClient) SetGrants(ctx context.Context, roleId string, version uint32, grantStrings []string, opt ...Option) (*Role, *api.Error, error) {
+func (c *rolesClient) SetGrants(ctx context.Context, roleId string, version uint32, grantStrings []string, opt ...Option) (*Role, *api.Error, error) {
 	if roleId == "" {
 		return nil, nil, fmt.Errorf("empty roleId value passed into SetGrants request")
 	}
@@ -358,7 +358,7 @@ func (c *roleClient) SetGrants(ctx context.Context, roleId string, version uint3
 	return target, apiErr, nil
 }
 
-func (c *roleClient) SetPrincipals(ctx context.Context, roleId string, version uint32, principalIds []string, opt ...Option) (*Role, *api.Error, error) {
+func (c *rolesClient) SetPrincipals(ctx context.Context, roleId string, version uint32, principalIds []string, opt ...Option) (*Role, *api.Error, error) {
 	if roleId == "" {
 		return nil, nil, fmt.Errorf("empty roleId value passed into SetPrincipals request")
 	}
@@ -412,7 +412,7 @@ func (c *roleClient) SetPrincipals(ctx context.Context, roleId string, version u
 	return target, apiErr, nil
 }
 
-func (c *roleClient) RemoveGrants(ctx context.Context, roleId string, version uint32, grantStrings []string, opt ...Option) (*Role, *api.Error, error) {
+func (c *rolesClient) RemoveGrants(ctx context.Context, roleId string, version uint32, grantStrings []string, opt ...Option) (*Role, *api.Error, error) {
 	if roleId == "" {
 		return nil, nil, fmt.Errorf("empty roleId value passed into RemoveGrants request")
 	}
@@ -463,7 +463,7 @@ func (c *roleClient) RemoveGrants(ctx context.Context, roleId string, version ui
 	return target, apiErr, nil
 }
 
-func (c *roleClient) RemovePrincipals(ctx context.Context, roleId string, version uint32, principalIds []string, opt ...Option) (*Role, *api.Error, error) {
+func (c *rolesClient) RemovePrincipals(ctx context.Context, roleId string, version uint32, principalIds []string, opt ...Option) (*Role, *api.Error, error) {
 	if roleId == "" {
 		return nil, nil, fmt.Errorf("empty roleId value passed into RemovePrincipals request")
 	}

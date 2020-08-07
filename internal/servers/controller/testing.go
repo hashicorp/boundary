@@ -114,6 +114,9 @@ type TestControllerOpts struct {
 	// in the normal config.
 	DefaultOrgId string
 
+	// DefaultAuthMethodId is the default auth method ID to use, if set.
+	DefaultAuthMethodId string
+
 	// DefaultUsername is the username used when creating the default account.
 	DefaultUsername string
 
@@ -168,7 +171,9 @@ func NewTestController(t *testing.T, opts *TestControllerOpts) *TestController {
 	if opts.DefaultOrgId != "" {
 		tc.b.DefaultOrgId = opts.DefaultOrgId
 	}
-
+	if opts.DefaultAuthMethodId != "" {
+		tc.b.DevAuthMethodId = opts.DefaultAuthMethodId
+	}
 	if opts.DefaultUsername != "" {
 		tc.b.DevUsername = opts.DefaultUsername
 	}

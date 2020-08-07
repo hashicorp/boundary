@@ -22,15 +22,15 @@ type AuthToken struct {
 	ExpirationTime          time.Time         `json:"expiration_time,omitempty"`
 }
 
-type authtokenClient struct {
+type authtokensClient struct {
 	client *api.Client
 }
 
-func NewAuthTokenClient(c *api.Client) *authtokenClient {
-	return &authtokenClient{client: c}
+func NewAuthTokensClient(c *api.Client) *authtokensClient {
+	return &authtokensClient{client: c}
 }
 
-func (c *authtokenClient) Read(ctx context.Context, authTokenId string, opt ...Option) (*AuthToken, *api.Error, error) {
+func (c *authtokensClient) Read(ctx context.Context, authTokenId string, opt ...Option) (*AuthToken, *api.Error, error) {
 	if authTokenId == "" {
 		return nil, nil, fmt.Errorf("empty authTokenId value passed into Read request")
 	}
@@ -60,7 +60,7 @@ func (c *authtokenClient) Read(ctx context.Context, authTokenId string, opt ...O
 	return target, apiErr, nil
 }
 
-func (c *authtokenClient) Delete(ctx context.Context, authTokenId string, opt ...Option) (bool, *api.Error, error) {
+func (c *authtokensClient) Delete(ctx context.Context, authTokenId string, opt ...Option) (bool, *api.Error, error) {
 	if authTokenId == "" {
 		return false, nil, fmt.Errorf("empty authTokenId value passed into Delete request")
 	}
@@ -93,7 +93,7 @@ func (c *authtokenClient) Delete(ctx context.Context, authTokenId string, opt ..
 	return target.Existed, apiErr, nil
 }
 
-func (c *authtokenClient) List(ctx context.Context, opt ...Option) ([]*AuthToken, *api.Error, error) {
+func (c *authtokensClient) List(ctx context.Context, opt ...Option) ([]*AuthToken, *api.Error, error) {
 	if c.client == nil {
 		return nil, nil, fmt.Errorf("nil client")
 	}

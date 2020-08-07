@@ -22,15 +22,15 @@ type Host struct {
 	Address     string            `json:"address,omitempty"`
 }
 
-type hostClient struct {
+type hostsClient struct {
 	client *api.Client
 }
 
-func NewHostClient(c *api.Client) *hostClient {
-	return &hostClient{client: c}
+func NewHostsClient(c *api.Client) *hostsClient {
+	return &hostsClient{client: c}
 }
 
-func (c *hostClient) Create(ctx context.Context, hostCatalogId string, opt ...Option) (*Host, *api.Error, error) {
+func (c *hostsClient) Create(ctx context.Context, hostCatalogId string, opt ...Option) (*Host, *api.Error, error) {
 	if hostCatalogId == "" {
 		return nil, nil, fmt.Errorf("empty hostCatalogId value passed into Create request")
 	}
@@ -60,7 +60,7 @@ func (c *hostClient) Create(ctx context.Context, hostCatalogId string, opt ...Op
 	return target, apiErr, nil
 }
 
-func (c *hostClient) Read(ctx context.Context, hostCatalogId string, hostId string, opt ...Option) (*Host, *api.Error, error) {
+func (c *hostsClient) Read(ctx context.Context, hostCatalogId string, hostId string, opt ...Option) (*Host, *api.Error, error) {
 	if hostCatalogId == "" {
 		return nil, nil, fmt.Errorf("empty hostCatalogId value passed into Read request")
 	}
@@ -94,7 +94,7 @@ func (c *hostClient) Read(ctx context.Context, hostCatalogId string, hostId stri
 	return target, apiErr, nil
 }
 
-func (c *hostClient) Update(ctx context.Context, hostCatalogId string, hostId string, version uint32, opt ...Option) (*Host, *api.Error, error) {
+func (c *hostsClient) Update(ctx context.Context, hostCatalogId string, hostId string, version uint32, opt ...Option) (*Host, *api.Error, error) {
 	if hostCatalogId == "" {
 		return nil, nil, fmt.Errorf("empty hostCatalogId value passed into Update request")
 	}
@@ -126,7 +126,7 @@ func (c *hostClient) Update(ctx context.Context, hostCatalogId string, hostId st
 	return target, apiErr, nil
 }
 
-func (c *hostClient) Delete(ctx context.Context, hostCatalogId string, hostId string, opt ...Option) (bool, *api.Error, error) {
+func (c *hostsClient) Delete(ctx context.Context, hostCatalogId string, hostId string, opt ...Option) (bool, *api.Error, error) {
 	if hostCatalogId == "" {
 		return false, nil, fmt.Errorf("empty hostCatalogId value passed into Delete request")
 	}
@@ -163,7 +163,7 @@ func (c *hostClient) Delete(ctx context.Context, hostCatalogId string, hostId st
 	return target.Existed, apiErr, nil
 }
 
-func (c *hostClient) List(ctx context.Context, hostCatalogId string, opt ...Option) ([]*Host, *api.Error, error) {
+func (c *hostsClient) List(ctx context.Context, hostCatalogId string, opt ...Option) ([]*Host, *api.Error, error) {
 	if hostCatalogId == "" {
 		return nil, nil, fmt.Errorf("empty hostCatalogId value passed into List request")
 	}

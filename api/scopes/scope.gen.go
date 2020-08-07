@@ -23,15 +23,15 @@ type Scope struct {
 	Version     uint32     `json:"version,omitempty"`
 }
 
-type scopeClient struct {
+type scopesClient struct {
 	client *api.Client
 }
 
-func NewScopeClient(c *api.Client) *scopeClient {
-	return &scopeClient{client: c}
+func NewScopesClient(c *api.Client) *scopesClient {
+	return &scopesClient{client: c}
 }
 
-func (c *scopeClient) Create(ctx context.Context, opt ...Option) (*Scope, *api.Error, error) {
+func (c *scopesClient) Create(ctx context.Context, opt ...Option) (*Scope, *api.Error, error) {
 	if c.client == nil {
 		return nil, nil, fmt.Errorf("nil client")
 	}
@@ -57,7 +57,7 @@ func (c *scopeClient) Create(ctx context.Context, opt ...Option) (*Scope, *api.E
 	return target, apiErr, nil
 }
 
-func (c *scopeClient) Read(ctx context.Context, scopeId string, opt ...Option) (*Scope, *api.Error, error) {
+func (c *scopesClient) Read(ctx context.Context, scopeId string, opt ...Option) (*Scope, *api.Error, error) {
 	if scopeId == "" {
 		return nil, nil, fmt.Errorf("empty scopeId value passed into Read request")
 	}
@@ -87,7 +87,7 @@ func (c *scopeClient) Read(ctx context.Context, scopeId string, opt ...Option) (
 	return target, apiErr, nil
 }
 
-func (c *scopeClient) Update(ctx context.Context, scopeId string, version uint32, opt ...Option) (*Scope, *api.Error, error) {
+func (c *scopesClient) Update(ctx context.Context, scopeId string, version uint32, opt ...Option) (*Scope, *api.Error, error) {
 	if scopeId == "" {
 		return nil, nil, fmt.Errorf("empty scopeId value passed into Update request")
 	}
@@ -134,7 +134,7 @@ func (c *scopeClient) Update(ctx context.Context, scopeId string, version uint32
 	return target, apiErr, nil
 }
 
-func (c *scopeClient) Delete(ctx context.Context, scopeId string, opt ...Option) (bool, *api.Error, error) {
+func (c *scopesClient) Delete(ctx context.Context, scopeId string, opt ...Option) (bool, *api.Error, error) {
 	if scopeId == "" {
 		return false, nil, fmt.Errorf("empty scopeId value passed into Delete request")
 	}
@@ -167,7 +167,7 @@ func (c *scopeClient) Delete(ctx context.Context, scopeId string, opt ...Option)
 	return target.Existed, apiErr, nil
 }
 
-func (c *scopeClient) List(ctx context.Context, opt ...Option) ([]*Scope, *api.Error, error) {
+func (c *scopesClient) List(ctx context.Context, opt ...Option) ([]*Scope, *api.Error, error) {
 	if c.client == nil {
 		return nil, nil, fmt.Errorf("nil client")
 	}
