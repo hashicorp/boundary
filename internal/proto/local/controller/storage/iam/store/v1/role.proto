@@ -5,7 +5,7 @@ option go_package = "github.com/hashicorp/watchtower/internal/iam/store;store";
 
 import "controller/storage/timestamp/v1/timestamp.proto";
 import "controller/storage/iam/store/v1/scope.proto";
-import "controller/custom_options/v1/masks.proto";
+import "controller/custom_options/v1/options.proto";
 
 message Role {
   // public_id is used to access the Role via an API

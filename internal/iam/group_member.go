@@ -60,8 +60,8 @@ type GroupMemberUser struct {
 	tableName string `gorm:"-"`
 }
 
-// ensure that GroupMember implements the interfaces of: Clonable, db.VetForWriter
-var _ Clonable = (*GroupMemberUser)(nil)
+// ensure that GroupMember implements the interfaces of: Cloneable, db.VetForWriter
+var _ Cloneable = (*GroupMemberUser)(nil)
 var _ db.VetForWriter = (*GroupMemberUser)(nil)
 
 // NewGroupMemberUser creates a new in memory user member of the group. No

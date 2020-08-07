@@ -46,7 +46,7 @@ func (r *Repository) CreateGroup(ctx context.Context, group *Group, opt ...Optio
 // be updated.  Fields will be set to NULL if the field is a zero value and
 // included in fieldMask. Name and Description are the only updatable fields,
 // If no updatable fields are included in the fieldMaskPaths, then an error is returned.
-func (r *Repository) UpdateGroup(ctx context.Context, group *Group, fieldMaskPaths []string, opt ...Option) (*Group, []*GroupMember, int, error) {
+func (r *Repository) UpdateGroup(ctx context.Context, group *Group, version uint32, fieldMaskPaths []string, opt ...Option) (*Group, []*GroupMember, int, error) {
 	if group == nil {
 		return nil, nil, db.NoRowsAffected, fmt.Errorf("update group: missing group %w", db.ErrNilParameter)
 	}
@@ -85,7 +85,7 @@ func (r *Repository) UpdateGroup(ctx context.Context, group *Group, fieldMaskPat
 		func(read db.Reader, w db.Writer) error {
 			var err error
 			g := group.Clone().(*Group)
-			resource, rowsUpdated, err = r.update(ctx, g, dbMask, nullFields)
+			resource, rowsUpdated, err = r.update(ctx, g, version, dbMask, nullFields)
 			if err != nil {
 				return err
 			}

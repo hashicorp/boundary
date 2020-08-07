@@ -23,9 +23,9 @@ type Role struct {
 	tableName string `gorm:"-"`
 }
 
-// ensure that Role implements the interfaces of: Resource, Clonable, and db.VetForWriter.
+// ensure that Role implements the interfaces of: Resource, Cloneable, and db.VetForWriter.
 var _ Resource = (*Role)(nil)
-var _ Clonable = (*Role)(nil)
+var _ Cloneable = (*Role)(nil)
 var _ db.VetForWriter = (*Role)(nil)
 
 // NewRole creates a new in memory role with a scope (project/org)

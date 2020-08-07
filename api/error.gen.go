@@ -2,14 +2,8 @@
 package api
 
 type Error struct {
-
-	// The HTTP Status code applicable to this error
-	Status int32 `json:"status,omitempty"`
-	// An application-specific error string
-	Code string `json:"code,omitempty"`
-	// A human readable explanation specific to this occurrence of the error
-	Message string `json:"message,omitempty"`
-	// Additional metadata regarding the error. Depending on the error
-	// different fields will be populated.
+	Status  int32         `json:"status,omitempty"`
+	Code    string        `json:"code,omitempty"`
+	Message string        `json:"message,omitempty"`
 	Details *ErrorDetails `json:"details,omitempty"`
 }

@@ -300,7 +300,7 @@ func TestRepository_UpdateUser(t *testing.T) {
 			if tt.wantDup {
 				u := TestUser(t, conn, org.PublicId, tt.newUserOpts...)
 				u.Name = tt.args.name
-				_, _, err := repo.UpdateUser(context.Background(), u, tt.args.fieldMaskPaths, tt.args.opt...)
+				_, _, err := repo.UpdateUser(context.Background(), u, 1, tt.args.fieldMaskPaths, tt.args.opt...)
 				require.NoError(err)
 			}
 
@@ -321,12 +321,12 @@ func TestRepository_UpdateUser(t *testing.T) {
 			if tt.directUpdate {
 				u := updateUser.Clone()
 				var resource interface{}
-				resource, updatedRows, err = repo.update(context.Background(), u.(*User), tt.args.fieldMaskPaths, nil, tt.args.opt...)
+				resource, updatedRows, err = repo.update(context.Background(), u.(*User), 1, tt.args.fieldMaskPaths, nil, tt.args.opt...)
 				if err == nil {
 					userAfterUpdate = resource.(*User)
 				}
 			} else {
-				userAfterUpdate, updatedRows, err = repo.UpdateUser(context.Background(), &updateUser, tt.args.fieldMaskPaths, tt.args.opt...)
+				userAfterUpdate, updatedRows, err = repo.UpdateUser(context.Background(), &updateUser, 1, tt.args.fieldMaskPaths, tt.args.opt...)
 			}
 			if tt.wantErr {
 				require.Error(err)

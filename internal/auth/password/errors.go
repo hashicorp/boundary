@@ -14,4 +14,8 @@ var (
 	// ErrInvalidConfiguration results from attempting to perform an
 	// operation that sets a password configuration with invalid settings.
 	ErrInvalidConfiguration = errors.New("invalid configuration")
+
+	// ErrPasswordsEqual is returned from ChangePassword when the old and
+	// new passwords are equal.
+	ErrPasswordsEqual = errors.New("old and new password are equal")
 )

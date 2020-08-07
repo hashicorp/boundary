@@ -530,16 +530,26 @@ func TestUpdate(t *testing.T) {
 		ScopeId: u.GetScopeId(),
 	}
 
+	var orVersion uint32 = 1
+	var prVersion uint32 = 1
+
 	tested, err := roles.NewService(repoFn)
 	require.NoError(t, err, "Error when getting new role service.")
 
-	resetRoles := func() {
+	resetRoles := func(proj bool) {
 		repo, err := repoFn()
 		require.NoError(t, err, "Couldn't get a new repo")
-		or, _, _, _, err = repo.UpdateRole(context.Background(), or, []string{"Name", "Description"})
-		require.NoError(t, err, "Failed to reset the role")
-		pr, _, _, _, err = repo.UpdateRole(context.Background(), pr, []string{"Name", "Description"})
-		require.NoError(t, err, "Failed to reset the role")
+		if proj {
+			prVersion++
+			pr, _, _, _, err = repo.UpdateRole(context.Background(), pr, prVersion, []string{"Name", "Description"})
+			require.NoError(t, err, "Failed to reset the role")
+			prVersion++
+		} else {
+			orVersion++
+			or, _, _, _, err = repo.UpdateRole(context.Background(), or, orVersion, []string{"Name", "Description"})
+			require.NoError(t, err, "Failed to reset the role")
+			orVersion++
+		}
 	}
 
 	created, err := ptypes.Timestamp(or.GetCreateTime().GetTimestamp())
@@ -805,7 +815,6 @@ func TestUpdate(t *testing.T) {
 		{
 			name: "Cant change Id",
 			req: &pbs.UpdateRoleRequest{
-				Id: or.GetPublicId(),
 				UpdateMask: &field_mask.FieldMask{
 					Paths: []string{"id"},
 				},
@@ -872,13 +881,31 @@ func TestUpdate(t *testing.T) {
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			defer resetRoles()
+			ver := orVersion
+			if tc.req.Id == pr.PublicId {
+				ver = prVersion
+			}
+			tc.req.Version = ver
+
 			assert, require := assert.New(t), require.New(t)
 			req := proto.Clone(toMerge).(*pbs.UpdateRoleRequest)
 			proto.Merge(req, tc.req)
 
+			// Test with bad version (too high, too low)
+			req.Version = ver + 2
+			_, gErr := tested.UpdateRole(auth.DisabledAuthTestContext(auth.WithScopeId(tc.scopeId)), req)
+			require.Error(gErr)
+			req.Version = ver - 1
+			_, gErr = tested.UpdateRole(auth.DisabledAuthTestContext(auth.WithScopeId(tc.scopeId)), req)
+			require.Error(gErr)
+			req.Version = ver
+
 			got, gErr := tested.UpdateRole(auth.DisabledAuthTestContext(auth.WithScopeId(tc.scopeId)), req)
 			assert.Equal(tc.errCode, status.Code(gErr), "UpdateRole(%+v) got error %v, wanted %v", req, gErr, tc.errCode)
+
+			if tc.errCode == codes.OK {
+				defer resetRoles(req.Id == pr.PublicId)
+			}
 
 			if got != nil {
 				assert.NotNilf(tc.res, "Expected UpdateRole response to be nil, but was %v", got)
@@ -890,8 +917,8 @@ func TestUpdate(t *testing.T) {
 				// Clear all values which are hard to compare against.
 				got.Item.UpdatedTime, tc.res.Item.UpdatedTime = nil, nil
 
-				// TODO: Figure out the best way to test versions when updating roles
-				got.GetItem().Version = 0
+				assert.Equal(ver+1, got.GetItem().GetVersion())
+				tc.res.Item.Version = ver + 1
 			}
 			assert.Empty(cmp.Diff(got, tc.res, protocmp.Transform()), "UpdateRole(%q) got response\n%q,\nwanted\n%q", req, got, tc.res)
 		})
@@ -974,7 +1001,7 @@ func TestAddPrincipal(t *testing.T) {
 				tc.setup(role)
 				req := &pbs.AddRolePrincipalsRequest{
 					RoleId:       role.GetPublicId(),
-					Version:      &wrapperspb.UInt32Value{Value: role.GetVersion()},
+					Version:      role.GetVersion(),
 					PrincipalIds: append(tc.addUsers, tc.addGroups...),
 				}
 
@@ -1003,7 +1030,7 @@ func TestAddPrincipal(t *testing.T) {
 			name: "Bad Role Id",
 			req: &pbs.AddRolePrincipalsRequest{
 				RoleId:  "bad id",
-				Version: &wrapperspb.UInt32Value{Value: role.GetVersion()},
+				Version: role.GetVersion(),
 			},
 			errCode: codes.InvalidArgument,
 		},
@@ -1094,7 +1121,7 @@ func TestSetPrincipal(t *testing.T) {
 				tc.setup(role)
 				req := &pbs.SetRolePrincipalsRequest{
 					RoleId:       role.GetPublicId(),
-					Version:      &wrapperspb.UInt32Value{Value: role.GetVersion()},
+					Version:      role.GetVersion(),
 					PrincipalIds: append(tc.setUsers, tc.setGroups...),
 				}
 
@@ -1123,7 +1150,7 @@ func TestSetPrincipal(t *testing.T) {
 			name: "Bad Role Id",
 			req: &pbs.SetRolePrincipalsRequest{
 				RoleId:  "bad id",
-				Version: &wrapperspb.UInt32Value{Value: role.GetVersion()},
+				Version: role.GetVersion(),
 			},
 			errCode: codes.InvalidArgument,
 		},
@@ -1232,7 +1259,7 @@ func TestRemovePrincipal(t *testing.T) {
 				tc.setup(role)
 				req := &pbs.RemoveRolePrincipalsRequest{
 					RoleId:       role.GetPublicId(),
-					Version:      &wrapperspb.UInt32Value{Value: role.GetVersion()},
+					Version:      role.GetVersion(),
 					PrincipalIds: append(tc.removeUsers, tc.removeGroups...),
 				}
 
@@ -1261,7 +1288,7 @@ func TestRemovePrincipal(t *testing.T) {
 			name: "Bad Role Id",
 			req: &pbs.AddRolePrincipalsRequest{
 				RoleId:  "bad id",
-				Version: &wrapperspb.UInt32Value{Value: role.GetVersion()},
+				Version: role.GetVersion(),
 			},
 			errCode: codes.InvalidArgument,
 		},
@@ -1341,7 +1368,7 @@ func TestAddGrants(t *testing.T) {
 				}
 				req := &pbs.AddRoleGrantsRequest{
 					RoleId:  role.GetPublicId(),
-					Version: &wrapperspb.UInt32Value{Value: role.GetVersion()},
+					Version: role.GetVersion(),
 				}
 				scopeId := o.GetPublicId()
 				if o != scope {
@@ -1371,7 +1398,7 @@ func TestAddGrants(t *testing.T) {
 			req: &pbs.AddRoleGrantsRequest{
 				RoleId:       "bad id",
 				GrantStrings: []string{"id=*;actions=create"},
-				Version:      &wrapperspb.UInt32Value{Value: role.GetVersion()},
+				Version:      role.GetVersion(),
 			},
 			errCode: codes.InvalidArgument,
 		},
@@ -1439,7 +1466,7 @@ func TestSetGrants(t *testing.T) {
 				}
 				req := &pbs.SetRoleGrantsRequest{
 					RoleId:  role.GetPublicId(),
-					Version: &wrapperspb.UInt32Value{Value: role.GetVersion()},
+					Version: role.GetVersion(),
 				}
 				scopeId := o.GetPublicId()
 				if o != scope {
@@ -1471,7 +1498,7 @@ func TestSetGrants(t *testing.T) {
 			req: &pbs.SetRoleGrantsRequest{
 				RoleId:       "bad id",
 				GrantStrings: []string{"id=*;actions=create"},
-				Version:      &wrapperspb.UInt32Value{Value: role.GetVersion()},
+				Version:      role.GetVersion(),
 			},
 			errCode: codes.InvalidArgument,
 		},
@@ -1538,7 +1565,7 @@ func TestRemoveGrants(t *testing.T) {
 				}
 				req := &pbs.RemoveRoleGrantsRequest{
 					RoleId:  role.GetPublicId(),
-					Version: &wrapperspb.UInt32Value{Value: role.GetVersion()},
+					Version: role.GetVersion(),
 				}
 				scopeId := o.GetPublicId()
 				if o != scope {
@@ -1571,7 +1598,7 @@ func TestRemoveGrants(t *testing.T) {
 			req: &pbs.RemoveRoleGrantsRequest{
 				RoleId:       "bad id",
 				GrantStrings: []string{"id=*;actions=create"},
-				Version:      &wrapperspb.UInt32Value{Value: role.GetVersion()},
+				Version:      role.GetVersion(),
 			},
 			errCode: codes.InvalidArgument,
 		},

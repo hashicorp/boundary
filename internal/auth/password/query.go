@@ -11,6 +11,7 @@ select acct.name,                        -- Account.Name
        acct.create_time,                 -- Account.CreateTime
        acct.update_time,                 -- Account.UpdateTime
        cred.private_id as credential_id, -- Account.CredentialId
+       cred.private_id,                  -- Argon2Credential.PrivateId
        cred.password_conf_id,            -- Argon2Credential.PasswordConfId
        cred.salt,                        -- Argon2Credential.CtSalt/Salt
        cred.derived_key,                 -- Argon2Credential.DerivedKey

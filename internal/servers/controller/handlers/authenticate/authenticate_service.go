@@ -2,66 +2,66 @@ package authenticate
 
 import (
 	"context"
-	"crypto/sha256"
-	"encoding/base32"
 	"fmt"
 	"regexp"
 	"strings"
-	"sync/atomic"
 
+	"github.com/hashicorp/watchtower/internal/auth"
 	"github.com/hashicorp/watchtower/internal/authtoken"
-	"github.com/hashicorp/watchtower/internal/db"
 	pba "github.com/hashicorp/watchtower/internal/gen/controller/api/resources/authtokens"
 	"github.com/hashicorp/watchtower/internal/gen/controller/api/resources/scopes"
 	pbs "github.com/hashicorp/watchtower/internal/gen/controller/api/services"
 	"github.com/hashicorp/watchtower/internal/iam"
-	iamStore "github.com/hashicorp/watchtower/internal/iam/store"
 	"github.com/hashicorp/watchtower/internal/servers/controller/common"
 	"github.com/hashicorp/watchtower/internal/servers/controller/handlers"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
 
-const scopeIdFieldName = "scope_id"
+const (
+	nameKey = "name"
+	pwKey   = "password"
+)
 
 var (
 	reInvalidID = regexp.MustCompile("[^A-Za-z0-9]")
-
-	// TODO: Remove once auth methods are in
-	Scope string
-	RWDb  = new(atomic.Value)
 )
-
-func init() {
-	RWDb.Store((*db.Db)(nil))
-}
 
 // Service handles request as described by the pbs.OrgServiceServer interface.
 type Service struct {
+	pwRepo        common.PasswordAuthRepoFactory
 	iamRepo       common.IamRepoFactory
 	authTokenRepo common.AuthTokenRepoFactory
 }
 
 // NewService returns an org service which handles org related requests to watchtower.
-func NewService(iamRepo common.IamRepoFactory, atRepo common.AuthTokenRepoFactory) (Service, error) {
+func NewService(pwRepo common.PasswordAuthRepoFactory, iamRepo common.IamRepoFactory, atRepo common.AuthTokenRepoFactory) (Service, error) {
 	if iamRepo == nil {
 		return Service{}, fmt.Errorf("nil iam repository provided")
 	}
 	if atRepo == nil {
 		return Service{}, fmt.Errorf("nil auth token repository provided")
 	}
+	if pwRepo == nil {
+		return Service{}, fmt.Errorf("nil password repository provided")
+	}
 
-	return Service{iamRepo: iamRepo, authTokenRepo: atRepo}, nil
+	return Service{pwRepo: pwRepo, iamRepo: iamRepo, authTokenRepo: atRepo}, nil
 }
 
 var _ pbs.AuthenticationServiceServer = Service{}
 
 // Authenticate implements the interface pbs.AuthenticationServiceServer.
 func (s Service) Authenticate(ctx context.Context, req *pbs.AuthenticateRequest) (*pbs.AuthenticateResponse, error) {
+	authResults := auth.Verify(ctx)
+	if !authResults.Valid {
+		return nil, handlers.ForbiddenError()
+	}
 	if err := validateAuthenticateRequest(req); err != nil {
 		return nil, err
 	}
-	tok, err := s.authenticateWithRepo(ctx, req)
+	creds := req.GetCredentials().GetFields()
+	tok, err := s.authenticateWithRepo(ctx, req.GetAuthMethodId(), creds[nameKey].GetStringValue(), creds[pwKey].GetStringValue())
 	if err != nil {
 		return nil, err
 	}
@@ -73,7 +73,7 @@ func (s Service) Deauthenticate(ctx context.Context, req *pbs.DeauthenticateRequ
 	return nil, status.Error(codes.Unimplemented, "Requested method is unimplemented.")
 }
 
-func (s Service) authenticateWithRepo(ctx context.Context, req *pbs.AuthenticateRequest) (*pba.AuthToken, error) {
+func (s Service) authenticateWithRepo(ctx context.Context, authMethodId, name, pw string) (*pba.AuthToken, error) {
 	iamRepo, err := s.iamRepo()
 	if err != nil {
 		return nil, err
@@ -82,29 +82,24 @@ func (s Service) authenticateWithRepo(ctx context.Context, req *pbs.Authenticate
 	if err != nil {
 		return nil, err
 	}
-	// Place holder for making a request to authenticate
-	creds := req.GetCredentials().GetFields()
-	pwName, password := creds["name"], creds["password"]
-	if pwName.GetStringValue() == "wrong" && password.GetStringValue() == "wrong" {
-		return nil, status.Error(codes.Unauthenticated, "Unable to authenticate.")
-	}
-	// Get back a password.Account with a CredentialId string and a public Id
-	// Create a fake auth account ID for the moment
-	acctIdBytes := sha256.Sum256([]byte(pwName.GetStringValue()))
-	acctId := fmt.Sprintf("aa_%s", base32.StdEncoding.EncodeToString(acctIdBytes[:])[0:10])
-
-	aAcct := &iam.Account{Account: &iamStore.AuthAccount{
-		PublicId:     acctId,
-		ScopeId:      Scope,
-		AuthMethodId: req.AuthMethodId,
-	}}
-	RWDb.Load().(*db.Db).Create(ctx, aAcct)
-
-	u, err := iamRepo.LookupUserWithLogin(ctx, acctId, iam.WithAutoVivify(true))
+	pwRepo, err := s.pwRepo()
 	if err != nil {
 		return nil, err
 	}
-	tok, err := atRepo.CreateAuthToken(ctx, u.GetPublicId(), acctId)
+
+	acct, err := pwRepo.Authenticate(ctx, authMethodId, name, pw)
+	if err != nil {
+		return nil, err
+	}
+	if acct == nil {
+		return nil, status.Error(codes.Unauthenticated, "Unable to authenticate.")
+	}
+
+	u, err := iamRepo.LookupUserWithLogin(ctx, acct.GetPublicId(), iam.WithAutoVivify(true))
+	if err != nil {
+		return nil, err
+	}
+	tok, err := atRepo.CreateAuthToken(ctx, u.GetPublicId(), acct.GetPublicId())
 	if err != nil {
 		return nil, err
 	}
@@ -155,6 +150,13 @@ func validateAuthenticateRequest(req *pbs.AuthenticateRequest) error {
 	// TODO: Update this when we enable different auth method types.
 	if req.GetCredentials() == nil {
 		badFields["credentials"] = "This is a required field."
+	}
+	creds := req.GetCredentials().GetFields()
+	if _, ok := creds[nameKey]; !ok {
+		badFields["credentials.name"] = "This is a required field."
+	}
+	if _, ok := creds[pwKey]; !ok {
+		badFields["credentials.password"] = "This is a required field."
 	}
 	// TODO: Update this when we enable split cookie token types.
 	tType := strings.ToLower(strings.TrimSpace(req.GetTokenType()))

@@ -1,0 +1,132 @@
+syntax = "proto3";
+
+package controller.api.services.v1;
+
+option go_package = "github.com/hashicorp/watchtower/internal/gen/controller/api/services;services";
+
+import "protoc-gen-openapiv2/options/annotations.proto";
+import "google/api/annotations.proto";
+import "google/protobuf/field_mask.proto";
+import "controller/api/resources/authmethods/v1/auth_method.proto";
+
+service AuthMethodService {
+  // GetAuthMethod returns a stored AuthMethod if present.  The provided request
+  // must include the org and auth method id for the auth method being retrieved. If
+  // any of those ids are missing, malformed or reference a non existing
+  // resource an error is returned.
+  rpc GetAuthMethod(GetAuthMethodRequest) returns (GetAuthMethodResponse) {
+    option (google.api.http) = {
+      get: "/v1/scopes/*/auth-methods/{id}"
+      response_body: "item"
+    };
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
+      summary: "Gets a single AuthMethod"
+    };
+  }
+
+  // ListAuthMethods returns a list of stored auth methods which exist inside the org
+  // referenced inside the request.  The request must include the org id for
+  // the auth methods being retrieved.  If the org id is missing, malformed, or
+  // reference a non existing organization, an error is returned.
+  rpc ListAuthMethods(ListAuthMethodsRequest) returns (ListAuthMethodsResponse) {
+    option (google.api.http) = {
+      get: "/v1/scopes/*/auth-methods"
+    };
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
+      summary: "Lists all AuthMethods"
+    };
+  }
+
+  // CreateAuthMethod creates and stores a user in watchtower.  The provided
+  // request must include the org id in which the user will be created.
+  // If the org id is missing, malformed or references a non existing
+  // org, an error is returned.  If a name is provided that is in
+  // use in another user in the same org, an error is returned.
+  rpc CreateAuthMethod(CreateAuthMethodRequest) returns (CreateAuthMethodResponse) {
+    option (google.api.http) = {
+      post: "/v1/scopes/*/auth-methods"
+      body: "item"
+      response_body: "item"
+    };
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
+      summary: "Creates a single AuthMethod"
+    };
+  }
+
+  // UpdateAuthMethod updates an existing user in watchtower.  The provided
+  // user must not have any read only fields set.  The update mask must be
+  // included in the request and contain at least 1 mutable field.  To unset
+  // a field's value, include the field in the update mask and don't set it
+  // in the provided user. An error is returned if either the org
+  // or user ids are missing or reference a non existing resource.  An error
+  // is also returned if the request attempts to update the name to one that is
+  // already in use in this org.
+  rpc UpdateAuthMethod(UpdateAuthMethodRequest) returns (UpdateAuthMethodResponse) {
+    option (google.api.http) = {
+      patch: "/v1/scopes/*/auth-methods/{id}"
+      body: "item"
+      response_body: "item"
+    };
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
+      summary: "Updates an AuthMethod"
+    };
+  }
+
+  // DeleteAuthMethod removes a user from Watchtower. If the provided org or user ids
+  // are malformed or not provided an error is returned.  No error is returned
+  // if either ids reference resources that do not exist as the response itself
+  // specifies if the resource existed before the DeleteAuthMethod request was
+  // received.
+  rpc DeleteAuthMethod(DeleteAuthMethodRequest) returns (DeleteAuthMethodResponse) {
+    option (google.api.http) = {
+      delete: "/v1/scopes/*/auth-methods/{id}"
+    };
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
+      summary: "Deletes an AuthMethod"
+    };
+  }
+}
+
+message GetAuthMethodRequest {
+  string id = 1;
+  string view = 2;
+}
+
+message GetAuthMethodResponse {
+  resources.authmethods.v1.AuthMethod item = 1;
+}
+
+message ListAuthMethodsRequest {
+  string view = 1;
+}
+
+message ListAuthMethodsResponse {
+  repeated resources.authmethods.v1.AuthMethod items = 1;
+}
+
+message CreateAuthMethodRequest {
+  resources.authmethods.v1.AuthMethod item = 1;
+}
+
+message CreateAuthMethodResponse {
+  string uri = 1;
+  resources.authmethods.v1.AuthMethod item = 2;
+}
+
+message UpdateAuthMethodRequest {
+  string id = 1;
+  resources.authmethods.v1.AuthMethod item = 2;
+  google.protobuf.FieldMask update_mask = 3;
+}
+
+message UpdateAuthMethodResponse {
+  resources.authmethods.v1.AuthMethod item = 1;
+}
+
+message DeleteAuthMethodRequest {
+  string id = 1;
+}
+
+message DeleteAuthMethodResponse {
+  bool existed = 1;
+}

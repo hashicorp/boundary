@@ -7,12 +7,11 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/watchtower/internal/auth"
 	"github.com/hashicorp/watchtower/internal/auth/password"
 	"github.com/hashicorp/watchtower/internal/auth/password/store"
 	"github.com/hashicorp/watchtower/internal/db"
-	pb "github.com/hashicorp/watchtower/internal/gen/controller/api/resources/auth"
+	pb "github.com/hashicorp/watchtower/internal/gen/controller/api/resources/authmethods"
 	pbs "github.com/hashicorp/watchtower/internal/gen/controller/api/services"
 	"github.com/hashicorp/watchtower/internal/servers/controller/handlers"
 	"google.golang.org/grpc/codes"
@@ -35,15 +34,14 @@ func init() {
 // Service handles request as described by the pbs.AccountServiceServer interface.
 type Service struct {
 	repoFn func() (*password.Repository, error)
-	log    hclog.Logger
 }
 
 // NewService returns a user service which handles user related requests to watchtower.
-func NewService(log hclog.Logger, repo func() (*password.Repository, error)) (Service, error) {
+func NewService(repo func() (*password.Repository, error)) (Service, error) {
 	if repo == nil {
 		return Service{}, fmt.Errorf("nil password repository provided")
 	}
-	return Service{log: log, repoFn: repo}, nil
+	return Service{repoFn: repo}, nil
 }
 
 var _ pbs.AccountServiceServer = Service{}
@@ -139,7 +137,7 @@ func (s Service) getFromRepo(ctx context.Context, id string) (*pb.Account, error
 	if u == nil {
 		return nil, handlers.NotFoundErrorf("Account %q doesn't exist.", id)
 	}
-	return s.toProto(u), nil
+	return toProto(u)
 }
 
 func (s Service) createInRepo(ctx context.Context, authMethodId string, item *pb.Account) (*pb.Account, error) {
@@ -169,7 +167,7 @@ func (s Service) createInRepo(ctx context.Context, authMethodId string, item *pb
 	if out == nil {
 		return nil, status.Error(codes.Internal, "Unable to create user but no error returned from repository.")
 	}
-	return s.toProto(out), nil
+	return toProto(out)
 }
 
 func (s Service) deleteFromRepo(ctx context.Context, id string) (bool, error) {
@@ -198,12 +196,16 @@ func (s Service) listFromRepo(ctx context.Context, authMethodId string) ([]*pb.A
 	}
 	var outUl []*pb.Account
 	for _, u := range ul {
-		outUl = append(outUl, s.toProto(u))
+		ou, err := toProto(u)
+		if err != nil {
+			return nil, err
+		}
+		outUl = append(outUl, ou)
 	}
 	return outUl, nil
 }
 
-func (s Service) toProto(in *password.Account) *pb.Account {
+func toProto(in *password.Account) (*pb.Account, error) {
 	out := pb.Account{
 		Id:           in.GetPublicId(),
 		CreatedTime:  in.GetCreateTime().GetTimestamp(),
@@ -220,9 +222,9 @@ func (s Service) toProto(in *password.Account) *pb.Account {
 	if st, err := handlers.ProtoToStruct(&pb.PasswordAccountAttributes{Username: in.GetUserName()}); err == nil {
 		out.Attributes = st
 	} else {
-		s.log.Error("failed converting account attribute to struct", "error", err)
+		return nil, status.Errorf(codes.Internal, "failed building password attribute struct: %v", err)
 	}
-	return &out
+	return &out, nil
 }
 
 // A validateX method should exist for each method above.  These methods do not make calls to any backing service but enforce

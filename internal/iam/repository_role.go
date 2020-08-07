@@ -46,7 +46,7 @@ func (r *Repository) CreateRole(ctx context.Context, role *Role, opt ...Option) 
 // included in fieldMask. Name, Description, and GrantScopeId are the only
 // updatable fields, If no updatable fields are included in the fieldMaskPaths,
 // then an error is returned.
-func (r *Repository) UpdateRole(ctx context.Context, role *Role, fieldMaskPaths []string, opt ...Option) (*Role, []PrincipalRole, []*RoleGrant, int, error) {
+func (r *Repository) UpdateRole(ctx context.Context, role *Role, version uint32, fieldMaskPaths []string, opt ...Option) (*Role, []PrincipalRole, []*RoleGrant, int, error) {
 	if role == nil {
 		return nil, nil, nil, db.NoRowsAffected, fmt.Errorf("update role: missing role %w", db.ErrNilParameter)
 	}
@@ -88,7 +88,7 @@ func (r *Repository) UpdateRole(ctx context.Context, role *Role, fieldMaskPaths 
 		func(read db.Reader, w db.Writer) error {
 			var err error
 			c := role.Clone().(*Role)
-			resource, rowsUpdated, err = r.update(ctx, c, dbMask, nullFields)
+			resource, rowsUpdated, err = r.update(ctx, c, version, dbMask, nullFields)
 			if err != nil {
 				return err
 			}
