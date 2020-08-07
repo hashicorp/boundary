@@ -81,7 +81,7 @@ func (c *ReadScopeCommand) Run(args []string) int {
 		return 1
 	}
 
-	scp, apiErr, err := scopes.NewScopeClient(client).Read(c.Context, c.flagId)
+	scp, apiErr, err := scopes.NewScopesClient(client).Read(c.Context, c.flagId)
 
 	switch {
 	case err != nil:

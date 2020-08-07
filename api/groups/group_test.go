@@ -10,15 +10,20 @@ type groupCrud interface {
 }
 
 func TestGroup_List(t *testing.T) {
-	assert := assert.New(t)
-	tc := controller.NewTestController(t, &controller.TestControllerOpts{DisableAuthorizationFailures: true})
+	assert, require := assert.New(t), require.New(t)
+	amId := "paum_1234567890"
+	tc := controller.NewTestController(t, &controller.TestControllerOpts{
+		DisableAuthorizationFailures: true,
+		DefaultAuthMethodId:          amId,
+		DefaultUsername:              "user",
+		DefaultPassword:              "passpass",
+	})
 	defer tc.Shutdown()
 
 	client := tc.Client()
-	org := &scopes.Org{
-		Client: client,
-	}
-	proj, apiErr, err := org.CreateProject(context.Background(), &scopes.Project{})
+	scp := scopes.NewScopesClient(client)
+
+	proj, apiErr, err := scopes.Create(tc.Context(), &scopes.Project{})
 	require.NoError(t, err)
 	require.Nil(t, apiErr)
 
@@ -86,6 +91,7 @@ func comparableSlice(in []*groups.Group) []groups.Group {
 	return filtered
 }
 
+/*
 func TestGroup_Crud(t *testing.T) {
 	tc := controller.NewTestController(t, &controller.TestControllerOpts{DisableAuthorizationFailures: true})
 	defer tc.Shutdown()

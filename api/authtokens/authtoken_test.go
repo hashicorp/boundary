@@ -25,8 +25,8 @@ func TestAuthTokens_List(t *testing.T) {
 	defer tc.Shutdown()
 
 	client := tc.Client()
-	tokens := authtokens.NewAuthTokenClient(client)
-	methods := authmethods.NewAuthMethodClient(client)
+	tokens := authtokens.NewAuthTokensClient(client)
+	methods := authmethods.NewAuthMethodsClient(client)
 
 	atl, apiErr, err := tokens.List(tc.Context())
 	require.NoError(err)
@@ -92,8 +92,8 @@ func TestAuthToken_Crud(t *testing.T) {
 	defer tc.Shutdown()
 
 	client := tc.Client()
-	tokens := authtokens.NewAuthTokenClient(client)
-	methods := authmethods.NewAuthMethodClient(client)
+	tokens := authtokens.NewAuthTokensClient(client)
+	methods := authmethods.NewAuthMethodsClient(client)
 
 	want, apiErr, err := methods.Authenticate(tc.Context(), amId, "user", "passpass")
 	require.NoError(err)
@@ -127,7 +127,7 @@ func TestAuthToken_Errors(t *testing.T) {
 	defer tc.Shutdown()
 
 	client := tc.Client()
-	tokens := authtokens.NewAuthTokenClient(client)
+	tokens := authtokens.NewAuthTokensClient(client)
 
 	_, apiErr, err := tokens.Read(tc.Context(), authtoken.AuthTokenPrefix+"_doesntexis")
 	require.NoError(err)

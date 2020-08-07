@@ -57,5 +57,4 @@ require (
 	google.golang.org/genproto v0.0.0-20200722002428-88e341933a54
 	google.golang.org/grpc v1.30.0
 	google.golang.org/protobuf v1.25.0
-	gotest.tools v2.2.0+incompatible
 )
