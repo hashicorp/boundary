@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"net/url"
 	"time"
 
 	"github.com/kr/pretty"
@@ -44,7 +45,7 @@ func (c *rolesClient) Create(ctx context.Context, opt ...Option) (*Role, *api.Er
 
 	opts, apiOpts := getOpts(opt...)
 
-	req, err := c.client.NewRequest(ctx, "POST", fmt.Sprintf("roles"), opts.valueMap, apiOpts...)
+	req, err := c.client.NewRequest(ctx, "POST", "roles", opts.valueMap, apiOpts...)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error creating Create request: %w", err)
 	}
@@ -119,12 +120,15 @@ func (c *rolesClient) Update(ctx context.Context, roleId string, version uint32,
 		}
 		version = existingTarget.Version
 	}
-	opts.valueMap["version"] = version
 
 	req, err := c.client.NewRequest(ctx, "PATCH", fmt.Sprintf("roles/%s", roleId), opts.valueMap, apiOpts...)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error creating Update request: %w", err)
 	}
+
+	q := url.Values{}
+	q.Add("version", fmt.Sprintf("%d", version))
+	req.URL.RawQuery = q.Encode()
 
 	resp, err := c.client.Do(req)
 	if err != nil {
@@ -180,7 +184,7 @@ func (c *rolesClient) List(ctx context.Context, opt ...Option) ([]*Role, *api.Er
 
 	_, apiOpts := getOpts(opt...)
 
-	req, err := c.client.NewRequest(ctx, "GET", fmt.Sprintf("roles"), nil, apiOpts...)
+	req, err := c.client.NewRequest(ctx, "GET", "roles", nil, apiOpts...)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error creating List request: %w", err)
 	}
@@ -228,7 +232,6 @@ func (c *rolesClient) AddGrants(ctx context.Context, roleId string, version uint
 		}
 		version = existingTarget.Version
 	}
-	opts.valueMap["version"] = version
 
 	if len(grantStrings) > 0 {
 		opts.valueMap["grant_strings"] = grantStrings
@@ -238,6 +241,10 @@ func (c *rolesClient) AddGrants(ctx context.Context, roleId string, version uint
 	if err != nil {
 		return nil, nil, fmt.Errorf("error creating AddGrants request: %w", err)
 	}
+
+	q := url.Values{}
+	q.Add("version", fmt.Sprintf("%d", version))
+	req.URL.RawQuery = q.Encode()
 
 	resp, err := c.client.Do(req)
 	if err != nil {
@@ -279,7 +286,6 @@ func (c *rolesClient) AddPrincipals(ctx context.Context, roleId string, version 
 		}
 		version = existingTarget.Version
 	}
-	opts.valueMap["version"] = version
 
 	if len(principalIds) > 0 {
 		opts.valueMap["principal_ids"] = principalIds
@@ -289,6 +295,10 @@ func (c *rolesClient) AddPrincipals(ctx context.Context, roleId string, version 
 	if err != nil {
 		return nil, nil, fmt.Errorf("error creating AddPrincipals request: %w", err)
 	}
+
+	q := url.Values{}
+	q.Add("version", fmt.Sprintf("%d", version))
+	req.URL.RawQuery = q.Encode()
 
 	resp, err := c.client.Do(req)
 	if err != nil {
@@ -330,7 +340,6 @@ func (c *rolesClient) SetGrants(ctx context.Context, roleId string, version uint
 		}
 		version = existingTarget.Version
 	}
-	opts.valueMap["version"] = version
 
 	if len(grantStrings) > 0 {
 		opts.valueMap["grant_strings"] = grantStrings
@@ -343,6 +352,10 @@ func (c *rolesClient) SetGrants(ctx context.Context, roleId string, version uint
 	if err != nil {
 		return nil, nil, fmt.Errorf("error creating SetGrants request: %w", err)
 	}
+
+	q := url.Values{}
+	q.Add("version", fmt.Sprintf("%d", version))
+	req.URL.RawQuery = q.Encode()
 
 	resp, err := c.client.Do(req)
 	if err != nil {
@@ -384,7 +397,6 @@ func (c *rolesClient) SetPrincipals(ctx context.Context, roleId string, version 
 		}
 		version = existingTarget.Version
 	}
-	opts.valueMap["version"] = version
 
 	if len(principalIds) > 0 {
 		opts.valueMap["principal_ids"] = principalIds
@@ -397,6 +409,10 @@ func (c *rolesClient) SetPrincipals(ctx context.Context, roleId string, version 
 	if err != nil {
 		return nil, nil, fmt.Errorf("error creating SetPrincipals request: %w", err)
 	}
+
+	q := url.Values{}
+	q.Add("version", fmt.Sprintf("%d", version))
+	req.URL.RawQuery = q.Encode()
 
 	resp, err := c.client.Do(req)
 	if err != nil {
@@ -438,7 +454,6 @@ func (c *rolesClient) RemoveGrants(ctx context.Context, roleId string, version u
 		}
 		version = existingTarget.Version
 	}
-	opts.valueMap["version"] = version
 
 	if len(grantStrings) > 0 {
 		opts.valueMap["grant_strings"] = grantStrings
@@ -448,6 +463,10 @@ func (c *rolesClient) RemoveGrants(ctx context.Context, roleId string, version u
 	if err != nil {
 		return nil, nil, fmt.Errorf("error creating RemoveGrants request: %w", err)
 	}
+
+	q := url.Values{}
+	q.Add("version", fmt.Sprintf("%d", version))
+	req.URL.RawQuery = q.Encode()
 
 	resp, err := c.client.Do(req)
 	if err != nil {
@@ -489,7 +508,6 @@ func (c *rolesClient) RemovePrincipals(ctx context.Context, roleId string, versi
 		}
 		version = existingTarget.Version
 	}
-	opts.valueMap["version"] = version
 
 	if len(principalIds) > 0 {
 		opts.valueMap["principal_ids"] = principalIds
@@ -499,6 +517,10 @@ func (c *rolesClient) RemovePrincipals(ctx context.Context, roleId string, versi
 	if err != nil {
 		return nil, nil, fmt.Errorf("error creating RemovePrincipals request: %w", err)
 	}
+
+	q := url.Values{}
+	q.Add("version", fmt.Sprintf("%d", version))
+	req.URL.RawQuery = q.Encode()
 
 	resp, err := c.client.Do(req)
 	if err != nil {

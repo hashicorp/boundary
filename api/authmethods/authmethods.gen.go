@@ -4,6 +4,7 @@ package authmethods
 import (
 	"context"
 	"fmt"
+	"net/url"
 	"time"
 
 	"github.com/hashicorp/watchtower/api"
@@ -36,7 +37,7 @@ func (c *authmethodsClient) Create(ctx context.Context, opt ...Option) (*AuthMet
 
 	opts, apiOpts := getOpts(opt...)
 
-	req, err := c.client.NewRequest(ctx, "POST", fmt.Sprintf("auth-methods"), opts.valueMap, apiOpts...)
+	req, err := c.client.NewRequest(ctx, "POST", "auth-methods", opts.valueMap, apiOpts...)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error creating Create request: %w", err)
 	}
@@ -100,6 +101,10 @@ func (c *authmethodsClient) Update(ctx context.Context, authMethodId string, ver
 		return nil, nil, fmt.Errorf("error creating Update request: %w", err)
 	}
 
+	q := url.Values{}
+	q.Add("version", fmt.Sprintf("%d", version))
+	req.URL.RawQuery = q.Encode()
+
 	resp, err := c.client.Do(req)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error performing client request during Update call: %w", err)
@@ -154,7 +159,7 @@ func (c *authmethodsClient) List(ctx context.Context, opt ...Option) ([]*AuthMet
 
 	_, apiOpts := getOpts(opt...)
 
-	req, err := c.client.NewRequest(ctx, "GET", fmt.Sprintf("auth-methods"), nil, apiOpts...)
+	req, err := c.client.NewRequest(ctx, "GET", "auth-methods", nil, apiOpts...)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error creating List request: %w", err)
 	}

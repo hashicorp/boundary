@@ -4,6 +4,7 @@ package hosts
 import (
 	"context"
 	"fmt"
+	"net/url"
 	"time"
 
 	"github.com/hashicorp/watchtower/api"
@@ -37,7 +38,7 @@ func (c *hostcatalogsClient) Create(ctx context.Context, opt ...Option) (*HostCa
 
 	opts, apiOpts := getOpts(opt...)
 
-	req, err := c.client.NewRequest(ctx, "POST", fmt.Sprintf("host-catalogs"), opts.valueMap, apiOpts...)
+	req, err := c.client.NewRequest(ctx, "POST", "host-catalogs", opts.valueMap, apiOpts...)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error creating Create request: %w", err)
 	}
@@ -101,6 +102,10 @@ func (c *hostcatalogsClient) Update(ctx context.Context, hostCatalogId string, v
 		return nil, nil, fmt.Errorf("error creating Update request: %w", err)
 	}
 
+	q := url.Values{}
+	q.Add("version", fmt.Sprintf("%d", version))
+	req.URL.RawQuery = q.Encode()
+
 	resp, err := c.client.Do(req)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error performing client request during Update call: %w", err)
@@ -155,7 +160,7 @@ func (c *hostcatalogsClient) List(ctx context.Context, opt ...Option) ([]*HostCa
 
 	_, apiOpts := getOpts(opt...)
 
-	req, err := c.client.NewRequest(ctx, "GET", fmt.Sprintf("host-catalogs"), nil, apiOpts...)
+	req, err := c.client.NewRequest(ctx, "GET", "host-catalogs", nil, apiOpts...)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error creating List request: %w", err)
 	}

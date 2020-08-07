@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"net/url"
 	"time"
 
 	"github.com/kr/pretty"
@@ -41,7 +42,7 @@ func (c *groupsClient) Create(ctx context.Context, opt ...Option) (*Group, *api.
 
 	opts, apiOpts := getOpts(opt...)
 
-	req, err := c.client.NewRequest(ctx, "POST", fmt.Sprintf("groups"), opts.valueMap, apiOpts...)
+	req, err := c.client.NewRequest(ctx, "POST", "groups", opts.valueMap, apiOpts...)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error creating Create request: %w", err)
 	}
@@ -116,12 +117,15 @@ func (c *groupsClient) Update(ctx context.Context, groupId string, version uint3
 		}
 		version = existingTarget.Version
 	}
-	opts.valueMap["version"] = version
 
 	req, err := c.client.NewRequest(ctx, "PATCH", fmt.Sprintf("groups/%s", groupId), opts.valueMap, apiOpts...)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error creating Update request: %w", err)
 	}
+
+	q := url.Values{}
+	q.Add("version", fmt.Sprintf("%d", version))
+	req.URL.RawQuery = q.Encode()
 
 	resp, err := c.client.Do(req)
 	if err != nil {
@@ -177,7 +181,7 @@ func (c *groupsClient) List(ctx context.Context, opt ...Option) ([]*Group, *api.
 
 	_, apiOpts := getOpts(opt...)
 
-	req, err := c.client.NewRequest(ctx, "GET", fmt.Sprintf("groups"), nil, apiOpts...)
+	req, err := c.client.NewRequest(ctx, "GET", "groups", nil, apiOpts...)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error creating List request: %w", err)
 	}
@@ -225,7 +229,6 @@ func (c *groupsClient) AddMembers(ctx context.Context, groupId string, version u
 		}
 		version = existingTarget.Version
 	}
-	opts.valueMap["version"] = version
 
 	if len(memberIds) > 0 {
 		opts.valueMap["member_ids"] = memberIds
@@ -235,6 +238,10 @@ func (c *groupsClient) AddMembers(ctx context.Context, groupId string, version u
 	if err != nil {
 		return nil, nil, fmt.Errorf("error creating AddMembers request: %w", err)
 	}
+
+	q := url.Values{}
+	q.Add("version", fmt.Sprintf("%d", version))
+	req.URL.RawQuery = q.Encode()
 
 	resp, err := c.client.Do(req)
 	if err != nil {
@@ -276,7 +283,6 @@ func (c *groupsClient) SetMembers(ctx context.Context, groupId string, version u
 		}
 		version = existingTarget.Version
 	}
-	opts.valueMap["version"] = version
 
 	if len(memberIds) > 0 {
 		opts.valueMap["member_ids"] = memberIds
@@ -289,6 +295,10 @@ func (c *groupsClient) SetMembers(ctx context.Context, groupId string, version u
 	if err != nil {
 		return nil, nil, fmt.Errorf("error creating SetMembers request: %w", err)
 	}
+
+	q := url.Values{}
+	q.Add("version", fmt.Sprintf("%d", version))
+	req.URL.RawQuery = q.Encode()
 
 	resp, err := c.client.Do(req)
 	if err != nil {
@@ -330,7 +340,6 @@ func (c *groupsClient) RemoveMembers(ctx context.Context, groupId string, versio
 		}
 		version = existingTarget.Version
 	}
-	opts.valueMap["version"] = version
 
 	if len(memberIds) > 0 {
 		opts.valueMap["member_ids"] = memberIds
@@ -340,6 +349,10 @@ func (c *groupsClient) RemoveMembers(ctx context.Context, groupId string, versio
 	if err != nil {
 		return nil, nil, fmt.Errorf("error creating RemoveMembers request: %w", err)
 	}
+
+	q := url.Values{}
+	q.Add("version", fmt.Sprintf("%d", version))
+	req.URL.RawQuery = q.Encode()
 
 	resp, err := c.client.Do(req)
 	if err != nil {
