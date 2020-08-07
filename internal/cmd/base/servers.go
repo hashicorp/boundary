@@ -21,6 +21,7 @@ import (
 	"github.com/hashicorp/vault/internalshared/configutil"
 	"github.com/hashicorp/vault/internalshared/gatedwriter"
 	"github.com/hashicorp/vault/internalshared/reloadutil"
+	"github.com/hashicorp/vault/sdk/helper/base62"
 	"github.com/hashicorp/vault/sdk/helper/logging"
 	"github.com/hashicorp/vault/sdk/helper/mlock"
 	"github.com/hashicorp/vault/sdk/logical"
@@ -62,6 +63,8 @@ type Server struct {
 
 	DefaultOrgId    string
 	DevAuthMethodId string
+	DevUsername     string
+	DevPassword     string
 
 	DevDatabaseUrl         string
 	DevDatabaseCleanupFunc func() error
@@ -497,21 +500,37 @@ func (b *Server) CreateDevDatabase(dialect string) error {
 		return fmt.Errorf("error saving auth method to the db: %w", err)
 	}
 
-	acctUserName := "admin"
+	acctUserName := b.DevUsername
+	if acctUserName == "" {
+		acctUserName, err = base62.Random(10)
+		if err != nil {
+			return fmt.Errorf("unable to generate dev username: %w", err)
+		}
+		acctUserName = strings.ToLower(acctUserName)
+	}
+
+	pw := b.DevPassword
+	if pw == "" {
+		pw, err = base62.Random(20)
+		if err != nil {
+			return fmt.Errorf("unable to generate dev password: %w", err)
+		}
+	}
 
 	acct, err := password.NewAccount(amId, acctUserName)
 	if err != nil {
 		return fmt.Errorf("error creating new in memory auth account: %w", err)
 	}
-	acct, err = pwRepo.CreateAccount(ctx, acct, password.WithPassword("password1234567890"))
+	acct, err = pwRepo.CreateAccount(ctx, acct, password.WithPassword(pw))
 	if err != nil {
 		return fmt.Errorf("error saving auth account to the db: %w", err)
 	}
 
-	b.InfoKeys = append(b.InfoKeys, "dev org id", "dev auth method id")
+	b.InfoKeys = append(b.InfoKeys, "dev org id", "dev auth method id", "dev username", "dev password")
 	b.Info["dev org id"] = b.DefaultOrgId
 	b.Info["dev auth method id"] = amId
-	b.Info["dev auth account username"] = acct.GetUserName()
+	b.Info["dev username"] = acct.GetUserName()
+	b.Info["dev password"] = pw
 
 	// now that we have passed all the error cases, reset c to be a noop so the
 	// defer doesn't do anything.

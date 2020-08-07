@@ -45,7 +45,8 @@ type Command struct {
 	flagLogFormat                      string
 	flagCombineLogs                    bool
 	flagDev                            bool
-	flagDevAdminPassword               string
+	flagDevUsername                    string
+	flagDevPassword                    string
 	flagDevControllerAPIListenAddr     string
 	flagDevControllerClusterListenAddr string
 	flagDevOrgId                       string
@@ -131,7 +132,7 @@ func (c *Command) Flags() *base.FlagSets {
 
 	f.StringVar(&base.StringVar{
 		Name:   "dev-admin-password",
-		Target: &c.flagDevAdminPassword,
+		Target: &c.flagDevPassword,
 		EnvVar: "WATCHTWER_DEV_ADMIN_PASSWORD",
 		Usage: "Initial admin password. This only applies when running in \"dev\" " +
 			"mode.",
@@ -323,11 +324,16 @@ func (c *Command) ParseFlagsAndConfig(args []string) int {
 		case len(c.flagConfig) == 0:
 			c.UI.Error("Must specify a config file using -config")
 			return 1
-		case c.flagDevAdminPassword != "":
+		case c.flagDevPassword != "":
 			c.UI.Warn(base.WrapAtLength(
 				"You cannot specify a custom admin password outside of \"dev\" mode. " +
 					"Your request has been ignored."))
-			c.flagDevAdminPassword = ""
+			c.flagDevPassword = ""
+		case c.flagDevUsername != "":
+			c.UI.Warn(base.WrapAtLength(
+				"You cannot specify a custom admin username outside of \"dev\" mode. " +
+					"Your request has been ignored."))
+			c.flagDevUsername = ""
 		}
 
 		c.Config, err = config.LoadFile(c.flagConfig, c.configKMS)
@@ -357,6 +363,20 @@ func (c *Command) ParseFlagsAndConfig(args []string) int {
 				return 1
 			}
 			c.DevAuthMethodId = c.flagDevAuthMethodId
+		}
+		if c.flagDevUsername != "" {
+			if len(c.flagDevUsername) < 5 {
+				c.UI.Error("Invalid dev username, must be longer than 5 characters")
+				return 1
+			}
+			c.DevUsername = c.flagDevUsername
+		}
+		if c.flagDevPassword != "" {
+			if len(c.flagDevPassword) < 7 {
+				c.UI.Error("Invalid dev username, must be longer than 7 characters")
+				return 1
+			}
+			c.DevPassword = c.flagDevPassword
 		}
 
 		c.Config.PassthroughDirectory = c.flagDevPassthroughDirectory
