@@ -387,6 +387,15 @@ func (b *Server) RunShutdownFuncs() error {
 	return mErr.ErrorOrNil()
 }
 
+func (b *Server) ConnectToDatabase(dialect string, url string) error {
+	dbase, err := gorm.Open(dialect, url)
+	if err != nil {
+		return fmt.Errorf("unable to create db object with dialect %s: %w", dialect, err)
+	}
+	b.Database = dbase
+	return nil
+}
+
 func (b *Server) CreateDevDatabase(dialect string) error {
 	c, url, container, err := db.InitDbInDocker(dialect)
 	if err != nil {
@@ -404,12 +413,10 @@ func (b *Server) CreateDevDatabase(dialect string) error {
 		b.Info["dev database container"] = strings.TrimPrefix(container, "/")
 	}
 
-	dbase, err := gorm.Open(dialect, url)
-	if err != nil {
+	if err := b.ConnectToDatabase(dialect, url); err != nil {
 		c()
-		return fmt.Errorf("unable to create db object with dialect %s: %w", dialect, err)
+		return err
 	}
-	b.Database = dbase
 
 	gorm.LogFormatter = db.GetGormLogFormatter(b.Logger)
 	b.Database.SetLogger(db.GetGormLogger(b.Logger))

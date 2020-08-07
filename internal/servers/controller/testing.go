@@ -118,6 +118,10 @@ type TestControllerOpts struct {
 	// database
 	DisableDatabaseCreation bool
 
+	// If set, instead of creating a dev database, it will connect to an
+	// existing database given the url
+	DatabaseUrl string
+
 	// If true, the controller will not be started
 	DisableAutoStart bool
 
@@ -182,6 +186,11 @@ func NewTestController(t *testing.T, opts *TestControllerOpts) *TestController {
 	}
 
 	if !opts.DisableDatabaseCreation {
+		if opts.DatabaseUrl != "" {
+			if err := tc.b.ConnectToDatabase("postgres", opts.DatabaseUrl); err != nil {
+				t.Fatal(err)
+			}
+		}
 		if err := tc.b.CreateDevDatabase("postgres"); err != nil {
 			t.Fatal(err)
 		}
