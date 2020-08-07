@@ -409,6 +409,9 @@ func validateUpdateRequest(req *pbs.UpdateGroupRequest) error {
 	if req.GetUpdateMask() == nil {
 		badFields["update_mask"] = "UpdateMask not provided but is required to update a group."
 	}
+	if req.GetVersion() == 0 {
+		badFields["version"] = "Existing resource version is required for an update."
+	}
 
 	item := req.GetItem()
 	if item == nil {
