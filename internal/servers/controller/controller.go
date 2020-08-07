@@ -6,9 +6,11 @@ import (
 	"fmt"
 
 	"github.com/hashicorp/go-hclog"
+	"github.com/hashicorp/vault/sdk/helper/base62"
 	"github.com/hashicorp/vault/sdk/helper/mlock"
 	"github.com/hashicorp/watchtower/internal/auth/password"
 	"github.com/hashicorp/watchtower/internal/authtoken"
+	"github.com/hashicorp/watchtower/internal/cmd/config"
 	"github.com/hashicorp/watchtower/internal/db"
 	"github.com/hashicorp/watchtower/internal/host/static"
 	"github.com/hashicorp/watchtower/internal/iam"
@@ -44,6 +46,16 @@ func New(conf *Config) (*Controller, error) {
 
 	if conf.SecureRandomReader == nil {
 		conf.SecureRandomReader = rand.Reader
+	}
+
+	var err error
+	if conf.RawConfig.Controller == nil {
+		conf.RawConfig.Controller = new(config.Controller)
+	}
+	if conf.RawConfig.Controller.Name == "" {
+		if conf.RawConfig.Controller.Name, err = base62.Random(10); err != nil {
+			return nil, fmt.Errorf("error auto-generating controller name: %w", err)
+		}
 	}
 
 	if !conf.RawConfig.DisableMlock {

@@ -17,10 +17,6 @@ import (
 const corsTestConfig = `
 disable_mlock = true
 
-controller {
-	name = "dev"
-}
-
 telemetry {
         prometheus_retention_time = "24h"
         disable_hostname = true

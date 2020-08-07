@@ -7,8 +7,9 @@ import (
 	"time"
 
 	"github.com/hashicorp/go-hclog"
+	"github.com/hashicorp/vault/sdk/helper/base62"
 	"github.com/hashicorp/vault/sdk/helper/mlock"
-	"github.com/kr/pretty"
+	"github.com/hashicorp/watchtower/internal/cmd/config"
 	"google.golang.org/grpc/resolver/manual"
 )
 
@@ -34,13 +35,21 @@ func New(conf *Config) (*Worker, error) {
 		logger:          conf.Logger.Named("worker"),
 		controllerConns: make([]*controllerConnection, 0, 3),
 	}
-	if conf.RawConfig.Worker == nil {
-		panic(pretty.Sprint(conf.RawConfig))
-	}
 
 	if conf.SecureRandomReader == nil {
 		conf.SecureRandomReader = rand.Reader
 	}
+
+	var err error
+	if conf.RawConfig.Worker == nil {
+		conf.RawConfig.Worker = new(config.Worker)
+	}
+	if conf.RawConfig.Worker.Name == "" {
+		if conf.RawConfig.Worker.Name, err = base62.Random(10); err != nil {
+			return nil, fmt.Errorf("error auto-generating worker name: %w", err)
+		}
+	}
+
 	w.controllerResolver, w.controllerResolverCleanup = manual.GenerateAndRegisterManualResolver()
 
 	if !conf.RawConfig.DisableMlock {
