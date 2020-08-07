@@ -2,14 +2,7 @@
 package roles
 
 type Grant struct {
-
-	// The original user-supplied string.
-	// Output only.
-	Raw string `json:"raw,omitempty"`
-	// The canonically formatted string.
-	// Output only.
-	Canonical string `json:"canonical,omitempty"`
-	// The JSON representation of the grant.
-	// Output only.
-	Json *GrantJson `json:"json,omitempty"`
+	Raw       string     `json:"raw,omitempty"`
+	Canonical string     `json:"canonical,omitempty"`
+	Json      *GrantJson `json:"json,omitempty"`
 }

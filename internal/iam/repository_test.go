@@ -306,7 +306,7 @@ func TestRepository_update(t *testing.T) {
 			if tt.args.resource != nil {
 				tt.args.resource.(*Scope).PublicId = org.PublicId
 			}
-			updatedResource, rowsUpdated, err := r.update(context.Background(), tt.args.resource, tt.args.fieldMaskPaths, tt.args.setToNullPaths, tt.args.opt...)
+			updatedResource, rowsUpdated, err := r.update(context.Background(), tt.args.resource, 1, tt.args.fieldMaskPaths, tt.args.setToNullPaths, tt.args.opt...)
 			if tt.wantErr {
 				require.Error(err)
 				assert.Equal(tt.wantUpdatedRows, rowsUpdated)

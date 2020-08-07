@@ -108,7 +108,7 @@ func (s Service) UpdateGroup(ctx context.Context, req *pbs.UpdateGroupRequest) (
 	if err := validateUpdateRequest(req); err != nil {
 		return nil, err
 	}
-	u, err := s.updateInRepo(ctx, authResults.Scope.GetId(), req.GetId(), req.GetUpdateMask().GetPaths(), req.GetItem())
+	u, err := s.updateInRepo(ctx, authResults.Scope.GetId(), req.GetId(), req.GetVersion(), req.GetUpdateMask().GetPaths(), req.GetItem())
 	if err != nil {
 		return nil, err
 	}
@@ -141,7 +141,7 @@ func (s Service) AddGroupMembers(ctx context.Context, req *pbs.AddGroupMembersRe
 	if err := validateAddGroupMembersRequest(req); err != nil {
 		return nil, err
 	}
-	g, err := s.addMembersInRepo(ctx, req.GetId(), req.GetMemberIds(), req.GetVersion().GetValue())
+	g, err := s.addMembersInRepo(ctx, req.GetId(), req.GetMemberIds(), req.GetVersion())
 	if err != nil {
 		return nil, err
 	}
@@ -157,7 +157,7 @@ func (s Service) SetGroupMembers(ctx context.Context, req *pbs.SetGroupMembersRe
 	if err := validateSetGroupMembersRequest(req); err != nil {
 		return nil, err
 	}
-	g, err := s.setMembersInRepo(ctx, req.GetId(), req.GetMemberIds(), req.GetVersion().GetValue())
+	g, err := s.setMembersInRepo(ctx, req.GetId(), req.GetMemberIds(), req.GetVersion())
 	if err != nil {
 		return nil, err
 	}
@@ -173,7 +173,7 @@ func (s Service) RemoveGroupMembers(ctx context.Context, req *pbs.RemoveGroupMem
 	if err := validateRemoveGroupMembersRequest(req); err != nil {
 		return nil, err
 	}
-	g, err := s.removeMembersInRepo(ctx, req.GetId(), req.GetMemberIds(), req.GetVersion().GetValue())
+	g, err := s.removeMembersInRepo(ctx, req.GetId(), req.GetMemberIds(), req.GetVersion())
 	if err != nil {
 		return nil, err
 	}
@@ -224,7 +224,7 @@ func (s Service) createInRepo(ctx context.Context, scopeId string, item *pb.Grou
 	return toProto(out, nil), nil
 }
 
-func (s Service) updateInRepo(ctx context.Context, scopeId, id string, mask []string, item *pb.Group) (*pb.Group, error) {
+func (s Service) updateInRepo(ctx context.Context, scopeId, id string, version uint32, mask []string, item *pb.Group) (*pb.Group, error) {
 	var opts []iam.Option
 	if desc := item.GetDescription(); desc != nil {
 		opts = append(opts, iam.WithDescription(desc.GetValue()))
@@ -232,11 +232,11 @@ func (s Service) updateInRepo(ctx context.Context, scopeId, id string, mask []st
 	if name := item.GetName(); name != nil {
 		opts = append(opts, iam.WithName(name.GetValue()))
 	}
-	u, err := iam.NewGroup(scopeId, opts...)
+	g, err := iam.NewGroup(scopeId, opts...)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "Unable to build group for update: %v.", err)
 	}
-	u.PublicId = id
+	g.PublicId = id
 	dbMask := maskManager.Translate(mask)
 	if len(dbMask) == 0 {
 		return nil, handlers.InvalidArgumentErrorf("No valid fields included in the update mask.", map[string]string{"update_mask": "No valid paths provided in the update mask."})
@@ -245,7 +245,7 @@ func (s Service) updateInRepo(ctx context.Context, scopeId, id string, mask []st
 	if err != nil {
 		return nil, err
 	}
-	out, m, rowsUpdated, err := repo.UpdateGroup(ctx, u, dbMask)
+	out, m, rowsUpdated, err := repo.UpdateGroup(ctx, g, version, dbMask)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "Unable to update group: %v.", err)
 	}
@@ -456,7 +456,7 @@ func validateAddGroupMembersRequest(req *pbs.AddGroupMembersRequest) error {
 	if !validId(req.GetId(), iam.GroupPrefix+"_") {
 		badFields["id"] = "Incorrectly formatted identifier."
 	}
-	if req.GetVersion() == nil {
+	if req.GetVersion() == 0 {
 		badFields["version"] = "Required field."
 	}
 	if len(req.GetMemberIds()) == 0 {
@@ -473,7 +473,7 @@ func validateSetGroupMembersRequest(req *pbs.SetGroupMembersRequest) error {
 	if !validId(req.GetId(), iam.GroupPrefix+"_") {
 		badFields["id"] = "Incorrectly formatted identifier."
 	}
-	if req.GetVersion() == nil {
+	if req.GetVersion() == 0 {
 		badFields["version"] = "Required field."
 	}
 	if len(badFields) > 0 {
@@ -487,7 +487,7 @@ func validateRemoveGroupMembersRequest(req *pbs.RemoveGroupMembersRequest) error
 	if !validId(req.GetId(), iam.GroupPrefix+"_") {
 		badFields["id"] = "Incorrectly formatted identifier."
 	}
-	if req.GetVersion() == nil {
+	if req.GetVersion() == 0 {
 		badFields["version"] = "Required field."
 	}
 	if len(req.GetMemberIds()) == 0 {

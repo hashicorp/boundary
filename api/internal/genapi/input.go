@@ -1,161 +1,251 @@
 package main
 
-import "os"
+import (
+	"text/template"
+
+	"github.com/hashicorp/watchtower/internal/gen/controller/api"
+	"github.com/hashicorp/watchtower/internal/gen/controller/api/resources/authmethods"
+	"github.com/hashicorp/watchtower/internal/gen/controller/api/resources/authtokens"
+	"github.com/hashicorp/watchtower/internal/gen/controller/api/resources/groups"
+	"github.com/hashicorp/watchtower/internal/gen/controller/api/resources/hosts"
+	"github.com/hashicorp/watchtower/internal/gen/controller/api/resources/roles"
+	"github.com/hashicorp/watchtower/internal/gen/controller/api/resources/scopes"
+	"github.com/hashicorp/watchtower/internal/gen/controller/api/resources/users"
+	"google.golang.org/protobuf/proto"
+)
+
+type structureInfo struct {
+	pkg    string
+	name   string
+	fields []fieldInfo
+}
+
+type fieldInfo struct {
+	Name              string
+	ProtoName         string
+	FieldType         string
+	GenerateSdkOption bool
+	SubtypeName       string
+}
 
 type structInfo struct {
-	inFile       string
-	inName       string
-	outFile      string
-	outName      string
-	outPkg       string
-	structFields string
-	parentName   string
-	detailName   string
-	outputOnly   bool
-	templateType templateType
-	nameJsonMap  map[string]string
+	inProto            proto.Message
+	outFile            string
+	generatedStructure structureInfo
+	templates          []*template.Template
+
+	// Subtype name for types implementing an abstract resource type. This is
+	// used as text to insert into With/Default function calls to separate out
+	// implementations of the same abstract type. This way e.g. a WithUsername
+	// option turns into WithPasswordAccountUsername which is wordy but
+	// unambiguous. It also switches the behavior of the functions to work on
+	// the attributes map.
+	subtypeName string
+
+	// mappings of names of resources and param names for sub slice types, e.g.
+	// role principals and group members
+	sliceSubTypes map[string]string
+
+	// outputOnly indicates that we shouldn't create options for setting members
+	// for this struct
+	outputOnly bool
+
+	// versionEnabled indicates that we should build a Version handler in
+	// update. Eventually everything should support this and this param can go
+	// away.
+	versionEnabled bool
+
+	// The parameters passed into the path.  These should be non-pluralized resource names.
+	// The templates will convert '-' to '_' and append an _id to them in the SDK param
+	// and append an 's' to it when building the path.
+	// The final value should be the path name of the resource since for single resource
+	// operations all values are used for the function argument.
+	// For collection based operations the last value is ignored for generating function argument.
+	pathArgs []string
 }
 
 var inputStructs = []*structInfo{
 	{
-		inFile:     os.Getenv("GEN_BASEPATH") + "/internal/gen/controller/api/error.pb.go",
-		inName:     "Error",
-		outFile:    os.Getenv("GEN_BASEPATH") + "/api/error.gen.go",
-		outName:    "Error",
-		outPkg:     "api",
+		inProto:    &api.Error{},
+		outFile:    "error.gen.go",
 		outputOnly: true,
 	},
 	{
-		inFile:     os.Getenv("GEN_BASEPATH") + "/internal/gen/controller/api/error.pb.go",
-		inName:     "ErrorDetails",
-		outFile:    os.Getenv("GEN_BASEPATH") + "/api/error_details.gen.go",
-		outName:    "ErrorDetails",
-		outPkg:     "api",
+		inProto:    &api.ErrorDetails{},
+		outFile:    "error_details.gen.go",
 		outputOnly: true,
 	},
 	{
-		inFile:     os.Getenv("GEN_BASEPATH") + "/internal/gen/controller/api/error.pb.go",
-		inName:     "FieldError",
-		outFile:    os.Getenv("GEN_BASEPATH") + "/api/field_error.gen.go",
-		outName:    "FieldError",
-		outPkg:     "api",
+		inProto:    &api.FieldError{},
+		outFile:    "field_error.gen.go",
+		outputOnly: true,
+	},
+	// Scope related resources
+	{
+		inProto:    &scopes.ScopeInfo{},
+		outFile:    "scopes/scope_info.gen.go",
 		outputOnly: true,
 	},
 	{
-		inFile:  os.Getenv("GEN_BASEPATH") + "/internal/gen/controller/api/resources/hosts/host.pb.go",
-		inName:  "Host",
-		outFile: os.Getenv("GEN_BASEPATH") + "/api/hosts/host.gen.go",
-		outName: "Host",
-		outPkg:  "hosts",
+		inProto: &scopes.Scope{},
+		outFile: "scopes/scope.gen.go",
+		templates: []*template.Template{
+			clientTemplate,
+			createTemplate,
+			readTemplate,
+			updateTemplate,
+			deleteTemplate,
+			listTemplate,
+		},
+		pathArgs:       []string{"scope"},
+		versionEnabled: true,
 	},
+	// User related resources
 	{
-		inFile:  os.Getenv("GEN_BASEPATH") + "/internal/gen/controller/api/resources/hosts/host_set.pb.go",
-		inName:  "HostSet",
-		outFile: os.Getenv("GEN_BASEPATH") + "/api/hosts/host_set.gen.go",
-		outName: "HostSet",
-		outPkg:  "hosts",
+		inProto: &users.User{},
+		outFile: "users/user.gen.go",
+		templates: []*template.Template{
+			clientTemplate,
+			createTemplate,
+			readTemplate,
+			updateTemplate,
+			deleteTemplate,
+			listTemplate,
+		},
+		pathArgs:       []string{"user"},
+		versionEnabled: true,
 	},
+	// Group related resources
 	{
-		inFile:  os.Getenv("GEN_BASEPATH") + "/internal/gen/controller/api/resources/hosts/host_catalog.pb.go",
-		inName:  "HostCatalog",
-		outFile: os.Getenv("GEN_BASEPATH") + "/api/hosts/host_catalog.gen.go",
-		outName: "HostCatalog",
-		outPkg:  "hosts",
-	},
-	{
-		inFile:  os.Getenv("GEN_BASEPATH") + "/internal/gen/controller/api/resources/authtokens/authtoken.pb.go",
-		inName:  "AuthToken",
-		outFile: os.Getenv("GEN_BASEPATH") + "/api/authtokens/authtoken.gen.go",
-		outName: "AuthToken",
-		outPkg:  "authtokens",
-	},
-	{
-		inFile:  os.Getenv("GEN_BASEPATH") + "/internal/gen/controller/api/resources/scopes/scope.pb.go",
-		inName:  "Scope",
-		outFile: os.Getenv("GEN_BASEPATH") + "/api/scopes/scope.gen.go",
-		outName: "Scope",
-		outPkg:  "scopes",
-	},
-
-	{
-		inFile:     os.Getenv("GEN_BASEPATH") + "/internal/gen/controller/api/resources/scopes/scope.pb.go",
-		inName:     "ScopeInfo",
-		outFile:    os.Getenv("GEN_BASEPATH") + "/api/info/scope.gen.go",
-		outName:    "Scope",
-		outPkg:     "info",
+		inProto:    &groups.Member{},
+		outFile:    "groups/member.gen.go",
 		outputOnly: true,
 	},
 	{
-		inFile:  os.Getenv("GEN_BASEPATH") + "/internal/gen/controller/api/resources/users/user.pb.go",
-		inName:  "User",
-		outFile: os.Getenv("GEN_BASEPATH") + "/api/users/user.gen.go",
-		outName: "User",
-		outPkg:  "users",
+		inProto: &groups.Group{},
+		outFile: "groups/group.gen.go",
+		templates: []*template.Template{
+			clientTemplate,
+			createTemplate,
+			readTemplate,
+			updateTemplate,
+			deleteTemplate,
+			listTemplate,
+		},
+		sliceSubTypes: map[string]string{
+			"Members": "memberIds",
+		},
+		pathArgs:       []string{"group"},
+		versionEnabled: true,
 	},
+	// Role related resources
 	{
-		inFile:  os.Getenv("GEN_BASEPATH") + "/internal/gen/controller/api/resources/groups/group.pb.go",
-		inName:  "Group",
-		outFile: os.Getenv("GEN_BASEPATH") + "/api/groups/group.gen.go",
-		outName: "Group",
-		outPkg:  "groups",
-	},
-	{
-		inFile:     os.Getenv("GEN_BASEPATH") + "/internal/gen/controller/api/resources/groups/group.pb.go",
-		inName:     "Member",
-		outFile:    os.Getenv("GEN_BASEPATH") + "/api/groups/member.gen.go",
-		outName:    "Member",
-		outPkg:     "groups",
+		inProto:    &roles.Grant{},
+		outFile:    "roles/grant.gen.go",
 		outputOnly: true,
 	},
 	{
-		inFile:  os.Getenv("GEN_BASEPATH") + "/internal/gen/controller/api/resources/roles/role.pb.go",
-		inName:  "Role",
-		outFile: os.Getenv("GEN_BASEPATH") + "/api/roles/role.gen.go",
-		outName: "Role",
-		outPkg:  "roles",
-	},
-	{
-		inFile:     os.Getenv("GEN_BASEPATH") + "/internal/gen/controller/api/resources/roles/role.pb.go",
-		inName:     "Principal",
-		outFile:    os.Getenv("GEN_BASEPATH") + "/api/roles/principal.gen.go",
-		outName:    "Principal",
-		outPkg:     "roles",
+		inProto:    &roles.Principal{},
+		outFile:    "roles/principal.gen.go",
 		outputOnly: true,
 	},
 	{
-		inFile:     os.Getenv("GEN_BASEPATH") + "/internal/gen/controller/api/resources/roles/role.pb.go",
-		inName:     "Grant",
-		outFile:    os.Getenv("GEN_BASEPATH") + "/api/roles/grant.gen.go",
-		outName:    "Grant",
-		outPkg:     "roles",
+		inProto:    &roles.GrantJson{},
+		outFile:    "roles/grant_json.gen.go",
 		outputOnly: true,
 	},
 	{
-		inFile:     os.Getenv("GEN_BASEPATH") + "/internal/gen/controller/api/resources/roles/role.pb.go",
-		inName:     "GrantJson",
-		outFile:    os.Getenv("GEN_BASEPATH") + "/api/roles/grant_json.gen.go",
-		outName:    "GrantJson",
-		outPkg:     "roles",
-		outputOnly: true,
+		inProto: &roles.Role{},
+		outFile: "roles/role.gen.go",
+		templates: []*template.Template{
+			clientTemplate,
+			createTemplate,
+			readTemplate,
+			updateTemplate,
+			deleteTemplate,
+			listTemplate,
+		},
+		sliceSubTypes: map[string]string{
+			"Principals": "principalIds",
+			"Grants":     "grantStrings",
+		},
+		pathArgs:       []string{"role"},
+		versionEnabled: true,
+	},
+	// Auth Methods related resources
+	{
+		inProto: &authmethods.AuthMethod{},
+		outFile: "authmethods/authmethods.gen.go",
+		templates: []*template.Template{
+			clientTemplate,
+			createTemplate,
+			readTemplate,
+			updateTemplate,
+			deleteTemplate,
+			listTemplate,
+		},
+		pathArgs: []string{"auth-method"},
 	},
 	{
-		inFile:       os.Getenv("GEN_BASEPATH") + "/internal/gen/controller/api/resources/hosts/host_catalog.pb.go",
-		inName:       "StaticHostCatalogDetails",
-		outFile:      os.Getenv("GEN_BASEPATH") + "/api/hosts/static_host_catalog.gen.go",
-		outName:      "StaticHostCatalogDetails",
-		outPkg:       "hosts",
-		parentName:   "HostCatalog",
-		detailName:   "StaticHostCatalog",
-		templateType: templateTypeDetail,
+		inProto:     &authmethods.PasswordAuthMethodAttributes{},
+		outFile:     "authmethods/password_auth_method_attributes.gen.go",
+		subtypeName: "PasswordAuthMethod",
 	},
 	{
-		inFile:       os.Getenv("GEN_BASEPATH") + "/internal/gen/controller/api/resources/hosts/host_catalog.pb.go",
-		inName:       "AwsEc2HostCatalogDetails",
-		outFile:      os.Getenv("GEN_BASEPATH") + "/api/hosts/awsec2_host_catalog.gen.go",
-		outName:      "AwsEc2HostCatalogDetails",
-		outPkg:       "hosts",
-		parentName:   "HostCatalog",
-		detailName:   "AwsEc2HostCatalog",
-		templateType: templateTypeDetail,
+		inProto: &authmethods.Account{},
+		outFile: "authmethods/account.gen.go",
+		templates: []*template.Template{
+			clientTemplate,
+			createTemplate,
+			readTemplate,
+			updateTemplate,
+			deleteTemplate,
+			listTemplate,
+		},
+		pathArgs: []string{"auth-method", "account"},
+	},
+	{
+		inProto:     &authmethods.PasswordAccountAttributes{},
+		outFile:     "authmethods/password_account_attributes.gen.go",
+		subtypeName: "PasswordAccount",
+	},
+	// Auth Tokens
+	{
+		inProto: &authtokens.AuthToken{},
+		outFile: "authtokens/authtokens.gen.go",
+		templates: []*template.Template{
+			clientTemplate,
+			readTemplate,
+			deleteTemplate,
+			listTemplate,
+		},
+		pathArgs: []string{"auth-token"},
+	},
+	// Host related resources
+	{
+		inProto: &hosts.HostCatalog{},
+		outFile: "hosts/host_catalog.gen.go",
+		templates: []*template.Template{
+			clientTemplate,
+			createTemplate,
+			readTemplate,
+			updateTemplate,
+			deleteTemplate,
+			listTemplate,
+		},
+		pathArgs: []string{"host-catalog"},
+	},
+	{
+		inProto: &hosts.Host{},
+		outFile: "hosts/host.gen.go",
+		templates: []*template.Template{
+			clientTemplate,
+			createTemplate,
+			readTemplate,
+			updateTemplate,
+			deleteTemplate,
+			listTemplate,
+		},
+		pathArgs: []string{"host-catalog", "host"},
 	},
 }

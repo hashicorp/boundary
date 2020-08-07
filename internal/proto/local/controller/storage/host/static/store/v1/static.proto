@@ -6,7 +6,7 @@ package controller.storage.host.static.store.v1;
 option go_package = "github.com/hashicorp/watchtower/internal/host/static/store;store";
 
 import "controller/storage/timestamp/v1/timestamp.proto";
-import "controller/custom_options/v1/masks.proto";
+import "controller/custom_options/v1/options.proto";
 
 message HostCatalog {
   // public_is is a surrogate key suitable for use in a public API.

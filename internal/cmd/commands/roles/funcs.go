@@ -174,6 +174,12 @@ func populateFlags(c *Command, f *base.FlagSet, flagNames []string) {
 				Target: &c.flagGrants,
 				Usage:  "The grants to add, remove, or set. May be specified multiple times. Can be in compact string format or JSON (be sure to escape JSON properly).",
 			})
+		case "version":
+			f.IntVar(&base.IntVar{
+				Name:   "version",
+				Target: &c.flagVersion,
+				Usage:  "The version of the resource against which to perform an update operation. If not specified, the command will perform a check-and-set automatically.",
+			})
 		}
 	}
 }
@@ -190,19 +196,19 @@ func generateRoleTableOutput(role *roles.Role) string {
 			fmt.Sprintf("  Version:          %d", role.Version),
 		}
 	}
-	if role.Name != nil {
+	if role.Name != "" {
 		output = append(output,
-			fmt.Sprintf("  Name:             %s", *role.Name),
+			fmt.Sprintf("  Name:             %s", role.Name),
 		)
 	}
-	if role.Description != nil {
+	if role.Description != "" {
 		output = append(output,
-			fmt.Sprintf("  Description:      %s", *role.Description),
+			fmt.Sprintf("  Description:      %s", role.Description),
 		)
 	}
-	if role.GrantScopeId != nil {
+	if role.GrantScopeId != "" {
 		output = append(output,
-			fmt.Sprintf("  Grant Scope ID:   %s", *role.GrantScopeId),
+			fmt.Sprintf("  Grant Scope ID:   %s", role.GrantScopeId),
 		)
 	}
 	if len(role.Principals) > 0 {

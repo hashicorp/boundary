@@ -164,8 +164,9 @@ message CreateGroupResponse {
 
 message UpdateGroupRequest {
   string id = 1;
-  resources.groups.v1.Group item = 2;
-  google.protobuf.FieldMask update_mask = 3;
+  uint32 version = 2;
+  resources.groups.v1.Group item = 3;
+  google.protobuf.FieldMask update_mask = 4;
 }
 
 message UpdateGroupResponse {
@@ -184,7 +185,7 @@ message AddGroupMembersRequest {
   string id = 1;
   // The version ensures the group hasn't changed since it was last retrieved and if
   // it has the request will fail.
-  google.protobuf.UInt32Value version = 2;
+  uint32 version = 2;
   repeated string member_ids = 3 [json_name="member_ids"];
 }
 
@@ -196,7 +197,7 @@ message SetGroupMembersRequest {
   string id = 1;
   // The version ensures the group hasn't changed since it was last retrieved and if
   // it has the request will fail.
-  google.protobuf.UInt32Value version = 2;
+  uint32 version = 2;
   repeated string member_ids = 3 [json_name="member_ids"];
 }
 
@@ -208,7 +209,7 @@ message RemoveGroupMembersRequest {
   string id = 1;
   // The version ensures the group hasn't changed since it was last retrieved and if
   // it has the request will fail.
-  google.protobuf.UInt32Value version = 2;
+  uint32 version = 2;
   repeated string member_ids = 3 [json_name="member_ids"];
 }
 

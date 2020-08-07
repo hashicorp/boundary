@@ -116,8 +116,9 @@ message CreateScopeResponse {
 
 message UpdateScopeRequest {
   string id = 1;
-  resources.scopes.v1.Scope item = 2;
-  google.protobuf.FieldMask update_mask = 3;
+  uint32 version = 2;
+  resources.scopes.v1.Scope item = 3;
+  google.protobuf.FieldMask update_mask = 4;
 }
 
 message UpdateScopeResponse {
