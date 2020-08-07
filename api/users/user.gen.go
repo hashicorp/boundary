@@ -24,15 +24,15 @@ type User struct {
 	Version     uint32            `json:"version,omitempty"`
 }
 
-type userClient struct {
+type usersClient struct {
 	client *api.Client
 }
 
-func NewUserClient(c *api.Client) *userClient {
-	return &userClient{client: c}
+func NewUsersClient(c *api.Client) *usersClient {
+	return &usersClient{client: c}
 }
 
-func (c *userClient) Create(ctx context.Context, opt ...Option) (*User, *api.Error, error) {
+func (c *usersClient) Create(ctx context.Context, opt ...Option) (*User, *api.Error, error) {
 	if c.client == nil {
 		return nil, nil, fmt.Errorf("nil client")
 	}
@@ -58,7 +58,7 @@ func (c *userClient) Create(ctx context.Context, opt ...Option) (*User, *api.Err
 	return target, apiErr, nil
 }
 
-func (c *userClient) Read(ctx context.Context, userId string, opt ...Option) (*User, *api.Error, error) {
+func (c *usersClient) Read(ctx context.Context, userId string, opt ...Option) (*User, *api.Error, error) {
 	if userId == "" {
 		return nil, nil, fmt.Errorf("empty userId value passed into Read request")
 	}
@@ -88,7 +88,7 @@ func (c *userClient) Read(ctx context.Context, userId string, opt ...Option) (*U
 	return target, apiErr, nil
 }
 
-func (c *userClient) Update(ctx context.Context, userId string, version uint32, opt ...Option) (*User, *api.Error, error) {
+func (c *usersClient) Update(ctx context.Context, userId string, version uint32, opt ...Option) (*User, *api.Error, error) {
 	if userId == "" {
 		return nil, nil, fmt.Errorf("empty userId value passed into Update request")
 	}
@@ -135,7 +135,7 @@ func (c *userClient) Update(ctx context.Context, userId string, version uint32, 
 	return target, apiErr, nil
 }
 
-func (c *userClient) Delete(ctx context.Context, userId string, opt ...Option) (bool, *api.Error, error) {
+func (c *usersClient) Delete(ctx context.Context, userId string, opt ...Option) (bool, *api.Error, error) {
 	if userId == "" {
 		return false, nil, fmt.Errorf("empty userId value passed into Delete request")
 	}
@@ -168,7 +168,7 @@ func (c *userClient) Delete(ctx context.Context, userId string, opt ...Option) (
 	return target.Existed, apiErr, nil
 }
 
-func (c *userClient) List(ctx context.Context, opt ...Option) ([]*User, *api.Error, error) {
+func (c *usersClient) List(ctx context.Context, opt ...Option) ([]*User, *api.Error, error) {
 	if c.client == nil {
 		return nil, nil, fmt.Errorf("nil client")
 	}
