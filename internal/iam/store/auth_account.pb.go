@@ -26,9 +26,10 @@ const (
 // of the legacy proto package is being used.
 const _ = proto.ProtoPackageIsVersion4
 
-// Account is a "shared table" between the iam and auth subsystems.  The
-// auth system is responsible for creating entries.  The iam system is only
-// responsible/allowed to update the iam_user_id.
+// Account is a "shared table" between the iam, authtoken, and auth
+// subsystems. The auth system is responsible for creating entries.  The iam
+// system is only responsible/allowed to update the iam_user_id.  The authtoken
+// system is a reader of this data.
 type Account struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache

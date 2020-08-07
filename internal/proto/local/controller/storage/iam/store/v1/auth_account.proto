@@ -5,9 +5,10 @@ option go_package = "github.com/hashicorp/watchtower/internal/iam/store;store";
 
 import "controller/storage/timestamp/v1/timestamp.proto";
 
-// Account is a "shared table" between the iam and auth subsystems.  The
-// auth system is responsible for creating entries.  The iam system is only
-// responsible/allowed to update the iam_user_id.
+// Account is a "shared table" between the iam, authtoken, and auth
+// subsystems. The auth system is responsible for creating entries.  The iam
+// system is only responsible/allowed to update the iam_user_id.  The authtoken
+// system is a reader of this data.
 message Account {
   // auth_account_id is primary key for the user account
   // @inject_tag: gorm:"primary_key"

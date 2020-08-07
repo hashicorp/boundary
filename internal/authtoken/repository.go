@@ -8,12 +8,9 @@ import (
 
 	"github.com/golang/protobuf/ptypes"
 	wrapping "github.com/hashicorp/go-kms-wrapping"
-	"github.com/hashicorp/watchtower/internal/db/timestamp"
-	"github.com/hashicorp/watchtower/internal/iam"
-	iamStore "github.com/hashicorp/watchtower/internal/iam/store"
-
 	"github.com/hashicorp/watchtower/internal/authtoken/store"
 	"github.com/hashicorp/watchtower/internal/db"
+	"github.com/hashicorp/watchtower/internal/db/timestamp"
 	"github.com/hashicorp/watchtower/internal/oplog"
 )
 
@@ -100,8 +97,8 @@ func (r *Repository) CreateAuthToken(ctx context.Context, withIamUserId, withAut
 		db.StdRetryCnt,
 		db.ExpBackoff{},
 		func(read db.Reader, w db.Writer) error {
-			// TODO: Remove this and either rely on either Alloc or a method exposed by the auth repo.
-			acct := &iam.Account{Account: &iamStore.Account{PublicId: withAuthAccountId}}
+			acct := allocAuthAccount()
+			acct.PublicId = withAuthAccountId
 			if err := read.LookupByPublicId(ctx, acct); err != nil {
 				return fmt.Errorf("create: auth token: auth account lookup: %w", err)
 			}
