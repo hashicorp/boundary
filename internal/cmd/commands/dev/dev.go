@@ -187,17 +187,9 @@ func (c *Command) Run(args []string) int {
 		c.DevAuthMethodId = c.flagDevAuthMethodId
 	}
 	if c.flagDevUsername != "" {
-		if len(c.flagDevUsername) < 5 {
-			c.UI.Error("Invalid dev username, must be longer than 5 characters")
-			return 1
-		}
 		c.DevUsername = c.flagDevUsername
 	}
 	if c.flagDevPassword != "" {
-		if len(c.flagDevPassword) < 7 {
-			c.UI.Error("Invalid dev username, must be longer than 7 characters")
-			return 1
-		}
 		c.DevPassword = c.flagDevPassword
 	}
 
