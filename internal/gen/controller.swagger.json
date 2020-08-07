@@ -72,6 +72,56 @@
         ]
       }
     },
+    "/v1/scopes/*/auth-methods": {
+      "get": {
+        "summary": "Lists all AuthMethods",
+        "operationId": "AuthMethodService_ListAuthMethods",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.services.v1.ListAuthMethodsResponse"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "view",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "controller.api.services.v1.AuthMethodService"
+        ]
+      },
+      "post": {
+        "summary": "Creates a single AuthMethod",
+        "operationId": "AuthMethodService_CreateAuthMethod",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/controller.api.resources.authmethods.v1.AuthMethod"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/controller.api.resources.authmethods.v1.AuthMethod"
+            }
+          }
+        ],
+        "tags": [
+          "controller.api.services.v1.AuthMethodService"
+        ]
+      }
+    },
     "/v1/scopes/*/auth-methods/{auth_method_id}/accounts": {
       "get": {
         "summary": "Lists all accounts in a specific auth method.",
@@ -109,7 +159,7 @@
           "200": {
             "description": "",
             "schema": {
-              "$ref": "#/definitions/controller.api.resources.auth.v1.Account"
+              "$ref": "#/definitions/controller.api.resources.authmethods.v1.Account"
             }
           }
         },
@@ -125,7 +175,7 @@
             "in": "body",
             "required": true,
             "schema": {
-              "$ref": "#/definitions/controller.api.resources.auth.v1.Account"
+              "$ref": "#/definitions/controller.api.resources.authmethods.v1.Account"
             }
           }
         ],
@@ -142,7 +192,7 @@
           "200": {
             "description": "",
             "schema": {
-              "$ref": "#/definitions/controller.api.resources.auth.v1.Account"
+              "$ref": "#/definitions/controller.api.resources.authmethods.v1.Account"
             }
           }
         },
@@ -206,7 +256,7 @@
           "200": {
             "description": "",
             "schema": {
-              "$ref": "#/definitions/controller.api.resources.auth.v1.Account"
+              "$ref": "#/definitions/controller.api.resources.authmethods.v1.Account"
             }
           }
         },
@@ -228,7 +278,7 @@
             "in": "body",
             "required": true,
             "schema": {
-              "$ref": "#/definitions/controller.api.resources.auth.v1.Account"
+              "$ref": "#/definitions/controller.api.resources.authmethods.v1.Account"
             }
           }
         ],
@@ -268,6 +318,91 @@
         ],
         "tags": [
           "controller.api.services.v1.AuthenticationService"
+        ]
+      }
+    },
+    "/v1/scopes/*/auth-methods/{id}": {
+      "get": {
+        "summary": "Gets a single AuthMethod",
+        "operationId": "AuthMethodService_GetAuthMethod",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/controller.api.resources.authmethods.v1.AuthMethod"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "view",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "controller.api.services.v1.AuthMethodService"
+        ]
+      },
+      "delete": {
+        "summary": "Deletes an AuthMethod",
+        "operationId": "AuthMethodService_DeleteAuthMethod",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.services.v1.DeleteAuthMethodResponse"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "controller.api.services.v1.AuthMethodService"
+        ]
+      },
+      "patch": {
+        "summary": "Updates an AuthMethod",
+        "operationId": "AuthMethodService_UpdateAuthMethod",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/controller.api.resources.authmethods.v1.AuthMethod"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/controller.api.resources.authmethods.v1.AuthMethod"
+            }
+          }
+        ],
+        "tags": [
+          "controller.api.services.v1.AuthMethodService"
         ]
       }
     },
@@ -1671,7 +1806,7 @@
     }
   },
   "definitions": {
-    "controller.api.resources.auth.v1.Account": {
+    "controller.api.resources.authmethods.v1.Account": {
       "type": "object",
       "properties": {
         "id": {
@@ -1724,6 +1859,50 @@
         }
       },
       "title": "Account contains all fields related to an auth Account resource"
+    },
+    "controller.api.resources.authmethods.v1.AuthMethod": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "The ID of the AuthMethod\nOutput only.",
+          "readOnly": true
+        },
+        "scope": {
+          "$ref": "#/definitions/controller.api.resources.scopes.v1.ScopeInfo",
+          "description": "Scope information for this resource\nOutput only.",
+          "readOnly": true
+        },
+        "name": {
+          "type": "string",
+          "title": "Optional name for identification purposes"
+        },
+        "description": {
+          "type": "string",
+          "title": "Optional user-set descripton for identification purposes"
+        },
+        "created_time": {
+          "type": "string",
+          "format": "date-time",
+          "description": "The time this resource was created\nOutput only.",
+          "readOnly": true
+        },
+        "updated_time": {
+          "type": "string",
+          "format": "date-time",
+          "description": "The time this resource was last updated.\nOutput only.",
+          "readOnly": true
+        },
+        "type": {
+          "type": "string",
+          "description": "The auth method type.  This can be \"password\" or \"oidc\"."
+        },
+        "attributes": {
+          "type": "object",
+          "description": "The attributes that are applied for the specific Auth Method type."
+        }
+      },
+      "title": "AuthMethod contains all fields related to a AuthMethod resource"
     },
     "controller.api.resources.authtokens.v1.AuthToken": {
       "type": "object",
@@ -2406,7 +2585,18 @@
           "type": "string"
         },
         "item": {
-          "$ref": "#/definitions/controller.api.resources.auth.v1.Account"
+          "$ref": "#/definitions/controller.api.resources.authmethods.v1.Account"
+        }
+      }
+    },
+    "controller.api.services.v1.CreateAuthMethodResponse": {
+      "type": "object",
+      "properties": {
+        "uri": {
+          "type": "string"
+        },
+        "item": {
+          "$ref": "#/definitions/controller.api.resources.authmethods.v1.AuthMethod"
         }
       }
     },
@@ -2496,6 +2686,15 @@
         }
       }
     },
+    "controller.api.services.v1.DeleteAuthMethodResponse": {
+      "type": "object",
+      "properties": {
+        "existed": {
+          "type": "boolean",
+          "format": "boolean"
+        }
+      }
+    },
     "controller.api.services.v1.DeleteAuthTokenResponse": {
       "type": "object",
       "properties": {
@@ -2572,7 +2771,15 @@
       "type": "object",
       "properties": {
         "item": {
-          "$ref": "#/definitions/controller.api.resources.auth.v1.Account"
+          "$ref": "#/definitions/controller.api.resources.authmethods.v1.Account"
+        }
+      }
+    },
+    "controller.api.services.v1.GetAuthMethodResponse": {
+      "type": "object",
+      "properties": {
+        "item": {
+          "$ref": "#/definitions/controller.api.resources.authmethods.v1.AuthMethod"
         }
       }
     },
@@ -2646,7 +2853,18 @@
         "items": {
           "type": "array",
           "items": {
-            "$ref": "#/definitions/controller.api.resources.auth.v1.Account"
+            "$ref": "#/definitions/controller.api.resources.authmethods.v1.Account"
+          }
+        }
+      }
+    },
+    "controller.api.services.v1.ListAuthMethodsResponse": {
+      "type": "object",
+      "properties": {
+        "items": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/controller.api.resources.authmethods.v1.AuthMethod"
           }
         }
       }
@@ -2908,7 +3126,15 @@
       "type": "object",
       "properties": {
         "item": {
-          "$ref": "#/definitions/controller.api.resources.auth.v1.Account"
+          "$ref": "#/definitions/controller.api.resources.authmethods.v1.Account"
+        }
+      }
+    },
+    "controller.api.services.v1.UpdateAuthMethodResponse": {
+      "type": "object",
+      "properties": {
+        "item": {
+          "$ref": "#/definitions/controller.api.resources.authmethods.v1.AuthMethod"
         }
       }
     },

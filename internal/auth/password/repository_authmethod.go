@@ -208,15 +208,14 @@ func (r *Repository) UpdateAuthMethod(ctx context.Context, authMethod *AuthMetho
 				dbOpts...,
 			)
 			if err == nil && rowsUpdated > 1 {
-				// return err, which will result in a rollback of the update
-				return errors.New("error more than 1 resource would have been updated ")
+				return db.ErrMultipleRecords
 			}
 			return err
 		},
 	)
 	if err != nil {
 		if db.IsUniqueError(err) {
-			return nil, db.NoRowsAffected, fmt.Errorf("update: password auth method: authMethod %s already exists in scope %s", authMethod.Name, authMethod.ScopeId)
+			return nil, db.NoRowsAffected, fmt.Errorf("update: password auth method: authMethod %s already exists in scope %s: %w", authMethod.Name, authMethod.ScopeId, db.ErrNotUnique)
 		}
 		return nil, db.NoRowsAffected, fmt.Errorf("update: password auth method: %w for %s", err, authMethod.PublicId)
 	}

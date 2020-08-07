@@ -4,6 +4,7 @@ import (
 	"text/template"
 
 	"github.com/hashicorp/watchtower/internal/gen/controller/api"
+	"github.com/hashicorp/watchtower/internal/gen/controller/api/resources/authmethods"
 	"github.com/hashicorp/watchtower/internal/gen/controller/api/resources/authtokens"
 	"github.com/hashicorp/watchtower/internal/gen/controller/api/resources/groups"
 	"github.com/hashicorp/watchtower/internal/gen/controller/api/resources/hosts"
@@ -24,6 +25,7 @@ type fieldInfo struct {
 	ProtoName         string
 	FieldType         string
 	GenerateSdkOption bool
+	SubtypeName       string
 }
 
 type structInfo struct {
@@ -31,6 +33,14 @@ type structInfo struct {
 	outFile            string
 	generatedStructure structureInfo
 	templates          []*template.Template
+
+	// Subtype name for types implementing an abstract resource type. This is
+	// used as text to insert into With/Default function calls to separate out
+	// implementations of the same abstract type. This way e.g. a WithUsername
+	// option turns into WithPasswordAccountUsername which is wordy but
+	// unambiguous. It also switches the behavior of the functions to work on
+	// the attributes map.
+	subtypeName string
 
 	// mappings of names of resources and param names for sub slice types, e.g.
 	// role principals and group members
@@ -172,6 +182,43 @@ var inputStructs = []*structInfo{
 			listTemplate,
 		},
 		pathArgs: []string{"user"},
+	},
+	// Auth Methods related resources
+	{
+		inProto: &authmethods.AuthMethod{},
+		outFile: "authmethods/authmethods.gen.go",
+		templates: []*template.Template{
+			clientTemplate,
+			createTemplate,
+			readTemplate,
+			updateTemplate,
+			deleteTemplate,
+			listTemplate,
+		},
+		pathArgs: []string{"auth-method"},
+	},
+	{
+		inProto:     &authmethods.PasswordAuthMethodAttributes{},
+		outFile:     "authmethods/password_auth_method_attributes.gen.go",
+		subtypeName: "PasswordAuthMethod",
+	},
+	{
+		inProto: &authmethods.Account{},
+		outFile: "authmethods/account.gen.go",
+		templates: []*template.Template{
+			clientTemplate,
+			createTemplate,
+			readTemplate,
+			updateTemplate,
+			deleteTemplate,
+			listTemplate,
+		},
+		pathArgs: []string{"auth-method", "account"},
+	},
+	{
+		inProto:     &authmethods.PasswordAccountAttributes{},
+		outFile:     "authmethods/password_account_attributes.gen.go",
+		subtypeName: "PasswordAccount",
 	},
 	// Auth Tokens
 	{

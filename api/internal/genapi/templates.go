@@ -99,6 +99,7 @@ func fillTemplates() {
 			pkgOptionMap := map[string]fieldInfo{}
 			for _, val := range input.Fields {
 				if val.GenerateSdkOption {
+					val.SubtypeName = in.subtypeName
 					pkgOptionMap[val.Name] = val
 				}
 			}
@@ -500,22 +501,42 @@ func WithScopeId(id string) Option {
 	}
 }
 
+// If set, and if the version is zero during an update, the API will perform a
+// fetch to get the current version of the resource and populate it during the
+// update call. This is convenient but opens up the possibility for subtle
+// order-of-modification issues, so use carefully.
 func WithAutomaticVersioning() Option {
 	return func(o *options) {
 		o.withAutomaticVersioning = true
 	}
 }
 {{ range .Fields }}
-func With{{ .Name }}(in{{ .Name }} {{ .FieldType }}) Option {
-	return func(o *options) {
+func With{{ .SubtypeName }}{{ .Name }}(in{{ .Name }} {{ .FieldType }}) Option {
+	return func(o *options) {		{{ if ( not ( eq .SubtypeName "" ) ) }}
+		raw, ok := o.valueMap["attributes"]
+		if !ok {
+			raw = interface{}(map[string]interface{}{})
+		}
+		val := raw.(map[string]interface{})
+		val["{{ .ProtoName }}"] = in{{ .Name }}
+		o.valueMap["attributes"] = val
+		{{ else }}
 		o.valueMap["{{ .ProtoName }}"] = in{{ .Name }}
-	}
+		{{ end }}	}
 }
 
-func Default{{ .Name }}() Option {
-	return func(o *options) {
+func Default{{ .SubtypeName }}{{ .Name }}() Option {
+	return func(o *options) {		{{ if ( not ( eq .SubtypeName "" ) ) }}
+		raw, ok := o.valueMap["attributes"]
+		if !ok {
+			raw = interface{}(map[string]interface{}{})
+		}
+		val := raw.(map[string]interface{})
+		val["{{ .ProtoName }}"] = nil
+		o.valueMap["attributes"] = val
+		{{ else }}
 		o.valueMap["{{ .ProtoName }}"] = nil
-	}
+		{{ end }}	}
 }
 {{ end }}
 `))

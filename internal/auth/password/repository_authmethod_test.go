@@ -497,6 +497,15 @@ func TestRepository_UpdateAuthMethod(t *testing.T) {
 			wantRowsUpdate: 1,
 		},
 		{
+			name: "null name ignored description",
+			args: args{
+				updates:        &store.AuthMethod{Description: "ignored"},
+				fieldMaskPaths: []string{"name"},
+			},
+			wantErr:        false,
+			wantRowsUpdate: 1,
+		},
+		{
 			name: "change min pw",
 			args: args{
 				updates: &store.AuthMethod{
