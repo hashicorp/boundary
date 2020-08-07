@@ -4,8 +4,8 @@ import (
 	"context"
 	"fmt"
 
+	authStore "github.com/hashicorp/watchtower/internal/auth/store"
 	"github.com/hashicorp/watchtower/internal/db"
-	"github.com/hashicorp/watchtower/internal/iam/store"
 	"github.com/hashicorp/watchtower/internal/oplog"
 	"github.com/hashicorp/watchtower/internal/types/scope"
 	"google.golang.org/protobuf/proto"
@@ -15,33 +15,33 @@ const (
 	defaultAccountTableName = "auth_account"
 )
 
-// Account is from the auth subsystem and iam is only allowed to: lookup and
+// authAccount is from the auth subsystem and iam is only allowed to: lookup and
 // update auth accounts.  That's why there is no "new" factory for Accounts.
-type Account struct {
-	*store.Account
+type authAccount struct {
+	*authStore.Account
 	tableName string `gorm:"-"`
 }
 
-var _ Cloneable = (*Account)(nil)
-var _ db.VetForWriter = (*Account)(nil)
-var _ oplog.ReplayableMessage = (*Account)(nil)
+var _ Cloneable = (*authAccount)(nil)
+var _ db.VetForWriter = (*authAccount)(nil)
+var _ oplog.ReplayableMessage = (*authAccount)(nil)
 
-func allocAccount() Account {
-	return Account{
-		Account: &store.Account{},
+func allocAccount() authAccount {
+	return authAccount{
+		Account: &authStore.Account{},
 	}
 }
 
 // Clone creates a clone of the auth account.
-func (a *Account) Clone() interface{} {
+func (a *authAccount) Clone() interface{} {
 	cp := proto.Clone(a.Account)
-	return &Account{
-		Account: cp.(*store.Account),
+	return &authAccount{
+		Account: cp.(*authStore.Account),
 	}
 }
 
 // VetForWrite implements db.VetForWrite() interface.
-func (a *Account) VetForWrite(ctx context.Context, r db.Reader, opType db.OpType, opt ...db.Option) error {
+func (a *authAccount) VetForWrite(ctx context.Context, r db.Reader, opType db.OpType, opt ...db.Option) error {
 	if a.PublicId == "" {
 		return fmt.Errorf("error public id is empty string for auth account write: %w", db.ErrInvalidParameter)
 	}
@@ -51,17 +51,17 @@ func (a *Account) VetForWrite(ctx context.Context, r db.Reader, opType db.OpType
 	return nil
 }
 
-func (a *Account) validScopeTypes() []scope.Type {
+func (a *authAccount) validScopeTypes() []scope.Type {
 	return []scope.Type{scope.Org}
 }
 
 // GetScope returns the scope for the auth account.
-func (a *Account) GetScope(ctx context.Context, r db.Reader) (*Scope, error) {
+func (a *authAccount) GetScope(ctx context.Context, r db.Reader) (*Scope, error) {
 	return LookupScope(ctx, r, a)
 }
 
 // TableName returns the tablename to override the default gorm table name.
-func (a *Account) TableName() string {
+func (a *authAccount) TableName() string {
 	if a.tableName != "" {
 		return a.tableName
 	}
@@ -71,6 +71,6 @@ func (a *Account) TableName() string {
 // SetTableName sets the tablename and satisfies the ReplayableMessage
 // interface. If the caller attempts to set the name to "" the name will be
 // reset to the default name.
-func (a *Account) SetTableName(n string) {
+func (a *authAccount) SetTableName(n string) {
 	a.tableName = n
 }

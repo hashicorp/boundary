@@ -1,7 +1,7 @@
 package authtoken
 
 import (
-	iamStore "github.com/hashicorp/watchtower/internal/iam/store"
+	authStore "github.com/hashicorp/watchtower/internal/auth/store"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -12,13 +12,13 @@ const (
 // AuthAccount is from the auth subsystem and iam is only allowed to: lookup and
 // update auth accounts.  That's why there is no "new" factory for AuthAccounts.
 type authAccount struct {
-	*iamStore.Account
+	*authStore.Account
 	tableName string `gorm:"-"`
 }
 
 func allocAuthAccount() *authAccount {
 	return &authAccount{
-		Account: &iamStore.Account{},
+		Account: &authStore.Account{},
 	}
 }
 
@@ -26,7 +26,7 @@ func allocAuthAccount() *authAccount {
 func (a *authAccount) clone() *authAccount {
 	cp := proto.Clone(a.Account)
 	return &authAccount{
-		Account: cp.(*iamStore.Account),
+		Account: cp.(*authStore.Account),
 	}
 }
 

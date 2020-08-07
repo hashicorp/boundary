@@ -189,7 +189,7 @@ func (r *Repository) LookupUserWithLogin(ctx context.Context, accountId string, 
 			msgs = append(msgs, &createMsg)
 
 			var updateMsg oplog.Message
-			updateAcct := acct.Clone().(*Account)
+			updateAcct := acct.Clone().(*authAccount)
 			updateAcct.IamUserId = id
 			updatedRows, err := w.Update(ctx, updateAcct, []string{"IamUserId"}, nil, db.NewOplogMsg(&updateMsg))
 			if err != nil {
@@ -245,7 +245,7 @@ func (r *Repository) getUserWithAccount(ctx context.Context, withAccountId strin
 // AssociateUserWithAccount will associate a user with an existing account.
 // The account must not already be associated with a different user.  No
 // options are currently supported.
-func (r *Repository) AssociateUserWithAccount(ctx context.Context, userPublicId, accountId string, opt ...Option) (*User, *Account, error) {
+func (r *Repository) AssociateUserWithAccount(ctx context.Context, userPublicId, accountId string, opt ...Option) (*User, *authAccount, error) {
 	opts := getOpts(opt...)
 	if userPublicId == "" {
 		return nil, nil, fmt.Errorf("associate user with account: missing user public id %w", db.ErrInvalidParameter)
@@ -280,7 +280,7 @@ func (r *Repository) AssociateUserWithAccount(ctx context.Context, userPublicId,
 		}
 	}
 
-	var updatedAcct *Account
+	var updatedAcct *authAccount
 
 	// validate, associated the user with the account, and then read the
 	// user back in the same tx for consistency.
@@ -297,7 +297,7 @@ func (r *Repository) AssociateUserWithAccount(ctx context.Context, userPublicId,
 				"resource-type":      []string{"auth-account"},
 			}
 			var updatedRows int
-			updatedAcct = acct.Clone().(*Account)
+			updatedAcct = acct.Clone().(*authAccount)
 			updatedAcct.IamUserId = userPublicId
 			// we are using WithWhere to make sure the account is not
 			// associated with a user (handling race conditions with concurrent
@@ -328,7 +328,7 @@ func (r *Repository) AssociateUserWithAccount(ctx context.Context, userPublicId,
 // DissociateUserWithAccount will dissociate a user with its existing account.
 // An error is returned if account is associated with a different user.  No
 // options are currently supported.
-func (r *Repository) DissociateUserWithAccount(ctx context.Context, userPublicId, accountId string, opt ...Option) (*User, *Account, error) {
+func (r *Repository) DissociateUserWithAccount(ctx context.Context, userPublicId, accountId string, opt ...Option) (*User, *authAccount, error) {
 	if userPublicId == "" {
 		return nil, nil, fmt.Errorf("dissociate user with account: missing user public id %w", db.ErrInvalidParameter)
 	}
@@ -359,7 +359,7 @@ func (r *Repository) DissociateUserWithAccount(ctx context.Context, userPublicId
 		return nil, nil, fmt.Errorf("dissociate user with account: %s account is not associated with a user: %w", accountId, db.ErrInvalidParameter)
 	}
 
-	var updatedAcct *Account
+	var updatedAcct *authAccount
 
 	// validate, dissociate the user with the account and then read the user back in
 	// the same tx for consistency.
@@ -374,7 +374,7 @@ func (r *Repository) DissociateUserWithAccount(ctx context.Context, userPublicId
 				"scope-type":         []string{scope.Org.String()},
 				"resource-type":      []string{"auth-account"},
 			}
-			updatedAcct = acct.Clone().(*Account)
+			updatedAcct = acct.Clone().(*authAccount)
 			updatedAcct.IamUserId = ""
 			// set the user id to null and use WithWhere to ensure that the auth
 			// account is associated with the user (handling race conditions

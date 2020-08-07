@@ -5,9 +5,9 @@ import (
 	"testing"
 
 	"github.com/hashicorp/go-uuid"
+	"github.com/hashicorp/watchtower/internal/auth/store"
 	"github.com/hashicorp/watchtower/internal/db"
 	dbassert "github.com/hashicorp/watchtower/internal/db/assert"
-	"github.com/hashicorp/watchtower/internal/iam/store"
 	"github.com/jinzhu/gorm"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -194,7 +194,7 @@ func TestGroupRole(t *testing.T, conn *gorm.DB, roleId, grpId string, opt ...Opt
 // testAccount is a temporary test function.  TODO - replace with an auth
 // subsystem testAccount function.  If userId is zero value, then an auth
 // account will be created with a null IamUserId
-func testAccount(t *testing.T, conn *gorm.DB, scopeId, authMethodId, userId string) *Account {
+func testAccount(t *testing.T, conn *gorm.DB, scopeId, authMethodId, userId string) *authAccount {
 	const (
 		accountPrefix = "aa_"
 	)
@@ -221,7 +221,7 @@ func testAccount(t *testing.T, conn *gorm.DB, scopeId, authMethodId, userId stri
 	id, err := db.NewPublicId(accountPrefix)
 	require.NoError(err)
 
-	acct := &Account{
+	acct := &authAccount{
 		Account: &store.Account{
 			PublicId:     id,
 			ScopeId:      scopeId,

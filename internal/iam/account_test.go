@@ -4,9 +4,9 @@ import (
 	"context"
 	"testing"
 
+	authStore "github.com/hashicorp/watchtower/internal/auth/store"
 	"github.com/hashicorp/watchtower/internal/db"
 	dbassert "github.com/hashicorp/watchtower/internal/db/assert"
-	"github.com/hashicorp/watchtower/internal/iam/store"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/proto"
@@ -28,7 +28,7 @@ func Test_AccountUpdate(t *testing.T) {
 		authMethodPublicId := testAuthMethod(t, conn, org.PublicId)
 		acct := testAccount(t, conn, org.PublicId, authMethodPublicId, "")
 
-		updateAcct := acct.Clone().(*Account)
+		updateAcct := acct.Clone().(*authAccount)
 		updateAcct.IamUserId = u.PublicId
 		updatedRows, err := rw.Update(context.Background(), updateAcct, []string{"IamUserId"}, nil)
 		require.NoError(err)
@@ -69,7 +69,7 @@ func TestAccount_Clone(t *testing.T) {
 		authMethodPublicId := testAuthMethod(t, conn, org.PublicId)
 		acct := testAccount(t, conn, org.PublicId, authMethodPublicId, u.PublicId)
 		cp := acct.Clone()
-		assert.True(proto.Equal(cp.(*Account).Account, acct.Account))
+		assert.True(proto.Equal(cp.(*authAccount).Account, acct.Account))
 	})
 	t.Run("not-equal", func(t *testing.T) {
 		assert := assert.New(t)
@@ -81,7 +81,7 @@ func TestAccount_Clone(t *testing.T) {
 		dbassert := dbassert.New(t, rw)
 		dbassert.IsNull(acct2, "IamUserId")
 		cp := acct.Clone()
-		assert.True(!proto.Equal(cp.(*Account).Account, acct2.Account))
+		assert.True(!proto.Equal(cp.(*authAccount).Account, acct2.Account))
 	})
 }
 
@@ -109,12 +109,12 @@ func TestAccount_SetTableName(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			def := &Account{
-				Account: &store.Account{},
+			def := &authAccount{
+				Account: &authStore.Account{},
 			}
 			require.Equal(defaultTableName, def.TableName())
-			s := &Account{
-				Account:   &store.Account{},
+			s := &authAccount{
+				Account:   &authStore.Account{},
 				tableName: tt.initialName,
 			}
 			s.SetTableName(tt.setNameTo)

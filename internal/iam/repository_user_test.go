@@ -693,7 +693,7 @@ func TestRepository_AssociateUserWithAccount(t *testing.T) {
 		name      string
 		args      args
 		want      *User
-		want1     *Account
+		want1     *authAccount
 		wantErr   bool
 		wantErrIs error
 	}{
@@ -842,7 +842,7 @@ func TestRepository_DissociateUserWithAccount(t *testing.T) {
 		name      string
 		args      args
 		want      *User
-		want1     *Account
+		want1     *authAccount
 		wantErr   bool
 		wantErrIs error
 	}{
