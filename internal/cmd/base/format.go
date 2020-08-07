@@ -397,9 +397,9 @@ var Formatters = map[string]Formatter{
 }
 
 func Format(ui cli.Ui) string {
-	switch ui.(type) {
+	switch t := ui.(type) {
 	case *WatchtowerUI:
-		return ui.(*WatchtowerUI).Format
+		return t.Format
 	}
 
 	format := os.Getenv(EnvWatchtowerCLIFormat)

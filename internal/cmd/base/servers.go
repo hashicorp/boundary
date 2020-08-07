@@ -287,7 +287,7 @@ func (b *Server) SetupListeners(ui cli.Ui, config *configutil.SharedConfig) erro
 		if lnConfig.MaxRequestDuration == 0 {
 			lnConfig.MaxRequestDuration = globals.DefaultMaxRequestDuration
 		}
-		props["max_request_duration"] = fmt.Sprintf("%s", lnConfig.MaxRequestDuration.String())
+		props["max_request_duration"] = lnConfig.MaxRequestDuration.String()
 
 		b.Listeners = append(b.Listeners, &ServerListener{
 			Mux:    lnMux,
@@ -387,7 +387,9 @@ func (b *Server) CreateDevDatabase(dialect string) error {
 	// In case of an error, run the cleanup function.  If we pass all errors, c should be set to a noop
 	// function before returning from this method
 	defer func() {
-		c()
+		if err := c(); err != nil {
+			b.Logger.Error("error cleaning up docker container", "error", err)
+		}
 	}()
 
 	if err != nil {
@@ -495,7 +497,7 @@ func (b *Server) CreateDevDatabase(dialect string) error {
 	if amId == "" {
 		amId = "paum_1234567890"
 	}
-	authMethod, err = pwRepo.CreateAuthMethod(ctx, authMethod, password.WithPublicId(amId))
+	_, err = pwRepo.CreateAuthMethod(ctx, authMethod, password.WithPublicId(amId))
 	if err != nil {
 		return fmt.Errorf("error saving auth method to the db: %w", err)
 	}

@@ -119,7 +119,9 @@ func (c *Command) Client() (*api.Client, error) {
 	}
 
 	if c.flagAddr != NotSetValue {
-		c.client.SetAddr(c.flagAddr)
+		if err := c.client.SetAddr(c.flagAddr); err != nil {
+			return nil, fmt.Errorf("error setting address on client: %w", err)
+		}
 	}
 
 	// If we need custom TLS configuration, then set it
