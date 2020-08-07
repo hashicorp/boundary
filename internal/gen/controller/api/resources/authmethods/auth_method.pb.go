@@ -44,7 +44,7 @@ type AuthMethod struct {
 	Scope *scopes.ScopeInfo `protobuf:"bytes,2,opt,name=scope,proto3" json:"scope,omitempty"`
 	// Optional name for identification purposes
 	Name *wrappers.StringValue `protobuf:"bytes,3,opt,name=name,proto3" json:"name,omitempty"`
-	// Optional user-set descripton for identification purposes
+	// Optional user-set description for identification purposes
 	Description *wrappers.StringValue `protobuf:"bytes,4,opt,name=description,proto3" json:"description,omitempty"`
 	// The time this resource was created
 	// Output only.
