@@ -30,6 +30,10 @@ func (tc *TestController) Controller() *Controller {
 	return tc.c
 }
 
+func (tc *TestController) Config() *Config {
+	return tc.c.conf
+}
+
 func (tc *TestController) Client() *api.Client {
 	return tc.client
 }
