@@ -35,7 +35,7 @@ message Scope {
   // @inject_tag: `gorm:"default:null"`
   string description = 7 [(custom_options.v1.mask_mapping) = {this: "description" that: "description"}];
 
-  // version allows optimistic locking of the user
+  // version allows optimistic locking of the scope
   // @inject_tag: `gorm:"default:null"`
   uint32 version = 8;
 }

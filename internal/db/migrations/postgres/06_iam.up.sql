@@ -43,7 +43,7 @@ create table iam_scope (
 
     -- version allows optimistic locking of the role when modifying the role
     -- itself and when modifying dependent items like principal roles.
-    version bigint not null default 1
+    version wt_version not null default 1
   );
 
 create table iam_scope_global (
@@ -222,7 +222,7 @@ create table iam_user (
     scope_id wt_scope_id not null references iam_scope(public_id) on delete cascade on update cascade,
     unique(name, scope_id),
     disabled boolean not null default false,
-    version bigint not null default 1,
+    version wt_version not null default 1,
 
     -- The order of columns is important for performance. See:
     -- https://dba.stackexchange.com/questions/58970/enforcing-constraints-two-tables-away/58972#58972
@@ -352,7 +352,7 @@ create table iam_role (
     grant_scope_id wt_scope_id not null references iam_scope(public_id) on delete cascade on update cascade,
     unique(name, scope_id),
     disabled boolean not null default false,
-    version bigint not null default 1,
+    version wt_version not null default 1,
 
     -- add unique index so a composite fk can be declared.
     unique(scope_id, public_id)
@@ -464,7 +464,7 @@ create table iam_group (
     disabled boolean not null default false,
     -- version allows optimistic locking of the group when modifying the group
     -- itself and when modifying dependent items like group members. 
-    version bigint not null default 1,
+    version wt_version not null default 1,
 
     -- add unique index so a composite fk can be declared.
     unique(scope_id, public_id)

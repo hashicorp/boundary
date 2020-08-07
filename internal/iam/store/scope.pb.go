@@ -53,7 +53,7 @@ type Scope struct {
 	// description of scope
 	// @inject_tag: `gorm:"default:null"`
 	Description string `protobuf:"bytes,7,opt,name=description,proto3" json:"description,omitempty" gorm:"default:null"`
-	// version allows optimistic locking of the user
+	// version allows optimistic locking of the scope
 	// @inject_tag: `gorm:"default:null"`
 	Version uint32 `protobuf:"varint,8,opt,name=version,proto3" json:"version,omitempty" gorm:"default:null"`
 }
