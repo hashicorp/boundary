@@ -9,6 +9,12 @@ import (
 
 func Test_GetOpts(t *testing.T) {
 	t.Parallel()
+	t.Run("WithPublicId", func(t *testing.T) {
+		opts := getOpts(WithPublicId("test id"))
+		testOpts := getDefaultOptions()
+		testOpts.withPublicId = "test id"
+		assert.Equal(t, opts, testOpts)
+	})
 	t.Run("WithName", func(t *testing.T) {
 		opts := getOpts(WithName("test"))
 		testOpts := getDefaultOptions()

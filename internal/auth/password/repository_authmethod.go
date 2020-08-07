@@ -38,17 +38,17 @@ func (r *Repository) CreateAuthMethod(ctx context.Context, m *AuthMethod, opt ..
 
 	opts := getOpts(opt...)
 
-	id, err := newAuthMethodId()
-	if err != nil {
-		return nil, fmt.Errorf("create: password auth method: %w", err)
-	}
-	m.PublicId = id
-
 	if opts.withPublicId != "" {
 		if !strings.HasPrefix(opts.withPublicId, AuthMethodPrefix+"_") {
 			return nil, fmt.Errorf("create: password auth method: passed-in public ID %q has wrong prefix, should be %q", opts.withPublicId, AuthMethodPrefix)
 		}
 		m.PublicId = opts.withPublicId
+	} else {
+		id, err := newAuthMethodId()
+		if err != nil {
+			return nil, fmt.Errorf("create: password auth method: %w", err)
+		}
+		m.PublicId = id
 	}
 
 	c, ok := opts.withConfig.(*Argon2Configuration)
@@ -59,6 +59,7 @@ func (r *Repository) CreateAuthMethod(ctx context.Context, m *AuthMethod, opt ..
 		return nil, fmt.Errorf("create: password auth method: %w", err)
 	}
 
+	var err error
 	c.PrivateId, err = newArgon2ConfigurationId()
 	if err != nil {
 		return nil, fmt.Errorf("create: password auth method: %w", err)
