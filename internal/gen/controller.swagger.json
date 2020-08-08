@@ -644,7 +644,7 @@
             "in": "body",
             "required": true,
             "schema": {
-              "$ref": "#/definitions/controller.api.services.v1.AddGroupMembersRequest"
+              "$ref": "#/definitions/controller.api.services.v1.GroupMemberIdsMessage"
             }
           }
         ],
@@ -677,7 +677,7 @@
             "in": "body",
             "required": true,
             "schema": {
-              "$ref": "#/definitions/controller.api.services.v1.RemoveGroupMembersRequest"
+              "$ref": "#/definitions/controller.api.services.v1.GroupMemberIdsMessage"
             }
           }
         ],
@@ -710,7 +710,7 @@
             "in": "body",
             "required": true,
             "schema": {
-              "$ref": "#/definitions/controller.api.services.v1.SetGroupMembersRequest"
+              "$ref": "#/definitions/controller.api.services.v1.GroupMemberIdsMessage"
             }
           }
         ],
@@ -2469,25 +2469,6 @@
       },
       "title": "User contains all fields related to a User resource"
     },
-    "controller.api.services.v1.AddGroupMembersRequest": {
-      "type": "object",
-      "properties": {
-        "id": {
-          "type": "string"
-        },
-        "version": {
-          "type": "integer",
-          "format": "int64",
-          "description": "The version ensures the group hasn't changed since it was last retrieved and if\nit has the request will fail."
-        },
-        "member_ids": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          }
-        }
-      }
-    },
     "controller.api.services.v1.AddGroupMembersResponse": {
       "type": "object",
       "properties": {
@@ -2820,6 +2801,17 @@
         }
       }
     },
+    "controller.api.services.v1.GroupMemberIdsMessage": {
+      "type": "object",
+      "properties": {
+        "member_ids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
     "controller.api.services.v1.ListAccountsResponse": {
       "type": "object",
       "properties": {
@@ -2944,25 +2936,6 @@
     "controller.api.services.v1.RemoveFromHostSetResponse": {
       "type": "object"
     },
-    "controller.api.services.v1.RemoveGroupMembersRequest": {
-      "type": "object",
-      "properties": {
-        "id": {
-          "type": "string"
-        },
-        "version": {
-          "type": "integer",
-          "format": "int64",
-          "description": "The version ensures the group hasn't changed since it was last retrieved and if\nit has the request will fail."
-        },
-        "member_ids": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          }
-        }
-      }
-    },
     "controller.api.services.v1.RemoveGroupMembersResponse": {
       "type": "object",
       "properties": {
@@ -2984,25 +2957,6 @@
       "properties": {
         "item": {
           "$ref": "#/definitions/controller.api.resources.roles.v1.Role"
-        }
-      }
-    },
-    "controller.api.services.v1.SetGroupMembersRequest": {
-      "type": "object",
-      "properties": {
-        "id": {
-          "type": "string"
-        },
-        "version": {
-          "type": "integer",
-          "format": "int64",
-          "description": "The version ensures the group hasn't changed since it was last retrieved and if\nit has the request will fail."
-        },
-        "member_ids": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          }
         }
       }
     },
