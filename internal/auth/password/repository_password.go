@@ -3,6 +3,7 @@ package password
 import (
 	"context"
 	"crypto/subtle"
+	"errors"
 	"fmt"
 
 	"github.com/hashicorp/watchtower/internal/db"
@@ -193,4 +194,59 @@ func (r *Repository) authenticate(ctx context.Context, authMethodId string, user
 		return nil, nil
 	}
 	return &acct, nil
+}
+
+// SetPassword sets the password for accountId to password. If password
+// contains an empty string, the password for accountId will be deleted.
+func (r *Repository) SetPassword(ctx context.Context, accountId string, password string) error {
+	if accountId == "" {
+		return fmt.Errorf("set password: no accountId: %w", db.ErrInvalidParameter)
+	}
+
+	var newCred *Argon2Credential
+	if password != "" {
+		cc, err := r.currentConfigForAccount(ctx, accountId)
+		if err != nil {
+			return fmt.Errorf("set password: retrieve current configuration: %w", err)
+		}
+		if cc.MinPasswordLength > len(password) {
+			return fmt.Errorf("set password: new password: %w", ErrTooShort)
+		}
+		newCred, err = newArgon2Credential(accountId, password, cc.argon2())
+		if err != nil {
+			return fmt.Errorf("set password: %w", err)
+		}
+		if err := newCred.encrypt(ctx, r.wrapper); err != nil {
+			return fmt.Errorf("set password: encrypt: %w", err)
+		}
+	}
+
+	_, err := r.writer.DoTx(ctx, db.StdRetryCnt, db.ExpBackoff{},
+		func(rr db.Reader, w db.Writer) error {
+			oldCred := allocCredential()
+			if err := rr.LookupWhere(ctx, &oldCred, "password_account_id = ?", accountId); err != nil {
+				if !errors.Is(err, db.ErrRecordNotFound) {
+					return err
+				}
+			}
+			if oldCred.PrivateId != "" {
+				dCred := oldCred.clone()
+				rowsDeleted, err := w.Delete(ctx, dCred, db.WithOplog(r.wrapper, oldCred.oplog(oplog.OpType_OP_TYPE_DELETE)))
+				if err == nil && rowsDeleted > 1 {
+					return db.ErrMultipleRecords
+				}
+				if err != nil {
+					return err
+				}
+			}
+			if newCred != nil {
+				return w.Create(ctx, newCred, db.WithOplog(r.wrapper, newCred.oplog(oplog.OpType_OP_TYPE_CREATE)))
+			}
+			return nil
+		},
+	)
+	if err != nil {
+		return fmt.Errorf("set password: %w", err)
+	}
+	return nil
 }
