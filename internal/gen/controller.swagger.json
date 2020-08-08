@@ -939,12 +939,12 @@
       "post": {
         "summary": "Adds existing Hosts to the Host Set",
         "description": "Adds the hosts to this Host Set if possible.  All hosts added must be a child of the same host catalog this host set is a child of.",
-        "operationId": "HostSetService_AddToHostSet",
+        "operationId": "HostSetService_AddHostSetHosts",
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
-              "$ref": "#/definitions/controller.api.services.v1.AddToHostSetResponse"
+              "$ref": "#/definitions/controller.api.services.v1.AddHostSetHostsResponse"
             }
           }
         },
@@ -969,14 +969,14 @@
     },
     "/v1/scopes/*/host-catalogs/{host_catalog_id}/host-sets/{id}:remove-hosts": {
       "post": {
-        "summary": "Removes Hosts to the Host Set",
+        "summary": "Removes Hosts from the Host Set",
         "description": "Removes the hosts from this Host Set if present.  If it is not present then no action is taken and no error is returned.",
-        "operationId": "HostSetService_RemoveFromHostSet",
+        "operationId": "HostSetService_RemoveHostSetHosts",
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
-              "$ref": "#/definitions/controller.api.services.v1.RemoveFromHostSetResponse"
+              "$ref": "#/definitions/controller.api.services.v1.RemoveHostSetHostsResponse"
             }
           }
         },
@@ -990,6 +990,38 @@
           {
             "name": "id",
             "description": "This host set's id.",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "controller.api.services.v1.HostSetService"
+        ]
+      }
+    },
+    "/v1/scopes/*/host-catalogs/{host_catalog_id}/host-sets/{id}:set-hosts": {
+      "post": {
+        "summary": "Sets the Hosts on the Host Set.",
+        "description": "Sets the Hosts on the Host Set, removing any hosts that are not specified in the request.",
+        "operationId": "HostSetService_SetHostSetHosts",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.services.v1.SetHostSetHostsResponse"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "host_catalog_id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "id",
             "in": "path",
             "required": true,
             "type": "string"
@@ -2514,6 +2546,9 @@
         }
       }
     },
+    "controller.api.services.v1.AddHostSetHostsResponse": {
+      "type": "object"
+    },
     "controller.api.services.v1.AddRoleGrantsRequest": {
       "type": "object",
       "properties": {
@@ -2567,9 +2602,6 @@
           "$ref": "#/definitions/controller.api.resources.roles.v1.Role"
         }
       }
-    },
-    "controller.api.services.v1.AddToHostSetResponse": {
-      "type": "object"
     },
     "controller.api.services.v1.AuthenticateRequest": {
       "type": "object",
@@ -2975,9 +3007,6 @@
         }
       }
     },
-    "controller.api.services.v1.RemoveFromHostSetResponse": {
-      "type": "object"
-    },
     "controller.api.services.v1.RemoveGroupMembersRequest": {
       "type": "object",
       "properties": {
@@ -3004,6 +3033,9 @@
           "$ref": "#/definitions/controller.api.resources.groups.v1.Group"
         }
       }
+    },
+    "controller.api.services.v1.RemoveHostSetHostsResponse": {
+      "type": "object"
     },
     "controller.api.services.v1.RemoveRoleGrantsRequest": {
       "type": "object",
@@ -3085,6 +3117,9 @@
           "$ref": "#/definitions/controller.api.resources.groups.v1.Group"
         }
       }
+    },
+    "controller.api.services.v1.SetHostSetHostsResponse": {
+      "type": "object"
     },
     "controller.api.services.v1.SetRoleGrantsRequest": {
       "type": "object",

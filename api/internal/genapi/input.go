@@ -261,7 +261,10 @@ var inputStructs = []*structInfo{
 			deleteTemplate,
 			listTemplate,
 		},
-		pathArgs:       []string{"host-catalog", "host-set"},
+		pathArgs: []string{"host-catalog", "host-set"},
+		sliceSubTypes: map[string]string{
+			"Hosts": "hostIds",
+		},
 		versionEnabled: true,
 	},
 }

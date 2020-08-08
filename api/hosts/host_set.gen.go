@@ -222,3 +222,177 @@ func (c *hostsetsClient) List(ctx context.Context, hostCatalogId string, opt ...
 
 	return target.Items, apiErr, nil
 }
+
+func (c *hostsetsClient) AddHosts(ctx context.Context, hostCatalogId string, hostSetId string, version uint32, hostIds []string, opt ...Option) (*HostSet, *api.Error, error) {
+	if hostCatalogId == "" {
+		return nil, nil, fmt.Errorf("empty hostCatalogId value passed into AddHosts request")
+	}
+	if hostSetId == "" {
+		return nil, nil, fmt.Errorf("empty hostSetId value passed into AddHosts request")
+	}
+	if c.client == nil {
+		return nil, nil, fmt.Errorf("nil client")
+	}
+
+	opts, apiOpts := getOpts(opt...)
+
+	if version == 0 {
+		if !opts.withAutomaticVersioning {
+			return nil, nil, errors.New("zero version number passed into AddHosts request")
+		}
+		existingTarget, existingApiErr, existingErr := c.Read(ctx, hostCatalogId, hostSetId, opt...)
+		if existingErr != nil {
+			return nil, nil, fmt.Errorf("error performing initial check-and-set read: %w", existingErr)
+		}
+		if existingApiErr != nil {
+			return nil, nil, fmt.Errorf("error from controller when performing initial check-and-set read: %s", pretty.Sprint(existingApiErr))
+		}
+		if existingTarget == nil {
+			return nil, nil, errors.New("nil resource found when performing initial check-and-set read")
+		}
+		version = existingTarget.Version
+	}
+
+	if len(hostIds) > 0 {
+		opts.valueMap["host_ids"] = hostIds
+	}
+
+	req, err := c.client.NewRequest(ctx, "POST", fmt.Sprintf("host-catalogs/%s/host-sets/%s:add-hosts", hostCatalogId, hostSetId), opts.valueMap, apiOpts...)
+	if err != nil {
+		return nil, nil, fmt.Errorf("error creating AddHosts request: %w", err)
+	}
+
+	q := url.Values{}
+	q.Add("version", fmt.Sprintf("%d", version))
+	req.URL.RawQuery = q.Encode()
+
+	resp, err := c.client.Do(req)
+	if err != nil {
+		return nil, nil, fmt.Errorf("error performing client request during AddHosts call: %w", err)
+	}
+
+	target := new(HostSet)
+	apiErr, err := resp.Decode(target)
+	if err != nil {
+		return nil, nil, fmt.Errorf("error decoding AddHosts response: %w", err)
+	}
+
+	return target, apiErr, nil
+}
+
+func (c *hostsetsClient) SetHosts(ctx context.Context, hostCatalogId string, hostSetId string, version uint32, hostIds []string, opt ...Option) (*HostSet, *api.Error, error) {
+	if hostCatalogId == "" {
+		return nil, nil, fmt.Errorf("empty hostCatalogId value passed into SetHosts request")
+	}
+	if hostSetId == "" {
+		return nil, nil, fmt.Errorf("empty hostSetId value passed into SetHosts request")
+	}
+	if c.client == nil {
+		return nil, nil, fmt.Errorf("nil client")
+	}
+
+	opts, apiOpts := getOpts(opt...)
+
+	if version == 0 {
+		if !opts.withAutomaticVersioning {
+			return nil, nil, errors.New("zero version number passed into SetHosts request")
+		}
+		existingTarget, existingApiErr, existingErr := c.Read(ctx, hostCatalogId, hostSetId, opt...)
+		if existingErr != nil {
+			return nil, nil, fmt.Errorf("error performing initial check-and-set read: %w", existingErr)
+		}
+		if existingApiErr != nil {
+			return nil, nil, fmt.Errorf("error from controller when performing initial check-and-set read: %s", pretty.Sprint(existingApiErr))
+		}
+		if existingTarget == nil {
+			return nil, nil, errors.New("nil resource found when performing initial check-and-set read")
+		}
+		version = existingTarget.Version
+	}
+
+	if len(hostIds) > 0 {
+		opts.valueMap["host_ids"] = hostIds
+	} else if hostIds != nil {
+		// In this function, a non-nil but empty list means clear out
+		opts.valueMap["host_ids"] = nil
+	}
+
+	req, err := c.client.NewRequest(ctx, "POST", fmt.Sprintf("host-catalogs/%s/host-sets/%s:set-hosts", hostCatalogId, hostSetId), opts.valueMap, apiOpts...)
+	if err != nil {
+		return nil, nil, fmt.Errorf("error creating SetHosts request: %w", err)
+	}
+
+	q := url.Values{}
+	q.Add("version", fmt.Sprintf("%d", version))
+	req.URL.RawQuery = q.Encode()
+
+	resp, err := c.client.Do(req)
+	if err != nil {
+		return nil, nil, fmt.Errorf("error performing client request during SetHosts call: %w", err)
+	}
+
+	target := new(HostSet)
+	apiErr, err := resp.Decode(target)
+	if err != nil {
+		return nil, nil, fmt.Errorf("error decoding SetHosts response: %w", err)
+	}
+
+	return target, apiErr, nil
+}
+
+func (c *hostsetsClient) RemoveHosts(ctx context.Context, hostCatalogId string, hostSetId string, version uint32, hostIds []string, opt ...Option) (*HostSet, *api.Error, error) {
+	if hostCatalogId == "" {
+		return nil, nil, fmt.Errorf("empty hostCatalogId value passed into RemoveHosts request")
+	}
+	if hostSetId == "" {
+		return nil, nil, fmt.Errorf("empty hostSetId value passed into RemoveHosts request")
+	}
+	if c.client == nil {
+		return nil, nil, fmt.Errorf("nil client")
+	}
+
+	opts, apiOpts := getOpts(opt...)
+
+	if version == 0 {
+		if !opts.withAutomaticVersioning {
+			return nil, nil, errors.New("zero version number passed into RemoveHosts request")
+		}
+		existingTarget, existingApiErr, existingErr := c.Read(ctx, hostCatalogId, hostSetId, opt...)
+		if existingErr != nil {
+			return nil, nil, fmt.Errorf("error performing initial check-and-set read: %w", existingErr)
+		}
+		if existingApiErr != nil {
+			return nil, nil, fmt.Errorf("error from controller when performing initial check-and-set read: %s", pretty.Sprint(existingApiErr))
+		}
+		if existingTarget == nil {
+			return nil, nil, errors.New("nil resource found when performing initial check-and-set read")
+		}
+		version = existingTarget.Version
+	}
+
+	if len(hostIds) > 0 {
+		opts.valueMap["host_ids"] = hostIds
+	}
+
+	req, err := c.client.NewRequest(ctx, "POST", fmt.Sprintf("host-catalogs/%s/host-sets/%s:remove-hosts", hostCatalogId, hostSetId), opts.valueMap, apiOpts...)
+	if err != nil {
+		return nil, nil, fmt.Errorf("error creating RemoveHosts request: %w", err)
+	}
+
+	q := url.Values{}
+	q.Add("version", fmt.Sprintf("%d", version))
+	req.URL.RawQuery = q.Encode()
+
+	resp, err := c.client.Do(req)
+	if err != nil {
+		return nil, nil, fmt.Errorf("error performing client request during RemoveHosts call: %w", err)
+	}
+
+	target := new(HostSet)
+	apiErr, err := resp.Decode(target)
+	if err != nil {
+		return nil, nil, fmt.Errorf("error decoding RemoveHosts response: %w", err)
+	}
+
+	return target, apiErr, nil
+}
