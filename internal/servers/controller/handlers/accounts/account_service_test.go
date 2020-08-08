@@ -48,6 +48,7 @@ func TestGet(t *testing.T) {
 		CreatedTime:  aa.GetCreateTime().GetTimestamp(),
 		UpdatedTime:  aa.GetUpdateTime().GetTimestamp(),
 		Scope:        &scopes.ScopeInfo{Id: org.GetPublicId(), Type: scope.Org.String()},
+		Version:      1,
 		Type:         "password",
 		Attributes:   &structpb.Struct{Fields: map[string]*structpb.Value{"username": structpb.NewStringValue(aa.GetUserName())}},
 	}
@@ -113,6 +114,7 @@ func TestList(t *testing.T) {
 			CreatedTime:  aa.GetCreateTime().GetTimestamp(),
 			UpdatedTime:  aa.GetUpdateTime().GetTimestamp(),
 			Scope:        &scopes.ScopeInfo{Id: o.GetPublicId(), Type: scope.Org.String()},
+			Version:      1,
 			Type:         "password",
 			Attributes:   &structpb.Struct{Fields: map[string]*structpb.Value{"username": structpb.NewStringValue(aa.GetUserName())}},
 		})
@@ -126,6 +128,7 @@ func TestList(t *testing.T) {
 			CreatedTime:  aa.GetCreateTime().GetTimestamp(),
 			UpdatedTime:  aa.GetUpdateTime().GetTimestamp(),
 			Scope:        &scopes.ScopeInfo{Id: o.GetPublicId(), Type: scope.Org.String()},
+			Version:      1,
 			Type:         "password",
 			Attributes:   &structpb.Struct{Fields: map[string]*structpb.Value{"username": structpb.NewStringValue(aa.GetUserName())}},
 		})
@@ -326,6 +329,7 @@ func TestCreate(t *testing.T) {
 					Name:         &wrapperspb.StringValue{Value: "name"},
 					Description:  &wrapperspb.StringValue{Value: "desc"},
 					Scope:        &scopes.ScopeInfo{Id: o.GetPublicId(), Type: scope.Org.String()},
+					Version:      1,
 					Type:         "password",
 					Attributes:   defaultSt,
 				},
