@@ -42,7 +42,6 @@ require (
 	github.com/mitchellh/go-wordwrap v1.0.0
 	github.com/mitchellh/gox v1.0.1
 	github.com/mitchellh/mapstructure v1.3.3
-	github.com/neo4j-drivers/gobolt v1.7.4 // indirect
 	github.com/oligot/go-mod-upgrade v0.2.1
 	github.com/ory/dockertest/v3 v3.6.0
 	github.com/pires/go-proxyproto v0.1.3
