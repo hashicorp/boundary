@@ -2084,6 +2084,12 @@
           "format": "boolean",
           "title": "Whether the host is disabled"
         },
+        "version": {
+          "type": "integer",
+          "format": "int64",
+          "description": "The version can be used in subsequent write requests to ensure this resource\nhas not changed and to fail the write if it has.\nOutput only.",
+          "readOnly": true
+        },
         "address": {
           "type": "string",
           "title": "The address (DNS or IP name) used to reach the host"
@@ -2132,6 +2138,12 @@
           "type": "boolean",
           "format": "boolean",
           "title": "Whether the catalog is disabled"
+        },
+        "version": {
+          "type": "integer",
+          "format": "int64",
+          "description": "The version can be used in subsequent write requests to ensure this resource\nhas not changed and to fail the write if it has.\nOutput only.",
+          "readOnly": true
         },
         "attributes": {
           "type": "object",
@@ -2182,8 +2194,14 @@
           "format": "boolean",
           "title": "Whether the host set is disabled"
         },
+        "version": {
+          "type": "integer",
+          "format": "int64",
+          "description": "The version can be used in subsequent write requests to ensure this resource\nhas not changed and to fail the write if it has.\nOutput only.",
+          "readOnly": true
+        },
         "size": {
-          "type": "string",
+          "type": "integer",
           "format": "int64",
           "description": "The total count of hosts in this host set\nOutput only.",
           "readOnly": true

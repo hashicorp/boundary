@@ -40,13 +40,18 @@ message HostSet {
 	// Whether the host set is disabled
 	google.protobuf.BoolValue disabled = 8 [(custom_options.v1.generate_sdk_option) = true];
 
+	// The version can be used in subsequent write requests to ensure this resource
+	// has not changed and to fail the write if it has.
+	// Output only.
+	uint32 version = 9;
+
 	// The total count of hosts in this host set
 	// Output only.
-	google.protobuf.Int64Value size = 9;
+	uint32 size = 10;
 
 	// A list of hosts in this host set
 	// TODO: Figure out if this should be in the basic HostSet view and what
 	// view to use on the Hosts.
 	// Output only.
-	repeated Host hosts = 10;
+	repeated Host hosts = 11;
 }
