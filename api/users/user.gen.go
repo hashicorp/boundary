@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"net/url"
 	"time"
 
 	"github.com/kr/pretty"
@@ -24,22 +25,22 @@ type User struct {
 	Version     uint32            `json:"version,omitempty"`
 }
 
-type userClient struct {
+type usersClient struct {
 	client *api.Client
 }
 
-func NewUserClient(c *api.Client) *userClient {
-	return &userClient{client: c}
+func NewUsersClient(c *api.Client) *usersClient {
+	return &usersClient{client: c}
 }
 
-func (c *userClient) Create(ctx context.Context, opt ...Option) (*User, *api.Error, error) {
+func (c *usersClient) Create(ctx context.Context, opt ...Option) (*User, *api.Error, error) {
 	if c.client == nil {
 		return nil, nil, fmt.Errorf("nil client")
 	}
 
 	opts, apiOpts := getOpts(opt...)
 
-	req, err := c.client.NewRequest(ctx, "POST", fmt.Sprintf("users"), opts.valueMap, apiOpts...)
+	req, err := c.client.NewRequest(ctx, "POST", "users", opts.valueMap, apiOpts...)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error creating Create request: %w", err)
 	}
@@ -58,7 +59,7 @@ func (c *userClient) Create(ctx context.Context, opt ...Option) (*User, *api.Err
 	return target, apiErr, nil
 }
 
-func (c *userClient) Read(ctx context.Context, userId string, opt ...Option) (*User, *api.Error, error) {
+func (c *usersClient) Read(ctx context.Context, userId string, opt ...Option) (*User, *api.Error, error) {
 	if userId == "" {
 		return nil, nil, fmt.Errorf("empty userId value passed into Read request")
 	}
@@ -88,7 +89,7 @@ func (c *userClient) Read(ctx context.Context, userId string, opt ...Option) (*U
 	return target, apiErr, nil
 }
 
-func (c *userClient) Update(ctx context.Context, userId string, version uint32, opt ...Option) (*User, *api.Error, error) {
+func (c *usersClient) Update(ctx context.Context, userId string, version uint32, opt ...Option) (*User, *api.Error, error) {
 	if userId == "" {
 		return nil, nil, fmt.Errorf("empty userId value passed into Update request")
 	}
@@ -114,12 +115,15 @@ func (c *userClient) Update(ctx context.Context, userId string, version uint32, 
 		}
 		version = existingTarget.Version
 	}
-	opts.valueMap["version"] = version
 
 	req, err := c.client.NewRequest(ctx, "PATCH", fmt.Sprintf("users/%s", userId), opts.valueMap, apiOpts...)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error creating Update request: %w", err)
 	}
+
+	q := url.Values{}
+	q.Add("version", fmt.Sprintf("%d", version))
+	req.URL.RawQuery = q.Encode()
 
 	resp, err := c.client.Do(req)
 	if err != nil {
@@ -135,7 +139,7 @@ func (c *userClient) Update(ctx context.Context, userId string, version uint32, 
 	return target, apiErr, nil
 }
 
-func (c *userClient) Delete(ctx context.Context, userId string, opt ...Option) (bool, *api.Error, error) {
+func (c *usersClient) Delete(ctx context.Context, userId string, opt ...Option) (bool, *api.Error, error) {
 	if userId == "" {
 		return false, nil, fmt.Errorf("empty userId value passed into Delete request")
 	}
@@ -168,14 +172,14 @@ func (c *userClient) Delete(ctx context.Context, userId string, opt ...Option) (
 	return target.Existed, apiErr, nil
 }
 
-func (c *userClient) List(ctx context.Context, opt ...Option) ([]*User, *api.Error, error) {
+func (c *usersClient) List(ctx context.Context, opt ...Option) ([]*User, *api.Error, error) {
 	if c.client == nil {
 		return nil, nil, fmt.Errorf("nil client")
 	}
 
 	_, apiOpts := getOpts(opt...)
 
-	req, err := c.client.NewRequest(ctx, "GET", fmt.Sprintf("users"), nil, apiOpts...)
+	req, err := c.client.NewRequest(ctx, "GET", "users", nil, apiOpts...)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error creating List request: %w", err)
 	}

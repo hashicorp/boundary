@@ -10,7 +10,7 @@ import (
 
 // TODO: This will need to be changed when we add Auth Method API to watchtower.  We'll also need a better
 // way to handle different auth method types.
-func (c *authmethodClient) Authenticate(ctx context.Context, authMethodId, name, password string, opt ...Option) (*authtokens.AuthToken, *api.Error, error) {
+func (c *authmethodsClient) Authenticate(ctx context.Context, authMethodId, name, password string, opt ...Option) (*authtokens.AuthToken, *api.Error, error) {
 	if c.client == nil {
 		return nil, nil, fmt.Errorf("nil client in Authenticate request")
 	}

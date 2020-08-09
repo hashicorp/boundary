@@ -94,7 +94,7 @@ service RoleService {
   rpc AddRolePrincipals(AddRolePrincipalsRequest) returns (AddRolePrincipalsResponse) {
     option (google.api.http) = {
       post: "/v1/scopes/*/roles/{role_id}:add-principals"
-      body: "*"
+      body: "item"
       response_body: "item"
     };
     option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
@@ -111,7 +111,7 @@ service RoleService {
   rpc SetRolePrincipals(SetRolePrincipalsRequest) returns (SetRolePrincipalsResponse) {
     option (google.api.http) = {
       post: "/v1/scopes/*/roles/{role_id}:set-principals"
-      body: "*"
+      body: "item"
       response_body: "item"
     };
     option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
@@ -127,7 +127,7 @@ service RoleService {
   rpc RemoveRolePrincipals(RemoveRolePrincipalsRequest) returns (RemoveRolePrincipalsResponse) {
     option (google.api.http) = {
       post: "/v1/scopes/*/roles/{role_id}:remove-principals"
-      body: "*"
+      body: "item"
       response_body: "item"
     };
     option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
@@ -142,7 +142,7 @@ service RoleService {
   rpc AddRoleGrants(AddRoleGrantsRequest) returns (AddRoleGrantsResponse) {
     option (google.api.http) = {
       post: "/v1/scopes/*/roles/{role_id}:add-grants"
-      body: "*"
+      body: "item"
       response_body: "item"
     };
     option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
@@ -158,7 +158,7 @@ service RoleService {
   rpc SetRoleGrants(SetRoleGrantsRequest) returns (SetRoleGrantsResponse) {
     option (google.api.http) = {
       post: "/v1/scopes/*/roles/{role_id}:set-grants"
-      body: "*"
+      body: "item"
       response_body: "item"
     };
     option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
@@ -174,7 +174,7 @@ service RoleService {
   rpc RemoveRoleGrants(RemoveRoleGrantsRequest) returns (RemoveRoleGrantsResponse) {
     option (google.api.http) = {
       post: "/v1/scopes/*/roles/{role_id}:remove-grants"
-      body: "*"
+      body: "item"
       response_body: "item"
     };
     option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
@@ -230,12 +230,17 @@ message DeleteRoleResponse {
   bool existed = 1;
 }
 
+message PrincipalIdsMessage {
+  repeated string principal_ids = 1 [json_name="principal_ids"];
+}
+
 message AddRolePrincipalsRequest {
   string role_id = 1;
   // The version ensures the role hasn't changed since it was last retrieved and if
   // it has the request will fail.
   uint32 version = 2;
-  repeated string principal_ids = 3 [json_name="principal_ids"];
+
+  PrincipalIdsMessage item = 3;
 }
 
 message AddRolePrincipalsResponse {
@@ -247,7 +252,8 @@ message SetRolePrincipalsRequest {
   // The version ensures the role hasn't changed since it was last retrieved and if
   // it has the request will fail.
   uint32 version = 2;
-  repeated string principal_ids = 3 [json_name="principal_ids"];
+  
+  PrincipalIdsMessage item = 3;
 }
 
 message SetRolePrincipalsResponse {
@@ -259,11 +265,16 @@ message RemoveRolePrincipalsRequest {
   // The version ensures the role hasn't changed since it was last retrieved and if
   // it has the request will fail.
   uint32 version = 2;
-  repeated string principal_ids = 3 [json_name="principal_ids"];
+  
+  PrincipalIdsMessage item = 3;
 }
 
 message RemoveRolePrincipalsResponse {
   resources.roles.v1.Role item = 1;
+}
+
+message GrantStringsMessage {
+  repeated string grant_strings = 1 [json_name="grant_strings"];
 }
 
 message AddRoleGrantsRequest {
@@ -271,7 +282,8 @@ message AddRoleGrantsRequest {
   // The version ensures the role hasn't changed since it was last retrieved and if
   // it has the request will fail.
   uint32 version = 2;
-  repeated string grant_strings = 3 [json_name="grant_strings"];
+  
+  GrantStringsMessage item = 3;;
 }
 
 message AddRoleGrantsResponse {
@@ -283,7 +295,8 @@ message SetRoleGrantsRequest {
   // The version ensures the role hasn't changed since it was last retrieved and if
   // it has the request will fail.
   uint32 version = 2;
-  repeated string grant_strings = 3 [json_name="grant_strings"];
+
+  GrantStringsMessage item = 3;
 }
 
 message SetRoleGrantsResponse {
@@ -295,7 +308,8 @@ message RemoveRoleGrantsRequest {
   // The version ensures the role hasn't changed since it was last retrieved and if
   // it has the request will fail.
   uint32 version = 2;
-  repeated string grant_strings = 3 [json_name="grant_strings"];
+  
+  GrantStringsMessage item = 3;
 }
 
 message RemoveRoleGrantsResponse {

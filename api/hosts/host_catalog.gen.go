@@ -4,6 +4,7 @@ package hosts
 import (
 	"context"
 	"fmt"
+	"net/url"
 	"time"
 
 	"github.com/hashicorp/watchtower/api"
@@ -22,22 +23,22 @@ type HostCatalog struct {
 	Attributes  map[string]interface{} `json:"attributes,omitempty"`
 }
 
-type hostcatalogClient struct {
+type hostcatalogsClient struct {
 	client *api.Client
 }
 
-func NewHostCatalogClient(c *api.Client) *hostcatalogClient {
-	return &hostcatalogClient{client: c}
+func NewHostCatalogsClient(c *api.Client) *hostcatalogsClient {
+	return &hostcatalogsClient{client: c}
 }
 
-func (c *hostcatalogClient) Create(ctx context.Context, opt ...Option) (*HostCatalog, *api.Error, error) {
+func (c *hostcatalogsClient) Create(ctx context.Context, opt ...Option) (*HostCatalog, *api.Error, error) {
 	if c.client == nil {
 		return nil, nil, fmt.Errorf("nil client")
 	}
 
 	opts, apiOpts := getOpts(opt...)
 
-	req, err := c.client.NewRequest(ctx, "POST", fmt.Sprintf("host-catalogs"), opts.valueMap, apiOpts...)
+	req, err := c.client.NewRequest(ctx, "POST", "host-catalogs", opts.valueMap, apiOpts...)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error creating Create request: %w", err)
 	}
@@ -56,7 +57,7 @@ func (c *hostcatalogClient) Create(ctx context.Context, opt ...Option) (*HostCat
 	return target, apiErr, nil
 }
 
-func (c *hostcatalogClient) Read(ctx context.Context, hostCatalogId string, opt ...Option) (*HostCatalog, *api.Error, error) {
+func (c *hostcatalogsClient) Read(ctx context.Context, hostCatalogId string, opt ...Option) (*HostCatalog, *api.Error, error) {
 	if hostCatalogId == "" {
 		return nil, nil, fmt.Errorf("empty hostCatalogId value passed into Read request")
 	}
@@ -86,7 +87,7 @@ func (c *hostcatalogClient) Read(ctx context.Context, hostCatalogId string, opt 
 	return target, apiErr, nil
 }
 
-func (c *hostcatalogClient) Update(ctx context.Context, hostCatalogId string, version uint32, opt ...Option) (*HostCatalog, *api.Error, error) {
+func (c *hostcatalogsClient) Update(ctx context.Context, hostCatalogId string, version uint32, opt ...Option) (*HostCatalog, *api.Error, error) {
 	if hostCatalogId == "" {
 		return nil, nil, fmt.Errorf("empty hostCatalogId value passed into Update request")
 	}
@@ -100,6 +101,10 @@ func (c *hostcatalogClient) Update(ctx context.Context, hostCatalogId string, ve
 	if err != nil {
 		return nil, nil, fmt.Errorf("error creating Update request: %w", err)
 	}
+
+	q := url.Values{}
+	q.Add("version", fmt.Sprintf("%d", version))
+	req.URL.RawQuery = q.Encode()
 
 	resp, err := c.client.Do(req)
 	if err != nil {
@@ -115,7 +120,7 @@ func (c *hostcatalogClient) Update(ctx context.Context, hostCatalogId string, ve
 	return target, apiErr, nil
 }
 
-func (c *hostcatalogClient) Delete(ctx context.Context, hostCatalogId string, opt ...Option) (bool, *api.Error, error) {
+func (c *hostcatalogsClient) Delete(ctx context.Context, hostCatalogId string, opt ...Option) (bool, *api.Error, error) {
 	if hostCatalogId == "" {
 		return false, nil, fmt.Errorf("empty hostCatalogId value passed into Delete request")
 	}
@@ -148,14 +153,14 @@ func (c *hostcatalogClient) Delete(ctx context.Context, hostCatalogId string, op
 	return target.Existed, apiErr, nil
 }
 
-func (c *hostcatalogClient) List(ctx context.Context, opt ...Option) ([]*HostCatalog, *api.Error, error) {
+func (c *hostcatalogsClient) List(ctx context.Context, opt ...Option) ([]*HostCatalog, *api.Error, error) {
 	if c.client == nil {
 		return nil, nil, fmt.Errorf("nil client")
 	}
 
 	_, apiOpts := getOpts(opt...)
 
-	req, err := c.client.NewRequest(ctx, "GET", fmt.Sprintf("host-catalogs"), nil, apiOpts...)
+	req, err := c.client.NewRequest(ctx, "GET", "host-catalogs", nil, apiOpts...)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error creating List request: %w", err)
 	}

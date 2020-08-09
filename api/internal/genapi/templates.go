@@ -14,6 +14,15 @@ import (
 )
 
 func toPath(segments []string, action string) string {
+	// If it's just a collection name, don't do a fmt.Sprintf
+	if len(segments) == 1 {
+		ret := segments[0]
+		if action != "" {
+			ret = fmt.Sprintf("%s:%s", ret, action)
+		}
+		return fmt.Sprintf(`"%s"`, ret)
+	}
+
 	var printfString, printfArg []string
 	for i, s := range segments {
 		if i%2 == 0 {
@@ -40,7 +49,13 @@ func getArgsAndPaths(in []string, action string) (colArgs, resArgs []string, col
 		pathSegment = append(pathSegment, collectionName, varName)
 	}
 
-	return argNames[:len(argNames)-1], argNames, toPath(pathSegment[:len(pathSegment)-1], action), toPath(pathSegment, action)
+	colArgs, resArgs, colPath, resPath = argNames[:len(argNames)-1], argNames, toPath(pathSegment[:len(pathSegment)-1], action), toPath(pathSegment, action)
+
+	// Scopes create and list operations always need scope ID
+	if colPath == `"scopes"` {
+		colArgs = append(colArgs, "scopeId")
+	}
+	return
 }
 
 type templateInput struct {
@@ -62,7 +77,7 @@ func fillTemplates() {
 	for _, in := range inputStructs {
 		outBuf := new(bytes.Buffer)
 		input := templateInput{
-			ClientName:     strings.ToLower(in.generatedStructure.name),
+			ClientName:     strings.ToLower(in.generatedStructure.name) + "s",
 			Name:           in.generatedStructure.name,
 			Package:        in.generatedStructure.pkg,
 			Fields:         in.generatedStructure.fields,
@@ -185,6 +200,11 @@ func (c *{{ .ClientName }}Client) List(ctx context.Context, {{ range .Collection
 	if err != nil {
 		return nil, nil, fmt.Errorf("error creating List request: %w", err)
 	}
+	{{ if ( eq .CollectionPath "\"scopes\"" ) }}
+	q := url.Values{}
+	q.Add("scope_id", scopeId)
+	req.URL.RawQuery = q.Encode()
+	{{ end }}
 
 	resp, err := c.client.Do(req)
 	if err != nil {
@@ -287,6 +307,11 @@ func (c *{{ .ClientName }}Client) Create(ctx context.Context, {{ range .Collecti
 	if err != nil {
 		return nil, nil, fmt.Errorf("error creating Create request: %w", err)
 	}
+	{{ if ( eq .CollectionPath "\"scopes\"" ) }}
+	q := url.Values{}
+	q.Add("scope_id", scopeId)
+	req.URL.RawQuery = q.Encode()
+	{{ end }}
 
 	resp, err := c.client.Do(req)
 	if err != nil {
@@ -331,13 +356,16 @@ func (c *{{ .ClientName }}Client) Update(ctx context.Context, {{ range .Resource
 		}
 		version = existingTarget.Version
 	}
-	opts.valueMap["version"] = version
 	{{ end }}
 
 	req, err := c.client.NewRequest(ctx, "PATCH", {{ .ResourcePath }}, opts.valueMap, apiOpts...)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error creating Update request: %w", err)
 	}
+
+	q := url.Values{}
+	q.Add("version", fmt.Sprintf("%d", version))
+	req.URL.RawQuery = q.Encode()
 
 	resp, err := c.client.Do(req)
 	if err != nil {
@@ -395,7 +423,6 @@ func (c *{{ $input.ClientName }}Client) {{ $fullName }}(ctx context.Context, {{ 
 		}
 		version = existingTarget.Version
 	}
-	opts.valueMap["version"] = version
 	{{ end }}
 
 	if len({{ $value }}) > 0 {
@@ -410,6 +437,10 @@ func (c *{{ $input.ClientName }}Client) {{ $fullName }}(ctx context.Context, {{ 
 	if err != nil {
 		return nil, nil, fmt.Errorf("error creating {{ $fullName }} request: %w", err)
 	}
+
+	q := url.Values{}
+	q.Add("version", fmt.Sprintf("%d", version))
+	req.URL.RawQuery = q.Encode()
 
 	resp, err := c.client.Do(req)
 	if err != nil {
@@ -453,7 +484,7 @@ type {{ .ClientName }}Client struct {
 	client *api.Client
 }
 
-func New{{ .Name }}Client(c *api.Client) *{{ .ClientName }}Client {
+func New{{ .Name }}sClient(c *api.Client) *{{ .ClientName }}Client {
 	return &{{ .ClientName }}Client{ client: c }
 }
 `))

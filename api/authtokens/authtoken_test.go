@@ -1,42 +1,58 @@
 package authtokens_test
 
-/*
+import (
+	"net/http"
+	"sort"
+	"testing"
+
+	"github.com/hashicorp/watchtower/api/authmethods"
+	"github.com/hashicorp/watchtower/api/authtokens"
+	"github.com/hashicorp/watchtower/internal/authtoken"
+	"github.com/hashicorp/watchtower/internal/servers/controller"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+)
+
 func TestAuthTokens_List(t *testing.T) {
-	assert := assert.New(t)
-	tc := controller.NewTestController(t, &controller.TestControllerOpts{DisableAuthorizationFailures: true})
+	assert, require := assert.New(t), require.New(t)
+	amId := "paum_1234567890"
+	tc := controller.NewTestController(t, &controller.TestControllerOpts{
+		DisableAuthorizationFailures: true,
+		DefaultAuthMethodId:          amId,
+		DefaultUsername:              "user",
+		DefaultPassword:              "passpass",
+	})
 	defer tc.Shutdown()
 
 	client := tc.Client()
-	org := &scopes.Org{
-		Client: client,
-	}
-	ctx := context.Background()
+	tokens := authtokens.NewAuthTokensClient(client)
+	methods := authmethods.NewAuthMethodsClient(client)
 
-	atl, apiErr, err := org.ListAuthTokens(ctx)
-	assert.NoError(err)
+	atl, apiErr, err := tokens.List(tc.Context())
+	require.NoError(err)
 	assert.Nil(apiErr)
 	assert.Empty(atl)
 
 	var expected []*authtokens.AuthToken
 
-	at, apiErr, err := org.Authenticate(ctx, "am_1234567890", "name", "pw")
-	assert.NoError(err)
+	at, apiErr, err := methods.Authenticate(tc.Context(), amId, "user", "passpass")
+	require.NoError(err)
 	assert.Nil(apiErr)
 	expected = append(expected, at)
 
-	atl, apiErr, err = org.ListAuthTokens(ctx)
-	assert.NoError(err)
+	atl, apiErr, err = tokens.List(tc.Context())
+	require.NoError(err)
 	assert.Nil(apiErr)
 	assert.ElementsMatch(comparableSlice(expected), comparableSlice(atl))
 
 	for i := 1; i < 10; i++ {
-		at, apiErr, err = org.Authenticate(ctx, "am_1234567890", "name", "pw")
-		assert.NoError(err)
+		at, apiErr, err = methods.Authenticate(tc.Context(), amId, "user", "passpass")
+		require.NoError(err)
 		assert.Nil(apiErr)
 		expected = append(expected, at)
 	}
-	atl, apiErr, err = org.ListAuthTokens(ctx)
-	require.NoError(t, err)
+	atl, apiErr, err = tokens.List(tc.Context())
+	require.NoError(err)
 	assert.Nil(apiErr)
 	assert.ElementsMatch(comparableSlice(expected), comparableSlice(atl))
 }
@@ -65,52 +81,61 @@ func comparableSlice(in []*authtokens.AuthToken) []authtokens.AuthToken {
 }
 
 func TestAuthToken_Crud(t *testing.T) {
-	tc := controller.NewTestController(t, &controller.TestControllerOpts{DisableAuthorizationFailures: true})
+	assert, require := assert.New(t), require.New(t)
+	amId := "paum_1234567890"
+	tc := controller.NewTestController(t, &controller.TestControllerOpts{
+		DisableAuthorizationFailures: true,
+		DefaultAuthMethodId:          amId,
+		DefaultUsername:              "user",
+		DefaultPassword:              "passpass",
+	})
 	defer tc.Shutdown()
 
 	client := tc.Client()
-	org := &scopes.Org{
-		Client: client,
-	}
+	tokens := authtokens.NewAuthTokensClient(client)
+	methods := authmethods.NewAuthMethodsClient(client)
 
-	want, apiErr, err := org.Authenticate(tc.Context(), "am_1234567890", "name", "pw")
+	want, apiErr, err := methods.Authenticate(tc.Context(), amId, "user", "passpass")
+	require.NoError(err)
+	assert.Empty(apiErr)
 
-	at, apiErr, err := org.ReadAuthToken(tc.Context(), &authtokens.AuthToken{Id: want.Id})
-	require.NoError(t, err)
-	assert.Nil(t, apiErr)
-	at.Token = ""
-	assert.EqualValues(t, comparableResource(want), comparableResource(at))
+	at, apiErr, err := tokens.Read(tc.Context(), want.Id)
+	require.NoError(err)
+	assert.Nil(apiErr)
+	assert.EqualValues(comparableResource(want), comparableResource(at))
 
-	existed, _, err := org.DeleteAuthToken(tc.Context(), at)
-	require.NoError(t, err)
-	assert.Nil(t, apiErr)
-	assert.True(t, existed, "Expected existing user when deleted, but it wasn't.")
+	existed, _, err := tokens.Delete(tc.Context(), at.Id)
+	require.NoError(err)
+	assert.Nil(apiErr)
+	assert.True(existed, "Expected existing user when deleted, but it wasn't.")
 
-	existed, apiErr, err = org.DeleteAuthToken(tc.Context(), at)
-	require.NoError(t, err)
-	assert.Nil(t, apiErr)
-	assert.False(t, existed, "Expected user to not exist when deleted, but it did.")
+	existed, apiErr, err = tokens.Delete(tc.Context(), at.Id)
+	require.NoError(err)
+	assert.Nil(apiErr)
+	assert.False(existed, "Expected user to not exist when deleted, but it did.")
 }
 
 func TestAuthToken_Errors(t *testing.T) {
-	assert := assert.New(t)
-	tc := controller.NewTestController(t, &controller.TestControllerOpts{DisableAuthorizationFailures: true})
+	assert, require := assert.New(t), require.New(t)
+	amId := "paum_1234567890"
+	tc := controller.NewTestController(t, &controller.TestControllerOpts{
+		DisableAuthorizationFailures: true,
+		DefaultAuthMethodId:          amId,
+		DefaultUsername:              "user",
+		DefaultPassword:              "passpass",
+	})
 	defer tc.Shutdown()
-	ctx := tc.Context()
 
 	client := tc.Client()
-	org := &scopes.Org{
-		Client: client,
-	}
+	tokens := authtokens.NewAuthTokensClient(client)
 
-	_, apiErr, err := org.ReadAuthToken(ctx, &authtokens.AuthToken{Id: authtoken.AuthTokenPrefix + "_doesntexis"})
-	assert.NoError(err)
+	_, apiErr, err := tokens.Read(tc.Context(), authtoken.AuthTokenPrefix+"_doesntexis")
+	require.NoError(err)
 	assert.NotNil(apiErr)
-	assert.EqualValues(apiErr.Status, http.StatusNotFound)
+	assert.EqualValues(http.StatusNotFound, apiErr.Status)
 
-	_, apiErr, err = org.ReadAuthToken(ctx, &authtokens.AuthToken{Id: "invalid id"})
-	assert.NoError(err)
+	_, apiErr, err = tokens.Read(tc.Context(), "invalid id")
+	require.NoError(err)
 	assert.NotNil(apiErr)
-	assert.EqualValues(apiErr.Status, http.StatusBadRequest)
+	assert.EqualValues(http.StatusForbidden, apiErr.Status)
 }
-*/

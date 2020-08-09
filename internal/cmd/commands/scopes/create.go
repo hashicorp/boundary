@@ -85,7 +85,8 @@ func (c *CreateScopeCommand) Run(args []string) int {
 		return 2
 	}
 
-	scp, apiErr, err := scopes.NewScopeClient(client).Create(c.Context,
+	scp, apiErr, err := scopes.NewScopesClient(client).Create(c.Context,
+		client.ScopeId(),
 		scopes.WithName(c.flagName),
 		scopes.WithDescription(c.flagDescription))
 
