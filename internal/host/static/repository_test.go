@@ -8,6 +8,7 @@ import (
 
 	wrapping "github.com/hashicorp/go-kms-wrapping"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	dbassert "github.com/hashicorp/watchtower/internal/db/assert"
 
@@ -528,13 +529,13 @@ func TestRepository_UpdateCatalog(t *testing.T) {
 			_, prj := iam.TestScopes(t, conn)
 			tt.orig.ScopeId = prj.GetPublicId()
 			orig, err := repo.CreateCatalog(context.Background(), tt.orig)
-			assert.NoError(err)
-			assert.NotNil(orig)
+			require.NoError(t, err)
+			require.NotNil(t, orig)
 
 			if tt.chgFn != nil {
 				orig = tt.chgFn(orig)
 			}
-			got, gotCount, err := repo.UpdateCatalog(context.Background(), orig, tt.masks)
+			got, gotCount, err := repo.UpdateCatalog(context.Background(), orig, 1, tt.masks)
 			if tt.wantIsErr != nil {
 				assert.Truef(errors.Is(err, tt.wantIsErr), "want err: %q got: %q", tt.wantIsErr, err)
 				assert.Equal(tt.wantCount, gotCount, "row count")
@@ -572,7 +573,7 @@ func TestRepository_UpdateCatalog(t *testing.T) {
 		cats := testCatalogs(t, conn, 2)
 		c1 := cats[0]
 		c1.Name = name
-		got1, gotCount1, err := repo.UpdateCatalog(context.Background(), c1, []string{"name"})
+		got1, gotCount1, err := repo.UpdateCatalog(context.Background(), c1, 1, []string{"name"})
 		assert.NoError(err)
 		assert.NotNil(got1)
 		assert.Equal(name, got1.Name)
@@ -580,7 +581,7 @@ func TestRepository_UpdateCatalog(t *testing.T) {
 
 		c2 := cats[1]
 		c2.Name = name
-		got2, gotCount2, err := repo.UpdateCatalog(context.Background(), c2, []string{"name"})
+		got2, gotCount2, err := repo.UpdateCatalog(context.Background(), c2, 1, []string{"name"})
 		assert.Truef(errors.Is(err, db.ErrNotUnique), "want err: %v got: %v", db.ErrNotUnique, err)
 		assert.Nil(got2)
 		assert.Equal(db.NoRowsAffected, gotCount2, "row count")
@@ -615,7 +616,7 @@ func TestRepository_UpdateCatalog(t *testing.T) {
 		assert.NoError(err)
 		assert.NotNil(got2)
 		got2.Name = got.Name
-		got3, gotCount3, err := repo.UpdateCatalog(context.Background(), got2, []string{"name"})
+		got3, gotCount3, err := repo.UpdateCatalog(context.Background(), got2, 1, []string{"name"})
 		assert.NoError(err)
 		assert.NotNil(got3)
 		assert.NotSame(got2, got3)
@@ -637,7 +638,7 @@ func TestRepository_UpdateCatalog(t *testing.T) {
 		c1.ScopeId = c2.ScopeId
 		assert.Equal(c1.ScopeId, c2.ScopeId)
 
-		got1, gotCount1, err := repo.UpdateCatalog(context.Background(), c1, []string{"name"})
+		got1, gotCount1, err := repo.UpdateCatalog(context.Background(), c1, 1, []string{"name"})
 
 		assert.NoError(err)
 		assert.NotNil(got1)
