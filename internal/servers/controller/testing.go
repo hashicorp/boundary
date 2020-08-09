@@ -262,3 +262,19 @@ func NewTestController(t *testing.T, opts *TestControllerOpts) *TestController {
 
 	return tc
 }
+
+func (tc *TestController) AddClusterControllerMember(t *testing.T, opts *TestControllerOpts) *TestController {
+	if opts == nil {
+		opts = new(TestControllerOpts)
+	}
+	nextOpts := &TestControllerOpts{
+		DatabaseUrl:   tc.c.conf.DatabaseUrl,
+		ControllerKMS: tc.c.conf.ControllerKMS,
+		WorkerAuthKMS: tc.c.conf.WorkerAuthKMS,
+		Logger:        tc.c.conf.Logger,
+	}
+	if opts.Logger != nil {
+		nextOpts.Logger = opts.Logger
+	}
+	return NewTestController(t, nextOpts)
+}

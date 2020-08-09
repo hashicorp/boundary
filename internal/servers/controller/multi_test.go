@@ -25,11 +25,8 @@ func TestAuthenticationMulti(t *testing.T) {
 	})
 	defer c1.Shutdown()
 
-	c2 := controller.NewTestController(t, &controller.TestControllerOpts{
-		DatabaseUrl:   c1.Config().Server.DatabaseUrl,
-		ControllerKMS: c1.Config().ControllerKMS,
-		WorkerAuthKMS: c1.Config().WorkerAuthKMS,
-		Logger:        c1.Config().Logger.ResetNamed("controller2"),
+	c2 := c1.AddClusterControllerMember(t, &controller.TestControllerOpts{
+		Logger: c1.Config().Logger.ResetNamed("controller2"),
 	})
 	defer c2.Shutdown()
 
