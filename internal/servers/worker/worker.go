@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/rand"
 	"fmt"
+	"sync/atomic"
 	"time"
 
 	"github.com/hashicorp/go-hclog"
@@ -22,6 +23,7 @@ type Worker struct {
 
 	controllerConns        []*controllerConnection
 	controllerStatusTicker *time.Timer
+	lastStatusSuccess      *atomic.Value
 
 	listeningAddress string
 
@@ -31,10 +33,13 @@ type Worker struct {
 
 func New(conf *Config) (*Worker, error) {
 	w := &Worker{
-		conf:            conf,
-		logger:          conf.Logger.Named("worker"),
-		controllerConns: make([]*controllerConnection, 0, 3),
+		conf:              conf,
+		logger:            conf.Logger.Named("worker"),
+		controllerConns:   make([]*controllerConnection, 0, 3),
+		lastStatusSuccess: new(atomic.Value),
 	}
+
+	w.lastStatusSuccess.Store(time.Time{})
 
 	if conf.SecureRandomReader == nil {
 		conf.SecureRandomReader = rand.Reader

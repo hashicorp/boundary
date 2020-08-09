@@ -61,10 +61,15 @@ func (w *Worker) startStatusTicking() {
 						}
 						w.controllerResolver.UpdateState(resolver.State{Addresses: addrs})
 						w.logger.Trace("found controllers", "addresses", strAddrs)
+						w.lastStatusSuccess.Store(time.Now())
 					}
 				}
 				timer.Reset(getRandomInterval())
 			}
 		}
 	}()
+}
+
+func (w *Worker) LastStatusSuccess() time.Time {
+	return w.lastStatusSuccess.Load().(time.Time)
 }
