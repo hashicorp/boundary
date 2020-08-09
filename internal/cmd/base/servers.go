@@ -67,7 +67,7 @@ type Server struct {
 	DevUsername     string
 	DevPassword     string
 
-	DevDatabaseUrl         string
+	DatabaseUrl            string
 	DevDatabaseCleanupFunc func() error
 
 	Database *gorm.DB
@@ -390,12 +390,15 @@ func (b *Server) RunShutdownFuncs() error {
 	return mErr.ErrorOrNil()
 }
 
-func (b *Server) ConnectToDatabase(dialect string, url string) error {
-	dbase, err := gorm.Open(dialect, url)
+func (b *Server) ConnectToDatabase(dialect string) error {
+	dbase, err := gorm.Open(dialect, b.DatabaseUrl)
 	if err != nil {
 		return fmt.Errorf("unable to create db object with dialect %s: %w", dialect, err)
 	}
+
 	b.Database = dbase
+	gorm.LogFormatter = db.GetGormLogFormatter(b.Logger)
+	b.Database.SetLogger(db.GetGormLogger(b.Logger))
 	return nil
 }
 
@@ -414,21 +417,19 @@ func (b *Server) CreateDevDatabase(dialect string) error {
 	}
 
 	b.DevDatabaseCleanupFunc = c
-	b.DevDatabaseUrl = url
+	b.DatabaseUrl = url
 
 	b.InfoKeys = append(b.InfoKeys, "dev database url")
-	b.Info["dev database url"] = b.DevDatabaseUrl
+	b.Info["dev database url"] = b.DatabaseUrl
 	if container != "" {
 		b.InfoKeys = append(b.InfoKeys, "dev database container")
 		b.Info["dev database container"] = strings.TrimPrefix(container, "/")
 	}
 
-	if err := b.ConnectToDatabase(dialect, url); err != nil {
+	if err := b.ConnectToDatabase(dialect); err != nil {
 		return err
 	}
 
-	gorm.LogFormatter = db.GetGormLogFormatter(b.Logger)
-	b.Database.SetLogger(db.GetGormLogger(b.Logger))
 	b.Database.LogMode(true)
 
 	rw := db.New(b.Database)
@@ -562,5 +563,5 @@ func (b *Server) DestroyDevDatabase() error {
 	if b.DevDatabaseCleanupFunc != nil {
 		return b.DevDatabaseCleanupFunc()
 	}
-	return errors.New("no dev database cleanup function found")
+	return nil
 }

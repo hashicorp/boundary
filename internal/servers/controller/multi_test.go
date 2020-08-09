@@ -1,38 +1,64 @@
-package controller_testing
+package controller_test
 
 import (
-	"encoding/json"
-	"fmt"
-	"io/ioutil"
-	"net/http"
-	"strings"
 	"testing"
 
+	"github.com/hashicorp/watchtower/api/authmethods"
+	"github.com/hashicorp/watchtower/api/scopes"
+	"github.com/hashicorp/watchtower/internal/servers/controller"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 func TestAuthenticationMulti(t *testing.T) {
-	c1 := NewTestController(t, &TestControllerOpts{DefaultOrgId: "o_1234567890"})
+	assert, require := assert.New(t), require.New(t)
+	amId := "paum_1234567890"
+	user := "jeff"
+	password := "passpass"
+	orgId := "o_1234567890"
+
+	c1 := controller.NewTestController(t, &controller.TestControllerOpts{
+		DefaultOrgId:        orgId,
+		DefaultAuthMethodId: amId,
+		DefaultUsername:     user,
+		DefaultPassword:     password,
+	})
 	defer c1.Shutdown()
 
-	c2 := NewTestController(t, &TestControllerOpts{DatabaseUrl: c1.Config().DatabaseUrl})
+	c2 := controller.NewTestController(t, &controller.TestControllerOpts{
+		DatabaseUrl:   c1.Config().Server.DatabaseUrl,
+		ControllerKMS: c1.Config().ControllerKMS,
+		WorkerAuthKMS: c1.Config().WorkerAuthKMS,
+		Logger:        c1.Config().Logger.ResetNamed("controller2"),
+	})
 	defer c2.Shutdown()
 
-	resp, err := http.Post(fmt.Sprintf("%s/v1/scopes/o_1234567890/auth-methods/am_1234567890:authenticate", c.ApiAddrs()[0]), "application/json",
-		strings.NewReader(`{"token_type": null, "credentials": {"name":"test", "password": "test"}}`))
-	require.NoError(t, err)
-	assert.Equal(t, http.StatusOK, resp.StatusCode, "Got response: %v", resp)
+	auth := authmethods.NewAuthMethodsClient(c1.Client())
+	token1, apiErr, err := auth.Authenticate(c1.Context(), amId, user, password)
+	require.Nil(err)
+	require.Nil(apiErr)
+	require.NotNil(token1)
 
-	b, err := ioutil.ReadAll(resp.Body)
-	require.NoError(t, err)
-	body := make(map[string]interface{})
-	require.NoError(t, json.Unmarshal(b, &body))
+	auth = authmethods.NewAuthMethodsClient(c2.Client())
+	token2, apiErr, err := auth.Authenticate(c2.Context(), amId, user, password)
+	require.Nil(err)
+	require.Nil(apiErr)
+	require.NotNil(token2)
 
-	require.Contains(t, body, "id")
-	require.Contains(t, body, "token")
-	pubId, tok := body["id"].(string), body["token"].(string)
-	assert.NotEmpty(t, pubId)
-	assert.NotEmpty(t, tok)
-	assert.Truef(t, strings.HasPrefix(tok, pubId), "Token: %q, Id: %q", tok, pubId)
+	assert.NotEqual(token1.Token, token2.Token)
+
+	c1.Client().SetToken(token1.Token)
+	c2.Client().SetToken(token1.Token) // Same token, as it should work on both
+
+	// Create a project, read from the other
+	proj, apiErr, err := scopes.NewScopesClient(c1.Client()).Create(c1.Context(), orgId)
+	require.NoError(err)
+	require.Nil(apiErr)
+	require.NotNil(proj)
+	projId := proj.Id
+
+	proj, apiErr, err = scopes.NewScopesClient(c2.Client()).Read(c2.Context(), projId)
+	require.NoError(err)
+	require.Nil(apiErr)
+	require.NotNil(proj)
 }

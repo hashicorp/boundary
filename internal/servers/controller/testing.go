@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/hashicorp/go-hclog"
+	wrapping "github.com/hashicorp/go-kms-wrapping"
 	"github.com/hashicorp/watchtower/api"
 	"github.com/hashicorp/watchtower/internal/cmd/base"
 	"github.com/hashicorp/watchtower/internal/cmd/config"
@@ -142,6 +143,15 @@ type TestControllerOpts struct {
 	// performed but they won't cause 403 Forbidden. Useful for API-level
 	// testing to avoid a lot of faff.
 	DisableAuthorizationFailures bool
+
+	// The controller KMS to use, or one will be created
+	ControllerKMS wrapping.Wrapper
+
+	// The worker auth KMS to use, or one will be created
+	WorkerAuthKMS wrapping.Wrapper
+
+	// The logger to use, or one will be created
+	Logger hclog.Logger
 }
 
 func NewTestController(t *testing.T, opts *TestControllerOpts) *TestController {
@@ -190,13 +200,24 @@ func NewTestController(t *testing.T, opts *TestControllerOpts) *TestController {
 	}
 
 	// Start a logger
-	tc.b.Logger = hclog.New(&hclog.LoggerOptions{
-		Level: hclog.Trace,
-	})
+	tc.b.Logger = opts.Logger
+	if tc.b.Logger == nil {
+		tc.b.Logger = hclog.New(&hclog.LoggerOptions{
+			Level: hclog.Trace,
+		})
+	}
 
 	// Set up KMSes
-	if err := tc.b.SetupKMSes(nil, opts.Config.SharedConfig, []string{"controller", "worker-auth"}); err != nil {
-		t.Fatal(err)
+	switch {
+	case opts.ControllerKMS != nil && opts.WorkerAuthKMS != nil:
+		tc.b.ControllerKMS = opts.ControllerKMS
+		tc.b.WorkerAuthKMS = opts.WorkerAuthKMS
+	case opts.ControllerKMS == nil && opts.WorkerAuthKMS == nil:
+		if err := tc.b.SetupKMSes(nil, opts.Config.SharedConfig, []string{"controller", "worker-auth"}); err != nil {
+			t.Fatal(err)
+		}
+	default:
+		t.Fatal("either controller and worker auth KMS must both be set, or neither")
 	}
 
 	// Ensure the listeners use random port allocation
@@ -207,12 +228,12 @@ func NewTestController(t *testing.T, opts *TestControllerOpts) *TestController {
 		t.Fatal(err)
 	}
 
-	if !opts.DisableDatabaseCreation {
-		if opts.DatabaseUrl != "" {
-			if err := tc.b.ConnectToDatabase("postgres", opts.DatabaseUrl); err != nil {
-				t.Fatal(err)
-			}
+	if opts.DatabaseUrl != "" {
+		tc.b.DatabaseUrl = opts.DatabaseUrl
+		if err := tc.b.ConnectToDatabase("postgres"); err != nil {
+			t.Fatal(err)
 		}
+	} else if !opts.DisableDatabaseCreation {
 		if err := tc.b.CreateDevDatabase("postgres"); err != nil {
 			t.Fatal(err)
 		}

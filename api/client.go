@@ -421,6 +421,14 @@ func NewClient(c *Config) (*Client, error) {
 	}, nil
 }
 
+// Addr returns the current (parsed) address
+func (c *Client) Addr() string {
+	c.modifyLock.RLock()
+	defer c.modifyLock.RUnlock()
+
+	return c.config.Addr
+}
+
 // Sets the address of Watchtower in the client. The format of address should
 // be "<Scheme>://<Host>:<Port>". Setting this on a client will override the
 // value of the WATCHTOWER_ADDR environment variable.
@@ -433,8 +441,8 @@ func (c *Client) SetAddr(addr string) error {
 
 // ScopeId fetches the scope ID the client will use by default
 func (c *Client) ScopeId() string {
-	c.modifyLock.Lock()
-	defer c.modifyLock.Unlock()
+	c.modifyLock.RLock()
+	defer c.modifyLock.RUnlock()
 
 	return c.config.ScopeId
 }
@@ -504,8 +512,8 @@ func (c *Client) SetOutputCurlString(curl bool) {
 
 // Token gets the configured token.
 func (c *Client) Token() string {
-	c.modifyLock.Lock()
-	defer c.modifyLock.Unlock()
+	c.modifyLock.RLock()
+	defer c.modifyLock.RUnlock()
 
 	return c.config.Token
 }
