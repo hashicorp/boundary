@@ -985,6 +985,80 @@ func TestRepository_UpdateAccount(t *testing.T) {
 		assert.NoError(db.TestVerifyOplog(t, rw, got2.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_UPDATE), db.WithCreateNotBefore(10*time.Second)))
 	})
 
+	t.Run("invalid-duplicate-usernames", func(t *testing.T) {
+		assert, require := assert.New(t), require.New(t)
+		repo, err := NewRepository(rw, rw, wrapper)
+		assert.NoError(err)
+		require.NotNil(repo)
+
+		userName := "kazmierczak12"
+		org, _ := iam.TestScopes(t, conn)
+		am := TestAuthMethods(t, conn, org.PublicId, 1)[0]
+		acts := TestAccounts(t, conn, am.PublicId, 2)
+
+		aa := acts[0]
+		ab := acts[1]
+
+		aa.UserName = userName
+		got1, gotCount1, err := repo.UpdateAccount(context.Background(), aa, []string{"UserName"})
+		assert.NoError(err)
+		require.NotNil(got1)
+		assert.Equal(userName, got1.UserName)
+		assert.Equal(1, gotCount1, "row count")
+		assert.NoError(db.TestVerifyOplog(t, rw, aa.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_UPDATE), db.WithCreateNotBefore(10*time.Second)))
+
+		ab.UserName = userName
+		got2, gotCount2, err := repo.UpdateAccount(context.Background(), ab, []string{"UserName"})
+		assert.Truef(errors.Is(err, db.ErrNotUnique), "want err: %v got: %v", db.ErrNotUnique, err)
+		assert.Nil(got2)
+		assert.Equal(db.NoRowsAffected, gotCount2, "row count")
+		err = db.TestVerifyOplog(t, rw, ab.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_UPDATE), db.WithCreateNotBefore(10*time.Second))
+		assert.Error(err)
+		assert.True(errors.Is(db.ErrRecordNotFound, err))
+	})
+
+	t.Run("valid-duplicate-usernames-diff-AuthMethods", func(t *testing.T) {
+		assert, require := assert.New(t), require.New(t)
+		repo, err := NewRepository(rw, rw, wrapper)
+		assert.NoError(err)
+		require.NotNil(repo)
+
+		org, _ := iam.TestScopes(t, conn)
+		ams := TestAuthMethods(t, conn, org.PublicId, 2)
+
+		ama := ams[0]
+		amb := ams[1]
+
+		in := &Account{
+			Account: &store.Account{
+				UserName: "kazmierczak",
+			},
+		}
+		in2 := in.clone()
+
+		in.AuthMethodId = ama.PublicId
+		got, err := repo.CreateAccount(context.Background(), in)
+		assert.NoError(err)
+		require.NotNil(got)
+		assertPublicId(t, AccountPrefix, got.PublicId)
+		assert.NotSame(in, got)
+		assert.Equal(in.UserName, got.UserName)
+
+		in2.AuthMethodId = amb.PublicId
+		in2.UserName = "kazmierczak2"
+		got2, err := repo.CreateAccount(context.Background(), in2)
+		assert.NoError(err)
+		require.NotNil(got2)
+		got2.UserName = got.UserName
+		got3, gotCount3, err := repo.UpdateAccount(context.Background(), got2, []string{"UserName"})
+		assert.NoError(err)
+		require.NotNil(got3)
+		assert.NotSame(got2, got3)
+		assert.Equal(got.UserName, got3.UserName)
+		assert.Equal(1, gotCount3, "row count")
+		assert.NoError(db.TestVerifyOplog(t, rw, got2.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_UPDATE), db.WithCreateNotBefore(10*time.Second)))
+	})
+
 	t.Run("change-authmethod-id", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
 		repo, err := NewRepository(rw, rw, wrapper)
