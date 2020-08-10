@@ -18,6 +18,7 @@ import (
 	"github.com/hashicorp/watchtower/internal/servers"
 	"github.com/hashicorp/watchtower/internal/servers/controller/common"
 	"github.com/patrickmn/go-cache"
+	ua "go.uber.org/atomic"
 )
 
 type Controller struct {
@@ -26,6 +27,7 @@ type Controller struct {
 
 	baseContext context.Context
 	baseCancel  context.CancelFunc
+	started     ua.Bool
 
 	workerAuthCache *cache.Cache
 
@@ -48,6 +50,8 @@ func New(conf *Config) (*Controller, error) {
 		logger:                  conf.Logger.Named("controller"),
 		workerStatusUpdateTimes: new(sync.Map),
 	}
+
+	c.started.Store(false)
 
 	if conf.SecureRandomReader == nil {
 		conf.SecureRandomReader = rand.Reader
@@ -103,6 +107,10 @@ func New(conf *Config) (*Controller, error) {
 }
 
 func (c *Controller) Start() error {
+	if c.started.Load() {
+		c.logger.Info("already started, skipping")
+		return nil
+	}
 	c.baseContext, c.baseCancel = context.WithCancel(context.Background())
 
 	if err := c.startListeners(); err != nil {
@@ -110,15 +118,22 @@ func (c *Controller) Start() error {
 	}
 
 	c.startStatusTicking(c.baseContext)
+	c.started.Store(true)
 
 	return nil
 }
 
-func (c *Controller) Shutdown() error {
+func (c *Controller) Shutdown(serversOnly bool) error {
+	if !c.started.Load() {
+		c.logger.Info("already shut down, skipping")
+		return nil
+	}
 	c.baseCancel()
-	if err := c.stopListeners(); err != nil {
+	if err := c.stopListeners(serversOnly); err != nil {
 		return fmt.Errorf("error stopping controller listeners: %w", err)
 	}
+	c.clusterAddress = ""
+	c.started.Store(false)
 	return nil
 }
 

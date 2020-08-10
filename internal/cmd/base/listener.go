@@ -112,9 +112,6 @@ func tcpListenerFactory(l *configutil.Listener, logger hclog.Logger, ui cli.Ui) 
 	alpnMux := alpnmux.New(ln, logger)
 
 	if l.TLSDisable {
-		if _, err = alpnMux.RegisterProto(alpnmux.NoProto, nil); err != nil {
-			return nil, nil, nil, err
-		}
 		return alpnMux, props, nil, nil
 	}
 

@@ -77,7 +77,10 @@ func (c *Controller) startListeners() error {
 
 		switch ln.Config.TLSDisable {
 		case true:
-			l := ln.Mux.GetListener(alpnmux.NoProto)
+			l, err := ln.Mux.RegisterProto(alpnmux.NoProto, nil)
+			if err != nil {
+				return fmt.Errorf("error getting non-tls listener: %w", err)
+			}
 			if l == nil {
 				return errors.New("could not get non-tls listener")
 			}
@@ -102,6 +105,8 @@ func (c *Controller) startListeners() error {
 	}
 
 	configureForCluster := func(ln *base.ServerListener) error {
+		// Clear out in case this is a second start of the controller
+		ln.Mux.UnregisterProto(alpnmux.DefaultProto)
 		l, err := ln.Mux.RegisterProto(alpnmux.DefaultProto, &tls.Config{
 			GetConfigForClient: c.validateWorkerTLS,
 		})
@@ -157,7 +162,7 @@ func (c *Controller) startListeners() error {
 	return nil
 }
 
-func (c *Controller) stopListeners() error {
+func (c *Controller) stopListeners(serversOnly bool) error {
 	serverWg := new(sync.WaitGroup)
 	for _, ln := range c.conf.Listeners {
 		localLn := ln
@@ -182,7 +187,9 @@ func (c *Controller) stopListeners() error {
 		}()
 	}
 	serverWg.Wait()
-
+	if serversOnly {
+		return nil
+	}
 	var retErr *multierror.Error
 	for _, ln := range c.conf.Listeners {
 		if err := ln.Mux.Close(); err != nil {

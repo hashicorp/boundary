@@ -23,10 +23,10 @@ type Worker struct {
 
 	baseContext context.Context
 	baseCancel  context.CancelFunc
+	started     ua.Bool
 
 	controllerConns   *sync.Map
 	lastStatusSuccess *atomic.Value
-	started           ua.Bool
 
 	listeningAddress string
 
@@ -83,6 +83,11 @@ func New(conf *Config) (*Worker, error) {
 }
 
 func (w *Worker) Start() error {
+	if w.started.Load() {
+		w.logger.Info("already started, skipping")
+		return nil
+	}
+
 	w.baseContext, w.baseCancel = context.WithCancel(context.Background())
 
 	controllerResolver, controllerResolverCleanup := manual.GenerateAndRegisterManualResolver()
@@ -108,6 +113,7 @@ func (w *Worker) Start() error {
 // doable, but work for later.
 func (w *Worker) Shutdown(skipListeners bool) error {
 	if !w.started.Load() {
+		w.logger.Info("already shut down, skipping")
 		return nil
 	}
 	w.Resolver().UpdateState(resolver.State{Addresses: []resolver.Address{}})

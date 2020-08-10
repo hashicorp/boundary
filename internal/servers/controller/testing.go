@@ -127,7 +127,7 @@ func (tc *TestController) Shutdown() {
 	tc.cancel()
 
 	if tc.c != nil {
-		if err := tc.c.Shutdown(); err != nil {
+		if err := tc.c.Shutdown(false); err != nil {
 			tc.t.Error(err)
 		}
 	}

@@ -11,7 +11,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestMultiControllerWorker(t *testing.T) {
+func TestMultiControllerMultiWorkerConnections(t *testing.T) {
 	assert, require := assert.New(t), require.New(t)
 	amId := "paum_1234567890"
 	user := "user"
@@ -85,6 +85,15 @@ func TestMultiControllerWorker(t *testing.T) {
 	expectWorkers(c2, w2)
 
 	require.NoError(w1.Worker().Start())
+	time.Sleep(10 * time.Second)
+	expectWorkers(c1, w1, w2)
+	expectWorkers(c2, w1, w2)
+
+	require.NoError(c1.Controller().Shutdown(true))
+	time.Sleep(10 * time.Second)
+	expectWorkers(c2, w1, w2)
+
+	require.NoError(c1.Controller().Start())
 	time.Sleep(10 * time.Second)
 	expectWorkers(c1, w1, w2)
 	expectWorkers(c2, w1, w2)
