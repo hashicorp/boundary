@@ -141,7 +141,7 @@ func (s Service) AddGroupMembers(ctx context.Context, req *pbs.AddGroupMembersRe
 	if err := validateAddGroupMembersRequest(req); err != nil {
 		return nil, err
 	}
-	g, err := s.addMembersInRepo(ctx, req.GetId(), req.GetMemberIds(), req.GetVersion())
+	g, err := s.addMembersInRepo(ctx, req.GetId(), req.GetItem().GetMemberIds(), req.GetVersion())
 	if err != nil {
 		return nil, err
 	}
@@ -157,7 +157,7 @@ func (s Service) SetGroupMembers(ctx context.Context, req *pbs.SetGroupMembersRe
 	if err := validateSetGroupMembersRequest(req); err != nil {
 		return nil, err
 	}
-	g, err := s.setMembersInRepo(ctx, req.GetId(), req.GetMemberIds(), req.GetVersion())
+	g, err := s.setMembersInRepo(ctx, req.GetId(), req.GetItem().GetMemberIds(), req.GetVersion())
 	if err != nil {
 		return nil, err
 	}
@@ -173,7 +173,7 @@ func (s Service) RemoveGroupMembers(ctx context.Context, req *pbs.RemoveGroupMem
 	if err := validateRemoveGroupMembersRequest(req); err != nil {
 		return nil, err
 	}
-	g, err := s.removeMembersInRepo(ctx, req.GetId(), req.GetMemberIds(), req.GetVersion())
+	g, err := s.removeMembersInRepo(ctx, req.GetId(), req.GetItem().GetMemberIds(), req.GetVersion())
 	if err != nil {
 		return nil, err
 	}
@@ -409,6 +409,9 @@ func validateUpdateRequest(req *pbs.UpdateGroupRequest) error {
 	if req.GetUpdateMask() == nil {
 		badFields["update_mask"] = "UpdateMask not provided but is required to update a group."
 	}
+	if req.GetVersion() == 0 {
+		badFields["version"] = "Existing resource version is required for an update."
+	}
 
 	item := req.GetItem()
 	if item == nil {
@@ -459,7 +462,7 @@ func validateAddGroupMembersRequest(req *pbs.AddGroupMembersRequest) error {
 	if req.GetVersion() == 0 {
 		badFields["version"] = "Required field."
 	}
-	if len(req.GetMemberIds()) == 0 {
+	if len(req.GetItem().GetMemberIds()) == 0 {
 		badFields["member_ids"] = "Must be non-empty."
 	}
 	if len(badFields) > 0 {
@@ -490,7 +493,7 @@ func validateRemoveGroupMembersRequest(req *pbs.RemoveGroupMembersRequest) error
 	if req.GetVersion() == 0 {
 		badFields["version"] = "Required field."
 	}
-	if len(req.GetMemberIds()) == 0 {
+	if len(req.GetItem().GetMemberIds()) == 0 {
 		badFields["member_ids"] = "Must be non-empty."
 	}
 	if len(badFields) > 0 {

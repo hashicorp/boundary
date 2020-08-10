@@ -96,7 +96,7 @@ service GroupService {
   rpc AddGroupMembers(AddGroupMembersRequest) returns (AddGroupMembersResponse) {
     option (google.api.http) = {
       post: "/v1/scopes/*/groups/{id}:add-members"
-      body: "*"
+      body: "item"
       response_body: "item"
     };
     option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
@@ -112,7 +112,7 @@ service GroupService {
   rpc SetGroupMembers(SetGroupMembersRequest) returns (SetGroupMembersResponse) {
     option (google.api.http) = {
       post: "/v1/scopes/*/groups/{id}:set-members"
-      body: "*"
+      body: "item"
       response_body: "item"
     };
     option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
@@ -127,7 +127,7 @@ service GroupService {
   rpc RemoveGroupMembers(RemoveGroupMembersRequest) returns (RemoveGroupMembersResponse) {
     option (google.api.http) = {
       post: "/v1/scopes/*/groups/{id}:remove-members"
-      body: "*"
+      body: "item"
       response_body: "item"
     };
     option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
@@ -181,12 +181,16 @@ message DeleteGroupResponse {
   bool existed = 1;
 }
 
+message GroupMemberIdsMessage {
+  repeated string member_ids = 1 [json_name="member_ids"];
+}
+
 message AddGroupMembersRequest {
   string id = 1;
   // The version ensures the group hasn't changed since it was last retrieved and if
   // it has the request will fail.
   uint32 version = 2;
-  repeated string member_ids = 3 [json_name="member_ids"];
+  GroupMemberIdsMessage item = 3;
 }
 
 message AddGroupMembersResponse {
@@ -198,7 +202,7 @@ message SetGroupMembersRequest {
   // The version ensures the group hasn't changed since it was last retrieved and if
   // it has the request will fail.
   uint32 version = 2;
-  repeated string member_ids = 3 [json_name="member_ids"];
+  GroupMemberIdsMessage item = 3;
 }
 
 message SetGroupMembersResponse {
@@ -210,7 +214,7 @@ message RemoveGroupMembersRequest {
   // The version ensures the group hasn't changed since it was last retrieved and if
   // it has the request will fail.
   uint32 version = 2;
-  repeated string member_ids = 3 [json_name="member_ids"];
+  GroupMemberIdsMessage item = 3;
 }
 
 message RemoveGroupMembersResponse {

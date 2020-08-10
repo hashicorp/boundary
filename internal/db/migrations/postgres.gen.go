@@ -1705,7 +1705,7 @@ begin;
     description text,
     create_time wt_timestamp,
     update_time wt_timestamp,
-    min_user_name_length int not null default 5,
+    min_user_name_length int not null default 3,
     min_password_length int not null default 8,
     foreign key (scope_id, public_id)
       references auth_method (scope_id, public_id)

@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"net/url"
 	"time"
 
 	"github.com/kr/pretty"
@@ -29,22 +30,22 @@ type Role struct {
 	Grants       []*Grant          `json:"grants,omitempty"`
 }
 
-type roleClient struct {
+type rolesClient struct {
 	client *api.Client
 }
 
-func NewRoleClient(c *api.Client) *roleClient {
-	return &roleClient{client: c}
+func NewRolesClient(c *api.Client) *rolesClient {
+	return &rolesClient{client: c}
 }
 
-func (c *roleClient) Create(ctx context.Context, opt ...Option) (*Role, *api.Error, error) {
+func (c *rolesClient) Create(ctx context.Context, opt ...Option) (*Role, *api.Error, error) {
 	if c.client == nil {
 		return nil, nil, fmt.Errorf("nil client")
 	}
 
 	opts, apiOpts := getOpts(opt...)
 
-	req, err := c.client.NewRequest(ctx, "POST", fmt.Sprintf("roles"), opts.valueMap, apiOpts...)
+	req, err := c.client.NewRequest(ctx, "POST", "roles", opts.valueMap, apiOpts...)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error creating Create request: %w", err)
 	}
@@ -63,7 +64,7 @@ func (c *roleClient) Create(ctx context.Context, opt ...Option) (*Role, *api.Err
 	return target, apiErr, nil
 }
 
-func (c *roleClient) Read(ctx context.Context, roleId string, opt ...Option) (*Role, *api.Error, error) {
+func (c *rolesClient) Read(ctx context.Context, roleId string, opt ...Option) (*Role, *api.Error, error) {
 	if roleId == "" {
 		return nil, nil, fmt.Errorf("empty roleId value passed into Read request")
 	}
@@ -93,7 +94,7 @@ func (c *roleClient) Read(ctx context.Context, roleId string, opt ...Option) (*R
 	return target, apiErr, nil
 }
 
-func (c *roleClient) Update(ctx context.Context, roleId string, version uint32, opt ...Option) (*Role, *api.Error, error) {
+func (c *rolesClient) Update(ctx context.Context, roleId string, version uint32, opt ...Option) (*Role, *api.Error, error) {
 	if roleId == "" {
 		return nil, nil, fmt.Errorf("empty roleId value passed into Update request")
 	}
@@ -119,12 +120,15 @@ func (c *roleClient) Update(ctx context.Context, roleId string, version uint32, 
 		}
 		version = existingTarget.Version
 	}
-	opts.valueMap["version"] = version
 
 	req, err := c.client.NewRequest(ctx, "PATCH", fmt.Sprintf("roles/%s", roleId), opts.valueMap, apiOpts...)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error creating Update request: %w", err)
 	}
+
+	q := url.Values{}
+	q.Add("version", fmt.Sprintf("%d", version))
+	req.URL.RawQuery = q.Encode()
 
 	resp, err := c.client.Do(req)
 	if err != nil {
@@ -140,7 +144,7 @@ func (c *roleClient) Update(ctx context.Context, roleId string, version uint32, 
 	return target, apiErr, nil
 }
 
-func (c *roleClient) Delete(ctx context.Context, roleId string, opt ...Option) (bool, *api.Error, error) {
+func (c *rolesClient) Delete(ctx context.Context, roleId string, opt ...Option) (bool, *api.Error, error) {
 	if roleId == "" {
 		return false, nil, fmt.Errorf("empty roleId value passed into Delete request")
 	}
@@ -173,14 +177,14 @@ func (c *roleClient) Delete(ctx context.Context, roleId string, opt ...Option) (
 	return target.Existed, apiErr, nil
 }
 
-func (c *roleClient) List(ctx context.Context, opt ...Option) ([]*Role, *api.Error, error) {
+func (c *rolesClient) List(ctx context.Context, opt ...Option) ([]*Role, *api.Error, error) {
 	if c.client == nil {
 		return nil, nil, fmt.Errorf("nil client")
 	}
 
 	_, apiOpts := getOpts(opt...)
 
-	req, err := c.client.NewRequest(ctx, "GET", fmt.Sprintf("roles"), nil, apiOpts...)
+	req, err := c.client.NewRequest(ctx, "GET", "roles", nil, apiOpts...)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error creating List request: %w", err)
 	}
@@ -202,7 +206,7 @@ func (c *roleClient) List(ctx context.Context, opt ...Option) ([]*Role, *api.Err
 	return target.Items, apiErr, nil
 }
 
-func (c *roleClient) AddGrants(ctx context.Context, roleId string, version uint32, grantStrings []string, opt ...Option) (*Role, *api.Error, error) {
+func (c *rolesClient) AddGrants(ctx context.Context, roleId string, version uint32, grantStrings []string, opt ...Option) (*Role, *api.Error, error) {
 	if roleId == "" {
 		return nil, nil, fmt.Errorf("empty roleId value passed into AddGrants request")
 	}
@@ -228,7 +232,6 @@ func (c *roleClient) AddGrants(ctx context.Context, roleId string, version uint3
 		}
 		version = existingTarget.Version
 	}
-	opts.valueMap["version"] = version
 
 	if len(grantStrings) > 0 {
 		opts.valueMap["grant_strings"] = grantStrings
@@ -238,6 +241,10 @@ func (c *roleClient) AddGrants(ctx context.Context, roleId string, version uint3
 	if err != nil {
 		return nil, nil, fmt.Errorf("error creating AddGrants request: %w", err)
 	}
+
+	q := url.Values{}
+	q.Add("version", fmt.Sprintf("%d", version))
+	req.URL.RawQuery = q.Encode()
 
 	resp, err := c.client.Do(req)
 	if err != nil {
@@ -253,7 +260,7 @@ func (c *roleClient) AddGrants(ctx context.Context, roleId string, version uint3
 	return target, apiErr, nil
 }
 
-func (c *roleClient) AddPrincipals(ctx context.Context, roleId string, version uint32, principalIds []string, opt ...Option) (*Role, *api.Error, error) {
+func (c *rolesClient) AddPrincipals(ctx context.Context, roleId string, version uint32, principalIds []string, opt ...Option) (*Role, *api.Error, error) {
 	if roleId == "" {
 		return nil, nil, fmt.Errorf("empty roleId value passed into AddPrincipals request")
 	}
@@ -279,7 +286,6 @@ func (c *roleClient) AddPrincipals(ctx context.Context, roleId string, version u
 		}
 		version = existingTarget.Version
 	}
-	opts.valueMap["version"] = version
 
 	if len(principalIds) > 0 {
 		opts.valueMap["principal_ids"] = principalIds
@@ -289,6 +295,10 @@ func (c *roleClient) AddPrincipals(ctx context.Context, roleId string, version u
 	if err != nil {
 		return nil, nil, fmt.Errorf("error creating AddPrincipals request: %w", err)
 	}
+
+	q := url.Values{}
+	q.Add("version", fmt.Sprintf("%d", version))
+	req.URL.RawQuery = q.Encode()
 
 	resp, err := c.client.Do(req)
 	if err != nil {
@@ -304,7 +314,7 @@ func (c *roleClient) AddPrincipals(ctx context.Context, roleId string, version u
 	return target, apiErr, nil
 }
 
-func (c *roleClient) SetGrants(ctx context.Context, roleId string, version uint32, grantStrings []string, opt ...Option) (*Role, *api.Error, error) {
+func (c *rolesClient) SetGrants(ctx context.Context, roleId string, version uint32, grantStrings []string, opt ...Option) (*Role, *api.Error, error) {
 	if roleId == "" {
 		return nil, nil, fmt.Errorf("empty roleId value passed into SetGrants request")
 	}
@@ -330,7 +340,6 @@ func (c *roleClient) SetGrants(ctx context.Context, roleId string, version uint3
 		}
 		version = existingTarget.Version
 	}
-	opts.valueMap["version"] = version
 
 	if len(grantStrings) > 0 {
 		opts.valueMap["grant_strings"] = grantStrings
@@ -343,6 +352,10 @@ func (c *roleClient) SetGrants(ctx context.Context, roleId string, version uint3
 	if err != nil {
 		return nil, nil, fmt.Errorf("error creating SetGrants request: %w", err)
 	}
+
+	q := url.Values{}
+	q.Add("version", fmt.Sprintf("%d", version))
+	req.URL.RawQuery = q.Encode()
 
 	resp, err := c.client.Do(req)
 	if err != nil {
@@ -358,7 +371,7 @@ func (c *roleClient) SetGrants(ctx context.Context, roleId string, version uint3
 	return target, apiErr, nil
 }
 
-func (c *roleClient) SetPrincipals(ctx context.Context, roleId string, version uint32, principalIds []string, opt ...Option) (*Role, *api.Error, error) {
+func (c *rolesClient) SetPrincipals(ctx context.Context, roleId string, version uint32, principalIds []string, opt ...Option) (*Role, *api.Error, error) {
 	if roleId == "" {
 		return nil, nil, fmt.Errorf("empty roleId value passed into SetPrincipals request")
 	}
@@ -384,7 +397,6 @@ func (c *roleClient) SetPrincipals(ctx context.Context, roleId string, version u
 		}
 		version = existingTarget.Version
 	}
-	opts.valueMap["version"] = version
 
 	if len(principalIds) > 0 {
 		opts.valueMap["principal_ids"] = principalIds
@@ -397,6 +409,10 @@ func (c *roleClient) SetPrincipals(ctx context.Context, roleId string, version u
 	if err != nil {
 		return nil, nil, fmt.Errorf("error creating SetPrincipals request: %w", err)
 	}
+
+	q := url.Values{}
+	q.Add("version", fmt.Sprintf("%d", version))
+	req.URL.RawQuery = q.Encode()
 
 	resp, err := c.client.Do(req)
 	if err != nil {
@@ -412,7 +428,7 @@ func (c *roleClient) SetPrincipals(ctx context.Context, roleId string, version u
 	return target, apiErr, nil
 }
 
-func (c *roleClient) RemoveGrants(ctx context.Context, roleId string, version uint32, grantStrings []string, opt ...Option) (*Role, *api.Error, error) {
+func (c *rolesClient) RemoveGrants(ctx context.Context, roleId string, version uint32, grantStrings []string, opt ...Option) (*Role, *api.Error, error) {
 	if roleId == "" {
 		return nil, nil, fmt.Errorf("empty roleId value passed into RemoveGrants request")
 	}
@@ -438,7 +454,6 @@ func (c *roleClient) RemoveGrants(ctx context.Context, roleId string, version ui
 		}
 		version = existingTarget.Version
 	}
-	opts.valueMap["version"] = version
 
 	if len(grantStrings) > 0 {
 		opts.valueMap["grant_strings"] = grantStrings
@@ -448,6 +463,10 @@ func (c *roleClient) RemoveGrants(ctx context.Context, roleId string, version ui
 	if err != nil {
 		return nil, nil, fmt.Errorf("error creating RemoveGrants request: %w", err)
 	}
+
+	q := url.Values{}
+	q.Add("version", fmt.Sprintf("%d", version))
+	req.URL.RawQuery = q.Encode()
 
 	resp, err := c.client.Do(req)
 	if err != nil {
@@ -463,7 +482,7 @@ func (c *roleClient) RemoveGrants(ctx context.Context, roleId string, version ui
 	return target, apiErr, nil
 }
 
-func (c *roleClient) RemovePrincipals(ctx context.Context, roleId string, version uint32, principalIds []string, opt ...Option) (*Role, *api.Error, error) {
+func (c *rolesClient) RemovePrincipals(ctx context.Context, roleId string, version uint32, principalIds []string, opt ...Option) (*Role, *api.Error, error) {
 	if roleId == "" {
 		return nil, nil, fmt.Errorf("empty roleId value passed into RemovePrincipals request")
 	}
@@ -489,7 +508,6 @@ func (c *roleClient) RemovePrincipals(ctx context.Context, roleId string, versio
 		}
 		version = existingTarget.Version
 	}
-	opts.valueMap["version"] = version
 
 	if len(principalIds) > 0 {
 		opts.valueMap["principal_ids"] = principalIds
@@ -499,6 +517,10 @@ func (c *roleClient) RemovePrincipals(ctx context.Context, roleId string, versio
 	if err != nil {
 		return nil, nil, fmt.Errorf("error creating RemovePrincipals request: %w", err)
 	}
+
+	q := url.Values{}
+	q.Add("version", fmt.Sprintf("%d", version))
+	req.URL.RawQuery = q.Encode()
 
 	resp, err := c.client.Do(req)
 	if err != nil {
