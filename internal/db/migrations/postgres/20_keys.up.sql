@@ -1,7 +1,16 @@
 begin;
 
 create table kms_external_type_enm (
-  string text not null primary key check(string in ('unknown', 'devkms', 'awskms', 'gcpkms','alicloudkms', 'azurekms', 'ocikms', 'vaulttransitkms', 'hsmpkcs11kms'))
+  name text primary key check(name in (
+    'unknown', 
+    'devkms', 
+    'awskms', 
+    'gcpkms',
+    'alicloudkms', 
+    'azurekms', 
+    'ocikms', 
+    'vaulttransitkms', 
+    'hsmpkcs11kms'))
 );
 
  -- define the immutable fields of kms_external_type_enm
@@ -9,9 +18,9 @@ create trigger
   immutable_columns
 before
 update on kms_external_type_enm
-  for each row execute procedure immutable_columns('string');
+  for each row execute procedure immutable_columns('name');
 
-insert into kms_external_type_enm (string)
+insert into kms_external_type_enm (name)
 values
   ('unknown'),
   ('devkms'),
@@ -25,8 +34,12 @@ values
 
 create table kms_external_config (
   private_id wt_private_id primary key,
-  scope_id wt_scope_id not null references iam_scope(public_id) on delete cascade on update cascade,
-  type text not null references kms_external_type_enm(string),
+  scope_id wt_scope_id not null 
+    references iam_scope(public_id) 
+    on delete cascade 
+    on update cascade,
+  type text not null 
+    references kms_external_type_enm(name),
   config jsonb,
   create_time wt_timestamp,
   update_time wt_timestamp
@@ -51,31 +64,12 @@ create trigger
 before update on kms_external_config 
   for each row execute procedure update_time_column();
 
-create table kms_root (
-  private_id wt_private_id primary key,
-  scope_id wt_scope_id not null references iam_scope(public_id) on delete cascade on update cascade,
-  unique(scope_id, private_id),
-  create_time wt_timestamp
-);
-
- -- define the immutable fields for kms_root (all of them)
-create trigger 
-  immutable_columns
-before
-update on kms_root
-  for each row execute procedure immutable_columns('private_id', 'scope_id', 'create_time');
-
-create trigger 
-  default_create_time_column
-before
-insert on kms_root
-  for each row execute procedure default_create_time();
-
 create table kms_root_key (
   private_id wt_private_id primary key,
-  root_id  wt_private_id not null references kms_root(private_id) on delete cascade on update cascade,
-  version wt_version not null default 1,
-  key bytea not null,
+  scope_id wt_scope_id not null unique -- there can only be one root key for a scope.
+    references iam_scope(public_id) 
+    on delete cascade 
+    on update cascade,
   create_time wt_timestamp
 );
 
@@ -84,7 +78,7 @@ create trigger
   immutable_columns
 before
 update on kms_root_key
-  for each row execute procedure immutable_columns('private_id', 'root_id', 'version', 'key', 'create_time');
+  for each row execute procedure immutable_columns('private_id', 'scope_id', 'create_time');
 
 create trigger 
   default_create_time_column
@@ -92,14 +86,37 @@ before
 insert on kms_root_key
   for each row execute procedure default_create_time();
 
-create table kms_database (
+create table kms_root_key_version (
   private_id wt_private_id primary key,
-  scope_id wt_scope_id not null,
-  root_id wt_private_id,
-  foreign key (scope_id, root_id)
-      references kms_root (scope_id, private_id)
-      on delete cascade
-      on update cascade,
+  root_id  wt_private_id not null 
+    references kms_root_key(private_id) 
+    on delete cascade 
+    on update cascade,
+  version wt_version not null default 1,
+  key bytea not null,
+  create_time wt_timestamp,
+  unique(root_id, version)
+);
+
+ -- define the immutable fields for kms_root_key (all of them)
+create trigger 
+  immutable_columns
+before
+update on kms_root_key_version
+  for each row execute procedure immutable_columns('private_id', 'root_id', 'version', 'key', 'create_time');
+
+create trigger 
+  default_create_time_column
+before
+insert on kms_root_key_version
+  for each row execute procedure default_create_time();
+
+create table kms_database_key (
+  private_id wt_private_id primary key,
+  root_id wt_private_id
+    references kms_root_key(private_id)
+    on delete cascade
+    on update cascade,
   create_time wt_timestamp
 );
 
@@ -107,22 +124,29 @@ create table kms_database (
 create trigger 
   immutable_columns
 before
-update on kms_database
-  for each row execute procedure immutable_columns('private_id', 'scope_id', 'root_id', 'create_time');
+update on kms_database_key
+  for each row execute procedure immutable_columns('private_id', 'root_id', 'create_time');
 
 create trigger 
   default_create_time_column
 before
-insert on kms_database
+insert on kms_database_key
   for each row execute procedure default_create_time();
 
-create table kms_database_key (
+create table kms_database_key_version (
   private_id wt_private_id primary key,
-  database_id wt_private_id references kms_database(private_id) on delete cascade on update cascade, 
-  root_key_id wt_private_id references kms_root_key(private_id) on delete cascade on update cascade,
+  database_id wt_private_id 
+    references kms_database_key(private_id) 
+    on delete cascade 
+    on update cascade, 
+  root_key_id wt_private_id 
+    references kms_root_key(private_id) 
+    on delete cascade 
+    on update cascade,
   version wt_version not null default 1,
   key bytea not null,
-  create_time wt_timestamp
+  create_time wt_timestamp,
+  unique(database_id, version)
 );
 
 
@@ -130,13 +154,13 @@ create table kms_database_key (
 create trigger 
   immutable_columns
 before
-update on kms_database_key
+update on kms_database_key_version
   for each row execute procedure immutable_columns('private_id', 'database_id', 'root_key_id', 'version', 'key', 'create_time');
   
 create trigger 
   default_create_time_column
 before
-insert on kms_database_key
+insert on kms_database_key_version
   for each row execute procedure default_create_time();
 
 commit;
