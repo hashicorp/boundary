@@ -4,10 +4,10 @@ import (
 	"context"
 	"testing"
 
+	"github.com/hashicorp/boundary/internal/auth/store"
+	"github.com/hashicorp/boundary/internal/db"
+	dbassert "github.com/hashicorp/boundary/internal/db/assert"
 	"github.com/hashicorp/go-uuid"
-	"github.com/hashicorp/watchtower/internal/db"
-	dbassert "github.com/hashicorp/watchtower/internal/db/assert"
-	"github.com/hashicorp/watchtower/internal/iam/store"
 	"github.com/jinzhu/gorm"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -191,12 +191,12 @@ func TestGroupRole(t *testing.T, conn *gorm.DB, roleId, grpId string, opt ...Opt
 	return r
 }
 
-// testAuthAccount is a temporary test function.  TODO - replace with an auth
-// subsystem testAuthAccount function.  If userId is zero value, then an auth
+// testAccount is a temporary test function.  TODO - replace with an auth
+// subsystem testAccount function.  If userId is zero value, then an auth
 // account will be created with a null IamUserId
-func testAuthAccount(t *testing.T, conn *gorm.DB, scopeId, authMethodId, userId string) *AuthAccount {
+func testAccount(t *testing.T, conn *gorm.DB, scopeId, authMethodId, userId string) *authAccount {
 	const (
-		authAccountPrefix = "aa_"
+		accountPrefix = "aa_"
 	)
 	t.Helper()
 	rw := db.New(conn)
@@ -218,11 +218,11 @@ func testAuthAccount(t *testing.T, conn *gorm.DB, scopeId, authMethodId, userId 
 	require.NoError(err)
 	require.Equal(1, count)
 
-	id, err := db.NewPublicId(authAccountPrefix)
+	id, err := db.NewPublicId(accountPrefix)
 	require.NoError(err)
 
-	acct := &AuthAccount{
-		AuthAccount: &store.AuthAccount{
+	acct := &authAccount{
+		Account: &store.Account{
 			PublicId:     id,
 			ScopeId:      scopeId,
 			AuthMethodId: authMethodId,

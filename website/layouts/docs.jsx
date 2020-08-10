@@ -6,7 +6,7 @@ import { createMdxProvider } from '@hashicorp/nextjs-scripts/lib/providers/docs'
 import Head from 'next/head'
 import Link from 'next/link'
 
-const MDXProvider = createMdxProvider({ product: 'watchtower' })
+const MDXProvider = createMdxProvider({ product: 'boundary' })
 
 function DocsLayoutWrapper(pageMeta) {
   function DocsLayout(props) {

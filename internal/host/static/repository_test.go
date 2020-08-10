@@ -10,11 +10,11 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	dbassert "github.com/hashicorp/watchtower/internal/db/assert"
+	dbassert "github.com/hashicorp/boundary/internal/db/assert"
 
-	"github.com/hashicorp/watchtower/internal/db"
-	"github.com/hashicorp/watchtower/internal/host/static/store"
-	"github.com/hashicorp/watchtower/internal/iam"
+	"github.com/hashicorp/boundary/internal/db"
+	"github.com/hashicorp/boundary/internal/host/static/store"
+	"github.com/hashicorp/boundary/internal/iam"
 )
 
 func TestRepository_New(t *testing.T) {

@@ -7,12 +7,12 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/hashicorp/watchtower/internal/auth"
-	"github.com/hashicorp/watchtower/internal/authtoken"
-	"github.com/hashicorp/watchtower/internal/db"
-	pb "github.com/hashicorp/watchtower/internal/gen/controller/api/resources/authtokens"
-	pbs "github.com/hashicorp/watchtower/internal/gen/controller/api/services"
-	"github.com/hashicorp/watchtower/internal/servers/controller/handlers"
+	"github.com/hashicorp/boundary/internal/auth"
+	"github.com/hashicorp/boundary/internal/authtoken"
+	"github.com/hashicorp/boundary/internal/db"
+	pb "github.com/hashicorp/boundary/internal/gen/controller/api/resources/authtokens"
+	pbs "github.com/hashicorp/boundary/internal/gen/controller/api/services"
+	"github.com/hashicorp/boundary/internal/servers/controller/handlers"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
@@ -28,7 +28,7 @@ type Service struct {
 	repoFn func() (*authtoken.Repository, error)
 }
 
-// NewService returns a user service which handles user related requests to watchtower.
+// NewService returns a user service which handles user related requests to boundary.
 func NewService(repo func() (*authtoken.Repository, error)) (Service, error) {
 	if repo == nil {
 		return Service{}, fmt.Errorf("nil iam repository provided")

@@ -6,11 +6,11 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/hashicorp/boundary/internal/auth/password/store"
+	"github.com/hashicorp/boundary/internal/db"
+	"github.com/hashicorp/boundary/internal/oplog"
 	wrapping "github.com/hashicorp/go-kms-wrapping"
 	"github.com/hashicorp/go-kms-wrapping/structwrapping"
-	"github.com/hashicorp/watchtower/internal/auth/password/store"
-	"github.com/hashicorp/watchtower/internal/db"
-	"github.com/hashicorp/watchtower/internal/oplog"
 	"golang.org/x/crypto/argon2"
 	"google.golang.org/protobuf/proto"
 )

@@ -10,8 +10,8 @@ import (
 
 	"github.com/kr/pretty"
 
-	"github.com/hashicorp/watchtower/api"
-	"github.com/hashicorp/watchtower/api/scopes"
+	"github.com/hashicorp/boundary/api"
+	"github.com/hashicorp/boundary/api/scopes"
 )
 
 type HostCatalog struct {

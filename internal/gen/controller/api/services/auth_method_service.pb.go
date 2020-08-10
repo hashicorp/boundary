@@ -10,7 +10,7 @@ import (
 	context "context"
 	proto "github.com/golang/protobuf/proto"
 	_ "github.com/grpc-ecosystem/grpc-gateway/v2/protoc-gen-openapiv2/options"
-	authmethods "github.com/hashicorp/watchtower/internal/gen/controller/api/resources/authmethods"
+	authmethods "github.com/hashicorp/boundary/internal/gen/controller/api/resources/authmethods"
 	_ "google.golang.org/genproto/googleapis/api/annotations"
 	field_mask "google.golang.org/genproto/protobuf/field_mask"
 	grpc "google.golang.org/grpc"
@@ -673,12 +673,12 @@ var file_controller_api_services_v1_auth_method_service_proto_rawDesc = []byte{
 	0x63, 0x6f, 0x70, 0x65, 0x73, 0x2f, 0x2a, 0x2f, 0x61, 0x75, 0x74, 0x68, 0x2d, 0x6d, 0x65, 0x74,
 	0x68, 0x6f, 0x64, 0x73, 0x2f, 0x7b, 0x69, 0x64, 0x7d, 0x92, 0x41, 0x17, 0x12, 0x15, 0x44, 0x65,
 	0x6c, 0x65, 0x74, 0x65, 0x73, 0x20, 0x61, 0x6e, 0x20, 0x41, 0x75, 0x74, 0x68, 0x4d, 0x65, 0x74,
-	0x68, 0x6f, 0x64, 0x42, 0x4f, 0x5a, 0x4d, 0x67, 0x69, 0x74, 0x68, 0x75, 0x62, 0x2e, 0x63, 0x6f,
-	0x6d, 0x2f, 0x68, 0x61, 0x73, 0x68, 0x69, 0x63, 0x6f, 0x72, 0x70, 0x2f, 0x77, 0x61, 0x74, 0x63,
-	0x68, 0x74, 0x6f, 0x77, 0x65, 0x72, 0x2f, 0x69, 0x6e, 0x74, 0x65, 0x72, 0x6e, 0x61, 0x6c, 0x2f,
-	0x67, 0x65, 0x6e, 0x2f, 0x63, 0x6f, 0x6e, 0x74, 0x72, 0x6f, 0x6c, 0x6c, 0x65, 0x72, 0x2f, 0x61,
-	0x70, 0x69, 0x2f, 0x73, 0x65, 0x72, 0x76, 0x69, 0x63, 0x65, 0x73, 0x3b, 0x73, 0x65, 0x72, 0x76,
-	0x69, 0x63, 0x65, 0x73, 0x62, 0x06, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x33,
+	0x68, 0x6f, 0x64, 0x42, 0x4d, 0x5a, 0x4b, 0x67, 0x69, 0x74, 0x68, 0x75, 0x62, 0x2e, 0x63, 0x6f,
+	0x6d, 0x2f, 0x68, 0x61, 0x73, 0x68, 0x69, 0x63, 0x6f, 0x72, 0x70, 0x2f, 0x62, 0x6f, 0x75, 0x6e,
+	0x64, 0x61, 0x72, 0x79, 0x2f, 0x69, 0x6e, 0x74, 0x65, 0x72, 0x6e, 0x61, 0x6c, 0x2f, 0x67, 0x65,
+	0x6e, 0x2f, 0x63, 0x6f, 0x6e, 0x74, 0x72, 0x6f, 0x6c, 0x6c, 0x65, 0x72, 0x2f, 0x61, 0x70, 0x69,
+	0x2f, 0x73, 0x65, 0x72, 0x76, 0x69, 0x63, 0x65, 0x73, 0x3b, 0x73, 0x65, 0x72, 0x76, 0x69, 0x63,
+	0x65, 0x73, 0x62, 0x06, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x33,
 }
 
 var (
@@ -902,13 +902,13 @@ type AuthMethodServiceClient interface {
 	// the auth methods being retrieved.  If the org id is missing, malformed, or
 	// reference a non existing organization, an error is returned.
 	ListAuthMethods(ctx context.Context, in *ListAuthMethodsRequest, opts ...grpc.CallOption) (*ListAuthMethodsResponse, error)
-	// CreateAuthMethod creates and stores a user in watchtower.  The provided
+	// CreateAuthMethod creates and stores a user in boundary.  The provided
 	// request must include the org id in which the user will be created.
 	// If the org id is missing, malformed or references a non existing
 	// org, an error is returned.  If a name is provided that is in
 	// use in another user in the same org, an error is returned.
 	CreateAuthMethod(ctx context.Context, in *CreateAuthMethodRequest, opts ...grpc.CallOption) (*CreateAuthMethodResponse, error)
-	// UpdateAuthMethod updates an existing user in watchtower.  The provided
+	// UpdateAuthMethod updates an existing user in boundary.  The provided
 	// user must not have any read only fields set.  The update mask must be
 	// included in the request and contain at least 1 mutable field.  To unset
 	// a field's value, include the field in the update mask and don't set it
@@ -917,7 +917,7 @@ type AuthMethodServiceClient interface {
 	// is also returned if the request attempts to update the name to one that is
 	// already in use in this org.
 	UpdateAuthMethod(ctx context.Context, in *UpdateAuthMethodRequest, opts ...grpc.CallOption) (*UpdateAuthMethodResponse, error)
-	// DeleteAuthMethod removes a user from Watchtower. If the provided org or user ids
+	// DeleteAuthMethod removes a user from Boundary. If the provided org or user ids
 	// are malformed or not provided an error is returned.  No error is returned
 	// if either ids reference resources that do not exist as the response itself
 	// specifies if the resource existed before the DeleteAuthMethod request was
@@ -990,13 +990,13 @@ type AuthMethodServiceServer interface {
 	// the auth methods being retrieved.  If the org id is missing, malformed, or
 	// reference a non existing organization, an error is returned.
 	ListAuthMethods(context.Context, *ListAuthMethodsRequest) (*ListAuthMethodsResponse, error)
-	// CreateAuthMethod creates and stores a user in watchtower.  The provided
+	// CreateAuthMethod creates and stores a user in boundary.  The provided
 	// request must include the org id in which the user will be created.
 	// If the org id is missing, malformed or references a non existing
 	// org, an error is returned.  If a name is provided that is in
 	// use in another user in the same org, an error is returned.
 	CreateAuthMethod(context.Context, *CreateAuthMethodRequest) (*CreateAuthMethodResponse, error)
-	// UpdateAuthMethod updates an existing user in watchtower.  The provided
+	// UpdateAuthMethod updates an existing user in boundary.  The provided
 	// user must not have any read only fields set.  The update mask must be
 	// included in the request and contain at least 1 mutable field.  To unset
 	// a field's value, include the field in the update mask and don't set it
@@ -1005,7 +1005,7 @@ type AuthMethodServiceServer interface {
 	// is also returned if the request attempts to update the name to one that is
 	// already in use in this org.
 	UpdateAuthMethod(context.Context, *UpdateAuthMethodRequest) (*UpdateAuthMethodResponse, error)
-	// DeleteAuthMethod removes a user from Watchtower. If the provided org or user ids
+	// DeleteAuthMethod removes a user from Boundary. If the provided org or user ids
 	// are malformed or not provided an error is returned.  No error is returned
 	// if either ids reference resources that do not exist as the response itself
 	// specifies if the resource existed before the DeleteAuthMethod request was

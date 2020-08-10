@@ -4,7 +4,7 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/hashicorp/watchtower/internal/oplog/store"
+	"github.com/hashicorp/boundary/internal/oplog/store"
 	"github.com/jinzhu/gorm"
 )
 

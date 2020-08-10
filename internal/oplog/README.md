@@ -1,6 +1,6 @@
 # oplog 
 
-oplog is a package for writing operation log (oplog) entries for the purpose of replication and verification of the data stored in the Watchtower RDBMS. 
+oplog is a package for writing operation log (oplog) entries for the purpose of replication and verification of the data stored in the Boundary RDBMS. 
 
 - [oplog](#oplog)
   - [Usage](#usage)
@@ -66,9 +66,9 @@ if err != nil {
 tx.Commit()
 ```
 ## TBD/TODO
-We need to discuss and decide how Watchtower is going to handle the following oplog things:
+We need to discuss and decide how Boundary is going to handle the following oplog things:
 
-* SQL migrations: you'll find the package's [SQL migrations](https://github.com/golang-migrate/migrate) under: ./migrations/postgres   We need to decide how Watchtower will manage migrations across the system and we will likely need to reference this package's migrations somehow.
+* SQL migrations: you'll find the package's [SQL migrations](https://github.com/golang-migrate/migrate) under: ./migrations/postgres   We need to decide how Boundary will manage migrations across the system and we will likely need to reference this package's migrations somehow.
 
 ## oplog entry
 ```                                            

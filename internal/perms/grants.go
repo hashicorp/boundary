@@ -7,9 +7,9 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/hashicorp/watchtower/internal/types/action"
-	"github.com/hashicorp/watchtower/internal/types/resource"
-	"github.com/hashicorp/watchtower/internal/types/scope"
+	"github.com/hashicorp/boundary/internal/types/action"
+	"github.com/hashicorp/boundary/internal/types/resource"
+	"github.com/hashicorp/boundary/internal/types/scope"
 )
 
 // GrantPair is simply a struct that can be reference from other code to return

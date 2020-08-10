@@ -3,11 +3,11 @@ package roles
 import (
 	"fmt"
 
+	"github.com/hashicorp/boundary/api"
+	"github.com/hashicorp/boundary/api/roles"
+	"github.com/hashicorp/boundary/internal/cmd/base"
+	"github.com/hashicorp/boundary/internal/perms"
 	"github.com/hashicorp/vault/sdk/helper/strutil"
-	"github.com/hashicorp/watchtower/api"
-	"github.com/hashicorp/watchtower/api/roles"
-	"github.com/hashicorp/watchtower/internal/cmd/base"
-	"github.com/hashicorp/watchtower/internal/perms"
 	"github.com/kr/pretty"
 	"github.com/mitchellh/cli"
 	"github.com/posener/complete"
@@ -39,7 +39,7 @@ func (c *Command) Synopsis() string {
 	case "add-grants", "set-grants", "remove-grants":
 		return principalsGrantsSynopsisFunc(c.Func, false)
 	}
-	return "Manage Watchtower roles"
+	return "Manage Boundary roles"
 }
 
 var helpMap = map[string]func() string{

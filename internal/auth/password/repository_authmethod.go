@@ -6,9 +6,9 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/hashicorp/watchtower/internal/db"
-	dbcommon "github.com/hashicorp/watchtower/internal/db/common"
-	"github.com/hashicorp/watchtower/internal/oplog"
+	"github.com/hashicorp/boundary/internal/db"
+	dbcommon "github.com/hashicorp/boundary/internal/db/common"
+	"github.com/hashicorp/boundary/internal/oplog"
 )
 
 // CreateAuthMethod inserts m into the repository and returns a new

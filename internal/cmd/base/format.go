@@ -398,11 +398,11 @@ var Formatters = map[string]Formatter{
 
 func Format(ui cli.Ui) string {
 	switch t := ui.(type) {
-	case *WatchtowerUI:
+	case *BoundaryUI:
 		return t.Format
 	}
 
-	format := os.Getenv(EnvWatchtowerCLIFormat)
+	format := os.Getenv(EnvBoundaryCLIFormat)
 	if format == "" {
 		format = "table"
 	}

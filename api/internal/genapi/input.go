@@ -3,14 +3,14 @@ package main
 import (
 	"text/template"
 
-	"github.com/hashicorp/watchtower/internal/gen/controller/api"
-	"github.com/hashicorp/watchtower/internal/gen/controller/api/resources/authmethods"
-	"github.com/hashicorp/watchtower/internal/gen/controller/api/resources/authtokens"
-	"github.com/hashicorp/watchtower/internal/gen/controller/api/resources/groups"
-	"github.com/hashicorp/watchtower/internal/gen/controller/api/resources/hosts"
-	"github.com/hashicorp/watchtower/internal/gen/controller/api/resources/roles"
-	"github.com/hashicorp/watchtower/internal/gen/controller/api/resources/scopes"
-	"github.com/hashicorp/watchtower/internal/gen/controller/api/resources/users"
+	"github.com/hashicorp/boundary/internal/gen/controller/api"
+	"github.com/hashicorp/boundary/internal/gen/controller/api/resources/authmethods"
+	"github.com/hashicorp/boundary/internal/gen/controller/api/resources/authtokens"
+	"github.com/hashicorp/boundary/internal/gen/controller/api/resources/groups"
+	"github.com/hashicorp/boundary/internal/gen/controller/api/resources/hosts"
+	"github.com/hashicorp/boundary/internal/gen/controller/api/resources/roles"
+	"github.com/hashicorp/boundary/internal/gen/controller/api/resources/scopes"
+	"github.com/hashicorp/boundary/internal/gen/controller/api/resources/users"
 	"google.golang.org/protobuf/proto"
 )
 

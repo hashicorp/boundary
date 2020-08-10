@@ -10,7 +10,7 @@ import (
 	context "context"
 	proto "github.com/golang/protobuf/proto"
 	_ "github.com/grpc-ecosystem/grpc-gateway/v2/protoc-gen-openapiv2/options"
-	hosts "github.com/hashicorp/watchtower/internal/gen/controller/api/resources/hosts"
+	hosts "github.com/hashicorp/boundary/internal/gen/controller/api/resources/hosts"
 	_ "google.golang.org/genproto/googleapis/api/annotations"
 	field_mask "google.golang.org/genproto/protobuf/field_mask"
 	grpc "google.golang.org/grpc"
@@ -695,12 +695,12 @@ var file_controller_api_services_v1_host_catalog_service_proto_rawDesc = []byte{
 	0x61, 0x6c, 0x6c, 0x6f, 0x77, 0x73, 0x20, 0x79, 0x6f, 0x75, 0x20, 0x74, 0x6f, 0x20, 0x67, 0x65,
 	0x74, 0x2f, 0x6d, 0x75, 0x74, 0x61, 0x74, 0x65, 0x20, 0x48, 0x6f, 0x73, 0x74, 0x20, 0x63, 0x61,
 	0x74, 0x61, 0x6c, 0x6f, 0x67, 0x73, 0x20, 0x6f, 0x66, 0x20, 0x65, 0x76, 0x65, 0x72, 0x79, 0x20,
-	0x74, 0x79, 0x70, 0x65, 0x2e, 0x42, 0x4f, 0x5a, 0x4d, 0x67, 0x69, 0x74, 0x68, 0x75, 0x62, 0x2e,
-	0x63, 0x6f, 0x6d, 0x2f, 0x68, 0x61, 0x73, 0x68, 0x69, 0x63, 0x6f, 0x72, 0x70, 0x2f, 0x77, 0x61,
-	0x74, 0x63, 0x68, 0x74, 0x6f, 0x77, 0x65, 0x72, 0x2f, 0x69, 0x6e, 0x74, 0x65, 0x72, 0x6e, 0x61,
-	0x6c, 0x2f, 0x67, 0x65, 0x6e, 0x2f, 0x63, 0x6f, 0x6e, 0x74, 0x72, 0x6f, 0x6c, 0x6c, 0x65, 0x72,
-	0x2f, 0x61, 0x70, 0x69, 0x2f, 0x73, 0x65, 0x72, 0x76, 0x69, 0x63, 0x65, 0x73, 0x3b, 0x73, 0x65,
-	0x72, 0x76, 0x69, 0x63, 0x65, 0x73, 0x62, 0x06, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x33,
+	0x74, 0x79, 0x70, 0x65, 0x2e, 0x42, 0x4d, 0x5a, 0x4b, 0x67, 0x69, 0x74, 0x68, 0x75, 0x62, 0x2e,
+	0x63, 0x6f, 0x6d, 0x2f, 0x68, 0x61, 0x73, 0x68, 0x69, 0x63, 0x6f, 0x72, 0x70, 0x2f, 0x62, 0x6f,
+	0x75, 0x6e, 0x64, 0x61, 0x72, 0x79, 0x2f, 0x69, 0x6e, 0x74, 0x65, 0x72, 0x6e, 0x61, 0x6c, 0x2f,
+	0x67, 0x65, 0x6e, 0x2f, 0x63, 0x6f, 0x6e, 0x74, 0x72, 0x6f, 0x6c, 0x6c, 0x65, 0x72, 0x2f, 0x61,
+	0x70, 0x69, 0x2f, 0x73, 0x65, 0x72, 0x76, 0x69, 0x63, 0x65, 0x73, 0x3b, 0x73, 0x65, 0x72, 0x76,
+	0x69, 0x63, 0x65, 0x73, 0x62, 0x06, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x33,
 }
 
 var (
@@ -925,20 +925,20 @@ type HostCatalogServiceClient interface {
 	// malformed, or reference a non-existing parent resource an error is
 	// returned.
 	ListHostCatalogs(ctx context.Context, in *ListHostCatalogsRequest, opts ...grpc.CallOption) (*ListHostCatalogsResponse, error)
-	// CreateHostCatalog creates and stores a HostCatalog in watchtower.  The
+	// CreateHostCatalog creates and stores a HostCatalog in boundary.  The
 	// provided request must include the scope ID in which the catalog will be
 	// created and the catalog type to be created. If any of these required fields
 	// are missing, malformed, or reference a non-existing parent resource an
 	// error is returned.
 	CreateHostCatalog(ctx context.Context, in *CreateHostCatalogRequest, opts ...grpc.CallOption) (*CreateHostCatalogResponse, error)
-	// UpdateHostCatalog updates an existing HostCatalog in Watchtower. The
+	// UpdateHostCatalog updates an existing HostCatalog in Boundary. The
 	// provided HostCatalog must not have any read only fields set. The update
 	// mask must be provided and include at least 1 mutable field. To unset a
 	// field's value include that field name in the update mask and don't set the
 	// field in the HostCatalog.
 	UpdateHostCatalog(ctx context.Context, in *UpdateHostCatalogRequest, opts ...grpc.CallOption) (*UpdateHostCatalogResponse, error)
 	// DeleteHostCatalog removes a HostCatalog and all associated hosts and host
-	// sets from Watchtower. If the provided scope or HostCatalog IDs are
+	// sets from Boundary. If the provided scope or HostCatalog IDs are
 	// malformed or not provided DeleteHostCatalog returns an error. It is not an
 	// error to call DeleteHostCatalog for an scope or HostCatalog that does not
 	// exist as the response indicates if it existed or not.
@@ -1011,20 +1011,20 @@ type HostCatalogServiceServer interface {
 	// malformed, or reference a non-existing parent resource an error is
 	// returned.
 	ListHostCatalogs(context.Context, *ListHostCatalogsRequest) (*ListHostCatalogsResponse, error)
-	// CreateHostCatalog creates and stores a HostCatalog in watchtower.  The
+	// CreateHostCatalog creates and stores a HostCatalog in boundary.  The
 	// provided request must include the scope ID in which the catalog will be
 	// created and the catalog type to be created. If any of these required fields
 	// are missing, malformed, or reference a non-existing parent resource an
 	// error is returned.
 	CreateHostCatalog(context.Context, *CreateHostCatalogRequest) (*CreateHostCatalogResponse, error)
-	// UpdateHostCatalog updates an existing HostCatalog in Watchtower. The
+	// UpdateHostCatalog updates an existing HostCatalog in Boundary. The
 	// provided HostCatalog must not have any read only fields set. The update
 	// mask must be provided and include at least 1 mutable field. To unset a
 	// field's value include that field name in the update mask and don't set the
 	// field in the HostCatalog.
 	UpdateHostCatalog(context.Context, *UpdateHostCatalogRequest) (*UpdateHostCatalogResponse, error)
 	// DeleteHostCatalog removes a HostCatalog and all associated hosts and host
-	// sets from Watchtower. If the provided scope or HostCatalog IDs are
+	// sets from Boundary. If the provided scope or HostCatalog IDs are
 	// malformed or not provided DeleteHostCatalog returns an error. It is not an
 	// error to call DeleteHostCatalog for an scope or HostCatalog that does not
 	// exist as the response indicates if it existed or not.

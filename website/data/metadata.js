@@ -1,2 +1,2 @@
-export const productName = 'Watchtower'
-export const productSlug = 'watchtower'
+export const productName = 'Boundary'
+export const productSlug = 'boundary'

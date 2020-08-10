@@ -470,8 +470,8 @@ import (
 
 	"github.com/kr/pretty"
 
-	"github.com/hashicorp/watchtower/api"
-	"github.com/hashicorp/watchtower/api/scopes"
+	"github.com/hashicorp/boundary/api"
+	"github.com/hashicorp/boundary/api/scopes"
 )
 
 type {{ .Name }} struct { {{ range .Fields }}
@@ -497,7 +497,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/hashicorp/watchtower/api"
+	"github.com/hashicorp/boundary/api"
 )
 
 // Option is a func that sets optional attributes for a call. This does not need

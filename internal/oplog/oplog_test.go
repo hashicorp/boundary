@@ -7,7 +7,7 @@ import (
 
 	dbassert "github.com/hashicorp/dbassert/gorm"
 
-	"github.com/hashicorp/watchtower/internal/oplog/oplog_test"
+	"github.com/hashicorp/boundary/internal/oplog/oplog_test"
 	"github.com/jinzhu/gorm"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"

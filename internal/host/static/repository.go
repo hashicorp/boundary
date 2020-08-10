@@ -7,9 +7,9 @@ import (
 
 	wrapping "github.com/hashicorp/go-kms-wrapping"
 
-	"github.com/hashicorp/watchtower/internal/db"
-	"github.com/hashicorp/watchtower/internal/host/static/store"
-	"github.com/hashicorp/watchtower/internal/oplog"
+	"github.com/hashicorp/boundary/internal/db"
+	"github.com/hashicorp/boundary/internal/host/static/store"
+	"github.com/hashicorp/boundary/internal/oplog"
 )
 
 // A Repository stores and retrieves the persistent types in the static

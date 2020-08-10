@@ -10,7 +10,7 @@ import (
 	context "context"
 	proto "github.com/golang/protobuf/proto"
 	_ "github.com/grpc-ecosystem/grpc-gateway/v2/protoc-gen-openapiv2/options"
-	users "github.com/hashicorp/watchtower/internal/gen/controller/api/resources/users"
+	users "github.com/hashicorp/boundary/internal/gen/controller/api/resources/users"
 	_ "google.golang.org/genproto/googleapis/api/annotations"
 	field_mask "google.golang.org/genproto/protobuf/field_mask"
 	grpc "google.golang.org/grpc"
@@ -663,12 +663,12 @@ var file_controller_api_services_v1_user_service_proto_rawDesc = []byte{
 	0x82, 0xd3, 0xe4, 0x93, 0x02, 0x19, 0x2a, 0x17, 0x2f, 0x76, 0x31, 0x2f, 0x73, 0x63, 0x6f, 0x70,
 	0x65, 0x73, 0x2f, 0x2a, 0x2f, 0x75, 0x73, 0x65, 0x72, 0x73, 0x2f, 0x7b, 0x69, 0x64, 0x7d, 0x92,
 	0x41, 0x10, 0x12, 0x0e, 0x44, 0x65, 0x6c, 0x65, 0x74, 0x65, 0x73, 0x20, 0x61, 0x20, 0x55, 0x73,
-	0x65, 0x72, 0x42, 0x4f, 0x5a, 0x4d, 0x67, 0x69, 0x74, 0x68, 0x75, 0x62, 0x2e, 0x63, 0x6f, 0x6d,
-	0x2f, 0x68, 0x61, 0x73, 0x68, 0x69, 0x63, 0x6f, 0x72, 0x70, 0x2f, 0x77, 0x61, 0x74, 0x63, 0x68,
-	0x74, 0x6f, 0x77, 0x65, 0x72, 0x2f, 0x69, 0x6e, 0x74, 0x65, 0x72, 0x6e, 0x61, 0x6c, 0x2f, 0x67,
-	0x65, 0x6e, 0x2f, 0x63, 0x6f, 0x6e, 0x74, 0x72, 0x6f, 0x6c, 0x6c, 0x65, 0x72, 0x2f, 0x61, 0x70,
-	0x69, 0x2f, 0x73, 0x65, 0x72, 0x76, 0x69, 0x63, 0x65, 0x73, 0x3b, 0x73, 0x65, 0x72, 0x76, 0x69,
-	0x63, 0x65, 0x73, 0x62, 0x06, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x33,
+	0x65, 0x72, 0x42, 0x4d, 0x5a, 0x4b, 0x67, 0x69, 0x74, 0x68, 0x75, 0x62, 0x2e, 0x63, 0x6f, 0x6d,
+	0x2f, 0x68, 0x61, 0x73, 0x68, 0x69, 0x63, 0x6f, 0x72, 0x70, 0x2f, 0x62, 0x6f, 0x75, 0x6e, 0x64,
+	0x61, 0x72, 0x79, 0x2f, 0x69, 0x6e, 0x74, 0x65, 0x72, 0x6e, 0x61, 0x6c, 0x2f, 0x67, 0x65, 0x6e,
+	0x2f, 0x63, 0x6f, 0x6e, 0x74, 0x72, 0x6f, 0x6c, 0x6c, 0x65, 0x72, 0x2f, 0x61, 0x70, 0x69, 0x2f,
+	0x73, 0x65, 0x72, 0x76, 0x69, 0x63, 0x65, 0x73, 0x3b, 0x73, 0x65, 0x72, 0x76, 0x69, 0x63, 0x65,
+	0x73, 0x62, 0x06, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x33,
 }
 
 var (
@@ -892,13 +892,13 @@ type UserServiceClient interface {
 	// the users being retrieved. If the scope ID is missing, malformed, or
 	// reference a non existing scope, an error is returned.
 	ListUsers(ctx context.Context, in *ListUsersRequest, opts ...grpc.CallOption) (*ListUsersResponse, error)
-	// CreateUser creates and stores a user in watchtower.  The provided
+	// CreateUser creates and stores a user in boundary.  The provided
 	// request must include the org id in which the user will be created.
 	// If the org id is missing, malformed or references a non existing
 	// org, an error is returned.  If a name is provided that is in
 	// use in another user in the same org, an error is returned.
 	CreateUser(ctx context.Context, in *CreateUserRequest, opts ...grpc.CallOption) (*CreateUserResponse, error)
-	// UpdateUser updates an existing user in watchtower.  The provided
+	// UpdateUser updates an existing user in boundary.  The provided
 	// user must not have any read only fields set.  The update mask must be
 	// included in the request and contain at least 1 mutable field.  To unset
 	// a field's value, include the field in the update mask and don't set it
@@ -907,7 +907,7 @@ type UserServiceClient interface {
 	// is also returned if the request attempts to update the name to one that is
 	// already in use in this org.
 	UpdateUser(ctx context.Context, in *UpdateUserRequest, opts ...grpc.CallOption) (*UpdateUserResponse, error)
-	// DeleteUser removes a user from Watchtower. If the provided org or user ids
+	// DeleteUser removes a user from Boundary. If the provided org or user ids
 	// are malformed or not provided an error is returned.  No error is returned
 	// if either ids reference resources that do not exist as the response itself
 	// specifies if the resource existed before the DeleteUser request was
@@ -980,13 +980,13 @@ type UserServiceServer interface {
 	// the users being retrieved. If the scope ID is missing, malformed, or
 	// reference a non existing scope, an error is returned.
 	ListUsers(context.Context, *ListUsersRequest) (*ListUsersResponse, error)
-	// CreateUser creates and stores a user in watchtower.  The provided
+	// CreateUser creates and stores a user in boundary.  The provided
 	// request must include the org id in which the user will be created.
 	// If the org id is missing, malformed or references a non existing
 	// org, an error is returned.  If a name is provided that is in
 	// use in another user in the same org, an error is returned.
 	CreateUser(context.Context, *CreateUserRequest) (*CreateUserResponse, error)
-	// UpdateUser updates an existing user in watchtower.  The provided
+	// UpdateUser updates an existing user in boundary.  The provided
 	// user must not have any read only fields set.  The update mask must be
 	// included in the request and contain at least 1 mutable field.  To unset
 	// a field's value, include the field in the update mask and don't set it
@@ -995,7 +995,7 @@ type UserServiceServer interface {
 	// is also returned if the request attempts to update the name to one that is
 	// already in use in this org.
 	UpdateUser(context.Context, *UpdateUserRequest) (*UpdateUserResponse, error)
-	// DeleteUser removes a user from Watchtower. If the provided org or user ids
+	// DeleteUser removes a user from Boundary. If the provided org or user ids
 	// are malformed or not provided an error is returned.  No error is returned
 	// if either ids reference resources that do not exist as the response itself
 	// specifies if the resource existed before the DeleteUser request was

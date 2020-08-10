@@ -3,8 +3,8 @@ package iam
 import (
 	"fmt"
 
-	"github.com/hashicorp/watchtower/internal/db"
-	"github.com/hashicorp/watchtower/internal/types/scope"
+	"github.com/hashicorp/boundary/internal/db"
+	"github.com/hashicorp/boundary/internal/types/scope"
 )
 
 const (

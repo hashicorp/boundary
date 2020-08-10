@@ -4,7 +4,7 @@ import (
 	"context"
 	"testing"
 
-	"github.com/hashicorp/watchtower/internal/db"
+	"github.com/hashicorp/boundary/internal/db"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/proto"
