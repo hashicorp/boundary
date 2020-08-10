@@ -4,7 +4,7 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/hashicorp/watchtower/internal/db/common"
+	"github.com/hashicorp/boundary/internal/db/common"
 
 	"github.com/jinzhu/gorm"
 )

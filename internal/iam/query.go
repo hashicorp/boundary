@@ -4,8 +4,8 @@ package iam
 // the db via sql.DB vs the standard pattern of using the internal/db package to
 // interact with the db.
 const (
-	// whereUserAuthAccount - given an auth account id, return the associated user.
-	whereUserAuthAccount = `	
+	// whereUserAccount - given an auth account id, return the associated user.
+	whereUserAccount = `	
 	select iam_user.*
 		from iam_user 
 	inner join auth_account 

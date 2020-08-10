@@ -3,7 +3,7 @@ package static_test
 import (
 	"fmt"
 
-	"github.com/hashicorp/watchtower/internal/host/static"
+	"github.com/hashicorp/boundary/internal/host/static"
 )
 
 func ExampleNewHostCatalog() {

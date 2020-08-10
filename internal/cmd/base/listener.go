@@ -96,7 +96,7 @@ func tcpListenerFactory(l *configutil.Listener, logger hclog.Logger, ui cli.Ui) 
 		"addr": l.Address,
 	}
 
-	if _, ok := os.LookupEnv("WATCHTOWER_LOG_CONNECTION_MUXING"); !ok {
+	if _, ok := os.LookupEnv("BOUNDARY_LOG_CONNECTION_MUXING"); !ok {
 		logger = nil
 	}
 	alpnMux := alpnmux.New(ln, logger)

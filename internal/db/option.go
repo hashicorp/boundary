@@ -1,8 +1,8 @@
 package db
 
 import (
+	"github.com/hashicorp/boundary/internal/oplog"
 	wrapping "github.com/hashicorp/go-kms-wrapping"
-	"github.com/hashicorp/watchtower/internal/oplog"
 )
 
 // GetOpts - iterate the inbound Options and return a struct.
@@ -36,6 +36,9 @@ type Options struct {
 	WithVersion *uint32
 
 	withSkipVetForWrite bool
+
+	withWhereClause     string
+	withWhereClauseArgs []interface{}
 }
 
 type oplogOpts struct {
@@ -132,5 +135,14 @@ func WithVersion(version *uint32) Option {
 func WithSkipVetForWrite(enable bool) Option {
 	return func(o *Options) {
 		o.withSkipVetForWrite = enable
+	}
+}
+
+// WithWhere provides an option to provide a where clause with arguments for an
+// operation.
+func WithWhere(whereClause string, args ...interface{}) Option {
+	return func(o *Options) {
+		o.withWhereClause = whereClause
+		o.withWhereClauseArgs = append(o.withWhereClauseArgs, args...)
 	}
 }

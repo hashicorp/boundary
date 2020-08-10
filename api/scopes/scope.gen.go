@@ -10,7 +10,7 @@ import (
 
 	"github.com/kr/pretty"
 
-	"github.com/hashicorp/watchtower/api"
+	"github.com/hashicorp/boundary/api"
 )
 
 type Scope struct {

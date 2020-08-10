@@ -6,16 +6,16 @@ import (
 	"strings"
 	"time"
 
-	"github.com/hashicorp/watchtower/api/roles"
-	"github.com/hashicorp/watchtower/internal/cmd/base"
+	"github.com/hashicorp/boundary/api/roles"
+	"github.com/hashicorp/boundary/internal/cmd/base"
 	"github.com/mitchellh/go-wordwrap"
 )
 
 func synopsisFunc(inFunc string) string {
 	if inFunc == "" {
-		return wordwrap.WrapString("Manage Watchtower roles", base.TermWidth)
+		return wordwrap.WrapString("Manage Boundary roles", base.TermWidth)
 	}
-	return wordwrap.WrapString(fmt.Sprintf("%s a role within Watchtower", textproto.CanonicalMIMEHeaderKey(inFunc)), base.TermWidth)
+	return wordwrap.WrapString(fmt.Sprintf("%s a role within Boundary", textproto.CanonicalMIMEHeaderKey(inFunc)), base.TermWidth)
 }
 
 func principalsGrantsSynopsisFunc(inFunc string, principals bool) string {
@@ -32,22 +32,22 @@ func principalsGrantsSynopsisFunc(inFunc string, principals bool) string {
 	case strings.HasPrefix(inFunc, "remove"):
 		in = fmt.Sprintf("Remove %s from", switchStr)
 	}
-	return wordwrap.WrapString(fmt.Sprintf("%s a role within Watchtower", in), base.TermWidth)
+	return wordwrap.WrapString(fmt.Sprintf("%s a role within Boundary", in), base.TermWidth)
 }
 
 func baseHelp() string {
 	return base.WrapForHelpText([]string{
-		"Usage: watchtower roles [sub command] [options] [args]",
+		"Usage: boundary roles [sub command] [options] [args]",
 		"",
-		"  This command allows operations on Watchtower roles. Examples:",
+		"  This command allows operations on Boundary roles. Examples:",
 		"",
 		"    Create a role:",
 		"",
-		`      $ watchtower roles create -name foo -description "For ProdOps usage"`,
+		`      $ boundary roles create -name foo -description "For ProdOps usage"`,
 		"",
 		"    Add a grant to a role:",
 		"",
-		`      $ watchtower roles add-grants -id r_1234567890 -grant "type=host-catalog;actions=create,delete"`,
+		`      $ boundary roles add-grants -id r_1234567890 -grant "type=host-catalog;actions=create,delete"`,
 		"",
 		"  Please see the role subcommand help for detailed usage information.",
 	})
@@ -55,11 +55,11 @@ func baseHelp() string {
 
 func createHelp() string {
 	return base.WrapForHelpText([]string{
-		"Usage: watchtower roles create [options] [args]",
+		"Usage: boundary roles create [options] [args]",
 		"",
 		"  Create a role. Example:",
 		"",
-		`    $ watchtower roles create -name ops -description "Role for ops grants"`,
+		`    $ boundary roles create -name ops -description "Role for ops grants"`,
 		"",
 		"",
 	})
@@ -67,71 +67,71 @@ func createHelp() string {
 
 func updateHelp() string {
 	return base.WrapForHelpText([]string{
-		"Usage: watchtower roles update [options] [args]",
+		"Usage: boundary roles update [options] [args]",
 		"",
 		"  Update a role given its ID. Example:",
 		"",
-		`    $ watchtower roles update -id r_1234567890 -description "Development host grants"`,
+		`    $ boundary roles update -id r_1234567890 -description "Development host grants"`,
 	})
 }
 
 func readHelp() string {
 	return base.WrapForHelpText([]string{
-		"Usage: watchtower roles read [options] [args]",
+		"Usage: boundary roles read [options] [args]",
 		"",
 		"  Read a role given its ID. Example:",
 		"",
-		`    $ watchtower roles read -id r_1234567890`,
+		`    $ boundary roles read -id r_1234567890`,
 	})
 }
 
 func deleteHelp() string {
 	return base.WrapForHelpText([]string{
-		"Usage: watchtower roles delete [options] [args]",
+		"Usage: boundary roles delete [options] [args]",
 		"",
 		"  Delete a role given its ID. Example:",
 		"",
-		`    $ watchtower roles delete -id r_1234567890`,
+		`    $ boundary roles delete -id r_1234567890`,
 	})
 }
 
 func listHelp() string {
 	return base.WrapForHelpText([]string{
-		"Usage: watchtower roles list [options] [args]",
+		"Usage: boundary roles list [options] [args]",
 		"",
 		"  List roles within a scope. Example:",
 		"",
-		`    $ watchtower roles list -org o_1234567890`,
+		`    $ boundary roles list -org o_1234567890`,
 	})
 }
 
 func addPrincipalsHelp() string {
 	return base.WrapForHelpText([]string{
-		"Usage: watchtower roles add-principals [options] [args]",
+		"Usage: boundary roles add-principals [options] [args]",
 		"",
 		`  Adds principals (users, groups) to a role given its ID. The "user" and "group" flags can be specified multiple times. Example:`,
 		"",
-		`    $ watchtower roles add-principals -id r_1234567890 -user u_1234567890`,
+		`    $ boundary roles add-principals -id r_1234567890 -user u_1234567890`,
 	})
 }
 
 func setPrincipalsHelp() string {
 	return base.WrapForHelpText([]string{
-		"Usage: watchtower roles set-principals [options] [args]",
+		"Usage: boundary roles set-principals [options] [args]",
 		"",
 		`  Sets the complete set of principals (users, groups) on a role given its ID. The "user" and "group" flags can be specified multiple times. Example:`,
 		"",
-		`    $ watchtower roles set-principals -id r_1234567890 -user u_anon -group sg_1234567890`,
+		`    $ boundary roles set-principals -id r_1234567890 -user u_anon -group sg_1234567890`,
 	})
 }
 
 func removePrincipalsHelp() string {
 	return base.WrapForHelpText([]string{
-		"Usage: watchtower roles remove-principals [options] [args]",
+		"Usage: boundary roles remove-principals [options] [args]",
 		"",
 		`  Removes principals (users, groups) from a role given its ID. The "user" and "group" flags can be specified multiple times. Example:`,
 		"",
-		`    $ watchtower roles remove-principals -id r_1234567890 -group sg_1234567890`,
+		`    $ boundary roles remove-principals -id r_1234567890 -group sg_1234567890`,
 	})
 }
 

@@ -3,7 +3,7 @@ syntax = "proto3";
 import "google/protobuf/field_mask.proto";
 
 package controller.storage.oplog.v1;
-option go_package = "github.com/hashicorp/watchtower/internal/oplog;oplog";
+option go_package = "github.com/hashicorp/boundary/internal/oplog;oplog";
 
 // OpType provides the type of database operation the Any message represents
 // (create, update, delete)

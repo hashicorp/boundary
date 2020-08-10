@@ -8,9 +8,9 @@ import (
 	"strings"
 
 	"github.com/golang-migrate/migrate/v4"
+	"github.com/hashicorp/boundary/internal/db/migrations"
 	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/go-multierror"
-	"github.com/hashicorp/watchtower/internal/db/migrations"
 	"github.com/jinzhu/gorm"
 	"github.com/lib/pq"
 	"github.com/ory/dockertest/v3"
@@ -91,7 +91,7 @@ func StartDbInDocker(dialect string) (cleanup func() error, retURL, container st
 	var url string
 	switch dialect {
 	case "postgres":
-		resource, err = pool.Run("postgres", "latest", []string{"POSTGRES_PASSWORD=secret", "POSTGRES_DB=watchtower"})
+		resource, err = pool.Run("postgres", "latest", []string{"POSTGRES_PASSWORD=secret", "POSTGRES_DB=boundary"})
 		url = "postgres://postgres:secret@localhost:%s?sslmode=disable"
 	default:
 		panic(fmt.Sprintf("unknown dialect %q", dialect))
