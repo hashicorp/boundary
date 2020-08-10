@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/hashicorp/watchtower/internal/db"
-	dbcommon "github.com/hashicorp/watchtower/internal/db/common"
+	"github.com/hashicorp/boundary/internal/db"
+	dbcommon "github.com/hashicorp/boundary/internal/db/common"
 )
 
 // CreateRole will create a role in the repository and return the written

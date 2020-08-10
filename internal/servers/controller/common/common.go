@@ -1,11 +1,11 @@
 package common
 
 import (
-	"github.com/hashicorp/watchtower/internal/auth/password"
-	"github.com/hashicorp/watchtower/internal/authtoken"
-	"github.com/hashicorp/watchtower/internal/host/static"
-	"github.com/hashicorp/watchtower/internal/iam"
-	"github.com/hashicorp/watchtower/internal/servers"
+	"github.com/hashicorp/boundary/internal/auth/password"
+	"github.com/hashicorp/boundary/internal/authtoken"
+	"github.com/hashicorp/boundary/internal/host/static"
+	"github.com/hashicorp/boundary/internal/iam"
+	"github.com/hashicorp/boundary/internal/servers"
 )
 
 type (

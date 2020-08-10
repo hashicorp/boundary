@@ -5,9 +5,9 @@ import (
 	"math/rand"
 	"time"
 
-	pbs "github.com/hashicorp/watchtower/internal/gen/controller/api/services"
-	"github.com/hashicorp/watchtower/internal/servers"
-	"github.com/hashicorp/watchtower/internal/types/resource"
+	pbs "github.com/hashicorp/boundary/internal/gen/controller/api/services"
+	"github.com/hashicorp/boundary/internal/servers"
+	"github.com/hashicorp/boundary/internal/types/resource"
 	"google.golang.org/grpc/resolver"
 )
 

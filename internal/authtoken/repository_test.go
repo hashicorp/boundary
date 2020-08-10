@@ -9,17 +9,16 @@ import (
 
 	"github.com/golang/protobuf/ptypes"
 	"github.com/google/go-cmp/cmp"
+	"github.com/hashicorp/boundary/internal/auth/password"
+	"github.com/hashicorp/boundary/internal/oplog"
 	wrapping "github.com/hashicorp/go-kms-wrapping"
-	"github.com/hashicorp/watchtower/internal/auth/password"
-	iamStore "github.com/hashicorp/watchtower/internal/iam/store"
-	"github.com/hashicorp/watchtower/internal/oplog"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/testing/protocmp"
 
-	"github.com/hashicorp/watchtower/internal/authtoken/store"
-	"github.com/hashicorp/watchtower/internal/db"
-	"github.com/hashicorp/watchtower/internal/iam"
+	"github.com/hashicorp/boundary/internal/authtoken/store"
+	"github.com/hashicorp/boundary/internal/db"
+	"github.com/hashicorp/boundary/internal/iam"
 )
 
 func TestRepository_New(t *testing.T) {
@@ -410,7 +409,8 @@ func TestRepository_ValidateToken_expired(t *testing.T) {
 	org, _ := iam.TestScopes(t, conn)
 	baseAT := TestAuthToken(t, conn, wrapper, org.GetPublicId())
 	baseAT.GetAuthAccountId()
-	aAcct := &iam.AuthAccount{AuthAccount: &iamStore.AuthAccount{PublicId: baseAT.GetAuthAccountId()}}
+	aAcct := allocAuthAccount()
+	aAcct.PublicId = baseAT.GetAuthAccountId()
 	require.NoError(t, rw.LookupByPublicId(context.Background(), aAcct))
 	iamUserId := aAcct.GetIamUserId()
 

@@ -11,8 +11,8 @@ import (
 	proto "github.com/golang/protobuf/proto"
 	_ "github.com/golang/protobuf/ptypes/wrappers"
 	_ "github.com/grpc-ecosystem/grpc-gateway/v2/protoc-gen-openapiv2/options"
-	groups "github.com/hashicorp/watchtower/internal/gen/controller/api/resources/groups"
-	_ "github.com/hashicorp/watchtower/internal/gen/controller/api/resources/scopes"
+	groups "github.com/hashicorp/boundary/internal/gen/controller/api/resources/groups"
+	_ "github.com/hashicorp/boundary/internal/gen/controller/api/resources/scopes"
 	_ "google.golang.org/genproto/googleapis/api/annotations"
 	field_mask "google.golang.org/genproto/protobuf/field_mask"
 	grpc "google.golang.org/grpc"
@@ -1151,12 +1151,12 @@ var file_controller_api_services_v1_group_service_proto_rawDesc = []byte{
 	0x69, 0x74, 0x65, 0x6d, 0x92, 0x41, 0x2d, 0x12, 0x2b, 0x52, 0x65, 0x6d, 0x6f, 0x76, 0x65, 0x73,
 	0x20, 0x74, 0x68, 0x65, 0x20, 0x73, 0x70, 0x65, 0x63, 0x69, 0x66, 0x69, 0x65, 0x64, 0x20, 0x6d,
 	0x65, 0x6d, 0x62, 0x65, 0x72, 0x73, 0x20, 0x66, 0x72, 0x6f, 0x6d, 0x20, 0x61, 0x20, 0x47, 0x72,
-	0x6f, 0x75, 0x70, 0x2e, 0x42, 0x4f, 0x5a, 0x4d, 0x67, 0x69, 0x74, 0x68, 0x75, 0x62, 0x2e, 0x63,
-	0x6f, 0x6d, 0x2f, 0x68, 0x61, 0x73, 0x68, 0x69, 0x63, 0x6f, 0x72, 0x70, 0x2f, 0x77, 0x61, 0x74,
-	0x63, 0x68, 0x74, 0x6f, 0x77, 0x65, 0x72, 0x2f, 0x69, 0x6e, 0x74, 0x65, 0x72, 0x6e, 0x61, 0x6c,
-	0x2f, 0x67, 0x65, 0x6e, 0x2f, 0x63, 0x6f, 0x6e, 0x74, 0x72, 0x6f, 0x6c, 0x6c, 0x65, 0x72, 0x2f,
-	0x61, 0x70, 0x69, 0x2f, 0x73, 0x65, 0x72, 0x76, 0x69, 0x63, 0x65, 0x73, 0x3b, 0x73, 0x65, 0x72,
-	0x76, 0x69, 0x63, 0x65, 0x73, 0x62, 0x06, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x33,
+	0x6f, 0x75, 0x70, 0x2e, 0x42, 0x4d, 0x5a, 0x4b, 0x67, 0x69, 0x74, 0x68, 0x75, 0x62, 0x2e, 0x63,
+	0x6f, 0x6d, 0x2f, 0x68, 0x61, 0x73, 0x68, 0x69, 0x63, 0x6f, 0x72, 0x70, 0x2f, 0x62, 0x6f, 0x75,
+	0x6e, 0x64, 0x61, 0x72, 0x79, 0x2f, 0x69, 0x6e, 0x74, 0x65, 0x72, 0x6e, 0x61, 0x6c, 0x2f, 0x67,
+	0x65, 0x6e, 0x2f, 0x63, 0x6f, 0x6e, 0x74, 0x72, 0x6f, 0x6c, 0x6c, 0x65, 0x72, 0x2f, 0x61, 0x70,
+	0x69, 0x2f, 0x73, 0x65, 0x72, 0x76, 0x69, 0x63, 0x65, 0x73, 0x3b, 0x73, 0x65, 0x72, 0x76, 0x69,
+	0x63, 0x65, 0x73, 0x62, 0x06, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x33,
 }
 
 var (
@@ -1483,13 +1483,13 @@ type GroupServiceClient interface {
 	// the groups being retrieved. If the scope is missing, malformed, or
 	// references a non-existing scope, an error is returned.
 	ListGroups(ctx context.Context, in *ListGroupsRequest, opts ...grpc.CallOption) (*ListGroupsResponse, error)
-	// CreateGroup creates and stores a group in watchtower. The provided
+	// CreateGroup creates and stores a group in boundary. The provided
 	// request must include the scope ID in which the group will be created.
 	// If the scope ID is missing, malformed or references a non existing
 	// org, an error is returned. If a name is provided that is in
 	// use in another group in the same scope, an error is returned.
 	CreateGroup(ctx context.Context, in *CreateGroupRequest, opts ...grpc.CallOption) (*CreateGroupResponse, error)
-	// UpdateGroup updates an existing group in watchtower. The provided group
+	// UpdateGroup updates an existing group in boundary. The provided group
 	// must not have any read only fields set. The update mask must be included in
 	// the request and contain at least 1 mutable field. To unset a field's value,
 	// include the field in the update mask and don't set it in the provided
@@ -1498,7 +1498,7 @@ type GroupServiceClient interface {
 	// request attempts to update the name to one that is already in use in this
 	// scope.
 	UpdateGroup(ctx context.Context, in *UpdateGroupRequest, opts ...grpc.CallOption) (*UpdateGroupResponse, error)
-	// DeleteGroup removes a group from Watchtower. If the provided scope or group
+	// DeleteGroup removes a group from Boundary. If the provided scope or group
 	// IDs are malformed or not provided an error is returned. No error is
 	// returned if either IDs reference resources that do not exist as the
 	// response itself specifies if the resource existed before the DeleteGroup
@@ -1614,13 +1614,13 @@ type GroupServiceServer interface {
 	// the groups being retrieved. If the scope is missing, malformed, or
 	// references a non-existing scope, an error is returned.
 	ListGroups(context.Context, *ListGroupsRequest) (*ListGroupsResponse, error)
-	// CreateGroup creates and stores a group in watchtower. The provided
+	// CreateGroup creates and stores a group in boundary. The provided
 	// request must include the scope ID in which the group will be created.
 	// If the scope ID is missing, malformed or references a non existing
 	// org, an error is returned. If a name is provided that is in
 	// use in another group in the same scope, an error is returned.
 	CreateGroup(context.Context, *CreateGroupRequest) (*CreateGroupResponse, error)
-	// UpdateGroup updates an existing group in watchtower. The provided group
+	// UpdateGroup updates an existing group in boundary. The provided group
 	// must not have any read only fields set. The update mask must be included in
 	// the request and contain at least 1 mutable field. To unset a field's value,
 	// include the field in the update mask and don't set it in the provided
@@ -1629,7 +1629,7 @@ type GroupServiceServer interface {
 	// request attempts to update the name to one that is already in use in this
 	// scope.
 	UpdateGroup(context.Context, *UpdateGroupRequest) (*UpdateGroupResponse, error)
-	// DeleteGroup removes a group from Watchtower. If the provided scope or group
+	// DeleteGroup removes a group from Boundary. If the provided scope or group
 	// IDs are malformed or not provided an error is returned. No error is
 	// returned if either IDs reference resources that do not exist as the
 	// response itself specifies if the resource existed before the DeleteGroup

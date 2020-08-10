@@ -7,15 +7,15 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/hashicorp/watchtower/internal/auth"
-	"github.com/hashicorp/watchtower/internal/gen/controller/api/resources/scopes"
-	pb "github.com/hashicorp/watchtower/internal/gen/controller/api/resources/scopes"
-	pbs "github.com/hashicorp/watchtower/internal/gen/controller/api/services"
-	"github.com/hashicorp/watchtower/internal/iam"
-	"github.com/hashicorp/watchtower/internal/iam/store"
-	"github.com/hashicorp/watchtower/internal/servers/controller/common"
-	"github.com/hashicorp/watchtower/internal/servers/controller/handlers"
-	"github.com/hashicorp/watchtower/internal/types/scope"
+	"github.com/hashicorp/boundary/internal/auth"
+	"github.com/hashicorp/boundary/internal/gen/controller/api/resources/scopes"
+	pb "github.com/hashicorp/boundary/internal/gen/controller/api/resources/scopes"
+	pbs "github.com/hashicorp/boundary/internal/gen/controller/api/services"
+	"github.com/hashicorp/boundary/internal/iam"
+	"github.com/hashicorp/boundary/internal/iam/store"
+	"github.com/hashicorp/boundary/internal/servers/controller/common"
+	"github.com/hashicorp/boundary/internal/servers/controller/handlers"
+	"github.com/hashicorp/boundary/internal/types/scope"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/wrapperspb"
@@ -38,7 +38,7 @@ type Service struct {
 	repo common.IamRepoFactory
 }
 
-// NewService returns a project service which handles project related requests to watchtower.
+// NewService returns a project service which handles project related requests to boundary.
 func NewService(repo common.IamRepoFactory) (Service, error) {
 	if repo == nil {
 		return Service{}, fmt.Errorf("nil iam repository provided")

@@ -54,10 +54,10 @@ func (c *Info) FullVersionNumber(rev bool) string {
 	var versionString bytes.Buffer
 
 	if Version == "unknown" && VersionPrerelease == "unknown" {
-		return "Watchtower (version unknown)"
+		return "Boundary (version unknown)"
 	}
 
-	fmt.Fprintf(&versionString, "Watchtower v%s", c.Version)
+	fmt.Fprintf(&versionString, "Boundary v%s", c.Version)
 	if c.VersionPrerelease != "" {
 		fmt.Fprintf(&versionString, "-%s", c.VersionPrerelease)
 	}

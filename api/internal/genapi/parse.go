@@ -10,7 +10,7 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 
-	"github.com/hashicorp/watchtower/internal/gen/controller/protooptions"
+	"github.com/hashicorp/boundary/internal/gen/controller/protooptions"
 
 	"github.com/iancoleman/strcase"
 )

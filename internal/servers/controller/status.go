@@ -4,8 +4,8 @@ import (
 	"context"
 	"time"
 
-	"github.com/hashicorp/watchtower/internal/servers"
-	"github.com/hashicorp/watchtower/internal/types/resource"
+	"github.com/hashicorp/boundary/internal/servers"
+	"github.com/hashicorp/boundary/internal/types/resource"
 )
 
 // In the future we could make this configurable

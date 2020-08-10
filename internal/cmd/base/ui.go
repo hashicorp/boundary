@@ -7,7 +7,7 @@ import (
 	"golang.org/x/crypto/ssh/terminal"
 )
 
-type WatchtowerUI struct {
+type BoundaryUI struct {
 	cli.Ui
 	Format string
 }

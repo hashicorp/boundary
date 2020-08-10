@@ -5,10 +5,10 @@ import (
 	"sync"
 	"time"
 
+	pbs "github.com/hashicorp/boundary/internal/gen/controller/api/services"
+	"github.com/hashicorp/boundary/internal/servers/controller/common"
+	"github.com/hashicorp/boundary/internal/types/resource"
 	"github.com/hashicorp/go-hclog"
-	pbs "github.com/hashicorp/watchtower/internal/gen/controller/api/services"
-	"github.com/hashicorp/watchtower/internal/servers/controller/common"
-	"github.com/hashicorp/watchtower/internal/types/resource"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )

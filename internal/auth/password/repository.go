@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/hashicorp/boundary/internal/db"
 	wrapping "github.com/hashicorp/go-kms-wrapping"
-	"github.com/hashicorp/watchtower/internal/db"
 )
 
 // A Repository stores and retrieves the persistent types in the password
@@ -34,7 +34,7 @@ func NewRepository(r db.Reader, w db.Writer, wrapper wrapping.Wrapper, opt ...Op
 
 	opts := getOpts(opt...)
 	if opts.withLimit == 0 {
-		// zero signals the watchtower defaults should be used.
+		// zero signals the boundary defaults should be used.
 		opts.withLimit = db.DefaultLimit
 	}
 

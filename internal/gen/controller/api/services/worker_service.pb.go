@@ -9,7 +9,7 @@ package services
 import (
 	context "context"
 	proto "github.com/golang/protobuf/proto"
-	servers "github.com/hashicorp/watchtower/internal/servers"
+	servers "github.com/hashicorp/boundary/internal/servers"
 	grpc "google.golang.org/grpc"
 	codes "google.golang.org/grpc/codes"
 	status "google.golang.org/grpc/status"

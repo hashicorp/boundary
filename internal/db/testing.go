@@ -9,10 +9,10 @@ import (
 
 	_ "github.com/golang-migrate/migrate/v4/database/postgres"
 	_ "github.com/golang-migrate/migrate/v4/source/file"
+	"github.com/hashicorp/boundary/internal/oplog"
+	"github.com/hashicorp/boundary/internal/oplog/store"
 	wrapping "github.com/hashicorp/go-kms-wrapping"
 	"github.com/hashicorp/go-kms-wrapping/wrappers/aead"
-	"github.com/hashicorp/watchtower/internal/oplog"
-	"github.com/hashicorp/watchtower/internal/oplog/store"
 	"github.com/jinzhu/gorm"
 	"github.com/stretchr/testify/assert"
 )

@@ -6,13 +6,13 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/hashicorp/watchtower/internal/auth"
-	pb "github.com/hashicorp/watchtower/internal/gen/controller/api/resources/hosts"
-	pbs "github.com/hashicorp/watchtower/internal/gen/controller/api/services"
-	"github.com/hashicorp/watchtower/internal/host/static"
-	"github.com/hashicorp/watchtower/internal/host/static/store"
-	"github.com/hashicorp/watchtower/internal/servers/controller/common"
-	"github.com/hashicorp/watchtower/internal/servers/controller/handlers"
+	"github.com/hashicorp/boundary/internal/auth"
+	pb "github.com/hashicorp/boundary/internal/gen/controller/api/resources/hosts"
+	pbs "github.com/hashicorp/boundary/internal/gen/controller/api/services"
+	"github.com/hashicorp/boundary/internal/host/static"
+	"github.com/hashicorp/boundary/internal/host/static/store"
+	"github.com/hashicorp/boundary/internal/servers/controller/common"
+	"github.com/hashicorp/boundary/internal/servers/controller/handlers"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/wrapperspb"
@@ -75,7 +75,7 @@ type Service struct {
 
 var _ pbs.HostCatalogServiceServer = Service{}
 
-// NewService returns a host catalog Service which handles host catalog related requests to watchtower and uses the provided
+// NewService returns a host catalog Service which handles host catalog related requests to boundary and uses the provided
 // repositories for storage and retrieval.
 func NewService(repoFn common.StaticRepoFactory) (Service, error) {
 	if repoFn == nil {

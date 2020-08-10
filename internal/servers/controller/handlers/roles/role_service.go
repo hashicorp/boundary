@@ -7,15 +7,15 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/hashicorp/watchtower/internal/auth"
-	"github.com/hashicorp/watchtower/internal/db"
-	pb "github.com/hashicorp/watchtower/internal/gen/controller/api/resources/roles"
-	"github.com/hashicorp/watchtower/internal/gen/controller/api/resources/scopes"
-	pbs "github.com/hashicorp/watchtower/internal/gen/controller/api/services"
-	"github.com/hashicorp/watchtower/internal/iam"
-	"github.com/hashicorp/watchtower/internal/iam/store"
-	"github.com/hashicorp/watchtower/internal/perms"
-	"github.com/hashicorp/watchtower/internal/servers/controller/handlers"
+	"github.com/hashicorp/boundary/internal/auth"
+	"github.com/hashicorp/boundary/internal/db"
+	pb "github.com/hashicorp/boundary/internal/gen/controller/api/resources/roles"
+	"github.com/hashicorp/boundary/internal/gen/controller/api/resources/scopes"
+	pbs "github.com/hashicorp/boundary/internal/gen/controller/api/services"
+	"github.com/hashicorp/boundary/internal/iam"
+	"github.com/hashicorp/boundary/internal/iam/store"
+	"github.com/hashicorp/boundary/internal/perms"
+	"github.com/hashicorp/boundary/internal/servers/controller/handlers"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/wrapperspb"
@@ -38,7 +38,7 @@ type Service struct {
 	repoFn func() (*iam.Repository, error)
 }
 
-// NewService returns a role service which handles role related requests to watchtower.
+// NewService returns a role service which handles role related requests to boundary.
 func NewService(repo func() (*iam.Repository, error)) (Service, error) {
 	if repo == nil {
 		return Service{}, fmt.Errorf("nil iam repository provided")

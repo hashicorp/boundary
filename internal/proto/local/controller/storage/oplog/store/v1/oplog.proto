@@ -1,8 +1,8 @@
 syntax = "proto3";
 
-// define an oplog package within the watchtower controller
+// define an oplog package within the boundary controller
 package controller.storage.oplog.store.v1;
-option go_package = "github.com/hashicorp/watchtower/internal/oplog/store;store";
+option go_package = "github.com/hashicorp/boundary/internal/oplog/store;store";
 
 import "controller/storage/timestamp/v1/timestamp.proto";
 

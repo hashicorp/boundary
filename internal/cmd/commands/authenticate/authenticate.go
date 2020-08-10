@@ -1,7 +1,7 @@
 package authenticate
 
 import (
-	"github.com/hashicorp/watchtower/internal/cmd/base"
+	"github.com/hashicorp/boundary/internal/cmd/base"
 	"github.com/mitchellh/cli"
 	"github.com/mitchellh/go-wordwrap"
 )
@@ -13,18 +13,18 @@ type Command struct {
 }
 
 func (c *Command) Synopsis() string {
-	return wordwrap.WrapString("Authenticate the Watchtower commandline client", base.TermWidth)
+	return wordwrap.WrapString("Authenticate the Boundary commandline client", base.TermWidth)
 }
 
 func (c *Command) Help() string {
 	return base.WrapForHelpText([]string{
-		"Usage: watchtower authenticate [sub command] [options] [args]",
+		"Usage: boundary authenticate [sub command] [options] [args]",
 		"",
-		"  This command authenticates the Watchtower commandline client using a specified auth method. Examples:",
+		"  This command authenticates the Boundary commandline client using a specified auth method. Examples:",
 		"",
 		"    Authenticate with password auth method:",
 		"",
-		"      $ watchtower authenticate password -name foo -password bar",
+		"      $ boundary authenticate password -name foo -password bar",
 		"",
 		"  Please see the auth method subcommand help for detailed usage information.",
 	})

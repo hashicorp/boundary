@@ -7,13 +7,13 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/hashicorp/boundary/internal/gen/controller/api/resources/scopes"
+	"github.com/hashicorp/boundary/internal/perms"
+	"github.com/hashicorp/boundary/internal/servers/controller/common"
+	"github.com/hashicorp/boundary/internal/types/action"
+	"github.com/hashicorp/boundary/internal/types/resource"
+	"github.com/hashicorp/boundary/internal/types/scope"
 	"github.com/hashicorp/go-hclog"
-	"github.com/hashicorp/watchtower/internal/gen/controller/api/resources/scopes"
-	"github.com/hashicorp/watchtower/internal/perms"
-	"github.com/hashicorp/watchtower/internal/servers/controller/common"
-	"github.com/hashicorp/watchtower/internal/types/action"
-	"github.com/hashicorp/watchtower/internal/types/resource"
-	"github.com/hashicorp/watchtower/internal/types/scope"
 	"github.com/kr/pretty"
 )
 

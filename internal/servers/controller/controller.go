@@ -6,22 +6,25 @@ import (
 	"fmt"
 	"sync"
 
+	"github.com/hashicorp/boundary/internal/auth/password"
+	"github.com/hashicorp/boundary/internal/authtoken"
+	"github.com/hashicorp/boundary/internal/db"
+	"github.com/hashicorp/boundary/internal/host/static"
+	"github.com/hashicorp/boundary/internal/iam"
+	"github.com/hashicorp/boundary/internal/servers/controller/common"
 	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/vault/sdk/helper/base62"
 	"github.com/hashicorp/vault/sdk/helper/mlock"
-	"github.com/hashicorp/watchtower/internal/auth/password"
-	"github.com/hashicorp/watchtower/internal/authtoken"
-	"github.com/hashicorp/watchtower/internal/cmd/config"
-	"github.com/hashicorp/watchtower/internal/db"
-	"github.com/hashicorp/watchtower/internal/host/static"
-	"github.com/hashicorp/watchtower/internal/iam"
-	"github.com/hashicorp/watchtower/internal/servers"
-	"github.com/hashicorp/watchtower/internal/servers/controller/common"
+	"github.com/hashicorp/boundary/internal/authtoken"
+	"github.com/hashicorp/boundary/internal/cmd/config"
+	"github.com/hashicorp/boundary/internal/db"
+	"github.com/hashicorp/boundary/internal/host/static"
+	"github.com/hashicorp/boundary/internal/iam"
+	"github.com/hashicorp/boundary/internal/servers"
+	"github.com/hashicorp/boundary/internal/servers/controller/common"
 	"github.com/patrickmn/go-cache"
 	ua "go.uber.org/atomic"
 )
-
-type Controller struct {
 	conf   *Config
 	logger hclog.Logger
 
@@ -73,10 +76,10 @@ func New(conf *Config) (*Controller, error) {
 			return nil, fmt.Errorf(
 				"Failed to lock memory: %v\n\n"+
 					"This usually means that the mlock syscall is not available.\n"+
-					"Watchtower uses mlock to prevent memory from being swapped to\n"+
+					"Boundary uses mlock to prevent memory from being swapped to\n"+
 					"disk. This requires root privileges as well as a machine\n"+
 					"that supports mlock. Please enable mlock on your system or\n"+
-					"disable Watchtower from using it. To disable Watchtower from using it,\n"+
+					"disable Boundary from using it. To disable Boundary from using it,\n"+
 					"set the `disable_mlock` configuration option in your configuration\n"+
 					"file.",
 				err)

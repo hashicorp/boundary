@@ -4,8 +4,8 @@ import (
 	"net/http"
 	"testing"
 
-	"github.com/hashicorp/watchtower/api/authmethods"
-	"github.com/hashicorp/watchtower/internal/servers/controller"
+	"github.com/hashicorp/boundary/api/authmethods"
+	"github.com/hashicorp/boundary/internal/servers/controller"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )

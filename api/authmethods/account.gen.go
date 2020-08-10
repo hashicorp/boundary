@@ -7,8 +7,8 @@ import (
 	"net/url"
 	"time"
 
-	"github.com/hashicorp/watchtower/api"
-	"github.com/hashicorp/watchtower/api/scopes"
+	"github.com/hashicorp/boundary/api"
+	"github.com/hashicorp/boundary/api/scopes"
 )
 
 type Account struct {

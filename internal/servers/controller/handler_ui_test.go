@@ -17,7 +17,7 @@ import (
 
 func TestUiRouting(t *testing.T) {
 	// Create a temporary directory
-	tempDir, err := ioutil.TempDir("", "watchtower-test-")
+	tempDir, err := ioutil.TempDir("", "boundary-test-")
 	require.NoError(t, err)
 	defer func() {
 		assert.NoError(t, os.RemoveAll(tempDir))

@@ -9,8 +9,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/hashicorp/boundary/internal/cmd/config"
 	"github.com/hashicorp/go-retryablehttp"
-	"github.com/hashicorp/watchtower/internal/cmd/config"
 )
 
 const corsTestConfig = `

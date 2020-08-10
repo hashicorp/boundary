@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/hashicorp/watchtower/internal/cmd/config"
-	"github.com/hashicorp/watchtower/internal/servers/controller"
+	"github.com/hashicorp/boundary/internal/cmd/config"
+	"github.com/hashicorp/boundary/internal/servers/controller"
 )
 
 func getOpts(opt ...Option) (*controller.TestControllerOpts, error) {

@@ -6,12 +6,12 @@ import (
 	"net"
 	"testing"
 
+	"github.com/hashicorp/boundary/api"
+	"github.com/hashicorp/boundary/internal/cmd/base"
+	"github.com/hashicorp/boundary/internal/cmd/config"
 	"github.com/hashicorp/go-hclog"
 	wrapping "github.com/hashicorp/go-kms-wrapping"
 	"github.com/hashicorp/vault/sdk/helper/base62"
-	"github.com/hashicorp/watchtower/api"
-	"github.com/hashicorp/watchtower/internal/cmd/base"
-	"github.com/hashicorp/watchtower/internal/cmd/config"
 )
 
 // TestController wraps a base.Server and Controller to provide a

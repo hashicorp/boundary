@@ -2,7 +2,7 @@ syntax = "proto3";
 
 package controller.api.services.v1;
 
-option go_package = "github.com/hashicorp/watchtower/internal/gen/controller/api/services;services";
+option go_package = "github.com/hashicorp/boundary/internal/gen/controller/api/services;services";
 
 import "protoc-gen-openapiv2/options/annotations.proto";
 import "google/api/annotations.proto";
@@ -44,7 +44,7 @@ service HostCatalogService {
     };
   }
 
-  // CreateHostCatalog creates and stores a HostCatalog in watchtower.  The
+  // CreateHostCatalog creates and stores a HostCatalog in boundary.  The
   // provided request must include the scope ID in which the catalog will be
   // created and the catalog type to be created. If any of these required fields
   // are missing, malformed, or reference a non-existing parent resource an
@@ -61,7 +61,7 @@ service HostCatalogService {
     };
   }
 
-  // UpdateHostCatalog updates an existing HostCatalog in Watchtower. The
+  // UpdateHostCatalog updates an existing HostCatalog in Boundary. The
   // provided HostCatalog must not have any read only fields set. The update
   // mask must be provided and include at least 1 mutable field. To unset a
   // field's value include that field name in the update mask and don't set the
@@ -78,7 +78,7 @@ service HostCatalogService {
   }
 
   // DeleteHostCatalog removes a HostCatalog and all associated hosts and host
-  // sets from Watchtower. If the provided scope or HostCatalog IDs are
+  // sets from Boundary. If the provided scope or HostCatalog IDs are
   // malformed or not provided DeleteHostCatalog returns an error. It is not an
   // error to call DeleteHostCatalog for an scope or HostCatalog that does not
   // exist as the response indicates if it existed or not.

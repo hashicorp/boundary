@@ -19,8 +19,8 @@ construction is thus synthesizing something reasonable from a set of Grants.
 */
 
 import (
-	"github.com/hashicorp/watchtower/internal/types/action"
-	"github.com/hashicorp/watchtower/internal/types/resource"
+	"github.com/hashicorp/boundary/internal/types/action"
+	"github.com/hashicorp/boundary/internal/types/resource"
 )
 
 // ACL provides an entry point into the permissions engine for determining if an
@@ -39,7 +39,7 @@ type ACLResults struct {
 	scopeMap map[string][]Grant
 }
 
-// Resource defines something within watchtower that requires authorization
+// Resource defines something within boundary that requires authorization
 // capabilities.  Resources must have a ScopeId.
 type Resource struct {
 	// ScopeId is the scope that contains the Resource.

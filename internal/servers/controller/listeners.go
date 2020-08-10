@@ -11,11 +11,11 @@ import (
 	"sync"
 	"time"
 
+	"github.com/hashicorp/boundary/internal/cmd/base"
+	"github.com/hashicorp/boundary/internal/gen/controller/api/services"
+	"github.com/hashicorp/boundary/internal/servers/controller/handlers/workers"
 	"github.com/hashicorp/go-alpnmux"
 	"github.com/hashicorp/go-multierror"
-	"github.com/hashicorp/watchtower/internal/cmd/base"
-	"github.com/hashicorp/watchtower/internal/gen/controller/api/services"
-	"github.com/hashicorp/watchtower/internal/servers/controller/handlers/workers"
 	"google.golang.org/grpc"
 )
 

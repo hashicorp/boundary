@@ -6,11 +6,11 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/hashicorp/watchtower/internal/db"
-	"github.com/hashicorp/watchtower/internal/iam/store"
-	"github.com/hashicorp/watchtower/internal/types/action"
-	"github.com/hashicorp/watchtower/internal/types/resource"
-	"github.com/hashicorp/watchtower/internal/types/scope"
+	"github.com/hashicorp/boundary/internal/db"
+	"github.com/hashicorp/boundary/internal/iam/store"
+	"github.com/hashicorp/boundary/internal/types/action"
+	"github.com/hashicorp/boundary/internal/types/resource"
+	"github.com/hashicorp/boundary/internal/types/scope"
 	"google.golang.org/protobuf/proto"
 )
 

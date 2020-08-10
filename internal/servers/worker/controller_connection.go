@@ -17,9 +17,9 @@ import (
 	"strings"
 	"time"
 
+	"github.com/hashicorp/boundary/internal/cmd/base"
+	"github.com/hashicorp/boundary/internal/gen/controller/api/services"
 	"github.com/hashicorp/vault/sdk/helper/base62"
-	"github.com/hashicorp/watchtower/internal/cmd/base"
-	"github.com/hashicorp/watchtower/internal/gen/controller/api/services"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/resolver"
 	"google.golang.org/protobuf/proto"

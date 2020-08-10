@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/hashicorp/watchtower/api/scopes"
-	"github.com/hashicorp/watchtower/internal/cmd/base"
+	"github.com/hashicorp/boundary/api/scopes"
+	"github.com/hashicorp/boundary/internal/cmd/base"
 )
 
 func printScope(in *scopes.Scope) string {

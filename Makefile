@@ -4,7 +4,7 @@ THIS_FILE := $(lastword $(MAKEFILE_LIST))
 THIS_DIR := $(dir $(realpath $(firstword $(MAKEFILE_LIST))))
 
 TMP_DIR := $(shell mktemp -d)
-REPO_PATH := github.com/hashicorp/watchtower
+REPO_PATH := github.com/hashicorp/boundary
 
 GENERATED_CODE := $(shell  find ${THIS_DIR} -name '*.gen.go' && find ${THIS_DIR} -name '*.pb.go' && find ${THIS_DIR} -name '*.pb.gw.go')
 
@@ -24,8 +24,8 @@ cleangen:
 dev: BUILD_TAGS+=dev
 dev: BUILD_TAGS+=ui
 dev: build-ui-ifne
-	@echo "==> Building Watchtower with dev and UI features enabled"
-	@CGO_ENABLED=$(CGO_ENABLED) BUILD_TAGS='$(BUILD_TAGS)' WATCHTOWER_DEV_BUILD=1 sh -c "'$(CURDIR)/scripts/build.sh'"
+	@echo "==> Building Boundary with dev and UI features enabled"
+	@CGO_ENABLED=$(CGO_ENABLED) BUILD_TAGS='$(BUILD_TAGS)' BOUNDARY_DEV_BUILD=1 sh -c "'$(CURDIR)/scripts/build.sh'"
 
 build-ui:
 	@scripts/uigen.sh
@@ -77,7 +77,7 @@ protobuild:
 	@protoc-go-inject-tag -input=./internal/db/db_test/db_test.pb.go
 	@protoc-go-inject-tag -input=./internal/host/static/store/static.pb.go
 	@protoc-go-inject-tag -input=./internal/authtoken/store/authtoken.pb.go
-	@protoc-go-inject-tag -input=./internal/iam/store/auth_account.pb.go
+	@protoc-go-inject-tag -input=./internal/auth/store/account.pb.go
 	@protoc-go-inject-tag -input=./internal/auth/password/store/password.pb.go
 	@protoc-go-inject-tag -input=./internal/auth/password/store/argon2.pb.go
 	@rm -R ${TMP_DIR}

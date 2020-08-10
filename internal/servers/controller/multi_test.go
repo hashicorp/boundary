@@ -3,9 +3,9 @@ package controller_test
 import (
 	"testing"
 
-	"github.com/hashicorp/watchtower/api/authmethods"
-	"github.com/hashicorp/watchtower/api/scopes"
-	"github.com/hashicorp/watchtower/internal/servers/controller"
+	"github.com/hashicorp/boundary/api/authmethods"
+	"github.com/hashicorp/boundary/api/scopes"
+	"github.com/hashicorp/boundary/internal/servers/controller"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )

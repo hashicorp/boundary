@@ -3,7 +3,7 @@ package password
 import (
 	"fmt"
 
-	"github.com/hashicorp/watchtower/internal/db"
+	"github.com/hashicorp/boundary/internal/db"
 )
 
 // Prefixes for private ids for types in the password package.

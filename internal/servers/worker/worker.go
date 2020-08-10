@@ -8,10 +8,10 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/hashicorp/boundary/internal/cmd/config"
 	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/vault/sdk/helper/base62"
 	"github.com/hashicorp/vault/sdk/helper/mlock"
-	"github.com/hashicorp/watchtower/internal/cmd/config"
 	ua "go.uber.org/atomic"
 	"google.golang.org/grpc/resolver"
 	"google.golang.org/grpc/resolver/manual"
@@ -69,10 +69,10 @@ func New(conf *Config) (*Worker, error) {
 			return nil, fmt.Errorf(
 				"Failed to lock memory: %v\n\n"+
 					"This usually means that the mlock syscall is not available.\n"+
-					"Watchtower uses mlock to prevent memory from being swapped to\n"+
+					"Boundary uses mlock to prevent memory from being swapped to\n"+
 					"disk. This requires root privileges as well as a machine\n"+
 					"that supports mlock. Please enable mlock on your system or\n"+
-					"disable Watchtower from using it. To disable Watchtower from using it,\n"+
+					"disable Boundary from using it. To disable Boundary from using it,\n"+
 					"set the `disable_mlock` configuration option in your configuration\n"+
 					"file.",
 				err)

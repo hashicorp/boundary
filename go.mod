@@ -1,4 +1,4 @@
-module github.com/hashicorp/watchtower
+module github.com/hashicorp/boundary
 
 go 1.13
 

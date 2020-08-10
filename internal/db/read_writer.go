@@ -9,10 +9,10 @@ import (
 	"strings"
 	"time"
 
+	"github.com/hashicorp/boundary/internal/db/common"
+	"github.com/hashicorp/boundary/internal/oplog"
+	"github.com/hashicorp/boundary/internal/oplog/store"
 	wrapping "github.com/hashicorp/go-kms-wrapping"
-	"github.com/hashicorp/watchtower/internal/db/common"
-	"github.com/hashicorp/watchtower/internal/oplog"
-	"github.com/hashicorp/watchtower/internal/oplog/store"
 	"github.com/jinzhu/gorm"
 	"google.golang.org/protobuf/proto"
 )
@@ -20,7 +20,7 @@ import (
 const (
 	NoRowsAffected = 0
 
-	// DefaultLimit is the default for results for watchtower
+	// DefaultLimit is the default for results for boundary
 	DefaultLimit = 10000
 )
 
@@ -387,7 +387,7 @@ func (rw *Db) Update(ctx context.Context, i interface{}, fieldMaskPaths []string
 		return NoRowsAffected, fmt.Errorf("update: no fields matched using fieldMaskPaths %s", fieldMaskPaths)
 	}
 
-	// This is not a watchtower scope, but rather a gorm Scope:
+	// This is not a boundary scope, but rather a gorm Scope:
 	// https://godoc.org/github.com/jinzhu/gorm#DB.NewScope
 	scope := rw.underlying.NewScope(i)
 	if scope.PrimaryKeyZero() {
@@ -424,14 +424,22 @@ func (rw *Db) Update(ctx context.Context, i interface{}, fieldMaskPaths []string
 	}
 	var underlying *gorm.DB
 	switch {
-	case opts.WithVersion != nil:
-		if *opts.WithVersion == 0 {
-			return NoRowsAffected, fmt.Errorf("update: with version option is zero: %w", ErrInvalidParameter)
+	case opts.WithVersion != nil || opts.withWhereClause != "":
+		var where []string
+		var args []interface{}
+		if opts.WithVersion != nil {
+			if *opts.WithVersion == 0 {
+				return NoRowsAffected, fmt.Errorf("update: with version option is zero: %w", ErrInvalidParameter)
+			}
+			if _, ok := scope.FieldByName("version"); !ok {
+				return NoRowsAffected, fmt.Errorf("update: %s does not have a version field", scope.TableName())
+			}
+			where, args = append(where, "version = ?"), append(args, opts.WithVersion)
 		}
-		if _, ok := scope.FieldByName("version"); !ok {
-			return NoRowsAffected, fmt.Errorf("update: %s does not have a version field", scope.TableName())
+		if opts.withWhereClause != "" {
+			where, args = append(where, opts.withWhereClause), append(args, opts.withWhereClauseArgs...)
 		}
-		underlying = rw.underlying.Model(i).Where("version = ?", opts.WithVersion).Updates(updateFields)
+		underlying = rw.underlying.Model(i).Where(strings.Join(where, " and "), args...).Updates(updateFields)
 	default:
 		underlying = rw.underlying.Model(i).Updates(updateFields)
 	}
@@ -493,7 +501,7 @@ func (rw *Db) Delete(ctx context.Context, i interface{}, opt ...Option) (int, er
 	if withOplog && opts.newOplogMsg != nil {
 		return NoRowsAffected, fmt.Errorf("delete: both WithOplog and NewOplogMsg options have been specified: %w", ErrInvalidParameter)
 	}
-	// This is not a watchtower scope, but rather a gorm Scope:
+	// This is not a boundary scope, but rather a gorm Scope:
 	// https://godoc.org/github.com/jinzhu/gorm#DB.NewScope
 	scope := rw.underlying.NewScope(i)
 	if scope.PrimaryKeyZero() {

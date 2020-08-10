@@ -4,9 +4,9 @@ import (
 	"context"
 	"testing"
 
-	"github.com/hashicorp/watchtower/internal/db"
-	"github.com/hashicorp/watchtower/internal/db/timestamp"
-	"github.com/hashicorp/watchtower/internal/iam"
+	"github.com/hashicorp/boundary/internal/db"
+	"github.com/hashicorp/boundary/internal/db/timestamp"
+	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/proto"

@@ -5,9 +5,9 @@ import (
 	"time"
 
 	"github.com/alecthomas/assert"
+	"github.com/hashicorp/boundary/internal/servers/controller"
+	"github.com/hashicorp/boundary/internal/servers/worker"
 	"github.com/hashicorp/go-hclog"
-	"github.com/hashicorp/watchtower/internal/servers/controller"
-	"github.com/hashicorp/watchtower/internal/servers/worker"
 	"github.com/stretchr/testify/require"
 )
 

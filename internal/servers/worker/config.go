@@ -1,8 +1,8 @@
 package worker
 
 import (
-	"github.com/hashicorp/watchtower/internal/cmd/base"
-	"github.com/hashicorp/watchtower/internal/cmd/config"
+	"github.com/hashicorp/boundary/internal/cmd/base"
+	"github.com/hashicorp/boundary/internal/cmd/config"
 )
 
 type Config struct {

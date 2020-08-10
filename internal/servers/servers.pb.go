@@ -8,7 +8,7 @@ package servers
 
 import (
 	proto "github.com/golang/protobuf/proto"
-	timestamp "github.com/hashicorp/watchtower/internal/db/timestamp"
+	timestamp "github.com/hashicorp/boundary/internal/db/timestamp"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	reflect "reflect"

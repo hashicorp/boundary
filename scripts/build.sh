@@ -12,14 +12,14 @@ DIR="$( cd -P "$( dirname "$SOURCE" )/.." && pwd )"
 cd "$DIR"
 
 # Set build tags
-BUILD_TAGS="${BUILD_TAGS:-"watchtower"}"
+BUILD_TAGS="${BUILD_TAGS:-"boundary"}"
 
 # Get the git commit
 GIT_COMMIT="$(git rev-parse HEAD)"
 GIT_DIRTY="$(test -n "`git status --porcelain`" && echo "+CHANGES" || true)"
 
 # If its dev mode, only build for ourself
-if [ "${WATCHTOWER_DEV_BUILD}x" != "x" ] && [ "${XC_OSARCH}x" == "x" ]; then
+if [ "${BOUNDARY_DEV_BUILD}x" != "x" ] && [ "${XC_OSARCH}x" == "x" ]; then
     XC_OS=$(go env GOOS)
     XC_ARCH=$(go env GOARCH)
     XC_OSARCH=$(go env GOOS)/$(go env GOARCH)
@@ -52,11 +52,11 @@ echo "==> Building..."
 gox \
     -osarch="${XC_OSARCH}" \
     -gcflags "${GCFLAGS}" \
-    -ldflags "${LD_FLAGS}-X github.com/hashicorp/watchtower/version.GitCommit='${GIT_COMMIT}${GIT_DIRTY}'" \
-    -output "pkg/{{.OS}}_{{.Arch}}/watchtower" \
+    -ldflags "${LD_FLAGS}-X github.com/hashicorp/boundary/version.GitCommit='${GIT_COMMIT}${GIT_DIRTY}'" \
+    -output "pkg/{{.OS}}_{{.Arch}}/boundary" \
     ${GOX_PARALLEL_BUILDS+-parallel="${GOX_PARALLEL_BUILDS}"} \
     -tags="${BUILD_TAGS}" \
-    ./cmd/watchtower
+    ./cmd/boundary
 
 # Move all the compiled things to the $GOPATH/bin
 OLDIFS=$IFS
@@ -70,7 +70,7 @@ for F in $(find ${DEV_PLATFORM} -mindepth 1 -maxdepth 1 -type f); do
     cp ${F} ${MAIN_GOPATH}/bin/
 done
 
-if [ "${WATCHTOWER_DEV_BUILD}x" = "x" ]; then
+if [ "${BOUNDARY_DEV_BUILD}x" = "x" ]; then
     # Zip and copy to the dist dir
     echo "==> Packaging..."
     for PLATFORM in $(find ./pkg -mindepth 1 -maxdepth 1 -type d); do

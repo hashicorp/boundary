@@ -8,8 +8,8 @@ import (
 	"sort"
 
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
+	pb "github.com/hashicorp/boundary/internal/gen/controller/api"
 	"github.com/hashicorp/go-hclog"
-	pb "github.com/hashicorp/watchtower/internal/gen/controller/api"
 	"google.golang.org/genproto/googleapis/rpc/errdetails"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"

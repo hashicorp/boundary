@@ -2,7 +2,7 @@ syntax = "proto3";
 
 package controller.api.services.v1;
 
-option go_package = "github.com/hashicorp/watchtower/internal/gen/controller/api/services;services";
+option go_package = "github.com/hashicorp/boundary/internal/gen/controller/api/services;services";
 
 import "controller/servers/v1/servers.proto";
 

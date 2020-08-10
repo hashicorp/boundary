@@ -6,11 +6,11 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/hashicorp/boundary/internal/db"
+	timestamp "github.com/hashicorp/boundary/internal/db/timestamp"
+	"github.com/hashicorp/boundary/internal/types/resource"
 	"github.com/hashicorp/go-hclog"
 	wrapping "github.com/hashicorp/go-kms-wrapping"
-	"github.com/hashicorp/watchtower/internal/db"
-	timestamp "github.com/hashicorp/watchtower/internal/db/timestamp"
-	"github.com/hashicorp/watchtower/internal/types/resource"
 )
 
 const (

@@ -6,10 +6,10 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/hashicorp/boundary/internal/db"
+	"github.com/hashicorp/boundary/internal/oplog"
+	"github.com/hashicorp/boundary/internal/types/scope"
 	wrapping "github.com/hashicorp/go-kms-wrapping"
-	"github.com/hashicorp/watchtower/internal/db"
-	"github.com/hashicorp/watchtower/internal/oplog"
-	"github.com/hashicorp/watchtower/internal/types/scope"
 )
 
 var (
@@ -40,7 +40,7 @@ func NewRepository(r db.Reader, w db.Writer, wrapper wrapping.Wrapper, opt ...Op
 	}
 	opts := getOpts(opt...)
 	if opts.withLimit == 0 {
-		// zero signals the watchtower defaults should be used.
+		// zero signals the boundary defaults should be used.
 		opts.withLimit = db.DefaultLimit
 	}
 	return &Repository{

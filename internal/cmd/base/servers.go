@@ -14,6 +14,11 @@ import (
 	"sync"
 
 	"github.com/armon/go-metrics"
+	"github.com/hashicorp/boundary/globals"
+	"github.com/hashicorp/boundary/internal/auth/password"
+	"github.com/hashicorp/boundary/internal/db"
+	"github.com/hashicorp/boundary/internal/iam"
+	"github.com/hashicorp/boundary/version"
 	"github.com/hashicorp/errwrap"
 	"github.com/hashicorp/go-hclog"
 	wrapping "github.com/hashicorp/go-kms-wrapping"
@@ -26,11 +31,6 @@ import (
 	"github.com/hashicorp/vault/sdk/helper/mlock"
 	"github.com/hashicorp/vault/sdk/helper/strutil"
 	"github.com/hashicorp/vault/sdk/logical"
-	"github.com/hashicorp/watchtower/globals"
-	"github.com/hashicorp/watchtower/internal/auth/password"
-	"github.com/hashicorp/watchtower/internal/db"
-	"github.com/hashicorp/watchtower/internal/iam"
-	"github.com/hashicorp/watchtower/version"
 	"github.com/jinzhu/gorm"
 	"github.com/mitchellh/cli"
 	"google.golang.org/grpc/grpclog"
@@ -108,7 +108,7 @@ func (b *Server) SetupLogging(flagLogLevel, flagLogFormat, configLogLevel, confi
 	namedGRPCLogFaker := b.Logger.Named("grpclogfaker")
 	grpclog.SetLogger(&GRPCLogFaker{
 		Logger: namedGRPCLogFaker,
-		Log:    os.Getenv("WATCHTOWER_GRPC_LOGGING") != "",
+		Log:    os.Getenv("BOUNDARY_GRPC_LOGGING") != "",
 	})
 
 	b.Info["log level"] = logLevel.String()
@@ -182,9 +182,9 @@ func (b *Server) SetupMetrics(ui cli.Ui, telemetry *configutil.Telemetry) error 
 	b.InmemSink, _, b.PrometheusEnabled, err = configutil.SetupTelemetry(&configutil.SetupTelemetryOpts{
 		Config:      telemetry,
 		Ui:          ui,
-		ServiceName: "watchtower",
-		DisplayName: "Watchtower",
-		UserAgent:   "watchtower",
+		ServiceName: "boundary",
+		DisplayName: "Boundary",
+		UserAgent:   "boundary",
 	})
 	if err != nil {
 		return fmt.Errorf("Error initializing telemetry: %w", err)
@@ -210,7 +210,7 @@ func (b *Server) PrintInfo(ui cli.Ui, mode string) {
 	// Server configuration output
 	padding := 36
 	sort.Strings(b.InfoKeys)
-	ui.Output(fmt.Sprintf("==> Watchtower %s configuration:\n", mode))
+	ui.Output(fmt.Sprintf("==> Boundary %s configuration:\n", mode))
 	for _, k := range b.InfoKeys {
 		ui.Output(fmt.Sprintf(
 			"%s%s: %s",
@@ -222,7 +222,7 @@ func (b *Server) PrintInfo(ui cli.Ui, mode string) {
 
 	// Output the header that the server has started
 	if !b.CombineLogs {
-		ui.Output(fmt.Sprintf("==> Watchtower %s started! Log data will stream in below:\n", mode))
+		ui.Output(fmt.Sprintf("==> Boundary %s started! Log data will stream in below:\n", mode))
 	}
 }
 

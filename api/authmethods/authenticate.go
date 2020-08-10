@@ -4,11 +4,11 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/hashicorp/watchtower/api"
-	"github.com/hashicorp/watchtower/api/authtokens"
+	"github.com/hashicorp/boundary/api"
+	"github.com/hashicorp/boundary/api/authtokens"
 )
 
-// TODO: This will need to be changed when we add Auth Method API to watchtower.  We'll also need a better
+// TODO: This will need to be changed when we add Auth Method API to boundary.  We'll also need a better
 // way to handle different auth method types.
 func (c *authmethodsClient) Authenticate(ctx context.Context, authMethodId, name, password string, opt ...Option) (*authtokens.AuthToken, *api.Error, error) {
 	if c.client == nil {

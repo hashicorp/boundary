@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/hashicorp/watchtower/internal/db"
-	"github.com/hashicorp/watchtower/internal/oplog"
+	"github.com/hashicorp/boundary/internal/db"
+	"github.com/hashicorp/boundary/internal/oplog"
 )
 
 // AddPrincipalRoles provides the ability to add principals (userIds and

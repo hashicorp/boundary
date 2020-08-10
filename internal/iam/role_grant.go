@@ -4,10 +4,10 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/hashicorp/watchtower/internal/db"
-	"github.com/hashicorp/watchtower/internal/iam/store"
-	"github.com/hashicorp/watchtower/internal/perms"
-	"github.com/hashicorp/watchtower/internal/types/resource"
+	"github.com/hashicorp/boundary/internal/db"
+	"github.com/hashicorp/boundary/internal/iam/store"
+	"github.com/hashicorp/boundary/internal/perms"
+	"github.com/hashicorp/boundary/internal/types/resource"
 	"google.golang.org/protobuf/proto"
 )
 

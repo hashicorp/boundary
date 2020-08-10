@@ -74,7 +74,7 @@ worker {
 `
 )
 
-// Config is the configuration for the watchtower controller
+// Config is the configuration for the boundary controller
 type Config struct {
 	*configutil.SharedConfig `hcl:"-"`
 
@@ -98,7 +98,7 @@ type Worker struct {
 	Controllers []string `hcl:"controllers"`
 }
 
-// DevWorker is a Config that is used for dev mode of Watchtower
+// DevWorker is a Config that is used for dev mode of Boundary
 // workers
 func DevWorker() (*Config, error) {
 	parsed, err := Parse(devConfig + devWorkerExtraConfig)
@@ -125,7 +125,7 @@ func devKeyGeneration() (string, string) {
 	return controllerKey, workerAuthKey
 }
 
-// DevController is a Config that is used for dev mode of Watchtower
+// DevController is a Config that is used for dev mode of Boundary
 // controllers
 func DevController() (*Config, error) {
 	controllerKey, workerAuthKey := devKeyGeneration()
