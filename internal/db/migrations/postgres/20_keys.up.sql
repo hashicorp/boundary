@@ -71,28 +71,21 @@ create table kms_root_key (
   root_id  wt_private_id not null references kms_root(private_id) on delete cascade on update cascade,
   version wt_version not null default 1,
   key bytea not null,
-  create_time wt_timestamp,
-  update_time wt_timestamp
+  create_time wt_timestamp
 );
 
- -- define the immutable fields for kms_root_key 
+ -- define the immutable fields for kms_root_key (all of them)
 create trigger 
   immutable_columns
 before
 update on kms_root_key
-  for each row execute procedure immutable_columns('private_id', 'root_id', 'create_time');
+  for each row execute procedure immutable_columns('private_id', 'root_id', 'version', 'key', 'create_time');
 
 create trigger 
   default_create_time_column
 before
 insert on kms_root_key
   for each row execute procedure default_create_time();
-
-create trigger 
-  update_time_column 
-before update on kms_root_key 
-  for each row execute procedure update_time_column();
-
 
 create table kms_database (
   private_id wt_private_id primary key,
@@ -124,27 +117,21 @@ create table kms_database_key (
   root_key_id wt_private_id references kms_root_key(private_id) on delete cascade on update cascade,
   version wt_version not null default 1,
   key bytea not null,
-  create_time wt_timestamp,
-  update_time wt_timestamp
+  create_time wt_timestamp
 );
 
 
- -- define the immutable fields for kms_database (all of them)
+ -- define the immutable fields for kms_database_key (all of them)
 create trigger 
   immutable_columns
 before
 update on kms_database_key
-  for each row execute procedure immutable_columns('private_id', 'database_id', 'root_key_id', 'create_time');
+  for each row execute procedure immutable_columns('private_id', 'database_id', 'root_key_id', 'version', 'key', 'create_time');
   
 create trigger 
   default_create_time_column
 before
 insert on kms_database_key
   for each row execute procedure default_create_time();
-
-create trigger 
-  update_time_column 
-before update on kms_database_key 
-  for each row execute procedure update_time_column();
 
 commit;
