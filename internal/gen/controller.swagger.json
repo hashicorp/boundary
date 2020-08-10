@@ -1879,7 +1879,7 @@
         },
         "description": {
           "type": "string",
-          "title": "Optional user-set description for identification purposes"
+          "title": "Optional user-set descripton for identification purposes"
         },
         "created_time": {
           "type": "string",

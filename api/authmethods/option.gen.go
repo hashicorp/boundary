@@ -89,54 +89,6 @@ func DefaultDisabled() Option {
 	}
 }
 
-func WithPasswordAuthMethodMinPasswordLength(inMinPasswordLength uint32) Option {
-	return func(o *options) {
-		raw, ok := o.valueMap["attributes"]
-		if !ok {
-			raw = interface{}(map[string]interface{}{})
-		}
-		val := raw.(map[string]interface{})
-		val["min_password_length"] = inMinPasswordLength
-		o.valueMap["attributes"] = val
-	}
-}
-
-func DefaultPasswordAuthMethodMinPasswordLength() Option {
-	return func(o *options) {
-		raw, ok := o.valueMap["attributes"]
-		if !ok {
-			raw = interface{}(map[string]interface{}{})
-		}
-		val := raw.(map[string]interface{})
-		val["min_password_length"] = nil
-		o.valueMap["attributes"] = val
-	}
-}
-
-func WithPasswordAuthMethodMinUserNameLength(inMinUserNameLength uint32) Option {
-	return func(o *options) {
-		raw, ok := o.valueMap["attributes"]
-		if !ok {
-			raw = interface{}(map[string]interface{}{})
-		}
-		val := raw.(map[string]interface{})
-		val["min_user_name_length"] = inMinUserNameLength
-		o.valueMap["attributes"] = val
-	}
-}
-
-func DefaultPasswordAuthMethodMinUserNameLength() Option {
-	return func(o *options) {
-		raw, ok := o.valueMap["attributes"]
-		if !ok {
-			raw = interface{}(map[string]interface{}{})
-		}
-		val := raw.(map[string]interface{})
-		val["min_user_name_length"] = nil
-		o.valueMap["attributes"] = val
-	}
-}
-
 func WithName(inName string) Option {
 	return func(o *options) {
 		o.valueMap["name"] = inName
@@ -170,18 +122,6 @@ func DefaultPasswordAccountPassword() Option {
 		val := raw.(map[string]interface{})
 		val["password"] = nil
 		o.valueMap["attributes"] = val
-	}
-}
-
-func WithType(inType string) Option {
-	return func(o *options) {
-		o.valueMap["type"] = inType
-	}
-}
-
-func DefaultType() Option {
-	return func(o *options) {
-		o.valueMap["type"] = nil
 	}
 }
 

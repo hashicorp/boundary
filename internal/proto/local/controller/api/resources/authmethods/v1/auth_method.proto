@@ -1,14 +1,14 @@
 syntax = "proto3";
 
-package controller.api.resources.auth.v1;
+package controller.api.resources.authmethods.v1;
 
-option go_package = "github.com/hashicorp/watchtower/internal/gen/controller/api/resources/auth;auth";
+option go_package = "github.com/hashicorp/boundary/internal/gen/controller/api/resources/authmethods;authmethods";
 
 import "google/protobuf/timestamp.proto";
 import "google/protobuf/wrappers.proto";
 import "google/protobuf/struct.proto";
 import "controller/api/resources/scopes/v1/scope.proto";
-import "controller/custom_options/v1/masks.proto";
+import "controller/custom_options/v1/options.proto";
 
 // AuthMethod contains all fields related to a AuthMethod resource
 message AuthMethod {
