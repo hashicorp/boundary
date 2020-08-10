@@ -245,13 +245,13 @@ func (r *Repository) getUserWithAccount(ctx context.Context, withAccountId strin
 // AssociateUserWithAccount will associate a user with an existing account.
 // The account must not already be associated with a different user.  No
 // options are currently supported.
-func (r *Repository) AssociateUserWithAccount(ctx context.Context, userPublicId, accountId string, opt ...Option) (*User, *authAccount, error) {
+func (r *Repository) AssociateUserWithAccount(ctx context.Context, userPublicId, accountId string, opt ...Option) (*User, error) {
 	opts := getOpts(opt...)
 	if userPublicId == "" {
-		return nil, nil, fmt.Errorf("associate user with account: missing user public id %w", db.ErrInvalidParameter)
+		return nil, fmt.Errorf("associate user with account: missing user public id %w", db.ErrInvalidParameter)
 	}
 	if accountId == "" {
-		return nil, nil, fmt.Errorf("associate user with account: missing account id %w", db.ErrInvalidParameter)
+		return nil, fmt.Errorf("associate user with account: missing account id %w", db.ErrInvalidParameter)
 	}
 
 	user := allocUser()
@@ -259,28 +259,26 @@ func (r *Repository) AssociateUserWithAccount(ctx context.Context, userPublicId,
 
 	err := r.reader.LookupById(ctx, &user)
 	if err != nil {
-		return nil, nil, fmt.Errorf("associate user with account: unable to lookup user %s: %w", userPublicId, err)
+		return nil, fmt.Errorf("associate user with account: unable to lookup user %s: %w", userPublicId, err)
 	}
 
 	acct := allocAccount()
 	acct.PublicId = accountId
 	err = r.reader.LookupByPublicId(context.Background(), &acct)
 	if err != nil {
-		return nil, nil, fmt.Errorf("associate user with account: unable to lookup account %s: %w", accountId, err)
+		return nil, fmt.Errorf("associate user with account: unable to lookup account %s: %w", accountId, err)
 	}
 	// first, let's handle the case where the account is already
 	// associated with the user, so we're done!
 	if acct.IamUserId == userPublicId {
-		return &user, &acct, nil
+		return &user, nil
 	}
 
 	if !opts.withDisassociate {
 		if acct.IamUserId != "" && acct.IamUserId != userPublicId {
-			return nil, nil, fmt.Errorf("associate user with account: %s account is already associated with a user: %w", accountId, db.ErrInvalidParameter)
+			return nil, fmt.Errorf("associate user with account: %s account is already associated with a user: %w", accountId, db.ErrInvalidParameter)
 		}
 	}
-
-	var updatedAcct *authAccount
 
 	// validate, associated the user with the account, and then read the
 	// user back in the same tx for consistency.
@@ -297,7 +295,7 @@ func (r *Repository) AssociateUserWithAccount(ctx context.Context, userPublicId,
 				"resource-type":      []string{"auth-account"},
 			}
 			var updatedRows int
-			updatedAcct = acct.Clone().(*authAccount)
+			updatedAcct := acct.Clone().(*authAccount)
 			updatedAcct.IamUserId = userPublicId
 			// we are using WithWhere to make sure the account is not
 			// associated with a user (handling race conditions with concurrent
@@ -306,9 +304,7 @@ func (r *Repository) AssociateUserWithAccount(ctx context.Context, userPublicId,
 			case opts.withDisassociate:
 				updatedRows, err = w.Update(ctx, updatedAcct, []string{"IamUserId"}, nil, db.WithOplog(r.wrapper, metadata), db.WithWhere("iam_user_id = ?", acct.IamUserId))
 			default:
-				//				updatedRows, err = w.Update(ctx, updatedAcct, []string{"IamUserId"}, nil, db.WithOplog(r.wrapper, metadata), db.WithWhere("iam_user_id is ?", gorm.Expr("NULL")))
 				updatedRows, err = w.Update(ctx, updatedAcct, []string{"IamUserId"}, nil, db.WithOplog(r.wrapper, metadata), db.WithWhere("iam_user_id is NULL"))
-
 			}
 			if err != nil {
 				return err
@@ -320,46 +316,44 @@ func (r *Repository) AssociateUserWithAccount(ctx context.Context, userPublicId,
 		},
 	)
 	if err != nil {
-		return nil, nil, fmt.Errorf("associate user with account: %w", err)
+		return nil, fmt.Errorf("associate user with account: %w", err)
 	}
-	return &user, updatedAcct, nil
+	return &user, nil
 }
 
 // DissociateUserWithAccount will dissociate a user with its existing account.
 // An error is returned if account is associated with a different user.  No
 // options are currently supported.
-func (r *Repository) DissociateUserWithAccount(ctx context.Context, userPublicId, accountId string, opt ...Option) (*User, *authAccount, error) {
+func (r *Repository) DissociateUserWithAccount(ctx context.Context, userPublicId, accountId string, opt ...Option) (*User, error) {
 	if userPublicId == "" {
-		return nil, nil, fmt.Errorf("dissociate user with account: missing user public id %w", db.ErrInvalidParameter)
+		return nil, fmt.Errorf("dissociate user with account: missing user public id %w", db.ErrInvalidParameter)
 	}
 	if accountId == "" {
-		return nil, nil, fmt.Errorf("dissociate user with account: missing account id %w", db.ErrInvalidParameter)
+		return nil, fmt.Errorf("dissociate user with account: missing account id %w", db.ErrInvalidParameter)
 	}
 
 	user := allocUser()
 	user.PublicId = userPublicId
 	err := r.reader.LookupById(ctx, &user)
 	if err != nil {
-		return nil, nil, fmt.Errorf("dissociate user with account: unable to lookup user %s: %w", userPublicId, err)
+		return nil, fmt.Errorf("dissociate user with account: unable to lookup user %s: %w", userPublicId, err)
 	}
 
 	acct := allocAccount()
 	acct.PublicId = accountId
 	err = r.reader.LookupByPublicId(ctx, &acct)
 	if err != nil {
-		return nil, nil, fmt.Errorf("dissociate user with account: unable to lookup account %s: %w", accountId, err)
+		return nil, fmt.Errorf("dissociate user with account: unable to lookup account %s: %w", accountId, err)
 	}
 	// first, let's handle the case where the account is not associated
 	// with any user, so we're done!
 	if acct.IamUserId == "" {
-		return &user, &acct, nil
+		return &user, nil
 	}
 	// before proceeding with an update, is the account associated with the different user?
 	if acct.IamUserId != userPublicId {
-		return nil, nil, fmt.Errorf("dissociate user with account: %s account is not associated with a user: %w", accountId, db.ErrInvalidParameter)
+		return nil, fmt.Errorf("dissociate user with account: %s account is not associated with a user: %w", accountId, db.ErrInvalidParameter)
 	}
-
-	var updatedAcct *authAccount
 
 	// validate, dissociate the user with the account and then read the user back in
 	// the same tx for consistency.
@@ -374,7 +368,7 @@ func (r *Repository) DissociateUserWithAccount(ctx context.Context, userPublicId
 				"scope-type":         []string{scope.Org.String()},
 				"resource-type":      []string{"auth-account"},
 			}
-			updatedAcct = acct.Clone().(*authAccount)
+			updatedAcct := acct.Clone().(*authAccount)
 			updatedAcct.IamUserId = ""
 			// set the user id to null and use WithWhere to ensure that the auth
 			// account is associated with the user (handling race conditions
@@ -390,7 +384,7 @@ func (r *Repository) DissociateUserWithAccount(ctx context.Context, userPublicId
 		},
 	)
 	if err != nil {
-		return nil, nil, fmt.Errorf("dissociate user with account: %w", err)
+		return nil, fmt.Errorf("dissociate user with account: %w", err)
 	}
-	return &user, updatedAcct, nil
+	return &user, nil
 }

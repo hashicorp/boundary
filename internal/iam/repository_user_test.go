@@ -696,6 +696,7 @@ func TestRepository_AssociateUserWithAccount(t *testing.T) {
 		want1     *authAccount
 		wantErr   bool
 		wantErrIs error
+		wantAssoc bool
 	}{
 		{
 			name: "simple",
@@ -795,12 +796,10 @@ func TestRepository_AssociateUserWithAccount(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			u, a, err := repo.AssociateUserWithAccount(context.Background(), tt.args.Ids.user, tt.args.Ids.acct, tt.args.opt...)
+			u, err := repo.AssociateUserWithAccount(context.Background(), tt.args.Ids.user, tt.args.Ids.acct, tt.args.opt...)
 			if tt.wantErr {
 				require.Error(err)
 				assert.Empty(u)
-				assert.Empty(a)
-
 				if tt.wantErrIs != nil {
 					assert.Truef(errors.Is(err, tt.wantErrIs), "unexpected error %s", err.Error())
 				}
@@ -808,9 +807,6 @@ func TestRepository_AssociateUserWithAccount(t *testing.T) {
 			}
 			require.NoError(err)
 			assert.Equal(tt.args.Ids.user, u.PublicId)
-			assert.Equal(tt.args.Ids.acct, a.PublicId)
-			assert.Equal(tt.args.Ids.user, a.IamUserId)
-
 			acct := allocAccount()
 			acct.PublicId = tt.args.Ids.acct
 			err = rw.LookupByPublicId(context.Background(), &acct)
@@ -931,12 +927,10 @@ func TestRepository_DissociateUserWithAccount(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 			dbassert := dbassert.New(t, rw)
-			u, a, err := repo.DissociateUserWithAccount(context.Background(), tt.args.Ids.user, tt.args.Ids.acct, tt.args.opt...)
+			u, err := repo.DissociateUserWithAccount(context.Background(), tt.args.Ids.user, tt.args.Ids.acct, tt.args.opt...)
 			if tt.wantErr {
 				require.Error(err)
 				assert.Empty(u)
-				assert.Empty(a)
-
 				if tt.wantErrIs != nil {
 					assert.Truef(errors.Is(err, tt.wantErrIs), "unexpected error %s", err.Error())
 				}
@@ -944,8 +938,6 @@ func TestRepository_DissociateUserWithAccount(t *testing.T) {
 			}
 			require.NoError(err)
 			assert.Equal(tt.args.Ids.user, u.PublicId)
-			assert.Equal(tt.args.Ids.acct, a.PublicId)
-			assert.Equal("", a.IamUserId)
 
 			acct := allocAccount()
 			acct.PublicId = tt.args.Ids.acct
