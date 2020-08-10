@@ -4,10 +4,10 @@ import (
 	"context"
 	"fmt"
 
-	authStore "github.com/hashicorp/watchtower/internal/auth/store"
-	"github.com/hashicorp/watchtower/internal/db"
-	"github.com/hashicorp/watchtower/internal/oplog"
-	"github.com/hashicorp/watchtower/internal/types/scope"
+	authStore "github.com/hashicorp/boundary/internal/auth/store"
+	"github.com/hashicorp/boundary/internal/db"
+	"github.com/hashicorp/boundary/internal/oplog"
+	"github.com/hashicorp/boundary/internal/types/scope"
 	"google.golang.org/protobuf/proto"
 )
 

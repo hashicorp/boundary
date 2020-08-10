@@ -9,11 +9,11 @@ import (
 	wrapping "github.com/hashicorp/go-kms-wrapping"
 	"github.com/stretchr/testify/assert"
 
-	dbassert "github.com/hashicorp/watchtower/internal/db/assert"
+	dbassert "github.com/hashicorp/boundary/internal/db/assert"
 
-	"github.com/hashicorp/watchtower/internal/db"
-	"github.com/hashicorp/watchtower/internal/host/static/store"
-	"github.com/hashicorp/watchtower/internal/iam"
+	"github.com/hashicorp/boundary/internal/db"
+	"github.com/hashicorp/boundary/internal/host/static/store"
+	"github.com/hashicorp/boundary/internal/iam"
 )
 
 func TestRepository_New(t *testing.T) {

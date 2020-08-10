@@ -6,8 +6,8 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/hashicorp/watchtower/internal/db"
-	"github.com/hashicorp/watchtower/internal/oplog"
+	"github.com/hashicorp/boundary/internal/db"
+	"github.com/hashicorp/boundary/internal/oplog"
 	"golang.org/x/crypto/argon2"
 )
 

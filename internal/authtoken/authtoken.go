@@ -4,11 +4,11 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/hashicorp/boundary/internal/authtoken/store"
+	"github.com/hashicorp/boundary/internal/db"
 	wrapping "github.com/hashicorp/go-kms-wrapping"
 	"github.com/hashicorp/go-kms-wrapping/structwrapping"
 	"github.com/hashicorp/vault/sdk/helper/base62"
-	"github.com/hashicorp/watchtower/internal/authtoken/store"
-	"github.com/hashicorp/watchtower/internal/db"
 	"google.golang.org/protobuf/proto"
 )
 

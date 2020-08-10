@@ -5,10 +5,10 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/hashicorp/watchtower/internal/db"
-	dbcommon "github.com/hashicorp/watchtower/internal/db/common"
-	"github.com/hashicorp/watchtower/internal/oplog"
-	"github.com/hashicorp/watchtower/internal/types/scope"
+	"github.com/hashicorp/boundary/internal/db"
+	dbcommon "github.com/hashicorp/boundary/internal/db/common"
+	"github.com/hashicorp/boundary/internal/oplog"
+	"github.com/hashicorp/boundary/internal/types/scope"
 )
 
 // CreateUser will create a user in the repository and return the written user

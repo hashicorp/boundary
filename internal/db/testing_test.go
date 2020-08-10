@@ -7,9 +7,9 @@ import (
 
 	_ "github.com/golang-migrate/migrate/v4/database/postgres"
 	_ "github.com/golang-migrate/migrate/v4/source/file"
+	"github.com/hashicorp/boundary/internal/db/db_test"
+	"github.com/hashicorp/boundary/internal/oplog"
 	"github.com/hashicorp/go-uuid"
-	"github.com/hashicorp/watchtower/internal/db/db_test"
-	"github.com/hashicorp/watchtower/internal/oplog"
 	"github.com/stretchr/testify/assert"
 )
 

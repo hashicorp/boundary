@@ -1,6 +1,6 @@
 package iam
 
-import "github.com/hashicorp/watchtower/internal/types/action"
+import "github.com/hashicorp/boundary/internal/types/action"
 
 // CrudActions returns a standard set of actions for resources that support a CRUD API
 func CrudActions() map[string]action.Type {

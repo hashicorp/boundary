@@ -9,10 +9,10 @@ import (
 	"testing"
 
 	"github.com/golang-migrate/migrate/v4"
+	"github.com/hashicorp/boundary/internal/oplog/oplog_test"
 	wrapping "github.com/hashicorp/go-kms-wrapping"
 	"github.com/hashicorp/go-kms-wrapping/wrappers/aead"
 	"github.com/hashicorp/go-uuid"
-	"github.com/hashicorp/watchtower/internal/oplog/oplog_test"
 	"github.com/jinzhu/gorm"
 	"github.com/ory/dockertest/v3"
 	"github.com/stretchr/testify/assert"
@@ -65,7 +65,7 @@ func testInitDbInDocker(t *testing.T) (cleanup func(), retURL string, err error)
 	pool, err := dockertest.NewPool("")
 	require.NoErrorf(t, err, "could not connect to docker: %w", err)
 
-	resource, err := pool.Run("postgres", "latest", []string{"POSTGRES_PASSWORD=secret", "POSTGRES_DB=watchtower"})
+	resource, err := pool.Run("postgres", "latest", []string{"POSTGRES_PASSWORD=secret", "POSTGRES_DB=boundary"})
 	require.NoErrorf(t, err, "could not start resource: %w", err)
 
 	c := func() {

@@ -11,9 +11,9 @@ import (
 	"sync"
 	"time"
 
+	"github.com/hashicorp/boundary/internal/cmd/base"
 	"github.com/hashicorp/go-alpnmux"
 	"github.com/hashicorp/go-multierror"
-	"github.com/hashicorp/watchtower/internal/cmd/base"
 )
 
 func (c *Controller) startListeners() error {

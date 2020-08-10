@@ -3,8 +3,8 @@ package dbassert
 import (
 	dbassert "github.com/hashicorp/dbassert"
 
+	"github.com/hashicorp/boundary/internal/db"
 	gormAssert "github.com/hashicorp/dbassert/gorm"
-	"github.com/hashicorp/watchtower/internal/db"
 	"github.com/stretchr/testify/assert"
 )
 

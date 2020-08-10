@@ -4,9 +4,9 @@ import (
 	"context"
 	"testing"
 
-	authStore "github.com/hashicorp/watchtower/internal/auth/store"
-	"github.com/hashicorp/watchtower/internal/db"
-	dbassert "github.com/hashicorp/watchtower/internal/db/assert"
+	authStore "github.com/hashicorp/boundary/internal/auth/store"
+	"github.com/hashicorp/boundary/internal/db"
+	dbassert "github.com/hashicorp/boundary/internal/db/assert"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/proto"

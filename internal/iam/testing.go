@@ -4,10 +4,10 @@ import (
 	"context"
 	"testing"
 
+	"github.com/hashicorp/boundary/internal/auth/store"
+	"github.com/hashicorp/boundary/internal/db"
+	dbassert "github.com/hashicorp/boundary/internal/db/assert"
 	"github.com/hashicorp/go-uuid"
-	"github.com/hashicorp/watchtower/internal/auth/store"
-	"github.com/hashicorp/watchtower/internal/db"
-	dbassert "github.com/hashicorp/watchtower/internal/db/assert"
 	"github.com/jinzhu/gorm"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"

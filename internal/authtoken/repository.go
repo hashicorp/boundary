@@ -7,11 +7,11 @@ import (
 	"time"
 
 	"github.com/golang/protobuf/ptypes"
+	"github.com/hashicorp/boundary/internal/authtoken/store"
+	"github.com/hashicorp/boundary/internal/db"
+	"github.com/hashicorp/boundary/internal/db/timestamp"
+	"github.com/hashicorp/boundary/internal/oplog"
 	wrapping "github.com/hashicorp/go-kms-wrapping"
-	"github.com/hashicorp/watchtower/internal/authtoken/store"
-	"github.com/hashicorp/watchtower/internal/db"
-	"github.com/hashicorp/watchtower/internal/db/timestamp"
-	"github.com/hashicorp/watchtower/internal/oplog"
 )
 
 // TODO (ICU-406): Make these fields configurable.
@@ -45,7 +45,7 @@ func NewRepository(r db.Reader, w db.Writer, wrapper wrapping.Wrapper, opt ...Op
 
 	opts := getOpts(opt...)
 	if opts.withLimit == 0 {
-		// zero signals the watchtower defaults should be used.
+		// zero signals the boundary defaults should be used.
 		opts.withLimit = db.DefaultLimit
 	}
 	return &Repository{

@@ -5,8 +5,8 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/vault/internalshared/configutil"
-	"github.com/hashicorp/watchtower/globals"
 )
 
 type HandlerProperties struct {

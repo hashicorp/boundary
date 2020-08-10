@@ -1,8 +1,8 @@
-# Watchtower Documentation Website
+# Boundary Documentation Website
 
 [![Netlify Status](https://img.shields.io/netlify/<NETLIFY-API-ID>?style=flat-square)](https://app.netlify.com/sites/<NETLIFY-SLUG>/deploys)
 
-This subdirectory contains the entire source for the [Watchtower Website](https://example.com/). This is a [NextJS](https://nextjs.org/) project, which builds a static site from these source files.
+This subdirectory contains the entire source for the [Boundary Website](https://example.com/). This is a [NextJS](https://nextjs.org/) project, which builds a static site from these source files.
 
 <!--
   This readme file contains several blocks of generated text, to make it easier to share common information

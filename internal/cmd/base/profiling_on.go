@@ -13,7 +13,7 @@ import (
 )
 
 func StartMemProfiler(logger hclog.Logger) {
-	profileDir := filepath.Join(os.TempDir(), "watchtowerprof")
+	profileDir := filepath.Join(os.TempDir(), "boundaryprof")
 	if err := os.MkdirAll(profileDir, 0700); err != nil {
 		logger.Debug("could not create profile directory", "error", err)
 		return

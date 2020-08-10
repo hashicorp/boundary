@@ -6,11 +6,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/hashicorp/watchtower/internal/auth/password/store"
-	"github.com/hashicorp/watchtower/internal/db"
-	dbassert "github.com/hashicorp/watchtower/internal/db/assert"
-	"github.com/hashicorp/watchtower/internal/iam"
-	"github.com/hashicorp/watchtower/internal/oplog"
+	"github.com/hashicorp/boundary/internal/auth/password/store"
+	"github.com/hashicorp/boundary/internal/db"
+	dbassert "github.com/hashicorp/boundary/internal/db/assert"
+	"github.com/hashicorp/boundary/internal/iam"
+	"github.com/hashicorp/boundary/internal/oplog"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )

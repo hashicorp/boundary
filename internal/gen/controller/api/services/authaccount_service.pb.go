@@ -11,7 +11,7 @@ import (
 	proto "github.com/golang/protobuf/proto"
 	_ "github.com/golang/protobuf/ptypes/wrappers"
 	_ "github.com/grpc-ecosystem/grpc-gateway/v2/protoc-gen-openapiv2/options"
-	authmethods "github.com/hashicorp/watchtower/internal/gen/controller/api/resources/authmethods"
+	authmethods "github.com/hashicorp/boundary/internal/gen/controller/api/resources/authmethods"
 	_ "google.golang.org/genproto/googleapis/api/annotations"
 	field_mask "google.golang.org/genproto/protobuf/field_mask"
 	grpc "google.golang.org/grpc"
@@ -732,13 +732,13 @@ var file_controller_api_services_v1_authaccount_service_proto_rawDesc = []byte{
 	0x74, 0x68, 0x6f, 0x64, 0x73, 0x2f, 0x7b, 0x61, 0x75, 0x74, 0x68, 0x5f, 0x6d, 0x65, 0x74, 0x68,
 	0x6f, 0x64, 0x5f, 0x69, 0x64, 0x7d, 0x2f, 0x61, 0x63, 0x63, 0x6f, 0x75, 0x6e, 0x74, 0x73, 0x2f,
 	0x7b, 0x69, 0x64, 0x7d, 0x92, 0x41, 0x15, 0x12, 0x13, 0x44, 0x65, 0x6c, 0x65, 0x74, 0x65, 0x73,
-	0x20, 0x61, 0x6e, 0x20, 0x61, 0x63, 0x63, 0x6f, 0x75, 0x6e, 0x74, 0x2e, 0x42, 0x4f, 0x5a, 0x4d,
+	0x20, 0x61, 0x6e, 0x20, 0x61, 0x63, 0x63, 0x6f, 0x75, 0x6e, 0x74, 0x2e, 0x42, 0x4d, 0x5a, 0x4b,
 	0x67, 0x69, 0x74, 0x68, 0x75, 0x62, 0x2e, 0x63, 0x6f, 0x6d, 0x2f, 0x68, 0x61, 0x73, 0x68, 0x69,
-	0x63, 0x6f, 0x72, 0x70, 0x2f, 0x77, 0x61, 0x74, 0x63, 0x68, 0x74, 0x6f, 0x77, 0x65, 0x72, 0x2f,
-	0x69, 0x6e, 0x74, 0x65, 0x72, 0x6e, 0x61, 0x6c, 0x2f, 0x67, 0x65, 0x6e, 0x2f, 0x63, 0x6f, 0x6e,
-	0x74, 0x72, 0x6f, 0x6c, 0x6c, 0x65, 0x72, 0x2f, 0x61, 0x70, 0x69, 0x2f, 0x73, 0x65, 0x72, 0x76,
-	0x69, 0x63, 0x65, 0x73, 0x3b, 0x73, 0x65, 0x72, 0x76, 0x69, 0x63, 0x65, 0x73, 0x62, 0x06, 0x70,
-	0x72, 0x6f, 0x74, 0x6f, 0x33,
+	0x63, 0x6f, 0x72, 0x70, 0x2f, 0x62, 0x6f, 0x75, 0x6e, 0x64, 0x61, 0x72, 0x79, 0x2f, 0x69, 0x6e,
+	0x74, 0x65, 0x72, 0x6e, 0x61, 0x6c, 0x2f, 0x67, 0x65, 0x6e, 0x2f, 0x63, 0x6f, 0x6e, 0x74, 0x72,
+	0x6f, 0x6c, 0x6c, 0x65, 0x72, 0x2f, 0x61, 0x70, 0x69, 0x2f, 0x73, 0x65, 0x72, 0x76, 0x69, 0x63,
+	0x65, 0x73, 0x3b, 0x73, 0x65, 0x72, 0x76, 0x69, 0x63, 0x65, 0x73, 0x62, 0x06, 0x70, 0x72, 0x6f,
+	0x74, 0x6f, 0x33,
 }
 
 var (
@@ -962,13 +962,13 @@ type AccountServiceClient interface {
 	// auth method for the account being retrieved. If the auth method is missing,
 	// malformed, or references a non-existing auth method, an error is returned.
 	ListAccounts(ctx context.Context, in *ListAccountsRequest, opts ...grpc.CallOption) (*ListAccountsResponse, error)
-	// CreateAccount creates and stores an account in watchtower. The provided
+	// CreateAccount creates and stores an account in boundary. The provided
 	// request must include the auth method id in which the account will be created.
 	// If the auth method id is missing, malformed or references a non existing
 	// auth method, an error is returned. If a name is provided that is in
 	// use in another account in the same auth method, an error is returned.
 	CreateAccount(ctx context.Context, in *CreateAccountRequest, opts ...grpc.CallOption) (*CreateAccountResponse, error)
-	// UpdateAccount updates an existing account in watchtower. The provided account
+	// UpdateAccount updates an existing account in boundary. The provided account
 	// must not have any read only fields set. The update mask must be included in
 	// the request and contain at least 1 mutable field. To unset a field's value,
 	// include the field in the update mask and don't set it in the provided
@@ -977,7 +977,7 @@ type AccountServiceClient interface {
 	// request attempts to update the name to one that is already in use in this
 	// auth method.
 	UpdateAccount(ctx context.Context, in *UpdateAccountRequest, opts ...grpc.CallOption) (*UpdateAccountResponse, error)
-	// DeleteAccount removes an account from Watchtower. If the provided auth mehtod
+	// DeleteAccount removes an account from Boundary. If the provided auth mehtod
 	// or account ids are malformed or not provided an error is returned. No error is
 	// returned if either ids reference resources that do not exist as the
 	// response itself specifies if the resource existed before the DeleteAccount
@@ -1050,13 +1050,13 @@ type AccountServiceServer interface {
 	// auth method for the account being retrieved. If the auth method is missing,
 	// malformed, or references a non-existing auth method, an error is returned.
 	ListAccounts(context.Context, *ListAccountsRequest) (*ListAccountsResponse, error)
-	// CreateAccount creates and stores an account in watchtower. The provided
+	// CreateAccount creates and stores an account in boundary. The provided
 	// request must include the auth method id in which the account will be created.
 	// If the auth method id is missing, malformed or references a non existing
 	// auth method, an error is returned. If a name is provided that is in
 	// use in another account in the same auth method, an error is returned.
 	CreateAccount(context.Context, *CreateAccountRequest) (*CreateAccountResponse, error)
-	// UpdateAccount updates an existing account in watchtower. The provided account
+	// UpdateAccount updates an existing account in boundary. The provided account
 	// must not have any read only fields set. The update mask must be included in
 	// the request and contain at least 1 mutable field. To unset a field's value,
 	// include the field in the update mask and don't set it in the provided
@@ -1065,7 +1065,7 @@ type AccountServiceServer interface {
 	// request attempts to update the name to one that is already in use in this
 	// auth method.
 	UpdateAccount(context.Context, *UpdateAccountRequest) (*UpdateAccountResponse, error)
-	// DeleteAccount removes an account from Watchtower. If the provided auth mehtod
+	// DeleteAccount removes an account from Boundary. If the provided auth mehtod
 	// or account ids are malformed or not provided an error is returned. No error is
 	// returned if either ids reference resources that do not exist as the
 	// response itself specifies if the resource existed before the DeleteAccount

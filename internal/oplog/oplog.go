@@ -10,7 +10,7 @@ import (
 	wrapping "github.com/hashicorp/go-kms-wrapping"
 	structwrapping "github.com/hashicorp/go-kms-wrapping/structwrapping"
 
-	"github.com/hashicorp/watchtower/internal/oplog/store"
+	"github.com/hashicorp/boundary/internal/oplog/store"
 	_ "github.com/lib/pq"
 	"google.golang.org/protobuf/proto"
 )
@@ -210,7 +210,7 @@ func (e *Entry) Replay(ctx context.Context, tx Writer, types *TypeCatalog, table
 				* the fk references would be to the original tables, not the new replay tables.
 			It may be a better choice to just create separate schemas for replay named blue and green
 			since we need at min of two replay tables definitions. if we went with separate schemas they
-			could be create with a watchtower cli cmd that had appropriate privs (reducing security issues)
+			could be create with a boundary cli cmd that had appropriate privs (reducing security issues)
 			and the separate schemas wouldn't have the fk reference issues mentioned above.
 		*/
 		replayTable := origTableName + tableSuffix

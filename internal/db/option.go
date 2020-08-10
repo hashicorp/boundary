@@ -1,8 +1,8 @@
 package db
 
 import (
+	"github.com/hashicorp/boundary/internal/oplog"
 	wrapping "github.com/hashicorp/go-kms-wrapping"
-	"github.com/hashicorp/watchtower/internal/oplog"
 )
 
 // GetOpts - iterate the inbound Options and return a struct.

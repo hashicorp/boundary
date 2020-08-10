@@ -6,13 +6,13 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/hashicorp/boundary/internal/cmd/base"
+	"github.com/hashicorp/boundary/internal/cmd/config"
+	"github.com/hashicorp/boundary/internal/servers/worker"
 	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/vault/internalshared/configutil"
 	"github.com/hashicorp/vault/sdk/helper/mlock"
-	"github.com/hashicorp/watchtower/internal/cmd/base"
-	"github.com/hashicorp/watchtower/internal/cmd/config"
-	"github.com/hashicorp/watchtower/internal/servers/worker"
 	"github.com/mitchellh/cli"
 	"github.com/posener/complete"
 )
@@ -44,16 +44,16 @@ type Command struct {
 }
 
 func (c *Command) Synopsis() string {
-	return "Start a Watchtower worker"
+	return "Start a Boundary worker"
 }
 
 func (c *Command) Help() string {
 	helpText := `
-Usage: watchtower worker [options]
+Usage: boundary worker [options]
 
   Start a worker with a configuration file:
 
-      $ watchtower worker -config=/etc/watchtower/worker.hcl
+      $ boundary worker -config=/etc/boundary/worker.hcl
 
   For a full list of examples, please see the documentation.
 
@@ -80,7 +80,7 @@ func (c *Command) Flags() *base.FlagSets {
 		Name:       "log-level",
 		Target:     &c.flagLogLevel,
 		Default:    base.NotSetValue,
-		EnvVar:     "WATCHTOWER_LOG_LEVEL",
+		EnvVar:     "BOUNDARY_LOG_LEVEL",
 		Completion: complete.PredictSet("trace", "debug", "info", "warn", "err"),
 		Usage: "Log verbosity level. Supported values (in order of more detail to less) are " +
 			"\"trace\", \"debug\", \"info\", \"warn\", and \"err\".",
@@ -106,7 +106,7 @@ func (c *Command) Flags() *base.FlagSets {
 	f.StringVar(&base.StringVar{
 		Name:   "dev-listen-address",
 		Target: &c.flagDevWorkerListenAddr,
-		EnvVar: "WATCHTOWER_DEV_WORKER_LISTEN_ADDRESS",
+		EnvVar: "BOUNDARY_DEV_WORKER_LISTEN_ADDRESS",
 		Usage:  "Address to bind the worker to in \"dev\" mode.",
 	})
 
@@ -157,14 +157,14 @@ func (c *Command) Run(args []string) int {
 	}
 
 	// If mlockall(2) isn't supported, show a warning. We disable this in dev
-	// because it is quite scary to see when first using Watchtower. We also disable
+	// because it is quite scary to see when first using Boundary. We also disable
 	// this if the user has explicitly disabled mlock in configuration.
 	if !c.flagDev && !c.Config.DisableMlock && !mlock.Supported() {
 		c.UI.Warn(base.WrapAtLength(
 			"WARNING! mlock is not supported on this system! An mlockall(2)-like " +
 				"syscall to prevent memory from being swapped to disk is not " +
-				"supported on this system. For better security, only run Watchtower on " +
-				"systems where this call is supported. If you are running Watchtower" +
+				"supported on this system. For better security, only run Boundary on " +
+				"systems where this call is supported. If you are running Boundary" +
 				"in a Docker container, provide the IPC_LOCK cap to the container."))
 	}
 
@@ -287,7 +287,7 @@ func (c *Command) WaitForInterrupt() int {
 	for !shutdownTriggered {
 		select {
 		case <-shutdownCh:
-			c.UI.Output("==> Watchtower worker shutdown triggered")
+			c.UI.Output("==> Boundary worker shutdown triggered")
 
 			if err := c.worker.Shutdown(); err != nil {
 				c.UI.Error(fmt.Errorf("Error with worker shutdown: %w", err).Error())
@@ -296,7 +296,7 @@ func (c *Command) WaitForInterrupt() int {
 			shutdownTriggered = true
 
 		case <-c.SighupCh:
-			c.UI.Output("==> Watchtower worker reload triggered")
+			c.UI.Output("==> Boundary worker reload triggered")
 
 			// Check for new log level
 			var level hclog.Level

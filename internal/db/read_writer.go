@@ -9,10 +9,10 @@ import (
 	"strings"
 	"time"
 
+	"github.com/hashicorp/boundary/internal/db/common"
+	"github.com/hashicorp/boundary/internal/oplog"
+	"github.com/hashicorp/boundary/internal/oplog/store"
 	wrapping "github.com/hashicorp/go-kms-wrapping"
-	"github.com/hashicorp/watchtower/internal/db/common"
-	"github.com/hashicorp/watchtower/internal/oplog"
-	"github.com/hashicorp/watchtower/internal/oplog/store"
 	"github.com/jinzhu/gorm"
 	"google.golang.org/protobuf/proto"
 )
@@ -20,7 +20,7 @@ import (
 const (
 	NoRowsAffected = 0
 
-	// DefaultLimit is the default for results for watchtower
+	// DefaultLimit is the default for results for boundary
 	DefaultLimit = 10000
 )
 
@@ -387,7 +387,7 @@ func (rw *Db) Update(ctx context.Context, i interface{}, fieldMaskPaths []string
 		return NoRowsAffected, fmt.Errorf("update: no fields matched using fieldMaskPaths %s", fieldMaskPaths)
 	}
 
-	// This is not a watchtower scope, but rather a gorm Scope:
+	// This is not a boundary scope, but rather a gorm Scope:
 	// https://godoc.org/github.com/jinzhu/gorm#DB.NewScope
 	scope := rw.underlying.NewScope(i)
 	if scope.PrimaryKeyZero() {
@@ -501,7 +501,7 @@ func (rw *Db) Delete(ctx context.Context, i interface{}, opt ...Option) (int, er
 	if withOplog && opts.newOplogMsg != nil {
 		return NoRowsAffected, fmt.Errorf("delete: both WithOplog and NewOplogMsg options have been specified: %w", ErrInvalidParameter)
 	}
-	// This is not a watchtower scope, but rather a gorm Scope:
+	// This is not a boundary scope, but rather a gorm Scope:
 	// https://godoc.org/github.com/jinzhu/gorm#DB.NewScope
 	scope := rw.underlying.NewScope(i)
 	if scope.PrimaryKeyZero() {
