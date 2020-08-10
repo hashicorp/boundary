@@ -978,9 +978,11 @@ func TestAddMember(t *testing.T) {
 				grp := iam.TestGroup(t, conn, scp.GetPublicId())
 				tc.setup(grp)
 				req := &pbs.AddGroupMembersRequest{
-					Id:        grp.GetPublicId(),
-					Version:   grp.GetVersion(),
-					MemberIds: tc.addUsers,
+					Id:      grp.GetPublicId(),
+					Version: grp.GetVersion(),
+					Item: &pbs.GroupMemberIdsMessage{
+						MemberIds: tc.addUsers,
+					},
 				}
 
 				got, err := s.AddGroupMembers(auth.DisabledAuthTestContext(auth.WithScopeId(scp.GetPublicId())), req)
@@ -1079,9 +1081,11 @@ func TestSetMember(t *testing.T) {
 				grp := iam.TestGroup(t, conn, scp.GetPublicId())
 				tc.setup(grp)
 				req := &pbs.SetGroupMembersRequest{
-					Id:        grp.GetPublicId(),
-					Version:   grp.GetVersion(),
-					MemberIds: tc.setUsers,
+					Id:      grp.GetPublicId(),
+					Version: grp.GetVersion(),
+					Item: &pbs.GroupMemberIdsMessage{
+						MemberIds: tc.setUsers,
+					},
 				}
 
 				got, err := s.SetGroupMembers(auth.DisabledAuthTestContext(auth.WithScopeId(scp.GetPublicId())), req)
@@ -1188,9 +1192,11 @@ func TestRemoveMember(t *testing.T) {
 				grp := iam.TestGroup(t, conn, scp.GetPublicId())
 				tc.setup(grp)
 				req := &pbs.RemoveGroupMembersRequest{
-					Id:        grp.GetPublicId(),
-					Version:   grp.GetVersion(),
-					MemberIds: tc.removeUsers,
+					Id:      grp.GetPublicId(),
+					Version: grp.GetVersion(),
+					Item: &pbs.GroupMemberIdsMessage{
+						MemberIds: tc.removeUsers,
+					},
 				}
 
 				got, err := s.RemoveGroupMembers(auth.DisabledAuthTestContext(auth.WithScopeId(scp.GetPublicId())), req)

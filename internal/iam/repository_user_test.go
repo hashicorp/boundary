@@ -541,17 +541,16 @@ func TestRepository_LookupUserWithLogin(t *testing.T) {
 	id := testId(t)
 	org, _ := TestScopes(t, conn)
 	authMethodId := testAuthMethod(t, conn, org.PublicId)
-	newAuthAcct := testAuthAccount(t, conn, org.PublicId, authMethodId, "")
-	newAuthAcctWithoutVivify := testAuthAccount(t, conn, org.PublicId, authMethodId, "")
-	// negativeTestAuthAcct := testAuthAccount(t, conn, org.PublicId, authMethodId, "")
+	newAuthAcct := testAccount(t, conn, org.PublicId, authMethodId, "")
+	newAuthAcctWithoutVivify := testAccount(t, conn, org.PublicId, authMethodId, "")
 
 	user := TestUser(t, conn, org.PublicId, WithName("existing-"+id))
-	existingAuthAcct := testAuthAccount(t, conn, org.PublicId, authMethodId, user.PublicId)
+	existingAuthAcct := testAccount(t, conn, org.PublicId, authMethodId, user.PublicId)
 	require.Equal(t, user.PublicId, existingAuthAcct.IamUserId)
 
 	type args struct {
-		withAuthAccountId string
-		opt               []Option
+		withAccountId string
+		opt           []Option
 	}
 	tests := []struct {
 		name            string
@@ -565,7 +564,7 @@ func TestRepository_LookupUserWithLogin(t *testing.T) {
 		{
 			name: "valid",
 			args: args{
-				withAuthAccountId: newAuthAcct.PublicId,
+				withAccountId: newAuthAcct.PublicId,
 				opt: []Option{
 					WithAutoVivify(true),
 					WithName("valid-" + id),
@@ -579,7 +578,7 @@ func TestRepository_LookupUserWithLogin(t *testing.T) {
 		{
 			name: "new-acct-without-vivify",
 			args: args{
-				withAuthAccountId: newAuthAcctWithoutVivify.PublicId,
+				withAccountId: newAuthAcctWithoutVivify.PublicId,
 			},
 			wantErr:   true,
 			wantErrIs: db.ErrRecordNotFound,
@@ -587,7 +586,7 @@ func TestRepository_LookupUserWithLogin(t *testing.T) {
 		{
 			name: "missing auth acct id",
 			args: args{
-				withAuthAccountId: "",
+				withAccountId: "",
 			},
 			wantErr:   true,
 			wantErrIs: db.ErrInvalidParameter,
@@ -595,7 +594,7 @@ func TestRepository_LookupUserWithLogin(t *testing.T) {
 		{
 			name: "existing-auth-account",
 			args: args{
-				withAuthAccountId: existingAuthAcct.PublicId,
+				withAccountId: existingAuthAcct.PublicId,
 			},
 			wantErr:  false,
 			wantName: "existing-" + id,
@@ -604,7 +603,7 @@ func TestRepository_LookupUserWithLogin(t *testing.T) {
 		{
 			name: "existing-auth-account-with-vivify",
 			args: args{
-				withAuthAccountId: existingAuthAcct.PublicId,
+				withAccountId: existingAuthAcct.PublicId,
 				opt: []Option{
 					WithAutoVivify(true),
 				},
@@ -616,7 +615,7 @@ func TestRepository_LookupUserWithLogin(t *testing.T) {
 		{
 			name: "bad-auth-account-id",
 			args: args{
-				withAuthAccountId: id,
+				withAccountId: id,
 			},
 			wantErr:   true,
 			wantErrIs: db.ErrRecordNotFound,
@@ -624,7 +623,7 @@ func TestRepository_LookupUserWithLogin(t *testing.T) {
 		{
 			name: "bad-auth-account-id-with-vivify",
 			args: args{
-				withAuthAccountId: id,
+				withAccountId: id,
 				opt: []Option{
 					WithAutoVivify(true),
 				},
@@ -637,17 +636,17 @@ func TestRepository_LookupUserWithLogin(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 			dbassert := dbassert.New(t, rw)
-			got, err := repo.LookupUserWithLogin(context.Background(), tt.args.withAuthAccountId, tt.args.opt...)
+			got, err := repo.LookupUserWithLogin(context.Background(), tt.args.withAccountId, tt.args.opt...)
 			if tt.wantErr {
 				require.Error(err)
 				assert.Nil(got)
 				if tt.wantErrIs != nil {
 					assert.Truef(errors.Is(err, tt.wantErrIs), "unexpected error %s", err.Error())
 				}
-				if tt.args.withAuthAccountId != "" && tt.args.withAuthAccountId != id {
+				if tt.args.withAccountId != "" && tt.args.withAccountId != id {
 					// need to assert that userid in auth_account is still null
-					acct := allocAuthAccount()
-					acct.PublicId = tt.args.withAuthAccountId
+					acct := allocAccount()
+					acct.PublicId = tt.args.withAccountId
 					dbassert.IsNull(&acct, "IamUserId")
 				}
 				return
@@ -663,11 +662,287 @@ func TestRepository_LookupUserWithLogin(t *testing.T) {
 			if tt.wantUser != nil {
 				assert.True(proto.Equal(tt.wantUser.User, got.User))
 			}
-			acct := allocAuthAccount()
-			acct.PublicId = tt.args.withAuthAccountId
+			acct := allocAccount()
+			acct.PublicId = tt.args.withAccountId
 			err = rw.LookupByPublicId(context.Background(), &acct)
 			require.NoError(err)
 			assert.Equal(got.PublicId, acct.IamUserId)
+		})
+	}
+}
+
+func TestRepository_AssociateUserWithAccount(t *testing.T) {
+	t.Parallel()
+	conn, _ := db.TestSetup(t, "postgres")
+	rw := db.New(conn)
+	wrapper := db.TestWrapper(t)
+	repo, err := NewRepository(rw, rw, wrapper)
+	require.NoError(t, err)
+	org, _ := TestScopes(t, conn)
+	authMethodId := testAuthMethod(t, conn, org.PublicId)
+
+	type Ids struct {
+		user string
+		acct string
+	}
+	type args struct {
+		Ids Ids
+		opt []Option
+	}
+	tests := []struct {
+		name      string
+		args      args
+		want      *User
+		want1     *authAccount
+		wantErr   bool
+		wantErrIs error
+		wantAssoc bool
+	}{
+		{
+			name: "simple",
+			args: args{
+				Ids: func() Ids {
+					u := TestUser(t, conn, org.PublicId)
+					a := testAccount(t, conn, org.PublicId, authMethodId, "")
+					return Ids{user: u.PublicId, acct: a.PublicId}
+				}(),
+			},
+		},
+		{
+			name: "missing-acctId",
+			args: args{
+				Ids: func() Ids {
+					id := testId(t)
+
+					return Ids{user: id}
+				}(),
+			},
+			wantErr:   true,
+			wantErrIs: db.ErrInvalidParameter,
+		},
+		{
+			name: "missing-userId",
+			args: args{
+				Ids: func() Ids {
+					id := testId(t)
+					return Ids{acct: id}
+				}(),
+			},
+			wantErr:   true,
+			wantErrIs: db.ErrInvalidParameter,
+		},
+		{
+			name: "already-properly-assoc",
+			args: args{
+				Ids: func() Ids {
+					u := TestUser(t, conn, org.PublicId)
+					a := testAccount(t, conn, org.PublicId, authMethodId, u.PublicId)
+					return Ids{user: u.PublicId, acct: a.PublicId}
+				}(),
+				opt: []Option{WithDisassociate(true)},
+			},
+		},
+		{
+			name: "assoc-with-diff-user",
+			args: args{
+				Ids: func() Ids {
+					u := TestUser(t, conn, org.PublicId)
+					diffUser := TestUser(t, conn, org.PublicId)
+					a := testAccount(t, conn, org.PublicId, authMethodId, diffUser.PublicId)
+					return Ids{user: u.PublicId, acct: a.PublicId}
+				}(),
+			},
+			wantErr:   true,
+			wantErrIs: db.ErrInvalidParameter,
+		},
+		{
+			name: "assoc-with-diff-user-withDisassociateOption",
+			args: args{
+				Ids: func() Ids {
+					u := TestUser(t, conn, org.PublicId)
+					diffUser := TestUser(t, conn, org.PublicId)
+					a := testAccount(t, conn, org.PublicId, authMethodId, diffUser.PublicId)
+					return Ids{user: u.PublicId, acct: a.PublicId}
+				}(),
+			},
+			wantErr:   true,
+			wantErrIs: db.ErrInvalidParameter,
+		},
+		{
+			name: "bad-acct-id",
+			args: args{
+				Ids: func() Ids {
+					u := TestUser(t, conn, org.PublicId)
+					id := testId(t)
+					return Ids{user: u.PublicId, acct: id}
+				}(),
+			},
+			wantErr:   true,
+			wantErrIs: db.ErrRecordNotFound,
+		},
+		{
+			name: "bad-user-id",
+			args: args{
+				Ids: func() Ids {
+					id := testId(t)
+					a := testAccount(t, conn, org.PublicId, authMethodId, "")
+					return Ids{user: id, acct: a.PublicId}
+				}(),
+			},
+			wantErr:   true,
+			wantErrIs: db.ErrRecordNotFound,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+			u, err := repo.AssociateUserWithAccount(context.Background(), tt.args.Ids.user, tt.args.Ids.acct, tt.args.opt...)
+			if tt.wantErr {
+				require.Error(err)
+				assert.Empty(u)
+				if tt.wantErrIs != nil {
+					assert.Truef(errors.Is(err, tt.wantErrIs), "unexpected error %s", err.Error())
+				}
+				return
+			}
+			require.NoError(err)
+			assert.Equal(tt.args.Ids.user, u.PublicId)
+			acct := allocAccount()
+			acct.PublicId = tt.args.Ids.acct
+			err = rw.LookupByPublicId(context.Background(), &acct)
+			require.NoError(err)
+			assert.Equal(tt.args.Ids.user, acct.IamUserId)
+		})
+	}
+}
+
+func TestRepository_DissociateUserWithAccount(t *testing.T) {
+	t.Parallel()
+	conn, _ := db.TestSetup(t, "postgres")
+	rw := db.New(conn)
+	wrapper := db.TestWrapper(t)
+	repo, err := NewRepository(rw, rw, wrapper)
+	require.NoError(t, err)
+	org, _ := TestScopes(t, conn)
+	authMethodId := testAuthMethod(t, conn, org.PublicId)
+
+	type Ids struct {
+		user string
+		acct string
+	}
+	type args struct {
+		Ids Ids
+		opt []Option
+	}
+	tests := []struct {
+		name      string
+		args      args
+		want      *User
+		want1     *authAccount
+		wantErr   bool
+		wantErrIs error
+	}{
+		{
+			name: "simple",
+			args: args{
+				Ids: func() Ids {
+					u := TestUser(t, conn, org.PublicId)
+					a := testAccount(t, conn, org.PublicId, authMethodId, u.PublicId)
+					return Ids{user: u.PublicId, acct: a.PublicId}
+				}(),
+			},
+		},
+		{
+			name: "missing-acctId",
+			args: args{
+				Ids: func() Ids {
+					id := testId(t)
+
+					return Ids{user: id}
+				}(),
+			},
+			wantErr:   true,
+			wantErrIs: db.ErrInvalidParameter,
+		},
+		{
+			name: "missing-userId",
+			args: args{
+				Ids: func() Ids {
+					id := testId(t)
+					return Ids{acct: id}
+				}(),
+			},
+			wantErr:   true,
+			wantErrIs: db.ErrInvalidParameter,
+		},
+		{
+			name: "already-properly-disassoc",
+			args: args{
+				Ids: func() Ids {
+					u := TestUser(t, conn, org.PublicId)
+					a := testAccount(t, conn, org.PublicId, authMethodId, "")
+					return Ids{user: u.PublicId, acct: a.PublicId}
+				}(),
+			},
+		},
+		{
+			name: "assoc-with-diff-user",
+			args: args{
+				Ids: func() Ids {
+					u := TestUser(t, conn, org.PublicId)
+					diffUser := TestUser(t, conn, org.PublicId)
+					a := testAccount(t, conn, org.PublicId, authMethodId, diffUser.PublicId)
+					return Ids{user: u.PublicId, acct: a.PublicId}
+				}(),
+			},
+			wantErr:   true,
+			wantErrIs: db.ErrInvalidParameter,
+		},
+		{
+			name: "bad-acct-id",
+			args: args{
+				Ids: func() Ids {
+					u := TestUser(t, conn, org.PublicId)
+					id := testId(t)
+					return Ids{user: u.PublicId, acct: id}
+				}(),
+			},
+			wantErr:   true,
+			wantErrIs: db.ErrRecordNotFound,
+		},
+		{
+			name: "bad-user-id",
+			args: args{
+				Ids: func() Ids {
+					id := testId(t)
+					a := testAccount(t, conn, org.PublicId, authMethodId, "")
+					return Ids{user: id, acct: a.PublicId}
+				}(),
+			},
+			wantErr:   true,
+			wantErrIs: db.ErrRecordNotFound,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+			dbassert := dbassert.New(t, rw)
+			u, err := repo.DissociateUserWithAccount(context.Background(), tt.args.Ids.user, tt.args.Ids.acct, tt.args.opt...)
+			if tt.wantErr {
+				require.Error(err)
+				assert.Empty(u)
+				if tt.wantErrIs != nil {
+					assert.Truef(errors.Is(err, tt.wantErrIs), "unexpected error %s", err.Error())
+				}
+				return
+			}
+			require.NoError(err)
+			assert.Equal(tt.args.Ids.user, u.PublicId)
+
+			acct := allocAccount()
+			acct.PublicId = tt.args.Ids.acct
+			dbassert.IsNull(&acct, "IamUserId")
+
 		})
 	}
 }
