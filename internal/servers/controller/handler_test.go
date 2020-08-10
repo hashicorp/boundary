@@ -14,11 +14,16 @@ import (
 )
 
 func TestAuthenticationHandler(t *testing.T) {
-	c := NewTestController(t, &TestControllerOpts{DefaultOrgId: "o_1234567890"})
+	c := NewTestController(t, &TestControllerOpts{
+		DefaultOrgId:                 "o_1234567890",
+		DisableAuthorizationFailures: true,
+		DefaultUsername:              "admin",
+		DefaultPassword:              "password123",
+	})
 	defer c.Shutdown()
 
-	resp, err := http.Post(fmt.Sprintf("%s/v1/scopes/o_1234567890/auth-methods/am_1234567890:authenticate", c.ApiAddrs()[0]), "application/json",
-		strings.NewReader(`{"token_type": null, "credentials": {"name":"test", "password": "test"}}`))
+	resp, err := http.Post(fmt.Sprintf("%s/v1/scopes/o_1234567890/auth-methods/paum_1234567890:authenticate", c.ApiAddrs()[0]), "application/json",
+		strings.NewReader(`{"token_type": null, "credentials": {"name":"admin", "password": "password123"}}`))
 	require.NoError(t, err)
 	assert.Equal(t, http.StatusOK, resp.StatusCode, "Got response: %v", resp)
 
@@ -72,6 +77,8 @@ func TestHandleImplementedPaths(t *testing.T) {
 			"v1/scopes/someid",
 			"v1/scopes/someid/auth-tokens",
 			"v1/scopes/someid/auth-tokens/someid",
+			"v1/scopes/someid/auth-methods",
+			"v1/scopes/someid/auth-methods/someid",
 			"v1/scopes/someid/auth-methods/someid/accounts",
 			"v1/scopes/someid/auth-methods/someid/accounts/someid",
 			"v1/scopes/someid/groups",
@@ -89,6 +96,7 @@ func TestHandleImplementedPaths(t *testing.T) {
 			"v1/scopes/someid/groups",
 			"v1/scopes/someid/roles",
 			"v1/scopes/someid/users",
+			"v1/scopes/someid/auth-methods",
 			"v1/scopes/someid/auth-methods/someid/accounts",
 
 			// custom methods
@@ -109,6 +117,7 @@ func TestHandleImplementedPaths(t *testing.T) {
 			"v1/scopes/someid/roles/someid",
 			"v1/scopes/someid/groups/someid",
 			"v1/scopes/someid/auth-tokens/someid",
+			"v1/scopes/someid/auth-methods/someid",
 			"v1/scopes/someid/auth-methods/someid/accounts/someid",
 		},
 		"PATCH": {
@@ -116,6 +125,7 @@ func TestHandleImplementedPaths(t *testing.T) {
 			"v1/scopes/someid/users/someid",
 			"v1/scopes/someid/roles/someid",
 			"v1/scopes/someid/groups/someid",
+			"v1/scopes/someid/auth-methods/someid",
 		},
 	} {
 		for _, p := range paths {

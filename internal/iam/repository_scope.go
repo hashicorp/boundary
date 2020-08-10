@@ -6,9 +6,9 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/hashicorp/watchtower/internal/db"
-	dbcommon "github.com/hashicorp/watchtower/internal/db/common"
-	"github.com/hashicorp/watchtower/internal/types/scope"
+	"github.com/hashicorp/boundary/internal/db"
+	dbcommon "github.com/hashicorp/boundary/internal/db/common"
+	"github.com/hashicorp/boundary/internal/types/scope"
 )
 
 // CreateScope will create a scope in the repository and return the written
@@ -62,7 +62,7 @@ func (r *Repository) CreateScope(ctx context.Context, s *Scope, opt ...Option) (
 // included in fieldMask. Name and Description are the only updatable fields,
 // and everything else is ignored.  If no updatable fields are included in the
 // fieldMaskPaths, then an error is returned.
-func (r *Repository) UpdateScope(ctx context.Context, scope *Scope, fieldMaskPaths []string, opt ...Option) (*Scope, int, error) {
+func (r *Repository) UpdateScope(ctx context.Context, scope *Scope, version uint32, fieldMaskPaths []string, opt ...Option) (*Scope, int, error) {
 	if scope == nil {
 		return nil, db.NoRowsAffected, fmt.Errorf("update scope: missing scope: %w", db.ErrNilParameter)
 	}
@@ -85,7 +85,7 @@ func (r *Repository) UpdateScope(ctx context.Context, scope *Scope, fieldMaskPat
 		return nil, db.NoRowsAffected, fmt.Errorf("update scope: %w", db.ErrEmptyFieldMask)
 	}
 
-	resource, rowsUpdated, err := r.update(ctx, scope, dbMask, nullFields)
+	resource, rowsUpdated, err := r.update(ctx, scope, version, dbMask, nullFields)
 	if err != nil {
 		if db.IsUniqueError(err) {
 			return nil, db.NoRowsAffected, fmt.Errorf("update scope: %s name %s already exists: %w", scope.PublicId, scope.Name, db.ErrNotUnique)

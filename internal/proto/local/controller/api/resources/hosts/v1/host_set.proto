@@ -2,12 +2,13 @@ syntax = "proto3";
 
 package controller.api.resources.hosts.v1;
 
-option go_package = "github.com/hashicorp/watchtower/internal/gen/controller/api/resources/hosts;hosts";
+option go_package = "github.com/hashicorp/boundary/internal/gen/controller/api/resources/hosts;hosts";
 
 import "google/protobuf/timestamp.proto";
 import "google/protobuf/wrappers.proto";
 import "controller/api/resources/hosts/v1/host.proto";
 import "controller/api/resources/scopes/v1/scope.proto";
+import "controller/custom_options/v1/options.proto";
 
 // HostSet is a collection of Hosts created and managed by a HostCatalog
 message HostSet {
@@ -20,13 +21,13 @@ message HostSet {
 	resources.scopes.v1.ScopeInfo scope = 2;
 	
 	// The type of the resource, to help differentiate schemas
-	google.protobuf.StringValue type = 3;
+	google.protobuf.StringValue type = 3 [(custom_options.v1.generate_sdk_option) = true];
 
 	// Optional name for identification purposes
-	google.protobuf.StringValue name = 4;
+	google.protobuf.StringValue name = 4 [(custom_options.v1.generate_sdk_option) = true];
 
 	// Optional user-set description for identification purposes
-	google.protobuf.StringValue description = 5;
+	google.protobuf.StringValue description = 5 [(custom_options.v1.generate_sdk_option) = true];
 
 	// The time this resource was created
 	// Output only.
@@ -37,7 +38,7 @@ message HostSet {
 	google.protobuf.Timestamp updated_time = 7 [json_name="updated_time"];
 
 	// Whether the host set is disabled
-	google.protobuf.BoolValue disabled = 8;
+	google.protobuf.BoolValue disabled = 8 [(custom_options.v1.generate_sdk_option) = true];
 
 	// The total count of hosts in this host set
 	// Output only.

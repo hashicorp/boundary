@@ -10,13 +10,13 @@ import (
 	"time"
 
 	"github.com/golang/protobuf/ptypes"
+	"github.com/hashicorp/boundary/internal/db/db_test"
+	"github.com/hashicorp/boundary/internal/db/timestamp"
+	"github.com/hashicorp/boundary/internal/oplog"
+	"github.com/hashicorp/boundary/internal/oplog/store"
 	wrapping "github.com/hashicorp/go-kms-wrapping"
 	"github.com/hashicorp/go-uuid"
 	"github.com/hashicorp/vault/sdk/helper/base62"
-	"github.com/hashicorp/watchtower/internal/db/db_test"
-	"github.com/hashicorp/watchtower/internal/db/timestamp"
-	"github.com/hashicorp/watchtower/internal/oplog"
-	"github.com/hashicorp/watchtower/internal/oplog/store"
 	"github.com/jinzhu/gorm"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -150,6 +150,68 @@ func TestDb_Update(t *testing.T) {
 			wantEmail:       "",
 			wantPhoneNumber: "updated" + id,
 			wantVersion:     2,
+		},
+		{
+			name: "simple-with-where",
+			args: args{
+				i: &db_test.TestUser{
+					StoreTestUser: &db_test.StoreTestUser{
+						Name:        "simple-with-where" + id,
+						Email:       "updated" + id,
+						PhoneNumber: "updated" + id,
+					},
+				},
+				fieldMaskPaths: []string{"Name", "PhoneNumber"},
+				setToNullPaths: []string{"Email"},
+				opt:            []Option{WithWhere("email = ? and phone_number = ?", id, id)},
+			},
+			want:            1,
+			wantErr:         false,
+			wantErrMsg:      "",
+			wantName:        "simple-with-where" + id,
+			wantEmail:       "",
+			wantPhoneNumber: "updated" + id,
+			wantVersion:     2,
+		},
+		{
+			name: "simple-with-where-and-version",
+			args: args{
+				i: &db_test.TestUser{
+					StoreTestUser: &db_test.StoreTestUser{
+						Name:        "simple-with-where-and-version" + id,
+						Email:       "updated" + id,
+						PhoneNumber: "updated" + id,
+					},
+				},
+				fieldMaskPaths: []string{"Name", "PhoneNumber"},
+				setToNullPaths: []string{"Email"},
+				opt:            []Option{WithWhere("email = ? and phone_number = ?", id, id), WithVersion(&versionOne)},
+			},
+			want:            1,
+			wantErr:         false,
+			wantErrMsg:      "",
+			wantName:        "simple-with-where-and-version" + id,
+			wantEmail:       "",
+			wantPhoneNumber: "updated" + id,
+			wantVersion:     2,
+		},
+		{
+			name: "bad-with-where",
+			args: args{
+				i: &db_test.TestUser{
+					StoreTestUser: &db_test.StoreTestUser{
+						Name:        "bad-with-where" + id,
+						Email:       "updated" + id,
+						PhoneNumber: "updated" + id,
+					},
+				},
+				fieldMaskPaths: []string{"Name", "PhoneNumber"},
+				setToNullPaths: []string{"Email"},
+				opt:            []Option{WithWhere("foo = ? and phone_number = ?", id, id)},
+			},
+			want:       0,
+			wantErr:    true,
+			wantErrMsg: `update: failed: pq: column "foo" does not exist`,
 		},
 		{
 			name: "multiple-null",

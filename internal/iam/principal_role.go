@@ -4,8 +4,8 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/hashicorp/watchtower/internal/db"
-	"github.com/hashicorp/watchtower/internal/iam/store"
+	"github.com/hashicorp/boundary/internal/db"
+	"github.com/hashicorp/boundary/internal/iam/store"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -65,9 +65,9 @@ type UserRole struct {
 	tableName string `gorm:"-"`
 }
 
-// ensure that UserRole implements the interfaces of:  Clonable and
+// ensure that UserRole implements the interfaces of:  Cloneable and
 // db.VetForWriter
-var _ Clonable = (*UserRole)(nil)
+var _ Cloneable = (*UserRole)(nil)
 var _ db.VetForWriter = (*UserRole)(nil)
 
 // NewUserRole creates a new user role in memory. No options are supported
@@ -138,9 +138,9 @@ type GroupRole struct {
 	tableName string `gorm:"-"`
 }
 
-// ensure that GroupRole implements the interfaces of: Clonable and
+// ensure that GroupRole implements the interfaces of: Cloneable and
 // db.VetForWriter
-var _ Clonable = (*GroupRole)(nil)
+var _ Cloneable = (*GroupRole)(nil)
 var _ db.VetForWriter = (*GroupRole)(nil)
 
 // NewGroupRole creates a new group role in memory. No options are supported

@@ -6,10 +6,11 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/hashicorp/watchtower/internal/cmd/base"
-	controllercmd "github.com/hashicorp/watchtower/internal/cmd/commands/controller"
-	workercmd "github.com/hashicorp/watchtower/internal/cmd/commands/worker"
-	"github.com/hashicorp/watchtower/internal/cmd/config"
+	"github.com/hashicorp/boundary/internal/auth/password"
+	"github.com/hashicorp/boundary/internal/cmd/base"
+	controllercmd "github.com/hashicorp/boundary/internal/cmd/commands/controller"
+	workercmd "github.com/hashicorp/boundary/internal/cmd/commands/worker"
+	"github.com/hashicorp/boundary/internal/cmd/config"
 	"github.com/mitchellh/cli"
 	"github.com/posener/complete"
 )
@@ -34,7 +35,8 @@ type Command struct {
 	flagLogFormat                      string
 	flagCombineLogs                    bool
 	flagDev                            bool
-	flagDevAdminPassword               string
+	flagDevUsername                    string
+	flagDevPassword                    string
 	flagDevOrgId                       string
 	flagDevAuthMethodId                string
 	flagDevControllerAPIListenAddr     string
@@ -43,16 +45,16 @@ type Command struct {
 }
 
 func (c *Command) Synopsis() string {
-	return "Start a Watchtower dev environment"
+	return "Start a Boundary dev environment"
 }
 
 func (c *Command) Help() string {
 	helpText := `
-Usage: watchtower dev [options]
+Usage: boundary dev [options]
 
   Start a dev environment: 
 
-      $ watchtower dev
+      $ boundary dev
 
   For a full list of examples, please see the documentation.
 
@@ -69,7 +71,7 @@ func (c *Command) Flags() *base.FlagSets {
 		Name:       "log-level",
 		Target:     &c.flagLogLevel,
 		Default:    base.NotSetValue,
-		EnvVar:     "WATCHTOWER_LOG_LEVEL",
+		EnvVar:     "BOUNDARY_LOG_LEVEL",
 		Completion: complete.PredictSet("trace", "debug", "info", "warn", "err"),
 		Usage: "Log verbosity level. Supported values (in order of more detail to less) are " +
 			"\"trace\", \"debug\", \"info\", \"warn\", and \"err\".",
@@ -102,24 +104,32 @@ func (c *Command) Flags() *base.FlagSets {
 	})
 
 	f.StringVar(&base.StringVar{
-		Name:   "dev-admin-password",
-		Target: &c.flagDevAdminPassword,
-		EnvVar: "WATCHTWER_DEV_ADMIN_PASSWORD",
+		Name:   "dev-password",
+		Target: &c.flagDevPassword,
+		EnvVar: "WATCHTWER_DEV_PASSWORD",
 		Usage: "Initial admin password. This only applies when running in \"dev\" " +
+			"mode.",
+	})
+
+	f.StringVar(&base.StringVar{
+		Name:   "dev-username",
+		Target: &c.flagDevUsername,
+		EnvVar: "WATCHTWER_DEV_USERNAME",
+		Usage: "Initial admin username. This only applies when running in \"dev\" " +
 			"mode.",
 	})
 
 	f.StringVar(&base.StringVar{
 		Name:   "dev-api-listen-address",
 		Target: &c.flagDevControllerAPIListenAddr,
-		EnvVar: "WATCHTOWER_DEV_CONTROLLER_API_LISTEN_ADDRESS",
+		EnvVar: "BOUNDARY_DEV_CONTROLLER_API_LISTEN_ADDRESS",
 		Usage:  "Address to bind to for controller \"api\" purpose.",
 	})
 
 	f.StringVar(&base.StringVar{
 		Name:   "dev-cluster-listen-address",
 		Target: &c.flagDevControllerClusterListenAddr,
-		EnvVar: "WATCHTOWER_DEV_CONTROLLER_CLUSTER_LISTEN_ADDRESS",
+		EnvVar: "BOUNDARY_DEV_CONTROLLER_CLUSTER_LISTEN_ADDRESS",
 		Usage:  "Address to bind to for controller \"cluster\" purpose.",
 	})
 
@@ -165,15 +175,22 @@ func (c *Command) Run(args []string) int {
 		devConfig.DefaultOrgId = c.flagDevOrgId
 	}
 	if c.flagDevAuthMethodId != "" {
-		if !strings.HasPrefix(c.flagDevAuthMethodId, "am_") {
-			c.UI.Error(fmt.Sprintf("Invalid dev auth method ID, must start with %q", "am_"))
+		prefix := password.AuthMethodPrefix + "_"
+		if !strings.HasPrefix(c.flagDevAuthMethodId, prefix) {
+			c.UI.Error(fmt.Sprintf("Invalid dev auth method ID, must start with %q", prefix))
 			return 1
 		}
 		if len(c.flagDevAuthMethodId) != 13 {
-			c.UI.Error(fmt.Sprintf("Invalid dev auth method ID, must be 10 base62 characters after %q", "am_"))
+			c.UI.Error(fmt.Sprintf("Invalid dev auth method ID, must be 10 base62 characters after %q", prefix))
 			return 1
 		}
 		c.DevAuthMethodId = c.flagDevAuthMethodId
+	}
+	if c.flagDevUsername != "" {
+		c.DevUsername = c.flagDevUsername
+	}
+	if c.flagDevPassword != "" {
+		c.DevPassword = c.flagDevPassword
 	}
 
 	devConfig.PassthroughDirectory = c.flagDevPassthroughDirectory
@@ -304,7 +321,7 @@ func (c *Command) Run(args []string) int {
 	for !shutdownTriggered {
 		select {
 		case <-c.ShutdownCh:
-			c.UI.Output("==> Watchtower dev environment shutdown triggered")
+			c.UI.Output("==> Boundary dev environment shutdown triggered")
 
 			childShutdownCh <- struct{}{}
 			childShutdownCh <- struct{}{}
@@ -312,7 +329,7 @@ func (c *Command) Run(args []string) int {
 			shutdownTriggered = true
 
 		case <-c.SighupCh:
-			c.UI.Output("==> Watchtower dev environment reload triggered")
+			c.UI.Output("==> Boundary dev environment reload triggered")
 			for _, v := range c.childSighupCh {
 				v <- struct{}{}
 			}

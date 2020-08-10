@@ -6,9 +6,9 @@ import (
 	"os"
 	"strings"
 
+	"github.com/hashicorp/boundary/internal/cmd/base"
 	"github.com/hashicorp/vault/internalshared/configutil"
 	"github.com/hashicorp/vault/sdk/helper/strutil"
-	"github.com/hashicorp/watchtower/internal/cmd/base"
 	"github.com/mitchellh/cli"
 	"github.com/posener/complete"
 )
@@ -38,9 +38,9 @@ func (c *EncryptDecryptCommand) Help() string {
 		subCmd = "Encrypt"
 	}
 	helpText := `
-Usage: watchtower config %s [options] [args]
+Usage: boundary config %s [options] [args]
   
-	%s sensitive values in a Watchtower's configuration file. These values must be marked
+	%s sensitive values in a Boundary's configuration file. These values must be marked
   with {{%s()}} as appropriate. This can only be used with string parameters, and
   the markers must be inside the quote marks delimiting the string; as an example:
     
@@ -49,7 +49,7 @@ Usage: watchtower config %s [options] [args]
 	By default this will print the new configuration out. To overwrite into the same
   file use the -overwrite flag.
     
-		$ watchtower config %s -overwrite config.hcl
+		$ boundary config %s -overwrite config.hcl
 																																				`
 	helpText = fmt.Sprintf(helpText, strings.ToLower(subCmd), subCmd, strings.ToLower(subCmd), strings.ToLower(subCmd))
 

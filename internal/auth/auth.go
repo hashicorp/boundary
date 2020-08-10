@@ -7,13 +7,13 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/hashicorp/boundary/internal/gen/controller/api/resources/scopes"
+	"github.com/hashicorp/boundary/internal/perms"
+	"github.com/hashicorp/boundary/internal/servers/controller/common"
+	"github.com/hashicorp/boundary/internal/types/action"
+	"github.com/hashicorp/boundary/internal/types/resource"
+	"github.com/hashicorp/boundary/internal/types/scope"
 	"github.com/hashicorp/go-hclog"
-	"github.com/hashicorp/watchtower/internal/gen/controller/api/resources/scopes"
-	"github.com/hashicorp/watchtower/internal/perms"
-	"github.com/hashicorp/watchtower/internal/servers/controller/common"
-	"github.com/hashicorp/watchtower/internal/types/action"
-	"github.com/hashicorp/watchtower/internal/types/resource"
-	"github.com/hashicorp/watchtower/internal/types/scope"
 	"github.com/kr/pretty"
 )
 
@@ -298,6 +298,11 @@ func (v *verifier) parseAuthParams() error {
 			return fmt.Errorf("parse auth parameters: unexpected empty segment")
 		}
 
+		// If the segment contains whitespace, it's not valid
+		if fields := strings.Fields(segment); len(fields) != 1 || fields[0] != segment {
+			return fmt.Errorf("parse auth params: segment %q contains whitespace", segment)
+		}
+
 		// Collections don't contain underscores; every resource ID does.
 		segmentIsCollection := !strings.Contains(segment, "_")
 
@@ -367,13 +372,13 @@ func (v verifier) performAuthCheck() (aclResults *perms.ACLResults, userId strin
 	userId = "u_anon"
 
 	// Validate the token and fetch the corresponding user ID
-	tokenRepo, err := v.authTokenRepoFn()
-	if err != nil {
-		retErr = fmt.Errorf("perform auth check: failed to get authtoken repo: %w", err)
-		return
-	}
+	if v.requestInfo.TokenFormat != AuthTokenTypeUnknown {
+		tokenRepo, err := v.authTokenRepoFn()
+		if err != nil {
+			retErr = fmt.Errorf("perform auth check: failed to get authtoken repo: %w", err)
+			return
+		}
 
-	if v.requestInfo.PublicId != "" && v.requestInfo.Token != "" {
 		at, err := tokenRepo.ValidateToken(v.ctx, v.requestInfo.PublicId, v.requestInfo.Token)
 		if err != nil {
 			retErr = fmt.Errorf("perform auth check: failed to validate token: %w", err)

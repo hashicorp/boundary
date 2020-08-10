@@ -19,42 +19,42 @@ import (
 	"time"
 	"unicode"
 
+	"github.com/hashicorp/boundary/api/internal/parseutil"
 	cleanhttp "github.com/hashicorp/go-cleanhttp"
 	retryablehttp "github.com/hashicorp/go-retryablehttp"
 	rootcerts "github.com/hashicorp/go-rootcerts"
-	"github.com/hashicorp/watchtower/api/internal/parseutil"
 	"golang.org/x/time/rate"
 )
 
-const EnvWatchtowerAddr = "WATCHTOWER_ADDR"
-const EnvWatchtowerCACert = "WATCHTOWER_CACERT"
-const EnvWatchtowerCAPath = "WATCHTOWER_CAPATH"
-const EnvWatchtowerClientCert = "WATCHTOWER_CLIENT_CERT"
-const EnvWatchtowerClientKey = "WATCHTOWER_CLIENT_KEY"
-const EnvWatchtowerClientTimeout = "WATCHTOWER_CLIENT_TIMEOUT"
-const EnvWatchtowerTLSInsecure = "WATCHTOWER_TLS_INSECURE"
-const EnvWatchtowerTLSServerName = "WATCHTOWER_TLS_SERVER_NAME"
-const EnvWatchtowerMaxRetries = "WATCHTOWER_MAX_RETRIES"
-const EnvWatchtowerToken = "WATCHTOWER_TOKEN"
-const EnvWatchtowerRateLimit = "WATCHTOWER_RATE_LIMIT"
-const EnvWatchtowerSRVLookup = "WATCHTOWER_SRV_LOOKUP"
-const EnvWatchtowerScopeId = "WATCHTOWER_SCOPE_ID"
+const EnvBoundaryAddr = "BOUNDARY_ADDR"
+const EnvBoundaryCACert = "BOUNDARY_CACERT"
+const EnvBoundaryCAPath = "BOUNDARY_CAPATH"
+const EnvBoundaryClientCert = "BOUNDARY_CLIENT_CERT"
+const EnvBoundaryClientKey = "BOUNDARY_CLIENT_KEY"
+const EnvBoundaryClientTimeout = "BOUNDARY_CLIENT_TIMEOUT"
+const EnvBoundaryTLSInsecure = "BOUNDARY_TLS_INSECURE"
+const EnvBoundaryTLSServerName = "BOUNDARY_TLS_SERVER_NAME"
+const EnvBoundaryMaxRetries = "BOUNDARY_MAX_RETRIES"
+const EnvBoundaryToken = "BOUNDARY_TOKEN"
+const EnvBoundaryRateLimit = "BOUNDARY_RATE_LIMIT"
+const EnvBoundarySRVLookup = "BOUNDARY_SRV_LOOKUP"
+const EnvBoundaryScopeId = "BOUNDARY_SCOPE_ID"
 
 // Config is used to configure the creation of the client
 type Config struct {
-	// Addr is the address of the Watchtower controller. This should be a
-	// complete URL such as "http://watchtower.example.com". If you need a custom
+	// Addr is the address of the Boundary controller. This should be a
+	// complete URL such as "http://boundary.example.com". If you need a custom
 	// SSL cert or want to enable insecure mode, you need to specify a custom
 	// HttpClient.
 	Addr string
 
 	// Token is the client token that reuslts from authentication and can be
-	// used to make calls into Watchtower
+	// used to make calls into Boundary
 	Token string
 
-	// HttpClient is the HTTP client to use. Watchtower sets sane defaults for
+	// HttpClient is the HTTP client to use. Boundary sets sane defaults for
 	// the http.Client and its associated http.Transport created in
-	// DefaultConfig. If you must modify Watchtower's defaults, it is
+	// DefaultConfig. If you must modify Boundary's defaults, it is
 	// suggested that you start with that client and modify as needed rather
 	// than start with an empty client (or http.DefaultClient).
 	HttpClient *http.Client
@@ -103,20 +103,20 @@ type Config struct {
 }
 
 // TLSConfig contains the parameters needed to configure TLS on the HTTP client
-// used to communicate with Watchtower.
+// used to communicate with Boundary.
 type TLSConfig struct {
 	// CACert is the path to a PEM-encoded CA cert file to use to verify the
-	// Watchtower server SSL certificate.
+	// Boundary server SSL certificate.
 	CACert string
 
 	// CAPath is the path to a directory of PEM-encoded CA cert files to verify
-	// the Watchtower server SSL certificate.
+	// the Boundary server SSL certificate.
 	CAPath string
 
-	// ClientCert is the path to the certificate for Watchtower communication
+	// ClientCert is the path to the certificate for Boundary communication
 	ClientCert string
 
-	// ClientKey is the path to the private key for Watchtower communication
+	// ClientKey is the path to the private key for Boundary communication
 	ClientKey string
 
 	// ServerName, if set, is used to set the SNI host when connecting via
@@ -131,7 +131,7 @@ type TLSConfig struct {
 // safe to modify the return value of this function.
 //
 // The default Addr is https://127.0.0.1:9200, but this can be overridden by
-// setting the `WATCHTOWER_ADDR` environment variable.
+// setting the `BOUNDARY_ADDR` environment variable.
 //
 // If an error is encountered, this will return nil.
 func DefaultConfig() (*Config, error) {
@@ -140,6 +140,7 @@ func DefaultConfig() (*Config, error) {
 		HttpClient: cleanhttp.DefaultPooledClient(),
 		Timeout:    time.Second * 60,
 		TLSConfig:  &TLSConfig{},
+		ScopeId:    "global",
 	}
 
 	// We read the environment now; after DefaultClient returns we can override
@@ -236,7 +237,7 @@ func (c *Config) setAddr(addr string) error {
 	// Remove trailing or leading slashes
 	path := strings.Trim(u.Path, "/")
 	// Remove v1 in front or back (e.g. they could have
-	// https://watchtower.example.com/myinstall/v1 which would put it at the
+	// https://boundary.example.com/myinstall/v1 which would put it at the
 	// back)
 	path = strings.Trim(path, "v1")
 	// Finally check again to make sure any slashes are removed before we join
@@ -261,19 +262,19 @@ func (c *Config) ReadEnvironment() error {
 	var envServerName string
 
 	// Parse the environment variables
-	if v := os.Getenv(EnvWatchtowerAddr); v != "" {
+	if v := os.Getenv(EnvBoundaryAddr); v != "" {
 		c.Addr = v
 	}
 
-	if v := os.Getenv(EnvWatchtowerToken); v != "" {
+	if v := os.Getenv(EnvBoundaryToken); v != "" {
 		c.Token = v
 	}
 
-	if v := os.Getenv(EnvWatchtowerScopeId); v != "" {
+	if v := os.Getenv(EnvBoundaryScopeId); v != "" {
 		c.ScopeId = v
 	}
 
-	if v := os.Getenv(EnvWatchtowerMaxRetries); v != "" {
+	if v := os.Getenv(EnvBoundaryMaxRetries); v != "" {
 		maxRetries, err := strconv.ParseUint(v, 10, 32)
 		if err != nil {
 			return err
@@ -281,24 +282,24 @@ func (c *Config) ReadEnvironment() error {
 		c.MaxRetries = int(maxRetries)
 	}
 
-	if v := os.Getenv(EnvWatchtowerSRVLookup); v != "" {
+	if v := os.Getenv(EnvBoundarySRVLookup); v != "" {
 		var err error
 		lookup, err := strconv.ParseBool(v)
 		if err != nil {
-			return fmt.Errorf("could not parse %s", EnvWatchtowerSRVLookup)
+			return fmt.Errorf("could not parse %s", EnvBoundarySRVLookup)
 		}
 		c.SRVLookup = lookup
 	}
 
-	if t := os.Getenv(EnvWatchtowerClientTimeout); t != "" {
+	if t := os.Getenv(EnvBoundaryClientTimeout); t != "" {
 		clientTimeout, err := parseutil.ParseDurationSecond(t)
 		if err != nil {
-			return fmt.Errorf("could not parse %q", EnvWatchtowerClientTimeout)
+			return fmt.Errorf("could not parse %q", EnvBoundaryClientTimeout)
 		}
 		c.Timeout = clientTimeout
 	}
 
-	if v := os.Getenv(EnvWatchtowerRateLimit); v != "" {
+	if v := os.Getenv(EnvBoundaryRateLimit); v != "" {
 		rateLimit, burstLimit, err := parseRateLimit(v)
 		if err != nil {
 			return err
@@ -309,31 +310,31 @@ func (c *Config) ReadEnvironment() error {
 	// TLS Config
 	{
 		var foundTLSConfig bool
-		if v := os.Getenv(EnvWatchtowerCACert); v != "" {
+		if v := os.Getenv(EnvBoundaryCACert); v != "" {
 			foundTLSConfig = true
 			envCACert = v
 		}
-		if v := os.Getenv(EnvWatchtowerCAPath); v != "" {
+		if v := os.Getenv(EnvBoundaryCAPath); v != "" {
 			foundTLSConfig = true
 			envCAPath = v
 		}
-		if v := os.Getenv(EnvWatchtowerClientCert); v != "" {
+		if v := os.Getenv(EnvBoundaryClientCert); v != "" {
 			foundTLSConfig = true
 			envClientCert = v
 		}
-		if v := os.Getenv(EnvWatchtowerClientKey); v != "" {
+		if v := os.Getenv(EnvBoundaryClientKey); v != "" {
 			foundTLSConfig = true
 			envClientKey = v
 		}
-		if v := os.Getenv(EnvWatchtowerTLSInsecure); v != "" {
+		if v := os.Getenv(EnvBoundaryTLSInsecure); v != "" {
 			foundTLSConfig = true
 			var err error
 			envInsecure, err = strconv.ParseBool(v)
 			if err != nil {
-				return fmt.Errorf("could not parse WATCHTOWER_TLS_INSECURE")
+				return fmt.Errorf("could not parse BOUNDARY_TLS_INSECURE")
 			}
 		}
-		if v := os.Getenv(EnvWatchtowerTLSServerName); v != "" {
+		if v := os.Getenv(EnvBoundaryTLSServerName); v != "" {
 			foundTLSConfig = true
 			envServerName = v
 		}
@@ -360,7 +361,7 @@ func parseRateLimit(val string) (rate float64, burst int, err error) {
 	if err != nil {
 		rate, err = strconv.ParseFloat(val, 64)
 		if err != nil {
-			err = fmt.Errorf("%v was provided but incorrectly formatted", EnvWatchtowerRateLimit)
+			err = fmt.Errorf("%v was provided but incorrectly formatted", EnvBoundaryRateLimit)
 		}
 		burst = int(rate)
 	}
@@ -368,7 +369,7 @@ func parseRateLimit(val string) (rate float64, burst int, err error) {
 	return rate, burst, err
 }
 
-// Client is the client to the Watchtower API. Create a client with NewClient.
+// Client is the client to the Boundary API. Create a client with NewClient.
 type Client struct {
 	modifyLock sync.RWMutex
 	config     *Config
@@ -376,10 +377,10 @@ type Client struct {
 
 // NewClient returns a new client for the given configuration.
 //
-// If the configuration is nil, Watchtower will use configuration from
+// If the configuration is nil, Boundary will use configuration from
 // DefaultConfig(), which is the recommended starting configuration.
 //
-// If the environment variable `WATCHTOWER_TOKEN` is present, the token will be
+// If the environment variable `BOUNDARY_TOKEN` is present, the token will be
 // automatically added to the client. Otherwise, you must manually call
 // `SetToken()`.
 func NewClient(c *Config) (*Client, error) {
@@ -420,9 +421,9 @@ func NewClient(c *Config) (*Client, error) {
 	}, nil
 }
 
-// Sets the address of Watchtower in the client. The format of address should
+// Sets the address of Boundary in the client. The format of address should
 // be "<Scheme>://<Host>:<Port>". Setting this on a client will override the
-// value of the WATCHTOWER_ADDR environment variable.
+// value of the BOUNDARY_ADDR environment variable.
 func (c *Client) SetAddr(addr string) error {
 	c.modifyLock.Lock()
 	defer c.modifyLock.Unlock()
@@ -594,7 +595,7 @@ func getBufferForJSON(val interface{}) (*bytes.Buffer, error) {
 	return bytes.NewBuffer(b), nil
 }
 
-// NewRequest creates a new raw request object to query the Watchtower controller
+// NewRequest creates a new raw request object to query the Boundary controller
 // configured for this client. This is an advanced method and generally
 // doesn't need to be called externally.
 func (c *Client) NewRequest(ctx context.Context, method, requestPath string, body interface{}, opt ...Option) (*retryablehttp.Request, error) {
@@ -672,6 +673,9 @@ func (c *Client) NewRequest(ctx context.Context, method, requestPath string, bod
 	if opts.withScopeId != "" {
 		scopeId = opts.withScopeId
 	}
+	if scopeId == "" {
+		scopeId = "global"
+	}
 
 	scopedPath := strings.TrimPrefix(requestPath, "/")
 	switch requestPath {
@@ -683,9 +687,7 @@ func (c *Client) NewRequest(ctx context.Context, method, requestPath string, bod
 		// If their path already has 'scopes/' in it, use the given request path
 		// instead of building it from the client's scope information
 		if !strings.HasPrefix(scopedPath, "scopes/") {
-			if scopeId != "" {
-				scopedPath = path.Join("scopes", scopeId, scopedPath)
-			}
+			scopedPath = path.Join("scopes", scopeId, scopedPath)
 		}
 	}
 	scopedPath = path.Join(u.Path, "/v1", scopedPath)
@@ -740,7 +742,7 @@ func (c *Client) Do(r *retryablehttp.Request) (*Response, error) {
 		return !unicode.IsPrint(c)
 	})
 	if idx != -1 {
-		return nil, fmt.Errorf("configured Watchtower token contains non-printable characters and cannot be used")
+		return nil, fmt.Errorf("configured Boundary token contains non-printable characters and cannot be used")
 	}
 
 	if outputCurlString {
@@ -801,9 +803,9 @@ func (c *Client) Do(r *retryablehttp.Request) (*Response, error) {
 					"but the client is configured to use TLS. Please either enable TLS\n"+
 					"on the server or run the client with -address set to an address\n"+
 					"that uses the http protocol:\n\n"+
-					"    watchtower <command> -address http://<address>\n\n"+
-					"You can also set the WATCHTOWER_ADDR environment variable:\n\n\n"+
-					"    WATCHTOWER_ADDR=http://<address> watchtower <command>\n\n"+
+					"    boundary <command> -address http://<address>\n\n"+
+					"You can also set the BOUNDARY_ADDR environment variable:\n\n\n"+
+					"    BOUNDARY_ADDR=http://<address> boundary <command>\n\n"+
 					"where <address> is replaced by the actual address to the controller.",
 				err)
 		}

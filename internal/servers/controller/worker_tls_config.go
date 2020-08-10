@@ -9,8 +9,8 @@ import (
 	"errors"
 	"strings"
 
+	"github.com/hashicorp/boundary/internal/cmd/base"
 	wrapping "github.com/hashicorp/go-kms-wrapping"
-	"github.com/hashicorp/watchtower/internal/cmd/base"
 	"google.golang.org/protobuf/proto"
 )
 

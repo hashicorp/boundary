@@ -2,7 +2,7 @@ syntax = "proto3";
 
 package controller.api.services.v1;
 
-option go_package = "github.com/hashicorp/watchtower/internal/gen/controller/api/services;services";
+option go_package = "github.com/hashicorp/boundary/internal/gen/controller/api/services;services";
 
 import "protoc-gen-openapiv2/options/annotations.proto";
 import "google/api/annotations.proto";
@@ -38,7 +38,7 @@ service UserService {
     };
   }
 
-  // CreateUser creates and stores a user in watchtower.  The provided
+  // CreateUser creates and stores a user in boundary.  The provided
   // request must include the org id in which the user will be created.
   // If the org id is missing, malformed or references a non existing
   // org, an error is returned.  If a name is provided that is in
@@ -54,7 +54,7 @@ service UserService {
     };
   }
 
-  // UpdateUser updates an existing user in watchtower.  The provided
+  // UpdateUser updates an existing user in boundary.  The provided
   // user must not have any read only fields set.  The update mask must be
   // included in the request and contain at least 1 mutable field.  To unset
   // a field's value, include the field in the update mask and don't set it
@@ -73,7 +73,7 @@ service UserService {
     };
   }
 
-  // DeleteUser removes a user from Watchtower. If the provided org or user ids
+  // DeleteUser removes a user from Boundary. If the provided org or user ids
   // are malformed or not provided an error is returned.  No error is returned
   // if either ids reference resources that do not exist as the response itself
   // specifies if the resource existed before the DeleteUser request was
@@ -116,8 +116,9 @@ message CreateUserResponse {
 
 message UpdateUserRequest {
   string id = 1;
-  resources.users.v1.User item = 2;
-  google.protobuf.FieldMask update_mask = 3;
+  uint32 version = 2;
+  resources.users.v1.User item = 3;
+  google.protobuf.FieldMask update_mask = 4;
 }
 
 message UpdateUserResponse {

@@ -6,10 +6,10 @@ import (
 	"net"
 	"testing"
 
+	"github.com/hashicorp/boundary/api"
+	"github.com/hashicorp/boundary/internal/cmd/base"
+	"github.com/hashicorp/boundary/internal/cmd/config"
 	"github.com/hashicorp/go-hclog"
-	"github.com/hashicorp/watchtower/api"
-	"github.com/hashicorp/watchtower/internal/cmd/base"
-	"github.com/hashicorp/watchtower/internal/cmd/config"
 )
 
 // TestController wraps a base.Server and Controller to provide a
@@ -114,6 +114,15 @@ type TestControllerOpts struct {
 	// in the normal config.
 	DefaultOrgId string
 
+	// DefaultAuthMethodId is the default auth method ID to use, if set.
+	DefaultAuthMethodId string
+
+	// DefaultUsername is the username used when creating the default account.
+	DefaultUsername string
+
+	// DefaultPassword is the password used when creating the default account.
+	DefaultPassword string
+
 	// DisableDatabaseCreation can be set true to disable creating a dev
 	// database
 	DisableDatabaseCreation bool
@@ -161,6 +170,15 @@ func NewTestController(t *testing.T, opts *TestControllerOpts) *TestController {
 	}
 	if opts.DefaultOrgId != "" {
 		tc.b.DefaultOrgId = opts.DefaultOrgId
+	}
+	if opts.DefaultAuthMethodId != "" {
+		tc.b.DevAuthMethodId = opts.DefaultAuthMethodId
+	}
+	if opts.DefaultUsername != "" {
+		tc.b.DevUsername = opts.DefaultUsername
+	}
+	if opts.DefaultPassword != "" {
+		tc.b.DevPassword = opts.DefaultPassword
 	}
 
 	// Start a logger

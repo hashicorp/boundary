@@ -6,10 +6,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/hashicorp/watchtower/internal/auth/password/store"
-	"github.com/hashicorp/watchtower/internal/db"
-	"github.com/hashicorp/watchtower/internal/iam"
-	"github.com/hashicorp/watchtower/internal/oplog"
+	"github.com/hashicorp/boundary/internal/auth/password/store"
+	"github.com/hashicorp/boundary/internal/db"
+	"github.com/hashicorp/boundary/internal/iam"
+	"github.com/hashicorp/boundary/internal/oplog"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -117,17 +117,17 @@ func TestRepository_CreateAccount(t *testing.T) {
 			wantIsErr: db.ErrInvalidParameter,
 		},
 		{
-			name: "invalid-username-to-short",
+			name: "invalid-username-too-short",
 			in: &Account{
 				Account: &store.Account{
 					AuthMethodId: authMethod.PublicId,
-					UserName:     "kaz",
+					UserName:     "ka",
 				},
 			},
 			wantIsErr: ErrTooShort,
 		},
 		{
-			name: "invalid-password-to-short",
+			name: "invalid-password-too-short",
 			in: &Account{
 				Account: &store.Account{
 					AuthMethodId: authMethod.PublicId,

@@ -3,11 +3,11 @@ package roles
 import (
 	"fmt"
 
+	"github.com/hashicorp/boundary/api"
+	"github.com/hashicorp/boundary/api/roles"
+	"github.com/hashicorp/boundary/internal/cmd/base"
+	"github.com/hashicorp/boundary/internal/perms"
 	"github.com/hashicorp/vault/sdk/helper/strutil"
-	"github.com/hashicorp/watchtower/api"
-	"github.com/hashicorp/watchtower/api/roles"
-	"github.com/hashicorp/watchtower/internal/cmd/base"
-	"github.com/hashicorp/watchtower/internal/perms"
 	"github.com/kr/pretty"
 	"github.com/mitchellh/cli"
 	"github.com/posener/complete"
@@ -27,6 +27,7 @@ type Command struct {
 	flagGrantScopeId string
 	flagPrincipals   []string
 	flagGrants       []string
+	flagVersion      int
 }
 
 func (c *Command) Synopsis() string {
@@ -38,7 +39,7 @@ func (c *Command) Synopsis() string {
 	case "add-grants", "set-grants", "remove-grants":
 		return principalsGrantsSynopsisFunc(c.Func, false)
 	}
-	return "Manage Watchtower roles"
+	return "Manage Boundary roles"
 }
 
 var helpMap = map[string]func() string{
@@ -57,15 +58,15 @@ var helpMap = map[string]func() string{
 
 var flagsMap = map[string][]string{
 	"create":            {"name", "description", "grantscopeid"},
-	"update":            {"id", "name", "description", "grantscopeid"},
+	"update":            {"id", "name", "description", "grantscopeid", "version"},
 	"read":              {"id"},
 	"delete":            {"id"},
-	"add-principals":    {"id", "principal"},
-	"set-principals":    {"id", "principal"},
-	"remove-principals": {"id", "principal"},
-	"add-grants":        {"id", "grant"},
-	"set-grants":        {"id", "grant"},
-	"remove-grants":     {"id", "grant"},
+	"add-principals":    {"id", "principal", "version"},
+	"set-principals":    {"id", "principal", "version"},
+	"remove-principals": {"id", "principal", "version"},
+	"add-grants":        {"id", "grant", "version"},
+	"set-grants":        {"id", "grant", "version"},
+	"remove-grants":     {"id", "grant", "version"},
 }
 
 func (c *Command) Help() string {
@@ -115,30 +116,28 @@ func (c *Command) Run(args []string) int {
 		return 2
 	}
 
-	role := &roles.Role{
-		Client: client,
-	}
+	var opts []roles.Option
 
 	switch c.flagName {
 	case "":
 	case "null":
-		role.SetDefault("name")
+		opts = append(opts, roles.DefaultName())
 	default:
-		role.Name = api.String(c.flagName)
+		opts = append(opts, roles.WithName(c.flagName))
 	}
 	switch c.flagDescription {
 	case "":
 	case "null":
-		role.SetDefault("description")
+		opts = append(opts, roles.DefaultDescription())
 	default:
-		role.Description = api.String(c.flagDescription)
+		opts = append(opts, roles.WithDescription(c.flagDescription))
 	}
 	switch c.flagGrantScopeId {
 	case "":
 	case "null":
-		role.SetDefault("grantscopeid")
+		opts = append(opts, roles.DefaultGrantScopeId())
 	default:
-		role.GrantScopeId = api.String(c.flagGrantScopeId)
+		opts = append(opts, roles.WithGrantScopeId(c.flagGrantScopeId))
 	}
 
 	principals := c.flagPrincipals
@@ -193,51 +192,50 @@ func (c *Command) Run(args []string) int {
 		}
 	}
 
-	var apiErr *api.Error
-
-	var existed bool
-	var listedRoles []*roles.Role
+	roleClient := roles.NewRolesClient(client)
 
 	// Perform check-and-set when needed
+	var version uint32
 	switch c.Func {
 	case "create", "read", "delete", "list":
 		// These don't udpate so don't need the existing version
 	default:
-		existingRole, existingApiErr, existingErr := role.ReadRole(c.Context, c.flagId)
-		if existingErr != nil {
-			c.UI.Error(fmt.Sprintf("Error performing initial check-and-set read: %s", err.Error()))
-			return 2
+		switch c.flagVersion {
+		case 0:
+			opts = append(opts, roles.WithAutomaticVersioning())
+		default:
+			version = uint32(c.flagVersion)
 		}
-		if existingApiErr != nil {
-			c.UI.Error(fmt.Sprintf("Error from controller when performing initial check-and-set read: %s", pretty.Sprint(apiErr)))
-			return 1
-		}
-		role.Version = existingRole.Version
 	}
+
+	var existed bool
+	var role *roles.Role
+	var listedRoles []*roles.Role
+	var apiErr *api.Error
 
 	switch c.Func {
 	case "create":
-		role, apiErr, err = role.CreateRole(c.Context, role)
+		role, apiErr, err = roleClient.Create(c.Context, opts...)
 	case "update":
-		role, apiErr, err = role.UpdateRole(c.Context, role)
+		role, apiErr, err = roleClient.Update(c.Context, c.flagId, version, opts...)
 	case "read":
-		role, apiErr, err = role.ReadRole(c.Context, c.flagId)
+		role, apiErr, err = roleClient.Read(c.Context, c.flagId, opts...)
 	case "delete":
-		existed, apiErr, err = role.DeleteRole(c.Context, c.flagId)
+		existed, apiErr, err = roleClient.Delete(c.Context, c.flagId, opts...)
 	case "list":
-		listedRoles, apiErr, err = role.ListRoles(c.Context)
+		listedRoles, apiErr, err = roleClient.List(c.Context, opts...)
 	case "add-principals":
-		role, apiErr, err = role.AddPrincipals(c.Context, c.flagId, principals)
+		role, apiErr, err = roleClient.AddPrincipals(c.Context, c.flagId, version, principals, opts...)
 	case "set-principals":
-		role, apiErr, err = role.SetPrincipals(c.Context, c.flagId, principals)
+		role, apiErr, err = roleClient.SetPrincipals(c.Context, c.flagId, version, principals, opts...)
 	case "remove-principals":
-		role, apiErr, err = role.RemovePrincipals(c.Context, c.flagId, principals)
+		role, apiErr, err = roleClient.RemovePrincipals(c.Context, c.flagId, version, principals, opts...)
 	case "add-grants":
-		role, apiErr, err = role.AddGrants(c.Context, c.flagId, grants)
+		role, apiErr, err = roleClient.AddGrants(c.Context, c.flagId, version, grants, opts...)
 	case "set-grants":
-		role, apiErr, err = role.SetGrants(c.Context, c.flagId, grants)
+		role, apiErr, err = roleClient.SetGrants(c.Context, c.flagId, version, grants, opts...)
 	case "remove-grants":
-		role, apiErr, err = role.RemoveGrants(c.Context, c.flagId, grants)
+		role, apiErr, err = roleClient.RemoveGrants(c.Context, c.flagId, version, grants, opts...)
 	}
 
 	plural := "role"
@@ -271,7 +269,6 @@ func (c *Command) Run(args []string) int {
 		return 0
 
 	case "list":
-
 		switch base.Format(c.UI) {
 		case "json":
 			if len(listedRoles) == 0 {
@@ -304,14 +301,14 @@ func (c *Command) Run(args []string) int {
 						fmt.Sprintf("  ID:               %s", r.Id),
 					)
 				}
-				if r.Name != nil {
+				if r.Name != "" {
 					output = append(output,
-						fmt.Sprintf("    Name:           %s", *r.Name),
+						fmt.Sprintf("    Name:           %s", r.Name),
 					)
 				}
-				if r.Description != nil {
+				if r.Description != "" {
 					output = append(output,
-						fmt.Sprintf("    Description:    %s", *r.Description),
+						fmt.Sprintf("    Description:    %s", r.Description),
 					)
 				}
 			}

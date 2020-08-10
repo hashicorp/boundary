@@ -7,15 +7,15 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/hashicorp/watchtower/internal/auth"
-	"github.com/hashicorp/watchtower/internal/gen/controller/api/resources/scopes"
-	pb "github.com/hashicorp/watchtower/internal/gen/controller/api/resources/scopes"
-	pbs "github.com/hashicorp/watchtower/internal/gen/controller/api/services"
-	"github.com/hashicorp/watchtower/internal/iam"
-	"github.com/hashicorp/watchtower/internal/iam/store"
-	"github.com/hashicorp/watchtower/internal/servers/controller/common"
-	"github.com/hashicorp/watchtower/internal/servers/controller/handlers"
-	"github.com/hashicorp/watchtower/internal/types/scope"
+	"github.com/hashicorp/boundary/internal/auth"
+	"github.com/hashicorp/boundary/internal/gen/controller/api/resources/scopes"
+	pb "github.com/hashicorp/boundary/internal/gen/controller/api/resources/scopes"
+	pbs "github.com/hashicorp/boundary/internal/gen/controller/api/services"
+	"github.com/hashicorp/boundary/internal/iam"
+	"github.com/hashicorp/boundary/internal/iam/store"
+	"github.com/hashicorp/boundary/internal/servers/controller/common"
+	"github.com/hashicorp/boundary/internal/servers/controller/handlers"
+	"github.com/hashicorp/boundary/internal/types/scope"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/wrapperspb"
@@ -38,7 +38,7 @@ type Service struct {
 	repo common.IamRepoFactory
 }
 
-// NewService returns a project service which handles project related requests to watchtower.
+// NewService returns a project service which handles project related requests to boundary.
 func NewService(repo common.IamRepoFactory) (Service, error) {
 	if repo == nil {
 		return Service{}, fmt.Errorf("nil iam repository provided")
@@ -126,7 +126,7 @@ func (s Service) UpdateScope(ctx context.Context, req *pbs.UpdateScopeRequest) (
 	if err := validateUpdateRequest(req); err != nil {
 		return nil, err
 	}
-	p, err := s.updateInRepo(ctx, authResults.Scope, req.GetId(), req.GetUpdateMask().GetPaths(), req.GetItem())
+	p, err := s.updateInRepo(ctx, authResults.Scope, req.GetId(), req.GetVersion(), req.GetUpdateMask().GetPaths(), req.GetItem())
 	if err != nil {
 		return nil, err
 	}
@@ -199,7 +199,7 @@ func (s Service) createInRepo(ctx context.Context, parentScope *scopes.ScopeInfo
 	return ToProto(out), nil
 }
 
-func (s Service) updateInRepo(ctx context.Context, parentScope *scopes.ScopeInfo, scopeId string, mask []string, item *pb.Scope) (*pb.Scope, error) {
+func (s Service) updateInRepo(ctx context.Context, parentScope *scopes.ScopeInfo, scopeId string, version uint32, mask []string, item *pb.Scope) (*pb.Scope, error) {
 	var opts []iam.Option
 	if desc := item.GetDescription(); desc != nil {
 		opts = append(opts, iam.WithDescription(desc.GetValue()))
@@ -227,7 +227,7 @@ func (s Service) updateInRepo(ctx context.Context, parentScope *scopes.ScopeInfo
 	if err != nil {
 		return nil, err
 	}
-	out, rowsUpdated, err := repo.UpdateScope(ctx, iamScope, dbMask)
+	out, rowsUpdated, err := repo.UpdateScope(ctx, iamScope, version, dbMask)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "Unable to update project: %v.", err)
 	}
@@ -289,6 +289,7 @@ func ToProto(in *iam.Scope) *pb.Scope {
 		Id:          in.GetPublicId(),
 		CreatedTime: in.GetCreateTime().GetTimestamp(),
 		UpdatedTime: in.GetUpdateTime().GetTimestamp(),
+		Version:     in.GetVersion(),
 	}
 	if in.GetDescription() != "" {
 		out.Description = &wrapperspb.StringValue{Value: in.GetDescription()}
@@ -362,6 +363,9 @@ func validateUpdateRequest(req *pbs.UpdateScopeRequest) error {
 	}
 	if req.GetUpdateMask() == nil {
 		badFields["update_mask"] = "UpdateMask not provided but is required to update a project."
+	}
+	if req.GetVersion() == 0 {
+		badFields["version"] = "Existing resource version is required for an update."
 	}
 
 	item := req.GetItem()

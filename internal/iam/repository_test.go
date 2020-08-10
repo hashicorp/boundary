@@ -7,13 +7,13 @@ import (
 	"time"
 
 	"github.com/golang/protobuf/ptypes"
+	"github.com/hashicorp/boundary/internal/db"
+	"github.com/hashicorp/boundary/internal/db/timestamp"
+	iam_store "github.com/hashicorp/boundary/internal/iam/store"
+	"github.com/hashicorp/boundary/internal/oplog"
+	"github.com/hashicorp/boundary/internal/oplog/store"
+	"github.com/hashicorp/boundary/internal/types/scope"
 	wrapping "github.com/hashicorp/go-kms-wrapping"
-	"github.com/hashicorp/watchtower/internal/db"
-	"github.com/hashicorp/watchtower/internal/db/timestamp"
-	iam_store "github.com/hashicorp/watchtower/internal/iam/store"
-	"github.com/hashicorp/watchtower/internal/oplog"
-	"github.com/hashicorp/watchtower/internal/oplog/store"
-	"github.com/hashicorp/watchtower/internal/types/scope"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/proto"
@@ -306,7 +306,7 @@ func TestRepository_update(t *testing.T) {
 			if tt.args.resource != nil {
 				tt.args.resource.(*Scope).PublicId = org.PublicId
 			}
-			updatedResource, rowsUpdated, err := r.update(context.Background(), tt.args.resource, tt.args.fieldMaskPaths, tt.args.setToNullPaths, tt.args.opt...)
+			updatedResource, rowsUpdated, err := r.update(context.Background(), tt.args.resource, 1, tt.args.fieldMaskPaths, tt.args.setToNullPaths, tt.args.opt...)
 			if tt.wantErr {
 				require.Error(err)
 				assert.Equal(tt.wantUpdatedRows, rowsUpdated)

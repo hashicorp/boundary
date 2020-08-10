@@ -10,22 +10,23 @@ import (
 	"time"
 
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
+	"github.com/hashicorp/boundary/api"
+	"github.com/hashicorp/boundary/globals"
+	"github.com/hashicorp/boundary/internal/auth"
+	"github.com/hashicorp/boundary/internal/gen/controller/api/services"
+	"github.com/hashicorp/boundary/internal/servers/controller/handlers/accounts"
+	"github.com/hashicorp/boundary/internal/servers/controller/handlers/authmethods"
 	"github.com/hashicorp/vault/internalshared/configutil"
 	"github.com/hashicorp/vault/sdk/helper/strutil"
-	"github.com/hashicorp/watchtower/api"
-	"github.com/hashicorp/watchtower/globals"
-	"github.com/hashicorp/watchtower/internal/auth"
-	"github.com/hashicorp/watchtower/internal/gen/controller/api/services"
-	"github.com/hashicorp/watchtower/internal/servers/controller/handlers/accounts"
 
-	"github.com/hashicorp/watchtower/internal/servers/controller/handlers"
-	"github.com/hashicorp/watchtower/internal/servers/controller/handlers/authenticate"
-	"github.com/hashicorp/watchtower/internal/servers/controller/handlers/authtokens"
-	"github.com/hashicorp/watchtower/internal/servers/controller/handlers/groups"
-	"github.com/hashicorp/watchtower/internal/servers/controller/handlers/host_catalogs"
-	"github.com/hashicorp/watchtower/internal/servers/controller/handlers/roles"
-	"github.com/hashicorp/watchtower/internal/servers/controller/handlers/scopes"
-	"github.com/hashicorp/watchtower/internal/servers/controller/handlers/users"
+	"github.com/hashicorp/boundary/internal/servers/controller/handlers"
+	"github.com/hashicorp/boundary/internal/servers/controller/handlers/authenticate"
+	"github.com/hashicorp/boundary/internal/servers/controller/handlers/authtokens"
+	"github.com/hashicorp/boundary/internal/servers/controller/handlers/groups"
+	"github.com/hashicorp/boundary/internal/servers/controller/handlers/host_catalogs"
+	"github.com/hashicorp/boundary/internal/servers/controller/handlers/roles"
+	"github.com/hashicorp/boundary/internal/servers/controller/handlers/scopes"
+	"github.com/hashicorp/boundary/internal/servers/controller/handlers/users"
 	"google.golang.org/protobuf/encoding/protojson"
 )
 
@@ -88,12 +89,19 @@ func handleGrpcGateway(c *Controller) (http.Handler, error) {
 	if err := services.RegisterAccountServiceHandlerServer(ctx, mux, accts); err != nil {
 		return nil, fmt.Errorf("failed to register account service handler: %w", err)
 	}
-	auths, err := authenticate.NewService(c.IamRepoFn, c.AuthTokenRepoFn)
+	auths, err := authenticate.NewService(c.PasswordAuthRepoFn, c.IamRepoFn, c.AuthTokenRepoFn)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create authentication handler service: %w", err)
 	}
 	if err := services.RegisterAuthenticationServiceHandlerServer(ctx, mux, auths); err != nil {
 		return nil, fmt.Errorf("failed to register authenticate service handler: %w", err)
+	}
+	authMethods, err := authmethods.NewService(c.PasswordAuthRepoFn)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create auth method handler service: %w", err)
+	}
+	if err := services.RegisterAuthMethodServiceHandlerServer(ctx, mux, authMethods); err != nil {
+		return nil, fmt.Errorf("failed to register auth method service handler: %w", err)
 	}
 	authtoks, err := authtokens.NewService(c.AuthTokenRepoFn)
 	if err != nil {
@@ -148,10 +156,10 @@ func wrapHandlerWithCommonFuncs(h http.Handler, c *Controller, props HandlerProp
 		maxRequestSize = globals.DefaultMaxRequestSize
 	}
 
-	logUrls := os.Getenv("WATCHTOWER_LOG_URLS") != ""
+	logUrls := os.Getenv("BOUNDARY_LOG_URLS") != ""
 
 	disableAuthzFailures := c.conf.DisableAuthorizationFailures ||
-		(c.conf.RawConfig.DevController && os.Getenv("WATCHTOWER_DEV_SKIP_AUTHZ") != "")
+		(c.conf.RawConfig.DevController && os.Getenv("BOUNDARY_DEV_SKIP_AUTHZ") != "")
 	if disableAuthzFailures {
 		c.logger.Warn("AUTHORIZATION CHECKING DISABLED")
 	}

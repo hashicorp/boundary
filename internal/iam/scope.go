@@ -6,11 +6,11 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/hashicorp/watchtower/internal/db"
-	"github.com/hashicorp/watchtower/internal/iam/store"
-	"github.com/hashicorp/watchtower/internal/types/action"
-	"github.com/hashicorp/watchtower/internal/types/resource"
-	"github.com/hashicorp/watchtower/internal/types/scope"
+	"github.com/hashicorp/boundary/internal/db"
+	"github.com/hashicorp/boundary/internal/iam/store"
+	"github.com/hashicorp/boundary/internal/types/action"
+	"github.com/hashicorp/boundary/internal/types/resource"
+	"github.com/hashicorp/boundary/internal/types/scope"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -28,10 +28,10 @@ type Scope struct {
 	tableName string `gorm:"-"`
 }
 
-// ensure that Scope implements the interfaces of: Resource, Clonable, and db.VetForWriter
+// ensure that Scope implements the interfaces of: Resource, Cloneable, and db.VetForWriter
 var _ Resource = (*Scope)(nil)
 var _ db.VetForWriter = (*Scope)(nil)
-var _ Clonable = (*Scope)(nil)
+var _ Cloneable = (*Scope)(nil)
 
 func NewOrg(opt ...Option) (*Scope, error) {
 	global := allocScope()

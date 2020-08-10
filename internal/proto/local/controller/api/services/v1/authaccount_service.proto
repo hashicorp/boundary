@@ -2,13 +2,13 @@ syntax = "proto3";
 
 package controller.api.services.v1;
 
-option go_package = "github.com/hashicorp/watchtower/internal/gen/controller/api/services;services";
+option go_package = "github.com/hashicorp/boundary/internal/gen/controller/api/services;services";
 
 import "protoc-gen-openapiv2/options/annotations.proto";
 import "google/api/annotations.proto";
 import "google/protobuf/field_mask.proto";
 import "google/protobuf/wrappers.proto";
-import "controller/api/resources/auth/v1/account.proto";
+import "controller/api/resources/authmethods/v1/account.proto";
 
 service AccountService {
 
@@ -39,7 +39,7 @@ service AccountService {
     };
   }
 
-  // CreateAccount creates and stores an account in watchtower. The provided
+  // CreateAccount creates and stores an account in boundary. The provided
   // request must include the auth method id in which the account will be created.
   // If the auth method id is missing, malformed or references a non existing
   // auth method, an error is returned. If a name is provided that is in
@@ -55,7 +55,7 @@ service AccountService {
     };
   }
 
-  // UpdateAccount updates an existing account in watchtower. The provided account
+  // UpdateAccount updates an existing account in boundary. The provided account
   // must not have any read only fields set. The update mask must be included in
   // the request and contain at least 1 mutable field. To unset a field's value,
   // include the field in the update mask and don't set it in the provided
@@ -74,7 +74,7 @@ service AccountService {
     };
   }
 
-  // DeleteAccount removes an account from Watchtower. If the provided auth mehtod
+  // DeleteAccount removes an account from Boundary. If the provided auth mehtod
   // or account ids are malformed or not provided an error is returned. No error is
   // returned if either ids reference resources that do not exist as the
   // response itself specifies if the resource existed before the DeleteAccount
@@ -96,7 +96,7 @@ message GetAccountRequest {
 }
 
 message GetAccountResponse {
-  resources.auth.v1.Account item = 1;
+  resources.authmethods.v1.Account item = 1;
 }
 
 message ListAccountsRequest {
@@ -105,28 +105,28 @@ message ListAccountsRequest {
 }
 
 message ListAccountsResponse {
-  repeated resources.auth.v1.Account items = 1;
+  repeated resources.authmethods.v1.Account items = 1;
 }
 
 message CreateAccountRequest {
   string auth_method_id = 1;
-  resources.auth.v1.Account item = 2;
+  resources.authmethods.v1.Account item = 2;
 }
 
 message CreateAccountResponse {
   string uri = 1;
-  resources.auth.v1.Account item = 2;
+  resources.authmethods.v1.Account item = 2;
 }
 
 message UpdateAccountRequest {
   string auth_method_id = 1;
   string id = 2;
-  resources.auth.v1.Account item = 3;
+  resources.authmethods.v1.Account item = 3;
   google.protobuf.FieldMask update_mask = 4;
 }
 
 message UpdateAccountResponse {
-  resources.auth.v1.Account item = 1;
+  resources.authmethods.v1.Account item = 1;
 }
 
 message DeleteAccountRequest {

@@ -8,14 +8,14 @@ import (
 
 	"github.com/golang/protobuf/ptypes"
 	"github.com/google/go-cmp/cmp"
-	"github.com/hashicorp/watchtower/internal/auth"
-	"github.com/hashicorp/watchtower/internal/db"
-	pb "github.com/hashicorp/watchtower/internal/gen/controller/api/resources/groups"
-	"github.com/hashicorp/watchtower/internal/gen/controller/api/resources/scopes"
-	pbs "github.com/hashicorp/watchtower/internal/gen/controller/api/services"
-	"github.com/hashicorp/watchtower/internal/iam"
-	"github.com/hashicorp/watchtower/internal/servers/controller/handlers/groups"
-	"github.com/hashicorp/watchtower/internal/types/scope"
+	"github.com/hashicorp/boundary/internal/auth"
+	"github.com/hashicorp/boundary/internal/db"
+	pb "github.com/hashicorp/boundary/internal/gen/controller/api/resources/groups"
+	"github.com/hashicorp/boundary/internal/gen/controller/api/resources/scopes"
+	pbs "github.com/hashicorp/boundary/internal/gen/controller/api/services"
+	"github.com/hashicorp/boundary/internal/iam"
+	"github.com/hashicorp/boundary/internal/servers/controller/handlers/groups"
+	"github.com/hashicorp/boundary/internal/types/scope"
 	"google.golang.org/genproto/protobuf/field_mask"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -534,13 +534,23 @@ func TestUpdate(t *testing.T) {
 	pg := iam.TestGroup(t, conn, p.GetPublicId(), iam.WithDescription("default"), iam.WithName("default"))
 	_ = iam.TestGroupMember(t, conn, pg.GetPublicId(), u.GetPublicId())
 
-	resetGroups := func() {
+	var ogVersion uint32 = 1
+	var pgVersion uint32 = 1
+
+	resetGroups := func(proj bool) {
 		repo, err := repoFn()
 		require.NoError(err, "Couldn't get a new repo")
-		og, _, _, err = repo.UpdateGroup(context.Background(), og, []string{"Name", "Description"})
-		require.NoError(err, "Failed to reset the group")
-		pg, _, _, err = repo.UpdateGroup(context.Background(), pg, []string{"Name", "Description"})
-		require.NoError(err, "Failed to reset the group")
+		if proj {
+			pgVersion++
+			pg, _, _, err = repo.UpdateGroup(context.Background(), pg, pgVersion, []string{"Name", "Description"})
+			require.NoError(err, "Failed to reset the group")
+			pgVersion++
+		} else {
+			ogVersion++
+			og, _, _, err = repo.UpdateGroup(context.Background(), og, ogVersion, []string{"Name", "Description"})
+			require.NoError(err, "Failed to reset the group")
+			ogVersion++
+		}
 	}
 
 	created, err := ptypes.Timestamp(og.GetCreateTime().GetTimestamp())
@@ -868,13 +878,31 @@ func TestUpdate(t *testing.T) {
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			defer resetGroups()
+			ver := ogVersion
+			if tc.req.Id == pg.PublicId {
+				ver = pgVersion
+			}
+			tc.req.Version = ver
+
 			assert := assert.New(t)
 			req := proto.Clone(toMerge).(*pbs.UpdateGroupRequest)
 			proto.Merge(req, tc.req)
 
+			// Test with bad version (too high, too low)
+			req.Version = ver + 2
+			_, gErr := tested.UpdateGroup(auth.DisabledAuthTestContext(auth.WithScopeId(tc.scopeId)), req)
+			require.Error(gErr)
+			req.Version = ver - 1
+			_, gErr = tested.UpdateGroup(auth.DisabledAuthTestContext(auth.WithScopeId(tc.scopeId)), req)
+			require.Error(gErr)
+			req.Version = ver
+
 			got, gErr := tested.UpdateGroup(auth.DisabledAuthTestContext(auth.WithScopeId(tc.scopeId)), req)
 			assert.Equal(tc.errCode, status.Code(gErr), "UpdateGroup(%+v) got error %v, wanted %v", req, gErr, tc.errCode)
+
+			if tc.errCode == codes.OK {
+				defer resetGroups(req.Id == pg.PublicId)
+			}
 
 			if got != nil {
 				assert.NotNilf(tc.res, "Expected UpdateGroup response to be nil, but was %v", got)
@@ -885,8 +913,9 @@ func TestUpdate(t *testing.T) {
 
 				// Clear all values which are hard to compare against.
 				got.Item.UpdatedTime, tc.res.Item.UpdatedTime = nil, nil
-				// TODO: Figure out the best way to test version updates.
-				got.Item.Version = 0
+
+				assert.Equal(ver+1, got.GetItem().GetVersion())
+				tc.res.Item.Version = ver + 1
 			}
 			assert.Empty(cmp.Diff(got, tc.res, protocmp.Transform()), "UpdateGroup(%q) got response %q, wanted %q", req, got, tc.res)
 		})
@@ -949,9 +978,11 @@ func TestAddMember(t *testing.T) {
 				grp := iam.TestGroup(t, conn, scp.GetPublicId())
 				tc.setup(grp)
 				req := &pbs.AddGroupMembersRequest{
-					Id:        grp.GetPublicId(),
-					Version:   &wrapperspb.UInt32Value{Value: grp.GetVersion()},
-					MemberIds: tc.addUsers,
+					Id:      grp.GetPublicId(),
+					Version: grp.GetVersion(),
+					Item: &pbs.GroupMemberIdsMessage{
+						MemberIds: tc.addUsers,
+					},
 				}
 
 				got, err := s.AddGroupMembers(auth.DisabledAuthTestContext(auth.WithScopeId(scp.GetPublicId())), req)
@@ -979,7 +1010,7 @@ func TestAddMember(t *testing.T) {
 			name: "Bad Group Id",
 			req: &pbs.AddGroupMembersRequest{
 				Id:      "bad id",
-				Version: &wrapperspb.UInt32Value{Value: grp.GetVersion()},
+				Version: grp.GetVersion(),
 			},
 			errCode: codes.InvalidArgument,
 		},
@@ -1050,9 +1081,11 @@ func TestSetMember(t *testing.T) {
 				grp := iam.TestGroup(t, conn, scp.GetPublicId())
 				tc.setup(grp)
 				req := &pbs.SetGroupMembersRequest{
-					Id:        grp.GetPublicId(),
-					Version:   &wrapperspb.UInt32Value{Value: grp.GetVersion()},
-					MemberIds: tc.setUsers,
+					Id:      grp.GetPublicId(),
+					Version: grp.GetVersion(),
+					Item: &pbs.GroupMemberIdsMessage{
+						MemberIds: tc.setUsers,
+					},
 				}
 
 				got, err := s.SetGroupMembers(auth.DisabledAuthTestContext(auth.WithScopeId(scp.GetPublicId())), req)
@@ -1080,7 +1113,7 @@ func TestSetMember(t *testing.T) {
 			name: "Bad Group Id",
 			req: &pbs.SetGroupMembersRequest{
 				Id:      "bad id",
-				Version: &wrapperspb.UInt32Value{Value: grp.GetVersion()},
+				Version: grp.GetVersion(),
 			},
 			errCode: codes.InvalidArgument,
 		},
@@ -1159,9 +1192,11 @@ func TestRemoveMember(t *testing.T) {
 				grp := iam.TestGroup(t, conn, scp.GetPublicId())
 				tc.setup(grp)
 				req := &pbs.RemoveGroupMembersRequest{
-					Id:        grp.GetPublicId(),
-					Version:   &wrapperspb.UInt32Value{Value: grp.GetVersion()},
-					MemberIds: tc.removeUsers,
+					Id:      grp.GetPublicId(),
+					Version: grp.GetVersion(),
+					Item: &pbs.GroupMemberIdsMessage{
+						MemberIds: tc.removeUsers,
+					},
 				}
 
 				got, err := s.RemoveGroupMembers(auth.DisabledAuthTestContext(auth.WithScopeId(scp.GetPublicId())), req)
@@ -1189,7 +1224,7 @@ func TestRemoveMember(t *testing.T) {
 			name: "Bad Group Id",
 			req: &pbs.AddGroupMembersRequest{
 				Id:      "bad id",
-				Version: &wrapperspb.UInt32Value{Value: grp.GetVersion()},
+				Version: grp.GetVersion(),
 			},
 			errCode: codes.InvalidArgument,
 		},

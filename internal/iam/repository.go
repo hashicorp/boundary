@@ -6,10 +6,10 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/hashicorp/boundary/internal/db"
+	"github.com/hashicorp/boundary/internal/oplog"
+	"github.com/hashicorp/boundary/internal/types/scope"
 	wrapping "github.com/hashicorp/go-kms-wrapping"
-	"github.com/hashicorp/watchtower/internal/db"
-	"github.com/hashicorp/watchtower/internal/oplog"
-	"github.com/hashicorp/watchtower/internal/types/scope"
 )
 
 var (
@@ -40,7 +40,7 @@ func NewRepository(r db.Reader, w db.Writer, wrapper wrapping.Wrapper, opt ...Op
 	}
 	opts := getOpts(opt...)
 	if opts.withLimit == 0 {
-		// zero signals the watchtower defaults should be used.
+		// zero signals the boundary defaults should be used.
 		opts.withLimit = db.DefaultLimit
 	}
 	return &Repository{
@@ -68,9 +68,9 @@ func (r *Repository) create(ctx context.Context, resource Resource, opt ...Optio
 	if resource == nil {
 		return nil, errors.New("error creating resource that is nil")
 	}
-	resourceCloner, ok := resource.(Clonable)
+	resourceCloner, ok := resource.(Cloneable)
 	if !ok {
-		return nil, errors.New("error resource is not clonable for create")
+		return nil, errors.New("error resource is not Cloneable for create")
 	}
 	metadata, err := r.stdMetadata(ctx, resource)
 	if err != nil {
@@ -96,13 +96,16 @@ func (r *Repository) create(ctx context.Context, resource Resource, opt ...Optio
 }
 
 // update will update an iam resource in the db repository with an oplog entry
-func (r *Repository) update(ctx context.Context, resource Resource, fieldMaskPaths []string, setToNullPaths []string, opt ...Option) (Resource, int, error) {
+func (r *Repository) update(ctx context.Context, resource Resource, version uint32, fieldMaskPaths []string, setToNullPaths []string, opt ...Option) (Resource, int, error) {
+	if version == 0 {
+		return nil, db.NoRowsAffected, errors.New("resource version cannot be zero during update")
+	}
 	if resource == nil {
 		return nil, db.NoRowsAffected, errors.New("error updating resource that is nil")
 	}
-	resourceCloner, ok := resource.(Clonable)
+	resourceCloner, ok := resource.(Cloneable)
 	if !ok {
-		return nil, db.NoRowsAffected, errors.New("error resource is not clonable for update")
+		return nil, db.NoRowsAffected, errors.New("error resource is not Cloneable for update")
 	}
 	metadata, err := r.stdMetadata(ctx, resource)
 	if err != nil {
@@ -110,7 +113,10 @@ func (r *Repository) update(ctx context.Context, resource Resource, fieldMaskPat
 	}
 	metadata["op-type"] = []string{oplog.OpType_OP_TYPE_UPDATE.String()}
 
-	dbOpts := []db.Option{db.WithOplog(r.wrapper, metadata)}
+	dbOpts := []db.Option{
+		db.WithOplog(r.wrapper, metadata),
+		db.WithVersion(&version),
+	}
 	opts := getOpts(opt...)
 	if opts.withSkipVetForWrite {
 		dbOpts = append(dbOpts, db.WithSkipVetForWrite(true))
@@ -147,9 +153,9 @@ func (r *Repository) delete(ctx context.Context, resource Resource, opt ...Optio
 	if resource == nil {
 		return db.NoRowsAffected, errors.New("error deleting resource that is nil")
 	}
-	resourceCloner, ok := resource.(Clonable)
+	resourceCloner, ok := resource.(Cloneable)
 	if !ok {
-		return db.NoRowsAffected, errors.New("error resource is not clonable for delete")
+		return db.NoRowsAffected, errors.New("error resource is not Cloneable for delete")
 	}
 	metadata, err := r.stdMetadata(ctx, resource)
 	if err != nil {

@@ -4,8 +4,8 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/hashicorp/watchtower/internal/db"
-	"github.com/hashicorp/watchtower/internal/iam/store"
+	"github.com/hashicorp/boundary/internal/db"
+	"github.com/hashicorp/boundary/internal/iam/store"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -60,8 +60,8 @@ type GroupMemberUser struct {
 	tableName string `gorm:"-"`
 }
 
-// ensure that GroupMember implements the interfaces of: Clonable, db.VetForWriter
-var _ Clonable = (*GroupMemberUser)(nil)
+// ensure that GroupMember implements the interfaces of: Cloneable, db.VetForWriter
+var _ Cloneable = (*GroupMemberUser)(nil)
 var _ db.VetForWriter = (*GroupMemberUser)(nil)
 
 // NewGroupMemberUser creates a new in memory user member of the group. No

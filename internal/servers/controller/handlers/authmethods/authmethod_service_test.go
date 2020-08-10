@@ -7,15 +7,15 @@ import (
 
 	"github.com/golang/protobuf/ptypes"
 	"github.com/google/go-cmp/cmp"
-	"github.com/hashicorp/watchtower/internal/auth"
-	"github.com/hashicorp/watchtower/internal/auth/password"
-	"github.com/hashicorp/watchtower/internal/db"
-	pb "github.com/hashicorp/watchtower/internal/gen/controller/api/resources/auth"
-	"github.com/hashicorp/watchtower/internal/gen/controller/api/resources/scopes"
-	pbs "github.com/hashicorp/watchtower/internal/gen/controller/api/services"
-	"github.com/hashicorp/watchtower/internal/iam"
-	"github.com/hashicorp/watchtower/internal/servers/controller/handlers/authmethods"
-	"github.com/hashicorp/watchtower/internal/types/scope"
+	"github.com/hashicorp/boundary/internal/auth"
+	"github.com/hashicorp/boundary/internal/auth/password"
+	"github.com/hashicorp/boundary/internal/db"
+	pb "github.com/hashicorp/boundary/internal/gen/controller/api/resources/authmethods"
+	"github.com/hashicorp/boundary/internal/gen/controller/api/resources/scopes"
+	pbs "github.com/hashicorp/boundary/internal/gen/controller/api/services"
+	"github.com/hashicorp/boundary/internal/iam"
+	"github.com/hashicorp/boundary/internal/servers/controller/handlers/authmethods"
+	"github.com/hashicorp/boundary/internal/types/scope"
 	"google.golang.org/genproto/protobuf/field_mask"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -45,7 +45,7 @@ func TestGet(t *testing.T) {
 		Type:        "password",
 		Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
 			"min_password_length":  structpb.NewNumberValue(8),
-			"min_user_name_length": structpb.NewNumberValue(5),
+			"min_user_name_length": structpb.NewNumberValue(3),
 		}},
 		Scope: &scopes.ScopeInfo{
 			Id:   o.GetPublicId(),
@@ -125,7 +125,7 @@ func TestList(t *testing.T) {
 			Type:        "password",
 			Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
 				"min_password_length":  structpb.NewNumberValue(8),
-				"min_user_name_length": structpb.NewNumberValue(5),
+				"min_user_name_length": structpb.NewNumberValue(3),
 			}},
 		})
 	}
@@ -140,7 +140,7 @@ func TestList(t *testing.T) {
 			Type:        "password",
 			Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
 				"min_password_length":  structpb.NewNumberValue(8),
-				"min_user_name_length": structpb.NewNumberValue(5),
+				"min_user_name_length": structpb.NewNumberValue(3),
 			}},
 		})
 	}
@@ -313,7 +313,7 @@ func TestCreate(t *testing.T) {
 					Type:        "password",
 					Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
 						"min_password_length":  structpb.NewNumberValue(8),
-						"min_user_name_length": structpb.NewNumberValue(5),
+						"min_user_name_length": structpb.NewNumberValue(3),
 					}},
 				},
 			},
@@ -371,7 +371,7 @@ func TestCreate(t *testing.T) {
 				Type:        "password",
 				Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
 					"invalid_field":        structpb.NewStringValue("invalid_value"),
-					"min_user_name_length": structpb.NewNumberValue(5),
+					"min_user_name_length": structpb.NewNumberValue(3),
 				}},
 			}},
 			res:     nil,
@@ -465,7 +465,7 @@ func TestUpdate(t *testing.T) {
 					Type:        "password",
 					Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
 						"min_password_length":  structpb.NewNumberValue(8),
-						"min_user_name_length": structpb.NewNumberValue(5),
+						"min_user_name_length": structpb.NewNumberValue(3),
 					}},
 				},
 			},
@@ -489,7 +489,7 @@ func TestUpdate(t *testing.T) {
 					Type:        "password",
 					Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
 						"min_password_length":  structpb.NewNumberValue(8),
-						"min_user_name_length": structpb.NewNumberValue(5),
+						"min_user_name_length": structpb.NewNumberValue(3),
 					}},
 				},
 			},
@@ -543,7 +543,7 @@ func TestUpdate(t *testing.T) {
 					Type:        "password",
 					Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
 						"min_password_length":  structpb.NewNumberValue(8),
-						"min_user_name_length": structpb.NewNumberValue(5),
+						"min_user_name_length": structpb.NewNumberValue(3),
 					}},
 				},
 			},
@@ -567,7 +567,7 @@ func TestUpdate(t *testing.T) {
 					Type:        "password",
 					Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
 						"min_password_length":  structpb.NewNumberValue(8),
-						"min_user_name_length": structpb.NewNumberValue(5),
+						"min_user_name_length": structpb.NewNumberValue(3),
 					}},
 				},
 			},
@@ -591,7 +591,7 @@ func TestUpdate(t *testing.T) {
 					Type:        "password",
 					Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
 						"min_password_length":  structpb.NewNumberValue(8),
-						"min_user_name_length": structpb.NewNumberValue(5),
+						"min_user_name_length": structpb.NewNumberValue(3),
 					}},
 				},
 			},

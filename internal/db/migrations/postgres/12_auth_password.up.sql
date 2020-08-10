@@ -64,7 +64,7 @@ begin;
     description text,
     create_time wt_timestamp,
     update_time wt_timestamp,
-    min_user_name_length int not null default 5,
+    min_user_name_length int not null default 3,
     min_password_length int not null default 8,
     foreign key (scope_id, public_id)
       references auth_method (scope_id, public_id)
@@ -200,6 +200,20 @@ begin;
          set password_conf_id = new.password_conf_id
        where private_id = new.private_id;
     end if;
+    return null; -- result is ignored since this is an after trigger
+  end;
+  $$ language plpgsql;
+
+  -- delete_auth_password_credential_subtype() is an after delete trigger
+  -- function for subtypes of auth_password_credential
+  create or replace function
+    delete_auth_password_credential_subtype()
+    returns trigger
+  as $$
+  begin
+    delete
+      from auth_password_credential
+     where private_id = old.private_id;
     return null; -- result is ignored since this is an after trigger
   end;
   $$ language plpgsql;

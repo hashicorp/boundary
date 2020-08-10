@@ -4,9 +4,9 @@ import (
 	"context"
 	"testing"
 
-	"github.com/hashicorp/watchtower/internal/auth/password/store"
-	"github.com/hashicorp/watchtower/internal/db"
-	"github.com/hashicorp/watchtower/internal/iam"
+	"github.com/hashicorp/boundary/internal/auth/password/store"
+	"github.com/hashicorp/boundary/internal/db"
+	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -32,7 +32,7 @@ func TestAuthMethod_New(t *testing.T) {
 			args: args{},
 			want: &AuthMethod{
 				AuthMethod: &store.AuthMethod{
-					MinUserNameLength: 5,
+					MinUserNameLength: 3,
 					MinPasswordLength: 8,
 				},
 			},
@@ -47,7 +47,7 @@ func TestAuthMethod_New(t *testing.T) {
 			want: &AuthMethod{
 				AuthMethod: &store.AuthMethod{
 					Name:              "test-name",
-					MinUserNameLength: 5,
+					MinUserNameLength: 3,
 					MinPasswordLength: 8,
 				},
 			},
@@ -62,7 +62,7 @@ func TestAuthMethod_New(t *testing.T) {
 			want: &AuthMethod{
 				AuthMethod: &store.AuthMethod{
 					Description:       "test-description",
-					MinUserNameLength: 5,
+					MinUserNameLength: 3,
 					MinPasswordLength: 8,
 				},
 			},

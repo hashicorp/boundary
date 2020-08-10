@@ -6,15 +6,16 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/hashicorp/boundary/globals"
+	"github.com/hashicorp/boundary/internal/auth/password"
+	"github.com/hashicorp/boundary/internal/cmd/base"
+	"github.com/hashicorp/boundary/internal/cmd/config"
+	"github.com/hashicorp/boundary/internal/servers/controller"
 	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/vault/internalshared/configutil"
 	"github.com/hashicorp/vault/sdk/helper/mlock"
 	"github.com/hashicorp/vault/sdk/helper/strutil"
-	"github.com/hashicorp/watchtower/globals"
-	"github.com/hashicorp/watchtower/internal/cmd/base"
-	"github.com/hashicorp/watchtower/internal/cmd/config"
-	"github.com/hashicorp/watchtower/internal/servers/controller"
 	"github.com/mitchellh/cli"
 	"github.com/posener/complete"
 )
@@ -44,7 +45,8 @@ type Command struct {
 	flagLogFormat                      string
 	flagCombineLogs                    bool
 	flagDev                            bool
-	flagDevAdminPassword               string
+	flagDevUsername                    string
+	flagDevPassword                    string
 	flagDevControllerAPIListenAddr     string
 	flagDevControllerClusterListenAddr string
 	flagDevOrgId                       string
@@ -53,16 +55,16 @@ type Command struct {
 }
 
 func (c *Command) Synopsis() string {
-	return "Start a Watchtower controller"
+	return "Start a Boundary controller"
 }
 
 func (c *Command) Help() string {
 	helpText := `
-Usage: watchtower controller [options]
+Usage: boundary controller [options]
 
   Start a controller with a configuration file:
 
-      $ watchtower controller -config=/etc/watchtower/controller.hcl
+      $ boundary controller -config=/etc/boundary/controller.hcl
 
   For a full list of examples, please see the documentation.
 
@@ -89,7 +91,7 @@ func (c *Command) Flags() *base.FlagSets {
 		Name:       "log-level",
 		Target:     &c.flagLogLevel,
 		Default:    base.NotSetValue,
-		EnvVar:     "WATCHTOWER_LOG_LEVEL",
+		EnvVar:     "BOUNDARY_LOG_LEVEL",
 		Completion: complete.PredictSet("trace", "debug", "info", "warn", "err"),
 		Usage: "Log verbosity level. Supported values (in order of more detail to less) are " +
 			"\"trace\", \"debug\", \"info\", \"warn\", and \"err\".",
@@ -129,24 +131,32 @@ func (c *Command) Flags() *base.FlagSets {
 	})
 
 	f.StringVar(&base.StringVar{
-		Name:   "dev-admin-password",
-		Target: &c.flagDevAdminPassword,
-		EnvVar: "WATCHTWER_DEV_ADMIN_PASSWORD",
+		Name:   "dev-password",
+		Target: &c.flagDevPassword,
+		EnvVar: "WATCHTWER_DEV_PASSWORD",
 		Usage: "Initial admin password. This only applies when running in \"dev\" " +
+			"mode.",
+	})
+
+	f.StringVar(&base.StringVar{
+		Name:   "dev-username",
+		Target: &c.flagDevUsername,
+		EnvVar: "WATCHTWER_DEV_USERNAME",
+		Usage: "Initial admin username. This only applies when running in \"dev\" " +
 			"mode.",
 	})
 
 	f.StringVar(&base.StringVar{
 		Name:   "dev-api-listen-address",
 		Target: &c.flagDevControllerAPIListenAddr,
-		EnvVar: "WATCHTOWER_DEV_CONTROLLER_API_LISTEN_ADDRESS",
+		EnvVar: "BOUNDARY_DEV_CONTROLLER_API_LISTEN_ADDRESS",
 		Usage:  "Address to bind the controller to in \"dev\" mode for \"api\" purpose.",
 	})
 
 	f.StringVar(&base.StringVar{
 		Name:   "dev-cluster-listen-address",
 		Target: &c.flagDevControllerClusterListenAddr,
-		EnvVar: "WATCHTOWER_DEV_CONTROLLER_CLUSTER_LISTEN_ADDRESS",
+		EnvVar: "BOUNDARY_DEV_CONTROLLER_CLUSTER_LISTEN_ADDRESS",
 		Usage:  "Address to bind the controller to in \"dev\" mode for \"cluster\" purpose.",
 	})
 
@@ -206,14 +216,14 @@ func (c *Command) Run(args []string) int {
 	}
 
 	// If mlockall(2) isn't supported, show a warning. We disable this in dev
-	// because it is quite scary to see when first using Watchtower. We also disable
+	// because it is quite scary to see when first using Boundary. We also disable
 	// this if the user has explicitly disabled mlock in configuration.
 	if !c.flagDev && !c.Config.DisableMlock && !mlock.Supported() {
 		c.UI.Warn(base.WrapAtLength(
 			"WARNING! mlock is not supported on this system! An mlockall(2)-like " +
 				"syscall to prevent memory from being swapped to disk is not " +
-				"supported on this system. For better security, only run Watchtower on " +
-				"systems where this call is supported. If you are running Watchtower" +
+				"supported on this system. For better security, only run Boundary on " +
+				"systems where this call is supported. If you are running Boundary" +
 				"in a Docker container, provide the IPC_LOCK cap to the container."))
 	}
 
@@ -322,11 +332,16 @@ func (c *Command) ParseFlagsAndConfig(args []string) int {
 		case len(c.flagConfig) == 0:
 			c.UI.Error("Must specify a config file using -config")
 			return 1
-		case c.flagDevAdminPassword != "":
+		case c.flagDevPassword != "":
 			c.UI.Warn(base.WrapAtLength(
 				"You cannot specify a custom admin password outside of \"dev\" mode. " +
 					"Your request has been ignored."))
-			c.flagDevAdminPassword = ""
+			c.flagDevPassword = ""
+		case c.flagDevUsername != "":
+			c.UI.Warn(base.WrapAtLength(
+				"You cannot specify a custom admin username outside of \"dev\" mode. " +
+					"Your request has been ignored."))
+			c.flagDevUsername = ""
 		}
 
 		c.Config, err = config.LoadFile(c.flagConfig, c.configKMS)
@@ -346,15 +361,22 @@ func (c *Command) ParseFlagsAndConfig(args []string) int {
 			c.Config.DefaultOrgId = c.flagDevOrgId
 		}
 		if c.flagDevAuthMethodId != "" {
-			if !strings.HasPrefix(c.flagDevAuthMethodId, "am_") {
-				c.UI.Error(fmt.Sprintf("Invalid dev auth method ID, must start with %q", "am_"))
+			prefix := password.AuthMethodPrefix + "_"
+			if !strings.HasPrefix(c.flagDevAuthMethodId, prefix) {
+				c.UI.Error(fmt.Sprintf("Invalid dev auth method ID, must start with %q", prefix))
 				return 1
 			}
 			if len(c.flagDevAuthMethodId) != 13 {
-				c.UI.Error(fmt.Sprintf("Invalid dev auth method ID, must be 10 base62 characters after %q", "am_"))
+				c.UI.Error(fmt.Sprintf("Invalid dev auth method ID, must be 10 base62 characters after %q", prefix))
 				return 1
 			}
 			c.DevAuthMethodId = c.flagDevAuthMethodId
+		}
+		if c.flagDevUsername != "" {
+			c.DevUsername = c.flagDevUsername
+		}
+		if c.flagDevPassword != "" {
+			c.DevPassword = c.flagDevPassword
 		}
 
 		c.Config.PassthroughDirectory = c.flagDevPassthroughDirectory
@@ -430,7 +452,7 @@ func (c *Command) WaitForInterrupt() int {
 	for !shutdownTriggered {
 		select {
 		case <-shutdownCh:
-			c.UI.Output("==> Watchtower controller shutdown triggered")
+			c.UI.Output("==> Boundary controller shutdown triggered")
 
 			if err := c.controller.Shutdown(); err != nil {
 				c.UI.Error(fmt.Errorf("Error with controller shutdown: %w", err).Error())
@@ -439,7 +461,7 @@ func (c *Command) WaitForInterrupt() int {
 			shutdownTriggered = true
 
 		case <-c.SighupCh:
-			c.UI.Output("==> Watchtower controller reload triggered")
+			c.UI.Output("==> Boundary controller reload triggered")
 
 			// Check for new log level
 			var level hclog.Level

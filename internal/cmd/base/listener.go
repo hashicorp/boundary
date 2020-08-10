@@ -96,7 +96,7 @@ func tcpListenerFactory(l *configutil.Listener, logger hclog.Logger, ui cli.Ui) 
 		"addr": l.Address,
 	}
 
-	if _, ok := os.LookupEnv("WATCHTOWER_LOG_CONNECTION_MUXING"); !ok {
+	if _, ok := os.LookupEnv("BOUNDARY_LOG_CONNECTION_MUXING"); !ok {
 		logger = nil
 	}
 	alpnMux := alpnmux.New(ln, logger)
@@ -179,12 +179,16 @@ type TCPKeepAliveListener struct {
 	*net.TCPListener
 }
 
-func (ln TCPKeepAliveListener) Accept() (c net.Conn, err error) {
+func (ln TCPKeepAliveListener) Accept() (net.Conn, error) {
 	tc, err := ln.AcceptTCP()
 	if err != nil {
-		return
+		return nil, err
 	}
-	tc.SetKeepAlive(true)
-	tc.SetKeepAlivePeriod(3 * time.Minute)
+	if err := tc.SetKeepAlive(true); err != nil {
+		return nil, err
+	}
+	if err := tc.SetKeepAlivePeriod(3 * time.Minute); err != nil {
+		return nil, err
+	}
 	return tc, nil
 }

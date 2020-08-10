@@ -4,9 +4,8 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/hashicorp/watchtower/api"
-	"github.com/hashicorp/watchtower/api/scopes"
-	"github.com/hashicorp/watchtower/internal/cmd/base"
+	"github.com/hashicorp/boundary/api/scopes"
+	"github.com/hashicorp/boundary/internal/cmd/base"
 	"github.com/kr/pretty"
 	"github.com/mitchellh/cli"
 	"github.com/posener/complete"
@@ -28,14 +27,14 @@ func (c *CreateScopeCommand) Synopsis() string {
 
 func (c *CreateScopeCommand) Help() string {
 	helpText := `
-Usage: watchtower scopes create
+Usage: boundary scopes create
 
   Creates a new scope within the scope specified by the ID from the
   "scope" parameter or the associated environment variable.
 
   Example: 
 
-      $ watchtower scopes create -scope=<scope_id> -name=<name>
+      $ boundary scopes create -scope=<scope_id> -name=<name>
 
 ` + c.Flags().Help()
 
@@ -86,14 +85,10 @@ func (c *CreateScopeCommand) Run(args []string) int {
 		return 2
 	}
 
-	scp := &scopes.Scope{
-		Client:      client,
-		Name:        api.StringOrNil(c.flagName),
-		Description: api.StringOrNil(c.flagDescription),
-	}
-
-	var apiErr *api.Error
-	scp, apiErr, err = scp.CreateScope(c.Context, scp)
+	scp, apiErr, err := scopes.NewScopesClient(client).Create(c.Context,
+		client.ScopeId(),
+		scopes.WithName(c.flagName),
+		scopes.WithDescription(c.flagDescription))
 
 	switch {
 	case err != nil:

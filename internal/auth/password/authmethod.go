@@ -3,9 +3,9 @@ package password
 import (
 	"fmt"
 
-	"github.com/hashicorp/watchtower/internal/auth/password/store"
-	"github.com/hashicorp/watchtower/internal/db"
-	"github.com/hashicorp/watchtower/internal/oplog"
+	"github.com/hashicorp/boundary/internal/auth/password/store"
+	"github.com/hashicorp/boundary/internal/db"
+	"github.com/hashicorp/boundary/internal/oplog"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -37,7 +37,7 @@ func NewAuthMethod(scopeId string, opt ...Option) (*AuthMethod, error) {
 			ScopeId:           scopeId,
 			Name:              opts.withName,
 			Description:       opts.withDescription,
-			MinUserNameLength: 5,
+			MinUserNameLength: 3,
 			MinPasswordLength: 8,
 		},
 	}

@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/hashicorp/watchtower/api/scopes"
-	"github.com/hashicorp/watchtower/internal/cmd/base"
+	"github.com/hashicorp/boundary/api/scopes"
+	"github.com/hashicorp/boundary/internal/cmd/base"
 )
 
 func printScope(in *scopes.Scope) string {
@@ -21,14 +21,14 @@ func printScope(in *scopes.Scope) string {
 		}...,
 		)
 	}
-	if in.Name != nil {
+	if in.Name != "" {
 		ret = append(ret,
-			fmt.Sprintf("  Name:         %s", *in.Name),
+			fmt.Sprintf("  Name:         %s", in.Name),
 		)
 	}
-	if in.Description != nil {
+	if in.Description != "" {
 		ret = append(ret,
-			fmt.Sprintf("  Description:  %s", *in.Description),
+			fmt.Sprintf("  Description:  %s", in.Description),
 		)
 	}
 

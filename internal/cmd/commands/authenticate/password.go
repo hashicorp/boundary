@@ -8,9 +8,9 @@ import (
 	"strings"
 	"time"
 
+	"github.com/hashicorp/boundary/api/authmethods"
+	"github.com/hashicorp/boundary/internal/cmd/base"
 	"github.com/hashicorp/vault/sdk/helper/password"
-	"github.com/hashicorp/watchtower/api/scopes"
-	"github.com/hashicorp/watchtower/internal/cmd/base"
 	"github.com/kr/pretty"
 	"github.com/mitchellh/cli"
 	"github.com/mitchellh/go-wordwrap"
@@ -21,9 +21,9 @@ import (
 var _ cli.Command = (*PasswordCommand)(nil)
 var _ cli.CommandAutocomplete = (*PasswordCommand)(nil)
 
-var envPassword = "WATCHTOWER_AUTHENTICATE_PASSWORD"
-var envName = "WATCHTOWER_AUTHENTICATE_NAME"
-var envMethodId = "WATCHTOWER_AUTHENTICATE_METHOD_ID"
+var envPassword = "BOUNDARY_AUTHENTICATE_PASSWORD"
+var envName = "BOUNDARY_AUTHENTICATE_NAME"
+var envMethodId = "BOUNDARY_AUTHENTICATE_METHOD_ID"
 
 type PasswordCommand struct {
 	*base.Command
@@ -34,20 +34,20 @@ type PasswordCommand struct {
 }
 
 func (c *PasswordCommand) Synopsis() string {
-	return wordwrap.WrapString("Invoke the password auth method to authenticate with Watchtower", base.TermWidth)
+	return wordwrap.WrapString("Invoke the password auth method to authenticate with Boundary", base.TermWidth)
 }
 
 func (c *PasswordCommand) Help() string {
 	return base.WrapForHelpText([]string{
-		"Usage: watchtower authenticate password [options] [args]",
+		"Usage: boundary authenticate password [options] [args]",
 		"",
-		"  Invoke the password auth method to authenticate the Watchtower CLI:",
+		"  Invoke the password auth method to authenticate the Boundary CLI:",
 		"",
-		"    $ watchtower authenticate password -name=foo -password=bar",
+		"    $ boundary authenticate password -name=foo -password=bar",
 		"",
 		"  If more than one instance of the password auth method exists, use the -method-id flag:",
 		"",
-		`    $ watchtower authenticate password -method-id am_12345 -name foo -password "bar"`,
+		`    $ boundary authenticate password -method-id am_12345 -name foo -password "bar"`,
 	}) + c.Flags().Help()
 }
 
@@ -122,14 +122,10 @@ func (c *PasswordCommand) Run(args []string) int {
 		return 2
 	}
 
-	scp := &scopes.Scope{
-		Client: client,
-	}
-
 	// note: Authenticate() calls SetToken() under the hood to set the
 	// auth bearer on the client so we do not need to do anything with the
 	// returned token after this call, so we ignore it
-	result, apiErr, err := scp.Authenticate(c.Context, c.flagMethodId, c.flagName, c.flagPassword)
+	result, apiErr, err := authmethods.NewAuthMethodsClient(client).Authenticate(c.Context, c.flagMethodId, c.flagName, c.flagPassword)
 	if err != nil {
 		c.UI.Error(fmt.Sprintf("Error trying to perform authentication: %s", err.Error()))
 		return 2
@@ -160,7 +156,7 @@ func (c *PasswordCommand) Run(args []string) int {
 			c.UI.Error(fmt.Sprintf("Error marshaling auth token to save to system credential store: %s", err))
 			return 1
 		}
-		if err := keyring.Set("HashiCorp Watchtower Auth Token", tokenName, base64.RawStdEncoding.EncodeToString(marshaled)); err != nil {
+		if err := keyring.Set("HashiCorp Boundary Auth Token", tokenName, base64.RawStdEncoding.EncodeToString(marshaled)); err != nil {
 			c.UI.Error(fmt.Sprintf("Error saving auth token to system credential store: %s", err))
 			return 1
 		}

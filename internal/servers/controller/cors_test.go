@@ -9,9 +9,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/hashicorp/boundary/internal/cmd/config"
 	"github.com/hashicorp/go-retryablehttp"
-	"github.com/hashicorp/watchtower/api/scopes"
-	"github.com/hashicorp/watchtower/internal/cmd/config"
 )
 
 const corsTestConfig = `
@@ -196,7 +195,7 @@ func TestHandler_CORS(t *testing.T) {
 			if c.provideScopeId {
 				scopeId = "o_1234567890"
 				if c.method == http.MethodPost {
-					body = &scopes.Scope{}
+					body = map[string]interface{}{}
 				}
 			}
 			req, err = client.NewRequest(tc.Context(), c.method, "scopes", body)

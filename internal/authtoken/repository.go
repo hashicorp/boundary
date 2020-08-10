@@ -7,14 +7,11 @@ import (
 	"time"
 
 	"github.com/golang/protobuf/ptypes"
+	"github.com/hashicorp/boundary/internal/authtoken/store"
+	"github.com/hashicorp/boundary/internal/db"
+	"github.com/hashicorp/boundary/internal/db/timestamp"
+	"github.com/hashicorp/boundary/internal/oplog"
 	wrapping "github.com/hashicorp/go-kms-wrapping"
-	"github.com/hashicorp/watchtower/internal/db/timestamp"
-	"github.com/hashicorp/watchtower/internal/iam"
-	iamStore "github.com/hashicorp/watchtower/internal/iam/store"
-
-	"github.com/hashicorp/watchtower/internal/authtoken/store"
-	"github.com/hashicorp/watchtower/internal/db"
-	"github.com/hashicorp/watchtower/internal/oplog"
 )
 
 // TODO (ICU-406): Make these fields configurable.
@@ -48,7 +45,7 @@ func NewRepository(r db.Reader, w db.Writer, wrapper wrapping.Wrapper, opt ...Op
 
 	opts := getOpts(opt...)
 	if opts.withLimit == 0 {
-		// zero signals the watchtower defaults should be used.
+		// zero signals the boundary defaults should be used.
 		opts.withLimit = db.DefaultLimit
 	}
 	return &Repository{
@@ -100,8 +97,8 @@ func (r *Repository) CreateAuthToken(ctx context.Context, withIamUserId, withAut
 		db.StdRetryCnt,
 		db.ExpBackoff{},
 		func(read db.Reader, w db.Writer) error {
-			// TODO: Remove this and either rely on either Alloc or a method exposed by the auth repo.
-			acct := &iam.AuthAccount{AuthAccount: &iamStore.AuthAccount{PublicId: withAuthAccountId}}
+			acct := allocAuthAccount()
+			acct.PublicId = withAuthAccountId
 			if err := read.LookupByPublicId(ctx, acct); err != nil {
 				return fmt.Errorf("create: auth token: auth account lookup: %w", err)
 			}

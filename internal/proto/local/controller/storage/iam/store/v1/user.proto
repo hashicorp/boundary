@@ -1,10 +1,10 @@
 syntax = "proto3";
 
 package controller.storage.iam.store.v1;
-option go_package = "github.com/hashicorp/watchtower/internal/iam/store;store";
+option go_package = "github.com/hashicorp/boundary/internal/iam/store;store";
 
 import "controller/storage/timestamp/v1/timestamp.proto";
-import "controller/custom_options/v1/masks.proto";
+import "controller/custom_options/v1/options.proto";
 
 message User {
   // public_id is used to access the User via an API
@@ -35,4 +35,8 @@ message User {
   // disabled is by default false and allows a User to be marked disabled.
   // @inject_tag: `gorm:"default:null"`
   bool disabled = 7;
+
+  // version allows optimistic locking of the user
+  // @inject_tag: `gorm:"default:null"`
+  uint32 version = 8;
 }

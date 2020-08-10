@@ -331,7 +331,7 @@ begin;
 
 -- create test tables used in the unit tests for the internal/db package 
 -- these tables (db_test_user, db_test_car, db_test_rental, db_test_scooter) are
--- not part of the watchtower domain model... they are simply used for testing
+-- not part of the boundary domain model... they are simply used for testing
 -- the internal/db package 
 create table if not exists db_test_user (
   id bigint generated always as identity primary key,
@@ -544,7 +544,11 @@ create table iam_scope (
       )
     ),
     description text,
-    parent_id text references iam_scope(public_id) on delete cascade on update cascade
+    parent_id text references iam_scope(public_id) on delete cascade on update cascade,
+
+    -- version allows optimistic locking of the role when modifying the role
+    -- itself and when modifying dependent items like principal roles.
+    version wt_version not null default 1
   );
 
 create table iam_scope_global (
@@ -643,6 +647,10 @@ before
 insert on iam_scope
   for each row execute procedure default_create_time();
 
+create trigger
+  update_version_column
+after update on iam_scope
+  for each row execute procedure update_version_column();
 
  -- define the immutable fields for iam_scope
 create trigger 
@@ -719,6 +727,7 @@ create table iam_user (
     scope_id wt_scope_id not null references iam_scope(public_id) on delete cascade on update cascade,
     unique(name, scope_id),
     disabled boolean not null default false,
+    version wt_version not null default 1,
 
     -- The order of columns is important for performance. See:
     -- https://dba.stackexchange.com/questions/58970/enforcing-constraints-two-tables-away/58972#58972
@@ -797,6 +806,11 @@ end;
 $$ language plpgsql;
 
 create trigger
+  update_version_column
+after update on iam_user
+  for each row execute procedure update_version_column();
+
+create trigger
   ensure_user_scope_id_valid
 before
 insert or update on iam_user
@@ -843,13 +857,8 @@ create table iam_role (
     grant_scope_id wt_scope_id not null references iam_scope(public_id) on delete cascade on update cascade,
     unique(name, scope_id),
     disabled boolean not null default false,
-    -- version allows optimistic locking of the role when modifying the role
-    -- itself and when modifying dependent items like principal roles. 
-    -- TODO (jlambert 6/2020) add before update trigger to automatically
-    -- increment the version when needed.  This trigger can be addded when PR
-    -- #126 is merged and update_version_column() is available.
-    version bigint not null default 1,
-    
+    version wt_version not null default 1,
+
     -- add unique index so a composite fk can be declared.
     unique(scope_id, public_id)
   );
@@ -960,7 +969,7 @@ create table iam_group (
     disabled boolean not null default false,
     -- version allows optimistic locking of the group when modifying the group
     -- itself and when modifying dependent items like group members. 
-    version bigint not null default 1,
+    version wt_version not null default 1,
 
     -- add unique index so a composite fk can be declared.
     unique(scope_id, public_id)
@@ -1696,7 +1705,7 @@ begin;
     description text,
     create_time wt_timestamp,
     update_time wt_timestamp,
-    min_user_name_length int not null default 5,
+    min_user_name_length int not null default 3,
     min_password_length int not null default 8,
     foreign key (scope_id, public_id)
       references auth_method (scope_id, public_id)
@@ -1832,6 +1841,20 @@ begin;
          set password_conf_id = new.password_conf_id
        where private_id = new.private_id;
     end if;
+    return null; -- result is ignored since this is an after trigger
+  end;
+  $$ language plpgsql;
+
+  -- delete_auth_password_credential_subtype() is an after delete trigger
+  -- function for subtypes of auth_password_credential
+  create or replace function
+    delete_auth_password_credential_subtype()
+    returns trigger
+  as $$
+  begin
+    delete
+      from auth_password_credential
+     where private_id = old.private_id;
     return null; -- result is ignored since this is an after trigger
   end;
   $$ language plpgsql;
@@ -1992,6 +2015,11 @@ begin;
     update_auth_password_credential_subtype
   after update on auth_password_argon2_cred
     for each row execute procedure update_auth_password_credential_subtype();
+
+  create trigger
+    delete_auth_password_credential_subtype
+  after delete on auth_password_argon2_cred
+    for each row execute procedure delete_auth_password_credential_subtype();
 
   --
   -- triggers for time columns

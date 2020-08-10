@@ -16,8 +16,8 @@ import (
 	"sync"
 	"syscall"
 
-	"github.com/hashicorp/watchtower/api"
-	"github.com/hashicorp/watchtower/api/authtokens"
+	"github.com/hashicorp/boundary/api"
+	"github.com/hashicorp/boundary/api/authtokens"
 	"github.com/mitchellh/cli"
 	"github.com/pkg/errors"
 	"github.com/posener/complete"
@@ -31,7 +31,7 @@ const (
 	// NotSetValue is a flag value for a not-set value
 	NotSetValue = "(not set)"
 
-	envTokenName = "WATCHTOWER_TOKEN_NAME"
+	envTokenName = "BOUNDARY_TOKEN_NAME"
 )
 
 // reRemoveWhitespace is a regular expression for stripping whitespace from
@@ -119,7 +119,9 @@ func (c *Command) Client() (*api.Client, error) {
 	}
 
 	if c.flagAddr != NotSetValue {
-		c.client.SetAddr(c.flagAddr)
+		if err := c.client.SetAddr(c.flagAddr); err != nil {
+			return nil, fmt.Errorf("error setting address on client: %w", err)
+		}
 	}
 
 	// If we need custom TLS configuration, then set it
@@ -157,7 +159,7 @@ func (c *Command) Client() (*api.Client, error) {
 	}
 
 	// Turn off retries on the CLI
-	if os.Getenv(api.EnvWatchtowerMaxRetries) == "" {
+	if os.Getenv(api.EnvBoundaryMaxRetries) == "" {
 		c.client.SetMaxRetries(0)
 	}
 
@@ -167,7 +169,7 @@ func (c *Command) Client() (*api.Client, error) {
 			tokenName = c.FlagTokenName
 		}
 		if tokenName != "none" {
-			token, err := keyring.Get("HashiCorp Watchtower Auth Token", tokenName)
+			token, err := keyring.Get("HashiCorp Boundary Auth Token", tokenName)
 			if err != nil {
 				if err == keyring.ErrNotFound {
 					c.UI.Info("No saved credential found, continuing without")
@@ -196,6 +198,10 @@ func (c *Command) Client() (*api.Client, error) {
 	// We do this here so we override the stored token info if it's set above
 	if c.flagScope != NotSetValue {
 		c.client.SetScopeId(c.flagScope)
+	}
+	// At this point if we haven't figured out the scope, default to "global"
+	if c.client.ScopeId() == "" {
+		c.client.SetScopeId("global")
 	}
 
 	return c.client, nil
@@ -229,25 +235,25 @@ func (c *Command) FlagSet(bit FlagSetBit) *FlagSets {
 				Name:       FlagNameAddr,
 				Target:     &c.flagAddr,
 				Default:    NotSetValue,
-				EnvVar:     api.EnvWatchtowerAddr,
+				EnvVar:     api.EnvBoundaryAddr,
 				Completion: complete.PredictAnything,
-				Usage:      "Addr of the Watchtower controller, as a complete URL (e.g. https://watchtower.example.com:9200).",
+				Usage:      "Addr of the Boundary controller, as a complete URL (e.g. https://boundary.example.com:9200).",
 			})
 
 			f.StringVar(&StringVar{
 				Name:       FlagNameScope,
 				Target:     &c.flagScope,
 				Default:    NotSetValue,
-				EnvVar:     api.EnvWatchtowerScopeId,
+				EnvVar:     api.EnvBoundaryScopeId,
 				Completion: complete.PredictAnything,
-				Usage:      "Scope in which to make the request.",
+				Usage:      `Scope in which to make the request. If not specified, will default to the scope of a saved token (if found), otherwise will default to "global".`,
 			})
 
 			f.StringVar(&StringVar{
 				Name:       FlagNameCACert,
 				Target:     &c.flagTLSCACert,
 				Default:    NotSetValue,
-				EnvVar:     api.EnvWatchtowerCACert,
+				EnvVar:     api.EnvBoundaryCACert,
 				Completion: complete.PredictFiles("*"),
 				Usage: "Path on the local disk to a single PEM-encoded CA " +
 					"certificate to verify the Controller or Worker's server's SSL certificate. This " +
@@ -258,7 +264,7 @@ func (c *Command) FlagSet(bit FlagSetBit) *FlagSets {
 				Name:       FlagNameCAPath,
 				Target:     &c.flagTLSCAPath,
 				Default:    NotSetValue,
-				EnvVar:     api.EnvWatchtowerCAPath,
+				EnvVar:     api.EnvBoundaryCAPath,
 				Completion: complete.PredictDirs("*"),
 				Usage: "Path on the local disk to a directory of PEM-encoded CA " +
 					"certificates to verify the SSL certificate of the Controller.",
@@ -268,10 +274,10 @@ func (c *Command) FlagSet(bit FlagSetBit) *FlagSets {
 				Name:       FlagNameClientCert,
 				Target:     &c.flagTLSClientCert,
 				Default:    NotSetValue,
-				EnvVar:     api.EnvWatchtowerClientCert,
+				EnvVar:     api.EnvBoundaryClientCert,
 				Completion: complete.PredictFiles("*"),
 				Usage: "Path on the local disk to a single PEM-encoded CA " +
-					"certificate to use for TLS authentication to the Watchtower Controller. If " +
+					"certificate to use for TLS authentication to the Boundary Controller. If " +
 					"this flag is specified, -client-key is also required.",
 			})
 
@@ -279,7 +285,7 @@ func (c *Command) FlagSet(bit FlagSetBit) *FlagSets {
 				Name:       FlagNameClientKey,
 				Target:     &c.flagTLSClientKey,
 				Default:    NotSetValue,
-				EnvVar:     api.EnvWatchtowerClientKey,
+				EnvVar:     api.EnvBoundaryClientKey,
 				Completion: complete.PredictFiles("*"),
 				Usage: "Path on the local disk to a single PEM-encoded private key " +
 					"matching the client certificate from -client-cert.",
@@ -289,19 +295,19 @@ func (c *Command) FlagSet(bit FlagSetBit) *FlagSets {
 				Name:       FlagTLSServerName,
 				Target:     &c.flagTLSServerName,
 				Default:    NotSetValue,
-				EnvVar:     api.EnvWatchtowerTLSServerName,
+				EnvVar:     api.EnvBoundaryTLSServerName,
 				Completion: complete.PredictAnything,
-				Usage: "Name to use as the SNI host when connecting to the Watchtower " +
+				Usage: "Name to use as the SNI host when connecting to the Boundary " +
 					"server via TLS.",
 			})
 
 			f.BoolVar(&BoolVar{
 				Name:   FlagNameTLSInsecure,
 				Target: &c.flagTLSInsecure,
-				EnvVar: api.EnvWatchtowerTLSInsecure,
+				EnvVar: api.EnvBoundaryTLSInsecure,
 				Usage: "Disable verification of TLS certificates. Using this option " +
 					"is highly discouraged as it decreases the security of data " +
-					"transmissions to and from the Watchtower server.",
+					"transmissions to and from the Boundary server.",
 			})
 		}
 
@@ -344,7 +350,7 @@ func (c *Command) FlagSet(bit FlagSetBit) *FlagSets {
 					Name:       "format",
 					Target:     &c.flagFormat,
 					Default:    "table",
-					EnvVar:     EnvWatchtowerCLIFormat,
+					EnvVar:     EnvBoundaryCLIFormat,
 					Completion: complete.PredictSet("table", "json", "yaml"),
 					Usage: "Print the output in the given format. Valid formats " +
 						"are \"table\", \"json\", or \"yaml\".",

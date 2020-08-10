@@ -18,6 +18,7 @@ type options struct {
 	withDescription string
 	withLimit       int
 	withConfig      Configuration
+	withPublicId    string
 	password        string
 	withPassword    bool
 }
@@ -25,6 +26,13 @@ type options struct {
 func getDefaultOptions() options {
 	return options{
 		withConfig: NewArgon2Configuration(),
+	}
+}
+
+// WithPublicId provides an optional public id
+func WithPublicId(id string) Option {
+	return func(o *options) {
+		o.withPublicId = id
 	}
 }
 

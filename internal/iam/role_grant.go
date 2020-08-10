@@ -4,10 +4,10 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/hashicorp/watchtower/internal/db"
-	"github.com/hashicorp/watchtower/internal/iam/store"
-	"github.com/hashicorp/watchtower/internal/perms"
-	"github.com/hashicorp/watchtower/internal/types/resource"
+	"github.com/hashicorp/boundary/internal/db"
+	"github.com/hashicorp/boundary/internal/iam/store"
+	"github.com/hashicorp/boundary/internal/perms"
+	"github.com/hashicorp/boundary/internal/types/resource"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -19,8 +19,8 @@ type RoleGrant struct {
 	tableName string `gorm:"-"`
 }
 
-// ensure that RoleGrant implements the interfaces of: Clonable and db.VetForWriter
-var _ Clonable = (*RoleGrant)(nil)
+// ensure that RoleGrant implements the interfaces of: Cloneable and db.VetForWriter
+var _ Cloneable = (*RoleGrant)(nil)
 var _ db.VetForWriter = (*RoleGrant)(nil)
 
 // NewRoleGrant creates a new in memory role grant

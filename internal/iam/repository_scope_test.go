@@ -7,11 +7,11 @@ import (
 	"time"
 
 	"github.com/golang/protobuf/ptypes"
-	"github.com/hashicorp/watchtower/internal/db"
-	"github.com/hashicorp/watchtower/internal/db/timestamp"
-	iam_store "github.com/hashicorp/watchtower/internal/iam/store"
-	"github.com/hashicorp/watchtower/internal/oplog"
-	"github.com/hashicorp/watchtower/internal/types/scope"
+	"github.com/hashicorp/boundary/internal/db"
+	"github.com/hashicorp/boundary/internal/db/timestamp"
+	iam_store "github.com/hashicorp/boundary/internal/iam/store"
+	"github.com/hashicorp/boundary/internal/oplog"
+	"github.com/hashicorp/boundary/internal/types/scope"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/proto"
@@ -132,19 +132,21 @@ func Test_Repository_Scope_Update(t *testing.T) {
 
 		foundScope, err := repo.LookupScope(context.Background(), s.PublicId)
 		require.NoError(err)
+		assert.Empty(foundScope.GetDescription()) // should  be "" after update in db
 		assert.True(proto.Equal(foundScope, s))
 
 		err = db.TestVerifyOplog(t, rw, s.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_CREATE), db.WithCreateNotBefore(10*time.Second))
 		require.NoError(err)
 
-		s.Name = id
+		s.Name = "foo" + id
 		s.Description = "desc-id" // not in the field mask paths
-		s, updatedRows, err := repo.UpdateScope(context.Background(), s, []string{"Name"})
+		s, updatedRows, err := repo.UpdateScope(context.Background(), s, 1, []string{"Name"})
 		require.NoError(err)
 		assert.Equal(1, updatedRows)
 		require.NotNil(s)
-		assert.Equal(s.GetName(), id)
-		assert.Empty(foundScope.GetDescription()) // should  be "" after update in db
+		assert.Equal("foo"+id, s.GetName())
+		// TODO: This isn't empty because of ICU-490 -- when that is resolved, fix this
+		//assert.Empty(s.GetDescription())
 
 		foundScope, err = repo.LookupScope(context.Background(), s.PublicId)
 		require.NoError(err)
@@ -153,6 +155,15 @@ func Test_Repository_Scope_Update(t *testing.T) {
 
 		err = db.TestVerifyOplog(t, rw, s.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_UPDATE), db.WithCreateNotBefore(10*time.Second))
 		assert.NoError(err)
+
+		s.Name = "test2"
+		s.Description = "desc-id-2"
+		s, updatedRows, err = repo.UpdateScope(context.Background(), s, 2, []string{"Name", "Description"})
+		require.NoError(err)
+		assert.Equal(1, updatedRows)
+		require.NotNil(s)
+		assert.Equal("test2", s.GetName())
+		assert.Equal("desc-id-2", s.GetDescription())
 	})
 	t.Run("bad-parent-scope", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
@@ -172,7 +183,7 @@ func Test_Repository_Scope_Update(t *testing.T) {
 		require.NotNil(project)
 
 		project.ParentId = project.PublicId
-		project, updatedRows, err := repo.UpdateScope(context.Background(), project, []string{"ParentId"})
+		project, updatedRows, err := repo.UpdateScope(context.Background(), project, 1, []string{"ParentId"})
 		require.Error(err)
 		assert.Nil(project)
 		assert.Equal(0, updatedRows)
@@ -415,7 +426,7 @@ func TestRepository_UpdateScope(t *testing.T) {
 			if tt.args.scope != nil {
 				tt.args.scope.PublicId = org.PublicId
 			}
-			updatedScope, rowsUpdated, err := r.UpdateScope(context.Background(), tt.args.scope, tt.args.fieldMaskPaths, tt.args.opt...)
+			updatedScope, rowsUpdated, err := r.UpdateScope(context.Background(), tt.args.scope, 1, tt.args.fieldMaskPaths, tt.args.opt...)
 			if tt.wantErr {
 				require.Error(err)
 				assert.Equal(tt.wantUpdatedRows, rowsUpdated)
@@ -455,7 +466,7 @@ func TestRepository_UpdateScope(t *testing.T) {
 		_ = testOrg(t, conn, id, id)
 		org2 := testOrg(t, conn, "dup-"+id, id)
 		org2.Name = id
-		updatedScope, rowsUpdated, err := r.UpdateScope(context.Background(), org2, []string{"Name"})
+		updatedScope, rowsUpdated, err := r.UpdateScope(context.Background(), org2, 1, []string{"Name"})
 		require.Error(err)
 		assert.Equal(0, rowsUpdated, "updated rows should be 0")
 		assert.Nil(updatedScope, "scope should be nil")

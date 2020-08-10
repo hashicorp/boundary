@@ -7,11 +7,11 @@ import (
 	"testing"
 	"time"
 
+	"github.com/hashicorp/boundary/internal/db"
+	dbassert "github.com/hashicorp/boundary/internal/db/assert"
+	"github.com/hashicorp/boundary/internal/iam/store"
+	"github.com/hashicorp/boundary/internal/oplog"
 	"github.com/hashicorp/go-uuid"
-	"github.com/hashicorp/watchtower/internal/db"
-	dbassert "github.com/hashicorp/watchtower/internal/db/assert"
-	"github.com/hashicorp/watchtower/internal/iam/store"
-	"github.com/hashicorp/watchtower/internal/oplog"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/proto"
@@ -390,7 +390,7 @@ func TestRepository_UpdateRole(t *testing.T) {
 				_ = TestUserRole(t, conn, r.GetPublicId(), u.GetPublicId())
 				_ = TestRoleGrant(t, conn, r.GetPublicId(), "id=*;actions=*")
 				r.Name = tt.args.name
-				_, _, _, _, err := repo.UpdateRole(context.Background(), r, tt.args.fieldMaskPaths, tt.args.opt...)
+				_, _, _, _, err := repo.UpdateRole(context.Background(), r, r.Version, tt.args.fieldMaskPaths, tt.args.opt...)
 				assert.NoError(err)
 			}
 
@@ -422,7 +422,7 @@ func TestRepository_UpdateRole(t *testing.T) {
 			updateRole.Name = tt.args.name
 			updateRole.Description = tt.args.description
 
-			roleAfterUpdate, principals, grants, updatedRows, err := repo.UpdateRole(context.Background(), &updateRole, tt.args.fieldMaskPaths, tt.args.opt...)
+			roleAfterUpdate, principals, grants, updatedRows, err := repo.UpdateRole(context.Background(), &updateRole, r.Version, tt.args.fieldMaskPaths, tt.args.opt...)
 			if tt.wantErr {
 				assert.Error(err)
 				if tt.wantIsError != nil {

@@ -8,11 +8,11 @@ import (
 	"time"
 
 	"github.com/google/go-cmp/cmp"
-	"github.com/hashicorp/watchtower/internal/auth/password/store"
-	"github.com/hashicorp/watchtower/internal/db"
-	dbassert "github.com/hashicorp/watchtower/internal/db/assert"
-	"github.com/hashicorp/watchtower/internal/iam"
-	"github.com/hashicorp/watchtower/internal/oplog"
+	"github.com/hashicorp/boundary/internal/auth/password/store"
+	"github.com/hashicorp/boundary/internal/db"
+	dbassert "github.com/hashicorp/boundary/internal/db/assert"
+	"github.com/hashicorp/boundary/internal/iam"
+	"github.com/hashicorp/boundary/internal/oplog"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/proto"
@@ -214,6 +214,42 @@ func TestRepository_CreateAuthMethod(t *testing.T) {
 		assert.Equal(in2.Name, got2.Name)
 		assert.Equal(in2.Description, got2.Description)
 		assert.Equal(got2.CreateTime, got2.UpdateTime)
+	})
+
+	t.Run("valid-with-publicid", func(t *testing.T) {
+		assert, require := assert.New(t), require.New(t)
+		repo, err := NewRepository(rw, rw, wrapper)
+		require.NoError(err)
+		require.NotNil(repo)
+
+		org1, _ := iam.TestScopes(t, conn)
+		in := allocAuthMethod()
+
+		amId, err := newAuthMethodId()
+		require.NoError(err)
+
+		in.ScopeId = org1.GetPublicId()
+		got, err := repo.CreateAuthMethod(context.Background(), &in, WithPublicId(amId))
+		require.NoError(err)
+		require.NotNil(got)
+		assert.Equal(amId, got.GetPublicId())
+		assert.Equal(got.CreateTime, got.UpdateTime)
+	})
+
+	t.Run("invalid-with-badpublicid", func(t *testing.T) {
+		assert, require := assert.New(t), require.New(t)
+		repo, err := NewRepository(rw, rw, wrapper)
+		require.NoError(err)
+		require.NotNil(repo)
+
+		org1, _ := iam.TestScopes(t, conn)
+		in := allocAuthMethod()
+
+		in.ScopeId = org1.GetPublicId()
+		got, err := repo.CreateAuthMethod(context.Background(), &in, WithPublicId("invalid_idwithabadprefix"))
+		assert.Error(err)
+		assert.Nil(got)
+		assert.True(errors.Is(err, db.ErrInvalidPublicId))
 	})
 }
 

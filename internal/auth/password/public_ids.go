@@ -3,7 +3,7 @@ package password
 import (
 	"fmt"
 
-	"github.com/hashicorp/watchtower/internal/db"
+	"github.com/hashicorp/boundary/internal/db"
 )
 
 // PublicId prefixes for the resources in the password package.
