@@ -11,7 +11,6 @@ import (
 	"github.com/google/go-cmp/cmp"
 	wrapping "github.com/hashicorp/go-kms-wrapping"
 	"github.com/hashicorp/watchtower/internal/auth/password"
-	iamStore "github.com/hashicorp/watchtower/internal/iam/store"
 	"github.com/hashicorp/watchtower/internal/oplog"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -410,7 +409,8 @@ func TestRepository_ValidateToken_expired(t *testing.T) {
 	org, _ := iam.TestScopes(t, conn)
 	baseAT := TestAuthToken(t, conn, wrapper, org.GetPublicId())
 	baseAT.GetAuthAccountId()
-	aAcct := &iam.AuthAccount{AuthAccount: &iamStore.AuthAccount{PublicId: baseAT.GetAuthAccountId()}}
+	aAcct := allocAuthAccount()
+	aAcct.PublicId = baseAT.GetAuthAccountId()
 	require.NoError(t, rw.LookupByPublicId(context.Background(), aAcct))
 	iamUserId := aAcct.GetIamUserId()
 

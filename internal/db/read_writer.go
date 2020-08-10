@@ -424,14 +424,22 @@ func (rw *Db) Update(ctx context.Context, i interface{}, fieldMaskPaths []string
 	}
 	var underlying *gorm.DB
 	switch {
-	case opts.WithVersion != nil:
-		if *opts.WithVersion == 0 {
-			return NoRowsAffected, fmt.Errorf("update: with version option is zero: %w", ErrInvalidParameter)
+	case opts.WithVersion != nil || opts.withWhereClause != "":
+		var where []string
+		var args []interface{}
+		if opts.WithVersion != nil {
+			if *opts.WithVersion == 0 {
+				return NoRowsAffected, fmt.Errorf("update: with version option is zero: %w", ErrInvalidParameter)
+			}
+			if _, ok := scope.FieldByName("version"); !ok {
+				return NoRowsAffected, fmt.Errorf("update: %s does not have a version field", scope.TableName())
+			}
+			where, args = append(where, "version = ?"), append(args, opts.WithVersion)
 		}
-		if _, ok := scope.FieldByName("version"); !ok {
-			return NoRowsAffected, fmt.Errorf("update: %s does not have a version field", scope.TableName())
+		if opts.withWhereClause != "" {
+			where, args = append(where, opts.withWhereClause), append(args, opts.withWhereClauseArgs...)
 		}
-		underlying = rw.underlying.Model(i).Where("version = ?", opts.WithVersion).Updates(updateFields)
+		underlying = rw.underlying.Model(i).Where(strings.Join(where, " and "), args...).Updates(updateFields)
 	default:
 		underlying = rw.underlying.Model(i).Updates(updateFields)
 	}
