@@ -104,7 +104,6 @@ values
   ('db_test_user', 1),
   ('db_test_car', 1),
   ('db_test_rental', 1),
-  ('kms_key_entry', 1);
   ('db_test_scooter', 1),
   ('auth_account', 1),
   ('iam_principal_role', 1);
