@@ -4,18 +4,54 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/hashicorp/watchtower/internal/db"
+	dbcommon "github.com/hashicorp/watchtower/internal/db/common"
+	"github.com/hashicorp/watchtower/internal/types/scope"
 )
 
-// CreateScope will create a scope in the repository and return the written scope
-func (r *Repository) CreateScope(ctx context.Context, scope *Scope, opt ...Option) (*Scope, error) {
-	if scope == nil {
-		return nil, errors.New("scope is nil for create")
+// CreateScope will create a scope in the repository and return the written
+// scope.  Supported options include: WithPublicId.
+func (r *Repository) CreateScope(ctx context.Context, s *Scope, opt ...Option) (*Scope, error) {
+	if s == nil {
+		return nil, fmt.Errorf("create scope: missing scope %w", db.ErrNilParameter)
 	}
-	resource, err := r.create(ctx, scope)
+	if s.Scope == nil {
+		return nil, fmt.Errorf("create scope: missing scope store %w", db.ErrNilParameter)
+	}
+	if s.PublicId != "" {
+		return nil, fmt.Errorf("create scope: public id not empty: %w", db.ErrInvalidParameter)
+	}
+	switch s.Type {
+	case scope.Unknown.String():
+		return nil, fmt.Errorf("create scope: unknown type: %w", db.ErrInvalidParameter)
+	case scope.Global.String():
+		return nil, fmt.Errorf("create scope: invalid type: %w", db.ErrInvalidParameter)
+	}
+	opts := getOpts(opt...)
+	var publicId string
+	t := scope.Map[s.Type]
+	if opts.withPublicId != "" {
+		if !strings.HasPrefix(opts.withPublicId, t.Prefix()+"_") {
+			return nil, fmt.Errorf("create scope: passed-in public ID %q has wrong prefix for type %q which uses prefix %q", opts.withPublicId, t.String(), t.Prefix())
+		}
+		publicId = opts.withPublicId
+	} else {
+		var err error
+		publicId, err = newScopeId(t)
+		if err != nil {
+			return nil, fmt.Errorf("create scope: error generating public id %w for new scope", err)
+		}
+	}
+	sc := s.Clone().(*Scope)
+	sc.PublicId = publicId
+	resource, err := r.create(ctx, sc)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create scope: %w", err)
+		if db.IsUniqueError(err) {
+			return nil, fmt.Errorf("create scope: scope %s/%s already exists: %w", sc.PublicId, sc.Name, db.ErrNotUnique)
+		}
+		return nil, fmt.Errorf("create scope: %w for %s", err, sc.PublicId)
 	}
 	return resource.(*Scope), nil
 }
@@ -26,7 +62,7 @@ func (r *Repository) CreateScope(ctx context.Context, scope *Scope, opt ...Optio
 // included in fieldMask. Name and Description are the only updatable fields,
 // and everything else is ignored.  If no updatable fields are included in the
 // fieldMaskPaths, then an error is returned.
-func (r *Repository) UpdateScope(ctx context.Context, scope *Scope, fieldMaskPaths []string, opt ...Option) (*Scope, int, error) {
+func (r *Repository) UpdateScope(ctx context.Context, scope *Scope, version uint32, fieldMaskPaths []string, opt ...Option) (*Scope, int, error) {
 	if scope == nil {
 		return nil, db.NoRowsAffected, fmt.Errorf("update scope: missing scope: %w", db.ErrNilParameter)
 	}
@@ -37,7 +73,7 @@ func (r *Repository) UpdateScope(ctx context.Context, scope *Scope, fieldMaskPat
 		return nil, db.NoRowsAffected, fmt.Errorf("update scope: you cannot change a scope's parent: %w", db.ErrInvalidFieldMask)
 	}
 	var dbMask, nullFields []string
-	dbMask, nullFields = buildUpdatePaths(
+	dbMask, nullFields = dbcommon.BuildUpdatePaths(
 		map[string]interface{}{
 			"name":        scope.Name,
 			"description": scope.Description,
@@ -49,7 +85,7 @@ func (r *Repository) UpdateScope(ctx context.Context, scope *Scope, fieldMaskPat
 		return nil, db.NoRowsAffected, fmt.Errorf("update scope: %w", db.ErrEmptyFieldMask)
 	}
 
-	resource, rowsUpdated, err := r.update(ctx, scope, dbMask, nullFields)
+	resource, rowsUpdated, err := r.update(ctx, scope, version, dbMask, nullFields)
 	if err != nil {
 		if db.IsUniqueError(err) {
 			return nil, db.NoRowsAffected, fmt.Errorf("update scope: %s name %s already exists: %w", scope.PublicId, scope.Name, db.ErrNotUnique)
@@ -63,7 +99,7 @@ func (r *Repository) UpdateScope(ctx context.Context, scope *Scope, fieldMaskPat
 // found, it will return nil, nil.
 func (r *Repository) LookupScope(ctx context.Context, withPublicId string, opt ...Option) (*Scope, error) {
 	if withPublicId == "" {
-		return nil, errors.New("cannot lookup a scope with an empty public id")
+		return nil, fmt.Errorf("lookup scope: missing public id %w", db.ErrInvalidParameter)
 	}
 	scope := allocScope()
 	scope.PublicId = withPublicId
@@ -71,7 +107,7 @@ func (r *Repository) LookupScope(ctx context.Context, withPublicId string, opt .
 		if err == db.ErrRecordNotFound {
 			return nil, nil
 		}
-		return nil, fmt.Errorf("unable to lookup scope by public id %s: %w", withPublicId, err)
+		return nil, fmt.Errorf("lookup scope: failed %w fo %s", err, withPublicId)
 	}
 	return &scope, nil
 }
@@ -79,7 +115,10 @@ func (r *Repository) LookupScope(ctx context.Context, withPublicId string, opt .
 // DeleteScope will delete a scope from the repository
 func (r *Repository) DeleteScope(ctx context.Context, withPublicId string, opt ...Option) (int, error) {
 	if withPublicId == "" {
-		return db.NoRowsAffected, errors.New("cannot delete a scope with an empty public id")
+		return db.NoRowsAffected, fmt.Errorf("delete scope: missing public id %w", db.ErrInvalidParameter)
+	}
+	if withPublicId == scope.Global.String() {
+		return db.NoRowsAffected, fmt.Errorf("delete scope: invalid to delete global scope: %w", db.ErrInvalidParameter)
 	}
 	scope := allocScope()
 	scope.PublicId = withPublicId
@@ -88,7 +127,30 @@ func (r *Repository) DeleteScope(ctx context.Context, withPublicId string, opt .
 		if errors.Is(err, ErrMetadataScopeNotFound) {
 			return 0, nil
 		}
-		return db.NoRowsAffected, fmt.Errorf("unable to delete scope with public id %s: %w", withPublicId, err)
+		return db.NoRowsAffected, fmt.Errorf("delete scope: failed %w for %s", err, withPublicId)
 	}
 	return rowsDeleted, nil
+}
+
+// ListProjects in an org and supports the WithLimit option.
+func (r *Repository) ListProjects(ctx context.Context, withOrgId string, opt ...Option) ([]*Scope, error) {
+	if withOrgId == "" {
+		return nil, fmt.Errorf("list projects: missing org id %w", db.ErrInvalidParameter)
+	}
+	var projects []*Scope
+	err := r.list(ctx, &projects, "parent_id = ? and type = ?", []interface{}{withOrgId, scope.Project.String()}, opt...)
+	if err != nil {
+		return nil, fmt.Errorf("list projects: %w", err)
+	}
+	return projects, nil
+}
+
+// ListOrgs and supports the WithLimit option.
+func (r *Repository) ListOrgs(ctx context.Context, opt ...Option) ([]*Scope, error) {
+	var orgs []*Scope
+	err := r.list(ctx, &orgs, "parent_id = ? and type = ?", []interface{}{"global", scope.Org.String()}, opt...)
+	if err != nil {
+		return nil, fmt.Errorf("list orgs: %w", err)
+	}
+	return orgs, nil
 }

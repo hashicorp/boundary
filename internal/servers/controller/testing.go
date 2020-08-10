@@ -73,6 +73,9 @@ func (tc *TestController) buildClient() {
 	if err := client.SetAddr(apiAddrs[0]); err != nil {
 		tc.t.Fatal(fmt.Errorf("error setting client address: %w", err))
 	}
+	if tc.b.DefaultOrgId != "" {
+		client.SetScopeId(tc.b.DefaultOrgId)
+	}
 
 	tc.client = client
 }
@@ -111,9 +114,26 @@ type TestControllerOpts struct {
 	// in the normal config.
 	DefaultOrgId string
 
+	// DefaultAuthMethodId is the default auth method ID to use, if set.
+	DefaultAuthMethodId string
+
+	// DefaultUsername is the username used when creating the default account.
+	DefaultUsername string
+
+	// DefaultPassword is the password used when creating the default account.
+	DefaultPassword string
+
 	// DisableDatabaseCreation can be set true to disable creating a dev
 	// database
 	DisableDatabaseCreation bool
+
+	// If true, the controller will not be started
+	DisableAutoStart bool
+
+	// DisableAuthorizationFailures will still cause authz checks to be
+	// performed but they won't cause 403 Forbidden. Useful for API-level
+	// testing to avoid a lot of faff.
+	DisableAuthorizationFailures bool
 }
 
 func NewTestController(t *testing.T, opts *TestControllerOpts) *TestController {
@@ -151,6 +171,15 @@ func NewTestController(t *testing.T, opts *TestControllerOpts) *TestController {
 	if opts.DefaultOrgId != "" {
 		tc.b.DefaultOrgId = opts.DefaultOrgId
 	}
+	if opts.DefaultAuthMethodId != "" {
+		tc.b.DevAuthMethodId = opts.DefaultAuthMethodId
+	}
+	if opts.DefaultUsername != "" {
+		tc.b.DevUsername = opts.DefaultUsername
+	}
+	if opts.DefaultPassword != "" {
+		tc.b.DevPassword = opts.DefaultPassword
+	}
 
 	// Start a logger
 	tc.b.Logger = hclog.New(&hclog.LoggerOptions{
@@ -177,8 +206,9 @@ func NewTestController(t *testing.T, opts *TestControllerOpts) *TestController {
 	}
 
 	conf := &Config{
-		RawConfig: opts.Config,
-		Server:    tc.b,
+		RawConfig:                    opts.Config,
+		Server:                       tc.b,
+		DisableAuthorizationFailures: opts.DisableAuthorizationFailures,
 	}
 
 	tc.c, err = New(conf)
@@ -189,9 +219,11 @@ func NewTestController(t *testing.T, opts *TestControllerOpts) *TestController {
 
 	tc.buildClient()
 
-	if err := tc.c.Start(); err != nil {
-		tc.Shutdown()
-		t.Fatal(err)
+	if !opts.DisableAutoStart {
+		if err := tc.c.Start(); err != nil {
+			tc.Shutdown()
+			t.Fatal(err)
+		}
 	}
 
 	return tc

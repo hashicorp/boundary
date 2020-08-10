@@ -35,7 +35,7 @@ func UpdateFields(i interface{}, fieldMaskPaths []string, setToNullPaths []strin
 		return nil, errors.New("both fieldMaskPaths and setToNullPaths are zero len")
 	}
 
-	inter, maskPaths, nullPaths, err := intersection(fieldMaskPaths, setToNullPaths)
+	inter, maskPaths, nullPaths, err := Intersection(fieldMaskPaths, setToNullPaths)
 	if err != nil {
 		return nil, err
 	}
@@ -111,11 +111,11 @@ func findMissingPaths(paths []string, foundPaths map[string]struct{}) []string {
 	return notFound
 }
 
-// intersection is a case-insensitive search for intersecting values.  Returns
-// []string of the intersection with values in lowercase, and  map[string]string
+// Intersection is a case-insensitive search for intersecting values.  Returns
+// []string of the Intersection with values in lowercase, and  map[string]string
 // of the original av and bv, with the key set to uppercase and value set to the
 // original
-func intersection(av, bv []string) ([]string, map[string]string, map[string]string, error) {
+func Intersection(av, bv []string) ([]string, map[string]string, map[string]string, error) {
 	if av == nil {
 		return nil, nil, nil, fmt.Errorf("av is missing: %w", ErrNilParameter)
 	}
@@ -140,4 +140,35 @@ func intersection(av, bv []string) ([]string, map[string]string, map[string]stri
 		}
 	}
 	return s, ah, bh, nil
+}
+
+// BuildUpdatePaths takes a map of field names to field values and field masks
+// and returns both a list of field names to udpate and a list of field names
+// that should be set to null.
+func BuildUpdatePaths(fieldValues map[string]interface{}, fieldMask []string) (masks []string, nulls []string) {
+	for f, v := range fieldValues {
+		if !contains(fieldMask, f) {
+			continue
+		}
+		switch {
+		case isZero(v):
+			nulls = append(nulls, f)
+		default:
+			masks = append(masks, f)
+		}
+	}
+	return masks, nulls
+}
+
+func contains(ss []string, t string) bool {
+	for _, s := range ss {
+		if strings.EqualFold(s, t) {
+			return true
+		}
+	}
+	return false
+}
+
+func isZero(i interface{}) bool {
+	return i == nil || reflect.DeepEqual(i, reflect.Zero(reflect.TypeOf(i)).Interface())
 }

@@ -2,61 +2,12 @@ package base
 
 import (
 	"encoding/json"
-	"io"
 	"strings"
 	"time"
 
-	kvbuilder "github.com/hashicorp/vault/internalshared/kv-builder"
 	"github.com/kr/text"
-	homedir "github.com/mitchellh/go-homedir"
-	"github.com/mitchellh/mapstructure"
-	"github.com/pkg/errors"
 	"github.com/ryanuber/columnize"
 )
-
-// sanitizePath removes any leading or trailing things from a "path".
-func sanitizePath(s string) string {
-	return ensureNoTrailingSlash(ensureNoLeadingSlash(strings.TrimSpace(s)))
-}
-
-// ensureTrailingSlash ensures the given string has a trailing slash.
-func ensureTrailingSlash(s string) string {
-	s = strings.TrimSpace(s)
-	if s == "" {
-		return ""
-	}
-
-	for len(s) > 0 && s[len(s)-1] != '/' {
-		s = s + "/"
-	}
-	return s
-}
-
-// ensureNoTrailingSlash ensures the given string has a trailing slash.
-func ensureNoTrailingSlash(s string) string {
-	s = strings.TrimSpace(s)
-	if s == "" {
-		return ""
-	}
-
-	for len(s) > 0 && s[len(s)-1] == '/' {
-		s = s[:len(s)-1]
-	}
-	return s
-}
-
-// ensureNoLeadingSlash ensures the given string has a trailing slash.
-func ensureNoLeadingSlash(s string) string {
-	s = strings.TrimSpace(s)
-	if s == "" {
-		return ""
-	}
-
-	for len(s) > 0 && s[0] == '/' {
-		s = s[1:]
-	}
-	return s
-}
 
 // columnOuput prints the list of items as a table with no headers.
 func columnOutput(list []string, c *columnize.Config) string {
@@ -108,80 +59,6 @@ func tableOutput(list []string, c *columnize.Config) string {
 	return columnOutput(list, c)
 }
 
-// parseArgsData parses the given args in the format key=value into a map of
-// the provided arguments. The given reader can also supply key=value pairs.
-func parseArgsData(stdin io.Reader, args []string) (map[string]interface{}, error) {
-	builder := &kvbuilder.Builder{Stdin: stdin}
-	if err := builder.Add(args...); err != nil {
-		return nil, err
-	}
-
-	return builder.Map(), nil
-}
-
-// parseArgsDataString parses the args data and returns the values as strings.
-// If the values cannot be represented as strings, an error is returned.
-func parseArgsDataString(stdin io.Reader, args []string) (map[string]string, error) {
-	raw, err := parseArgsData(stdin, args)
-	if err != nil {
-		return nil, err
-	}
-
-	var result map[string]string
-	if err := mapstructure.WeakDecode(raw, &result); err != nil {
-		return nil, errors.Wrap(err, "failed to convert values to strings")
-	}
-	if result == nil {
-		result = make(map[string]string)
-	}
-	return result, nil
-}
-
-// parseArgsDataStringLists parses the args data and returns the values as
-// string lists. If the values cannot be represented as strings, an error is
-// returned.
-func parseArgsDataStringLists(stdin io.Reader, args []string) (map[string][]string, error) {
-	raw, err := parseArgsData(stdin, args)
-	if err != nil {
-		return nil, err
-	}
-
-	var result map[string][]string
-	if err := mapstructure.WeakDecode(raw, &result); err != nil {
-		return nil, errors.Wrap(err, "failed to convert values to strings")
-	}
-	return result, nil
-}
-
-// truncateToSeconds truncates the given duration to the number of seconds. If
-// the duration is less than 1s, it is returned as 0. The integer represents
-// the whole number unit of seconds for the duration.
-func truncateToSeconds(d time.Duration) int {
-	d = d.Truncate(1 * time.Second)
-
-	// Handle the case where someone requested a ridiculously short increment -
-	// increments must be larger than a second.
-	if d < 1*time.Second {
-		return 0
-	}
-
-	return int(d.Seconds())
-}
-
-// expandPath takes a filepath and returns the full expanded path, accounting
-// for user-relative things like ~/.
-func expandPath(s string) string {
-	if s == "" {
-		return ""
-	}
-
-	e, err := homedir.Expand(s)
-	if err != nil {
-		return s
-	}
-	return e
-}
-
 // WrapAtLengthWithPadding wraps the given text at the maxLineLength, taking
 // into account any provided left padding.
 func WrapAtLengthWithPadding(s string, pad int) string {
@@ -196,22 +73,6 @@ func WrapAtLengthWithPadding(s string, pad int) string {
 // WrapAtLength wraps the given text to maxLineLength.
 func WrapAtLength(s string) string {
 	return WrapAtLengthWithPadding(s, 0)
-}
-
-// ttlToAPI converts a user-supplied ttl into an API-compatible string. If
-// the TTL is 0, this returns the empty string. If the TTL is negative, this
-// returns "system" to indicate to use the system values. Otherwise, the
-// time.Duration ttl is used.
-func ttlToAPI(d time.Duration) string {
-	if d == 0 {
-		return ""
-	}
-
-	if d < 0 {
-		return "system"
-	}
-
-	return d.String()
 }
 
 // humanDuration prints the time duration without those pesky zeros.
@@ -233,13 +94,13 @@ func humanDuration(d time.Duration) string {
 // humanDurationInt prints the given int as if it were a time.Duration  number
 // of seconds.
 func humanDurationInt(i interface{}) interface{} {
-	switch i.(type) {
+	switch t := i.(type) {
 	case int:
-		return humanDuration(time.Duration(i.(int)) * time.Second)
+		return humanDuration(time.Duration(t) * time.Second)
 	case int64:
-		return humanDuration(time.Duration(i.(int64)) * time.Second)
+		return humanDuration(time.Duration(t) * time.Second)
 	case json.Number:
-		if i, err := i.(json.Number).Int64(); err == nil {
+		if i, err := t.Int64(); err == nil {
 			return humanDuration(time.Duration(i) * time.Second)
 		}
 	}

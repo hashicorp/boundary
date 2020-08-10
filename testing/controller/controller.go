@@ -33,14 +33,15 @@ type option struct {
 
 type Option func(*option) error
 
-// WithConfigFile provides the given ConfigFile to the built TestController.  This option can not be used if WithConfigText is used.
+// WithConfigFile provides the given ConfigFile to the built TestController.
+// This option cannot be used if WithConfigText is used.
 func WithConfigFile(f string) Option {
 	return func(c *option) error {
 		if c.setWithConfigFile {
 			return fmt.Errorf("WithConfigFile provided more than once.")
 		}
 		c.setWithConfigFile = true
-		cfg, err := config.LoadFile(f)
+		cfg, err := config.LoadFile(f, nil)
 		if err != nil {
 			return err
 		}
@@ -49,7 +50,8 @@ func WithConfigFile(f string) Option {
 	}
 }
 
-// WithConfigText configures the TestController sets up the Controller using the provided config text.  This option cannot be used if WithConfigFile is used.
+// WithConfigText configures the TestController sets up the Controller using the
+// provided config text. This option cannot be used if WithConfigFile is used.
 func WithConfigText(ct string) Option {
 	return func(c *option) error {
 		if c.setWithConfigText {
@@ -65,7 +67,8 @@ func WithConfigText(ct string) Option {
 	}
 }
 
-// DisableDatabaseCreation skips creating a database in docker and allows one to be provided through a tcOptions.
+// DisableDatabaseCreation skips creating a database in docker and allows one to
+// be provided through a tcOptions.
 func DisableDatabaseCreation() Option {
 	return func(c *option) error {
 		if c.setDisableDatabaseCreation {

@@ -3,36 +3,25 @@ package iam
 import (
 	"context"
 	"fmt"
-	"reflect"
 	"testing"
 	"time"
 
 	"github.com/golang/protobuf/ptypes"
 	wrapping "github.com/hashicorp/go-kms-wrapping"
-	"github.com/hashicorp/go-uuid"
 	"github.com/hashicorp/watchtower/internal/db"
 	"github.com/hashicorp/watchtower/internal/db/timestamp"
 	iam_store "github.com/hashicorp/watchtower/internal/iam/store"
 	"github.com/hashicorp/watchtower/internal/oplog"
 	"github.com/hashicorp/watchtower/internal/oplog/store"
+	"github.com/hashicorp/watchtower/internal/types/scope"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/proto"
 )
 
 func TestNewRepository(t *testing.T) {
 	t.Parallel()
-	cleanup, conn, _ := db.TestSetup(t, "postgres")
-	defer func() {
-		if err := cleanup(); err != nil {
-			t.Error(err)
-		}
-	}()
-	assert := assert.New(t)
-	defer func() {
-		if err := conn.Close(); err != nil {
-			t.Error(err)
-		}
-	}()
+	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
 	type args struct {
@@ -55,9 +44,10 @@ func TestNewRepository(t *testing.T) {
 				wrapper: wrapper,
 			},
 			want: &Repository{
-				reader:  rw,
-				writer:  rw,
-				wrapper: wrapper,
+				reader:       rw,
+				writer:       rw,
+				wrapper:      wrapper,
+				defaultLimit: db.DefaultLimit,
 			},
 			wantErr: false,
 		},
@@ -97,69 +87,59 @@ func TestNewRepository(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
 			got, err := NewRepository(tt.args.r, tt.args.w, tt.args.wrapper)
-			if (err != nil) != tt.wantErr {
-				t.Errorf("NewRepository() error = %v, wantErr %v", err, tt.wantErr)
+			if tt.wantErr {
+				require.Error(err)
+				assert.Equal(err.Error(), tt.wantErrString)
 				return
 			}
-			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("NewRepository() = %v, want %v", got, tt.want)
-			}
-			if err != nil {
-				assert.Equal(err.Error(), tt.wantErrString)
-			}
+			require.NoError(err)
+			assert.Equal(tt.want, got)
 		})
 	}
 }
 func Test_Repository_create(t *testing.T) {
 	t.Parallel()
-	cleanup, conn, _ := db.TestSetup(t, "postgres")
-	defer func() {
-		if err := cleanup(); err != nil {
-			t.Error(err)
-		}
-	}()
-	assert := assert.New(t)
-	defer func() {
-		if err := conn.Close(); err != nil {
-			t.Error(err)
-		}
-	}()
+	conn, _ := db.TestSetup(t, "postgres")
 	t.Run("valid-scope", func(t *testing.T) {
+		assert, require := assert.New(t), require.New(t)
 		rw := db.New(conn)
 		wrapper := db.TestWrapper(t)
 		repo, err := NewRepository(rw, rw, wrapper)
-		assert.NoError(err)
-		id, err := uuid.GenerateUUID()
-		assert.NoError(err)
+		require.NoError(err)
+		id := testId(t)
 
-		s, err := NewOrganization(WithName("fname-" + id))
+		s, err := NewOrg(WithName("fname-" + id))
 		assert.NoError(err)
+		s.PublicId, err = newScopeId(scope.Org)
+		require.NoError(err)
 		retScope, err := repo.create(context.Background(), s)
-		assert.NoError(err)
-		assert.NotNil(retScope)
+		require.NoError(err)
+		require.NotNil(retScope)
 		assert.NotEmpty(retScope.GetPublicId())
 		assert.Equal(retScope.GetName(), "fname-"+id)
 
 		foundScope, err := repo.LookupScope(context.Background(), s.PublicId)
-		assert.NoError(err)
+		require.NoError(err)
 		assert.True(proto.Equal(foundScope, retScope.(*Scope)))
 
 		var metadata store.Metadata
 		err = conn.Where("key = ? and value = ?", "resource-public-id", s.PublicId).First(&metadata).Error
-		assert.NoError(err)
+		require.NoError(err)
 
 		var foundEntry oplog.Entry
 		err = conn.Where("id = ?", metadata.EntryId).First(&foundEntry).Error
 		assert.NoError(err)
 	})
 	t.Run("nil-resource", func(t *testing.T) {
+		assert, require := assert.New(t), require.New(t)
 		rw := db.New(conn)
 		wrapper := db.TestWrapper(t)
 		repo, err := NewRepository(rw, rw, wrapper)
-		assert.NoError(err)
+		require.NoError(err)
 		resource, err := repo.create(context.Background(), nil)
-		assert.NotNil(err)
+		require.Error(err)
 		assert.Nil(resource)
 		assert.Equal(err.Error(), "error creating resource that is nil")
 	})
@@ -167,65 +147,40 @@ func Test_Repository_create(t *testing.T) {
 
 func Test_Repository_delete(t *testing.T) {
 	t.Parallel()
-	cleanup, conn, _ := db.TestSetup(t, "postgres")
-	defer func() {
-		if err := cleanup(); err != nil {
-			t.Error(err)
-		}
-	}()
-	assert := assert.New(t)
-	defer func() {
-		if err := conn.Close(); err != nil {
-			t.Error(err)
-		}
-	}()
+	conn, _ := db.TestSetup(t, "postgres")
 	t.Run("valid-org", func(t *testing.T) {
+		assert, require := assert.New(t), require.New(t)
 		rw := db.New(conn)
 		wrapper := db.TestWrapper(t)
 		repo, err := NewRepository(rw, rw, wrapper)
-		assert.NoError(err)
+		require.NoError(err)
 
-		s, err := NewOrganization()
-		assert.NoError(err)
-		retScope, err := repo.create(context.Background(), s)
-		assert.NoError(err)
-		assert.NotNil(retScope)
-		assert.NotEmpty(retScope.GetPublicId())
-		assert.Equal(retScope.GetName(), "")
+		s, _ := TestScopes(t, conn)
 
 		rowsDeleted, err := repo.delete(context.Background(), s)
-		assert.NoError(err)
+		require.NoError(err)
 		assert.Equal(1, rowsDeleted)
 
 		err = db.TestVerifyOplog(t, rw, s.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_DELETE), db.WithCreateNotBefore(5*time.Second))
-		assert.NoError(err)
+		require.NoError(err)
 	})
 	t.Run("nil-resource", func(t *testing.T) {
+		assert, require := assert.New(t), require.New(t)
 		rw := db.New(conn)
 		wrapper := db.TestWrapper(t)
 		repo, err := NewRepository(rw, rw, wrapper)
-		assert.NoError(err)
+		require.NoError(err)
 		deletedRows, err := repo.delete(context.Background(), nil, nil)
-		assert.NotNil(err)
+		assert.Error(err)
 		assert.Equal(0, deletedRows)
 		assert.Equal(err.Error(), "error deleting resource that is nil")
 	})
 }
 
 func TestRepository_update(t *testing.T) {
-	cleanup, conn, _ := db.TestSetup(t, "postgres")
+	conn, _ := db.TestSetup(t, "postgres")
 	now := &timestamp.Timestamp{Timestamp: ptypes.TimestampNow()}
 	id := testId(t)
-	defer func() {
-		if err := cleanup(); err != nil {
-			t.Error(err)
-		}
-	}()
-	defer func() {
-		if err := conn.Close(); err != nil {
-			t.Error(err)
-		}
-	}()
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
 	publicId := testPublicId(t, "o")
@@ -341,7 +296,7 @@ func TestRepository_update(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			assert := assert.New(t)
+			assert, require := assert.New(t), require.New(t)
 			r := &Repository{
 				reader:  rw,
 				writer:  rw,
@@ -351,17 +306,17 @@ func TestRepository_update(t *testing.T) {
 			if tt.args.resource != nil {
 				tt.args.resource.(*Scope).PublicId = org.PublicId
 			}
-			updatedResource, rowsUpdated, err := r.update(context.Background(), tt.args.resource, tt.args.fieldMaskPaths, tt.args.setToNullPaths, tt.args.opt...)
+			updatedResource, rowsUpdated, err := r.update(context.Background(), tt.args.resource, 1, tt.args.fieldMaskPaths, tt.args.setToNullPaths, tt.args.opt...)
 			if tt.wantErr {
-				assert.Error(err)
+				require.Error(err)
 				assert.Equal(tt.wantUpdatedRows, rowsUpdated)
 				assert.Equal(tt.wantErrMsg, err.Error())
 				return
 			}
-			assert.NoError(err)
+			require.NoError(err)
 			assert.Equal(tt.wantUpdatedRows, rowsUpdated)
 			err = db.TestVerifyOplog(t, rw, org.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_UPDATE), db.WithCreateNotBefore(10*time.Second))
-			assert.NoError(err)
+			require.NoError(err)
 
 			foundResource := allocScope()
 			foundResource.PublicId = updatedResource.GetPublicId()
@@ -370,7 +325,7 @@ func TestRepository_update(t *testing.T) {
 				where = fmt.Sprintf("%s and %s is null", where, f)
 			}
 			err = rw.LookupWhere(context.Background(), &foundResource, where, tt.args.resource.GetPublicId())
-			assert.NoError(err)
+			require.NoError(err)
 			assert.Equal(tt.args.resource.GetPublicId(), foundResource.GetPublicId())
 			assert.Equal(tt.wantName, foundResource.GetName())
 			assert.Equal(tt.wantDescription, foundResource.GetDescription())

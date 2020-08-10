@@ -3,6 +3,7 @@ package db
 import (
 	"context"
 	"crypto/rand"
+	"strings"
 	"testing"
 	"time"
 
@@ -13,19 +14,26 @@ import (
 	"github.com/hashicorp/watchtower/internal/oplog"
 	"github.com/hashicorp/watchtower/internal/oplog/store"
 	"github.com/jinzhu/gorm"
+	"github.com/stretchr/testify/assert"
 )
 
-// setup the tests (initialize the database one-time and intialized testDatabaseURL)
-func TestSetup(t *testing.T, dialect string) (func() error, *gorm.DB, string) {
+// setup the tests (initialize the database one-time and intialized testDatabaseURL). Do not close the returned db.
+func TestSetup(t *testing.T, dialect string) (*gorm.DB, string) {
 	cleanup, url, _, err := InitDbInDocker(dialect)
 	if err != nil {
 		t.Fatal(err)
 	}
+	t.Cleanup(func() {
+		assert.NoError(t, cleanup(), "Got error cleaning up db in docker.")
+	})
 	db, err := gorm.Open(dialect, url)
 	if err != nil {
 		t.Fatal(err)
 	}
-	return cleanup, db, url
+	t.Cleanup(func() {
+		assert.NoError(t, db.Close(), "Got error closing gorm db.")
+	})
+	return db, url
 }
 
 // TestWrapper initializes an AEAD wrapping.Wrapper for testing the oplog
@@ -43,6 +51,16 @@ func TestWrapper(t *testing.T) wrapping.Wrapper {
 		t.Fatal(err)
 	}
 	return root
+}
+
+// AssertPublicId is a test helper that asserts that the provided id is in
+// the format of a public id.
+func AssertPublicId(t *testing.T, prefix, actual string) {
+	t.Helper()
+	assert.NotEmpty(t, actual)
+	parts := strings.Split(actual, "_")
+	assert.Equalf(t, 2, len(parts), "want one '_' in PublicId, got multiple in %q", actual)
+	assert.Equalf(t, prefix, parts[0], "PublicId want prefix: %q, got: %q in %q", prefix, parts[0], actual)
 }
 
 // TestVerifyOplog will verify that there is an oplog entry. An error is

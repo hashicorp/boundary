@@ -3,19 +3,25 @@ package base
 import (
 	"bytes"
 	"context"
+	"encoding/base64"
+	"encoding/json"
 	"flag"
 	"fmt"
 	"io"
 	"io/ioutil"
 	"os"
+	"os/signal"
 	"regexp"
 	"strings"
 	"sync"
+	"syscall"
 
 	"github.com/hashicorp/watchtower/api"
+	"github.com/hashicorp/watchtower/api/authtokens"
 	"github.com/mitchellh/cli"
 	"github.com/pkg/errors"
 	"github.com/posener/complete"
+	"github.com/zalando/go-keyring"
 )
 
 const (
@@ -24,6 +30,8 @@ const (
 
 	// NotSetValue is a flag value for a not-set value
 	NotSetValue = "(not set)"
+
+	envTokenName = "WATCHTOWER_TOKEN_NAME"
 )
 
 // reRemoveWhitespace is a regular expression for stripping whitespace from
@@ -38,9 +46,8 @@ type Command struct {
 	flags     *FlagSets
 	flagsOnce sync.Once
 
-	flagAddr    string
-	flagOrg     string
-	flagProject string
+	flagAddr  string
+	flagScope string
 
 	flagTLSCACert     string
 	flagTLSCAPath     string
@@ -51,9 +58,42 @@ type Command struct {
 
 	flagFormat           string
 	flagField            string
+	FlagTokenName        string
 	flagOutputCurlString bool
 
 	client *api.Client
+}
+
+// New returns a new instance of a base.Command type
+func NewCommand(ui cli.Ui) *Command {
+	ctx, cancel := context.WithCancel(context.Background())
+	ret := &Command{
+		UI:         ui,
+		ShutdownCh: MakeShutdownCh(),
+		Context:    ctx,
+	}
+
+	go func() {
+		<-ret.ShutdownCh
+		cancel()
+	}()
+
+	return ret
+}
+
+// MakeShutdownCh returns a channel that can be used for shutdown
+// notifications for commands. This channel will send a message for every
+// SIGINT or SIGTERM received.
+func MakeShutdownCh() chan struct{} {
+	resultCh := make(chan struct{})
+
+	shutdownCh := make(chan os.Signal, 4)
+	signal.Notify(shutdownCh, os.Interrupt, syscall.SIGTERM)
+	go func() {
+		<-shutdownCh
+		close(resultCh)
+	}()
+	return resultCh
 }
 
 // Client returns the HTTP API client. The client is cached on the command to
@@ -79,13 +119,9 @@ func (c *Command) Client() (*api.Client, error) {
 	}
 
 	if c.flagAddr != NotSetValue {
-		c.client.SetAddr(c.flagAddr)
-	}
-	if c.flagOrg != NotSetValue {
-		c.client.SetOrg(c.flagOrg)
-	}
-	if c.flagProject != NotSetValue {
-		c.client.SetProject(c.flagProject)
+		if err := c.client.SetAddr(c.flagAddr); err != nil {
+			return nil, fmt.Errorf("error setting address on client: %w", err)
+		}
 	}
 
 	// If we need custom TLS configuration, then set it
@@ -127,6 +163,47 @@ func (c *Command) Client() (*api.Client, error) {
 		c.client.SetMaxRetries(0)
 	}
 
+	if c.client.Token() == "" {
+		tokenName := "default"
+		if c.FlagTokenName != "" {
+			tokenName = c.FlagTokenName
+		}
+		if tokenName != "none" {
+			token, err := keyring.Get("HashiCorp Watchtower Auth Token", tokenName)
+			if err != nil {
+				if err == keyring.ErrNotFound {
+					c.UI.Info("No saved credential found, continuing without")
+				} else {
+					c.UI.Error(fmt.Sprintf("Error reading auth token from system credential store: %s", err))
+				}
+				token = ""
+			}
+			if token != "" {
+				tokenBytes, err := base64.RawStdEncoding.DecodeString(token)
+				if err != nil {
+					c.UI.Error(fmt.Sprintf("Error unmarshaling stored token from system credential store: %s", err))
+				} else {
+					var authToken authtokens.AuthToken
+					if err := json.Unmarshal(tokenBytes, &authToken); err != nil {
+						c.UI.Error(fmt.Sprintf("Error unmarshaling stored token information after reading from system credential store: %s", err))
+					} else {
+						c.client.SetToken(authToken.Token)
+						c.client.SetScopeId(authToken.Scope.Id)
+					}
+				}
+			}
+		}
+	}
+
+	// We do this here so we override the stored token info if it's set above
+	if c.flagScope != NotSetValue {
+		c.client.SetScopeId(c.flagScope)
+	}
+	// At this point if we haven't figured out the scope, default to "global"
+	if c.client.ScopeId() == "" {
+		c.client.SetScopeId("global")
+	}
+
 	return c.client, nil
 }
 
@@ -135,6 +212,7 @@ type FlagSetBit uint
 const (
 	FlagSetNone FlagSetBit = 1 << iota
 	FlagSetHTTP
+	FlagSetClient
 	FlagSetOutputField
 	FlagSetOutputFormat
 )
@@ -163,21 +241,12 @@ func (c *Command) FlagSet(bit FlagSetBit) *FlagSets {
 			})
 
 			f.StringVar(&StringVar{
-				Name:       FlagNameOrg,
-				Target:     &c.flagOrg,
+				Name:       FlagNameScope,
+				Target:     &c.flagScope,
 				Default:    NotSetValue,
-				EnvVar:     api.EnvWatchtowerOrg,
+				EnvVar:     api.EnvWatchtowerScopeId,
 				Completion: complete.PredictAnything,
-				Usage:      "Organization in which to make the request; overrides any set in the address.",
-			})
-
-			f.StringVar(&StringVar{
-				Name:       FlagNameProject,
-				Target:     &c.flagProject,
-				Default:    NotSetValue,
-				EnvVar:     api.EnvWatchtowerProject,
-				Completion: complete.PredictAnything,
-				Usage:      "Project in which to make the request; overrides any set in the address.",
+				Usage:      `Scope in which to make the request. If not specified, will default to the scope of a saved token (if found), otherwise will default to "global".`,
 			})
 
 			f.StringVar(&StringVar{
@@ -239,6 +308,17 @@ func (c *Command) FlagSet(bit FlagSetBit) *FlagSets {
 				Usage: "Disable verification of TLS certificates. Using this option " +
 					"is highly discouraged as it decreases the security of data " +
 					"transmissions to and from the Watchtower server.",
+			})
+		}
+
+		if bit&FlagSetClient != 0 {
+			f := set.NewFlagSet("Client Options")
+
+			f.StringVar(&StringVar{
+				Name:   "token-name",
+				Target: &c.FlagTokenName,
+				EnvVar: envTokenName,
+				Usage:  `If specified, the given value will be used as the name when storing the token in the system credential store. This can allow switching user identities for different commands. Set to "none" to disable storing the token.`,
 			})
 
 			f.BoolVar(&BoolVar{

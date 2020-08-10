@@ -1,0 +1,50 @@
+syntax = "proto3";
+
+package controller.api.resources.authtokens.v1;
+
+option go_package = "github.com/hashicorp/watchtower/internal/gen/controller/api/resources/authtokens;authtokens";
+
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/wrappers.proto";
+import "controller/api/resources/scopes/v1/scope.proto";
+
+// AuthToken contains all fields related to an AuthToken resource
+message AuthToken {
+	// The ID of the AuthToken
+	// Output only.
+	string id = 1;
+
+	// Scope information for this resource
+	// Output only.
+	resources.scopes.v1.ScopeInfo scope = 2;
+
+	// The token value, which will only be populated after authentication and is
+	// only ever visible to the end user whose login request resulted in this
+	// auth token being created.
+	// Output only.
+	string token = 3;
+
+	// The id of the user of this AuthToken.
+	// Output only.
+	string user_id = 4 [json_name="user_id"];
+
+	// The id of the user of this AuthToken.
+	// Output only.
+	string auth_method_id = 5 [json_name="auth_method_id"];
+
+	// The time this resource was created
+	// Output only.
+	google.protobuf.Timestamp created_time = 6 [json_name="created_time"];
+
+	// The time this resource was last updated.
+	// Output only.
+	google.protobuf.Timestamp updated_time = 7 [json_name="updated_time"];
+
+	// The approximate time this AuthToken was last used.
+	// Output only.
+	google.protobuf.Timestamp approximate_last_used_time = 8 [json_name = "approximate_last_used_time"];
+
+	// The time this AuthToken expires.
+	// Output only.
+	google.protobuf.Timestamp expiration_time = 9 [json_name="expiration_time"];
+}

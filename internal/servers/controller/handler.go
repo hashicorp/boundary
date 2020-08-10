@@ -3,23 +3,31 @@ package controller
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
-	"path"
-	"path/filepath"
+	"os"
 	"strings"
 	"time"
 
-	"github.com/grpc-ecosystem/grpc-gateway/runtime"
+	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	"github.com/hashicorp/vault/internalshared/configutil"
 	"github.com/hashicorp/vault/sdk/helper/strutil"
 	"github.com/hashicorp/watchtower/api"
 	"github.com/hashicorp/watchtower/globals"
+	"github.com/hashicorp/watchtower/internal/auth"
 	"github.com/hashicorp/watchtower/internal/gen/controller/api/services"
+	"github.com/hashicorp/watchtower/internal/servers/controller/handlers/accounts"
+	"github.com/hashicorp/watchtower/internal/servers/controller/handlers/authmethods"
+
 	"github.com/hashicorp/watchtower/internal/servers/controller/handlers"
+	"github.com/hashicorp/watchtower/internal/servers/controller/handlers/authenticate"
+	"github.com/hashicorp/watchtower/internal/servers/controller/handlers/authtokens"
+	"github.com/hashicorp/watchtower/internal/servers/controller/handlers/groups"
 	"github.com/hashicorp/watchtower/internal/servers/controller/handlers/host_catalogs"
-	"github.com/hashicorp/watchtower/internal/servers/controller/handlers/host_sets"
-	"github.com/hashicorp/watchtower/internal/servers/controller/handlers/hosts"
-	"github.com/hashicorp/watchtower/internal/servers/controller/handlers/projects"
+	"github.com/hashicorp/watchtower/internal/servers/controller/handlers/roles"
+	"github.com/hashicorp/watchtower/internal/servers/controller/handlers/scopes"
+	"github.com/hashicorp/watchtower/internal/servers/controller/handlers/users"
+	"google.golang.org/protobuf/encoding/protojson"
 )
 
 type HandlerProperties struct {
@@ -28,43 +36,110 @@ type HandlerProperties struct {
 
 // Handler returns an http.Handler for the services. This can be used on
 // its own to mount the Vault API within another web server.
-func (c *Controller) handler(props HandlerProperties) http.Handler {
+func (c *Controller) handler(props HandlerProperties) (http.Handler, error) {
 	// Create the muxer to handle the actual endpoints
 	mux := http.NewServeMux()
 
-	if c.conf.RawConfig.PassthroughDirectory != "" {
-		// Panic may not be ideal but this is never a production call and it'll
-		// panic on startup. We could also just change the function to return
-		// an error.
-		abs, err := filepath.Abs(c.conf.RawConfig.PassthroughDirectory)
-		if err != nil {
-			panic(err)
-		}
-		c.logger.Warn("serving passthrough files at /passthrough", "path", abs)
-		fs := http.FileServer(http.Dir(abs))
-		prefixHandler := http.StripPrefix("/passthrough/", fs)
-		mux.Handle("/passthrough/", prefixHandler)
+	h, err := handleGrpcGateway(c)
+	if err != nil {
+		return nil, err
 	}
+	mux.Handle("/v1/", h)
 
-	mux.Handle("/v1/", handleGrpcGateway(c))
+	mux.Handle("/", handleUi(c))
 
 	corsWrappedHandler := wrapHandlerWithCors(mux, props)
 	commonWrappedHandler := wrapHandlerWithCommonFuncs(corsWrappedHandler, c, props)
 
-	return commonWrappedHandler
+	return commonWrappedHandler, nil
 }
 
-func handleGrpcGateway(c *Controller) http.Handler {
+func handleGrpcGateway(c *Controller) (http.Handler, error) {
 	// Register*ServiceHandlerServer methods ignore the passed in ctx.  Using the baseContext now just in case this changes
 	// in the future, at which point we'll want to be using the baseContext.
 	ctx := c.baseContext
-	mux := runtime.NewServeMux(runtime.WithProtoErrorHandler(handlers.ErrorHandler(c.logger)))
-	services.RegisterHostCatalogServiceHandlerServer(ctx, mux, &host_catalogs.Service{})
-	services.RegisterHostSetServiceHandlerServer(ctx, mux, &host_sets.Service{})
-	services.RegisterHostServiceHandlerServer(ctx, mux, &hosts.Service{})
-	services.RegisterProjectServiceHandlerServer(ctx, mux, projects.NewService(c.IamRepo))
+	mux := runtime.NewServeMux(
+		runtime.WithMarshalerOption(runtime.MIMEWildcard, &runtime.HTTPBodyMarshaler{
+			Marshaler: &runtime.JSONPb{
+				MarshalOptions: protojson.MarshalOptions{
+					// Ensures the json marshaler uses the snake casing as defined in the proto field names.
+					UseProtoNames: true,
+					// Do not add fields set to zero value to json.
+					EmitUnpopulated: false,
+				},
+				UnmarshalOptions: protojson.UnmarshalOptions{
+					// Allows requests to contain unknown fields.
+					DiscardUnknown: true,
+				},
+			},
+		}),
+		runtime.WithErrorHandler(handlers.ErrorHandler(c.logger)),
+	)
+	hcs, err := host_catalogs.NewService(c.StaticHostRepoFn)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create host catalog handler service: %w", err)
+	}
+	if err := services.RegisterHostCatalogServiceHandlerServer(ctx, mux, hcs); err != nil {
+		return nil, fmt.Errorf("failed to register host catalog service handler: %w", err)
+	}
+	accts, err := accounts.NewService(c.PasswordAuthRepoFn)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create account handler service: %w", err)
+	}
+	if err := services.RegisterAccountServiceHandlerServer(ctx, mux, accts); err != nil {
+		return nil, fmt.Errorf("failed to register account service handler: %w", err)
+	}
+	auths, err := authenticate.NewService(c.PasswordAuthRepoFn, c.IamRepoFn, c.AuthTokenRepoFn)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create authentication handler service: %w", err)
+	}
+	if err := services.RegisterAuthenticationServiceHandlerServer(ctx, mux, auths); err != nil {
+		return nil, fmt.Errorf("failed to register authenticate service handler: %w", err)
+	}
+	authMethods, err := authmethods.NewService(c.PasswordAuthRepoFn)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create auth method handler service: %w", err)
+	}
+	if err := services.RegisterAuthMethodServiceHandlerServer(ctx, mux, authMethods); err != nil {
+		return nil, fmt.Errorf("failed to register auth method service handler: %w", err)
+	}
+	authtoks, err := authtokens.NewService(c.AuthTokenRepoFn)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create auth token handler service: %w", err)
+	}
+	if err := services.RegisterAuthTokenServiceHandlerServer(ctx, mux, authtoks); err != nil {
+		return nil, fmt.Errorf("failed to register auth token service handler: %w", err)
+	}
+	os, err := scopes.NewService(c.IamRepoFn)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create scope handler service: %w", err)
+	}
+	if err := services.RegisterScopeServiceHandlerServer(ctx, mux, os); err != nil {
+		return nil, fmt.Errorf("failed to register scope service handler: %w", err)
+	}
+	us, err := users.NewService(c.IamRepoFn)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create user handler service: %w", err)
+	}
+	if err := services.RegisterUserServiceHandlerServer(ctx, mux, us); err != nil {
+		return nil, fmt.Errorf("failed to register user service handler: %w", err)
+	}
+	gs, err := groups.NewService(c.IamRepoFn)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create group handler service: %w", err)
+	}
+	if err := services.RegisterGroupServiceHandlerServer(ctx, mux, gs); err != nil {
+		return nil, fmt.Errorf("failed to register group service handler: %w", err)
+	}
+	rs, err := roles.NewService(c.IamRepoFn)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create role handler service: %w", err)
+	}
+	if err := services.RegisterRoleServiceHandlerServer(ctx, mux, rs); err != nil {
+		return nil, fmt.Errorf("failed to register role service handler: %w", err)
+	}
 
-	return mux
+	return mux, nil
 }
 
 func wrapHandlerWithCommonFuncs(h http.Handler, c *Controller, props HandlerProperties) http.Handler {
@@ -80,37 +155,45 @@ func wrapHandlerWithCommonFuncs(h http.Handler, c *Controller, props HandlerProp
 	if maxRequestSize == 0 {
 		maxRequestSize = globals.DefaultMaxRequestSize
 	}
-	var defaultOrgId string
-	if c != nil && c.conf != nil {
-		defaultOrgId = c.conf.DefaultOrgId
+
+	logUrls := os.Getenv("WATCHTOWER_LOG_URLS") != ""
+
+	disableAuthzFailures := c.conf.DisableAuthorizationFailures ||
+		(c.conf.RawConfig.DevController && os.Getenv("WATCHTOWER_DEV_SKIP_AUTHZ") != "")
+	if disableAuthzFailures {
+		c.logger.Warn("AUTHORIZATION CHECKING DISABLED")
 	}
+
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if defaultOrgId != "" {
-			splitPath := strings.Split(r.URL.Path, "/")
-			if len(splitPath) >= 3 && splitPath[2] == "projects" {
-				http.Redirect(w, r, path.Join("/v1/orgs", defaultOrgId, strings.Join(splitPath[2:], "/")), 307)
-				return
-			}
+		if logUrls {
+			c.logger.Trace("request received", "url", r.URL.RequestURI())
 		}
 
 		// Set the Cache-Control header for all responses returned
 		w.Header().Set("Cache-Control", "no-store")
 
-		// Start with the request context
-		ctx := r.Context()
-		var cancelFunc context.CancelFunc
-		// Add our timeout
-		ctx, cancelFunc = context.WithTimeout(ctx, maxRequestDuration)
+		// Start with the request context and our timeout
+		ctx, cancelFunc := context.WithTimeout(r.Context(), maxRequestDuration)
+		defer cancelFunc()
+
 		// Add a size limiter if desired
 		if maxRequestSize > 0 {
 			ctx = context.WithValue(ctx, "max_request_size", maxRequestSize)
 		}
-		ctx = context.WithValue(ctx, "original_request_path", r.URL.Path)
+
+		// Add values for authn/authz checking
+		requestInfo := auth.RequestInfo{
+			Path:                 r.URL.Path,
+			Method:               r.Method,
+			DisableAuthzFailures: disableAuthzFailures,
+		}
+		requestInfo.PublicId, requestInfo.Token, requestInfo.TokenFormat = auth.GetTokenFromRequest(c.logger, r)
+		ctx = auth.NewVerifierContext(ctx, c.logger, c.IamRepoFn, c.AuthTokenRepoFn, requestInfo)
+
+		// Set the context back on the request
 		r = r.WithContext(ctx)
 
 		h.ServeHTTP(w, r)
-		cancelFunc()
-		return
 	})
 }
 
@@ -162,8 +245,8 @@ func wrapHandlerWithCors(h http.Handler, props HandlerProperties) http.Handler {
 			w.WriteHeader(http.StatusForbidden)
 
 			err := &api.Error{
-				Status: api.Int(http.StatusForbidden),
-				Code:   api.String("origin forbidden"),
+				Status: http.StatusForbidden,
+				Code:   "origin forbidden",
 			}
 
 			enc := json.NewEncoder(w)
@@ -190,7 +273,6 @@ func wrapHandlerWithCors(h http.Handler, props HandlerProperties) http.Handler {
 		}
 
 		h.ServeHTTP(w, req)
-		return
 	})
 }
 

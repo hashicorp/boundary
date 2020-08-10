@@ -1,0 +1,56 @@
+syntax = "proto3";
+
+package controller.storage.authtoken.store.v1;
+option go_package = "github.com/hashicorp/watchtower/internal/authtoken/store;store";
+
+import "controller/storage/timestamp/v1/timestamp.proto";
+
+message AuthToken {
+	// public_id is used to access the auth token via an API
+	// @inject_tag: gorm:"primary_key"
+	string public_id = 1;
+
+	// create_time from the RDBMS
+	// @inject_tag: `gorm:"default:current_timestamp"`
+	timestamp.v1.Timestamp create_time = 2;
+
+	// update_time from the RDBMS
+	// @inject_tag: `gorm:"default:current_timestamp"`
+	timestamp.v1.Timestamp update_time = 3;
+
+	// last_access_time indicates the last time the auth token was used on the watchtower API.
+	// @inject_tag: `gorm:"default:current_timestamp"`
+	timestamp.v1.Timestamp approximate_last_access_time = 4;
+
+	// expiration_time indicates when this session will expire.
+	// If null a default duration and create_time is used to calculate expiration.
+	// @inject_tag: `gorm:"default:null"`
+	timestamp.v1.Timestamp expiration_time = 5;
+
+	// ciphertext token value stored in the database
+	// @inject_tag: gorm:"column:token;not_null" wrapping:"ct,authtoken_token"
+	bytes ct_token = 6;
+
+	// plain text version of the decrypted authtoken value
+	// we are NOT storing this plain-text entry data in the db
+	// token is the field stored and used by the client
+	// @inject_tag: gorm:"-" wrapping:"pt,authtoken_token"
+	string token = 7;
+
+	// auth_account_id is the public id for the auth account this auth token
+	// was generated for.
+	// @inject_tag: `gorm:"default:not_null"`
+	string auth_account_id = 10;
+
+	// scope_id is not stored in the backing DB but it derived from the linked to auth account.
+	// @inject_tag: gorm:"-"
+	string scope_id = 11;
+
+	// auth_method_id is not stored in the backing DB but it derived from the linked to auth account.
+	// @inject_tag: gorm:"-"
+	string auth_method_id = 12;
+
+	// iam_user_id is not stored in the backing DB but it derived from the linked to auth account.
+	// @inject_tag: gorm:"-"
+	string iam_user_id = 13;
+}

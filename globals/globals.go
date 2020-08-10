@@ -9,6 +9,10 @@ import "time"
 // import issues. These values should only ever be set at startup, but simply
 // available to reference from anywhere.
 
+const (
+	ContextUserIdValue = "wt_user_id"
+)
+
 var (
 	// DefaultMaxRequestDuration is the amount of time we'll wait for a request
 	DefaultMaxRequestDuration = 90 * time.Second

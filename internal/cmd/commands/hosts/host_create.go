@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/hashicorp/watchtower/api"
 	"github.com/hashicorp/watchtower/api/hosts"
 	"github.com/hashicorp/watchtower/internal/cmd/base"
 	"github.com/kr/pretty"
@@ -45,7 +44,7 @@ Usage: watchtower hosts create
 }
 
 func (c *CreateCommand) Flags() *base.FlagSets {
-	set := c.FlagSet(base.FlagSetHTTP | base.FlagSetOutputFormat)
+	set := c.FlagSet(base.FlagSetHTTP | base.FlagSetClient | base.FlagSetOutputFormat)
 
 	f := set.NewFlagSet("Command Options")
 
@@ -111,19 +110,11 @@ func (c *CreateCommand) Run(args []string) int {
 		return 2
 	}
 
-	catalog := &hosts.HostCatalog{
-		Client: client,
-		Id:     c.flagCatalogId,
-	}
-
-	host := &hosts.Host{
-		Address:     api.String(c.flagAddress),
-		Name:        api.StringOrNil(c.flagName),
-		Description: api.StringOrNil(c.flagDescription),
-	}
-
-	var apiErr *api.Error
-	host, apiErr, err = catalog.CreateHost(c.Context, host)
+	host, apiErr, err := hosts.NewHostsClient(client).Create(c.Context,
+		c.flagCatalogId,
+		hosts.WithAddress(c.flagAddress),
+		hosts.WithName(c.flagName),
+		hosts.WithDescription(c.flagDescription))
 
 	switch {
 	case err != nil:

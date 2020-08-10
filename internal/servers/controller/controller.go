@@ -7,8 +7,12 @@ import (
 
 	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/vault/sdk/helper/mlock"
+	"github.com/hashicorp/watchtower/internal/auth/password"
+	"github.com/hashicorp/watchtower/internal/authtoken"
 	"github.com/hashicorp/watchtower/internal/db"
+	"github.com/hashicorp/watchtower/internal/host/static"
 	"github.com/hashicorp/watchtower/internal/iam"
+	"github.com/hashicorp/watchtower/internal/servers/controller/common"
 )
 
 type Controller struct {
@@ -18,8 +22,12 @@ type Controller struct {
 	baseContext context.Context
 	baseCancel  context.CancelFunc
 
-	// Repos
-	IamRepo *iam.Repository
+	// Repo factory methods
+	IamRepoFn        common.IamRepoFactory
+	StaticHostRepoFn common.StaticRepoFactory
+	AuthTokenRepoFn  common.AuthTokenRepoFactory
+
+	PasswordAuthRepoFn common.PasswordAuthRepoFactory
 }
 
 func New(conf *Config) (*Controller, error) {
@@ -51,12 +59,18 @@ func New(conf *Config) (*Controller, error) {
 	c.baseContext, c.baseCancel = context.WithCancel(context.Background())
 
 	// Set up repo stuff
-	var err error
-
 	dbase := db.New(c.conf.Database)
-	c.IamRepo, err = iam.NewRepository(dbase, dbase, c.conf.ControllerKMS)
-	if err != nil {
-		return nil, fmt.Errorf("unable to create iam repo: %w", err)
+	c.IamRepoFn = func() (*iam.Repository, error) {
+		return iam.NewRepository(dbase, dbase, c.conf.ControllerKMS)
+	}
+	c.StaticHostRepoFn = func() (*static.Repository, error) {
+		return static.NewRepository(dbase, dbase, c.conf.ControllerKMS)
+	}
+	c.AuthTokenRepoFn = func() (*authtoken.Repository, error) {
+		return authtoken.NewRepository(dbase, dbase, c.conf.ControllerKMS)
+	}
+	c.PasswordAuthRepoFn = func() (*password.Repository, error) {
+		return password.NewRepository(dbase, dbase, c.conf.ControllerKMS)
 	}
 
 	return c, nil

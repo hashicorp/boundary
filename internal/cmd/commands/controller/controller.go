@@ -8,9 +8,11 @@ import (
 
 	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/go-multierror"
+	"github.com/hashicorp/vault/internalshared/configutil"
 	"github.com/hashicorp/vault/sdk/helper/mlock"
 	"github.com/hashicorp/vault/sdk/helper/strutil"
 	"github.com/hashicorp/watchtower/globals"
+	"github.com/hashicorp/watchtower/internal/auth/password"
 	"github.com/hashicorp/watchtower/internal/cmd/base"
 	"github.com/hashicorp/watchtower/internal/cmd/config"
 	"github.com/hashicorp/watchtower/internal/servers/controller"
@@ -36,15 +38,19 @@ type Command struct {
 	Config     *config.Config
 	controller *controller.Controller
 
+	configKMS *configutil.KMS
+
 	flagConfig                         string
 	flagLogLevel                       string
 	flagLogFormat                      string
 	flagCombineLogs                    bool
 	flagDev                            bool
-	flagDevAdminPassword               string
+	flagDevUsername                    string
+	flagDevPassword                    string
 	flagDevControllerAPIListenAddr     string
 	flagDevControllerClusterListenAddr string
 	flagDevOrgId                       string
+	flagDevAuthMethodId                string
 	flagDevPassthroughDirectory        string
 }
 
@@ -112,15 +118,31 @@ func (c *Command) Flags() *base.FlagSets {
 		Name:   "dev-org-id",
 		Target: &c.flagDevOrgId,
 		EnvVar: "WATCHTWER_DEV_ORG_ID",
-		Usage: "Auto-created organization ID. This only applies when running in \"dev\" " +
+		Usage: "Auto-created org ID. This only applies when running in \"dev\" " +
 			"mode.",
 	})
 
 	f.StringVar(&base.StringVar{
-		Name:   "dev-admin-password",
-		Target: &c.flagDevAdminPassword,
-		EnvVar: "WATCHTWER_DEV_ADMIN_PASSWORD",
+		Name:   "dev-auth-method-id",
+		Target: &c.flagDevAuthMethodId,
+		EnvVar: "WATCHTWER_DEV_AUTH_METHOD_ID",
+		Usage: "Auto-created auth method ID. This only applies when running in \"dev\" " +
+			"mode.",
+	})
+
+	f.StringVar(&base.StringVar{
+		Name:   "dev-password",
+		Target: &c.flagDevPassword,
+		EnvVar: "WATCHTWER_DEV_PASSWORD",
 		Usage: "Initial admin password. This only applies when running in \"dev\" " +
+			"mode.",
+	})
+
+	f.StringVar(&base.StringVar{
+		Name:   "dev-username",
+		Target: &c.flagDevUsername,
+		EnvVar: "WATCHTWER_DEV_USERNAME",
+		Usage: "Initial admin username. This only applies when running in \"dev\" " +
 			"mode.",
 	})
 
@@ -288,20 +310,41 @@ func (c *Command) ParseFlagsAndConfig(args []string) int {
 		return 1
 	}
 
+	// preload the KMS for encrypting/decrypting the config parameters
+	kmss, err := configutil.LoadConfigKMSes(c.flagConfig)
+	if err != nil {
+		c.UI.Error("error loading KMS config: " + err.Error())
+		return 1
+	}
+
+	for _, kms := range kmss {
+		for _, purpose := range kms.Purpose {
+			if purpose == "config" {
+				c.configKMS = kms
+				break
+			}
+		}
+	}
+
 	// Validation
 	if !c.flagDev {
 		switch {
 		case len(c.flagConfig) == 0:
 			c.UI.Error("Must specify a config file using -config")
 			return 1
-		case c.flagDevAdminPassword != "":
+		case c.flagDevPassword != "":
 			c.UI.Warn(base.WrapAtLength(
 				"You cannot specify a custom admin password outside of \"dev\" mode. " +
 					"Your request has been ignored."))
-			c.flagDevAdminPassword = ""
+			c.flagDevPassword = ""
+		case c.flagDevUsername != "":
+			c.UI.Warn(base.WrapAtLength(
+				"You cannot specify a custom admin username outside of \"dev\" mode. " +
+					"Your request has been ignored."))
+			c.flagDevUsername = ""
 		}
 
-		c.Config, err = config.LoadFile(c.flagConfig)
+		c.Config, err = config.LoadFile(c.flagConfig, c.configKMS)
 		if err != nil {
 			c.UI.Error("Error parsing config: " + err.Error())
 			return 1
@@ -317,6 +360,25 @@ func (c *Command) ParseFlagsAndConfig(args []string) int {
 		if c.flagDevOrgId != "" {
 			c.Config.DefaultOrgId = c.flagDevOrgId
 		}
+		if c.flagDevAuthMethodId != "" {
+			prefix := password.AuthMethodPrefix + "_"
+			if !strings.HasPrefix(c.flagDevAuthMethodId, prefix) {
+				c.UI.Error(fmt.Sprintf("Invalid dev auth method ID, must start with %q", prefix))
+				return 1
+			}
+			if len(c.flagDevAuthMethodId) != 13 {
+				c.UI.Error(fmt.Sprintf("Invalid dev auth method ID, must be 10 base62 characters after %q", prefix))
+				return 1
+			}
+			c.DevAuthMethodId = c.flagDevAuthMethodId
+		}
+		if c.flagDevUsername != "" {
+			c.DevUsername = c.flagDevUsername
+		}
+		if c.flagDevPassword != "" {
+			c.DevPassword = c.flagDevPassword
+		}
+
 		c.Config.PassthroughDirectory = c.flagDevPassthroughDirectory
 
 		for _, l := range c.Config.Listeners {
@@ -410,7 +472,7 @@ func (c *Command) WaitForInterrupt() int {
 				goto RUNRELOADFUNCS
 			}
 
-			newConf, err = config.LoadFile(c.flagConfig)
+			newConf, err = config.LoadFile(c.flagConfig, c.configKMS)
 			if err != nil {
 				c.Logger.Error("could not reload config", "path", c.flagConfig, "error", err)
 				goto RUNRELOADFUNCS

@@ -2,6 +2,7 @@ package config
 
 import (
 	"bytes"
+	"context"
 	"crypto/rand"
 	"encoding/base64"
 	"fmt"
@@ -54,9 +55,16 @@ listener "tcp" {
 
 	devWorkerExtraConfig = `
 listener "tcp" {
+	purpose = "worker-alpn-tls"
 	tls_disable = true
 	proxy_protocol_behavior = "allow_authorized"
 	proxy_protocol_authorized_addrs = "127.0.0.1"
+}
+
+worker {
+	name = "dev-worker"
+	description = "A default worker created in dev mode"
+	controllers = ["127.0.0.1"]
 }
 `
 )
@@ -65,9 +73,16 @@ listener "tcp" {
 type Config struct {
 	*configutil.SharedConfig `hcl:"-"`
 
-	DevController        bool   `hcl:"-"`
-	DefaultOrgId         string `hcl:"default_org_id"`
-	PassthroughDirectory string `hcl:"-"`
+	DevController        bool    `hcl:"-"`
+	DefaultOrgId         string  `hcl:"default_org_id"`
+	PassthroughDirectory string  `hcl:"-"`
+	Worker               *Worker `hcl:"worker"`
+}
+
+type Worker struct {
+	Name        string   `hcl:"name"`
+	Description string   `hcl:"description"`
+	Controllers []string `hcl:"controllers"`
 }
 
 // DevWorker is a Config that is used for dev mode of Watchtower
@@ -80,24 +95,40 @@ func DevWorker() (*Config, error) {
 	return parsed, nil
 }
 
-// DevController is a Config that is used for dev mode of Watchtower
-// controllers
-func DevController() (*Config, error) {
+func devKeyGeneration() (string, string) {
 	randBuf := new(bytes.Buffer)
 	n, err := randBuf.ReadFrom(&io.LimitedReader{
 		R: rand.Reader,
 		N: 64,
 	})
 	if err != nil {
-		return nil, err
+		panic(err)
 	}
 	if n != 64 {
-		return nil, fmt.Errorf("expected to read 64 bytes, read %d", n)
+		panic(fmt.Errorf("expected to read 64 bytes, read %d", n))
 	}
 	controllerKey := base64.StdEncoding.EncodeToString(randBuf.Bytes()[0:32])
 	workerAuthKey := base64.StdEncoding.EncodeToString(randBuf.Bytes()[32:64])
+	return controllerKey, workerAuthKey
+}
+
+// DevController is a Config that is used for dev mode of Watchtower
+// controllers
+func DevController() (*Config, error) {
+	controllerKey, workerAuthKey := devKeyGeneration()
 
 	hclStr := fmt.Sprintf(devConfig+devControllerExtraConfig, controllerKey, workerAuthKey)
+	parsed, err := Parse(hclStr)
+	if err != nil {
+		return nil, fmt.Errorf("error parsing dev config: %w", err)
+	}
+	parsed.DevController = true
+	return parsed, nil
+}
+
+func DevCombined() (*Config, error) {
+	controllerKey, workerAuthKey := devKeyGeneration()
+	hclStr := fmt.Sprintf(devConfig+devControllerExtraConfig+devWorkerExtraConfig, controllerKey, workerAuthKey)
 	parsed, err := Parse(hclStr)
 	if err != nil {
 		return nil, fmt.Errorf("error parsing dev config: %w", err)
@@ -113,19 +144,22 @@ func New() *Config {
 }
 
 // LoadFile loads the configuration from the given file.
-func LoadFile(path string) (*Config, error) {
-	// Read the file
+func LoadFile(path string, kms *configutil.KMS) (*Config, error) {
 	d, err := ioutil.ReadFile(path)
 	if err != nil {
 		return nil, err
 	}
 
-	conf, err := Parse(string(d))
-	if err != nil {
-		return nil, err
+	raw := string(d)
+
+	if kms != nil {
+		raw, err = configDecrypt(raw, kms)
+		if err != nil {
+			return nil, err
+		}
 	}
 
-	return conf, nil
+	return Parse(raw)
 }
 
 func Parse(d string) (*Config, error) {
@@ -169,4 +203,16 @@ func (c *Config) Sanitized() map[string]interface{} {
 	}
 
 	return result
+}
+
+func configDecrypt(raw string, kms *configutil.KMS) (string, error) {
+	wrapper, err := configutil.ConfigureWrapper(kms, nil, nil, nil)
+	if err != nil {
+		return raw, err
+	}
+
+	wrapper.Init(context.Background())
+	defer wrapper.Finalize(context.Background())
+
+	return configutil.EncryptDecrypt(raw, true, true, wrapper)
 }

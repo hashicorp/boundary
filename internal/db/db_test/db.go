@@ -6,6 +6,13 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
+const (
+	defaultUserTablename    = "db_test_user"
+	defaultCarTableName     = "db_test_car"
+	defaultRentalTableName  = "db_test_rental"
+	defaultScooterTableName = "db_test_scooter"
+)
+
 type TestUser struct {
 	*StoreTestUser
 	table string `gorm:"-"`
@@ -23,8 +30,14 @@ func NewTestUser() (*TestUser, error) {
 	}, nil
 }
 
+func AllocTestUser() TestUser {
+	return TestUser{
+		StoreTestUser: &StoreTestUser{},
+	}
+}
+
 // Clone is useful when you're retrying transactions and you need to send the user several times
-func (u *TestUser) Clone() *TestUser {
+func (u *TestUser) Clone() interface{} {
 	s := proto.Clone(u.StoreTestUser)
 	return &TestUser{
 		StoreTestUser: s.(*StoreTestUser),
@@ -34,11 +47,14 @@ func (u *TestUser) TableName() string {
 	if u.table != "" {
 		return u.table
 	}
-	return "db_test_user"
+	return defaultUserTablename
 }
 
 func (u *TestUser) SetTableName(name string) {
-	if name != "" {
+	switch name {
+	case "":
+		u.table = defaultUserTablename
+	default:
 		u.table = name
 	}
 }
@@ -65,12 +81,10 @@ func (c *TestCar) TableName() string {
 		return c.table
 	}
 
-	return "db_test_car"
+	return defaultCarTableName
 }
 func (c *TestCar) SetTableName(name string) {
-	if name != "" {
-		c.table = name
-	}
+	c.table = name
 }
 
 type TestRental struct {
@@ -94,10 +108,52 @@ func (r *TestRental) TableName() string {
 		return r.table
 	}
 
-	return "db_test_rental"
+	return defaultRentalTableName
 }
 func (r *TestRental) SetTableName(name string) {
-	if name != "" {
-		r.table = name
+	r.table = name
+}
+
+type TestScooter struct {
+	*StoreTestScooter
+	table string `gorm:"-"`
+}
+
+func NewTestScooter() (*TestScooter, error) {
+	privateId, err := base62.Random(20)
+	if err != nil {
+		return nil, err
 	}
+	return &TestScooter{
+		StoreTestScooter: &StoreTestScooter{
+			PrivateId: privateId,
+		},
+	}, nil
+}
+
+func (t *TestScooter) Clone() interface{} {
+	s := proto.Clone(t.StoreTestScooter)
+	return &TestScooter{
+		StoreTestScooter: s.(*StoreTestScooter),
+	}
+}
+func (t *TestScooter) TableName() string {
+	if t.table != "" {
+		return t.table
+	}
+	return defaultScooterTableName
+}
+
+func (t *TestScooter) SetTableName(name string) {
+	t.table = name
+}
+
+type Cloner interface {
+	Clone() interface{}
+}
+
+type NotIder struct{}
+
+func (i *NotIder) Clone() interface{} {
+	return &NotIder{}
 }

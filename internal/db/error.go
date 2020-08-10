@@ -58,3 +58,20 @@ func IsUniqueError(err error) bool {
 
 	return false
 }
+
+// IsCheckConstraintError returns a boolean indicating whether the error is
+// known to report a check constraint violation.
+func IsCheckConstraintError(err error) bool {
+	if err == nil {
+		return false
+	}
+
+	var pqError *pq.Error
+	if errors.As(err, &pqError) {
+		if pqError.Code.Name() == "check_violation" {
+			return true
+		}
+	}
+
+	return false
+}

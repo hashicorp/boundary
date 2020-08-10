@@ -12,8 +12,16 @@ begin;
 
 drop domain wt_timestamp;
 drop domain wt_public_id;
-drop function update_time_column() cascade;
-drop function immutable_create_time_func() cascade;
+drop domain wt_private_id;
+drop domain wt_scope_id;
+drop domain wt_user_id;
+drop domain wt_version;
+
+drop function default_create_time;
+drop function update_time_column;
+drop function update_version_column;
+drop function immutable_columns;
+
 commit;
 
 `),
@@ -30,12 +38,39 @@ check(
 comment on domain wt_public_id is
 'Random ID generated with github.com/hashicorp/vault/sdk/helper/base62';
 
+create domain wt_private_id as text
+check(
+  length(trim(value)) > 10
+);
+comment on domain wt_private_id is
+'Random ID generated with github.com/hashicorp/vault/sdk/helper/base62';
+
+create domain wt_scope_id as text
+check(
+  length(trim(value)) > 10 or value = 'global'
+);
+comment on domain wt_scope_id is
+'"global" or random ID generated with github.com/hashicorp/vault/sdk/helper/base62';
+
+create domain wt_user_id as text
+check(
+  length(trim(value)) > 10 or value = 'u_anon' or value = 'u_auth'
+);
+comment on domain wt_scope_id is
+'"u_anon", "u_auth", or random ID generated with github.com/hashicorp/vault/sdk/helper/base62';
+
+create domain wt_role_id as text
+check(
+  length(trim(value)) > 10 or value = 'r_default'
+);
+comment on domain wt_scope_id is
+'"r_default", or random ID generated with github.com/hashicorp/vault/sdk/helper/base62';
+
 create domain wt_timestamp as
   timestamp with time zone
   default current_timestamp;
 comment on domain wt_timestamp is
 'Standard timestamp for all create_time and update_time columns';
-
 
 create or replace function
   update_time_column()
@@ -55,24 +90,6 @@ comment on function
   update_time_column()
 is
   'function used in before update triggers to properly set update_time columns';
-
-create or replace function
-  immutable_create_time_func()
-  returns trigger
-as $$
-begin
-  if new.create_time is distinct from old.create_time then
-    raise warning 'create_time cannot be set to %', new.create_time;
-    new.create_time = old.create_time;
-  end if;
-  return new;
-end;
-$$ language plpgsql;
-
-comment on function
-  immutable_create_time_func()
-is
-  'function used in before update triggers to make create_time column immutable';
   
 create or replace function
   default_create_time()
@@ -92,6 +109,71 @@ comment on function
 is
   'function used in before insert triggers to set create_time column to now';
 
+
+create domain wt_version as bigint
+default 1 
+check(
+  value > 0
+);
+comment on domain wt_version is
+'standard column for row version';
+
+-- update_version_column() will increment the version column whenever row data
+-- is updated and should only be used in an update after trigger.  This function
+-- will overwrite any explicit updates to the version column. 
+create or replace function
+  update_version_column()
+  returns trigger
+as $$
+begin
+  if pg_trigger_depth() = 1 then
+    if row(new.*) is distinct from row(old.*) then
+      execute format('update %I set version = $1 where public_id = $2', tg_relid::regclass) using old.version+1, new.public_id;
+      new.version = old.version + 1;
+      return new;
+    end if;
+  end if;
+  return new;
+end;
+$$ language plpgsql;
+
+comment on function
+  update_version_column()
+is
+  'function used in after update triggers to properly set version columns';
+
+-- immutable_columns() will make the column names immutable which are passed as
+-- parameters when the trigger is created. It raises error code 23601 which is a
+-- class 23 integrity constraint violation: immutable column  
+create or replace function
+  immutable_columns()
+  returns trigger
+as $$
+declare 
+	col_name text; 
+	new_value text;
+	old_value text;
+begin
+  foreach col_name in array tg_argv loop
+    execute format('SELECT $1.%I', col_name) into new_value using new;
+    execute format('SELECT $1.%I', col_name) into old_value using old;
+  	if new_value is distinct from old_value then
+      raise exception 'immutable column: %.%', tg_table_name, col_name using
+        errcode = '23601', 
+        schema = tg_table_schema,
+        table = tg_table_name,
+        column = col_name;
+  	end if;
+  end loop;
+  return new;
+end;
+$$ language plpgsql;
+
+comment on function
+  immutable_columns()
+is
+  'function used in before update triggers to make columns immutable';
+
 commit;
 
 `),
@@ -101,22 +183,12 @@ commit;
 		bytes: []byte(`
 begin;
 
-drop table if exists oplog_entry cascade;
-
-drop trigger if exists update_oplog_entry_update_time on oplog_entry;
-drop trigger if exists update_oplog_entry_create_time on oplog_entry;
-
-drop table if exists oplog_ticket cascade;
-
-drop trigger if exists update_oplog_ticket_update_time on oplog_ticket;
-drop trigger if exists update_oplog_ticket_create_time on oplog_ticket;
-
-drop table if exists oplog_metadata cascade;
-
-drop trigger if exists update_oplog_metadata_update_time on oplog_metadata;
-drop trigger if exists update_oplog_metadata_create_time on oplog_metadata;
+drop table oplog_metadata cascade;
+drop table oplog_ticket cascade;
+drop table oplog_entry cascade;
 
 commit;
+
 `),
 	},
 	"migrations/02_oplog.up.sql": {
@@ -124,6 +196,7 @@ commit;
 		bytes: []byte(`
 begin;
 
+-- TODO (jimlambrt 7/2020) remove update_time
 create table if not exists oplog_entry (
   id bigint generated always as identity primary key,
   create_time wt_timestamp,
@@ -140,16 +213,17 @@ update on oplog_entry
   for each row execute procedure update_time_column();
 
 create trigger 
-  create_time_column
-before
-update on oplog_entry 
-  for each row execute procedure immutable_create_time_func();
-
-create trigger 
   default_create_time_column
 before
 insert on oplog_entry
   for each row execute procedure default_create_time();
+
+-- oplog_entry is immutable.
+create trigger 
+  immutable_columns
+before
+update on oplog_entry
+  for each row execute procedure immutable_columns('id','update_time','create_time','version','aggregate_name', 'data');
 
 create table if not exists oplog_ticket (
   id bigint generated always as identity primary key,
@@ -166,17 +240,19 @@ update on oplog_ticket
   for each row execute procedure update_time_column();
 
 create trigger 
-  create_time_column
-before
-update on oplog_ticket 
-  for each row execute procedure immutable_create_time_func();
-
-create trigger 
   default_create_time_column
 before
 insert on oplog_ticket
   for each row execute procedure default_create_time();
 
+-- oplog_ticket: only allow updates to: version and update_time
+create trigger 
+  immutable_columns
+before
+update on oplog_ticket
+  for each row execute procedure immutable_columns('id','create_time','name');
+  
+-- TODO (jimlambrt 7/2020) remove update_time
 create table if not exists oplog_metadata (
   id bigint generated always as identity primary key,
   create_time wt_timestamp,
@@ -193,16 +269,17 @@ update on oplog_metadata
   for each row execute procedure update_time_column();
 
 create trigger 
-  create_time_column
-before
-update on oplog_metadata 
-  for each row execute procedure immutable_create_time_func();
-
-create trigger 
   default_create_time_column
 before
 insert on oplog_metadata 
   for each row execute procedure default_create_time();
+
+ -- oplog_metadata is immutable
+create trigger 
+  immutable_columns
+before
+update on oplog_metadata
+  for each row execute procedure immutable_columns('id','create_time','update_time','entry_id','key','value');
 
 create index if not exists idx_oplog_metatadata_key on oplog_metadata(key);
 
@@ -210,20 +287,24 @@ create index if not exists idx_oplog_metatadata_value on oplog_metadata(value);
 
 insert into oplog_ticket (name, version)
 values
+  ('auth_token', 1),
   ('default', 1),
   ('iam_scope', 1),
   ('iam_user', 1),
-  ('iam_auth_method', 1),
   ('iam_group', 1),
-  ('iam_group_member_user', 1),
+  ('iam_group_member', 1),
   ('iam_role', 1),
   ('iam_role_grant', 1),
-  ('iam_role_group', 1),
-  ('iam_role_user', 1),
+  ('iam_group_role', 1),
+  ('iam_user_role', 1),
   ('db_test_user', 1),
   ('db_test_car', 1),
   ('db_test_rental', 1),
   ('kms_key_entry', 1);
+  ('db_test_scooter', 1),
+  ('auth_account', 1),
+  ('iam_principal_role', 1);
+  
 
 commit;
 
@@ -235,18 +316,10 @@ commit;
 		bytes: []byte(`
 begin;
 
-drop table if exists db_test_user;
-drop table if exists db_test_car;
-drop table if exists db_test_rental;
-
-drop trigger if exists update_db_test_user_update_time on db_test_user;
-drop trigger if exists update_db_test_user_create_time on db_test_user;
-
-drop trigger if exists update_db_test_car_update_time on db_test_car;
-drop trigger if exists update_db_test_car_create_time on db_test_car;
-
-drop trigger if exists update_db_test_rental_update_time on db_test_rental;
-drop trigger if exists update_db_test_rental_create_time on db_test_rental;
+drop table db_test_rental cascade;
+drop table db_test_car cascade;
+drop table db_test_user cascade;
+drop table db_test_scooter cascade;
 
 commit;
 
@@ -257,9 +330,10 @@ commit;
 		bytes: []byte(`
 begin;
 
--- create test tables used in the unit tests for the internal/db package
--- these tables (db_test_user, db_test_car, db_test_rental) are not part
--- of the watchtower domain model... they are simply used for testing the internal/db package
+-- create test tables used in the unit tests for the internal/db package 
+-- these tables (db_test_user, db_test_car, db_test_rental, db_test_scooter) are
+-- not part of the watchtower domain model... they are simply used for testing
+-- the internal/db package 
 create table if not exists db_test_user (
   id bigint generated always as identity primary key,
   create_time wt_timestamp,
@@ -267,7 +341,8 @@ create table if not exists db_test_user (
   public_id text not null unique,
   name text unique,
   phone_number text,
-  email text
+  email text,
+  version wt_version
 );
 
 create trigger 
@@ -276,11 +351,12 @@ before
 update on db_test_user 
   for each row execute procedure update_time_column();
 
+-- define the immutable fields for db_test_user
 create trigger 
-  create_time_column
+  immutable_columns
 before
-update on db_test_user 
-  for each row execute procedure immutable_create_time_func();
+update on db_test_user
+  for each row execute procedure immutable_columns('create_time');
 
 create trigger 
   default_create_time_column
@@ -288,6 +364,11 @@ before
 insert on db_test_user 
   for each row execute procedure default_create_time();
 
+create trigger 
+  update_version_column
+after update on db_test_user
+  for each row execute procedure update_version_column();
+  
 create table if not exists db_test_car (
   id bigint generated always as identity primary key,
   create_time wt_timestamp,
@@ -304,11 +385,12 @@ before
 update on db_test_car 
   for each row execute procedure update_time_column();
 
+-- define the immutable fields for db_test_car
 create trigger 
-  create_time_column
+  immutable_columns
 before
-update on db_test_car 
-  for each row execute procedure immutable_create_time_func();
+update on db_test_car
+  for each row execute procedure immutable_columns('create_time');
 
 create trigger 
   default_create_time_column
@@ -332,11 +414,12 @@ before
 update on db_test_rental 
   for each row execute procedure update_time_column();
 
+-- define the immutable fields for db_test_rental
 create trigger 
-  create_time_column
+  immutable_columns
 before
-update on db_test_rental 
-  for each row execute procedure immutable_create_time_func();
+update on db_test_rental
+  for each row execute procedure immutable_columns('create_time');
 
 create trigger 
   default_create_time_column
@@ -345,69 +428,157 @@ insert on db_test_rental
   for each row execute procedure default_create_time();
 
 
+create table if not exists db_test_scooter (
+  id bigint generated always as identity primary key,
+  create_time wt_timestamp,
+  update_time wt_timestamp,
+  private_id text not null unique,
+  name text unique,
+  model text,
+  mpg smallint
+);
+
+create trigger 
+  update_time_column 
+before 
+update on db_test_scooter 
+  for each row execute procedure update_time_column();
+
+
+-- define the immutable fields for db_test_scooter
+create trigger 
+  immutable_columns
+before
+update on db_test_scooter
+  for each row execute procedure immutable_columns('create_time');
+
+create trigger 
+  default_create_time_column
+before
+insert on db_test_scooter
+  for each row execute procedure default_create_time();
+
 commit;
 
 `),
 	},
-	"migrations/04_iam.down.sql": {
-		name: "04_iam.down.sql",
+	"migrations/06_iam.down.sql": {
+		name: "06_iam.down.sql",
 		bytes: []byte(`
 BEGIN;
 
-drop table if exists iam_scope CASCADE;
-drop trigger if exists iam_scope_insert;
-drop function if exists iam_sub_scopes_func;
+drop table iam_group cascade;
+drop table iam_user cascade;
+drop table iam_scope_project cascade;
+drop table iam_scope_org cascade;
+drop table iam_scope_global cascade;
+drop table iam_scope cascade;
+drop table iam_scope_type_enm cascade;
+drop table iam_role cascade;
+drop view iam_principal_role cascade;
+drop table iam_group_role cascade;
+drop table iam_user_role cascade;
+drop table iam_group_member_user cascade;
+drop view iam_group_member cascade;
+drop table iam_role_grant cascade;
 
-drop trigger if exists update_iam_scope_update_time on iam_scope;
-drop trigger if exists update_iam_scope_create_time on iam_scope;
+drop function iam_sub_names cascade;
+drop function iam_immutable_scope_type_func cascade;
+drop function iam_sub_scopes_func cascade;
+drop function iam_immutable_role_principal cascade;
+drop function iam_user_role_scope_check cascade;
+drop function iam_group_role_scope_check cascade;
+drop function iam_group_member_scope_check cascade;
+drop function iam_immutable_group_member cascade;
+drop function get_scoped_member_id cascade;
+drop function grant_scope_id_valid cascade;
+drop function disallow_global_scope_deletion cascade;
+drop function user_scope_id_valid cascade;
+drop function iam_immutable_role_grant cascade;
+drop function disallow_iam_anon_auth_deletion cascade;
 
 COMMIT;
+
 `),
 	},
-	"migrations/04_iam.up.sql": {
-		name: "04_iam.up.sql",
+	"migrations/06_iam.up.sql": {
+		name: "06_iam.up.sql",
 		bytes: []byte(`
 begin;
 
 create table iam_scope_type_enm (
-  string text not null primary key check(string in ('unknown', 'organization', 'project'))
+  string text not null primary key check(string in ('unknown', 'global', 'org', 'project'))
 );
 
 insert into iam_scope_type_enm (string)
 values
   ('unknown'),
-  ('organization'),
+  ('global'),
+  ('org'),
   ('project');
 
- 
+ -- define the immutable fields of iam_scope_type_enm
+create trigger 
+  immutable_columns
+before
+update on iam_scope_type_enm
+  for each row execute procedure immutable_columns('string');
+
 create table iam_scope (
-    public_id wt_public_id primary key,
+    public_id wt_scope_id primary key,
     create_time wt_timestamp,
     update_time wt_timestamp,
     name text,
     type text not null references iam_scope_type_enm(string) check(
       (
-        type = 'organization'
-        and parent_id = null
+        type = 'global'
+        and parent_id is null
+      )
+      or (
+        type = 'org'
+        and parent_id = 'global'
       )
       or (
         type = 'project'
         and parent_id is not null
+        and parent_id != 'global'
       )
     ),
     description text,
-    parent_id text references iam_scope(public_id) on delete cascade on update cascade
+    parent_id text references iam_scope(public_id) on delete cascade on update cascade,
+
+    -- version allows optimistic locking of the role when modifying the role
+    -- itself and when modifying dependent items like principal roles.
+    version wt_version not null default 1
   );
 
-create table iam_scope_organization (
-    scope_id wt_public_id not null unique references iam_scope(public_id) on delete cascade on update cascade,
-    name text unique,
-    primary key(scope_id)
-  );
+create table iam_scope_global (
+    scope_id wt_scope_id primary key
+      references iam_scope(public_id)
+      on delete cascade
+      on update cascade
+      check(
+        scope_id = 'global'
+      ),
+    name text unique
+);
+
+create table iam_scope_org (
+  scope_id wt_scope_id primary key
+    references iam_scope(public_id)
+    on delete cascade
+    on update cascade,
+  parent_id wt_scope_id not null
+    references iam_scope_global(scope_id)
+    on delete cascade
+    on update cascade,
+  name text,
+  unique (parent_id, name)
+);
 
 create table iam_scope_project (
-    scope_id wt_public_id not null references iam_scope(public_id) on delete cascade on update cascade,
-    parent_id wt_public_id not null references iam_scope_organization(scope_id) on delete cascade on update cascade,
+    scope_id wt_scope_id not null references iam_scope(public_id) on delete cascade on update cascade,
+    parent_id wt_public_id not null references iam_scope_org(scope_id) on delete cascade on update cascade,
     name text,
     unique(parent_id, name),
     primary key(scope_id, parent_id)
@@ -418,11 +589,17 @@ create or replace function
   returns trigger
 as $$ 
 declare parent_type int;
-begin 
-  if new.type = 'organization' then
-    insert into iam_scope_organization (scope_id, name)
+begin
+  if new.type = 'global' then
+    insert into iam_scope_global (scope_id, name)
     values
       (new.public_id, new.name);
+    return new;
+  end if;
+  if new.type = 'org' then
+    insert into iam_scope_org (scope_id, parent_id, name)
+    values
+      (new.public_id, new.parent_id, new.name);
     return new;
   end if;
   if new.type = 'project' then
@@ -435,43 +612,35 @@ begin
 end;
 $$ language plpgsql;
 
-
 create trigger 
   iam_scope_insert
 after
 insert on iam_scope 
   for each row execute procedure iam_sub_scopes_func();
 
-
-create or replace function 
-  iam_immutable_scope_type_func() 
+create or replace function
+  disallow_global_scope_deletion()
   returns trigger
-as $$ 
-declare parent_type int;
-begin 
-  if new.type != old.type then
-    raise exception 'scope type cannot be updated';
+as $$
+begin
+  if old.type = 'global' then
+    raise exception 'deletion of global scope not allowed';
   end if;
-  return new;
+  return old;
 end;
 $$ language plpgsql;
 
-create trigger 
-  iam_scope_update
-before 
-update on iam_scope 
-  for each row execute procedure iam_immutable_scope_type_func();
+create trigger
+  iam_scope_disallow_global_deletion
+before
+delete on iam_scope
+  for each row execute procedure disallow_global_scope_deletion();
+
 
 create trigger 
   update_time_column 
 before update on iam_scope 
   for each row execute procedure update_time_column();
-
-create trigger 
-  immutable_create_time
-before
-update on iam_scope 
-  for each row execute procedure immutable_create_time_func();
   
 create trigger 
   default_create_time_column
@@ -479,18 +648,55 @@ before
 insert on iam_scope
   for each row execute procedure default_create_time();
 
+create trigger
+  update_version_column
+after update on iam_scope
+  for each row execute procedure update_version_column();
+
+ -- define the immutable fields for iam_scope
+create trigger 
+  immutable_columns
+before
+update on iam_scope
+  for each row execute procedure immutable_columns('public_id', 'create_time', 'type', 'parent_id');
+
+ -- define the immutable fields of iam_scope_global
+create trigger 
+  immutable_columns
+before
+update on iam_scope_global
+  for each row execute procedure immutable_columns('scope_id');
+
+ -- define the immutable fields of iam_scope_org
+create trigger 
+  immutable_columns
+before
+update on iam_scope_org
+  for each row execute procedure immutable_columns('scope_id');
+
+ -- define the immutable fields of iam_scope_project
+create trigger 
+  immutable_columns
+before
+update on iam_scope_project
+  for each row execute procedure immutable_columns('scope_id');
+
 
 -- iam_sub_names will allow us to enforce the different name constraints for
--- organizations and projects via a before update trigger on the iam_scope
+-- orgs and projects via a before update trigger on the iam_scope
 -- table. 
 create or replace function 
   iam_sub_names() 
   returns trigger
 as $$ 
-begin 
+begin
   if new.name != old.name then
-    if new.type = 'organization' then
-      update iam_scope_organization set name = new.name where scope_id = old.public_id;
+    if new.type = 'global' then
+      update iam_scope_global set name = new.name where scope_id = old.public_id;
+      return new;
+    end if;
+    if new.type = 'org' then
+      update iam_scope_org set name = new.name where scope_id = old.public_id;
       return new;
     end if;
     if new.type = 'project' then
@@ -508,6 +714,610 @@ create trigger
 before 
 update on iam_scope
   for each row execute procedure iam_sub_names();
+
+insert into iam_scope (public_id, name, type, description)
+  values ('global', 'global', 'global', 'Global Scope');
+
+
+create table iam_user (
+    public_id wt_user_id primary key,
+    create_time wt_timestamp,
+    update_time wt_timestamp,
+    name text,
+    description text,
+    scope_id wt_scope_id not null references iam_scope(public_id) on delete cascade on update cascade,
+    unique(name, scope_id),
+    disabled boolean not null default false,
+    version wt_version not null default 1,
+
+    -- The order of columns is important for performance. See:
+    -- https://dba.stackexchange.com/questions/58970/enforcing-constraints-two-tables-away/58972#58972
+    -- https://dba.stackexchange.com/questions/27481/is-a-composite-index-also-good-for-queries-on-the-first-field
+    unique(scope_id, public_id)
+  );
+
+create or replace function
+  user_scope_id_valid()
+  returns trigger
+as $$
+begin
+  perform from iam_scope where public_id = new.scope_id and type in ('global', 'org');
+  if not found then
+    raise exception 'invalid scope type for user creation';
+  end if;
+  return new;
+end;
+$$ language plpgsql;
+
+create or replace function
+  grant_scope_id_valid()
+  returns trigger
+as $$
+declare parent_scope_id text;
+declare role_scope_type text;
+begin
+  -- There is a not-null constraint so ensure that if the value passed in is
+  -- empty we simply set to the scope ID
+  if new.grant_scope_id = '' or new.grant_scope_id is null then
+    new.grant_scope_id = new.scope_id;
+  end if;
+  -- If the scopes match, it's allowed
+  if new.grant_scope_id = new.scope_id then
+    return new;
+  end if;
+  -- Fetch the type of scope
+  select isc.type from iam_scope isc where isc.public_id = new.scope_id into role_scope_type;
+  -- Always allowed
+  if role_scope_type = 'global' then
+    return new;
+  end if;
+  -- Never allowed; the case where it's set to the same scope ID as the project
+  -- itself is covered above
+  if role_scope_type = 'project' then
+    raise exception 'invalid to set grant_scope_id to non-same scope_id when role scope type is project';
+  end if;
+  if role_scope_type = 'org' then
+    -- Look up the parent scope ID for the scope ID given
+    select isc.parent_id from iam_scope isc where isc.public_id = new.grant_scope_id into parent_scope_id;
+    -- Allow iff the grant scope ID's parent matches the role's scope ID; that
+    -- is, match if the role belongs to a direct child scope of this
+    -- org
+    if parent_scope_id = new.scope_id then
+      return new;
+    end if;
+    raise exception 'grant_scope_id is not a child project of the role scope';
+  end if;
+  raise exception 'unknown scope type';
+end;
+$$ language plpgsql;
+
+create or replace function
+  disallow_iam_anon_auth_deletion()
+  returns trigger
+as $$
+begin
+  if old.public_id = 'u_anon' then
+    raise exception 'deletion of anonymous user not allowed';
+  end if;
+  if old.public_id = 'u_auth' then
+    raise exception 'deletion of authenticated user not allowed';
+  end if;
+  return old;
+end;
+$$ language plpgsql;
+
+create trigger
+  update_version_column
+after update on iam_user
+  for each row execute procedure update_version_column();
+
+create trigger
+  ensure_user_scope_id_valid
+before
+insert or update on iam_user
+  for each row execute procedure user_scope_id_valid();
+
+create trigger 
+  update_time_column 
+before update on iam_user 
+  for each row execute procedure update_time_column();
+  
+create trigger 
+  default_create_time_column
+before
+insert on iam_user
+  for each row execute procedure default_create_time();
+
+create trigger
+  iam_user_disallow_anon_auth_deletion
+before
+delete on iam_user
+  for each row execute procedure disallow_iam_anon_auth_deletion();
+
+-- TODO: Do we want to disallow changing the name or description?
+insert into iam_user (public_id, name, description, scope_id)
+  values ('u_anon', 'anonymous', 'The anonymous user matches any request, whether authenticated or not', 'global');
+
+insert into iam_user (public_id, name, description, scope_id)
+  values ('u_auth', 'authenticated', 'The authenticated user matches any user that has a valid token', 'global');
+
+ -- define the immutable fields for iam_user
+create trigger 
+  immutable_columns
+before
+update on iam_user
+  for each row execute procedure immutable_columns('public_id', 'create_time', 'scope_id');
+  
+create table iam_role (
+    public_id wt_role_id primary key,
+    create_time wt_timestamp,
+    update_time wt_timestamp,
+    name text,
+    description text,
+    scope_id wt_scope_id not null references iam_scope(public_id) on delete cascade on update cascade,
+    grant_scope_id wt_scope_id not null references iam_scope(public_id) on delete cascade on update cascade,
+    unique(name, scope_id),
+    disabled boolean not null default false,
+    version wt_version not null default 1,
+
+    -- add unique index so a composite fk can be declared.
+    unique(scope_id, public_id)
+  );
+
+  -- Grants are immutable, which is enforced via the trigger below
+  create table iam_role_grant (
+    create_time wt_timestamp,
+    role_id wt_role_id -- pk
+      references iam_role(public_id)
+      on delete cascade
+      on update cascade,
+    canonical_grant text -- pk
+      check(
+        length(trim(canonical_grant)) > 0
+      ),
+    raw_grant text not null
+      check(
+        length(trim(raw_grant)) > 0
+      ),
+    primary key(role_id, canonical_grant)
+  );
+
+-- iam_immutable_role_grant() ensures that grants assigned to roles are immutable. 
+create or replace function
+  iam_immutable_role_grant()
+  returns trigger
+as $$
+begin
+  raise exception 'role grants are immutable';
+end;
+$$ language plpgsql;
+
+create trigger immutable_role_grant
+before
+update on iam_role_grant
+  for each row execute procedure iam_immutable_role_grant();
+  
+create trigger
+  default_create_time_column
+before
+insert on iam_role_grant
+  for each row execute procedure default_create_time();
+
+create trigger 
+  update_version_column
+after update on iam_role
+  for each row execute procedure update_version_column();
+
+create trigger
+  update_time_column 
+before update on iam_role
+  for each row execute procedure update_time_column();
+  
+create trigger 
+  default_create_time_column
+before
+insert on iam_role
+  for each row execute procedure default_create_time();
+
+create trigger
+  ensure_grant_scope_id_valid
+before
+insert or update on iam_role
+  for each row execute procedure grant_scope_id_valid();
+
+-- disallow_default_role_deletion prevents the default role (r_default) from
+-- being deleted
+create or replace function
+  disallow_default_role_deletion()
+  returns trigger
+as $$
+begin
+  if old.public_id = 'r_default' then
+    raise exception 'deletion of default role not allowed';
+  end if;
+  return old;
+end;
+$$ language plpgsql;
+
+create trigger
+  disallow_default_role_deletion
+before
+delete on iam_role
+  for each row execute procedure disallow_default_role_deletion();
+
+-- define the immutable fields for iam_role (started trigger name with "a_" so
+-- it will run first)
+create trigger 
+  a_immutable_columns
+before
+update on iam_role
+  for each row execute procedure immutable_columns('public_id', 'create_time', 'scope_id');
+
+insert into iam_role (public_id, name, description, scope_id)
+  values('r_default', 'default', 'default role', 'global');
+
+insert into iam_role_grant (role_id, canonical_grant, raw_grant)
+  values('r_default', 'type=org;actions=list', 'type=org;actions=list');
+
+create table iam_group (
+    public_id wt_public_id not null primary key,
+    create_time wt_timestamp,
+    update_time wt_timestamp,
+    name text,
+    description text,
+    scope_id wt_scope_id not null references iam_scope(public_id) on delete cascade on update cascade,
+    unique(name, scope_id),
+    disabled boolean not null default false,
+    -- version allows optimistic locking of the group when modifying the group
+    -- itself and when modifying dependent items like group members. 
+    version wt_version not null default 1,
+
+    -- add unique index so a composite fk can be declared.
+    unique(scope_id, public_id)
+  );
+  
+create trigger 
+  update_version_column
+after update on iam_group
+  for each row execute procedure update_version_column();
+
+create trigger 
+  update_time_column 
+before update on iam_group
+  for each row execute procedure update_time_column();
+  
+create trigger 
+  default_create_time_column
+before
+insert on iam_group
+  for each row execute procedure default_create_time();
+
+-- define the immutable fields for iam_group
+create trigger 
+  immutable_columns
+before
+update on iam_group
+  for each row execute procedure immutable_columns('public_id', 'create_time', 'scope_id');
+
+-- iam_user_role contains roles that have been assigned to users. Users can be
+-- from any scope. The rows in this table must be immutable after insert, which
+-- will be ensured with a before update trigger using
+-- iam_immutable_role_principal(). 
+create table iam_user_role (
+  create_time wt_timestamp,
+  role_id wt_role_id
+    references iam_role(public_id)
+    on delete cascade
+    on update cascade,
+  principal_id wt_user_id 
+    references iam_user(public_id)
+    on delete cascade
+    on update cascade,
+  primary key (role_id, principal_id)
+  );
+
+-- iam_group_role contains roles that have been assigned to groups. 
+-- Groups can be from any scope. The rows in this table must be immutable after
+-- insert, which will be ensured with a before update trigger using
+-- iam_immutable_role_principal(). 
+create table iam_group_role (
+  create_time wt_timestamp,
+  role_id wt_role_id
+    references iam_role(public_id)
+    on delete cascade
+    on update cascade,
+  principal_id wt_public_id 
+    references iam_group(public_id)
+    on delete cascade
+    on update cascade,
+  primary key (role_id, principal_id)
+  );
+
+-- get_scoped_principal_id is used by the iam_principle_role view as a convient
+-- way to create <scope_id>:<principal_id> to reference principals from
+-- other scopes than the role's scope. 
+create or replace function get_scoped_principal_id(role_scope text, principal_scope text, principal_id text) returns text 
+as $$
+begin
+	if role_scope = principal_scope then
+		return principal_id;
+	end if;
+	return principal_scope || ':' || principal_id;
+end;
+$$ language plpgsql;
+
+insert into iam_user_role (role_id, principal_id)
+  values 
+    ('r_default', 'u_anon'),
+    ('r_default', 'u_auth');
+
+
+-- iam_principle_role provides a consolidated view all principal roles assigned
+-- (user and group roles).
+create view iam_principal_role as
+select 
+	ur.create_time, 
+	ur.principal_id,
+	ur.role_id,
+	u.scope_id as principal_scope_id, 
+	r.scope_id as role_scope_id,
+	get_scoped_principal_id(r.scope_id, u.scope_id, ur.principal_id) as scoped_principal_id,
+	'user' as type
+from 	
+	iam_user_role ur, 
+	iam_role r,
+	iam_user u
+where
+	ur.role_id = r.public_id and 
+	u.public_id = ur.principal_id
+union 
+select 
+	gr.create_time, 
+	gr.principal_id,
+	gr.role_id,
+	g.scope_id as principal_scope_id, 
+	r.scope_id as role_scope_id,
+	get_scoped_principal_id(r.scope_id, g.scope_id, gr.principal_id) as scoped_principal_id,
+	'group' as type
+from 	
+	iam_group_role gr, 
+	iam_role r,
+	iam_group g
+where
+	gr.role_id = r.public_id and 
+	g.public_id = gr.principal_id;
+
+-- iam_immutable_role_principal() ensures that roles assigned to principals are immutable. 
+create or replace function
+  iam_immutable_role_principal()
+  returns trigger
+as $$
+begin
+    raise exception 'roles are immutable';
+end;
+$$ language plpgsql;
+
+create trigger immutable_role_principal
+before
+update on iam_user_role
+  for each row execute procedure iam_immutable_role_principal();
+
+create trigger 
+  default_create_time_column
+before
+insert on iam_user_role
+  for each row execute procedure default_create_time();
+
+create trigger immutable_role_principal
+before
+update on iam_group_role
+  for each row execute procedure iam_immutable_role_principal();
+  
+create trigger 
+  default_create_time_column
+before
+insert on iam_group_role
+  for each row execute procedure default_create_time();
+
+-- iam_group_member_user is an association table that represents groups with
+-- associated users.
+create table iam_group_member_user (
+  create_time wt_timestamp,
+  group_id wt_public_id references iam_group(public_id) on delete cascade on update cascade,
+  member_id wt_public_id references iam_user(public_id) on delete cascade on update cascade,
+  primary key (group_id, member_id)
+);
+
+-- iam_immutable_group_member() ensures that group members are immutable. 
+create or replace function
+  iam_immutable_group_member()
+  returns trigger
+as $$
+begin
+    raise exception 'group members are immutable';
+end;
+$$ language plpgsql;
+
+create trigger 
+  default_create_time_column
+before
+insert on iam_group_member_user
+  for each row execute procedure default_create_time();
+
+create trigger iam_immutable_group_member
+before
+update on iam_group_member_user
+  for each row execute procedure iam_immutable_group_member();
+
+-- get_scoped_principal_id is used by the iam_group_member view as a convient
+-- way to create <scope_id>:<member_id> to reference members from
+-- other scopes than the group's scope. 
+create or replace function get_scoped_member_id(group_scope text, member_scope text, member_id text) returns text 
+as $$
+begin
+	if group_scope = member_scope then
+		return member_id;
+	end if;
+	return member_scope || ':' || member_id;
+end;
+$$ language plpgsql;
+
+-- iam_group_member provides a consolidated view of group members.
+create view iam_group_member as
+select
+  gm.create_time,
+  gm.group_id,
+  gm.member_id,
+  u.scope_id as member_scope_id,
+  g.scope_id as group_scope_id,
+  get_scoped_member_id(g.scope_id, u.scope_id, gm.member_id) as scoped_member_id,
+  'user' as type
+from
+  iam_group_member_user gm,
+  iam_user u,
+  iam_group g
+where
+  gm.member_id = u.public_id and
+  gm.group_id = g.public_id;
+  
+
+commit;
+
+`),
+	},
+	"migrations/07_auth.down.sql": {
+		name: "07_auth.down.sql",
+		bytes: []byte(`
+begin;
+
+  drop function insert_auth_account_subtype;
+  drop function insert_auth_method_subtype;
+
+  drop table auth_account cascade;
+  drop table auth_method cascade;
+
+commit;
+
+`),
+	},
+	"migrations/07_auth.up.sql": {
+		name: "07_auth.up.sql",
+		bytes: []byte(`
+begin;
+
+/*
+
+  ┌────────────────┐               ┌────────────────┐
+  │   iam_scope    │               │  auth_method   │
+  ├────────────────┤               ├────────────────┤
+  │ public_id (pk) │              ╱│ public_id (pk) │
+  │                │┼┼───────────○─│ scope_id  (fk) │
+  │                │              ╲│                │
+  └────────────────┘               └────────────────┘
+           ┼                                ┼
+           ┼                                ┼
+           │                                │
+           │                                │ ▲fk1
+           │                                │
+           ○                                ○
+          ╱│╲                              ╱│╲
+  ┌────────────────┐          ┌──────────────────────────┐
+  │    iam_user    │          │       auth_account       │
+  ├────────────────┤          ├──────────────────────────┤
+  │ public_id (pk) │          │ public_id      (pk)      │
+  │ scope_id  (fk) │   ◀fk2   │ scope_id       (fk1,fk2) │
+  │                │┼○──────○┼│ auth_method_id (fk1)     │
+  │                │          │ iam_user_id    (fk2)     │
+  └────────────────┘          └──────────────────────────┘
+
+  An iam_scope can have 0 to many iam_users.
+  An iam_scope can have 0 to many auth_methods.
+
+  An iam_user belongs to 1 iam_scope.
+  An auth_method belongs to 1 iam_scope.
+
+  An iam_user can have 0 or 1 auth_account.
+  An auth_account belongs to 0 or 1 iam_user.
+
+  An auth_method can have 0 to many auth_accounts.
+  An auth_account belongs to 1 auth_account.
+
+  An auth_account can only be associated with an iam_user in the same scope of
+  the auth_account's auth_method. Including scope_id in fk1 and fk2 ensures this
+  restriction is not violated.
+
+  Design influenced by:
+  https://dba.stackexchange.com/questions/58970/enforcing-constraints-two-tables-away/58972#58972
+
+*/
+
+  -- base table for auth methods
+  create table auth_method (
+    public_id wt_public_id primary key,
+    scope_id wt_scope_id not null
+      references iam_scope(public_id)
+      on delete cascade
+      on update cascade,
+
+    -- The order of columns is important for performance. See:
+    -- https://dba.stackexchange.com/questions/58970/enforcing-constraints-two-tables-away/58972#58972
+    -- https://dba.stackexchange.com/questions/27481/is-a-composite-index-also-good-for-queries-on-the-first-field
+    unique(scope_id, public_id)
+  );
+
+
+  -- base table for auth accounts
+  create table auth_account (
+    public_id wt_public_id primary key,
+    auth_method_id wt_public_id not null,
+    scope_id wt_scope_id not null,
+    iam_user_id wt_public_id,
+    -- including scope_id in fk1 and fk2 ensures the scope_id of the owning
+    -- auth_method and the scope_id of the owning iam_user are the same
+    foreign key (scope_id, auth_method_id) -- fk1
+      references auth_method (scope_id, public_id)
+      on delete cascade
+      on update cascade,
+    foreign key (scope_id, iam_user_id) -- fk2
+      references iam_user (scope_id, public_id)
+      on delete set null
+      on update cascade,
+    unique(scope_id, auth_method_id, public_id)
+  );
+
+  create or replace function
+    insert_auth_method_subtype()
+    returns trigger
+  as $$
+  begin
+    insert into auth_method
+      (public_id, scope_id)
+    values
+      (new.public_id, new.scope_id);
+    return new;
+  end;
+  $$ language plpgsql;
+
+  create or replace function
+    insert_auth_account_subtype()
+    returns trigger
+  as $$
+  begin
+
+    select auth_method.scope_id
+      into new.scope_id
+    from auth_method
+    where auth_method.public_id = new.auth_method_id;
+
+    insert into auth_account
+      (public_id, auth_method_id, scope_id)
+    values
+      (new.public_id, new.auth_method_id, new.scope_id);
+
+    return new;
+
+  end;
+  $$ language plpgsql;
 
 commit;
 
@@ -534,7 +1344,7 @@ begin;
 
   create table static_host_catalog (
     public_id wt_public_id primary key,
-    scope_id wt_public_id not null
+    scope_id wt_scope_id not null
       references iam_scope (public_id)
       on delete cascade
       on update cascade,
@@ -551,16 +1361,16 @@ begin;
     for each row execute procedure update_time_column();
 
   create trigger
-    immutable_create_time
-  before
-  update on static_host_catalog
-    for each row execute procedure immutable_create_time_func();
-
-  create trigger
     default_create_time_column
   before
   insert on static_host_catalog
     for each row execute procedure default_create_time();
+
+  create trigger 
+    immutable_columns
+  before
+  update on static_host_catalog
+    for each row execute procedure immutable_columns('public_id', 'scope_id','create_time');
 
   create table static_host (
     public_id wt_public_id primary key,
@@ -587,17 +1397,17 @@ begin;
     for each row execute procedure update_time_column();
 
   create trigger
-    immutable_create_time
-  before
-  update on static_host
-    for each row execute procedure immutable_create_time_func();
-
-  create trigger
     default_create_time_column
   before
   insert on static_host
     for each row execute procedure default_create_time();
 
+  create trigger 
+    immutable_columns
+  before
+  update on static_host
+    for each row execute procedure immutable_columns('public_id', 'static_host_catalog_id','create_time');
+  
   create table static_host_set (
     public_id wt_public_id primary key,
     static_host_catalog_id wt_public_id not null
@@ -617,16 +1427,17 @@ begin;
     for each row execute procedure update_time_column();
 
   create trigger
-    immutable_create_time
-  before
-  update on static_host_set
-    for each row execute procedure immutable_create_time_func();
-
-  create trigger
     default_create_time_column
   before
   insert on static_host_set
     for each row execute procedure default_create_time();
+
+
+  create trigger 
+    immutable_columns
+  before
+  update on static_host_set
+    for each row execute procedure immutable_columns('public_id', 'static_host_catalog_id','create_time');
 
   create table static_host_set_member (
     static_host_set_id wt_public_id
@@ -640,12 +1451,661 @@ begin;
     primary key(static_host_set_id, static_host_id)
   );
 
+  create trigger 
+    immutable_columns
+  before
+  update on static_host_set_member
+    for each row execute procedure immutable_columns('static_host_set_id', 'static_host_id');
+    
   insert into oplog_ticket (name, version)
   values
     ('static_host_catalog', 1),
     ('static_host', 1),
     ('static_host_set', 1),
     ('static_host_set_member', 1);
+
+commit;
+
+`),
+	},
+	"migrations/11_auth_token.down.sql": {
+		name: "11_auth_token.down.sql",
+		bytes: []byte(`
+begin;
+
+  drop view auth_token_account cascade;
+  drop table auth_token cascade;
+
+  drop function update_last_access_time cascade;
+  drop function immutable_auth_token_columns cascade;
+  drop function expire_time_not_older_than_token cascade;
+
+commit;
+
+`),
+	},
+	"migrations/11_auth_token.up.sql": {
+		name: "11_auth_token.up.sql",
+		bytes: []byte(`
+begin;
+
+  -- an auth token belongs to 1 and only 1 auth account
+  -- an auth account can have 0 to many auth tokens
+  create table auth_token (
+    public_id wt_public_id primary key,
+    token bytea not null unique,
+    auth_account_id wt_public_id not null
+      references auth_account(public_id)
+      on delete cascade
+      on update cascade,
+    create_time wt_timestamp,
+    update_time wt_timestamp,
+    -- This column is not updated every time this auth token is accessed.
+    -- It is updated after X minutes from the last time it was updated on
+    -- a per row basis.
+    approximate_last_access_time wt_timestamp
+      check(
+        approximate_last_access_time <= expiration_time
+      ),
+    expiration_time wt_timestamp
+      check(
+        create_time <= expiration_time
+      )
+  );
+
+  create view auth_token_account as
+        select at.public_id,
+               at.token,
+               at.auth_account_id,
+               at.create_time,
+               at.update_time,
+               at.approximate_last_access_time,
+               at.expiration_time,
+               aa.scope_id,
+               aa.iam_user_id,
+               aa.auth_method_id
+          from auth_token as at
+    inner join auth_account as aa
+            on at.auth_account_id = aa.public_id;
+
+  create or replace function
+    update_last_access_time()
+    returns trigger
+  as $$
+  begin
+    if new.approximate_last_access_time is distinct from old.approximate_last_access_time then
+      new.approximate_last_access_time = now();
+    end if;
+    return new;
+  end;
+  $$ language plpgsql;
+
+  comment on function
+    update_last_access_time()
+  is
+    'function used in before update triggers to properly set last_access_time columns';
+
+  create or replace function
+    immutable_auth_token_columns()
+    returns trigger
+  as $$
+  begin
+    if new.auth_account_id is distinct from old.auth_account_id then
+      raise exception 'auth_account_id is read-only';
+    end if;
+    if new.token is distinct from old.token then
+      raise exception 'token is read-only';
+    end if;
+    return new;
+  end;
+  $$ language plpgsql;
+
+  comment on function
+    immutable_auth_token_columns()
+  is
+    'function used in before update triggers to make specific columns immutable';
+
+  -- This allows the expiration to be calculated on the server side and still hold the constraint that
+  -- the expiration time cant be before the creation time of the auth token.
+  create or replace function
+    expire_time_not_older_than_token()
+    returns trigger
+  as $$
+  begin
+    if new.expiration_time < new.create_time then
+      new.expiration_time = new.create_time;
+    end if;
+    return new;
+  end;
+  $$ language plpgsql;
+
+  comment on function
+      expire_time_not_older_than_token()
+  is
+    'function used in before insert triggers to ensure expiration time is not older than create time';
+
+  create trigger
+    default_create_time_column
+  before insert on auth_token
+    for each row execute procedure default_create_time();
+
+  create trigger
+    expire_time_not_older_than_token
+  before insert on auth_token
+    for each row execute procedure expire_time_not_older_than_token();
+
+  create trigger
+    update_time_column
+  before update on auth_token
+    for each row execute procedure update_time_column();
+
+  create trigger
+    update_last_access_time
+  before update on auth_token
+    for each row execute procedure update_last_access_time();
+
+
+  create trigger
+    immutable_auth_token_columns
+  before update on auth_token
+    for each row execute procedure immutable_auth_token_columns();
+
+  create trigger 
+    immutable_columns
+  before
+  update on auth_token
+    for each row execute procedure immutable_columns('public_id', 'auth_account_id', 'create_time');
+
+commit;
+
+`),
+	},
+	"migrations/12_auth_password.down.sql": {
+		name: "12_auth_password.down.sql",
+		bytes: []byte(`
+begin;
+
+  drop table auth_password_credential;
+  drop table auth_password_conf cascade;
+  drop table if exists auth_password_account;
+  drop table if exists auth_password_method;
+
+  drop function insert_auth_password_credential_subtype;
+  drop function insert_auth_password_conf_subtype;
+
+commit;
+
+`),
+	},
+	"migrations/12_auth_password.up.sql": {
+		name: "12_auth_password.up.sql",
+		bytes: []byte(`
+begin;
+
+/*
+
+       ┌────────────────┐                 ┌──────────────────────┐             ┌────────────────────────────┐
+       │  auth_method   │                 │ auth_password_method │             │     auth_password_conf     │
+       ├────────────────┤                 ├──────────────────────┤             ├────────────────────────────┤
+       │ public_id (pk) │                 │ public_id (pk,fk)    │            ╱│ private_id         (pk,fk) │
+       │ scope_id  (fk) │┼┼─────────────○┼│ scope_id  (fk)       │┼┼─────────○─│ password_method_id (fk)    │
+       │                │                 │ ...                  │            ╲│                            │
+       └────────────────┘                 └──────────────────────┘             └────────────────────────────┘
+                ┼                                     ┼                                       ┼
+                ┼                                     ┼                                       ┼
+                │                                     │                                       │
+                │ ▲fk1                                │ ▲fk1                                  │ ▲fk1
+                │                                     │                                       │
+                ○                                     ○                                       ○
+               ╱│╲                                   ╱│╲                                     ╱│╲
+  ┌──────────────────────────┐          ┌──────────────────────────┐          ┌───────────────────────────────┐
+  │       auth_account       │          │  auth_password_account   │          │   auth_password_credential    │
+  ├──────────────────────────┤          ├──────────────────────────┤          ├───────────────────────────────┤
+  │ public_id      (pk)      │          │ public_id      (pk,fk2)  │          │ private_id          (pk)      │
+  │ scope_id       (fk1,fk2) │   ◀fk2   │ scope_id       (fk1,fk2) │   ◀fk2   │ password_method_id  (fk1,fk2) │
+  │ auth_method_id (fk1)     │┼┼──────○┼│ auth_method_id (fk1,fk2) │┼┼──────○┼│ password_conf_id    (fk1)     │
+  │ iam_user_id    (fk2)     │          │ ...                      │          │ password_account_id (fk2)     │
+  └──────────────────────────┘          └──────────────────────────┘          └───────────────────────────────┘
+
+  An auth_method is a base type. An auth_password_method is an auth_method
+  subtype. For every row in auth_password_method there is one row in auth_method
+  with the same public_id and scope_id.
+
+  Similarly, an auth_account is a base type. An auth_password_account is an
+  auth_account subtype. For every row in auth_password_account there is one row
+  in auth_account with the same public_id, scope_id, and auth_method_id.
+
+  Both auth_password_conf and auth_password_credential are base types. Each
+  password key derivation function will require a auth_password_conf and
+  auth_password_credential table.
+
+  An auth_method can have 0 or 1 auth_password_method.
+  An auth_account can have 0 or 1 auth_password_account.
+
+  An auth_password_method belongs to 1 auth_method.
+  An auth_password_method can have 0 to many auth_password_accounts.
+  An auth_password_method can have 0 to many auth_password_confs.
+
+  An auth_password_account belongs to 1 auth_account.
+  An auth_password_account belongs to 1 auth_password_method.
+  An auth_password_account can have 0 or 1 auth_password_credential.
+
+  An auth_password_conf belongs to 1 auth_password_method.
+  An auth_password_conf can have 0 to many auth_password_credentials.
+
+  An auth_password_credential belongs to 1 auth_password_account.
+  An auth_password_credential belongs to 1 auth_password_conf.
+
+*/
+
+  create table auth_password_method (
+    public_id wt_public_id primary key,
+    scope_id wt_scope_id not null,
+    password_conf_id wt_private_id not null, -- FK to auth_password_conf added below
+    name text,
+    description text,
+    create_time wt_timestamp,
+    update_time wt_timestamp,
+    min_user_name_length int not null default 3,
+    min_password_length int not null default 8,
+    foreign key (scope_id, public_id)
+      references auth_method (scope_id, public_id)
+      on delete cascade
+      on update cascade,
+    unique(scope_id, name),
+    unique(scope_id, public_id)
+  );
+
+  create trigger
+    insert_auth_method_subtype
+  before insert on auth_password_method
+    for each row execute procedure insert_auth_method_subtype();
+
+  create table auth_password_account (
+    public_id wt_public_id primary key,
+    auth_method_id wt_public_id not null,
+    -- NOTE(mgaffney): The scope_id type is not wt_scope_id because the domain
+    -- check is executed before the insert trigger which retrieves the scope_id
+    -- causing an insert to fail.
+    scope_id text not null,
+    name text,
+    description text,
+    create_time wt_timestamp,
+    update_time wt_timestamp,
+    user_name text not null
+      check(
+        lower(trim(user_name)) = user_name
+        and
+        length(user_name) > 0
+      ),
+    foreign key (scope_id, auth_method_id)
+      references auth_password_method (scope_id, public_id)
+      on delete cascade
+      on update cascade,
+    foreign key (scope_id, auth_method_id, public_id)
+      references auth_account (scope_id, auth_method_id, public_id)
+      on delete cascade
+      on update cascade,
+    unique(auth_method_id, name),
+    unique(auth_method_id, user_name),
+    unique(auth_method_id, public_id)
+  );
+
+  create trigger
+    insert_auth_account_subtype
+  before insert on auth_password_account
+    for each row execute procedure insert_auth_account_subtype();
+
+  create table auth_password_conf (
+    private_id wt_private_id primary key,
+    password_method_id wt_public_id not null
+      references auth_password_method (public_id)
+      on delete cascade
+      on update cascade
+      deferrable initially deferred,
+    unique(password_method_id, private_id)
+  );
+
+  alter table auth_password_method
+    add constraint current_conf_fkey
+    foreign key (public_id, password_conf_id)
+    references auth_password_conf (password_method_id, private_id)
+    on delete cascade
+    on update cascade
+    deferrable initially deferred;
+
+  -- insert_auth_password_conf_subtype() is a trigger function for subtypes of
+  -- auth_password_conf
+  create or replace function
+    insert_auth_password_conf_subtype()
+    returns trigger
+  as $$
+  begin
+    insert into auth_password_conf
+      (private_id, password_method_id)
+    values
+      (new.private_id, new.password_method_id);
+    return new;
+  end;
+  $$ language plpgsql;
+
+  create table auth_password_credential (
+    private_id wt_private_id primary key,
+    password_account_id wt_public_id not null unique,
+    password_conf_id wt_private_id not null,
+    password_method_id wt_public_id not null,
+    foreign key (password_method_id, password_conf_id)
+      references auth_password_conf (password_method_id, private_id)
+      on delete cascade
+      on update cascade,
+    foreign key (password_method_id, password_account_id)
+      references auth_password_account (auth_method_id, public_id)
+      on delete cascade
+      on update cascade,
+    unique(password_method_id, password_conf_id, password_account_id)
+  );
+
+  -- insert_auth_password_credential_subtype() is a trigger function for
+  -- subtypes of auth_password_credential
+  create or replace function
+    insert_auth_password_credential_subtype()
+    returns trigger
+  as $$
+  begin
+
+    select auth_password_account.auth_method_id
+      into new.password_method_id
+    from auth_password_account
+    where auth_password_account.public_id = new.password_account_id;
+
+    insert into auth_password_credential
+      (private_id, password_account_id, password_conf_id, password_method_id)
+    values
+      (new.private_id, new.password_account_id, new.password_conf_id, new.password_method_id);
+    return new;
+  end;
+  $$ language plpgsql;
+
+  -- update_auth_password_credential_subtype() is an after update trigger
+  -- function for subtypes of auth_password_credential
+  create or replace function
+    update_auth_password_credential_subtype()
+    returns trigger
+  as $$
+  begin
+    /*
+      The configuration id of a credential is updated when a credential is
+      rehashed during authentication.
+    */
+    if new.password_conf_id is distinct from old.password_conf_id then
+      update auth_password_credential
+         set password_conf_id = new.password_conf_id
+       where private_id = new.private_id;
+    end if;
+    return null; -- result is ignored since this is an after trigger
+  end;
+  $$ language plpgsql;
+
+  -- delete_auth_password_credential_subtype() is an after delete trigger
+  -- function for subtypes of auth_password_credential
+  create or replace function
+    delete_auth_password_credential_subtype()
+    returns trigger
+  as $$
+  begin
+    delete
+      from auth_password_credential
+     where private_id = old.private_id;
+    return null; -- result is ignored since this is an after trigger
+  end;
+  $$ language plpgsql;
+
+  --
+  -- triggers for time columns
+  --
+
+  create trigger
+    update_time_column
+  before
+  update on auth_password_method
+    for each row execute procedure update_time_column();
+
+  create trigger
+    immutable_columns
+  before
+  update on auth_password_method
+    for each row execute procedure immutable_columns('create_time');
+
+  create trigger
+    default_create_time_column
+  before
+  insert on auth_password_method
+    for each row execute procedure default_create_time();
+
+  create trigger
+    update_time_column
+  before
+  update on auth_password_account
+    for each row execute procedure update_time_column();
+
+  create trigger
+    immutable_columns
+  before
+  update on auth_password_account
+    for each row execute procedure immutable_columns('create_time');
+
+  create trigger
+    default_create_time_column
+  before
+  insert on auth_password_account
+    for each row execute procedure default_create_time();
+
+  -- The tickets for oplog are the subtypes not the base types because no updates
+  -- are done to any values in the base types.
+  insert into oplog_ticket
+    (name, version)
+  values
+    ('auth_password_method', 1),
+    ('auth_password_account', 1);
+
+commit;
+
+`),
+	},
+	"migrations/13_auth_password_argon.down.sql": {
+		name: "13_auth_password_argon.down.sql",
+		bytes: []byte(`
+begin;
+
+  drop table auth_password_argon2_cred;
+  drop table auth_password_argon2_conf;
+
+commit;
+
+`),
+	},
+	"migrations/13_auth_password_argon.up.sql": {
+		name: "13_auth_password_argon.up.sql",
+		bytes: []byte(`
+begin;
+
+  create table auth_password_argon2_conf (
+    private_id wt_private_id primary key
+      references auth_password_conf (private_id)
+      on delete cascade
+      on update cascade,
+    password_method_id wt_public_id not null,
+    create_time wt_timestamp,
+    iterations int not null default 3
+      check(iterations > 0),
+    memory int not null default 65536
+      check(memory > 0),
+    threads int not null default 1
+      check(threads > 0),
+    -- salt_length unit is bytes
+    salt_length int not null default 32
+    -- minimum of 16 bytes (128 bits)
+      check(salt_length >= 16),
+    -- key_length unit is bytes
+    key_length int not null default 32
+    -- minimum of 16 bytes (128 bits)
+      check(key_length >= 16),
+    unique(password_method_id, iterations, memory, threads, salt_length, key_length),
+    unique (password_method_id, private_id),
+    foreign key (password_method_id, private_id)
+      references auth_password_conf (password_method_id, private_id)
+      on delete cascade
+      on update cascade
+      deferrable initially deferred
+  );
+
+  create or replace function
+    read_only_auth_password_argon2_conf()
+    returns trigger
+  as $$
+  begin
+    raise exception 'auth_password_argon2_conf is read-only';
+  end;
+  $$ language plpgsql;
+
+  create trigger
+    read_only_auth_password_argon2_conf
+  before
+  update on auth_password_argon2_conf
+    for each row execute procedure read_only_auth_password_argon2_conf();
+
+  create trigger
+    insert_auth_password_conf_subtype
+  before insert on auth_password_argon2_conf
+    for each row execute procedure insert_auth_password_conf_subtype();
+
+  create table auth_password_argon2_cred (
+    private_id wt_private_id primary key
+      references auth_password_credential (private_id)
+      on delete cascade
+      on update cascade,
+    password_account_id wt_public_id not null,
+    password_conf_id wt_private_id not null,
+    -- NOTE(mgaffney): The password_method_id type is not wt_public_id because
+    -- the domain check is executed before the insert trigger which retrieves
+    -- the password_method_id causing an insert to fail.
+    password_method_id text not null,
+    create_time wt_timestamp,
+    update_time wt_timestamp,
+    salt bytea not null -- cannot be changed unless derived_key is changed too
+      check(length(salt) > 0),
+    derived_key bytea not null
+      check(length(derived_key) > 0),
+    foreign key (password_method_id, password_conf_id)
+      references auth_password_argon2_conf (password_method_id, private_id)
+      on delete cascade
+      on update cascade,
+    foreign key (password_method_id, password_conf_id, password_account_id)
+      references auth_password_credential (password_method_id, password_conf_id, password_account_id)
+      on delete cascade
+      on update cascade
+      deferrable initially deferred
+  );
+
+  create trigger
+    insert_auth_password_credential_subtype
+  before insert on auth_password_argon2_cred
+    for each row execute procedure insert_auth_password_credential_subtype();
+
+  create trigger
+    update_auth_password_credential_subtype
+  after update on auth_password_argon2_cred
+    for each row execute procedure update_auth_password_credential_subtype();
+
+  create trigger
+    delete_auth_password_credential_subtype
+  after delete on auth_password_argon2_cred
+    for each row execute procedure delete_auth_password_credential_subtype();
+
+  --
+  -- triggers for time columns
+  --
+
+  create trigger
+    immutable_columns
+  before
+  update on auth_password_argon2_conf
+    for each row execute procedure immutable_columns('create_time');
+
+  create trigger
+    default_create_time_column
+  before
+  insert on auth_password_argon2_conf
+    for each row execute procedure default_create_time();
+
+  create trigger
+    update_time_column
+  before
+  update on auth_password_argon2_cred
+    for each row execute procedure update_time_column();
+
+  create trigger
+    immutable_columns
+  before
+  update on auth_password_argon2_cred
+    for each row execute procedure immutable_columns('create_time');
+
+  create trigger
+    default_create_time_column
+  before
+  insert on auth_password_argon2_cred
+    for each row execute procedure default_create_time();
+
+  -- The tickets for oplog are the subtypes not the base types because no updates
+  -- are done to any values in the base types.
+  insert into oplog_ticket
+    (name, version)
+  values
+    ('auth_password_argon2_conf', 1),
+    ('auth_password_argon2_cred', 1);
+
+commit;
+
+`),
+	},
+	"migrations/14_auth_password_views.down.sql": {
+		name: "14_auth_password_views.down.sql",
+		bytes: []byte(`
+begin;
+
+  drop view auth_password_current_conf;
+  drop view auth_password_conf_union;
+
+commit;
+
+`),
+	},
+	"migrations/14_auth_password_views.up.sql": {
+		name: "14_auth_password_views.up.sql",
+		bytes: []byte(`
+begin;
+
+  -- auth_password_conf_union is a union of the configuration settings
+  -- of all supported key derivation functions.
+  -- It will be updated as new key derivation functions are supported.
+  create or replace view auth_password_conf_union as
+      -- Do not change the order of the columns when adding new configurations.
+      -- Union with new tables appending new columns as needed.
+      select c.password_method_id, c.private_id as password_conf_id, c.private_id,
+             'argon2' as conf_type,
+             c.iterations, c.memory, c.threads, c.salt_length, c.key_length
+        from auth_password_argon2_conf c;
+
+  -- auth_password_current_conf provides a view of the current password
+  -- configuration for each password auth method.
+  -- The view will be updated as new key derivation functions are supported
+  -- but the query to create the view should not need to be updated.
+  create or replace view auth_password_current_conf as
+      -- Rerun this query whenever auth_password_conf_union is updated.
+      select pm.min_user_name_length, pm.min_password_length, c.*
+        from auth_password_method pm
+  inner join auth_password_conf_union c
+          on pm.password_conf_id = c.password_conf_id;
 
 commit;
 

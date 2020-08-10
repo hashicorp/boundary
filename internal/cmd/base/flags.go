@@ -667,7 +667,7 @@ func (s *stringMapValue) Hidden() bool     { return s.hidden }
 
 func mapToKV(m map[string]string) string {
 	list := make([]string, 0, len(m))
-	for k, _ := range m {
+	for k := range m {
 		list = append(list, k)
 	}
 	sort.Strings(list)
@@ -747,34 +747,4 @@ func (f *FlagSet) VarFlag(i *VarFlag) {
 func (f *FlagSet) Var(value flag.Value, name, usage string) {
 	f.mainSet.Var(value, name, usage)
 	f.flagSet.Var(value, name, usage)
-}
-
-// -- helpers
-func envDefault(key, def string) string {
-	if v, exist := os.LookupEnv(key); exist {
-		return v
-	}
-	return def
-}
-
-func envBoolDefault(key string, def bool) bool {
-	if v, exist := os.LookupEnv(key); exist {
-		b, err := strconv.ParseBool(v)
-		if err != nil {
-			panic(err)
-		}
-		return b
-	}
-	return def
-}
-
-func envDurationDefault(key string, def time.Duration) time.Duration {
-	if v, exist := os.LookupEnv(key); exist {
-		d, err := time.ParseDuration(v)
-		if err != nil {
-			panic(err)
-		}
-		return d
-	}
-	return def
 }

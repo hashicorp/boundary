@@ -1,59 +1,116 @@
 package controller
 
 import (
+	"encoding/json"
 	"fmt"
-	"net"
+	"io/ioutil"
 	"net/http"
+	"strings"
 	"testing"
 
-	"github.com/hashicorp/vault/internalshared/configutil"
-	"github.com/hashicorp/watchtower/internal/cmd/base"
-	"github.com/hashicorp/watchtower/internal/cmd/config"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
-func TestHandleGrpcGateway(t *testing.T) {
-	c := &Controller{
-		conf: &Config{
-			Server:    new(base.Server),
-			RawConfig: config.New(),
-		},
-	}
-	h := c.handler(HandlerProperties{ListenerConfig: new(configutil.Listener)})
-	l, err := net.Listen("tcp4", "127.0.0.1:0")
-	if err != nil {
-		t.Fatalf("Couldn't listen: %v", err)
-	}
-	defer l.Close()
-	go func() {
-		http.Serve(l, h)
-	}()
+func TestAuthenticationHandler(t *testing.T) {
+	c := NewTestController(t, &TestControllerOpts{
+		DefaultOrgId:                 "o_1234567890",
+		DisableAuthorizationFailures: true,
+		DefaultUsername:              "admin",
+		DefaultPassword:              "password123",
+	})
+	defer c.Shutdown()
 
-	cases := []struct {
-		name string
-		path string
-		code int
-	}{
-		{
-			"Non existent path",
-			"v1/this-is-made-up",
-			http.StatusNotFound,
+	resp, err := http.Post(fmt.Sprintf("%s/v1/scopes/o_1234567890/auth-methods/paum_1234567890:authenticate", c.ApiAddrs()[0]), "application/json",
+		strings.NewReader(`{"token_type": null, "credentials": {"name":"admin", "password": "password123"}}`))
+	require.NoError(t, err)
+	assert.Equal(t, http.StatusOK, resp.StatusCode, "Got response: %v", resp)
+
+	b, err := ioutil.ReadAll(resp.Body)
+	require.NoError(t, err)
+	body := make(map[string]interface{})
+	require.NoError(t, json.Unmarshal(b, &body))
+
+	require.Contains(t, body, "id")
+	require.Contains(t, body, "token")
+	pubId, tok := body["id"].(string), body["token"].(string)
+	assert.NotEmpty(t, pubId)
+	assert.NotEmpty(t, tok)
+	assert.Truef(t, strings.HasPrefix(tok, pubId), "Token: %q, Id: %q", tok, pubId)
+}
+
+func TestHandleImplementedPaths(t *testing.T) {
+	c := NewTestController(t, &TestControllerOpts{
+		DisableAuthorizationFailures: true,
+	})
+	defer c.Shutdown()
+
+	for verb, paths := range map[string][]string{
+		"GET": {
+			"v1/scopes",
+			"v1/scopes/someid",
+			"v1/scopes/someid/auth-tokens",
+			"v1/scopes/someid/auth-tokens/someid",
+			"v1/scopes/someid/auth-methods",
+			"v1/scopes/someid/auth-methods/someid",
+			"v1/scopes/someid/auth-methods/someid/accounts",
+			"v1/scopes/someid/auth-methods/someid/accounts/someid",
+			"v1/scopes/someid/groups",
+			"v1/scopes/someid/groups/someid",
+			"v1/scopes/someid/host-catalogs",
+			"v1/scopes/someid/host-catalogs/someid",
+			"v1/scopes/someid/roles",
+			"v1/scopes/someid/roles/someid",
+			"v1/scopes/someid/users",
+			"v1/scopes/someid/users/someid",
 		},
-		{
-			"Unimplemented path",
-			"v1/orgs/1/projects/2/host-catalogs/3/host-sets/4",
-			http.StatusMethodNotAllowed,
+		"POST": {
+			// Creation end points
+			"v1/scopes",
+			"v1/scopes/someid/groups",
+			"v1/scopes/someid/roles",
+			"v1/scopes/someid/users",
+			"v1/scopes/someid/auth-methods",
+			"v1/scopes/someid/auth-methods/someid/accounts",
+
+			// custom methods
+			"v1/scopes/someid/auth-methods/someid:authenticate",
+			"v1/scopes/someid/roles/someid:add-principals",
+			"v1/scopes/someid/roles/someid:set-principals",
+			"v1/scopes/someid/roles/someid:remove-principals",
+			"v1/scopes/someid/roles/someid:add-grants",
+			"v1/scopes/someid/roles/someid:set-grants",
+			"v1/scopes/someid/roles/someid:remove-grants",
+			"v1/scopes/someid/groups/someid:add-members",
+			"v1/scopes/someid/groups/someid:set-members",
+			"v1/scopes/someid/groups/someid:remove-members",
 		},
-	}
-	for _, tc := range cases {
-		t.Run(tc.name, func(t *testing.T) {
-			url := fmt.Sprintf("http://%s/%s", l.Addr(), tc.path)
-			resp, err := http.Get(url)
-			if err != nil {
-				t.Errorf("Got error: %v when non was expected.", err)
-			}
-			if got, want := resp.StatusCode, tc.code; got != want {
-				t.Errorf("GET on %q got code %d, wanted %d", tc.path, got, want)
-			}
-		})
+		"DELETE": {
+			"v1/scopes/someid",
+			"v1/scopes/someid/users/someid",
+			"v1/scopes/someid/roles/someid",
+			"v1/scopes/someid/groups/someid",
+			"v1/scopes/someid/auth-tokens/someid",
+			"v1/scopes/someid/auth-methods/someid",
+			"v1/scopes/someid/auth-methods/someid/accounts/someid",
+		},
+		"PATCH": {
+			"v1/scopes/someid",
+			"v1/scopes/someid/users/someid",
+			"v1/scopes/someid/roles/someid",
+			"v1/scopes/someid/groups/someid",
+			"v1/scopes/someid/auth-methods/someid",
+		},
+	} {
+		for _, p := range paths {
+			t.Run(fmt.Sprintf("%s/%s", verb, p), func(t *testing.T) {
+				url := fmt.Sprintf("%s/%s", c.ApiAddrs()[0], p)
+				req, err := http.NewRequest(verb, url, nil)
+				require.NoError(t, err)
+				resp, err := http.DefaultClient.Do(req)
+				require.NoError(t, err)
+				assert.NotEqualf(t, resp.StatusCode, http.StatusNotFound, "Got response %v, wanted not 404", resp.StatusCode)
+			})
+		}
 	}
 }

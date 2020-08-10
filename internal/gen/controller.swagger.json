@@ -16,33 +16,21 @@
     "application/json"
   ],
   "paths": {
-    "/v1/orgs/{org_id}/host-catalogs": {
+    "/v1/scopes": {
       "get": {
-        "summary": "List all Hosts for the specified catalog",
-        "operationId": "HostService_ListHosts2",
+        "summary": "Lists all Scopes within the scope of the token making the request",
+        "operationId": "ScopeService_ListScopes",
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
-              "$ref": "#/definitions/controller.api.services.v1.ListHostsResponse"
+              "$ref": "#/definitions/controller.api.services.v1.ListScopesResponse"
             }
           }
         },
         "parameters": [
           {
-            "name": "org_id",
-            "in": "path",
-            "required": true,
-            "type": "string"
-          },
-          {
-            "name": "project_id",
-            "in": "query",
-            "required": false,
-            "type": "string"
-          },
-          {
-            "name": "host_catalog_id",
+            "name": "scope_id",
             "in": "query",
             "required": false,
             "type": "string"
@@ -55,71 +43,102 @@
           }
         ],
         "tags": [
-          "controller.api.services.v1.HostService"
+          "controller.api.services.v1.ScopeService"
         ]
       },
       "post": {
-        "summary": "Creates a HostCatalog",
-        "description": "Creates a single host catalog under the specified org and project",
-        "operationId": "HostCatalogService_CreateHostCatalog2",
+        "summary": "Creates a single Scope",
+        "operationId": "ScopeService_CreateScope",
         "responses": {
           "200": {
             "description": "",
             "schema": {
-              "$ref": "#/definitions/controller.api.resources.hosts.v1.HostCatalog"
+              "$ref": "#/definitions/controller.api.resources.scopes.v1.Scope"
             }
           }
         },
         "parameters": [
-          {
-            "name": "org_id",
-            "in": "path",
-            "required": true,
-            "type": "string"
-          },
           {
             "name": "body",
             "in": "body",
             "required": true,
             "schema": {
-              "$ref": "#/definitions/controller.api.resources.hosts.v1.HostCatalog"
+              "$ref": "#/definitions/controller.api.resources.scopes.v1.Scope"
             }
           }
         ],
         "tags": [
-          "controller.api.services.v1.HostCatalogService"
+          "controller.api.services.v1.ScopeService"
         ]
       }
     },
-    "/v1/orgs/{org_id}/host-catalogs/{host_catalog_id}/host-sets": {
+    "/v1/scopes/*/auth-methods": {
       "get": {
-        "summary": "List all HostSets under the specific catalog",
-        "operationId": "HostSetService_ListHostSets2",
+        "summary": "Lists all AuthMethods",
+        "operationId": "AuthMethodService_ListAuthMethods",
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
-              "$ref": "#/definitions/controller.api.services.v1.ListHostSetsResponse"
+              "$ref": "#/definitions/controller.api.services.v1.ListAuthMethodsResponse"
             }
           }
         },
         "parameters": [
           {
-            "name": "org_id",
-            "in": "path",
-            "required": true,
-            "type": "string"
-          },
-          {
-            "name": "host_catalog_id",
-            "in": "path",
-            "required": true,
-            "type": "string"
-          },
-          {
-            "name": "project_id",
+            "name": "view",
             "in": "query",
             "required": false,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "controller.api.services.v1.AuthMethodService"
+        ]
+      },
+      "post": {
+        "summary": "Creates a single AuthMethod",
+        "operationId": "AuthMethodService_CreateAuthMethod",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/controller.api.resources.authmethods.v1.AuthMethod"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/controller.api.resources.authmethods.v1.AuthMethod"
+            }
+          }
+        ],
+        "tags": [
+          "controller.api.services.v1.AuthMethodService"
+        ]
+      }
+    },
+    "/v1/scopes/*/auth-methods/{auth_method_id}/accounts": {
+      "get": {
+        "summary": "Lists all accounts in a specific auth method.",
+        "operationId": "AccountService_ListAccounts",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.services.v1.ListAccountsResponse"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "auth_method_id",
+            "in": "path",
+            "required": true,
             "type": "string"
           },
           {
@@ -130,29 +149,23 @@
           }
         ],
         "tags": [
-          "controller.api.services.v1.HostSetService"
+          "controller.api.services.v1.AccountService"
         ]
       },
       "post": {
-        "summary": "Create a HostSet",
-        "operationId": "HostSetService_CreateHostSet2",
+        "summary": "Creates a single account in the provided auth method.",
+        "operationId": "AccountService_CreateAccount",
         "responses": {
           "200": {
             "description": "",
             "schema": {
-              "$ref": "#/definitions/controller.api.resources.hosts.v1.HostSet"
+              "$ref": "#/definitions/controller.api.resources.authmethods.v1.Account"
             }
           }
         },
         "parameters": [
           {
-            "name": "org_id",
-            "in": "path",
-            "required": true,
-            "type": "string"
-          },
-          {
-            "name": "host_catalog_id",
+            "name": "auth_method_id",
             "in": "path",
             "required": true,
             "type": "string"
@@ -162,36 +175,30 @@
             "in": "body",
             "required": true,
             "schema": {
-              "$ref": "#/definitions/controller.api.resources.hosts.v1.HostSet"
+              "$ref": "#/definitions/controller.api.resources.authmethods.v1.Account"
             }
           }
         ],
         "tags": [
-          "controller.api.services.v1.HostSetService"
+          "controller.api.services.v1.AccountService"
         ]
       }
     },
-    "/v1/orgs/{org_id}/host-catalogs/{host_catalog_id}/host-sets/{id}": {
+    "/v1/scopes/*/auth-methods/{auth_method_id}/accounts/{id}": {
       "get": {
-        "summary": "Get a single HostSet",
-        "operationId": "HostSetService_GetHostSet2",
+        "summary": "Gets a single Account",
+        "operationId": "AccountService_GetAccount",
         "responses": {
           "200": {
             "description": "",
             "schema": {
-              "$ref": "#/definitions/controller.api.resources.hosts.v1.HostSet"
+              "$ref": "#/definitions/controller.api.resources.authmethods.v1.Account"
             }
           }
         },
         "parameters": [
           {
-            "name": "org_id",
-            "in": "path",
-            "required": true,
-            "type": "string"
-          },
-          {
-            "name": "host_catalog_id",
+            "name": "auth_method_id",
             "in": "path",
             "required": true,
             "type": "string"
@@ -203,12 +210,6 @@
             "type": "string"
           },
           {
-            "name": "project_id",
-            "in": "query",
-            "required": false,
-            "type": "string"
-          },
-          {
             "name": "view",
             "in": "query",
             "required": false,
@@ -216,29 +217,23 @@
           }
         ],
         "tags": [
-          "controller.api.services.v1.HostSetService"
+          "controller.api.services.v1.AccountService"
         ]
       },
       "delete": {
-        "summary": "Delete a HostSet",
-        "operationId": "HostSetService_DeleteHostSet2",
+        "summary": "Deletes an account.",
+        "operationId": "AccountService_DeleteAccount",
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
-              "$ref": "#/definitions/controller.api.services.v1.DeleteHostSetResponse"
+              "$ref": "#/definitions/controller.api.services.v1.DeleteAccountResponse"
             }
           }
         },
         "parameters": [
           {
-            "name": "org_id",
-            "in": "path",
-            "required": true,
-            "type": "string"
-          },
-          {
-            "name": "host_catalog_id",
+            "name": "auth_method_id",
             "in": "path",
             "required": true,
             "type": "string"
@@ -248,38 +243,26 @@
             "in": "path",
             "required": true,
             "type": "string"
-          },
-          {
-            "name": "project_id",
-            "in": "query",
-            "required": false,
-            "type": "string"
           }
         ],
         "tags": [
-          "controller.api.services.v1.HostSetService"
+          "controller.api.services.v1.AccountService"
         ]
       },
       "patch": {
-        "summary": "Update a HostSet",
-        "operationId": "HostSetService_UpdateHostSet2",
+        "summary": "Updates an account.",
+        "operationId": "AccountService_UpdateAccount",
         "responses": {
           "200": {
             "description": "",
             "schema": {
-              "$ref": "#/definitions/controller.api.resources.hosts.v1.HostSet"
+              "$ref": "#/definitions/controller.api.resources.authmethods.v1.Account"
             }
           }
         },
         "parameters": [
           {
-            "name": "org_id",
-            "in": "path",
-            "required": true,
-            "type": "string"
-          },
-          {
-            "name": "host_catalog_id",
+            "name": "auth_method_id",
             "in": "path",
             "required": true,
             "type": "string"
@@ -295,113 +278,31 @@
             "in": "body",
             "required": true,
             "schema": {
-              "$ref": "#/definitions/controller.api.resources.hosts.v1.HostSet"
+              "$ref": "#/definitions/controller.api.resources.authmethods.v1.Account"
             }
           }
         ],
         "tags": [
-          "controller.api.services.v1.HostSetService"
+          "controller.api.services.v1.AccountService"
         ]
       }
     },
-    "/v1/orgs/{org_id}/host-catalogs/{host_catalog_id}/host-sets/{id}:add-hosts": {
+    "/v1/scopes/*/auth-methods/{auth_method_id}:authenticate": {
       "post": {
-        "summary": "Adds existing Hosts to the Host Set",
-        "description": "Adds the hosts to this Host Set if possible.  All hosts added must be a child of the same host catalog this host set is a child of.",
-        "operationId": "HostSetService_AddToHostSet2",
-        "responses": {
-          "200": {
-            "description": "A successful response.",
-            "schema": {
-              "$ref": "#/definitions/controller.api.services.v1.AddToHostSetResponse"
-            }
-          }
-        },
-        "parameters": [
-          {
-            "name": "org_id",
-            "in": "path",
-            "required": true,
-            "type": "string"
-          },
-          {
-            "name": "host_catalog_id",
-            "in": "path",
-            "required": true,
-            "type": "string"
-          },
-          {
-            "name": "id",
-            "in": "path",
-            "required": true,
-            "type": "string"
-          }
-        ],
-        "tags": [
-          "controller.api.services.v1.HostSetService"
-        ]
-      }
-    },
-    "/v1/orgs/{org_id}/host-catalogs/{host_catalog_id}/host-sets/{id}:remove-hosts": {
-      "post": {
-        "summary": "Removes Hosts to the Host Set",
-        "description": "Removes the hosts from this Host Set if present.  If it is not present then no action is taken and no error is returned.",
-        "operationId": "HostSetService_RemoveFromHostSet2",
-        "responses": {
-          "200": {
-            "description": "A successful response.",
-            "schema": {
-              "$ref": "#/definitions/controller.api.services.v1.RemoveFromHostSetResponse"
-            }
-          }
-        },
-        "parameters": [
-          {
-            "name": "org_id",
-            "in": "path",
-            "required": true,
-            "type": "string"
-          },
-          {
-            "name": "host_catalog_id",
-            "in": "path",
-            "required": true,
-            "type": "string"
-          },
-          {
-            "name": "id",
-            "description": "This host set's id.",
-            "in": "path",
-            "required": true,
-            "type": "string"
-          }
-        ],
-        "tags": [
-          "controller.api.services.v1.HostSetService"
-        ]
-      }
-    },
-    "/v1/orgs/{org_id}/host-catalogs/{host_catalog_id}/hosts": {
-      "post": {
-        "summary": "Create a single Host",
-        "operationId": "HostService_CreateHost2",
+        "summary": "Authenticate a user to an scope and retrieve an authentication token.",
+        "operationId": "AuthenticationService_Authenticate",
         "responses": {
           "200": {
             "description": "",
             "schema": {
-              "$ref": "#/definitions/controller.api.resources.hosts.v1.Host"
+              "$ref": "#/definitions/controller.api.resources.authtokens.v1.AuthToken"
             }
           }
         },
         "parameters": [
           {
-            "name": "org_id",
-            "in": "path",
-            "required": true,
-            "type": "string"
-          },
-          {
-            "name": "host_catalog_id",
+            "name": "auth_method_id",
+            "description": "The id to the authmethod in the system being used for authentication.  The auth method must be in the scope\nbeing logged in to.",
             "in": "path",
             "required": true,
             "type": "string"
@@ -411,50 +312,32 @@
             "in": "body",
             "required": true,
             "schema": {
-              "$ref": "#/definitions/controller.api.resources.hosts.v1.Host"
+              "$ref": "#/definitions/controller.api.services.v1.AuthenticateRequest"
             }
           }
         ],
         "tags": [
-          "controller.api.services.v1.HostService"
+          "controller.api.services.v1.AuthenticationService"
         ]
       }
     },
-    "/v1/orgs/{org_id}/host-catalogs/{host_catalog_id}/hosts/{id}": {
+    "/v1/scopes/*/auth-methods/{id}": {
       "get": {
-        "summary": "Gets a single Host",
-        "operationId": "HostService_GetHost2",
+        "summary": "Gets a single AuthMethod",
+        "operationId": "AuthMethodService_GetAuthMethod",
         "responses": {
           "200": {
             "description": "",
             "schema": {
-              "$ref": "#/definitions/controller.api.resources.hosts.v1.Host"
+              "$ref": "#/definitions/controller.api.resources.authmethods.v1.AuthMethod"
             }
           }
         },
         "parameters": [
           {
-            "name": "org_id",
-            "in": "path",
-            "required": true,
-            "type": "string"
-          },
-          {
-            "name": "host_catalog_id",
-            "in": "path",
-            "required": true,
-            "type": "string"
-          },
-          {
             "name": "id",
             "in": "path",
             "required": true,
-            "type": "string"
-          },
-          {
-            "name": "project_id",
-            "in": "query",
-            "required": false,
             "type": "string"
           },
           {
@@ -465,74 +348,44 @@
           }
         ],
         "tags": [
-          "controller.api.services.v1.HostService"
+          "controller.api.services.v1.AuthMethodService"
         ]
       },
       "delete": {
-        "summary": "Delete a Host",
-        "operationId": "HostService_DeleteHost2",
+        "summary": "Deletes an AuthMethod",
+        "operationId": "AuthMethodService_DeleteAuthMethod",
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
-              "$ref": "#/definitions/controller.api.services.v1.DeleteHostResponse"
+              "$ref": "#/definitions/controller.api.services.v1.DeleteAuthMethodResponse"
             }
           }
         },
         "parameters": [
-          {
-            "name": "org_id",
-            "in": "path",
-            "required": true,
-            "type": "string"
-          },
-          {
-            "name": "host_catalog_id",
-            "in": "path",
-            "required": true,
-            "type": "string"
-          },
           {
             "name": "id",
             "in": "path",
             "required": true,
             "type": "string"
-          },
-          {
-            "name": "project_id",
-            "in": "query",
-            "required": false,
-            "type": "string"
           }
         ],
         "tags": [
-          "controller.api.services.v1.HostService"
+          "controller.api.services.v1.AuthMethodService"
         ]
       },
       "patch": {
-        "summary": "Update a Host",
-        "operationId": "HostService_UpdateHost2",
+        "summary": "Updates an AuthMethod",
+        "operationId": "AuthMethodService_UpdateAuthMethod",
         "responses": {
           "200": {
             "description": "",
             "schema": {
-              "$ref": "#/definitions/controller.api.resources.hosts.v1.Host"
+              "$ref": "#/definitions/controller.api.resources.authmethods.v1.AuthMethod"
             }
           }
         },
         "parameters": [
-          {
-            "name": "org_id",
-            "in": "path",
-            "required": true,
-            "type": "string"
-          },
-          {
-            "name": "host_catalog_id",
-            "in": "path",
-            "required": true,
-            "type": "string"
-          },
           {
             "name": "id",
             "in": "path",
@@ -544,45 +397,57 @@
             "in": "body",
             "required": true,
             "schema": {
-              "$ref": "#/definitions/controller.api.resources.hosts.v1.Host"
+              "$ref": "#/definitions/controller.api.resources.authmethods.v1.AuthMethod"
             }
           }
         ],
         "tags": [
-          "controller.api.services.v1.HostService"
+          "controller.api.services.v1.AuthMethodService"
         ]
       }
     },
-    "/v1/orgs/{org_id}/host-catalogs/{id}": {
+    "/v1/scopes/*/auth-tokens": {
       "get": {
-        "summary": "Gets a single HostCatalog",
-        "description": "Get's a single Host Catalog with the provided identifier.",
-        "operationId": "HostCatalogService_GetHostCatalog2",
+        "summary": "Lists all AuthTokens",
+        "operationId": "AuthTokenService_ListAuthTokens",
         "responses": {
           "200": {
-            "description": "",
+            "description": "A successful response.",
             "schema": {
-              "$ref": "#/definitions/controller.api.resources.hosts.v1.HostCatalog"
+              "$ref": "#/definitions/controller.api.services.v1.ListAuthTokensResponse"
             }
           }
         },
         "parameters": [
           {
-            "name": "org_id",
-            "in": "path",
-            "required": true,
+            "name": "view",
+            "in": "query",
+            "required": false,
             "type": "string"
-          },
+          }
+        ],
+        "tags": [
+          "controller.api.services.v1.AuthTokenService"
+        ]
+      }
+    },
+    "/v1/scopes/*/auth-tokens/{id}": {
+      "get": {
+        "summary": "Gets a single AuthToken",
+        "operationId": "AuthTokenService_GetAuthToken",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/controller.api.resources.authtokens.v1.AuthToken"
+            }
+          }
+        },
+        "parameters": [
           {
             "name": "id",
             "in": "path",
             "required": true,
-            "type": "string"
-          },
-          {
-            "name": "project_id",
-            "in": "query",
-            "required": false,
             "type": "string"
           },
           {
@@ -593,101 +458,46 @@
           }
         ],
         "tags": [
-          "controller.api.services.v1.HostCatalogService"
+          "controller.api.services.v1.AuthTokenService"
         ]
       },
       "delete": {
-        "summary": "Deletes a HostCatalog",
-        "operationId": "HostCatalogService_DeleteHostCatalog2",
+        "summary": "Deletes an AuthTokens",
+        "operationId": "AuthTokenService_DeleteAuthToken",
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
-              "$ref": "#/definitions/controller.api.services.v1.DeleteHostCatalogResponse"
+              "$ref": "#/definitions/controller.api.services.v1.DeleteAuthTokenResponse"
             }
           }
         },
         "parameters": [
           {
-            "name": "org_id",
-            "in": "path",
-            "required": true,
-            "type": "string"
-          },
-          {
             "name": "id",
             "in": "path",
             "required": true,
             "type": "string"
-          },
-          {
-            "name": "project_id",
-            "in": "query",
-            "required": false,
-            "type": "string"
           }
         ],
         "tags": [
-          "controller.api.services.v1.HostCatalogService"
-        ]
-      },
-      "patch": {
-        "summary": "Updates a HostCatalog",
-        "operationId": "HostCatalogService_UpdateHostCatalog2",
-        "responses": {
-          "200": {
-            "description": "",
-            "schema": {
-              "$ref": "#/definitions/controller.api.resources.hosts.v1.HostCatalog"
-            }
-          }
-        },
-        "parameters": [
-          {
-            "name": "org_id",
-            "in": "path",
-            "required": true,
-            "type": "string"
-          },
-          {
-            "name": "id",
-            "in": "path",
-            "required": true,
-            "type": "string"
-          },
-          {
-            "name": "body",
-            "in": "body",
-            "required": true,
-            "schema": {
-              "$ref": "#/definitions/controller.api.resources.hosts.v1.HostCatalog"
-            }
-          }
-        ],
-        "tags": [
-          "controller.api.services.v1.HostCatalogService"
+          "controller.api.services.v1.AuthTokenService"
         ]
       }
     },
-    "/v1/orgs/{org_id}/projects": {
+    "/v1/scopes/*/groups": {
       "get": {
-        "summary": "Lists all Projects",
-        "operationId": "ProjectService_ListProjects",
+        "summary": "Lists all Groups",
+        "operationId": "GroupService_ListGroups",
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
-              "$ref": "#/definitions/controller.api.services.v1.ListProjectsResponse"
+              "$ref": "#/definitions/controller.api.services.v1.ListGroupsResponse"
             }
           }
         },
         "parameters": [
-          {
-            "name": "org_id",
-            "in": "path",
-            "required": true,
-            "type": "string"
-          },
           {
             "name": "view",
             "in": "query",
@@ -696,60 +506,48 @@
           }
         ],
         "tags": [
-          "controller.api.services.v1.ProjectService"
+          "controller.api.services.v1.GroupService"
         ]
       },
       "post": {
-        "summary": "Creates a single Project",
-        "operationId": "ProjectService_CreateProject",
+        "summary": "Creates a single Group",
+        "operationId": "GroupService_CreateGroup",
         "responses": {
           "200": {
             "description": "",
             "schema": {
-              "$ref": "#/definitions/controller.api.resources.scopes.v1.Project"
+              "$ref": "#/definitions/controller.api.resources.groups.v1.Group"
             }
           }
         },
         "parameters": [
-          {
-            "name": "org_id",
-            "in": "path",
-            "required": true,
-            "type": "string"
-          },
           {
             "name": "body",
             "in": "body",
             "required": true,
             "schema": {
-              "$ref": "#/definitions/controller.api.resources.scopes.v1.Project"
+              "$ref": "#/definitions/controller.api.resources.groups.v1.Group"
             }
           }
         ],
         "tags": [
-          "controller.api.services.v1.ProjectService"
+          "controller.api.services.v1.GroupService"
         ]
       }
     },
-    "/v1/orgs/{org_id}/projects/{id}": {
+    "/v1/scopes/*/groups/{id}": {
       "get": {
-        "summary": "Gets a single Project",
-        "operationId": "ProjectService_GetProject",
+        "summary": "Gets a single Group",
+        "operationId": "GroupService_GetGroup",
         "responses": {
           "200": {
             "description": "",
             "schema": {
-              "$ref": "#/definitions/controller.api.resources.scopes.v1.Project"
+              "$ref": "#/definitions/controller.api.resources.groups.v1.Group"
             }
           }
         },
         "parameters": [
-          {
-            "name": "org_id",
-            "in": "path",
-            "required": true,
-            "type": "string"
-          },
           {
             "name": "id",
             "in": "path",
@@ -764,27 +562,21 @@
           }
         ],
         "tags": [
-          "controller.api.services.v1.ProjectService"
+          "controller.api.services.v1.GroupService"
         ]
       },
       "delete": {
-        "summary": "Deletes a Project",
-        "operationId": "ProjectService_DeleteProject",
+        "summary": "Deletes a Group",
+        "operationId": "GroupService_DeleteGroup",
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
-              "$ref": "#/definitions/controller.api.services.v1.DeleteProjectResponse"
+              "$ref": "#/definitions/controller.api.services.v1.DeleteGroupResponse"
             }
           }
         },
         "parameters": [
-          {
-            "name": "org_id",
-            "in": "path",
-            "required": true,
-            "type": "string"
-          },
           {
             "name": "id",
             "in": "path",
@@ -793,27 +585,21 @@
           }
         ],
         "tags": [
-          "controller.api.services.v1.ProjectService"
+          "controller.api.services.v1.GroupService"
         ]
       },
       "patch": {
-        "summary": "Updates a Project",
-        "operationId": "ProjectService_UpdateProject",
+        "summary": "Updates a Group",
+        "operationId": "GroupService_UpdateGroup",
         "responses": {
           "200": {
             "description": "",
             "schema": {
-              "$ref": "#/definitions/controller.api.resources.scopes.v1.Project"
+              "$ref": "#/definitions/controller.api.resources.groups.v1.Group"
             }
           }
         },
         "parameters": [
-          {
-            "name": "org_id",
-            "in": "path",
-            "required": true,
-            "type": "string"
-          },
           {
             "name": "id",
             "in": "path",
@@ -825,16 +611,115 @@
             "in": "body",
             "required": true,
             "schema": {
-              "$ref": "#/definitions/controller.api.resources.scopes.v1.Project"
+              "$ref": "#/definitions/controller.api.resources.groups.v1.Group"
             }
           }
         ],
         "tags": [
-          "controller.api.services.v1.ProjectService"
+          "controller.api.services.v1.GroupService"
         ]
       }
     },
-    "/v1/orgs/{org_id}/projects/{project_id}/host-catalogs": {
+    "/v1/scopes/*/groups/{id}:add-members": {
+      "post": {
+        "summary": "Adds Users as members to a Group",
+        "operationId": "GroupService_AddGroupMembers",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/controller.api.resources.groups.v1.Group"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/controller.api.services.v1.GroupMemberIdsMessage"
+            }
+          }
+        ],
+        "tags": [
+          "controller.api.services.v1.GroupService"
+        ]
+      }
+    },
+    "/v1/scopes/*/groups/{id}:remove-members": {
+      "post": {
+        "summary": "Removes the specified members from a Group.",
+        "operationId": "GroupService_RemoveGroupMembers",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/controller.api.resources.groups.v1.Group"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/controller.api.services.v1.GroupMemberIdsMessage"
+            }
+          }
+        ],
+        "tags": [
+          "controller.api.services.v1.GroupService"
+        ]
+      }
+    },
+    "/v1/scopes/*/groups/{id}:set-members": {
+      "post": {
+        "summary": "Set a Group's members to exactly the list of provided in the request, removing any members that are not specified.",
+        "operationId": "GroupService_SetGroupMembers",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/controller.api.resources.groups.v1.Group"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/controller.api.services.v1.GroupMemberIdsMessage"
+            }
+          }
+        ],
+        "tags": [
+          "controller.api.services.v1.GroupService"
+        ]
+      }
+    },
+    "/v1/scopes/*/host-catalogs": {
       "get": {
         "summary": "Gets a list of HostCatalogs",
         "operationId": "HostCatalogService_ListHostCatalogs",
@@ -848,18 +733,6 @@
         },
         "parameters": [
           {
-            "name": "org_id",
-            "in": "path",
-            "required": true,
-            "type": "string"
-          },
-          {
-            "name": "project_id",
-            "in": "path",
-            "required": true,
-            "type": "string"
-          },
-          {
             "name": "view",
             "in": "query",
             "required": false,
@@ -872,7 +745,7 @@
       },
       "post": {
         "summary": "Creates a HostCatalog",
-        "description": "Creates a single host catalog under the specified org and project",
+        "description": "Creates a single host catalog under the specified scope",
         "operationId": "HostCatalogService_CreateHostCatalog",
         "responses": {
           "200": {
@@ -883,18 +756,6 @@
           }
         },
         "parameters": [
-          {
-            "name": "org_id",
-            "in": "path",
-            "required": true,
-            "type": "string"
-          },
-          {
-            "name": "project_id",
-            "in": "path",
-            "required": true,
-            "type": "string"
-          },
           {
             "name": "body",
             "in": "body",
@@ -909,7 +770,7 @@
         ]
       }
     },
-    "/v1/orgs/{org_id}/projects/{project_id}/host-catalogs/{host_catalog_id}/host-sets": {
+    "/v1/scopes/*/host-catalogs/{host_catalog_id}/host-sets": {
       "get": {
         "summary": "List all HostSets under the specific catalog",
         "operationId": "HostSetService_ListHostSets",
@@ -922,18 +783,6 @@
           }
         },
         "parameters": [
-          {
-            "name": "org_id",
-            "in": "path",
-            "required": true,
-            "type": "string"
-          },
-          {
-            "name": "project_id",
-            "in": "path",
-            "required": true,
-            "type": "string"
-          },
           {
             "name": "host_catalog_id",
             "in": "path",
@@ -964,18 +813,6 @@
         },
         "parameters": [
           {
-            "name": "org_id",
-            "in": "path",
-            "required": true,
-            "type": "string"
-          },
-          {
-            "name": "project_id",
-            "in": "path",
-            "required": true,
-            "type": "string"
-          },
-          {
             "name": "host_catalog_id",
             "in": "path",
             "required": true,
@@ -995,7 +832,7 @@
         ]
       }
     },
-    "/v1/orgs/{org_id}/projects/{project_id}/host-catalogs/{host_catalog_id}/host-sets/{id}": {
+    "/v1/scopes/*/host-catalogs/{host_catalog_id}/host-sets/{id}": {
       "get": {
         "summary": "Get a single HostSet",
         "operationId": "HostSetService_GetHostSet",
@@ -1008,18 +845,6 @@
           }
         },
         "parameters": [
-          {
-            "name": "org_id",
-            "in": "path",
-            "required": true,
-            "type": "string"
-          },
-          {
-            "name": "project_id",
-            "in": "path",
-            "required": true,
-            "type": "string"
-          },
           {
             "name": "host_catalog_id",
             "in": "path",
@@ -1056,18 +881,6 @@
         },
         "parameters": [
           {
-            "name": "org_id",
-            "in": "path",
-            "required": true,
-            "type": "string"
-          },
-          {
-            "name": "project_id",
-            "in": "path",
-            "required": true,
-            "type": "string"
-          },
-          {
             "name": "host_catalog_id",
             "in": "path",
             "required": true,
@@ -1097,18 +910,6 @@
         },
         "parameters": [
           {
-            "name": "org_id",
-            "in": "path",
-            "required": true,
-            "type": "string"
-          },
-          {
-            "name": "project_id",
-            "in": "path",
-            "required": true,
-            "type": "string"
-          },
-          {
             "name": "host_catalog_id",
             "in": "path",
             "required": true,
@@ -1134,7 +935,7 @@
         ]
       }
     },
-    "/v1/orgs/{org_id}/projects/{project_id}/host-catalogs/{host_catalog_id}/host-sets/{id}:add-hosts": {
+    "/v1/scopes/*/host-catalogs/{host_catalog_id}/host-sets/{id}:add-hosts": {
       "post": {
         "summary": "Adds existing Hosts to the Host Set",
         "description": "Adds the hosts to this Host Set if possible.  All hosts added must be a child of the same host catalog this host set is a child of.",
@@ -1148,18 +949,6 @@
           }
         },
         "parameters": [
-          {
-            "name": "org_id",
-            "in": "path",
-            "required": true,
-            "type": "string"
-          },
-          {
-            "name": "project_id",
-            "in": "path",
-            "required": true,
-            "type": "string"
-          },
           {
             "name": "host_catalog_id",
             "in": "path",
@@ -1178,7 +967,7 @@
         ]
       }
     },
-    "/v1/orgs/{org_id}/projects/{project_id}/host-catalogs/{host_catalog_id}/host-sets/{id}:remove-hosts": {
+    "/v1/scopes/*/host-catalogs/{host_catalog_id}/host-sets/{id}:remove-hosts": {
       "post": {
         "summary": "Removes Hosts to the Host Set",
         "description": "Removes the hosts from this Host Set if present.  If it is not present then no action is taken and no error is returned.",
@@ -1192,18 +981,6 @@
           }
         },
         "parameters": [
-          {
-            "name": "org_id",
-            "in": "path",
-            "required": true,
-            "type": "string"
-          },
-          {
-            "name": "project_id",
-            "in": "path",
-            "required": true,
-            "type": "string"
-          },
           {
             "name": "host_catalog_id",
             "in": "path",
@@ -1223,7 +1000,7 @@
         ]
       }
     },
-    "/v1/orgs/{org_id}/projects/{project_id}/host-catalogs/{host_catalog_id}/hosts": {
+    "/v1/scopes/*/host-catalogs/{host_catalog_id}/hosts": {
       "get": {
         "summary": "List all Hosts for the specified catalog",
         "operationId": "HostService_ListHosts",
@@ -1236,18 +1013,6 @@
           }
         },
         "parameters": [
-          {
-            "name": "org_id",
-            "in": "path",
-            "required": true,
-            "type": "string"
-          },
-          {
-            "name": "project_id",
-            "in": "path",
-            "required": true,
-            "type": "string"
-          },
           {
             "name": "host_catalog_id",
             "in": "path",
@@ -1278,18 +1043,6 @@
         },
         "parameters": [
           {
-            "name": "org_id",
-            "in": "path",
-            "required": true,
-            "type": "string"
-          },
-          {
-            "name": "project_id",
-            "in": "path",
-            "required": true,
-            "type": "string"
-          },
-          {
             "name": "host_catalog_id",
             "in": "path",
             "required": true,
@@ -1309,7 +1062,7 @@
         ]
       }
     },
-    "/v1/orgs/{org_id}/projects/{project_id}/host-catalogs/{host_catalog_id}/hosts/{id}": {
+    "/v1/scopes/*/host-catalogs/{host_catalog_id}/hosts/{id}": {
       "get": {
         "summary": "Gets a single Host",
         "operationId": "HostService_GetHost",
@@ -1322,18 +1075,6 @@
           }
         },
         "parameters": [
-          {
-            "name": "org_id",
-            "in": "path",
-            "required": true,
-            "type": "string"
-          },
-          {
-            "name": "project_id",
-            "in": "path",
-            "required": true,
-            "type": "string"
-          },
           {
             "name": "host_catalog_id",
             "in": "path",
@@ -1370,18 +1111,6 @@
         },
         "parameters": [
           {
-            "name": "org_id",
-            "in": "path",
-            "required": true,
-            "type": "string"
-          },
-          {
-            "name": "project_id",
-            "in": "path",
-            "required": true,
-            "type": "string"
-          },
-          {
             "name": "host_catalog_id",
             "in": "path",
             "required": true,
@@ -1411,18 +1140,6 @@
         },
         "parameters": [
           {
-            "name": "org_id",
-            "in": "path",
-            "required": true,
-            "type": "string"
-          },
-          {
-            "name": "project_id",
-            "in": "path",
-            "required": true,
-            "type": "string"
-          },
-          {
             "name": "host_catalog_id",
             "in": "path",
             "required": true,
@@ -1448,10 +1165,10 @@
         ]
       }
     },
-    "/v1/orgs/{org_id}/projects/{project_id}/host-catalogs/{id}": {
+    "/v1/scopes/*/host-catalogs/{id}": {
       "get": {
         "summary": "Gets a single HostCatalog",
-        "description": "Get's a single Host Catalog with the provided identifier.",
+        "description": "Gets a single Host Catalog with the provided identifier.",
         "operationId": "HostCatalogService_GetHostCatalog",
         "responses": {
           "200": {
@@ -1462,18 +1179,6 @@
           }
         },
         "parameters": [
-          {
-            "name": "org_id",
-            "in": "path",
-            "required": true,
-            "type": "string"
-          },
-          {
-            "name": "project_id",
-            "in": "path",
-            "required": true,
-            "type": "string"
-          },
           {
             "name": "id",
             "in": "path",
@@ -1504,18 +1209,6 @@
         },
         "parameters": [
           {
-            "name": "org_id",
-            "in": "path",
-            "required": true,
-            "type": "string"
-          },
-          {
-            "name": "project_id",
-            "in": "path",
-            "required": true,
-            "type": "string"
-          },
-          {
             "name": "id",
             "in": "path",
             "required": true,
@@ -1539,18 +1232,6 @@
         },
         "parameters": [
           {
-            "name": "org_id",
-            "in": "path",
-            "required": true,
-            "type": "string"
-          },
-          {
-            "name": "project_id",
-            "in": "path",
-            "required": true,
-            "type": "string"
-          },
-          {
             "name": "id",
             "in": "path",
             "required": true,
@@ -1569,15 +1250,809 @@
           "controller.api.services.v1.HostCatalogService"
         ]
       }
+    },
+    "/v1/scopes/*/roles": {
+      "get": {
+        "summary": "Lists all Roles",
+        "operationId": "RoleService_ListRoles",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.services.v1.ListRolesResponse"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "view",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "controller.api.services.v1.RoleService"
+        ]
+      },
+      "post": {
+        "summary": "Creates a single Role",
+        "operationId": "RoleService_CreateRole",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/controller.api.resources.roles.v1.Role"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/controller.api.resources.roles.v1.Role"
+            }
+          }
+        ],
+        "tags": [
+          "controller.api.services.v1.RoleService"
+        ]
+      }
+    },
+    "/v1/scopes/*/roles/{id}": {
+      "get": {
+        "summary": "Gets a single Role",
+        "operationId": "RoleService_GetRole",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/controller.api.resources.roles.v1.Role"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "view",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "controller.api.services.v1.RoleService"
+        ]
+      },
+      "delete": {
+        "summary": "Deletes a Role",
+        "operationId": "RoleService_DeleteRole",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.services.v1.DeleteRoleResponse"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "controller.api.services.v1.RoleService"
+        ]
+      },
+      "patch": {
+        "summary": "Updates a Role",
+        "operationId": "RoleService_UpdateRole",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/controller.api.resources.roles.v1.Role"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/controller.api.resources.roles.v1.Role"
+            }
+          }
+        ],
+        "tags": [
+          "controller.api.services.v1.RoleService"
+        ]
+      }
+    },
+    "/v1/scopes/*/roles/{role_id}:add-grants": {
+      "post": {
+        "summary": "Adds grants to a role",
+        "operationId": "RoleService_AddRoleGrants",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/controller.api.resources.roles.v1.Role"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "role_id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/controller.api.services.v1.GrantStringsMessage"
+            }
+          }
+        ],
+        "tags": [
+          "controller.api.services.v1.RoleService"
+        ]
+      }
+    },
+    "/v1/scopes/*/roles/{role_id}:add-principals": {
+      "post": {
+        "summary": "Adds Users and/or Groups to a Role",
+        "operationId": "RoleService_AddRolePrincipals",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/controller.api.resources.roles.v1.Role"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "role_id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/controller.api.services.v1.PrincipalIdsMessage"
+            }
+          }
+        ],
+        "tags": [
+          "controller.api.services.v1.RoleService"
+        ]
+      }
+    },
+    "/v1/scopes/*/roles/{role_id}:remove-grants": {
+      "post": {
+        "summary": "Removes grants from a role.",
+        "operationId": "RoleService_RemoveRoleGrants",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/controller.api.resources.roles.v1.Role"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "role_id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/controller.api.services.v1.GrantStringsMessage"
+            }
+          }
+        ],
+        "tags": [
+          "controller.api.services.v1.RoleService"
+        ]
+      }
+    },
+    "/v1/scopes/*/roles/{role_id}:remove-principals": {
+      "post": {
+        "summary": "Removes the specified Users and/or Groups from a Role.",
+        "operationId": "RoleService_RemoveRolePrincipals",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/controller.api.resources.roles.v1.Role"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "role_id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/controller.api.services.v1.PrincipalIdsMessage"
+            }
+          }
+        ],
+        "tags": [
+          "controller.api.services.v1.RoleService"
+        ]
+      }
+    },
+    "/v1/scopes/*/roles/{role_id}:set-grants": {
+      "post": {
+        "summary": "Set grants for a role, removing any grants that are not specified in the request.",
+        "operationId": "RoleService_SetRoleGrants",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/controller.api.resources.roles.v1.Role"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "role_id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/controller.api.services.v1.GrantStringsMessage"
+            }
+          }
+        ],
+        "tags": [
+          "controller.api.services.v1.RoleService"
+        ]
+      }
+    },
+    "/v1/scopes/*/roles/{role_id}:set-principals": {
+      "post": {
+        "summary": "Set Users and/or Groups to a Role, removing any principals that are not specified in the request.",
+        "operationId": "RoleService_SetRolePrincipals",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/controller.api.resources.roles.v1.Role"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "role_id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/controller.api.services.v1.PrincipalIdsMessage"
+            }
+          }
+        ],
+        "tags": [
+          "controller.api.services.v1.RoleService"
+        ]
+      }
+    },
+    "/v1/scopes/*/users": {
+      "get": {
+        "summary": "Lists all Users",
+        "operationId": "UserService_ListUsers",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.services.v1.ListUsersResponse"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "view",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "controller.api.services.v1.UserService"
+        ]
+      },
+      "post": {
+        "summary": "Creates a single User",
+        "operationId": "UserService_CreateUser",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/controller.api.resources.users.v1.User"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/controller.api.resources.users.v1.User"
+            }
+          }
+        ],
+        "tags": [
+          "controller.api.services.v1.UserService"
+        ]
+      }
+    },
+    "/v1/scopes/*/users/{id}": {
+      "get": {
+        "summary": "Gets a single User",
+        "operationId": "UserService_GetUser",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/controller.api.resources.users.v1.User"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "view",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "controller.api.services.v1.UserService"
+        ]
+      },
+      "delete": {
+        "summary": "Deletes a User",
+        "operationId": "UserService_DeleteUser",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.services.v1.DeleteUserResponse"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "controller.api.services.v1.UserService"
+        ]
+      },
+      "patch": {
+        "summary": "Updates a User",
+        "operationId": "UserService_UpdateUser",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/controller.api.resources.users.v1.User"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/controller.api.resources.users.v1.User"
+            }
+          }
+        ],
+        "tags": [
+          "controller.api.services.v1.UserService"
+        ]
+      }
+    },
+    "/v1/scopes/{id}": {
+      "get": {
+        "summary": "Gets a single Scope",
+        "operationId": "ScopeService_GetScope",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/controller.api.resources.scopes.v1.Scope"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "view",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "controller.api.services.v1.ScopeService"
+        ]
+      },
+      "delete": {
+        "summary": "Deletes a Scope",
+        "operationId": "ScopeService_DeleteScope",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.services.v1.DeleteScopeResponse"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "controller.api.services.v1.ScopeService"
+        ]
+      },
+      "patch": {
+        "summary": "Updates a Scope",
+        "operationId": "ScopeService_UpdateScope",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/controller.api.resources.scopes.v1.Scope"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/controller.api.resources.scopes.v1.Scope"
+            }
+          }
+        ],
+        "tags": [
+          "controller.api.services.v1.ScopeService"
+        ]
+      }
     }
   },
   "definitions": {
+    "controller.api.resources.authmethods.v1.Account": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "The ID of the Account\nOutput only.",
+          "readOnly": true
+        },
+        "scope": {
+          "$ref": "#/definitions/controller.api.resources.scopes.v1.ScopeInfo",
+          "description": "Scope information for this resource\nOutput only.",
+          "readOnly": true
+        },
+        "auth_method_id": {
+          "type": "string",
+          "description": "The auth method this account is created for.\nOutput only.",
+          "readOnly": true
+        },
+        "name": {
+          "type": "string",
+          "title": "Optional name for identification purposes"
+        },
+        "description": {
+          "type": "string",
+          "title": "Optional user-set descripton for identification purposes"
+        },
+        "created_time": {
+          "type": "string",
+          "format": "date-time",
+          "description": "The time this resource was created\nOutput only.",
+          "readOnly": true
+        },
+        "updated_time": {
+          "type": "string",
+          "format": "date-time",
+          "description": "The time this resource was last updated.\nOutput only.",
+          "readOnly": true
+        },
+        "disabled": {
+          "type": "boolean",
+          "format": "boolean",
+          "title": "Whether the resource is disabled"
+        },
+        "type": {
+          "type": "string",
+          "description": "The type of this account.  Possible values are: \"password\", \"oidc\"."
+        },
+        "attributes": {
+          "type": "object",
+          "description": "The attributes that are applicable for the specific Account type."
+        }
+      },
+      "title": "Account contains all fields related to an auth Account resource"
+    },
+    "controller.api.resources.authmethods.v1.AuthMethod": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "The ID of the AuthMethod\nOutput only.",
+          "readOnly": true
+        },
+        "scope": {
+          "$ref": "#/definitions/controller.api.resources.scopes.v1.ScopeInfo",
+          "description": "Scope information for this resource\nOutput only.",
+          "readOnly": true
+        },
+        "name": {
+          "type": "string",
+          "title": "Optional name for identification purposes"
+        },
+        "description": {
+          "type": "string",
+          "title": "Optional user-set description for identification purposes"
+        },
+        "created_time": {
+          "type": "string",
+          "format": "date-time",
+          "description": "The time this resource was created\nOutput only.",
+          "readOnly": true
+        },
+        "updated_time": {
+          "type": "string",
+          "format": "date-time",
+          "description": "The time this resource was last updated.\nOutput only.",
+          "readOnly": true
+        },
+        "type": {
+          "type": "string",
+          "description": "The auth method type.  This can be \"password\" or \"oidc\"."
+        },
+        "attributes": {
+          "type": "object",
+          "description": "The attributes that are applied for the specific Auth Method type."
+        }
+      },
+      "title": "AuthMethod contains all fields related to a AuthMethod resource"
+    },
+    "controller.api.resources.authtokens.v1.AuthToken": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "The ID of the AuthToken\nOutput only.",
+          "readOnly": true
+        },
+        "scope": {
+          "$ref": "#/definitions/controller.api.resources.scopes.v1.ScopeInfo",
+          "description": "Scope information for this resource\nOutput only.",
+          "readOnly": true
+        },
+        "token": {
+          "type": "string",
+          "description": "The token value, which will only be populated after authentication and is\nonly ever visible to the end user whose login request resulted in this\nauth token being created.\nOutput only.",
+          "readOnly": true
+        },
+        "user_id": {
+          "type": "string",
+          "description": "The id of the user of this AuthToken.\nOutput only.",
+          "readOnly": true
+        },
+        "auth_method_id": {
+          "type": "string",
+          "description": "The id of the user of this AuthToken.\nOutput only.",
+          "readOnly": true
+        },
+        "created_time": {
+          "type": "string",
+          "format": "date-time",
+          "description": "The time this resource was created\nOutput only.",
+          "readOnly": true
+        },
+        "updated_time": {
+          "type": "string",
+          "format": "date-time",
+          "description": "The time this resource was last updated.\nOutput only.",
+          "readOnly": true
+        },
+        "approximate_last_used_time": {
+          "type": "string",
+          "format": "date-time",
+          "description": "The approximate time this AuthToken was last used.\nOutput only.",
+          "readOnly": true
+        },
+        "expiration_time": {
+          "type": "string",
+          "format": "date-time",
+          "description": "The time this AuthToken expires.\nOutput only.",
+          "readOnly": true
+        }
+      },
+      "title": "AuthToken contains all fields related to an AuthToken resource"
+    },
+    "controller.api.resources.groups.v1.Group": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "The ID of the Project\nOutput only.",
+          "readOnly": true
+        },
+        "scope": {
+          "$ref": "#/definitions/controller.api.resources.scopes.v1.ScopeInfo",
+          "description": "Scope information for this resource\nOutput only.",
+          "readOnly": true
+        },
+        "name": {
+          "type": "string",
+          "title": "Optional name for identification purposes"
+        },
+        "description": {
+          "type": "string",
+          "title": "Optional user-set descripton for identification purposes"
+        },
+        "created_time": {
+          "type": "string",
+          "format": "date-time",
+          "description": "The time this resource was created\nOutput only.",
+          "readOnly": true
+        },
+        "updated_time": {
+          "type": "string",
+          "format": "date-time",
+          "description": "The time this resource was last updated.\nOutput only.",
+          "readOnly": true
+        },
+        "disabled": {
+          "type": "boolean",
+          "format": "boolean",
+          "title": "Whether the resource is disabled"
+        },
+        "version": {
+          "type": "integer",
+          "format": "int64",
+          "description": "The version can be used in subsequent write requests to ensure this resource\nhas not changed and to fail the write if it has.\nOutput only.",
+          "readOnly": true
+        },
+        "member_ids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Contains the list of member ids in this group.\nOutput only.",
+          "readOnly": true
+        },
+        "members": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/controller.api.resources.groups.v1.Member"
+          },
+          "description": "The members of this group.\nOutput only.",
+          "readOnly": true
+        }
+      },
+      "title": "Group contains all fields related to a Group resource"
+    },
+    "controller.api.resources.groups.v1.Member": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "The ID of the member.\nOutput only.",
+          "readOnly": true
+        },
+        "type": {
+          "type": "string",
+          "description": "The type of the member.\nOutput only.",
+          "readOnly": true
+        },
+        "scope_id": {
+          "type": "string",
+          "description": "The scope ID of the member.\nOutput only.",
+          "readOnly": true
+        }
+      }
+    },
     "controller.api.resources.hosts.v1.Host": {
       "type": "object",
       "properties": {
         "id": {
           "type": "string",
           "description": "The ID of the host\nOutput only.",
+          "readOnly": true
+        },
+        "scope": {
+          "$ref": "#/definitions/controller.api.resources.scopes.v1.ScopeInfo",
+          "description": "Scope information for this resource\nOutput only.",
           "readOnly": true
         },
         "type": {
@@ -1624,6 +2099,11 @@
           "description": "The ID of the host\nOutput only.",
           "readOnly": true
         },
+        "scope": {
+          "$ref": "#/definitions/controller.api.resources.scopes.v1.ScopeInfo",
+          "description": "Scope information for this resource\nOutput only.",
+          "readOnly": true
+        },
         "type": {
           "type": "string",
           "title": "The type of the resource, to help differentiate schemas"
@@ -1666,6 +2146,11 @@
         "id": {
           "type": "string",
           "description": "The ID of the host\nOutput only.",
+          "readOnly": true
+        },
+        "scope": {
+          "$ref": "#/definitions/controller.api.resources.scopes.v1.ScopeInfo",
+          "description": "Scope information for this resource\nOutput only.",
           "readOnly": true
         },
         "type": {
@@ -1714,12 +2199,163 @@
       },
       "title": "HostSet is a collection of Hosts created and managed by a HostCatalog"
     },
-    "controller.api.resources.scopes.v1.Project": {
+    "controller.api.resources.roles.v1.Grant": {
+      "type": "object",
+      "properties": {
+        "raw": {
+          "type": "string",
+          "description": "The original user-supplied string.\nOutput only.",
+          "readOnly": true
+        },
+        "canonical": {
+          "type": "string",
+          "description": "The canonically formatted string.\nOutput only.",
+          "readOnly": true
+        },
+        "json": {
+          "$ref": "#/definitions/controller.api.resources.roles.v1.GrantJson",
+          "description": "The JSON representation of the grant.\nOutput only.",
+          "readOnly": true
+        }
+      }
+    },
+    "controller.api.resources.roles.v1.GrantJson": {
       "type": "object",
       "properties": {
         "id": {
           "type": "string",
-          "description": "The ID of the Project\nOutput only.",
+          "description": "The ID, if set.\nOutput only.",
+          "readOnly": true
+        },
+        "type": {
+          "type": "string",
+          "description": "The type, if set.\nOutput only.",
+          "readOnly": true
+        },
+        "actions": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "The actions.\nOutput only.",
+          "readOnly": true
+        }
+      }
+    },
+    "controller.api.resources.roles.v1.Principal": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "The ID of the principal.\nOutput only.",
+          "readOnly": true
+        },
+        "type": {
+          "type": "string",
+          "description": "The type of the principal.\nOutput only.",
+          "readOnly": true
+        },
+        "scope_id": {
+          "type": "string",
+          "description": "The scope ID of the principal.\nOutput only.",
+          "readOnly": true
+        }
+      }
+    },
+    "controller.api.resources.roles.v1.Role": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "The ID of the Role\nOutput only.",
+          "readOnly": true
+        },
+        "scope": {
+          "$ref": "#/definitions/controller.api.resources.scopes.v1.ScopeInfo",
+          "description": "Scope information for this resource\nOutput only.",
+          "readOnly": true
+        },
+        "name": {
+          "type": "string",
+          "title": "Optional name for identification purposes"
+        },
+        "description": {
+          "type": "string",
+          "title": "Optional user-set description for identification purposes"
+        },
+        "created_time": {
+          "type": "string",
+          "format": "date-time",
+          "description": "The time this resource was created\nOutput only.",
+          "readOnly": true
+        },
+        "updated_time": {
+          "type": "string",
+          "format": "date-time",
+          "description": "The time this resource was last updated.\nOutput only.",
+          "readOnly": true
+        },
+        "disabled": {
+          "type": "boolean",
+          "format": "boolean",
+          "title": "Whether the resource is disabled"
+        },
+        "grant_scope_id": {
+          "type": "string",
+          "description": "The scope the grants will apply to. If the role is at the global scope,\nthis can be an org or project. If the role is at an org\nscope, this can be a project within the org. It is invalid for\nthis to be anything other than the role's scope when the role's scope is\na project."
+        },
+        "version": {
+          "type": "integer",
+          "format": "int64",
+          "description": "The version can be used in subsequent write requests to ensure this resource\nhas not changed and to fail the write if it has.\nOutput only.",
+          "readOnly": true
+        },
+        "principal_ids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "The IDs (only) of principals that are assigned to this role.\nOutput only.",
+          "readOnly": true
+        },
+        "principals": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/controller.api.resources.roles.v1.Principal"
+          },
+          "description": "The principals that are assigned to this role.\nOutput only.",
+          "readOnly": true
+        },
+        "grant_strings": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "The grants that this role provides for its principals.\nOutput only.",
+          "readOnly": true
+        },
+        "grants": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/controller.api.resources.roles.v1.Grant"
+          },
+          "description": "The parsed grant information.\nOutput only.",
+          "readOnly": true
+        }
+      },
+      "title": "Role contains all fields related to a Role resource"
+    },
+    "controller.api.resources.scopes.v1.Scope": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "The ID of the Scope\nOutput only.",
+          "readOnly": true
+        },
+        "scope": {
+          "$ref": "#/definitions/controller.api.resources.scopes.v1.ScopeInfo",
+          "description": "Scope information for this resource\nOutput only.",
           "readOnly": true
         },
         "name": {
@@ -1746,12 +2382,177 @@
           "type": "boolean",
           "format": "boolean",
           "title": "Whether the resource is disabled"
+        },
+        "version": {
+          "type": "integer",
+          "format": "int64",
+          "description": "The version can be used in subsequent write requests to ensure this\nresource has not changed and to fail the write if it has.\nOutput only.",
+          "readOnly": true
         }
       },
-      "title": "Project contains all fields related to a Project resource"
+      "title": "Scope contains all fields related to a Scope resource"
+    },
+    "controller.api.resources.scopes.v1.ScopeInfo": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "The ID of the Scope\nOutput only.",
+          "readOnly": true
+        },
+        "type": {
+          "type": "string",
+          "description": "The type of the Scope\nOutput only.",
+          "readOnly": true
+        },
+        "name": {
+          "type": "string",
+          "description": "The name of the scope, if any\nOutput only.",
+          "readOnly": true
+        },
+        "description": {
+          "type": "string",
+          "description": "The description of the scope, if any\nOutput only.",
+          "readOnly": true
+        },
+        "parent_scope_id": {
+          "type": "string",
+          "description": "The ID of the parent scope, if any\nOutput only.",
+          "readOnly": true
+        }
+      }
+    },
+    "controller.api.resources.users.v1.User": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "The ID of the Project\nOutput only.",
+          "readOnly": true
+        },
+        "scope": {
+          "$ref": "#/definitions/controller.api.resources.scopes.v1.ScopeInfo",
+          "description": "Scope information for this resource\nOutput only.",
+          "readOnly": true
+        },
+        "name": {
+          "type": "string",
+          "title": "Optional name for identification purposes"
+        },
+        "description": {
+          "type": "string",
+          "title": "Optional user-set descripton for identification purposes"
+        },
+        "created_time": {
+          "type": "string",
+          "format": "date-time",
+          "description": "The time this resource was created\nOutput only.",
+          "readOnly": true
+        },
+        "updated_time": {
+          "type": "string",
+          "format": "date-time",
+          "description": "The time this resource was last updated.\nOutput only.",
+          "readOnly": true
+        },
+        "disabled": {
+          "type": "boolean",
+          "format": "boolean",
+          "title": "Whether the resource is disabled"
+        },
+        "version": {
+          "type": "integer",
+          "format": "int64",
+          "description": "The version can be used in subsequent write requests to ensure this\nresource has not changed and to fail the write if it has.\nOutput only.",
+          "readOnly": true
+        }
+      },
+      "title": "User contains all fields related to a User resource"
+    },
+    "controller.api.services.v1.AddGroupMembersResponse": {
+      "type": "object",
+      "properties": {
+        "item": {
+          "$ref": "#/definitions/controller.api.resources.groups.v1.Group"
+        }
+      }
+    },
+    "controller.api.services.v1.AddRoleGrantsResponse": {
+      "type": "object",
+      "properties": {
+        "item": {
+          "$ref": "#/definitions/controller.api.resources.roles.v1.Role"
+        }
+      }
+    },
+    "controller.api.services.v1.AddRolePrincipalsResponse": {
+      "type": "object",
+      "properties": {
+        "item": {
+          "$ref": "#/definitions/controller.api.resources.roles.v1.Role"
+        }
+      }
     },
     "controller.api.services.v1.AddToHostSetResponse": {
       "type": "object"
+    },
+    "controller.api.services.v1.AuthenticateRequest": {
+      "type": "object",
+      "properties": {
+        "auth_method_id": {
+          "type": "string",
+          "description": "The id to the authmethod in the system being used for authentication.  The auth method must be in the scope\nbeing logged in to."
+        },
+        "token_type": {
+          "type": "string",
+          "description": "This can be \"cookie\" or \"token\".  If not provided, \"token\" will be used.  For now only type \"token\" is returned."
+        },
+        "credentials": {
+          "type": "object",
+          "description": "credentials are the different possible credential names depending on what type of auth method is used.\nFor password auth method: should include only \"name\" and \"password\"."
+        }
+      }
+    },
+    "controller.api.services.v1.AuthenticateResponse": {
+      "type": "object",
+      "properties": {
+        "item": {
+          "$ref": "#/definitions/controller.api.resources.authtokens.v1.AuthToken"
+        }
+      }
+    },
+    "controller.api.services.v1.CreateAccountResponse": {
+      "type": "object",
+      "properties": {
+        "uri": {
+          "type": "string"
+        },
+        "item": {
+          "$ref": "#/definitions/controller.api.resources.authmethods.v1.Account"
+        }
+      }
+    },
+    "controller.api.services.v1.CreateAuthMethodResponse": {
+      "type": "object",
+      "properties": {
+        "uri": {
+          "type": "string"
+        },
+        "item": {
+          "$ref": "#/definitions/controller.api.resources.authmethods.v1.AuthMethod"
+        }
+      }
+    },
+    "controller.api.services.v1.CreateGroupResponse": {
+      "type": "object",
+      "properties": {
+        "uri": {
+          "type": "string"
+        },
+        "item": {
+          "$ref": "#/definitions/controller.api.resources.groups.v1.Group"
+        }
+      }
     },
     "controller.api.services.v1.CreateHostCatalogResponse": {
       "type": "object",
@@ -1767,7 +2568,7 @@
     "controller.api.services.v1.CreateHostResponse": {
       "type": "object",
       "properties": {
-        "ref": {
+        "uri": {
           "type": "string"
         },
         "item": {
@@ -1786,14 +2587,72 @@
         }
       }
     },
-    "controller.api.services.v1.CreateProjectResponse": {
+    "controller.api.services.v1.CreateRoleResponse": {
       "type": "object",
       "properties": {
         "uri": {
           "type": "string"
         },
         "item": {
-          "$ref": "#/definitions/controller.api.resources.scopes.v1.Project"
+          "$ref": "#/definitions/controller.api.resources.roles.v1.Role"
+        }
+      }
+    },
+    "controller.api.services.v1.CreateScopeResponse": {
+      "type": "object",
+      "properties": {
+        "uri": {
+          "type": "string"
+        },
+        "item": {
+          "$ref": "#/definitions/controller.api.resources.scopes.v1.Scope"
+        }
+      }
+    },
+    "controller.api.services.v1.CreateUserResponse": {
+      "type": "object",
+      "properties": {
+        "uri": {
+          "type": "string"
+        },
+        "item": {
+          "$ref": "#/definitions/controller.api.resources.users.v1.User"
+        }
+      }
+    },
+    "controller.api.services.v1.DeleteAccountResponse": {
+      "type": "object",
+      "properties": {
+        "existed": {
+          "type": "boolean",
+          "format": "boolean"
+        }
+      }
+    },
+    "controller.api.services.v1.DeleteAuthMethodResponse": {
+      "type": "object",
+      "properties": {
+        "existed": {
+          "type": "boolean",
+          "format": "boolean"
+        }
+      }
+    },
+    "controller.api.services.v1.DeleteAuthTokenResponse": {
+      "type": "object",
+      "properties": {
+        "existed": {
+          "type": "boolean",
+          "format": "boolean"
+        }
+      }
+    },
+    "controller.api.services.v1.DeleteGroupResponse": {
+      "type": "object",
+      "properties": {
+        "existed": {
+          "type": "boolean",
+          "format": "boolean"
         }
       }
     },
@@ -1824,12 +2683,62 @@
         }
       }
     },
-    "controller.api.services.v1.DeleteProjectResponse": {
+    "controller.api.services.v1.DeleteRoleResponse": {
       "type": "object",
       "properties": {
         "existed": {
           "type": "boolean",
           "format": "boolean"
+        }
+      }
+    },
+    "controller.api.services.v1.DeleteScopeResponse": {
+      "type": "object",
+      "properties": {
+        "existed": {
+          "type": "boolean",
+          "format": "boolean"
+        }
+      }
+    },
+    "controller.api.services.v1.DeleteUserResponse": {
+      "type": "object",
+      "properties": {
+        "existed": {
+          "type": "boolean",
+          "format": "boolean"
+        }
+      }
+    },
+    "controller.api.services.v1.GetAccountResponse": {
+      "type": "object",
+      "properties": {
+        "item": {
+          "$ref": "#/definitions/controller.api.resources.authmethods.v1.Account"
+        }
+      }
+    },
+    "controller.api.services.v1.GetAuthMethodResponse": {
+      "type": "object",
+      "properties": {
+        "item": {
+          "$ref": "#/definitions/controller.api.resources.authmethods.v1.AuthMethod"
+        }
+      }
+    },
+    "controller.api.services.v1.GetAuthTokenResponse": {
+      "type": "object",
+      "properties": {
+        "item": {
+          "$ref": "#/definitions/controller.api.resources.authtokens.v1.AuthToken"
+        }
+      }
+    },
+    "controller.api.services.v1.GetGroupResponse": {
+      "type": "object",
+      "properties": {
+        "item": {
+          "$ref": "#/definitions/controller.api.resources.groups.v1.Group"
         }
       }
     },
@@ -1857,11 +2766,93 @@
         }
       }
     },
-    "controller.api.services.v1.GetProjectResponse": {
+    "controller.api.services.v1.GetRoleResponse": {
       "type": "object",
       "properties": {
         "item": {
-          "$ref": "#/definitions/controller.api.resources.scopes.v1.Project"
+          "$ref": "#/definitions/controller.api.resources.roles.v1.Role"
+        }
+      }
+    },
+    "controller.api.services.v1.GetScopeResponse": {
+      "type": "object",
+      "properties": {
+        "item": {
+          "$ref": "#/definitions/controller.api.resources.scopes.v1.Scope"
+        }
+      }
+    },
+    "controller.api.services.v1.GetUserResponse": {
+      "type": "object",
+      "properties": {
+        "item": {
+          "$ref": "#/definitions/controller.api.resources.users.v1.User"
+        }
+      }
+    },
+    "controller.api.services.v1.GrantStringsMessage": {
+      "type": "object",
+      "properties": {
+        "grant_strings": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "controller.api.services.v1.GroupMemberIdsMessage": {
+      "type": "object",
+      "properties": {
+        "member_ids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "controller.api.services.v1.ListAccountsResponse": {
+      "type": "object",
+      "properties": {
+        "items": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/controller.api.resources.authmethods.v1.Account"
+          }
+        }
+      }
+    },
+    "controller.api.services.v1.ListAuthMethodsResponse": {
+      "type": "object",
+      "properties": {
+        "items": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/controller.api.resources.authmethods.v1.AuthMethod"
+          }
+        }
+      }
+    },
+    "controller.api.services.v1.ListAuthTokensResponse": {
+      "type": "object",
+      "properties": {
+        "items": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/controller.api.resources.authtokens.v1.AuthToken"
+          }
+        }
+      }
+    },
+    "controller.api.services.v1.ListGroupsResponse": {
+      "type": "object",
+      "properties": {
+        "items": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/controller.api.resources.groups.v1.Group"
+          }
         }
       }
     },
@@ -1898,19 +2889,124 @@
         }
       }
     },
-    "controller.api.services.v1.ListProjectsResponse": {
+    "controller.api.services.v1.ListRolesResponse": {
       "type": "object",
       "properties": {
         "items": {
           "type": "array",
           "items": {
-            "$ref": "#/definitions/controller.api.resources.scopes.v1.Project"
+            "$ref": "#/definitions/controller.api.resources.roles.v1.Role"
+          }
+        }
+      }
+    },
+    "controller.api.services.v1.ListScopesResponse": {
+      "type": "object",
+      "properties": {
+        "items": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/controller.api.resources.scopes.v1.Scope"
+          }
+        }
+      }
+    },
+    "controller.api.services.v1.ListUsersResponse": {
+      "type": "object",
+      "properties": {
+        "items": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/controller.api.resources.users.v1.User"
+          }
+        }
+      }
+    },
+    "controller.api.services.v1.PrincipalIdsMessage": {
+      "type": "object",
+      "properties": {
+        "principal_ids": {
+          "type": "array",
+          "items": {
+            "type": "string"
           }
         }
       }
     },
     "controller.api.services.v1.RemoveFromHostSetResponse": {
       "type": "object"
+    },
+    "controller.api.services.v1.RemoveGroupMembersResponse": {
+      "type": "object",
+      "properties": {
+        "item": {
+          "$ref": "#/definitions/controller.api.resources.groups.v1.Group"
+        }
+      }
+    },
+    "controller.api.services.v1.RemoveRoleGrantsResponse": {
+      "type": "object",
+      "properties": {
+        "item": {
+          "$ref": "#/definitions/controller.api.resources.roles.v1.Role"
+        }
+      }
+    },
+    "controller.api.services.v1.RemoveRolePrincipalsResponse": {
+      "type": "object",
+      "properties": {
+        "item": {
+          "$ref": "#/definitions/controller.api.resources.roles.v1.Role"
+        }
+      }
+    },
+    "controller.api.services.v1.SetGroupMembersResponse": {
+      "type": "object",
+      "properties": {
+        "item": {
+          "$ref": "#/definitions/controller.api.resources.groups.v1.Group"
+        }
+      }
+    },
+    "controller.api.services.v1.SetRoleGrantsResponse": {
+      "type": "object",
+      "properties": {
+        "item": {
+          "$ref": "#/definitions/controller.api.resources.roles.v1.Role"
+        }
+      }
+    },
+    "controller.api.services.v1.SetRolePrincipalsResponse": {
+      "type": "object",
+      "properties": {
+        "item": {
+          "$ref": "#/definitions/controller.api.resources.roles.v1.Role"
+        }
+      }
+    },
+    "controller.api.services.v1.UpdateAccountResponse": {
+      "type": "object",
+      "properties": {
+        "item": {
+          "$ref": "#/definitions/controller.api.resources.authmethods.v1.Account"
+        }
+      }
+    },
+    "controller.api.services.v1.UpdateAuthMethodResponse": {
+      "type": "object",
+      "properties": {
+        "item": {
+          "$ref": "#/definitions/controller.api.resources.authmethods.v1.AuthMethod"
+        }
+      }
+    },
+    "controller.api.services.v1.UpdateGroupResponse": {
+      "type": "object",
+      "properties": {
+        "item": {
+          "$ref": "#/definitions/controller.api.resources.groups.v1.Group"
+        }
+      }
     },
     "controller.api.services.v1.UpdateHostCatalogResponse": {
       "type": "object",
@@ -1936,11 +3032,27 @@
         }
       }
     },
-    "controller.api.services.v1.UpdateProjectResponse": {
+    "controller.api.services.v1.UpdateRoleResponse": {
       "type": "object",
       "properties": {
         "item": {
-          "$ref": "#/definitions/controller.api.resources.scopes.v1.Project"
+          "$ref": "#/definitions/controller.api.resources.roles.v1.Role"
+        }
+      }
+    },
+    "controller.api.services.v1.UpdateScopeResponse": {
+      "type": "object",
+      "properties": {
+        "item": {
+          "$ref": "#/definitions/controller.api.resources.scopes.v1.Scope"
+        }
+      }
+    },
+    "controller.api.services.v1.UpdateUserResponse": {
+      "type": "object",
+      "properties": {
+        "item": {
+          "$ref": "#/definitions/controller.api.resources.users.v1.User"
         }
       }
     },

@@ -3,13 +3,13 @@ package static
 import (
 	"context"
 	"errors"
-	"fmt"
 	"strings"
 	"testing"
 
 	wrapping "github.com/hashicorp/go-kms-wrapping"
-	"github.com/jinzhu/gorm"
 	"github.com/stretchr/testify/assert"
+
+	dbassert "github.com/hashicorp/watchtower/internal/db/assert"
 
 	"github.com/hashicorp/watchtower/internal/db"
 	"github.com/hashicorp/watchtower/internal/host/static/store"
@@ -17,17 +17,7 @@ import (
 )
 
 func TestRepository_New(t *testing.T) {
-
-	cleanup, conn, _ := db.TestSetup(t, "postgres")
-	defer func() {
-		if err := conn.Close(); err != nil {
-			t.Error(err)
-		}
-		if err := cleanup(); err != nil {
-			t.Error(err)
-		}
-	}()
-
+	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
 
@@ -115,15 +105,7 @@ func TestRepository_New(t *testing.T) {
 }
 
 func TestRepository_CreateCatalog(t *testing.T) {
-	cleanup, conn, _ := db.TestSetup(t, "postgres")
-	defer func() {
-		if err := cleanup(); err != nil {
-			t.Error(err)
-		}
-		if err := conn.Close(); err != nil {
-			t.Error(err)
-		}
-	}()
+	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
 
@@ -282,16 +264,7 @@ func assertPublicId(t *testing.T, prefix, actual string) {
 }
 
 func TestRepository_UpdateCatalog(t *testing.T) {
-	cleanup, conn, _ := db.TestSetup(t, "postgres")
-	defer func() {
-		if err := cleanup(); err != nil {
-			t.Error(err)
-		}
-		if err := conn.Close(); err != nil {
-			t.Error(err)
-		}
-	}()
-
+	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
 
@@ -575,13 +548,14 @@ func TestRepository_UpdateCatalog(t *testing.T) {
 			assert.Equal(tt.wantCount, gotCount, "row count")
 			assert.NotSame(tt.orig, got)
 			assert.Equal(tt.orig.ScopeId, got.ScopeId)
+			dbassert := dbassert.New(t, rw)
 			if tt.want.Name == "" {
-				assertColumnIsNull(t, conn, got, "name")
+				dbassert.IsNull(got, "name")
 				return
 			}
 			assert.Equal(tt.want.Name, got.Name)
 			if tt.want.Description == "" {
-				assertColumnIsNull(t, conn, got, "description")
+				dbassert.IsNull(got, "description")
 				return
 			}
 			assert.Equal(tt.want.Description, got.Description)
@@ -672,62 +646,8 @@ func TestRepository_UpdateCatalog(t *testing.T) {
 	})
 }
 
-// TODO(mgaffney,jimlambrt) 05/2020: delete after support for setting
-// columns to nil is added to db.Update.
-func TestNullAssert(t *testing.T) {
-	/*
-		cleanup, conn, _ := db.TestSetup(t, "postgres")
-		defer func() {
-		if err := cleanup(); err != nil {
-			t.Error(err)
-		}
-		if err := conn.Close(); err != nil {
-			t.Error(err)
-		}
-		}()
-
-		isNotNull := &HostCatalog{HostCatalog: &store.HostCatalog{PublicId: "sthc_JSH52G07wI"}}
-		m := isNotNull
-		if err := conn.Model(m).Where("public_id = ?", m.GetPublicId()).UpdateColumn("name", gorm.Expr("NULL")).Error; err != nil {
-			t.Fatalf("could not set to null: %v", err)
-		}
-
-		assertColumnIsNull(t, conn, isNotNull, "name")
-	*/
-}
-
-type resource interface {
-	GetPublicId() string
-	TableName() string
-}
-
-func assertColumnIsNull(t *testing.T, db *gorm.DB, m resource, column string) {
-
-	query := fmt.Sprintf("public_id = ? AND %s is null", column)
-	var count int
-
-	// TODO(mgaffney) 05/2020: There is a good chance this test method will be
-	// needed in other packages. If and when that happens, this method
-	// should be moved to the db package. If the method is not needed, then
-	// the method should be refactored to eliminate the direct call on
-	// gorm.
-	if err := db.Model(m).Where(query, m.GetPublicId()).Count(&count).Error; err != nil {
-		t.Fatalf("could not query: table: %s, column: %s, public_id: %s err: %v", m.TableName(), column, m.GetPublicId(), err)
-	}
-	assert.Equalf(t, 1, count, "want NULL, got NOT NULL - table: %s, column: %s, public_id: %s", m.TableName(), column, m.GetPublicId())
-}
-
 func TestRepository_LookupCatalog(t *testing.T) {
-	cleanup, conn, _ := db.TestSetup(t, "postgres")
-	defer func() {
-		if err := cleanup(); err != nil {
-			t.Error(err)
-		}
-		if err := conn.Close(); err != nil {
-			t.Error(err)
-		}
-	}()
-
+	conn, _ := db.TestSetup(t, "postgres")
 	cat := testCatalog(t, conn)
 	badId, err := newHostCatalogId()
 	assert.NoError(t, err)
@@ -787,16 +707,7 @@ func TestRepository_LookupCatalog(t *testing.T) {
 }
 
 func TestRepository_DeleteCatalog(t *testing.T) {
-	cleanup, conn, _ := db.TestSetup(t, "postgres")
-	defer func() {
-		if err := cleanup(); err != nil {
-			t.Error(err)
-		}
-		if err := conn.Close(); err != nil {
-			t.Error(err)
-		}
-	}()
-
+	conn, _ := db.TestSetup(t, "postgres")
 	cat := testCatalog(t, conn)
 	badId, err := newHostCatalogId()
 	assert.NoError(t, err)

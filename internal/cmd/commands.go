@@ -1,17 +1,20 @@
 package cmd
 
 import (
-	"context"
 	"os"
 	"os/signal"
 	"syscall"
 
 	"github.com/hashicorp/watchtower/internal/cmd/base"
+	"github.com/hashicorp/watchtower/internal/cmd/commands/authenticate"
+	"github.com/hashicorp/watchtower/internal/cmd/commands/config"
 	"github.com/hashicorp/watchtower/internal/cmd/commands/controller"
 	"github.com/hashicorp/watchtower/internal/cmd/commands/dev"
 	"github.com/hashicorp/watchtower/internal/cmd/commands/hosts"
+	"github.com/hashicorp/watchtower/internal/cmd/commands/roles"
 	"github.com/hashicorp/watchtower/internal/cmd/commands/scopes"
 	"github.com/hashicorp/watchtower/internal/cmd/commands/worker"
+
 	"github.com/mitchellh/cli"
 )
 
@@ -19,28 +22,12 @@ import (
 var Commands map[string]cli.CommandFactory
 
 func initCommands(ui, serverCmdUi cli.Ui, runOpts *RunOptions) {
-	getBaseCommand := func() *base.Command {
-		ctx, cancel := context.WithCancel(context.Background())
-		ret := &base.Command{
-			UI:         ui,
-			ShutdownCh: MakeShutdownCh(),
-			Context:    ctx,
-		}
-
-		go func() {
-			<-ret.ShutdownCh
-			cancel()
-		}()
-
-		return ret
-	}
-
 	Commands = map[string]cli.CommandFactory{
 		"controller": func() (cli.Command, error) {
 			return &controller.Command{
 				Server: base.NewServer(&base.Command{
 					UI:         serverCmdUi,
-					ShutdownCh: MakeShutdownCh(),
+					ShutdownCh: base.MakeShutdownCh(),
 				}),
 				SighupCh:  MakeSighupCh(),
 				SigUSR2Ch: MakeSigUSR2Ch(),
@@ -50,7 +37,7 @@ func initCommands(ui, serverCmdUi cli.Ui, runOpts *RunOptions) {
 			return &worker.Command{
 				Server: base.NewServer(&base.Command{
 					UI:         serverCmdUi,
-					ShutdownCh: MakeShutdownCh(),
+					ShutdownCh: base.MakeShutdownCh(),
 				}),
 				SighupCh:  MakeSighupCh(),
 				SigUSR2Ch: MakeSigUSR2Ch(),
@@ -60,7 +47,7 @@ func initCommands(ui, serverCmdUi cli.Ui, runOpts *RunOptions) {
 			return &dev.Command{
 				Server: base.NewServer(&base.Command{
 					UI:         serverCmdUi,
-					ShutdownCh: MakeShutdownCh(),
+					ShutdownCh: base.MakeShutdownCh(),
 				}),
 				SighupCh:  MakeSighupCh(),
 				SigUSR2Ch: MakeSigUSR2Ch(),
@@ -68,35 +55,117 @@ func initCommands(ui, serverCmdUi cli.Ui, runOpts *RunOptions) {
 		},
 		"hosts create": func() (cli.Command, error) {
 			return &hosts.CreateCommand{
-				Command: getBaseCommand(),
+				Command: base.NewCommand(ui),
 			}, nil
 		},
-		"projects create": func() (cli.Command, error) {
-			return &scopes.CreateProjectCommand{
-				Command: getBaseCommand(),
+		"scopes create": func() (cli.Command, error) {
+			return &scopes.CreateScopeCommand{
+				Command: base.NewCommand(ui),
 			}, nil
 		},
-		"projects read": func() (cli.Command, error) {
-			return &scopes.ReadProjectCommand{
-				Command: getBaseCommand(),
+		"scopes read": func() (cli.Command, error) {
+			return &scopes.ReadScopeCommand{
+				Command: base.NewCommand(ui),
+			}, nil
+		},
+		"config": func() (cli.Command, error) {
+			return &config.Command{
+				Command: base.NewCommand(ui),
+			}, nil
+		},
+		"config encrypt": func() (cli.Command, error) {
+			return &config.EncryptDecryptCommand{
+				Command: base.NewCommand(ui),
+				Encrypt: true,
+			}, nil
+		},
+		"config decrypt": func() (cli.Command, error) {
+			return &config.EncryptDecryptCommand{
+				Command: base.NewCommand(ui),
+			}, nil
+		},
+		"authenticate": func() (cli.Command, error) {
+			return &authenticate.Command{
+				Command: base.NewCommand(ui),
+			}, nil
+		},
+		"authenticate password": func() (cli.Command, error) {
+			return &authenticate.PasswordCommand{
+				Command: base.NewCommand(ui),
+			}, nil
+		},
+		"roles": func() (cli.Command, error) {
+			return &roles.Command{
+				Command: base.NewCommand(ui),
+			}, nil
+		},
+		"roles create": func() (cli.Command, error) {
+			return &roles.Command{
+				Command: base.NewCommand(ui),
+				Func:    "create",
+			}, nil
+		},
+		"roles update": func() (cli.Command, error) {
+			return &roles.Command{
+				Command: base.NewCommand(ui),
+				Func:    "update",
+			}, nil
+		},
+		"roles read": func() (cli.Command, error) {
+			return &roles.Command{
+				Command: base.NewCommand(ui),
+				Func:    "read",
+			}, nil
+		},
+		"roles delete": func() (cli.Command, error) {
+			return &roles.Command{
+				Command: base.NewCommand(ui),
+				Func:    "delete",
+			}, nil
+		},
+		"roles list": func() (cli.Command, error) {
+			return &roles.Command{
+				Command: base.NewCommand(ui),
+				Func:    "list",
+			}, nil
+		},
+		"roles add-principals": func() (cli.Command, error) {
+			return &roles.Command{
+				Command: base.NewCommand(ui),
+				Func:    "add-principals",
+			}, nil
+		},
+		"roles set-principals": func() (cli.Command, error) {
+			return &roles.Command{
+				Command: base.NewCommand(ui),
+				Func:    "set-principals",
+			}, nil
+		},
+		"roles remove-principals": func() (cli.Command, error) {
+			return &roles.Command{
+				Command: base.NewCommand(ui),
+				Func:    "remove-principals",
+			}, nil
+		},
+		"roles add-grants": func() (cli.Command, error) {
+			return &roles.Command{
+				Command: base.NewCommand(ui),
+				Func:    "add-grants",
+			}, nil
+		},
+		"roles set-grants": func() (cli.Command, error) {
+			return &roles.Command{
+				Command: base.NewCommand(ui),
+				Func:    "set-grants",
+			}, nil
+		},
+		"roles remove-grants": func() (cli.Command, error) {
+			return &roles.Command{
+				Command: base.NewCommand(ui),
+				Func:    "remove-grants",
 			}, nil
 		},
 	}
-}
-
-// MakeShutdownCh returns a channel that can be used for shutdown
-// notifications for commands. This channel will send a message for every
-// SIGINT or SIGTERM received.
-func MakeShutdownCh() chan struct{} {
-	resultCh := make(chan struct{})
-
-	shutdownCh := make(chan os.Signal, 4)
-	signal.Notify(shutdownCh, os.Interrupt, syscall.SIGTERM)
-	go func() {
-		<-shutdownCh
-		close(resultCh)
-	}()
-	return resultCh
 }
 
 // MakeSighupCh returns a channel that can be used for SIGHUP

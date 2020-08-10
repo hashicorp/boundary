@@ -15,15 +15,28 @@ export GEN_BASEPATH := $(shell pwd)
 api:
 	$(MAKE) --environment-overrides -C api/internal/genapi api
 
-bootstrap:
+tools:
 	go generate -tags tools tools/tools.go
 
 cleangen:
 	@rm -f ${GENERATED_CODE}
 
 dev: BUILD_TAGS+=dev
-dev:
+dev: BUILD_TAGS+=ui
+dev: build-ui-ifne
+	@echo "==> Building Watchtower with dev and UI features enabled"
 	@CGO_ENABLED=$(CGO_ENABLED) BUILD_TAGS='$(BUILD_TAGS)' WATCHTOWER_DEV_BUILD=1 sh -c "'$(CURDIR)/scripts/build.sh'"
+
+build-ui:
+	@scripts/uigen.sh
+
+build-ui-ifne:
+ifeq (,$(wildcard internal/ui/assets.go))
+	@echo "==> No UI assets found, building..."
+	@scripts/uigen.sh
+else
+	@echo "==> UI assets found, use build-ui target to update"
+endif
 
 gen: cleangen proto api migrations
 
@@ -51,18 +64,43 @@ protobuild:
 	# Move the generated files from the tmp file subdirectories into the current repo.
 	cp -R ${TMP_DIR}/${REPO_PATH}/* ${THIS_DIR}
 
-	@protoc --proto_path=internal/proto/local --proto_path=internal/proto/third_party --swagger_out=logtostderr=true,disable_default_errors=true,include_package_in_tags=true,fqn_for_swagger_name=true,allow_merge,merge_file_name=controller:internal/gen/. internal/proto/local/controller/api/services/v1/*.proto
+	@protoc --proto_path=internal/proto/local --proto_path=internal/proto/third_party --openapiv2_out=json_names_for_fields=false,logtostderr=true,disable_default_errors=true,include_package_in_tags=true,fqn_for_openapi_name=true,allow_merge,merge_file_name=controller:internal/gen/. internal/proto/local/controller/api/services/v1/*.proto
 	@protoc-go-inject-tag -input=./internal/oplog/store/oplog.pb.go
 	@protoc-go-inject-tag -input=./internal/oplog/oplog_test/oplog_test.pb.go
+	@protoc-go-inject-tag -input=./internal/iam/store/group_member.pb.go
+	@protoc-go-inject-tag -input=./internal/iam/store/role.pb.go
+	@protoc-go-inject-tag -input=./internal/iam/store/principal_role.pb.go
+	@protoc-go-inject-tag -input=./internal/iam/store/role_grant.pb.go
+	@protoc-go-inject-tag -input=./internal/iam/store/user.pb.go
 	@protoc-go-inject-tag -input=./internal/iam/store/scope.pb.go
+	@protoc-go-inject-tag -input=./internal/iam/store/group.pb.go
 	@protoc-go-inject-tag -input=./internal/db/db_test/db_test.pb.go
 	@protoc-go-inject-tag -input=./internal/kms/store/kms.pb.go
 	@protoc-go-inject-tag -input=./internal/host/static/store/static.pb.go
+	@protoc-go-inject-tag -input=./internal/authtoken/store/authtoken.pb.go
+	@protoc-go-inject-tag -input=./internal/iam/store/auth_account.pb.go
+	@protoc-go-inject-tag -input=./internal/auth/password/store/password.pb.go
+	@protoc-go-inject-tag -input=./internal/auth/password/store/argon2.pb.go
 	@rm -R ${TMP_DIR}
 
 protolint:
 	@buf check lint
 
-.PHONY: api bootstrap gen migrations proto
+# must have nodejs and npm installed
+website: website-install website-start
+
+website-install:
+	@npm install --prefix website/
+
+website-start:
+	@npm start --prefix website/
+
+test-ci: install-go
+	~/.go/bin/go test ./... -v $(TESTARGS) -timeout 120m
+
+install-go:
+	./ci/goinstall.sh
+
+.PHONY: api tools gen migrations proto website
 
 .NOTPARALLEL:

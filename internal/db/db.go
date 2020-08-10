@@ -13,7 +13,7 @@ import (
 	"github.com/hashicorp/watchtower/internal/db/migrations"
 	"github.com/jinzhu/gorm"
 	"github.com/lib/pq"
-	"github.com/ory/dockertest"
+	"github.com/ory/dockertest/v3"
 )
 
 type DbType int
@@ -181,4 +181,22 @@ func GetGormLogFormatter(log hclog.Logger) func(values ...interface{}) (messages
 		}
 		return nil
 	}
+}
+
+type gormLogger struct {
+	logger hclog.Logger
+}
+
+func (g gormLogger) Print(values ...interface{}) {
+	formatted := gorm.LogFormatter(values...)
+	if formatted == nil {
+		return
+	}
+	// Our formatter should elide anything we don't want so this should never
+	// happen, panic if so so we catch/fix
+	panic("unhandled error case")
+}
+
+func GetGormLogger(log hclog.Logger) gormLogger {
+	return gormLogger{logger: log}
 }
