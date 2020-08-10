@@ -3,7 +3,7 @@ package oplog
 import (
 	"testing"
 
-	"github.com/hashicorp/watchtower/internal/oplog/oplog_test"
+	"github.com/hashicorp/boundary/internal/oplog/oplog_test"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/proto"

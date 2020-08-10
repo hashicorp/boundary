@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/hashicorp/watchtower/api/scopes"
-	"github.com/hashicorp/watchtower/internal/cmd/base"
+	"github.com/hashicorp/boundary/api/scopes"
+	"github.com/hashicorp/boundary/internal/cmd/base"
 	"github.com/kr/pretty"
 	"github.com/mitchellh/cli"
 	"github.com/posener/complete"
@@ -26,13 +26,13 @@ func (c *ReadScopeCommand) Synopsis() string {
 
 func (c *ReadScopeCommand) Help() string {
 	helpText := `
-Usage: watchtower scopes read 
+Usage: boundary scopes read 
 
   Returns information about a scope specified by the ID. The request will take place within the scope of the caller's authentication token.
 
   Example: 
 
-      $ watchtower scopes read -id=<scope_id>
+      $ boundary scopes read -id=<scope_id>
 
 ` + c.Flags().Help()
 

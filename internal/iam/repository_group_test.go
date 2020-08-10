@@ -7,10 +7,10 @@ import (
 	"testing"
 	"time"
 
+	"github.com/hashicorp/boundary/internal/db"
+	dbassert "github.com/hashicorp/boundary/internal/db/assert"
+	"github.com/hashicorp/boundary/internal/oplog"
 	"github.com/hashicorp/go-uuid"
-	"github.com/hashicorp/watchtower/internal/db"
-	dbassert "github.com/hashicorp/watchtower/internal/db/assert"
-	"github.com/hashicorp/watchtower/internal/oplog"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/proto"

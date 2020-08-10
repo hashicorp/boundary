@@ -2,7 +2,7 @@ package base
 
 const (
 	// FlagNameAddr is the flag used in the base command to read in the
-	// address of the Watchtower server.
+	// address of the Boundary server.
 	FlagNameAddr = "addr"
 	// FlagNameScope is the flag used in the base command to read in the scope
 	// in which to make a request.
@@ -28,6 +28,6 @@ const (
 )
 
 const (
-	EnvWatchtowerCLINoColor = `WATCHTOWER_CLI_NO_COLOR`
-	EnvWatchtowerCLIFormat  = `WATCHTOWER_CLI_FORMAT`
+	EnvBoundaryCLINoColor = `BOUNDARY_CLI_NO_COLOR`
+	EnvBoundaryCLIFormat  = `BOUNDARY_CLI_FORMAT`
 )

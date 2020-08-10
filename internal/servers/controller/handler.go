@@ -10,23 +10,23 @@ import (
 	"time"
 
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
+	"github.com/hashicorp/boundary/api"
+	"github.com/hashicorp/boundary/globals"
+	"github.com/hashicorp/boundary/internal/auth"
+	"github.com/hashicorp/boundary/internal/gen/controller/api/services"
+	"github.com/hashicorp/boundary/internal/servers/controller/handlers/accounts"
+	"github.com/hashicorp/boundary/internal/servers/controller/handlers/authmethods"
 	"github.com/hashicorp/vault/internalshared/configutil"
 	"github.com/hashicorp/vault/sdk/helper/strutil"
-	"github.com/hashicorp/watchtower/api"
-	"github.com/hashicorp/watchtower/globals"
-	"github.com/hashicorp/watchtower/internal/auth"
-	"github.com/hashicorp/watchtower/internal/gen/controller/api/services"
-	"github.com/hashicorp/watchtower/internal/servers/controller/handlers/accounts"
-	"github.com/hashicorp/watchtower/internal/servers/controller/handlers/authmethods"
 
-	"github.com/hashicorp/watchtower/internal/servers/controller/handlers"
-	"github.com/hashicorp/watchtower/internal/servers/controller/handlers/authenticate"
-	"github.com/hashicorp/watchtower/internal/servers/controller/handlers/authtokens"
-	"github.com/hashicorp/watchtower/internal/servers/controller/handlers/groups"
-	"github.com/hashicorp/watchtower/internal/servers/controller/handlers/host_catalogs"
-	"github.com/hashicorp/watchtower/internal/servers/controller/handlers/roles"
-	"github.com/hashicorp/watchtower/internal/servers/controller/handlers/scopes"
-	"github.com/hashicorp/watchtower/internal/servers/controller/handlers/users"
+	"github.com/hashicorp/boundary/internal/servers/controller/handlers"
+	"github.com/hashicorp/boundary/internal/servers/controller/handlers/authenticate"
+	"github.com/hashicorp/boundary/internal/servers/controller/handlers/authtokens"
+	"github.com/hashicorp/boundary/internal/servers/controller/handlers/groups"
+	"github.com/hashicorp/boundary/internal/servers/controller/handlers/host_catalogs"
+	"github.com/hashicorp/boundary/internal/servers/controller/handlers/roles"
+	"github.com/hashicorp/boundary/internal/servers/controller/handlers/scopes"
+	"github.com/hashicorp/boundary/internal/servers/controller/handlers/users"
 	"google.golang.org/protobuf/encoding/protojson"
 )
 
@@ -156,10 +156,10 @@ func wrapHandlerWithCommonFuncs(h http.Handler, c *Controller, props HandlerProp
 		maxRequestSize = globals.DefaultMaxRequestSize
 	}
 
-	logUrls := os.Getenv("WATCHTOWER_LOG_URLS") != ""
+	logUrls := os.Getenv("BOUNDARY_LOG_URLS") != ""
 
 	disableAuthzFailures := c.conf.DisableAuthorizationFailures ||
-		(c.conf.RawConfig.DevController && os.Getenv("WATCHTOWER_DEV_SKIP_AUTHZ") != "")
+		(c.conf.RawConfig.DevController && os.Getenv("BOUNDARY_DEV_SKIP_AUTHZ") != "")
 	if disableAuthzFailures {
 		c.logger.Warn("AUTHORIZATION CHECKING DISABLED")
 	}

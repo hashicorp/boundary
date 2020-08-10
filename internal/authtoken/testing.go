@@ -4,10 +4,10 @@ import (
 	"context"
 	"testing"
 
+	"github.com/hashicorp/boundary/internal/auth/password"
+	"github.com/hashicorp/boundary/internal/db"
+	"github.com/hashicorp/boundary/internal/iam"
 	wrapping "github.com/hashicorp/go-kms-wrapping"
-	"github.com/hashicorp/watchtower/internal/auth/password"
-	"github.com/hashicorp/watchtower/internal/db"
-	"github.com/hashicorp/watchtower/internal/iam"
 	"github.com/jinzhu/gorm"
 	"github.com/stretchr/testify/require"
 )

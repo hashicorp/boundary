@@ -6,7 +6,7 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/hashicorp/watchtower/internal/ui"
+	"github.com/hashicorp/boundary/internal/ui"
 )
 
 func init() {

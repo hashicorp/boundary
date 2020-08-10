@@ -3,7 +3,7 @@ package db
 import (
 	"testing"
 
-	"github.com/hashicorp/watchtower/internal/oplog"
+	"github.com/hashicorp/boundary/internal/oplog"
 	"github.com/stretchr/testify/assert"
 )
 

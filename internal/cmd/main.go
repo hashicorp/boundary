@@ -12,8 +12,8 @@ import (
 	"text/tabwriter"
 
 	"github.com/fatih/color"
-	"github.com/hashicorp/watchtower/api"
-	"github.com/hashicorp/watchtower/internal/cmd/base"
+	"github.com/hashicorp/boundary/api"
+	"github.com/hashicorp/boundary/internal/cmd/base"
 	colorable "github.com/mattn/go-colorable"
 	"github.com/mitchellh/cli"
 )
@@ -57,10 +57,10 @@ func setupEnv(args []string) (retArgs []string, format string, outputCurlString 
 		}
 	}
 
-	envWatchtowerCLIFormat := os.Getenv(base.EnvWatchtowerCLIFormat)
+	envBoundaryCLIFormat := os.Getenv(base.EnvBoundaryCLIFormat)
 	// If we did not parse a value, fetch the env var
-	if format == "" && envWatchtowerCLIFormat != "" {
-		format = envWatchtowerCLIFormat
+	if format == "" && envBoundaryCLIFormat != "" {
+		format = envBoundaryCLIFormat
 	}
 	// Lowercase for consistency
 	format = strings.ToLower(format)
@@ -94,7 +94,7 @@ func RunCustom(args []string, runOpts *RunOptions) int {
 
 	// Don't use color if disabled
 	useColor := true
-	if os.Getenv(base.EnvWatchtowerCLINoColor) != "" || color.NoColor {
+	if os.Getenv(base.EnvBoundaryCLINoColor) != "" || color.NoColor {
 		useColor = false
 	}
 
@@ -123,7 +123,7 @@ func RunCustom(args []string, runOpts *RunOptions) int {
 		uiErrWriter = ioutil.Discard
 	}
 
-	ui := &base.WatchtowerUI{
+	ui := &base.BoundaryUI{
 		Ui: &cli.ColoredUi{
 			ErrorColor: cli.UiColorRed,
 			WarnColor:  cli.UiColorYellow,
@@ -136,7 +136,7 @@ func RunCustom(args []string, runOpts *RunOptions) int {
 		Format: format,
 	}
 
-	serverCmdUi := &base.WatchtowerUI{
+	serverCmdUi := &base.BoundaryUI{
 		Ui: &cli.ColoredUi{
 			ErrorColor: cli.UiColorRed,
 			WarnColor:  cli.UiColorYellow,
@@ -158,11 +158,11 @@ func RunCustom(args []string, runOpts *RunOptions) int {
 	hiddenCommands := []string{"version"}
 
 	cli := &cli.CLI{
-		Name:     "watchtower",
+		Name:     "boundary",
 		Args:     args,
 		Commands: Commands,
 		HelpFunc: groupedHelpFunc(
-			cli.BasicHelpFunc("watchtower"),
+			cli.BasicHelpFunc("boundary"),
 		),
 		HelpWriter:                 runOpts.Stderr,
 		HiddenCommands:             hiddenCommands,
@@ -206,7 +206,7 @@ func groupedHelpFunc(f cli.HelpFunc) cli.HelpFunc {
 		var b bytes.Buffer
 		tw := tabwriter.NewWriter(&b, 0, 2, 6, ' ', 0)
 
-		fmt.Fprintf(tw, "Usage: watchtower <command> [args]\n\n")
+		fmt.Fprintf(tw, "Usage: boundary <command> [args]\n\n")
 		fmt.Fprintf(tw, "Common commands:\n")
 		for _, v := range commonCommands {
 			printCommand(tw, v, commands[v])

@@ -6,14 +6,14 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/hashicorp/watchtower/internal/auth"
-	"github.com/hashicorp/watchtower/internal/authtoken"
-	pba "github.com/hashicorp/watchtower/internal/gen/controller/api/resources/authtokens"
-	"github.com/hashicorp/watchtower/internal/gen/controller/api/resources/scopes"
-	pbs "github.com/hashicorp/watchtower/internal/gen/controller/api/services"
-	"github.com/hashicorp/watchtower/internal/iam"
-	"github.com/hashicorp/watchtower/internal/servers/controller/common"
-	"github.com/hashicorp/watchtower/internal/servers/controller/handlers"
+	"github.com/hashicorp/boundary/internal/auth"
+	"github.com/hashicorp/boundary/internal/authtoken"
+	pba "github.com/hashicorp/boundary/internal/gen/controller/api/resources/authtokens"
+	"github.com/hashicorp/boundary/internal/gen/controller/api/resources/scopes"
+	pbs "github.com/hashicorp/boundary/internal/gen/controller/api/services"
+	"github.com/hashicorp/boundary/internal/iam"
+	"github.com/hashicorp/boundary/internal/servers/controller/common"
+	"github.com/hashicorp/boundary/internal/servers/controller/handlers"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
@@ -34,7 +34,7 @@ type Service struct {
 	authTokenRepo common.AuthTokenRepoFactory
 }
 
-// NewService returns an org service which handles org related requests to watchtower.
+// NewService returns an org service which handles org related requests to boundary.
 func NewService(pwRepo common.PasswordAuthRepoFactory, iamRepo common.IamRepoFactory, atRepo common.AuthTokenRepoFactory) (Service, error) {
 	if iamRepo == nil {
 		return Service{}, fmt.Errorf("nil iam repository provided")

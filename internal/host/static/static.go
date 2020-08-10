@@ -3,8 +3,8 @@ package static
 import (
 	"fmt"
 
-	"github.com/hashicorp/watchtower/internal/db"
-	"github.com/hashicorp/watchtower/internal/host/static/store"
+	"github.com/hashicorp/boundary/internal/db"
+	"github.com/hashicorp/boundary/internal/host/static/store"
 	"google.golang.org/protobuf/proto"
 )
 

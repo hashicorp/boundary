@@ -1,7 +1,7 @@
 syntax = "proto3";
 
 package controller.storage.authtoken.store.v1;
-option go_package = "github.com/hashicorp/watchtower/internal/authtoken/store;store";
+option go_package = "github.com/hashicorp/boundary/internal/authtoken/store;store";
 
 import "controller/storage/timestamp/v1/timestamp.proto";
 
@@ -18,7 +18,7 @@ message AuthToken {
 	// @inject_tag: `gorm:"default:current_timestamp"`
 	timestamp.v1.Timestamp update_time = 3;
 
-	// last_access_time indicates the last time the auth token was used on the watchtower API.
+	// last_access_time indicates the last time the auth token was used on the boundary API.
 	// @inject_tag: `gorm:"default:current_timestamp"`
 	timestamp.v1.Timestamp approximate_last_access_time = 4;
 
