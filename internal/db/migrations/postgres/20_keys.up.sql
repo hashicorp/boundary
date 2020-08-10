@@ -1,7 +1,7 @@
 begin;
 
 create table kms_external_type_enm (
-  string text not null primary key check(string in ('unknown', 'devkms', 'awskms', 'gcpkms'))
+  string text not null primary key check(string in ('unknown', 'devkms', 'awskms', 'gcpkms','alicloudkms', 'azurekms', 'ocikms', 'vaulttransitkms', 'hsmpkcs11kms'))
 );
 
  -- define the immutable fields of kms_external_type_enm
@@ -16,7 +16,12 @@ values
   ('unknown'),
   ('devkms'),
   ('awskms'),
-  ('gcpkms');
+  ('gcpkms'),
+  ('alicloudkms'),
+  ('azurekms'),
+  ('ocikms'),
+  ('vaulttransitkms'),
+  ('hsmpkcs11kms');
 
 create table kms_external_config (
   private_id wt_private_id primary key,
