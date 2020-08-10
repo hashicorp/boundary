@@ -104,12 +104,14 @@ func (c *Controller) startListeners() error {
 		if err != nil {
 			return fmt.Errorf("error getting sub-listener for worker proto: %w", err)
 		}
+		c.clusterAddress = l.Addr().String()
+		c.logger.Info("cluster address", "addr", c.clusterAddress)
 
 		workerServer := grpc.NewServer(
 			grpc.MaxRecvMsgSize(math.MaxInt32),
 			grpc.MaxSendMsgSize(math.MaxInt32),
 		)
-		services.RegisterWorkerServiceServer(workerServer, workers.NewWorkerServiceServer(c.logger.Named("worker-handler"), c.ServersRepoFn))
+		services.RegisterWorkerServiceServer(workerServer, workers.NewWorkerServiceServer(c.logger.Named("worker-handler"), c.ServersRepoFn, c.workerStatusUpdateTimes))
 
 		interceptor := newInterceptingListener(c, l)
 		ln.ALPNListener = interceptor
@@ -131,7 +133,6 @@ func (c *Controller) startListeners() error {
 				if c.clusterAddress != "" {
 					err = errors.New("more than one cluster listener found")
 				} else {
-					c.clusterAddress = ln.Config.Address
 					err = configureForCluster(ln)
 				}
 			case "worker-alpn-tls":

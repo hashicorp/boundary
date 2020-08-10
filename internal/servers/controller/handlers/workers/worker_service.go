@@ -2,6 +2,8 @@ package workers
 
 import (
 	"context"
+	"sync"
+	"time"
 
 	"github.com/hashicorp/go-hclog"
 	pbs "github.com/hashicorp/watchtower/internal/gen/controller/api/services"
@@ -12,19 +14,22 @@ import (
 )
 
 type workerServiceServer struct {
-	logger hclog.Logger
-	repoFn common.ServersRepoFactory
+	logger      hclog.Logger
+	repoFn      common.ServersRepoFactory
+	updateTimes *sync.Map
 }
 
-func NewWorkerServiceServer(logger hclog.Logger, repoFn common.ServersRepoFactory) *workerServiceServer {
+func NewWorkerServiceServer(logger hclog.Logger, repoFn common.ServersRepoFactory, updateTimes *sync.Map) *workerServiceServer {
 	return &workerServiceServer{
-		logger: logger,
-		repoFn: repoFn,
+		logger:      logger,
+		repoFn:      repoFn,
+		updateTimes: updateTimes,
 	}
 }
 
 func (ws *workerServiceServer) Status(ctx context.Context, req *pbs.StatusRequest) (*pbs.StatusResponse, error) {
 	ws.logger.Trace("got status request from worker", "name", req.Worker.Name)
+	ws.updateTimes.Store(req.Worker.Name, time.Now())
 	repo, err := ws.repoFn()
 	if err != nil {
 		ws.logger.Error("error getting servers repo", "error", err)

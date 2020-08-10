@@ -246,7 +246,7 @@ func (b *Server) SetupListeners(ui cli.Ui, config *configutil.SharedConfig, allo
 		for _, purpose := range lnConfig.Purpose {
 			purpose = strings.ToLower(purpose)
 			if !strutil.StrListContains(allowedPurposes, purpose) {
-				return fmt.Errorf("Unknown listner purpose %q", purpose)
+				return fmt.Errorf("Unknown listener purpose %q", purpose)
 			}
 		}
 

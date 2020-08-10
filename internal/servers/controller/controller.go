@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/rand"
 	"fmt"
+	"sync"
 
 	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/vault/sdk/helper/base62"
@@ -28,6 +29,9 @@ type Controller struct {
 
 	workerAuthCache *cache.Cache
 
+	// Mostly used for testing
+	workerStatusUpdateTimes *sync.Map
+
 	// Repo factory methods
 	IamRepoFn          common.IamRepoFactory
 	StaticHostRepoFn   common.StaticRepoFactory
@@ -40,8 +44,9 @@ type Controller struct {
 
 func New(conf *Config) (*Controller, error) {
 	c := &Controller{
-		conf:   conf,
-		logger: conf.Logger.Named("controller"),
+		conf:                    conf,
+		logger:                  conf.Logger.Named("controller"),
+		workerStatusUpdateTimes: new(sync.Map),
 	}
 
 	if conf.SecureRandomReader == nil {

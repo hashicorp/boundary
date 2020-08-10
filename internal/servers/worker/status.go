@@ -39,7 +39,12 @@ func (w *Worker) startStatusTicking() {
 				return
 
 			case <-timer.C:
-				for _, c := range w.controllerConns {
+				w.controllerConns.Range(func(_, v interface{}) bool {
+					// If something is removed from the map while ranging, ignore it
+					if v == nil {
+						return true
+					}
+					c := v.(*controllerConnection)
 					result, err := c.client.Status(w.baseContext, &pbs.StatusRequest{
 						Worker: &servers.Server{
 							PrivateId:   w.conf.RawConfig.Worker.Name,
@@ -50,7 +55,7 @@ func (w *Worker) startStatusTicking() {
 						},
 					})
 					if err != nil {
-						w.logger.Error("error making status request to controller", "controller_addr_", c.controllerAddr, "error", err)
+						w.logger.Error("error making status request to controller", "controller_addr", c.controllerAddr, "error", err)
 					} else {
 						w.logger.Trace("successfully sent status to controller", "controller_addr", c.controllerAddr)
 						addrs := make([]resolver.Address, 0, len(result.Controllers))
@@ -63,7 +68,8 @@ func (w *Worker) startStatusTicking() {
 						w.logger.Trace("found controllers", "addresses", strAddrs)
 						w.lastStatusSuccess.Store(time.Now())
 					}
-				}
+					return true
+				})
 				timer.Reset(getRandomInterval())
 			}
 		}

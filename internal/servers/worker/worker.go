@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/rand"
 	"fmt"
+	"sync"
 	"sync/atomic"
 	"time"
 
@@ -21,9 +22,8 @@ type Worker struct {
 	baseContext context.Context
 	baseCancel  context.CancelFunc
 
-	controllerConns        []*controllerConnection
-	controllerStatusTicker *time.Timer
-	lastStatusSuccess      *atomic.Value
+	controllerConns   *sync.Map
+	lastStatusSuccess *atomic.Value
 
 	listeningAddress string
 
@@ -35,7 +35,7 @@ func New(conf *Config) (*Worker, error) {
 	w := &Worker{
 		conf:              conf,
 		logger:            conf.Logger.Named("worker"),
-		controllerConns:   make([]*controllerConnection, 0, 3),
+		controllerConns:   new(sync.Map),
 		lastStatusSuccess: new(atomic.Value),
 	}
 

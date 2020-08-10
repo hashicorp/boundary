@@ -8,6 +8,7 @@ import (
 
 	"github.com/hashicorp/go-hclog"
 	wrapping "github.com/hashicorp/go-kms-wrapping"
+	"github.com/hashicorp/vault/sdk/helper/base62"
 	"github.com/hashicorp/watchtower/api"
 	"github.com/hashicorp/watchtower/internal/cmd/base"
 	"github.com/hashicorp/watchtower/internal/cmd/config"
@@ -17,13 +18,14 @@ import (
 // fully-programmatic controller for tests. Error checking (for instance, for
 // valid config) is not stringent at the moment.
 type TestController struct {
-	b      *base.Server
-	c      *Controller
-	t      *testing.T
-	addrs  []string // The address the Controller API is listening on
-	client *api.Client
-	ctx    context.Context
-	cancel context.CancelFunc
+	b            *base.Server
+	c            *Controller
+	t            *testing.T
+	apiAddrs     []string // The address the Controller API is listening on
+	clusterAddrs []string
+	client       *api.Client
+	ctx          context.Context
+	cancel       context.CancelFunc
 }
 
 // Controller returns the underlying controller
@@ -48,22 +50,47 @@ func (tc *TestController) Cancel() {
 }
 
 func (tc *TestController) ApiAddrs() []string {
-	if tc.addrs != nil {
-		return tc.addrs
+	return tc.addrs("api")
+}
+
+func (tc *TestController) ClusterAddrs() []string {
+	return tc.addrs("cluster")
+}
+
+func (tc *TestController) addrs(purpose string) []string {
+	var prefix string
+	switch purpose {
+	case "api":
+		if tc.apiAddrs != nil {
+			return tc.apiAddrs
+		}
+		prefix = "http://"
+	case "cluster":
+		if tc.clusterAddrs != nil {
+			return tc.clusterAddrs
+		}
 	}
 
+	addrs := make([]string, 0, len(tc.b.Listeners))
 	for _, listener := range tc.b.Listeners {
-		if listener.Config.Purpose[0] == "api" {
+		if listener.Config.Purpose[0] == purpose {
 			tcpAddr, ok := listener.Mux.Addr().(*net.TCPAddr)
 			if !ok {
 				tc.t.Fatal("could not parse address as a TCP addr")
 			}
-			addr := fmt.Sprintf("http://%s:%d", tcpAddr.IP.String(), tcpAddr.Port)
-			tc.addrs = append(tc.addrs, addr)
+			addr := fmt.Sprintf("%s%s:%d", prefix, tcpAddr.IP.String(), tcpAddr.Port)
+			addrs = append(addrs, addr)
 		}
 	}
 
-	return tc.addrs
+	switch purpose {
+	case "api":
+		tc.apiAddrs = addrs
+	case "cluster":
+		tc.clusterAddrs = addrs
+	}
+
+	return addrs
 }
 
 func (tc *TestController) buildClient() {
@@ -150,6 +177,10 @@ type TestControllerOpts struct {
 	// The worker auth KMS to use, or one will be created
 	WorkerAuthKMS wrapping.Wrapper
 
+	// The name to use for the controller, otherwise one will be randomly
+	// generated, unless provided in a non-nil Config
+	Name string
+
 	// The logger to use, or one will be created
 	Logger hclog.Logger
 }
@@ -180,6 +211,7 @@ func NewTestController(t *testing.T, opts *TestControllerOpts) *TestController {
 		if err != nil {
 			t.Fatal(err)
 		}
+		opts.Config.Controller.Name = opts.Name
 	}
 
 	// Set default org ID, preferring one passed in from opts over config
@@ -207,6 +239,14 @@ func NewTestController(t *testing.T, opts *TestControllerOpts) *TestController {
 		})
 	}
 
+	if opts.Config.Controller.Name == "" {
+		opts.Config.Controller.Name, err = base62.Random(5)
+		if err != nil {
+			t.Fatal(err)
+		}
+		tc.b.Logger.Info("controller name generated", "name", opts.Config.Controller.Name)
+	}
+
 	// Set up KMSes
 	switch {
 	case opts.ControllerKMS != nil && opts.WorkerAuthKMS != nil:
@@ -224,7 +264,7 @@ func NewTestController(t *testing.T, opts *TestControllerOpts) *TestController {
 	for _, listener := range opts.Config.Listeners {
 		listener.RandomPort = true
 	}
-	if err := tc.b.SetupListeners(nil, opts.Config.SharedConfig, []string{"api", "cluster", "worker-tls-alpn"}); err != nil {
+	if err := tc.b.SetupListeners(nil, opts.Config.SharedConfig, []string{"api", "cluster"}); err != nil {
 		t.Fatal(err)
 	}
 
@@ -271,10 +311,19 @@ func (tc *TestController) AddClusterControllerMember(t *testing.T, opts *TestCon
 		DatabaseUrl:   tc.c.conf.DatabaseUrl,
 		ControllerKMS: tc.c.conf.ControllerKMS,
 		WorkerAuthKMS: tc.c.conf.WorkerAuthKMS,
+		Name:          opts.Name,
 		Logger:        tc.c.conf.Logger,
 	}
 	if opts.Logger != nil {
 		nextOpts.Logger = opts.Logger
+	}
+	if nextOpts.Name == "" {
+		var err error
+		nextOpts.Name, err = base62.Random(5)
+		if err != nil {
+			t.Fatal(err)
+		}
+		nextOpts.Logger.Info("controller name generated", "name", nextOpts.Name)
 	}
 	return NewTestController(t, nextOpts)
 }

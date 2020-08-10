@@ -15,7 +15,7 @@ func (w *Worker) startListeners() error {
 		for _, purpose := range ln.Config.Purpose {
 			switch purpose {
 			case "api", "cluster":
-				// Do nothing, in a dev mode we might see it here
+				// Do nothing, in dev mode we might see it here
 			case "worker-alpn-tls":
 				if w.listeningAddress != "" {
 					return errors.New("more than one listening address found")
@@ -23,6 +23,7 @@ func (w *Worker) startListeners() error {
 				w.listeningAddress = ln.Config.Address
 				w.logger.Info("reporting listening address to controllers", "address", w.listeningAddress)
 				// TODO: other stuff
+				// TODO: once we have an actual listener, record in w.listeningAddress the actual address with port
 			default:
 				err = fmt.Errorf("unknown listener purpose %q", purpose)
 			}

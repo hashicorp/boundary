@@ -123,7 +123,7 @@ func (w *Worker) createClientConn(addr string) error {
 	}
 
 	client := services.NewWorkerServiceClient(cc)
-	w.controllerConns = append(w.controllerConns, newControllerConnection(addr, client))
+	w.controllerConns.Store(addr, newControllerConnection(addr, client))
 
 	w.logger.Info("connected to controller", "address", addr)
 	return nil
