@@ -2,7 +2,7 @@ syntax = "proto3";
 
 package controller.api.services.v1;
 
-option go_package = "github.com/hashicorp/watchtower/internal/gen/controller/api/services;services";
+option go_package = "github.com/hashicorp/boundary/internal/gen/controller/api/services;services";
 
 import "protoc-gen-openapiv2/options/annotations.proto";
 import "google/api/annotations.proto";
@@ -39,7 +39,7 @@ service AccountService {
     };
   }
 
-  // CreateAccount creates and stores an account in watchtower. The provided
+  // CreateAccount creates and stores an account in boundary. The provided
   // request must include the auth method id in which the account will be created.
   // If the auth method id is missing, malformed or references a non existing
   // auth method, an error is returned. If a name is provided that is in
@@ -55,7 +55,7 @@ service AccountService {
     };
   }
 
-  // UpdateAccount updates an existing account in watchtower. The provided account
+  // UpdateAccount updates an existing account in boundary. The provided account
   // must not have any read only fields set. The update mask must be included in
   // the request and contain at least 1 mutable field. To unset a field's value,
   // include the field in the update mask and don't set it in the provided
@@ -74,7 +74,7 @@ service AccountService {
     };
   }
 
-  // DeleteAccount removes an account from Watchtower. If the provided auth mehtod
+  // DeleteAccount removes an account from Boundary. If the provided auth mehtod
   // or account ids are malformed or not provided an error is returned. No error is
   // returned if either ids reference resources that do not exist as the
   // response itself specifies if the resource existed before the DeleteAccount

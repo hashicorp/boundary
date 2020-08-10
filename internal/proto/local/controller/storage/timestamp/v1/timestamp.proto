@@ -1,7 +1,7 @@
 syntax = "proto3";
 
 package controller.storage.timestamp.v1;
-option go_package = "github.com/hashicorp/watchtower/internal/db/timestamp;timestamp";
+option go_package = "github.com/hashicorp/boundary/internal/db/timestamp;timestamp";
 
 import "google/protobuf/timestamp.proto";
 

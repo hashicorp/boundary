@@ -1,7 +1,7 @@
 package authmethods
 
 import (
-	"github.com/hashicorp/watchtower/api"
+	"github.com/hashicorp/boundary/api"
 )
 
 // Option is a func that sets optional attributes for a call. This does not need

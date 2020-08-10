@@ -10,8 +10,8 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
+	pb "github.com/hashicorp/boundary/internal/gen/controller/api"
 	"github.com/hashicorp/go-hclog"
-	pb "github.com/hashicorp/watchtower/internal/gen/controller/api"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc/codes"

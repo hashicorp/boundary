@@ -22,6 +22,7 @@ type options struct {
 	withAutoVivify      bool
 	withGrantScopeId    string
 	withSkipVetForWrite bool
+	withDisassociate    bool
 }
 
 func getDefaultOptions() options {
@@ -95,5 +96,13 @@ func WithGrantScopeId(id string) Option {
 func WithSkipVetForWrite(enable bool) Option {
 	return func(o *options) {
 		o.withSkipVetForWrite = enable
+	}
+}
+
+// WithDisassociate provides an option to allow the combining of disassociating
+// and associating a user in one operation.
+func WithDisassociate(enable bool) Option {
+	return func(o *options) {
+		o.withDisassociate = enable
 	}
 }

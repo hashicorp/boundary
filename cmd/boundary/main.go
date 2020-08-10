@@ -3,7 +3,7 @@ package main
 import (
 	"os"
 
-	"github.com/hashicorp/watchtower/internal/cmd"
+	"github.com/hashicorp/boundary/internal/cmd"
 )
 
 func main() {

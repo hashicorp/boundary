@@ -1,7 +1,7 @@
 syntax = "proto3";
 
 package controller.storage.auth.store.v1;
-option go_package = "github.com/hashicorp/watchtower/internal/auth/store;store";
+option go_package = "github.com/hashicorp/boundary/internal/auth/store;store";
 
 import "controller/storage/timestamp/v1/timestamp.proto";
 

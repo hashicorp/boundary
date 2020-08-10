@@ -1,4 +1,4 @@
-// Package dbassert provides a set of assertions for testing the watchtower database
+// Package dbassert provides a set of assertions for testing the boundary database
 // applications.
 //
 // Example Usage:

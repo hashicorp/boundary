@@ -5,10 +5,10 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/hashicorp/watchtower/internal/db"
-	"github.com/hashicorp/watchtower/internal/types/action"
-	"github.com/hashicorp/watchtower/internal/types/resource"
-	"github.com/hashicorp/watchtower/internal/types/scope"
+	"github.com/hashicorp/boundary/internal/db"
+	"github.com/hashicorp/boundary/internal/types/action"
+	"github.com/hashicorp/boundary/internal/types/resource"
+	"github.com/hashicorp/boundary/internal/types/scope"
 )
 
 // Resource declares the shared behavior of IAM Resources

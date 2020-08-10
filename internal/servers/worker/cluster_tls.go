@@ -14,8 +14,8 @@ import (
 	mathrand "math/rand"
 	"time"
 
+	"github.com/hashicorp/boundary/internal/cmd/base"
 	"github.com/hashicorp/vault/sdk/helper/base62"
-	"github.com/hashicorp/watchtower/internal/cmd/base"
 	"google.golang.org/protobuf/proto"
 )
 

@@ -6,9 +6,9 @@ import (
 	"time"
 
 	"github.com/golang/protobuf/ptypes"
-	"github.com/hashicorp/watchtower/internal/db/timestamp"
-	"github.com/hashicorp/watchtower/internal/oplog/oplog_test"
-	"github.com/hashicorp/watchtower/internal/oplog/store"
+	"github.com/hashicorp/boundary/internal/db/timestamp"
+	"github.com/hashicorp/boundary/internal/oplog/oplog_test"
+	"github.com/hashicorp/boundary/internal/oplog/store"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/proto"

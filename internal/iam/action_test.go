@@ -3,7 +3,7 @@ package iam
 import (
 	"testing"
 
-	"github.com/hashicorp/watchtower/internal/types/action"
+	"github.com/hashicorp/boundary/internal/types/action"
 	"github.com/stretchr/testify/assert"
 )
 

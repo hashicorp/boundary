@@ -8,14 +8,14 @@ import (
 
 	"github.com/golang/protobuf/ptypes"
 	"github.com/google/go-cmp/cmp"
-	"github.com/hashicorp/watchtower/internal/auth"
-	"github.com/hashicorp/watchtower/internal/db"
-	pb "github.com/hashicorp/watchtower/internal/gen/controller/api/resources/groups"
-	"github.com/hashicorp/watchtower/internal/gen/controller/api/resources/scopes"
-	pbs "github.com/hashicorp/watchtower/internal/gen/controller/api/services"
-	"github.com/hashicorp/watchtower/internal/iam"
-	"github.com/hashicorp/watchtower/internal/servers/controller/handlers/groups"
-	"github.com/hashicorp/watchtower/internal/types/scope"
+	"github.com/hashicorp/boundary/internal/auth"
+	"github.com/hashicorp/boundary/internal/db"
+	pb "github.com/hashicorp/boundary/internal/gen/controller/api/resources/groups"
+	"github.com/hashicorp/boundary/internal/gen/controller/api/resources/scopes"
+	pbs "github.com/hashicorp/boundary/internal/gen/controller/api/services"
+	"github.com/hashicorp/boundary/internal/iam"
+	"github.com/hashicorp/boundary/internal/servers/controller/handlers/groups"
+	"github.com/hashicorp/boundary/internal/types/scope"
 	"google.golang.org/genproto/protobuf/field_mask"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -978,9 +978,11 @@ func TestAddMember(t *testing.T) {
 				grp := iam.TestGroup(t, conn, scp.GetPublicId())
 				tc.setup(grp)
 				req := &pbs.AddGroupMembersRequest{
-					Id:        grp.GetPublicId(),
-					Version:   grp.GetVersion(),
-					MemberIds: tc.addUsers,
+					Id:      grp.GetPublicId(),
+					Version: grp.GetVersion(),
+					Item: &pbs.GroupMemberIdsMessage{
+						MemberIds: tc.addUsers,
+					},
 				}
 
 				got, err := s.AddGroupMembers(auth.DisabledAuthTestContext(auth.WithScopeId(scp.GetPublicId())), req)
@@ -1079,9 +1081,11 @@ func TestSetMember(t *testing.T) {
 				grp := iam.TestGroup(t, conn, scp.GetPublicId())
 				tc.setup(grp)
 				req := &pbs.SetGroupMembersRequest{
-					Id:        grp.GetPublicId(),
-					Version:   grp.GetVersion(),
-					MemberIds: tc.setUsers,
+					Id:      grp.GetPublicId(),
+					Version: grp.GetVersion(),
+					Item: &pbs.GroupMemberIdsMessage{
+						MemberIds: tc.setUsers,
+					},
 				}
 
 				got, err := s.SetGroupMembers(auth.DisabledAuthTestContext(auth.WithScopeId(scp.GetPublicId())), req)
@@ -1188,9 +1192,11 @@ func TestRemoveMember(t *testing.T) {
 				grp := iam.TestGroup(t, conn, scp.GetPublicId())
 				tc.setup(grp)
 				req := &pbs.RemoveGroupMembersRequest{
-					Id:        grp.GetPublicId(),
-					Version:   grp.GetVersion(),
-					MemberIds: tc.removeUsers,
+					Id:      grp.GetPublicId(),
+					Version: grp.GetVersion(),
+					Item: &pbs.GroupMemberIdsMessage{
+						MemberIds: tc.removeUsers,
+					},
 				}
 
 				got, err := s.RemoveGroupMembers(auth.DisabledAuthTestContext(auth.WithScopeId(scp.GetPublicId())), req)

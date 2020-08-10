@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/hashicorp/watchtower/api/hosts"
-	"github.com/hashicorp/watchtower/internal/cmd/base"
+	"github.com/hashicorp/boundary/api/hosts"
+	"github.com/hashicorp/boundary/internal/cmd/base"
 	"github.com/kr/pretty"
 	"github.com/mitchellh/cli"
 	"github.com/posener/complete"
@@ -29,14 +29,14 @@ func (c *CreateCommand) Synopsis() string {
 
 func (c *CreateCommand) Help() string {
 	helpText := `
-Usage: watchtower hosts create
+Usage: boundary hosts create
 
   Creates a host in the given host catalog. This command will result in an
   error for any catalog that does not support manual host creation.
 
   Example: 
 
-      $ watchtower hosts create -catalog-id=<id> -address=<addr> -name=<name>
+      $ boundary hosts create -catalog-id=<id> -address=<addr> -name=<name>
 
 ` + c.Flags().Help()
 
