@@ -23,6 +23,7 @@ type TestWorker struct {
 	addrs  []string // The address the worker proxies are listening on
 	ctx    context.Context
 	cancel context.CancelFunc
+	name   string
 }
 
 // Worker returns the underlying controller
@@ -40,6 +41,10 @@ func (tw *TestWorker) Context() context.Context {
 
 func (tw *TestWorker) Cancel() {
 	tw.cancel()
+}
+
+func (tw *TestWorker) Name() string {
+	return tw.name
 }
 
 func (tw *TestWorker) ControllerAddrs() []string {
@@ -86,7 +91,7 @@ func (tw *TestWorker) Shutdown() {
 	tw.cancel()
 
 	if tw.w != nil {
-		if err := tw.w.Shutdown(); err != nil {
+		if err := tw.w.Shutdown(false); err != nil {
 			tw.t.Error(err)
 		}
 	}
@@ -166,6 +171,7 @@ func NewTestWorker(t *testing.T, opts *TestWorkerOpts) *TestWorker {
 		}
 		tw.b.Logger.Info("worker name generated", "name", opts.Config.Worker.Name)
 	}
+	tw.name = opts.Config.Worker.Name
 
 	// Set up KMSes
 	switch {

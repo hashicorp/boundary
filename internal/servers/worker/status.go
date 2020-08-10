@@ -1,6 +1,7 @@
 package worker
 
 import (
+	"context"
 	"math/rand"
 	"time"
 
@@ -15,7 +16,7 @@ const (
 	statusInterval = 2 * time.Second
 )
 
-func (w *Worker) startStatusTicking() {
+func (w *Worker) startStatusTicking(cancelCtx context.Context) {
 	go func() {
 		r := rand.New(rand.NewSource(time.Now().UnixNano()))
 		// This function exists to desynchronize calls to controllers from
@@ -34,7 +35,7 @@ func (w *Worker) startStatusTicking() {
 		timer := time.NewTimer(0)
 		for {
 			select {
-			case <-w.baseContext.Done():
+			case <-cancelCtx.Done():
 				w.logger.Info("status ticking shutting down")
 				return
 
@@ -45,7 +46,7 @@ func (w *Worker) startStatusTicking() {
 						return true
 					}
 					c := v.(*controllerConnection)
-					result, err := c.client.Status(w.baseContext, &pbs.StatusRequest{
+					result, err := c.client.Status(cancelCtx, &pbs.StatusRequest{
 						Worker: &servers.Server{
 							PrivateId:   w.conf.RawConfig.Worker.Name,
 							Name:        w.conf.RawConfig.Worker.Name,
@@ -55,16 +56,16 @@ func (w *Worker) startStatusTicking() {
 						},
 					})
 					if err != nil {
-						w.logger.Error("error making status request to controller", "controller_addr", c.controllerAddr, "error", err)
+						w.logger.Error("error making status request to controller", "error", err)
 					} else {
-						w.logger.Trace("successfully sent status to controller", "controller_addr", c.controllerAddr)
+						w.logger.Trace("successfully sent status to controller")
 						addrs := make([]resolver.Address, 0, len(result.Controllers))
 						strAddrs := make([]string, 0, len(result.Controllers))
 						for _, v := range result.Controllers {
 							addrs = append(addrs, resolver.Address{Addr: v.Address})
 							strAddrs = append(strAddrs, v.Address)
 						}
-						w.controllerResolver.UpdateState(resolver.State{Addresses: addrs})
+						w.Resolver().UpdateState(resolver.State{Addresses: addrs})
 						w.logger.Trace("found controllers", "addresses", strAddrs)
 						w.lastStatusSuccess.Store(time.Now())
 					}

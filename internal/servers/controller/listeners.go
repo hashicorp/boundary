@@ -46,6 +46,10 @@ func (c *Controller) startListeners() error {
 			}
 		*/
 
+		// Resolve it here to avoid race conditions if the base context is
+		// replaced
+		cancelCtx := c.baseContext
+
 		server := &http.Server{
 			Handler:           handler,
 			ReadHeaderTimeout: 10 * time.Second,
@@ -53,7 +57,7 @@ func (c *Controller) startListeners() error {
 			IdleTimeout:       5 * time.Minute,
 			ErrorLog:          c.logger.StandardLogger(nil),
 			BaseContext: func(net.Listener) context.Context {
-				return c.baseContext
+				return cancelCtx
 			},
 		}
 		ln.HTTPServer = server

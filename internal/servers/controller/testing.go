@@ -26,6 +26,7 @@ type TestController struct {
 	client       *api.Client
 	ctx          context.Context
 	cancel       context.CancelFunc
+	name         string
 }
 
 // Controller returns the underlying controller
@@ -47,6 +48,10 @@ func (tc *TestController) Context() context.Context {
 
 func (tc *TestController) Cancel() {
 	tc.cancel()
+}
+
+func (tc *TestController) Name() string {
+	return tc.name
 }
 
 func (tc *TestController) ApiAddrs() []string {
@@ -246,6 +251,7 @@ func NewTestController(t *testing.T, opts *TestControllerOpts) *TestController {
 		}
 		tc.b.Logger.Info("controller name generated", "name", opts.Config.Controller.Name)
 	}
+	tc.name = opts.Config.Controller.Name
 
 	// Set up KMSes
 	switch {

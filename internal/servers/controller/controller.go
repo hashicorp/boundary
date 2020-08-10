@@ -29,7 +29,7 @@ type Controller struct {
 
 	workerAuthCache *cache.Cache
 
-	// Mostly used for testing
+	// Used for testing
 	workerStatusUpdateTimes *sync.Map
 
 	// Repo factory methods
@@ -79,8 +79,6 @@ func New(conf *Config) (*Controller, error) {
 		}
 	}
 
-	c.baseContext, c.baseCancel = context.WithCancel(context.Background())
-
 	// Set up repo stuff
 	dbase := db.New(c.conf.Database)
 	c.IamRepoFn = func() (*iam.Repository, error) {
@@ -105,10 +103,14 @@ func New(conf *Config) (*Controller, error) {
 }
 
 func (c *Controller) Start() error {
+	c.baseContext, c.baseCancel = context.WithCancel(context.Background())
+
 	if err := c.startListeners(); err != nil {
 		return fmt.Errorf("error starting controller listeners: %w", err)
 	}
-	c.startStatusTicking()
+
+	c.startStatusTicking(c.baseContext)
+
 	return nil
 }
 
@@ -118,4 +120,12 @@ func (c *Controller) Shutdown() error {
 		return fmt.Errorf("error stopping controller listeners: %w", err)
 	}
 	return nil
+}
+
+// WorkerStatusUpdateTimes returns the map, which specifically is held in _this_
+// controller, not the DB. It's used in tests to verify that a given controller
+// is receiving updates from an expected set of workers, to test out balancing
+// and auto reconnection.
+func (c *Controller) WorkerStatusUpdateTimes() *sync.Map {
+	return c.workerStatusUpdateTimes
 }

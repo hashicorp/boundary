@@ -1,6 +1,7 @@
 package controller
 
 import (
+	"context"
 	"time"
 
 	"github.com/hashicorp/watchtower/internal/servers"
@@ -12,12 +13,12 @@ const (
 	statusInterval = 10 * time.Second
 )
 
-func (c *Controller) startStatusTicking() {
+func (c *Controller) startStatusTicking(cancelCtx context.Context) {
 	go func() {
 		timer := time.NewTimer(0)
 		for {
 			select {
-			case <-c.baseContext.Done():
+			case <-cancelCtx.Done():
 				c.logger.Info("status ticking shutting down")
 				return
 
@@ -33,7 +34,7 @@ func (c *Controller) startStatusTicking() {
 				if err != nil {
 					c.logger.Error("error fetching repository for status update", "error", err)
 				} else {
-					_, _, err = repo.Upsert(c.baseContext, server)
+					_, _, err = repo.Upsert(cancelCtx, server)
 					if err != nil {
 						c.logger.Error("error performing status update", "error", err)
 					} else {

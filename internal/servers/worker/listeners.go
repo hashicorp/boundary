@@ -50,7 +50,9 @@ func (w *Worker) stopListeners() error {
 		}
 
 		if !w.conf.RawConfig.DevController {
+			w.logger.Info("about to close listening mux")
 			if err := ln.Mux.Close(); err != nil {
+				w.logger.Info("error closign listening mux", "error", err)
 				retErr = multierror.Append(retErr, err)
 			}
 		}

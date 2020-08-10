@@ -3,6 +3,9 @@ module github.com/hashicorp/watchtower
 go 1.13
 
 require (
+	github.com/alecthomas/assert v0.0.0-20170929043011-405dbfeb8e38
+	github.com/alecthomas/colour v0.1.0 // indirect
+	github.com/alecthomas/repr v0.0.0-20200325044227-4184120f674c // indirect
 	github.com/armon/go-metrics v0.3.3
 	github.com/bufbuild/buf v0.20.5
 	github.com/fatih/color v1.9.0
@@ -50,8 +53,10 @@ require (
 	github.com/posener/complete v1.2.3
 	github.com/ryanuber/columnize v2.1.0+incompatible
 	github.com/ryanuber/go-glob v1.0.0
+	github.com/sergi/go-diff v1.1.0 // indirect
 	github.com/stretchr/testify v1.6.1
 	github.com/zalando/go-keyring v0.1.0
+	go.uber.org/atomic v1.6.0
 	golang.org/x/crypto v0.0.0-20200728195943-123391ffb6de
 	golang.org/x/time v0.0.0-20200630173020-3af7569d3a1e
 	golang.org/x/tools v0.0.0-20200807210451-92211316783d

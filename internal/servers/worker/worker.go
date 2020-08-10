@@ -12,6 +12,8 @@ import (
 	"github.com/hashicorp/vault/sdk/helper/base62"
 	"github.com/hashicorp/vault/sdk/helper/mlock"
 	"github.com/hashicorp/watchtower/internal/cmd/config"
+	ua "go.uber.org/atomic"
+	"google.golang.org/grpc/resolver"
 	"google.golang.org/grpc/resolver/manual"
 )
 
@@ -24,22 +26,28 @@ type Worker struct {
 
 	controllerConns   *sync.Map
 	lastStatusSuccess *atomic.Value
+	started           ua.Bool
 
 	listeningAddress string
 
-	controllerResolver        *manual.Resolver
-	controllerResolverCleanup func()
+	controllerResolver        *atomic.Value
+	controllerResolverCleanup *atomic.Value
 }
 
 func New(conf *Config) (*Worker, error) {
 	w := &Worker{
-		conf:              conf,
-		logger:            conf.Logger.Named("worker"),
-		controllerConns:   new(sync.Map),
-		lastStatusSuccess: new(atomic.Value),
+		conf:                      conf,
+		logger:                    conf.Logger.Named("worker"),
+		controllerConns:           new(sync.Map),
+		lastStatusSuccess:         new(atomic.Value),
+		controllerResolver:        new(atomic.Value),
+		controllerResolverCleanup: new(atomic.Value),
 	}
 
 	w.lastStatusSuccess.Store(time.Time{})
+	w.started.Store(false)
+	w.controllerResolver.Store((*manual.Resolver)(nil))
+	w.controllerResolverCleanup.Store(func() {})
 
 	if conf.SecureRandomReader == nil {
 		conf.SecureRandomReader = rand.Reader
@@ -54,8 +62,6 @@ func New(conf *Config) (*Worker, error) {
 			return nil, fmt.Errorf("error auto-generating worker name: %w", err)
 		}
 	}
-
-	w.controllerResolver, w.controllerResolverCleanup = manual.GenerateAndRegisterManualResolver()
 
 	if !conf.RawConfig.DisableMlock {
 		// Ensure our memory usage is locked into physical RAM
@@ -73,27 +79,54 @@ func New(conf *Config) (*Worker, error) {
 		}
 	}
 
-	w.baseContext, w.baseCancel = context.WithCancel(context.Background())
-
 	return w, nil
 }
 
 func (w *Worker) Start() error {
+	w.baseContext, w.baseCancel = context.WithCancel(context.Background())
+
+	controllerResolver, controllerResolverCleanup := manual.GenerateAndRegisterManualResolver()
+	w.controllerResolver.Store(controllerResolver)
+	w.controllerResolverCleanup.Store(controllerResolverCleanup)
+
 	if err := w.startListeners(); err != nil {
 		return fmt.Errorf("error starting worker listeners: %w", err)
 	}
 	if err := w.startControllerConnections(); err != nil {
 		return fmt.Errorf("error making controller connections: %w", err)
 	}
-	w.startStatusTicking()
+
+	w.startStatusTicking(w.baseContext)
+	w.started.Store(true)
+
 	return nil
 }
 
-func (w *Worker) Shutdown() error {
-	w.controllerResolverCleanup()
-	w.baseCancel()
-	if err := w.stopListeners(); err != nil {
-		return fmt.Errorf("error stopping worker listeners: %w", err)
+// Shutdown shuts down the workers. skipListeners can be used to not stop
+// listeners, useful for tests if we want to stop and start a worker. In order
+// to create new listeners we'd have to migrate listener setup logic here --
+// doable, but work for later.
+func (w *Worker) Shutdown(skipListeners bool) error {
+	if !w.started.Load() {
+		return nil
 	}
+	w.Resolver().UpdateState(resolver.State{Addresses: []resolver.Address{}})
+	w.controllerResolverCleanup.Load().(func())()
+	w.baseCancel()
+	if !skipListeners {
+		if err := w.stopListeners(); err != nil {
+			return fmt.Errorf("error stopping worker listeners: %w", err)
+		}
+	}
+	w.listeningAddress = ""
+	w.started.Store(false)
 	return nil
+}
+
+func (w *Worker) Resolver() *manual.Resolver {
+	raw := w.controllerResolver.Load()
+	if raw == nil {
+		panic("nil resolver")
+	}
+	return raw.(*manual.Resolver)
 }

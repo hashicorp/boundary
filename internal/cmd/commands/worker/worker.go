@@ -269,7 +269,7 @@ func (c *Command) Start() error {
 
 	if err := c.worker.Start(); err != nil {
 		retErr := fmt.Errorf("Error starting worker: %w", err)
-		if err := c.worker.Shutdown(); err != nil {
+		if err := c.worker.Shutdown(false); err != nil {
 			c.UI.Error(retErr.Error())
 			retErr = fmt.Errorf("Error with worker shutdown: %w", err)
 		}
@@ -293,7 +293,7 @@ func (c *Command) WaitForInterrupt() int {
 		case <-shutdownCh:
 			c.UI.Output("==> Watchtower worker shutdown triggered")
 
-			if err := c.worker.Shutdown(); err != nil {
+			if err := c.worker.Shutdown(false); err != nil {
 				c.UI.Error(fmt.Errorf("Error with worker shutdown: %w", err).Error())
 			}
 

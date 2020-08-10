@@ -52,7 +52,7 @@ func (w *Worker) startControllerConnections() error {
 		initialAddrs = append(initialAddrs, resolver.Address{Addr: fmt.Sprintf("%s:%s", host, port)})
 	}
 
-	w.controllerResolver.InitialState(resolver.State{
+	w.Resolver().InitialState(resolver.State{
 		Addresses: initialAddrs,
 	})
 	for _, addr := range initialAddrs {
@@ -108,7 +108,7 @@ func (w *Worker) createClientConn(addr string) error {
 	  }
 	  `, defaultTimeout)
 	cc, err := grpc.DialContext(w.baseContext,
-		fmt.Sprintf("%s:///%s", w.controllerResolver.Scheme(), addr),
+		fmt.Sprintf("%s:///%s", w.Resolver().Scheme(), addr),
 		grpc.WithDefaultCallOptions(grpc.MaxCallRecvMsgSize(math.MaxInt32)),
 		grpc.WithDefaultCallOptions(grpc.MaxCallSendMsgSize(math.MaxInt32)),
 		grpc.WithContextDialer(w.controllerDialerFunc()),
