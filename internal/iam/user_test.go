@@ -211,7 +211,7 @@ func Test_UserUpdate(t *testing.T) {
 			},
 			wantErr:    true,
 			wantDup:    true,
-			wantErrMsg: `update: failed: pq: duplicate key value violates unique constraint "iam_user_name_scope_id_key"`,
+			wantErrMsg: `update: failed: pq: duplicate key value violates unique constraint "iam_login_name_scope_id_key"`,
 		},
 	}
 	for _, tt := range tests {

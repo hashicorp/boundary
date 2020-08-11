@@ -21,7 +21,7 @@ func TestAccount_New(t *testing.T) {
 
 	type args struct {
 		authMethodId string
-		userName     string
+		loginName    string
 		opts         []Option
 	}
 
@@ -43,12 +43,12 @@ func TestAccount_New(t *testing.T) {
 			name: "valid-no-options",
 			args: args{
 				authMethodId: aut.GetPublicId(),
-				userName:     "kazmierczak",
+				loginName:    "kazmierczak",
 			},
 			want: &Account{
 				Account: &store.Account{
 					AuthMethodId: aut.GetPublicId(),
-					UserName:     "kazmierczak",
+					LoginName:    "kazmierczak",
 				},
 			},
 		},
@@ -56,7 +56,7 @@ func TestAccount_New(t *testing.T) {
 			name: "valid-with-name",
 			args: args{
 				authMethodId: aut.GetPublicId(),
-				userName:     "kazmierczak1",
+				loginName:    "kazmierczak1",
 				opts: []Option{
 					WithName("test-name"),
 				},
@@ -64,7 +64,7 @@ func TestAccount_New(t *testing.T) {
 			want: &Account{
 				Account: &store.Account{
 					AuthMethodId: aut.GetPublicId(),
-					UserName:     "kazmierczak1",
+					LoginName:    "kazmierczak1",
 					Name:         "test-name",
 				},
 			},
@@ -73,7 +73,7 @@ func TestAccount_New(t *testing.T) {
 			name: "valid-with-description",
 			args: args{
 				authMethodId: aut.GetPublicId(),
-				userName:     "kazmierczak2",
+				loginName:    "kazmierczak2",
 				opts: []Option{
 					WithDescription("test-description"),
 				},
@@ -81,7 +81,7 @@ func TestAccount_New(t *testing.T) {
 			want: &Account{
 				Account: &store.Account{
 					AuthMethodId: aut.GetPublicId(),
-					UserName:     "kazmierczak2",
+					LoginName:    "kazmierczak2",
 					Description:  "test-description",
 				},
 			},
@@ -92,7 +92,7 @@ func TestAccount_New(t *testing.T) {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			got, err := NewAccount(tt.args.authMethodId, tt.args.userName, tt.args.opts...)
+			got, err := NewAccount(tt.args.authMethodId, tt.args.loginName, tt.args.opts...)
 			if tt.wantErr {
 				assert.Error(err)
 				require.Nil(got)

@@ -107,9 +107,9 @@ func (r *Repository) setArgon2Conf(ctx context.Context, c *Argon2Configuration) 
 }
 
 type currentConfig struct {
-	ConfType          string
-	MinUserNameLength int
-	MinPasswordLength int
+	ConfType           string
+	MinLoginNameLength int
+	MinPasswordLength  int
 
 	*Argon2Configuration
 }
