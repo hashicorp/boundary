@@ -2,6 +2,6 @@
 package authmethods
 
 type PasswordAccountAttributes struct {
-	Username string `json:"username,omitempty"`
-	Password string `json:"password,omitempty"`
+	LoginName string `json:"login_name,omitempty"`
+	Password  string `json:"password,omitempty"`
 }
