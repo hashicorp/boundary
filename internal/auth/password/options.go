@@ -51,7 +51,7 @@ func WithName(name string) Option {
 	}
 }
 
-// WithName provides an optional name.
+// WithLoginName provides an optional login name.
 func WithLoginName(loginName string) Option {
 	return func(o *options) {
 		o.withLoginName = loginName
