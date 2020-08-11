@@ -165,7 +165,7 @@ func TestScope_ResourceType(t *testing.T) {
 	o, err := NewOrg()
 	require.NoError(t, err)
 	assert.Equal(t, o.ResourceType(), resource.Scope)
-	assert.Equal(t, o.GetParentId(), resource.Global.String())
+	assert.Equal(t, o.GetParentId(), scope.Global.String())
 }
 
 func TestScope_Clone(t *testing.T) {

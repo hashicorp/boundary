@@ -180,7 +180,7 @@ func TestHandler_AuthDecoration(t *testing.T) {
 			path:     "/v1/scopes/o_abc123/projects",
 			action:   action.List,
 			scope:    "o_abc123",
-			resource: resource.Project,
+			resource: resource.Scope,
 		},
 		{
 			name:     "global action, valid",

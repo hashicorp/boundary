@@ -298,14 +298,16 @@ func (g Grant) validateType() error {
 	switch g.typ {
 	case resource.Unknown,
 		resource.All,
-		resource.Role,
-		resource.Group,
+		resource.Scope,
 		resource.User,
+		resource.Group,
+		resource.Role,
+		resource.RoleGrant,
 		resource.AuthMethod,
+		resource.Account,
 		resource.HostCatalog,
 		resource.HostSet,
 		resource.Host,
-		resource.Org,
 		resource.Target:
 		return nil
 	}

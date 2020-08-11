@@ -33,30 +33,6 @@ func Test_Resource(t *testing.T) {
 			want:       Role,
 		},
 		{
-			typeString: "org",
-			want:       Org,
-		},
-		{
-			typeString: "group-member",
-			want:       GroupMember,
-		},
-		{
-			typeString: "group-user-member",
-			want:       GroupUserMember,
-		},
-		{
-			typeString: "assigned-role",
-			want:       AssignedRole,
-		},
-		{
-			typeString: "assigned-user-role",
-			want:       AssignedUserRole,
-		},
-		{
-			typeString: "assigned-group-role",
-			want:       AssignedGroupRole,
-		},
-		{
 			typeString: "role-grant",
 			want:       RoleGrant,
 		},
@@ -65,8 +41,8 @@ func Test_Resource(t *testing.T) {
 			want:       AuthMethod,
 		},
 		{
-			typeString: "project",
-			want:       Project,
+			typeString: "account",
+			want:       Account,
 		},
 		{
 			typeString: "*",
@@ -87,10 +63,6 @@ func Test_Resource(t *testing.T) {
 		{
 			typeString: "target",
 			want:       Target,
-		},
-		{
-			typeString: "global",
-			want:       Global,
 		},
 	}
 	for _, tt := range tests {
