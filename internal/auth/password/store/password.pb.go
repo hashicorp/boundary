@@ -260,6 +260,81 @@ func (x *Account) GetUserName() string {
 	return ""
 }
 
+type Credential struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	// @inject_tag: `gorm:"primary_key"`
+	PrivateId string `protobuf:"bytes,1,opt,name=private_id,json=privateId,proto3" json:"private_id,omitempty" gorm:"primary_key"`
+	// @inject_tag: `gorm:"not_null"`
+	PasswordAccountId string `protobuf:"bytes,2,opt,name=password_account_id,json=passwordAccountId,proto3" json:"password_account_id,omitempty" gorm:"not_null"`
+	// @inject_tag: `gorm:"not_null"`
+	PasswordConfId string `protobuf:"bytes,3,opt,name=password_conf_id,json=passwordConfId,proto3" json:"password_conf_id,omitempty" gorm:"not_null"`
+	// @inject_tag: `gorm:"not_null"`
+	PasswordMethodId string `protobuf:"bytes,4,opt,name=password_method_id,json=passwordMethodId,proto3" json:"password_method_id,omitempty" gorm:"not_null"`
+}
+
+func (x *Credential) Reset() {
+	*x = Credential{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_controller_storage_auth_password_store_v1_password_proto_msgTypes[2]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *Credential) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*Credential) ProtoMessage() {}
+
+func (x *Credential) ProtoReflect() protoreflect.Message {
+	mi := &file_controller_storage_auth_password_store_v1_password_proto_msgTypes[2]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use Credential.ProtoReflect.Descriptor instead.
+func (*Credential) Descriptor() ([]byte, []int) {
+	return file_controller_storage_auth_password_store_v1_password_proto_rawDescGZIP(), []int{2}
+}
+
+func (x *Credential) GetPrivateId() string {
+	if x != nil {
+		return x.PrivateId
+	}
+	return ""
+}
+
+func (x *Credential) GetPasswordAccountId() string {
+	if x != nil {
+		return x.PasswordAccountId
+	}
+	return ""
+}
+
+func (x *Credential) GetPasswordConfId() string {
+	if x != nil {
+		return x.PasswordConfId
+	}
+	return ""
+}
+
+func (x *Credential) GetPasswordMethodId() string {
+	if x != nil {
+		return x.PasswordMethodId
+	}
+	return ""
+}
+
 var File_controller_storage_auth_password_store_v1_password_proto protoreflect.FileDescriptor
 
 var file_controller_storage_auth_password_store_v1_password_proto_rawDesc = []byte{
@@ -327,11 +402,23 @@ var file_controller_storage_auth_password_store_v1_password_proto_rawDesc = []by
 	0x5f, 0x69, 0x64, 0x18, 0x06, 0x20, 0x01, 0x28, 0x09, 0x52, 0x0c, 0x61, 0x75, 0x74, 0x68, 0x4d,
 	0x65, 0x74, 0x68, 0x6f, 0x64, 0x49, 0x64, 0x12, 0x1b, 0x0a, 0x09, 0x75, 0x73, 0x65, 0x72, 0x5f,
 	0x6e, 0x61, 0x6d, 0x65, 0x18, 0x07, 0x20, 0x01, 0x28, 0x09, 0x52, 0x08, 0x75, 0x73, 0x65, 0x72,
-	0x4e, 0x61, 0x6d, 0x65, 0x42, 0x42, 0x5a, 0x40, 0x67, 0x69, 0x74, 0x68, 0x75, 0x62, 0x2e, 0x63,
-	0x6f, 0x6d, 0x2f, 0x68, 0x61, 0x73, 0x68, 0x69, 0x63, 0x6f, 0x72, 0x70, 0x2f, 0x62, 0x6f, 0x75,
-	0x6e, 0x64, 0x61, 0x72, 0x79, 0x2f, 0x69, 0x6e, 0x74, 0x65, 0x72, 0x6e, 0x61, 0x6c, 0x2f, 0x61,
-	0x75, 0x74, 0x68, 0x2f, 0x70, 0x61, 0x73, 0x73, 0x77, 0x6f, 0x72, 0x64, 0x2f, 0x73, 0x74, 0x6f,
-	0x72, 0x65, 0x3b, 0x73, 0x74, 0x6f, 0x72, 0x65, 0x62, 0x06, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x33,
+	0x4e, 0x61, 0x6d, 0x65, 0x22, 0xb3, 0x01, 0x0a, 0x0a, 0x43, 0x72, 0x65, 0x64, 0x65, 0x6e, 0x74,
+	0x69, 0x61, 0x6c, 0x12, 0x1d, 0x0a, 0x0a, 0x70, 0x72, 0x69, 0x76, 0x61, 0x74, 0x65, 0x5f, 0x69,
+	0x64, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x09, 0x70, 0x72, 0x69, 0x76, 0x61, 0x74, 0x65,
+	0x49, 0x64, 0x12, 0x2e, 0x0a, 0x13, 0x70, 0x61, 0x73, 0x73, 0x77, 0x6f, 0x72, 0x64, 0x5f, 0x61,
+	0x63, 0x63, 0x6f, 0x75, 0x6e, 0x74, 0x5f, 0x69, 0x64, 0x18, 0x02, 0x20, 0x01, 0x28, 0x09, 0x52,
+	0x11, 0x70, 0x61, 0x73, 0x73, 0x77, 0x6f, 0x72, 0x64, 0x41, 0x63, 0x63, 0x6f, 0x75, 0x6e, 0x74,
+	0x49, 0x64, 0x12, 0x28, 0x0a, 0x10, 0x70, 0x61, 0x73, 0x73, 0x77, 0x6f, 0x72, 0x64, 0x5f, 0x63,
+	0x6f, 0x6e, 0x66, 0x5f, 0x69, 0x64, 0x18, 0x03, 0x20, 0x01, 0x28, 0x09, 0x52, 0x0e, 0x70, 0x61,
+	0x73, 0x73, 0x77, 0x6f, 0x72, 0x64, 0x43, 0x6f, 0x6e, 0x66, 0x49, 0x64, 0x12, 0x2c, 0x0a, 0x12,
+	0x70, 0x61, 0x73, 0x73, 0x77, 0x6f, 0x72, 0x64, 0x5f, 0x6d, 0x65, 0x74, 0x68, 0x6f, 0x64, 0x5f,
+	0x69, 0x64, 0x18, 0x04, 0x20, 0x01, 0x28, 0x09, 0x52, 0x10, 0x70, 0x61, 0x73, 0x73, 0x77, 0x6f,
+	0x72, 0x64, 0x4d, 0x65, 0x74, 0x68, 0x6f, 0x64, 0x49, 0x64, 0x42, 0x42, 0x5a, 0x40, 0x67, 0x69,
+	0x74, 0x68, 0x75, 0x62, 0x2e, 0x63, 0x6f, 0x6d, 0x2f, 0x68, 0x61, 0x73, 0x68, 0x69, 0x63, 0x6f,
+	0x72, 0x70, 0x2f, 0x62, 0x6f, 0x75, 0x6e, 0x64, 0x61, 0x72, 0x79, 0x2f, 0x69, 0x6e, 0x74, 0x65,
+	0x72, 0x6e, 0x61, 0x6c, 0x2f, 0x61, 0x75, 0x74, 0x68, 0x2f, 0x70, 0x61, 0x73, 0x73, 0x77, 0x6f,
+	0x72, 0x64, 0x2f, 0x73, 0x74, 0x6f, 0x72, 0x65, 0x3b, 0x73, 0x74, 0x6f, 0x72, 0x65, 0x62, 0x06,
+	0x70, 0x72, 0x6f, 0x74, 0x6f, 0x33,
 }
 
 var (
@@ -346,17 +433,18 @@ func file_controller_storage_auth_password_store_v1_password_proto_rawDescGZIP()
 	return file_controller_storage_auth_password_store_v1_password_proto_rawDescData
 }
 
-var file_controller_storage_auth_password_store_v1_password_proto_msgTypes = make([]protoimpl.MessageInfo, 2)
+var file_controller_storage_auth_password_store_v1_password_proto_msgTypes = make([]protoimpl.MessageInfo, 3)
 var file_controller_storage_auth_password_store_v1_password_proto_goTypes = []interface{}{
 	(*AuthMethod)(nil),          // 0: controller.storage.auth.password.store.v1.AuthMethod
 	(*Account)(nil),             // 1: controller.storage.auth.password.store.v1.Account
-	(*timestamp.Timestamp)(nil), // 2: controller.storage.timestamp.v1.Timestamp
+	(*Credential)(nil),          // 2: controller.storage.auth.password.store.v1.Credential
+	(*timestamp.Timestamp)(nil), // 3: controller.storage.timestamp.v1.Timestamp
 }
 var file_controller_storage_auth_password_store_v1_password_proto_depIdxs = []int32{
-	2, // 0: controller.storage.auth.password.store.v1.AuthMethod.create_time:type_name -> controller.storage.timestamp.v1.Timestamp
-	2, // 1: controller.storage.auth.password.store.v1.AuthMethod.update_time:type_name -> controller.storage.timestamp.v1.Timestamp
-	2, // 2: controller.storage.auth.password.store.v1.Account.create_time:type_name -> controller.storage.timestamp.v1.Timestamp
-	2, // 3: controller.storage.auth.password.store.v1.Account.update_time:type_name -> controller.storage.timestamp.v1.Timestamp
+	3, // 0: controller.storage.auth.password.store.v1.AuthMethod.create_time:type_name -> controller.storage.timestamp.v1.Timestamp
+	3, // 1: controller.storage.auth.password.store.v1.AuthMethod.update_time:type_name -> controller.storage.timestamp.v1.Timestamp
+	3, // 2: controller.storage.auth.password.store.v1.Account.create_time:type_name -> controller.storage.timestamp.v1.Timestamp
+	3, // 3: controller.storage.auth.password.store.v1.Account.update_time:type_name -> controller.storage.timestamp.v1.Timestamp
 	4, // [4:4] is the sub-list for method output_type
 	4, // [4:4] is the sub-list for method input_type
 	4, // [4:4] is the sub-list for extension type_name
@@ -394,6 +482,18 @@ func file_controller_storage_auth_password_store_v1_password_proto_init() {
 				return nil
 			}
 		}
+		file_controller_storage_auth_password_store_v1_password_proto_msgTypes[2].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*Credential); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
 	}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
@@ -401,7 +501,7 @@ func file_controller_storage_auth_password_store_v1_password_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: file_controller_storage_auth_password_store_v1_password_proto_rawDesc,
 			NumEnums:      0,
-			NumMessages:   2,
+			NumMessages:   3,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

@@ -1905,7 +1905,8 @@ begin;
     (name, version)
   values
     ('auth_password_method', 1),
-    ('auth_password_account', 1);
+    ('auth_password_account', 1),
+    ('auth_password_credential', 1);
 
 commit;
 
