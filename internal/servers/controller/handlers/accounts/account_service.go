@@ -263,7 +263,7 @@ func toProto(in *password.Account) (*pb.Account, error) {
 	if in.GetName() != "" {
 		out.Name = &wrapperspb.StringValue{Value: in.GetName()}
 	}
-	if st, err := handlers.ProtoToStruct(&pb.PasswordAccountAttributes{Username: in.GetUserName()}); err == nil {
+	if st, err := handlers.ProtoToStruct(&pb.PasswordAccountAttributes{LoginName: in.GetLoginName()}); err == nil {
 		out.Attributes = st
 	} else {
 		return nil, status.Errorf(codes.Internal, "failed building password attribute struct: %v", err)
@@ -314,8 +314,8 @@ func validateCreateRequest(req *pbs.CreateAccountRequest) error {
 		if err := handlers.StructToProto(item.GetAttributes(), pwAttrs); err != nil {
 			badFields["attributes"] = "Attribute fields do not match the expected format."
 		}
-		if pwAttrs.GetUsername() == "" {
-			badFields["username"] = "This is a required field for this type."
+		if pwAttrs.GetLoginName() == "" {
+			badFields["login_name"] = "This is a required field for this type."
 		}
 	default:
 		badFields["type"] = "This is a required field."

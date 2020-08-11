@@ -17,7 +17,7 @@ begin;
   -- but the query to create the view should not need to be updated.
   create or replace view auth_password_current_conf as
       -- Rerun this query whenever auth_password_conf_union is updated.
-      select pm.min_user_name_length, pm.min_password_length, c.*
+      select pm.min_login_name_length, pm.min_password_length, c.*
         from auth_password_method pm
   inner join auth_password_conf_union c
           on pm.password_conf_id = c.password_conf_id;

@@ -40,7 +40,7 @@ service AuthenticationService {
 // The layout of the struct for "credentials" field in AuthenticateRequest.  This message isn't
 // directly referenced anywhere but is used here to define the expected field names and types.
 message PasswordCredentials {
-  string name = 1;
+  string login_name = 1;
   string password = 2;
 }
 

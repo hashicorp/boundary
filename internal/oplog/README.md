@@ -22,7 +22,7 @@ initTx.Commit()
 
 userCreate := oplog_test.TestUser{
   TestUser: oplog_test.TestUser{
-    Name: userName,
+    Name: loginName,
   },
 }
 tx := db.Begin()

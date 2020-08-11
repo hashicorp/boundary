@@ -36,8 +36,8 @@ type structInfo struct {
 
 	// Subtype name for types implementing an abstract resource type. This is
 	// used as text to insert into With/Default function calls to separate out
-	// implementations of the same abstract type. This way e.g. a WithUsername
-	// option turns into WithPasswordAccountUsername which is wordy but
+	// implementations of the same abstract type. This way e.g. a WithLoginName
+	// option turns into WithPasswordAccountLoginName which is wordy but
 	// unambiguous. It also switches the behavior of the functions to work on
 	// the attributes map.
 	subtypeName string

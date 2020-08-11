@@ -19,7 +19,7 @@ func TestAccount_New(t *testing.T) {
 
 	type args struct {
 		authMethodId string
-		userName     string
+		loginName    string
 		opts         []Option
 	}
 
@@ -53,13 +53,13 @@ func TestAccount_New(t *testing.T) {
 			args: args{
 				authMethodId: aut.GetPublicId(),
 				opts: []Option{
-					WithUserName("kazmierczak1"),
+					WithLoginName("kazmierczak1"),
 				},
 			},
 			want: &Account{
 				Account: &store.Account{
 					AuthMethodId: aut.GetPublicId(),
-					UserName:     "kazmierczak1",
+					LoginName:     "kazmierczak1",
 				},
 			},
 		},
