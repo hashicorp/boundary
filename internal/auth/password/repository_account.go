@@ -38,7 +38,7 @@ func (r *Repository) CreateAccount(ctx context.Context, a *Account, opt ...Optio
 		return nil, fmt.Errorf("create: password account: public id not empty: %w", db.ErrInvalidParameter)
 	}
 	if !validUserName(a.UserName) {
-		return nil, fmt.Errorf("create: password account: invalid user name: %w", db.ErrInvalidParameter)
+		return nil, fmt.Errorf("create: password account: invalid user name %q: %w", a.UserName, db.ErrInvalidParameter)
 	}
 
 	cc, err := r.currentConfig(ctx, a.AuthMethodId)

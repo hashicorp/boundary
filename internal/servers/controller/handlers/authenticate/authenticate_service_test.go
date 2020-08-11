@@ -35,7 +35,7 @@ func TestAuthenticate(t *testing.T) {
 	passwordRepoFn := func() (*password.Repository, error) { return password.NewRepository(rw, rw, wrapper) }
 	am := password.TestAuthMethods(t, conn, o.GetPublicId(), 1)[0]
 
-	acct, err := password.NewAccount(am.GetPublicId(), testUsername)
+	acct, err := password.NewAccount(am.GetPublicId(), password.WithUserName(testUsername))
 	require.NoError(t, err)
 
 	pwRepo, err := passwordRepoFn()
@@ -178,7 +178,7 @@ func TestAuthenticate_AuthAccountConnectedToIamUser(t *testing.T) {
 	iamRepoFn := func() (*iam.Repository, error) { return iam.NewRepository(rw, rw, wrapper) }
 
 	am := password.TestAuthMethods(t, conn, o.GetPublicId(), 1)[0]
-	acct, err := password.NewAccount(am.GetPublicId(), testUsername)
+	acct, err := password.NewAccount(am.GetPublicId(), password.WithUserName(testUsername))
 	require.NoError(err)
 
 	pwRepo, err := passwordRepoFn()

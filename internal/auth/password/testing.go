@@ -58,7 +58,7 @@ func TestAccounts(t *testing.T, conn *gorm.DB, authMethodId string, count int) [
 	w := db.New(conn)
 	var auts []*Account
 	for i := 0; i < count; i++ {
-		cat, err := NewAccount(authMethodId, fmt.Sprintf("name%d", i))
+		cat, err := NewAccount(authMethodId, WithUserName(fmt.Sprintf("name%d", i)))
 		assert.NoError(err)
 		require.NotNil(cat)
 		id, err := newAccountId()

@@ -12,7 +12,7 @@ import (
 	"github.com/hashicorp/boundary/internal/authtoken"
 	"github.com/hashicorp/boundary/internal/db"
 	pb "github.com/hashicorp/boundary/internal/gen/controller/api/resources/authmethods"
-	"github.com/hashicorp/boundary/internal/gen/controller/api/resources/scopes"
+	scopepb "github.com/hashicorp/boundary/internal/gen/controller/api/resources/scopes"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/api/services"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers"
@@ -20,6 +20,7 @@ import (
 	"github.com/hashicorp/boundary/internal/types/scope"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/genproto/protobuf/field_mask"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/testing/protocmp"
@@ -47,7 +48,7 @@ func TestGet(t *testing.T) {
 		AuthMethodId: aa.GetAuthMethodId(),
 		CreatedTime:  aa.GetCreateTime().GetTimestamp(),
 		UpdatedTime:  aa.GetUpdateTime().GetTimestamp(),
-		Scope:        &scopes.ScopeInfo{Id: org.GetPublicId(), Type: scope.Org.String()},
+		Scope:        &scopepb.ScopeInfo{Id: org.GetPublicId(), Type: scope.Org.String()},
 		Version:      1,
 		Type:         "password",
 		Attributes:   &structpb.Struct{Fields: map[string]*structpb.Value{"username": structpb.NewStringValue(aa.GetUserName())}},
@@ -113,7 +114,7 @@ func TestList(t *testing.T) {
 			AuthMethodId: aa.GetAuthMethodId(),
 			CreatedTime:  aa.GetCreateTime().GetTimestamp(),
 			UpdatedTime:  aa.GetUpdateTime().GetTimestamp(),
-			Scope:        &scopes.ScopeInfo{Id: o.GetPublicId(), Type: scope.Org.String()},
+			Scope:        &scopepb.ScopeInfo{Id: o.GetPublicId(), Type: scope.Org.String()},
 			Version:      1,
 			Type:         "password",
 			Attributes:   &structpb.Struct{Fields: map[string]*structpb.Value{"username": structpb.NewStringValue(aa.GetUserName())}},
@@ -127,7 +128,7 @@ func TestList(t *testing.T) {
 			AuthMethodId: aa.GetAuthMethodId(),
 			CreatedTime:  aa.GetCreateTime().GetTimestamp(),
 			UpdatedTime:  aa.GetUpdateTime().GetTimestamp(),
-			Scope:        &scopes.ScopeInfo{Id: o.GetPublicId(), Type: scope.Org.String()},
+			Scope:        &scopepb.ScopeInfo{Id: o.GetPublicId(), Type: scope.Org.String()},
 			Version:      1,
 			Type:         "password",
 			Attributes:   &structpb.Struct{Fields: map[string]*structpb.Value{"username": structpb.NewStringValue(aa.GetUserName())}},
@@ -328,7 +329,7 @@ func TestCreate(t *testing.T) {
 					AuthMethodId: defaultAccount.GetAuthMethodId(),
 					Name:         &wrapperspb.StringValue{Value: "name"},
 					Description:  &wrapperspb.StringValue{Value: "desc"},
-					Scope:        &scopes.ScopeInfo{Id: o.GetPublicId(), Type: scope.Org.String()},
+					Scope:        &scopepb.ScopeInfo{Id: o.GetPublicId(), Type: scope.Org.String()},
 					Version:      1,
 					Type:         "password",
 					Attributes:   defaultSt,
@@ -433,6 +434,326 @@ func TestCreate(t *testing.T) {
 				got.Item.CreatedTime, got.Item.UpdatedTime, tc.res.Item.CreatedTime, tc.res.Item.UpdatedTime = nil, nil, nil, nil
 			}
 			assert.Empty(cmp.Diff(got, tc.res, protocmp.Transform()), "CreateAccount(%q) got response %q, wanted %q", tc.req, got, tc.res)
+		})
+	}
+}
+
+func TestUpdate(t *testing.T) {
+	conn, _ := db.TestSetup(t, "postgres")
+	rw := db.New(conn)
+	wrap := db.TestWrapper(t)
+	repoFn := func() (*password.Repository, error) {
+		return password.NewRepository(rw, rw, wrap)
+	}
+
+	o, _ := iam.TestScopes(t, conn)
+	am := password.TestAuthMethods(t, conn, o.GetPublicId(), 1)[0]
+	tested, err := accounts.NewService(repoFn)
+	require.NoError(t, err, "Error when getting new auth_method service.")
+
+	defaultScopeInfo := &scopepb.ScopeInfo{Id: o.GetPublicId(), Type: o.GetType()}
+	defaultAttributes := &structpb.Struct{Fields: map[string]*structpb.Value{
+		"username": structpb.NewStringValue("default"),
+	}}
+
+	freshAccount := func() (*pb.Account, func()) {
+		acc, err := tested.CreateAccount(auth.DisabledAuthTestContext(auth.WithScopeId(o.GetPublicId())),
+			&pbs.CreateAccountRequest{
+				AuthMethodId: am.GetPublicId(),
+				Item: &pb.Account{
+					Name:        wrapperspb.String("default"),
+					Description: wrapperspb.String("default"),
+					Type:        "password",
+					Attributes:  defaultAttributes,
+				}},
+		)
+		require.NoError(t, err)
+
+		clean := func() {
+			_, err := tested.DeleteAccount(auth.DisabledAuthTestContext(auth.WithScopeId(o.GetPublicId())),
+				&pbs.DeleteAccountRequest{AuthMethodId: am.GetPublicId(), Id: acc.GetItem().GetId()})
+			require.NoError(t, err)
+		}
+
+		return acc.GetItem(), clean
+	}
+
+	cases := []struct {
+		name    string
+		req     *pbs.UpdateAccountRequest
+		res     *pbs.UpdateAccountResponse
+		errCode codes.Code
+	}{
+		{
+			name: "Update an Existing AuthMethod",
+			req: &pbs.UpdateAccountRequest{
+				AuthMethodId: am.GetPublicId(),
+				UpdateMask: &field_mask.FieldMask{
+					Paths: []string{"name", "description"},
+				},
+				Item: &pb.Account{
+					Name:        &wrapperspb.StringValue{Value: "new"},
+					Description: &wrapperspb.StringValue{Value: "desc"},
+				},
+			},
+			res: &pbs.UpdateAccountResponse{
+				Item: &pb.Account{
+					AuthMethodId: am.GetPublicId(),
+					Name:         &wrapperspb.StringValue{Value: "new"},
+					Description:  &wrapperspb.StringValue{Value: "desc"},
+					Type:         "password",
+					Attributes:   defaultAttributes,
+					Scope:        defaultScopeInfo,
+				},
+			},
+			errCode: codes.OK,
+		},
+		{
+			name: "Multiple Paths in single string",
+			req: &pbs.UpdateAccountRequest{
+				AuthMethodId: am.GetPublicId(),
+				UpdateMask: &field_mask.FieldMask{
+					Paths: []string{"name,description"},
+				},
+				Item: &pb.Account{
+					Name:        &wrapperspb.StringValue{Value: "new"},
+					Description: &wrapperspb.StringValue{Value: "desc"},
+				},
+			},
+			res: &pbs.UpdateAccountResponse{
+				Item: &pb.Account{
+					AuthMethodId: am.GetPublicId(),
+					Name:         &wrapperspb.StringValue{Value: "new"},
+					Description:  &wrapperspb.StringValue{Value: "desc"},
+					Type:         "password",
+					Attributes:   defaultAttributes,
+					Scope:        defaultScopeInfo,
+				},
+			},
+			errCode: codes.OK,
+		},
+		{
+			name: "No Update Mask",
+			req: &pbs.UpdateAccountRequest{
+				AuthMethodId: am.GetPublicId(),
+				Item: &pb.Account{
+					Name:        &wrapperspb.StringValue{Value: "updated name"},
+					Description: &wrapperspb.StringValue{Value: "updated desc"},
+				},
+			},
+			errCode: codes.InvalidArgument,
+		},
+		{
+			name: "No Paths in Mask",
+			req: &pbs.UpdateAccountRequest{
+				AuthMethodId: am.GetPublicId(),
+				UpdateMask:   &field_mask.FieldMask{Paths: []string{}},
+				Item: &pb.Account{
+					Name:        &wrapperspb.StringValue{Value: "updated name"},
+					Description: &wrapperspb.StringValue{Value: "updated desc"},
+				},
+			},
+			errCode: codes.InvalidArgument,
+		},
+		{
+			name: "Only non-existant paths in Mask",
+			req: &pbs.UpdateAccountRequest{
+				AuthMethodId: am.GetPublicId(),
+				UpdateMask:   &field_mask.FieldMask{Paths: []string{"nonexistant_field"}},
+				Item: &pb.Account{
+					Name:        &wrapperspb.StringValue{Value: "updated name"},
+					Description: &wrapperspb.StringValue{Value: "updated desc"},
+				},
+			},
+			errCode: codes.InvalidArgument,
+		},
+		{
+			name: "Unset Name",
+			req: &pbs.UpdateAccountRequest{
+				AuthMethodId: am.GetPublicId(),
+				UpdateMask: &field_mask.FieldMask{
+					Paths: []string{"name"},
+				},
+				Item: &pb.Account{
+					Description: &wrapperspb.StringValue{Value: "ignored"},
+				},
+			},
+			res: &pbs.UpdateAccountResponse{
+				Item: &pb.Account{
+					AuthMethodId: am.GetPublicId(),
+					Description:  &wrapperspb.StringValue{Value: "default"},
+					Type:         "password",
+					Attributes:   defaultAttributes,
+					Scope:        defaultScopeInfo,
+				},
+			},
+			errCode: codes.OK,
+		},
+		{
+			name: "Update Only Name",
+			req: &pbs.UpdateAccountRequest{
+				AuthMethodId: am.GetPublicId(),
+				UpdateMask: &field_mask.FieldMask{
+					Paths: []string{"name"},
+				},
+				Item: &pb.Account{
+					Name:        &wrapperspb.StringValue{Value: "updated"},
+					Description: &wrapperspb.StringValue{Value: "ignored"},
+				},
+			},
+			res: &pbs.UpdateAccountResponse{
+				Item: &pb.Account{
+					AuthMethodId: am.GetPublicId(),
+					Name:         &wrapperspb.StringValue{Value: "updated"},
+					Description:  &wrapperspb.StringValue{Value: "default"},
+					Type:         "password",
+					Attributes:   defaultAttributes,
+					Scope:        defaultScopeInfo,
+				},
+			},
+			errCode: codes.OK,
+		},
+		{
+			name: "Update Only Description",
+			req: &pbs.UpdateAccountRequest{
+				AuthMethodId: am.GetPublicId(),
+				UpdateMask: &field_mask.FieldMask{
+					Paths: []string{"description"},
+				},
+				Item: &pb.Account{
+					Name:        &wrapperspb.StringValue{Value: "ignored"},
+					Description: &wrapperspb.StringValue{Value: "notignored"},
+				},
+			},
+			res: &pbs.UpdateAccountResponse{
+				Item: &pb.Account{
+					AuthMethodId: am.GetPublicId(),
+					Name:         &wrapperspb.StringValue{Value: "default"},
+					Description:  &wrapperspb.StringValue{Value: "notignored"},
+					Type:         "password",
+					Attributes:   defaultAttributes,
+					Scope:        defaultScopeInfo,
+				},
+			},
+			errCode: codes.OK,
+		},
+		// TODO: Updating a non existant auth_method should result in a NotFound exception but currently results in
+		// the repoFn returning an internal error.
+		{
+			name: "Update a Non Existing Account",
+			req: &pbs.UpdateAccountRequest{
+				AuthMethodId: am.GetPublicId(),
+				Id:           password.AccountPrefix + "_DoesntExis",
+				UpdateMask: &field_mask.FieldMask{
+					Paths: []string{"description"},
+				},
+				Item: &pb.Account{
+					Name:        &wrapperspb.StringValue{Value: "new"},
+					Description: &wrapperspb.StringValue{Value: "desc"},
+				},
+			},
+			errCode: codes.Internal,
+		},
+		{
+			name: "Cant change Id",
+			req: &pbs.UpdateAccountRequest{
+				AuthMethodId: am.GetPublicId(),
+				UpdateMask: &field_mask.FieldMask{
+					Paths: []string{"id"},
+				},
+				Item: &pb.Account{
+					Id:          password.AccountPrefix + "_somethinge",
+					Name:        &wrapperspb.StringValue{Value: "new"},
+					Description: &wrapperspb.StringValue{Value: "new desc"},
+				}},
+			res:     nil,
+			errCode: codes.InvalidArgument,
+		},
+		{
+			name: "Cant specify Created Time",
+			req: &pbs.UpdateAccountRequest{
+				AuthMethodId: am.GetPublicId(),
+				UpdateMask: &field_mask.FieldMask{
+					Paths: []string{"created_time"},
+				},
+				Item: &pb.Account{
+					CreatedTime: ptypes.TimestampNow(),
+				},
+			},
+			res:     nil,
+			errCode: codes.InvalidArgument,
+		},
+		{
+			name: "Cant specify Updated Time",
+			req: &pbs.UpdateAccountRequest{
+				AuthMethodId: am.GetPublicId(),
+				UpdateMask: &field_mask.FieldMask{
+					Paths: []string{"updated_time"},
+				},
+				Item: &pb.Account{
+					UpdatedTime: ptypes.TimestampNow(),
+				},
+			},
+			res:     nil,
+			errCode: codes.InvalidArgument,
+		},
+		{
+			name: "Cant specify Type",
+			req: &pbs.UpdateAccountRequest{
+				AuthMethodId: am.GetPublicId(),
+				UpdateMask: &field_mask.FieldMask{
+					Paths: []string{"type"},
+				},
+				Item: &pb.Account{
+					Type: "oidc",
+				},
+			},
+			res:     nil,
+			errCode: codes.InvalidArgument,
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+			acc, cleanup := freshAccount()
+			defer cleanup()
+
+			tc.req.Version = 1
+
+			if tc.req.GetId() == "" {
+				tc.req.Id = acc.GetId()
+			}
+
+			if tc.res != nil && tc.res.Item != nil {
+				tc.res.Item.Id = acc.GetId()
+				tc.res.Item.CreatedTime = acc.GetCreatedTime()
+			}
+
+			got, gErr := tested.UpdateAccount(auth.DisabledAuthTestContext(auth.WithScopeId(o.GetPublicId())), tc.req)
+			assert.Equal(tc.errCode, status.Code(gErr), "UpdateAccount(%+v) got error %v, wanted %v", tc.req, gErr, tc.errCode)
+
+			if tc.res == nil {
+				require.Nil(got)
+			}
+
+			if got != nil {
+				assert.NotNilf(tc.res, "Expected UpdateAccount response to be nil, but was %v", got)
+				gotUpdateTime, err := ptypes.Timestamp(got.GetItem().GetUpdatedTime())
+				require.NoError(err, "Error converting proto to timestamp")
+
+				created, err := ptypes.Timestamp(acc.GetCreatedTime())
+				require.NoError(err, "Error converting proto to timestamp")
+
+				// Verify it is a auth_method updated after it was created
+				assert.True(gotUpdateTime.After(created), "Updated account should have been updated after it's creation. Was updated %v, which is after %v", gotUpdateTime, created)
+
+				// Clear all values which are hard to compare against.
+				got.Item.UpdatedTime, tc.res.Item.UpdatedTime = nil, nil
+
+				assert.EqualValues(2, got.Item.Version)
+				tc.res.Item.Version = 2
+			}
+			assert.Empty(cmp.Diff(got, tc.res, protocmp.Transform()), "UpdateAccount(%q) got response %q, wanted %q", tc.req, got, tc.res)
 		})
 	}
 }

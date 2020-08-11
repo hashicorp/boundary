@@ -112,6 +112,7 @@ func (s Service) UpdateAuthMethod(ctx context.Context, req *pbs.UpdateAuthMethod
 	if err != nil {
 		return nil, err
 	}
+	u.Scope = authResults.Scope
 	return &pbs.UpdateAuthMethodResponse{Item: u}, nil
 }
 

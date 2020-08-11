@@ -11,7 +11,7 @@ import (
 	"github.com/hashicorp/boundary/internal/auth/password"
 	"github.com/hashicorp/boundary/internal/db"
 	pb "github.com/hashicorp/boundary/internal/gen/controller/api/resources/authmethods"
-	"github.com/hashicorp/boundary/internal/gen/controller/api/resources/scopes"
+	scopepb "github.com/hashicorp/boundary/internal/gen/controller/api/resources/scopes"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/api/services"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers/authmethods"
@@ -48,7 +48,7 @@ func TestGet(t *testing.T) {
 			"min_user_name_length": structpb.NewNumberValue(3),
 		}},
 		Version: 1,
-		Scope: &scopes.ScopeInfo{
+		Scope: &scopepb.ScopeInfo{
 			Id:   o.GetPublicId(),
 			Type: o.GetType(),
 		},
@@ -122,7 +122,7 @@ func TestList(t *testing.T) {
 			Id:          am.GetPublicId(),
 			CreatedTime: am.GetCreateTime().GetTimestamp(),
 			UpdatedTime: am.GetUpdateTime().GetTimestamp(),
-			Scope:       &scopes.ScopeInfo{Id: oWithAuthMethods.GetPublicId(), Type: scope.Org.String()},
+			Scope:       &scopepb.ScopeInfo{Id: oWithAuthMethods.GetPublicId(), Type: scope.Org.String()},
 			Version:     1,
 			Type:        "password",
 			Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
@@ -138,7 +138,7 @@ func TestList(t *testing.T) {
 			Id:          aa.GetPublicId(),
 			CreatedTime: aa.GetCreateTime().GetTimestamp(),
 			UpdatedTime: aa.GetUpdateTime().GetTimestamp(),
-			Scope:       &scopes.ScopeInfo{Id: oWithOtherAuthMethods.GetPublicId(), Type: scope.Org.String()},
+			Scope:       &scopepb.ScopeInfo{Id: oWithOtherAuthMethods.GetPublicId(), Type: scope.Org.String()},
 			Version:     1,
 			Type:        "password",
 			Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
@@ -312,7 +312,7 @@ func TestCreate(t *testing.T) {
 					UpdatedTime: defaultAm.GetUpdateTime().GetTimestamp(),
 					Name:        &wrapperspb.StringValue{Value: "name"},
 					Description: &wrapperspb.StringValue{Value: "desc"},
-					Scope:       &scopes.ScopeInfo{Id: o.GetPublicId(), Type: scope.Org.String()},
+					Scope:       &scopepb.ScopeInfo{Id: o.GetPublicId(), Type: o.GetType()},
 					Version:     1,
 					Type:        "password",
 					Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
@@ -427,6 +427,8 @@ func TestUpdate(t *testing.T) {
 	tested, err := authmethods.NewService(repoFn)
 	require.NoError(t, err, "Error when getting new auth_method service.")
 
+	defaultScopeInfo := &scopepb.ScopeInfo{Id: o.GetPublicId(), Type: o.GetType()}
+
 	freshAuthMethod := func() (*pb.AuthMethod, func()) {
 		am, err := tested.CreateAuthMethod(auth.DisabledAuthTestContext(auth.WithScopeId(o.GetPublicId())),
 			&pbs.CreateAuthMethodRequest{Item: &pb.AuthMethod{
@@ -471,6 +473,7 @@ func TestUpdate(t *testing.T) {
 						"min_password_length":  structpb.NewNumberValue(8),
 						"min_user_name_length": structpb.NewNumberValue(3),
 					}},
+					Scope: defaultScopeInfo,
 				},
 			},
 			errCode: codes.OK,
@@ -495,6 +498,7 @@ func TestUpdate(t *testing.T) {
 						"min_password_length":  structpb.NewNumberValue(8),
 						"min_user_name_length": structpb.NewNumberValue(3),
 					}},
+					Scope: defaultScopeInfo,
 				},
 			},
 			errCode: codes.OK,
@@ -549,6 +553,7 @@ func TestUpdate(t *testing.T) {
 						"min_password_length":  structpb.NewNumberValue(8),
 						"min_user_name_length": structpb.NewNumberValue(3),
 					}},
+					Scope: defaultScopeInfo,
 				},
 			},
 			errCode: codes.OK,
@@ -573,6 +578,7 @@ func TestUpdate(t *testing.T) {
 						"min_password_length":  structpb.NewNumberValue(8),
 						"min_user_name_length": structpb.NewNumberValue(3),
 					}},
+					Scope: defaultScopeInfo,
 				},
 			},
 			errCode: codes.OK,
@@ -597,6 +603,7 @@ func TestUpdate(t *testing.T) {
 						"min_password_length":  structpb.NewNumberValue(8),
 						"min_user_name_length": structpb.NewNumberValue(3),
 					}},
+					Scope: defaultScopeInfo,
 				},
 			},
 			errCode: codes.OK,
