@@ -34,11 +34,11 @@ func NewAuthMethod(scopeId string, opt ...Option) (*AuthMethod, error) {
 	opts := getOpts(opt...)
 	a := &AuthMethod{
 		AuthMethod: &store.AuthMethod{
-			ScopeId:           scopeId,
-			Name:              opts.withName,
-			Description:       opts.withDescription,
-			MinUserNameLength: 3,
-			MinPasswordLength: 8,
+			ScopeId:            scopeId,
+			Name:               opts.withName,
+			Description:        opts.withDescription,
+			MinLoginNameLength: 3,
+			MinPasswordLength:  8,
 		},
 	}
 	return a, nil

@@ -89,6 +89,30 @@ func DefaultDisabled() Option {
 	}
 }
 
+func WithPasswordAccountLoginName(inLoginName string) Option {
+	return func(o *options) {
+		raw, ok := o.valueMap["attributes"]
+		if !ok {
+			raw = interface{}(map[string]interface{}{})
+		}
+		val := raw.(map[string]interface{})
+		val["login_name"] = inLoginName
+		o.valueMap["attributes"] = val
+	}
+}
+
+func DefaultPasswordAccountLoginName() Option {
+	return func(o *options) {
+		raw, ok := o.valueMap["attributes"]
+		if !ok {
+			raw = interface{}(map[string]interface{}{})
+		}
+		val := raw.(map[string]interface{})
+		val["login_name"] = nil
+		o.valueMap["attributes"] = val
+	}
+}
+
 func WithName(inName string) Option {
 	return func(o *options) {
 		o.valueMap["name"] = inName
@@ -98,53 +122,5 @@ func WithName(inName string) Option {
 func DefaultName() Option {
 	return func(o *options) {
 		o.valueMap["name"] = nil
-	}
-}
-
-func WithPasswordAccountPassword(inPassword string) Option {
-	return func(o *options) {
-		raw, ok := o.valueMap["attributes"]
-		if !ok {
-			raw = interface{}(map[string]interface{}{})
-		}
-		val := raw.(map[string]interface{})
-		val["password"] = inPassword
-		o.valueMap["attributes"] = val
-	}
-}
-
-func DefaultPasswordAccountPassword() Option {
-	return func(o *options) {
-		raw, ok := o.valueMap["attributes"]
-		if !ok {
-			raw = interface{}(map[string]interface{}{})
-		}
-		val := raw.(map[string]interface{})
-		val["password"] = nil
-		o.valueMap["attributes"] = val
-	}
-}
-
-func WithPasswordAccountUsername(inUsername string) Option {
-	return func(o *options) {
-		raw, ok := o.valueMap["attributes"]
-		if !ok {
-			raw = interface{}(map[string]interface{}{})
-		}
-		val := raw.(map[string]interface{})
-		val["username"] = inUsername
-		o.valueMap["attributes"] = val
-	}
-}
-
-func DefaultPasswordAccountUsername() Option {
-	return func(o *options) {
-		raw, ok := o.valueMap["attributes"]
-		if !ok {
-			raw = interface{}(map[string]interface{}{})
-		}
-		val := raw.(map[string]interface{})
-		val["username"] = nil
-		o.valueMap["attributes"] = val
 	}
 }

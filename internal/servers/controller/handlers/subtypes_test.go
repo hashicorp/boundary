@@ -23,7 +23,7 @@ func TestStructToProtoToStruct(t *testing.T) {
 	}{
 		{
 			name:     "password",
-			pb:       &authpb.PasswordAccountAttributes{Username: "testun", Password: &wrapperspb.StringValue{Value: "testpw"}},
+			pb:       &authpb.PasswordAccountAttributes{LoginName: "testun", Password: &wrapperspb.StringValue{Value: "testpw"}},
 			wantJson: `{"username": "testun", "password": "testpw"}`,
 		},
 		{

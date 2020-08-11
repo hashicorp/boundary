@@ -26,7 +26,7 @@ var (
 
 func init() {
 	var err error
-	if maskManager, err = handlers.NewMaskManager(&store.AuthMethod{}, &pb.AuthMethod{}); err != nil {
+	if maskManager, err = handlers.NewMaskManager(&store.AuthMethod{}, &pb.AuthMethod{}, &pb.PasswordAuthMethodAttributes{}); err != nil {
 		panic(err)
 	}
 }
@@ -255,8 +255,8 @@ func toProto(in *password.AuthMethod) (*pb.AuthMethod, error) {
 		out.Name = &wrapperspb.StringValue{Value: in.GetName()}
 	}
 	st, err := handlers.ProtoToStruct(&pb.PasswordAuthMethodAttributes{
-		MinUserNameLength: in.GetMinUserNameLength(),
-		MinPasswordLength: in.GetMinPasswordLength(),
+		MinLoginNameLength: in.GetMinLoginNameLength(),
+		MinPasswordLength:  in.GetMinPasswordLength(),
 	})
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "failed building password attribute struct: %v", err)

@@ -299,7 +299,7 @@ func TestCreate(t *testing.T) {
 	defaultCreated, err := ptypes.Timestamp(defaultAccount.GetCreateTime().GetTimestamp())
 	require.NoError(t, err, "Error converting proto to timestamp.")
 
-	defaultSt, err := handlers.ProtoToStruct(&pb.PasswordAccountAttributes{Username: "thetestusername"})
+	defaultSt, err := handlers.ProtoToStruct(&pb.PasswordAccountAttributes{LoginName: "thetestusername"})
 	require.NoError(t, err, "Error converting proto to struct.")
 
 	cases := []struct {

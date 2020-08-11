@@ -189,10 +189,10 @@ func (r *Repository) UpdateAuthMethod(ctx context.Context, authMethod *AuthMetho
 	var dbMask, nullFields []string
 	dbMask, nullFields = dbcommon.BuildUpdatePaths(
 		map[string]interface{}{
-			"Name":              authMethod.Name,
-			"Description":       authMethod.Description,
-			"MinPasswordLength": authMethod.MinPasswordLength,
-			"MinUserNameLength": authMethod.MinUserNameLength,
+			"Name":               authMethod.Name,
+			"Description":        authMethod.Description,
+			"MinPasswordLength":  authMethod.MinPasswordLength,
+			"MinLoginNameLength": authMethod.MinLoginNameLength,
 		},
 		fieldMaskPaths,
 	)
