@@ -871,7 +871,7 @@ func TestRepository_UpdateAccount(t *testing.T) {
 			if tt.chgFn != nil {
 				orig = tt.chgFn(orig)
 			}
-			got, gotCount, err := repo.UpdateAccount(context.Background(), orig, tt.masks)
+			got, gotCount, err := repo.UpdateAccount(context.Background(), orig, 1, tt.masks)
 			if tt.wantIsErr != nil {
 				assert.Truef(errors.Is(err, tt.wantIsErr), "want err: %q got: %q", tt.wantIsErr, err)
 				assert.Equal(tt.wantCount, gotCount, "row count")
@@ -922,7 +922,7 @@ func TestRepository_UpdateAccount(t *testing.T) {
 		ab := acts[1]
 
 		aa.Name = name
-		got1, gotCount1, err := repo.UpdateAccount(context.Background(), aa, []string{"name"})
+		got1, gotCount1, err := repo.UpdateAccount(context.Background(), aa, 1, []string{"name"})
 		assert.NoError(err)
 		require.NotNil(got1)
 		assert.Equal(name, got1.Name)
@@ -930,7 +930,7 @@ func TestRepository_UpdateAccount(t *testing.T) {
 		assert.NoError(db.TestVerifyOplog(t, rw, aa.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_UPDATE), db.WithCreateNotBefore(10*time.Second)))
 
 		ab.Name = name
-		got2, gotCount2, err := repo.UpdateAccount(context.Background(), ab, []string{"name"})
+		got2, gotCount2, err := repo.UpdateAccount(context.Background(), ab, 1, []string{"name"})
 		assert.Truef(errors.Is(err, db.ErrNotUnique), "want err: %v got: %v", db.ErrNotUnique, err)
 		assert.Nil(got2)
 		assert.Equal(db.NoRowsAffected, gotCount2, "row count")
@@ -975,7 +975,7 @@ func TestRepository_UpdateAccount(t *testing.T) {
 		assert.NoError(err)
 		require.NotNil(got2)
 		got2.Name = got.Name
-		got3, gotCount3, err := repo.UpdateAccount(context.Background(), got2, []string{"name"})
+		got3, gotCount3, err := repo.UpdateAccount(context.Background(), got2, 1, []string{"name"})
 		assert.NoError(err)
 		require.NotNil(got3)
 		assert.NotSame(got2, got3)
@@ -1000,7 +1000,7 @@ func TestRepository_UpdateAccount(t *testing.T) {
 		ab := acts[1]
 
 		aa.UserName = userName
-		got1, gotCount1, err := repo.UpdateAccount(context.Background(), aa, []string{"UserName"})
+		got1, gotCount1, err := repo.UpdateAccount(context.Background(), aa, 1, []string{"UserName"})
 		assert.NoError(err)
 		require.NotNil(got1)
 		assert.Equal(userName, got1.UserName)
@@ -1008,7 +1008,7 @@ func TestRepository_UpdateAccount(t *testing.T) {
 		assert.NoError(db.TestVerifyOplog(t, rw, aa.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_UPDATE), db.WithCreateNotBefore(10*time.Second)))
 
 		ab.UserName = userName
-		got2, gotCount2, err := repo.UpdateAccount(context.Background(), ab, []string{"UserName"})
+		got2, gotCount2, err := repo.UpdateAccount(context.Background(), ab, 1, []string{"UserName"})
 		assert.Truef(errors.Is(err, db.ErrNotUnique), "want err: %v got: %v", db.ErrNotUnique, err)
 		assert.Nil(got2)
 		assert.Equal(db.NoRowsAffected, gotCount2, "row count")
@@ -1050,7 +1050,7 @@ func TestRepository_UpdateAccount(t *testing.T) {
 		assert.NoError(err)
 		require.NotNil(got2)
 		got2.UserName = got.UserName
-		got3, gotCount3, err := repo.UpdateAccount(context.Background(), got2, []string{"UserName"})
+		got3, gotCount3, err := repo.UpdateAccount(context.Background(), got2, 1, []string{"UserName"})
 		assert.NoError(err)
 		require.NotNil(got3)
 		assert.NotSame(got2, got3)
@@ -1080,7 +1080,7 @@ func TestRepository_UpdateAccount(t *testing.T) {
 		aa.AuthMethodId = ab.AuthMethodId
 		assert.Equal(aa.AuthMethodId, ab.AuthMethodId)
 
-		got1, gotCount1, err := repo.UpdateAccount(context.Background(), aa, []string{"name"})
+		got1, gotCount1, err := repo.UpdateAccount(context.Background(), aa, 1, []string{"name"})
 
 		assert.NoError(err)
 		require.NotNil(got1)

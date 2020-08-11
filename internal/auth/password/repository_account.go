@@ -191,7 +191,7 @@ func validUserName(u string) bool {
 // An attribute of a will be set to NULL in the database if the attribute
 // in a is the zero value and it is included in fieldMaskPaths. a.UserName
 // cannot be set to NULL.
-func (r *Repository) UpdateAccount(ctx context.Context, a *Account, fieldMaskPaths []string, opt ...Option) (*Account, int, error) {
+func (r *Repository) UpdateAccount(ctx context.Context, a *Account, version uint32, fieldMaskPaths []string, opt ...Option) (*Account, int, error) {
 	if a == nil {
 		return nil, db.NoRowsAffected, fmt.Errorf("update: password account: %w", db.ErrNilParameter)
 	}
@@ -200,6 +200,9 @@ func (r *Repository) UpdateAccount(ctx context.Context, a *Account, fieldMaskPat
 	}
 	if a.PublicId == "" {
 		return nil, db.NoRowsAffected, fmt.Errorf("update: password account: missing public id: %w", db.ErrInvalidParameter)
+	}
+	if version == 0 {
+		return nil, db.NoRowsAffected, fmt.Errorf("update: password account: no version supplied: %w", db.ErrInvalidParameter)
 	}
 
 	var changeUserName bool
@@ -249,7 +252,7 @@ func (r *Repository) UpdateAccount(ctx context.Context, a *Account, fieldMaskPat
 		func(_ db.Reader, w db.Writer) error {
 			returnedAccount = a.clone()
 			var err error
-			rowsUpdated, err = w.Update(ctx, returnedAccount, dbMask, nullFields, db.WithOplog(r.wrapper, metadata))
+			rowsUpdated, err = w.Update(ctx, returnedAccount, dbMask, nullFields, db.WithOplog(r.wrapper, metadata), db.WithVersion(&version))
 			if err == nil && rowsUpdated > 1 {
 				return db.ErrMultipleRecords
 			}
