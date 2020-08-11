@@ -176,13 +176,6 @@ func TestHandler_AuthDecoration(t *testing.T) {
 			id:       "o_1234",
 		},
 		{
-			name:     "org scope, get on collection is list",
-			path:     "/v1/scopes/o_abc123/projects",
-			action:   action.List,
-			scope:    "o_abc123",
-			resource: resource.Scope,
-		},
-		{
 			name:     "global action, valid",
 			path:     "/v1/scopes/global/:read",
 			action:   action.Read,
