@@ -196,6 +196,10 @@ func (s Service) createInRepo(ctx context.Context, scopeId string, item *pb.Auth
 }
 
 func (s Service) updateInRepo(ctx context.Context, scopeId, id string, version uint32, mask []string, item *pb.AuthMethod) (*pb.AuthMethod, error) {
+	pwAttrs := &pb.PasswordAuthMethodAttributes{}
+	if err := handlers.StructToProto(item.GetAttributes(), pwAttrs); err != nil {
+		return nil, status.Errorf(codes.InvalidArgument, "Provided attributes don't match expected format.")
+	}
 	var opts []password.Option
 	if desc := item.GetDescription(); desc != nil {
 		opts = append(opts, password.WithDescription(desc.GetValue()))
@@ -207,6 +211,13 @@ func (s Service) updateInRepo(ctx context.Context, scopeId, id string, version u
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "Unable to build auth method for update: %v.", err)
 	}
+	if pwAttrs.GetMinLoginNameLength() != nil {
+		u.MinLoginNameLength = pwAttrs.GetMinLoginNameLength().GetValue()
+	}
+	if pwAttrs.GetMinPasswordLength() != nil {
+		u.MinPasswordLength = pwAttrs.GetMinPasswordLength().GetValue()
+	}
+
 	u.PublicId = id
 	dbMask := maskManager.Translate(mask)
 	if len(dbMask) == 0 {
@@ -250,14 +261,14 @@ func toProto(in *password.AuthMethod) (*pb.AuthMethod, error) {
 		Type:        "password",
 	}
 	if in.GetDescription() != "" {
-		out.Description = &wrapperspb.StringValue{Value: in.GetDescription()}
+		out.Description = wrapperspb.String(in.GetDescription())
 	}
 	if in.GetName() != "" {
-		out.Name = &wrapperspb.StringValue{Value: in.GetName()}
+		out.Name = wrapperspb.String(in.GetName())
 	}
 	st, err := handlers.ProtoToStruct(&pb.PasswordAuthMethodAttributes{
-		MinLoginNameLength: in.GetMinLoginNameLength(),
-		MinPasswordLength:  in.GetMinPasswordLength(),
+		MinLoginNameLength: wrapperspb.UInt32(in.GetMinLoginNameLength()),
+		MinPasswordLength:  wrapperspb.UInt32(in.GetMinPasswordLength()),
 	})
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "failed building password attribute struct: %v", err)

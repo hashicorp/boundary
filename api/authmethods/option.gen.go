@@ -113,7 +113,7 @@ func DefaultPasswordAccountLoginName() Option {
 	}
 }
 
-func WithPasswordAuthMethodMinLoginNameLength(inMinLoginNameLength uint32) Option {
+func WithPasswordAuthMethodMinLoginNameLength(inMinLoginNameLength *google.UInt32Value) Option {
 	return func(o *options) {
 		raw, ok := o.valueMap["attributes"]
 		if !ok {
@@ -137,7 +137,7 @@ func DefaultPasswordAuthMethodMinLoginNameLength() Option {
 	}
 }
 
-func WithPasswordAuthMethodMinPasswordLength(inMinPasswordLength uint32) Option {
+func WithPasswordAuthMethodMinPasswordLength(inMinPasswordLength *google.UInt32Value) Option {
 	return func(o *options) {
 		raw, ok := o.valueMap["attributes"]
 		if !ok {
