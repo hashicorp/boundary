@@ -67,7 +67,7 @@ service HostSetService {
     };
   }
 
-  rpc AddToHostSet(AddToHostSetRequest) returns (AddToHostSetResponse) {
+  rpc AddHostSetHosts(AddHostSetHostsRequest) returns (AddHostSetHostsResponse) {
     option (google.api.http) = {
       post: "/v1/scopes/*/host-catalogs/{host_catalog_id}/host-sets/{id}:add-hosts"
     };
@@ -77,12 +77,22 @@ service HostSetService {
     };
   }
 
-  rpc RemoveFromHostSet(RemoveFromHostSetRequest) returns (RemoveFromHostSetResponse) {
+  rpc SetHostSetHosts(SetHostSetHostsRequest) returns (SetHostSetHostsResponse) {
+    option (google.api.http) = {
+      post: "/v1/scopes/*/host-catalogs/{host_catalog_id}/host-sets/{id}:set-hosts"
+    };
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
+      summary: "Sets the Hosts on the Host Set."
+      description: "Sets the Hosts on the Host Set, removing any hosts that are not specified in the request."
+    };
+  }
+
+  rpc RemoveHostSetHosts(RemoveHostSetHostsRequest) returns (RemoveHostSetHostsResponse) {
     option (google.api.http) = {
       post: "/v1/scopes/*/host-catalogs/{host_catalog_id}/host-sets/{id}:remove-hosts"
     };
     option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
-      summary: "Removes Hosts to the Host Set"
+      summary: "Removes Hosts from the Host Set"
       description: "Removes the hosts from this Host Set if present.  If it is not present then no action is taken and no error is returned."
     };
   }
@@ -120,8 +130,9 @@ message CreateHostSetResponse {
 message UpdateHostSetRequest {
   string host_catalog_id = 1 [json_name="host_catalog_id"];
   string id = 2;
-  api.resources.hosts.v1.HostSet item = 3;
-  google.protobuf.FieldMask update_mask = 4;
+  uint32 version = 3;
+  api.resources.hosts.v1.HostSet item = 4;
+  google.protobuf.FieldMask update_mask = 5;
 }
 
 message UpdateHostSetResponse {
@@ -137,9 +148,10 @@ message DeleteHostSetResponse {
   bool existed = 1;
 }
 
-message AddToHostSetRequest {
+message AddHostSetHostsRequest {
   string host_catalog_id = 1 [json_name="host_catalog_id"];
   string id = 2;
+  uint32 version = 3;
 
   // A list of host IDs which will be added to this host set. Each host
   // referenced here must be a child of the same host catalog that this host
@@ -147,18 +159,33 @@ message AddToHostSetRequest {
   repeated string host_ids = 4;
 }
 
-message AddToHostSetResponse {
+message AddHostSetHostsResponse {
 }
 
-message RemoveFromHostSetRequest {
+message SetHostSetHostsRequest {
+  string host_catalog_id = 1 [json_name="host_catalog_id"];
+  string id = 2;
+  uint32 version = 3;
+
+  // A list of host IDs which will be set on this host set. Each host
+  // referenced here must be a child of the same host catalog that this host
+  // set is a child of.
+  repeated string host_ids = 4;
+}
+
+message SetHostSetHostsResponse {
+}
+
+message RemoveHostSetHostsRequest {
   string host_catalog_id = 1 [json_name="host_catalog_id"];
   // This host set's id.
   string id = 2;
+  uint32 version = 3;
 
   // A list of host IDs which should not be in the host set when this request
   // returns.
   repeated string host_ids = 4;
 }
 
-message RemoveFromHostSetResponse {
+message RemoveHostSetHostsResponse {
 }

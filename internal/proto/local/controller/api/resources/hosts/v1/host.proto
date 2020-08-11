@@ -39,6 +39,11 @@ message Host {
 	// Whether the host is disabled
 	google.protobuf.BoolValue disabled = 8 [(custom_options.v1.generate_sdk_option) = true];
 
+	// The version can be used in subsequent write requests to ensure this resource
+	// has not changed and to fail the write if it has.
+	// Output only.
+	uint32 version = 9;
+
 	// The address (DNS or IP name) used to reach the host
-	google.protobuf.StringValue address = 9 [(custom_options.v1.generate_sdk_option) = true];
+	google.protobuf.StringValue address = 10 [(custom_options.v1.generate_sdk_option) = true];
 }

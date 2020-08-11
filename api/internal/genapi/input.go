@@ -235,7 +235,8 @@ var inputStructs = []*structInfo{
 			deleteTemplate,
 			listTemplate,
 		},
-		pathArgs: []string{"host-catalog"},
+		pathArgs:       []string{"host-catalog"},
+		versionEnabled: true,
 	},
 	{
 		inProto: &hosts.Host{},
@@ -248,6 +249,24 @@ var inputStructs = []*structInfo{
 			deleteTemplate,
 			listTemplate,
 		},
-		pathArgs: []string{"host-catalog", "host"},
+		pathArgs:       []string{"host-catalog", "host"},
+		versionEnabled: true,
+	},
+	{
+		inProto: &hosts.HostSet{},
+		outFile: "hosts/host_set.gen.go",
+		templates: []*template.Template{
+			clientTemplate,
+			createTemplate,
+			readTemplate,
+			updateTemplate,
+			deleteTemplate,
+			listTemplate,
+		},
+		pathArgs: []string{"host-catalog", "host-set"},
+		sliceSubTypes: map[string]string{
+			"Hosts": "hostIds",
+		},
+		versionEnabled: true,
 	},
 }
