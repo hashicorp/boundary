@@ -244,6 +244,9 @@ func NewTestController(t *testing.T, opts *TestControllerOpts) *TestController {
 		})
 	}
 
+	if opts.Config.Controller == nil {
+		opts.Config.Controller = new(config.Controller)
+	}
 	if opts.Config.Controller.Name == "" {
 		opts.Config.Controller.Name, err = base62.Random(5)
 		if err != nil {

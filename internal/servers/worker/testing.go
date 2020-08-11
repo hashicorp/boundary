@@ -164,6 +164,9 @@ func NewTestWorker(t *testing.T, opts *TestWorkerOpts) *TestWorker {
 		})
 	}
 
+	if opts.Config.Worker == nil {
+		opts.Config.Worker = new(config.Worker)
+	}
 	if opts.Config.Worker.Name == "" {
 		opts.Config.Worker.Name, err = base62.Random(5)
 		if err != nil {
