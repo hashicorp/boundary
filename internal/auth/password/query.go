@@ -4,7 +4,7 @@ const (
 	authenticateQuery = `
 select acct.name,                        -- Account.Name
        acct.description,                 -- Account.Description
-       acct.user_name,                   -- Account.UserName
+       acct.login_name,                   -- Account.LoginName
        acct.public_id,                   -- Account.PublicId
        acct.auth_method_id,              -- Account.AuthMethodId
        acct.scope_id,                    -- Account.ScopeId
@@ -25,7 +25,7 @@ select acct.name,                        -- Account.Name
        auth_password_account acct,
        auth_password_method meth
  where acct.auth_method_id = $1
-   and acct.user_name = $2
+   and acct.login_name = $2
    and cred.password_conf_id = conf.private_id
    and cred.password_account_id = acct.public_id
    and acct.auth_method_id = meth.public_id ;

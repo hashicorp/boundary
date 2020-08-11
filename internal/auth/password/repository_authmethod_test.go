@@ -565,21 +565,21 @@ func TestRepository_UpdateAuthMethod(t *testing.T) {
 			skipVersionCheck: true,
 		},
 		{
-			name: "change min username",
+			name: "change min login name",
 			args: args{
 				updates: &store.AuthMethod{
-					MinUserNameLength: 13,
+					MinLoginNameLength: 13,
 				},
-				fieldMaskPaths: []string{"MinUserNameLength"},
+				fieldMaskPaths: []string{"MinLoginNameLength"},
 			},
 			wantErr:        false,
 			wantRowsUpdate: 1,
 		},
 		{
-			name: "null min username",
+			name: "null min login name",
 			args: args{
 				updates:        &store.AuthMethod{},
-				fieldMaskPaths: []string{"MinUserNameLength"},
+				fieldMaskPaths: []string{"MinLoginNameLength"},
 			},
 			wantErr:          false,
 			wantRowsUpdate:   1,

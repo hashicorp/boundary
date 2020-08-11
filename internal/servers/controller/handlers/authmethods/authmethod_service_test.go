@@ -44,8 +44,8 @@ func TestGet(t *testing.T) {
 		UpdatedTime: am.UpdateTime.GetTimestamp(),
 		Type:        "password",
 		Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
-			"min_password_length":  structpb.NewNumberValue(8),
-			"min_user_name_length": structpb.NewNumberValue(3),
+			"min_password_length":   structpb.NewNumberValue(8),
+			"min_login_name_length": structpb.NewNumberValue(3),
 		}},
 		Version: 1,
 		Scope: &scopes.ScopeInfo{
@@ -126,8 +126,8 @@ func TestList(t *testing.T) {
 			Version:     1,
 			Type:        "password",
 			Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
-				"min_password_length":  structpb.NewNumberValue(8),
-				"min_user_name_length": structpb.NewNumberValue(3),
+				"min_password_length":   structpb.NewNumberValue(8),
+				"min_login_name_length": structpb.NewNumberValue(3),
 			}},
 		})
 	}
@@ -142,8 +142,8 @@ func TestList(t *testing.T) {
 			Version:     1,
 			Type:        "password",
 			Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
-				"min_password_length":  structpb.NewNumberValue(8),
-				"min_user_name_length": structpb.NewNumberValue(3),
+				"min_password_length":   structpb.NewNumberValue(8),
+				"min_login_name_length": structpb.NewNumberValue(3),
 			}},
 		})
 	}
@@ -316,8 +316,8 @@ func TestCreate(t *testing.T) {
 					Version:     1,
 					Type:        "password",
 					Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
-						"min_password_length":  structpb.NewNumberValue(8),
-						"min_user_name_length": structpb.NewNumberValue(3),
+						"min_password_length":   structpb.NewNumberValue(8),
+						"min_login_name_length": structpb.NewNumberValue(3),
 					}},
 				},
 			},
@@ -374,8 +374,8 @@ func TestCreate(t *testing.T) {
 				Description: &wrapperspb.StringValue{Value: "Attributes must be valid for type"},
 				Type:        "password",
 				Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
-					"invalid_field":        structpb.NewStringValue("invalid_value"),
-					"min_user_name_length": structpb.NewNumberValue(3),
+					"invalid_field":         structpb.NewStringValue("invalid_value"),
+					"min_login_name_length": structpb.NewNumberValue(3),
 				}},
 			}},
 			res:     nil,
@@ -468,8 +468,8 @@ func TestUpdate(t *testing.T) {
 					Description: &wrapperspb.StringValue{Value: "desc"},
 					Type:        "password",
 					Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
-						"min_password_length":  structpb.NewNumberValue(8),
-						"min_user_name_length": structpb.NewNumberValue(3),
+						"min_password_length":   structpb.NewNumberValue(8),
+						"min_login_name_length": structpb.NewNumberValue(3),
 					}},
 				},
 			},
@@ -492,8 +492,8 @@ func TestUpdate(t *testing.T) {
 					Description: &wrapperspb.StringValue{Value: "desc"},
 					Type:        "password",
 					Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
-						"min_password_length":  structpb.NewNumberValue(8),
-						"min_user_name_length": structpb.NewNumberValue(3),
+						"min_password_length":   structpb.NewNumberValue(8),
+						"min_login_name_length": structpb.NewNumberValue(3),
 					}},
 				},
 			},
@@ -546,8 +546,8 @@ func TestUpdate(t *testing.T) {
 					Description: &wrapperspb.StringValue{Value: "default"},
 					Type:        "password",
 					Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
-						"min_password_length":  structpb.NewNumberValue(8),
-						"min_user_name_length": structpb.NewNumberValue(3),
+						"min_password_length":   structpb.NewNumberValue(8),
+						"min_login_name_length": structpb.NewNumberValue(3),
 					}},
 				},
 			},
@@ -570,8 +570,8 @@ func TestUpdate(t *testing.T) {
 					Description: &wrapperspb.StringValue{Value: "default"},
 					Type:        "password",
 					Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
-						"min_password_length":  structpb.NewNumberValue(8),
-						"min_user_name_length": structpb.NewNumberValue(3),
+						"min_password_length":   structpb.NewNumberValue(8),
+						"min_login_name_length": structpb.NewNumberValue(3),
 					}},
 				},
 			},
@@ -594,8 +594,8 @@ func TestUpdate(t *testing.T) {
 					Description: &wrapperspb.StringValue{Value: "notignored"},
 					Type:        "password",
 					Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
-						"min_password_length":  structpb.NewNumberValue(8),
-						"min_user_name_length": structpb.NewNumberValue(3),
+						"min_password_length":   structpb.NewNumberValue(8),
+						"min_login_name_length": structpb.NewNumberValue(3),
 					}},
 				},
 			},

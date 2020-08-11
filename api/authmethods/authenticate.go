@@ -19,8 +19,8 @@ func (c *authmethodsClient) Authenticate(ctx context.Context, authMethodId, name
 
 	reqBody := map[string]interface{}{
 		"credentials": map[string]string{
-			"name":     name,
-			"password": password,
+			"login_name": name,
+			"password":   password,
 		},
 	}
 

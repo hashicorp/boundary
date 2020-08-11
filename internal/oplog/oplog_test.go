@@ -376,12 +376,12 @@ func Test_Replay(t *testing.T) {
 		require.NoError(err)
 
 		tx := db
-		userName := "foo-" + testId(t)
-		userCreate := testUser(t, db, userName, "", "")
+		loginName := "foo-" + testId(t)
+		userCreate := testUser(t, db, loginName, "", "")
 		userSave := oplog_test.TestUser{
 			Id:    userCreate.Id,
 			Name:  userCreate.Name,
-			Email: userName + "@hashicorp.com",
+			Email: loginName + "@hashicorp.com",
 		}
 		err = tx.Save(&userSave).Error
 		require.NoError(err)
@@ -433,7 +433,7 @@ func Test_Replay(t *testing.T) {
 		assert.Equal(foundUser.PhoneNumber, foundReplayedUser.PhoneNumber)
 		assert.Equal(foundReplayedUser.PhoneNumber, "867-5309")
 		assert.Equal(foundUser.Email, foundReplayedUser.Email)
-		assert.Equal(foundReplayedUser.Email, userName+"@hashicorp.com")
+		assert.Equal(foundReplayedUser.Email, loginName+"@hashicorp.com")
 	})
 
 	t.Run("replay:delete", func(t *testing.T) {
@@ -446,10 +446,10 @@ func Test_Replay(t *testing.T) {
 		require.NoError(err)
 
 		id4 := testId(t)
-		userName2 := "foo-" + id4
+		loginName2 := "foo-" + id4
 		// create a user that's replayable
 		userCreate2 := oplog_test.TestUser{
-			Name: userName2,
+			Name: loginName2,
 		}
 		err = tx2.Create(&userCreate2).Error
 		require.NoError(err)

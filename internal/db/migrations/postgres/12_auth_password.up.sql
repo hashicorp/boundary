@@ -64,7 +64,7 @@ begin;
     description text,
     create_time wt_timestamp,
     update_time wt_timestamp,
-    min_user_name_length int not null default 3,
+    min_login_name_length int not null default 3,
     min_password_length int not null default 8,
     version wt_version,
     foreign key (scope_id, public_id)
@@ -96,11 +96,11 @@ begin;
     description text,
     create_time wt_timestamp,
     update_time wt_timestamp,
-    user_name text not null
+    login_name text not null
       check(
-        lower(trim(user_name)) = user_name
+        lower(trim(login_name)) = login_name
         and
-        length(user_name) > 0
+        length(login_name) > 0
       ),
     version wt_version,
     foreign key (scope_id, auth_method_id)
@@ -112,7 +112,7 @@ begin;
       on delete cascade
       on update cascade,
     unique(auth_method_id, name),
-    unique(auth_method_id, user_name),
+    unique(auth_method_id, login_name),
     unique(auth_method_id, public_id)
   );
 
