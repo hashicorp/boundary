@@ -169,7 +169,7 @@ func (r *Repository) DeleteAuthMethod(ctx context.Context, publicId string, opt 
 // value and included in fieldMask. Name, Description, MinPasswordLength,
 // and MinUserNameLength are the only updatable fields, If no updatable fields
 // are included in the fieldMaskPaths, then an error is returned.
-func (r *Repository) UpdateAuthMethod(ctx context.Context, authMethod *AuthMethod, fieldMaskPaths []string, opt ...Option) (*AuthMethod, int, error) {
+func (r *Repository) UpdateAuthMethod(ctx context.Context, authMethod *AuthMethod, version uint32, fieldMaskPaths []string, opt ...Option) (*AuthMethod, int, error) {
 	if authMethod == nil {
 		return nil, db.NoRowsAffected, fmt.Errorf("update: password auth method: missing authMethod: %w", db.ErrNilParameter)
 	}
@@ -207,7 +207,10 @@ func (r *Repository) UpdateAuthMethod(ctx context.Context, authMethod *AuthMetho
 		db.StdRetryCnt,
 		db.ExpBackoff{},
 		func(_ db.Reader, w db.Writer) error {
-			dbOpts := []db.Option{db.WithOplog(r.wrapper, upAuthMethod.oplog(oplog.OpType_OP_TYPE_UPDATE))}
+			dbOpts := []db.Option{
+				db.WithOplog(r.wrapper, upAuthMethod.oplog(oplog.OpType_OP_TYPE_UPDATE)),
+				db.WithVersion(&version),
+			}
 			var err error
 			rowsUpdated, err = w.Update(
 				ctx,

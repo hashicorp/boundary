@@ -34,11 +34,16 @@ message AuthMethod {
 	// Output only.
 	google.protobuf.Timestamp updated_time = 6 [json_name="updated_time"];
 
+	// The version can be used in subsequent write requests to ensure this resource
+	// has not changed and to fail the write if it has.
+	// Output only.
+	uint32 version = 7;
+
 	// The auth method type.  This can be "password" or "oidc".
-	string type = 7 [(custom_options.v1.generate_sdk_option) = true];
+	string type = 8 [(custom_options.v1.generate_sdk_option) = true];
 
 	// The attributes that are applied for the specific Auth Method type.
-	google.protobuf.Struct attributes = 8 [(custom_options.v1.generate_sdk_option) = true];
+	google.protobuf.Struct attributes = 9 [(custom_options.v1.generate_sdk_option) = true];
 }
 
 message PasswordAuthMethodAttributes {

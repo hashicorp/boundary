@@ -108,7 +108,7 @@ func (r *Repository) CreateCatalog(ctx context.Context, c *HostCatalog, opt ...O
 //
 // An attribute of c will be set to NULL in the database if the attribute
 // in c is the zero value and it is included in fieldMask.
-func (r *Repository) UpdateCatalog(ctx context.Context, c *HostCatalog, fieldMask []string, opt ...Option) (*HostCatalog, int, error) {
+func (r *Repository) UpdateCatalog(ctx context.Context, c *HostCatalog, version uint32, fieldMask []string, opt ...Option) (*HostCatalog, int, error) {
 	if c == nil {
 		return nil, db.NoRowsAffected, fmt.Errorf("update: static host catalog: %w", db.ErrNilParameter)
 	}
@@ -157,6 +157,7 @@ func (r *Repository) UpdateCatalog(ctx context.Context, c *HostCatalog, fieldMas
 				dbMask,
 				nullFields,
 				db.WithOplog(r.wrapper, metadata),
+				db.WithVersion(&version),
 			)
 			if err == nil && rowsUpdated > 1 {
 				return db.ErrMultipleRecords

@@ -1399,8 +1399,14 @@ begin;
     description text,
     create_time wt_timestamp,
     update_time wt_timestamp,
+    version wt_version not null default 1,
     unique(scope_id, name)
   );
+
+  create trigger
+    update_version_column
+  after update on static_host_catalog
+    for each row execute procedure update_version_column();
 
   create trigger
     update_time_column
@@ -1435,8 +1441,14 @@ begin;
     ),
     create_time wt_timestamp,
     update_time wt_timestamp,
+    version wt_version not null default 1,
     unique(static_host_catalog_id, name)
   );
+
+  create trigger
+    update_version_column
+  after update on static_host
+    for each row execute procedure update_version_column();
 
   create trigger
     update_time_column
@@ -1465,8 +1477,14 @@ begin;
     description text,
     create_time wt_timestamp,
     update_time wt_timestamp,
+    version wt_version not null default 1,
     unique(static_host_catalog_id, name)
   );
+
+  create trigger
+    update_version_column
+  after update on static_host_set
+    for each row execute procedure update_version_column();
 
   create trigger
     update_time_column
@@ -1755,6 +1773,7 @@ begin;
     update_time wt_timestamp,
     min_user_name_length int not null default 3,
     min_password_length int not null default 8,
+    version wt_version not null default 1,
     foreign key (scope_id, public_id)
       references auth_method (scope_id, public_id)
       on delete cascade
@@ -1762,6 +1781,11 @@ begin;
     unique(scope_id, name),
     unique(scope_id, public_id)
   );
+
+  create trigger
+    update_version_column
+  after update on auth_password_method
+    for each row execute procedure update_version_column();
 
   create trigger
     insert_auth_method_subtype
@@ -1785,6 +1809,7 @@ begin;
         and
         length(user_name) > 0
       ),
+    version wt_version not null default 1,
     foreign key (scope_id, auth_method_id)
       references auth_password_method (scope_id, public_id)
       on delete cascade
@@ -1797,6 +1822,11 @@ begin;
     unique(auth_method_id, user_name),
     unique(auth_method_id, public_id)
   );
+
+  create trigger
+    update_version_column
+  after update on auth_password_account
+    for each row execute procedure update_version_column();
 
   create trigger
     insert_auth_account_subtype
@@ -1953,7 +1983,8 @@ begin;
     (name, version)
   values
     ('auth_password_method', 1),
-    ('auth_password_account', 1);
+    ('auth_password_account', 1),
+    ('auth_password_credential', 1);
 
 commit;
 
