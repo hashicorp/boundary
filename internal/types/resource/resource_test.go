@@ -45,6 +45,10 @@ func Test_Resource(t *testing.T) {
 			want:       Account,
 		},
 		{
+			typeString: "auth-token",
+			want:       AuthToken,
+		},
+		{
 			typeString: "*",
 			want:       All,
 		},
