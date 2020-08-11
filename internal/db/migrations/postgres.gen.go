@@ -111,10 +111,11 @@ is
 
 
 create domain wt_version as bigint
-default 1 
-check(
-  value > 0
-);
+  default 1
+  not null
+  check(
+   value > 0
+  );
 comment on domain wt_version is
 'standard column for row version';
 
@@ -548,7 +549,7 @@ create table iam_scope (
 
     -- version allows optimistic locking of the role when modifying the role
     -- itself and when modifying dependent items like principal roles.
-    version wt_version not null default 1
+    version wt_version
   );
 
 create table iam_scope_global (
@@ -727,7 +728,7 @@ create table iam_user (
     scope_id wt_scope_id not null references iam_scope(public_id) on delete cascade on update cascade,
     unique(name, scope_id),
     disabled boolean not null default false,
-    version wt_version not null default 1,
+    version wt_version,
 
     -- The order of columns is important for performance. See:
     -- https://dba.stackexchange.com/questions/58970/enforcing-constraints-two-tables-away/58972#58972
@@ -857,7 +858,7 @@ create table iam_role (
     grant_scope_id wt_scope_id not null references iam_scope(public_id) on delete cascade on update cascade,
     unique(name, scope_id),
     disabled boolean not null default false,
-    version wt_version not null default 1,
+    version wt_version,
 
     -- add unique index so a composite fk can be declared.
     unique(scope_id, public_id)
@@ -969,7 +970,7 @@ create table iam_group (
     disabled boolean not null default false,
     -- version allows optimistic locking of the group when modifying the group
     -- itself and when modifying dependent items like group members. 
-    version wt_version not null default 1,
+    version wt_version,
 
     -- add unique index so a composite fk can be declared.
     unique(scope_id, public_id)
@@ -1399,7 +1400,7 @@ begin;
     description text,
     create_time wt_timestamp,
     update_time wt_timestamp,
-    version wt_version not null default 1,
+    version wt_version,
     unique(scope_id, name)
   );
 
@@ -1441,7 +1442,7 @@ begin;
     ),
     create_time wt_timestamp,
     update_time wt_timestamp,
-    version wt_version not null default 1,
+    version wt_version,
     unique(static_host_catalog_id, name)
   );
 
@@ -1477,7 +1478,7 @@ begin;
     description text,
     create_time wt_timestamp,
     update_time wt_timestamp,
-    version wt_version not null default 1,
+    version wt_version,
     unique(static_host_catalog_id, name)
   );
 
@@ -1773,7 +1774,7 @@ begin;
     update_time wt_timestamp,
     min_user_name_length int not null default 3,
     min_password_length int not null default 8,
-    version wt_version not null default 1,
+    version wt_version,
     foreign key (scope_id, public_id)
       references auth_method (scope_id, public_id)
       on delete cascade
@@ -1809,7 +1810,7 @@ begin;
         and
         length(user_name) > 0
       ),
-    version wt_version not null default 1,
+    version wt_version,
     foreign key (scope_id, auth_method_id)
       references auth_password_method (scope_id, public_id)
       on delete cascade
