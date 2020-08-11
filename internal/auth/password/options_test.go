@@ -15,6 +15,12 @@ func Test_GetOpts(t *testing.T) {
 		testOpts.withPublicId = "test id"
 		assert.Equal(t, opts, testOpts)
 	})
+	t.Run("WithLoginName", func(t *testing.T) {
+		opts := getOpts(WithLoginName("test"))
+		testOpts := getDefaultOptions()
+		testOpts.withLoginName = "test"
+		assert.Equal(t, opts, testOpts)
+	})
 	t.Run("WithName", func(t *testing.T) {
 		opts := getOpts(WithName("test"))
 		testOpts := getDefaultOptions()

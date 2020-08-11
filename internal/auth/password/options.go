@@ -16,7 +16,7 @@ type Option func(*options)
 type options struct {
 	withName        string
 	withDescription string
-	withUserName    string
+	withLoginName   string
 	withLimit       int
 	withConfig      Configuration
 	withPublicId    string
@@ -52,9 +52,9 @@ func WithName(name string) Option {
 }
 
 // WithName provides an optional name.
-func WithUserName(userName string) Option {
+func WithLoginName(loginName string) Option {
 	return func(o *options) {
-		o.withUserName = userName
+		o.withLoginName = loginName
 	}
 }
 

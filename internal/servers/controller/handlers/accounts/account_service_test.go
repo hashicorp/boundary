@@ -453,10 +453,11 @@ func TestUpdate(t *testing.T) {
 
 	defaultScopeInfo := &scopepb.ScopeInfo{Id: o.GetPublicId(), Type: o.GetType()}
 	defaultAttributes := &structpb.Struct{Fields: map[string]*structpb.Value{
-		"username": structpb.NewStringValue("default"),
+		"login_name": structpb.NewStringValue("default"),
 	}}
 
-	freshAccount := func() (*pb.Account, func()) {
+	freshAccount := func(t *testing.T) (*pb.Account, func()) {
+		t.Helper()
 		acc, err := tested.CreateAccount(auth.DisabledAuthTestContext(auth.WithScopeId(o.GetPublicId())),
 			&pbs.CreateAccountRequest{
 				AuthMethodId: am.GetPublicId(),
@@ -715,7 +716,7 @@ func TestUpdate(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			acc, cleanup := freshAccount()
+			acc, cleanup := freshAccount(t)
 			defer cleanup()
 
 			tc.req.Version = 1
