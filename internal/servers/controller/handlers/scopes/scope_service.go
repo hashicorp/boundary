@@ -51,10 +51,7 @@ var _ pbs.ScopeServiceServer = Service{}
 // ListScopes implements the interface pbs.ScopeServiceServer.
 func (s Service) ListScopes(ctx context.Context, req *pbs.ListScopesRequest) (*pbs.ListScopesResponse, error) {
 	if req.GetScopeId() == "" {
-		return nil, handlers.InvalidArgumentErrorf(
-			"Argument errors found in the request.",
-			map[string]string{"scope_id": "Missing value for scope_id"},
-		)
+		req.ScopeId = scope.Global.String()
 	}
 	authResults := auth.Verify(ctx, auth.WithScopeId(req.GetScopeId()))
 	if !authResults.Valid {
