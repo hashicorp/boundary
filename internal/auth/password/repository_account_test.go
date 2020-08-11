@@ -8,6 +8,7 @@ import (
 
 	"github.com/hashicorp/boundary/internal/auth/password/store"
 	"github.com/hashicorp/boundary/internal/db"
+	dbassert "github.com/hashicorp/boundary/internal/db/assert"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/oplog"
 	"github.com/stretchr/testify/assert"
@@ -535,4 +536,556 @@ func TestRepository_ListAccounts_Limits(t *testing.T) {
 			assert.Len(got, tt.wantLen)
 		})
 	}
+}
+
+func TestRepository_UpdateAccount(t *testing.T) {
+	conn, _ := db.TestSetup(t, "postgres")
+	rw := db.New(conn)
+	wrapper := db.TestWrapper(t)
+
+	changeUserName := func(s string) func(*Account) *Account {
+		return func(a *Account) *Account {
+			a.UserName = s
+			return a
+		}
+	}
+
+	changeName := func(s string) func(*Account) *Account {
+		return func(a *Account) *Account {
+			a.Name = s
+			return a
+		}
+	}
+
+	changeDescription := func(s string) func(*Account) *Account {
+		return func(a *Account) *Account {
+			a.Description = s
+			return a
+		}
+	}
+
+	makeNil := func() func(*Account) *Account {
+		return func(a *Account) *Account {
+			return nil
+		}
+	}
+
+	makeEmbeddedNil := func() func(*Account) *Account {
+		return func(a *Account) *Account {
+			return &Account{}
+		}
+	}
+
+	deletePublicId := func() func(*Account) *Account {
+		return func(a *Account) *Account {
+			a.PublicId = ""
+			return a
+		}
+	}
+
+	nonExistentPublicId := func() func(*Account) *Account {
+		return func(a *Account) *Account {
+			a.PublicId = "abcd_OOOOOOOOOO"
+			return a
+		}
+	}
+
+	combine := func(fns ...func(a *Account) *Account) func(*Account) *Account {
+		return func(a *Account) *Account {
+			for _, fn := range fns {
+				a = fn(a)
+			}
+			return a
+		}
+	}
+
+	var tests = []struct {
+		name      string
+		orig      *Account
+		chgFn     func(*Account) *Account
+		masks     []string
+		want      *Account
+		wantCount int
+		wantIsErr error
+	}{
+		{
+			name: "nil-Account",
+			orig: &Account{
+				Account: &store.Account{},
+			},
+			chgFn:     makeNil(),
+			masks:     []string{"Name", "Description"},
+			wantIsErr: db.ErrNilParameter,
+		},
+		{
+			name: "nil-embedded-Account",
+			orig: &Account{
+				Account: &store.Account{},
+			},
+			chgFn:     makeEmbeddedNil(),
+			masks:     []string{"Name", "Description"},
+			wantIsErr: db.ErrNilParameter,
+		},
+		{
+			name: "no-public-id",
+			orig: &Account{
+				Account: &store.Account{},
+			},
+			chgFn:     deletePublicId(),
+			masks:     []string{"Name", "Description"},
+			wantIsErr: db.ErrInvalidParameter,
+		},
+		{
+			name: "updating-non-existent-Account",
+			orig: &Account{
+				Account: &store.Account{
+					Name: "test-name-repo",
+				},
+			},
+			chgFn:     combine(nonExistentPublicId(), changeName("test-update-name-repo")),
+			masks:     []string{"Name"},
+			wantIsErr: db.ErrRecordNotFound,
+		},
+		{
+			name: "empty-field-mask",
+			orig: &Account{
+				Account: &store.Account{
+					Name: "test-name-repo",
+				},
+			},
+			chgFn:     changeName("test-update-name-repo"),
+			wantIsErr: db.ErrEmptyFieldMask,
+		},
+		{
+			name: "read-only-fields-in-field-mask",
+			orig: &Account{
+				Account: &store.Account{
+					Name: "test-name-repo",
+				},
+			},
+			chgFn:     changeName("test-update-name-repo"),
+			masks:     []string{"PublicId", "CreateTime", "UpdateTime", "AuthMethodId"},
+			wantIsErr: db.ErrInvalidFieldMask,
+		},
+		{
+			name: "unknown-field-in-field-mask",
+			orig: &Account{
+				Account: &store.Account{
+					Name: "test-name-repo",
+				},
+			},
+			chgFn:     changeName("test-update-name-repo"),
+			masks:     []string{"Bilbo"},
+			wantIsErr: db.ErrInvalidFieldMask,
+		},
+		{
+			name: "change-name",
+			orig: &Account{
+				Account: &store.Account{
+					Name: "test-name-repo",
+				},
+			},
+			chgFn: changeName("test-update-name-repo"),
+			masks: []string{"Name"},
+			want: &Account{
+				Account: &store.Account{
+					Name: "test-update-name-repo",
+				},
+			},
+			wantCount: 1,
+		},
+		{
+			name: "change-description",
+			orig: &Account{
+				Account: &store.Account{
+					Description: "test-description-repo",
+				},
+			},
+			chgFn: changeDescription("test-update-description-repo"),
+			masks: []string{"Description"},
+			want: &Account{
+				Account: &store.Account{
+					Description: "test-update-description-repo",
+				},
+			},
+			wantCount: 1,
+		},
+		{
+			name: "change-name-and-description",
+			orig: &Account{
+				Account: &store.Account{
+					Name:        "test-name-repo",
+					Description: "test-description-repo",
+				},
+			},
+			chgFn: combine(changeDescription("test-update-description-repo"), changeName("test-update-name-repo")),
+			masks: []string{"Name", "Description"},
+			want: &Account{
+				Account: &store.Account{
+					Name:        "test-update-name-repo",
+					Description: "test-update-description-repo",
+				},
+			},
+			wantCount: 1,
+		},
+		{
+			name: "delete-name",
+			orig: &Account{
+				Account: &store.Account{
+					Name:        "test-name-repo",
+					Description: "test-description-repo",
+				},
+			},
+			masks: []string{"Name"},
+			chgFn: combine(changeDescription("test-update-description-repo"), changeName("")),
+			want: &Account{
+				Account: &store.Account{
+					Description: "test-description-repo",
+				},
+			},
+			wantCount: 1,
+		},
+		{
+			name: "delete-description",
+			orig: &Account{
+				Account: &store.Account{
+					Name:        "test-name-repo",
+					Description: "test-description-repo",
+				},
+			},
+			masks: []string{"Description"},
+			chgFn: combine(changeDescription(""), changeName("test-update-name-repo")),
+			want: &Account{
+				Account: &store.Account{
+					Name: "test-name-repo",
+				},
+			},
+			wantCount: 1,
+		},
+		{
+			name: "do-not-delete-name",
+			orig: &Account{
+				Account: &store.Account{
+					Name:        "test-name-repo",
+					Description: "test-description-repo",
+				},
+			},
+			masks: []string{"Description"},
+			chgFn: combine(changeDescription("test-update-description-repo"), changeName("")),
+			want: &Account{
+				Account: &store.Account{
+					Name:        "test-name-repo",
+					Description: "test-update-description-repo",
+				},
+			},
+			wantCount: 1,
+		},
+		{
+			name: "do-not-delete-description",
+			orig: &Account{
+				Account: &store.Account{
+					Name:        "test-name-repo",
+					Description: "test-description-repo",
+				},
+			},
+			masks: []string{"Name"},
+			chgFn: combine(changeDescription(""), changeName("test-update-name-repo")),
+			want: &Account{
+				Account: &store.Account{
+					Name:        "test-update-name-repo",
+					Description: "test-description-repo",
+				},
+			},
+			wantCount: 1,
+		},
+		{
+			name: "change-user-name",
+			orig: &Account{
+				Account: &store.Account{
+					UserName: "kazmierczak",
+				},
+			},
+			chgFn: changeUserName("mothball"),
+			masks: []string{"UserName"},
+			want: &Account{
+				Account: &store.Account{
+					UserName: "mothball",
+				},
+			},
+			wantCount: 1,
+		},
+		{
+			name: "change-user-name-mixed-caps",
+			orig: &Account{
+				Account: &store.Account{
+					UserName: "kazmierczak",
+				},
+			},
+			chgFn:     changeUserName("KaZmIeRcZaK"),
+			masks:     []string{"UserName"},
+			wantIsErr: db.ErrInvalidParameter,
+		},
+		{
+			name: "change-user-name-to-short",
+			orig: &Account{
+				Account: &store.Account{
+					UserName: "kazmierczak",
+				},
+			},
+			chgFn:     changeUserName("ka"),
+			masks:     []string{"UserName"},
+			wantIsErr: ErrTooShort,
+		},
+		{
+			name: "delete-user-name",
+			orig: &Account{
+				Account: &store.Account{
+					UserName: "kazmierczak",
+				},
+			},
+			chgFn:     changeUserName(""),
+			masks:     []string{"UserName"},
+			wantIsErr: db.ErrInvalidParameter,
+		},
+	}
+
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+			repo, err := NewRepository(rw, rw, wrapper)
+			assert.NoError(err)
+			require.NotNil(repo)
+
+			org, _ := iam.TestScopes(t, conn)
+			am := TestAuthMethods(t, conn, org.PublicId, 1)[0]
+
+			tt.orig.AuthMethodId = am.PublicId
+			if tt.orig.UserName == "" {
+				tt.orig.UserName = "kazmierczak"
+			}
+			orig, err := repo.CreateAccount(context.Background(), tt.orig)
+			assert.NoError(err)
+			require.NotNil(orig)
+
+			if tt.chgFn != nil {
+				orig = tt.chgFn(orig)
+			}
+			got, gotCount, err := repo.UpdateAccount(context.Background(), orig, tt.masks)
+			if tt.wantIsErr != nil {
+				assert.Truef(errors.Is(err, tt.wantIsErr), "want err: %q got: %q", tt.wantIsErr, err)
+				assert.Equal(tt.wantCount, gotCount, "row count")
+				assert.Nil(got)
+				return
+			}
+			assert.NoError(err)
+			assert.Empty(tt.orig.PublicId)
+			if tt.wantCount == 0 {
+				assert.Equal(tt.wantCount, gotCount, "row count")
+				assert.Nil(got)
+				return
+			}
+			require.NotNil(got)
+			assertPublicId(t, AccountPrefix, got.PublicId)
+			assert.Equal(tt.wantCount, gotCount, "row count")
+			assert.NotSame(tt.orig, got)
+			assert.Equal(tt.orig.AuthMethodId, got.AuthMethodId)
+			dbassert := dbassert.New(t, rw)
+			if tt.want.Name == "" {
+				dbassert.IsNull(got, "name")
+				return
+			}
+			assert.Equal(tt.want.Name, got.Name)
+			if tt.want.Description == "" {
+				dbassert.IsNull(got, "description")
+				return
+			}
+			assert.Equal(tt.want.Description, got.Description)
+			if tt.wantCount > 0 {
+				assert.NoError(db.TestVerifyOplog(t, rw, got.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_UPDATE), db.WithCreateNotBefore(10*time.Second)))
+			}
+		})
+	}
+
+	t.Run("invalid-duplicate-names", func(t *testing.T) {
+		assert, require := assert.New(t), require.New(t)
+		repo, err := NewRepository(rw, rw, wrapper)
+		assert.NoError(err)
+		require.NotNil(repo)
+
+		name := "test-dup-name"
+		org, _ := iam.TestScopes(t, conn)
+		am := TestAuthMethods(t, conn, org.PublicId, 1)[0]
+		acts := TestAccounts(t, conn, am.PublicId, 2)
+
+		aa := acts[0]
+		ab := acts[1]
+
+		aa.Name = name
+		got1, gotCount1, err := repo.UpdateAccount(context.Background(), aa, []string{"name"})
+		assert.NoError(err)
+		require.NotNil(got1)
+		assert.Equal(name, got1.Name)
+		assert.Equal(1, gotCount1, "row count")
+		assert.NoError(db.TestVerifyOplog(t, rw, aa.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_UPDATE), db.WithCreateNotBefore(10*time.Second)))
+
+		ab.Name = name
+		got2, gotCount2, err := repo.UpdateAccount(context.Background(), ab, []string{"name"})
+		assert.Truef(errors.Is(err, db.ErrNotUnique), "want err: %v got: %v", db.ErrNotUnique, err)
+		assert.Nil(got2)
+		assert.Equal(db.NoRowsAffected, gotCount2, "row count")
+		err = db.TestVerifyOplog(t, rw, ab.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_UPDATE), db.WithCreateNotBefore(10*time.Second))
+		assert.Error(err)
+		assert.True(errors.Is(db.ErrRecordNotFound, err))
+	})
+
+	t.Run("valid-duplicate-names-diff-AuthMethods", func(t *testing.T) {
+		assert, require := assert.New(t), require.New(t)
+		repo, err := NewRepository(rw, rw, wrapper)
+		assert.NoError(err)
+		require.NotNil(repo)
+
+		org, _ := iam.TestScopes(t, conn)
+		ams := TestAuthMethods(t, conn, org.PublicId, 2)
+
+		ama := ams[0]
+		amb := ams[1]
+
+		in := &Account{
+			Account: &store.Account{
+				Name: "test-name-repo",
+			},
+		}
+		in2 := in.clone()
+
+		in.AuthMethodId = ama.PublicId
+		in.UserName = "kazmierczak"
+		got, err := repo.CreateAccount(context.Background(), in)
+		assert.NoError(err)
+		require.NotNil(got)
+		assertPublicId(t, AccountPrefix, got.PublicId)
+		assert.NotSame(in, got)
+		assert.Equal(in.Name, got.Name)
+		assert.Equal(in.Description, got.Description)
+
+		in2.AuthMethodId = amb.PublicId
+		in2.UserName = "kazmierczak2"
+		in2.Name = "first-name"
+		got2, err := repo.CreateAccount(context.Background(), in2)
+		assert.NoError(err)
+		require.NotNil(got2)
+		got2.Name = got.Name
+		got3, gotCount3, err := repo.UpdateAccount(context.Background(), got2, []string{"name"})
+		assert.NoError(err)
+		require.NotNil(got3)
+		assert.NotSame(got2, got3)
+		assert.Equal(got.Name, got3.Name)
+		assert.Equal(got2.Description, got3.Description)
+		assert.Equal(1, gotCount3, "row count")
+		assert.NoError(db.TestVerifyOplog(t, rw, got2.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_UPDATE), db.WithCreateNotBefore(10*time.Second)))
+	})
+
+	t.Run("invalid-duplicate-usernames", func(t *testing.T) {
+		assert, require := assert.New(t), require.New(t)
+		repo, err := NewRepository(rw, rw, wrapper)
+		assert.NoError(err)
+		require.NotNil(repo)
+
+		userName := "kazmierczak12"
+		org, _ := iam.TestScopes(t, conn)
+		am := TestAuthMethods(t, conn, org.PublicId, 1)[0]
+		acts := TestAccounts(t, conn, am.PublicId, 2)
+
+		aa := acts[0]
+		ab := acts[1]
+
+		aa.UserName = userName
+		got1, gotCount1, err := repo.UpdateAccount(context.Background(), aa, []string{"UserName"})
+		assert.NoError(err)
+		require.NotNil(got1)
+		assert.Equal(userName, got1.UserName)
+		assert.Equal(1, gotCount1, "row count")
+		assert.NoError(db.TestVerifyOplog(t, rw, aa.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_UPDATE), db.WithCreateNotBefore(10*time.Second)))
+
+		ab.UserName = userName
+		got2, gotCount2, err := repo.UpdateAccount(context.Background(), ab, []string{"UserName"})
+		assert.Truef(errors.Is(err, db.ErrNotUnique), "want err: %v got: %v", db.ErrNotUnique, err)
+		assert.Nil(got2)
+		assert.Equal(db.NoRowsAffected, gotCount2, "row count")
+		err = db.TestVerifyOplog(t, rw, ab.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_UPDATE), db.WithCreateNotBefore(10*time.Second))
+		assert.Error(err)
+		assert.True(errors.Is(db.ErrRecordNotFound, err))
+	})
+
+	t.Run("valid-duplicate-usernames-diff-AuthMethods", func(t *testing.T) {
+		assert, require := assert.New(t), require.New(t)
+		repo, err := NewRepository(rw, rw, wrapper)
+		assert.NoError(err)
+		require.NotNil(repo)
+
+		org, _ := iam.TestScopes(t, conn)
+		ams := TestAuthMethods(t, conn, org.PublicId, 2)
+
+		ama := ams[0]
+		amb := ams[1]
+
+		in := &Account{
+			Account: &store.Account{
+				UserName: "kazmierczak",
+			},
+		}
+		in2 := in.clone()
+
+		in.AuthMethodId = ama.PublicId
+		got, err := repo.CreateAccount(context.Background(), in)
+		assert.NoError(err)
+		require.NotNil(got)
+		assertPublicId(t, AccountPrefix, got.PublicId)
+		assert.NotSame(in, got)
+		assert.Equal(in.UserName, got.UserName)
+
+		in2.AuthMethodId = amb.PublicId
+		in2.UserName = "kazmierczak2"
+		got2, err := repo.CreateAccount(context.Background(), in2)
+		assert.NoError(err)
+		require.NotNil(got2)
+		got2.UserName = got.UserName
+		got3, gotCount3, err := repo.UpdateAccount(context.Background(), got2, []string{"UserName"})
+		assert.NoError(err)
+		require.NotNil(got3)
+		assert.NotSame(got2, got3)
+		assert.Equal(got.UserName, got3.UserName)
+		assert.Equal(1, gotCount3, "row count")
+		assert.NoError(db.TestVerifyOplog(t, rw, got2.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_UPDATE), db.WithCreateNotBefore(10*time.Second)))
+	})
+
+	t.Run("change-authmethod-id", func(t *testing.T) {
+		assert, require := assert.New(t), require.New(t)
+		repo, err := NewRepository(rw, rw, wrapper)
+		assert.NoError(err)
+		require.NotNil(repo)
+
+		org, _ := iam.TestScopes(t, conn)
+		ams := TestAuthMethods(t, conn, org.PublicId, 2)
+
+		ama := ams[0]
+		amb := ams[1]
+
+		aa := TestAccounts(t, conn, ama.PublicId, 1)[0]
+		ab := TestAccounts(t, conn, amb.PublicId, 1)[0]
+
+		assert.NotEqual(aa.AuthMethodId, ab.AuthMethodId)
+		orig := aa.clone()
+
+		aa.AuthMethodId = ab.AuthMethodId
+		assert.Equal(aa.AuthMethodId, ab.AuthMethodId)
+
+		got1, gotCount1, err := repo.UpdateAccount(context.Background(), aa, []string{"name"})
+
+		assert.NoError(err)
+		require.NotNil(got1)
+		assert.Equal(orig.AuthMethodId, got1.AuthMethodId)
+		assert.Equal(1, gotCount1, "row count")
+		assert.NoError(db.TestVerifyOplog(t, rw, aa.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_UPDATE), db.WithCreateNotBefore(10*time.Second)))
+	})
 }
