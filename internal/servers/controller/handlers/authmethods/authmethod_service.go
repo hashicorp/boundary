@@ -108,7 +108,7 @@ func (s Service) UpdateAuthMethod(ctx context.Context, req *pbs.UpdateAuthMethod
 	if err := validateUpdateRequest(req); err != nil {
 		return nil, err
 	}
-	u, err := s.updateInRepo(ctx, authResults.Scope.GetId(), req.GetId(), req.GetUpdateMask().GetPaths(), req.GetItem())
+	u, err := s.updateInRepo(ctx, authResults.Scope.GetId(), req.GetId(), req.GetVersion(), req.GetUpdateMask().GetPaths(), req.GetItem())
 	if err != nil {
 		return nil, err
 	}
@@ -195,7 +195,7 @@ func (s Service) createInRepo(ctx context.Context, scopeId string, item *pb.Auth
 	return toProto(out)
 }
 
-func (s Service) updateInRepo(ctx context.Context, scopeId, id string, mask []string, item *pb.AuthMethod) (*pb.AuthMethod, error) {
+func (s Service) updateInRepo(ctx context.Context, scopeId, id string, version uint32, mask []string, item *pb.AuthMethod) (*pb.AuthMethod, error) {
 	var opts []password.Option
 	if desc := item.GetDescription(); desc != nil {
 		opts = append(opts, password.WithDescription(desc.GetValue()))
@@ -216,7 +216,7 @@ func (s Service) updateInRepo(ctx context.Context, scopeId, id string, mask []st
 	if err != nil {
 		return nil, err
 	}
-	out, rowsUpdated, err := repo.UpdateAuthMethod(ctx, u, dbMask)
+	out, rowsUpdated, err := repo.UpdateAuthMethod(ctx, u, version, dbMask)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "Unable to update auth method: %v.", err)
 	}
@@ -246,6 +246,7 @@ func toProto(in *password.AuthMethod) (*pb.AuthMethod, error) {
 		Id:          in.GetPublicId(),
 		CreatedTime: in.GetCreateTime().GetTimestamp(),
 		UpdatedTime: in.GetUpdateTime().GetTimestamp(),
+		Version:     in.GetVersion(),
 		Type:        "password",
 	}
 	if in.GetDescription() != "" {
@@ -323,6 +324,9 @@ func validateUpdateRequest(req *pbs.UpdateAuthMethodRequest) error {
 	}
 	if req.GetUpdateMask() == nil {
 		badFields["update_mask"] = "UpdateMask not provided but is required to update this resource."
+	}
+	if req.GetVersion() == 0 {
+		badFields["version"] = "Existing resource version is required for an update."
 	}
 
 	item := req.GetItem()

@@ -1849,6 +1849,12 @@
           "format": "boolean",
           "title": "Whether the resource is disabled"
         },
+        "version": {
+          "type": "integer",
+          "format": "int64",
+          "description": "The version can be used in subsequent write requests to ensure this resource\nhas not changed and to fail the write if it has.\nOutput only.",
+          "readOnly": true
+        },
         "type": {
           "type": "string",
           "description": "The type of this account.  Possible values are: \"password\", \"oidc\"."
@@ -1891,6 +1897,12 @@
           "type": "string",
           "format": "date-time",
           "description": "The time this resource was last updated.\nOutput only.",
+          "readOnly": true
+        },
+        "version": {
+          "type": "integer",
+          "format": "int64",
+          "description": "The version can be used in subsequent write requests to ensure this resource\nhas not changed and to fail the write if it has.\nOutput only.",
           "readOnly": true
         },
         "type": {

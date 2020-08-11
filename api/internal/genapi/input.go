@@ -184,7 +184,8 @@ var inputStructs = []*structInfo{
 			deleteTemplate,
 			listTemplate,
 		},
-		pathArgs: []string{"auth-method"},
+		pathArgs:       []string{"auth-method"},
+		versionEnabled: true,
 	},
 	{
 		inProto:     &authmethods.PasswordAuthMethodAttributes{},
@@ -202,7 +203,8 @@ var inputStructs = []*structInfo{
 			deleteTemplate,
 			listTemplate,
 		},
-		pathArgs: []string{"auth-method", "account"},
+		pathArgs:       []string{"auth-method", "account"},
+		versionEnabled: true,
 	},
 	{
 		inProto:     &authmethods.PasswordAccountAttributes{},

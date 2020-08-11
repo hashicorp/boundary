@@ -211,6 +211,7 @@ func toProto(in *password.Account) (*pb.Account, error) {
 		CreatedTime:  in.GetCreateTime().GetTimestamp(),
 		UpdatedTime:  in.GetUpdateTime().GetTimestamp(),
 		AuthMethodId: in.GetAuthMethodId(),
+		Version:      in.GetVersion(),
 		Type:         "password",
 	}
 	if in.GetDescription() != "" {
