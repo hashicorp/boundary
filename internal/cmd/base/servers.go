@@ -518,13 +518,13 @@ func (b *Server) CreateDevDatabase(dialect string) error {
 		return fmt.Errorf("error saving auth method to the db: %w", err)
 	}
 
-	acctUserName := b.DevUsername
-	if acctUserName == "" {
-		acctUserName, err = base62.Random(10)
+	acctLoginName := b.DevUsername
+	if acctLoginName == "" {
+		acctLoginName, err = base62.Random(10)
 		if err != nil {
-			return fmt.Errorf("unable to generate dev username: %w", err)
+			return fmt.Errorf("unable to generate dev login name: %w", err)
 		}
-		acctUserName = strings.ToLower(acctUserName)
+		acctLoginName = strings.ToLower(acctLoginName)
 	}
 
 	pw := b.DevPassword
@@ -535,7 +535,7 @@ func (b *Server) CreateDevDatabase(dialect string) error {
 		}
 	}
 
-	acct, err := password.NewAccount(amId, acctUserName)
+	acct, err := password.NewAccount(amId, acctLoginName)
 	if err != nil {
 		return fmt.Errorf("error creating new in memory auth account: %w", err)
 	}
@@ -544,10 +544,10 @@ func (b *Server) CreateDevDatabase(dialect string) error {
 		return fmt.Errorf("error saving auth account to the db: %w", err)
 	}
 
-	b.InfoKeys = append(b.InfoKeys, "dev org id", "dev auth method id", "dev username", "dev password")
+	b.InfoKeys = append(b.InfoKeys, "dev org id", "dev auth method id", "dev login name", "dev password")
 	b.Info["dev org id"] = b.DefaultOrgId
 	b.Info["dev auth method id"] = amId
-	b.Info["dev username"] = acct.GetUserName()
+	b.Info["dev login name"] = acct.GetLoginName()
 	b.Info["dev password"] = pw
 
 	// now that we have passed all the error cases, reset c to be a noop so the

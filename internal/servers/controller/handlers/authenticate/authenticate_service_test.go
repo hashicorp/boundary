@@ -126,7 +126,7 @@ func TestAuthenticate(t *testing.T) {
 			wantErr: status.Error(codes.Unauthenticated, "unauthenticated"),
 		},
 		{
-			name: "wrong-username",
+			name: "wrong-login-name",
 			request: &pbs.AuthenticateRequest{
 				AuthMethodId: am.GetPublicId(),
 				TokenType:    "token",

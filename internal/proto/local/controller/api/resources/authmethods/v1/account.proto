@@ -54,8 +54,8 @@ message Account {
 }
 
 message PasswordAccountAttributes {
-	// The username of this account.  This is unique per auth method.
-	string username = 1 [(custom_options.v1.generate_sdk_option) = true];
+	// The login name of this account.  This is unique per auth method.
+	string login_name = 1 [(custom_options.v1.generate_sdk_option) = true];
 	// The password for this account.
 	google.protobuf.StringValue password = 2 [(custom_options.v1.generate_sdk_option) = true];
 }

@@ -26,7 +26,7 @@ func TestRepository_Authenticate(t *testing.T) {
 	inAcct := &Account{
 		Account: &store.Account{
 			AuthMethodId: authMethod.PublicId,
-			UserName:     "kazmierczak",
+			LoginName:    "kazmierczak",
 		},
 	}
 	passwd := "12345678"
@@ -54,7 +54,7 @@ func TestRepository_Authenticate(t *testing.T) {
 			name: "invalid-no-authMethodId",
 			args: args{
 				authMethodId: "",
-				userName:     inAcct.UserName,
+				userName:     inAcct.LoginName,
 				password:     passwd,
 			},
 			wantIsErr: db.ErrInvalidParameter,
@@ -72,7 +72,7 @@ func TestRepository_Authenticate(t *testing.T) {
 			name: "invalid-no-password",
 			args: args{
 				authMethodId: inAcct.AuthMethodId,
-				userName:     inAcct.UserName,
+				userName:     inAcct.LoginName,
 				password:     "",
 			},
 			wantIsErr: db.ErrInvalidParameter,
@@ -81,7 +81,7 @@ func TestRepository_Authenticate(t *testing.T) {
 			name: "valid-authenticate",
 			args: args{
 				authMethodId: inAcct.AuthMethodId,
-				userName:     inAcct.UserName,
+				userName:     inAcct.LoginName,
 				password:     passwd,
 			},
 			want: outAcct,
@@ -90,7 +90,7 @@ func TestRepository_Authenticate(t *testing.T) {
 			name: "wrong-password",
 			args: args{
 				authMethodId: inAcct.AuthMethodId,
-				userName:     inAcct.UserName,
+				userName:     inAcct.LoginName,
 				password:     "foobar",
 			},
 			want:      nil,
@@ -115,7 +115,7 @@ func TestRepository_Authenticate(t *testing.T) {
 			require.NotNil(authAcct, "returned account")
 			assert.NotEmpty(authAcct.CredentialId, "CredentialId")
 			assert.Equal(tt.args.authMethodId, authAcct.AuthMethodId, "authMethodId")
-			assert.Equal(tt.args.userName, authAcct.UserName, "UserName")
+			assert.Equal(tt.args.userName, authAcct.LoginName, "LoginName")
 			err = db.TestVerifyOplog(t, rw, authAcct.CredentialId, db.WithOperation(oplog.OpType_OP_TYPE_UPDATE), db.WithCreateNotBefore(10*time.Second))
 			assert.Error(err)
 			assert.True(errors.Is(db.ErrRecordNotFound, err))
@@ -154,7 +154,7 @@ func TestRepository_AuthenticateRehash(t *testing.T) {
 	inAcct := &Account{
 		Account: &store.Account{
 			AuthMethodId: authMethod.PublicId,
-			UserName:     userName,
+			LoginName:    userName,
 		},
 	}
 
@@ -250,7 +250,7 @@ func TestRepository_ChangePassword(t *testing.T) {
 
 	inAcct := &Account{
 		Account: &store.Account{
-			UserName: "kazmierczak",
+			LoginName: "kazmierczak",
 		},
 	}
 	passwd := "12345678"
@@ -272,7 +272,7 @@ func TestRepository_ChangePassword(t *testing.T) {
 			name: "invalid-no-authMethodId",
 			args: args{
 				authMethodId: "",
-				userName:     inAcct.UserName,
+				userName:     inAcct.LoginName,
 				old:          passwd,
 				new:          "12345678-changed",
 			},
@@ -291,7 +291,7 @@ func TestRepository_ChangePassword(t *testing.T) {
 		{
 			name: "invalid-no-old-password",
 			args: args{
-				userName: inAcct.UserName,
+				userName: inAcct.LoginName,
 				old:      "",
 				new:      "12345678-changed",
 			},
@@ -300,7 +300,7 @@ func TestRepository_ChangePassword(t *testing.T) {
 		{
 			name: "invalid-no-new-password",
 			args: args{
-				userName: inAcct.UserName,
+				userName: inAcct.LoginName,
 				old:      passwd,
 				new:      "",
 			},
@@ -309,7 +309,7 @@ func TestRepository_ChangePassword(t *testing.T) {
 		{
 			name: "invalid-same-passwords",
 			args: args{
-				userName: inAcct.UserName,
+				userName: inAcct.LoginName,
 				old:      passwd,
 				new:      passwd,
 			},
@@ -319,7 +319,7 @@ func TestRepository_ChangePassword(t *testing.T) {
 			name: "auth-failure-unknown-authMethodId",
 			args: args{
 				authMethodId: "not-an-authMethod-Id",
-				userName:     inAcct.UserName,
+				userName:     inAcct.LoginName,
 				old:          passwd,
 				new:          "12345678-changed",
 			},
@@ -330,7 +330,7 @@ func TestRepository_ChangePassword(t *testing.T) {
 		{
 			name: "auth-failure-wrong-old-password",
 			args: args{
-				userName: inAcct.UserName,
+				userName: inAcct.LoginName,
 				old:      "wrong-password",
 				new:      "12345678-changed",
 			},
@@ -340,7 +340,7 @@ func TestRepository_ChangePassword(t *testing.T) {
 		{
 			name: "password-to-short",
 			args: args{
-				userName: inAcct.UserName,
+				userName: inAcct.LoginName,
 				old:      passwd,
 				new:      "1",
 			},
@@ -349,7 +349,7 @@ func TestRepository_ChangePassword(t *testing.T) {
 		{
 			name: "valid",
 			args: args{
-				userName: inAcct.UserName,
+				userName: inAcct.LoginName,
 				old:      passwd,
 				new:      "12345678-changed",
 			},
@@ -373,7 +373,7 @@ func TestRepository_ChangePassword(t *testing.T) {
 			}
 			// Calls to Authenticate should always succeed in these tests
 			authFn := func(pwd string, name string) *Account {
-				acct, err := repo.Authenticate(context.Background(), inAcct.AuthMethodId, inAcct.UserName, pwd)
+				acct, err := repo.Authenticate(context.Background(), inAcct.AuthMethodId, inAcct.LoginName, pwd)
 				require.NotNilf(acct, "%s: Authenticate should return an account", name)
 				require.NoErrorf(err, "%s: Authenticate should succeed", name)
 				return acct
@@ -401,7 +401,7 @@ func TestRepository_ChangePassword(t *testing.T) {
 			assert.NotEmpty(chgAuthAcct.CredentialId, "CredentialId")
 			assert.NotEqual(authAcct1.CredentialId, chgAuthAcct.CredentialId, "CredentialId should change")
 			assert.Equal(authAcct1.AuthMethodId, chgAuthAcct.AuthMethodId, "authMethodId")
-			assert.Equal(authAcct1.UserName, chgAuthAcct.UserName, "UserName")
+			assert.Equal(authAcct1.LoginName, chgAuthAcct.LoginName, "LoginName")
 
 			authAcct2 := authFn(tt.args.new, "successful change password: using new password")
 			assert.Equal(chgAuthAcct.CredentialId, authAcct2.CredentialId, "CredentialId should not change")
@@ -423,13 +423,13 @@ func TestRepository_SetPassword(t *testing.T) {
 
 	template := &Account{
 		Account: &store.Account{
-			UserName: "kazmierczak",
+			LoginName: "kazmierczak",
 		},
 	}
 	origPasswd := "12345678"
 
 	wantAuthenticate := func(t *testing.T, authMethodId string, pwd string, msg string) string {
-		acct, err := repo.Authenticate(context.Background(), authMethodId, template.UserName, pwd)
+		acct, err := repo.Authenticate(context.Background(), authMethodId, template.LoginName, pwd)
 		assert.NoErrorf(t, err, "%s: authenticate should not return an error", msg)
 		if assert.NotNilf(t, acct, "%s: authenticate should succeed", msg) {
 			return acct.CredentialId
@@ -440,7 +440,7 @@ func TestRepository_SetPassword(t *testing.T) {
 		if authMethodId == "" || pwd == "" {
 			return ""
 		}
-		acct, err := repo.Authenticate(context.Background(), authMethodId, template.UserName, pwd)
+		acct, err := repo.Authenticate(context.Background(), authMethodId, template.LoginName, pwd)
 		assert.NoErrorf(t, err, "%s: authenticate should not return an error", msg)
 		assert.Nilf(t, acct, "%s: authenticate should not succeed", msg)
 		return ""

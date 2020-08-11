@@ -16,7 +16,7 @@ func TestAuthenticationHandler(t *testing.T) {
 	c := NewTestController(t, &TestControllerOpts{
 		DefaultOrgId:                 "o_1234567890",
 		DisableAuthorizationFailures: true,
-		DefaultUsername:              "admin",
+		DefaultLoginName:             "admin",
 		DefaultPassword:              "password123",
 	})
 	defer c.Shutdown()

@@ -42,7 +42,7 @@ func NewAccount(authMethodId string, userName string, opt ...Option) (*Account, 
 	a := &Account{
 		Account: &store.Account{
 			AuthMethodId: authMethodId,
-			UserName:     userName,
+			LoginName:    userName,
 			Name:         opts.withName,
 			Description:  opts.withDescription,
 		},

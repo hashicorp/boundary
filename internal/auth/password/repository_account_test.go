@@ -15,7 +15,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestCheckUserName(t *testing.T) {
+func TestCheckLoginName(t *testing.T) {
 	var tests = []struct {
 		in   string
 		want bool
@@ -25,12 +25,12 @@ func TestCheckUserName(t *testing.T) {
 		{"trailing-spaces ", false},
 		{"contains spaces", false},
 		{"NotLowerCase", false},
-		{"valid.username", true},
+		{"valid.loginname", true},
 	}
 	for _, tt := range tests {
 		tt := tt
 		t.Run(tt.in, func(t *testing.T) {
-			assert.Equal(t, tt.want, validUserName(tt.in))
+			assert.Equal(t, tt.want, validLoginName(tt.in))
 		})
 	}
 }
@@ -78,51 +78,51 @@ func TestRepository_CreateAccount(t *testing.T) {
 			wantIsErr: db.ErrInvalidParameter,
 		},
 		{
-			name: "invalid-username-uppercase",
+			name: "invalid-loginname-uppercase",
 			in: &Account{
 				Account: &store.Account{
 					AuthMethodId: authMethod.PublicId,
-					UserName:     "KaZmiErcZak11",
+					LoginName:    "KaZmiErcZak11",
 				},
 			},
 			wantIsErr: db.ErrInvalidParameter,
 		},
 		{
-			name: "invalid-username-leading-space",
+			name: "invalid-loginname-leading-space",
 			in: &Account{
 				Account: &store.Account{
 					AuthMethodId: authMethod.PublicId,
-					UserName:     " kazmierczak12",
+					LoginName:    " kazmierczak12",
 				},
 			},
 			wantIsErr: db.ErrInvalidParameter,
 		},
 		{
-			name: "invalid-username-trailing-space",
+			name: "invalid-loginname-trailing-space",
 			in: &Account{
 				Account: &store.Account{
 					AuthMethodId: authMethod.PublicId,
-					UserName:     "kazmierczak13 ",
+					LoginName:    "kazmierczak13 ",
 				},
 			},
 			wantIsErr: db.ErrInvalidParameter,
 		},
 		{
-			name: "invalid-username-space-in-name",
+			name: "invalid-loginname-space-in-name",
 			in: &Account{
 				Account: &store.Account{
 					AuthMethodId: authMethod.PublicId,
-					UserName:     "kazmier czak14",
+					LoginName:    "kazmier czak14",
 				},
 			},
 			wantIsErr: db.ErrInvalidParameter,
 		},
 		{
-			name: "invalid-username-too-short",
+			name: "invalid-loginname-too-short",
 			in: &Account{
 				Account: &store.Account{
 					AuthMethodId: authMethod.PublicId,
-					UserName:     "ka",
+					LoginName:    "ka",
 				},
 			},
 			wantIsErr: ErrTooShort,
@@ -132,7 +132,7 @@ func TestRepository_CreateAccount(t *testing.T) {
 			in: &Account{
 				Account: &store.Account{
 					AuthMethodId: authMethod.PublicId,
-					UserName:     "kazmierczak123",
+					LoginName:    "kazmierczak123",
 				},
 			},
 			opts: []Option{
@@ -145,13 +145,13 @@ func TestRepository_CreateAccount(t *testing.T) {
 			in: &Account{
 				Account: &store.Account{
 					AuthMethodId: authMethod.PublicId,
-					UserName:     "kazmierczak",
+					LoginName:    "kazmierczak",
 				},
 			},
 			want: &Account{
 				Account: &store.Account{
 					AuthMethodId: authMethod.PublicId,
-					UserName:     "kazmierczak",
+					LoginName:    "kazmierczak",
 				},
 			},
 		},
@@ -161,14 +161,14 @@ func TestRepository_CreateAccount(t *testing.T) {
 				Account: &store.Account{
 					AuthMethodId: authMethod.PublicId,
 					Name:         "test-name-repo",
-					UserName:     "kazmierczak1",
+					LoginName:    "kazmierczak1",
 				},
 			},
 			want: &Account{
 				Account: &store.Account{
 					AuthMethodId: authMethod.PublicId,
 					Name:         "test-name-repo",
-					UserName:     "kazmierczak1",
+					LoginName:    "kazmierczak1",
 				},
 			},
 		},
@@ -178,14 +178,14 @@ func TestRepository_CreateAccount(t *testing.T) {
 				Account: &store.Account{
 					AuthMethodId: authMethod.PublicId,
 					Description:  ("test-description-repo"),
-					UserName:     "kazmierczak2",
+					LoginName:    "kazmierczak2",
 				},
 			},
 			want: &Account{
 				Account: &store.Account{
 					AuthMethodId: authMethod.PublicId,
 					Description:  ("test-description-repo"),
-					UserName:     "kazmierczak2",
+					LoginName:    "kazmierczak2",
 				},
 			},
 		},
@@ -194,7 +194,7 @@ func TestRepository_CreateAccount(t *testing.T) {
 			in: &Account{
 				Account: &store.Account{
 					AuthMethodId: authMethod.PublicId,
-					UserName:     "kazmierczak3",
+					LoginName:    "kazmierczak3",
 				},
 			},
 			opts: []Option{
@@ -203,7 +203,7 @@ func TestRepository_CreateAccount(t *testing.T) {
 			want: &Account{
 				Account: &store.Account{
 					AuthMethodId: authMethod.PublicId,
-					UserName:     "kazmierczak3",
+					LoginName:    "kazmierczak3",
 				},
 			},
 		},
@@ -235,7 +235,7 @@ func TestRepository_CreateAccount(t *testing.T) {
 
 			opts := getOpts(tt.opts...)
 			if opts.withPassword {
-				authAcct, err := repo.Authenticate(context.Background(), tt.in.AuthMethodId, tt.in.UserName, opts.password)
+				authAcct, err := repo.Authenticate(context.Background(), tt.in.AuthMethodId, tt.in.LoginName, opts.password)
 				require.NoError(err)
 				assert.NoError(db.TestVerifyOplog(t, rw, authAcct.CredentialId, db.WithOperation(oplog.OpType_OP_TYPE_CREATE), db.WithCreateNotBefore(10*time.Second)))
 			}
@@ -256,7 +256,7 @@ func TestRepository_CreateAccount(t *testing.T) {
 			Account: &store.Account{
 				AuthMethodId: authMethod.GetPublicId(),
 				Name:         "test-name-repo",
-				UserName:     "kazmierczak3",
+				LoginName:    "kazmierczak3",
 			},
 		}
 
@@ -285,8 +285,8 @@ func TestRepository_CreateAccount(t *testing.T) {
 		authMethoda, authMethodb := authMethods[0], authMethods[1]
 		in := &Account{
 			Account: &store.Account{
-				Name:     "test-name-repo",
-				UserName: "kazmierczak4",
+				Name:      "test-name-repo",
+				LoginName: "kazmierczak4",
 			},
 		}
 		in2 := in.clone()
@@ -543,9 +543,9 @@ func TestRepository_UpdateAccount(t *testing.T) {
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
 
-	changeUserName := func(s string) func(*Account) *Account {
+	changeLoginName := func(s string) func(*Account) *Account {
 		return func(a *Account) *Account {
-			a.UserName = s
+			a.LoginName = s
 			return a
 		}
 	}
@@ -802,14 +802,14 @@ func TestRepository_UpdateAccount(t *testing.T) {
 			name: "change-user-name",
 			orig: &Account{
 				Account: &store.Account{
-					UserName: "kazmierczak",
+					LoginName: "kazmierczak",
 				},
 			},
-			chgFn: changeUserName("mothball"),
-			masks: []string{"UserName"},
+			chgFn: changeLoginName("mothball"),
+			masks: []string{"LoginName"},
 			want: &Account{
 				Account: &store.Account{
-					UserName: "mothball",
+					LoginName: "mothball",
 				},
 			},
 			wantCount: 1,
@@ -818,33 +818,33 @@ func TestRepository_UpdateAccount(t *testing.T) {
 			name: "change-user-name-mixed-caps",
 			orig: &Account{
 				Account: &store.Account{
-					UserName: "kazmierczak",
+					LoginName: "kazmierczak",
 				},
 			},
-			chgFn:     changeUserName("KaZmIeRcZaK"),
-			masks:     []string{"UserName"},
+			chgFn:     changeLoginName("KaZmIeRcZaK"),
+			masks:     []string{"LoginName"},
 			wantIsErr: db.ErrInvalidParameter,
 		},
 		{
 			name: "change-user-name-to-short",
 			orig: &Account{
 				Account: &store.Account{
-					UserName: "kazmierczak",
+					LoginName: "kazmierczak",
 				},
 			},
-			chgFn:     changeUserName("ka"),
-			masks:     []string{"UserName"},
+			chgFn:     changeLoginName("ka"),
+			masks:     []string{"LoginName"},
 			wantIsErr: ErrTooShort,
 		},
 		{
 			name: "delete-user-name",
 			orig: &Account{
 				Account: &store.Account{
-					UserName: "kazmierczak",
+					LoginName: "kazmierczak",
 				},
 			},
-			chgFn:     changeUserName(""),
-			masks:     []string{"UserName"},
+			chgFn:     changeLoginName(""),
+			masks:     []string{"LoginName"},
 			wantIsErr: db.ErrInvalidParameter,
 		},
 	}
@@ -861,8 +861,8 @@ func TestRepository_UpdateAccount(t *testing.T) {
 			am := TestAuthMethods(t, conn, org.PublicId, 1)[0]
 
 			tt.orig.AuthMethodId = am.PublicId
-			if tt.orig.UserName == "" {
-				tt.orig.UserName = "kazmierczak"
+			if tt.orig.LoginName == "" {
+				tt.orig.LoginName = "kazmierczak"
 			}
 			orig, err := repo.CreateAccount(context.Background(), tt.orig)
 			assert.NoError(err)
@@ -959,7 +959,7 @@ func TestRepository_UpdateAccount(t *testing.T) {
 		in2 := in.clone()
 
 		in.AuthMethodId = ama.PublicId
-		in.UserName = "kazmierczak"
+		in.LoginName = "kazmierczak"
 		got, err := repo.CreateAccount(context.Background(), in)
 		assert.NoError(err)
 		require.NotNil(got)
@@ -969,7 +969,7 @@ func TestRepository_UpdateAccount(t *testing.T) {
 		assert.Equal(in.Description, got.Description)
 
 		in2.AuthMethodId = amb.PublicId
-		in2.UserName = "kazmierczak2"
+		in2.LoginName = "kazmierczak2"
 		in2.Name = "first-name"
 		got2, err := repo.CreateAccount(context.Background(), in2)
 		assert.NoError(err)
@@ -985,7 +985,7 @@ func TestRepository_UpdateAccount(t *testing.T) {
 		assert.NoError(db.TestVerifyOplog(t, rw, got2.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_UPDATE), db.WithCreateNotBefore(10*time.Second)))
 	})
 
-	t.Run("invalid-duplicate-usernames", func(t *testing.T) {
+	t.Run("invalid-duplicate-loginnames", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
 		repo, err := NewRepository(rw, rw, wrapper)
 		assert.NoError(err)
@@ -999,16 +999,16 @@ func TestRepository_UpdateAccount(t *testing.T) {
 		aa := acts[0]
 		ab := acts[1]
 
-		aa.UserName = userName
-		got1, gotCount1, err := repo.UpdateAccount(context.Background(), aa, []string{"UserName"})
+		aa.LoginName = userName
+		got1, gotCount1, err := repo.UpdateAccount(context.Background(), aa, []string{"LoginName"})
 		assert.NoError(err)
 		require.NotNil(got1)
-		assert.Equal(userName, got1.UserName)
+		assert.Equal(userName, got1.LoginName)
 		assert.Equal(1, gotCount1, "row count")
 		assert.NoError(db.TestVerifyOplog(t, rw, aa.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_UPDATE), db.WithCreateNotBefore(10*time.Second)))
 
-		ab.UserName = userName
-		got2, gotCount2, err := repo.UpdateAccount(context.Background(), ab, []string{"UserName"})
+		ab.LoginName = userName
+		got2, gotCount2, err := repo.UpdateAccount(context.Background(), ab, []string{"LoginName"})
 		assert.Truef(errors.Is(err, db.ErrNotUnique), "want err: %v got: %v", db.ErrNotUnique, err)
 		assert.Nil(got2)
 		assert.Equal(db.NoRowsAffected, gotCount2, "row count")
@@ -1017,7 +1017,7 @@ func TestRepository_UpdateAccount(t *testing.T) {
 		assert.True(errors.Is(db.ErrRecordNotFound, err))
 	})
 
-	t.Run("valid-duplicate-usernames-diff-AuthMethods", func(t *testing.T) {
+	t.Run("valid-duplicate-loginnames-diff-AuthMethods", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
 		repo, err := NewRepository(rw, rw, wrapper)
 		assert.NoError(err)
@@ -1031,7 +1031,7 @@ func TestRepository_UpdateAccount(t *testing.T) {
 
 		in := &Account{
 			Account: &store.Account{
-				UserName: "kazmierczak",
+				LoginName: "kazmierczak",
 			},
 		}
 		in2 := in.clone()
@@ -1042,19 +1042,19 @@ func TestRepository_UpdateAccount(t *testing.T) {
 		require.NotNil(got)
 		assertPublicId(t, AccountPrefix, got.PublicId)
 		assert.NotSame(in, got)
-		assert.Equal(in.UserName, got.UserName)
+		assert.Equal(in.LoginName, got.LoginName)
 
 		in2.AuthMethodId = amb.PublicId
-		in2.UserName = "kazmierczak2"
+		in2.LoginName = "kazmierczak2"
 		got2, err := repo.CreateAccount(context.Background(), in2)
 		assert.NoError(err)
 		require.NotNil(got2)
-		got2.UserName = got.UserName
-		got3, gotCount3, err := repo.UpdateAccount(context.Background(), got2, []string{"UserName"})
+		got2.LoginName = got.LoginName
+		got3, gotCount3, err := repo.UpdateAccount(context.Background(), got2, []string{"LoginName"})
 		assert.NoError(err)
 		require.NotNil(got3)
 		assert.NotSame(got2, got3)
-		assert.Equal(got.UserName, got3.UserName)
+		assert.Equal(got.LoginName, got3.LoginName)
 		assert.Equal(1, gotCount3, "row count")
 		assert.NoError(db.TestVerifyOplog(t, rw, got2.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_UPDATE), db.WithCreateNotBefore(10*time.Second)))
 	})
