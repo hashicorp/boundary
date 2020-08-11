@@ -158,6 +158,9 @@ func (s Service) createInRepo(ctx context.Context, authMethodId string, item *pb
 		return nil, status.Errorf(codes.InvalidArgument, "Provided attributes don't match expected format.")
 	}
 	opts := []password.Option{password.WithLoginName(pwAttrs.GetLoginName())}
+	if pwAttrs.GetPassword() != nil {
+		opts = append(opts, password.WithPassword(pwAttrs.GetPassword().GetValue()))
+	}
 	if item.GetName() != nil {
 		opts = append(opts, password.WithName(item.GetName().GetValue()))
 	}
