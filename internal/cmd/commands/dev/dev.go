@@ -35,7 +35,7 @@ type Command struct {
 	flagLogFormat                      string
 	flagCombineLogs                    bool
 	flagDev                            bool
-	flagDevUsername                    string
+	flagDevLoginName                   string
 	flagDevPassword                    string
 	flagDevOrgId                       string
 	flagDevAuthMethodId                string
@@ -112,10 +112,10 @@ func (c *Command) Flags() *base.FlagSets {
 	})
 
 	f.StringVar(&base.StringVar{
-		Name:   "dev-username",
-		Target: &c.flagDevUsername,
-		EnvVar: "WATCHTWER_DEV_USERNAME",
-		Usage: "Initial admin username. This only applies when running in \"dev\" " +
+		Name:   "dev-login-name",
+		Target: &c.flagDevLoginName,
+		EnvVar: "WATCHTWER_DEV_LOGIN_NAME",
+		Usage: "Initial admin login name. This only applies when running in \"dev\" " +
 			"mode.",
 	})
 
@@ -186,8 +186,8 @@ func (c *Command) Run(args []string) int {
 		}
 		c.DevAuthMethodId = c.flagDevAuthMethodId
 	}
-	if c.flagDevUsername != "" {
-		c.DevUsername = c.flagDevUsername
+	if c.flagDevLoginName != "" {
+		c.DevLoginName = c.flagDevLoginName
 	}
 	if c.flagDevPassword != "" {
 		c.DevPassword = c.flagDevPassword

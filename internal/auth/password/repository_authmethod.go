@@ -157,19 +157,19 @@ func (r *Repository) DeleteAuthMethod(ctx context.Context, publicId string, opt 
 	return rowsDeleted, nil
 }
 
-// TODO: Fix the MinPasswordLength and MinUserNameLength update path so they dont have
+// TODO: Fix the MinPasswordLength and MinLoginNameLength update path so they dont have
 //  to rely on the response of NewAuthMethod but instead can be unset in order to be
 //  set to the default values.
 
 // UpdateAuthMethod will update an auth method in the repository and return
-// the written auth method.  MinPasswordLength and MinUserNameLength should
+// the written auth method.  MinPasswordLength and MinLoginNameLength should
 // not be set to null, but instead use the default values returned by
 // NewAuthMethod.  fieldMaskPaths provides field_mask.proto paths for fields
 // that should be updated.  Fields will be set to NULL if the field is a zero
 // value and included in fieldMask. Name, Description, MinPasswordLength,
-// and MinUserNameLength are the only updatable fields, If no updatable fields
+// and MinLoginNameLength are the only updatable fields, If no updatable fields
 // are included in the fieldMaskPaths, then an error is returned.
-func (r *Repository) UpdateAuthMethod(ctx context.Context, authMethod *AuthMethod, fieldMaskPaths []string, opt ...Option) (*AuthMethod, int, error) {
+func (r *Repository) UpdateAuthMethod(ctx context.Context, authMethod *AuthMethod, version uint32, fieldMaskPaths []string, opt ...Option) (*AuthMethod, int, error) {
 	if authMethod == nil {
 		return nil, db.NoRowsAffected, fmt.Errorf("update: password auth method: missing authMethod: %w", db.ErrNilParameter)
 	}
@@ -180,7 +180,7 @@ func (r *Repository) UpdateAuthMethod(ctx context.Context, authMethod *AuthMetho
 		switch {
 		case strings.EqualFold("name", f):
 		case strings.EqualFold("description", f):
-		case strings.EqualFold("MinUserNameLength", f):
+		case strings.EqualFold("MinLoginNameLength", f):
 		case strings.EqualFold("MinPasswordLength", f):
 		default:
 			return nil, db.NoRowsAffected, fmt.Errorf("update: password auth method: field: %s: %w", f, db.ErrInvalidFieldMask)
@@ -207,7 +207,10 @@ func (r *Repository) UpdateAuthMethod(ctx context.Context, authMethod *AuthMetho
 		db.StdRetryCnt,
 		db.ExpBackoff{},
 		func(_ db.Reader, w db.Writer) error {
-			dbOpts := []db.Option{db.WithOplog(r.wrapper, upAuthMethod.oplog(oplog.OpType_OP_TYPE_UPDATE))}
+			dbOpts := []db.Option{
+				db.WithOplog(r.wrapper, upAuthMethod.oplog(oplog.OpType_OP_TYPE_UPDATE)),
+				db.WithVersion(&version),
+			}
 			var err error
 			rowsUpdated, err = w.Update(
 				ctx,

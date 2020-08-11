@@ -36,8 +36,8 @@ type structInfo struct {
 
 	// Subtype name for types implementing an abstract resource type. This is
 	// used as text to insert into With/Default function calls to separate out
-	// implementations of the same abstract type. This way e.g. a WithUsername
-	// option turns into WithPasswordAccountUsername which is wordy but
+	// implementations of the same abstract type. This way e.g. a WithLoginName
+	// option turns into WithPasswordAccountLoginName which is wordy but
 	// unambiguous. It also switches the behavior of the functions to work on
 	// the attributes map.
 	subtypeName string
@@ -184,7 +184,8 @@ var inputStructs = []*structInfo{
 			deleteTemplate,
 			listTemplate,
 		},
-		pathArgs: []string{"auth-method"},
+		pathArgs:       []string{"auth-method"},
+		versionEnabled: true,
 	},
 	{
 		inProto:     &authmethods.PasswordAuthMethodAttributes{},
@@ -202,7 +203,8 @@ var inputStructs = []*structInfo{
 			deleteTemplate,
 			listTemplate,
 		},
-		pathArgs: []string{"auth-method", "account"},
+		pathArgs:       []string{"auth-method", "account"},
+		versionEnabled: true,
 	},
 	{
 		inProto:     &authmethods.PasswordAccountAttributes{},
@@ -233,7 +235,8 @@ var inputStructs = []*structInfo{
 			deleteTemplate,
 			listTemplate,
 		},
-		pathArgs: []string{"host-catalog"},
+		pathArgs:       []string{"host-catalog"},
+		versionEnabled: true,
 	},
 	{
 		inProto: &hosts.Host{},
@@ -246,6 +249,24 @@ var inputStructs = []*structInfo{
 			deleteTemplate,
 			listTemplate,
 		},
-		pathArgs: []string{"host-catalog", "host"},
+		pathArgs:       []string{"host-catalog", "host"},
+		versionEnabled: true,
+	},
+	{
+		inProto: &hosts.HostSet{},
+		outFile: "hosts/host_set.gen.go",
+		templates: []*template.Template{
+			clientTemplate,
+			createTemplate,
+			readTemplate,
+			updateTemplate,
+			deleteTemplate,
+			listTemplate,
+		},
+		pathArgs: []string{"host-catalog", "host-set"},
+		sliceSubTypes: map[string]string{
+			"Hosts": "hostIds",
+		},
+		versionEnabled: true,
 	},
 }

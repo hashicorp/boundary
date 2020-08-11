@@ -41,16 +41,21 @@ message Account {
 	// Whether the resource is disabled
 	google.protobuf.BoolValue disabled = 8 [(custom_options.v1.generate_sdk_option) = true];
 
+	// The version can be used in subsequent write requests to ensure this resource
+	// has not changed and to fail the write if it has.
+	// Output only.
+	uint32 version = 9;
+
 	// The type of this account.  Possible values are: "password", "oidc".
-	string type = 9;
+	string type = 10;
 
 	// The attributes that are applicable for the specific Account type.
-	google.protobuf.Struct attributes = 10 [(custom_options.v1.generate_sdk_option) = true];
+	google.protobuf.Struct attributes = 11 [(custom_options.v1.generate_sdk_option) = true];
 }
 
 message PasswordAccountAttributes {
-	// The username of this account.  This is unique per auth method.
-	string login_name = 1 [(custom_options.v1.generate_sdk_option) = true, (custom_options.v1.mask_mapping) = {this:"attributes.login_name" that: "login_name"}];
+	// The login name of this account.  This is unique per auth method.
+	string login_name = 1 [(custom_options.v1.generate_sdk_option) = true];
 	// The password for this account.
-	google.protobuf.StringValue password = 2;
+	google.protobuf.StringValue password = 2 [(custom_options.v1.generate_sdk_option) = true];
 }

@@ -211,6 +211,7 @@ func toProto(in *password.Account) (*pb.Account, error) {
 		CreatedTime:  in.GetCreateTime().GetTimestamp(),
 		UpdatedTime:  in.GetUpdateTime().GetTimestamp(),
 		AuthMethodId: in.GetAuthMethodId(),
+		Version:      in.GetVersion(),
 		Type:         "password",
 	}
 	if in.GetDescription() != "" {
@@ -219,7 +220,7 @@ func toProto(in *password.Account) (*pb.Account, error) {
 	if in.GetName() != "" {
 		out.Name = &wrapperspb.StringValue{Value: in.GetName()}
 	}
-	if st, err := handlers.ProtoToStruct(&pb.PasswordAccountAttributes{LoginName: in.GetUserName()}); err == nil {
+	if st, err := handlers.ProtoToStruct(&pb.PasswordAccountAttributes{LoginName: in.GetLoginName()}); err == nil {
 		out.Attributes = st
 	} else {
 		return nil, status.Errorf(codes.Internal, "failed building password attribute struct: %v", err)

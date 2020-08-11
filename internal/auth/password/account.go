@@ -25,16 +25,16 @@ func allocAccount() Account {
 	}
 }
 
-// NewAccount creates a new in memory Account with userName assigned to
+// NewAccount creates a new in memory Account with loginName assigned to
 // authMethodId. Name and description are the only valid options. All other
 // options are ignored.
-func NewAccount(authMethodId string, userName string, opt ...Option) (*Account, error) {
+func NewAccount(authMethodId string, loginName string, opt ...Option) (*Account, error) {
 	// NOTE(mgaffney): The scopeId in the embedded *store.Account is
 	// populated by a trigger in the database.
 	if authMethodId == "" {
 		return nil, fmt.Errorf("new: password account: no auth method id: %w", db.ErrInvalidParameter)
 	}
-	if userName == "" {
+	if loginName == "" {
 		return nil, fmt.Errorf("new: password account: no user name: %w", db.ErrInvalidParameter)
 	}
 
@@ -42,7 +42,7 @@ func NewAccount(authMethodId string, userName string, opt ...Option) (*Account, 
 	a := &Account{
 		Account: &store.Account{
 			AuthMethodId: authMethodId,
-			LoginName:    userName,
+			LoginName:    loginName,
 			Name:         opts.withName,
 			Description:  opts.withDescription,
 		},

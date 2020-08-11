@@ -21,10 +21,10 @@ message AuthMethod {
 	resources.scopes.v1.ScopeInfo scope = 2;
 
 	// Optional name for identification purposes
-	google.protobuf.StringValue name = 3 [(custom_options.v1.mask_mapping) = {this:"name" that: "name"}];
+	google.protobuf.StringValue name = 3 [(custom_options.v1.generate_sdk_option) = true, (custom_options.v1.mask_mapping) = {this:"name" that: "name"}];
 
-	// Optional user-set descripton for identification purposes
-	google.protobuf.StringValue description = 4 [(custom_options.v1.mask_mapping) = {this:"description" that: "description"}];
+	// Optional user-set description for identification purposes
+	google.protobuf.StringValue description = 4 [(custom_options.v1.generate_sdk_option) = true, (custom_options.v1.mask_mapping) = {this:"description" that: "description"}];
 
 	// The time this resource was created
 	// Output only.
@@ -34,17 +34,22 @@ message AuthMethod {
 	// Output only.
 	google.protobuf.Timestamp updated_time = 6 [json_name="updated_time"];
 
+	// The version can be used in subsequent write requests to ensure this resource
+	// has not changed and to fail the write if it has.
+	// Output only.
+	uint32 version = 7;
+
 	// The auth method type.  This can be "password" or "oidc".
-	string type = 7;
+	string type = 8 [(custom_options.v1.generate_sdk_option) = true];
 
 	// The attributes that are applied for the specific Auth Method type.
-	google.protobuf.Struct attributes = 8;
+	google.protobuf.Struct attributes = 9 [(custom_options.v1.generate_sdk_option) = true];
 }
 
 message PasswordAuthMethodAttributes {
-	// The minimum length allowed for login names for accounts in this auth method.
-	uint32 min_login_name_length = 1 [(custom_options.v1.mask_mapping) = {this:"attributes.min_login_name_length" that: "min_login_name_length"}];
+	// The minimum length allowed for user names for accounts in this auth method.
+	uint32 min_login_name_length = 1 [(custom_options.v1.generate_sdk_option) = true];
 
 	// The minimum length allowed for passwords for accounts in this auth method.
-	uint32 min_password_length = 2 [(custom_options.v1.mask_mapping) = {this:"attributes.min_password_length" that: "min_password_length"}];
+	uint32 min_password_length = 2 [(custom_options.v1.generate_sdk_option) = true];
 }

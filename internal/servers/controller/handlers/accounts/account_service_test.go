@@ -48,8 +48,9 @@ func TestGet(t *testing.T) {
 		CreatedTime:  aa.GetCreateTime().GetTimestamp(),
 		UpdatedTime:  aa.GetUpdateTime().GetTimestamp(),
 		Scope:        &scopes.ScopeInfo{Id: org.GetPublicId(), Type: scope.Org.String()},
+		Version:      1,
 		Type:         "password",
-		Attributes:   &structpb.Struct{Fields: map[string]*structpb.Value{"username": structpb.NewStringValue(aa.GetUserName())}},
+		Attributes:   &structpb.Struct{Fields: map[string]*structpb.Value{"login_name": structpb.NewStringValue(aa.GetLoginName())}},
 	}
 
 	cases := []struct {
@@ -113,8 +114,9 @@ func TestList(t *testing.T) {
 			CreatedTime:  aa.GetCreateTime().GetTimestamp(),
 			UpdatedTime:  aa.GetUpdateTime().GetTimestamp(),
 			Scope:        &scopes.ScopeInfo{Id: o.GetPublicId(), Type: scope.Org.String()},
+			Version:      1,
 			Type:         "password",
-			Attributes:   &structpb.Struct{Fields: map[string]*structpb.Value{"username": structpb.NewStringValue(aa.GetUserName())}},
+			Attributes:   &structpb.Struct{Fields: map[string]*structpb.Value{"login_name": structpb.NewStringValue(aa.GetLoginName())}},
 		})
 	}
 
@@ -126,8 +128,9 @@ func TestList(t *testing.T) {
 			CreatedTime:  aa.GetCreateTime().GetTimestamp(),
 			UpdatedTime:  aa.GetUpdateTime().GetTimestamp(),
 			Scope:        &scopes.ScopeInfo{Id: o.GetPublicId(), Type: scope.Org.String()},
+			Version:      1,
 			Type:         "password",
-			Attributes:   &structpb.Struct{Fields: map[string]*structpb.Value{"username": structpb.NewStringValue(aa.GetUserName())}},
+			Attributes:   &structpb.Struct{Fields: map[string]*structpb.Value{"login_name": structpb.NewStringValue(aa.GetLoginName())}},
 		})
 	}
 
@@ -299,7 +302,7 @@ func TestCreate(t *testing.T) {
 	defaultCreated, err := ptypes.Timestamp(defaultAccount.GetCreateTime().GetTimestamp())
 	require.NoError(t, err, "Error converting proto to timestamp.")
 
-	defaultSt, err := handlers.ProtoToStruct(&pb.PasswordAccountAttributes{LoginName: "thetestusername"})
+	defaultSt, err := handlers.ProtoToStruct(&pb.PasswordAccountAttributes{LoginName: "thetestloginname"})
 	require.NoError(t, err, "Error converting proto to struct.")
 
 	cases := []struct {
@@ -326,6 +329,7 @@ func TestCreate(t *testing.T) {
 					Name:         &wrapperspb.StringValue{Value: "name"},
 					Description:  &wrapperspb.StringValue{Value: "desc"},
 					Scope:        &scopes.ScopeInfo{Id: o.GetPublicId(), Type: scope.Org.String()},
+					Version:      1,
 					Type:         "password",
 					Attributes:   defaultSt,
 				},
@@ -396,7 +400,7 @@ func TestCreate(t *testing.T) {
 			errCode: codes.InvalidArgument,
 		},
 		{
-			name: "Must specify username for password type",
+			name: "Must specify login name for password type",
 			req: &pbs.CreateAccountRequest{
 				AuthMethodId: defaultAccount.GetAuthMethodId(),
 				Item: &pb.Account{

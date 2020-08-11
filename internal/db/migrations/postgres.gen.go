@@ -1351,8 +1351,14 @@ begin;
     description text,
     create_time wt_timestamp,
     update_time wt_timestamp,
+    version wt_version not null default 1,
     unique(scope_id, name)
   );
+
+  create trigger
+    update_version_column
+  after update on static_host_catalog
+    for each row execute procedure update_version_column();
 
   create trigger
     update_time_column
@@ -1387,8 +1393,14 @@ begin;
     ),
     create_time wt_timestamp,
     update_time wt_timestamp,
+    version wt_version not null default 1,
     unique(static_host_catalog_id, name)
   );
+
+  create trigger
+    update_version_column
+  after update on static_host
+    for each row execute procedure update_version_column();
 
   create trigger
     update_time_column
@@ -1417,8 +1429,14 @@ begin;
     description text,
     create_time wt_timestamp,
     update_time wt_timestamp,
+    version wt_version not null default 1,
     unique(static_host_catalog_id, name)
   );
+
+  create trigger
+    update_version_column
+  after update on static_host_set
+    for each row execute procedure update_version_column();
 
   create trigger
     update_time_column
@@ -1705,8 +1723,9 @@ begin;
     description text,
     create_time wt_timestamp,
     update_time wt_timestamp,
-    min_user_name_length int not null default 3,
+    min_login_name_length int not null default 3,
     min_password_length int not null default 8,
+    version wt_version not null default 1,
     foreign key (scope_id, public_id)
       references auth_method (scope_id, public_id)
       on delete cascade
@@ -1714,6 +1733,11 @@ begin;
     unique(scope_id, name),
     unique(scope_id, public_id)
   );
+
+  create trigger
+    update_version_column
+  after update on auth_password_method
+    for each row execute procedure update_version_column();
 
   create trigger
     insert_auth_method_subtype
@@ -1731,12 +1755,13 @@ begin;
     description text,
     create_time wt_timestamp,
     update_time wt_timestamp,
-    user_name text not null
+    login_name text not null
       check(
-        lower(trim(user_name)) = user_name
+        lower(trim(login_name)) = login_name
         and
-        length(user_name) > 0
+        length(login_name) > 0
       ),
+    version wt_version not null default 1,
     foreign key (scope_id, auth_method_id)
       references auth_password_method (scope_id, public_id)
       on delete cascade
@@ -1746,9 +1771,14 @@ begin;
       on delete cascade
       on update cascade,
     unique(auth_method_id, name),
-    unique(auth_method_id, user_name),
+    unique(auth_method_id, login_name),
     unique(auth_method_id, public_id)
   );
+
+  create trigger
+    update_version_column
+  after update on auth_password_account
+    for each row execute procedure update_version_column();
 
   create trigger
     insert_auth_account_subtype
@@ -1905,7 +1935,8 @@ begin;
     (name, version)
   values
     ('auth_password_method', 1),
-    ('auth_password_account', 1);
+    ('auth_password_account', 1),
+    ('auth_password_credential', 1);
 
 commit;
 
@@ -2101,7 +2132,7 @@ begin;
   -- but the query to create the view should not need to be updated.
   create or replace view auth_password_current_conf as
       -- Rerun this query whenever auth_password_conf_union is updated.
-      select pm.min_user_name_length, pm.min_password_length, c.*
+      select pm.min_login_name_length, pm.min_password_length, c.*
         from auth_password_method pm
   inner join auth_password_conf_union c
           on pm.password_conf_id = c.password_conf_id;

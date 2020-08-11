@@ -5,15 +5,20 @@ import (
 	"errors"
 	"fmt"
 	"regexp"
+	"strings"
 
 	"github.com/hashicorp/boundary/internal/db"
+	dbcommon "github.com/hashicorp/boundary/internal/db/common"
 	"github.com/hashicorp/boundary/internal/oplog"
 )
 
-// CreateAccount inserts a into the repository and returns a new
-// Account containing the account's PublicId. a is not changed. a must
-// contain a valid AuthMethodId. a must not contain a PublicId. The PublicId is
+// CreateAccount inserts a into the repository and returns a new Account
+// containing the account's PublicId. a is not changed. a must contain a
+// valid AuthMethodId. a must not contain a PublicId. The PublicId is
 // generated and assigned by this method.
+//
+// a must contain a valid LoginName. a.LoginName must be unique within
+// a.AuthMethodId.
 //
 // WithPassword is the only valid option. All other options are ignored.
 //
@@ -32,7 +37,7 @@ func (r *Repository) CreateAccount(ctx context.Context, a *Account, opt ...Optio
 	if a.PublicId != "" {
 		return nil, fmt.Errorf("create: password account: public id not empty: %w", db.ErrInvalidParameter)
 	}
-	if !validUserName(a.UserName) {
+	if !validLoginName(a.LoginName) {
 		return nil, fmt.Errorf("create: password account: invalid user name: %w", db.ErrInvalidParameter)
 	}
 
@@ -41,8 +46,8 @@ func (r *Repository) CreateAccount(ctx context.Context, a *Account, opt ...Optio
 		return nil, fmt.Errorf("create: password account: retrieve current configuration: %w", err)
 	}
 
-	if cc.MinUserNameLength > len(a.UserName) {
-		return nil, fmt.Errorf("create: password account: user name %q: %w", a.UserName, ErrTooShort)
+	if cc.MinLoginNameLength > len(a.LoginName) {
+		return nil, fmt.Errorf("create: password account: user name %q: %w", a.LoginName, ErrTooShort)
 	}
 
 	a = a.clone()
@@ -164,11 +169,104 @@ func (r *Repository) DeleteAccount(ctx context.Context, withPublicId string, opt
 	return rowsDeleted, nil
 }
 
-var reInvalidUserName = regexp.MustCompile("[^a-z0-9.]")
+var reInvalidLoginName = regexp.MustCompile("[^a-z0-9.]")
 
-func validUserName(u string) bool {
+func validLoginName(u string) bool {
 	if u == "" {
 		return false
 	}
-	return !reInvalidUserName.Match([]byte(u))
+	return !reInvalidLoginName.Match([]byte(u))
+}
+
+// UpdateAccount updates the repository entry for a.PublicId with the
+// values in a for the fields listed in fieldMaskPaths. It returns a new
+// Account containing the updated values and a count of the number of
+// records updated. a is not changed.
+//
+// a must contain a valid PublicId. Only a.Name, a.Description and
+// a.LoginName can be updated. If a.Name is set to a non-empty string, it
+// must be unique within a.AuthMethodId. If a.LoginName is set to a
+// non-empty string, it must be unique within a.AuthMethodId.
+//
+// An attribute of a will be set to NULL in the database if the attribute
+// in a is the zero value and it is included in fieldMaskPaths. a.LoginName
+// cannot be set to NULL.
+func (r *Repository) UpdateAccount(ctx context.Context, a *Account, version uint32, fieldMaskPaths []string, opt ...Option) (*Account, int, error) {
+	if a == nil {
+		return nil, db.NoRowsAffected, fmt.Errorf("update: password account: %w", db.ErrNilParameter)
+	}
+	if a.Account == nil {
+		return nil, db.NoRowsAffected, fmt.Errorf("update: password account: embedded Account: %w", db.ErrNilParameter)
+	}
+	if a.PublicId == "" {
+		return nil, db.NoRowsAffected, fmt.Errorf("update: password account: missing public id: %w", db.ErrInvalidParameter)
+	}
+	if version == 0 {
+		return nil, db.NoRowsAffected, fmt.Errorf("update: password account: no version supplied: %w", db.ErrInvalidParameter)
+	}
+
+	var changeLoginName bool
+	for _, f := range fieldMaskPaths {
+		switch {
+		case strings.EqualFold("Name", f):
+		case strings.EqualFold("Description", f):
+		case strings.EqualFold("LoginName", f):
+			if !validLoginName(a.LoginName) {
+				return nil, db.NoRowsAffected, fmt.Errorf("update: password account: invalid user name: %w", db.ErrInvalidParameter)
+			}
+			changeLoginName = true
+		default:
+			return nil, db.NoRowsAffected, fmt.Errorf("update: password account: field: %s: %w", f, db.ErrInvalidFieldMask)
+		}
+	}
+	var dbMask, nullFields []string
+	dbMask, nullFields = dbcommon.BuildUpdatePaths(
+		map[string]interface{}{
+			"Name":        a.Name,
+			"Description": a.Description,
+			"LoginName":   a.LoginName,
+		},
+		fieldMaskPaths,
+	)
+	if len(dbMask) == 0 && len(nullFields) == 0 {
+		return nil, db.NoRowsAffected, fmt.Errorf("update: password account: %w", db.ErrEmptyFieldMask)
+	}
+
+	if changeLoginName {
+		cc, err := r.currentConfigForAccount(ctx, a.PublicId)
+		if err != nil {
+			return nil, db.NoRowsAffected, fmt.Errorf("update: password account: retrieve current configuration: %w", err)
+		}
+		if cc.MinLoginNameLength > len(a.LoginName) {
+			return nil, db.NoRowsAffected, fmt.Errorf("update: password account: user name %q: %w", a.LoginName, ErrTooShort)
+		}
+	}
+
+	a = a.clone()
+
+	metadata := a.oplog(oplog.OpType_OP_TYPE_UPDATE)
+
+	var rowsUpdated int
+	var returnedAccount *Account
+	_, err := r.writer.DoTx(ctx, db.StdRetryCnt, db.ExpBackoff{},
+		func(_ db.Reader, w db.Writer) error {
+			returnedAccount = a.clone()
+			var err error
+			rowsUpdated, err = w.Update(ctx, returnedAccount, dbMask, nullFields, db.WithOplog(r.wrapper, metadata), db.WithVersion(&version))
+			if err == nil && rowsUpdated > 1 {
+				return db.ErrMultipleRecords
+			}
+			return err
+		},
+	)
+
+	if err != nil {
+		if db.IsUniqueError(err) {
+			return nil, db.NoRowsAffected, fmt.Errorf("update: password account: %s: name %s already exists: %w",
+				a.PublicId, a.Name, db.ErrNotUnique)
+		}
+		return nil, db.NoRowsAffected, fmt.Errorf("update: password account: %s: %w", a.PublicId, err)
+	}
+
+	return returnedAccount, rowsUpdated, nil
 }

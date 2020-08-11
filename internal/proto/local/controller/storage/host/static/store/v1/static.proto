@@ -32,6 +32,10 @@ message HostCatalog {
   // The scope_id of the owning scope and must be set.
   // @inject_tag: gorm:"not_null"
   string scope_id = 6;
+
+  // version allows optimistic locking of the resource
+  // @inject_tag: `gorm:"default:null"`
+  uint32 version = 7;
 }
 
 message Host {
@@ -65,6 +69,10 @@ message Host {
   // it must be unique within static_host_catalog_id.
   // @inject_tag: gorm:"not_null"
   string address = 7;
+
+  // version allows optimistic locking of the resource
+  // @inject_tag: `gorm:"default:null"`
+  uint32 version = 8;
 }
 
 message HostSet {
@@ -93,6 +101,10 @@ message HostSet {
   // static_host_catalog and must be set.
   // @inject_tag: gorm:"not_null"
   string static_host_catalog_id = 6;
+
+  // version allows optimistic locking of the resource
+  // @inject_tag: `gorm:"default:null"`
+  uint32 version = 7;
 }
 
 message HostSetMember {

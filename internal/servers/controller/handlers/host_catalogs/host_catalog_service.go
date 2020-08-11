@@ -142,7 +142,7 @@ func (s Service) UpdateHostCatalog(ctx context.Context, req *pbs.UpdateHostCatal
 	if err := validateUpdateRequest(req, ct); err != nil {
 		return nil, err
 	}
-	hc, err := s.updateInRepo(ctx, authResults.Scope.GetId(), req.GetId(), req.GetUpdateMask().GetPaths(), req.GetItem())
+	hc, err := s.updateInRepo(ctx, authResults.Scope.GetId(), req.GetId(), req.GetVersion(), req.GetUpdateMask().GetPaths(), req.GetItem())
 	if err != nil {
 		return nil, err
 	}
@@ -211,7 +211,7 @@ func (s Service) createInRepo(ctx context.Context, projId string, item *pb.HostC
 	return toProto(out), nil
 }
 
-func (s Service) updateInRepo(ctx context.Context, projId, id string, mask []string, item *pb.HostCatalog) (*pb.HostCatalog, error) {
+func (s Service) updateInRepo(ctx context.Context, projId, id string, version uint32, mask []string, item *pb.HostCatalog) (*pb.HostCatalog, error) {
 	var opts []static.Option
 	if desc := item.GetDescription(); desc != nil {
 		opts = append(opts, static.WithDescription(desc.GetValue()))
@@ -232,7 +232,7 @@ func (s Service) updateInRepo(ctx context.Context, projId, id string, mask []str
 	if err != nil {
 		return nil, err
 	}
-	out, rowsUpdated, err := repo.UpdateCatalog(ctx, h, dbMask)
+	out, rowsUpdated, err := repo.UpdateCatalog(ctx, h, version, dbMask)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "Unable to update host catalog: %v.", err)
 	}
@@ -260,6 +260,7 @@ func toProto(in *static.HostCatalog) *pb.HostCatalog {
 		Type:        &wrapperspb.StringValue{Value: staticType.String()},
 		CreatedTime: in.GetCreateTime().GetTimestamp(),
 		UpdatedTime: in.GetUpdateTime().GetTimestamp(),
+		Version:     in.GetVersion(),
 	}
 	if in.GetDescription() != "" {
 		out.Description = &wrapperspb.StringValue{Value: in.GetDescription()}
@@ -323,6 +324,9 @@ func validateUpdateRequest(req *pbs.UpdateHostCatalogRequest, ct catalogType) er
 
 	if req.GetUpdateMask() == nil {
 		badFields["update_mask"] = "This field is required."
+	}
+	if req.GetVersion() == 0 {
+		badFields["version"] = "Existing resource version is required for an update."
 	}
 
 	item := req.GetItem()

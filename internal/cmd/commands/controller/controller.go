@@ -45,7 +45,7 @@ type Command struct {
 	flagLogFormat                      string
 	flagCombineLogs                    bool
 	flagDev                            bool
-	flagDevUsername                    string
+	flagDevLoginName                   string
 	flagDevPassword                    string
 	flagDevControllerAPIListenAddr     string
 	flagDevControllerClusterListenAddr string
@@ -139,10 +139,10 @@ func (c *Command) Flags() *base.FlagSets {
 	})
 
 	f.StringVar(&base.StringVar{
-		Name:   "dev-username",
-		Target: &c.flagDevUsername,
-		EnvVar: "WATCHTWER_DEV_USERNAME",
-		Usage: "Initial admin username. This only applies when running in \"dev\" " +
+		Name:   "dev-login-name",
+		Target: &c.flagDevLoginName,
+		EnvVar: "WATCHTWER_DEV_LOGIN_NAME",
+		Usage: "Initial admin login name. This only applies when running in \"dev\" " +
 			"mode.",
 	})
 
@@ -337,11 +337,11 @@ func (c *Command) ParseFlagsAndConfig(args []string) int {
 				"You cannot specify a custom admin password outside of \"dev\" mode. " +
 					"Your request has been ignored."))
 			c.flagDevPassword = ""
-		case c.flagDevUsername != "":
+		case c.flagDevLoginName != "":
 			c.UI.Warn(base.WrapAtLength(
-				"You cannot specify a custom admin username outside of \"dev\" mode. " +
+				"You cannot specify a custom admin login name outside of \"dev\" mode. " +
 					"Your request has been ignored."))
-			c.flagDevUsername = ""
+			c.flagDevLoginName = ""
 		}
 
 		c.Config, err = config.LoadFile(c.flagConfig, c.configKMS)
@@ -372,8 +372,8 @@ func (c *Command) ParseFlagsAndConfig(args []string) int {
 			}
 			c.DevAuthMethodId = c.flagDevAuthMethodId
 		}
-		if c.flagDevUsername != "" {
-			c.DevUsername = c.flagDevUsername
+		if c.flagDevLoginName != "" {
+			c.DevLoginName = c.flagDevLoginName
 		}
 		if c.flagDevPassword != "" {
 			c.DevPassword = c.flagDevPassword

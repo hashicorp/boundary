@@ -24,7 +24,7 @@ func allocAuthMethod() AuthMethod {
 
 // NewAuthMethod creates a new in memory AuthMethod assigned to scopeId.
 // Name and description are the only valid options. All other options are
-// ignored.  MinUserNameLength and MinPasswordLength are pre-set to the
+// ignored.  MinLoginNameLength and MinPasswordLength are pre-set to the
 // default values of 5 and 8 respectively.
 func NewAuthMethod(scopeId string, opt ...Option) (*AuthMethod, error) {
 	if scopeId == "" {

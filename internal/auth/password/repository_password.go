@@ -3,6 +3,7 @@ package password
 import (
 	"context"
 	"crypto/subtle"
+	"errors"
 	"fmt"
 
 	"github.com/hashicorp/boundary/internal/db"
@@ -17,8 +18,8 @@ type authAccount struct {
 	IsCurrentConf bool
 }
 
-// Authenticate authenticates userName and password match for userName in
-// authMethodId. The account for the userName is returned if authentication
+// Authenticate authenticates loginName and password match for loginName in
+// authMethodId. The account for the loginName is returned if authentication
 // is successful. Returns nil if authentication fails.
 //
 // The CredentialId in the returned account represents a user's current
@@ -28,18 +29,18 @@ type authAccount struct {
 // Authenticate will update the stored values for password to the current
 // password settings for authMethodId if authentication is successful and
 // the stored values are not using the current password settings.
-func (r *Repository) Authenticate(ctx context.Context, authMethodId string, userName string, password string) (*Account, error) {
+func (r *Repository) Authenticate(ctx context.Context, authMethodId string, loginName string, password string) (*Account, error) {
 	if authMethodId == "" {
 		return nil, fmt.Errorf("password authenticate: no authMethodId: %w", db.ErrInvalidParameter)
 	}
-	if userName == "" {
-		return nil, fmt.Errorf("password authenticate: no userName: %w", db.ErrInvalidParameter)
+	if loginName == "" {
+		return nil, fmt.Errorf("password authenticate: no loginName: %w", db.ErrInvalidParameter)
 	}
 	if password == "" {
 		return nil, fmt.Errorf("password authenticate: no password: %w", db.ErrInvalidParameter)
 	}
 
-	acct, err := r.authenticate(ctx, authMethodId, userName, password)
+	acct, err := r.authenticate(ctx, authMethodId, loginName, password)
 	if err != nil {
 		return nil, fmt.Errorf("password authenticate: %w", err)
 	}
@@ -82,18 +83,18 @@ func (r *Repository) Authenticate(ctx context.Context, authMethodId string, user
 	return acct.Account, nil
 }
 
-// ChangePassword updates the password for userName in authMethodId to new
-// if old equals the stored password. The account for the userName is
+// ChangePassword updates the password for loginName in authMethodId to new
+// if old equals the stored password. The account for the loginName is
 // returned with a new CredentialId if password is successfully changed.
 //
-// Returns nil if old does not match the stored password for userName.
+// Returns nil if old does not match the stored password for loginName.
 // Returns ErrPasswordsEqual if old and new are equal.
-func (r *Repository) ChangePassword(ctx context.Context, authMethodId string, userName string, old, new string) (*Account, error) {
+func (r *Repository) ChangePassword(ctx context.Context, authMethodId string, loginName string, old, new string) (*Account, error) {
 	if authMethodId == "" {
 		return nil, fmt.Errorf("change password: no authMethodId: %w", db.ErrInvalidParameter)
 	}
-	if userName == "" {
-		return nil, fmt.Errorf("change password: no userName: %w", db.ErrInvalidParameter)
+	if loginName == "" {
+		return nil, fmt.Errorf("change password: no loginName: %w", db.ErrInvalidParameter)
 	}
 	if old == "" {
 		return nil, fmt.Errorf("change password: no old password: %w", db.ErrInvalidParameter)
@@ -105,7 +106,7 @@ func (r *Repository) ChangePassword(ctx context.Context, authMethodId string, us
 		return nil, fmt.Errorf("change password: %w", ErrPasswordsEqual)
 	}
 
-	acct, err := r.authenticate(ctx, authMethodId, userName, old)
+	acct, err := r.authenticate(ctx, authMethodId, loginName, old)
 	if err != nil {
 		return nil, fmt.Errorf("change password: %w", err)
 	}
@@ -152,14 +153,14 @@ func (r *Repository) ChangePassword(ctx context.Context, authMethodId string, us
 	return acct.Account, nil
 }
 
-func (r *Repository) authenticate(ctx context.Context, authMethodId string, userName string, password string) (*authAccount, error) {
+func (r *Repository) authenticate(ctx context.Context, authMethodId string, loginName string, password string) (*authAccount, error) {
 	var accts []authAccount
 
 	tx, err := r.reader.DB()
 	if err != nil {
 		return nil, err
 	}
-	rows, err := tx.Query(authenticateQuery, authMethodId, userName)
+	rows, err := tx.Query(authenticateQuery, authMethodId, loginName)
 	if err != nil {
 		return nil, err
 	}
@@ -193,4 +194,59 @@ func (r *Repository) authenticate(ctx context.Context, authMethodId string, user
 		return nil, nil
 	}
 	return &acct, nil
+}
+
+// SetPassword sets the password for accountId to password. If password
+// contains an empty string, the password for accountId will be deleted.
+func (r *Repository) SetPassword(ctx context.Context, accountId string, password string) error {
+	if accountId == "" {
+		return fmt.Errorf("set password: no accountId: %w", db.ErrInvalidParameter)
+	}
+
+	var newCred *Argon2Credential
+	if password != "" {
+		cc, err := r.currentConfigForAccount(ctx, accountId)
+		if err != nil {
+			return fmt.Errorf("set password: retrieve current configuration: %w", err)
+		}
+		if cc.MinPasswordLength > len(password) {
+			return fmt.Errorf("set password: new password: %w", ErrTooShort)
+		}
+		newCred, err = newArgon2Credential(accountId, password, cc.argon2())
+		if err != nil {
+			return fmt.Errorf("set password: %w", err)
+		}
+		if err := newCred.encrypt(ctx, r.wrapper); err != nil {
+			return fmt.Errorf("set password: encrypt: %w", err)
+		}
+	}
+
+	_, err := r.writer.DoTx(ctx, db.StdRetryCnt, db.ExpBackoff{},
+		func(rr db.Reader, w db.Writer) error {
+			oldCred := allocCredential()
+			if err := rr.LookupWhere(ctx, &oldCred, "password_account_id = ?", accountId); err != nil {
+				if !errors.Is(err, db.ErrRecordNotFound) {
+					return err
+				}
+			}
+			if oldCred.PrivateId != "" {
+				dCred := oldCred.clone()
+				rowsDeleted, err := w.Delete(ctx, dCred, db.WithOplog(r.wrapper, oldCred.oplog(oplog.OpType_OP_TYPE_DELETE)))
+				if err == nil && rowsDeleted > 1 {
+					return db.ErrMultipleRecords
+				}
+				if err != nil {
+					return err
+				}
+			}
+			if newCred != nil {
+				return w.Create(ctx, newCred, db.WithOplog(r.wrapper, newCred.oplog(oplog.OpType_OP_TYPE_CREATE)))
+			}
+			return nil
+		},
+	)
+	if err != nil {
+		return fmt.Errorf("set password: %w", err)
+	}
+	return nil
 }
