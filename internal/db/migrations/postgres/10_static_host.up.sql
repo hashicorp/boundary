@@ -10,7 +10,7 @@ begin;
     description text,
     create_time wt_timestamp,
     update_time wt_timestamp,
-    version wt_version not null default 1,
+    version wt_version,
     unique(scope_id, name)
   );
 
@@ -52,7 +52,7 @@ begin;
     ),
     create_time wt_timestamp,
     update_time wt_timestamp,
-    version wt_version not null default 1,
+    version wt_version,
     unique(static_host_catalog_id, name)
   );
 
@@ -88,7 +88,7 @@ begin;
     description text,
     create_time wt_timestamp,
     update_time wt_timestamp,
-    version wt_version not null default 1,
+    version wt_version,
     unique(static_host_catalog_id, name)
   );
 
