@@ -120,7 +120,8 @@ comment on domain wt_version is
 
 -- update_version_column() will increment the version column whenever row data
 -- is updated and should only be used in an update after trigger.  This function
--- will overwrite any explicit updates to the version column. 
+-- will overwrite any explicit updates to the version column. The function
+-- accepts an optional parameter of 'private_id' for the tables primary key.
 create or replace function
   update_version_column()
   returns trigger
@@ -128,9 +129,16 @@ as $$
 begin
   if pg_trigger_depth() = 1 then
     if row(new.*) is distinct from row(old.*) then
-      execute format('update %I set version = $1 where public_id = $2', tg_relid::regclass) using old.version+1, new.public_id;
-      new.version = old.version + 1;
-      return new;
+      if tg_nargs = 0 then
+        execute format('update %I set version = $1 where public_id = $2', tg_relid::regclass) using old.version+1, new.public_id;
+        new.version = old.version + 1;
+        return new;
+      end if;
+      if tg_argv[0] = 'private_id' then
+        execute format('update %I set version = $1 where private_id = $2', tg_relid::regclass) using old.version+1, new.private_id;
+        new.version = old.version + 1;
+        return new;
+      end if;
     end if;
   end if;
   return new;
@@ -2204,7 +2212,7 @@ before update on kms_external_config
 create trigger
   update_version_column
 after update on kms_external_config
-  for each row execute procedure update_version_column();
+  for each row execute procedure update_version_column('private_id');
 
 create or replace function
   kms_scope_valid()
