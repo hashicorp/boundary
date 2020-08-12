@@ -68,7 +68,7 @@ before update on kms_external_config
 create trigger
   update_version_column
 after update on kms_external_config
-  for each row execute procedure update_version_column();
+  for each row execute procedure update_version_column('private_id');
 
 create or replace function
   kms_scope_valid()
