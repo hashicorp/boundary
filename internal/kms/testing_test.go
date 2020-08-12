@@ -14,7 +14,7 @@ func Test_TestExternalConfig(t *testing.T) {
 	assert, require := assert.New(t), require.New(t)
 	conn, _ := db.TestSetup(t, "postgres")
 	org, _ := iam.TestScopes(t, conn)
-	extConf := TestExternalConfig(t, conn, org.PublicId, DevKms.String(), "{}")
+	extConf := TestExternalConfig(t, conn, org.PublicId, DevKms, "{}")
 	require.NotNil(extConf)
 	assert.Equal(DevKms.String(), extConf.Type)
 	assert.Equal("{}", extConf.Config)

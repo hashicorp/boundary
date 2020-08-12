@@ -9,7 +9,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestExternalConfig(t *testing.T, conn *gorm.DB, scopeId, confType, conf string) *ExternalConfig {
+func TestExternalConfig(t *testing.T, conn *gorm.DB, scopeId string, confType KmsType, conf string) *ExternalConfig {
 	t.Helper()
 	require := require.New(t)
 	rw := db.New(conn)
