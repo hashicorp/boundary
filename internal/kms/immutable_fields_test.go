@@ -86,3 +86,14 @@ func TestExternalConfig_ImmutableFields(t *testing.T) {
 		})
 	}
 }
+
+// TODO (jimlambrt 8/2020) define tests for immutable fields in the remaining
+// kms tables:
+// 	kms_root_key
+//	kms_root_key_version
+//	kms_database_key
+//	kms_database_key_version
+//	kms_oplog_key
+//	kms_oplog_key_version
+//	kms_session_key
+//	kms_session_key_version
