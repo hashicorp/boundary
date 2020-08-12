@@ -21,7 +21,7 @@ func TestCatalogs_Crud(t *testing.T) {
 		DisableAuthorizationFailures: true,
 		DefaultOrgId:                 orgId,
 		DefaultAuthMethodId:          amId,
-		DefaultUsername:              "user",
+		DefaultLoginName:             "user",
 		DefaultPassword:              "passpass",
 	})
 	defer tc.Shutdown()
@@ -81,7 +81,7 @@ func TestCatalogs_Errors(t *testing.T) {
 		DisableAuthorizationFailures: true,
 		DefaultOrgId:                 orgId,
 		DefaultAuthMethodId:          amId,
-		DefaultUsername:              "user",
+		DefaultLoginName:             "user",
 		DefaultPassword:              "passpass",
 	})
 	defer tc.Shutdown()

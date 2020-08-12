@@ -26,7 +26,7 @@ func TestCustom(t *testing.T) {
 		DisableAuthorizationFailures: true,
 		DefaultOrgId:                 orgId,
 		DefaultAuthMethodId:          amId,
-		DefaultUsername:              "user",
+		DefaultLoginName:             "user",
 		DefaultPassword:              "passpass",
 	})
 	defer tc.Shutdown()
@@ -144,7 +144,7 @@ func TestRole_List(t *testing.T) {
 		DisableAuthorizationFailures: true,
 		DefaultOrgId:                 orgId,
 		DefaultAuthMethodId:          amId,
-		DefaultUsername:              "user",
+		DefaultLoginName:             "user",
 		DefaultPassword:              "passpass",
 	})
 	defer tc.Shutdown()
@@ -249,7 +249,7 @@ func TestRole_Crud(t *testing.T) {
 		DisableAuthorizationFailures: true,
 		DefaultOrgId:                 orgId,
 		DefaultAuthMethodId:          amId,
-		DefaultUsername:              "user",
+		DefaultLoginName:             "user",
 		DefaultPassword:              "passpass",
 	})
 	defer tc.Shutdown()
@@ -327,7 +327,7 @@ func TestRole_Errors(t *testing.T) {
 		DisableAuthorizationFailures: true,
 		DefaultOrgId:                 orgId,
 		DefaultAuthMethodId:          amId,
-		DefaultUsername:              "user",
+		DefaultLoginName:             "user",
 		DefaultPassword:              "passpass",
 	})
 	defer tc.Shutdown()

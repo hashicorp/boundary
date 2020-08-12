@@ -32,8 +32,8 @@ func TestAuthMethod_New(t *testing.T) {
 			args: args{},
 			want: &AuthMethod{
 				AuthMethod: &store.AuthMethod{
-					MinUserNameLength: 3,
-					MinPasswordLength: 8,
+					MinLoginNameLength: 3,
+					MinPasswordLength:  8,
 				},
 			},
 		},
@@ -46,9 +46,9 @@ func TestAuthMethod_New(t *testing.T) {
 			},
 			want: &AuthMethod{
 				AuthMethod: &store.AuthMethod{
-					Name:              "test-name",
-					MinUserNameLength: 3,
-					MinPasswordLength: 8,
+					Name:               "test-name",
+					MinLoginNameLength: 3,
+					MinPasswordLength:  8,
 				},
 			},
 		},
@@ -61,9 +61,9 @@ func TestAuthMethod_New(t *testing.T) {
 			},
 			want: &AuthMethod{
 				AuthMethod: &store.AuthMethod{
-					Description:       "test-description",
-					MinUserNameLength: 3,
-					MinPasswordLength: 8,
+					Description:        "test-description",
+					MinLoginNameLength: 3,
+					MinPasswordLength:  8,
 				},
 			},
 		},

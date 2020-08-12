@@ -8,7 +8,6 @@ import (
 
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/iam/store"
-	"github.com/hashicorp/boundary/internal/types/resource"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/proto"
@@ -214,13 +213,6 @@ func TestRoleGrant_Delete(t *testing.T) {
 			assert.Equal(tt.deletedRows, deleted)
 		})
 	}
-}
-
-func TestRoleGrant_ResourceType(t *testing.T) {
-	assert := assert.New(t)
-	r := &RoleGrant{}
-	ty := r.ResourceType()
-	assert.Equal(ty, resource.RoleGrant)
 }
 
 func TestRoleGrant_Clone(t *testing.T) {

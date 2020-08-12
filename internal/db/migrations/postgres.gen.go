@@ -957,7 +957,7 @@ insert into iam_role (public_id, name, description, scope_id)
   values('r_default', 'default', 'default role', 'global');
 
 insert into iam_role_grant (role_id, canonical_grant, raw_grant)
-  values('r_default', 'type=org;actions=list', 'type=org;actions=list');
+  values('r_default', 'type=scope;actions=list', 'type=scope;actions=list');
 
 create table iam_group (
     public_id wt_public_id not null primary key,
@@ -1772,7 +1772,7 @@ begin;
     description text,
     create_time wt_timestamp,
     update_time wt_timestamp,
-    min_user_name_length int not null default 3,
+    min_login_name_length int not null default 3,
     min_password_length int not null default 8,
     version wt_version,
     foreign key (scope_id, public_id)
@@ -1804,11 +1804,11 @@ begin;
     description text,
     create_time wt_timestamp,
     update_time wt_timestamp,
-    user_name text not null
+    login_name text not null
       check(
-        lower(trim(user_name)) = user_name
+        lower(trim(login_name)) = login_name
         and
-        length(user_name) > 0
+        length(login_name) > 0
       ),
     version wt_version,
     foreign key (scope_id, auth_method_id)
@@ -1820,7 +1820,7 @@ begin;
       on delete cascade
       on update cascade,
     unique(auth_method_id, name),
-    unique(auth_method_id, user_name),
+    unique(auth_method_id, login_name),
     unique(auth_method_id, public_id)
   );
 
@@ -2181,7 +2181,7 @@ begin;
   -- but the query to create the view should not need to be updated.
   create or replace view auth_password_current_conf as
       -- Rerun this query whenever auth_password_conf_union is updated.
-      select pm.min_user_name_length, pm.min_password_length, c.*
+      select pm.min_login_name_length, pm.min_password_length, c.*
         from auth_password_method pm
   inner join auth_password_conf_union c
           on pm.password_conf_id = c.password_conf_id;
