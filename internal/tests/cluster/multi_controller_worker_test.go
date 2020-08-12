@@ -24,7 +24,7 @@ func TestMultiControllerMultiWorkerConnections(t *testing.T) {
 	c1 := controller.NewTestController(t, &controller.TestControllerOpts{
 		DefaultOrgId:        orgId,
 		DefaultAuthMethodId: amId,
-		DefaultUsername:     user,
+		DefaultLoginName:    user,
 		DefaultPassword:     password,
 		Logger:              logger.Named("c1"),
 	})
