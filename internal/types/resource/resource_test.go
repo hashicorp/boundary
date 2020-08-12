@@ -64,6 +64,14 @@ func Test_Resource(t *testing.T) {
 			typeString: "target",
 			want:       Target,
 		},
+		{
+			typeString: "controller",
+			want:       Controller,
+		},
+		{
+			typeString: "worker",
+			want:       Worker,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.typeString, func(t *testing.T) {

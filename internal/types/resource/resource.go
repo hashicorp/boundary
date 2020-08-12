@@ -17,6 +17,8 @@ const (
 	HostSet     Type = 10
 	Host        Type = 11
 	Target      Type = 12
+	Controller  Type = 13
+	Worker      Type = 14
 )
 
 func (r Type) String() string {
@@ -34,6 +36,8 @@ func (r Type) String() string {
 		"host-set",
 		"host",
 		"target",
+		"controller",
+		"worker",
 	}[r]
 }
 
@@ -51,4 +55,6 @@ var Map = map[string]Type{
 	HostSet.String():     HostSet,
 	Host.String():        Host,
 	Target.String():      Target,
+	Controller.String():  Controller,
+	Worker.String():      Worker,
 }
