@@ -2117,10 +2117,15 @@ begin;
 
 drop table kms_key_entry_purpose_enm cascade;
 drop table kms_external_config cascade;
-drop table kms_root cascade;
 drop table kms_root_key cascade;
-drop table kms_database cascade;
+drop table kms_root_key_version cascade;
 drop table kms_database_key cascade;
+drop table kms_database_key_version cascade;
+drop table kms_oplog_key cascade;
+drop table kms_oplog_key_version cascade;
+drop table kms_session_key cascade;
+drop table kms_session_key_version cascade;
+drop function kms_scope_valid() cascade;
 
 commit;
 
@@ -2133,7 +2138,7 @@ begin;
 
 create table kms_external_type_enm (
   name text primary key check(name in (
-    'unknown', 
+    'unknownkms', 
     'devkms', 
     'awskms', 
     'gcpkms',
@@ -2153,7 +2158,7 @@ update on kms_external_type_enm
 
 insert into kms_external_type_enm (name)
 values
-  ('unknown'),
+  ('unknownkms'),
   ('devkms'),
   ('awskms'),
   ('gcpkms'),
@@ -2172,11 +2177,12 @@ create table kms_external_config (
   type text not null 
     references kms_external_type_enm(name),
   config jsonb,
+  version wt_version not null default 1,
   create_time wt_timestamp,
   update_time wt_timestamp
 );
 
- -- define the immutable fields for kms_external_config (only config and
+ -- define the immutable fields for kms_external_config (only version, config and
  -- update_time are updatable)
 create trigger 
   immutable_columns
@@ -2194,6 +2200,30 @@ create trigger
   update_time_column 
 before update on kms_external_config 
   for each row execute procedure update_time_column();
+
+create trigger
+  update_version_column
+after update on kms_external_config
+  for each row execute procedure update_version_column();
+
+create or replace function
+  kms_scope_valid()
+  returns trigger
+as $$
+declare scope_type text;
+begin
+  -- Fetch the type of scope
+  select isc.type from iam_scope isc where isc.public_id = new.scope_id into scope_type;
+  -- Always allowed
+  if role_scope_type = 'global' then
+    return new;
+  end if;
+  if scope_type = 'org' then
+    return new;
+  end if;
+  raise exception 'invalid to scope type for kms external config';
+end;
+$$ language plpgsql;
 
 create table kms_root_key (
   private_id wt_private_id primary key,
