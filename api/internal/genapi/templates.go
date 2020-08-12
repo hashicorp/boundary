@@ -77,7 +77,7 @@ func fillTemplates() {
 	for _, in := range inputStructs {
 		outBuf := new(bytes.Buffer)
 		input := templateInput{
-			ClientName:     strings.ToLower(in.generatedStructure.name) + "s",
+			ClientName:     in.generatedStructure.name + "s",
 			Name:           in.generatedStructure.name,
 			Package:        in.generatedStructure.pkg,
 			Fields:         in.generatedStructure.fields,
