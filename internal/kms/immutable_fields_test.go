@@ -21,7 +21,7 @@ func TestExternalConfig_ImmutableFields(t *testing.T) {
 	ts := timestamp.Timestamp{Timestamp: &timestamppb.Timestamp{Seconds: 0, Nanos: 0}}
 
 	org, _ := iam.TestScopes(t, conn)
-	new := TestExternalConfig(t, conn, org.PublicId, DevKms.String(), "{}")
+	new := TestExternalConfig(t, conn, org.PublicId, DevKms, "{}")
 
 	var tests = []struct {
 		name      string
