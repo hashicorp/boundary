@@ -317,11 +317,13 @@ func (tc *TestController) AddClusterControllerMember(t *testing.T, opts *TestCon
 		opts = new(TestControllerOpts)
 	}
 	nextOpts := &TestControllerOpts{
-		DatabaseUrl:   tc.c.conf.DatabaseUrl,
-		ControllerKMS: tc.c.conf.ControllerKMS,
-		WorkerAuthKMS: tc.c.conf.WorkerAuthKMS,
-		Name:          opts.Name,
-		Logger:        tc.c.conf.Logger,
+		DatabaseUrl:         tc.c.conf.DatabaseUrl,
+		DefaultAuthMethodId: tc.c.conf.DevAuthMethodId,
+		DefaultOrgId:        tc.c.conf.DefaultOrgId,
+		ControllerKMS:       tc.c.conf.ControllerKMS,
+		WorkerAuthKMS:       tc.c.conf.WorkerAuthKMS,
+		Name:                opts.Name,
+		Logger:              tc.c.conf.Logger,
 	}
 	if opts.Logger != nil {
 		nextOpts.Logger = opts.Logger
