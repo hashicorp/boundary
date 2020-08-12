@@ -6,7 +6,7 @@ require (
 	github.com/alecthomas/assert v0.0.0-20170929043011-405dbfeb8e38
 	github.com/alecthomas/colour v0.1.0 // indirect
 	github.com/alecthomas/repr v0.0.0-20200325044227-4184120f674c // indirect
-	github.com/armon/go-metrics v0.3.3
+	github.com/armon/go-metrics v0.3.4
 	github.com/bufbuild/buf v0.20.5
 	github.com/fatih/color v1.9.0
 	github.com/fatih/structs v1.1.0
@@ -32,8 +32,8 @@ require (
 	github.com/hashicorp/go-sockaddr v1.0.2
 	github.com/hashicorp/go-uuid v1.0.2
 	github.com/hashicorp/hcl v1.0.0
-	github.com/hashicorp/vault v1.2.1-0.20200717203022-646babcf458c
-	github.com/hashicorp/vault/sdk v0.1.14-0.20200717191844-f687267c8086
+	github.com/hashicorp/shared-secure-libs v0.0.2
+	github.com/hashicorp/vault/sdk v0.1.14-0.20200805123347-1ef507638af6
 	github.com/iancoleman/strcase v0.0.0-20180726023541-3605ed457bf7
 	github.com/jackc/pgx/v4 v4.8.1
 	github.com/jinzhu/gorm v1.9.15

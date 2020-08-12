@@ -15,9 +15,9 @@ import (
 
 	"github.com/hashicorp/go-alpnmux"
 	"github.com/hashicorp/go-hclog"
-	"github.com/hashicorp/vault/internalshared/configutil"
-	"github.com/hashicorp/vault/internalshared/listenerutil"
-	"github.com/hashicorp/vault/internalshared/reloadutil"
+	"github.com/hashicorp/shared-secure-libs/configutil"
+	"github.com/hashicorp/shared-secure-libs/listenerutil"
+	"github.com/hashicorp/shared-secure-libs/reloadutil"
 	"github.com/mitchellh/cli"
 	"github.com/pires/go-proxyproto"
 	"google.golang.org/grpc"
