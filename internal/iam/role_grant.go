@@ -7,7 +7,6 @@ import (
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/iam/store"
 	"github.com/hashicorp/boundary/internal/perms"
-	"github.com/hashicorp/boundary/internal/types/resource"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -86,9 +85,6 @@ func (g *RoleGrant) VetForWrite(ctx context.Context, r db.Reader, opType db.OpTy
 
 	return nil
 }
-
-// ResourceType returns the type of the RoleGrant
-func (*RoleGrant) ResourceType() resource.Type { return resource.RoleGrant }
 
 // TableName returns the tablename to override the default gorm table name
 func (g *RoleGrant) TableName() string {

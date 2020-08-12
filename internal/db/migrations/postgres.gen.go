@@ -957,7 +957,7 @@ insert into iam_role (public_id, name, description, scope_id)
   values('r_default', 'default', 'default role', 'global');
 
 insert into iam_role_grant (role_id, canonical_grant, raw_grant)
-  values('r_default', 'type=org;actions=list', 'type=org;actions=list');
+  values('r_default', 'type=scope;actions=list', 'type=scope;actions=list');
 
 create table iam_group (
     public_id wt_public_id not null primary key,

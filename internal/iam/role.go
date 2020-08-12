@@ -72,7 +72,7 @@ func (role *Role) VetForWrite(ctx context.Context, r db.Reader, opType db.OpType
 }
 
 func (u *Role) validScopeTypes() []scope.Type {
-	return []scope.Type{scope.Org, scope.Project}
+	return []scope.Type{scope.Global, scope.Org, scope.Project}
 }
 
 // Getscope returns the scope for the Role.

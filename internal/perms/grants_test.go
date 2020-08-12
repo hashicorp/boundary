@@ -105,13 +105,6 @@ func Test_ValidateType(t *testing.T) {
 			name: "no specifier",
 		},
 		{
-			name: "unknown specifier",
-			input: Grant{
-				typ: resource.RoleGrant,
-			},
-			errResult: `unknown type specifier "role-grant"`,
-		},
-		{
 			name: "valid specifier",
 			input: Grant{
 				typ: resource.HostCatalog,
