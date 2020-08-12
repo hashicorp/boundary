@@ -103,3 +103,37 @@ func (r *Repository) LookupExternalConfig(ctx context.Context, privateId string,
 	}
 	return &c, nil
 }
+
+// DeleteExternalConfig deletes the external config for the provided id from the
+// repository returning a count of the number of records deleted.  All options
+// are ignored.
+func (r *Repository) DeleteExternalConfig(ctx context.Context, privateId string, opt ...Option) (int, error) {
+	if privateId == "" {
+		return db.NoRowsAffected, fmt.Errorf("delete external config: missing private id: %w", db.ErrInvalidParameter)
+	}
+	c := allocExternalConfig()
+	c.PrivateId = privateId
+	if err := r.reader.LookupById(ctx, &c); err != nil {
+		return db.NoRowsAffected, fmt.Errorf("delete external config: failed %w for %s", err, privateId)
+	}
+
+	var rowsDeleted int
+	_, err := r.writer.DoTx(
+		ctx,
+		db.StdRetryCnt,
+		db.ExpBackoff{},
+		func(_ db.Reader, w db.Writer) (err error) {
+			metadata := c.oplog(oplog.OpType_OP_TYPE_DELETE)
+			dc := c.Clone()
+			rowsDeleted, err = w.Delete(ctx, dc, db.WithOplog(r.wrapper, metadata))
+			if err == nil && rowsDeleted > 1 {
+				return db.ErrMultipleRecords
+			}
+			return err
+		},
+	)
+	if err != nil {
+		return db.NoRowsAffected, fmt.Errorf("delete external config: %s: %w", privateId, err)
+	}
+	return rowsDeleted, nil
+}
