@@ -1,0 +1,33 @@
+syntax = "proto3";
+
+package controller.storage.kms.store.v1;
+option go_package = "github.com/hashicorp/boundary/internal/kms/store;store";
+
+import "controller/storage/timestamp/v1/timestamp.proto";
+import "controller/custom_options/v1/options.proto";
+
+message ExternalConfig {
+  // private_id is used to access the config via an API
+  // @inject_tag: gorm:"primary_key"
+  string private_id = 1;
+
+  // scope id for the config
+  // @inject_tag: `gorm:"default:null"`
+  string scope_id = 2;
+
+  // type of the external kms' config
+  // @inject_tag: `gorm:"default:null"`
+  string type = 3;
+
+  // config for the config in json format
+  // @inject_tag: `gorm:"default:null"`
+  string config = 4;
+
+  // version allows optimistic locking of the config
+  // @inject_tag: `gorm:"default:null"`
+  uint32 version = 5;
+
+  // create_time from the RDBMS
+  // @inject_tag: `gorm:"default:current_timestamp"`
+  timestamp.v1.Timestamp create_time = 6;
+}
