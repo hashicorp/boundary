@@ -2215,7 +2215,7 @@ begin
   -- Fetch the type of scope
   select isc.type from iam_scope isc where isc.public_id = new.scope_id into scope_type;
   -- Always allowed
-  if role_scope_type = 'global' then
+  if scope_type = 'global' then
     return new;
   end if;
   if scope_type = 'org' then
@@ -2224,6 +2224,12 @@ begin
   raise exception 'invalid to scope type for kms external config';
 end;
 $$ language plpgsql;
+
+create trigger 
+  kms_scope_valid
+before insert on kms_external_config
+  for each row execute procedure kms_scope_valid();
+
 
 create table kms_root_key (
   private_id wt_private_id primary key,
@@ -2246,6 +2252,11 @@ create trigger
 before
 insert on kms_root_key
   for each row execute procedure default_create_time();
+
+create trigger 
+  kms_scope_valid
+before insert on kms_root_key
+  for each row execute procedure kms_scope_valid();
 
 create table kms_root_key_version (
   private_id wt_private_id primary key,
