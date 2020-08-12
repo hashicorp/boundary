@@ -244,3 +244,89 @@ func TestRepository_CreateExternalConfig(t *testing.T) {
 		})
 	}
 }
+
+func TestRepository_DeleteExternalConfig(t *testing.T) {
+	t.Parallel()
+	conn, _ := db.TestSetup(t, "postgres")
+	rw := db.New(conn)
+	wrapper := db.TestWrapper(t)
+	repo, err := NewRepository(rw, rw, wrapper)
+	require.NoError(t, err)
+	org, _ := iam.TestScopes(t, conn)
+
+	type args struct {
+		conf *ExternalConfig
+		opt  []Option
+	}
+	tests := []struct {
+		name            string
+		args            args
+		wantRowsDeleted int
+		wantErr         bool
+		wantIsError     error
+	}{
+		{
+			name: "valid",
+			args: args{
+				conf: TestExternalConfig(t, conn, org.PublicId, DevKms, "{}"),
+			},
+			wantRowsDeleted: 1,
+			wantErr:         false,
+		},
+		{
+			name: "no-private-id",
+			args: args{
+				conf: func() *ExternalConfig {
+					c := allocExternalConfig()
+					return &c
+				}(),
+			},
+			wantRowsDeleted: 0,
+			wantErr:         true,
+			wantIsError:     db.ErrInvalidParameter,
+		},
+		{
+			name: "not-found",
+			args: args{
+				conf: func() *ExternalConfig {
+					id, err := newExternalConfigId()
+					require.NoError(t, err)
+					c := allocExternalConfig()
+					c.PrivateId = id
+					require.NoError(t, err)
+					return &c
+				}(),
+			},
+			wantRowsDeleted: 0,
+			wantErr:         true,
+			wantIsError:     db.ErrRecordNotFound,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+			conn.LogMode(true)
+			deletedRows, err := repo.DeleteExternalConfig(context.Background(), tt.args.conf.PrivateId, tt.args.opt...)
+			if tt.wantErr {
+				require.Error(err)
+				assert.Equal(0, deletedRows)
+				if tt.wantIsError != nil {
+					assert.True(errors.Is(err, tt.wantIsError))
+				}
+				err = db.TestVerifyOplog(t, rw, tt.args.conf.PrivateId, db.WithOperation(oplog.OpType_OP_TYPE_DELETE), db.WithCreateNotBefore(10*time.Second))
+				assert.Error(err)
+				assert.True(errors.Is(db.ErrRecordNotFound, err))
+				return
+			}
+			require.NoError(err)
+			assert.Equal(tt.wantRowsDeleted, deletedRows)
+			foundCfg, err := repo.LookupExternalConfig(context.Background(), tt.args.conf.PrivateId)
+			assert.Error(err)
+			assert.Nil(foundCfg)
+			assert.True(errors.Is(err, db.ErrRecordNotFound))
+
+			err = db.TestVerifyOplog(t, rw, tt.args.conf.PrivateId, db.WithOperation(oplog.OpType_OP_TYPE_DELETE), db.WithCreateNotBefore(10*time.Second))
+			assert.NoError(err)
+		})
+	}
+}
