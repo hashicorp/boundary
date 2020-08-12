@@ -1,4 +1,4 @@
-package main_test
+package tests
 
 // TODO: Reenable once we reimplement generation of As functions once static hosts lands
 /*
