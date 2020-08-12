@@ -4,8 +4,10 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/hashicorp/boundary/internal/db"
+	dbcommon "github.com/hashicorp/boundary/internal/db/common"
 	"github.com/hashicorp/boundary/internal/oplog"
 	wrapping "github.com/hashicorp/go-kms-wrapping"
 )
@@ -136,4 +138,66 @@ func (r *Repository) DeleteExternalConfig(ctx context.Context, privateId string,
 		return db.NoRowsAffected, fmt.Errorf("delete external config: %s: %w", privateId, err)
 	}
 	return rowsDeleted, nil
+}
+
+// UpdateExternalConfig will update an external config in the repository and
+// return the written config. fieldMaskPaths provides field_mask.proto paths for
+// fields that should be updated.  Fields will be set to NULL if the field is a
+// zero value and included in fieldMask.  Config is the only updatable field,
+// If no updatable fields are included in the fieldMaskPaths, then an error is
+// returned.
+func (r *Repository) UpdateExternalConfig(ctx context.Context, conf *ExternalConfig, version uint32, fieldMaskPaths []string, opt ...Option) (*ExternalConfig, int, error) {
+	if conf == nil {
+		return nil, db.NoRowsAffected, fmt.Errorf("update external config: missing conf %w", db.ErrNilParameter)
+	}
+	if conf.PrivateId == "" {
+		return nil, db.NoRowsAffected, fmt.Errorf("update external config: missing conf private id %w", db.ErrInvalidParameter)
+	}
+	for _, f := range fieldMaskPaths {
+		switch {
+		case strings.EqualFold("config", f):
+		default:
+			return nil, db.NoRowsAffected, fmt.Errorf("update external config: field: %s: %w", f, db.ErrInvalidFieldMask)
+		}
+	}
+	var dbMask, nullFields []string
+	dbMask, nullFields = dbcommon.BuildUpdatePaths(
+		map[string]interface{}{
+			"config": conf.Config,
+		},
+		fieldMaskPaths,
+	)
+	if len(dbMask) == 0 && len(nullFields) == 0 {
+		return nil, db.NoRowsAffected, fmt.Errorf("update external config: %w", db.ErrEmptyFieldMask)
+	}
+
+	var rowsUpdated int
+	var returnedCfg interface{}
+	_, err := r.writer.DoTx(
+		ctx,
+		db.StdRetryCnt,
+		db.ExpBackoff{},
+		func(_ db.Reader, w db.Writer) error {
+			metadata := conf.oplog(oplog.OpType_OP_TYPE_UPDATE)
+			returnedCfg = conf.Clone()
+			var err error
+			rowsUpdated, err = w.Update(
+				ctx,
+				returnedCfg,
+				dbMask,
+				nullFields,
+				db.WithOplog(r.wrapper, metadata),
+			)
+			if err == nil && rowsUpdated > 1 {
+				// return err, which will result in a rollback of the update
+				return errors.New("error more than 1 resource would have been updated ")
+			}
+			return err
+		},
+	)
+	if err != nil {
+		return nil, db.NoRowsAffected, fmt.Errorf("update external config: %w for %s", err, conf.PrivateId)
+	}
+
+	return returnedCfg.(*ExternalConfig), rowsUpdated, err
 }

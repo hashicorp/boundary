@@ -318,7 +318,6 @@ func TestRepository_DeleteExternalConfig(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			conn.LogMode(true)
 			deletedRows, err := repo.DeleteExternalConfig(context.Background(), tt.args.conf.PrivateId, tt.args.opt...)
 			if tt.wantErr {
 				require.Error(err)
@@ -339,6 +338,289 @@ func TestRepository_DeleteExternalConfig(t *testing.T) {
 			assert.True(errors.Is(err, db.ErrRecordNotFound))
 
 			err = db.TestVerifyOplog(t, rw, tt.args.conf.PrivateId, db.WithOperation(oplog.OpType_OP_TYPE_DELETE), db.WithCreateNotBefore(10*time.Second))
+			assert.NoError(err)
+		})
+	}
+}
+
+func TestRepository_UpdateExternalConfig(t *testing.T) {
+	t.Parallel()
+	conn, _ := db.TestSetup(t, "postgres")
+	a := assert.New(t)
+	rw := db.New(conn)
+	wrapper := db.TestWrapper(t)
+	repo, err := NewRepository(rw, rw, wrapper)
+	a.NoError(err)
+
+	org, _ := iam.TestScopes(t, conn)
+	privId := func(s string) *string { return &s }
+
+	type args struct {
+		config         *ExternalConfig
+		fieldMaskPaths []string
+		opt            []Option
+		PrivateId      *string
+		version        uint32
+	}
+	tests := []struct {
+		name           string
+		newScopeId     string
+		newGrpOpts     []Option
+		args           args
+		wantRowsUpdate int
+		wantErr        bool
+		wantIsError    error
+	}{
+		{
+			name: "valid",
+			args: args{
+				fieldMaskPaths: []string{"Config"},
+				config: func() *ExternalConfig {
+					c := allocExternalConfig()
+					c.Config = `{"alice":"bob"}`
+					return &c
+				}(),
+				version: uint32(1),
+			},
+			newScopeId:     org.PublicId,
+			wantErr:        false,
+			wantRowsUpdate: 1,
+		},
+		{
+			name: "not-found",
+			args: args{
+				fieldMaskPaths: []string{"Config"},
+				config: func() *ExternalConfig {
+					c := allocExternalConfig()
+					c.Config = `{"alice":"bob"}`
+					return &c
+				}(),
+				version:   uint32(1),
+				PrivateId: func() *string { s := "1"; return &s }(),
+			},
+			newScopeId:     org.PublicId,
+			wantErr:        true,
+			wantRowsUpdate: 0,
+			wantIsError:    db.ErrRecordNotFound,
+		},
+		// {
+		// 	name: "null-name",
+		// 	args: args{
+		// 		name:           "",
+		// 		fieldMaskPaths: []string{"Name"},
+		// 		ScopeId:        org.PublicId,
+		// 	},
+		// 	newScopeId:     org.PublicId,
+		// 	newGrpOpts:     []Option{WithName("null-name" + id)},
+		// 	wantErr:        false,
+		// 	wantRowsUpdate: 1,
+		// },
+		// {
+		// 	name: "null-description",
+		// 	args: args{
+		// 		name:           "",
+		// 		fieldMaskPaths: []string{"Description"},
+		// 		ScopeId:        org.PublicId,
+		// 	},
+		// 	newScopeId:     org.PublicId,
+		// 	newGrpOpts:     []Option{WithDescription("null-description" + id)},
+		// 	wantErr:        false,
+		// 	wantRowsUpdate: 1,
+		// },
+		{
+			name: "empty-field-mask",
+			args: args{
+				fieldMaskPaths: []string{},
+				config: func() *ExternalConfig {
+					c := allocExternalConfig()
+					c.Config = `{"alice":"bob"}`
+					return &c
+				}(),
+				version: uint32(1),
+			},
+			newScopeId:     org.PublicId,
+			wantErr:        true,
+			wantRowsUpdate: 0,
+			wantIsError:    db.ErrEmptyFieldMask,
+		},
+		{
+			name: "nil-fieldmask",
+			args: args{
+				fieldMaskPaths: nil,
+				config: func() *ExternalConfig {
+					c := allocExternalConfig()
+					c.Config = `{"alice":"bob"}`
+					return &c
+				}(),
+				version: uint32(1),
+			},
+			newScopeId:     org.PublicId,
+			wantErr:        true,
+			wantRowsUpdate: 0,
+			wantIsError:    db.ErrEmptyFieldMask,
+		},
+		{
+			name: "read-only-create-time",
+			args: args{
+				fieldMaskPaths: []string{"CreateTime"},
+				config: func() *ExternalConfig {
+					c := allocExternalConfig()
+					c.Config = `{"alice":"bob"}`
+					return &c
+				}(),
+				version: uint32(1),
+			},
+			newScopeId:     org.PublicId,
+			wantErr:        true,
+			wantRowsUpdate: 0,
+			wantIsError:    db.ErrInvalidFieldMask,
+		},
+		{
+			name: "read-only-update-time",
+			args: args{
+				fieldMaskPaths: []string{"UpdateTime"},
+				config: func() *ExternalConfig {
+					c := allocExternalConfig()
+					c.Config = `{"alice":"bob"}`
+					return &c
+				}(),
+				version: uint32(1),
+			},
+			newScopeId:     org.PublicId,
+			wantErr:        true,
+			wantRowsUpdate: 0,
+			wantIsError:    db.ErrInvalidFieldMask,
+		},
+		{
+			name: "read-only-privateId",
+			args: args{
+				fieldMaskPaths: []string{"PrivateId"},
+				config: func() *ExternalConfig {
+					c := allocExternalConfig()
+					c.PrivateId = org.PublicId
+					return &c
+				}(),
+				version: uint32(1),
+			},
+			newScopeId:     org.PublicId,
+			wantErr:        true,
+			wantRowsUpdate: 0,
+			wantIsError:    db.ErrInvalidFieldMask,
+		},
+		{
+			name: "read-only-scopeId",
+			args: args{
+				fieldMaskPaths: []string{"ScopeId"},
+				config: func() *ExternalConfig {
+					c := allocExternalConfig()
+					c.ScopeId = org.PublicId
+					return &c
+				}(),
+				version: uint32(1),
+			},
+			newScopeId:     org.PublicId,
+			wantErr:        true,
+			wantRowsUpdate: 0,
+			wantIsError:    db.ErrInvalidFieldMask,
+		},
+		{
+			name: "read-only-type",
+			args: args{
+				fieldMaskPaths: []string{"type"},
+				config: func() *ExternalConfig {
+					c := allocExternalConfig()
+					c.Type = AliCloudKms.String()
+					return &c
+				}(),
+				version: uint32(1),
+			},
+			newScopeId:     org.PublicId,
+			wantErr:        true,
+			wantRowsUpdate: 0,
+			wantIsError:    db.ErrInvalidFieldMask,
+		},
+		{
+			name: "read-only-version",
+			args: args{
+				fieldMaskPaths: []string{"version"},
+				config: func() *ExternalConfig {
+					c := allocExternalConfig()
+					c.Version = 100
+					return &c
+				}(),
+				version: uint32(1),
+			},
+			newScopeId:     org.PublicId,
+			wantErr:        true,
+			wantRowsUpdate: 0,
+			wantIsError:    db.ErrInvalidFieldMask,
+		},
+		{
+			name: "unknown-fields",
+			args: args{
+				fieldMaskPaths: []string{"Alice"},
+				config: func() *ExternalConfig {
+					c := allocExternalConfig()
+					c.Config = `{"alice":"bob"}`
+					return &c
+				}(),
+				version: uint32(1),
+			},
+			newScopeId:     org.PublicId,
+			wantErr:        true,
+			wantRowsUpdate: 0,
+			wantIsError:    db.ErrInvalidFieldMask,
+		},
+		{
+			name: "no-private-id",
+			args: args{
+				fieldMaskPaths: []string{"Name"},
+				config: func() *ExternalConfig {
+					c := allocExternalConfig()
+					c.Config = `{"alice":"bob"}`
+					return &c
+				}(),
+				version:   uint32(1),
+				PrivateId: privId(""),
+			},
+			newScopeId:     org.PublicId,
+			wantErr:        true,
+			wantIsError:    db.ErrInvalidParameter,
+			wantRowsUpdate: 0,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+
+			c := TestExternalConfig(t, conn, tt.newScopeId, DevKms, "{}")
+
+			tt.args.config.PrivateId = c.PrivateId
+			if tt.args.PrivateId != nil {
+				tt.args.config.PrivateId = *tt.args.PrivateId
+			}
+			var cfgAfterUpdate *ExternalConfig
+			var updatedRows int
+			var err error
+			cfgAfterUpdate, updatedRows, err = repo.UpdateExternalConfig(context.Background(), tt.args.config, tt.args.version, tt.args.fieldMaskPaths, tt.args.opt...)
+			if tt.wantErr {
+				assert.Error(err)
+				if tt.wantIsError != nil {
+					assert.True(errors.Is(err, tt.wantIsError))
+				}
+				assert.Nil(cfgAfterUpdate)
+				assert.Equal(0, updatedRows)
+				err = db.TestVerifyOplog(t, rw, c.PrivateId, db.WithOperation(oplog.OpType_OP_TYPE_UPDATE), db.WithCreateNotBefore(10*time.Second))
+				assert.Error(err)
+				assert.True(errors.Is(db.ErrRecordNotFound, err))
+				return
+			}
+			assert.NoError(err)
+			assert.Equal(tt.wantRowsUpdate, updatedRows)
+			foundCfg, err := repo.LookupExternalConfig(context.Background(), c.PrivateId)
+			require.NoError(err)
+			assert.True(proto.Equal(cfgAfterUpdate, foundCfg))
+			err = db.TestVerifyOplog(t, rw, c.PrivateId, db.WithOperation(oplog.OpType_OP_TYPE_UPDATE), db.WithCreateNotBefore(10*time.Second))
 			assert.NoError(err)
 		})
 	}
