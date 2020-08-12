@@ -51,8 +51,8 @@ type structInfo struct {
 	outputOnly bool
 
 	// versionEnabled indicates that we should build a Version handler in
-	// update. Eventually everything should support this and this param can go
-	// away.
+	// update. Some structs are embedded in others and shouldn't have version
+	// fields.
 	versionEnabled bool
 
 	// The parameters passed into the path.  These should be non-pluralized resource names.

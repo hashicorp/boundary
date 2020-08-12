@@ -77,18 +77,6 @@ func DefaultDescription() Option {
 	}
 }
 
-func WithDisabled(inDisabled bool) Option {
-	return func(o *options) {
-		o.valueMap["disabled"] = inDisabled
-	}
-}
-
-func DefaultDisabled() Option {
-	return func(o *options) {
-		o.valueMap["disabled"] = nil
-	}
-}
-
 func WithPasswordAccountLoginName(inLoginName string) Option {
 	return func(o *options) {
 		raw, ok := o.valueMap["attributes"]

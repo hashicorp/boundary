@@ -234,7 +234,6 @@ func comparableSlice(in []*roles.Role) []roles.Role {
 			Description: i.Description,
 			CreatedTime: i.CreatedTime,
 			UpdatedTime: i.UpdatedTime,
-			Disabled:    i.Disabled,
 		}
 		filtered = append(filtered, p)
 	}

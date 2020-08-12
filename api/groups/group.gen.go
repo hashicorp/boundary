@@ -21,7 +21,6 @@ type Group struct {
 	Description string            `json:"description,omitempty"`
 	CreatedTime time.Time         `json:"created_time,omitempty"`
 	UpdatedTime time.Time         `json:"updated_time,omitempty"`
-	Disabled    bool              `json:"disabled,omitempty"`
 	Version     uint32            `json:"version,omitempty"`
 	MemberIds   []string          `json:"member_ids,omitempty"`
 	Members     []*Member         `json:"members,omitempty"`
