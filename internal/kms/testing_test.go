@@ -3,9 +3,9 @@ package kms
 import (
 	"testing"
 
-	"github.com/alecthomas/assert"
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/iam"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 

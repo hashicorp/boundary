@@ -3,7 +3,7 @@ package kms
 import (
 	"testing"
 
-	"github.com/bmizerany/assert"
+	"github.com/stretchr/testify/assert"
 )
 
 func Test_ExternalKmsType(t *testing.T) {
