@@ -535,7 +535,7 @@ func (b *Server) CreateDevDatabase(dialect string) error {
 		}
 	}
 
-	acct, err := password.NewAccount(amId, acctLoginName)
+	acct, err := password.NewAccount(amId, password.WithLoginName(acctLoginName))
 	if err != nil {
 		return fmt.Errorf("error creating new in memory auth account: %w", err)
 	}

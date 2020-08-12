@@ -93,8 +93,8 @@ func (r *Repository) CreateAccount(ctx context.Context, a *Account, opt ...Optio
 
 	if err != nil {
 		if db.IsUniqueError(err) {
-			return nil, fmt.Errorf("create: password account: in auth method: %s: name %s already exists: %w",
-				a.AuthMethodId, a.Name, db.ErrNotUnique)
+			return nil, fmt.Errorf("create: password account: in auth method: %s: name %q or loginName %q already exists: %w",
+				a.AuthMethodId, a.Name, a.LoginName, db.ErrNotUnique)
 		}
 		return nil, fmt.Errorf("create: password account: in auth method: %s: %w", a.AuthMethodId, err)
 	}
