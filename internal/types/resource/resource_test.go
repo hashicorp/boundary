@@ -33,10 +33,6 @@ func Test_Resource(t *testing.T) {
 			want:       Role,
 		},
 		{
-			typeString: "role-grant",
-			want:       RoleGrant,
-		},
-		{
 			typeString: "auth-method",
 			want:       AuthMethod,
 		},

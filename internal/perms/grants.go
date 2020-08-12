@@ -302,7 +302,6 @@ func (g Grant) validateType() error {
 		resource.User,
 		resource.Group,
 		resource.Role,
-		resource.RoleGrant,
 		resource.AuthMethod,
 		resource.Account,
 		resource.HostCatalog,

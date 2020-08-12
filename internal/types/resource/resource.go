@@ -10,14 +10,13 @@ const (
 	User        Type = 3
 	Group       Type = 4
 	Role        Type = 5
-	RoleGrant   Type = 6
-	AuthMethod  Type = 7
-	Account     Type = 8
-	AuthToken   Type = 9
-	HostCatalog Type = 10
-	HostSet     Type = 11
-	Host        Type = 12
-	Target      Type = 13
+	AuthMethod  Type = 6
+	Account     Type = 7
+	AuthToken   Type = 8
+	HostCatalog Type = 9
+	HostSet     Type = 10
+	Host        Type = 11
+	Target      Type = 12
 )
 
 func (r Type) String() string {
@@ -28,7 +27,6 @@ func (r Type) String() string {
 		"user",
 		"group",
 		"role",
-		"role-grant",
 		"auth-method",
 		"account",
 		"auth-token",
@@ -46,7 +44,6 @@ var Map = map[string]Type{
 	User.String():        User,
 	Group.String():       Group,
 	Role.String():        Role,
-	RoleGrant.String():   RoleGrant,
 	AuthMethod.String():  AuthMethod,
 	Account.String():     Account,
 	AuthToken.String():   AuthToken,
