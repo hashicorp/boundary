@@ -2446,6 +2446,10 @@ before
 insert on kms_session_key_version
   for each row execute procedure default_create_time();
 
+  insert into oplog_ticket
+    (name, version)
+  values
+    ('kms_external_config', 1);
 commit;
 `),
 	},

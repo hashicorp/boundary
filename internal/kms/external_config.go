@@ -7,6 +7,7 @@ import (
 
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/kms/store"
+	"github.com/hashicorp/boundary/internal/oplog"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -98,4 +99,14 @@ func (c *ExternalConfig) TableName() string {
 // reset to the default name.
 func (c *ExternalConfig) SetTableName(n string) {
 	c.tableName = n
+}
+
+func (c *ExternalConfig) oplog(op oplog.OpType) oplog.Metadata {
+	metadata := oplog.Metadata{
+		"resource-public-id": []string{c.PrivateId},
+		"resource-type":      []string{"external kms config"},
+		"op-type":            []string{op.String()},
+		"scope-id":           []string{c.ScopeId},
+	}
+	return metadata
 }
