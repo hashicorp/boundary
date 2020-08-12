@@ -54,7 +54,6 @@ func comparableSlice(in []*scopes.Scope) []scopes.Scope {
 			Description: i.Description,
 			CreatedTime: i.CreatedTime,
 			UpdatedTime: i.UpdatedTime,
-			Disabled:    i.Disabled,
 		}
 		filtered = append(filtered, p)
 	}

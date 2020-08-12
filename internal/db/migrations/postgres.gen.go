@@ -727,7 +727,6 @@ create table iam_user (
     description text,
     scope_id wt_scope_id not null references iam_scope(public_id) on delete cascade on update cascade,
     unique(name, scope_id),
-    disabled boolean not null default false,
     version wt_version,
 
     -- The order of columns is important for performance. See:
@@ -857,7 +856,6 @@ create table iam_role (
     scope_id wt_scope_id not null references iam_scope(public_id) on delete cascade on update cascade,
     grant_scope_id wt_scope_id not null references iam_scope(public_id) on delete cascade on update cascade,
     unique(name, scope_id),
-    disabled boolean not null default false,
     version wt_version,
 
     -- add unique index so a composite fk can be declared.
@@ -967,7 +965,6 @@ create table iam_group (
     description text,
     scope_id wt_scope_id not null references iam_scope(public_id) on delete cascade on update cascade,
     unique(name, scope_id),
-    disabled boolean not null default false,
     -- version allows optimistic locking of the group when modifying the group
     -- itself and when modifying dependent items like group members. 
     version wt_version,

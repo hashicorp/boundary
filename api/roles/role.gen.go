@@ -21,9 +21,8 @@ type Role struct {
 	Description  string            `json:"description,omitempty"`
 	CreatedTime  time.Time         `json:"created_time,omitempty"`
 	UpdatedTime  time.Time         `json:"updated_time,omitempty"`
-	Disabled     bool              `json:"disabled,omitempty"`
-	GrantScopeId string            `json:"grant_scope_id,omitempty"`
 	Version      uint32            `json:"version,omitempty"`
+	GrantScopeId string            `json:"grant_scope_id,omitempty"`
 	PrincipalIds []string          `json:"principal_ids,omitempty"`
 	Principals   []*Principal      `json:"principals,omitempty"`
 	GrantStrings []string          `json:"grant_strings,omitempty"`
