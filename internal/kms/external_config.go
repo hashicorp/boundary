@@ -3,7 +3,6 @@ package kms
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 
 	"github.com/hashicorp/boundary/internal/db"
@@ -20,14 +19,13 @@ type ExternalConfig struct {
 	tableName string `gorm:"-"`
 }
 
-// NewExternalConfig creates a new in memory external config.  the config
+// NewExternalConfig creates a new in memory external config.  ScopeId must be
+// for a global or org scope, but the scope type validation will be deferred
+// until the in memory external config is written to the database.  The config
 // parmater must be valid json.  No options are currently supported.
-func NewExternalConfig(scopeId, confType, config string, opt ...Option) (*ExternalConfig, error) {
+func NewExternalConfig(scopeId string, confType KmsType, config string, opt ...Option) (*ExternalConfig, error) {
 	if scopeId == "" {
 		return nil, fmt.Errorf("new external config: missing scope id %w", db.ErrInvalidParameter)
-	}
-	if confType == "" {
-		return nil, fmt.Errorf("new external config: missing type%w", db.ErrInvalidParameter)
 	}
 	if config == "" {
 		return nil, fmt.Errorf("new external config: missing conf %w", db.ErrInvalidParameter)
@@ -38,7 +36,7 @@ func NewExternalConfig(scopeId, confType, config string, opt ...Option) (*Extern
 	c := &ExternalConfig{
 		ExternalConfig: &store.ExternalConfig{
 			ScopeId: scopeId,
-			Type:    confType,
+			Type:    confType.String(),
 			Config:  config,
 		},
 	}
@@ -48,7 +46,7 @@ func NewExternalConfig(scopeId, confType, config string, opt ...Option) (*Extern
 func validateConfig(str string) error {
 	var js json.RawMessage
 	if json.Unmarshal([]byte(str), &js) != nil {
-		return errors.New("config is not valid json")
+		return fmt.Errorf("config is not valid json: %w", db.ErrInvalidParameter)
 	}
 	return nil
 }
