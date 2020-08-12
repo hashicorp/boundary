@@ -32,6 +32,7 @@ import (
 
 type HandlerProperties struct {
 	ListenerConfig *configutil.Listener
+	CancelCtx      context.Context
 }
 
 // Handler returns an http.Handler for the services. This can be used on
@@ -40,7 +41,7 @@ func (c *Controller) handler(props HandlerProperties) (http.Handler, error) {
 	// Create the muxer to handle the actual endpoints
 	mux := http.NewServeMux()
 
-	h, err := handleGrpcGateway(c)
+	h, err := handleGrpcGateway(c, props)
 	if err != nil {
 		return nil, err
 	}
@@ -54,10 +55,10 @@ func (c *Controller) handler(props HandlerProperties) (http.Handler, error) {
 	return commonWrappedHandler, nil
 }
 
-func handleGrpcGateway(c *Controller) (http.Handler, error) {
-	// Register*ServiceHandlerServer methods ignore the passed in ctx.  Using the baseContext now just in case this changes
-	// in the future, at which point we'll want to be using the baseContext.
-	ctx := c.baseContext
+func handleGrpcGateway(c *Controller, props HandlerProperties) (http.Handler, error) {
+	// Register*ServiceHandlerServer methods ignore the passed in ctx.  Using
+	// the a context now just in case this changes in the future
+	ctx := props.CancelCtx
 	mux := runtime.NewServeMux(
 		runtime.WithMarshalerOption(runtime.MIMEWildcard, &runtime.HTTPBodyMarshaler{
 			Marshaler: &runtime.JSONPb{

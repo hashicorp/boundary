@@ -52,7 +52,7 @@ func (a *authAccount) VetForWrite(ctx context.Context, r db.Reader, opType db.Op
 }
 
 func (a *authAccount) validScopeTypes() []scope.Type {
-	return []scope.Type{scope.Org}
+	return []scope.Type{scope.Global, scope.Org}
 }
 
 // GetScope returns the scope for the auth account.

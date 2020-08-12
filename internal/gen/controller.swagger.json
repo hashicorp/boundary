@@ -3049,6 +3049,25 @@
         }
       }
     },
+    "controller.api.services.v1.StatusResponse": {
+      "type": "object",
+      "properties": {
+        "controllers": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/controller.servers.v1.Server"
+          },
+          "description": "Active controllers. This can be used (eventually) for conneciton\nmanagement."
+        },
+        "cancel_job_ids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Jobs that should be canceled: ones assigned to this worker that have been\nreported as active but are in canceling state in the database. Once the\nworker cancels the job, it will no longer show up in active_jobs in the\nnext heartbeat, and we can move the job to canceled state."
+        }
+      }
+    },
     "controller.api.services.v1.UpdateAccountResponse": {
       "type": "object",
       "properties": {
@@ -3120,6 +3139,50 @@
           "$ref": "#/definitions/controller.api.resources.users.v1.User"
         }
       }
+    },
+    "controller.servers.v1.Server": {
+      "type": "object",
+      "properties": {
+        "private_id": {
+          "type": "string",
+          "title": "Private ID of the resource"
+        },
+        "type": {
+          "type": "string",
+          "title": "Type of the resource (controller, worker)"
+        },
+        "name": {
+          "type": "string",
+          "title": "Name of the resource"
+        },
+        "description": {
+          "type": "string",
+          "title": "Description of the resource"
+        },
+        "address": {
+          "type": "string",
+          "title": "Address for the server"
+        },
+        "create_time": {
+          "$ref": "#/definitions/controller.storage.timestamp.v1.Timestamp",
+          "title": "First seen time from the RDBMS"
+        },
+        "update_time": {
+          "$ref": "#/definitions/controller.storage.timestamp.v1.Timestamp",
+          "title": "Last time there was an update"
+        }
+      },
+      "title": "Server contains all fields related to a Controller or Worker resource"
+    },
+    "controller.storage.timestamp.v1.Timestamp": {
+      "type": "object",
+      "properties": {
+        "timestamp": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "title": "Timestamp for storage messages.  We've defined a new local type wrapper\nof google.protobuf.Timestamp so we can implement sql.Scanner and sql.Valuer\ninterfaces.  See:\nhttps://golang.org/pkg/database/sql/#Scanner\nhttps://golang.org/pkg/database/sql/driver/#Valuer"
     },
     "google.protobuf.FieldMask": {
       "type": "object",

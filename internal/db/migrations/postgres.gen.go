@@ -957,7 +957,7 @@ insert into iam_role (public_id, name, description, scope_id)
   values('r_default', 'default', 'default role', 'global');
 
 insert into iam_role_grant (role_id, canonical_grant, raw_grant)
-  values('r_default', 'type=org;actions=list', 'type=org;actions=list');
+  values('r_default', 'type=scope;actions=list', 'type=scope;actions=list');
 
 create table iam_group (
     public_id wt_public_id not null primary key,
@@ -1318,6 +1318,54 @@ begin;
 
   end;
   $$ language plpgsql;
+
+commit;
+
+`),
+	},
+	"migrations/08_servers.down.sql": {
+		name: "08_servers.down.sql",
+		bytes: []byte(`
+begin;
+
+  drop table workers;
+  drop table controllers;
+
+commit;
+
+`),
+	},
+	"migrations/08_servers.up.sql": {
+		name: "08_servers.up.sql",
+		bytes: []byte(`
+begin;
+
+-- For now at least the IDs will be the same as the name, because this allows us
+-- to not have to persist some generated ID to worker and controller nodes.
+-- Eventually we may want them to diverge, so we have both here for now.
+
+create table servers (
+    private_id text,
+    type text,
+    name text not null unique,
+    description text,
+    address text,
+    create_time wt_timestamp,
+    update_time wt_timestamp,
+    primary key (private_id, type)
+  );
+  
+create trigger 
+  immutable_columns
+before
+update on servers
+  for each row execute procedure immutable_columns('create_time');
+  
+create trigger 
+  default_create_time_column
+before
+insert on servers
+  for each row execute procedure default_create_time();
 
 commit;
 

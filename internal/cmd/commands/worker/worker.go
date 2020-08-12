@@ -168,7 +168,7 @@ func (c *Command) Run(args []string) int {
 				"in a Docker container, provide the IPC_LOCK cap to the container."))
 	}
 
-	if err := c.SetupListeners(c.UI, c.Config.SharedConfig); err != nil {
+	if err := c.SetupListeners(c.UI, c.Config.SharedConfig, []string{"worker-alpn-tls"}); err != nil {
 		c.UI.Error(err.Error())
 		return 1
 	}
@@ -235,7 +235,11 @@ func (c *Command) ParseFlagsAndConfig(args []string) int {
 		}
 
 	} else {
-		c.Config, err = config.DevWorker()
+		if len(c.flagConfig) == 0 {
+			c.Config, err = config.DevWorker()
+		} else {
+			c.Config, err = config.LoadFile(c.flagConfig, c.configKMS)
+		}
 		if err != nil {
 			c.UI.Error(fmt.Errorf("Error creating dev config: %s", err).Error())
 			return 1
@@ -265,7 +269,7 @@ func (c *Command) Start() error {
 
 	if err := c.worker.Start(); err != nil {
 		retErr := fmt.Errorf("Error starting worker: %w", err)
-		if err := c.worker.Shutdown(); err != nil {
+		if err := c.worker.Shutdown(false); err != nil {
 			c.UI.Error(retErr.Error())
 			retErr = fmt.Errorf("Error with worker shutdown: %w", err)
 		}
@@ -289,7 +293,7 @@ func (c *Command) WaitForInterrupt() int {
 		case <-shutdownCh:
 			c.UI.Output("==> Boundary worker shutdown triggered")
 
-			if err := c.worker.Shutdown(); err != nil {
+			if err := c.worker.Shutdown(false); err != nil {
 				c.UI.Error(fmt.Errorf("Error with worker shutdown: %w", err).Error())
 			}
 

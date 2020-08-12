@@ -124,18 +124,6 @@ func Test_UserCreate(t *testing.T) {
 		require.Error(err)
 		assert.Equal("create: vet for write failed: scope is not found", err.Error())
 	})
-	t.Run("bad-scope", func(t *testing.T) {
-		assert, require := assert.New(t), require.New(t)
-		w := db.New(conn)
-		user, err := NewUser("global")
-		require.NoError(err)
-		id, err := newUserId()
-		require.NoError(err)
-		user.PublicId = id
-		err = w.Create(context.Background(), user)
-		require.Error(err)
-		assert.Equal("create: vet for write failed: global not a valid scope type for this resource", err.Error())
-	})
 }
 
 func Test_UserUpdate(t *testing.T) {
