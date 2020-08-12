@@ -71,14 +71,16 @@ func (c *ExternalConfig) VetForWrite(ctx context.Context, r db.Reader, opType db
 	if c.PrivateId == "" {
 		return fmt.Errorf("external config vet for write: missing private id: %w", db.ErrInvalidParameter)
 	}
-	if c.Type == "" {
-		return fmt.Errorf("external config vet for write: missing type: %w", db.ErrInvalidParameter)
-	}
-	if c.Config == "" {
-		return fmt.Errorf("external config vet for write: missing config: %w", db.ErrInvalidParameter)
-	}
-	if err := validateConfig(c.Config); err != nil {
-		return fmt.Errorf("external config vet for write: %w", err)
+	if opType == db.CreateOp {
+		if c.Type == "" {
+			return fmt.Errorf("external config vet for write: missing type: %w", db.ErrInvalidParameter)
+		}
+		if c.Config == "" {
+			return fmt.Errorf("external config vet for write: missing config: %w", db.ErrInvalidParameter)
+		}
+		if err := validateConfig(c.Config); err != nil {
+			return fmt.Errorf("external config vet for write: %w", err)
+		}
 	}
 	return nil
 }
