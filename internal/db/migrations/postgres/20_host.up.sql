@@ -49,9 +49,7 @@ begin;
     unique(scope_id, public_id)
   );
 
-  create trigger immutable_columns
-  before
-  update on host_catalog
+  create trigger immutable_columns before update on host_catalog
     for each row execute procedure immutable_columns('public_id', 'scope_id');
 
   create table host (
@@ -63,9 +61,7 @@ begin;
     unique(catalog_id, public_id)
   );
 
-  create trigger immutable_columns
-  before
-  update on host
+  create trigger immutable_columns before update on host
     for each row execute procedure immutable_columns('public_id', 'catalog_id');
 
   create table host_set (
@@ -77,9 +73,7 @@ begin;
     unique(catalog_id, public_id)
   );
 
-  create trigger immutable_columns
-  before
-  update on host_set
+  create trigger immutable_columns before update on host_set
     for each row execute procedure immutable_columns('public_id', 'catalog_id');
 
   insert into oplog_ticket (name, version)

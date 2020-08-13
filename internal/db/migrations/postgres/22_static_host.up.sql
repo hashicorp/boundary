@@ -54,26 +54,16 @@ begin;
     unique(scope_id, name)
   );
 
-  create trigger
-    update_version_column
-  after update on static_host_catalog
+  create trigger update_version_column after update on static_host_catalog
     for each row execute procedure update_version_column();
 
-  create trigger
-    update_time_column
-  before update on static_host_catalog
+  create trigger update_time_column before update on static_host_catalog
     for each row execute procedure update_time_column();
 
-  create trigger
-    default_create_time_column
-  before
-  insert on static_host_catalog
+  create trigger default_create_time_column before insert on static_host_catalog
     for each row execute procedure default_create_time();
 
-  create trigger 
-    immutable_columns
-  before
-  update on static_host_catalog
+  create trigger immutable_columns before update on static_host_catalog
     for each row execute procedure immutable_columns('public_id', 'scope_id','create_time');
 
   create table static_host (
@@ -101,26 +91,16 @@ begin;
     unique(catalog_id, public_id)
   );
 
-  create trigger
-    update_version_column
-  after update on static_host
+  create trigger update_version_column after update on static_host
     for each row execute procedure update_version_column();
 
-  create trigger
-    update_time_column
-  before update on static_host
+  create trigger update_time_column before update on static_host
     for each row execute procedure update_time_column();
 
-  create trigger
-    default_create_time_column
-  before
-  insert on static_host
+  create trigger default_create_time_column before insert on static_host
     for each row execute procedure default_create_time();
 
-  create trigger 
-    immutable_columns
-  before
-  update on static_host
+  create trigger immutable_columns before update on static_host
     for each row execute procedure immutable_columns('public_id', 'catalog_id','create_time');
   
   create table static_host_set (
@@ -142,27 +122,17 @@ begin;
     unique(catalog_id, public_id)
   );
 
-  create trigger
-    update_version_column
-  after update on static_host_set
+  create trigger update_version_column after update on static_host_set
     for each row execute procedure update_version_column();
 
-  create trigger
-    update_time_column
-  before update on static_host_set
+  create trigger update_time_column before update on static_host_set
     for each row execute procedure update_time_column();
 
-  create trigger
-    default_create_time_column
-  before
-  insert on static_host_set
+  create trigger default_create_time_column before insert on static_host_set
     for each row execute procedure default_create_time();
 
 
-  create trigger 
-    immutable_columns
-  before
-  update on static_host_set
+  create trigger immutable_columns before update on static_host_set
     for each row execute procedure immutable_columns('public_id', 'catalog_id','create_time');
 
   create table static_host_set_member (
@@ -180,10 +150,7 @@ begin;
       on update cascade
   );
 
-  create trigger 
-    immutable_columns
-  before
-  update on static_host_set_member
+  create trigger immutable_columns before update on static_host_set_member
     for each row execute procedure immutable_columns('static_host_set_id', 'static_host_id');
     
   insert into oplog_ticket (name, version)
