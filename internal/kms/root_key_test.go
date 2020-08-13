@@ -178,11 +178,11 @@ func TestRootKey_Clone(t *testing.T) {
 		assert := assert.New(t)
 		org, _ := iam.TestScopes(t, conn)
 		org2, _ := iam.TestScopes(t, conn)
-		grp := TestRootKey(t, conn, org.PublicId)
-		grp2 := TestRootKey(t, conn, org2.PublicId)
+		k := TestRootKey(t, conn, org.PublicId)
+		k2 := TestRootKey(t, conn, org2.PublicId)
 
-		cp := grp.Clone()
-		assert.True(!proto.Equal(cp.(*RootKey).RootKey, grp2.RootKey))
+		cp := k.Clone()
+		assert.True(!proto.Equal(cp.(*RootKey).RootKey, k2.RootKey))
 	})
 }
 
