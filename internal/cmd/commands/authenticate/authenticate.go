@@ -13,7 +13,7 @@ type Command struct {
 }
 
 func (c *Command) Synopsis() string {
-	return wordwrap.WrapString("Authenticate the Boundary commandline client", base.TermWidth)
+	return wordwrap.WrapString("Authenticate the Boundary command-line client", base.TermWidth)
 }
 
 func (c *Command) Help() string {

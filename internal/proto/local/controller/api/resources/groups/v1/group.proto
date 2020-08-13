@@ -14,13 +14,9 @@ message Member {
 	// Output only.
 	string id = 10;
 
-	// The type of the member.
-	// Output only.
-	string type = 20;
-
 	// The scope ID of the member.
 	// Output only.
-	string scope_id = 30 [json_name="scope_id"];
+	string scope_id = 20 [json_name="scope_id"];
 }
 
 // Group contains all fields related to a Group resource
