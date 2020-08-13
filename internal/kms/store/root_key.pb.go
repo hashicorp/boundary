@@ -112,8 +112,8 @@ type RootKeyVersion struct {
 	// @inject_tag: `gorm:"-" wrapping:"pt,key_data"`
 	Key string `protobuf:"bytes,3,opt,name=key,proto3" json:"key,omitempty" gorm:"-" wrapping:"pt,key_data"`
 	// ciphertext key data stored in the database
-	// @inject_tag: `gorm:"column:config;not_null" wrapping:"ct,key_data"`
-	CtKey []byte `protobuf:"bytes,4,opt,name=ct_key,json=ctKey,proto3" json:"ct_key,omitempty" gorm:"column:config;not_null" wrapping:"ct,key_data"`
+	// @inject_tag: `gorm:"column:key;not_null" wrapping:"ct,key_data"`
+	CtKey []byte `protobuf:"bytes,4,opt,name=ct_key,json=ctKey,proto3" json:"ct_key,omitempty" gorm:"column:key;not_null" wrapping:"ct,key_data"`
 	// version of the key data.  This is not used for optimistic locking, since
 	// key versions are immutable.  It's just the version of the key.
 	// @inject_tag: `gorm:"default:null"`

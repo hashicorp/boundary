@@ -35,7 +35,7 @@ message RootKeyVersion {
   string key = 3;
 
   // ciphertext key data stored in the database
-  // @inject_tag: `gorm:"column:config;not_null" wrapping:"ct,key_data"`
+  // @inject_tag: `gorm:"column:key;not_null" wrapping:"ct,key_data"`
   bytes ct_key = 4;
 
   // version of the key data.  This is not used for optimistic locking, since
