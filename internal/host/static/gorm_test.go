@@ -3,13 +3,14 @@ package static
 import (
 	"testing"
 
-	"github.com/hashicorp/boundary/internal/host/static/store"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/hashicorp/boundary/internal/host/static/store"
 )
 
 func TestHostCatalog_SetTableName(t *testing.T) {
-	defaultTableName := defaultHostCatalogTableName
+	defaultTableName := "static_host_catalog"
 	tests := []struct {
 		name        string
 		initialName string
@@ -45,7 +46,7 @@ func TestHostCatalog_SetTableName(t *testing.T) {
 }
 
 func TestHost_SetTableName(t *testing.T) {
-	defaultTableName := defaultHostTableName
+	defaultTableName := "static_host"
 	tests := []struct {
 		name        string
 		initialName string
@@ -83,7 +84,7 @@ func TestHost_SetTableName(t *testing.T) {
 }
 
 func TestHostSet_SetTableName(t *testing.T) {
-	defaultTableName := defaultHostSetTableName
+	defaultTableName := "static_host_set"
 	tests := []struct {
 		name        string
 		initialName string
@@ -121,7 +122,7 @@ func TestHostSet_SetTableName(t *testing.T) {
 }
 
 func TestHostSetMember_SetTableName(t *testing.T) {
-	defaultTableName := defaultHostSetMemberTableName
+	defaultTableName := "static_host_set_member"
 	tests := []struct {
 		name        string
 		initialName string

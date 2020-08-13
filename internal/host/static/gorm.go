@@ -1,18 +1,11 @@
 package static
 
-const (
-	defaultHostCatalogTableName   = "static_host_catalog"
-	defaultHostTableName          = "static_host"
-	defaultHostSetTableName       = "static_host_set"
-	defaultHostSetMemberTableName = "static_host_set_member"
-)
-
 // TableName returns the table name for the host catalog.
 func (c *HostCatalog) TableName() string {
 	if c.tableName != "" {
 		return c.tableName
 	}
-	return defaultHostCatalogTableName
+	return "static_host_catalog"
 }
 
 // SetTableName sets the table name. If the caller attempts to
@@ -26,7 +19,7 @@ func (h *Host) TableName() string {
 	if h.tableName != "" {
 		return h.tableName
 	}
-	return defaultHostTableName
+	return "static_host"
 }
 
 // SetTableName sets the table name. If the caller attempts to
@@ -40,7 +33,7 @@ func (s *HostSet) TableName() string {
 	if s.tableName != "" {
 		return s.tableName
 	}
-	return defaultHostSetTableName
+	return "static_host_set"
 }
 
 // SetTableName sets the table name. If the caller attempts to
@@ -54,7 +47,7 @@ func (m *HostSetMember) TableName() string {
 	if m.tableName != "" {
 		return m.tableName
 	}
-	return defaultHostSetMemberTableName
+	return "static_host_set_member"
 }
 
 // SetTableName sets the table name. If the caller attempts to
