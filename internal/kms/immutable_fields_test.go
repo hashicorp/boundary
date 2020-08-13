@@ -16,12 +16,13 @@ import (
 func TestExternalConfig_ImmutableFields(t *testing.T) {
 	t.Parallel()
 	conn, _ := db.TestSetup(t, "postgres")
+	wrapper := db.TestWrapper(t)
 	w := db.New(conn)
 
 	ts := timestamp.Timestamp{Timestamp: &timestamppb.Timestamp{Seconds: 0, Nanos: 0}}
 
 	org, _ := iam.TestScopes(t, conn)
-	new := TestExternalConfig(t, conn, org.PublicId, DevKms, "{}")
+	new := TestExternalConfig(t, conn, wrapper, org.PublicId, DevKms, "{}")
 
 	var tests = []struct {
 		name      string
