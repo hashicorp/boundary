@@ -159,19 +159,26 @@ func (r *Repository) UpdateExternalConfig(ctx context.Context, conf *ExternalCon
 	if conf.PrivateId == "" {
 		return nil, db.NoRowsAffected, fmt.Errorf("update external config: missing conf private id %w", db.ErrInvalidParameter)
 	}
+	var filteredFieldMasks []string
 	for _, f := range fieldMaskPaths {
 		switch {
 		case strings.EqualFold("config", f):
+			filteredFieldMasks = append(filteredFieldMasks, "CtConfig")
 		default:
 			return nil, db.NoRowsAffected, fmt.Errorf("update external config: field: %s: %w", f, db.ErrInvalidFieldMask)
 		}
 	}
+	c := conf.Clone().(*ExternalConfig)
+	if err := c.encrypt(ctx, r.wrapper); err != nil {
+		return nil, db.NoRowsAffected, fmt.Errorf("update external config: encrypt: %w", err)
+	}
+
 	var dbMask, nullFields []string
 	dbMask, nullFields = dbcommon.BuildUpdatePaths(
 		map[string]interface{}{
-			"config": conf.Config,
+			"CtConfig": c.CtConfig,
 		},
-		fieldMaskPaths,
+		filteredFieldMasks,
 	)
 	if len(dbMask) == 0 && len(nullFields) == 0 {
 		return nil, db.NoRowsAffected, fmt.Errorf("update external config: %w", db.ErrEmptyFieldMask)
@@ -184,8 +191,8 @@ func (r *Repository) UpdateExternalConfig(ctx context.Context, conf *ExternalCon
 		db.StdRetryCnt,
 		db.ExpBackoff{},
 		func(_ db.Reader, w db.Writer) error {
-			metadata := conf.oplog(oplog.OpType_OP_TYPE_UPDATE)
-			returnedCfg = conf.Clone()
+			metadata := c.oplog(oplog.OpType_OP_TYPE_UPDATE)
+			returnedCfg = c.Clone()
 			var err error
 			rowsUpdated, err = w.Update(
 				ctx,
@@ -205,5 +212,8 @@ func (r *Repository) UpdateExternalConfig(ctx context.Context, conf *ExternalCon
 		return nil, db.NoRowsAffected, fmt.Errorf("update external config: %w for %s", err, conf.PrivateId)
 	}
 
+	if err := returnedCfg.(*ExternalConfig).decrypt(ctx, r.wrapper); err != nil {
+		return nil, db.NoRowsAffected, fmt.Errorf("update external config: decrypt: %w", err)
+	}
 	return returnedCfg.(*ExternalConfig), rowsUpdated, err
 }

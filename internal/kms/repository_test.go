@@ -268,7 +268,7 @@ func TestRepository_DeleteExternalConfig(t *testing.T) {
 		{
 			name: "valid",
 			args: args{
-				conf: TestExternalConfig(t, conn, org.PublicId, DevKms, "{}"),
+				conf: TestExternalConfig(t, conn, wrapper, org.PublicId, DevKms, "{}"),
 			},
 			wantRowsDeleted: 1,
 			wantErr:         false,
@@ -390,30 +390,6 @@ func TestRepository_UpdateExternalConfig(t *testing.T) {
 			wantRowsUpdate: 0,
 			wantIsError:    db.ErrRecordNotFound,
 		},
-		// {
-		// 	name: "null-name",
-		// 	args: args{
-		// 		name:           "",
-		// 		fieldMaskPaths: []string{"Name"},
-		// 		ScopeId:        org.PublicId,
-		// 	},
-		// 	newScopeId:     org.PublicId,
-		// 	newGrpOpts:     []Option{WithName("null-name" + id)},
-		// 	wantErr:        false,
-		// 	wantRowsUpdate: 1,
-		// },
-		// {
-		// 	name: "null-description",
-		// 	args: args{
-		// 		name:           "",
-		// 		fieldMaskPaths: []string{"Description"},
-		// 		ScopeId:        org.PublicId,
-		// 	},
-		// 	newScopeId:     org.PublicId,
-		// 	newGrpOpts:     []Option{WithDescription("null-description" + id)},
-		// 	wantErr:        false,
-		// 	wantRowsUpdate: 1,
-		// },
 		{
 			name: "empty-field-mask",
 			args: args{
@@ -580,7 +556,7 @@ func TestRepository_UpdateExternalConfig(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 
-			c := TestExternalConfig(t, conn, tt.newScopeId, DevKms, "{}")
+			c := TestExternalConfig(t, conn, wrapper, tt.newScopeId, DevKms, "{}")
 
 			tt.args.config.PrivateId = c.PrivateId
 			if tt.args.PrivateId != nil {
