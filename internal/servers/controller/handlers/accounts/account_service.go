@@ -148,7 +148,7 @@ func (s Service) ChangePassword(ctx context.Context, req *pbs.ChangePasswordRequ
 		return nil, err
 	}
 	u.Scope = authResults.Scope
-	return &pbs.ChangePasswordResponse{}, nil
+	return &pbs.ChangePasswordResponse{Item: u}, nil
 }
 
 // SetPassword implements the interface pbs.AccountServiceServer.
@@ -165,7 +165,7 @@ func (s Service) SetPassword(ctx context.Context, req *pbs.SetPasswordRequest) (
 		return nil, err
 	}
 	u.Scope = authResults.Scope
-	return &pbs.SetPasswordResponse{}, nil
+	return &pbs.SetPasswordResponse{Item: u}, nil
 }
 
 func (s Service) getFromRepo(ctx context.Context, id string) (*pb.Account, error) {
@@ -192,9 +192,6 @@ func (s Service) createInRepo(ctx context.Context, authMethodId string, item *pb
 		return nil, status.Errorf(codes.InvalidArgument, "Provided attributes don't match expected format.")
 	}
 	opts := []password.Option{password.WithLoginName(pwAttrs.GetLoginName())}
-	if pwAttrs.GetPassword() != nil {
-		opts = append(opts, password.WithPassword(pwAttrs.GetPassword().GetValue()))
-	}
 	if item.GetName() != nil {
 		opts = append(opts, password.WithName(item.GetName().GetValue()))
 	}
@@ -209,7 +206,12 @@ func (s Service) createInRepo(ctx context.Context, authMethodId string, item *pb
 	if err != nil {
 		return nil, err
 	}
-	out, err := repo.CreateAccount(ctx, a)
+
+	var createOpts []password.Option
+	if pwAttrs.GetPassword() != nil {
+		createOpts = append(createOpts, password.WithPassword(pwAttrs.GetPassword().GetValue()))
+	}
+	out, err := repo.CreateAccount(ctx, a, createOpts...)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "Unable to create user: %v.", err)
 	}
@@ -292,7 +294,7 @@ func (s Service) changePasswordInRepo(ctx context.Context, auth_method_id, id st
 	}
 	out, err := repo.ChangePassword(ctx, auth_method_id, id, oldPassword, newPassword, version)
 	if err != nil {
-		return nil, status.Errorf(codes.Internal, "Unable to update auth method: %v.", err)
+		return nil, status.Errorf(codes.Internal, "Unable to change password: %v.", err)
 	}
 	return toProto(out)
 }
@@ -304,7 +306,7 @@ func (s Service) setPasswordInRepo(ctx context.Context, id string, version uint3
 	}
 	out, err := repo.SetPassword(ctx, id, password, version)
 	if err != nil {
-		return nil, status.Errorf(codes.Internal, "Unable to update auth method: %v.", err)
+		return nil, status.Errorf(codes.Internal, "Unable to set password: %v.", err)
 	}
 	return toProto(out)
 }
@@ -423,10 +425,10 @@ func validateChangePasswordRequest(req *pbs.ChangePasswordRequest) error {
 	if req.GetVersion() == 0 {
 		badFields["version"] = "Existing resource version is required for an update."
 	}
-	if req.GetNewPassword() != "" {
+	if req.GetNewPassword() == "" {
 		badFields["new_password"] = "This is a required field."
 	}
-	if req.GetOldPassword() != "" {
+	if req.GetOldPassword() == "" {
 		badFields["old_password"] = "This is a required field."
 	}
 	if len(badFields) > 0 {
@@ -445,9 +447,6 @@ func validateSetPasswordRequest(req *pbs.SetPasswordRequest) error {
 	}
 	if req.GetVersion() == 0 {
 		badFields["version"] = "Existing resource version is required for an update."
-	}
-	if req.GetPassword() != "" {
-		badFields["password"] = "This is a required field."
 	}
 	if len(badFields) > 0 {
 		return handlers.InvalidArgumentErrorf("Improperly formatted identifier.", badFields)

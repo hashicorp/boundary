@@ -122,7 +122,7 @@ func (r *Repository) ChangePassword(ctx context.Context, authMethodId string, ac
 		return nil, fmt.Errorf("change password: %w", err)
 	}
 	if acct == nil {
-		return nil, nil
+		return nil, fmt.Errorf("change password: unable to authenticate")
 	}
 
 	cc, err := r.currentConfig(ctx, authMethodId)
@@ -143,12 +143,13 @@ func (r *Repository) ChangePassword(ctx context.Context, authMethodId string, ac
 
 	oldCred := acct.Argon2Credential
 
+	var updatedAccount *Account
 	_, err = r.writer.DoTx(ctx, db.StdRetryCnt, db.ExpBackoff{},
 		func(_ db.Reader, w db.Writer) error {
-			updatedAccount := allocAccount()
+			updatedAccount = allocAccount()
 			updatedAccount.PublicId = accountId
 			updatedAccount.Version = version + 1
-			rowsUpdated, err := w.Update(ctx, &updatedAccount, []string{"Version"}, nil, db.WithOplog(r.wrapper, acct.Account.oplog(oplog.OpType_OP_TYPE_UPDATE)), db.WithVersion(&version))
+			rowsUpdated, err := w.Update(ctx, updatedAccount, []string{"Version"}, nil, db.WithOplog(r.wrapper, acct.Account.oplog(oplog.OpType_OP_TYPE_UPDATE)), db.WithVersion(&version))
 			if err != nil {
 				return fmt.Errorf("change password: unable to update account version: %w", err)
 			}
@@ -171,8 +172,8 @@ func (r *Repository) ChangePassword(ctx context.Context, authMethodId string, ac
 	}
 
 	// change the Credential Id
-	acct.Account.CredentialId = newCred.PrivateId
-	return acct.Account, nil
+	updatedAccount.CredentialId = newCred.PrivateId
+	return updatedAccount, nil
 }
 
 func (r *Repository) authenticate(ctx context.Context, authMethodId string, loginName string, password string) (*authAccount, error) {
@@ -259,13 +260,14 @@ func (r *Repository) SetPassword(ctx context.Context, accountId string, password
 			updatedAccount := allocAccount()
 			updatedAccount.PublicId = accountId
 			updatedAccount.Version = version + 1
-			rowsUpdated, err := w.Update(ctx, &updatedAccount, []string{"Version"}, nil, db.WithOplog(r.wrapper, acct.oplog(oplog.OpType_OP_TYPE_UPDATE)), db.WithVersion(&version))
+			rowsUpdated, err := w.Update(ctx, updatedAccount, []string{"Version"}, nil, db.WithOplog(r.wrapper, acct.oplog(oplog.OpType_OP_TYPE_UPDATE)), db.WithVersion(&version))
 			if err != nil {
 				return fmt.Errorf("set password: unable to update account version: %w", err)
 			}
 			if rowsUpdated != 1 {
 				return fmt.Errorf("set password: updated account and %d rows updated", rowsUpdated)
 			}
+			acct = updatedAccount
 
 			oldCred := allocCredential()
 			if err := rr.LookupWhere(ctx, &oldCred, "password_account_id = ?", accountId); err != nil {

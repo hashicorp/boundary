@@ -790,3 +790,272 @@ func TestUpdate(t *testing.T) {
 		})
 	}
 }
+
+func TestSetPassword(t *testing.T) {
+	conn, _ := db.TestSetup(t, "postgres")
+	rw := db.New(conn)
+	wrap := db.TestWrapper(t)
+	repoFn := func() (*password.Repository, error) {
+		return password.NewRepository(rw, rw, wrap)
+	}
+
+	o, _ := iam.TestScopes(t, conn)
+	tested, err := accounts.NewService(repoFn)
+	require.NoError(t, err, "Error when getting new auth_method service.")
+
+	createAccount := func(t *testing.T, pw string) *pb.Account {
+		am := password.TestAuthMethods(t, conn, o.GetPublicId(), 1)[0]
+		pwAttrs := &pb.PasswordAccountAttributes{
+			LoginName: "testusername",
+		}
+		if pw != "" {
+			pwAttrs.Password = wrapperspb.String(pw)
+		}
+		attrs, err := handlers.ProtoToStruct(pwAttrs)
+		createResp, err := tested.CreateAccount(auth.DisabledAuthTestContext(auth.WithScopeId(o.GetPublicId())), &pbs.CreateAccountRequest{
+			AuthMethodId: am.GetPublicId(),
+			Item: &pb.Account{
+				Type:       "password",
+				Attributes: attrs,
+			},
+		})
+		require.NoError(t, err)
+		require.NotNil(t, createResp)
+		require.NotNil(t, createResp.GetItem())
+		return createResp.GetItem()
+	}
+
+	cases := []struct {
+		name  string
+		oldPw string
+		newPw string
+	}{
+		{
+			name:  "has old set new",
+			oldPw: "originalpassword",
+			newPw: "a different password",
+		},
+		{
+			name:  "has old unset new",
+			oldPw: "originalpassword",
+			newPw: "",
+		},
+		{
+			name:  "no old password set new",
+			oldPw: "",
+			newPw: "a different password",
+		},
+	}
+
+	for _, tt := range cases {
+		t.Run(tt.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+			acct := createAccount(t, tt.oldPw)
+
+			setResp, err := tested.SetPassword(auth.DisabledAuthTestContext(auth.WithScopeId(o.GetPublicId())), &pbs.SetPasswordRequest{
+				AuthMethodId: acct.GetAuthMethodId(),
+				Id:           acct.GetId(),
+				Version:      acct.GetVersion(),
+				Password:     tt.newPw,
+			})
+			require.NoError(err)
+			assert.Equal(acct.GetVersion()+1, setResp.GetItem().GetVersion())
+			// clear uncomparable fields
+			acct.Version, setResp.GetItem().Version = 0, 0
+			acct.UpdatedTime, setResp.GetItem().UpdatedTime = nil, nil
+
+			assert.Empty(cmp.Diff(acct, setResp.GetItem(), protocmp.Transform()))
+		})
+	}
+
+	defaultAcct := createAccount(t, "")
+	badRequestCases := []struct {
+		name         string
+		authMethodId string
+		accountId    string
+		version      uint32
+		password     string
+	}{
+		{
+			name:         "empty auth method",
+			authMethodId: "",
+			accountId:    defaultAcct.GetId(),
+			version:      defaultAcct.GetVersion(),
+			password:     "somepassword",
+		},
+		{
+			name:         "empty account id",
+			authMethodId: defaultAcct.GetAuthMethodId(),
+			accountId:    "",
+			version:      defaultAcct.GetVersion(),
+			password:     "somepassword",
+		},
+		{
+			name:         "unset version",
+			authMethodId: defaultAcct.GetAuthMethodId(),
+			accountId:    defaultAcct.GetId(),
+			version:      0,
+			password:     "somepassword",
+		},
+	}
+
+	for _, tt := range badRequestCases {
+		t.Run(tt.name, func(t *testing.T) {
+			assert := assert.New(t)
+
+			setResp, err := tested.SetPassword(auth.DisabledAuthTestContext(auth.WithScopeId(o.GetPublicId())), &pbs.SetPasswordRequest{
+				AuthMethodId: tt.authMethodId,
+				Id:           tt.accountId,
+				Version:      tt.version,
+				Password:     tt.password,
+			})
+			assert.Error(err)
+			assert.Nil(setResp)
+		})
+	}
+}
+
+func TestChangePassword(t *testing.T) {
+	conn, _ := db.TestSetup(t, "postgres")
+	rw := db.New(conn)
+	wrap := db.TestWrapper(t)
+	repoFn := func() (*password.Repository, error) {
+		return password.NewRepository(rw, rw, wrap)
+	}
+
+	o, _ := iam.TestScopes(t, conn)
+	tested, err := accounts.NewService(repoFn)
+	require.NoError(t, err, "Error when getting new auth_method service.")
+
+	createAccount := func(t *testing.T, pw string) *pb.Account {
+		am := password.TestAuthMethods(t, conn, o.GetPublicId(), 1)[0]
+		pwAttrs := &pb.PasswordAccountAttributes{
+			LoginName: "testusername",
+		}
+		if pw != "" {
+			pwAttrs.Password = wrapperspb.String(pw)
+		}
+		attrs, err := handlers.ProtoToStruct(pwAttrs)
+		createResp, err := tested.CreateAccount(auth.DisabledAuthTestContext(auth.WithScopeId(o.GetPublicId())), &pbs.CreateAccountRequest{
+			AuthMethodId: am.GetPublicId(),
+			Item: &pb.Account{
+				Type:       "password",
+				Attributes: attrs,
+			},
+		})
+		require.NoError(t, err)
+		require.NotNil(t, createResp)
+		require.NotNil(t, createResp.GetItem())
+		return createResp.GetItem()
+	}
+
+	t.Run("valid update", func(t *testing.T) {
+		assert, require := assert.New(t), require.New(t)
+		acct := createAccount(t, "originalpassword")
+
+		changeResp, err := tested.ChangePassword(auth.DisabledAuthTestContext(auth.WithScopeId(o.GetPublicId())), &pbs.ChangePasswordRequest{
+			AuthMethodId: acct.GetAuthMethodId(),
+			Id:           acct.GetId(),
+			Version:      acct.GetVersion(),
+			OldPassword:  "originalpassword",
+			NewPassword:  "a different password",
+		})
+		require.NoError(err)
+		assert.Equal(acct.GetVersion()+1, changeResp.GetItem().GetVersion())
+		// clear uncomparable fields
+		acct.Version, changeResp.GetItem().Version = 0, 0
+		acct.UpdatedTime, changeResp.GetItem().UpdatedTime = nil, nil
+
+		assert.Empty(cmp.Diff(acct, changeResp.GetItem(), protocmp.Transform()))
+	})
+
+	t.Run("unauthenticated update", func(t *testing.T) {
+		assert := assert.New(t)
+		acct := createAccount(t, "originalpassword")
+
+		changeResp, err := tested.ChangePassword(auth.DisabledAuthTestContext(auth.WithScopeId(o.GetPublicId())), &pbs.ChangePasswordRequest{
+			AuthMethodId: acct.GetAuthMethodId(),
+			Id:           acct.GetId(),
+			Version:      acct.GetVersion(),
+			OldPassword:  "thewrongpassword",
+			NewPassword:  "a different password",
+		})
+		assert.Error(err)
+		assert.Nil(changeResp)
+	})
+
+	defaultAcct := createAccount(t, "")
+	badRequestCases := []struct {
+		name         string
+		authMethodId string
+		accountId    string
+		version      uint32
+		oldPW        string
+		newPW        string
+	}{
+		{
+			name:         "empty auth method",
+			authMethodId: "",
+			accountId:    defaultAcct.GetId(),
+			version:      defaultAcct.GetVersion(),
+			oldPW:        "somepassword",
+			newPW:        "anewpassword",
+		},
+		{
+			name:         "empty account id",
+			authMethodId: defaultAcct.GetAuthMethodId(),
+			accountId:    "",
+			version:      defaultAcct.GetVersion(),
+			oldPW:        "somepassword",
+			newPW:        "anewpassword",
+		},
+		{
+			name:         "unset version",
+			authMethodId: defaultAcct.GetAuthMethodId(),
+			accountId:    defaultAcct.GetId(),
+			version:      0,
+			oldPW:        "somepassword",
+			newPW:        "anewpassword",
+		},
+		{
+			name:         "no old password",
+			authMethodId: defaultAcct.GetAuthMethodId(),
+			accountId:    defaultAcct.GetId(),
+			version:      defaultAcct.GetVersion(),
+			oldPW:        "",
+			newPW:        "anewpassword",
+		},
+		{
+			name:         "no new password",
+			authMethodId: defaultAcct.GetAuthMethodId(),
+			accountId:    defaultAcct.GetId(),
+			version:      defaultAcct.GetVersion(),
+			oldPW:        "somepassword",
+			newPW:        "",
+		},
+		{
+			name:         "matching old and new passwords",
+			authMethodId: defaultAcct.GetAuthMethodId(),
+			accountId:    defaultAcct.GetId(),
+			version:      defaultAcct.GetVersion(),
+			oldPW:        "somepassword",
+			newPW:        "somepassword",
+		},
+	}
+
+	for _, tt := range badRequestCases {
+		t.Run(tt.name, func(t *testing.T) {
+			assert := assert.New(t)
+
+			changeResp, err := tested.ChangePassword(auth.DisabledAuthTestContext(auth.WithScopeId(o.GetPublicId())), &pbs.ChangePasswordRequest{
+				AuthMethodId: tt.authMethodId,
+				Id:           tt.accountId,
+				Version:      tt.version,
+				OldPassword:  tt.oldPW,
+				NewPassword:  tt.newPW,
+			})
+			assert.Error(err)
+			assert.Nil(changeResp)
+		})
+	}
+}
