@@ -66,7 +66,7 @@ func (c *ExternalConfig) VetForWrite(ctx context.Context, r db.Reader, opType db
 		if c.Type == "" {
 			return fmt.Errorf("external config vet for write: missing type: %w", db.ErrInvalidParameter)
 		}
-		if c.Config == "" {
+		if c.CtConfig == nil { // check the ciphertext since that's the config going to the db.
 			return fmt.Errorf("external config vet for write: missing config: %w", db.ErrInvalidParameter)
 		}
 		if c.ScopeId == "" {

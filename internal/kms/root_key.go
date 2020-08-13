@@ -49,7 +49,7 @@ func (k *RootKey) Clone() interface{} {
 	}
 }
 
-// VetForWrite implements db.VetForWrite() interface and validates the external config
+// VetForWrite implements db.VetForWrite() interface and validates the kms root
 // before it's written.
 func (k *RootKey) VetForWrite(ctx context.Context, r db.Reader, opType db.OpType, opt ...db.Option) error {
 	if k.PrivateId == "" {
@@ -81,7 +81,7 @@ func (c *RootKey) SetTableName(n string) {
 func (c *RootKey) oplog(op oplog.OpType) oplog.Metadata {
 	metadata := oplog.Metadata{
 		"resource-public-id": []string{c.PrivateId},
-		"resource-type":      []string{"external kms config"},
+		"resource-type":      []string{"kms root key"},
 		"op-type":            []string{op.String()},
 		"scope-id":           []string{c.ScopeId},
 	}
