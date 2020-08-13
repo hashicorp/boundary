@@ -61,6 +61,11 @@ type Command struct {
 	FlagTokenName        string
 	flagOutputCurlString bool
 
+	FlagId          string
+	FlagName        string
+	FlagDescription string
+	FlagVersion     int
+
 	client *api.Client
 }
 

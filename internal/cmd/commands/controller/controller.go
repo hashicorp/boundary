@@ -13,7 +13,7 @@ import (
 	"github.com/hashicorp/boundary/internal/servers/controller"
 	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/go-multierror"
-	"github.com/hashicorp/vault/internalshared/configutil"
+	"github.com/hashicorp/shared-secure-libs/configutil"
 	"github.com/hashicorp/vault/sdk/helper/mlock"
 	"github.com/hashicorp/vault/sdk/helper/strutil"
 	"github.com/mitchellh/cli"
@@ -372,7 +372,7 @@ func (c *Command) ParseFlagsAndConfig(args []string) int {
 				c.UI.Error(fmt.Sprintf("Invalid dev auth method ID, must start with %q", prefix))
 				return 1
 			}
-			if len(c.flagDevAuthMethodId) != 13 {
+			if len(c.flagDevAuthMethodId) != 15 {
 				c.UI.Error(fmt.Sprintf("Invalid dev auth method ID, must be 10 base62 characters after %q", prefix))
 				return 1
 			}

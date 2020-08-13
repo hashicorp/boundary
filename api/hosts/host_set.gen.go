@@ -27,15 +27,15 @@ type HostSet struct {
 	Hosts       []*Host           `json:"hosts,omitempty"`
 }
 
-type hostsetsClient struct {
+type HostSetsClient struct {
 	client *api.Client
 }
 
-func NewHostSetsClient(c *api.Client) *hostsetsClient {
-	return &hostsetsClient{client: c}
+func NewHostSetsClient(c *api.Client) *HostSetsClient {
+	return &HostSetsClient{client: c}
 }
 
-func (c *hostsetsClient) Create(ctx context.Context, hostCatalogId string, opt ...Option) (*HostSet, *api.Error, error) {
+func (c *HostSetsClient) Create(ctx context.Context, hostCatalogId string, opt ...Option) (*HostSet, *api.Error, error) {
 	if hostCatalogId == "" {
 		return nil, nil, fmt.Errorf("empty hostCatalogId value passed into Create request")
 	}
@@ -65,7 +65,7 @@ func (c *hostsetsClient) Create(ctx context.Context, hostCatalogId string, opt .
 	return target, apiErr, nil
 }
 
-func (c *hostsetsClient) Read(ctx context.Context, hostCatalogId string, hostSetId string, opt ...Option) (*HostSet, *api.Error, error) {
+func (c *HostSetsClient) Read(ctx context.Context, hostCatalogId string, hostSetId string, opt ...Option) (*HostSet, *api.Error, error) {
 	if hostCatalogId == "" {
 		return nil, nil, fmt.Errorf("empty hostCatalogId value passed into Read request")
 	}
@@ -99,7 +99,7 @@ func (c *hostsetsClient) Read(ctx context.Context, hostCatalogId string, hostSet
 	return target, apiErr, nil
 }
 
-func (c *hostsetsClient) Update(ctx context.Context, hostCatalogId string, hostSetId string, version uint32, opt ...Option) (*HostSet, *api.Error, error) {
+func (c *HostSetsClient) Update(ctx context.Context, hostCatalogId string, hostSetId string, version uint32, opt ...Option) (*HostSet, *api.Error, error) {
 	if hostCatalogId == "" {
 		return nil, nil, fmt.Errorf("empty hostCatalogId value passed into Update request")
 	}
@@ -152,7 +152,7 @@ func (c *hostsetsClient) Update(ctx context.Context, hostCatalogId string, hostS
 	return target, apiErr, nil
 }
 
-func (c *hostsetsClient) Delete(ctx context.Context, hostCatalogId string, hostSetId string, opt ...Option) (bool, *api.Error, error) {
+func (c *HostSetsClient) Delete(ctx context.Context, hostCatalogId string, hostSetId string, opt ...Option) (bool, *api.Error, error) {
 	if hostCatalogId == "" {
 		return false, nil, fmt.Errorf("empty hostCatalogId value passed into Delete request")
 	}
@@ -189,7 +189,7 @@ func (c *hostsetsClient) Delete(ctx context.Context, hostCatalogId string, hostS
 	return target.Existed, apiErr, nil
 }
 
-func (c *hostsetsClient) List(ctx context.Context, hostCatalogId string, opt ...Option) ([]*HostSet, *api.Error, error) {
+func (c *HostSetsClient) List(ctx context.Context, hostCatalogId string, opt ...Option) ([]*HostSet, *api.Error, error) {
 	if hostCatalogId == "" {
 		return nil, nil, fmt.Errorf("empty hostCatalogId value passed into List request")
 	}
@@ -222,7 +222,7 @@ func (c *hostsetsClient) List(ctx context.Context, hostCatalogId string, opt ...
 	return target.Items, apiErr, nil
 }
 
-func (c *hostsetsClient) AddHosts(ctx context.Context, hostCatalogId string, hostSetId string, version uint32, hostIds []string, opt ...Option) (*HostSet, *api.Error, error) {
+func (c *HostSetsClient) AddHosts(ctx context.Context, hostCatalogId string, hostSetId string, version uint32, hostIds []string, opt ...Option) (*HostSet, *api.Error, error) {
 	if hostCatalogId == "" {
 		return nil, nil, fmt.Errorf("empty hostCatalogId value passed into AddHosts request")
 	}
@@ -279,7 +279,7 @@ func (c *hostsetsClient) AddHosts(ctx context.Context, hostCatalogId string, hos
 	return target, apiErr, nil
 }
 
-func (c *hostsetsClient) SetHosts(ctx context.Context, hostCatalogId string, hostSetId string, version uint32, hostIds []string, opt ...Option) (*HostSet, *api.Error, error) {
+func (c *HostSetsClient) SetHosts(ctx context.Context, hostCatalogId string, hostSetId string, version uint32, hostIds []string, opt ...Option) (*HostSet, *api.Error, error) {
 	if hostCatalogId == "" {
 		return nil, nil, fmt.Errorf("empty hostCatalogId value passed into SetHosts request")
 	}
@@ -339,7 +339,7 @@ func (c *hostsetsClient) SetHosts(ctx context.Context, hostCatalogId string, hos
 	return target, apiErr, nil
 }
 
-func (c *hostsetsClient) RemoveHosts(ctx context.Context, hostCatalogId string, hostSetId string, version uint32, hostIds []string, opt ...Option) (*HostSet, *api.Error, error) {
+func (c *HostSetsClient) RemoveHosts(ctx context.Context, hostCatalogId string, hostSetId string, version uint32, hostIds []string, opt ...Option) (*HostSet, *api.Error, error) {
 	if hostCatalogId == "" {
 		return nil, nil, fmt.Errorf("empty hostCatalogId value passed into RemoveHosts request")
 	}

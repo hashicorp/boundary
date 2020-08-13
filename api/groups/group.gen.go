@@ -26,15 +26,15 @@ type Group struct {
 	Members     []*Member         `json:"members,omitempty"`
 }
 
-type groupsClient struct {
+type GroupsClient struct {
 	client *api.Client
 }
 
-func NewGroupsClient(c *api.Client) *groupsClient {
-	return &groupsClient{client: c}
+func NewGroupsClient(c *api.Client) *GroupsClient {
+	return &GroupsClient{client: c}
 }
 
-func (c *groupsClient) Create(ctx context.Context, opt ...Option) (*Group, *api.Error, error) {
+func (c *GroupsClient) Create(ctx context.Context, opt ...Option) (*Group, *api.Error, error) {
 	if c.client == nil {
 		return nil, nil, fmt.Errorf("nil client")
 	}
@@ -60,7 +60,7 @@ func (c *groupsClient) Create(ctx context.Context, opt ...Option) (*Group, *api.
 	return target, apiErr, nil
 }
 
-func (c *groupsClient) Read(ctx context.Context, groupId string, opt ...Option) (*Group, *api.Error, error) {
+func (c *GroupsClient) Read(ctx context.Context, groupId string, opt ...Option) (*Group, *api.Error, error) {
 	if groupId == "" {
 		return nil, nil, fmt.Errorf("empty groupId value passed into Read request")
 	}
@@ -90,7 +90,7 @@ func (c *groupsClient) Read(ctx context.Context, groupId string, opt ...Option) 
 	return target, apiErr, nil
 }
 
-func (c *groupsClient) Update(ctx context.Context, groupId string, version uint32, opt ...Option) (*Group, *api.Error, error) {
+func (c *GroupsClient) Update(ctx context.Context, groupId string, version uint32, opt ...Option) (*Group, *api.Error, error) {
 	if groupId == "" {
 		return nil, nil, fmt.Errorf("empty groupId value passed into Update request")
 	}
@@ -140,7 +140,7 @@ func (c *groupsClient) Update(ctx context.Context, groupId string, version uint3
 	return target, apiErr, nil
 }
 
-func (c *groupsClient) Delete(ctx context.Context, groupId string, opt ...Option) (bool, *api.Error, error) {
+func (c *GroupsClient) Delete(ctx context.Context, groupId string, opt ...Option) (bool, *api.Error, error) {
 	if groupId == "" {
 		return false, nil, fmt.Errorf("empty groupId value passed into Delete request")
 	}
@@ -173,7 +173,7 @@ func (c *groupsClient) Delete(ctx context.Context, groupId string, opt ...Option
 	return target.Existed, apiErr, nil
 }
 
-func (c *groupsClient) List(ctx context.Context, opt ...Option) ([]*Group, *api.Error, error) {
+func (c *GroupsClient) List(ctx context.Context, opt ...Option) ([]*Group, *api.Error, error) {
 	if c.client == nil {
 		return nil, nil, fmt.Errorf("nil client")
 	}
@@ -202,7 +202,7 @@ func (c *groupsClient) List(ctx context.Context, opt ...Option) ([]*Group, *api.
 	return target.Items, apiErr, nil
 }
 
-func (c *groupsClient) AddMembers(ctx context.Context, groupId string, version uint32, memberIds []string, opt ...Option) (*Group, *api.Error, error) {
+func (c *GroupsClient) AddMembers(ctx context.Context, groupId string, version uint32, memberIds []string, opt ...Option) (*Group, *api.Error, error) {
 	if groupId == "" {
 		return nil, nil, fmt.Errorf("empty groupId value passed into AddMembers request")
 	}
@@ -256,7 +256,7 @@ func (c *groupsClient) AddMembers(ctx context.Context, groupId string, version u
 	return target, apiErr, nil
 }
 
-func (c *groupsClient) SetMembers(ctx context.Context, groupId string, version uint32, memberIds []string, opt ...Option) (*Group, *api.Error, error) {
+func (c *GroupsClient) SetMembers(ctx context.Context, groupId string, version uint32, memberIds []string, opt ...Option) (*Group, *api.Error, error) {
 	if groupId == "" {
 		return nil, nil, fmt.Errorf("empty groupId value passed into SetMembers request")
 	}
@@ -313,7 +313,7 @@ func (c *groupsClient) SetMembers(ctx context.Context, groupId string, version u
 	return target, apiErr, nil
 }
 
-func (c *groupsClient) RemoveMembers(ctx context.Context, groupId string, version uint32, memberIds []string, opt ...Option) (*Group, *api.Error, error) {
+func (c *GroupsClient) RemoveMembers(ctx context.Context, groupId string, version uint32, memberIds []string, opt ...Option) (*Group, *api.Error, error) {
 	if groupId == "" {
 		return nil, nil, fmt.Errorf("empty groupId value passed into RemoveMembers request")
 	}
