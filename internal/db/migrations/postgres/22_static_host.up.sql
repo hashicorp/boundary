@@ -66,6 +66,9 @@ begin;
   create trigger immutable_columns before update on static_host_catalog
     for each row execute procedure immutable_columns('public_id', 'scope_id','create_time');
 
+  create trigger insert_host_catalog_subtype before insert on static_host_catalog
+    for each row execute procedure insert_host_catalog_subtype();
+
   create table static_host (
     public_id wt_public_id primary key,
     catalog_id wt_public_id not null
@@ -102,7 +105,10 @@ begin;
 
   create trigger immutable_columns before update on static_host
     for each row execute procedure immutable_columns('public_id', 'catalog_id','create_time');
-  
+
+  create trigger insert_host_subtype before insert on static_host
+    for each row execute procedure insert_host_subtype();
+
   create table static_host_set (
     public_id wt_public_id primary key,
     catalog_id wt_public_id not null
@@ -131,9 +137,11 @@ begin;
   create trigger default_create_time_column before insert on static_host_set
     for each row execute procedure default_create_time();
 
-
   create trigger immutable_columns before update on static_host_set
     for each row execute procedure immutable_columns('public_id', 'catalog_id','create_time');
+
+  create trigger insert_host_set_subtype before insert on static_host_set
+    for each row execute procedure insert_host_set_subtype();
 
   create table static_host_set_member (
     host_id wt_public_id not null,
@@ -152,7 +160,7 @@ begin;
 
   create trigger immutable_columns before update on static_host_set_member
     for each row execute procedure immutable_columns('static_host_set_id', 'static_host_id');
-    
+
   insert into oplog_ticket (name, version)
   values
     ('static_host_catalog', 1),

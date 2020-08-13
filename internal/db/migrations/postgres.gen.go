@@ -176,6 +176,7 @@ comment on function
 is
   'function used in before update triggers to make columns immutable';
 
+-- TODO(mgaffney) 08/2020: Add unit tests for wt_host_address domain
 create domain wt_host_address as text
   not null
   check(
@@ -2044,6 +2045,10 @@ begin;
   drop table host;
   drop table host_catalog;
 
+  drop function insert_host_set_subtype;
+  drop function insert_host_subtype;
+  drop function insert_host_catalog_subtype;
+
   delete
     from oplog_ticket
    where name in (
@@ -2113,6 +2118,18 @@ begin;
   create trigger immutable_columns before update on host_catalog
     for each row execute procedure immutable_columns('public_id', 'scope_id');
 
+  create or replace function insert_host_catalog_subtype()
+    returns trigger
+  as $$
+  begin
+    insert into host_catalog
+      (public_id, scope_id)
+    values
+      (new.public_id, new.scope_id);
+    return new;
+  end;
+  $$ language plpgsql;
+
   create table host (
     public_id wt_public_id primary key,
     catalog_id wt_public_id not null
@@ -2125,6 +2142,18 @@ begin;
   create trigger immutable_columns before update on host
     for each row execute procedure immutable_columns('public_id', 'catalog_id');
 
+  create or replace function insert_host_subtype()
+    returns trigger
+  as $$
+  begin
+    insert into host
+      (public_id, catalog_id)
+    values
+      (new.public_id, new.catalog_id);
+    return new;
+  end;
+  $$ language plpgsql;
+
   create table host_set (
     public_id wt_public_id primary key,
     catalog_id wt_public_id not null
@@ -2136,6 +2165,18 @@ begin;
 
   create trigger immutable_columns before update on host_set
     for each row execute procedure immutable_columns('public_id', 'catalog_id');
+
+  create or replace function insert_host_set_subtype()
+    returns trigger
+  as $$
+  begin
+    insert into host_set
+      (public_id, catalog_id)
+    values
+      (new.public_id, new.catalog_id);
+    return new;
+  end;
+  $$ language plpgsql;
 
   insert into oplog_ticket (name, version)
   values
@@ -2241,6 +2282,9 @@ begin;
   create trigger immutable_columns before update on static_host_catalog
     for each row execute procedure immutable_columns('public_id', 'scope_id','create_time');
 
+  create trigger insert_host_catalog_subtype before insert on static_host_catalog
+    for each row execute procedure insert_host_catalog_subtype();
+
   create table static_host (
     public_id wt_public_id primary key,
     catalog_id wt_public_id not null
@@ -2277,7 +2321,10 @@ begin;
 
   create trigger immutable_columns before update on static_host
     for each row execute procedure immutable_columns('public_id', 'catalog_id','create_time');
-  
+
+  create trigger insert_host_subtype before insert on static_host
+    for each row execute procedure insert_host_subtype();
+
   create table static_host_set (
     public_id wt_public_id primary key,
     catalog_id wt_public_id not null
@@ -2306,9 +2353,11 @@ begin;
   create trigger default_create_time_column before insert on static_host_set
     for each row execute procedure default_create_time();
 
-
   create trigger immutable_columns before update on static_host_set
     for each row execute procedure immutable_columns('public_id', 'catalog_id','create_time');
+
+  create trigger insert_host_set_subtype before insert on static_host_set
+    for each row execute procedure insert_host_set_subtype();
 
   create table static_host_set_member (
     host_id wt_public_id not null,
@@ -2327,7 +2376,7 @@ begin;
 
   create trigger immutable_columns before update on static_host_set_member
     for each row execute procedure immutable_columns('static_host_set_id', 'static_host_id');
-    
+
   insert into oplog_ticket (name, version)
   values
     ('static_host_catalog', 1),

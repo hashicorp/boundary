@@ -52,6 +52,18 @@ begin;
   create trigger immutable_columns before update on host_catalog
     for each row execute procedure immutable_columns('public_id', 'scope_id');
 
+  create or replace function insert_host_catalog_subtype()
+    returns trigger
+  as $$
+  begin
+    insert into host_catalog
+      (public_id, scope_id)
+    values
+      (new.public_id, new.scope_id);
+    return new;
+  end;
+  $$ language plpgsql;
+
   create table host (
     public_id wt_public_id primary key,
     catalog_id wt_public_id not null
@@ -64,6 +76,18 @@ begin;
   create trigger immutable_columns before update on host
     for each row execute procedure immutable_columns('public_id', 'catalog_id');
 
+  create or replace function insert_host_subtype()
+    returns trigger
+  as $$
+  begin
+    insert into host
+      (public_id, catalog_id)
+    values
+      (new.public_id, new.catalog_id);
+    return new;
+  end;
+  $$ language plpgsql;
+
   create table host_set (
     public_id wt_public_id primary key,
     catalog_id wt_public_id not null
@@ -75,6 +99,18 @@ begin;
 
   create trigger immutable_columns before update on host_set
     for each row execute procedure immutable_columns('public_id', 'catalog_id');
+
+  create or replace function insert_host_set_subtype()
+    returns trigger
+  as $$
+  begin
+    insert into host_set
+      (public_id, catalog_id)
+    values
+      (new.public_id, new.catalog_id);
+    return new;
+  end;
+  $$ language plpgsql;
 
   insert into oplog_ticket (name, version)
   values
