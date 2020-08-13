@@ -71,7 +71,7 @@ func (r *Repository) DeleteRootKey(ctx context.Context, privateId string, opt ..
 	if privateId == "" {
 		return db.NoRowsAffected, fmt.Errorf("delete root key: missing private id: %w", db.ErrInvalidParameter)
 	}
-	k := allocExternalConfig()
+	k := allocRootKey()
 	k.PrivateId = privateId
 	if err := r.reader.LookupById(ctx, &k); err != nil {
 		return db.NoRowsAffected, fmt.Errorf("delete root key: failed %w for %s", err, privateId)
