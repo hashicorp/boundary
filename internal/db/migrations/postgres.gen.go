@@ -10,6 +10,7 @@ var postgresMigrations = map[string]*fakeFile{
 		bytes: []byte(`
 begin;
 
+drop domain wt_host_address;
 drop domain wt_timestamp;
 drop domain wt_public_id;
 drop domain wt_private_id;
@@ -174,6 +175,16 @@ comment on function
   immutable_columns()
 is
   'function used in before update triggers to make columns immutable';
+
+create domain wt_host_address as text
+  not null
+  check(
+      length(trim(value)) > 7
+      and
+      length(trim(value)) < 256
+  );
+comment on domain wt_host_address is
+'Standard column for host address';
 
 commit;
 
