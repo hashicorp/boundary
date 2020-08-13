@@ -65,7 +65,18 @@ func (r *Repository) CreateScope(ctx context.Context, s *Scope, userId string, o
 	var roleMetadata oplog.Metadata
 	var role *Role
 	var roleRaw interface{}
-	if userId != "" {
+	switch userId {
+	case "", "u_anon", "u_auth":
+		// TODO: Cause a log entry. The repo doesn't have a logger right now,
+		// and ideally we will be using context to pass around log info scoped
+		// to this request for grouped display in the server log. The only
+		// reason this should ever happen anyways is via the administrative
+		// recovery workflow so it's already a special case.
+
+		// Also, stop linter from complaining
+		_ = role
+
+	default:
 		role, err = NewRole(scopePublicId)
 		if err != nil {
 			return nil, fmt.Errorf("create scope: error instantiating new role: %w", err)
@@ -85,15 +96,6 @@ func (r *Repository) CreateScope(ctx context.Context, s *Scope, userId string, o
 			"resource-type":      []string{resource.Role.String()},
 			"op-type":            []string{oplog.OpType_OP_TYPE_CREATE.String()},
 		}
-	} else {
-		// TODO: Cause a log entry. The repo doesn't have a logger right now,
-		// and ideally we will be using context to pass around log info scoped
-		// to this request for grouped display in the server log. The only
-		// reason this should ever happen anyways is via the administrative
-		// recovery workflow so it's already a special case.
-
-		// Also, stop linter from complaining
-		_ = role
 	}
 
 	_, err = r.writer.DoTx(
