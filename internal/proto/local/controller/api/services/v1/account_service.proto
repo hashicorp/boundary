@@ -87,6 +87,32 @@ service AccountService {
       summary: "Deletes an account."
     };
   }
+
+  // SetPassword sets the account's password to the one provided in the
+  // request. This method is intended for administration purpose and as such
+  // does not require the old password.
+  rpc SetPassword(SetPasswordRequest) returns (SetPasswordResponse) {
+    option (google.api.http) = {
+      post: "/v1/scopes/*/auth-methods/{auth_method_id}/accounts/{id}:set-password"
+      response_body: "item"
+    };
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
+      summary: "Sets the password for the provided account."
+    };
+  }
+
+  // ChangePassword changes the account's password to the one provided in the
+  // request. This method is intended for end users and requires the existing
+  // password to be provided for authentication purposes.
+  rpc ChangePassword(ChangePasswordRequest) returns (ChangePasswordResponse) {
+    option (google.api.http) = {
+      post: "/v1/scopes/*/auth-methods/{auth_method_id}/accounts/{id}:change-password"
+      response_body: "item"
+    };
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
+      summary: "Sets the password for the provided account."
+    };
+  }
 }
 
 message GetAccountRequest {
@@ -137,4 +163,27 @@ message DeleteAccountRequest {
 
 message DeleteAccountResponse {
   bool existed = 1;
+}
+
+message SetPasswordRequest {
+  string auth_method_id = 1;
+  string id = 2;
+  uint32 version = 3;
+  string password = 4;
+}
+
+message SetPasswordResponse {
+  resources.authmethods.v1.Account item = 1;
+}
+
+message ChangePasswordRequest {
+  string auth_method_id = 1;
+  string id = 2;
+  uint32 version = 3;
+  string old_password = 4 [json_name="old_password"];
+  string new_password = 5 [json_name="new_password"];
+}
+
+message ChangePasswordResponse {
+  resources.authmethods.v1.Account item = 1;
 }
