@@ -12,16 +12,16 @@ import (
 // with its PrivateId.  There are no valid options at this time.
 func (r *Repository) CreateRootKey(ctx context.Context, k *RootKey, opt ...Option) (*RootKey, error) {
 	if k == nil {
-		return nil, fmt.Errorf("create root key: missing conf %w", db.ErrNilParameter)
+		return nil, fmt.Errorf("create root key: missing key %w", db.ErrNilParameter)
 	}
 	if k.RootKey == nil {
-		return nil, fmt.Errorf("create root key: missing conf store %w", db.ErrNilParameter)
+		return nil, fmt.Errorf("create root key: missing key store %w", db.ErrNilParameter)
 	}
 	if k.PrivateId != "" {
 		return nil, fmt.Errorf("create root key: private id not empty: %w", db.ErrInvalidParameter)
 	}
 	if k.ScopeId == "" {
-		return nil, fmt.Errorf("create root key: missing conf scope id: %w", db.ErrInvalidParameter)
+		return nil, fmt.Errorf("create root key: missing key scope id: %w", db.ErrInvalidParameter)
 	}
 	id, err := newRootKeyId()
 	if err != nil {
