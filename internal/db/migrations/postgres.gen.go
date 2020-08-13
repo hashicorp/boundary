@@ -2494,7 +2494,8 @@ before insert on kms_session_key_version
     (name, version)
   values
     ('kms_external_config', 1),
-    ('kms_root_key', 1);
+    ('kms_root_key', 1),
+    ('kms_root_key_version', 1);
 commit;
 `),
 	},
