@@ -7,8 +7,10 @@ import (
 
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/iam"
+	"github.com/hashicorp/boundary/internal/kms/store"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/protobuf/proto"
 )
 
 // NOTE: there are no update tests since all the RootKey attributes are
@@ -158,6 +160,64 @@ func TestRootKey_Delete(t *testing.T) {
 			err = rw.LookupById(context.Background(), &foundCfg)
 			require.Error(err)
 			assert.True(errors.Is(db.ErrRecordNotFound, err))
+		})
+	}
+}
+
+func TestRootKey_Clone(t *testing.T) {
+	t.Parallel()
+	conn, _ := db.TestSetup(t, "postgres")
+	t.Run("valid", func(t *testing.T) {
+		assert := assert.New(t)
+		org, _ := iam.TestScopes(t, conn)
+		k := TestRootKey(t, conn, org.PublicId)
+		cp := k.Clone()
+		assert.True(proto.Equal(cp.(*RootKey).RootKey, k.RootKey))
+	})
+	t.Run("not-equal", func(t *testing.T) {
+		assert := assert.New(t)
+		org, _ := iam.TestScopes(t, conn)
+		org2, _ := iam.TestScopes(t, conn)
+		grp := TestRootKey(t, conn, org.PublicId)
+		grp2 := TestRootKey(t, conn, org2.PublicId)
+
+		cp := grp.Clone()
+		assert.True(!proto.Equal(cp.(*RootKey).RootKey, grp2.RootKey))
+	})
+}
+
+func TestRootKey_SetTableName(t *testing.T) {
+	defaultTableName := defaultRootKeyTableName
+	tests := []struct {
+		name        string
+		initialName string
+		setNameTo   string
+		want        string
+	}{
+		{
+			name:        "new-name",
+			initialName: "",
+			setNameTo:   "new-name",
+			want:        "new-name",
+		},
+		{
+			name:        "reset to default",
+			initialName: "initial",
+			setNameTo:   "",
+			want:        defaultTableName,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+			def := allocRootKey()
+			require.Equal(defaultTableName, def.TableName())
+			s := &RootKey{
+				RootKey:   &store.RootKey{},
+				tableName: tt.initialName,
+			}
+			s.SetTableName(tt.setNameTo)
+			assert.Equal(tt.want, s.TableName())
 		})
 	}
 }
