@@ -164,7 +164,22 @@ begin;
   );
 
   create trigger immutable_columns before update on static_host_set_member
-    for each row execute procedure immutable_columns('static_host_set_id', 'static_host_id');
+    for each row execute procedure immutable_columns('host_id', 'set_id', 'catalog_id');
+
+  create or replace function insert_static_host_set_member()
+    returns trigger
+  as $$
+  begin
+    select static_host_set.catalog_id
+      into new.catalog_id
+    from static_host_set
+    where static_host_set.public_id = new.set_id;
+    return new;
+  end;
+  $$ language plpgsql;
+
+  create trigger insert_static_host_set_member before insert on static_host_set_member
+    for each row execute procedure insert_static_host_set_member();
 
   insert into oplog_ticket (name, version)
   values

@@ -2090,6 +2090,7 @@ begin;
 
 */
 
+  -- host_catalog
   create table host_catalog (
     public_id wt_public_id primary key,
     scope_id wt_scope_id not null
@@ -2118,6 +2119,7 @@ begin;
   end;
   $$ language plpgsql;
 
+  -- host
   create table host (
     public_id wt_public_id primary key,
     catalog_id wt_public_id not null
@@ -2142,6 +2144,7 @@ begin;
   end;
   $$ language plpgsql;
 
+  -- host_set
   create table host_set (
     public_id wt_public_id primary key,
     catalog_id wt_public_id not null
@@ -2368,7 +2371,22 @@ begin;
   );
 
   create trigger immutable_columns before update on static_host_set_member
-    for each row execute procedure immutable_columns('static_host_set_id', 'static_host_id');
+    for each row execute procedure immutable_columns('host_id', 'set_id', 'catalog_id');
+
+  create or replace function insert_static_host_set_member()
+    returns trigger
+  as $$
+  begin
+    select static_host_set.catalog_id
+      into new.catalog_id
+    from static_host_set
+    where static_host_set.public_id = new.set_id;
+    return new;
+  end;
+  $$ language plpgsql;
+
+  create trigger insert_static_host_set_member before insert on static_host_set_member
+    for each row execute procedure insert_static_host_set_member();
 
   insert into oplog_ticket (name, version)
   values

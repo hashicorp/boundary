@@ -36,6 +36,7 @@ begin;
 
 */
 
+  -- host_catalog
   create table host_catalog (
     public_id wt_public_id primary key,
     scope_id wt_scope_id not null
@@ -64,6 +65,7 @@ begin;
   end;
   $$ language plpgsql;
 
+  -- host
   create table host (
     public_id wt_public_id primary key,
     catalog_id wt_public_id not null
@@ -88,6 +90,7 @@ begin;
   end;
   $$ language plpgsql;
 
+  -- host_set
   create table host_set (
     public_id wt_public_id primary key,
     catalog_id wt_public_id not null
