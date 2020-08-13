@@ -331,9 +331,9 @@ func TestExternalConfig_SetTableName(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 			def := allocExternalConfig()
 			require.Equal(defaultTableName, def.TableName())
-			s := &RootKey{
-				RootKey:   &store.RootKey{},
-				tableName: tt.initialName,
+			s := &ExternalConfig{
+				ExternalConfig: &store.ExternalConfig{},
+				tableName:      tt.initialName,
 			}
 			s.SetTableName(tt.setNameTo)
 			assert.Equal(tt.want, s.TableName())
