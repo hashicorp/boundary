@@ -77,7 +77,12 @@ begin;
       on update cascade,
     name text,
     description text,
-    address wt_host_address,
+    address text not null
+      check(
+        length(trim(address)) > 7
+        and
+        length(trim(address)) < 256
+      ),
     create_time wt_timestamp,
     update_time wt_timestamp,
     version wt_version,

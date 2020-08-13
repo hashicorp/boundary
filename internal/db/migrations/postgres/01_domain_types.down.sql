@@ -1,6 +1,5 @@
 begin;
 
-drop domain wt_host_address;
 drop domain wt_timestamp;
 drop domain wt_public_id;
 drop domain wt_private_id;

@@ -144,15 +144,4 @@ comment on function
 is
   'function used in before update triggers to make columns immutable';
 
--- TODO(mgaffney) 08/2020: Add unit tests for wt_host_address domain
-create domain wt_host_address as text
-  not null
-  check(
-      length(trim(value)) > 7
-      and
-      length(trim(value)) < 256
-  );
-comment on domain wt_host_address is
-'Standard column for host address';
-
 commit;
