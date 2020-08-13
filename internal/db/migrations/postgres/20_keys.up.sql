@@ -147,6 +147,35 @@ before
 insert on kms_root_key_version
   for each row execute procedure default_create_time();
 
+-- kms_version_column() will increment the version column whenever row data
+-- is inserted and should only be used in an before insert trigger.  This
+-- function will overwrite any explicit values to the version column.
+create or replace function
+  kms_version_column()
+  returns trigger
+as $$
+declare 
+  _max bigint; 
+begin
+  execute format('select max(version) + 1 from %I where root_key_id = $1', tg_relid::regclass) using new.root_key_id into _max;
+  if _max is null then
+  	_max = 1;
+  end if;
+  new.version = _max;
+  return new;
+end;
+$$ language plpgsql;
+
+comment on function
+  kms_version_column()
+is
+  'function used in before insert triggers to properly set version columns for kms_* tables with a version column';
+
+create trigger
+	kms_version_column
+before insert on kms_root_key_version
+	for each row execute procedure kms_version_column();
+
 create table kms_database_key (
   private_id wt_private_id primary key,
   root_key_id wt_private_id
@@ -198,6 +227,10 @@ before
 insert on kms_database_key_version
   for each row execute procedure default_create_time();
 
+create trigger
+	kms_version_column
+before insert on kms_database_key_version
+	for each row execute procedure kms_version_column();
 
 create table kms_oplog_key (
   private_id wt_private_id primary key,
@@ -250,6 +283,11 @@ before
 insert on kms_oplog_key_version
   for each row execute procedure default_create_time();
 
+create trigger
+	kms_version_column
+before insert on kms_oplog_key_version
+	for each row execute procedure kms_version_column();
+
 create table kms_session_key (
   private_id wt_private_id primary key,
   root_key_id wt_private_id
@@ -301,6 +339,11 @@ create trigger
 before
 insert on kms_session_key_version
   for each row execute procedure default_create_time();
+
+create trigger
+	kms_version_column
+before insert on kms_session_key_version
+	for each row execute procedure kms_version_column();
 
   insert into oplog_ticket
     (name, version)
