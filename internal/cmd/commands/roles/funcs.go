@@ -8,6 +8,7 @@ import (
 
 	"github.com/hashicorp/boundary/api/roles"
 	"github.com/hashicorp/boundary/internal/cmd/base"
+	"github.com/hashicorp/boundary/internal/cmd/common"
 	"github.com/mitchellh/go-wordwrap"
 )
 
@@ -49,7 +50,7 @@ func baseHelp() string {
 		"",
 		`      $ boundary roles add-grants -id r_1234567890 -grant "type=host-catalog;actions=create,delete"`,
 		"",
-		"  Please see the role subcommand help for detailed usage information.",
+		"  Please see the roles subcommand help for detailed usage information.",
 	})
 }
 
@@ -101,7 +102,7 @@ func listHelp() string {
 		"",
 		"  List roles within a scope. Example:",
 		"",
-		`    $ boundary roles list -org o_1234567890`,
+		`    $ boundary roles list -scope o_1234567890`,
 	})
 }
 
@@ -136,26 +137,10 @@ func removePrincipalsHelp() string {
 }
 
 func populateFlags(c *Command, f *base.FlagSet, flagNames []string) {
+	common.PopulateCommonFlags(c.Command, f, flagNames)
+
 	for _, name := range flagNames {
 		switch name {
-		case "id":
-			f.StringVar(&base.StringVar{
-				Name:   "id",
-				Target: &c.flagId,
-				Usage:  "ID of the role to operate on",
-			})
-		case "name":
-			f.StringVar(&base.StringVar{
-				Name:   "name",
-				Target: &c.flagName,
-				Usage:  "Name to set on the role",
-			})
-		case "description":
-			f.StringVar(&base.StringVar{
-				Name:   "description",
-				Target: &c.flagDescription,
-				Usage:  "Description to set on the role",
-			})
 		case "grantscopeid":
 			f.StringVar(&base.StringVar{
 				Name:   "grant-scope-id",
@@ -173,12 +158,6 @@ func populateFlags(c *Command, f *base.FlagSet, flagNames []string) {
 				Name:   "grant",
 				Target: &c.flagGrants,
 				Usage:  "The grants to add, remove, or set. May be specified multiple times. Can be in compact string format or JSON (be sure to escape JSON properly).",
-			})
-		case "version":
-			f.IntVar(&base.IntVar{
-				Name:   "version",
-				Target: &c.flagVersion,
-				Usage:  "The version of the resource against which to perform an update operation. If not specified, the command will perform a check-and-set automatically.",
 			})
 		}
 	}

@@ -59,13 +59,33 @@ func initCommands(ui, serverCmdUi cli.Ui, runOpts *RunOptions) {
 			}, nil
 		},
 		"scopes create": func() (cli.Command, error) {
-			return &scopes.CreateScopeCommand{
+			return &scopes.Command{
 				Command: base.NewCommand(ui),
+				Func:    "create",
 			}, nil
 		},
 		"scopes read": func() (cli.Command, error) {
-			return &scopes.ReadScopeCommand{
+			return &scopes.Command{
 				Command: base.NewCommand(ui),
+				Func:    "read",
+			}, nil
+		},
+		"scopes update": func() (cli.Command, error) {
+			return &scopes.Command{
+				Command: base.NewCommand(ui),
+				Func:    "update",
+			}, nil
+		},
+		"scopes delete": func() (cli.Command, error) {
+			return &scopes.Command{
+				Command: base.NewCommand(ui),
+				Func:    "delete",
+			}, nil
+		},
+		"scopes list": func() (cli.Command, error) {
+			return &scopes.Command{
+				Command: base.NewCommand(ui),
+				Func:    "list",
 			}, nil
 		},
 		"config": func() (cli.Command, error) {
