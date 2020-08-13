@@ -19,19 +19,24 @@ message ExternalConfig {
   // @inject_tag: `gorm:"default:null"`
   string type = 3;
 
-  // config for the config in json format
-  // @inject_tag: `gorm:"default:null"`
+  // plain-text of the config data.  we are NOT storing this plain-text config
+  // in the db.
+  // @inject_tag: `gorm:"-" wrapping:"pt,config_data"`
   string config = 4;
+
+  // ciphertext config data stored in the database
+  // @inject_tag: `gorm:"column:config;not_null" wrapping:"ct,config_data"`
+  bytes ct_config = 5;
 
   // version allows optimistic locking of the config
   // @inject_tag: `gorm:"default:null"`
-  uint32 version = 5;
+  uint32 version = 6;
 
   // create_time from the RDBMS
   // @inject_tag: `gorm:"default:current_timestamp"`
-  timestamp.v1.Timestamp create_time = 6;
+  timestamp.v1.Timestamp create_time = 7;
 
   // update_time from the RDBMS
   // @inject_tag: `gorm:"default:current_timestamp"`
-  timestamp.v1.Timestamp update_time = 7;
+  timestamp.v1.Timestamp update_time = 8;
 }

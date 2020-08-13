@@ -61,7 +61,7 @@ func (r *Repository) CreateExternalConfig(ctx context.Context, conf *ExternalCon
 		return nil, fmt.Errorf("create external config: missing conf scope id: %w", db.ErrInvalidParameter)
 	}
 	if conf.Config == "" {
-		return nil, fmt.Errorf("create external config: missing json configuration: %w", db.ErrInvalidParameter)
+		return nil, fmt.Errorf("create external config: missing configuration: %w", db.ErrInvalidParameter)
 	}
 	id, err := newExternalConfigId()
 	if err != nil {
@@ -69,6 +69,9 @@ func (r *Repository) CreateExternalConfig(ctx context.Context, conf *ExternalCon
 	}
 	c := conf.Clone().(*ExternalConfig)
 	c.PrivateId = id
+	if err := c.encrypt(ctx, r.wrapper); err != nil {
+		return nil, fmt.Errorf("create external config: encrypt: %w", err)
+	}
 
 	var returnedConfig interface{}
 	_, err = r.writer.DoTx(
@@ -100,6 +103,9 @@ func (r *Repository) LookupExternalConfig(ctx context.Context, privateId string,
 	c.PrivateId = privateId
 	if err := r.reader.LookupById(ctx, &c); err != nil {
 		return nil, fmt.Errorf("lookup external config: failed %w for %s", err, privateId)
+	}
+	if err := c.decrypt(ctx, r.wrapper); err != nil {
+		return nil, fmt.Errorf("lookup external config: encrypt: %w", err)
 	}
 	return &c, nil
 }

@@ -2,12 +2,13 @@ package kms
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/kms/store"
 	"github.com/hashicorp/boundary/internal/oplog"
+	wrapping "github.com/hashicorp/go-kms-wrapping"
+	"github.com/hashicorp/go-kms-wrapping/structwrapping"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -22,17 +23,14 @@ type ExternalConfig struct {
 
 // NewExternalConfig creates a new in memory external config.  ScopeId must be
 // for a global or org scope, but the scope type validation will be deferred
-// until the in memory external config is written to the database.  The config
-// parmater must be valid json.  No options are currently supported.
+// until the in memory external config is written to the database.  No options
+// are currently supported.
 func NewExternalConfig(scopeId string, confType KmsType, config string, opt ...Option) (*ExternalConfig, error) {
 	if scopeId == "" {
 		return nil, fmt.Errorf("new external config: missing scope id %w", db.ErrInvalidParameter)
 	}
 	if config == "" {
 		return nil, fmt.Errorf("new external config: missing conf %w", db.ErrInvalidParameter)
-	}
-	if err := validateConfig(config); err != nil {
-		return nil, fmt.Errorf("new external config: %w", err)
 	}
 	c := &ExternalConfig{
 		ExternalConfig: &store.ExternalConfig{
@@ -42,14 +40,6 @@ func NewExternalConfig(scopeId string, confType KmsType, config string, opt ...O
 		},
 	}
 	return c, nil
-}
-
-func validateConfig(str string) error {
-	var js json.RawMessage
-	if json.Unmarshal([]byte(str), &js) != nil {
-		return fmt.Errorf("config is not valid json: %w", db.ErrInvalidParameter)
-	}
-	return nil
 }
 
 func allocExternalConfig() ExternalConfig {
@@ -79,9 +69,6 @@ func (c *ExternalConfig) VetForWrite(ctx context.Context, r db.Reader, opType db
 		if c.Config == "" {
 			return fmt.Errorf("external config vet for write: missing config: %w", db.ErrInvalidParameter)
 		}
-		if err := validateConfig(c.Config); err != nil {
-			return fmt.Errorf("external config vet for write: %w", err)
-		}
 	}
 	return nil
 }
@@ -109,4 +96,22 @@ func (c *ExternalConfig) oplog(op oplog.OpType) oplog.Metadata {
 		"scope-id":           []string{c.ScopeId},
 	}
 	return metadata
+}
+
+func (c *ExternalConfig) encrypt(ctx context.Context, cipher wrapping.Wrapper) error {
+	// structwrapping doesn't support embedding, so we'll pass in the
+	// store.ExternalConfig directly
+	if err := structwrapping.WrapStruct(ctx, cipher, c.ExternalConfig, nil); err != nil {
+		return fmt.Errorf("error encrypting external config: %w", err)
+	}
+	return nil
+}
+
+func (c *ExternalConfig) decrypt(ctx context.Context, cipher wrapping.Wrapper) error {
+	// structwrapping doesn't support embedding, so we'll pass in the
+	// store.ExternalConfig directly
+	if err := structwrapping.UnwrapStruct(ctx, cipher, c.ExternalConfig, nil); err != nil {
+		return fmt.Errorf("error decrypting external config: %w", err)
+	}
+	return nil
 }

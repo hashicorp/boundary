@@ -18,6 +18,7 @@ import (
 func TestExternalConfig_Create(t *testing.T) {
 	t.Parallel()
 	conn, _ := db.TestSetup(t, "postgres")
+	wrapper := db.TestWrapper(t)
 	org, proj := iam.TestScopes(t, conn)
 	type args struct {
 		scopeId  string
@@ -48,16 +49,6 @@ func TestExternalConfig_Create(t *testing.T) {
 			args: args{
 				scopeId:  org.PublicId,
 				confType: DevKms,
-			},
-			wantErr:   true,
-			wantIsErr: db.ErrInvalidParameter,
-		},
-		{
-			name: "bad-json-config",
-			args: args{
-				scopeId:  org.PublicId,
-				confType: DevKms,
-				config:   "{",
 			},
 			wantErr:   true,
 			wantIsErr: db.ErrInvalidParameter,
@@ -129,6 +120,10 @@ func TestExternalConfig_Create(t *testing.T) {
 				id, err := newExternalConfigId()
 				require.NoError(err)
 				got.PrivateId = id
+
+				err = got.encrypt(context.Background(), wrapper)
+				require.NoError(err)
+
 				err = db.New(conn).Create(context.Background(), got)
 				if tt.wantCreateErr {
 					assert.Error(err)
@@ -147,6 +142,7 @@ func TestExternalConfig_Create(t *testing.T) {
 func TestExternalConfig_Update(t *testing.T) {
 	t.Parallel()
 	conn, _ := db.TestSetup(t, "postgres")
+	wrapper := db.TestWrapper(t)
 	org, _ := iam.TestScopes(t, conn)
 	rw := db.New(conn)
 	type args struct {
@@ -166,7 +162,7 @@ func TestExternalConfig_Update(t *testing.T) {
 			args: args{
 				config:         `{"valid": "valid"}`,
 				version:        uint32(4), // this will be accepted, but the trigger will override it to the correct value of 2
-				fieldMaskPaths: []string{"Config", "Version"},
+				fieldMaskPaths: []string{"CtConfig", "Version"},
 			},
 			wantErr:        false,
 			wantRowsUpdate: 1,
@@ -174,8 +170,8 @@ func TestExternalConfig_Update(t *testing.T) {
 		{
 			name: "invalid",
 			args: args{
-				config:         `{: "invalid"}`,
-				fieldMaskPaths: []string{"Config"},
+				config:    "",
+				nullPaths: []string{"Config"},
 			},
 			wantErr:        true,
 			wantRowsUpdate: 0,
@@ -184,12 +180,14 @@ func TestExternalConfig_Update(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			c := TestExternalConfig(t, conn, org.PublicId, DevKms, "{}")
+			c := TestExternalConfig(t, conn, wrapper, org.PublicId, DevKms, "{}")
 
 			updateConfig := allocExternalConfig()
 			updateConfig.PrivateId = c.PrivateId
 			updateConfig.Config = tt.args.config
 			updateConfig.Version = tt.args.version
+			err := updateConfig.encrypt(context.Background(), wrapper)
+			require.NoError(err)
 
 			updatedRows, err := rw.Update(context.Background(), &updateConfig, tt.args.fieldMaskPaths, tt.args.nullPaths)
 			if tt.wantErr {
@@ -207,6 +205,9 @@ func TestExternalConfig_Update(t *testing.T) {
 			foundConfig.PrivateId = c.PrivateId
 			err = rw.LookupById(context.Background(), &foundConfig)
 			require.NoError(err)
+			err = foundConfig.decrypt(context.Background(), wrapper)
+			require.NoError(err)
+
 			assert.True(proto.Equal(updateConfig, foundConfig))
 			assert.Equal(uint32(2), foundConfig.Version)
 			if len(tt.args.nullPaths) != 0 {
@@ -222,6 +223,7 @@ func TestExternalConfig_Update(t *testing.T) {
 func TestExternalConfig_Delete(t *testing.T) {
 	t.Parallel()
 	conn, _ := db.TestSetup(t, "postgres")
+	wrapper := db.TestWrapper(t)
 	rw := db.New(conn)
 	org, _ := iam.TestScopes(t, conn)
 
@@ -234,7 +236,7 @@ func TestExternalConfig_Delete(t *testing.T) {
 	}{
 		{
 			name:            "valid",
-			config:          TestExternalConfig(t, conn, org.PublicId, DevKms, "{}"),
+			config:          TestExternalConfig(t, conn, wrapper, org.PublicId, DevKms, "{}"),
 			wantErr:         false,
 			wantRowsDeleted: 1,
 		},

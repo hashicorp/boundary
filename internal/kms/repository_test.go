@@ -186,19 +186,6 @@ func TestRepository_CreateExternalConfig(t *testing.T) {
 			wantIsError: db.ErrInvalidParameter,
 		},
 		{
-			name: "invalid-conf",
-			args: args{
-				conf: func() *ExternalConfig {
-					c, err := NewExternalConfig(org.PublicId, DevKms, "{}")
-					assert.NoError(t, err)
-					c.Config = "{invalid}"
-					return c
-				}(),
-			},
-			wantErr:     true,
-			wantIsError: db.ErrInvalidParameter,
-		},
-		{
 			name: "invalid-privateId",
 			args: args{
 				conf: func() *ExternalConfig {
