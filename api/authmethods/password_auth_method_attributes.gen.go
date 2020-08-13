@@ -2,6 +2,6 @@
 package authmethods
 
 type PasswordAuthMethodAttributes struct {
-	MinLoginNameLength *google.UInt32Value `json:"min_login_name_length,omitempty"`
-	MinPasswordLength  *google.UInt32Value `json:"min_password_length,omitempty"`
+	MinLoginNameLength uint32 `json:"min_login_name_length,omitempty"`
+	MinPasswordLength  uint32 `json:"min_password_length,omitempty"`
 }

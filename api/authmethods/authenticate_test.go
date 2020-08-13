@@ -6,6 +6,7 @@ import (
 
 	"github.com/hashicorp/boundary/api/authmethods"
 	"github.com/hashicorp/boundary/internal/servers/controller"
+	"github.com/kr/pretty"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -26,7 +27,7 @@ func TestAuthenticate(t *testing.T) {
 
 	tok, apiErr, err := methods.Authenticate(tc.Context(), amId, "user", "passpass")
 	require.NoError(err)
-	assert.Nil(apiErr)
+	assert.Nil(apiErr, pretty.Sprint(apiErr))
 	assert.NotNil(tok)
 
 	_, apiErr, err = methods.Authenticate(tc.Context(), amId, "user", "wrong")

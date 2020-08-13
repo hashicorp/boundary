@@ -29,6 +29,9 @@ type option struct {
 	setWithConfigText          bool
 	setDisableDatabaseCreation bool
 	setDefaultOrgId            bool
+	setDefaultAuthMethodId     bool
+	setDefaultLoginName        bool
+	setDefaultPassword         bool
 }
 
 type Option func(*option) error
@@ -88,6 +91,39 @@ func WithDefaultOrgId(id string) Option {
 		}
 		c.setDefaultOrgId = true
 		c.tcOptions.DefaultOrgId = id
+		return nil
+	}
+}
+
+func WithDefaultAuthMethodId(id string) Option {
+	return func(c *option) error {
+		if c.setDefaultAuthMethodId {
+			return fmt.Errorf("WithDefaultAuthMethodId provided more than once.")
+		}
+		c.setDefaultAuthMethodId = true
+		c.tcOptions.DefaultAuthMethodId = id
+		return nil
+	}
+}
+
+func WithDefaultLoginName(ln string) Option {
+	return func(c *option) error {
+		if c.setDefaultLoginName {
+			return fmt.Errorf("WithDefaultLoginName provided more than once.")
+		}
+		c.setDefaultLoginName = true
+		c.tcOptions.DefaultLoginName = ln
+		return nil
+	}
+}
+
+func WithDefaultPassword(pw string) Option {
+	return func(c *option) error {
+		if c.setDefaultPassword {
+			return fmt.Errorf("WithDefaultPassword provided more than once.")
+		}
+		c.setDefaultPassword = true
+		c.tcOptions.DefaultPassword = pw
 		return nil
 	}
 }

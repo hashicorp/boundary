@@ -65,18 +65,6 @@ func DefaultDescription() Option {
 	}
 }
 
-func WithDisabled(inDisabled bool) Option {
-	return func(o *options) {
-		o.valueMap["disabled"] = inDisabled
-	}
-}
-
-func DefaultDisabled() Option {
-	return func(o *options) {
-		o.valueMap["disabled"] = nil
-	}
-}
-
 func WithGrantScopeId(inGrantScopeId string) Option {
 	return func(o *options) {
 		o.valueMap["grant_scope_id"] = inGrantScopeId

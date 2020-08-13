@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/hashicorp/go-sockaddr"
-	"github.com/hashicorp/vault/internalshared/configutil"
+	"github.com/hashicorp/shared-secure-libs/configutil"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -69,6 +69,10 @@ func TestDevController(t *testing.T) {
 				MaximumGaugeCardinality: 500,
 			},
 		},
+		Controller: &Controller{
+			Name:        "dev-controller",
+			Description: "A default controller created in dev mode",
+		},
 		DevController: true,
 	}
 
@@ -76,6 +80,8 @@ func TestDevController(t *testing.T) {
 	exp.Listeners[1].RawConfig = actual.Listeners[1].RawConfig
 	exp.Seals[0].Config["key"] = actual.Seals[0].Config["key"]
 	exp.Seals[1].Config["key"] = actual.Seals[1].Config["key"]
+	exp.Controller.DevControllerKey = actual.Seals[0].Config["key"]
+	exp.Controller.DevWorkerAuthKey = actual.Seals[1].Config["key"]
 
 	assert.Equal(t, exp, actual)
 }
@@ -125,7 +131,6 @@ func TestDevWorker(t *testing.T) {
 }
 
 func TestConfigDecrypt(t *testing.T) {
-
 	const (
 		clr = `
 kms "aead" {

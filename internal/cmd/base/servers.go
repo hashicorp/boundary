@@ -23,12 +23,13 @@ import (
 	"github.com/hashicorp/go-hclog"
 	wrapping "github.com/hashicorp/go-kms-wrapping"
 	"github.com/hashicorp/go-multierror"
-	"github.com/hashicorp/vault/internalshared/configutil"
-	"github.com/hashicorp/vault/internalshared/gatedwriter"
-	"github.com/hashicorp/vault/internalshared/reloadutil"
+	"github.com/hashicorp/shared-secure-libs/configutil"
+	"github.com/hashicorp/shared-secure-libs/gatedwriter"
+	"github.com/hashicorp/shared-secure-libs/reloadutil"
 	"github.com/hashicorp/vault/sdk/helper/base62"
 	"github.com/hashicorp/vault/sdk/helper/logging"
 	"github.com/hashicorp/vault/sdk/helper/mlock"
+	"github.com/hashicorp/vault/sdk/helper/strutil"
 	"github.com/hashicorp/vault/sdk/logical"
 	"github.com/jinzhu/gorm"
 	"github.com/mitchellh/cli"
@@ -66,7 +67,7 @@ type Server struct {
 	DevLoginName    string
 	DevPassword     string
 
-	DevDatabaseUrl         string
+	DatabaseUrl            string
 	DevDatabaseCleanupFunc func() error
 
 	Database *gorm.DB
@@ -207,7 +208,7 @@ func (b *Server) PrintInfo(ui cli.Ui, mode string) {
 	}
 
 	// Server configuration output
-	padding := 24
+	padding := 36
 	sort.Strings(b.InfoKeys)
 	ui.Output(fmt.Sprintf("==> Boundary %s configuration:\n", mode))
 	for _, k := range b.InfoKeys {
@@ -225,7 +226,7 @@ func (b *Server) PrintInfo(ui cli.Ui, mode string) {
 	}
 }
 
-func (b *Server) SetupListeners(ui cli.Ui, config *configutil.SharedConfig) error {
+func (b *Server) SetupListeners(ui cli.Ui, config *configutil.SharedConfig, allowedPurposes []string) error {
 	// Initialize the listeners
 	b.Listeners = make([]*ServerListener, 0, len(config.Listeners))
 	// Make sure we close everything before we exit
@@ -242,6 +243,13 @@ func (b *Server) SetupListeners(ui cli.Ui, config *configutil.SharedConfig) erro
 	defer b.ReloadFuncsLock.Unlock()
 
 	for i, lnConfig := range config.Listeners {
+		for _, purpose := range lnConfig.Purpose {
+			purpose = strings.ToLower(purpose)
+			if !strutil.StrListContains(allowedPurposes, purpose) {
+				return fmt.Errorf("Unknown listener purpose %q", purpose)
+			}
+		}
+
 		// Override for now
 		// TODO: Way to configure
 		lnConfig.TLSCipherSuites = []uint16{
@@ -382,6 +390,18 @@ func (b *Server) RunShutdownFuncs() error {
 	return mErr.ErrorOrNil()
 }
 
+func (b *Server) ConnectToDatabase(dialect string) error {
+	dbase, err := gorm.Open(dialect, b.DatabaseUrl)
+	if err != nil {
+		return fmt.Errorf("unable to create db object with dialect %s: %w", dialect, err)
+	}
+
+	b.Database = dbase
+	gorm.LogFormatter = db.GetGormLogFormatter(b.Logger)
+	b.Database.SetLogger(db.GetGormLogger(b.Logger))
+	return nil
+}
+
 func (b *Server) CreateDevDatabase(dialect string) error {
 	c, url, container, err := db.InitDbInDocker(dialect)
 	// In case of an error, run the cleanup function.  If we pass all errors, c should be set to a noop
@@ -397,23 +417,19 @@ func (b *Server) CreateDevDatabase(dialect string) error {
 	}
 
 	b.DevDatabaseCleanupFunc = c
-	b.DevDatabaseUrl = url
+	b.DatabaseUrl = url
 
 	b.InfoKeys = append(b.InfoKeys, "dev database url")
-	b.Info["dev database url"] = b.DevDatabaseUrl
+	b.Info["dev database url"] = b.DatabaseUrl
 	if container != "" {
 		b.InfoKeys = append(b.InfoKeys, "dev database container")
 		b.Info["dev database container"] = strings.TrimPrefix(container, "/")
 	}
 
-	dbase, err := gorm.Open(dialect, url)
-	if err != nil {
-		return fmt.Errorf("unable to create db object with dialect %s: %w", dialect, err)
+	if err := b.ConnectToDatabase(dialect); err != nil {
+		return err
 	}
-	b.Database = dbase
 
-	gorm.LogFormatter = db.GetGormLogFormatter(b.Logger)
-	b.Database.SetLogger(db.GetGormLogger(b.Logger))
 	b.Database.LogMode(true)
 
 	rw := db.New(b.Database)
@@ -519,7 +535,7 @@ func (b *Server) CreateDevDatabase(dialect string) error {
 		}
 	}
 
-	acct, err := password.NewAccount(amId, acctLoginName)
+	acct, err := password.NewAccount(amId, password.WithLoginName(acctLoginName))
 	if err != nil {
 		return fmt.Errorf("error creating new in memory auth account: %w", err)
 	}
@@ -547,5 +563,5 @@ func (b *Server) DestroyDevDatabase() error {
 	if b.DevDatabaseCleanupFunc != nil {
 		return b.DevDatabaseCleanupFunc()
 	}
-	return errors.New("no dev database cleanup function found")
+	return nil
 }

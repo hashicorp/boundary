@@ -1,0 +1,30 @@
+syntax = "proto3";
+
+package controller.servers.v1;
+option go_package = "github.com/hashicorp/boundary/internal/servers;servers";
+
+import "controller/storage/timestamp/v1/timestamp.proto";
+
+// Server contains all fields related to a Controller or Worker resource
+message Server {
+  // Private ID of the resource
+  string private_id = 10;
+
+  // Type of the resource (controller, worker)
+  string type = 20;
+
+  // Name of the resource
+  string name = 30;
+
+  // Description of the resource
+  string description = 40;
+
+  // Address for the server
+  string address = 50;
+
+  // First seen time from the RDBMS
+  storage.timestamp.v1.Timestamp create_time = 60;
+
+  // Last time there was an update
+  storage.timestamp.v1.Timestamp update_time = 70;
+}

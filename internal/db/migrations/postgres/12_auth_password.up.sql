@@ -66,7 +66,7 @@ begin;
     update_time wt_timestamp,
     min_login_name_length int not null default 3,
     min_password_length int not null default 8,
-    version wt_version not null default 1,
+    version wt_version,
     foreign key (scope_id, public_id)
       references auth_method (scope_id, public_id)
       on delete cascade
@@ -102,7 +102,7 @@ begin;
         and
         length(login_name) > 0
       ),
-    version wt_version not null default 1,
+    version wt_version,
     foreign key (scope_id, auth_method_id)
       references auth_password_method (scope_id, public_id)
       on delete cascade

@@ -13,7 +13,7 @@ import (
 	"github.com/hashicorp/boundary/internal/servers/controller"
 	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/go-multierror"
-	"github.com/hashicorp/vault/internalshared/configutil"
+	"github.com/hashicorp/shared-secure-libs/configutil"
 	"github.com/hashicorp/vault/sdk/helper/mlock"
 	"github.com/hashicorp/vault/sdk/helper/strutil"
 	"github.com/mitchellh/cli"
@@ -238,6 +238,8 @@ func (c *Command) Run(args []string) int {
 				foundCluster = true
 			case "api":
 				foundAPI = true
+			case "worker-alpn-tls":
+				// Do nothing, in a dev mode we might see it here
 			default:
 				c.UI.Error(fmt.Sprintf("Unknown listener purpose %q", lnConfig.Purpose[0]))
 				return 1
@@ -264,7 +266,7 @@ func (c *Command) Run(args []string) int {
 		c.UI.Error("No listener marked for cluster purpose found, but listener explicitly marked for api was found")
 		return 1
 	}
-	if err := c.SetupListeners(c.UI, c.Config.SharedConfig); err != nil {
+	if err := c.SetupListeners(c.UI, c.Config.SharedConfig, []string{"api", "cluster"}); err != nil {
 		c.UI.Error(err.Error())
 		return 1
 	}
@@ -351,7 +353,11 @@ func (c *Command) ParseFlagsAndConfig(args []string) int {
 		}
 
 	} else {
-		c.Config, err = config.DevController()
+		if len(c.flagConfig) == 0 {
+			c.Config, err = config.DevController()
+		} else {
+			c.Config, err = config.LoadFile(c.flagConfig, c.configKMS)
+		}
 		if err != nil {
 			c.UI.Error(fmt.Errorf("Error creating dev config: %w", err).Error())
 			return 1
@@ -366,7 +372,7 @@ func (c *Command) ParseFlagsAndConfig(args []string) int {
 				c.UI.Error(fmt.Sprintf("Invalid dev auth method ID, must start with %q", prefix))
 				return 1
 			}
-			if len(c.flagDevAuthMethodId) != 13 {
+			if len(c.flagDevAuthMethodId) != 15 {
 				c.UI.Error(fmt.Sprintf("Invalid dev auth method ID, must be 10 base62 characters after %q", prefix))
 				return 1
 			}
@@ -430,7 +436,7 @@ func (c *Command) Start() error {
 
 	if err := c.controller.Start(); err != nil {
 		retErr := fmt.Errorf("Error starting controller: %w", err)
-		if err := c.controller.Shutdown(); err != nil {
+		if err := c.controller.Shutdown(false); err != nil {
 			c.UI.Error(retErr.Error())
 			retErr = fmt.Errorf("Error with controller shutdown: %w", err)
 		}
@@ -454,7 +460,7 @@ func (c *Command) WaitForInterrupt() int {
 		case <-shutdownCh:
 			c.UI.Output("==> Boundary controller shutdown triggered")
 
-			if err := c.controller.Shutdown(); err != nil {
+			if err := c.controller.Shutdown(false); err != nil {
 				c.UI.Error(fmt.Errorf("Error with controller shutdown: %w", err).Error())
 			}
 

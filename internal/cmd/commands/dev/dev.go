@@ -166,7 +166,7 @@ func (c *Command) Run(args []string) int {
 
 	childShutdownCh := make(chan struct{})
 
-	devConfig, err := config.DevController()
+	devConfig, err := config.DevCombined()
 	if err != nil {
 		c.UI.Error(fmt.Errorf("Error creating controller dev config: %w", err).Error())
 		return 1
@@ -180,7 +180,7 @@ func (c *Command) Run(args []string) int {
 			c.UI.Error(fmt.Sprintf("Invalid dev auth method ID, must start with %q", prefix))
 			return 1
 		}
-		if len(c.flagDevAuthMethodId) != 13 {
+		if len(c.flagDevAuthMethodId) != 15 {
 			c.UI.Error(fmt.Sprintf("Invalid dev auth method ID, must be 10 base62 characters after %q", prefix))
 			return 1
 		}
@@ -248,9 +248,17 @@ func (c *Command) Run(args []string) int {
 		c.UI.Error("Worker Auth KMS not found after parsing KMS blocks")
 		return 1
 	}
+	c.InfoKeys = append(c.InfoKeys, "[Controller] AEAD Key Bytes")
+	c.Info["[Controller] AEAD Key Bytes"] = devConfig.Controller.DevControllerKey
+	c.InfoKeys = append(c.InfoKeys, "[Worker-Auth] AEAD Key Bytes")
+	c.Info["[Worker-Auth] AEAD Key Bytes"] = devConfig.Controller.DevWorkerAuthKey
+	if c.WorkerAuthKMS == nil {
+		c.UI.Error("Worker Auth KMS not found after parsing KMS blocks")
+		return 1
+	}
 
 	// Initialize the listeners
-	if err := c.SetupListeners(c.UI, devConfig.SharedConfig); err != nil {
+	if err := c.SetupListeners(c.UI, devConfig.SharedConfig, []string{"api", "cluster", "worker-alpn-tls"}); err != nil {
 		c.UI.Error(err.Error())
 		return 1
 	}

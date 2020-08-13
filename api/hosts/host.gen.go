@@ -17,25 +17,24 @@ import (
 type Host struct {
 	Id          string            `json:"id,omitempty"`
 	Scope       *scopes.ScopeInfo `json:"scope,omitempty"`
-	Type        string            `json:"type,omitempty"`
 	Name        string            `json:"name,omitempty"`
 	Description string            `json:"description,omitempty"`
 	CreatedTime time.Time         `json:"created_time,omitempty"`
 	UpdatedTime time.Time         `json:"updated_time,omitempty"`
-	Disabled    bool              `json:"disabled,omitempty"`
 	Version     uint32            `json:"version,omitempty"`
+	Type        string            `json:"type,omitempty"`
 	Address     string            `json:"address,omitempty"`
 }
 
-type hostsClient struct {
+type HostsClient struct {
 	client *api.Client
 }
 
-func NewHostsClient(c *api.Client) *hostsClient {
-	return &hostsClient{client: c}
+func NewHostsClient(c *api.Client) *HostsClient {
+	return &HostsClient{client: c}
 }
 
-func (c *hostsClient) Create(ctx context.Context, hostCatalogId string, opt ...Option) (*Host, *api.Error, error) {
+func (c *HostsClient) Create(ctx context.Context, hostCatalogId string, opt ...Option) (*Host, *api.Error, error) {
 	if hostCatalogId == "" {
 		return nil, nil, fmt.Errorf("empty hostCatalogId value passed into Create request")
 	}
@@ -65,7 +64,7 @@ func (c *hostsClient) Create(ctx context.Context, hostCatalogId string, opt ...O
 	return target, apiErr, nil
 }
 
-func (c *hostsClient) Read(ctx context.Context, hostCatalogId string, hostId string, opt ...Option) (*Host, *api.Error, error) {
+func (c *HostsClient) Read(ctx context.Context, hostCatalogId string, hostId string, opt ...Option) (*Host, *api.Error, error) {
 	if hostCatalogId == "" {
 		return nil, nil, fmt.Errorf("empty hostCatalogId value passed into Read request")
 	}
@@ -99,7 +98,7 @@ func (c *hostsClient) Read(ctx context.Context, hostCatalogId string, hostId str
 	return target, apiErr, nil
 }
 
-func (c *hostsClient) Update(ctx context.Context, hostCatalogId string, hostId string, version uint32, opt ...Option) (*Host, *api.Error, error) {
+func (c *HostsClient) Update(ctx context.Context, hostCatalogId string, hostId string, version uint32, opt ...Option) (*Host, *api.Error, error) {
 	if hostCatalogId == "" {
 		return nil, nil, fmt.Errorf("empty hostCatalogId value passed into Update request")
 	}
@@ -152,7 +151,7 @@ func (c *hostsClient) Update(ctx context.Context, hostCatalogId string, hostId s
 	return target, apiErr, nil
 }
 
-func (c *hostsClient) Delete(ctx context.Context, hostCatalogId string, hostId string, opt ...Option) (bool, *api.Error, error) {
+func (c *HostsClient) Delete(ctx context.Context, hostCatalogId string, hostId string, opt ...Option) (bool, *api.Error, error) {
 	if hostCatalogId == "" {
 		return false, nil, fmt.Errorf("empty hostCatalogId value passed into Delete request")
 	}
@@ -189,7 +188,7 @@ func (c *hostsClient) Delete(ctx context.Context, hostCatalogId string, hostId s
 	return target.Existed, apiErr, nil
 }
 
-func (c *hostsClient) List(ctx context.Context, hostCatalogId string, opt ...Option) ([]*Host, *api.Error, error) {
+func (c *HostsClient) List(ctx context.Context, hostCatalogId string, opt ...Option) ([]*Host, *api.Error, error) {
 	if hostCatalogId == "" {
 		return nil, nil, fmt.Errorf("empty hostCatalogId value passed into List request")
 	}

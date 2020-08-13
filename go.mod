@@ -3,7 +3,10 @@ module github.com/hashicorp/boundary
 go 1.13
 
 require (
-	github.com/armon/go-metrics v0.3.3
+	github.com/alecthomas/assert v0.0.0-20170929043011-405dbfeb8e38
+	github.com/alecthomas/colour v0.1.0 // indirect
+	github.com/alecthomas/repr v0.0.0-20200325044227-4184120f674c // indirect
+	github.com/armon/go-metrics v0.3.4
 	github.com/bufbuild/buf v0.20.5
 	github.com/fatih/color v1.9.0
 	github.com/fatih/structs v1.1.0
@@ -29,8 +32,8 @@ require (
 	github.com/hashicorp/go-sockaddr v1.0.2
 	github.com/hashicorp/go-uuid v1.0.2
 	github.com/hashicorp/hcl v1.0.0
-	github.com/hashicorp/vault v1.2.1-0.20200717203022-646babcf458c
-	github.com/hashicorp/vault/sdk v0.1.14-0.20200717191844-f687267c8086
+	github.com/hashicorp/shared-secure-libs v0.0.2
+	github.com/hashicorp/vault/sdk v0.1.14-0.20200805123347-1ef507638af6
 	github.com/iancoleman/strcase v0.0.0-20180726023541-3605ed457bf7
 	github.com/jackc/pgx/v4 v4.8.1
 	github.com/jinzhu/gorm v1.9.15
@@ -44,13 +47,16 @@ require (
 	github.com/mitchellh/mapstructure v1.3.3
 	github.com/oligot/go-mod-upgrade v0.2.1
 	github.com/ory/dockertest/v3 v3.6.0
+	github.com/patrickmn/go-cache v2.1.0+incompatible
 	github.com/pires/go-proxyproto v0.1.3
 	github.com/pkg/errors v0.9.1
 	github.com/posener/complete v1.2.3
 	github.com/ryanuber/columnize v2.1.0+incompatible
 	github.com/ryanuber/go-glob v1.0.0
+	github.com/sergi/go-diff v1.1.0 // indirect
 	github.com/stretchr/testify v1.6.1
 	github.com/zalando/go-keyring v0.1.0
+	go.uber.org/atomic v1.6.0
 	golang.org/x/crypto v0.0.0-20200728195943-123391ffb6de
 	golang.org/x/time v0.0.0-20200630173020-3af7569d3a1e
 	golang.org/x/tools v0.0.0-20200807210451-92211316783d

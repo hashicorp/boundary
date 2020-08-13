@@ -68,7 +68,6 @@ func comparableSlice(in []*users.User) []users.User {
 			Description: i.Description,
 			CreatedTime: i.CreatedTime,
 			UpdatedTime: i.UpdatedTime,
-			Disabled:    i.Disabled,
 		}
 		filtered = append(filtered, p)
 	}

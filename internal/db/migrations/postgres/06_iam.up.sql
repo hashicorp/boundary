@@ -43,7 +43,7 @@ create table iam_scope (
 
     -- version allows optimistic locking of the role when modifying the role
     -- itself and when modifying dependent items like principal roles.
-    version wt_version not null default 1
+    version wt_version
   );
 
 create table iam_scope_global (
@@ -221,8 +221,7 @@ create table iam_user (
     description text,
     scope_id wt_scope_id not null references iam_scope(public_id) on delete cascade on update cascade,
     unique(name, scope_id),
-    disabled boolean not null default false,
-    version wt_version not null default 1,
+    version wt_version,
 
     -- The order of columns is important for performance. See:
     -- https://dba.stackexchange.com/questions/58970/enforcing-constraints-two-tables-away/58972#58972
@@ -351,8 +350,7 @@ create table iam_role (
     scope_id wt_scope_id not null references iam_scope(public_id) on delete cascade on update cascade,
     grant_scope_id wt_scope_id not null references iam_scope(public_id) on delete cascade on update cascade,
     unique(name, scope_id),
-    disabled boolean not null default false,
-    version wt_version not null default 1,
+    version wt_version,
 
     -- add unique index so a composite fk can be declared.
     unique(scope_id, public_id)
@@ -451,7 +449,7 @@ insert into iam_role (public_id, name, description, scope_id)
   values('r_default', 'default', 'default role', 'global');
 
 insert into iam_role_grant (role_id, canonical_grant, raw_grant)
-  values('r_default', 'type=org;actions=list', 'type=org;actions=list');
+  values('r_default', 'type=scope;actions=list', 'type=scope;actions=list');
 
 create table iam_group (
     public_id wt_public_id not null primary key,
@@ -461,10 +459,9 @@ create table iam_group (
     description text,
     scope_id wt_scope_id not null references iam_scope(public_id) on delete cascade on update cascade,
     unique(name, scope_id),
-    disabled boolean not null default false,
     -- version allows optimistic locking of the group when modifying the group
     -- itself and when modifying dependent items like group members. 
-    version wt_version not null default 1,
+    version wt_version,
 
     -- add unique index so a composite fk can be declared.
     unique(scope_id, public_id)

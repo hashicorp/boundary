@@ -11,7 +11,7 @@ import (
 	"github.com/hashicorp/boundary/internal/auth/password"
 	"github.com/hashicorp/boundary/internal/db"
 	pb "github.com/hashicorp/boundary/internal/gen/controller/api/resources/authmethods"
-	"github.com/hashicorp/boundary/internal/gen/controller/api/resources/scopes"
+	scopepb "github.com/hashicorp/boundary/internal/gen/controller/api/resources/scopes"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/api/services"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers/authmethods"
@@ -48,7 +48,7 @@ func TestGet(t *testing.T) {
 			"min_login_name_length": structpb.NewNumberValue(3),
 		}},
 		Version: 1,
-		Scope: &scopes.ScopeInfo{
+		Scope: &scopepb.ScopeInfo{
 			Id:   o.GetPublicId(),
 			Type: o.GetType(),
 		},
@@ -122,7 +122,7 @@ func TestList(t *testing.T) {
 			Id:          am.GetPublicId(),
 			CreatedTime: am.GetCreateTime().GetTimestamp(),
 			UpdatedTime: am.GetUpdateTime().GetTimestamp(),
-			Scope:       &scopes.ScopeInfo{Id: oWithAuthMethods.GetPublicId(), Type: scope.Org.String()},
+			Scope:       &scopepb.ScopeInfo{Id: oWithAuthMethods.GetPublicId(), Type: scope.Org.String()},
 			Version:     1,
 			Type:        "password",
 			Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
@@ -138,7 +138,7 @@ func TestList(t *testing.T) {
 			Id:          aa.GetPublicId(),
 			CreatedTime: aa.GetCreateTime().GetTimestamp(),
 			UpdatedTime: aa.GetUpdateTime().GetTimestamp(),
-			Scope:       &scopes.ScopeInfo{Id: oWithOtherAuthMethods.GetPublicId(), Type: scope.Org.String()},
+			Scope:       &scopepb.ScopeInfo{Id: oWithOtherAuthMethods.GetPublicId(), Type: scope.Org.String()},
 			Version:     1,
 			Type:        "password",
 			Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
@@ -312,7 +312,7 @@ func TestCreate(t *testing.T) {
 					UpdatedTime: defaultAm.GetUpdateTime().GetTimestamp(),
 					Name:        &wrapperspb.StringValue{Value: "name"},
 					Description: &wrapperspb.StringValue{Value: "desc"},
-					Scope:       &scopes.ScopeInfo{Id: o.GetPublicId(), Type: scope.Org.String()},
+					Scope:       &scopepb.ScopeInfo{Id: o.GetPublicId(), Type: o.GetType()},
 					Version:     1,
 					Type:        "password",
 					Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
@@ -427,6 +427,8 @@ func TestUpdate(t *testing.T) {
 	tested, err := authmethods.NewService(repoFn)
 	require.NoError(t, err, "Error when getting new auth_method service.")
 
+	defaultScopeInfo := &scopepb.ScopeInfo{Id: o.GetPublicId(), Type: o.GetType()}
+
 	freshAuthMethod := func() (*pb.AuthMethod, func()) {
 		am, err := tested.CreateAuthMethod(auth.DisabledAuthTestContext(auth.WithScopeId(o.GetPublicId())),
 			&pbs.CreateAuthMethodRequest{Item: &pb.AuthMethod{
@@ -451,240 +453,245 @@ func TestUpdate(t *testing.T) {
 		res     *pbs.UpdateAuthMethodResponse
 		errCode codes.Code
 	}{
-		// {
-		// 	name: "Update an Existing AuthMethod",
-		// 	req: &pbs.UpdateAuthMethodRequest{
-		// 		UpdateMask: &field_mask.FieldMask{
-		// 			Paths: []string{"name", "description"},
-		// 		},
-		// 		Item: &pb.AuthMethod{
-		// 			Name:        &wrapperspb.StringValue{Value: "new"},
-		// 			Description: &wrapperspb.StringValue{Value: "desc"},
-		// 		},
-		// 	},
-		// 	res: &pbs.UpdateAuthMethodResponse{
-		// 		Item: &pb.AuthMethod{
-		// 			Name:        &wrapperspb.StringValue{Value: "new"},
-		// 			Description: &wrapperspb.StringValue{Value: "desc"},
-		// 			Type:        "password",
-		// 			Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
-		// 				"min_password_length":   structpb.NewNumberValue(8),
-		// 				"min_login_name_length": structpb.NewNumberValue(3),
-		// 			}},
-		// 		},
-		// 	},
-		// 	errCode: codes.OK,
-		// },
-		// {
-		// 	name: "Multiple Paths in single string",
-		// 	req: &pbs.UpdateAuthMethodRequest{
-		// 		UpdateMask: &field_mask.FieldMask{
-		// 			Paths: []string{"name,description"},
-		// 		},
-		// 		Item: &pb.AuthMethod{
-		// 			Name:        &wrapperspb.StringValue{Value: "new"},
-		// 			Description: &wrapperspb.StringValue{Value: "desc"},
-		// 		},
-		// 	},
-		// 	res: &pbs.UpdateAuthMethodResponse{
-		// 		Item: &pb.AuthMethod{
-		// 			Name:        &wrapperspb.StringValue{Value: "new"},
-		// 			Description: &wrapperspb.StringValue{Value: "desc"},
-		// 			Type:        "password",
-		// 			Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
-		// 				"min_password_length":   structpb.NewNumberValue(8),
-		// 				"min_login_name_length": structpb.NewNumberValue(3),
-		// 			}},
-		// 		},
-		// 	},
-		// 	errCode: codes.OK,
-		// },
-		// {
-		// 	name: "No Update Mask",
-		// 	req: &pbs.UpdateAuthMethodRequest{
-		// 		Item: &pb.AuthMethod{
-		// 			Name:        &wrapperspb.StringValue{Value: "updated name"},
-		// 			Description: &wrapperspb.StringValue{Value: "updated desc"},
-		// 		},
-		// 	},
-		// 	errCode: codes.InvalidArgument,
-		// },
-		// {
-		// 	name: "No Paths in Mask",
-		// 	req: &pbs.UpdateAuthMethodRequest{
-		// 		UpdateMask: &field_mask.FieldMask{Paths: []string{}},
-		// 		Item: &pb.AuthMethod{
-		// 			Name:        &wrapperspb.StringValue{Value: "updated name"},
-		// 			Description: &wrapperspb.StringValue{Value: "updated desc"},
-		// 		},
-		// 	},
-		// 	errCode: codes.InvalidArgument,
-		// },
-		// {
-		// 	name: "Only non-existant paths in Mask",
-		// 	req: &pbs.UpdateAuthMethodRequest{
-		// 		UpdateMask: &field_mask.FieldMask{Paths: []string{"nonexistant_field"}},
-		// 		Item: &pb.AuthMethod{
-		// 			Name:        &wrapperspb.StringValue{Value: "updated name"},
-		// 			Description: &wrapperspb.StringValue{Value: "updated desc"},
-		// 		},
-		// 	},
-		// 	errCode: codes.InvalidArgument,
-		// },
-		// {
-		// 	name: "Unset Name",
-		// 	req: &pbs.UpdateAuthMethodRequest{
-		// 		UpdateMask: &field_mask.FieldMask{
-		// 			Paths: []string{"name"},
-		// 		},
-		// 		Item: &pb.AuthMethod{
-		// 			Description: &wrapperspb.StringValue{Value: "ignored"},
-		// 		},
-		// 	},
-		// 	res: &pbs.UpdateAuthMethodResponse{
-		// 		Item: &pb.AuthMethod{
-		// 			Description: &wrapperspb.StringValue{Value: "default"},
-		// 			Type:        "password",
-		// 			Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
-		// 				"min_password_length":   structpb.NewNumberValue(8),
-		// 				"min_login_name_length": structpb.NewNumberValue(3),
-		// 			}},
-		// 		},
-		// 	},
-		// 	errCode: codes.OK,
-		// },
-		// {
-		// 	name: "Update Only Name",
-		// 	req: &pbs.UpdateAuthMethodRequest{
-		// 		UpdateMask: &field_mask.FieldMask{
-		// 			Paths: []string{"name"},
-		// 		},
-		// 		Item: &pb.AuthMethod{
-		// 			Name:        &wrapperspb.StringValue{Value: "updated"},
-		// 			Description: &wrapperspb.StringValue{Value: "ignored"},
-		// 		},
-		// 	},
-		// 	res: &pbs.UpdateAuthMethodResponse{
-		// 		Item: &pb.AuthMethod{
-		// 			Name:        &wrapperspb.StringValue{Value: "updated"},
-		// 			Description: &wrapperspb.StringValue{Value: "default"},
-		// 			Type:        "password",
-		// 			Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
-		// 				"min_password_length":   structpb.NewNumberValue(8),
-		// 				"min_login_name_length": structpb.NewNumberValue(3),
-		// 			}},
-		// 		},
-		// 	},
-		// 	errCode: codes.OK,
-		// },
-		// {
-		// 	name: "Update Only Description",
-		// 	req: &pbs.UpdateAuthMethodRequest{
-		// 		UpdateMask: &field_mask.FieldMask{
-		// 			Paths: []string{"description"},
-		// 		},
-		// 		Item: &pb.AuthMethod{
-		// 			Name:        &wrapperspb.StringValue{Value: "ignored"},
-		// 			Description: &wrapperspb.StringValue{Value: "notignored"},
-		// 		},
-		// 	},
-		// 	res: &pbs.UpdateAuthMethodResponse{
-		// 		Item: &pb.AuthMethod{
-		// 			Name:        &wrapperspb.StringValue{Value: "default"},
-		// 			Description: &wrapperspb.StringValue{Value: "notignored"},
-		// 			Type:        "password",
-		// 			Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
-		// 				"min_password_length":   structpb.NewNumberValue(8),
-		// 				"min_login_name_length": structpb.NewNumberValue(3),
-		// 			}},
-		// 		},
-		// 	},
-		// 	errCode: codes.OK,
-		// },
-		// // TODO: Updating a non existant auth_method should result in a NotFound exception but currently results in
-		// // the repoFn returning an internal error.
-		// {
-		// 	name: "Update a Non Existing AuthMethod",
-		// 	req: &pbs.UpdateAuthMethodRequest{
-		// 		Id: password.AuthMethodPrefix + "_DoesntExis",
-		// 		UpdateMask: &field_mask.FieldMask{
-		// 			Paths: []string{"description"},
-		// 		},
-		// 		Item: &pb.AuthMethod{
-		// 			Name:        &wrapperspb.StringValue{Value: "new"},
-		// 			Description: &wrapperspb.StringValue{Value: "desc"},
-		// 		},
-		// 	},
-		// 	errCode: codes.Internal,
-		// },
-		// {
-		// 	name: "Cant change Id",
-		// 	req: &pbs.UpdateAuthMethodRequest{
-		// 		UpdateMask: &field_mask.FieldMask{
-		// 			Paths: []string{"id"},
-		// 		},
-		// 		Item: &pb.AuthMethod{
-		// 			Id:          password.AuthMethodPrefix + "_somethinge",
-		// 			Name:        &wrapperspb.StringValue{Value: "new"},
-		// 			Description: &wrapperspb.StringValue{Value: "new desc"},
-		// 		}},
-		// 	res:     nil,
-		// 	errCode: codes.InvalidArgument,
-		// },
-		// {
-		// 	name: "Cant specify Created Time",
-		// 	req: &pbs.UpdateAuthMethodRequest{
-		// 		UpdateMask: &field_mask.FieldMask{
-		// 			Paths: []string{"created_time"},
-		// 		},
-		// 		Item: &pb.AuthMethod{
-		// 			CreatedTime: ptypes.TimestampNow(),
-		// 		},
-		// 	},
-		// 	res:     nil,
-		// 	errCode: codes.InvalidArgument,
-		// },
-		// {
-		// 	name: "Cant specify Updated Time",
-		// 	req: &pbs.UpdateAuthMethodRequest{
-		// 		UpdateMask: &field_mask.FieldMask{
-		// 			Paths: []string{"updated_time"},
-		// 		},
-		// 		Item: &pb.AuthMethod{
-		// 			UpdatedTime: ptypes.TimestampNow(),
-		// 		},
-		// 	},
-		// 	res:     nil,
-		// 	errCode: codes.InvalidArgument,
-		// },
-		// {
-		// 	name: "Cant specify Type",
-		// 	req: &pbs.UpdateAuthMethodRequest{
-		// 		UpdateMask: &field_mask.FieldMask{
-		// 			Paths: []string{"type"},
-		// 		},
-		// 		Item: &pb.AuthMethod{
-		// 			Type: "oidc",
-		// 		},
-		// 	},
-		// 	res:     nil,
-		// 	errCode: codes.InvalidArgument,
-		// },
 		{
-			name: "Update login name length",
+			name: "Update an Existing AuthMethod",
 			req: &pbs.UpdateAuthMethodRequest{
 				UpdateMask: &field_mask.FieldMask{
-					Paths: []string{"attributes.min_login_name_length"},
+					Paths: []string{"name", "description"},
 				},
 				Item: &pb.AuthMethod{
+					Name:        &wrapperspb.StringValue{Value: "new"},
+					Description: &wrapperspb.StringValue{Value: "desc"},
+				},
+			},
+			res: &pbs.UpdateAuthMethodResponse{
+				Item: &pb.AuthMethod{
+					Name:        &wrapperspb.StringValue{Value: "new"},
+					Description: &wrapperspb.StringValue{Value: "desc"},
+					Type:        "password",
 					Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
-						"min_login_name_length": structpb.NewNumberValue(42),
+						"min_password_length":   structpb.NewNumberValue(8),
+						"min_login_name_length": structpb.NewNumberValue(3),
 					}},
+					Scope: defaultScopeInfo,
+				},
+			},
+			errCode: codes.OK,
+		},
+		{
+			name: "Multiple Paths in single string",
+			req: &pbs.UpdateAuthMethodRequest{
+				UpdateMask: &field_mask.FieldMask{
+					Paths: []string{"name,description"},
+				},
+				Item: &pb.AuthMethod{
+					Name:        &wrapperspb.StringValue{Value: "new"},
+					Description: &wrapperspb.StringValue{Value: "desc"},
+				},
+			},
+			res: &pbs.UpdateAuthMethodResponse{
+				Item: &pb.AuthMethod{
+					Name:        &wrapperspb.StringValue{Value: "new"},
+					Description: &wrapperspb.StringValue{Value: "desc"},
+					Type:        "password",
+					Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
+						"min_password_length":   structpb.NewNumberValue(8),
+						"min_login_name_length": structpb.NewNumberValue(3),
+					}},
+					Scope: defaultScopeInfo,
+				},
+			},
+			errCode: codes.OK,
+		},
+		{
+			name: "No Update Mask",
+			req: &pbs.UpdateAuthMethodRequest{
+				Item: &pb.AuthMethod{
+					Name:        &wrapperspb.StringValue{Value: "updated name"},
+					Description: &wrapperspb.StringValue{Value: "updated desc"},
+				},
+			},
+			errCode: codes.InvalidArgument,
+		},
+		{
+			name: "No Paths in Mask",
+			req: &pbs.UpdateAuthMethodRequest{
+				UpdateMask: &field_mask.FieldMask{Paths: []string{}},
+				Item: &pb.AuthMethod{
+					Name:        &wrapperspb.StringValue{Value: "updated name"},
+					Description: &wrapperspb.StringValue{Value: "updated desc"},
+				},
+			},
+			errCode: codes.InvalidArgument,
+		},
+		{
+			name: "Only non-existant paths in Mask",
+			req: &pbs.UpdateAuthMethodRequest{
+				UpdateMask: &field_mask.FieldMask{Paths: []string{"nonexistant_field"}},
+				Item: &pb.AuthMethod{
+					Name:        &wrapperspb.StringValue{Value: "updated name"},
+					Description: &wrapperspb.StringValue{Value: "updated desc"},
+				},
+			},
+			errCode: codes.InvalidArgument,
+		},
+		{
+			name: "Unset Name",
+			req: &pbs.UpdateAuthMethodRequest{
+				UpdateMask: &field_mask.FieldMask{
+					Paths: []string{"name"},
+				},
+				Item: &pb.AuthMethod{
+					Description: &wrapperspb.StringValue{Value: "ignored"},
+				},
+			},
+			res: &pbs.UpdateAuthMethodResponse{
+				Item: &pb.AuthMethod{
+					Description: &wrapperspb.StringValue{Value: "default"},
+					Type:        "password",
+					Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
+						"min_password_length":   structpb.NewNumberValue(8),
+						"min_login_name_length": structpb.NewNumberValue(3),
+					}},
+					Scope: defaultScopeInfo,
+				},
+			},
+			errCode: codes.OK,
+		},
+		{
+			name: "Update Only Name",
+			req: &pbs.UpdateAuthMethodRequest{
+				UpdateMask: &field_mask.FieldMask{
+					Paths: []string{"name"},
+				},
+				Item: &pb.AuthMethod{
+					Name:        &wrapperspb.StringValue{Value: "updated"},
+					Description: &wrapperspb.StringValue{Value: "ignored"},
+				},
+			},
+			res: &pbs.UpdateAuthMethodResponse{
+				Item: &pb.AuthMethod{
+					Name:        &wrapperspb.StringValue{Value: "updated"},
+					Description: &wrapperspb.StringValue{Value: "default"},
+					Type:        "password",
+					Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
+						"min_password_length":   structpb.NewNumberValue(8),
+						"min_login_name_length": structpb.NewNumberValue(3),
+					}},
+					Scope: defaultScopeInfo,
+				},
+			},
+			errCode: codes.OK,
+		},
+		{
+			name: "Update Only Description",
+			req: &pbs.UpdateAuthMethodRequest{
+				UpdateMask: &field_mask.FieldMask{
+					Paths: []string{"description"},
+				},
+				Item: &pb.AuthMethod{
+					Name:        &wrapperspb.StringValue{Value: "ignored"},
+					Description: &wrapperspb.StringValue{Value: "notignored"},
+				},
+			},
+			res: &pbs.UpdateAuthMethodResponse{
+				Item: &pb.AuthMethod{
+					Name:        &wrapperspb.StringValue{Value: "default"},
+					Description: &wrapperspb.StringValue{Value: "notignored"},
+					Type:        "password",
+					Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
+						"min_password_length":   structpb.NewNumberValue(8),
+						"min_login_name_length": structpb.NewNumberValue(3),
+					}},
+					Scope: defaultScopeInfo,
+				},
+			},
+			errCode: codes.OK,
+		},
+		// TODO: Updating a non existant auth_method should result in a NotFound exception but currently results in
+		// the repoFn returning an internal error.
+		{
+			name: "Update a Non Existing AuthMethod",
+			req: &pbs.UpdateAuthMethodRequest{
+				Id: password.AuthMethodPrefix + "_DoesntExis",
+				UpdateMask: &field_mask.FieldMask{
+					Paths: []string{"description"},
+				},
+				Item: &pb.AuthMethod{
+					Name:        &wrapperspb.StringValue{Value: "new"},
+					Description: &wrapperspb.StringValue{Value: "desc"},
+				},
+			},
+			errCode: codes.Internal,
+		},
+		{
+			name: "Cant change Id",
+			req: &pbs.UpdateAuthMethodRequest{
+				UpdateMask: &field_mask.FieldMask{
+					Paths: []string{"id"},
+				},
+				Item: &pb.AuthMethod{
+					Id:          password.AuthMethodPrefix + "_somethinge",
+					Name:        &wrapperspb.StringValue{Value: "new"},
+					Description: &wrapperspb.StringValue{Value: "new desc"},
+				}},
+			res:     nil,
+			errCode: codes.InvalidArgument,
+		},
+		{
+			name: "Cant specify Created Time",
+			req: &pbs.UpdateAuthMethodRequest{
+				UpdateMask: &field_mask.FieldMask{
+					Paths: []string{"created_time"},
+				},
+				Item: &pb.AuthMethod{
+					CreatedTime: ptypes.TimestampNow(),
 				},
 			},
 			res:     nil,
 			errCode: codes.InvalidArgument,
 		},
+		{
+			name: "Cant specify Updated Time",
+			req: &pbs.UpdateAuthMethodRequest{
+				UpdateMask: &field_mask.FieldMask{
+					Paths: []string{"updated_time"},
+				},
+				Item: &pb.AuthMethod{
+					UpdatedTime: ptypes.TimestampNow(),
+				},
+			},
+			res:     nil,
+			errCode: codes.InvalidArgument,
+		},
+		{
+			name: "Cant specify Type",
+			req: &pbs.UpdateAuthMethodRequest{
+				UpdateMask: &field_mask.FieldMask{
+					Paths: []string{"type"},
+				},
+				Item: &pb.AuthMethod{
+					Type: "oidc",
+				},
+			},
+			res:     nil,
+			errCode: codes.InvalidArgument,
+		},,
+	{
+		name: "Update login name length",
+		req: &pbs.UpdateAuthMethodRequest{
+		UpdateMask: &field_mask.FieldMask{
+		Paths: []string{"attributes.min_login_name_length"},
+	},
+		Item: &pb.AuthMethod{
+		Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
+		"min_login_name_length": structpb.NewNumberValue(42),
+	}},
+	},
+	},
+		res:     nil,
+		errCode: codes.InvalidArgument,
+	},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {

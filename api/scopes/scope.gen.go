@@ -20,19 +20,18 @@ type Scope struct {
 	Description string     `json:"description,omitempty"`
 	CreatedTime time.Time  `json:"created_time,omitempty"`
 	UpdatedTime time.Time  `json:"updated_time,omitempty"`
-	Disabled    bool       `json:"disabled,omitempty"`
 	Version     uint32     `json:"version,omitempty"`
 }
 
-type scopesClient struct {
+type ScopesClient struct {
 	client *api.Client
 }
 
-func NewScopesClient(c *api.Client) *scopesClient {
-	return &scopesClient{client: c}
+func NewScopesClient(c *api.Client) *ScopesClient {
+	return &ScopesClient{client: c}
 }
 
-func (c *scopesClient) Create(ctx context.Context, scopeId string, opt ...Option) (*Scope, *api.Error, error) {
+func (c *ScopesClient) Create(ctx context.Context, scopeId string, opt ...Option) (*Scope, *api.Error, error) {
 	if scopeId == "" {
 		return nil, nil, fmt.Errorf("empty scopeId value passed into Create request")
 	}
@@ -66,7 +65,7 @@ func (c *scopesClient) Create(ctx context.Context, scopeId string, opt ...Option
 	return target, apiErr, nil
 }
 
-func (c *scopesClient) Read(ctx context.Context, scopeId string, opt ...Option) (*Scope, *api.Error, error) {
+func (c *ScopesClient) Read(ctx context.Context, scopeId string, opt ...Option) (*Scope, *api.Error, error) {
 	if scopeId == "" {
 		return nil, nil, fmt.Errorf("empty scopeId value passed into Read request")
 	}
@@ -96,7 +95,7 @@ func (c *scopesClient) Read(ctx context.Context, scopeId string, opt ...Option) 
 	return target, apiErr, nil
 }
 
-func (c *scopesClient) Update(ctx context.Context, scopeId string, version uint32, opt ...Option) (*Scope, *api.Error, error) {
+func (c *ScopesClient) Update(ctx context.Context, scopeId string, version uint32, opt ...Option) (*Scope, *api.Error, error) {
 	if scopeId == "" {
 		return nil, nil, fmt.Errorf("empty scopeId value passed into Update request")
 	}
@@ -146,7 +145,7 @@ func (c *scopesClient) Update(ctx context.Context, scopeId string, version uint3
 	return target, apiErr, nil
 }
 
-func (c *scopesClient) Delete(ctx context.Context, scopeId string, opt ...Option) (bool, *api.Error, error) {
+func (c *ScopesClient) Delete(ctx context.Context, scopeId string, opt ...Option) (bool, *api.Error, error) {
 	if scopeId == "" {
 		return false, nil, fmt.Errorf("empty scopeId value passed into Delete request")
 	}
@@ -179,7 +178,7 @@ func (c *scopesClient) Delete(ctx context.Context, scopeId string, opt ...Option
 	return target.Existed, apiErr, nil
 }
 
-func (c *scopesClient) List(ctx context.Context, scopeId string, opt ...Option) ([]*Scope, *api.Error, error) {
+func (c *ScopesClient) List(ctx context.Context, scopeId string, opt ...Option) ([]*Scope, *api.Error, error) {
 	if scopeId == "" {
 		return nil, nil, fmt.Errorf("empty scopeId value passed into List request")
 	}

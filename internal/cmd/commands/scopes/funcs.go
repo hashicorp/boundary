@@ -8,7 +8,7 @@ import (
 	"github.com/hashicorp/boundary/internal/cmd/base"
 )
 
-func printScope(in *scopes.Scope) string {
+func generateScopeTableOutput(in *scopes.Scope) string {
 	var ret []string
 	// This if true is here to line up columns for easy editing
 	if true {
