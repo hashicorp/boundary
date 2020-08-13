@@ -2229,7 +2229,7 @@ begin
   if scope_type = 'org' then
     return new;
   end if;
-  raise exception 'invalid to scope type for kms external config';
+  raise exception 'invalid to scope type (must be global or org)';
 end;
 $$ language plpgsql;
 
@@ -2449,7 +2449,8 @@ insert on kms_session_key_version
   insert into oplog_ticket
     (name, version)
   values
-    ('kms_external_config', 1);
+    ('kms_external_config', 1),
+    ('kms_root_key', 1);
 commit;
 `),
 	},
