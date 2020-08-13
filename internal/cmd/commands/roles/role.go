@@ -6,7 +6,9 @@ import (
 	"github.com/hashicorp/boundary/api"
 	"github.com/hashicorp/boundary/api/roles"
 	"github.com/hashicorp/boundary/internal/cmd/base"
+	"github.com/hashicorp/boundary/internal/cmd/common"
 	"github.com/hashicorp/boundary/internal/perms"
+	"github.com/hashicorp/boundary/internal/types/resource"
 	"github.com/hashicorp/vault/sdk/helper/strutil"
 	"github.com/kr/pretty"
 	"github.com/mitchellh/cli"
@@ -28,28 +30,25 @@ type Command struct {
 
 func (c *Command) Synopsis() string {
 	switch c.Func {
-	case "create", "update", "read", "delete", "list":
-		return synopsisFunc(c.Func)
+	case "", "create", "update", "read", "delete", "list":
+		return common.SynopsisFunc(c.Func, "role")
 	case "add-principals", "set-principals", "remove-principals":
 		return principalsGrantsSynopsisFunc(c.Func, true)
 	case "add-grants", "set-grants", "remove-grants":
 		return principalsGrantsSynopsisFunc(c.Func, false)
 	}
-	return "Manage Boundary roles"
+	return ""
 }
 
-var helpMap = map[string]func() string{
-	"create":            createHelp,
-	"update":            updateHelp,
-	"read":              readHelp,
-	"delete":            deleteHelp,
-	"list":              listHelp,
-	"add-principals":    addPrincipalsHelp,
-	"set-principals":    setPrincipalsHelp,
-	"remove-principals": removePrincipalsHelp,
-	"add-grants":        addPrincipalsHelp,
-	"set-grants":        setPrincipalsHelp,
-	"remove-grants":     removePrincipalsHelp,
+var helpMap = func() map[string]func() string {
+	ret := common.HelpMap(resource.Role)
+	ret["add-principals"] = addPrincipalsHelp
+	ret["set-principals"] = setPrincipalsHelp
+	ret["remove-principals"] = removePrincipalsHelp
+	ret["add-grants"] = addPrincipalsHelp
+	ret["set-grants"] = setPrincipalsHelp
+	ret["remove-grants"] = removePrincipalsHelp
+	return ret
 }
 
 var flagsMap = map[string][]string{
@@ -66,10 +65,11 @@ var flagsMap = map[string][]string{
 }
 
 func (c *Command) Help() string {
+	hm := helpMap()
 	if c.Func == "" {
-		return baseHelp()
+		return hm["base"]()
 	}
-	return helpMap[c.Func]() + "\n\n" + c.Flags().Help()
+	return hm[c.Func]() + "\n\n" + c.Flags().Help()
 }
 
 func (c *Command) Flags() *base.FlagSets {

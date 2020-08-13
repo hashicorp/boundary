@@ -7,6 +7,7 @@ import (
 	"github.com/hashicorp/boundary/api/scopes"
 	"github.com/hashicorp/boundary/internal/cmd/base"
 	"github.com/hashicorp/boundary/internal/cmd/common"
+	"github.com/hashicorp/boundary/internal/types/resource"
 	"github.com/hashicorp/vault/sdk/helper/strutil"
 	"github.com/kr/pretty"
 	"github.com/mitchellh/cli"
@@ -23,19 +24,7 @@ type Command struct {
 }
 
 func (c *Command) Synopsis() string {
-	switch c.Func {
-	case "create", "update", "read", "delete", "list":
-		return synopsisFunc(c.Func)
-	}
-	return "Manage Boundary scopes"
-}
-
-var helpMap = map[string]func() string{
-	"create": createHelp,
-	"update": updateHelp,
-	"read":   readHelp,
-	"delete": deleteHelp,
-	"list":   listHelp,
+	return common.SynopsisFunc(c.Func, "scope")
 }
 
 var flagsMap = map[string][]string{
@@ -46,8 +35,9 @@ var flagsMap = map[string][]string{
 }
 
 func (c *Command) Help() string {
+	helpMap := common.HelpMap(resource.Scope)
 	if c.Func == "" {
-		return baseHelp()
+		return helpMap["base"]()
 	}
 	return helpMap[c.Func]() + "\n\n" + c.Flags().Help()
 }
@@ -57,7 +47,7 @@ func (c *Command) Flags() *base.FlagSets {
 
 	f := set.NewFlagSet("Command Options")
 
-	common.PopulateCommonFlags(c.Command, f, flagsMap[c.Func])
+	common.PopulateCommonFlags(c.Command, f, resource.Scope, flagsMap[c.Func])
 	return set
 }
 

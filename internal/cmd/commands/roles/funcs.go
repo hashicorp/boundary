@@ -2,22 +2,15 @@ package roles
 
 import (
 	"fmt"
-	"net/textproto"
 	"strings"
 	"time"
 
 	"github.com/hashicorp/boundary/api/roles"
 	"github.com/hashicorp/boundary/internal/cmd/base"
 	"github.com/hashicorp/boundary/internal/cmd/common"
+	"github.com/hashicorp/boundary/internal/types/resource"
 	"github.com/mitchellh/go-wordwrap"
 )
-
-func synopsisFunc(inFunc string) string {
-	if inFunc == "" {
-		return wordwrap.WrapString("Manage Boundary roles", base.TermWidth)
-	}
-	return wordwrap.WrapString(fmt.Sprintf("%s a role within Boundary", textproto.CanonicalMIMEHeaderKey(inFunc)), base.TermWidth)
-}
 
 func principalsGrantsSynopsisFunc(inFunc string, principals bool) string {
 	var in string
@@ -34,76 +27,6 @@ func principalsGrantsSynopsisFunc(inFunc string, principals bool) string {
 		in = fmt.Sprintf("Remove %s from", switchStr)
 	}
 	return wordwrap.WrapString(fmt.Sprintf("%s a role within Boundary", in), base.TermWidth)
-}
-
-func baseHelp() string {
-	return base.WrapForHelpText([]string{
-		"Usage: boundary roles [sub command] [options] [args]",
-		"",
-		"  This command allows operations on Boundary roles. Examples:",
-		"",
-		"    Create a role:",
-		"",
-		`      $ boundary roles create -name foo -description "For ProdOps usage"`,
-		"",
-		"    Add a grant to a role:",
-		"",
-		`      $ boundary roles add-grants -id r_1234567890 -grant "type=host-catalog;actions=create,delete"`,
-		"",
-		"  Please see the roles subcommand help for detailed usage information.",
-	})
-}
-
-func createHelp() string {
-	return base.WrapForHelpText([]string{
-		"Usage: boundary roles create [options] [args]",
-		"",
-		"  Create a role. Example:",
-		"",
-		`    $ boundary roles create -name ops -description "Role for ops grants"`,
-		"",
-		"",
-	})
-}
-
-func updateHelp() string {
-	return base.WrapForHelpText([]string{
-		"Usage: boundary roles update [options] [args]",
-		"",
-		"  Update a role given its ID. Example:",
-		"",
-		`    $ boundary roles update -id r_1234567890 -description "Development host grants"`,
-	})
-}
-
-func readHelp() string {
-	return base.WrapForHelpText([]string{
-		"Usage: boundary roles read [options] [args]",
-		"",
-		"  Read a role given its ID. Example:",
-		"",
-		`    $ boundary roles read -id r_1234567890`,
-	})
-}
-
-func deleteHelp() string {
-	return base.WrapForHelpText([]string{
-		"Usage: boundary roles delete [options] [args]",
-		"",
-		"  Delete a role given its ID. Example:",
-		"",
-		`    $ boundary roles delete -id r_1234567890`,
-	})
-}
-
-func listHelp() string {
-	return base.WrapForHelpText([]string{
-		"Usage: boundary roles list [options] [args]",
-		"",
-		"  List roles within a scope. Example:",
-		"",
-		`    $ boundary roles list -scope o_1234567890`,
-	})
 }
 
 func addPrincipalsHelp() string {
@@ -137,7 +60,7 @@ func removePrincipalsHelp() string {
 }
 
 func populateFlags(c *Command, f *base.FlagSet, flagNames []string) {
-	common.PopulateCommonFlags(c.Command, f, flagNames)
+	common.PopulateCommonFlags(c.Command, f, resource.Role, flagNames)
 
 	for _, name := range flagNames {
 		switch name {
