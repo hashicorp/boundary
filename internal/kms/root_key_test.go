@@ -155,9 +155,9 @@ func TestRootKey_Delete(t *testing.T) {
 				return
 			}
 			assert.Equal(tt.wantRowsDeleted, deletedRows)
-			foundCfg := allocRootKey()
-			foundCfg.PrivateId = tt.key.PrivateId
-			err = rw.LookupById(context.Background(), &foundCfg)
+			foundKey := allocRootKey()
+			foundKey.PrivateId = tt.key.PrivateId
+			err = rw.LookupById(context.Background(), &foundKey)
 			require.Error(err)
 			assert.True(errors.Is(db.ErrRecordNotFound, err))
 		})
