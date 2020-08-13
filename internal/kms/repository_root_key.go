@@ -12,10 +12,10 @@ import (
 // with its PrivateId.  There are no valid options at this time.
 func (r *Repository) CreateRootKey(ctx context.Context, k *RootKey, opt ...Option) (*RootKey, error) {
 	if k == nil {
-		return nil, fmt.Errorf("create root key: missing key %w", db.ErrNilParameter)
+		return nil, fmt.Errorf("create root key: missing key: %w", db.ErrNilParameter)
 	}
 	if k.RootKey == nil {
-		return nil, fmt.Errorf("create root key: missing key store %w", db.ErrNilParameter)
+		return nil, fmt.Errorf("create root key: missing key store: %w", db.ErrNilParameter)
 	}
 	if k.PrivateId != "" {
 		return nil, fmt.Errorf("create root key: private id not empty: %w", db.ErrInvalidParameter)
@@ -53,7 +53,7 @@ func (r *Repository) CreateRootKey(ctx context.Context, k *RootKey, opt ...Optio
 // found, it will return nil, nil.
 func (r *Repository) LookupRootKey(ctx context.Context, privateId string, opt ...Option) (*RootKey, error) {
 	if privateId == "" {
-		return nil, fmt.Errorf("lookup root key: missing private id %w", db.ErrNilParameter)
+		return nil, fmt.Errorf("lookup root key: missing private id: %w", db.ErrNilParameter)
 	}
 
 	k := allocRootKey()

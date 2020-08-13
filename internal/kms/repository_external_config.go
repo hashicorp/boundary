@@ -15,10 +15,10 @@ import (
 // config with its PrivateId.  There are no valid options at this time.
 func (r *Repository) CreateExternalConfig(ctx context.Context, conf *ExternalConfig, opt ...Option) (*ExternalConfig, error) {
 	if conf == nil {
-		return nil, fmt.Errorf("create external config: missing conf %w", db.ErrNilParameter)
+		return nil, fmt.Errorf("create external config: missing conf: %w", db.ErrNilParameter)
 	}
 	if conf.ExternalConfig == nil {
-		return nil, fmt.Errorf("create external config: missing conf store %w", db.ErrNilParameter)
+		return nil, fmt.Errorf("create external config: missing conf store: %w", db.ErrNilParameter)
 	}
 	if conf.PrivateId != "" {
 		return nil, fmt.Errorf("create external config: private id not empty: %w", db.ErrInvalidParameter)
@@ -62,7 +62,7 @@ func (r *Repository) CreateExternalConfig(ctx context.Context, conf *ExternalCon
 // found, it will return nil, nil.
 func (r *Repository) LookupExternalConfig(ctx context.Context, privateId string, opt ...Option) (*ExternalConfig, error) {
 	if privateId == "" {
-		return nil, fmt.Errorf("lookup external config: missing private id %w", db.ErrNilParameter)
+		return nil, fmt.Errorf("lookup external config: missing private id: %w", db.ErrNilParameter)
 	}
 
 	c := allocExternalConfig()
@@ -118,10 +118,10 @@ func (r *Repository) DeleteExternalConfig(ctx context.Context, privateId string,
 // returned.
 func (r *Repository) UpdateExternalConfig(ctx context.Context, conf *ExternalConfig, version uint32, fieldMaskPaths []string, opt ...Option) (*ExternalConfig, int, error) {
 	if conf == nil {
-		return nil, db.NoRowsAffected, fmt.Errorf("update external config: missing conf %w", db.ErrNilParameter)
+		return nil, db.NoRowsAffected, fmt.Errorf("update external config: missing conf: %w", db.ErrNilParameter)
 	}
 	if conf.PrivateId == "" {
-		return nil, db.NoRowsAffected, fmt.Errorf("update external config: missing conf private id %w", db.ErrInvalidParameter)
+		return nil, db.NoRowsAffected, fmt.Errorf("update external config: missing conf private id: %w", db.ErrInvalidParameter)
 	}
 	var filteredFieldMasks []string
 	for _, f := range fieldMaskPaths {

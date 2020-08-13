@@ -12,10 +12,10 @@ import (
 // version with its PrivateId.  There are no valid options at this time.
 func (r *Repository) CreateRootKeyVersion(ctx context.Context, k *RootKeyVersion, opt ...Option) (*RootKeyVersion, error) {
 	if k == nil {
-		return nil, fmt.Errorf("create root key version: missing key %w", db.ErrNilParameter)
+		return nil, fmt.Errorf("create root key version: missing key: %w", db.ErrNilParameter)
 	}
 	if k.RootKeyVersion == nil {
-		return nil, fmt.Errorf("create root key version: missing key store %w", db.ErrNilParameter)
+		return nil, fmt.Errorf("create root key version: missing key store: %w", db.ErrNilParameter)
 	}
 	if k.PrivateId != "" {
 		return nil, fmt.Errorf("create root key version: private id not empty: %w", db.ErrInvalidParameter)
@@ -62,7 +62,7 @@ func (r *Repository) CreateRootKeyVersion(ctx context.Context, k *RootKeyVersion
 // the key version is not found, it will return nil, nil.
 func (r *Repository) LookupRootKeyVersion(ctx context.Context, privateId string, opt ...Option) (*RootKeyVersion, error) {
 	if privateId == "" {
-		return nil, fmt.Errorf("lookup root key version: missing private id %w", db.ErrNilParameter)
+		return nil, fmt.Errorf("lookup root key version: missing private id: %w", db.ErrNilParameter)
 	}
 
 	k := allocRootKeyVersion()

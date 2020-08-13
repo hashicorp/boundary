@@ -25,7 +25,7 @@ type RootKey struct {
 // are currently supported.
 func NewRootKey(scopeId string, opt ...Option) (*RootKey, error) {
 	if scopeId == "" {
-		return nil, fmt.Errorf("new root key: missing scope id %w", db.ErrInvalidParameter)
+		return nil, fmt.Errorf("new root key: missing scope id: %w", db.ErrInvalidParameter)
 	}
 	c := &RootKey{
 		RootKey: &store.RootKey{

@@ -25,10 +25,10 @@ type RootKeyVersion struct {
 // currently supported.
 func NewRootKeyVersion(rootKeyId, key string, opt ...Option) (*RootKeyVersion, error) {
 	if rootKeyId == "" {
-		return nil, fmt.Errorf("new root key version: missing root key id %w", db.ErrInvalidParameter)
+		return nil, fmt.Errorf("new root key version: missing root key id: %w", db.ErrInvalidParameter)
 	}
 	if key == "" {
-		return nil, fmt.Errorf("new root key version: missing key %w", db.ErrInvalidParameter)
+		return nil, fmt.Errorf("new root key version: missing key: %w", db.ErrInvalidParameter)
 	}
 
 	k := &RootKeyVersion{

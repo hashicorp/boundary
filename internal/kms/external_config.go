@@ -27,10 +27,10 @@ type ExternalConfig struct {
 // are currently supported.
 func NewExternalConfig(scopeId string, confType KmsType, config string, opt ...Option) (*ExternalConfig, error) {
 	if scopeId == "" {
-		return nil, fmt.Errorf("new external config: missing scope id %w", db.ErrInvalidParameter)
+		return nil, fmt.Errorf("new external config: missing scope id: %w", db.ErrInvalidParameter)
 	}
 	if config == "" {
-		return nil, fmt.Errorf("new external config: missing conf %w", db.ErrInvalidParameter)
+		return nil, fmt.Errorf("new external config: missing conf: %w", db.ErrInvalidParameter)
 	}
 	c := &ExternalConfig{
 		ExternalConfig: &store.ExternalConfig{
