@@ -141,12 +141,6 @@ func TestAccount_CustomMethods(t *testing.T) {
 	defer tc.Shutdown()
 
 	client := tc.Client()
-	// authMethodClient := authmethods.NewAuthMethodsClient(client)
-	// tk, apiErr, err := authMethodClient.Authenticate(tc.Context(), amId, "user", "passpass")
-	// require.NoError(err)
-	// require.Nil(apiErr)
-	// require.NotNil(tk)
-
 	accountClient := authmethods.NewAccountsClient(client)
 
 	al, apiErr, err := accountClient.List(tc.Context(), amId)

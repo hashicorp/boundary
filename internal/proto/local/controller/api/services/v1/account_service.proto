@@ -94,6 +94,7 @@ service AccountService {
   rpc SetPassword(SetPasswordRequest) returns (SetPasswordResponse) {
     option (google.api.http) = {
       post: "/v1/scopes/*/auth-methods/{auth_method_id}/accounts/{id}:set-password"
+      body: "*"
       response_body: "item"
     };
     option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
@@ -107,6 +108,7 @@ service AccountService {
   rpc ChangePassword(ChangePasswordRequest) returns (ChangePasswordResponse) {
     option (google.api.http) = {
       post: "/v1/scopes/*/auth-methods/{auth_method_id}/accounts/{id}:change-password"
+      body: "*"
       response_body: "item"
     };
     option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
