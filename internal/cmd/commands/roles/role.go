@@ -160,7 +160,7 @@ func (c *Command) Run(args []string) int {
 			}
 		}
 		if principals == nil {
-			c.UI.Error("No principals supplied via -principals")
+			c.UI.Error("No principals supplied via -principal")
 			return 1
 		}
 

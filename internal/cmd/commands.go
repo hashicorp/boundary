@@ -10,6 +10,7 @@ import (
 	"github.com/hashicorp/boundary/internal/cmd/commands/config"
 	"github.com/hashicorp/boundary/internal/cmd/commands/controller"
 	"github.com/hashicorp/boundary/internal/cmd/commands/dev"
+	"github.com/hashicorp/boundary/internal/cmd/commands/groups"
 	"github.com/hashicorp/boundary/internal/cmd/commands/hosts"
 	"github.com/hashicorp/boundary/internal/cmd/commands/roles"
 	"github.com/hashicorp/boundary/internal/cmd/commands/scopes"
@@ -53,8 +54,66 @@ func initCommands(ui, serverCmdUi cli.Ui, runOpts *RunOptions) {
 				SigUSR2Ch: MakeSigUSR2Ch(),
 			}, nil
 		},
+		"groups": func() (cli.Command, error) {
+			return &groups.Command{
+				Command: base.NewCommand(ui),
+			}, nil
+		},
+		"groups create": func() (cli.Command, error) {
+			return &groups.Command{
+				Command: base.NewCommand(ui),
+				Func:    "create",
+			}, nil
+		},
+		"groups update": func() (cli.Command, error) {
+			return &groups.Command{
+				Command: base.NewCommand(ui),
+				Func:    "update",
+			}, nil
+		},
+		"groups read": func() (cli.Command, error) {
+			return &groups.Command{
+				Command: base.NewCommand(ui),
+				Func:    "read",
+			}, nil
+		},
+		"groups delete": func() (cli.Command, error) {
+			return &groups.Command{
+				Command: base.NewCommand(ui),
+				Func:    "delete",
+			}, nil
+		},
+		"groups list": func() (cli.Command, error) {
+			return &groups.Command{
+				Command: base.NewCommand(ui),
+				Func:    "list",
+			}, nil
+		},
+		"groups add-members": func() (cli.Command, error) {
+			return &groups.Command{
+				Command: base.NewCommand(ui),
+				Func:    "add-members",
+			}, nil
+		},
+		"groups set-members": func() (cli.Command, error) {
+			return &groups.Command{
+				Command: base.NewCommand(ui),
+				Func:    "set-members",
+			}, nil
+		},
+		"groups remove-members": func() (cli.Command, error) {
+			return &groups.Command{
+				Command: base.NewCommand(ui),
+				Func:    "remove-members",
+			}, nil
+		},
 		"hosts create": func() (cli.Command, error) {
 			return &hosts.CreateCommand{
+				Command: base.NewCommand(ui),
+			}, nil
+		},
+		"scopes": func() (cli.Command, error) {
+			return &scopes.Command{
 				Command: base.NewCommand(ui),
 			}, nil
 		},
