@@ -2147,7 +2147,7 @@ begin;
 create table kms_external_type_enm (
   name text primary key check(name in (
     'unknownkms', 
-    'devkms', 
+    'aeadkms', 
     'awskms', 
     'gcpkms',
     'alicloudkms', 
@@ -2167,7 +2167,7 @@ update on kms_external_type_enm
 insert into kms_external_type_enm (name)
 values
   ('unknownkms'),
-  ('devkms'),
+  ('aeadkms'),
   ('awskms'),
   ('gcpkms'),
   ('alicloudkms'),

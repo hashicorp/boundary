@@ -17,8 +17,8 @@ func Test_ExternalKmsType(t *testing.T) {
 			want:       UnknownKms,
 		},
 		{
-			typeString: "devkms",
-			want:       DevKms,
+			typeString: "aeadkms",
+			want:       AeadKms,
 		},
 		{
 			typeString: "awskms",

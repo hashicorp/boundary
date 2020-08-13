@@ -119,7 +119,7 @@ func TestRepository_CreateExternalConfig(t *testing.T) {
 			name: "valid-org",
 			args: args{
 				conf: func() *ExternalConfig {
-					c, err := NewExternalConfig(org.PublicId, DevKms, "{}")
+					c, err := NewExternalConfig(org.PublicId, AeadKms, "{}")
 					assert.NoError(t, err)
 					return c
 				}(),
@@ -130,7 +130,7 @@ func TestRepository_CreateExternalConfig(t *testing.T) {
 			name: "valid-global",
 			args: args{
 				conf: func() *ExternalConfig {
-					c, err := NewExternalConfig("global", DevKms, "{}")
+					c, err := NewExternalConfig("global", AeadKms, "{}")
 					assert.NoError(t, err)
 					return c
 				}(),
@@ -141,7 +141,7 @@ func TestRepository_CreateExternalConfig(t *testing.T) {
 			name: "invalid-proj",
 			args: args{
 				conf: func() *ExternalConfig {
-					c, err := NewExternalConfig(proj.PublicId, DevKms, "{}")
+					c, err := NewExternalConfig(proj.PublicId, AeadKms, "{}")
 					assert.NoError(t, err)
 					return c
 				}(),
@@ -152,7 +152,7 @@ func TestRepository_CreateExternalConfig(t *testing.T) {
 			name: "invalid-scope",
 			args: args{
 				conf: func() *ExternalConfig {
-					c, err := NewExternalConfig("o_notAValidScopeId", DevKms, "{}")
+					c, err := NewExternalConfig("o_notAValidScopeId", AeadKms, "{}")
 					assert.NoError(t, err)
 					return c
 				}(),
@@ -163,7 +163,7 @@ func TestRepository_CreateExternalConfig(t *testing.T) {
 			name: "empty-scope",
 			args: args{
 				conf: func() *ExternalConfig {
-					c, err := NewExternalConfig(org.PublicId, DevKms, "{}")
+					c, err := NewExternalConfig(org.PublicId, AeadKms, "{}")
 					assert.NoError(t, err)
 					c.ScopeId = ""
 					return c
@@ -176,7 +176,7 @@ func TestRepository_CreateExternalConfig(t *testing.T) {
 			name: "empty-conf",
 			args: args{
 				conf: func() *ExternalConfig {
-					c, err := NewExternalConfig(org.PublicId, DevKms, "{}")
+					c, err := NewExternalConfig(org.PublicId, AeadKms, "{}")
 					assert.NoError(t, err)
 					c.Config = ""
 					return c
@@ -189,7 +189,7 @@ func TestRepository_CreateExternalConfig(t *testing.T) {
 			name: "invalid-privateId",
 			args: args{
 				conf: func() *ExternalConfig {
-					c, err := NewExternalConfig(org.PublicId, DevKms, "{}")
+					c, err := NewExternalConfig(org.PublicId, AeadKms, "{}")
 					assert.NoError(t, err)
 					c.PrivateId = "mustBeEmpty"
 					return c
@@ -268,7 +268,7 @@ func TestRepository_DeleteExternalConfig(t *testing.T) {
 		{
 			name: "valid",
 			args: args{
-				conf: TestExternalConfig(t, conn, wrapper, org.PublicId, DevKms, "{}"),
+				conf: TestExternalConfig(t, conn, wrapper, org.PublicId, AeadKms, "{}"),
 			},
 			wantRowsDeleted: 1,
 			wantErr:         false,
@@ -556,7 +556,7 @@ func TestRepository_UpdateExternalConfig(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 
-			c := TestExternalConfig(t, conn, wrapper, tt.newScopeId, DevKms, "{}")
+			c := TestExternalConfig(t, conn, wrapper, tt.newScopeId, AeadKms, "{}")
 
 			tt.args.config.PrivateId = c.PrivateId
 			if tt.args.PrivateId != nil {

@@ -38,7 +38,7 @@ func TestExternalConfig_Create(t *testing.T) {
 		{
 			name: "empty-scopeId",
 			args: args{
-				confType: DevKms,
+				confType: AeadKms,
 				config:   "{}",
 			},
 			wantErr:   true,
@@ -48,7 +48,7 @@ func TestExternalConfig_Create(t *testing.T) {
 			name: "empty-config",
 			args: args{
 				scopeId:  org.PublicId,
-				confType: DevKms,
+				confType: AeadKms,
 			},
 			wantErr:   true,
 			wantIsErr: db.ErrInvalidParameter,
@@ -57,13 +57,13 @@ func TestExternalConfig_Create(t *testing.T) {
 			name: "valid-org-config",
 			args: args{
 				scopeId:  org.PublicId,
-				confType: DevKms,
+				confType: AeadKms,
 				config:   "{}",
 			},
 			want: func() *ExternalConfig {
 				c := allocExternalConfig()
 				c.ScopeId = org.PublicId
-				c.Type = DevKms.String()
+				c.Type = AeadKms.String()
 				c.Config = "{}"
 				return &c
 			}(),
@@ -73,13 +73,13 @@ func TestExternalConfig_Create(t *testing.T) {
 			name: "valid-global-config",
 			args: args{
 				scopeId:  "global",
-				confType: DevKms,
+				confType: AeadKms,
 				config:   "{}",
 			},
 			want: func() *ExternalConfig {
 				c := allocExternalConfig()
 				c.ScopeId = "global"
-				c.Type = DevKms.String()
+				c.Type = AeadKms.String()
 				c.Config = "{}"
 				return &c
 			}(),
@@ -90,13 +90,13 @@ func TestExternalConfig_Create(t *testing.T) {
 			name: "invalid-project-config",
 			args: args{
 				scopeId:  proj.PublicId,
-				confType: DevKms,
+				confType: AeadKms,
 				config:   "{}",
 			},
 			want: func() *ExternalConfig {
 				c := allocExternalConfig()
 				c.ScopeId = proj.PublicId
-				c.Type = DevKms.String()
+				c.Type = AeadKms.String()
 				c.Config = "{}"
 				return &c
 			}(),
@@ -180,7 +180,7 @@ func TestExternalConfig_Update(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			c := TestExternalConfig(t, conn, wrapper, org.PublicId, DevKms, "{}")
+			c := TestExternalConfig(t, conn, wrapper, org.PublicId, AeadKms, "{}")
 
 			updateConfig := allocExternalConfig()
 			updateConfig.PrivateId = c.PrivateId
@@ -236,7 +236,7 @@ func TestExternalConfig_Delete(t *testing.T) {
 	}{
 		{
 			name:            "valid",
-			config:          TestExternalConfig(t, conn, wrapper, org.PublicId, DevKms, "{}"),
+			config:          TestExternalConfig(t, conn, wrapper, org.PublicId, AeadKms, "{}"),
 			wantErr:         false,
 			wantRowsDeleted: 1,
 		},
@@ -248,7 +248,7 @@ func TestExternalConfig_Delete(t *testing.T) {
 				require.NoError(t, err)
 				c.PrivateId = id
 				c.ScopeId = org.PublicId
-				c.Type = DevKms.String()
+				c.Type = AeadKms.String()
 				c.Config = "{}"
 				return &c
 			}(),

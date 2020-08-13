@@ -5,7 +5,7 @@ type KmsType int
 
 const (
 	UnknownKms      KmsType = 0
-	DevKms          KmsType = 1
+	AeadKms         KmsType = 1
 	AwsKms          KmsType = 2
 	GcpKms          KmsType = 3
 	AliCloudKms     KmsType = 4
@@ -18,7 +18,7 @@ const (
 func (k KmsType) String() string {
 	return [...]string{
 		"unknownkms",
-		"devkms",
+		"aeadkms",
 		"awskms",
 		"gcpkms",
 		"alicloudkms",
@@ -31,7 +31,7 @@ func (k KmsType) String() string {
 
 var Map = map[string]KmsType{
 	UnknownKms.String():      UnknownKms,
-	DevKms.String():          DevKms,
+	AeadKms.String():         AeadKms,
 	AwsKms.String():          AwsKms,
 	GcpKms.String():          GcpKms,
 	AliCloudKms.String():     AliCloudKms,
