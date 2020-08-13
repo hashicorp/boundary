@@ -26,3 +26,17 @@ func TestExternalConfig(t *testing.T, conn *gorm.DB, wrapper wrapping.Wrapper, s
 	require.Equal(conf, config.Config)
 	return config
 }
+
+func TestRootKey(t *testing.T, conn *gorm.DB, scopeId string) *RootKey {
+	t.Helper()
+	require := require.New(t)
+	rw := db.New(conn)
+	k, err := NewRootKey(scopeId)
+	require.NoError(err)
+	id, err := newRootKeyId()
+	require.NoError(err)
+	k.PrivateId = id
+	err = rw.Create(context.Background(), k)
+	require.NoError(err)
+	return k
+}

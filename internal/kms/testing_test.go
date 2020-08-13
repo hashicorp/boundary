@@ -21,3 +21,13 @@ func Test_TestExternalConfig(t *testing.T) {
 	assert.Equal("{}", extConf.Config)
 	assert.NotEmpty(extConf.PrivateId)
 }
+
+func Test_TestRootKey(t *testing.T) {
+	t.Helper()
+	assert, require := assert.New(t), require.New(t)
+	conn, _ := db.TestSetup(t, "postgres")
+	org, _ := iam.TestScopes(t, conn)
+	extConf := TestRootKey(t, conn, org.PublicId)
+	require.NotNil(extConf)
+	assert.NotEmpty(extConf.PrivateId)
+}
