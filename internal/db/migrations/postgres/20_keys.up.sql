@@ -1,74 +1,5 @@
 begin;
 
-create table kms_external_type_enm (
-  name text primary key check(name in (
-    'unknownkms', 
-    'aeadkms', 
-    'awskms', 
-    'gcpkms',
-    'alicloudkms', 
-    'azurekms', 
-    'ocikms', 
-    'vaulttransitkms', 
-    'hsmpkcs11kms'))
-);
-
- -- define the immutable fields of kms_external_type_enm
-create trigger 
-  immutable_columns
-before
-update on kms_external_type_enm
-  for each row execute procedure immutable_columns('name');
-
-insert into kms_external_type_enm (name)
-values
-  ('unknownkms'),
-  ('aeadkms'),
-  ('awskms'),
-  ('gcpkms'),
-  ('alicloudkms'),
-  ('azurekms'),
-  ('ocikms'),
-  ('vaulttransitkms'),
-  ('hsmpkcs11kms');
-
-create table kms_external_config (
-  private_id wt_private_id primary key,
-  scope_id wt_scope_id not null 
-    references iam_scope(public_id) 
-    on delete cascade 
-    on update cascade,
-  type text not null 
-    references kms_external_type_enm(name),
-  config bytea not null,
-  version wt_version not null default 1,
-  create_time wt_timestamp,
-  update_time wt_timestamp
-);
-
- -- define the immutable fields for kms_external_config (only version, config and
- -- update_time are updatable)
-create trigger 
-  immutable_columns
-before
-update on kms_external_config
-  for each row execute procedure immutable_columns('private_id', 'scope_id', 'type', 'create_time');
-  
-create trigger 
-  default_create_time_column
-before
-insert on kms_external_config
-  for each row execute procedure default_create_time();
-
-create trigger 
-  update_time_column 
-before update on kms_external_config 
-  for each row execute procedure update_time_column();
-
-create trigger
-  update_version_column
-after update on kms_external_config
-  for each row execute procedure update_version_column('private_id');
 
 create or replace function
   kms_scope_valid()
@@ -88,11 +19,6 @@ begin
   raise exception 'invalid to scope type (must be global or org)';
 end;
 $$ language plpgsql;
-
-create trigger 
-  kms_scope_valid
-before insert on kms_external_config
-  for each row execute procedure kms_scope_valid();
 
 
 create table kms_root_key (
@@ -348,7 +274,6 @@ before insert on kms_session_key_version
   insert into oplog_ticket
     (name, version)
   values
-    ('kms_external_config', 1),
     ('kms_root_key', 1),
     ('kms_root_key_version', 1);
 commit;
