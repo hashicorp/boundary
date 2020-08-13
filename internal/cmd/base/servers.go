@@ -457,7 +457,7 @@ func (b *Server) CreateDevDatabase(dialect string) error {
 		if err != nil {
 			return fmt.Errorf("error creating new org scope: %w", err)
 		}
-		orgScope, err = repo.CreateScope(ctx, orgScope, iam.WithPublicId(b.DefaultOrgId))
+		orgScope, err = repo.CreateScope(ctx, orgScope, "", iam.WithPublicId(b.DefaultOrgId))
 		if err != nil {
 			return fmt.Errorf("error persisting new org scope: %w", err)
 		}

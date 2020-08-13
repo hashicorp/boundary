@@ -8,12 +8,14 @@ import (
 
 	"github.com/hashicorp/boundary/internal/db"
 	dbcommon "github.com/hashicorp/boundary/internal/db/common"
+	"github.com/hashicorp/boundary/internal/oplog"
+	"github.com/hashicorp/boundary/internal/types/resource"
 	"github.com/hashicorp/boundary/internal/types/scope"
 )
 
 // CreateScope will create a scope in the repository and return the written
 // scope.  Supported options include: WithPublicId.
-func (r *Repository) CreateScope(ctx context.Context, s *Scope, opt ...Option) (*Scope, error) {
+func (r *Repository) CreateScope(ctx context.Context, s *Scope, userId string, opt ...Option) (*Scope, error) {
 	if s == nil {
 		return nil, fmt.Errorf("create scope: missing scope %w", db.ErrNilParameter)
 	}
@@ -29,31 +31,160 @@ func (r *Repository) CreateScope(ctx context.Context, s *Scope, opt ...Option) (
 	case scope.Global.String():
 		return nil, fmt.Errorf("create scope: invalid type: %w", db.ErrInvalidParameter)
 	}
+
 	opts := getOpts(opt...)
-	var publicId string
-	t := scope.Map[s.Type]
-	if opts.withPublicId != "" {
-		if !strings.HasPrefix(opts.withPublicId, t.Prefix()+"_") {
-			return nil, fmt.Errorf("create scope: passed-in public ID %q has wrong prefix for type %q which uses prefix %q", opts.withPublicId, t.String(), t.Prefix())
+
+	var err error
+	var scopePublicId string
+	var scopeMetadata oplog.Metadata
+	var scopeRaw interface{}
+	{
+		scopeType := scope.Map[s.Type]
+		if opts.withPublicId != "" {
+			if !strings.HasPrefix(opts.withPublicId, scopeType.Prefix()+"_") {
+				return nil, fmt.Errorf("create scope: passed-in public ID %q has wrong prefix for type %q which uses prefix %q", opts.withPublicId, scopeType.String(), scopeType.Prefix())
+			}
+			scopePublicId = opts.withPublicId
+		} else {
+			scopePublicId, err = newScopeId(scopeType)
+			if err != nil {
+				return nil, fmt.Errorf("create scope: error generating public id for new scope: %w", err)
+			}
 		}
-		publicId = opts.withPublicId
-	} else {
-		var err error
-		publicId, err = newScopeId(t)
+		sc := s.Clone().(*Scope)
+		sc.PublicId = scopePublicId
+		scopeRaw = sc
+		scopeMetadata, err = r.stdMetadata(ctx, sc)
 		if err != nil {
-			return nil, fmt.Errorf("create scope: error generating public id %w for new scope", err)
+			return nil, fmt.Errorf("create scope: error getting metadata for scope create: %w", err)
 		}
+		scopeMetadata["op-type"] = []string{oplog.OpType_OP_TYPE_CREATE.String()}
 	}
-	sc := s.Clone().(*Scope)
-	sc.PublicId = publicId
-	resource, err := r.create(ctx, sc)
+
+	var rolePublicId string
+	var roleMetadata oplog.Metadata
+	var role *Role
+	var roleRaw interface{}
+	if userId != "" {
+		role, err = NewRole(scopePublicId)
+		if err != nil {
+			return nil, fmt.Errorf("create scope: error instantiating new role: %w", err)
+		}
+		rolePublicId, err = newRoleId()
+		if err != nil {
+			return nil, fmt.Errorf("create scope: error generating public id for new role: %w", err)
+		}
+		role.PublicId = rolePublicId
+		role.Name = "on-scope-creation"
+		role.Description = fmt.Sprintf("Role created for administration of scope %s at its creation time", scopePublicId)
+		roleRaw = role
+		roleMetadata = oplog.Metadata{
+			"resource-public-id": []string{rolePublicId},
+			"scope-id":           []string{scopePublicId},
+			"scope-type":         []string{s.Type},
+			"resource-type":      []string{resource.Role.String()},
+			"op-type":            []string{oplog.OpType_OP_TYPE_CREATE.String()},
+		}
+	} else {
+		// TODO: Cause a log entry. The repo doesn't have a logger right now,
+		// and ideally we will be using context to pass around log info scoped
+		// to this request for grouped display in the server log. The only
+		// reason this should ever happen anyways is via the administrative
+		// recovery workflow so it's already a special case.
+
+		// Also, stop linter from complaining
+		_ = role
+	}
+
+	_, err = r.writer.DoTx(
+		ctx,
+		db.StdRetryCnt,
+		db.ExpBackoff{},
+		func(_ db.Reader, w db.Writer) error {
+			if err := w.Create(
+				ctx,
+				scopeRaw,
+				db.WithOplog(r.wrapper, scopeMetadata),
+			); err != nil {
+				return fmt.Errorf("error creating scope: %w", err)
+			}
+
+			// We create a new role, then set grants and principals on it. This
+			// turns into a bunch of stuff sadly because the role is the
+			// aggregate.
+			if roleRaw != nil {
+				if err := w.Create(
+					ctx,
+					roleRaw,
+					db.WithOplog(r.wrapper, roleMetadata),
+				); err != nil {
+					return fmt.Errorf("error creating role: %w", err)
+				}
+
+				role = roleRaw.(*Role)
+
+				msgs := make([]*oplog.Message, 0, 3)
+				roleTicket, err := w.GetTicket(role)
+				if err != nil {
+					return fmt.Errorf("unable to get ticket: %w", err)
+				}
+
+				// We need to update the role version as that's the aggregate
+				var roleOplogMsg oplog.Message
+				rowsUpdated, err := w.Update(ctx, role, []string{"Version"}, nil, db.NewOplogMsg(&roleOplogMsg), db.WithVersion(&role.Version))
+				if err != nil {
+					return fmt.Errorf("unable to update role version for adding grant: %w", err)
+				}
+				if rowsUpdated != 1 {
+					return fmt.Errorf("updated role but %d rows updated", rowsUpdated)
+				}
+
+				msgs = append(msgs, &roleOplogMsg)
+
+				roleGrant, err := NewRoleGrant(rolePublicId, "id=*;actions=*")
+				if err != nil {
+					return fmt.Errorf("unable to create in memory role grant: %w", err)
+				}
+				roleGrantOplogMsgs := make([]*oplog.Message, 0, 1)
+				if err := w.CreateItems(ctx, []interface{}{roleGrant}, db.NewOplogMsgs(&roleGrantOplogMsgs)); err != nil {
+					return fmt.Errorf("unable to add grants: %w", err)
+				}
+				msgs = append(msgs, roleGrantOplogMsgs...)
+
+				rolePrincipal, err := NewUserRole(rolePublicId, userId)
+				if err != nil {
+					return fmt.Errorf("unable to create in memory role user: %w", err)
+				}
+				roleUserOplogMsgs := make([]*oplog.Message, 0, 1)
+				if err := w.CreateItems(ctx, []interface{}{rolePrincipal}, db.NewOplogMsgs(&roleUserOplogMsgs)); err != nil {
+					return fmt.Errorf("unable to add grants: %w", err)
+				}
+				msgs = append(msgs, roleUserOplogMsgs...)
+
+				s := scopeRaw.(*Scope)
+
+				metadata := oplog.Metadata{
+					"op-type":            []string{oplog.OpType_OP_TYPE_CREATE.String()},
+					"scope-id":           []string{s.PublicId},
+					"scope-type":         []string{s.Type},
+					"resource-public-id": []string{role.PublicId},
+				}
+				if err := w.WriteOplogEntryWith(ctx, r.wrapper, roleTicket, metadata, msgs); err != nil {
+					return fmt.Errorf("unable to write oplog: %w", err)
+				}
+			}
+
+			return nil
+		},
+	)
+
 	if err != nil {
 		if db.IsUniqueError(err) {
-			return nil, fmt.Errorf("create scope: scope %s/%s already exists: %w", sc.PublicId, sc.Name, db.ErrNotUnique)
+			return nil, fmt.Errorf("create scope: scope %s/%s already exists: %w", scopePublicId, s.Name, db.ErrNotUnique)
 		}
-		return nil, fmt.Errorf("create scope: %w for %s", err, sc.PublicId)
+		return nil, fmt.Errorf("create scope: id %s got error: %w", scopePublicId, err)
 	}
-	return resource.(*Scope), nil
+	return scopeRaw.(*Scope), nil
 }
 
 // UpdateScope will update a scope in the repository and return the written
