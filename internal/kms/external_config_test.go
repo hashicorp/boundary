@@ -9,6 +9,7 @@ import (
 	"github.com/hashicorp/boundary/internal/db"
 	dbassert "github.com/hashicorp/boundary/internal/db/assert"
 	"github.com/hashicorp/boundary/internal/iam"
+	"github.com/hashicorp/boundary/internal/kms/store"
 	"github.com/hashicorp/boundary/internal/oplog"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -277,6 +278,65 @@ func TestExternalConfig_Delete(t *testing.T) {
 			err = rw.LookupById(context.Background(), &foundCfg)
 			require.Error(err)
 			assert.True(errors.Is(db.ErrRecordNotFound, err))
+		})
+	}
+}
+
+func TestExternalConfig_Clone(t *testing.T) {
+	t.Parallel()
+	wrapper := db.TestWrapper(t)
+	conn, _ := db.TestSetup(t, "postgres")
+	t.Run("valid", func(t *testing.T) {
+		assert := assert.New(t)
+		org, _ := iam.TestScopes(t, conn)
+		k := TestExternalConfig(t, conn, wrapper, org.PublicId, AeadKms, "{}")
+		cp := k.Clone()
+		assert.True(proto.Equal(cp.(*ExternalConfig).ExternalConfig, k.ExternalConfig))
+	})
+	t.Run("not-equal", func(t *testing.T) {
+		assert := assert.New(t)
+		org, _ := iam.TestScopes(t, conn)
+		org2, _ := iam.TestScopes(t, conn)
+		k := TestExternalConfig(t, conn, wrapper, org.PublicId, AeadKms, "{}")
+		k2 := TestExternalConfig(t, conn, wrapper, org2.PublicId, AeadKms, "{}")
+
+		cp := k.Clone()
+		assert.True(!proto.Equal(cp.(*ExternalConfig).ExternalConfig, k2.ExternalConfig))
+	})
+}
+
+func TestExternalConfig_SetTableName(t *testing.T) {
+	defaultTableName := defaultExternalConfigTableName
+	tests := []struct {
+		name        string
+		initialName string
+		setNameTo   string
+		want        string
+	}{
+		{
+			name:        "new-name",
+			initialName: "",
+			setNameTo:   "new-name",
+			want:        "new-name",
+		},
+		{
+			name:        "reset to default",
+			initialName: "initial",
+			setNameTo:   "",
+			want:        defaultTableName,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+			def := allocExternalConfig()
+			require.Equal(defaultTableName, def.TableName())
+			s := &RootKey{
+				RootKey:   &store.RootKey{},
+				tableName: tt.initialName,
+			}
+			s.SetTableName(tt.setNameTo)
+			assert.Equal(tt.want, s.TableName())
 		})
 	}
 }
