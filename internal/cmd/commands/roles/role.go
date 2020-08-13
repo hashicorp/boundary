@@ -6,7 +6,9 @@ import (
 	"github.com/hashicorp/boundary/api"
 	"github.com/hashicorp/boundary/api/roles"
 	"github.com/hashicorp/boundary/internal/cmd/base"
+	"github.com/hashicorp/boundary/internal/cmd/common"
 	"github.com/hashicorp/boundary/internal/perms"
+	"github.com/hashicorp/boundary/internal/types/resource"
 	"github.com/hashicorp/vault/sdk/helper/strutil"
 	"github.com/kr/pretty"
 	"github.com/mitchellh/cli"
@@ -21,39 +23,32 @@ type Command struct {
 
 	Func string
 
-	flagId           string
-	flagName         string
-	flagDescription  string
 	flagGrantScopeId string
 	flagPrincipals   []string
 	flagGrants       []string
-	flagVersion      int
 }
 
 func (c *Command) Synopsis() string {
 	switch c.Func {
-	case "create", "update", "read", "delete", "list":
-		return synopsisFunc(c.Func)
+	case "", "create", "update", "read", "delete", "list":
+		return common.SynopsisFunc(c.Func, "role")
 	case "add-principals", "set-principals", "remove-principals":
 		return principalsGrantsSynopsisFunc(c.Func, true)
 	case "add-grants", "set-grants", "remove-grants":
 		return principalsGrantsSynopsisFunc(c.Func, false)
 	}
-	return "Manage Boundary roles"
+	return ""
 }
 
-var helpMap = map[string]func() string{
-	"create":            createHelp,
-	"update":            updateHelp,
-	"read":              readHelp,
-	"delete":            deleteHelp,
-	"list":              listHelp,
-	"add-principals":    addPrincipalsHelp,
-	"set-principals":    setPrincipalsHelp,
-	"remove-principals": removePrincipalsHelp,
-	"add-grants":        addPrincipalsHelp,
-	"set-grants":        setPrincipalsHelp,
-	"remove-grants":     removePrincipalsHelp,
+var helpMap = func() map[string]func() string {
+	ret := common.HelpMap(resource.Role)
+	ret["add-principals"] = addPrincipalsHelp
+	ret["set-principals"] = setPrincipalsHelp
+	ret["remove-principals"] = removePrincipalsHelp
+	ret["add-grants"] = addPrincipalsHelp
+	ret["set-grants"] = setPrincipalsHelp
+	ret["remove-grants"] = removePrincipalsHelp
+	return ret
 }
 
 var flagsMap = map[string][]string{
@@ -70,10 +65,11 @@ var flagsMap = map[string][]string{
 }
 
 func (c *Command) Help() string {
+	hm := helpMap()
 	if c.Func == "" {
-		return baseHelp()
+		return hm["base"]()
 	}
-	return helpMap[c.Func]() + "\n\n" + c.Flags().Help()
+	return hm[c.Func]() + "\n\n" + c.Flags().Help()
 }
 
 func (c *Command) Flags() *base.FlagSets {
@@ -105,7 +101,7 @@ func (c *Command) Run(args []string) int {
 		return 1
 	}
 
-	if strutil.StrListContains(flagsMap[c.Func], "id") && c.flagId == "" {
+	if strutil.StrListContains(flagsMap[c.Func], "id") && c.FlagId == "" {
 		c.UI.Error("ID is required but not passed in via -id")
 		return 1
 	}
@@ -118,19 +114,19 @@ func (c *Command) Run(args []string) int {
 
 	var opts []roles.Option
 
-	switch c.flagName {
+	switch c.FlagName {
 	case "":
 	case "null":
 		opts = append(opts, roles.DefaultName())
 	default:
-		opts = append(opts, roles.WithName(c.flagName))
+		opts = append(opts, roles.WithName(c.FlagName))
 	}
-	switch c.flagDescription {
+	switch c.FlagDescription {
 	case "":
 	case "null":
 		opts = append(opts, roles.DefaultDescription())
 	default:
-		opts = append(opts, roles.WithDescription(c.flagDescription))
+		opts = append(opts, roles.WithDescription(c.FlagDescription))
 	}
 	switch c.flagGrantScopeId {
 	case "":
@@ -200,11 +196,11 @@ func (c *Command) Run(args []string) int {
 	case "create", "read", "delete", "list":
 		// These don't udpate so don't need the existing version
 	default:
-		switch c.flagVersion {
+		switch c.FlagVersion {
 		case 0:
 			opts = append(opts, roles.WithAutomaticVersioning())
 		default:
-			version = uint32(c.flagVersion)
+			version = uint32(c.FlagVersion)
 		}
 	}
 
@@ -217,25 +213,25 @@ func (c *Command) Run(args []string) int {
 	case "create":
 		role, apiErr, err = roleClient.Create(c.Context, opts...)
 	case "update":
-		role, apiErr, err = roleClient.Update(c.Context, c.flagId, version, opts...)
+		role, apiErr, err = roleClient.Update(c.Context, c.FlagId, version, opts...)
 	case "read":
-		role, apiErr, err = roleClient.Read(c.Context, c.flagId, opts...)
+		role, apiErr, err = roleClient.Read(c.Context, c.FlagId, opts...)
 	case "delete":
-		existed, apiErr, err = roleClient.Delete(c.Context, c.flagId, opts...)
+		existed, apiErr, err = roleClient.Delete(c.Context, c.FlagId, opts...)
 	case "list":
 		listedRoles, apiErr, err = roleClient.List(c.Context, opts...)
 	case "add-principals":
-		role, apiErr, err = roleClient.AddPrincipals(c.Context, c.flagId, version, principals, opts...)
+		role, apiErr, err = roleClient.AddPrincipals(c.Context, c.FlagId, version, principals, opts...)
 	case "set-principals":
-		role, apiErr, err = roleClient.SetPrincipals(c.Context, c.flagId, version, principals, opts...)
+		role, apiErr, err = roleClient.SetPrincipals(c.Context, c.FlagId, version, principals, opts...)
 	case "remove-principals":
-		role, apiErr, err = roleClient.RemovePrincipals(c.Context, c.flagId, version, principals, opts...)
+		role, apiErr, err = roleClient.RemovePrincipals(c.Context, c.FlagId, version, principals, opts...)
 	case "add-grants":
-		role, apiErr, err = roleClient.AddGrants(c.Context, c.flagId, version, grants, opts...)
+		role, apiErr, err = roleClient.AddGrants(c.Context, c.FlagId, version, grants, opts...)
 	case "set-grants":
-		role, apiErr, err = roleClient.SetGrants(c.Context, c.flagId, version, grants, opts...)
+		role, apiErr, err = roleClient.SetGrants(c.Context, c.FlagId, version, grants, opts...)
 	case "remove-grants":
-		role, apiErr, err = roleClient.RemoveGrants(c.Context, c.flagId, version, grants, opts...)
+		role, apiErr, err = roleClient.RemoveGrants(c.Context, c.FlagId, version, grants, opts...)
 	}
 
 	plural := "role"

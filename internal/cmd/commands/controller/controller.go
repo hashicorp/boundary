@@ -372,7 +372,7 @@ func (c *Command) ParseFlagsAndConfig(args []string) int {
 				c.UI.Error(fmt.Sprintf("Invalid dev auth method ID, must start with %q", prefix))
 				return 1
 			}
-			if len(c.flagDevAuthMethodId) != 13 {
+			if len(c.flagDevAuthMethodId) != 15 {
 				c.UI.Error(fmt.Sprintf("Invalid dev auth method ID, must be 10 base62 characters after %q", prefix))
 				return 1
 			}
