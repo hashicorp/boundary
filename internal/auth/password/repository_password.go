@@ -239,6 +239,9 @@ func (r *Repository) SetPassword(ctx context.Context, accountId string, password
 		if err != nil {
 			return nil, fmt.Errorf("set password: retrieve current configuration: %w", err)
 		}
+		if cc == nil {
+			return nil, fmt.Errorf("set password: retrieve current configuration: %w", db.ErrRecordNotFound)
+		}
 		if cc.MinPasswordLength > len(password) {
 			return nil, fmt.Errorf("set password: new password: %w", ErrTooShort)
 		}
