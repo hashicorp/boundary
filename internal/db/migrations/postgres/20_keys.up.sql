@@ -40,7 +40,7 @@ create table kms_external_config (
     on update cascade,
   type text not null 
     references kms_external_type_enm(name),
-  config jsonb not null,
+  config bytea not null,
   version wt_version not null default 1,
   create_time wt_timestamp,
   update_time wt_timestamp
