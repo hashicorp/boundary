@@ -296,6 +296,9 @@ func (s Service) changePasswordInRepo(ctx context.Context, auth_method_id, id st
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "Unable to change password: %v.", err)
 	}
+	if out == nil {
+		return nil, status.Errorf(codes.PermissionDenied, "Failed to change password.")
+	}
 	return toProto(out)
 }
 

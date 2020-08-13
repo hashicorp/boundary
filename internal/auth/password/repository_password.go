@@ -122,7 +122,7 @@ func (r *Repository) ChangePassword(ctx context.Context, authMethodId string, ac
 		return nil, fmt.Errorf("change password: %w", err)
 	}
 	if acct == nil {
-		return nil, fmt.Errorf("change password: unable to authenticate")
+		return nil, nil
 	}
 
 	cc, err := r.currentConfig(ctx, authMethodId)
