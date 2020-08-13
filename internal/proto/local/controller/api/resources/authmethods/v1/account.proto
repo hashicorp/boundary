@@ -52,7 +52,7 @@ message Account {
 
 message PasswordAccountAttributes {
 	// The login name of this account.  This is unique per auth method.
-	string login_name = 1 [(custom_options.v1.generate_sdk_option) = true];
+	string login_name = 1 [(custom_options.v1.generate_sdk_option) = true, (custom_options.v1.mask_mapping) = {this:"attributes.login_name" that: "LoginName"}];
 	// The password for this account.
 	google.protobuf.StringValue password = 2 [(custom_options.v1.generate_sdk_option) = true];
 }
