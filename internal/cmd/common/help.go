@@ -10,75 +10,84 @@ import (
 	"github.com/mitchellh/go-wordwrap"
 )
 
-func SynopsisFunc(inFunc, resourceType string) string {
+func SynopsisFunc(inFunc, resType string) string {
 	if inFunc == "" {
-		return wordwrap.WrapString(fmt.Sprintf("Manage Boundary %ss", resourceType), base.TermWidth)
+		return wordwrap.WrapString(fmt.Sprintf("Manage Boundary %ss", resType), base.TermWidth)
 	}
-	return wordwrap.WrapString(fmt.Sprintf("%s a %s within Boundary", textproto.CanonicalMIMEHeaderKey(inFunc), resourceType), base.TermWidth)
+	articleType := resType
+	switch resType[0] {
+	case 'a', 'e', 'i', 'o':
+		articleType = fmt.Sprintf("an %s", articleType)
+	default:
+		articleType = fmt.Sprintf("a %s", articleType)
+	}
+	return wordwrap.WrapString(fmt.Sprintf("%s %s within Boundary", textproto.CanonicalMIMEHeaderKey(inFunc), articleType), base.TermWidth)
 }
 
-func HelpMap(resourceType resource.Type) map[string]func() string {
+func HelpMap(resType string) map[string]func() string {
 	prefixMap := map[string]string{
-		resource.Scope.String(): "o",
-		resource.Role.String():  "r",
-		resource.Group.String(): "g",
-		resource.User.String():  "u",
+		resource.Scope.String():      "o",
+		resource.AuthToken.String():  "at",
+		resource.AuthMethod.String(): "am",
+		resource.Role.String():       "r",
+		resource.Group.String():      "g",
+		resource.User.String():       "u",
 	}
 	return map[string]func() string{
 		"base": func() string {
 			return base.WrapForHelpText(subType([]string{
 				"Usage: boundary {{type}}s [sub command] [options] [args]",
 				"",
-				"  This command allows operations on Boundary {{type}}s. Examples",
+				"  This command allows operations on Boundary {{type}} resources. Examples",
 				"",
-				"    Create a {{type}}:",
+				"    Create {{articletype}}:",
 				"",
 				`      $ boundary {{type}}s create -name prodops -description "For ProdOps usage"`,
 				"",
 				"  Please see the {{type}}s subcommand help for detailed usage information.",
-			}, resourceType, prefixMap))
+			}, resType, prefixMap))
 		},
 
 		"create": func() string {
 			return base.WrapForHelpText(subType([]string{
 				"Usage: boundary {{type}}s create [options] [args]",
 				"",
-				"  Create a {{type}}. Example:",
+				"  Create {{articletype}}. Example:",
 				"",
 				`    $ boundary {{type}}s create -name prodops -description "{{uppertype}} for ProdOps"`,
 				"",
 				"",
-			}, resourceType, prefixMap))
+			}, resType, prefixMap))
 		},
 
 		"update": func() string {
 			return base.WrapForHelpText(subType([]string{
 				"Usage: boundary {{type}}s update [options] [args]",
 				"",
-				"  Update a {{type}} given its ID. Example:",
+				"  Update {{articletype}} given its ID. Example:",
 				"",
 				`    $ boundary {{type}}s update -id {{prefix}}_1234567890 -name "devops" -description "{{uppertype}} for DevOps"`,
-			}, resourceType, prefixMap))
+			}, resType, prefixMap))
 		},
 
 		"read": func() string {
 			return base.WrapForHelpText(subType([]string{
 				"Usage: boundary {{type}}s read [options] [args]",
 				"",
-				"  Read a {{type}} given its ID. Example:",
+				"  Read {{articletype}} given its ID. Example:",
 				"",
 				`    $ boundary {{type}}s read -id {{prefix}}_1234567890`,
-			}, resourceType, prefixMap))
+			}, resType, prefixMap))
 		},
 
 		"delete": func() string {
 			return base.WrapForHelpText(subType([]string{
 				"Usage: boundary {{type}}s delete [options] [args]",
 				"",
-				"  Delete a {{type}} given its ID. Example:",
+				"  Delete {{articletype}} given its ID. Example:",
 				"",
 				`    $ boundary {{type}}s delete -id {{prefix}}_1234567890`,
-			}, resourceType, prefixMap))
+			}, resType, prefixMap))
 		},
 
 		"list": func() string {
@@ -88,20 +97,29 @@ func HelpMap(resourceType resource.Type) map[string]func() string {
 				"  List {{type}}s within an enclosing scope or resource. Example:",
 				"",
 				`    $ boundary {{type}}s list`,
-			}, resourceType, prefixMap))
+			}, resType, prefixMap))
 		},
 	}
 }
 
-func subType(in []string, resType resource.Type, prefixMap map[string]string) []string {
+func subType(in []string, resType string, prefixMap map[string]string) []string {
+	articleType := resType
+	switch resType[0] {
+	case 'a', 'e', 'i', 'o':
+		articleType = fmt.Sprintf("an %s", articleType)
+	default:
+		articleType = fmt.Sprintf("a %s", articleType)
+	}
 	for i, v := range in {
 		in[i] =
 			strings.Replace(
 				strings.Replace(
 					strings.Replace(
-						v, "{{type}}", resType.String(), -1),
-					"{{uppertype}}", textproto.CanonicalMIMEHeaderKey(resType.String()), -1),
-				"{{prefix}}", prefixMap[resType.String()], -1)
+						strings.Replace(
+							v, "{{type}}", resType, -1),
+						"{{uppertype}}", textproto.CanonicalMIMEHeaderKey(resType), -1),
+					"{{prefix}}", prefixMap[resType], -1),
+				"{{articletype}}", articleType, -1)
 	}
 	return in
 }

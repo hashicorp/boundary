@@ -76,31 +76,31 @@ func generateGroupTableOutput(group *groups.Group) string {
 		output = []string{
 			"",
 			"Group information:",
-			fmt.Sprintf("  ID:               %s", group.Id),
-			fmt.Sprintf("  Created At:       %s", group.CreatedTime.Local().Format(time.RFC3339)),
-			fmt.Sprintf("  Updated At:       %s", group.UpdatedTime.Local().Format(time.RFC3339)),
-			fmt.Sprintf("  Version:          %d", group.Version),
+			fmt.Sprintf("  ID:           %s", group.Id),
+			fmt.Sprintf("  Version:      %d", group.Version),
+			fmt.Sprintf("  Created At:   %s", group.CreatedTime.Local().Format(time.RFC3339)),
+			fmt.Sprintf("  Updated At:   %s", group.UpdatedTime.Local().Format(time.RFC3339)),
 		}
 	}
 	if group.Name != "" {
 		output = append(output,
-			fmt.Sprintf("  Name:             %s", group.Name),
+			fmt.Sprintf("  Name:         %s", group.Name),
 		)
 	}
 	if group.Description != "" {
 		output = append(output,
-			fmt.Sprintf("  Description:      %s", group.Description),
+			fmt.Sprintf("  Description:  %s", group.Description),
 		)
 	}
 	if len(group.Members) > 0 {
 		output = append(output,
-			fmt.Sprintf("  Members:       %s", ""),
+			fmt.Sprintf("  Members:      %s", ""),
 		)
 	}
 	for _, member := range group.Members {
 		output = append(output,
-			fmt.Sprintf("    ID:             %s", member.Id),
-			fmt.Sprintf("      Scope ID:     %s", member.ScopeId),
+			fmt.Sprintf("    ID:         %s", member.Id),
+			fmt.Sprintf("      Scope ID: %s", member.ScopeId),
 		)
 	}
 	return base.WrapForHelpText(output)

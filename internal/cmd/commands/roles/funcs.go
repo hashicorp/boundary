@@ -93,9 +93,9 @@ func generateRoleTableOutput(role *roles.Role) string {
 			"",
 			"Role information:",
 			fmt.Sprintf("  ID:               %s", role.Id),
+			fmt.Sprintf("  Version:          %d", role.Version),
 			fmt.Sprintf("  Created At:       %s", role.CreatedTime.Local().Format(time.RFC3339)),
 			fmt.Sprintf("  Updated At:       %s", role.UpdatedTime.Local().Format(time.RFC3339)),
-			fmt.Sprintf("  Version:          %d", role.Version),
 		}
 	}
 	if role.Name != "" {
