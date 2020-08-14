@@ -6,6 +6,7 @@ import (
 
 	"github.com/hashicorp/boundary/api/authmethods"
 	"github.com/hashicorp/boundary/api/scopes"
+	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/servers/controller"
 	"github.com/hashicorp/go-hclog"
 	"github.com/stretchr/testify/assert"
@@ -17,19 +18,19 @@ func TestAuthenticationMulti(t *testing.T) {
 	amId := "paum_1234567890"
 	user := "user"
 	password := "passpass"
-	orgId := "o_1234567890"
 	logger := hclog.New(&hclog.LoggerOptions{
 		Level: hclog.Trace,
 	})
 
 	c1 := controller.NewTestController(t, &controller.TestControllerOpts{
-		DefaultOrgId:        orgId,
 		DefaultAuthMethodId: amId,
 		DefaultLoginName:    user,
 		DefaultPassword:     password,
 		Logger:              logger.Named("c1"),
 	})
 	defer c1.Shutdown()
+
+	org, _ := iam.TestScopes(t, c1.DbConn())
 
 	c2 := c1.AddClusterControllerMember(t, &controller.TestControllerOpts{
 		Logger: logger.Named("c2"),
@@ -52,10 +53,12 @@ func TestAuthenticationMulti(t *testing.T) {
 	assert.NotEqual(token1.Token, token2.Token)
 
 	c1.Client().SetToken(token1.Token)
+	c1.Client().SetScopeId(org.GetPublicId())
 	c2.Client().SetToken(token1.Token) // Same token, as it should work on both
+	c2.Client().SetScopeId(org.GetPublicId())
 
 	// Create a project, read from the other
-	proj, apiErr, err := scopes.NewScopesClient(c1.Client()).Create(c1.Context(), orgId)
+	proj, apiErr, err := scopes.NewScopesClient(c1.Client()).Create(c1.Context(), org.GetPublicId())
 	require.NoError(err)
 	require.Nil(apiErr)
 	require.NotNil(proj)

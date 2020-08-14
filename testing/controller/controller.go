@@ -28,7 +28,6 @@ type option struct {
 	setWithConfigFile          bool
 	setWithConfigText          bool
 	setDisableDatabaseCreation bool
-	setDefaultOrgId            bool
 	setDefaultAuthMethodId     bool
 	setDefaultLoginName        bool
 	setDefaultPassword         bool
@@ -79,18 +78,6 @@ func DisableDatabaseCreation() Option {
 		}
 		c.setDisableDatabaseCreation = true
 		c.tcOptions.DisableDatabaseCreation = true
-		return nil
-	}
-}
-
-// WithDefaultOrgId sets the org id to the one provided here.
-func WithDefaultOrgId(id string) Option {
-	return func(c *option) error {
-		if c.setDefaultOrgId {
-			return fmt.Errorf("WithDefaultOrgId provided more than once.")
-		}
-		c.setDefaultOrgId = true
-		c.tcOptions.DefaultOrgId = id
 		return nil
 	}
 }

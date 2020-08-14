@@ -69,7 +69,6 @@ func TestHandler_CORS(t *testing.T) {
 	}
 	tc := NewTestController(t, &TestControllerOpts{
 		Config:                       cfg,
-		DefaultOrgId:                 "o_1234567890",
 		DisableAuthorizationFailures: true,
 	})
 	defer tc.Shutdown()

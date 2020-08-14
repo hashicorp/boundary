@@ -363,9 +363,6 @@ func (c *Command) ParseFlagsAndConfig(args []string) int {
 			return 1
 		}
 
-		if c.flagDevOrgId != "" {
-			c.Config.DefaultOrgId = c.flagDevOrgId
-		}
 		if c.flagDevAuthMethodId != "" {
 			prefix := password.AuthMethodPrefix + "_"
 			if !strings.HasPrefix(c.flagDevAuthMethodId, prefix) {
@@ -403,18 +400,6 @@ func (c *Command) ParseFlagsAndConfig(args []string) int {
 				}
 			}
 		}
-	}
-
-	if c.Config.DefaultOrgId != "" {
-		if !strings.HasPrefix(c.Config.DefaultOrgId, "o_") {
-			c.UI.Error(fmt.Sprintf("Invalid default org ID, must start with %q", "o_"))
-			return 1
-		}
-		if len(c.Config.DefaultOrgId) != 12 {
-			c.UI.Error(fmt.Sprintf("Invalid default org ID, must be 10 base62 characters after %q", "o_"))
-			return 1
-		}
-		c.DefaultOrgId = c.Config.DefaultOrgId
 	}
 
 	return 0
