@@ -7,6 +7,7 @@ import (
 
 	"github.com/hashicorp/boundary/internal/cmd/base"
 	"github.com/hashicorp/boundary/internal/cmd/commands/authenticate"
+	"github.com/hashicorp/boundary/internal/cmd/commands/authtokens"
 	"github.com/hashicorp/boundary/internal/cmd/commands/config"
 	"github.com/hashicorp/boundary/internal/cmd/commands/controller"
 	"github.com/hashicorp/boundary/internal/cmd/commands/dev"
@@ -54,6 +55,59 @@ func initCommands(ui, serverCmdUi cli.Ui, runOpts *RunOptions) {
 				SigUSR2Ch: MakeSigUSR2Ch(),
 			}, nil
 		},
+
+		"authenticate": func() (cli.Command, error) {
+			return &authenticate.Command{
+				Command: base.NewCommand(ui),
+			}, nil
+		},
+		"authenticate password": func() (cli.Command, error) {
+			return &authenticate.PasswordCommand{
+				Command: base.NewCommand(ui),
+			}, nil
+		},
+
+		"auth-tokens": func() (cli.Command, error) {
+			return &authtokens.Command{
+				Command: base.NewCommand(ui),
+			}, nil
+		},
+		"auth-tokens read": func() (cli.Command, error) {
+			return &authtokens.Command{
+				Command: base.NewCommand(ui),
+				Func:    "read",
+			}, nil
+		},
+		"auth-tokens delete": func() (cli.Command, error) {
+			return &authtokens.Command{
+				Command: base.NewCommand(ui),
+				Func:    "delete",
+			}, nil
+		},
+		"auth-tokens list": func() (cli.Command, error) {
+			return &authtokens.Command{
+				Command: base.NewCommand(ui),
+				Func:    "list",
+			}, nil
+		},
+
+		"config": func() (cli.Command, error) {
+			return &config.Command{
+				Command: base.NewCommand(ui),
+			}, nil
+		},
+		"config encrypt": func() (cli.Command, error) {
+			return &config.EncryptDecryptCommand{
+				Command: base.NewCommand(ui),
+				Encrypt: true,
+			}, nil
+		},
+		"config decrypt": func() (cli.Command, error) {
+			return &config.EncryptDecryptCommand{
+				Command: base.NewCommand(ui),
+			}, nil
+		},
+
 		"groups": func() (cli.Command, error) {
 			return &groups.Command{
 				Command: base.NewCommand(ui),
@@ -107,72 +161,13 @@ func initCommands(ui, serverCmdUi cli.Ui, runOpts *RunOptions) {
 				Func:    "remove-members",
 			}, nil
 		},
+
 		"hosts create": func() (cli.Command, error) {
 			return &hosts.CreateCommand{
 				Command: base.NewCommand(ui),
 			}, nil
 		},
-		"scopes": func() (cli.Command, error) {
-			return &scopes.Command{
-				Command: base.NewCommand(ui),
-			}, nil
-		},
-		"scopes create": func() (cli.Command, error) {
-			return &scopes.Command{
-				Command: base.NewCommand(ui),
-				Func:    "create",
-			}, nil
-		},
-		"scopes read": func() (cli.Command, error) {
-			return &scopes.Command{
-				Command: base.NewCommand(ui),
-				Func:    "read",
-			}, nil
-		},
-		"scopes update": func() (cli.Command, error) {
-			return &scopes.Command{
-				Command: base.NewCommand(ui),
-				Func:    "update",
-			}, nil
-		},
-		"scopes delete": func() (cli.Command, error) {
-			return &scopes.Command{
-				Command: base.NewCommand(ui),
-				Func:    "delete",
-			}, nil
-		},
-		"scopes list": func() (cli.Command, error) {
-			return &scopes.Command{
-				Command: base.NewCommand(ui),
-				Func:    "list",
-			}, nil
-		},
-		"config": func() (cli.Command, error) {
-			return &config.Command{
-				Command: base.NewCommand(ui),
-			}, nil
-		},
-		"config encrypt": func() (cli.Command, error) {
-			return &config.EncryptDecryptCommand{
-				Command: base.NewCommand(ui),
-				Encrypt: true,
-			}, nil
-		},
-		"config decrypt": func() (cli.Command, error) {
-			return &config.EncryptDecryptCommand{
-				Command: base.NewCommand(ui),
-			}, nil
-		},
-		"authenticate": func() (cli.Command, error) {
-			return &authenticate.Command{
-				Command: base.NewCommand(ui),
-			}, nil
-		},
-		"authenticate password": func() (cli.Command, error) {
-			return &authenticate.PasswordCommand{
-				Command: base.NewCommand(ui),
-			}, nil
-		},
+
 		"roles": func() (cli.Command, error) {
 			return &roles.Command{
 				Command: base.NewCommand(ui),
@@ -242,6 +237,42 @@ func initCommands(ui, serverCmdUi cli.Ui, runOpts *RunOptions) {
 			return &roles.Command{
 				Command: base.NewCommand(ui),
 				Func:    "remove-grants",
+			}, nil
+		},
+
+		"scopes": func() (cli.Command, error) {
+			return &scopes.Command{
+				Command: base.NewCommand(ui),
+			}, nil
+		},
+		"scopes create": func() (cli.Command, error) {
+			return &scopes.Command{
+				Command: base.NewCommand(ui),
+				Func:    "create",
+			}, nil
+		},
+		"scopes read": func() (cli.Command, error) {
+			return &scopes.Command{
+				Command: base.NewCommand(ui),
+				Func:    "read",
+			}, nil
+		},
+		"scopes update": func() (cli.Command, error) {
+			return &scopes.Command{
+				Command: base.NewCommand(ui),
+				Func:    "update",
+			}, nil
+		},
+		"scopes delete": func() (cli.Command, error) {
+			return &scopes.Command{
+				Command: base.NewCommand(ui),
+				Func:    "delete",
+			}, nil
+		},
+		"scopes list": func() (cli.Command, error) {
+			return &scopes.Command{
+				Command: base.NewCommand(ui),
+				Func:    "list",
 			}, nil
 		},
 	}
