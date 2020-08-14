@@ -16,6 +16,7 @@ import (
 	"github.com/hashicorp/boundary/internal/gen/controller/api/services"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers/accounts"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers/authmethods"
+	"github.com/hashicorp/boundary/internal/servers/controller/handlers/host_sets"
 	"github.com/hashicorp/shared-secure-libs/configutil"
 	"github.com/hashicorp/vault/sdk/helper/strutil"
 
@@ -82,6 +83,13 @@ func handleGrpcGateway(c *Controller, props HandlerProperties) (http.Handler, er
 	}
 	if err := services.RegisterHostCatalogServiceHandlerServer(ctx, mux, hcs); err != nil {
 		return nil, fmt.Errorf("failed to register host catalog service handler: %w", err)
+	}
+	hss, err := host_sets.NewService(c.StaticHostRepoFn)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create host set handler service: %w", err)
+	}
+	if err := services.RegisterHostSetServiceHandlerServer(ctx, mux, hss); err != nil {
+		return nil, fmt.Errorf("failed to register host set service handler: %w", err)
 	}
 	accts, err := accounts.NewService(c.PasswordAuthRepoFn)
 	if err != nil {

@@ -15,15 +15,16 @@ import (
 )
 
 type Host struct {
-	Id          string            `json:"id,omitempty"`
-	Scope       *scopes.ScopeInfo `json:"scope,omitempty"`
-	Name        string            `json:"name,omitempty"`
-	Description string            `json:"description,omitempty"`
-	CreatedTime time.Time         `json:"created_time,omitempty"`
-	UpdatedTime time.Time         `json:"updated_time,omitempty"`
-	Version     uint32            `json:"version,omitempty"`
-	Type        string            `json:"type,omitempty"`
-	Address     string            `json:"address,omitempty"`
+	Id            string            `json:"id,omitempty"`
+	Scope         *scopes.ScopeInfo `json:"scope,omitempty"`
+	Name          string            `json:"name,omitempty"`
+	Description   string            `json:"description,omitempty"`
+	CreatedTime   time.Time         `json:"created_time,omitempty"`
+	UpdatedTime   time.Time         `json:"updated_time,omitempty"`
+	Version       uint32            `json:"version,omitempty"`
+	Type          string            `json:"type,omitempty"`
+	HostCatalogId string            `json:"host_catalog_id,omitempty"`
+	Address       string            `json:"address,omitempty"`
 }
 
 type HostsClient struct {

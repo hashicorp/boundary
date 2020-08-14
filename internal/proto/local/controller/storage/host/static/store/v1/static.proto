@@ -54,11 +54,11 @@ message Host {
   // name is optional. If set, it must be unique within
   // static_host_catalog_id.
   // @inject_tag: `gorm:"default:null"`
-  string name = 4;
+  string name = 4 [(custom_options.v1.mask_mapping) = {this:"name" that: "name"}];
 
   // description is optional.
   // @inject_tag: `gorm:"default:null"`
-  string description = 5;
+  string description = 5 [(custom_options.v1.mask_mapping) = {this:"description" that: "description"}];
 
   // static_host_catalog_id is the public_id of the owning
   // static_host_catalog and must be set.
@@ -91,11 +91,11 @@ message HostSet {
   // name is optional. If set, it must be unique within
   // static_host_catalog_id.
   // @inject_tag: `gorm:"default:null"`
-  string name = 4;
+  string name = 4 [(custom_options.v1.mask_mapping) = {this:"name" that: "name"}];
 
   // description is optional.
   // @inject_tag: `gorm:"default:null"`
-  string description = 5;
+  string description = 5 [(custom_options.v1.mask_mapping) = {this:"description" that: "description"}];
 
   // static_host_catalog_id is the public_id of the owning
   // static_host_catalog and must be set.

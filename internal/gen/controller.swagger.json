@@ -2137,6 +2137,10 @@
           "type": "string",
           "title": "The type of the resource, to help differentiate schemas"
         },
+        "host_catalog_id": {
+          "type": "string",
+          "title": "The host catalog this host set is a part of\nOutput only"
+        },
         "address": {
           "type": "string",
           "title": "The address (DNS or IP name) used to reach the host"
@@ -2236,6 +2240,10 @@
         "type": {
           "type": "string",
           "title": "The type of the resource, to help differentiate schemas"
+        },
+        "host_catalog_id": {
+          "type": "string",
+          "title": "The host catalog this host set is a part of\nOutput only"
         },
         "size": {
           "type": "integer",

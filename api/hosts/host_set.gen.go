@@ -15,16 +15,17 @@ import (
 )
 
 type HostSet struct {
-	Id          string            `json:"id,omitempty"`
-	Scope       *scopes.ScopeInfo `json:"scope,omitempty"`
-	Name        string            `json:"name,omitempty"`
-	Description string            `json:"description,omitempty"`
-	CreatedTime time.Time         `json:"created_time,omitempty"`
-	UpdatedTime time.Time         `json:"updated_time,omitempty"`
-	Version     uint32            `json:"version,omitempty"`
-	Type        string            `json:"type,omitempty"`
-	Size        uint32            `json:"size,omitempty"`
-	HostIds     []string          `json:"host_ids,omitempty"`
+	Id            string            `json:"id,omitempty"`
+	Scope         *scopes.ScopeInfo `json:"scope,omitempty"`
+	Name          string            `json:"name,omitempty"`
+	Description   string            `json:"description,omitempty"`
+	CreatedTime   time.Time         `json:"created_time,omitempty"`
+	UpdatedTime   time.Time         `json:"updated_time,omitempty"`
+	Version       uint32            `json:"version,omitempty"`
+	Type          string            `json:"type,omitempty"`
+	HostCatalogId string            `json:"host_catalog_id,omitempty"`
+	Size          uint32            `json:"size,omitempty"`
+	HostIds       []string          `json:"host_ids,omitempty"`
 }
 
 type HostSetsClient struct {

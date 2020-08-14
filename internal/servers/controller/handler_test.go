@@ -59,6 +59,8 @@ func TestHandleImplementedPaths(t *testing.T) {
 			"v1/scopes/someid/groups/someid",
 			"v1/scopes/someid/host-catalogs",
 			"v1/scopes/someid/host-catalogs/someid",
+			"v1/scopes/someid/host-catalogs/someid/host-sets",
+			"v1/scopes/someid/host-catalogs/someid/host-sets/someid",
 			"v1/scopes/someid/roles",
 			"v1/scopes/someid/roles/someid",
 			"v1/scopes/someid/users",
@@ -72,6 +74,8 @@ func TestHandleImplementedPaths(t *testing.T) {
 			"v1/scopes/someid/users",
 			"v1/scopes/someid/auth-methods",
 			"v1/scopes/someid/auth-methods/someid/accounts",
+			"v1/scopes/someid/host-catalogs",
+			"v1/scopes/someid/host-catalogs/someid/host-sets",
 
 			// custom methods
 			"v1/scopes/someid/auth-methods/someid:authenticate",
@@ -93,6 +97,8 @@ func TestHandleImplementedPaths(t *testing.T) {
 			"v1/scopes/someid/auth-tokens/someid",
 			"v1/scopes/someid/auth-methods/someid",
 			"v1/scopes/someid/auth-methods/someid/accounts/someid",
+			"v1/scopes/someid/host-catalogs/someid",
+			"v1/scopes/someid/host-catalogs/someid/host-sets/someid",
 		},
 		"PATCH": {
 			"v1/scopes/someid",
@@ -100,6 +106,8 @@ func TestHandleImplementedPaths(t *testing.T) {
 			"v1/scopes/someid/roles/someid",
 			"v1/scopes/someid/groups/someid",
 			"v1/scopes/someid/auth-methods/someid",
+			"v1/scopes/someid/host-catalogs/someid",
+			"v1/scopes/someid/host-catalogs/someid/host-sets/someid",
 		},
 	} {
 		for _, p := range paths {

@@ -13,34 +13,38 @@ import "controller/custom_options/v1/options.proto";
 message Host {
 	// The ID of the host
 	// Output only.
-	string id = 1;
+	string id = 10;
 
 	// Scope information for this resource
 	// Output only.
-	resources.scopes.v1.ScopeInfo scope = 2;
+	resources.scopes.v1.ScopeInfo scope = 20;
 
 	// Optional name for identification purposes
-	google.protobuf.StringValue name = 3 [(custom_options.v1.generate_sdk_option) = true, (custom_options.v1.mask_mapping) = {this:"name" that: "name"}];
+	google.protobuf.StringValue name = 30 [(custom_options.v1.generate_sdk_option) = true, (custom_options.v1.mask_mapping) = {this:"name" that: "name"}];
 
 	// Optional user-set description for identification purposes
-	google.protobuf.StringValue description = 4 [(custom_options.v1.generate_sdk_option) = true, (custom_options.v1.mask_mapping) = {this:"description" that: "description"}];
+	google.protobuf.StringValue description = 40 [(custom_options.v1.generate_sdk_option) = true, (custom_options.v1.mask_mapping) = {this:"description" that: "description"}];
 
 	// The time this resource was created
 	// Output only.
-	google.protobuf.Timestamp created_time = 5 [json_name="created_time"];
+	google.protobuf.Timestamp created_time = 50 [json_name="created_time"];
 
 	// The time this resource was last updated
 	// Output only.
-	google.protobuf.Timestamp updated_time = 6 [json_name="updated_time"];
+	google.protobuf.Timestamp updated_time = 60 [json_name="updated_time"];
 
 	// The version can be used in subsequent write requests to ensure this resource
 	// has not changed and to fail the write if it has.
 	// Output only.
-	uint32 version = 7;
+	uint32 version = 70;
 
 	// The type of the resource, to help differentiate schemas
-	google.protobuf.StringValue type = 8;
+	string type = 80 [(custom_options.v1.generate_sdk_option) = true];
+
+	// The host catalog this host set is a part of
+	// Output only
+	string host_catalog_id = 90 [json_name="host_catalog_id"];
 
 	// The address (DNS or IP name) used to reach the host
-	google.protobuf.StringValue address = 9 [(custom_options.v1.generate_sdk_option) = true, (custom_options.v1.mask_mapping) = {this:"address" that: "address"}];
+	google.protobuf.StringValue address = 100 [(custom_options.v1.generate_sdk_option) = true, (custom_options.v1.mask_mapping) = {this:"address" that: "address"}];
 }

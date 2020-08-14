@@ -1,4 +1,4 @@
-package host_catalogs
+package host_sets
 
 import (
 	"context"
@@ -18,14 +18,14 @@ import (
 	"google.golang.org/protobuf/types/known/wrapperspb"
 )
 
-type catalogType int
+type setType int
 
 const (
-	unknownType catalogType = iota
+	unknownType setType = iota
 	staticType
 )
 
-func (t catalogType) String() string {
+func (t setType) String() string {
 	switch t {
 	case staticType:
 		return "static"
@@ -33,15 +33,15 @@ func (t catalogType) String() string {
 	return "unknown"
 }
 
-func (t catalogType) idPrefix() string {
+func (t setType) idPrefix() string {
 	switch t {
 	case staticType:
-		return static.HostCatalogPrefix + "_"
+		return static.HostSetPrefix + "_"
 	}
 	return "unknown"
 }
 
-func typeFromTypeField(t string) catalogType {
+func typeFromTypeField(t string) setType {
 	switch {
 	case strings.EqualFold(strings.TrimSpace(t), staticType.String()):
 		return staticType
@@ -49,7 +49,7 @@ func typeFromTypeField(t string) catalogType {
 	return unknownType
 }
 
-func typeFromId(id string) catalogType {
+func typeFromId(id string) setType {
 	switch {
 	case strings.HasPrefix(id, staticType.idPrefix()):
 		return staticType
@@ -64,7 +64,7 @@ var (
 
 func init() {
 	var err error
-	if maskManager, err = handlers.NewMaskManager(&pb.HostCatalog{}, &store.HostCatalog{}); err != nil {
+	if maskManager, err = handlers.NewMaskManager(&pb.HostSet{}, &store.HostSet{}); err != nil {
 		panic(err)
 	}
 }
@@ -73,7 +73,7 @@ type Service struct {
 	staticRepoFn common.StaticRepoFactory
 }
 
-var _ pbs.HostCatalogServiceServer = Service{}
+var _ pbs.HostSetServiceServer = Service{}
 
 // NewService returns a host catalog Service which handles host catalog related requests to boundary and uses the provided
 // repositories for storage and retrieval.
@@ -84,12 +84,12 @@ func NewService(repoFn common.StaticRepoFactory) (Service, error) {
 	return Service{staticRepoFn: repoFn}, nil
 }
 
-func (s Service) ListHostCatalogs(ctx context.Context, req *pbs.ListHostCatalogsRequest) (*pbs.ListHostCatalogsResponse, error) {
-	return nil, status.Error(codes.Unimplemented, "Requested method is unimplemented for Host Catalogs.")
+func (s Service) ListHostSets(ctx context.Context, req *pbs.ListHostSetsRequest) (*pbs.ListHostSetsResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "Requested method is unimplemented for Host Sets.")
 }
 
-// GetHostCatalog implements the interface pbs.HostCatalogServiceServer.
-func (s Service) GetHostCatalog(ctx context.Context, req *pbs.GetHostCatalogRequest) (*pbs.GetHostCatalogResponse, error) {
+// GetHostSet implements the interface pbs.HostSetServiceServer.
+func (s Service) GetHostSet(ctx context.Context, req *pbs.GetHostSetRequest) (*pbs.GetHostSetResponse, error) {
 	authResults := auth.Verify(ctx)
 	if !authResults.Valid {
 		return nil, handlers.ForbiddenError()
@@ -106,11 +106,11 @@ func (s Service) GetHostCatalog(ctx context.Context, req *pbs.GetHostCatalogRequ
 		return nil, err
 	}
 	hc.Scope = authResults.Scope
-	return &pbs.GetHostCatalogResponse{Item: hc}, nil
+	return &pbs.GetHostSetResponse{Item: hc}, nil
 }
 
-// CreateHostCatalog implements the interface pbs.HostCatalogServiceServer.
-func (s Service) CreateHostCatalog(ctx context.Context, req *pbs.CreateHostCatalogRequest) (*pbs.CreateHostCatalogResponse, error) {
+// CreateHostSet implements the interface pbs.HostSetServiceServer.
+func (s Service) CreateHostSet(ctx context.Context, req *pbs.CreateHostSetRequest) (*pbs.CreateHostSetResponse, error) {
 	authResults := auth.Verify(ctx)
 	if !authResults.Valid {
 		return nil, handlers.ForbiddenError()
@@ -118,19 +118,19 @@ func (s Service) CreateHostCatalog(ctx context.Context, req *pbs.CreateHostCatal
 	if err := validateCreateRequest(req); err != nil {
 		return nil, err
 	}
-	hc, err := s.createInRepo(ctx, authResults.Scope.GetId(), req.GetItem())
+	h, err := s.createInRepo(ctx, authResults.Scope.GetId(), req.GetItem())
 	if err != nil {
 		return nil, err
 	}
-	hc.Scope = authResults.Scope
-	return &pbs.CreateHostCatalogResponse{
-		Item: hc,
-		Uri:  fmt.Sprintf("scopes/%s/host-catalogs/%s", authResults.Scope.GetId(), hc.GetId()),
+	h.Scope = authResults.Scope
+	return &pbs.CreateHostSetResponse{
+		Item: h,
+		Uri:  fmt.Sprintf("scopes/%s/host-catalogs/%s/host-sets/%s", authResults.Scope.GetId(), req.GetHostCatalogId(), h.GetId()),
 	}, nil
 }
 
-// UpdateHostCatalog implements the interface pbs.HostCatalogServiceServer.
-func (s Service) UpdateHostCatalog(ctx context.Context, req *pbs.UpdateHostCatalogRequest) (*pbs.UpdateHostCatalogResponse, error) {
+// UpdateHostSet implements the interface pbs.HostSetServiceServer.
+func (s Service) UpdateHostSet(ctx context.Context, req *pbs.UpdateHostSetRequest) (*pbs.UpdateHostSetResponse, error) {
 	authResults := auth.Verify(ctx)
 	if !authResults.Valid {
 		return nil, handlers.ForbiddenError()
@@ -147,11 +147,11 @@ func (s Service) UpdateHostCatalog(ctx context.Context, req *pbs.UpdateHostCatal
 		return nil, err
 	}
 	hc.Scope = authResults.Scope
-	return &pbs.UpdateHostCatalogResponse{Item: hc}, nil
+	return &pbs.UpdateHostSetResponse{Item: hc}, nil
 }
 
-// DeleteHostCatalog implements the interface pbs.HostCatalogServiceServer.
-func (s Service) DeleteHostCatalog(ctx context.Context, req *pbs.DeleteHostCatalogRequest) (*pbs.DeleteHostCatalogResponse, error) {
+// DeleteHostSet implements the interface pbs.HostSetServiceServer.
+func (s Service) DeleteHostSet(ctx context.Context, req *pbs.DeleteHostSetRequest) (*pbs.DeleteHostSetResponse, error) {
 	authResults := auth.Verify(ctx)
 	if !authResults.Valid {
 		return nil, handlers.ForbiddenError()
@@ -167,25 +167,42 @@ func (s Service) DeleteHostCatalog(ctx context.Context, req *pbs.DeleteHostCatal
 	if err != nil {
 		return nil, err
 	}
-	return &pbs.DeleteHostCatalogResponse{Existed: existed}, nil
+	return &pbs.DeleteHostSetResponse{Existed: existed}, nil
 }
 
-func (s Service) getFromRepo(ctx context.Context, id string) (*pb.HostCatalog, error) {
+// AddHostSetHosts implements the interface pbs.HostSetServiceServer.
+func (s Service) AddHostSetHosts(ctx context.Context, request *pbs.AddHostSetHostsRequest) (*pbs.AddHostSetHostsResponse, error) {
+	panic("implement me")
+}
+
+// SetHostSetHosts implements the interface pbs.HostSetServiceServer.
+func (s Service) SetHostSetHosts(ctx context.Context, request *pbs.SetHostSetHostsRequest) (*pbs.SetHostSetHostsResponse, error) {
+	panic("implement me")
+}
+
+// RemoveHostSetHosts implements the interface pbs.HostSetServiceServer.
+func (s Service) RemoveHostSetHosts(ctx context.Context, request *pbs.RemoveHostSetHostsRequest) (*pbs.RemoveHostSetHostsResponse, error) {
+	panic("implement me")
+}
+
+func (s Service) getFromRepo(ctx context.Context, id string) (*pb.HostSet, error) {
 	repo, err := s.staticRepoFn()
 	if err != nil {
 		return nil, err
 	}
-	hc, err := repo.LookupCatalog(ctx, id)
-	if err != nil {
-		return nil, err
+	// h, err := repo.LookupSet(ctx, id)
+	// if err != nil {
+	// 	return nil, err
+	// }
+	_ = repo
+	var h *static.HostSet
+	if h == nil {
+		return nil, handlers.NotFoundErrorf("Host set %q doesn't exist.", id)
 	}
-	if hc == nil {
-		return nil, handlers.NotFoundErrorf("Host catalog %q doesn't exist.", id)
-	}
-	return toProto(hc), nil
+	return toProto(h), nil
 }
 
-func (s Service) createInRepo(ctx context.Context, projId string, item *pb.HostCatalog) (*pb.HostCatalog, error) {
+func (s Service) createInRepo(ctx context.Context, projId string, item *pb.HostSet) (*pb.HostSet, error) {
 	var opts []static.Option
 	if item.GetName() != nil {
 		opts = append(opts, static.WithName(item.GetName().GetValue()))
@@ -193,25 +210,27 @@ func (s Service) createInRepo(ctx context.Context, projId string, item *pb.HostC
 	if item.GetDescription() != nil {
 		opts = append(opts, static.WithDescription(item.GetDescription().GetValue()))
 	}
-	h, err := static.NewHostCatalog(projId, opts...)
+	h, err := static.NewHostSet(projId, opts...)
 	if err != nil {
-		return nil, status.Errorf(codes.Internal, "Unable to build host catalog for creation: %v.", err)
+		return nil, status.Errorf(codes.Internal, "Unable to build host set for creation: %v.", err)
 	}
 	repo, err := s.staticRepoFn()
 	if err != nil {
 		return nil, err
 	}
-	out, err := repo.CreateCatalog(ctx, h)
-	if err != nil {
-		return nil, status.Errorf(codes.Internal, "Unable to create host catalog: %v.", err)
-	}
+	// out, err := repo.CreateSet(ctx, h)
+	// if err != nil {
+	// 	return nil, status.Errorf(codes.Internal, "Unable to create host set: %v.", err)
+	// }
+	_ = repo
+	out := h
 	if out == nil {
-		return nil, status.Error(codes.Internal, "Unable to create host catalog but no error returned from repository.")
+		return nil, status.Error(codes.Internal, "Unable to create host set but no error returned from repository.")
 	}
 	return toProto(out), nil
 }
 
-func (s Service) updateInRepo(ctx context.Context, projId, id string, version uint32, mask []string, item *pb.HostCatalog) (*pb.HostCatalog, error) {
+func (s Service) updateInRepo(ctx context.Context, projId, id string, version uint32, mask []string, item *pb.HostSet) (*pb.HostSet, error) {
 	var opts []static.Option
 	if desc := item.GetDescription(); desc != nil {
 		opts = append(opts, static.WithDescription(desc.GetValue()))
@@ -219,9 +238,9 @@ func (s Service) updateInRepo(ctx context.Context, projId, id string, version ui
 	if name := item.GetName(); name != nil {
 		opts = append(opts, static.WithName(name.GetValue()))
 	}
-	h, err := static.NewHostCatalog(projId, opts...)
+	h, err := static.NewHostSet(projId, opts...)
 	if err != nil {
-		return nil, status.Errorf(codes.Internal, "Unable to build host catalog for update: %v.", err)
+		return nil, status.Errorf(codes.Internal, "Unable to build host set for update: %v.", err)
 	}
 	h.PublicId = id
 	dbMask := maskManager.Translate(mask)
@@ -232,13 +251,15 @@ func (s Service) updateInRepo(ctx context.Context, projId, id string, version ui
 	if err != nil {
 		return nil, err
 	}
-	out, rowsUpdated, err := repo.UpdateCatalog(ctx, h, version, dbMask)
-	if err != nil {
-		return nil, status.Errorf(codes.Internal, "Unable to update host catalog: %v.", err)
-	}
-	if rowsUpdated == 0 {
-		return nil, handlers.NotFoundErrorf("Host catalog %q doesn't exist.", id)
-	}
+	// out, rowsUpdated, err := repo.UpdateSet(ctx, h, version, dbMask)
+	// if err != nil {
+	// 	return nil, status.Errorf(codes.Internal, "Unable to update host set: %v.", err)
+	// }
+	// if rowsUpdated == 0 {
+	// 	return nil, handlers.NotFoundErrorf("Host set %q doesn't exist.", id)
+	// }
+	_ = repo
+	out := h
 	return toProto(out), nil
 }
 
@@ -247,15 +268,17 @@ func (s Service) deleteFromRepo(ctx context.Context, id string) (bool, error) {
 	if err != nil {
 		return false, err
 	}
-	rows, err := repo.DeleteCatalog(ctx, id)
-	if err != nil {
-		return false, status.Errorf(codes.Internal, "Unable to delete host: %v.", err)
-	}
+	// rows, err := repo.DeleteSet(ctx, id)
+	// if err != nil {
+	// 	return false, status.Errorf(codes.Internal, "Unable to delete host: %v.", err)
+	// }
+	_ = repo
+	rows := 0
 	return rows > 0, nil
 }
 
-func toProto(in *static.HostCatalog) *pb.HostCatalog {
-	out := pb.HostCatalog{
+func toProto(in *static.HostSet) *pb.HostSet {
+	out := pb.HostSet{
 		Id:          in.GetPublicId(),
 		Type:        staticType.String(),
 		CreatedTime: in.GetCreateTime().GetTimestamp(),
@@ -278,7 +301,7 @@ func toProto(in *static.HostCatalog) *pb.HostCatalog {
 //  * There are no conflicting parameters provided
 //  * The type asserted by the ID and/or field is known
 //  * If relevant, the type derived from the id prefix matches what is claimed by the type field
-func validateGetRequest(req *pbs.GetHostCatalogRequest, ct catalogType) error {
+func validateGetRequest(req *pbs.GetHostSetRequest, ct setType) error {
 	badFields := map[string]string{}
 	if !validId(req.GetId(), ct.idPrefix()) {
 		badFields["id"] = "Invalid formatted identifier."
@@ -289,7 +312,7 @@ func validateGetRequest(req *pbs.GetHostCatalogRequest, ct catalogType) error {
 	return nil
 }
 
-func validateCreateRequest(req *pbs.CreateHostCatalogRequest) error {
+func validateCreateRequest(req *pbs.CreateHostSetRequest) error {
 	badFields := map[string]string{}
 	item := req.GetItem()
 	if item == nil {
@@ -304,6 +327,9 @@ func validateCreateRequest(req *pbs.CreateHostCatalogRequest) error {
 	if item.GetId() != "" {
 		badFields["id"] = "This field is read only."
 	}
+	if item.GetHostCatalogId() != "" {
+		badFields["host_catalog_id"] = "This field is read only."
+	}
 	if item.GetCreatedTime() != nil {
 		badFields["created_time"] = "This field is read only."
 	}
@@ -316,10 +342,13 @@ func validateCreateRequest(req *pbs.CreateHostCatalogRequest) error {
 	return nil
 }
 
-func validateUpdateRequest(req *pbs.UpdateHostCatalogRequest, ct catalogType) error {
+func validateUpdateRequest(req *pbs.UpdateHostSetRequest, ct setType) error {
 	badFields := map[string]string{}
 	if !validId(req.GetId(), ct.idPrefix()) {
 		badFields["id"] = "The field is incorrectly formatted."
+	}
+	if !validId(req.GetHostCatalogId(), static.HostCatalogPrefix+"_") {
+		badFields["host_catalog_id"] = "The field is incorrectly formatted."
 	}
 
 	if req.GetUpdateMask() == nil {
@@ -338,6 +367,9 @@ func validateUpdateRequest(req *pbs.UpdateHostCatalogRequest, ct catalogType) er
 	if item.GetType() != "" {
 		badFields["type"] = "This is a read only field and cannot be specified in an update request."
 	}
+	if item.GetHostCatalogId() != "" {
+		badFields["host_catalog_id"] = "This is a read only field and cannot be specified in an update request."
+	}
 	if item.GetId() != "" {
 		badFields["id"] = "This is a read only field and cannot be specified in an update request."
 	}
@@ -354,7 +386,7 @@ func validateUpdateRequest(req *pbs.UpdateHostCatalogRequest, ct catalogType) er
 	return nil
 }
 
-func validateDeleteRequest(req *pbs.DeleteHostCatalogRequest, ct catalogType) error {
+func validateDeleteRequest(req *pbs.DeleteHostSetRequest, ct setType) error {
 	badFields := map[string]string{}
 	if !validId(req.GetId(), ct.idPrefix()) {
 		badFields["id"] = "The field is incorrectly formatted."

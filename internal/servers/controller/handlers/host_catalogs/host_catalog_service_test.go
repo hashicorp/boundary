@@ -64,7 +64,7 @@ func TestGet(t *testing.T) {
 		Description: &wrappers.StringValue{Value: hc.GetDescription()},
 		CreatedTime: hc.CreateTime.GetTimestamp(),
 		UpdatedTime: hc.UpdateTime.GetTimestamp(),
-		Type:        &wrappers.StringValue{Value: "Static"},
+		Type:        "static",
 	}
 
 	cases := []struct {
@@ -120,11 +120,10 @@ func TestGet(t *testing.T) {
 
 func TestDelete(t *testing.T) {
 	t.Parallel()
-	require := require.New(t)
 	hc, proj, repo := createDefaultHostCatalogAndRepo(t)
 
 	s, err := host_catalogs.NewService(repo)
-	require.NoError(err, "Couldn't create a new host catalog service.")
+	require.NoError(t, err, "Couldn't create a new host catalog service.")
 
 	cases := []struct {
 		name    string
@@ -218,11 +217,9 @@ func TestDelete_twice(t *testing.T) {
 
 func TestCreate(t *testing.T) {
 	t.Parallel()
-	require := require.New(t)
-	assert := assert.New(t)
 	defaultHc, proj, repo := createDefaultHostCatalogAndRepo(t)
 	defaultHcCreated, err := ptypes.Timestamp(defaultHc.GetCreateTime().GetTimestamp())
-	require.NoError(err, "Error converting proto to timestamp.")
+	require.NoError(t, err, "Error converting proto to timestamp.")
 	toMerge := &pbs.CreateHostCatalogRequest{}
 
 	cases := []struct {
@@ -236,7 +233,7 @@ func TestCreate(t *testing.T) {
 			req: &pbs.CreateHostCatalogRequest{Item: &pb.HostCatalog{
 				Name:        &wrappers.StringValue{Value: "name"},
 				Description: &wrappers.StringValue{Value: "desc"},
-				Type:        &wrappers.StringValue{Value: "Static"},
+				Type:        "static",
 			}},
 			res: &pbs.CreateHostCatalogResponse{
 				Uri: fmt.Sprintf("scopes/%s/host-catalogs/%s_", proj.GetPublicId(), static.HostCatalogPrefix),
@@ -244,7 +241,7 @@ func TestCreate(t *testing.T) {
 					Scope:       &scopes.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String()},
 					Name:        &wrappers.StringValue{Value: "name"},
 					Description: &wrappers.StringValue{Value: "desc"},
-					Type:        &wrappers.StringValue{Value: "Static"},
+					Type:        "static",
 				},
 			},
 			errCode: codes.OK,
@@ -254,7 +251,7 @@ func TestCreate(t *testing.T) {
 			req: &pbs.CreateHostCatalogRequest{Item: &pb.HostCatalog{
 				Name:        &wrappers.StringValue{Value: "name"},
 				Description: &wrappers.StringValue{Value: "desc"},
-				Type:        &wrappers.StringValue{Value: "ThisIsMadeUp"},
+				Type:        "ThisIsMadeUp",
 			}},
 			errCode: codes.InvalidArgument,
 		},
@@ -293,6 +290,7 @@ func TestCreate(t *testing.T) {
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
 			req := proto.Clone(toMerge).(*pbs.CreateHostCatalogRequest)
 			proto.Merge(req, tc.req)
 
@@ -327,25 +325,23 @@ func TestCreate(t *testing.T) {
 
 func TestUpdate(t *testing.T) {
 	t.Parallel()
-	require := require.New(t)
-	assert := assert.New(t)
 	hc, proj, repoFn := createDefaultHostCatalogAndRepo(t)
 	tested, err := host_catalogs.NewService(repoFn)
-	require.NoError(err, "Failed to create a new host catalog service.")
+	require.NoError(t, err, "Failed to create a new host catalog service.")
 
 	var version uint32 = 1
 
 	resetHostCatalog := func() {
 		version++
 		repo, err := repoFn()
-		require.NoError(err, "Couldn't create new static repo.")
+		require.NoError(t, err, "Couldn't create new static repo.")
 		hc, _, err = repo.UpdateCatalog(context.Background(), hc, version, []string{"Name", "Description"})
-		require.NoError(err, "Failed to reset host catalog.")
+		require.NoError(t, err, "Failed to reset host catalog.")
 		version++
 	}
 
 	hcCreated, err := ptypes.Timestamp(hc.GetCreateTime().GetTimestamp())
-	require.NoError(err, "Failed to convert proto to timestamp")
+	require.NoError(t, err, "Failed to convert proto to timestamp")
 	toMerge := &pbs.UpdateHostCatalogRequest{
 		Id: hc.GetPublicId(),
 	}
@@ -374,7 +370,7 @@ func TestUpdate(t *testing.T) {
 					Name:        &wrappers.StringValue{Value: "new"},
 					Description: &wrappers.StringValue{Value: "desc"},
 					CreatedTime: hc.GetCreateTime().GetTimestamp(),
-					Type:        &wrappers.StringValue{Value: "Static"},
+					Type:        "static",
 				},
 			},
 			errCode: codes.OK,
@@ -397,7 +393,7 @@ func TestUpdate(t *testing.T) {
 					Name:        &wrappers.StringValue{Value: "new"},
 					Description: &wrappers.StringValue{Value: "desc"},
 					CreatedTime: hc.GetCreateTime().GetTimestamp(),
-					Type:        &wrappers.StringValue{Value: "Static"},
+					Type:        "static",
 				},
 			},
 			errCode: codes.OK,
@@ -450,7 +446,7 @@ func TestUpdate(t *testing.T) {
 					Scope:       &scopes.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String()},
 					Description: &wrappers.StringValue{Value: "default"},
 					CreatedTime: hc.GetCreateTime().GetTimestamp(),
-					Type:        &wrappers.StringValue{Value: "Static"},
+					Type:        "static",
 				},
 			},
 			errCode: codes.OK,
@@ -471,7 +467,7 @@ func TestUpdate(t *testing.T) {
 					Scope:       &scopes.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String()},
 					Name:        &wrappers.StringValue{Value: "default"},
 					CreatedTime: hc.GetCreateTime().GetTimestamp(),
-					Type:        &wrappers.StringValue{Value: "Static"},
+					Type:        "static",
 				},
 			},
 			errCode: codes.OK,
@@ -494,7 +490,7 @@ func TestUpdate(t *testing.T) {
 					Name:        &wrappers.StringValue{Value: "updated"},
 					Description: &wrappers.StringValue{Value: "default"},
 					CreatedTime: hc.GetCreateTime().GetTimestamp(),
-					Type:        &wrappers.StringValue{Value: "Static"},
+					Type:        "static",
 				},
 			},
 			errCode: codes.OK,
@@ -517,7 +513,7 @@ func TestUpdate(t *testing.T) {
 					Name:        &wrappers.StringValue{Value: "default"},
 					Description: &wrappers.StringValue{Value: "notignored"},
 					CreatedTime: hc.GetCreateTime().GetTimestamp(),
-					Type:        &wrappers.StringValue{Value: "Static"},
+					Type:        "static",
 				},
 			},
 			errCode: codes.OK,
@@ -588,7 +584,7 @@ func TestUpdate(t *testing.T) {
 					Paths: []string{"name"},
 				},
 				Item: &pb.HostCatalog{
-					Type: &wrappers.StringValue{Value: "Unknown"},
+					Type: "unknown",
 				},
 			},
 			res:     nil,
@@ -597,6 +593,7 @@ func TestUpdate(t *testing.T) {
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
 			tc.req.Version = version
 
 			req := proto.Clone(toMerge).(*pbs.UpdateHostCatalogRequest)
