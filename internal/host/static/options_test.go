@@ -21,4 +21,10 @@ func Test_GetOpts(t *testing.T) {
 		testOpts.withDescription = "test desc"
 		assert.Equal(opts, testOpts)
 	})
+	t.Run("WithAddress", func(t *testing.T) {
+		opts := getOpts(WithAddress("test"))
+		testOpts := getDefaultOptions()
+		testOpts.withAddress = "test"
+		assert.Equal(opts, testOpts)
+	})
 }
