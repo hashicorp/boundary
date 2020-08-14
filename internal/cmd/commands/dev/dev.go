@@ -236,7 +236,7 @@ func (c *Command) Run(args []string) int {
 		return 1
 	}
 
-	if err := c.SetupKMSes(c.UI, devConfig.SharedConfig, []string{"controller", "worker-auth"}); err != nil {
+	if err := c.SetupKMSes(c.UI, devConfig.SharedConfig, []string{"root", "worker-auth"}); err != nil {
 		c.UI.Error(err.Error())
 		return 1
 	}

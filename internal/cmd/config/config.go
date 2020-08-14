@@ -30,7 +30,7 @@ controller {
 }
 
 kms "aead" {
-	purpose = "controller"
+	purpose = "root"
 	aead_type = "aes-gcm"
 	key = "%s"
 }
