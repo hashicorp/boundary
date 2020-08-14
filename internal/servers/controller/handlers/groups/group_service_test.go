@@ -100,7 +100,6 @@ func TestGet(t *testing.T) {
 		Members: []*pb.Member{
 			{
 				Id:      u.GetPublicId(),
-				Type:    iam.UserMemberType.String(),
 				ScopeId: u.GetScopeId(),
 			},
 		},
@@ -118,7 +117,6 @@ func TestGet(t *testing.T) {
 		Members: []*pb.Member{
 			{
 				Id:      u.GetPublicId(),
-				Type:    iam.UserMemberType.String(),
 				ScopeId: u.GetScopeId(),
 			},
 		},
@@ -590,7 +588,6 @@ func TestUpdate(t *testing.T) {
 					Members: []*pb.Member{
 						{
 							Id:      u.GetPublicId(),
-							Type:    iam.UserMemberType.String(),
 							ScopeId: u.GetScopeId(),
 						},
 					},
@@ -621,7 +618,6 @@ func TestUpdate(t *testing.T) {
 					Members: []*pb.Member{
 						{
 							Id:      u.GetPublicId(),
-							Type:    iam.UserMemberType.String(),
 							ScopeId: u.GetScopeId(),
 						},
 					},
@@ -653,7 +649,6 @@ func TestUpdate(t *testing.T) {
 					Members: []*pb.Member{
 						{
 							Id:      u.GetPublicId(),
-							Type:    iam.UserMemberType.String(),
 							ScopeId: u.GetScopeId(),
 						},
 					},
@@ -685,7 +680,6 @@ func TestUpdate(t *testing.T) {
 					Members: []*pb.Member{
 						{
 							Id:      u.GetPublicId(),
-							Type:    iam.UserMemberType.String(),
 							ScopeId: u.GetScopeId(),
 						},
 					},
@@ -748,7 +742,6 @@ func TestUpdate(t *testing.T) {
 					Members: []*pb.Member{
 						{
 							Id:      u.GetPublicId(),
-							Type:    iam.UserMemberType.String(),
 							ScopeId: u.GetScopeId(),
 						},
 					},
@@ -779,7 +772,6 @@ func TestUpdate(t *testing.T) {
 					Members: []*pb.Member{
 						{
 							Id:      u.GetPublicId(),
-							Type:    iam.UserMemberType.String(),
 							ScopeId: u.GetScopeId(),
 						},
 					},
@@ -810,7 +802,6 @@ func TestUpdate(t *testing.T) {
 					Members: []*pb.Member{
 						{
 							Id:      u.GetPublicId(),
-							Type:    iam.UserMemberType.String(),
 							ScopeId: u.GetScopeId(),
 						},
 					},

@@ -3,6 +3,5 @@ package groups
 
 type Member struct {
 	Id      string `json:"id,omitempty"`
-	Type    string `json:"type,omitempty"`
 	ScopeId string `json:"scope_id,omitempty"`
 }

@@ -22,7 +22,7 @@ telemetry {
 }
 
 kms "aead" {
-        purpose = "controller"
+        purpose = "root"
         aead_type = "aes-gcm"
         key = "09iqFxRJNYsl/b8CQxjnGw=="
 }

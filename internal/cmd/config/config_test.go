@@ -49,7 +49,7 @@ func TestDevController(t *testing.T) {
 			Seals: []*configutil.KMS{
 				{
 					Type:    "aead",
-					Purpose: []string{"controller"},
+					Purpose: []string{"root"},
 					Config: map[string]string{
 						"aead_type": "aes-gcm",
 					},
@@ -140,7 +140,7 @@ kms "aead" {
 }
 
 kms "aead" {
-  purpose = "controller"
+  purpose = "root"
   aead_type = "aes-gcm"
   key ="eb78KqCwowELYnkOOko/XYz01q1ax3g76J1vCAvt5dQ="
 }`
@@ -153,7 +153,7 @@ kms "aead" {
 }
 
 kms "aead" {
-  purpose = "controller"
+  purpose = "root"
   aead_type = "aes-gcm"
   key ="{{decrypt(Ckh57d4NA6nsnRKV6DiHTyfwLIakdhN8w7qdPJgo-KWnBdlEKv3NQkUFbouU0eorSGik1Qbca5xEy2NqYT9UYj_GUGo6hHz13MEqAA)}}"
 }`

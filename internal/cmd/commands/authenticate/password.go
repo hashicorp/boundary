@@ -21,16 +21,16 @@ import (
 var _ cli.Command = (*PasswordCommand)(nil)
 var _ cli.CommandAutocomplete = (*PasswordCommand)(nil)
 
-var envPassword = "BOUNDARY_AUTHENTICATE_PASSWORD"
-var envName = "BOUNDARY_AUTHENTICATE_NAME"
-var envMethodId = "BOUNDARY_AUTHENTICATE_METHOD_ID"
+var envPassword = "BOUNDARY_AUTHENTICATE_PASSWORD_PASSWORD"
+var envLoginName = "BOUNDARY_AUTHENTICATE_PASSWORD_LOGIN_NAME"
+var envAuthMethodId = "BOUNDARY_AUTHENTICATE_AUTH_METHOD_ID"
 
 type PasswordCommand struct {
 	*base.Command
 
-	flagName     string
-	flagPassword string
-	flagMethodId string
+	flagLoginName    string
+	flagPassword     string
+	flagAuthMethodId string
 }
 
 func (c *PasswordCommand) Synopsis() string {
@@ -43,11 +43,7 @@ func (c *PasswordCommand) Help() string {
 		"",
 		"  Invoke the password auth method to authenticate the Boundary CLI:",
 		"",
-		"    $ boundary authenticate password -name=foo -password=bar",
-		"",
-		"  If more than one instance of the password auth method exists, use the -method-id flag:",
-		"",
-		`    $ boundary authenticate password -method-id am_12345 -name foo -password "bar"`,
+		`    $ boundary authenticate password -auth-method-id paum_1234567890 -login-name foo -password "bar"`,
 	}) + c.Flags().Help()
 }
 
@@ -57,9 +53,9 @@ func (c *PasswordCommand) Flags() *base.FlagSets {
 	f := set.NewFlagSet("Command Options")
 
 	f.StringVar(&base.StringVar{
-		Name:   "name",
-		Target: &c.flagName,
-		EnvVar: envName,
+		Name:   "login-name",
+		Target: &c.flagLoginName,
+		EnvVar: envLoginName,
 		Usage:  "Login name",
 	})
 
@@ -71,10 +67,10 @@ func (c *PasswordCommand) Flags() *base.FlagSets {
 	})
 
 	f.StringVar(&base.StringVar{
-		Name:   "method-id",
-		Target: &c.flagMethodId,
-		EnvVar: envMethodId,
-		Usage:  "Specify if more than one instance of a password auth method exists in the given org",
+		Name:   "auth-method-id",
+		Target: &c.flagAuthMethodId,
+		EnvVar: envAuthMethodId,
+		Usage:  "Specifies the ID of the auth method against which to authenticate",
 	})
 
 	return set
@@ -97,11 +93,11 @@ func (c *PasswordCommand) Run(args []string) int {
 	}
 
 	switch {
-	case c.flagName == "":
-		c.UI.Error("Name must be provided via -name")
+	case c.flagLoginName == "":
+		c.UI.Error("Login name must be provided via -login-name")
 		return 1
-	case c.flagMethodId == "":
-		c.UI.Error("Auth method ID must be provided via -method-id")
+	case c.flagAuthMethodId == "":
+		c.UI.Error("Auth method ID must be provided via -auth-method-id")
 		return 1
 	}
 
@@ -125,7 +121,7 @@ func (c *PasswordCommand) Run(args []string) int {
 	// note: Authenticate() calls SetToken() under the hood to set the
 	// auth bearer on the client so we do not need to do anything with the
 	// returned token after this call, so we ignore it
-	result, apiErr, err := authmethods.NewAuthMethodsClient(client).Authenticate(c.Context, c.flagMethodId, c.flagName, c.flagPassword)
+	result, apiErr, err := authmethods.NewAuthMethodsClient(client).Authenticate(c.Context, c.flagAuthMethodId, c.flagLoginName, c.flagPassword)
 	if err != nil {
 		c.UI.Error(fmt.Sprintf("Error trying to perform authentication: %s", err.Error()))
 		return 2

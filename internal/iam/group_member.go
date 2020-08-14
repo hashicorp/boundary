@@ -9,7 +9,9 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-// MemberType defines the possible membership types for groups.
+// MemberType defines the possible membership types for groups. We don't surface
+// this in the API as of yet as it's always user and we don't have plans for
+// others currently.
 type MemberType uint32
 
 const (

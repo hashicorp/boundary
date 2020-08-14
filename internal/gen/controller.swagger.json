@@ -2142,11 +2142,6 @@
           "description": "The ID of the member.\nOutput only.",
           "readOnly": true
         },
-        "type": {
-          "type": "string",
-          "description": "The type of the member.\nOutput only.",
-          "readOnly": true
-        },
         "scope_id": {
           "type": "string",
           "description": "The scope ID of the member.\nOutput only.",

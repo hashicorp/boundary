@@ -33,9 +33,9 @@ func addPrincipalsHelp() string {
 	return base.WrapForHelpText([]string{
 		"Usage: boundary roles add-principals [options] [args]",
 		"",
-		`  Adds principals (users, groups) to a role given its ID. The "user" and "group" flags can be specified multiple times. Example:`,
+		`  Adds principals (users, groups) to a role given its ID. The "principal" flag can be specified multiple times. Example:`,
 		"",
-		`    $ boundary roles add-principals -id r_1234567890 -user u_1234567890`,
+		`    $ boundary roles add-principals -id r_1234567890 -principal u_1234567890`,
 	})
 }
 
@@ -43,9 +43,9 @@ func setPrincipalsHelp() string {
 	return base.WrapForHelpText([]string{
 		"Usage: boundary roles set-principals [options] [args]",
 		"",
-		`  Sets the complete set of principals (users, groups) on a role given its ID. The "user" and "group" flags can be specified multiple times. Example:`,
+		`  Sets the complete set of principals (users, groups) on a role given its ID. The "principal" flag can be specified multiple times. Example:`,
 		"",
-		`    $ boundary roles set-principals -id r_1234567890 -user u_anon -group sg_1234567890`,
+		`    $ boundary roles set-principals -id r_1234567890 -principal u_anon -principal sg_1234567890`,
 	})
 }
 
@@ -53,9 +53,9 @@ func removePrincipalsHelp() string {
 	return base.WrapForHelpText([]string{
 		"Usage: boundary roles remove-principals [options] [args]",
 		"",
-		`  Removes principals (users, groups) from a role given its ID. The "user" and "group" flags can be specified multiple times. Example:`,
+		`  Removes principals (users, groups) from a role given its ID. The "principal" flags can be specified multiple times. Example:`,
 		"",
-		`    $ boundary roles remove-principals -id r_1234567890 -group sg_1234567890`,
+		`    $ boundary roles remove-principals -id r_1234567890 -principal sg_1234567890`,
 	})
 }
 
@@ -93,9 +93,9 @@ func generateRoleTableOutput(role *roles.Role) string {
 			"",
 			"Role information:",
 			fmt.Sprintf("  ID:               %s", role.Id),
+			fmt.Sprintf("  Version:          %d", role.Version),
 			fmt.Sprintf("  Created At:       %s", role.CreatedTime.Local().Format(time.RFC3339)),
 			fmt.Sprintf("  Updated At:       %s", role.UpdatedTime.Local().Format(time.RFC3339)),
-			fmt.Sprintf("  Version:          %d", role.Version),
 		}
 	}
 	if role.Name != "" {

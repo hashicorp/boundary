@@ -180,10 +180,10 @@ func TestRole_List(t *testing.T) {
 			assert.Nil(apiErr)
 			var defaultRoleIds []string
 			if tt.name == "org" {
-				require.True(2 == len(p1))
+				require.True(len(p1) == 2)
 				defaultRoleIds = []string{p1[0].Id, p1[1].Id}
 			} else {
-				require.Empty(p1)
+				require.Len(p1, 0)
 			}
 
 			var expected []*roles.Role

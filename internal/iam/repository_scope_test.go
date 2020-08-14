@@ -30,7 +30,7 @@ func Test_Repository_Scope_Create(t *testing.T) {
 
 		s, err := NewOrg(WithName(id))
 		require.NoError(err)
-		s, err = repo.CreateScope(context.Background(), s)
+		s, err = repo.CreateScope(context.Background(), s, "")
 		require.NoError(err)
 		require.NotNil(s)
 		assert.NotEmpty(s.GetPublicId())
@@ -53,7 +53,7 @@ func Test_Repository_Scope_Create(t *testing.T) {
 		require.NoError(err)
 		s, err := NewOrg()
 		require.NoError(err)
-		s, err = repo.CreateScope(context.Background(), s, WithPublicId(publicId))
+		s, err = repo.CreateScope(context.Background(), s, "", WithPublicId(publicId))
 		require.NoError(err)
 		require.NotNil(s)
 		assert.Equal(publicId, s.GetPublicId())
@@ -74,7 +74,7 @@ func Test_Repository_Scope_Create(t *testing.T) {
 
 		s, err := NewOrg(WithName(id))
 		require.NoError(err)
-		s, err = repo.CreateScope(context.Background(), s)
+		s, err = repo.CreateScope(context.Background(), s, "")
 		require.NoError(err)
 		require.NotNil(s)
 		assert.NotEmpty(s.GetPublicId())
@@ -82,7 +82,7 @@ func Test_Repository_Scope_Create(t *testing.T) {
 
 		s2, err := NewOrg(WithName(id))
 		require.NoError(err)
-		s2, err = repo.CreateScope(context.Background(), s2)
+		s2, err = repo.CreateScope(context.Background(), s2, "")
 		require.Error(err)
 		assert.Nil(s2)
 	})
@@ -96,7 +96,7 @@ func Test_Repository_Scope_Create(t *testing.T) {
 
 		s, err := NewOrg(WithName(id))
 		require.NoError(err)
-		s, err = repo.CreateScope(context.Background(), s)
+		s, err = repo.CreateScope(context.Background(), s, "")
 		require.NoError(err)
 		require.NotNil(s)
 		assert.NotEmpty(s.GetPublicId())
@@ -104,13 +104,13 @@ func Test_Repository_Scope_Create(t *testing.T) {
 
 		p, err := NewProject(s.PublicId, WithName(id))
 		require.NoError(err)
-		p, err = repo.CreateScope(context.Background(), p)
+		p, err = repo.CreateScope(context.Background(), p, "")
 		require.NoError(err)
 		require.NotEmpty(p.PublicId)
 
 		p2, err := NewProject(s.PublicId, WithName(id))
 		require.NoError(err)
-		p2, err = repo.CreateScope(context.Background(), p2)
+		p2, err = repo.CreateScope(context.Background(), p2, "")
 		assert.Error(err)
 		assert.Nil(p2)
 	})
@@ -178,7 +178,7 @@ func Test_Repository_Scope_Update(t *testing.T) {
 
 		project, err := NewProject(s.PublicId)
 		require.NoError(err)
-		project, err = repo.CreateScope(context.Background(), project)
+		project, err = repo.CreateScope(context.Background(), project, "")
 		require.NoError(err)
 		require.NotNil(project)
 

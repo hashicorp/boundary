@@ -1,10 +1,10 @@
-package scopes
+package users
 
 import (
 	"fmt"
 
 	"github.com/hashicorp/boundary/api"
-	"github.com/hashicorp/boundary/api/scopes"
+	"github.com/hashicorp/boundary/api/users"
 	"github.com/hashicorp/boundary/internal/cmd/base"
 	"github.com/hashicorp/boundary/internal/cmd/common"
 	"github.com/hashicorp/boundary/internal/types/resource"
@@ -24,7 +24,7 @@ type Command struct {
 }
 
 func (c *Command) Synopsis() string {
-	return common.SynopsisFunc(c.Func, "scope")
+	return common.SynopsisFunc(c.Func, "user")
 }
 
 var flagsMap = map[string][]string{
@@ -35,7 +35,7 @@ var flagsMap = map[string][]string{
 }
 
 func (c *Command) Help() string {
-	helpMap := common.HelpMap("scope")
+	helpMap := common.HelpMap("user")
 	if c.Func == "" {
 		return helpMap["base"]()
 	}
@@ -47,7 +47,7 @@ func (c *Command) Flags() *base.FlagSets {
 
 	if len(flagsMap[c.Func]) > 0 {
 		f := set.NewFlagSet("Command Options")
-		common.PopulateCommonFlags(c.Command, f, resource.Scope, flagsMap[c.Func])
+		common.PopulateCommonFlags(c.Command, f, resource.User, flagsMap[c.Func])
 	}
 
 	return set
@@ -84,25 +84,25 @@ func (c *Command) Run(args []string) int {
 		return 2
 	}
 
-	var opts []scopes.Option
+	var opts []users.Option
 
 	switch c.FlagName {
 	case "":
 	case "null":
-		opts = append(opts, scopes.DefaultName())
+		opts = append(opts, users.DefaultName())
 	default:
-		opts = append(opts, scopes.WithName(c.FlagName))
+		opts = append(opts, users.WithName(c.FlagName))
 	}
 
 	switch c.FlagDescription {
 	case "":
 	case "null":
-		opts = append(opts, scopes.DefaultDescription())
+		opts = append(opts, users.DefaultDescription())
 	default:
-		opts = append(opts, scopes.WithDescription(c.FlagDescription))
+		opts = append(opts, users.WithDescription(c.FlagDescription))
 	}
 
-	scopeClient := scopes.NewScopesClient(client)
+	userClient := users.NewUsersClient(client)
 
 	// Perform check-and-set when needed
 	var version uint32
@@ -112,33 +112,33 @@ func (c *Command) Run(args []string) int {
 	default:
 		switch c.FlagVersion {
 		case 0:
-			opts = append(opts, scopes.WithAutomaticVersioning())
+			opts = append(opts, users.WithAutomaticVersioning())
 		default:
 			version = uint32(c.FlagVersion)
 		}
 	}
 
 	var existed bool
-	var scope *scopes.Scope
-	var listedScopes []*scopes.Scope
+	var user *users.User
+	var listedUsers []*users.User
 	var apiErr *api.Error
 
 	switch c.Func {
 	case "create":
-		scope, apiErr, err = scopeClient.Create(c.Context, client.ScopeId(), opts...)
+		user, apiErr, err = userClient.Create(c.Context, opts...)
 	case "update":
-		scope, apiErr, err = scopeClient.Update(c.Context, c.FlagId, version, opts...)
+		user, apiErr, err = userClient.Update(c.Context, c.FlagId, version, opts...)
 	case "read":
-		scope, apiErr, err = scopeClient.Read(c.Context, c.FlagId, opts...)
+		user, apiErr, err = userClient.Read(c.Context, c.FlagId, opts...)
 	case "delete":
-		existed, apiErr, err = scopeClient.Delete(c.Context, c.FlagId, opts...)
+		existed, apiErr, err = userClient.Delete(c.Context, c.FlagId, opts...)
 	case "list":
-		listedScopes, apiErr, err = scopeClient.List(c.Context, client.ScopeId(), opts...)
+		listedUsers, apiErr, err = userClient.List(c.Context, opts...)
 	}
 
-	plural := "scope"
+	plural := "user"
 	if c.Func == "list" {
-		plural = "scopes"
+		plural = "users"
 	}
 	if err != nil {
 		c.UI.Error(fmt.Sprintf("Error trying to %s %s: %s", c.Func, plural, err.Error()))
@@ -169,11 +169,11 @@ func (c *Command) Run(args []string) int {
 	case "list":
 		switch base.Format(c.UI) {
 		case "json":
-			if len(listedScopes) == 0 {
+			if len(listedUsers) == 0 {
 				c.UI.Output("null")
 				return 0
 			}
-			b, err := base.JsonFormatter{}.Format(listedScopes)
+			b, err := base.JsonFormatter{}.Format(listedUsers)
 			if err != nil {
 				c.UI.Error(fmt.Errorf("Error formatting as JSON: %w", err).Error())
 				return 1
@@ -181,33 +181,33 @@ func (c *Command) Run(args []string) int {
 			c.UI.Output(string(b))
 
 		case "table":
-			if len(listedScopes) == 0 {
-				c.UI.Output("No scopes found")
+			if len(listedUsers) == 0 {
+				c.UI.Output("No users found")
 				return 0
 			}
 			var output []string
 			output = []string{
 				"",
-				"Scope information:",
+				"User information:",
 			}
-			for i, s := range listedScopes {
+			for i, u := range listedUsers {
 				if i > 0 {
 					output = append(output, "")
 				}
 				if true {
 					output = append(output,
-						fmt.Sprintf("  ID:             %s", s.Id),
-						fmt.Sprintf("    Version:      %d", s.Version),
+						fmt.Sprintf("  ID:             %s", u.Id),
+						fmt.Sprintf("    Version:      %d", u.Version),
 					)
 				}
-				if s.Name != "" {
+				if u.Name != "" {
 					output = append(output,
-						fmt.Sprintf("    Name:         %s", s.Name),
+						fmt.Sprintf("    Name:         %s", u.Name),
 					)
 				}
-				if s.Description != "" {
+				if u.Description != "" {
 					output = append(output,
-						fmt.Sprintf("    Description:  %s", s.Description),
+						fmt.Sprintf("    Description:  %s", u.Description),
 					)
 				}
 			}
@@ -218,9 +218,9 @@ func (c *Command) Run(args []string) int {
 
 	switch base.Format(c.UI) {
 	case "table":
-		c.UI.Output(generateScopeTableOutput(scope))
+		c.UI.Output(generateUserTableOutput(user))
 	case "json":
-		b, err := base.JsonFormatter{}.Format(scope)
+		b, err := base.JsonFormatter{}.Format(user)
 		if err != nil {
 			c.UI.Error(fmt.Errorf("Error formatting as JSON: %w", err).Error())
 			return 1
