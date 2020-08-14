@@ -46,7 +46,7 @@ func (c *Command) Flags() *base.FlagSets {
 
 	if len(flagsMap[c.Func]) > 0 {
 		f := set.NewFlagSet("Command Options")
-		common.PopulateCommonFlags(c.Command, f, resource.AuthToken, flagsMap[c.Func])
+		common.PopulateCommonFlags(c.Command, f, resource.AuthToken.String(), flagsMap[c.Func])
 	}
 
 	return set

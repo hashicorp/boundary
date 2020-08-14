@@ -37,9 +37,10 @@ var flagsMap = map[string][]string{
 
 func (c *Command) Help() string {
 	helpMap := common.HelpMap("auth-method")
+	var info string
 	switch c.Func {
 	case "":
-		return base.WrapForHelpText([]string{
+		info = base.WrapForHelpText([]string{
 			"Usage: boundary auth-methods [sub command] [options] [args]",
 			"",
 			"  This command allows operations on Boundary auth-method resources. Example:",
@@ -51,7 +52,7 @@ func (c *Command) Help() string {
 			"  Please see the auth-methods subcommand help for detailed usage information.",
 		})
 	case "password":
-		return base.WrapForHelpText([]string{
+		info = base.WrapForHelpText([]string{
 			"Usage: boundary auth-methods password [sub command] [options] [args]",
 			"",
 			"  This command allows operations on Boundary password-type auth-method resources. Example:",
@@ -63,9 +64,9 @@ func (c *Command) Help() string {
 			"  Please see the subcommand help for detailed usage information.",
 		})
 	default:
-		return helpMap[c.Func]() + c.Flags().Help()
+		info = helpMap[c.Func]()
 	}
-	return ""
+	return info + c.Flags().Help()
 }
 
 func (c *Command) Flags() *base.FlagSets {
@@ -73,7 +74,7 @@ func (c *Command) Flags() *base.FlagSets {
 
 	if len(flagsMap[c.Func]) > 0 {
 		f := set.NewFlagSet("Command Options")
-		common.PopulateCommonFlags(c.Command, f, resource.User, flagsMap[c.Func])
+		common.PopulateCommonFlags(c.Command, f, resource.User.String(), flagsMap[c.Func])
 	}
 
 	return set
