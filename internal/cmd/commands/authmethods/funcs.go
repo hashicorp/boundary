@@ -23,46 +23,58 @@ func addPasswordFlags(c *PasswordCommand, f *base.FlagSet) {
 
 func generateAuthMethodTableOutput(in *authmethods.AuthMethod) string {
 	var ret []string
-	// This if true is here to line up columns for easy editing
-	if true {
-		if true {
-			ret = append(ret, []string{
-				"",
-				"User information:",
-				fmt.Sprintf("  ID:           %s", in.Id),
-				fmt.Sprintf("  Version:      %d", in.Version),
-				fmt.Sprintf("  Type:         %s", in.Type),
-				fmt.Sprintf("  Created Time: %s", in.CreatedTime.Local().Format(time.RFC3339)),
-				fmt.Sprintf("  Updated Time: %s", in.UpdatedTime.Local().Format(time.RFC3339)),
-			}...,
-			)
-		}
-		if in.Name != "" {
-			ret = append(ret,
-				fmt.Sprintf("  Name:         %s", in.Name),
-			)
-		}
-		if in.Description != "" {
-			ret = append(ret,
-				fmt.Sprintf("  Description:  %s", in.Description),
-			)
+
+	nonAttributeMap := map[string]interface{}{
+		"ID":           in.Id,
+		"Version":      in.Version,
+		"Type":         in.Type,
+		"Created Time": in.CreatedTime.Local().Format(time.RFC3339),
+		"Updated Time": in.UpdatedTime.Local().Format(time.RFC3339),
+	}
+
+	if in.Name != "" {
+		nonAttributeMap["Name"] = in.Name
+	}
+	if in.Description != "" {
+		nonAttributeMap["Description"] = in.Description
+	}
+
+	maxLength := 0
+	for k := range nonAttributeMap {
+		if len(k) > maxLength {
+			maxLength = len(k)
 		}
 	}
+	if len(in.Attributes) > 0 {
+		for k, v := range in.Attributes {
+			if attributeMap[k] != "" {
+				in.Attributes[attributeMap[k]] = v
+				delete(in.Attributes, k)
+			}
+		}
+		for k := range in.Attributes {
+			if len(k) > maxLength {
+				maxLength = len(k)
+			}
+		}
+	}
+
+	ret = append(ret, "", "User information:")
+
+	ret = append(ret,
+		// We do +2 because there is another +2 offset for attributes below
+		base.WrapMap(2, maxLength+2, nonAttributeMap),
+	)
+
 	if len(in.Attributes) > 0 {
 		if true {
 			ret = append(ret,
 				fmt.Sprintf("  Attributes:   %s", ""),
 			)
 		}
-		for k, v := range in.Attributes {
-			if attributeMap[k] != "" {
-				k = attributeMap[k]
-			}
-			ret = append(ret,
-				fmt.Sprintf("    %s: %s", k, v),
-			)
-
-		}
+		ret = append(ret,
+			base.WrapMap(4, maxLength, in.Attributes),
+		)
 	}
 
 	return base.WrapForHelpText(ret)
