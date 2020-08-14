@@ -34,7 +34,7 @@ var flagsMap = map[string][]string{
 }
 
 func (c *Command) Help() string {
-	helpMap := common.HelpMap(resource.AuthToken)
+	helpMap := common.HelpMap("auth-token")
 	if c.Func == "" {
 		return helpMap["base"]()
 	}
@@ -44,9 +44,11 @@ func (c *Command) Help() string {
 func (c *Command) Flags() *base.FlagSets {
 	set := c.FlagSet(base.FlagSetHTTP | base.FlagSetClient | base.FlagSetOutputFormat)
 
-	f := set.NewFlagSet("Command Options")
+	if len(flagsMap[c.Func]) > 0 {
+		f := set.NewFlagSet("Command Options")
+		common.PopulateCommonFlags(c.Command, f, resource.AuthToken, flagsMap[c.Func])
+	}
 
-	common.PopulateCommonFlags(c.Command, f, resource.AuthToken, flagsMap[c.Func])
 	return set
 }
 
@@ -136,7 +138,7 @@ func (c *Command) Run(args []string) int {
 			}
 			b, err := base.JsonFormatter{}.Format(listedTokens)
 			if err != nil {
-				c.UI.Error(fmt.Errorf("Error formatting to JSON: %w", err).Error())
+				c.UI.Error(fmt.Errorf("Error formatting as JSON: %w", err).Error())
 				return 1
 			}
 			c.UI.Output(string(b))
@@ -176,7 +178,7 @@ func (c *Command) Run(args []string) int {
 	case "json":
 		b, err := base.JsonFormatter{}.Format(token)
 		if err != nil {
-			c.UI.Error(fmt.Errorf("Error formatting to JSON: %w", err).Error())
+			c.UI.Error(fmt.Errorf("Error formatting as JSON: %w", err).Error())
 			return 1
 		}
 		c.UI.Output(string(b))

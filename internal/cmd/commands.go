@@ -15,6 +15,7 @@ import (
 	"github.com/hashicorp/boundary/internal/cmd/commands/hosts"
 	"github.com/hashicorp/boundary/internal/cmd/commands/roles"
 	"github.com/hashicorp/boundary/internal/cmd/commands/scopes"
+	"github.com/hashicorp/boundary/internal/cmd/commands/users"
 	"github.com/hashicorp/boundary/internal/cmd/commands/worker"
 
 	"github.com/mitchellh/cli"
@@ -271,6 +272,42 @@ func initCommands(ui, serverCmdUi cli.Ui, runOpts *RunOptions) {
 		},
 		"scopes list": func() (cli.Command, error) {
 			return &scopes.Command{
+				Command: base.NewCommand(ui),
+				Func:    "list",
+			}, nil
+		},
+
+		"users": func() (cli.Command, error) {
+			return &users.Command{
+				Command: base.NewCommand(ui),
+			}, nil
+		},
+		"users create": func() (cli.Command, error) {
+			return &users.Command{
+				Command: base.NewCommand(ui),
+				Func:    "create",
+			}, nil
+		},
+		"users read": func() (cli.Command, error) {
+			return &users.Command{
+				Command: base.NewCommand(ui),
+				Func:    "read",
+			}, nil
+		},
+		"users update": func() (cli.Command, error) {
+			return &users.Command{
+				Command: base.NewCommand(ui),
+				Func:    "update",
+			}, nil
+		},
+		"users delete": func() (cli.Command, error) {
+			return &users.Command{
+				Command: base.NewCommand(ui),
+				Func:    "delete",
+			}, nil
+		},
+		"users list": func() (cli.Command, error) {
+			return &users.Command{
 				Command: base.NewCommand(ui),
 				Func:    "list",
 			}, nil

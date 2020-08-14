@@ -35,7 +35,7 @@ var flagsMap = map[string][]string{
 }
 
 func (c *Command) Help() string {
-	helpMap := common.HelpMap(resource.Scope)
+	helpMap := common.HelpMap("scope")
 	if c.Func == "" {
 		return helpMap["base"]()
 	}
@@ -45,9 +45,11 @@ func (c *Command) Help() string {
 func (c *Command) Flags() *base.FlagSets {
 	set := c.FlagSet(base.FlagSetHTTP | base.FlagSetClient | base.FlagSetOutputFormat)
 
-	f := set.NewFlagSet("Command Options")
+	if len(flagsMap[c.Func]) > 0 {
+		f := set.NewFlagSet("Command Options")
+		common.PopulateCommonFlags(c.Command, f, resource.Scope, flagsMap[c.Func])
+	}
 
-	common.PopulateCommonFlags(c.Command, f, resource.Scope, flagsMap[c.Func])
 	return set
 }
 
@@ -173,7 +175,7 @@ func (c *Command) Run(args []string) int {
 			}
 			b, err := base.JsonFormatter{}.Format(listedScopes)
 			if err != nil {
-				c.UI.Error(fmt.Errorf("Error formatting to JSON: %w", err).Error())
+				c.UI.Error(fmt.Errorf("Error formatting as JSON: %w", err).Error())
 				return 1
 			}
 			c.UI.Output(string(b))
@@ -194,17 +196,18 @@ func (c *Command) Run(args []string) int {
 				}
 				if true {
 					output = append(output,
-						fmt.Sprintf("  ID:               %s", s.Id),
+						fmt.Sprintf("  ID:             %s", s.Id),
+						fmt.Sprintf("    Version:      %d", s.Version),
 					)
 				}
 				if s.Name != "" {
 					output = append(output,
-						fmt.Sprintf("    Name:           %s", s.Name),
+						fmt.Sprintf("    Name:         %s", s.Name),
 					)
 				}
 				if s.Description != "" {
 					output = append(output,
-						fmt.Sprintf("    Description:    %s", s.Description),
+						fmt.Sprintf("    Description:  %s", s.Description),
 					)
 				}
 			}
@@ -219,7 +222,7 @@ func (c *Command) Run(args []string) int {
 	case "json":
 		b, err := base.JsonFormatter{}.Format(scope)
 		if err != nil {
-			c.UI.Error(fmt.Errorf("Error formatting to JSON: %w", err).Error())
+			c.UI.Error(fmt.Errorf("Error formatting as JSON: %w", err).Error())
 			return 1
 		}
 		c.UI.Output(string(b))

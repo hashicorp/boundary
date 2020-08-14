@@ -1,20 +1,20 @@
-package scopes
+package users
 
 import (
 	"fmt"
 	"time"
 
-	"github.com/hashicorp/boundary/api/scopes"
+	"github.com/hashicorp/boundary/api/users"
 	"github.com/hashicorp/boundary/internal/cmd/base"
 )
 
-func generateScopeTableOutput(in *scopes.Scope) string {
+func generateUserTableOutput(in *users.User) string {
 	var ret []string
 	// This if true is here to line up columns for easy editing
 	if true {
 		ret = append(ret, []string{
 			"",
-			"Scope information:",
+			"User information:",
 			fmt.Sprintf("  ID:           %s", in.Id),
 			fmt.Sprintf("  Version:      %d", in.Version),
 			fmt.Sprintf("  Created Time: %s", in.CreatedTime.Local().Format(time.RFC3339)),
