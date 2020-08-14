@@ -42,11 +42,28 @@ var passwordFlagsMap = map[string][]string{
 }
 
 func (c *PasswordCommand) Help() string {
-	helpMap := common.HelpMap("auth-method")
-	if c.Func == "" {
-		return helpMap["base"]()
+	switch c.Func {
+	case "create":
+		return base.WrapForHelpText([]string{
+			"Usage: boundary auth-methods password create [options] [args]",
+			"",
+			"  Create a password-type auth-method. Example:",
+			"",
+			`    $ boundary auth-methods password create -name prodops -description "Password auth-method for ProdOps"`,
+			"",
+			"",
+		})
+
+	case "update":
+		return base.WrapForHelpText([]string{
+			"Usage: boundary auth-methods password update [options] [args]",
+			"",
+			"  Update a password-type auth-method given its ID. Example:",
+			"",
+			`    $ boundary auth-methods password update -id paum_1234567890 -name "devops" -description "Password auth-method for DevOps"`,
+		})
 	}
-	return helpMap[c.Func]() + c.Flags().Help()
+	return ""
 }
 
 func typeFlag(c *PasswordCommand, f *base.FlagSet) {
