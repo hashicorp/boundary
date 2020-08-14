@@ -25,8 +25,9 @@ func TestRepository_CreateRootKeyVersion(t *testing.T) {
 	rk := TestRootKey(t, conn, org.PublicId)
 
 	type args struct {
-		key *RootKeyVersion
-		opt []Option
+		rootKeyId string
+		key       string
+		opt       []Option
 	}
 	tests := []struct {
 		name        string
@@ -37,81 +38,33 @@ func TestRepository_CreateRootKeyVersion(t *testing.T) {
 		{
 			name: "valid",
 			args: args{
-				key: func() *RootKeyVersion {
-					k, err := NewRootKeyVersion(rk.PrivateId, "test key")
-					assert.NoError(t, err)
-					return k
-				}(),
+				key:       "test key",
+				rootKeyId: rk.PrivateId,
 			},
 			wantErr: false,
 		},
 		{
 			name: "invalid-root-key",
 			args: args{
-				key: func() *RootKeyVersion {
-					k, err := NewRootKeyVersion("krk_thisIsNotValid", "test key")
-					assert.NoError(t, err)
-					return k
-				}(),
+				key:       "test key",
+				rootKeyId: "krk_thisIsNotValid",
 			},
 			wantErr: true,
 		},
 		{
 			name: "empty-key",
 			args: args{
-				key: func() *RootKeyVersion {
-					k, err := NewRootKeyVersion(rk.PrivateId, "test key")
-					assert.NoError(t, err)
-					k.Key = ""
-					return k
-				}(),
+				key:       "",
+				rootKeyId: rk.PrivateId,
 			},
 			wantErr:     true,
 			wantIsError: db.ErrInvalidParameter,
-		},
-		{
-			name: "invalid-privateId",
-			args: args{
-				key: func() *RootKeyVersion {
-					k, err := NewRootKeyVersion(rk.PrivateId, "test key")
-					assert.NoError(t, err)
-					k.PrivateId = "mustBeEmpty"
-					return k
-				}(),
-			},
-			wantErr:     true,
-			wantIsError: db.ErrInvalidParameter,
-		},
-		{
-			name: "invalid-version",
-			args: args{
-				key: func() *RootKeyVersion {
-					k, err := NewRootKeyVersion(rk.PrivateId, "test key")
-					assert.NoError(t, err)
-					k.Version = 5675309
-					return k
-				}(),
-			},
-			wantErr:     true,
-			wantIsError: db.ErrInvalidParameter,
-		},
-		{
-			name: "nil-store",
-			args: args{
-				key: func() *RootKeyVersion {
-					return &RootKeyVersion{
-						RootKeyVersion: nil,
-					}
-				}(),
-			},
-			wantErr:     true,
-			wantIsError: db.ErrNilParameter,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			k, err := repo.CreateRootKeyVersion(context.Background(), tt.args.key, tt.args.opt...)
+			k, err := repo.CreateRootKeyVersion(context.Background(), tt.args.rootKeyId, tt.args.key, tt.args.opt...)
 			if tt.wantErr {
 				assert.Error(err)
 				assert.Nil(k)

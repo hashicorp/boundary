@@ -10,32 +10,21 @@ import (
 
 // CreateRootKeyVersion inserts into the repository and returns the new root key
 // version with its PrivateId.  There are no valid options at this time.
-func (r *Repository) CreateRootKeyVersion(ctx context.Context, k *RootKeyVersion, opt ...Option) (*RootKeyVersion, error) {
-	if k == nil {
-		return nil, fmt.Errorf("create root key version: missing key: %w", db.ErrNilParameter)
-	}
-	if k.RootKeyVersion == nil {
-		return nil, fmt.Errorf("create root key version: missing key store: %w", db.ErrNilParameter)
-	}
-	if k.PrivateId != "" {
-		return nil, fmt.Errorf("create root key version: private id not empty: %w", db.ErrInvalidParameter)
-	}
-	if k.RootKeyId == "" {
+func (r *Repository) CreateRootKeyVersion(ctx context.Context, rootKeyId, key string, opt ...Option) (*RootKeyVersion, error) {
+	if rootKeyId == "" {
 		return nil, fmt.Errorf("create root key version: missing root key id: %w", db.ErrInvalidParameter)
 	}
-	if k.Key == "" {
+	if key == "" {
 		return nil, fmt.Errorf("create root key version: missing key: %w", db.ErrInvalidParameter)
 	}
-	if k.Version != 0 {
-		return nil, fmt.Errorf("create root key version: version not empty: %w", db.ErrInvalidParameter)
-	}
+	kv := allocRootKeyVersion()
 	id, err := newRootKeyVersionId()
 	if err != nil {
 		return nil, fmt.Errorf("create root key version: %w", err)
 	}
-	c := k.Clone().(*RootKeyVersion)
-	c.PrivateId = id
-	if err := c.encrypt(ctx, r.wrapper); err != nil {
+	kv.PrivateId = id
+	kv.RootKeyId = rootKeyId
+	if err := kv.encrypt(ctx, r.wrapper); err != nil {
 		return nil, fmt.Errorf("create root key version: encrypt: %w", err)
 	}
 
@@ -45,15 +34,15 @@ func (r *Repository) CreateRootKeyVersion(ctx context.Context, k *RootKeyVersion
 		db.StdRetryCnt,
 		db.ExpBackoff{},
 		func(_ db.Reader, w db.Writer) error {
-			returnedKey = c.Clone()
-			if err := w.Create(ctx, returnedKey, db.WithOplog(r.wrapper, c.oplog(oplog.OpType_OP_TYPE_CREATE))); err != nil {
+			returnedKey = kv.Clone()
+			if err := w.Create(ctx, returnedKey, db.WithOplog(r.wrapper, kv.oplog(oplog.OpType_OP_TYPE_CREATE))); err != nil {
 				return err
 			}
 			return nil
 		},
 	)
 	if err != nil {
-		return nil, fmt.Errorf("create root key version: %w for %s", err, c.PrivateId)
+		return nil, fmt.Errorf("create root key version: %w for %s root key id", err, kv.RootKeyId)
 	}
 	return returnedKey.(*RootKeyVersion), err
 }

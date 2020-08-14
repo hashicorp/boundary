@@ -8,45 +8,56 @@ import (
 	"github.com/hashicorp/boundary/internal/oplog"
 )
 
-// CreateRootKey inserts into the repository and returns the new root key
-// with its PrivateId.  There are no valid options at this time.
-func (r *Repository) CreateRootKey(ctx context.Context, k *RootKey, opt ...Option) (*RootKey, error) {
-	if k == nil {
-		return nil, fmt.Errorf("create root key: missing key: %w", db.ErrNilParameter)
+// CreateRootKey inserts into the repository and returns the new root key and
+// root key version. There are no valid options at this time.
+func (r *Repository) CreateRootKey(ctx context.Context, scopeId, key string, opt ...Option) (*RootKey, *RootKeyVersion, error) {
+	if scopeId == "" {
+		return nil, nil, fmt.Errorf("create root key: missing scope id: %w", db.ErrInvalidParameter)
 	}
-	if k.RootKey == nil {
-		return nil, fmt.Errorf("create root key: missing key store: %w", db.ErrNilParameter)
+	if key == "" {
+		return nil, nil, fmt.Errorf("create root key: missing key: %w", db.ErrInvalidParameter)
 	}
-	if k.PrivateId != "" {
-		return nil, fmt.Errorf("create root key: private id not empty: %w", db.ErrInvalidParameter)
-	}
-	if k.ScopeId == "" {
-		return nil, fmt.Errorf("create root key: missing key scope id: %w", db.ErrInvalidParameter)
-	}
+	rk := allocRootKey()
+	kv := allocRootKeyVersion()
 	id, err := newRootKeyId()
 	if err != nil {
-		return nil, fmt.Errorf("create root key: %w", err)
+		return nil, nil, fmt.Errorf("create root key: %w", err)
 	}
-	c := k.Clone().(*RootKey)
-	c.PrivateId = id
+	rk.PrivateId = id
+	rk.ScopeId = scopeId
 
-	var returnedKey interface{}
+	id, err = newRootKeyVersionId()
+	if err != nil {
+		return nil, nil, fmt.Errorf("create root key: %w", err)
+	}
+	kv.PrivateId = id
+	kv.RootKeyId = rk.PrivateId
+	kv.Key = key
+	if err := kv.encrypt(ctx, r.wrapper); err != nil {
+		return nil, nil, fmt.Errorf("create root key: %w", err)
+	}
+
+	var returnedRk, returnedKv interface{}
 	_, err = r.writer.DoTx(
 		ctx,
 		db.StdRetryCnt,
 		db.ExpBackoff{},
 		func(_ db.Reader, w db.Writer) error {
-			returnedKey = c.Clone()
-			if err := w.Create(ctx, returnedKey, db.WithOplog(r.wrapper, c.oplog(oplog.OpType_OP_TYPE_CREATE))); err != nil {
+			returnedRk = rk.Clone()
+			if err := w.Create(ctx, returnedRk, db.WithOplog(r.wrapper, rk.oplog(oplog.OpType_OP_TYPE_CREATE))); err != nil {
+				return err
+			}
+			returnedKv = kv.Clone()
+			if err := w.Create(ctx, returnedKv, db.WithOplog(r.wrapper, kv.oplog(oplog.OpType_OP_TYPE_CREATE))); err != nil {
 				return err
 			}
 			return nil
 		},
 	)
 	if err != nil {
-		return nil, fmt.Errorf("create root key: %w for %s", err, c.PrivateId)
+		return nil, nil, fmt.Errorf("create root key: %w for %s in %s", err, rk.PrivateId, scopeId)
 	}
-	return returnedKey.(*RootKey), err
+	return returnedRk.(*RootKey), returnedKv.(*RootKeyVersion), err
 }
 
 // LookupRootKey will look up a root key in the repository.  If the key is not

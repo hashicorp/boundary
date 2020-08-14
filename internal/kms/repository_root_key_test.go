@@ -24,8 +24,9 @@ func TestRepository_CreateRootKey(t *testing.T) {
 	org, proj := iam.TestScopes(t, conn)
 
 	type args struct {
-		key *RootKey
-		opt []Option
+		scopeId string
+		key     string
+		opt     []Option
 	}
 	tests := []struct {
 		name        string
@@ -36,105 +37,71 @@ func TestRepository_CreateRootKey(t *testing.T) {
 		{
 			name: "valid-org",
 			args: args{
-				key: func() *RootKey {
-					k, err := NewRootKey(org.PublicId)
-					assert.NoError(t, err)
-					return k
-				}(),
+				scopeId: org.PublicId,
+				key:     "test key",
 			},
 			wantErr: false,
 		},
 		{
 			name: "valid-global",
 			args: args{
-				key: func() *RootKey {
-					k, err := NewRootKey("global")
-					assert.NoError(t, err)
-					return k
-				}(),
+				scopeId: "global",
+				key:     "valid-global",
 			},
 			wantErr: false,
 		},
 		{
 			name: "invalid-proj",
 			args: args{
-				key: func() *RootKey {
-					k, err := NewRootKey(proj.PublicId)
-					assert.NoError(t, err)
-					return k
-				}(),
+				scopeId: proj.PublicId,
+				key:     "invalid-proj",
 			},
 			wantErr: true,
 		},
 		{
 			name: "invalid-scope",
 			args: args{
-				key: func() *RootKey {
-					k, err := NewRootKey("o_notAValidScopeId")
-					assert.NoError(t, err)
-					return k
-				}(),
+				scopeId: "o_notAValidScopeId",
+				key:     "invalid-scope",
 			},
 			wantErr: true,
 		},
 		{
 			name: "empty-scope",
 			args: args{
-				key: func() *RootKey {
-					k, err := NewRootKey(org.PublicId)
-					assert.NoError(t, err)
-					k.ScopeId = ""
-					return k
-				}(),
+				key: "empty-scope",
 			},
 			wantErr:     true,
 			wantIsError: db.ErrInvalidParameter,
-		},
-		{
-			name: "invalid-privateId",
-			args: args{
-				key: func() *RootKey {
-					k, err := NewRootKey(org.PublicId)
-					assert.NoError(t, err)
-					k.PrivateId = "mustBeEmpty"
-					return k
-				}(),
-			},
-			wantErr:     true,
-			wantIsError: db.ErrInvalidParameter,
-		},
-		{
-			name: "nil-store",
-			args: args{
-				key: func() *RootKey {
-					return &RootKey{
-						RootKey: nil,
-					}
-				}(),
-			},
-			wantErr:     true,
-			wantIsError: db.ErrNilParameter,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			k, err := repo.CreateRootKey(context.Background(), tt.args.key, tt.args.opt...)
+			rk, kv, err := repo.CreateRootKey(context.Background(), tt.args.scopeId, tt.args.key, tt.args.opt...)
 			if tt.wantErr {
 				assert.Error(err)
-				assert.Nil(k)
+				assert.Nil(rk)
 				if tt.wantIsError != nil {
 					assert.True(errors.Is(err, tt.wantIsError))
 				}
 				return
 			}
 			require.NoError(err)
-			assert.NotNil(k.CreateTime)
-			foundKey, err := repo.LookupRootKey(context.Background(), k.PrivateId)
+			assert.NotNil(rk.CreateTime)
+			foundKey, err := repo.LookupRootKey(context.Background(), rk.PrivateId)
 			assert.NoError(err)
-			assert.True(proto.Equal(foundKey, k))
+			assert.True(proto.Equal(foundKey, rk))
 
-			err = db.TestVerifyOplog(t, rw, k.PrivateId, db.WithOperation(oplog.OpType_OP_TYPE_CREATE), db.WithCreateNotBefore(10*time.Second))
+			err = db.TestVerifyOplog(t, rw, rk.PrivateId, db.WithOperation(oplog.OpType_OP_TYPE_CREATE), db.WithCreateNotBefore(10*time.Second))
+			assert.NoError(err)
+
+			assert.NotNil(kv.CreateTime)
+			foundKeyVersion, err := repo.LookupRootKeyVersion(context.Background(), kv.PrivateId)
+			assert.NoError(err)
+			assert.True(proto.Equal(foundKeyVersion, kv))
+
+			err = db.TestVerifyOplog(t, rw, kv.PrivateId, db.WithOperation(oplog.OpType_OP_TYPE_CREATE), db.WithCreateNotBefore(10*time.Second))
 			assert.NoError(err)
 		})
 	}
