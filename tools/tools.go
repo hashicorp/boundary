@@ -4,7 +4,7 @@
 // recommended way of doing this according to
 // https://github.com/golang/go/wiki/Modules#how-can-i-track-tool-dependencies-for-a-module
 // To install the following tools at the version used by this repo run:
-// $ make bootstrap
+// $ make tools
 // or
 // $ go generate -tags tools tools/tools.go
 
