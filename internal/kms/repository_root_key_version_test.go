@@ -217,3 +217,58 @@ func TestRepository_DeleteRootKeyVersion(t *testing.T) {
 		})
 	}
 }
+
+func TestRepository_LatestRootKeyVersion(t *testing.T) {
+	t.Parallel()
+	conn, _ := db.TestSetup(t, "postgres")
+	rw := db.New(conn)
+	wrapper := db.TestWrapper(t)
+	repo, err := NewRepository(rw, rw, wrapper)
+	require.NoError(t, err)
+	org, _ := iam.TestScopes(t, conn)
+	rk := TestRootKey(t, conn, org.PublicId)
+
+	tests := []struct {
+		name        string
+		createCnt   int
+		wantVersion uint32
+		wantErr     bool
+		wantIsError error
+	}{
+		{
+			name:        "5",
+			createCnt:   5,
+			wantVersion: 5,
+			wantErr:     false,
+		},
+		{
+			name:        "0",
+			createCnt:   0,
+			wantErr:     true,
+			wantIsError: db.ErrRecordNotFound,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+			require.NoError(conn.Where("1=1").Delete(allocRootKeyVersion()).Error)
+			testKeys := []*RootKeyVersion{}
+			for i := 0; i < tt.createCnt; i++ {
+				testKeys = append(testKeys, TestRootKeyVersion(t, conn, wrapper, rk.PrivateId, "test key"))
+			}
+			assert.Equal(tt.createCnt, len(testKeys))
+			got, err := repo.LatestRootKeyVersion(context.Background(), rk.PrivateId)
+			if tt.wantErr {
+				require.Error(err)
+				assert.Nil(got)
+				if tt.wantIsError != nil {
+					assert.True(errors.Is(err, tt.wantIsError))
+				}
+				return
+			}
+			require.NoError(err)
+			require.NotNil(got)
+			assert.Equal(tt.wantVersion, got.Version)
+		})
+	}
+}

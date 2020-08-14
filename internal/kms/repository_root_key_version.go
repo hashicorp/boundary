@@ -109,3 +109,20 @@ func (r *Repository) DeleteRootKeyVersion(ctx context.Context, privateId string,
 	}
 	return rowsDeleted, nil
 }
+
+// LatestRootKeyVersion searches for the root key version with the highest
+// version number.  When no results are found, it returns nil,
+// db.ErrRecordNotFound.
+func (r *Repository) LatestRootKeyVersion(ctx context.Context, rootKeyId string, opt ...Option) (*RootKeyVersion, error) {
+	if rootKeyId == "" {
+		return nil, fmt.Errorf("latest root key version: missing root key id: %w", db.ErrNilParameter)
+	}
+	var foundKeys []RootKeyVersion
+	if err := r.reader.SearchWhere(ctx, &foundKeys, "root_key_id = ?", []interface{}{rootKeyId}, db.WithLimit(1), db.WithOrder("version desc")); err != nil {
+		return nil, fmt.Errorf("latest root key version: failed %w for %s", err, rootKeyId)
+	}
+	if len(foundKeys) == 0 {
+		return nil, db.ErrRecordNotFound
+	}
+	return &foundKeys[0], nil
+}
