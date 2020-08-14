@@ -39,7 +39,7 @@ func (c *Command) Help() string {
 	if c.Func == "" {
 		return helpMap["base"]()
 	}
-	return helpMap[c.Func]() + "\n\n" + c.Flags().Help()
+	return helpMap[c.Func]() + c.Flags().Help()
 }
 
 func (c *Command) Flags() *base.FlagSets {
