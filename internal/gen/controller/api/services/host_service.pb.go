@@ -947,11 +947,37 @@ const _ = grpc.SupportPackageIsVersion6
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://godoc.org/google.golang.org/grpc#ClientConn.NewStream.
 type HostServiceClient interface {
-	// This retrieves the host specified in the request using the basic view.
+	// GetHost returns a stored Host if present.  The provided request
+	// must include the host catalog and host ID for the resource being
+	// retrieved. If any of those IDs are missing, malformed or reference a
+	// non existing resource an error is returned.
 	GetHost(ctx context.Context, in *GetHostRequest, opts ...grpc.CallOption) (*GetHostResponse, error)
+	// ListHosts returns a list of stored hosts which exist inside the scope
+	// referenced inside the request. The request must include the scope ID and
+	// the host catalog id for the hosts being retrieved. If the any of those
+	// are missing, malformed, or reference a non existing scope, an error is
+	// returned.
 	ListHosts(ctx context.Context, in *ListHostsRequest, opts ...grpc.CallOption) (*ListHostsResponse, error)
+	// CreateHost creates and stores a host in boundary.  The provided
+	// request must include the scope and host catalog ids in which the host
+	// will be created.  If the scope or catalog id is missing, malformed or references a
+	// non existing resource, an error is returned.  If a name is provided that
+	// is in use by another host in the same host catalog, an error is returned.
 	CreateHost(ctx context.Context, in *CreateHostRequest, opts ...grpc.CallOption) (*CreateHostResponse, error)
+	// UpdateHost updates an existing host in boundary.  The provided
+	// host must not have any read only fields set.  The update mask must be
+	// included in the request and contain at least 1 mutable field.  To unset
+	// a field's value, include the field in the update mask and don't set it
+	// in the provided host. An error is returned if either the scope
+	// or host catalog or host ids are missing or reference a non existing
+	// resource.  An error is also returned if the request attempts to update the
+	// name to one that is already in use in this host catalog.
 	UpdateHost(ctx context.Context, in *UpdateHostRequest, opts ...grpc.CallOption) (*UpdateHostResponse, error)
+	// DeleteHost removes a host from Boundary. If the provided scope,
+	// host catalog, or host ids are malformed or not provided an error is
+	// returned.  No error is returned if any of the ids reference resources that
+	// do not exist since the response itself specifies if the resource existed
+	// before the DeleteHost request was received.
 	DeleteHost(ctx context.Context, in *DeleteHostRequest, opts ...grpc.CallOption) (*DeleteHostResponse, error)
 }
 
@@ -1010,11 +1036,37 @@ func (c *hostServiceClient) DeleteHost(ctx context.Context, in *DeleteHostReques
 
 // HostServiceServer is the server API for HostService service.
 type HostServiceServer interface {
-	// This retrieves the host specified in the request using the basic view.
+	// GetHost returns a stored Host if present.  The provided request
+	// must include the host catalog and host ID for the resource being
+	// retrieved. If any of those IDs are missing, malformed or reference a
+	// non existing resource an error is returned.
 	GetHost(context.Context, *GetHostRequest) (*GetHostResponse, error)
+	// ListHosts returns a list of stored hosts which exist inside the scope
+	// referenced inside the request. The request must include the scope ID and
+	// the host catalog id for the hosts being retrieved. If the any of those
+	// are missing, malformed, or reference a non existing scope, an error is
+	// returned.
 	ListHosts(context.Context, *ListHostsRequest) (*ListHostsResponse, error)
+	// CreateHost creates and stores a host in boundary.  The provided
+	// request must include the scope and host catalog ids in which the host
+	// will be created.  If the scope or catalog id is missing, malformed or references a
+	// non existing resource, an error is returned.  If a name is provided that
+	// is in use by another host in the same host catalog, an error is returned.
 	CreateHost(context.Context, *CreateHostRequest) (*CreateHostResponse, error)
+	// UpdateHost updates an existing host in boundary.  The provided
+	// host must not have any read only fields set.  The update mask must be
+	// included in the request and contain at least 1 mutable field.  To unset
+	// a field's value, include the field in the update mask and don't set it
+	// in the provided host. An error is returned if either the scope
+	// or host catalog or host ids are missing or reference a non existing
+	// resource.  An error is also returned if the request attempts to update the
+	// name to one that is already in use in this host catalog.
 	UpdateHost(context.Context, *UpdateHostRequest) (*UpdateHostResponse, error)
+	// DeleteHost removes a host from Boundary. If the provided scope,
+	// host catalog, or host ids are malformed or not provided an error is
+	// returned.  No error is returned if any of the ids reference resources that
+	// do not exist since the response itself specifies if the resource existed
+	// before the DeleteHost request was received.
 	DeleteHost(context.Context, *DeleteHostRequest) (*DeleteHostResponse, error)
 }
 

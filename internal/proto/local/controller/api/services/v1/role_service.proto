@@ -166,11 +166,11 @@ service RoleService {
     };
   }
 
-  // RemoveRoleGrants removes the users and/or groups from the specified role.
+  // RemoveRoleGrants removes the grants from the specified role.
   // The provided request must include the scope and the role IDs from which the
-  // users and/or groups will be removed. If either ID is missing, malformed, or
-  // references a non-existing org, an error is returned.  It is not an error to
-  // have duplicate user/group IDs.
+  // grants will be removed. If either ID is missing, malformed, or
+  // references a non-existing scope, an error is returned.  It is not an error to
+  // have duplicate grants.
   rpc RemoveRoleGrants(RemoveRoleGrantsRequest) returns (RemoveRoleGrantsResponse) {
     option (google.api.http) = {
       post: "/v1/scopes/*/roles/{role_id}:remove-grants"
@@ -252,7 +252,7 @@ message SetRolePrincipalsRequest {
   // The version ensures the role hasn't changed since it was last retrieved and if
   // it has the request will fail.
   uint32 version = 2;
-  
+
   PrincipalIdsMessage item = 3;
 }
 
@@ -265,7 +265,7 @@ message RemoveRolePrincipalsRequest {
   // The version ensures the role hasn't changed since it was last retrieved and if
   // it has the request will fail.
   uint32 version = 2;
-  
+
   PrincipalIdsMessage item = 3;
 }
 
@@ -282,8 +282,8 @@ message AddRoleGrantsRequest {
   // The version ensures the role hasn't changed since it was last retrieved and if
   // it has the request will fail.
   uint32 version = 2;
-  
-  GrantStringsMessage item = 3;;
+
+  GrantStringsMessage item = 3;
 }
 
 message AddRoleGrantsResponse {
@@ -308,7 +308,7 @@ message RemoveRoleGrantsRequest {
   // The version ensures the role hasn't changed since it was last retrieved and if
   // it has the request will fail.
   uint32 version = 2;
-  
+
   GrantStringsMessage item = 3;
 }
 

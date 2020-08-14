@@ -2107,11 +2107,11 @@ type RoleServiceClient interface {
 	// ID is missing, malformed, or references a non-existing resource, an
 	// error is returned. It is not an error to have duplicate grants.
 	SetRoleGrants(ctx context.Context, in *SetRoleGrantsRequest, opts ...grpc.CallOption) (*SetRoleGrantsResponse, error)
-	// RemoveRoleGrants removes the users and/or groups from the specified role.
+	// RemoveRoleGrants removes the grants from the specified role.
 	// The provided request must include the scope and the role IDs from which the
-	// users and/or groups will be removed. If either ID is missing, malformed, or
-	// references a non-existing org, an error is returned.  It is not an error to
-	// have duplicate user/group IDs.
+	// grants will be removed. If either ID is missing, malformed, or
+	// references a non-existing scope, an error is returned.  It is not an error to
+	// have duplicate grants.
 	RemoveRoleGrants(ctx context.Context, in *RemoveRoleGrantsRequest, opts ...grpc.CallOption) (*RemoveRoleGrantsResponse, error)
 }
 
@@ -2283,11 +2283,11 @@ type RoleServiceServer interface {
 	// ID is missing, malformed, or references a non-existing resource, an
 	// error is returned. It is not an error to have duplicate grants.
 	SetRoleGrants(context.Context, *SetRoleGrantsRequest) (*SetRoleGrantsResponse, error)
-	// RemoveRoleGrants removes the users and/or groups from the specified role.
+	// RemoveRoleGrants removes the grants from the specified role.
 	// The provided request must include the scope and the role IDs from which the
-	// users and/or groups will be removed. If either ID is missing, malformed, or
-	// references a non-existing org, an error is returned.  It is not an error to
-	// have duplicate user/group IDs.
+	// grants will be removed. If either ID is missing, malformed, or
+	// references a non-existing scope, an error is returned.  It is not an error to
+	// have duplicate grants.
 	RemoveRoleGrants(context.Context, *RemoveRoleGrantsRequest) (*RemoveRoleGrantsResponse, error)
 }
 

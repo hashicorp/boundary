@@ -466,12 +466,20 @@ func local_request_HostSetService_DeleteHostSet_0(ctx context.Context, marshaler
 }
 
 var (
-	filter_HostSetService_AddHostSetHosts_0 = &utilities.DoubleArray{Encoding: map[string]int{"host_catalog_id": 0, "id": 1}, Base: []int{1, 1, 2, 0, 0}, Check: []int{0, 1, 1, 2, 3}}
+	filter_HostSetService_AddHostSetHosts_0 = &utilities.DoubleArray{Encoding: map[string]int{"item": 0, "host_catalog_id": 1, "id": 2}, Base: []int{1, 1, 2, 3, 0, 0, 0}, Check: []int{0, 1, 1, 1, 2, 3, 4}}
 )
 
 func request_HostSetService_AddHostSetHosts_0(ctx context.Context, marshaler runtime.Marshaler, client HostSetServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
 	var protoReq AddHostSetHostsRequest
 	var metadata runtime.ServerMetadata
+
+	newReader, berr := utilities.IOReaderFactory(req.Body)
+	if berr != nil {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", berr)
+	}
+	if err := marshaler.NewDecoder(newReader()).Decode(&protoReq.Item); err != nil && err != io.EOF {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
+	}
 
 	var (
 		val string
@@ -518,6 +526,14 @@ func local_request_HostSetService_AddHostSetHosts_0(ctx context.Context, marshal
 	var protoReq AddHostSetHostsRequest
 	var metadata runtime.ServerMetadata
 
+	newReader, berr := utilities.IOReaderFactory(req.Body)
+	if berr != nil {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", berr)
+	}
+	if err := marshaler.NewDecoder(newReader()).Decode(&protoReq.Item); err != nil && err != io.EOF {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
+	}
+
 	var (
 		val string
 		ok  bool
@@ -560,12 +576,20 @@ func local_request_HostSetService_AddHostSetHosts_0(ctx context.Context, marshal
 }
 
 var (
-	filter_HostSetService_SetHostSetHosts_0 = &utilities.DoubleArray{Encoding: map[string]int{"host_catalog_id": 0, "id": 1}, Base: []int{1, 1, 2, 0, 0}, Check: []int{0, 1, 1, 2, 3}}
+	filter_HostSetService_SetHostSetHosts_0 = &utilities.DoubleArray{Encoding: map[string]int{"item": 0, "host_catalog_id": 1, "id": 2}, Base: []int{1, 1, 2, 3, 0, 0, 0}, Check: []int{0, 1, 1, 1, 2, 3, 4}}
 )
 
 func request_HostSetService_SetHostSetHosts_0(ctx context.Context, marshaler runtime.Marshaler, client HostSetServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
 	var protoReq SetHostSetHostsRequest
 	var metadata runtime.ServerMetadata
+
+	newReader, berr := utilities.IOReaderFactory(req.Body)
+	if berr != nil {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", berr)
+	}
+	if err := marshaler.NewDecoder(newReader()).Decode(&protoReq.Item); err != nil && err != io.EOF {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
+	}
 
 	var (
 		val string
@@ -612,6 +636,14 @@ func local_request_HostSetService_SetHostSetHosts_0(ctx context.Context, marshal
 	var protoReq SetHostSetHostsRequest
 	var metadata runtime.ServerMetadata
 
+	newReader, berr := utilities.IOReaderFactory(req.Body)
+	if berr != nil {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", berr)
+	}
+	if err := marshaler.NewDecoder(newReader()).Decode(&protoReq.Item); err != nil && err != io.EOF {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
+	}
+
 	var (
 		val string
 		ok  bool
@@ -654,12 +686,20 @@ func local_request_HostSetService_SetHostSetHosts_0(ctx context.Context, marshal
 }
 
 var (
-	filter_HostSetService_RemoveHostSetHosts_0 = &utilities.DoubleArray{Encoding: map[string]int{"host_catalog_id": 0, "id": 1}, Base: []int{1, 1, 2, 0, 0}, Check: []int{0, 1, 1, 2, 3}}
+	filter_HostSetService_RemoveHostSetHosts_0 = &utilities.DoubleArray{Encoding: map[string]int{"item": 0, "host_catalog_id": 1, "id": 2}, Base: []int{1, 1, 2, 3, 0, 0, 0}, Check: []int{0, 1, 1, 1, 2, 3, 4}}
 )
 
 func request_HostSetService_RemoveHostSetHosts_0(ctx context.Context, marshaler runtime.Marshaler, client HostSetServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
 	var protoReq RemoveHostSetHostsRequest
 	var metadata runtime.ServerMetadata
+
+	newReader, berr := utilities.IOReaderFactory(req.Body)
+	if berr != nil {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", berr)
+	}
+	if err := marshaler.NewDecoder(newReader()).Decode(&protoReq.Item); err != nil && err != io.EOF {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
+	}
 
 	var (
 		val string
@@ -705,6 +745,14 @@ func request_HostSetService_RemoveHostSetHosts_0(ctx context.Context, marshaler 
 func local_request_HostSetService_RemoveHostSetHosts_0(ctx context.Context, marshaler runtime.Marshaler, server HostSetServiceServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
 	var protoReq RemoveHostSetHostsRequest
 	var metadata runtime.ServerMetadata
+
+	newReader, berr := utilities.IOReaderFactory(req.Body)
+	if berr != nil {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", berr)
+	}
+	if err := marshaler.NewDecoder(newReader()).Decode(&protoReq.Item); err != nil && err != io.EOF {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
+	}
 
 	var (
 		val string
@@ -868,7 +916,7 @@ func RegisterHostSetServiceHandlerServer(ctx context.Context, mux *runtime.Serve
 			return
 		}
 
-		forward_HostSetService_AddHostSetHosts_0(ctx, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+		forward_HostSetService_AddHostSetHosts_0(ctx, mux, outboundMarshaler, w, req, response_HostSetService_AddHostSetHosts_0{resp}, mux.GetForwardResponseOptions()...)
 
 	})
 
@@ -888,7 +936,7 @@ func RegisterHostSetServiceHandlerServer(ctx context.Context, mux *runtime.Serve
 			return
 		}
 
-		forward_HostSetService_SetHostSetHosts_0(ctx, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+		forward_HostSetService_SetHostSetHosts_0(ctx, mux, outboundMarshaler, w, req, response_HostSetService_SetHostSetHosts_0{resp}, mux.GetForwardResponseOptions()...)
 
 	})
 
@@ -908,7 +956,7 @@ func RegisterHostSetServiceHandlerServer(ctx context.Context, mux *runtime.Serve
 			return
 		}
 
-		forward_HostSetService_RemoveHostSetHosts_0(ctx, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+		forward_HostSetService_RemoveHostSetHosts_0(ctx, mux, outboundMarshaler, w, req, response_HostSetService_RemoveHostSetHosts_0{resp}, mux.GetForwardResponseOptions()...)
 
 	})
 
@@ -1069,7 +1117,7 @@ func RegisterHostSetServiceHandlerClient(ctx context.Context, mux *runtime.Serve
 			return
 		}
 
-		forward_HostSetService_AddHostSetHosts_0(ctx, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+		forward_HostSetService_AddHostSetHosts_0(ctx, mux, outboundMarshaler, w, req, response_HostSetService_AddHostSetHosts_0{resp}, mux.GetForwardResponseOptions()...)
 
 	})
 
@@ -1089,7 +1137,7 @@ func RegisterHostSetServiceHandlerClient(ctx context.Context, mux *runtime.Serve
 			return
 		}
 
-		forward_HostSetService_SetHostSetHosts_0(ctx, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+		forward_HostSetService_SetHostSetHosts_0(ctx, mux, outboundMarshaler, w, req, response_HostSetService_SetHostSetHosts_0{resp}, mux.GetForwardResponseOptions()...)
 
 	})
 
@@ -1109,7 +1157,7 @@ func RegisterHostSetServiceHandlerClient(ctx context.Context, mux *runtime.Serve
 			return
 		}
 
-		forward_HostSetService_RemoveHostSetHosts_0(ctx, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+		forward_HostSetService_RemoveHostSetHosts_0(ctx, mux, outboundMarshaler, w, req, response_HostSetService_RemoveHostSetHosts_0{resp}, mux.GetForwardResponseOptions()...)
 
 	})
 
@@ -1140,6 +1188,33 @@ type response_HostSetService_UpdateHostSet_0 struct {
 
 func (m response_HostSetService_UpdateHostSet_0) XXX_ResponseBody() interface{} {
 	response := m.Message.(*UpdateHostSetResponse)
+	return response.Item
+}
+
+type response_HostSetService_AddHostSetHosts_0 struct {
+	proto.Message
+}
+
+func (m response_HostSetService_AddHostSetHosts_0) XXX_ResponseBody() interface{} {
+	response := m.Message.(*AddHostSetHostsResponse)
+	return response.Item
+}
+
+type response_HostSetService_SetHostSetHosts_0 struct {
+	proto.Message
+}
+
+func (m response_HostSetService_SetHostSetHosts_0) XXX_ResponseBody() interface{} {
+	response := m.Message.(*SetHostSetHostsResponse)
+	return response.Item
+}
+
+type response_HostSetService_RemoveHostSetHosts_0 struct {
+	proto.Message
+}
+
+func (m response_HostSetService_RemoveHostSetHosts_0) XXX_ResponseBody() interface{} {
+	response := m.Message.(*RemoveHostSetHostsResponse)
 	return response.Item
 }
 
