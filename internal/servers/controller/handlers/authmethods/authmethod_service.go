@@ -26,7 +26,7 @@ var (
 
 func init() {
 	var err error
-	if maskManager, err = handlers.NewMaskManager(&pb.AuthMethod{}, &store.AuthMethod{}); err != nil {
+	if maskManager, err = handlers.NewMaskManager(&store.AuthMethod{}, &pb.AuthMethod{}, &pb.PasswordAuthMethodAttributes{}); err != nil {
 		panic(err)
 	}
 }
@@ -208,6 +208,18 @@ func (s Service) updateInRepo(ctx context.Context, scopeId, id string, version u
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "Unable to build auth method for update: %v.", err)
 	}
+
+	pwAttrs := &pb.PasswordAuthMethodAttributes{}
+	if err := handlers.StructToProto(item.GetAttributes(), pwAttrs); err != nil {
+		return nil, status.Errorf(codes.InvalidArgument, "Provided attributes don't match expected format.")
+	}
+	if pwAttrs.GetMinLoginNameLength() != 0 {
+		u.MinLoginNameLength = pwAttrs.GetMinLoginNameLength()
+	}
+	if pwAttrs.GetMinPasswordLength() != 0 {
+		u.MinPasswordLength = pwAttrs.GetMinPasswordLength()
+	}
+
 	u.PublicId = id
 	dbMask := maskManager.Translate(mask)
 	if len(dbMask) == 0 {
@@ -251,10 +263,10 @@ func toProto(in *password.AuthMethod) (*pb.AuthMethod, error) {
 		Type:        "password",
 	}
 	if in.GetDescription() != "" {
-		out.Description = &wrapperspb.StringValue{Value: in.GetDescription()}
+		out.Description = wrapperspb.String(in.GetDescription())
 	}
 	if in.GetName() != "" {
-		out.Name = &wrapperspb.StringValue{Value: in.GetName()}
+		out.Name = wrapperspb.String(in.GetName())
 	}
 	st, err := handlers.ProtoToStruct(&pb.PasswordAuthMethodAttributes{
 		MinLoginNameLength: in.GetMinLoginNameLength(),

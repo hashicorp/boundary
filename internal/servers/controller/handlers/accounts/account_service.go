@@ -26,7 +26,7 @@ var (
 
 func init() {
 	var err error
-	if maskManager, err = handlers.NewMaskManager(&pb.Account{}, &store.Account{}); err != nil {
+	if maskManager, err = handlers.NewMaskManager(&store.Account{}, &pb.Account{}, &pb.PasswordAccountAttributes{}); err != nil {
 		panic(err)
 	}
 }
@@ -198,6 +198,15 @@ func (s Service) updateInRepo(ctx context.Context, authMethodId, id string, vers
 		return nil, status.Errorf(codes.Internal, "Unable to build auth method for update: %v.", err)
 	}
 	u.PublicId = id
+
+	pwAttrs := &pb.PasswordAccountAttributes{}
+	if err := handlers.StructToProto(item.GetAttributes(), pwAttrs); err != nil {
+		return nil, status.Errorf(codes.InvalidArgument, "Provided attributes don't match expected format.")
+	}
+	if pwAttrs.GetLoginName() != "" {
+		u.LoginName = pwAttrs.GetLoginName()
+	}
+
 	dbMask := maskManager.Translate(mask)
 	if len(dbMask) == 0 {
 		return nil, handlers.InvalidArgumentErrorf("No valid fields included in the update mask.", map[string]string{"update_mask": "No valid paths provided in the update mask."})
