@@ -47,6 +47,7 @@ func (c *PasswordCommand) Help() string {
 			"",
 			`    $ boundary auth-methods password create -name prodops -description "Password auth-method for ProdOps"`,
 			"",
+			"",
 		})
 
 	case "update":
@@ -56,6 +57,8 @@ func (c *PasswordCommand) Help() string {
 			"  Update a password-type auth-method given its ID. Example:",
 			"",
 			`    $ boundary auth-methods password update -id paum_1234567890 -name "devops" -description "Password auth-method for DevOps"`,
+			"",
+			"",
 		})
 	}
 	return info + c.Flags().Help()
@@ -64,9 +67,9 @@ func (c *PasswordCommand) Help() string {
 func (c *PasswordCommand) Flags() *base.FlagSets {
 	set := c.FlagSet(base.FlagSetHTTP | base.FlagSetClient | base.FlagSetOutputFormat)
 
-	if len(flagsMap[c.Func]) > 0 {
+	if len(passwordFlagsMap[c.Func]) > 0 {
 		f := set.NewFlagSet("Command Options")
-		common.PopulateCommonFlags(c.Command, f, "password-type auth-method", flagsMap[c.Func])
+		common.PopulateCommonFlags(c.Command, f, "password-type auth-method", passwordFlagsMap[c.Func])
 	}
 
 	f := set.NewFlagSet("Password Auth-Method Options")
