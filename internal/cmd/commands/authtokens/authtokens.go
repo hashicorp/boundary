@@ -1,10 +1,11 @@
-package scopes
+package authtokens
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/hashicorp/boundary/api"
-	"github.com/hashicorp/boundary/api/scopes"
+	"github.com/hashicorp/boundary/api/authtokens"
 	"github.com/hashicorp/boundary/internal/cmd/base"
 	"github.com/hashicorp/boundary/internal/cmd/common"
 	"github.com/hashicorp/boundary/internal/types/resource"
@@ -24,18 +25,16 @@ type Command struct {
 }
 
 func (c *Command) Synopsis() string {
-	return common.SynopsisFunc(c.Func, "scope")
+	return common.SynopsisFunc(c.Func, "auth-token")
 }
 
 var flagsMap = map[string][]string{
-	"create": {"name", "description"},
-	"update": {"id", "name", "description", "version"},
 	"read":   {"id"},
 	"delete": {"id"},
 }
 
 func (c *Command) Help() string {
-	helpMap := common.HelpMap("scope")
+	helpMap := common.HelpMap("auth-token")
 	if c.Func == "" {
 		return helpMap["base"]()
 	}
@@ -47,7 +46,7 @@ func (c *Command) Flags() *base.FlagSets {
 
 	if len(flagsMap[c.Func]) > 0 {
 		f := set.NewFlagSet("Command Options")
-		common.PopulateCommonFlags(c.Command, f, resource.Scope, flagsMap[c.Func])
+		common.PopulateCommonFlags(c.Command, f, resource.AuthToken, flagsMap[c.Func])
 	}
 
 	return set
@@ -84,61 +83,25 @@ func (c *Command) Run(args []string) int {
 		return 2
 	}
 
-	var opts []scopes.Option
-
-	switch c.FlagName {
-	case "":
-	case "null":
-		opts = append(opts, scopes.DefaultName())
-	default:
-		opts = append(opts, scopes.WithName(c.FlagName))
-	}
-
-	switch c.FlagDescription {
-	case "":
-	case "null":
-		opts = append(opts, scopes.DefaultDescription())
-	default:
-		opts = append(opts, scopes.WithDescription(c.FlagDescription))
-	}
-
-	scopeClient := scopes.NewScopesClient(client)
-
-	// Perform check-and-set when needed
-	var version uint32
-	switch c.Func {
-	case "create", "read", "delete", "list":
-		// These don't udpate so don't need the existing version
-	default:
-		switch c.FlagVersion {
-		case 0:
-			opts = append(opts, scopes.WithAutomaticVersioning())
-		default:
-			version = uint32(c.FlagVersion)
-		}
-	}
+	authtokenClient := authtokens.NewAuthTokensClient(client)
 
 	var existed bool
-	var scope *scopes.Scope
-	var listedScopes []*scopes.Scope
+	var token *authtokens.AuthToken
+	var listedTokens []*authtokens.AuthToken
 	var apiErr *api.Error
 
 	switch c.Func {
-	case "create":
-		scope, apiErr, err = scopeClient.Create(c.Context, client.ScopeId(), opts...)
-	case "update":
-		scope, apiErr, err = scopeClient.Update(c.Context, c.FlagId, version, opts...)
 	case "read":
-		scope, apiErr, err = scopeClient.Read(c.Context, c.FlagId, opts...)
+		token, apiErr, err = authtokenClient.Read(c.Context, c.FlagId)
 	case "delete":
-		existed, apiErr, err = scopeClient.Delete(c.Context, c.FlagId, opts...)
+		existed, apiErr, err = authtokenClient.Delete(c.Context, c.FlagId)
 	case "list":
-		listedScopes, apiErr, err = scopeClient.List(c.Context, client.ScopeId(), opts...)
+		listedTokens, apiErr, err = authtokenClient.List(c.Context)
 	}
 
-	plural := "scope"
+	plural := "auth token"
 	if c.Func == "list" {
-		plural = "scopes"
+		plural = "auth tokens"
 	}
 	if err != nil {
 		c.UI.Error(fmt.Sprintf("Error trying to %s %s: %s", c.Func, plural, err.Error()))
@@ -169,11 +132,11 @@ func (c *Command) Run(args []string) int {
 	case "list":
 		switch base.Format(c.UI) {
 		case "json":
-			if len(listedScopes) == 0 {
+			if len(listedTokens) == 0 {
 				c.UI.Output("null")
 				return 0
 			}
-			b, err := base.JsonFormatter{}.Format(listedScopes)
+			b, err := base.JsonFormatter{}.Format(listedTokens)
 			if err != nil {
 				c.UI.Error(fmt.Errorf("Error formatting as JSON: %w", err).Error())
 				return 1
@@ -181,35 +144,28 @@ func (c *Command) Run(args []string) int {
 			c.UI.Output(string(b))
 
 		case "table":
-			if len(listedScopes) == 0 {
-				c.UI.Output("No scopes found")
+			if len(listedTokens) == 0 {
+				c.UI.Output("No auth tokens found")
 				return 0
 			}
 			var output []string
 			output = []string{
 				"",
-				"Scope information:",
+				"Auth Token information:",
 			}
-			for i, s := range listedScopes {
+			for i, t := range listedTokens {
 				if i > 0 {
 					output = append(output, "")
 				}
-				if true {
-					output = append(output,
-						fmt.Sprintf("  ID:             %s", s.Id),
-						fmt.Sprintf("    Version:      %d", s.Version),
-					)
-				}
-				if s.Name != "" {
-					output = append(output,
-						fmt.Sprintf("    Name:         %s", s.Name),
-					)
-				}
-				if s.Description != "" {
-					output = append(output,
-						fmt.Sprintf("    Description:  %s", s.Description),
-					)
-				}
+				output = append(output,
+					fmt.Sprintf("  ID:                           %s", t.Id),
+					fmt.Sprintf("    Auth Method ID:             %s", t.AuthMethodId),
+					fmt.Sprintf("    User ID:                    %s", t.UserId),
+					fmt.Sprintf("    Expiration Time:            %s", t.ExpirationTime.Local().Format(time.RFC3339)),
+					fmt.Sprintf("    Approximate Last Used Time: %s", t.ApproximateLastUsedTime.Local().Format(time.RFC3339)),
+					fmt.Sprintf("    Created Time:               %s", t.CreatedTime.Local().Format(time.RFC3339)),
+					fmt.Sprintf("    Updated Time:               %s", t.UpdatedTime.Local().Format(time.RFC3339)),
+				)
 			}
 			c.UI.Output(base.WrapForHelpText(output))
 		}
@@ -218,9 +174,9 @@ func (c *Command) Run(args []string) int {
 
 	switch base.Format(c.UI) {
 	case "table":
-		c.UI.Output(generateScopeTableOutput(scope))
+		c.UI.Output(generateAuthTokenTableOutput(token))
 	case "json":
-		b, err := base.JsonFormatter{}.Format(scope)
+		b, err := base.JsonFormatter{}.Format(token)
 		if err != nil {
 			c.UI.Error(fmt.Errorf("Error formatting as JSON: %w", err).Error())
 			return 1

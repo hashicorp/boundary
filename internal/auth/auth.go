@@ -45,6 +45,7 @@ type RequestInfo struct {
 
 	// This is used for operations on the scopes collection
 	scopeIdOverride string
+	userIdOverride  string
 
 	// The following are useful for tests
 	DisableAuthzFailures bool
@@ -96,6 +97,7 @@ func Verify(ctx context.Context, opt ...Option) (ret VerifyResults) {
 		// context we won't catch in tests
 		panic("no verifier information found in context")
 	}
+	opts := getOpts(opt...)
 	ret.Scope = new(scopes.ScopeInfo)
 	if v.requestInfo.DisableAuthEntirely {
 		ret.Scope.Id = v.requestInfo.scopeIdOverride
@@ -107,11 +109,11 @@ func Verify(ctx context.Context, opt ...Option) (ret VerifyResults) {
 		case strings.HasPrefix(ret.Scope.Id, scope.Project.Prefix()):
 			ret.Scope.Type = scope.Project.String()
 		}
+		ret.UserId = v.requestInfo.userIdOverride
 		ret.Valid = true
 		return
 	}
 	v.ctx = ctx
-	opts := getOpts(opt...)
 	v.requestInfo.scopeIdOverride = opts.withScopeId
 	if err := v.parseAuthParams(); err != nil {
 		v.logger.Trace("error reading auth parameters from URL", "url", v.requestInfo.Path, "method", v.requestInfo.Method, "error", err)

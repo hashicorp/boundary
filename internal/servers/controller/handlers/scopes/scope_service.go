@@ -106,7 +106,7 @@ func (s Service) CreateScope(ctx context.Context, req *pbs.CreateScopeRequest) (
 	if err := validateCreateRequest(req); err != nil {
 		return nil, err
 	}
-	p, err := s.createInRepo(ctx, authResults.Scope, req.GetItem())
+	p, err := s.createInRepo(ctx, authResults, req.GetItem())
 	if err != nil {
 		return nil, err
 	}
@@ -162,7 +162,7 @@ func (s Service) getFromRepo(ctx context.Context, id string) (*pb.Scope, error) 
 	return ToProto(p), nil
 }
 
-func (s Service) createInRepo(ctx context.Context, parentScope *scopes.ScopeInfo, item *pb.Scope) (*pb.Scope, error) {
+func (s Service) createInRepo(ctx context.Context, authResults auth.VerifyResults, item *pb.Scope) (*pb.Scope, error) {
 	var opts []iam.Option
 	if item.GetName() != nil {
 		opts = append(opts, iam.WithName(item.GetName().GetValue()))
@@ -171,6 +171,7 @@ func (s Service) createInRepo(ctx context.Context, parentScope *scopes.ScopeInfo
 		opts = append(opts, iam.WithDescription(item.GetDescription().GetValue()))
 	}
 
+	parentScope := authResults.Scope
 	var iamScope *iam.Scope
 	var err error
 	switch parentScope.GetType() {
@@ -186,7 +187,7 @@ func (s Service) createInRepo(ctx context.Context, parentScope *scopes.ScopeInfo
 	if err != nil {
 		return nil, err
 	}
-	out, err := repo.CreateScope(ctx, iamScope)
+	out, err := repo.CreateScope(ctx, iamScope, authResults.UserId)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "Unable to create scope: %v.", err)
 	}

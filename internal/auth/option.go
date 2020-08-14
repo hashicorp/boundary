@@ -14,16 +14,24 @@ type Option func(*options)
 // options = how options are represented
 type options struct {
 	withScopeId string
+	withUserId  string
 }
 
 func getDefaultOptions() options {
 	return options{
 		withScopeId: "",
+		withUserId:  "",
 	}
 }
 
 func WithScopeId(id string) Option {
 	return func(o *options) {
 		o.withScopeId = id
+	}
+}
+
+func WithUserId(id string) Option {
+	return func(o *options) {
+		o.withUserId = id
 	}
 }

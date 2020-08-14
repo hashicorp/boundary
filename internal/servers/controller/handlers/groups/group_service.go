@@ -360,7 +360,6 @@ func toProto(in *iam.Group, members []*iam.GroupMember) *pb.Group {
 		out.MemberIds = append(out.MemberIds, m.GetMemberId())
 		out.Members = append(out.Members, &pb.Member{
 			Id:      m.GetMemberId(),
-			Type:    m.GetType(),
 			ScopeId: m.GetMemberScopeId(),
 		})
 	}

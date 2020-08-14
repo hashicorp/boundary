@@ -8,7 +8,6 @@ import (
 	"github.com/hashicorp/boundary/internal/cmd/base"
 	"github.com/hashicorp/boundary/internal/cmd/common"
 	"github.com/hashicorp/boundary/internal/perms"
-	"github.com/hashicorp/boundary/internal/types/resource"
 	"github.com/hashicorp/vault/sdk/helper/strutil"
 	"github.com/kr/pretty"
 	"github.com/mitchellh/cli"
@@ -41,7 +40,7 @@ func (c *Command) Synopsis() string {
 }
 
 var helpMap = func() map[string]func() string {
-	ret := common.HelpMap(resource.Role)
+	ret := common.HelpMap("role")
 	ret["add-principals"] = addPrincipalsHelp
 	ret["set-principals"] = setPrincipalsHelp
 	ret["remove-principals"] = removePrincipalsHelp
@@ -75,9 +74,10 @@ func (c *Command) Help() string {
 func (c *Command) Flags() *base.FlagSets {
 	set := c.FlagSet(base.FlagSetHTTP | base.FlagSetClient | base.FlagSetOutputFormat)
 
-	f := set.NewFlagSet("Command Options")
-
-	populateFlags(c, f, flagsMap[c.Func])
+	if len(flagsMap[c.Func]) > 0 {
+		f := set.NewFlagSet("Command Options")
+		populateFlags(c, f, flagsMap[c.Func])
+	}
 	return set
 }
 
@@ -160,7 +160,7 @@ func (c *Command) Run(args []string) int {
 			}
 		}
 		if principals == nil {
-			c.UI.Error("No principals supplied via -principals")
+			c.UI.Error("No principals supplied via -principal")
 			return 1
 		}
 
@@ -273,7 +273,7 @@ func (c *Command) Run(args []string) int {
 			}
 			b, err := base.JsonFormatter{}.Format(listedRoles)
 			if err != nil {
-				c.UI.Error(fmt.Errorf("Error formatting to JSON: %w", err).Error())
+				c.UI.Error(fmt.Errorf("Error formatting as JSON: %w", err).Error())
 				return 1
 			}
 			c.UI.Output(string(b))
@@ -294,17 +294,18 @@ func (c *Command) Run(args []string) int {
 				}
 				if true {
 					output = append(output,
-						fmt.Sprintf("  ID:               %s", r.Id),
+						fmt.Sprintf("  ID:            %s", r.Id),
+						fmt.Sprintf("    Version:     %d", r.Version),
 					)
 				}
 				if r.Name != "" {
 					output = append(output,
-						fmt.Sprintf("    Name:           %s", r.Name),
+						fmt.Sprintf("    Name:        %s", r.Name),
 					)
 				}
 				if r.Description != "" {
 					output = append(output,
-						fmt.Sprintf("    Description:    %s", r.Description),
+						fmt.Sprintf("    Description: %s", r.Description),
 					)
 				}
 			}
@@ -319,7 +320,7 @@ func (c *Command) Run(args []string) int {
 	case "json":
 		b, err := base.JsonFormatter{}.Format(role)
 		if err != nil {
-			c.UI.Error(fmt.Errorf("Error formatting to JSON: %w", err).Error())
+			c.UI.Error(fmt.Errorf("Error formatting as JSON: %w", err).Error())
 			return 1
 		}
 		c.UI.Output(string(b))

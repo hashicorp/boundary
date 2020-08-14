@@ -2,6 +2,7 @@ package scopes_test
 
 import (
 	"context"
+	"fmt"
 	"strings"
 	"testing"
 
@@ -211,7 +212,7 @@ func TestList(t *testing.T) {
 	for i := 0; i < 10; i++ {
 		newO, err := iam.NewOrg()
 		require.NoError(t, err)
-		o, err := repo.CreateScope(context.Background(), newO)
+		o, err := repo.CreateScope(context.Background(), newO, "")
 		require.NoError(t, err)
 		wantOrgs = append(wantOrgs, &pb.Scope{
 			Id:          o.GetPublicId(),
@@ -228,7 +229,7 @@ func TestList(t *testing.T) {
 	for i := 0; i < 10; i++ {
 		newP, err := iam.NewProject(oWithProjects.GetPublicId())
 		require.NoError(t, err)
-		p, err := repo.CreateScope(context.Background(), newP)
+		p, err := repo.CreateScope(context.Background(), newP, "")
 		require.NoError(t, err)
 		wantProjects = append(wantProjects, &pb.Scope{
 			Id:          p.GetPublicId(),
@@ -393,11 +394,23 @@ func TestDelete_twice(t *testing.T) {
 }
 
 func TestCreate(t *testing.T) {
+	ctx := context.Background()
 	require := require.New(t)
-	defaultOrg, defaultProj, repo := createDefaultScopesAndRepo(t)
+	defaultOrg, defaultProj, repoFn := createDefaultScopesAndRepo(t)
 	defaultProjCreated, err := ptypes.Timestamp(defaultProj.GetCreateTime().GetTimestamp())
 	require.NoError(err, "Error converting proto to timestamp.")
 	toMerge := &pbs.CreateScopeRequest{}
+
+	repo, err := repoFn()
+	require.NoError(err)
+	globalUser, err := iam.NewUser(scope.Global.String())
+	require.NoError(err)
+	globalUser, err = repo.CreateUser(ctx, globalUser)
+	require.NoError(err)
+	orgUser, err := iam.NewUser(defaultOrg.GetPublicId())
+	require.NoError(err)
+	orgUser, err = repo.CreateUser(ctx, orgUser)
+	require.NoError(err)
 
 	cases := []struct {
 		name    string
@@ -477,39 +490,75 @@ func TestCreate(t *testing.T) {
 		},
 	}
 	for _, tc := range cases {
-		t.Run(tc.name, func(t *testing.T) {
-			assert := assert.New(t)
-			req := proto.Clone(toMerge).(*pbs.CreateScopeRequest)
-			proto.Merge(req, tc.req)
-
-			s, err := scopes.NewService(repo)
-			require.NoError(err, "Error when getting new project service.")
-
-			got, gErr := s.CreateScope(auth.DisabledAuthTestContext(auth.WithScopeId(tc.scopeId)), req)
-			assert.Equal(tc.errCode, status.Code(gErr), "CreateScope(%+v) got error %v, wanted %v", req, gErr, tc.errCode)
-			if got != nil {
-				assert.Contains(got.GetUri(), tc.res.Uri)
-				switch tc.scopeId {
-				case "global":
-					assert.True(strings.HasPrefix(got.GetItem().GetId(), "o_"))
-				default:
-					assert.True(strings.HasPrefix(got.GetItem().GetId(), "p_"))
+		for _, withUserId := range []bool{false, true} {
+			t.Run(fmt.Sprintf("%s-userid-%t", tc.name, withUserId), func(t *testing.T) {
+				var name string
+				if tc.req != nil && tc.req.GetItem() != nil && tc.req.GetItem().GetName() != nil {
+					name = tc.req.GetItem().GetName().GetValue()
+					localName := name
+					defer func() {
+						tc.res.GetItem().GetName().Value = localName
+					}()
 				}
-				gotCreateTime, err := ptypes.Timestamp(got.GetItem().GetCreatedTime())
-				require.NoError(err, "Error converting proto to timestamp.")
-				gotUpdateTime, err := ptypes.Timestamp(got.GetItem().GetUpdatedTime())
-				require.NoError(err, "Error converting proto to timestamp.")
-				// Verify it is a project created after the test setup's default project
-				assert.True(gotCreateTime.After(defaultProjCreated), "New scope should have been created after default project. Was created %v, which is after %v", gotCreateTime, defaultProjCreated)
-				assert.True(gotUpdateTime.After(defaultProjCreated), "New scope should have been updated after default project. Was updated %v, which is after %v", gotUpdateTime, defaultProjCreated)
+				assert := assert.New(t)
+				req := proto.Clone(toMerge).(*pbs.CreateScopeRequest)
+				proto.Merge(req, tc.req)
 
-				// Clear all values which are hard to compare against.
-				got.Uri, tc.res.Uri = "", ""
-				got.Item.Id, tc.res.Item.Id = "", ""
-				got.Item.CreatedTime, got.Item.UpdatedTime, tc.res.Item.CreatedTime, tc.res.Item.UpdatedTime = nil, nil, nil, nil
-			}
-			assert.Empty(cmp.Diff(got, tc.res, protocmp.Transform()), "CreateScope(%q) got response %q, wanted %q", req, got, tc.res)
-		})
+				s, err := scopes.NewService(repoFn)
+				require.NoError(err, "Error when getting new project service.")
+
+				if name != "" {
+					name = fmt.Sprintf("%s-%t", name, withUserId)
+					req.GetItem().GetName().Value = name
+				}
+				var userId string
+				if withUserId {
+					if tc.scopeId == scope.Global.String() {
+						userId = globalUser.GetPublicId()
+					} else {
+						userId = orgUser.GetPublicId()
+					}
+					assert.NotEmpty(userId)
+				}
+				got, gErr := s.CreateScope(auth.DisabledAuthTestContext(auth.WithScopeId(tc.scopeId), auth.WithUserId(userId)), req)
+				assert.Equal(tc.errCode, status.Code(gErr), "CreateScope(%+v) got error %v, wanted %v", req, gErr, tc.errCode)
+				if got != nil {
+					assert.Contains(got.GetUri(), tc.res.Uri)
+					switch tc.scopeId {
+					case "global":
+						assert.True(strings.HasPrefix(got.GetItem().GetId(), "o_"))
+					default:
+						assert.True(strings.HasPrefix(got.GetItem().GetId(), "p_"))
+					}
+					gotCreateTime, err := ptypes.Timestamp(got.GetItem().GetCreatedTime())
+					require.NoError(err, "Error converting proto to timestamp.")
+					gotUpdateTime, err := ptypes.Timestamp(got.GetItem().GetUpdatedTime())
+					require.NoError(err, "Error converting proto to timestamp.")
+					// Verify it is a project created after the test setup's default project
+					assert.True(gotCreateTime.After(defaultProjCreated), "New scope should have been created after default project. Was created %v, which is after %v", gotCreateTime, defaultProjCreated)
+					assert.True(gotUpdateTime.After(defaultProjCreated), "New scope should have been updated after default project. Was updated %v, which is after %v", gotUpdateTime, defaultProjCreated)
+
+					if withUserId {
+						repo, err := repoFn()
+						require.NoError(err)
+						roles, err := repo.ListRoles(ctx, got.GetItem().GetId())
+						require.NoError(err)
+						require.Len(roles, 1)
+						role := roles[0]
+						assert.Equal("on-scope-creation", role.GetName())
+						assert.Equal(fmt.Sprintf("Role created for administration of scope %s at its creation time", got.GetItem().GetId()), role.GetDescription())
+					}
+
+					// Clear all values which are hard to compare against.
+					assert.Equal(name, got.GetItem().GetName().GetValue())
+					got.Item.Name = tc.res.GetItem().GetName()
+					got.Uri, tc.res.Uri = "", ""
+					got.Item.Id, tc.res.Item.Id = "", ""
+					got.Item.CreatedTime, got.Item.UpdatedTime, tc.res.Item.CreatedTime, tc.res.Item.UpdatedTime = nil, nil, nil, nil
+				}
+				assert.Empty(cmp.Diff(tc.res, got, protocmp.Transform()), "CreateScope(%q) got response %q, wanted %q", req, got, tc.res)
+			})
+		}
 	}
 }
 

@@ -1,13 +1,12 @@
-package scopes
+package groups
 
 import (
 	"fmt"
 
 	"github.com/hashicorp/boundary/api"
-	"github.com/hashicorp/boundary/api/scopes"
+	"github.com/hashicorp/boundary/api/groups"
 	"github.com/hashicorp/boundary/internal/cmd/base"
 	"github.com/hashicorp/boundary/internal/cmd/common"
-	"github.com/hashicorp/boundary/internal/types/resource"
 	"github.com/hashicorp/vault/sdk/helper/strutil"
 	"github.com/kr/pretty"
 	"github.com/mitchellh/cli"
@@ -21,25 +20,44 @@ type Command struct {
 	*base.Command
 
 	Func string
+
+	flagMembers []string
 }
 
 func (c *Command) Synopsis() string {
-	return common.SynopsisFunc(c.Func, "scope")
+	switch c.Func {
+	case "", "create", "update", "read", "delete", "list":
+		return common.SynopsisFunc(c.Func, "group")
+	case "add-members", "set-members", "remove-members":
+		return memberSynopsisFunc(c.Func)
+	}
+	return ""
+}
+
+var helpMap = func() map[string]func() string {
+	ret := common.HelpMap("group")
+	ret["add-members"] = addMembersHelp
+	ret["set-members"] = setMembersHelp
+	ret["remove-members"] = removeMembersHelp
+	return ret
 }
 
 var flagsMap = map[string][]string{
-	"create": {"name", "description"},
-	"update": {"id", "name", "description", "version"},
-	"read":   {"id"},
-	"delete": {"id"},
+	"create":         {"name", "description"},
+	"update":         {"id", "name", "description", "version"},
+	"read":           {"id"},
+	"delete":         {"id"},
+	"add-members":    {"id", "member", "version"},
+	"set-members":    {"id", "member", "version"},
+	"remove-members": {"id", "member", "version"},
 }
 
 func (c *Command) Help() string {
-	helpMap := common.HelpMap("scope")
+	hm := helpMap()
 	if c.Func == "" {
-		return helpMap["base"]()
+		return hm["base"]()
 	}
-	return helpMap[c.Func]() + "\n\n" + c.Flags().Help()
+	return hm[c.Func]() + "\n\n" + c.Flags().Help()
 }
 
 func (c *Command) Flags() *base.FlagSets {
@@ -47,7 +65,7 @@ func (c *Command) Flags() *base.FlagSets {
 
 	if len(flagsMap[c.Func]) > 0 {
 		f := set.NewFlagSet("Command Options")
-		common.PopulateCommonFlags(c.Command, f, resource.Scope, flagsMap[c.Func])
+		populateFlags(c, f, flagsMap[c.Func])
 	}
 
 	return set
@@ -84,25 +102,46 @@ func (c *Command) Run(args []string) int {
 		return 2
 	}
 
-	var opts []scopes.Option
+	var opts []groups.Option
 
 	switch c.FlagName {
 	case "":
 	case "null":
-		opts = append(opts, scopes.DefaultName())
+		opts = append(opts, groups.DefaultName())
 	default:
-		opts = append(opts, scopes.WithName(c.FlagName))
+		opts = append(opts, groups.WithName(c.FlagName))
 	}
-
 	switch c.FlagDescription {
 	case "":
 	case "null":
-		opts = append(opts, scopes.DefaultDescription())
+		opts = append(opts, groups.DefaultDescription())
 	default:
-		opts = append(opts, scopes.WithDescription(c.FlagDescription))
+		opts = append(opts, groups.WithDescription(c.FlagDescription))
 	}
 
-	scopeClient := scopes.NewScopesClient(client)
+	members := c.flagMembers
+	switch c.Func {
+	case "add-members", "remove-members":
+		if len(c.flagMembers) == 0 {
+			c.UI.Error("No members supplied via -member")
+			return 1
+		}
+
+	case "set-members":
+		switch len(c.flagMembers) {
+		case 0:
+		case 1:
+			if c.flagMembers[0] == "null" {
+				members = []string{}
+			}
+		}
+		if members == nil {
+			c.UI.Error("No members supplied via -member")
+			return 1
+		}
+	}
+
+	groupClient := groups.NewGroupsClient(client)
 
 	// Perform check-and-set when needed
 	var version uint32
@@ -112,33 +151,39 @@ func (c *Command) Run(args []string) int {
 	default:
 		switch c.FlagVersion {
 		case 0:
-			opts = append(opts, scopes.WithAutomaticVersioning())
+			opts = append(opts, groups.WithAutomaticVersioning())
 		default:
 			version = uint32(c.FlagVersion)
 		}
 	}
 
 	var existed bool
-	var scope *scopes.Scope
-	var listedScopes []*scopes.Scope
+	var group *groups.Group
+	var listedGroups []*groups.Group
 	var apiErr *api.Error
 
 	switch c.Func {
 	case "create":
-		scope, apiErr, err = scopeClient.Create(c.Context, client.ScopeId(), opts...)
+		group, apiErr, err = groupClient.Create(c.Context, opts...)
 	case "update":
-		scope, apiErr, err = scopeClient.Update(c.Context, c.FlagId, version, opts...)
+		group, apiErr, err = groupClient.Update(c.Context, c.FlagId, version, opts...)
 	case "read":
-		scope, apiErr, err = scopeClient.Read(c.Context, c.FlagId, opts...)
+		group, apiErr, err = groupClient.Read(c.Context, c.FlagId, opts...)
 	case "delete":
-		existed, apiErr, err = scopeClient.Delete(c.Context, c.FlagId, opts...)
+		existed, apiErr, err = groupClient.Delete(c.Context, c.FlagId, opts...)
 	case "list":
-		listedScopes, apiErr, err = scopeClient.List(c.Context, client.ScopeId(), opts...)
+		listedGroups, apiErr, err = groupClient.List(c.Context, opts...)
+	case "add-members":
+		group, apiErr, err = groupClient.AddMembers(c.Context, c.FlagId, version, members, opts...)
+	case "set-members":
+		group, apiErr, err = groupClient.SetMembers(c.Context, c.FlagId, version, members, opts...)
+	case "remove-members":
+		group, apiErr, err = groupClient.RemoveMembers(c.Context, c.FlagId, version, members, opts...)
 	}
 
-	plural := "scope"
+	plural := "group"
 	if c.Func == "list" {
-		plural = "scopes"
+		plural = "groups"
 	}
 	if err != nil {
 		c.UI.Error(fmt.Sprintf("Error trying to %s %s: %s", c.Func, plural, err.Error()))
@@ -169,11 +214,11 @@ func (c *Command) Run(args []string) int {
 	case "list":
 		switch base.Format(c.UI) {
 		case "json":
-			if len(listedScopes) == 0 {
+			if len(listedGroups) == 0 {
 				c.UI.Output("null")
 				return 0
 			}
-			b, err := base.JsonFormatter{}.Format(listedScopes)
+			b, err := base.JsonFormatter{}.Format(listedGroups)
 			if err != nil {
 				c.UI.Error(fmt.Errorf("Error formatting as JSON: %w", err).Error())
 				return 1
@@ -181,33 +226,33 @@ func (c *Command) Run(args []string) int {
 			c.UI.Output(string(b))
 
 		case "table":
-			if len(listedScopes) == 0 {
-				c.UI.Output("No scopes found")
+			if len(listedGroups) == 0 {
+				c.UI.Output("No groups found")
 				return 0
 			}
 			var output []string
 			output = []string{
 				"",
-				"Scope information:",
+				"Group information:",
 			}
-			for i, s := range listedScopes {
+			for i, g := range listedGroups {
 				if i > 0 {
 					output = append(output, "")
 				}
 				if true {
 					output = append(output,
-						fmt.Sprintf("  ID:             %s", s.Id),
-						fmt.Sprintf("    Version:      %d", s.Version),
+						fmt.Sprintf("  ID:            %s", g.Id),
+						fmt.Sprintf("    Version:     %d", g.Version),
 					)
 				}
-				if s.Name != "" {
+				if g.Name != "" {
 					output = append(output,
-						fmt.Sprintf("    Name:         %s", s.Name),
+						fmt.Sprintf("    Name:        %s", g.Name),
 					)
 				}
-				if s.Description != "" {
+				if g.Description != "" {
 					output = append(output,
-						fmt.Sprintf("    Description:  %s", s.Description),
+						fmt.Sprintf("    Description: %s", g.Description),
 					)
 				}
 			}
@@ -218,9 +263,9 @@ func (c *Command) Run(args []string) int {
 
 	switch base.Format(c.UI) {
 	case "table":
-		c.UI.Output(generateScopeTableOutput(scope))
+		c.UI.Output(generateGroupTableOutput(group))
 	case "json":
-		b, err := base.JsonFormatter{}.Format(scope)
+		b, err := base.JsonFormatter{}.Format(group)
 		if err != nil {
 			c.UI.Error(fmt.Errorf("Error formatting as JSON: %w", err).Error())
 			return 1
