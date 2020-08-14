@@ -250,7 +250,6 @@ func (v *verifier) parseAuthParams() error {
 				return fmt.Errorf("perform auth check: failed to lookup scope: %w", err)
 			}
 			if scp == nil {
-				v.Status = http.StatusNotFound
 				return fmt.Errorf("perform auth check: non-existent scope %q", id)
 			}
 			v.res.ScopeId = scp.GetParentId()
