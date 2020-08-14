@@ -183,7 +183,7 @@ func TestDelete(t *testing.T) {
 			assert := assert.New(t)
 			got, gErr := s.DeleteHost(auth.DisabledAuthTestContext(auth.WithScopeId(tc.scopeId)), tc.req)
 			assert.Equal(tc.errCode, status.Code(gErr), "DeleteHost(%+v) got error %v, wanted %v", tc.req, gErr, tc.errCode)
-			assert.EqualValuesf(tc.res, got, "DeleteHost(%q) got response %q, wanted %q", tc.req, got, tc.res)
+			assert.Empty(cmp.Diff(tc.res, got, protocmp.Transform()), "DeleteHost(%q) got response %q, wanted %q", tc.req, got, tc.res)
 		})
 	}
 }

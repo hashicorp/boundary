@@ -9,6 +9,7 @@ import (
 	"github.com/hashicorp/boundary/internal/auth"
 	pb "github.com/hashicorp/boundary/internal/gen/controller/api/resources/hosts"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/api/services"
+	"github.com/hashicorp/boundary/internal/host"
 	"github.com/hashicorp/boundary/internal/host/static"
 	"github.com/hashicorp/boundary/internal/host/static/store"
 	"github.com/hashicorp/boundary/internal/servers/controller/common"
@@ -17,45 +18,6 @@ import (
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 )
-
-type setType int
-
-const (
-	unknownType setType = iota
-	staticType
-)
-
-func (t setType) String() string {
-	switch t {
-	case staticType:
-		return "static"
-	}
-	return "unknown"
-}
-
-func (t setType) idPrefix() string {
-	switch t {
-	case staticType:
-		return static.HostSetPrefix + "_"
-	}
-	return "unknown"
-}
-
-func typeFromTypeField(t string) setType {
-	switch {
-	case strings.EqualFold(strings.TrimSpace(t), staticType.String()):
-		return staticType
-	}
-	return unknownType
-}
-
-func typeFromId(id string) setType {
-	switch {
-	case strings.HasPrefix(id, staticType.idPrefix()):
-		return staticType
-	}
-	return unknownType
-}
 
 var (
 	maskManager handlers.MaskManager
@@ -94,11 +56,7 @@ func (s Service) GetHostSet(ctx context.Context, req *pbs.GetHostSetRequest) (*p
 	if !authResults.Valid {
 		return nil, handlers.ForbiddenError()
 	}
-	ct := typeFromId(req.GetId())
-	if ct == unknownType {
-		return nil, handlers.InvalidArgumentErrorf("Invalid argument provided.", map[string]string{"id": "Improperly formatted identifier used."})
-	}
-	if err := validateGetRequest(req, ct); err != nil {
+	if err := validateGetRequest(req); err != nil {
 		return nil, err
 	}
 	hc, err := s.getFromRepo(ctx, req.GetId())
@@ -135,11 +93,7 @@ func (s Service) UpdateHostSet(ctx context.Context, req *pbs.UpdateHostSetReques
 	if !authResults.Valid {
 		return nil, handlers.ForbiddenError()
 	}
-	ct := typeFromId(req.GetId())
-	if ct == unknownType {
-		return nil, handlers.InvalidArgumentErrorf("Invalid argument provided.", map[string]string{"id": "Improperly formatted identifier used."})
-	}
-	if err := validateUpdateRequest(req, ct); err != nil {
+	if err := validateUpdateRequest(req); err != nil {
 		return nil, err
 	}
 	hc, err := s.updateInRepo(ctx, req.GetHostCatalogId(), req.GetId(), req.GetVersion(), req.GetUpdateMask().GetPaths(), req.GetItem())
@@ -156,11 +110,7 @@ func (s Service) DeleteHostSet(ctx context.Context, req *pbs.DeleteHostSetReques
 	if !authResults.Valid {
 		return nil, handlers.ForbiddenError()
 	}
-	ct := typeFromId(req.GetId())
-	if ct == unknownType {
-		return nil, handlers.InvalidArgumentErrorf("Invalid argument provided.", map[string]string{"id": "Improperly formatted identifier used."})
-	}
-	if err := validateDeleteRequest(req, ct); err != nil {
+	if err := validateDeleteRequest(req); err != nil {
 		return nil, err
 	}
 	existed, err := s.deleteFromRepo(ctx, req.GetId())
@@ -172,17 +122,17 @@ func (s Service) DeleteHostSet(ctx context.Context, req *pbs.DeleteHostSetReques
 
 // AddHostSetHosts implements the interface pbs.HostSetServiceServer.
 func (s Service) AddHostSetHosts(ctx context.Context, request *pbs.AddHostSetHostsRequest) (*pbs.AddHostSetHostsResponse, error) {
-	panic("implement me")
+	return nil, status.Errorf(codes.Unimplemented, "This has not been implemented yet.")
 }
 
 // SetHostSetHosts implements the interface pbs.HostSetServiceServer.
 func (s Service) SetHostSetHosts(ctx context.Context, request *pbs.SetHostSetHostsRequest) (*pbs.SetHostSetHostsResponse, error) {
-	panic("implement me")
+	return nil, status.Errorf(codes.Unimplemented, "This has not been implemented yet.")
 }
 
 // RemoveHostSetHosts implements the interface pbs.HostSetServiceServer.
 func (s Service) RemoveHostSetHosts(ctx context.Context, request *pbs.RemoveHostSetHostsRequest) (*pbs.RemoveHostSetHostsResponse, error) {
-	panic("implement me")
+	return nil, status.Errorf(codes.Unimplemented, "This has not been implemented yet.")
 }
 
 func (s Service) getFromRepo(ctx context.Context, id string) (*pb.HostSet, error) {
@@ -280,7 +230,7 @@ func (s Service) deleteFromRepo(ctx context.Context, id string) (bool, error) {
 func toProto(in *static.HostSet) *pb.HostSet {
 	out := pb.HostSet{
 		Id:          in.GetPublicId(),
-		Type:        staticType.String(),
+		Type:        host.StaticSubtype.String(),
 		CreatedTime: in.GetCreateTime().GetTimestamp(),
 		UpdatedTime: in.GetUpdateTime().GetTimestamp(),
 		Version:     in.GetVersion(),
@@ -301,9 +251,9 @@ func toProto(in *static.HostSet) *pb.HostSet {
 //  * There are no conflicting parameters provided
 //  * The type asserted by the ID and/or field is known
 //  * If relevant, the type derived from the id prefix matches what is claimed by the type field
-func validateGetRequest(req *pbs.GetHostSetRequest, ct setType) error {
+func validateGetRequest(req *pbs.GetHostSetRequest) error {
 	badFields := map[string]string{}
-	if !validId(req.GetId(), ct.idPrefix()) {
+	if !validId(req.GetId(), static.HostSetPrefix+"_") {
 		badFields["id"] = "Invalid formatted identifier."
 	}
 	if len(badFields) > 0 {
@@ -321,7 +271,7 @@ func validateCreateRequest(req *pbs.CreateHostSetRequest) error {
 	if item.GetType() == "" {
 		badFields["type"] = "This field is required."
 	}
-	if typeFromTypeField(item.GetType()) == unknownType {
+	if host.SubtypeFromType(item.GetType()) == host.UnknownSubtype {
 		badFields["type"] = "Provided type is unknown."
 	}
 	if item.GetId() != "" {
@@ -342,9 +292,9 @@ func validateCreateRequest(req *pbs.CreateHostSetRequest) error {
 	return nil
 }
 
-func validateUpdateRequest(req *pbs.UpdateHostSetRequest, ct setType) error {
+func validateUpdateRequest(req *pbs.UpdateHostSetRequest) error {
 	badFields := map[string]string{}
-	if !validId(req.GetId(), ct.idPrefix()) {
+	if !validId(req.GetId(), static.HostSetPrefix+"_") {
 		badFields["id"] = "The field is incorrectly formatted."
 	}
 	if !validId(req.GetHostCatalogId(), static.HostCatalogPrefix+"_") {
@@ -386,9 +336,9 @@ func validateUpdateRequest(req *pbs.UpdateHostSetRequest, ct setType) error {
 	return nil
 }
 
-func validateDeleteRequest(req *pbs.DeleteHostSetRequest, ct setType) error {
+func validateDeleteRequest(req *pbs.DeleteHostSetRequest) error {
 	badFields := map[string]string{}
-	if !validId(req.GetId(), ct.idPrefix()) {
+	if !validId(req.GetId(), static.HostSetPrefix+"_") {
 		badFields["id"] = "The field is incorrectly formatted."
 	}
 	if len(badFields) > 0 {
