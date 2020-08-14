@@ -54,8 +54,8 @@ var _ pbs.AuthenticationServiceServer = Service{}
 // Authenticate implements the interface pbs.AuthenticationServiceServer.
 func (s Service) Authenticate(ctx context.Context, req *pbs.AuthenticateRequest) (*pbs.AuthenticateResponse, error) {
 	authResults := auth.Verify(ctx)
-	if !authResults.Valid {
-		return nil, handlers.ForbiddenError()
+	if authResults.Error != nil {
+		return nil, authResults.Error
 	}
 	if err := validateAuthenticateRequest(req); err != nil {
 		return nil, err
