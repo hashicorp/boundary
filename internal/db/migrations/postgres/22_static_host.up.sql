@@ -69,6 +69,9 @@ begin;
   create trigger insert_host_catalog_subtype before insert on static_host_catalog
     for each row execute procedure insert_host_catalog_subtype();
 
+  create trigger delete_host_catalog_subtype after delete on static_host_catalog
+    for each row execute procedure delete_host_catalog_subtype();
+
   create table static_host (
     public_id wt_public_id primary key,
     catalog_id wt_public_id not null
@@ -114,6 +117,9 @@ begin;
   create trigger insert_host_subtype before insert on static_host
     for each row execute procedure insert_host_subtype();
 
+  create trigger delete_host_subtype after delete on static_host
+    for each row execute procedure delete_host_subtype();
+
   create table static_host_set (
     public_id wt_public_id primary key,
     catalog_id wt_public_id not null
@@ -147,6 +153,9 @@ begin;
 
   create trigger insert_host_set_subtype before insert on static_host_set
     for each row execute procedure insert_host_set_subtype();
+
+  create trigger delete_host_set_subtype after delete on static_host_set
+    for each row execute procedure delete_host_set_subtype();
 
   create table static_host_set_member (
     host_id wt_public_id not null,

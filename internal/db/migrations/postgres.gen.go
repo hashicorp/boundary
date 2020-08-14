@@ -2107,6 +2107,8 @@ begin;
   create trigger immutable_columns before update on host_catalog
     for each row execute procedure immutable_columns('public_id', 'scope_id');
 
+  -- insert_host_catalog_subtype() is a before insert trigger
+  -- function for subtypes of host_catalog
   create or replace function insert_host_catalog_subtype()
     returns trigger
   as $$
@@ -2116,6 +2118,18 @@ begin;
     values
       (new.public_id, new.scope_id);
     return new;
+  end;
+  $$ language plpgsql;
+
+  -- delete_host_catalog_subtype() is an after delete trigger
+  -- function for subtypes of host_catalog
+  create or replace function delete_host_catalog_subtype()
+    returns trigger
+  as $$
+  begin
+    delete from host_catalog
+    where public_id = old.public_id;
+    return null; -- result is ignored since this is an after trigger
   end;
   $$ language plpgsql;
 
@@ -2132,6 +2146,8 @@ begin;
   create trigger immutable_columns before update on host
     for each row execute procedure immutable_columns('public_id', 'catalog_id');
 
+  -- insert_host_subtype() is a before insert trigger
+  -- function for subtypes of host
   create or replace function insert_host_subtype()
     returns trigger
   as $$
@@ -2141,6 +2157,18 @@ begin;
     values
       (new.public_id, new.catalog_id);
     return new;
+  end;
+  $$ language plpgsql;
+
+  -- delete_host_subtype() is an after delete trigger
+  -- function for subtypes of host
+  create or replace function delete_host_subtype()
+    returns trigger
+  as $$
+  begin
+    delete from host
+    where public_id = old.public_id;
+    return null; -- result is ignored since this is an after trigger
   end;
   $$ language plpgsql;
 
@@ -2157,6 +2185,8 @@ begin;
   create trigger immutable_columns before update on host_set
     for each row execute procedure immutable_columns('public_id', 'catalog_id');
 
+  -- insert_host_set_subtype() is a before insert trigger
+  -- function for subtypes of host_set
   create or replace function insert_host_set_subtype()
     returns trigger
   as $$
@@ -2166,6 +2196,18 @@ begin;
     values
       (new.public_id, new.catalog_id);
     return new;
+  end;
+  $$ language plpgsql;
+
+  -- delete_host_set_subtype() is an after delete trigger
+  -- function for subtypes of host_set
+  create or replace function delete_host_set_subtype()
+    returns trigger
+  as $$
+  begin
+    delete from host_set
+    where public_id = old.public_id;
+    return null; -- result is ignored since this is an after trigger
   end;
   $$ language plpgsql;
 
@@ -2276,6 +2318,9 @@ begin;
   create trigger insert_host_catalog_subtype before insert on static_host_catalog
     for each row execute procedure insert_host_catalog_subtype();
 
+  create trigger delete_host_catalog_subtype after delete on static_host_catalog
+    for each row execute procedure delete_host_catalog_subtype();
+
   create table static_host (
     public_id wt_public_id primary key,
     catalog_id wt_public_id not null
@@ -2321,6 +2366,9 @@ begin;
   create trigger insert_host_subtype before insert on static_host
     for each row execute procedure insert_host_subtype();
 
+  create trigger delete_host_subtype after delete on static_host
+    for each row execute procedure delete_host_subtype();
+
   create table static_host_set (
     public_id wt_public_id primary key,
     catalog_id wt_public_id not null
@@ -2354,6 +2402,9 @@ begin;
 
   create trigger insert_host_set_subtype before insert on static_host_set
     for each row execute procedure insert_host_set_subtype();
+
+  create trigger delete_host_set_subtype after delete on static_host_set
+    for each row execute procedure delete_host_set_subtype();
 
   create table static_host_set_member (
     host_id wt_public_id not null,
