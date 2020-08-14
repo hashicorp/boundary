@@ -684,8 +684,11 @@ func TestUpdate(t *testing.T) {
 					Paths: []string{"attributes.min_login_name_length"},
 				},
 				Item: &pb.AuthMethod{
+					Name:        &wrapperspb.StringValue{Value: "ignored"},
+					Description: &wrapperspb.StringValue{Value: "ignored"},
 					Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
 						"min_login_name_length": structpb.NewNumberValue(42),
+						"min_password_length":   structpb.NewNumberValue(55555),
 					}},
 				},
 			},
@@ -707,11 +710,14 @@ func TestUpdate(t *testing.T) {
 			name: "Update password length",
 			req: &pbs.UpdateAuthMethodRequest{
 				UpdateMask: &field_mask.FieldMask{
-					Paths: []string{"attributes.min_login_name_length"},
+					Paths: []string{"attributes.min_password_length"},
 				},
 				Item: &pb.AuthMethod{
+					Name:        &wrapperspb.StringValue{Value: "ignored"},
+					Description: &wrapperspb.StringValue{Value: "ignored"},
 					Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
-						"min_password_length": structpb.NewNumberValue(42),
+						"min_login_name_length": structpb.NewNumberValue(5555),
+						"min_password_length":   structpb.NewNumberValue(42),
 					}},
 				},
 			},
