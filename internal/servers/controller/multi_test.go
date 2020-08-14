@@ -6,8 +6,8 @@ import (
 
 	"github.com/hashicorp/boundary/api/authmethods"
 	"github.com/hashicorp/boundary/api/scopes"
-	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/servers/controller"
+	"github.com/hashicorp/boundary/internal/types/scope"
 	"github.com/hashicorp/go-hclog"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -30,8 +30,6 @@ func TestAuthenticationMulti(t *testing.T) {
 	})
 	defer c1.Shutdown()
 
-	org, _ := iam.TestScopes(t, c1.DbConn())
-
 	c2 := c1.AddClusterControllerMember(t, &controller.TestControllerOpts{
 		Logger: logger.Named("c2"),
 	})
@@ -53,18 +51,17 @@ func TestAuthenticationMulti(t *testing.T) {
 	assert.NotEqual(token1.Token, token2.Token)
 
 	c1.Client().SetToken(token1.Token)
-	c1.Client().SetScopeId(org.GetPublicId())
+	c1.Client().SetScopeId(scope.Global.String())
 	c2.Client().SetToken(token1.Token) // Same token, as it should work on both
-	c2.Client().SetScopeId(org.GetPublicId())
+	c2.Client().SetScopeId(scope.Global.String())
 
 	// Create a project, read from the other
-	proj, apiErr, err := scopes.NewScopesClient(c1.Client()).Create(c1.Context(), org.GetPublicId())
+	org, apiErr, err := scopes.NewScopesClient(c1.Client()).Create(c1.Context(), scope.Global.String())
 	require.NoError(err)
 	require.Nil(apiErr)
-	require.NotNil(proj)
-	projId := proj.Id
+	require.NotNil(org)
 
-	proj, apiErr, err = scopes.NewScopesClient(c2.Client()).Read(c2.Context(), projId)
+	proj, apiErr, err := scopes.NewScopesClient(c2.Client()).Read(c2.Context(), org.Id)
 	require.NoError(err)
 	require.Nil(apiErr)
 	require.NotNil(proj)

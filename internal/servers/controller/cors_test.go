@@ -10,6 +10,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/hashicorp/boundary/internal/cmd/config"
+	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/go-retryablehttp"
 )
 
@@ -72,6 +73,8 @@ func TestHandler_CORS(t *testing.T) {
 		DisableAuthorizationFailures: true,
 	})
 	defer tc.Shutdown()
+
+	org := iam.TestOrg(t, tc.DbConn())
 
 	cases := []struct {
 		name           string
@@ -182,7 +185,6 @@ func TestHandler_CORS(t *testing.T) {
 			client := tc.Client()
 			err := client.SetAddr(tc.ApiAddrs()[c.listenerNum-1])
 			require.NoError(t, err)
-			client.SetScopeId("o_1234567890")
 			client.SetToken("fo_o_bar")
 
 			// Create the request
@@ -192,7 +194,7 @@ func TestHandler_CORS(t *testing.T) {
 			var body interface{}
 			scopeId := "global"
 			if c.provideScopeId {
-				scopeId = "o_1234567890"
+				scopeId = org.GetPublicId()
 				if c.method == http.MethodPost {
 					body = map[string]interface{}{}
 				}
