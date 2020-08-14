@@ -11,13 +11,11 @@ import (
 func addPasswordFlags(c *PasswordCommand, f *base.FlagSet) {
 	f.StringVar(&base.StringVar{
 		Name:   "password-min-login-name-length",
-		EnvVar: "BOUNDARY_AUTH_METHOD_PASSWORD_MIN_LOGIN_NAME_LENGTH",
 		Target: &c.flagPasswordMinLoginNameLength,
 		Usage:  "The minimum length of login names",
 	})
 	f.StringVar(&base.StringVar{
 		Name:   "password-min-password-length",
-		EnvVar: "BOUNDARY_AUTH_METHOD_PASSWORD_MIN_PASSWORD_LENGTH",
 		Target: &c.flagPasswordMinPasswordLength,
 		Usage:  "The minimum length of passwords",
 	})
