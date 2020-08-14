@@ -16,19 +16,16 @@ type Host struct {
 // NewHost creates a new in memory Host for address assigned to catalogId.
 // Name and description are the only valid options. All other options are
 // ignored.
-func NewHost(catalogId, address string, opt ...Option) (*Host, error) {
+func NewHost(catalogId string, opt ...Option) (*Host, error) {
 	if catalogId == "" {
 		return nil, fmt.Errorf("new: static host: no catalog id: %w", db.ErrInvalidParameter)
-	}
-	if address == "" {
-		return nil, fmt.Errorf("new: static host: no address: %w", db.ErrInvalidParameter)
 	}
 
 	opts := getOpts(opt...)
 	host := &Host{
 		Host: &store.Host{
 			StaticHostCatalogId: catalogId,
-			Address:             address,
+			Address:             opts.withAddress,
 			Name:                opts.withName,
 			Description:         opts.withDescription,
 		},

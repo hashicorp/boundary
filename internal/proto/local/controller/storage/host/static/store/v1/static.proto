@@ -68,7 +68,7 @@ message Host {
   // address is the IP Address or DNS name of the host. It must be set and
   // it must be unique within static_host_catalog_id.
   // @inject_tag: gorm:"not_null"
-  string address = 7;
+  string address = 7 [(custom_options.v1.mask_mapping) = {this:"address" that: "address"}];
 
   // version allows optimistic locking of the resource
   // @inject_tag: `gorm:"default:null"`
