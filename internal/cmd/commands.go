@@ -74,8 +74,14 @@ func initCommands(ui, serverCmdUi cli.Ui, runOpts *RunOptions) {
 				Command: base.NewCommand(ui),
 			}, nil
 		},
-		"auth-methods create": func() (cli.Command, error) {
+		"auth-methods password": func() (cli.Command, error) {
 			return &authmethods.Command{
+				Command: base.NewCommand(ui),
+				Func:    "password",
+			}, nil
+		},
+		"auth-methods password create": func() (cli.Command, error) {
+			return &authmethods.PasswordCommand{
 				Command: base.NewCommand(ui),
 				Func:    "create",
 			}, nil
@@ -86,8 +92,8 @@ func initCommands(ui, serverCmdUi cli.Ui, runOpts *RunOptions) {
 				Func:    "read",
 			}, nil
 		},
-		"auth-methods update": func() (cli.Command, error) {
-			return &authmethods.Command{
+		"auth-methods password update": func() (cli.Command, error) {
+			return &authmethods.PasswordCommand{
 				Command: base.NewCommand(ui),
 				Func:    "update",
 			}, nil

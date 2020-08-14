@@ -8,7 +8,7 @@ import (
 	"github.com/hashicorp/boundary/internal/cmd/base"
 )
 
-func addTypeFlags(c *Command, f *base.FlagSet, flagType string) {
+func addTypeFlags(c *PasswordCommand, f *base.FlagSet, flagType string) {
 	switch flagType {
 	case "password":
 		f.StringVar(&base.StringVar{

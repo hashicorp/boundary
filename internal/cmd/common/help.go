@@ -38,7 +38,7 @@ func HelpMap(resType string) map[string]func() string {
 			return base.WrapForHelpText(subType([]string{
 				"Usage: boundary {{type}}s [sub command] [options] [args]",
 				"",
-				"  This command allows operations on Boundary {{type}} resources. Examples",
+				"  This command allows operations on Boundary {{type}} resources. Example:",
 				"",
 				"    Create {{articletype}}:",
 				"",

@@ -2,8 +2,6 @@ package authmethods
 
 import (
 	"fmt"
-	"os"
-	"strings"
 
 	"github.com/hashicorp/boundary/api"
 	"github.com/hashicorp/boundary/api/authmethods"
@@ -22,42 +20,52 @@ var _ cli.CommandAutocomplete = (*Command)(nil)
 type Command struct {
 	*base.Command
 
-	Func     string
-	flagType string
-	flagsErr string
-
-	// Password method flags
-	flagPasswordMinLoginNameLength string
-	flagPasswordMinPasswordLength  string
+	Func string
 }
 
 func (c *Command) Synopsis() string {
+	if c.Func == "password" {
+		return "Manage password auth-methods within Boundary"
+	}
 	return common.SynopsisFunc(c.Func, "auth-method")
 }
 
 var flagsMap = map[string][]string{
-	"create": {"name", "description"},
-	"update": {"id", "name", "description", "version"},
 	"read":   {"id"},
 	"delete": {"id"},
 }
 
 func (c *Command) Help() string {
 	helpMap := common.HelpMap("auth-method")
-	if c.Func == "" {
-		return helpMap["base"]()
+	switch c.Func {
+	case "":
+		return base.WrapForHelpText([]string{
+			"Usage: boundary auth-methods [sub command] [options] [args]",
+			"",
+			"  This command allows operations on Boundary auth-method resources. Example:",
+			"",
+			"    Read an auth-method:",
+			"",
+			`      $ boundary auth-methods read -id paum_1234567890`,
+			"",
+			"  Please see the auth-methods subcommand help for detailed usage information.",
+		})
+	case "password":
+		return base.WrapForHelpText([]string{
+			"Usage: boundary auth-methods password [sub command] [options] [args]",
+			"",
+			"  This command allows operations on Boundary password-type auth-method resources. Example:",
+			"",
+			"    Create a password-type auth-method:",
+			"",
+			`      $ boundary auth-methods pasword create -name prodops -description "For ProdOps usage"`,
+			"",
+			"  Please see the subcommand help for detailed usage information.",
+		})
+	default:
+		return helpMap[c.Func]() + c.Flags().Help()
 	}
-	return helpMap[c.Func]() + c.Flags().Help()
-}
-
-func typeFlag(c *Command, f *base.FlagSet) {
-	f.StringVar(&base.StringVar{
-		Name:    "type",
-		EnvVar:  "BOUNDARY_AUTH_METHOD_TYPE",
-		Target:  &c.flagType,
-		Default: c.flagType,
-		Usage:   "The type of auth method to create or update",
-	})
+	return ""
 }
 
 func (c *Command) Flags() *base.FlagSets {
@@ -66,29 +74,6 @@ func (c *Command) Flags() *base.FlagSets {
 	if len(flagsMap[c.Func]) > 0 {
 		f := set.NewFlagSet("Command Options")
 		common.PopulateCommonFlags(c.Command, f, resource.User, flagsMap[c.Func])
-		if c.Func == "create" {
-			typeFlag(c, f)
-		}
-	}
-
-	if c.Func == "create" || c.Func == "update" {
-		switch c.flagType {
-		case "password":
-			c.flagsErr = ""
-			f := set.NewFlagSet("Password Auth Method Options")
-			addTypeFlags(c, f, c.flagType)
-
-		case "":
-			c.flagsErr = ""
-			// Do everything for the normal help output, but in sections
-			for _, v := range []string{"Password"} {
-				f := set.NewFlagSet(fmt.Sprintf("%s Auth Method Options", v))
-				addTypeFlags(c, f, strings.ToLower(v))
-			}
-
-		default:
-			c.flagsErr = fmt.Sprintf("Unknown auth method type %q", c.flagType)
-		}
 	}
 
 	return set
@@ -103,65 +88,14 @@ func (c *Command) AutocompleteFlags() complete.Flags {
 }
 
 func (c *Command) Run(args []string) int {
-	if c.Func == "" {
+	if c.Func == "" || c.Func == "password" {
 		return cli.RunResultHelp
 	}
 
-	switch c.Func {
-	case "update":
-		// Do an initial parse so we can get a client for checking type
-		f := c.Flags()
-		if c.flagsErr != "" {
-			c.UI.Error(c.flagsErr)
-			return 1
-		}
-
-		if err := f.Parse(args); err != nil {
-			c.UI.Error(err.Error())
-			return 1
-		}
-
-		client, err := c.Client()
-		if err != nil {
-			c.UI.Error(fmt.Sprintf("Error creating API client: %s", err.Error()))
-			return 2
-		}
-
-		// Attempt to discover the type
-		am, _, _ := authmethods.NewAuthMethodsClient(client).Read(c.Context, c.FlagId)
-		if am != nil {
-			c.flagType = am.Type
-		}
-
-	case "create":
-		// Discover type from the flag
-		for i, v := range args {
-			if v == "-type" {
-				if i+1 >= len(args) {
-					c.UI.Error("Missing argument for -type")
-					return 1
-				}
-				c.flagType = args[i+1]
-			}
-		}
-		if c.flagType == "" {
-			c.flagType = os.Getenv("BOUNDARY_AUTH_METHOD_TYPE")
-		}
-	}
-
 	f := c.Flags()
-	if c.flagsErr != "" {
-		c.UI.Error(c.flagsErr)
-		return 1
-	}
 
 	if err := f.Parse(args); err != nil {
 		c.UI.Error(err.Error())
-		return 1
-	}
-
-	if c.Func == "create" && c.flagType == "" {
-		c.UI.Error("Type is required but not passed in via -type")
 		return 1
 	}
 
@@ -177,10 +111,6 @@ func (c *Command) Run(args []string) int {
 	}
 
 	var opts []authmethods.Option
-
-	if c.Func == "create" {
-		opts = append(opts, authmethods.WithType(c.flagType))
-	}
 
 	switch c.FlagName {
 	case "":
@@ -198,58 +128,7 @@ func (c *Command) Run(args []string) int {
 		opts = append(opts, authmethods.WithDescription(c.FlagDescription))
 	}
 
-	var attributes map[string]interface{}
-	if c.Func == "create" || c.Func == "update" {
-		switch c.flagType {
-		case "password":
-			switch c.flagPasswordMinLoginNameLength {
-			case "":
-			case "null":
-				if attributes == nil {
-					attributes = make(map[string]interface{})
-				}
-				attributes["min_login_name_length"] = nil
-			default:
-				if attributes == nil {
-					attributes = make(map[string]interface{})
-				}
-				attributes["min_login_name_length"] = c.flagPasswordMinLoginNameLength
-			}
-
-			switch c.flagPasswordMinPasswordLength {
-			case "":
-			case "null":
-				if attributes == nil {
-					attributes = make(map[string]interface{})
-				}
-				attributes["min_password_length"] = nil
-			default:
-				if attributes == nil {
-					attributes = make(map[string]interface{})
-				}
-				attributes["min_password_length"] = c.flagPasswordMinPasswordLength
-			}
-		}
-	}
-	if attributes != nil {
-		opts = append(opts, authmethods.WithAttributes(attributes))
-	}
-
 	authmethodClient := authmethods.NewAuthMethodsClient(client)
-
-	// Perform check-and-set when needed
-	var version uint32
-	switch c.Func {
-	case "create", "read", "delete", "list":
-		// These don't udpate so don't need the existing version
-	default:
-		switch c.FlagVersion {
-		case 0:
-			opts = append(opts, authmethods.WithAutomaticVersioning())
-		default:
-			version = uint32(c.FlagVersion)
-		}
-	}
 
 	var existed bool
 	var method *authmethods.AuthMethod
@@ -257,10 +136,6 @@ func (c *Command) Run(args []string) int {
 	var apiErr *api.Error
 
 	switch c.Func {
-	case "create":
-		method, apiErr, err = authmethodClient.Create(c.Context, opts...)
-	case "update":
-		method, apiErr, err = authmethodClient.Update(c.Context, c.FlagId, version, opts...)
 	case "read":
 		method, apiErr, err = authmethodClient.Read(c.Context, c.FlagId, opts...)
 	case "delete":
