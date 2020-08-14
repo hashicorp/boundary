@@ -11,6 +11,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
 func TestHost_New(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	cat := testCatalog(t, conn)
@@ -18,7 +19,6 @@ func TestHost_New(t *testing.T) {
 	conn.LogMode(false)
 	type args struct {
 		catalogId string
-		address   string
 		opts      []Option
 	}
 
@@ -33,7 +33,6 @@ func TestHost_New(t *testing.T) {
 			name: "blank-catalogId",
 			args: args{
 				catalogId: "",
-				address:   "127.0.0.1",
 			},
 			want:          nil,
 			wantCreateErr: true,
@@ -42,16 +41,19 @@ func TestHost_New(t *testing.T) {
 			name: "blank-address",
 			args: args{
 				catalogId: cat.GetPublicId(),
-				address:   "",
 			},
-			want:          nil,
-			wantCreateErr: true,
+			want: &Host{
+				Host: &store.Host{
+					StaticHostCatalogId: cat.GetPublicId(),
+				},
+			},
+			wantWriteErr: true,
 		},
 		{
 			name: "address-to-short",
 			args: args{
 				catalogId: cat.GetPublicId(),
-				address:   "1234567",
+				opts:      []Option{WithAddress("1234567")},
 			},
 			want: &Host{
 				Host: &store.Host{
@@ -65,7 +67,7 @@ func TestHost_New(t *testing.T) {
 			name: "minimum-address",
 			args: args{
 				catalogId: cat.GetPublicId(),
-				address:   "12345678",
+				opts:      []Option{WithAddress("12345678")},
 			},
 			want: &Host{
 				Host: &store.Host{
@@ -78,21 +80,20 @@ func TestHost_New(t *testing.T) {
 			name: "valid-no-options",
 			args: args{
 				catalogId: cat.GetPublicId(),
-				address:   "127.0.0.1",
 			},
 			want: &Host{
 				Host: &store.Host{
 					StaticHostCatalogId: cat.GetPublicId(),
-					Address:             "127.0.0.1",
 				},
 			},
+			wantWriteErr: true,
 		},
 		{
 			name: "valid-with-name",
 			args: args{
 				catalogId: cat.GetPublicId(),
-				address:   "127.0.0.1",
 				opts: []Option{
+					WithAddress("127.0.0.1"),
 					WithName("test-name"),
 				},
 			},
@@ -108,8 +109,8 @@ func TestHost_New(t *testing.T) {
 			name: "valid-with-description",
 			args: args{
 				catalogId: cat.GetPublicId(),
-				address:   "127.0.0.1",
 				opts: []Option{
+					WithAddress("127.0.0.1"),
 					WithDescription("test-description"),
 				},
 			},
@@ -127,7 +128,7 @@ func TestHost_New(t *testing.T) {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			assert := assert.New(t)
-			got, err := NewHost(tt.args.catalogId, tt.args.address, tt.args.opts...)
+			got, err := NewHost(tt.args.catalogId, tt.args.opts...)
 			if tt.wantCreateErr {
 				assert.Error(err)
 				assert.Nil(got)
@@ -160,7 +161,7 @@ func testHosts(t *testing.T, conn *gorm.DB, catalogId string, count int) []*Host
 	var hosts []*Host
 
 	for i := 0; i < count; i++ {
-		host, err := NewHost(catalogId, fmt.Sprintf("%s-%d", catalogId, i))
+		host, err := NewHost(catalogId, WithAddress(fmt.Sprintf("%s-%d", catalogId, i)))
 		assert.NoError(err)
 		assert.NotNil(host)
 
