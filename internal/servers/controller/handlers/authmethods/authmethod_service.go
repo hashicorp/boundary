@@ -197,10 +197,6 @@ func (s Service) createInRepo(ctx context.Context, scopeId string, item *pb.Auth
 }
 
 func (s Service) updateInRepo(ctx context.Context, scopeId, id string, version uint32, mask []string, item *pb.AuthMethod) (*pb.AuthMethod, error) {
-	pwAttrs := &pb.PasswordAuthMethodAttributes{}
-	if err := handlers.StructToProto(item.GetAttributes(), pwAttrs); err != nil {
-		return nil, status.Errorf(codes.InvalidArgument, "Provided attributes don't match expected format.")
-	}
 	var opts []password.Option
 	if desc := item.GetDescription(); desc != nil {
 		opts = append(opts, password.WithDescription(desc.GetValue()))
@@ -211,6 +207,11 @@ func (s Service) updateInRepo(ctx context.Context, scopeId, id string, version u
 	u, err := password.NewAuthMethod(scopeId, opts...)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "Unable to build auth method for update: %v.", err)
+	}
+
+	pwAttrs := &pb.PasswordAuthMethodAttributes{}
+	if err := handlers.StructToProto(item.GetAttributes(), pwAttrs); err != nil {
+		return nil, status.Errorf(codes.InvalidArgument, "Provided attributes don't match expected format.")
 	}
 	if pwAttrs.GetMinLoginNameLength() != 0 {
 		u.MinLoginNameLength = pwAttrs.GetMinLoginNameLength()
