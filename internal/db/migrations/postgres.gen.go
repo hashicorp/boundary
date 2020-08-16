@@ -923,26 +923,6 @@ before
 insert or update on iam_role
   for each row execute procedure grant_scope_id_valid();
 
--- disallow_default_role_deletion prevents the default role (r_default) from
--- being deleted
-create or replace function
-  disallow_default_role_deletion()
-  returns trigger
-as $$
-begin
-  if old.public_id = 'r_default' then
-    raise exception 'deletion of default role not allowed';
-  end if;
-  return old;
-end;
-$$ language plpgsql;
-
-create trigger
-  disallow_default_role_deletion
-before
-delete on iam_role
-  for each row execute procedure disallow_default_role_deletion();
-
 -- define the immutable fields for iam_role (started trigger name with "a_" so
 -- it will run first)
 create trigger 
@@ -1038,7 +1018,7 @@ end;
 $$ language plpgsql;
 
 insert into iam_role (public_id, name, description, scope_id)
-  values('r_default', 'default', 'Default role created on first instantiation of Boundary. It can be modified but not deleted. It is meant to provide enough permissions for users to successfully authenticate via various clients types.', 'global');
+  values('r_default', 'default', 'Default role created on first instantiation of Boundary. It is meant to provide enough permissions for users to successfully authenticate via various clients types.', 'global');
 insert into iam_role_grant (role_id, canonical_grant, raw_grant)
   values
     ('r_default', 'type=scope;actions=list', 'type=scope;actions=list'),
