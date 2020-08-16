@@ -1,6 +1,7 @@
 package kms
 
 import (
+	"context"
 	"errors"
 
 	"github.com/hashicorp/boundary/internal/db"
@@ -40,4 +41,16 @@ func NewRepository(r db.Reader, w db.Writer, wrapper wrapping.Wrapper, opt ...Op
 		wrapper:      wrapper,
 		defaultLimit: opts.withLimit,
 	}, nil
+}
+
+// list will return a listing of resources and honor the WithLimit option or the
+// repo defaultLimit
+func (r *Repository) list(ctx context.Context, resources interface{}, where string, args []interface{}, opt ...Option) error {
+	opts := getOpts(opt...)
+	limit := r.defaultLimit
+	if opts.withLimit != 0 {
+		// non-zero signals an override of the default limit for the repo.
+		limit = opts.withLimit
+	}
+	return r.reader.SearchWhere(ctx, resources, where, args, db.WithLimit(limit))
 }

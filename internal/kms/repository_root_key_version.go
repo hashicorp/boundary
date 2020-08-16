@@ -115,3 +115,16 @@ func (r *Repository) LatestRootKeyVersion(ctx context.Context, rootKeyId string,
 	}
 	return &foundKeys[0], nil
 }
+
+// ListRootKeyVersions in versions of a root key.  Supports the WithLimit option.
+func (r *Repository) ListRootKeyVersions(ctx context.Context, rootKeyId string, opt ...Option) ([]*RootKeyVersion, error) {
+	if rootKeyId == "" {
+		return nil, fmt.Errorf("list root key versions: missing root key id %w", db.ErrInvalidParameter)
+	}
+	var versions []*RootKeyVersion
+	err := r.list(ctx, &versions, "root_key_id = ?", []interface{}{rootKeyId}, opt...)
+	if err != nil {
+		return nil, fmt.Errorf("list root key versions: %w", err)
+	}
+	return versions, nil
+}

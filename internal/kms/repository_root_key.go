@@ -108,3 +108,13 @@ func (r *Repository) DeleteRootKey(ctx context.Context, privateId string, opt ..
 	}
 	return rowsDeleted, nil
 }
+
+// ListRootKeys will list the root keys.  Supports the WithLimit option.
+func (r *Repository) ListRootKeys(ctx context.Context, opt ...Option) ([]*RootKey, error) {
+	var keys []*RootKey
+	err := r.list(ctx, &keys, "1=1", nil, opt...)
+	if err != nil {
+		return nil, fmt.Errorf("list root keys: %w", err)
+	}
+	return keys, nil
+}

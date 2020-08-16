@@ -225,3 +225,84 @@ func TestRepository_LatestRootKeyVersion(t *testing.T) {
 		})
 	}
 }
+
+func TestRepository_ListRootKeyVersions(t *testing.T) {
+	t.Parallel()
+	conn, _ := db.TestSetup(t, "postgres")
+	const testLimit = 10
+	rw := db.New(conn)
+	wrapper := db.TestWrapper(t)
+	repo, err := NewRepository(rw, rw, wrapper, WithLimit(testLimit))
+	require.NoError(t, err)
+	org, _ := iam.TestScopes(t, conn)
+	rk := TestRootKey(t, conn, org.PublicId)
+
+	type args struct {
+		rootKeyId string
+		opt       []Option
+	}
+	tests := []struct {
+		name      string
+		createCnt int
+		args      args
+		wantCnt   int
+		wantErr   bool
+	}{
+		{
+			name:      "no-limit",
+			createCnt: repo.defaultLimit + 1,
+			args: args{
+				rootKeyId: rk.PrivateId,
+				opt:       []Option{WithLimit(-1)},
+			},
+			wantCnt: repo.defaultLimit + 1,
+			wantErr: false,
+		},
+		{
+			name:      "default-limit",
+			createCnt: repo.defaultLimit + 1,
+			args: args{
+				rootKeyId: rk.PrivateId,
+			},
+			wantCnt: repo.defaultLimit,
+			wantErr: false,
+		},
+		{
+			name:      "custom-limit",
+			createCnt: repo.defaultLimit + 1,
+			args: args{
+				rootKeyId: rk.PrivateId,
+				opt:       []Option{WithLimit(3)},
+			},
+			wantCnt: 3,
+			wantErr: false,
+		},
+		{
+			name:      "bad-org",
+			createCnt: 1,
+			args: args{
+				rootKeyId: "bad-id",
+			},
+			wantCnt: 0,
+			wantErr: false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+			require.NoError(conn.Where("1=1").Delete(allocRootKeyVersion()).Error)
+			testRootKeyVersions := []*RootKeyVersion{}
+			for i := 0; i < tt.createCnt; i++ {
+				testRootKeyVersions = append(testRootKeyVersions, TestRootKeyVersion(t, conn, wrapper, rk.PrivateId, "test key"))
+			}
+			assert.Equal(tt.createCnt, len(testRootKeyVersions))
+			got, err := repo.ListRootKeyVersions(context.Background(), tt.args.rootKeyId, tt.args.opt...)
+			if tt.wantErr {
+				require.Error(err)
+				return
+			}
+			require.NoError(err)
+			assert.Equal(tt.wantCnt, len(got))
+		})
+	}
+}
