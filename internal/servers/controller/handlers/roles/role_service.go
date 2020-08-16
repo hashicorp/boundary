@@ -51,8 +51,8 @@ var _ pbs.RoleServiceServer = Service{}
 // ListRoles implements the interface pbs.RoleServiceServer.
 func (s Service) ListRoles(ctx context.Context, req *pbs.ListRolesRequest) (*pbs.ListRolesResponse, error) {
 	authResults := auth.Verify(ctx)
-	if !authResults.Valid {
-		return nil, handlers.ForbiddenError()
+	if authResults.Error != nil {
+		return nil, authResults.Error
 	}
 	if err := validateListRequest(req); err != nil {
 		return nil, err
@@ -70,8 +70,8 @@ func (s Service) ListRoles(ctx context.Context, req *pbs.ListRolesRequest) (*pbs
 // GetRoles implements the interface pbs.RoleServiceServer.
 func (s Service) GetRole(ctx context.Context, req *pbs.GetRoleRequest) (*pbs.GetRoleResponse, error) {
 	authResults := auth.Verify(ctx)
-	if !authResults.Valid {
-		return nil, handlers.ForbiddenError()
+	if authResults.Error != nil {
+		return nil, authResults.Error
 	}
 	if err := validateGetRequest(req); err != nil {
 		return nil, err
@@ -87,8 +87,8 @@ func (s Service) GetRole(ctx context.Context, req *pbs.GetRoleRequest) (*pbs.Get
 // CreateRole implements the interface pbs.RoleServiceServer.
 func (s Service) CreateRole(ctx context.Context, req *pbs.CreateRoleRequest) (*pbs.CreateRoleResponse, error) {
 	authResults := auth.Verify(ctx)
-	if !authResults.Valid {
-		return nil, handlers.ForbiddenError()
+	if authResults.Error != nil {
+		return nil, authResults.Error
 	}
 	if err := validateCreateRequest(req, authResults.Scope); err != nil {
 		return nil, err
@@ -104,8 +104,8 @@ func (s Service) CreateRole(ctx context.Context, req *pbs.CreateRoleRequest) (*p
 // UpdateRole implements the interface pbs.RoleServiceServer.
 func (s Service) UpdateRole(ctx context.Context, req *pbs.UpdateRoleRequest) (*pbs.UpdateRoleResponse, error) {
 	authResults := auth.Verify(ctx)
-	if !authResults.Valid {
-		return nil, handlers.ForbiddenError()
+	if authResults.Error != nil {
+		return nil, authResults.Error
 	}
 	if err := validateUpdateRequest(req, authResults.Scope); err != nil {
 		return nil, err
@@ -121,8 +121,8 @@ func (s Service) UpdateRole(ctx context.Context, req *pbs.UpdateRoleRequest) (*p
 // DeleteRole implements the interface pbs.RoleServiceServer.
 func (s Service) DeleteRole(ctx context.Context, req *pbs.DeleteRoleRequest) (*pbs.DeleteRoleResponse, error) {
 	authResults := auth.Verify(ctx)
-	if !authResults.Valid {
-		return nil, handlers.ForbiddenError()
+	if authResults.Error != nil {
+		return nil, authResults.Error
 	}
 	if err := validateDeleteRequest(req); err != nil {
 		return nil, err
@@ -137,8 +137,8 @@ func (s Service) DeleteRole(ctx context.Context, req *pbs.DeleteRoleRequest) (*p
 // AddRolePrincipals implements the interface pbs.RoleServiceServer.
 func (s Service) AddRolePrincipals(ctx context.Context, req *pbs.AddRolePrincipalsRequest) (*pbs.AddRolePrincipalsResponse, error) {
 	authResults := auth.Verify(ctx)
-	if !authResults.Valid {
-		return nil, handlers.ForbiddenError()
+	if authResults.Error != nil {
+		return nil, authResults.Error
 	}
 	if err := validateAddRolePrincipalsRequest(req); err != nil {
 		return nil, err
@@ -154,8 +154,8 @@ func (s Service) AddRolePrincipals(ctx context.Context, req *pbs.AddRolePrincipa
 // SetRolePrincipals implements the interface pbs.RoleServiceServer.
 func (s Service) SetRolePrincipals(ctx context.Context, req *pbs.SetRolePrincipalsRequest) (*pbs.SetRolePrincipalsResponse, error) {
 	authResults := auth.Verify(ctx)
-	if !authResults.Valid {
-		return nil, handlers.ForbiddenError()
+	if authResults.Error != nil {
+		return nil, authResults.Error
 	}
 	if err := validateSetRolePrincipalsRequest(req); err != nil {
 		return nil, err
@@ -171,8 +171,8 @@ func (s Service) SetRolePrincipals(ctx context.Context, req *pbs.SetRolePrincipa
 // RemoveRolePrincipals implements the interface pbs.RoleServiceServer.
 func (s Service) RemoveRolePrincipals(ctx context.Context, req *pbs.RemoveRolePrincipalsRequest) (*pbs.RemoveRolePrincipalsResponse, error) {
 	authResults := auth.Verify(ctx)
-	if !authResults.Valid {
-		return nil, handlers.ForbiddenError()
+	if authResults.Error != nil {
+		return nil, authResults.Error
 	}
 	if err := validateRemoveRolePrincipalsRequest(req); err != nil {
 		return nil, err
@@ -188,8 +188,8 @@ func (s Service) RemoveRolePrincipals(ctx context.Context, req *pbs.RemoveRolePr
 // AddRoleGrants implements the interface pbs.RoleServiceServer.
 func (s Service) AddRoleGrants(ctx context.Context, req *pbs.AddRoleGrantsRequest) (*pbs.AddRoleGrantsResponse, error) {
 	authResults := auth.Verify(ctx)
-	if !authResults.Valid {
-		return nil, handlers.ForbiddenError()
+	if authResults.Error != nil {
+		return nil, authResults.Error
 	}
 	if err := validateAddRoleGrantsRequest(req); err != nil {
 		return nil, err
@@ -205,8 +205,8 @@ func (s Service) AddRoleGrants(ctx context.Context, req *pbs.AddRoleGrantsReques
 // SetRoleGrants implements the interface pbs.RoleServiceServer.
 func (s Service) SetRoleGrants(ctx context.Context, req *pbs.SetRoleGrantsRequest) (*pbs.SetRoleGrantsResponse, error) {
 	authResults := auth.Verify(ctx)
-	if !authResults.Valid {
-		return nil, handlers.ForbiddenError()
+	if authResults.Error != nil {
+		return nil, authResults.Error
 	}
 	if err := validateSetRoleGrantsRequest(req); err != nil {
 		return nil, err
@@ -222,8 +222,8 @@ func (s Service) SetRoleGrants(ctx context.Context, req *pbs.SetRoleGrantsReques
 // RemoveRoleGrants implements the interface pbs.RoleServiceServer.
 func (s Service) RemoveRoleGrants(ctx context.Context, req *pbs.RemoveRoleGrantsRequest) (*pbs.RemoveRoleGrantsResponse, error) {
 	authResults := auth.Verify(ctx)
-	if !authResults.Valid {
-		return nil, handlers.ForbiddenError()
+	if authResults.Error != nil {
+		return nil, authResults.Error
 	}
 	if err := validateRemoveRoleGrantsRequest(req); err != nil {
 		return nil, err

@@ -49,8 +49,8 @@ var _ pbs.GroupServiceServer = Service{}
 // ListGroups implements the interface pbs.GroupServiceServer.
 func (s Service) ListGroups(ctx context.Context, req *pbs.ListGroupsRequest) (*pbs.ListGroupsResponse, error) {
 	authResults := auth.Verify(ctx)
-	if !authResults.Valid {
-		return nil, handlers.ForbiddenError()
+	if authResults.Error != nil {
+		return nil, authResults.Error
 	}
 	if err := validateListRequest(req); err != nil {
 		return nil, err
@@ -68,8 +68,8 @@ func (s Service) ListGroups(ctx context.Context, req *pbs.ListGroupsRequest) (*p
 // GetGroups implements the interface pbs.GroupServiceServer.
 func (s Service) GetGroup(ctx context.Context, req *pbs.GetGroupRequest) (*pbs.GetGroupResponse, error) {
 	authResults := auth.Verify(ctx)
-	if !authResults.Valid {
-		return nil, handlers.ForbiddenError()
+	if authResults.Error != nil {
+		return nil, authResults.Error
 	}
 	if err := validateGetRequest(req); err != nil {
 		return nil, err
@@ -85,8 +85,8 @@ func (s Service) GetGroup(ctx context.Context, req *pbs.GetGroupRequest) (*pbs.G
 // CreateGroup implements the interface pbs.GroupServiceServer.
 func (s Service) CreateGroup(ctx context.Context, req *pbs.CreateGroupRequest) (*pbs.CreateGroupResponse, error) {
 	authResults := auth.Verify(ctx)
-	if !authResults.Valid {
-		return nil, handlers.ForbiddenError()
+	if authResults.Error != nil {
+		return nil, authResults.Error
 	}
 	if err := validateCreateRequest(req); err != nil {
 		return nil, err
@@ -102,8 +102,8 @@ func (s Service) CreateGroup(ctx context.Context, req *pbs.CreateGroupRequest) (
 // UpdateGroup implements the interface pbs.GroupServiceServer.
 func (s Service) UpdateGroup(ctx context.Context, req *pbs.UpdateGroupRequest) (*pbs.UpdateGroupResponse, error) {
 	authResults := auth.Verify(ctx)
-	if !authResults.Valid {
-		return nil, handlers.ForbiddenError()
+	if authResults.Error != nil {
+		return nil, authResults.Error
 	}
 	if err := validateUpdateRequest(req); err != nil {
 		return nil, err
@@ -119,8 +119,8 @@ func (s Service) UpdateGroup(ctx context.Context, req *pbs.UpdateGroupRequest) (
 // DeleteGroup implements the interface pbs.GroupServiceServer.
 func (s Service) DeleteGroup(ctx context.Context, req *pbs.DeleteGroupRequest) (*pbs.DeleteGroupResponse, error) {
 	authResults := auth.Verify(ctx)
-	if !authResults.Valid {
-		return nil, handlers.ForbiddenError()
+	if authResults.Error != nil {
+		return nil, authResults.Error
 	}
 	if err := validateDeleteRequest(req); err != nil {
 		return nil, err
@@ -135,8 +135,8 @@ func (s Service) DeleteGroup(ctx context.Context, req *pbs.DeleteGroupRequest) (
 // AddGroupMembers implements the interface pbs.GroupServiceServer.
 func (s Service) AddGroupMembers(ctx context.Context, req *pbs.AddGroupMembersRequest) (*pbs.AddGroupMembersResponse, error) {
 	authResults := auth.Verify(ctx)
-	if !authResults.Valid {
-		return nil, handlers.ForbiddenError()
+	if authResults.Error != nil {
+		return nil, authResults.Error
 	}
 	if err := validateAddGroupMembersRequest(req); err != nil {
 		return nil, err
@@ -151,8 +151,8 @@ func (s Service) AddGroupMembers(ctx context.Context, req *pbs.AddGroupMembersRe
 // SetGroupMembers implements the interface pbs.GroupServiceServer.
 func (s Service) SetGroupMembers(ctx context.Context, req *pbs.SetGroupMembersRequest) (*pbs.SetGroupMembersResponse, error) {
 	authResults := auth.Verify(ctx)
-	if !authResults.Valid {
-		return nil, handlers.ForbiddenError()
+	if authResults.Error != nil {
+		return nil, authResults.Error
 	}
 	if err := validateSetGroupMembersRequest(req); err != nil {
 		return nil, err
@@ -167,8 +167,8 @@ func (s Service) SetGroupMembers(ctx context.Context, req *pbs.SetGroupMembersRe
 // RemoveGroupMembers implements the interface pbs.GroupServiceServer.
 func (s Service) RemoveGroupMembers(ctx context.Context, req *pbs.RemoveGroupMembersRequest) (*pbs.RemoveGroupMembersResponse, error) {
 	authResults := auth.Verify(ctx)
-	if !authResults.Valid {
-		return nil, handlers.ForbiddenError()
+	if authResults.Error != nil {
+		return nil, authResults.Error
 	}
 	if err := validateRemoveGroupMembersRequest(req); err != nil {
 		return nil, err

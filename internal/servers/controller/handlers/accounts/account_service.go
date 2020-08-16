@@ -51,8 +51,8 @@ var _ pbs.AccountServiceServer = Service{}
 // ListAccounts implements the interface pbs.AccountServiceServer.
 func (s Service) ListAccounts(ctx context.Context, req *pbs.ListAccountsRequest) (*pbs.ListAccountsResponse, error) {
 	authResults := auth.Verify(ctx)
-	if !authResults.Valid {
-		return nil, handlers.ForbiddenError()
+	if authResults.Error != nil {
+		return nil, authResults.Error
 	}
 	if err := validateListRequest(req); err != nil {
 		return nil, err
@@ -70,8 +70,8 @@ func (s Service) ListAccounts(ctx context.Context, req *pbs.ListAccountsRequest)
 // GetAccounts implements the interface pbs.AccountServiceServer.
 func (s Service) GetAccount(ctx context.Context, req *pbs.GetAccountRequest) (*pbs.GetAccountResponse, error) {
 	authResults := auth.Verify(ctx)
-	if !authResults.Valid {
-		return nil, handlers.ForbiddenError()
+	if authResults.Error != nil {
+		return nil, authResults.Error
 	}
 	if err := validateGetRequest(req); err != nil {
 		return nil, err
@@ -87,8 +87,8 @@ func (s Service) GetAccount(ctx context.Context, req *pbs.GetAccountRequest) (*p
 // CreateAccount implements the interface pbs.AccountServiceServer.
 func (s Service) CreateAccount(ctx context.Context, req *pbs.CreateAccountRequest) (*pbs.CreateAccountResponse, error) {
 	authResults := auth.Verify(ctx)
-	if !authResults.Valid {
-		return nil, handlers.ForbiddenError()
+	if authResults.Error != nil {
+		return nil, authResults.Error
 	}
 	if err := validateCreateRequest(req); err != nil {
 		return nil, err
@@ -104,8 +104,8 @@ func (s Service) CreateAccount(ctx context.Context, req *pbs.CreateAccountReques
 // UpdateAccount implements the interface pbs.AccountServiceServer.
 func (s Service) UpdateAccount(ctx context.Context, req *pbs.UpdateAccountRequest) (*pbs.UpdateAccountResponse, error) {
 	authResults := auth.Verify(ctx)
-	if !authResults.Valid {
-		return nil, handlers.ForbiddenError()
+	if authResults.Error != nil {
+		return nil, authResults.Error
 	}
 	if err := validateUpdateRequest(req); err != nil {
 		return nil, err
@@ -121,8 +121,8 @@ func (s Service) UpdateAccount(ctx context.Context, req *pbs.UpdateAccountReques
 // DeleteAccount implements the interface pbs.AccountServiceServer.
 func (s Service) DeleteAccount(ctx context.Context, req *pbs.DeleteAccountRequest) (*pbs.DeleteAccountResponse, error) {
 	authResults := auth.Verify(ctx)
-	if !authResults.Valid {
-		return nil, handlers.ForbiddenError()
+	if authResults.Error != nil {
+		return nil, authResults.Error
 	}
 	if err := validateDeleteRequest(req); err != nil {
 		return nil, err

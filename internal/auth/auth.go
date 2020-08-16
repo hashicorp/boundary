@@ -10,6 +10,7 @@ import (
 	"github.com/hashicorp/boundary/internal/gen/controller/api/resources/scopes"
 	"github.com/hashicorp/boundary/internal/perms"
 	"github.com/hashicorp/boundary/internal/servers/controller/common"
+	"github.com/hashicorp/boundary/internal/servers/controller/handlers"
 	"github.com/hashicorp/boundary/internal/types/action"
 	"github.com/hashicorp/boundary/internal/types/resource"
 	"github.com/hashicorp/boundary/internal/types/scope"
@@ -53,8 +54,8 @@ type RequestInfo struct {
 }
 
 type VerifyResults struct {
-	Valid  bool
 	UserId string
+	Error  error
 	Scope  *scopes.ScopeInfo
 }
 
@@ -91,6 +92,7 @@ func NewVerifierContext(ctx context.Context,
 // proceed, e.g. whether the authn/authz check resulted in failure. If an error
 // occurs it's logged to the system log.
 func Verify(ctx context.Context, opt ...Option) (ret VerifyResults) {
+	ret.Error = handlers.ForbiddenError()
 	v, ok := ctx.Value(verifierKey).(*verifier)
 	if !ok {
 		// We don't have a logger yet and this should never happen in any
@@ -110,7 +112,7 @@ func Verify(ctx context.Context, opt ...Option) (ret VerifyResults) {
 			ret.Scope.Type = scope.Project.String()
 		}
 		ret.UserId = v.requestInfo.userIdOverride
-		ret.Valid = true
+		ret.Error = nil
 		return
 	}
 	v.ctx = ctx
@@ -132,15 +134,16 @@ func Verify(ctx context.Context, opt ...Option) (ret VerifyResults) {
 		return
 	}
 	if !authResults.Allowed {
-		// TODO: Decide whether to remove this
 		if v.requestInfo.DisableAuthzFailures {
+			ret.Error = nil
+			// TODO: Decide whether to remove this
 			v.logger.Info("failed authz info for request", "resource", pretty.Sprint(v.res), "user_id", ret.UserId, "action", v.act.String())
 		} else {
 			return
 		}
 	}
 
-	ret.Valid = true
+	ret.Error = nil
 	return
 }
 
