@@ -5,7 +5,7 @@ kms "aead" {
 }
 
 kms "aead" {
-  purpose = "controller"
+  purpose = "root"
   aead_type = "aes-gcm"
   key ="{{encrypt(eb78KqCwowELYnkOOko/XYz01q1ax3g76J1vCAvt5dQ=)}}"
 }

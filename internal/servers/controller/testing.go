@@ -257,7 +257,7 @@ func NewTestController(t *testing.T, opts *TestControllerOpts) *TestController {
 		tc.b.ControllerKMS = opts.ControllerKMS
 		tc.b.WorkerAuthKMS = opts.WorkerAuthKMS
 	case opts.ControllerKMS == nil && opts.WorkerAuthKMS == nil:
-		if err := tc.b.SetupKMSes(nil, opts.Config.SharedConfig, []string{"controller", "worker-auth"}); err != nil {
+		if err := tc.b.SetupKMSes(nil, opts.Config.SharedConfig, []string{"root", "worker-auth"}); err != nil {
 			t.Fatal(err)
 		}
 	default:

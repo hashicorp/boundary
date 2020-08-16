@@ -327,7 +327,7 @@ func (b *Server) SetupKMSes(ui cli.Ui, config *configutil.SharedConfig, purposes
 			switch purpose {
 			case "":
 				return errors.New("KMS block missing 'purpose'")
-			case "controller", "worker-auth", "config":
+			case "root", "worker-auth", "config":
 			default:
 				return fmt.Errorf("Unknown KMS purpose %q", kms.Purpose)
 			}
@@ -346,7 +346,7 @@ func (b *Server) SetupKMSes(ui cli.Ui, config *configutil.SharedConfig, purposes
 					"After configuration nil KMS returned, KMS type was %s", kms.Type)
 			}
 
-			if purpose == "controller" {
+			if purpose == "root" {
 				b.ControllerKMS = wrapper
 			} else {
 				b.WorkerAuthKMS = wrapper

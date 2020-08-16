@@ -48,8 +48,8 @@ message AuthMethod {
 
 message PasswordAuthMethodAttributes {
 	// The minimum length allowed for user names for accounts in this auth method.
-	uint32 min_login_name_length = 1 [(custom_options.v1.generate_sdk_option) = true];
+	uint32 min_login_name_length = 1 [(custom_options.v1.generate_sdk_option) = true, (custom_options.v1.mask_mapping) = {this:"attributes.min_login_name_length" that: "MinLoginNameLength"}];
 
 	// The minimum length allowed for passwords for accounts in this auth method.
-	uint32 min_password_length = 2 [(custom_options.v1.generate_sdk_option) = true];
+	uint32 min_password_length = 2 [(custom_options.v1.generate_sdk_option) = true, (custom_options.v1.mask_mapping) = {this:"attributes.min_password_length" that: "MinPasswordLength"}];
 }
