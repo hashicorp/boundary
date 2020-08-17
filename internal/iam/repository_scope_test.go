@@ -10,6 +10,7 @@ import (
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/db/timestamp"
 	iam_store "github.com/hashicorp/boundary/internal/iam/store"
+	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/oplog"
 	"github.com/hashicorp/boundary/internal/types/scope"
 	"github.com/stretchr/testify/assert"
@@ -24,7 +25,8 @@ func Test_Repository_Scope_Create(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
 		rw := db.New(conn)
 		wrapper := db.TestWrapper(t)
-		repo, err := NewRepository(rw, rw, wrapper)
+		kms := kms.TestKms(t, conn, kms.WithRootWrapper(wrapper))
+		repo, err := NewRepository(rw, rw, kms)
 		require.NoError(err)
 		id := testId(t)
 
@@ -47,7 +49,8 @@ func Test_Repository_Scope_Create(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
 		rw := db.New(conn)
 		wrapper := db.TestWrapper(t)
-		repo, err := NewRepository(rw, rw, wrapper)
+		kms := kms.TestKms(t, conn, kms.WithRootWrapper(wrapper))
+		repo, err := NewRepository(rw, rw, kms)
 		require.NoError(err)
 		publicId, err := newScopeId(scope.Org)
 		require.NoError(err)
@@ -68,7 +71,8 @@ func Test_Repository_Scope_Create(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
 		rw := db.New(conn)
 		wrapper := db.TestWrapper(t)
-		repo, err := NewRepository(rw, rw, wrapper)
+		kms := kms.TestKms(t, conn, kms.WithRootWrapper(wrapper))
+		repo, err := NewRepository(rw, rw, kms)
 		require.NoError(err)
 		id := testId(t)
 
@@ -90,7 +94,8 @@ func Test_Repository_Scope_Create(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
 		rw := db.New(conn)
 		wrapper := db.TestWrapper(t)
-		repo, err := NewRepository(rw, rw, wrapper)
+		kms := kms.TestKms(t, conn, kms.WithRootWrapper(wrapper))
+		repo, err := NewRepository(rw, rw, kms)
 		require.NoError(err)
 		id := testId(t)
 
@@ -123,7 +128,8 @@ func Test_Repository_Scope_Update(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
 		rw := db.New(conn)
 		wrapper := db.TestWrapper(t)
-		repo, err := NewRepository(rw, rw, wrapper)
+		kms := kms.TestKms(t, conn, kms.WithRootWrapper(wrapper))
+		repo, err := NewRepository(rw, rw, kms)
 		require.NoError(err)
 		id := testId(t)
 
@@ -169,7 +175,8 @@ func Test_Repository_Scope_Update(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
 		rw := db.New(conn)
 		wrapper := db.TestWrapper(t)
-		repo, err := NewRepository(rw, rw, wrapper)
+		kms := kms.TestKms(t, conn, kms.WithRootWrapper(wrapper))
+		repo, err := NewRepository(rw, rw, kms)
 		require.NoError(err)
 		id := testId(t)
 
@@ -198,7 +205,8 @@ func Test_Repository_Scope_Lookup(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
 		rw := db.New(conn)
 		wrapper := db.TestWrapper(t)
-		repo, err := NewRepository(rw, rw, wrapper)
+		kms := kms.TestKms(t, conn, kms.WithRootWrapper(wrapper))
+		repo, err := NewRepository(rw, rw, kms)
 		require.NoError(err)
 		id := testId(t)
 
@@ -222,7 +230,8 @@ func Test_Repository_Scope_Delete(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
-	repo, err := NewRepository(rw, rw, wrapper)
+	kms := kms.TestKms(t, conn, kms.WithRootWrapper(wrapper))
+	repo, err := NewRepository(rw, rw, kms)
 	assert.NoError(t, err)
 	t.Run("valid-with-public-id", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
@@ -261,6 +270,7 @@ func TestRepository_UpdateScope(t *testing.T) {
 	id := testId(t)
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
+	kms := kms.TestKms(t, conn, kms.WithRootWrapper(wrapper))
 	publicId := testPublicId(t, "o")
 
 	type args struct {
@@ -418,9 +428,9 @@ func TestRepository_UpdateScope(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 			r := &Repository{
-				reader:  rw,
-				writer:  rw,
-				wrapper: wrapper,
+				reader: rw,
+				writer: rw,
+				kms:    kms,
 			}
 			org := testOrg(t, conn, tt.name+"-orig-"+id, "orig-"+id)
 			if tt.args.scope != nil {

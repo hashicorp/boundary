@@ -7,6 +7,7 @@ import (
 	"github.com/hashicorp/boundary/internal/auth/password"
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/iam"
+	"github.com/hashicorp/boundary/internal/kms"
 	wrapping "github.com/hashicorp/go-kms-wrapping"
 	"github.com/jinzhu/gorm"
 	"github.com/stretchr/testify/require"
@@ -21,7 +22,8 @@ func TestAuthToken(t *testing.T, conn *gorm.DB, wrapper wrapping.Wrapper, scopeI
 
 	ctx := context.Background()
 	rw := db.New(conn)
-	iamRepo, err := iam.NewRepository(rw, rw, wrapper)
+	kms := kms.TestKms(t, conn, kms.WithRootWrapper(wrapper))
+	iamRepo, err := iam.NewRepository(rw, rw, kms)
 	require.NoError(t, err)
 
 	u, err := iamRepo.LookupUserWithLogin(ctx, acct.GetPublicId(), iam.WithAutoVivify(true))

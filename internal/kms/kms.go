@@ -59,16 +59,16 @@ func NewKms(opt ...Option) (*Kms, error) {
 	return ret, nil
 }
 
-// AddExternalWrappers allows setting the external keys for a scope.
+// AddExternalWrappers allows setting the external keys.
 //
 // TODO: If we support more than one, e.g. for encrypting against many in case
 // of a key loss, there will need to be some refactoring here to have the values
 // being stored in the struct be a multiwrapper, but that's for a later project.
-func (k *Kms) AddExternalWrappers(scopeId string, opt ...Option) error {
+func (k *Kms) AddExternalWrappers(opt ...Option) error {
 	k.externalScopeCacheMutex.Lock()
 	defer k.externalScopeCacheMutex.Unlock()
 
-	ext := k.externalScopeCache[scopeId]
+	ext := k.externalScopeCache[scope.Global.String()]
 	if ext == nil {
 		ext = &ExternalWrappers{}
 	}
@@ -79,32 +79,36 @@ func (k *Kms) AddExternalWrappers(scopeId string, opt ...Option) error {
 	if opts.withRootWrapper != nil {
 		ext.root = opts.withRootWrapper
 		if ext.root.KeyID() == "" {
-			return fmt.Errorf("root wrapper passed in for scope %s has no key ID", scopeId)
+			return fmt.Errorf("root wrapper passed in for has no key ID")
 		}
 	}
 	if opts.withWorkerAuthWrapper != nil {
 		ext.workerAuth = opts.withWorkerAuthWrapper
 		if ext.workerAuth.KeyID() == "" {
-			return fmt.Errorf("worker auth wrapper passed in for scope %s has no key ID", scopeId)
+			return fmt.Errorf("worker auth wrapper passed in has no key ID")
 		}
 	}
 
-	k.externalScopeCache[scopeId] = ext
+	k.externalScopeCache[scope.Global.String()] = ext
 	return nil
 }
 
-func (k *Kms) GetExternalWrappers(scopeId string) *ExternalWrappers {
+func (k *Kms) GetExternalWrappers() *ExternalWrappers {
 	k.externalScopeCacheMutex.RLock()
 	defer k.externalScopeCacheMutex.RUnlock()
 
-	return k.externalScopeCache[scopeId]
+	return k.externalScopeCache[scope.Global.String()]
 }
 
-func generateKeyId(scopeId, purpose string, version uint32) string {
+func generateKeyId(scopeId, purpose KeyPurpose, version uint32) string {
 	return fmt.Sprintf("%s_%s_%d", scopeId, purpose, version)
 }
 
-func (k *Kms) GetWrapper(ctx context.Context, scopeId, purpose, keyId string) (wrapping.Wrapper, error) {
+// GetWrapper returns a wrapper for the given scope and purpose. When a keyId is
+// passed, it will ensure that the returning wrapper has that key ID in the
+// multiwrapper. This is not necesary for encryption but should be supplied for
+// decryption.
+func (k *Kms) GetWrapper(ctx context.Context, scopeId string, purpose KeyPurpose, keyId string) (wrapping.Wrapper, error) {
 	switch purpose {
 	case "oplog", "database":
 	default:
@@ -113,10 +117,10 @@ func (k *Kms) GetWrapper(ctx context.Context, scopeId, purpose, keyId string) (w
 	// Fast-path: we have a valid key at the scope/purpose. Verify the key with
 	// that ID is in the multiwrapper; if not, fall through to reload from the
 	// DB.
-	val, ok := k.scopePurposeCache.Load(scopeId + purpose)
+	val, ok := k.scopePurposeCache.Load(scopeId + purpose.String())
 	if ok {
 		wrapper := val.(*multiwrapper.MultiWrapper)
-		if wrapper.WrapperForKeyID(keyId) != nil {
+		if keyId == "" || wrapper.WrapperForKeyID(keyId) != nil {
 			return wrapper, nil
 		}
 		// Fall through to refresh our multiwrapper for this scope/purpose from the DB
@@ -169,16 +173,10 @@ func (k *Kms) loadRoot(ctx context.Context, scopeId string) (*multiwrapper.Multi
 	// Now: find the external KMS that can be used to decrypt the root values
 	// from the DB.
 	k.externalScopeCacheMutex.Lock()
-	externalWrappers := k.externalScopeCache[scopeId]
+	externalWrappers := k.externalScopeCache[scope.Global.String()]
 	if externalWrappers == nil {
-		// Note that if we ever allow per-project-scope external wrappers this will
-		// become quite a bit more complicated to go up the chain of external KMSes, but
-		// that's not in the plans currently so for now ignore that possibility.
-		externalWrappers = k.externalScopeCache[scope.Global.String()]
-		if externalWrappers == nil {
-			k.externalScopeCacheMutex.Unlock()
-			return nil, errors.New("could not find kms information at either the needed scope or global fallback")
-		}
+		k.externalScopeCacheMutex.Unlock()
+		return nil, errors.New("could not find kms information at either the needed scope or global fallback")
 	}
 	k.externalScopeCacheMutex.Unlock()
 

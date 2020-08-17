@@ -10,6 +10,7 @@ import (
 	"github.com/golang/protobuf/ptypes"
 	"github.com/google/go-cmp/cmp"
 	"github.com/hashicorp/boundary/internal/auth/password"
+	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/oplog"
 	wrapping "github.com/hashicorp/go-kms-wrapping"
 	"github.com/stretchr/testify/assert"
@@ -130,12 +131,13 @@ func TestRepository_CreateAuthToken(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
+	kms := kms.TestKms(t, conn, kms.WithRootWrapper(wrapper))
 
 	org1, _ := iam.TestScopes(t, conn)
 	am := password.TestAuthMethods(t, conn, org1.GetPublicId(), 1)[0]
 	aAcct := password.TestAccounts(t, conn, am.GetPublicId(), 1)[0]
 
-	iamRepo, err := iam.NewRepository(rw, rw, wrapper)
+	iamRepo, err := iam.NewRepository(rw, rw, kms)
 	require.NoError(t, err)
 	u1, err := iamRepo.LookupUserWithLogin(context.Background(), aAcct.GetPublicId(), iam.WithAutoVivify(true))
 	require.NoError(t, err)

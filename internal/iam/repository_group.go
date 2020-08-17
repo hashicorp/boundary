@@ -7,6 +7,7 @@ import (
 
 	"github.com/hashicorp/boundary/internal/db"
 	dbcommon "github.com/hashicorp/boundary/internal/db/common"
+	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/oplog"
 )
 
@@ -89,7 +90,7 @@ func (r *Repository) UpdateGroup(ctx context.Context, group *Group, version uint
 			if err != nil {
 				return err
 			}
-			repo, err := NewRepository(read, w, r.wrapper)
+			repo, err := NewRepository(read, w, r.kms)
 			if err != nil {
 				return fmt.Errorf("update group: failed creating inner repo: %w for %s", err, group.PublicId)
 			}
@@ -126,7 +127,7 @@ func (r *Repository) LookupGroup(ctx context.Context, withPublicId string, opt .
 			if err := read.LookupByPublicId(ctx, &g); err != nil {
 				return fmt.Errorf("lookup group: failed %w for %s", err, withPublicId)
 			}
-			repo, err := NewRepository(read, w, r.wrapper)
+			repo, err := NewRepository(read, w, r.kms)
 			if err != nil {
 				return fmt.Errorf("lookup group: failed creating inner repo: %w for %s", err, withPublicId)
 			}
@@ -249,14 +250,18 @@ func (r *Repository) AddGroupMembers(ctx context.Context, groupId string, groupV
 				"scope-type":         []string{scope.Type},
 				"resource-public-id": []string{groupId},
 			}
-			if err := w.WriteOplogEntryWith(ctx, r.wrapper, groupTicket, metadata, msgs); err != nil {
+			oplogWrapper, err := r.kms.GetWrapper(ctx, scope.GetPublicId(), kms.KeyPurposeOplog, "")
+			if err != nil {
+				return fmt.Errorf("add group members: unable to get oplog wrapper: %w", err)
+			}
+			if err := w.WriteOplogEntryWith(ctx, oplogWrapper, groupTicket, metadata, msgs); err != nil {
 				return fmt.Errorf("add group members: unable to write oplog: %w", err)
 			}
 			// we need a new repo, that's using the same reader/writer as this TxHandler
 			txRepo := Repository{
-				reader:  reader,
-				writer:  w,
-				wrapper: r.wrapper,
+				reader: reader,
+				writer: w,
+				kms:    r.kms,
 				// intentionally not setting the defaultLimit, so we'll get all
 				// the members without a limit
 			}
@@ -341,7 +346,11 @@ func (r *Repository) DeleteGroupMembers(ctx context.Context, groupId string, gro
 				"scope-type":         []string{scope.Type},
 				"resource-public-id": []string{groupId},
 			}
-			if err := w.WriteOplogEntryWith(ctx, r.wrapper, groupTicket, metadata, msgs); err != nil {
+			oplogWrapper, err := r.kms.GetWrapper(ctx, scope.GetPublicId(), kms.KeyPurposeOplog, "")
+			if err != nil {
+				return fmt.Errorf("add group members: unable to get oplog wrapper: %w", err)
+			}
+			if err := w.WriteOplogEntryWith(ctx, oplogWrapper, groupTicket, metadata, msgs); err != nil {
 				return fmt.Errorf("delete group members: unable to write oplog: %w", err)
 			}
 			return nil
@@ -470,14 +479,18 @@ func (r *Repository) SetGroupMembers(ctx context.Context, groupId string, groupV
 			}
 			// we're done with all the membership writes, so let's write the
 			// group's update oplog message
-			if err := w.WriteOplogEntryWith(ctx, r.wrapper, groupTicket, metadata, msgs); err != nil {
+			oplogWrapper, err := r.kms.GetWrapper(ctx, scope.GetPublicId(), kms.KeyPurposeOplog, "")
+			if err != nil {
+				return fmt.Errorf("add group members: unable to get oplog wrapper: %w", err)
+			}
+			if err := w.WriteOplogEntryWith(ctx, oplogWrapper, groupTicket, metadata, msgs); err != nil {
 				return fmt.Errorf("set group members: unable to write oplog for additions: %w", err)
 			}
 			// we need a new repo, that's using the same reader/writer as this TxHandler
 			txRepo := Repository{
-				reader:  reader,
-				writer:  w,
-				wrapper: r.wrapper,
+				reader: reader,
+				writer: w,
+				kms:    r.kms,
 				// intentionally not setting the defaultLimit, so we'll get all
 				// the members without a limit
 			}

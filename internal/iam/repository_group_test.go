@@ -9,6 +9,7 @@ import (
 
 	"github.com/hashicorp/boundary/internal/db"
 	dbassert "github.com/hashicorp/boundary/internal/db/assert"
+	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/oplog"
 	"github.com/hashicorp/go-uuid"
 	"github.com/stretchr/testify/assert"
@@ -21,7 +22,8 @@ func TestRepository_CreateGroup(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
-	repo, err := NewRepository(rw, rw, wrapper)
+	kms := kms.TestKms(t, conn, kms.WithRootWrapper(wrapper))
+	repo, err := NewRepository(rw, rw, kms)
 	require.NoError(t, err)
 	id := testId(t)
 
@@ -177,7 +179,8 @@ func TestRepository_UpdateGroup(t *testing.T) {
 	a := assert.New(t)
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
-	repo, err := NewRepository(rw, rw, wrapper)
+	kms := kms.TestKms(t, conn, kms.WithRootWrapper(wrapper))
+	repo, err := NewRepository(rw, rw, kms)
 	a.NoError(err)
 	id, err := uuid.GenerateUUID()
 	a.NoError(err)
@@ -473,7 +476,8 @@ func TestRepository_DeleteGroup(t *testing.T) {
 	a := assert.New(t)
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
-	repo, err := NewRepository(rw, rw, wrapper)
+	kms := kms.TestKms(t, conn, kms.WithRootWrapper(wrapper))
+	repo, err := NewRepository(rw, rw, kms)
 	a.NoError(err)
 	org, _ := TestScopes(t, conn)
 
@@ -557,7 +561,8 @@ func TestRepository_ListGroups(t *testing.T) {
 	const testLimit = 10
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
-	repo, err := NewRepository(rw, rw, wrapper, WithLimit(testLimit))
+	kms := kms.TestKms(t, conn, kms.WithRootWrapper(wrapper))
+	repo, err := NewRepository(rw, rw, kms, WithLimit(testLimit))
 	require.NoError(t, err)
 	org, proj := TestScopes(t, conn)
 
@@ -653,7 +658,8 @@ func TestRepository_ListMembers(t *testing.T) {
 	const testLimit = 10
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
-	repo, err := NewRepository(rw, rw, wrapper, WithLimit(testLimit))
+	kms := kms.TestKms(t, conn, kms.WithRootWrapper(wrapper))
+	repo, err := NewRepository(rw, rw, kms, WithLimit(testLimit))
 	require.NoError(t, err)
 	org, proj := TestScopes(t, conn)
 	pg := TestGroup(t, conn, proj.PublicId)
@@ -745,7 +751,8 @@ func TestRepository_AddGroupMembers(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
-	repo, err := NewRepository(rw, rw, wrapper)
+	kms := kms.TestKms(t, conn, kms.WithRootWrapper(wrapper))
+	repo, err := NewRepository(rw, rw, kms)
 	require.NoError(t, err)
 	org, proj := TestScopes(t, conn)
 	group := TestGroup(t, conn, proj.PublicId)
@@ -864,7 +871,8 @@ func TestRepository_DeleteGroupMembers(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
-	repo, err := NewRepository(rw, rw, wrapper)
+	kms := kms.TestKms(t, conn, kms.WithRootWrapper(wrapper))
+	repo, err := NewRepository(rw, rw, kms)
 	require.NoError(t, err)
 	org, _ := TestScopes(t, conn)
 
@@ -1003,8 +1011,9 @@ func TestRepository_SetGroupMembers(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
+	kms := kms.TestKms(t, conn, kms.WithRootWrapper(wrapper))
 
-	repo, err := NewRepository(rw, rw, wrapper)
+	repo, err := NewRepository(rw, rw, kms)
 	require.NoError(t, err)
 
 	org, proj := TestScopes(t, conn)

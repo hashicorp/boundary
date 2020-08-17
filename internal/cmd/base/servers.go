@@ -447,7 +447,6 @@ func (b *Server) CreateDevDatabase(dialect string) error {
 		return fmt.Errorf("error creating kms cache: %w", err)
 	}
 	if err := kmsCache.AddExternalWrappers(
-		scope.Global.String(),
 		kms.WithRootWrapper(b.RootKms),
 		kms.WithWorkerAuthWrapper(b.WorkerAuthKms),
 	); err != nil {
@@ -468,10 +467,6 @@ func (b *Server) CreateDevDatabase(dialect string) error {
 	rootKey, err := uuid.GenerateRandomBytesWithReader(32, b.SecureRandomReader)
 	if err != nil {
 		return fmt.Errorf("error generating random bytes for scope root key: %w", err)
-	}
-	kmsRepo, err := kms.NewRepository(rw, rw)
-	if err != nil {
-		return fmt.Errorf("unable to create kms repo for saving global scope root key: %w", err)
 	}
 	_, _, err = kmsRepo.CreateRootKey(ctx, b.RootKms, scope.Global.String(), rootKey)
 	if err != nil {

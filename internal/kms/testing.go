@@ -5,7 +5,6 @@ import (
 	"testing"
 
 	"github.com/hashicorp/boundary/internal/db"
-	"github.com/hashicorp/boundary/internal/types/scope"
 	wrapping "github.com/hashicorp/go-kms-wrapping"
 	"github.com/jinzhu/gorm"
 	"github.com/stretchr/testify/require"
@@ -49,10 +48,7 @@ func TestKms(t *testing.T, conn *gorm.DB, opt ...Option) *Kms {
 	require.NoError(err)
 	kms, err := NewKms(WithRepository(kmsRepo))
 	require.NoError(err)
-	err = kms.AddExternalWrappers(
-		scope.Global.String(),
-		opt...,
-	)
+	err = kms.AddExternalWrappers(opt...)
 	require.NoError(err)
 	return kms
 }

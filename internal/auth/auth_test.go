@@ -10,6 +10,7 @@ import (
 	"github.com/hashicorp/boundary/internal/authtoken"
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/iam"
+	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/types/action"
 	"github.com/hashicorp/boundary/internal/types/resource"
 	"github.com/kr/pretty"
@@ -21,7 +22,8 @@ func TestHandler_AuthDecoration(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
-	iamRepo, err := iam.NewRepository(rw, rw, wrapper)
+	kms := kms.TestKms(t, conn, kms.WithRootWrapper(wrapper))
+	iamRepo, err := iam.NewRepository(rw, rw, kms)
 	require.NoError(t, err)
 	iamRepoFn := func() (*iam.Repository, error) {
 		return iamRepo, nil
@@ -274,7 +276,8 @@ func TestAuthTokenAuthenticator(t *testing.T) {
 	wrapper := db.TestWrapper(t)
 	tokenRepo, err := authtoken.NewRepository(rw, rw, wrapper)
 	require.NoError(t, err)
-	iamRepo, err := iam.NewRepository(rw, rw, wrapper)
+	kms := kms.TestKms(t, conn, kms.WithRootWrapper(wrapper))
+	iamRepo, err := iam.NewRepository(rw, rw, kms)
 	require.NoError(t, err)
 	tokenRepoFn := func() (*authtoken.Repository, error) {
 		return tokenRepo, nil
