@@ -46,13 +46,9 @@ message HostSet {
 	// Output only
 	string host_catalog_id = 90 [json_name="host_catalog_id"];
 
-	// The total count of hosts in this host set
-	// Output only.
-	uint32 size = 100;
-
 	// A list of hosts in this host set
 	// TODO: Figure out if this should be in the basic HostSet view and what
 	// view to use on the Hosts.
 	// Output only.
-	repeated string host_ids = 110;
+	repeated string host_ids = 100;
 }

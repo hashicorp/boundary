@@ -25,6 +25,7 @@ type Host struct {
 	Type          string            `json:"type,omitempty"`
 	HostCatalogId string            `json:"host_catalog_id,omitempty"`
 	Address       string            `json:"address,omitempty"`
+	HostSetIds    []string          `json:"host_set_ids,omitempty"`
 }
 
 type HostsClient struct {

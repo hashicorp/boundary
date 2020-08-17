@@ -147,16 +147,17 @@ func (s Service) getFromRepo(ctx context.Context, id string) (*pb.Host, error) {
 	if err != nil {
 		return nil, err
 	}
-	// h, err := repo.LookupSet(ctx, id)
+	// h, hsl, err := repo.LookupSet(ctx, id)
 	// if err != nil {
 	// 	return nil, err
 	// }
 	_ = repo
+	var hsl []*static.HostSetMember
 	var h *static.Host
 	if h == nil {
 		return nil, handlers.NotFoundErrorf("Host %q doesn't exist.", id)
 	}
-	return toProto(h), nil
+	return toProto(h, hsl), nil
 }
 
 func (s Service) createInRepo(ctx context.Context, catalogId string, item *pb.Host) (*pb.Host, error) {
@@ -184,7 +185,7 @@ func (s Service) createInRepo(ctx context.Context, catalogId string, item *pb.Ho
 	if out == nil {
 		return nil, status.Error(codes.Internal, "Unable to create host but no error returned from repository.")
 	}
-	return toProto(out), nil
+	return toProto(out, nil), nil
 }
 
 func (s Service) updateInRepo(ctx context.Context, catalogId, id string, version uint32, mask []string, item *pb.Host) (*pb.Host, error) {
@@ -211,7 +212,7 @@ func (s Service) updateInRepo(ctx context.Context, catalogId, id string, version
 	if err != nil {
 		return nil, err
 	}
-	// out, rowsUpdated, err := repo.UpdateHost(ctx, h, version, dbMask)
+	// out, hsl, rowsUpdated, err := repo.UpdateHost(ctx, h, version, dbMask)
 	// if err != nil {
 	// 	return nil, status.Errorf(codes.Internal, "Unable to update host: %v.", err)
 	// }
@@ -219,8 +220,9 @@ func (s Service) updateInRepo(ctx context.Context, catalogId, id string, version
 	// 	return nil, handlers.NotFoundErrorf("Host %q doesn't exist.", id)
 	// }
 	_ = repo
+	var hsl []*static.HostSetMember
 	out := h
-	return toProto(out), nil
+	return toProto(out, hsl), nil
 }
 
 func (s Service) deleteFromRepo(ctx context.Context, id string) (bool, error) {
@@ -242,7 +244,7 @@ func (s Service) listFromRepo(ctx context.Context, catalogId string) ([]*pb.Host
 	if err != nil {
 		return nil, err
 	}
-	//gl, err := repo.ListHosts(ctx, catalogId)
+	//hl, err := repo.ListHosts(ctx, catalogId)
 	_ = repo
 	var hl []*static.Host
 	if err != nil {
@@ -250,12 +252,12 @@ func (s Service) listFromRepo(ctx context.Context, catalogId string) ([]*pb.Host
 	}
 	var outHl []*pb.Host
 	for _, h := range hl {
-		outHl = append(outHl, toProto(h))
+		outHl = append(outHl, toProto(h, nil))
 	}
 	return outHl, nil
 }
 
-func toProto(in *static.Host) *pb.Host {
+func toProto(in *static.Host, members []*static.HostSetMember) *pb.Host {
 	out := pb.Host{
 		Id:            in.GetPublicId(),
 		HostCatalogId: in.GetCatalogId(),
@@ -270,6 +272,9 @@ func toProto(in *static.Host) *pb.Host {
 	}
 	if in.GetName() != "" {
 		out.Name = wrapperspb.String(in.GetName())
+	}
+	for _, m := range members {
+		out.HostSetIds = append(out.HostSetIds, m.GetSetId())
 	}
 	return &out
 }

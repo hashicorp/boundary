@@ -24,7 +24,6 @@ type HostSet struct {
 	Version       uint32            `json:"version,omitempty"`
 	Type          string            `json:"type,omitempty"`
 	HostCatalogId string            `json:"host_catalog_id,omitempty"`
-	Size          uint32            `json:"size,omitempty"`
 	HostIds       []string          `json:"host_ids,omitempty"`
 }
 

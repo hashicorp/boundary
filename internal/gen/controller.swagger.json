@@ -2222,6 +2222,14 @@
         "address": {
           "type": "string",
           "title": "The address (DNS or IP name) used to reach the host"
+        },
+        "host_set_ids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "A list of host sets this host is in\nOutput only.",
+          "readOnly": true
         }
       },
       "title": "Host contains all fields related to a Host resource"
@@ -2322,12 +2330,6 @@
         "host_catalog_id": {
           "type": "string",
           "title": "The host catalog this host set is a part of\nOutput only"
-        },
-        "size": {
-          "type": "integer",
-          "format": "int64",
-          "description": "The total count of hosts in this host set\nOutput only.",
-          "readOnly": true
         },
         "host_ids": {
           "type": "array",

@@ -47,4 +47,8 @@ message Host {
 
 	// The address (DNS or IP name) used to reach the host
 	google.protobuf.StringValue address = 100 [(custom_options.v1.generate_sdk_option) = true, (custom_options.v1.mask_mapping) = {this:"address" that: "address"}];
+
+	// A list of host sets this host is in
+	// Output only.
+	repeated string host_set_ids = 110;
 }
