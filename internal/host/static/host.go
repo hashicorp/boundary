@@ -52,8 +52,8 @@ func (h *Host) SetTableName(n string) {
 	h.tableName = n
 }
 
-func allocHost() Host {
-	return Host{
+func allocHost() *Host {
+	return &Host{
 		Host: &store.Host{},
 	}
 }
