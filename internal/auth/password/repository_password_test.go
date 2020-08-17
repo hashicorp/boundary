@@ -248,91 +248,84 @@ func TestRepository_ChangePassword(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, repo)
 
+	o, _ := iam.TestScopes(t, conn)
+	authMethod := TestAuthMethods(t, conn, o.GetPublicId(), 1)[0]
+
 	inAcct := &Account{
 		Account: &store.Account{
-			LoginName: "kazmierczak",
+			LoginName:    "kazmierczak",
+			AuthMethodId: authMethod.PublicId,
 		},
 	}
 	passwd := "12345678"
 
+	acct, err := repo.CreateAccount(context.Background(), inAcct, WithPassword(passwd))
+	require.NoError(t, err)
+	require.NotNil(t, acct)
+
 	type args struct {
-		authMethodId string
-		loginName    string
-		old, new     string
+		acctId   string
+		old, new string
 	}
 
 	var tests = []struct {
-		name            string
-		args            args
-		useAuthMethodId bool
-		wantAccount     bool
-		wantIsErr       error
+		name        string
+		args        args
+		wantAccount bool
+		wantIsErr   error
 	}{
 		{
-			name: "invalid-no-authMethodId",
+			name: "invalid-no-accountId",
 			args: args{
-				authMethodId: "",
-				loginName:    inAcct.LoginName,
-				old:          passwd,
-				new:          "12345678-changed",
-			},
-			useAuthMethodId: true,
-			wantIsErr:       db.ErrInvalidParameter,
-		},
-		{
-			name: "invalid-no-loginName",
-			args: args{
-				loginName: "",
-				old:       passwd,
-				new:       "12345678-changed",
+				acctId: "",
+				old:    passwd,
+				new:    "12345678-changed",
 			},
 			wantIsErr: db.ErrInvalidParameter,
 		},
 		{
 			name: "invalid-no-old-password",
 			args: args{
-				loginName: inAcct.LoginName,
-				old:       "",
-				new:       "12345678-changed",
+				acctId: acct.PublicId,
+				old:    "",
+				new:    "12345678-changed",
 			},
 			wantIsErr: db.ErrInvalidParameter,
 		},
 		{
 			name: "invalid-no-new-password",
 			args: args{
-				loginName: inAcct.LoginName,
-				old:       passwd,
-				new:       "",
+				acctId: acct.PublicId,
+				old:    passwd,
+				new:    "",
 			},
 			wantIsErr: db.ErrInvalidParameter,
 		},
 		{
 			name: "invalid-same-passwords",
 			args: args{
-				loginName: inAcct.LoginName,
-				old:       passwd,
-				new:       passwd,
+				acctId: acct.PublicId,
+				old:    passwd,
+				new:    passwd,
 			},
 			wantIsErr: ErrPasswordsEqual,
 		},
 		{
-			name: "auth-failure-unknown-authMethodId",
+			name: "auth-failure-unknown-accountId",
 			args: args{
-				authMethodId: "not-an-authMethod-Id",
-				loginName:    inAcct.LoginName,
-				old:          passwd,
-				new:          "12345678-changed",
+				acctId: "not-an-account-Id",
+				old:    passwd,
+				new:    "12345678-changed",
 			},
-			useAuthMethodId: true,
-			wantAccount:     false,
-			wantIsErr:       nil,
+			wantAccount: false,
+			wantIsErr:   db.ErrRecordNotFound,
 		},
 		{
 			name: "auth-failure-wrong-old-password",
 			args: args{
-				loginName: inAcct.LoginName,
-				old:       "wrong-password",
-				new:       "12345678-changed",
+				acctId: acct.PublicId,
+				old:    "wrong-password",
+				new:    "12345678-changed",
 			},
 			wantAccount: false,
 			wantIsErr:   nil,
@@ -340,18 +333,18 @@ func TestRepository_ChangePassword(t *testing.T) {
 		{
 			name: "password-to-short",
 			args: args{
-				loginName: inAcct.LoginName,
-				old:       passwd,
-				new:       "1",
+				acctId: acct.PublicId,
+				old:    passwd,
+				new:    "1",
 			},
 			wantIsErr: ErrTooShort,
 		},
 		{
 			name: "valid",
 			args: args{
-				loginName: inAcct.LoginName,
-				old:       passwd,
-				new:       "12345678-changed",
+				acctId: acct.PublicId,
+				old:    passwd,
+				new:    "12345678-changed",
 			},
 			wantAccount: true,
 		},
@@ -361,16 +354,6 @@ func TestRepository_ChangePassword(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 
-			o, _ := iam.TestScopes(t, conn)
-			authMethod := TestAuthMethods(t, conn, o.GetPublicId(), 1)[0]
-			inAcct.AuthMethodId = authMethod.PublicId
-			outAcct, err := repo.CreateAccount(context.Background(), inAcct, WithPassword(passwd))
-			require.NoError(err)
-			require.NotNil(outAcct)
-
-			if !tt.useAuthMethodId {
-				tt.args.authMethodId = authMethod.PublicId
-			}
 			// Calls to Authenticate should always succeed in these tests
 			authFn := func(pwd string, name string) *Account {
 				acct, err := repo.Authenticate(context.Background(), inAcct.AuthMethodId, inAcct.LoginName, pwd)
@@ -381,7 +364,7 @@ func TestRepository_ChangePassword(t *testing.T) {
 			// authenticate with original password
 			authAcct1 := authFn(passwd, "original account")
 
-			chgAuthAcct, err := repo.ChangePassword(context.Background(), tt.args.authMethodId, tt.args.loginName, tt.args.old, tt.args.new)
+			chgAuthAcct, err := repo.ChangePassword(context.Background(), tt.args.acctId, tt.args.old, tt.args.new, authAcct1.Version)
 			if tt.wantIsErr != nil {
 				assert.Error(err)
 				assert.Truef(errors.Is(err, tt.wantIsErr), "want err: %q got: %q", tt.wantIsErr, err)
@@ -421,127 +404,134 @@ func TestRepository_SetPassword(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, repo)
 
-	template := &Account{
-		Account: &store.Account{
-			LoginName: "kazmierczak",
-		},
-	}
+	o, _ := iam.TestScopes(t, conn)
+	authMethod := TestAuthMethods(t, conn, o.GetPublicId(), 1)[0]
+
 	origPasswd := "12345678"
 
-	wantAuthenticate := func(t *testing.T, authMethodId string, pwd string, msg string) string {
-		acct, err := repo.Authenticate(context.Background(), authMethodId, template.LoginName, pwd)
+	createAccount := func(un string) func(string) *Account {
+		return func(pw string) *Account {
+			inAcct := &Account{
+				Account: &store.Account{
+					AuthMethodId: authMethod.PublicId,
+					LoginName:    un,
+				},
+			}
+			var opts []Option
+			if pw != "" {
+				opts = append(opts, WithPassword(origPasswd))
+			}
+			acct, err := repo.CreateAccount(context.Background(), inAcct, opts...)
+			require.NoError(t, err)
+			require.NotNil(t, acct)
+			return acct
+		}
+	}
+
+	wantAuthenticate := func(t *testing.T, ln, pw, msg string) string {
+		acct, err := repo.Authenticate(context.Background(), authMethod.PublicId, ln, pw)
 		assert.NoErrorf(t, err, "%s: authenticate should not return an error", msg)
 		if assert.NotNilf(t, acct, "%s: authenticate should succeed", msg) {
 			return acct.CredentialId
 		}
 		return ""
 	}
-	wantNoAuthenticate := func(t *testing.T, authMethodId string, pwd string, msg string) string {
-		if authMethodId == "" || pwd == "" {
-			return ""
-		}
-		acct, err := repo.Authenticate(context.Background(), authMethodId, template.LoginName, pwd)
+	wantNoAuthenticate := func(t *testing.T, ln, pw, msg string) string {
+		acct, err := repo.Authenticate(context.Background(), authMethod.PublicId, ln, pw)
 		assert.NoErrorf(t, err, "%s: authenticate should not return an error", msg)
 		assert.Nilf(t, acct, "%s: authenticate should not succeed", msg)
 		return ""
 	}
 
-	type args struct {
-		accountId string
-		password  string
-	}
-
 	var tests = []struct {
-		name               string
-		args               args
-		createWithPassword bool
-		useArgsAccountId   bool
-		wantIsErr          error
+		name       string
+		oldPw      string
+		newPw      string
+		createAcct func(string) *Account
 	}{
 		{
-			name: "no-accountId",
-			args: args{
-				accountId: "",
-				password:  "abcdefghijk",
-			},
-			createWithPassword: true,
-			useArgsAccountId:   true,
-			wantIsErr:          db.ErrInvalidParameter,
+			name:       "valid-new-password-no-old-password",
+			createAcct: createAccount("validnewpwnoold"),
+			oldPw:      "",
+			newPw:      "abcdefghijk",
 		},
 		{
-			name: "new-passsword-too-short",
-			args: args{
-				password: "a",
-			},
-			wantIsErr: ErrTooShort,
+			name:       "valid-new-password-delete-old-password",
+			createAcct: createAccount("validnewpwyesold"),
+			oldPw:      origPasswd,
+			newPw:      "abcdefghijk",
 		},
 		{
-			name: "valid-new-password-no-old-password",
-			args: args{
-				password: "abcdefghijk",
-			},
-		},
-		{
-			name: "valid-new-password-delete-old-password",
-			args: args{
-				password: "abcdefghijk",
-			},
-			createWithPassword: true,
-		},
-		{
-			name: "valid-delete-password-no-new-password",
-			args: args{
-				password: "",
-			},
-			createWithPassword: true,
+			name:       "valid-delete-password-no-new-password",
+			createAcct: createAccount("nonewyesold"),
+			oldPw:      origPasswd,
+			newPw:      "",
 		},
 	}
 	for _, tt := range tests {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-
-			o, _ := iam.TestScopes(t, conn)
-			authMethod := TestAuthMethods(t, conn, o.GetPublicId(), 1)[0]
-			inAcct := template.clone()
-			inAcct.AuthMethodId = authMethod.PublicId
-			var opts []Option
-			if tt.createWithPassword {
-				opts = append(opts, WithPassword(origPasswd))
-			}
-			outAcct, err := repo.CreateAccount(context.Background(), inAcct, opts...)
-			require.NoError(err)
-			require.NotNil(outAcct)
+			acct := tt.createAcct(tt.oldPw)
 
 			nextAuth := wantNoAuthenticate
-			if tt.createWithPassword {
+			if tt.oldPw != "" {
 				nextAuth = wantAuthenticate
 			}
-			oldCredId := nextAuth(t, authMethod.PublicId, origPasswd, "after create account")
+			oldCredId := nextAuth(t, acct.LoginName, origPasswd, "after create account")
 
-			if !tt.useArgsAccountId {
-				tt.args.accountId = outAcct.PublicId
-			}
-
-			err = repo.SetPassword(context.Background(), tt.args.accountId, tt.args.password)
-			if tt.wantIsErr != nil {
-				assert.Error(err)
-				assert.Truef(errors.Is(err, tt.wantIsErr), "want err: %q got: %q", tt.wantIsErr, err)
-				newCredId := nextAuth(t, authMethod.PublicId, origPasswd, "SetPassword failed")
-				assert.Equal(oldCredId, newCredId)
-				return
-			}
+			acct, err = repo.SetPassword(context.Background(), acct.PublicId, tt.newPw, acct.Version)
 			require.NoError(err)
 
 			if oldCredId != "" {
-				wantNoAuthenticate(t, authMethod.PublicId, origPasswd, "old password")
+				wantNoAuthenticate(t, acct.LoginName, origPasswd, "old password")
 				assert.NoError(db.TestVerifyOplog(t, rw, oldCredId, db.WithOperation(oplog.OpType_OP_TYPE_DELETE), db.WithCreateNotBefore(10*time.Second)))
 			}
-			if tt.args.password != "" {
-				newCredId := wantAuthenticate(t, authMethod.PublicId, tt.args.password, "new password")
+			if tt.newPw != "" {
+				newCredId := wantAuthenticate(t, acct.LoginName, tt.newPw, "new password")
 				assert.NotEqual(oldCredId, newCredId)
 				assert.NoError(db.TestVerifyOplog(t, rw, newCredId, db.WithOperation(oplog.OpType_OP_TYPE_CREATE), db.WithCreateNotBefore(10*time.Second)))
 			}
 		})
 	}
+
+	badInputAcct := createAccount("badinputusername")("")
+	badInputCases := []struct {
+		name      string
+		accountId string
+		pw        string
+		version   uint32
+		wantError error
+	}{
+		{
+			name:      "no id",
+			pw:        "anylongpassword",
+			version:   1,
+			wantError: db.ErrInvalidParameter,
+		},
+		{
+			name:      "short pw",
+			accountId: badInputAcct.PublicId,
+			pw:        "c",
+			version:   1,
+			wantError: ErrTooShort,
+		},
+		{
+			name:      "no version",
+			accountId: badInputAcct.PublicId,
+			pw:        "anylongpassword",
+			wantError: db.ErrInvalidParameter,
+		},
+	}
+	for _, tt := range badInputCases {
+		t.Run(tt.name, func(t *testing.T) {
+			assert := assert.New(t)
+
+			acct, err := repo.SetPassword(context.Background(), tt.accountId, tt.pw, tt.version)
+			assert.Error(err)
+			assert.Truef(errors.Is(err, tt.wantError), "want err: %q got: %q", tt.wantError, err)
+			assert.Nil(acct)
+		})
+	}
+
 }
