@@ -25,7 +25,7 @@ func TestRepository_CreateRootKey(t *testing.T) {
 
 	type args struct {
 		scopeId string
-		key     string
+		key     []byte
 		opt     []Option
 	}
 	tests := []struct {
@@ -38,7 +38,7 @@ func TestRepository_CreateRootKey(t *testing.T) {
 			name: "valid-org",
 			args: args{
 				scopeId: org.PublicId,
-				key:     "test key",
+				key:     []byte("test key"),
 			},
 			wantErr: false,
 		},
@@ -46,7 +46,7 @@ func TestRepository_CreateRootKey(t *testing.T) {
 			name: "valid-global",
 			args: args{
 				scopeId: "global",
-				key:     "valid-global",
+				key:     []byte("valid-global"),
 			},
 			wantErr: false,
 		},
@@ -54,7 +54,7 @@ func TestRepository_CreateRootKey(t *testing.T) {
 			name: "invalid-proj",
 			args: args{
 				scopeId: proj.PublicId,
-				key:     "invalid-proj",
+				key:     []byte("invalid-proj"),
 			},
 			wantErr: true,
 		},
@@ -62,14 +62,14 @@ func TestRepository_CreateRootKey(t *testing.T) {
 			name: "invalid-scope",
 			args: args{
 				scopeId: "o_notAValidScopeId",
-				key:     "invalid-scope",
+				key:     []byte("invalid-scope"),
 			},
 			wantErr: true,
 		},
 		{
 			name: "empty-scope",
 			args: args{
-				key: "empty-scope",
+				key: []byte("empty-scope"),
 			},
 			wantErr:     true,
 			wantIsError: db.ErrInvalidParameter,

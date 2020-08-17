@@ -24,7 +24,7 @@ func TestRootKey(t *testing.T, conn *gorm.DB, scopeId string) *RootKey {
 	return k
 }
 
-func TestRootKeyVersion(t *testing.T, conn *gorm.DB, wrapper wrapping.Wrapper, rootId, key string) *RootKeyVersion {
+func TestRootKeyVersion(t *testing.T, conn *gorm.DB, wrapper wrapping.Wrapper, rootId string, key []byte) *RootKeyVersion {
 	t.Helper()
 	require := require.New(t)
 	rw := db.New(conn)

@@ -23,11 +23,11 @@ type RootKeyVersion struct {
 
 // NewRootKeyVersion creates a new in memory root key version. No options are
 // currently supported.
-func NewRootKeyVersion(rootKeyId, key string, opt ...Option) (*RootKeyVersion, error) {
+func NewRootKeyVersion(rootKeyId string, key []byte, opt ...Option) (*RootKeyVersion, error) {
 	if rootKeyId == "" {
 		return nil, fmt.Errorf("new root key version: missing root key id: %w", db.ErrInvalidParameter)
 	}
-	if key == "" {
+	if len(key) == 0 {
 		return nil, fmt.Errorf("new root key version: missing key: %w", db.ErrInvalidParameter)
 	}
 

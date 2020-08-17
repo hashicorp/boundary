@@ -26,7 +26,7 @@ func Test_TestRootKeyVersion(t *testing.T) {
 	wrapper := db.TestWrapper(t)
 	org, _ := iam.TestScopes(t, conn)
 	rk := TestRootKey(t, conn, org.PublicId)
-	k := TestRootKeyVersion(t, conn, wrapper, rk.PrivateId, "test key")
+	k := TestRootKeyVersion(t, conn, wrapper, rk.PrivateId, []byte("test key"))
 	require.NotNil(k)
 	assert.NotEmpty(k.PrivateId)
 }

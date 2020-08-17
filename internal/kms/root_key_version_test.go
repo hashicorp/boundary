@@ -24,7 +24,7 @@ func TestRootKeyVersion_Create(t *testing.T) {
 	rootKey := TestRootKey(t, conn, org.PublicId)
 	type args struct {
 		rootId string
-		key    string
+		key    []byte
 		opt    []Option
 	}
 	tests := []struct {
@@ -39,7 +39,7 @@ func TestRootKeyVersion_Create(t *testing.T) {
 		{
 			name: "empty-root-id",
 			args: args{
-				key: "test key",
+				key: []byte("test key"),
 			},
 			wantErr:   true,
 			wantIsErr: db.ErrInvalidParameter,
@@ -56,12 +56,12 @@ func TestRootKeyVersion_Create(t *testing.T) {
 			name: "valid",
 			args: args{
 				rootId: rootKey.PrivateId,
-				key:    "test key",
+				key:    []byte("test key"),
 			},
 			want: func() *RootKeyVersion {
 				k := allocRootKeyVersion()
 				k.RootKeyId = rootKey.PrivateId
-				k.Key = "test key"
+				k.Key = []byte("test key")
 				return &k
 			}(),
 			create: true,
@@ -115,7 +115,7 @@ func TestRootKeyVersion_Delete(t *testing.T) {
 	}{
 		{
 			name:            "valid",
-			key:             TestRootKeyVersion(t, conn, wrapper, rk.PrivateId, "test key"),
+			key:             TestRootKeyVersion(t, conn, wrapper, rk.PrivateId, []byte("test key")),
 			wantErr:         false,
 			wantRowsDeleted: 1,
 		},
@@ -165,7 +165,7 @@ func TestRootKeyVersion_Clone(t *testing.T) {
 		assert := assert.New(t)
 		org, _ := iam.TestScopes(t, conn)
 		rk := TestRootKey(t, conn, org.PublicId)
-		k := TestRootKeyVersion(t, conn, wrapper, rk.PrivateId, "test key")
+		k := TestRootKeyVersion(t, conn, wrapper, rk.PrivateId, []byte("test key"))
 		cp := k.Clone()
 		assert.True(proto.Equal(cp.(*RootKeyVersion).RootKeyVersion, k.RootKeyVersion))
 	})
@@ -173,8 +173,8 @@ func TestRootKeyVersion_Clone(t *testing.T) {
 		assert := assert.New(t)
 		org, _ := iam.TestScopes(t, conn)
 		rk := TestRootKey(t, conn, org.PublicId)
-		k := TestRootKeyVersion(t, conn, wrapper, rk.PrivateId, "test key")
-		k2 := TestRootKeyVersion(t, conn, wrapper, rk.PrivateId, "test key")
+		k := TestRootKeyVersion(t, conn, wrapper, rk.PrivateId, []byte("test key"))
+		k2 := TestRootKeyVersion(t, conn, wrapper, rk.PrivateId, []byte("test key"))
 		cp := k.Clone()
 		assert.True(!proto.Equal(cp.(*RootKeyVersion).RootKeyVersion, k2.RootKeyVersion))
 	})

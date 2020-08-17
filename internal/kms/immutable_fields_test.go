@@ -32,7 +32,7 @@ func TestRootKeyVersion_ImmutableFields(t *testing.T) {
 
 	org, _ := iam.TestScopes(t, conn)
 	rk := TestRootKey(t, conn, org.PublicId)
-	new := TestRootKeyVersion(t, conn, wrapper, rk.PrivateId, "test key")
+	new := TestRootKeyVersion(t, conn, wrapper, rk.PrivateId, []byte("test key"))
 
 	var tests = []struct {
 		name      string
@@ -79,7 +79,7 @@ func TestRootKeyVersion_ImmutableFields(t *testing.T) {
 			name: "key",
 			update: func() *RootKeyVersion {
 				k := new.Clone().(*RootKeyVersion)
-				k.Key = "updated key"
+				k.Key = []byte("updated key")
 				return k
 			}(),
 			fieldMask: []string{"CtKey"},

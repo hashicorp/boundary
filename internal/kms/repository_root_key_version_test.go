@@ -26,7 +26,7 @@ func TestRepository_CreateRootKeyVersion(t *testing.T) {
 
 	type args struct {
 		rootKeyId string
-		key       string
+		key       []byte
 		opt       []Option
 	}
 	tests := []struct {
@@ -38,7 +38,7 @@ func TestRepository_CreateRootKeyVersion(t *testing.T) {
 		{
 			name: "valid",
 			args: args{
-				key:       "test key",
+				key:       []byte("test key"),
 				rootKeyId: rk.PrivateId,
 			},
 			wantErr: false,
@@ -46,7 +46,7 @@ func TestRepository_CreateRootKeyVersion(t *testing.T) {
 		{
 			name: "invalid-root-key",
 			args: args{
-				key:       "test key",
+				key:       []byte("test key"),
 				rootKeyId: "krk_thisIsNotValid",
 			},
 			wantErr: true,
@@ -54,7 +54,7 @@ func TestRepository_CreateRootKeyVersion(t *testing.T) {
 		{
 			name: "empty-key",
 			args: args{
-				key:       "",
+				key:       nil,
 				rootKeyId: rk.PrivateId,
 			},
 			wantErr:     true,
@@ -109,7 +109,7 @@ func TestRepository_DeleteRootKeyVersion(t *testing.T) {
 		{
 			name: "valid",
 			args: args{
-				key: TestRootKeyVersion(t, conn, wrapper, rk.PrivateId, "test key"),
+				key: TestRootKeyVersion(t, conn, wrapper, rk.PrivateId, []byte("test key")),
 			},
 			wantRowsDeleted: 1,
 			wantErr:         false,
@@ -207,7 +207,7 @@ func TestRepository_LatestRootKeyVersion(t *testing.T) {
 			require.NoError(conn.Where("1=1").Delete(allocRootKeyVersion()).Error)
 			testKeys := []*RootKeyVersion{}
 			for i := 0; i < tt.createCnt; i++ {
-				testKeys = append(testKeys, TestRootKeyVersion(t, conn, wrapper, rk.PrivateId, "test key"))
+				testKeys = append(testKeys, TestRootKeyVersion(t, conn, wrapper, rk.PrivateId, []byte("test key")))
 			}
 			assert.Equal(tt.createCnt, len(testKeys))
 			got, err := repo.LatestRootKeyVersion(context.Background(), rk.PrivateId)
@@ -293,7 +293,7 @@ func TestRepository_ListRootKeyVersions(t *testing.T) {
 			require.NoError(conn.Where("1=1").Delete(allocRootKeyVersion()).Error)
 			testRootKeyVersions := []*RootKeyVersion{}
 			for i := 0; i < tt.createCnt; i++ {
-				testRootKeyVersions = append(testRootKeyVersions, TestRootKeyVersion(t, conn, wrapper, rk.PrivateId, "test key"))
+				testRootKeyVersions = append(testRootKeyVersions, TestRootKeyVersion(t, conn, wrapper, rk.PrivateId, []byte("test key")))
 			}
 			assert.Equal(tt.createCnt, len(testRootKeyVersions))
 			got, err := repo.ListRootKeyVersions(context.Background(), tt.args.rootKeyId, tt.args.opt...)

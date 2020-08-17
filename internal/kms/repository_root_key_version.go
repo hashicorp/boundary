@@ -10,11 +10,11 @@ import (
 
 // CreateRootKeyVersion inserts into the repository and returns the new root key
 // version with its PrivateId.  There are no valid options at this time.
-func (r *Repository) CreateRootKeyVersion(ctx context.Context, rootKeyId, key string, opt ...Option) (*RootKeyVersion, error) {
+func (r *Repository) CreateRootKeyVersion(ctx context.Context, rootKeyId string, key []byte, opt ...Option) (*RootKeyVersion, error) {
 	if rootKeyId == "" {
 		return nil, fmt.Errorf("create root key version: missing root key id: %w", db.ErrInvalidParameter)
 	}
-	if key == "" {
+	if len(key) == 0 {
 		return nil, fmt.Errorf("create root key version: missing key: %w", db.ErrInvalidParameter)
 	}
 	kv := allocRootKeyVersion()
@@ -24,6 +24,7 @@ func (r *Repository) CreateRootKeyVersion(ctx context.Context, rootKeyId, key st
 	}
 	kv.PrivateId = id
 	kv.RootKeyId = rootKeyId
+	kv.Key = key
 	if err := kv.encrypt(ctx, r.wrapper); err != nil {
 		return nil, fmt.Errorf("create root key version: encrypt: %w", err)
 	}

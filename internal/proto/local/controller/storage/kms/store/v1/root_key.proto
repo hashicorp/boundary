@@ -32,7 +32,7 @@ message RootKeyVersion {
   // plain-text of the key data.  we are NOT storing this plain-text key
   // in the db.
   // @inject_tag: `gorm:"-" wrapping:"pt,key_data"`
-  string key = 3;
+  bytes key = 3;
 
   // ciphertext key data stored in the database
   // @inject_tag: `gorm:"column:key;not_null" wrapping:"ct,key_data"`

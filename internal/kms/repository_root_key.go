@@ -10,11 +10,11 @@ import (
 
 // CreateRootKey inserts into the repository and returns the new root key and
 // root key version. There are no valid options at this time.
-func (r *Repository) CreateRootKey(ctx context.Context, scopeId, key string, opt ...Option) (*RootKey, *RootKeyVersion, error) {
+func (r *Repository) CreateRootKey(ctx context.Context, scopeId string, key []byte, opt ...Option) (*RootKey, *RootKeyVersion, error) {
 	if scopeId == "" {
 		return nil, nil, fmt.Errorf("create root key: missing scope id: %w", db.ErrInvalidParameter)
 	}
-	if key == "" {
+	if len(key) == 0 {
 		return nil, nil, fmt.Errorf("create root key: missing key: %w", db.ErrInvalidParameter)
 	}
 	rk := allocRootKey()
