@@ -13,6 +13,7 @@ import (
 	pb "github.com/hashicorp/boundary/internal/gen/controller/api/resources/hosts"
 	"github.com/hashicorp/boundary/internal/gen/controller/api/resources/scopes"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/api/services"
+	"github.com/hashicorp/boundary/internal/host"
 	"github.com/hashicorp/boundary/internal/host/static"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers/host_sets"
@@ -114,6 +115,72 @@ func TestGet(t *testing.T) {
 				tc.res.Item.Version = 1
 			}
 			assert.Empty(cmp.Diff(got, tc.res, protocmp.Transform()), "GetHostSet(%q) got response %q, wanted %q", req, got, tc.res)
+		})
+	}
+}
+
+func TestList(t *testing.T) {
+	conn, _ := db.TestSetup(t, "postgres")
+	rw := db.New(conn)
+	wrap := db.TestWrapper(t)
+	repoFn := func() (*static.Repository, error) {
+		return static.NewRepository(rw, rw, wrap)
+	}
+	o, _ := iam.TestScopes(t, conn)
+
+	newHc, err := static.NewHostCatalog(o.GetPublicId())
+	require.NoError(t, err, "Couldn't get new catalog.")
+	repo, err := repoFn()
+	require.NoError(t, err, "Couldn't create static repostitory")
+	hcRes, err := repo.CreateCatalog(context.Background(), newHc)
+	require.NoError(t, err, "Couldn't create host catalog")
+	hcNoHostSets, err := repo.CreateCatalog(context.Background(), newHc)
+	require.NoError(t, err, "Couldn't create host catalog")
+
+	var wantHs []*pb.HostSet
+	for i := 0; i < 10; i++ {
+		hs := iam.TestGroup(t, conn, o.GetPublicId())
+		wantHs = append(wantHs, &pb.HostSet{
+			Id:            hs.GetPublicId(),
+			HostCatalogId: hcRes.GetPublicId(),
+			Scope:         &scopes.ScopeInfo{Id: o.GetPublicId(), Type: scope.Org.String()},
+			CreatedTime:   hs.GetCreateTime().GetTimestamp(),
+			UpdatedTime:   hs.GetUpdateTime().GetTimestamp(),
+			Version:       hs.GetVersion(),
+			Type:          host.StaticSubtype.String(),
+		})
+	}
+
+	cases := []struct {
+		name          string
+		hostCatalogId string
+		res           *pbs.ListHostSetsResponse
+		errCode       codes.Code
+	}{
+		{
+			name:          "List Many Host Sets",
+			hostCatalogId: hcRes.GetPublicId(),
+			// TODO: Uncomment this out when we implement list host catalog.
+			// res:     &pbs.ListHostSetsResponse{Items: wantHs},
+			res:     &pbs.ListHostSetsResponse{},
+			errCode: codes.OK,
+		},
+		{
+			name:          "List No Host Sets",
+			hostCatalogId: hcNoHostSets.GetPublicId(),
+			res:           &pbs.ListHostSetsResponse{},
+			errCode:       codes.OK,
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+			s, err := host_sets.NewService(repoFn)
+			require.NoError(err, "Couldn't create new host set service.")
+
+			got, gErr := s.ListHostSets(auth.DisabledAuthTestContext(auth.WithScopeId(o.GetPublicId())), &pbs.ListHostSetsRequest{HostCatalogId: tc.hostCatalogId})
+			assert.Equal(tc.errCode, status.Code(gErr), "ListHostSets(%q) got error %v, wanted %v", tc.hostCatalogId, gErr, tc.errCode)
+			assert.Empty(cmp.Diff(got, tc.res, protocmp.Transform()), "ListHostSets(%q) got response %q, wanted %q", tc.hostCatalogId, got, tc.res)
 		})
 	}
 }

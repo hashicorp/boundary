@@ -14,6 +14,7 @@ import (
 	pb "github.com/hashicorp/boundary/internal/gen/controller/api/resources/hosts"
 	"github.com/hashicorp/boundary/internal/gen/controller/api/resources/scopes"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/api/services"
+	"github.com/hashicorp/boundary/internal/host"
 	"github.com/hashicorp/boundary/internal/host/static"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers/host_catalogs"
@@ -114,6 +115,72 @@ func TestGet(t *testing.T) {
 				tc.res.Item.Version = 1
 			}
 			assert.Empty(cmp.Diff(got, tc.res, protocmp.Transform()), "GetHostCatalog(%q) got response %q, wanted %q", req, got, tc.res)
+		})
+	}
+}
+
+func TestList(t *testing.T) {
+	conn, _ := db.TestSetup(t, "postgres")
+	rw := db.New(conn)
+	wrap := db.TestWrapper(t)
+	repoFn := func() (*static.Repository, error) {
+		return static.NewRepository(rw, rw, wrap)
+	}
+	o, _ := iam.TestScopes(t, conn)
+	oNoHCs, _ := iam.TestScopes(t, conn)
+
+	hc, err := static.NewHostCatalog(o.GetPublicId())
+	require.NoError(t, err, "Couldn't get new catalog.")
+	repo, err := repoFn()
+	require.NoError(t, err, "Couldn't create static repostitory")
+
+	var wantHcs []*pb.HostCatalog
+	for i := 0; i < 10; i++ {
+		hc.Name = fmt.Sprintf("name%d", i)
+		hc.Description = fmt.Sprintf("desc%d", i)
+		hcRes, err := repo.CreateCatalog(context.Background(), hc)
+		require.NoError(t, err, "Couldn't persist new catalog.")
+
+		wantHcs = append(wantHcs, &pb.HostCatalog{
+			Id:          hcRes.GetPublicId(),
+			Scope:       &scopes.ScopeInfo{Id: o.GetPublicId(), Type: scope.Org.String()},
+			CreatedTime: hcRes.GetCreateTime().GetTimestamp(),
+			UpdatedTime: hcRes.GetUpdateTime().GetTimestamp(),
+			Version:     hcRes.GetVersion(),
+			Type:        host.StaticSubtype.String(),
+		})
+	}
+
+	cases := []struct {
+		name    string
+		scopeId string
+		res     *pbs.ListHostCatalogsResponse
+		errCode codes.Code
+	}{
+		{
+			name:    "List Many Host Catalogs",
+			scopeId: o.GetPublicId(),
+			// TODO: Uncomment this out when we implement list host catalog.
+			// res:     &pbs.ListHostCatalogsResponse{Items: wantHcs},
+			res:     &pbs.ListHostCatalogsResponse{},
+			errCode: codes.OK,
+		},
+		{
+			name:    "List No Host Catalogs",
+			scopeId: oNoHCs.GetPublicId(),
+			res:     &pbs.ListHostCatalogsResponse{},
+			errCode: codes.OK,
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+			s, err := host_catalogs.NewService(repoFn)
+			require.NoError(err, "Couldn't create new group service.")
+
+			got, gErr := s.ListHostCatalogs(auth.DisabledAuthTestContext(auth.WithScopeId(tc.scopeId)), &pbs.ListHostCatalogsRequest{})
+			assert.Equal(tc.errCode, status.Code(gErr), "ListHostCatalogs(%q) got error %v, wanted %v", tc.scopeId, gErr, tc.errCode)
+			assert.Empty(cmp.Diff(got, tc.res, protocmp.Transform()), "ListHostCatalogs(%q) got response %q, wanted %q", tc.scopeId, got, tc.res)
 		})
 	}
 }

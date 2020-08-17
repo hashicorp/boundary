@@ -269,7 +269,6 @@ func toProto(in *static.HostSet, members []*static.HostSetMember) *pb.HostSet {
 		CreatedTime:   in.GetCreateTime().GetTimestamp(),
 		UpdatedTime:   in.GetUpdateTime().GetTimestamp(),
 		Version:       in.GetVersion(),
-		Size:          0,
 	}
 	if in.GetDescription() != "" {
 		out.Description = wrapperspb.String(in.GetDescription())
