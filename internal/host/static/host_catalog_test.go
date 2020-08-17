@@ -107,13 +107,12 @@ func TestHostCatalog_New(t *testing.T) {
 	}
 }
 
-func testCatalogs(t *testing.T, conn *gorm.DB, count int) []*HostCatalog {
+func testCatalogs(t *testing.T, conn *gorm.DB, scopeId string, count int) []*HostCatalog {
 	t.Helper()
 	assert := assert.New(t)
-	_, prj := iam.TestScopes(t, conn)
 	var cats []*HostCatalog
 	for i := 0; i < count; i++ {
-		cat, err := NewHostCatalog(prj.GetPublicId())
+		cat, err := NewHostCatalog(scopeId)
 		assert.NoError(err)
 		assert.NotNil(cat)
 		id, err := newHostCatalogId()
@@ -129,9 +128,9 @@ func testCatalogs(t *testing.T, conn *gorm.DB, count int) []*HostCatalog {
 	return cats
 }
 
-func testCatalog(t *testing.T, conn *gorm.DB) *HostCatalog {
+func testCatalog(t *testing.T, conn *gorm.DB, scopeId string) *HostCatalog {
 	t.Helper()
-	cats := testCatalogs(t, conn, 1)
+	cats := testCatalogs(t, conn, scopeId, 1)
 	return cats[0]
 }
 
