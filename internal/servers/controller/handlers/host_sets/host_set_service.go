@@ -47,14 +47,28 @@ func NewService(repoFn common.StaticRepoFactory) (Service, error) {
 }
 
 func (s Service) ListHostSets(ctx context.Context, req *pbs.ListHostSetsRequest) (*pbs.ListHostSetsResponse, error) {
-	return nil, status.Error(codes.Unimplemented, "Requested method is unimplemented for Host Sets.")
+	authResults := auth.Verify(ctx)
+	if authResults.Error != nil {
+		return nil, authResults.Error
+	}
+	if err := validateListRequest(req); err != nil {
+		return nil, err
+	}
+	hl, err := s.listFromRepo(ctx, req.GetHostCatalogId())
+	if err != nil {
+		return nil, err
+	}
+	for _, item := range hl {
+		item.Scope = authResults.Scope
+	}
+	return &pbs.ListHostSetsResponse{Items: hl}, nil
 }
 
 // GetHostSet implements the interface pbs.HostSetServiceServer.
 func (s Service) GetHostSet(ctx context.Context, req *pbs.GetHostSetRequest) (*pbs.GetHostSetResponse, error) {
 	authResults := auth.Verify(ctx)
-	if !authResults.Valid {
-		return nil, handlers.ForbiddenError()
+	if authResults.Error != nil {
+		return nil, authResults.Error
 	}
 	if err := validateGetRequest(req); err != nil {
 		return nil, err
@@ -70,8 +84,8 @@ func (s Service) GetHostSet(ctx context.Context, req *pbs.GetHostSetRequest) (*p
 // CreateHostSet implements the interface pbs.HostSetServiceServer.
 func (s Service) CreateHostSet(ctx context.Context, req *pbs.CreateHostSetRequest) (*pbs.CreateHostSetResponse, error) {
 	authResults := auth.Verify(ctx)
-	if !authResults.Valid {
-		return nil, handlers.ForbiddenError()
+	if authResults.Error != nil {
+		return nil, authResults.Error
 	}
 	if err := validateCreateRequest(req); err != nil {
 		return nil, err
@@ -90,8 +104,8 @@ func (s Service) CreateHostSet(ctx context.Context, req *pbs.CreateHostSetReques
 // UpdateHostSet implements the interface pbs.HostSetServiceServer.
 func (s Service) UpdateHostSet(ctx context.Context, req *pbs.UpdateHostSetRequest) (*pbs.UpdateHostSetResponse, error) {
 	authResults := auth.Verify(ctx)
-	if !authResults.Valid {
-		return nil, handlers.ForbiddenError()
+	if authResults.Error != nil {
+		return nil, authResults.Error
 	}
 	if err := validateUpdateRequest(req); err != nil {
 		return nil, err
@@ -107,8 +121,8 @@ func (s Service) UpdateHostSet(ctx context.Context, req *pbs.UpdateHostSetReques
 // DeleteHostSet implements the interface pbs.HostSetServiceServer.
 func (s Service) DeleteHostSet(ctx context.Context, req *pbs.DeleteHostSetRequest) (*pbs.DeleteHostSetResponse, error) {
 	authResults := auth.Verify(ctx)
-	if !authResults.Valid {
-		return nil, handlers.ForbiddenError()
+	if authResults.Error != nil {
+		return nil, authResults.Error
 	}
 	if err := validateDeleteRequest(req); err != nil {
 		return nil, err
@@ -227,19 +241,39 @@ func (s Service) deleteFromRepo(ctx context.Context, id string) (bool, error) {
 	return rows > 0, nil
 }
 
+func (s Service) listFromRepo(ctx context.Context, catalogId string) ([]*pb.HostSet, error) {
+	repo, err := s.staticRepoFn()
+	if err != nil {
+		return nil, err
+	}
+	//gl, err := repo.ListCatalogs(ctx, catalogId)
+	_ = repo
+	var hl []*static.HostSet
+	if err != nil {
+		return nil, err
+	}
+	var outH []*pb.HostSet
+	for _, h := range hl {
+		outH = append(outH, toProto(h))
+	}
+	return outH, nil
+}
+
 func toProto(in *static.HostSet) *pb.HostSet {
 	out := pb.HostSet{
-		Id:          in.GetPublicId(),
-		Type:        host.StaticSubtype.String(),
-		CreatedTime: in.GetCreateTime().GetTimestamp(),
-		UpdatedTime: in.GetUpdateTime().GetTimestamp(),
-		Version:     in.GetVersion(),
+		Id:            in.GetPublicId(),
+		HostCatalogId: in.GetCatalogId(),
+		Type:          host.StaticSubtype.String(),
+		CreatedTime:   in.GetCreateTime().GetTimestamp(),
+		UpdatedTime:   in.GetUpdateTime().GetTimestamp(),
+		Version:       in.GetVersion(),
+		Size:          0,
 	}
 	if in.GetDescription() != "" {
-		out.Description = &wrapperspb.StringValue{Value: in.GetDescription()}
+		out.Description = wrapperspb.String(in.GetDescription())
 	}
 	if in.GetName() != "" {
-		out.Name = &wrapperspb.StringValue{Value: in.GetName()}
+		out.Name = wrapperspb.String(in.GetName())
 	}
 	return &out
 }
@@ -266,7 +300,7 @@ func validateCreateRequest(req *pbs.CreateHostSetRequest) error {
 	badFields := map[string]string{}
 	item := req.GetItem()
 	if item == nil {
-		badFields["item"] = "This field is required."
+		return handlers.InvalidArgumentErrorf("Invalid arguments provided.", map[string]string{"item": "this field is required."})
 	}
 	if item.GetType() == "" {
 		badFields["type"] = "This field is required."
@@ -333,6 +367,14 @@ func validateUpdateRequest(req *pbs.UpdateHostSetRequest) error {
 		return handlers.InvalidArgumentErrorf("Errors in provided fields.", badFields)
 	}
 
+	return nil
+}
+
+func validateListRequest(req *pbs.ListHostSetsRequest) error {
+	badFields := map[string]string{}
+	if len(badFields) > 0 {
+		return handlers.InvalidArgumentErrorf("Improperly formatted identifier.", badFields)
+	}
 	return nil
 }
 

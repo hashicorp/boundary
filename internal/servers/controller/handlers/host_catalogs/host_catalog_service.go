@@ -47,7 +47,21 @@ func NewService(repoFn common.StaticRepoFactory) (Service, error) {
 }
 
 func (s Service) ListHostCatalogs(ctx context.Context, req *pbs.ListHostCatalogsRequest) (*pbs.ListHostCatalogsResponse, error) {
-	return nil, status.Error(codes.Unimplemented, "Requested method is unimplemented for Host Catalogs.")
+	authResults := auth.Verify(ctx)
+	if authResults.Error != nil {
+		return nil, authResults.Error
+	}
+	if err := validateListRequest(req); err != nil {
+		return nil, err
+	}
+	hl, err := s.listFromRepo(ctx, authResults.Scope.GetId())
+	if err != nil {
+		return nil, err
+	}
+	for _, item := range hl {
+		item.Scope = authResults.Scope
+	}
+	return &pbs.ListHostCatalogsResponse{Items: hl}, nil
 }
 
 // GetHostCatalog implements the interface pbs.HostCatalogServiceServer.
@@ -204,6 +218,24 @@ func (s Service) deleteFromRepo(ctx context.Context, id string) (bool, error) {
 	return rows > 0, nil
 }
 
+func (s Service) listFromRepo(ctx context.Context, scopeId string) ([]*pb.HostCatalog, error) {
+	repo, err := s.staticRepoFn()
+	if err != nil {
+		return nil, err
+	}
+	//gl, err := repo.ListCatalogs(ctx, scopeId)
+	_ = repo
+	var hl []*static.HostCatalog
+	if err != nil {
+		return nil, err
+	}
+	var outGl []*pb.HostCatalog
+	for _, h := range hl {
+		outGl = append(outGl, toProto(h))
+	}
+	return outGl, nil
+}
+
 func toProto(in *static.HostCatalog) *pb.HostCatalog {
 	out := pb.HostCatalog{
 		Id:          in.GetPublicId(),
@@ -243,7 +275,7 @@ func validateCreateRequest(req *pbs.CreateHostCatalogRequest) error {
 	badFields := map[string]string{}
 	item := req.GetItem()
 	if item == nil {
-		badFields["item"] = "This field is required."
+		return handlers.InvalidArgumentErrorf("Invalid arguments provided.", map[string]string{"item": "This field is required."})
 	}
 	if item.GetType() == "" {
 		badFields["type"] = "This field is required."
@@ -301,6 +333,14 @@ func validateUpdateRequest(req *pbs.UpdateHostCatalogRequest) error {
 		return handlers.InvalidArgumentErrorf("Errors in provided fields.", badFields)
 	}
 
+	return nil
+}
+
+func validateListRequest(req *pbs.ListHostCatalogsRequest) error {
+	badFields := map[string]string{}
+	if len(badFields) > 0 {
+		return handlers.InvalidArgumentErrorf("Improperly formatted identifier.", badFields)
+	}
 	return nil
 }
 

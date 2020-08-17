@@ -44,7 +44,7 @@ func TestHost_New(t *testing.T) {
 			},
 			want: &Host{
 				Host: &store.Host{
-					catalogId: cat.GetPublicId(),
+					CatalogId: cat.GetPublicId(),
 				},
 			},
 			wantWriteErr: true,
