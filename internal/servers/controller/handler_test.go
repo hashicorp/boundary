@@ -77,6 +77,8 @@ func TestHandleImplementedPaths(t *testing.T) {
 
 			// custom methods
 			"v1/scopes/someid/auth-methods/someid:authenticate",
+			"v1/scopes/someid/auth-methods/someid/accounts/someid:set-password",
+			"v1/scopes/someid/auth-methods/someid/accounts/someid:change-password",
 			"v1/scopes/someid/roles/someid:add-principals",
 			"v1/scopes/someid/roles/someid:set-principals",
 			"v1/scopes/someid/roles/someid:remove-principals",

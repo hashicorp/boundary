@@ -25,6 +25,8 @@ const (
 	AddMembers       Type = 16
 	SetMembers       Type = 17
 	RemoveMembers    Type = 18
+	SetPassword      Type = 19
+	ChangePassword   Type = 20
 )
 
 var Map = map[string]Type{
@@ -46,6 +48,8 @@ var Map = map[string]Type{
 	AddMembers.String():       AddMembers,
 	SetMembers.String():       SetMembers,
 	RemoveMembers.String():    RemoveMembers,
+	SetPassword.String():      SetPassword,
+	ChangePassword.String():   ChangePassword,
 }
 
 func (a Type) String() string {
@@ -69,5 +73,7 @@ func (a Type) String() string {
 		"add-members",
 		"set-members",
 		"remove-members",
+		"set-password",
+		"change-password",
 	}[a]
 }

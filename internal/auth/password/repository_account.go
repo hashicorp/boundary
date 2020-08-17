@@ -109,13 +109,13 @@ func (r *Repository) LookupAccount(ctx context.Context, withPublicId string, opt
 	}
 	a := allocAccount()
 	a.PublicId = withPublicId
-	if err := r.reader.LookupByPublicId(ctx, &a); err != nil {
+	if err := r.reader.LookupByPublicId(ctx, a); err != nil {
 		if errors.Is(err, db.ErrRecordNotFound) {
 			return nil, nil
 		}
 		return nil, fmt.Errorf("lookup: password account: failed %w for %s", err, withPublicId)
 	}
-	return &a, nil
+	return a, nil
 }
 
 // ListAccounts in an auth method and supports WithLimit option.
