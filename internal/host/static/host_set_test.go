@@ -42,7 +42,7 @@ func TestHostSet_New(t *testing.T) {
 			},
 			want: &HostSet{
 				HostSet: &store.HostSet{
-					StaticHostCatalogId: cat.GetPublicId(),
+					CatalogId: cat.GetPublicId(),
 				},
 			},
 		},
@@ -56,8 +56,8 @@ func TestHostSet_New(t *testing.T) {
 			},
 			want: &HostSet{
 				HostSet: &store.HostSet{
-					StaticHostCatalogId: cat.GetPublicId(),
-					Name:                "test-name",
+					CatalogId: cat.GetPublicId(),
+					Name:      "test-name",
 				},
 			},
 		},
@@ -71,8 +71,8 @@ func TestHostSet_New(t *testing.T) {
 			},
 			want: &HostSet{
 				HostSet: &store.HostSet{
-					StaticHostCatalogId: cat.GetPublicId(),
-					Description:         "test-description",
+					CatalogId:   cat.GetPublicId(),
+					Description: "test-description",
 				},
 			},
 		},
