@@ -8,6 +8,7 @@ import (
 	"github.com/hashicorp/boundary/api"
 	"github.com/hashicorp/boundary/api/authmethods"
 	"github.com/hashicorp/boundary/internal/auth/password"
+	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/servers/controller"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -15,11 +16,9 @@ import (
 
 func TestAccounts_List(t *testing.T) {
 	assert, require := assert.New(t), require.New(t)
-	orgId := "o_1234567890"
 	amId := "paum_1234567890"
 	tc := controller.NewTestController(t, &controller.TestControllerOpts{
 		DisableAuthorizationFailures: true,
-		DefaultOrgId:                 orgId,
 		DefaultAuthMethodId:          amId,
 		DefaultLoginName:             "user",
 		DefaultPassword:              "passpass",
@@ -27,6 +26,9 @@ func TestAccounts_List(t *testing.T) {
 	defer tc.Shutdown()
 
 	client := tc.Client()
+	org := iam.TestOrg(t, tc.DbConn())
+	client.SetScopeId(org.GetPublicId())
+
 	accountClient := authmethods.NewAccountsClient(client)
 
 	expected, apiErr, err := accountClient.List(tc.Context(), amId)
@@ -76,11 +78,9 @@ func comparableSlice(in []*authmethods.Account) []authmethods.Account {
 
 func TestAccount_Crud(t *testing.T) {
 	assert, require := assert.New(t), require.New(t)
-	orgId := "o_1234567890"
 	amId := "paum_1234567890"
 	tc := controller.NewTestController(t, &controller.TestControllerOpts{
 		DisableAuthorizationFailures: true,
-		DefaultOrgId:                 orgId,
 		DefaultAuthMethodId:          amId,
 		DefaultLoginName:             "user",
 		DefaultPassword:              "passpass",
@@ -88,6 +88,9 @@ func TestAccount_Crud(t *testing.T) {
 	defer tc.Shutdown()
 
 	client := tc.Client()
+	org := iam.TestOrg(t, tc.DbConn())
+	client.SetScopeId(org.GetPublicId())
+
 	accountClient := authmethods.NewAccountsClient(client)
 
 	checkAccount := func(step string, u *authmethods.Account, apiErr *api.Error, err error, wantedName string, wantedVersion uint32) {
@@ -129,11 +132,9 @@ func TestAccount_Crud(t *testing.T) {
 
 func TestAccount_CustomMethods(t *testing.T) {
 	assert, require := assert.New(t), require.New(t)
-	orgId := "o_1234567890"
 	amId := "paum_1234567890"
 	tc := controller.NewTestController(t, &controller.TestControllerOpts{
 		DisableAuthorizationFailures: true,
-		DefaultOrgId:                 orgId,
 		DefaultAuthMethodId:          amId,
 		DefaultLoginName:             "user",
 		DefaultPassword:              "passpass",
@@ -141,6 +142,9 @@ func TestAccount_CustomMethods(t *testing.T) {
 	defer tc.Shutdown()
 
 	client := tc.Client()
+	org := iam.TestOrg(t, tc.DbConn())
+	client.SetScopeId(org.GetPublicId())
+
 	accountClient := authmethods.NewAccountsClient(client)
 
 	al, apiErr, err := accountClient.List(tc.Context(), amId)
@@ -165,11 +169,9 @@ func TestAccount_CustomMethods(t *testing.T) {
 
 func TestAccount_Errors(t *testing.T) {
 	assert, require := assert.New(t), require.New(t)
-	orgId := "o_1234567890"
 	amId := "paum_1234567890"
 	tc := controller.NewTestController(t, &controller.TestControllerOpts{
 		DisableAuthorizationFailures: true,
-		DefaultOrgId:                 orgId,
 		DefaultAuthMethodId:          amId,
 		DefaultLoginName:             "user",
 		DefaultPassword:              "passpass",
@@ -177,6 +179,9 @@ func TestAccount_Errors(t *testing.T) {
 	defer tc.Shutdown()
 
 	client := tc.Client()
+	org := iam.TestOrg(t, tc.DbConn())
+	client.SetScopeId(org.GetPublicId())
+
 	accountClient := authmethods.NewAccountsClient(client)
 
 	u, apiErr, err := accountClient.Create(tc.Context(), amId, authmethods.WithType("password"), authmethods.WithPasswordAccountLoginName("first"))

@@ -16,13 +16,11 @@ func TestMultiControllerMultiWorkerConnections(t *testing.T) {
 	amId := "paum_1234567890"
 	user := "user"
 	password := "passpass"
-	orgId := "o_1234567890"
 	logger := hclog.New(&hclog.LoggerOptions{
 		Level: hclog.Trace,
 	})
 
 	c1 := controller.NewTestController(t, &controller.TestControllerOpts{
-		DefaultOrgId:        orgId,
 		DefaultAuthMethodId: amId,
 		DefaultLoginName:    user,
 		DefaultPassword:     password,
@@ -60,7 +58,7 @@ func TestMultiControllerMultiWorkerConnections(t *testing.T) {
 	expectWorkers(c2)
 
 	w1 := worker.NewTestWorker(t, &worker.TestWorkerOpts{
-		WorkerAuthKMS:      c1.Config().WorkerAuthKMS,
+		WorkerAuthKms:      c1.Config().WorkerAuthKms,
 		InitialControllers: c1.ClusterAddrs(),
 		Logger:             logger.Named("w1"),
 	})

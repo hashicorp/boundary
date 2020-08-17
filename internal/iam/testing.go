@@ -39,6 +39,24 @@ func TestScopes(t *testing.T, conn *gorm.DB) (org *Scope, prj *Scope) {
 	return
 }
 
+func TestOrg(t *testing.T, conn *gorm.DB) (org *Scope) {
+	t.Helper()
+	require := require.New(t)
+	rw := db.New(conn)
+	wrapper := db.TestWrapper(t)
+	repo, err := NewRepository(rw, rw, wrapper)
+	require.NoError(err)
+
+	org, err = NewOrg()
+	require.NoError(err)
+	org, err = repo.CreateScope(context.Background(), org, "")
+	require.NoError(err)
+	require.NotNil(org)
+	require.NotEmpty(org.GetPublicId())
+
+	return
+}
+
 func testOrg(t *testing.T, conn *gorm.DB, name, description string) (org *Scope) {
 	t.Helper()
 	require := require.New(t)

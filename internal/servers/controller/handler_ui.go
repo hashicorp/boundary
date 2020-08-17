@@ -21,18 +21,6 @@ func handleUiWithAssets(c *Controller) http.Handler {
 		nextHandler = http.FileServer(ui.AssetFile())
 	}
 
-	rootHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		switch r.URL.Path {
-		case "/":
-			irw := newIndexResponseWriter(c.conf.DefaultOrgId)
-			nextHandler.ServeHTTP(irw, r)
-			irw.writeToWriter(w)
-
-		default:
-			nextHandler.ServeHTTP(w, r)
-		}
-	})
-
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet {
 			w.WriteHeader(http.StatusMethodNotAllowed)
@@ -66,6 +54,6 @@ func handleUiWithAssets(c *Controller) http.Handler {
 		}
 
 		// Fall through to the next handler
-		rootHandler.ServeHTTP(w, r)
+		nextHandler.ServeHTTP(w, r)
 	})
 }
