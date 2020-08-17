@@ -118,6 +118,9 @@ func (c *PasswordCommand) Run(args []string) int {
 		return 2
 	}
 
+	// Don't pass along a saved token as it might have an invalid scope
+	client.SetToken("")
+
 	// note: Authenticate() calls SetToken() under the hood to set the
 	// auth bearer on the client so we do not need to do anything with the
 	// returned token after this call, so we ignore it
