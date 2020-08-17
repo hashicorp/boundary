@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"sync"
 
 	"github.com/golang-migrate/migrate/v4"
 	"github.com/hashicorp/boundary/internal/db/migrations"
@@ -80,8 +81,14 @@ func InitDbInDocker(dialect string) (cleanup func() error, retURL, container str
 	return c, url, container, nil
 }
 
+var (
+	mx = sync.Mutex{}
+)
+
 // StartDbInDocker
 func StartDbInDocker(dialect string) (cleanup func() error, retURL, container string, err error) {
+	mx.Lock()
+	defer mx.Unlock()
 	pool, err := dockertest.NewPool("")
 	if err != nil {
 		return func() error { return nil }, "", "", fmt.Errorf("could not connect to docker: %w", err)
