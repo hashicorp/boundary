@@ -17,7 +17,6 @@ import (
 // immutable and those tests are covered by TestRootKey_ImmutableFields
 
 func TestRootKey_Create(t *testing.T) {
-	t.Parallel()
 	conn, _ := db.TestSetup(t, "postgres")
 	org, proj := iam.TestScopes(t, conn)
 	type args struct {

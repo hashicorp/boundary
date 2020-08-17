@@ -2478,8 +2478,8 @@ commit;
 
 `),
 	},
-	"migrations/30_keys_up.sql": {
-		name: "30_keys_up.sql",
+	"migrations/30_keys.up.sql": {
+		name: "30_keys.up.sql",
 		bytes: []byte(`
 begin;
 
@@ -2794,6 +2794,7 @@ before insert on kms_session_key_version
   values
     ('kms_root_key', 1),
     ('kms_root_key_version', 1);
+    
 commit;
 `),
 	},

@@ -17,7 +17,6 @@ import (
 // immutable and those tests are covered by TestRootKeyVersion_ImmutableFields
 
 func TestRootKeyVersion_Create(t *testing.T) {
-	t.Parallel()
 	conn, _ := db.TestSetup(t, "postgres")
 	wrapper := db.TestWrapper(t)
 	org, _ := iam.TestScopes(t, conn)

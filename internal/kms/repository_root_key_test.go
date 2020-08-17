@@ -193,7 +193,6 @@ func TestRepository_DeleteRootKey(t *testing.T) {
 }
 
 func TestRepository_ListRootKeys(t *testing.T) {
-	t.Parallel()
 	conn, _ := db.TestSetup(t, "postgres")
 	const testLimit = 10
 	rw := db.New(conn)

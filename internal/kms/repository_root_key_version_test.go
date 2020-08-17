@@ -172,7 +172,6 @@ func TestRepository_DeleteRootKeyVersion(t *testing.T) {
 }
 
 func TestRepository_LatestRootKeyVersion(t *testing.T) {
-	t.Parallel()
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
@@ -227,7 +226,6 @@ func TestRepository_LatestRootKeyVersion(t *testing.T) {
 }
 
 func TestRepository_ListRootKeyVersions(t *testing.T) {
-	t.Parallel()
 	conn, _ := db.TestSetup(t, "postgres")
 	const testLimit = 10
 	rw := db.New(conn)
