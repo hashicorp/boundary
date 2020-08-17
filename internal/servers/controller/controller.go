@@ -86,7 +86,7 @@ func New(conf *Config) (*Controller, error) {
 	// Set up repo stuff
 	dbase := db.New(c.conf.Database)
 	c.IamRepoFn = func() (*iam.Repository, error) {
-		return iam.NewRepository(dbase, dbase, c.conf.ControllerKMS)
+		return iam.NewRepository(dbase, dbase, c.conf.ControllerKMS, iam.WithRandomReader(c.conf.SecureRandomReader))
 	}
 	c.StaticHostRepoFn = func() (*static.Repository, error) {
 		return static.NewRepository(dbase, dbase, c.conf.ControllerKMS)

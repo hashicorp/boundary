@@ -66,11 +66,11 @@ func CreateRootKeyTx(ctx context.Context, w db.Writer, keyWrapper wrapping.Wrapp
 
 	// no oplog entries for root keys
 	if err := w.Create(ctx, &rk); err != nil {
-		return nil, nil, fmt.Errorf("create root key:  root create: %w", err)
+		return nil, nil, fmt.Errorf("create root key: root create: %w", err)
 	}
 	// no oplog entries for root key versions
 	if err := w.Create(ctx, &kv); err != nil {
-		return nil, nil, fmt.Errorf("create root key:  version create: %w", err)
+		return nil, nil, fmt.Errorf("create root key: version create: %w", err)
 	}
 
 	return &rk, &kv, err

@@ -1,5 +1,7 @@
 package iam
 
+import "io"
+
 // getOpts - iterate the inbound Options and return a struct
 func getOpts(opt ...Option) options {
 	opts := getDefaultOptions()
@@ -23,6 +25,7 @@ type options struct {
 	withGrantScopeId    string
 	withSkipVetForWrite bool
 	withDisassociate    bool
+	withRandomReader    io.Reader
 }
 
 func getDefaultOptions() options {
@@ -104,5 +107,11 @@ func WithSkipVetForWrite(enable bool) Option {
 func WithDisassociate(enable bool) Option {
 	return func(o *options) {
 		o.withDisassociate = enable
+	}
+}
+
+func WithRandomReader(reader io.Reader) Option {
+	return func(o *options) {
+		o.withRandomReader = reader
 	}
 }
