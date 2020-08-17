@@ -20,8 +20,8 @@ import (
 )
 
 const (
-	testPassword = "thetestpassword"
-	testUsername = "default"
+	testPassword  = "thetestpassword"
+	testLoginName = "default"
 )
 
 func TestAuthenticate(t *testing.T) {
@@ -35,7 +35,7 @@ func TestAuthenticate(t *testing.T) {
 	passwordRepoFn := func() (*password.Repository, error) { return password.NewRepository(rw, rw, wrapper) }
 	am := password.TestAuthMethods(t, conn, o.GetPublicId(), 1)[0]
 
-	acct, err := password.NewAccount(am.GetPublicId(), testUsername)
+	acct, err := password.NewAccount(am.GetPublicId(), password.WithLoginName(testLoginName))
 	require.NoError(t, err)
 
 	pwRepo, err := passwordRepoFn()
@@ -56,8 +56,8 @@ func TestAuthenticate(t *testing.T) {
 				TokenType:    "token",
 				Credentials: func() *structpb.Struct {
 					creds := map[string]*structpb.Value{
-						"name":     {Kind: &structpb.Value_StringValue{StringValue: testUsername}},
-						"password": {Kind: &structpb.Value_StringValue{StringValue: testPassword}},
+						"login_name": {Kind: &structpb.Value_StringValue{StringValue: testLoginName}},
+						"password":   {Kind: &structpb.Value_StringValue{StringValue: testPassword}},
 					}
 					return &structpb.Struct{Fields: creds}
 				}(),
@@ -72,8 +72,8 @@ func TestAuthenticate(t *testing.T) {
 				AuthMethodId: am.GetPublicId(),
 				Credentials: func() *structpb.Struct {
 					creds := map[string]*structpb.Value{
-						"name":     {Kind: &structpb.Value_StringValue{StringValue: testUsername}},
-						"password": {Kind: &structpb.Value_StringValue{StringValue: testPassword}},
+						"login_name": {Kind: &structpb.Value_StringValue{StringValue: testLoginName}},
+						"password":   {Kind: &structpb.Value_StringValue{StringValue: testPassword}},
 					}
 					return &structpb.Struct{Fields: creds}
 				}(),
@@ -89,8 +89,8 @@ func TestAuthenticate(t *testing.T) {
 				TokenType:    "email",
 				Credentials: func() *structpb.Struct {
 					creds := map[string]*structpb.Value{
-						"name":     {Kind: &structpb.Value_StringValue{StringValue: testUsername}},
-						"password": {Kind: &structpb.Value_StringValue{StringValue: testPassword}},
+						"login_name": {Kind: &structpb.Value_StringValue{StringValue: testLoginName}},
+						"password":   {Kind: &structpb.Value_StringValue{StringValue: testPassword}},
 					}
 					return &structpb.Struct{Fields: creds}
 				}(),
@@ -102,8 +102,8 @@ func TestAuthenticate(t *testing.T) {
 			request: &pbs.AuthenticateRequest{
 				Credentials: func() *structpb.Struct {
 					creds := map[string]*structpb.Value{
-						"name":     {Kind: &structpb.Value_StringValue{StringValue: testUsername}},
-						"password": {Kind: &structpb.Value_StringValue{StringValue: testPassword}},
+						"login_name": {Kind: &structpb.Value_StringValue{StringValue: testLoginName}},
+						"password":   {Kind: &structpb.Value_StringValue{StringValue: testPassword}},
 					}
 					return &structpb.Struct{Fields: creds}
 				}(),
@@ -117,8 +117,8 @@ func TestAuthenticate(t *testing.T) {
 				TokenType:    "token",
 				Credentials: func() *structpb.Struct {
 					creds := map[string]*structpb.Value{
-						"name":     {Kind: &structpb.Value_StringValue{StringValue: testUsername}},
-						"password": {Kind: &structpb.Value_StringValue{StringValue: "wrong"}},
+						"login_name": {Kind: &structpb.Value_StringValue{StringValue: testLoginName}},
+						"password":   {Kind: &structpb.Value_StringValue{StringValue: "wrong"}},
 					}
 					return &structpb.Struct{Fields: creds}
 				}(),
@@ -126,14 +126,14 @@ func TestAuthenticate(t *testing.T) {
 			wantErr: status.Error(codes.Unauthenticated, "unauthenticated"),
 		},
 		{
-			name: "wrong-username",
+			name: "wrong-login-name",
 			request: &pbs.AuthenticateRequest{
 				AuthMethodId: am.GetPublicId(),
 				TokenType:    "token",
 				Credentials: func() *structpb.Struct {
 					creds := map[string]*structpb.Value{
-						"name":     {Kind: &structpb.Value_StringValue{StringValue: "wrong"}},
-						"password": {Kind: &structpb.Value_StringValue{StringValue: testPassword}},
+						"login_name": {Kind: &structpb.Value_StringValue{StringValue: "wrong"}},
+						"password":   {Kind: &structpb.Value_StringValue{StringValue: testPassword}},
 					}
 					return &structpb.Struct{Fields: creds}
 				}(),
@@ -178,7 +178,7 @@ func TestAuthenticate_AuthAccountConnectedToIamUser(t *testing.T) {
 	iamRepoFn := func() (*iam.Repository, error) { return iam.NewRepository(rw, rw, wrapper) }
 
 	am := password.TestAuthMethods(t, conn, o.GetPublicId(), 1)[0]
-	acct, err := password.NewAccount(am.GetPublicId(), testUsername)
+	acct, err := password.NewAccount(am.GetPublicId(), password.WithLoginName(testLoginName))
 	require.NoError(err)
 
 	pwRepo, err := passwordRepoFn()
@@ -198,8 +198,8 @@ func TestAuthenticate_AuthAccountConnectedToIamUser(t *testing.T) {
 		AuthMethodId: am.GetPublicId(),
 		Credentials: func() *structpb.Struct {
 			creds := map[string]*structpb.Value{
-				"name":     {Kind: &structpb.Value_StringValue{StringValue: testUsername}},
-				"password": {Kind: &structpb.Value_StringValue{StringValue: testPassword}},
+				"login_name": {Kind: &structpb.Value_StringValue{StringValue: testLoginName}},
+				"password":   {Kind: &structpb.Value_StringValue{StringValue: testPassword}},
 			}
 			return &structpb.Struct{Fields: creds}
 		}(),

@@ -939,12 +939,12 @@
       "post": {
         "summary": "Adds existing Hosts to the Host Set",
         "description": "Adds the hosts to this Host Set if possible.  All hosts added must be a child of the same host catalog this host set is a child of.",
-        "operationId": "HostSetService_AddToHostSet",
+        "operationId": "HostSetService_AddHostSetHosts",
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
-              "$ref": "#/definitions/controller.api.services.v1.AddToHostSetResponse"
+              "$ref": "#/definitions/controller.api.services.v1.AddHostSetHostsResponse"
             }
           }
         },
@@ -969,14 +969,14 @@
     },
     "/v1/scopes/*/host-catalogs/{host_catalog_id}/host-sets/{id}:remove-hosts": {
       "post": {
-        "summary": "Removes Hosts to the Host Set",
+        "summary": "Removes Hosts from the Host Set",
         "description": "Removes the hosts from this Host Set if present.  If it is not present then no action is taken and no error is returned.",
-        "operationId": "HostSetService_RemoveFromHostSet",
+        "operationId": "HostSetService_RemoveHostSetHosts",
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
-              "$ref": "#/definitions/controller.api.services.v1.RemoveFromHostSetResponse"
+              "$ref": "#/definitions/controller.api.services.v1.RemoveHostSetHostsResponse"
             }
           }
         },
@@ -990,6 +990,38 @@
           {
             "name": "id",
             "description": "This host set's id.",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "controller.api.services.v1.HostSetService"
+        ]
+      }
+    },
+    "/v1/scopes/*/host-catalogs/{host_catalog_id}/host-sets/{id}:set-hosts": {
+      "post": {
+        "summary": "Sets the Hosts on the Host Set.",
+        "description": "Sets the Hosts on the Host Set, removing any hosts that are not specified in the request.",
+        "operationId": "HostSetService_SetHostSetHosts",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.services.v1.SetHostSetHostsResponse"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "host_catalog_id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "id",
             "in": "path",
             "required": true,
             "type": "string"
@@ -1819,11 +1851,6 @@
           "description": "Scope information for this resource\nOutput only.",
           "readOnly": true
         },
-        "auth_method_id": {
-          "type": "string",
-          "description": "The auth method this account is created for.\nOutput only.",
-          "readOnly": true
-        },
         "name": {
           "type": "string",
           "title": "Optional name for identification purposes"
@@ -1844,14 +1871,20 @@
           "description": "The time this resource was last updated.\nOutput only.",
           "readOnly": true
         },
-        "disabled": {
-          "type": "boolean",
-          "format": "boolean",
-          "title": "Whether the resource is disabled"
+        "version": {
+          "type": "integer",
+          "format": "int64",
+          "description": "The version can be used in subsequent write requests to ensure this resource\nhas not changed and to fail the write if it has.\nOutput only.",
+          "readOnly": true
         },
         "type": {
           "type": "string",
           "description": "The type of this account.  Possible values are: \"password\", \"oidc\"."
+        },
+        "auth_method_id": {
+          "type": "string",
+          "description": "The auth method this account is created for.\nOutput only.",
+          "readOnly": true
         },
         "attributes": {
           "type": "object",
@@ -1891,6 +1924,12 @@
           "type": "string",
           "format": "date-time",
           "description": "The time this resource was last updated.\nOutput only.",
+          "readOnly": true
+        },
+        "version": {
+          "type": "integer",
+          "format": "int64",
+          "description": "The version can be used in subsequent write requests to ensure this resource\nhas not changed and to fail the write if it has.\nOutput only.",
           "readOnly": true
         },
         "type": {
@@ -1992,11 +2031,6 @@
           "description": "The time this resource was last updated.\nOutput only.",
           "readOnly": true
         },
-        "disabled": {
-          "type": "boolean",
-          "format": "boolean",
-          "title": "Whether the resource is disabled"
-        },
         "version": {
           "type": "integer",
           "format": "int64",
@@ -2030,11 +2064,6 @@
           "description": "The ID of the member.\nOutput only.",
           "readOnly": true
         },
-        "type": {
-          "type": "string",
-          "description": "The type of the member.\nOutput only.",
-          "readOnly": true
-        },
         "scope_id": {
           "type": "string",
           "description": "The scope ID of the member.\nOutput only.",
@@ -2054,10 +2083,6 @@
           "$ref": "#/definitions/controller.api.resources.scopes.v1.ScopeInfo",
           "description": "Scope information for this resource\nOutput only.",
           "readOnly": true
-        },
-        "type": {
-          "type": "string",
-          "title": "The type of the resource, to help differentiate schemas"
         },
         "name": {
           "type": "string",
@@ -2079,10 +2104,15 @@
           "description": "The time this resource was last updated\nOutput only.",
           "readOnly": true
         },
-        "disabled": {
-          "type": "boolean",
-          "format": "boolean",
-          "title": "Whether the host is disabled"
+        "version": {
+          "type": "integer",
+          "format": "int64",
+          "description": "The version can be used in subsequent write requests to ensure this resource\nhas not changed and to fail the write if it has.\nOutput only.",
+          "readOnly": true
+        },
+        "type": {
+          "type": "string",
+          "title": "The type of the resource, to help differentiate schemas"
         },
         "address": {
           "type": "string",
@@ -2104,10 +2134,6 @@
           "description": "Scope information for this resource\nOutput only.",
           "readOnly": true
         },
-        "type": {
-          "type": "string",
-          "title": "The type of the resource, to help differentiate schemas"
-        },
         "name": {
           "type": "string",
           "title": "Optional name for identification purposes"
@@ -2128,10 +2154,15 @@
           "description": "The time this resource was last updated\nOutput only.",
           "readOnly": true
         },
-        "disabled": {
-          "type": "boolean",
-          "format": "boolean",
-          "title": "Whether the catalog is disabled"
+        "version": {
+          "type": "integer",
+          "format": "int64",
+          "description": "The version can be used in subsequent write requests to ensure this resource\nhas not changed and to fail the write if it has.\nOutput only.",
+          "readOnly": true
+        },
+        "type": {
+          "type": "string",
+          "title": "The type of the resource, to help differentiate schemas"
         },
         "attributes": {
           "type": "object",
@@ -2153,10 +2184,6 @@
           "description": "Scope information for this resource\nOutput only.",
           "readOnly": true
         },
-        "type": {
-          "type": "string",
-          "title": "The type of the resource, to help differentiate schemas"
-        },
         "name": {
           "type": "string",
           "title": "Optional name for identification purposes"
@@ -2177,13 +2204,18 @@
           "description": "The time this resource was last updated\nOutput only.",
           "readOnly": true
         },
-        "disabled": {
-          "type": "boolean",
-          "format": "boolean",
-          "title": "Whether the host set is disabled"
+        "version": {
+          "type": "integer",
+          "format": "int64",
+          "description": "The version can be used in subsequent write requests to ensure this resource\nhas not changed and to fail the write if it has.\nOutput only.",
+          "readOnly": true
+        },
+        "type": {
+          "type": "string",
+          "title": "The type of the resource, to help differentiate schemas"
         },
         "size": {
-          "type": "string",
+          "type": "integer",
           "format": "int64",
           "description": "The total count of hosts in this host set\nOutput only.",
           "readOnly": true
@@ -2295,20 +2327,15 @@
           "description": "The time this resource was last updated.\nOutput only.",
           "readOnly": true
         },
-        "disabled": {
-          "type": "boolean",
-          "format": "boolean",
-          "title": "Whether the resource is disabled"
-        },
-        "grant_scope_id": {
-          "type": "string",
-          "description": "The scope the grants will apply to. If the role is at the global scope,\nthis can be an org or project. If the role is at an org\nscope, this can be a project within the org. It is invalid for\nthis to be anything other than the role's scope when the role's scope is\na project."
-        },
         "version": {
           "type": "integer",
           "format": "int64",
           "description": "The version can be used in subsequent write requests to ensure this resource\nhas not changed and to fail the write if it has.\nOutput only.",
           "readOnly": true
+        },
+        "grant_scope_id": {
+          "type": "string",
+          "description": "The scope the grants will apply to. If the role is at the global scope,\nthis can be an org or project. If the role is at an org\nscope, this can be a project within the org. It is invalid for\nthis to be anything other than the role's scope when the role's scope is\na project."
         },
         "principal_ids": {
           "type": "array",
@@ -2377,11 +2404,6 @@
           "format": "date-time",
           "description": "The time this resource was last updated.\nOutput only.",
           "readOnly": true
-        },
-        "disabled": {
-          "type": "boolean",
-          "format": "boolean",
-          "title": "Whether the resource is disabled"
         },
         "version": {
           "type": "integer",
@@ -2455,11 +2477,6 @@
           "description": "The time this resource was last updated.\nOutput only.",
           "readOnly": true
         },
-        "disabled": {
-          "type": "boolean",
-          "format": "boolean",
-          "title": "Whether the resource is disabled"
-        },
         "version": {
           "type": "integer",
           "format": "int64",
@@ -2477,6 +2494,9 @@
         }
       }
     },
+    "controller.api.services.v1.AddHostSetHostsResponse": {
+      "type": "object"
+    },
     "controller.api.services.v1.AddRoleGrantsResponse": {
       "type": "object",
       "properties": {
@@ -2492,9 +2512,6 @@
           "$ref": "#/definitions/controller.api.resources.roles.v1.Role"
         }
       }
-    },
-    "controller.api.services.v1.AddToHostSetResponse": {
-      "type": "object"
     },
     "controller.api.services.v1.AuthenticateRequest": {
       "type": "object",
@@ -2933,9 +2950,6 @@
         }
       }
     },
-    "controller.api.services.v1.RemoveFromHostSetResponse": {
-      "type": "object"
-    },
     "controller.api.services.v1.RemoveGroupMembersResponse": {
       "type": "object",
       "properties": {
@@ -2943,6 +2957,9 @@
           "$ref": "#/definitions/controller.api.resources.groups.v1.Group"
         }
       }
+    },
+    "controller.api.services.v1.RemoveHostSetHostsResponse": {
+      "type": "object"
     },
     "controller.api.services.v1.RemoveRoleGrantsResponse": {
       "type": "object",
@@ -2968,6 +2985,9 @@
         }
       }
     },
+    "controller.api.services.v1.SetHostSetHostsResponse": {
+      "type": "object"
+    },
     "controller.api.services.v1.SetRoleGrantsResponse": {
       "type": "object",
       "properties": {
@@ -2981,6 +3001,25 @@
       "properties": {
         "item": {
           "$ref": "#/definitions/controller.api.resources.roles.v1.Role"
+        }
+      }
+    },
+    "controller.api.services.v1.StatusResponse": {
+      "type": "object",
+      "properties": {
+        "controllers": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/controller.servers.v1.Server"
+          },
+          "description": "Active controllers. This can be used (eventually) for conneciton\nmanagement."
+        },
+        "cancel_job_ids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Jobs that should be canceled: ones assigned to this worker that have been\nreported as active but are in canceling state in the database. Once the\nworker cancels the job, it will no longer show up in active_jobs in the\nnext heartbeat, and we can move the job to canceled state."
         }
       }
     },
@@ -3055,6 +3094,50 @@
           "$ref": "#/definitions/controller.api.resources.users.v1.User"
         }
       }
+    },
+    "controller.servers.v1.Server": {
+      "type": "object",
+      "properties": {
+        "private_id": {
+          "type": "string",
+          "title": "Private ID of the resource"
+        },
+        "type": {
+          "type": "string",
+          "title": "Type of the resource (controller, worker)"
+        },
+        "name": {
+          "type": "string",
+          "title": "Name of the resource"
+        },
+        "description": {
+          "type": "string",
+          "title": "Description of the resource"
+        },
+        "address": {
+          "type": "string",
+          "title": "Address for the server"
+        },
+        "create_time": {
+          "$ref": "#/definitions/controller.storage.timestamp.v1.Timestamp",
+          "title": "First seen time from the RDBMS"
+        },
+        "update_time": {
+          "$ref": "#/definitions/controller.storage.timestamp.v1.Timestamp",
+          "title": "Last time there was an update"
+        }
+      },
+      "title": "Server contains all fields related to a Controller or Worker resource"
+    },
+    "controller.storage.timestamp.v1.Timestamp": {
+      "type": "object",
+      "properties": {
+        "timestamp": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "title": "Timestamp for storage messages.  We've defined a new local type wrapper\nof google.protobuf.Timestamp so we can implement sql.Scanner and sql.Valuer\ninterfaces.  See:\nhttps://golang.org/pkg/database/sql/#Scanner\nhttps://golang.org/pkg/database/sql/driver/#Valuer"
     },
     "google.protobuf.FieldMask": {
       "type": "object",

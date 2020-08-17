@@ -26,7 +26,7 @@ var (
 
 func init() {
 	var err error
-	if maskManager, err = handlers.NewMaskManager(&pb.Account{}, &store.Account{}); err != nil {
+	if maskManager, err = handlers.NewMaskManager(&store.Account{}, &pb.Account{}, &pb.PasswordAccountAttributes{}); err != nil {
 		panic(err)
 	}
 }
@@ -51,8 +51,8 @@ var _ pbs.AccountServiceServer = Service{}
 // ListAccounts implements the interface pbs.AccountServiceServer.
 func (s Service) ListAccounts(ctx context.Context, req *pbs.ListAccountsRequest) (*pbs.ListAccountsResponse, error) {
 	authResults := auth.Verify(ctx)
-	if !authResults.Valid {
-		return nil, handlers.ForbiddenError()
+	if authResults.Error != nil {
+		return nil, authResults.Error
 	}
 	if err := validateListRequest(req); err != nil {
 		return nil, err
@@ -70,8 +70,8 @@ func (s Service) ListAccounts(ctx context.Context, req *pbs.ListAccountsRequest)
 // GetAccounts implements the interface pbs.AccountServiceServer.
 func (s Service) GetAccount(ctx context.Context, req *pbs.GetAccountRequest) (*pbs.GetAccountResponse, error) {
 	authResults := auth.Verify(ctx)
-	if !authResults.Valid {
-		return nil, handlers.ForbiddenError()
+	if authResults.Error != nil {
+		return nil, authResults.Error
 	}
 	if err := validateGetRequest(req); err != nil {
 		return nil, err
@@ -87,8 +87,8 @@ func (s Service) GetAccount(ctx context.Context, req *pbs.GetAccountRequest) (*p
 // CreateAccount implements the interface pbs.AccountServiceServer.
 func (s Service) CreateAccount(ctx context.Context, req *pbs.CreateAccountRequest) (*pbs.CreateAccountResponse, error) {
 	authResults := auth.Verify(ctx)
-	if !authResults.Valid {
-		return nil, handlers.ForbiddenError()
+	if authResults.Error != nil {
+		return nil, authResults.Error
 	}
 	if err := validateCreateRequest(req); err != nil {
 		return nil, err
@@ -103,14 +103,26 @@ func (s Service) CreateAccount(ctx context.Context, req *pbs.CreateAccountReques
 
 // UpdateAccount implements the interface pbs.AccountServiceServer.
 func (s Service) UpdateAccount(ctx context.Context, req *pbs.UpdateAccountRequest) (*pbs.UpdateAccountResponse, error) {
-	panic("UpdateAccount is not implemented.")
+	authResults := auth.Verify(ctx)
+	if authResults.Error != nil {
+		return nil, authResults.Error
+	}
+	if err := validateUpdateRequest(req); err != nil {
+		return nil, err
+	}
+	u, err := s.updateInRepo(ctx, req.GetAuthMethodId(), req.GetId(), req.GetVersion(), req.GetUpdateMask().GetPaths(), req.GetItem())
+	if err != nil {
+		return nil, err
+	}
+	u.Scope = authResults.Scope
+	return &pbs.UpdateAccountResponse{Item: u}, nil
 }
 
 // DeleteAccount implements the interface pbs.AccountServiceServer.
 func (s Service) DeleteAccount(ctx context.Context, req *pbs.DeleteAccountRequest) (*pbs.DeleteAccountResponse, error) {
 	authResults := auth.Verify(ctx)
-	if !authResults.Valid {
-		return nil, handlers.ForbiddenError()
+	if authResults.Error != nil {
+		return nil, authResults.Error
 	}
 	if err := validateDeleteRequest(req); err != nil {
 		return nil, err
@@ -145,14 +157,17 @@ func (s Service) createInRepo(ctx context.Context, authMethodId string, item *pb
 	if err := handlers.StructToProto(item.GetAttributes(), pwAttrs); err != nil {
 		return nil, status.Errorf(codes.InvalidArgument, "Provided attributes don't match expected format.")
 	}
-	var opts []password.Option
+	opts := []password.Option{password.WithLoginName(pwAttrs.GetLoginName())}
+	if pwAttrs.GetPassword() != nil {
+		opts = append(opts, password.WithPassword(pwAttrs.GetPassword().GetValue()))
+	}
 	if item.GetName() != nil {
 		opts = append(opts, password.WithName(item.GetName().GetValue()))
 	}
 	if item.GetDescription() != nil {
 		opts = append(opts, password.WithDescription(item.GetDescription().GetValue()))
 	}
-	a, err := password.NewAccount(authMethodId, pwAttrs.GetUsername(), opts...)
+	a, err := password.NewAccount(authMethodId, opts...)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "Unable to build user for creation: %v.", err)
 	}
@@ -166,6 +181,46 @@ func (s Service) createInRepo(ctx context.Context, authMethodId string, item *pb
 	}
 	if out == nil {
 		return nil, status.Error(codes.Internal, "Unable to create user but no error returned from repository.")
+	}
+	return toProto(out)
+}
+
+func (s Service) updateInRepo(ctx context.Context, authMethodId, id string, version uint32, mask []string, item *pb.Account) (*pb.Account, error) {
+	var opts []password.Option
+	if desc := item.GetDescription(); desc != nil {
+		opts = append(opts, password.WithDescription(desc.GetValue()))
+	}
+	if name := item.GetName(); name != nil {
+		opts = append(opts, password.WithName(name.GetValue()))
+	}
+	u, err := password.NewAccount(authMethodId, opts...)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "Unable to build auth method for update: %v.", err)
+	}
+	u.PublicId = id
+
+	pwAttrs := &pb.PasswordAccountAttributes{}
+	if err := handlers.StructToProto(item.GetAttributes(), pwAttrs); err != nil {
+		return nil, status.Errorf(codes.InvalidArgument, "Provided attributes don't match expected format.")
+	}
+	if pwAttrs.GetLoginName() != "" {
+		u.LoginName = pwAttrs.GetLoginName()
+	}
+
+	dbMask := maskManager.Translate(mask)
+	if len(dbMask) == 0 {
+		return nil, handlers.InvalidArgumentErrorf("No valid fields included in the update mask.", map[string]string{"update_mask": "No valid paths provided in the update mask."})
+	}
+	repo, err := s.repoFn()
+	if err != nil {
+		return nil, err
+	}
+	out, rowsUpdated, err := repo.UpdateAccount(ctx, u, version, dbMask)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "Unable to update auth method: %v.", err)
+	}
+	if rowsUpdated == 0 {
+		return nil, handlers.NotFoundErrorf("AuthMethod %q doesn't exist.", id)
 	}
 	return toProto(out)
 }
@@ -211,6 +266,7 @@ func toProto(in *password.Account) (*pb.Account, error) {
 		CreatedTime:  in.GetCreateTime().GetTimestamp(),
 		UpdatedTime:  in.GetUpdateTime().GetTimestamp(),
 		AuthMethodId: in.GetAuthMethodId(),
+		Version:      in.GetVersion(),
 		Type:         "password",
 	}
 	if in.GetDescription() != "" {
@@ -219,7 +275,7 @@ func toProto(in *password.Account) (*pb.Account, error) {
 	if in.GetName() != "" {
 		out.Name = &wrapperspb.StringValue{Value: in.GetName()}
 	}
-	if st, err := handlers.ProtoToStruct(&pb.PasswordAccountAttributes{Username: in.GetUserName()}); err == nil {
+	if st, err := handlers.ProtoToStruct(&pb.PasswordAccountAttributes{LoginName: in.GetLoginName()}); err == nil {
 		out.Attributes = st
 	} else {
 		return nil, status.Errorf(codes.Internal, "failed building password attribute struct: %v", err)
@@ -270,8 +326,8 @@ func validateCreateRequest(req *pbs.CreateAccountRequest) error {
 		if err := handlers.StructToProto(item.GetAttributes(), pwAttrs); err != nil {
 			badFields["attributes"] = "Attribute fields do not match the expected format."
 		}
-		if pwAttrs.GetUsername() == "" {
-			badFields["username"] = "This is a required field for this type."
+		if pwAttrs.GetLoginName() == "" {
+			badFields["login_name"] = "This is a required field for this type."
 		}
 	default:
 		badFields["type"] = "This is a required field."
@@ -304,6 +360,49 @@ func validateListRequest(req *pbs.ListAccountsRequest) error {
 	if len(badFields) > 0 {
 		return handlers.InvalidArgumentErrorf("Improperly formatted identifier.", badFields)
 	}
+	return nil
+}
+
+func validateUpdateRequest(req *pbs.UpdateAccountRequest) error {
+	badFields := map[string]string{}
+	if !validId(req.GetId(), password.AccountPrefix+"_") {
+		badFields["id"] = "Improperly formatted identifier."
+	}
+	if !validId(req.GetAuthMethodId(), password.AuthMethodPrefix+"_") {
+		badFields["auth_method_id"] = "Improperly formatted identifier."
+	}
+	if req.GetUpdateMask() == nil {
+		badFields["update_mask"] = "UpdateMask not provided but is required to update this resource."
+	}
+	if req.GetVersion() == 0 {
+		badFields["version"] = "Existing resource version is required for an update."
+	}
+
+	item := req.GetItem()
+	if item == nil {
+		// It is legitimate for no item to be specified in an update request as it indicates all fields provided in
+		// the mask will be marked as unset.
+		return nil
+	}
+	if item.GetId() != "" {
+		badFields["id"] = "This is a read only field and cannot be specified in an update request."
+	}
+	if item.GetAuthMethodId() != "" {
+		badFields["auth_method_id"] = "This is a read only field and cannot be specified in an update request."
+	}
+	if item.GetCreatedTime() != nil {
+		badFields["created_time"] = "This is a read only field and cannot be specified in an update request."
+	}
+	if item.GetUpdatedTime() != nil {
+		badFields["updated_time"] = "This is a read only field and cannot be specified in an update request."
+	}
+	if item.GetType() != "" {
+		badFields["type"] = "This is a read only field and cannot be specified in an update request."
+	}
+	if len(badFields) > 0 {
+		return handlers.InvalidArgumentErrorf("Errors in provided fields.", badFields)
+	}
+
 	return nil
 }
 

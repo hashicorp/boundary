@@ -11,7 +11,7 @@ import (
 	"github.com/hashicorp/boundary/internal/auth/password"
 	"github.com/hashicorp/boundary/internal/db"
 	pb "github.com/hashicorp/boundary/internal/gen/controller/api/resources/authmethods"
-	"github.com/hashicorp/boundary/internal/gen/controller/api/resources/scopes"
+	scopepb "github.com/hashicorp/boundary/internal/gen/controller/api/resources/scopes"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/api/services"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers/authmethods"
@@ -44,10 +44,11 @@ func TestGet(t *testing.T) {
 		UpdatedTime: am.UpdateTime.GetTimestamp(),
 		Type:        "password",
 		Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
-			"min_password_length":  structpb.NewNumberValue(8),
-			"min_user_name_length": structpb.NewNumberValue(3),
+			"min_password_length":   structpb.NewNumberValue(8),
+			"min_login_name_length": structpb.NewNumberValue(3),
 		}},
-		Scope: &scopes.ScopeInfo{
+		Version: 1,
+		Scope: &scopepb.ScopeInfo{
 			Id:   o.GetPublicId(),
 			Type: o.GetType(),
 		},
@@ -121,11 +122,12 @@ func TestList(t *testing.T) {
 			Id:          am.GetPublicId(),
 			CreatedTime: am.GetCreateTime().GetTimestamp(),
 			UpdatedTime: am.GetUpdateTime().GetTimestamp(),
-			Scope:       &scopes.ScopeInfo{Id: oWithAuthMethods.GetPublicId(), Type: scope.Org.String()},
+			Scope:       &scopepb.ScopeInfo{Id: oWithAuthMethods.GetPublicId(), Type: scope.Org.String()},
+			Version:     1,
 			Type:        "password",
 			Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
-				"min_password_length":  structpb.NewNumberValue(8),
-				"min_user_name_length": structpb.NewNumberValue(3),
+				"min_password_length":   structpb.NewNumberValue(8),
+				"min_login_name_length": structpb.NewNumberValue(3),
 			}},
 		})
 	}
@@ -136,11 +138,12 @@ func TestList(t *testing.T) {
 			Id:          aa.GetPublicId(),
 			CreatedTime: aa.GetCreateTime().GetTimestamp(),
 			UpdatedTime: aa.GetUpdateTime().GetTimestamp(),
-			Scope:       &scopes.ScopeInfo{Id: oWithOtherAuthMethods.GetPublicId(), Type: scope.Org.String()},
+			Scope:       &scopepb.ScopeInfo{Id: oWithOtherAuthMethods.GetPublicId(), Type: scope.Org.String()},
+			Version:     1,
 			Type:        "password",
 			Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
-				"min_password_length":  structpb.NewNumberValue(8),
-				"min_user_name_length": structpb.NewNumberValue(3),
+				"min_password_length":   structpb.NewNumberValue(8),
+				"min_login_name_length": structpb.NewNumberValue(3),
 			}},
 		})
 	}
@@ -309,11 +312,12 @@ func TestCreate(t *testing.T) {
 					UpdatedTime: defaultAm.GetUpdateTime().GetTimestamp(),
 					Name:        &wrapperspb.StringValue{Value: "name"},
 					Description: &wrapperspb.StringValue{Value: "desc"},
-					Scope:       &scopes.ScopeInfo{Id: o.GetPublicId(), Type: scope.Org.String()},
+					Scope:       &scopepb.ScopeInfo{Id: o.GetPublicId(), Type: o.GetType()},
+					Version:     1,
 					Type:        "password",
 					Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
-						"min_password_length":  structpb.NewNumberValue(8),
-						"min_user_name_length": structpb.NewNumberValue(3),
+						"min_password_length":   structpb.NewNumberValue(8),
+						"min_login_name_length": structpb.NewNumberValue(3),
 					}},
 				},
 			},
@@ -370,8 +374,8 @@ func TestCreate(t *testing.T) {
 				Description: &wrapperspb.StringValue{Value: "Attributes must be valid for type"},
 				Type:        "password",
 				Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
-					"invalid_field":        structpb.NewStringValue("invalid_value"),
-					"min_user_name_length": structpb.NewNumberValue(3),
+					"invalid_field":         structpb.NewStringValue("invalid_value"),
+					"min_login_name_length": structpb.NewNumberValue(3),
 				}},
 			}},
 			res:     nil,
@@ -423,6 +427,8 @@ func TestUpdate(t *testing.T) {
 	tested, err := authmethods.NewService(repoFn)
 	require.NoError(t, err, "Error when getting new auth_method service.")
 
+	defaultScopeInfo := &scopepb.ScopeInfo{Id: o.GetPublicId(), Type: o.GetType()}
+
 	freshAuthMethod := func() (*pb.AuthMethod, func()) {
 		am, err := tested.CreateAuthMethod(auth.DisabledAuthTestContext(auth.WithScopeId(o.GetPublicId())),
 			&pbs.CreateAuthMethodRequest{Item: &pb.AuthMethod{
@@ -464,9 +470,10 @@ func TestUpdate(t *testing.T) {
 					Description: &wrapperspb.StringValue{Value: "desc"},
 					Type:        "password",
 					Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
-						"min_password_length":  structpb.NewNumberValue(8),
-						"min_user_name_length": structpb.NewNumberValue(3),
+						"min_password_length":   structpb.NewNumberValue(8),
+						"min_login_name_length": structpb.NewNumberValue(3),
 					}},
+					Scope: defaultScopeInfo,
 				},
 			},
 			errCode: codes.OK,
@@ -488,9 +495,10 @@ func TestUpdate(t *testing.T) {
 					Description: &wrapperspb.StringValue{Value: "desc"},
 					Type:        "password",
 					Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
-						"min_password_length":  structpb.NewNumberValue(8),
-						"min_user_name_length": structpb.NewNumberValue(3),
+						"min_password_length":   structpb.NewNumberValue(8),
+						"min_login_name_length": structpb.NewNumberValue(3),
 					}},
+					Scope: defaultScopeInfo,
 				},
 			},
 			errCode: codes.OK,
@@ -542,9 +550,10 @@ func TestUpdate(t *testing.T) {
 					Description: &wrapperspb.StringValue{Value: "default"},
 					Type:        "password",
 					Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
-						"min_password_length":  structpb.NewNumberValue(8),
-						"min_user_name_length": structpb.NewNumberValue(3),
+						"min_password_length":   structpb.NewNumberValue(8),
+						"min_login_name_length": structpb.NewNumberValue(3),
 					}},
+					Scope: defaultScopeInfo,
 				},
 			},
 			errCode: codes.OK,
@@ -566,9 +575,10 @@ func TestUpdate(t *testing.T) {
 					Description: &wrapperspb.StringValue{Value: "default"},
 					Type:        "password",
 					Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
-						"min_password_length":  structpb.NewNumberValue(8),
-						"min_user_name_length": structpb.NewNumberValue(3),
+						"min_password_length":   structpb.NewNumberValue(8),
+						"min_login_name_length": structpb.NewNumberValue(3),
 					}},
+					Scope: defaultScopeInfo,
 				},
 			},
 			errCode: codes.OK,
@@ -590,9 +600,10 @@ func TestUpdate(t *testing.T) {
 					Description: &wrapperspb.StringValue{Value: "notignored"},
 					Type:        "password",
 					Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
-						"min_password_length":  structpb.NewNumberValue(8),
-						"min_user_name_length": structpb.NewNumberValue(3),
+						"min_password_length":   structpb.NewNumberValue(8),
+						"min_login_name_length": structpb.NewNumberValue(3),
 					}},
+					Scope: defaultScopeInfo,
 				},
 			},
 			errCode: codes.OK,
@@ -666,12 +677,72 @@ func TestUpdate(t *testing.T) {
 			res:     nil,
 			errCode: codes.InvalidArgument,
 		},
+		{
+			name: "Update login name length",
+			req: &pbs.UpdateAuthMethodRequest{
+				UpdateMask: &field_mask.FieldMask{
+					Paths: []string{"attributes.min_login_name_length"},
+				},
+				Item: &pb.AuthMethod{
+					Name:        &wrapperspb.StringValue{Value: "ignored"},
+					Description: &wrapperspb.StringValue{Value: "ignored"},
+					Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
+						"min_login_name_length": structpb.NewNumberValue(42),
+						"min_password_length":   structpb.NewNumberValue(55555),
+					}},
+				},
+			},
+			res: &pbs.UpdateAuthMethodResponse{
+				Item: &pb.AuthMethod{
+					Name:        &wrapperspb.StringValue{Value: "default"},
+					Description: &wrapperspb.StringValue{Value: "default"},
+					Type:        "password",
+					Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
+						"min_password_length":   structpb.NewNumberValue(8),
+						"min_login_name_length": structpb.NewNumberValue(42),
+					}},
+					Scope: defaultScopeInfo,
+				},
+			},
+			errCode: codes.OK,
+		},
+		{
+			name: "Update password length",
+			req: &pbs.UpdateAuthMethodRequest{
+				UpdateMask: &field_mask.FieldMask{
+					Paths: []string{"attributes.min_password_length"},
+				},
+				Item: &pb.AuthMethod{
+					Name:        &wrapperspb.StringValue{Value: "ignored"},
+					Description: &wrapperspb.StringValue{Value: "ignored"},
+					Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
+						"min_login_name_length": structpb.NewNumberValue(5555),
+						"min_password_length":   structpb.NewNumberValue(42),
+					}},
+				},
+			},
+			res: &pbs.UpdateAuthMethodResponse{
+				Item: &pb.AuthMethod{
+					Name:        &wrapperspb.StringValue{Value: "default"},
+					Description: &wrapperspb.StringValue{Value: "default"},
+					Type:        "password",
+					Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
+						"min_password_length":   structpb.NewNumberValue(42),
+						"min_login_name_length": structpb.NewNumberValue(3),
+					}},
+					Scope: defaultScopeInfo,
+				},
+			},
+			errCode: codes.OK,
+		},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 			am, cleanup := freshAuthMethod()
 			defer cleanup()
+
+			tc.req.Version = 1
 
 			if tc.req.GetId() == "" {
 				tc.req.Id = am.GetId()
@@ -702,6 +773,9 @@ func TestUpdate(t *testing.T) {
 
 				// Clear all values which are hard to compare against.
 				got.Item.UpdatedTime, tc.res.Item.UpdatedTime = nil, nil
+
+				assert.EqualValues(2, got.Item.Version)
+				tc.res.Item.Version = 2
 			}
 			assert.Empty(cmp.Diff(got, tc.res, protocmp.Transform()), "UpdateAuthMethod(%q) got response %q, wanted %q", tc.req, got, tc.res)
 		})

@@ -35,7 +35,7 @@ type Command struct {
 	flagLogFormat                      string
 	flagCombineLogs                    bool
 	flagDev                            bool
-	flagDevUsername                    string
+	flagDevLoginName                   string
 	flagDevPassword                    string
 	flagDevOrgId                       string
 	flagDevAuthMethodId                string
@@ -112,10 +112,10 @@ func (c *Command) Flags() *base.FlagSets {
 	})
 
 	f.StringVar(&base.StringVar{
-		Name:   "dev-username",
-		Target: &c.flagDevUsername,
-		EnvVar: "WATCHTWER_DEV_USERNAME",
-		Usage: "Initial admin username. This only applies when running in \"dev\" " +
+		Name:   "dev-login-name",
+		Target: &c.flagDevLoginName,
+		EnvVar: "WATCHTWER_DEV_LOGIN_NAME",
+		Usage: "Initial admin login name. This only applies when running in \"dev\" " +
 			"mode.",
 	})
 
@@ -166,7 +166,7 @@ func (c *Command) Run(args []string) int {
 
 	childShutdownCh := make(chan struct{})
 
-	devConfig, err := config.DevController()
+	devConfig, err := config.DevCombined()
 	if err != nil {
 		c.UI.Error(fmt.Errorf("Error creating controller dev config: %w", err).Error())
 		return 1
@@ -180,14 +180,14 @@ func (c *Command) Run(args []string) int {
 			c.UI.Error(fmt.Sprintf("Invalid dev auth method ID, must start with %q", prefix))
 			return 1
 		}
-		if len(c.flagDevAuthMethodId) != 13 {
+		if len(c.flagDevAuthMethodId) != 15 {
 			c.UI.Error(fmt.Sprintf("Invalid dev auth method ID, must be 10 base62 characters after %q", prefix))
 			return 1
 		}
 		c.DevAuthMethodId = c.flagDevAuthMethodId
 	}
-	if c.flagDevUsername != "" {
-		c.DevUsername = c.flagDevUsername
+	if c.flagDevLoginName != "" {
+		c.DevLoginName = c.flagDevLoginName
 	}
 	if c.flagDevPassword != "" {
 		c.DevPassword = c.flagDevPassword
@@ -236,7 +236,7 @@ func (c *Command) Run(args []string) int {
 		return 1
 	}
 
-	if err := c.SetupKMSes(c.UI, devConfig.SharedConfig, []string{"controller", "worker-auth"}); err != nil {
+	if err := c.SetupKMSes(c.UI, devConfig.SharedConfig, []string{"root", "worker-auth"}); err != nil {
 		c.UI.Error(err.Error())
 		return 1
 	}
@@ -248,9 +248,17 @@ func (c *Command) Run(args []string) int {
 		c.UI.Error("Worker Auth KMS not found after parsing KMS blocks")
 		return 1
 	}
+	c.InfoKeys = append(c.InfoKeys, "[Controller] AEAD Key Bytes")
+	c.Info["[Controller] AEAD Key Bytes"] = devConfig.Controller.DevControllerKey
+	c.InfoKeys = append(c.InfoKeys, "[Worker-Auth] AEAD Key Bytes")
+	c.Info["[Worker-Auth] AEAD Key Bytes"] = devConfig.Controller.DevWorkerAuthKey
+	if c.WorkerAuthKMS == nil {
+		c.UI.Error("Worker Auth KMS not found after parsing KMS blocks")
+		return 1
+	}
 
 	// Initialize the listeners
-	if err := c.SetupListeners(c.UI, devConfig.SharedConfig); err != nil {
+	if err := c.SetupListeners(c.UI, devConfig.SharedConfig, []string{"api", "cluster", "worker-alpn-tls"}); err != nil {
 		c.UI.Error(err.Error())
 		return 1
 	}

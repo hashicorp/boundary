@@ -112,7 +112,7 @@ Start the server binary with:
 This will start a Controller service listening on `http://127.0.0.1:9200` for
 incoming API requests and a Worker service listening on the same address/port for
 incoming session requests. It will also create various default Catalogs and Sets,
-and display various bits of information, such as a username and password that can
+and display various bits of information, such as a login name and password that can
 be used to log in.
 
 ### Configuring Resources
@@ -132,9 +132,9 @@ you suitable for local testing:
 
 * A Host Catalog with a default Host Set containing the local machine
   (`127.0.0.1`) and defining an SSH service on port 22
-* A User Catalog with a default User Set containing a user with the given
-  username and associated password. This can be used to log in to the web UI
-  and the desktop client.
+* A Password User Method with a default User Set containing a user with the
+  given login name and associated password. This can be used to log in to the
+  web UI and the desktop client.
 * A Permissions Set mapping the given User Set to a set of permissions, in this
   case granting access to make connections to resources
 * A Credentials Catalog with a default Credential Set that is empty (meaning
@@ -161,7 +161,7 @@ input/knowledge.
 Next, let's actually make a connection to your local SSH daemon via Boundary:
 
 3. Start the desktop client and point it at the local Boundary `dev` session.
-   Log in with the generated username and password.
+   Log in with the generated login name and password.
 4. You can now select the Target that grants access to the local machine and
    hit "Request Session". Doing so will cause Boundary to check whether this
    action is allowed, and if so, send session information back to the client,

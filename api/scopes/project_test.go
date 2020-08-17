@@ -20,7 +20,7 @@ func TestProjects_List(t *testing.T) {
 		DisableAuthorizationFailures: true,
 		DefaultOrgId:                 orgId,
 		DefaultAuthMethodId:          amId,
-		DefaultUsername:              "user",
+		DefaultLoginName:             "user",
 		DefaultPassword:              "passpass",
 	})
 	defer tc.Shutdown()
@@ -54,7 +54,6 @@ func comparableSlice(in []*scopes.Scope) []scopes.Scope {
 			Description: i.Description,
 			CreatedTime: i.CreatedTime,
 			UpdatedTime: i.UpdatedTime,
-			Disabled:    i.Disabled,
 		}
 		filtered = append(filtered, p)
 	}
@@ -69,7 +68,7 @@ func TestProjects_Crud(t *testing.T) {
 		DisableAuthorizationFailures: true,
 		DefaultOrgId:                 orgId,
 		DefaultAuthMethodId:          amId,
-		DefaultUsername:              "user",
+		DefaultLoginName:             "user",
 		DefaultPassword:              "passpass",
 	})
 	defer tc.Shutdown()
@@ -121,7 +120,7 @@ func TestProject_Errors(t *testing.T) {
 		DisableAuthorizationFailures: true,
 		DefaultOrgId:                 orgId,
 		DefaultAuthMethodId:          amId,
-		DefaultUsername:              "user",
+		DefaultLoginName:             "user",
 		DefaultPassword:              "passpass",
 	})
 	defer tc.Shutdown()

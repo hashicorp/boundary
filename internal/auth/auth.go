@@ -10,6 +10,7 @@ import (
 	"github.com/hashicorp/boundary/internal/gen/controller/api/resources/scopes"
 	"github.com/hashicorp/boundary/internal/perms"
 	"github.com/hashicorp/boundary/internal/servers/controller/common"
+	"github.com/hashicorp/boundary/internal/servers/controller/handlers"
 	"github.com/hashicorp/boundary/internal/types/action"
 	"github.com/hashicorp/boundary/internal/types/resource"
 	"github.com/hashicorp/boundary/internal/types/scope"
@@ -45,6 +46,7 @@ type RequestInfo struct {
 
 	// This is used for operations on the scopes collection
 	scopeIdOverride string
+	userIdOverride  string
 
 	// The following are useful for tests
 	DisableAuthzFailures bool
@@ -52,8 +54,8 @@ type RequestInfo struct {
 }
 
 type VerifyResults struct {
-	Valid  bool
 	UserId string
+	Error  error
 	Scope  *scopes.ScopeInfo
 }
 
@@ -90,12 +92,14 @@ func NewVerifierContext(ctx context.Context,
 // proceed, e.g. whether the authn/authz check resulted in failure. If an error
 // occurs it's logged to the system log.
 func Verify(ctx context.Context, opt ...Option) (ret VerifyResults) {
+	ret.Error = handlers.ForbiddenError()
 	v, ok := ctx.Value(verifierKey).(*verifier)
 	if !ok {
 		// We don't have a logger yet and this should never happen in any
 		// context we won't catch in tests
 		panic("no verifier information found in context")
 	}
+	opts := getOpts(opt...)
 	ret.Scope = new(scopes.ScopeInfo)
 	if v.requestInfo.DisableAuthEntirely {
 		ret.Scope.Id = v.requestInfo.scopeIdOverride
@@ -107,11 +111,11 @@ func Verify(ctx context.Context, opt ...Option) (ret VerifyResults) {
 		case strings.HasPrefix(ret.Scope.Id, scope.Project.Prefix()):
 			ret.Scope.Type = scope.Project.String()
 		}
-		ret.Valid = true
+		ret.UserId = v.requestInfo.userIdOverride
+		ret.Error = nil
 		return
 	}
 	v.ctx = ctx
-	opts := getOpts(opt...)
 	v.requestInfo.scopeIdOverride = opts.withScopeId
 	if err := v.parseAuthParams(); err != nil {
 		v.logger.Trace("error reading auth parameters from URL", "url", v.requestInfo.Path, "method", v.requestInfo.Method, "error", err)
@@ -130,15 +134,16 @@ func Verify(ctx context.Context, opt ...Option) (ret VerifyResults) {
 		return
 	}
 	if !authResults.Allowed {
-		// TODO: Decide whether to remove this
 		if v.requestInfo.DisableAuthzFailures {
+			ret.Error = nil
+			// TODO: Decide whether to remove this
 			v.logger.Info("failed authz info for request", "resource", pretty.Sprint(v.res), "user_id", ret.UserId, "action", v.act.String())
 		} else {
 			return
 		}
 	}
 
-	ret.Valid = true
+	ret.Error = nil
 	return
 }
 

@@ -1,7 +1,6 @@
 package password
 
 import (
-	"context"
 	"testing"
 
 	"github.com/hashicorp/boundary/internal/auth/password/store"
@@ -14,14 +13,13 @@ import (
 func TestAccount_New(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 
-	w := db.New(conn)
 	o, _ := iam.TestScopes(t, conn)
 	auts := TestAuthMethods(t, conn, o.GetPublicId(), 1)
 	aut := auts[0]
 
 	type args struct {
 		authMethodId string
-		userName     string
+		loginName    string
 		opts         []Option
 	}
 
@@ -43,12 +41,25 @@ func TestAccount_New(t *testing.T) {
 			name: "valid-no-options",
 			args: args{
 				authMethodId: aut.GetPublicId(),
-				userName:     "kazmierczak",
 			},
 			want: &Account{
 				Account: &store.Account{
 					AuthMethodId: aut.GetPublicId(),
-					UserName:     "kazmierczak",
+				},
+			},
+		},
+		{
+			name: "valid-with-user-name",
+			args: args{
+				authMethodId: aut.GetPublicId(),
+				opts: []Option{
+					WithLoginName("kazmierczak1"),
+				},
+			},
+			want: &Account{
+				Account: &store.Account{
+					AuthMethodId: aut.GetPublicId(),
+					LoginName:     "kazmierczak1",
 				},
 			},
 		},
@@ -56,7 +67,6 @@ func TestAccount_New(t *testing.T) {
 			name: "valid-with-name",
 			args: args{
 				authMethodId: aut.GetPublicId(),
-				userName:     "kazmierczak1",
 				opts: []Option{
 					WithName("test-name"),
 				},
@@ -64,7 +74,6 @@ func TestAccount_New(t *testing.T) {
 			want: &Account{
 				Account: &store.Account{
 					AuthMethodId: aut.GetPublicId(),
-					UserName:     "kazmierczak1",
 					Name:         "test-name",
 				},
 			},
@@ -73,7 +82,6 @@ func TestAccount_New(t *testing.T) {
 			name: "valid-with-description",
 			args: args{
 				authMethodId: aut.GetPublicId(),
-				userName:     "kazmierczak2",
 				opts: []Option{
 					WithDescription("test-description"),
 				},
@@ -81,7 +89,6 @@ func TestAccount_New(t *testing.T) {
 			want: &Account{
 				Account: &store.Account{
 					AuthMethodId: aut.GetPublicId(),
-					UserName:     "kazmierczak2",
 					Description:  "test-description",
 				},
 			},
@@ -92,7 +99,7 @@ func TestAccount_New(t *testing.T) {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			got, err := NewAccount(tt.args.authMethodId, tt.args.userName, tt.args.opts...)
+			got, err := NewAccount(tt.args.authMethodId, tt.args.opts...)
 			if tt.wantErr {
 				assert.Error(err)
 				require.Nil(got)
@@ -103,15 +110,6 @@ func TestAccount_New(t *testing.T) {
 
 			assert.Emptyf(got.PublicId, "PublicId set")
 			assert.Equal(tt.want, got)
-
-			id, err := newAccountId()
-			assert.NoError(err)
-
-			tt.want.PublicId = id
-			got.PublicId = id
-
-			err2 := w.Create(context.Background(), got)
-			assert.NoError(err2)
 		})
 	}
 }

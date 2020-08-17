@@ -111,10 +111,11 @@ is
 
 
 create domain wt_version as bigint
-default 1 
-check(
-  value > 0
-);
+  default 1
+  not null
+  check(
+   value > 0
+  );
 comment on domain wt_version is
 'standard column for row version';
 
@@ -556,7 +557,7 @@ create table iam_scope (
 
     -- version allows optimistic locking of the role when modifying the role
     -- itself and when modifying dependent items like principal roles.
-    version wt_version not null default 1
+    version wt_version
   );
 
 create table iam_scope_global (
@@ -734,8 +735,7 @@ create table iam_user (
     description text,
     scope_id wt_scope_id not null references iam_scope(public_id) on delete cascade on update cascade,
     unique(name, scope_id),
-    disabled boolean not null default false,
-    version wt_version not null default 1,
+    version wt_version,
 
     -- The order of columns is important for performance. See:
     -- https://dba.stackexchange.com/questions/58970/enforcing-constraints-two-tables-away/58972#58972
@@ -864,8 +864,7 @@ create table iam_role (
     scope_id wt_scope_id not null references iam_scope(public_id) on delete cascade on update cascade,
     grant_scope_id wt_scope_id not null references iam_scope(public_id) on delete cascade on update cascade,
     unique(name, scope_id),
-    disabled boolean not null default false,
-    version wt_version not null default 1,
+    version wt_version,
 
     -- add unique index so a composite fk can be declared.
     unique(scope_id, public_id)
@@ -964,7 +963,7 @@ insert into iam_role (public_id, name, description, scope_id)
   values('r_default', 'default', 'default role', 'global');
 
 insert into iam_role_grant (role_id, canonical_grant, raw_grant)
-  values('r_default', 'type=org;actions=list', 'type=org;actions=list');
+  values('r_default', 'type=scope;actions=list', 'type=scope;actions=list');
 
 create table iam_group (
     public_id wt_public_id not null primary key,
@@ -974,10 +973,9 @@ create table iam_group (
     description text,
     scope_id wt_scope_id not null references iam_scope(public_id) on delete cascade on update cascade,
     unique(name, scope_id),
-    disabled boolean not null default false,
     -- version allows optimistic locking of the group when modifying the group
     -- itself and when modifying dependent items like group members. 
-    version wt_version not null default 1,
+    version wt_version,
 
     -- add unique index so a composite fk can be declared.
     unique(scope_id, public_id)
@@ -1330,6 +1328,54 @@ commit;
 
 `),
 	},
+	"migrations/08_servers.down.sql": {
+		name: "08_servers.down.sql",
+		bytes: []byte(`
+begin;
+
+  drop table workers;
+  drop table controllers;
+
+commit;
+
+`),
+	},
+	"migrations/08_servers.up.sql": {
+		name: "08_servers.up.sql",
+		bytes: []byte(`
+begin;
+
+-- For now at least the IDs will be the same as the name, because this allows us
+-- to not have to persist some generated ID to worker and controller nodes.
+-- Eventually we may want them to diverge, so we have both here for now.
+
+create table servers (
+    private_id text,
+    type text,
+    name text not null unique,
+    description text,
+    address text,
+    create_time wt_timestamp,
+    update_time wt_timestamp,
+    primary key (private_id, type)
+  );
+  
+create trigger 
+  immutable_columns
+before
+update on servers
+  for each row execute procedure immutable_columns('create_time');
+  
+create trigger 
+  default_create_time_column
+before
+insert on servers
+  for each row execute procedure default_create_time();
+
+commit;
+
+`),
+	},
 	"migrations/10_static_host.down.sql": {
 		name: "10_static_host.down.sql",
 		bytes: []byte(`
@@ -1359,8 +1405,14 @@ begin;
     description text,
     create_time wt_timestamp,
     update_time wt_timestamp,
+    version wt_version,
     unique(scope_id, name)
   );
+
+  create trigger
+    update_version_column
+  after update on static_host_catalog
+    for each row execute procedure update_version_column();
 
   create trigger
     update_time_column
@@ -1395,8 +1447,14 @@ begin;
     ),
     create_time wt_timestamp,
     update_time wt_timestamp,
+    version wt_version,
     unique(static_host_catalog_id, name)
   );
+
+  create trigger
+    update_version_column
+  after update on static_host
+    for each row execute procedure update_version_column();
 
   create trigger
     update_time_column
@@ -1425,8 +1483,14 @@ begin;
     description text,
     create_time wt_timestamp,
     update_time wt_timestamp,
+    version wt_version,
     unique(static_host_catalog_id, name)
   );
+
+  create trigger
+    update_version_column
+  after update on static_host_set
+    for each row execute procedure update_version_column();
 
   create trigger
     update_time_column
@@ -1713,8 +1777,9 @@ begin;
     description text,
     create_time wt_timestamp,
     update_time wt_timestamp,
-    min_user_name_length int not null default 3,
+    min_login_name_length int not null default 3,
     min_password_length int not null default 8,
+    version wt_version,
     foreign key (scope_id, public_id)
       references auth_method (scope_id, public_id)
       on delete cascade
@@ -1722,6 +1787,11 @@ begin;
     unique(scope_id, name),
     unique(scope_id, public_id)
   );
+
+  create trigger
+    update_version_column
+  after update on auth_password_method
+    for each row execute procedure update_version_column();
 
   create trigger
     insert_auth_method_subtype
@@ -1739,12 +1809,13 @@ begin;
     description text,
     create_time wt_timestamp,
     update_time wt_timestamp,
-    user_name text not null
+    login_name text not null
       check(
-        lower(trim(user_name)) = user_name
+        lower(trim(login_name)) = login_name
         and
-        length(user_name) > 0
+        length(login_name) > 0
       ),
+    version wt_version,
     foreign key (scope_id, auth_method_id)
       references auth_password_method (scope_id, public_id)
       on delete cascade
@@ -1754,9 +1825,14 @@ begin;
       on delete cascade
       on update cascade,
     unique(auth_method_id, name),
-    unique(auth_method_id, user_name),
+    unique(auth_method_id, login_name),
     unique(auth_method_id, public_id)
   );
+
+  create trigger
+    update_version_column
+  after update on auth_password_account
+    for each row execute procedure update_version_column();
 
   create trigger
     insert_auth_account_subtype
@@ -1913,7 +1989,8 @@ begin;
     (name, version)
   values
     ('auth_password_method', 1),
-    ('auth_password_account', 1);
+    ('auth_password_account', 1),
+    ('auth_password_credential', 1);
 
 commit;
 
@@ -2109,7 +2186,7 @@ begin;
   -- but the query to create the view should not need to be updated.
   create or replace view auth_password_current_conf as
       -- Rerun this query whenever auth_password_conf_union is updated.
-      select pm.min_user_name_length, pm.min_password_length, c.*
+      select pm.min_login_name_length, pm.min_password_length, c.*
         from auth_password_method pm
   inner join auth_password_conf_union c
           on pm.password_conf_id = c.password_conf_id;

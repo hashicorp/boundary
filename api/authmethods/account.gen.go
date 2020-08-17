@@ -3,9 +3,12 @@ package authmethods
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/url"
 	"time"
+
+	"github.com/kr/pretty"
 
 	"github.com/hashicorp/boundary/api"
 	"github.com/hashicorp/boundary/api/scopes"
@@ -14,25 +17,25 @@ import (
 type Account struct {
 	Id           string                 `json:"id,omitempty"`
 	Scope        *scopes.ScopeInfo      `json:"scope,omitempty"`
-	AuthMethodId string                 `json:"auth_method_id,omitempty"`
 	Name         string                 `json:"name,omitempty"`
 	Description  string                 `json:"description,omitempty"`
 	CreatedTime  time.Time              `json:"created_time,omitempty"`
 	UpdatedTime  time.Time              `json:"updated_time,omitempty"`
-	Disabled     bool                   `json:"disabled,omitempty"`
+	Version      uint32                 `json:"version,omitempty"`
 	Type         string                 `json:"type,omitempty"`
+	AuthMethodId string                 `json:"auth_method_id,omitempty"`
 	Attributes   map[string]interface{} `json:"attributes,omitempty"`
 }
 
-type accountsClient struct {
+type AccountsClient struct {
 	client *api.Client
 }
 
-func NewAccountsClient(c *api.Client) *accountsClient {
-	return &accountsClient{client: c}
+func NewAccountsClient(c *api.Client) *AccountsClient {
+	return &AccountsClient{client: c}
 }
 
-func (c *accountsClient) Create(ctx context.Context, authMethodId string, opt ...Option) (*Account, *api.Error, error) {
+func (c *AccountsClient) Create(ctx context.Context, authMethodId string, opt ...Option) (*Account, *api.Error, error) {
 	if authMethodId == "" {
 		return nil, nil, fmt.Errorf("empty authMethodId value passed into Create request")
 	}
@@ -62,7 +65,7 @@ func (c *accountsClient) Create(ctx context.Context, authMethodId string, opt ..
 	return target, apiErr, nil
 }
 
-func (c *accountsClient) Read(ctx context.Context, authMethodId string, accountId string, opt ...Option) (*Account, *api.Error, error) {
+func (c *AccountsClient) Read(ctx context.Context, authMethodId string, accountId string, opt ...Option) (*Account, *api.Error, error) {
 	if authMethodId == "" {
 		return nil, nil, fmt.Errorf("empty authMethodId value passed into Read request")
 	}
@@ -96,7 +99,7 @@ func (c *accountsClient) Read(ctx context.Context, authMethodId string, accountI
 	return target, apiErr, nil
 }
 
-func (c *accountsClient) Update(ctx context.Context, authMethodId string, accountId string, version uint32, opt ...Option) (*Account, *api.Error, error) {
+func (c *AccountsClient) Update(ctx context.Context, authMethodId string, accountId string, version uint32, opt ...Option) (*Account, *api.Error, error) {
 	if authMethodId == "" {
 		return nil, nil, fmt.Errorf("empty authMethodId value passed into Update request")
 	}
@@ -108,6 +111,23 @@ func (c *accountsClient) Update(ctx context.Context, authMethodId string, accoun
 	}
 
 	opts, apiOpts := getOpts(opt...)
+
+	if version == 0 {
+		if !opts.withAutomaticVersioning {
+			return nil, nil, errors.New("zero version number passed into Update request and automatic versioning not specified")
+		}
+		existingTarget, existingApiErr, existingErr := c.Read(ctx, authMethodId, accountId, opt...)
+		if existingErr != nil {
+			return nil, nil, fmt.Errorf("error performing initial check-and-set read: %w", existingErr)
+		}
+		if existingApiErr != nil {
+			return nil, nil, fmt.Errorf("error from controller when performing initial check-and-set read: %s", pretty.Sprint(existingApiErr))
+		}
+		if existingTarget == nil {
+			return nil, nil, errors.New("nil resource found when performing initial check-and-set read")
+		}
+		version = existingTarget.Version
+	}
 
 	req, err := c.client.NewRequest(ctx, "PATCH", fmt.Sprintf("auth-methods/%s/accounts/%s", authMethodId, accountId), opts.valueMap, apiOpts...)
 	if err != nil {
@@ -132,7 +152,7 @@ func (c *accountsClient) Update(ctx context.Context, authMethodId string, accoun
 	return target, apiErr, nil
 }
 
-func (c *accountsClient) Delete(ctx context.Context, authMethodId string, accountId string, opt ...Option) (bool, *api.Error, error) {
+func (c *AccountsClient) Delete(ctx context.Context, authMethodId string, accountId string, opt ...Option) (bool, *api.Error, error) {
 	if authMethodId == "" {
 		return false, nil, fmt.Errorf("empty authMethodId value passed into Delete request")
 	}
@@ -169,7 +189,7 @@ func (c *accountsClient) Delete(ctx context.Context, authMethodId string, accoun
 	return target.Existed, apiErr, nil
 }
 
-func (c *accountsClient) List(ctx context.Context, authMethodId string, opt ...Option) ([]*Account, *api.Error, error) {
+func (c *AccountsClient) List(ctx context.Context, authMethodId string, opt ...Option) ([]*Account, *api.Error, error) {
 	if authMethodId == "" {
 		return nil, nil, fmt.Errorf("empty authMethodId value passed into List request")
 	}

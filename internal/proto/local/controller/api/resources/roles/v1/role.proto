@@ -55,54 +55,51 @@ message Grant {
 message Role {
 	// The ID of the Role
 	// Output only.
-	string id = 1;
+	string id = 10;
 
 	// Scope information for this resource
 	// Output only.
-	resources.scopes.v1.ScopeInfo scope = 2;
+	resources.scopes.v1.ScopeInfo scope = 20;
 	
 	// Optional name for identification purposes
-	google.protobuf.StringValue name = 3 [(custom_options.v1.generate_sdk_option) = true, (custom_options.v1.mask_mapping) = {this:"name" that: "name"}];
+	google.protobuf.StringValue name = 30 [(custom_options.v1.generate_sdk_option) = true, (custom_options.v1.mask_mapping) = {this:"name" that: "name"}];
 
 	// Optional user-set description for identification purposes
-	google.protobuf.StringValue description = 4 [(custom_options.v1.generate_sdk_option) = true, (custom_options.v1.mask_mapping) = {this:"description" that: "description"}];
+	google.protobuf.StringValue description = 40 [(custom_options.v1.generate_sdk_option) = true, (custom_options.v1.mask_mapping) = {this:"description" that: "description"}];
 
 	// The time this resource was created
 	// Output only.
-	google.protobuf.Timestamp created_time = 5 [json_name="created_time"];
+	google.protobuf.Timestamp created_time = 50 [json_name="created_time"];
 
 	// The time this resource was last updated.
 	// Output only.
-	google.protobuf.Timestamp updated_time = 6 [json_name="updated_time"];
+	google.protobuf.Timestamp updated_time = 60 [json_name="updated_time"];
 
-	// Whether the resource is disabled
-	google.protobuf.BoolValue disabled = 7 [(custom_options.v1.generate_sdk_option) = true];
+	// The version can be used in subsequent write requests to ensure this resource
+	// has not changed and to fail the write if it has.
+	// Output only.
+	uint32 version = 70;
 
 	// The scope the grants will apply to. If the role is at the global scope,
 	// this can be an org or project. If the role is at an org
 	// scope, this can be a project within the org. It is invalid for
 	// this to be anything other than the role's scope when the role's scope is
 	// a project.
-	google.protobuf.StringValue grant_scope_id = 8 [json_name="grant_scope_id", (custom_options.v1.generate_sdk_option) = true, (custom_options.v1.mask_mapping) = {this:"grant_scope_id" that: "GrantScopeId"}];
-	
-	// The version can be used in subsequent write requests to ensure this resource
-	// has not changed and to fail the write if it has.
-	// Output only.
-	uint32 version = 9;
+	google.protobuf.StringValue grant_scope_id = 80 [json_name="grant_scope_id", (custom_options.v1.generate_sdk_option) = true, (custom_options.v1.mask_mapping) = {this:"grant_scope_id" that: "GrantScopeId"}];
 
 	// The IDs (only) of principals that are assigned to this role.
 	// Output only.
-	repeated string principal_ids = 10 [json_name="principal_ids"];
+	repeated string principal_ids = 90 [json_name="principal_ids"];
 
 	// The principals that are assigned to this role.
 	// Output only.
-	repeated Principal principals = 11;
+	repeated Principal principals = 100;
 
 	// The grants that this role provides for its principals.
 	// Output only.
-	repeated string grant_strings = 12 [json_name="grant_strings"];
+	repeated string grant_strings = 110[json_name="grant_strings"];
 
 	// The parsed grant information.
 	// Output only.
-	repeated Grant grants = 13;
+	repeated Grant grants = 120;
 }

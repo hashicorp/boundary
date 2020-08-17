@@ -487,10 +487,11 @@ func TestRepository_UpdateAuthMethod(t *testing.T) {
 		fieldMaskPaths []string
 	}
 	tests := []struct {
-		name           string
-		args           args
-		wantRowsUpdate int
-		wantErr        bool
+		name             string
+		args             args
+		wantRowsUpdate   int
+		wantErr          bool
+		skipVersionCheck bool
 	}{
 		{
 			name: "change name",
@@ -529,8 +530,9 @@ func TestRepository_UpdateAuthMethod(t *testing.T) {
 				updates:        &store.AuthMethod{},
 				fieldMaskPaths: []string{"Description"},
 			},
-			wantErr:        false,
-			wantRowsUpdate: 1,
+			wantErr:          false,
+			wantRowsUpdate:   1,
+			skipVersionCheck: true,
 		},
 		{
 			name: "null name ignored description",
@@ -558,28 +560,30 @@ func TestRepository_UpdateAuthMethod(t *testing.T) {
 				updates:        &store.AuthMethod{},
 				fieldMaskPaths: []string{"MinPasswordLength"},
 			},
-			wantErr:        false,
-			wantRowsUpdate: 1,
+			wantErr:          false,
+			wantRowsUpdate:   1,
+			skipVersionCheck: true,
 		},
 		{
-			name: "change min username",
+			name: "change min login name",
 			args: args{
 				updates: &store.AuthMethod{
-					MinUserNameLength: 13,
+					MinLoginNameLength: 13,
 				},
-				fieldMaskPaths: []string{"MinUserNameLength"},
+				fieldMaskPaths: []string{"MinLoginNameLength"},
 			},
 			wantErr:        false,
 			wantRowsUpdate: 1,
 		},
 		{
-			name: "null min username",
+			name: "null min login name",
 			args: args{
 				updates:        &store.AuthMethod{},
-				fieldMaskPaths: []string{"MinUserNameLength"},
+				fieldMaskPaths: []string{"MinLoginNameLength"},
 			},
-			wantErr:        false,
-			wantRowsUpdate: 1,
+			wantErr:          false,
+			wantRowsUpdate:   1,
+			skipVersionCheck: true,
 		},
 		{
 			name: "noop update",
@@ -589,8 +593,9 @@ func TestRepository_UpdateAuthMethod(t *testing.T) {
 				},
 				fieldMaskPaths: []string{"name"},
 			},
-			wantErr:        false,
-			wantRowsUpdate: 1,
+			wantErr:          false,
+			wantRowsUpdate:   1,
+			skipVersionCheck: true,
 		},
 		{
 			name: "not fround",
@@ -654,13 +659,16 @@ func TestRepository_UpdateAuthMethod(t *testing.T) {
 			require.NoError(err)
 			origAM, err := repo.CreateAuthMethod(ctx, am)
 			require.NoError(err)
+			assert.EqualValues(1, origAM.Version)
 
 			amToUpdate, err := NewAuthMethod(o.GetPublicId())
 			require.NoError(err)
 			amToUpdate.PublicId = origAM.GetPublicId()
+			amToUpdate.Version = origAM.Version
 			proto.Merge(amToUpdate.AuthMethod, tt.args.updates)
+			assert.EqualValues(1, amToUpdate.Version)
 
-			updatedAM, updatedRows, err := repo.UpdateAuthMethod(ctx, amToUpdate, tt.args.fieldMaskPaths)
+			updatedAM, updatedRows, err := repo.UpdateAuthMethod(ctx, amToUpdate, amToUpdate.Version, tt.args.fieldMaskPaths)
 			assert.Equal(tt.wantRowsUpdate, updatedRows)
 			if tt.wantErr {
 				require.Error(err)
@@ -671,6 +679,9 @@ func TestRepository_UpdateAuthMethod(t *testing.T) {
 				return
 			}
 			require.NoError(err)
+			if !tt.skipVersionCheck {
+				assert.EqualValues(2, updatedAM.Version)
+			}
 			assert.NotEqual(origAM.UpdateTime, updatedAM.UpdateTime)
 			foundAuthMethod, err := repo.LookupAuthMethod(ctx, origAM.PublicId)
 			require.NoError(err)

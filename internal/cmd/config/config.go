@@ -10,7 +10,7 @@ import (
 	"io/ioutil"
 
 	"github.com/hashicorp/hcl"
-	"github.com/hashicorp/vault/internalshared/configutil"
+	"github.com/hashicorp/shared-secure-libs/configutil"
 )
 
 const (
@@ -24,8 +24,13 @@ telemetry {
 `
 
 	devControllerExtraConfig = `
+controller {
+	name = "dev-controller"
+	description = "A default controller created in dev mode"
+}
+
 kms "aead" {
-	purpose = "controller"
+	purpose = "root"
 	aead_type = "aes-gcm"
 	key = "%s"
 }
@@ -73,10 +78,18 @@ worker {
 type Config struct {
 	*configutil.SharedConfig `hcl:"-"`
 
-	DevController        bool    `hcl:"-"`
-	DefaultOrgId         string  `hcl:"default_org_id"`
-	PassthroughDirectory string  `hcl:"-"`
-	Worker               *Worker `hcl:"worker"`
+	DevController        bool        `hcl:"-"`
+	DefaultOrgId         string      `hcl:"default_org_id"`
+	PassthroughDirectory string      `hcl:"-"`
+	Worker               *Worker     `hcl:"worker"`
+	Controller           *Controller `hcl:"controller"`
+}
+
+type Controller struct {
+	Name             string `hcl:"name"`
+	Description      string `hcl:"description"`
+	DevControllerKey string `hcl:"-"`
+	DevWorkerAuthKey string `hcl:"-"`
 }
 
 type Worker struct {
@@ -123,6 +136,8 @@ func DevController() (*Config, error) {
 		return nil, fmt.Errorf("error parsing dev config: %w", err)
 	}
 	parsed.DevController = true
+	parsed.Controller.DevControllerKey = controllerKey
+	parsed.Controller.DevWorkerAuthKey = workerAuthKey
 	return parsed, nil
 }
 
@@ -134,6 +149,8 @@ func DevCombined() (*Config, error) {
 		return nil, fmt.Errorf("error parsing dev config: %w", err)
 	}
 	parsed.DevController = true
+	parsed.Controller.DevControllerKey = controllerKey
+	parsed.Controller.DevWorkerAuthKey = workerAuthKey
 	return parsed, nil
 }
 

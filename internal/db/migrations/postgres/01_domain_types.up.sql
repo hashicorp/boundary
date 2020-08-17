@@ -80,10 +80,11 @@ is
 
 
 create domain wt_version as bigint
-default 1 
-check(
-  value > 0
-);
+  default 1
+  not null
+  check(
+   value > 0
+  );
 comment on domain wt_version is
 'standard column for row version';
 

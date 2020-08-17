@@ -12,54 +12,47 @@ import "controller/custom_options/v1/options.proto";
 message Member {
 	// The ID of the member.
 	// Output only.
-	string id = 1;
-
-	// The type of the member.
-	// Output only.
-	string type = 2;
+	string id = 10;
 
 	// The scope ID of the member.
 	// Output only.
-	string scope_id = 3 [json_name="scope_id"];
+	string scope_id = 20 [json_name="scope_id"];
 }
 
 // Group contains all fields related to a Group resource
 message Group {
 	// The ID of the Project
 	// Output only.
-	string id = 1;
+	string id = 10;
 
 	// Scope information for this resource
 	// Output only.
-	resources.scopes.v1.ScopeInfo scope = 2;
+	resources.scopes.v1.ScopeInfo scope = 20;
 
 	// Optional name for identification purposes
-	google.protobuf.StringValue name = 3 [(custom_options.v1.generate_sdk_option) = true, (custom_options.v1.mask_mapping) = {this:"name" that: "name"}];
+	google.protobuf.StringValue name = 30 [(custom_options.v1.generate_sdk_option) = true, (custom_options.v1.mask_mapping) = {this:"name" that: "name"}];
 
 	// Optional user-set descripton for identification purposes
-	google.protobuf.StringValue description = 4 [(custom_options.v1.generate_sdk_option) = true, (custom_options.v1.mask_mapping) = {this:"description" that: "description"}];
+	google.protobuf.StringValue description = 40 [(custom_options.v1.generate_sdk_option) = true, (custom_options.v1.mask_mapping) = {this:"description" that: "description"}];
 
 	// The time this resource was created
 	// Output only.
-	google.protobuf.Timestamp created_time = 5 [json_name="created_time"];
+	google.protobuf.Timestamp created_time = 50 [json_name="created_time"];
 
 	// The time this resource was last updated.
 	// Output only.
-	google.protobuf.Timestamp updated_time = 6 [json_name="updated_time"];
-
-	// Whether the resource is disabled
-	google.protobuf.BoolValue disabled = 7 [(custom_options.v1.generate_sdk_option) = true];
+	google.protobuf.Timestamp updated_time = 60 [json_name="updated_time"];
 
 	// The version can be used in subsequent write requests to ensure this resource
 	// has not changed and to fail the write if it has.
 	// Output only.
-	uint32 version = 8;
+	uint32 version = 70;
 
 	// Contains the list of member ids in this group.
 	// Output only.
-	repeated string member_ids = 9;
+	repeated string member_ids = 80;
 
 	// The members of this group.
 	// Output only.
-	repeated Member members = 10;
+	repeated Member members = 90;
 }

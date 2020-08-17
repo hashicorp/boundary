@@ -107,9 +107,9 @@ func (r *Repository) setArgon2Conf(ctx context.Context, c *Argon2Configuration) 
 }
 
 type currentConfig struct {
-	ConfType          string
-	MinUserNameLength int
-	MinPasswordLength int
+	ConfType           string
+	MinLoginNameLength int
+	MinPasswordLength  int
 
 	*Argon2Configuration
 }
@@ -122,6 +122,38 @@ func (r *Repository) currentConfig(ctx context.Context, authMethodId string) (*c
 	var cc currentConfig
 	if err := r.reader.LookupWhere(ctx, &cc, "password_method_id = ?", authMethodId); err != nil {
 		return nil, err
+	}
+	return &cc, nil
+}
+
+func (r *Repository) currentConfigForAccount(ctx context.Context, accountId string) (*currentConfig, error) {
+	var confs []currentConfig
+	tx, err := r.reader.DB()
+	if err != nil {
+		return nil, err
+	}
+	rows, err := tx.Query(currentConfigForAccountQuery, accountId)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var conf currentConfig
+		if err := r.reader.ScanRows(rows, &conf); err != nil {
+			return nil, err
+		}
+		confs = append(confs, conf)
+	}
+
+	var cc currentConfig
+	switch {
+	case len(confs) == 0:
+		return nil, nil
+	case len(confs) > 1:
+		// this should never happen
+		return nil, fmt.Errorf("multiple current configs returned for account")
+	default:
+		cc = confs[0]
 	}
 	return &cc, nil
 }

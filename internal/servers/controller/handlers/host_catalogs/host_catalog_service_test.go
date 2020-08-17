@@ -109,6 +109,10 @@ func TestGet(t *testing.T) {
 
 			got, gErr := s.GetHostCatalog(auth.DisabledAuthTestContext(auth.WithScopeId(proj.GetPublicId())), req)
 			assert.Equal(tc.errCode, status.Code(gErr), "GetHostCatalog(%+v) got error %v, wanted %v", req, gErr, tc.errCode)
+
+			if tc.res != nil {
+				tc.res.Item.Version = 1
+			}
 			assert.Empty(cmp.Diff(got, tc.res, protocmp.Transform()), "GetHostCatalog(%q) got response %q, wanted %q", req, got, tc.res)
 		})
 	}
@@ -313,6 +317,9 @@ func TestCreate(t *testing.T) {
 				got.Item.Id, tc.res.Item.Id = "", ""
 				got.Item.CreatedTime, got.Item.UpdatedTime, tc.res.Item.CreatedTime, tc.res.Item.UpdatedTime = nil, nil, nil, nil
 			}
+			if tc.res != nil {
+				tc.res.Item.Version = 1
+			}
 			assert.Empty(cmp.Diff(got, tc.res, protocmp.Transform()), "CreateHostCatalog(%q) got response %q, wanted %q", req, got, tc.res)
 		})
 	}
@@ -326,11 +333,15 @@ func TestUpdate(t *testing.T) {
 	tested, err := host_catalogs.NewService(repoFn)
 	require.NoError(err, "Failed to create a new host catalog service.")
 
+	var version uint32 = 1
+
 	resetHostCatalog := func() {
+		version++
 		repo, err := repoFn()
 		require.NoError(err, "Couldn't create new static repo.")
-		hc, _, err = repo.UpdateCatalog(context.Background(), hc, []string{"Name", "Description"})
+		hc, _, err = repo.UpdateCatalog(context.Background(), hc, version, []string{"Name", "Description"})
 		require.NoError(err, "Failed to reset host catalog.")
+		version++
 	}
 
 	hcCreated, err := ptypes.Timestamp(hc.GetCreateTime().GetTimestamp())
@@ -586,12 +597,26 @@ func TestUpdate(t *testing.T) {
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			defer resetHostCatalog()
+			tc.req.Version = version
+
 			req := proto.Clone(toMerge).(*pbs.UpdateHostCatalogRequest)
 			proto.Merge(req, tc.req)
 
+			// Test some bad versions
+			req.Version = version + 2
+			_, gErr := tested.UpdateHostCatalog(auth.DisabledAuthTestContext(auth.WithScopeId(proj.GetPublicId())), req)
+			require.Error(gErr)
+			req.Version = version - 1
+			_, gErr = tested.UpdateHostCatalog(auth.DisabledAuthTestContext(auth.WithScopeId(proj.GetPublicId())), req)
+			require.Error(gErr)
+			req.Version = version
+
 			got, gErr := tested.UpdateHostCatalog(auth.DisabledAuthTestContext(auth.WithScopeId(proj.GetPublicId())), req)
 			assert.Equal(tc.errCode, status.Code(gErr), "UpdateHostCatalog(%+v) got error %v, wanted %v", req, gErr, tc.errCode)
+
+			if tc.errCode == codes.OK {
+				defer resetHostCatalog()
+			}
 
 			if got != nil {
 				assert.NotNilf(tc.res, "Expected UpdateHostCatalog response to be nil, but was %v", got)
@@ -605,6 +630,9 @@ func TestUpdate(t *testing.T) {
 
 				// Clear all values which are hard to compare against.
 				got.Item.UpdatedTime, tc.res.Item.UpdatedTime = nil, nil
+			}
+			if tc.res != nil {
+				tc.res.Item.Version = version + 1
 			}
 			assert.Empty(cmp.Diff(got, tc.res, protocmp.Transform()), "UpdateHostCatalog(%q) got response %q, wanted %q", req, got, tc.res)
 		})

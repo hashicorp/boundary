@@ -199,37 +199,21 @@ func RunCustom(args []string, runOpts *RunOptions) int {
 	return exitCode
 }
 
-var commonCommands = []string{}
-
 func groupedHelpFunc(f cli.HelpFunc) cli.HelpFunc {
 	return func(commands map[string]cli.CommandFactory) string {
 		var b bytes.Buffer
 		tw := tabwriter.NewWriter(&b, 0, 2, 6, ' ', 0)
 
-		fmt.Fprintf(tw, "Usage: boundary <command> [args]\n\n")
-		fmt.Fprintf(tw, "Common commands:\n")
-		for _, v := range commonCommands {
-			printCommand(tw, v, commands[v])
-		}
+		fmt.Fprintf(tw, "Usage: boundary <command> [args]\n")
 
 		otherCommands := make([]string, 0, len(commands))
 		for k := range commands {
-			found := false
-			for _, v := range commonCommands {
-				if k == v {
-					found = true
-					break
-				}
-			}
-
-			if !found {
-				otherCommands = append(otherCommands, k)
-			}
+			otherCommands = append(otherCommands, k)
 		}
 		sort.Strings(otherCommands)
 
 		fmt.Fprintf(tw, "\n")
-		fmt.Fprintf(tw, "Other commands:\n")
+		fmt.Fprintf(tw, "Commands:\n")
 		for _, v := range otherCommands {
 			printCommand(tw, v, commands[v])
 		}

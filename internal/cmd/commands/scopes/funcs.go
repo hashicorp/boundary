@@ -8,7 +8,7 @@ import (
 	"github.com/hashicorp/boundary/internal/cmd/base"
 )
 
-func printScope(in *scopes.Scope) string {
+func generateScopeTableOutput(in *scopes.Scope) string {
 	var ret []string
 	// This if true is here to line up columns for easy editing
 	if true {
@@ -16,6 +16,7 @@ func printScope(in *scopes.Scope) string {
 			"",
 			"Scope information:",
 			fmt.Sprintf("  ID:           %s", in.Id),
+			fmt.Sprintf("  Version:      %d", in.Version),
 			fmt.Sprintf("  Created Time: %s", in.CreatedTime.Local().Format(time.RFC3339)),
 			fmt.Sprintf("  Updated Time: %s", in.UpdatedTime.Local().Format(time.RFC3339)),
 		}...,

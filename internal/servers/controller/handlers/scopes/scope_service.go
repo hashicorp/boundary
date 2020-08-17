@@ -28,7 +28,7 @@ var (
 
 func init() {
 	var err error
-	if maskManager, err = handlers.NewMaskManager(&pb.Scope{}, &store.Scope{}); err != nil {
+	if maskManager, err = handlers.NewMaskManager(&store.Scope{}, &pb.Scope{}); err != nil {
 		panic(err)
 	}
 }
@@ -51,14 +51,11 @@ var _ pbs.ScopeServiceServer = Service{}
 // ListScopes implements the interface pbs.ScopeServiceServer.
 func (s Service) ListScopes(ctx context.Context, req *pbs.ListScopesRequest) (*pbs.ListScopesResponse, error) {
 	if req.GetScopeId() == "" {
-		return nil, handlers.InvalidArgumentErrorf(
-			"Argument errors found in the request.",
-			map[string]string{"scope_id": "Missing value for scope_id"},
-		)
+		req.ScopeId = scope.Global.String()
 	}
 	authResults := auth.Verify(ctx, auth.WithScopeId(req.GetScopeId()))
-	if !authResults.Valid {
-		return nil, handlers.ForbiddenError()
+	if authResults.Error != nil {
+		return nil, authResults.Error
 	}
 
 	if err := validateListRequest(req); err != nil {
@@ -79,8 +76,8 @@ func (s Service) ListScopes(ctx context.Context, req *pbs.ListScopesRequest) (*p
 // GetScopes implements the interface pbs.ScopeServiceServer.
 func (s Service) GetScope(ctx context.Context, req *pbs.GetScopeRequest) (*pbs.GetScopeResponse, error) {
 	authResults := auth.Verify(ctx)
-	if !authResults.Valid {
-		return nil, handlers.ForbiddenError()
+	if authResults.Error != nil {
+		return nil, authResults.Error
 	}
 	if err := validateGetRequest(req); err != nil {
 		return nil, err
@@ -102,14 +99,14 @@ func (s Service) CreateScope(ctx context.Context, req *pbs.CreateScopeRequest) (
 		)
 	}
 	authResults := auth.Verify(ctx, auth.WithScopeId(req.GetScopeId()))
-	if !authResults.Valid {
-		return nil, handlers.ForbiddenError()
+	if authResults.Error != nil {
+		return nil, authResults.Error
 	}
 
 	if err := validateCreateRequest(req); err != nil {
 		return nil, err
 	}
-	p, err := s.createInRepo(ctx, authResults.Scope, req.GetItem())
+	p, err := s.createInRepo(ctx, authResults, req.GetItem())
 	if err != nil {
 		return nil, err
 	}
@@ -120,8 +117,8 @@ func (s Service) CreateScope(ctx context.Context, req *pbs.CreateScopeRequest) (
 // UpdateScope implements the interface pbs.ScopeServiceServer.
 func (s Service) UpdateScope(ctx context.Context, req *pbs.UpdateScopeRequest) (*pbs.UpdateScopeResponse, error) {
 	authResults := auth.Verify(ctx)
-	if !authResults.Valid {
-		return nil, handlers.ForbiddenError()
+	if authResults.Error != nil {
+		return nil, authResults.Error
 	}
 	if err := validateUpdateRequest(req); err != nil {
 		return nil, err
@@ -137,8 +134,8 @@ func (s Service) UpdateScope(ctx context.Context, req *pbs.UpdateScopeRequest) (
 // DeleteScope implements the interface pbs.ScopeServiceServer.
 func (s Service) DeleteScope(ctx context.Context, req *pbs.DeleteScopeRequest) (*pbs.DeleteScopeResponse, error) {
 	authResults := auth.Verify(ctx)
-	if !authResults.Valid {
-		return nil, handlers.ForbiddenError()
+	if authResults.Error != nil {
+		return nil, authResults.Error
 	}
 	if err := validateDeleteRequest(req); err != nil {
 		return nil, err
@@ -165,7 +162,7 @@ func (s Service) getFromRepo(ctx context.Context, id string) (*pb.Scope, error) 
 	return ToProto(p), nil
 }
 
-func (s Service) createInRepo(ctx context.Context, parentScope *scopes.ScopeInfo, item *pb.Scope) (*pb.Scope, error) {
+func (s Service) createInRepo(ctx context.Context, authResults auth.VerifyResults, item *pb.Scope) (*pb.Scope, error) {
 	var opts []iam.Option
 	if item.GetName() != nil {
 		opts = append(opts, iam.WithName(item.GetName().GetValue()))
@@ -174,6 +171,7 @@ func (s Service) createInRepo(ctx context.Context, parentScope *scopes.ScopeInfo
 		opts = append(opts, iam.WithDescription(item.GetDescription().GetValue()))
 	}
 
+	parentScope := authResults.Scope
 	var iamScope *iam.Scope
 	var err error
 	switch parentScope.GetType() {
@@ -189,7 +187,7 @@ func (s Service) createInRepo(ctx context.Context, parentScope *scopes.ScopeInfo
 	if err != nil {
 		return nil, err
 	}
-	out, err := repo.CreateScope(ctx, iamScope)
+	out, err := repo.CreateScope(ctx, iamScope, authResults.UserId)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "Unable to create scope: %v.", err)
 	}

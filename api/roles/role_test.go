@@ -26,7 +26,7 @@ func TestCustom(t *testing.T) {
 		DisableAuthorizationFailures: true,
 		DefaultOrgId:                 orgId,
 		DefaultAuthMethodId:          amId,
-		DefaultUsername:              "user",
+		DefaultLoginName:             "user",
 		DefaultPassword:              "passpass",
 	})
 	defer tc.Shutdown()
@@ -144,7 +144,7 @@ func TestRole_List(t *testing.T) {
 		DisableAuthorizationFailures: true,
 		DefaultOrgId:                 orgId,
 		DefaultAuthMethodId:          amId,
-		DefaultUsername:              "user",
+		DefaultLoginName:             "user",
 		DefaultPassword:              "passpass",
 	})
 	defer tc.Shutdown()
@@ -180,10 +180,10 @@ func TestRole_List(t *testing.T) {
 			assert.Nil(apiErr)
 			var defaultRoleIds []string
 			if tt.name == "org" {
-				require.True(2 == len(p1))
+				require.True(len(p1) == 2)
 				defaultRoleIds = []string{p1[0].Id, p1[1].Id}
 			} else {
-				require.Empty(p1)
+				require.Len(p1, 0)
 			}
 
 			var expected []*roles.Role
@@ -234,7 +234,6 @@ func comparableSlice(in []*roles.Role) []roles.Role {
 			Description: i.Description,
 			CreatedTime: i.CreatedTime,
 			UpdatedTime: i.UpdatedTime,
-			Disabled:    i.Disabled,
 		}
 		filtered = append(filtered, p)
 	}
@@ -249,7 +248,7 @@ func TestRole_Crud(t *testing.T) {
 		DisableAuthorizationFailures: true,
 		DefaultOrgId:                 orgId,
 		DefaultAuthMethodId:          amId,
-		DefaultUsername:              "user",
+		DefaultLoginName:             "user",
 		DefaultPassword:              "passpass",
 	})
 	defer tc.Shutdown()
@@ -327,7 +326,7 @@ func TestRole_Errors(t *testing.T) {
 		DisableAuthorizationFailures: true,
 		DefaultOrgId:                 orgId,
 		DefaultAuthMethodId:          amId,
-		DefaultUsername:              "user",
+		DefaultLoginName:             "user",
 		DefaultPassword:              "passpass",
 	})
 	defer tc.Shutdown()

@@ -10,8 +10,14 @@ begin;
     description text,
     create_time wt_timestamp,
     update_time wt_timestamp,
+    version wt_version,
     unique(scope_id, name)
   );
+
+  create trigger
+    update_version_column
+  after update on static_host_catalog
+    for each row execute procedure update_version_column();
 
   create trigger
     update_time_column
@@ -46,8 +52,14 @@ begin;
     ),
     create_time wt_timestamp,
     update_time wt_timestamp,
+    version wt_version,
     unique(static_host_catalog_id, name)
   );
+
+  create trigger
+    update_version_column
+  after update on static_host
+    for each row execute procedure update_version_column();
 
   create trigger
     update_time_column
@@ -76,8 +88,14 @@ begin;
     description text,
     create_time wt_timestamp,
     update_time wt_timestamp,
+    version wt_version,
     unique(static_host_catalog_id, name)
   );
+
+  create trigger
+    update_version_column
+  after update on static_host_set
+    for each row execute procedure update_version_column();
 
   create trigger
     update_time_column

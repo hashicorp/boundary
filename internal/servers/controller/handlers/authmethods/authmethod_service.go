@@ -26,7 +26,7 @@ var (
 
 func init() {
 	var err error
-	if maskManager, err = handlers.NewMaskManager(&pb.AuthMethod{}, &store.AuthMethod{}); err != nil {
+	if maskManager, err = handlers.NewMaskManager(&store.AuthMethod{}, &pb.AuthMethod{}, &pb.PasswordAuthMethodAttributes{}); err != nil {
 		panic(err)
 	}
 }
@@ -49,8 +49,8 @@ var _ pbs.AuthMethodServiceServer = Service{}
 // ListAuthMethods implements the interface pbs.AuthMethodServiceServer.
 func (s Service) ListAuthMethods(ctx context.Context, req *pbs.ListAuthMethodsRequest) (*pbs.ListAuthMethodsResponse, error) {
 	authResults := auth.Verify(ctx)
-	if !authResults.Valid {
-		return nil, handlers.ForbiddenError()
+	if authResults.Error != nil {
+		return nil, authResults.Error
 	}
 	if err := validateListRequest(req); err != nil {
 		return nil, err
@@ -68,8 +68,8 @@ func (s Service) ListAuthMethods(ctx context.Context, req *pbs.ListAuthMethodsRe
 // GetAuthMethods implements the interface pbs.AuthMethodServiceServer.
 func (s Service) GetAuthMethod(ctx context.Context, req *pbs.GetAuthMethodRequest) (*pbs.GetAuthMethodResponse, error) {
 	authResults := auth.Verify(ctx)
-	if !authResults.Valid {
-		return nil, handlers.ForbiddenError()
+	if authResults.Error != nil {
+		return nil, authResults.Error
 	}
 	if err := validateGetRequest(req); err != nil {
 		return nil, err
@@ -85,8 +85,8 @@ func (s Service) GetAuthMethod(ctx context.Context, req *pbs.GetAuthMethodReques
 // CreateAuthMethod implements the interface pbs.AuthMethodServiceServer.
 func (s Service) CreateAuthMethod(ctx context.Context, req *pbs.CreateAuthMethodRequest) (*pbs.CreateAuthMethodResponse, error) {
 	authResults := auth.Verify(ctx)
-	if !authResults.Valid {
-		return nil, handlers.ForbiddenError()
+	if authResults.Error != nil {
+		return nil, authResults.Error
 	}
 	if err := validateCreateRequest(req); err != nil {
 		return nil, err
@@ -102,24 +102,25 @@ func (s Service) CreateAuthMethod(ctx context.Context, req *pbs.CreateAuthMethod
 // UpdateAuthMethod implements the interface pbs.AuthMethodServiceServer.
 func (s Service) UpdateAuthMethod(ctx context.Context, req *pbs.UpdateAuthMethodRequest) (*pbs.UpdateAuthMethodResponse, error) {
 	authResults := auth.Verify(ctx)
-	if !authResults.Valid {
-		return nil, handlers.ForbiddenError()
+	if authResults.Error != nil {
+		return nil, authResults.Error
 	}
 	if err := validateUpdateRequest(req); err != nil {
 		return nil, err
 	}
-	u, err := s.updateInRepo(ctx, authResults.Scope.GetId(), req.GetId(), req.GetUpdateMask().GetPaths(), req.GetItem())
+	u, err := s.updateInRepo(ctx, authResults.Scope.GetId(), req.GetId(), req.GetVersion(), req.GetUpdateMask().GetPaths(), req.GetItem())
 	if err != nil {
 		return nil, err
 	}
+	u.Scope = authResults.Scope
 	return &pbs.UpdateAuthMethodResponse{Item: u}, nil
 }
 
 // DeleteAuthMethod implements the interface pbs.AuthMethodServiceServer.
 func (s Service) DeleteAuthMethod(ctx context.Context, req *pbs.DeleteAuthMethodRequest) (*pbs.DeleteAuthMethodResponse, error) {
 	authResults := auth.Verify(ctx)
-	if !authResults.Valid {
-		return nil, handlers.ForbiddenError()
+	if authResults.Error != nil {
+		return nil, authResults.Error
 	}
 	if err := validateDeleteRequest(req); err != nil {
 		return nil, err
@@ -195,7 +196,7 @@ func (s Service) createInRepo(ctx context.Context, scopeId string, item *pb.Auth
 	return toProto(out)
 }
 
-func (s Service) updateInRepo(ctx context.Context, scopeId, id string, mask []string, item *pb.AuthMethod) (*pb.AuthMethod, error) {
+func (s Service) updateInRepo(ctx context.Context, scopeId, id string, version uint32, mask []string, item *pb.AuthMethod) (*pb.AuthMethod, error) {
 	var opts []password.Option
 	if desc := item.GetDescription(); desc != nil {
 		opts = append(opts, password.WithDescription(desc.GetValue()))
@@ -207,6 +208,18 @@ func (s Service) updateInRepo(ctx context.Context, scopeId, id string, mask []st
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "Unable to build auth method for update: %v.", err)
 	}
+
+	pwAttrs := &pb.PasswordAuthMethodAttributes{}
+	if err := handlers.StructToProto(item.GetAttributes(), pwAttrs); err != nil {
+		return nil, status.Errorf(codes.InvalidArgument, "Provided attributes don't match expected format.")
+	}
+	if pwAttrs.GetMinLoginNameLength() != 0 {
+		u.MinLoginNameLength = pwAttrs.GetMinLoginNameLength()
+	}
+	if pwAttrs.GetMinPasswordLength() != 0 {
+		u.MinPasswordLength = pwAttrs.GetMinPasswordLength()
+	}
+
 	u.PublicId = id
 	dbMask := maskManager.Translate(mask)
 	if len(dbMask) == 0 {
@@ -216,7 +229,7 @@ func (s Service) updateInRepo(ctx context.Context, scopeId, id string, mask []st
 	if err != nil {
 		return nil, err
 	}
-	out, rowsUpdated, err := repo.UpdateAuthMethod(ctx, u, dbMask)
+	out, rowsUpdated, err := repo.UpdateAuthMethod(ctx, u, version, dbMask)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "Unable to update auth method: %v.", err)
 	}
@@ -246,17 +259,18 @@ func toProto(in *password.AuthMethod) (*pb.AuthMethod, error) {
 		Id:          in.GetPublicId(),
 		CreatedTime: in.GetCreateTime().GetTimestamp(),
 		UpdatedTime: in.GetUpdateTime().GetTimestamp(),
+		Version:     in.GetVersion(),
 		Type:        "password",
 	}
 	if in.GetDescription() != "" {
-		out.Description = &wrapperspb.StringValue{Value: in.GetDescription()}
+		out.Description = wrapperspb.String(in.GetDescription())
 	}
 	if in.GetName() != "" {
-		out.Name = &wrapperspb.StringValue{Value: in.GetName()}
+		out.Name = wrapperspb.String(in.GetName())
 	}
 	st, err := handlers.ProtoToStruct(&pb.PasswordAuthMethodAttributes{
-		MinUserNameLength: in.GetMinUserNameLength(),
-		MinPasswordLength: in.GetMinPasswordLength(),
+		MinLoginNameLength: in.GetMinLoginNameLength(),
+		MinPasswordLength:  in.GetMinPasswordLength(),
 	})
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "failed building password attribute struct: %v", err)
@@ -323,6 +337,9 @@ func validateUpdateRequest(req *pbs.UpdateAuthMethodRequest) error {
 	}
 	if req.GetUpdateMask() == nil {
 		badFields["update_mask"] = "UpdateMask not provided but is required to update this resource."
+	}
+	if req.GetVersion() == 0 {
+		badFields["version"] = "Existing resource version is required for an update."
 	}
 
 	item := req.GetItem()

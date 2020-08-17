@@ -23,7 +23,7 @@ func TestGroup_List(t *testing.T) {
 		DisableAuthorizationFailures: true,
 		DefaultOrgId:                 orgId,
 		DefaultAuthMethodId:          amId,
-		DefaultUsername:              "user",
+		DefaultLoginName:             "user",
 		DefaultPassword:              "passpass",
 	})
 	defer tc.Shutdown()
@@ -84,7 +84,6 @@ func comparableSlice(in []*groups.Group) []groups.Group {
 			Description: i.Description,
 			CreatedTime: i.CreatedTime,
 			UpdatedTime: i.UpdatedTime,
-			Disabled:    i.Disabled,
 		}
 		filtered = append(filtered, p)
 	}
@@ -99,7 +98,7 @@ func TestGroup_Crud(t *testing.T) {
 		DisableAuthorizationFailures: true,
 		DefaultOrgId:                 orgId,
 		DefaultAuthMethodId:          amId,
-		DefaultUsername:              "user",
+		DefaultLoginName:             "user",
 		DefaultPassword:              "passpass",
 	})
 	defer tc.Shutdown()
@@ -196,7 +195,7 @@ func TestGroup_Errors(t *testing.T) {
 		DisableAuthorizationFailures: true,
 		DefaultOrgId:                 orgId,
 		DefaultAuthMethodId:          amId,
-		DefaultUsername:              "user",
+		DefaultLoginName:             "user",
 		DefaultPassword:              "passpass",
 	})
 	defer tc.Shutdown()

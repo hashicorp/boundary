@@ -19,8 +19,8 @@ import (
 )
 
 const (
-	nameKey = "name"
-	pwKey   = "password"
+	loginNameKey = "login_name"
+	pwKey        = "password"
 )
 
 var (
@@ -54,14 +54,14 @@ var _ pbs.AuthenticationServiceServer = Service{}
 // Authenticate implements the interface pbs.AuthenticationServiceServer.
 func (s Service) Authenticate(ctx context.Context, req *pbs.AuthenticateRequest) (*pbs.AuthenticateResponse, error) {
 	authResults := auth.Verify(ctx)
-	if !authResults.Valid {
-		return nil, handlers.ForbiddenError()
+	if authResults.Error != nil {
+		return nil, authResults.Error
 	}
 	if err := validateAuthenticateRequest(req); err != nil {
 		return nil, err
 	}
 	creds := req.GetCredentials().GetFields()
-	tok, err := s.authenticateWithRepo(ctx, req.GetAuthMethodId(), creds[nameKey].GetStringValue(), creds[pwKey].GetStringValue())
+	tok, err := s.authenticateWithRepo(ctx, req.GetAuthMethodId(), creds[loginNameKey].GetStringValue(), creds[pwKey].GetStringValue())
 	if err != nil {
 		return nil, err
 	}
@@ -73,7 +73,7 @@ func (s Service) Deauthenticate(ctx context.Context, req *pbs.DeauthenticateRequ
 	return nil, status.Error(codes.Unimplemented, "Requested method is unimplemented.")
 }
 
-func (s Service) authenticateWithRepo(ctx context.Context, authMethodId, name, pw string) (*pba.AuthToken, error) {
+func (s Service) authenticateWithRepo(ctx context.Context, authMethodId, loginName, pw string) (*pba.AuthToken, error) {
 	iamRepo, err := s.iamRepo()
 	if err != nil {
 		return nil, err
@@ -87,7 +87,7 @@ func (s Service) authenticateWithRepo(ctx context.Context, authMethodId, name, p
 		return nil, err
 	}
 
-	acct, err := pwRepo.Authenticate(ctx, authMethodId, name, pw)
+	acct, err := pwRepo.Authenticate(ctx, authMethodId, loginName, pw)
 	if err != nil {
 		return nil, err
 	}
@@ -152,8 +152,8 @@ func validateAuthenticateRequest(req *pbs.AuthenticateRequest) error {
 		badFields["credentials"] = "This is a required field."
 	}
 	creds := req.GetCredentials().GetFields()
-	if _, ok := creds[nameKey]; !ok {
-		badFields["credentials.name"] = "This is a required field."
+	if _, ok := creds[loginNameKey]; !ok {
+		badFields["credentials.login_name"] = "This is a required field."
 	}
 	if _, ok := creds[pwKey]; !ok {
 		badFields["credentials.password"] = "This is a required field."

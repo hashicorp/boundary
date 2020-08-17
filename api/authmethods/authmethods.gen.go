@@ -3,9 +3,12 @@ package authmethods
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/url"
 	"time"
+
+	"github.com/kr/pretty"
 
 	"github.com/hashicorp/boundary/api"
 	"github.com/hashicorp/boundary/api/scopes"
@@ -18,19 +21,20 @@ type AuthMethod struct {
 	Description string                 `json:"description,omitempty"`
 	CreatedTime time.Time              `json:"created_time,omitempty"`
 	UpdatedTime time.Time              `json:"updated_time,omitempty"`
+	Version     uint32                 `json:"version,omitempty"`
 	Type        string                 `json:"type,omitempty"`
 	Attributes  map[string]interface{} `json:"attributes,omitempty"`
 }
 
-type authmethodsClient struct {
+type AuthMethodsClient struct {
 	client *api.Client
 }
 
-func NewAuthMethodsClient(c *api.Client) *authmethodsClient {
-	return &authmethodsClient{client: c}
+func NewAuthMethodsClient(c *api.Client) *AuthMethodsClient {
+	return &AuthMethodsClient{client: c}
 }
 
-func (c *authmethodsClient) Create(ctx context.Context, opt ...Option) (*AuthMethod, *api.Error, error) {
+func (c *AuthMethodsClient) Create(ctx context.Context, opt ...Option) (*AuthMethod, *api.Error, error) {
 	if c.client == nil {
 		return nil, nil, fmt.Errorf("nil client")
 	}
@@ -56,7 +60,7 @@ func (c *authmethodsClient) Create(ctx context.Context, opt ...Option) (*AuthMet
 	return target, apiErr, nil
 }
 
-func (c *authmethodsClient) Read(ctx context.Context, authMethodId string, opt ...Option) (*AuthMethod, *api.Error, error) {
+func (c *AuthMethodsClient) Read(ctx context.Context, authMethodId string, opt ...Option) (*AuthMethod, *api.Error, error) {
 	if authMethodId == "" {
 		return nil, nil, fmt.Errorf("empty authMethodId value passed into Read request")
 	}
@@ -86,7 +90,7 @@ func (c *authmethodsClient) Read(ctx context.Context, authMethodId string, opt .
 	return target, apiErr, nil
 }
 
-func (c *authmethodsClient) Update(ctx context.Context, authMethodId string, version uint32, opt ...Option) (*AuthMethod, *api.Error, error) {
+func (c *AuthMethodsClient) Update(ctx context.Context, authMethodId string, version uint32, opt ...Option) (*AuthMethod, *api.Error, error) {
 	if authMethodId == "" {
 		return nil, nil, fmt.Errorf("empty authMethodId value passed into Update request")
 	}
@@ -95,6 +99,23 @@ func (c *authmethodsClient) Update(ctx context.Context, authMethodId string, ver
 	}
 
 	opts, apiOpts := getOpts(opt...)
+
+	if version == 0 {
+		if !opts.withAutomaticVersioning {
+			return nil, nil, errors.New("zero version number passed into Update request and automatic versioning not specified")
+		}
+		existingTarget, existingApiErr, existingErr := c.Read(ctx, authMethodId, opt...)
+		if existingErr != nil {
+			return nil, nil, fmt.Errorf("error performing initial check-and-set read: %w", existingErr)
+		}
+		if existingApiErr != nil {
+			return nil, nil, fmt.Errorf("error from controller when performing initial check-and-set read: %s", pretty.Sprint(existingApiErr))
+		}
+		if existingTarget == nil {
+			return nil, nil, errors.New("nil resource found when performing initial check-and-set read")
+		}
+		version = existingTarget.Version
+	}
 
 	req, err := c.client.NewRequest(ctx, "PATCH", fmt.Sprintf("auth-methods/%s", authMethodId), opts.valueMap, apiOpts...)
 	if err != nil {
@@ -119,7 +140,7 @@ func (c *authmethodsClient) Update(ctx context.Context, authMethodId string, ver
 	return target, apiErr, nil
 }
 
-func (c *authmethodsClient) Delete(ctx context.Context, authMethodId string, opt ...Option) (bool, *api.Error, error) {
+func (c *AuthMethodsClient) Delete(ctx context.Context, authMethodId string, opt ...Option) (bool, *api.Error, error) {
 	if authMethodId == "" {
 		return false, nil, fmt.Errorf("empty authMethodId value passed into Delete request")
 	}
@@ -152,7 +173,7 @@ func (c *authmethodsClient) Delete(ctx context.Context, authMethodId string, opt
 	return target.Existed, apiErr, nil
 }
 
-func (c *authmethodsClient) List(ctx context.Context, opt ...Option) ([]*AuthMethod, *api.Error, error) {
+func (c *AuthMethodsClient) List(ctx context.Context, opt ...Option) ([]*AuthMethod, *api.Error, error) {
 	if c.client == nil {
 		return nil, nil, fmt.Errorf("nil client")
 	}

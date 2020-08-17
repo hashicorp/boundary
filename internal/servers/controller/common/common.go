@@ -5,11 +5,13 @@ import (
 	"github.com/hashicorp/boundary/internal/authtoken"
 	"github.com/hashicorp/boundary/internal/host/static"
 	"github.com/hashicorp/boundary/internal/iam"
+	"github.com/hashicorp/boundary/internal/servers"
 )
 
 type (
 	IamRepoFactory          func() (*iam.Repository, error)
 	StaticRepoFactory       func() (*static.Repository, error)
 	AuthTokenRepoFactory    func() (*authtoken.Repository, error)
+	ServersRepoFactory      func() (*servers.Repository, error)
 	PasswordAuthRepoFactory func() (*password.Repository, error)
 )
