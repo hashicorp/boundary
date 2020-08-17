@@ -48,7 +48,7 @@ type Server struct {
 	CombineLogs bool
 	LogLevel    hclog.Level
 
-	ControllerKMS      wrapping.Wrapper
+	RootKms            wrapping.Wrapper
 	WorkerAuthKMS      wrapping.Wrapper
 	SecureRandomReader io.Reader
 
@@ -347,7 +347,7 @@ func (b *Server) SetupKMSes(ui cli.Ui, config *configutil.SharedConfig, purposes
 			}
 
 			if purpose == "root" {
-				b.ControllerKMS = wrapper
+				b.RootKms = wrapper
 			} else {
 				b.WorkerAuthKMS = wrapper
 			}
@@ -365,7 +365,7 @@ func (b *Server) SetupKMSes(ui cli.Ui, config *configutil.SharedConfig, purposes
 
 	// prepare a secure random reader
 	var err error
-	b.SecureRandomReader, err = configutil.CreateSecureRandomReaderFunc(config, b.ControllerKMS)
+	b.SecureRandomReader, err = configutil.CreateSecureRandomReaderFunc(config, b.RootKms)
 	if err != nil {
 		return err
 	}
@@ -433,7 +433,7 @@ func (b *Server) CreateDevDatabase(dialect string) error {
 	b.Database.LogMode(true)
 
 	rw := db.New(b.Database)
-	repo, err := iam.NewRepository(rw, rw, b.ControllerKMS)
+	repo, err := iam.NewRepository(rw, rw, b.RootKms)
 	if err != nil {
 		return fmt.Errorf("unable to create repo for org id: %w", err)
 	}
@@ -500,7 +500,7 @@ func (b *Server) CreateDevDatabase(dialect string) error {
 		return fmt.Errorf("error adding principal to role for default dev grants: %w", err)
 	}
 
-	pwRepo, err := password.NewRepository(rw, rw, b.ControllerKMS)
+	pwRepo, err := password.NewRepository(rw, rw, b.RootKms)
 	if err != nil {
 		return fmt.Errorf("error creating password repo: %w", err)
 	}

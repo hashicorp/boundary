@@ -177,7 +177,7 @@ type TestControllerOpts struct {
 	DisableAuthorizationFailures bool
 
 	// The controller KMS to use, or one will be created
-	ControllerKMS wrapping.Wrapper
+	RootKms wrapping.Wrapper
 
 	// The worker auth KMS to use, or one will be created
 	WorkerAuthKMS wrapping.Wrapper
@@ -258,10 +258,10 @@ func NewTestController(t *testing.T, opts *TestControllerOpts) *TestController {
 
 	// Set up KMSes
 	switch {
-	case opts.ControllerKMS != nil && opts.WorkerAuthKMS != nil:
-		tc.b.ControllerKMS = opts.ControllerKMS
+	case opts.RootKms != nil && opts.WorkerAuthKMS != nil:
+		tc.b.RootKms = opts.RootKms
 		tc.b.WorkerAuthKMS = opts.WorkerAuthKMS
-	case opts.ControllerKMS == nil && opts.WorkerAuthKMS == nil:
+	case opts.RootKms == nil && opts.WorkerAuthKMS == nil:
 		if err := tc.b.SetupKMSes(nil, opts.Config.SharedConfig, []string{"root", "worker-auth"}); err != nil {
 			t.Fatal(err)
 		}
@@ -320,7 +320,7 @@ func (tc *TestController) AddClusterControllerMember(t *testing.T, opts *TestCon
 		DatabaseUrl:         tc.c.conf.DatabaseUrl,
 		DefaultAuthMethodId: tc.c.conf.DevAuthMethodId,
 		DefaultOrgId:        tc.c.conf.DefaultOrgId,
-		ControllerKMS:       tc.c.conf.ControllerKMS,
+		RootKms:             tc.c.conf.RootKms,
 		WorkerAuthKMS:       tc.c.conf.WorkerAuthKMS,
 		Name:                opts.Name,
 		Logger:              tc.c.conf.Logger,
