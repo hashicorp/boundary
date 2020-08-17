@@ -9,6 +9,7 @@ import (
 )
 
 func Test_Ids(t *testing.T) {
+	t.Parallel()
 	t.Run("krk", func(t *testing.T) {
 		id, err := newRootKeyId()
 		require.NoError(t, err)

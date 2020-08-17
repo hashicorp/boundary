@@ -17,6 +17,7 @@ import (
 // immutable and those tests are covered by TestRootKeyVersion_ImmutableFields
 
 func TestRootKeyVersion_Create(t *testing.T) {
+	t.Parallel()
 	conn, _ := db.TestSetup(t, "postgres")
 	wrapper := db.TestWrapper(t)
 	org, _ := iam.TestScopes(t, conn)
@@ -180,6 +181,7 @@ func TestRootKeyVersion_Clone(t *testing.T) {
 }
 
 func TestRootKeyVersion_SetTableName(t *testing.T) {
+	t.Parallel()
 	defaultTableName := defaultRootKeyVersionTableName
 	tests := []struct {
 		name        string
