@@ -15,11 +15,9 @@ import (
 
 func TestUsers_List(t *testing.T) {
 	assert, require := assert.New(t), require.New(t)
-	orgId := "o_1234567890"
 	amId := "paum_1234567890"
 	tc := controller.NewTestController(t, &controller.TestControllerOpts{
 		DisableAuthorizationFailures: true,
-		DefaultOrgId:                 orgId,
 		DefaultAuthMethodId:          amId,
 		DefaultLoginName:             "user",
 		DefaultPassword:              "passpass",
@@ -27,6 +25,8 @@ func TestUsers_List(t *testing.T) {
 	defer tc.Shutdown()
 
 	client := tc.Client()
+	org := iam.TestOrg(t, tc.DbConn())
+	client.SetScopeId(org.GetPublicId())
 	userClient := users.NewUsersClient(client)
 
 	ul, apiErr, err := userClient.List(tc.Context())
@@ -76,11 +76,9 @@ func comparableSlice(in []*users.User) []users.User {
 
 func TestUser_Crud(t *testing.T) {
 	assert, require := assert.New(t), require.New(t)
-	orgId := "o_1234567890"
 	amId := "paum_1234567890"
 	tc := controller.NewTestController(t, &controller.TestControllerOpts{
 		DisableAuthorizationFailures: true,
-		DefaultOrgId:                 orgId,
 		DefaultAuthMethodId:          amId,
 		DefaultLoginName:             "user",
 		DefaultPassword:              "passpass",
@@ -88,6 +86,8 @@ func TestUser_Crud(t *testing.T) {
 	defer tc.Shutdown()
 
 	client := tc.Client()
+	org := iam.TestOrg(t, tc.DbConn())
+	client.SetScopeId(org.GetPublicId())
 	userClient := users.NewUsersClient(client)
 
 	checkUser := func(step string, u *users.User, apiErr *api.Error, err error, wantedName string, wantedVersion uint32) {
@@ -129,11 +129,9 @@ func TestUser_Crud(t *testing.T) {
 
 func TestUser_Errors(t *testing.T) {
 	assert, require := assert.New(t), require.New(t)
-	orgId := "o_1234567890"
 	amId := "paum_1234567890"
 	tc := controller.NewTestController(t, &controller.TestControllerOpts{
 		DisableAuthorizationFailures: true,
-		DefaultOrgId:                 orgId,
 		DefaultAuthMethodId:          amId,
 		DefaultLoginName:             "user",
 		DefaultPassword:              "passpass",
@@ -141,6 +139,8 @@ func TestUser_Errors(t *testing.T) {
 	defer tc.Shutdown()
 
 	client := tc.Client()
+	org := iam.TestOrg(t, tc.DbConn())
+	client.SetScopeId(org.GetPublicId())
 	userClient := users.NewUsersClient(client)
 
 	u, apiErr, err := userClient.Create(tc.Context(), users.WithName("first"))

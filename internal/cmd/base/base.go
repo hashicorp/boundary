@@ -46,8 +46,9 @@ type Command struct {
 	flags     *FlagSets
 	flagsOnce sync.Once
 
-	flagAddr  string
-	flagScope string
+	flagAddr    string
+	flagScope   string
+	flagVerbose bool
 
 	flagTLSCACert     string
 	flagTLSCAPath     string
@@ -168,8 +169,8 @@ func (c *Command) Client() (*api.Client, error) {
 		c.client.SetMaxRetries(0)
 	}
 
+	tokenName := "default"
 	if c.client.Token() == "" {
-		tokenName := "default"
 		if c.FlagTokenName != "" {
 			tokenName = c.FlagTokenName
 		}
@@ -203,10 +204,25 @@ func (c *Command) Client() (*api.Client, error) {
 	// We do this here so we override the stored token info if it's set above
 	if c.flagScope != NotSetValue {
 		c.client.SetScopeId(c.flagScope)
+		if c.flagFormat == "table" && c.flagVerbose {
+			if c.flagScope == os.Getenv("BOUNDARY_TOKEN") {
+				c.UI.Info(fmt.Sprintf("Scope of %q set from BOUNDARY_TOKEN env var", c.flagScope))
+			} else {
+				c.UI.Info(fmt.Sprintf("Scope of %q set from -scope command flag", c.flagScope))
+			}
+		}
+	} else if c.client.ScopeId() != "" {
+		// If it didn't come from env or a flag but isn't empty, it must have come from the token
+		if c.flagFormat == "table" && c.flagVerbose {
+			c.UI.Info(fmt.Sprintf("Scope of %q set from saved token with name %q", c.client.ScopeId(), tokenName))
+		}
 	}
 	// At this point if we haven't figured out the scope, default to "global"
 	if c.client.ScopeId() == "" {
 		c.client.SetScopeId("global")
+		if c.flagFormat == "table" && c.flagVerbose {
+			c.UI.Info(`Scope of "global" set by default`)
+		}
 	}
 
 	return c.client, nil
@@ -218,7 +234,6 @@ const (
 	FlagSetNone FlagSetBit = 1 << iota
 	FlagSetHTTP
 	FlagSetClient
-	FlagSetOutputField
 	FlagSetOutputFormat
 )
 
@@ -334,21 +349,15 @@ func (c *Command) FlagSet(bit FlagSetBit) *FlagSets {
 			})
 		}
 
-		if bit&(FlagSetOutputField|FlagSetOutputFormat) != 0 {
+		if bit&FlagSetOutputFormat != 0 {
 			f := set.NewFlagSet("Output Options")
 
-			if bit&FlagSetOutputField != 0 {
-				f.StringVar(&StringVar{
-					Name:       "field",
-					Target:     &c.flagField,
-					Default:    "",
-					Completion: complete.PredictAnything,
-					Usage: "Print only the field with the given name. Specifying " +
-						"this option will take precedence over other formatting " +
-						"directives. The result will not have a trailing newline " +
-						"making it ideal for piping to other processes.",
-				})
-			}
+			f.BoolVar(&BoolVar{
+				Name:       "verbose",
+				Target:     &c.flagVerbose,
+				Completion: complete.PredictAnything,
+				Usage:      "Turns on some extra verbosity in the command output.",
+			})
 
 			if bit&FlagSetOutputFormat != 0 {
 				f.StringVar(&StringVar{

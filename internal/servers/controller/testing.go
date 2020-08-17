@@ -12,6 +12,7 @@ import (
 	"github.com/hashicorp/go-hclog"
 	wrapping "github.com/hashicorp/go-kms-wrapping"
 	"github.com/hashicorp/vault/sdk/helper/base62"
+	"github.com/jinzhu/gorm"
 )
 
 // TestController wraps a base.Server and Controller to provide a
@@ -62,6 +63,10 @@ func (tc *TestController) ClusterAddrs() []string {
 	return tc.addrs("cluster")
 }
 
+func (tc *TestController) DbConn() *gorm.DB {
+	return tc.b.Database
+}
+
 func (tc *TestController) addrs(purpose string) []string {
 	var prefix string
 	switch purpose {
@@ -110,9 +115,10 @@ func (tc *TestController) buildClient() {
 	if err := client.SetAddr(apiAddrs[0]); err != nil {
 		tc.t.Fatal(fmt.Errorf("error setting client address: %w", err))
 	}
-	if tc.b.DefaultOrgId != "" {
-		client.SetScopeId(tc.b.DefaultOrgId)
-	}
+	// Because this is using the real lib it can pick up from stored locations
+	// like the system keychain. Explicitly clear the token to ensure we
+	// understand the client state at the start of each test.
+	client.SetToken("")
 
 	tc.client = client
 }
@@ -146,10 +152,6 @@ func (tc *TestController) Shutdown() {
 type TestControllerOpts struct {
 	// Config; if not provided a dev one will be created
 	Config *config.Config
-
-	// DefaultOrgId is the default org ID to use, if set. Can also be provided
-	// in the normal config.
-	DefaultOrgId string
 
 	// DefaultAuthMethodId is the default auth method ID to use, if set.
 	DefaultAuthMethodId string
@@ -219,13 +221,6 @@ func NewTestController(t *testing.T, opts *TestControllerOpts) *TestController {
 		opts.Config.Controller.Name = opts.Name
 	}
 
-	// Set default org ID, preferring one passed in from opts over config
-	if opts.Config.DefaultOrgId != "" {
-		tc.b.DefaultOrgId = opts.Config.DefaultOrgId
-	}
-	if opts.DefaultOrgId != "" {
-		tc.b.DefaultOrgId = opts.DefaultOrgId
-	}
 	if opts.DefaultAuthMethodId != "" {
 		tc.b.DevAuthMethodId = opts.DefaultAuthMethodId
 	}
@@ -319,7 +314,6 @@ func (tc *TestController) AddClusterControllerMember(t *testing.T, opts *TestCon
 	nextOpts := &TestControllerOpts{
 		DatabaseUrl:         tc.c.conf.DatabaseUrl,
 		DefaultAuthMethodId: tc.c.conf.DevAuthMethodId,
-		DefaultOrgId:        tc.c.conf.DefaultOrgId,
 		ControllerKMS:       tc.c.conf.ControllerKMS,
 		WorkerAuthKMS:       tc.c.conf.WorkerAuthKMS,
 		Name:                opts.Name,

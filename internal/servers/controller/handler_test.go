@@ -8,20 +8,22 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 func TestAuthenticationHandler(t *testing.T) {
 	c := NewTestController(t, &TestControllerOpts{
-		DefaultOrgId:                 "o_1234567890",
 		DisableAuthorizationFailures: true,
 		DefaultLoginName:             "admin",
 		DefaultPassword:              "password123",
 	})
 	defer c.Shutdown()
 
-	resp, err := http.Post(fmt.Sprintf("%s/v1/scopes/o_1234567890/auth-methods/paum_1234567890:authenticate", c.ApiAddrs()[0]), "application/json",
+	org := iam.TestOrg(t, c.DbConn())
+
+	resp, err := http.Post(fmt.Sprintf("%s/v1/scopes/%s/auth-methods/paum_1234567890:authenticate", c.ApiAddrs()[0], org.GetPublicId()), "application/json",
 		strings.NewReader(`{"token_type": null, "credentials": {"login_name":"admin", "password": "password123"}}`))
 	require.NoError(t, err)
 	assert.Equal(t, http.StatusOK, resp.StatusCode, "Got response: %v", resp)

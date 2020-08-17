@@ -6,8 +6,8 @@ import (
 
 	"github.com/hashicorp/boundary/api"
 	"github.com/hashicorp/boundary/api/hosts"
-	"github.com/hashicorp/boundary/api/scopes"
 	"github.com/hashicorp/boundary/internal/host/static"
+	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/servers/controller"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -15,11 +15,9 @@ import (
 
 func TestCatalogs_Crud(t *testing.T) {
 	assert, require := assert.New(t), require.New(t)
-	orgId := "o_1234567890"
 	amId := "paum_1234567890"
 	tc := controller.NewTestController(t, &controller.TestControllerOpts{
 		DisableAuthorizationFailures: true,
-		DefaultOrgId:                 orgId,
 		DefaultAuthMethodId:          amId,
 		DefaultLoginName:             "user",
 		DefaultPassword:              "passpass",
@@ -27,13 +25,10 @@ func TestCatalogs_Crud(t *testing.T) {
 	defer tc.Shutdown()
 
 	client := tc.Client()
-
-	proj, apiErr, err := scopes.NewScopesClient(client).Create(tc.Context(), orgId)
-	require.NoError(err)
-	require.Nil(apiErr)
-
+	org, proj := iam.TestScopes(t, tc.DbConn())
+	client.SetScopeId(org.GetPublicId())
 	projClient := client.Clone()
-	projClient.SetScopeId(proj.Id)
+	projClient.SetScopeId(proj.GetPublicId())
 
 	checkCatalog := func(step string, hc *hosts.HostCatalog, apiErr *api.Error, err error, wantedName string, wantVersion uint32) {
 		require.NoError(err, step)
@@ -75,11 +70,9 @@ func TestCatalogs_Crud(t *testing.T) {
 // TODO: Get better coverage for expected errors and error formats.
 func TestCatalogs_Errors(t *testing.T) {
 	assert, require := assert.New(t), require.New(t)
-	orgId := "o_1234567890"
 	amId := "paum_1234567890"
 	tc := controller.NewTestController(t, &controller.TestControllerOpts{
 		DisableAuthorizationFailures: true,
-		DefaultOrgId:                 orgId,
 		DefaultAuthMethodId:          amId,
 		DefaultLoginName:             "user",
 		DefaultPassword:              "passpass",
@@ -87,12 +80,8 @@ func TestCatalogs_Errors(t *testing.T) {
 	defer tc.Shutdown()
 
 	client := tc.Client()
-
-	proj, apiErr, err := scopes.NewScopesClient(client).Create(tc.Context(), orgId)
-	require.NoError(err)
-	require.Nil(apiErr)
-
-	client.SetScopeId(proj.Id)
+	_, proj := iam.TestScopes(t, tc.DbConn())
+	client.SetScopeId(proj.GetPublicId())
 	pc := hosts.NewHostCatalogsClient(client)
 
 	hc, apiErr, err := pc.Create(tc.Context(), hosts.WithType("static"))
