@@ -34,6 +34,6 @@ func ExampleNewHostSetMember() {
 	setPublicId := "sths_11111"
 	hostPublicId := "sth_22222"
 	member, _ := static.NewHostSetMember(setPublicId, hostPublicId)
-	fmt.Println(member.StaticHostSetId)
-	fmt.Println(member.StaticHostId)
+	fmt.Println(member.SetId)
+	fmt.Println(member.HostId)
 }

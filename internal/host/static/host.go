@@ -24,7 +24,7 @@ func NewHost(catalogId string, opt ...Option) (*Host, error) {
 	opts := getOpts(opt...)
 	host := &Host{
 		Host: &store.Host{
-			StaticHostCatalogId: catalogId,
+			CatalogId: catalogId,
 			Address:             opts.withAddress,
 			Name:                opts.withName,
 			Description:         opts.withDescription,

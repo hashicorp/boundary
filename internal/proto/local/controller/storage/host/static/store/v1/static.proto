@@ -10,7 +10,7 @@ import "controller/custom_options/v1/options.proto";
 
 message HostCatalog {
   // public_is is a surrogate key suitable for use in a public API.
-  // @inject_tag: gorm:"primary_key"
+  // @inject_tag: `gorm:"primary_key"`
   string public_id = 1;
 
   // The create_time is set by the database.
@@ -30,7 +30,7 @@ message HostCatalog {
   string description = 5 [(custom_options.v1.mask_mapping) = {this:"description" that: "description"}];
 
   // The scope_id of the owning scope and must be set.
-  // @inject_tag: gorm:"not_null"
+  // @inject_tag: `gorm:"not_null"`
   string scope_id = 6;
 
   // version allows optimistic locking of the resource
@@ -40,7 +40,7 @@ message HostCatalog {
 
 message Host {
   // public_is is a surrogate key suitable for use in a public API.
-  // @inject_tag: gorm:"primary_key"
+  // @inject_tag: `gorm:"primary_key"`
   string public_id = 1;
 
   // The create_time is set by the database.
@@ -52,7 +52,7 @@ message Host {
   timestamp.v1.Timestamp update_time = 3;
 
   // name is optional. If set, it must be unique within
-  // static_host_catalog_id.
+  // catalog_id.
   // @inject_tag: `gorm:"default:null"`
   string name = 4 [(custom_options.v1.mask_mapping) = {this:"name" that: "name"}];
 
@@ -60,14 +60,14 @@ message Host {
   // @inject_tag: `gorm:"default:null"`
   string description = 5 [(custom_options.v1.mask_mapping) = {this:"description" that: "description"}];
 
-  // static_host_catalog_id is the public_id of the owning
+  // catalog_id is the public_id of the owning
   // static_host_catalog and must be set.
-  // @inject_tag: gorm:"not_null"
-  string static_host_catalog_id = 6;
+  // @inject_tag: `gorm:"not_null"`
+  string catalog_id = 6;
 
   // address is the IP Address or DNS name of the host. It must be set and
-  // it must be unique within static_host_catalog_id.
-  // @inject_tag: gorm:"not_null"
+  // it must be unique within catalog_id.
+  // @inject_tag: `gorm:"not_null"`
   string address = 7 [(custom_options.v1.mask_mapping) = {this:"address" that: "address"}];
 
   // version allows optimistic locking of the resource
@@ -77,7 +77,7 @@ message Host {
 
 message HostSet {
   // public_is is a surrogate key suitable for use in a public API.
-  // @inject_tag: gorm:"primary_key"
+  // @inject_tag: `gorm:"primary_key"`
   string public_id = 1;
 
   // The create_time is set by the database.
@@ -89,7 +89,7 @@ message HostSet {
   timestamp.v1.Timestamp update_time = 3;
 
   // name is optional. If set, it must be unique within
-  // static_host_catalog_id.
+  // catalog_id.
   // @inject_tag: `gorm:"default:null"`
   string name = 4 [(custom_options.v1.mask_mapping) = {this:"name" that: "name"}];
 
@@ -97,10 +97,10 @@ message HostSet {
   // @inject_tag: `gorm:"default:null"`
   string description = 5 [(custom_options.v1.mask_mapping) = {this:"description" that: "description"}];
 
-  // static_host_catalog_id is the public_id of the owning
+  // catalog_id is the public_id of the owning
   // static_host_catalog and must be set.
-  // @inject_tag: gorm:"not_null"
-  string static_host_catalog_id = 6;
+  // @inject_tag: `gorm:"not_null"`
+  string catalog_id = 6;
 
   // version allows optimistic locking of the resource
   // @inject_tag: `gorm:"default:null"`
@@ -108,9 +108,12 @@ message HostSet {
 }
 
 message HostSetMember {
-  // @inject_tag: gorm:"primary_key"
-  string static_host_set_id = 1;
+  // @inject_tag: `gorm:"primary_key"`
+  string host_id = 1;
 
-  // @inject_tag: gorm:"primary_key"
-  string static_host_id = 2;
+  // @inject_tag: `gorm:"primary_key"`
+  string set_id = 2;
+
+  // @inject_tag: `gorm:"default:null"`
+  string catalog_id = 3;
 }

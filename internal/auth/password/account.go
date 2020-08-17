@@ -19,8 +19,8 @@ type Account struct {
 	CredentialId string `gorm:"-"`
 }
 
-func allocAccount() Account {
-	return Account{
+func allocAccount() *Account {
+	return &Account{
 		Account: &store.Account{},
 	}
 }

@@ -287,6 +287,84 @@
         ]
       }
     },
+    "/v1/scopes/*/auth-methods/{auth_method_id}/accounts/{id}:change-password": {
+      "post": {
+        "summary": "Sets the password for the provided account.",
+        "operationId": "AccountService_ChangePassword",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/controller.api.resources.authmethods.v1.Account"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "auth_method_id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/controller.api.services.v1.ChangePasswordRequest"
+            }
+          }
+        ],
+        "tags": [
+          "controller.api.services.v1.AccountService"
+        ]
+      }
+    },
+    "/v1/scopes/*/auth-methods/{auth_method_id}/accounts/{id}:set-password": {
+      "post": {
+        "summary": "Sets the password for the provided account.",
+        "operationId": "AccountService_SetPassword",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/controller.api.resources.authmethods.v1.Account"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "auth_method_id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/controller.api.services.v1.SetPasswordRequest"
+            }
+          }
+        ],
+        "tags": [
+          "controller.api.services.v1.AccountService"
+        ]
+      }
+    },
     "/v1/scopes/*/auth-methods/{auth_method_id}:authenticate": {
       "post": {
         "summary": "Authenticate a user to an scope and retrieve an authentication token.",
@@ -2574,6 +2652,35 @@
         }
       }
     },
+    "controller.api.services.v1.ChangePasswordRequest": {
+      "type": "object",
+      "properties": {
+        "auth_method_id": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "version": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "old_password": {
+          "type": "string"
+        },
+        "new_password": {
+          "type": "string"
+        }
+      }
+    },
+    "controller.api.services.v1.ChangePasswordResponse": {
+      "type": "object",
+      "properties": {
+        "item": {
+          "$ref": "#/definitions/controller.api.resources.authmethods.v1.Account"
+        }
+      }
+    },
     "controller.api.services.v1.CreateAccountResponse": {
       "type": "object",
       "properties": {
@@ -3042,6 +3149,32 @@
       "properties": {
         "item": {
           "$ref": "#/definitions/controller.api.resources.hosts.v1.HostSet"
+        }
+      }
+    },
+    "controller.api.services.v1.SetPasswordRequest": {
+      "type": "object",
+      "properties": {
+        "auth_method_id": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "version": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "password": {
+          "type": "string"
+        }
+      }
+    },
+    "controller.api.services.v1.SetPasswordResponse": {
+      "type": "object",
+      "properties": {
+        "item": {
+          "$ref": "#/definitions/controller.api.resources.authmethods.v1.Account"
         }
       }
     },

@@ -116,10 +116,10 @@ func TestStaticHost_ImmutableFields(t *testing.T) {
 			name: "static_host_catalog_id",
 			update: func() *Host {
 				c := new.testCloneHost()
-				c.StaticHostCatalogId = "stc_01234567890"
+				c.CatalogId = "stc_01234567890"
 				return c
 			}(),
-			fieldMask: []string{"StaticHostCatalogId"},
+			fieldMask: []string{"CatalogId"},
 		},
 	}
 	for _, tt := range tests {
@@ -189,10 +189,10 @@ func TestStaticHostSet_ImmutableFields(t *testing.T) {
 			name: "static_host_catalog_id",
 			update: func() *HostSet {
 				c := new.testCloneHostSet()
-				c.StaticHostCatalogId = "stc_01234567890"
+				c.CatalogId = "stc_01234567890"
 				return c
 			}(),
-			fieldMask: []string{"StaticHostCatalogId"},
+			fieldMask: []string{"CatalogId"},
 		},
 	}
 	for _, tt := range tests {
@@ -244,22 +244,22 @@ func TestStaticHostSetMember_ImmutableFields(t *testing.T) {
 		fieldMask []string
 	}{
 		{
-			name: "static_host_set_id",
+			name: "set_id",
 			update: func() *HostSetMember {
 				c := new.testCloneHostSetMember()
-				c.StaticHostId = "shs_thisIsNotAValidId"
+				c.HostId = "shs_thisIsNotAValidId"
 				return c
 			}(),
-			fieldMask: []string{"StaticHostSetId"},
+			fieldMask: []string{"SetId"},
 		},
 		{
-			name: "static_host_id",
+			name: "host_id",
 			update: func() *HostSetMember {
 				c := new.testCloneHostSetMember()
-				c.StaticHostId = "sth_01234567890"
+				c.HostId = "sth_01234567890"
 				return c
 			}(),
-			fieldMask: []string{"StaticHostId"},
+			fieldMask: []string{"HostId"},
 		},
 	}
 	for _, tt := range tests {
@@ -267,7 +267,7 @@ func TestStaticHostSetMember_ImmutableFields(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 			orig := new.testCloneHostSetMember()
-			err = w.LookupWhere(context.Background(), orig, "static_host_id = ? and static_host_set_id = ?", orig.StaticHostId, orig.StaticHostSetId)
+			err = w.LookupWhere(context.Background(), orig, "host_id = ? and set_id = ?", orig.HostId, orig.SetId)
 			require.NoError(err)
 
 			rowsUpdated, err := w.Update(context.Background(), tt.update, tt.fieldMask, nil)
@@ -275,7 +275,7 @@ func TestStaticHostSetMember_ImmutableFields(t *testing.T) {
 			assert.Equal(0, rowsUpdated)
 
 			after := new.testCloneHostSetMember()
-			err = w.LookupWhere(context.Background(), after, "static_host_id = ? and static_host_set_id = ?", after.StaticHostId, after.StaticHostSetId)
+			err = w.LookupWhere(context.Background(), after, "host_id = ? and set_id = ?", after.HostId, after.SetId)
 			require.NoError(err)
 
 			assert.True(proto.Equal(orig, after))
