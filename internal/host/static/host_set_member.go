@@ -24,8 +24,8 @@ func NewHostSetMember(hostSetId, hostId string, opt ...Option) (*HostSetMember, 
 	}
 	member := &HostSetMember{
 		HostSetMember: &store.HostSetMember{
-			StaticHostSetId: hostSetId,
-			StaticHostId:    hostId,
+			SetId:  hostSetId,
+			HostId: hostId,
 		},
 	}
 	return member, nil
