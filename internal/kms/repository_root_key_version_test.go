@@ -94,8 +94,10 @@ func TestRepository_CreateRootKeyVersion(t *testing.T) {
 			assert.NoError(err)
 			assert.True(proto.Equal(foundKey, k))
 
+			// make sure there was no oplog written
 			err = db.TestVerifyOplog(t, rw, k.PrivateId, db.WithOperation(oplog.OpType_OP_TYPE_CREATE), db.WithCreateNotBefore(10*time.Second))
-			assert.NoError(err)
+			assert.Error(err)
+			assert.True(errors.Is(db.ErrRecordNotFound, err))
 		})
 	}
 }
@@ -180,8 +182,10 @@ func TestRepository_DeleteRootKeyVersion(t *testing.T) {
 			assert.Nil(foundKey)
 			assert.True(errors.Is(err, db.ErrRecordNotFound))
 
+			// make sure there was no oplog written
 			err = db.TestVerifyOplog(t, rw, tt.args.key.PrivateId, db.WithOperation(oplog.OpType_OP_TYPE_DELETE), db.WithCreateNotBefore(10*time.Second))
-			assert.NoError(err)
+			assert.Error(err)
+			assert.True(errors.Is(db.ErrRecordNotFound, err))
 		})
 	}
 }

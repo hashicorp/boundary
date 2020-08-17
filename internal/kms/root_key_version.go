@@ -6,7 +6,6 @@ import (
 
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/kms/store"
-	"github.com/hashicorp/boundary/internal/oplog"
 	wrapping "github.com/hashicorp/go-kms-wrapping"
 	"github.com/hashicorp/go-kms-wrapping/structwrapping"
 	"google.golang.org/protobuf/proto"
@@ -84,16 +83,6 @@ func (k *RootKeyVersion) TableName() string {
 // reset to the default name.
 func (k *RootKeyVersion) SetTableName(n string) {
 	k.tableName = n
-}
-
-func (k *RootKeyVersion) oplog(op oplog.OpType) oplog.Metadata {
-	metadata := oplog.Metadata{
-		"resource-public-id": []string{k.PrivateId},
-		"resource-type":      []string{"kms root key version"},
-		"op-type":            []string{op.String()},
-		"root-key-id":        []string{k.RootKeyId},
-	}
-	return metadata
 }
 
 func (k *RootKeyVersion) encrypt(ctx context.Context, cipher wrapping.Wrapper) error {

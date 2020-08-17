@@ -5,7 +5,6 @@ import (
 	"fmt"
 
 	"github.com/hashicorp/boundary/internal/db"
-	"github.com/hashicorp/boundary/internal/oplog"
 	wrapping "github.com/hashicorp/go-kms-wrapping"
 )
 
@@ -48,11 +47,13 @@ func (r *Repository) CreateRootKey(ctx context.Context, keyWrapper wrapping.Wrap
 		db.ExpBackoff{},
 		func(_ db.Reader, w db.Writer) error {
 			returnedRk = rk.Clone()
-			if err := w.Create(ctx, returnedRk, db.WithOplog(r.wrapper, rk.oplog(oplog.OpType_OP_TYPE_CREATE))); err != nil {
+			// no oplog entries for root keys
+			if err := w.Create(ctx, returnedRk); err != nil {
 				return err
 			}
 			returnedKv = kv.Clone()
-			if err := w.Create(ctx, returnedKv, db.WithOplog(r.wrapper, kv.oplog(oplog.OpType_OP_TYPE_CREATE))); err != nil {
+			// no oplog entries for root key versions
+			if err := w.Create(ctx, returnedKv); err != nil {
 				return err
 			}
 			return nil
@@ -100,9 +101,9 @@ func (r *Repository) DeleteRootKey(ctx context.Context, privateId string, opt ..
 		db.StdRetryCnt,
 		db.ExpBackoff{},
 		func(_ db.Reader, w db.Writer) (err error) {
-			metadata := k.oplog(oplog.OpType_OP_TYPE_DELETE)
 			dk := k.Clone()
-			rowsDeleted, err = w.Delete(ctx, dk, db.WithOplog(r.wrapper, metadata))
+			// no oplog entries for root keys
+			rowsDeleted, err = w.Delete(ctx, dk)
 			if err == nil && rowsDeleted > 1 {
 				return db.ErrMultipleRecords
 			}

@@ -5,7 +5,6 @@ import (
 	"fmt"
 
 	"github.com/hashicorp/boundary/internal/db"
-	"github.com/hashicorp/boundary/internal/oplog"
 	wrapping "github.com/hashicorp/go-kms-wrapping"
 )
 
@@ -40,7 +39,8 @@ func (r *Repository) CreateRootKeyVersion(ctx context.Context, keyWrapper wrappi
 		db.ExpBackoff{},
 		func(_ db.Reader, w db.Writer) error {
 			returnedKey = kv.Clone()
-			if err := w.Create(ctx, returnedKey, db.WithOplog(r.wrapper, kv.oplog(oplog.OpType_OP_TYPE_CREATE))); err != nil {
+			// no oplog entries for root key version
+			if err := w.Create(ctx, returnedKey); err != nil {
 				return err
 			}
 			return nil
@@ -91,9 +91,9 @@ func (r *Repository) DeleteRootKeyVersion(ctx context.Context, privateId string,
 		db.StdRetryCnt,
 		db.ExpBackoff{},
 		func(_ db.Reader, w db.Writer) (err error) {
-			metadata := k.oplog(oplog.OpType_OP_TYPE_DELETE)
 			dk := k.Clone()
-			rowsDeleted, err = w.Delete(ctx, dk, db.WithOplog(r.wrapper, metadata))
+			// no oplog entries for root key version
+			rowsDeleted, err = w.Delete(ctx, dk)
 			if err == nil && rowsDeleted > 1 {
 				return db.ErrMultipleRecords
 			}

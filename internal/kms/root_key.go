@@ -6,7 +6,6 @@ import (
 
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/kms/store"
-	"github.com/hashicorp/boundary/internal/oplog"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -76,14 +75,4 @@ func (k *RootKey) TableName() string {
 // reset to the default name.
 func (c *RootKey) SetTableName(n string) {
 	c.tableName = n
-}
-
-func (c *RootKey) oplog(op oplog.OpType) oplog.Metadata {
-	metadata := oplog.Metadata{
-		"resource-public-id": []string{c.PrivateId},
-		"resource-type":      []string{"kms root key"},
-		"op-type":            []string{op.String()},
-		"scope-id":           []string{c.ScopeId},
-	}
-	return metadata
 }

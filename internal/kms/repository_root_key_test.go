@@ -110,16 +110,20 @@ func TestRepository_CreateRootKey(t *testing.T) {
 			assert.NoError(err)
 			assert.True(proto.Equal(foundKey, rk))
 
+			// make sure there was no oplog written
 			err = db.TestVerifyOplog(t, rw, rk.PrivateId, db.WithOperation(oplog.OpType_OP_TYPE_CREATE), db.WithCreateNotBefore(10*time.Second))
-			assert.NoError(err)
+			assert.Error(err)
+			assert.True(errors.Is(err, db.ErrRecordNotFound))
 
 			assert.NotNil(kv.CreateTime)
 			foundKeyVersion, err := repo.LookupRootKeyVersion(context.Background(), tt.args.keyWrapper, kv.PrivateId)
 			assert.NoError(err)
 			assert.True(proto.Equal(foundKeyVersion, kv))
 
+			// make sure there was no oplog written
 			err = db.TestVerifyOplog(t, rw, kv.PrivateId, db.WithOperation(oplog.OpType_OP_TYPE_CREATE), db.WithCreateNotBefore(10*time.Second))
-			assert.NoError(err)
+			assert.Error(err)
+			assert.True(errors.Is(err, db.ErrRecordNotFound))
 		})
 	}
 }
@@ -191,6 +195,7 @@ func TestRepository_DeleteRootKey(t *testing.T) {
 				if tt.wantIsError != nil {
 					assert.True(errors.Is(err, tt.wantIsError))
 				}
+				// make sure there was no oplog written
 				err = db.TestVerifyOplog(t, rw, tt.args.key.PrivateId, db.WithOperation(oplog.OpType_OP_TYPE_DELETE), db.WithCreateNotBefore(10*time.Second))
 				assert.Error(err)
 				assert.True(errors.Is(db.ErrRecordNotFound, err))
@@ -203,8 +208,10 @@ func TestRepository_DeleteRootKey(t *testing.T) {
 			assert.Nil(foundKey)
 			assert.True(errors.Is(err, db.ErrRecordNotFound))
 
+			// make sure there was no oplog written
 			err = db.TestVerifyOplog(t, rw, tt.args.key.PrivateId, db.WithOperation(oplog.OpType_OP_TYPE_DELETE), db.WithCreateNotBefore(10*time.Second))
-			assert.NoError(err)
+			assert.Error(err)
+			assert.True(errors.Is(db.ErrRecordNotFound, err))
 		})
 	}
 }
