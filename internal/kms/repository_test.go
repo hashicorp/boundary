@@ -4,7 +4,6 @@ import (
 	"testing"
 
 	"github.com/hashicorp/boundary/internal/db"
-	wrapping "github.com/hashicorp/go-kms-wrapping"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -13,11 +12,9 @@ func TestNewRepository(t *testing.T) {
 	t.Parallel()
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
-	wrapper := db.TestWrapper(t)
 	type args struct {
-		r       db.Reader
-		w       db.Writer
-		wrapper wrapping.Wrapper
+		r db.Reader
+		w db.Writer
 	}
 	tests := []struct {
 		name          string
@@ -29,35 +26,21 @@ func TestNewRepository(t *testing.T) {
 		{
 			name: "valid",
 			args: args{
-				r:       rw,
-				w:       rw,
-				wrapper: wrapper,
+				r: rw,
+				w: rw,
 			},
 			want: &Repository{
 				reader:       rw,
 				writer:       rw,
-				wrapper:      wrapper,
 				defaultLimit: db.DefaultLimit,
 			},
 			wantErr: false,
 		},
 		{
-			name: "nil-wrapper",
-			args: args{
-				r:       rw,
-				w:       rw,
-				wrapper: nil,
-			},
-			want:          nil,
-			wantErr:       true,
-			wantErrString: "error creating db repository with nil wrapper",
-		},
-		{
 			name: "nil-writer",
 			args: args{
-				r:       rw,
-				w:       nil,
-				wrapper: wrapper,
+				r: rw,
+				w: nil,
 			},
 			want:          nil,
 			wantErr:       true,
@@ -66,9 +49,8 @@ func TestNewRepository(t *testing.T) {
 		{
 			name: "nil-reader",
 			args: args{
-				r:       nil,
-				w:       rw,
-				wrapper: wrapper,
+				r: nil,
+				w: rw,
 			},
 			want:          nil,
 			wantErr:       true,
@@ -78,7 +60,7 @@ func TestNewRepository(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			got, err := NewRepository(tt.args.r, tt.args.w, tt.args.wrapper)
+			got, err := NewRepository(tt.args.r, tt.args.w)
 			if tt.wantErr {
 				require.Error(err)
 				assert.Equal(err.Error(), tt.wantErrString)

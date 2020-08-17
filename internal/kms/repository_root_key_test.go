@@ -20,7 +20,7 @@ func TestRepository_CreateRootKey(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
-	repo, err := NewRepository(rw, rw, wrapper)
+	repo, err := NewRepository(rw, rw)
 	require.NoError(t, err)
 	org, proj := iam.TestScopes(t, conn)
 
@@ -133,7 +133,7 @@ func TestRepository_DeleteRootKey(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
-	repo, err := NewRepository(rw, rw, wrapper)
+	repo, err := NewRepository(rw, rw)
 	require.NoError(t, err)
 	org, _ := iam.TestScopes(t, conn)
 
@@ -221,8 +221,7 @@ func TestRepository_ListRootKeys(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	const testLimit = 10
 	rw := db.New(conn)
-	wrapper := db.TestWrapper(t)
-	repo, err := NewRepository(rw, rw, wrapper, WithLimit(testLimit))
+	repo, err := NewRepository(rw, rw, WithLimit(testLimit))
 	require.NoError(t, err)
 
 	type args struct {
