@@ -264,9 +264,8 @@ func TestRepository_ChangePassword(t *testing.T) {
 	require.NotNil(t, acct)
 
 	type args struct {
-		authMethodId string
-		acctId       string
-		old, new     string
+		acctId   string
+		old, new string
 	}
 
 	var tests = []struct {
@@ -276,73 +275,57 @@ func TestRepository_ChangePassword(t *testing.T) {
 		wantIsErr   error
 	}{
 		{
-			name: "invalid-no-authMethodId",
-			args: args{
-				authMethodId: "",
-				acctId:       acct.PublicId,
-				old:          passwd,
-				new:          "12345678-changed",
-			},
-			wantIsErr: db.ErrInvalidParameter,
-		},
-		{
 			name: "invalid-no-accountId",
 			args: args{
-				authMethodId: acct.AuthMethodId,
-				acctId:       "",
-				old:          passwd,
-				new:          "12345678-changed",
+				acctId: "",
+				old:    passwd,
+				new:    "12345678-changed",
 			},
 			wantIsErr: db.ErrInvalidParameter,
 		},
 		{
 			name: "invalid-no-old-password",
 			args: args{
-				authMethodId: acct.AuthMethodId,
-				acctId:       acct.PublicId,
-				old:          "",
-				new:          "12345678-changed",
+				acctId: acct.PublicId,
+				old:    "",
+				new:    "12345678-changed",
 			},
 			wantIsErr: db.ErrInvalidParameter,
 		},
 		{
 			name: "invalid-no-new-password",
 			args: args{
-				authMethodId: acct.AuthMethodId,
-				acctId:       acct.PublicId,
-				old:          passwd,
-				new:          "",
+				acctId: acct.PublicId,
+				old:    passwd,
+				new:    "",
 			},
 			wantIsErr: db.ErrInvalidParameter,
 		},
 		{
 			name: "invalid-same-passwords",
 			args: args{
-				authMethodId: acct.AuthMethodId,
-				acctId:       acct.PublicId,
-				old:          passwd,
-				new:          passwd,
+				acctId: acct.PublicId,
+				old:    passwd,
+				new:    passwd,
 			},
 			wantIsErr: ErrPasswordsEqual,
 		},
 		{
-			name: "auth-failure-unknown-authMethodId",
+			name: "auth-failure-unknown-accountId",
 			args: args{
-				authMethodId: "not-an-authMethod-Id",
-				acctId:       acct.PublicId,
-				old:          passwd,
-				new:          "12345678-changed",
+				acctId: "not-an-account-Id",
+				old:    passwd,
+				new:    "12345678-changed",
 			},
 			wantAccount: false,
-			wantIsErr:   nil,
+			wantIsErr:   db.ErrRecordNotFound,
 		},
 		{
 			name: "auth-failure-wrong-old-password",
 			args: args{
-				authMethodId: acct.AuthMethodId,
-				acctId:       acct.PublicId,
-				old:          "wrong-password",
-				new:          "12345678-changed",
+				acctId: acct.PublicId,
+				old:    "wrong-password",
+				new:    "12345678-changed",
 			},
 			wantAccount: false,
 			wantIsErr:   nil,
@@ -350,20 +333,18 @@ func TestRepository_ChangePassword(t *testing.T) {
 		{
 			name: "password-to-short",
 			args: args{
-				authMethodId: acct.AuthMethodId,
-				acctId:       acct.PublicId,
-				old:          passwd,
-				new:          "1",
+				acctId: acct.PublicId,
+				old:    passwd,
+				new:    "1",
 			},
 			wantIsErr: ErrTooShort,
 		},
 		{
 			name: "valid",
 			args: args{
-				authMethodId: acct.AuthMethodId,
-				acctId:       acct.PublicId,
-				old:          passwd,
-				new:          "12345678-changed",
+				acctId: acct.PublicId,
+				old:    passwd,
+				new:    "12345678-changed",
 			},
 			wantAccount: true,
 		},
@@ -383,7 +364,7 @@ func TestRepository_ChangePassword(t *testing.T) {
 			// authenticate with original password
 			authAcct1 := authFn(passwd, "original account")
 
-			chgAuthAcct, err := repo.ChangePassword(context.Background(), tt.args.authMethodId, tt.args.acctId, tt.args.old, tt.args.new, authAcct1.Version)
+			chgAuthAcct, err := repo.ChangePassword(context.Background(), tt.args.acctId, tt.args.old, tt.args.new, authAcct1.Version)
 			if tt.wantIsErr != nil {
 				assert.Error(err)
 				assert.Truef(errors.Is(err, tt.wantIsErr), "want err: %q got: %q", tt.wantIsErr, err)

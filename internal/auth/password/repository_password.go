@@ -83,16 +83,13 @@ func (r *Repository) Authenticate(ctx context.Context, authMethodId string, logi
 	return acct.Account, nil
 }
 
-// ChangePassword updates the password for loginName in authMethodId to new
-// if old equals the stored password. The account for the loginName is
-// returned with a new CredentialId if password is successfully changed.
+// ChangePassword updates the password for accountId to new if old equals
+// the stored password. The account for the loginName is returned with a
+// new CredentialId if password is successfully changed.
 //
-// Returns nil if old does not match the stored password for loginName.
+// Returns nil if old does not match the stored password for accountId.
 // Returns ErrPasswordsEqual if old and new are equal.
-func (r *Repository) ChangePassword(ctx context.Context, authMethodId string, accountId string, old, new string, version uint32) (*Account, error) {
-	if authMethodId == "" {
-		return nil, fmt.Errorf("change password: no authMethodId: %w", db.ErrInvalidParameter)
-	}
+func (r *Repository) ChangePassword(ctx context.Context, accountId string, old, new string, version uint32) (*Account, error) {
 	if accountId == "" {
 		return nil, fmt.Errorf("change password: no account id: %w", db.ErrInvalidParameter)
 	}
@@ -117,7 +114,7 @@ func (r *Repository) ChangePassword(ctx context.Context, authMethodId string, ac
 		return nil, fmt.Errorf("change password: lookup account: account not found: %w", db.ErrRecordNotFound)
 	}
 
-	acct, err := r.authenticate(ctx, authMethodId, authAccount.GetLoginName(), old)
+	acct, err := r.authenticate(ctx, authAccount.GetAuthMethodId(), authAccount.GetLoginName(), old)
 	if err != nil {
 		return nil, fmt.Errorf("change password: %w", err)
 	}
@@ -125,7 +122,7 @@ func (r *Repository) ChangePassword(ctx context.Context, authMethodId string, ac
 		return nil, nil
 	}
 
-	cc, err := r.currentConfig(ctx, authMethodId)
+	cc, err := r.currentConfig(ctx, authAccount.GetAuthMethodId())
 	if err != nil {
 		return nil, fmt.Errorf("change password: retrieve current password configuration: %w", err)
 	}
