@@ -18,15 +18,13 @@ type Option func(*Options)
 
 // Options - how Options are represented.
 type Options struct {
-	withLogger      hclog.Logger
-	withRootWrapper wrapping.Wrapper
+	withLogger            hclog.Logger
+	withRootWrapper       wrapping.Wrapper
+	withWorkerAuthWrapper wrapping.Wrapper
 }
 
 func getDefaultOptions() Options {
-	return Options{
-		withLogger:      nil,
-		withRootWrapper: nil,
-	}
+	return Options{}
 }
 
 func WithLogger(l hclog.Logger) Option {
@@ -36,6 +34,12 @@ func WithLogger(l hclog.Logger) Option {
 }
 
 func WithRootWrapper(w wrapping.Wrapper) Option {
+	return func(o *Options) {
+		o.withRootWrapper = w
+	}
+}
+
+func WithWorkerAuthWrapper(w wrapping.Wrapper) Option {
 	return func(o *Options) {
 		o.withRootWrapper = w
 	}

@@ -13,23 +13,18 @@ import (
 )
 
 type externalWrappers struct {
-	Root wrapping.Wrapper
-}
-
-type versionedKeys struct {
-	versionsCache sync.Map
-}
-
-type scopeKms struct {
-	purposeCache sync.Map
+	Root       wrapping.Wrapper
+	WorkerAuth wrapping.Wrapper
 }
 
 type Kms struct {
-	logger            hclog.Logger
+	logger hclog.Logger
+
+	// scopePurposeCache holds a per-scope-purpose multiwrapper containing the
+	// current encrypting key and all previous key versions, for decryption
 	scopePurposeCache sync.Map
 
-	externalByScopeCache sync.Map
-	externalByKeyIdCache sync.Map
+	externalScopeCache sync.Map
 }
 
 func NewKms(opt ...Option) *Kms {
@@ -39,38 +34,59 @@ func NewKms(opt ...Option) *Kms {
 	}
 }
 
+// AddExternalWrappers allows setting the external keys for a scope.
+//
+// TODO: If we support more than one, e.g. for encrypting against many in case
+// of a key loss, there will need to be some refactoring here to have the values
+// being stored in the struct be a multiwrapper, but that's for a later project.
 func (k *Kms) AddExternalWrappers(scopeId string, opt ...Option) error {
 	opts := getOpts(opt...)
 	if opts.withRootWrapper == nil {
 		return fmt.Errorf("nil root wrapper passed in for scope %s", scopeId)
 	}
+	if opts.withWorkerAuthWrapper == nil {
+		return fmt.Errorf("nil worker auth wrapper passed in for scope %s", scopeId)
+	}
 	ext := &externalWrappers{
-		Root: opts.withRootWrapper,
+		Root:       opts.withRootWrapper,
+		WorkerAuth: opts.withWorkerAuthWrapper,
 	}
 	if ext.Root.KeyID() == "" {
 		return fmt.Errorf("root wrapper passed in for scope %s has no key ID", scopeId)
 	}
-	if _, loaded := k.externalByKeyIdCache.LoadOrStore(ext.Root.KeyID(), ext); loaded {
-		return fmt.Errorf("key ID for given root wrapper collides with an existing key")
+	if ext.WorkerAuth.KeyID() == "" {
+		return fmt.Errorf("worker auth wrapper passed in for scope %s has no key ID", scopeId)
 	}
-	k.externalByScopeCache.Store(scopeId, ext)
+	k.externalScopeCache.Store(scopeId, ext)
 	return nil
 }
 
-func keyId(scopeId, purpose string, version uint32) string {
+func generateKeyId(scopeId, purpose string, version uint32) string {
 	return fmt.Sprintf("%s_%s_%d", scopeId, purpose, version)
 }
 
-func (k *Kms) GetWrapper(scopeId, purpose string) (wrapping.Wrapper, error) {
-	// Fast-path: we have a valid key at the scope/purpose
+func (k *Kms) GetWrapper(scopeId, purpose, keyId string) (wrapping.Wrapper, error) {
+	switch purpose {
+	case "oplog", "database":
+	default:
+		return nil, fmt.Errorf("unsupported purpose %q", purpose)
+	}
+	// Fast-path: we have a valid key at the scope/purpose. Verify the key with
+	// that ID is in the multiwrapper; if not, fall through to reload from the
+	// DB.
 	val, ok := k.scopePurposeCache.Load(scopeId + purpose)
 	if ok {
-		return val.(wrapping.Wrapper), nil
+		wrapper := val.(*multiwrapper.MultiWrapper)
+		if wrapper.WrapperForKeyID(keyId) != nil {
+			return wrapper, nil
+		}
+		// Fall through to refresh our multiwrapper for this scope/purpose from the DB
 	}
 
 	// We don't have it cached, so we'll need to read from the database. Get the
-	// root for the scope. This may have been the purpose to begin with, but
-	// that's okay.
+	// root for the scope as we'll need it to decrypt the value coming from the
+	// DB. We don't cache the roots as we expect that after a few calls the
+	// scope-purpose cache will catch everything in steady-state.
 	rootWrapper, err := k.loadRoot(scopeId)
 	if err != nil {
 		return nil, fmt.Errorf("error loading root key for scope %s: %w", scopeId, err)
@@ -78,25 +94,25 @@ func (k *Kms) GetWrapper(scopeId, purpose string) (wrapping.Wrapper, error) {
 
 	// TODO: Look up dek in the db, then decrypt with the root wrapper. For now
 	// since we don't have DEKs, derive a key.
-	// TODO: Once we have rotation, switch all of this to multiwrapper
-	derived, err := rootWrapper.NewDerivedWrapper(&aead.DerivedWrapperOptions{
-		KeyID: keyId(scopeId, purpose, 1),
+	baseWrapper := rootWrapper.WrapperForKeyID("__base__").(*aead.Wrapper)
+	derived, err := baseWrapper.NewDerivedWrapper(&aead.DerivedWrapperOptions{
+		KeyID: generateKeyId(scopeId, purpose, 1),
 		Hash:  func() hash.Hash { b, _ := blake2b.New256(nil); return b },
 		Salt:  []byte(scopeId),
 		Info:  []byte(purpose),
 	})
-	if origVal, loaded := k.scopePurposeCache.LoadOrStore(scopeId+purpose, derived); loaded {
-		// This was created async by some other thread, so return the already-existing value
-		return origVal.(wrapping.Wrapper), nil
+	if err != nil {
+		return nil, fmt.Errorf("error creating derived wrapper: %w", err)
 	}
+
+	// Store the looked-up value into the scope cache.
+	k.scopePurposeCache.Store(scopeId+purpose, multiwrapper.NewMultiWrapper(derived))
 
 	return derived, nil
 }
 
 func (k *Kms) loadRoot(scopeId string) (*multiwrapper.MultiWrapper, error) {
-	val, ok := k.scopePurposeCache.Load(scopeId + "root")
-	if ok {
-		return val.(*multiwrapper.MultiWrapper), nil
-	}
 	// TODO: look up all root versions in DB and decrypt with appropriate external wrapper
+
+	return nil, nil
 }

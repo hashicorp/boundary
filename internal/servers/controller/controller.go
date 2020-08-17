@@ -62,7 +62,9 @@ func New(conf *Config) (*Controller, error) {
 	}
 
 	c.kms = kms.NewKms(kms.WithLogger(c.logger.Named("kms")))
-	if err := c.kms.AddExternalWrappers(scope.Global.String(), kms.WithRootWrapper(c.conf.RootKms)); err != nil {
+	if err := c.kms.AddExternalWrappers(scope.Global.String(),
+		kms.WithRootWrapper(c.conf.RootKms),
+		kms.WithWorkerAuthWrapper(c.conf.WorkerAuthKMS)); err != nil {
 		return nil, fmt.Errorf("error adding config root to kms: %w", err)
 	}
 
