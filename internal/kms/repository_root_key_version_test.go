@@ -9,6 +9,7 @@ import (
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/oplog"
+	wrapping "github.com/hashicorp/go-kms-wrapping"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/proto"
@@ -25,9 +26,10 @@ func TestRepository_CreateRootKeyVersion(t *testing.T) {
 	rk := TestRootKey(t, conn, org.PublicId)
 
 	type args struct {
-		rootKeyId string
-		key       []byte
-		opt       []Option
+		rootKeyId  string
+		key        []byte
+		keyWrapper wrapping.Wrapper
+		opt        []Option
 	}
 	tests := []struct {
 		name        string
@@ -38,33 +40,46 @@ func TestRepository_CreateRootKeyVersion(t *testing.T) {
 		{
 			name: "valid",
 			args: args{
-				key:       []byte("test key"),
-				rootKeyId: rk.PrivateId,
+				key:        []byte("test key"),
+				rootKeyId:  rk.PrivateId,
+				keyWrapper: wrapper,
 			},
 			wantErr: false,
 		},
 		{
 			name: "invalid-root-key",
 			args: args{
-				key:       []byte("test key"),
-				rootKeyId: "krk_thisIsNotValid",
+				key:        []byte("test key"),
+				rootKeyId:  "krk_thisIsNotValid",
+				keyWrapper: wrapper,
 			},
 			wantErr: true,
 		},
 		{
 			name: "empty-key",
 			args: args{
-				key:       nil,
-				rootKeyId: rk.PrivateId,
+				key:        nil,
+				rootKeyId:  rk.PrivateId,
+				keyWrapper: wrapper,
 			},
 			wantErr:     true,
 			wantIsError: db.ErrInvalidParameter,
+		},
+		{
+			name: "nil-wrapper",
+			args: args{
+				key:        []byte("test key"),
+				rootKeyId:  rk.PrivateId,
+				keyWrapper: nil,
+			},
+			wantErr:     true,
+			wantIsError: db.ErrNilParameter,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			k, err := repo.CreateRootKeyVersion(context.Background(), tt.args.rootKeyId, tt.args.key, tt.args.opt...)
+			k, err := repo.CreateRootKeyVersion(context.Background(), tt.args.keyWrapper, tt.args.rootKeyId, tt.args.key, tt.args.opt...)
 			if tt.wantErr {
 				assert.Error(err)
 				assert.Nil(k)
@@ -75,7 +90,7 @@ func TestRepository_CreateRootKeyVersion(t *testing.T) {
 			}
 			require.NoError(err)
 			assert.NotNil(k.CreateTime)
-			foundKey, err := repo.LookupRootKeyVersion(context.Background(), k.PrivateId)
+			foundKey, err := repo.LookupRootKeyVersion(context.Background(), tt.args.keyWrapper, k.PrivateId)
 			assert.NoError(err)
 			assert.True(proto.Equal(foundKey, k))
 
@@ -160,7 +175,7 @@ func TestRepository_DeleteRootKeyVersion(t *testing.T) {
 			}
 			require.NoError(err)
 			assert.Equal(tt.wantRowsDeleted, deletedRows)
-			foundKey, err := repo.LookupRootKeyVersion(context.Background(), tt.args.key.PrivateId)
+			foundKey, err := repo.LookupRootKeyVersion(context.Background(), wrapper, tt.args.key.PrivateId)
 			assert.Error(err)
 			assert.Nil(foundKey)
 			assert.True(errors.Is(err, db.ErrRecordNotFound))
@@ -183,6 +198,7 @@ func TestRepository_LatestRootKeyVersion(t *testing.T) {
 	tests := []struct {
 		name        string
 		createCnt   int
+		keyWrapper  wrapping.Wrapper
 		wantVersion uint32
 		wantErr     bool
 		wantIsError error
@@ -190,14 +206,24 @@ func TestRepository_LatestRootKeyVersion(t *testing.T) {
 		{
 			name:        "5",
 			createCnt:   5,
+			keyWrapper:  wrapper,
 			wantVersion: 5,
 			wantErr:     false,
 		},
 		{
 			name:        "0",
 			createCnt:   0,
+			keyWrapper:  wrapper,
 			wantErr:     true,
 			wantIsError: db.ErrRecordNotFound,
+		},
+		{
+			name:        "nil-wrapper",
+			createCnt:   5,
+			keyWrapper:  nil,
+			wantVersion: 5,
+			wantErr:     true,
+			wantIsError: db.ErrNilParameter,
 		},
 	}
 	for _, tt := range tests {
@@ -209,7 +235,7 @@ func TestRepository_LatestRootKeyVersion(t *testing.T) {
 				testKeys = append(testKeys, TestRootKeyVersion(t, conn, wrapper, rk.PrivateId, []byte("test key")))
 			}
 			assert.Equal(tt.createCnt, len(testKeys))
-			got, err := repo.LatestRootKeyVersion(context.Background(), rk.PrivateId)
+			got, err := repo.LatestRootKeyVersion(context.Background(), tt.keyWrapper, rk.PrivateId)
 			if tt.wantErr {
 				require.Error(err)
 				assert.Nil(got)
@@ -236,8 +262,9 @@ func TestRepository_ListRootKeyVersions(t *testing.T) {
 	rk := TestRootKey(t, conn, org.PublicId)
 
 	type args struct {
-		rootKeyId string
-		opt       []Option
+		rootKeyId  string
+		keyWrapper wrapping.Wrapper
+		opt        []Option
 	}
 	tests := []struct {
 		name      string
@@ -250,8 +277,9 @@ func TestRepository_ListRootKeyVersions(t *testing.T) {
 			name:      "no-limit",
 			createCnt: repo.defaultLimit + 1,
 			args: args{
-				rootKeyId: rk.PrivateId,
-				opt:       []Option{WithLimit(-1)},
+				rootKeyId:  rk.PrivateId,
+				keyWrapper: wrapper,
+				opt:        []Option{WithLimit(-1)},
 			},
 			wantCnt: repo.defaultLimit + 1,
 			wantErr: false,
@@ -260,7 +288,8 @@ func TestRepository_ListRootKeyVersions(t *testing.T) {
 			name:      "default-limit",
 			createCnt: repo.defaultLimit + 1,
 			args: args{
-				rootKeyId: rk.PrivateId,
+				keyWrapper: wrapper,
+				rootKeyId:  rk.PrivateId,
 			},
 			wantCnt: repo.defaultLimit,
 			wantErr: false,
@@ -269,8 +298,9 @@ func TestRepository_ListRootKeyVersions(t *testing.T) {
 			name:      "custom-limit",
 			createCnt: repo.defaultLimit + 1,
 			args: args{
-				rootKeyId: rk.PrivateId,
-				opt:       []Option{WithLimit(3)},
+				keyWrapper: wrapper,
+				rootKeyId:  rk.PrivateId,
+				opt:        []Option{WithLimit(3)},
 			},
 			wantCnt: 3,
 			wantErr: false,
@@ -279,10 +309,21 @@ func TestRepository_ListRootKeyVersions(t *testing.T) {
 			name:      "bad-org",
 			createCnt: 1,
 			args: args{
-				rootKeyId: "bad-id",
+				keyWrapper: wrapper,
+				rootKeyId:  "bad-id",
 			},
 			wantCnt: 0,
 			wantErr: false,
+		},
+		{
+			name:      "nil-wrapper",
+			createCnt: 1,
+			args: args{
+				keyWrapper: nil,
+				rootKeyId:  rk.PrivateId,
+			},
+			wantCnt: 0,
+			wantErr: true,
 		},
 	}
 	for _, tt := range tests {
@@ -294,7 +335,7 @@ func TestRepository_ListRootKeyVersions(t *testing.T) {
 				testRootKeyVersions = append(testRootKeyVersions, TestRootKeyVersion(t, conn, wrapper, rk.PrivateId, []byte("test key")))
 			}
 			assert.Equal(tt.createCnt, len(testRootKeyVersions))
-			got, err := repo.ListRootKeyVersions(context.Background(), tt.args.rootKeyId, tt.args.opt...)
+			got, err := repo.ListRootKeyVersions(context.Background(), tt.args.keyWrapper, tt.args.rootKeyId, tt.args.opt...)
 			if tt.wantErr {
 				require.Error(err)
 				return

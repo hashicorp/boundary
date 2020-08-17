@@ -9,6 +9,7 @@ import (
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/oplog"
+	wrapping "github.com/hashicorp/go-kms-wrapping"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/proto"
@@ -24,9 +25,10 @@ func TestRepository_CreateRootKey(t *testing.T) {
 	org, proj := iam.TestScopes(t, conn)
 
 	type args struct {
-		scopeId string
-		key     []byte
-		opt     []Option
+		scopeId    string
+		key        []byte
+		keyWrapper wrapping.Wrapper
+		opt        []Option
 	}
 	tests := []struct {
 		name        string
@@ -37,48 +39,63 @@ func TestRepository_CreateRootKey(t *testing.T) {
 		{
 			name: "valid-org",
 			args: args{
-				scopeId: org.PublicId,
-				key:     []byte("test key"),
+				scopeId:    org.PublicId,
+				key:        []byte("test key"),
+				keyWrapper: wrapper,
 			},
 			wantErr: false,
 		},
 		{
 			name: "valid-global",
 			args: args{
-				scopeId: "global",
-				key:     []byte("valid-global"),
+				scopeId:    "global",
+				key:        []byte("valid-global"),
+				keyWrapper: wrapper,
 			},
 			wantErr: false,
 		},
 		{
 			name: "invalid-proj",
 			args: args{
-				scopeId: proj.PublicId,
-				key:     []byte("invalid-proj"),
+				scopeId:    proj.PublicId,
+				key:        []byte("invalid-proj"),
+				keyWrapper: wrapper,
 			},
 			wantErr: true,
 		},
 		{
 			name: "invalid-scope",
 			args: args{
-				scopeId: "o_notAValidScopeId",
-				key:     []byte("invalid-scope"),
+				scopeId:    "o_notAValidScopeId",
+				key:        []byte("invalid-scope"),
+				keyWrapper: wrapper,
 			},
 			wantErr: true,
 		},
 		{
 			name: "empty-scope",
 			args: args{
-				key: []byte("empty-scope"),
+				key:        []byte("empty-scope"),
+				keyWrapper: wrapper,
 			},
 			wantErr:     true,
 			wantIsError: db.ErrInvalidParameter,
+		},
+		{
+			name: "nil-wrapper",
+			args: args{
+				scopeId:    org.PublicId,
+				key:        []byte("test key"),
+				keyWrapper: nil,
+			},
+			wantErr:     true,
+			wantIsError: db.ErrNilParameter,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			rk, kv, err := repo.CreateRootKey(context.Background(), tt.args.scopeId, tt.args.key, tt.args.opt...)
+			rk, kv, err := repo.CreateRootKey(context.Background(), tt.args.keyWrapper, tt.args.scopeId, tt.args.key, tt.args.opt...)
 			if tt.wantErr {
 				assert.Error(err)
 				assert.Nil(rk)
@@ -89,7 +106,7 @@ func TestRepository_CreateRootKey(t *testing.T) {
 			}
 			require.NoError(err)
 			assert.NotNil(rk.CreateTime)
-			foundKey, err := repo.LookupRootKey(context.Background(), rk.PrivateId)
+			foundKey, err := repo.LookupRootKey(context.Background(), tt.args.keyWrapper, rk.PrivateId)
 			assert.NoError(err)
 			assert.True(proto.Equal(foundKey, rk))
 
@@ -97,7 +114,7 @@ func TestRepository_CreateRootKey(t *testing.T) {
 			assert.NoError(err)
 
 			assert.NotNil(kv.CreateTime)
-			foundKeyVersion, err := repo.LookupRootKeyVersion(context.Background(), kv.PrivateId)
+			foundKeyVersion, err := repo.LookupRootKeyVersion(context.Background(), tt.args.keyWrapper, kv.PrivateId)
 			assert.NoError(err)
 			assert.True(proto.Equal(foundKeyVersion, kv))
 
@@ -181,7 +198,7 @@ func TestRepository_DeleteRootKey(t *testing.T) {
 			}
 			require.NoError(err)
 			assert.Equal(tt.wantRowsDeleted, deletedRows)
-			foundKey, err := repo.LookupRootKey(context.Background(), tt.args.key.PrivateId)
+			foundKey, err := repo.LookupRootKey(context.Background(), wrapper, tt.args.key.PrivateId)
 			assert.Error(err)
 			assert.Nil(foundKey)
 			assert.True(errors.Is(err, db.ErrRecordNotFound))
