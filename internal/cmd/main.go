@@ -34,7 +34,7 @@ func setupEnv(args []string) (retArgs []string, format string, outputCurlString 
 			break
 		}
 
-		if len(args) == 1 && (arg == "-v" || arg == "-version" || arg == "--version") {
+		if len(args) == 1 && arg == "-version" {
 			args = []string{"version"}
 			break
 		}
@@ -45,14 +45,11 @@ func setupEnv(args []string) (retArgs []string, format string, outputCurlString 
 		}
 
 		// Parse a given flag here, which overrides the env var
-		if strings.HasPrefix(arg, "--format=") {
-			format = strings.TrimPrefix(arg, "--format=")
-		}
 		if strings.HasPrefix(arg, "-format=") {
 			format = strings.TrimPrefix(arg, "-format=")
 		}
-		// For backwards compat, it could be specified without an equal sign
-		if arg == "-format" || arg == "--format" {
+		// Handle the case where it is specified without an equal sign
+		if arg == "-format" {
 			nextArgFormat = true
 		}
 	}
