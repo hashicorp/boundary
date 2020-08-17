@@ -50,6 +50,7 @@ func request_RoleService_GetRole_0(ctx context.Context, marshaler runtime.Marsha
 	}
 
 	protoReq.Id, err = runtime.String(val)
+
 	if err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "id", err)
 	}
@@ -83,6 +84,7 @@ func local_request_RoleService_GetRole_0(ctx context.Context, marshaler runtime.
 	}
 
 	protoReq.Id, err = runtime.String(val)
+
 	if err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "id", err)
 	}
@@ -205,6 +207,7 @@ func request_RoleService_UpdateRole_0(ctx context.Context, marshaler runtime.Mar
 	}
 
 	protoReq.Id, err = runtime.String(val)
+
 	if err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "id", err)
 	}
@@ -253,6 +256,7 @@ func local_request_RoleService_UpdateRole_0(ctx context.Context, marshaler runti
 	}
 
 	protoReq.Id, err = runtime.String(val)
+
 	if err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "id", err)
 	}
@@ -286,6 +290,7 @@ func request_RoleService_DeleteRole_0(ctx context.Context, marshaler runtime.Mar
 	}
 
 	protoReq.Id, err = runtime.String(val)
+
 	if err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "id", err)
 	}
@@ -312,6 +317,7 @@ func local_request_RoleService_DeleteRole_0(ctx context.Context, marshaler runti
 	}
 
 	protoReq.Id, err = runtime.String(val)
+
 	if err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "id", err)
 	}
@@ -350,6 +356,7 @@ func request_RoleService_AddRolePrincipals_0(ctx context.Context, marshaler runt
 	}
 
 	protoReq.RoleId, err = runtime.String(val)
+
 	if err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "role_id", err)
 	}
@@ -391,6 +398,7 @@ func local_request_RoleService_AddRolePrincipals_0(ctx context.Context, marshale
 	}
 
 	protoReq.RoleId, err = runtime.String(val)
+
 	if err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "role_id", err)
 	}
@@ -436,6 +444,7 @@ func request_RoleService_SetRolePrincipals_0(ctx context.Context, marshaler runt
 	}
 
 	protoReq.RoleId, err = runtime.String(val)
+
 	if err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "role_id", err)
 	}
@@ -477,6 +486,7 @@ func local_request_RoleService_SetRolePrincipals_0(ctx context.Context, marshale
 	}
 
 	protoReq.RoleId, err = runtime.String(val)
+
 	if err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "role_id", err)
 	}
@@ -522,6 +532,7 @@ func request_RoleService_RemoveRolePrincipals_0(ctx context.Context, marshaler r
 	}
 
 	protoReq.RoleId, err = runtime.String(val)
+
 	if err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "role_id", err)
 	}
@@ -563,6 +574,7 @@ func local_request_RoleService_RemoveRolePrincipals_0(ctx context.Context, marsh
 	}
 
 	protoReq.RoleId, err = runtime.String(val)
+
 	if err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "role_id", err)
 	}
@@ -608,6 +620,7 @@ func request_RoleService_AddRoleGrants_0(ctx context.Context, marshaler runtime.
 	}
 
 	protoReq.RoleId, err = runtime.String(val)
+
 	if err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "role_id", err)
 	}
@@ -649,6 +662,7 @@ func local_request_RoleService_AddRoleGrants_0(ctx context.Context, marshaler ru
 	}
 
 	protoReq.RoleId, err = runtime.String(val)
+
 	if err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "role_id", err)
 	}
@@ -694,6 +708,7 @@ func request_RoleService_SetRoleGrants_0(ctx context.Context, marshaler runtime.
 	}
 
 	protoReq.RoleId, err = runtime.String(val)
+
 	if err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "role_id", err)
 	}
@@ -735,6 +750,7 @@ func local_request_RoleService_SetRoleGrants_0(ctx context.Context, marshaler ru
 	}
 
 	protoReq.RoleId, err = runtime.String(val)
+
 	if err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "role_id", err)
 	}
@@ -780,6 +796,7 @@ func request_RoleService_RemoveRoleGrants_0(ctx context.Context, marshaler runti
 	}
 
 	protoReq.RoleId, err = runtime.String(val)
+
 	if err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "role_id", err)
 	}
@@ -821,6 +838,7 @@ func local_request_RoleService_RemoveRoleGrants_0(ctx context.Context, marshaler
 	}
 
 	protoReq.RoleId, err = runtime.String(val)
+
 	if err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "role_id", err)
 	}
@@ -840,7 +858,6 @@ func local_request_RoleService_RemoveRoleGrants_0(ctx context.Context, marshaler
 // RegisterRoleServiceHandlerServer registers the http handlers for service RoleService to "mux".
 // UnaryRPC     :call RoleServiceServer directly.
 // StreamingRPC :currently unsupported pending https://github.com/grpc/grpc-go/issues/906.
-// Note that using this registration option will cause many gRPC library features (such as grpc.SendHeader, etc) to stop working. Consider using RegisterRoleServiceHandlerFromEndpoint instead.
 func RegisterRoleServiceHandlerServer(ctx context.Context, mux *runtime.ServeMux, server RoleServiceServer) error {
 
 	mux.Handle("GET", pattern_RoleService_GetRole_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {

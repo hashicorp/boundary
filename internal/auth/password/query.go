@@ -10,6 +10,7 @@ select acct.name,                        -- Account.Name
        acct.scope_id,                    -- Account.ScopeId
        acct.create_time,                 -- Account.CreateTime
        acct.update_time,                 -- Account.UpdateTime
+       acct.version,                     -- Account.Version
        cred.private_id as credential_id, -- Account.CredentialId
        cred.private_id,                  -- Argon2Credential.PrivateId
        cred.password_conf_id,            -- Argon2Credential.PasswordConfId

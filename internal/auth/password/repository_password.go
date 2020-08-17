@@ -83,18 +83,15 @@ func (r *Repository) Authenticate(ctx context.Context, authMethodId string, logi
 	return acct.Account, nil
 }
 
-// ChangePassword updates the password for loginName in authMethodId to new
-// if old equals the stored password. The account for the loginName is
-// returned with a new CredentialId if password is successfully changed.
+// ChangePassword updates the password for accountId to new if old equals
+// the stored password. The account for the loginName is returned with a
+// new CredentialId if password is successfully changed.
 //
-// Returns nil if old does not match the stored password for loginName.
+// Returns nil if old does not match the stored password for accountId.
 // Returns ErrPasswordsEqual if old and new are equal.
-func (r *Repository) ChangePassword(ctx context.Context, authMethodId string, loginName string, old, new string) (*Account, error) {
-	if authMethodId == "" {
-		return nil, fmt.Errorf("change password: no authMethodId: %w", db.ErrInvalidParameter)
-	}
-	if loginName == "" {
-		return nil, fmt.Errorf("change password: no loginName: %w", db.ErrInvalidParameter)
+func (r *Repository) ChangePassword(ctx context.Context, accountId string, old, new string, version uint32) (*Account, error) {
+	if accountId == "" {
+		return nil, fmt.Errorf("change password: no account id: %w", db.ErrInvalidParameter)
 	}
 	if old == "" {
 		return nil, fmt.Errorf("change password: no old password: %w", db.ErrInvalidParameter)
@@ -105,8 +102,19 @@ func (r *Repository) ChangePassword(ctx context.Context, authMethodId string, lo
 	if old == new {
 		return nil, fmt.Errorf("change password: %w", ErrPasswordsEqual)
 	}
+	if version == 0 {
+		return nil, fmt.Errorf("change password: no version supplied: %w", db.ErrInvalidParameter)
+	}
 
-	acct, err := r.authenticate(ctx, authMethodId, loginName, old)
+	authAccount, err := r.LookupAccount(ctx, accountId)
+	if err != nil {
+		return nil, fmt.Errorf("change password: lookup account: %w", err)
+	}
+	if authAccount == nil {
+		return nil, fmt.Errorf("change password: lookup account: account not found: %w", db.ErrRecordNotFound)
+	}
+
+	acct, err := r.authenticate(ctx, authAccount.GetAuthMethodId(), authAccount.GetLoginName(), old)
 	if err != nil {
 		return nil, fmt.Errorf("change password: %w", err)
 	}
@@ -114,14 +122,14 @@ func (r *Repository) ChangePassword(ctx context.Context, authMethodId string, lo
 		return nil, nil
 	}
 
-	cc, err := r.currentConfig(ctx, authMethodId)
+	cc, err := r.currentConfig(ctx, authAccount.GetAuthMethodId())
 	if err != nil {
 		return nil, fmt.Errorf("change password: retrieve current password configuration: %w", err)
 	}
 	if cc.MinPasswordLength > len(new) {
 		return nil, fmt.Errorf("change password: %w", ErrTooShort)
 	}
-	newCred, err := newArgon2Credential(acct.PublicId, new, cc.argon2())
+	newCred, err := newArgon2Credential(accountId, new, cc.argon2())
 	if err != nil {
 		return nil, fmt.Errorf("change password: %w", err)
 	}
@@ -132,8 +140,20 @@ func (r *Repository) ChangePassword(ctx context.Context, authMethodId string, lo
 
 	oldCred := acct.Argon2Credential
 
+	var updatedAccount *Account
 	_, err = r.writer.DoTx(ctx, db.StdRetryCnt, db.ExpBackoff{},
 		func(_ db.Reader, w db.Writer) error {
+			updatedAccount = allocAccount()
+			updatedAccount.PublicId = accountId
+			updatedAccount.Version = version + 1
+			rowsUpdated, err := w.Update(ctx, updatedAccount, []string{"Version"}, nil, db.WithOplog(r.wrapper, acct.Account.oplog(oplog.OpType_OP_TYPE_UPDATE)), db.WithVersion(&version))
+			if err != nil {
+				return fmt.Errorf("change password: unable to update account version: %w", err)
+			}
+			if rowsUpdated != 1 {
+				return fmt.Errorf("change password: updated account and %d rows updated", rowsUpdated)
+			}
+
 			rowsDeleted, err := w.Delete(ctx, oldCred, db.WithOplog(r.wrapper, oldCred.oplog(oplog.OpType_OP_TYPE_DELETE)))
 			if err == nil && rowsDeleted > 1 {
 				return db.ErrMultipleRecords
@@ -149,8 +169,8 @@ func (r *Repository) ChangePassword(ctx context.Context, authMethodId string, lo
 	}
 
 	// change the Credential Id
-	acct.Account.CredentialId = newCred.PrivateId
-	return acct.Account, nil
+	updatedAccount.CredentialId = newCred.PrivateId
+	return updatedAccount, nil
 }
 
 func (r *Repository) authenticate(ctx context.Context, authMethodId string, loginName string, password string) (*authAccount, error) {
@@ -198,31 +218,50 @@ func (r *Repository) authenticate(ctx context.Context, authMethodId string, logi
 
 // SetPassword sets the password for accountId to password. If password
 // contains an empty string, the password for accountId will be deleted.
-func (r *Repository) SetPassword(ctx context.Context, accountId string, password string) error {
+func (r *Repository) SetPassword(ctx context.Context, accountId string, password string, version uint32) (*Account, error) {
 	if accountId == "" {
-		return fmt.Errorf("set password: no accountId: %w", db.ErrInvalidParameter)
+		return nil, fmt.Errorf("set password: no accountId: %w", db.ErrInvalidParameter)
+	}
+	if version == 0 {
+		return nil, fmt.Errorf("set password: no version supplied: %w", db.ErrInvalidParameter)
 	}
 
 	var newCred *Argon2Credential
 	if password != "" {
 		cc, err := r.currentConfigForAccount(ctx, accountId)
 		if err != nil {
-			return fmt.Errorf("set password: retrieve current configuration: %w", err)
+			return nil, fmt.Errorf("set password: retrieve current configuration: %w", err)
+		}
+		if cc == nil {
+			return nil, fmt.Errorf("set password: retrieve current configuration: %w", db.ErrRecordNotFound)
 		}
 		if cc.MinPasswordLength > len(password) {
-			return fmt.Errorf("set password: new password: %w", ErrTooShort)
+			return nil, fmt.Errorf("set password: new password: %w", ErrTooShort)
 		}
 		newCred, err = newArgon2Credential(accountId, password, cc.argon2())
 		if err != nil {
-			return fmt.Errorf("set password: %w", err)
+			return nil, fmt.Errorf("set password: %w", err)
 		}
 		if err := newCred.encrypt(ctx, r.wrapper); err != nil {
-			return fmt.Errorf("set password: encrypt: %w", err)
+			return nil, fmt.Errorf("set password: encrypt: %w", err)
 		}
 	}
 
+	var acct *Account
 	_, err := r.writer.DoTx(ctx, db.StdRetryCnt, db.ExpBackoff{},
 		func(rr db.Reader, w db.Writer) error {
+			updatedAccount := allocAccount()
+			updatedAccount.PublicId = accountId
+			updatedAccount.Version = version + 1
+			rowsUpdated, err := w.Update(ctx, updatedAccount, []string{"Version"}, nil, db.WithOplog(r.wrapper, updatedAccount.oplog(oplog.OpType_OP_TYPE_UPDATE)), db.WithVersion(&version))
+			if err != nil {
+				return fmt.Errorf("set password: unable to update account version: %w", err)
+			}
+			if rowsUpdated != 1 {
+				return fmt.Errorf("set password: updated account and %d rows updated", rowsUpdated)
+			}
+			acct = updatedAccount
+
 			oldCred := allocCredential()
 			if err := rr.LookupWhere(ctx, &oldCred, "password_account_id = ?", accountId); err != nil {
 				if !errors.Is(err, db.ErrRecordNotFound) {
@@ -246,7 +285,7 @@ func (r *Repository) SetPassword(ctx context.Context, accountId string, password
 		},
 	)
 	if err != nil {
-		return fmt.Errorf("set password: %w", err)
+		return nil, fmt.Errorf("set password: %w", err)
 	}
-	return nil
+	return acct, nil
 }
