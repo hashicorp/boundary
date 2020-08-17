@@ -18,7 +18,7 @@ require (
 	github.com/golang-sql/civil v0.0.0-20190719163853-cb61b32ac6fe
 	github.com/golang/protobuf v1.4.2
 	github.com/google/go-cmp v0.5.1
-	github.com/grpc-ecosystem/grpc-gateway/v2 v2.0.0-beta.3
+	github.com/grpc-ecosystem/grpc-gateway/v2 v2.0.0-beta.4.0.20200813083929-9bdca3d79b97
 	github.com/hashicorp/dbassert v0.0.0-20200602142727-a6709b436ad6
 	github.com/hashicorp/errwrap v1.0.0
 	github.com/hashicorp/go-alpnmux v0.0.0-20200513011953-0293f5d23c31
@@ -60,7 +60,7 @@ require (
 	golang.org/x/crypto v0.0.0-20200728195943-123391ffb6de
 	golang.org/x/time v0.0.0-20200630173020-3af7569d3a1e
 	golang.org/x/tools v0.0.0-20200807210451-92211316783d
-	google.golang.org/genproto v0.0.0-20200806141610-86f49bd18e98
+	google.golang.org/genproto v0.0.0-20200813001606-1ccf2a5ae4fd
 	google.golang.org/grpc v1.31.0
 	google.golang.org/protobuf v1.25.0
 )

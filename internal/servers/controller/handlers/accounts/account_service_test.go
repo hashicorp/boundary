@@ -487,6 +487,9 @@ func TestUpdate(t *testing.T) {
 	defaultAttributes := &structpb.Struct{Fields: map[string]*structpb.Value{
 		"login_name": structpb.NewStringValue("default"),
 	}}
+	modifiedAttributes := &structpb.Struct{Fields: map[string]*structpb.Value{
+		"login_name": structpb.NewStringValue("modified"),
+	}}
 
 	freshAccount := func(t *testing.T) (*pb.Account, func()) {
 		t.Helper()
@@ -572,6 +575,7 @@ func TestUpdate(t *testing.T) {
 				Item: &pb.Account{
 					Name:        &wrapperspb.StringValue{Value: "updated name"},
 					Description: &wrapperspb.StringValue{Value: "updated desc"},
+					Attributes:  modifiedAttributes,
 				},
 			},
 			errCode: codes.InvalidArgument,
@@ -584,6 +588,7 @@ func TestUpdate(t *testing.T) {
 				Item: &pb.Account{
 					Name:        &wrapperspb.StringValue{Value: "updated name"},
 					Description: &wrapperspb.StringValue{Value: "updated desc"},
+					Attributes:  modifiedAttributes,
 				},
 			},
 			errCode: codes.InvalidArgument,
@@ -596,6 +601,7 @@ func TestUpdate(t *testing.T) {
 				Item: &pb.Account{
 					Name:        &wrapperspb.StringValue{Value: "updated name"},
 					Description: &wrapperspb.StringValue{Value: "updated desc"},
+					Attributes:  modifiedAttributes,
 				},
 			},
 			errCode: codes.InvalidArgument,
@@ -609,6 +615,7 @@ func TestUpdate(t *testing.T) {
 				},
 				Item: &pb.Account{
 					Description: &wrapperspb.StringValue{Value: "ignored"},
+					Attributes:  modifiedAttributes,
 				},
 			},
 			res: &pbs.UpdateAccountResponse{
@@ -632,6 +639,7 @@ func TestUpdate(t *testing.T) {
 				Item: &pb.Account{
 					Name:        &wrapperspb.StringValue{Value: "updated"},
 					Description: &wrapperspb.StringValue{Value: "ignored"},
+					Attributes:  modifiedAttributes,
 				},
 			},
 			res: &pbs.UpdateAccountResponse{
@@ -656,6 +664,7 @@ func TestUpdate(t *testing.T) {
 				Item: &pb.Account{
 					Name:        &wrapperspb.StringValue{Value: "ignored"},
 					Description: &wrapperspb.StringValue{Value: "notignored"},
+					Attributes:  modifiedAttributes,
 				},
 			},
 			res: &pbs.UpdateAccountResponse{
@@ -665,6 +674,31 @@ func TestUpdate(t *testing.T) {
 					Description:  &wrapperspb.StringValue{Value: "notignored"},
 					Type:         "password",
 					Attributes:   defaultAttributes,
+					Scope:        defaultScopeInfo,
+				},
+			},
+			errCode: codes.OK,
+		},
+		{
+			name: "Update Only LoginName",
+			req: &pbs.UpdateAccountRequest{
+				AuthMethodId: am.GetPublicId(),
+				UpdateMask: &field_mask.FieldMask{
+					Paths: []string{"attributes.login_name"},
+				},
+				Item: &pb.Account{
+					Name:        &wrapperspb.StringValue{Value: "ignored"},
+					Description: &wrapperspb.StringValue{Value: "ignored"},
+					Attributes:  modifiedAttributes,
+				},
+			},
+			res: &pbs.UpdateAccountResponse{
+				Item: &pb.Account{
+					AuthMethodId: am.GetPublicId(),
+					Name:         &wrapperspb.StringValue{Value: "default"},
+					Description:  &wrapperspb.StringValue{Value: "default"},
+					Type:         "password",
+					Attributes:   modifiedAttributes,
 					Scope:        defaultScopeInfo,
 				},
 			},

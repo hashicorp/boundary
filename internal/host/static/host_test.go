@@ -55,8 +55,8 @@ func TestHost_New(t *testing.T) {
 			},
 			want: &Host{
 				Host: &store.Host{
-					StaticHostCatalogId: cat.GetPublicId(),
-					Address:             "1234567",
+					CatalogId: cat.GetPublicId(),
+					Address:   "1234567",
 				},
 			},
 			wantWriteErr: true,
@@ -69,8 +69,8 @@ func TestHost_New(t *testing.T) {
 			},
 			want: &Host{
 				Host: &store.Host{
-					StaticHostCatalogId: cat.GetPublicId(),
-					Address:             "12345678",
+					CatalogId: cat.GetPublicId(),
+					Address:   "12345678",
 				},
 			},
 		},
@@ -82,8 +82,8 @@ func TestHost_New(t *testing.T) {
 			},
 			want: &Host{
 				Host: &store.Host{
-					StaticHostCatalogId: cat.GetPublicId(),
-					Address:             "127.0.0.1",
+					CatalogId: cat.GetPublicId(),
+					Address:   "127.0.0.1",
 				},
 			},
 		},
@@ -98,9 +98,9 @@ func TestHost_New(t *testing.T) {
 			},
 			want: &Host{
 				Host: &store.Host{
-					StaticHostCatalogId: cat.GetPublicId(),
-					Address:             "127.0.0.1",
-					Name:                "test-name",
+					CatalogId: cat.GetPublicId(),
+					Address:   "127.0.0.1",
+					Name:      "test-name",
 				},
 			},
 		},
@@ -115,9 +115,9 @@ func TestHost_New(t *testing.T) {
 			},
 			want: &Host{
 				Host: &store.Host{
-					StaticHostCatalogId: cat.GetPublicId(),
-					Address:             "127.0.0.1",
-					Description:         "test-description",
+					CatalogId:   cat.GetPublicId(),
+					Address:     "127.0.0.1",
+					Description: "test-description",
 				},
 			},
 		},
