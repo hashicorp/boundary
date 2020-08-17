@@ -11,6 +11,30 @@ import (
 // CreateRootKey inserts into the repository and returns the new root key and
 // root key version. There are no valid options at this time.
 func (r *Repository) CreateRootKey(ctx context.Context, keyWrapper wrapping.Wrapper, scopeId string, key []byte, opt ...Option) (*RootKey, *RootKeyVersion, error) {
+	var returnedRk, returnedKv interface{}
+	_, err := r.writer.DoTx(
+		ctx,
+		db.StdRetryCnt,
+		db.ExpBackoff{},
+		func(_ db.Reader, w db.Writer) error {
+			var err error
+			if returnedRk, returnedKv, err = CreateRootKeyTx(ctx, w, keyWrapper, scopeId, key); err != nil {
+				return err
+			}
+			return nil
+		},
+	)
+	if err != nil {
+		return nil, nil, fmt.Errorf("create root key: %w in %s", err, scopeId)
+	}
+	return returnedRk.(*RootKey), returnedKv.(*RootKeyVersion), err
+}
+
+// CreateRootKeyTx inserts into the db (via db.Writer) and returns the new root key
+// and root key version. This function encapsulates all the work required within
+// a db.TxHandler and allows this capability to be shared with the iam repo via
+// a common pkg without circular dependencies: kms/common.CreateRootKeyTx
+func CreateRootKeyTx(ctx context.Context, w db.Writer, keyWrapper wrapping.Wrapper, scopeId string, key []byte) (*RootKey, *RootKeyVersion, error) {
 	if scopeId == "" {
 		return nil, nil, fmt.Errorf("create root key: missing scope id: %w", db.ErrInvalidParameter)
 	}
@@ -40,29 +64,16 @@ func (r *Repository) CreateRootKey(ctx context.Context, keyWrapper wrapping.Wrap
 		return nil, nil, fmt.Errorf("create root key: %w", err)
 	}
 
-	var returnedRk, returnedKv interface{}
-	_, err = r.writer.DoTx(
-		ctx,
-		db.StdRetryCnt,
-		db.ExpBackoff{},
-		func(_ db.Reader, w db.Writer) error {
-			returnedRk = rk.Clone()
-			// no oplog entries for root keys
-			if err := w.Create(ctx, returnedRk); err != nil {
-				return err
-			}
-			returnedKv = kv.Clone()
-			// no oplog entries for root key versions
-			if err := w.Create(ctx, returnedKv); err != nil {
-				return err
-			}
-			return nil
-		},
-	)
-	if err != nil {
-		return nil, nil, fmt.Errorf("create root key: %w for %s in %s", err, rk.PrivateId, scopeId)
+	// no oplog entries for root keys
+	if err := w.Create(ctx, &rk); err != nil {
+		return nil, nil, fmt.Errorf("create root key:  root create: %w", err)
 	}
-	return returnedRk.(*RootKey), returnedKv.(*RootKeyVersion), err
+	// no oplog entries for root key versions
+	if err := w.Create(ctx, &kv); err != nil {
+		return nil, nil, fmt.Errorf("create root key:  version create: %w", err)
+	}
+
+	return &rk, &kv, err
 }
 
 // LookupRootKey will look up a root key in the repository.  If the key is not
