@@ -84,7 +84,7 @@ func (r *Repository) Authenticate(ctx context.Context, authMethodId string, logi
 }
 
 // ChangePassword updates the password for accountId to new if old equals
-// the stored password. The account for the loginName is returned with a
+// the stored password. The account for the accountId is returned with a
 // new CredentialId if password is successfully changed.
 //
 // Returns nil if old does not match the stored password for accountId.
