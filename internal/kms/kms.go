@@ -1,10 +1,12 @@
 package kms
 
 import (
+	"errors"
 	"fmt"
 	"hash"
 	"sync"
 
+	"github.com/hashicorp/boundary/internal/types/scope"
 	"github.com/hashicorp/go-hclog"
 	wrapping "github.com/hashicorp/go-kms-wrapping"
 	"github.com/hashicorp/go-kms-wrapping/wrappers/aead"
@@ -112,7 +114,23 @@ func (k *Kms) GetWrapper(scopeId, purpose, keyId string) (wrapping.Wrapper, erro
 }
 
 func (k *Kms) loadRoot(scopeId string) (*multiwrapper.MultiWrapper, error) {
-	// TODO: look up all root versions in DB and decrypt with appropriate external wrapper
+	// TODO: look up all root versions in DB.
 
-	return nil, nil
+	// Now: find the external KMS that can be used to decrypt the root values
+	// from the DB.
+	val, ok := k.externalScopeCache.Load(scopeId)
+	if !ok {
+		// Note that if we ever allow per-project-scope external wrappers this will
+		// become quite a bit more complicated to go up the chain of external KMSes, but
+		// that's not in the plans currently so for now ignore that possibility.
+		val, ok = k.externalScopeCache.Load(scope.Global.String())
+		if !ok {
+			return nil, errors.New("could not find kms information at either the needed scope or global fallback")
+		}
+	}
+
+	extWrappers := val.(*externalWrappers)
+	for _, key := range rootKeys {
+
+	}
 }
