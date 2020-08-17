@@ -112,14 +112,11 @@ func (c *PasswordCommand) Run(args []string) int {
 		c.flagPassword = strings.TrimSpace(value)
 	}
 
-	client, err := c.Client()
+	client, err := c.Client(base.WithNoTokenScope())
 	if err != nil {
 		c.UI.Error(fmt.Sprintf("Error creating API client: %s", err.Error()))
 		return 2
 	}
-
-	// Don't pass along a saved token as it might have an invalid scope
-	client.SetToken("")
 
 	// note: Authenticate() calls SetToken() under the hood to set the
 	// auth bearer on the client so we do not need to do anything with the
