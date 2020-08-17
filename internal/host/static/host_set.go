@@ -24,9 +24,9 @@ func NewHostSet(catalogId string, opt ...Option) (*HostSet, error) {
 	opts := getOpts(opt...)
 	set := &HostSet{
 		HostSet: &store.HostSet{
-			StaticHostCatalogId: catalogId,
-			Name:                opts.withName,
-			Description:         opts.withDescription,
+			CatalogId:   catalogId,
+			Name:        opts.withName,
+			Description: opts.withDescription,
 		},
 	}
 	return set, nil

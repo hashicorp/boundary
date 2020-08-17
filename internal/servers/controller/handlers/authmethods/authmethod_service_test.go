@@ -677,6 +677,64 @@ func TestUpdate(t *testing.T) {
 			res:     nil,
 			errCode: codes.InvalidArgument,
 		},
+		{
+			name: "Update login name length",
+			req: &pbs.UpdateAuthMethodRequest{
+				UpdateMask: &field_mask.FieldMask{
+					Paths: []string{"attributes.min_login_name_length"},
+				},
+				Item: &pb.AuthMethod{
+					Name:        &wrapperspb.StringValue{Value: "ignored"},
+					Description: &wrapperspb.StringValue{Value: "ignored"},
+					Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
+						"min_login_name_length": structpb.NewNumberValue(42),
+						"min_password_length":   structpb.NewNumberValue(55555),
+					}},
+				},
+			},
+			res: &pbs.UpdateAuthMethodResponse{
+				Item: &pb.AuthMethod{
+					Name:        &wrapperspb.StringValue{Value: "default"},
+					Description: &wrapperspb.StringValue{Value: "default"},
+					Type:        "password",
+					Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
+						"min_password_length":   structpb.NewNumberValue(8),
+						"min_login_name_length": structpb.NewNumberValue(42),
+					}},
+					Scope: defaultScopeInfo,
+				},
+			},
+			errCode: codes.OK,
+		},
+		{
+			name: "Update password length",
+			req: &pbs.UpdateAuthMethodRequest{
+				UpdateMask: &field_mask.FieldMask{
+					Paths: []string{"attributes.min_password_length"},
+				},
+				Item: &pb.AuthMethod{
+					Name:        &wrapperspb.StringValue{Value: "ignored"},
+					Description: &wrapperspb.StringValue{Value: "ignored"},
+					Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
+						"min_login_name_length": structpb.NewNumberValue(5555),
+						"min_password_length":   structpb.NewNumberValue(42),
+					}},
+				},
+			},
+			res: &pbs.UpdateAuthMethodResponse{
+				Item: &pb.AuthMethod{
+					Name:        &wrapperspb.StringValue{Value: "default"},
+					Description: &wrapperspb.StringValue{Value: "default"},
+					Type:        "password",
+					Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
+						"min_password_length":   structpb.NewNumberValue(42),
+						"min_login_name_length": structpb.NewNumberValue(3),
+					}},
+					Scope: defaultScopeInfo,
+				},
+			},
+			errCode: codes.OK,
+		},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {

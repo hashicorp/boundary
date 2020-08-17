@@ -18,6 +18,7 @@ import (
 	"github.com/hashicorp/boundary/internal/auth/password"
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/iam"
+	"github.com/hashicorp/boundary/internal/types/scope"
 	"github.com/hashicorp/boundary/version"
 	"github.com/hashicorp/errwrap"
 	"github.com/hashicorp/go-hclog"
@@ -62,7 +63,6 @@ type Server struct {
 
 	Listeners []*ServerListener
 
-	DefaultOrgId    string
 	DevAuthMethodId string
 	DevLoginName    string
 	DevPassword     string
@@ -327,7 +327,7 @@ func (b *Server) SetupKMSes(ui cli.Ui, config *configutil.SharedConfig, purposes
 			switch purpose {
 			case "":
 				return errors.New("KMS block missing 'purpose'")
-			case "controller", "worker-auth", "config":
+			case "root", "worker-auth", "config":
 			default:
 				return fmt.Errorf("Unknown KMS purpose %q", kms.Purpose)
 			}
@@ -346,7 +346,7 @@ func (b *Server) SetupKMSes(ui cli.Ui, config *configutil.SharedConfig, purposes
 					"After configuration nil KMS returned, KMS type was %s", kms.Type)
 			}
 
-			if purpose == "controller" {
+			if purpose == "root" {
 				b.ControllerKMS = wrapper
 			} else {
 				b.WorkerAuthKMS = wrapper
@@ -444,52 +444,57 @@ func (b *Server) CreateDevDatabase(dialect string) error {
 		cancel()
 	}()
 
-	var orgScope *iam.Scope
-	if b.DefaultOrgId != "" {
-		orgScope, err = repo.LookupScope(ctx, b.DefaultOrgId)
-		if err != nil {
-			return fmt.Errorf("error looking up existing scope with org ID %q: %w", b.DefaultOrgId, err)
-		}
-	}
-
-	if orgScope == nil {
-		orgScope, err = iam.NewOrg()
-		if err != nil {
-			return fmt.Errorf("error creating new org scope: %w", err)
-		}
-		orgScope, err = repo.CreateScope(ctx, orgScope, "", iam.WithPublicId(b.DefaultOrgId))
-		if err != nil {
-			return fmt.Errorf("error persisting new org scope: %w", err)
-		}
-		if b.DefaultOrgId != "" {
-			if orgScope.GetPublicId() != b.DefaultOrgId {
-				return fmt.Errorf("expected org ID %q, got %q after persisting", b.DefaultOrgId, orgScope.GetPublicId())
-			}
-		} else {
-			b.DefaultOrgId = orgScope.GetPublicId()
-		}
-	}
-
-	ar, err := iam.NewRole(orgScope.PublicId)
+	// Create the dev auth method
+	pwRepo, err := password.NewRepository(rw, rw, b.ControllerKMS)
 	if err != nil {
-		return fmt.Errorf("error creating in memory role for anon authen: %w", err)
+		return fmt.Errorf("error creating password repo: %w", err)
 	}
-	authenRole, err := repo.CreateRole(ctx, ar, iam.WithDescription("role for authentication by the anonymous user"))
+	authMethod, err := password.NewAuthMethod(scope.Global.String())
 	if err != nil {
-		return fmt.Errorf("error creating role for anon authen: %w", err)
+		return fmt.Errorf("error creating new in memory auth method: %w", err)
 	}
-	if _, err := repo.AddRoleGrants(ctx, authenRole.PublicId, authenRole.Version, []string{"type=auth-method;actions=list,authenticate"}); err != nil {
-		return fmt.Errorf("error creating grant for anon authen: %w", err)
+	amId := b.DevAuthMethodId
+	if amId == "" {
+		amId = "paum_1234567890"
 	}
-	if _, err := repo.AddPrincipalRoles(ctx, authenRole.PublicId, authenRole.Version+1, []string{"u_anon"}, nil); err != nil {
-		return fmt.Errorf("error adding principal to role for anon authen: %w", err)
+	_, err = pwRepo.CreateAuthMethod(ctx, authMethod, password.WithPublicId(amId))
+	if err != nil {
+		return fmt.Errorf("error saving auth method to the db: %w", err)
 	}
 
-	pr, err := iam.NewRole(orgScope.PublicId)
+	// Create the dev user
+	acctLoginName := b.DevLoginName
+	if acctLoginName == "" {
+		acctLoginName, err = base62.Random(10)
+		if err != nil {
+			return fmt.Errorf("unable to generate dev login name: %w", err)
+		}
+		acctLoginName = strings.ToLower(acctLoginName)
+	}
+	pw := b.DevPassword
+	if pw == "" {
+		pw, err = base62.Random(20)
+		if err != nil {
+			return fmt.Errorf("unable to generate dev password: %w", err)
+		}
+	}
+	acct, err := password.NewAccount(amId, password.WithLoginName(acctLoginName))
+	if err != nil {
+		return fmt.Errorf("error creating new in memory auth account: %w", err)
+	}
+	acct, err = pwRepo.CreateAccount(ctx, acct, password.WithPassword(pw))
+	if err != nil {
+		return fmt.Errorf("error saving auth account to the db: %w", err)
+	}
+
+	// Create a role tying them together
+	pr, err := iam.NewRole(scope.Global.String())
 	if err != nil {
 		return fmt.Errorf("error creating in memory role for default dev grants: %w", err)
 	}
-	defPermsRole, err := repo.CreateRole(ctx, pr, iam.WithDescription("role for admin grants to authenticated users"))
+	pr.Name = "Dev Mode Global Scope Admin Role"
+	pr.Description = `Provides admin grants to all authenticated users within the "global" scope`
+	defPermsRole, err := repo.CreateRole(ctx, pr)
 	if err != nil {
 		return fmt.Errorf("error creating role for default dev grants: %w", err)
 	}
@@ -500,52 +505,7 @@ func (b *Server) CreateDevDatabase(dialect string) error {
 		return fmt.Errorf("error adding principal to role for default dev grants: %w", err)
 	}
 
-	pwRepo, err := password.NewRepository(rw, rw, b.ControllerKMS)
-	if err != nil {
-		return fmt.Errorf("error creating password repo: %w", err)
-	}
-	authMethod, err := password.NewAuthMethod(orgScope.GetPublicId())
-	if err != nil {
-		return fmt.Errorf("error creating new in memory auth method: %w", err)
-	}
-
-	amId := b.DevAuthMethodId
-	if amId == "" {
-		amId = "paum_1234567890"
-	}
-	_, err = pwRepo.CreateAuthMethod(ctx, authMethod, password.WithPublicId(amId))
-	if err != nil {
-		return fmt.Errorf("error saving auth method to the db: %w", err)
-	}
-
-	acctLoginName := b.DevLoginName
-	if acctLoginName == "" {
-		acctLoginName, err = base62.Random(10)
-		if err != nil {
-			return fmt.Errorf("unable to generate dev login name: %w", err)
-		}
-		acctLoginName = strings.ToLower(acctLoginName)
-	}
-
-	pw := b.DevPassword
-	if pw == "" {
-		pw, err = base62.Random(20)
-		if err != nil {
-			return fmt.Errorf("unable to generate dev password: %w", err)
-		}
-	}
-
-	acct, err := password.NewAccount(amId, password.WithLoginName(acctLoginName))
-	if err != nil {
-		return fmt.Errorf("error creating new in memory auth account: %w", err)
-	}
-	acct, err = pwRepo.CreateAccount(ctx, acct, password.WithPassword(pw))
-	if err != nil {
-		return fmt.Errorf("error saving auth account to the db: %w", err)
-	}
-
-	b.InfoKeys = append(b.InfoKeys, "dev org id", "dev auth method id", "dev login name", "dev password")
-	b.Info["dev org id"] = b.DefaultOrgId
+	b.InfoKeys = append(b.InfoKeys, "dev auth method id", "dev login name", "dev password")
 	b.Info["dev auth method id"] = amId
 	b.Info["dev login name"] = acct.GetLoginName()
 	b.Info["dev password"] = pw

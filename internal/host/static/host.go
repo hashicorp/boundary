@@ -27,10 +27,10 @@ func NewHost(catalogId, address string, opt ...Option) (*Host, error) {
 	opts := getOpts(opt...)
 	host := &Host{
 		Host: &store.Host{
-			StaticHostCatalogId: catalogId,
-			Address:             address,
-			Name:                opts.withName,
-			Description:         opts.withDescription,
+			CatalogId:   catalogId,
+			Address:     address,
+			Name:        opts.withName,
+			Description: opts.withDescription,
 		},
 	}
 	return host, nil

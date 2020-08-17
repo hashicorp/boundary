@@ -7,7 +7,6 @@ import (
 
 	"github.com/hashicorp/boundary/api"
 	"github.com/hashicorp/boundary/api/groups"
-	"github.com/hashicorp/boundary/api/scopes"
 	"github.com/hashicorp/boundary/api/users"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/servers/controller"
@@ -17,11 +16,9 @@ import (
 
 func TestGroup_List(t *testing.T) {
 	assert, require := assert.New(t), require.New(t)
-	orgId := "o_1234567890"
 	amId := "paum_1234567890"
 	tc := controller.NewTestController(t, &controller.TestControllerOpts{
 		DisableAuthorizationFailures: true,
-		DefaultOrgId:                 orgId,
 		DefaultAuthMethodId:          amId,
 		DefaultLoginName:             "user",
 		DefaultPassword:              "passpass",
@@ -29,13 +26,10 @@ func TestGroup_List(t *testing.T) {
 	defer tc.Shutdown()
 
 	client := tc.Client()
-
-	proj, apiErr, err := scopes.NewScopesClient(client).Create(tc.Context(), orgId)
-	require.NoError(err)
-	require.Nil(apiErr)
-
+	org, proj := iam.TestScopes(t, tc.DbConn())
+	client.SetScopeId(org.GetPublicId())
 	projClient := client.Clone()
-	projClient.SetScopeId(proj.Id)
+	projClient.SetScopeId(proj.GetPublicId())
 
 	cases := []struct {
 		name        string
@@ -92,11 +86,9 @@ func comparableSlice(in []*groups.Group) []groups.Group {
 
 func TestGroup_Crud(t *testing.T) {
 	assert, require := assert.New(t), require.New(t)
-	orgId := "o_1234567890"
 	amId := "paum_1234567890"
 	tc := controller.NewTestController(t, &controller.TestControllerOpts{
 		DisableAuthorizationFailures: true,
-		DefaultOrgId:                 orgId,
 		DefaultAuthMethodId:          amId,
 		DefaultLoginName:             "user",
 		DefaultPassword:              "passpass",
@@ -104,13 +96,10 @@ func TestGroup_Crud(t *testing.T) {
 	defer tc.Shutdown()
 
 	client := tc.Client()
-
-	proj, apiErr, err := scopes.NewScopesClient(client).Create(tc.Context(), orgId)
-	require.NoError(err)
-	require.Nil(apiErr)
-
+	org, proj := iam.TestScopes(t, tc.DbConn())
+	client.SetScopeId(org.GetPublicId())
 	projClient := client.Clone()
-	projClient.SetScopeId(proj.Id)
+	projClient.SetScopeId(proj.GetPublicId())
 
 	checkGroup := func(step string, g *groups.Group, apiErr *api.Error, err error, wantedName string, wantedVersion uint32, expectedUserIds []string) {
 		require.NoError(err, step)
@@ -189,11 +178,9 @@ func TestGroup_Crud(t *testing.T) {
 
 func TestGroup_Errors(t *testing.T) {
 	assert, require := assert.New(t), require.New(t)
-	orgId := "o_1234567890"
 	amId := "paum_1234567890"
 	tc := controller.NewTestController(t, &controller.TestControllerOpts{
 		DisableAuthorizationFailures: true,
-		DefaultOrgId:                 orgId,
 		DefaultAuthMethodId:          amId,
 		DefaultLoginName:             "user",
 		DefaultPassword:              "passpass",
@@ -201,13 +188,10 @@ func TestGroup_Errors(t *testing.T) {
 	defer tc.Shutdown()
 
 	client := tc.Client()
-
-	proj, apiErr, err := scopes.NewScopesClient(client).Create(tc.Context(), orgId)
-	require.NoError(err)
-	require.Nil(apiErr)
-
+	org, proj := iam.TestScopes(t, tc.DbConn())
+	client.SetScopeId(org.GetPublicId())
 	projClient := client.Clone()
-	projClient.SetScopeId(proj.Id)
+	projClient.SetScopeId(proj.GetPublicId())
 
 	cases := []struct {
 		name        string

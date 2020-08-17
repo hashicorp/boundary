@@ -171,9 +171,6 @@ func (c *Command) Run(args []string) int {
 		c.UI.Error(fmt.Errorf("Error creating controller dev config: %w", err).Error())
 		return 1
 	}
-	if c.flagDevOrgId != "" {
-		devConfig.DefaultOrgId = c.flagDevOrgId
-	}
 	if c.flagDevAuthMethodId != "" {
 		prefix := password.AuthMethodPrefix + "_"
 		if !strings.HasPrefix(c.flagDevAuthMethodId, prefix) {
@@ -212,18 +209,6 @@ func (c *Command) Run(args []string) int {
 		}
 	}
 
-	if devConfig.DefaultOrgId != "" {
-		if !strings.HasPrefix(devConfig.DefaultOrgId, "o_") {
-			c.UI.Error(fmt.Sprintf("Invalid default org ID, must start with %q", "o_"))
-			return 1
-		}
-		if len(devConfig.DefaultOrgId) != 12 {
-			c.UI.Error(fmt.Sprintf("Invalid default org ID, must be 10 base62 characters after %q", "o_"))
-			return 1
-		}
-		c.DefaultOrgId = devConfig.DefaultOrgId
-	}
-
 	if err := c.SetupLogging(c.flagLogLevel, c.flagLogFormat, "", ""); err != nil {
 		c.UI.Error(err.Error())
 		return 1
@@ -236,7 +221,7 @@ func (c *Command) Run(args []string) int {
 		return 1
 	}
 
-	if err := c.SetupKMSes(c.UI, devConfig.SharedConfig, []string{"controller", "worker-auth"}); err != nil {
+	if err := c.SetupKMSes(c.UI, devConfig.SharedConfig, []string{"root", "worker-auth"}); err != nil {
 		c.UI.Error(err.Error())
 		return 1
 	}
