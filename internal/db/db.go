@@ -87,7 +87,7 @@ var (
 
 // StartDbInDocker
 func StartDbInDocker(dialect string) (cleanup func() error, retURL, container string, err error) {
-	// TODO: Debug what part of this method is actually causing issues with our test and fix.
+	// TODO: Debug what part of this method is actually causing race condition issues with our test and fix.
 	mx.Lock()
 	defer mx.Unlock()
 	pool, err := dockertest.NewPool("")
