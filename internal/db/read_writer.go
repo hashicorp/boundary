@@ -973,7 +973,7 @@ func (rw *Db) LookupWhere(ctx context.Context, resource interface{}, where strin
 // SearchWhere will search for all the resources it can find using a where
 // clause with parameters.  Supports the WithLimit option.  If
 // WithLimit < 0, then unlimited results are returned.  If WithLimit == 0, then
-// default limits are used for results.
+// default limits are used for results.  Supports the WithOrder option.
 func (rw *Db) SearchWhere(ctx context.Context, resources interface{}, where string, args []interface{}, opt ...Option) error {
 	opts := GetOpts(opt...)
 	if rw.underlying == nil {
@@ -985,11 +985,11 @@ func (rw *Db) SearchWhere(ctx context.Context, resources interface{}, where stri
 	var err error
 	switch {
 	case opts.WithLimit < 0: // any negative number signals unlimited results
-		err = rw.underlying.Where(where, args...).Find(resources).Error
+		err = rw.underlying.Order(opts.withOrder).Where(where, args...).Find(resources).Error
 	case opts.WithLimit == 0: // zero signals the default value and default limits
-		err = rw.underlying.Limit(DefaultLimit).Where(where, args...).Find(resources).Error
+		err = rw.underlying.Order(opts.withOrder).Limit(DefaultLimit).Where(where, args...).Find(resources).Error
 	default:
-		err = rw.underlying.Limit(opts.WithLimit).Where(where, args...).Find(resources).Error
+		err = rw.underlying.Order(opts.withOrder).Limit(opts.WithLimit).Where(where, args...).Find(resources).Error
 	}
 	if err != nil {
 		// searching with a slice parameter does not return a gorm.ErrRecordNotFound

@@ -2,19 +2,22 @@ package iam
 
 import (
 	"context"
+	"crypto/rand"
 	"errors"
 	"fmt"
 	"strings"
 
 	"github.com/hashicorp/boundary/internal/db"
 	dbcommon "github.com/hashicorp/boundary/internal/db/common"
+	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/oplog"
 	"github.com/hashicorp/boundary/internal/types/resource"
 	"github.com/hashicorp/boundary/internal/types/scope"
+	"github.com/hashicorp/go-uuid"
 )
 
 // CreateScope will create a scope in the repository and return the written
-// scope.  Supported options include: WithPublicId.
+// scope. Supported options include: WithPublicId.
 func (r *Repository) CreateScope(ctx context.Context, s *Scope, userId string, opt ...Option) (*Scope, error) {
 	if s == nil {
 		return nil, fmt.Errorf("create scope: missing scope %w", db.ErrNilParameter)
@@ -98,6 +101,15 @@ func (r *Repository) CreateScope(ctx context.Context, s *Scope, userId string, o
 		}
 	}
 
+	reader := opts.withRandomReader
+	if reader == nil {
+		reader = rand.Reader
+	}
+	rootKey, err := uuid.GenerateRandomBytesWithReader(32, reader)
+	if err != nil {
+		return nil, fmt.Errorf("create scope: error generating random bytes for scope root key: %w", err)
+	}
+
 	_, err = r.writer.DoTx(
 		ctx,
 		db.StdRetryCnt,
@@ -110,6 +122,16 @@ func (r *Repository) CreateScope(ctx context.Context, s *Scope, userId string, o
 			); err != nil {
 				return fmt.Errorf("error creating scope: %w", err)
 			}
+
+			s := scopeRaw.(*Scope)
+
+			// Create the scope's root key
+			_, _, err := kms.CreateRootKeyTx(ctx, w, r.wrapper, s.PublicId, rootKey)
+			if err != nil {
+				return fmt.Errorf("error creating scope root key: %w", err)
+			}
+
+			// TODO: wrapper below should be the new scope's oplog key
 
 			// We create a new role, then set grants and principals on it. This
 			// turns into a bunch of stuff sadly because the role is the
@@ -162,8 +184,6 @@ func (r *Repository) CreateScope(ctx context.Context, s *Scope, userId string, o
 					return fmt.Errorf("unable to add grants: %w", err)
 				}
 				msgs = append(msgs, roleUserOplogMsgs...)
-
-				s := scopeRaw.(*Scope)
 
 				metadata := oplog.Metadata{
 					"op-type":            []string{oplog.OpType_OP_TYPE_CREATE.String()},

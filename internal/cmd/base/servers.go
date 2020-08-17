@@ -18,12 +18,14 @@ import (
 	"github.com/hashicorp/boundary/internal/auth/password"
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/iam"
+	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/types/scope"
 	"github.com/hashicorp/boundary/version"
 	"github.com/hashicorp/errwrap"
 	"github.com/hashicorp/go-hclog"
 	wrapping "github.com/hashicorp/go-kms-wrapping"
 	"github.com/hashicorp/go-multierror"
+	"github.com/hashicorp/go-uuid"
 	"github.com/hashicorp/shared-secure-libs/configutil"
 	"github.com/hashicorp/shared-secure-libs/gatedwriter"
 	"github.com/hashicorp/shared-secure-libs/reloadutil"
@@ -433,7 +435,7 @@ func (b *Server) CreateDevDatabase(dialect string) error {
 	b.Database.LogMode(true)
 
 	rw := db.New(b.Database)
-	repo, err := iam.NewRepository(rw, rw, b.RootKms)
+	repo, err := iam.NewRepository(rw, rw, b.RootKMS, iam.WithRandomReader(b.SecureRandomReader))
 	if err != nil {
 		return fmt.Errorf("unable to create repo for org id: %w", err)
 	}
@@ -443,6 +445,19 @@ func (b *Server) CreateDevDatabase(dialect string) error {
 		<-b.ShutdownCh
 		cancel()
 	}()
+
+	rootKey, err := uuid.GenerateRandomBytesWithReader(32, b.SecureRandomReader)
+	if err != nil {
+		return fmt.Errorf("error generating random bytes for scope root key: %w", err)
+	}
+	kmsRepo, err := kms.NewRepository(rw, rw)
+	if err != nil {
+		return fmt.Errorf("unable to create kms repo for saving global scope root key: %w", err)
+	}
+	_, _, err = kmsRepo.CreateRootKey(ctx, b.RootKMS, scope.Global.String(), rootKey)
+	if err != nil {
+		return fmt.Errorf("error saving global scope root key: %w", err)
+	}
 
 	// Create the dev auth method
 	pwRepo, err := password.NewRepository(rw, rw, b.RootKms)
