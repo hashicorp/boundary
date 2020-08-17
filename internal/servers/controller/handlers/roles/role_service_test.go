@@ -14,6 +14,7 @@ import (
 	"github.com/hashicorp/boundary/internal/gen/controller/api/resources/scopes"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/api/services"
 	"github.com/hashicorp/boundary/internal/iam"
+	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/perms"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers/roles"
 	"github.com/hashicorp/boundary/internal/types/scope"
@@ -33,8 +34,9 @@ func createDefaultRolesAndRepo(t *testing.T) (*iam.Role, *iam.Role, func() (*iam
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrap := db.TestWrapper(t)
+	kms := kms.TestKms(t, conn, kms.WithRootWrapper(wrap))
 	repoFn := func() (*iam.Repository, error) {
-		return iam.NewRepository(rw, rw, wrap)
+		return iam.NewRepository(rw, rw, kms)
 	}
 
 	o, p := iam.TestScopes(t, conn)

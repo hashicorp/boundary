@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/hashicorp/boundary/internal/db"
+	"github.com/hashicorp/boundary/internal/types/scope"
 	wrapping "github.com/hashicorp/go-kms-wrapping"
 	"github.com/jinzhu/gorm"
 	"github.com/stretchr/testify/require"
@@ -38,4 +39,20 @@ func TestRootKeyVersion(t *testing.T, conn *gorm.DB, wrapper wrapping.Wrapper, r
 	err = rw.Create(context.Background(), k)
 	require.NoError(err)
 	return k
+}
+
+func TestKms(t *testing.T, conn *gorm.DB, opt ...Option) *Kms {
+	t.Helper()
+	require := require.New(t)
+	rw := db.New(conn)
+	kmsRepo, err := NewRepository(rw, rw)
+	require.NoError(err)
+	kms, err := NewKms(WithRepository(kmsRepo))
+	require.NoError(err)
+	err = kms.AddExternalWrappers(
+		scope.Global.String(),
+		opt...,
+	)
+	require.NoError(err)
+	return kms
 }

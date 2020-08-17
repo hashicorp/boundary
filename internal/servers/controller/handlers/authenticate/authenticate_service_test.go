@@ -13,6 +13,7 @@ import (
 	pba "github.com/hashicorp/boundary/internal/gen/controller/api/resources/authtokens"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/api/services"
 	"github.com/hashicorp/boundary/internal/iam"
+	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc/codes"
@@ -30,8 +31,10 @@ func TestAuthenticate(t *testing.T) {
 	wrapper := db.TestWrapper(t)
 	o, _ := iam.TestScopes(t, conn)
 
+	kms := kms.TestKms(t, conn, kms.WithRootWrapper(wrapper))
+
 	authTokenRepoFn := func() (*authtoken.Repository, error) { return authtoken.NewRepository(rw, rw, wrapper) }
-	iamRepoFn := func() (*iam.Repository, error) { return iam.NewRepository(rw, rw, wrapper) }
+	iamRepoFn := func() (*iam.Repository, error) { return iam.NewRepository(rw, rw, kms) }
 	passwordRepoFn := func() (*password.Repository, error) { return password.NewRepository(rw, rw, wrapper) }
 	am := password.TestAuthMethods(t, conn, o.GetPublicId(), 1)[0]
 
@@ -173,9 +176,11 @@ func TestAuthenticate_AuthAccountConnectedToIamUser(t *testing.T) {
 	wrapper := db.TestWrapper(t)
 	o, _ := iam.TestScopes(t, conn)
 
+	kms := kms.TestKms(t, conn, kms.WithRootWrapper(wrapper))
+
 	passwordRepoFn := func() (*password.Repository, error) { return password.NewRepository(rw, rw, wrapper) }
 	authTokenRepoFn := func() (*authtoken.Repository, error) { return authtoken.NewRepository(rw, rw, wrapper) }
-	iamRepoFn := func() (*iam.Repository, error) { return iam.NewRepository(rw, rw, wrapper) }
+	iamRepoFn := func() (*iam.Repository, error) { return iam.NewRepository(rw, rw, kms) }
 
 	am := password.TestAuthMethods(t, conn, o.GetPublicId(), 1)[0]
 	acct, err := password.NewAccount(am.GetPublicId(), password.WithLoginName(testLoginName))

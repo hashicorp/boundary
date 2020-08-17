@@ -7,6 +7,7 @@ import (
 	"github.com/hashicorp/boundary/internal/auth/store"
 	"github.com/hashicorp/boundary/internal/db"
 	dbassert "github.com/hashicorp/boundary/internal/db/assert"
+	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/go-uuid"
 	"github.com/jinzhu/gorm"
 	"github.com/stretchr/testify/assert"
@@ -19,7 +20,8 @@ func TestScopes(t *testing.T, conn *gorm.DB) (org *Scope, prj *Scope) {
 	require := require.New(t)
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
-	repo, err := NewRepository(rw, rw, wrapper)
+	kms := kms.TestKms(t, conn, kms.WithRootWrapper(wrapper))
+	repo, err := NewRepository(rw, rw, kms)
 	require.NoError(err)
 
 	org, err = NewOrg()
@@ -44,7 +46,8 @@ func TestOrg(t *testing.T, conn *gorm.DB) (org *Scope) {
 	require := require.New(t)
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
-	repo, err := NewRepository(rw, rw, wrapper)
+	kms := kms.TestKms(t, conn, kms.WithRootWrapper(wrapper))
+	repo, err := NewRepository(rw, rw, kms)
 	require.NoError(err)
 
 	org, err = NewOrg()
@@ -62,7 +65,8 @@ func testOrg(t *testing.T, conn *gorm.DB, name, description string) (org *Scope)
 	require := require.New(t)
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
-	repo, err := NewRepository(rw, rw, wrapper)
+	kms := kms.TestKms(t, conn, kms.WithRootWrapper(wrapper))
+	repo, err := NewRepository(rw, rw, kms)
 	require.NoError(err)
 
 	o, err := NewOrg(WithDescription(description), WithName(name))
@@ -79,7 +83,8 @@ func testProject(t *testing.T, conn *gorm.DB, orgId string, opt ...Option) *Scop
 	require := require.New(t)
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
-	repo, err := NewRepository(rw, rw, wrapper)
+	kms := kms.TestKms(t, conn, kms.WithRootWrapper(wrapper))
+	repo, err := NewRepository(rw, rw, kms)
 	require.NoError(err)
 
 	p, err := NewProject(orgId, opt...)
@@ -111,7 +116,8 @@ func TestUser(t *testing.T, conn *gorm.DB, scopeId string, opt ...Option) *User 
 	require := assert.New(t)
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
-	repo, err := NewRepository(rw, rw, wrapper)
+	kms := kms.TestKms(t, conn, kms.WithRootWrapper(wrapper))
+	repo, err := NewRepository(rw, rw, kms)
 	require.NoError(err)
 
 	user, err := NewUser(scopeId, opt...)

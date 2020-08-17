@@ -14,6 +14,7 @@ import (
 	"github.com/hashicorp/boundary/internal/gen/controller/api/resources/scopes"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/api/services"
 	"github.com/hashicorp/boundary/internal/iam"
+	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers/groups"
 	"github.com/hashicorp/boundary/internal/types/scope"
 	"google.golang.org/genproto/protobuf/field_mask"
@@ -33,8 +34,9 @@ func createDefaultGroupsAndRepo(t *testing.T) (*iam.Group, *iam.Group, func() (*
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrap := db.TestWrapper(t)
+	kms := kms.TestKms(t, conn, kms.WithRootWrapper(wrap))
 	repoFn := func() (*iam.Repository, error) {
-		return iam.NewRepository(rw, rw, wrap)
+		return iam.NewRepository(rw, rw, kms)
 	}
 
 	o, p := iam.TestScopes(t, conn)
@@ -71,8 +73,9 @@ func TestGet(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrap := db.TestWrapper(t)
+	kms := kms.TestKms(t, conn, kms.WithRootWrapper(wrap))
 	repoFn := func() (*iam.Repository, error) {
-		return iam.NewRepository(rw, rw, wrap)
+		return iam.NewRepository(rw, rw, kms)
 	}
 
 	o, p := iam.TestScopes(t, conn)
@@ -203,8 +206,9 @@ func TestList(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrap := db.TestWrapper(t)
+	kms := kms.TestKms(t, conn, kms.WithRootWrapper(wrap))
 	repoFn := func() (*iam.Repository, error) {
-		return iam.NewRepository(rw, rw, wrap)
+		return iam.NewRepository(rw, rw, kms)
 	}
 	oNoGroups, pWithGroups := iam.TestScopes(t, conn)
 	oWithGroups, pNoGroups := iam.TestScopes(t, conn)
@@ -519,8 +523,9 @@ func TestUpdate(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrap := db.TestWrapper(t)
+	kms := kms.TestKms(t, conn, kms.WithRootWrapper(wrap))
 	repoFn := func() (*iam.Repository, error) {
-		return iam.NewRepository(rw, rw, wrap)
+		return iam.NewRepository(rw, rw, kms)
 	}
 
 	o, p := iam.TestScopes(t, conn)
@@ -917,8 +922,9 @@ func TestAddMember(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrap := db.TestWrapper(t)
+	kms := kms.TestKms(t, conn, kms.WithRootWrapper(wrap))
 	repoFn := func() (*iam.Repository, error) {
-		return iam.NewRepository(rw, rw, wrap)
+		return iam.NewRepository(rw, rw, kms)
 	}
 	s, err := groups.NewService(repoFn)
 	require.NoError(t, err, "Error when getting new group service.")
@@ -1019,8 +1025,9 @@ func TestSetMember(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrap := db.TestWrapper(t)
+	kms := kms.TestKms(t, conn, kms.WithRootWrapper(wrap))
 	repoFn := func() (*iam.Repository, error) {
-		return iam.NewRepository(rw, rw, wrap)
+		return iam.NewRepository(rw, rw, kms)
 	}
 	s, err := groups.NewService(repoFn)
 	require.NoError(t, err, "Error when getting new group service.")
@@ -1122,8 +1129,9 @@ func TestRemoveMember(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrap := db.TestWrapper(t)
+	kms := kms.TestKms(t, conn, kms.WithRootWrapper(wrap))
 	repoFn := func() (*iam.Repository, error) {
-		return iam.NewRepository(rw, rw, wrap)
+		return iam.NewRepository(rw, rw, kms)
 	}
 	s, err := groups.NewService(repoFn)
 	require.NoError(t, err, "Error when getting new grp service.")

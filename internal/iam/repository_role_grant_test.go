@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/hashicorp/boundary/internal/db"
+	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/oplog"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -19,7 +20,8 @@ func TestRepository_AddRoleGrants(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
-	repo, err := NewRepository(rw, rw, wrapper)
+	kms := kms.TestKms(t, conn, kms.WithRootWrapper(wrapper))
+	repo, err := NewRepository(rw, rw, kms)
 	require.NoError(t, err)
 	_, proj := TestScopes(t, conn)
 	role := TestRole(t, conn, proj.PublicId)
@@ -126,7 +128,8 @@ func TestRepository_ListRoleGrants(t *testing.T) {
 	const testLimit = 10
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
-	repo, err := NewRepository(rw, rw, wrapper, WithLimit(testLimit))
+	kms := kms.TestKms(t, conn, kms.WithRootWrapper(wrapper))
+	repo, err := NewRepository(rw, rw, kms, WithLimit(testLimit))
 	require.NoError(t, err)
 	org, proj := TestScopes(t, conn)
 
@@ -226,7 +229,8 @@ func TestRepository_DeleteRoleGrants(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
-	repo, err := NewRepository(rw, rw, wrapper)
+	kms := kms.TestKms(t, conn, kms.WithRootWrapper(wrapper))
+	repo, err := NewRepository(rw, rw, kms)
 	require.NoError(t, err)
 	org, _ := TestScopes(t, conn)
 
@@ -412,7 +416,8 @@ func TestRepository_SetRoleGrants_Randomize(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
-	repo, err := NewRepository(rw, rw, wrapper)
+	kms := kms.TestKms(t, conn, kms.WithRootWrapper(wrapper))
+	repo, err := NewRepository(rw, rw, kms)
 	require.NoError(err)
 	org, _ := TestScopes(t, conn)
 	role := TestRole(t, conn, org.PublicId)

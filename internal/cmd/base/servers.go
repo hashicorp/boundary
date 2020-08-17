@@ -435,7 +435,26 @@ func (b *Server) CreateDevDatabase(dialect string) error {
 	b.Database.LogMode(true)
 
 	rw := db.New(b.Database)
-	repo, err := iam.NewRepository(rw, rw, b.RootKMS, iam.WithRandomReader(b.SecureRandomReader))
+
+	kmsRepo, err := kms.NewRepository(rw, rw)
+	if err != nil {
+		return fmt.Errorf("error creating kms repository: %w", err)
+	}
+	kmsCache, err := kms.NewKms(
+		kms.WithRepository(kmsRepo),
+	)
+	if err != nil {
+		return fmt.Errorf("error creating kms cache: %w", err)
+	}
+	if err := kmsCache.AddExternalWrappers(
+		scope.Global.String(),
+		kms.WithRootWrapper(b.RootKms),
+		kms.WithWorkerAuthWrapper(b.WorkerAuthKms),
+	); err != nil {
+		return fmt.Errorf("error adding config keys to kms: %w", err)
+	}
+
+	repo, err := iam.NewRepository(rw, rw, kmsCache, iam.WithRandomReader(b.SecureRandomReader))
 	if err != nil {
 		return fmt.Errorf("unable to create repo for org id: %w", err)
 	}
@@ -454,7 +473,7 @@ func (b *Server) CreateDevDatabase(dialect string) error {
 	if err != nil {
 		return fmt.Errorf("unable to create kms repo for saving global scope root key: %w", err)
 	}
-	_, _, err = kmsRepo.CreateRootKey(ctx, b.RootKMS, scope.Global.String(), rootKey)
+	_, _, err = kmsRepo.CreateRootKey(ctx, b.RootKms, scope.Global.String(), rootKey)
 	if err != nil {
 		return fmt.Errorf("error saving global scope root key: %w", err)
 	}

@@ -61,13 +61,6 @@ func New(conf *Config) (*Controller, error) {
 		conf.SecureRandomReader = rand.Reader
 	}
 
-	c.kms = kms.NewKms(kms.WithLogger(c.logger.Named("kms")))
-	if err := c.kms.AddExternalWrappers(scope.Global.String(),
-		kms.WithRootWrapper(c.conf.RootKms),
-		kms.WithWorkerAuthWrapper(c.conf.WorkerAuthKms)); err != nil {
-		return nil, fmt.Errorf("error adding config root to kms: %w", err)
-	}
-
 	var err error
 	if conf.RawConfig.Controller == nil {
 		conf.RawConfig.Controller = new(config.Controller)
@@ -96,8 +89,26 @@ func New(conf *Config) (*Controller, error) {
 
 	// Set up repo stuff
 	dbase := db.New(c.conf.Database)
+	kmsRepo, err := kms.NewRepository(dbase, dbase)
+	if err != nil {
+		return nil, fmt.Errorf("error creating kms repository: %w", err)
+	}
+	c.kms, err = kms.NewKms(
+		kms.WithLogger(c.logger.Named("kms")),
+		kms.WithRepository(kmsRepo),
+	)
+	if err != nil {
+		return nil, fmt.Errorf("error creating kms cache: %w", err)
+	}
+	if err := c.kms.AddExternalWrappers(
+		scope.Global.String(),
+		kms.WithRootWrapper(c.conf.RootKms),
+		kms.WithWorkerAuthWrapper(c.conf.WorkerAuthKms),
+	); err != nil {
+		return nil, fmt.Errorf("error adding config keys to kms: %w", err)
+	}
 	c.IamRepoFn = func() (*iam.Repository, error) {
-		return iam.NewRepository(dbase, dbase, c.conf.RootKms, iam.WithRandomReader(c.conf.SecureRandomReader))
+		return iam.NewRepository(dbase, dbase, c.kms, iam.WithRandomReader(c.conf.SecureRandomReader))
 	}
 	c.StaticHostRepoFn = func() (*static.Repository, error) {
 		return static.NewRepository(dbase, dbase, c.conf.RootKms)

@@ -7,9 +7,9 @@ import (
 	"strings"
 
 	"github.com/hashicorp/boundary/internal/db"
+	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/oplog"
 	"github.com/hashicorp/boundary/internal/types/scope"
-	wrapping "github.com/hashicorp/go-kms-wrapping"
 )
 
 var (
@@ -18,9 +18,9 @@ var (
 
 // Repository is the iam database repository
 type Repository struct {
-	reader  db.Reader
-	writer  db.Writer
-	wrapper wrapping.Wrapper
+	reader db.Reader
+	writer db.Writer
+	kms    *kms.Kms
 
 	// defaultLimit provides a default for limiting the number of results returned from the repo
 	defaultLimit int
@@ -28,15 +28,15 @@ type Repository struct {
 
 // NewRepository creates a new iam Repository. Supports the options: WithLimit
 // which sets a default limit on results returned by repo operations.
-func NewRepository(r db.Reader, w db.Writer, wrapper wrapping.Wrapper, opt ...Option) (*Repository, error) {
+func NewRepository(r db.Reader, w db.Writer, kms *kms.Kms, opt ...Option) (*Repository, error) {
 	if r == nil {
 		return nil, errors.New("error creating db repository with nil reader")
 	}
 	if w == nil {
 		return nil, errors.New("error creating db repository with nil writer")
 	}
-	if wrapper == nil {
-		return nil, errors.New("error creating db repository with nil wrapper")
+	if kms == nil {
+		return nil, errors.New("error creating db repository with nil kms")
 	}
 	opts := getOpts(opt...)
 	if opts.withLimit == 0 {
@@ -46,7 +46,7 @@ func NewRepository(r db.Reader, w db.Writer, wrapper wrapping.Wrapper, opt ...Op
 	return &Repository{
 		reader:       r,
 		writer:       w,
-		wrapper:      wrapper,
+		kms:          kms,
 		defaultLimit: opts.withLimit,
 	}, nil
 }
