@@ -137,8 +137,8 @@ func (s Service) DeleteAccount(ctx context.Context, req *pbs.DeleteAccountReques
 // ChangePassword implements the interface pbs.AccountServiceServer.
 func (s Service) ChangePassword(ctx context.Context, req *pbs.ChangePasswordRequest) (*pbs.ChangePasswordResponse, error) {
 	authResults := auth.Verify(ctx)
-	if !authResults.Valid {
-		return nil, handlers.ForbiddenError()
+	if authResults.Error != nil {
+		return nil, authResults.Error
 	}
 	if err := validateChangePasswordRequest(req); err != nil {
 		return nil, err
@@ -154,8 +154,8 @@ func (s Service) ChangePassword(ctx context.Context, req *pbs.ChangePasswordRequ
 // SetPassword implements the interface pbs.AccountServiceServer.
 func (s Service) SetPassword(ctx context.Context, req *pbs.SetPasswordRequest) (*pbs.SetPasswordResponse, error) {
 	authResults := auth.Verify(ctx)
-	if !authResults.Valid {
-		return nil, handlers.ForbiddenError()
+	if authResults.Error != nil {
+		return nil, authResults.Error
 	}
 	if err := validateSetPasswordRequest(req); err != nil {
 		return nil, err
