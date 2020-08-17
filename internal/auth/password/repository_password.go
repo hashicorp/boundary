@@ -226,11 +226,6 @@ func (r *Repository) SetPassword(ctx context.Context, accountId string, password
 		return nil, fmt.Errorf("set password: no version supplied: %w", db.ErrInvalidParameter)
 	}
 
-	acct, err := r.LookupAccount(ctx, accountId)
-	if err != nil {
-		return nil, fmt.Errorf("set password: lookup account: %w", err)
-	}
-
 	var newCred *Argon2Credential
 	if password != "" {
 		cc, err := r.currentConfigForAccount(ctx, accountId)
@@ -252,12 +247,13 @@ func (r *Repository) SetPassword(ctx context.Context, accountId string, password
 		}
 	}
 
-	_, err = r.writer.DoTx(ctx, db.StdRetryCnt, db.ExpBackoff{},
+	var acct *Account
+	_, err := r.writer.DoTx(ctx, db.StdRetryCnt, db.ExpBackoff{},
 		func(rr db.Reader, w db.Writer) error {
 			updatedAccount := allocAccount()
 			updatedAccount.PublicId = accountId
 			updatedAccount.Version = version + 1
-			rowsUpdated, err := w.Update(ctx, updatedAccount, []string{"Version"}, nil, db.WithOplog(r.wrapper, acct.oplog(oplog.OpType_OP_TYPE_UPDATE)), db.WithVersion(&version))
+			rowsUpdated, err := w.Update(ctx, updatedAccount, []string{"Version"}, nil, db.WithOplog(r.wrapper, updatedAccount.oplog(oplog.OpType_OP_TYPE_UPDATE)), db.WithVersion(&version))
 			if err != nil {
 				return fmt.Errorf("set password: unable to update account version: %w", err)
 			}
