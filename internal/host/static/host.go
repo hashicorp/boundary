@@ -5,6 +5,8 @@ import (
 
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/host/static/store"
+	"github.com/hashicorp/boundary/internal/oplog"
+	"google.golang.org/protobuf/proto"
 )
 
 // A Host contains a static address.
@@ -48,4 +50,29 @@ func (h *Host) TableName() string {
 // set the name to "" the name will be reset to the default name.
 func (h *Host) SetTableName(n string) {
 	h.tableName = n
+}
+
+func allocHost() Host {
+	return Host{
+		Host: &store.Host{},
+	}
+}
+
+func (h *Host) clone() *Host {
+	cp := proto.Clone(h.Host)
+	return &Host{
+		Host: cp.(*store.Host),
+	}
+}
+
+func (h *Host) oplog(op oplog.OpType) oplog.Metadata {
+	metadata := oplog.Metadata{
+		"resource-public-id": []string{h.PublicId},
+		"resource-type":      []string{"static-host"},
+		"op-type":            []string{op.String()},
+	}
+	if h.CatalogId != "" {
+		metadata["catalog-id"] = []string{h.CatalogId}
+	}
+	return metadata
 }
