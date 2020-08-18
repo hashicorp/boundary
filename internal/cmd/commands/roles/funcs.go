@@ -60,7 +60,7 @@ func removePrincipalsHelp() string {
 }
 
 func populateFlags(c *Command, f *base.FlagSet, flagNames []string) {
-	common.PopulateCommonFlags(c.Command, f, resource.Role, flagNames)
+	common.PopulateCommonFlags(c.Command, f, resource.Role.String(), flagNames)
 
 	for _, name := range flagNames {
 		switch name {

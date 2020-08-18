@@ -39,12 +39,10 @@ func (c *AccountsClient) Create(ctx context.Context, authMethodId string, opt ..
 	if authMethodId == "" {
 		return nil, nil, fmt.Errorf("empty authMethodId value passed into Create request")
 	}
-
+	opts, apiOpts := getOpts(opt...)
 	if c.client == nil {
 		return nil, nil, fmt.Errorf("nil client")
 	}
-
-	opts, apiOpts := getOpts(opt...)
 
 	req, err := c.client.NewRequest(ctx, "POST", fmt.Sprintf("auth-methods/%s/accounts", authMethodId), opts.valueMap, apiOpts...)
 	if err != nil {

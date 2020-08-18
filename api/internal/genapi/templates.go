@@ -70,6 +70,7 @@ type templateInput struct {
 	ResourcePath           string
 	SliceSubTypes          map[string]string
 	VersionEnabled         bool
+	TypeOnCreate           bool
 }
 
 func fillTemplates() {
@@ -83,6 +84,7 @@ func fillTemplates() {
 			Fields:         in.generatedStructure.fields,
 			PathArgs:       in.pathArgs,
 			VersionEnabled: in.versionEnabled,
+			TypeOnCreate:   in.typeOnCreate,
 		}
 
 		if len(in.pathArgs) > 0 {
@@ -292,16 +294,19 @@ func (c *{{ .ClientName }}Client) Delete(ctx context.Context, {{ range .Resource
 `))
 
 var createTemplate = template.Must(template.New("").Parse(`
-func (c *{{ .ClientName }}Client) Create(ctx context.Context, {{ range .CollectionFunctionArgs }} {{ . }} string, {{ end }} opt... Option) (*{{ .Name }}, *api.Error, error) { {{ range .CollectionFunctionArgs }}
+func (c *{{ .ClientName }}Client) Create(ctx context.Context, {{ if .TypeOnCreate }} resourceType string, {{ end }} {{ range .CollectionFunctionArgs }} {{ . }} string, {{ end }} opt... Option) (*{{ .Name }}, *api.Error, error) { {{ range .CollectionFunctionArgs }}
 	if {{ . }} == "" {
 		return nil, nil, fmt.Errorf("empty {{ . }} value passed into Create request")
 	}
-	{{ end }}
+	{{ end }}opts, apiOpts := getOpts(opt...)
 	if c.client == nil {
 		return nil, nil, fmt.Errorf("nil client")
 	}
-
-	opts, apiOpts := getOpts(opt...)
+	{{ if .TypeOnCreate }} if resourceType == "" {
+		return nil, nil, fmt.Errorf("empty resourceType value passed into Create request")
+	} else {
+		opts.valueMap["type"] = resourceType
+	}{{ end }}
 
 	req, err := c.client.NewRequest(ctx, "POST", {{ .CollectionPath }}, opts.valueMap, apiOpts...)
 	if err != nil {

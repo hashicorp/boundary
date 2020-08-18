@@ -39,12 +39,10 @@ func (c *HostSetsClient) Create(ctx context.Context, hostCatalogId string, opt .
 	if hostCatalogId == "" {
 		return nil, nil, fmt.Errorf("empty hostCatalogId value passed into Create request")
 	}
-
+	opts, apiOpts := getOpts(opt...)
 	if c.client == nil {
 		return nil, nil, fmt.Errorf("nil client")
 	}
-
-	opts, apiOpts := getOpts(opt...)
 
 	req, err := c.client.NewRequest(ctx, "POST", fmt.Sprintf("host-catalogs/%s/host-sets", hostCatalogId), opts.valueMap, apiOpts...)
 	if err != nil {

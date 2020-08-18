@@ -56,7 +56,7 @@ func removeMembersHelp() string {
 }
 
 func populateFlags(c *Command, f *base.FlagSet, flagNames []string) {
-	common.PopulateCommonFlags(c.Command, f, resource.Group, flagNames)
+	common.PopulateCommonFlags(c.Command, f, resource.Group.String(), flagNames)
 
 	for _, name := range flagNames {
 		switch name {
