@@ -74,7 +74,7 @@ func TestHandler_CORS(t *testing.T) {
 	})
 	defer tc.Shutdown()
 
-	repo, err := tc.IamRepoFn()()
+	repo := tc.IamRepo()
 	require.NoError(t, err)
 	org := iam.TestOrg(t, repo)
 

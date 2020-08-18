@@ -26,7 +26,7 @@ func TestAccounts_List(t *testing.T) {
 	defer tc.Shutdown()
 
 	client := tc.Client()
-	org := iam.TestOrg(t, tc.DbConn())
+	org := iam.TestOrg(t, tc.IamRepo())
 	client.SetScopeId(org.GetPublicId())
 
 	accountClient := authmethods.NewAccountsClient(client)
@@ -88,7 +88,7 @@ func TestAccount_Crud(t *testing.T) {
 	defer tc.Shutdown()
 
 	client := tc.Client()
-	org := iam.TestOrg(t, tc.DbConn())
+	org := iam.TestOrg(t, tc.IamRepo())
 	client.SetScopeId(org.GetPublicId())
 
 	accountClient := authmethods.NewAccountsClient(client)
@@ -142,7 +142,7 @@ func TestAccount_CustomMethods(t *testing.T) {
 	defer tc.Shutdown()
 
 	client := tc.Client()
-	org := iam.TestOrg(t, tc.DbConn())
+	org := iam.TestOrg(t, tc.IamRepo())
 	client.SetScopeId(org.GetPublicId())
 
 	accountClient := authmethods.NewAccountsClient(client)
@@ -179,7 +179,7 @@ func TestAccount_Errors(t *testing.T) {
 	defer tc.Shutdown()
 
 	client := tc.Client()
-	org := iam.TestOrg(t, tc.DbConn())
+	org := iam.TestOrg(t, tc.IamRepo())
 	client.SetScopeId(org.GetPublicId())
 
 	accountClient := authmethods.NewAccountsClient(client)

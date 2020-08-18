@@ -14,7 +14,6 @@ import (
 	"github.com/hashicorp/boundary/internal/gen/controller/api/resources/scopes"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/api/services"
 	"github.com/hashicorp/boundary/internal/iam"
-	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/perms"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers/roles"
 	"github.com/hashicorp/boundary/internal/types/scope"
@@ -32,14 +31,13 @@ import (
 func createDefaultRolesAndRepo(t *testing.T) (*iam.Role, *iam.Role, func() (*iam.Repository, error)) {
 	t.Helper()
 	conn, _ := db.TestSetup(t, "postgres")
-	rw := db.New(conn)
 	wrap := db.TestWrapper(t)
-	kms := kms.TestKms(t, conn)
+	iamRepo := iam.TestRepo(t, conn, wrap)
 	repoFn := func() (*iam.Repository, error) {
-		return iam.NewRepository(rw, rw, kms)
+		return iamRepo, nil
 	}
 
-	o, p := iam.TestScopes(t, repo)
+	o, p := iam.TestScopes(t, iamRepo)
 	or := iam.TestRole(t, conn, o.GetPublicId(), iam.WithDescription("default"), iam.WithName("default"), iam.WithGrantScopeId(p.GetPublicId()))
 	pr := iam.TestRole(t, conn, p.GetPublicId(), iam.WithDescription("default"), iam.WithName("default"))
 	return or, pr, repoFn
@@ -178,14 +176,13 @@ func TestGet(t *testing.T) {
 func TestList(t *testing.T) {
 	assert, require := assert.New(t), require.New(t)
 	conn, _ := db.TestSetup(t, "postgres")
-	rw := db.New(conn)
 	wrap := db.TestWrapper(t)
-	kms := kms.TestKms(t, conn)
+	iamRepo := iam.TestRepo(t, conn, wrap)
 	repoFn := func() (*iam.Repository, error) {
-		return iam.NewRepository(rw, rw, kms)
+		return iamRepo, nil
 	}
-	oNoRoles, pWithRoles := iam.TestScopes(t, repo)
-	oWithRoles, pNoRoles := iam.TestScopes(t, repo)
+	oNoRoles, pWithRoles := iam.TestScopes(t, iamRepo)
+	oWithRoles, pNoRoles := iam.TestScopes(t, iamRepo)
 	var wantOrgRoles []*pb.Role
 	var wantProjRoles []*pb.Role
 	for i := 0; i < 10; i++ {
@@ -510,15 +507,14 @@ func TestUpdate(t *testing.T) {
 		},
 	}
 	conn, _ := db.TestSetup(t, "postgres")
-	rw := db.New(conn)
 	wrap := db.TestWrapper(t)
-	kms := kms.TestKms(t, conn)
+	iamRepo := iam.TestRepo(t, conn, wrap)
 	repoFn := func() (*iam.Repository, error) {
-		return iam.NewRepository(rw, rw, kms)
+		return iamRepo, nil
 	}
 
-	o, p := iam.TestScopes(t, repo)
-	u := iam.TestUser(t, conn, o.GetPublicId())
+	o, p := iam.TestScopes(t, iamRepo)
+	u := iam.TestUser(t, iamRepo, o.GetPublicId())
 
 	or := iam.TestRole(t, conn, o.GetPublicId(), iam.WithDescription("default"), iam.WithName("default"), iam.WithGrantScopeId(p.GetPublicId()))
 	_ = iam.TestRoleGrant(t, conn, or.GetPublicId(), grantString)
@@ -931,20 +927,19 @@ func TestUpdate(t *testing.T) {
 
 func TestAddPrincipal(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
-	rw := db.New(conn)
 	wrap := db.TestWrapper(t)
-	kms := kms.TestKms(t, conn)
+	iamRepo := iam.TestRepo(t, conn, wrap)
 	repoFn := func() (*iam.Repository, error) {
-		return iam.NewRepository(rw, rw, kms)
+		return iamRepo, nil
 	}
 	s, err := roles.NewService(repoFn)
 	require.NoError(t, err, "Error when getting new role service.")
 
-	o, p := iam.TestScopes(t, repo)
+	o, p := iam.TestScopes(t, iamRepo)
 	users := []*iam.User{
-		iam.TestUser(t, conn, o.GetPublicId()),
-		iam.TestUser(t, conn, o.GetPublicId()),
-		iam.TestUser(t, conn, o.GetPublicId()),
+		iam.TestUser(t, iamRepo, o.GetPublicId()),
+		iam.TestUser(t, iamRepo, o.GetPublicId()),
+		iam.TestUser(t, iamRepo, o.GetPublicId()),
 	}
 	groups := []*iam.Group{
 		iam.TestGroup(t, conn, o.GetPublicId()),
@@ -1053,20 +1048,19 @@ func TestAddPrincipal(t *testing.T) {
 
 func TestSetPrincipal(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
-	rw := db.New(conn)
 	wrap := db.TestWrapper(t)
-	kms := kms.TestKms(t, conn)
+	iamRepo := iam.TestRepo(t, conn, wrap)
 	repoFn := func() (*iam.Repository, error) {
-		return iam.NewRepository(rw, rw, kms)
+		return iamRepo, nil
 	}
 	s, err := roles.NewService(repoFn)
 	require.NoError(t, err, "Error when getting new role service.")
 
-	o, p := iam.TestScopes(t, repo)
+	o, p := iam.TestScopes(t, iamRepo)
 	users := []*iam.User{
-		iam.TestUser(t, conn, o.GetPublicId()),
-		iam.TestUser(t, conn, o.GetPublicId()),
-		iam.TestUser(t, conn, o.GetPublicId()),
+		iam.TestUser(t, iamRepo, o.GetPublicId()),
+		iam.TestUser(t, iamRepo, o.GetPublicId()),
+		iam.TestUser(t, iamRepo, o.GetPublicId()),
 	}
 	groups := []*iam.Group{
 		iam.TestGroup(t, conn, o.GetPublicId()),
@@ -1176,20 +1170,19 @@ func TestSetPrincipal(t *testing.T) {
 
 func TestRemovePrincipal(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
-	rw := db.New(conn)
 	wrap := db.TestWrapper(t)
-	kms := kms.TestKms(t, conn)
+	iamRepo := iam.TestRepo(t, conn, wrap)
 	repoFn := func() (*iam.Repository, error) {
-		return iam.NewRepository(rw, rw, kms)
+		return iamRepo, nil
 	}
 	s, err := roles.NewService(repoFn)
 	require.NoError(t, err, "Error when getting new role service.")
 
-	o, p := iam.TestScopes(t, repo)
+	o, p := iam.TestScopes(t, iamRepo)
 	users := []*iam.User{
-		iam.TestUser(t, conn, o.GetPublicId()),
-		iam.TestUser(t, conn, o.GetPublicId()),
-		iam.TestUser(t, conn, o.GetPublicId()),
+		iam.TestUser(t, iamRepo, o.GetPublicId()),
+		iam.TestUser(t, iamRepo, o.GetPublicId()),
+		iam.TestUser(t, iamRepo, o.GetPublicId()),
 	}
 	groups := []*iam.Group{
 		iam.TestGroup(t, conn, o.GetPublicId()),
@@ -1336,11 +1329,10 @@ func checkEqualGrants(t *testing.T, expected []string, got *pb.Role) {
 
 func TestAddGrants(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
-	rw := db.New(conn)
 	wrap := db.TestWrapper(t)
-	kms := kms.TestKms(t, conn)
+	iamRepo := iam.TestRepo(t, conn, wrap)
 	repoFn := func() (*iam.Repository, error) {
-		return iam.NewRepository(rw, rw, kms)
+		return iamRepo, nil
 	}
 	s, err := roles.NewService(repoFn)
 	require.NoError(t, err, "Error when getting new role service.")
@@ -1372,7 +1364,7 @@ func TestAddGrants(t *testing.T) {
 	}
 
 	for _, tc := range addCases {
-		o, p := iam.TestScopes(t, repo)
+		o, p := iam.TestScopes(t, iamRepo)
 		for _, scope := range []*iam.Scope{o, p} {
 			t.Run(tc.name+"_"+scope.Type, func(t *testing.T) {
 				assert := assert.New(t)
@@ -1402,7 +1394,7 @@ func TestAddGrants(t *testing.T) {
 		}
 	}
 
-	_, p := iam.TestScopes(t, repo)
+	_, p := iam.TestScopes(t, iamRepo)
 	role := iam.TestRole(t, conn, p.GetPublicId())
 	failCases := []struct {
 		name    string
@@ -1432,11 +1424,10 @@ func TestAddGrants(t *testing.T) {
 
 func TestSetGrants(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
-	rw := db.New(conn)
 	wrap := db.TestWrapper(t)
-	kms := kms.TestKms(t, conn)
+	iamRepo := iam.TestRepo(t, conn, wrap)
 	repoFn := func() (*iam.Repository, error) {
-		return iam.NewRepository(rw, rw, kms)
+		return iamRepo, nil
 	}
 
 	s, err := roles.NewService(repoFn)
@@ -1475,7 +1466,7 @@ func TestSetGrants(t *testing.T) {
 	}
 
 	for _, tc := range setCases {
-		o, p := iam.TestScopes(t, repo)
+		o, p := iam.TestScopes(t, iamRepo)
 		for _, scope := range []*iam.Scope{o, p} {
 			t.Run(tc.name+"_"+scope.Type, func(t *testing.T) {
 				assert := assert.New(t)
@@ -1506,7 +1497,7 @@ func TestSetGrants(t *testing.T) {
 		}
 	}
 
-	_, p := iam.TestScopes(t, repo)
+	_, p := iam.TestScopes(t, iamRepo)
 	role := iam.TestRole(t, conn, p.GetPublicId())
 
 	failCases := []struct {
@@ -1537,11 +1528,10 @@ func TestSetGrants(t *testing.T) {
 
 func TestRemoveGrants(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
-	rw := db.New(conn)
 	wrap := db.TestWrapper(t)
-	kms := kms.TestKms(t, conn)
+	iamRepo := iam.TestRepo(t, conn, wrap)
 	repoFn := func() (*iam.Repository, error) {
-		return iam.NewRepository(rw, rw, kms)
+		return iamRepo, nil
 	}
 	s, err := roles.NewService(repoFn)
 	require.NoError(t, err, "Error when getting new role service.")
@@ -1579,7 +1569,7 @@ func TestRemoveGrants(t *testing.T) {
 	}
 
 	for _, tc := range removeCases {
-		o, p := iam.TestScopes(t, repo)
+		o, p := iam.TestScopes(t, iamRepo)
 		for _, scope := range []*iam.Scope{o, p} {
 			t.Run(tc.name+"_"+scope.Type, func(t *testing.T) {
 				assert := assert.New(t)
@@ -1611,7 +1601,7 @@ func TestRemoveGrants(t *testing.T) {
 		}
 	}
 
-	_, p := iam.TestScopes(t, repo)
+	_, p := iam.TestScopes(t, iamRepo)
 	role := iam.TestRole(t, conn, p.GetPublicId())
 	failCases := []struct {
 		name string

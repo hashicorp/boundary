@@ -29,13 +29,12 @@ func TestAuthenticate(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
-	o, _ := iam.TestScopes(t, repo)
+	kms := kms.TestKms(t, conn, wrapper)
+	o, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
 
-	kms := kms.TestKms(t, conn)
-
-	authTokenRepoFn := func() (*authtoken.Repository, error) { return authtoken.NewRepository(rw, rw, wrapper) }
+	authTokenRepoFn := func() (*authtoken.Repository, error) { return authtoken.NewRepository(rw, rw, kms) }
 	iamRepoFn := func() (*iam.Repository, error) { return iam.NewRepository(rw, rw, kms) }
-	passwordRepoFn := func() (*password.Repository, error) { return password.NewRepository(rw, rw, wrapper) }
+	passwordRepoFn := func() (*password.Repository, error) { return password.NewRepository(rw, rw, kms) }
 	am := password.TestAuthMethods(t, conn, o.GetPublicId(), 1)[0]
 
 	acct, err := password.NewAccount(am.GetPublicId(), password.WithLoginName(testLoginName))
@@ -43,7 +42,7 @@ func TestAuthenticate(t *testing.T) {
 
 	pwRepo, err := passwordRepoFn()
 	require.NoError(t, err)
-	acct, err = pwRepo.CreateAccount(context.Background(), acct, password.WithPassword(testPassword))
+	acct, err = pwRepo.CreateAccount(context.Background(), o.GetPublicId(), acct, password.WithPassword(testPassword))
 	require.NoError(t, err)
 
 	cases := []struct {
@@ -174,12 +173,11 @@ func TestAuthenticate_AuthAccountConnectedToIamUser(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
-	o, _ := iam.TestScopes(t, repo)
+	kms := kms.TestKms(t, conn, wrapper)
+	o, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
 
-	kms := kms.TestKms(t, conn)
-
-	passwordRepoFn := func() (*password.Repository, error) { return password.NewRepository(rw, rw, wrapper) }
-	authTokenRepoFn := func() (*authtoken.Repository, error) { return authtoken.NewRepository(rw, rw, wrapper) }
+	passwordRepoFn := func() (*password.Repository, error) { return password.NewRepository(rw, rw, kms) }
+	authTokenRepoFn := func() (*authtoken.Repository, error) { return authtoken.NewRepository(rw, rw, kms) }
 	iamRepoFn := func() (*iam.Repository, error) { return iam.NewRepository(rw, rw, kms) }
 
 	am := password.TestAuthMethods(t, conn, o.GetPublicId(), 1)[0]
@@ -188,7 +186,7 @@ func TestAuthenticate_AuthAccountConnectedToIamUser(t *testing.T) {
 
 	pwRepo, err := passwordRepoFn()
 	require.NoError(err)
-	acct, err = pwRepo.CreateAccount(context.Background(), acct, password.WithPassword(testPassword))
+	acct, err = pwRepo.CreateAccount(context.Background(), o.GetPublicId(), acct, password.WithPassword(testPassword))
 	require.NoError(err)
 
 	// connected to an account.

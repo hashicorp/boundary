@@ -9,7 +9,7 @@ import (
 	"github.com/hashicorp/boundary/api"
 	"github.com/hashicorp/boundary/internal/cmd/base"
 	"github.com/hashicorp/boundary/internal/cmd/config"
-	"github.com/hashicorp/boundary/internal/servers/controller/common"
+	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/go-hclog"
 	wrapping "github.com/hashicorp/go-kms-wrapping"
 	"github.com/hashicorp/vault/sdk/helper/base62"
@@ -48,8 +48,12 @@ func (tc *TestController) Context() context.Context {
 	return tc.ctx
 }
 
-func (tc *TestController) IamRepoFn() common.IamRepoFactory {
-	return tc.c.IamRepoFn
+func (tc *TestController) IamRepo() *iam.Repository {
+	repo, err := tc.c.IamRepoFn()
+	if err != nil {
+		tc.t.Fatal(err)
+	}
+	return repo
 }
 
 func (tc *TestController) Cancel() {

@@ -143,7 +143,7 @@ func (s Service) ChangePassword(ctx context.Context, req *pbs.ChangePasswordRequ
 	if err := validateChangePasswordRequest(req); err != nil {
 		return nil, err
 	}
-	u, err := s.changePasswordInRepo(ctx, req.GetId(), req.GetVersion(), req.GetOldPassword(), req.GetNewPassword())
+	u, err := s.changePasswordInRepo(ctx, authResults.Scope.GetId(), req.GetId(), req.GetVersion(), req.GetOldPassword(), req.GetNewPassword())
 	if err != nil {
 		return nil, err
 	}
@@ -160,7 +160,7 @@ func (s Service) SetPassword(ctx context.Context, req *pbs.SetPasswordRequest) (
 	if err := validateSetPasswordRequest(req); err != nil {
 		return nil, err
 	}
-	u, err := s.setPasswordInRepo(ctx, req.GetId(), req.GetVersion(), req.GetPassword())
+	u, err := s.setPasswordInRepo(ctx, authResults.Scope.GetId(), req.GetId(), req.GetVersion(), req.GetPassword())
 	if err != nil {
 		return nil, err
 	}
@@ -296,12 +296,12 @@ func (s Service) listFromRepo(ctx context.Context, authMethodId string) ([]*pb.A
 	return outUl, nil
 }
 
-func (s Service) changePasswordInRepo(ctx context.Context, id string, version uint32, oldPassword, newPassword string) (*pb.Account, error) {
+func (s Service) changePasswordInRepo(ctx context.Context, scopeId, id string, version uint32, oldPassword, newPassword string) (*pb.Account, error) {
 	repo, err := s.repoFn()
 	if err != nil {
 		return nil, err
 	}
-	out, err := repo.ChangePassword(ctx, id, oldPassword, newPassword, version)
+	out, err := repo.ChangePassword(ctx, scopeId, id, oldPassword, newPassword, version)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "Unable to change password: %v.", err)
 	}
@@ -311,12 +311,12 @@ func (s Service) changePasswordInRepo(ctx context.Context, id string, version ui
 	return toProto(out)
 }
 
-func (s Service) setPasswordInRepo(ctx context.Context, id string, version uint32, password string) (*pb.Account, error) {
+func (s Service) setPasswordInRepo(ctx context.Context, scopeId, id string, version uint32, password string) (*pb.Account, error) {
 	repo, err := s.repoFn()
 	if err != nil {
 		return nil, err
 	}
-	out, err := repo.SetPassword(ctx, id, password, version)
+	out, err := repo.SetPassword(ctx, scopeId, id, password, version)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "Unable to set password: %v.", err)
 	}

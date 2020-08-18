@@ -11,6 +11,7 @@ import (
 	"github.com/hashicorp/boundary/internal/gen/controller/api/resources/scopes"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/api/services"
 	"github.com/hashicorp/boundary/internal/iam"
+	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers/authtokens"
 	"github.com/hashicorp/boundary/internal/types/scope"
 	"google.golang.org/grpc/codes"
@@ -25,15 +26,16 @@ func TestGet(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrap := db.TestWrapper(t)
+	kms := kms.TestKms(t, conn, wrap)
 	repoFn := func() (*authtoken.Repository, error) {
-		return authtoken.NewRepository(rw, rw, wrap)
+		return authtoken.NewRepository(rw, rw, kms)
 	}
 
 	s, err := authtokens.NewService(repoFn)
 	require.NoError(t, err, "Couldn't create new auth token service.")
 
-	org, _ := iam.TestScopes(t, repo)
-	at := authtoken.TestAuthToken(t, conn, wrap, org.GetPublicId())
+	org, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrap))
+	at := authtoken.TestAuthToken(t, conn, kms, org.GetPublicId())
 
 	wireAuthToken := pb.AuthToken{
 		Id:                      at.GetPublicId(),
@@ -91,16 +93,18 @@ func TestList(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrap := db.TestWrapper(t)
+	kms := kms.TestKms(t, conn, wrap)
 	repoFn := func() (*authtoken.Repository, error) {
-		return authtoken.NewRepository(rw, rw, wrap)
+		return authtoken.NewRepository(rw, rw, kms)
 	}
+	iamRepo := iam.TestRepo(t, conn, wrap)
 
-	orgNoTokens, _ := iam.TestScopes(t, repo)
+	orgNoTokens, _ := iam.TestScopes(t, iamRepo)
 
-	orgWithSomeTokens, _ := iam.TestScopes(t, repo)
+	orgWithSomeTokens, _ := iam.TestScopes(t, iamRepo)
 	var wantSomeTokens []*pb.AuthToken
 	for i := 0; i < 3; i++ {
-		at := authtoken.TestAuthToken(t, conn, wrap, orgWithSomeTokens.GetPublicId())
+		at := authtoken.TestAuthToken(t, conn, kms, orgWithSomeTokens.GetPublicId())
 		wantSomeTokens = append(wantSomeTokens, &pb.AuthToken{
 			Id:                      at.GetPublicId(),
 			UserId:                  at.GetIamUserId(),
@@ -113,10 +117,10 @@ func TestList(t *testing.T) {
 		})
 	}
 
-	orgWithOtherTokens, _ := iam.TestScopes(t, repo)
+	orgWithOtherTokens, _ := iam.TestScopes(t, iamRepo)
 	var wantOtherTokens []*pb.AuthToken
 	for i := 0; i < 3; i++ {
-		at := authtoken.TestAuthToken(t, conn, wrap, orgWithOtherTokens.GetPublicId())
+		at := authtoken.TestAuthToken(t, conn, kms, orgWithOtherTokens.GetPublicId())
 		wantOtherTokens = append(wantOtherTokens, &pb.AuthToken{
 			Id:                      at.GetPublicId(),
 			UserId:                  at.GetIamUserId(),
@@ -177,14 +181,16 @@ func TestDelete(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrap := db.TestWrapper(t)
+	kms := kms.TestKms(t, conn, wrap)
 	repoFn := func() (*authtoken.Repository, error) {
-		return authtoken.NewRepository(rw, rw, wrap)
+		return authtoken.NewRepository(rw, rw, kms)
 	}
+	iamRepo := iam.TestRepo(t, conn, wrap)
 
-	wrongOrg, _ := iam.TestScopes(t, repo)
-	org, _ := iam.TestScopes(t, repo)
-	at := authtoken.TestAuthToken(t, conn, wrap, org.GetPublicId())
-	atForWrongOrg := authtoken.TestAuthToken(t, conn, wrap, org.GetPublicId())
+	wrongOrg, _ := iam.TestScopes(t, iamRepo)
+	org, _ := iam.TestScopes(t, iamRepo)
+	at := authtoken.TestAuthToken(t, conn, kms, org.GetPublicId())
+	atForWrongOrg := authtoken.TestAuthToken(t, conn, kms, org.GetPublicId())
 
 	s, err := authtokens.NewService(repoFn)
 	require.NoError(t, err, "Error when getting new user service.")
@@ -256,12 +262,14 @@ func TestDelete_twice(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrap := db.TestWrapper(t)
+	kms := kms.TestKms(t, conn, wrap)
 	repoFn := func() (*authtoken.Repository, error) {
-		return authtoken.NewRepository(rw, rw, wrap)
+		return authtoken.NewRepository(rw, rw, kms)
 	}
+	iamRepo := iam.TestRepo(t, conn, wrap)
 
-	org, _ := iam.TestScopes(t, repo)
-	at := authtoken.TestAuthToken(t, conn, wrap, org.GetPublicId())
+	org, _ := iam.TestScopes(t, iamRepo)
+	at := authtoken.TestAuthToken(t, conn, kms, org.GetPublicId())
 
 	s, err := authtokens.NewService(repoFn)
 	require.NoError(t, err, "Error when getting new user service")

@@ -14,7 +14,6 @@ import (
 	pb "github.com/hashicorp/boundary/internal/gen/controller/api/resources/users"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/api/services"
 	"github.com/hashicorp/boundary/internal/iam"
-	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers/users"
 	"github.com/hashicorp/boundary/internal/types/scope"
 	"google.golang.org/genproto/protobuf/field_mask"
@@ -31,22 +30,20 @@ import (
 func createDefaultUserAndRepo(t *testing.T) (*iam.User, func() (*iam.Repository, error)) {
 	t.Helper()
 	conn, _ := db.TestSetup(t, "postgres")
-	rw := db.New(conn)
 	wrap := db.TestWrapper(t)
-	kms := kms.TestKms(t, conn)
+	repo := iam.TestRepo(t, conn, wrap)
 	repoFn := func() (*iam.Repository, error) {
-		return iam.NewRepository(rw, rw, kms)
+		return repo, nil
 	}
-
 	o, _ := iam.TestScopes(t, repo)
-	u := iam.TestUser(t, conn, o.GetPublicId(), iam.WithDescription("default"), iam.WithName("default"))
+	u := iam.TestUser(t, repo, o.GetPublicId(), iam.WithDescription("default"), iam.WithName("default"))
 	return u, repoFn
 }
 
 func TestGet(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
-	u, repo := createDefaultUserAndRepo(t)
+	u, repoFn := createDefaultUserAndRepo(t)
 	toMerge := &pbs.GetUserRequest{
 		Id: u.GetPublicId(),
 	}
@@ -97,7 +94,7 @@ func TestGet(t *testing.T) {
 			req := proto.Clone(toMerge).(*pbs.GetUserRequest)
 			proto.Merge(req, tc.req)
 
-			s, err := users.NewService(repo)
+			s, err := users.NewService(repoFn)
 			require.NoError(err, "Couldn't create new user service.")
 
 			got, gErr := s.GetUser(auth.DisabledAuthTestContext(auth.WithScopeId(u.GetScopeId())), req)
@@ -110,11 +107,10 @@ func TestGet(t *testing.T) {
 func TestList(t *testing.T) {
 	assert, require := assert.New(t), require.New(t)
 	conn, _ := db.TestSetup(t, "postgres")
-	rw := db.New(conn)
 	wrap := db.TestWrapper(t)
-	kms := kms.TestKms(t, conn)
+	iamRepo := iam.TestRepo(t, conn, wrap)
 	repoFn := func() (*iam.Repository, error) {
-		return iam.NewRepository(rw, rw, kms)
+		return iamRepo, nil
 	}
 	repo, err := repoFn()
 	require.NoError(err)

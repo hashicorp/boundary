@@ -14,7 +14,6 @@ import (
 	pb "github.com/hashicorp/boundary/internal/gen/controller/api/resources/scopes"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/api/services"
 	"github.com/hashicorp/boundary/internal/iam"
-	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers/scopes"
 	"github.com/hashicorp/boundary/internal/types/scope"
 	"google.golang.org/genproto/protobuf/field_mask"
@@ -31,14 +30,13 @@ import (
 func createDefaultScopesAndRepo(t *testing.T) (*iam.Scope, *iam.Scope, func() (*iam.Repository, error)) {
 	t.Helper()
 	conn, _ := db.TestSetup(t, "postgres")
-	rw := db.New(conn)
 	wrap := db.TestWrapper(t)
-	kms := kms.TestKms(t, conn)
+	iamRepo := iam.TestRepo(t, conn, wrap)
 	repoFn := func() (*iam.Repository, error) {
-		return iam.NewRepository(rw, rw, kms)
+		return iamRepo, nil
 	}
 
-	oRes, pRes := iam.TestScopes(t, repo)
+	oRes, pRes := iam.TestScopes(t, iamRepo)
 
 	oRes.Name = "defaultProj"
 	oRes.Description = "defaultProj"
@@ -152,11 +150,10 @@ func TestGet(t *testing.T) {
 
 func TestList(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
-	rw := db.New(conn)
 	wrap := db.TestWrapper(t)
-	kms := kms.TestKms(t, conn)
+	iamRepo := iam.TestRepo(t, conn, wrap)
 	repoFn := func() (*iam.Repository, error) {
-		return iam.NewRepository(rw, rw, kms)
+		return iamRepo, nil
 	}
 	repo, err := repoFn()
 	require.NoError(t, err)
