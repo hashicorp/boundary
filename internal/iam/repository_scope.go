@@ -9,7 +9,7 @@ import (
 
 	"github.com/hashicorp/boundary/internal/db"
 	dbcommon "github.com/hashicorp/boundary/internal/db/common"
-	"github.com/hashicorp/boundary/internal/kms"
+	kmsCommon "github.com/hashicorp/boundary/internal/kms/common"
 	"github.com/hashicorp/boundary/internal/oplog"
 	"github.com/hashicorp/boundary/internal/types/resource"
 	"github.com/hashicorp/boundary/internal/types/scope"
@@ -125,10 +125,12 @@ func (r *Repository) CreateScope(ctx context.Context, s *Scope, userId string, o
 
 			s := scopeRaw.(*Scope)
 
-			// Create the scope's root key
-			_, _, err := kms.CreateRootKeyTx(ctx, w, r.wrapper, s.PublicId, rootKey)
-			if err != nil {
-				return fmt.Errorf("error creating scope root key: %w", err)
+			if s.Type == scope.Global.String() || s.Type == scope.Org.String() {
+				// Create the scope's root key
+				_, _, err := kmsCommon.CreateRootKeyTx(ctx, w, r.wrapper, s.PublicId, rootKey)
+				if err != nil {
+					return fmt.Errorf("error creating scope root key: %w", err)
+				}
 			}
 
 			// TODO: wrapper below should be the new scope's oplog key
