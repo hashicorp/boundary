@@ -53,18 +53,6 @@ func WithAutomaticVersioning() Option {
 	}
 }
 
-func WithAddress(inAddress string) Option {
-	return func(o *options) {
-		o.valueMap["address"] = inAddress
-	}
-}
-
-func DefaultAddress() Option {
-	return func(o *options) {
-		o.valueMap["address"] = nil
-	}
-}
-
 func WithAttributes(inAttributes map[string]interface{}) Option {
 	return func(o *options) {
 		o.valueMap["attributes"] = inAttributes

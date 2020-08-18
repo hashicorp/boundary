@@ -390,6 +390,9 @@ func toProto(in *static.HostSet, members []*static.HostSetMember) *pb.HostSet {
 //  * If relevant, the type derived from the id prefix matches what is claimed by the type field
 func validateGetRequest(req *pbs.GetHostSetRequest) error {
 	badFields := map[string]string{}
+	if !validId(req.GetHostCatalogId(), static.HostCatalogPrefix+"_") {
+		badFields["host_catalog_id"] = "The field is incorrectly formatted."
+	}
 	if !validId(req.GetId(), static.HostSetPrefix+"_") {
 		badFields["id"] = "Invalid formatted identifier."
 	}
@@ -401,6 +404,9 @@ func validateGetRequest(req *pbs.GetHostSetRequest) error {
 
 func validateCreateRequest(req *pbs.CreateHostSetRequest) error {
 	badFields := map[string]string{}
+	if !validId(req.GetHostCatalogId(), static.HostCatalogPrefix+"_") {
+		badFields["host_catalog_id"] = "The field is incorrectly formatted."
+	}
 	item := req.GetItem()
 	if item == nil {
 		return handlers.InvalidArgumentErrorf("Invalid arguments provided.", map[string]string{"item": "this field is required."})
@@ -431,11 +437,11 @@ func validateCreateRequest(req *pbs.CreateHostSetRequest) error {
 
 func validateUpdateRequest(req *pbs.UpdateHostSetRequest) error {
 	badFields := map[string]string{}
-	if !validId(req.GetId(), static.HostSetPrefix+"_") {
-		badFields["id"] = "The field is incorrectly formatted."
-	}
 	if !validId(req.GetHostCatalogId(), static.HostCatalogPrefix+"_") {
 		badFields["host_catalog_id"] = "The field is incorrectly formatted."
+	}
+	if !validId(req.GetId(), static.HostSetPrefix+"_") {
+		badFields["id"] = "The field is incorrectly formatted."
 	}
 
 	if req.GetUpdateMask() == nil {
@@ -475,6 +481,9 @@ func validateUpdateRequest(req *pbs.UpdateHostSetRequest) error {
 
 func validateListRequest(req *pbs.ListHostSetsRequest) error {
 	badFields := map[string]string{}
+	if !validId(req.GetHostCatalogId(), static.HostCatalogPrefix+"_") {
+		badFields["host_catalog_id"] = "The field is incorrectly formatted."
+	}
 	if len(badFields) > 0 {
 		return handlers.InvalidArgumentErrorf("Improperly formatted identifier.", badFields)
 	}
@@ -483,6 +492,9 @@ func validateListRequest(req *pbs.ListHostSetsRequest) error {
 
 func validateDeleteRequest(req *pbs.DeleteHostSetRequest) error {
 	badFields := map[string]string{}
+	if !validId(req.GetHostCatalogId(), static.HostCatalogPrefix+"_") {
+		badFields["host_catalog_id"] = "The field is incorrectly formatted."
+	}
 	if !validId(req.GetId(), static.HostSetPrefix+"_") {
 		badFields["id"] = "The field is incorrectly formatted."
 	}
@@ -494,6 +506,9 @@ func validateDeleteRequest(req *pbs.DeleteHostSetRequest) error {
 
 func validateAddRequest(req *pbs.AddHostSetHostsRequest) error {
 	badFields := map[string]string{}
+	if !validId(req.GetHostCatalogId(), static.HostCatalogPrefix+"_") {
+		badFields["host_catalog_id"] = "The field is incorrectly formatted."
+	}
 	if !validId(req.GetId(), static.HostSetPrefix+"_") {
 		badFields["id"] = "Incorrectly formatted identifier."
 	}
@@ -511,6 +526,9 @@ func validateAddRequest(req *pbs.AddHostSetHostsRequest) error {
 
 func validateSetRequest(req *pbs.SetHostSetHostsRequest) error {
 	badFields := map[string]string{}
+	if !validId(req.GetHostCatalogId(), static.HostCatalogPrefix+"_") {
+		badFields["host_catalog_id"] = "The field is incorrectly formatted."
+	}
 	if !validId(req.GetId(), static.HostSetPrefix+"_") {
 		badFields["id"] = "Incorrectly formatted identifier."
 	}
@@ -525,6 +543,9 @@ func validateSetRequest(req *pbs.SetHostSetHostsRequest) error {
 
 func validateRemoveRequest(req *pbs.RemoveHostSetHostsRequest) error {
 	badFields := map[string]string{}
+	if !validId(req.GetHostCatalogId(), static.HostCatalogPrefix+"_") {
+		badFields["host_catalog_id"] = "The field is incorrectly formatted."
+	}
 	if !validId(req.GetId(), static.HostSetPrefix+"_") {
 		badFields["id"] = "Incorrectly formatted identifier."
 	}

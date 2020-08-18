@@ -157,11 +157,18 @@ func (s Service) getFromRepo(ctx context.Context, id string) (*pb.Host, error) {
 	if h == nil {
 		return nil, handlers.NotFoundErrorf("Host %q doesn't exist.", id)
 	}
-	return toProto(h, hsl), nil
+	return toProto(h, hsl)
 }
 
 func (s Service) createInRepo(ctx context.Context, catalogId string, item *pb.Host) (*pb.Host, error) {
-	opts := []static.Option{static.WithAddress(item.GetAddress().GetValue())}
+	ha := &pb.StaticHostAttributes{}
+	if err := handlers.StructToProto(item.GetAttributes(), ha); err != nil {
+		return nil, status.Errorf(codes.Internal, "Failed converting attributes to subtype proto: %s", err)
+	}
+	var opts []static.Option
+	if ha.GetAddress() != nil {
+		opts = append(opts, static.WithAddress(ha.GetAddress().GetValue()))
+	}
 	if item.GetName() != nil {
 		opts = append(opts, static.WithName(item.GetName().GetValue()))
 	}
@@ -185,10 +192,14 @@ func (s Service) createInRepo(ctx context.Context, catalogId string, item *pb.Ho
 	if out == nil {
 		return nil, status.Error(codes.Internal, "Unable to create host but no error returned from repository.")
 	}
-	return toProto(out, nil), nil
+	return toProto(out, nil)
 }
 
 func (s Service) updateInRepo(ctx context.Context, catalogId, id string, version uint32, mask []string, item *pb.Host) (*pb.Host, error) {
+	ha := &pb.StaticHostAttributes{}
+	if err := handlers.StructToProto(item.GetAttributes(), ha); err != nil {
+		return nil, status.Errorf(codes.Internal, "Failed converting attributes to subtype proto: %s", err)
+	}
 	var opts []static.Option
 	if desc := item.GetDescription(); desc != nil {
 		opts = append(opts, static.WithDescription(desc.GetValue()))
@@ -196,7 +207,7 @@ func (s Service) updateInRepo(ctx context.Context, catalogId, id string, version
 	if name := item.GetName(); name != nil {
 		opts = append(opts, static.WithName(name.GetValue()))
 	}
-	if addr := item.GetAddress(); addr != nil {
+	if addr := ha.GetAddress(); addr != nil {
 		opts = append(opts, static.WithAddress(addr.GetValue()))
 	}
 	h, err := static.NewHost(catalogId, opts...)
@@ -222,7 +233,7 @@ func (s Service) updateInRepo(ctx context.Context, catalogId, id string, version
 	_ = repo
 	var hsl []*static.HostSetMember
 	out := h
-	return toProto(out, hsl), nil
+	return toProto(out, hsl)
 }
 
 func (s Service) deleteFromRepo(ctx context.Context, id string) (bool, error) {
@@ -252,12 +263,16 @@ func (s Service) listFromRepo(ctx context.Context, catalogId string) ([]*pb.Host
 	}
 	var outHl []*pb.Host
 	for _, h := range hl {
-		outHl = append(outHl, toProto(h, nil))
+		p, err := toProto(h, nil)
+		if err != nil {
+			return nil, err
+		}
+		outHl = append(outHl, p)
 	}
 	return outHl, nil
 }
 
-func toProto(in *static.Host, members []*static.HostSetMember) *pb.Host {
+func toProto(in *static.Host, members []*static.HostSetMember) (*pb.Host, error) {
 	out := pb.Host{
 		Id:            in.GetPublicId(),
 		HostCatalogId: in.GetCatalogId(),
@@ -265,7 +280,6 @@ func toProto(in *static.Host, members []*static.HostSetMember) *pb.Host {
 		CreatedTime:   in.GetCreateTime().GetTimestamp(),
 		UpdatedTime:   in.GetUpdateTime().GetTimestamp(),
 		Version:       in.GetVersion(),
-		Address:       wrapperspb.String(in.GetAddress()),
 	}
 	if in.GetDescription() != "" {
 		out.Description = wrapperspb.String(in.GetDescription())
@@ -276,7 +290,12 @@ func toProto(in *static.Host, members []*static.HostSetMember) *pb.Host {
 	for _, m := range members {
 		out.HostSetIds = append(out.HostSetIds, m.GetSetId())
 	}
-	return &out
+	st, err := handlers.ProtoToStruct(&pb.StaticHostAttributes{Address: wrapperspb.String(in.GetAddress())})
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "Unable to convert static attribute to struct: %s", err)
+	}
+	out.Attributes = st
+	return &out, nil
 }
 
 // A validateX method should exist for each method above.  These methods do not make calls to any backing service but enforce
@@ -288,6 +307,9 @@ func toProto(in *static.Host, members []*static.HostSetMember) *pb.Host {
 //  * If relevant, the type derived from the id prefix matches what is claimed by the type field
 func validateGetRequest(req *pbs.GetHostRequest) error {
 	badFields := map[string]string{}
+	if !validId(req.GetHostCatalogId(), static.HostCatalogPrefix+"_") {
+		badFields["host_catalog_id"] = "The field is incorrectly formatted."
+	}
 	if !validId(req.GetId(), static.HostPrefix+"_") {
 		badFields["id"] = "Invalid formatted identifier."
 	}
@@ -299,13 +321,23 @@ func validateGetRequest(req *pbs.GetHostRequest) error {
 
 func validateCreateRequest(req *pbs.CreateHostRequest) error {
 	badFields := map[string]string{}
+	if !validId(req.GetHostCatalogId(), static.HostCatalogPrefix+"_") {
+		badFields["host_catalog_id"] = "The field is incorrectly formatted."
+	}
 	item := req.GetItem()
 	if item == nil {
 		return handlers.InvalidArgumentErrorf("Invalid arguments provided.", map[string]string{"item": "this field is required."})
 	}
-	if item.GetAddress() == nil {
-		badFields["address"] = "This field is required."
+
+	ha := &pb.StaticHostAttributes{}
+	if err := handlers.StructToProto(item.GetAttributes(), ha); err != nil {
+		badFields["attributes"] = "Incorrectly formatted attribute for this type."
 	}
+
+	if ha.GetAddress() == nil {
+		badFields["attributes.address"] = "This field is required."
+	}
+
 	if item.GetType() == "" {
 		badFields["type"] = "This field is required."
 	}
@@ -376,6 +408,9 @@ func validateUpdateRequest(req *pbs.UpdateHostRequest) error {
 
 func validateListRequest(req *pbs.ListHostsRequest) error {
 	badFields := map[string]string{}
+	if !validId(req.GetHostCatalogId(), static.HostCatalogPrefix+"_") {
+		badFields["host_catalog_id"] = "The field is incorrectly formatted."
+	}
 	if len(badFields) > 0 {
 		return handlers.InvalidArgumentErrorf("Improperly formatted identifier.", badFields)
 	}
@@ -384,6 +419,9 @@ func validateListRequest(req *pbs.ListHostsRequest) error {
 
 func validateDeleteRequest(req *pbs.DeleteHostRequest) error {
 	badFields := map[string]string{}
+	if !validId(req.GetHostCatalogId(), static.HostCatalogPrefix+"_") {
+		badFields["host_catalog_id"] = "The field is incorrectly formatted."
+	}
 	if !validId(req.GetId(), static.HostPrefix+"_") {
 		badFields["id"] = "The field is incorrectly formatted."
 	}
