@@ -58,7 +58,7 @@ create table target_tcp (
     references iam_scope(public_id) 
     on delete cascade 
     on update cascade,
-  name text,
+  name text not null, -- name is not optional for a target subtype
   description text,
   default_port int, -- default_port can be null
   create_time wt_timestamp,
