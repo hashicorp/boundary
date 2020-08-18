@@ -6,7 +6,7 @@ create table target (
     references iam_scope(public_id) 
     on delete cascade 
     on update cascade,
-  create_time wt_timestamp,
+  create_time wt_timestamp
 );
 
 create trigger 
@@ -18,13 +18,13 @@ update on target
 create trigger 
   default_create_time_column
 before
-insert on kms_root_key
+insert on target
   for each row execute procedure default_create_time();
 
 create trigger 
   target_scope_valid
 before insert on target
-  for each row execute procedure kms_scope_valid();
+  for each row execute procedure target_scope_valid();
 
 
 create table target_host_set(
@@ -38,20 +38,19 @@ create table target_host_set(
     on update cascade,
   primary key(target_id, host_set_id),
   create_time wt_timestamp
-)
+);
 
 create trigger 
   immutable_columns
 before
-update on target
-  for each row execute procedure immutable_columns('public_id', 'scope_id', 'create_time');
+update on target_host_set
+  for each row execute procedure immutable_columns('target_id', 'host_set_id', 'create_time');
 
 create trigger 
-  default_create_time_column
+  target_host_set_scope_valid
 before
-insert on kms_root_key
-  for each row execute procedure default_create_time();
-
+insert on target_host_set
+  for each row execute procedure target_host_set_scope_valid();
 
 create table target_tcp (
   public_id wt_public_id primary key,
@@ -95,7 +94,7 @@ insert on target_tcp
 create trigger 
   target_scope_valid
 before insert on target_tcp
-  for each row execute procedure kms_scope_valid();
+  for each row execute procedure target_scope_valid();
 
 
 commit;

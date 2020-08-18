@@ -2429,4 +2429,173 @@ commit;
 
 `),
 	},
+	"migrations/30_targets.up.sql": {
+		name: "30_targets.up.sql",
+		bytes: []byte(`
+begin;
+
+create or replace function
+  target_scope_valid()
+  returns trigger
+as $$
+declare scope_type text;
+begin
+  -- Fetch the type of scope
+  select isc.type from iam_scope isc where isc.public_id = new.scope_id into scope_type;
+  if scope_type = 'org' then
+    return new;
+  end if;
+  if scope_type = 'project' then
+    return new;
+  end if;
+  raise exception 'invalid to scope type % (must be org or project)', scope_type;
+end;
+$$ language plpgsql;
+
+create or replace function
+  target_host_set_scope_valid()
+  returns trigger
+as $$
+declare hc_scope_id text;
+declare t_scope_id text;
+declare scope_type text;
+begin
+  select 
+    hc.scpoe_id,
+    t.scope_id,
+    s.type
+  from 
+    scope s,
+    host_set hs,
+    host_catalog hc,
+    target t
+  where 
+    hs.catalog_id = hc.public_id and
+    hc.scope_id = s.scope_id and 
+    hs.public_id = new.host_set_id and 
+    t.public_id = new.target_id 
+  into hc_scope_id, t_scope_id;
+  -- Always allowed
+  if hc_scope_id != t_scope_id then
+    raise exception 'host set scope % and target scope % are not equal', hc_scope_id, t_scope_id;
+  end if;
+  if scope_type = 'org' then
+    return new;
+  end if;
+  if scope_type = 'project' then
+    return new;
+  end if;
+  raise exception 'invalid to scope type % (must be org or project)', scope_type;
+end;
+$$ language plpgsql;
+
+commit;
+`),
+	},
+	"migrations/31_targets.up.sql": {
+		name: "31_targets.up.sql",
+		bytes: []byte(`
+begin;
+
+create table target (
+  public_id wt_public_id primary key,
+  scope_id wt_scope_id not null 
+    references iam_scope(public_id) 
+    on delete cascade 
+    on update cascade,
+  create_time wt_timestamp
+);
+
+create trigger 
+  immutable_columns
+before
+update on target
+  for each row execute procedure immutable_columns('public_id', 'scope_id', 'create_time');
+
+create trigger 
+  default_create_time_column
+before
+insert on target
+  for each row execute procedure default_create_time();
+
+create trigger 
+  target_scope_valid
+before insert on target
+  for each row execute procedure target_scope_valid();
+
+
+create table target_host_set(
+  target_id wt_public_id
+    references target(public_id)
+    on delete cascade
+    on update cascade,
+  host_set_id wt_public_id
+    references host_set(public_id)
+    on delete cascade
+    on update cascade,
+  primary key(target_id, host_set_id),
+  create_time wt_timestamp
+);
+
+create trigger 
+  immutable_columns
+before
+update on target_host_set
+  for each row execute procedure immutable_columns('target_id', 'host_set_id', 'create_time');
+
+create trigger 
+  target_host_set_scope_valid
+before
+insert on target_host_set
+  for each row execute procedure target_host_set_scope_valid();
+
+create table target_tcp (
+  public_id wt_public_id primary key,
+  scope_id wt_scope_id not null 
+    references iam_scope(public_id) 
+    on delete cascade 
+    on update cascade,
+  name text,
+  description text,
+  default_port int, -- default_port can be null
+  create_time wt_timestamp,
+  update_time wt_timestamp,
+  version wt_version,
+  unique(scope_id, name) -- name must be unique within a scope
+);
+
+
+ -- define the immutable fields for target 
+create trigger 
+  immutable_columns
+before
+update on target_tcp
+  for each row execute procedure immutable_columns('public_id', 'scope_id', 'create_time');
+
+create trigger
+  update_version_column
+after update on target_tcp
+  for each row execute procedure update_version_column();
+
+create trigger
+  update_time_column
+before update on target_tcp
+  for each row execute procedure update_time_column();
+
+create trigger 
+  default_create_time_column
+before
+insert on target_tcp
+  for each row execute procedure default_create_time();
+
+create trigger 
+  target_scope_valid
+before insert on target_tcp
+  for each row execute procedure target_scope_valid();
+
+
+commit;
+
+`),
+	},
 }
