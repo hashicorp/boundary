@@ -2459,7 +2459,8 @@ begin
   insert into target
     (public_id, scope_id)
   values
-    (new.public_id, new.scope_id);
+    (new.public_id, new.scope_id)
+  on conflict (public_id) do nothing;
   return new;
 end;
 $$ language plpgsql;
@@ -2471,7 +2472,12 @@ create or replace function delete_target_subtype()
 as $$
 begin
   delete from target
-  where public_id = old.public_id;
+  where 
+    public_id = old.public_id and
+    not exists(
+        select count(*) from target_all_subtypes 
+        where public_id = old.public_id and scope_id = old.scope_id
+    );
   return null; -- result is ignored since this is an after trigger
 end;
 $$ language plpgsql;
@@ -2649,6 +2655,11 @@ create trigger
 before insert on target_tcp
   for each row execute procedure target_scope_valid();
 
+
+-- target_all_subtypes is a union of all target subtypes 
+create view target_all_subtypes
+as 
+select public_id, scope_id from target_tcp;
 
 commit;
 
