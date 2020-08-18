@@ -33,11 +33,10 @@ func NewUsersClient(c *api.Client) *UsersClient {
 }
 
 func (c *UsersClient) Create(ctx context.Context, opt ...Option) (*User, *api.Error, error) {
+	opts, apiOpts := getOpts(opt...)
 	if c.client == nil {
 		return nil, nil, fmt.Errorf("nil client")
 	}
-
-	opts, apiOpts := getOpts(opt...)
 
 	req, err := c.client.NewRequest(ctx, "POST", "users", opts.valueMap, apiOpts...)
 	if err != nil {

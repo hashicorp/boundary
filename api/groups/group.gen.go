@@ -35,11 +35,10 @@ func NewGroupsClient(c *api.Client) *GroupsClient {
 }
 
 func (c *GroupsClient) Create(ctx context.Context, opt ...Option) (*Group, *api.Error, error) {
+	opts, apiOpts := getOpts(opt...)
 	if c.client == nil {
 		return nil, nil, fmt.Errorf("nil client")
 	}
-
-	opts, apiOpts := getOpts(opt...)
 
 	req, err := c.client.NewRequest(ctx, "POST", "groups", opts.valueMap, apiOpts...)
 	if err != nil {
