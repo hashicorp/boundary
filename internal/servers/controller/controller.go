@@ -112,13 +112,13 @@ func New(conf *Config) (*Controller, error) {
 		return static.NewRepository(dbase, dbase, c.kms)
 	}
 	c.AuthTokenRepoFn = func() (*authtoken.Repository, error) {
-		return authtoken.NewRepository(dbase, dbase, c.conf.RootKms)
+		return authtoken.NewRepository(dbase, dbase, c.kms)
 	}
 	c.ServersRepoFn = func() (*servers.Repository, error) {
-		return servers.NewRepository(c.logger.Named("servers.repository"), dbase, dbase, c.conf.RootKms)
+		return servers.NewRepository(c.logger.Named("servers.repository"), dbase, dbase, c.kms)
 	}
 	c.PasswordAuthRepoFn = func() (*password.Repository, error) {
-		return password.NewRepository(dbase, dbase, c.conf.RootKms)
+		return password.NewRepository(dbase, dbase, c.kms)
 	}
 
 	c.workerAuthCache = cache.New(0, 0)

@@ -99,7 +99,7 @@ func (s Service) authenticateWithRepo(ctx context.Context, authMethodId, loginNa
 	if err != nil {
 		return nil, err
 	}
-	tok, err := atRepo.CreateAuthToken(ctx, u.GetPublicId(), acct.GetPublicId())
+	tok, err := atRepo.CreateAuthToken(ctx, u, acct.GetPublicId())
 	if err != nil {
 		return nil, err
 	}

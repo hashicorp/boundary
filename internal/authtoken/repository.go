@@ -10,8 +10,9 @@ import (
 	"github.com/hashicorp/boundary/internal/authtoken/store"
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/db/timestamp"
+	"github.com/hashicorp/boundary/internal/iam"
+	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/oplog"
-	wrapping "github.com/hashicorp/go-kms-wrapping"
 )
 
 // TODO (ICU-406): Make these fields configurable.
@@ -24,23 +25,23 @@ var (
 // A Repository stores and retrieves the persistent types in the authtoken
 // package. It is not safe to use a repository concurrently.
 type Repository struct {
-	reader  db.Reader
-	writer  db.Writer
-	wrapper wrapping.Wrapper
+	reader db.Reader
+	writer db.Writer
+	kms    *kms.Kms
 	// defaultLimit provides a default for limiting the number of results returned from the repo
 	defaultLimit int
 }
 
 // NewRepository creates a new Repository. The returned repository is not safe for concurrent go
 // routines to access it.
-func NewRepository(r db.Reader, w db.Writer, wrapper wrapping.Wrapper, opt ...Option) (*Repository, error) {
+func NewRepository(r db.Reader, w db.Writer, kms *kms.Kms, opt ...Option) (*Repository, error) {
 	switch {
 	case r == nil:
 		return nil, fmt.Errorf("db.Reader: auth token: %w", db.ErrNilParameter)
 	case w == nil:
 		return nil, fmt.Errorf("db.Writer: auth token: %w", db.ErrNilParameter)
-	case wrapper == nil:
-		return nil, fmt.Errorf("wrapping.Wrapper: auth token: %w", db.ErrNilParameter)
+	case kms == nil:
+		return nil, fmt.Errorf("kms: auth token: %w", db.ErrNilParameter)
 	}
 
 	opts := getOpts(opt...)
@@ -51,7 +52,7 @@ func NewRepository(r db.Reader, w db.Writer, wrapper wrapping.Wrapper, opt ...Op
 	return &Repository{
 		reader:       r,
 		writer:       w,
-		wrapper:      wrapper,
+		kms:          kms,
 		defaultLimit: opts.withLimit,
 	}, nil
 }
@@ -59,8 +60,11 @@ func NewRepository(r db.Reader, w db.Writer, wrapper wrapping.Wrapper, opt ...Op
 // CreateAuthToken inserts an Auth Token into the repository and returns a new Auth Token.  The returned auth token
 // contains the auth token value. The provided IAM User ID must be associated to the provided auth account id
 // or an error will be returned. All options are ignored.
-func (r *Repository) CreateAuthToken(ctx context.Context, withIamUserId, withAuthAccountId string, opt ...Option) (*AuthToken, error) {
-	if withIamUserId == "" {
+func (r *Repository) CreateAuthToken(ctx context.Context, withIamUser *iam.User, withAuthAccountId string, opt ...Option) (*AuthToken, error) {
+	if withIamUser == nil {
+		return nil, fmt.Errorf("create: auth token: no user: %w", db.ErrNilParameter)
+	}
+	if withIamUser.GetPublicId() == "" {
 		return nil, fmt.Errorf("create: auth token: no user id: %w", db.ErrInvalidParameter)
 	}
 	if withAuthAccountId == "" {
@@ -82,6 +86,15 @@ func (r *Repository) CreateAuthToken(ctx context.Context, withIamUserId, withAut
 	}
 	at.Token = token
 
+	oplogWrapper, err := r.kms.GetWrapper(ctx, withIamUser.GetScopeId(), kms.KeyPurposeOplog, "")
+	if err != nil {
+		return nil, fmt.Errorf("create: unable to get oplog wrapper: %w", err)
+	}
+	databaseWrapper, err := r.kms.GetWrapper(ctx, withIamUser.GetScopeId(), kms.KeyPurposeDatabase, "")
+	if err != nil {
+		return nil, fmt.Errorf("create: unable to get database wrapper: %w", err)
+	}
+
 	// TODO: Allow the caller to specify something different than the default duration.
 	// We truncate the expiration time to the nearest second to make testing in different platforms with
 	// different time resolutions easier.
@@ -102,8 +115,8 @@ func (r *Repository) CreateAuthToken(ctx context.Context, withIamUserId, withAut
 			if err := read.LookupByPublicId(ctx, acct); err != nil {
 				return fmt.Errorf("create: auth token: auth account lookup: %w", err)
 			}
-			if acct.GetIamUserId() != withIamUserId {
-				return fmt.Errorf("create: auth token: auth account %q mismatch with iam user %q", withAuthAccountId, withIamUserId)
+			if acct.GetIamUserId() != withIamUser.GetPublicId() {
+				return fmt.Errorf("create: auth token: auth account %q mismatch with iam user %q", withAuthAccountId, withIamUser.GetPublicId())
 			}
 			at.ScopeId = acct.GetScopeId()
 			at.AuthMethodId = acct.GetAuthMethodId()
@@ -111,10 +124,10 @@ func (r *Repository) CreateAuthToken(ctx context.Context, withIamUserId, withAut
 
 			metadata := newAuthTokenMetadata(at, oplog.OpType_OP_TYPE_CREATE)
 			newAuthToken = at.toWritableAuthToken()
-			if err := newAuthToken.encrypt(ctx, r.wrapper); err != nil {
+			if err := newAuthToken.encrypt(ctx, databaseWrapper); err != nil {
 				return err
 			}
-			if err := w.Create(ctx, newAuthToken, db.WithOplog(r.wrapper, metadata)); err != nil {
+			if err := w.Create(ctx, newAuthToken, db.WithOplog(oplogWrapper, metadata)); err != nil {
 				return err
 			}
 			newAuthToken.CtToken = nil
@@ -147,7 +160,11 @@ func (r *Repository) LookupAuthToken(ctx context.Context, id string, opt ...Opti
 		return nil, fmt.Errorf("auth token: lookup: %w", err)
 	}
 	if opts.withTokenValue {
-		if err := at.decrypt(ctx, r.wrapper); err != nil {
+		databaseWrapper, err := r.kms.GetWrapper(ctx, at.GetScopeId(), kms.KeyPurposeDatabase, "")
+		if err != nil {
+			return nil, fmt.Errorf("lookup: unable to get database wrapper: %w", err)
+		}
+		if err := at.decrypt(ctx, databaseWrapper); err != nil {
 			return nil, fmt.Errorf("lookup: auth token: cannot decrypt auth token value: %w", err)
 		}
 	}
@@ -193,6 +210,11 @@ func (r *Repository) ValidateToken(ctx context.Context, id, token string, opt ..
 		return nil, fmt.Errorf("validate token: last accessed time : %w", err)
 	}
 
+	oplogWrapper, err := r.kms.GetWrapper(ctx, retAT.GetScopeId(), kms.KeyPurposeOplog, "")
+	if err != nil {
+		return nil, fmt.Errorf("validate token: unable to get oplog wrapper: %w", err)
+	}
+
 	now := time.Now()
 	sinceLastAccessed := now.Sub(lastAccessed)
 	if now.After(exp) || sinceLastAccessed > maxStaleness {
@@ -204,7 +226,7 @@ func (r *Repository) ValidateToken(ctx context.Context, id, token string, opt ..
 			func(_ db.Reader, w db.Writer) error {
 				metadata := newAuthTokenMetadata(retAT, oplog.OpType_OP_TYPE_DELETE)
 				delAt := retAT.toWritableAuthToken()
-				if _, err := w.Delete(ctx, delAt, db.WithOplog(r.wrapper, metadata)); err != nil {
+				if _, err := w.Delete(ctx, delAt, db.WithOplog(oplogWrapper, metadata)); err != nil {
 					return fmt.Errorf("validate token: delete auth token: %w", err)
 				}
 				retAT = nil
@@ -237,7 +259,7 @@ func (r *Repository) ValidateToken(ctx context.Context, id, token string, opt ..
 					at,
 					nil,
 					[]string{"ApproximateLastAccessTime"},
-					db.WithOplog(r.wrapper, metadata),
+					db.WithOplog(oplogWrapper, metadata),
 				)
 				if err == nil && rowsUpdated > 1 {
 					return db.ErrMultipleRecords
@@ -293,6 +315,11 @@ func (r *Repository) DeleteAuthToken(ctx context.Context, id string, opt ...Opti
 		return db.NoRowsAffected, nil
 	}
 
+	oplogWrapper, err := r.kms.GetWrapper(ctx, at.GetScopeId(), kms.KeyPurposeOplog, "")
+	if err != nil {
+		return db.NoRowsAffected, fmt.Errorf("delete: unable to get oplog wrapper: %w", err)
+	}
+
 	var rowsDeleted int
 	_, err = r.writer.DoTx(
 		ctx,
@@ -301,7 +328,7 @@ func (r *Repository) DeleteAuthToken(ctx context.Context, id string, opt ...Opti
 		func(_ db.Reader, w db.Writer) error {
 			metadata := newAuthTokenMetadata(at, oplog.OpType_OP_TYPE_DELETE)
 			deleteAT := at.toWritableAuthToken()
-			rowsDeleted, err = w.Delete(ctx, deleteAT, db.WithOplog(r.wrapper, metadata))
+			rowsDeleted, err = w.Delete(ctx, deleteAT, db.WithOplog(oplogWrapper, metadata))
 			if err == nil && rowsDeleted > 1 {
 				return db.ErrMultipleRecords
 			}

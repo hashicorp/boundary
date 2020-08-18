@@ -12,7 +12,6 @@ import (
 	"github.com/hashicorp/boundary/internal/auth/password"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/oplog"
-	wrapping "github.com/hashicorp/go-kms-wrapping"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/testing/protocmp"
@@ -26,12 +25,13 @@ func TestRepository_New(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
+	kmsCache := kms.TestKms(t, conn, wrapper)
 
 	type args struct {
-		r       db.Reader
-		w       db.Writer
-		wrapper wrapping.Wrapper
-		opts    []Option
+		r    db.Reader
+		w    db.Writer
+		kms  *kms.Kms
+		opts []Option
 	}
 
 	var tests = []struct {
@@ -43,38 +43,38 @@ func TestRepository_New(t *testing.T) {
 		{
 			name: "valid default limit",
 			args: args{
-				r:       rw,
-				w:       rw,
-				wrapper: wrapper,
+				r:   rw,
+				w:   rw,
+				kms: kmsCache,
 			},
 			want: &Repository{
 				reader:       rw,
 				writer:       rw,
-				wrapper:      wrapper,
+				kms:          kmsCache,
 				defaultLimit: db.DefaultLimit,
 			},
 		},
 		{
 			name: "valid new limit",
 			args: args{
-				r:       rw,
-				w:       rw,
-				wrapper: wrapper,
-				opts:    []Option{WithLimit(5)},
+				r:    rw,
+				w:    rw,
+				kms:  kmsCache,
+				opts: []Option{WithLimit(5)},
 			},
 			want: &Repository{
 				reader:       rw,
 				writer:       rw,
-				wrapper:      wrapper,
+				kms:          kmsCache,
 				defaultLimit: 5,
 			},
 		},
 		{
 			name: "nil-reader",
 			args: args{
-				r:       nil,
-				w:       rw,
-				wrapper: wrapper,
+				r:   nil,
+				w:   rw,
+				kms: kmsCache,
 			},
 			want:      nil,
 			wantIsErr: db.ErrNilParameter,
@@ -82,19 +82,19 @@ func TestRepository_New(t *testing.T) {
 		{
 			name: "nil-writer",
 			args: args{
-				r:       rw,
-				w:       nil,
-				wrapper: wrapper,
+				r:   rw,
+				w:   nil,
+				kms: kmsCache,
 			},
 			want:      nil,
 			wantIsErr: db.ErrNilParameter,
 		},
 		{
-			name: "nil-wrapper",
+			name: "nil-kms",
 			args: args{
-				r:       rw,
-				w:       rw,
-				wrapper: nil,
+				r:   rw,
+				w:   rw,
+				kms: nil,
 			},
 			want:      nil,
 			wantIsErr: db.ErrNilParameter,
@@ -102,9 +102,9 @@ func TestRepository_New(t *testing.T) {
 		{
 			name: "all-nils",
 			args: args{
-				r:       nil,
-				w:       nil,
-				wrapper: nil,
+				r:   nil,
+				w:   nil,
+				kms: nil,
 			},
 			want:      nil,
 			wantIsErr: db.ErrNilParameter,
@@ -114,7 +114,7 @@ func TestRepository_New(t *testing.T) {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			assert := assert.New(t)
-			got, err := NewRepository(tt.args.r, tt.args.w, tt.args.wrapper, tt.args.opts...)
+			got, err := NewRepository(tt.args.r, tt.args.w, tt.args.kms, tt.args.opts...)
 			if tt.wantIsErr != nil {
 				assert.Truef(errors.Is(err, tt.wantIsErr), "want err: %q got: %q", tt.wantIsErr, err)
 				assert.Nil(got)
@@ -131,7 +131,8 @@ func TestRepository_CreateAuthToken(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
-	kms := kms.TestKms(t, conn)
+	kms := kms.TestKms(t, conn, wrapper)
+	repo := iam.TestRepo(t, conn, wrapper)
 
 	org1, _ := iam.TestScopes(t, repo)
 	am := password.TestAuthMethods(t, conn, org1.GetPublicId(), 1)[0]
@@ -143,18 +144,18 @@ func TestRepository_CreateAuthToken(t *testing.T) {
 	require.NoError(t, err)
 
 	org2, _ := iam.TestScopes(t, repo)
-	u2 := iam.TestUser(t, conn, org2.GetPublicId())
+	u2 := iam.TestUser(t, repo, org2.GetPublicId())
 
 	var tests = []struct {
 		name       string
-		iamUserId  string
+		iamUser    *iam.User
 		authAcctId string
 		want       *AuthToken
 		wantErr    bool
 	}{
 		{
 			name:       "valid",
-			iamUserId:  u1.GetPublicId(),
+			iamUser:    u1,
 			authAcctId: aAcct.GetPublicId(),
 			want: &AuthToken{
 				AuthToken: &store.AuthToken{
@@ -164,14 +165,14 @@ func TestRepository_CreateAuthToken(t *testing.T) {
 		},
 		{
 			name:       "unconnected-authaccount-user",
-			iamUserId:  u2.GetPublicId(),
+			iamUser:    u2,
 			authAcctId: aAcct.GetPublicId(),
 			wantErr:    true,
 		},
 		{
-			name:      "no-authacctid",
-			iamUserId: u1.GetPublicId(),
-			wantErr:   true,
+			name:    "no-authacctid",
+			iamUser: u1,
+			wantErr: true,
 		},
 		{
 			name:       "no-userid",
@@ -180,13 +181,13 @@ func TestRepository_CreateAuthToken(t *testing.T) {
 		},
 		{
 			name:       "invalid-authacctid",
-			iamUserId:  u1.GetPublicId(),
+			iamUser:    u1,
 			authAcctId: "this_is_invalid",
 			wantErr:    true,
 		},
 		{
 			name:       "invalid-userid",
-			iamUserId:  "this_is_invalid",
+			iamUser:    func() *iam.User { u := u1.Clone().(*iam.User); u.PublicId = "this_is_invalid"; return u }(),
 			authAcctId: aAcct.GetPublicId(),
 			wantErr:    true,
 		},
@@ -195,16 +196,16 @@ func TestRepository_CreateAuthToken(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			repo, err := NewRepository(rw, rw, wrapper)
+			repo, err := NewRepository(rw, rw, kms)
 			require.NoError(err)
 			require.NotNil(repo)
-			got, err := repo.CreateAuthToken(context.Background(), tt.iamUserId, tt.authAcctId)
+			got, err := repo.CreateAuthToken(context.Background(), tt.iamUser, tt.authAcctId)
 			if tt.wantErr {
 				assert.Error(err)
 				assert.Nil(got)
 				return
 			}
-			require.NoError(err, "Got error for CreateAuthToken(ctx, %v, %v)", tt.iamUserId, tt.authAcctId)
+			require.NoError(err, "Got error for CreateAuthToken(ctx, %v, %v)", tt.iamUser, tt.authAcctId)
 			assert.NotNil(got)
 			db.AssertPublicId(t, AuthTokenPrefix, got.PublicId)
 			assert.Equal(tt.authAcctId, got.GetAuthAccountId())
@@ -219,9 +220,10 @@ func TestRepository_LookupAuthToken(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
-
+	kms := kms.TestKms(t, conn, wrapper)
+	repo := iam.TestRepo(t, conn, wrapper)
 	org, _ := iam.TestScopes(t, repo)
-	at := TestAuthToken(t, conn, wrapper, org.GetPublicId())
+	at := TestAuthToken(t, conn, kms, org.GetPublicId())
 	at.Token = ""
 	at.CtToken = nil
 
@@ -257,7 +259,7 @@ func TestRepository_LookupAuthToken(t *testing.T) {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			repo, err := NewRepository(rw, rw, wrapper)
+			repo, err := NewRepository(rw, rw, kms)
 			require.NoError(err)
 			require.NotNil(repo)
 
@@ -294,12 +296,14 @@ func TestRepository_ValidateToken(t *testing.T) {
 
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
-	repo, err := NewRepository(rw, rw, wrapper)
+	kms := kms.TestKms(t, conn, wrapper)
+	iamRepo := iam.TestRepo(t, conn, wrapper)
+	repo, err := NewRepository(rw, rw, kms)
 	require.NoError(t, err)
 	require.NotNil(t, repo)
 
-	org, _ := iam.TestScopes(t, repo)
-	at := TestAuthToken(t, conn, wrapper, org.GetPublicId())
+	org, _ := iam.TestScopes(t, iamRepo)
+	at := TestAuthToken(t, conn, kms, org.GetPublicId())
 	atToken := at.GetToken()
 	at.Token = ""
 	at.CtToken = nil
@@ -404,17 +408,21 @@ func TestRepository_ValidateToken_expired(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
-	repo, err := NewRepository(rw, rw, wrapper)
+	kms := kms.TestKms(t, conn, wrapper)
+	iamRepo := iam.TestRepo(t, conn, wrapper)
+	repo, err := NewRepository(rw, rw, kms)
 	require.NoError(t, err)
 	require.NotNil(t, repo)
 
-	org, _ := iam.TestScopes(t, repo)
-	baseAT := TestAuthToken(t, conn, wrapper, org.GetPublicId())
+	org, _ := iam.TestScopes(t, iamRepo)
+	baseAT := TestAuthToken(t, conn, kms, org.GetPublicId())
 	baseAT.GetAuthAccountId()
 	aAcct := allocAuthAccount()
 	aAcct.PublicId = baseAT.GetAuthAccountId()
 	require.NoError(t, rw.LookupByPublicId(context.Background(), aAcct))
-	iamUserId := aAcct.GetIamUserId()
+	iamUser, err := iamRepo.LookupUser(context.Background(), aAcct.GetIamUserId())
+	require.NoError(t, err)
+	require.NotNil(t, iamUser)
 
 	defaultStaleTime := maxStaleness
 	defaultExpireDuration := maxTokenDuration
@@ -453,7 +461,7 @@ func TestRepository_ValidateToken_expired(t *testing.T) {
 			maxTokenDuration = tt.expirationDuration
 
 			ctx := context.Background()
-			at, err := repo.CreateAuthToken(ctx, iamUserId, baseAT.GetAuthAccountId())
+			at, err := repo.CreateAuthToken(ctx, iamUser, baseAT.GetAuthAccountId())
 			require.NoError(err)
 
 			got, err := repo.ValidateToken(ctx, at.GetPublicId(), at.GetToken())
@@ -477,9 +485,10 @@ func TestRepository_DeleteAuthToken(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
-
+	kms := kms.TestKms(t, conn, wrapper)
+	repo := iam.TestRepo(t, conn, wrapper)
 	org, _ := iam.TestScopes(t, repo)
-	at := TestAuthToken(t, conn, wrapper, org.GetPublicId())
+	at := TestAuthToken(t, conn, kms, org.GetPublicId())
 	badId, err := newAuthTokenId()
 	require.NoError(t, err)
 	require.NotNil(t, badId)
@@ -512,7 +521,7 @@ func TestRepository_DeleteAuthToken(t *testing.T) {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			repo, err := NewRepository(rw, rw, wrapper)
+			repo, err := NewRepository(rw, rw, kms)
 			require.NoError(err)
 			require.NotNil(repo)
 
@@ -534,13 +543,14 @@ func TestRepository_ListAuthTokens(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
-
+	kms := kms.TestKms(t, conn, wrapper)
+	repo := iam.TestRepo(t, conn, wrapper)
 	org, _ := iam.TestScopes(t, repo)
-	at1 := TestAuthToken(t, conn, wrapper, org.GetPublicId())
+	at1 := TestAuthToken(t, conn, kms, org.GetPublicId())
 	at1.Token = ""
-	at2 := TestAuthToken(t, conn, wrapper, org.GetPublicId())
+	at2 := TestAuthToken(t, conn, kms, org.GetPublicId())
 	at2.Token = ""
-	at3 := TestAuthToken(t, conn, wrapper, org.GetPublicId())
+	at3 := TestAuthToken(t, conn, kms, org.GetPublicId())
 	at3.Token = ""
 
 	emptyOrg, _ := iam.TestScopes(t, repo)
@@ -573,7 +583,7 @@ func TestRepository_ListAuthTokens(t *testing.T) {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			repo, err := NewRepository(rw, rw, wrapper)
+			repo, err := NewRepository(rw, rw, kms)
 			require.NoError(err)
 			require.NotNil(repo)
 

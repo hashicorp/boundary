@@ -15,6 +15,7 @@ import (
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/db/timestamp"
 	"github.com/hashicorp/boundary/internal/iam"
+	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/proto"
@@ -23,8 +24,10 @@ import (
 func TestAuthToken_DbUpdate(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	wrapper := db.TestWrapper(t)
+	kms := kms.TestKms(t, conn, wrapper)
+	iamRepo := iam.TestRepo(t, conn, wrapper)
 
-	org, _ := iam.TestScopes(t, repo)
+	org, _ := iam.TestScopes(t, iamRepo)
 	am := password.TestAuthMethods(t, conn, org.GetPublicId(), 1)[0]
 	acct := password.TestAccounts(t, conn, am.GetPublicId(), 1)[0]
 
@@ -94,8 +97,8 @@ func TestAuthToken_DbUpdate(t *testing.T) {
 			assert := assert.New(t)
 			w := db.New(conn)
 
-			org, _ := iam.TestScopes(t, repo)
-			authTok := TestAuthToken(t, conn, wrapper, org.GetPublicId())
+			org, _ := iam.TestScopes(t, iamRepo)
+			authTok := TestAuthToken(t, conn, kms, org.GetPublicId())
 			proto.Merge(authTok.AuthToken, tt.args.authTok)
 
 			wAuthToken := authTok.toWritableAuthToken()
@@ -116,11 +119,11 @@ func TestAuthToken_DbUpdate(t *testing.T) {
 func TestAuthToken_DbCreate(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	wrapper := db.TestWrapper(t)
-
-	org, _ := iam.TestScopes(t, repo)
+	kms := kms.TestKms(t, conn, wrapper)
+	org, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
 	am := password.TestAuthMethods(t, conn, org.GetPublicId(), 1)[0]
 	acct := password.TestAccounts(t, conn, am.GetPublicId(), 1)[0]
-	createdAuthToken := TestAuthToken(t, conn, wrapper, org.GetPublicId())
+	createdAuthToken := TestAuthToken(t, conn, kms, org.GetPublicId())
 
 	testAuthTokenId := func() string {
 		id, err := newAuthTokenId()
@@ -178,8 +181,9 @@ func TestAuthToken_DbDelete(t *testing.T) {
 	}
 
 	wrapper := db.TestWrapper(t)
-	org, _ := iam.TestScopes(t, repo)
-	existingAuthTok := TestAuthToken(t, conn, wrapper, org.GetPublicId())
+	kms := kms.TestKms(t, conn, wrapper)
+	org, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
+	existingAuthTok := TestAuthToken(t, conn, kms, org.GetPublicId())
 
 	var tests = []struct {
 		name      string
