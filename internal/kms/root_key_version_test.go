@@ -212,7 +212,6 @@ func TestRootKeyVersion_SetTableName(t *testing.T) {
 			s := &kms.RootKeyVersion{
 				RootKeyVersion: &store.RootKeyVersion{},
 			}
-			s.SetTableName(tt.initialName)
 			s.SetTableName(tt.setNameTo)
 			assert.Equal(tt.want, s.TableName())
 		})
