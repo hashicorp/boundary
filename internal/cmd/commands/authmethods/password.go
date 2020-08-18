@@ -185,7 +185,7 @@ func (c *PasswordCommand) Run(args []string) int {
 
 	switch c.Func {
 	case "create":
-		method, apiErr, err = authmethodClient.Create(c.Context, opts...)
+		method, apiErr, err = authmethodClient.Create(c.Context, "password", opts...)
 	case "update":
 		method, apiErr, err = authmethodClient.Update(c.Context, c.FlagId, version, opts...)
 	}

@@ -50,7 +50,6 @@ func request_AuthTokenService_GetAuthToken_0(ctx context.Context, marshaler runt
 	}
 
 	protoReq.Id, err = runtime.String(val)
-
 	if err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "id", err)
 	}
@@ -84,7 +83,6 @@ func local_request_AuthTokenService_GetAuthToken_0(ctx context.Context, marshale
 	}
 
 	protoReq.Id, err = runtime.String(val)
-
 	if err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "id", err)
 	}
@@ -154,7 +152,6 @@ func request_AuthTokenService_DeleteAuthToken_0(ctx context.Context, marshaler r
 	}
 
 	protoReq.Id, err = runtime.String(val)
-
 	if err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "id", err)
 	}
@@ -181,7 +178,6 @@ func local_request_AuthTokenService_DeleteAuthToken_0(ctx context.Context, marsh
 	}
 
 	protoReq.Id, err = runtime.String(val)
-
 	if err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "id", err)
 	}
@@ -194,6 +190,7 @@ func local_request_AuthTokenService_DeleteAuthToken_0(ctx context.Context, marsh
 // RegisterAuthTokenServiceHandlerServer registers the http handlers for service AuthTokenService to "mux".
 // UnaryRPC     :call AuthTokenServiceServer directly.
 // StreamingRPC :currently unsupported pending https://github.com/grpc/grpc-go/issues/906.
+// Note that using this registration option will cause many gRPC library features (such as grpc.SendHeader, etc) to stop working. Consider using RegisterAuthTokenServiceHandlerFromEndpoint instead.
 func RegisterAuthTokenServiceHandlerServer(ctx context.Context, mux *runtime.ServeMux, server AuthTokenServiceServer) error {
 
 	mux.Handle("GET", pattern_AuthTokenService_GetAuthToken_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {

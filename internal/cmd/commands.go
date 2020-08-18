@@ -74,28 +74,10 @@ func initCommands(ui, serverCmdUi cli.Ui, runOpts *RunOptions) {
 				Command: base.NewCommand(ui),
 			}, nil
 		},
-		"auth-methods password": func() (cli.Command, error) {
-			return &authmethods.Command{
-				Command: base.NewCommand(ui),
-				Func:    "password",
-			}, nil
-		},
-		"auth-methods password create": func() (cli.Command, error) {
-			return &authmethods.PasswordCommand{
-				Command: base.NewCommand(ui),
-				Func:    "create",
-			}, nil
-		},
 		"auth-methods read": func() (cli.Command, error) {
 			return &authmethods.Command{
 				Command: base.NewCommand(ui),
 				Func:    "read",
-			}, nil
-		},
-		"auth-methods password update": func() (cli.Command, error) {
-			return &authmethods.PasswordCommand{
-				Command: base.NewCommand(ui),
-				Func:    "update",
 			}, nil
 		},
 		"auth-methods delete": func() (cli.Command, error) {
@@ -108,6 +90,25 @@ func initCommands(ui, serverCmdUi cli.Ui, runOpts *RunOptions) {
 			return &authmethods.Command{
 				Command: base.NewCommand(ui),
 				Func:    "list",
+			}, nil
+		},
+		"auth-methods password": func() (cli.Command, error) {
+			return &authmethods.Command{
+				Command: base.NewCommand(ui),
+				Func:    "password",
+			}, nil
+		},
+		"auth-methods password create": func() (cli.Command, error) {
+			return &authmethods.PasswordCommand{
+				Command: base.NewCommand(ui),
+				Func:    "create",
+			}, nil
+		},
+
+		"auth-methods password update": func() (cli.Command, error) {
+			return &authmethods.PasswordCommand{
+				Command: base.NewCommand(ui),
+				Func:    "update",
 			}, nil
 		},
 

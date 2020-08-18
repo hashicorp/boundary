@@ -35,11 +35,10 @@ func NewHostCatalogsClient(c *api.Client) *HostCatalogsClient {
 }
 
 func (c *HostCatalogsClient) Create(ctx context.Context, opt ...Option) (*HostCatalog, *api.Error, error) {
+	opts, apiOpts := getOpts(opt...)
 	if c.client == nil {
 		return nil, nil, fmt.Errorf("nil client")
 	}
-
-	opts, apiOpts := getOpts(opt...)
 
 	req, err := c.client.NewRequest(ctx, "POST", "host-catalogs", opts.valueMap, apiOpts...)
 	if err != nil {
