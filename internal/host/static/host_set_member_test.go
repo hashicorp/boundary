@@ -6,6 +6,7 @@ import (
 
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/host/static/store"
+	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -15,7 +16,8 @@ func TestHostSetMember_New(t *testing.T) {
 	conn.LogMode(false)
 	wrapper := db.TestWrapper(t)
 
-	cats := testCatalogs(t, conn, wrapper, 2)
+	_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
+	cats := testCatalogs(t, conn, wrapper, prj.PublicId, 2)
 
 	blueCat := cats[0]
 	blueSets := testSets(t, conn, blueCat.GetPublicId(), 2)
