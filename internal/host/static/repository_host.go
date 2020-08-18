@@ -2,6 +2,7 @@ package static
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 
@@ -138,4 +139,21 @@ func (r *Repository) UpdateHost(ctx context.Context, h *Host, version uint32, fi
 	}
 
 	return returnedHost, rowsUpdated, nil
+}
+
+// LookupHost will look up a host in the repository. If the host is not
+// found, it will return nil, nil. All options are ignored.
+func (r *Repository) LookupHost(ctx context.Context, publicId string, opt ...Option) (*Host, error) {
+	if publicId == "" {
+		return nil, fmt.Errorf("lookup: static host: missing public id %w", db.ErrInvalidParameter)
+	}
+	h := allocHost()
+	h.PublicId = publicId
+	if err := r.reader.LookupByPublicId(ctx, h); err != nil {
+		if errors.Is(err, db.ErrRecordNotFound) {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("lookup: static host: failed %w for %s", err, publicId)
+	}
+	return h, nil
 }

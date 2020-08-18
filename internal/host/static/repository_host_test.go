@@ -723,3 +723,54 @@ func TestRepository_UpdateHost(t *testing.T) {
 		assert.NoError(db.TestVerifyOplog(t, rw, hA.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_UPDATE), db.WithCreateNotBefore(10*time.Second)))
 	})
 }
+
+func TestRepository_LookupHost(t *testing.T) {
+	conn, _ := db.TestSetup(t, "postgres")
+	rw := db.New(conn)
+	wrapper := db.TestWrapper(t)
+
+	_, prj := iam.TestScopes(t, conn)
+	catalog := testCatalogs(t, conn, prj.PublicId, 1)[0]
+	host := testHosts(t, conn, catalog.PublicId, 1)[0]
+
+	hostId, err := newHostId()
+	require.NoError(t, err)
+	var tests = []struct {
+		name      string
+		in        string
+		want      *Host
+		wantIsErr error
+	}{
+		{
+			name:      "with-no-public-id",
+			wantIsErr: db.ErrInvalidParameter,
+		},
+		{
+			name: "with-non-existing-host-id",
+			in:   hostId,
+		},
+		{
+			name: "with-existing-host-id",
+			in:   host.PublicId,
+			want: host,
+		},
+	}
+
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+			repo, err := NewRepository(rw, rw, wrapper)
+			assert.NoError(err)
+			require.NotNil(repo)
+			got, err := repo.LookupHost(context.Background(), tt.in)
+			if tt.wantIsErr != nil {
+				assert.Truef(errors.Is(err, tt.wantIsErr), "want err: %q got: %q", tt.wantIsErr, err)
+				assert.Nil(got)
+				return
+			}
+			require.NoError(err)
+			assert.EqualValues(tt.want, got)
+		})
+	}
+}
