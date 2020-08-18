@@ -23,8 +23,8 @@ type PasswordCommand struct {
 
 	Func string
 
-	flagPasswordMinLoginNameLength string
-	flagPasswordMinPasswordLength  string
+	flagMinLoginNameLength string
+	flagMinPasswordLength  string
 }
 
 func (c *PasswordCommand) Synopsis() string {
@@ -134,27 +134,27 @@ func (c *PasswordCommand) Run(args []string) int {
 		}
 		attributes[name] = value
 	}
-	switch c.flagPasswordMinLoginNameLength {
+	switch c.flagMinLoginNameLength {
 	case "":
 	case "null":
 		addAttribute("min_login_name_length", nil)
 	default:
-		length, err := strconv.ParseUint(c.flagPasswordMinLoginNameLength, 10, 32)
+		length, err := strconv.ParseUint(c.flagMinLoginNameLength, 10, 32)
 		if err != nil {
-			c.UI.Error(fmt.Sprintf("Error parsing %q: %s", c.flagPasswordMinLoginNameLength, err))
+			c.UI.Error(fmt.Sprintf("Error parsing %q: %s", c.flagMinLoginNameLength, err))
 			return 1
 		}
 		addAttribute("min_login_name_length", uint32(length))
 	}
 
-	switch c.flagPasswordMinPasswordLength {
+	switch c.flagMinPasswordLength {
 	case "":
 	case "null":
 		addAttribute("min_password_length", nil)
 	default:
-		length, err := strconv.ParseUint(c.flagPasswordMinPasswordLength, 10, 32)
+		length, err := strconv.ParseUint(c.flagMinPasswordLength, 10, 32)
 		if err != nil {
-			c.UI.Error(fmt.Sprintf("Error parsing %q: %s", c.flagPasswordMinPasswordLength, err))
+			c.UI.Error(fmt.Sprintf("Error parsing %q: %s", c.flagMinPasswordLength, err))
 			return 1
 		}
 		addAttribute("min_password_length", uint32(length))
