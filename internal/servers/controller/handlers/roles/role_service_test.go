@@ -180,8 +180,9 @@ func TestList(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrap := db.TestWrapper(t)
+	kms := kms.TestKms(t, conn, kms.WithRootWrapper(wrap))
 	repoFn := func() (*iam.Repository, error) {
-		return iam.NewRepository(rw, rw, wrap)
+		return iam.NewRepository(rw, rw, kms)
 	}
 	oNoRoles, pWithRoles := iam.TestScopes(t, conn)
 	oWithRoles, pNoRoles := iam.TestScopes(t, conn)
@@ -511,8 +512,9 @@ func TestUpdate(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrap := db.TestWrapper(t)
+	kms := kms.TestKms(t, conn, kms.WithRootWrapper(wrap))
 	repoFn := func() (*iam.Repository, error) {
-		return iam.NewRepository(rw, rw, wrap)
+		return iam.NewRepository(rw, rw, kms)
 	}
 
 	o, p := iam.TestScopes(t, conn)
@@ -931,8 +933,9 @@ func TestAddPrincipal(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrap := db.TestWrapper(t)
+	kms := kms.TestKms(t, conn, kms.WithRootWrapper(wrap))
 	repoFn := func() (*iam.Repository, error) {
-		return iam.NewRepository(rw, rw, wrap)
+		return iam.NewRepository(rw, rw, kms)
 	}
 	s, err := roles.NewService(repoFn)
 	require.NoError(t, err, "Error when getting new role service.")
@@ -1052,8 +1055,9 @@ func TestSetPrincipal(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrap := db.TestWrapper(t)
+	kms := kms.TestKms(t, conn, kms.WithRootWrapper(wrap))
 	repoFn := func() (*iam.Repository, error) {
-		return iam.NewRepository(rw, rw, wrap)
+		return iam.NewRepository(rw, rw, kms)
 	}
 	s, err := roles.NewService(repoFn)
 	require.NoError(t, err, "Error when getting new role service.")
@@ -1174,8 +1178,9 @@ func TestRemovePrincipal(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrap := db.TestWrapper(t)
+	kms := kms.TestKms(t, conn, kms.WithRootWrapper(wrap))
 	repoFn := func() (*iam.Repository, error) {
-		return iam.NewRepository(rw, rw, wrap)
+		return iam.NewRepository(rw, rw, kms)
 	}
 	s, err := roles.NewService(repoFn)
 	require.NoError(t, err, "Error when getting new role service.")
@@ -1333,8 +1338,9 @@ func TestAddGrants(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrap := db.TestWrapper(t)
+	kms := kms.TestKms(t, conn, kms.WithRootWrapper(wrap))
 	repoFn := func() (*iam.Repository, error) {
-		return iam.NewRepository(rw, rw, wrap)
+		return iam.NewRepository(rw, rw, kms)
 	}
 	s, err := roles.NewService(repoFn)
 	require.NoError(t, err, "Error when getting new role service.")
@@ -1428,8 +1434,9 @@ func TestSetGrants(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrap := db.TestWrapper(t)
+	kms := kms.TestKms(t, conn, kms.WithRootWrapper(wrap))
 	repoFn := func() (*iam.Repository, error) {
-		return iam.NewRepository(rw, rw, wrap)
+		return iam.NewRepository(rw, rw, kms)
 	}
 
 	s, err := roles.NewService(repoFn)
@@ -1532,8 +1539,9 @@ func TestRemoveGrants(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrap := db.TestWrapper(t)
+	kms := kms.TestKms(t, conn, kms.WithRootWrapper(wrap))
 	repoFn := func() (*iam.Repository, error) {
-		return iam.NewRepository(rw, rw, wrap)
+		return iam.NewRepository(rw, rw, kms)
 	}
 	s, err := roles.NewService(repoFn)
 	require.NoError(t, err, "Error when getting new role service.")

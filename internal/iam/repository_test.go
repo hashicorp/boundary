@@ -10,10 +10,10 @@ import (
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/db/timestamp"
 	iam_store "github.com/hashicorp/boundary/internal/iam/store"
+	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/oplog"
 	"github.com/hashicorp/boundary/internal/oplog/store"
 	"github.com/hashicorp/boundary/internal/types/scope"
-	wrapping "github.com/hashicorp/go-kms-wrapping"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/proto"
@@ -24,10 +24,11 @@ func TestNewRepository(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
+	testKms := kms.TestKms(t, conn, kms.WithRootWrapper(wrapper))
 	type args struct {
-		r       db.Reader
-		w       db.Writer
-		wrapper wrapping.Wrapper
+		r   db.Reader
+		w   db.Writer
+		kms *kms.Kms
 	}
 	tests := []struct {
 		name          string
@@ -39,24 +40,24 @@ func TestNewRepository(t *testing.T) {
 		{
 			name: "valid",
 			args: args{
-				r:       rw,
-				w:       rw,
-				wrapper: wrapper,
+				r:   rw,
+				w:   rw,
+				kms: testKms,
 			},
 			want: &Repository{
 				reader:       rw,
 				writer:       rw,
-				wrapper:      wrapper,
+				kms:          testKms,
 				defaultLimit: db.DefaultLimit,
 			},
 			wantErr: false,
 		},
 		{
-			name: "nil-wrapper",
+			name: "nil-kms",
 			args: args{
-				r:       rw,
-				w:       rw,
-				wrapper: nil,
+				r:   rw,
+				w:   rw,
+				kms: nil,
 			},
 			want:          nil,
 			wantErr:       true,
@@ -65,9 +66,9 @@ func TestNewRepository(t *testing.T) {
 		{
 			name: "nil-writer",
 			args: args{
-				r:       rw,
-				w:       nil,
-				wrapper: wrapper,
+				r:   rw,
+				w:   nil,
+				kms: testKms,
 			},
 			want:          nil,
 			wantErr:       true,
@@ -76,9 +77,9 @@ func TestNewRepository(t *testing.T) {
 		{
 			name: "nil-reader",
 			args: args{
-				r:       nil,
-				w:       rw,
-				wrapper: wrapper,
+				r:   nil,
+				w:   rw,
+				kms: testKms,
 			},
 			want:          nil,
 			wantErr:       true,
@@ -88,7 +89,7 @@ func TestNewRepository(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			got, err := NewRepository(tt.args.r, tt.args.w, tt.args.wrapper)
+			got, err := NewRepository(tt.args.r, tt.args.w, tt.args.kms)
 			if tt.wantErr {
 				require.Error(err)
 				assert.Equal(err.Error(), tt.wantErrString)
@@ -106,7 +107,8 @@ func Test_Repository_create(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
 		rw := db.New(conn)
 		wrapper := db.TestWrapper(t)
-		repo, err := NewRepository(rw, rw, wrapper)
+		kms := kms.TestKms(t, conn, kms.WithRootWrapper(wrapper))
+		repo, err := NewRepository(rw, rw, kms)
 		require.NoError(err)
 		id := testId(t)
 
@@ -136,7 +138,8 @@ func Test_Repository_create(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
 		rw := db.New(conn)
 		wrapper := db.TestWrapper(t)
-		repo, err := NewRepository(rw, rw, wrapper)
+		kms := kms.TestKms(t, conn, kms.WithRootWrapper(wrapper))
+		repo, err := NewRepository(rw, rw, kms)
 		require.NoError(err)
 		resource, err := repo.create(context.Background(), nil)
 		require.Error(err)
@@ -152,7 +155,8 @@ func Test_Repository_delete(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
 		rw := db.New(conn)
 		wrapper := db.TestWrapper(t)
-		repo, err := NewRepository(rw, rw, wrapper)
+		kms := kms.TestKms(t, conn, kms.WithRootWrapper(wrapper))
+		repo, err := NewRepository(rw, rw, kms)
 		require.NoError(err)
 
 		s, _ := TestScopes(t, conn)
@@ -168,7 +172,8 @@ func Test_Repository_delete(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
 		rw := db.New(conn)
 		wrapper := db.TestWrapper(t)
-		repo, err := NewRepository(rw, rw, wrapper)
+		kms := kms.TestKms(t, conn, kms.WithRootWrapper(wrapper))
+		repo, err := NewRepository(rw, rw, kms)
 		require.NoError(err)
 		deletedRows, err := repo.delete(context.Background(), nil, nil)
 		assert.Error(err)
@@ -183,6 +188,7 @@ func TestRepository_update(t *testing.T) {
 	id := testId(t)
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
+	kms := kms.TestKms(t, conn, kms.WithRootWrapper(wrapper))
 	publicId := testPublicId(t, "o")
 
 	type args struct {
@@ -298,9 +304,9 @@ func TestRepository_update(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 			r := &Repository{
-				reader:  rw,
-				writer:  rw,
-				wrapper: wrapper,
+				reader: rw,
+				writer: rw,
+				kms:    kms,
 			}
 			org := testOrg(t, conn, tt.name+"-orig-"+id, "orig-"+id)
 			if tt.args.resource != nil {

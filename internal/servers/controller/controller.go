@@ -15,7 +15,6 @@ import (
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/servers"
 	"github.com/hashicorp/boundary/internal/servers/controller/common"
-	"github.com/hashicorp/boundary/internal/types/scope"
 	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/vault/sdk/helper/base62"
 	"github.com/hashicorp/vault/sdk/helper/mlock"
@@ -101,7 +100,6 @@ func New(conf *Config) (*Controller, error) {
 		return nil, fmt.Errorf("error creating kms cache: %w", err)
 	}
 	if err := c.kms.AddExternalWrappers(
-		scope.Global.String(),
 		kms.WithRootWrapper(c.conf.RootKms),
 		kms.WithWorkerAuthWrapper(c.conf.WorkerAuthKms),
 	); err != nil {

@@ -10,6 +10,7 @@ import (
 
 	"github.com/hashicorp/boundary/internal/db"
 	dbassert "github.com/hashicorp/boundary/internal/db/assert"
+	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/oplog"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -21,7 +22,8 @@ func TestRepository_CreateUser(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
-	repo, err := NewRepository(rw, rw, wrapper)
+	kms := kms.TestKms(t, conn, kms.WithRootWrapper(wrapper))
+	repo, err := NewRepository(rw, rw, kms)
 	require.NoError(t, err)
 	id := testId(t)
 	org, _ := TestScopes(t, conn)
@@ -113,7 +115,8 @@ func TestRepository_UpdateUser(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
-	repo, err := NewRepository(rw, rw, wrapper)
+	kms := kms.TestKms(t, conn, kms.WithRootWrapper(wrapper))
+	repo, err := NewRepository(rw, rw, kms)
 	require.NoError(t, err)
 	id := testId(t)
 	org, proj := TestScopes(t, conn)
@@ -372,7 +375,8 @@ func TestRepository_DeleteUser(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
-	repo, err := NewRepository(rw, rw, wrapper)
+	kms := kms.TestKms(t, conn, kms.WithRootWrapper(wrapper))
+	repo, err := NewRepository(rw, rw, kms)
 	require.NoError(t, err)
 	org, _ := TestScopes(t, conn)
 
@@ -456,7 +460,8 @@ func TestRepository_ListUsers(t *testing.T) {
 	const testLimit = 10
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
-	repo, err := NewRepository(rw, rw, wrapper, WithLimit(testLimit))
+	kms := kms.TestKms(t, conn, kms.WithRootWrapper(wrapper))
+	repo, err := NewRepository(rw, rw, kms, WithLimit(testLimit))
 	require.NoError(t, err)
 	org, _ := TestScopes(t, conn)
 
@@ -535,7 +540,8 @@ func TestRepository_LookupUserWithLogin(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
-	repo, err := NewRepository(rw, rw, wrapper)
+	kms := kms.TestKms(t, conn, kms.WithRootWrapper(wrapper))
+	repo, err := NewRepository(rw, rw, kms)
 	require.NoError(t, err)
 
 	id := testId(t)
@@ -676,7 +682,8 @@ func TestRepository_AssociateUserWithAccount(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
-	repo, err := NewRepository(rw, rw, wrapper)
+	kms := kms.TestKms(t, conn, kms.WithRootWrapper(wrapper))
+	repo, err := NewRepository(rw, rw, kms)
 	require.NoError(t, err)
 	org, _ := TestScopes(t, conn)
 	authMethodId := testAuthMethod(t, conn, org.PublicId)
@@ -821,7 +828,8 @@ func TestRepository_DissociateUserWithAccount(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
-	repo, err := NewRepository(rw, rw, wrapper)
+	kms := kms.TestKms(t, conn, kms.WithRootWrapper(wrapper))
+	repo, err := NewRepository(rw, rw, kms)
 	require.NoError(t, err)
 	org, _ := TestScopes(t, conn)
 	authMethodId := testAuthMethod(t, conn, org.PublicId)

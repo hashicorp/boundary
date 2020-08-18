@@ -423,6 +423,11 @@ func (r *Repository) SetGroupMembers(ctx context.Context, groupId string, groupV
 		return currentMembers, db.NoRowsAffected, nil
 	}
 
+	oplogWrapper, err := r.kms.GetWrapper(ctx, scope.GetPublicId(), kms.KeyPurposeOplog, "")
+	if err != nil {
+		return nil, db.NoRowsAffected, fmt.Errorf("add group members: unable to get oplog wrapper: %w", err)
+	}
+
 	var totalRowsAffected int
 	_, err = r.writer.DoTx(
 		ctx,
@@ -479,10 +484,6 @@ func (r *Repository) SetGroupMembers(ctx context.Context, groupId string, groupV
 			}
 			// we're done with all the membership writes, so let's write the
 			// group's update oplog message
-			oplogWrapper, err := r.kms.GetWrapper(ctx, scope.GetPublicId(), kms.KeyPurposeOplog, "")
-			if err != nil {
-				return fmt.Errorf("add group members: unable to get oplog wrapper: %w", err)
-			}
 			if err := w.WriteOplogEntryWith(ctx, oplogWrapper, groupTicket, metadata, msgs); err != nil {
 				return fmt.Errorf("set group members: unable to write oplog for additions: %w", err)
 			}

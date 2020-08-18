@@ -100,7 +100,7 @@ func (k *Kms) GetExternalWrappers() *ExternalWrappers {
 	return k.externalScopeCache[scope.Global.String()]
 }
 
-func generateKeyId(scopeId, purpose KeyPurpose, version uint32) string {
+func generateKeyId(scopeId string, purpose KeyPurpose, version uint32) string {
 	return fmt.Sprintf("%s_%s_%d", scopeId, purpose, version)
 }
 
@@ -149,7 +149,7 @@ func (k *Kms) GetWrapper(ctx context.Context, scopeId string, purpose KeyPurpose
 	}
 
 	// Store the looked-up value into the scope cache.
-	k.scopePurposeCache.Store(scopeId+purpose, multiwrapper.NewMultiWrapper(derived))
+	k.scopePurposeCache.Store(scopeId+purpose.String(), multiwrapper.NewMultiWrapper(derived))
 
 	return derived, nil
 }

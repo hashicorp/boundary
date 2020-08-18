@@ -7,6 +7,7 @@ import (
 
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/iam/store"
+	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/types/action"
 	"github.com/hashicorp/boundary/internal/types/resource"
 	"github.com/stretchr/testify/assert"
@@ -131,7 +132,8 @@ func Test_UserUpdate(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
-	repo, err := NewRepository(rw, rw, wrapper)
+	kms := kms.TestKms(t, conn, kms.WithRootWrapper(wrapper))
+	repo, err := NewRepository(rw, rw, kms)
 	require.NoError(t, err)
 	id := testId(t)
 	org, proj := TestScopes(t, conn)
@@ -243,7 +245,8 @@ func Test_UserDelete(t *testing.T) {
 
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
-	repo, err := NewRepository(rw, rw, wrapper)
+	kms := kms.TestKms(t, conn, kms.WithRootWrapper(wrapper))
+	repo, err := NewRepository(rw, rw, kms)
 	require.NoError(t, err)
 	id := testId(t)
 	org, _ := TestScopes(t, conn)

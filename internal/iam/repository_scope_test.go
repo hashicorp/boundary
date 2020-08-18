@@ -270,7 +270,7 @@ func TestRepository_UpdateScope(t *testing.T) {
 	id := testId(t)
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
-	kms := kms.TestKms(t, conn, kms.WithRootWrapper(wrapper))
+	testKms := kms.TestKms(t, conn, kms.WithRootWrapper(wrapper))
 	publicId := testPublicId(t, "o")
 
 	type args struct {
@@ -430,7 +430,7 @@ func TestRepository_UpdateScope(t *testing.T) {
 			r := &Repository{
 				reader: rw,
 				writer: rw,
-				kms:    kms,
+				kms:    testKms,
 			}
 			org := testOrg(t, conn, tt.name+"-orig-"+id, "orig-"+id)
 			if tt.args.scope != nil {
@@ -468,9 +468,9 @@ func TestRepository_UpdateScope(t *testing.T) {
 	t.Run("dup-name", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
 		r := &Repository{
-			reader:  rw,
-			writer:  rw,
-			wrapper: wrapper,
+			reader: rw,
+			writer: rw,
+			kms:    testKms,
 		}
 		id := testId(t)
 		_ = testOrg(t, conn, id, id)
@@ -489,7 +489,8 @@ func Test_Repository_ListProjects(t *testing.T) {
 	const testLimit = 10
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
-	repo, err := NewRepository(rw, rw, wrapper, WithLimit(testLimit))
+	kms := kms.TestKms(t, conn, kms.WithRootWrapper(wrapper))
+	repo, err := NewRepository(rw, rw, kms, WithLimit(testLimit))
 	require.NoError(t, err)
 	org := testOrg(t, conn, "", "")
 
@@ -569,7 +570,8 @@ func Test_Repository_ListOrgs(t *testing.T) {
 	const testLimit = 10
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
-	repo, err := NewRepository(rw, rw, wrapper, WithLimit(testLimit))
+	kms := kms.TestKms(t, conn, kms.WithRootWrapper(wrapper))
+	repo, err := NewRepository(rw, rw, kms, WithLimit(testLimit))
 	require.NoError(t, err)
 	type args struct {
 		opt []Option

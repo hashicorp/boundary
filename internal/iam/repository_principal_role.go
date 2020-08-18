@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/hashicorp/boundary/internal/db"
+	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/oplog"
 )
 
@@ -154,6 +155,11 @@ func (r *Repository) SetPrincipalRoles(ctx context.Context, roleId string, roleV
 		return toSet.unchangedPrincipalRoles, db.NoRowsAffected, nil
 	}
 
+	oplogWrapper, err := r.kms.GetWrapper(ctx, scope.GetPublicId(), kms.KeyPurposeOplog, "")
+	if err != nil {
+		return nil, db.NoRowsAffected, fmt.Errorf("disassociate user with account: unable to get oplog wrapper: %w", err)
+	}
+
 	var currentPrincipals []PrincipalRole
 	var totalRowsAffected int
 	_, err = r.writer.DoTx(
@@ -234,14 +240,14 @@ func (r *Repository) SetPrincipalRoles(ctx context.Context, roleId string, roleV
 					msgs = append(msgs, grpOplogMsgs...)
 				}
 			}
-			if err := w.WriteOplogEntryWith(ctx, r.wrapper, roleTicket, metadata, msgs); err != nil {
+			if err := w.WriteOplogEntryWith(ctx, oplogWrapper, roleTicket, metadata, msgs); err != nil {
 				return fmt.Errorf("set principal roles: unable to write oplog for additions: %w", err)
 			}
 			// we need a new repo, that's using the same reader/writer as this TxHandler
 			txRepo := &Repository{
-				reader:  reader,
-				writer:  w,
-				wrapper: r.wrapper,
+				reader: reader,
+				writer: w,
+				kms:    r.kms,
 				// intentionally not setting the defaultLimit, so we'll get all
 				// the principal roles without a limit
 			}
