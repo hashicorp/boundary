@@ -51,6 +51,7 @@ func TestRepository_CreateHost(t *testing.T) {
 				Host: &store.Host{
 					CatalogId: catalog.PublicId,
 					PublicId:  "abcd_OOOOOOOOOO",
+					Address:   "127.0.0.1",
 				},
 			},
 			wantIsErr: db.ErrInvalidParameter,
@@ -119,6 +120,16 @@ func TestRepository_CreateHost(t *testing.T) {
 				Host: &store.Host{
 					CatalogId: catalog.PublicId,
 					Address:   "127",
+				},
+			},
+			wantIsErr: ErrInvalidAddress,
+		},
+		{
+			name: "invalid-empty-address",
+			in: &Host{
+				Host: &store.Host{
+					CatalogId: catalog.PublicId,
+					Address:   "            ",
 				},
 			},
 			wantIsErr: ErrInvalidAddress,

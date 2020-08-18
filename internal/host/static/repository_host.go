@@ -51,7 +51,7 @@ func (r *Repository) CreateHost(ctx context.Context, h *Host, opt ...Option) (*H
 			return nil, fmt.Errorf("create: static host: in catalog: %s: name %s already exists: %w",
 				h.CatalogId, h.Name, db.ErrNotUnique)
 		}
-		if db.IsCheckConstraintError(err) {
+		if db.IsCheckConstraintError(err) || db.IsNotNullError(err) {
 			return nil, fmt.Errorf("create: static host: in catalog: %s: %q: %w",
 				h.CatalogId, h.Address, ErrInvalidAddress)
 		}
