@@ -149,9 +149,8 @@ message CreateAccountResponse {
 message UpdateAccountRequest {
   string auth_method_id = 1;
   string id = 2;
-  uint32 version = 3;
-  resources.authmethods.v1.Account item = 4;
-  google.protobuf.FieldMask update_mask = 5;
+  resources.authmethods.v1.Account item = 3;
+  google.protobuf.FieldMask update_mask = 4;
 }
 
 message UpdateAccountResponse {

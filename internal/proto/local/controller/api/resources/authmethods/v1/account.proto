@@ -36,7 +36,6 @@ message Account {
 
 	// The version can be used in subsequent write requests to ensure this resource
 	// has not changed and to fail the write if it has.
-	// Output only.
 	uint32 version = 70;
 
 	// The type of this account.  Possible values are: "password", "oidc".
