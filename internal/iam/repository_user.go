@@ -160,7 +160,7 @@ func (r *Repository) LookupUserWithLogin(ctx context.Context, accountId string, 
 		"resource-type":      []string{"auth-account"},
 	}
 
-	oplogWrapper, err := r.kms.GetWrapper(ctx, acct.GetScopeId(), kms.KeyPurposeOplog, "")
+	oplogWrapper, err := r.kms.GetWrapper(ctx, acct.GetScopeId(), kms.KeyPurposeOplog)
 	if err != nil {
 		return nil, fmt.Errorf("lookup user with login: unable to get oplog wrapper: %w", err)
 	}
@@ -286,7 +286,7 @@ func (r *Repository) AssociateUserWithAccount(ctx context.Context, userPublicId,
 		}
 	}
 
-	oplogWrapper, err := r.kms.GetWrapper(ctx, acct.GetScopeId(), kms.KeyPurposeOplog, "")
+	oplogWrapper, err := r.kms.GetWrapper(ctx, acct.GetScopeId(), kms.KeyPurposeOplog)
 	if err != nil {
 		return nil, fmt.Errorf("associate user with account: unable to get oplog wrapper: %w", err)
 	}
@@ -365,7 +365,7 @@ func (r *Repository) DissociateUserWithAccount(ctx context.Context, userPublicId
 		return nil, fmt.Errorf("dissociate user with account: %s account is not associated with a user: %w", accountId, db.ErrInvalidParameter)
 	}
 
-	oplogWrapper, err := r.kms.GetWrapper(ctx, acct.GetScopeId(), kms.KeyPurposeOplog, "")
+	oplogWrapper, err := r.kms.GetWrapper(ctx, acct.GetScopeId(), kms.KeyPurposeOplog)
 	if err != nil {
 		return nil, fmt.Errorf("disassociate user with account: unable to get oplog wrapper: %w", err)
 	}

@@ -73,11 +73,12 @@ func (r *Repository) CreateAccount(ctx context.Context, scopeId string, a *Accou
 		}
 	}
 
-	oplogWrapper, err := r.kms.GetWrapper(ctx, scopeId, kms.KeyPurposeOplog, "")
+	oplogWrapper, err := r.kms.GetWrapper(ctx, scopeId, kms.KeyPurposeOplog)
 	if err != nil {
 		return nil, fmt.Errorf("create: password account: unable to get oplog wrapper: %w", err)
 	}
-	databaseWrapper, err := r.kms.GetWrapper(ctx, scopeId, kms.KeyPurposeDatabase, "")
+	// FIXME: should have a key ID
+	databaseWrapper, err := r.kms.GetWrapper(ctx, scopeId, kms.KeyPurposeDatabase, kms.WithKeyId(""))
 	if err != nil {
 		return nil, fmt.Errorf("create: password account: unable to get database wrapper: %w", err)
 	}
@@ -162,7 +163,7 @@ func (r *Repository) DeleteAccount(ctx context.Context, scopeId, withPublicId st
 	ac := allocAccount()
 	ac.PublicId = withPublicId
 
-	oplogWrapper, err := r.kms.GetWrapper(ctx, scopeId, kms.KeyPurposeOplog, "")
+	oplogWrapper, err := r.kms.GetWrapper(ctx, scopeId, kms.KeyPurposeOplog)
 	if err != nil {
 		return db.NoRowsAffected, fmt.Errorf("delete: password account: unable to get oplog wrapper: %w", err)
 	}
@@ -266,7 +267,7 @@ func (r *Repository) UpdateAccount(ctx context.Context, scopeId string, a *Accou
 		}
 	}
 
-	oplogWrapper, err := r.kms.GetWrapper(ctx, scopeId, kms.KeyPurposeOplog, "")
+	oplogWrapper, err := r.kms.GetWrapper(ctx, scopeId, kms.KeyPurposeOplog)
 	if err != nil {
 		return nil, db.NoRowsAffected, fmt.Errorf("update: password account: unable to get oplog wrapper: %w", err)
 	}

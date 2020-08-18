@@ -82,7 +82,7 @@ func (r *Repository) create(ctx context.Context, resource Resource, opt ...Optio
 	if err != nil {
 		return nil, fmt.Errorf("unable to get scope: %w", err)
 	}
-	oplogWrapper, err := r.kms.GetWrapper(ctx, scope.GetPublicId(), kms.KeyPurposeOplog, "")
+	oplogWrapper, err := r.kms.GetWrapper(ctx, scope.GetPublicId(), kms.KeyPurposeOplog)
 	if err != nil {
 		return nil, fmt.Errorf("unable to get oplog wrapper: %w", err)
 	}
@@ -140,7 +140,7 @@ func (r *Repository) update(ctx context.Context, resource Resource, version uint
 			return nil, db.NoRowsAffected, fmt.Errorf("unable to get scope: %w", err)
 		}
 	}
-	oplogWrapper, err := r.kms.GetWrapper(ctx, scope.GetPublicId(), kms.KeyPurposeOplog, "")
+	oplogWrapper, err := r.kms.GetWrapper(ctx, scope.GetPublicId(), kms.KeyPurposeOplog)
 	if err != nil {
 		return nil, db.NoRowsAffected, fmt.Errorf("unable to get oplog wrapper: %w", err)
 	}
@@ -190,7 +190,7 @@ func (r *Repository) delete(ctx context.Context, resource Resource, opt ...Optio
 	if err != nil {
 		return db.NoRowsAffected, fmt.Errorf("unable to get scope: %w", err)
 	}
-	oplogWrapper, err := r.kms.GetWrapper(ctx, scope.GetPublicId(), kms.KeyPurposeOplog, "")
+	oplogWrapper, err := r.kms.GetWrapper(ctx, scope.GetPublicId(), kms.KeyPurposeOplog)
 	if err != nil {
 		return db.NoRowsAffected, fmt.Errorf("unable to get oplog wrapper: %w", err)
 	}

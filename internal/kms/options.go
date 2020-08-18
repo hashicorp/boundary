@@ -25,6 +25,7 @@ type options struct {
 	withWorkerAuthWrapper wrapping.Wrapper
 	withRepository        *Repository
 	withOrder             string
+	withKeyId             string
 }
 
 func getDefaultOptions() options {
@@ -67,5 +68,11 @@ func WithRepository(repo *Repository) Option {
 func WithOrder(order string) Option {
 	return func(o *options) {
 		o.withOrder = order
+	}
+}
+
+func WithKeyId(keyId string) Option {
+	return func(o *options) {
+		o.withKeyId = keyId
 	}
 }

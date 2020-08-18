@@ -129,7 +129,7 @@ func TestRepository_AuthenticateRehash(t *testing.T) {
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
 	assert, require := assert.New(t), require.New(t)
-	kms := kms.TestKms(t, conn, wrapper)
+	kmsCache := kms.TestKms(t, conn, wrapper)
 	o, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
 	authMethods := TestAuthMethods(t, conn, o.GetPublicId(), 1)
 	authMethod := authMethods[0]
@@ -138,7 +138,7 @@ func TestRepository_AuthenticateRehash(t *testing.T) {
 	passwd := "12345678"
 	ctx := context.Background()
 
-	repo, err := NewRepository(rw, rw, kms)
+	repo, err := NewRepository(rw, rw, kmsCache)
 	assert.NoError(err)
 	require.NotNil(repo)
 
@@ -231,7 +231,10 @@ func TestRepository_AuthenticateRehash(t *testing.T) {
 	assert.Equal(origCred.CreateTime, auth2Cred.CreateTime, "the create time should not change")
 
 	// Verify fields that should change
-	require.NoError(auth2Cred.decrypt(ctx, wrapper))
+	// FIXME: We should have a key ID
+	decryptWrapper, err := kmsCache.GetWrapper(ctx, o.GetPublicId(), kms.KeyPurposeDatabase, kms.WithKeyId(""))
+	require.NoError(err)
+	require.NoError(auth2Cred.decrypt(ctx, decryptWrapper))
 	assert.NotEqual(origCred.UpdateTime, auth2Cred.UpdateTime, "the update time should be different")
 	assert.NotEqual(origCred.PasswordConfId, auth2Cred.PasswordConfId, "the configuration Id should be different")
 	assert.NotEqual(origCred.Salt, auth2Cred.Salt, "a new salt value should be generated")

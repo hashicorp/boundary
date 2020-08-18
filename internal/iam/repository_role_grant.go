@@ -39,7 +39,7 @@ func (r *Repository) AddRoleGrants(ctx context.Context, roleId string, roleVersi
 	if err != nil {
 		return nil, fmt.Errorf("add role grants: unable to get role %s scope: %w", roleId, err)
 	}
-	oplogWrapper, err := r.kms.GetWrapper(ctx, scope.GetPublicId(), kms.KeyPurposeOplog, "")
+	oplogWrapper, err := r.kms.GetWrapper(ctx, scope.GetPublicId(), kms.KeyPurposeOplog)
 	if err != nil {
 		return nil, fmt.Errorf("add role grants: unable to get oplog wrapper: %w", err)
 	}
@@ -118,7 +118,7 @@ func (r *Repository) DeleteRoleGrants(ctx context.Context, roleId string, roleVe
 	if err != nil {
 		return db.NoRowsAffected, fmt.Errorf("delete role grants: unable to get role %s scope to create metadata: %w", roleId, err)
 	}
-	oplogWrapper, err := r.kms.GetWrapper(ctx, scope.GetPublicId(), kms.KeyPurposeOplog, "")
+	oplogWrapper, err := r.kms.GetWrapper(ctx, scope.GetPublicId(), kms.KeyPurposeOplog)
 	if err != nil {
 		return db.NoRowsAffected, fmt.Errorf("delete role grants: unable to get oplog wrapper: %w", err)
 	}
@@ -289,7 +289,7 @@ func (r *Repository) SetRoleGrants(ctx context.Context, roleId string, roleVersi
 	if err != nil {
 		return nil, db.NoRowsAffected, fmt.Errorf("set role grants: unable to get role %s scope: %w", roleId, err)
 	}
-	oplogWrapper, err := r.kms.GetWrapper(ctx, scope.GetPublicId(), kms.KeyPurposeOplog, "")
+	oplogWrapper, err := r.kms.GetWrapper(ctx, scope.GetPublicId(), kms.KeyPurposeOplog)
 	if err != nil {
 		return nil, db.NoRowsAffected, fmt.Errorf("set role grants: unable to get oplog wrapper: %w", err)
 	}

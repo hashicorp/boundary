@@ -44,9 +44,9 @@ func (r *Repository) CreateScope(ctx context.Context, s *Scope, userId string, o
 		case "":
 			return nil, fmt.Errorf("create scope: missing parent id: %w", db.ErrNilParameter)
 		case scope.Global.String():
-			parentOplogWrapper, err = r.kms.GetWrapper(ctx, scope.Global.String(), kms.KeyPurposeOplog, "")
+			parentOplogWrapper, err = r.kms.GetWrapper(ctx, scope.Global.String(), kms.KeyPurposeOplog)
 		default:
-			parentOplogWrapper, err = r.kms.GetWrapper(ctx, s.ParentId, kms.KeyPurposeOplog, "")
+			parentOplogWrapper, err = r.kms.GetWrapper(ctx, s.ParentId, kms.KeyPurposeOplog)
 		}
 		externalWrappers = r.kms.GetExternalWrappers()
 	}
@@ -153,7 +153,7 @@ func (r *Repository) CreateScope(ctx context.Context, s *Scope, userId string, o
 			if err != nil {
 				return fmt.Errorf("error creating new kms repo: %w", err)
 			}
-			childOplogWrapper, err := r.kms.GetWrapper(ctx, s.PublicId, kms.KeyPurposeOplog, "", kms.WithRepository(kmsRepo))
+			childOplogWrapper, err := r.kms.GetWrapper(ctx, s.PublicId, kms.KeyPurposeOplog, kms.WithRepository(kmsRepo))
 			if err != nil {
 				return fmt.Errorf("error fetching new scope oplog wrapper: %w", err)
 			}

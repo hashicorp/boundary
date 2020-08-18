@@ -41,7 +41,7 @@ func (r *Repository) CreateCatalog(ctx context.Context, c *HostCatalog, opt ...O
 	}
 	c.PublicId = id
 
-	oplogWrapper, err := r.kms.GetWrapper(ctx, c.ScopeId, kms.KeyPurposeOplog, "")
+	oplogWrapper, err := r.kms.GetWrapper(ctx, c.ScopeId, kms.KeyPurposeOplog)
 	if err != nil {
 		return nil, fmt.Errorf("create: static host catalog: unable to get oplog wrapper: %w", err)
 	}
@@ -118,7 +118,7 @@ func (r *Repository) UpdateCatalog(ctx context.Context, c *HostCatalog, version 
 		}
 	}
 
-	oplogWrapper, err := r.kms.GetWrapper(ctx, c.ScopeId, kms.KeyPurposeOplog, "")
+	oplogWrapper, err := r.kms.GetWrapper(ctx, c.ScopeId, kms.KeyPurposeOplog)
 	if err != nil {
 		return nil, db.NoRowsAffected, fmt.Errorf("update: static host catalog: unable to get oplog wrapper: %w", err)
 	}
@@ -197,7 +197,7 @@ func (r *Repository) DeleteCatalog(ctx context.Context, id string, opt ...Option
 	if c.ScopeId == "" {
 		return db.NoRowsAffected, fmt.Errorf("delete: static host catalog: missing scope id: %w", db.ErrNilParameter)
 	}
-	oplogWrapper, err := r.kms.GetWrapper(ctx, c.ScopeId, kms.KeyPurposeOplog, "")
+	oplogWrapper, err := r.kms.GetWrapper(ctx, c.ScopeId, kms.KeyPurposeOplog)
 	if err != nil {
 		return db.NoRowsAffected, fmt.Errorf("delete: static host catalog: unable to get oplog wrapper: %w", err)
 	}

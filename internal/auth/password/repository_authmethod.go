@@ -67,7 +67,7 @@ func (r *Repository) CreateAuthMethod(ctx context.Context, m *AuthMethod, opt ..
 	}
 	m.PasswordConfId, c.PasswordMethodId = c.PrivateId, m.PublicId
 
-	oplogWrapper, err := r.kms.GetWrapper(ctx, m.GetScopeId(), kms.KeyPurposeOplog, "")
+	oplogWrapper, err := r.kms.GetWrapper(ctx, m.GetScopeId(), kms.KeyPurposeOplog)
 	if err != nil {
 		return nil, fmt.Errorf("create: password auth method: unable to get oplog wrapper: %w", err)
 	}
@@ -140,7 +140,7 @@ func (r *Repository) DeleteAuthMethod(ctx context.Context, scopeId, publicId str
 	am := allocAuthMethod()
 	am.PublicId = publicId
 
-	oplogWrapper, err := r.kms.GetWrapper(ctx, scopeId, kms.KeyPurposeOplog, "")
+	oplogWrapper, err := r.kms.GetWrapper(ctx, scopeId, kms.KeyPurposeOplog)
 	if err != nil {
 		return db.NoRowsAffected, fmt.Errorf("delete: password auth method: unable to get oplog wrapper: %w", err)
 	}
@@ -214,7 +214,7 @@ func (r *Repository) UpdateAuthMethod(ctx context.Context, authMethod *AuthMetho
 		return nil, db.NoRowsAffected, fmt.Errorf("update: password auth method: %w", db.ErrEmptyFieldMask)
 	}
 
-	oplogWrapper, err := r.kms.GetWrapper(ctx, authMethod.ScopeId, kms.KeyPurposeOplog, "")
+	oplogWrapper, err := r.kms.GetWrapper(ctx, authMethod.ScopeId, kms.KeyPurposeOplog)
 	if err != nil {
 		return nil, db.NoRowsAffected, fmt.Errorf("update: password auth method: unable to get oplog wrapper: %w", err)
 	}

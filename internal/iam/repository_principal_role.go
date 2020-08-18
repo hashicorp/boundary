@@ -54,7 +54,7 @@ func (r *Repository) AddPrincipalRoles(ctx context.Context, roleId string, roleV
 		return nil, fmt.Errorf("add principal roles: unable to get role %s scope: %w", roleId, err)
 	}
 
-	oplogWrapper, err := r.kms.GetWrapper(ctx, scope.GetPublicId(), kms.KeyPurposeOplog, "")
+	oplogWrapper, err := r.kms.GetWrapper(ctx, scope.GetPublicId(), kms.KeyPurposeOplog)
 	if err != nil {
 		return nil, fmt.Errorf("add principal roles: unable to get oplog wrapper: %w", err)
 	}
@@ -162,7 +162,7 @@ func (r *Repository) SetPrincipalRoles(ctx context.Context, roleId string, roleV
 	if err != nil {
 		return nil, db.NoRowsAffected, fmt.Errorf("set principal roles: unable to get role %s scope: %w", roleId, err)
 	}
-	oplogWrapper, err := r.kms.GetWrapper(ctx, scope.GetPublicId(), kms.KeyPurposeOplog, "")
+	oplogWrapper, err := r.kms.GetWrapper(ctx, scope.GetPublicId(), kms.KeyPurposeOplog)
 	if err != nil {
 		return nil, db.NoRowsAffected, fmt.Errorf("set principal roles: unable to get oplog wrapper: %w", err)
 	}
@@ -312,7 +312,7 @@ func (r *Repository) DeletePrincipalRoles(ctx context.Context, roleId string, ro
 	if err != nil {
 		return db.NoRowsAffected, fmt.Errorf("delete principal roles: unable to get role %s scope to create metadata: %w", roleId, err)
 	}
-	oplogWrapper, err := r.kms.GetWrapper(ctx, scope.GetPublicId(), kms.KeyPurposeOplog, "")
+	oplogWrapper, err := r.kms.GetWrapper(ctx, scope.GetPublicId(), kms.KeyPurposeOplog)
 	if err != nil {
 		return db.NoRowsAffected, fmt.Errorf("delete principal roles: unable to get oplog wrapper: %w", err)
 	}

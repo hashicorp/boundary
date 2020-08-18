@@ -216,7 +216,7 @@ func (r *Repository) AddGroupMembers(ctx context.Context, groupId string, groupV
 		newGroupMembers = append(newGroupMembers, gm)
 	}
 
-	oplogWrapper, err := r.kms.GetWrapper(ctx, scope.GetPublicId(), kms.KeyPurposeOplog, "")
+	oplogWrapper, err := r.kms.GetWrapper(ctx, scope.GetPublicId(), kms.KeyPurposeOplog)
 	if err != nil {
 		return nil, fmt.Errorf("add group members: unable to get oplog wrapper: %w", err)
 	}
@@ -308,7 +308,7 @@ func (r *Repository) DeleteGroupMembers(ctx context.Context, groupId string, gro
 		deleteMembers = append(deleteMembers, member)
 	}
 
-	oplogWrapper, err := r.kms.GetWrapper(ctx, scope.GetPublicId(), kms.KeyPurposeOplog, "")
+	oplogWrapper, err := r.kms.GetWrapper(ctx, scope.GetPublicId(), kms.KeyPurposeOplog)
 	if err != nil {
 		return db.NoRowsAffected, fmt.Errorf("add group members: unable to get oplog wrapper: %w", err)
 	}
@@ -425,7 +425,7 @@ func (r *Repository) SetGroupMembers(ctx context.Context, groupId string, groupV
 		return currentMembers, db.NoRowsAffected, nil
 	}
 
-	oplogWrapper, err := r.kms.GetWrapper(ctx, scope.GetPublicId(), kms.KeyPurposeOplog, "")
+	oplogWrapper, err := r.kms.GetWrapper(ctx, scope.GetPublicId(), kms.KeyPurposeOplog)
 	if err != nil {
 		return nil, db.NoRowsAffected, fmt.Errorf("add group members: unable to get oplog wrapper: %w", err)
 	}

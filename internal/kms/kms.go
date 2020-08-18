@@ -108,19 +108,20 @@ func generateKeyId(scopeId string, purpose KeyPurpose, version uint32) string {
 // passed, it will ensure that the returning wrapper has that key ID in the
 // multiwrapper. This is not necesary for encryption but should be supplied for
 // decryption.
-func (k *Kms) GetWrapper(ctx context.Context, scopeId string, purpose KeyPurpose, keyId string, opt ...Option) (wrapping.Wrapper, error) {
+func (k *Kms) GetWrapper(ctx context.Context, scopeId string, purpose KeyPurpose, opt ...Option) (wrapping.Wrapper, error) {
 	switch purpose {
 	case "oplog", "database":
 	default:
 		return nil, fmt.Errorf("unsupported purpose %q", purpose)
 	}
+	opts := getOpts(opt...)
 	// Fast-path: we have a valid key at the scope/purpose. Verify the key with
 	// that ID is in the multiwrapper; if not, fall through to reload from the
 	// DB.
 	val, ok := k.scopePurposeCache.Load(scopeId + purpose.String())
 	if ok {
 		wrapper := val.(*multiwrapper.MultiWrapper)
-		if keyId == "" || wrapper.WrapperForKeyID(keyId) != nil {
+		if opts.withKeyId == "" || wrapper.WrapperForKeyID(opts.withKeyId) != nil {
 			return wrapper, nil
 		}
 		// Fall through to refresh our multiwrapper for this scope/purpose from the DB

@@ -74,7 +74,9 @@ func TestHandler_CORS(t *testing.T) {
 	})
 	defer tc.Shutdown()
 
-	org := iam.TestOrg(t, tc.DbConn())
+	repo, err := tc.IamRepoFn()()
+	require.NoError(t, err)
+	org := iam.TestOrg(t, repo)
 
 	cases := []struct {
 		name           string

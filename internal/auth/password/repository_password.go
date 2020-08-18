@@ -44,8 +44,8 @@ func (r *Repository) Authenticate(ctx context.Context, scopeId, authMethodId, lo
 	if scopeId == "" {
 		return nil, fmt.Errorf("password authenticate: no scopeId: %w", db.ErrNilParameter)
 	}
-
-	databaseWrapper, err := r.kms.GetWrapper(ctx, scopeId, kms.KeyPurposeDatabase, "")
+	// FIXME: We should have a key ID
+	databaseWrapper, err := r.kms.GetWrapper(ctx, scopeId, kms.KeyPurposeDatabase, kms.WithKeyId(""))
 	if err != nil {
 		return nil, fmt.Errorf("password authenticate: unable to get database wrapper: %w", err)
 	}
@@ -68,7 +68,7 @@ func (r *Repository) Authenticate(ctx context.Context, scopeId, authMethodId, lo
 			return acct.Account, fmt.Errorf("password authenticate: update credential: %w", err)
 		}
 
-		oplogWrapper, err := r.kms.GetWrapper(ctx, scopeId, kms.KeyPurposeOplog, "")
+		oplogWrapper, err := r.kms.GetWrapper(ctx, scopeId, kms.KeyPurposeOplog)
 		if err != nil {
 			return acct.Account, fmt.Errorf("password authenticate: unable to get oplog wrapper: %w", err)
 		}
@@ -132,11 +132,12 @@ func (r *Repository) ChangePassword(ctx context.Context, scopeId, accountId, old
 		return nil, fmt.Errorf("change password: lookup account: account not found: %w", db.ErrRecordNotFound)
 	}
 
-	oplogWrapper, err := r.kms.GetWrapper(ctx, scopeId, kms.KeyPurposeOplog, "")
+	oplogWrapper, err := r.kms.GetWrapper(ctx, scopeId, kms.KeyPurposeOplog)
 	if err != nil {
 		return nil, fmt.Errorf("change password: unable to get oplog wrapper: %w", err)
 	}
-	databaseWrapper, err := r.kms.GetWrapper(ctx, scopeId, kms.KeyPurposeDatabase, "")
+	// FIXME: We should have a key ID
+	databaseWrapper, err := r.kms.GetWrapper(ctx, scopeId, kms.KeyPurposeDatabase, kms.WithKeyId(""))
 	if err != nil {
 		return nil, fmt.Errorf("change password: unable to get database wrapper: %w", err)
 	}
@@ -256,11 +257,12 @@ func (r *Repository) SetPassword(ctx context.Context, scopeId, accountId, passwo
 		return nil, fmt.Errorf("set password: no scopeId: %w", db.ErrNilParameter)
 	}
 
-	oplogWrapper, err := r.kms.GetWrapper(ctx, scopeId, kms.KeyPurposeOplog, "")
+	oplogWrapper, err := r.kms.GetWrapper(ctx, scopeId, kms.KeyPurposeOplog)
 	if err != nil {
 		return nil, fmt.Errorf("set password: unable to get oplog wrapper: %w", err)
 	}
-	databaseWrapper, err := r.kms.GetWrapper(ctx, scopeId, kms.KeyPurposeDatabase, "")
+	// FIXME: We should have a key ID
+	databaseWrapper, err := r.kms.GetWrapper(ctx, scopeId, kms.KeyPurposeDatabase, kms.WithKeyId(""))
 	if err != nil {
 		return nil, fmt.Errorf("set password: unable to get database wrapper: %w", err)
 	}

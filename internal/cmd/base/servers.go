@@ -53,6 +53,7 @@ type Server struct {
 
 	RootKms            wrapping.Wrapper
 	WorkerAuthKms      wrapping.Wrapper
+	Kms                *kms.Kms
 	SecureRandomReader io.Reader
 
 	InmemSink         *metrics.InmemSink
@@ -474,7 +475,7 @@ func (b *Server) CreateDevDatabase(dialect string) error {
 	}
 
 	// Create the dev auth method
-	pwRepo, err := password.NewRepository(rw, rw, b.RootKms)
+	pwRepo, err := password.NewRepository(rw, rw, kmsCache)
 	if err != nil {
 		return fmt.Errorf("error creating password repo: %w", err)
 	}
@@ -511,7 +512,7 @@ func (b *Server) CreateDevDatabase(dialect string) error {
 	if err != nil {
 		return fmt.Errorf("error creating new in memory auth account: %w", err)
 	}
-	acct, err = pwRepo.CreateAccount(ctx, acct, password.WithPassword(pw))
+	acct, err = pwRepo.CreateAccount(ctx, scope.Global.String(), acct, password.WithPassword(pw))
 	if err != nil {
 		return fmt.Errorf("error saving auth account to the db: %w", err)
 	}

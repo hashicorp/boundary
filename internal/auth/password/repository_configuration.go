@@ -78,7 +78,7 @@ func (r *Repository) setArgon2Conf(ctx context.Context, scopeId string, c *Argon
 		},
 	}
 
-	oplogWrapper, err := r.kms.GetWrapper(ctx, scopeId, kms.KeyPurposeOplog, "")
+	oplogWrapper, err := r.kms.GetWrapper(ctx, scopeId, kms.KeyPurposeOplog)
 	if err != nil {
 		return nil, fmt.Errorf("update: password account: unable to get oplog wrapper: %w", err)
 	}

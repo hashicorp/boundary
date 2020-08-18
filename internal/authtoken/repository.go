@@ -86,11 +86,12 @@ func (r *Repository) CreateAuthToken(ctx context.Context, withIamUser *iam.User,
 	}
 	at.Token = token
 
-	oplogWrapper, err := r.kms.GetWrapper(ctx, withIamUser.GetScopeId(), kms.KeyPurposeOplog, "")
+	oplogWrapper, err := r.kms.GetWrapper(ctx, withIamUser.GetScopeId(), kms.KeyPurposeOplog)
 	if err != nil {
 		return nil, fmt.Errorf("create: unable to get oplog wrapper: %w", err)
 	}
-	databaseWrapper, err := r.kms.GetWrapper(ctx, withIamUser.GetScopeId(), kms.KeyPurposeDatabase, "")
+	// FIXME: should have a key ID
+	databaseWrapper, err := r.kms.GetWrapper(ctx, withIamUser.GetScopeId(), kms.KeyPurposeDatabase, kms.WithKeyId(""))
 	if err != nil {
 		return nil, fmt.Errorf("create: unable to get database wrapper: %w", err)
 	}
@@ -160,7 +161,8 @@ func (r *Repository) LookupAuthToken(ctx context.Context, id string, opt ...Opti
 		return nil, fmt.Errorf("auth token: lookup: %w", err)
 	}
 	if opts.withTokenValue {
-		databaseWrapper, err := r.kms.GetWrapper(ctx, at.GetScopeId(), kms.KeyPurposeDatabase, "")
+		// FIXME: Should have a key ID
+		databaseWrapper, err := r.kms.GetWrapper(ctx, at.GetScopeId(), kms.KeyPurposeDatabase, kms.WithKeyId(""))
 		if err != nil {
 			return nil, fmt.Errorf("lookup: unable to get database wrapper: %w", err)
 		}
@@ -210,7 +212,7 @@ func (r *Repository) ValidateToken(ctx context.Context, id, token string, opt ..
 		return nil, fmt.Errorf("validate token: last accessed time : %w", err)
 	}
 
-	oplogWrapper, err := r.kms.GetWrapper(ctx, retAT.GetScopeId(), kms.KeyPurposeOplog, "")
+	oplogWrapper, err := r.kms.GetWrapper(ctx, retAT.GetScopeId(), kms.KeyPurposeOplog)
 	if err != nil {
 		return nil, fmt.Errorf("validate token: unable to get oplog wrapper: %w", err)
 	}
@@ -315,7 +317,7 @@ func (r *Repository) DeleteAuthToken(ctx context.Context, id string, opt ...Opti
 		return db.NoRowsAffected, nil
 	}
 
-	oplogWrapper, err := r.kms.GetWrapper(ctx, at.GetScopeId(), kms.KeyPurposeOplog, "")
+	oplogWrapper, err := r.kms.GetWrapper(ctx, at.GetScopeId(), kms.KeyPurposeOplog)
 	if err != nil {
 		return db.NoRowsAffected, fmt.Errorf("delete: unable to get oplog wrapper: %w", err)
 	}
