@@ -61,6 +61,19 @@ func Test_TestScopes(t *testing.T) {
 	require.NotNil(prj)
 	assert.NotEmpty(prj.GetPublicId())
 }
+
+func Test_TestRepo(t *testing.T) {
+	require := require.New(t)
+	conn, _ := db.TestSetup(t, "postgres")
+	wrapper := db.TestWrapper(t)
+
+	repo := TestRepo(t, conn, wrapper)
+	require.NotNil(repo)
+
+	repo = TestRepo(t, conn, wrapper)
+	require.NotNil(repo)
+}
+
 func Test_TestUser(t *testing.T) {
 	t.Helper()
 	assert, require := assert.New(t), require.New(t)
