@@ -184,3 +184,15 @@ func DefaultPasswordAccountPassword() Option {
 		o.valueMap["attributes"] = val
 	}
 }
+
+func WithType(inType string) Option {
+	return func(o *options) {
+		o.valueMap["type"] = inType
+	}
+}
+
+func DefaultType() Option {
+	return func(o *options) {
+		o.valueMap["type"] = nil
+	}
+}

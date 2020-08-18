@@ -241,6 +241,7 @@ var inputStructs = []*structInfo{
 			listTemplate,
 		},
 		pathArgs:       []string{"host-catalog"},
+		typeOnCreate:   true,
 		versionEnabled: true,
 	},
 	{

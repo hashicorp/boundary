@@ -34,10 +34,15 @@ func NewHostCatalogsClient(c *api.Client) *HostCatalogsClient {
 	return &HostCatalogsClient{client: c}
 }
 
-func (c *HostCatalogsClient) Create(ctx context.Context, opt ...Option) (*HostCatalog, *api.Error, error) {
+func (c *HostCatalogsClient) Create(ctx context.Context, resourceType string, opt ...Option) (*HostCatalog, *api.Error, error) {
 	opts, apiOpts := getOpts(opt...)
 	if c.client == nil {
 		return nil, nil, fmt.Errorf("nil client")
+	}
+	if resourceType == "" {
+		return nil, nil, fmt.Errorf("empty resourceType value passed into Create request")
+	} else {
+		opts.valueMap["type"] = resourceType
 	}
 
 	req, err := c.client.NewRequest(ctx, "POST", "host-catalogs", opts.valueMap, apiOpts...)
