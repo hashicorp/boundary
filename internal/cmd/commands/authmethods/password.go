@@ -170,7 +170,7 @@ func (c *PasswordCommand) Run(args []string) int {
 	var version uint32
 	switch c.Func {
 	case "create":
-		// These don't udpate so don't need the existing version
+		// These don't update so don't need the existing version
 	default:
 		switch c.FlagVersion {
 		case 0:
