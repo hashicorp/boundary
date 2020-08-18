@@ -298,7 +298,6 @@ func (r *Repository) AssociateUserWithAccount(ctx context.Context, userPublicId,
 		db.StdRetryCnt,
 		db.ExpBackoff{},
 		func(txReader db.Reader, w db.Writer) error {
-
 			metadata := oplog.Metadata{
 				"resource-public-id": []string{accountId},
 				"scope-id":           []string{acct.ScopeId},

@@ -216,6 +216,11 @@ func (r *Repository) AddGroupMembers(ctx context.Context, groupId string, groupV
 		newGroupMembers = append(newGroupMembers, gm)
 	}
 
+	oplogWrapper, err := r.kms.GetWrapper(ctx, scope.GetPublicId(), kms.KeyPurposeOplog, "")
+	if err != nil {
+		return nil, fmt.Errorf("add group members: unable to get oplog wrapper: %w", err)
+	}
+
 	var currentMembers []*GroupMember
 	_, err = r.writer.DoTx(
 		ctx,
@@ -249,10 +254,6 @@ func (r *Repository) AddGroupMembers(ctx context.Context, groupId string, groupV
 				"scope-id":           []string{scope.PublicId},
 				"scope-type":         []string{scope.Type},
 				"resource-public-id": []string{groupId},
-			}
-			oplogWrapper, err := r.kms.GetWrapper(ctx, scope.GetPublicId(), kms.KeyPurposeOplog, "")
-			if err != nil {
-				return fmt.Errorf("add group members: unable to get oplog wrapper: %w", err)
 			}
 			if err := w.WriteOplogEntryWith(ctx, oplogWrapper, groupTicket, metadata, msgs); err != nil {
 				return fmt.Errorf("add group members: unable to write oplog: %w", err)
@@ -307,6 +308,11 @@ func (r *Repository) DeleteGroupMembers(ctx context.Context, groupId string, gro
 		deleteMembers = append(deleteMembers, member)
 	}
 
+	oplogWrapper, err := r.kms.GetWrapper(ctx, scope.GetPublicId(), kms.KeyPurposeOplog, "")
+	if err != nil {
+		return db.NoRowsAffected, fmt.Errorf("add group members: unable to get oplog wrapper: %w", err)
+	}
+
 	var totalRowsDeleted int
 	_, err = r.writer.DoTx(
 		ctx,
@@ -345,10 +351,6 @@ func (r *Repository) DeleteGroupMembers(ctx context.Context, groupId string, gro
 				"scope-id":           []string{scope.PublicId},
 				"scope-type":         []string{scope.Type},
 				"resource-public-id": []string{groupId},
-			}
-			oplogWrapper, err := r.kms.GetWrapper(ctx, scope.GetPublicId(), kms.KeyPurposeOplog, "")
-			if err != nil {
-				return fmt.Errorf("add group members: unable to get oplog wrapper: %w", err)
 			}
 			if err := w.WriteOplogEntryWith(ctx, oplogWrapper, groupTicket, metadata, msgs); err != nil {
 				return fmt.Errorf("delete group members: unable to write oplog: %w", err)

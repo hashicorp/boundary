@@ -30,13 +30,6 @@ func (r *Repository) AddPrincipalRoles(ctx context.Context, roleId string, roleV
 		return nil, fmt.Errorf("add principal roles: missing either user or groups to add: %w", db.ErrInvalidParameter)
 	}
 
-	role := allocRole()
-	role.PublicId = roleId
-	roleScope, err := role.GetScope(ctx, r.reader)
-	if err != nil {
-		return nil, fmt.Errorf("add principal roles: unable to get role %s scope: %w", roleId, err)
-	}
-
 	newUserRoles := make([]interface{}, 0, len(userIds))
 	for _, id := range userIds {
 		usrRole, err := NewUserRole(roleId, id)
@@ -53,6 +46,19 @@ func (r *Repository) AddPrincipalRoles(ctx context.Context, roleId string, roleV
 		}
 		newGrpRoles = append(newGrpRoles, grpRole)
 	}
+
+	role := allocRole()
+	role.PublicId = roleId
+	scope, err := role.GetScope(ctx, r.reader)
+	if err != nil {
+		return nil, fmt.Errorf("add principal roles: unable to get role %s scope: %w", roleId, err)
+	}
+
+	oplogWrapper, err := r.kms.GetWrapper(ctx, scope.GetPublicId(), kms.KeyPurposeOplog, "")
+	if err != nil {
+		return nil, fmt.Errorf("add principal roles: unable to get oplog wrapper: %w", err)
+	}
+
 	var currentPrincipals []PrincipalRole
 	_, err = r.writer.DoTx(
 		ctx,
@@ -92,18 +98,18 @@ func (r *Repository) AddPrincipalRoles(ctx context.Context, roleId string, roleV
 			}
 			metadata := oplog.Metadata{
 				"op-type":            []string{oplog.OpType_OP_TYPE_CREATE.String()},
-				"scope-id":           []string{roleScope.PublicId},
-				"scope-type":         []string{roleScope.Type},
+				"scope-id":           []string{scope.PublicId},
+				"scope-type":         []string{scope.Type},
 				"resource-public-id": []string{roleId},
 			}
-			if err := w.WriteOplogEntryWith(ctx, r.wrapper, roleTicket, metadata, msgs); err != nil {
+			if err := w.WriteOplogEntryWith(ctx, oplogWrapper, roleTicket, metadata, msgs); err != nil {
 				return fmt.Errorf("add principal roles: unable to write oplog: %w", err)
 			}
 			// we need a new repo, that's using the same reader/writer as this TxHandler
 			txRepo := &Repository{
-				reader:  reader,
-				writer:  w,
-				wrapper: r.wrapper,
+				reader: reader,
+				writer: w,
+				kms:    r.kms,
 				// intentionally not setting the defaultLimit, so we'll get all
 				// the principal roles without a limit
 			}
@@ -134,10 +140,7 @@ func (r *Repository) SetPrincipalRoles(ctx context.Context, roleId string, roleV
 	}
 	role := allocRole()
 	role.PublicId = roleId
-	scope, err := role.GetScope(ctx, r.reader)
-	if err != nil {
-		return nil, db.NoRowsAffected, fmt.Errorf("set principal roles: unable to get role %s scope: %w", roleId, err)
-	}
+
 	// it's "safe" to do this lookup outside the DoTx transaction because we
 	// have a roleVersion so the principals can’t change without the version
 	// changing.
@@ -155,9 +158,14 @@ func (r *Repository) SetPrincipalRoles(ctx context.Context, roleId string, roleV
 		return toSet.unchangedPrincipalRoles, db.NoRowsAffected, nil
 	}
 
+	scope, err := role.GetScope(ctx, r.reader)
+	if err != nil {
+		return nil, db.NoRowsAffected, fmt.Errorf("set principal roles: unable to get role %s scope: %w", roleId, err)
+	}
+
 	oplogWrapper, err := r.kms.GetWrapper(ctx, scope.GetPublicId(), kms.KeyPurposeOplog, "")
 	if err != nil {
-		return nil, db.NoRowsAffected, fmt.Errorf("disassociate user with account: unable to get oplog wrapper: %w", err)
+		return nil, db.NoRowsAffected, fmt.Errorf("set principal roles: unable to get oplog wrapper: %w", err)
 	}
 
 	var currentPrincipals []PrincipalRole
@@ -283,10 +291,7 @@ func (r *Repository) DeletePrincipalRoles(ctx context.Context, roleId string, ro
 	}
 	role := allocRole()
 	role.PublicId = roleId
-	scope, err := role.GetScope(ctx, r.reader)
-	if err != nil {
-		return db.NoRowsAffected, fmt.Errorf("delete principal roles: unable to get role %s scope to create metadata: %w", roleId, err)
-	}
+
 	deleteUserRoles := make([]interface{}, 0, len(userIds))
 	for _, id := range userIds {
 		usrRole, err := NewUserRole(roleId, id)
@@ -302,6 +307,15 @@ func (r *Repository) DeletePrincipalRoles(ctx context.Context, roleId string, ro
 			return db.NoRowsAffected, fmt.Errorf("delete principal roles: unable to create in memory group role: %w", err)
 		}
 		deleteGrpRoles = append(deleteGrpRoles, grpRole)
+	}
+
+	scope, err := role.GetScope(ctx, r.reader)
+	if err != nil {
+		return db.NoRowsAffected, fmt.Errorf("delete principal roles: unable to get role %s scope to create metadata: %w", roleId, err)
+	}
+	oplogWrapper, err := r.kms.GetWrapper(ctx, scope.GetPublicId(), kms.KeyPurposeOplog, "")
+	if err != nil {
+		return db.NoRowsAffected, fmt.Errorf("delete principal roles: unable to get oplog wrapper: %w", err)
 	}
 
 	var totalRowsDeleted int
@@ -357,7 +371,7 @@ func (r *Repository) DeletePrincipalRoles(ctx context.Context, roleId string, ro
 				"scope-type":         []string{scope.Type},
 				"resource-public-id": []string{roleId},
 			}
-			if err := w.WriteOplogEntryWith(ctx, r.wrapper, roleTicket, metadata, msgs); err != nil {
+			if err := w.WriteOplogEntryWith(ctx, oplogWrapper, roleTicket, metadata, msgs); err != nil {
 				return fmt.Errorf("delete principal roles: unable to write oplog: %w", err)
 			}
 			return nil

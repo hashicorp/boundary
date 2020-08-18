@@ -9,10 +9,12 @@ import (
 
 	"github.com/hashicorp/boundary/internal/db"
 	dbcommon "github.com/hashicorp/boundary/internal/db/common"
+	"github.com/hashicorp/boundary/internal/kms"
 	kmsCommon "github.com/hashicorp/boundary/internal/kms/common"
 	"github.com/hashicorp/boundary/internal/oplog"
 	"github.com/hashicorp/boundary/internal/types/resource"
 	"github.com/hashicorp/boundary/internal/types/scope"
+	wrapping "github.com/hashicorp/go-kms-wrapping"
 	"github.com/hashicorp/go-uuid"
 )
 
@@ -28,16 +30,32 @@ func (r *Repository) CreateScope(ctx context.Context, s *Scope, userId string, o
 	if s.PublicId != "" {
 		return nil, fmt.Errorf("create scope: public id not empty: %w", db.ErrInvalidParameter)
 	}
+
+	var parentOplogWrapper wrapping.Wrapper
+	var externalWrappers *kms.ExternalWrappers
+	var err error
 	switch s.Type {
 	case scope.Unknown.String():
 		return nil, fmt.Errorf("create scope: unknown type: %w", db.ErrInvalidParameter)
 	case scope.Global.String():
 		return nil, fmt.Errorf("create scope: invalid type: %w", db.ErrInvalidParameter)
+	default:
+		switch s.ParentId {
+		case "":
+			return nil, fmt.Errorf("create scope: missing parent id: %w", db.ErrNilParameter)
+		case scope.Global.String():
+			parentOplogWrapper, err = r.kms.GetWrapper(ctx, scope.Global.String(), kms.KeyPurposeOplog, "")
+		default:
+			parentOplogWrapper, err = r.kms.GetWrapper(ctx, s.ParentId, kms.KeyPurposeOplog, "")
+		}
+		externalWrappers = r.kms.GetExternalWrappers()
+	}
+	if err != nil {
+		return nil, fmt.Errorf("create scope: unable to get oplog wrapper: %w", err)
 	}
 
 	opts := getOpts(opt...)
 
-	var err error
 	var scopePublicId string
 	var scopeMetadata oplog.Metadata
 	var scopeRaw interface{}
@@ -118,7 +136,7 @@ func (r *Repository) CreateScope(ctx context.Context, s *Scope, userId string, o
 			if err := w.Create(
 				ctx,
 				scopeRaw,
-				db.WithOplog(r.wrapper, scopeMetadata),
+				db.WithOplog(parentOplogWrapper, scopeMetadata),
 			); err != nil {
 				return fmt.Errorf("error creating scope: %w", err)
 			}
@@ -127,13 +145,16 @@ func (r *Repository) CreateScope(ctx context.Context, s *Scope, userId string, o
 
 			if s.Type == scope.Global.String() || s.Type == scope.Org.String() {
 				// Create the scope's root key
-				_, _, err := kmsCommon.CreateRootKeyTx(ctx, w, r.wrapper, s.PublicId, rootKey)
+				_, _, err := kmsCommon.CreateRootKeyTx(ctx, w, externalWrappers.Root(), s.PublicId, rootKey)
 				if err != nil {
 					return fmt.Errorf("error creating scope root key: %w", err)
 				}
 			}
 
-			// TODO: wrapper below should be the new scope's oplog key
+			childOplogWrapper, err := r.kms.GetWrapper(ctx, s.PublicId, kms.KeyPurposeOplog, "")
+			if err != nil {
+				return fmt.Errorf("error fetching new scope oplog wrapper: %w", err)
+			}
 
 			// We create a new role, then set grants and principals on it. This
 			// turns into a bunch of stuff sadly because the role is the
@@ -142,7 +163,7 @@ func (r *Repository) CreateScope(ctx context.Context, s *Scope, userId string, o
 				if err := w.Create(
 					ctx,
 					roleRaw,
-					db.WithOplog(r.wrapper, roleMetadata),
+					db.WithOplog(childOplogWrapper, roleMetadata),
 				); err != nil {
 					return fmt.Errorf("error creating role: %w", err)
 				}
@@ -193,7 +214,7 @@ func (r *Repository) CreateScope(ctx context.Context, s *Scope, userId string, o
 					"scope-type":         []string{s.Type},
 					"resource-public-id": []string{role.PublicId},
 				}
-				if err := w.WriteOplogEntryWith(ctx, r.wrapper, roleTicket, metadata, msgs); err != nil {
+				if err := w.WriteOplogEntryWith(ctx, childOplogWrapper, roleTicket, metadata, msgs); err != nil {
 					return fmt.Errorf("unable to write oplog: %w", err)
 				}
 			}

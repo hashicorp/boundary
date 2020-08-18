@@ -78,21 +78,21 @@ func (r *Repository) create(ctx context.Context, resource Resource, opt ...Optio
 	}
 	metadata["op-type"] = []string{oplog.OpType_OP_TYPE_CREATE.String()}
 
+	scope, err := resource.GetScope(ctx, r.reader)
+	if err != nil {
+		return nil, fmt.Errorf("unable to get scope: %w", err)
+	}
+	oplogWrapper, err := r.kms.GetWrapper(ctx, scope.GetPublicId(), kms.KeyPurposeOplog, "")
+	if err != nil {
+		return nil, fmt.Errorf("unable to get oplog wrapper: %w", err)
+	}
+
 	var returnedResource interface{}
 	_, err = r.writer.DoTx(
 		ctx,
 		db.StdRetryCnt,
 		db.ExpBackoff{},
-		func(dbr db.Reader, w db.Writer) error {
-			// We get the oplog wrapper in here so it's in the same transaction
-			scope, err := resource.GetScope(ctx, dbr)
-			if err != nil {
-				return fmt.Errorf("unable to get scope: %w", err)
-			}
-			oplogWrapper, err := r.kms.GetWrapper(ctx, scope.GetPublicId(), kms.KeyPurposeOplog, "")
-			if err != nil {
-				return fmt.Errorf("unable to get oplog wrapper: %w", err)
-			}
+		func(_ db.Reader, w db.Writer) error {
 			returnedResource = resourceCloner.Clone()
 			return w.Create(
 				ctx,
@@ -130,22 +130,22 @@ func (r *Repository) update(ctx context.Context, resource Resource, version uint
 		dbOpts = append(dbOpts, db.WithSkipVetForWrite(true))
 	}
 
+	scope, err := resource.GetScope(ctx, r.reader)
+	if err != nil {
+		return nil, db.NoRowsAffected, fmt.Errorf("unable to get scope: %w", err)
+	}
+	oplogWrapper, err := r.kms.GetWrapper(ctx, scope.GetPublicId(), kms.KeyPurposeOplog, "")
+	if err != nil {
+		return nil, db.NoRowsAffected, fmt.Errorf("unable to get oplog wrapper: %w", err)
+	}
+
 	var rowsUpdated int
 	var returnedResource interface{}
 	_, err = r.writer.DoTx(
 		ctx,
 		db.StdRetryCnt,
 		db.ExpBackoff{},
-		func(dbr db.Reader, w db.Writer) error {
-			// We get the oplog wrapper in here so it's in the same transaction
-			scope, err := resource.GetScope(ctx, dbr)
-			if err != nil {
-				return fmt.Errorf("unable to get scope: %w", err)
-			}
-			oplogWrapper, err := r.kms.GetWrapper(ctx, scope.GetPublicId(), kms.KeyPurposeOplog, "")
-			if err != nil {
-				return fmt.Errorf("unable to get oplog wrapper: %w", err)
-			}
+		func(_ db.Reader, w db.Writer) error {
 			dbOpts = append(dbOpts, db.WithOplog(oplogWrapper, metadata))
 			returnedResource = resourceCloner.Clone()
 			rowsUpdated, err = w.Update(
@@ -180,22 +180,22 @@ func (r *Repository) delete(ctx context.Context, resource Resource, opt ...Optio
 	}
 	metadata["op-type"] = []string{oplog.OpType_OP_TYPE_DELETE.String()}
 
+	scope, err := resource.GetScope(ctx, r.reader)
+	if err != nil {
+		return db.NoRowsAffected, fmt.Errorf("unable to get scope: %w", err)
+	}
+	oplogWrapper, err := r.kms.GetWrapper(ctx, scope.GetPublicId(), kms.KeyPurposeOplog, "")
+	if err != nil {
+		return db.NoRowsAffected, fmt.Errorf("unable to get oplog wrapper: %w", err)
+	}
+
 	var rowsDeleted int
 	var deleteResource interface{}
 	_, err = r.writer.DoTx(
 		ctx,
 		db.StdRetryCnt,
 		db.ExpBackoff{},
-		func(dbr db.Reader, w db.Writer) error {
-			// We get the oplog wrapper in here so it's in the same transaction
-			scope, err := resource.GetScope(ctx, dbr)
-			if err != nil {
-				return fmt.Errorf("unable to get scope: %w", err)
-			}
-			oplogWrapper, err := r.kms.GetWrapper(ctx, scope.GetPublicId(), kms.KeyPurposeOplog, "")
-			if err != nil {
-				return fmt.Errorf("unable to get oplog wrapper: %w", err)
-			}
+		func(_ db.Reader, w db.Writer) error {
 			deleteResource = resourceCloner.Clone()
 			rowsDeleted, err = w.Delete(
 				ctx,
