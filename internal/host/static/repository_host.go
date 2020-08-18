@@ -110,8 +110,6 @@ func (r *Repository) UpdateHost(ctx context.Context, h *Host, version uint32, fi
 		return nil, db.NoRowsAffected, fmt.Errorf("update: static host: %w", db.ErrEmptyFieldMask)
 	}
 
-	h = h.clone()
-
 	var rowsUpdated int
 	var returnedHost *Host
 	_, err := r.writer.DoTx(ctx, db.StdRetryCnt, db.ExpBackoff{},
