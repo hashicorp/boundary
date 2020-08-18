@@ -422,6 +422,7 @@ func (c *{{ $input.ClientName }}Client) {{ $fullName }}(ctx context.Context, {{ 
 		version = existingTarget.Version
 	}
 	{{ end }}
+	opts.valueMap["version"] = version
 
 	if len({{ $value }}) > 0 {
 		opts.valueMap["{{ snakeCase $value }}"] = {{ $value }}
@@ -435,10 +436,6 @@ func (c *{{ $input.ClientName }}Client) {{ $fullName }}(ctx context.Context, {{ 
 	if err != nil {
 		return nil, nil, fmt.Errorf("error creating {{ $fullName }} request: %w", err)
 	}
-
-	q := url.Values{}
-	q.Add("version", fmt.Sprintf("%d", version))
-	req.URL.RawQuery = q.Encode()
 
 	resp, err := c.client.Do(req)
 	if err != nil {
