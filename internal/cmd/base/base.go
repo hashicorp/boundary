@@ -104,11 +104,13 @@ func MakeShutdownCh() chan struct{} {
 
 // Client returns the HTTP API client. The client is cached on the command to
 // save performance on future calls.
-func (c *Command) Client() (*api.Client, error) {
+func (c *Command) Client(opt ...Option) (*api.Client, error) {
 	// Read the test client if present
 	if c.client != nil {
 		return c.client, nil
 	}
+
+	opts := getOpts(opt...)
 
 	config, err := api.DefaultConfig()
 	if err != nil {
@@ -194,7 +196,9 @@ func (c *Command) Client() (*api.Client, error) {
 						c.UI.Error(fmt.Sprintf("Error unmarshaling stored token information after reading from system credential store: %s", err))
 					} else {
 						c.client.SetToken(authToken.Token)
-						c.client.SetScopeId(authToken.Scope.Id)
+						if !opts.withNoTokenScope {
+							c.client.SetScopeId(authToken.Scope.Id)
+						}
 					}
 				}
 			}
@@ -211,7 +215,7 @@ func (c *Command) Client() (*api.Client, error) {
 				c.UI.Info(fmt.Sprintf("Scope of %q set from -scope command flag", c.flagScope))
 			}
 		}
-	} else if c.client.ScopeId() != "" {
+	} else if c.client.ScopeId() != "" && !opts.withNoTokenScope {
 		// If it didn't come from env or a flag but isn't empty, it must have come from the token
 		if c.flagFormat == "table" && c.flagVerbose {
 			c.UI.Info(fmt.Sprintf("Scope of %q set from saved token with name %q", c.client.ScopeId(), tokenName))

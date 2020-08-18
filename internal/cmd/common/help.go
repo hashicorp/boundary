@@ -38,7 +38,7 @@ func HelpMap(resType string) map[string]func() string {
 			return base.WrapForHelpText(subType([]string{
 				"Usage: boundary {{type}}s [sub command] [options] [args]",
 				"",
-				"  This command allows operations on Boundary {{type}} resources. Examples",
+				"  This command allows operations on Boundary {{type}} resources. Example:",
 				"",
 				"    Create {{articletype}}:",
 				"",
@@ -67,6 +67,8 @@ func HelpMap(resType string) map[string]func() string {
 				"  Update {{articletype}} given its ID. Example:",
 				"",
 				`    $ boundary {{type}}s update -id {{prefix}}_1234567890 -name "devops" -description "{{uppertype}} for DevOps"`,
+				"",
+				"",
 			}, resType, prefixMap))
 		},
 
@@ -77,6 +79,8 @@ func HelpMap(resType string) map[string]func() string {
 				"  Read {{articletype}} given its ID. Example:",
 				"",
 				`    $ boundary {{type}}s read -id {{prefix}}_1234567890`,
+				"",
+				"",
 			}, resType, prefixMap))
 		},
 
@@ -87,6 +91,8 @@ func HelpMap(resType string) map[string]func() string {
 				"  Delete {{articletype}} given its ID. Example:",
 				"",
 				`    $ boundary {{type}}s delete -id {{prefix}}_1234567890`,
+				"",
+				"",
 			}, resType, prefixMap))
 		},
 
@@ -97,6 +103,8 @@ func HelpMap(resType string) map[string]func() string {
 				"  List {{type}}s within an enclosing scope or resource. Example:",
 				"",
 				`    $ boundary {{type}}s list`,
+				"",
+				"",
 			}, resType, prefixMap))
 		},
 	}

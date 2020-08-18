@@ -60,7 +60,7 @@ insert on kms_root_key
 
 create table kms_root_key_version (
   private_id wt_private_id primary key,
-  root_key_id  wt_private_id not null 
+  root_key_id  wt_private_id not null
     references kms_root_key(private_id) 
     on delete cascade 
     on update cascade,
@@ -91,7 +91,7 @@ before insert on kms_root_key_version
 
 create table kms_database_key (
   private_id wt_private_id primary key,
-  root_key_id wt_private_id
+  root_key_id wt_private_id not null
     references kms_root_key(private_id)
     on delete cascade
     on update cascade,
@@ -113,7 +113,7 @@ insert on kms_database_key
 
 create table kms_database_key_version (
   private_id wt_private_id primary key,
-  database_key_id wt_private_id 
+  database_key_id wt_private_id not null
     references kms_database_key(private_id) 
     on delete cascade 
     on update cascade, 
@@ -147,7 +147,7 @@ before insert on kms_database_key_version
 
 create table kms_oplog_key (
   private_id wt_private_id primary key,
-  root_key_id wt_private_id
+  root_key_id wt_private_id not null
     references kms_root_key(private_id)
     on delete cascade
     on update cascade,
@@ -169,7 +169,7 @@ insert on kms_oplog_key
 
 create table kms_oplog_key_version (
   private_id wt_private_id primary key,
-  oplog_key_id wt_private_id 
+  oplog_key_id wt_private_id not null
     references kms_oplog_key(private_id) 
     on delete cascade 
     on update cascade, 
@@ -203,7 +203,7 @@ before insert on kms_oplog_key_version
 
 create table kms_session_key (
   private_id wt_private_id primary key,
-  root_key_id wt_private_id
+  root_key_id wt_private_id not null
     references kms_root_key(private_id)
     on delete cascade
     on update cascade,
@@ -225,7 +225,7 @@ insert on kms_session_key
 
 create table kms_session_key_version (
   private_id wt_private_id primary key,
-  session_key_id wt_private_id 
+  session_key_id wt_private_id not null
     references kms_session_key(private_id) 
     on delete cascade 
     on update cascade, 

@@ -112,7 +112,7 @@ func (c *PasswordCommand) Run(args []string) int {
 		c.flagPassword = strings.TrimSpace(value)
 	}
 
-	client, err := c.Client()
+	client, err := c.Client(base.WithNoTokenScope())
 	if err != nil {
 		c.UI.Error(fmt.Sprintf("Error creating API client: %s", err.Error()))
 		return 2
